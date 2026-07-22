@@ -26,3 +26,29 @@ func TestIsNonCombatFragClass(t *testing.T) {
 		}
 	}
 }
+
+// TestWeaponClassHasAccuracy fige le prédicat d'inclusion du graphe « Précision par arme »
+// (déplacé depuis le package service, exporté pour être partagé avec service/teammates).
+// Les classes SANS « tir au but » — grenade/mêlée/capacités spartanes/non attribué — et les
+// buckets non-combat (véhicule/tourelle/environnement/autre) sont EXCLUS ; les classes gun
+// et la classe non résolue ("" — bénéfice du doute) sont INCLUSES.
+func TestWeaponClassHasAccuracy(t *testing.T) {
+	excluded := []string{
+		FragClassGrenade, FragClassMelee, FragClassSpartanAbility, FragClassUnattributed,
+		FragClassVehicle, FragClassTurret, FragClassEnvironmental, FragClassOther,
+	}
+	for _, c := range excluded {
+		if WeaponClassHasAccuracy(c) {
+			t.Errorf("WeaponClassHasAccuracy(%q) = true, want false", c)
+		}
+	}
+	included := []string{
+		FragClassShoulder, FragClassSidearm, FragClassHeavy,
+		"", "precision", "automatic", "sniper", "shotgun",
+	}
+	for _, c := range included {
+		if !WeaponClassHasAccuracy(c) {
+			t.Errorf("WeaponClassHasAccuracy(%q) = false, want true", c)
+		}
+	}
+}

@@ -12,11 +12,13 @@ en = "Frag distribution"
 fr = "Frags par arme"
 en = "Kills by weapon"
 
-# Titre du bloc « Détails des frags » — UNIQUEMENT le Match view (armes + mêlée/grenade/
-# capacités). Les autres surfaces gardent weapon_breakdown_title (« Frags par arme »).
+# Titre du bloc « Outils de destruction » (armes du registre + détail mêlée/grenade/
+# capacités via buildFragDetailBreakdown). Clé PARTAGÉE par 4 surfaces : Match view +
+# Synthesis + Sessions + Timeseries (onglet Résumé). Les autres surfaces gardent
+# weapon_breakdown_title (« Frags par arme »).
 [frags.charts.detail_title]
-fr = "Détails des frags"
-en = "Frag details"
+fr = "Outils de destruction"
+en = "Tools of destruction"
 
 [frags.charts.center_total_label]
 fr = "Frags"

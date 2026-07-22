@@ -17,6 +17,66 @@ import (
 	"levelup/go-api/internal/service/fragdist"
 )
 
+// squadScope porte le périmètre commun aux breakdowns par-arme de la page Escouade
+// (weapon kills, mécaniques natives, précision) : matchs partagés uniques + résolution
+// xuid↔gamertag dans l'ordre canonique (main d'abord, puis coéquipiers avec xuid résolu).
+type squadScope struct {
+	sharedMatches  []string          // match_ids uniques présents dans allSquadRows
+	xuidByPlayer   map[string]string // gamertag → xuid
+	gtByXUID       map[string]string // xuid → gamertag (réindexation pour l'agrégation)
+	playersOrdered []string          // main d'abord, puis coéquipiers (ordre canonique)
+	xuids          []string          // xuids alignés sur playersOrdered
+}
+
+// resolveSquadScope dérive le périmètre commun (matchs partagés + xuids/gamertags ordonnés)
+// des breakdowns par-arme. Centralise la dérivation autrefois inline dans
+// buildSquadWeaponKills / buildSquadKillMechanics ; buildSquadWeaponAccuracy en serait la 3e
+// copie → factorisation obligatoire (règle CLAUDE.md ≤2 copies) gardée par le garde-rail
+// TestSquadScopeCentralized. Périmètre vide (sharedMatches ou playersOrdered vide) →
+// l'appelant retourne nil.
+func resolveSquadScope(
+	allSquadRows []domain.SquadMatchRow,
+	mainGamertag, mainXUID string,
+	teammates []domain.TeammateRow,
+) squadScope {
+	matchSet := make(map[string]struct{}, len(allSquadRows))
+	for _, m := range allSquadRows {
+		matchSet[m.MatchID] = struct{}{}
+	}
+	sharedMatches := make([]string, 0, len(matchSet))
+	for mid := range matchSet {
+		sharedMatches = append(sharedMatches, mid)
+	}
+
+	xuidByPlayer := make(map[string]string, 1+len(teammates))
+	playersOrdered := make([]string, 0, 1+len(teammates))
+	if mainXUID != "" {
+		xuidByPlayer[mainGamertag] = mainXUID
+		playersOrdered = append(playersOrdered, mainGamertag)
+	}
+	for _, tm := range teammates {
+		if tm.XUID == nil || *tm.XUID == "" {
+			continue
+		}
+		xuidByPlayer[tm.Gamertag] = *tm.XUID
+		playersOrdered = append(playersOrdered, tm.Gamertag)
+	}
+
+	xuids := make([]string, 0, len(playersOrdered))
+	gtByXUID := make(map[string]string, len(playersOrdered))
+	for _, p := range playersOrdered {
+		xuids = append(xuids, xuidByPlayer[p])
+		gtByXUID[xuidByPlayer[p]] = p
+	}
+	return squadScope{
+		sharedMatches:  sharedMatches,
+		xuidByPlayer:   xuidByPlayer,
+		gtByXUID:       gtByXUID,
+		playersOrdered: playersOrdered,
+		xuids:          xuids,
+	}
+}
+
 func (s *TeammatesService) buildSquadWeaponKills(
 	ctx context.Context,
 	allSquadRows []domain.SquadMatchRow,
@@ -32,44 +92,16 @@ func (s *TeammatesService) buildSquadWeaponKills(
 		return nil, nil
 	}
 
-	// 1. Union des matchs — chaque match unique présent dans allSquadRows
-	// (= match où le main a joué avec au moins un coéquipier sélectionné).
-	matchSet := make(map[string]struct{})
-	for _, m := range allSquadRows {
-		matchSet[m.MatchID] = struct{}{}
-	}
-	sharedMatches := make([]string, 0, len(matchSet))
-	for mid := range matchSet {
-		sharedMatches = append(sharedMatches, mid)
-	}
-	if len(sharedMatches) == 0 {
+	// Périmètre commun (matchs partagés + xuids/gamertags ordonnés + réindexation
+	// xuid→gamertag) via le helper partagé (règle ≤2 copies, cf. resolveSquadScope).
+	sc := resolveSquadScope(allSquadRows, mainGamertag, mainXUID, teammates)
+	if len(sc.sharedMatches) == 0 || len(sc.playersOrdered) == 0 {
 		return nil, nil
 	}
+	sharedMatches, xuids := sc.sharedMatches, sc.xuids
+	playersOrdered, xuidByPlayer, gtByXUID := sc.playersOrdered, sc.xuidByPlayer, sc.gtByXUID
 
-	// 2. xuid map (main + teammates avec xuid résolu).
-	xuidByPlayer := make(map[string]string)
-	playersOrdered := make([]string, 0, 1+len(teammates))
-	if mainXUID != "" {
-		xuidByPlayer[mainGamertag] = mainXUID
-		playersOrdered = append(playersOrdered, mainGamertag)
-	}
-	for _, tm := range teammates {
-		if tm.XUID == nil || *tm.XUID == "" {
-			continue
-		}
-		xuidByPlayer[tm.Gamertag] = *tm.XUID
-		playersOrdered = append(playersOrdered, tm.Gamertag)
-	}
-	if len(playersOrdered) == 0 {
-		return nil, nil
-	}
-
-	xuids := make([]string, 0, len(playersOrdered))
-	for _, p := range playersOrdered {
-		xuids = append(xuids, xuidByPlayer[p])
-	}
-
-	// 3. 1 seul appel pour tous les xuids. ResolveRoles=true peuple Class/Role sur
+	// 1 seul appel pour tous les xuids. ResolveRoles=true peuple Class/Role sur
 	// chaque row (registre) — requis pour la ventilation PAR CLASSE (D8) ; sans effet
 	// sur les barres par-arme (elles indexent weapon_id/label).
 	rows, err := s.squadLoader.LoadWeaponKills(ctx, s.titleSlug, port.WeaponKillFilters{
@@ -92,16 +124,11 @@ func (s *TeammatesService) buildSquadWeaponKills(
 		return nil, nil
 	}
 
-	// 4. Réindexation xuid → gamertag pour l'agrégation.
-	gtByXUID := make(map[string]string, len(xuidByPlayer))
-	for gt, x := range xuidByPlayer {
-		gtByXUID[x] = gt
-	}
-
-	// 5. Group by weapon_id.
+	// Group by weapon_id.
 	type barAgg struct {
 		weaponID       int64
 		label          string
+		class          string
 		isGrenadeMelee bool
 		kills          map[string]int
 		total          int
@@ -117,6 +144,7 @@ func (s *TeammatesService) buildSquadWeaponKills(
 			b = &barAgg{
 				weaponID:       r.WeaponID,
 				label:          r.Label,
+				class:          r.Class,
 				isGrenadeMelee: r.IsGrenadeMelee,
 				kills:          make(map[string]int),
 			}
@@ -127,6 +155,11 @@ func (s *TeammatesService) buildSquadWeaponKills(
 		// Privilégier un label non-vide.
 		if b.label == "" && r.Label != "" {
 			b.label = r.Label
+		}
+		// Privilégier une classe non-vide (résolue via ResolveRoles ; les sentinels
+		// grenade/mêlée restent "" — leur détail vient de la FragDistribution côté front).
+		if b.class == "" && r.Class != "" {
+			b.class = r.Class
 		}
 	}
 	if len(bars) == 0 {
@@ -139,6 +172,7 @@ func (s *TeammatesService) buildSquadWeaponKills(
 		out = append(out, domain.SquadWeaponBar{
 			WeaponID:       b.weaponID,
 			Label:          b.label,
+			Class:          b.class,
 			IsGrenadeMelee: b.isGrenadeMelee,
 			KillsByPlayer:  b.kills,
 			TotalSquad:     b.total,
@@ -298,38 +332,12 @@ func (s *TeammatesService) buildSquadKillMechanics(
 		return nil
 	}
 
-	matchSet := make(map[string]struct{})
-	for _, m := range allSquadRows {
-		matchSet[m.MatchID] = struct{}{}
-	}
-	sharedMatches := make([]string, 0, len(matchSet))
-	for mid := range matchSet {
-		sharedMatches = append(sharedMatches, mid)
-	}
-	if len(sharedMatches) == 0 {
+	sc := resolveSquadScope(allSquadRows, mainGamertag, mainXUID, teammates)
+	if len(sc.sharedMatches) == 0 || len(sc.playersOrdered) == 0 {
 		return nil
 	}
-
-	xuidByPlayer := make(map[string]string)
-	playersOrdered := make([]string, 0, 1+len(teammates))
-	if mainXUID != "" {
-		xuidByPlayer[mainGamertag] = mainXUID
-		playersOrdered = append(playersOrdered, mainGamertag)
-	}
-	for _, tm := range teammates {
-		if tm.XUID == nil || *tm.XUID == "" {
-			continue
-		}
-		xuidByPlayer[tm.Gamertag] = *tm.XUID
-		playersOrdered = append(playersOrdered, tm.Gamertag)
-	}
-	if len(playersOrdered) == 0 {
-		return nil
-	}
-	xuids := make([]string, 0, len(playersOrdered))
-	for _, p := range playersOrdered {
-		xuids = append(xuids, xuidByPlayer[p])
-	}
+	sharedMatches, xuids, playersOrdered := sc.sharedMatches, sc.xuids, sc.playersOrdered
+	gtByXUID := sc.gtByXUID
 
 	rows, err := s.squadLoader.LoadKillMechanics(ctx, s.titleSlug, port.WeaponKillFilters{
 		MatchIDs: sharedMatches,
@@ -341,11 +349,6 @@ func (s *TeammatesService) buildSquadKillMechanics(
 	}
 	if len(rows) == 0 {
 		return nil
-	}
-
-	gtByXUID := make(map[string]string, len(xuidByPlayer))
-	for gt, x := range xuidByPlayer {
-		gtByXUID[x] = gt
 	}
 
 	// 1 barre par mécanique (ordre stable), segments = joueurs.

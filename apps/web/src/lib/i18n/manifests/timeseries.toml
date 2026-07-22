@@ -310,10 +310,6 @@ en = "Average life (s)"
 fr = "Tendance"
 en = "Trend"
 
-[timeseries.summary.top_weapons_title]
-fr = "Outils de destruction"
-en = "Tools of destruction"
-
 [timeseries.summary.kill_types_title]
 fr = "Répartition des frags"
 en = "Kill type distribution"

@@ -110,8 +110,14 @@ type SquadFirstEvents struct {
 // SquadWeaponBar est une ligne du chart kills par arme teammates.09 :
 // 1 arme avec ses kills par joueur de l'escouade + total cumulé.
 type SquadWeaponBar struct {
-	WeaponID       int64          `json:"weapon_id"`
-	Label          string         `json:"label"`
+	WeaponID int64  `json:"weapon_id"`
+	Label    string `json:"label"`
+	// Class : classe d'arme du registre (axe manipulation : shoulder/sidearm/heavy/
+	// melee/grenade/…) résolue via ResolveRoles. Omise ("") si non résolue (dont les
+	// sentinels grenade/mêlée, absents du registre) — omitempty : classe vide == absente,
+	// cohérent avec SynthesisWeaponKillEntry.class. Sert au split gun/non-gun côté front
+	// (buildSquadFragTools → « Outils de destruction »).
+	Class          string         `json:"class,omitempty"`
 	IsGrenadeMelee bool           `json:"is_grenade_melee,omitempty"`
 	KillsByPlayer  map[string]int `json:"kills_by_player"` // gamertag → kills
 	TotalSquad     int            `json:"total_squad"`
@@ -123,6 +129,32 @@ type SquadWeaponBar struct {
 type SquadWeaponKills struct {
 	Players []string         `json:"players"`
 	Bars    []SquadWeaponBar `json:"bars"`
+}
+
+// SquadWeaponAccuracyBar est une ligne du comparatif « Précision par rôle » de la page
+// Escouade : agrégat PAR RÔLE d'arme (precision/automatic/sniper/…) — les ~30 armes sont
+// regroupées par rôle pour la lisibilité — avec sa précision (0..1) par joueur, le volume
+// de tirs par joueur (tooltip) et le total de tirs escouade (tri).
+type SquadWeaponAccuracyBar struct {
+	// Role : clé de rôle canonique du registre (ex. "precision", "automatic", "sniper") ;
+	// localisée côté front via frags.role.<role>.
+	Role string `json:"role"`
+	// AccuracyByPlayer : précision native 0..1 (ΣShotsLanded/ΣShotsFired du rôle) par gamertag.
+	AccuracyByPlayer map[string]float64 `json:"accuracy_by_player"`
+	// ShotsFiredByPlayer : Σ tirs du rôle par gamertag (contexte tooltip).
+	ShotsFiredByPlayer map[string]int `json:"shots_fired_by_player"`
+	// TotalShotsSquad : Σ tirs escouade sur le rôle (clé de tri des barres).
+	TotalShotsSquad int `json:"total_shots_squad"`
+}
+
+// SquadWeaponAccuracy alimente la comparaison « Précision par rôle » multi-joueurs de la
+// page Escouade (barres groupées horizontales). Players = ordre canonique (main puis
+// teammates) ; Bars = 1 par RÔLE à précision pertinente (grenade/mêlée/capacités exclues).
+// Précision NATIVE Halo 5 (table weapon_accuracy) ; OMISE sur Halo Infinite (capability
+// absente) → le front ne rend pas les blocs précision.
+type SquadWeaponAccuracy struct {
+	Players []string                 `json:"players"`
+	Bars    []SquadWeaponAccuracyBar `json:"bars"`
 }
 
 // SquadKillMechanicBar est une barre du breakdown « mécaniques de kill » de la
@@ -454,6 +486,10 @@ type TeammatesPageResponse struct {
 	// Nil si aucune donnée weapon_kills disponible (capability absente ou shared
 	// match_ids vides).
 	WeaponKills *SquadWeaponKills `json:"weapon_kills,omitempty"`
+	// WeaponAccuracy alimente la comparaison « Précision par arme » multi-joueurs
+	// (heatmap joueurs×armes + dot plot). Précision NATIVE Halo 5 ; OMISE sur Infinite
+	// (capability weapon_accuracy absente) ou si aucune arme à précision pertinente.
+	WeaponAccuracy *SquadWeaponAccuracy `json:"weapon_accuracy,omitempty"`
 	// NativeKillMechanics : breakdown des mécaniques natives Halo 5 par coéquipier
 	// (assassinats + compétences spartiate, barres empilées). Nil hors h5
 	// (capability native_kill_mechanics) ou aucune mécanique sur les matchs partagés.

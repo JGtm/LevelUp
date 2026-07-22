@@ -24,6 +24,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sort"
@@ -67,6 +68,11 @@ type TimeseriesService struct {
 	// weaponKillsRepo (chart .04 Top weapons) : optionnel, degradation gracieuse.
 	// Si nil, TopWeapons reste vide.
 	weaponKillsRepo port.WeaponKillsRepository
+	// weaponAccuracyRepo (« Précision par arme » onglet Résumé) : loader
+	// weapon_accuracy agrégé (Halo 5 natif, MIROIR de weaponKillsRepo). Optionnel —
+	// nil / capability absente (Infinite) → WeaponAccuracy best-effort nil (le front
+	// retombe sur « Outils de destruction »).
+	weaponAccuracyRepo port.WeaponAccuracyRepository
 	// highlightEventsRepo (chart .11 Premier evenement) : optionnel, degradation
 	// gracieuse. Si nil ou xuid vide, FirstEvents reste nil.
 	//
@@ -107,6 +113,15 @@ func (s *TimeseriesService) WithPlayerMatchesRepo(repo port.PlayerMatchesReposit
 // (Top weapons by kills). Optionnel : si non cable, TopWeapons reste vide.
 func (s *TimeseriesService) WithWeaponKillsRepo(repo port.WeaponKillsRepository) *TimeseriesService {
 	s.weaponKillsRepo = repo
+	return s
+}
+
+// WithWeaponAccuracyRepo injecte le repo weapon_accuracy alimentant le graphe
+// « Précision par arme » de l'onglet Résumé (Halo 5 natif, MIROIR de
+// WithWeaponKillsRepo). Optionnel — nil / capability absente (Infinite) →
+// WeaponAccuracy best-effort nil.
+func (s *TimeseriesService) WithWeaponAccuracyRepo(repo port.WeaponAccuracyRepository) *TimeseriesService {
+	s.weaponAccuracyRepo = repo
 	return s
 }
 
@@ -242,6 +257,16 @@ func (s *TimeseriesService) GetPage(
 	// Synthesis/Match view — aucune duplication). Construite même sans weaponRows.
 	resp.FragDistribution = s.buildTimeseriesFragDistribution(ctx, weaponRows, resp.KillTypes)
 
+	// Précision par arme (Halo 5 natif) : MÊME builder partagé que Synthesis/Sessions
+	// (buildWeaponAccuracy → nil si aucune arme valide → champ omis). Best-effort,
+	// découplé du gate frags ; repo nil / capability absente (Infinite) → nil (le front
+	// retombe sur « Outils de destruction »). Miroir du bloc Sessions
+	// (attachSessionFragDistribution).
+	resp.WeaponAccuracy = buildWeaponAccuracy(
+		s.loadTimeseriesWeaponAccuracy(ctx, matchIDsFromStatsRows(matches)),
+		synthesisWeaponChartTopN,
+	)
+
 	// First events distribution (chart .11) + Intensity heatmap : RÉUTILISE les events
 	// déjà chargés (highlightEvents). Correction chronologie T0 ici (ramène les TimeMS
 	// au référentiel gameplay) — distincte du fallback spree, qui reste order-based sur
@@ -291,4 +316,31 @@ func (s *TimeseriesService) buildTimeseriesFragDistribution(
 	fd := fragdist.Build(weaponRows, counts, titleHasNativeKillMechanics(s.titleSlug))
 	logFragDistribution(ctx, "timeseries", s.titleSlug, s.gamertag, fd)
 	return &fd
+}
+
+// loadTimeseriesWeaponAccuracy charge la précision agrégée par arme du scope filtré
+// (MIROIR de loadSessionWeaponAccuracy). Best-effort : nil si repo absent / gamertag
+// vide / scope vide, ou erreur (loggée, jamais avalée — capability absente = Debug,
+// titre sans table weapon_accuracy comme Infinite ; anomalie SQL/conn = Warn, parité
+// loadWeaponAccuracy Synthesis / Sessions).
+func (s *TimeseriesService) loadTimeseriesWeaponAccuracy(
+	ctx context.Context, matchIDs []string,
+) []port.WeaponAccuracyRow {
+	if s.weaponAccuracyRepo == nil || s.gamertag == "" || len(matchIDs) == 0 {
+		return nil
+	}
+	filters := port.WeaponAccuracyFilters{MatchIDs: matchIDs, Gamertag: s.gamertag}
+	rows, err := s.weaponAccuracyRepo.LoadWeaponAccuracyAggregated(ctx, s.titleSlug, filters)
+	if err != nil {
+		if errors.Is(err, games.ErrCapabilityNotSupported) {
+			slog.DebugContext(ctx, "timeseries: weapon accuracy capability absente",
+				"title", s.titleSlug, "gamertag", s.gamertag)
+		} else {
+			slog.WarnContext(ctx, "timeseries: weapon accuracy query failed (best-effort, fallback nil)",
+				"title", s.titleSlug, "gamertag", s.gamertag,
+				"match_count", len(matchIDs), "err", err)
+		}
+		return nil
+	}
+	return rows
 }

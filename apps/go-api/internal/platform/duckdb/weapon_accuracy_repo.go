@@ -160,10 +160,11 @@ GROUP BY wa.xuid, wa.weapon_id`)
 	return sb.String(), args
 }
 
-// attachWeaponLabels renseigne le Label EN/FR ET la Class (registre) par weapon_id via
-// resolveWeaponMeta (registre + weapon_labels). Best-effort : meta absent → no-op (Label/
-// Class vides, le service filtre). La Class sert à écarter du graphe précision les classes
-// sans précision pertinente (grenade/mêlée/capacités). Pas de Role (le graphe n'en a pas besoin).
+// attachWeaponLabels renseigne le Label EN/FR, la Class ET le Role (registre) par weapon_id
+// via resolveWeaponMeta (registre + weapon_labels). Best-effort : meta absent → no-op (Label/
+// Class/Role vides, le service filtre). La Class sert à écarter du graphe précision les classes
+// sans précision pertinente (grenade/mêlée/capacités) ; le Role sert à AGRÉGER PAR RÔLE la
+// précision de l'Escouade (regroupement des ~30 armes par rôle pour la lisibilité).
 func (r *WeaponAccuracyRepo) attachWeaponLabels(ctx context.Context, slug string, rows []port.WeaponAccuracyRow) {
 	if r.pdb == nil || r.pdb.Metadata == nil || len(rows) == 0 {
 		return
@@ -182,5 +183,6 @@ func (r *WeaponAccuracyRepo) attachWeaponLabels(ctx context.Context, slug string
 			rows[i].Label = m.label
 		}
 		rows[i].Class = m.class
+		rows[i].Role = m.role
 	}
 }

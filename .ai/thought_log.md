@@ -1,3 +1,21 @@
+## [2026-07-22] Frag Distribution v2 — Timeseries (layout + précision) + Escouade (précision par rôle + Outils de destruction multi-joueur) + rename global « Outils de destruction »
+
+**Statut** : Complété. Timeseries + Escouade précision par rôle VALIDÉS user ; Escouade « Outils de destruction » en revue. Branche `feat/frag-distribution-v2`. Commit autorisé (1 commit combiné — voir note).
+
+**Rename global** : clé i18n partagée `frags.charts.detail_title` → « Outils de destruction » / « Tools of destruction » → répercuté Match view + Synthesis + Sessions + Timeseries. Escouade : `weaponKills.title` (i18n squad) aussi renommé « Outils de destruction ».
+
+**Timeseries (onglet Résumé)** : sunburst réduit (maxW 480, compteur seul, légende gauche) + « Outils de destruction » à droite (rangée 1) ; « Précision par arme » (H5) + tendance FDA (rangée 2). Backend : `weapon_accuracy` sur `TimeseriesPageResponse` (miroir Sessions, `buildWeaponAccuracy` réutilisé). `TimeseriesTopWeapons` supprimé (→ `FragWeaponBreakdown` partagé). Cross-feature `timeseries⇒synthesis` déclaré.
+
+**Escouade — précision par RÔLE** : « Précision par arme » (~30 armes × 4, illisible) → « Précision par rôle » (~6-7 rôles). Backend : `Role` résolu sur `WeaponAccuracyRow` (via `resolveWeaponMeta.role`) ; `SquadWeaponAccuracy` reshapé par rôle ; agrégat `ΣLanded/ΣFired` brut par (rôle, joueur). Prédicat `weaponClassHasAccuracy` remonté en `domain.WeaponClassHasAccuracy` (partagé service + teammates, sans cycle). Scope des 3 builders centralisé (`resolveSquadScope`, garde-rail). Variantes REJETÉES par l'user retirées : barres 100 %, heatmap kills, heatmap précision, dot plot précision (+ revert extension `Heatmap2DChart`).
+
+**Escouade — « Outils de destruction » multi-joueur** : le graphe listait les armes BRUTES dont le bucket « Spartan » (arme 3168248199, classe `unattributed`, meaningless). Corrigé en RÉUTILISANT `buildFragDetailBreakdown` (helper des 4 pages mono-joueur) en multi-joueur (`squadFragTools.buildSquadFragTools`) : par joueur, armes gun + détail non-arme (Assassinat/Corps-à-corps/Coup au sol/Charge spartane/Grenade) depuis la FragDistribution, `unattributed` exclu ; fusion par label ; top-8 armes gun par `total_squad` + ligne « Autres armes » (anti-perte). Anti-double-comptage : sentinels grenade/mêlée écartés du volet per-arme. Backend : `SquadWeaponBar.class` ajouté. Les 5 surfaces alignées sur `buildFragDetailBreakdown`.
+
+**Note commit** : 1 commit combiné (Timeseries + Escouade) — `openapi.yaml` + `generated.ts` mélangent les hunks des deux lots (régén partagée) ; un split propre exigerait un staging par hunk (fiddly/risqué), même chantier v2 sur une branche.
+
+**Gates (verts)** : Go gofmt/vet/`go test` (service/domain/port/teammates) ; front typecheck (purgé) / eslint 0 err / vitest 2418 / cross-feature 0 ; generate-types idempotent.
+
+**Reste (demandé user, non fait)** : épingler « Autres armes » tout en bas du graphe ; déplacer les 3 graphes frags (Répartition / Outils de destruction / Précision par rôle) vers l'onglet Synergies ; revue visuelle Escouade Outils de destruction.
+
 ## [2026-07-22] Frag Distribution v2 — Sessions : carte frags finalisée (sunburst + 2e graphe côte à côte) + swap précision/détails + fix grenades à 0 %
 
 **Statut** : Complété, VALIDÉ user sur la page Sessions. Branche `feat/frag-distribution-v2`. Commit autorisé.

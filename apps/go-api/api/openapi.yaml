@@ -15528,9 +15528,52 @@ components:
           - players
           - bars
       type: object
+    SquadWeaponAccuracy:
+      additionalProperties: false
+      properties:
+          bars:
+              items:
+                  $ref: '#/components/schemas/SquadWeaponAccuracyBar'
+              type: array
+              nullable: true
+          players:
+              items:
+                  type: string
+              type: array
+              nullable: true
+      required:
+          - players
+          - bars
+      type: object
+    SquadWeaponAccuracyBar:
+      additionalProperties: false
+      properties:
+          accuracy_by_player:
+              additionalProperties:
+                  format: double
+                  type: number
+              type: object
+          role:
+              type: string
+          shots_fired_by_player:
+              additionalProperties:
+                  format: int64
+                  type: integer
+              type: object
+          total_shots_squad:
+              format: int64
+              type: integer
+      required:
+          - role
+          - accuracy_by_player
+          - shots_fired_by_player
+          - total_shots_squad
+      type: object
     SquadWeaponBar:
       additionalProperties: false
       properties:
+          class:
+              type: string
           is_grenade_melee:
               type: boolean
           kills_by_player:
@@ -16430,6 +16473,8 @@ components:
           total_matches:
               format: int64
               type: integer
+          weapon_accuracy:
+              $ref: '#/components/schemas/SquadWeaponAccuracy'
           weapon_kills:
               $ref: '#/components/schemas/SquadWeaponKills'
       required:
@@ -16736,6 +16781,11 @@ components:
           top_weapons:
               items:
                   $ref: '#/components/schemas/TimeseriesWeaponKill'
+              type: array
+              nullable: true
+          weapon_accuracy:
+              items:
+                  $ref: '#/components/schemas/SynthesisWeaponAccuracyEntry'
               type: array
               nullable: true
           kill_types:

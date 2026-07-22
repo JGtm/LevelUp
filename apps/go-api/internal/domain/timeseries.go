@@ -305,4 +305,9 @@ type TimeseriesPageResponse struct {
 	// melee/grenade/spartan + total, classes gun depuis le registre). Nil si aucun
 	// frag. Title-agnostic (spartan_ability capability-gated native_kill_mechanics).
 	FragDistribution *FragDistribution `json:"frag_distribution,omitempty"`
+	// WeaponAccuracy : précision par arme (tirs au but / tirs tirés, 0..1) sur le
+	// scope filtré — donnée native Halo 5, omise sur les titres sans la donnée
+	// (Infinite → nil → le front retombe sur « Outils de destruction »). MÊME builder
+	// partagé que Synthesis/Sessions (buildWeaponAccuracy). Nil si aucune arme valide.
+	WeaponAccuracy []SynthesisWeaponAccuracyEntry `json:"weapon_accuracy,omitempty"`
 }

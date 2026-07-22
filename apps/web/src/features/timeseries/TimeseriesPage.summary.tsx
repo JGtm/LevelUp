@@ -5,12 +5,20 @@
  * Contenu : outcome sequence + KDA trend + KDA density + avg life + assists +
  * top weapons + KDA trend value + perf session/week/month + map win-rate/perf.
  */
+import { useState } from 'react'
+
 import { OutcomeSequenceTape, type OutcomePoint } from '@/components/charts/OutcomeSequenceTape'
 import { outcomeCodeToTapeValue } from '@/lib/outcome'
 import { TimeseriesKdaTrend } from './TimeseriesKdaTrend'
 import { TimeseriesKdaDensity } from './TimeseriesKdaDensity'
-import { TimeseriesTopWeapons } from './TimeseriesTopWeapons'
 import { FragSunburst } from '@/components/charts/FragSunburst'
+import { FragWeaponBreakdown } from '@/components/charts/FragWeaponBreakdown'
+import { buildFragDetailBreakdown } from '@/components/charts/fragDetailBreakdown'
+// Précision par arme : réutilise le graphe Synthesis (recoloré par classe + survol lié)
+// — même choix que SessionFragCard. Import cross-feature durable déclaré
+// (timeseries=>synthesis, cf. tools/lint-cross-feature-imports.mjs), analogue à
+// session-detail=>synthesis.
+import { SynthesisWeaponAccuracyChart } from '@/features/synthesis/SynthesisWeaponAccuracyChart'
 import {
   TimeseriesAssistsTrend,
   TimeseriesAvgLifeTrend,
@@ -20,6 +28,9 @@ import { TimeseriesSessionPerformance } from './TimeseriesSquadAdapted'
 import { WinRateVsHistoryBulletChart } from '@/features/squad/WinRateVsHistoryBulletChart'
 import { MapPerfVsHistoryChart } from '@/features/squad/MapPerfVsHistoryChart'
 import { useCapability } from '@/lib/capabilities/capabilities'
+import { formatMessage } from '@/lib/i18n/format'
+import { fragsManifest } from '@/lib/i18n/generated/frags'
+import { useAppShellStore } from '@/stores/appShellStore'
 import type { FieldMappingsResponse } from '@/lib/i18n/fieldMappings'
 import type { TimeseriesPageResponse } from '@/lib/api/types'
 import type { TimeseriesManifestKey } from '@/lib/i18n/generated/timeseries'
@@ -62,6 +73,31 @@ export function TimeseriesSummaryTab({
       : soloGranularity === 'month'
         ? t('timeseries.summary.solo_perf_month')
         : t('timeseries.summary.solo_perf_session')
+
+  // Répartition des frags v2 (MÊME rendu que Match view / Sessions) : survol LIÉ
+  // sunburst ↔ 2e graphe + résolveurs i18n partagés (fragsManifest, clé detail_title
+  // « Outils de destruction »).
+  const appLocale = useAppShellStore((s) => s.locale)
+  const [hoveredClass, setHoveredClass] = useState<string | null>(null)
+  const classLabel = (c: string) => formatMessage(fragsManifest, `frags.class.${c}` as never, appLocale)
+  const roleLabel = (r: string) => formatMessage(fragsManifest, `frags.role.${r}` as never, appLocale)
+  const detailTitle = formatMessage(fragsManifest, 'frags.charts.detail_title', appLocale)
+  // Armes du registre normalisées (label/kills/classe) : alimentent « Outils de
+  // destruction » (buildFragDetailBreakdown) ET la recoloration par classe du graphe
+  // précision (l'entrée précision de l'API ne porte pas la classe).
+  const topWeaponsMapped = (data.top_weapons ?? []).map((w) => ({ label: w.label, kills: w.kills, class: w.class }))
+  const breakdown = buildFragDetailBreakdown(data.frag_distribution ?? null, topWeaponsMapped, { roleLabel, classLabel })
+  // Précision par arme native (Halo 5) ; vide sur Infinite → 2e rangée = tendance FDA seule.
+  const accuracy = data.weapon_accuracy ?? []
+  const fdaTrend = (
+    <TimeseriesKdaValueTrend
+      title={fieldMappings?.fields['kda']?.label ?? 'FDA'}
+      emptyMessage={emptyMsg}
+      rows={data.match_rows ?? []}
+      fdaLabel={fieldMappings?.fields['kda']?.label ?? 'FDA'}
+      smoothingLabel={t('timeseries.summary.trend')}
+    />
+  )
   return (
     <div className="space-y-6">
       {/* Séquence des résultats — en haut. Libellé conservé + message court
@@ -135,32 +171,48 @@ export function TimeseriesSummaryTab({
         />
       </div>
 
-      {/* Répartition des frags v2 — sunburst hiérarchique classe→rôle (title-agnostic :
-          Infinite sans capacités spartanes, Halo 5 avec). Remplace l'ancien donut
-          kill-type (Résumé) ET le donut de l'onglet Progression (D7 : tout sur Résumé).
+      {/* Répartition des frags v2 — MÊME rendu que Match view / Sessions : sunburst
+          hiérarchique classe→rôle (compteur seul, légende à gauche, maxW 480) +
+          « Outils de destruction » (armes du registre + détail mêlée/grenade/capacités),
+          survol LIÉ. title-agnostic (Infinite sans capacités spartanes, Halo 5 avec).
           Rend null si aucun frag. */}
-      <FragSunburst distribution={data.frag_distribution} />
-
-      {/* Outils de destruction (gauche, recoloré par classe) | FDA (droite) */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <TimeseriesTopWeapons
-          title={t('timeseries.summary.top_weapons_title')}
-          emptyMessage={emptyMsg}
-          weapons={data.top_weapons ?? []}
-          labels={{
-            seriesName: fieldMappings?.fields['kills']?.label ?? 'Frags',
-            fallbackLabel: (id) => `#${id}`,
-          }}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <FragSunburst
+          distribution={data.frag_distribution}
+          externalHoveredClass={hoveredClass}
+          onClassHover={setHoveredClass}
+          hideCenterLabel
+          maxWidthPx={480}
+          legendSide="left"
+          className="lg:col-span-2"
         />
-
-        <TimeseriesKdaValueTrend
-          title={fieldMappings?.fields['kda']?.label ?? 'FDA'}
-          emptyMessage={emptyMsg}
-          rows={data.match_rows ?? []}
-          fdaLabel={fieldMappings?.fields['kda']?.label ?? 'FDA'}
-          smoothingLabel={t('timeseries.summary.trend')}
+        <FragWeaponBreakdown
+          weapons={breakdown}
+          title={detailTitle}
+          hoveredClass={hoveredClass}
+          onClassHover={setHoveredClass}
+          className="lg:col-span-1"
+          heightScale={1.1}
         />
       </div>
+
+      {/* Précision par arme (Halo 5 natif, survol lié au sunburst) | Tendance FDA. Titre
+          sans précision native (Infinite → weapon_accuracy vide) : la tendance FDA occupe
+          seule la largeur (pas de colonne vide). */}
+      {accuracy.length > 0 ? (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <SynthesisWeaponAccuracyChart
+            weapons={accuracy}
+            weaponKills={topWeaponsMapped}
+            hoveredClass={hoveredClass}
+            onClassHover={setHoveredClass}
+            fillHeight
+          />
+          {fdaTrend}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-6">{fdaTrend}</div>
+      )}
 
       {/* Performance solo par session/semaine/mois — agrégat backend
           sur tous les matchs solo (cross-session, granularité auto). */}

@@ -272,6 +272,7 @@ func (r *ServiceRegistry) Timeseries(ctx context.Context, slug string) (port.Tim
 	svc := service.NewTimeseriesService(duckdb.NewStatsRepo(pdb)).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
 		WithWeaponKillsRepo(duckdb.NewWeaponKillsRepo(pdb)).
+		WithWeaponAccuracyRepo(duckdb.NewWeaponAccuracyRepo(pdb)).
 		WithHighlightEventsRepo(duckdb.NewHighlightEventsRepo(pdb), pdb.XUID)
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)

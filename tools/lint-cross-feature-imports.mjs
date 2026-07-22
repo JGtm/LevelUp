@@ -117,6 +117,10 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   'timeseries=>engagement',
   'timeseries=>squad',
   'timeseries=>explorer',
+  // TimeseriesPage.summary réutilise SynthesisWeaponAccuracyChart (graphe « Précision
+  // par arme », Halo 5) sous le sunburst frags — dépendance durable, analogue à
+  // session-detail=>synthesis.
+  'timeseries=>synthesis',
   // Explorer mode "Joueur" réutilise des composants Squad (synergy table,
   // visualisations partagées) — feature durable.
   'explorer=>squad',

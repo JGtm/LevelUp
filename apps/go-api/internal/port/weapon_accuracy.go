@@ -58,6 +58,10 @@ type WeaponAccuracyRow struct {
 	// resolveWeaponMeta. Sert à EXCLURE du graphe « Précision par arme » les classes sans
 	// précision pertinente (grenade/mêlée/capacités : pas de « tir au but »). Vide si non résolue.
 	Class string `json:"class,omitempty"`
+	// Role = rôle d'arme du registre (precision/automatic/sniper/…) résolu côté repo via
+	// resolveWeaponMeta. Sert à AGRÉGER PAR RÔLE la précision de l'Escouade (les ~30 armes
+	// sont regroupées par rôle pour la lisibilité). Vide si non résolue.
+	Role string `json:"role,omitempty"`
 }
 
 // WeaponAccuracyRepository expose le loader agrégé weapon_accuracy.

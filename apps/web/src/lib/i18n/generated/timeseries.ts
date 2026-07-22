@@ -119,7 +119,6 @@ export const timeseriesManifest = {
   "timeseries.summary.solo_perf_month": { fr: "Performance solo par mois", en: "Solo performance per month" },
   "timeseries.summary.solo_perf_session": { fr: "Performance solo par session", en: "Solo performance per session" },
   "timeseries.summary.solo_perf_week": { fr: "Performance solo par semaine", en: "Solo performance per week" },
-  "timeseries.summary.top_weapons_title": { fr: "Outils de destruction", en: "Tools of destruction" },
   "timeseries.summary.trend": { fr: "Tendance", en: "Trend" },
   "timeseries.summary.win_rate_label": { fr: "Taux de victoire", en: "Win rate" },
   "timeseries.summary.winrate_vs_history_title": { fr: "Taux de victoire — Session vs Historique", en: "Win rate — Session vs History" },

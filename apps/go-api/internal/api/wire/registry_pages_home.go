@@ -177,7 +177,11 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 	svc := teammates.NewTeammatesService(duckdb.NewSquadRepo(pdb), r.friendGamertagsResolver()).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
 		WithSquadLoader(briefingLoader).
-		WithMedalDefs(duckdb.NewMedalDefinitionsRepo(pdb))
+		WithMedalDefs(duckdb.NewMedalDefinitionsRepo(pdb)).
+		// Précision native par arme (Halo 5) : table weapon_accuracy SHARED par titre →
+		// le repo lié au PlayerDB du main charge la précision de tous les xuids de
+		// l'escouade. Miroir du câblage Synthesis/Sessions ; nil-safe hors h5.
+		WithWeaponAccuracyRepo(duckdb.NewWeaponAccuracyRepo(pdb))
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 
