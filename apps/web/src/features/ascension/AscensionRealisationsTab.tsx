@@ -22,6 +22,8 @@ import { StatsGlobales } from '@/features/prestige/components/StatsGlobales'
 import { MomentCard } from '@/features/prestige/components/MomentCard'
 import type { Challenge } from '@/lib/prestige'
 import { StreakDashboard } from './StreakDashboard'
+import { ActivityCalendarChart } from './ActivityCalendarChart'
+import { useActivityCalendar } from './queries'
 import { RecordsTimeline } from './RecordsTimeline'
 import { MilestonesGrid } from './MilestonesGrid'
 import { HistorySection } from './HistorySection'
@@ -45,6 +47,8 @@ export function AscensionRealisationsTab() {
   // créés »), la célébration et l'historique n'exploitent que les terminaux.
   const { data: activeData } = useChallenges(playerSlug, titleSlug)
   const { data: historyData } = useChallengeHistory(playerSlug, titleSlug)
+  // Calendrier d'activité 90 j (DEC-5/D3), adossé au bloc séries.
+  const { data: activity } = useActivityCalendar(playerSlug)
 
   if (!playerSlug) {
     return (
@@ -66,6 +70,13 @@ export function AscensionRealisationsTab() {
       <PrestigeSquadProgress />
 
       <StreakDashboard playerSlug={playerSlug} />
+      {activity && (
+        <ActivityCalendarChart
+          since={activity.since}
+          until={activity.until}
+          days={activity.days}
+        />
+      )}
       <RecordsTimeline playerSlug={playerSlug} />
       <MilestonesGrid playerSlug={playerSlug} />
 

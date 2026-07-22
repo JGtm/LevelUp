@@ -136,6 +136,14 @@ func (s *Service) BuildProfile(ctx context.Context, userID, titleSlug string, lo
 		slog.WarnContext(ctx, "profile: section B partial", "err", err)
 	}
 
+	// ── Sparkline tendance LUSR 90 j (DEC-5/D2) — fenêtre FIXE, indépendante de
+	// window_days. Best-effort : une erreur laisse SkillTrend vide (front masque).
+	if pts, err := s.loadMuSeriesPoints(ctx, now.AddDate(0, 0, -SkillTrendWindowDays), now); err != nil {
+		slog.WarnContext(ctx, "profile: skill trend partial", "err", err)
+	} else {
+		profile.SkillTrend = buildSkillTrend(pts)
+	}
+
 	// ── Section A1 : radar narrative 6 axes
 	if err := s.aggregateNarrative(ctx, profile, userID, now.AddDate(0, 0, -lowessWindowDays), now); err != nil {
 		slog.WarnContext(ctx, "profile: section A1 partial", "err", err)
@@ -576,6 +584,41 @@ func (s *Service) loadLUSRSnapshot(ctx context.Context) (LUSRState, error) {
 		return lusr, fmt.Errorf("query count: %w", err)
 	}
 	return lusr, nil
+}
+
+// loadMuSeriesPoints retourne les ratings LUSR DATÉS (ASC) sur la fenêtre — même
+// source ART-safe que loadMuSeries (vue `_latest`, règle n°2) mais en conservant le
+// timestamp `COALESCE(start_time, written_at)` pour dater chaque point de la
+// sparkline (DEC-5/D2). Les rows LUSR ont `start_time` souvent NULL → written_at
+// sert de proxy temporel (cf. loadMuSeries).
+func (s *Service) loadMuSeriesPoints(ctx context.Context, since, until time.Time) ([]muPoint, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	rows, err := s.db.Query(ctx, `
+		SELECT rating_value, COALESCE(start_time, written_at)
+		FROM match_skill_rank_latest
+		WHERE rating_type = 'LUSR' AND rating_value IS NOT NULL
+		  AND COALESCE(start_time, written_at) >= ? AND COALESCE(start_time, written_at) <= ?
+		ORDER BY COALESCE(start_time, written_at) ASC
+	`, since, until)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []muPoint
+	for rows.Next() {
+		var (
+			v  sql.NullFloat64
+			at sql.NullTime
+		)
+		if err := rows.Scan(&v, &at); err != nil {
+			return nil, err
+		}
+		if v.Valid && at.Valid {
+			out = append(out, muPoint{at: at.Time, value: v.Float64})
+		}
+	}
+	return out, rows.Err()
 }
 
 // loadMuSeries retourne la série de μ ordonnée chronologiquement (ASC).

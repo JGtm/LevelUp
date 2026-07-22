@@ -230,18 +230,19 @@ make check-types && make test-web
 
 ## Lot D — Tendance visuelle (graphes minimaux, DEC-5)
 
-- [ ] **D1 — Vérifier l'existant timeseries** : `internal/api/handlers/timeseries.go` +
+- [x] **D1 — Vérifier l'existant timeseries** : `internal/api/handlers/timeseries.go` +
   SPEC_ECHARTS_TIMESERIES (13 graphes) — si une série skill/LUSR par match existe,
   la réutiliser telle quelle (lecteurs : vues `_latest` uniquement, règle ART n°2).
   Sortie : décision écrite réutilisation vs nouvel endpoint (défaut : réutilisation).
-- [ ] **D2 — Sparkline Performance** : mini-graphe 90 j (μ lissé LOWESS affiché en
+  **Décision tranchée — voir « Journal d'exécution — Lot D » ci-dessous.**
+- [x] **D2 — Sparkline Performance** : mini-graphe 90 j (μ lissé LOWESS affiché en
   points LUSR) dans la section Performance, wrapper ECharts existant
   (`components/charts/`), tokens sémantiques, mock echarts-for-react dans les tests
-  jsdom (piège mémorisé).
-- [ ] **D3 — Calendrier d'activité** : heatmap 90 j des jours joués (données : counts
+  jsdom (piège mémorisé). **Voir journal D2.**
+- [x] **D3 — Calendrier d'activité** : heatmap 90 j des jours joués (données : counts
   par jour — vérifier l'existant côté home/engagement avant tout nouvel endpoint),
   rattachée au bloc séries de Réalisations. Timezone : fragment SQL canonique
-  `COALESCE(start_time_utc, ...)` obligatoire.
+  `COALESCE(start_time_utc, ...)` obligatoire. **Voir journal D3.**
 
 **Gate Lot D** :
 ```
@@ -580,3 +581,106 @@ le `?f=` n'est décodé qu'au rehydrate du store solo). Records : lien « voir l
 backend traite `end_date` en fin de journée inclusive, `filters_service.go:381`). i18n
 FR/EN (patternSeeMatches, recordSeePeriod). Tests vitest `filterLink.test.ts` (round-trip
 encode/decode, by_mode/by_map cascade, période bornée, estampille titre, dayWindowUTC).
+
+## Journal d'exécution — Lot D (2026-07-22)
+
+### D1 — Décision timeseries (vérifiée sur pièces, confirme AM-8)
+
+**Constat sur pièces.** `internal/api/handlers/timeseries.go` ne sert AUCUNE série
+skill/LUSR (5 onglets : summary/cumul/intensity/distributions + first-events ;
+`domain.TimeseriesPageResponse`). Seul un champ **per-match** `SkillRatingValue`
+existe (`domain/timeseries.go:243-248`), non agrégé en série lissée.
+`service/timeseries_service.go:53-57` confirme que `canonical.MetricSeries` ne
+couvre pas lusr. Donc rien de directement réutilisable côté page Solo.
+
+**Ce qui existe et se réutilise (règle n°14, zéro réimplémentation).**
+- **Source de données** : la vue append-only `match_skill_rank_latest` (règle ART
+  n°2 — lecteurs via `_latest` uniquement), `rating_value` où `rating_type='LUSR'`,
+  ordonnée par `COALESCE(start_time, written_at)` (les rows LUSR ont `start_time`
+  souvent NULL). C'est EXACTEMENT ce que lit déjà `profile.loadMuSeries`
+  (`progression/profile/service.go:582-612`). LUSR = chemin v2 canonique ; la même
+  colonne `rating_value` = μ = la valeur affichée « {mu} pts LUSR » côté Performance
+  (`PerformanceSection.tsx:62`, `rating.mu.toFixed(0)`). Échelle 1000–2000+
+  (`sync/skill/skill_config.go:230`) : le lissé est directement en points LUSR,
+  aucune conversion.
+- **Lissage LOWESS** : `temporal.LowessSmooth(series, LOWESSAlpha=0.3)`
+  (`analysis/temporal/lowess.go`), DÉJÀ utilisé par `profile.ComputeMuTrend` et par
+  la campagne (`current_value_lowess`). Réutilisé tel quel.
+
+**Décision (D1).** CONSTRUIRE la série depuis l'existant (défaut amendé confirmé),
+**PAS** de réutilisation d'un endpoint timeseries inexistant.
+- **Surface D2 (sparkline)** : champ ajouté à la réponse `/profile`
+  (`PlayerProfile.skill_trend`), calculé sur une fenêtre FIXE de 90 j dans
+  `BuildProfile` (indépendante du `window_days` du profil — sémantique stable
+  « tendance 90 j »). Rationale : la `PerformanceSection` consomme déjà la réponse
+  `/profile` (skill_rating, components, mu_trend) dans l'onglet Profil → **aucune
+  nouvelle query key, aucun hook, aucun 2e fetch**. Un endpoint dédié dupliquerait
+  la résolution joueur + une clé + un hook pour une série minuscule (DEC-5 minimal).
+  Le backend sert UNIQUEMENT les points **lissés** (`{date, value}`), jamais le μ
+  brut (DEC-6 « jamais de μ brut à l'écran » garanti côté serveur). `< 3` points →
+  série vide (LOWESS non fiable), front n'affiche rien.
+- **Surface D3 (calendrier)** : les counts/jour n'existent NULLE PART (les hits
+  « daily » = cadence de défis, sans rapport ; les heatmaps activité existantes
+  Explorer/Synthesis sont jour×heure 7×24, PAS un calendrier 90 j). → **nouvel
+  endpoint** `GET /players/{slug}/activity-calendar?days=90`, handler mince réutilisant
+  `ProgressionResolver` + `profile.Service`, lecteur via `SharedReadDB` avec le
+  fragment timezone canonique `StartTimeCanonicalSQL("mr")` + exclusion Campagne
+  (`campaignExcl`), bucket jour = `t.UTC().Format("2006-01-02")` en Go (motif A6,
+  évite les pièges TZ du CAST DATE DuckDB). Huma type l'output → schémas openapi
+  émis + `generate-types`.
+
+### D2 — Sparkline Performance (Profil)
+
+Champ `PlayerProfile.SkillTrend []SkillTrendPoint{date, value}` servi par `/profile`,
+calculé sur 90 j FIXE dans `BuildProfile` (const `SkillTrendWindowDays`). Backend :
+`loadMuSeriesPoints` (vue `_latest`, timestamp `COALESCE(start_time, written_at)`) +
+`buildSkillTrend` (réutilise `temporal.LowessSmooth`, LOWESSAlpha ; date =
+`t.UTC().Format`). Sert UNIQUEMENT le lissé, `< 3` points → nil (front n'affiche rien).
+openapi.yaml : schéma `SkillTrendPoint` + `skill_trend` sur `PlayerProfile` (émis via
+`OPENAPI_EMIT_OUT`/`_DIVERGENT_OUT`, drift MISSING=0, PlayerProfile ré-aligné) +
+`generate-types`. Front : type `SkillTrendPoint` (`lib/playerProfile.ts`),
+`PerformanceSection` rend `<TimeseriesLineChart>` compact (height 96, `showSymbol=false`,
+`smooth`, `xAxisType='category'`, valeurs arrondies pour un tooltip lisible), sous role
+`img` + aria manifesté, i18n profile.toml (`trend_chart_title/_series/_aria`), `< 2`
+points → rien. Tests : pur Go `buildSkillTrend` (lissage + date UTC), intégration
+`SkillTrendPopulated`, vitest `PerformanceSection.test.tsx` (mock echarts-for-react :
+rendu ≥ 2 pts / aria / états vides < 2 et absent).
+
+### D3 — Calendrier d'activité (Réalisations)
+
+Vérification existant (go-features) : AUCUN endpoint ne sert de counts/jour (les hits
+« daily » = cadence de défis ; heatmaps Explorer/Synthesis = jour×heure 7×24). → nouvel
+endpoint `GET /players/{slug}/activity-calendar?days=90` (clamp 7..180). Backend :
+`profile.LoadActivityCalendar` (SharedReader, fragment canonique `StartTimeCanonicalSQL` +
+`campaignExcl`, bucket jour `t.UTC().Format` en Go — motif A6, dédup match/jour), DTO
+`ActivityCalendar{since, until, days[]ActivityDay{date, count}}` (jours vides omis).
+Handler mince ajouté à `PlayerProfileHandler.Mount`. openapi.yaml : path
+`getActivityCalendar` + schémas `ActivityCalendar`/`ActivityDay` (drift MISSING=0) +
+`generate-types`. Front : query key `progressionActivity`, hook `useActivityCalendar`,
+types `ActivityCalendar/ActivityDay` (ascension `types.ts`), composant
+`ActivityCalendarChart` (compose `ChartCard` + `buildActivityCalendarOption` : heatmap
+semaine×jour, lundi en haut, rampe NEUTRE `heatmapRampTokens('frequency')` CVD-safe,
+`dowLabels`/`calendarChartText` réutilisés, légende sobre Moins/Plus, tokens uniquement),
+i18n ascension.i18n (`activityCalendar*` FR/EN), rendu sous `StreakDashboard` dans
+`AscensionRealisationsTab`. Tests : intégration Go `LoadActivityCalendar` (counts jours
+distincts, fenêtre vide), vitest `ActivityCalendarChart.test.tsx` (grille pure semaine×jour,
+builder option, rendu + état vide, mock echarts-for-react).
+
+### Gate Lot D — sorties fidèles (exécutées cette session)
+
+- `go test ./internal/progression/profile/... ./internal/api/handlers/...` → ok
+- `CGO_ENABLED=1 go test ./internal/api/` (drift `TestOpenAPISchemaDrift` MISSING=0 +
+  contract routes) → ok
+- `CGO_ENABLED=1 go test -tags=integration ./internal/progression/profile/... -run
+  'SkillTrend|ActivityCalendar'` → ok
+- `gofmt -l` (profile+handlers) vide ; `go vet` (profile+handlers+api) clean ;
+  `make go-api-lint` (vet domain/analysis, périmètre du target) EXIT 0
+- `make generate-types` → generated.ts régénéré (ActivityCalendar/ActivityDay/
+  SkillTrendPoint + skill_trend/getActivityCalendar) ; `make check-types` (tsc) → ok
+- `make test-web` → 283 fichiers, 2480 passés / 14 skippés / 0 échec
+- ESLint fichiers web touchés → 0 erreur (warning react-refresh supprimé sur les builders
+  exportés, motif catalogue wrappers)
+
+Reste à faire orchestrateur : revue visuelle (sparkline ≥ 30 matchs rendue ; heatmap
+cohérente avec les cartes séries, un jour joué = case remplie) ; entrée thought_log
+ajoutée en tête.

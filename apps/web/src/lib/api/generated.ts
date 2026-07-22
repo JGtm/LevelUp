@@ -2777,6 +2777,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/activity-calendar": {
+        parameters: {
+            query?: {
+                /** @description Fenêtre d'activité en jours (clampé 7..180) */
+                days?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        /** Calendrier d'activité : nombre de matchs par jour UTC sur la fenêtre (jours vides omis) */
+        get: operations["getActivityCalendar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/campaigns": {
         parameters: {
             query?: never;
@@ -3373,6 +3396,16 @@ export interface components {
             field: string;
             message: string;
             code?: string | null;
+        };
+        ActivityCalendar: {
+            days: components["schemas"]["ActivityDay"][] | null;
+            since: string;
+            until: string;
+        };
+        ActivityDay: {
+            /** Format: int64 */
+            count: number;
+            date: string;
         };
         ApiErrorSchema: {
             /**
@@ -7361,6 +7394,7 @@ export interface components {
             radar_axes?: components["schemas"]["ParticipationAxisValue"][] | null;
             secondary_role?: string;
             skill_rating: components["schemas"]["SkillRatingSnapshot"];
+            skill_trend?: components["schemas"]["SkillTrendPoint"][] | null;
             strengths?: components["schemas"]["RadarAxisInsight"][] | null;
             style_signature: components["schemas"]["StyleSignature"];
             suggested_challenges?: components["schemas"]["SuggestedChallenge"][] | null;
@@ -8050,6 +8084,11 @@ export interface components {
             sub_tier: number;
             tier_name: string;
             tier_name_fr: string;
+        };
+        SkillTrendPoint: {
+            date: string;
+            /** Format: double */
+            value: number;
         };
         SkillSnapshot: {
             /** Format: double */
@@ -12922,6 +12961,37 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description PlayerProfile */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Joueur inconnu */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getActivityCalendar: {
+        parameters: {
+            query?: {
+                /** @description Fenêtre d'activité en jours (clampé 7..180) */
+                days?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ActivityCalendar */
             200: {
                 headers: {
                     [name: string]: unknown;

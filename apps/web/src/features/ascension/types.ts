@@ -172,6 +172,21 @@ export interface PlayerProfile {
   suggested_challenges?: SuggestedChallenge[]
 }
 
+// ── Calendrier d'activité (DEC-5/D3) ─────────────────────────────────────────
+
+/** Un jour joué (>= 1 match). Les jours vides sont omis par le backend. */
+export interface ActivityDay {
+  date: string // jour UTC (YYYY-MM-DD)
+  count: number // nb de matchs distincts ce jour-là
+}
+
+/** Réponse GET /activity-calendar — miroir de profile.ActivityCalendar. */
+export interface ActivityCalendar {
+  since: string // jour UTC (YYYY-MM-DD) inclus
+  until: string // jour UTC (YYYY-MM-DD) inclus
+  days: ActivityDay[] // uniquement les jours avec count > 0, triés ASC
+}
+
 // ── Patterns contextuels / comportementaux (phases 1-3) ──────────────────────
 
 export type ContextType = 'by_mode' | 'by_map' | 'by_squad'

@@ -75,6 +75,13 @@ export interface AscensionText {
   ascensionLayerTitle: string
   ascensionLayerDescription: string
 
+  // Calendrier d'activité (DEC-5/D3)
+  activityCalendarTitle: string
+  activityCalendarAria: string
+  activityCalendarEmpty: string
+  activityCalendarLegendLess: string
+  activityCalendarLegendMore: string
+
   // Streaks
   streaksSectionTitle: string
   streaksEmpty: string
@@ -235,6 +242,12 @@ const FR: AscensionText = {
   ascensionLayerTitle: 'Ascension — Coaching d\'amélioration',
   ascensionLayerDescription:
     'Analyse ton historique pour te proposer des angles d\'amélioration ciblés. S\'appuie sur Prestige (les campagnes deviennent des objectifs) — tu peux ignorer cette section si tu préfères piloter toi-même.',
+  activityCalendarTitle: 'Calendrier d\'activité',
+  activityCalendarAria:
+    "Calendrier des jours joués sur les 90 derniers jours : une case remplie par jour joué, l'intensité reflète le nombre de matchs.",
+  activityCalendarEmpty: 'Aucun match sur les 90 derniers jours.',
+  activityCalendarLegendLess: 'Moins',
+  activityCalendarLegendMore: 'Plus',
   streaksSectionTitle: 'Mes séries',
   streaksEmpty:
     "Aucune série en cours. Joue un match aujourd'hui pour en démarrer une !",
@@ -453,6 +466,12 @@ const EN: AscensionText = {
   ascensionLayerTitle: 'Ascension — Improvement coaching',
   ascensionLayerDescription:
     'Analyses your history to surface targeted improvement angles. Builds on Prestige (campaigns become objectives) — feel free to ignore this section if you prefer to drive your own progress.',
+  activityCalendarTitle: 'Activity calendar',
+  activityCalendarAria:
+    'Calendar of days played over the last 90 days: one filled cell per day played, intensity reflects the number of matches.',
+  activityCalendarEmpty: 'No match over the last 90 days.',
+  activityCalendarLegendLess: 'Less',
+  activityCalendarLegendMore: 'More',
   streaksSectionTitle: 'My streaks',
   streaksEmpty: 'No active streak. Play a match today to start a series!',
   streakActive: 'Active',

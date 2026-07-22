@@ -8,7 +8,13 @@ import type {
   LOWESSTrend,
   LUSRComponentBreakdown,
   SkillRatingSnapshot,
+  SkillTrendPoint,
 } from '@/lib/playerProfile'
+import {
+  TimeseriesLineChart,
+  type ChartPoint2D,
+} from '@/components/charts/TimeseriesLineChart'
+import type { ChartSeries } from '@/components/charts/ChartCard'
 import { useProfileI18n } from './useProfileI18n'
 import type { ProfileManifestKey } from '@/lib/i18n/generated/profile'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -18,12 +24,14 @@ interface PerformanceSectionProps {
   skillRating: SkillRatingSnapshot
   components?: LUSRComponentBreakdown[]
   muTrend?: LOWESSTrend
+  skillTrend?: SkillTrendPoint[]
 }
 
 export function PerformanceSection({
   skillRating,
   components,
   muTrend,
+  skillTrend,
 }: PerformanceSectionProps) {
   const { t } = useProfileI18n()
   return (
@@ -37,8 +45,47 @@ export function PerformanceSection({
 
       <TierBlock rating={skillRating} />
 
+      <SkillTrendSparkline points={skillTrend} />
+
       <ComponentsBreakdown components={components} />
     </section>
+  )
+}
+
+// Nombre minimal de points sous lequel on n'affiche RIEN (pas de graphe cassé).
+const MIN_TREND_POINTS = 2
+
+function SkillTrendSparkline({ points }: { points?: SkillTrendPoint[] }) {
+  const { t } = useProfileI18n()
+  // État vide propre : < 2 points → rien (DEC-5/D2). Le backend ne sert de série
+  // que si ≥ 3 points de rating ; ce garde-fou couvre aussi l'absence de champ.
+  if (!points || points.length < MIN_TREND_POINTS) return null
+
+  // DEC-6/B8 : la valeur servie est déjà le μ LISSÉ en points LUSR. On arrondit
+  // pour un tooltip lisible (échelle 1000-2000+, l'arrondi ne dénature pas la
+  // courbe). x = jour UTC (axe catégoriel : sparkline, pas d'espacement temporel).
+  const series: ChartSeries<ChartPoint2D>[] = [
+    {
+      key: 'lusr_trend',
+      datapoints: points.map((p) => ({ x: p.date, y: Math.round(p.value) })),
+    },
+  ]
+  const seriesName = t('profile.performance.trend_chart_series')
+
+  return (
+    <div role="img" aria-label={t('profile.performance.trend_chart_aria')}>
+      <TimeseriesLineChart
+        title={t('profile.performance.trend_chart_title')}
+        series={series}
+        xAxisType="category"
+        outcomeMarkers={false}
+        showSymbol={false}
+        smooth
+        seriesNameResolver={() => seriesName}
+        xAxisLabelInterval={Math.max(1, Math.floor(points.length / 4))}
+        height={96}
+      />
+    </div>
   )
 }
 

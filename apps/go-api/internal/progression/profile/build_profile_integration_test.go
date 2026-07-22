@@ -310,6 +310,82 @@ func axisValue(prof *PlayerProfile, axis string) float64 {
 	return 0
 }
 
+// TestBuildProfile_SkillTrendPopulated vérifie que la sparkline de tendance LUSR
+// (DEC-5/D2) est peuplée depuis match_skill_rank_latest et datée en jours UTC.
+func TestBuildProfile_SkillTrendPopulated(t *testing.T) {
+	pdb := setupProfileEnv(t)
+	now := time.Date(2026, 5, 18, 12, 0, 0, 0, time.UTC)
+	seedMatchesForProfile(t, pdb, now, 25) // 25 jours notés → LOWESS effectif
+
+	svc := NewServiceFromPlayerDB(pdb)
+	prof, err := svc.BuildProfile(context.Background(), testXUID, testTitle, 60, now)
+	if err != nil {
+		t.Fatalf("BuildProfile: %v", err)
+	}
+	if len(prof.SkillTrend) == 0 {
+		t.Fatalf("SkillTrend: vide, want peuplé (>= 3 points de rating dans 90 j)")
+	}
+	for i, p := range prof.SkillTrend {
+		if len(p.Date) != 10 { // YYYY-MM-DD
+			t.Errorf("point %d: Date %q, want format YYYY-MM-DD", i, p.Date)
+		}
+		if p.Value <= 0 {
+			t.Errorf("point %d: Value %v, want > 0 (échelle points LUSR)", i, p.Value)
+		}
+		if i > 0 && p.Date < prof.SkillTrend[i-1].Date {
+			t.Errorf("SkillTrend non trié ASC en %d: %s < %s", i, p.Date, prof.SkillTrend[i-1].Date)
+		}
+	}
+}
+
+// TestLoadActivityCalendar_CountsDistinctDays vérifie le calendrier d'activité
+// (DEC-5/D3) : 1 match/jour seedé → 1 jour par entrée, comptes = 1, tri ASC.
+func TestLoadActivityCalendar_CountsDistinctDays(t *testing.T) {
+	pdb := setupProfileEnv(t)
+	now := time.Date(2026, 5, 18, 12, 0, 0, 0, time.UTC)
+	seedMatchesForProfile(t, pdb, now, 10) // 1 match/jour sur 10 jours distincts
+
+	svc := NewServiceFromPlayerDB(pdb)
+	cal, err := svc.LoadActivityCalendar(context.Background(), testXUID, now.AddDate(0, 0, -90), now)
+	if err != nil {
+		t.Fatalf("LoadActivityCalendar: %v", err)
+	}
+	if len(cal.Days) != 10 {
+		t.Fatalf("Days: got %d, want 10 (jours distincts)", len(cal.Days))
+	}
+	for _, d := range cal.Days {
+		if d.Count != 1 {
+			t.Errorf("jour %s: count %d, want 1", d.Date, d.Count)
+		}
+		if len(d.Date) != 10 {
+			t.Errorf("jour %q: format YYYY-MM-DD attendu", d.Date)
+		}
+	}
+	for i := 1; i < len(cal.Days); i++ {
+		if cal.Days[i-1].Date > cal.Days[i].Date {
+			t.Errorf("Days non trié ASC en %d: %s > %s", i, cal.Days[i-1].Date, cal.Days[i].Date)
+		}
+	}
+	if cal.Since == "" || cal.Until == "" {
+		t.Errorf("Since/Until vides: %q / %q", cal.Since, cal.Until)
+	}
+}
+
+// TestLoadActivityCalendar_EmptyWindow vérifie le cas vide (aucun match).
+func TestLoadActivityCalendar_EmptyWindow(t *testing.T) {
+	pdb := setupProfileEnv(t)
+	now := time.Date(2026, 5, 18, 12, 0, 0, 0, time.UTC)
+
+	svc := NewServiceFromPlayerDB(pdb)
+	cal, err := svc.LoadActivityCalendar(context.Background(), testXUID, now.AddDate(0, 0, -90), now)
+	if err != nil {
+		t.Fatalf("LoadActivityCalendar: %v", err)
+	}
+	if len(cal.Days) != 0 {
+		t.Errorf("Days: got %d, want 0 (DB vide)", len(cal.Days))
+	}
+}
+
 // TestLoad_V2Compat vérifie que Load() reste compatible avec le caller V2
 // (post_sync_progression.go). MinMatchesForRating=10 → 10+ matchs requis.
 func TestLoad_V2Compat(t *testing.T) {

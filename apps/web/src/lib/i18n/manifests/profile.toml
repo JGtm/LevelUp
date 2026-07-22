@@ -254,6 +254,19 @@ en = "Declining"
 fr = "Pente LOWESS {slope} sur {window} pts"
 en = "LOWESS slope {slope} over {window} pts"
 
+# Sparkline de tendance LUSR 90 j (DEC-5/D2) — μ lissé LOWESS, en points LUSR.
+[profile.performance.trend_chart_title]
+fr = "Tendance sur 90 jours"
+en = "90-day trend"
+
+[profile.performance.trend_chart_series]
+fr = "Points LUSR (lissés)"
+en = "LUSR points (smoothed)"
+
+[profile.performance.trend_chart_aria]
+fr = "Courbe de tendance du classement LUSR lissée sur les 90 derniers jours."
+en = "Smoothed LUSR rating trend line over the last 90 days."
+
 [profile.performance.components_unavailable]
 fr = "Détail des 8 composantes : données non disponibles pour cette fenêtre."
 en = "8-component breakdown: data unavailable for this window."
