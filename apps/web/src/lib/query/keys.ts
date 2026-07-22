@@ -251,6 +251,10 @@ export const queryKeys = {
   challenge: {
     list: (userId: string, titleSlug: string) =>
       ['prestige', 'challenges', userId, titleSlug] as const,
+    /** Défis terminaux (historique Réalisations) — statuts distincts de `list`
+     *  (actifs), donc clé distincte. */
+    history: (userId: string, titleSlug: string) =>
+      ['prestige', 'challenges', 'history', userId, titleSlug] as const,
     one: (id: string) => ['prestige', 'challenge', id] as const,
   },
   squad: {
@@ -266,6 +270,10 @@ export const queryKeys = {
       ['playerProfile', 'campaign', 'active', playerSlug] as const,
     campaign: (playerSlug: string, id: string) =>
       ['playerProfile', 'campaign', playerSlug, id] as const,
+    /** Campagnes closes (historique Réalisations). Sous le préfixe `campaignAll`
+     *  → invalidée par les mutations de campagne (close/abandon refont l'historique). */
+    campaignHistory: (playerSlug: string) =>
+      ['playerProfile', 'campaign', playerSlug, 'history'] as const,
     /** Préfixe broad — invalide tous les `campaign(playerSlug, *)`. */
     campaignAll: (playerSlug: string) =>
       ['playerProfile', 'campaign', playerSlug] as const,

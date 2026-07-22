@@ -336,6 +336,21 @@ export const prestigeApi = {
       `${scopedToPlayer(userId)}/prestige/challenges?user_id=${encodeURIComponent(userId)}&title_slug=${encodeURIComponent(titleSlug)}`,
     ),
 
+  /**
+   * Liste les défis filtrés par statut(s). `statuses` est sérialisé en CSV
+   * (`status=completed,abandoned`, convention Huma form/explode=false). Vide →
+   * le backend applique le défaut `active`. Sert la surface Historique (défis
+   * terminaux) de l'onglet Réalisations.
+   */
+  listChallenges: (userId: string, titleSlug: string, statuses: ChallengeStatus[]) => {
+    const statusQs = statuses.length
+      ? `&status=${statuses.map(encodeURIComponent).join(',')}`
+      : ''
+    return api.get<{ challenges: Challenge[]; count: number }>(
+      `${scopedToPlayer(userId)}/prestige/challenges?user_id=${encodeURIComponent(userId)}&title_slug=${encodeURIComponent(titleSlug)}${statusQs}`,
+    )
+  },
+
   updateChallenge: (id: string, body: UpdateChallengeBody, actorSlug: string) =>
     api.patch<Challenge>(`${scopedToPlayer(actorSlug)}/prestige/challenges/${id}`, body),
 

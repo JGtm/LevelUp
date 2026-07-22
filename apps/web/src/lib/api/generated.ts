@@ -2817,6 +2817,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/campaigns/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        /** Campagnes closes du joueur (historique, les plus récentes d'abord) */
+        get: operations["listEndedCampaigns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/campaigns/{id}": {
         parameters: {
             query?: never;
@@ -5567,6 +5587,28 @@ export interface components {
             pairs: number;
             /** Format: int64 */
             playlists: number;
+        };
+        CampaignHistoryItem: {
+            axis: string;
+            axis_kind: string;
+            /** Format: double */
+            delta?: number;
+            /** Format: date-time */
+            ended_at?: string;
+            /** Format: double */
+            final_value?: number;
+            id: string;
+            playlist_group: string;
+            /** Format: double */
+            snapshot_value: number;
+            /** Format: date-time */
+            started_at: string;
+            status: string;
+        };
+        CampaignHistoryResponse: {
+            campaigns: components["schemas"]["CampaignHistoryItem"][] | null;
+            /** Format: int64 */
+            count: number;
         };
         ChallengeItem: {
             challenge_path: string;
@@ -12948,6 +12990,29 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    listEndedCampaigns: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Liste des campagnes closes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignHistoryResponse"];
+                };
             };
         };
     };

@@ -5,6 +5,7 @@
 //
 //	POST   /campaigns                  → StartCampaign
 //	GET    /campaigns/active           → GetActiveCampaign (1 par titre)
+//	GET    /campaigns/history          → ListEnded (campagnes closes, récentes d'abord)
 //	GET    /campaigns/{id}             → GetByID (campagne + défis liés)
 //	POST   /campaigns/{id}/pause       → PauseCampaign
 //	POST   /campaigns/{id}/resume      → ResumeCampaign
@@ -52,6 +53,7 @@ func (h *CampaignHandler) Mount(r chi.Router) {
 	api := humacore.NewAPI(r)
 	huma.Post(api, "/campaigns", h.handleStart)
 	huma.Get(api, "/campaigns/active", h.handleGetActive)
+	huma.Get(api, "/campaigns/history", h.handleListEnded)
 	huma.Get(api, "/campaigns/{id}", h.handleGetByID)
 	huma.Post(api, "/campaigns/{id}/pause", h.handlePause)
 	huma.Post(api, "/campaigns/{id}/resume", h.handleResume)
@@ -99,6 +101,33 @@ type campaignOutput struct {
 // pointeur reproduit le contrat d'origine (writeJSON nil → corps `null`).
 type campaignActiveOutput struct {
 	Body *campaign.ImprovementCampaign
+}
+
+// campaignHistoryItem : DTO dédié d'une campagne close pour la surface
+// « Historique » (onglet Réalisations). N'expose que ce dont le front a besoin :
+// axe, delta de progression (final − snapshot), playlist, dates, statut.
+type campaignHistoryItem struct {
+	ID            string     `json:"id"`
+	Axis          string     `json:"axis"`
+	AxisKind      string     `json:"axis_kind"`
+	PlaylistGroup string     `json:"playlist_group"`
+	Status        string     `json:"status"`
+	StartedAt     time.Time  `json:"started_at"`
+	EndedAt       *time.Time `json:"ended_at,omitempty"`
+	SnapshotValue float64    `json:"snapshot_value"`
+	FinalValue    *float64   `json:"final_value,omitempty"`
+	Delta         *float64   `json:"delta,omitempty"`
+}
+
+// campaignHistoryResponse : corps de réponse de GET /campaigns/history.
+type campaignHistoryResponse struct {
+	Campaigns []campaignHistoryItem `json:"campaigns"`
+	Count     int                   `json:"count"`
+}
+
+// campaignHistoryOutput : 200 avec la liste des campagnes closes + total.
+type campaignHistoryOutput struct {
+	Body campaignHistoryResponse
 }
 
 // campaignNoContent : réponse 204 sans corps (transitions pause/resume/close/abandon).
@@ -155,6 +184,42 @@ func (h *CampaignHandler) handleGetActive(ctx context.Context, in *campaignPlaye
 		return nil, humacore.NewError(http.StatusInternalServerError, "get_active_error", err.Error())
 	}
 	return &campaignActiveOutput{Body: &c}, nil
+}
+
+// handleListEnded : GET /campaigns/history → campagnes closes du joueur, les
+// plus récentes d'abord. Mappe vers un DTO dédié (delta snapshot→final calculé).
+func (h *CampaignHandler) handleListEnded(ctx context.Context, in *campaignPlayerInput) (*campaignHistoryOutput, error) {
+	pdb, err := h.resolvePlayer(ctx, in.PlayerSlug)
+	if err != nil {
+		return nil, err
+	}
+	svc := h.serviceFromPDB(pdb)
+	list, err := svc.ListEnded(ctx, pdb.XUID, requestTitleSlug(ctx, h.titleSlug))
+	if err != nil {
+		slog.WarnContext(ctx, "campaign: list ended", "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "list_campaigns_error", err.Error())
+	}
+	items := make([]campaignHistoryItem, 0, len(list))
+	for i := range list {
+		items = append(items, toCampaignHistoryItem(&list[i]))
+	}
+	return &campaignHistoryOutput{Body: campaignHistoryResponse{Campaigns: items, Count: len(items)}}, nil
+}
+
+// toCampaignHistoryItem projette une campagne close vers son DTO d'historique.
+func toCampaignHistoryItem(c *campaign.ImprovementCampaign) campaignHistoryItem {
+	return campaignHistoryItem{
+		ID:            c.ID,
+		Axis:          c.Axis,
+		AxisKind:      string(c.AxisKind),
+		PlaylistGroup: c.PlaylistGroup,
+		Status:        string(c.Status),
+		StartedAt:     c.StartedAt,
+		EndedAt:       c.EndedAt,
+		SnapshotValue: c.SnapshotValue,
+		FinalValue:    c.FinalValue(),
+		Delta:         c.Delta(),
+	}
 }
 
 // handleGetByID : GET /campaigns/{id} → détail + défis liés.

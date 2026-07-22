@@ -17,13 +17,14 @@ import { useEffect, useRef } from 'react'
 import { useSearch } from '@tanstack/react-router'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { getAscensionText } from './i18n'
-import { useChallenges } from '@/features/prestige/hooks'
+import { useChallenges, useChallengeHistory } from '@/features/prestige/hooks'
 import { StatsGlobales } from '@/features/prestige/components/StatsGlobales'
 import { MomentCard } from '@/features/prestige/components/MomentCard'
 import type { Challenge } from '@/lib/prestige'
 import { StreakDashboard } from './StreakDashboard'
 import { RecordsTimeline } from './RecordsTimeline'
 import { MilestonesGrid } from './MilestonesGrid'
+import { HistorySection } from './HistorySection'
 import { PrestigeSquadProgress } from './PrestigeSquadProgress'
 
 export function AscensionRealisationsTab() {
@@ -40,7 +41,10 @@ export function AscensionRealisationsTab() {
   }
   const selectedId = search.selectedChallengeId ?? search.selectedObjectiveId
 
-  const { data: challengesData } = useChallenges(playerSlug, titleSlug)
+  // Défis actifs + terminaux : StatsGlobales veut l'ensemble (« complétés /
+  // créés »), la célébration et l'historique n'exploitent que les terminaux.
+  const { data: activeData } = useChallenges(playerSlug, titleSlug)
+  const { data: historyData } = useChallengeHistory(playerSlug, titleSlug)
 
   if (!playerSlug) {
     return (
@@ -50,8 +54,10 @@ export function AscensionRealisationsTab() {
     )
   }
 
-  const challenges: Challenge[] = challengesData?.challenges ?? []
-  const completed = challenges
+  const activeChallenges: Challenge[] = activeData?.challenges ?? []
+  const pastChallenges: Challenge[] = historyData?.challenges ?? []
+  const allChallenges = [...activeChallenges, ...pastChallenges]
+  const completed = pastChallenges
     .filter((c) => c.status === 'completed' && c.completed_at)
     .sort((a, b) => (b.completed_at ?? '').localeCompare(a.completed_at ?? ''))
 
@@ -63,7 +69,9 @@ export function AscensionRealisationsTab() {
       <RecordsTimeline playerSlug={playerSlug} />
       <MilestonesGrid playerSlug={playerSlug} />
 
-      <StatsGlobales challenges={challenges} />
+      <HistorySection playerSlug={playerSlug} />
+
+      <StatsGlobales challenges={allChallenges} />
 
       <MomentsSection completed={completed} locale={locale} selectedId={selectedId} />
     </div>

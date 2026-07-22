@@ -2923,6 +2923,20 @@ paths:
       responses:
         "200": { description: "Campagne ou null" }
 
+  /players/{player_slug}/campaigns/history:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+    get:
+      tags: [progression]
+      operationId: listEndedCampaigns
+      summary: "Campagnes closes du joueur (historique, les plus récentes d'abord)"
+      responses:
+        "200":
+          description: "Liste des campagnes closes"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CampaignHistoryResponse" }
+
   /players/{player_slug}/campaigns/{id}:
     parameters:
       - $ref: "#/components/parameters/PlayerSlug"
@@ -8806,6 +8820,58 @@ components:
           - pairs
           - maps
           - game_variants
+      type: object
+    CampaignHistoryItem:
+      additionalProperties: false
+      properties:
+          axis:
+              type: string
+          axis_kind:
+              type: string
+          delta:
+              format: double
+              type: number
+          ended_at:
+              format: date-time
+              type: string
+          final_value:
+              format: double
+              type: number
+          id:
+              type: string
+          playlist_group:
+              type: string
+          snapshot_value:
+              format: double
+              type: number
+          started_at:
+              format: date-time
+              type: string
+          status:
+              type: string
+      required:
+          - id
+          - axis
+          - axis_kind
+          - playlist_group
+          - status
+          - started_at
+          - snapshot_value
+      type: object
+    CampaignHistoryResponse:
+      additionalProperties: false
+      properties:
+          campaigns:
+              items:
+                  $ref: '#/components/schemas/CampaignHistoryItem'
+              nullable: true
+              type: array
+          count:
+              format: int64
+              type: integer
+      required:
+          - campaigns
+          - count
       type: object
     ChallengeItem:
       additionalProperties: false

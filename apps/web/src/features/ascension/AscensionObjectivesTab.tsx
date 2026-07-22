@@ -294,7 +294,9 @@ function MyArcsSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
   const { data: arcsData } = useArcs(playerSlug, titleSlug)
   const { data: challengesData } = useChallenges(playerSlug, titleSlug)
   const deleteArc = useDeleteArc(playerSlug, titleSlug)
-  const arcs: Arc[] = arcsData?.arcs ?? []
+  // Onglet Objectifs = actif uniquement (Lot C, C4) : les arcs terminés
+  // (completed_at renseigné) migrent vers l'Historique de l'onglet Réalisations.
+  const arcs: Arc[] = (arcsData?.arcs ?? []).filter((a) => !a.completed_at)
   const challenges: Challenge[] = challengesData?.challenges ?? []
   const [showArcForm, setShowArcForm] = useState(false)
   const [showPicker, setShowPicker] = useState(false)

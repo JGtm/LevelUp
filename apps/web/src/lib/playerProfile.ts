@@ -162,6 +162,24 @@ export interface StartCampaignBody {
   playlist_group?: string
 }
 
+/**
+ * Campagne close (historique). DTO dédié servi par GET /campaigns/history —
+ * miroir de handlers.campaignHistoryItem. `delta` = final − snapshot (progression
+ * sur l'axe), absent si la campagne n'a jamais été évaluée.
+ */
+export interface CampaignHistoryItem {
+  id: string
+  axis: string
+  axis_kind: AxisKind
+  playlist_group: string
+  status: CampaignStatus
+  started_at: string
+  ended_at?: string
+  snapshot_value: number
+  final_value?: number
+  delta?: number
+}
+
 // ─── API client ────────────────────────────────────────────────────────────
 
 export const playerProfileApi = {
@@ -181,6 +199,12 @@ export const campaignApi = {
   getActive: (playerSlug: string) =>
     api.get<ImprovementCampaign | null>(
       `/players/${encodeURIComponent(playerSlug)}/campaigns/active`,
+    ),
+
+  /** Campagnes closes (completed/abandoned), les plus récentes d'abord. */
+  listEnded: (playerSlug: string) =>
+    api.get<{ campaigns: CampaignHistoryItem[]; count: number }>(
+      `/players/${encodeURIComponent(playerSlug)}/campaigns/history`,
     ),
 
   getById: (playerSlug: string, id: string) =>

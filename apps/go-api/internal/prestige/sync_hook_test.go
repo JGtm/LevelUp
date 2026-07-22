@@ -29,6 +29,10 @@ func (m *mockService) ListActiveChallenges(ctx context.Context, _, _ string) ([]
 	return nil, nil
 }
 
+func (m *mockService) ListChallenges(ctx context.Context, _, _ string, _ []ChallengeStatus) ([]Challenge, error) {
+	return nil, nil
+}
+
 func (m *mockService) EvaluateForUser(ctx context.Context, _, _ string) ([]EvaluationOutcome, error) {
 	m.called = true
 	return nil, nil

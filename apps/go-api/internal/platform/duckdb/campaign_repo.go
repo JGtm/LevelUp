@@ -83,6 +83,33 @@ func (r *CampaignRepo) GetActive(ctx context.Context, userID, titleSlug string) 
 	return scanCampaign(rows)
 }
 
+// ListEnded liste les campagnes closes (completed/abandoned) du joueur sur un
+// titre, les plus récentes d'abord. Scopé user_id + title_slug ; tri par
+// ended_at desc (NULLS LAST par sécurité — une campagne close a normalement un
+// ended_at renseigné).
+func (r *CampaignRepo) ListEnded(ctx context.Context, userID, titleSlug string) ([]campaign.ImprovementCampaign, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	rows, err := r.db.QueryRecovered(ctx, campaignSelectColumns+`
+		WHERE user_id = ? AND title_slug = ?
+		  AND status IN ('completed', 'abandoned')
+		ORDER BY ended_at DESC NULLS LAST, started_at DESC
+	`, userID, titleSlug)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []campaign.ImprovementCampaign
+	for rows.Next() {
+		c, err := scanCampaign(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
 // UpdateStatus change le status (+ ended_at si terminé).
 func (r *CampaignRepo) UpdateStatus(ctx context.Context, id string, status campaign.CampaignStatus, endedAt *time.Time) error {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)

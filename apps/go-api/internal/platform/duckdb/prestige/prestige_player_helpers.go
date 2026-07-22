@@ -80,7 +80,14 @@ func buildChallengeListQuery(f prestige.ChallengeFilter) (string, []any) {
 		conds = append(conds, "title_slug = ?")
 		args = append(args, f.TitleSlug)
 	}
-	if f.Status != nil {
+	if len(f.Statuses) > 0 {
+		// Filtre multi-statuts (prioritaire) : status IN (...). Sert la liste
+		// d'historique (défis terminaux) sans multiplier les appels.
+		conds = append(conds, "status IN ("+duckdb.Placeholders(len(f.Statuses))+")")
+		for _, st := range f.Statuses {
+			args = append(args, string(st))
+		}
+	} else if f.Status != nil {
 		conds = append(conds, "status = ?")
 		args = append(args, string(*f.Status))
 	}

@@ -19,28 +19,29 @@ import (
 
 // mockPrestigeService est l'implémentation in-memory pour tester le handler.
 type mockPrestigeService struct {
-	createResp      prestige.Challenge
-	createErr       error
-	getResp         prestige.Challenge
-	getErr          error
-	listResp        []prestige.Challenge
-	listErr         error
-	updateResp      prestige.Challenge
-	updateErr       error
-	abandonErr      error
-	suggestNextResp []prestige.Template
-	suggestNextErr  error
-	mePrestige      prestige.UserPrestige
-	meErr           error
-	suggestTplResp  []prestige.Template
-	suggestTplErr   error
-	createSquadErr  error
-	joinSquadErr    error
-	deleteArcErr    error
-	listPresetsResp []prestige.PresetArc
-	listPresetsErr  error
-	adoptResp       prestige.Arc
-	adoptErr        error
+	createResp       prestige.Challenge
+	createErr        error
+	getResp          prestige.Challenge
+	getErr           error
+	listResp         []prestige.Challenge
+	listErr          error
+	lastListStatuses []prestige.ChallengeStatus
+	updateResp       prestige.Challenge
+	updateErr        error
+	abandonErr       error
+	suggestNextResp  []prestige.Template
+	suggestNextErr   error
+	mePrestige       prestige.UserPrestige
+	meErr            error
+	suggestTplResp   []prestige.Template
+	suggestTplErr    error
+	createSquadErr   error
+	joinSquadErr     error
+	deleteArcErr     error
+	listPresetsResp  []prestige.PresetArc
+	listPresetsErr   error
+	adoptResp        prestige.Arc
+	adoptErr         error
 
 	lastCreate       prestige.CreateChallengeRequest
 	lastUpdate       prestige.UpdateChallengePatch
@@ -100,6 +101,11 @@ func (m *mockPrestigeService) GetChallenge(ctx context.Context, id string) (pres
 }
 
 func (m *mockPrestigeService) ListActiveChallenges(ctx context.Context, userID, titleSlug string) ([]prestige.Challenge, error) {
+	return m.listResp, m.listErr
+}
+
+func (m *mockPrestigeService) ListChallenges(ctx context.Context, userID, titleSlug string, statuses []prestige.ChallengeStatus) ([]prestige.Challenge, error) {
+	m.lastListStatuses = statuses
 	return m.listResp, m.listErr
 }
 
@@ -883,6 +889,59 @@ func TestPrestigeHandler_ListActiveChallenges(t *testing.T) {
 func TestPrestigeHandler_ListActiveChallenges_MissingParams(t *testing.T) {
 	router := newRouter(&mockPrestigeService{})
 	req := httptest.NewRequest(http.MethodGet, "/prestige/challenges", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestPrestigeHandler_ListChallenges_StatusFilter(t *testing.T) {
+	mock := &mockPrestigeService{
+		listResp: []prestige.Challenge{{ID: "ch_done", Status: prestige.StatusCompleted}},
+	}
+	router := newRouter(mock)
+
+	// Huma déserialise un query param tableau en CSV (style form, explode=false).
+	req := httptest.NewRequest(http.MethodGet,
+		"/prestige/challenges?user_id=u1&title_slug=halo_infinite&status=completed,abandoned", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d; body=%s", w.Code, w.Body.String())
+	}
+	want := []prestige.ChallengeStatus{prestige.StatusCompleted, prestige.StatusAbandoned}
+	if len(mock.lastListStatuses) != len(want) {
+		t.Fatalf("statuses got %v want %v", mock.lastListStatuses, want)
+	}
+	for i, st := range want {
+		if mock.lastListStatuses[i] != st {
+			t.Errorf("status[%d] got %q want %q", i, mock.lastListStatuses[i], st)
+		}
+	}
+}
+
+func TestPrestigeHandler_ListChallenges_DefaultsToActive(t *testing.T) {
+	mock := &mockPrestigeService{}
+	router := newRouter(mock)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/prestige/challenges?user_id=u1&title_slug=halo_infinite", nil)
+	router.ServeHTTP(httptest.NewRecorder(), req)
+
+	// Sans paramètre status, le handler délègue à ListChallenges(statuses=nil) :
+	// le service applique le défaut 'active'. On vérifie que rien n'est forcé côté
+	// handler (nil transmis, défaut appliqué en aval).
+	if mock.lastListStatuses != nil {
+		t.Errorf("statuses got %v want nil (défaut appliqué par le service)", mock.lastListStatuses)
+	}
+}
+
+func TestPrestigeHandler_ListChallenges_InvalidStatus(t *testing.T) {
+	router := newRouter(&mockPrestigeService{})
+	req := httptest.NewRequest(http.MethodGet,
+		"/prestige/challenges?user_id=u1&title_slug=halo_infinite&status=bogus", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 	if w.Code != http.StatusBadRequest {

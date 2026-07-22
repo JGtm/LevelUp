@@ -402,6 +402,26 @@ func TestService_ListActiveChallenges_DelegatesFilter(t *testing.T) {
 	}
 }
 
+func TestService_ListChallenges_TerminalNotEnriched(t *testing.T) {
+	svc, chRepo, _, _, _, _ := buildCoverageService()
+	// Un défi terminal (completed) avec un palier : l'enrichissement PP/valeur
+	// courante ne doit PAS s'appliquer (sa fenêtre est passée).
+	chRepo.listResult = []Challenge{{ID: "done", Status: StatusCompleted, Tier: TierHeroic, DataTier: DataFull}}
+	out, err := svc.ListChallenges(context.Background(), "u1", "halo_infinite", []ChallengeStatus{StatusCompleted})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(out) != 1 {
+		t.Fatalf("expected 1, got %d", len(out))
+	}
+	if out[0].PPReward != 0 {
+		t.Errorf("défi terminal enrichi à tort : PPReward=%d, want 0", out[0].PPReward)
+	}
+	if out[0].CurrentValue != 0 {
+		t.Errorf("défi terminal enrichi à tort : CurrentValue=%v, want 0", out[0].CurrentValue)
+	}
+}
+
 func TestService_GetUserPrestige_TitleSpecific(t *testing.T) {
 	svc, _, _, _, prRepo, _ := buildCoverageService()
 	prRepo.user = UserPrestige{UserID: "u1", TitleSlug: "halo_infinite", TotalPP: 500}

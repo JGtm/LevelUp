@@ -7,6 +7,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   prestigeApi,
+  type ChallengeStatus,
   type CreateChallengeBody,
   type UpdateChallengeBody,
 } from '@/lib/prestige'
@@ -18,6 +19,28 @@ export function useChallenges(userId: string, titleSlug: string) {
   return useQuery({
     queryKey: queryKeys.challenge.list(userId, titleSlug),
     queryFn: () => prestigeApi.listActiveChallenges(userId, titleSlug),
+    retry: false,
+    enabled: !!userId && !!titleSlug,
+  })
+}
+
+/** Statuts terminaux servis à l'historique Réalisations (défis passés). */
+const TERMINAL_CHALLENGE_STATUSES: ChallengeStatus[] = [
+  'completed',
+  'expired',
+  'abandoned',
+  'archived',
+]
+
+/**
+ * useChallengeHistory — défis terminaux (complétés/expirés/abandonnés/retirés)
+ * pour la surface Historique de l'onglet Réalisations. Clé de cache distincte de
+ * `useChallenges` (actifs).
+ */
+export function useChallengeHistory(userId: string, titleSlug: string) {
+  return useQuery({
+    queryKey: queryKeys.challenge.history(userId, titleSlug),
+    queryFn: () => prestigeApi.listChallenges(userId, titleSlug, TERMINAL_CHALLENGE_STATUSES),
     retry: false,
     enabled: !!userId && !!titleSlug,
   })

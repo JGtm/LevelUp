@@ -196,29 +196,30 @@ make check-types && make test-web && make go-api-lint
 Principe : l'onglet Objectifs ne montre QUE l'actif ; l'onglet Réalisations devient la
 mémoire complète (séries, records, jalons, objectifs/arcs/campagnes passés).
 
-- [ ] **C1 — Inventaire backend sur pièces** : vérifier ce que les endpoints servent
+- [x] **C1 — Inventaire backend sur pièces** : vérifier ce que les endpoints servent
   déjà — statuts challenge existants : `draft/active/completed/expired/abandoned/
   archived` (enums.go) ; l'endpoint liste accepte-t-il un filtre statut ? Les
   campagnes closes sont-elles listables (pas seulement l'active) ? Arcs terminés ?
   Sortie de C1 : liste écrite des trous d'API (potentiellement zéro — ne rien
-  réimplémenter qui existe, skill `go-features`).
-- [ ] **C2 — Compléments d'API si trous** : au besoin, paramètre `status` sur la liste
+  réimplémenter qui existe, skill `go-features`). **Sortie → journal Lot C.**
+- [x] **C2 — Compléments d'API si trous** : au besoin, paramètre `status` sur la liste
   challenges et endpoint campagnes passées. Handlers minces, DTOs dédiés,
-  openapi.yaml + `make generate-types` (le test contract force la doc).
-- [ ] **C3 — Section « Historique » de l'onglet Réalisations** : sous les jalons,
+  openapi.yaml + `make generate-types` (le test contract force la doc). **Voir journal.**
+- [x] **C3 — Section « Historique » de l'onglet Réalisations** : sous les jalons,
   3 blocs chronologiques — objectifs passés (terminés / abandonnés / expirés, avec
   résultat), arcs terminés, campagnes closes (axe, delta snapshot→final, playlist).
   Les cartes moments existantes restent le bloc « célébration » ; l'historique est la
-  liste exhaustive datée. Query keys centralisées, i18n FR/EN.
-- [ ] **C4 — Nettoyage de l'actif** : onglet Objectifs = objectifs actifs + arcs en
+  liste exhaustive datée. Query keys centralisées, i18n FR/EN. **Voir journal C3.**
+- [x] **C4 — Nettoyage de l'actif** : onglet Objectifs = objectifs actifs + arcs en
   cours uniquement (plus de complétés dans les groupes) ; séries cassées : visibles
   dans Réalisations avec leur date, mais l'accueil (widget) ne montre que
-  actives/protégées (déjà le cas).
-- [ ] **C5 — Sorties vers les matchs** : cartes patterns cliquables → page Solo avec le
+  actives/protégées (déjà le cas). **Voir journal C4** (défis `[~]`, séries `[~]`).
+- [x] **C5 — Sorties vers les matchs** : cartes patterns cliquables → page Solo avec le
   filtre correspondant (le paramètre d'URL `f=` des pages stats existe déjà — réutiliser
   l'encodage existant, pas de format maison) : pattern by_mode → filtre mode, by_map →
   filtre carte. Pour les records : lien « voir la période » → page Solo bornée sur la
   fenêtre du record. Aucun cul-de-sac restant sur ces deux familles de cartes.
+  **Voir journal C5.**
 
 **Gate Lot C** :
 ```
@@ -369,6 +370,22 @@ complété » renvoient vers une page où l'objectif concerné n'est pas visible
 - **(A2 rappel, B6) phrases de leviers FR en dur côté Go** : confirmé pendant B6 —
   `internal/analysis/patterns/levers.go` code « Améliore ton win rate… » en français
   dur (non i18n, non title-agnostic). Hors périmètre B (déjà consigné en A2).
+- **(C4) Décompte des étapes d'arc faux dans l'onglet Objectifs** : `MyArcsSection`
+  calcule `stepsByArc` depuis `useChallenges` (actifs seuls) → un arc en cours affiche
+  toujours « 0/N » étapes complétées (les défis `completed` de l'arc ne sont pas dans la
+  liste active). Pré-existant, hors périmètre C4 (qui ne traite que le retrait des items
+  passés). Corrigeable en alimentant le décompte depuis `useChallengeHistory` (défis
+  terminaux de l'arc) — à faire dans un lot dédié.
+- **(C5) Lien by_map sensible à la locale** : `cascade.maps` = `p.label` (nom de carte
+  résolu selon la locale UI). Le filtre cascade matche `mapUI = MapNameFR ?? MapName`
+  (FR d'abord, quelle que soit la locale, `filters_service.go:345`). En FR le match est
+  exact ; en EN une carte traduite (ex. Décharge/Recharge) peut ne pas matcher. App
+  FR-primaire → acceptable ; le vrai correctif serait que le backend serve le nom
+  canonique de match (ou que le pattern porte l'id ET le nom FR). À aligner si l'EN
+  devient prioritaire.
+- **(C5) Warning jsdom « Not implemented: navigation to another Document »** : apparaît
+  au run vitest (liens `<a href>` full-nav). Warning bénin, non bloquant (0 échec) et
+  déjà présent ailleurs dans la suite — non traité.
 
 ## Journal d'exécution — Lot A (2026-07-22)
 
@@ -462,3 +479,104 @@ Reste à faire par l'orchestrateur : revue visuelle des 4 onglets × joueurs act
 Entraînement) ; aller-retour toggle pilote (enable → défis pilote visibles → disable →
 archivés) ; coach ON par défaut sur profil vierge ; ancrage notif « objectif complété »
 → carte moment surlignée dans Réalisations.
+
+## Journal d'exécution — Lot C (2026-07-22)
+
+### C1 — Inventaire backend (vérifié sur pièces, confirme AM-7)
+
+Deux trous d'API confirmés, un non-trou :
+
+- **Trou n°1 — filtre statut non exposé sur `GET /prestige/challenges`.** Le repo est
+  prêt : `ChallengeFilter.Status *ChallengeStatus` (`repository.go:40`) honoré par
+  `buildChallengeListQuery` (`prestige_player_helpers.go:83-86`, `status = ?`). Mais
+  l'API force `active` : handler `ListActiveChallenges` (`prestige.go:268-280`, input
+  `listActiveChallengesInput` sans champ status `:263-266`) → service
+  `ListActiveChallenges` (`service.go:576-582`, `Status: &active` en dur). Statuts
+  disponibles : `draft/active/completed/expired/abandoned/archived` (`enums.go:24-31`),
+  terminaux = completed/expired/abandoned/archived (`IsTerminal`:34-40).
+- **Trou n°2 — aucune liste de campagnes closes.** Handler campagne : 7 routes
+  create/active/byID/pause/resume/close/abandon (`campaign.go:51-60`), AUCUNE liste.
+  `Repo` interface (`campaign/service.go:39-47`) : `GetByID`/`GetActive` mais pas de
+  `List`. Statuts campagne `active/paused/completed/abandoned` (`types.go:23-28`),
+  `IsEnded` = completed|abandoned (`types.go:75-77`). Colonnes disponibles pour le DTO
+  (delta) : `snapshot_value`, `current_value_raw`, `current_value_lowess`, `axis`,
+  `axis_kind`, `playlist_group`, `started_at`, `ended_at`, `status`
+  (`campaign_repo.go:25-32` / `campaign/types.go:45-69`). Delta snapshot→final dérivable
+  = `final - snapshot_value` avec `final = current_value_lowess ?? current_value_raw`.
+- **NON-trou — arcs terminés déjà servis** par `GET /arcs` → `ListArcs` →
+  `ArcRepo.ListByUser` (SQL sans filtre `completed_at`, `prestige_player_repo.go:315-322`
+  ; scan `completed_at` nullable `:60-64`). Le front partitionne sur `Arc.CompletedAt`
+  (décision de chantier : AUCUN nouveau lecteur `arc_titles`/`ArcsByTitle`).
+
+### C2 — Compléments d'API (les 2 trous)
+
+- **Trou n°1 — `status` sur `GET /prestige/challenges`** : ajout `Statuses
+  []ChallengeStatus` à `ChallengeFilter` (repository.go) honoré par
+  `buildChallengeListQuery` (`status IN (...)`, prioritaire sur `Status` mono ;
+  callers existants inchangés). Nouvelle méthode service `ListChallenges(ctx, userID,
+  titleSlug, statuses)` (interface `Service` + `LazyPrestigeService` + 2 mocks) ;
+  `ListActiveChallenges` délègue à `ListChallenges([active])` → comportement historique
+  identique. **Décision** : les défis ACTIFS restent enrichis (valeur courante + PP) ;
+  les défis TERMINAUX sont servis bruts (leur fenêtre est passée, une valeur courante
+  n'aurait pas de sens) — évite aussi N requêtes shared inutiles à l'ouverture de
+  l'historique. Handler : `Status []string query:"status"` (CSV, convention Huma
+  form/explode=false : `?status=completed,abandoned`) ; vide → défaut `active` appliqué
+  par le service ; statut inconnu → 400 `invalid_status`. **Pas de MAJ openapi.yaml** :
+  le path `/prestige/challenges` n'y est PAS documenté (réponse `mapOutput`
+  non typée) — rien à émettre côté drift, la query est ajoutée en `doc:` de l'input Huma.
+  Tests handler : filtre CSV → statuses parsés, défaut nil, statut invalide → 400 ;
+  test service : défi terminal non enrichi.
+- **Trou n°2 — `GET /players/{slug}/campaigns/history`** : nouvelle méthode repo
+  `CampaignRepo.ListEnded` (SQL `status IN ('completed','abandoned')` scopé
+  `user_id`+`title_slug`, tri `ended_at DESC NULLS LAST, started_at DESC`) + interface
+  `Repo` + service `Service.ListEnded` + fakeRepo. Handler `handleListEnded` + DTO dédié
+  `campaignHistoryItem` (id, axe, axis_kind, playlist, statut, dates, snapshot,
+  final_value, delta) via `toCampaignHistoryItem`. Delta/FinalValue = méthodes PURES sur
+  `ImprovementCampaign` (`FinalValue` = LOWESS lissé sinon brut ; `Delta` = final −
+  snapshot ; nil si non évaluée) — colonnes vérifiées sur pièces
+  (`campaign_repo.go:25-32`). openapi.yaml : path `listEndedCampaigns` + schémas
+  `CampaignHistoryItem`/`CampaignHistoryResponse` (émis via `OPENAPI_EMIT_OUT`, drift
+  MISSING=0) ; `generate-types` → generated.ts (2 schémas + operation). Tests : domain
+  (FinalValue/Delta), service (ListEnded filtre+scope), handler (projection DTO), repo
+  intégration (SQL scope+ordre, `//go:build integration`).
+
+### C3 — Section « Historique » de l'onglet Réalisations
+
+Sous les jalons, nouveau `HistorySection` (3 blocs datés) : objectifs passés (défis
+terminaux), arcs terminés, campagnes closes. Hooks + query keys nouveaux :
+`useChallengeHistory` (statuts terminaux via `prestigeApi.listChallenges`, clé
+`queryKeys.challenge.history`), `useCampaignHistory` (`campaignApi.listEnded`, clé
+`queryKeys.playerProfile.campaignHistory` sous `campaignAll` → invalidée par les
+mutations de campagne). Types front `CampaignHistoryItem` + `prestigeApi.listChallenges`
+(CSV status, chokepoint `/players/…` respecté + ratchet paths). i18n FR/EN
+(historyTitle/…/historyResult*). Libellé `archived` = « Retiré » (neutre, distinct
+d'« Abandonné »). États vides propres par bloc. Correction cohérente au passage : la
+célébration (cartes moments) et `StatsGlobales` sont désormais alimentées par les défis
+terminaux (avant : `useChallenges` = actifs seuls → 0 moment, complétion faussée) —
+`allChallenges = actifs + terminaux` pour StatsGlobales, `completed` (terminaux) pour les
+moments. Campagnes : libellés d'axe/statut/playlist réutilisés du manifest profile
+(`useProfileI18n`, `profile.axis.*`/`profile.lusr.*`/`campaign.status.*`).
+
+### C4 — Nettoyage de l'actif
+
+`AscensionObjectivesTab` / `MyArcsSection` : arcs filtrés aux EN COURS (`!a.completed_at`)
+— les arcs terminés migrent vers l'Historique. Défis : déjà actifs uniquement (l'API
+force `active` pour `useChallenges`) → aucun item passé dans les groupes `[~]`. Séries :
+le widget home (`HomeAscensionWidget:46`) filtre déjà `status !== 'broken'` (actives +
+protégées) `[~]` ; les séries interrompues restent visibles dans Réalisations
+(StreakDashboard, déjà le cas B12).
+
+### C5 — Sorties vers les matchs
+
+Helper partagé `features/filters/filterLink.ts` : `encodeFilterContextParam` (source
+UNIQUE du format `?f=`, `createFilterStore.encodeToUrl` refactoré pour l'utiliser — plus
+de duplication), `buildSoloFilterLink({playerSlug, titleSlug, cascade?, period?})` →
+`/players/{slug}/stats/timeseries?f=…`, `dayWindowUTC`. **Format vérifié sur pièces** :
+cascade.modes = valeur = `p.key` du pattern by_mode (= `NormalizeModeLabel(pair)` ===
+`modeUI` du filtre, `filters_service.go:337`) ; cascade.maps = `p.label` (nom résolu,
+JAMAIS le GUID `p.key`, = `mapUI`). Cartes patterns → `<a href>` (navigation PLEINE PAGE :
+le `?f=` n'est décodé qu'au rehydrate du store solo). Records : lien « voir la période »
+(PB cards + timeline) → Solo borné sur la JOURNÉE UTC du record (`dayWindowUTC`, le
+backend traite `end_date` en fin de journée inclusive, `filters_service.go:381`). i18n
+FR/EN (patternSeeMatches, recordSeePeriod). Tests vitest `filterLink.test.ts` (round-trip
+encode/decode, by_mode/by_map cascade, période bornée, estampille titre, dayWindowUTC).

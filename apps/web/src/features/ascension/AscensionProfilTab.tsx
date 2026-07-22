@@ -20,6 +20,7 @@ export function AscensionProfilTab() {
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
   const playerSlug = currentPlayer?.player_slug ?? ''
   const locale = useAppShellStore((s) => s.locale)
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const t = getAscensionText(locale)
 
   if (!playerSlug) {
@@ -34,7 +35,7 @@ export function AscensionProfilTab() {
     <div className="space-y-10">
       <LayerSection title={t.profilLayerTitle} description={t.profilLayerDescription}>
         <PlayerProfileV3 playerSlug={playerSlug} />
-        <ProfilePatternsSection playerSlug={playerSlug} t={t} locale={locale} />
+        <ProfilePatternsSection playerSlug={playerSlug} titleSlug={titleSlug} t={t} locale={locale} />
       </LayerSection>
     </div>
   )
@@ -44,11 +45,12 @@ export function AscensionProfilTab() {
 
 interface ProfilePatternsSectionProps {
   playerSlug: string
+  titleSlug: string
   t: ReturnType<typeof getAscensionText>
   locale: 'fr' | 'en'
 }
 
-function ProfilePatternsSection({ playerSlug, t, locale }: ProfilePatternsSectionProps) {
+function ProfilePatternsSection({ playerSlug, titleSlug, t, locale }: ProfilePatternsSectionProps) {
   const { data: patterns, isLoading } = usePatterns(playerSlug)
   if (isLoading) return null
   const contextPatterns = patterns?.context_patterns ?? []
@@ -66,6 +68,8 @@ function ProfilePatternsSection({ playerSlug, t, locale }: ProfilePatternsSectio
             patterns={contextPatterns}
             t={t}
             minMatchesForSignal={patterns?.min_matches_for_signal ?? 0}
+            playerSlug={playerSlug}
+            titleSlug={titleSlug}
           />
           <SquadVsSoloCard patterns={contextPatterns} t={t} locale={locale} />
         </SectionShell>

@@ -53,6 +53,24 @@ export interface AscensionText {
   realisationsSelectPlayer: string
   realisationsHighlights: string
   realisationsEmpty: string
+  // Historique (Lot C) — mémoire complète datée sous les jalons.
+  historyTitle: string
+  historyObjectivesTitle: string
+  historyObjectivesEmpty: string
+  historyArcsTitle: string
+  historyArcsEmpty: string
+  historyArcCompletedOn: string // "Terminé le {date}" / "Completed on {date}"
+  historyArcStarted: string // "Créé le {date}" / "Created on {date}"
+  historyCampaignsTitle: string
+  historyCampaignsEmpty: string
+  historyCampaignProgress: string // libellé du delta d'axe
+  historyResultCompleted: string
+  historyResultExpired: string
+  historyResultAbandoned: string
+  historyResultArchived: string // « Retiré » — neutre (défi pilote désactivé)
+  // Sorties vers les matchs (Lot C, C5).
+  patternSeeMatches: string // aria/tooltip carte pattern cliquable
+  recordSeePeriod: string // lien « voir la période » d'un record
   coachingSelectPlayer: string
   ascensionLayerTitle: string
   ascensionLayerDescription: string
@@ -197,6 +215,22 @@ const FR: AscensionText = {
   realisationsSelectPlayer: 'Sélectionne un joueur.',
   realisationsHighlights: 'Moments marquants',
   realisationsEmpty: 'Les cartes moments apparaîtront ici à la validation de tes premiers objectifs.',
+  historyTitle: 'Historique',
+  historyObjectivesTitle: 'Objectifs passés',
+  historyObjectivesEmpty: 'Aucun objectif terminé pour l’instant.',
+  historyArcsTitle: 'Arcs terminés',
+  historyArcsEmpty: 'Aucun arc terminé.',
+  historyArcCompletedOn: 'Terminé le {date}',
+  historyArcStarted: 'Créé le {date}',
+  historyCampaignsTitle: 'Campagnes closes',
+  historyCampaignsEmpty: 'Aucune campagne close.',
+  historyCampaignProgress: 'Progression',
+  historyResultCompleted: 'Réussi',
+  historyResultExpired: 'Expiré',
+  historyResultAbandoned: 'Abandonné',
+  historyResultArchived: 'Retiré',
+  patternSeeMatches: 'Voir les matchs',
+  recordSeePeriod: 'Voir la période',
   coachingSelectPlayer: 'Sélectionne un joueur pour voir ton entraînement.',
   ascensionLayerTitle: 'Ascension — Coaching d\'amélioration',
   ascensionLayerDescription:
@@ -399,6 +433,22 @@ const EN: AscensionText = {
   realisationsSelectPlayer: 'Select a player.',
   realisationsHighlights: 'Highlights',
   realisationsEmpty: 'Moment cards will appear here as you complete your first objectives.',
+  historyTitle: 'History',
+  historyObjectivesTitle: 'Past objectives',
+  historyObjectivesEmpty: 'No completed objectives yet.',
+  historyArcsTitle: 'Completed arcs',
+  historyArcsEmpty: 'No completed arcs.',
+  historyArcCompletedOn: 'Completed on {date}',
+  historyArcStarted: 'Created on {date}',
+  historyCampaignsTitle: 'Closed campaigns',
+  historyCampaignsEmpty: 'No closed campaigns.',
+  historyCampaignProgress: 'Progress',
+  historyResultCompleted: 'Completed',
+  historyResultExpired: 'Expired',
+  historyResultAbandoned: 'Abandoned',
+  historyResultArchived: 'Removed',
+  patternSeeMatches: 'See matches',
+  recordSeePeriod: 'See the period',
   coachingSelectPlayer: 'Select a player to view coaching.',
   ascensionLayerTitle: 'Ascension — Improvement coaching',
   ascensionLayerDescription:
