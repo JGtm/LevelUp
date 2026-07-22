@@ -469,20 +469,37 @@ func TestStore_SaveLoadRoundTrip_ShowProgression(t *testing.T) {
 // ─── CoachProactiveMode (toggle pont coach → Prestige, ADR 0020) ────────────
 
 func TestDefaults_CoachProactiveMode(t *testing.T) {
+	// DEC-2 : bascule du défaut à true (2026-07-22).
 	d := settings.Defaults()
-	if d.CoachProactiveMode {
-		t.Error("CoachProactiveMode default should be false (opt-in)")
+	if !d.CoachProactiveMode {
+		t.Error("CoachProactiveMode default should be true (DEC-2)")
 	}
 }
 
-func TestStore_Load_CoachProactiveModeDefaultsFalseWhenAbsent(t *testing.T) {
+func TestStore_Load_CoachProactiveModeDefaultsTrueWhenAbsent(t *testing.T) {
+	// Fichier existant sans coach_proactive_mode → rétrocompat : default true (DEC-2).
 	store := newTestStore(t, map[string]interface{}{"lang": "fr"})
 	cfg, err := store.Load()
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
+	if !cfg.CoachProactiveMode {
+		t.Error("absent coach_proactive_mode should default to true (DEC-2)")
+	}
+}
+
+func TestStore_Load_CoachProactiveModeFalseRespected(t *testing.T) {
+	// Opt-out explicite (false dans le fichier) reste respecté malgré le défaut true.
+	store := newTestStore(t, map[string]interface{}{
+		"lang":                 "fr",
+		"coach_proactive_mode": false,
+	})
+	cfg, err := store.Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
 	if cfg.CoachProactiveMode {
-		t.Error("absent coach_proactive_mode should default to false")
+		t.Error("explicit coach_proactive_mode=false must be respected")
 	}
 }
 

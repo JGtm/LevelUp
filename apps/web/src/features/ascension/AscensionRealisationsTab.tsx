@@ -13,6 +13,8 @@
  *
  * Tout le contenu rétrospectif de l'ancienne page Parcours + Séries.
  */
+import { useEffect, useRef } from 'react'
+import { useSearch } from '@tanstack/react-router'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { getAscensionText } from './i18n'
 import { useChallenges } from '@/features/prestige/hooks'
@@ -29,6 +31,14 @@ export function AscensionRealisationsTab() {
   const playerSlug = currentPlayer?.player_slug ?? ''
   const locale = useAppShellStore((s) => s.locale)
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+
+  // Ancrage AM-5 : les notifs objective_completed/challenge_completed passent
+  // l'id de l'item complété → on surligne et scrolle sa carte moment.
+  const search = useSearch({ strict: false }) as {
+    selectedObjectiveId?: string
+    selectedChallengeId?: string
+  }
+  const selectedId = search.selectedChallengeId ?? search.selectedObjectiveId
 
   const { data: challengesData } = useChallenges(playerSlug, titleSlug)
 
@@ -55,15 +65,30 @@ export function AscensionRealisationsTab() {
 
       <StatsGlobales challenges={challenges} />
 
-      <MomentsSection completed={completed} locale={locale} />
+      <MomentsSection completed={completed} locale={locale} selectedId={selectedId} />
     </div>
   )
 }
 
 // ─── Moments marquants ──────────────────────────────────────────────────────
 
-function MomentsSection({ completed, locale }: { completed: Challenge[]; locale: 'fr' | 'en' }) {
+interface MomentsSectionProps {
+  completed: Challenge[]
+  locale: 'fr' | 'en'
+  /** id de l'item complété à ancrer/surligner (AM-5), depuis la notif. */
+  selectedId?: string
+}
+
+function MomentsSection({ completed, locale, selectedId }: MomentsSectionProps) {
   const t = getAscensionText(locale)
+  const selectedRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (selectedId && selectedRef.current) {
+      selectedRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [selectedId])
+
   return (
     <section className="rounded-lg border border-border bg-card p-4">
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -75,15 +100,27 @@ function MomentsSection({ completed, locale }: { completed: Challenge[]; locale:
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {completed.map((c) => (
-            <MomentCard
-              key={c.id}
-              challenge={c}
-              achievedValue={c.target}
-              matchCount={0}
-              compact
-            />
-          ))}
+          {completed.map((c) => {
+            const isSelected = !!selectedId && c.id === selectedId
+            return (
+              <div
+                key={c.id}
+                ref={isSelected ? selectedRef : undefined}
+                className={
+                  isSelected
+                    ? 'rounded-lg ring-2 ring-primary ring-offset-2 ring-offset-background'
+                    : undefined
+                }
+              >
+                <MomentCard
+                  challenge={c}
+                  achievedValue={c.target}
+                  matchCount={0}
+                  compact
+                />
+              </div>
+            )
+          })}
         </div>
       )}
     </section>

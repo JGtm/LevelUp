@@ -122,13 +122,18 @@ func buildSinglePattern(ctxType ContextType, key string, rows []MatchRow, cfg Pa
 	return pat
 }
 
+// MinMatchesForSignal est le nombre de matchs minimum d'un groupe pour qu'un
+// signal Force/Faiblesse soit statistiquement crédible. En dessous, le front
+// affiche un badge neutre « Échantillon faible » (DEC-8) — le seuil est servi
+// dans PatternReport pour ne pas le coder en dur côté client.
+const MinMatchesForSignal = 10
+
 // classifySignal détermine le signal en fonction du delta de win rate.
-// Strength : delta > seuil ET count >= 10.
+// Strength : delta > seuil ET count >= MinMatchesForSignal.
 // Weakness : delta < -seuil.
 func classifySignal(delta float64, count int, cfg PatternConfig) Signal {
-	const minCountForStrength = 10
 	switch {
-	case delta > cfg.StrengthWinRateDelta && count >= minCountForStrength:
+	case delta > cfg.StrengthWinRateDelta && count >= MinMatchesForSignal:
 		return SignalStrength
 	case delta < -cfg.WeaknessWinRateDelta:
 		return SignalWeakness

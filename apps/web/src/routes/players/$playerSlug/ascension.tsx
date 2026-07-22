@@ -1,8 +1,10 @@
 /**
- * Route /players/$playerSlug/ascension — layout Ascension à 2 onglets.
+ * Route /players/$playerSlug/ascension — layout Ascension à 4 onglets.
  *
  * Routes enfants :
- *   - /ascension                → tab "Profil & objectifs" (index)
+ *   - /ascension                → tab "Profil" (index)
+ *   - /ascension/objectifs      → tab "Objectifs" (couche Prestige)
+ *   - /ascension/coaching       → tab "Entraînement"
  *   - /ascension/realisations   → tab "Réalisations"
  */
 import { createFileRoute } from '@tanstack/react-router'

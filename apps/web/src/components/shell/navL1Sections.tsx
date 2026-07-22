@@ -130,7 +130,8 @@ export const L1_SECTIONS: L1Section[] = [
     defaultPath: '/players/$playerSlug/ascension',
     matchPathname: (p) => /\/players\/[^/]+\/(objectifs|ascension)/.test(p),
     tabs: [
-      { key: 'profile', labelKey: 'common.nav.tab_profile_objectives', path: '/players/$playerSlug/ascension' },
+      { key: 'profile', labelKey: 'common.nav.tab_profile', path: '/players/$playerSlug/ascension' },
+      { key: 'objectives', labelKey: 'common.nav.tab_objectives', path: '/players/$playerSlug/ascension/objectifs' },
       { key: 'coaching', labelKey: 'common.nav.tab_coaching', path: '/players/$playerSlug/ascension/coaching' },
       { key: 'realisations', labelKey: 'common.nav.tab_realisations', path: '/players/$playerSlug/ascension/realisations' },
     ],

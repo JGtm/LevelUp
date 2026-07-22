@@ -3005,7 +3005,8 @@ paths:
 
   # Coach Advisor — pont coach proactif → Prestige (ADR 0020).
   # Lecture des proposals + actions accept/dismiss. La génération s'exécute
-  # côté post-sync hook (lit settings.coach_proactive_mode pour opt-in).
+  # côté post-sync hook (lit settings.coach_proactive_mode, défaut ON depuis
+  # 2026-07-22 / DEC-2 ; opt-out explicite respecté).
   /players/{player_slug}/coach/proposals:
     parameters:
       - $ref: "#/components/parameters/PlayerSlug"
@@ -12483,6 +12484,9 @@ components:
                   $ref: '#/components/schemas/Lever'
               type: array
               nullable: true
+          min_matches_for_signal:
+              format: int64
+              type: integer
           window_size:
               format: int64
               type: integer
@@ -12492,6 +12496,7 @@ components:
           - behavior_patterns
           - levers
           - computed_at
+          - min_matches_for_signal
       type: object
     PerfAPIBuckets:
       additionalProperties: false

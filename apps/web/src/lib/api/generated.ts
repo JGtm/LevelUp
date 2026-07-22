@@ -7130,6 +7130,8 @@ export interface components {
             context_patterns: components["schemas"]["ContextualPattern"][] | null;
             levers: components["schemas"]["Lever"][] | null;
             /** Format: int64 */
+            min_matches_for_signal: number;
+            /** Format: int64 */
             window_size: number;
         };
         PerfAPIBuckets: {

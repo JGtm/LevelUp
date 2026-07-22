@@ -17,10 +17,17 @@ type fakeChallengeRepo struct {
 	createdSince      int
 	createCalled      bool
 	createCount       int
-	createdChallenges []Challenge // capture des défis persistés (assertions Source, etc.)
-	listResult        []Challenge // renvoyé tel quel par List (pour tests cooldown)
-	detachedArc       string      // dernier arcID passé à DetachFromArc
-	deletedArc        string      // dernier arcID passé à DeleteByArc
+	createdChallenges []Challenge    // capture des défis persistés (assertions Source, etc.)
+	listResult        []Challenge    // renvoyé tel quel par List (pour tests cooldown)
+	detachedArc       string         // dernier arcID passé à DetachFromArc
+	deletedArc        string         // dernier arcID passé à DeleteByArc
+	statusUpdates     []statusUpdate // capture des UpdateStatus (id + statut)
+}
+
+// statusUpdate capture un appel UpdateStatus pour assertion (mode pilote disable…).
+type statusUpdate struct {
+	ID     string
+	Status ChallengeStatus
 }
 
 func (r *fakeChallengeRepo) Create(_ context.Context, c Challenge) error {
@@ -43,7 +50,8 @@ func (r *fakeChallengeRepo) DeleteByArc(_ context.Context, arcID string) error {
 	r.deletedArc = arcID
 	return nil
 }
-func (r *fakeChallengeRepo) UpdateStatus(_ context.Context, _ string, _ ChallengeStatus, _ time.Time) error {
+func (r *fakeChallengeRepo) UpdateStatus(_ context.Context, id string, s ChallengeStatus, _ time.Time) error {
+	r.statusUpdates = append(r.statusUpdates, statusUpdate{ID: id, Status: s})
 	return nil
 }
 func (r *fakeChallengeRepo) UpdateLabel(_ context.Context, _, _ string) error { return nil }

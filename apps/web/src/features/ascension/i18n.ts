@@ -9,30 +9,38 @@ import type { StreakType, ContextType, BehaviorType } from './types'
 export type AscensionLocale = 'fr' | 'en'
 
 export interface AscensionText {
-  // Page wrapper (layout 2 onglets — refonte 2026-05-26)
+  // Page wrapper (layout 4 onglets — refonte 2026-07, DEC-3)
   pageTitle: string
   pageSubtitle: string
   tabsAriaLabel: string
   tabProfile: string
+  tabObjectives: string
   tabCoaching: string
   tabRealisations: string
   tipsTickerAriaLabel: string
+  profilLayerTitle: string
+  profilLayerDescription: string
   prestigeLayerTitle: string
   prestigeLayerDescription: string
-  prestigeDisabledHint: string // tooltip bouton désactivé (backend non implémenté)
-  // Onglet Profil & objectifs — labels ex-inline (I4b, 2026-07-05)
+  // Onglet Objectifs (couche Prestige) — labels ex-inline (I4b, 2026-07-05)
   profileSelectPlayer: string
   profileMyObjectives: string
   profilePrestigeNotEnabled: string
-  profileAbandonConfirm: string
+  profileAbandonObjective: string // bouton « Abandonner » d'un objectif (B5)
+  profileAbandonTitle: string // titre de la confirmation AlertDialog (B5)
+  profileAbandonConfirm: string // description de la confirmation AlertDialog
+  profileAbandonCancel: string // libellé « Annuler » de la confirmation (B5)
   profileMyActiveObjectives: string
   profileFreeObjectives: string
   profileNoFreeObjective: string
   profileNewObjective: string
   profilePilotedObjectives: string
-  profilePilotDisabled: string
   profilePilotHelp: string
   profilePilotMode: string
+  profilePilotEnable: string // bouton d'activation du mode pilote
+  profilePilotDisable: string // bouton de désactivation du mode pilote
+  profilePilotPending: string // libellé transitoire (mutation en cours)
+  profilePilotEnableCta: string // CTA d'activation dans l'empty state objectifs
   profileNewArc: string
   profileBrowsePresets: string
   profileMyActiveArcs: string
@@ -40,6 +48,8 @@ export interface AscensionText {
   squadPrestigeTitle: string
   squadPrestigeMaxTier: string
   squadPrestigeYou: string
+  squadPrestigeTowardNext: string // "{current} / {target} PP vers {next}" (intra-niveau)
+  squadPrestigeTotal: string // "{pp} PP au total" (libellé secondaire)
   realisationsSelectPlayer: string
   realisationsHighlights: string
   realisationsEmpty: string
@@ -53,6 +63,7 @@ export interface AscensionText {
   streakActive: string
   streakPaused: string
   streakBroken: string
+  streakBrokenTooltip: string // pill série interrompue : date + reset multiplicateur (AM-6)
   streakBadgeAriaLabel: string // "{count} jours d'affilée"
   streakBadgeAriaEmpty: string // "Aucune série active"
   streakCurrentLength: string // "{n} jour(s)"
@@ -120,6 +131,7 @@ export interface AscensionText {
   signalStrength: string
   signalWeakness: string
   signalNeutral: string
+  signalLowSample: string // badge neutre sous le seuil de matchs (DEC-8)
   squadVsSoloTitle: string
   squadVsSoloSolo: string
   squadVsSoloSquad: string
@@ -144,26 +156,35 @@ const FR: AscensionText = {
   pageTitle: 'Ascension',
   pageSubtitle: 'Ton profil de jeu, tes objectifs et tes accomplissements.',
   tabsAriaLabel: 'Sections Ascension',
-  tabProfile: 'Profil & objectifs',
+  tabProfile: 'Profil',
+  tabObjectives: 'Objectifs',
   tabCoaching: 'Entraînement',
   tabRealisations: 'Réalisations',
   tipsTickerAriaLabel: 'Astuces de jeu pour progresser',
+  profilLayerTitle: 'Profil de jeu',
+  profilLayerDescription:
+    'Qui tu es en jeu : ton identité, ton style, ton niveau et tes tendances par contexte.',
   prestigeLayerTitle: 'Prestige — Objectifs et arcs',
   prestigeLayerDescription:
     'Système autonome pour te fixer des objectifs personnels et suivre ta progression. Tu peux l\'utiliser seul, sans coaching.',
-  prestigeDisabledHint: 'Phase 5 minimale : non implémenté côté backend',
   profileSelectPlayer: 'Sélectionne un joueur pour voir tes objectifs.',
   profileMyObjectives: 'Mes objectifs',
   profilePrestigeNotEnabled: "Le module Prestige n'est pas activé sur ce serveur.",
-  profileAbandonConfirm: 'Abandonner cet objectif ? Cooldown 24h sur la métrique.',
+  profileAbandonObjective: 'Abandonner',
+  profileAbandonTitle: 'Abandonner cet objectif ?',
+  profileAbandonConfirm: 'Un cooldown de 24h s\'applique sur la métrique après l\'abandon.',
+  profileAbandonCancel: 'Annuler',
   profileMyActiveObjectives: 'Mes objectifs actifs',
   profileFreeObjectives: 'Objectifs libres',
   profileNoFreeObjective: 'Aucun objectif libre actif.',
   profileNewObjective: '+ Nouvel objectif',
   profilePilotedObjectives: 'Objectifs pilotés',
-  profilePilotDisabled: 'Désactivé',
   profilePilotHelp: "Le système t'attribue des objectifs quotidiens, hebdo et mensuels avec des plafonds.",
   profilePilotMode: 'Mode pilote',
+  profilePilotEnable: 'Activer',
+  profilePilotDisable: 'Désactiver',
+  profilePilotPending: '…',
+  profilePilotEnableCta: 'Activer le mode pilote',
   profileNewArc: '+ Nouvel arc',
   profileBrowsePresets: 'Parcourir les presets',
   profileMyActiveArcs: 'Mes arcs en cours',
@@ -171,9 +192,11 @@ const FR: AscensionText = {
   squadPrestigeTitle: 'Progression Prestige',
   squadPrestigeMaxTier: 'Niveau max',
   squadPrestigeYou: 'moi',
+  squadPrestigeTowardNext: '{current} / {target} PP vers {next}',
+  squadPrestigeTotal: '{pp} PP au total',
   realisationsSelectPlayer: 'Sélectionne un joueur.',
   realisationsHighlights: 'Moments marquants',
-  realisationsEmpty: 'Les moment cards apparaîtront ici à la validation de tes premiers objectifs.',
+  realisationsEmpty: 'Les cartes moments apparaîtront ici à la validation de tes premiers objectifs.',
   coachingSelectPlayer: 'Sélectionne un joueur pour voir ton entraînement.',
   ascensionLayerTitle: 'Ascension — Coaching d\'amélioration',
   ascensionLayerDescription:
@@ -183,7 +206,8 @@ const FR: AscensionText = {
     "Aucune série en cours. Joue un match aujourd'hui pour en démarrer une !",
   streakActive: 'En cours',
   streakPaused: 'Préservée par un bouclier',
-  streakBroken: 'Cassée',
+  streakBroken: 'Interrompue',
+  streakBrokenTooltip: 'Série interrompue le {date}. Multiplicateur PP réinitialisé.',
   streakBadgeAriaLabel: 'Série de {count} jours',
   streakBadgeAriaEmpty: 'Aucune série active',
   streakCurrentLength: '{n} jour{plural}',
@@ -212,8 +236,8 @@ const FR: AscensionText = {
   recordsValueLabel: 'Valeur',
   recordsAchievedAt: 'Atteint le {date}',
   recordsPreviousValue: 'Précédent : {value}',
-  milestonesSectionTitle: 'Mes milestones',
-  milestonesEmpty: 'Aucun milestone configuré pour ce titre.',
+  milestonesSectionTitle: 'Mes jalons',
+  milestonesEmpty: 'Aucun jalon configuré pour ce titre.',
   milestonesEarnedAt: 'Débloqué le {date}',
   milestonesLocked: 'À débloquer',
   milestonesEarned: 'Débloqué',
@@ -278,11 +302,12 @@ const FR: AscensionText = {
     by_map: 'Par carte',
     by_squad: 'Solo vs Escouade',
   },
-  patternWinRate: 'Win rate',
+  patternWinRate: 'Taux de victoire',
   patternMatches: 'matchs',
   signalStrength: 'Force',
   signalWeakness: 'Faiblesse',
   signalNeutral: 'Neutre',
+  signalLowSample: 'Échantillon faible',
   squadVsSoloTitle: 'Comparaison Solo / Escouade',
   squadVsSoloSolo: 'Solo',
   squadVsSoloSquad: 'Escouade',
@@ -333,26 +358,35 @@ const EN: AscensionText = {
   pageTitle: 'Ascension',
   pageSubtitle: 'Your play profile, your objectives and your achievements.',
   tabsAriaLabel: 'Ascension sections',
-  tabProfile: 'Profile & objectives',
+  tabProfile: 'Profile',
+  tabObjectives: 'Objectives',
   tabCoaching: 'Training',
   tabRealisations: 'Achievements',
   tipsTickerAriaLabel: 'Gameplay tips to improve',
+  profilLayerTitle: 'Play profile',
+  profilLayerDescription:
+    'Who you are in game: your identity, style, tier and context tendencies.',
   prestigeLayerTitle: 'Prestige — Objectives and arcs',
   prestigeLayerDescription:
     'Autonomous system to set personal objectives and track progression. Usable on its own, no coaching required.',
-  prestigeDisabledHint: 'Minimal Phase 5: not yet implemented on the backend',
   profileSelectPlayer: 'Select a player to view objectives.',
   profileMyObjectives: 'My objectives',
   profilePrestigeNotEnabled: 'The Prestige module is not enabled on this server.',
-  profileAbandonConfirm: 'Abandon this objective? 24h cooldown on the metric.',
+  profileAbandonObjective: 'Abandon',
+  profileAbandonTitle: 'Abandon this objective?',
+  profileAbandonConfirm: 'A 24h cooldown applies to the metric after abandoning.',
+  profileAbandonCancel: 'Cancel',
   profileMyActiveObjectives: 'My active objectives',
   profileFreeObjectives: 'Free objectives',
   profileNoFreeObjective: 'No free objective active.',
   profileNewObjective: '+ New objective',
   profilePilotedObjectives: 'Piloted objectives',
-  profilePilotDisabled: 'Disabled',
   profilePilotHelp: 'The system assigns you daily/weekly/monthly objectives with caps.',
   profilePilotMode: 'Pilot mode',
+  profilePilotEnable: 'Enable',
+  profilePilotDisable: 'Disable',
+  profilePilotPending: '…',
+  profilePilotEnableCta: 'Enable pilot mode',
   profileNewArc: '+ New arc',
   profileBrowsePresets: 'Browse presets',
   profileMyActiveArcs: 'My active arcs',
@@ -360,6 +394,8 @@ const EN: AscensionText = {
   squadPrestigeTitle: 'Prestige progression',
   squadPrestigeMaxTier: 'Max tier',
   squadPrestigeYou: 'you',
+  squadPrestigeTowardNext: '{current} / {target} PP to {next}',
+  squadPrestigeTotal: '{pp} PP total',
   realisationsSelectPlayer: 'Select a player.',
   realisationsHighlights: 'Highlights',
   realisationsEmpty: 'Moment cards will appear here as you complete your first objectives.',
@@ -372,6 +408,7 @@ const EN: AscensionText = {
   streakActive: 'Active',
   streakPaused: 'Preserved by a shield',
   streakBroken: 'Broken',
+  streakBrokenTooltip: 'Streak broken on {date}. PP multiplier reset.',
   streakBadgeAriaLabel: '{count}-day streak',
   streakBadgeAriaEmpty: 'No active streak',
   streakCurrentLength: '{n} day{plural}',
@@ -471,6 +508,7 @@ const EN: AscensionText = {
   signalStrength: 'Strength',
   signalWeakness: 'Weakness',
   signalNeutral: 'Neutral',
+  signalLowSample: 'Low sample',
   squadVsSoloTitle: 'Solo vs Squad comparison',
   squadVsSoloSolo: 'Solo',
   squadVsSoloSquad: 'Squad',

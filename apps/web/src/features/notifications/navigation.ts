@@ -44,16 +44,27 @@ export function resolveTarget(notif: Notification, playerSlug: string): NotifTar
     case 'match_synced':
       return { to: `/players/${playerSlug}/explorer` }
     case 'objective_assigned':
-    case 'objective_completed':
+      // Objectif attribué → onglet "Objectifs" (couche Prestige, l'actif).
       return {
-        to: `/players/${playerSlug}/ascension`,
+        to: `/players/${playerSlug}/ascension/objectifs`,
+        search: notif.params?.id ? { selectedObjectiveId: String(notif.params.id) } : undefined,
+      }
+    case 'objective_completed':
+      // Objectif complété → onglet "Réalisations" où l'item apparaît en carte
+      // moment (AM-5). selectedObjectiveId ancre/surligne la carte concernée.
+      return {
+        to: `/players/${playerSlug}/ascension/realisations`,
         search: notif.params?.id ? { selectedObjectiveId: String(notif.params.id) } : undefined,
       }
     case 'challenge_added':
-    case 'challenge_completed':
-      // Les défis et objectifs vivent dans le tab "Profil & objectifs" d'Ascension.
       return {
-        to: `/players/${playerSlug}/ascension`,
+        to: `/players/${playerSlug}/ascension/objectifs`,
+        search: notif.params?.id ? { selectedChallengeId: String(notif.params.id) } : undefined,
+      }
+    case 'challenge_completed':
+      // Défi complété → "Réalisations" avec ancrage de la carte moment (AM-5).
+      return {
+        to: `/players/${playerSlug}/ascension/realisations`,
         search: notif.params?.id ? { selectedChallengeId: String(notif.params.id) } : undefined,
       }
     case 'season_pass_level':

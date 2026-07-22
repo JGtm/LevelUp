@@ -222,4 +222,8 @@ export interface PatternReport {
   behavior_patterns: BehavioralPattern[]
   levers: PatternLever[]
   computed_at: string
+  /** Seuil de matchs par groupe sous lequel afficher « Échantillon faible »
+   *  au lieu de Force/Faiblesse (DEC-8). Servi par le backend, jamais codé en
+   *  dur côté front. */
+  min_matches_for_signal: number
 }

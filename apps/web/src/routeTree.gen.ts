@@ -66,6 +66,7 @@ import { Route as PlayersPlayerSlugCareerSeasonPassRouteImport } from './routes/
 import { Route as PlayersPlayerSlugCareerCommendationsRouteImport } from './routes/players/$playerSlug/career/commendations'
 import { Route as PlayersPlayerSlugCareerCitationsRouteImport } from './routes/players/$playerSlug/career/citations'
 import { Route as PlayersPlayerSlugAscensionRealisationsRouteImport } from './routes/players/$playerSlug/ascension/realisations'
+import { Route as PlayersPlayerSlugAscensionObjectifsRouteImport } from './routes/players/$playerSlug/ascension/objectifs'
 import { Route as PlayersPlayerSlugAscensionCoachingRouteImport } from './routes/players/$playerSlug/ascension/coaching'
 import { Route as PlayersPlayerSlugMatchesMatchIdReplayRouteImport } from './routes/players/$playerSlug/matches/$matchId/replay'
 
@@ -382,6 +383,12 @@ const PlayersPlayerSlugAscensionRealisationsRoute =
     path: '/realisations',
     getParentRoute: () => PlayersPlayerSlugAscensionRoute,
   } as any)
+const PlayersPlayerSlugAscensionObjectifsRoute =
+  PlayersPlayerSlugAscensionObjectifsRouteImport.update({
+    id: '/objectifs',
+    path: '/objectifs',
+    getParentRoute: () => PlayersPlayerSlugAscensionRoute,
+  } as any)
 const PlayersPlayerSlugAscensionCoachingRoute =
   PlayersPlayerSlugAscensionCoachingRouteImport.update({
     id: '/coaching',
@@ -432,6 +439,7 @@ export interface FileRoutesByFullPath {
   '/players/$playerSlug/squad': typeof PlayersPlayerSlugSquadRouteWithChildren
   '/players/$playerSlug/synthesis': typeof PlayersPlayerSlugSynthesisRoute
   '/players/$playerSlug/ascension/coaching': typeof PlayersPlayerSlugAscensionCoachingRoute
+  '/players/$playerSlug/ascension/objectifs': typeof PlayersPlayerSlugAscensionObjectifsRoute
   '/players/$playerSlug/ascension/realisations': typeof PlayersPlayerSlugAscensionRealisationsRoute
   '/players/$playerSlug/career/citations': typeof PlayersPlayerSlugCareerCitationsRoute
   '/players/$playerSlug/career/commendations': typeof PlayersPlayerSlugCareerCommendationsRoute
@@ -490,6 +498,7 @@ export interface FileRoutesByTo {
   '/players/$playerSlug/notifications': typeof PlayersPlayerSlugNotificationsRoute
   '/players/$playerSlug/synthesis': typeof PlayersPlayerSlugSynthesisRoute
   '/players/$playerSlug/ascension/coaching': typeof PlayersPlayerSlugAscensionCoachingRoute
+  '/players/$playerSlug/ascension/objectifs': typeof PlayersPlayerSlugAscensionObjectifsRoute
   '/players/$playerSlug/ascension/realisations': typeof PlayersPlayerSlugAscensionRealisationsRoute
   '/players/$playerSlug/career/citations': typeof PlayersPlayerSlugCareerCitationsRoute
   '/players/$playerSlug/career/commendations': typeof PlayersPlayerSlugCareerCommendationsRoute
@@ -552,6 +561,7 @@ export interface FileRoutesById {
   '/players/$playerSlug/squad': typeof PlayersPlayerSlugSquadRouteWithChildren
   '/players/$playerSlug/synthesis': typeof PlayersPlayerSlugSynthesisRoute
   '/players/$playerSlug/ascension/coaching': typeof PlayersPlayerSlugAscensionCoachingRoute
+  '/players/$playerSlug/ascension/objectifs': typeof PlayersPlayerSlugAscensionObjectifsRoute
   '/players/$playerSlug/ascension/realisations': typeof PlayersPlayerSlugAscensionRealisationsRoute
   '/players/$playerSlug/career/citations': typeof PlayersPlayerSlugCareerCitationsRoute
   '/players/$playerSlug/career/commendations': typeof PlayersPlayerSlugCareerCommendationsRoute
@@ -615,6 +625,7 @@ export interface FileRouteTypes {
     | '/players/$playerSlug/squad'
     | '/players/$playerSlug/synthesis'
     | '/players/$playerSlug/ascension/coaching'
+    | '/players/$playerSlug/ascension/objectifs'
     | '/players/$playerSlug/ascension/realisations'
     | '/players/$playerSlug/career/citations'
     | '/players/$playerSlug/career/commendations'
@@ -673,6 +684,7 @@ export interface FileRouteTypes {
     | '/players/$playerSlug/notifications'
     | '/players/$playerSlug/synthesis'
     | '/players/$playerSlug/ascension/coaching'
+    | '/players/$playerSlug/ascension/objectifs'
     | '/players/$playerSlug/ascension/realisations'
     | '/players/$playerSlug/career/citations'
     | '/players/$playerSlug/career/commendations'
@@ -734,6 +746,7 @@ export interface FileRouteTypes {
     | '/players/$playerSlug/squad'
     | '/players/$playerSlug/synthesis'
     | '/players/$playerSlug/ascension/coaching'
+    | '/players/$playerSlug/ascension/objectifs'
     | '/players/$playerSlug/ascension/realisations'
     | '/players/$playerSlug/career/citations'
     | '/players/$playerSlug/career/commendations'
@@ -1176,6 +1189,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlayersPlayerSlugAscensionRealisationsRouteImport
       parentRoute: typeof PlayersPlayerSlugAscensionRoute
     }
+    '/players/$playerSlug/ascension/objectifs': {
+      id: '/players/$playerSlug/ascension/objectifs'
+      path: '/objectifs'
+      fullPath: '/players/$playerSlug/ascension/objectifs'
+      preLoaderRoute: typeof PlayersPlayerSlugAscensionObjectifsRouteImport
+      parentRoute: typeof PlayersPlayerSlugAscensionRoute
+    }
     '/players/$playerSlug/ascension/coaching': {
       id: '/players/$playerSlug/ascension/coaching'
       path: '/coaching'
@@ -1227,6 +1247,7 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface PlayersPlayerSlugAscensionRouteChildren {
   PlayersPlayerSlugAscensionCoachingRoute: typeof PlayersPlayerSlugAscensionCoachingRoute
+  PlayersPlayerSlugAscensionObjectifsRoute: typeof PlayersPlayerSlugAscensionObjectifsRoute
   PlayersPlayerSlugAscensionRealisationsRoute: typeof PlayersPlayerSlugAscensionRealisationsRoute
   PlayersPlayerSlugAscensionIndexRoute: typeof PlayersPlayerSlugAscensionIndexRoute
 }
@@ -1235,6 +1256,8 @@ const PlayersPlayerSlugAscensionRouteChildren: PlayersPlayerSlugAscensionRouteCh
   {
     PlayersPlayerSlugAscensionCoachingRoute:
       PlayersPlayerSlugAscensionCoachingRoute,
+    PlayersPlayerSlugAscensionObjectifsRoute:
+      PlayersPlayerSlugAscensionObjectifsRoute,
     PlayersPlayerSlugAscensionRealisationsRoute:
       PlayersPlayerSlugAscensionRealisationsRoute,
     PlayersPlayerSlugAscensionIndexRoute: PlayersPlayerSlugAscensionIndexRoute,

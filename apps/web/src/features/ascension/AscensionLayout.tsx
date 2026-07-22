@@ -1,16 +1,18 @@
 /**
- * AscensionLayout — layout parent à 2 onglets de la section Ascension.
+ * AscensionLayout — layout parent à 4 onglets de la section Ascension.
  *
- * Architecture :
- *   /ascension              → tab "Profil & objectifs" (index)
- *   /ascension/realisations → tab "Réalisations"
+ * Architecture (parcours utilisateur : qui je suis → ce que je vise →
+ * comment progresser → ce que j'ai accompli) :
+ *   /ascension               → tab "Profil" (index)
+ *   /ascension/objectifs     → tab "Objectifs" (couche Prestige)
+ *   /ascension/coaching      → tab "Entraînement"
+ *   /ascension/realisations  → tab "Réalisations"
  *
  * Le layout fournit le header (H1 + sous-titre), le bandeau TipsTicker
  * partagé, et la barre d'onglets. Le contenu de chaque tab est rendu
  * via <Outlet />.
  *
- * Refonte Ascension : remplace les pages séparées Objectifs / Parcours /
- * Séries par une UX unifiée à 2 entrées (cf. plan PLAN_ASCENSION_2_TABS).
+ * Refonte Ascension UX (2026-07) : restructuration 3 → 4 onglets (DEC-3).
  */
 import { useMemo } from 'react'
 import { Link, Outlet, useMatchRoute, useParams } from '@tanstack/react-router'
@@ -49,11 +51,13 @@ export function AscensionLayout() {
   const tips = useMemo(() => buildAscensionTips(locale === 'en' ? 'en' : 'fr'), [locale])
 
   const profileRoute = '/players/$playerSlug/ascension' as const
+  const objectivesRoute = '/players/$playerSlug/ascension/objectifs' as const
   const coachingRoute = '/players/$playerSlug/ascension/coaching' as const
   const realisationsRoute = '/players/$playerSlug/ascension/realisations' as const
+  const isObjectives = !!matchRoute({ to: objectivesRoute })
   const isCoaching = !!matchRoute({ to: coachingRoute })
   const isRealisations = !!matchRoute({ to: realisationsRoute })
-  const isProfile = !isCoaching && !isRealisations
+  const isProfile = !isObjectives && !isCoaching && !isRealisations
 
   return (
     <main className="container mx-auto max-w-6xl space-y-6 px-4 py-6">
@@ -81,6 +85,15 @@ export function AscensionLayout() {
           className={tabClass(isProfile)}
         >
           {t.tabProfile}
+        </Link>
+        <Link
+          to={objectivesRoute}
+          params={{ playerSlug }}
+          role="tab"
+          aria-selected={isObjectives}
+          className={tabClass(isObjectives)}
+        >
+          {t.tabObjectives}
         </Link>
         <Link
           to={coachingRoute}

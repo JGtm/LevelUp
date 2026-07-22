@@ -226,9 +226,9 @@ en = "Performance"
 fr = "Pas encore assez de matchs évalués pour estimer ton palier."
 en = "Not enough rated matches yet to estimate your tier."
 
-[profile.performance.mu_sigma]
-fr = "μ {mu} · σ {sigma}"
-en = "μ {mu} · σ {sigma}"
+[profile.performance.lusr_points]
+fr = "{points} pts LUSR"
+en = "{points} LUSR pts"
 
 [profile.performance.next_tier]
 fr = "Prochain palier :"
@@ -269,6 +269,10 @@ en = "Target for the next tier"
 [profile.performance.aria_top20]
 fr = "Top 20% personnel"
 en = "Personal top 20%"
+
+[profile.performance.target_note]
+fr = "Cible = score composite requis pour le palier suivant (identique pour les 8 composantes)."
+en = "Target = composite score required for the next tier (same across all 8 components)."
 
 # Composantes LUSR (8).
 

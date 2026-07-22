@@ -1,11 +1,13 @@
 /**
- * Route /players/$playerSlug/ascension — index (tab "Profil & objectifs").
+ * Route /players/$playerSlug/ascension — index (onglet "Profil").
  *
- * Composé par Phase 6 (AscensionProfileTab). Placeholder ici.
+ * Restructuration 4 onglets (2026-07, DEC-3) : l'index rend l'onglet Profil
+ * (identité/style/performance + patterns). La couche Prestige (objectifs/arcs)
+ * a migré vers /ascension/objectifs.
  */
 import { createFileRoute } from '@tanstack/react-router'
-import { AscensionProfileTab } from '@/features/ascension/AscensionProfileTab'
+import { AscensionProfilTab } from '@/features/ascension/AscensionProfilTab'
 
 export const Route = createFileRoute('/players/$playerSlug/ascension/')({
-  component: AscensionProfileTab,
+  component: AscensionProfilTab,
 })
