@@ -111,19 +111,25 @@ const (
 // inconnu — jamais le GUID nu). Vide pour by_mode (la clé est déjà un libellé
 // normalisé) et by_squad (libellé i18n côté front).
 type ContextualPattern struct {
-	Type         ContextType `json:"type"`
-	Key          string      `json:"key"`
-	Label        string      `json:"label,omitempty"`
-	MatchCount   int         `json:"match_count"`
-	WinRate      float64     `json:"win_rate"`
-	AvgKDA       float64     `json:"avg_kda"`
-	AvgOC        float64     `json:"avg_oc"`
-	AvgDR        float64     `json:"avg_dr"`
-	AvgPerf      *float64    `json:"avg_perf,omitempty"`
-	AvgDeltaCSR  *float64    `json:"avg_delta_csr,omitempty"`
-	AvgDeltaLUSR *float64    `json:"avg_delta_lusr,omitempty"`
-	Delta        float64     `json:"delta"`
-	Signal       Signal      `json:"signal"`
+	Type  ContextType `json:"type"`
+	Key   string      `json:"key"`
+	Label string      `json:"label,omitempty"`
+	// FilterKey est la clé de filtrage STABLE d'un lien pattern→Solo (F7) : la
+	// valeur EXACTE que le pipeline de filtres matche, indépendante de la locale
+	// de la requête. by_map : nom de carte FR-first (fr→en fixe, = mapUI) ;
+	// by_mode : libellé de mode normalisé (= modeUI = Key). Rempli au handler.
+	// Vide pour by_squad (non lié). Distinct de Label (affichage localisé).
+	FilterKey    string   `json:"filter_key,omitempty"`
+	MatchCount   int      `json:"match_count"`
+	WinRate      float64  `json:"win_rate"`
+	AvgKDA       float64  `json:"avg_kda"`
+	AvgOC        float64  `json:"avg_oc"`
+	AvgDR        float64  `json:"avg_dr"`
+	AvgPerf      *float64 `json:"avg_perf,omitempty"`
+	AvgDeltaCSR  *float64 `json:"avg_delta_csr,omitempty"`
+	AvgDeltaLUSR *float64 `json:"avg_delta_lusr,omitempty"`
+	Delta        float64  `json:"delta"`
+	Signal       Signal   `json:"signal"`
 }
 
 // BehaviorType identifie le type de pattern comportemental.
@@ -155,16 +161,41 @@ type BehavioralPattern struct {
 	Confirmed bool         `json:"confirmed"`
 }
 
+// Axes de leviers — clés stables consommées par le gabarit i18n front (un
+// gabarit de phrase FR/EN par axe, F3). Le backend ne sert JAMAIS de phrase
+// (title-agnostic + multilingue) : il sert l'axe + les données structurées du
+// contexte visé, le front compose. Les 3 premiers portent un contexte
+// (mode/carte/escouade), les 5 suivants sont des axes comportementaux (phrase
+// fixe par axe).
+const (
+	AxisModeSelection     = "mode_selection"
+	AxisMapAvoidance      = "map_avoidance"
+	AxisSquadPlay         = "squad_play"
+	AxisSessionManagement = "session_management"
+	AxisSessionLength     = "session_length"
+	AxisEngagement        = "engagement"
+	AxisAccuracy          = "accuracy"
+	AxisRadarAxis         = "radar_axis"
+)
+
 // Lever est une cible d'amélioration calibrée.
+//
+// F3 : le backend ne sert PLUS de phrase (`label` supprimé) — le front compose
+// la phrase via un gabarit i18n FR/EN par `Axis`. Pour les leviers contextuels
+// (by_mode/by_map/by_squad), le contexte visé est servi en données structurées :
+// ContextKey (clé brute — libellé de mode, « with_friends »/« solo », ou GUID de
+// carte) et ContextLabel (nom d'asset résolu, title-agnostic, rempli au handler
+// pour by_map — jamais un littéral). Les leviers comportementaux n'ont pas de
+// contexte (ContextKey/ContextLabel vides).
 type Lever struct {
-	Rank          int     `json:"rank"`
-	Axis          string  `json:"axis"`
-	Label         string  `json:"label"`
-	CurrentVal    float64 `json:"current_val"`
-	TargetVal     float64 `json:"target_val"`
-	Horizon       int     `json:"horizon"`
-	Impact        float64 `json:"impact"`
-	SourcePattern string  `json:"source_pattern"`
+	Rank         int     `json:"rank"`
+	Axis         string  `json:"axis"`
+	ContextKey   string  `json:"context_key,omitempty"`
+	ContextLabel string  `json:"context_label,omitempty"`
+	CurrentVal   float64 `json:"current_val"`
+	TargetVal    float64 `json:"target_val"`
+	Horizon      int     `json:"horizon"`
+	Impact       float64 `json:"impact"`
 }
 
 // PatternReport est la sortie de Analyze().

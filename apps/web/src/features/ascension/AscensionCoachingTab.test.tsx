@@ -131,7 +131,7 @@ describe('AscensionCoachingTab — composition (couche Coaching)', () => {
   })
 
   it('renders LeverList when patterns expose calibrated levers', () => {
-    mockPatterns.current = { levers: [{ rank: 1, axis: 'accuracy', label: 'x', current_val: 0, target_val: 1, horizon: 10, impact: 0.2, source_pattern: 'accuracy' }] }
+    mockPatterns.current = { levers: [{ rank: 1, axis: 'accuracy', current_val: 0, target_val: 1, horizon: 10, impact: 0.2 }] }
     render(<AscensionCoachingTab />)
     expect(screen.getByTestId('lever-list')).toBeInTheDocument()
   })

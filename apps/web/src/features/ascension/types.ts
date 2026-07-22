@@ -200,6 +200,10 @@ export interface ContextualPattern {
   /** Libellé lisible résolu côté backend (nom de carte pour by_map). Absent
    *  pour by_mode (clé déjà lisible) et by_squad (libellé i18n front). */
   label?: string
+  /** Clé de filtrage STABLE d'un lien pattern→Solo (F7) : valeur exacte que le
+   *  pipeline de filtres matche, indépendante de la locale (by_map : nom FR-first ;
+   *  by_mode : mode normalisé). À utiliser pour construire le lien, jamais `label`. */
+  filter_key?: string
   match_count: number
   win_rate: number
   avg_kda: number
@@ -223,12 +227,16 @@ export interface BehavioralPattern {
 export interface PatternLever {
   rank: number
   axis: string
-  label: string
+  /** Clé brute du contexte visé (F3) : libellé de mode (by_mode), « with_friends »/
+   *  « solo » (by_squad), ou GUID de carte (by_map — NON affiché, cf. context_label). */
+  context_key?: string
+  /** Nom d'asset résolu du contexte visé (by_map : nom de carte, title-agnostic).
+   *  Le front l'affiche pour by_map ; jamais le GUID de context_key. */
+  context_label?: string
   current_val: number
   target_val: number
   horizon: number
   impact: number
-  source_pattern: string
 }
 
 export interface PatternReport {

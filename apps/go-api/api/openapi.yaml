@@ -9363,6 +9363,8 @@ components:
           delta:
               format: double
               type: number
+          filter_key:
+              type: string
           key:
               type: string
           label:
@@ -11422,6 +11424,10 @@ components:
       properties:
           axis:
               type: string
+          context_key:
+              type: string
+          context_label:
+              type: string
           current_val:
               format: double
               type: number
@@ -11431,25 +11437,19 @@ components:
           impact:
               format: double
               type: number
-          label:
-              type: string
           rank:
               format: int64
               type: integer
-          source_pattern:
-              type: string
           target_val:
               format: double
               type: number
       required:
           - rank
           - axis
-          - label
           - current_val
           - target_val
           - horizon
           - impact
-          - source_pattern
       type: object
     ListResult:
       additionalProperties: false

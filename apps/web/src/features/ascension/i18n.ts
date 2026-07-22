@@ -175,6 +175,11 @@ export interface AscensionText {
   leverTarget: string
   leverHorizonMatches: string
   leverAxis: Record<string, string>
+  /** Gabarit de phrase par axe (F3) : le backend ne sert plus de phrase, le
+   *  front la compose. `{context}` (leviers by_mode/by_map/by_squad) est
+   *  interpolé avec le libellé du contexte visé (mode, carte résolue, solo/
+   *  escouade) ; les axes comportementaux sont des phrases fixes sans placeholder. */
+  leverPhrase: Record<string, string>
 }
 
 const FR: AscensionText = {
@@ -399,6 +404,16 @@ const FR: AscensionText = {
     radar_axis: 'Axe radar',
     csr_ranked: 'CSR classé',
   },
+  leverPhrase: {
+    mode_selection: 'Améliore ton taux de victoire en {context}',
+    map_avoidance: 'Améliore ton taux de victoire sur {context}',
+    squad_play: 'Améliore ton taux de victoire en {context}',
+    session_management: 'Gère tes sessions de tilt',
+    session_length: 'Ajuste la durée de tes sessions',
+    engagement: 'Maintiens ton engagement',
+    accuracy: 'Améliore ta précision',
+    radar_axis: 'Dépasse ton plafond de performance',
+  },
 }
 
 const EN: AscensionText = {
@@ -621,6 +636,16 @@ const EN: AscensionText = {
     accuracy: 'Accuracy',
     radar_axis: 'Radar axis',
     csr_ranked: 'Ranked CSR',
+  },
+  leverPhrase: {
+    mode_selection: 'Improve your win rate in {context}',
+    map_avoidance: 'Improve your win rate on {context}',
+    squad_play: 'Improve your win rate in {context}',
+    session_management: 'Manage your tilt sessions',
+    session_length: 'Adjust your session length',
+    engagement: 'Sustain your engagement',
+    accuracy: 'Improve your accuracy',
+    radar_axis: 'Break your performance ceiling',
   },
 }
 

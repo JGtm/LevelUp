@@ -59,9 +59,10 @@ Certaines specs restent skippées avec un motif explicite (helpers de
   son écriture (elle skippait toujours faute de démo, la dérive n'avait jamais été détectée).
   À RÉÉCRIRE pour l'UI courante. Concernées : `slice-3-match-history` (route `/stats/history`
   supprimée), `slice-3c-session-compare` (endpoint fusionné dans `/pages/timeseries`),
-  `ascension-2tabs` (page redessinée 2→3 onglets), `match-view-combat` (onglet « Combat » →
-  « Général »/« Détails »), `period-session-rail` (route `/stats/history`), 1 test
-  `p7-dto-rename` (sélecteur canvas du graphique bipolaire).
+  `match-view-combat` (onglet « Combat » → « Général »/« Détails »), `period-session-rail`
+  (route `/stats/history`), 1 test `p7-dto-rename` (sélecteur canvas du graphique bipolaire).
+  L'ancienne spec `ascension-2tabs` a été SUPPRIMÉE (2026-07-22, F6) : la page Ascension est
+  passée à 4 onglets ; sa réécriture e2e est un chantier dédié.
 - **`skipRequiresRealPlayer(reason)`** — exige les données d'un JOUEUR RÉEL spécifique
   (gamertags nommés + synergies, chart LUSR multi-groupes) non reproductibles en synthétique ;
   skip UNIQUEMENT quand `E2E_SYNTHETIC_DEMO=1` (posé par la CI), s'exécute contre une démo

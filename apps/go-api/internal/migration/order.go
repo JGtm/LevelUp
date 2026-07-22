@@ -87,6 +87,7 @@ var canonicalOrder = []string{
 	"create_arc_titles_join",                           // player (cross-titre arcs backend)
 	"create_improvement_campaign_schema",               // player
 	"create_progression_player_schema",                 // player
+	"repair_rec_hist_achieved_index_canonical_v1",      // player (F4 : index record_history canonique)
 	"prestige_add_source_columns_v1",                   // player (ADR 0020 : source challenge + telemetry)
 	"player_match_enrichment_psa_checked_v1",           // player
 	"rebuild_career_progression_defeat_art_corruption", // player
