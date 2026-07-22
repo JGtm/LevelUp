@@ -96,11 +96,14 @@ func seedMatches(t *testing.T, env *progressionTestEnv, now time.Time, count int
 		if i%3 == 0 {
 			outcome = 3 // loss
 		}
-		// match_registry sur shared (conn dédiée post-ADR 0016).
+		// match_registry sur shared (conn dédiée post-ADR 0016). Prod porte les DEUX
+		// colonnes temporelles (start_time naïf + start_time_utc TIMESTAMPTZ) : on
+		// seede les deux pour exercer le fragment canonique COALESCE(start_time_utc,
+		// start_time AT TIME ZONE 'UTC') que lisent désormais les queries progression (G1).
 		if _, err := env.pdb.Shared.Exec(ctx, `
-			INSERT INTO match_registry (match_id, start_time)
-			VALUES (?, ?)
-		`, matchID, startTime); err != nil {
+			INSERT INTO match_registry (match_id, start_time, start_time_utc)
+			VALUES (?, ?, ?)
+		`, matchID, startTime, startTime); err != nil {
 			t.Fatalf("insert match_registry %s: %v", matchID, err)
 		}
 		// match_participants sur shared.

@@ -418,20 +418,40 @@ complété » renvoient vers une page où l'objectif concerné n'est pas visible
   job CI. Commentaire Makefile daté (scope réduit du repli assumé + critère de retrait).
   golangci-lint NON installé dans cet environnement → repli `go vet` exécuté (propre) ;
   le lint complet reste vérifié en CI.
-- **(F2) autres `start_time` bruts dans `post_sync_progression_queries.go`** (NOUVELLE,
-  non traitée) : hors du bucket `accuracy_threshold_days` corrigé, le fichier lit encore
-  `mr.start_time` brut dans `loadProgressionSharedMatches` (SELECT PlayedAt + `WHERE
-  start_time >= ?` + `ORDER BY start_time` allowlisté) et `loadComebackContext`. Concern
-  distinct (chargement de matchs → PlayedAt bucketé en Go côté streaks/records), pas le
-  bug jour-frontière de F2. À aligner sur le fragment canonique dans un lot dédié si le
-  décalage TZ des imports OpenSpartan devient sensible sur ce chemin.
-- **(F7) Halo 5 by_mode dégénéré** (NOUVELLE, non traitée) : le pattern engine dérive
-  `Mode = NormalizeModeLabel(pair_name_fr ?? pair_name)` (patterns_repo `loadShared`),
-  SANS repli `game_variant`. Halo 5 n'a pas de `pair_name` → `Mode = ''` pour tous les
-  matchs → grouping by_mode dégénéré (une clé vide). Non aggravé par F7 (filter_key vide
-  → pas de lien plutôt qu'un lien cassé). Le correctif pérenne = faire dériver le Mode du
-  pattern via `ResolveModeUIWithVariant` (pair-puis-variant) — aligne display + filtre
-  pour les deux titres, mais change le grouping/affichage Halo 5 → chantier dédié.
+- **(F2) autres `start_time` bruts dans `post_sync_progression_queries.go`** —
+  **RÉSOLU 2026-07-22 (G1)** : les 3 sites bruts de `loadProgressionSharedMatches`
+  (SELECT PlayedAt, `WHERE start_time >= ?`, `ORDER BY start_time`) et les 3 de
+  `loadComebackContext` (SELECT, `WHERE ... IS NOT NULL`, `ORDER BY`) passent désormais
+  par `analysis.SQLStartTimeCanonical("mr")` : SELECT projeté `AS start_time`, ORDER BY sur
+  l'alias nu (forme légitime, cf. commentaire ratchet), WHERE sur le fragment ; bind
+  `since.UTC()` (même pattern éprouvé qu'`analysis/match_filter.go:154`). Effet fonctionnel :
+  un match à `start_time` NULL/TZ-décalé mais `start_time_utc` renseigné est désormais
+  correctement daté/inclus. Allowlist ratchet `rawOrderByStartTimeAllowlist` : l'entrée
+  `post_sync_progression_queries.go` est RETIRÉE (le ratchet scanne maintenant le fichier —
+  0 occurrence restante). Fixture intégration seedée sur `start_time` + `start_time_utc`
+  (réalisme prod). Gate `./internal/api/wire/...` + `./internal/archlint/...` +
+  `-tags=integration -p 1 ./internal/api/wire/...` VERT.
+- **(F7) Halo 5 by_mode dégénéré** — **RÉSOLU 2026-07-22 (G2)** : `patterns_repo.loadShared`
+  charge désormais les 4 sources de mode brutes (`pair_name`, `pair_name_fr`,
+  `game_variant_id`, `game_variant_name`) et dérive le Mode via la convention centralisée
+  `analysis.ResolveModeUIWithVariant` (pair, sinon game_variant) dans `applyPatternModes`
+  — MÊME source que le chokepoint `modeUI` du pipeline de filtres (`filters_service.go:337`).
+  Titres sans pair (Halo 5 : `pair_name`/`pair_id` ET `game_variant_name` 100 % NULL au
+  registry, vérifié 3032/3032 ; seul `game_variant_id` présent) : le nom du variant est
+  résolu FR-first read-side depuis `asset_translations` (`ResolveAssetNamesBulk`
+  "game_variant", `PreferredLangsForLocale("fr")` FIXE = `GameVariantNameFR` du pipeline,
+  même mécanisme que `ResolveMapFilterKeys`). Résultat H5 : grouping by_mode = variant
+  normalisé ("Assassin", "Bases") ; `filter_key` by_mode (= Key = Mode, posé au handler)
+  == `modeUI` ⇒ garantie F7 étendue à H5. Infinite : pair présent → aucun id collecté,
+  ZÉRO requête metadata (no-op strict) ⇒ iso-comportement PROUVÉ par
+  `TestPatternsRepo_LoadRows_EndToEnd` (m1.Mode "Slayer" inchangé) + package `patterns` +
+  handler F7 inchangés. `mergePatternRows` ne re-normalise plus (Mode déjà final).
+  Garde-rail `no_bare_resolve_mode_ui` respecté (forme WithVariant). Nouveau test
+  `TestPatternsRepo_LoadRows_H5ModeFromVariant`. **Constat capability** : la route
+  `/patterns` n'est PAS capability-gated (montée pour tous les titres,
+  `server_apiv1.go:785`) ; H5 `match_participants.xuid` peuplé (24208/24208) → les rows
+  patterns chargent → le fix est effectif end-to-end sur H5. Gate
+  `patterns/handlers/archlint` + duckdb intégration `-p 1` VERT.
 
 ## Journal d'exécution — Lot A (2026-07-22)
 

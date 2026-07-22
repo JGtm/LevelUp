@@ -69,14 +69,14 @@ var rawCastStartTimeDateAllowlist = map[string]bool{}
 
 // rawOrderByStartTimeAllowlist : dette PRÉEXISTANTE gelée (règle CLAUDE.md n°5 —
 // baseline), keyée PAR FICHIER (comme H1 ci-dessus : robuste au décalage de
-// lignes). 20 fichiers au 2026-07-07 : outils cmd/ diag/backfill/seed + requêtes
-// internes non-lecture-chaude déjà sur start_time brut avant V7b. Le ratchet
-// interdit toute NOUVELLE occurrence dans un fichier HORS liste (dont
-// queries_match.go — la lecture chaude Q29 corrigée par V7b, volontairement
-// ABSENTE : une régression y refait échouer le test). Ne jamais ajouter un fichier
-// sans avoir d'abord migré ses sites vers StartTimeCanonicalSQL.
+// lignes). Outils cmd/ diag/backfill/seed + requêtes internes non-lecture-chaude
+// déjà sur start_time brut avant V7b. Le ratchet interdit toute NOUVELLE
+// occurrence dans un fichier HORS liste (dont queries_match.go — la lecture chaude
+// Q29 corrigée par V7b, volontairement ABSENTE : une régression y refait échouer
+// le test ; et post_sync_progression_queries.go, migré vers le fragment canonique
+// le 2026-07-22 par G1 — SELECT/WHERE/ORDER BY). Ne jamais ajouter un fichier sans
+// avoir d'abord migré ses sites vers StartTimeCanonicalSQL.
 var rawOrderByStartTimeAllowlist = map[string]bool{
-	"internal/api/wire/post_sync_progression_queries.go":              true,
 	"internal/ops/seed_demo.go":                                       true,
 	"internal/ops/seed_demo_corpus.go":                                true,
 	"internal/platform/duckdb/campaign_repo.go":                       true,

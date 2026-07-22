@@ -1,3 +1,49 @@
+## [2026-07-22] Mini-lot « G » G1/G2 (branche refactor/ascension-ux-2026-07)
+
+**Statut** : Complété (G1, G2), sous contrat `plan-execution` (ordre strict G1 puis G2,
+vérif sur pièces avant/après, zéro fix hors périmètre). NON committé (décision utilisateur).
+Les 2 dernières découvertes NOUVELLE du plan Ascension (F2-restant, F7-H5) passent RÉSOLU.
+
+**Décisions techniques principales** :
+- **G1** (start_time bruts restants de `post_sync_progression_queries.go`) : les 6 sites
+  bruts — `loadProgressionSharedMatches` (SELECT PlayedAt, `WHERE start_time >= ?`,
+  `ORDER BY`) et `loadComebackContext` (SELECT, `WHERE ... IS NOT NULL`, `ORDER BY`) —
+  migrés vers `analysis.SQLStartTimeCanonical("mr")` : SELECT projeté `AS start_time`,
+  ORDER BY sur l'alias nu (forme légitime), WHERE sur le fragment, bind `since.UTC()`
+  (pattern éprouvé `analysis/match_filter.go:154`). Allowlist `rawOrderByStartTimeAllowlist` :
+  entrée du fichier RETIRÉE → ratchet actif dessus (0 occurrence). Fixture intégration
+  seedée `start_time` + `start_time_utc` (réalisme prod). Effet : match `start_time`
+  NULL/TZ-décalé mais `start_time_utc` renseigné désormais correctement daté/inclus.
+- **G2** (PILIER title-agnostic) : Mode des rows patterns dérivé via la convention
+  centralisée `analysis.ResolveModeUIWithVariant` (pair sinon game_variant) dans
+  `patterns_repo.applyPatternModes`, au lieu du `NormalizeModeLabel(pair)` pair-only.
+  `loadShared` charge les 4 sources brutes ; H5 (pair NULL + `game_variant_name` NULL au
+  registry, vérifié 3032/3032, seul `game_variant_id` présent) : nom du variant résolu
+  FR-first read-side (`asset_translations`, `PreferredLangsForLocale("fr")` FIXE) =
+  `GameVariantNameFR` du chokepoint `modeUI` des filtres → by_mode H5 groupé par variant
+  normalisé ("Assassin", "Bases") ET `filter_key` (=Key=Mode) == `modeUI` (F7 étendu à H5).
+  Infinite : pair présent → aucun id collecté → ZÉRO requête metadata (no-op) → iso prouvé.
+  `mergePatternRows` ne re-normalise plus (Mode déjà final). Garde-rail
+  `no_bare_resolve_mode_ui` respecté (forme WithVariant).
+
+**Résultats observés / gate** (exécutés cette session) : `./internal/api/wire/...`,
+`./internal/archlint/...`, `./internal/analysis/patterns/...`, `./internal/api/handlers/...`,
+`./internal/platform/duckdb/...` VERT ; `-tags=integration -p 1` sur `./internal/api/wire/...`
+et `./internal/platform/duckdb/...` VERT ; `go test ./...` complet VERT ; gofmt -l . vide ;
+go vet ./... propre. Iso Infinite PROUVÉ par tests existants inchangés
+(`TestPatternsRepo_LoadRows_EndToEnd` = m1.Mode "Slayer", package patterns, handler F7).
+Nouveau test `TestPatternsRepo_LoadRows_H5ModeFromVariant`. Front NON touché (aucun
+changement DTO/openapi/generated → pas de tsc/vitest).
+
+**Constat capability H5** : route `/patterns` NON capability-gated (montée pour tous les
+titres, `server_apiv1.go:785`) ; `match_participants.xuid` H5 peuplé (24208/24208) → les
+rows patterns chargent → fix effectif end-to-end. L'exposition front de la page Ascension
+pour H5 reste un concern séparé (non traité ici — hors périmètre).
+
+**Conclusion / prochaine étape** : mini-lot G clos, section Découvertes du plan à jour
+(2 entrées RÉSOLU). Aucune nouvelle découverte hors périmètre. Reste-à-faire orchestrateur :
+décision de commit.
+
 ## [2026-07-22] Mini-lot « Finitions Ascension » F1→F8 (branche refactor/ascension-ux-2026-07)
 
 **Statut** : Complété (F1→F8), sous contrat `plan-execution` (ordre strict, vérif sur
