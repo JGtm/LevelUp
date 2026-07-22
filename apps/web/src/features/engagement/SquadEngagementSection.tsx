@@ -37,6 +37,10 @@ export function SquadEngagementSection(props: SquadEngagementSectionProps) {
   const locale = useAppShellStore((s) => s.locale)
   const query = useSquadEngagementSession(playerSlug, matchIds, teammates)
 
+  // colorByPlayer est recréé à chaque rendu parent (nouvel objet) : on le suit par
+  // contenu pour rafraîchir la vue quand une couleur change réellement, sans
+  // recalculer à chaque rendu.
+  const colorKey = JSON.stringify(colorByPlayer ?? {})
   const session: ViewSession = useMemo(() => {
     if (!query.data) {
       return { labels: [], mapNames: [], lobbyPerPlayer: [], teamExpected: [], teamObserved: [], players: [] }
@@ -56,7 +60,8 @@ export function SquadEngagementSection(props: SquadEngagementSectionProps) {
       teamObserved: query.data.team_observed,
       players,
     }
-  }, [query.data])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- colorByPlayer suivi via colorKey (2026-07-22)
+  }, [query.data, colorKey])
 
   // Pas de `return null` sur erreur / session vide : SquadEngagementView
   // (ChartCard) rend son état error / empty dans le même bloc titré.

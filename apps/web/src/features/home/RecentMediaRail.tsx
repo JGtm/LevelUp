@@ -4,7 +4,8 @@ import { Carousel, CarouselItem } from '@/components/ui/carousel'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import { useRecentMediaRail, useToggleMediaLike } from '@/features/media/queries'
-import { MediaLightbox, MediaThumbnailCard, buildOwnerColorMap } from '@/features/media/MediaViewer'
+import { MediaLightbox, MediaThumbnailCard } from '@/features/media/MediaViewer'
+import { buildOwnerColorMap } from '@/features/media/mediaOwnerColors'
 import { MediaMatchPicker } from '@/features/media/MediaMatchPicker'
 import { useMediaPicker } from '@/features/media/useMediaPicker'
 import { formatMessage } from '@/lib/i18n/format'
@@ -30,7 +31,7 @@ export function RecentMediaRail({ playerSlug }: RecentMediaRailProps) {
   const picker = useMediaPicker()
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: HomeManifestKey) => formatMessage(homeManifest, key, locale)
-  const items = data?.items.items ?? []
+  const items = useMemo(() => data?.items.items ?? [], [data?.items.items])
   const playerColorMap = useMemo(() => buildOwnerColorMap(items, playerSlug), [items, playerSlug])
   const recentTotal = recentQuery.data?.items.pagination.total
   const likedTotal = likedQuery.data?.items.pagination.total

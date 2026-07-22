@@ -512,7 +512,7 @@ describe('WatcherCard', () => {
 // ---------------------------------------------------------------------------
 // formatLastSeen unit tests
 // ---------------------------------------------------------------------------
-import { formatLastSeen, resolveTitleDisplayName } from './WatcherCard'
+import { formatLastSeen, resolveTitleDisplayName } from './watcherPresence'
 
 describe('formatLastSeen', () => {
   const baseNow = new Date('2026-05-26T10:00:00Z')

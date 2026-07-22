@@ -48,9 +48,14 @@ export function SettingsPage() {
     navigate({ to: '/settings', search: { tab }, replace: true }).catch(() => {})
   }
 
-  useEffect(() => {
-    if (settings) setLocalSettings(settings)
-  }, [settings])
+  // Copie éditable des réglages serveur : resync quand la requête livre un nouvel
+  // objet (ajustement pendant le rendu, pattern React « valeur précédente », au
+  // lieu d'un effet). Comportement inchangé : un refetch réaligne l'état local.
+  const [prevSettings, setPrevSettings] = useState(settings)
+  if (settings && settings !== prevSettings) {
+    setPrevSettings(settings)
+    setLocalSettings(settings)
+  }
 
   useEffect(() => {
     return () => {

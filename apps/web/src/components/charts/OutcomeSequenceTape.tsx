@@ -97,6 +97,11 @@ export function OutcomeSequenceTape({
 
   const option = useMemo((): EChartsCoreOption => {
     if (xMax === 0) return {}
+    // themeVersion force le recalcul quand le thème bascule : les couleurs
+    // (CHART_BG, outcomeColor, getEChartsThemeColors) sont lues à l'appel via des
+    // variables CSS, invisibles pour exhaustive-deps. Référence réelle pour garder
+    // la dépendance légitime sans disable.
+    void themeVersion
     const tc = getEChartsThemeColors()
     return {
       backgroundColor: CHART_BG,

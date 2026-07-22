@@ -24,9 +24,17 @@ export function GifHoverThumbnail({ src, isActive, alt = '', className }: GifHov
   const hoverCountRef = useRef(0)
   const [hoverKey, setHoverKey] = useState(0)
 
-  useEffect(() => {
+  // Reset de l'état poster quand src change — ajustement pendant le rendu (pattern
+  // React « prop précédente ») au lieu d'un setState en tête d'effet, avant le
+  // fetch asynchrone du poster ci-dessous.
+  const [prevSrc, setPrevSrc] = useState(src)
+  if (prevSrc !== src) {
+    setPrevSrc(src)
     setPosterReady(false)
     setPosterFailed(false)
+  }
+
+  useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
 

@@ -33,7 +33,12 @@ export function useCounterSnapshot(
   const [previous, setPrevious] = useState<CountersSnapshot>(() => readCountersSnapshot(storageKey))
   const lastRunRef = useRef<{ generatedAt: string; snapshot: CountersSnapshot } | null>(null)
   const buildRef = useRef(buildSnapshot)
-  buildRef.current = buildSnapshot
+  // Miroir affecté dans un effet (pas pendant le rendu) : lu uniquement par
+  // l'effet ci-dessous quand generatedAt change. Déclaré AVANT lui pour que la
+  // valeur soit fraîche dans le même commit.
+  useEffect(() => {
+    buildRef.current = buildSnapshot
+  }, [buildSnapshot])
 
   useEffect(() => {
     if (!generatedAt) return

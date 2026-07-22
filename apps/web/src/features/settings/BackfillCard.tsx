@@ -42,10 +42,9 @@ export function BackfillCard({ t }: BackfillCardProps) {
   const [showForceConfirm, setShowForceConfirm] = useState(false)
   const [activeJobId, setActiveJobId] = useState<string | null>(null)
 
-  // Si la liste de joueurs arrive après le premier render, initialiser selectedSlug.
-  useEffect(() => {
-    if (!selectedSlug && firstSlug) setSelectedSlug(firstSlug)
-  }, [firstSlug, selectedSlug])
+  // Si la liste de joueurs arrive après le premier render, initialiser selectedSlug
+  // (ajustement pendant le rendu au lieu d'un effet ; auto-terminant).
+  if (!selectedSlug && firstSlug) setSelectedSlug(firstSlug)
 
   const startBackfill = useStartBackfill()
   const { data: jobStatus } = useJobStatus(activeJobId ?? '', !!activeJobId)
@@ -57,7 +56,8 @@ export function BackfillCard({ t }: BackfillCardProps) {
     jobStatus?.status !== 'cancelled' &&
     jobStatus?.status !== 'interrupted'
 
-  // Reset activeJobId quand le job atteint un état terminal.
+  // Reset activeJobId quand le job atteint un état terminal (réaction à l'état
+  // async du polling → arrête la requête useJobStatus ; effet légitime).
   useEffect(() => {
     if (
       activeJobId &&
@@ -66,6 +66,7 @@ export function BackfillCard({ t }: BackfillCardProps) {
         jobStatus?.status === 'cancelled' ||
         jobStatus?.status === 'interrupted')
     ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- réaction à l'arrivée async d'un état terminal (arrête le polling), pas un dérivé synchrone (2026-07-22)
       setActiveJobId(null)
     }
   }, [jobStatus?.status, activeJobId])

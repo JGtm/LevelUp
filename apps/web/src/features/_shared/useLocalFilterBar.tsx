@@ -11,9 +11,10 @@
  * Le hook n'écrit dans AUCUN store global — l'état reste 100% local à la page,
  * cohérent avec le pattern « 1 page = 1 scope de filtres ».
  */
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useFiltersPreview } from '@/features/filters/queries'
 import { PeriodePill, SaisonPill, DEFAULT_PERIOD } from '@/components/shell/FilterOmnibar'
+import { ViewDropdown } from '@/features/_shared/ViewDropdown'
 import { useActiveSeason, seasonToPeriod } from '@/features/squad/useActiveSeason'
 import { MultiSelectFilter, type MultiSelectOption } from '@/features/explorer/MultiSelectFilter'
 import { ExperienceDropdown, type Experience } from '@/features/_shared/ExperienceDropdown'
@@ -38,15 +39,15 @@ export interface LocalFilterBarLabels {
  *  les pages qui exposent la segmentation match_context (ex. hub Relations).
  *  Non exporté : consommé via le champ `viewLabels` (typé structurellement par
  *  l'appelant) — évite un export mort (knip-ratchet). */
-interface LocalFilterBarViewLabels {
+export interface LocalFilterBarViewLabels {
   view: string
   viewAll: string
   viewSolo: string
   viewSquad: string
 }
 
-/** Vue match_context côté UI ('all' = les deux). Interne au hook. */
-type MatchView = 'all' | 'solo' | 'squad'
+/** Vue match_context côté UI ('all' = les deux). Partagé avec ViewDropdown. */
+export type MatchView = 'all' | 'solo' | 'squad'
 
 interface UseLocalFilterBarOptions {
   playerSlug: string
@@ -96,73 +97,6 @@ function hashContext(ctx: FilterContextInput): string {
     h = Math.imul(h, 0x01000193) >>> 0
   }
   return h.toString(16).padStart(8, '0')
-}
-
-/** ViewDropdown — sélecteur single-select de la vue match_context (Tous / Solo /
- *  Escouade), aligné visuellement sur ExperienceDropdown (pill + popover radio). */
-function ViewDropdown({
-  value,
-  onChange,
-  labels,
-}: {
-  value: MatchView
-  onChange: (next: MatchView) => void
-  labels: LocalFilterBarViewLabels
-}) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
-
-  const options: { value: MatchView; label: string }[] = [
-    { value: 'all', label: labels.viewAll },
-    { value: 'solo', label: labels.viewSolo },
-    { value: 'squad', label: labels.viewSquad },
-  ]
-  const currentLabel = options.find((o) => o.value === value)?.label ?? labels.viewAll
-  const isActive = value !== 'all'
-
-  return (
-    <div ref={ref} className="relative" data-testid="relations-view-dropdown">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className={`rounded border px-2 py-1 text-xs bg-background flex items-center gap-1 whitespace-nowrap transition-colors ${
-          isActive ? 'border-primary text-primary' : 'border-input text-muted-foreground hover:border-foreground'
-        }`}
-      >
-        {labels.view} : {currentLabel}
-        <svg width="10" height="10" viewBox="0 0 12 12" aria-hidden="true">
-          <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none" />
-        </svg>
-      </button>
-      {open && (
-        <div className="absolute right-0 z-20 mt-1 min-w-[12rem] rounded border border-border bg-popover p-1 shadow-md">
-          {options.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => {
-                onChange(opt.value)
-                setOpen(false)
-              }}
-              className={`w-full px-2 py-1 text-left text-sm rounded transition-colors ${
-                opt.value === value ? 'bg-accent/60 font-semibold' : 'hover:bg-accent/40'
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
 }
 
 export function useLocalFilterBar({ playerSlug, labels, viewLabels }: UseLocalFilterBarOptions): UseLocalFilterBarResult {

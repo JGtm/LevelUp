@@ -4,7 +4,7 @@
  * WAL, budgets/pool DuckDB (expvar enfin surfacés). Le verdict compact vit sur
  * l'onglet État. Couleurs exclusivement via tokens sémantiques.
  */
-import { tokenCssVar, type SemanticToken } from '@/lib/accessibility/semantic-tokens'
+import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { AdminResourcesResponse } from '@/lib/api/types'
 import { useMonitoringResources } from '../monitoring/queries'
 import { AdminTable, AdminTd, AdminTh, AdminTr } from '../components/AdminTable'
@@ -12,20 +12,7 @@ import { SectionHeader } from '../components/SectionHeader'
 import { formatBytes, formatDurationMs } from '../format'
 import { useAdminT, useAdminLocale, type TAdmin } from '../useAdminText'
 import type { AdminLocale } from '../format'
-
-/** Token d'accent du statut disque (mêmes valeurs que la fraîcheur). */
-export function diskToken(status: string): SemanticToken | undefined {
-  switch (status) {
-    case 'ok':
-      return 'success'
-    case 'warn':
-      return 'warning'
-    case 'critical':
-      return 'destructive'
-    default:
-      return undefined
-  }
-}
+import { diskToken } from './diskStatusToken'
 
 export function ResourcesSection() {
   const { data, isError } = useMonitoringResources()

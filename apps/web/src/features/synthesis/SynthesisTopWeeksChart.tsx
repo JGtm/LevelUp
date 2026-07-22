@@ -110,10 +110,12 @@ export function SynthesisTopWeeksChart({ weeks, title, height }: Props) {
     ? [{ key: 'topweeks', datapoints: weeks.map((w) => ({ week_label: w.week_label })) }]
     : []
 
+  // Clé de recalcul stable : on ne rebuild l'option que si le contenu change.
+  const weeksKey = JSON.stringify(weeks)
   const buildOption = useCallback(
     () => buildTopWeeksOption(weeks),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [JSON.stringify(weeks)],
+    [weeksKey],
   )
 
   return (

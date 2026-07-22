@@ -80,7 +80,7 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
     staleTime: 30_000,
   })
 
-  const challenges = challengesQ.data?.challenges ?? []
+  const challenges = useMemo(() => challengesQ.data?.challenges ?? [], [challengesQ.data?.challenges])
   const filteredObjectives = useMemo(
     () =>
       sortObjectives(
@@ -93,13 +93,20 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
   const totalPages = Math.max(1, Math.ceil(filteredObjectives.length / VISIBLE_OBJECTIVES))
   const [page, setPage] = useState(0)
   const [fading, setFading] = useState(false)
-  // Reset page si le filtre change ou si la liste rétrécit.
-  useEffect(() => {
+  // Reset page si le filtre change ou si la liste rétrécit : ajustement d'état
+  // pendant le rendu (pattern React « prop précédente ») au lieu d'un effet, pour
+  // éviter un rendu transitoire sur une page hors bornes.
+  const pageResetKey = `${filter}|${totalPages}`
+  const [prevPageResetKey, setPrevPageResetKey] = useState(pageResetKey)
+  if (prevPageResetKey !== pageResetKey) {
+    setPrevPageResetKey(pageResetKey)
     setPage(0)
-  }, [filter, totalPages])
+  }
   const pagesRef = useRef(totalPages)
-  pagesRef.current = totalPages
   useEffect(() => {
+    // Miroir de totalPages lu par le timer de rotation (affecté dans l'effet, pas
+    // pendant le rendu). L'effet re-tourne à chaque changement de totalPages.
+    pagesRef.current = totalPages
     if (totalPages <= 1) return
     const iv = window.setInterval(() => {
       setFading(true)

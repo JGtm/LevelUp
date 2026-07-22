@@ -218,7 +218,7 @@ export function MatchCadenceChart({ cadence, scoreboard, meXUID, t }: Props) {
         ],
       }
     },
-    [cadence, scoreboard, meXUID, t.combatTeamLabel, t.combatEnemyLabel],
+    [cadence, scoreboard, meXUID, t.combatKillsLabel, t.combatTeamLabel, t.combatEnemyLabel],
   )
 
   return (

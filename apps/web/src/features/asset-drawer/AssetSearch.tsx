@@ -11,10 +11,13 @@ export function AssetSearch({ value, placeholder, onChange, debounceMs = 300 }: 
   const [draft, setDraft] = useState(value)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // sync si value réinitialisé par le store (ex: changement d'onglet)
-  useEffect(() => {
+  // sync si value réinitialisé par le store (ex: changement d'onglet) — ajustement
+  // pendant le rendu (pattern React « prop précédente ») au lieu d'un effet.
+  const [prevValue, setPrevValue] = useState(value)
+  if (prevValue !== value) {
+    setPrevValue(value)
     setDraft(value)
-  }, [value])
+  }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const q = e.target.value

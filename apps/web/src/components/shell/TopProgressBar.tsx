@@ -61,8 +61,12 @@ export function TopProgressBar() {
   const activeRef = useRef(false)
   const prevPathRef = useRef(pathname)
   // Ref miroir pour vérifier la valeur courante depuis un closure de timer.
+  // Affectée dans un effet (pas pendant le rendu) : lue uniquement de façon
+  // asynchrone par les closures de timers (l.147), jamais synchronement.
   const pendingCountRef = useRef(pendingCount)
-  pendingCountRef.current = pendingCount
+  useEffect(() => {
+    pendingCountRef.current = pendingCount
+  }, [pendingCount])
 
   function clearTrickleTimer() {
     if (trickleTimerRef.current) {

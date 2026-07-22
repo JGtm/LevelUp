@@ -47,15 +47,20 @@ export function HomeHeroBanner() {
   ])
   const [activeIdx, setActiveIdx] = useState(0)
 
-  // Refs pour lire l'état courant dans setInterval sans stale closure
+  // Refs pour lire l'état courant dans setInterval sans stale closure. Affectées
+  // dans un effet (pas pendant le rendu) : lues seulement de façon asynchrone par
+  // le timer de rotation, jamais synchronement.
   const srcsRef = useRef(srcs)
-  srcsRef.current = srcs
   const activeIdxRef = useRef(activeIdx)
-  activeIdxRef.current = activeIdx
+  useEffect(() => {
+    srcsRef.current = srcs
+    activeIdxRef.current = activeIdx
+  }, [srcs, activeIdx])
 
   useEffect(() => {
     if (images.length === 0) return
     const initial = images[Math.floor(Math.random() * images.length)] ?? ''
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de l'image affichée sur changement de titre, couplé à la mise en place du timer de rotation (2026-07-22)
     setSrcs([initial, ''])
     setActiveIdx(0)
 
