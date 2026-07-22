@@ -58,6 +58,255 @@ code mort) ; `buildModeTranslationMap` ignore la voie variant (no-op inoffensif 
 **Prochaine étape** : revue utilisateur → commit(s) sur `fix/h5-filters-asset-names`,
 push (CI de branche), PR vers main. Vérif visuelle web (barre L2 H5) au premier `make dev`.
 
+## [2026-07-22] Revue complète branche `feat/monitoring-lusr-fixes` + correctifs des 5 findings majeurs
+
+**Statut** : Complété (code + tests). Gates : `check-types` vert, `test-web` complet vert (2389),
+session `-race -count=2` vert, suites Go ciblées vertes ; suite Go complète + intégration anti-ART
+rejouées avant commit. NON committé (attente autorisation user, CLAUDE.md n°16).
+
+**Revue** (8 angles de recherche + vérification contradictoire par candidat, 27 candidats → 8
+confirmés / 2 réfutés) sur les 14 commits de la branche. Confirmés majeurs corrigés dans la foulée
+(implémentation pilotée en 3 agents Opus parallèles, fichiers disjoints) :
+1. **`PurgeExpired` supprimait une session vivante** (store.go) : pas de verrou + `os.Remove` sur
+   toute erreur de lecture (sharing violation Windows d'un Save concurrent = déconnexion permanente).
+   Fix : Lock exclusif PAR FICHIER (`purgeSessionFileLocked`), jamais de suppression sur erreur de
+   lecture (WARN + skip), JSON corrompu supprimé seulement si vieux (`corruptSessionTTL` 1h). Test
+   Windows déterministe (sharing violation réelle via `syscall.CreateFile`) + test concurrent -race.
+2. **Garde anti-éjection = shell mort sur vraie expiration** (`__root.tsx`) : `levelup:auth-required`
+   (dispatché sur 401 `auth_required` hors /bootstrap) n'avait AUCUN listener. Fix : listener au
+   RootLayout → si on se croyait authentifié, `window.location.assign('/')` (bootstrap frais fait
+   autorité) ; anti-rafale par ref ; no-op si store déjà anonyme (anti-boucle /login).
+3. **Fuite inverse pré-bootstrap** (`client.ts`) : `_currentTitleSlug` valait `'halo_infinite'` au
+   boot et le header était toujours affirmé → une requête title-scoped pré-hydratation
+   (`useFiltersResolve`, gated URL et non bootstrap — hypothèse du plan header réfutée sur pièces)
+   servait de l'Infinite à une session halo_5. Fix : `null` au boot (aucun header → session
+   autoritaire), slug affirmé dès l'hydratation. `getApiTitleSlug()` coalesce vers le défaut
+   (contrat share-link inchangé).
+4. **Jauge trous LUSR sous-comptée sur scan partiel** (scheduler) : joueur DB-locked sauté en Debug
+   sans compteur, jauge republiée quand même → badge éteint à tort. Fix : `LUSRPlayersUnmeasured`
+   (WARN par joueur non mesuré, ReadDir KO compris), `publishLUSRGaugeIfComplete` ne republie que si
+   scan COMPLET (« unmeasured ≠ sain »), cycle loggé WARN sinon.
+5. **Badge périmé 24h après « Recalculer »** (wire) : la jauge n'était écrite que par le cron. Fix :
+   scan avant/après replay + `AddLUSRInteriorGapsGauge(delta)` clampé ≥0 (course avec le Set du cron
+   documentée bénigne) ; best-effort — un scan raté n'ajuste pas la jauge et ne fait pas échouer le
+   replay.
+
+**Réfutés à la revue (au crédit de la conception)** : interruption d'un auto-heal mi-replay = bénigne
+(reset watermark = sentinelle INSERT append-only, reprise propre) ; « divergence détecteur v2 /
+écrivain v1 » inexistante (flag global forcé `LUSR_V2` au boot, prédicat partagé).
+
+**Dette consignée, NON traitée (hors périmètre)** : ~13 copies du pattern atomic-write sans
+`WriteFileAtomic` partagé (celle de session omet `tmp.Sync()`) ; résolution joueur divergente entre
+endpoints admin (`resolvePlayerRef` EqualFold vs `RunPlayerConvergence` sensible casse, ≥4 copies →
+helper + garde-rail à faire) ; `Touch`→`Save` par requête sans throttle (mutex global) ; N+1 rosters
+dans `ScanLUSRGaps` + rescan séquentiel par GET admin ; helpers dupliqués (`loadGroupWatermarks` vs
+`SkillV2Repo.LoadAllStates`, `readXUIDFromDir` vs `config.readXUIDFile`, `LusrCoverageBar` vs
+`CoverageBar`) ; anglicisme « Replay » dans 3 strings FR admin ; opt-out `LEVELUP_LUSR_CANONICAL=LUSR`
+encore vivant alors que la doctrine dit « v1 mort ».
+
+**CI de branche (delivery-checklist §0)** : le HEAD mergé `e76f48bb7` était ROUGE sur 3 jobs. Causés
+par la branche et corrigés ici : (a) gofmt `internal/domain/admin_lusr_gaps.go` (lint ratchet) ;
+(b) `TestOpenAPISchemaDrift_AggregatesAndReports` — les 5 schémas de réponse Huma LUSR
+(`AdminLUSRGaps`, `AdminLUSRRecomputeResponse`, `LUSRGapItem`, `LUSRGapPlayer`,
+`LUSRGuardrailHealth`) manquaient dans `openapi.yaml` (les 2 paths y étaient, pas les composants) →
+ajoutés via la recette du test (`OPENAPI_EMIT_OUT`), `generate-types` rejoué (generated.ts +53,
+additif), drift + contracttest verts. HÉRITÉ de main (rouge aussi sur main, PAS corrigé ici — garde-
+rail, décision user requise) : job « Go Baseline Tests » — 3 tests de la baseline pré-migration
+supprimés volontairement par `c9bfa0e7d` (« supprime la route battlepass sans consommateur ») :
+`TestHomeHandler_GetBattlePass_OK/_PlayerNotFound`, `TestRestMixFilter` → la remédiation est de les
+retirer de `.ai/baselines/tests_pre_migration.jsonl` avec justification datée dans le commit.
+
+**Note** : les 3 plans `PLAN_*` déplacés `.ai/` → `.ai/V7/` par l'utilisateur pendant la session
+(contenus identiques vérifiés) ; addenda revue ajoutés dans les copies V7.
+
+**Prochaine étape** : commit sur `feat/monitoring-lusr-fixes` après accord user ; gate visuel e2e
+(multi-onglets titre + repro login-loop) toujours à la main de l'utilisateur.
+
+## [2026-07-21] Revue + réécriture v2 du plan D7 « titre (et langue) dans l'URL »
+
+**Statut** : Complété (plan seulement — aucune ligne de code). `.ai/PLAN_TITLE_SLUG_URL_2026-07.md`
+réécrit en v2 après revue sur pièces (grille `plan-review`) ; amendements validés par l'utilisateur.
+
+**Trous corrigés vs v1** :
+1. **beforeLoad ≠ bootstrap** : le bootstrap est composant-level (`__root.tsx:34-49`, useQuery) — un
+   `beforeLoad` enfant lit un store NON hydraté (un bookmark H5 legacy aurait redirigé vers le défaut).
+   → D-8 : tout mécanisme = résolveur pur + `<Navigate>` déclaratif gaté `isBootstrapped` (pattern
+   maison `resolveIndexRedirect`).
+2. **Bénéfice non câblé** : « titre connu synchrone au fresh-load » était relégué en optimisation
+   optionnelle → D-9 : parse du segment AVANT la première requête + header `X-LevelUp-Title` envoyé
+   TOUJOURS, pour TOUS les titres (demande explicite user : title-agnostic, zéro cas spécial
+   halo_infinite). Vérifié compatible backend sans changement Go (`title.go:55-61` accepte tout slug
+   du registre).
+3. **« tsc énumère l'exhaustif » surestimé** : surfaces string échappant au typecheck recensées
+   (`ShellNavItem.to: string`, `buildPlayerDestination`, `isCommunityPath`, `pageTitle`,
+   `usePageScope`, specs e2e) — preuve : mismatch `profile/citations` vivant depuis des mois.
+   → garde-rail grep ratchet (critère de succès dédié) + typage de `ShellNavItem.to`.
+4. **E2E non optionnels** : les 10 specs Playwright assertent des URLs `/players/…` qui casseront
+   → migration + spec `legacy-redirect` obligatoires (Phase 6).
+
+**Décisions nouvelles** : D-10 module unique `lib/title-routing/` (parse/gate/redirect purs +
+`applyActiveTitle` effectful) + garde-rail ; D-11 TDD ciblé (tests du module et matrice de
+redirection AVANT implémentation ; le mécanique reste sous tsc) ; D-4 amendé : langue INTÉGRÉE
+structurellement (`/{-$lang}/t/{slug}/…`, param optionnel vérifié supporté par router-core 1.170.16,
+repli tranché = `$lang` obligatoire) — évite un 2e déplacement de ~50 routes + une 2e génération
+d'URLs legacy ; D-12 locale par segment à périmètre minimal (un seul caller `setLocale`) ; chemin
+d'erreur de bascule redéfini (pas de rollback store-only → navigate retour segment, anti-boucle) +
+course back/forward couverte.
+
+**Prochaine étape** : exécution sur `feat/title-slug-in-url` (après livraison de la branche frags),
+sous contrat `plan-execution`, Phase 0.
+
+## [2026-07-21] Garde-fou « trous d'intérieur » LUSR + exposition monitoring (Lots 1→6)
+
+**Statut** : Complété (backend + web), gates verts. NON committé (attente autorisation user, CLAUDE.md n°16).
+Branche `feat/frag-distribution-v2` (⚠ le chantier LUSR est empilé sur la branche frags — à séparer au
+découpage commits si souhaité). Plan : `.ai/PLAN_LUSR_INTERIOR_GAPS_GUARDRAIL.md` (chaque lot statué).
+
+**Problème** : le LUSR v2 est une note μ incrémentale à état par `(xuid, playlist_group)`, gardée par un
+watermark chronologique. Un match arrivé HORS-ORDRE passe sous le watermark sans être scoré → `skippedAlready`
+permanent = **trou d'intérieur** (note définitivement absente). Non-déterministe, par-environnement (mesuré :
+JGtm 10 trous prod / 1 local, ensembles disjoints ; `ac313879` le cas type). Doctrine préservée : « plutôt un
+trou qu'une note fausse » — le garde-fou rend les trous VISIBLES + RÉPARABLES, sans changer la règle.
+
+**Décisions techniques** :
+- **Source unique d'éligibilité** (anti-dérive CLAUDE.md n°6) : `classifyLUSREligibility` extrait de
+  `processOneShadowMatch` (rosters/équilibre/outcome), appelé APRÈS le watermark (pas de query rosters sur
+  l'historique déjà vu). Signature `(ctx, sharedDB, m) lusrEligibility` ; la chaîne (`GetLUSRChainForTitle`) et
+  le filtre SQL (`loadShadowMatches`) restent les 2 autres maillons mono-source. Garde-rail grep
+  `lusr_eligibility_guardrail_test.go` (allowlist v1 loader + shadow loader).
+- **Détecteur** `ScanLUSRGaps` read-only : réutilise `loadShadowMatches` + le prédicat, croise
+  `match_skill_rank_latest` (vue _latest, ART n°2) + watermark `player_skill_state_v2_latest`. Trou d'intérieur =
+  éligible + non noté + `!start_time.After(last_match_at)` (== sémantique `skippedAlready` du scoreur ; le plan
+  disait `<`, retenu `<=` car le match-frontière est de toute façon noté donc exclu par le set rated). Sans
+  watermark → pending, pas trou.
+- **Métriques/cron** : jauge `levelup.lusr_v2.interior_gaps` + accesseurs ré-exposés ; accroche
+  `HealthScheduler` (scan par joueur via `xuid.txt`, timeout 60s/joueur). Trous HORS `WarningsTotal` (signal
+  distinct).
+- **Remédiation** : `POST /admin/monitoring/lusr-gaps/{player}/recompute` → `RecomputeLUSRCanonical` in-server
+  (leases player+shared, B-swap via `SharedProvider`). **Auto-heal borné OFF par défaut** (kill-switch
+  `LEVELUP_LUSR_AUTOHEAL_ENABLED`, 1 joueur/cycle, seuil 3, commentaire daté n°11) — **activation = décision
+  user après observation** (démarré alerte seule, conforme au plan).
+- **Expo web** : panneau `LusrGapsSection` dans `/admin/data` (barre couverture rated/pending/interior via
+  tokens sémantiques, stats, ligne garde-fou, joueurs impactés + bouton « Recalculer ») ; badge d'onglet via
+  `lusr_interior_gaps` ajouté à `AdminMonitoringOverview` ; i18n FR+EN `admin.lusr.*`. Réconciliation
+  documentée avec l'invariant `checkSkillRankMissing` (signal grossier superset vs panneau précis + réparable).
+
+**Gates** : `go build ./...`, `go vet`, `go-api-test` (dont `TestContractOpenAPIYAMLValid`), tests
+`skill`/`scheduler`/`wire`/`handlers`/`domain` + `internal/sync` complet verts ; `check-types`, eslint 0 + 0 hex,
+suite vitest (2422, dont garde-rail `response-types.guard` — `LusrRecomputeResult` renommé pour éviter le suffixe
+`Response`). Intégration `-tags=integration -p 1 ./internal/sync/... ./internal/persist/...` VERT (anti-ART OK).
+
+**Vérification finale (2026-07-21, demande user « tout complet + logging + tests »)** :
+- **Bug prod évité (vérifié sûr)** : `GetLUSRChainForTitle` panique si le classifier n'est pas câblé
+  (contrat fail-loud). Mon accroche cron Lot 3 l'appelle → risque de panic au boot si le scheduler
+  (démarré `main.go:998`) devançait le câblage. VÉRIFIÉ : `runMigrations` (câble le classifier,
+  `main.go:1579`) est appelé `main.go:404`, AVANT le scheduler, + `ValidateLUSRChainClassifierWired`
+  gate le démarrage → pas de race prod. Le panic reste un artefact test (package sans boot serveur) →
+  classifier câblé dans le harnais e2e.
+- **Logging durci** (CLAUDE.md n°3, routage `logs/`) : wire → `monitoringLog` (monitoring.log) pour
+  l'échec de scan par joueur + synthèse Debug ; scheduler → `slog` (scheduler.log auto par package)
+  pour l'échec d'ouverture player DB (plus de `continue` muet).
+- **Tests ajoutés** (9 Go + 2 web) : garde-rail éligibilité ; détecteur (hétérogène + no-watermark) ;
+  jauge/accesseurs métriques ; auto-heal décision (matrice flag/seuil/hook) ; **e2e scheduler** avec
+  VRAIES migrations (trou détecté + auto-heal fire ON / OFF défaut) ; 2 cas badge trous LUSR.
+- **Taille fichiers** : refactor → `lusr_eligibility.go` (74) + `data_health_lusr.go` (141) ;
+  `skill_v2_shadow.go` 781 (< 792 origine), `data_health_check.go` 385. Tous ≤ 500, fonctions ≤ 80.
+
+**Découverte notée** : le chantier LUSR est empilé sur la branche frags (`feat/frag-distribution-v2`).
+**Prochaine étape** : découpage commits + autorisation user avant tout commit/merge (push main = deploy prod).
+## [2026-07-21] Fix boucle /login — Lot complémentaire : couverture logging session + fix flake réseau internal/sync (branche fix/session-login-loop)
+
+**Statut** : Complété. NON committé côté superviseur pour push. Déclencheur : demande utilisateur (vérif finale +
+couverture logging dans le dossier logs/ dédié + fix dettes/échecs préexistants).
+
+**Décisions techniques** :
+- LOGGING (dossier logs/ routé par module, auto-détection package → fichier). Le `session.Store` n'avait AUCUN
+  log : `Load` renvoyait nil en silence (le point aveugle exact de la boucle /login). Ajout :
+  `Load(ctx, id)` (signature enrichie du ctx pour corrélation event_id → logs/session.log) trace un WARN sur
+  read IO / JSON corrompu ; fichier ABSENT = silencieux (cas nominal, sinon spam par requête anonyme).
+  `NewStore` log ERROR sur MkdirAll échoué ; `PurgeExpired` log ERROR sur ReadDir échoué. Non-ctx pour ces 2
+  (pas de ctx au montage/ticker) — module auto = session quand même.
+- SWALLOWED ERRORS (anti-pattern #10) : 3 `_ = h.sessionStore.Save(sess)` dans les handlers auth
+  (auth.go, auth_xbox_oauth.go ×2) → `slog.ErrorContext`.
+- FLAKE PRÉEXISTANT internal/sync (identifié via `go test -v` : `TestHaloClient_GetMatchHistory_ParamsValides`
+  faisait un vrai GET halostats.svc.halowaypoint.com avec deadline 100ms → flaky sous charge parallèle de
+  `go test ./...`). Fix : contexte DÉJÀ ANNULÉ (pattern déjà présent : TestPooledHaloClientGetCareerRank_PinnedToken)
+  → validation locale passe, HTTP échoue instantanément (duration_ms=0, zéro I/O réseau). Idem
+  TestPooledHaloClientGetMatchHistory (+ retrait du skip `-short` obsolète et de l'import `time`).
+
+**Résultats observés** : nouveaux tests session (corrupt→nil+WARN ; absent→silencieux) verts `-race`.
+Les 2 tests sync hermétisés : 0.03s / 0.00s (avant : réseau réel + backoff). `go test ./...` VERT (flake
+éliminé), `go vet` défaut + `-tags=integration` verts, handlers verts. Signature `Load(ctx,...)` propagée :
+seul caller prod = middleware (r.Context()) ; tests (store_test, store_concurrent, auth_xbox_oauth_test) mis à jour.
+
+**Conclusion / prochaine étape** : couverture logging + flake traités. Reste (inchangé) : vérif manuelle e2e
+navigateur + non-régression logout avec l'utilisateur, puis PR (push main = deploy prod). Découverte encore
+ouverte : listener `levelup:auth-required` (client.ts:148) pour vraie expiration en session (lot séparé).
+
+## [2026-07-21] Fix boucle /login — Étape 2 frontend : garde anti-éjection sur bootstrap anonyme transitoire (branche fix/session-login-loop)
+
+**Statut** : Complété (Étape 2/2 → plan terminé). NON committé côté superviseur pour push (push main = deploy prod).
+Déclencheur : couche 2 du même plan — même si un `/bootstrap` anonyme transitoire survient, le front ne doit pas
+éjecter un utilisateur déjà authentifié.
+
+**Décision technique principale** : dans `routes/__root.tsx` (effet `[data]`), avant `hydrateFromBootstrap`,
+capture `wasAuthenticated = useAppShellStore.getState().currentUsername`. Si `!data.current_username &&
+wasAuthenticated` (rétrogradation suspecte via refetch focus) → `return` early : ni hydrate, ni
+`navigate('/login')` + `log.warn('bootstrap:anon_downgrade', ...)`. Tous les vecteurs de redirection
+(`__root`, `resolveIndexRedirect`/index.tsx, players/$playerSlug) lisent le STORE → préserver le store les
+neutralise tous d'un coup.
+
+**Écart aux 2 options du plan (justifié)** : le plan proposait « hydrater puis restaurer currentUsername ». J'ai
+préféré **skip hydrate entièrement** sur downgrade suspect, car en mode xbox un bootstrap anonyme renvoie AUSSI
+`available_players: []` / `current_player: null` / `is_admin: false` — ne restaurer que currentUsername
+laisserait un état mi-anonyme incohérent (shell sans joueurs). Le skip préserve l'état authentifié complet. La
+vraie déconnexion recharge la page (store vidé → wasAuthenticated null → chemin autoritaire → /login OK).
+
+**In-scope hors items plan** : `RootLayout` exporté (testabilité) ; `vite.config.ts` +
+`routeFileIgnorePattern: '\\.test\\.tsx?$'` pour exclure les tests colocalisés du codegen de routes TanStack
+(sinon warning « does not export a Route » à chaque dev/build).
+
+**Résultats observés** : `__root.test.tsx` (mocks useQuery/router/AppShell) 2/2 vert — (1) authentifié + refetch
+anonyme → navigate jamais appelé, currentUsername préservé ; (2) montage frais + anonyme → navigate /login.
+Gate : `check-types` vert ; `make test-web` suite complète vert (276 fichiers, 2382 tests, 14 skipped, 0 échec).
+
+**Conclusion / prochaine étape** : plan complet (2/2). Vérification manuelle end-to-end (onglet arrière-plan >5min
++ refocus) + non-régression logout à faire avec l'utilisateur avant PR. Push sur main = deploy prod → PR
+recommandée, prévenir avant merge. Découverte laissée : câbler un listener `levelup:auth-required` (client.ts:148,
+code mort) pour la vraie expiration en cours de session (lot séparé) ; + flake réseau `internal/sync` (lot séparé).
+
+## [2026-07-21] Fix boucle /login — Étape 1 backend : persistance atomique des sessions (branche fix/session-login-loop)
+
+**Statut** : Complété (Étape 1/2). NON committé encore côté superviseur pour push (push main = deploy prod).
+Déclencheur : utilisateur renvoyé « sans cesse » vers /login malgré session valide ; retirer /login de l'URL
+(reload plein) reconnecte -> session backend vivante mais éjectée à tort. Plan
+`.ai/PLAN_FIX_SESSION_LOGIN_LOOP_2026-07.md`.
+
+**Décision technique principale** : cause racine couche 1 = « torn read » sur le fichier de session.
+`session.Store.Save` faisait `os.WriteFile` (truncate+write non atomique, aucun verrou). Sous la rafale
+`refetchOnWindowFocus`, `/bootstrap` faisait un `Load` d'un fichier tronqué -> `nil` -> session anonyme
+transitoire -> le front éjectait vers /login. Fix : `Save` écrit dans un `.tmp` du même répertoire puis
+`os.Rename` (atomic-replace cross-plateforme) -> `Load` voit toujours un fichier complet.
+
+**Écart au plan (justifié, signalé)** : le rename atomique SEUL ne suffit pas intra-process sous **Windows**
+(dev local) — `os.Rename` échoue et `os.ReadFile` prend une *sharing violation* si un handle concurrent tient
+le fichier (test rouge : 109 Load nil / 177 Save err). J'ai donc mis un **`sync.RWMutex`** sur le `Store`
+(`Save`=Lock, `Load`=RLock) au lieu du simple `sync.Mutex` optionnel prévu par le plan. Le RWMutex sérialise
+lecture/écriture intra-process (les deux OS) ; le rename atomique reste la protection cross-process (doublon
+`air`). `Delete` laissé sans verrou (appelé sous RLock par Load sur expiry -> éviter le deadlock).
+Aussi : `PurgeExpired` nettoie les `.tmp` orphelins (guard 1h) ; middleware log l'échec `Touch`
+(`slog.ErrorContext`, anti swallowed-error).
+
+**Résultats observés** : nouveau `store_concurrent_test.go` (4 writers + 4 readers ~200 ms) ROUGE avec rename
+seul, VERT avec le RWMutex (`-race -count=3`). Gate : session+middleware verts, build+vet verts, `go test ./...`
+vert SAUF un flake réseau `internal/sync` (GET réel halowaypoint -> deadline) qui passe en isolation — noté en
+Découvertes, non traité.
+
+**Conclusion / prochaine étape** : Étape 2 frontend — garde anti-éjection dans `__root.tsx` (ne pas
+hydrater/rediriger sur un downgrade anonyme suspect alors que le store porte un user authentifié) + tests
+vitest. NB : le fichier plan vivait sur la branche feat/frag-distribution-v2 (committé, absent de main) ; je
+l'ai rapatrié via `git checkout feat -- <plan>` sur la branche fix pour le versionner avec le correctif.
+
 ## [2026-07-19] Notifs — i18n FR notifs/Discord, toggle version, fix « solide » présence webhook (branche fix/notif-i18n-fr-webhook-present)
 
 **Statut** : Complété. NON committé (superviseur committe ; push main = deploy prod → après revue utilisateur).
@@ -10218,3 +10467,53 @@ Q30.
 
 **Conclusion** : les 2 items « hors périmètre » sont soldés. Reste au superviseur : relecture +
 décision de push (déploiement).
+
+---
+
+## [2026-07-21] Patch fuite directionnelle H5 → Infinite (header titre non affirmé)
+
+**Statut** : Complété côté code + gates automatisés. Reste : gate visuel utilisateur (e2e
+browser) + décision de commit. Contrat `plan-execution` ; plan
+`.ai/PLAN_TITLE_HEADER_LEAK_2026-07.md`. Branche `fix/title-header-leak` (depuis `main`).
+
+**Décision technique principale** : le client API n'envoyait `X-LevelUp-Title` que pour les
+titres non-défaut (`_currentTitleSlug !== 'halo_infinite'`, justifié « rétrocompat »). Sur
+Infinite, les requêtes n'affirmaient donc AUCUN titre → le backend (`resolveTitleSlug`,
+priorité header > session > défaut) retombait sur la session serveur ; une session périmée
+`halo_5` (autre onglet, cookie de session partagé ; refetch focus/interval ; course avec le
+commit `/session/context`) faisait servir du Halo 5 sous les clés Infinite (Spartan ID,
+playlists, rangs…). Asymétrie diagnostique : fuite uniquement H5→Infinite, Infinite étant le
+seul titre sans header. Correctif minimal : `getTitleHeader` affirme le titre pour TOUS les
+titres (`if (_currentTitleSlug)`). Sûr car le registre backend contient `halo_infinite`
+(test middleware existant honore le header explicite) et `/bootstrap` dérive
+`current_title_slug` de la SESSION, pas du header → reprise F5 préservée. Commentaires
+`_currentTitleSlug` + `switchTitle` (étapes 1 ET 2) réécrits (doc==code, anti-pattern #9
+« doc inversée »). Périmètre « header seul » : le durcissement structurel (query keys
+`titleSlug`, `setCurrentTitle`, bandeau Spartan `useCapabilityStrict`) est explicitement
+renvoyé au chantier « slug dans l'URL » — NON touché.
+
+**Résultats observés** : nouveau `apps/web/src/lib/api/client.test.ts` (spy `globalThis.fetch`,
+`mockRestore` → rend la main à MSW) — le défaut `halo_infinite` porte bien le header (cœur
+non-régression) + `halo_5` inchangé, 2/2 verts. `make check-types` vert ; `make test-web`
+276 fichiers / 2382 passed / 14 skipped (+2) ; `go test ./internal/api/...` vert (middleware
+titre non régressé). Note process : le plan vivait uniquement sur `feat/frag-distribution-v2`
+(commit 3f4ed36d3) ; brancher depuis `main` (conforme au plan) l'a retiré du working tree →
+rapatrié via `git checkout <frag> -- <plan>` (path-scoped, sans embarquer le code frags).
+
+**Conclusion / prochaine étape** : correctif + tests automatisés livrés et verts. Commit initial
+`71b7c97b3` (front + test + plan + log) posé après accord utilisateur — NON poussé (pas de deploy
+prod). Reste la vérification e2e visuelle par l'utilisateur (multi-onglets H5/Infinite, switch
+simple, reprise F5, header réseau sur chaque `/api/v1/…` — MCP browser indisponible in-session).
+
+**Addendum observabilité + couverture (2026-07-21, même tâche)** — demandé par l'utilisateur
+(« bonne couverture de logging dans le dossier logs dédié + tests »). Le fix front n'a pas de
+surface de log ; la `SlogLogger` trace déjà `title_slug` à chaque requête (logs/http.log). Le vrai
+trou d'observabilité : `resolveTitleSlug` (middleware TitleExtractor) avalait SILENCIEUSEMENT un
+header `X-LevelUp-Title` non-vide pointant un titre INCONNU (anti-pattern #10). Ajout d'un
+`slog.WarnContext` (rare par construction — le front n'émet que des slugs connus — nommant le titre
+demandé) → une confusion de titre devient visible dans logs/. Couverture backend renforcée (3
+tests middleware via `InjectSession`) : WARN sur header inconnu ; **header bat une session
+divergente** (l'invariant backend qui rend le fix front efficace, jusque-là NON testé) ; session
+fait autorité sans header. Gates : `gofmt` + `go vet` clean, `go test ./internal/api/...` vert
+(middleware 8/8), front vert. golangci-lint absent du PATH (le gate local `make go-api-lint` se
+réduit à `go vet`). Reste l'accord pour un 2e commit (title.go + title_test.go).

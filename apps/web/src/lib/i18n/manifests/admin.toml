@@ -52,6 +52,100 @@ en = "Convergence"
 fr = "Invariants"
 en = "Invariants"
 
+[admin.data.section_lusr_gaps]
+fr = "Notes LUSR — trous & garde-fou"
+en = "LUSR ratings — gaps & guardrail"
+
+# ─── Panneau « Notes LUSR — trous & garde-fou » (garde-fou trous d'intérieur) ──
+
+[admin.lusr.hint]
+fr = "Matchs éligibles sans note LUSR sous le watermark de leur groupe : notes définitivement absentes, réparables par un replay chronologique."
+en = "Eligible matches with no LUSR rating below their group watermark: permanently missing ratings, fixable by a chronological replay."
+
+[admin.lusr.coverage]
+fr = "Couverture"
+en = "Coverage"
+
+[admin.lusr.loading]
+fr = "Chargement…"
+en = "Loading…"
+
+[admin.lusr.refresh]
+fr = "Rafraîchir"
+en = "Refresh"
+
+[admin.lusr.load_failed]
+fr = "Échec du calcul des trous LUSR."
+en = "Failed to compute LUSR gaps."
+
+[admin.lusr.empty]
+fr = "Aucun match LUSR-éligible pour ce titre."
+en = "No LUSR-eligible match for this title."
+
+[admin.lusr.eligible]
+fr = "Éligibles"
+en = "Eligible"
+
+[admin.lusr.rated]
+fr = "Notés"
+en = "Rated"
+
+[admin.lusr.interior_gaps]
+fr = "trous"
+en = "gaps"
+
+[admin.lusr.pending_recent]
+fr = "En attente"
+en = "Pending"
+
+[admin.lusr.guardrail_held]
+fr = "Watermarks tenus"
+en = "Held watermarks"
+
+[admin.lusr.guardrail_owner_missing]
+fr = "Owner absent"
+en = "Owner missing"
+
+[admin.lusr.guardrail_last_audit]
+fr = "Dernier audit"
+en = "Last audit"
+
+[admin.lusr.guardrail_never]
+fr = "jamais"
+en = "never"
+
+[admin.lusr.players_impacted]
+fr = "Joueurs impactés"
+en = "Impacted players"
+
+[admin.lusr.no_gaps]
+fr = "Aucun trou d'intérieur."
+en = "No interior gaps."
+
+[admin.lusr.check_error]
+fr = "Erreur de scan"
+en = "Scan error"
+
+[admin.lusr.recompute]
+fr = "Recalculer"
+en = "Recompute"
+
+[admin.lusr.recompute_busy]
+fr = "Replay…"
+en = "Replaying…"
+
+[admin.lusr.recompute_confirm]
+fr = "Rejouer tout l'historique LUSR de ce joueur (comble les trous) ?"
+en = "Replay this player's full LUSR history (fills the gaps)?"
+
+[admin.lusr.recompute_done]
+fr = "Replay LUSR terminé"
+en = "LUSR replay done"
+
+[admin.lusr.recompute_failed]
+fr = "Replay LUSR échoué"
+en = "LUSR replay failed"
+
 # ─── Sections de l'onglet Gestion (A3.4) ────────────────────────────────────
 
 [admin.management.section_users]

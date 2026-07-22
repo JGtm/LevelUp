@@ -105,9 +105,6 @@ func testTokens(gamertag string) *domain.HaloTokens {
 
 // TestPooledHaloClientGetMatchHistory teste GetMatchHistory avec PolicyAnyPublic.
 func TestPooledHaloClientGetMatchHistory(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skip: fait de vrais appels réseau avec backoff (>120s en -short)")
-	}
 	mp := &mockPool{
 		tokens: map[string]*domain.HaloTokens{
 			"Alice": testTokens("Alice"),
@@ -115,13 +112,15 @@ func TestPooledHaloClientGetMatchHistory(t *testing.T) {
 	}
 	client := NewPooledHaloClient(mp, "", "", 0)
 
-	ctx := context.Background()
-	// Appel va utiliser PolicyAnyPublic et acquérir le token "Alice".
-	// La requête échouera probablement (pas de vrai API), mais on teste juste que Acquire fonctionne.
+	// Hermétique : contexte DÉJÀ ANNULÉ. Acquire (PolicyAnyPublic → token "Alice")
+	// réussit, puis la couche HTTP échoue IMMÉDIATEMENT sur ctx annulé → aucun
+	// appel réseau réel (fini le skip -short et le backoff >120s qui rendaient le
+	// package flaky sous charge). On teste que l'erreur ne vient PAS du pool.
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
 	_, err := client.GetMatchHistory(ctx, "Bob", "all", 0, 25)
-	// Erreur attendue car pas de vrai API, mais le pool fonctionne.
 	if err == nil {
-		t.Fatal("expected error (no real API), got nil")
+		t.Fatal("expected network error (context canceled), got nil")
 	}
 	// Vérifier que l'erreur ne vient pas du pool.
 	if err.Error() == "pooled: Acquire failed: no tokens available" {

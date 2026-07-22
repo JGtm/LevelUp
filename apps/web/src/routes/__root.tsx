@@ -9,17 +9,18 @@
 import { createRootRouteWithContext, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import type { RouterContext } from '@/app/router'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import { resolvePageTitle } from '@/lib/pageTitle'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { AppShell } from '@/components/shell/AppShell'
+import { log } from '@/components/shell/_logger'
 import type { BootstrapResponse } from '@/lib/api/types'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
-function RootLayout() {
+export function RootLayout() {
   const navigate = useNavigate()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   const hydrateFromBootstrap = useAppShellStore((s) => s.hydrateFromBootstrap)
@@ -52,8 +53,60 @@ function RootLayout() {
     document.title = resolvePageTitle(pathname)
   }, [pathname])
 
+  // Vraie expiration de session (TTL 7 j atteint, logout dans un autre onglet) :
+  // le client HTTP dispatche `levelup:auth-required` sur un 401 `auth_required`
+  // hors /bootstrap (cf. lib/api/client.ts). Sans ce listener, le garde
+  // anti-éjection ci-dessous — qui préserve l'état authentifié sur un bootstrap
+  // anonyme transitoire — piégerait l'utilisateur dans un shell authentifié mort
+  // dont chaque appel API retombe en 401. On recharge la page en plein (même
+  // mécanique que LogoutButton) : le bootstrap frais fait autorité et atterrit
+  // sur /login.
+  const authReloadFiredRef = useRef(false)
+  useEffect(() => {
+    function handleAuthRequired() {
+      // Store déjà anonyme (ex. /login, mauvais mot de passe → 401) : ne rien
+      // faire. Recharger ici bouclerait sur /login. Seule une session qu'on
+      // CROYAIT authentifiée (currentUsername truthy) justifie le reload.
+      if (!useAppShellStore.getState().currentUsername) return
+      // Anti-rafale : une salve de 401 ne déclenche qu'un seul reload.
+      if (authReloadFiredRef.current) return
+      authReloadFiredRef.current = true
+      log.warn(
+        'auth:session_expired',
+        'session expirée (401 auth_required) — rechargement plein vers /login',
+      )
+      window.location.assign('/')
+    }
+    window.addEventListener('levelup:auth-required', handleAuthRequired)
+    return () => window.removeEventListener('levelup:auth-required', handleAuthRequired)
+  }, [])
+
   useEffect(() => {
     if (!data) return
+
+    // Garde anti-éjection transitoire. Un refetch (focus d'onglet, navigation
+    // multi-requêtes) qui renvoie un /bootstrap ANONYME alors que le store porte
+    // déjà un utilisateur authentifié est une rétrogradation SUSPECTE — vestige
+    // possible d'un torn read backend (cf. fix persistance atomique des sessions).
+    // On NE ré-hydrate PAS (hydrater une réponse anonyme rabattrait aussi
+    // currentPlayer/availablePlayers/isAdmin → état mi-anonyme incohérent) et on NE
+    // redirige PAS vers /login : on préserve l'état authentifié complet.
+    // La VRAIE expiration de session (TTL atteint, logout dans un autre onglet)
+    // n'est PAS gérée ici — un /bootstrap anonyme ne réinitialise jamais
+    // currentUsername, donc ce garde retomberait en boucle à chaque refetch. Elle
+    // est couverte par le listener `levelup:auth-required` (effet ci-dessus) qui
+    // recharge la page en plein sur un 401 `auth_required`. La déconnexion explicite
+    // recharge aussi la page (store vidé → wasAuthenticated null → chemin
+    // autoritaire ci-dessous), donc /login reste atteignable au logout.
+    const wasAuthenticated = useAppShellStore.getState().currentUsername
+    if (!data.current_username && wasAuthenticated) {
+      log.warn(
+        'bootstrap:anon_downgrade',
+        'bootstrap anonyme transitoire ignoré — session authentifiée préservée',
+      )
+      return
+    }
+
     hydrateFromBootstrap(data)
 
     // Auth locale : rediriger si pas connecté (modes password ET xbox).

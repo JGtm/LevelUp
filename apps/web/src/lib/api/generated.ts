@@ -1579,6 +1579,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/monitoring/lusr-gaps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dashboard monitoring — trous d'intérieur LUSR (matchs éligibles sans note, sous le watermark) + santé du garde-fou, par titre (auth admin requis) */
+        get: operations["getAdminMonitoringLusrGaps"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/monitoring/lusr-gaps/{player}/recompute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Action admin — replay LUSR chronologique complet d'un joueur (comble les trous d'intérieur) (auth admin requis) */
+        post: operations["postAdminMonitoringLusrGapsRecompute"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/monitoring/jobs": {
         parameters: {
             query?: never;
@@ -5261,6 +5295,29 @@ export interface components {
             scanned_bytes: number;
             truncated: boolean;
         };
+        AdminLUSRGaps: {
+            /** Format: double */
+            coverage_percent: number;
+            /** Format: int64 */
+            eligible_total: number;
+            generated_at: string;
+            guardrail: components["schemas"]["LUSRGuardrailHealth"];
+            /** Format: int64 */
+            interior_gaps_total: number;
+            /** Format: int64 */
+            pending_recent_total: number;
+            players: components["schemas"]["LUSRGapPlayer"][] | null;
+            /** Format: int64 */
+            rated_total: number;
+            title_slug: string;
+        };
+        AdminLUSRRecomputeResponse: {
+            gamertag: string;
+            ok: boolean;
+            /** Format: int64 */
+            updated: number;
+            xuid: string;
+        };
         AdminMonitoringOverview: {
             data_health?: components["schemas"]["MonitoringDataHealth"];
             generated_at: string;
@@ -5273,6 +5330,8 @@ export interface components {
             open_detections: number;
             /** Format: int64 */
             freshness_critical: number;
+            /** Format: int64 */
+            lusr_interior_gaps: number;
             http: components["schemas"]["MonitoringHTTPSummary"];
             title_slug: string;
             tokens?: components["schemas"]["MonitoringTokensSummary"];
@@ -6441,6 +6500,36 @@ export interface components {
             trend: number;
             /** Format: double */
             weight: number;
+        };
+        LUSRGapItem: {
+            group: string;
+            match_id: string;
+            playlist: string;
+            start_time: string;
+        };
+        LUSRGapPlayer: {
+            check_error?: string;
+            /** Format: int64 */
+            eligible: number;
+            gamertag: string;
+            /** Format: int64 */
+            interior_gaps: number;
+            /** Format: int64 */
+            pending_recent: number;
+            player_slug: string;
+            /** Format: int64 */
+            rated: number;
+            top_gaps: components["schemas"]["LUSRGapItem"][] | null;
+            xuid: string;
+        };
+        LUSRGuardrailHealth: {
+            /** Format: int64 */
+            held_watermark: number;
+            /** Format: int64 */
+            interior_gaps_gauge: number;
+            last_audit_at?: string;
+            /** Format: int64 */
+            owner_missing: number;
         };
         LUSRPoint: {
             match_id: string;
@@ -11194,6 +11283,62 @@ export interface operations {
         responses: {
             /** @description Couverture de résolution d'arme par titre */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getAdminMonitoringLusrGaps: {
+        parameters: {
+            query?: {
+                title?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rapport trous LUSR par joueur + agrégats + garde-fou */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    postAdminMonitoringLusrGapsRecompute: {
+        parameters: {
+            query?: {
+                title?: string;
+            };
+            header?: never;
+            path: {
+                player: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Replay effectué (nombre de lignes LUSR réécrites) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Replay échoué */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Moteur de replay non câblé */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

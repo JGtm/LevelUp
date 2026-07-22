@@ -35,6 +35,7 @@ function baseOverview(): AdminMonitoringOverview {
     },
     open_detections: 0,
     freshness_critical: 0,
+    lusr_interior_gaps: 0,
     http: { status_2xx: 0, status_3xx: 0, status_4xx: 0, status_5xx: 0 },
   }
 }

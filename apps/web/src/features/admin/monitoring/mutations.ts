@@ -48,6 +48,35 @@ export function useRunSyncCycle() {
   })
 }
 
+/** Accusé d'un replay LUSR (nombre de lignes LUSR réécrites). */
+export interface LusrRecomputeResult {
+  gamertag: string
+  xuid: string
+  updated: number
+  ok: boolean
+}
+
+/**
+ * Déclenche le replay LUSR chronologique d'un joueur (comble les trous
+ * d'intérieur) via POST /admin/monitoring/lusr-gaps/{player}/recompute. Invalide
+ * le rapport trous du titre ET l'overview (le badge « Données » lit
+ * lusr_interior_gaps de l'overview). Synchrone (le replay tient les leases).
+ */
+export function useRecomputeLusrGaps(titleSlug: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (player: string) =>
+      api.post<LusrRecomputeResult>(
+        `/admin/monitoring/lusr-gaps/${encodeURIComponent(player)}/recompute?title=${encodeURIComponent(titleSlug)}`,
+        {},
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.adminLusrGaps(titleSlug) })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.adminMonitoringOverview })
+    },
+  })
+}
+
 /**
  * Extrait details.job_id d'une ApiError 409 `already_running` — le backend y
  * renvoie le job déjà en vol pour que le front le suive au lieu d'en créer

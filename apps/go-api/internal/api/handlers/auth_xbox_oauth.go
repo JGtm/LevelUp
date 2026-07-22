@@ -226,7 +226,9 @@ func (h *XboxOAuthHandler) validateCallbackParams(w http.ResponseWriter, r *http
 		slog.WarnContext(r.Context(), "auth_xbox_oauth: erreur Microsoft", "error", errCode, "description", errDesc)
 		sess.OAuthState = ""
 		sess.OAuthCodeVerifier = ""
-		_ = h.sessionStore.Save(sess)
+		if err := h.sessionStore.Save(sess); err != nil {
+			slog.ErrorContext(r.Context(), "auth_xbox_oauth: persistance session (reset état OAuth) échouée", "err", err)
+		}
 		writeError(r.Context(), w, http.StatusBadRequest, "oauth_denied", errDesc)
 		return "", false
 	}
@@ -242,7 +244,9 @@ func (h *XboxOAuthHandler) validateCallbackParams(w http.ResponseWriter, r *http
 	expected := sess.OAuthState
 	sess.OAuthState = ""        // consommer (one-shot)
 	sess.OAuthCodeVerifier = "" // PKCE one-shot (déjà capturé par le Callback)
-	_ = h.sessionStore.Save(sess)
+	if err := h.sessionStore.Save(sess); err != nil {
+		slog.ErrorContext(r.Context(), "auth_xbox_oauth: persistance session (consommation state/PKCE) échouée", "err", err)
+	}
 	if expected == "" || state != expected {
 		slog.WarnContext(r.Context(), "auth_xbox_oauth: state mismatch — possible CSRF",
 			"expected_set", expected != "", "received_set", state != "")

@@ -11,7 +11,13 @@ const apiProxyTarget = process.env.VITE_API_PROXY_TARGET ?? 'http://127.0.0.1:80
 export default defineConfig(({ mode }) => ({
   plugins: [
     // Plugin TanStack Router — génère les types de routes depuis src/routes/
-    TanStackRouterVite({ target: 'react', autoCodeSplitting: true }),
+    // routeFileIgnorePattern : exclut les tests colocalisés (ex. __root.test.tsx)
+    // du scan de routes — sinon le codegen avertit « does not export a Route ».
+    TanStackRouterVite({
+      target: 'react',
+      autoCodeSplitting: true,
+      routeFileIgnorePattern: '\\.test\\.tsx?$',
+    }),
     react(),
     tailwindcss(),
     // Analyse du bundle : ANALYZE=true vite build → ouvre dist/stats.html

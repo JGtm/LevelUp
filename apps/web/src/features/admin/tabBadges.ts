@@ -39,12 +39,14 @@ export function computeTabBadges(
   }
 
   // Données : invariants FAIL = critique ; sinon warnings (invariants WARN +
-  // audit data health).
+  // audit data health + trous d'intérieur LUSR — notes manquantes sous watermark,
+  // réparables par replay depuis le panneau Données).
   const invariantsRan = overview.invariants.runs_total > 0
   const invariantsFail = invariantsRan ? overview.invariants.fail_last : 0
   const dataWarnings =
     (invariantsRan ? overview.invariants.warn_last : 0) +
-    (overview.data_health?.warnings_total ?? 0)
+    (overview.data_health?.warnings_total ?? 0) +
+    (overview.lusr_interior_gaps ?? 0)
   if (invariantsFail > 0) {
     out['/admin/data'] = { count: invariantsFail, token: 'destructive' }
   } else if (dataWarnings > 0) {
