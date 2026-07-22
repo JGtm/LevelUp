@@ -26,10 +26,17 @@ export const queryKeys = {
 
   // Par joueur
   player: (playerSlug: string) => ['player', playerSlug] as const,
-  filtersResolve: (playerSlug: string, filterHash: string) =>
-    ['filters-resolve', playerSlug, filterHash] as const,
-  filtersPreview: (playerSlug: string, filterHash: string) =>
-    ['filters-preview', playerSlug, filterHash] as const,
+  // Le titre courant scope la clé (même motif que `home` ci-dessous) : la
+  // résolution de filtres est spécifique au titre (sessions / options cascade du
+  // titre actif). Sans lui, un switch de titre — ou une réponse mise en cache
+  // avant que le header titre soit affirmé au boot (fenêtre de course « titre
+  // implicite ») — servait des options périmées de l'autre titre, la clé ne
+  // changeant pas. Défense en profondeur du chantier D7 (titre dans l'URL) — cf.
+  // §7 PLAN_TITLE_SLUG_URL.
+  filtersResolve: (playerSlug: string, titleSlug: string, filterHash: string) =>
+    ['filters-resolve', playerSlug, titleSlug, filterHash] as const,
+  filtersPreview: (playerSlug: string, titleSlug: string, filterHash: string) =>
+    ['filters-preview', playerSlug, titleSlug, filterHash] as const,
 
   // Carrière (Slice 2)
   career: (playerSlug: string) => ['career', playerSlug] as const,
@@ -300,7 +307,11 @@ export const queryKeys = {
     filePath: string | null,
     windowMinutes: number,
   ) => ['media', 'match-candidates', playerSlug, filePath, windowMinutes] as const,
-  /** Préfixe broad — invalide tous les `filtersResolve(playerSlug, *)`. */
+  /** Préfixe broad — invalide tous les `filtersResolve(playerSlug, *, *)`.
+   *  RESTE broad PAR JOUEUR (n'inclut PAS le titre) : son unique usage
+   *  (invalidation post-sync, $playerSlug.tsx) doit rafraîchir la résolution du
+   *  joueur, et le préfixe `['filters-resolve', playerSlug]` matche toujours la clé
+   *  enrichie du titre. Décision orchestrateur — cf. §7 PLAN_TITLE_SLUG_URL. */
   filtersResolveAll: (playerSlug: string) => ['filters-resolve', playerSlug] as const,
   /** Préfixe broad — invalide tous les `adminDataQualityIssues(*)`. */
   adminDataQualityIssuesAll: ['admin', 'data-quality', 'issues'] as const,

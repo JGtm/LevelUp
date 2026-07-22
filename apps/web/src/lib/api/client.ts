@@ -57,20 +57,24 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
 export const API_BASE_URL = BASE_URL
 
 /**
- * Sprint 44 : titre courant pour les requêtes API. Cycle de vie load-bearing
- * dans les DEUX sens de fuite inter-titres :
- *  - `null` au boot (AVANT hydratation) : aucun header X-LevelUp-Title → le
- *    backend résout via la SESSION serveur (resolveTitleSlug : header > session
- *    > défaut). C'est le comportement sûr au démarrage : une requête
- *    title-scoped qui part avant le bootstrap (useFiltersResolve est `enabled`
- *    dès que playerSlug vient de l'URL) ne force PAS halo_infinite et n'écrase
- *    donc pas une session halo_5 sous une clé de cache sans titre (fuite
- *    Infinite→session).
- *  - dès l'hydratation (hydrateFromBootstrap) et à chaque switch (switchTitle),
- *    un slug non vide est affirmé sur CHAQUE requête, défaut halo_infinite
- *    compris : sans header, une session périmée sur un autre titre ferait fuiter
- *    ses données sur le titre affiché (fuite H5→Infinite).
- * La session est donc l'autorité au boot, le header dès qu'il est connu.
+ * Titre courant pour les requêtes API (header X-LevelUp-Title). TROIS sources,
+ * par ordre d'établissement (chantier D7 — titre dans l'URL) :
+ *  1. SEGMENT D'URL de forme /t/{slug}/… — affirmé SYNCHRONEMENT au boot par
+ *     initTitleFromLocation (module title-routing, D-9) AVANT la première requête,
+ *     quand la page est title-scoped (routes déplacées en Phase 2). Le titre est
+ *     alors déterministe dès le premier fetch — plus de fenêtre de course « titre
+ *     implicite » (ex. useFiltersResolve, `enabled` dès le playerSlug d'URL).
+ *  2. HYDRATATION bootstrap (hydrateFromBootstrap) puis chaque bascule
+ *     (applyActiveTitle) : un slug non vide est affirmé sur CHAQUE requête, défaut
+ *     halo_infinite compris (title-agnostic — aucun cas spécial, D-9). Sans header,
+ *     une session périmée sur un autre titre ferait fuiter ses données (fuite
+ *     H5→Infinite).
+ *  3. `null` au boot d'une page AGNOSTIQUE (pas de segment) : aucun header → le
+ *     backend résout via la SESSION serveur (resolveTitleSlug : header > session >
+ *     défaut). Comportement sûr : une requête title-scoped partie avant hydratation
+ *     ne force PAS un titre et ne pollue pas une clé de cache sans titre.
+ * La session est l'autorité au boot des pages agnostiques ; le header (segment
+ * d'URL, puis store) fait foi partout ailleurs.
  */
 let _currentTitleSlug: string | null = null
 
@@ -98,12 +102,11 @@ export function getApiTitleSlug(): string {
 }
 
 function getTitleHeader(): Record<string, string> {
-  // Affirmer le titre dès qu'il est connu (post-hydratation) : sans header, le
-  // backend retombe sur la session serveur (partagée entre onglets) → une session
-  // périmée sur un autre titre fait fuiter ses données sur le titre affiché. Au
-  // boot (_currentTitleSlug === null), on n'envoie AUCUN header : la session reste
-  // autoritaire (comportement sûr avant hydratation). Cf. resolveTitleSlug
-  // (header > session > défaut).
+  // Affirmer le titre dès qu'il est connu — segment d'URL posé au boot
+  // (initTitleFromLocation) OU hydratation/bascule du store — pour TOUS les titres,
+  // défaut halo_infinite compris (title-agnostic, D-9 : aucun cas spécial). Au boot
+  // d'une page AGNOSTIQUE (_currentTitleSlug === null), aucun header : la session
+  // serveur reste autoritaire (resolveTitleSlug : header > session > défaut).
   if (_currentTitleSlug) {
     return { 'X-LevelUp-Title': _currentTitleSlug }
   }

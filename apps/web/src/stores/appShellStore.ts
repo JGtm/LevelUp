@@ -11,9 +11,9 @@
 import { create } from 'zustand'
 import type { BootstrapResponse, CapabilityMap, HaloIdentitySummary, PlayerSummary, TitleSummary } from '@/lib/api/types'
 import { api, setApiTitleSlug, setApiLocale } from '@/lib/api/client'
-import { queryClient } from '@/app/queryClient'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { useSquadFilterStore } from '@/stores/squadFilterStore'
+import { applyActiveTitle } from '@/lib/title-routing/applyActiveTitle'
 
 interface AppShellState {
   // Joueur courant
@@ -163,57 +163,17 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
   },
 
   switchTitle: async (titleSlug) => {
+    // WRAPPER (D-10) : la mécanique de bascule vit désormais dans applyActiveTitle
+    // (module title-routing), réutilisée par le layout `t/$titleSlug` en Phase 2+.
+    // Le bouton conserve son comportement observable IDENTIQUE : en cas d'échec,
+    // rollback store-only (le chemin d'erreur URL-source-de-vérité — navigate
+    // retour + message — est câblé côté appelant en Phase 4 / D-6).
     const current = get().currentTitleSlug
-    if (titleSlug === current) return
-
-    set({ isTitleSwitching: true })
     try {
-      // 1. Commit le titre côté serveur. Depuis le patch anti-fuite, le front
-      // affirme le titre sur CHAQUE requête via X-LevelUp-Title (cf. getTitleHeader),
-      // donc la résolution per-requête (header > session > défaut, cf. middleware
-      // TitleExtractor) ne dépend plus de la session. Ce POST reste requis pour la
-      // PERSISTANCE/REPRISE : /bootstrap dérive current_title_slug de la SESSION (pas
-      // du header), donc un F5 ultérieur ne retrouve le bon titre que s'il est commité.
-      await api.post('/session/context', { title_slug: titleSlug })
-      // 2. Basculer le client API + le store sur le nouveau titre AVANT tout
-      // refetch : à partir d'ici chaque requête affirme le nouveau titre via le
-      // header X-LevelUp-Title (pour tous les titres, défaut halo_infinite compris).
-      setApiTitleSlug(titleSlug)
-      set({ currentTitleSlug: titleSlug })
-      // 2bis. Réinitialiser les filtres contextuels (solo/squad). Leur state
-      // (picked_sessions, cascade modes/maps/playlists) référence des labels/IDs
-      // du titre PRÉCÉDENT qui n'ont aucun sens sur le nouveau titre — même
-      // catégorie de state « lié à l'ancien titre » que le cache TanStack purgé
-      // juste après. resetFilters() réécrit aussi l'URL (?f=) et le localStorage,
-      // donc synchrone ici : un F5 pendant la fenêtre [titre changé / filtre pas
-      // encore reset] ne relira pas un ?f= obsolète. Les deux stores sont globaux
-      // (non scopés par titre), d'où le reset explicite au switch.
-      useSoloFilterStore.getState().resetFilters()
-      useSquadFilterStore.getState().resetFilters()
-      // 3. Annuler les requêtes EN VOL (potentiellement parties avec l'ancien
-      // titre pendant l'await du POST) PUIS purger tout le cache. Fait APRÈS le
-      // commit du titre (étapes 1-2) : aucune donnée de l'ancien titre ne peut
-      // survivre ni se re-peupler ensuite. clear() vide toutes les clés (y
-      // compris les clés inline hors fabrique queryKeys).
-      await queryClient.cancelQueries()
-      queryClient.clear()
-      // 4. Re-bootstrap pour obtenir les données du nouveau titre + réhydrater.
-      const bootstrap = await api.get<BootstrapResponse>('/bootstrap')
-      get().hydrateFromBootstrap(bootstrap)
-      // 5. Filet de sécurité : si le re-bootstrap n'a pas désigné de joueur
-      // courant alors que des joueurs existent pour ce titre, sélectionner le
-      // premier disponible — sinon la NavL1 reste vide et l'app paraît blanche.
-      // (NE PAS reset les données joueur ici : le re-bootstrap a déjà chargé la
-      // liste correcte du NOUVEAU titre ; la purger laisserait la nav vide.)
-      if (get().currentPlayer == null && get().availablePlayers.length > 0) {
-        get().setCurrentPlayer(get().availablePlayers[0])
-      }
+      await applyActiveTitle(titleSlug)
     } catch {
-      // Rollback silencieux : restaurer l'ancien titre
       setApiTitleSlug(current)
       set({ currentTitleSlug: current })
-    } finally {
-      set({ isTitleSwitching: false })
     }
   },
 
