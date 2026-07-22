@@ -1,3 +1,20 @@
+## [2026-07-22] D7 titre dans l'URL — Phase 0 close (branche feat/title-slug-in-url)
+
+**Statut** : En cours (Phase 0/6 close), plan `.ai/PLAN_TITLE_SLUG_URL_2026-07.md` sous
+contrat `plan-execution`. Orchestration : Fable pilote + vérifie, agents Opus implémentent.
+
+**Décisions** : branche créée depuis `refactor/ascension-ux-2026-07` (= origin/main
+intégral + fixes Ascension — déviation du plan demandée par l'utilisateur, consignée au
+plan). Sanity-check `{-$lang}` file-based : SUPPORT OK (routeTree généré, tsc -b = 0 avec
+et sans `lang`), repli D-4 non nécessaire. Forme canonique des `to` typés :
+`'/{-$lang}/t/$titleSlug/…'` — la forme courte `'/t/$titleSlug'` est refusée par tsc.
+
+**Résultats** : baselines consignées au journal du plan (192 occ typées / 70 fichiers,
+131 strings `/players/` échappées, 26 fichiers e2e). Zéro diff de code à la clôture.
+
+**Prochaine étape** : Phase 1 (module `title-routing` TDD + câblage synchrone +
+header title-agnostic) déléguée à Opus, vérification par l'orchestrateur.
+
 ## [2026-07-22] Mini-lot « G » G1/G2 (branche refactor/ascension-ux-2026-07)
 
 **Statut** : Complété (G1, G2), sous contrat `plan-execution` (ordre strict G1 puis G2,
