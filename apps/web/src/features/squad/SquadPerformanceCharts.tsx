@@ -23,17 +23,13 @@ import { useCallback, useMemo } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery'
 import { useProvidesMaxKillingSpree } from '@/lib/damage/effectiveHp'
-import type { FragClassEntry, SquadPerformanceSeriesPoint } from '@/lib/api/types'
-import { formatMessage } from '@/lib/i18n/format'
-import { fragsManifest } from '@/lib/i18n/generated/frags'
-import { useAppShellStore } from '@/stores/appShellStore'
+import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
 import {
   buildHsPerfectOption,
   buildKillsDeathsButterflyOption,
   buildPerformanceLineOption,
   buildTeamMMROption,
 } from './charts/squadPerformanceLineCharts'
-import { buildFragBreakdownOption } from './charts/squadFragBreakdownChart'
 import { SquadToggleLegendChart } from './SquadToggleLegendChart'
 
 interface I18nLabels {
@@ -51,14 +47,11 @@ interface I18nLabels {
   perfectLabel: string
   rankTitle: string
   mmrLabel: string
-  fragBreakdownTitle: string
 }
 
 interface SquadPerformanceChartsProps {
   emptyMessage?: string
   rowsByPlayer: Record<string, SquadPerformanceSeriesPoint[]>
-  /** Répartition des frags PAR CLASSE (D8) par gamertag (agrégat serveur). */
-  fragClassesByPlayer: Record<string, FragClassEntry[]>
   /** Ordre stable des joueurs (main d'abord, puis coéquipiers). */
   playerOrder: string[]
   /** gamertag → couleur hex. */
@@ -72,13 +65,11 @@ const PAIR_LAYOUT_THRESHOLD = 14
 
 export function SquadPerformanceCharts({
   rowsByPlayer,
-  fragClassesByPlayer,
   playerOrder,
   colorByPlayer,
   labels,
   emptyMessage,
 }: SquadPerformanceChartsProps) {
-  const appLocale = useAppShellStore((s) => s.locale)
   const isMobile = useMediaQuery('(max-width: 768px)')
   // Title-agnostic : la série « Folie meurtrière max » n'est masquée que pour un
   // titre sans events horodatés (provides_max_killing_spree=false). Pour Halo 5
@@ -178,15 +169,6 @@ export function SquadPerformanceCharts({
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [rowsByPlayer, colorByPlayer, playerOrder, xMatchLabels],
-  )
-
-  const buildFragBreakdown = useCallback(
-    () =>
-      buildFragBreakdownOption(fragClassesByPlayer, {
-        playerOrder,
-        classLabel: (c: string) => formatMessage(fragsManifest, `frags.class.${c}` as never, appLocale),
-      }),
-    [fragClassesByPlayer, playerOrder, appLocale],
   )
 
   const buildKda = useCallback(
@@ -292,24 +274,18 @@ export function SquadPerformanceCharts({
           emptyMessage={emptyMessage}
         />
       </div>
-      <div className={hasAccuracy ? pairClass : (stacked ? 'space-y-4' : 'grid grid-cols-1 gap-4')}>
-        {hasAccuracy && (
-          <ChartCard
-            title={labels.accuracyTitle}
-            series={series}
-            buildOption={buildAccuracy}
-            height={SUBCHART_HEIGHT}
-            emptyMessage={emptyMessage}
-          />
-        )}
+      {/* Précision : carte pleine largeur (DATA-GATE hasAccuracy). Son ancien
+          binôme « Répartition des frags » a migré vers l'onglet Synergies
+          (SquadFragSection) → on ne rend rien quand l'accuracy est absente. */}
+      {hasAccuracy && (
         <ChartCard
-          title={labels.fragBreakdownTitle}
+          title={labels.accuracyTitle}
           series={series}
-          buildOption={buildFragBreakdown}
+          buildOption={buildAccuracy}
           height={SUBCHART_HEIGHT}
           emptyMessage={emptyMessage}
         />
-      </div>
+      )}
       <div className={pairClass}>
         <ChartCard
           title={labels.kdaTitle}

@@ -13,8 +13,6 @@ import { Link } from '@tanstack/react-router'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { EfficiencyTooltipText } from '@/components/charts/EfficiencyTooltipText'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { formatMessage } from '@/lib/i18n/format'
-import { fragsManifest } from '@/lib/i18n/generated/frags'
 import { useSquadContext } from './SquadContext'
 import { getSquadText } from './i18n'
 import { SquadPerMinuteChart } from './SquadPerMinuteChart'
@@ -22,9 +20,6 @@ import { SquadSynergyRadarChart } from './SquadSynergyRadarChart'
 import { SquadIntensityHeatmapChart } from './SquadIntensityHeatmapChart'
 import { SquadEfficiencyChart } from './SquadEfficiencyChart'
 import { SquadPerformanceCharts } from './SquadPerformanceCharts'
-import { SquadWeaponKillsChart } from './SquadWeaponKillsChart'
-import { buildSquadFragTools, SQUAD_TOOLS_TOP_GUNS } from './charts/squadFragTools'
-import { SquadWeaponAccuracyBarsChart } from './SquadWeaponAccuracyBarsChart'
 import { SquadKillMechanicsChart } from './SquadKillMechanicsChart'
 import { SquadFirstEventsChart } from './SquadFirstEventsChart'
 import { SquadEngagementSection } from '@/features/engagement/SquadEngagementSection'
@@ -40,22 +35,7 @@ export function SquadContributionsPage() {
   const synergyRadar = pageData?.synergy_radar ?? []
   const intensityProfile = pageData?.intensity_profile
   const performanceSeries = pageData?.performance_series
-  const weaponKills = pageData?.weapon_kills
-  const weaponAccuracy = pageData?.weapon_accuracy
   const firstEvents = pageData?.first_events
-  // « Outils de destruction » = version multi-joueurs de buildFragDetailBreakdown : armes
-  // gun (top-N) + détail Assassinat/Corps-à-corps/Coup au sol/Charge spartane/Grenade tiré
-  // de frag_classes, SANS « Spartan »/unattributed. Réalimente le chart existant.
-  const weaponTools = useMemo(
-    () =>
-      buildSquadFragTools(weaponKills, pageData?.frag_classes ?? {}, {
-        roleLabel: (r) => formatMessage(fragsManifest, `frags.role.${r}` as never, locale),
-        classLabel: (c) => formatMessage(fragsManifest, `frags.class.${c}` as never, locale),
-        otherWeaponsLabel: t.weaponKills.otherWeapons,
-        topGuns: SQUAD_TOOLS_TOP_GUNS,
-      }),
-    [weaponKills, pageData?.frag_classes, locale, t.weaponKills.otherWeapons],
-  )
   // Le backend renvoie s.gamertag (casse mixte ex "Madina97294") tandis que
   // playerSlug est l'URL param (souvent lowercase). On aligne sur main_player
   // pour que le mapping couleurs matche les clés des SquadPerMinuteEntry.player
@@ -177,33 +157,11 @@ export function SquadContributionsPage() {
         <SquadPerformanceCharts
           emptyMessage={t.empty.noBlockData}
           rowsByPlayer={performanceSeries ?? {}}
-          fragClassesByPlayer={pageData?.frag_classes ?? {}}
           playerOrder={[mainPlayerKey, ...confirmedGamertags].filter((p) => performanceSeries?.[p])}
           colorByPlayer={playerColors}
           labels={t.performanceCharts}
         />
       </section>
-
-      <SquadWeaponKillsChart
-        title={t.weaponKills.title}
-        emptyMessage={t.empty.noBlockData}
-        data={weaponTools}
-        colorByPlayer={playerColors}
-      />
-
-      {/* Précision par arme (native Halo 5) : barres groupées horizontales (1 barre/joueur
-          par arme, longueur = précision %). Gate DATA sur weapon_accuracy → absent sur
-          Infinite (capability), on ne rend pas ce bloc. */}
-      {weaponAccuracy && (
-        <SquadWeaponAccuracyBarsChart
-          title={t.weaponAccuracy.title}
-          emptyMessage={t.empty.noBlockData}
-          data={weaponAccuracy}
-          colorByPlayer={playerColors}
-          roleLabel={(r) => formatMessage(fragsManifest, `frags.role.${r}` as never, locale)}
-          shotsLabel={t.weaponAccuracy.shotsLabel}
-        />
-      )}
 
       {/* Halo 5 : mécaniques natives par coéquipier (assassinats + compétences
           spartiate). FeatureGate masque hors h5 ; le composant rend null sans données. */}

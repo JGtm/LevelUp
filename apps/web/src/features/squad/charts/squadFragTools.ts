@@ -120,11 +120,14 @@ export function buildSquadFragTools(
   const cap = Math.max(0, opts.topGuns)
 
   const outRows: MergedBar[] = [...guns.slice(0, cap), ...details]
-  const overflow = guns.slice(cap)
-  if (overflow.length > 0) outRows.push(aggregateOverflow(overflow, opts.otherWeaponsLabel))
-
-  // Ordre du chart existant : ASC par total escouade (peu utilisées en haut), tie-break label.
+  // Tri par usage : ASC par total escouade (tie-break label).
   outRows.sort((a, b) => (a.total !== b.total ? a.total - b.total : a.label.localeCompare(b.label)))
+
+  // « Autres armes » : agrégat épinglé TOUT EN BAS, HORS tri par usage (un agrégat ne peut
+  // pas être classé « significatif »). Le chart squadWeaponKills n'a PAS d'inverse yAxis →
+  // la 1re catégorie (index 0) est rendue EN BAS → on PRÉFIXE l'agrégat.
+  const overflow = guns.slice(cap)
+  if (overflow.length > 0) outRows.unshift(aggregateOverflow(overflow, opts.otherWeaponsLabel))
 
   return {
     players,

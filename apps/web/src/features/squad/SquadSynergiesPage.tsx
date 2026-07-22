@@ -20,6 +20,8 @@ import { SquadSessionTimelineChart } from './SquadSessionTimelineChart'
 import { SquadSynergyHistoryTable } from './SquadSynergyHistoryTable'
 import { SquadImpactScoreboard } from './SquadImpactScoreboard'
 import { MedalDigest } from './MedalDigest'
+import { SquadFragSection } from './SquadFragSection'
+import { getSquadPlayerColors } from './colors'
 
 export function SquadSynergiesPage() {
   const { selectedRows, confirmedGamertags, pageData, playerSlug } = useSquadContext()
@@ -55,6 +57,15 @@ export function SquadSynergiesPage() {
       </Card>
     )
   }
+
+  // Section « frags » (relocalisée depuis Contributions) : mêmes couleurs/ordre
+  // que SquadContributionsPage — main_player (casse serveur) puis coéquipiers,
+  // restreint aux joueurs ayant des frag_classes ou une performance_series.
+  const mainPlayerKey = pageData?.main_player ?? playerSlug
+  const playerColors = getSquadPlayerColors(mainPlayerKey, confirmedGamertags)
+  const playerOrder = [mainPlayerKey, ...confirmedGamertags].filter(
+    (p) => pageData?.frag_classes?.[p] || pageData?.performance_series?.[p],
+  )
 
   const mapAssets = mappings?.assets?.['map']
   const mapLabelOf = (mapUI: string) => mapAssets?.[mapUI]?.label ?? mapUI
@@ -142,6 +153,18 @@ export function SquadSynergiesPage() {
         mmrLabel={t.timeline.teamMmr}
         perfAxisLabel={t.timeline.perfAxis}
         mmrAxisLabel={t.timeline.mmrAxis}
+      />
+      {/* Section « frags » (relocalisée depuis Contributions), juste avant « Impact
+          des coéquipiers » : Répartition des frags pleine largeur, puis Outils de
+          destruction | Précision par rôle côte à côte. */}
+      <SquadFragSection
+        fragClassesByPlayer={pageData?.frag_classes ?? {}}
+        weaponKills={pageData?.weapon_kills}
+        weaponAccuracy={pageData?.weapon_accuracy}
+        playerColors={playerColors}
+        playerOrder={playerOrder}
+        locale={locale}
+        t={t}
       />
       {/* Sections non-graphes toujours montées : titre + état vide géré par le
           composant (cadre bordé / carte), au lieu de disparaître. */}
