@@ -1,3 +1,41 @@
+## [2026-07-22] CLÔTURE chantier Ascension UX — 4 lots livrés (branche refactor/ascension-ux-2026-07)
+
+**Statut** : Complété. 5 commits sur la branche (`bedf81914` Lot A, `afc606907` Lot B,
+`a42049b5f` Lot C, `62bf8f4a1` Lot D, `d1662bf78` fixes clôture). NON pushé (décision
+utilisateur — push main = deploy prod). Orchestration : Fable + 3 agents Explore (revue
+pré-exécution) + 4 agents Opus (1 par lot), gates re-vérifiés par l'orchestrateur.
+
+**Revue pré-exécution** : addendum daté AM-1..AM-11 + item B12 écrits au plan (routes
+sous players/$playerSlug/, records append-only depuis 2026-05-30, DisablePilotMode
+no-op, inventaire C1 pré-rempli, feedback collègue intégré). Décision croisement :
+PLAN_CROSS_TITLE_ARCS_2026-07 NON fusionné (séparable proprement, vérifié — reste
+déclenché par le 2e titre sur sa branche dédiée).
+
+**Delivery-checklist (clôture)** :
+- `go test ./...` : vert après fix ratchet (littéral start_time → helper
+  `analysis.SQLStartTimeCanonical` dans milestone_dates.go).
+- `go test -tags=integration -p 1 ./...` : vert SAUF 2 tests Relations HÉRITÉS de main
+  (rouges à l'identique sur `b21a59772`, vérifié en worktree isolé — fixture VALUES sans
+  les +4 colonnes Q4 du fix filtres H5). Consignés au plan, non corrigés (hors périmètre).
+- tsc (cache purgé) : vert. ESLint : 1 erreur corrigée (slug en dur filterLink.ts →
+  constante canonique) ; 68 warnings = baseline pré-existante intacte. Vitest : 2480+.
+- `make go-api-lint` : scope réduit (domain+analysis) + golangci-lint absent de l'env —
+  compensé `go vet ./...` propre (consigné).
+- CI de branche : AUCUN run (branche jamais pushée) — à vérifier au push.
+- Revue API serveur réel (4 joueurs, script node) : TOUT VERT — labels by_map sans GUID
+  + `min_matches_for_signal=10` servi, leviers sans GUID, records purgés (plus de
+  best_kda, accuracy ≤ 1, KDA plausibles), jalons avec dates RÉELLES variées
+  (ex 2025-12-23, plus aucun 2026-05-30) + condition_fr/en localisées (7/19, autres
+  sans condition affichable = rien d'affiché), skill_trend servi (266/114/174 pts,
+  null propre pour XxDaemon), activity-calendar peuplé (36/12/12/0 jours), séries
+  interrompues datées, filtre ?status= opérationnel, liste par défaut = actifs seuls,
+  campaigns/history 200. Note données : 0 défi terminal à ce jour (l'objectif FDA
+  JGtm est encore actif) → blocs Historique sur états vides tant que rien n'est clos.
+
+**Reste (utilisateur)** : revue visuelle UI des 4 onglets (rendu, i18n, sparkline,
+heatmap) sur `make dev` ; décision push/PR ; décision fix des 2 tests Relations hérités ;
+lancement ultérieur du plan arcs per-titre (branche dédiée).
+
 ## [2026-07-22] Lot D « Tendance visuelle (graphes minimaux, DEC-5) » — plan Ascension UX (branche refactor/ascension-ux-2026-07)
 
 **Statut** : Complété (code + tests). Gate Lot D PASSÉ intégralement (sorties vertes).
