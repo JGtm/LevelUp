@@ -28,13 +28,15 @@ type catalogMetaTOML struct {
 }
 
 type milestoneEntryTOML struct {
-	ID        string  `toml:"id"`
-	Metric    string  `toml:"metric"`
-	Threshold float64 `toml:"threshold"`
-	TitleEN   string  `toml:"title_en"`
-	TitleFR   string  `toml:"title_fr"`
-	Icon      string  `toml:"icon"`
-	Condition string  `toml:"condition"`
+	ID          string  `toml:"id"`
+	Metric      string  `toml:"metric"`
+	Threshold   float64 `toml:"threshold"`
+	TitleEN     string  `toml:"title_en"`
+	TitleFR     string  `toml:"title_fr"`
+	Icon        string  `toml:"icon"`
+	Condition   string  `toml:"condition"`
+	ConditionFR string  `toml:"condition_fr"`
+	ConditionEN string  `toml:"condition_en"`
 }
 
 // LoadCatalogFromFile lit le TOML, valide la structure et retourne les entrées
@@ -73,14 +75,16 @@ func parseCatalogBytes(data []byte) ([]CatalogEntry, error) {
 			return nil, fmt.Errorf("milestones: entry %s missing title_en or title_fr", m.ID)
 		}
 		out = append(out, CatalogEntry{
-			ID:        m.ID,
-			TitleSlug: raw.Meta.TitleSlug,
-			Metric:    m.Metric,
-			Threshold: m.Threshold,
-			TitleEN:   m.TitleEN,
-			TitleFR:   m.TitleFR,
-			Icon:      m.Icon,
-			Condition: m.Condition,
+			ID:          m.ID,
+			TitleSlug:   raw.Meta.TitleSlug,
+			Metric:      m.Metric,
+			Threshold:   m.Threshold,
+			TitleEN:     m.TitleEN,
+			TitleFR:     m.TitleFR,
+			Icon:        m.Icon,
+			Condition:   m.Condition,
+			ConditionFR: m.ConditionFR,
+			ConditionEN: m.ConditionEN,
 		})
 	}
 	return out, nil

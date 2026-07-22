@@ -22,6 +22,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -29,6 +30,7 @@ import (
 
 	"levelup/go-api/internal/analysis/patterns"
 	"levelup/go-api/internal/api/humacore"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
 )
@@ -110,6 +112,7 @@ func (h *PatternsHandler) GetPatterns(ctx context.Context, in *patternsInput) (*
 		Config: patterns.DefaultPatternConfig(),
 		Now:    time.Now().UTC(),
 	})
+	h.enrichContextLabels(ctx, repo, &report)
 	slog.DebugContext(ctx, "patterns: analyse terminée",
 		"player_slug", in.PlayerSlug,
 		"rows", len(rows),
@@ -118,4 +121,95 @@ func (h *PatternsHandler) GetPatterns(ctx context.Context, in *patternsInput) (*
 		"levers", len(report.Levers),
 	)
 	return &patternsOutput{Body: report}, nil
+}
+
+// enrichContextLabels résout les libellés lisibles des patterns by_map (nom de
+// carte depuis le référentiel metadata du titre) et les pose sur le rapport. La
+// résolution SQL vit dans le repo (port) : ici on ne fait que collecter les ids,
+// appeler le port et appliquer le repli localisé. Best-effort : une résolution
+// en échec dégrade vers le repli sans casser l'endpoint.
+func (h *PatternsHandler) enrichContextLabels(ctx context.Context, repo port.PatternsRepository, report *patterns.PatternReport) {
+	mapIDs := distinctMapKeys(report.ContextPatterns)
+	if len(mapIDs) == 0 {
+		return
+	}
+	resolved, err := repo.ResolveMapLabels(ctx, mapIDs)
+	if err != nil {
+		slog.WarnContext(ctx, "patterns: résolution des libellés de carte échouée — repli local", "err", err)
+		resolved = nil
+	}
+	locale := ctxkeys.Locale(ctx)
+	for i := range report.ContextPatterns {
+		if report.ContextPatterns[i].Type == patterns.ContextByMap {
+			report.ContextPatterns[i].Label = mapLabelOrFallback(resolved, report.ContextPatterns[i].Key, locale)
+		}
+	}
+	rewriteMapLeverLabels(report.Levers, resolved, locale)
+}
+
+// rewriteMapLeverLabels remplace le GUID de carte présent dans le texte des
+// leviers by_map (« Améliore ton win rate en {GUID} ») par le nom résolu, pour
+// qu'aucun identifiant technique n'apparaisse dans une phrase servie (A2). Le
+// GUID est identifié via SourcePattern (« by_map:{GUID} ») — substitution
+// title-agnostic, aucun identifiant de carte n'est reconstruit à la main.
+func rewriteMapLeverLabels(levers []patterns.Lever, resolved map[string]string, locale string) {
+	const byMapPrefix = string(patterns.ContextByMap) + ":"
+	for i := range levers {
+		if !strings.HasPrefix(levers[i].SourcePattern, byMapPrefix) {
+			continue
+		}
+		mapID := strings.TrimPrefix(levers[i].SourcePattern, byMapPrefix)
+		if mapID == "" {
+			continue
+		}
+		label := mapLabelOrFallback(resolved, mapID, locale)
+		levers[i].Label = strings.ReplaceAll(levers[i].Label, mapID, label)
+	}
+}
+
+// distinctMapKeys collecte les clés (map_id) distinctes des patterns by_map.
+func distinctMapKeys(pats []patterns.ContextualPattern) []string {
+	seen := make(map[string]struct{}, len(pats))
+	var out []string
+	for _, p := range pats {
+		if p.Type != patterns.ContextByMap {
+			continue
+		}
+		id := strings.TrimSpace(p.Key)
+		if id == "" {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	return out
+}
+
+// mapLabelOrFallback retourne le nom résolu, sinon un repli localisé (« Carte
+// inconnue » + id court) — jamais le GUID nu.
+func mapLabelOrFallback(resolved map[string]string, key, locale string) string {
+	if name := strings.TrimSpace(resolved[key]); name != "" {
+		return name
+	}
+	return fallbackMapLabel(key, locale)
+}
+
+// fallbackMapLabel construit le repli localisé pour une carte non résolue :
+// « Carte inconnue (xxxxxxxx) » / « Unknown map (xxxxxxxx) », l'id tronqué aux
+// 8 premiers caractères (jamais le GUID complet). Exception assumée à la règle
+// « pas de libellé FR/EN en dur » : ce repli est un état de dégradation (asset
+// absent du référentiel), pas un libellé de titre — le back doit garantir un
+// label non vide (contrat A1), et le front affiche le label tel quel.
+func fallbackMapLabel(id, locale string) string {
+	short := id
+	if len(short) > 8 {
+		short = short[:8]
+	}
+	if strings.HasPrefix(strings.ToLower(locale), "en") {
+		return "Unknown map (" + short + ")"
+	}
+	return "Carte inconnue (" + short + ")"
 }

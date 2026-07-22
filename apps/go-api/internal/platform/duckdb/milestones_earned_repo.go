@@ -111,8 +111,15 @@ func (r *MilestoneEarnedRepo) ListByUser(ctx context.Context, userID, titleSlug 
 	var out []milestones.Earned
 	for rows.Next() {
 		var e milestones.Earned
-		if err := rows.Scan(&e.UserID, &e.TitleSlug, &e.MilestoneID, &e.EarnedAt); err != nil {
+		// earned_at peut être NULL depuis le backfill A6 (date de franchissement
+		// non dérivable) → scan nullable, EarnedAt reste zéro (sentinelle « pas de
+		// date »), jamais une date fausse.
+		var earnedAt sql.NullTime
+		if err := rows.Scan(&e.UserID, &e.TitleSlug, &e.MilestoneID, &earnedAt); err != nil {
 			return nil, fmt.Errorf("MilestoneEarnedRepo.ListByUser scan: %w", err)
+		}
+		if earnedAt.Valid {
+			e.EarnedAt = earnedAt.Time
 		}
 		out = append(out, e)
 	}

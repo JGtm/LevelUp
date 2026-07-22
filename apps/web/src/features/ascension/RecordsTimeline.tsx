@@ -12,6 +12,7 @@
  * évite un doublon UI et donne un feedback proactif plutôt que statique.
  */
 import { useAppShellStore } from '@/stores/appShellStore'
+import { metricLabel } from '@/lib/i18n/metricLabel'
 import { useRecords } from './queries'
 import { getAscensionText } from './i18n'
 import { formatAscensionDate, formatMetricValue, interpolate } from './format'
@@ -120,7 +121,7 @@ interface PBCardProps {
 }
 
 function PBCard({ metric, pbs, locale, t }: PBCardProps) {
-  const label = t.metric[metric] ?? metric
+  const label = metricLabel(metric, locale)
   return (
     <article className="rounded-md border border-border bg-card p-4">
       <h4 className="mb-3 text-sm font-medium">{label}</h4>
@@ -161,7 +162,7 @@ interface HistoryRowProps {
 }
 
 function HistoryRow({ entry, locale, t }: HistoryRowProps) {
-  const label = t.metric[entry.metric] ?? entry.metric
+  const label = metricLabel(entry.metric, locale)
   return (
     <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm">
       <div className="flex flex-1 items-baseline gap-2">

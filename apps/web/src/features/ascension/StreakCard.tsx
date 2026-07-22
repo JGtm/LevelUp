@@ -90,7 +90,7 @@ export function StreakCard({ streak: s, locale, t, compact = false }: StreakCard
         <span className="text-xs text-muted-foreground">{streakUnit(t, s.type, s.current_length)}</span>
       </div>
 
-      <p className="text-xs text-muted-foreground">{interpolate(t.streakBestLength, { n: s.best_length })}</p>
+      <p className="text-xs text-muted-foreground">{interpolate(t.streakBestLength, { n: s.best_length, unit: streakUnit(t, s.type, s.best_length) })}</p>
 
       <dl className="mt-1 space-y-1 text-xs">
         <div>

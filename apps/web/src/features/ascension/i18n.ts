@@ -58,7 +58,7 @@ export interface AscensionText {
   streakCurrentLength: string // "{n} jour(s)"
   streakUnitDay: string // unité période daily_* (jour/jours)
   streakUnitWeek: string // unité période weekly_* (semaine/semaines)
-  streakBestLength: string // "Record perso : {n}"
+  streakBestLength: string // "Record perso : {n} {unit}" (unité jour/semaine selon le type)
   streakStarted: string // "Commencée le {date}"
   streakBrokenAt: string // "Cassée le {date}"
   streakShieldsAvailable: string // "{n} bouclier(s) disponible(s) ce mois"
@@ -87,8 +87,6 @@ export interface AscensionText {
   milestonesEarnedCount: string // "{n}/{total}"
   milestonesThreshold: string // "Seuil : {n}"
 
-  // Métriques (labels)
-  metric: Record<string, string>
   // Périodes
   period: Record<'30d' | '90d' | 'all_time', string>
 
@@ -142,34 +140,6 @@ export interface AscensionText {
   leverAxis: Record<string, string>
 }
 
-const METRIC_LABEL_FR: Record<string, string> = {
-  performance_score: 'Score de performance',
-  kda: 'KDA',
-  kpm: 'Tueries / minute',
-  accuracy: 'Précision',
-  pspm: 'Score perso / minute',
-  matches_played: 'Matchs joués',
-  wins: 'Victoires',
-  kills: 'Éliminations',
-  headshots: 'Tirs à la tête',
-  assists: 'Assistances',
-  accuracy_threshold_days: 'Jours réguliers',
-}
-
-const METRIC_LABEL_EN: Record<string, string> = {
-  performance_score: 'Performance score',
-  kda: 'KDA',
-  kpm: 'Kills per minute',
-  accuracy: 'Accuracy',
-  pspm: 'Personal score per minute',
-  matches_played: 'Matches played',
-  wins: 'Wins',
-  kills: 'Kills',
-  headshots: 'Headshots',
-  assists: 'Assists',
-  accuracy_threshold_days: 'Consistent days',
-}
-
 const FR: AscensionText = {
   pageTitle: 'Ascension',
   pageSubtitle: 'Ton profil de jeu, tes objectifs et tes accomplissements.',
@@ -219,7 +189,7 @@ const FR: AscensionText = {
   streakCurrentLength: '{n} jour{plural}',
   streakUnitDay: 'jour{plural}',
   streakUnitWeek: 'semaine{plural}',
-  streakBestLength: 'Record perso : {n} jour{plural}',
+  streakBestLength: 'Record perso : {n} {unit}',
   streakStarted: 'Commencée le {date}',
   streakBrokenAt: 'Cassée le {date}',
   streakShieldsAvailable:
@@ -249,7 +219,6 @@ const FR: AscensionText = {
   milestonesEarned: 'Débloqué',
   milestonesEarnedCount: '{n}/{total} débloqué{plural}',
   milestonesThreshold: 'Seuil : {n}',
-  metric: METRIC_LABEL_FR,
   period: {
     '30d': '30 jours',
     '90d': '90 jours',
@@ -408,7 +377,7 @@ const EN: AscensionText = {
   streakCurrentLength: '{n} day{plural}',
   streakUnitDay: 'day{plural}',
   streakUnitWeek: 'week{plural}',
-  streakBestLength: 'Personal best: {n} day{plural}',
+  streakBestLength: 'Personal best: {n} {unit}',
   streakStarted: 'Started on {date}',
   streakBrokenAt: 'Broken on {date}',
   streakShieldsAvailable:
@@ -438,7 +407,6 @@ const EN: AscensionText = {
   milestonesEarned: 'Earned',
   milestonesEarnedCount: '{n}/{total} earned',
   milestonesThreshold: 'Threshold: {n}',
-  metric: METRIC_LABEL_EN,
   period: {
     '30d': '30 days',
     '90d': '90 days',

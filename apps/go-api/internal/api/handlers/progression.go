@@ -133,15 +133,16 @@ type recordsResponse struct {
 
 // milestoneDTO joint catalogue + earned pour 1 entrée.
 type milestoneDTO struct {
-	ID        string     `json:"id"`
-	Metric    string     `json:"metric"`
-	Threshold float64    `json:"threshold"`
-	TitleEN   string     `json:"title_en"`
-	TitleFR   string     `json:"title_fr"`
-	Icon      string     `json:"icon,omitempty"`
-	Condition string     `json:"condition,omitempty"`
-	Earned    bool       `json:"earned"`
-	EarnedAt  *time.Time `json:"earned_at,omitempty"`
+	ID          string     `json:"id"`
+	Metric      string     `json:"metric"`
+	Threshold   float64    `json:"threshold"`
+	TitleEN     string     `json:"title_en"`
+	TitleFR     string     `json:"title_fr"`
+	Icon        string     `json:"icon,omitempty"`
+	ConditionFR string     `json:"condition_fr,omitempty"`
+	ConditionEN string     `json:"condition_en,omitempty"`
+	Earned      bool       `json:"earned"`
+	EarnedAt    *time.Time `json:"earned_at,omitempty"`
 }
 
 type milestonesResponse struct {
@@ -205,10 +206,23 @@ func (h *ProgressionHandler) handleRecords(ctx context.Context, in *progRecordsI
 		PersonalBests: make([]personalBestDTO, 0, len(pbList)),
 		History:       make([]recordHistoryDTO, 0, len(histList)),
 	}
+	// A4 — filtre read-side : une métrique hors catalogue (ex « best_kda »
+	// legacy) n'est pas servie à l'UI (elle n'a ni libellé ni bornes connues).
+	// Trace la dégradation sans avaler l'anomalie (règle logging n°3).
 	for _, pb := range pbList {
+		if !records.IsKnownMetric(pb.Metric) {
+			slog.WarnContext(ctx, "progression: PB métrique hors catalogue non servie",
+				"metric", pb.Metric, "period", pb.Period)
+			continue
+		}
 		resp.PersonalBests = append(resp.PersonalBests, toPBDTO(pb))
 	}
 	for _, hh := range histList {
+		if !records.IsKnownMetric(hh.Metric) {
+			slog.WarnContext(ctx, "progression: record history métrique hors catalogue non servi",
+				"metric", hh.Metric, "period", hh.Period)
+			continue
+		}
 		resp.History = append(resp.History, toHistoryDTO(hh))
 	}
 	return &recordsHumaOutput{Body: resp}, nil
@@ -250,8 +264,13 @@ func (h *ProgressionHandler) milestoneDTOs(ctx context.Context, pdb *duckdb.Play
 		dto := toMilestoneDTO(c)
 		if at, ok := earnedByID[c.ID]; ok {
 			dto.Earned = true
-			t := at
-			dto.EarnedAt = &t
+			// earned_at NULL (backfill A6 non dérivable) → EarnedAt zéro : le
+			// jalon reste débloqué mais sans date (le front n'affiche pas de date
+			// fausse). Sinon on sert la vraie date de franchissement.
+			if !at.IsZero() {
+				t := at
+				dto.EarnedAt = &t
+			}
 		}
 		items = append(items, dto)
 	}
@@ -340,13 +359,17 @@ func toHistoryDTO(h records.RecordHistory) recordHistoryDTO {
 }
 
 func toMilestoneDTO(c milestones.CatalogEntry) milestoneDTO {
+	// A9 : on sert les descriptions localisées (le front choisit selon la locale),
+	// jamais la formule technique c.Condition. Vides si le jalon n'a pas de
+	// condition → le front n'affiche rien.
 	return milestoneDTO{
-		ID:        c.ID,
-		Metric:    c.Metric,
-		Threshold: c.Threshold,
-		TitleEN:   c.TitleEN,
-		TitleFR:   c.TitleFR,
-		Icon:      c.Icon,
-		Condition: c.Condition,
+		ID:          c.ID,
+		Metric:      c.Metric,
+		Threshold:   c.Threshold,
+		TitleEN:     c.TitleEN,
+		TitleFR:     c.TitleFR,
+		Icon:        c.Icon,
+		ConditionFR: c.ConditionFR,
+		ConditionEN: c.ConditionEN,
 	}
 }

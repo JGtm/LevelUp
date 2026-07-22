@@ -9,6 +9,7 @@
  * Cf. PLAN_PROGRESSION_TRACKING_ASCENSION.md §5.3.
  */
 import { useAppShellStore } from '@/stores/appShellStore'
+import { metricLabel } from '@/lib/i18n/metricLabel'
 import { useMilestones } from './queries'
 import { getAscensionText } from './i18n'
 import { formatAscensionDate, interpolate } from './format'
@@ -94,7 +95,10 @@ interface MilestoneCardProps {
 
 function MilestoneCard({ milestone: m, locale, t }: MilestoneCardProps) {
   const title = locale === 'fr' ? m.title_fr : m.title_en
-  const metricLabel = t.metric[m.metric] ?? m.metric
+  const metricText = metricLabel(m.metric, locale)
+  // A9 : description lisible localisée ; jamais la formule technique. Absente
+  // pour les jalons sans condition explicite -> on n'affiche rien.
+  const condition = locale === 'fr' ? m.condition_fr : m.condition_en
 
   const cardTone = m.earned
     ? 'border-amber-500/40 bg-amber-500/10' // color-allow: amber distinction milestone earned (CLAUDE.md §20 badge UI)
@@ -113,12 +117,12 @@ function MilestoneCard({ milestone: m, locale, t }: MilestoneCardProps) {
         <h3 className={`text-sm font-semibold ${titleTone}`}>{title}</h3>
         <MilestoneStatusBadge earned={m.earned} t={t} />
       </header>
-      <p className="text-xs text-muted-foreground">{metricLabel}</p>
+      <p className="text-xs text-muted-foreground">{metricText}</p>
       <p className="text-xs text-muted-foreground">
         {interpolate(t.milestonesThreshold, { n: m.threshold })}
       </p>
-      {m.condition && (
-        <p className="text-2xs italic text-muted-foreground">{m.condition}</p>
+      {condition && (
+        <p className="text-2xs italic text-muted-foreground">{condition}</p>
       )}
       {m.earned && m.earned_at && (
         <p className="mt-auto text-2xs text-amber-700 dark:text-amber-300"> {/* color-allow: amber distinction milestone earned (CLAUDE.md §20) */}

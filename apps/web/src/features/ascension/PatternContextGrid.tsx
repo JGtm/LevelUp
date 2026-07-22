@@ -60,7 +60,7 @@ function ContextCard({ pattern: p, t }: { pattern: ContextualPattern; t: Ascensi
   return (
     <div className={`rounded-md border p-3 ${signalClass}`}>
       <div className="mb-1 flex items-center justify-between">
-        <span className="text-sm font-semibold">{p.key}</span>
+        <span className="text-sm font-semibold">{contextLabel(p, t)}</span>
         <SignalBadge signal={p.signal} t={t} />
       </div>
       <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
@@ -97,6 +97,18 @@ function SignalBadge({ signal, t }: { signal: ContextualPattern['signal']; t: As
       {map.label}
     </span>
   )
+}
+
+/**
+ * contextLabel — libellé lisible d'un pattern contextuel selon son type :
+ *  - by_map   : nom de carte résolu côté backend (`label`), jamais le GUID de `key`.
+ *  - by_squad : libellé i18n (Solo / Escouade) mappé depuis la clé technique.
+ *  - by_mode  : la clé est déjà un libellé de mode normalisé.
+ */
+function contextLabel(p: ContextualPattern, t: AscensionText): string {
+  if (p.type === 'by_map') return p.label ?? p.key
+  if (p.type === 'by_squad') return p.key === 'with_friends' ? t.squadVsSoloSquad : t.squadVsSoloSolo
+  return p.key
 }
 
 function pct(v: number): string {

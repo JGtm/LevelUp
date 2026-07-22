@@ -66,7 +66,10 @@ export interface MilestoneItem {
   title_en: string
   title_fr: string
   icon?: string
-  condition?: string
+  /** Description lisible localisée de la condition du jalon (A9). Vide si le
+   *  jalon n'a pas de condition explicite → aucune ligne affichée. */
+  condition_fr?: string
+  condition_en?: string
   earned: boolean
   earned_at?: string | null
 }
@@ -179,6 +182,9 @@ export type PatternSeverity = 'low' | 'medium' | 'high'
 export interface ContextualPattern {
   type: ContextType
   key: string
+  /** Libellé lisible résolu côté backend (nom de carte pour by_map). Absent
+   *  pour by_mode (clé déjà lisible) et by_squad (libellé i18n front). */
+  label?: string
   match_count: number
   win_rate: number
   avg_kda: number

@@ -1,3 +1,59 @@
+## [2026-07-22] Lot A « Crédibilité des données » — plan Ascension UX (branche refactor/ascension-ux-2026-07)
+
+**Statut** : Complété (code + tests + données). Gate re-vérifié par l'orchestrateur puis
+committé sur la branche (pas de push). One-offs exécutés serveur stoppé (2026-07-22) :
+purge A5 = 32 lignes hors bornes retirées (shared player_records_history 18/69 + 4 DBs
+joueurs record_history ; contre-épreuve dry-run = 0 restant ; halo_5 = 0 à purger) ;
+backfill A6 = 31 dates de jalons recalculées HINF + 41 halo_5, 0 non-dérivable (NULL).
+Fix de gate : 2 entrées justifiées datées ajoutées à sharedSocialFilesWhitelist
+(no_attach_on_social_test.go) pour cmd/purge_corrupt_records + internal/ops/records_purge
+(ratchet TestNoUnauthorizedSharedSocialMention) ; intégration duckdb/ops rejouée verte.
+
+**Contexte** : exécution des 9 items A1→A9 du `.ai/PLAN_ASCENSION_UX_2026-07.md` sous
+contrat `plan-execution` (ordre strict, un item vérifié avant le suivant). Objectif :
+zéro identifiant technique ni valeur aberrante à l'écran sur la page Ascension.
+
+**Décisions techniques principales** :
+- **A1/A2** : résolution des noms de cartes au HANDLER (le package `analysis/patterns`
+  reste pur). Nouveau port `PatternsRepository.ResolveMapLabels` réutilisant
+  `MetadataRepo.ResolveAssetNamesBulk` (même chemin que match-view/career/filtres).
+  Champ `label` sur `ContextualPattern` + repli localisé « Carte inconnue (id court) »
+  (jamais le GUID nu). Le texte des leviers `map_avoidance` : substitution GUID→nom au
+  handler via `SourcePattern` (`by_map:{id}`) — la phrase FR en dur de `levers.go`
+  reste (consignée en Découvertes).
+- **A3** : helper unique `lib/i18n/metricLabel.ts` (source de vérité des libellés de
+  métriques), migration de TOUS les affichages des deux features, suppression du code
+  mort (`metric` d'ascension i18n, 5 clés métriques de prestige i18n), 2 garde-rails
+  vitest (humanisation clé inconnue + grep interdisant `\bField[A-Z]` dans le JSX).
+- **A4** : bornes de vraisemblance nommées par métrique (`records/bounds.go`), gate
+  detector (INSERT refusé + WarnContext) + filtre read-side (métrique hors catalogue
+  non servie). Pas de MAJ openapi (le filtre masque des lignes, ne change pas le DTO).
+- **A5** : purge = recette ADR 0026 (rebuild CTAS filtré transactionnel + garde de
+  cardinalité + rollback), JAMAIS de DELETE brut. `player_records_history` (append-only,
+  vue `_latest` → retombée sur dernière version plausible) + `record_history`. Logique
+  dans `internal/ops`, commande `cmd/purge_corrupt_records` (`--dry-run` défaut).
+- **A6** : moteur PUR de recalcul des dates de franchissement (cumul par métrique,
+  fragment timezone canonique, constantes OC/DR/accuracy alignées sur le détecteur) ;
+  `milestone_earned` n'étant PAS append-only, écriture = UPDATE de `earned_at` (colonne
+  NON indexée → ART-safe) ; colonne rendue nullable (non dérivable → NULL, jamais une
+  date fausse). Commande `cmd/backfill_milestone_dates`.
+- **A9** : `condition_fr/_en` TOML+DB+DTO ; seed bumpé v2 pour re-seeder les DBs
+  existantes ; le DTO ne sert PLUS la formule technique, uniquement le libellé localisé.
+
+**Résultats observés** : gate Lot A vert — `go test` patterns/progression/handlers OK ;
+`make check-types` (tsc) OK ; `gofmt -l` vide ; `go vet ./...` propre ; tests ops A5/A6
+(DuckDB temp) OK ; test seed A9 (intégration) OK. `make test-web` : 279 fichiers,
+2442 verts / 14 skipped, 0 échec (re-vérifié par l'orchestrateur). openapi.yaml +
+`generated.ts` régénérés (label + condition_fr/_en).
+
+**Découvertes hors périmètre (consignées, non traitées)** : phrases de leviers FR en dur
+dans `levers.go` ; `accuracy_threshold_days` lit `start_time` brut au détecteur (pas le
+fragment canonique) ; divergence d'index `idx_rec_hist_achieved_desc`. Détail : section
+Découvertes du plan.
+
+**Prochaine étape (orchestrateur)** : exécuter `--apply` de A5/A6 (serveur stoppé) ;
+suite intégration anti-ART avant commit ; revue visuelle 3 onglets × JGtm ; commit du Lot A.
+
 ## [2026-07-22] Filtres L2 vides sur Halo 5 — résolution read-side ID→nom (branche fix/h5-filters-asset-names)
 
 **Statut** : Complété. NON committé (validation utilisateur avant commit).

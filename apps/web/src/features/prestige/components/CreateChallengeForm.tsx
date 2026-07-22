@@ -21,6 +21,7 @@ import {
   type WindowType,
 } from '@/lib/prestige'
 import { useAssetLabel } from '@/lib/i18n/fieldMappings'
+import { metricLabel, PRESTIGE_METRIC_OPTIONS } from '@/lib/i18n/metricLabel'
 import { CADENCE_FREE_FALLBACK_FR } from '../fallback.i18n'
 import { getPrestigeText } from '../i18n'
 import { useCreateChallenge, useSuggestedTemplates } from '../hooks'
@@ -102,7 +103,7 @@ function ModeButton({ active, onClick, label }: { active: boolean; onClick: () =
 function FreeForm({ userId, titleSlug, onSuccess }: TabFormProps) {
   const locale = useAppShellStore((s) => s.locale)
   const t = getPrestigeText(locale)
-  const [metric, setMetric] = useState('FieldKDA')
+  const [metric, setMetric] = useState(PRESTIGE_METRIC_OPTIONS[0])
   const [target, setTarget] = useState('1.5')
   const [windowType, setWindowType] = useState<WindowType>('session')
   const [windowValue, setWindowValue] = useState('3')
@@ -137,13 +138,11 @@ function FreeForm({ userId, titleSlug, onSuccess }: TabFormProps) {
           onChange={(e) => setMetric(e.target.value)}
           className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground"
         >
-          <option value="FieldKDA">KDA</option>
-          <option value="FieldKDR">K/D</option>
-          <option value="FieldAccuracy">{t.metricAccuracy}</option>
-          <option value="FieldHeadshotKills">{t.metricHeadshots}</option>
-          <option value="FieldDamageDealt">{t.metricDamage}</option>
-          <option value="FieldPersonalScore">{t.metricPersonalScore}</option>
-          <option value="FieldWinRate">{t.metricWinRate}</option>
+          {PRESTIGE_METRIC_OPTIONS.map((opt) => (
+            <option key={opt} value={opt}>
+              {metricLabel(opt, locale)}
+            </option>
+          ))}
         </select>
       </Field>
 

@@ -248,11 +248,13 @@ func Steps() []migration.Migration {
 						title_slug  VARCHAR NOT NULL,
 						metric      VARCHAR NOT NULL,
 						threshold   DOUBLE NOT NULL,
-						title_en    VARCHAR NOT NULL,
-						title_fr    VARCHAR NOT NULL,
-						icon        VARCHAR,
-						condition   VARCHAR,
-						updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+						title_en     VARCHAR NOT NULL,
+						title_fr     VARCHAR NOT NULL,
+						icon         VARCHAR,
+						condition    VARCHAR,
+						condition_fr VARCHAR,
+						condition_en VARCHAR,
+						updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 					);
 					-- PAS d'index secondaire : title_slug et metric sont MUTÉS par
 					-- MilestoneCatalogRepo.Upsert (SELECT-then-write) → un index ART sur une
