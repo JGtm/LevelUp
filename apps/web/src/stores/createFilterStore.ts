@@ -18,6 +18,7 @@
 import { create, type UseBoundStore, type StoreApi } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { log } from '@/features/filters/_logger'
+import { encodeFilterContextParam } from '@/features/filters/filterLink'
 import {
   computeNextSession,
   computeNextWindow,
@@ -186,8 +187,8 @@ export function createFilterStore(options: CreateFilterStoreOptions): FilterStor
       // titre permet, au fresh-load, de rejeter un deep-link généré pour un AUTRE
       // titre (cf. decodeFromUrl / reconcileActiveTitle) — les labels de session
       // sont purement temporels, donc title-agnostic, et fuiteraient sinon.
-      const payload = { t: activeTitle(), c: ctx }
-      const encoded = btoa(encodeURIComponent(JSON.stringify(payload)))
+      // Format encodé mutualisé avec buildSoloFilterLink (features/filters/filterLink).
+      const encoded = encodeFilterContextParam(activeTitle(), ctx)
       const url = new URL(window.location.href)
       url.searchParams.set(urlParam, encoded)
       window.history.replaceState(null, '', url.toString())

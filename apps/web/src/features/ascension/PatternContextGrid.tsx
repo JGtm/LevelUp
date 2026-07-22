@@ -5,6 +5,8 @@
  * La comparaison Solo/Escouade (by_squad) n'apparaît PAS dans la grille : elle
  * est rendue une seule fois par SquadVsSoloCard (dédoublonnage B7).
  */
+import type { CascadeInput } from '@/lib/api/types'
+import { buildSoloFilterLink } from '@/features/filters/filterLink'
 import type { ContextualPattern, ContextType } from './types'
 import type { AscensionText } from './i18n'
 import { CombatAbbr } from './CombatAbbr'
@@ -14,12 +16,21 @@ interface PatternContextGridProps {
   t: AscensionText
   /** Seuil de matchs servi par le backend (DEC-8) — jamais codé en dur ici. */
   minMatchesForSignal: number
+  /** Contexte pour construire les liens « voir les matchs » (C5). */
+  playerSlug: string
+  titleSlug: string
 }
 
 // by_squad exclu : la comparaison Solo/Escouade vit dans SquadVsSoloCard (B7).
 const CONTEXT_ORDER: ContextType[] = ['by_mode', 'by_map']
 
-export function PatternContextGrid({ patterns, t, minMatchesForSignal }: PatternContextGridProps) {
+export function PatternContextGrid({
+  patterns,
+  t,
+  minMatchesForSignal,
+  playerSlug,
+  titleSlug,
+}: PatternContextGridProps) {
   if (patterns.length === 0) return null
 
   const byType = CONTEXT_ORDER.map((ct) => ({
@@ -43,6 +54,7 @@ export function PatternContextGrid({ patterns, t, minMatchesForSignal }: Pattern
                 pattern={p}
                 t={t}
                 lowSample={p.match_count < minMatchesForSignal}
+                href={soloLinkForPattern(p, playerSlug, titleSlug)}
               />
             ))}
           </div>
@@ -52,7 +64,37 @@ export function PatternContextGrid({ patterns, t, minMatchesForSignal }: Pattern
   )
 }
 
-function ContextCard({ pattern: p, t, lowSample }: { pattern: ContextualPattern; t: AscensionText; lowSample: boolean }) {
+/**
+ * soloLinkForPattern — deep-link Solo filtré pour une carte pattern.
+ *  - by_mode : cascade.modes = [clé] (déjà le libellé de mode normalisé, identique
+ *    au `modeUI` des options de filtre = NormalizeModeLabel(pair)).
+ *  - by_map  : cascade.maps = [label] (nom de carte résolu, jamais le GUID `key` ;
+ *    matche le `mapUI` du filtre). Sans label → pas de lien (le GUID ne matcherait
+ *    aucune row).
+ * Retourne undefined si aucune valeur exploitable (by_squad n'atteint pas la grille).
+ */
+function soloLinkForPattern(p: ContextualPattern, playerSlug: string, titleSlug: string): string | undefined {
+  let cascade: Partial<CascadeInput> | null = null
+  if (p.type === 'by_mode') {
+    cascade = { modes: [p.key] }
+  } else if (p.type === 'by_map' && p.label) {
+    cascade = { maps: [p.label] }
+  }
+  if (!cascade) return undefined
+  return buildSoloFilterLink({ playerSlug, titleSlug, cascade })
+}
+
+function ContextCard({
+  pattern: p,
+  t,
+  lowSample,
+  href,
+}: {
+  pattern: ContextualPattern
+  t: AscensionText
+  lowSample: boolean
+  href?: string
+}) {
   // DEC-8 : sous le seuil de matchs, on neutralise le signal (bordure + delta)
   // et on affiche un badge « Échantillon faible » à la place de Force/Faiblesse.
   const signalClass = lowSample
@@ -72,8 +114,8 @@ function ContextCard({ pattern: p, t, lowSample }: { pattern: ContextualPattern;
         ? 'text-red-500 dark:text-red-400' // color-allow: delta trend — CLAUDE.md §20
         : 'text-muted-foreground'
 
-  return (
-    <div className={`rounded-md border p-3 ${signalClass}`}>
+  const body = (
+    <>
       <div className="mb-1 flex items-center justify-between">
         <span className="text-sm font-semibold">{contextLabel(p)}</span>
         <SignalBadge signal={p.signal} lowSample={lowSample} t={t} />
@@ -87,8 +129,20 @@ function ContextCard({ pattern: p, t, lowSample }: { pattern: ContextualPattern;
         <span><CombatAbbr metric="dr" t={t} /> <strong className="text-foreground">{Math.round((p.avg_dr - 1) * 100)}%</strong></span>
         <span className="text-muted-foreground/70">{p.match_count} {t.patternMatches}</span>
       </div>
-    </div>
+    </>
   )
+
+  const cardClass = `block rounded-md border p-3 ${signalClass}`
+  // Navigation PLEINE PAGE (`<a href>`, pas `<Link>`) : le `?f=` n'est décodé
+  // qu'au rehydrate du store solo (cf. filterLink). Sans href → carte statique.
+  if (href) {
+    return (
+      <a href={href} className={`${cardClass} transition-colors hover:border-primary/60`} title={t.patternSeeMatches}>
+        {body}
+      </a>
+    )
+  }
+  return <div className={cardClass}>{body}</div>
 }
 
 function SignalBadge({ signal, lowSample, t }: { signal: ContextualPattern['signal']; lowSample: boolean; t: AscensionText }) {

@@ -1,3 +1,68 @@
+## [2026-07-22] Lot C « Historique (actif vs passé) » — plan Ascension UX (branche refactor/ascension-ux-2026-07)
+
+**Statut** : Complété (code + tests). Gate Lot C PASSÉ intégralement (sorties vertes).
+Aucun commit/push (à la charge de l'orchestrateur). Revue visuelle = à faire par
+l'orchestrateur.
+
+**Contexte** : items C1→C5 du `.ai/PLAN_ASCENSION_UX_2026-07.md` sous contrat
+`plan-execution` (ordre strict, un item vérifié avant le suivant). Principe : l'onglet
+Objectifs ne montre QUE l'actif ; Réalisations devient la mémoire complète datée.
+Contrainte croisement plans (addendum) respectée : AUCUN nouveau lecteur
+`arc_titles`/`ArcsByTitle` — partition en cours/terminés via `Arc.CompletedAt`.
+
+**Décisions techniques principales** :
+- **C1 (inventaire, confirme AM-7)** : 2 trous d'API confirmés sur pièces — (1) filtre
+  `status` non exposé sur `GET /prestige/challenges` (repo prêt, service force `active`) ;
+  (2) aucune liste de campagnes closes. NON-trou : arcs terminés déjà servis par
+  `GET /arcs`.
+- **C2 (compléments API)** : Trou 1 → `ChallengeFilter.Statuses` (status IN, non
+  breaking) + service `ListChallenges(statuses)` (`ListActiveChallenges` délègue) ;
+  handler query `status` CSV (convention Huma form/explode=false), défaut `active`,
+  invalide→400. Défis terminaux NON enrichis (valeur courante/PP n'ont de sens que sur un
+  défi en cours + évite N reads shared). Pas de MAJ openapi (path non documenté, réponse
+  `mapOutput`). Trou 2 → `CampaignRepo.ListEnded` (SQL `status IN (completed,abandoned)`
+  scopé user+title, tri `ended_at DESC`) + service + handler `GET /campaigns/history` +
+  DTO `campaignHistoryItem` (delta = final−snapshot via méthodes pures `FinalValue`/
+  `Delta` sur `ImprovementCampaign`). openapi.yaml : path + 2 schémas (émis via
+  `OPENAPI_EMIT_OUT`, drift MISSING=0) ; generate-types.
+- **C3 (Historique front)** : `HistorySection` (3 blocs datés) + hooks
+  `useChallengeHistory`/`useCampaignHistory` + query keys `challenge.history`/
+  `playerProfile.campaignHistory` + types + `prestigeApi.listChallenges`/
+  `campaignApi.listEnded`. i18n FR/EN, `archived`→« Retiré » (neutre). Correction
+  cohérente : célébration (moments) + StatsGlobales alimentées par les défis terminaux
+  (avant : actifs seuls → 0 moment / complétion faussée).
+- **C4 (nettoyage actif)** : arcs de l'onglet Objectifs filtrés `!completed_at`. Défis
+  déjà actifs seuls `[~]` ; widget home séries déjà `status !== 'broken'` `[~]`.
+- **C5 (sorties matchs)** : helper partagé `filterLink.ts` (`encodeFilterContextParam`
+  source UNIQUE du format `?f=`, `createFilterStore` refactoré ; `buildSoloFilterLink`,
+  `dayWindowUTC`). Cartes patterns → `<a href>` full-nav (le `?f=` n'est décodé qu'au
+  rehydrate). Format cascade vérifié sur pièces : by_mode → `p.key` (== `modeUI`
+  `NormalizeModeLabel(pair)`), by_map → `p.label` (nom, jamais GUID, == `mapUI`). Records
+  → « voir la période » borné sur la journée UTC du record.
+
+**Résultats observés** — Gate Lot C intégral, sorties vertes :
+- `go test ./internal/prestige/... ./internal/campaign/... ./internal/api/handlers/...
+  ./internal/platform/duckdb/...` → EXIT=0 (tous ok)
+- `TestOpenAPISchemaDrift` (CGO) → MISSING=0 ; `TestContractRoutes{Registered,Documented}`
+  → PASS (path `listEndedCampaigns` enregistré+documenté)
+- `TestCampaignRepo_ListEnded` (`-tags=integration`) → PASS (SQL scope+ordre)
+- `make generate-types` → generated.ts (2 schémas + operation) ; `check-types` (tsc -b) →
+  clean ; `test-web` (vitest run) → 281 fichiers, 2469 passés / 14 skippés / 0 échec
+- `gofmt -l .` → vide ; `go vet ./...` → clean ; `make go-api-lint` → clean
+- Tests ajoutés : handler status filter (CSV/défaut/invalide), service terminal-non-enrichi,
+  domain FinalValue/Delta, service ListEnded, handler DTO, `filterLink.test.ts`
+
+**Découvertes consignées (non traitées, plan §Découvertes)** : décompte d'étapes d'arc
+faux dans l'onglet Objectifs (pré-existant, `useChallenges` actifs seuls) ; lien by_map
+sensible à la locale (cascade FR-first vs label locale) ; warning jsdom navigation bénin.
+
+**Conclusion / prochaine étape** : Lot C livré et vérifié, non poussé. Reste à
+l'orchestrateur : revue visuelle (onglet Objectifs sans items passés ; Réalisations →
+Historique peuplé, défi FDA terminé/abandonné visible ; clic pattern Super Fiesta → Solo
+filtré ; « voir la période » d'un record) ; puis Lot D (graphes) si poursuite.
+
+---
+
 ## [2026-07-22] Lot B « Navigation, IA, mode pilote » — plan Ascension UX (branche refactor/ascension-ux-2026-07)
 
 **Statut** : Complété (code + tests). Gate Lot B PASSÉ intégralement (sorties vertes).

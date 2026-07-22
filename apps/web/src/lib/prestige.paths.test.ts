@@ -215,6 +215,7 @@ const invokeAll: Record<keyof typeof prestigeApi, () => unknown> = {
   createChallenge: () => prestigeApi.createChallenge(CHALLENGE_BODY),
   getChallenge: () => prestigeApi.getChallenge('c1', SLUG),
   listActiveChallenges: () => prestigeApi.listActiveChallenges(SLUG, 'halo_infinite'),
+  listChallenges: () => prestigeApi.listChallenges(SLUG, 'halo_infinite', ['completed']),
   updateChallenge: () => prestigeApi.updateChallenge('c1', { target: 2 }, SLUG),
   abandonChallenge: () => prestigeApi.abandonChallenge('c1', SLUG),
   suggestNext: () => prestigeApi.suggestNext('c1', SLUG),

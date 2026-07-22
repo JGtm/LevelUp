@@ -38,6 +38,12 @@ type Service interface {
 	AbandonChallenge(ctx context.Context, id string) error
 	GetChallenge(ctx context.Context, id string) (Challenge, error)
 	ListActiveChallenges(ctx context.Context, userID, titleSlug string) ([]Challenge, error)
+	// ListChallenges liste les défis d'un joueur filtrés par statut. statuses vide
+	// → défaut historique [active] (comportement identique à ListActiveChallenges).
+	// Les défis actifs sont enrichis (valeur courante + PP potentiels) ; les défis
+	// terminaux sont servis bruts (l'enrichissement n'a de sens que sur un défi en
+	// cours). Sert la surface « Historique » de l'onglet Réalisations (Lot C).
+	ListChallenges(ctx context.Context, userID, titleSlug string, statuses []ChallengeStatus) ([]Challenge, error)
 
 	// EvaluateForUser ré-évalue tous les défis actifs d'un joueur sur un titre.
 	// Appelé par le sync hook après ingestion des nouveaux matchs.
@@ -574,20 +580,30 @@ func (s *service) GetChallenge(ctx context.Context, id string) (Challenge, error
 }
 
 func (s *service) ListActiveChallenges(ctx context.Context, userID, titleSlug string) ([]Challenge, error) {
-	active := StatusActive
+	return s.ListChallenges(ctx, userID, titleSlug, []ChallengeStatus{StatusActive})
+}
+
+func (s *service) ListChallenges(ctx context.Context, userID, titleSlug string, statuses []ChallengeStatus) ([]Challenge, error) {
+	if len(statuses) == 0 {
+		statuses = []ChallengeStatus{StatusActive}
+	}
 	list, err := s.deps.Challenges.List(ctx, ChallengeFilter{
 		UserID:    userID,
 		TitleSlug: titleSlug,
-		Status:    &active,
+		Statuses:  statuses,
 	})
 	if err != nil {
 		return nil, err
 	}
-	// Enrichit chaque défi avec sa valeur courante mesurée. Pure (pas de
+	// Enrichit chaque défi ACTIF avec sa valeur courante mesurée. Pure (pas de
 	// persistance) — l'évaluateur threshold est lui-même pur. Permet au front
-	// de trier par % de progression dans la home Prestige.
+	// de trier par % de progression. Les défis terminaux ne sont pas enrichis :
+	// leur fenêtre est passée, une « valeur courante » n'aurait pas de sens.
 	now := s.deps.Now()
 	for i, c := range list {
+		if c.Status != StatusActive {
+			continue
+		}
 		list[i].CurrentValue = s.computeCurrentValue(ctx, c, now)
 		// Récompense PP affichée = ce qui serait crédité à la complétion (même
 		// calcul que creditCompletion, isSquad=false pour les défis perso).

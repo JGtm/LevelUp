@@ -37,8 +37,9 @@ type ChallengeRepo interface {
 type ChallengeFilter struct {
 	UserID    string
 	TitleSlug string
-	Status    *ChallengeStatus // nil = tous statuts
-	ArcID     *string          // nil = tous, "" interdit (utilise NoArc à la place)
+	Status    *ChallengeStatus  // nil = tous statuts (filtre mono-statut)
+	Statuses  []ChallengeStatus // vide = ignoré ; sinon status IN (...) — prioritaire sur Status
+	ArcID     *string           // nil = tous, "" interdit (utilise NoArc à la place)
 	Mode      *ChallengeMode
 	Metric    *string // nil = toutes métriques (filtre cooldown par métrique)
 	Limit     int
