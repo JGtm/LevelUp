@@ -33,6 +33,11 @@ type SessionPageService struct {
 	// (sunburst v2) de la session. Optionnel — nil → FragDistribution best-effort
 	// (classes API servies, ventilation gun retombant dans « Non attribué »).
 	weaponKillsRepo port.WeaponKillsRepository
+	// weaponAccuracyRepo : loader weapon_accuracy agrégé pour le graphe « Précision
+	// par arme » de la session (Halo 5 natif, MIROIR de weaponKillsRepo). Optionnel —
+	// nil ou capability absente (Infinite) → WeaponAccuracy best-effort nil (le front
+	// retombe sur « Détails des frags »).
+	weaponAccuracyRepo port.WeaponAccuracyRepository
 	// csrThreshold (optionnel) : résolveur season_id → seuil placement CSR (5 ou 10).
 	// Sans lui, applyMatchPlacements retombe sur le défaut (5). Cf. match_history_placement.go.
 	csrThreshold CSRThresholdResolver
@@ -62,6 +67,14 @@ func (s *SessionPageService) WithCSRThresholds(resolver CSRThresholdResolver) *S
 // hiérarchique des frags (sunburst v2) par session. Optionnel.
 func (s *SessionPageService) WithWeaponKillsRepo(repo port.WeaponKillsRepository) *SessionPageService {
 	s.weaponKillsRepo = repo
+	return s
+}
+
+// WithWeaponAccuracyRepo injecte le loader weapon_accuracy alimentant le graphe
+// « Précision par arme » de la session (Halo 5 natif, MIROIR de WithWeaponKillsRepo).
+// Optionnel — nil / capability absente (Infinite) → WeaponAccuracy best-effort nil.
+func (s *SessionPageService) WithWeaponAccuracyRepo(repo port.WeaponAccuracyRepository) *SessionPageService {
+	s.weaponAccuracyRepo = repo
 	return s
 }
 

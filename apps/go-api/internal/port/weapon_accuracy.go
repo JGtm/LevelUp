@@ -54,6 +54,10 @@ type WeaponAccuracyRow struct {
 	ShotsLanded int    `json:"shots_landed"`
 	// Label EN ou FR résolu côté service. Vide côté repo.
 	Label string `json:"label,omitempty"`
+	// Class = classe d'arme (registre, axe manipulation) résolue côté repo via
+	// resolveWeaponMeta. Sert à EXCLURE du graphe « Précision par arme » les classes sans
+	// précision pertinente (grenade/mêlée/capacités : pas de « tir au but »). Vide si non résolue.
+	Class string `json:"class,omitempty"`
 }
 
 // WeaponAccuracyRepository expose le loader agrégé weapon_accuracy.

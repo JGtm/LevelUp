@@ -14,6 +14,7 @@
  * Garde-fou : minimum de frags (MIN_KILLS) pour éviter le bruit sur les petits
  * échantillons. null = aucun insight pertinent.
  */
+import { GUN_CLASSES } from '@/components/charts/fragDetailBreakdown'
 import type { FragDistribution } from '@/lib/api/types'
 
 export type RoleInsight =
@@ -25,13 +26,10 @@ const MIN_KILLS = 50
 const POWER_BLIND_THRESHOLD = 0.03
 const OVER_RELIANCE_THRESHOLD = 0.7
 
-/**
- * Classes « gun » (ventilation par arme, registre) dont les rôles nourrissent
- * l'insight coach — miroir de `gunFragClasses` côté Go (fragdist.Build). Les classes
- * servies par l'API (melee/grenade/spartan_ability) et le résidu (unattributed) sont
- * exclus : l'insight raisonne sur l'ARSENAL réel.
- */
-const GUN_FRAG_CLASSES: ReadonlySet<string> = new Set(['shoulder', 'sidearm', 'heavy'])
+// Classes « gun » (ventilation par arme, registre) dont les rôles nourrissent l'insight
+// coach : le SET partagé GUN_CLASSES (source unique buildFragDetailBreakdown). Les classes
+// API (melee/grenade/spartan_ability) et le résidu (unattributed) sont exclus — l'insight
+// raisonne sur l'ARSENAL réel.
 
 /**
  * Rôles NON-COMBAT (frags hors-arsenal H5 : véhicules, tourelles, environnement,
@@ -63,7 +61,7 @@ export function rolesFromDistribution(distribution: FragDistribution | null | un
   if (!distribution?.classes) return []
   const byRole = new Map<string, number>()
   for (const c of distribution.classes) {
-    if (!GUN_FRAG_CLASSES.has(c.class)) continue
+    if (!GUN_CLASSES.has(c.class)) continue
     if (c.roles && c.roles.length > 0) {
       for (const r of c.roles) byRole.set(r.role, (byRole.get(r.role) ?? 0) + r.kills)
     } else {

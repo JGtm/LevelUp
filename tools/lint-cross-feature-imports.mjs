@@ -166,6 +166,10 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   // SessionMatchesTable réutilise ExplorerMatchesTable pour l'historique de session
   // — durable, strictement analogue à career=>explorer.
   'session-detail=>explorer',
+  // SessionFragCard réutilise SynthesisWeaponAccuracyChart (graphe « Précision par
+  // arme », Halo 5) au lieu de « Détails des frags » — dépendance durable, analogue à
+  // session-detail=>explorer.
+  'session-detail=>synthesis',
   // MatchEncountersTable réutilise RelationBadgeLegend (légende des badges de
   // relation) de palmarès — dépendance durable.
   'match-view=>palmares',

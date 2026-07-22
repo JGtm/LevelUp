@@ -9,6 +9,7 @@
  */
 import { useState } from 'react'
 
+import { buildFragDetailBreakdown } from '@/components/charts/fragDetailBreakdown'
 import type { FragDistribution, SynthesisWeaponKillEntry } from '@/lib/api/types'
 import { formatMessage } from '@/lib/i18n/format'
 import { fragsManifest } from '@/lib/i18n/generated/frags'
@@ -17,10 +18,6 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { weaponRoleInsight } from './weaponRoleInsight'
 
 type ManifestKey = keyof typeof synthesisManifest
-
-// Classes servies par des ARMES (registre). Les autres (mêlée/grenade/capacités spartanes)
-// ne sont pas des armes → leur détail vient de la distribution, append sans double-comptage.
-const GUN_CLASSES = new Set(['shoulder', 'sidearm', 'heavy'])
 
 export interface SynthesisFragCharts {
   hovered: string | null
@@ -41,18 +38,7 @@ export function useSynthesisFragCharts(
   const roleLabel = (r: string) => formatMessage(fragsManifest, `frags.role.${r}` as never, appLocale)
   const detailTitle = formatMessage(fragsManifest, 'frags.charts.detail_title', appLocale)
 
-  const guns = (weapons ?? []).filter((w) => !w.class || GUN_CLASSES.has(w.class))
-  const details: SynthesisWeaponKillEntry[] = []
-  for (const c of distribution?.classes ?? []) {
-    if (GUN_CLASSES.has(c.class) || c.class === 'unattributed') continue
-    const roles = c.roles ?? []
-    if (roles.length > 0) {
-      for (const r of roles) details.push({ label: roleLabel(r.role), kills: r.kills, class: c.class })
-    } else {
-      details.push({ label: classLabel(c.class), kills: c.kills, class: c.class })
-    }
-  }
-  const breakdown = [...guns, ...details].sort((a, b) => b.kills - a.kills)
+  const breakdown = buildFragDetailBreakdown(distribution, weapons ?? [], { roleLabel, classLabel })
 
   const insight = weaponRoleInsight(distribution)
   const insightText = !insight

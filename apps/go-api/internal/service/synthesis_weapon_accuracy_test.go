@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"testing"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
 
@@ -74,6 +75,34 @@ func TestBuildWeaponAccuracy_TopNCap(t *testing.T) {
 	if math.Abs(last.Accuracy-float64(total-synthesisWeaponChartTopN+1)/100) > 1e-9 {
 		t.Errorf("out[last] accuracy = %.4f, want %.4f (W%d, seuil du cap)",
 			last.Accuracy, float64(total-synthesisWeaponChartTopN+1)/100, total-synthesisWeaponChartTopN+1)
+	}
+}
+
+// TestBuildWeaponAccuracy_ExcludesNonAccuracyClasses verrouille l'exclusion des classes
+// SANS précision pertinente : projectiles (grenade), mêlée, capacités spartanes, résidu non
+// attribué, buckets non-combat (véhicule/…). Une grenade lancée (shots_fired > 0, jamais
+// « au but ») ne doit PAS apparaître à 0 % dans « Précision par arme » — bug Sessions/
+// Synthesis. Les armes à tir (gun) et les classes non résolues ("" — bénéfice du doute) restent.
+func TestBuildWeaponAccuracy_ExcludesNonAccuracyClasses(t *testing.T) {
+	rows := []port.WeaponAccuracyRow{
+		{WeaponID: 1, Label: "BR75", Class: domain.FragClassShoulder, ShotsFired: 100, ShotsLanded: 40},
+		{WeaponID: 2, Label: "Grenade à plasma", Class: domain.FragClassGrenade, ShotsFired: 5, ShotsLanded: 0},
+		{WeaponID: 3, Label: "Épée à énergie", Class: domain.FragClassMelee, ShotsFired: 4, ShotsLanded: 4},
+		{WeaponID: 4, Label: "Charge spartane", Class: domain.FragClassSpartanAbility, ShotsFired: 2, ShotsLanded: 1},
+		{WeaponID: 5, Label: "Non attribué", Class: domain.FragClassUnattributed, ShotsFired: 9, ShotsLanded: 0},
+		{WeaponID: 6, Label: "Frag véhicule", Class: domain.FragClassVehicle, ShotsFired: 6, ShotsLanded: 0},
+		{WeaponID: 7, Label: "Arme hors registre", Class: "", ShotsFired: 10, ShotsLanded: 5}, // non résolue → conservée
+	}
+	out := buildWeaponAccuracy(rows, synthesisWeaponChartTopN)
+	// Seules les classes gun (BR75) + non résolue (arme hors registre) survivent.
+	if len(out) != 2 {
+		t.Fatalf("len = %d, want 2 (BR75 + arme hors registre) ; %+v", len(out), out)
+	}
+	for _, e := range out {
+		switch e.Label {
+		case "Grenade à plasma", "Épée à énergie", "Charge spartane", "Non attribué", "Frag véhicule":
+			t.Errorf("classe sans précision conservée à tort : %+v", e)
+		}
 	}
 }
 

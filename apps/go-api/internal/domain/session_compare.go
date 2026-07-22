@@ -78,6 +78,12 @@ type SessionCompareEntry struct {
 	// TopWeaponKills : frags par arme (top N) de la session, enrichis class/role — pour
 	// le breakdown recoloré par classe accolé au sunburst. Nil/vide si indisponible.
 	TopWeaponKills []SynthesisWeaponKillEntry `json:"top_weapon_kills,omitempty"`
+	// WeaponAccuracy : précision par arme de la session (Halo 5 natif, table
+	// weapon_accuracy). Omis pour les titres qui ne peuplent pas cette donnée
+	// (Infinite). MÊME source/format que Synthesis (builder partagé
+	// buildWeaponAccuracy) : accuracy = tirs au but / tirs tirés (0..1), tri
+	// précision décroissante, cap top N (synthesisWeaponChartTopN).
+	WeaponAccuracy []SynthesisWeaponAccuracyEntry `json:"weapon_accuracy,omitempty"`
 }
 
 // SessionCompareMetricRow est une ligne de comparaison métrique A vs B.
