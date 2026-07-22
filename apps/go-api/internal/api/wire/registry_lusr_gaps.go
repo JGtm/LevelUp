@@ -4,7 +4,9 @@
 // LUSRGapsReport : lectures seules best-effort par joueur (miroir de
 // ConvergenceReport) — un joueur inaccessible pose CheckError, jamais d'échec
 // global. RecomputeLUSRGapsForPlayer : action admin = replay chronologique
-// in-server (SyncEngine.RecomputeLUSRCanonical, prend les leases player+shared).
+// in-server (SyncEngine.RecomputeLUSRCanonical, prend les leases player+shared),
+// puis rafraîchit la jauge expvar des trous (delta borné) pour que le badge
+// /admin/data reflète la réparation sans attendre le cron data_health 24h.
 package wire
 
 import (
@@ -130,6 +132,10 @@ func (r *ServiceRegistry) RecomputeLUSRGapsForPlayer(ctx context.Context, titleS
 	if !ok {
 		return empty, fmt.Errorf("joueur introuvable pour ce titre : %q", playerRef)
 	}
+	// Scan des trous d'intérieur AVANT le replay → base du delta de jauge (pas de
+	// re-scan global). Best-effort : si le scan échoue, on n'ajustera pas la jauge.
+	before, beforeOK := r.scanPlayerInteriorGaps(ctx, titleSlug, p)
+
 	engine := sync_pkg.NewSyncEngineForTitle(r.cfg.RepoRoot, titleSlug, p.Gamertag, p.XUID, nil, r.provider)
 	if r.cfg.SharedProvider != nil {
 		engine = engine.WithSharedProvider(r.cfg.SharedProvider)
@@ -141,11 +147,48 @@ func (r *ServiceRegistry) RecomputeLUSRGapsForPlayer(ctx context.Context, titleS
 		return empty, fmt.Errorf("replay LUSR échoué: %w", err)
 	}
 	observability.IncCounter("admin_action_lusr_recompute_total")
+	// Rafraîchit la jauge du delta comblé : sinon le badge /admin/data resterait rouge
+	// jusqu'au prochain cron 24h (seul autre écrivain de la jauge).
+	r.refreshLUSRGaugeAfterReplay(ctx, titleSlug, p, before, beforeOK)
 	monitoringLog.InfoContext(ctx, "admin_actions: replay LUSR terminé",
 		"gamertag", p.Gamertag, "xuid", p.XUID, "updated", updated)
 	return domain.AdminLUSRRecomputeResponse{
 		Gamertag: p.Gamertag, XUID: p.XUID, Updated: updated, OK: true,
 	}, nil
+}
+
+// scanPlayerInteriorGaps renvoie le nombre de trous d'intérieur LUSR d'un joueur en
+// réutilisant scanPlayerLUSRGaps (→ resolveMonitoringDBs). ok=false si le scan a
+// échoué (DB inaccessible, resolver absent) : le caller n'ajuste alors PAS la jauge.
+func (r *ServiceRegistry) scanPlayerInteriorGaps(ctx context.Context, titleSlug string, p domain.PlayerSummary) (int, bool) {
+	// La chaîne LUSR est title-aware (GetLUSRChainForTitle) : injecter le slug.
+	scanCtx := ctxkeys.WithTitleSlug(ctx, titleSlug)
+	res := r.scanPlayerLUSRGaps(scanCtx, titleSlug, p)
+	if res.CheckError != "" {
+		return 0, false
+	}
+	return res.InteriorGaps, true
+}
+
+// refreshLUSRGaugeAfterReplay re-scanne le joueur APRÈS un replay réussi et ajuste la
+// jauge expvar du delta comblé (apres - avant, clampé ≥ 0 par AddLUSRInteriorGapsGauge).
+// Best-effort : si le scan avant OU après a échoué, on ne touche pas la jauge (le
+// prochain cron data_health la corrigera) — le replay lui-même reste un succès.
+func (r *ServiceRegistry) refreshLUSRGaugeAfterReplay(ctx context.Context, titleSlug string, p domain.PlayerSummary, before int, beforeOK bool) {
+	after, afterOK := r.scanPlayerInteriorGaps(ctx, titleSlug, p)
+	if !beforeOK || !afterOK {
+		monitoringLog.WarnContext(ctx, "admin_actions: jauge LUSR non ajustée (scan trous indisponible)",
+			"gamertag", p.Gamertag, "xuid", p.XUID, "title", titleSlug,
+			"before_ok", beforeOK, "after_ok", afterOK)
+		return
+	}
+	delta := after - before // attendu ≤ 0 (trous comblés par le replay)
+	if delta != 0 {
+		skill.AddLUSRInteriorGapsGauge(delta)
+	}
+	monitoringLog.InfoContext(ctx, "admin_actions: jauge LUSR ajustée après replay",
+		"gamertag", p.Gamertag, "title", titleSlug,
+		"gaps_before", before, "gaps_after", after, "delta", delta)
 }
 
 // resolvePlayerRef résout un slug OU gamertag (insensible à la casse) en
