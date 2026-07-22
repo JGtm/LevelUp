@@ -1,3 +1,63 @@
+## [2026-07-22] Filtres L2 vides sur Halo 5 — résolution read-side ID→nom (branche fix/h5-filters-asset-names)
+
+**Statut** : Complété. NON committé (validation utilisateur avant commit).
+Déclencheur : signalement utilisateur — le popover « Filtres » (barre L2, partagé Sessions/
+Timeseries/Historique/Escouade) ne proposait plus que « Type d'expérience » sur Halo 5 ;
+boutons « Modes »/« Sélections » grisés sur Synthesis.
+
+**Cause racine (vérifiée duckdb read-only)** : le pipeline `/filters/resolve`
+(`FiltersRepo.LoadMatchesForFilters`, Q4/Q4MV) ne lisait QUE les colonnes noms de
+`match_registry` — 100 % NULL sur le warehouse H5 (doctrine « H5 = metadata-side » : seuls
+les ids y sont écrits, les libellés bilingues vivent dans `metadata.asset_translations` ;
+le cron de sweep skippe H5 ; le backfill ne traite que `nom == id`, pas les NULL). Seules
+les options `experience_types` (booléens) survivaient ; `CheckboxGroup` masque les
+catégories vides → symptôme exact. Pas une régression : trou de couverture d'origine, le
+pipeline filtres était le SEUL lecteur sans résolution ID→nom.
+
+**Décisions techniques principales** :
+- Option READ-SIDE retenue (vs backfill data-side) : le backfill ne peut pas produire
+  « Modes » (pair_id 100 % NULL en H5, structurel — `PairMode: nil`), écrirait sur la DB
+  partagée (risque ART) et contredirait la doctrine metadata-side.
+- Nouveau `platform/duckdb/filters_repo_asset_names.go` : `applyAssetNamesFromMetadata`,
+  déclenché par la DONNÉE (nom vide + id présent), jamais le slug — no-op strict Infinite
+  (zéro requête metadata). Résolution bulk EN+FR via `MetadataRepo.ResolveAssetNamesBulk`
+  (même chemin que `applyMatchHistoryFRTranslations`). Jamais d'UUID écrit comme nom.
+  Le bloc cascades FR historique y est déménagé (filters_repo.go 551→286 L, seuil 500 L).
+- Q4/Q4MV : +4 colonnes fin de SELECT (map_id, playlist_id, game_variant_id,
+  game_variant_name) ; `FilterMatchRow` +5 champs.
+- Convention « mode = pair, sinon game_variant » centralisée :
+  `analysis.ResolveModeUIWithVariant` (source unique), branchée au chokepoint `modeUI`
+  (options ET applyCascadeFilter → Value d'option == clé de filtrage garanti) ; refactor
+  iso-comportement des 2 copies match_history (enrich, briefing). GARDE-RAIL ajouté :
+  `archlint/no_bare_resolve_mode_ui_test.go` (nouvel appel nu `analysis.ResolveModeUI(`
+  interdit hors allowlist datée — 4 sites legacy grandfathered, candidats migration).
+- Alignement des consommateurs in-memory (le filtre sélectionné doit MATCHER leurs rows) :
+  stats_filters.go (playlist FR-préféré + champs GameVariant — timeseries/session/
+  engagement), toFilterMatchRow (+PlaylistNameEN/GameVariant*), Explorer
+  (filterByExplorerModeNames + computeExplorerAvailableOptions → WithVariant),
+  squadagg.FilterRowsByCascade (modeLabelForFilter : PairMode sinon variant normalisé —
+  Synthesis/Squad v2/Teammates briefing). Aucun WHERE SQL sur noms dans le chemin cascade
+  L2 (tracé complet).
+
+**Résultats observés** : gates verts (build, vet, suite Go, intégration duckdb complète
+150 s, archlint, lint, gofmt). E2E serveur réel : H5 `/filters/resolve` → 24 playlists /
+13 modes / 21 cartes FR avec counts (1855 matchs, exclusion campagne active) ; cascade
+exacte (modes=[Capture du drapeau] → 201/201 ; playlists=[Assassin] → 742/742) ;
+match-history filtré → toutes les rows mode_ui=« Capture du drapeau » ; contre-épreuve
+Infinite inchangée (11/22/71 sur 1039). Flaky pré-existant observé 1× en suite complète :
+`TestStartImport_HappyPathReturns202WithJobID` (handlers, pollution inter-packages) —
+passe isolé et en package complet, non lié au diff.
+
+**Découvertes hors périmètre (non traitées)** : clés de cache front `filtersResolve/
+Preview` sans titre (→ à couvrir par PLAN_TITLE_SLUG_URL, note à y ajouter) ; résiduels
+SQL-side sur noms hors cascade L2 (neighbors filtrés `analysis/match_filter.go`, Career
+highlights `career_repo_highlights.go:69` — correctif nom→id à planifier) ;
+`GetAvailablePlaylists/GetAvailableMaps` (filters_repo) sans consommateur prod (candidats
+code mort) ; `buildModeTranslationMap` ignore la voie variant (no-op inoffensif H5).
+
+**Prochaine étape** : revue utilisateur → commit(s) sur `fix/h5-filters-asset-names`,
+push (CI de branche), PR vers main. Vérif visuelle web (barre L2 H5) au premier `make dev`.
+
 ## [2026-07-19] Notifs — i18n FR notifs/Discord, toggle version, fix « solide » présence webhook (branche fix/notif-i18n-fr-webhook-present)
 
 **Statut** : Complété. NON committé (superviseur committe ; push main = deploy prod → après revue utilisateur).

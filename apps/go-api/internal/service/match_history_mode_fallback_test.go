@@ -31,3 +31,52 @@ func TestEnrichRow_ModeFallbackToGameVariant(t *testing.T) {
 		t.Errorf("sans source de mode, ModeUI attendu nil, obtenu %v", *got.ModeUI)
 	}
 }
+
+// TestFilterByExplorerModeNames_GameVariantFallback : la voie Explorer (filtre
+// modes) matche sur le game_variant quand le pair est absent (H5) ; le pair prime
+// pour les rows Infinite (non-régression).
+func TestFilterByExplorerModeNames_GameVariantFallback(t *testing.T) {
+	assassin := "Assassin"
+	strongholds := "Strongholds"
+	rows := []domain.MatchHistoryRawRow{
+		{MatchID: "h5", GameVariantNameFR: &assassin}, // pair absent → variant
+		{MatchID: "inf", PairName: &strongholds},      // pair présent
+	}
+
+	got := filterByExplorerModeNames(rows, []string{"Assassin"})
+	if len(got) != 1 || got[0].MatchID != "h5" {
+		t.Errorf("variant fallback: attendu h5, obtenu %v", got)
+	}
+
+	gotInf := filterByExplorerModeNames(rows, []string{"Strongholds"})
+	if len(gotInf) != 1 || gotInf[0].MatchID != "inf" {
+		t.Errorf("pair Infinite: attendu inf, obtenu %v", gotInf)
+	}
+}
+
+// TestComputeExplorerAvailableOptions_GameVariantMode : les facettes modes
+// incluent le game_variant des rows sans pair (H5) — sinon « Modes » resterait vide.
+func TestComputeExplorerAvailableOptions_GameVariantMode(t *testing.T) {
+	assassin := "Assassin"
+	strongholds := "Strongholds"
+	rows := []domain.MatchHistoryRawRow{
+		{MatchID: "h5", GameVariantNameFR: &assassin},
+		{MatchID: "inf", PairName: &strongholds},
+	}
+
+	_, _, _, modes := computeExplorerAvailableOptions(rows)
+	hasMode := func(want string) bool {
+		for _, m := range modes {
+			if m == want {
+				return true
+			}
+		}
+		return false
+	}
+	if !hasMode("Assassin") {
+		t.Errorf("facette modes doit inclure 'Assassin' (game_variant H5), obtenu %v", modes)
+	}
+	if !hasMode("Strongholds") {
+		t.Errorf("facette modes doit inclure 'Strongholds' (pair Infinite), obtenu %v", modes)
+	}
+}

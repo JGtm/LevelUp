@@ -351,7 +351,20 @@ journal du plan ; delivery-checklist passée.
 > ICI et n'est pas traitée (sauf si elle bloque le gate de l'étape courante). Format :
 > `[YYYY-MM-DD] découverte — décision (différé / signalé / bloquant traité)`.
 
-- (aucune à ce jour)
+- [2026-07-22] Clés de cache TanStack `filtersResolve`/`filtersPreview` SANS titre
+  (`lib/query/keys.ts:29-32`), alors que la clé `home` (keys.ts:98) documente précisément ce
+  piège (« un switch de titre servait les données périmées du titre précédent »). Risque
+  résiduel : depuis df7f13775 le client n'affirme AUCUN header titre avant hydratation
+  (session serveur autoritaire) et `useFiltersResolve` est `enabled` dès le playerSlug
+  d'URL → une réponse `/filters/resolve` du titre de session peut être mise en cache sous
+  une clé sans titre et servie après hydratation sur un autre titre. Découvert pendant le
+  diagnostic « filtres H5 vides » (branche fix/h5-filters-asset-names — la cause racine de
+  ce bug-là était backend, corrigée là-bas). Décision : différé vers CE plan — D7 rend le
+  titre déterministe dès le premier rendu (segment d'URL → header affirmé d'emblée), ce qui
+  ferme la fenêtre de course au boot ; lors de la Phase 1, AJOUTER le titre aux clés
+  `filtersResolve`/`filtersPreview` (même motif que `home`) en défense en profondeur, et
+  vérifier au passage les autres clés player-scoped title-dépendantes sans titre
+  (`career`, `timeseries`, `synthesis`, `teammates`, …) — même audit, même commit.
 
 Points de vigilance connus à surveiller (candidats Découvertes) :
 - Mismatch nav pré-existant : `shellNavigation.ts:47` pointe `/players/$playerSlug/profile/
