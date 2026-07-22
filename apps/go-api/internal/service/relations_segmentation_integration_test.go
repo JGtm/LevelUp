@@ -38,7 +38,9 @@ func seedRelationsSegmentation(t *testing.T, db *duckdb.DB) {
 			map_name VARCHAR, map_name_fr VARCHAR,
 			pair_name VARCHAR, pair_name_fr VARCHAR, pair_id VARCHAR,
 			playlist_name VARCHAR, playlist_name_fr VARCHAR,
-			is_firefight BOOLEAN, is_ranked BOOLEAN)`,
+			is_firefight BOOLEAN, is_ranked BOOLEAN,
+			map_id VARCHAR, playlist_id VARCHAR,
+			game_variant_id VARCHAR, game_variant_name VARCHAR)`,
 		`CREATE TABLE match_participants (
 			match_id VARCHAR, xuid VARCHAR, team_id INTEGER, outcome INTEGER, kda DOUBLE)`,
 		`CREATE TABLE killer_victim_pairs (
