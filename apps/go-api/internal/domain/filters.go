@@ -31,16 +31,23 @@ type FilterMatchRow struct {
 	StartTime      *time.Time
 	MapName        *string // nom EN brut
 	MapNameFR      *string // COALESCE(map_name_fr, map_name), enrichi par applyMapFRTranslations
+	MapID          *string // UUID asset — clé de résolution metadata (titres sans noms registry)
 	PairName       *string // nom EN brut
 	PairNameFR     *string // COALESCE, enrichi par applyModeFRTranslations
 	PairID         *string // UUID asset, clé de lookup asset_translations (fallback enrichissement FR)
 	PlaylistName   *string // COALESCE(playlist_name_fr, playlist_name), enrichi par applyPlaylistFRTranslations
 	PlaylistNameEN *string // playlist_name EN brut — clé de migration cascade
-	IsFirefight    bool
-	IsRanked       bool
-	SessionID      *string
-	SessionLabel   *string
-	IsWithFriends  bool
+	PlaylistID     *string // UUID asset — clé de résolution metadata (titres sans noms registry)
+	// game_variant : source de MODE des titres sans pair (Halo 5), où pair_id/pair_name
+	// sont NULL. Résolu read-side depuis asset_translations via applyAssetNamesFromMetadata.
+	GameVariantID     *string // UUID asset — clé de résolution metadata
+	GameVariantName   *string // EN — source de MODE des titres sans pair (Halo 5)
+	GameVariantNameFR *string // FR (sinon EN) — enrichi par applyAssetNamesFromMetadata
+	IsFirefight       bool
+	IsRanked          bool
+	SessionID         *string
+	SessionLabel      *string
+	IsWithFriends     bool
 }
 
 // PeriodInput représente le filtre de période.

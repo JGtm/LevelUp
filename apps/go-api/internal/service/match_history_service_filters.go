@@ -217,7 +217,12 @@ func filterByExplorerModeNames(rows []domain.MatchHistoryRawRow, modes []string)
 	set := stringSliceToSet(modes)
 	out := rows[:0:0]
 	for _, r := range rows {
-		label := analysis.NormalizeModeLabel(coalesceStr(r.PairNameFR, r.PairName))
+		// Pair prioritaire, sinon fallback game_variant (titres sans pair, ex. H5) —
+		// même convention que le chokepoint filters_service.modeUI et les options.
+		label := ""
+		if v := analysis.ResolveModeUIWithVariant(r.PairName, r.PairNameFR, r.GameVariantName, r.GameVariantNameFR); v != nil {
+			label = *v
+		}
 		if _, ok := set[label]; ok {
 			out = append(out, r)
 		}
@@ -312,8 +317,10 @@ func computeExplorerAvailableOptions(rows []domain.MatchHistoryRawRow) (expTypes
 		if m := coalesceStr(r.MapNameFR, r.MapName); m != "" {
 			mapSet[m] = struct{}{}
 		}
-		if mo := analysis.NormalizeModeLabel(coalesceStr(r.PairNameFR, r.PairName)); mo != "" {
-			modeSet[mo] = struct{}{}
+		// Pair prioritaire, sinon fallback game_variant (titres sans pair, ex. H5) —
+		// même convention que filterByExplorerModeNames et les options du filtre.
+		if v := analysis.ResolveModeUIWithVariant(r.PairName, r.PairNameFR, r.GameVariantName, r.GameVariantNameFR); v != nil && *v != "" {
+			modeSet[*v] = struct{}{}
 		}
 	}
 	expTypes = sortedKeys(expSet)

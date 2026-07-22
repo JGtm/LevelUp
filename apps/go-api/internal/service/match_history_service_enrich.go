@@ -17,19 +17,27 @@ import (
 )
 
 func toFilterMatchRow(r domain.MatchHistoryRawRow) domain.FilterMatchRow {
+	// PlaylistName est déjà FR-préféré (COALESCE(playlist_name_fr, playlist_name),
+	// cf. domain.MatchHistoryRawRow) → cohérent avec la Value FR des options.
+	// GameVariantName/FR + PlaylistNameEN sont remplis pour H5 par
+	// applyMatchHistoryFRTranslations : GameVariant* alimente le fallback mode
+	// (titres sans pair), PlaylistNameEN sert de clé de migration cascade.
 	return domain.FilterMatchRow{
-		MatchID:       r.MatchID,
-		StartTime:     r.StartTime,
-		MapName:       r.MapName,
-		MapNameFR:     r.MapNameFR,
-		PairName:      r.PairName,
-		PairNameFR:    r.PairNameFR,
-		PlaylistName:  r.PlaylistName,
-		IsFirefight:   r.IsFirefight,
-		IsRanked:      r.IsRanked,
-		SessionID:     r.SessionID,
-		SessionLabel:  r.SessionLabel,
-		IsWithFriends: r.IsWithFriends,
+		MatchID:           r.MatchID,
+		StartTime:         r.StartTime,
+		MapName:           r.MapName,
+		MapNameFR:         r.MapNameFR,
+		PairName:          r.PairName,
+		PairNameFR:        r.PairNameFR,
+		PlaylistName:      r.PlaylistName,
+		PlaylistNameEN:    r.PlaylistNameEN,
+		GameVariantName:   r.GameVariantName,
+		GameVariantNameFR: r.GameVariantNameFR,
+		IsFirefight:       r.IsFirefight,
+		IsRanked:          r.IsRanked,
+		SessionID:         r.SessionID,
+		SessionLabel:      r.SessionLabel,
+		IsWithFriends:     r.IsWithFriends,
 	}
 }
 
@@ -115,13 +123,10 @@ func enrichMapWinRate(mapName string, mapWR map[string][2]int) (*float64, *int) 
 }
 
 func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFormatters) domain.MatchHistoryRow {
-	modeUI := analysis.ResolveModeUI(r.PairName, r.PairNameFR)
-	// Fallback game_variant : les titres sans pair_name (Halo 5) portent leur mode dans
-	// le game_variant. Sans ce repli, mode_ui resterait vide sur la liste Explorer/
-	// Historique pour H5 (parité home/matchs-récents : analysis.modeLabels PairMode→GameVariant).
-	if modeUI == nil {
-		modeUI = analysis.ResolveModeUI(r.GameVariantName, r.GameVariantNameFR)
-	}
+	// mode_ui : pair prioritaire, sinon fallback game_variant (titres sans pair_name,
+	// ex. Halo 5). Sans ce repli, mode_ui resterait vide sur la liste Explorer/
+	// Historique pour H5. Convention centralisée — cf. analysis.ResolveModeUIWithVariant.
+	modeUI := analysis.ResolveModeUIWithVariant(r.PairName, r.PairNameFR, r.GameVariantName, r.GameVariantNameFR)
 	mapU := coalesceStr(r.MapNameFR, r.MapName)
 	playlist := fmts.playlistLabelFor(coalesceStr(r.PlaylistName))
 

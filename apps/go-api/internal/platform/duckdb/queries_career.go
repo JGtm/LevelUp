@@ -24,7 +24,11 @@ SELECT
     COALESCE(r.playlist_name_fr, r.playlist_name)      AS playlist_name,
     COALESCE(r.is_firefight, FALSE)                    AS is_firefight,
     COALESCE(r.is_ranked, FALSE)                       AS is_ranked,
-    r.playlist_name                                    AS playlist_name_en
+    r.playlist_name                                    AS playlist_name_en,
+    r.map_id,
+    r.playlist_id,
+    r.game_variant_id,
+    r.game_variant_name
 FROM v_match_full r
 JOIN match_participants p ON r.match_id = p.match_id
 WHERE p.xuid = ?` + campaignExclusionToken + `
@@ -47,7 +51,11 @@ SELECT
     COALESCE(playlist_name_fr, playlist_name)      AS playlist_name,
     COALESCE(is_firefight, FALSE)                  AS is_firefight,
     COALESCE(is_ranked, FALSE)                     AS is_ranked,
-    playlist_name                                  AS playlist_name_en
+    playlist_name                                  AS playlist_name_en,
+    map_id,
+    playlist_id,
+    game_variant_id,
+    game_variant_name
 FROM mv_player_matches
 WHERE xuid = ?` + campaignExclusionToken + `
 ORDER BY start_time DESC`

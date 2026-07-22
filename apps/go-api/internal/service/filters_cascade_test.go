@@ -51,6 +51,15 @@ func fWithMap(m string) func(*domain.FilterMatchRow) {
 	return func(r *domain.FilterMatchRow) { r.MapName = strPtr(m) }
 }
 
+// fWithVariant renseigne le game_variant (EN + FR) SANS pair_name : reproduit le
+// modèle Halo 5 où le mode vient du game_variant (pair_id/pair_name NULL).
+func fWithVariant(en, fr string) func(*domain.FilterMatchRow) {
+	return func(r *domain.FilterMatchRow) {
+		r.GameVariantName = strPtr(en)
+		r.GameVariantNameFR = strPtr(fr)
+	}
+}
+
 func fWithRanked() func(*domain.FilterMatchRow) {
 	return func(r *domain.FilterMatchRow) { r.IsRanked = true }
 }
@@ -669,5 +678,59 @@ func TestResolveFilters_EmptyRows_ZeroCounts(t *testing.T) {
 	}
 	if res.Counts.TotalMatchesAfterFilters != 0 {
 		t.Errorf("expected 0 after, got %d", res.Counts.TotalMatchesAfterFilters)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// 15. Halo 5 — mode dérivé du game_variant (pair_name NULL)
+// ---------------------------------------------------------------------------
+
+// TestBuildAvailableOptions_H5VariantMode_ModesFromVariant : sur un titre sans
+// pair (H5), le mode est dérivé du game_variant (FR préféré) → la catégorie Modes
+// n'est plus vide. C'est le symptôme corrigé (filtres L2 grisés sur Halo 5).
+func TestBuildAvailableOptions_H5VariantMode_ModesFromVariant(t *testing.T) {
+	rows := []domain.FilterMatchRow{
+		mkFilterRow("h5a", fWithPlaylist("Team Arena"), fWithVariant("Team Slayer", "Assassin en équipe"), fWithMap("Truth")),
+		mkFilterRow("h5b", fWithPlaylist("Team Arena"), fWithVariant("Capture the Flag", "Capture du drapeau"), fWithMap("Coliseum")),
+	}
+	avail := buildAvailableOptions(rows, domain.CascadeFilter{})
+	if len(avail.Modes) != 2 {
+		t.Fatalf("expected 2 modes from variant, got %d: %v", len(avail.Modes), labelValues(avail.Modes))
+	}
+	if !hasLabel(avail.Modes, "Assassin en équipe") || !hasLabel(avail.Modes, "Capture du drapeau") {
+		t.Errorf("expected FR variant modes, got %v", labelValues(avail.Modes))
+	}
+}
+
+// TestResolveFilters_H5VariantMode_CascadeMatchesRow : sélectionner un mode dérivé
+// du game_variant filtre bien les rows (Value d'option == clé de filtrage, garanti
+// par le chokepoint modeUI).
+func TestResolveFilters_H5VariantMode_CascadeMatchesRow(t *testing.T) {
+	rows := []domain.FilterMatchRow{
+		mkFilterRow("h5a", fWithPlaylist("Team Arena"), fWithVariant("Team Slayer", "Assassin en équipe"), fWithMap("Truth")),
+		mkFilterRow("h5b", fWithPlaylist("Team Arena"), fWithVariant("Capture the Flag", "Capture du drapeau"), fWithMap("Coliseum")),
+	}
+	res := ResolveFiltersFromRows(rows, domain.FilterContextInput{
+		Cascade: domain.CascadeFilter{Modes: []string{"Assassin en équipe"}},
+	})
+	if res.Counts.TotalMatchesBeforeFilters != 2 {
+		t.Errorf("TotalMatchesBeforeFilters = %d, want 2", res.Counts.TotalMatchesBeforeFilters)
+	}
+	if res.Counts.TotalMatchesAfterFilters != 1 {
+		t.Errorf("TotalMatchesAfterFilters = %d, want 1 (mode dérivé du game_variant)", res.Counts.TotalMatchesAfterFilters)
+	}
+}
+
+// TestBuildAvailableOptions_InfinitePairWins_VariantIgnored : contre-épreuve
+// Infinite — quand le pair_name est rempli, il prime et le game_variant est
+// ignoré (le fallback ne s'active que pair absent) → comportement inchangé.
+func TestBuildAvailableOptions_InfinitePairWins_VariantIgnored(t *testing.T) {
+	rows := []domain.FilterMatchRow{
+		mkFilterRow("inf1", fWithPlaylist("Quick Play"), fWithMode("Arena:Slayer"),
+			fWithVariant("Team Slayer", "Assassin en équipe"), fWithMap("Streets")),
+	}
+	avail := buildAvailableOptions(rows, domain.CascadeFilter{})
+	if len(avail.Modes) != 1 || avail.Modes[0].Value != "Slayer" {
+		t.Errorf("expected Modes=['Slayer'] (pair prime, variant ignoré), got %v", labelValues(avail.Modes))
 	}
 }

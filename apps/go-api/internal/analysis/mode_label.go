@@ -137,6 +137,45 @@ func ResolveModeUI(pairName, pairNameFR *string) *string {
 	return &out
 }
 
+// ResolveModeUIWithVariant retourne le libellé de MODE côté UI : pair prioritaire
+// (FR sinon EN, normalisé via NormalizeModeLabel), sinon fallback game_variant
+// (FR sinon EN, normalisé) pour les titres sans pair_name (Halo 5,
+// games/halo_5/mapping.go PairMode nil). Source unique de la convention
+// pair-sinon-variant — ne pas recopier ce pattern ailleurs. Retourne nil si
+// aucune source (pair ET variant vides).
+//
+// Différence assumée avec ResolveModeUI : si une source non vide est sur-nettoyée
+// par NormalizeModeLabel (résultat vide, ex. un brut réduit à un pur suffixe
+// "- Forge"), on retombe sur la valeur brute trimée au lieu de perdre le libellé.
+// Un pair_name / game_variant réel porte toujours un token de mode, donc ce repli
+// ne se déclenche pas sur les données de production (iso-comportement effectif).
+func ResolveModeUIWithVariant(pairName, pairNameFR, variantName, variantNameFR *string) *string {
+	if v := resolveModeSource(pairNameFR, pairName); v != nil {
+		return v
+	}
+	return resolveModeSource(variantNameFR, variantName)
+}
+
+// resolveModeSource prend la première source non vide (préférence au 1er argument
+// = FR), applique NormalizeModeLabel, et retombe sur la valeur brute trimée si la
+// normalisation vide le libellé. Retourne nil si les deux sources sont vides.
+func resolveModeSource(preferred, fallback *string) *string {
+	src := ""
+	if preferred != nil && *preferred != "" {
+		src = *preferred
+	} else if fallback != nil && *fallback != "" {
+		src = *fallback
+	}
+	src = strings.TrimSpace(src)
+	if src == "" {
+		return nil
+	}
+	if norm := NormalizeModeLabel(src); norm != "" {
+		return &norm
+	}
+	return &src
+}
+
 // ExtractKnownMode retrouve un mode CANONIQUE connu à l'intérieur d'un label déjà
 // normalisé mais non reconnu tel quel — typiquement une variante d'arme/saison
 // ("Legacy Slayer BR" → "Slayer", "Tactical Slayer" → "Slayer"). Cherche le mode
