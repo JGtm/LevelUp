@@ -56,7 +56,15 @@ type DataHealthCheckResult struct {
 	LUSRInteriorGaps   int
 	LUSRPendingRecent  int
 	LUSRPlayersScanned int
-	Duration           time.Duration
+	// LUSRPlayersUnmeasured : # de joueurs (ou de titres entiers) dont les trous LUSR
+	// n'ont PAS pu être mesurés ce cycle : player DB tenue RW par un sync donc
+	// inouvrable, scan SQL en échec, ou os.ReadDir du répertoire joueurs KO. >0 = scan
+	// LUSR PARTIEL → LUSRInteriorGaps est sous-compté et la jauge expvar NE DOIT PAS
+	// être republiée (sinon le badge /admin/data s'éteindrait à tort — « unmeasured ≠
+	// sain »). Distinct de ProbeErrors : une player DB tenue RW est transitoire/normale,
+	// elle ne fait pas échouer le cron mais gèle la jauge le temps du sync.
+	LUSRPlayersUnmeasured int
+	Duration              time.Duration
 }
 
 // HealthScheduler orchestre l'audit santé DB périodique. N'émet pas de
@@ -188,10 +196,10 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 	res.WarningsTotal = res.UUIDsRawCount + res.LyingBitsEvents + res.LyingBitsWeaponKills + res.GarbageBannerURLs
 	res.Duration = time.Since(start)
 
-	// Publie la jauge expvar des trous d'intérieur (dernier scan complet). Les trous
-	// LUSR ne rentrent PAS dans WarningsTotal (signal distinct, alerte via le panneau
-	// monitoring + auto-heal), mais sont toujours loggés + exposés.
-	skill.SetLUSRInteriorGapsGauge(res.LUSRInteriorGaps)
+	// Publie la jauge expvar des trous LUSR (dernier scan complet uniquement). Les
+	// trous LUSR ne rentrent PAS dans WarningsTotal (signal distinct : panneau
+	// monitoring + auto-heal), mais sont toujours loggés.
+	publishLUSRGaugeIfComplete(ctx, res)
 
 	// Auto-heal (remédiation bornée) : 1 joueur/cycle max, le plus impacté, seulement
 	// si le kill-switch est ON (défaut OFF → alerte seule).
@@ -204,11 +212,13 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 	// 2026-05-30). Reste informatif — hors WarningsTotal par décision.
 	// Lot B (audit #10) : un cycle avec des sondes en échec (ProbeErrors > 0) est
 	// loggué en WARN — il n'a pas pu tout mesurer et ne doit pas passer pour « sain ».
+	// Idem si des joueurs LUSR n'ont pas pu être mesurés (scan partiel, jauge gelée) :
+	// « unmeasured ≠ sain ».
 	logHealth := slog.InfoContext
-	if res.ProbeErrors > 0 {
+	if res.ProbeErrors > 0 || res.LUSRPlayersUnmeasured > 0 {
 		logHealth = slog.WarnContext
 	}
-	if res.WarningsTotal == 0 && res.ProbeErrors == 0 {
+	if res.WarningsTotal == 0 && res.ProbeErrors == 0 && res.LUSRPlayersUnmeasured == 0 {
 		slog.InfoContext(ctx, "data_health: cycle terminé",
 			"warnings_total", 0,
 			"probe_errors", 0,
@@ -216,6 +226,7 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 			"lusr_interior_gaps", res.LUSRInteriorGaps,
 			"lusr_pending_recent", res.LUSRPendingRecent,
 			"lusr_players_scanned", res.LUSRPlayersScanned,
+			"lusr_players_unmeasured", 0,
 			"duration", res.Duration.Round(time.Millisecond),
 		)
 	} else {
@@ -230,6 +241,7 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 			"lusr_interior_gaps", res.LUSRInteriorGaps,
 			"lusr_pending_recent", res.LUSRPendingRecent,
 			"lusr_players_scanned", res.LUSRPlayersScanned,
+			"lusr_players_unmeasured", res.LUSRPlayersUnmeasured,
 			"duration", res.Duration.Round(time.Millisecond),
 		)
 	}
@@ -336,6 +348,23 @@ func (s *HealthScheduler) auditPlayerBanners(ctx context.Context, pr *titlePkg.P
 		_ = pdb.Close() //nolint:errcheck // ref-count : best-effort
 	}
 	return total
+}
+
+// publishLUSRGaugeIfComplete republie la jauge expvar des trous d'intérieur —
+// SEULEMENT si le scan LUSR a été COMPLET (aucun joueur non mesuré). Un scan partiel
+// (player DB tenue RW par un sync, ReadDir KO) sous-compte LUSRInteriorGaps :
+// republier écraserait le badge /admin/data avec un total trompeur (voire 0) et
+// l'éteindrait à tort — « unmeasured ≠ sain ». On conserve alors la dernière valeur
+// publiée (dernier scan complet ou heal manuel, cf. skill.AddLUSRInteriorGapsGauge)
+// et on logge le motif.
+func publishLUSRGaugeIfComplete(ctx context.Context, res *DataHealthCheckResult) {
+	if res.LUSRPlayersUnmeasured == 0 {
+		skill.SetLUSRInteriorGapsGauge(res.LUSRInteriorGaps)
+		return
+	}
+	slog.WarnContext(ctx, "data_health: jauge LUSR non mise à jour (scan partiel)",
+		"lusr_players_unmeasured", res.LUSRPlayersUnmeasured,
+		"lusr_interior_gaps_scanned", res.LUSRInteriorGaps)
 }
 
 // scanCount exécute une sonde COUNT(*) data-health. Sur erreur, la LOGGUE (Warn)

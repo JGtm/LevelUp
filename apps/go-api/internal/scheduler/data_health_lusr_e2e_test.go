@@ -20,6 +20,7 @@ import (
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/scheduler"
 	syncpkg "levelup/go-api/internal/sync"
+	"levelup/go-api/internal/sync/skill"
 )
 
 // seedLUSRInteriorGaps crée un joueur (dir + xuid.txt + player DB migrée SANS note
@@ -89,6 +90,26 @@ func seedLUSRInteriorGaps(t *testing.T, repoRoot, gamertag, xuid string, nMatche
 	}
 }
 
+// seedUnmeasurableLUSRPlayer crée un joueur (dir + xuid.txt) dont la player DB est un
+// fichier CORROMPU (pas une DuckDB valide) : openDBShared échoue au ping → le joueur
+// est compté LUSRPlayersUnmeasured (scan partiel) sans être scanné, et la jauge ne
+// doit pas être republiée.
+func seedUnmeasurableLUSRPlayer(t *testing.T, repoRoot, gamertag, xuid string) {
+	t.Helper()
+	playerDir := filepath.Join(repoRoot, "data", "titles", "halo_infinite", "players", gamertag)
+	if err := os.MkdirAll(playerDir, 0o755); err != nil {
+		t.Fatalf("mkdir player dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(playerDir, "xuid.txt"), []byte(xuid), 0o644); err != nil {
+		t.Fatalf("write xuid.txt: %v", err)
+	}
+	// Contenu volontairement non-DuckDB → PingContext échoue à l'ouverture read-only.
+	if err := os.WriteFile(filepath.Join(playerDir, "stats.duckdb"),
+		[]byte("this is not a valid duckdb database file"), 0o644); err != nil {
+		t.Fatalf("write corrupt stats.duckdb: %v", err)
+	}
+}
+
 func TestHealthScheduler_E2E_LUSRInteriorGap_Detected(t *testing.T) {
 	repoRoot := healthE2ESetup(t)
 	seedLUSRInteriorGaps(t, repoRoot, "GapPlayer", "2533274811111111", 1)
@@ -106,6 +127,38 @@ func TestHealthScheduler_E2E_LUSRInteriorGap_Detected(t *testing.T) {
 	// Les trous LUSR ne comptent PAS dans WarningsTotal (signal distinct).
 	if res.WarningsTotal != 0 {
 		t.Errorf("WarningsTotal: les trous LUSR ne doivent pas gonfler les warnings, obtenu %d", res.WarningsTotal)
+	}
+	// Cas nominal : joueur mesurable → aucun non mesuré et la jauge est publiée.
+	if res.LUSRPlayersUnmeasured != 0 {
+		t.Errorf("LUSRPlayersUnmeasured: attendu 0 (joueur mesurable), obtenu %d", res.LUSRPlayersUnmeasured)
+	}
+	if got := skill.LUSRInteriorGapsGaugeValue(); got != int64(res.LUSRInteriorGaps) {
+		t.Errorf("jauge LUSR: got %d, want %d (scan complet → publiée)", got, res.LUSRInteriorGaps)
+	}
+}
+
+// TestHealthScheduler_E2E_LUSRUnmeasured_GaugeFrozen : un joueur dont la player DB est
+// inouvrable rend le scan PARTIEL (LUSRPlayersUnmeasured > 0) → la jauge NE doit PAS
+// être republiée (valeur précédente conservée, « unmeasured ≠ sain »).
+func TestHealthScheduler_E2E_LUSRUnmeasured_GaugeFrozen(t *testing.T) {
+	repoRoot := healthE2ESetup(t)
+	seedUnmeasurableLUSRPlayer(t, repoRoot, "Corrupt", "2533274844444444")
+
+	// Valeur sentinelle : simule un dernier scan complet (ou un heal manuel) publié.
+	const sentinel = 42
+	skill.SetLUSRInteriorGapsGauge(sentinel)
+	t.Cleanup(func() { skill.SetLUSRInteriorGapsGauge(0) })
+
+	res := scheduler.NewDataHealthScheduler(repoRoot).RunOnce(context.Background())
+	if res == nil {
+		t.Fatal("RunOnce a retourné nil")
+	}
+	if res.LUSRPlayersUnmeasured < 1 {
+		t.Errorf("LUSRPlayersUnmeasured: attendu >= 1 (player DB non ouvrable), obtenu %d", res.LUSRPlayersUnmeasured)
+	}
+	// Scan partiel → la jauge n'est pas écrasée : la valeur précédente est conservée.
+	if got := skill.LUSRInteriorGapsGaugeValue(); got != sentinel {
+		t.Errorf("jauge écrasée sur scan partiel: got %d, want %d (valeur précédente conservée)", got, sentinel)
 	}
 }
 
