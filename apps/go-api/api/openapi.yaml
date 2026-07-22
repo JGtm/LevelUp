@@ -1984,6 +1984,38 @@ paths:
       responses:
         "200": { description: "Couverture de résolution d'arme par titre" }
 
+  /admin/monitoring/lusr-gaps:
+    get:
+      tags: [admin]
+      operationId: getAdminMonitoringLusrGaps
+      summary: "Dashboard monitoring — trous d'intérieur LUSR (matchs éligibles sans note, sous le watermark) + santé du garde-fou, par titre (auth admin requis)"
+      parameters:
+        - name: title
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200": { description: "Rapport trous LUSR par joueur + agrégats + garde-fou" }
+
+  /admin/monitoring/lusr-gaps/{player}/recompute:
+    post:
+      tags: [admin]
+      operationId: postAdminMonitoringLusrGapsRecompute
+      summary: "Action admin — replay LUSR chronologique complet d'un joueur (comble les trous d'intérieur) (auth admin requis)"
+      parameters:
+        - name: player
+          in: path
+          required: true
+          schema: { type: string }
+        - name: title
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200": { description: "Replay effectué (nombre de lignes LUSR réécrites)" }
+        "500": { description: "Replay échoué" }
+        "503": { description: "Moteur de replay non câblé" }
+
   /admin/monitoring/jobs:
     get:
       tags: [admin]
@@ -8057,6 +8089,64 @@ components:
           - scanned_bytes
           - truncated
       type: object
+    AdminLUSRGaps:
+      additionalProperties: false
+      properties:
+          coverage_percent:
+              format: double
+              type: number
+          eligible_total:
+              format: int64
+              type: integer
+          generated_at:
+              type: string
+          guardrail:
+              $ref: '#/components/schemas/LUSRGuardrailHealth'
+          interior_gaps_total:
+              format: int64
+              type: integer
+          pending_recent_total:
+              format: int64
+              type: integer
+          players:
+              items:
+                  $ref: '#/components/schemas/LUSRGapPlayer'
+              nullable: true
+              type: array
+          rated_total:
+              format: int64
+              type: integer
+          title_slug:
+              type: string
+      required:
+          - title_slug
+          - generated_at
+          - eligible_total
+          - rated_total
+          - interior_gaps_total
+          - pending_recent_total
+          - coverage_percent
+          - players
+          - guardrail
+      type: object
+    AdminLUSRRecomputeResponse:
+      additionalProperties: false
+      properties:
+          gamertag:
+              type: string
+          ok:
+              type: boolean
+          updated:
+              format: int64
+              type: integer
+          xuid:
+              type: string
+      required:
+          - gamertag
+          - xuid
+          - updated
+          - ok
+      type: object
     AdminMonitoringOverview:
       additionalProperties: false
       properties:
@@ -8080,6 +8170,9 @@ components:
           freshness_critical:
               format: int64
               type: integer
+          lusr_interior_gaps:
+              format: int64
+              type: integer
           http:
               $ref: '#/components/schemas/MonitoringHTTPSummary'
           title_slug:
@@ -8098,6 +8191,7 @@ components:
           - snapshot
           - open_detections
           - freshness_critical
+          - lusr_interior_gaps
           - http
       type: object
     MonitoringHTTPSummary:
@@ -10919,6 +11013,80 @@ components:
           - personal_top_20
           - target_for_tier
           - trend
+      type: object
+    LUSRGapItem:
+      additionalProperties: false
+      properties:
+          group:
+              type: string
+          match_id:
+              type: string
+          playlist:
+              type: string
+          start_time:
+              type: string
+      required:
+          - match_id
+          - group
+          - playlist
+          - start_time
+      type: object
+    LUSRGapPlayer:
+      additionalProperties: false
+      properties:
+          check_error:
+              type: string
+          eligible:
+              format: int64
+              type: integer
+          gamertag:
+              type: string
+          interior_gaps:
+              format: int64
+              type: integer
+          pending_recent:
+              format: int64
+              type: integer
+          player_slug:
+              type: string
+          rated:
+              format: int64
+              type: integer
+          top_gaps:
+              items:
+                  $ref: '#/components/schemas/LUSRGapItem'
+              nullable: true
+              type: array
+          xuid:
+              type: string
+      required:
+          - player_slug
+          - gamertag
+          - xuid
+          - eligible
+          - rated
+          - interior_gaps
+          - pending_recent
+          - top_gaps
+      type: object
+    LUSRGuardrailHealth:
+      additionalProperties: false
+      properties:
+          held_watermark:
+              format: int64
+              type: integer
+          interior_gaps_gauge:
+              format: int64
+              type: integer
+          last_audit_at:
+              type: string
+          owner_missing:
+              format: int64
+              type: integer
+      required:
+          - interior_gaps_gauge
+          - held_watermark
+          - owner_missing
       type: object
     LUSRPoint:
       additionalProperties: false

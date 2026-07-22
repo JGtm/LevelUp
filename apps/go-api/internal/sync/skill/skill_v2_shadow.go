@@ -279,31 +279,21 @@ func processOneShadowMatch(ctx context.Context, c shadowRunContext, m shadowMatc
 		s.skippedAlready++
 		return
 	}
-	if !m.ownerHasTeam {
-		s.skippedNonTwoTeam++
+	// Éligibilité (rosters / équilibre / outcome) — prédicat PARTAGÉ avec le
+	// détecteur de trous (classifyLUSREligibility, source unique anti-dérive
+	// CLAUDE.md n°6). Appelé APRÈS le watermark : la query rosters ne tourne que
+	// pour un match neuf, jamais pour tout l'historique déjà vu.
+	elig := classifyLUSREligibility(ctx, c.sharedDB, m)
+	if !elig.eligible {
+		switch elig.reason {
+		case lusrSkipImbalance:
+			s.skippedImbalance++
+		default: // lusrSkipNonTwoTeam : owner sans équipe, ≠ 2 équipes, ou outcome non scorable
+			s.skippedNonTwoTeam++
+		}
 		return
 	}
-	teamA, teamB, ok := buildTwoTeamRosters(ctx, c.sharedDB, m.matchID, m.ownerTeamID)
-	if !ok {
-		s.skippedNonTwoTeam++
-		return
-	}
-	// Skip les matchs réellement déséquilibrés en effectif CONCURRENT. On compte
-	// les présents au coup d'envoi (present_at_beginning), pas len(team) : dans
-	// Halo l'effectif par camp est constant à tout instant T, un quitter est
-	// REMPLACÉ jamais ajouté. len() sur-compterait quitter + remplaçant comme 2
-	// joueurs simultanés fictifs → ~32% des matchs (4v4 avec subs) étaient sautés
-	// à tort (cf. concurrentTeamSize). Les remplaçants restent gérés par wᵢ
-	// (temps-joué) dans l'EP ; une vraie asymétrie concurrente (rare) reste skip.
-	if isTeamImbalanceTooHigh(concurrentTeamSize(teamA), concurrentTeamSize(teamB)) {
-		s.skippedImbalance++
-		return
-	}
-	outcomeA, ok := outcomeToTeamResult(m.ownerOutcome)
-	if !ok {
-		s.skippedNonTwoTeam++
-		return
-	}
+	teamA, teamB, outcomeA := elig.teamA, elig.teamB, elig.outcomeA
 	groupPriors, groupCountHyp := resolveGroupParams(ctx, c, group)
 	// Sprint 2.A : contexte du quit (score au moment du quit). Chargé seulement
 	// s'il y a un quitter ; sinon timeline vide → fallback outcome final.

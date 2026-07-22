@@ -10614,10 +10614,6 @@
 {"Time":"2026-06-26T23:45:41.0461391+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestSyncHandler_InitialSync_NoTokens","Output":"2026/06/26 23:45:41 INFO sync_handler: StartInitialSync démarré player_slug=test-player title_slug=halo_infinite max_matches=100 event=http.sync.initial:test-player:2d01884ca28ac1a9\n"}
 {"Time":"2026-06-26T23:45:41.0466574+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestSyncHandler_InitialSync_NoTokens","Output":"--- PASS: TestSyncHandler_InitialSync_NoTokens (0.00s)\n"}
 {"Time":"2026-06-26T23:45:41.0466574+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestSyncHandler_InitialSync_NoTokens","Elapsed":0}
-{"Time":"2026-06-26T23:45:41.0466574+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestHomeHandler_GetBattlePass_PlayerNotFound"}
-{"Time":"2026-06-26T23:45:41.0466574+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestHomeHandler_GetBattlePass_PlayerNotFound","Output":"=== RUN   TestHomeHandler_GetBattlePass_PlayerNotFound\n"}
-{"Time":"2026-06-26T23:45:41.04718+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestHomeHandler_GetBattlePass_PlayerNotFound","Output":"--- PASS: TestHomeHandler_GetBattlePass_PlayerNotFound (0.00s)\n"}
-{"Time":"2026-06-26T23:45:41.04718+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestHomeHandler_GetBattlePass_PlayerNotFound","Elapsed":0}
 {"Time":"2026-06-26T23:45:41.04718+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestMediaHandler_PostUploadMedia_NotConfigured"}
 {"Time":"2026-06-26T23:45:41.04718+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestMediaHandler_PostUploadMedia_NotConfigured","Output":"=== RUN   TestMediaHandler_PostUploadMedia_NotConfigured\n"}
 {"Time":"2026-06-26T23:45:41.04718+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestMediaHandler_PostUploadMedia_NotConfigured","Output":"2026/06/26 23:45:41 ERROR http: erreur réponse status=501 code=upload_not_configured message=\"upload factory non configurée\"\n"}
@@ -10712,10 +10708,6 @@
 {"Time":"2026-06-26T23:45:41.0927603+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestHomeHandler_GetHomePage_DBClosed_Returns503/Failed_to_delete_all_rows_from_index_(ART)","Elapsed":0}
 {"Time":"2026-06-26T23:45:41.0927603+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestHomeHandler_GetHomePage_DBClosed_Returns503","Output":"--- PASS: TestHomeHandler_GetHomePage_DBClosed_Returns503 (0.00s)\n"}
 {"Time":"2026-06-26T23:45:41.0927603+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestHomeHandler_GetHomePage_DBClosed_Returns503","Elapsed":0}
-{"Time":"2026-06-26T23:45:41.0927603+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestHomeHandler_GetBattlePass_OK"}
-{"Time":"2026-06-26T23:45:41.0927603+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestHomeHandler_GetBattlePass_OK","Output":"=== RUN   TestHomeHandler_GetBattlePass_OK\n"}
-{"Time":"2026-06-26T23:45:41.0927603+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestHomeHandler_GetBattlePass_OK","Output":"--- PASS: TestHomeHandler_GetBattlePass_OK (0.00s)\n"}
-{"Time":"2026-06-26T23:45:41.0927603+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestHomeHandler_GetBattlePass_OK","Elapsed":0}
 {"Time":"2026-06-26T23:45:41.0927603+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestHomeHandler_GetHomePage_UsesSettingsLanguage"}
 {"Time":"2026-06-26T23:45:41.0927603+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestHomeHandler_GetHomePage_UsesSettingsLanguage","Output":"=== RUN   TestHomeHandler_GetHomePage_UsesSettingsLanguage\n"}
 {"Time":"2026-06-26T23:45:41.0968995+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestHomeHandler_GetHomePage_UsesSettingsLanguage","Output":"--- PASS: TestHomeHandler_GetHomePage_UsesSettingsLanguage (0.00s)\n"}
@@ -21523,10 +21515,6 @@
 {"Time":"2026-06-26T23:46:54.271748+02:00","Action":"output","Package":"levelup/go-api/internal/media","Test":"TestSilenceRatio","Output":"=== RUN   TestSilenceRatio\n"}
 {"Time":"2026-06-26T23:46:54.271748+02:00","Action":"output","Package":"levelup/go-api/internal/media","Test":"TestSilenceRatio","Output":"--- PASS: TestSilenceRatio (0.00s)\n"}
 {"Time":"2026-06-26T23:46:54.271748+02:00","Action":"pass","Package":"levelup/go-api/internal/media","Test":"TestSilenceRatio","Elapsed":0}
-{"Time":"2026-06-26T23:46:54.271748+02:00","Action":"run","Package":"levelup/go-api/internal/media","Test":"TestRestMixFilter"}
-{"Time":"2026-06-26T23:46:54.271748+02:00","Action":"output","Package":"levelup/go-api/internal/media","Test":"TestRestMixFilter","Output":"=== RUN   TestRestMixFilter\n"}
-{"Time":"2026-06-26T23:46:54.271748+02:00","Action":"output","Package":"levelup/go-api/internal/media","Test":"TestRestMixFilter","Output":"--- PASS: TestRestMixFilter (0.00s)\n"}
-{"Time":"2026-06-26T23:46:54.271748+02:00","Action":"pass","Package":"levelup/go-api/internal/media","Test":"TestRestMixFilter","Elapsed":0}
 {"Time":"2026-06-26T23:46:54.271748+02:00","Action":"run","Package":"levelup/go-api/internal/media","Test":"TestPlanAudioRenditions_FullMixFourTracks"}
 {"Time":"2026-06-26T23:46:54.271748+02:00","Action":"output","Package":"levelup/go-api/internal/media","Test":"TestPlanAudioRenditions_FullMixFourTracks","Output":"=== RUN   TestPlanAudioRenditions_FullMixFourTracks\n"}
 {"Time":"2026-06-26T23:46:54.271748+02:00","Action":"output","Package":"levelup/go-api/internal/media","Test":"TestPlanAudioRenditions_FullMixFourTracks","Output":"--- PASS: TestPlanAudioRenditions_FullMixFourTracks (0.00s)\n"}

@@ -253,6 +253,11 @@ type AdminMonitoringOverview struct {
 	// Zéro I/O DuckDB ici. 0 tant que la fraîcheur n'a jamais été calculée.
 	FreshnessCritical int64 `json:"freshness_critical"`
 
+	// LUSRInteriorGaps : trous d'intérieur LUSR au dernier scan (gauge posée par le
+	// cron data_health — source du badge nav « Données » quand > 0). Zéro I/O DuckDB.
+	// 0 tant que le cron n'a pas scanné. Détail sur /admin/monitoring/lusr-gaps.
+	LUSRInteriorGaps int64 `json:"lusr_interior_gaps"`
+
 	// HTTP : compteurs de requêtes par classe de statut depuis le boot (A7,
 	// DC-6 — middleware SlogLogger, titre-aware, jamais par route).
 	HTTP MonitoringHTTPSummary `json:"http"`
