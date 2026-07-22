@@ -116,9 +116,6 @@ interface RoleArcSeed {
   classKey: string
 }
 
-function clamp(v: number, lo: number, hi: number): number {
-  return Math.max(lo, Math.min(hi, v))
-}
 
 /** Construit les arcs (classe + rôle/feuille) et collecte les rôles à étiqueter. */
 function buildArcs(
@@ -209,16 +206,33 @@ function buildCalloutsForSide(
   const knee = right ? tx - KNEE_DX : tx + KNEE_DX
   const anchor: 'start' | 'end' = right ? 'end' : 'start'
   // Écart vertical mini entre deux étiquettes = hauteur d'une étiquette à DEUX lignes (nom
-  // au-dessus + « valeur · % » en dessous, ~22 px). En dessous, les CHIFFRES d'une étiquette
-  // chevauchent le nom de la suivante (illisible quand beaucoup de rôles, ex. Synthesis).
+  // au-dessus + « valeur · % » en dessous, ~22-26 px), sinon les CHIFFRES d'une étiquette
+  // chevauchent le nom de la suivante. Quand TROP de rôles d'un côté pour tenir dans
+  // [TOP, BOT] à cet écart (ex. Explorer d'une cible : beaucoup de rôles), on RÉDUIT l'écart
+  // (réparti régulièrement) au lieu d'empiler en bas — l'ancien clamp à BOT empilait les
+  // étiquettes en surnombre → chevauchement.
   const MIN_GAP = 26
-  let prevLy = -Infinity
-  return points.map((p) => {
-    let ly = clamp(p.ey, CALLOUT_Y_TOP, CALLOUT_Y_BOT)
-    if (ly < prevLy + MIN_GAP) ly = prevLy + MIN_GAP
-    ly = clamp(ly, CALLOUT_Y_TOP, CALLOUT_Y_BOT)
-    prevLy = ly
-    const endX = right ? tx - 2 : tx + 2
+  const n = points.length
+  const available = CALLOUT_Y_BOT - CALLOUT_Y_TOP
+  // Écart effectif : garanti ≤ available/(n-1) → toutes les étiquettes tiennent dans [TOP, BOT].
+  const gap = n > 1 ? Math.min(MIN_GAP, available / (n - 1)) : MIN_GAP
+  // Passe 1 (top-down) : chaque étiquette au plus près de sa position naturelle (ey), écart
+  // mini garanti ; peut déborder sous BOT.
+  const lys: number[] = []
+  let prev = -Infinity
+  for (const p of points) {
+    prev = Math.max(p.ey, CALLOUT_Y_TOP, prev + gap)
+    lys.push(prev)
+  }
+  // Passe 2 : si le bloc déborde en bas, recentrage bottom-up (jamais d'empilement — le span
+  // (n-1)*gap ≤ available garantit lys[0] ≥ TOP après recalage).
+  if (n > 0 && lys[n - 1] > CALLOUT_Y_BOT) {
+    lys[n - 1] = CALLOUT_Y_BOT
+    for (let i = n - 2; i >= 0; i--) lys[i] = Math.min(lys[i], lys[i + 1] - gap)
+  }
+  const endX = right ? tx - 2 : tx + 2
+  return points.map((p, i) => {
+    const ly = lys[i]
     return {
       key: `${p.classKey}-${p.label}`,
       points: `${p.ex},${p.ey} ${p.elbowX},${p.elbowY} ${knee},${ly} ${endX},${ly}`,
@@ -313,9 +327,15 @@ export interface FragSunburstProps {
   hideCenterLabel?: boolean
   /** Largeur max (px) du SVG, centré (opt-in Match view) — borne la hauteur `h-auto`. */
   maxWidthPx?: number
-  /** Position de la légende des classes : 'bottom' (défaut, sous l'anneau) ou 'left' (opt-in
-   *  Match view : colonne verticale le long de la bordure gauche, à côté de l'anneau). */
-  legendSide?: 'bottom' | 'left'
+  /** Position de la légende des classes : 'bottom' (défaut, sous l'anneau), 'left' (colonne
+   *  le long de la bordure gauche, opt-in Match view), ou 'none' (légende NON rendue en
+   *  interne — à placer soi-même via <FragClassLegend>, ex. encart Explorer : légende
+   *  centrée en bas du bloc entier). */
+  legendSide?: 'bottom' | 'left' | 'none'
+  /** Mode « nu » (opt-in) : rend le SVG + légende SANS la carte racine (bordure + barre de
+   *  titre) — pour intégrer le sunburst dans un bloc parent (ex. encart Explorer) sans
+   *  bloc-dans-bloc. Défaut false = carte complète (comportement des autres surfaces). */
+  bare?: boolean
 }
 
 export function FragSunburst({
@@ -327,6 +347,7 @@ export function FragSunburst({
   hideCenterLabel = false,
   maxWidthPx,
   legendSide = 'bottom',
+  bare = false,
 }: FragSunburstProps) {
   const appLocale = useAppShellStore((s) => s.locale)
   const paletteVersion = useColorPaletteVersion()
@@ -415,8 +436,8 @@ export function FragSunburst({
   )
 
   return (
-    <div className={`relative rounded-lg border border-border bg-card ${className}`} data-testid="frag-sunburst">
-      <div className="flex-none border-b border-border px-3 py-2 text-sm font-medium">{cardTitle}</div>
+    <div className={`relative ${bare ? '' : 'rounded-lg border border-border bg-card'} ${className}`} data-testid="frag-sunburst">
+      {!bare && <div className="flex-none border-b border-border px-3 py-2 text-sm font-medium">{cardTitle}</div>}
       <div className={legendSide === 'left' ? 'flex items-center gap-3 p-3' : 'p-3'}>
         {legendSide === 'left' && legendBlock}
         <div className={`relative flex items-center justify-center ${legendSide === 'left' ? 'min-w-0 flex-1' : ''}`}>
@@ -489,6 +510,64 @@ export function FragSunburst({
           <div className="text-muted-foreground">{tip.sub}</div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ── FragClassLegend : légende des classes EXTRACTIBLE ─────────────────────────
+// Rend la légende (pastille + nom + valeur) AILLEURS que sous l'anneau — pour un
+// <FragSunburst legendSide="none" /> dont on place la légende soi-même (ex. encart
+// Explorer : sunburst + Top armes en rangée, légende centrée EN BAS du bloc entier).
+// Survol LIÉ au sunburst via hoveredClass/onClassHover partagés. Recalcule le modèle
+// de légende depuis la MÊME distribution (2e usage du setup classes/arcTotal — sous le
+// plafond ≤2 copies ; buildSunburstModel reste la source unique du modèle).
+export function FragClassLegend({
+  distribution,
+  hoveredClass = null,
+  onClassHover,
+  className = '',
+}: {
+  distribution?: FragDistribution | null
+  hoveredClass?: string | null
+  onClassHover?: (classKey: string | null) => void
+  className?: string
+}) {
+  const appLocale = useAppShellStore((s) => s.locale)
+  const paletteVersion = useColorPaletteVersion()
+  const labelsBase = useSunburstLabels()
+  const numLoc = intlLocale(appLocale)
+  const classes = distribution?.classes ?? []
+  const total = distribution?.total_kills ?? 0
+  const arcTotal = Math.max(total, classes.reduce((s, c) => s + c.kills, 0)) || 1
+  const labels: FragSunburstLabels = useMemo(
+    () => ({
+      ...labelsBase,
+      formatShare: (n: number) => `${((n / arcTotal) * 100).toLocaleString(numLoc, { maximumFractionDigits: 1 })} %`,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [arcTotal, appLocale, numLoc],
+  )
+  const legend = useMemo(
+    () => buildSunburstModel(classes, arcTotal, SUNBURST_COLORS, labels).legend,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [classes, arcTotal, appLocale, paletteVersion],
+  )
+  if (legend.length === 0) return null
+  return (
+    <div className={`flex flex-wrap justify-center gap-x-3 gap-y-1 ${className}`} data-testid="frag-legend">
+      {legend.map((row) => (
+        <span
+          key={row.classKey}
+          className="inline-flex cursor-default items-center gap-1.5 rounded px-1 py-0.5 text-xs"
+          style={{ opacity: hoveredClass && row.classKey !== hoveredClass ? DIM_OPACITY : 1 }}
+          onMouseEnter={() => onClassHover?.(row.classKey)}
+          onMouseLeave={() => onClassHover?.(null)}
+        >
+          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: row.color }} />
+          {row.label}
+          <span className="text-muted-foreground">{row.valueLabel}</span>
+        </span>
+      ))}
     </div>
   )
 }

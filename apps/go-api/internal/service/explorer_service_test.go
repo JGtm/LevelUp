@@ -15,6 +15,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	halo_games "levelup/go-api/internal/games/halo_infinite"
+	"levelup/go-api/internal/port"
 )
 
 // TestExplorerService_PlayerIntersection_DataAdapterParity (HIGH-B Path C) prouve
@@ -146,6 +147,67 @@ func TestExplorerService_SampleStats_AdapterFallbackOnUnsupported(t *testing.T) 
 	}
 }
 
+// TestExplorerService_TargetFragDistribution_PopulatedFromWeaponRows : quand le loader
+// weapon_kills renvoie des armes résolues (classe/rôle), l'encart cible expose la
+// « Répartition des frags » v2 (sunburst) + le top armes enrichi. Classes gun (registre)
+// + Mêlée/Grenade (compteurs API de l'agrégat) + résidu « Non attribué » ; Σ == total.
+func TestExplorerService_TargetFragDistribution_PopulatedFromWeaponRows(t *testing.T) {
+	t.Parallel()
+	agg := &domain.ParticipantStatsAggregate{Kills: 20, Deaths: 10, MeleeKills: 2, GrenadeKills: 1}
+	wk := &fakeExplorerWeaponKillsRepo{rows: []port.WeaponKillRow{
+		{XUID: "target", WeaponID: 100, Kills: 8, Label: "BR75", Class: "shoulder", Role: "precision"},
+		{XUID: "target", WeaponID: 200, Kills: 5, Label: "Sidekick", Class: "sidearm", Role: "sidearm"},
+	}}
+	out := NewExplorerService(&mockExplorerRepo{participants: agg}, "self").
+		WithWeaponKillsRepo(wk).
+		computeTargetSampleStats(context.Background(), "target", []domain.CommonMatchRaw{{MatchID: "m1"}})
+	if out == nil || out.FragDistribution == nil {
+		t.Fatalf("frag_distribution attendue non-nil, got %+v", out)
+	}
+	if out.FragDistribution.TotalKills != 20 {
+		t.Errorf("TotalKills = %d, want 20", out.FragDistribution.TotalKills)
+	}
+	if len(out.TopWeaponKills) != 2 {
+		t.Errorf("top_weapon_kills = %d, want 2", len(out.TopWeaponKills))
+	}
+	classes := map[string]int{}
+	sum := 0
+	for _, c := range out.FragDistribution.Classes {
+		classes[c.Class] = c.Kills
+		sum += c.Kills
+	}
+	if classes["shoulder"] != 8 || classes["sidearm"] != 5 {
+		t.Errorf("classes gun inattendues: %+v", classes)
+	}
+	if classes["melee"] != 2 || classes["grenade"] != 1 {
+		t.Errorf("classes API mêlée/grenade inattendues: %+v", classes)
+	}
+	if sum != out.FragDistribution.TotalKills {
+		t.Errorf("Σ classes = %d, want == TotalKills %d (unattributed absorbe le résidu)", sum, out.FragDistribution.TotalKills)
+	}
+}
+
+// TestExplorerService_TargetFragDistribution_NilOnRepoError : échec du loader
+// weapon_kills → frag_distribution + top_weapon_kills nil best-effort (les stats
+// legacy restent calculées, le front retombe sur le donut kill-type).
+func TestExplorerService_TargetFragDistribution_NilOnRepoError(t *testing.T) {
+	t.Parallel()
+	agg := &domain.ParticipantStatsAggregate{Kills: 12, Deaths: 4}
+	wk := &fakeExplorerWeaponKillsRepo{rowsErr: errors.New("db down")}
+	out := NewExplorerService(&mockExplorerRepo{participants: agg}, "self").
+		WithWeaponKillsRepo(wk).
+		computeTargetSampleStats(context.Background(), "target", []domain.CommonMatchRaw{{MatchID: "m1"}})
+	if out == nil {
+		t.Fatal("sample stats non-nil attendues (best-effort)")
+	}
+	if out.FragDistribution != nil {
+		t.Errorf("frag_distribution attendue nil sur échec repo, got %+v", out.FragDistribution)
+	}
+	if out.TopWeaponKills != nil {
+		t.Errorf("top_weapon_kills attendu nil sur échec repo, got %+v", out.TopWeaponKills)
+	}
+}
+
 // TestExplorerService_CombatProfileLocal_AdapterFallbackOnUnsupported : adapter sans
 // RecentSource → ErrCapabilityNotSupported → fallback silencieux sur repo.
 func TestExplorerService_CombatProfileLocal_AdapterFallbackOnUnsupported(t *testing.T) {
@@ -207,6 +269,22 @@ func (m *mockExplorerRepo) TranslateModeUIsFR(_ context.Context, _ []domain.Expl
 }
 func (m *mockExplorerRepo) GetTopWeaponsForMatches(_ context.Context, _ string, _ []string, _ int) ([]domain.WeaponHighlight, error) {
 	return m.topWeapons, m.topWeaponsErr
+}
+
+// fakeExplorerWeaponKillsRepo simule port.WeaponKillsRepository + la capability
+// OPTIONNELLE LoadKillMechanicsAggregated (explorerKillMechanicsLoader) pour la
+// « Répartition des frags » v2 de l'encart cible.
+type fakeExplorerWeaponKillsRepo struct {
+	rows    []port.WeaponKillRow
+	rowsErr error
+	mechs   []port.KillMechanicsRow
+}
+
+func (f *fakeExplorerWeaponKillsRepo) LoadWeaponKillsAggregated(_ context.Context, _ string, _ port.WeaponKillFilters) ([]port.WeaponKillRow, error) {
+	return f.rows, f.rowsErr
+}
+func (f *fakeExplorerWeaponKillsRepo) LoadKillMechanicsAggregated(_ context.Context, _ port.WeaponKillFilters) ([]port.KillMechanicsRow, error) {
+	return f.mechs, nil
 }
 
 // --- tests ---

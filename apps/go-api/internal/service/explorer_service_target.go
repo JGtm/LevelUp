@@ -330,6 +330,11 @@ func (s *ExplorerService) computeTargetSampleStats(ctx context.Context, targetXU
 			slog.WarnContext(ctx, "explorer_target_top_weapons_failed", "xuid", targetXUID, "err", wErr)
 		}
 		sample.TopWeapons = weapons
+		// Frag v2 COMPLET (sunburst classe→rôle + « Outils de destruction ») — MÊME builder
+		// partagé fragdist.Build que Sessions/Escouade/Synthesis (zéro duplication). Best-effort :
+		// nil si pas de repo weapon_kills ou aucune arme résolue → le front retombe sur le donut
+		// kill-type + top armes legacy (conservés ci-dessus).
+		sample.FragDistribution, sample.TopWeaponKills = s.targetFragDistribution(ctx, targetXUID, matchIDs, sample)
 	}
 	return sample
 }

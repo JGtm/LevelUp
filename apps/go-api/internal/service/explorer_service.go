@@ -129,6 +129,13 @@ type ExplorerService struct {
 	// résolution locale (v_gamertag_lookup) échoue pour un joueur JAMAIS croisé. nil
 	// (démo/offline) → comportement d'origine (erreur dure sur joueur inconnu).
 	liveResolver GamertagXUIDResolver
+
+	// weaponKillsRepo (frag v2) : loader weapon_kills agrégé alimentant la « Répartition
+	// des frags » v2 (sunburst classe→rôle) + « Outils de destruction » de l'encart cible.
+	// Optionnel — nil → FragDistribution nil (le front retombe sur le donut kill-type
+	// legacy). Le repo concret DuckDB fournit AUSSI les mécaniques natives H5 via
+	// type-assertion (explorerKillMechanicsLoader), capability OPTIONNELLE façon lobbySizeProvider.
+	weaponKillsRepo port.WeaponKillsRepository
 }
 
 // ExplorerTargetProfileDeps regroupe les dépendances de l'encart "Profil joueur
@@ -201,6 +208,16 @@ func (s *ExplorerService) WithTargetProfileProviders(deps ExplorerTargetProfileD
 // un joueur jamais croisé). nil → no-op. Retourne le service pour chainer.
 func (s *ExplorerService) WithLiveGamertagResolver(r GamertagXUIDResolver) *ExplorerService {
 	s.liveResolver = r
+	return s
+}
+
+// WithWeaponKillsRepo injecte le loader weapon_kills alimentant la « Répartition des
+// frags » v2 (sunburst classe→rôle + « Outils de destruction ») de l'encart cible —
+// MIROIR de Synthesis/Sessions. Optionnel (nil → repli donut kill-type côté front). Le
+// repo concret DuckDB fournit aussi les mécaniques natives H5 (LoadKillMechanicsAggregated)
+// via type-assertion. Retourne le service pour chainer.
+func (s *ExplorerService) WithWeaponKillsRepo(repo port.WeaponKillsRepository) *ExplorerService {
+	s.weaponKillsRepo = repo
 	return s
 }
 

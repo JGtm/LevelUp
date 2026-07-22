@@ -1,3 +1,22 @@
+## [2026-07-22] Frag Distribution v2 — Explorer : encart adversaire en v2 (sunburst + Top armes) + FragSunburst (mode nu, légende extractible, fix callouts). v2 COMPLÈTE (6 surfaces).
+
+**Statut** : Complété, VALIDÉ user. Branche `feat/frag-distribution-v2`. Commit + push branche + merge main LOCAL autorisés (main NON poussé → pas de déploiement prod). DERNIÈRE surface.
+
+**Backend (encart cible)** : `frag_distribution` (+ `top_weapon_kills` avec classe) exposé sur `ExplorerTargetSampleStats` via `targetFragDistribution` (nouveau `explorer_target_frag_distribution.go`, MIROIR Sessions) : weapon_kills de la cible sur les matchs communs via `WeaponKillsRepository.LoadWeaponKillsAggregated` (filtre XUIDs) + `fragdist.Build` (compteurs mêlée/grenade de l'agrégat + mécaniques natives H5 via type-assertion optionnelle `explorerKillMechanicsLoader`, capability-gated). Best-effort (nil → repli donut). DI (`registry_pages_explorer.go`) + openapi + generated + 2 tests.
+
+**Front (ExplorerTargetSampleStats)** : donut kill-type v1 → **sunburst classe→rôle + « Top armes »** si `frag_distribution` présent (sinon repli donut legacy conservé). Layout final (itérations user) : UN bloc « Répartition des frags » = sunburst NU (gauche) + « Top armes » (top 5, liste recolorée par classe, droite) ; **légende centrée EN BAS** du bloc entier ; sunburst `maxWidthPx=480`. « Top armes » = top 5 armes gun (pas le breakdown détaillé — décision user, encart compact).
+
+**FragSunburst (partagé) — 3 évolutions** :
+- `bare` (opt-in) : SVG + légende SANS carte racine (évite bloc-dans-bloc quand intégré à un bloc parent). Défaut inchangé → 5 autres surfaces intactes.
+- `legendSide="none"` + composant exporté `FragClassLegend` : place la légende hors de l'anneau (ex. bas du bloc Explorer, centrée). Survol partagé via hoveredClass/onClassHover.
+- **Fix callouts (GLOBAL)** : quand trop de rôles d'un côté pour tenir dans [TOP, BOT] à `MIN_GAP=26`, l'ancien clamp à BOT EMPILAIT les étiquettes en surnombre (chevauchement). Désormais écart réduit réparti (`gap = min(26, available/(n-1))`) + recentrage bottom-up si débordement. Non-régressif ≤ 7 rôles. `clamp` devenu inutilisé → supprimé.
+
+**Escouade = barres empilées (pas de sunburst)** → aucun callout, non concernée. Timeseries = FragSunburst partagé → fix appliqué automatiquement.
+
+**Gates (verts, suite COMPLÈTE)** : Go gofmt/vet/test ; front typecheck (purgé) / eslint 0 err / vitest 2418 / cross-feature 0 ; generate-types.
+
+**v2 COMPLÈTE sur les 6 surfaces** : Match view · Synthesis · Sessions · Timeseries · Escouade · Explorer.
+
 ## [2026-07-22] Frag Distribution v2 — Escouade : finalisation layout (3 graphes → Synergies + dispositions + alignement hauteurs)
 
 **Statut** : Complété, VALIDÉ user. Branche `feat/frag-distribution-v2`. Commit autorisé. Suite du commit `0285a8d72` (items « Reste » traités).
