@@ -207,7 +207,8 @@ describe('MediaThumbnailCard — icône "ouvrir le match"', () => {
     )
     const link = screen.getByRole('link', { name: /Ouvrir.*match/ })
     expect(link).toBeInTheDocument()
-    expect(link).toHaveAttribute('href', '/players/myGT/matches/match-42')
+    // Lien PLEINE PAGE title-scoped (lot 2-C) : titleSlug = défaut store 'halo_infinite'.
+    expect(link).toHaveAttribute('href', '/t/halo_infinite/players/myGT/matches/match-42')
   })
 
   it('masque l\'icône quand currentMatchId === item.match_id', () => {

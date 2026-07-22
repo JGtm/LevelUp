@@ -19,6 +19,7 @@
  */
 import { useCallback } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { useTitleSlug } from '@/lib/title-routing'
 
 import {
   filterSpecToQueryString,
@@ -39,6 +40,7 @@ function searchFromFilterSpec(ctx?: MatchNavContext): Record<string, string> | u
 
 export function useNavigateToMatch(playerSlug: string) {
   const navigate = useNavigate()
+  const titleSlug = useTitleSlug()
 
   return useCallback(
     (matchId: string, ctx?: MatchNavContext) => {
@@ -47,8 +49,8 @@ export function useNavigateToMatch(playerSlug: string) {
         persistNavContext(matchId, ctx)
       }
       void navigate({
-        to: '/players/$playerSlug/matches/$matchId',
-        params: { playerSlug, matchId },
+        to: '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId',
+        params: { titleSlug, playerSlug, matchId },
         // Phase 2b : sérialisation filterSpec en query params pour que la
         // navigation contextuelle survive Ctrl+Click / lien partagé. Si pas
         // de filterSpec, search reste undefined (URL non polluée).
@@ -63,6 +65,6 @@ export function useNavigateToMatch(playerSlug: string) {
           : undefined,
       })
     },
-    [navigate, playerSlug],
+    [navigate, titleSlug, playerSlug],
   )
 }

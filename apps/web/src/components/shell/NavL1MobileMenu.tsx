@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
+import { playerRelativePath, routeTemplateSuffix } from '@/lib/title-routing'
 import { log } from './_logger'
 import type { L1Section } from './navL1Sections'
 
@@ -22,11 +23,13 @@ interface NavL1MobileMenuProps {
   sections: L1Section[]
   /** Pathname courant pour l'état actif. */
   pathname: string
-  /** Résout un template `$playerSlug` en chemin concret. */
-  resolvePath: (templatePath: string) => string
+  /** Slug du titre actif (param de route des liens title-scoped). */
+  titleSlug: string
+  /** Slug du joueur actif (param de route des liens title-scoped). */
+  playerSlug: string
 }
 
-export function NavL1MobileMenu({ sections, pathname, resolvePath }: NavL1MobileMenuProps) {
+export function NavL1MobileMenu({ sections, pathname, titleSlug, playerSlug }: NavL1MobileMenuProps) {
   const [open, setOpen] = useState(false)
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
@@ -117,11 +120,12 @@ export function NavL1MobileMenu({ sections, pathname, resolvePath }: NavL1Mobile
         <nav className="flex-1 overflow-y-auto py-2" aria-label={t('common.nav.sections_aria')}>
           {sections.map((section) => {
             const isActive = section.matchPathname(pathname)
-            const resolvedDefaultPath = resolvePath(section.defaultPath)
+            const suffix = playerRelativePath(pathname)
             return (
               <div key={section.key} className="px-2">
                 <Link
-                  to={resolvedDefaultPath as never}
+                  to={section.defaultPath}
+                  params={{ titleSlug, playerSlug }}
                   onClick={() => setOpen(false)}
                   role="menuitem"
                   aria-current={isActive ? 'page' : undefined}
@@ -139,12 +143,12 @@ export function NavL1MobileMenu({ sections, pathname, resolvePath }: NavL1Mobile
                 {section.tabs && (
                   <div className="mb-1 ml-3 mt-0.5 flex flex-col border-l border-border pl-2">
                     {section.tabs.map((tab) => {
-                      const resolvedTabPath = resolvePath(tab.path)
-                      const tabActive = pathname === resolvedTabPath
+                      const tabActive = suffix !== null && suffix === routeTemplateSuffix(tab.path)
                       return (
                         <Link
                           key={tab.key}
-                          to={resolvedTabPath as never}
+                          to={tab.path}
+                          params={{ titleSlug, playerSlug }}
                           onClick={() => setOpen(false)}
                           role="menuitem"
                           aria-current={tabActive ? 'page' : undefined}

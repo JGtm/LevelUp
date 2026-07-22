@@ -3,6 +3,7 @@
  */
 import { useState } from 'react'
 import { useParams, useNavigate } from '@tanstack/react-router'
+import { useTitleSlug } from '@/lib/title-routing'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
@@ -23,6 +24,7 @@ import { useCareerPage, useCareerTopMatches } from './queries'
 export function CareerPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
   const navigate = useNavigate()
+  const titleSlug = useTitleSlug()
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CareerManifestKey) => formatMessage(careerManifest, key, locale)
   const { data, isLoading, isError, refetch } = useCareerPage(playerSlug)
@@ -75,7 +77,7 @@ export function CareerPage() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => void navigate({ to: '/players/$playerSlug/community/compare', params: { playerSlug } })}
+            onClick={() => void navigate({ to: '/{-$lang}/t/$titleSlug/players/$playerSlug/community/compare', params: { titleSlug, playerSlug } })}
           >
             {t('career.actions.compare')}
           </Button>

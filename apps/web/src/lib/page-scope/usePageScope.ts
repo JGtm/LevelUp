@@ -27,12 +27,14 @@
  */
 import { useCallback, useEffect, useRef } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
+import type { FileRouteTypes } from '@/routeTree.gen'
 
 export interface UsePageScopeOptions<App, Url extends object> {
-  /** Cible `navigate` (ex: '/players/$playerSlug/explorer'). */
-  to: string
-  /** Params de route pour `navigate` (ex: { playerSlug }). */
-  params: Record<string, unknown>
+  /** Cible `navigate` — chemin de route typé du routeur généré (ex:
+   *  '/{-$lang}/t/$titleSlug/players/$playerSlug/explorer'). */
+  to: FileRouteTypes['to']
+  /** Params de route pour `navigate` (ex: { titleSlug, playerSlug }). */
+  params: Record<string, string>
   /** Clé localStorage du miroir cold-start (ex: `levelup-explorer-scope:<slug>`). */
   storageKey: string
   /** App → forme plate URL (toutes les clés, `undefined` pour les valeurs vides). */

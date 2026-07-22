@@ -10,6 +10,7 @@
  * Limit 10 résultats, amis configurés (FriendGamertags) exclus côté backend.
  */
 import { useNavigate, useParams } from '@tanstack/react-router'
+import { useTitleSlug } from '@/lib/title-routing'
 import { MatchEncountersTable } from '@/features/match-view/MatchEncountersTable'
 import { Spinner } from '@/components/ui/spinner'
 import { useCareerTopEncounters } from './queries'
@@ -22,13 +23,14 @@ export function CareerTopEncountersSection() {
   const locale = useAppShellStore((s) => s.locale) as ManifestLocale
   const t = (key: keyof typeof careerManifest) => careerManifest[key][locale]
   const navigate = useNavigate()
+  const titleSlug = useTitleSlug()
 
   const { data, isLoading, isError } = useCareerTopEncounters(playerSlug)
 
   const handlePlayerClick = (gamertag: string) => {
     void navigate({
-      to: '/players/$playerSlug/explorer',
-      params: { playerSlug },
+      to: '/{-$lang}/t/$titleSlug/players/$playerSlug/explorer',
+      params: { titleSlug, playerSlug },
       search: { mode: 'player', target: gamertag },
     })
   }

@@ -5,6 +5,7 @@ import { getMediaText } from './i18n'
 import { getMediaModalsText } from './i18n-modals'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
+import { playerScopedHref, useTitleSlug } from '@/lib/title-routing'
 import { looksLikeAssetId } from '@/lib/halo/assetId'
 import { intlLocale } from '@/lib/formatters'
 import type { ManifestLocale } from '@/lib/i18n/format'
@@ -207,6 +208,7 @@ export function MediaThumbnailCard({
 }: MediaThumbnailCardProps) {
   const [isHovering, setIsHovering] = useState(false)
   const locale = useAppShellStore((s) => s.locale)
+  const titleSlug = useTitleSlug()
   const text = getMediaText(locale)
   const modals = getMediaModalsText(locale)
   const dateStr = formatMediaDate(item.capture_end_utc ?? item.match_start_time, locale)
@@ -365,7 +367,7 @@ export function MediaThumbnailCard({
               </button>
             ) : (
               <a
-                href={`/players/${playerSlug}/matches/${item.match_id}`}
+                href={playerScopedHref(titleSlug, playerSlug, `/matches/${item.match_id}`)}
                 onClick={(e) => e.stopPropagation()}
                 title={modals.coverFlow.viewMatchTitle}
                 aria-label={modals.coverFlow.viewMatchTitle}

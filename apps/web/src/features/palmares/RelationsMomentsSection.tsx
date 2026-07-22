@@ -7,6 +7,7 @@
  * glissant via wrappers existants. Strings via palmares.toml (FR/EN).
  */
 import { useNavigate } from '@tanstack/react-router'
+import { useTitleSlug } from '@/lib/title-routing'
 
 import { Spinner } from '@/components/ui/spinner'
 import type { FilterContextInput } from '@/lib/api/types'
@@ -33,12 +34,13 @@ export function RelationsMomentsSection({ playerSlug, filterContext, filterHash,
   const mode = useRelationsPrefsStore((s) => s.heatmapMode)
   const setMode = useRelationsPrefsStore((s) => s.setHeatmapMode)
   const navigate = useNavigate()
+  const titleSlug = useTitleSlug()
 
   // Clic sur un duel de la frise revanche → match view (playerSlug déjà en props).
   const onMatchClick = (matchId: string) => {
     void navigate({
-      to: '/players/$playerSlug/matches/$matchId',
-      params: { playerSlug, matchId },
+      to: '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId',
+      params: { titleSlug, playerSlug, matchId },
     })
   }
 

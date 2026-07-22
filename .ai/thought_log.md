@@ -38,6 +38,35 @@ erreur console. Remaps legacy contre-vérifiés contre les 6 redirects de routes
 **Prochaine étape** : Phase 2 (déplacement structurel ~50 routes + littéraux + layout
 titre) — brief Opus avec précision « l'Outlet ne rend pas pendant wait/divergence ».
 
+## [2026-07-23] D7 Phase 2 close — structure /t/{slug} + layout titre (branche feat/title-slug-in-url)
+
+**Statut** : Complété (Phase 2/6), 3 lots Opus (2-A structure, 2-B surfaces échappées,
+2-C backtick emitters découverts en 2-B), revue sur pièces + gates re-exécutés par
+l'orchestrateur à chaque lot.
+
+**Décisions techniques principales** : 36 routes déplacées (renames git) sous
+`routes/{-$lang}/t/$titleSlug/players/**` ; layout titre = projection PURE de
+`resolveTitleGate` + `applyActiveTitle` sur divergence, et RÈGLE ABSOLUE : Outlet
+jamais rendu en wait/divergence/bascule (constat : `__root` rend l'Outlet nu quand
+`!isBootstrapped` — le layout titre est le seul rempart de la fenêtre pré-hydratation).
+Verdict TanStack : `titleSlug` requis dans `params` hors from/beforeLoad/useParams →
+helper unique `useTitleSlug()` ; héritage du segment `lang` par les Links PROUVÉ par
+test (vrai routeur). Nav L1/L2 typée `RouteTo = FileRouteTypes['to']` (mismatch
+`profile/citations`→`career/citations` corrigé mécaniquement) ; matchers de pathname
+centralisés (`playerRelativePath`/`routeTemplateSuffix`) ; `buildPlayerDestination`
+supprimé → `resolvePlayerSwitch` + `navigate({to:'.'})`. Filet joueur fresh-load
+déclaratif `resolvePlayerFallback` (trou n°1 revue v2 fermé). Ratchet `/players/`
+armé (0 offender) + étendu aux backticks `to:`/`href:`. `playerScopedHref` pour les
+hrefs pleine page. Écran gate i18n FR+EN (10 clés `common.title_gate.*`).
+
+**Résultats/gate** (re-exécutés) : tsc 0 ; vitest 295 fichiers / 2605 passés / 0 échec ;
+eslint 0 erreur ; smoke navigateur 2 titres : Infinite headers uniformes ; H5 fresh-load
+avec session Infinite → convergence D-6 (URL stable, ?f= halo_5, contenu H5) ;
+/t/inconnu → gate « Titre introuvable » sans fuite. Legacy /players/ = 404 (attendu,
+splat Phase 3).
+
+**Prochaine étape** : Phase 3 splat legacy déclaratif + vérif matrice navigateur.
+
 ## [2026-07-22] Mini-lot « G » G1/G2 (branche refactor/ascension-ux-2026-07)
 
 **Statut** : Complété (G1, G2), sous contrat `plan-execution` (ordre strict G1 puis G2,

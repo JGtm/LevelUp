@@ -374,29 +374,50 @@ aussi (preuve D-9).
 
 ### Phase 2 — Déplacement structurel + littéraux + layout (LOURD — cœur du chantier)
 
-- [ ] **2a.** `git mv routes/players/** → routes/{-$lang}/t/$titleSlug/players/**` (forme
-      Phase 0). Compléter le layout `t/$titleSlug.tsx` : projection de `resolveTitleGate`
-      (D-6, D-8) + `applyActiveTitle` sur divergence + écran d'indisponibilité (strings
-      FR **et** EN dans le manifest i18n approprié).
-- [ ] **2b.** Régénérer `routeTree.gen.ts`, corriger CHAQUE littéral typé cassé jusqu'à
-      `tsc -b` = 0 (Link `to=`, `navigate({to})`, `redirect({to})`, `Route.useParams()`).
-- [ ] **2c.** Surfaces échappant au typecheck (§2) : typer `ShellNavItem.to` avec le type
-      de route du routeur (fait entrer la nav L1/L2 dans tsc — le mismatch
-      `profile/citations` `shellNavigation.ts:48` sera FORCÉMENT corrigé vers la route
-      réelle `career/citations` : correction mécanique in-périmètre, la consigner) ;
-      `buildPlayerDestination` (préfixe titre+lang) ; `isCommunityPath` ; `pageTitle.ts` ;
-      callers `usePageScope`.
-- [ ] **2d.** Re-cibler l'index `/` (`routes/index.tsx`) et le guard joueur
-      (ex-`players/$playerSlug.tsx:16-50`) ; **joueur inconnu sur le titre cible** : après
-      réconciliation/re-bootstrap, si `playerSlug` absent de `availablePlayers` → premier
-      joueur disponible (même titre) sinon index — avec test.
-- [ ] **2e.** Armer le garde-rail (1e) : allowlist réduite à sa forme finale datée (module,
-      splat — créé Phase 3 : l'y inscrire par avance —, regex legacy volontaires).
-- [ ] **2f.** Adapter les tests de route/nav cassés ; tests du layout titre (wait → null ;
-      valide → rendu ; divergence → bascule ; inconnu/coming_soon → gate).
-- [ ] **2g.** Vérifier que les Links conservent le segment lang courant quand il est
-      présent (héritage des params TanStack sur param optionnel) — test ou vérification
-      consignée ; si non hérité, corriger via les helpers centralisés (pas au cas par cas).
+- [x] **2a.** 36 fichiers de route déplacés en RENAMES git vers
+      `routes/{-$lang}/t/$titleSlug/players/**`. Layout `t/$titleSlug.tsx` livré :
+      projection PURE de `resolveTitleGate` + effet `applyActiveTitle` sur divergence
+      (gardes anti-double-bascule : `isTitleSwitching`, `applyingRef` StrictMode,
+      `applyFailed`) + `TitleGateScreen` (unknown/coming_soon/archived/switch_failed,
+      10 clés i18n `common.title_gate.*` FR+EN, tokens sémantiques). RÈGLE ABSOLUE
+      implémentée : l'Outlet ne rend JAMAIS en `wait`/divergence/bascule en vol — ce
+      layout ferme la fenêtre pré-hydratation que `__root` laisse ouverte (il rend
+      l'Outlet NU quand `!isBootstrapped`, constat §7).
+- [x] **2b.** routeTree régénéré (vite build) ; ~100 littéraux typés corrigés, 108
+      erreurs tsc → 0. Verdict params : TanStack EXIGE `titleSlug` dans `params` hors
+      `from`/`beforeLoad`/`Route.useParams()` → helper central `useTitleSlug()`
+      (module title-routing) au lieu de ~30 copies. Les redirects internes déplacés
+      (objectifs/palmares/compare/synthesis/citations/commendations) retypés par tsc
+      vers les cibles title-préfixées (⇒ Phase 3b déjà couverte, cf. journal).
+- [x] **2c.** `ShellNavItem.to` typé `RouteTo = FileRouteTypes['to']` (nav L1/L2 dans
+      tsc) — mismatch `profile/citations` → `career/citations` corrigé MÉCANIQUEMENT
+      (commentaire in-code, effet attendu §7). `buildPlayerDestination` SUPPRIMÉ
+      (zéro code mort), remplacé par `resolvePlayerSwitch` (pur) + `navigate({to:'.'})`
+      qui préserve section/titre/langue. Matchers de pathname déportés sur helpers
+      uniques `playerRelativePath`/`routeTemplateSuffix` (module title-routing,
+      allowlisté) : `isCommunityPath`, `pageTitle.ts`, `navL1Sections`, `NavL2` SANS
+      littéral `/players/`. `usePageScope.to` typé `FileRouteTypes['to']`.
+- [x] **2d.** Index `/` re-ciblé (Navigate typé + `useTitleSlug`). Guard joueur :
+      beforeLoad conservé pour les nav SPA (cibles retypées, spread `...params`) +
+      filet fresh-load DÉCLARATIF `resolvePlayerFallback` (pur, testé) projeté par
+      `PlayerLayout` — commentaire expliquant la division (trou n°1 revue v2 fermé).
+- [x] **2e.** Ratchet `/players/` ARMÉ (allowlist datée 2026-07-23 : module
+      title-routing, `routes/players/` splat Phase 3 inscrit par avance,
+      feedback-drawer regex legacy volontaire, générés exclus) — 0 offender.
+      Étendu (lot 2-C) à la forme backtick en contexte `to:`/`href:` (limite
+      résiduelle documentée dans le test).
+- [x] **2f.** Tests layout titre : 7 cas (wait→null, valid→Outlet, divergence→
+      applyActiveTitle mocké puis convergence, unknown/coming_soon/archived→gate FR,
+      switch_failed→retry). Tests nav adaptés sans affaiblissement.
+- [x] **2g.** Héritage `lang` PROUVÉ par test avec vrai routeur + memory history
+      (`langSegmentInheritance.test.ts`) : depuis `/en/t/…`, un Link sans `lang`
+      préserve `/en` ; sans segment, reste sans segment. Aucun correctif nécessaire.
+- [x] **2-C (complément découvert en 2-B).** Dernière famille de littéraux : cibles de
+      route en template-literal backtick (échappent à tsc ET au ratchet) — 5 fichiers
+      migrés (notifications/navigation.ts ~11 cibles typées + params, filterLink,
+      PlayerDetailPanel, MediaViewer, CoverFlowModal) via `useTitleSlug()` et helper
+      `playerScopedHref` (title-routing, hrefs pleine page — lang omis = session).
+      Cycle d'import barrel→store évité (import du module feuille, documenté).
 
 Gate Phase 2 : `make check-types` = 0 ; `make test-web` vert ; `npm run lint` = 0 ;
 garde-rail vert ; smoke navigateur : `/t/halo_infinite/players/{p}/home` ET
@@ -519,6 +540,29 @@ Gate Phase 6 : tous les gates verts ; captures/observations consignées au journ
   `_currentTitleSlug`) pendant une bascule par URL : fermée structurellement si le
   layout D-6 ne rend PAS l'Outlet pendant `wait`/divergence/bascule en vol — précision
   d'implémentation INTÉGRÉE au brief Phase 2 (2a). Pas de changement de design.
+  **TRAITÉ Phase 2** (layout livré avec cette règle + constat aggravant : `__root` rend
+  l'Outlet NU quand `!isBootstrapped`, __root.tsx:175-177 — le layout titre est le seul
+  rempart du sous-arbre title-scoped).
+
+- [2026-07-23] (lot 2-B) Cibles de route front en template-literal backtick
+  (`` `/players/${slug}/…` ``) échappant à tsc ET au ratchet : 5 fichiers
+  (notifications/navigation, filterLink, PlayerDetailPanel, MediaViewer,
+  CoverFlowModal). L'audit §2 du plan les avait manquées. **TRAITÉ lot 2-C** (même
+  phase) : migration typée + `playerScopedHref` + extension du ratchet au contexte
+  `to:`/`href:` backtick.
+
+- [2026-07-23] (lot 2-C) `notif.target_route` ÉMIS PAR LE BACKEND porte encore l'ancien
+  format `/players/…` (donnée runtime, pas un littéral source). Couvert par le splat
+  legacy Phase 3 (1 hop). Mise à jour de l'émission backend = chantier Go HORS D7
+  (documenté in-code navigation.ts). Décision : DIFFÉRÉ (signalé utilisateur).
+
+- [2026-07-23] (lot 2-B, mineur) `ExplorerPage.tsx:168` : `eslint-disable-next-line
+  set-state-in-effect` MAL PLACÉ (désactive la ligne suivante, pas les setState
+  165-167) → warning baseline. Décision : lot final (trivial).
+
+- [2026-07-23] (lot 2-B, mineur) `NavL1MobileActions.test.tsx:42` : fixture pathname
+  ancien style `/players/test-player/home` (passe par sous-chaîne). Décision : lot
+  final (cohérence des fixtures).
 
 Points de vigilance connus :
 - Le mismatch `shellNavigation.ts:48` (`profile/citations` vs route réelle
@@ -591,3 +635,19 @@ déplacement (Phase 1, TDD). Backend non touché.
   `<img>` sans header (fetch navigateur, hors client API — attendu). Découvertes
   consignées §7 (type Locale absent, durcissement optionnel clés loader/poll → lot
   final). Binaires Playwright chromium (ré)installés au passage (requis Phase 6).
+
+- **[2026-07-23] Phase 2 CLOSE** (3 lots Opus : 2-A structure+layout, 2-B surfaces
+  échappées, 2-C backtick emitters — chaque lot revu sur pièces par l'orchestrateur).
+  Gate re-exécuté par l'orchestrateur : `tsc -b` = 0 ; vitest **295 fichiers / 2605
+  passés / 14 skip pré-existants / 0 échec** ; `eslint .` = 0 erreur (68 warnings
+  baseline pré-existante) ; ratchet `/t/` + `/players/` vert, 0 offender. Smoke
+  navigateur (Playwright) : `/t/halo_infinite/players/Chocoboflor/home` rendu, headers
+  API uniformément `halo_infinite` ; `/t/halo_5/players/Chocoboflor/home` FRESH-LOAD
+  avec session Infinite → convergence D-6 observée (URL stable, `?f=` estampillé
+  `halo_5`, re-bootstrap, contenu H5) — les requêtes shell pré-convergence partent avec
+  l'ancien titre puis sont purgées par `clear()` (conforme D-3 : le shell suit le
+  store) ; `/t/inconnu/…` → écran gate « Titre introuvable » + lien retour, ZÉRO fuite
+  de contenu joueur sous le gate, aucune erreur console. Legacy `/players/…` = 404
+  TanStack à ce stade : ATTENDU, le splat arrive Phase 3. Verdicts consignés : params
+  `titleSlug` requis hors from/beforeLoad/useParams (helper `useTitleSlug`) ; héritage
+  `lang` OK (test routeur réel).

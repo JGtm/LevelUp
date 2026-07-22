@@ -49,7 +49,7 @@ export function TitleSwitcher({ onSwitched }: TitleSwitcherProps) {
       if (state.currentTitleSlug !== slug) return
       const targetSlug = state.currentPlayer?.player_slug ?? state.availablePlayers[0]?.player_slug
       if (targetSlug) {
-        void navigate({ to: '/players/$playerSlug/home', params: { playerSlug: targetSlug } })
+        void navigate({ to: '/{-$lang}/t/$titleSlug/players/$playerSlug/home', params: { titleSlug: slug, playerSlug: targetSlug } })
       } else {
         // Aucun joueur pour ce titre → retour à l'index (qui gère l'onboarding).
         void navigate({ to: '/' })

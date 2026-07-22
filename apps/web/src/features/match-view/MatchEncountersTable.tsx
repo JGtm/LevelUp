@@ -30,6 +30,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { useNavigate, useParams } from '@tanstack/react-router'
+import { useTitleSlug } from '@/lib/title-routing'
 import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
 import { Tooltip } from '@/components/ui/tooltip'
 import { RelationBadgeLegend } from '@/features/palmares/RelationBadgeLegend'
@@ -183,6 +184,7 @@ function formatRelativeEN(iso: string): string {
 export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideCardWrapper = false }: Props) {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug?: string }
   const navigate = useNavigate()
+  const titleSlug = useTitleSlug()
   const formatRelative = locale === 'en' ? formatRelativeEN : formatRelativeFR
 
   const labels = useMemo(
@@ -230,8 +232,8 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
     }
     if (!playerSlug) return
     void navigate({
-      to: '/players/$playerSlug/explorer',
-      params: { playerSlug },
+      to: '/{-$lang}/t/$titleSlug/players/$playerSlug/explorer',
+      params: { titleSlug, playerSlug },
       search: { mode: 'player', target: gamertag },
     })
   }

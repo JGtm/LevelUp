@@ -1,39 +1,49 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  buildPlayerDestination,
   PLAYER_PRIMARY_NAV_ITEMS,
   resolveIndexRedirect,
+  resolvePlayerFallback,
+  resolvePlayerSwitch,
   type IndexRedirectInput,
 } from './shellNavigation'
 
-describe('buildPlayerDestination', () => {
-  it('redirige vers home si aucun slug courant', () => {
-    expect(buildPlayerDestination('/', null, 'new-player')).toBe('/players/new-player/home')
+describe('resolvePlayerSwitch', () => {
+  it('reste sur la même route (préserve la sous-page) quand on est sous une sous-page joueur', () => {
+    expect(resolvePlayerSwitch('/t/halo_infinite/players/old/stats/timeseries')).toEqual({
+      kind: 'same-route',
+    })
+    // Tolère aussi les anciens pathnames /players/… (préfixe titre optionnel).
+    expect(resolvePlayerSwitch('/players/old/community/relations')).toEqual({ kind: 'same-route' })
   })
 
-  it('préserve la section active quand le path est dans le scope joueur', () => {
-    expect(
-      buildPlayerDestination(
-        '/players/old-player/stats/timeseries',
-        'old-player',
-        'new-player',
-      ),
-    ).toBe('/players/new-player/stats/timeseries')
+  it('retombe sur home si le path n’est pas une sous-page joueur', () => {
+    expect(resolvePlayerSwitch('/settings')).toEqual({ kind: 'home' })
+    expect(resolvePlayerSwitch('/')).toEqual({ kind: 'home' })
   })
 
-  it('retombe sur home si le path actuel n’est pas un path joueur', () => {
-    expect(buildPlayerDestination('/settings', 'old-player', 'new-player')).toBe(
-      '/players/new-player/home',
-    )
+  it('retombe sur home si le path est la racine joueur nue', () => {
+    expect(resolvePlayerSwitch('/t/halo_infinite/players/old')).toEqual({ kind: 'home' })
+  })
+})
+
+describe('resolvePlayerFallback', () => {
+  const players = [{ player_slug: 'alice' }, { player_slug: 'bob' }]
+
+  it('slug d’URL présent → ok (pas de redirection)', () => {
+    expect(resolvePlayerFallback('bob', players)).toEqual({ kind: 'ok' })
   })
 
-  it('retombe sur home si le path est la racine du joueur', () => {
-    expect(buildPlayerDestination('/players/old-player', 'old-player', 'new-player')).toBe(
-      '/players/new-player/home',
-    )
+  it('slug d’URL inconnu → premier joueur disponible', () => {
+    expect(resolvePlayerFallback('ghost', players)).toEqual({ kind: 'redirect', slug: 'alice' })
   })
 
+  it('aucun joueur disponible → index', () => {
+    expect(resolvePlayerFallback('anyone', [])).toEqual({ kind: 'index' })
+  })
+})
+
+describe('PLAYER_PRIMARY_NAV_ITEMS', () => {
   it('place Communauté avant Carrière dans le parcours principal', () => {
     const labels = PLAYER_PRIMARY_NAV_ITEMS.map((item) => item.label)
 

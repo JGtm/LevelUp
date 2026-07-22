@@ -17,6 +17,7 @@
  */
 import { useCallback, useEffect } from 'react'
 import { Link, useRouter } from '@tanstack/react-router'
+import { useTitleSlug } from '@/lib/title-routing'
 import { Button } from '@/components/ui/button'
 import { useMatchNeighborsResolved } from '@/lib/match-nav/useMatchNeighborsResolved'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
@@ -43,6 +44,7 @@ interface MatchBreadcrumbProps {
 
 export function MatchBreadcrumb({ playerSlug, matchLabel, locale }: MatchBreadcrumbProps) {
   const router = useRouter()
+  const titleSlug = useTitleSlug()
   const t = MATCH_VIEW_TEXT[locale]
 
   function handleBack() {
@@ -51,8 +53,8 @@ export function MatchBreadcrumb({ playerSlug, matchLabel, locale }: MatchBreadcr
       router.history.back()
     } else {
       void router.navigate({
-        to: '/players/$playerSlug/explorer',
-        params: { playerSlug },
+        to: '/{-$lang}/t/$titleSlug/players/$playerSlug/explorer',
+        params: { titleSlug, playerSlug },
       })
     }
   }
@@ -82,8 +84,8 @@ export function MatchBreadcrumb({ playerSlug, matchLabel, locale }: MatchBreadcr
       </button>
       <span aria-hidden="true">·</span>
       <Link
-        to="/players/$playerSlug/home"
-        params={{ playerSlug }}
+        to="/{-$lang}/t/$titleSlug/players/$playerSlug/home"
+        params={{ titleSlug, playerSlug }}
         className="hover:text-foreground transition-colors truncate max-w-[12rem]"
       >
         {playerSlug}
