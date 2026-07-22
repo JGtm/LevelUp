@@ -15,6 +15,29 @@ et sans `lang`), repli D-4 non nécessaire. Forme canonique des `to` typés :
 **Prochaine étape** : Phase 1 (module `title-routing` TDD + câblage synchrone +
 header title-agnostic) déléguée à Opus, vérification par l'orchestrateur.
 
+## [2026-07-22] D7 Phase 1 close — module title-routing TDD (branche feat/title-slug-in-url)
+
+**Statut** : Complété (Phase 1/6), agent Opus + revue/gates orchestrateur.
+
+**Décisions techniques** : module `lib/title-routing/` (D-10) : 4 fonctions pures testées
+TDD (parse, gate, legacy redirect, init boot) + `applyActiveTitle` extraite de
+`switchTitle` (THROW sans rollback — le chemin d'erreur appartient à l'appelant, D-6) ;
+`switchTitle` = wrapper rollback store-only (bouton ISO, tests PR #59 inchangés).
+Câblage synchrone au boot dans `main.tsx` (D-9). Constat sur pièces : la suppression du
+cas spécial `halo_infinite` du header était DÉJÀ livrée par `df7f13775` → item 1d réduit
+aux commentaires (statut [~]). Clés `filtersResolve`/`filtersPreview` enrichies du titre
+(Découverte §7 du plan, défense en profondeur) ; audit des autres clés player-scoped :
+aucune fuite résiduelle, durcissement optionnel loaders/polls → lot final. Garde-rail
+ratchet `/t/` armé (allowlist = module seul) ; règle `/players/` s'armera en Phase 2e.
+
+**Résultats/gate** (re-exécutés par l'orchestrateur) : vitest 2573 passés / 0 échec ;
+tsc -b = 0 ; eslint touchés = 0 ; smoke Playwright : app inchangée, header
+`X-LevelUp-Title: halo_infinite` sur toutes les requêtes API JSON (preuve D-9), aucune
+erreur console. Remaps legacy contre-vérifiés contre les 6 redirects de routes existants.
+
+**Prochaine étape** : Phase 2 (déplacement structurel ~50 routes + littéraux + layout
+titre) — brief Opus avec précision « l'Outlet ne rend pas pendant wait/divergence ».
+
 ## [2026-07-22] Mini-lot « G » G1/G2 (branche refactor/ascension-ux-2026-07)
 
 **Statut** : Complété (G1, G2), sous contrat `plan-execution` (ordre strict G1 puis G2,

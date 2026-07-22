@@ -15,6 +15,7 @@ import { useEffect } from 'react'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
+import { useAppShellStore } from '@/stores/appShellStore'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import type { FilterStore } from '@/stores/createFilterStore'
 import type { FilterContextInput, FilterContextResolved } from '@/lib/api/types'
@@ -33,9 +34,12 @@ export function useFiltersResolve(playerSlug: string, filterStore: FilterStore =
   const filterContext = filterStore((s) => s.filterContext)
   const filterContextHash = filterStore((s) => s.filterContextHash)
   const setResolvedContext = filterStore((s) => s.setResolvedContext)
+  // Le titre courant scope la clé (cf. queryKeys.filtersResolve) : au switch de
+  // titre la clé change → refetch des options du bon titre, jamais de serve périmé.
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
 
   const query = useQuery<FilterContextResolved>({
-    queryKey: queryKeys.filtersResolve(playerSlug, filterContextHash),
+    queryKey: queryKeys.filtersResolve(playerSlug, titleSlug, filterContextHash),
     queryFn: () =>
       api.post<FilterContextResolved>(
         `/players/${playerSlug}/filters/resolve`,
@@ -127,6 +131,9 @@ export function useFollowLatestSession(
  * dropdown, avant que l'utilisateur clique sur Analyser.
  */
 export function useFiltersPreview(playerSlug: string, input: FilterContextInput) {
+  // Le titre courant scope la clé (cf. queryKeys.filtersPreview) — même motif que
+  // useFiltersResolve : pas de preview périmé d'un autre titre après bascule.
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   // FNV-1a 32 bits — même algo que computeHash/computePendingHash. Crucial :
   // le hash doit refléter les diffs de cascade pour que toggler une checkbox
   // dans FiltresPill déclenche un refetch et mette à jour available_options.
@@ -140,7 +147,7 @@ export function useFiltersPreview(playerSlug: string, input: FilterContextInput)
     return h.toString(16).padStart(8, '0')
   })()
   return useQuery<FilterContextResolved>({
-    queryKey: queryKeys.filtersPreview(playerSlug, hash),
+    queryKey: queryKeys.filtersPreview(playerSlug, titleSlug, hash),
     queryFn: () =>
       api.post<FilterContextResolved>(`/players/${playerSlug}/filters/resolve`, input),
     enabled: !!playerSlug,
