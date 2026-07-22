@@ -148,7 +148,7 @@ export const sessionManifest = {
   "session.detail.compare_label": { fr: "Comparaison", en: "Comparison" },
   "session.detail.compare_metrics_empty_description": { fr: "Aucune métrique comparative n'a été calculée pour cette paire de sessions.", en: "No comparative metric was computed for this session pair." },
   "session.detail.compare_metrics_empty_title": { fr: "Comparaison indisponible", en: "Comparison unavailable" },
-  "session.detail.compare_tooltip_desc": { fr: "Affiche une deuxième session à droite — mêmes graphes, même tableaux — pour comparer vos performances pour une session similaire sans changer de page.", en: "Shows a second session on the right — same charts, same tables — to compare your performance from a similar session without switching pages." },
+  "session.detail.compare_tooltip_desc": { fr: "Affiche une deuxième session à droite — mêmes graphes, même tableaux, pour comparer vos performances sur une session similaire sans changer de page.", en: "Shows a second session on the right — same charts, same tables — to compare your performance from a similar session without switching pages." },
   "session.detail.compare_tooltip_suggested": { fr: "Session suggérée", en: "Suggested session" },
   "session.detail.compare_tooltip_title": { fr: "Comparaison côte à côte", en: "Side-by-side comparison" },
   "session.detail.donut_winrate_center": { fr: "Victoires", en: "Win rate" },

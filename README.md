@@ -1,4 +1,4 @@
-# LevelUp - Halo Infinite Dashboard
+# LevelUp - Halo Dashboard
 
 > **Analyze your Halo 5: Guardians and Halo Infinite stats match by match, track your progress over time, and compare your performance with your squad.**
 
