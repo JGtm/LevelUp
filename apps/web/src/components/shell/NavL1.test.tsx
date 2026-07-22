@@ -4,18 +4,27 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 
 import { renderWithProviders } from '@/test/render-utils'
+import { resolveRoutePath } from '@/test/routeLinkMock'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { NavL1 } from './NavL1'
 
-let mockPathname = '/players/test-player/home'
+let mockPathname = '/t/halo_infinite/players/test-player/home'
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>()
   return {
     ...actual,
-    Link: ({ children, to, ...props }: ComponentPropsWithoutRef<'a'> & { to: string }) => (
-      <a href={to} {...props}>
+    Link: ({
+      children,
+      to,
+      params,
+      ...props
+    }: ComponentPropsWithoutRef<'a'> & {
+      to: string
+      params?: Record<string, string | undefined>
+    }) => (
+      <a href={resolveRoutePath(to, params)} {...props}>
         {children}
       </a>
     ),
@@ -30,7 +39,7 @@ vi.mock('./ThemeToggle', () => ({
 
 describe('NavL1', () => {
   beforeEach(() => {
-    mockPathname = '/players/test-player/home'
+    mockPathname = '/t/halo_infinite/players/test-player/home'
     // Casts vers `unknown` puis le type cible : évite `as any` (lint strict).
     // Les fixtures volontairement minimales ne représentent pas le full PlayerProfile.
     useAppShellStore.setState({
@@ -58,7 +67,7 @@ describe('NavL1', () => {
   })
 
   it('marque Communauté actif sur les sous-routes du hub', () => {
-    mockPathname = '/players/test-player/community/relations'
+    mockPathname = '/t/halo_infinite/players/test-player/community/relations'
 
     renderWithProviders(<NavL1 />)
 
@@ -87,7 +96,7 @@ describe('NavL1', () => {
   })
 
   it('marque Solo actif sur la route /synthesis (Synthèse est sous-onglet de Solo)', () => {
-    mockPathname = '/players/test-player/synthesis'
+    mockPathname = '/t/halo_infinite/players/test-player/synthesis'
 
     renderWithProviders(<NavL1 />)
 
@@ -116,7 +125,7 @@ describe('NavL1', () => {
 
     const coaching = screen.getByRole('menuitem', { name: 'Entraînement' })
     expect(coaching).toBeInTheDocument()
-    expect(coaching).toHaveAttribute('href', '/players/test-player/ascension/coaching')
+    expect(coaching).toHaveAttribute('href', '/t/halo_infinite/players/test-player/ascension/coaching')
   })
 
   it('ordonne Profil / Objectifs / Entraînement / Réalisations dans la dropdown Ascension', () => {
@@ -129,7 +138,7 @@ describe('NavL1', () => {
     const coaching = screen.getByRole('menuitem', { name: 'Entraînement' })
     const realisations = screen.getByRole('menuitem', { name: 'Réalisations' })
 
-    expect(objectives).toHaveAttribute('href', '/players/test-player/ascension/objectifs')
+    expect(objectives).toHaveAttribute('href', '/t/halo_infinite/players/test-player/ascension/objectifs')
     expect(
       profile.compareDocumentPosition(objectives) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()

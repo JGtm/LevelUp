@@ -10,6 +10,7 @@
  */
 import { useMemo, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { useTitleSlug } from '@/lib/title-routing'
 import type { ReactNode } from 'react'
 
 import { useLeaderboard, useLeaderboardCatalog } from './queries'
@@ -102,6 +103,7 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   const navigate = useNavigate()
+  const titleSlug = useTitleSlug()
 
   const [category, setCategory] = useState(CSR_WORLD)
   const [playlist, setPlaylist] = useState(PLAYLISTS[0].id)
@@ -166,8 +168,8 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
 
   function goToExplorer(gamertag: string, xuid: string) {
     void navigate({
-      to: '/players/$playerSlug/explorer',
-      params: { playerSlug },
+      to: '/{-$lang}/t/$titleSlug/players/$playerSlug/explorer',
+      params: { titleSlug, playerSlug },
       // On transmet le xuid (connu de la ligne) pour que l'Explorer affiche le
       // profil live même si le joueur n'est pas dans les données locales (sinon
       // ResolveXUIDByGamertag échoue côté backend pour un joueur du classement

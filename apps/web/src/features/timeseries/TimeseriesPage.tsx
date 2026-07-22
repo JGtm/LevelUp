@@ -48,10 +48,10 @@ export function TimeseriesPage() {
   const filterContext = useSoloFilterStore((s) => s.filterContext)
   const filterContextHash = useSoloFilterStore((s) => s.filterContextHash)
   const { tab } = useSearch({
-    from: '/players/$playerSlug/stats/timeseries',
+    from: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/timeseries',
   })
   const activeTab: TabId = tab ?? 'summary'
-  const navigate = useNavigate({ from: '/players/$playerSlug/stats/timeseries' })
+  const navigate = useNavigate({ from: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/timeseries' })
   const setActiveTab = (next: TabId) => {
     navigate({ search: (prev) => ({ ...prev, tab: next }), replace: true }).catch(() => {})
   }

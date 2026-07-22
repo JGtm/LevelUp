@@ -395,7 +395,8 @@ describe('CoverFlowModal — icône "ouvrir le match" header', () => {
     )
     const link = screen.getByRole('link', { name: /Ouvrir.*match/ })
     expect(link).toBeInTheDocument()
-    expect(link).toHaveAttribute('href', `/players/myGT/matches/${ITEM_A.match_id}`)
+    // Lien PLEINE PAGE title-scoped (lot 2-C) : titleSlug = défaut store 'halo_infinite'.
+    expect(link).toHaveAttribute('href', `/t/halo_infinite/players/myGT/matches/${ITEM_A.match_id}`)
   })
 
   it('masque l\'icône quand currentMatchId === item.match_id', () => {
@@ -438,11 +439,12 @@ describe('CoverFlowModal — icône "ouvrir le match" header', () => {
         playerSlug="GT"
       />,
     )
-    expect(screen.getByRole('link', { name: /Ouvrir.*match/ })).toHaveAttribute('href', '/players/GT/matches/match-X')
+    // Lien PLEINE PAGE title-scoped (lot 2-C) : titleSlug = défaut store 'halo_infinite'.
+    expect(screen.getByRole('link', { name: /Ouvrir.*match/ })).toHaveAttribute('href', '/t/halo_infinite/players/GT/matches/match-X')
 
     fireEvent.keyDown(window, { key: 'ArrowRight' })
 
-    expect(screen.getByRole('link', { name: /Ouvrir.*match/ })).toHaveAttribute('href', '/players/GT/matches/match-Y')
+    expect(screen.getByRole('link', { name: /Ouvrir.*match/ })).toHaveAttribute('href', '/t/halo_infinite/players/GT/matches/match-Y')
   })
 
   it('si onOpenMatch est fourni, le rendu est un <button> qui appelle le callback avec le match_id courant', () => {

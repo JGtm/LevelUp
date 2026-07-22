@@ -8,9 +8,18 @@
  * Garder la structure ici évite toute duplication entre les deux rendus.
  */
 import type { ReactNode } from 'react'
-import { isCommunityPath } from './shellNavigation'
+import { isCommunityPath, type RouteTo } from './shellNavigation'
+import { playerRelativePath } from '@/lib/title-routing'
 import type { TitleCapability } from '@/lib/capabilities/capabilities'
 import type { CommonManifestKey } from '@/lib/i18n/generated/common'
+
+// Matcher de section : `re` s'applique au SUFFIXE relatif au joueur (playerRelativePath),
+// jamais au pathname brut — aucun littéral `/players/` (garde-rail D-10). Retourne false
+// hors scope joueur (page agnostique).
+function under(pathname: string, re: RegExp): boolean {
+  const suffix = playerRelativePath(pathname)
+  return suffix !== null && re.test(suffix)
+}
 
 // ─── Icône flamme (label Ascension) ──────────────────────────────────────────
 // Nœud JSX statique (pas un composant) pour garder ce module « data-only »
@@ -38,8 +47,8 @@ export interface L1Tab {
   key: string
   /** Clé i18n du libellé (résolue par le consommateur via `t()`). */
   labelKey: CommonManifestKey
-  /** Chemin avec $playerSlug en placeholder. */
-  path: string
+  /** Template de route typé (`$titleSlug`/`$playerSlug` résolus par `params`). */
+  path: RouteTo
   /**
    * Capability produit requise pour afficher cet onglet (multi-titre, Phase 5).
    * Absente ⇒ onglet toujours visible. NO-OP pour `halo_infinite`.
@@ -53,8 +62,8 @@ export interface L1Section {
   labelKey: CommonManifestKey
   /** Icône optionnelle affichée avant le label (ex: flamme pour Ascension). */
   icon?: ReactNode
-  /** Route par défaut lors du clic sur le label (avec $playerSlug en placeholder). */
-  defaultPath: string
+  /** Route par défaut (template typé) lors du clic sur le label. */
+  defaultPath: RouteTo
   /** Retourne true si le pathname courant appartient à cette section. */
   matchPathname: (pathname: string) => boolean
   /** Onglets du dropdown (optionnel — si absent, bouton simple). */
@@ -78,43 +87,43 @@ export const L1_SECTIONS: L1Section[] = [
   {
     key: 'home',
     labelKey: 'common.nav.section_home',
-    defaultPath: '/players/$playerSlug/home',
-    matchPathname: (p) => /\/players\/[^/]+\/home/.test(p),
+    defaultPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/home',
+    matchPathname: (p) => under(p, /^\/home/),
   },
   {
     key: 'stats',
     labelKey: 'common.nav.section_solo',
-    defaultPath: '/players/$playerSlug/stats/timeseries',
-    matchPathname: (p) => /\/players\/[^/]+\/(stats\/|synthesis)/.test(p),
+    defaultPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/timeseries',
+    matchPathname: (p) => under(p, /^\/(stats\/|synthesis)/),
     tabs: [
-      { key: 'synthesis', labelKey: 'common.nav.tab_synthesis', path: '/players/$playerSlug/stats/synthesis' },
-      { key: 'timeseries', labelKey: 'common.nav.tab_timeseries', path: '/players/$playerSlug/stats/timeseries' },
-      { key: 'sessions', labelKey: 'common.nav.tab_sessions', path: '/players/$playerSlug/stats/sessions' },
+      { key: 'synthesis', labelKey: 'common.nav.tab_synthesis', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/synthesis' },
+      { key: 'timeseries', labelKey: 'common.nav.tab_timeseries', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/timeseries' },
+      { key: 'sessions', labelKey: 'common.nav.tab_sessions', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/sessions' },
     ],
   },
   {
     key: 'squad',
     labelKey: 'common.nav.section_squad',
-    defaultPath: '/players/$playerSlug/squad/synergies',
-    matchPathname: (p) => /\/players\/[^/]+\/squad/.test(p),
+    defaultPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies',
+    matchPathname: (p) => under(p, /^\/squad/),
     tabs: [
-      { key: 'synergies', labelKey: 'common.nav.tab_synergies', path: '/players/$playerSlug/squad/synergies' },
-      { key: 'contributions', labelKey: 'common.nav.tab_contributions', path: '/players/$playerSlug/squad/contributions' },
+      { key: 'synergies', labelKey: 'common.nav.tab_synergies', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies' },
+      { key: 'contributions', labelKey: 'common.nav.tab_contributions', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions' },
     ],
   },
   {
     key: 'career',
     labelKey: 'common.nav.section_career',
     capability: 'career',
-    defaultPath: '/players/$playerSlug/career',
-    matchPathname: (p) => /\/players\/[^/]+\/(career|citations|profile)/.test(p),
+    defaultPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/career',
+    matchPathname: (p) => under(p, /^\/(career|citations|profile)/),
     tabs: [
-      { key: 'progression', labelKey: 'common.nav.tab_progression', path: '/players/$playerSlug/career' },
-      { key: 'citations', labelKey: 'common.nav.tab_citations', path: '/players/$playerSlug/career/citations' },
+      { key: 'progression', labelKey: 'common.nav.tab_progression', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/career' },
+      { key: 'citations', labelKey: 'common.nav.tab_citations', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations' },
       {
         key: 'season-pass',
         labelKey: 'common.nav.tab_season_pass',
-        path: '/players/$playerSlug/career/season-pass',
+        path: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/season-pass',
         capability: 'season_pass',
       },
     ],
@@ -127,19 +136,19 @@ export const L1_SECTIONS: L1Section[] = [
     // LUSR ⇒ gatée sur `lusr`. (Reste aussi conditionnée par le réglage
     // `show_progression` côté NavL1.)
     capability: 'lusr',
-    defaultPath: '/players/$playerSlug/ascension',
-    matchPathname: (p) => /\/players\/[^/]+\/(objectifs|ascension)/.test(p),
+    defaultPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension',
+    matchPathname: (p) => under(p, /^\/(objectifs|ascension)/),
     tabs: [
-      { key: 'profile', labelKey: 'common.nav.tab_profile', path: '/players/$playerSlug/ascension' },
-      { key: 'objectives', labelKey: 'common.nav.tab_objectives', path: '/players/$playerSlug/ascension/objectifs' },
-      { key: 'coaching', labelKey: 'common.nav.tab_coaching', path: '/players/$playerSlug/ascension/coaching' },
-      { key: 'realisations', labelKey: 'common.nav.tab_realisations', path: '/players/$playerSlug/ascension/realisations' },
+      { key: 'profile', labelKey: 'common.nav.tab_profile', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension' },
+      { key: 'objectives', labelKey: 'common.nav.tab_objectives', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/objectifs' },
+      { key: 'coaching', labelKey: 'common.nav.tab_coaching', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/coaching' },
+      { key: 'realisations', labelKey: 'common.nav.tab_realisations', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations' },
     ],
   },
   {
     key: 'community',
     labelKey: 'common.nav.section_community',
-    defaultPath: '/players/$playerSlug/community',
+    defaultPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/community',
     matchPathname: isCommunityPath,
     // Section transverse non gatée (Relations / Face-à-face dérivent des matchs) ;
     // seul l'onglet « Classements » dépend de `world.leaderboard`.
@@ -147,24 +156,24 @@ export const L1_SECTIONS: L1Section[] = [
       {
         key: 'leaderboard',
         labelKey: 'common.nav.tab_leaderboard',
-        path: '/players/$playerSlug/community',
+        path: '/{-$lang}/t/$titleSlug/players/$playerSlug/community',
         capability: 'world.leaderboard',
       },
-      { key: 'relations', labelKey: 'common.nav.tab_relations', path: '/players/$playerSlug/community/relations' },
-      { key: 'compare', labelKey: 'common.nav.tab_compare', path: '/players/$playerSlug/community/compare' },
+      { key: 'relations', labelKey: 'common.nav.tab_relations', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/community/relations' },
+      { key: 'compare', labelKey: 'common.nav.tab_compare', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/community/compare' },
     ],
   },
   {
     key: 'media',
     labelKey: 'common.nav.section_media',
     capability: 'media',
-    defaultPath: '/players/$playerSlug/media',
-    matchPathname: (p) => /\/players\/[^/]+\/media/.test(p),
+    defaultPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/media',
+    matchPathname: (p) => under(p, /^\/media/),
   },
   {
     key: 'explorer',
     labelKey: 'common.nav.section_explorer',
-    defaultPath: '/players/$playerSlug/explorer',
-    matchPathname: (p) => /\/players\/[^/]+\/explorer/.test(p),
+    defaultPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/explorer',
+    matchPathname: (p) => under(p, /^\/explorer/),
   },
 ]

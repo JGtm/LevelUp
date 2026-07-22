@@ -122,10 +122,10 @@ export function MatchViewPage() {
     matchId: string
   }
   const { tab } = useSearch({
-    from: '/players/$playerSlug/matches/$matchId',
+    from: '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId',
   })
   const activeTab: TabId = tab ?? 'summary'
-  const navigate = useNavigate({ from: '/players/$playerSlug/matches/$matchId' })
+  const navigate = useNavigate({ from: '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId' })
   const router = useRouter()
   const setActiveTab = (next: TabId) => {
     navigate({ search: (prev) => ({ ...prev, tab: next }), replace: true }).catch(() => {})
@@ -140,10 +140,10 @@ export function MatchViewPage() {
 
   const isEN = locale === 'en'
   const goHome = () => {
-    navigate({ to: '/players/$playerSlug/home', params: { playerSlug } }).catch(() => {})
+    navigate({ to: '/{-$lang}/t/$titleSlug/players/$playerSlug/home', params: { playerSlug } }).catch(() => {})
   }
   const goMatches = () => {
-    navigate({ to: '/players/$playerSlug/explorer', params: { playerSlug } }).catch(() => {})
+    navigate({ to: '/{-$lang}/t/$titleSlug/players/$playerSlug/explorer', params: { playerSlug } }).catch(() => {})
   }
   const goBack = () => {
     if (router.history.length > 1) router.history.back()

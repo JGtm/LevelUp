@@ -7,6 +7,7 @@
  * la page Ascension complète.
  */
 import { Link } from '@tanstack/react-router'
+import { useTitleSlug } from '@/lib/title-routing'
 import { Card, CardContent } from '@/components/ui/card'
 import { useStreaks } from '@/features/ascension/queries'
 import { getAscensionText } from '@/features/ascension/i18n'
@@ -39,6 +40,7 @@ function FlameIcon() {
 
 export function HomeAscensionWidget({ playerSlug, locale }: HomeAscensionWidgetProps) {
   const t = getAscensionText(locale)
+  const titleSlug = useTitleSlug()
   const { data, isLoading, isError } = useStreaks(playerSlug, !!playerSlug)
 
   if (isError) return null
@@ -85,8 +87,8 @@ export function HomeAscensionWidget({ playerSlug, locale }: HomeAscensionWidgetP
         {/* Le widget montre des séries (surface du passé) → pointe l'onglet
             « Réalisations », pas l'index Profil (B2). */}
         <Link
-          to="/players/$playerSlug/ascension/realisations"
-          params={{ playerSlug }}
+          to="/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations"
+          params={{ titleSlug, playerSlug }}
           className="mt-auto text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
           {locale === 'en' ? 'View all →' : 'Voir tout →'}

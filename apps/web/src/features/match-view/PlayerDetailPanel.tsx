@@ -14,6 +14,7 @@ import { tokenCssVar } from '@/lib/accessibility'
 import { perfScale } from '@/lib/accessibility/scales'
 import { dropShadowForDifficulty } from '@/lib/medalDifficulty'
 import { displayPlayerName } from '@/lib/players/displayName'
+import { playerScopedHref, useTitleSlug } from '@/lib/title-routing'
 import { formatRankDelta } from '@/lib/formatters'
 import type {
   MatchCitationSnippet,
@@ -347,8 +348,14 @@ function LocalSection({ data, t }: { data: LocalRow; t: MatchViewText }) {
 
 function Footer({ isTracked, isMe, isBot, gamertag, playerSlug, t }: { isTracked: boolean; isMe: boolean; isBot: boolean; gamertag: string; playerSlug?: string; t: MatchViewText }) {
   const badgeText = isTracked ? t.sbDetailPlayerDb : t.sbDetailSharedOnly
+  const titleSlug = useTitleSlug()
   const showLink = !isMe && !isBot && !!playerSlug
-  const explorerUrl = showLink ? `/players/${playerSlug}/explorer?mode=player&target=${encodeURIComponent(gamertag)}` : null
+  // Lien PLEINE PAGE (`<a href>`) vers l'explorer du joueur : forme title-scoped via le
+  // helper centralisé (jamais de littéral `/players/` local — garde-rail lot 2-C).
+  const explorerUrl =
+    showLink && playerSlug
+      ? playerScopedHref(titleSlug, playerSlug, `/explorer?mode=player&target=${encodeURIComponent(gamertag)}`)
+      : null
   const displayGamertag = gamertag
   return (
     <div className="flex items-center justify-between gap-2 border-t border-border pt-2 text-3xs">

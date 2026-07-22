@@ -8,17 +8,30 @@
  *      valide (préfixe whitelist).
  *   2. Aucune des 3 routes fantômes B1 n'est plus retournée.
  *
+ * Lot 2-C (2026-07-23) : les fallbacks par catégorie émettent désormais la forme
+ * TYPÉE title-scoped (`to` template `/{-$lang}/t/$titleSlug/players/$playerSlug/…`
+ * + `params`), plus l'ancien littéral `/players/{slug}/…`. Les assertions ci-dessous
+ * valident donc le couple (to template, params) — le `suffix` relatif au joueur (via
+ * routeTemplateSuffix) reste le point de contrôle de la whitelist.
+ *
  * Tests symétriques côté Go : apps/go-api/internal/api/post_sync_deltas_test.go
  *   - TestEmitPostSyncDeltas_AllTargetRoutesValid
  *   - TestEmitPostSyncDeltas_NoFantomRoutes
  */
 import { describe, it, expect } from 'vitest'
 
+import { routeTemplateSuffix } from '@/lib/title-routing'
 import { resolveTarget } from './navigation'
 import type { Notification, NotificationCategory } from './types'
 import { ALL_CATEGORIES } from './types'
 
 const PLAYER_SLUG = 'test-player'
+const TITLE_SLUG = 'halo_infinite'
+
+// Template title-scoped canonique (préfixe commun des fallbacks joueur).
+const PLAYER_TPL = '/{-$lang}/t/$titleSlug/players/$playerSlug'
+// Params attendus des fallbacks joueur sans segment dynamique supplémentaire.
+const PLAYER_PARAMS = { titleSlug: TITLE_SLUG, playerSlug: PLAYER_SLUG }
 
 // Whitelist des préfixes de routes acceptés.
 // À synchroniser avec routeTree.gen.ts si la nav front évolue.
@@ -65,12 +78,12 @@ const FANTOM_ROUTES_B1 = [
 
 function targetRouteIsValid(to: string): boolean {
   if ((VALID_TOP_ROUTES as readonly string[]).includes(to)) return true
-  const prefix = '/players/'
-  if (!to.startsWith(prefix)) return false
-  const rest = to.slice(prefix.length)
-  const slash = rest.indexOf('/')
-  if (slash < 0) return true // /players/{slug} sans sous-chemin
-  const subPath = rest.slice(slash)
+  // Forme post-migration : template title-scoped
+  // `/{-$lang}/t/$titleSlug/players/$playerSlug{suffix}`. Le suffixe relatif au joueur
+  // (routeTemplateSuffix) porte l'identité de la page.
+  if (!to.includes('/players/$playerSlug')) return false
+  const subPath = routeTemplateSuffix(to)
+  if (subPath === '') return true // /players/$playerSlug racine, sans sous-chemin
   if ((VALID_PLAYER_SUBPATHS as readonly string[]).includes(subPath)) return true
   // Routes dynamiques (ex: /matches/$matchId pour rival_encounter) : le sous-chemin
   // porte un id → valider sur le 1er segment. Les routes fantômes B1 (/defis, /sync)
@@ -95,7 +108,7 @@ function makeNotif(category: NotificationCategory): Notification {
 describe('navigation.ts - regression B1 routes notifications', () => {
   it('toutes les categories resolvent vers une route valide (whitelist)', () => {
     for (const category of ALL_CATEGORIES) {
-      const target = resolveTarget(makeNotif(category), PLAYER_SLUG)
+      const target = resolveTarget(makeNotif(category), PLAYER_SLUG, TITLE_SLUG)
       // null = pas de route ciblee : OK pour les categories sans drill-down
       if (target === null) continue
       expect(
@@ -107,7 +120,7 @@ describe('navigation.ts - regression B1 routes notifications', () => {
 
   it('aucune des 3 routes fantomes B1 n\'est plus retournee', () => {
     for (const category of ALL_CATEGORIES) {
-      const target = resolveTarget(makeNotif(category), PLAYER_SLUG)
+      const target = resolveTarget(makeNotif(category), PLAYER_SLUG, TITLE_SLUG)
       if (target === null) continue
       for (const fantom of FANTOM_ROUTES_B1) {
         expect(
@@ -118,71 +131,92 @@ describe('navigation.ts - regression B1 routes notifications', () => {
     }
   })
 
+  it('les fallbacks joueur portent titleSlug + playerSlug dans params', () => {
+    // Défense lot 2-C : toute cible joueur (template) doit fournir les params de route
+    // (sinon navigate n'interpole pas → URL morte). Les pages agnostiques et le
+    // target_route backend (string verbatim) sont exemptés.
+    for (const category of ALL_CATEGORIES) {
+      const target = resolveTarget(makeNotif(category), PLAYER_SLUG, TITLE_SLUG)
+      if (target === null) continue
+      if (!target.to.includes('/players/$playerSlug')) continue
+      expect(target.params?.titleSlug, `category=${category}`).toBe(TITLE_SLUG)
+      expect(target.params?.playerSlug, `category=${category}`).toBe(PLAYER_SLUG)
+    }
+  })
+
   it('challenge_added cible /ascension/objectifs (onglet Objectifs)', () => {
-    const target = resolveTarget(makeNotif('challenge_added'), PLAYER_SLUG)
+    const target = resolveTarget(makeNotif('challenge_added'), PLAYER_SLUG, TITLE_SLUG)
     expect(target).not.toBeNull()
-    expect(target!.to).toBe(`/players/${PLAYER_SLUG}/ascension/objectifs`)
+    expect(target!.to).toBe(`${PLAYER_TPL}/ascension/objectifs`)
+    expect(target!.params).toEqual(PLAYER_PARAMS)
   })
 
   it('objective_assigned cible /ascension/objectifs (onglet Objectifs)', () => {
-    const target = resolveTarget(makeNotif('objective_assigned'), PLAYER_SLUG)
-    expect(target!.to).toBe(`/players/${PLAYER_SLUG}/ascension/objectifs`)
+    const target = resolveTarget(makeNotif('objective_assigned'), PLAYER_SLUG, TITLE_SLUG)
+    expect(target!.to).toBe(`${PLAYER_TPL}/ascension/objectifs`)
+    expect(target!.params).toEqual(PLAYER_PARAMS)
   })
 
   it('objective_completed cible /ascension/realisations avec ancrage (AM-5)', () => {
-    const target = resolveTarget(makeNotif('objective_completed'), PLAYER_SLUG)
-    expect(target!.to).toBe(`/players/${PLAYER_SLUG}/ascension/realisations`)
+    const target = resolveTarget(makeNotif('objective_completed'), PLAYER_SLUG, TITLE_SLUG)
+    expect(target!.to).toBe(`${PLAYER_TPL}/ascension/realisations`)
+    expect(target!.params).toEqual(PLAYER_PARAMS)
     expect(target!.search).toMatchObject({ selectedObjectiveId: '42' })
   })
 
   it('challenge_completed cible /ascension/realisations avec ancrage (AM-5)', () => {
-    const target = resolveTarget(makeNotif('challenge_completed'), PLAYER_SLUG)
-    expect(target!.to).toBe(`/players/${PLAYER_SLUG}/ascension/realisations`)
+    const target = resolveTarget(makeNotif('challenge_completed'), PLAYER_SLUG, TITLE_SLUG)
+    expect(target!.to).toBe(`${PLAYER_TPL}/ascension/realisations`)
+    expect(target!.params).toEqual(PLAYER_PARAMS)
     expect(target!.search).toMatchObject({ selectedChallengeId: '42' })
   })
 
   it('app_release cible /changelog (pas /help/changelog)', () => {
-    const target = resolveTarget(makeNotif('app_release'), PLAYER_SLUG)
+    const target = resolveTarget(makeNotif('app_release'), PLAYER_SLUG, TITLE_SLUG)
     expect(target).not.toBeNull()
     expect(target!.to).toBe('/changelog')
+    expect(target!.params).toBeUndefined()
   })
 
   it('sync_error cible /settings (pas /players/$slug/sync)', () => {
-    const target = resolveTarget(makeNotif('sync_error'), PLAYER_SLUG)
+    const target = resolveTarget(makeNotif('sync_error'), PLAYER_SLUG, TITLE_SLUG)
     expect(target).not.toBeNull()
     expect(target!.to).toBe('/settings')
     expect(target!.search).toMatchObject({ jobId: 'job-1' })
   })
 
   it('rival_encounter cible la match view via le target_route backend', () => {
-    // Cas nominal : le backend renvoie déjà /players/{slug}/matches/{match_id}.
+    // Cas nominal : le backend renvoie déjà /players/{slug}/matches/{match_id} (format
+    // legacy verbatim — donnée runtime, redirigée par le splat Phase 3).
     const notif = makeNotif('rival_encounter')
     notif.target_route = `/players/${PLAYER_SLUG}/matches/m-42`
-    const target = resolveTarget(notif, PLAYER_SLUG)
+    const target = resolveTarget(notif, PLAYER_SLUG, TITLE_SLUG)
     expect(target).not.toBeNull()
     expect(target!.to).toBe(`/players/${PLAYER_SLUG}/matches/m-42`)
+    expect(target!.params).toBeUndefined()
   })
 
   it('rival_encounter fallback sur match_id des params si target_route absent', () => {
     const notif = makeNotif('rival_encounter')
     notif.target_route = undefined
     notif.params = { match_id: 'm-99' }
-    const target = resolveTarget(notif, PLAYER_SLUG)
+    const target = resolveTarget(notif, PLAYER_SLUG, TITLE_SLUG)
     expect(target).not.toBeNull()
-    expect(target!.to).toBe(`/players/${PLAYER_SLUG}/matches/m-99`)
+    expect(target!.to).toBe(`${PLAYER_TPL}/matches/$matchId`)
+    expect(target!.params).toEqual({ ...PLAYER_PARAMS, matchId: 'm-99' })
   })
 
   it('rival_encounter sans match_id ni target_route → aucune route', () => {
     const notif = makeNotif('rival_encounter')
     notif.target_route = undefined
     notif.params = {}
-    expect(resolveTarget(notif, PLAYER_SLUG)).toBeNull()
+    expect(resolveTarget(notif, PLAYER_SLUG, TITLE_SLUG)).toBeNull()
   })
 
   it('target_route backend prend le pas sur le fallback', () => {
     const notif = makeNotif('app_release')
     notif.target_route = '/some/custom/route'
-    const target = resolveTarget(notif, PLAYER_SLUG)
+    const target = resolveTarget(notif, PLAYER_SLUG, TITLE_SLUG)
     expect(target!.to).toBe('/some/custom/route')
   })
 
@@ -192,8 +226,9 @@ describe('navigation.ts - regression B1 routes notifications', () => {
     // persistees doivent retomber sur le fallback /players/{slug}/notifications.
     const notif = makeNotif('data_health_warning')
     notif.target_route = '/admin/data-health'
-    const target = resolveTarget(notif, PLAYER_SLUG)
+    const target = resolveTarget(notif, PLAYER_SLUG, TITLE_SLUG)
     expect(target).not.toBeNull()
-    expect(target!.to).toBe(`/players/${PLAYER_SLUG}/notifications`)
+    expect(target!.to).toBe(`${PLAYER_TPL}/notifications`)
+    expect(target!.params).toEqual(PLAYER_PARAMS)
   })
 })

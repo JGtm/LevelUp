@@ -17,6 +17,7 @@
 import { useMemo } from 'react'
 import { Link, Outlet, useMatchRoute, useParams } from '@tanstack/react-router'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useTitleSlug } from '@/lib/title-routing'
 import { TipsTicker } from '@/components/ui/tips-ticker'
 import { buildAscensionTips } from './tips'
 import { getAscensionText } from './i18n'
@@ -44,16 +45,17 @@ function LightbulbIcon() {
 
 export function AscensionLayout() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
+  const titleSlug = useTitleSlug()
   const locale = useAppShellStore((s) => s.locale)
   const t = getAscensionText(locale)
   const matchRoute = useMatchRoute()
 
   const tips = useMemo(() => buildAscensionTips(locale === 'en' ? 'en' : 'fr'), [locale])
 
-  const profileRoute = '/players/$playerSlug/ascension' as const
-  const objectivesRoute = '/players/$playerSlug/ascension/objectifs' as const
-  const coachingRoute = '/players/$playerSlug/ascension/coaching' as const
-  const realisationsRoute = '/players/$playerSlug/ascension/realisations' as const
+  const profileRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension' as const
+  const objectivesRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/objectifs' as const
+  const coachingRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/coaching' as const
+  const realisationsRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations' as const
   const isObjectives = !!matchRoute({ to: objectivesRoute })
   const isCoaching = !!matchRoute({ to: coachingRoute })
   const isRealisations = !!matchRoute({ to: realisationsRoute })
@@ -79,7 +81,7 @@ export function AscensionLayout() {
       >
         <Link
           to={profileRoute}
-          params={{ playerSlug }}
+          params={{ titleSlug, playerSlug }}
           role="tab"
           aria-selected={isProfile}
           className={tabClass(isProfile)}
@@ -88,7 +90,7 @@ export function AscensionLayout() {
         </Link>
         <Link
           to={objectivesRoute}
-          params={{ playerSlug }}
+          params={{ titleSlug, playerSlug }}
           role="tab"
           aria-selected={isObjectives}
           className={tabClass(isObjectives)}
@@ -97,7 +99,7 @@ export function AscensionLayout() {
         </Link>
         <Link
           to={coachingRoute}
-          params={{ playerSlug }}
+          params={{ titleSlug, playerSlug }}
           role="tab"
           aria-selected={isCoaching}
           className={tabClass(isCoaching)}
@@ -106,7 +108,7 @@ export function AscensionLayout() {
         </Link>
         <Link
           to={realisationsRoute}
-          params={{ playerSlug }}
+          params={{ titleSlug, playerSlug }}
           role="tab"
           aria-selected={isRealisations}
           className={tabClass(isRealisations)}

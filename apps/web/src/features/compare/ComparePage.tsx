@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useParams, useNavigate, useSearch, Link } from '@tanstack/react-router'
+import { useTitleSlug } from '@/lib/title-routing'
 
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { PrivacyBanner } from '@/components/ui/privacy-banner'
@@ -294,7 +295,8 @@ function MirrorHeader({
 export function ComparePage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
   const navigate = useNavigate()
-  const search = useSearch({ from: '/players/$playerSlug/community/compare' }) as {
+  const titleSlug = useTitleSlug()
+  const search = useSearch({ from: '/{-$lang}/t/$titleSlug/players/$playerSlug/community/compare' }) as {
     target?: string
     target2?: string
     from?: 'explorer'
@@ -330,8 +332,8 @@ export function ComparePage() {
 
   function handleComboChange(values: string[]) {
     void navigate({
-      to: '/players/$playerSlug/community/compare',
-      params: { playerSlug },
+      to: '/{-$lang}/t/$titleSlug/players/$playerSlug/community/compare',
+      params: { titleSlug, playerSlug },
       search: {
         target: values[0] ?? undefined,
         target2: values[1] ?? undefined,
@@ -350,8 +352,8 @@ export function ComparePage() {
       <div className="space-y-2">
         {fromExplorer && (
           <Link
-            to="/players/$playerSlug/explorer"
-            params={{ playerSlug }}
+            to="/{-$lang}/t/$titleSlug/players/$playerSlug/explorer"
+            params={{ titleSlug, playerSlug }}
             search={{ mode: 'player', target: target || undefined }}
             className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
           >

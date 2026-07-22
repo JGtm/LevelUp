@@ -13,6 +13,7 @@ import Hls from 'hls.js'
 import type { MediaItemRow } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { intlLocale } from '@/lib/formatters'
+import { playerScopedHref, useTitleSlug } from '@/lib/title-routing'
 import type { ManifestLocale } from '@/lib/i18n/format'
 import { MediaLikeButton } from './MediaViewer'
 import { getMediaModalsText } from './i18n-modals'
@@ -367,6 +368,7 @@ export function CoverFlowModal({
   onToggleAutoChain,
 }: CoverFlowModalProps) {
   const locale = useAppShellStore((s) => s.locale)
+  const titleSlug = useTitleSlug()
   const text = getMediaModalsText(locale)
   // L'identité de l'item courant est suivie via son file_path (stable),
   // pas via un index (qui peut changer si l'array items est réordonné).
@@ -598,7 +600,7 @@ export function CoverFlowModal({
                 </button>
               ) : (
                 <a
-                  href={`/players/${playerSlug}/matches/${currentItem.match_id}`}
+                  href={playerScopedHref(titleSlug, playerSlug, `/matches/${currentItem.match_id}`)}
                   onClick={(e) => e.stopPropagation()}
                   title={text.coverFlow.viewMatchTitle}
                   aria-label={text.coverFlow.viewMatchTitle}

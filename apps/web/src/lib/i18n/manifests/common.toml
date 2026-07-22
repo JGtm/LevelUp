@@ -2061,3 +2061,45 @@ en = "90 days"
 [common.period.preset_all]
 fr = "Toutes"
 en = "All"
+
+# ─── Gate de titre (segment /t/{slug} invalide, coming_soon, archivé, ou bascule
+#     impossible) — parité RequireActiveTitle, écran d'indisponibilité title-scoped.
+[common.title_gate.unknown_heading]
+fr = "Titre introuvable"
+en = "Title not found"
+
+[common.title_gate.unknown_body]
+fr = "Ce titre n'existe pas ou n'est plus disponible."
+en = "This title does not exist or is no longer available."
+
+[common.title_gate.coming_soon_heading]
+fr = "Bientôt disponible"
+en = "Coming soon"
+
+[common.title_gate.coming_soon_body]
+fr = "Ce titre n'est pas encore accessible."
+en = "This title is not accessible yet."
+
+[common.title_gate.archived_heading]
+fr = "Titre archivé"
+en = "Archived title"
+
+[common.title_gate.archived_body]
+fr = "Ce titre a été archivé et n'est plus consultable."
+en = "This title has been archived and is no longer available."
+
+[common.title_gate.switch_failed_heading]
+fr = "Changement de titre impossible"
+en = "Cannot switch title"
+
+[common.title_gate.switch_failed_body]
+fr = "Le changement de titre a échoué. Réessaie ou reviens au titre actif."
+en = "Switching title failed. Retry or go back to the active title."
+
+[common.title_gate.back_to_active]
+fr = "Retourner au titre actif"
+en = "Back to the active title"
+
+[common.title_gate.retry]
+fr = "Réessayer"
+en = "Retry"
