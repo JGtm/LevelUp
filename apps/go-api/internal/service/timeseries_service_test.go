@@ -445,3 +445,41 @@ func TestFilterStatsMatchRows_MatchContextSquad(t *testing.T) {
 		t.Errorf("squad filter: expected only squad1, got %+v", out)
 	}
 }
+
+// TestFilterStatsMatchRows_PlaylistFRPreferred : la Value playlist des options du
+// filtre est FR-canonique → filterStatsMatchRows doit dériver la playlist depuis
+// PlaylistNameFR (sinon une sélection FR ne matcherait jamais les rows, ex. H5).
+func TestFilterStatsMatchRows_PlaylistFRPreferred(t *testing.T) {
+	now := time.Now()
+	rows := []legacymatch.StatsMatchRow{
+		{MatchID: "m1", StartTime: now, PlaylistName: "Ranked Arena", PlaylistNameFR: "Arène classée"},
+		{MatchID: "m2", StartTime: now, PlaylistName: "Big Team Battle", PlaylistNameFR: "Bataille en équipe"},
+	}
+	f := domain.FilterContextInput{Cascade: domain.CascadeFilter{Playlists: []string{"Arène classée"}}}
+	out := filterStatsMatchRows(rows, f)
+	if len(out) != 1 || out[0].MatchID != "m1" {
+		t.Fatalf("playlist FR: attendu m1 uniquement, obtenu %+v", out)
+	}
+}
+
+// TestFilterStatsMatchRows_ModeGameVariantFallback : titre sans pair (H5) — la
+// cascade modes matche sur le game_variant normalisé quand PairName est vide ;
+// non-régression Infinite : le pair prime sur le game_variant.
+func TestFilterStatsMatchRows_ModeGameVariantFallback(t *testing.T) {
+	now := time.Now()
+	rows := []legacymatch.StatsMatchRow{
+		{MatchID: "h5", StartTime: now, GameVariantNameFR: "Assassin"},                        // pair vide → variant
+		{MatchID: "inf", StartTime: now, PairName: "Strongholds", GameVariantName: "Slayer"}, // pair présent
+	}
+	f := domain.FilterContextInput{Cascade: domain.CascadeFilter{Modes: []string{"Assassin"}}}
+	out := filterStatsMatchRows(rows, f)
+	if len(out) != 1 || out[0].MatchID != "h5" {
+		t.Fatalf("mode variant fallback: attendu h5 uniquement, obtenu %+v", out)
+	}
+
+	fInf := domain.FilterContextInput{Cascade: domain.CascadeFilter{Modes: []string{"Strongholds"}}}
+	outInf := filterStatsMatchRows(rows, fInf)
+	if len(outInf) != 1 || outInf[0].MatchID != "inf" {
+		t.Fatalf("mode pair Infinite: attendu inf uniquement (game_variant ignoré), obtenu %+v", outInf)
+	}
+}
