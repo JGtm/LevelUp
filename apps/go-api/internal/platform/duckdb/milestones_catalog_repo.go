@@ -27,7 +27,8 @@ func NewMilestoneCatalogRepo(db *DB) *MilestoneCatalogRepo {
 var _ milestones.CatalogRepo = (*MilestoneCatalogRepo)(nil)
 
 const milestoneCatalogSelectColumns = `
-SELECT id, title_slug, metric, threshold, title_en, title_fr, icon, condition
+SELECT id, title_slug, metric, threshold, title_en, title_fr, icon,
+       condition, condition_fr, condition_en
 FROM milestone_catalog`
 
 // Upsert insère ou remplace une entrée du catalogue.
@@ -46,13 +47,13 @@ func (r *MilestoneCatalogRepo) Upsert(ctx context.Context, e milestones.CatalogE
 		`SELECT 1 FROM milestone_catalog WHERE id = ?`,
 		[]any{e.ID},
 		`UPDATE milestone_catalog SET title_slug = ?, metric = ?, threshold = ?, title_en = ?,
-		 title_fr = ?, icon = ?, condition = ?, updated_at = ? WHERE id = ?`,
+		 title_fr = ?, icon = ?, condition = ?, condition_fr = ?, condition_en = ?, updated_at = ? WHERE id = ?`,
 		[]any{e.TitleSlug, e.Metric, e.Threshold, e.TitleEN, e.TitleFR,
-			NullableStr(e.Icon), NullableStr(e.Condition), now, e.ID},
-		`INSERT INTO milestone_catalog (id, title_slug, metric, threshold, title_en, title_fr, icon, condition, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			NullableStr(e.Icon), NullableStr(e.Condition), NullableStr(e.ConditionFR), NullableStr(e.ConditionEN), now, e.ID},
+		`INSERT INTO milestone_catalog (id, title_slug, metric, threshold, title_en, title_fr, icon, condition, condition_fr, condition_en, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		[]any{e.ID, e.TitleSlug, e.Metric, e.Threshold, e.TitleEN, e.TitleFR,
-			NullableStr(e.Icon), NullableStr(e.Condition), now},
+			NullableStr(e.Icon), NullableStr(e.Condition), NullableStr(e.ConditionFR), NullableStr(e.ConditionEN), now},
 	); err != nil {
 		return fmt.Errorf("MilestoneCatalogRepo.Upsert: %w", err)
 	}
@@ -75,12 +76,14 @@ func (r *MilestoneCatalogRepo) ListByTitle(ctx context.Context, titleSlug string
 	var out []milestones.CatalogEntry
 	for rows.Next() {
 		var (
-			e         milestones.CatalogEntry
-			icon      sql.NullString
-			condition sql.NullString
+			e           milestones.CatalogEntry
+			icon        sql.NullString
+			condition   sql.NullString
+			conditionFR sql.NullString
+			conditionEN sql.NullString
 		)
 		if err := rows.Scan(&e.ID, &e.TitleSlug, &e.Metric, &e.Threshold,
-			&e.TitleEN, &e.TitleFR, &icon, &condition); err != nil {
+			&e.TitleEN, &e.TitleFR, &icon, &condition, &conditionFR, &conditionEN); err != nil {
 			return nil, fmt.Errorf("MilestoneCatalogRepo.ListByTitle scan: %w", err)
 		}
 		if icon.Valid {
@@ -88,6 +91,12 @@ func (r *MilestoneCatalogRepo) ListByTitle(ctx context.Context, titleSlug string
 		}
 		if condition.Valid {
 			e.Condition = condition.String
+		}
+		if conditionFR.Valid {
+			e.ConditionFR = conditionFR.String
+		}
+		if conditionEN.Valid {
+			e.ConditionEN = conditionEN.String
 		}
 		out = append(out, e)
 	}

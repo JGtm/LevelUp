@@ -70,6 +70,20 @@ func TestSeedMilestonesFromTOML_HaloInfinite_PopulatesRows(t *testing.T) {
 	if centurionTitleFR == "" {
 		t.Errorf("title_fr Centurion vide")
 	}
+
+	// A9 : les conditions localisées sont seedées pour les jalons qui en ont une.
+	var condFR, condEN sql.NullString
+	if err := db.QueryRow(
+		`SELECT condition_fr, condition_en FROM milestone_catalog
+		 WHERE id = 'halo_infinite.accuracy_consistent.30d'`).Scan(&condFR, &condEN); err != nil {
+		t.Fatalf("condition lookup: %v", err)
+	}
+	if !condFR.Valid || condFR.String == "" {
+		t.Errorf("condition_fr vide pour accuracy_consistent.30d (A9)")
+	}
+	if !condEN.Valid || condEN.String == "" {
+		t.Errorf("condition_en vide pour accuracy_consistent.30d (A9)")
+	}
 }
 
 // TestSeedMilestonesFromTOML_Idempotent : 2 runs = même count.

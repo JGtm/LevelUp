@@ -3,6 +3,7 @@ package records
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -114,6 +115,15 @@ func (d *Detector) detectOne(ctx context.Context, input DetectInput, metric Trac
 	result := DetectionResult{Metric: metric, Period: period, Value: best, MatchID: matchID}
 
 	if count < MinMatchesForRecord {
+		return result, nil
+	}
+
+	// A4 — borne de vraisemblance : une valeur hors plage est aberrante
+	// (corruption d'échelle/ingestion, cf. bounds.go). On NE persiste PAS un tel
+	// PB (INSERT bloqué) et on trace la dégradation — sans masquer le bug amont.
+	if !IsPlausibleValue(metric, best) {
+		slog.WarnContext(ctx, "records: valeur hors bornes ignorée (PB non persisté)",
+			"metric", metric, "period", period, "value", best, "match_id", matchID)
 		return result, nil
 	}
 

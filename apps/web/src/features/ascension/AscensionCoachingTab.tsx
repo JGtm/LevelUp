@@ -71,7 +71,7 @@ export function AscensionCoachingTab() {
           playerSlug={playerSlug}
           onStartCampaign={hasActiveCampaign ? undefined : openStartCampaign}
         />
-        <PatternsSection playerSlug={playerSlug} t={t} />
+        <PatternsSection playerSlug={playerSlug} t={t} locale={locale} />
       </LayerSection>
 
       <StartCampaignModal
@@ -90,9 +90,10 @@ export function AscensionCoachingTab() {
 interface PatternsSectionProps {
   playerSlug: string
   t: ReturnType<typeof getAscensionText>
+  locale: 'fr' | 'en'
 }
 
-function PatternsSection({ playerSlug, t }: PatternsSectionProps) {
+function PatternsSection({ playerSlug, t, locale }: PatternsSectionProps) {
   const { data: patterns, isLoading } = usePatterns(playerSlug)
   if (isLoading) return null
   const contextPatterns = patterns?.context_patterns ?? []
@@ -108,7 +109,7 @@ function PatternsSection({ playerSlug, t }: PatternsSectionProps) {
       {contextPatterns.length > 0 && (
         <SectionShell title={t.patternsSectionTitle}>
           <PatternContextGrid patterns={contextPatterns} t={t} />
-          <SquadVsSoloCard patterns={contextPatterns} t={t} />
+          <SquadVsSoloCard patterns={contextPatterns} t={t} locale={locale} />
         </SectionShell>
       )}
       {behaviorPatterns.length > 0 && (

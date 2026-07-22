@@ -9252,6 +9252,8 @@ components:
               type: number
           key:
               type: string
+          label:
+              type: string
           match_count:
               format: int64
               type: integer
@@ -12039,7 +12041,9 @@ components:
     MilestoneDTO:
       additionalProperties: false
       properties:
-          condition:
+          condition_en:
+              type: string
+          condition_fr:
               type: string
           earned:
               type: boolean

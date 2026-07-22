@@ -5763,6 +5763,7 @@ export interface components {
             /** Format: double */
             delta: number;
             key: string;
+            label?: string;
             /** Format: int64 */
             match_count: number;
             signal: string;
@@ -6939,7 +6940,8 @@ export interface components {
             total_count: number;
         };
         MilestoneDTO: {
-            condition?: string;
+            condition_en?: string;
+            condition_fr?: string;
             earned: boolean;
             /** Format: date-time */
             earned_at?: string;

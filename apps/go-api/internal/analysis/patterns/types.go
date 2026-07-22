@@ -104,9 +104,16 @@ const (
 )
 
 // ContextualPattern est le résultat pour une clé de contexte.
+//
+// Label est le libellé lisible de la clé, résolu côté service/handler (le
+// package reste pur : aucun accès au référentiel ici). Rempli pour les
+// patterns by_map (nom de carte résolu depuis metadata, repli localisé si
+// inconnu — jamais le GUID nu). Vide pour by_mode (la clé est déjà un libellé
+// normalisé) et by_squad (libellé i18n côté front).
 type ContextualPattern struct {
 	Type         ContextType `json:"type"`
 	Key          string      `json:"key"`
+	Label        string      `json:"label,omitempty"`
 	MatchCount   int         `json:"match_count"`
 	WinRate      float64     `json:"win_rate"`
 	AvgKDA       float64     `json:"avg_kda"`

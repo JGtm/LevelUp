@@ -27,6 +27,9 @@ export function LeverList({ levers, t }: LeverListProps) {
 
 function LeverCard({ lever: lev, t }: { lever: PatternLever; t: AscensionText }) {
   const axisLabel = t.leverAxis?.[lev.axis] ?? lev.axis
+  // Valeur courante absente (ex leviers comportementaux : tilt, fatigue) → on
+  // masque la ligne « Actuel → Cible » plutôt que d'afficher « — → — » (A7).
+  const hasCurrent = lev.current_val > 0
   const progress = lev.target_val > 0
     ? Math.min((lev.current_val / lev.target_val) * 100, 100)
     : 0
@@ -52,11 +55,13 @@ function LeverCard({ lever: lev, t }: { lever: PatternLever; t: AscensionText })
       </div>
 
       <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>
-          {t.leverCurrent ?? 'Actuel'} <strong className="text-foreground">{fmt(lev.current_val)}</strong>
-          {' → '}{t.leverTarget ?? 'Cible'} <strong className="text-foreground">{fmt(lev.target_val)}</strong>
-        </span>
-        <span>~{lev.horizon} {t.leverHorizonMatches ?? 'matchs'}</span>
+        {hasCurrent && (
+          <span>
+            {t.leverCurrent ?? 'Actuel'} <strong className="text-foreground">{fmt(lev.current_val)}</strong>
+            {' → '}{t.leverTarget ?? 'Cible'} <strong className="text-foreground">{fmt(lev.target_val)}</strong>
+          </span>
+        )}
+        <span className={hasCurrent ? '' : 'ml-auto'}>~{lev.horizon} {t.leverHorizonMatches ?? 'matchs'}</span>
       </div>
     </div>
   )

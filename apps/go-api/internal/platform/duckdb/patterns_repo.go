@@ -20,6 +20,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/patterns"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/games"
 )
 
@@ -73,6 +74,19 @@ func (r *PatternsRepo) LoadRows(ctx context.Context, limit int) ([]patterns.Matc
 	rows := mergePatternRows(shared, enrichMap, skillMap, games.EffectiveHpToKill(r.pdb.TitleSlug))
 	computePatternSkillDeltas(rows)
 	return rows, nil
+}
+
+// ResolveMapLabels résout les noms de cartes (map_id -> nom) via le référentiel
+// metadata du titre, dans la langue du contexte. Réutilise la primitive unifiée
+// MetadataRepo.ResolveAssetNamesBulk (même chemin que match-view / career /
+// filtres). Les map_id sans traduction sont absents du résultat (repli côté
+// handler). Best-effort : si metadata n'est pas attaché, renvoie nil.
+func (r *PatternsRepo) ResolveMapLabels(ctx context.Context, mapIDs []string) (map[string]string, error) {
+	if len(mapIDs) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
+		return nil, nil
+	}
+	langs := PreferredLangsForLocale(ctxkeys.Locale(ctx))
+	return NewMetadataRepoFromDB(r.pdb.Metadata).ResolveAssetNamesBulk(ctx, "map", mapIDs, langs)
 }
 
 // patternSharedRow est le résultat intermédiaire de la phase 1.
