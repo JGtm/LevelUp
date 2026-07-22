@@ -231,3 +231,32 @@ Converger le local sur prod maintenant : serveur arrêté →
   `internal/api/wire/registry_monitoring.go`.
 - Web : `features/admin/data/AdminDataPage.tsx` (+ nouveau panneau), `features/admin/monitoring/queries.ts`,
   `lib/query/keys.ts`, i18n manifests.
+
+## Addendum revue 2026-07-22 (post-merge)
+
+Lot 6 : RÉSOLU — commité `b8024ea83` sur `feat/monitoring-lusr-fixes`. La revue complète de la
+branche a confirmé 2 défauts de la jauge, corrigés le 2026-07-22 :
+
+- `[x]` **Jauge sous-comptée sur scan partiel** : un joueur dont la player DB était tenue RW par un
+  sync était sauté en Debug sans compteur, puis la jauge était republiée quand même → le badge
+  `/admin/data` pouvait s'éteindre alors que les trous existaient (« unmeasured ≠ sain » violé).
+  Fix : champ `LUSRPlayersUnmeasured` (WARN par joueur non mesuré ; `os.ReadDir` KO = titre non
+  mesuré), `publishLUSRGaugeIfComplete` ne republie la jauge que si le scan est COMPLET, cycle
+  loggé WARN sinon. Tests scheduler + e2e (`seedUnmeasurableLUSRPlayer`, jauge figée).
+- `[x]` **Badge périmé jusqu'à 24 h après « Recalculer »** : `RecomputeLUSRGapsForPlayer` ne
+  rafraîchissait jamais la jauge (seul écrivain = cron). Fix : scan du joueur avant/après replay +
+  `AddLUSRInteriorGapsGauge(delta)` clampé ≥ 0 (course avec le Set du cron documentée bénigne) ;
+  best-effort, un scan raté n'ajuste pas la jauge et ne fait pas échouer le replay. Doc de la jauge
+  (2 écrivains) mise à jour dans `skill_v2_metrics.go`.
+
+Réfuté par la même revue (conception validée) : l'interruption d'un auto-heal mi-replay est bénigne
+(reset watermark = sentinelle INSERT append-only, reprise propre au run suivant).
+
+- `[x]` **CI branche — drift OpenAPI** (découvert au go/no-go, causé par le Lot 5) : les 2 paths
+  admin étaient dans `openapi.yaml` mais PAS les 5 schémas de composants (`AdminLUSRGaps`,
+  `AdminLUSRRecomputeResponse`, `LUSRGapItem`, `LUSRGapPlayer`, `LUSRGuardrailHealth`) →
+  `TestOpenAPISchemaDrift_AggregatesAndReports` rouge en CI. Ajoutés (recette `OPENAPI_EMIT_OUT` du
+  test) + `generate-types` rejoué (generated.ts additif). La note « hand-typed côté web, cohérent
+  avec AdminWeaponCoverage » des Découvertes reste vraie pour les paths (description-only), mais le
+  gate de drift exige les schémas de composants. + gofmt `internal/domain/admin_lusr_gaps.go`
+  (lint ratchet CI, alignement de commentaires).

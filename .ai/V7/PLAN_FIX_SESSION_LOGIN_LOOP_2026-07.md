@@ -191,3 +191,22 @@ Au-delà du plan initial, sur demande : couverture de logging dans le dossier `l
 - **`push main` = déploiement prod automatique** : prévenir avant merge/push. PR recommandée.
 - Entrée `.ai/thought_log.md` avant commit ; passer `delivery-checklist` avant livraison.
 - Exécution sous contrat `plan-execution` (ordre strict, gate par étape, statut par item).
+
+## Addendum revue 2026-07-22 (post-merge branche `feat/monitoring-lusr-fixes`)
+
+Livré : commits `13b044ab3` (étape 1), `5c437a69a` (étape 2), lot complémentaire `7f5587458`/
+`e49c7ea69`/`8b07e9082`, merge `e76f48bb7`. La revue complète de la branche a confirmé 2 défauts
+résiduels, corrigés le 2026-07-22 (même branche) :
+
+- `[x]` **`PurgeExpired` hors verrou + suppression sur erreur de lecture** : la purge (boot + 6h)
+  ne prenait pas le RWMutex de l'étape 1 et supprimait le fichier sur TOUTE erreur `os.ReadFile`
+  (une sharing violation transitoire d'un Save concurrent supprimait une session vivante →
+  déconnexion permanente). Fix : Lock exclusif par fichier (`purgeSessionFileLocked`), erreur de
+  lecture = WARN + conservation, JSON corrompu supprimé seulement si vieux (`corruptSessionTTL` 1h).
+  Tests : sharing violation Windows déterministe (`store_purge_windows_test.go`), purge concurrente
+  d'une session vivante sous -race, corrompu frais/vieux.
+- `[x]` **Découverte « `levelup:auth-required` sans listener » câblée** (était consignée hors
+  périmètre) : listener au RootLayout — vraie expiration (401 `auth_required` hors /bootstrap) →
+  reload plein vers `/` si on se croyait authentifié (anti-rafale ; no-op si store anonyme). Sans ce
+  câblage, le garde anti-éjection de l'étape 2 piégeait l'utilisateur dans un shell authentifié mort
+  sur une expiration réelle (TTL 7 j, logout autre onglet).
