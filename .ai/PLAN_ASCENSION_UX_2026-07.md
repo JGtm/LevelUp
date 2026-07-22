@@ -387,6 +387,17 @@ complété » renvoient vers une page où l'objectif concerné n'est pas visible
 - **(C5) Warning jsdom « Not implemented: navigation to another Document »** : apparaît
   au run vitest (liens `<a href>` full-nav). Warning bénin, non bloquant (0 échec) et
   déjà présent ailleurs dans la suite — non traité.
+- **(Clôture) HÉRITÉ DE MAIN — 2 tests Relations rouges** :
+  `TestRelationsSegmentation_SoloVsSquad_CrossDB` + `_PlaylistFilter_CrossDB`
+  (internal/service, tag integration) échouent À L'IDENTIQUE sur main `b21a59772`
+  (vérifié en worktree isolé le 2026-07-22) : la fixture VALUES `r` du test n'a pas
+  suivi les +4 colonnes Q4 du fix filtres H5 (`fae9921d9`) → Binder Error `r.map_id`.
+  PAS corrigé ici (hors périmètre) — décision utilisateur ; fix probable : ajouter
+  map_id/playlist_id/game_variant_id/game_variant_name à la fixture du test.
+- **(Clôture) `make go-api-lint` au scope réduit** : le target Makefile ne lint que
+  `internal/domain` + `internal/analysis`, et golangci-lint n'est pas installé dans
+  l'environnement d'exécution — compensé par `go vet ./...` (propre) sur tout le
+  chantier. À signaler si un lint complet est attendu au gate.
 
 ## Journal d'exécution — Lot A (2026-07-22)
 
