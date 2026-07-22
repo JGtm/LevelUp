@@ -237,6 +237,9 @@ export const queryKeys = {
     meAll: (userId: string) => ['prestige', 'me', userId] as const,
     templates: (userId: string, titleSlug: string) =>
       ['prestige', 'templates', userId, titleSlug] as const,
+    /** Clé de mutation du mode pilote (enable/disable auto-attribution, B3). */
+    pilotMode: (userId: string, titleSlug: string) =>
+      ['prestige', 'pilot-mode', userId, titleSlug] as const,
   },
   arc: {
     list: (userId: string, titleSlug: string) =>

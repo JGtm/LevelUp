@@ -3,9 +3,11 @@
  *
  * Affiché uniquement si le PatternReport contient des patterns bySquad.
  */
+import type { ReactNode } from 'react'
 import { metricLabel } from '@/lib/i18n/metricLabel'
 import type { ContextualPattern } from './types'
 import type { AscensionText, AscensionLocale } from './i18n'
+import { CombatAbbr } from './CombatAbbr'
 
 interface SquadVsSoloCardProps {
   patterns: ContextualPattern[]
@@ -31,8 +33,8 @@ export function SquadVsSoloCard({ patterns, t, locale }: SquadVsSoloCardProps) {
           <p className="text-xs font-medium text-muted-foreground">{t.squadVsSoloSolo}</p>
           <StatRow label={t.patternWinRate} value={pct(solo.win_rate)} />
           <StatRow label={metricLabel('kda', locale)} value={solo.avg_kda.toFixed(2)} />
-          <StatRow label="OC" value={`${Math.round(solo.avg_oc * 100)}%`} />
-          <StatRow label="DR" value={`${Math.round((solo.avg_dr - 1) * 100)}%`} />
+          <StatRow label={<CombatAbbr metric="oc" t={t} />} value={`${Math.round(solo.avg_oc * 100)}%`} />
+          <StatRow label={<CombatAbbr metric="dr" t={t} />} value={`${Math.round((solo.avg_dr - 1) * 100)}%`} />
           <p className="text-[10px] text-muted-foreground">{solo.match_count} {t.patternMatches}</p>
         </div>
         <div className="space-y-1">
@@ -43,8 +45,8 @@ export function SquadVsSoloCard({ patterns, t, locale }: SquadVsSoloCardProps) {
             highlight={better === 'squad'}
           />
           <StatRow label={metricLabel('kda', locale)} value={squad.avg_kda.toFixed(2)} highlight={squad.avg_kda > solo.avg_kda} />
-          <StatRow label="OC" value={`${Math.round(squad.avg_oc * 100)}%`} />
-          <StatRow label="DR" value={`${Math.round((squad.avg_dr - 1) * 100)}%`} />
+          <StatRow label={<CombatAbbr metric="oc" t={t} />} value={`${Math.round(squad.avg_oc * 100)}%`} />
+          <StatRow label={<CombatAbbr metric="dr" t={t} />} value={`${Math.round((squad.avg_dr - 1) * 100)}%`} />
           <p className="text-[10px] text-muted-foreground">{squad.match_count} {t.patternMatches}</p>
         </div>
       </div>
@@ -52,7 +54,7 @@ export function SquadVsSoloCard({ patterns, t, locale }: SquadVsSoloCardProps) {
   )
 }
 
-function StatRow({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
+function StatRow({ label, value, highlight = false }: { label: ReactNode; value: string; highlight?: boolean }) {
   return (
     <div className="flex items-center justify-between text-xs">
       <span className="text-muted-foreground">{label}</span>

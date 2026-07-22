@@ -1,11 +1,12 @@
 /**
- * AscensionProfileTab — tab "Profil & objectifs" (couche Prestige autonome).
+ * AscensionObjectivesTab — onglet "Objectifs" (couche Prestige autonome).
  *
- * Depuis le split en 2 onglets (2026-06-08), ce tab ne porte QUE la couche
- * Prestige : objectifs + arcs. La couche coaching (proposals, campagne, profil,
- * patterns) vit dans AscensionCoachingTab (onglet « Entraînement »).
+ * Restructuration 4 onglets (2026-07, DEC-3) : ex-AscensionProfileTab renommé.
+ * Ce tab ne porte QUE la couche Prestige : objectifs + arcs. L'identité/profil
+ * vit dans l'onglet "Profil" (index, AscensionProfilTab) ; le coaching dans
+ * l'onglet "Entraînement" (AscensionCoachingTab).
  */
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { CreateChallengeForm } from '@/features/prestige/components/CreateChallengeForm'
 import { ChallengeCard } from '@/features/prestige/components/ChallengeCard'
@@ -13,13 +14,14 @@ import { ArcSummary } from '@/features/prestige/components/ArcSummary'
 import { CreateArcForm } from '@/features/prestige/components/CreateArcForm'
 import { ArcPresetPicker } from '@/features/prestige/components/ArcPresetPicker'
 import { Tooltip } from '@/components/ui/tooltip'
-import { useChallenges, useArcs, useAbandonChallenge, useDeleteArc } from '@/features/prestige/hooks'
+import { AlertDialog } from '@/components/ui/alert-dialog'
+import { useChallenges, useArcs, useAbandonChallenge, useDeleteArc, usePilotMode } from '@/features/prestige/hooks'
 import { getPrestigeText } from '@/features/prestige/i18n'
 import type { Challenge, Arc } from '@/lib/prestige'
 import { getAscensionText } from './i18n'
 import { LayerSection, SectionShell } from './AscensionLayers'
 
-export function AscensionProfileTab() {
+export function AscensionObjectivesTab() {
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
   const playerSlug = currentPlayer?.player_slug ?? ''
   const locale = useAppShellStore((s) => s.locale)
@@ -56,6 +58,7 @@ function MyObjectivesSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const { data, isLoading, isError } = useChallenges(playerSlug, titleSlug)
   const abandon = useAbandonChallenge(playerSlug, titleSlug)
+  const pilot = usePilotMode(playerSlug, titleSlug)
   const [showForm, setShowForm] = useState(false)
 
   if (isError) {
@@ -71,14 +74,35 @@ function MyObjectivesSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
   const challenges: Challenge[] = data?.challenges ?? []
   const libres = challenges.filter((c) => c.mode === 'libre')
   const pilotes = challenges.filter((c) => c.mode === 'pilote')
+  // État ON/OFF dérivé de la présence de défis pilote actifs (pas de flag serveur).
+  const pilotActive = pilotes.some((c) => c.status === 'active')
+  const pilotPending = pilot.enable.isPending || pilot.disable.isPending
+  const togglePilot = () => (pilotActive ? pilot.disable.mutate() : pilot.enable.mutate())
 
-  const handleAbandon = (id: string) => {
-    if (confirm(t.profileAbandonConfirm)) abandon.mutate(id)
-  }
+  // La confirmation d'abandon passe désormais par un AlertDialog par carte (B5) ;
+  // ce handler ne fait que déclencher la mutation une fois l'utilisateur confirmé.
+  const handleAbandon = (id: string) => abandon.mutate(id)
+
+  const enablePilotCta =
+    !pilotActive && !showForm ? (
+      <button
+        type="button"
+        onClick={togglePilot}
+        disabled={pilotPending}
+        className="mt-3 rounded-md border border-primary px-3 py-1 text-xs font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
+      >
+        {pilotPending ? t.profilePilotPending : t.profilePilotEnableCta}
+      </button>
+    ) : undefined
 
   return (
     <SectionShell title={t.profileMyActiveObjectives}>
-      <PilotModeToggle locale={locale} />
+      <PilotModeToggle
+        locale={locale}
+        active={pilotActive}
+        pending={pilotPending}
+        onToggle={togglePilot}
+      />
       {showForm ? (
         <div className="rounded-lg border border-border bg-card p-4">
           <CreateChallengeForm
@@ -95,6 +119,7 @@ function MyObjectivesSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
             challenges={libres}
             loading={isLoading}
             emptyMessage={t.profileNoFreeObjective}
+            emptyCta={enablePilotCta}
             onAbandon={handleAbandon}
             onCreate={() => setShowForm(true)}
             createLabel={t.profileNewObjective}
@@ -119,6 +144,8 @@ interface ChallengeGroupProps {
   challenges: Challenge[]
   loading: boolean
   emptyMessage: string
+  /** CTA optionnel rendu sous le message d'empty state (ex. activer le pilote). */
+  emptyCta?: ReactNode
   onAbandon: (id: string) => void
   onCreate?: () => void
   createLabel?: string
@@ -129,6 +156,7 @@ function ChallengeGroup({
   challenges,
   loading,
   emptyMessage,
+  emptyCta,
   onAbandon,
   onCreate,
   createLabel,
@@ -156,23 +184,12 @@ function ChallengeGroup({
       ) : challenges.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
           {emptyMessage || '—'}
+          {emptyCta}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {challenges.map((c) => (
-            <div key={c.id} className="space-y-1">
-              <ChallengeCard challenge={c} />
-              {c.status === 'active' && (
-                <button
-                  type="button"
-                  onClick={() => onAbandon(c.id)}
-                  className="text-xs text-muted-foreground hover:text-destructive"
-                >
-                  {/* Conservé en FR strict — pas de string EN dans l'orig. */}
-                  Abandonner
-                </button>
-              )}
-            </div>
+            <ObjectiveCard key={c.id} challenge={c} onAbandon={onAbandon} />
           ))}
         </div>
       )}
@@ -180,16 +197,70 @@ function ChallengeGroup({
   )
 }
 
-function PilotModeToggle({ locale }: { locale: 'fr' | 'en' }) {
+// ─── Carte d'objectif avec action d'abandon (confirmation AlertDialog, B5) ────
+
+function ObjectiveCard({
+  challenge,
+  onAbandon,
+}: {
+  challenge: Challenge
+  onAbandon: (id: string) => void
+}) {
+  const locale = useAppShellStore((s) => s.locale)
   const t = getAscensionText(locale)
-  const labelOff = t.profilePilotDisabled
-  const help = t.profilePilotHelp
+  const [confirmOpen, setConfirmOpen] = useState(false)
+
+  return (
+    <div className="w-64 max-w-full">
+      <ChallengeCard challenge={challenge} />
+      {challenge.status === 'active' && (
+        <div className="flex justify-end px-1 pt-1">
+          <button
+            type="button"
+            onClick={() => setConfirmOpen(true)}
+            className="text-xs text-muted-foreground hover:text-destructive"
+          >
+            {t.profileAbandonObjective}
+          </button>
+        </div>
+      )}
+      <AlertDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={t.profileAbandonTitle}
+        description={t.profileAbandonConfirm}
+        confirmLabel={t.profileAbandonObjective}
+        cancelLabel={t.profileAbandonCancel}
+        destructive
+        onConfirm={() => {
+          onAbandon(challenge.id)
+          setConfirmOpen(false)
+        }}
+      />
+    </div>
+  )
+}
+
+interface PilotModeToggleProps {
+  locale: 'fr' | 'en'
+  active: boolean
+  pending: boolean
+  onToggle: () => void
+}
+
+function PilotModeToggle({ locale, active, pending, onToggle }: PilotModeToggleProps) {
+  const t = getAscensionText(locale)
+  const label = pending
+    ? t.profilePilotPending
+    : active
+      ? t.profilePilotDisable
+      : t.profilePilotEnable
   return (
     <div className="flex items-center justify-between rounded-md border border-border bg-card px-4 py-3">
       <div>
         <h3 className="text-sm font-semibold">{t.profilePilotMode}</h3>
         <p className="flex items-center gap-1 text-xs text-muted-foreground">
-          {help}
+          {t.profilePilotHelp}
           <Tooltip content="3 daily · 5 weekly · 2 monthly">
             <span className="inline-flex h-3.5 w-3.5 cursor-default select-none items-center justify-center rounded-full border border-muted-foreground/40 text-[9px] leading-none text-muted-foreground">
               i
@@ -199,11 +270,17 @@ function PilotModeToggle({ locale }: { locale: 'fr' | 'en' }) {
       </div>
       <button
         type="button"
-        className="rounded-md border border-border px-3 py-1 text-xs"
-        title={t.prestigeDisabledHint}
-        disabled
+        onClick={onToggle}
+        disabled={pending}
+        aria-pressed={active}
+        className={[
+          'rounded-md border px-3 py-1 text-xs font-medium transition-colors disabled:opacity-50',
+          active
+            ? 'border-primary bg-primary/10 text-primary hover:bg-primary/20'
+            : 'border-border hover:bg-accent',
+        ].join(' ')}
       >
-        {labelOff}
+        {label}
       </button>
     </div>
   )
@@ -383,4 +460,3 @@ function ArcDeleteConfirm({
     </div>
   )
 }
-

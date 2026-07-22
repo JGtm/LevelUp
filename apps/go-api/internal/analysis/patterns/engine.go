@@ -20,8 +20,9 @@ func Analyze(input AnalyzeInput) PatternReport {
 		rows = rows[:input.N]
 	}
 	report := PatternReport{
-		WindowSize: len(rows),
-		ComputedAt: input.Now,
+		WindowSize:          len(rows),
+		ComputedAt:          input.Now,
+		MinMatchesForSignal: MinMatchesForSignal,
 	}
 	if len(rows) == 0 {
 		return report

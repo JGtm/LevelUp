@@ -1,3 +1,73 @@
+## [2026-07-22] Lot B « Navigation, IA, mode pilote » — plan Ascension UX (branche refactor/ascension-ux-2026-07)
+
+**Statut** : Complété (code + tests). Gate Lot B PASSÉ intégralement (sorties vertes).
+Aucun commit/push (à la charge de l'orchestrateur). Revue visuelle 4 onglets = à faire
+par l'orchestrateur.
+
+**Contexte** : exécution des 12 items B1→B12 du `.ai/PLAN_ASCENSION_UX_2026-07.md`
+(+ amendements AM-1..AM-11) sous contrat `plan-execution` (ordre strict, un item vérifié
+avant le suivant). But : page Ascension navigable (onglets nommés selon leur contenu,
+deep-links cohérents), mode pilote fonctionnel, coach ON par défaut, vocabulaire FR sans
+anglicismes, valeurs lisibles (LUSR, barre Prestige intra-niveau, badge échantillon
+faible, pill série interrompue).
+
+**Décisions techniques principales** :
+- **B1 (restructuration 3→4 onglets, DEC-3)** : recomposition sans réécriture de feuilles.
+  Nouveau `AscensionProfilTab` (index : `PlayerProfileV3` + patterns contextuels +
+  SquadVsSoloCard + BehaviorAlertList) ; `AscensionProfileTab`→`AscensionObjectivesTab`
+  (couche Prestige inchangée) ; `AscensionCoachingTab` = cap + proposals + campagne +
+  `ProgressionSection` (EXTRAITE de `PlayerProfileV3` via wrapper `usePlayerProfile` —
+  suppression des props CTA de PlayerProfileV3, plus de code mort) + leviers calibrés.
+  `routeTree.gen.ts` régénéré par `@tanstack/router-generator` (jamais édité main).
+  Renommage clé nav `tab_profile_objectives`→`tab_profile` + `tab_objectives`
+  (common.toml régénéré). `classifyFeedback.ts` non touché : sa regex
+  `(objectifs|ascension)` couvre déjà les 4 sous-onglets (`[~]`).
+- **B2 + AM-5** : widget home → `/ascension/realisations` ; notifs *completed* →
+  Réalisations avec `selectedObjectiveId`/`selectedChallengeId` ; ancrage : `useSearch`
+  côté Réalisations, `scrollIntoView` + ring sur la carte moment correspondante.
+- **B3 + AM-4 (mode pilote, DEC-1)** : backend — `DisablePilotMode` (ex no-op) archive
+  désormais les défis pilote actifs (`List{status:active,mode:pilote}` → `UpdateStatus
+  archived`, distinct d'`abandoned` = retrait système ; slog + tests). Front —
+  `usePilotMode` (enable/disable), `prestigeApi.enable/disablePilotMode`,
+  `queryKeys.prestige.pilotMode`, état ON/OFF dérivé des défis pilote actifs (pas de flag
+  serveur), tooltip « non implémenté » (doc inversée) retiré, CTA d'activation en empty
+  state, i18n FR/EN, invalidation `challenge.list` + `prestige.meAll`. Défaut OFF.
+- **B4 (coach proactif ON, DEC-2)** : `CoachProactiveMode` défaut TRUE
+  (`defaultSettings` + `applyAbsentDefaults`, kill-switch daté commenté) ; anti
+  doc-inversée : toutes les mentions du défaut mises à jour (ADR 0020 ×3, openapi
+  comment, fallbacks front `?? true`) + tests inversés (`DefaultsTrue…` + `FalseRespected`).
+- **B5 + AM-11** : `confirm()` natif → `AlertDialog` destructive par carte
+  (`ObjectiveCard`) ; bouton « Abandonner » i18n FR/EN.
+- **B6 + AM-10** : composant partagé `CombatAbbr` (tooltip OC/DR, libellé depuis
+  `lusrComponent`) ; `target_for_tier` vérifié sur pièces = composite global requis pour
+  le palier suivant (par design — `computeLUSRComponents` applique la même cible aux 8),
+  donc PAS un bug → étiqueté via note `profile.performance.target_note`.
+- **B7** : `by_squad` retiré de `CONTEXT_ORDER` (grille = mode/carte), la comparaison
+  Solo/Escouade reste dans `SquadVsSoloCard` ; branche morte `contextLabel` supprimée.
+- **B8 (DEC-6)** : PerformanceSection affiche « {mu} pts LUSR » (clé `lusr_points`) au
+  lieu de μ/σ (clé `mu_sigma` supprimée, code mort) ; écart au palier déjà en points via
+  `gap_to_next`. DTO déjà suffisant — 0 champ Go ajouté.
+- **B10 (DEC-9)** : barre Prestige = progression intra-niveau
+  (`{total-threshold} / {next-threshold} PP vers {niveau suivant}`), total PP secondaire,
+  amis à 0 PP omis. DTO déjà suffisant (`threshold_pp`/`next_threshold_pp`).
+- **B11 (DEC-8)** : seuil `MinMatchesForSignal` (=10) promu const backend (source unique,
+  utilisée par `classifySignal`) + servi dans `PatternReport.min_matches_for_signal`
+  (openapi + generate-types + drift OK) ; front affiche « Échantillon faible » (neutre,
+  bordure+delta neutralisés) sous le seuil — aucun 10 en dur côté front.
+- **B12 (AM-6)** : « Cassée »→« Interrompue » (FR ; EN « Broken » inchangé) + tooltip
+  `streakBrokenTooltip` (date `broken_at` + reset multiplicateur PP), FR/EN.
+
+**Résultats observés (gate)** : Go (`settings`/`handlers`/`prestige`/`patterns`) ok ;
+`tsc -b` ok ; `vitest run` 2459 passés / 14 skippés / 0 échec (280 fichiers) ;
+`gofmt -l .` vide ; `go vet ./...` + `make go-api-lint` clean ; drift OpenAPI CGO ok.
+
+**Conclusion / prochaine étape** : Lot B prêt. Orchestrateur : revue visuelle 4 onglets ×
+joueurs actifs (Profil=index ; patterns dans Profil ; pistes+leviers dans Entraînement),
+aller-retour toggle pilote (enable→défis pilote→disable→archivés), coach ON par défaut,
+ancrage notif « objectif complété »→carte moment surlignée. Puis Lot C (Historique).
+
+---
+
 ## [2026-07-22] Lot A « Crédibilité des données » — plan Ascension UX (branche refactor/ascension-ux-2026-07)
 
 **Statut** : Complété (code + tests + données). Gate re-vérifié par l'orchestrateur puis

@@ -16,6 +16,7 @@ export {
   useCreateChallenge,
   useUpdateChallenge,
   useAbandonChallenge,
+  usePilotMode,
 } from './hooks/useChallenges'
 export {
   useArcs,

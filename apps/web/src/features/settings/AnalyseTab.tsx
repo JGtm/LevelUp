@@ -224,7 +224,7 @@ export function AnalyseTab({ merged, handleChange, t, frozen }: TabProps) {
         <CardContent className="space-y-4">
           <ToggleRow
             label={t.coachProactiveLabel}
-            value={merged.coach_proactive_mode ?? false}
+            value={merged.coach_proactive_mode ?? true /* défaut ON, DEC-2 */}
             onChange={(v) => handleChange('coach_proactive_mode', v)}
           />
           <p className="text-xs text-muted-foreground">{t.coachProactiveHint}</p>

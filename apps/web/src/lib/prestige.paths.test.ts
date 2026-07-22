@@ -218,6 +218,8 @@ const invokeAll: Record<keyof typeof prestigeApi, () => unknown> = {
   updateChallenge: () => prestigeApi.updateChallenge('c1', { target: 2 }, SLUG),
   abandonChallenge: () => prestigeApi.abandonChallenge('c1', SLUG),
   suggestNext: () => prestigeApi.suggestNext('c1', SLUG),
+  enablePilotMode: () => prestigeApi.enablePilotMode(SLUG, 'halo_infinite'),
+  disablePilotMode: () => prestigeApi.disablePilotMode(SLUG, 'halo_infinite'),
   createArc: () => prestigeApi.createArc(ARC_BODY),
   listArcs: () => prestigeApi.listArcs(SLUG, 'halo_infinite'),
   getArc: () => prestigeApi.getArc('a1', SLUG),

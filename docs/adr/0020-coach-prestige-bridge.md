@@ -25,8 +25,10 @@ des défis aléatoires depuis le catalogue mais n'a pas de signal pour cibler
 **ce qui compte maintenant** pour ce joueur précis.
 
 Le user product veut combler ce gap en V2 : une option utilisateur
-`coach_proactive_mode` (off par défaut) qui, quand activée, fait que le coach
-**propose** des défis et des arcs Prestige calibrés sur les signaux détectés.
+`coach_proactive_mode` (défaut ON depuis 2026-07-22, cf. DEC-2 du plan
+PLAN_ASCENSION_UX_2026-07 ; off à l'origine) qui, quand activée, fait que le
+coach **propose** des défis et des arcs Prestige calibrés sur les signaux
+détectés.
 Le joueur reste maître de l'acceptation (pas d'auto-attribution silencieuse).
 
 ## Decision
@@ -104,8 +106,9 @@ nouveau endpoint, aucun nouveau type, aucun bypass du flow standard.
 
 ### Settings utilisateur (révisé Phase 1 — 2026-05-25)
 
-Toggle `coach_proactive_mode` (booléen, default `false`) persisté dans
-`app_settings.json` (global app-level, pattern identique à `ShowProgression`).
+Toggle `coach_proactive_mode` (booléen, default `true` depuis 2026-07-22 —
+DEC-2 ; `false` à l'origine) persisté dans `app_settings.json` (global
+app-level, pattern identique à `ShowProgression`).
 LevelUp est une app locale single-user, pas multi-user — pas besoin d'une table
 `user_preferences` per-user comme initialement envisagé dans l'esquisse.
 
@@ -213,7 +216,11 @@ catalogue Prestige sera seed.
 - Découplage strict : `coach` reste un détecteur pur ; `prestige` reste agnostique
   du coach ; `coach_advisor` est le seul point de couplage (importé par aucun
   des deux, importe les deux).
-- Opt-in explicite : aucun joueur n'est exposé sans avoir activé le toggle.
+- Suggestions sans write non sollicité : le coach **propose** uniquement
+  (dédup 24h, supersession) ; aucune écriture Prestige n'est faite sans action
+  du joueur. Le défaut du toggle est passé à ON le 2026-07-22 (DEC-2) —
+  l'exposition par défaut reste sûre car ce sont des suggestions pures ; un
+  opt-out explicite (`coach_proactive_mode=false`) reste respecté.
 - Extensible : ajouter un nouveau signal demande 1 entry dans `signals.go` +
   1 mapping LUSR/radar dans `synthesis_grammar.toml`. Ajouter un nouveau type
   de proposal (squad, cross-title) ne demande pas de refonte du modèle.

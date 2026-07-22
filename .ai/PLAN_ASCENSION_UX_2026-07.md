@@ -125,63 +125,64 @@ make check-types && make test-web
 
 ## Lot B — Navigation, IA, mode pilote
 
-- [ ] **B1 — Restructuration 4 onglets** (DEC-3) — périmètre fermé :
-  - [ ] route `objectifs.tsx` créée ; `index.tsx` rend le nouvel onglet Profil
-    (routing file-based, ne jamais éditer routeTree.gen.ts)
-  - [ ] `AscensionProfileTab` renommé `AscensionObjectivesTab` (contenu Prestige
+- [x] **B1 — Restructuration 4 onglets** (DEC-3) — périmètre fermé :
+  - [x] route `objectifs.tsx` créée ; `index.tsx` rend le nouvel onglet Profil
+    (routing file-based, routeTree.gen.ts régénéré via `@tanstack/router-generator`)
+  - [x] `AscensionProfileTab` renommé `AscensionObjectivesTab` (contenu Prestige
     inchangé) ; nouveau `AscensionProfilTab` composant : PlayerProfileV3 (identité /
-    style / performance) + PatternsSection (déplacée depuis le tab coaching) +
-    SquadVsSoloCard + BehaviorAlertList
-  - [ ] `ProgressionSection` + `StartCampaignModal` recomposées dans
-    `AscensionCoachingTab` (sortent de PlayerProfileV3 — prop ou recomposition,
-    vérifier sur pièces la plus simple)
-  - [ ] `AscensionLayout` : 4 liens d'onglets, i18n FR/EN (labels + aria), sous-titres
-    LayerSection relus
-  - [ ] deep-links mis à jour (grep exhaustif) : `features/notifications/navigation.ts`,
-    `lib/pageTitle.ts`, `features/feedback-drawer/classifyFeedback.ts`,
-    `components/shell/navL1Sections.tsx` (+ NavL1MobileMenu)
-  - [ ] tests : AscensionCoachingTab.test.tsx et AscensionProfileTab.test.tsx adaptés,
-    nouveau test du tab Profil (mock echarts-for-react si radar rendu)
-- [ ] **B2 — Deep-link du widget home** : `HomeAscensionWidget` montre des séries mais
-  pointe l'onglet objectifs. Cible → `/ascension/realisations`. Vérifier le mapping
-  des notifications (features/notifications/navigation.ts) vers le bon onglet aussi.
-- [ ] **B3 — Câblage mode pilote** (DEC-1) : mutations front sur
-  `POST /pilot-mode/enable|disable` (queryKeys dans `lib/query/keys.ts`, jamais
-  inline), toggle réel avec état issu des défis `mode === 'pilote'` actifs, retrait du
-  tooltip « non implémenté », i18n FR/EN, invalidation de `useChallenges` après
-  attribution. CTA d'activation dans l'empty state « Aucun objectif libre actif ».
-- [ ] **B4 — Coach proactif défaut ON** (DEC-2) : défaut `CoachProactiveMode` à true
-  (`internal/platform/settings/store.go` + domain + test du défaut inversé), doc du
-  changement dans le commit (anti-pattern doc inversée : mettre à jour TOUTE mention
-  du défaut, grep `coach_proactive_mode`). Le hint d'activation dans
-  `CoachProposalsCard` reste pour ceux qui l'ont explicitement désactivé.
-- [ ] **B5 — Confirmations cohérentes** : `confirm()` natif d'abandon d'objectif
-  (AscensionProfileTab.tsx:76) → `AlertDialog` (même composant que les campagnes) ;
-  bouton « Abandonner » rattaché visuellement à sa carte (dans la carte, pas flottant
-  sous la grille).
-- [ ] **B6 — Abréviations et cibles** : tooltips sur OC (« Conversion offensive ») et DR
-  (« Résistance défensive ») partout où ils apparaissent ; les « cible 98 % »
-  uniformes de la section Performance : vérifier le calcul de cible par composante —
-  si la cible est bien un même percentile global, l'étiqueter (« cible palier
-  suivant ») ; si c'est un bug de calcul, le corriger (vérifier sur pièces côté
-  service profile).
-- [ ] **B7 — Dédoublonnage Solo/Escouade** : l'onglet Entraînement montre 2 cartes
-  patterns `by_squad` PUIS une carte « Comparaison Solo / Escouade » avec les mêmes
-  chiffres. Garder la comparaison, supprimer les 2 cartes du grid (filtre `by_squad`
-  hors de `PatternContextGrid`). Code mort supprimé avec ses tests (règle n°7).
-- [ ] **B8 — LUSR au lieu de μ/σ** (DEC-6) : section Performance affiche le tier + les
-  points LUSR et l'écart au palier en points LUSR ; μ/σ retirés de l'UI.
-- [ ] **B9 — Vocabulaire FR** (DEC-4) : « Mes milestones » → « Mes jalons »,
-  `realisationsEmpty` sans « moment cards », relecture des strings FR de la feature
-  (i18n.ts) pour anglicismes résiduels. EN inchangé sur le fond.
-- [ ] **B10 — Barre Prestige lisible** (DEC-9) : progression intra-niveau explicite
-  (« 0 / 1500 PP vers Mythique »), total PP en libellé secondaire, amis à 0 PP omis.
-- [ ] **B11 — Badge petits échantillons** (DEC-8) : sous 10 matchs, badge neutre
-  « Échantillon faible » à la place de Force/Faiblesse (front, seuil constant nommé
-  partagé avec le backend via la réponse — pas de dur en double).
-- [ ] **B12 — Pill de statut des séries lisible** (AM-6, feedback collègue 2026-07-22) :
-  « Cassée » → « Interrompue », tooltip explicatif (date de cassure + multiplicateur PP
-  réinitialisé), FR/EN (StreakCard).
+    style / performance) + patterns contextuels + SquadVsSoloCard + BehaviorAlertList
+  - [x] `ProgressionSection` extraite de PlayerProfileV3 vers `AscensionCoachingTab`
+    (recomposition via wrapper `usePlayerProfile` ; PlayerProfileV3 perd les props
+    onStartCampaign/onLaunchTemplate — code mort supprimé) ; `StartCampaignModal`
+    déjà dans le coaching tab ; leviers calibrés (LeverList) déplacés dans Entraînement
+  - [x] `AscensionLayout` : 4 liens d'onglets, i18n FR/EN (tabProfile/tabObjectives/
+    tabCoaching/tabRealisations + aria), sous-titres LayerSection relus (profilLayer*)
+  - [x] deep-links mis à jour : `navigation.ts`, `lib/pageTitle.ts` (+objectifs/coaching),
+    `navL1Sections.tsx` (4 onglets, `tab_profile`+`tab_objectives`), common.toml/
+    generated.ts régénérés. `classifyFeedback.ts` : regex `(objectifs|ascension)` couvre
+    déjà tous les sous-onglets → aucun changement (`[~]`). NavL1MobileMenu consomme
+    NAV_L1_SECTIONS → couvert automatiquement.
+  - [x] tests : AscensionObjectivesTab.test.tsx (renommé), AscensionCoachingTab.test.tsx
+    adapté, nouveau AscensionProfilTab.test.tsx (PlayerProfileV3 mocké), PlayerProfileV3
+    .test.tsx (progression/μσ retirés), NavL1.test.tsx (4 onglets)
+- [x] **B2 — Deep-link du widget home + AM-5** : `HomeAscensionWidget` → `/ascension/
+  realisations`. Notifs `objective_completed`/`challenge_completed` → `/ascension/
+  realisations` avec `selectedObjectiveId`/`selectedChallengeId` ; ancrage/surlignage +
+  scroll de la carte moment côté Réalisations (`useSearch`). `objective_assigned`/
+  `challenge_added` → `/ascension/objectifs`. navigation.test.ts couvre les 4 cas.
+- [x] **B3 — Câblage mode pilote** (DEC-1) : `usePilotMode` (mutations enable/disable),
+  `prestigeApi.enable/disablePilotMode`, key `queryKeys.prestige.pilotMode`, toggle réel
+  (état dérivé des défis `mode === 'pilote'` actifs), tooltip « non implémenté » retiré,
+  i18n FR/EN, invalidation `challenge.list` + `prestige.meAll`, CTA dans l'empty state.
+  **AM-4** : `DisablePilotMode` complété côté Go (archive les défis pilote actifs →
+  statut `archived`, slog + tests).
+- [x] **B4 — Coach proactif défaut ON** (DEC-2) : défaut `CoachProactiveMode` = true
+  (`store.go` defaultSettings + applyAbsentDefaults, domain, wire ; tests inversés +
+  « FalseRespected »). Mentions du défaut mises à jour (grep) : ADR 0020 (3 endroits),
+  openapi.yaml comment, `AscensionCoachingTab` + `AnalyseTab` fallbacks `?? true`.
+- [x] **B5 + AM-11 — Confirmations cohérentes** : `confirm()` natif → `AlertDialog`
+  destructive (par carte, composant `ObjectiveCard`) ; bouton « Abandonner » i18n FR/EN.
+- [x] **B6 + AM-10 — Abréviations et cibles** : composant partagé `CombatAbbr` (tooltip
+  OC/DR) dans PatternContextGrid + SquadVsSoloCard ; `target_for_tier` vérifié sur pièces
+  = composite global du palier suivant (par design, pas un bug) → étiqueté via note
+  `profile.performance.target_note`.
+- [x] **B7 — Dédoublonnage Solo/Escouade** : `by_squad` retiré de `CONTEXT_ORDER` (grille
+  mode/carte) ; branche `contextLabel` by_squad supprimée (code mort ; aucun test dédié).
+- [x] **B8 — LUSR au lieu de μ/σ** (DEC-6) : PerformanceSection affiche « {mu} pts LUSR »
+  (clé `lusr_points`) ; `mu_sigma` supprimée (manifest + rendu) ; écart au palier déjà
+  en points via `gap_to_next`. DTO déjà suffisant (aucun champ Go ajouté).
+- [x] **B9 — Vocabulaire FR** (DEC-4) : « Mes jalons », « Aucun jalon », « cartes moments »,
+  « Taux de victoire » (ex-« Win rate »). EN inchangé.
+- [x] **B10 — Barre Prestige lisible** (DEC-9) : progression intra-niveau
+  (`{inLevel} / {span} PP vers {next}`), total PP secondaire, amis à 0 PP omis. DTO déjà
+  suffisant (`threshold_pp`/`next_threshold_pp` servis).
+- [x] **B11 — Badge petits échantillons** (DEC-8) : seuil `MinMatchesForSignal` (10)
+  promu const backend + servi via `PatternReport.min_matches_for_signal` (openapi +
+  generate-types + drift OK) ; front affiche « Échantillon faible » (neutre) sous le
+  seuil, sans 10 en dur.
+- [x] **B12 — Pill de statut des séries lisible** (AM-6) : « Cassée » → « Interrompue »
+  (FR ; EN « Broken » inchangé) + tooltip `streakBrokenTooltip` (date + reset
+  multiplicateur PP), FR/EN (StreakCard).
 
 **Gate Lot B** :
 ```
@@ -356,6 +357,18 @@ complété » renvoient vers une page où l'objectif concerné n'est pas visible
   homogénéiser.
 - **(A5/A6) LUSR/ratings hors périmètre** : les records purgés/backfillés ne
   concernent que PB/jalons ; aucun impact sur LUSR/CSR.
+- **(B1) e2e `ascension-2tabs.spec.ts` obsolète** : la spec Playwright est déjà
+  `skipObsoleteSpec` (marquée obsolète depuis le passage 3 onglets, 2026-06-08) et
+  référence encore le layout 2/3 onglets + le libellé « Profil & objectifs ». Hors
+  gate (Playwright ≠ vitest) et déjà skippée → NON traitée. À réécrire pour les
+  4 onglets dans un chantier e2e dédié.
+- **(B3) télémétrie transition `archived`** : `DisablePilotMode` fait `UpdateStatus`
+  → `archived` sans `EmitTransition` (contrairement à `AbandonChallenge` qui émet
+  `TelemetryAbandoned`). Pas de compteur télémétrie « archived » aujourd'hui ; à
+  ajouter si l'observabilité du churn pilote devient utile.
+- **(A2 rappel, B6) phrases de leviers FR en dur côté Go** : confirmé pendant B6 —
+  `internal/analysis/patterns/levers.go` code « Améliore ton win rate… » en français
+  dur (non i18n, non title-agnostic). Hors périmètre B (déjà consigné en A2).
 
 ## Journal d'exécution — Lot A (2026-07-22)
 
@@ -412,3 +425,40 @@ Reste à faire par l'orchestrateur : exécuter `--apply` de A5
 (`cmd/purge_corrupt_records`) et A6 (`cmd/backfill_milestone_dates`) serveur
 stoppé ; revue visuelle 3 onglets × JGtm (zéro GUID / zéro `Field*` / zéro
 % > 100 en précision) ; suite intégration anti-ART avant commit (A4/A5/A6).
+
+## Journal d'exécution — Lot B (2026-07-22)
+
+Exécution complète B1→B12 sous contrat `plan-execution`, branche
+`refactor/ascension-ux-2026-07` (par-dessus Lot A). Tous les items `[x]` sauf le
+sous-point `classifyFeedback.ts` de B1 (`[~]`, regex couvre déjà les sous-onglets).
+Gate Lot B PASSÉ intégralement (sorties vertes) :
+
+- `go test ./internal/platform/settings/... ./internal/api/handlers/...
+  ./internal/prestige/... ./internal/analysis/patterns/...` → ok
+- `tsc -b` (check-types) → ok ; `vitest run` (test-web) → 280 fichiers,
+  2459 passés / 14 skippés / 0 échec
+- `gofmt -l .` → vide ; `go vet ./...` → clean ; `make go-api-lint` → clean
+- Drift OpenAPI (`TestOpenAPISchemaDrift`, CGO) → ok (champ B11 `min_matches_for_signal`
+  aligné struct↔yaml)
+
+Faits notables :
+
+- **B1** : restructuration 3→4 onglets. Nouveau `AscensionProfilTab` (index :
+  identité + patterns + comportements), `AscensionObjectivesTab` (ex-ProfileTab, couche
+  Prestige), `AscensionCoachingTab` (cap + proposals + campagne + `ProgressionSection`
+  extraite de PlayerProfileV3 + leviers calibrés). `PlayerProfileV3` allégé (identité/
+  style/perf uniquement, props CTA supprimées). routeTree régénéré via
+  `@tanstack/router-generator` (jamais édité à la main). i18n `tab_profile`+`tab_objectives`
+  (common.toml régénéré).
+- **B3 + AM-4** : `DisablePilotMode` backend complété (archive les défis pilote actifs) ;
+  toggle front réel dérivé des défis pilote, CTA d'activation en empty state.
+- **B4** : défaut `coach_proactive_mode` → TRUE (DEC-2) ; doc anti-inversée mise à jour
+  partout (ADR 0020, openapi comment, fallbacks front `?? true`).
+- **B8/B10** : aucun champ DTO ajouté (mu/gap_to_next et threshold_pp/next_threshold_pp
+  déjà servis). **B11** : seul ajout DTO du lot (`min_matches_for_signal`).
+
+Reste à faire par l'orchestrateur : revue visuelle des 4 onglets × joueurs actifs
+(Profil = index ; patterns dans Profil ; pistes de progression + leviers dans
+Entraînement) ; aller-retour toggle pilote (enable → défis pilote visibles → disable →
+archivés) ; coach ON par défaut sur profil vierge ; ancrage notif « objectif complété »
+→ carte moment surlignée dans Réalisations.

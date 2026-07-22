@@ -1,17 +1,19 @@
 // cross-feature-allow: tab orchestrateur Entraînement — agrège les composants
-// coach (proposals) et profil/patterns Ascension.
+// coach (proposals) et les pistes de progression Ascension.
 /**
- * AscensionCoachingTab — tab "Entraînement" (couche coaching d'amélioration).
+ * AscensionCoachingTab — onglet "Entraînement" (couche coaching d'amélioration).
  *
- * Extrait de AscensionProfileTab lors du split en 2 onglets (2026-06-08).
- * Composition (verticale, du plus actionnable au plus analytique) :
- *   1. CoachProposalsCard — suggestions proactives
- *   2. CampaignTracker     — campagne en cours (si active)
- *   3. PlayerProfileV3     — identité, style, performance, leviers + CTAs
- *   4. Patterns contextuels + comportementaux + leviers calibrés
+ * Restructuration 4 onglets (2026-07, DEC-3). Composition (du plus actionnable
+ * au plus analytique) :
+ *   1. CoachFocusCard       — cap du moment
+ *   2. CoachProposalsCard   — suggestions proactives
+ *   3. CampaignTracker      — campagne en cours (si active)
+ *   4. ProgressionSection   — pistes de progression (leviers LUSR + défis suggérés)
+ *   5. LeverList            — leviers calibrés (issus des patterns)
  *
- * La navigation Coach → création de campagne reste sur le même écran (modale
- * StartCampaign).
+ * L'identité/profil (PlayerProfileV3) et les patterns contextuels vivent
+ * désormais dans l'onglet "Profil" (index). La navigation Coach → création de
+ * campagne reste sur le même écran (modale StartCampaign).
  */
 import { useState } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -22,13 +24,10 @@ import type { AxisKind } from '@/lib/playerProfile'
 import { CoachFocusCard } from './CoachFocusCard'
 import { CampaignTracker } from './campaign/CampaignTracker'
 import { StartCampaignModal } from './campaign/StartCampaignModal'
-import { PlayerProfileV3 } from './profile/PlayerProfileV3'
-import { useActiveCampaign } from './profile/queries'
+import { ProgressionSection } from './profile/ProgressionSection'
+import { useActiveCampaign, usePlayerProfile } from './profile/queries'
 import { usePatterns } from './queries'
 import { getAscensionText } from './i18n'
-import { PatternContextGrid } from './PatternContextGrid'
-import { SquadVsSoloCard } from './SquadVsSoloCard'
-import { BehaviorAlertList } from './BehaviorAlertList'
 import { LeverList } from './LeverList'
 import { LayerSection, SectionShell } from './AscensionLayers'
 
@@ -39,7 +38,9 @@ export function AscensionCoachingTab() {
   const t = getAscensionText(locale)
   const coachT = getCoachStrings(locale)
   const { data: settings } = useSettings()
-  const proactiveEnabled = settings?.coach_proactive_mode ?? false
+  // Défaut ON (DEC-2) : optimiste pendant le chargement des settings. Un opt-out
+  // explicite renvoie false et le hint d'activation réapparaît.
+  const proactiveEnabled = settings?.coach_proactive_mode ?? true
 
   const { data: activeCampaign } = useActiveCampaign(playerSlug)
   const hasActiveCampaign = !!activeCampaign && activeCampaign.status === 'active'
@@ -67,11 +68,11 @@ export function AscensionCoachingTab() {
           <CoachProposalsCard playerSlug={playerSlug} proactiveEnabled={proactiveEnabled} t={coachT} />
         </div>
         {hasActiveCampaign && <CampaignTracker playerSlug={playerSlug} campaign={activeCampaign} />}
-        <PlayerProfileV3
+        <ProgressionLeadsSection
           playerSlug={playerSlug}
           onStartCampaign={hasActiveCampaign ? undefined : openStartCampaign}
         />
-        <PatternsSection playerSlug={playerSlug} t={t} locale={locale} />
+        <CalibratedLeversSection playerSlug={playerSlug} t={t} />
       </LayerSection>
 
       <StartCampaignModal
@@ -85,43 +86,40 @@ export function AscensionCoachingTab() {
   )
 }
 
-// ─── Patterns ────────────────────────────────────────────────────────────────
+// ─── Pistes de progression (leviers LUSR + défis suggérés) ───────────────────
 
-interface PatternsSectionProps {
+interface ProgressionLeadsSectionProps {
   playerSlug: string
-  t: ReturnType<typeof getAscensionText>
-  locale: 'fr' | 'en'
+  onStartCampaign?: (axis: string, axisKind: AxisKind) => void
 }
 
-function PatternsSection({ playerSlug, t, locale }: PatternsSectionProps) {
+function ProgressionLeadsSection({ playerSlug, onStartCampaign }: ProgressionLeadsSectionProps) {
+  const { data: profile, isLoading } = usePlayerProfile(playerSlug, 30)
+  if (isLoading || !profile || !profile.has_enough_data) return null
+  return (
+    <ProgressionSection
+      leverages={profile.leverages}
+      suggestions={profile.suggested_challenges}
+      onStartCampaign={onStartCampaign}
+    />
+  )
+}
+
+// ─── Leviers calibrés (issus des patterns) ───────────────────────────────────
+
+interface CalibratedLeversSectionProps {
+  playerSlug: string
+  t: ReturnType<typeof getAscensionText>
+}
+
+function CalibratedLeversSection({ playerSlug, t }: CalibratedLeversSectionProps) {
   const { data: patterns, isLoading } = usePatterns(playerSlug)
   if (isLoading) return null
-  const contextPatterns = patterns?.context_patterns ?? []
-  const behaviorPatterns = patterns?.behavior_patterns ?? []
   const levers = patterns?.levers ?? []
-
-  if (contextPatterns.length === 0 && behaviorPatterns.length === 0 && levers.length === 0) {
-    return null
-  }
-
+  if (levers.length === 0) return null
   return (
-    <div className="space-y-6">
-      {contextPatterns.length > 0 && (
-        <SectionShell title={t.patternsSectionTitle}>
-          <PatternContextGrid patterns={contextPatterns} t={t} />
-          <SquadVsSoloCard patterns={contextPatterns} t={t} locale={locale} />
-        </SectionShell>
-      )}
-      {behaviorPatterns.length > 0 && (
-        <SectionShell title={t.behaviorsSectionTitle}>
-          <BehaviorAlertList patterns={behaviorPatterns} t={t} />
-        </SectionShell>
-      )}
-      {levers.length > 0 && (
-        <SectionShell title={t.leversSectionTitle}>
-          <LeverList levers={levers} t={t} />
-        </SectionShell>
-      )}
-    </div>
+    <SectionShell title={t.leversSectionTitle}>
+      <LeverList levers={levers} t={t} />
+    </SectionShell>
   )
 }

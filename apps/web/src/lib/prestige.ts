@@ -170,6 +170,13 @@ export interface UserPrestige {
   level?: PrestigeLevel
 }
 
+/** Réponse de POST /pilot-mode/enable (auto-attribution mode pilote). */
+export interface PilotModeAttribution {
+  daily?: Challenge | null
+  weekly_forced?: Challenge | null
+  weekly_choices: Template[]
+}
+
 export interface Template {
   id: string
   title_slug: string
@@ -337,6 +344,21 @@ export const prestigeApi = {
 
   suggestNext: (id: string, actorSlug: string) =>
     api.post<{ suggestions: Template[] }>(`${scopedToPlayer(actorSlug)}/prestige/challenges/${id}/suggest-next`),
+
+  // Mode pilote (auto-attribution). enable auto-attribue 1 quotidien + 1 hebdo ;
+  // disable archive les défis pilote actifs (statut `archived`). L'état ON/OFF
+  // est dérivé côté client de la présence de défis `mode === 'pilote'` actifs.
+  enablePilotMode: (userId: string, titleSlug: string) =>
+    api.post<PilotModeAttribution>(`${scopedToPlayer(userId)}/pilot-mode/enable`, {
+      user_id: userId,
+      title_slug: titleSlug,
+    }),
+
+  disablePilotMode: (userId: string, titleSlug: string) =>
+    api.post<void>(`${scopedToPlayer(userId)}/pilot-mode/disable`, {
+      user_id: userId,
+      title_slug: titleSlug,
+    }),
 
   // Arcs. Le body (createArc) porte user_id ; getArc reçoit le slug de l'acteur.
   createArc: (body: CreateArcBody) => api.post<Arc>(`${scopedToPlayer(body.user_id)}/arcs`, body),

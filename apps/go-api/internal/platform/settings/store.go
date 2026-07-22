@@ -73,8 +73,12 @@ type AppSettings struct {
 	// ShowProgression — affichage du système Objectifs/Prestige (défaut : true).
 	ShowProgression bool `json:"show_progression"`
 
-	// CoachProactiveMode — toggle pont coach → Prestige (cf. ADR 0020).
-	// Opt-in explicite : défaut false (zero value).
+	// CoachProactiveMode — toggle pont coach → Prestige (cf. ADR 0020, DEC-2).
+	// Défaut TRUE (bascule 2026-07-22) : suggestions pures, dédup 24h existante,
+	// aucun write non sollicité. Réappliqué « clé absente → true » par
+	// applyAbsentDefaults ; un opt-out explicite (false dans le fichier) reste
+	// respecté (le hint d'activation dans CoachProposalsCard ne s'affiche que
+	// pour ceux-là).
 	CoachProactiveMode bool `json:"coach_proactive_mode"`
 
 	// Capabilities (défaut : true)
@@ -147,6 +151,9 @@ func applyAbsentDefaults(cfg *AppSettings, raw map[string]json.RawMessage) {
 	}
 	if _, ok := raw["show_progression"]; !ok {
 		cfg.ShowProgression = true
+	}
+	if _, ok := raw["coach_proactive_mode"]; !ok {
+		cfg.CoachProactiveMode = true // DEC-2 : défaut ON (bascule 2026-07-22)
 	}
 }
 
@@ -493,5 +500,7 @@ func defaultSettings() *AppSettings {
 		OutcomeBadgeSensitivity:             "standard", // seuils historiques Python
 		// Affichage Objectifs/Prestige activé par défaut
 		ShowProgression: true,
+		// Coach proactif activé par défaut (DEC-2, bascule 2026-07-22).
+		CoachProactiveMode: true,
 	}
 }

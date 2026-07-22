@@ -7,6 +7,7 @@
  * Cf. PLAN_PROGRESSION_TRACKING_ASCENSION.md §4 + §8.3.
  */
 import { CompositeProgressBar } from '@/components/ui/composite-progress-bar'
+import { Tooltip } from '@/components/ui/tooltip'
 import { formatAscensionDate, formatMultiplier, interpolate, nextPPTier, streakTierProgressPct } from './format'
 import { getAscensionText, type AscensionLocale } from './i18n'
 import type { Streak } from './types'
@@ -80,9 +81,23 @@ export function StreakCard({ streak: s, locale, t, compact = false }: StreakCard
     <article className="flex flex-col gap-2 rounded-md border border-border bg-card p-4">
       <header className="flex items-start justify-between gap-2">
         <h3 className="text-sm font-medium">{t.streakTypeName[s.type]}</h3>
-        <span className={`rounded-full px-2 py-0.5 text-2xs font-medium ${streakStatusBadgeClass(s.status)}`}>
-          {statusLabel}
-        </span>
+        {s.status === 'broken' ? (
+          <Tooltip
+            content={interpolate(t.streakBrokenTooltip, {
+              date: s.broken_at ? formatAscensionDate(s.broken_at, locale) : '—',
+            })}
+          >
+            <span
+              className={`cursor-help rounded-full px-2 py-0.5 text-2xs font-medium ${streakStatusBadgeClass(s.status)}`}
+            >
+              {statusLabel}
+            </span>
+          </Tooltip>
+        ) : (
+          <span className={`rounded-full px-2 py-0.5 text-2xs font-medium ${streakStatusBadgeClass(s.status)}`}>
+            {statusLabel}
+          </span>
+        )}
       </header>
 
       <div className="flex items-baseline gap-2">

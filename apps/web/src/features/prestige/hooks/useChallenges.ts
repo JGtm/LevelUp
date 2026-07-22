@@ -56,3 +56,30 @@ export function useAbandonChallenge(userId: string, titleSlug: string) {
     },
   })
 }
+
+// ─── Mode pilote (auto-attribution, B3) ───
+
+/**
+ * usePilotMode — mutations enable/disable du mode pilote. L'état ON/OFF n'est
+ * pas persisté côté serveur : il se dérive de la présence de défis
+ * `mode === 'pilote'` actifs (cf. useChallenges). Les deux mutations invalident
+ * donc la liste des défis + le total PP (l'auto-attribution crée des défis).
+ */
+export function usePilotMode(userId: string, titleSlug: string) {
+  const qc = useQueryClient()
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: queryKeys.challenge.list(userId, titleSlug) })
+    qc.invalidateQueries({ queryKey: queryKeys.prestige.meAll(userId) })
+  }
+  const enable = useMutation({
+    mutationKey: queryKeys.prestige.pilotMode(userId, titleSlug),
+    mutationFn: () => prestigeApi.enablePilotMode(userId, titleSlug),
+    onSuccess: invalidate,
+  })
+  const disable = useMutation({
+    mutationKey: queryKeys.prestige.pilotMode(userId, titleSlug),
+    mutationFn: () => prestigeApi.disablePilotMode(userId, titleSlug),
+    onSuccess: invalidate,
+  })
+  return { enable, disable }
+}

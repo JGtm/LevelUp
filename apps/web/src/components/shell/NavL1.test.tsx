@@ -119,17 +119,22 @@ describe('NavL1', () => {
     expect(coaching).toHaveAttribute('href', '/players/test-player/ascension/coaching')
   })
 
-  it('place Entraînement entre Profil & objectifs et Réalisations dans la dropdown Ascension', () => {
+  it('ordonne Profil / Objectifs / Entraînement / Réalisations dans la dropdown Ascension', () => {
     renderWithProviders(<NavL1 />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Onglets Ascension' }))
 
-    const profile = screen.getByRole('menuitem', { name: 'Profil & objectifs' })
+    const profile = screen.getByRole('menuitem', { name: 'Profil' })
+    const objectives = screen.getByRole('menuitem', { name: 'Objectifs' })
     const coaching = screen.getByRole('menuitem', { name: 'Entraînement' })
     const realisations = screen.getByRole('menuitem', { name: 'Réalisations' })
 
+    expect(objectives).toHaveAttribute('href', '/players/test-player/ascension/objectifs')
     expect(
-      profile.compareDocumentPosition(coaching) & Node.DOCUMENT_POSITION_FOLLOWING,
+      profile.compareDocumentPosition(objectives) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(
+      objectives.compareDocumentPosition(coaching) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
     expect(
       coaching.compareDocumentPosition(realisations) & Node.DOCUMENT_POSITION_FOLLOWING,

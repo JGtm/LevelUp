@@ -29,7 +29,9 @@ const VALID_PLAYER_SUBPATHS = [
   '/synthesis',
   '/objectifs',
   '/ascension',
+  '/ascension/objectifs',
   '/ascension/coaching',
+  '/ascension/realisations',
   '/palmares',
   '/palmares/season-pass',
   '/palmares/prestige',
@@ -116,10 +118,27 @@ describe('navigation.ts - regression B1 routes notifications', () => {
     }
   })
 
-  it('challenge_added cible /ascension (tab profil & objectifs)', () => {
+  it('challenge_added cible /ascension/objectifs (onglet Objectifs)', () => {
     const target = resolveTarget(makeNotif('challenge_added'), PLAYER_SLUG)
     expect(target).not.toBeNull()
-    expect(target!.to).toBe(`/players/${PLAYER_SLUG}/ascension`)
+    expect(target!.to).toBe(`/players/${PLAYER_SLUG}/ascension/objectifs`)
+  })
+
+  it('objective_assigned cible /ascension/objectifs (onglet Objectifs)', () => {
+    const target = resolveTarget(makeNotif('objective_assigned'), PLAYER_SLUG)
+    expect(target!.to).toBe(`/players/${PLAYER_SLUG}/ascension/objectifs`)
+  })
+
+  it('objective_completed cible /ascension/realisations avec ancrage (AM-5)', () => {
+    const target = resolveTarget(makeNotif('objective_completed'), PLAYER_SLUG)
+    expect(target!.to).toBe(`/players/${PLAYER_SLUG}/ascension/realisations`)
+    expect(target!.search).toMatchObject({ selectedObjectiveId: '42' })
+  })
+
+  it('challenge_completed cible /ascension/realisations avec ancrage (AM-5)', () => {
+    const target = resolveTarget(makeNotif('challenge_completed'), PLAYER_SLUG)
+    expect(target!.to).toBe(`/players/${PLAYER_SLUG}/ascension/realisations`)
+    expect(target!.search).toMatchObject({ selectedChallengeId: '42' })
   })
 
   it('app_release cible /changelog (pas /help/changelog)', () => {

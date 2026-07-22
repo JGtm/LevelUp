@@ -25,6 +25,7 @@ import { useSettings } from '@/features/settings/queries'
 import { queryKeys } from '@/lib/query/keys'
 import { PRESTIGE_LEVEL_NAMES_FALLBACK } from '@/features/prestige/fallback.i18n'
 import { getAscensionText } from './i18n'
+import { interpolate } from './format'
 import { prestigeApi, type UserPrestige } from '@/lib/prestige'
 import { useAssetLabel } from '@/lib/i18n/fieldMappings'
 import type { PlayerSummary } from '@/lib/api/types'
@@ -100,6 +101,8 @@ export function PrestigeSquadProgress() {
       return { slug, gamertag, isMe: slug === meSlug, prestige: data }
     })
     .filter((r): r is RowData => r != null)
+    // DEC-9 : amis à 0 PP partout omis (le joueur courant est toujours conservé).
+    .filter((r) => r.isMe || r.prestige.total_pp >= 1)
     .sort((a, b) => b.prestige.total_pp - a.prestige.total_pp)
 
   if (rows.length === 0) return null
@@ -140,11 +143,25 @@ function SquadPrestigeRow({
       ? levelLabel
       : PRESTIGE_LEVEL_NAMES_FALLBACK[level] ?? PRESTIGE_LEVEL_NAMES_FALLBACK[0]
 
+  // Nom du niveau SUIVANT (pour « … vers {next} »). Hook appelé inconditionnellement.
+  const nextKey = String(level + 1)
+  const nextLabelResolved = useAssetLabel('prestige_level', nextKey)
+  const nextLevelName =
+    nextLabelResolved !== nextKey
+      ? nextLabelResolved
+      : PRESTIGE_LEVEL_NAMES_FALLBACK[level + 1] ?? ''
+
   const lvl = prestige.level
   const isMax = lvl ? lvl.next_threshold_pp <= 0 : false
   const progressPct = lvl ? Math.round(lvl.progress_ratio * 100) : 0
-  const nextPP = lvl?.next_threshold_pp ?? 0
-  const maxLabel = t.squadPrestigeMaxTier
+  const threshold = lvl?.threshold_pp ?? 0
+  const nextThreshold = lvl?.next_threshold_pp ?? 0
+  // DEC-9 : progression INTRA-niveau (PP acquis dans le niveau / PP du niveau).
+  const inLevelPP = Math.max(0, prestige.total_pp - threshold)
+  const levelSpan = Math.max(0, nextThreshold - threshold)
+  const totalLabel = interpolate(t.squadPrestigeTotal, {
+    pp: prestige.total_pp.toLocaleString(numberLocale),
+  })
 
   return (
     <div
@@ -166,17 +183,23 @@ function SquadPrestigeRow({
           <span className="ml-2 font-normal text-muted-foreground">{levelName}</span>
         </span>
         <span className="shrink-0 text-muted-foreground">
-          {isMax ? maxLabel : `${progressPct}%`}
+          {isMax ? t.squadPrestigeMaxTier : `${progressPct}%`}
         </span>
       </div>
-      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
-        <span className="shrink-0 whitespace-nowrap text-3xs font-medium tabular-nums text-foreground/85">
-          {prestige.total_pp.toLocaleString(numberLocale)} PP
+      <CompositeProgressBar value={progressPct} />
+      <div className="flex items-center justify-between gap-2 text-3xs tabular-nums">
+        <span className="whitespace-nowrap font-medium text-foreground/85">
+          {isMax
+            ? totalLabel
+            : interpolate(t.squadPrestigeTowardNext, {
+                current: inLevelPP.toLocaleString(numberLocale),
+                target: levelSpan.toLocaleString(numberLocale),
+                next: nextLevelName,
+              })}
         </span>
-        <CompositeProgressBar value={progressPct} />
-        <span className="shrink-0 whitespace-nowrap text-3xs font-medium tabular-nums text-foreground/85">
-          {isMax ? '—' : `${nextPP.toLocaleString(numberLocale)} PP`}
-        </span>
+        {!isMax && (
+          <span className="whitespace-nowrap text-muted-foreground">{totalLabel}</span>
+        )}
       </div>
     </div>
   )

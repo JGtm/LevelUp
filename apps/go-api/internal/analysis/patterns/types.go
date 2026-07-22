@@ -174,6 +174,10 @@ type PatternReport struct {
 	BehaviorPatterns []BehavioralPattern `json:"behavior_patterns"`
 	Levers           []Lever             `json:"levers"`
 	ComputedAt       time.Time           `json:"computed_at"`
+	// MinMatchesForSignal : seuil de matchs par groupe sous lequel le front
+	// affiche « Échantillon faible » au lieu de Force/Faiblesse (DEC-8). Servi
+	// pour éviter un seuil codé en dur côté client.
+	MinMatchesForSignal int `json:"min_matches_for_signal"`
 }
 
 // AnalyzeInput est l'entrée de la fonction Analyze.

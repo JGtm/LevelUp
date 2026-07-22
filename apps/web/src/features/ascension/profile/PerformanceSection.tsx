@@ -51,15 +51,15 @@ function TierBlock({ rating }: { rating: SkillRatingSnapshot }) {
   const progressPct = Math.round((rating.progress_ratio ?? 0) * 100)
   // tier_name (EN) / tier_name_fr (FR) portés par le DTO ; label/next_tier_label
   // sont composés en EN côté backend (package profile locale-agnostic) → localisés ici.
+  // DEC-6 : on affiche les points LUSR (échelle connue du joueur), pas μ/σ bruts.
+  // `mu` est la valeur de rating LUSR ; l'écart au palier (points) est rendu sur
+  // la ligne « prochain palier » via gap_to_next.
   return (
     <div>
       <div className="flex items-baseline justify-between">
         <span className="text-2xl font-bold">{(locale === 'en' ? rating.tier_name : rating.tier_name_fr) || rating.label}</span>
-        <span className="font-mono text-xs text-muted-foreground">
-          {t('profile.performance.mu_sigma', {
-            mu: rating.mu.toFixed(0),
-            sigma: rating.sigma.toFixed(0),
-          })}
+        <span className="text-xs font-semibold tabular-nums text-muted-foreground">
+          {t('profile.performance.lusr_points', { points: rating.mu.toFixed(0) })}
         </span>
       </div>
       <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
@@ -130,11 +130,18 @@ function ComponentsBreakdown({ components }: { components?: LUSRComponentBreakdo
     )
   }
   return (
-    <ul className="space-y-2">
-      {components.map((c) => (
-        <ComponentRow key={c.name} component={c} />
-      ))}
-    </ul>
+    <div className="space-y-2">
+      <ul className="space-y-2">
+        {components.map((c) => (
+          <ComponentRow key={c.name} component={c} />
+        ))}
+      </ul>
+      {/* AM-10 : la « cible » uniforme (~98 %) est le composite requis pour le
+          palier suivant, identique pour les 8 composantes — étiqueté ici. */}
+      <p className="text-2xs italic text-muted-foreground">
+        {t('profile.performance.target_note')}
+      </p>
+    </div>
   )
 }
 
