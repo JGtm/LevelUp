@@ -1,6 +1,6 @@
-## [2026-07-23] Chantier Dynamique Escouade — P1 onglet Dynamique
+## [2026-07-23] Chantier Dynamique Escouade — P1 onglet + P2 séparation Rendement/Résistance
 
-**Statut** : En cours (P1 livrée, P2-P5 à suivre). Plan :
+**Statut** : En cours (P1+P2 livrées, P3-P5 à suivre). Plan :
 `.ai/PLAN_DYNAMIQUE_ESCOUADE_2026-07.md`, branche `feat/squad-dynamique` (worktree
 dédié, base main e85323beb). Exécution pilotée : Opus implémente, superviseur
 vérifie les gates et commite.
@@ -17,8 +17,18 @@ repo ; le plugin vite fait foi en dev) — diff purement additif.
 adaptés). Vérification visuelle des 3 onglets reportée à la passe visuelle de fin
 de lot (doctrine gates UI en une passe finale).
 
-**Conclusion / prochaine étape** : P2 — séparation Rendement / Résistance en deux
-graphes multi-joueurs.
+**P2 (séparation Rendement/Résistance)** : builder unique paramétré
+`buildSquadEfficiencyMultiOption(metric: damagePerKill|damagePerDeath)` (ex-
+RendementMulti renommé, track builder 1-joueur SUPPRIMÉ avec ses UI — 0 code
+mort) ; SquadEfficiencyChart rend 2 ChartCards multi-joueurs (couleur = joueur,
+repère « 1 vie » title-aware), H5 sans damage_taken → carte Rendement seule.
+Gradients offensifs/défensifs conservés (callers Timeseries). i18n : 2 titres de
+cartes FR/EN, 4 clés mortes retirées. Gates : tsc exit 0 ; vitest squad 35
+fichiers / 265 tests verts. Découverte consignée : efficiencySeries.description
+morte d'avant-chantier (non traitée).
+
+**Conclusion / prochaine étape** : P3 — « Balance des dégâts » (helper cumul
+générique + charts session/escouade).
 
 ---
 ## [2026-07-23] Réintégration + validation des 4 retouches FDA gap sur origin/main

@@ -171,12 +171,11 @@ export interface SquadText {
     zLabel: string
   }
   efficiencySeries: {
-    title: string
-    /** Titre en mode mono-métrique (sans résistance, ex. Halo 5). */
-    rendementTitle: string
+    /** Titre de la carte Rendement (métrique dégâts/frag). */
+    rendementCardTitle: string
+    /** Titre de la carte Résistance (métrique dégâts/mort). */
+    resistanceCardTitle: string
     description: string
-    rendementLabel: string
-    resistanceLabel: string
     refLabel: string
     noData: string
   }
@@ -456,11 +455,9 @@ const FR_TEXT: SquadText = {
     zLabel: 'Cadence',
   },
   efficiencySeries: {
-    title: 'Rendement & Résistance',
-    rendementTitle: 'Rendement',
-    description: 'Dégâts / frag (trait plein) = dégâts infligés / frags. Dégâts / mort (pointillé) = dégâts subis / morts. Repère 225 = 1 vie de Spartan : pour les frags, au plus proche de 225, au plus efficace ; pour les morts, au-dessus de 225 = bonne résistance.',
-    rendementLabel: 'Dégâts / frag',
-    resistanceLabel: 'Dégâts / mort',
+    rendementCardTitle: 'Rendement — dégâts par frag',
+    resistanceCardTitle: 'Résistance — dégâts par mort',
+    description: 'Dégâts / frag = dégâts infligés / frags. Dégâts / mort = dégâts subis / morts. Repère 225 = 1 vie de Spartan : pour les frags, au plus proche de 225, au plus efficace ; pour les morts, au-dessus de 225 = bonne résistance.',
     refLabel: '1 vie ({{HP}})',
     noData: 'Aucune donnée d\'efficacité disponible.',
   },
@@ -735,11 +732,9 @@ const EN_TEXT: SquadText = {
     zLabel: 'Cadence',
   },
   efficiencySeries: {
-    title: 'Offensive & Defensive Efficiency',
-    rendementTitle: 'Offensive Efficiency',
-    description: 'Damage / kill (solid) = damage dealt / kills. Damage / death (dashed) = damage taken / deaths. Reference 225 = one Spartan life: for kills, closer to 225 is more efficient; for deaths, above 225 means good resistance.',
-    rendementLabel: 'Damage / kill',
-    resistanceLabel: 'Damage / death',
+    rendementCardTitle: 'Offensive efficiency — damage per kill',
+    resistanceCardTitle: 'Defensive resistance — damage per death',
+    description: 'Damage / kill = damage dealt / kills. Damage / death = damage taken / deaths. Reference 225 = one Spartan life: for kills, closer to 225 is more efficient; for deaths, above 225 means good resistance.',
     refLabel: '1 life ({{HP}})',
     noData: 'No efficiency data available.',
   },
