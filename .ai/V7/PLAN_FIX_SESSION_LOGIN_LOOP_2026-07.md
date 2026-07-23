@@ -60,28 +60,28 @@ anonyme transitoire (focus d'onglet, navigation multi-requêtes). La vraie déco
 
 Fichier : `apps/go-api/internal/platform/session/store.go`
 
-- [x] `Save` : écriture dans un fichier temporaire du **même répertoire** (`os.CreateTemp(s.dir,
-  sanitizeID(id)+"-*.tmp")`) -> `Write` -> `Close` -> `os.Rename(tmp, target)` (atomic-replace
-  cross-plateforme). En cas d'erreur : `os.Remove(tmp)` + retour de l'erreur (pas d'avalage).
-- [x] `PurgeExpired` : nettoie les `*.tmp` orphelins (guard `orphanTmpTTL = 1h` pour ne jamais
-  supprimer le `.tmp` d'un `Save` en vol) ; non comptés comme sessions.
-- [x] **RWMutex** sur le `Store` (au lieu du simple `sync.Mutex` sur `Save` — écart au plan justifié) :
-  `Save` prend `Lock`, `Load` prend `RLock`. NÉCESSAIRE et non optionnel : sous **Windows**, le rename
-  atomique seul ne suffit pas intra-process — `os.Rename` échoue et `os.ReadFile` prend une *sharing
-  violation* si un handle concurrent tient le fichier (empiriquement 109 Load nil / 177 Save err au 1er
-  run avec rename seul). Le RWMutex sérialise lecture/écriture intra-process (les deux plateformes) ; le
-  rename atomique reste la protection **cross-process** (doublon `air`). Couvre aussi les lost-updates
-  login/OAuth. `Delete` reste sans verrou (appelé sous `RLock` par `Load` sur expiry -> pas de deadlock).
+- [ ] `Save` : écrire dans un fichier temporaire du **même répertoire** puis **rename atomique**
+  vers la cible. Motif : `os.CreateTemp(s.dir, sanitizeID(id)+"-*.tmp")` -> `Write` -> `Close` ->
+  `os.Rename(tmp, target)` (atomic-replace cross-plateforme : `rename(2)` Linux,
+  `MoveFileEx(REPLACE_EXISTING)` Windows via `os.Rename`). En cas d'erreur : supprimer le temp et
+  renvoyer l'erreur (pas d'avalage). `Load` verra toujours un fichier **complet** (ancien ou nouveau).
+- [ ] `PurgeExpired` : ignorer/nettoyer aussi les `*.tmp` orphelins (crash entre write et rename)
+  pour ne pas les compter comme sessions.
+- [ ] (Optionnel, ceinture-bretelles intra-process) `sync.Mutex` sur le `Store` sérialisant `Save`
+  (évite aussi les lost-updates sur écritures « meaningful » login/OAuth). Le rename atomique reste
+  le correctif requis (seul valable **cross-process**, ex. doublon `air`).
 
 Fichier : `apps/go-api/internal/api/middleware/session.go`
-- [x] L59 `store.Touch(sess)` : échec logué via
-  `slog.ErrorContext(r.Context(), "session touch failed", "err", err)`.
+- [ ] L59 `_ = store.Touch(sess)` : logguer l'échec au lieu de l'avaler —
+  `slog.ErrorContext(r.Context(), "session touch failed", "err", err)` (CLAUDE.md règle 3 / anti-pattern
+  « swallowed error »).
 
 Test garde-rail : `apps/go-api/internal/platform/session/store_concurrent_test.go` (nouveau)
-- [x] 4 writers (`Load`->`Touch` sur copie fraîche par itération) + 4 readers (`Load` en boucle
-  ~200 ms) sur une session `Username="alice"`. **Assertion** : chaque `Load` non-`nil` + `Username`
-  préservé. **ROUGE** au 1er run (rename atomique seul, sans RLock : 109 nil) -> **VERT** après le
-  RWMutex (`-race`, `-count=3`).
+- [ ] Store en répertoire temp, session `Username` non nil sauvegardée. N goroutines : moitié
+  `Touch` en boucle (sur une **copie** rechargée par itération pour éviter une data-race Go sur le
+  pointeur `sess`), moitié `Load(id)` en boucle ~200 ms. **Assertion** : chaque `Load` renvoie
+  non-`nil` et `Username` préservé. Doit être **rouge** avec l'implémentation actuelle, **vert** après
+  le rename atomique.
 
 **Gate étape 1 :**
 ```
@@ -89,47 +89,34 @@ cd apps/go-api && go test ./internal/platform/session/... ./internal/api/middlew
 cd apps/go-api && go test -race ./internal/platform/session/...   # OK ici : pas de driver DuckDB
 cd apps/go-api && go test ./...
 ```
-Résultat (2026-07-21) : session + middleware **verts** ; `-race` session **vert** (count=3) ;
-`go build ./...` + `go vet` (paquets touchés) **verts** ; `go test ./...` **vert sauf** un flake
-`internal/sync` (GET réseau réel vers halostats.svc.halowaypoint.com -> `context deadline exceeded`
-sous charge parallèle) qui **passe en isolation** (`go test ./internal/sync/` = ok). Sans lien avec
-session/middleware — cf. Découvertes.
 
 ### Étape 2 — Frontend : ne pas éjecter un utilisateur authentifié sur un anonyme transitoire
 
 Fichier : `apps/web/src/routes/__root.tsx` (effet L55-84)
-- [x] Avant `hydrateFromBootstrap(data)`, capture `wasAuthenticated =
+- [ ] Avant `hydrateFromBootstrap(data)`, capturer `wasAuthenticated =
   useAppShellStore.getState().currentUsername`.
-- [x] Si `!data.current_username && wasAuthenticated` (rétrogradation suspecte via refetch) :
-  `return` **avant** hydrate ET redirection + `log.warn('bootstrap:anon_downgrade', ...)`
-  (`@/components/shell/_logger`). La redirection `/login` ne s'exécute que sur un anonyme
-  **autoritaire** (`!wasAuthenticated` : chargement frais, reload post-logout).
-- [x] **Variante choisie (écart aux 2 options du plan, justifié)** : `return` early = **ne pas
-  hydrater du tout** sur downgrade suspect, plutôt que « hydrater puis restaurer `currentUsername` ».
-  Raison : en mode xbox un bootstrap anonyme renvoie AUSSI `available_players: []`, `current_player:
-  null`, `is_admin: false` — hydrater en ne préservant QUE `currentUsername` laisserait un état
-  mi-anonyme incohérent (shell sans joueurs). Le skip préserve l'état authentifié **complet**. Comme
+- [ ] Si `!data.current_username && wasAuthenticated` (rétrogradation suspecte via refetch) :
+  **ne pas** `navigate('/login')` **et** **ne pas** rabattre `currentUsername` à `null` (préserver la
+  dernière valeur connue) ; logguer un warning via le logger client (`components/shell/_logger` ou
+  équivalent). La redirection `/login` ne s'exécute que sur un anonyme **autoritaire**
+  (`!wasAuthenticated` : chargement frais, reload post-logout).
+- [ ] Implémentation : soit gate autour du bloc redirection + restauration `currentUsername`
+  après hydrate, soit variante d'hydrate qui ne rétrograde pas `currentUsername`. Comme
   `index.tsx`/`resolveIndexRedirect` et `players/$playerSlug.tsx` lisent le **store**, préserver le
   store corrige **tous** les vecteurs d'un coup.
-- [x] `refetchOnWindowFocus: true` conservé (inchangé). Un refetch AUTHENTIFIÉ (cas nominal) hydrate
-  toujours normalement, bannière reauth incluse ; seul le downgrade **anonyme** est ignoré.
-- [x] (hors items plan, in-scope) `RootLayout` exporté pour testabilité ;
-  `vite.config.ts` : `routeFileIgnorePattern: '\\.test\\.tsx?$'` pour exclure les tests colocalisés
-  du codegen de routes (sinon warning « does not export a Route »).
+- [ ] Conserver `refetchOnWindowFocus: true` (la bannière reauth se rafraîchit toujours ; les autres
+  champs continuent d'être hydratés).
 
-Tests : `apps/web/src/routes/__root.test.tsx`
-- [x] store authentifié (`currentUsername='alice'`) + `/bootstrap` refetch anonyme => `navigateMock`
-  **jamais** appelé, `currentUsername` reste `'alice'`.
-- [x] montage frais (store vide) + bootstrap anonyme => `navigate({ to: '/login' })` appelé,
-  `currentUsername` null (chemin logout intact).
+Tests : `apps/web/src/routes/__root.test.tsx` (ou colocalisé)
+- [ ] store authentifié + `/bootstrap` refetch anonyme => **aucun** `navigate('/login')`, `currentUsername`
+  préservé.
+- [ ] montage frais (store vide) + bootstrap anonyme => redirige vers `/login` (chemin logout intact).
 
 **Gate étape 2 :**
 ```
 make check-types
 make test-web        # vitest hors sandbox : dangerouslyDisableSandbox=true
 ```
-Résultat (2026-07-21) : `check-types` (tsc -b) **vert** ; `__root.test.tsx` 2/2 **vert** ;
-`make test-web` (suite complète) **vert** : 276 fichiers, 2382 tests, 14 skipped, 0 échec.
 
 ## Vérification end-to-end
 
@@ -159,28 +146,6 @@ Résultat (2026-07-21) : `check-types` (tsc -b) **vert** ; `__root.test.tsx` 2/2
 - `apps/web/src/lib/api/client.ts:148` dispatch `levelup:auth-required` mais **aucun listener**
   n'existe (code mort / câblage incomplet). Serait le **bon** canal pour une vraie expiration en cours
   de session (401 sur appel API réel), complémentaire du fix. À câbler dans un lot séparé.
-- **Flake `internal/sync`** : ~~un test tente un `GET` réseau réel...~~ **RÉSOLU (lot complémentaire, cf.
-  ci-dessous)**. Coupable : `TestHaloClient_GetMatchHistory_ParamsValides` (+ `TestPooledHaloClientGetMatchHistory`)
-  faisaient de vrais appels réseau. Rendus hermétiques (contexte déjà annulé → échec HTTP instantané,
-  `duration_ms=0`, zéro I/O réseau). Skip `-short` obsolète retiré. `time` import retiré.
-
-## Lot complémentaire (demande utilisateur) — couverture logging + dette préexistante
-
-Au-delà du plan initial, sur demande : couverture de logging dans le dossier `logs/` dédié + fix des
-échecs/dettes préexistants. Réalisé et testé (2026-07-21) :
-
-- **`session.Store` — logs des erreurs avalées** (module auto-détecté = `session` → `logs/session.log`) :
-  - `Load(ctx, id)` (signature enrichie du ctx) : trace un WARN sur read IO / JSON corrompu (le retour
-    `nil` silencieux était le point aveugle du bug) ; un fichier ABSENT reste silencieux (cas nominal).
-  - `NewStore` : log ERROR si `MkdirAll` échoue (sessions non persistables → login cassé).
-  - `PurgeExpired` : log ERROR si `ReadDir` échoue (fuite disque sinon).
-- **Handlers auth — 3 `Save` avalés (`_ =`) corrigés** (`auth.go`, `auth_xbox_oauth.go` ×2) : log
-  `slog.ErrorContext` (anti-pattern #10 « swallowed error »).
-- **Tests** : `TestStore_Load_CorruptFile_LogsWarnAndReturnsNil` (nil + WARN sur corruption),
-  `TestStore_Load_NotFound_NoLog` (absent = silencieux). Middleware `loadOrCreate` passe `r.Context()`.
-- **Dette flake** : 2 tests `internal/sync` rendus hermétiques (cf. ci-dessus).
-- Gates : `go test ./...` **vert** (flake éliminé) ; `go vet` défaut + `-tags=integration` **verts** ;
-  `-race` session/middleware **vert**.
 
 ## Branche & livraison
 
@@ -191,22 +156,3 @@ Au-delà du plan initial, sur demande : couverture de logging dans le dossier `l
 - **`push main` = déploiement prod automatique** : prévenir avant merge/push. PR recommandée.
 - Entrée `.ai/thought_log.md` avant commit ; passer `delivery-checklist` avant livraison.
 - Exécution sous contrat `plan-execution` (ordre strict, gate par étape, statut par item).
-
-## Addendum revue 2026-07-22 (post-merge branche `feat/monitoring-lusr-fixes`)
-
-Livré : commits `13b044ab3` (étape 1), `5c437a69a` (étape 2), lot complémentaire `7f5587458`/
-`e49c7ea69`/`8b07e9082`, merge `e76f48bb7`. La revue complète de la branche a confirmé 2 défauts
-résiduels, corrigés le 2026-07-22 (même branche) :
-
-- `[x]` **`PurgeExpired` hors verrou + suppression sur erreur de lecture** : la purge (boot + 6h)
-  ne prenait pas le RWMutex de l'étape 1 et supprimait le fichier sur TOUTE erreur `os.ReadFile`
-  (une sharing violation transitoire d'un Save concurrent supprimait une session vivante →
-  déconnexion permanente). Fix : Lock exclusif par fichier (`purgeSessionFileLocked`), erreur de
-  lecture = WARN + conservation, JSON corrompu supprimé seulement si vieux (`corruptSessionTTL` 1h).
-  Tests : sharing violation Windows déterministe (`store_purge_windows_test.go`), purge concurrente
-  d'une session vivante sous -race, corrompu frais/vieux.
-- `[x]` **Découverte « `levelup:auth-required` sans listener » câblée** (était consignée hors
-  périmètre) : listener au RootLayout — vraie expiration (401 `auth_required` hors /bootstrap) →
-  reload plein vers `/` si on se croyait authentifié (anti-rafale ; no-op si store anonyme). Sans ce
-  câblage, le garde anti-éjection de l'étape 2 piégeait l'utilisateur dans un shell authentifié mort
-  sur une expiration réelle (TTL 7 j, logout autre onglet).
