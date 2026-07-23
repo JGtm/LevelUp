@@ -51,6 +51,7 @@ function finite(v: number | null | undefined): number | null {
  * D5 : un match sans attendu n'ajoute rien au cumul (report de la dernière
  * valeur) mais figure quand même sur l'axe (point porté à la valeur courante).
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function computeCumulativeFdaGap(matches: SessionDetailMatchRow[]): FdaGapPoint[] {
   const sorted = [...matches].sort((a, b) => a.start_time.localeCompare(b.start_time))
   let running = 0
