@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 )
 
 func TestService_CreateSquad_CreatesAndAddsMembers(t *testing.T) {
@@ -208,9 +209,11 @@ type fakeSquadMatchProvider struct {
 	err            error
 	usualPlaylists []string
 	usualModes     []string
+	lastSince      time.Time // capture la borne basse reçue (Lot 4)
 }
 
-func (f *fakeSquadMatchProvider) SquadMatchMetrics(_ context.Context, _ []string, _, _ string, _ int) ([]SquadMatchMetric, error) {
+func (f *fakeSquadMatchProvider) SquadMatchMetrics(_ context.Context, _ []string, _, _ string, _ int, since time.Time) ([]SquadMatchMetric, error) {
+	f.lastSince = since
 	return f.matches, f.err
 }
 
@@ -270,6 +273,58 @@ func TestService_EvaluateSquadChallenge_RequiresTemplate(t *testing.T) {
 
 	if _, err := svc.EvaluateSquadChallenge(context.Background(), "sc1", "alice"); !errors.Is(err, ErrInvalidInput) {
 		t.Errorf("défi sans template doit être rejeté, got %v", err)
+	}
+}
+
+// TestSquadEvalSince (Lot 4, item 4.1/4.2) : la borne basse est created_at, sauf
+// rolling_days où la plus récente de (created_at, now-N j) l'emporte.
+func TestSquadEvalSince(t *testing.T) {
+	created := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+	now := time.Date(2026, 7, 20, 0, 0, 0, 0, time.UTC)
+	cases := []struct {
+		name       string
+		windowType WindowType
+		windowVal  string
+		want       time.Time
+	}{
+		{"last_n_matches → created_at", WindowLastNMatches, "5", created},
+		{"session → created_at", WindowSession, "3", created},
+		{"rolling_days récent > created", WindowRollingDays, "5", now.AddDate(0, 0, -5)},
+		{"rolling_days ancien < created → created", WindowRollingDays, "60", created},
+		{"rolling_days invalide → created", WindowRollingDays, "abc", created},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			sc := SquadChallenge{CreatedAt: created, WindowType: tc.windowType, WindowValue: tc.windowVal}
+			if got := squadEvalSince(sc, now); !got.Equal(tc.want) {
+				t.Errorf("squadEvalSince = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestService_EvaluateSquadChallenge_BoundsSinceToCreatedAt (Lot 4, item 4.1) :
+// EvaluateSquadChallenge transmet une borne basse = created_at au provider (plus
+// de complétion rétroactive avec l'historique antérieur à la création).
+func TestService_EvaluateSquadChallenge_BoundsSinceToCreatedAt(t *testing.T) {
+	svc, _, _, scRepo, sqRepo, tplRepo := buildFullService()
+	prov := &fakeSquadMatchProvider{matches: []SquadMatchMetric{
+		{MatchID: "m1", Xuids: []string{xA, xB}, Values: map[string]float64{xA: 6, xB: 2}},
+	}}
+	svc.deps.SquadMatches = prov
+	created := time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC)
+	scRepo.getResp = SquadChallenge{
+		ID: "sc1", SquadID: "sq1", TemplateID: "tpl1", TitleSlug: "halo_infinite",
+		TargetPerMember: 10, WindowType: WindowLastNMatches, WindowValue: "5", CreatedAt: created,
+	}
+	tplRepo.templates = []Template{{ID: "tpl1", Metric: "kills"}}
+	sqRepo.members = []SquadMember{{SquadID: "sq1", Xuid: xA, UserID: "alice"}, {SquadID: "sq1", Xuid: xB, UserID: "bob"}}
+
+	if _, err := svc.EvaluateSquadChallenge(context.Background(), "sc1", "alice"); err != nil {
+		t.Fatalf("evaluate: %v", err)
+	}
+	if !prov.lastSince.Equal(created) {
+		t.Errorf("borne since = %v, want created_at %v", prov.lastSince, created)
 	}
 }
 

@@ -113,6 +113,28 @@ comptés à created_at du défi — plus de complétion rétroactive ; fenêtres
 filtrage pool cumulatif).
 
 ---
+## [2026-07-23] PLAN_SQUAD_CHALLENGES — Lot 4 (sémantique d'évaluation) CLÔTURÉ
+
+**Statut** : Complété. Branche `fix/squad-challenges-workflow`.
+
+**Décision technique principale** : ajout d'une borne basse `since time.Time` à
+`SquadMatchProvider.SquadMatchMetrics` — le provider filtre `start_time_canonical >= since`
+dans `candidateMatches` (fragment SQL timezone canonique). `EvaluateSquadChallenge` calcule
+`since = squadEvalSince(sc, s.deps.Now())` = created_at du défi, resserré à `now - N jours`
+pour `rolling_days` (la plus récente des deux bornes). Cœur du fix F : un défi ne se complète
+plus rétroactivement avec l'historique antérieur à sa création. `session` = approximation
+bornée created_at (documentée). Item 4.3 (threshold squad, gap G) : option « documenter »
+retenue — légende UI cumulative FR/EN sous le pool ; impl threshold squad = backlog.
+
+**Résultats observés** : go build OK ; tests prestige (`TestSquadEvalSince` 5 cas +
+`_BoundsSinceToCreatedAt` + éval existants) + persist provider verts ; tsc/eslint/vitest verts.
+**Vérifié LIVE** : défi créé + évalué immédiatement → progression 0/0 (candidate_matches:0,
+since=created_at loggé), contre le bug rétroactif 181/243 d'avant. Escouade de test supprimée.
+
+**Conclusion / prochaine étape** : Lot 5 (multi-titre halo_5 + finitions : catalogue h5 ou
+dégradation capability, pool éphémère assumé, i18n manifests, renommage éventuel).
+
+---
 ## [2026-07-23] Réintégration + validation des 4 retouches FDA gap sur origin/main
 
 **Statut** : Complété. Branche `integrate/fda-gap-followups` rebasée sur `origin/main`

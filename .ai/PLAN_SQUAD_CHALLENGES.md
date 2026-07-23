@@ -176,20 +176,24 @@ garantie que `RenameSquad`). Migration additive `add_archived_at_to_squad_challe
       Garde anti-ART (`-tags=integration`) vert, persist prestige (real DB) vert. Route
       ajoutée au test de garde acteur (2 tables). tsc + eslint + vitest + paths verts.
 
-## Lot 4 — Sémantique d'évaluation (P2)
+## Lot 4 — Sémantique d'évaluation (P2) — CLÔTURÉ 2026-07-23
 
-- [ ] 4.1 Borner les matchs comptés à `created_at` du défi (filtre dans
-      `SquadMatchMetrics` ou en aval avant `AggregateSquadProgress`) — minimum vital,
-      corrige le cœur de F : plus de complétion rétroactive.
-- [ ] 4.2 Mapper réellement la fenêtre : `rolling_days` → borne temporelle
-      `now - N jours` (max avec `created_at`) ; `session` → approximation documentée
-      (borne `created_at` + gap de session existant si réutilisable —
-      vérifier `internal/analysis` avant d'implémenter, skill `go-features`).
-- [ ] 4.3 Court terme pour G : filtrer le pool (`RefreshSquadPool`) aux templates
-      compatibles cumulatif OU documenter l'agrégation cumulative dans le libellé UI.
-      L'implémentation threshold squad complète reste hors périmètre (noter au backlog).
-- [ ] 4.4 Tests Go table-driven : matchs antérieurs exclus, fenêtre rolling_days,
-      pool filtré.
+- [x] 4.1 Borne basse `since` ajoutée à `SquadMatchProvider.SquadMatchMetrics` (param
+      `since time.Time`) ; le provider filtre `start_time_canonical >= since` dans
+      `candidateMatches`. `EvaluateSquadChallenge` calcule `since = squadEvalSince(sc, now)`
+      = created_at. **Vérifié live** : défi créé + évalué immédiatement → progression 0/0
+      (candidate_matches:0), plus le bug rétroactif 181/243.
+- [x] 4.2 `squadEvalSince` : `rolling_days` → `max(created_at, now - N j)` ;
+      `session`/`last_n_matches` bornés à created_at (le compteur `limit` gère la
+      profondeur). `session` = approximation documentée (pas de découpage de session
+      escouade — noté dans le commentaire, à affiner si besoin).
+- [x] 4.3 Agrégation cumulative documentée dans l'UI : légende sous le pool (« Défi
+      collectif : chaque membre cumule la métrique… sur les matchs postérieurs à la
+      création »), FR + EN. Option « documenter » du plan retenue ; threshold squad
+      complet reste au backlog (§ Hors périmètre).
+- [x] 4.4 Tests Go table-driven : `TestSquadEvalSince` (5 cas : last_n/session/rolling
+      récent/rolling ancien/rolling invalide), `_BoundsSinceToCreatedAt` (borne transmise
+      = created_at). prestige + persist provider verts. tsc/eslint/vitest verts.
 
 ## Lot 5 — Multi-titre + finitions (P3)
 
@@ -243,3 +247,7 @@ garantie que `RenameSquad`). Migration additive `add_archived_at_to_squad_challe
   tests prestige/handlers/wire/migration/persist, anti-ART integration, tsc/eslint/vitest).
   Vérifié LIVE : expires_at +7 j exact, requested_by vide → 400, abandon → 204 + liste vide,
   cascade delete → 204. → passage Lot 4.
+- 2026-07-23 : **Lot 4 CLÔTURÉ**. Sémantique d'évaluation : borne basse `since` (created_at,
+  resserrée rolling_days) transmise au provider qui filtre `start_time >= since`. Fin de la
+  complétion rétroactive. Légende UI cumulative. Gates verts. Vérifié LIVE : éval immédiate
+  → 0/0 (candidate_matches:0). → passage Lot 5.

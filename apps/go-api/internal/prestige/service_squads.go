@@ -257,7 +257,10 @@ func (s *service) EvaluateSquadChallenge(ctx context.Context, squadChallengeID, 
 	}
 	other := s.otherKnownTeammates(ctx, sc.SquadID, members, roster)
 	limit := squadWindowLimit(sc.WindowType, sc.WindowValue)
-	matches, err := s.deps.SquadMatches.SquadMatchMetrics(ctx, roster, sc.TitleSlug, metric, limit)
+	// Borne basse temporelle : jamais avant created_at (fin de la complétion
+	// rétroactive, Lot 4) ; resserrée par la fenêtre pour rolling_days.
+	since := squadEvalSince(sc, s.deps.Now())
+	matches, err := s.deps.SquadMatches.SquadMatchMetrics(ctx, roster, sc.TitleSlug, metric, limit, since)
 	if err != nil {
 		return nil, fmt.Errorf("squad match metrics: %w", err)
 	}
@@ -265,8 +268,30 @@ func (s *service) EvaluateSquadChallenge(ctx context.Context, squadChallengeID, 
 	s.persistSquadProgress(ctx, squadChallengeID, members, progress)
 	slog.InfoContext(ctx, "prestige: squad challenge evaluated",
 		"squad_challenge_id", squadChallengeID, "roster", len(roster),
-		"candidate_matches", len(matches), "members", len(progress))
+		"candidate_matches", len(matches), "members", len(progress), "since", since)
 	return progress, nil
+}
+
+// squadEvalSince calcule la borne basse temporelle des matchs comptés pour un
+// défi d'escouade (Lot 4) :
+//   - JAMAIS avant created_at → un défi ne se complète pas rétroactivement avec
+//     l'historique antérieur à sa création (bug observé : 181/243 vs cible 7) ;
+//   - pour une fenêtre rolling_days, pas avant now - N jours (la plus récente
+//     des deux bornes l'emporte).
+//
+// Les fenêtres session / last_n_matches sont bornées par created_at (le compteur
+// de matchs `limit` gère déjà la profondeur) ; session reste une approximation
+// (pas de découpage de session côté escouade) — documenté, à affiner si besoin.
+func squadEvalSince(sc SquadChallenge, now time.Time) time.Time {
+	since := sc.CreatedAt
+	if sc.WindowType == WindowRollingDays {
+		if n, err := strconv.Atoi(sc.WindowValue); err == nil && n > 0 {
+			if cutoff := now.AddDate(0, 0, -n); cutoff.After(since) {
+				since = cutoff
+			}
+		}
+	}
+	return since
 }
 
 // SquadOrientation retourne l'axe focal de l'escouade (le plus faible du profil

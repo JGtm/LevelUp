@@ -75,6 +75,7 @@ const STRINGS = {
     create: 'Créer',
     creating: 'Création…',
     poolEmpty: 'Aucun défi proposé.',
+    poolCaption: 'Défi collectif : chaque membre cumule la métrique jusqu’à la cible, sur les matchs de l’escouade postérieurs à la création.',
     poolError: 'Échec de la génération des défis',
     orientation: (axis: string) => `Axe à renforcer : ${axis}`,
     axisLabels: {
@@ -124,6 +125,7 @@ const STRINGS = {
     create: 'Create',
     creating: 'Creating…',
     poolEmpty: 'No challenge suggested.',
+    poolCaption: 'Team challenge: each member accumulates the metric toward the target, over squad matches after creation.',
     poolError: 'Failed to generate challenges',
     orientation: (axis: string) => `Focus to improve: ${axis}`,
     axisLabels: {
@@ -504,6 +506,10 @@ function SquadObjectivesPanel({
 
         {refreshPool.isSuccess && pool.length === 0 ? (
           <p className="mt-2 text-xs text-muted-foreground">{t.poolEmpty}</p>
+        ) : null}
+
+        {pool.length > 0 ? (
+          <p className="mt-2 text-2xs text-muted-foreground">{t.poolCaption}</p>
         ) : null}
 
         {pool.length > 0 ? (

@@ -36,8 +36,10 @@ func NewPrestigeSquadMatchProvider(reader duckdb.SharedReader) *PrestigeSquadMat
 var _ prestige.SquadMatchProvider = (*PrestigeSquadMatchProvider)(nil)
 
 // SquadMatchMetrics retourne les `limit` derniers matchs où tout le roster a
-// joué, chacun avec ses participants (Xuids) + la métrique par membre (Values).
-func (p *PrestigeSquadMatchProvider) SquadMatchMetrics(ctx context.Context, rosterXUIDs []string, _ string, metric string, limit int) ([]prestige.SquadMatchMetric, error) {
+// joué (start_time >= since), chacun avec ses participants (Xuids) + la métrique
+// par membre (Values). since borne le bas (created_at du défi + fenêtre) — un
+// since zéro désactive la borne.
+func (p *PrestigeSquadMatchProvider) SquadMatchMetrics(ctx context.Context, rosterXUIDs []string, _ string, metric string, limit int, since time.Time) ([]prestige.SquadMatchMetric, error) {
 	if len(rosterXUIDs) == 0 {
 		return nil, nil
 	}
@@ -58,7 +60,7 @@ func (p *PrestigeSquadMatchProvider) SquadMatchMetrics(ctx context.Context, rost
 	}
 	defer release()
 
-	candidates, err := p.candidateMatches(ctx, db, rosterXUIDs, limit)
+	candidates, err := p.candidateMatches(ctx, db, rosterXUIDs, limit, since)
 	if err != nil {
 		return nil, err
 	}
@@ -69,20 +71,28 @@ func (p *PrestigeSquadMatchProvider) SquadMatchMetrics(ctx context.Context, rost
 }
 
 // candidateMatches retourne les match_id (les plus récents) où TOUT le roster a
-// joué : COUNT(DISTINCT xuid parmi le roster) == taille du roster.
-func (p *PrestigeSquadMatchProvider) candidateMatches(ctx context.Context, db *sql.DB, roster []string, limit int) ([]string, error) {
+// joué : COUNT(DISTINCT xuid parmi le roster) == taille du roster. Si since est
+// non nul, seuls les matchs dont le start_time canonique est >= since sont
+// retenus (borne basse Lot 4 — pas de complétion rétroactive).
+func (p *PrestigeSquadMatchProvider) candidateMatches(ctx context.Context, db *sql.DB, roster []string, limit int, since time.Time) ([]string, error) {
+	args := toAnyArgs(roster)
+	sinceClause := ""
+	if !since.IsZero() {
+		sinceClause = " AND " + duckdb.StartTimeCanonicalSQL("mr") + " >= ?"
+		args = append(args, since)
+	}
 	q := fmt.Sprintf(`
 		SELECT mp.match_id
 		FROM match_participants mp
 		JOIN match_registry mr ON mr.match_id = mp.match_id
-		WHERE mp.xuid IN (%s)
+		WHERE mp.xuid IN (%s)%s
 		GROUP BY mp.match_id, `+duckdb.StartTimeCanonicalSQL("mr")+`
 		HAVING COUNT(DISTINCT mp.xuid) = %d
 		ORDER BY `+duckdb.StartTimeCanonicalSQL("mr")+` DESC
 		LIMIT %d
-	`, sqlInPlaceholders(len(roster)), len(roster), limit)
+	`, sqlInPlaceholders(len(roster)), sinceClause, len(roster), limit)
 
-	rows, err := db.QueryContext(ctx, q, toAnyArgs(roster)...)
+	rows, err := db.QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil, fmt.Errorf("PrestigeSquadMatchProvider.candidateMatches: %w", err)
 	}
