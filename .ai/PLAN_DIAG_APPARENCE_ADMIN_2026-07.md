@@ -306,19 +306,19 @@ docs/historique se justifient un par un) + `grep -rn "parity_check" .` → 0 + g
 Objectif : exposer le POURQUOI de la résolution sans dupliquer la logique existante
 (règle ≤ 2 copies : refactorer, ne pas copier).
 
-- [ ] E1. Créer dans `internal/sync/haloclient/` un type exporté
+- [x] E1. Créer dans `internal/sync/haloclient/` un type exporté
       `AppearanceDiagnosis` : par composant {`ServedFrom` (live/carry), `ResolvedURL`,
       `Verdict` (enum 5 valeurs), `Detail` (clé technique : mapping_miss,
       no_positive_cfg, cms_http_error, no_banner_field, …)}.
-- [ ] E2. Extraire de `ResolveNameplateURL` (`spartan_nameplate_resolver.go:177`) une
+- [x] E2. Extraire de `ResolveNameplateURL` (`spartan_nameplate_resolver.go:177`) une
       fonction interne unique qui retourne (url, verdict, detail) ;
       `ResolveNameplateURL` devient un wrapper qui n'en garde que l'url (comportement
       byte-identique, logs inchangés). Ajouter une fonction exportée
       `DiagnoseNameplate(ctx, emblemPath, cfg, tokens…)` sur cette même interne.
       INTERDIT : dupliquer le fetch mapping/CMS.
-- [ ] E3. Pendant emblème/backdrop : diagnostiquer via `resolveCustomizationImageURL`
+- [x] E3. Pendant emblème/backdrop : diagnostiquer via `resolveCustomizationImageURL`
       (succès/échec HTTP → ok/transient). Service tag : présent/absent du payload.
-- [ ] E4. Tests unitaires haloclient : verdicts sur cache mapping seedé
+- [x] E4. Tests unitaires haloclient : verdicts sur cache mapping seedé
       (`seedEmblemMappingCacheForTest`), cas `upstream_missing` (JSON CMS réel du cas
       3806589 en fixture), cas transient (HTTP KO), cas cfg positive directe.
 
@@ -469,6 +469,27 @@ inattendu.
   (surtout la dominante), pas un bug de plomberie.
 
 ## Journal d'exécution
+
+### [2026-07-23] Lot E — CLOS (agent Opus + revue orchestrateur)
+
+- Extraction : cœur unique `resolveNameplate(ctx, path, cfg, tokens) (url, verdict,
+  detail)` dans le resolver ; `ResolveNameplateURL` = wrapper mince (URL seule) ;
+  `DiagnoseNameplate` + `DiagnoseCustomizationImage` + `DiagnoseServiceTag` dans
+  `spartan_nameplate_diagnosis.go` (169 L). Type `AppearanceDiagnosis{ServedFrom,
+  ResolvedURL, Verdict, Detail}` — enum 5 verdicts défini, resolver n'émet que
+  ok/upstream_missing/transient (auth_required/not_supported posés par le service F).
+- Mapping verdict/detail : mapping_hit→ok(live) ; cfg positive→ok/mapping_miss(live,
+  caveat fallback) ; CMS 200 sans cfg positive→upstream_missing/no_positive_cfg(carry,
+  log Info inchangé) ; HTTP/parse KO→transient/cms_http_error(carry, log Warn inchangé).
+- BYTE-IDENTIQUE PROUVÉ : diff de `spartan_nameplate_resolver_test.go` = néant, les 8
+  `TestResolveNameplateURL_*` passent inchangés. Fixture 3806589 reconstruite depuis
+  les invariants du thought_log 2026-07-08 (une seule cfg négative −1766636888) —
+  cadenasse `upstream_missing` bout-en-bout (+ pendant transient CMS 500).
+- Refactor au service du lot : `firstPositiveEmblemCfg([]byte)` extrait (testable sans
+  réseau). Copie tolérée (2/2) avec le helper de test préexistant — fusion candidate
+  notée, non traitée (contrainte diff-néant).
+- Gate re-exécuté par l'orchestrateur : haloclient ok (11 nouveaux tests), vet 0,
+  archlint ok, build 0.
 
 ### [2026-07-23] Lot D — CLOS, VOLET 1 COMPLET (agent Opus + revue orchestrateur)
 

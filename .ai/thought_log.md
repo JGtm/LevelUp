@@ -140,6 +140,25 @@ côté UI (la route lab était sa seule application serveur) — à trancher hor
 **Prochaine étape** : VOLET 2 — Lot E (extraction diagnostique du resolver nameplate
 haloclient, byte-identique, + DiagnoseNameplate + tests fixtures 3806589).
 
+## [2026-07-23] Admin retours — Lot E clos (branche feat/admin-retours-diag)
+
+**Statut** : Complété. Agent Opus + revue/gate orchestrateur.
+
+**Décisions techniques** : cœur unique `resolveNameplate → (url, verdict, detail)` ;
+`ResolveNameplateURL` wrapper mince (signature et sémantique intactes) ;
+`DiagnoseNameplate`/`DiagnoseCustomizationImage`/`DiagnoseServiceTag` dans un fichier
+voisin du même package. Enum `Verdict` fermé 5 valeurs (resolver n'émet que
+ok/upstream_missing/transient). Byte-identique PROUVÉ : diff des tests existants =
+néant, 8 TestResolveNameplateURL_* inchangés verts. Fixture 3806589 (une cfg négative
+−1766636888, zéro positive) cadenasse upstream_missing ; pendant transient (CMS 500).
+
+**Résultats/gate** (re-exécutés) : haloclient ok (+11 tests), vet 0, archlint ok
+(garde no-halowaypoint-literal a même attrapé un commentaire de l'agent — reformulé),
+build 0.
+
+**Prochaine étape** : Lot F (service appearance_diag + endpoint Huma
+GET /admin/diag/appearance/{player_slug} — PIÈGE xuid du PROFIL, jamais HaloXUID(ctx)).
+
 ## [2026-07-22] D7 titre dans l'URL — Phase 0 close (branche feat/title-slug-in-url)
 
 **Statut** : En cours (Phase 0/6 close), plan `.ai/PLAN_TITLE_SLUG_URL_2026-07.md` sous
