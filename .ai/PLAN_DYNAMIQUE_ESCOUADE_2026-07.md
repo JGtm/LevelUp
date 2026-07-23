@@ -217,13 +217,23 @@ vérif visuelle Timeseries + Dynamique + Session.
 
 ## Phase 5 — Essai : aire Rendement → ligne « 1 vie » (Timeseries)
 
-- [ ] 5.1 `features/timeseries/TimeseriesSquadAdapted.tsx` (section Rendement &
-      Résistance) : `areaStyle` sur la SEULE série Rendement,
-      `origin: oneLife`, opacité ~0.10, couleur alignée sur le dégradé existant.
-      Commit isolé (revert facile si non concluant).
+- [~] 5.1 `features/timeseries/TimeseriesSquadAdapted.tsx` (section Rendement &
+      Résistance) : `areaStyle` ajouté sur la SEULE série Rendement (dégâts/frag),
+      `origin: hp` (barème « 1 vie » du titre, origin numérique ECharts >= 5.3.2),
+      `opacity: 0.1`, couleur = même `offensiveDamageGradient(dmgKill, hp)` que le
+      trait (aucune couleur hex nouvelle). Résistance (pointillé) inchangée, sans aire.
+      Modification localisée d'UNE propriété (trivialement revertable). Code posé,
+      gates verts. Statut `[~]` : la **validation visuelle utilisateur RESTE OUVERTE**
+      (thème clair + sombre) — décision go/no-go en attente. Non concluant → revert de
+      la propriété `areaStyle`, item repassé `[!]` avec justification.
 
 **Gate P5** : vérif visuelle par l'utilisateur (thème clair + sombre). Non
 concluant → revert du commit P5, item passé `[!]` avec justification.
+
+> Journal P5 [2026-07-23] — Code posé. `npx tsc --noEmit` exit 0 ; `npx vitest run
+> src/features/timeseries` : 5 fichiers / 43 tests passés. Diff = 1 propriété
+> `areaStyle` ajoutée (+ commentaire) sur la série Rendement. Validation visuelle
+> utilisateur NON réalisée (hors périmètre agent) — go/no-go en attente.
 
 ## Hors périmètre (ne pas traiter, consigner ici)
 

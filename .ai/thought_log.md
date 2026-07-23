@@ -51,8 +51,16 @@ résidu pace_observed − team_expected par joueur), SessionEngagementCumulative
 engagement.toml + session.toml + squad i18n FR/EN. Gates : go test
 service/api/domain ok ; tsc exit 0 ; vitest 67 fichiers / 462 tests verts.
 
-**Conclusion / prochaine étape** : P5 — essai aire Rendement → repère « 1 vie »
-sur Timeseries (commit isolé jetable), puis gates finaux + passe visuelle.
+**P5 (essai aire Rendement)** : areaStyle sur la seule série Rendement de
+TimeseriesSquadAdapted (origin: hp = repère « 1 vie » title-aware, opacité 0.10,
+même dégradé offensif que le trait) — commit isolé trivialement revertable.
+Item 5.1 statué [~] : gates verts (tsc, vitest timeseries 5 fichiers / 43
+tests), le go/no-go VISUEL (thème clair + sombre) reste à l'utilisateur.
+
+**Conclusion / prochaine étape** : gates finaux du lot (go test ./..., vet,
+typecheck --force, lint, vitest complet) puis passe visuelle utilisateur et
+revue au merge. Intégration -tags=integration non requise : aucun fichier
+persist/sync/migration touché (P4 = service engagement + domain DTO).
 
 ---
 ## [2026-07-23] Réintégration + validation des 4 retouches FDA gap sur origin/main
