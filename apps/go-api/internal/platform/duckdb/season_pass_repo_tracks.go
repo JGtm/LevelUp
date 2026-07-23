@@ -114,10 +114,11 @@ func (r *SeasonPassRepo) LoadSeasonPassTracks(ctx context.Context, _, _ string) 
 		return nil, err
 	}
 
+	preferEN := bpPreferEN(ctx)
 	for _, row := range trackRows {
 		prog := progressMap[row.rewardTrackPath]
 		prog.IsActive = row.rewardTrackPath == activeTrackPath
-		summary := buildTrackSummary(row, prog, itemMap)
+		summary := buildTrackSummary(row, prog, itemMap, preferEN)
 		tracks = append(tracks, summary)
 	}
 

@@ -45,8 +45,21 @@ rarity.ts (raretés pleines — couleurs Halo iconiques, exception connue du fic
 eslint 0/0, vitest verts. Découvertes : badge « Now showing » mort (isSelected codé false), chips
 PassContentSummary laissés neutres.
 
-**Conclusion / prochaine étape** : commit pills. Enchaîner Lot D (locale Défis/BP), puis Lot A
-(page Médailles). Aucun push `main` sans feu vert (= deploy prod auto).
+**Lot D (Complété)** : Défis & Battle Pass restaient FR en UI EN — bug 100 % serveur, 3 causes.
+(A) fixture démo `demoChallenges` FR-only → `challenges.en.json` sélectionnée via `ctxkeys.Locale(ctx)`.
+(B) `challenge_snapshots` sans locale : `state_hash` langue-indépendant → dédup droppait la 2e locale.
+Découverte : la migration `add_challenge_snapshots_display_path` a été SQUASHÉE dans la baseline
+(golden gelé `TestSquashInvariant_*`) → ajouté un NOUVEAU step ALTER post-baseline
+`add_challenge_snapshots_locale` (`playerBaseSteps` + `canonicalOrder` après `create_baseline_player_v1`),
+sans muter baseline/golden ; `locale` dans la clé de dédup writer (INSERT-only, anti-ART OK) + filtre
+reader `(locale=? OR ''/NULL)` tolérant legacy. (C) `localizedText` FR-first figé → param `preferEN`
+(réutilise `bpPreferEN`) ; front `alt`+locale intl via clé i18n `home.battle_pass.image_alt`. Gates :
+go build, unitaires, INTÉGRATION (golden invariants + anti-ART + roundtrip coexistence FR/EN), i18n
+régénéré, tsc, vitest — tous verts. Tests ajoutés (coexistence, ordering, démo FR/EN distinct).
+
+**Conclusion / prochaine étape** : commit Lot D. Enchaîner Lot A (page Médailles, le gros lot).
+À vérifier plus tard (superviseur) : lecture prod `battlepass_snapshots.is_owned` (Lot C) ; passe
+finale complète de gates avant merge. Aucun push `main` sans feu vert (= deploy prod auto).
 
 ---
 ## [2026-07-23] Réintégration + validation des 4 retouches FDA gap sur origin/main

@@ -60,7 +60,11 @@ var canonicalOrder = []string{
 	// Baseline squashée v1 (chantier N4, plan PLAN_MIGRATION_SQUASH_BASELINE_2026-07) :
 	// remplace les 33 steps title-owned contigus create_base_player_schema..
 	// player_append_only_csr_snapshots_v1 (bornes M3a). Cf. steps_player_baseline.go.
-	"create_baseline_player_v1",                        // player
+	"create_baseline_player_v1", // player
+	// ALTER post-baseline additif : challenge_snapshots.locale (mirror du squashé
+	// add_challenge_snapshots_display_path, désormais dans la baseline). Doit suivre
+	// create_baseline_player_v1 (créateur de la table). Cf. steps_player_base.go.
+	"add_challenge_snapshots_locale",                   // player
 	"player_append_only_match_citations_v1",            // player
 	"player_append_only_match_enrichment_v1",           // player
 	"player_append_only_match_skill_rank_v1",           // player

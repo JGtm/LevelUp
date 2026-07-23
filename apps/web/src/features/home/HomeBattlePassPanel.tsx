@@ -131,7 +131,7 @@ export function HomeBattlePassPanel({
     partialProgress: featuredPass.partial_progress,
     xpPerRank: featuredPass.xp_per_rank,
     progressPercent: tierProgress,
-    locale: 'fr-FR',
+    locale: intlLocale,
   })
   const hasTiers = (featuredPass.tiers?.length ?? 0) > 0
 
@@ -155,7 +155,7 @@ export function HomeBattlePassPanel({
           {(featuredPass.background_image_url ?? featuredPass.image_url) ? (
             <img
               src={featuredPass.background_image_url ?? featuredPass.image_url!}
-              alt={`Illustration de ${featuredPass.name}`}
+              alt={formatMessage(homeManifest, 'home.battle_pass.image_alt', locale, { name: featuredPass.name })}
               data-testid="home-battle-pass-image"
               className="aspect-[986/248] w-full object-cover"
             />
