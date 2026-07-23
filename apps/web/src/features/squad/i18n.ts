@@ -10,7 +10,7 @@
  * Pattern aligné avec features/compare/i18n.ts et features/home/*.i18n.ts.
  */
 
-export type SquadLocale = 'fr' | 'en'
+import type { Locale } from '@/lib/i18n/locale'
 
 export interface SquadText {
   intlLocale: string
@@ -791,13 +791,13 @@ const EN_TEXT: SquadText = {
   },
 }
 
-const DICTS: Record<SquadLocale, SquadText> = {
+const DICTS: Record<Locale, SquadText> = {
   fr: FR_TEXT,
   en: EN_TEXT,
 }
 
 /** Retourne le dictionnaire pour la locale demandée (fallback fr). */
-export function getSquadText(locale: SquadLocale | string | undefined): SquadText {
+export function getSquadText(locale: Locale | string | undefined): SquadText {
   if (locale === 'en') return DICTS.en
   return DICTS.fr
 }

@@ -26,13 +26,14 @@ import type {
   ExplorerPlayerQueryResponse,
   MatchEncounterBadge,
 } from '@/lib/api/types'
+import type { Locale } from '@/lib/i18n/locale'
 
 function isEncounterSemanticToken(s: string): s is SemanticToken {
   return s.startsWith('narrative-') || s.startsWith('outcome-') || s.startsWith('perf-')
 }
 
 function renderEncounterBadges(badges: MatchEncounterBadge[], locale: string) {
-  const manifestLocale: 'fr' | 'en' = locale === 'en' ? 'en' : 'fr'
+  const manifestLocale: Locale = locale === 'en' ? 'en' : 'fr'
   const sqT = (key: SquadManifestKey, values?: Record<string, string | number>) =>
     formatMessage(squadManifest, key, manifestLocale, values)
   return badges.map((badge, i) => {

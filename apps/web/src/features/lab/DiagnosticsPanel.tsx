@@ -7,7 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import type { LabDiagnosticsResponse } from '@/lib/api/types'
-import type { LabLocale, LabText } from './i18n'
+import type { LabText } from './i18n'
+import type { Locale } from '@/lib/i18n/locale'
 import {
   FileStatusRow,
   formatNumber,
@@ -21,7 +22,7 @@ interface DiagnosticsPanelProps {
   isLoading: boolean
   isError: boolean
   onRetry: () => void
-  locale: LabLocale
+  locale: Locale
   text: LabText
 }
 

@@ -9,7 +9,8 @@
  */
 import { Badge } from '@/components/ui/badge'
 import type { LabFileStatus, LabGuardResult } from '@/lib/api/types'
-import { getLabText, type LabLocale, type LabText } from './i18n'
+import { getLabText, type LabText } from './i18n'
+import type { Locale } from '@/lib/i18n/locale'
 
 // ─── Formatters ──────────────────────────────────────────────────────────────
 
@@ -50,28 +51,28 @@ export function translateStatus(status: string, text: LabText) {
   }
 }
 
-export function formatLabDateTime(value: string | null | undefined, locale: LabLocale, text: LabText) {
+export function formatLabDateTime(value: string | null | undefined, locale: Locale, text: LabText) {
   if (!value) {
     return text.common.notAvailable
   }
   return new Date(value).toLocaleString(getLabText(locale).intlLocale)
 }
 
-export function formatNumber(value: number | null | undefined, locale: LabLocale, text: LabText) {
+export function formatNumber(value: number | null | undefined, locale: Locale, text: LabText) {
   if (value == null) {
     return text.common.notAvailable
   }
   return value.toLocaleString(getLabText(locale).intlLocale)
 }
 
-export function formatDecimal(value: number, locale: LabLocale) {
+export function formatDecimal(value: number, locale: Locale) {
   return value.toLocaleString(getLabText(locale).intlLocale, {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   })
 }
 
-export function formatBytes(value: number | null | undefined, locale: LabLocale, text: LabText) {
+export function formatBytes(value: number | null | undefined, locale: Locale, text: LabText) {
   if (value == null) {
     return text.common.notAvailable
   }
@@ -113,7 +114,7 @@ export function FileStatusRow({
 }: {
   label: string
   file: LabFileStatus
-  locale: LabLocale
+  locale: Locale
   text: LabText
 }) {
   return (

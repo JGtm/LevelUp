@@ -16,6 +16,7 @@ import {
   useWatcherAuthPoll,
   useUpdateWatcherSubscriptions,
 } from '@/features/settings/watcher-queries'
+import type { Locale } from '@/lib/i18n/locale'
 
 interface WatcherCardProps {
   enabled: boolean
@@ -268,7 +269,7 @@ export function formatLastSeen(
   timestamp: string,
   titleName: string,
   t: SettingsText,
-  locale: 'fr' | 'en' = 'fr',
+  locale: Locale = 'fr',
   now: Date = new Date(),
 ): string {
   const past = new Date(timestamp)

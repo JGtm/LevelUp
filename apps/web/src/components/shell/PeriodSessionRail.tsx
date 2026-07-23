@@ -20,8 +20,7 @@ import { intlLocale } from '@/lib/formatters'
 import { computeNextWindow, computePrevWindow, getRailMode } from '@/features/filters/periodSessionNav'
 import { useSeasons, type SeasonEntry } from '@/lib/i18n/fieldMappings'
 import { findActiveSeason, isoDateUTC, nextSeason, prevSeason } from '@/lib/seasons/findSeasonAt'
-
-type Locale = 'fr' | 'en'
+import type { Locale } from '@/lib/i18n/locale'
 
 interface RailText {
   prev: string

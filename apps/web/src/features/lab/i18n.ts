@@ -4,7 +4,7 @@
  * briques _labShared. Les sections tabs/page/help/resources/contracts sont
  * parties avec les panneaux supprimés.
  */
-export type LabLocale = 'fr' | 'en'
+import type { Locale } from '@/lib/i18n/locale'
 
 export interface LabText {
   intlLocale: string
@@ -205,12 +205,12 @@ const EN_TEXT: LabText = {
   },
 }
 
-const LAB_TEXT: Record<LabLocale, LabText> = {
+const LAB_TEXT: Record<Locale, LabText> = {
   fr: FR_TEXT,
   en: EN_TEXT,
 }
 
-export function normalizeLabLocale(locale?: string | null): LabLocale {
+export function normalizeLabLocale(locale?: string | null): Locale {
   return locale === 'en' ? 'en' : 'fr'
 }
 

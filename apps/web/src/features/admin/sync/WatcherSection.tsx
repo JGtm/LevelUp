@@ -12,6 +12,7 @@ import { adminAbsoluteTime, adminRelativeTime } from '../format'
 import { useAdminT, useAdminLocale, type TAdmin } from '../useAdminText'
 import { watcherLivenessStatus, type AdminStatus } from '../statusDisplay'
 import { SectionHeader } from '../components/SectionHeader'
+import type { Locale } from '@/lib/i18n/locale'
 
 /** État FSM watcher → statut de badge (Watching/Syncing actifs, Cooling warn). */
 function watcherStateStatus(state: string): AdminStatus {
@@ -85,7 +86,7 @@ function WatcherPlayersTable({
 }: {
   players: WatcherPlayerStatus[]
   tA: TAdmin
-  locale: 'fr' | 'en'
+  locale: Locale
 }) {
   return (
     <div className="overflow-x-auto rounded-md border">

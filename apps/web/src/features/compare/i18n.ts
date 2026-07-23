@@ -1,4 +1,4 @@
-export type CompareLocale = 'fr' | 'en'
+import type { Locale } from '@/lib/i18n/locale'
 
 export interface CompareText {
   intlLocale: string
@@ -114,12 +114,12 @@ const EN_TEXT: CompareText = {
   },
 }
 
-const TEXT: Record<CompareLocale, CompareText> = {
+const TEXT: Record<Locale, CompareText> = {
   fr: FR_TEXT,
   en: EN_TEXT,
 }
 
-export function normalizeCompareLocale(locale?: string | null): CompareLocale {
+export function normalizeCompareLocale(locale?: string | null): Locale {
   return locale === 'en' ? 'en' : 'fr'
 }
 

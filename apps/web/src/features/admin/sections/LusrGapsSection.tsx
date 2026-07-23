@@ -24,6 +24,7 @@ import {
 import { useRecomputeLusrGaps } from '../monitoring/mutations'
 import { useAdminTitles } from '../titles/queries'
 import { useAdminT, type TAdmin } from '../useAdminText'
+import type { Locale } from '@/lib/i18n/locale'
 
 export function LusrGapsSection() {
   const tA = useAdminT()
@@ -136,7 +137,7 @@ function GuardrailLine({
   tA,
 }: {
   g: AdminLusrGuardrailHealth
-  locale: 'fr' | 'en'
+  locale: Locale
   tA: TAdmin
 }) {
   return (

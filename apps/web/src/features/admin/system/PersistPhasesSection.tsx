@@ -11,6 +11,7 @@ import { usePerfStats } from '../monitoring/queries'
 import { formatDurationMs } from '../format'
 import { useAdminT, useAdminLocale } from '../useAdminText'
 import { SectionHeader } from '../components/SectionHeader'
+import type { Locale } from '@/lib/i18n/locale'
 
 const PHASE_LABELS: Record<string, AdminManifestKey> = {
   shared_acquire: 'admin.persist.phase_shared_acquire',
@@ -52,7 +53,7 @@ function PhaseCell({
 }: {
   phase: NonNullable<AdminPerfStats['persist_phases']>[number]
   label: string
-  locale: 'fr' | 'en'
+  locale: Locale
 }) {
   const hasErrors = (phase.errors ?? 0) > 0
   return (

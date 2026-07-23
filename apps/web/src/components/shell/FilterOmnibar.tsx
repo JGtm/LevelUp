@@ -34,6 +34,7 @@ import {
   computePendingHash,
   isUUIDLabel,
 } from './_filter_pills/_hooks'
+import type { Locale } from '@/lib/i18n/locale'
 
 // ─── Re-exports pour les consommateurs externes (SquadLayout, SquadV2RouteHost…) ───
 // Ces re-exports cohabitent intentionnellement avec FilterOmnibar pour servir
@@ -83,7 +84,7 @@ interface FilterOmnibarProps {
 
 // Libellés du sélecteur de contexte (FR/EN). Module-level pour éviter une
 // recréation par rendu.
-const CONTEXT_LABELS: Record<'fr' | 'en', Record<'solo' | 'squad' | 'all', string>> = {
+const CONTEXT_LABELS: Record<Locale, Record<'solo' | 'squad' | 'all', string>> = {
   fr: { solo: 'Solo', squad: 'Escouade', all: 'Mixte' },
   en: { solo: 'Solo', squad: 'Squad', all: 'Mixed' },
 }

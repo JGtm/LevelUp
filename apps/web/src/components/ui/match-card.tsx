@@ -21,10 +21,11 @@ import { formatMessage } from '@/lib/i18n/format'
 import { effectiveDmgPerFrag } from '@/lib/formatters'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { normalizeModeLabel } from '@/lib/halo/modeLabel'
+import type { Locale } from '@/lib/i18n/locale'
 
 export interface MatchCardProps {
   match: RecentMatchItem
-  locale?: 'fr' | 'en'
+  locale?: Locale
   timezone?: string
   onClick?: () => void
   onToggleFavorite?: () => void
@@ -37,7 +38,7 @@ function formatMatchDuration(secs: number): string {
   return `${m}m ${s.toString().padStart(2, '0')}s`
 }
 
-function formatMatchDateTime(isoDate: string, timezone: string, locale: 'fr' | 'en'): string {
+function formatMatchDateTime(isoDate: string, timezone: string, locale: Locale): string {
   const date = new Date(isoDate)
   if (isNaN(date.getTime())) return ''
   const intlLocale = locale === 'en' ? 'en-GB' : 'fr-FR'
@@ -51,7 +52,7 @@ function formatMatchDateTime(isoDate: string, timezone: string, locale: 'fr' | '
   }).format(date)
 }
 
-function buildMatchHeading(match: RecentMatchItem, locale: 'fr' | 'en'): string {
+function buildMatchHeading(match: RecentMatchItem, locale: Locale): string {
   const normalizedMode = normalizeModeLabel(match.mode_ui, match.map_ui)
   const connector = locale === 'en' ? 'on' : 'sur'
 

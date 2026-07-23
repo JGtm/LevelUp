@@ -10,11 +10,12 @@ import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 import type { ColorPalette } from '@/stores/settingsDraftStore'
 import { tokenCssVar } from '@/lib/accessibility'
 import { HALO_OUTLINE_COLORS } from '@/lib/halo/outline-colors'
-import type { SettingsText, SettingsLocale } from '@/features/settings/i18n'
+import type { SettingsText } from '@/features/settings/i18n'
+import type { Locale } from '@/lib/i18n/locale'
 
 interface Props {
   t: SettingsText
-  locale: SettingsLocale
+  locale: Locale
 }
 
 const PERF_TOKENS = [
@@ -98,7 +99,7 @@ function OutlineColorPicker({
   value: string | null
   defaultLabel: string
   onChange: (id: string | null) => void
-  locale: SettingsLocale
+  locale: Locale
 }) {
   const selected = HALO_OUTLINE_COLORS.find((c) => c.id === value)
   const selectedName = selected

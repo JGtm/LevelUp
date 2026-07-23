@@ -13,8 +13,7 @@
  */
 import { formatMessage } from '@/lib/i18n/format'
 import { homeManifest, type HomeManifestKey } from '@/lib/i18n/generated/home'
-
-export type HighlightLocale = 'fr' | 'en'
+import type { Locale } from '@/lib/i18n/locale'
 
 type Params = Record<string, string | number>
 
@@ -25,12 +24,12 @@ interface HighlightTextDict {
   }
 }
 
-export function normalizeHighlightLocale(locale?: string | null): HighlightLocale {
+export function normalizeHighlightLocale(locale?: string | null): Locale {
   return locale === 'en' ? 'en' : 'fr'
 }
 
 function t(
-  loc: HighlightLocale,
+  loc: Locale,
   key: HomeManifestKey,
   values?: Record<string, string | number>,
 ): string {

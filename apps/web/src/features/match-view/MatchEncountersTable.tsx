@@ -40,11 +40,12 @@ import { tokenVar } from '@/lib/accessibility'
 import { AllyEnemySplitBar, KDSplitBar } from '@/features/_shared/EncounterSplitBars'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import type { MatchEncounterBadge, MatchEncounterRow } from '@/lib/api/types'
+import type { Locale } from '@/lib/i18n/locale'
 
 interface Props {
   rows: MatchEncounterRow[]
   /** Locale pour formatRelative (défaut fr). */
-  locale?: 'fr' | 'en'
+  locale?: Locale
   /**
    * Override de la navigation au clic sur un gamertag. Si fourni, remplace la
    * navigation par défaut (Explorer mode joueur scoped sur le playerSlug courant).
@@ -97,7 +98,7 @@ function EncounterBadgesInline({
   locale,
 }: {
   badges: MatchEncounterBadge[]
-  locale: 'fr' | 'en'
+  locale: Locale
 }) {
   if (!badges.length) return null
   return (

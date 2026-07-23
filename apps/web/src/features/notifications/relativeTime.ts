@@ -1,4 +1,5 @@
-import { getNotificationsText, type NotificationsLocale } from './i18n'
+import { getNotificationsText } from './i18n'
+import type { Locale } from '@/lib/i18n/locale'
 
 /**
  * Formate un timestamp ISO en libellé relatif court (FR/EN).
@@ -9,7 +10,7 @@ import { getNotificationsText, type NotificationsLocale } from './i18n'
  * - < 7 j    → "il y a N j" / "N d ago"
  * - sinon    → date locale (jj/mm/aaaa ou m/d/yyyy)
  */
-export function formatRelative(iso: string, locale: NotificationsLocale): string {
+export function formatRelative(iso: string, locale: Locale): string {
   const t = getNotificationsText(locale)
   const date = new Date(iso)
   const now = Date.now()
