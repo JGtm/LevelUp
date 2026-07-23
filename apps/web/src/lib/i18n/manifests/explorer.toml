@@ -726,10 +726,6 @@ en = "Collapse (10 rows)"
 fr = "Profil de combat"
 en = "Combat profile"
 
-[explorer.combat.subtitle]
-fr = "Forme récente sur les derniers matchs PvP"
-en = "Recent form over the last PvP matches"
-
 [explorer.combat.fda_title]
 fr = "FDA et Frags / Morts / Assistances"
 en = "KDA and Kills / Deaths / Assists"
@@ -839,6 +835,23 @@ en = "vs usual"
 [explorer.briefing.low_sample]
 fr = "Échantillon faible ({n} matchs)"
 en = "Small sample ({n} matches)"
+
+# Bascule réduire/afficher de la synthèse (« briefing ») — libellé + aria explicites.
+[explorer.briefing.collapse]
+fr = "Réduire"
+en = "Collapse"
+
+[explorer.briefing.expand]
+fr = "Afficher"
+en = "Show"
+
+[explorer.briefing.collapse_aria]
+fr = "Masquer la synthèse"
+en = "Hide summary"
+
+[explorer.briefing.expand_aria]
+fr = "Afficher la synthèse"
+en = "Show summary"
 
 # ─── Bandeau briefing : modules conditionnels (Lot C) ──────────────────────────
 
