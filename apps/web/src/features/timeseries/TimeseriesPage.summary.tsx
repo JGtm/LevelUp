@@ -63,6 +63,10 @@ export function TimeseriesSummaryTab({
   // MMR par match indisponible (titre sans `team_mmr`, ex. Halo 5) → la série MMR
   // de « Performance par session » est retirée (data + axe + légende).
   const hasTeamMmr = useCapability('team_mmr')
+  // FDA attendu natif (titre avec `expected_stats`, ex. Halo Infinite) → le chart
+  // « Écart au FDA attendu » se place à DROITE du FDA (2 colonnes) au lieu d'un bloc
+  // pleine largeur en dessous. Absente (Halo 5) → FDA seul, pleine largeur.
+  const hasExpectedStats = useCapability('expected_stats')
   const soloPerf = data.solo_session_perf
   const soloGranularity: 'session' | 'week' | 'month' =
     soloPerf?.granularity === 'week' || soloPerf?.granularity === 'month'
@@ -97,6 +101,23 @@ export function TimeseriesSummaryTab({
       rows={data.match_rows ?? []}
       fdaLabel={fieldMappings?.fields['kda']?.label ?? 'FDA'}
       smoothingLabel={t('timeseries.summary.trend')}
+    />
+  )
+  // Écart au FDA attendu (D1) — différentiel réel−attendu par match, aire signée
+  // divergente + tendance lissée. Self-gate `expected_stats` (null sur Halo 5).
+  // Hauteur alignée sur le FDA (360) pour la disposition côte à côte.
+  const fdaGapTrend = (
+    <TimeseriesFdaGapTrend
+      title={t('timeseries.summary.fda_gap_title')}
+      emptyMessage={emptyMsg}
+      height={360}
+      rows={data.match_rows ?? []}
+      labels={{
+        gap: t('timeseries.summary.fda_gap_series'),
+        real: t('timeseries.summary.fda_gap_real'),
+        expected: t('timeseries.summary.fda_gap_expected'),
+        smoothing: t('timeseries.summary.trend'),
+      }}
     />
   )
   return (
@@ -200,6 +221,8 @@ export function TimeseriesSummaryTab({
       {/* Précision par arme (Halo 5 natif, survol lié au sunburst) | Tendance FDA. Titre
           sans précision native (Infinite → weapon_accuracy vide) : la tendance FDA occupe
           seule la largeur (pas de colonne vide). */}
+      {/* Précision par arme (Halo 5 natif) | FDA : la précision native est Halo-5-only
+          et exclut `expected_stats` → le chart Écart (masqué sur H5) ne s'insère pas ici. */}
       {accuracy.length > 0 ? (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <SynthesisWeaponAccuracyChart
@@ -211,24 +234,16 @@ export function TimeseriesSummaryTab({
           />
           {fdaTrend}
         </div>
+      ) : hasExpectedStats ? (
+        // FDA | Écart au FDA attendu, côte à côte (D1 : l'Écart à droite du FDA).
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {fdaTrend}
+          {fdaGapTrend}
+        </div>
       ) : (
+        // Ni précision native ni FDA attendu → FDA seul, pleine largeur.
         <div className="grid grid-cols-1 gap-6">{fdaTrend}</div>
       )}
-
-      {/* Écart au FDA attendu (D1) — différentiel réel−attendu par match, aire signée
-          divergente + tendance lissée. Masqué par capability `expected_stats`
-          (self-gate : null sur un titre sans FDA attendu). */}
-      <TimeseriesFdaGapTrend
-        title={t('timeseries.summary.fda_gap_title')}
-        emptyMessage={emptyMsg}
-        rows={data.match_rows ?? []}
-        labels={{
-          gap: t('timeseries.summary.fda_gap_series'),
-          real: t('timeseries.summary.fda_gap_real'),
-          expected: t('timeseries.summary.fda_gap_expected'),
-          smoothing: t('timeseries.summary.trend'),
-        }}
-      />
 
       {/* Performance solo par session/semaine/mois — agrégat backend
           sur tous les matchs solo (cross-session, granularité auto). */}
