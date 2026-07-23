@@ -101,6 +101,14 @@ const (
 	// Halo Infinite n'expose pas ces masques recolorisables). Absente ⇒ le front ne
 	// propose pas la modale de personnalisation depuis la bannière d'identité.
 	CapSpartanCustomizer Capability = "spartan_customizer"
+
+	// CapExpectedStats — le titre fournit NATIVEMENT les stats attendues par match
+	// (kills_expected / deaths_expected via l'API skill), permettant l'écart au FDA
+	// attendu (réel − attendu) sur Timeseries / Sessions / Escouade. Halo Infinite :
+	// oui ; Halo 5 : non (0 kills_expected en shared, aucun modèle d'assists). Absente
+	// ⇒ le front masque les 3 charts « Écart au FDA attendu » (dégradation par
+	// construction côté Go : champs additifs nil, aucun ErrCapabilityNotSupported).
+	CapExpectedStats Capability = "expected_stats"
 )
 
 // TitleDescriptor décrit un titre supporté avec ses métadonnées.
@@ -273,6 +281,8 @@ func NewRegistry() *Registry {
 			// nativement le MMR d'équipe et le dégât subi
 			// (ProvidesTeamMMR / ProvidesDamageTaken == true).
 			CapTeamMMR, CapDamageTaken,
+			// Stats attendues natives (kills_expected/deaths_expected) → écart au FDA attendu.
+			CapExpectedStats,
 		},
 		IsDefault:        true,
 		XboxTitleID:      "2043073184",

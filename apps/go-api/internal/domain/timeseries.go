@@ -253,6 +253,14 @@ type TimeseriesMatchRow struct {
 	SessionLabel *string `json:"session_label,omitempty"`
 	// MMR équipe — alimente le chart "Performance par session" (axe MMR moyen).
 	TeamMMR *float64 `json:"team_mmr,omitempty"`
+	// Stats attendues (écart au FDA attendu, chart « Écart au FDA attendu »).
+	// KdaExpected = kills_expected + assists_expected/3 − deaths_expected
+	// (analysis.ExpectedFDA). Tous nil hors titre à CapExpectedStats (Halo 5) ou
+	// match sans attendu → le chart est gaté par la capability côté front.
+	KillsExpected   *float64 `json:"kills_expected,omitempty"`
+	DeathsExpected  *float64 `json:"deaths_expected,omitempty"`
+	AssistsExpected *float64 `json:"assists_expected,omitempty"`
+	KdaExpected     *float64 `json:"kda_expected,omitempty"`
 }
 
 // ---------------------------------------------------------------------------
