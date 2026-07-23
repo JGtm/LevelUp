@@ -1,7 +1,8 @@
 /**
  * BackupTab — onglet "Sauvegarde" de SettingsPage.
- * Affiche le statut du scheduler DuckDB/Restic et permet de déclencher
- * une sauvegarde manuelle.
+ * Affiche le statut de la dernière sauvegarde restic des bases DuckDB et permet
+ * de déclencher une sauvegarde manuelle. La PLANIFICATION est externe (systemd
+ * timers côté serveur) : l'application n'embarque plus de planificateur.
  */
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -152,28 +153,6 @@ export function BackupTab({ t, frozen }: BackupTabProps) {
           </div>
         </CardContent>
       </Card>
-
-      {/* Configuration (lecture seule) */}
-      {status?.config && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">{t.backupConfigTitle}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-              <dt className="text-muted-foreground">{t.backupConfigInterval}</dt>
-              <dd className="font-mono">{status.config.interval}</dd>
-              <dt className="text-muted-foreground">{t.backupConfigRetention}</dt>
-              <dd>
-                {t.backupConfigRetentionValue
-                  .replace('{daily}', String(status.config.keep_daily))
-                  .replace('{weekly}', String(status.config.keep_weekly))
-                  .replace('{monthly}', String(status.config.keep_monthly))}
-              </dd>
-            </dl>
-          </CardContent>
-        </Card>
-      )}
     </fieldset>
   )
 }

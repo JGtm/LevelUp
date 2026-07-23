@@ -998,19 +998,13 @@ func main() {
 		healthScheduler.Run(schedulerCtx)
 	}()
 
-	// Backup périodique DuckDB via restic (pkg/duckdbbackup).
-	// Créé inconditionnellement pour exposer le statut dans l'UI settings.
-	// Run() est appelé seulement si backup_enabled=true dans app_settings.json.
+	// Backup restic des bases DuckDB (pkg/duckdbbackup).
+	// La PLANIFICATION est externe (systemd timers côté serveur, cf.
+	// scripts/systemd/levelup-restic-backup.timer) : l'application n'embarque plus
+	// de planificateur périodique. Le scheduler est créé pour exposer le statut du
+	// dernier backup dans l'UI settings, le déclenchement manuel (POST
+	// /settings/backup/run) et la fraîcheur (admin monitoring).
 	backupSched := ops.NewLevelUpBackupScheduler(cfg.Backup, pr)
-	if cfg.Backup.Enabled {
-		schedulerWG.Add(1)
-		go func() {
-			defer schedulerWG.Done()
-			backupSched.Run(schedulerCtx)
-		}()
-	} else {
-		slog.Debug("backup: désactivé — scheduler créé mais non démarré")
-	}
 
 	// Convertir en interface (nil safe : un *Daemon nil ne doit pas devenir une interface non-nil)
 	var watcherCtrl watcher.DaemonController
