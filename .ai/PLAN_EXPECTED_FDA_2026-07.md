@@ -177,15 +177,22 @@ masqués proprement sur Halo 5 (capability), gates complètes vertes (lot D).
 
 ### Lot D — Gates finales, docs, clôture
 
-- [ ] **D1** Suite complète : `go test ./...` + `go vet ./...` (apps/go-api, CGO) ;
-  purge `node_modules/.tmp` puis `npm run typecheck`, `npm run lint`, `npm run test`
-  (apps/web). Baseline lint non aggravée (`make go-api-lint` ratchet).
-- [ ] **D2** Skill `delivery-checklist` passé intégralement (complétude, logging,
-  multi-titre, couleurs, i18n).
-- [ ] **D3** Plan statué (toutes cases), section Découvertes remplie, entrée
-  `.ai/thought_log.md`.
-- [ ] **D4** Point final utilisateur : résumé, risque de merge D8/plan revue
-  analytique, proposition de vérification visuelle (serveur dev) avant merge.
+- [x] **D1** Suite complète (superviseur, 2026-07-23) : `go test ./...` exit 0 +
+  `go vet ./...` exit 0 (CGO msys64) ; `tsc -b` cache purgé exit 0 ; `npm run lint`
+  0 erreur / 7 warnings = baseline (le 8e warning, introduit par B2, corrigé :
+  dérogation react-refresh manquante sur `computeCumulativeFdaGap`) ; `npm run test`
+  complet 298 fichiers / 2577 tests passés (14 skips préexistants) exit 0 ;
+  `golangci-lint --new-from-merge-base=origin/main` 0 issue exit 0.
+- [x] **D2** delivery-checklist passée : complétude (3 surfaces, 0 TODO introduit
+  vérifié par grep du diff, garde-rails livrés dans les mêmes commits que leurs
+  helpers), logging (WarnContext resolver), multi-titre (capability, ratchet slug
+  vert), couleurs (tokens + convention color-allow), i18n (parité FR/EN). CI de
+  branche : N/A (branche locale non poussée — gates locales complètes ; la CI
+  tournera au push).
+- [x] **D3** Plan statué (0 case ouverte), Découvertes remplies, entrées
+  thought_log Lots A/B/C (agents) + entrée de clôture (superviseur).
+- [x] **D4** Point final utilisateur livré : résumé, ordre de merge vs plan revue
+  analytique, vérification visuelle sur serveur dev proposée avant merge.
 
 ## Risques et coordination
 
@@ -301,3 +308,10 @@ masqués proprement sur Halo 5 (capability), gates complètes vertes (lot D).
     SquadFdaGapCumulativeCard + squadPerformanceLineCharts + SquadSynergiesPage) →
     4 fichiers / 28 tests exit 0. Aucun `go` touché (Lot C = front pur).
   - Prochaine étape : Lot D (gates finales complètes, delivery-checklist, revue merge).
+- 2026-07-23 : **Lot D exécuté et clôturé** (superviseur). Gates finales toutes
+  vertes (détail case D1). Un correctif superviseur : dérogation
+  `react-refresh/only-export-components` manquante sur `computeCumulativeFdaGap`
+  (B2) — baseline lint restaurée à 7. Commits du chantier : `d53967cf5` (Lot A),
+  `36ddd5989` (Lot B), `fe8ea87cb` (Lot C), + commit de clôture (Lot D).
+  **PLAN CLOS** — reste côté user : vérification visuelle (serveur dev, checkout
+  principal) puis merge dans main (AVANT le plan revue analytique, cf. Risques).

@@ -1,3 +1,28 @@
+## [2026-07-23] Différentiel FDA réel vs attendu — CHANTIER CLOS (Lot D, gates finales)
+
+**Statut** : Complété. Plan `.ai/PLAN_EXPECTED_FDA_2026-07.md` clos (0 case ouverte),
+branche `feat/expected-fda-differential` (worktree `expected-fda`), 4 commits :
+`d53967cf5` (A backend) · `36ddd5989` (B front Timeseries/Sessions) · `fe8ea87cb`
+(C front Synergies) · clôture (D). NON poussée, NON mergée.
+
+**Décision technique principale** : exécution supervisée — 3 agents Opus (1/lot),
+revue sur pièces + rejeu indépendant des gates avant chaque commit superviseur.
+Un correctif de revue au Lot D : dérogation `react-refresh/only-export-components`
+manquante sur `computeCumulativeFdaGap` (SessionFdaGapCumulative, B2), baseline
+eslint restaurée à 7 warnings.
+
+**Résultats observés** : gates finales toutes vertes — `go test ./...` exit 0,
+`go vet` exit 0, golangci-lint ratchet 0 issue, tsc (cache purgé) exit 0, eslint
+0 erreur/7 warnings (= baseline), vitest 298 fichiers / 2577 tests exit 0.
+Données validées en amont sur parquets du 23/07 (couverture ~98 % Infinite,
+6 lignes +Inf filtrées par les gardes, H5 = 0 attendu → capability).
+
+**Conclusion / prochaine étape** : vérification visuelle sur serveur dev (checkout
+principal, le worktree n'a pas de data/) puis merge dans main — AVANT le chantier
+`PLAN_REVUE_ANALYTIQUE_TIMESERIES_SQUAD` (collisions cartographiées dans le plan,
+section Risques).
+
+---
 ## [2026-07-23] Différentiel FDA réel vs attendu — Lot C (front Escouade / Synergies) livré
 
 **Statut** : Complété (Lot C du plan `.ai/PLAN_EXPECTED_FDA_2026-07.md` ; branche
