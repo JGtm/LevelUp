@@ -204,6 +204,12 @@ export interface SquadText {
     /** Caption de la rangée de pastilles KPI (écart moyen par match). */
     averageCaption: string
   }
+  /** « Balance des dégâts cumulée » (P3 — dégâts nets ÷ PV-pour-tuer, cumulé par joueur). */
+  netLives: {
+    title: string
+    /** Tooltip explicatif de la formule (jeton {{HP}} = barème du titre). */
+    tooltip: string
+  }
   weaponKills: {
     title: string
     description: string
@@ -484,6 +490,10 @@ const FR_TEXT: SquadText = {
     title: 'Écart cumulé au FDA attendu',
     averageCaption: 'Écart moyen par match',
   },
+  netLives: {
+    title: 'Balance des dégâts cumulée',
+    tooltip: 'Balance des dégâts = (dégâts infligés − dégâts subis) ÷ {{HP}} PV, exprimée en vies. Positif = tu portes l\'équipe ; négatif = tu coûtes plus que tu ne rapportes.',
+  },
   weaponKills: {
     title: 'Outils de destruction',
     description: 'Frags cumulés par arme sur les matchs partagés. Tri ASC : armes peu utilisées en haut, principales en bas.',
@@ -760,6 +770,10 @@ const EN_TEXT: SquadText = {
   fdaGap: {
     title: 'Cumulative KDA gap to expected',
     averageCaption: 'Average gap per match',
+  },
+  netLives: {
+    title: 'Cumulative damage balance',
+    tooltip: 'Damage balance = (damage dealt − damage taken) ÷ {{HP}} HP, expressed in lives. Positive = you carry the team; negative = you cost more than you bring.',
   },
   weaponKills: {
     title: 'Tools of destruction',

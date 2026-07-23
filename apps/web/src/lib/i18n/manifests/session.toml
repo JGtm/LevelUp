@@ -292,6 +292,31 @@ en = "Expected"
 fr = "Écart"
 en = "Gap"
 
+# Balance des dégâts cumulée (P3) — dégâts nets ÷ PV-pour-tuer, exprimée en vies.
+[session.detail.chart_net_lives_title]
+fr = "Balance des dégâts cumulée"
+en = "Cumulative damage balance"
+
+[session.detail.net_lives_series]
+fr = "Balance cumulée"
+en = "Cumulative balance"
+
+[session.detail.net_lives_match]
+fr = "Balance du match"
+en = "Match balance"
+
+[session.detail.net_lives_average_caption]
+fr = "Balance moyenne par match"
+en = "Average balance per match"
+
+[session.detail.net_lives_average_unit]
+fr = "vies/match"
+en = "lives/match"
+
+[session.detail.net_lives_tooltip]
+fr = "Balance des dégâts = (dégâts infligés − dégâts subis) ÷ {{HP}} PV, exprimée en vies. Positif = tu portes l'équipe ; négatif = tu coûtes plus que tu ne rapportes."
+en = "Damage balance = (damage dealt − damage taken) ÷ {{HP}} HP, expressed in lives. Positive = you carry the team; negative = you cost more than you bring."
+
 [session.detail.col_rating_delta]
 fr = "Δ rang"
 en = "Δ rank"

@@ -10,12 +10,16 @@
  * graphes concernés ; gardées en phase via le commentaire de renvoi `cf. <Composant>`.
  */
 import type { SessionCompareEntry, SessionDetailMatchRow } from '@/lib/api/types'
+import { cumulativeSigned } from '@/lib/charts/cumulativeSeries'
+import { netLives } from '@/lib/charts/netLives'
 
 import { modalValue } from './SessionPlacementBreakdown'
 
 export interface CompareScale {
   /** [min, max] du solde cumulé (net score), 0 inclus. */
   netScore?: [number, number]
+  /** [min, max] de la balance des dégâts cumulée (vies nettes), 0 inclus. */
+  netLives?: [number, number]
   /** [min, max] des taux/min FDA (morts en négatif), 0 inclus. */
   fdaMinute?: [number, number]
   /** [min, max] du score d'engagement (résidu centré sur 0), 0 inclus. */
@@ -33,6 +37,14 @@ function netCumulatives(matches: SessionDetailMatchRow[]): number[] {
   const sorted = [...matches].sort((a, b) => a.start_time.localeCompare(b.start_time))
   let running = 0
   return sorted.map((m) => (running += (m.kills ?? 0) - (m.deaths ?? 0)))
+}
+
+/** cf. SessionNetLivesCumulative : cumul de netLives (vies nettes), trié par start_time. */
+function netLivesCumulatives(matches: SessionDetailMatchRow[], hp: number): number[] {
+  const sorted = [...matches].sort((a, b) => a.start_time.localeCompare(b.start_time))
+  return cumulativeSigned(sorted.map((m) => netLives(m.damage_dealt, m.damage_taken, hp))).map(
+    (c) => c.cumulative,
+  )
 }
 
 /** cf. SessionFdaBars mode="minute" : taux frags/morts/assists par minute. */
@@ -93,11 +105,16 @@ export function computeCompareScale(
   aEntry: SessionCompareEntry | null,
   bMatches: SessionDetailMatchRow[],
   bEntry: SessionCompareEntry | null,
+  hp: number,
 ): CompareScale {
   const scale: CompareScale = {}
 
   const netVals = [...netCumulatives(aMatches), ...netCumulatives(bMatches)]
   if (netVals.length > 0) scale.netScore = [Math.min(...netVals, 0), Math.max(...netVals, 0)]
+
+  const netLivesVals = [...netLivesCumulatives(aMatches, hp), ...netLivesCumulatives(bMatches, hp)]
+  if (netLivesVals.length > 0)
+    scale.netLives = [Math.min(...netLivesVals, 0), Math.max(...netLivesVals, 0)]
 
   const fdas = [fdaMinuteRates(aMatches), fdaMinuteRates(bMatches)].filter(
     (x): x is NonNullable<typeof x> => x != null,

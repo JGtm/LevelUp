@@ -1,6 +1,6 @@
-## [2026-07-23] Chantier Dynamique Escouade — P1 onglet + P2 séparation Rendement/Résistance
+## [2026-07-23] Chantier Dynamique Escouade — P1 onglet + P2 séparation + P3 Balance des dégâts
 
-**Statut** : En cours (P1+P2 livrées, P3-P5 à suivre). Plan :
+**Statut** : En cours (P1+P2+P3 livrées, P4-P5 à suivre). Plan :
 `.ai/PLAN_DYNAMIQUE_ESCOUADE_2026-07.md`, branche `feat/squad-dynamique` (worktree
 dédié, base main e85323beb). Exécution pilotée : Opus implémente, superviseur
 vérifie les gates et commite.
@@ -27,8 +27,19 @@ cartes FR/EN, 4 clés mortes retirées. Gates : tsc exit 0 ; vitest squad 35
 fichiers / 265 tests verts. Découverte consignée : efficiencySeries.description
 morte d'avant-chantier (non traitée).
 
-**Conclusion / prochaine étape** : P3 — « Balance des dégâts » (helper cumul
-générique + charts session/escouade).
+**P3 (« Balance des dégâts »)** : métrique `(dégâts infligés − subis) / PV-pour-
+tuer` en vies (lib/charts/netLives.ts). Cumul signé générique extrait dans
+lib/charts/cumulativeSeries.ts (`cumulativeSigned` + `meanOfValid`, carry-forward
+D5) ; `cumulativeFdaGap` délègue, garde-rail `carryForward` étendu aux 2 fichiers
+helpers. Surfaces : SquadNetLivesChart (Dynamique, 1 courbe cumulée/joueur,
+repère 0) + SessionNetLivesCumulative (aire cumulée + KPI « balance moyenne par
+match », _compareScale A/B → computeCompareScale prend `hp`). Masquage title-
+agnostic par capability `damage_taken` (useProvidesDamageTaken) — H5 masqué.
+i18n session.toml (6 clés net_lives_*) + squad i18n. Gates : tsc exit 0 ; vitest
+lib/charts + session-detail + squad = 58 fichiers / 401 tests verts.
+
+**Conclusion / prochaine étape** : P4 — écart d'engagement cumulé (Go : durées
+dans EngagementMatchSummary + payload squad ; web : 3 charts).
 
 ---
 ## [2026-07-23] Réintégration + validation des 4 retouches FDA gap sur origin/main
