@@ -50,6 +50,8 @@ type fakeSquadChallengeRepo struct {
 	getResp           SquadChallenge
 	getErr            error
 	progressUpdates   []squadProgressUpdate
+	listBySquad       []SquadChallenge
+	archivedIDs       []string
 }
 
 func (r *fakeSquadChallengeRepo) Create(_ context.Context, sc SquadChallenge) error {
@@ -60,7 +62,11 @@ func (r *fakeSquadChallengeRepo) Get(_ context.Context, _ string) (SquadChalleng
 	return r.getResp, r.getErr
 }
 func (r *fakeSquadChallengeRepo) ListBySquad(_ context.Context, _ string) ([]SquadChallenge, error) {
-	return nil, nil
+	return r.listBySquad, nil
+}
+func (r *fakeSquadChallengeRepo) Archive(_ context.Context, id string) error {
+	r.archivedIDs = append(r.archivedIDs, id)
+	return nil
 }
 func (r *fakeSquadChallengeRepo) AddParticipant(_ context.Context, p SquadChallengeParticipant) error {
 	r.addedParticipants = append(r.addedParticipants, p)
@@ -460,6 +466,86 @@ func TestService_RefreshSquadPool_GeneratesPool(t *testing.T) {
 	}
 	if len(pool) < 6 || len(pool) > 9 {
 		t.Errorf("pool size out of range [6,9]: %d", len(pool))
+	}
+}
+
+// TestService_RefreshSquadPool_RequiresRequestedBy (Lot 3, item 3.6) : un
+// requested_by vide est rejeté (sinon la garde d'appartenance serait contournée).
+func TestService_RefreshSquadPool_RequiresRequestedBy(t *testing.T) {
+	svc, _, _, _, sqRepo, tplRepo := buildFullService()
+	sqRepo.members = []SquadMember{{UserID: "u1"}}
+	tplRepo.templates = []Template{{ID: "t1"}}
+	_, err := svc.RefreshSquadPool(context.Background(), "sq1", "halo_infinite", "")
+	if !errors.Is(err, ErrInvalidInput) {
+		t.Errorf("requested_by vide doit être rejeté, got %v", err)
+	}
+}
+
+// ─── Squad challenge lifecycle (Lot 3) ───
+
+// TestService_AbandonSquadChallenge_ArchivesWhenMember : abandon d'un membre-user
+// archive le défi (sort de la liste active).
+func TestService_AbandonSquadChallenge_ArchivesWhenMember(t *testing.T) {
+	svc, _, _, scRepo, sqRepo, _ := buildFullService()
+	scRepo.getResp = SquadChallenge{ID: "sc1", SquadID: "sq1"}
+	sqRepo.members = []SquadMember{{UserID: "alice"}}
+	if err := svc.AbandonSquadChallenge(context.Background(), "sc1", "alice"); err != nil {
+		t.Fatalf("abandon: %v", err)
+	}
+	if len(scRepo.archivedIDs) != 1 || scRepo.archivedIDs[0] != "sc1" {
+		t.Errorf("défi non archivé: %v", scRepo.archivedIDs)
+	}
+}
+
+// TestService_AbandonSquadChallenge_RejectsNonMember : garde BOLA objet-level —
+// un non-membre ne peut pas archiver le défi d'une escouade arbitraire.
+func TestService_AbandonSquadChallenge_RejectsNonMember(t *testing.T) {
+	svc, _, _, scRepo, sqRepo, _ := buildFullService()
+	scRepo.getResp = SquadChallenge{ID: "sc1", SquadID: "sq1"}
+	sqRepo.members = []SquadMember{{UserID: "alice"}}
+	err := svc.AbandonSquadChallenge(context.Background(), "sc1", "outsider")
+	if !errors.Is(err, ErrInvalidInput) {
+		t.Errorf("non-membre doit être rejeté, got %v", err)
+	}
+	if len(scRepo.archivedIDs) != 0 {
+		t.Errorf("aucun archivage pour un non-membre, got %v", scRepo.archivedIDs)
+	}
+}
+
+// TestService_CreateSquadChallenge_ComputesExpiryFromCadence : expires_at dérivé
+// de la cadence du template (weekly → +7 j) quand non fourni explicitement.
+func TestService_CreateSquadChallenge_ComputesExpiryFromCadence(t *testing.T) {
+	svc, _, _, _, _, tplRepo := buildFullService()
+	fixedNow := time.Date(2026, 7, 23, 12, 0, 0, 0, time.UTC)
+	svc.deps.Now = func() time.Time { return fixedNow }
+	tplRepo.templates = []Template{{ID: "tpl_w", Cadence: CadenceWeekly}}
+	sc, err := svc.CreateSquadChallenge(context.Background(), CreateSquadChallengeRequest{
+		SquadID: "sq1", TemplateID: "tpl_w", TitleSlug: "halo_infinite",
+		Mode: SquadCollective, EvalType: EvalCumulative, WindowType: WindowLastNMatches,
+		TargetPerMember: 5, CreatedBy: "alice",
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if sc.ExpiresAt == nil {
+		t.Fatal("expires_at doit être calculé depuis la cadence weekly")
+	}
+	if want := fixedNow.Add(7 * 24 * time.Hour); !sc.ExpiresAt.Equal(want) {
+		t.Errorf("expires_at = %v, want %v", sc.ExpiresAt, want)
+	}
+}
+
+// TestService_DeleteSquad_CascadesArchiveChallenges : la suppression d'escouade
+// archive ses défis actifs (pas d'orphelins).
+func TestService_DeleteSquad_CascadesArchiveChallenges(t *testing.T) {
+	svc, _, _, scRepo, sqRepo, _ := buildFullService()
+	sqRepo.members = []SquadMember{{Xuid: "x1", UserID: "alice"}}
+	scRepo.listBySquad = []SquadChallenge{{ID: "sc1"}, {ID: "sc2"}}
+	if err := svc.DeleteSquad(context.Background(), "sq1", "alice"); err != nil {
+		t.Fatalf("delete squad: %v", err)
+	}
+	if len(scRepo.archivedIDs) != 2 {
+		t.Errorf("les 2 défis doivent être archivés en cascade, got %v", scRepo.archivedIDs)
 	}
 }
 

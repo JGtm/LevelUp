@@ -84,6 +84,30 @@ func (h *PrestigeHandler) ListSquadChallenges(ctx context.Context, in *listSquad
 	return &mapOutput{Body: map[string]any{"squad_challenges": list, jsonKeyCount: len(list)}}, nil
 }
 
+type abandonSquadChallengeInput struct {
+	ID          string `path:"id"`
+	RequestedBy string `query:"requested_by"`
+}
+
+// AbandonSquadChallenge gère DELETE /squad-challenges/{id}?requested_by=slug —
+// archive le défi (abandon volontaire) : il sort de la liste active. La garde
+// d'appartenance (requestedBy membre-user) vit dans le service (BOLA objet-level).
+func (h *PrestigeHandler) AbandonSquadChallenge(ctx context.Context, in *abandonSquadChallengeInput) (*noContentOutput, error) {
+	if in.ID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_id", "id requis")
+	}
+	if in.RequestedBy == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_requested_by", "requested_by requis")
+	}
+	if err := h.authorizeActor(ctx, in.RequestedBy); err != nil {
+		return nil, err
+	}
+	if err := h.svc.AbandonSquadChallenge(ctx, in.ID, in.RequestedBy); err != nil {
+		return nil, h.serviceError(ctx, err)
+	}
+	return &noContentOutput{Status: http.StatusNoContent}, nil
+}
+
 type joinSquadChallengeBody struct {
 	UserID     string `json:"user_id"`
 	ChosenTier string `json:"chosen_tier,omitempty"`

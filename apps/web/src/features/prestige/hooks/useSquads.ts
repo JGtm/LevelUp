@@ -146,6 +146,18 @@ export function useRefreshSquadPool() {
   })
 }
 
+/** Abandonne (archive) un défi d'escouade — il sort de la liste active. */
+export function useAbandonSquadChallenge(squadId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, requestedBy }: { id: string; requestedBy: string }) =>
+      prestigeApi.abandonSquadChallenge(id, requestedBy),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.squad.challenges(squadId) })
+    },
+  })
+}
+
 /** Crée un défi d'escouade (depuis un template du pool). */
 export function useCreateSquadChallenge(squadId: string) {
   const qc = useQueryClient()

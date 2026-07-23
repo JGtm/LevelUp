@@ -24,6 +24,7 @@ import {
   useEvaluateSquadChallenge,
   useRefreshSquadPool,
   useCreateSquadChallenge,
+  useAbandonSquadChallenge,
   useSquadOrientation,
 } from '@/features/prestige/hooks/useSquads'
 import { useJoinSquadChallenge } from '@/features/prestige/hooks'
@@ -62,7 +63,10 @@ const STRINGS = {
     evalError: 'Échec du recalcul',
     created: 'Défi créé',
     createError: 'Échec de la création du défi',
+    challengeDeleted: 'Défi supprimé',
+    challengeDeleteError: 'Échec de la suppression du défi',
     reached: 'Atteint',
+    expired: 'Expiré',
     target: (n: number) => `Cible ${n} / membre`,
     matchesN: (n: number) => `${n} match${n > 1 ? 's' : ''}`,
     challenge: 'Défi',
@@ -108,7 +112,10 @@ const STRINGS = {
     evalError: 'Recalculation failed',
     created: 'Challenge created',
     createError: 'Failed to create challenge',
+    challengeDeleted: 'Challenge deleted',
+    challengeDeleteError: 'Failed to delete challenge',
     reached: 'Reached',
+    expired: 'Expired',
     target: (n: number) => `Target ${n} / member`,
     matchesN: (n: number) => `${n} match${n > 1 ? 'es' : ''}`,
     challenge: 'Challenge',
@@ -360,6 +367,7 @@ function SquadObjectivesPanel({
   const evaluate = useEvaluateSquadChallenge(squadId)
   const refreshPool = useRefreshSquadPool()
   const createChallenge = useCreateSquadChallenge(squadId)
+  const abandon = useAbandonSquadChallenge(squadId)
   const challenges = data?.squad_challenges ?? []
   const pool = refreshPool.data?.pool ?? []
 
@@ -368,6 +376,8 @@ function SquadObjectivesPanel({
   const [progressByChallenge, setProgressByChallenge] = useState<
     Record<string, SquadParticipantProgress[]>
   >({})
+  // Défi en attente de confirmation de suppression (2e clic), pattern du footer squad.
+  const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null)
 
   const onEvaluate = (challengeId: string) =>
     evaluate.mutate(
@@ -390,6 +400,21 @@ function SquadObjectivesPanel({
       },
     )
 
+  const onDelete = (challengeId: string) => {
+    if (confirmingDelete !== challengeId) {
+      setConfirmingDelete(challengeId)
+      return
+    }
+    setConfirmingDelete(null)
+    abandon.mutate(
+      { id: challengeId, requestedBy: playerSlug },
+      {
+        onSuccess: () => toast.success(t.challengeDeleted),
+        onError: (err) => toast.error(apiErrorMessage(err) ?? t.challengeDeleteError),
+      },
+    )
+  }
+
   return (
     <div className="mt-3 space-y-3">
       {/* Défis actifs */}
@@ -407,7 +432,14 @@ function SquadObjectivesPanel({
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="min-w-0">
-                    <span className="block truncate text-sm">{label}</span>
+                    <span className="flex items-center gap-2">
+                      <span className="truncate text-sm">{label}</span>
+                      {c.expired ? (
+                        <span className="shrink-0 text-2xs font-semibold text-muted-foreground">
+                          {t.expired}
+                        </span>
+                      ) : null}
+                    </span>
                     {c.target_per_member ? (
                       <span className="text-2xs text-muted-foreground">
                         {t.target(c.target_per_member)}
@@ -427,9 +459,18 @@ function SquadObjectivesPanel({
                       size="sm"
                       variant={isParticipant ? 'outline' : 'default'}
                       onClick={() => onJoin(c.id)}
-                      disabled={isParticipant || join.isPending}
+                      disabled={isParticipant || c.expired || join.isPending}
                     >
                       {isParticipant ? t.joined : t.join}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className={confirmingDelete === c.id ? 'text-destructive' : undefined}
+                      onClick={() => onDelete(c.id)}
+                      disabled={abandon.isPending}
+                    >
+                      {confirmingDelete === c.id ? t.confirmDelete : t.deleteCta}
                     </Button>
                   </span>
                 </div>

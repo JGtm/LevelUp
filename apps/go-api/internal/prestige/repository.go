@@ -157,6 +157,9 @@ type SquadChallengeRepo interface {
 	Create(ctx context.Context, sc SquadChallenge) error
 	Get(ctx context.Context, id string) (SquadChallenge, error)
 	ListBySquad(ctx context.Context, squadID string) ([]SquadChallenge, error)
+	// Archive marque un défi comme archivé (abandon). ListBySquad ne renvoie
+	// plus les défis archivés. Idempotent.
+	Archive(ctx context.Context, id string) error
 
 	AddParticipant(ctx context.Context, p SquadChallengeParticipant) error
 	UpdateParticipantProgress(ctx context.Context, challengeID, userID string, value float64, completedAt *time.Time) error

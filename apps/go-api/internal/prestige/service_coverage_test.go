@@ -147,6 +147,7 @@ type stubSquadChallengeRepo struct {
 	stored           map[string]SquadChallenge
 	listBySquad      []SquadChallenge
 	listParticipants []SquadChallengeParticipant
+	archived         map[string]bool
 	getErr           error
 }
 
@@ -170,6 +171,13 @@ func (r *stubSquadChallengeRepo) Get(_ context.Context, id string) (SquadChallen
 }
 func (r *stubSquadChallengeRepo) ListBySquad(_ context.Context, _ string) ([]SquadChallenge, error) {
 	return r.listBySquad, nil
+}
+func (r *stubSquadChallengeRepo) Archive(_ context.Context, id string) error {
+	if r.archived == nil {
+		r.archived = map[string]bool{}
+	}
+	r.archived[id] = true
+	return nil
 }
 func (r *stubSquadChallengeRepo) AddParticipant(_ context.Context, _ SquadChallengeParticipant) error {
 	return nil
@@ -634,6 +642,32 @@ func TestService_ListSquadChallenges_EnrichesLabelsAndParticipants(t *testing.T)
 	}
 	if out[1].LabelFR != "" || out[1].LabelEN != "" {
 		t.Errorf("défi sans template ne doit pas avoir de libellé: %+v", out[1])
+	}
+}
+
+// TestService_ListSquadChallenges_MarksExpired : un défi dont expires_at est
+// dépassé (horloge service) est marqué Expired ; un défi sans expiration ne
+// l'est pas (Lot 3, item 3.5).
+func TestService_ListSquadChallenges_MarksExpired(t *testing.T) {
+	svc, _, _, scRepo, _, _ := buildCoverageService()
+	svc.deps.Squads.(*fakeSquadRepo).members = []SquadMember{{Xuid: "x1", UserID: "alice"}}
+	// buildCoverageService fige Now au 2026-04-25 12:00 UTC.
+	past := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
+	future := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
+	scRepo.listBySquad = []SquadChallenge{
+		{ID: "sc_exp", ExpiresAt: &past},
+		{ID: "sc_live", ExpiresAt: &future},
+		{ID: "sc_none"}, // pas d'expiration
+	}
+	out, err := svc.ListSquadChallenges(context.Background(), "sq1", "alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !out[0].Expired {
+		t.Errorf("défi expiré (expires_at passé) doit être marqué Expired")
+	}
+	if out[1].Expired || out[2].Expired {
+		t.Errorf("défi futur/sans expiration ne doit PAS être marqué Expired: %+v %+v", out[1], out[2])
 	}
 }
 

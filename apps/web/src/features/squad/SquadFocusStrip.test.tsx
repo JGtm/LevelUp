@@ -39,6 +39,7 @@ const H = vi.hoisted(() => {
     created_at: '2026-07-02T00:00:00Z',
     label_fr: 'Briseur de couronnes',
     label_en: 'Crown breaker',
+    expired: false,
     participants: [
       {
         squad_challenge_id: 'sc1',
@@ -62,6 +63,7 @@ vi.mock('@/features/prestige/hooks/useSquads', () => ({
   useEvaluateSquadChallenge: () => ({ mutate: H.evaluateMutate, isPending: false }),
   useRefreshSquadPool: () => ({ mutate: vi.fn(), isPending: false, isSuccess: false, data: undefined }),
   useCreateSquadChallenge: () => ({ mutate: vi.fn(), isPending: false }),
+  useAbandonSquadChallenge: () => ({ mutate: vi.fn(), isPending: false }),
   useSquadOrientation: () => ({ data: undefined }),
 }))
 

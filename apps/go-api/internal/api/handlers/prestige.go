@@ -80,7 +80,7 @@ func (h *PrestigeHandler) WithActorGuard(g ActorGuard) *PrestigeHandler {
 	return h
 }
 
-// Mount enregistre les 26 routes via Huma sur le routeur chi fourni.
+// Mount enregistre les 27 routes via Huma sur le routeur chi fourni.
 //
 // Les routes à corps REQUIS utilisent RawBody (décodage maison) pour préserver
 // le contrat 400 {invalid_body} sur JSON malformé (un Body typé renverrait le 422
@@ -109,6 +109,7 @@ func (h *PrestigeHandler) Mount(r chi.Router) {
 	huma.Get(api, "/squads/{squad_id}/challenges", h.ListSquadChallenges)
 	huma.Post(api, "/squads/{squad_id}/challenges/pool/refresh", h.RefreshSquadPool)
 	huma.Post(api, "/squad-challenges/{id}/join", h.JoinSquadChallenge)
+	huma.Delete(api, "/squad-challenges/{id}", h.AbandonSquadChallenge)
 
 	huma.Post(api, "/squads", h.CreateSquad)
 	huma.Get(api, "/squads", h.ListMySquads)

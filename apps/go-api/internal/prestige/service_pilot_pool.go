@@ -183,12 +183,18 @@ func (s *service) RefreshSquadPool(ctx context.Context, squadID, titleSlug, requ
 		return nil, fmt.Errorf("%w: squad_id/title_slug requis", ErrInvalidInput)
 	}
 
+	// requestedBy OBLIGATOIRE : sans lui, la garde d'appartenance ci-dessous
+	// serait contournée (Lot 3, fermeture du bypass). Le handler fournit toujours
+	// l'acteur du chemin ; un appel sans acteur est un bug/abus → 400.
+	if requestedBy == "" {
+		return nil, fmt.Errorf("%w: requested_by requis", ErrInvalidInput)
+	}
 	// Vérifier que requestedBy est membre de l'escouade (sinon rejeter).
 	members, err := s.deps.Squads.ListMembers(ctx, squadID)
 	if err != nil {
 		return nil, fmt.Errorf("list members: %w", err)
 	}
-	if requestedBy != "" && !isMember(members, requestedBy) {
+	if !isMember(members, requestedBy) {
 		return nil, fmt.Errorf("%w: not a member of squad", ErrInvalidInput)
 	}
 

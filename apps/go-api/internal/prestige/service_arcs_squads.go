@@ -297,6 +297,14 @@ func presetDescription(p PresetArc) string {
 
 // ---------- Squad challenges ----------
 
+// Durées d'expiration d'un défi d'escouade par cadence de template (Lot 3).
+// Bornes nommées (pas de magic number) ; le mois est approximé à 30 jours.
+const (
+	squadExpiryDaily   = 24 * time.Hour
+	squadExpiryWeekly  = 7 * 24 * time.Hour
+	squadExpiryMonthly = 30 * 24 * time.Hour
+)
+
 // CreateSquadChallenge crée un défi d'escouade (collectif ou compétitif).
 //
 // L'invariant target_per_member est conservé : la cible affichée au total
@@ -313,6 +321,18 @@ func (s *service) CreateSquadChallenge(ctx context.Context, req CreateSquadChall
 	}
 
 	now := s.deps.Now()
+	// expires_at : explicite (req) sinon dérivé de la cadence du template
+	// (Lot 3). Lookup best-effort — un template retiré/illisible → pas
+	// d'expiration (nil), jamais d'échec de création. Loggé (règle 3).
+	expiresAt := req.ExpiresAt
+	if expiresAt == nil && req.TemplateID != "" {
+		if tpl, err := s.deps.Templates.GetByID(ctx, req.TemplateID); err != nil {
+			slog.DebugContext(ctx, "prestige: squad challenge expiry — template lookup failed (pas d'expiration)",
+				"err", err, "template_id", req.TemplateID)
+		} else {
+			expiresAt = squadChallengeExpiry(now, tpl.Cadence)
+		}
+	}
 	sc := SquadChallenge{
 		ID:              newID("sc"),
 		SquadID:         req.SquadID,
@@ -323,7 +343,7 @@ func (s *service) CreateSquadChallenge(ctx context.Context, req CreateSquadChall
 		WindowType:      req.WindowType,
 		WindowValue:     req.WindowValue,
 		TargetPerMember: req.TargetPerMember,
-		ExpiresAt:       req.ExpiresAt,
+		ExpiresAt:       expiresAt,
 		CreatedBy:       req.CreatedBy,
 		CreatedAt:       now,
 	}
@@ -399,6 +419,54 @@ func (s *service) JoinSquadChallenge(ctx context.Context, challengeID, userID st
 	return nil
 }
 
+// AbandonSquadChallenge archive un défi d'escouade (abandon volontaire) : il
+// sort de la liste active (ListSquadChallenges filtre archived_at IS NULL).
+//
+// Garde d'appartenance objet-level (BOLA) identique à Join/Evaluate : les défis
+// d'escouade vivent dans une DB partagée, donc requestedBy DOIT être membre-user
+// de l'escouade du défi. Idempotent (ré-archiver = UPDATE sans effet).
+func (s *service) AbandonSquadChallenge(ctx context.Context, challengeID, requestedBy string) error {
+	if challengeID == "" {
+		return fmt.Errorf("%w: challenge_id requis", ErrInvalidInput)
+	}
+	sc, err := s.deps.SquadChallenges.Get(ctx, challengeID)
+	if err != nil {
+		// Sans le squad_id du défi, la vérification d'appartenance est impossible.
+		// On LOGGE (règle 10) puis on refuse — challenge_id inexistant OU lecture KO.
+		slog.WarnContext(ctx, "prestige: squad challenge lookup failed on abandon",
+			"err", err, "squad_challenge_id", challengeID, "requested_by", requestedBy)
+		return fmt.Errorf("%w: défi d'escouade introuvable", ErrInvalidInput)
+	}
+	if err := s.assertMemberUser(ctx, sc.SquadID, requestedBy); err != nil {
+		return err
+	}
+	if err := s.deps.SquadChallenges.Archive(ctx, challengeID); err != nil {
+		return fmt.Errorf("archive squad challenge: %w", err)
+	}
+	slog.InfoContext(ctx, "prestige: squad challenge abandoned",
+		"squad_challenge_id", challengeID, "squad_id", sc.SquadID, "by", requestedBy)
+	return nil
+}
+
+// squadChallengeExpiry calcule la date d'expiration d'un défi d'escouade depuis
+// la cadence de son template (daily → +1 j, weekly → +7 j, monthly → +30 j).
+// Cadence libre/inconnue → nil (pas d'expiration). Bornes nommées, pas de magie.
+func squadChallengeExpiry(now time.Time, cadence Cadence) *time.Time {
+	var d time.Duration
+	switch cadence {
+	case CadenceDaily:
+		d = squadExpiryDaily
+	case CadenceWeekly:
+		d = squadExpiryWeekly
+	case CadenceMonthly:
+		d = squadExpiryMonthly
+	default:
+		return nil
+	}
+	exp := now.Add(d)
+	return &exp
+}
+
 // GetSquadChallenge retourne un défi d'escouade par ID.
 func (s *service) GetSquadChallenge(ctx context.Context, id string) (SquadChallenge, error) {
 	sc, err := s.deps.SquadChallenges.Get(ctx, id)
@@ -443,6 +511,9 @@ func (s *service) ListSquadChallenges(ctx context.Context, squadID, requestedBy 
 // borné (poignée), le coût N+1 des lectures par défi est acceptable.
 func (s *service) enrichSquadChallenge(ctx context.Context, c SquadChallenge) SquadChallengeView {
 	view := SquadChallengeView{SquadChallenge: c, Participants: []SquadChallengeParticipant{}}
+	// Expiré : comparé à l'horloge canonique UTC du service (cohérent avec le
+	// calcul d'expires_at à la création) — jamais CURRENT_TIMESTAMP SQL (fuseau).
+	view.Expired = c.ExpiresAt != nil && c.ExpiresAt.Before(s.deps.Now())
 	if c.TemplateID != "" {
 		if tpl, err := s.deps.Templates.GetByID(ctx, c.TemplateID); err != nil {
 			slog.DebugContext(ctx, "prestige: squad challenge label lookup failed (libellés omis)",

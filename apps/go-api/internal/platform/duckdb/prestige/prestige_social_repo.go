@@ -361,11 +361,14 @@ func (r *PrestigeSquadChallengeRepo) Get(ctx context.Context, id string) (presti
 func (r *PrestigeSquadChallengeRepo) ListBySquad(ctx context.Context, squadID string) ([]prestige.SquadChallenge, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
+	// Défis ACTIFS uniquement (archived_at IS NULL) : un défi abandonné/archivé
+	// sort de la liste (cycle de vie, Lot 3). L'archivage est un UPDATE de la
+	// colonne non indexée archived_at → aucun risque ART.
 	rows, err := r.db.QueryRecovered(ctx, `
 		SELECT id, squad_id, COALESCE(template_id, ''), title_slug, mode, eval_type,
 		       window_type, COALESCE(window_value, ''), COALESCE(target_per_member, 0),
 		       expires_at, created_by, created_at
-		FROM squad_challenge WHERE squad_id = ? ORDER BY created_at DESC
+		FROM squad_challenge WHERE squad_id = ? AND archived_at IS NULL ORDER BY created_at DESC
 	`, squadID)
 	if err != nil {
 		return nil, err
@@ -386,6 +389,18 @@ func (r *PrestigeSquadChallengeRepo) ListBySquad(ctx context.Context, squadID st
 		out = append(out, sc)
 	}
 	return out, rows.Err()
+}
+
+// Archive marque un défi d'escouade comme archivé (abandon). UPDATE basse
+// fréquence (HTTP) sur la colonne NON indexée archived_at de la table create-only
+// squad_challenge : pas de pression concurrente ni de risque ART (mêmes garanties
+// que Rename sur squad). Sous lease KindSharedSocial + CHECKPOINT (ADR 0022).
+// Idempotent : ré-archiver un défi déjà archivé est un UPDATE sans effet.
+func (r *PrestigeSquadChallengeRepo) Archive(ctx context.Context, id string) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	return execCheckpointed(ctx, r.db,
+		`UPDATE squad_challenge SET archived_at = CURRENT_TIMESTAMP WHERE id = ?`, id)
 }
 
 func (r *PrestigeSquadChallengeRepo) AddParticipant(ctx context.Context, p prestige.SquadChallengeParticipant) error {

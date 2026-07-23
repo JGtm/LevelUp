@@ -40,6 +40,7 @@ func TestPrestigeHandler_ActorGuard_DeniesForeignActor_AllActorRoutes(t *testing
 		// prestige_squad_challenges.go
 		{"create_squad_challenge", http.MethodPost, "/squads/sq1/challenges", `{"title_slug":"halo_infinite","mode":"collective","eval_type":"threshold","window_type":"session","target_per_member":5,"created_by":"bob"}`},
 		{"join_squad_challenge", http.MethodPost, "/squad-challenges/sc1/join", `{"user_id":"bob","chosen_tier":"heroic"}`},
+		{"abandon_squad_challenge", http.MethodDelete, "/squad-challenges/sc1?requested_by=bob", ""},
 		// prestige_squads.go
 		{"enable_pilot_mode", http.MethodPost, "/pilot-mode/enable", `{"user_id":"bob","title_slug":"halo_infinite"}`},
 		{"disable_pilot_mode", http.MethodPost, "/pilot-mode/disable", `{"user_id":"bob","title_slug":"halo_infinite"}`},
@@ -84,6 +85,7 @@ func TestPrestigeHandler_ActorGuard_AllowsOwnActor_AllActorRoutes(t *testing.T) 
 		{"adopt_preset_arc", http.MethodPost, "/arcs/presets/p1/adopt", `{"user_id":"alice","title_slug":"halo_infinite"}`, http.StatusCreated},
 		{"create_squad_challenge", http.MethodPost, "/squads/sq1/challenges", `{"title_slug":"halo_infinite","mode":"collective","eval_type":"threshold","window_type":"session","target_per_member":5,"created_by":"alice"}`, http.StatusCreated},
 		{"join_squad_challenge", http.MethodPost, "/squad-challenges/sc1/join", `{"user_id":"alice","chosen_tier":"heroic"}`, http.StatusNoContent},
+		{"abandon_squad_challenge", http.MethodDelete, "/squad-challenges/sc1?requested_by=alice", "", http.StatusNoContent},
 		{"enable_pilot_mode", http.MethodPost, "/pilot-mode/enable", `{"user_id":"alice","title_slug":"halo_infinite"}`, http.StatusOK},
 		{"disable_pilot_mode", http.MethodPost, "/pilot-mode/disable", `{"user_id":"alice","title_slug":"halo_infinite"}`, http.StatusNoContent},
 		{"refresh_squad_pool", http.MethodPost, "/squads/sq1/challenges/pool/refresh", `{"title_slug":"halo_infinite","requested_by":"alice"}`, http.StatusOK},

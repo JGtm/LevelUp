@@ -298,8 +298,12 @@ type SquadChallengeParticipant struct {
 // embarqué (JSON aplati) : la vue est un sur-ensemble strict de SquadChallenge.
 type SquadChallengeView struct {
 	SquadChallenge
-	LabelFR      string                      `json:"label_fr,omitempty"`
-	LabelEN      string                      `json:"label_en,omitempty"`
+	LabelFR string `json:"label_fr,omitempty"`
+	LabelEN string `json:"label_en,omitempty"`
+	// Expired : expires_at dépassé (comparé à l'horloge canonique UTC du service).
+	// Le défi reste listé (le membre peut le voir et le supprimer) mais l'UI le
+	// signale et empêche de le rejoindre.
+	Expired      bool                        `json:"expired"`
 	Participants []SquadChallengeParticipant `json:"participants"`
 }
 

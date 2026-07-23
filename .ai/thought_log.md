@@ -85,6 +85,34 @@ laissée à l'utilisateur. Le parcours est prouvé fonctionnel par l'API.
 DELETE, cascade DeleteSquad, expires_at, fermeture bypass requested_by vide).
 
 ---
+## [2026-07-23] PLAN_SQUAD_CHALLENGES — Lot 3 (cycle de vie) CLÔTURÉ
+
+**Statut** : Complété. Branche `fix/squad-challenges-workflow`.
+
+**Décision technique principale** : `squad_challenge` est une table SIMPLE (PK id, pas
+append-only) → archivage par colonne nullable `archived_at` (UPDATE sur colonne NON
+indexée = zéro risque ART, même garantie que RenameSquad ; garde anti-ART integration
+vert). Migration additive `add_archived_at_to_squad_challenge` (ADD COLUMN IF NOT EXISTS)
++ ordre canonique — appliquée live sur halo_infinite ET halo_5. Endpoint
+`DELETE /squad-challenges/{id}` → `AbandonSquadChallenge` (Get → assertMemberUser BOLA →
+Archive), wrapper Lazy avec writer shared_social. `ListBySquad` filtre `archived_at IS NULL`.
+`DeleteSquad` archive les défis en cascade (best-effort loggé). `expires_at` calculé à la
+création depuis la cadence du template (constantes `squadExpiry*`) ; champ `Expired`
+comparé à `s.deps.Now()` UTC (jamais CURRENT_TIMESTAMP SQL — timezone). `RefreshSquadPool`
+exige requested_by non vide (ferme le bypass membership).
+
+**Résultats observés** : go build OK ; tests prestige (5 nouveaux : abandon×2, expiry,
+cascade, requested_by, marquage expiré) + handlers + wire + migration + persist real DB
+verts ; garde anti-ART `-tags=integration` vert ; tsc/eslint/vitest/paths verts.
+**Vérifié LIVE** (serveur rebuild, migration appliquée) : défi weekly → expires_at =
+created_at + 7 j exact ; requested_by vide → HTTP 400 ; abandon → 204 + liste vide ;
+delete squad avec défi actif → 204 (cascade). Escouades de test supprimées (0 résidu).
+
+**Conclusion / prochaine étape** : Lot 4 (sémantique d'évaluation : borner les matchs
+comptés à created_at du défi — plus de complétion rétroactive ; fenêtres session/rolling_days ;
+filtrage pool cumulatif).
+
+---
 ## [2026-07-23] Réintégration + validation des 4 retouches FDA gap sur origin/main
 
 **Statut** : Complété. Branche `integrate/fda-gap-followups` rebasée sur `origin/main`

@@ -235,6 +235,8 @@ export interface SquadChallengeParticipant {
 export interface SquadChallengeView extends SquadChallenge {
   label_fr?: string
   label_en?: string
+  /** true si expires_at est dépassé (le défi reste listé mais non rejoignable). */
+  expired: boolean
   participants: SquadChallengeParticipant[]
 }
 
@@ -462,6 +464,12 @@ export const prestigeApi = {
 
   joinSquadChallenge: (id: string, body: { user_id: string; chosen_tier?: Tier; is_private?: boolean }) =>
     api.post<void>(`${scopedToPlayer(body.user_id)}/squad-challenges/${id}/join`, body),
+
+  // Abandon d'un défi d'escouade (archivage) : il sort de la liste active.
+  abandonSquadChallenge: (id: string, requestedBy: string) =>
+    api.delete<void>(
+      `${scopedToPlayer(requestedBy)}/squad-challenges/${encodeURIComponent(id)}?requested_by=${encodeURIComponent(requestedBy)}`,
+    ),
 
   // Squad roster (CRUD) — clé xuid, cf. backend Phase C.
   createSquad: (body: { name: string; created_by: string; members?: SquadMemberInput[] }) =>

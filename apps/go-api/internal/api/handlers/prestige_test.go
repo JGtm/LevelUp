@@ -69,6 +69,10 @@ type mockPrestigeService struct {
 	lastListSquadChallID    string
 	lastListSquadChallReqBy string
 
+	abandonSquadErr       error
+	lastAbandonSquadID    string
+	lastAbandonSquadReqBy string
+
 	lastRenameSquadID    string
 	lastRenameSquadName  string
 	lastRenameSquadReqBy string
@@ -162,6 +166,11 @@ func (m *mockPrestigeService) ListSquadChallenges(ctx context.Context, squadID, 
 	m.lastListSquadChallID = squadID
 	m.lastListSquadChallReqBy = requestedBy
 	return m.listSquadChallResp, m.listSquadChallErr
+}
+func (m *mockPrestigeService) AbandonSquadChallenge(ctx context.Context, challengeID, requestedBy string) error {
+	m.lastAbandonSquadID = challengeID
+	m.lastAbandonSquadReqBy = requestedBy
+	return m.abandonSquadErr
 }
 func (m *mockPrestigeService) RefreshSquadPool(ctx context.Context, _, _, _ string) ([]prestige.Template, error) {
 	return nil, nil
