@@ -160,7 +160,7 @@ func (r *CareerLiveRepo) LoadLastCareerRank(ctx context.Context, xuid string) (*
 
 // qLoadLastFetchStatus lit la dernière issue de fetch live persistée
 // (career_progression.last_fetch_status). Passive : contexte du diagnostic
-// apparence (Lot F), jamais critique. Même workaround `xuid || ''` que
+// apparence (Lot F), jamais critique. Même workaround `xuid || ”` que
 // qLoadLastCareerRank (défait le pushdown sur l'index ART corrompu).
 const qLoadLastFetchStatus = `
 SELECT ARG_MAX(last_fetch_status, recorded_at)
