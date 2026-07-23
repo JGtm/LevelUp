@@ -1,9 +1,11 @@
 # PLAN — D7 : titre (et langue) dans l'URL (segments de route)
 
-Statut : **LIVRÉ** (Phases 0-6 + lot final Découvertes closes le 2026-07-23 ; 13/13
-critères de succès §1 vérifiés — détail au journal §10). Branche `feat/title-slug-in-url`
-NON pushée (décision d'intégration laissée à l'utilisateur ; CI de branche non exercée
-de ce fait).
+Statut : **LIVRÉ + ADDENDUM CLOS** (Phases 0-6 + lot final Découvertes closes le
+2026-07-23 ; 13/13 critères de succès §1 vérifiés — détail au journal §10. Addendum du
+2026-07-23, demande utilisateur : les 3 découvertes différées TRAITÉES — target_route
+backend title-préfixé, outillage tsc/eslint sur e2e/, union locale centralisée + ratchet
+— cf. §7). Branche `feat/title-slug-in-url` NON pushée (décision d'intégration laissée
+à l'utilisateur ; CI de branche non exercée de ce fait).
 Date : v1 2026-07-13 (architecte Opus) ; **v2 2026-07-21** (revue Fable : 4 trous corrigés,
 langue intégrée structurellement, décisions D-8..D-11 ajoutées — amendements validés par
 l'utilisateur le 2026-07-21).
@@ -802,3 +804,30 @@ déplacement (Phase 1, TDD). Backend non touché.
   `SquadLocale`, …) — candidats à la migration vers `lib/i18n/locale.ts` dans un
   chantier de cohérence i18n dédié. (c) `notif.target_route` émis par le backend au
   format legacy (chantier Go) — le splat couvre en 1 hop, DIFFÉRÉ.
+  **LES 3 TRAITÉES le 2026-07-23 (addendum, demande utilisateur — 3 lots Opus + revue
+  orchestrateur, commits 38867c1d6 / cc56e1898 / edafa755b) :**
+  - **Lot A (c)** : helper canonique `notifications.PlayerTargetRoute` + garde-rail Go
+    `routes_guard_test` (prouvé mordant) ; 10 sites migrés avec le titre RÉEL du
+    contexte ; suffixes morts corrigés vers les routes réelles (synthesis→
+    stats/synthesis, citations→career/citations — stubs de redirection éliminés = zéro
+    hop) ; `sync_error` n'émet PLUS de TargetRoute (route morte /sync + bgCtx sans
+    titre : le fallback front délibéré /settings?jobId gouverne — arbitré) ; stock
+    persisté legacy paramétré `/players/{slug}/sync` neutralisé à la lecture
+    (`isFantomTargetRoute` via `playerRelativePath`, les 2 formats — trou attrapé par
+    la revue orchestrateur, le Set exact-match ne pouvait pas le matcher). Gates Go
+    complets (dont integration -p 1 réel : persist 21.7s, duckdb 125s) + front verts.
+  - **Lot B (a)** : `tsconfig.e2e.json` référencé dans `tsc -b` (rigueur alignée sur
+    la barre RÉELLE du repo — pas de strict fantôme ; couverture PROUVÉE par sonde
+    TS2322/TS6133) ; e2e retiré des globalIgnores eslint + bloc dédié sans règles
+    React ; 12 erreurs lint révélées corrigées par de VRAIS fixes (helper typé
+    `captureMediaCache` — 10 any + 1 ts-ignore + 1 duplication résorbés ; disable de
+    complaisance echarts retiré). Baseline warnings inchangée (67). Playwright : état
+    identique, legacy-redirect 5/5, seul rouge = slice-9 pré-existant.
+  - **Lot C (b)** : inventaire RÉEL = 89 occurrences / 66 fichiers (bien au-delà des
+    7 alias connus) ; 16 alias supprimés + consommateurs migrés, `AdminLocale`/
+    `MatchViewLocale` conservés en compat documentée (> 5 fichiers, règle du lot
+    final) ; ~50 annotations inline et `Record<'fr'|'en',T>` → `Locale` (parité par
+    typage préservée) ; garde-rail `locale.ratchet.test.ts` (position de type, 4
+    formes quotes/ordres, ZÉRO allowlist). Nouvelle micro-découverte consignée :
+    `ExplorerEncounterBriefing.tsx:48` prop `locale: string` (resserrement possible,
+    non bloquant, hors périmètre).
