@@ -19,6 +19,7 @@ interface SpartanIdentityTextDict {
     rankPrefix: string
     maxRank: string
     progressTowardsRank: (name: string) => string
+    peakReachedOn: (date: string) => string
   }
   emptyPanel: {
     titleUnavailable: string
@@ -54,6 +55,8 @@ export function getSpartanIdentityText(locale?: string | null): SpartanIdentityT
       maxRank: t(loc, 'home.spartan.max_rank'),
       progressTowardsRank: (name: string) =>
         t(loc, 'home.spartan.progress_towards_rank', { name }),
+      peakReachedOn: (date: string) =>
+        t(loc, 'home.spartan.peak_reached_on', { date }),
     },
     emptyPanel: {
       titleUnavailable: t(loc, 'home.spartan.empty.title_unavailable'),

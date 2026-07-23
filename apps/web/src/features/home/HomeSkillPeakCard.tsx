@@ -21,6 +21,12 @@ export interface HomeSkillPeakCardProps {
   testIdPrefix: string
   state: 'value' | 'placement' | 'neutral' | 'absent'
   detail: string
+  /**
+   * Formate le libellé « Atteint le {date} » (i18n FR/EN). Optionnel : si absent
+   * ou si peak.peak_achieved_at est nul, la date d'obtention n'est pas affichée
+   * (dégradation gracieuse — ex. pic CSR all-time sans date sourçable).
+   */
+  reachedOnLabel?: (date: string) => string
 }
 
 export function HomeSkillPeakCard({
@@ -31,9 +37,23 @@ export function HomeSkillPeakCard({
   testIdPrefix,
   state,
   detail,
+  reachedOnLabel,
 }: HomeSkillPeakCardProps) {
   const isPlacement = state === 'placement'
   const showRatingValue = state === 'value' && peak !== null && peak.rating_value > 0
+
+  // Date d'obtention du pic, discrète, sous le rating. Uniquement en phase
+  // « value » (matured) et si le backend a pu la sourcer (peak_achieved_at).
+  const peakReachedText =
+    state === 'value' && peak?.peak_achieved_at && reachedOnLabel
+      ? reachedOnLabel(
+          new Date(peak.peak_achieved_at).toLocaleDateString(numberLocale, {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+          }),
+        )
+      : null
   // Rang « par paliers » sans valeur numérique (CSR Halo 5 : tier seul, pas
   // d'échelle chiffrée) : on AFFICHE le palier (ligne principale) mais on NE
   // montre PAS le tiret « — » placeholder (qui n'a de sens qu'en placement /
@@ -104,6 +124,14 @@ export function HomeSkillPeakCard({
                 className="text-xs font-medium text-muted-foreground"
               >
                 {showRatingValue ? peak!.rating_value.toLocaleString(numberLocale, { maximumFractionDigits: 0 }) : '—'}
+              </p>
+            )}
+            {peakReachedText && (
+              <p
+                data-testid={`${testIdPrefix}-reached-on`}
+                className="mt-0.5 text-2xs font-medium text-muted-foreground/80"
+              >
+                {peakReachedText}
               </p>
             )}
           </div>

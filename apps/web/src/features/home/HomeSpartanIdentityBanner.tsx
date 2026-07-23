@@ -296,6 +296,7 @@ export function HomeSpartanIdentityBanner({
                 testIdPrefix="home-highest-csr"
                 state={csrState.state}
                 detail={csrState.detail}
+                reachedOnLabel={labels.peakReachedOn}
               />
             )}
             {hasLusrCap && (
@@ -307,6 +308,7 @@ export function HomeSpartanIdentityBanner({
                 testIdPrefix="home-highest-lusr"
                 state={lusrState.state}
                 detail={lusrState.detail}
+                reachedOnLabel={labels.peakReachedOn}
               />
             )}
           </>

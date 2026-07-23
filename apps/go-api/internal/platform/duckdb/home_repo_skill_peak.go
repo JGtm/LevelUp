@@ -53,11 +53,13 @@ type peakRow struct {
 	recency       sql.NullTime
 }
 
-// peakRegistryInfo : projection Phase B match_registry pour classification CSR/LUSR.
+// peakRegistryInfo : projection Phase B match_registry pour classification CSR/LUSR
+// + date d'obtention du pic (start_time canonique du match).
 type peakRegistryInfo struct {
 	isRanked     bool
 	playlistName string
 	pairName     string
+	startTime    sql.NullTime // start_time canonique (COALESCE utc, local AT TIME ZONE UTC)
 }
 
 // loadHomeSkillPeak lit le meilleur rating CSR ou LUSR pour la home, avec
@@ -105,7 +107,7 @@ func (r *HomeRepo) loadHomeSkillPeak(ctx context.Context, ratingType string) *do
 		matchIDs = append(matchIDs, pr.matchID)
 	}
 	registryByMatch := r.loadPeakPhaseB(ctx, matchIDs)
-	return r.assemblePeak(playerRows, registryByMatch, ratingType)
+	return r.assemblePeak(ctx, playerRows, registryByMatch, ratingType)
 }
 
 // loadPeakPhaseA : query match_skill_rank sur pdb.Player (player-only).
@@ -182,11 +184,12 @@ func (r *HomeRepo) loadPeakPhaseB(ctx context.Context, matchIDs []string) map[st
 			isRanked     bool
 			playlistName string
 			pairName     string
+			startTime    sql.NullTime
 		)
-		if err := rows.Scan(&matchID, &isRanked, &playlistName, &pairName); err != nil {
+		if err := rows.Scan(&matchID, &isRanked, &playlistName, &pairName, &startTime); err != nil {
 			continue
 		}
-		out[matchID] = peakRegistryInfo{isRanked: isRanked, playlistName: playlistName, pairName: pairName}
+		out[matchID] = peakRegistryInfo{isRanked: isRanked, playlistName: playlistName, pairName: pairName, startTime: startTime}
 	}
 	return out
 }
@@ -197,7 +200,7 @@ func (r *HomeRepo) loadPeakPhaseB(ctx context.Context, matchIDs []string) map[st
 // + threshold (season vs default vs LUSR=10).
 //
 //nolint:gocyclo // cohésion du flow filtre→group→select, splitter casse la lisibilité.
-func (r *HomeRepo) assemblePeak(playerRows []peakRow, registryByMatch map[string]peakRegistryInfo, ratingType string) *domain.HomeSkillPeakRow {
+func (r *HomeRepo) assemblePeak(ctx context.Context, playerRows []peakRow, registryByMatch map[string]peakRegistryInfo, ratingType string) *domain.HomeSkillPeakRow {
 	want := strings.ToUpper(strings.TrimSpace(ratingType))
 	// LUSR garde son seuil interne de 10 (algorithme local). CSR utilise la
 	// saison courante du HomeRepo (configurée via WithCSRThresholds) ou le
@@ -263,6 +266,16 @@ func (r *HomeRepo) assemblePeak(playerRows []peakRow, registryByMatch map[string
 	peak.SubTier = chosen.row.subTier
 	if strings.TrimSpace(chosen.row.tierLabel) != "" {
 		peak.TierLabel = stringPtr(chosen.row.tierLabel)
+	}
+	// Date d'obtention du pic : start_time canonique du match retenu (Phase B).
+	// Dégradation gracieuse si le match est absent du registry (ex. m2 legacy
+	// sans ligne registry) : champ laissé nil + trace Debug, jamais d'erreur.
+	if info, ok := registryByMatch[chosen.row.matchID]; ok && info.startTime.Valid {
+		t := info.startTime.Time
+		peak.PeakAchievedAt = &t
+	} else {
+		slog.DebugContext(ctx, "assemblePeak: date d'obtention du pic indisponible (match hors registry)",
+			"rating_type", want, "match_id", chosen.row.matchID, "xuid", r.pdb.XUID)
 	}
 	zero := 0
 	peak.MeasurementMatchesRemaining = &zero
@@ -344,6 +357,13 @@ func (r *HomeRepo) loadCSRAlltimePeak(ctx context.Context) *domain.HomeSkillPeak
 		peak.MeasurementMatchesRemaining = &zero
 		totalCopy := threshold
 		peak.PlacementTotal = &totalCopy
+		// PeakAchievedAt laissé nil À DESSEIN : le pic CSR all-time provient de
+		// player_csr_snapshots.alltime_value (valeur officielle Waypoint) qui
+		// n'expose PAS la date d'obtention. Les colonnes fetched_at/written_at
+		// datent la persistance du snapshot, pas l'atteinte du pic → on ne les
+		// utilise pas (sinon date trompeuse). Front dégrade (pas de "Atteint le").
+		slog.DebugContext(ctx, "loadCSRAlltimePeak: pic CSR all-time sans date d'obtention (source Waypoint alltime_value)",
+			"tier", bestTier, "xuid", r.pdb.XUID)
 		return peak
 	}
 

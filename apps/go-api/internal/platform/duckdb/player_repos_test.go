@@ -1435,6 +1435,39 @@ func TestHomeRepo_LoadHomeSkillPeak_Matured(t *testing.T) {
 	}
 }
 
+// TestHomeRepo_LoadHomeSkillPeak_PeakAchievedAt cadenasse la date d'obtention
+// du pic (C4). Deux cas via le seed matured :
+//   - CSR : pic = m1 (Gold 3, playlist ranked), qui a une ligne match_registry
+//     avec start_time_utc → PeakAchievedAt = start_time canonique du match.
+//   - LUSR : pic = m2 (Platinum V, social), SANS ligne match_registry (fixture
+//     legacy) → PeakAchievedAt nil (dégradation gracieuse, pas d'erreur).
+func TestHomeRepo_LoadHomeSkillPeak_PeakAchievedAt(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	seedMaturedSkillRankGroups(t, pdb)
+	ctx := context.Background()
+
+	repo := NewHomeRepo(pdb)
+	identity, err := repo.LoadSpartanIdentity(ctx)
+	if err != nil {
+		t.Fatalf("LoadSpartanIdentity: %v", err)
+	}
+	if identity == nil || identity.HighestCSR == nil || identity.HighestLUSR == nil {
+		t.Fatal("expected both peaks matured (10 matchs par groupe via seed)")
+	}
+	// CSR : m1 a une ligne registry (start_time_utc 2025-01-10 14:00:00+00).
+	csr := identity.HighestCSR
+	if csr.PeakAchievedAt == nil {
+		t.Fatal("CSR PeakAchievedAt = nil, want start_time canonique de m1")
+	}
+	if got := csr.PeakAchievedAt.UTC().Format("2006-01-02 15:04"); got != "2025-01-10 14:00" {
+		t.Errorf("CSR PeakAchievedAt = %s, want 2025-01-10 14:00 (start_time canonique m1)", got)
+	}
+	// LUSR : m2 n'a PAS de ligne registry → date non sourçable → nil (dégradation).
+	if lusr := identity.HighestLUSR; lusr.PeakAchievedAt != nil {
+		t.Errorf("LUSR PeakAchievedAt = %v, want nil (m2 hors match_registry)", lusr.PeakAchievedAt)
+	}
+}
+
 // TestHomeRepo_LoadFavoriteWeapon_TableMissing : le drop silencieux est
 // préservé pour les tables absentes (instance fraîche pré-migration). C'est
 // distinct des erreurs réelles (driver, scan) qui doivent logger un warn.

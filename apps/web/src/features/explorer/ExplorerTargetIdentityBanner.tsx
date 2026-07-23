@@ -302,6 +302,7 @@ export function ExplorerTargetIdentityBanner({
               testIdPrefix="explorer-target-csr"
               state={csrState.state}
               detail={csrState.detail}
+              reachedOnLabel={labels.peakReachedOn}
             />
           )}
           {lusrState && (
@@ -313,6 +314,7 @@ export function ExplorerTargetIdentityBanner({
               testIdPrefix="explorer-target-lusr"
               state={lusrState.state}
               detail={lusrState.detail}
+              reachedOnLabel={labels.peakReachedOn}
             />
           )}
         </div>

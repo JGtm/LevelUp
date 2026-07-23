@@ -155,6 +155,7 @@ export const homeManifest = {
   "home.spartan.highest_csr": { fr: "Meilleur CSR", en: "Highest CSR" },
   "home.spartan.highest_lusr": { fr: "Meilleur LUSR", en: "Highest LUSR" },
   "home.spartan.max_rank": { fr: "Rang max", en: "Max rank" },
+  "home.spartan.peak_reached_on": { fr: "Atteint le {date}", en: "Reached on {date}" },
   "home.spartan.progress_towards_rank": { fr: "Progression vers {name}", en: "Progress towards {name}" },
   "home.spartan.rank_prefix": { fr: "Rang", en: "Rank" },
   "home.spartan_customizer.cancel": { fr: "Annuler", en: "Cancel" },
