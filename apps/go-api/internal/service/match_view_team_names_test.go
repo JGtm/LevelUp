@@ -64,6 +64,40 @@ func TestApplyTeamNames_SetsLocalizedName(t *testing.T) {
 	}
 }
 
+// TestApplyTeamNames_SetsIdentityColor : l'adapter H5 (capability teamColorResolver)
+// renseigne la couleur d'identité hex sur le scoreboard, en laissant vides les team_side
+// inconnus/absents (fallback couleur front préservé).
+func TestApplyTeamNames_SetsIdentityColor(t *testing.T) {
+	t.Parallel()
+	adapter := halo5.NewAssetURLAdapter().WithTeamColorResolver(func(id int) string {
+		switch id {
+		case 0:
+			return "#b00000"
+		case 1:
+			return "#178dd8"
+		default:
+			return ""
+		}
+	})
+	svc := NewMatchViewService(nil, "").WithAssetURL(adapter)
+
+	t0, t1, t9 := "t0", "t1", "t9"
+	rows := []domain.MatchScoreboardRow{
+		{XUID: "a", TeamSide: &t0},
+		{XUID: "b", TeamSide: &t1},
+		{XUID: "c", TeamSide: &t9}, // team inconnu → "" → inchangé
+		{XUID: "d", TeamSide: nil}, // pas de team_side → inchangé
+	}
+	svc.applyTeamNames(context.Background(), rows)
+
+	if rows[0].TeamColor != "#b00000" || rows[1].TeamColor != "#178dd8" {
+		t.Errorf("couleurs attendues #b00000/#178dd8, got %q/%q", rows[0].TeamColor, rows[1].TeamColor)
+	}
+	if rows[2].TeamColor != "" || rows[3].TeamColor != "" {
+		t.Errorf("team_color doit rester vide (team inconnu/absent), got %q/%q", rows[2].TeamColor, rows[3].TeamColor)
+	}
+}
+
 // TestApplyTeamNames_NoCapabilityIsNoOp : sans adapter exposant teamNameResolver
 // (ex. Halo Infinite, ou assetURL nil), applyTeamNames est un no-op sans panique →
 // team_name reste vide → le front garde sa résolution existante.

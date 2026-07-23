@@ -125,6 +125,26 @@ func TestAssetURLAdapter_TeamName(t *testing.T) {
 	}
 }
 
+func TestAssetURLAdapter_TeamColor(t *testing.T) {
+	a := NewAssetURLAdapter().WithTeamColorResolver(func(teamID int) string {
+		colors := map[int]string{0: "#b00000", 1: "#178dd8"}
+		return colors[teamID]
+	})
+	if got := a.TeamColor(0); got != "#b00000" {
+		t.Errorf("TeamColor(0) = %q, want #b00000", got)
+	}
+	if got := a.TeamColor(1); got != "#178dd8" {
+		t.Errorf("TeamColor(1) = %q, want #178dd8", got)
+	}
+	if got := a.TeamColor(9); got != "" {
+		t.Errorf("TeamColor(9) = %q, want \"\" (team inconnu)", got)
+	}
+	// Sans résolveur injecté → "" (nil-safe, dégradation gracieuse).
+	if got := NewAssetURLAdapter().TeamColor(0); got != "" {
+		t.Errorf("TeamColor sans résolveur = %q, want \"\"", got)
+	}
+}
+
 func TestAssetURLAdapter_NilCSRResolver(t *testing.T) {
 	// Sans résolveur injecté, les méthodes CSR dégradent en "" (nil-safe).
 	a := NewAssetURLAdapter()

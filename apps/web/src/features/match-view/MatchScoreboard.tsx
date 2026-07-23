@@ -30,7 +30,13 @@ import type { MatchViewText } from './i18n'
 import { displayTierLabel } from './MatchHeader.utils'
 import { localizeTierLabel } from '@/lib/skillTiers'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { labelHasTeamWord, parseTeamSideID, resolveTeamName } from '@/lib/halo/teamNames'
+import {
+  labelHasTeamWord,
+  parseTeamSideID,
+  resolveTeamColorFromID,
+  resolveTeamName,
+  teamLogoPath,
+} from '@/lib/halo/teamNames'
 import {
   cellState,
   cellStyle,
@@ -148,6 +154,19 @@ export function MatchScoreboard({ rows, killerVictim, citations, header, rank, t
     return present
   }, [rows, highlightCols])
 
+  // Largeur commune de la colonne « Joueur », alignée sur le plus long gamertag
+  // du LOBBY (toutes équipes/tables confondues), pour que chaque TeamScoreboard
+  // dimensionne cette colonne à l'identique — sans quoi chaque table auto-sizerait
+  // sa colonne joueur selon SES seules lignes (largeurs incohérentes empilées).
+  // Calcul déterministe basé sur la longueur de chaîne (pas de mesure DOM fragile) :
+  // longueur max en `ch` + réserve fixe pour la flèche d'expansion (▸/▾ + marge) et
+  // le padding de cellule. `minWidth` garantit le plancher partagé ; l'ellipsis
+  // gère les rares cas où un badge (Bot/MVP/LVP) dépasserait la réserve.
+  const playerColWidth = useMemo(() => {
+    const maxLen = rows.reduce((m, r) => Math.max(m, (r.gamertag ?? '').length), 0)
+    return `${maxLen + 6}ch`
+  }, [rows])
+
   function goToExplorer(gamertag: string, e: React.MouseEvent) {
     if (!playerSlug) return
     e.stopPropagation()
@@ -176,6 +195,7 @@ export function MatchScoreboard({ rows, killerVictim, citations, header, rank, t
           rows={rows.filter((r) => (r.team_side ?? '') === side)}
           highlightCols={highlightCols}
           presentKeys={presentKeys}
+          playerColWidth={playerColWidth}
           extremesByKey={extremesByKey}
           mvpXuid={mvpXuid}
           lvpXuid={lvpXuid}
@@ -203,6 +223,8 @@ interface TeamScoreboardProps {
   highlightCols: ColDef[]
   /** Clés de colonnes avec au moins une valeur sur le lobby (masquage data-driven). */
   presentKeys: Set<string>
+  /** Largeur commune de la colonne « Joueur » (ch) — partagée par toutes les tables. */
+  playerColWidth: string
   /** Extremes (min/max) par colonne, calculés au niveau LOBBY (toutes équipes). */
   extremesByKey: Record<string, Extremes>
   /** MVP/LVP du LOBBY (un seul de chaque, partagé par tous les TeamScoreboard). */
@@ -225,6 +247,7 @@ function TeamScoreboard({
   rows,
   highlightCols,
   presentKeys,
+  playerColWidth,
   extremesByKey,
   mvpXuid: mvp,
   lvpXuid: lvp,
@@ -239,6 +262,9 @@ function TeamScoreboard({
   t,
 }: TeamScoreboardProps) {
   const locale = useAppShellStore((s) => s.locale)
+  // Titre courant : paramètre du chemin d'asset logo `/titles/{slug}/teams/{id}.png`
+  // (résolution d'asset, pas une branche de comportement → title-agnostic).
+  const slug = useAppShellStore((s) => s.currentTitleSlug)
 
   const data: ScoreboardRowVM[] = useMemo(
     () =>
@@ -433,14 +459,24 @@ function TeamScoreboard({
     : teamID != null
       ? t.teamNumberedFmt(teamID)
       : t.teamUnknown
-  // Couleur de fond du header : token sémantique team-ally / team-enemy,
-  // overridable par les réglages d'accessibilité du joueur (cf. AccessibilityTab
-  // → OutlineColorPicker, thought_log 2026-05-07). Gradient horizontal pour
-  // garder l'effet du Python (`linear-gradient(90deg, color 38%, bg 88%)`).
-  const teamColorVar = isMyTeam ? tokenCssVar('team-ally') : tokenCssVar('team-enemy')
-  const teamHeaderBg = `color-mix(in oklab, ${teamColorVar} 30%, transparent)`
+  // Couleur d'IDENTITÉ de l'équipe, data-driven (jamais slug==) : couleur fournie par
+  // le backend (row.team_color, Halo 5 depuis team_colors) en priorité, sinon la map de
+  // couleurs officielles par team_id (Halo Infinite : Eagle bleu, Cobra rouge, ...),
+  // sinon repli sur le token sémantique ally/enemy existant (overridable par les réglages
+  // d'accessibilité). Chaque équipe obtient ainsi sa couleur distincte (> 2 équipes =
+  // > 2 couleurs), là où l'ancien schéma ally/enemy n'en offrait que deux.
+  const backendTeamColor = rows.find((r) => r.team_color)?.team_color ?? null
+  const identityColor = backendTeamColor ?? resolveTeamColorFromID(teamID)
+  const teamColorVar = identityColor ?? (isMyTeam ? tokenCssVar('team-ally') : tokenCssVar('team-enemy'))
+  // Accent lisible : fond subtil + soulignement + bordure gauche marquée. Le TEXTE reste
+  // en `var(--foreground)` (jamais teinté par une couleur d'identité potentiellement vive
+  // comme le jaune Valor) pour garantir le contraste.
+  const teamHeaderBg = `color-mix(in oklab, ${teamColorVar} 22%, transparent)`
   const teamHeaderBorder = `2px solid color-mix(in oklab, ${teamColorVar} 55%, transparent)`
-  const teamHeaderColor = `color-mix(in oklab, ${teamColorVar} 80%, var(--foreground))`
+  const teamHeaderLeftBorder = `4px solid ${teamColorVar}`
+  // Logo d'équipe : `/titles/{slug}/teams/{id}.png`. null si slug/team_id absent → pas de
+  // logo ; onError masque proprement les team_id sans asset.
+  const teamLogoSrc = teamLogoPath(slug, teamID)
 
   return (
     <div className="rounded-lg overflow-hidden border-2 border-border">
@@ -453,12 +489,24 @@ function TeamScoreboard({
               className="border border-border px-3 py-2 text-left text-sm font-bold uppercase tracking-wider"
               style={{
                 background: teamHeaderBg,
-                color: teamHeaderColor,
                 borderBottom: teamHeaderBorder,
+                borderLeft: teamHeaderLeftBorder,
               }}
               aria-label={isMyTeam ? t.teamMine : t.teamEnemy}
             >
-              {teamLabel}
+              <span className="inline-flex items-center gap-2 align-middle">
+                {teamLogoSrc && (
+                  <img
+                    src={teamLogoSrc}
+                    alt={teamLabel}
+                    className="h-6 w-6 shrink-0 object-contain"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none'
+                    }}
+                  />
+                )}
+                <span>{teamLabel}</span>
+              </span>
             </th>
           </tr>
           {table.getHeaderGroups().map((hg) => (
@@ -470,6 +518,7 @@ function TeamScoreboard({
                   <th
                     key={h.id}
                     className={`border border-border border-b-2 px-2 pb-1 pt-1 ${align}`}
+                    style={isPlayerCol ? { width: playerColWidth, minWidth: playerColWidth } : undefined}
                   >
                     {flexRender(h.column.columnDef.header, h.getContext())}
                   </th>
@@ -510,7 +559,7 @@ function TeamScoreboard({
                     const align = isPlayerCol ? 'text-left' : 'text-right'
                     const highlight = r._cellStates[cell.column.id]
                     const tone: React.CSSProperties = isPlayerCol
-                      ? gamertagCellStyle
+                      ? { ...gamertagCellStyle, width: playerColWidth, minWidth: playerColWidth }
                       : highlight
                         ? cellStyle(highlight)
                         : {}

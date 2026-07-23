@@ -61,25 +61,29 @@ func LoadTitleAssetDrawerData(ctx context.Context, metaDB *DB, slug string) (map
 	return maps, weapons, medals
 }
 
-// TeamColorName : nom localisé EN/FR d'une couleur d'équipe Halo 5 (table team_colors).
+// TeamColorName : nom localisé EN/FR + couleur d'identité d'une équipe Halo 5
+// (table team_colors). Color est la couleur d'identité hex (#RRGGBB) exposée telle
+// quelle jusqu'au scoreboard front (accent d'en-tête d'équipe) ; "" quand absente.
 type TeamColorName struct {
 	NameEN string
 	NameFR string
+	Color  string
 }
 
-// LoadTeamColorNames charge la map (team_id → noms EN/FR) des couleurs d'équipe d'un
-// titre depuis une metadata.duckdb DÉJÀ OUVERTE (peuplée par cmd/h5-metadata-fetch).
+// LoadTeamColorNames charge la map (team_id → noms EN/FR + couleur) des couleurs d'équipe
+// d'un titre depuis une metadata.duckdb DÉJÀ OUVERTE (peuplée par cmd/h5-metadata-fetch).
 // Best-effort : table absente/vide → map vide. Le caller construit le résolveur closure
-// et gère le cas vide. Alimente le libellé d'équipe « Rouge/Bleu » de la Match View H5.
+// et gère le cas vide. Alimente le libellé « Rouge/Bleu » ET la couleur d'identité de
+// l'en-tête d'équipe de la Match View H5.
 func LoadTeamColorNames(ctx context.Context, metaDB *DB) map[int]TeamColorName {
 	m := map[int]TeamColorName{}
 	if rows, qerr := metaDB.Query(ctx,
-		`SELECT team_id, COALESCE(name_en, ''), COALESCE(name_fr, '') FROM team_colors`); qerr == nil {
+		`SELECT team_id, COALESCE(name_en, ''), COALESCE(name_fr, ''), COALESCE(color, '') FROM team_colors`); qerr == nil {
 		for rows.Next() {
 			var id int
-			var en, fr string
-			if rows.Scan(&id, &en, &fr) == nil && (en != "" || fr != "") {
-				m[id] = TeamColorName{NameEN: en, NameFR: fr}
+			var en, fr, color string
+			if rows.Scan(&id, &en, &fr, &color) == nil && (en != "" || fr != "") {
+				m[id] = TeamColorName{NameEN: en, NameFR: fr, Color: color}
 			}
 		}
 		_ = rows.Close()
