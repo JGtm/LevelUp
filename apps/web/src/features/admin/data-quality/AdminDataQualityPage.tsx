@@ -42,10 +42,6 @@ import {
   invalidateActionJournal,
 } from '../actionJournal'
 import { ActionLastRun } from '../ActionLastRun'
-import { useAppShellStore } from '@/stores/appShellStore'
-import { DiagnosticsPanel } from '@/features/lab/DiagnosticsPanel'
-import { getLabText, normalizeLabLocale } from '@/features/lab/i18n'
-import { useLabDiagnostics } from '@/features/lab/queries'
 import { SectionHeader } from '../components/SectionHeader'
 
 const DQ_SNAPSHOT_KEY = 'admin-dq-snapshot'
@@ -53,12 +49,6 @@ const DQ_SNAPSHOT_KEY = 'admin-dq-snapshot'
 export function AdminDataQualityPage() {
   const { data, isLoading, isError } = useDataQualityCounts()
   const tA = useAdminT()
-
-  // Diagnostics d'instance (ex-Lab) : parité endpoints + guards médailles.
-  // Réutilise le panneau Lab + son i18n local ; query gardée admin via AdminLayout.
-  const labLocale = normalizeLabLocale(useAppShellStore((s) => s.locale))
-  const labText = getLabText(labLocale)
-  const diagnostics = useLabDiagnostics(true)
 
   // Baseline roulante (hook canonique A8.2) : delta vs run precedent.
   const previous = useCounterSnapshot(DQ_SNAPSHOT_KEY, data?.generated_at, () => buildDQSnapshot(data!))
@@ -95,28 +85,6 @@ export function AdminDataQualityPage() {
       <RawAssetsSection />
       <OrphanPlaylistsSection />
       <OrphanXuidsSection />
-
-      <section className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <SectionHeader title={tA('admin.dq.diagnostics_section')} />
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => void diagnostics.refetch()}
-            disabled={diagnostics.isFetching}
-          >
-            {diagnostics.isFetching ? tA('admin.job.in_progress') : tA('admin.dq.diagnostics_refresh')}
-          </Button>
-        </div>
-        <DiagnosticsPanel
-          data={diagnostics.data}
-          isLoading={diagnostics.isLoading}
-          isError={diagnostics.isError}
-          onRetry={() => void diagnostics.refetch()}
-          locale={labLocale}
-          text={labText}
-        />
-      </section>
     </div>
   )
 }

@@ -269,24 +269,31 @@ ressources, couverture arme, exemples DQ).
 
 ### Lot D — Purge des résidus de migration (Go + front)
 
-- [ ] D1. Rapport de parité : SUPPRIMER le bloc front (`DiagnosticsPanel.tsx` partie
+- [x] D1. Rapport de parité : SUPPRIMER le bloc front (`DiagnosticsPanel.tsx` partie
       parité) ET le chargement Go (`provider.go` : parityPath/parityReport), les types
       domain associés et les clés i18n — `parity_check.py` n'existe plus dans le repo,
       la migration est terminée, et le panneau fait doublon avec son propre bloc
       fichier (signalé par l'utilisateur).
-- [ ] D2. Guards médailles (« Entrées analysées 0 ») : re-vérifier sur pièces (requête
+- [x] D2. Guards médailles (« Entrées analysées 0 ») : re-vérifier sur pièces (requête
       locale sur les données prod via duckdb CLI). RÈGLE FERMÉE : si la validation
       produit des données réelles utiles → la re-héberger comme invariant dans
       `internal/sync/invariants` (elle apparaît alors dans « Intégrité des données ») ;
       sinon SUPPRIMER avec le reste. Défaut = suppression. Le swallow `return nil, nil`
       (`provider.go:71-74`) disparaît dans les deux cas.
-- [ ] D3. Si D1+D2 = suppression totale : retirer la route `GET /lab/diagnostics`, le
+      (SUPPRESSION — preuve API live : `entry_count=0`, guards trivialement verts sur
+      table vide ; ET les guards vivent déjà à leur vrai site `cmd/refresh-metadata`
+      (`RunAllGuards` + tests propres) — le panneau était un miroir redondant. Pas de
+      re-hébergement nécessaire.)
+- [x] D3. Si D1+D2 = suppression totale : retirer la route `GET /lab/diagnostics`, le
       garde-fou `lab_routes_mounted_test.go` (retrait CONSCIENT, justifié dans le
       message de commit), `lab/queries.ts`, le port `LabProvider`, le package
       `internal/platform/lab` — 0 code mort, git garde l'historique.
-- [ ] D4. `migrate-media-paths` : vérifier son statut (déjà exécuté en prod ? encore
+- [x] D4. `migrate-media-paths` : vérifier son statut (déjà exécuté en prod ? encore
       utile ?) ; s'il reste pertinent le documenter dans `docs/COMMANDS.md`, sinon
       consigner sa suppression candidate en Découvertes. Pas de surface admin.
+      (PERTINENT — déjà exécuté en prod (H5 7/7) mais garde sa valeur si un import
+      legacy réintroduit des chemins absolus ; documenté dans COMMANDS.md EN + FR
+      avec les vrais flags.)
 
 **Gate D** : `cd apps/go-api && go test ./internal/api/... ./internal/platform/... -count=1`
 + `grep -rni "parity" apps/web/src apps/go-api/internal` → 0 hit applicatif (les hits
@@ -448,6 +455,12 @@ inattendu.
   TitleDescriptor) couvre la visibilité dans tous les cas.
 - [Lot B] `IntegrityBadge` (BackupTab) utilise les caractères `✓`/`⚠` préexistants —
   toléré (Unicode, pas emoji), non touché.
+- [Lot D] `can_manage_instance` : la route lab supprimée était la SEULE application
+  serveur de ce réglage — il ne survit plus que comme gate UI via `/bootstrap`
+  (`CanManageInstance`). Aucun endpoint backend ne l'applique désormais. À trancher
+  hors chantier (le réglage garde-t-il un sens ?).
+- [Lot C-III] Reseed du registre d'armes : RÉSOLU par l'extension C6 (reconcile au
+  boot) — la découverte initiale « mapping inerte sur DB migrée » est close.
 - [Lot B — REQUALIFIÉE] weapon-coverage : fausse piste « en-tête ignoré » — le canal
   de titre de cet endpoint est `?title=` (query param) et le panel front le passe
   correctement. État réel H5 constaté en live (2026-07-23) : 66 armes distinctes,
@@ -456,6 +469,27 @@ inattendu.
   (surtout la dominante), pas un bug de plomberie.
 
 ## Journal d'exécution
+
+### [2026-07-23] Lot D — CLOS, VOLET 1 COMPLET (agent Opus + revue orchestrateur)
+
+- D1-D3 : pile « diagnostics d'instance » entièrement supprimée (−1434 lignes nettes) —
+  Go : handler, service (`ErrLabForbidden` inclus), port `LabProvider`, package
+  `internal/platform/lab`, types domain, route openapi, garde-fou
+  `lab_routes_mounted_test.go` (retrait CONSCIENT : il assertait le contraire de l'état
+  cible ; sa valeur anti-résurrection migrée dans `lab-removal.guard.test.ts` front,
+  RENFORCÉ : `/lab/diagnostics` + modules interdits) ; front : `features/lab/{DiagnosticsPanel,
+  _labShared,i18n,queries}` + section de la page Données + types/keys/i18n/fixture MSW.
+  `features/lab/ChartsShowcasePage` + `/lab/charts` CONSERVÉS (feature distincte, vérifiée
+  vivante en navigateur).
+- D2 : preuve API live (`entry_count=0`) + guards déjà hébergés à leur vrai site
+  (`cmd/refresh-metadata` → `RunAllGuards`, tests propres) → suppression sans
+  re-hébergement.
+- D4 : `migrate-media-paths` documenté (COMMANDS EN+FR, vrais flags) — déjà exécuté en
+  prod, garde sa valeur défensive.
+- Gate re-exécuté par l'orchestrateur : go test api/platform/service 0, vet 0, build 0 ;
+  tsc 0 ; eslint 0 erreur (62 warnings, −5) ; vitest 300 fichiers / 2636 passés ;
+  grep `parity_check` = 0 ; navigateur : page Données sans la section, /lab/charts vivant,
+  0 pageerror.
 
 ### [2026-07-23] Sous-lot C-III (C6+C7) — CLOS, Lot C entier clos (agent Opus + extension orchestrateur + revue)
 

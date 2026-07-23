@@ -118,6 +118,28 @@ réelles, locale émise vérifiée par écoute réseau, liens player-scopés cor
 d'instance, décision D2 guards médailles, D3 suppression totale probable, D4
 migrate-media-paths).
 
+## [2026-07-23] Admin retours — Lot D clos, VOLET 1 COMPLET (branche feat/admin-retours-diag)
+
+**Statut** : Complété. Les 4 lots du volet 1 (A/B/C/D) sont clos — les 24 retours
+Notion sont couverts (traçabilité à statuer formellement au Lot I).
+
+**Décisions** : D2 tranché SUPPRESSION sur double preuve (API live `entry_count=0` +
+guards déjà hébergés à leur vrai site `cmd/refresh-metadata`) ; garde-fou Go
+`lab_routes_mounted_test.go` retiré CONSCIEMMENT (assertait le contraire de l'état
+cible), valeur anti-résurrection migrée et renforcée dans le garde front
+`lab-removal.guard.test.ts` ; `/lab/charts` conservé (feature distincte). D4 :
+`migrate-media-paths` documenté EN+FR (déjà exécuté en prod, valeur défensive).
+
+**Résultats/gate** (re-exécutés) : go test api/platform/service 0, vet 0, build 0 ;
+tsc 0 ; eslint 0 erreur (62 warnings, −5 vs baseline) ; vitest 2636 ; greps
+parity/parity_check/lab propres ; navigateur OK. −1434 lignes nettes.
+
+**Découvertes consignées au plan** : `can_manage_instance` n'est plus appliqué que
+côté UI (la route lab était sa seule application serveur) — à trancher hors chantier.
+
+**Prochaine étape** : VOLET 2 — Lot E (extraction diagnostique du resolver nameplate
+haloclient, byte-identique, + DiagnoseNameplate + tests fixtures 3806589).
+
 ## [2026-07-22] D7 titre dans l'URL — Phase 0 close (branche feat/title-slug-in-url)
 
 **Statut** : En cours (Phase 0/6 close), plan `.ai/PLAN_TITLE_SLUG_URL_2026-07.md` sous

@@ -30,7 +30,6 @@ export const queryKeys = {
   settings: ['settings'] as const,
   // Groupes/familles (accès mutuel) — gestion end-user
   groups: ['groups'] as const,
-  labDiagnostics: ['lab', 'diagnostics'] as const,
 
   // Par joueur
   player: (playerSlug: string) => ['player', playerSlug] as const,

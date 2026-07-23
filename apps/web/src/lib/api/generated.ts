@@ -1117,23 +1117,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/lab/diagnostics": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Diagnostic d'instance — parité + garde-fous médailles */
-        get: operations["getLabDiagnostics"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/auth/login": {
         parameters: {
             query?: never;
@@ -6680,62 +6663,6 @@ export interface components {
             has_data: boolean;
             points: components["schemas"]["LUSRPoint"][] | null;
         };
-        LabDiagnosticsResponse: {
-            medal_guards?: components["schemas"]["LabMedalGuardsReport"];
-            parity_report?: components["schemas"]["LabParityReport"];
-            parity_report_file: components["schemas"]["LabFileStatus"];
-            title_slug: string;
-        };
-        LabFileStatus: {
-            exists: boolean;
-            /** Format: date-time */
-            modified_at?: string;
-            path: string;
-            /** Format: int64 */
-            size_bytes: number;
-        };
-        LabGuardResult: {
-            details?: string[] | null;
-            passed: boolean;
-            reason: string;
-        };
-        LabMedalGuardsReport: {
-            cardinality: components["schemas"]["LabGuardResult"];
-            /** Format: int64 */
-            entry_count: number;
-            images: components["schemas"]["LabGuardResult"];
-            overall: components["schemas"]["LabGuardResult"];
-            required_fields: components["schemas"]["LabGuardResult"];
-        };
-        LabParityReport: {
-            generated_at: string;
-            go_url: string;
-            player: string;
-            results: components["schemas"]["LabParityResult"][] | null;
-            summary: components["schemas"]["LabParitySummary"];
-        };
-        LabParityResult: {
-            diffs?: {
-                [key: string]: unknown;
-            }[] | null;
-            error?: string;
-            /** Format: int64 */
-            http_status?: number;
-            mode?: string;
-            name: string;
-            reason?: string;
-            status: string;
-        };
-        LabParitySummary: {
-            /** Format: int64 */
-            failed: number;
-            /** Format: int64 */
-            passed: number;
-            /** Format: int64 */
-            skipped: number;
-            /** Format: int64 */
-            total: number;
-        };
         LastSeenStatus: {
             timestamp: string;
             title_id?: string;
@@ -10769,31 +10696,6 @@ export interface operations {
         responses: {
             /** @description Liste des release notes */
             200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    getLabDiagnostics: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Diagnostics d'instance pour le titre courant */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Diagnostic non autorisé sur cette instance (can_manage_instance) */
-            403: {
                 headers: {
                     [name: string]: unknown;
                 };
