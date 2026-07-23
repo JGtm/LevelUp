@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
-import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { buildCompositeProgressEdgeLabels, clampCompositeProgress } from '@/components/ui/composite-progress-bar-labels'
 import { DataFreshnessIndicator } from '@/components/ui/data-freshness-indicator'
@@ -14,6 +13,7 @@ import { BattlePassRewardLightbox, type RewardLightboxData } from '@/features/pa
 import { BattlePassRewardCarousel } from '@/features/palmares/BattlePassRewardCarousel'
 import { buildTierGroups, type RewardCard } from '@/features/palmares/battlePassTierGroups'
 import { PassContentSummary } from '@/features/palmares/PassContentSummary'
+import { SeasonPassBadge } from '@/features/palmares/SeasonPassBadge'
 import { getPalmaresText, normalizePalmaresLocale } from '@/features/palmares/i18n'
 
 function pickFeaturedPass(passes: SeasonPassTrackSummary[]) {
@@ -144,8 +144,8 @@ export function HomeBattlePassPanel({
           </h3>
 
           <div className="flex flex-wrap gap-2">
-            {featuredPass.premium_owned && <Badge variant="outline">{t('home.battle_pass.badge_owned')}</Badge>}
-            {featuredPass.is_active && <Badge variant="info">{t('home.battle_pass.badge_active')}</Badge>}
+            {featuredPass.premium_owned && <SeasonPassBadge role="premium" label={t('home.battle_pass.badge_owned')} />}
+            {featuredPass.is_active && <SeasonPassBadge role="active" label={t('home.battle_pass.badge_active')} />}
           </div>
         </div>
       </CardHeader>
