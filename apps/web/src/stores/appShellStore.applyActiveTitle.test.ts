@@ -1,9 +1,19 @@
 /**
- * Tests — AppShellStore.switchTitle (correction #10 : données du jeu précédent).
+ * Tests — applyActiveTitle : ordre load-bearing complet + reset filtres.
  *
- * Vérifie l'ORDRE load-bearing du switch : le titre (header X-LevelUp-Title + store)
- * est committé AVANT le re-bootstrap, puis cancelQueries() + clear() purgent le cache
+ * MIGRÉ depuis appShellStore.switchTitle.test.ts (Phase 4a). Le wrapper
+ * `switchTitle` a été SUPPRIMÉ du store (navigate-first D-6 : le TitleSwitcher
+ * navigue, le layout `t/$titleSlug` exécute la bascule). Les assertions PR #59
+ * (correction #10 : données du jeu précédent) sont PRÉSERVÉES telles quelles,
+ * re-ciblées sur la fonction survivante `applyActiveTitle` (module title-routing,
+ * appelée par le layout et le fallback sans-joueur du TitleSwitcher).
+ *
+ * Vérifie l'ORDRE load-bearing : le titre (header X-LevelUp-Title + store) est
+ * committé AVANT le re-bootstrap, puis cancelQueries() + clear() purgent le cache
  * AVANT le re-bootstrap → aucune requête/cache de l'ancien titre ne survit.
+ *
+ * Les 2 derniers cas exercent hydrateFromBootstrap (garde deep-link `?f=`, PR #59) —
+ * chemin fresh-load/bookmark qui SURVIT, distinct de la bascule applyActiveTitle.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
@@ -38,6 +48,7 @@ vi.mock('@/app/queryClient', () => ({
 }))
 
 import { useAppShellStore } from '@/stores/appShellStore'
+import { applyActiveTitle } from '@/lib/title-routing/applyActiveTitle'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { useSquadFilterStore } from '@/stores/squadFilterStore'
 import { DEFAULT_FILTER_CONTEXT } from '@/stores/createFilterStore'
@@ -67,7 +78,7 @@ const BOOTSTRAP_H5 = {
   oauth_code_flow_enabled: false, demo_mode: false,
 } as const
 
-describe('switchTitle (correction #10)', () => {
+describe('applyActiveTitle (ordre load-bearing — ex-switchTitle #10)', () => {
   beforeEach(() => {
     calls.length = 0
     vi.restoreAllMocks()
@@ -87,7 +98,7 @@ describe('switchTitle (correction #10)', () => {
       calls.push('resetSquad')
     })
 
-    await useAppShellStore.getState().switchTitle('halo_5')
+    await applyActiveTitle('halo_5')
 
     // Le store reflète le nouveau titre.
     expect(useAppShellStore.getState().currentTitleSlug).toBe('halo_5')
@@ -118,7 +129,7 @@ describe('switchTitle (correction #10)', () => {
     expect(useSoloFilterStore.getState().filterContext).not.toEqual(DEFAULT_FILTER_CONTEXT)
     expect(useSquadFilterStore.getState().filterContext).not.toEqual(DEFAULT_FILTER_CONTEXT)
 
-    await useAppShellStore.getState().switchTitle('halo_5')
+    await applyActiveTitle('halo_5')
 
     expect(useSoloFilterStore.getState().filterContext).toEqual(DEFAULT_FILTER_CONTEXT)
     expect(useSquadFilterStore.getState().filterContext).toEqual(DEFAULT_FILTER_CONTEXT)
@@ -128,14 +139,14 @@ describe('switchTitle (correction #10)', () => {
     useSoloFilterStore.getState().setSessions({ picked_sessions: ['garde-moi'], gap_minutes: 120 })
     const polluted = useSoloFilterStore.getState().filterContext
 
-    await useAppShellStore.getState().switchTitle('halo_infinite')
+    await applyActiveTitle('halo_infinite')
 
     expect(calls).toHaveLength(0)
     expect(useSoloFilterStore.getState().filterContext).toEqual(polluted)
   })
 
   // Garde deep-link : le fresh-load / bookmark passe par hydrateFromBootstrap (pas
-  // par switchTitle). Un ?f= généré pour un AUTRE titre a hydraté le store solo
+  // par applyActiveTitle). Un ?f= généré pour un AUTRE titre a hydraté le store solo
   // (urlHydratedTitleSlug posé par onRehydrateStorage) → le bootstrap doit le reset.
   it('hydrateFromBootstrap reset le filtre solo hydraté depuis un deep-link d’un autre titre', () => {
     useSoloFilterStore.getState().setSessions({ picked_sessions: ['sess-infinite'], gap_minutes: 120 })

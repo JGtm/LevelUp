@@ -110,7 +110,7 @@ export interface FilterStoreState {
    *  (résolu par le bootstrap). Si le deep-link a été généré pour un AUTRE titre,
    *  reset le filtre (son état — sessions/cascade — n'a aucun sens hors de son
    *  titre). No-op si le filtre ne vient pas d'un deep-link. Consommation
-   *  one-shot. Cf. appShellStore.hydrateFromBootstrap / switchTitle. */
+   *  one-shot. Cf. appShellStore.hydrateFromBootstrap / applyActiveTitle. */
   reconcileActiveTitle: (activeTitleSlug: string) => void
 
   // --- Auto-snap on new data ---
@@ -197,6 +197,29 @@ export function createFilterStore(options: CreateFilterStoreOptions): FilterStor
     }
   }
 
+  // ── Coexistence segment d'URL ↔ garde d'estampille share-link (D-7, depuis 2026-07-23) ──
+  // Depuis D7 (titre porté par l'URL — ce chantier), le SEGMENT de titre dans l'URL
+  // (namespace de titre, forme /t/{slug}/…) est la SOURCE DE VÉRITÉ du titre actif :
+  // posé verbatim dans le header X-LevelUp-Title dès le premier rendu
+  // (parseRouteSegments → initTitleFromLocation), il rend le titre déterministe AVANT
+  // le bootstrap. La garde d'estampille du share-link (paramètre f) ci-dessous
+  // (enveloppe v2 { t, c } au décodage + reconcileActiveTitle) N'EST PLUS le
+  // mécanisme primaire de résolution du titre ; elle est CONSERVÉE comme :
+  //   (a) défense en profondeur — un share-link généré pour un AUTRE titre reste
+  //       rejeté même si un chemin d'entrée échappait un jour au segment ;
+  //   (b) rétro-compat — les liens partagés AVANT D7 (sans segment de titre, ou
+  //       enveloppe legacy sans clé `t`) restent honorés/rejetés correctement.
+  // CRITÈRE DE RETRAIT (mesurable, daté) : au plus tôt UNE release majeure après la
+  // mise en prod de D7, RETIRER l'estampille `t` + reconcileActiveTitle QUAND, les
+  // DEUX conditions réunies :
+  //   1. la télémétrie/les logs d'accès ne montrent plus de share-link legacy SANS
+  //      segment de titre sur une fenêtre glissante d'au moins 1 mois (les liens
+  //      pré-D7 ont expiré du partage) ;
+  //   2. toutes les entrées title-scoped passent par un segment de titre (aucun point
+  //      d'entrée joueur résiduel hors namespace, hors splat legacy — invariant tenu
+  //      par le ratchet no-title-literals).
+  // Tant que ces deux conditions ne sont pas réunies : NE PAS retirer la garde (elle
+  // est bon marché et ferme une classe de fuites inter-titres — PR #59, 0b2e5cdb8).
   function decodeFromUrl(): { context: FilterContextInput; titleSlug: string } | null {
     if (!urlEnabled || typeof window === 'undefined') return null
     try {

@@ -81,7 +81,7 @@ let _currentTitleSlug: string | null = null
 /**
  * Appelé par le store pour mettre à jour le titre courant. `null` ramène le
  * client à l'état de boot (session serveur autoritaire) — utilisé pour le reset
- * des tests ; les appelants applicatifs (hydrateFromBootstrap, switchTitle)
+ * des tests ; les appelants applicatifs (hydrateFromBootstrap, applyActiveTitle)
  * passent toujours un slug non vide.
  */
 export function setApiTitleSlug(slug: string | null): void {

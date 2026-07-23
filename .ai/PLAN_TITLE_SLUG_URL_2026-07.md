@@ -450,17 +450,33 @@ vérifiées, suffixe + `?f=` + hash préservés, aucune page morte.
 
 ### Phase 4 — `switchTitle` réduit, chemin d'erreur, courses (moyen)
 
-- [ ] **4a.** `TitleSwitcher.onSelect` → simple `navigate` vers
-      `/t/{slug}/players/{player}/home` (le layout fait la bascule) ; réduire/supprimer
-      `switchTitle` bouton ; purge du code mort (POST+rebootstrap+navigate dupliqués) et de
-      ses tests obsolètes — règle « 0 code mort ».
-- [ ] **4b.** Chemin d'erreur D-6 : échec `applyActiveTitle` → navigate retour segment
-      précédent + message ; test (mock POST en échec → URL revenue, pas de boucle).
-- [ ] **4c.** Course back/forward : test popstate pendant bascule en vol → convergence
-      (re-comparaison à la complétion), pas de double bascule.
-- [ ] **4d.** Articulation `?f=` (D-7) : garde PR #59 intacte ; commentaire de coexistence
-      + critère de retrait ; tests PR #59 passent inchangés OU adaptés (justification au
-      journal, assertions non affaiblies).
+- [x] **4a.** `TitleSwitcher.onSelect` → navigate typé vers le segment cible (le layout
+      bascule sur divergence). Cas limite SANS joueur : `applyActiveTitle` direct +
+      navigate `/` (pas de route de titre nue — documenté, échec loggé). `switchTitle`
+      ET `setCurrentTitle` SUPPRIMÉS du store (plus aucun caller — grep vérifié) ;
+      assertions PR #59 MIGRÉES vers `appShellStore.applyActiveTitle.test.ts` (même
+      séquence load-bearing protégée : POST→set→resetFilters→cancel+clear→bootstrap→
+      filet ; justification : switchTitle n'était qu'un wrapper, séquence observable
+      identique). `createFilterStore.test.ts` INCHANGÉ (git diff vide).
+- [x] **4b.** Chemin d'erreur D-6 complet : échec avec joueur courant → toast sonner
+      (clé i18n `common.title_gate.switch_failed_toast` FR+EN) + navigate REPLACE vers
+      le titre courant ; sans joueur → écran `switch_failed` (retry) conservé.
+      Anti-boucle par convergence segment==store. Constat consigné : le layout reste
+      MONTÉ au changement de param → `applyFailed` persisterait → le chemin avec
+      joueur ne le pose JAMAIS (design). Testé (mock rejet → toast + navigate replace,
+      pas de re-tentative ; sans joueur → écran).
+- [x] **4c.** Test de course back/forward écrit AVANT — il a RÉVÉLÉ une fragilité
+      réelle du layout Phase 2 : `applyingRef` relâché dans `.finally` APRÈS le
+      re-render SYNCHRONE Zustand (isTitleSwitching→false) → convergence calée si le
+      segment avait changé pendant le vol. CORRIGÉ dans le layout (relâchement en tête
+      d'effet quand aucune bascule live ; dédup StrictMode préservée — applyActiveTitle
+      pose isTitleSwitching=true synchrone). Après fix : exactement 2 appels [cible,
+      retour], convergence finale. Point §7 `refetchOnWindowFocus` : test dédié vert,
+      la re-comparaison absorbe une réhydratation pendant bascule — pas de patch ad hoc.
+- [x] **4d.** Garde PR #59 INTACTE (zéro refactor, `createFilterStore.test.ts` intact
+      vert) ; commentaire de coexistence segment↔`?f=` ajouté (défense en profondeur +
+      rétro-compat) avec critère de retrait daté mesurable (≥ 1 release majeure post-D7
+      + télémétrie ≥ 1 mois sans lien legacy sans segment).
 
 Gate Phase 4 : `make check-types` = 0 ; `make test-web` vert (incl. PR #59) ; grep
 confirmant l'absence du code de switch dupliqué ; navigateur : switch via sélecteur →
@@ -675,3 +691,16 @@ déplacement (Phase 1, TDD). Backend non touché.
   Leçon consignée : les tests de composant du splat ne simulaient pas le re-render
   en transition — la vérification navigateur end-to-end reste OBLIGATOIRE à chaque
   étape (elle a payé ici).
+
+- **[2026-07-23] Phase 4 CLOSE.** TitleSwitcher navigate-first (agent Opus) ;
+  `switchTitle`/`setCurrentTitle` supprimés (0 code mort), assertions PR #59 migrées
+  sans affaiblissement. Le test de course 4c (écrit d'abord) a détecté une fragilité
+  de convergence du layout Phase 2 (verrou vs re-render synchrone Zustand) — corrigée
+  dans le layout, pas dans le test. Chemin d'erreur D-6 complet (toast + navigate
+  replace / écran fallback sans joueur). Gate re-exécuté orchestrateur : tsc 0 ;
+  vitest 296 fichiers / 2613 passés / 0 échec ; smoke UI navigateur : switch
+  Infinite→H5→Infinite par clics réels, segment + `?f=` ré-estampillés, 0 erreur.
+
+- Découverte (2026-07-23, Phase 4, mineure) : `createFilterStore.test.ts:142` porte
+  une référence commentée à l'ex-`switchTitle` — laissée pour honorer la contrainte
+  « INCHANGÉ » du gate 4d. Rafraîchissement de commentaire → lot final.
