@@ -292,6 +292,17 @@ type SquadChallengeParticipant struct {
 	JoinedAt         time.Time  `json:"joined_at"`
 }
 
+// SquadChallengeView enrichit un défi d'escouade pour l'affichage : libellés
+// localisés (résolus depuis le template — vides si le défi n'a pas de template ou
+// s'il a été retiré du catalogue) et participants courants. Le défi de base est
+// embarqué (JSON aplati) : la vue est un sur-ensemble strict de SquadChallenge.
+type SquadChallengeView struct {
+	SquadChallenge
+	LabelFR      string                      `json:"label_fr,omitempty"`
+	LabelEN      string                      `json:"label_en,omitempty"`
+	Participants []SquadChallengeParticipant `json:"participants"`
+}
+
 // ---------- PrestigeTelemetry ----------
 
 // PrestigeTelemetry est un événement structurel utilisé pour le calage post-alpha.

@@ -421,7 +421,7 @@ func (l *LazyPrestigeService) GetSquadChallenge(ctx context.Context, id string) 
 	return svc.GetSquadChallenge(ctx, id)
 }
 
-func (l *LazyPrestigeService) ListSquadChallenges(ctx context.Context, squadID, requestedBy string) ([]prestige.SquadChallenge, error) {
+func (l *LazyPrestigeService) ListSquadChallenges(ctx context.Context, squadID, requestedBy string) ([]prestige.SquadChallengeView, error) {
 	svc, err := l.resolveByUserID(ctx, requestedBy)
 	if err != nil {
 		return nil, err

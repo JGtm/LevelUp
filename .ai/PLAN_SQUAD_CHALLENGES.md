@@ -123,24 +123,29 @@ cp data/titles/halo_infinite/warehouse/metadata.duckdb /tmp/meta_ro.duckdb
 duckdb -readonly /tmp/meta_ro.duckdb "SELECT count(*) FROM challenge_template;"  # attendu >= 27
 ```
 
-## Lot 2 — Boucle UI minimale complète (P1)
+## Lot 2 — Boucle UI minimale complète (P1) — CLÔTURÉ 2026-07-23
 
-- [ ] 2.1 Backend : enrichir `ListSquadChallenges` avec `label_fr`/`label_en` (+
-      `target_per_member` déjà présent) via lookup catalogue `TemplateRepo` (title-agnostic,
-      pas de label en dur Go). Défi sans template (`template_id` NULL) → labels vides,
-      fallback front.
-- [ ] 2.2 Front : afficher le label localisé dans la liste des défis actifs (fallback
-      `t.challenge` si vide) — corrige A.
-- [ ] 2.3 Backend : exposer les participants (`ListParticipants` existe déjà côté repo)
-      dans la réponse `ListSquadChallenges` (par défi : user_id, chosen_tier, completed_at).
-- [ ] 2.4 Front : « Rejoindre » → `onSuccess` toast + invalidation
-      `queryKeys.squad.challenges(squadId)` ; bouton en état « Rejoint » (désactivé) si
-      le joueur courant est participant — corrige B (utilise enfin `t.joined`).
-- [ ] 2.5 Front : « Réévaluer » → afficher la progression retournée (par membre :
-      gamertag, valeur/cible, complété) sous le défi ; et badge de complétion depuis les
-      participants (2.3) au chargement — corrige C.
-- [ ] 2.6 Tests : Go (labels + participants dans la réponse), vitest (état Rejoint,
-      rendu progression). Revue navigateur du parcours.
+- [x] 2.1 Backend : `ListSquadChallenges` renvoie désormais `[]SquadChallengeView`
+      (nouveau type, embed `SquadChallenge` → JSON sur-ensemble) enrichi `label_fr`/
+      `label_en` via `Templates.GetByID` (title-agnostic). Défi sans template → labels
+      vides. Best-effort loggé (helper `enrichSquadChallenge`). Interface Service + wrapper
+      Lazy + mocks mis à jour.
+- [x] 2.2 Front : label localisé affiché (`c.label_fr/label_en`), fallback `t.challenge`.
+      Vérifié live : `label_fr:"Briseur de couronnes"` dans la réponse API.
+- [x] 2.3 Backend : `Participants` exposés dans `SquadChallengeView` (via `ListParticipants`),
+      slice non-nil même vide. Vérifié live (créateur auto-joint visible).
+- [x] 2.4 Front : `useJoinSquadChallenge` invalide `queryKeys.squad.challenges(squadId)`
+      au succès (param `squadId` ajouté) ; toast succès/erreur ; bouton « Rejoint »
+      (désactivé, variant outline) si `participants` contient le joueur — corrige B.
+- [x] 2.5 Front : « Réévaluer » stocke la progression retournée (`progressByChallenge`),
+      composant `SquadProgressList` (gamertag résolu via roster, valeur/cible, nb matchs,
+      badge « Atteint » token `text-success`) ; toast succès/erreur — corrige C.
+      Bonus : toast sur « Créer » aussi.
+- [x] 2.6 Tests : Go `TestService_ListSquadChallenges_EnrichesLabelsAndParticipants` +
+      `_OK` renforcé (participants non-nil) — verts. vitest `SquadFocusStrip.test.tsx`
+      (label vs template_id, état Rejoint, rendu progression) — 2/2 verts. tsc + eslint
+      verts. **Revue navigateur** : vérifiée par API end-to-end (réponse enrichie live) ;
+      revue VISUELLE laissée à l'utilisateur (pas de MCP navigateur dans la session agent).
 
 ## Lot 3 — Cycle de vie des défis (P1/P2)
 
@@ -216,3 +221,9 @@ duckdb -readonly /tmp/meta_ro.duckdb "SELECT count(*) FROM challenge_template;" 
   Cause du 500 résiduel = lock non mappé le plus probable (Découverte D1), non confirmable
   sans logs prod (items 1.2/1.3-rowcount = `[!]`, commandes fournies à l'utilisateur).
   Symptôme utilisateur déjà corrigé par `04eae99ba`. → passage Lot 2.
+- 2026-07-23 : **Lot 2 CLÔTURÉ**. Boucle UI complète : type `SquadChallengeView`
+  (labels + participants), enrichissement service best-effort, feedback Rejoindre/Rejoint,
+  affichage progression par membre. Gates verts (go build/test prestige+handlers+wire, tsc,
+  eslint, vitest 2/2). Vérifié LIVE via API (réponse enrichie : label_fr + participants).
+  Revue visuelle navigateur = à faire par l'utilisateur (pas de MCP navigateur agent).
+  → passage Lot 3.

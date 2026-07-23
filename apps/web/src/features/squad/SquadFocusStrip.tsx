@@ -27,7 +27,12 @@ import {
   useSquadOrientation,
 } from '@/features/prestige/hooks/useSquads'
 import { useJoinSquadChallenge } from '@/features/prestige/hooks'
-import type { Squad, SquadWithMembers } from '@/lib/prestige'
+import type {
+  Squad,
+  SquadWithMembers,
+  SquadMember,
+  SquadParticipantProgress,
+} from '@/lib/prestige'
 import { findSquadByRoster } from './squadRoster'
 
 const STRINGS = {
@@ -50,7 +55,16 @@ const STRINGS = {
     noObjectives: 'Aucun objectif actif pour cette escouade.',
     join: 'Rejoindre',
     joined: 'Rejoint',
+    joinedToast: 'Défi rejoint',
+    joinError: 'Impossible de rejoindre le défi',
     evaluate: 'Réévaluer',
+    evaluated: 'Progression recalculée',
+    evalError: 'Échec du recalcul',
+    created: 'Défi créé',
+    createError: 'Échec de la création du défi',
+    reached: 'Atteint',
+    target: (n: number) => `Cible ${n} / membre`,
+    matchesN: (n: number) => `${n} match${n > 1 ? 's' : ''}`,
     challenge: 'Défi',
     propose: 'Proposer des défis',
     proposing: 'Génération…',
@@ -87,7 +101,16 @@ const STRINGS = {
     noObjectives: 'No active objective for this squad.',
     join: 'Join',
     joined: 'Joined',
+    joinedToast: 'Challenge joined',
+    joinError: 'Could not join the challenge',
     evaluate: 'Re-evaluate',
+    evaluated: 'Progress recalculated',
+    evalError: 'Recalculation failed',
+    created: 'Challenge created',
+    createError: 'Failed to create challenge',
+    reached: 'Reached',
+    target: (n: number) => `Target ${n} / member`,
+    matchesN: (n: number) => `${n} match${n > 1 ? 'es' : ''}`,
     challenge: 'Challenge',
     propose: 'Suggest challenges',
     proposing: 'Generating…',
@@ -176,7 +199,12 @@ export function SquadFocusStrip() {
 
       {matched && open ? (
         <>
-          <SquadObjectivesPanel squadId={matched.squad.id} playerSlug={playerSlug} t={t} />
+          <SquadObjectivesPanel
+            squadId={matched.squad.id}
+            playerSlug={playerSlug}
+            members={matched.members}
+            t={t}
+          />
           <SquadManageActions
             squad={matched.squad}
             playerSlug={playerSlug}
@@ -317,10 +345,12 @@ function SquadManageActions({
 function SquadObjectivesPanel({
   squadId,
   playerSlug,
+  members,
   t,
 }: {
   squadId: string
   playerSlug: string
+  members: SquadMember[]
   t: (typeof STRINGS)['fr']
 }) {
   const locale = useAppShellStore((s) => s.locale)
@@ -333,6 +363,33 @@ function SquadObjectivesPanel({
   const challenges = data?.squad_challenges ?? []
   const pool = refreshPool.data?.pool ?? []
 
+  // Progression par défi renvoyée par « Réévaluer » (transitoire : la réponse
+  // d'évaluation n'est pas dans le cache liste — on la garde le temps de l'afficher).
+  const [progressByChallenge, setProgressByChallenge] = useState<
+    Record<string, SquadParticipantProgress[]>
+  >({})
+
+  const onEvaluate = (challengeId: string) =>
+    evaluate.mutate(
+      { id: challengeId, requestedBy: playerSlug },
+      {
+        onSuccess: (res) => {
+          setProgressByChallenge((prev) => ({ ...prev, [challengeId]: res.progress }))
+          toast.success(t.evaluated)
+        },
+        onError: (err) => toast.error(apiErrorMessage(err) ?? t.evalError),
+      },
+    )
+
+  const onJoin = (challengeId: string) =>
+    join.mutate(
+      { challengeId, userId: playerSlug, squadId },
+      {
+        onSuccess: () => toast.success(t.joinedToast),
+        onError: (err) => toast.error(apiErrorMessage(err) ?? t.joinError),
+      },
+    )
+
   return (
     <div className="mt-3 space-y-3">
       {/* Défis actifs */}
@@ -340,31 +397,51 @@ function SquadObjectivesPanel({
         <p className="text-xs text-muted-foreground">{t.noObjectives}</p>
       ) : (
         <ul className="space-y-2">
-          {challenges.map((c) => (
-            <li
-              key={c.id}
-              className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2"
-            >
-              <span className="truncate text-sm">{c.template_id || t.challenge}</span>
-              <span className="flex shrink-0 gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => evaluate.mutate({ id: c.id, requestedBy: playerSlug })}
-                  disabled={evaluate.isPending}
-                >
-                  {t.evaluate}
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => join.mutate({ challengeId: c.id, userId: playerSlug })}
-                  disabled={join.isPending}
-                >
-                  {t.join}
-                </Button>
-              </span>
-            </li>
-          ))}
+          {challenges.map((c) => {
+            const label = (locale === 'en' ? c.label_en : c.label_fr) || t.challenge
+            const isParticipant = c.participants.some((p) => p.user_id === playerSlug)
+            return (
+              <li
+                key={c.id}
+                className="rounded-md border border-border bg-background px-3 py-2"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm">{label}</span>
+                    {c.target_per_member ? (
+                      <span className="text-2xs text-muted-foreground">
+                        {t.target(c.target_per_member)}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="flex shrink-0 gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onEvaluate(c.id)}
+                      disabled={evaluate.isPending}
+                    >
+                      {t.evaluate}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={isParticipant ? 'outline' : 'default'}
+                      onClick={() => onJoin(c.id)}
+                      disabled={isParticipant || join.isPending}
+                    >
+                      {isParticipant ? t.joined : t.join}
+                    </Button>
+                  </span>
+                </div>
+                <SquadProgressList
+                  progress={progressByChallenge[c.id]}
+                  targetPerMember={c.target_per_member}
+                  members={members}
+                  t={t}
+                />
+              </li>
+            )
+          })}
         </ul>
       )}
 
@@ -401,16 +478,22 @@ function SquadObjectivesPanel({
                 <Button
                   size="sm"
                   onClick={() =>
-                    createChallenge.mutate({
-                      template_id: tpl.id,
-                      title_slug: tpl.title_slug,
-                      mode: 'collective',
-                      eval_type: tpl.eval_type,
-                      window_type: tpl.window_type,
-                      window_value: tpl.window_value,
-                      target_per_member: tpl.normal_target,
-                      created_by: playerSlug,
-                    })
+                    createChallenge.mutate(
+                      {
+                        template_id: tpl.id,
+                        title_slug: tpl.title_slug,
+                        mode: 'collective',
+                        eval_type: tpl.eval_type,
+                        window_type: tpl.window_type,
+                        window_value: tpl.window_value,
+                        target_per_member: tpl.normal_target,
+                        created_by: playerSlug,
+                      },
+                      {
+                        onSuccess: () => toast.success(t.created),
+                        onError: (err) => toast.error(apiErrorMessage(err) ?? t.createError),
+                      },
+                    )
                   }
                   disabled={createChallenge.isPending}
                 >
@@ -422,5 +505,46 @@ function SquadObjectivesPanel({
         ) : null}
       </div>
     </div>
+  )
+}
+
+// SquadProgressList affiche la progression par membre d'un défi, telle que
+// renvoyée par « Réévaluer » (valeur cumulée, nb de matchs comptés, atteinte de
+// la cible). Le gamertag est résolu depuis le roster (fallback xuid tronqué).
+// Rien tant qu'aucune évaluation n'a été lancée pour ce défi.
+function SquadProgressList({
+  progress,
+  targetPerMember,
+  members,
+  t,
+}: {
+  progress: SquadParticipantProgress[] | undefined
+  targetPerMember?: number
+  members: SquadMember[]
+  t: (typeof STRINGS)['fr']
+}) {
+  if (!progress || progress.length === 0) return null
+  const gamertagByXuid = new Map(members.map((m) => [m.xuid, m.gamertag]))
+  return (
+    <ul className="mt-2 space-y-1 border-t border-border pt-2">
+      {progress.map((p) => {
+        const name = gamertagByXuid.get(p.xuid) || p.xuid.slice(0, 8)
+        return (
+          <li key={p.xuid} className="flex items-center justify-between gap-2 text-2xs">
+            <span className="truncate text-muted-foreground">{name}</span>
+            <span className="flex shrink-0 items-center gap-2">
+              <span className="tabular-nums">
+                {Math.round(p.value)}
+                {targetPerMember ? ` / ${targetPerMember}` : ''}
+              </span>
+              <span className="text-muted-foreground">{t.matchesN(p.matches)}</span>
+              {p.completed ? (
+                <span className="font-semibold text-success">{t.reached}</span>
+              ) : null}
+            </span>
+          </li>
+        )
+      })}
+    </ul>
   )
 }
