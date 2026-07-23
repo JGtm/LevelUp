@@ -78,6 +78,10 @@ type Service interface {
 	// donc cette garde d'appartenance ferme le BOLA objet-level (un squad_id
 	// arbitraire ne doit pas être lisible par un non-membre).
 	ListSquadChallenges(ctx context.Context, squadID, requestedBy string) ([]SquadChallengeView, error)
+	// AbandonSquadChallenge archive un défi d'escouade (abandon volontaire) : il
+	// sort de la liste active. requestedBy (player_slug) doit être membre-user de
+	// l'escouade du défi (BOLA objet-level, comme Join/Evaluate).
+	AbandonSquadChallenge(ctx context.Context, challengeID, requestedBy string) error
 	RefreshSquadPool(ctx context.Context, squadID, titleSlug, requestedBy string) ([]Template, error)
 
 	// Escouade — roster (entité Squad / SquadMember, clé xuid). requestedBy =

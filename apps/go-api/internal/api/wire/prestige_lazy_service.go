@@ -413,6 +413,20 @@ func (l *LazyPrestigeService) JoinSquadChallenge(ctx context.Context, challengeI
 	return svc.JoinSquadChallenge(ctx, challengeID, userID, chosenTier, isPrivate)
 }
 
+func (l *LazyPrestigeService) AbandonSquadChallenge(ctx context.Context, challengeID, requestedBy string) error {
+	pdb, svc, err := l.resolveWithPlayerDBByUserID(ctx, requestedBy)
+	if err != nil {
+		return err
+	}
+	// Écrit dans shared_social (UPDATE squad_challenge.archived_at) → writer requis.
+	w, err := acquireSharedSocialWriter(pdb)
+	if err != nil {
+		return err
+	}
+	defer w.Release()
+	return svc.AbandonSquadChallenge(ctx, challengeID, requestedBy)
+}
+
 func (l *LazyPrestigeService) GetSquadChallenge(ctx context.Context, id string) (prestige.SquadChallenge, error) {
 	svc, err := l.resolve(ctx)
 	if err != nil {

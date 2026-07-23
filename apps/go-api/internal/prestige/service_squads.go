@@ -153,6 +153,21 @@ func (s *service) DeleteSquad(ctx context.Context, squadID, requestedBy string) 
 	if err := s.assertMemberUser(ctx, squadID, requestedBy); err != nil {
 		return err
 	}
+	// Cascade (Lot 3) : archive les défis actifs de l'escouade avant de la
+	// dissoudre — sinon ils resteraient orphelins (défis d'une escouade sans
+	// membre). Best-effort : un échec d'archivage n'empêche pas la suppression
+	// (idempotent, réessayable), mais est loggé (règle 3).
+	if challenges, cErr := s.deps.SquadChallenges.ListBySquad(ctx, squadID); cErr != nil {
+		slog.WarnContext(ctx, "prestige: delete squad — list challenges failed (cascade partielle)",
+			"squad_id", squadID, "err", cErr)
+	} else {
+		for _, c := range challenges {
+			if err := s.deps.SquadChallenges.Archive(ctx, c.ID); err != nil {
+				slog.WarnContext(ctx, "prestige: delete squad — archive challenge failed",
+					"squad_id", squadID, "squad_challenge_id", c.ID, "err", err)
+			}
+		}
+	}
 	members, err := s.deps.Squads.ListMembers(ctx, squadID)
 	if err != nil {
 		return fmt.Errorf("list members: %w", err)

@@ -147,24 +147,34 @@ duckdb -readonly /tmp/meta_ro.duckdb "SELECT count(*) FROM challenge_template;" 
       verts. **Revue navigateur** : vérifiée par API end-to-end (réponse enrichie live) ;
       revue VISUELLE laissée à l'utilisateur (pas de MCP navigateur dans la session agent).
 
-## Lot 3 — Cycle de vie des défis (P1/P2)
+## Lot 3 — Cycle de vie des défis (P1/P2) — CLÔTURÉ 2026-07-23
 
-- [ ] 3.1 Backend : `DELETE /squads/challenges` sémantique **abandon** — statut
-      `archived` (cohérent append-only shared_social, pas de DELETE physique ; modèle
-      `DisablePilotMode`/`StatusArchived`). Route `DELETE /squad-challenges/{id}` +
-      garde `assertMemberUser` + actor guard.
-- [ ] 3.2 Backend : `ListSquadChallenges` filtre les défis archivés (lecture `_latest`
-      si table historisée ; sinon colonne statut sur `squad_challenge` — trancher au
-      moment du schéma, recette ADR 0026 si append-only).
-- [ ] 3.3 Backend : `DeleteSquad` archive les défis de l'escouade (cascade logique).
-- [ ] 3.4 Front : bouton « Supprimer » par défi (confirm au 2e clic, pattern
-      `SquadManageActions`) + toast + invalidation — corrige D.
-- [ ] 3.5 Backend : calculer `expires_at` à la création depuis la cadence du template
-      (daily → fin de journée UTC+1 j, weekly → +7 j, monthly → +30 j — constantes
-      nommées) ; `ListSquadChallenges` marque/filtre les expirés — corrige E.
-- [ ] 3.6 Fermer I : exiger `requested_by` non vide dans `RefreshSquadPool` (service) —
-      un `requested_by` vide = 400, plus de bypass du check membership.
-- [ ] 3.7 Tests Go : abandon, cascade, expiration, 400 requested_by vide.
+Choix de schéma : `squad_challenge` est une table SIMPLE (PK `id`, PAS append-only) →
+archivage par colonne nullable `archived_at` (UPDATE non indexé = zéro risque ART, même
+garantie que `RenameSquad`). Migration additive `add_archived_at_to_squad_challenge`
+(ADD COLUMN IF NOT EXISTS) + ordre canonique. Appliquée live sur halo_infinite + halo_5.
+
+- [x] 3.1 Backend : route `DELETE /squad-challenges/{id}?requested_by=slug` →
+      `AbandonSquadChallenge` (Get défi → `assertMemberUser` BOLA → `Archive`).
+      Handler + actor guard + wrapper Lazy (writer shared_social). Idempotent.
+- [x] 3.2 Backend : `ListBySquad` filtre `archived_at IS NULL` (défis actifs).
+      Vérifié live : abandon → 204 → liste vide.
+- [x] 3.3 Backend : `DeleteSquad` archive les défis actifs en cascade (best-effort loggé)
+      avant de retirer les membres. Vérifié live (delete squad avec défi → 204).
+- [x] 3.4 Front : bouton « Supprimer » par défi (confirm 2e clic via `confirmingDelete`,
+      token `text-destructive`) + `useAbandonSquadChallenge` (invalide le cache) + toasts.
+- [x] 3.5 Backend : `expires_at` calculé à la création depuis la cadence du template
+      (daily +1 j / weekly +7 j / monthly +30 j, constantes nommées `squadExpiry*`) ;
+      lookup best-effort. Champ `Expired` (comparé à `s.deps.Now()` UTC, jamais
+      CURRENT_TIMESTAMP SQL) marque les défis dépassés → badge « Expiré » + join désactivé.
+      Vérifié live : défi weekly → expires_at = created_at + 7 j exact.
+- [x] 3.6 Backend : `RefreshSquadPool` exige `requested_by` non vide (400 sinon) — bypass
+      du check membership fermé. Vérifié live : requested_by vide → HTTP 400.
+- [x] 3.7 Tests Go : `_AbandonSquadChallenge_ArchivesWhenMember` / `_RejectsNonMember`,
+      `_CreateSquadChallenge_ComputesExpiryFromCadence`, `_DeleteSquad_CascadesArchiveChallenges`,
+      `_RefreshSquadPool_RequiresRequestedBy`, `_ListSquadChallenges_MarksExpired` — verts.
+      Garde anti-ART (`-tags=integration`) vert, persist prestige (real DB) vert. Route
+      ajoutée au test de garde acteur (2 tables). tsc + eslint + vitest + paths verts.
 
 ## Lot 4 — Sémantique d'évaluation (P2)
 
@@ -227,3 +237,9 @@ duckdb -readonly /tmp/meta_ro.duckdb "SELECT count(*) FROM challenge_template;" 
   eslint, vitest 2/2). Vérifié LIVE via API (réponse enrichie : label_fr + participants).
   Revue visuelle navigateur = à faire par l'utilisateur (pas de MCP navigateur agent).
   → passage Lot 3.
+- 2026-07-23 : **Lot 3 CLÔTURÉ**. Cycle de vie : archivage `archived_at` (migration
+  additive, colonne non indexée = zéro ART), endpoint DELETE + abandon, cascade DeleteSquad,
+  `expires_at` par cadence + marquage `Expired`, garde `requested_by`. Gates verts (go build,
+  tests prestige/handlers/wire/migration/persist, anti-ART integration, tsc/eslint/vitest).
+  Vérifié LIVE : expires_at +7 j exact, requested_by vide → 400, abandon → 204 + liste vide,
+  cascade delete → 204. → passage Lot 4.

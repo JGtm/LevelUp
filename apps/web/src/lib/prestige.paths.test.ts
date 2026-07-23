@@ -203,6 +203,13 @@ describe('prestigeApi — routes Escouade player-scoped (/players/{slug})', () =
     prestigeApi.evaluateSquadChallenge('sc1', SLUG)
     expect(calls[0].path).toBe(`/players/${ENC}/squad-challenges/sc1/evaluate`)
   })
+
+  it('abandonSquadChallenge → DELETE /players/{requestedBy}/squad-challenges/{id}', () => {
+    prestigeApi.abandonSquadChallenge('sc1', SLUG)
+    expect(calls[0].path).toBe(
+      `/players/${ENC}/squad-challenges/sc1?requested_by=${ENC}`,
+    )
+  })
 })
 
 /**
@@ -239,6 +246,7 @@ const invokeAll: Record<keyof typeof prestigeApi, () => unknown> = {
     }),
   listSquadChallenges: () => prestigeApi.listSquadChallenges('sq1', SLUG),
   joinSquadChallenge: () => prestigeApi.joinSquadChallenge('sc1', { user_id: SLUG }),
+  abandonSquadChallenge: () => prestigeApi.abandonSquadChallenge('sc1', SLUG),
   createSquad: () => prestigeApi.createSquad({ name: 'T', created_by: SLUG }),
   listMySquads: () => prestigeApi.listMySquads(SLUG),
   addSquadMember: () => prestigeApi.addSquadMember('sq1', { xuid: 'x1', requested_by: SLUG }),

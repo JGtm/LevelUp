@@ -819,7 +819,8 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			ph := handlers.NewPrestigeHandler(lazy, appPlayers).WithActorGuard(squadActorGuard)
 			// Migré vers Huma (Phase 3b) : tout passe par ph.Mount. Les 2 routes
 			// squad de main (PATCH/DELETE /squads/{squad_id} = Rename/Delete) sont
-			// portées dans ph.Mount côté handlers (prestige.go) → 26 + 2 = 28.
+			// portées dans ph.Mount côté handlers (prestige.go). +1 route Lot 3
+			// (DELETE /squad-challenges/{id} = abandon) → 29 routes au total.
 			//
 			// Câblage du player_slug du chemin dans le contexte de résolution
 			// Prestige (prestigePlayerSlugCtx) : répare les routes {id} et clôt le

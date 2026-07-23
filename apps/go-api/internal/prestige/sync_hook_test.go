@@ -76,6 +76,9 @@ func (m *mockService) GetSquadChallenge(ctx context.Context, _ string) (SquadCha
 func (m *mockService) ListSquadChallenges(ctx context.Context, _, _ string) ([]SquadChallengeView, error) {
 	return nil, nil
 }
+func (m *mockService) AbandonSquadChallenge(ctx context.Context, _, _ string) error {
+	return nil
+}
 func (m *mockService) RefreshSquadPool(ctx context.Context, _, _, _ string) ([]Template, error) {
 	return nil, nil
 }

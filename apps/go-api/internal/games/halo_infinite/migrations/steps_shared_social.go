@@ -576,6 +576,14 @@ func sharedSocialSteps() []migration.Migration {
 				`)
 			},
 		},
+		{
+			Name:        "add_archived_at_to_squad_challenge",
+			TargetDB:    migration.TargetSharedSocial,
+			Description: "Ajoute archived_at à squad_challenge (abandon/archivage d'un défi ; NULL = actif). Colonne non indexée → UPDATE sans risque ART.",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `ALTER TABLE squad_challenge ADD COLUMN IF NOT EXISTS archived_at TIMESTAMP;`)
+			},
+		},
 	}
 }
 
