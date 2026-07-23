@@ -11854,3 +11854,31 @@ constante introduite par C4) ; go test non-integration touchés exit 0 ; 2 nouve
 **Conclusion / prochaine étape** : commits par zone sur feat/v7.1-lot-c ; merge main à la
 validation user (push main = deploy prod). Vérif visuelle scoreboard (couleurs/logos)
 recommandée au review. Lot D (stats de modes objectifs + H5) reste à faire, UI non tranchée.
+
+---
+
+## [2026-07-23] Lot C — C4b : date d'obtention du pic CSR all-time (corrélation match_csrs)
+
+**Statut** : Complété. Suite du C4 (suggestion user : vérifier l'API + corréler).
+
+**Constat** : l'API Waypoint CSR (csrRankRaw : Value/Tier/SubTier/MeasurementMatchesRemaining,
+y compris AllTimeMax) N'A PAS de date d'obtention — rien n'est jeté au parsing, le champ
+n'existe pas. La SEULE voie = corrélation avec l'historique CSR par-match `match_csrs`
+(shared, vue match_csrs_latest). Validé sur données réelles (Madina xuid 2533274858283686 :
+pic all-time 1400 Diamant IV == match 74a8614e du 2025-11-06 21:25 UTC).
+
+**Décision** : loadCSRAlltimePeak corrèle (bestTier, bestSub, bestVal) avec match_csrs_latest
+JOIN match_registry (start_time canonique), MIN(start_time) = première atteinte du pic ->
+PeakAchievedAt. Prédicat rating_value ±0.5 ajouté seulement si val>0 (titres tier-only H5
+corrélés sur tier+sub_tier). Lecture vue _latest (ART). Shared ouvert proprement (pas
+d'imbrication : loadCSRAlltimePeak ne tient aucun reader shared, vérifié). Best-effort :
+nil + Debug si aucun match ne corrèle (pic PRÉ-tracking) ou shared indisponible.
+
+**Résultats** : go build/vet exit 0 ; 2 tests -tags=integration -p 1
+(TestHomeRepo_LoadCSRAlltimePeak_PeakAchievedAt : corrélé + pré-tracking nil ; + C4 existant)
+PASS. Aucun changement front (peak_achieved_at déjà câblé).
+
+**Limite résiduelle** : pic CSR atteint AVANT le début du tracking match_csrs -> pas de date
+(dégradation propre). Pour le combler il faudrait un backfill CSR historique (chantier à part).
+
+**Conclusion** : commit sur feat/v7.1-lot-c ; merge à la validation user.

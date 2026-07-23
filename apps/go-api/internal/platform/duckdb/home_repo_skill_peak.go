@@ -16,6 +16,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/assets/static"
@@ -357,13 +358,13 @@ func (r *HomeRepo) loadCSRAlltimePeak(ctx context.Context) *domain.HomeSkillPeak
 		peak.MeasurementMatchesRemaining = &zero
 		totalCopy := threshold
 		peak.PlacementTotal = &totalCopy
-		// PeakAchievedAt laissé nil À DESSEIN : le pic CSR all-time provient de
-		// player_csr_snapshots.alltime_value (valeur officielle Waypoint) qui
-		// n'expose PAS la date d'obtention. Les colonnes fetched_at/written_at
-		// datent la persistance du snapshot, pas l'atteinte du pic → on ne les
-		// utilise pas (sinon date trompeuse). Front dégrade (pas de "Atteint le").
-		slog.DebugContext(ctx, "loadCSRAlltimePeak: pic CSR all-time sans date d'obtention (source Waypoint alltime_value)",
-			"tier", bestTier, "xuid", r.pdb.XUID)
+		// Date d'obtention du pic : corrélée via l'historique par-match
+		// match_csrs (l'API Waypoint alltime_value n'expose PAS la date). On
+		// retrouve la PREMIÈRE atteinte du pic (tier+sub_tier[+valeur]) dans
+		// match_csrs_latest ⋈ match_registry. Reste nil seulement si aucun match
+		// ne corrèle (pic atteint AVANT notre tracking) ou shared indisponible —
+		// dégradation gracieuse, jamais d'erreur propagée (best-effort).
+		peak.PeakAchievedAt = r.loadCSRPeakDate(ctx, bestTier, bestSub, bestVal)
 		return peak
 	}
 
@@ -435,6 +436,73 @@ func (r *HomeRepo) pickBestCSRAlltime(ctx context.Context) (tier string, sub int
 		}
 	}
 	return tier, sub, val, ok
+}
+
+// csrRatingMatchEpsilon : tolérance d'égalité sur rating_value lors de la
+// corrélation du pic all-time. rating_value (FLOAT) et bestVal portent des
+// valeurs entières CSR ; une demi-unité couvre l'imprécision flottante sans
+// jamais chevaucher deux paliers de valeur distincts.
+const csrRatingMatchEpsilon = 0.5
+
+// loadCSRPeakDate corrèle le pic CSR all-time (tier+sub_tier[+valeur]) avec
+// l'historique par-match match_csrs_latest (DB shared) pour retrouver la
+// PREMIÈRE date d'atteinte du pic — MIN(start_time canonique du match). L'API
+// Waypoint (alltime_value) n'expose pas cette date : la corrélation est la
+// seule voie.
+//
+// Title-agnostic : un titre tier-only (val<=0, ex. Halo 5 dont l'API ne fournit
+// pas la valeur numérique) corrèle sur tier+sub_tier seuls ; un titre à valeur
+// (Infinite) resserre en plus sur rating_value (± csrRatingMatchEpsilon).
+//
+// Best-effort : retourne nil (sans erreur propagée) si le shared reader est
+// indisponible, si le scan échoue, ou si aucun match ne corrèle (pic atteint
+// AVANT le début de notre tracking). Chaque cas laisse une trace Debug.
+//
+// Accès shared conforme au modèle mono-process (ADR 0016) : le site d'appel
+// (loadCSRAlltimePeak) ne tient AUCUN reader shared ouvert (pickBestCSRAlltime
+// et la requête placement lisent la player DB via ReadDB), donc on ouvre puis
+// libère ici sans imbrication.
+func (r *HomeRepo) loadCSRPeakDate(ctx context.Context, tier string, sub int, val float64) *time.Time {
+	if r == nil || r.pdb == nil || strings.TrimSpace(tier) == "" {
+		return nil
+	}
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		slog.DebugContext(ctx, "loadCSRPeakDate: shared reader indisponible (date du pic non corrélée)",
+			"tier", tier, "sub_tier", sub, "xuid", r.pdb.XUID, "err", err)
+		return nil
+	}
+	defer release()
+
+	// MIN(start_time canonique) = première atteinte du pic. Lecture via la vue
+	// _latest (règle ART n°2). Timezone canonique via StartTimeCanonicalSQL.
+	query := `
+		SELECT MIN(` + StartTimeCanonicalSQL("mr") + `)
+		FROM match_csrs_latest mc
+		JOIN match_registry mr ON mc.match_id = mr.match_id
+		WHERE mc.xuid = ?
+		  AND mc.tier = ?
+		  AND mc.sub_tier = ?`
+	args := []any{r.pdb.XUID, tier, sub}
+	if val > 0 {
+		query += `
+		  AND ABS(mc.rating_value - ?) < ?`
+		args = append(args, val, csrRatingMatchEpsilon)
+	}
+
+	var achieved sql.NullTime
+	if err := sharedDB.QueryRowContext(ctx, query, args...).Scan(&achieved); err != nil {
+		slog.DebugContext(ctx, "loadCSRPeakDate: corrélation de la date du pic échouée (scan)",
+			"tier", tier, "sub_tier", sub, "xuid", r.pdb.XUID, "err", err)
+		return nil
+	}
+	if !achieved.Valid {
+		slog.DebugContext(ctx, "loadCSRPeakDate: aucun match ne corrèle le pic CSR all-time (pic pré-tracking)",
+			"tier", tier, "sub_tier", sub, "xuid", r.pdb.XUID)
+		return nil
+	}
+	t := achieved.Time
+	return &t
 }
 
 // unrankedBadgeURL retourne l'URL du badge unranked_N.png pour un placement à
