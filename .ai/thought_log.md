@@ -35,12 +35,18 @@ joueur source (pas de fixture synthétique) → badge correct si le joueur sourc
 À VÉRIFIER EN PROD (lecture) : `is_owned` peuplé pour un compte premium connu (non bloquant, le
 chemin d'écriture est garanti côté code).
 
-**Ajout utilisateur (en cours)** : restyler les pills/badges du season pass en COULEURS PLEINES
-(réf. pills joueurs page Relations), texte BLANC, couleurs harmonieuses avec la page — tokens
-sémantiques uniquement (skill color-tokens).
+**Ajout utilisateur — pills season pass pleines (Complété)** : réutilise `NarrativeBadge solid`
+(même rendu que les pills joueurs de Relations) via un wrapper `SeasonPassBadge` +
+`battlePassBadgeStyle.ts` (map rôle→token). Tokens `narrative-encounter-*` = seul set sombre
+palette-invariant garantissant l'AA sur blanc dans TOUTES les palettes daltonisme (vérifié
+`wcagContrast.test.ts`) ; texte blanc via `text-badge-on-solid` (pas de `#fff`). Restylé :
+SeasonPassPage (statut/actif/premium), HomeBattlePassPanel (possédé/actif), BattlePassRewardLightbox,
+rarity.ts (raretés pleines — couleurs Halo iconiques, exception connue du fichier). Gates : tsc,
+eslint 0/0, vitest verts. Découvertes : badge « Now showing » mort (isSelected codé false), chips
+PassContentSummary laissés neutres.
 
-**Conclusion / prochaine étape** : commit Lot C, puis restyle pills season pass, puis Lot D
-(locale Défis/BP), puis Lot A (page Médailles). Aucun push `main` sans feu vert (= deploy prod auto).
+**Conclusion / prochaine étape** : commit pills. Enchaîner Lot D (locale Défis/BP), puis Lot A
+(page Médailles). Aucun push `main` sans feu vert (= deploy prod auto).
 
 ---
 ## [2026-07-23] Réintégration + validation des 4 retouches FDA gap sur origin/main

@@ -3,7 +3,6 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 
 import { KpiCard } from '@/components/cards/KpiCard'
-import { Badge } from '@/components/ui/badge'
 import { buildCompositeProgressEdgeLabels, clampCompositeProgress } from '@/components/ui/composite-progress-bar-labels'
 import { DataFreshnessIndicator } from '@/components/ui/data-freshness-indicator'
 import { EmptyStateCard } from '@/components/ui/empty-state'
@@ -11,27 +10,17 @@ import { Spinner } from '@/components/ui/spinner'
 import type { SeasonPassTrackSummary } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
+import { seasonPassStatusRole } from './battlePassBadgeStyle'
 import { BattlePassRewardCarousel } from './BattlePassRewardCarousel'
 import { buildTierGroups, type RewardCard } from './battlePassTierGroups'
 import { BattlePassRewardLightbox, type RewardLightboxData } from './BattlePassRewardLightbox'
 import { getPalmaresText, normalizePalmaresLocale } from './i18n'
 import { PassContentSummary, type ContentLabels } from './PassContentSummary'
 import { useSeasonPassPage } from './queries'
+import { SeasonPassBadge } from './SeasonPassBadge'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { isArmorItemType, rarityLabel, rarityStyle, type RarityTier } from './rarity'
 import type { Locale } from '@/lib/i18n/locale'
-
-// Le contrat OpenAPI expose `status` en `string` (cf. SeasonPassTrackSummary).
-// On accepte donc `string` et on retombe sur la branche par défaut pour toute
-// valeur hors des statuts connus.
-function statusVariant(status: string) {
-  switch (status) {
-    case 'active': return 'default' as const
-    case 'completed': return 'success' as const
-    case 'in_progress': return 'secondary' as const
-    default: return 'outline' as const
-  }
-}
 
 // Ordre décroissant de rareté — du plus rare au plus commun.
 const RARITY_ORDER: RarityTier[] = ['mythic', 'legendary', 'epic', 'rare', 'common']
@@ -329,10 +318,10 @@ function SeasonPassCard({ pass, intlLocale, statusLabel, labels, contentLabels, 
         <div className="flex flex-wrap items-start justify-between gap-3">
           <h3 className="text-lg font-semibold text-foreground">{pass.name}</h3>
           <div className="flex flex-wrap gap-2">
-            {isSelected && <Badge variant="default">{labels.nowShowing}</Badge>}
-            {pass.is_active && pass.status !== 'active' && <Badge variant="default">{labels.active}</Badge>}
-            {pass.premium_owned && <Badge variant="outline">{labels.premium}</Badge>}
-            <Badge variant={statusVariant(pass.status)}>{statusLabel}</Badge>
+            {isSelected && <SeasonPassBadge role="active" label={labels.nowShowing} />}
+            {pass.is_active && pass.status !== 'active' && <SeasonPassBadge role="active" label={labels.active} />}
+            {pass.premium_owned && <SeasonPassBadge role="premium" label={labels.premium} />}
+            <SeasonPassBadge role={seasonPassStatusRole(pass.status)} label={statusLabel} />
           </div>
         </div>
 
@@ -456,12 +445,10 @@ function PassShowcase({
               />
             </div>
             <div className="mt-1 flex flex-wrap gap-1.5">
-              <Badge variant={statusVariant(pass.status)}>
-                {text.seasonPass.status[pass.status] ?? pass.status}
-              </Badge>
+              <SeasonPassBadge role={seasonPassStatusRole(pass.status)} label={text.seasonPass.status[pass.status] ?? pass.status} />
               {/* status === 'active' affiche déjà « Actif » → pas de second badge. */}
-              {pass.is_active && pass.status !== 'active' && <Badge variant="default">{text.seasonPass.active}</Badge>}
-              {pass.premium_owned && <Badge variant="outline">{text.seasonPass.premium}</Badge>}
+              {pass.is_active && pass.status !== 'active' && <SeasonPassBadge role="active" label={text.seasonPass.active} />}
+              {pass.premium_owned && <SeasonPassBadge role="premium" label={text.seasonPass.premium} />}
             </div>
             {pass.content && (
               <OverlayContentRows
@@ -485,9 +472,9 @@ function PassShowcase({
             />
           </div>
           <div className="flex flex-wrap gap-2">
-            {pass.premium_owned && <Badge variant="outline">{text.seasonPass.premium}</Badge>}
-            {pass.is_active && pass.status !== 'active' && <Badge variant="default">{text.seasonPass.active}</Badge>}
-            <Badge variant={statusVariant(pass.status)}>{text.seasonPass.status[pass.status] ?? pass.status}</Badge>
+            {pass.premium_owned && <SeasonPassBadge role="premium" label={text.seasonPass.premium} />}
+            {pass.is_active && pass.status !== 'active' && <SeasonPassBadge role="active" label={text.seasonPass.active} />}
+            <SeasonPassBadge role={seasonPassStatusRole(pass.status)} label={text.seasonPass.status[pass.status] ?? pass.status} />
           </div>
         </div>
       )}
