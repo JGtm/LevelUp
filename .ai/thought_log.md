@@ -1,6 +1,15 @@
 ## [2026-07-23] Chantier Page Médailles + 3 correctifs Carrière — feat/career-medals-and-fixes
 
-**Statut** : En cours (Lots B, C, D + pills + A1 backend + A2 frontend livrés ; A2 NON committé — superviseur).
+**Statut** : COMPLÉTÉ — 6 lots committés sur `feat/career-medals-and-fixes` (B `9327fad9`, C `39e6a1b0`,
+pills `cf54da9b`, D `420a8ec8`, A1 `4e5e00f8`, A2 `20d07bb5`) + fix contrat OpenAPI (path `pages/medals`
+manquant → `TestContractRoutesDocumented` rouge, corrigé : bloc calqué sur `pages/commendations`,
+`$ref MedalsPageResponse`, `generate-types` régénéré +41 l). **Passe finale de gates : 9/9 verts en
+local** — tsc, vitest 2760 passed, eslint (8 warnings baseline connus), i18n parité (0 diff), drift
+OpenAPI MISSING=0, `go test ./...`, intégration `-p 1` (TOUT anti-ART/persist/migration vert), golangci
+ratchet 0 issue, baseline 0 test manquant. **MERGE-READY** — push `main` en attente du feu vert
+utilisateur (= deploy prod auto). Résiduels CI-only (sans risque) : baseline sous-mode coverage ±1pt,
+re-confirm Linux contract/drift (fix purement documentaire). À vérifier (non bloquant) : lecture prod
+`battlepass_snapshots.is_owned` pour valider le badge Premium (Lot C) sur un compte premium réel.
 
 **Contexte** : demande utilisateur — (A) nouvelle page Médailles style Citations affichant les
 médailles JAMAIS obtenues, groupées « à la SpartanRecord », compteur rouge si 0, filtre
