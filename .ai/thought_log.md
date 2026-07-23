@@ -194,6 +194,37 @@ fonctionnel, i18n conforme ADR 0003, seuils 500 L respectés. NON poussé (atten
 push = deploy prod). Reste utilisateur : revue VISUELLE navigateur + décision push.
 
 ---
+## [2026-07-23] Merge main + push : PROD DOWN sur disque plein VPS (infra, PAS le code)
+
+**Statut** : Code mergé/poussé OK ; **déploiement VPS ÉCHOUÉ → prod 502 (DOWN)**. Bloqué
+sur accès VPS (pas de SSH depuis l'agent).
+
+**Décision technique principale** : merge fast-forward `fix/squad-challenges-workflow` →
+main (e85323beb→93812f0ca), push origin/main. Gates finaux verts (go build, tsc). CI : ADR
+0021 Gate + Deploy Pre-Check verts ; « Deploy to VPS » **failure**.
+
+**Cause de l'échec deploy** (run 30040148538) : `write /tmp/.tmp-compose-build-metadataFile…:
+no space left on device` — **disque VPS plein**. Les images Docker se sont construites
+(`naming to …/levelup:latest done`), l'échec est à l'écriture du metadata compose. Séquence
+`scripts/deploy.sh` : `docker compose down` (l.66, arrête l'ancien conteneur) PUIS
+`docker compose up -d --build` (l.83, échoue disque plein) — les prune l.87-99
+(`builder prune --keep-storage=5GB`) qui libèrent l'espace ne s'exécutent QUE si `up`
+réussit. Donc : ancien conteneur arrêté + nouveau non démarré = prod 502. **Incident
+RÉCURRENT** (déjà 2026-07-13 disque 100% prod down, noté dans deploy.sh l.93).
+
+**Ce n'est PAS le code** : mes commits n'ajoutent aucun gros fichier (max 276 L de texte,
+prebuilt zip inchangé) ; go build + tsc + CI checks verts.
+
+**Récupération (nécessite SSH VPS — hors agent)** : 1) libérer le disque
+(`docker system prune -af` + `docker builder prune -af`, vider /tmp) ; 2) relancer le
+déploiement (`gh run rerun 30040148538` OU sur le VPS `docker compose up -d --build`).
+Re-run seul SANS libérer le disque = même échec. L'agent peut re-déclencher le workflow GH
+une fois le disque libéré.
+
+**Prochaine étape** : utilisateur libère le disque VPS puis redéploie ; vérifier lvelup.info
+repasse 200. Le code livré est sain.
+
+---
 ## [2026-07-23] Réintégration + validation des 4 retouches FDA gap sur origin/main
 
 **Statut** : Complété. Branche `integrate/fda-gap-followups` rebasée sur `origin/main`
