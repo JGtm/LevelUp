@@ -1,3 +1,34 @@
+## [2026-07-23] Chantier Page Médailles + 3 correctifs Carrière — feat/career-medals-and-fixes
+
+**Statut** : En cours (Lot B livré ; C/D/A à venir).
+
+**Contexte** : demande utilisateur — (A) nouvelle page Médailles style Citations affichant les
+médailles JAMAIS obtenues, groupées « à la SpartanRecord », compteur rouge si 0, filtre
+obtenues/non-obtenues, tri ; multi-titre (Halo 5 + futurs, contrainte confirmée) ; (B) masquer
+Assassinat/Coup au sol/Charge spartane non trackées par Halo Infinite ; (C) badge Premium du pass
+saisonnier fiable ; (D) Défis & Battle Pass qui ignorent la locale EN. Plan approuvé
+(~/.claude/plans/je-veux-que-tu-iterative-moore.md). Exécution PILOTÉE : un agent Opus par lot,
+séquentiel ; superviseur = branche/commits/gates/journal. Ordre B→C→D→A (risque croissant), 1 branche.
+
+**Décision technique principale (Lot A)** : taxonomie médailles RÉCONCILIÉE — les 2 catalogues
+partagent le même `medal_name_id` 343i (Killjoy 3233952928, Perfect 1512363953, vérifié sur pièces).
+Import unique du mapping `medal_id→catégorie(23)+super-section(4)` de SpartanRecord ; réutilisation
+noms/desc/difficulté/images LevelUp ; fallback `medal_type` pour non-mappés (custom/nouvelles/H5).
+Baseline (`medal_type`+`difficulty` du titre) = grouping natif de TOUT titre ; enrichissement
+SpartanRecord = Halo Infinite only, via un port `MedalCategoryResolver` (aucun `slug ==`).
+
+**Lot B (Complété)** : `MatchScoreboard.tsx` — colonnes `assassination/ground_pound/shoulder_bash`
+stockées 0 (pas null) sur Infinite → non retirées par le filtre `presentKeys` (`0 != null`). Gate
+désormais `useCapability('native_kill_mechanics')` (absente Infinite, présente H5), threadé aux DEUX
+points de définition (`buildHighlightCols` + `hlDef` de `TeamScoreboard` — sinon le filtre final
+réaffiche les clés absentes de `hlKeys`). Gates : tsc exit 0 ; vitest 23/23 (MatchScoreboard +
+capabilities) ; eslint vert (baseline inchangée). Découvertes notées non traitées : commentaire
+inversé `capabilities.ts:11`, `MatchScoreboard.tsx` > 500 L, pas de test de rendu du masquage.
+
+**Conclusion / prochaine étape** : commit Lot B. Enchaîner Lot C (champ `premium_owned`). Aucun
+push `main` sans feu vert utilisateur (= deploy prod auto).
+
+---
 ## [2026-07-23] Réintégration + validation des 4 retouches FDA gap sur origin/main
 
 **Statut** : Complété. Branche `integrate/fda-gap-followups` rebasée sur `origin/main`

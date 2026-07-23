@@ -17,6 +17,7 @@ import {
 } from '@tanstack/react-table'
 import { useParams, useNavigate } from '@tanstack/react-router'
 import { useTitleSlug } from '@/lib/title-routing'
+import { useCapability } from '@/lib/capabilities/capabilities'
 import { PlayerDetailPanel } from './PlayerDetailPanel'
 import type {
   MatchCitationSnippet,
@@ -56,7 +57,26 @@ import {
  */
 const SHOW_GRENADE_KILLS_COLUMN: boolean = false
 
-function buildHighlightCols(t: MatchViewText, offensiveLabel: string, defensiveLabel: string): ColDef[] {
+/**
+ * Clés des mécaniques de kill natives Halo 5 (assassinats + compétences spartiate :
+ * coup au sol / charge spartane). Colonnes gatées par la capability
+ * `native_kill_mechanics` : présentes sur Halo 5, ABSENTES sur Halo Infinite (le jeu
+ * ne les track pas → stockées 0, pas null, donc le masquage data-driven `presentKeys`
+ * ne suffit pas — `0 != null`). Source unique des clés pour les DEUX points de
+ * définition de colonnes (buildHighlightCols + le tableau hlDef de TeamScoreboard).
+ */
+const NATIVE_KILL_MECHANIC_KEYS = [
+  'assassination_kills',
+  'ground_pound_kills',
+  'shoulder_bash_kills',
+] as const
+
+function buildHighlightCols(
+  t: MatchViewText,
+  offensiveLabel: string,
+  defensiveLabel: string,
+  showNativeKillMechanics: boolean,
+): ColDef[] {
   return [
     { key: 'rank', label: t.sbColRank, inverted: true },
     { key: 'score', label: t.sbColScore, inverted: false, fmt: (v) => t.sbFormatScore(v) },
@@ -74,11 +94,16 @@ function buildHighlightCols(t: MatchViewText, offensiveLabel: string, defensiveL
     { key: 'power_weapon_kills', label: t.sbColPowerWeapons, inverted: false },
     ...(SHOW_GRENADE_KILLS_COLUMN ? [{ key: 'grenade_kills', label: t.labelGrenade, inverted: false } as ColDef] : []),
     // Mécaniques de kill natives Halo 5 (assassinats + compétences spartiate).
-    // Auto-masquées hors H5 : `null` pour Infinite → retirées par le filtre
-    // data-driven (cf. presentKeys / visibleColumn) plus bas.
-    { key: 'assassination_kills', label: t.labelAssassination, inverted: false },
-    { key: 'ground_pound_kills', label: t.labelGroundPound, inverted: false },
-    { key: 'shoulder_bash_kills', label: t.labelShoulderBash, inverted: false },
+    // Gatées par la capability `native_kill_mechanics` : Halo Infinite ne les track
+    // pas (stockées 0, pas null → le filtre data-driven `presentKeys` ne les retire
+    // pas) → exclues des colonnes quand la capability est absente. Halo 5 : conservées.
+    ...(showNativeKillMechanics
+      ? ([
+          { key: 'assassination_kills', label: t.labelAssassination, inverted: false },
+          { key: 'ground_pound_kills', label: t.labelGroundPound, inverted: false },
+          { key: 'shoulder_bash_kills', label: t.labelShoulderBash, inverted: false },
+        ] as ColDef[])
+      : []),
     { key: 'damage_dealt', label: t.sbColDamageDealt, inverted: false, fmt: (v) => v.toFixed(0) },
     { key: 'damage_taken', label: t.sbColDamageTaken, inverted: true, fmt: (v) => v.toFixed(0) },
     { key: 'avg_life_seconds', label: t.sbColAvgLife, inverted: false, fmt: (v) => formatDurationMMSS(v, '—') },
@@ -115,8 +140,16 @@ export function MatchScoreboard({ rows, killerVictim, citations, header, rank, t
   const titleSlug = useTitleSlug()
   const offensiveLabel = useFieldLabel('offensive_conversion')
   const defensiveLabel = useFieldLabel('defensive_resistance')
+  // Mécaniques de kill natives (assassinat / coup au sol / charge spartane) : gatées
+  // par capability (présentes Halo 5, absentes Halo Infinite — non trackées par le jeu).
+  // Thread jusqu'aux DEUX points de définition des colonnes (buildHighlightCols +
+  // le tableau hlDef de TeamScoreboard) — cf. NATIVE_KILL_MECHANIC_KEYS.
+  const showNativeKillMechanics = useCapability('native_kill_mechanics')
 
-  const highlightCols = useMemo(() => buildHighlightCols(t, offensiveLabel, defensiveLabel), [t, offensiveLabel, defensiveLabel])
+  const highlightCols = useMemo(
+    () => buildHighlightCols(t, offensiveLabel, defensiveLabel, showNativeKillMechanics),
+    [t, offensiveLabel, defensiveLabel, showNativeKillMechanics],
+  )
   const teams = useMemo(
     () => Array.from(new Set(rows.map((r) => r.team_side ?? ''))).sort(),
     [rows],
@@ -196,6 +229,7 @@ export function MatchScoreboard({ rows, killerVictim, citations, header, rank, t
           isMyTeam={side !== '' && side === myTeamSide}
           rows={rows.filter((r) => (r.team_side ?? '') === side)}
           highlightCols={highlightCols}
+          showNativeKillMechanics={showNativeKillMechanics}
           presentKeys={presentKeys}
           playerColWidth={playerColWidth}
           extremesByKey={extremesByKey}
@@ -223,6 +257,8 @@ interface TeamScoreboardProps {
   isMyTeam: boolean
   rows: MatchScoreboardRow[]
   highlightCols: ColDef[]
+  /** Capability `native_kill_mechanics` : gate les colonnes assassinat/coup au sol/charge spartane (H5 only). */
+  showNativeKillMechanics: boolean
   /** Clés de colonnes avec au moins une valeur sur le lobby (masquage data-driven). */
   presentKeys: Set<string>
   /** Largeur commune de la colonne « Joueur » (ch) — partagée par toutes les tables. */
@@ -248,6 +284,7 @@ function TeamScoreboard({
   isMyTeam,
   rows,
   highlightCols,
+  showNativeKillMechanics,
   presentKeys,
   playerColWidth,
   extremesByKey,
@@ -417,11 +454,11 @@ function TeamScoreboard({
       hlDef('accuracy'),
       hlDef('melee_kills'),
       hlDef('power_weapon_kills'),
-      // Mécaniques natives H5 : auto-masquées hors H5 (presentKeys retire les
-      // colonnes dont aucune ligne du lobby ne porte de valeur → null Infinite).
-      hlDef('assassination_kills'),
-      hlDef('ground_pound_kills'),
-      hlDef('shoulder_bash_kills'),
+      // Mécaniques natives H5 : gatées par la capability `native_kill_mechanics`. Halo
+      // Infinite ne les track pas (stockées 0, pas null → `presentKeys` ne les retire
+      // pas) → il FAUT gater ICI aussi : le filtre final conserve toute clé absente de
+      // `hlKeys`, donc sans ce gate les colonnes réapparaîtraient. Halo 5 : conservées.
+      ...(showNativeKillMechanics ? NATIVE_KILL_MECHANIC_KEYS.map((k) => hlDef(k)) : []),
       hlDef('damage_dealt'),
       hlDef('damage_taken'),
       hlDef('avg_life_seconds'),
@@ -434,7 +471,7 @@ function TeamScoreboard({
     // top_weapon) ne figurent pas dans highlightCols → toujours conservées.
     const hlKeys = new Set(highlightCols.map((c) => String(c.key)))
     return cols.filter((c) => !hlKeys.has(c.id ?? '') || presentKeys.has(c.id ?? ''))
-  }, [highlightCols, presentKeys, expandedXuid, playerSlug, onPlayerClick, isRanked, t, locale])
+  }, [highlightCols, showNativeKillMechanics, presentKeys, expandedXuid, playerSlug, onPlayerClick, isRanked, t, locale])
 
   const table = useReactTable<ScoreboardRowVM>({
     data,
