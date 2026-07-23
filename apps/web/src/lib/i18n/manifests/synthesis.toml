@@ -218,10 +218,6 @@ en = "Ground Pound"
 fr = "Charge spartane"
 en = "Shoulder Bash"
 
-[synthesis.spartan.section_title]
-fr = "Compétences Spartan & assassinats"
-en = "Spartan abilities & assassinations"
-
 [synthesis.charts.weapon_kills_title]
 fr = "Frags par arme"
 en = "Kills by weapon"

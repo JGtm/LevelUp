@@ -433,7 +433,6 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
                   {hasKillMechanics &&
                     (detailedStats.total_assassinations + detailedStats.total_ground_pound_kills + detailedStats.total_shoulder_bash_kills) > 0 && (
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1.5">{t('synthesis.spartan.section_title')}</p>
                       <div className="grid grid-cols-3 gap-2">
                         <AccentCard label={t('synthesis.charts.kill_type_assassination')} value={detailedStats.total_assassinations.toLocaleString(numLoc)} accent="chart-series-2" />
                         <AccentCard label={t('synthesis.charts.kill_type_ground_pound')} value={detailedStats.total_ground_pound_kills.toLocaleString(numLoc)} accent="chart-series-3" />
