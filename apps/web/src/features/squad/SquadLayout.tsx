@@ -462,8 +462,10 @@ export function SquadLayout() {
   // ── Routes actives ───────────────────────────────────────────────────────
   const synergiesRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies' as const
   const contributionsRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions' as const
+  const dynamiqueRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/dynamique' as const
   const isSynergies = !!matchRoute({ to: synergiesRoute, fuzzy: true })
   const isContributions = !!matchRoute({ to: contributionsRoute, fuzzy: true })
+  const isDynamique = !!matchRoute({ to: dynamiqueRoute, fuzzy: true })
 
   // ── Gestion chargement / erreur ──────────────────────────────────────────
   // La barre de filtres (sticky) est toujours rendue; seul le contenu est
@@ -714,6 +716,13 @@ export function SquadLayout() {
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${isContributions ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
               >
                 {t.nav.contributions}
+              </Link>
+              <Link
+                to="/{-$lang}/t/$titleSlug/players/$playerSlug/squad/dynamique"
+                params={{ titleSlug, playerSlug }}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${isDynamique ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+              >
+                {t.nav.dynamique}
               </Link>
             </nav>
           </div>

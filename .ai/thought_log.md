@@ -1,3 +1,26 @@
+## [2026-07-23] Chantier Dynamique Escouade — P1 onglet Dynamique
+
+**Statut** : En cours (P1 livrée, P2-P5 à suivre). Plan :
+`.ai/PLAN_DYNAMIQUE_ESCOUADE_2026-07.md`, branche `feat/squad-dynamique` (worktree
+dédié, base main e85323beb). Exécution pilotée : Opus implémente, superviseur
+vérifie les gates et commite.
+
+**Décision technique principale** : l'onglet Escouade « Dynamique » (3e onglet,
+FR « Dynamique » / EN « Dynamics ») reçoit les sections intensité, rendement/
+résistance et engagement DÉPLACÉES depuis Contributions (SquadDynamiquePage
+consomme le même SquadContext, aucune query key nouvelle). routeTree.gen.ts
+régénéré via l'API programmatique @tanstack/router-generator (tsr CLI absent du
+repo ; le plugin vite fait foi en dev) — diff purement additif.
+
+**Résultats observés** : tsc exit 0 ; vitest src/features/squad = 34 fichiers /
+259 tests verts (smoke test SquadDynamiquePage inclus, tests Contributions
+adaptés). Vérification visuelle des 3 onglets reportée à la passe visuelle de fin
+de lot (doctrine gates UI en une passe finale).
+
+**Conclusion / prochaine étape** : P2 — séparation Rendement / Résistance en deux
+graphes multi-joueurs.
+
+---
 ## [2026-07-23] Réintégration + validation des 4 retouches FDA gap sur origin/main
 
 **Statut** : Complété. Branche `integrate/fda-gap-followups` rebasée sur `origin/main`
