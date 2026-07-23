@@ -255,8 +255,9 @@ export interface SettingsText {
   // Onglet Backup
   tabBackup: string
   backupStatusEnabled: string
-  backupStatusDisabled: string
+  backupStatusNotConfigured: string
   backupStatusResticMissing: string
+  backupNotConfiguredHint: string
   backupLastBackup: string
   backupNever: string
   backupSnapshotId: string
@@ -544,8 +545,10 @@ const FR_TEXT: SettingsText = {
 
   tabBackup: 'Sauvegarde',
   backupStatusEnabled: 'Activée',
-  backupStatusDisabled: 'Désactivée',
+  backupStatusNotConfigured: 'Non configurées',
   backupStatusResticMissing: 'Restic introuvable',
+  backupNotConfiguredHint:
+    'Sauvegardes non configurées. Pour les activer : installer le binaire restic (sur le PATH), définir BACKUP_ENABLED=true et configurer RESTIC_REPOSITORY (+ RESTIC_PASSWORD) dans l\'environnement du serveur (.env.local). Voir docs/BACKUP_RESTORE.md.',
   backupLastBackup: 'Dernière sauvegarde',
   backupNever: 'Jamais sauvegardé',
   backupSnapshotId: 'Snapshot',
@@ -833,8 +836,10 @@ const EN_TEXT: SettingsText = {
 
   tabBackup: 'Backup',
   backupStatusEnabled: 'Enabled',
-  backupStatusDisabled: 'Disabled',
+  backupStatusNotConfigured: 'Not configured',
   backupStatusResticMissing: 'Restic not found',
+  backupNotConfiguredHint:
+    'Backups are not configured. To enable them: install the restic binary (on PATH), set BACKUP_ENABLED=true, and configure RESTIC_REPOSITORY (+ RESTIC_PASSWORD) in the server environment (.env.local). See docs/BACKUP_RESTORE.md.',
   backupLastBackup: 'Last backup',
   backupNever: 'Never backed up',
   backupSnapshotId: 'Snapshot',

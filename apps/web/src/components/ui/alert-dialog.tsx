@@ -19,7 +19,7 @@
  *     onConfirm={handleExclude}
  *   />
  */
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
 
@@ -34,6 +34,14 @@ export interface AlertDialogProps {
   destructive?: boolean
   /** Désactive les deux boutons (ex: mutation en cours). */
   busy?: boolean
+  /**
+   * Contenu additionnel rendu sous la description (ex: champ de saisie). Quand
+   * il contient un élément focusable auto-focus, passer `autoFocusConfirm={false}`
+   * pour lui laisser le focus initial.
+   */
+  children?: ReactNode
+  /** Focus initial sur le bouton de confirmation (défaut true). */
+  autoFocusConfirm?: boolean
   onConfirm: () => void
 }
 
@@ -46,6 +54,8 @@ export function AlertDialog({
   cancelLabel,
   destructive = false,
   busy = false,
+  children,
+  autoFocusConfirm = true,
   onConfirm,
 }: AlertDialogProps) {
   const confirmRef = useRef<HTMLButtonElement>(null)
@@ -63,10 +73,10 @@ export function AlertDialog({
   }, [open, busy, onOpenChange])
 
   useEffect(() => {
-    if (open) {
+    if (open && autoFocusConfirm) {
       confirmRef.current?.focus()
     }
-  }, [open])
+  }, [open, autoFocusConfirm])
 
   if (!open) return null
 
@@ -110,6 +120,7 @@ export function AlertDialog({
           >
             {description}
           </p>
+          {children && <div className="mt-3">{children}</div>}
         </div>
         <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
           <Button

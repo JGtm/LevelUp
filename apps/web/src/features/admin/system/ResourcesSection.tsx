@@ -66,7 +66,7 @@ function RuntimeSummary({ data, tA, locale }: { data: AdminResourcesResponse; tA
         </span>
         {disk.total_bytes > 0 && <span> / {formatBytes(disk.total_bytes, locale)}</span>}
       </span>
-      <span>
+      <span className="cursor-help" title={tA('admin.resources.heap_help')}>
         {tA('admin.resources.heap')}{' '}
         <span className="font-semibold tabular-nums text-foreground">{formatBytes(data.runtime.heap_alloc_bytes, locale)}</span>
         {' '}({tA('admin.resources.sys')} {formatBytes(data.runtime.sys_bytes, locale)})

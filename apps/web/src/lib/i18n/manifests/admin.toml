@@ -261,8 +261,12 @@ fr = "Disque libre :"
 en = "Free disk:"
 
 [admin.resources.heap]
-fr = "Tas Go :"
-en = "Go heap:"
+fr = "Mémoire serveur (tas Go) :"
+en = "Server memory (Go heap):"
+
+[admin.resources.heap_help]
+fr = "Mémoire allouée par le processus du serveur."
+en = "Memory allocated by the server process."
 
 [admin.resources.sys]
 fr = "sys"
@@ -355,10 +359,6 @@ fr = "Donnée d'avant le dernier redémarrage (pas encore couru depuis)"
 en = "Data predates the last restart (not run since)"
 
 # ─── Section Titres (PMT-14 volet A — gestion multi-titres) ─────────────────
-[admin.titles.heading]
-fr = "Gestion des titres"
-en = "Title management"
-
 [admin.titles.subtitle]
 fr = "Registre des titres supportés — statut, capabilities déclarées et feature-matrix calculée (lecture seule)."
 en = "Registry of supported titles — status, declared capabilities and computed feature matrix (read-only)."
@@ -415,6 +415,10 @@ en = "Yes"
 fr = "Non"
 en = "No"
 
+[admin.titles.registry_capabilities]
+fr = "Capabilities du registre"
+en = "Registry capabilities"
+
 [admin.titles.declared_capabilities]
 fr = "Capabilities déclarées"
 en = "Declared capabilities"
@@ -430,6 +434,10 @@ en = "No TOML mappings loaded for this title."
 [admin.titles.diagnostic]
 fr = "Diagnostic"
 en = "Diagnostic"
+
+[admin.titles.diag_intro]
+fr = "Cohérence entre ce qui est déclaré et la réalité : fichiers de config présents, bases et tables attendues peuplées. Chaque ligne porte un verdict."
+en = "Consistency between what is declared and reality: config files present, expected databases and tables populated. Each line carries a verdict."
 
 [admin.titles.diag_config]
 fr = "Fichiers de config"
@@ -472,12 +480,12 @@ fr = "Aucun écart détecté."
 en = "No drift detected."
 
 [admin.titles.register_help_title]
-fr = "Enregistrer un 2e titre"
-en = "Register a 2nd title"
+fr = "Enregistrer un nouveau titre"
+en = "Register a new title"
 
 [admin.titles.register_help_body]
-fr = "Procédure (aucune écriture via l'interface) : lancer « levelup add-title », déclarer le titre dans internal/domain/title/registry.go, puis « make build ». Le brouillon capabilities.toml ci-dessus sert de point de départ (à copier dans config/titles/{slug}/mappings/)."
-en = "Procedure (no write via the UI): run \"levelup add-title\", declare the title in internal/domain/title/registry.go, then \"make build\". The capabilities.toml draft above is a starting point (copy it to config/titles/{slug}/mappings/)."
+fr = "Aucune écriture via l'interface — la préparation d'un titre est un flux en ligne de commande. 1) Lancer « levelup add-title --name \"…\" [--slug s] [--capabilities c1,c2] » : la commande crée l'arborescence de données data/titles/{slug}/ (entrepôt + joueurs), ajoute la section dans db_profiles.json et imprime le bloc TitleDescriptor à coller. 2) Créer les manifests config/titles/{slug}/ : title.toml + mappings/{fields,assets,outcomes,capabilities}.toml (le brouillon capabilities.toml ci-dessus sert de point de départ). 3) Déclarer le titre dans internal/domain/title/registry.go, puis « make build ». Procédure détaillée : docs/RUNBOOK_ADD_TITLE.md."
+en = "No write via the UI — preparing a title is a command-line workflow. 1) Run \"levelup add-title --name \\\"…\\\" [--slug s] [--capabilities c1,c2]\": the command creates the data tree data/titles/{slug}/ (warehouse + players), adds the section to db_profiles.json, and prints the TitleDescriptor block to paste. 2) Create the manifests under config/titles/{slug}/: title.toml + mappings/{fields,assets,outcomes,capabilities}.toml (the capabilities.toml draft above is a starting point). 3) Declare the title in internal/domain/title/registry.go, then \"make build\". Full procedure: docs/RUNBOOK_ADD_TITLE.md."
 
 # ─── Page Logs ─────────────────────────────────────────────────────────────
 
@@ -615,9 +623,41 @@ en = "Resolve"
 fr = "Rouvrir"
 en = "Reopen"
 
-[admin.detections.note_prompt]
-fr = "Note (optionnelle) :"
-en = "Note (optional):"
+[admin.detections.actions_help_summary]
+fr = "Que font ces actions ?"
+en = "What do these actions do?"
+
+[admin.detections.help_ack]
+fr = "Reconnaître : l'anomalie est prise en compte, elle reste visible dans la liste."
+en = "Acknowledge: the anomaly is taken into account and stays visible in the list."
+
+[admin.detections.help_mute]
+fr = "Mettre en sourdine : masquée jusqu'à ce qu'elle réapparaisse."
+en = "Mute: hidden until it reappears."
+
+[admin.detections.help_resolve]
+fr = "Résoudre : clôturée (déplacée dans « Résolues »)."
+en = "Resolve: closed (moved to \"Resolved\")."
+
+[admin.detections.help_reopen]
+fr = "Rouvrir : réactive une détection résolue."
+en = "Reopen: reactivates a resolved detection."
+
+[admin.detections.note_dialog_desc]
+fr = "Note enregistrée avec le changement de statut et conservée dans l'historique de la détection. Laissez vide pour valider sans commentaire."
+en = "Note saved with the status change and kept in the detection history. Leave empty to proceed without a comment."
+
+[admin.detections.note_placeholder]
+fr = "Ex. : cause connue, ticket lié…"
+en = "E.g. known cause, linked ticket…"
+
+[admin.detections.note_confirm]
+fr = "Valider"
+en = "Confirm"
+
+[admin.detections.note_cancel]
+fr = "Annuler"
+en = "Cancel"
 
 # ─── Vue d'ensemble (KPIs) ─────────────────────────────────────────────────
 
@@ -1108,8 +1148,8 @@ fr = "Tous les participants ont un alias gamertag. La convergence PSA résorbe c
 en = "All participants have a gamertag alias. PSA convergence resorbs this backlog automatically."
 
 [admin.dq.orphan_xuids_hint]
-fr = "Résorbé automatiquement par la convergence PSA (coût API nul) — lancer une convergence joueur si pressé."
-en = "Automatically resorbed by PSA convergence (zero API cost) — run a player convergence if in a hurry."
+fr = "Résolution automatique au prochain cycle de convergence PSA (coût API nul). Pour forcer la résolution immédiate, lancer une convergence joueur."
+en = "Resolved automatically at the next PSA convergence cycle (zero API cost). To force immediate resolution, run a player convergence."
 
 [admin.dq.col_asset_kind]
 fr = "Type"

@@ -24,6 +24,32 @@ tailles DBs/WAL affiche en local), capabilities H5 déjà listées dans TitleDet
 **Prochaine étape** : Lot B (libellés, flows, clarté — détections dialog in-app, Tas Go,
 Restic, capabilities, XUIDs wording).
 
+## [2026-07-23] Admin retours — Lot B clos (branche feat/admin-retours-diag)
+
+**Statut** : Complété (Lot B/I), agent Opus + revue/gates/navigateur orchestrateur.
+
+**Décisions techniques** : note des détections via extension du composant canonique
+`AlertDialog` (slot `children` + `autoFocusConfirm=false`, rétrocompatible) — pas de 2e
+shell modal (règle ≤ 2 copies) ; sémantique W4 conservée (annuler = zéro mutation, note
+vide = mutation sans note). B3/B6 rendus FRONT SEUL : les DTOs exposaient déjà
+enabled/available et declared_capabilities — zéro Go touché. B6 : cause racine du
+retour #23 = environnement runtime + carte de détail mono-titre sur sélection (défaut
+H5) ; correctif de robustesse = capabilities du registre (TitleDescriptor) toujours
+rendues. Diagnostic titres : verdicts via StatusBadge (ok/warning si optionnel
+absent/error). CTA backup avec gestes réels vérifiés (BACKUP_ENABLED, RESTIC_REPOSITORY,
+docs/BACKUP_RESTORE.md).
+
+**Résultats/gate** (re-exécutés) : regen i18n idempotente ; tsc 0 ; eslint 0 erreur
+(baseline 67 warnings tenue) ; vitest 2620 passés ; window.prompt = 0 ; matrice
+navigateur complète (dialog annulation sans PATCH — intercepté par sécurité, 3 états
+backup dont stub !enabled, carte Infinite 15 capabilities, wording XUIDs) verte.
+
+**Découvertes consignées au plan** : weapon-coverage ignore l'en-tête titre (→ C6),
+diagnostic environnemental B6 à confirmer en prod (log mappings_loaded).
+
+**Prochaine étape** : Lot C (post-sync persisté JSON, journal des actions, XUIDs vus/
+pagination, logs « charger plus », tailles DBs, couverture arme H5, exemples DQ).
+
 ## [2026-07-22] D7 titre dans l'URL — Phase 0 close (branche feat/title-slug-in-url)
 
 **Statut** : En cours (Phase 0/6 close), plan `.ai/PLAN_TITLE_SLUG_URL_2026-07.md` sous

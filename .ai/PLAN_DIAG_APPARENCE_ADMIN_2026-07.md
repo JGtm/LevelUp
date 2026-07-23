@@ -191,25 +191,26 @@ titres hors cartes, zéro doublon de titre, onglet Gestion visible sans scroll h
 
 ### Lot B — Libellés, flows et clarté (front + i18n, retouches DTO possibles)
 
-- [ ] B1. Détections (`DetectionsPanel.tsx`) : (a) aligner les boutons d'action (largeur
+- [x] B1. Détections (`DetectionsPanel.tsx`) : (a) aligner les boutons d'action (largeur
       de colonne suffisante / `whitespace-nowrap` — plus de chevauchement au wrap) ;
       (b) micro-copy expliquant chaque action (Reconnaître = pris en compte, reste
       visible ; Sourdine = masqué jusqu'à réapparition ; Résoudre = clos ; Rouvrir) via
       info-tooltip ou légende ; (c) remplacer `window.prompt` (`:49`) par un dialog
       in-app (alert-dialog + champ texte) qui explique l'usage de la note ; (d) FR/EN.
-- [ ] B2. « Tas Go » → libellé compréhensible : « Mémoire serveur (tas Go) » + courte
+- [x] B2. « Tas Go » → libellé compréhensible : « Mémoire serveur (tas Go) » + courte
       description (« mémoire allouée par le processus du serveur ») ; FR/EN.
-- [ ] B3. Restic/Sauvegarde : vérifier ce que `Status()` expose (enabled vs available) ;
+- [x] B3. Restic/Sauvegarde : vérifier ce que `Status()` expose (enabled vs available) ;
+      (Constat : le DTO exposait déjà `enabled` + `available` → front seul, zéro Go.)
       étendre le DTO `/settings/backup/status` si nécessaire ; le front n'affiche
       « Restic introuvable » (erreur) que si sauvegardes ACTIVÉES et binaire absent ;
       sinon « Sauvegardes non configurées » (neutre) + CTA d'activation. FR/EN.
-- [ ] B4. « Enregistrer un 2e titre » → « Enregistrer un nouveau titre » ; contenu
+- [x] B4. « Enregistrer un 2e titre » → « Enregistrer un nouveau titre » ; contenu
       étoffé : pré-requis concrets (arborescence `config/titles/{slug}/`, `title.toml`,
       mappings TOML, commande CLI), lien doc. FR/EN, pas d'anglicisme.
-- [ ] B5. XUIDs orphelins : reformuler le hint « …lancer une convergence joueur si
+- [x] B5. XUIDs orphelins : reformuler le hint « …lancer une convergence joueur si
       pressé » en formulation professionnelle (ex. « Résolution automatique au prochain
       cycle ; “Converger” force la résolution immédiate »). FR/EN.
-- [ ] B6. Gestion des titres : afficher la LISTE des capabilities déclarées par titre
+- [x] B6. Gestion des titres : afficher la LISTE des capabilities déclarées par titre
       (Infinite ET H5), pas seulement les comptes (`TitleDetailCards.tsx:143` ; étendre
       le DTO `GET /admin/titles/{slug}` si les clés n'y figurent pas) ; carte
       « Diagnostic » : une ligne par vérification avec verdict explicite (OK/KO +
@@ -423,8 +424,42 @@ inattendu.
 - [Lot A] `TitleDetailCards` affiche DÉJÀ la liste détaillée des capabilities pour H5
   (vu navigateur) — B6 devra vérifier sur pièces ce qui manque réellement (retour #23
   visait surtout Infinite).
+- [Lot B] Diagnostic B6 : les capabilities d'Infinite ne sont PAS absentes par code —
+  les deux titres passent par `caps.GetCapabilities(slug)` (capabilities.toml chargés au
+  boot, Infinite 17 clés / H5 16). Le symptôme utilisateur est environnemental au
+  runtime (RepoRoot du process serveur / process obsolète) — à confirmer en prod via le
+  log de boot `mappings_loaded kind=capabilities title_slug=halo_infinite`. Par ailleurs
+  la carte de détail est mono-titre SUR SÉLECTION de ligne (défaut = 1re ligne = H5) :
+  l'utilisateur n'a probablement jamais vu la carte Infinite faute de savoir la ligne
+  cliquable. Le correctif front (capabilities du registre toujours rendues, issues du
+  TitleDescriptor) couvre la visibilité dans tous les cas.
+- [Lot B] `IntegrityBadge` (BackupTab) utilise les caractères `✓`/`⚠` préexistants —
+  toléré (Unicode, pas emoji), non touché.
+- [Lot B] L'endpoint `GET /admin/monitoring/weapon-coverage` renvoie les données du
+  titre par défaut même avec `X-LevelUp-Title: halo_5` (testé en live, réponses
+  identiques) — piste sérieuse pour C6 (le retour #21 « inconnues H5 » regardait
+  peut-être des données Infinite). À diagnostiquer au Lot C.
 
 ## Journal d'exécution
+
+### [2026-07-23] Lot B — CLOS (agent Opus + revue orchestrateur)
+
+- B1-B6 tous [x] + purge des 3 clés i18n orphelines du Lot A (B7 de fait). Front seul —
+  aucun DTO Go touché (B3 : `enabled`/`available` déjà exposés ; B6 : `declared_capabilities`
+  déjà exposé). `AlertDialog` étendu (slot `children` + `autoFocusConfirm`) plutôt qu'un
+  2e shell modal (règle ≤ 2 copies) — rétrocompatible, tests existants inchangés.
+  Sémantique W4 préservée (annuler = zéro mutation, vérifié navigateur PATCH intercepté).
+  Clés retirées : `note_prompt`, `backupStatusDisabled` (renommée `backupStatusNotConfigured`).
+  Contenus B4 vérifiés sur pièces (cmd_title.go, RUNBOOK_ADD_TITLE.md, vars BACKUP_ENABLED/
+  RESTIC_REPOSITORY réelles).
+- Gate re-exécuté par l'orchestrateur : regen i18n idempotente (18 manifests, 2589 clés) ;
+  tsc -b 0 ; eslint 0 erreur (67 warnings = baseline) ; vitest 297 fichiers / 2620 passés ;
+  grep window.prompt = 0.
+- Matrice navigateur : légende 4 actions + dialog in-app (focus textarea, annulation sans
+  PATCH), « Mémoire serveur (tas Go) » + tooltip, badge backup 3 états (réel « Restic
+  introuvable » enabled&&!available ; stub !enabled → « Non configurées » + CTA concret),
+  carte Infinite complète (15 chips registre + déclarées + feature-matrix), « Enregistrer
+  un nouveau titre », hint XUIDs reformulé. 0 erreur console.
 
 ### [2026-07-23] Lot A — CLOS (agent Opus + revue orchestrateur)
 

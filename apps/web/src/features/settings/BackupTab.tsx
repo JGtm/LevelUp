@@ -17,7 +17,10 @@ interface BackupTabProps {
 }
 
 function statusBadge(enabled: boolean, available: boolean, t: BackupTabProps['t']) {
-  if (!enabled) return { label: t.backupStatusDisabled, cls: 'bg-muted text-muted-foreground' }
+  // Non configurées (état neutre) : les sauvegardes ne sont pas activées. « Restic
+  // introuvable » (erreur) est réservé au cas où elles SONT activées mais que le
+  // binaire manque (enabled && !available) — cf. B3.
+  if (!enabled) return { label: t.backupStatusNotConfigured, cls: 'bg-muted text-muted-foreground' }
   if (!available) return { label: t.backupStatusResticMissing, cls: 'bg-destructive/20 text-destructive' }
   return { label: t.backupStatusEnabled, cls: 'bg-green-500/20 text-green-700 dark:text-green-400' } // color-allow: badge état système success (vert) — exception CLAUDE.md §20
 }
@@ -137,6 +140,14 @@ export function BackupTab({ t, frozen }: BackupTabProps) {
               </span>
             )}
           </div>
+
+          {/* CTA d'activation — état neutre « non configurées » : explique le geste
+              concret (binaire restic + BACKUP_ENABLED + dépôt restic + doc). */}
+          {status && !status.enabled && (
+            <div className="rounded-md border border-border bg-muted/40 p-3 text-xs leading-relaxed text-muted-foreground">
+              {t.backupNotConfiguredHint}
+            </div>
+          )}
 
           {/* Configuration (lecture seule) — repliée dans la même carte */}
           {status?.config && (
