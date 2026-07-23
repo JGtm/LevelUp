@@ -11807,3 +11807,50 @@ duckdbbackup exit 0.
 **Conclusion / prochaine etape** : commits par zone sur feat/v7.1-quick-wins ; merge main
 a la validation utilisateur (push main = deploy prod). B3 : surveiller l'entree
 "unmapped service error masked as 500" apres deploiement pour eliminer la cause backend.
+
+---
+
+## [2026-07-23] Quick wins v7.1 Lot C — finitions scoreboard & Synthesis (feat/v7.1-lot-c)
+
+**Statut** : Complété (C1-C4). Implémenté par 5 agents Opus pilotés (recon + 4 impl),
+consolidé + vérifié par le superviseur. Périmètre validé user (Lot D reporté, UI non tranchée).
+
+**Décisions techniques** :
+- C1 (couleur d'identité + logos d'équipe, scoreboard, title-agnostic) : H5 avait
+  team_colors.color/icon_url SEEDÉS mais jamais lus -> étendu LoadTeamColorNames pour lire
+  color, exposé via nouvelle capability teamColorResolver (adapter H5) + WithTeamColorResolver,
+  posé row.TeamColor dans applyTeamNames, champ DTO team_color. Front : couleur data-driven
+  (row.team_color H5 -> TEAM_COLORS_HALO_INFINITE[team_id] -> token ally/enemy), accent
+  bordure gauche + fond color-mix, texte en var(--foreground) pour le contraste. Logos =
+  chemin uniforme /titles/{slug}/teams/{team_id}.png. Slug via useAppShellStore. Jamais
+  slug== (branché donnée/team_id).
+- ASSETS (préparés par le superviseur, ffmpeg) : H5 = atlas fourni (kprwyclqv2me1.png,
+  8 emblèmes couleur R/B/Y/G/P/M/O/C) slicé en 8 cellules 320x320 + colorkey noir->alpha ->
+  /titles/halo_5/teams/{0..7}.png (team_id 0=Rouge..7=Cyan, ordre atlas == team_id vérifié
+  via team_colors). Infinite = 9 emblèmes SpartanRecord (Supabase public) rapatriés, teintés
+  par la couleur d'équipe Arrowhead (silhouettes blanches -> geq RGB, alpha préservé) ->
+  /titles/halo_infinite/teams/{0..8}.png. Anti-403 : assets locaux (pas de hotlink CDN).
+- C2 (largeur colonne joueur) : calcul déterministe au niveau lobby (plus long gamertag,
+  +6ch), propagé à chaque table -> largeur identique. Pas de mesure DOM.
+- C3 (KPI défaites consécutives max Synthesis) : réutilise analysis.LongestRun (helper des
+  séries de victoires) avec prédicat OutcomeLoss, sur la même slice rows. Champ
+  overview.longest_loss_streak. Card AccentCard outcome-loss à côté de la série de victoires.
+- C4 (date d'obtention pic LUSR/CSR) : date = start_time canonique du match du pic via
+  match_skill_rank_latest (vue _latest, règle ART) + StartTimeCanonicalSQL. Champ
+  peak_achieved_at (nullable). LIMITE : le pic CSR all-time (player_csr_snapshots) n'a pas
+  de date d'obtention en base -> champ nul + Debug, dégradation gracieuse (pas de date
+  affichée). Fallback Phase A/B renseigne la date quand le CSR passe par match_skill_rank.
+
+**Contrat API** : openapi.yaml MANUEL (garde-fou openapi_schema_drift_test) -> 3 champs
+ajoutés à la main (team_color, longest_loss_streak, peak_achieved_at) + generate-types.
+types.ts (hand-written) : team_color ajouté manuellement au MatchScoreboardRow.
+
+**Résultats observés** : frontend tsc -b (cache purgé) exit 0 ; eslint fichiers touchés
+exit 0 (warning baseline TanStack seul) ; vitest zones touchées 369 passed / 14 skipped.
+Go build/vet exit 0 (après fix const->var Q26ePeakPhaseBRegistryTpl, concaténation SQL non
+constante introduite par C4) ; go test non-integration touchés exit 0 ; 2 nouveaux tests
+-tags=integration (PeakAchievedAt + LoadTeamColorNames_ReadsColor) PASS en -p 1.
+
+**Conclusion / prochaine étape** : commits par zone sur feat/v7.1-lot-c ; merge main à la
+validation user (push main = deploy prod). Vérif visuelle scoreboard (couleurs/logos)
+recommandée au review. Lot D (stats de modes objectifs + H5) reste à faire, UI non tranchée.
