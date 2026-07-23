@@ -1,3 +1,26 @@
+## [2026-07-23] Réintégration + validation des 4 retouches FDA gap sur origin/main
+
+**Statut** : Complété. Branche `integrate/fda-gap-followups` rebasée sur `origin/main`
+courant, retouches validées visuellement par l'utilisateur. Prête à merger/déployer.
+
+**Décision technique principale** : les 4 retouches UX (Timeseries « Écart au FDA
+attendu » à droite du FDA + forme AIRE CUMULÉE comme Sessions + KPI « écart moyen par
+match » ; card Escouade « Écart cumulé » à gauche de « Répartition des frags » ; helper
+`lib/charts/cumulativeFdaGap` centralisé + garde-rail, 3 appelants migrés) étaient sur un
+`main` local diverge d'avant la refonte routage. Cherry-pick des 3 commits de code sur
+origin/main : ZÉRO conflit de code (fichiers disjoints de la refonte), seul thought_log
+en conflit (append) résolu à neuf. Fichiers générés (i18n + openapi) régénérés sans
+dérive.
+
+**Résultats observés** : gates sur l'état réintégré — tsc (cache purgé) exit 0 ; eslint
+0 erreur / 8 warnings (baseline origin/main, +1 table `useReactTable` de la refonte, aucun
+de mes fichiers) ; vitest 380 tests verts (suites FDA + features timeseries/session/squad).
+Validation visuelle utilisateur OK.
+
+**Conclusion / prochaine étape** : merge dans main + push (deploy prod auto) sur feu vert
+push de l'utilisateur.
+
+---
 ## [2026-07-23] CI post-merge : lint unparam + baseline tests lab (2 gates rouges)
 
 **Statut** : Complété (fix poussé, CI en observation).
