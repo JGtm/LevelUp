@@ -2216,7 +2216,15 @@ export interface SchedulerSnapshot {
   pool_size: number
   players: SchedulerPlayerOutcome[]
   gate: SchedulerGateSnapshot
+  /** true = un cycle a tourné depuis ce boot ; false = snapshot réhydraté du
+   *  disque (dernier cycle d'avant redémarrage). Combiné à last_cycle_at (vide/
+   *  zéro = aucune donnée connue) pour distinguer les trois états côté UI (C1). */
+  since_boot: boolean
 }
+
+/** Journal des actions globales admin (GET /admin/actions/journal, survit au reboot). */
+export type AdminActionJournalEntry = components['schemas']['AdminActionJournalEntry']
+export type AdminActionJournalResponse = components['schemas']['AdminActionJournalResponse']
 
 export interface SchedulerCycleRecord {
   /** RFC3339 */

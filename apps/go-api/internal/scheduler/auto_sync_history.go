@@ -10,10 +10,12 @@
 package scheduler
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/platform/adminstate"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/sync"
 )
@@ -107,7 +109,11 @@ func (after cycleLoadSnapshot) deltaSince(before cycleLoadSnapshot) cycleLoadSna
 // historique borné) avec les deltas de charge attribués au cycle. Point de
 // passage UNIQUE des deux paths V1/V2 de RunOnceTrigger — thread-safe via
 // snapshotMu.
-func (s *AutoSyncScheduler) storeCycleResult(res *RunOnceResult, trigger string, load cycleLoadSnapshot) {
+//
+// En sortie (hors verrou) : journalise l'action « sync_cycle » (C2 — survit au
+// reboot) et persiste le snapshot post-sync (C1). ctx sert la corrélation des
+// logs (event_id du tick).
+func (s *AutoSyncScheduler) storeCycleResult(ctx context.Context, res *RunOnceResult, trigger string, load cycleLoadSnapshot) {
 	// Statut unifié des crons (A6/DC-5) : point de convergence des deux paths
 	// (V2 orchestrator + filet syncPlayer). Échec = au moins un joueur failed.
 	var cycleErr error
@@ -117,10 +123,10 @@ func (s *AutoSyncScheduler) storeCycleResult(res *RunOnceResult, trigger string,
 	observability.ReportCronRun("auto_sync", time.Now().Add(-res.Duration), cycleErr, res.Duration.Milliseconds())
 
 	s.snapshotMu.Lock()
-	defer s.snapshotMu.Unlock()
 	s.lastCycleAt = time.Now()
 	copyRes := *res
 	s.lastCycleResult = &copyRes
+	s.cycleRanSinceBoot = true // un cycle a tourné : le snapshot n'est plus « réhydraté seul » (C1)
 	s.cycleHistory = append(s.cycleHistory, CycleRecord{
 		At:             s.lastCycleAt,
 		Trigger:        trigger,
@@ -141,6 +147,13 @@ func (s *AutoSyncScheduler) storeCycleResult(res *RunOnceResult, trigger string,
 		copy(trimmed, s.cycleHistory[len(s.cycleHistory)-cycleHistorySize:])
 		s.cycleHistory = trimmed
 	}
+	s.snapshotMu.Unlock()
+
+	// C2 : journal de l'action « cycle de sync » (dernière exécution / issue /
+	// déclencheur) — survit au reboot. Trigger "tick"|"manual" tel quel.
+	s.actionJournal.Record(ctx, adminstate.ActionSyncCycle, adminstate.Outcome(cycleErr), trigger)
+	// C1 : snapshot post-sync persistant (timeline + matrice + horodatage).
+	s.persistSnapshot(ctx)
 }
 
 // History retourne une copie de l'historique des cycles, le plus récent en

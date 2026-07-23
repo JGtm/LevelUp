@@ -28,6 +28,7 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/platform/adminstate"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/auth/pool"
 	settings_platform "levelup/go-api/internal/platform/settings"
@@ -125,6 +126,12 @@ type SchedulerSnapshot struct {
 	// Gate : état du gate de déduplication cross-source (claims en vol + âge +
 	// compteurs). Vide si watcher désactivé (NopSyncGate).
 	Gate sync.GateSnapshotData `json:"gate"`
+	// SinceBoot : true si LastCycleAt reflète un cycle EFFECTIF depuis ce boot ;
+	// false si le snapshot est purement RÉHYDRATÉ du disque (dernier cycle d'un
+	// boot précédent, cf. C1). Combiné à LastCycleAt (zéro = aucune donnée
+	// connue), il permet au front de distinguer « aucun cycle depuis le boot mais
+	// snapshot connu (daté) » de « aucune donnée » et « cycle en direct ».
+	SinceBoot bool `json:"since_boot"`
 }
 
 // AutoSyncScheduler orchestre la sync delta périodique de tous les joueurs.
@@ -214,6 +221,18 @@ type AutoSyncScheduler struct {
 	// (ring borné), pour la sparkline de tendance — repère un joueur qui
 	// converge toujours plus lentement. Alimenté par storeCycleResult.
 	postSyncHistory map[string][]int64 // keyed by gamertag
+	// cycleRanSinceBoot : true dès qu'un cycle a tourné depuis ce boot. False
+	// tant que le snapshot est purement réhydraté du disque (C1) — exposé via
+	// SchedulerSnapshot.SinceBoot. Protégé par snapshotMu.
+	cycleRanSinceBoot bool
+
+	// snapshotStore persiste le snapshot post-sync (JSON hors DuckDB) en fin de
+	// cycle et le réhydrate au boot (C1). Nil → persistance désactivée (tests,
+	// CLI) : le dashboard reste amnésique au reboot, sans jamais paniquer.
+	snapshotStore *adminstate.FileStore
+	// actionJournal enregistre la dernière exécution du cycle de sync (C2 —
+	// action « sync_cycle », déclencheur tick/manual). Nil → non journalisé.
+	actionJournal *adminstate.ActionJournal
 }
 
 // New crée un AutoSyncScheduler. tokenPool peut être nil (cas où Discovery
@@ -328,6 +347,7 @@ func (s *AutoSyncScheduler) Snapshot() SchedulerSnapshot {
 		IntervalMinutes: int(s.CurrentInterval() / time.Minute),
 		PoolSize:        poolSize,
 		Players:         players,
+		SinceBoot:       s.cycleRanSinceBoot,
 	}
 	if s.SyncGate != nil {
 		snap.Gate = s.SyncGate.GateSnapshot()

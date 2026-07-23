@@ -21,6 +21,7 @@ import (
 	halo_games "levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/ops"
+	"levelup/go-api/internal/platform/adminstate"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/halo"
@@ -40,12 +41,14 @@ const (
 
 // RunCatalogUGCDrain seed la file depuis match_registry puis la draine via
 // l'API DiscoveryUGC. Bloquant (réseau) — appelé dans la goroutine d'un job.
-func (r *ServiceRegistry) RunCatalogUGCDrain(ctx context.Context, titleSlug string) (domain.CatalogUGCDrainResult, error) {
-	var res domain.CatalogUGCDrainResult
+func (r *ServiceRegistry) RunCatalogUGCDrain(ctx context.Context, titleSlug string) (res domain.CatalogUGCDrainResult, err error) {
 	if !catalogDrainMu.TryLock() {
 		return res, ErrActionBusy
 	}
 	defer catalogDrainMu.Unlock()
+	// C2 : journal de l'exécution réelle (single-flight non journalisé — placé
+	// avant ce defer). err = erreur finale nommée.
+	defer func() { r.journalAction(ctx, adminstate.ActionCatalogUGCDrain, err) }()
 
 	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(ctx, titleSlug)
 	if err != nil {

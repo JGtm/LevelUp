@@ -2048,6 +2048,19 @@ paths:
         "409": { description: "Un cycle forcé est déjà en vol (job_id en details)" }
         "503": { description: "Scheduler indisponible" }
 
+  /admin/actions/journal:
+    get:
+      tags: [admin]
+      operationId: getAdminActionsJournal
+      summary: "Dashboard monitoring — journal des actions globales (dernière exécution/issue/déclencheur par action, survit au reboot) (auth admin requis)"
+      responses:
+        "200":
+          description: "Journal des actions globales"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminActionJournalResponse'
+
   /admin/monitoring/data-quality:
     get:
       tags: [admin]
@@ -7448,6 +7461,37 @@ components:
       required:
           - xuid
           - name
+      type: object
+    AdminActionJournalEntry:
+      additionalProperties: false
+      properties:
+          action:
+              type: string
+          last_run_at:
+              type: string
+          outcome:
+              type: string
+          trigger:
+              type: string
+      required:
+          - action
+          - last_run_at
+          - outcome
+          - trigger
+      type: object
+    AdminActionJournalResponse:
+      additionalProperties: false
+      properties:
+          actions:
+              items:
+                  $ref: '#/components/schemas/AdminActionJournalEntry'
+              nullable: true
+              type: array
+          generated_at:
+              type: string
+      required:
+          - generated_at
+          - actions
       type: object
     AdminConvergenceReport:
       additionalProperties: false
@@ -13574,12 +13618,15 @@ components:
           pool_size:
               format: int64
               type: integer
+          since_boot:
+              type: boolean
       required:
           - last_cycle_at
           - interval_minutes
           - pool_size
           - players
           - gate
+          - since_boot
       type: object
     SeasonCalendar:
       additionalProperties: false

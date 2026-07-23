@@ -821,6 +821,28 @@ en = "Action failed"
 fr = "Déjà en cours — suivi de l'exécution active."
 en = "Already running — following the active execution."
 
+# ─── Journal des actions globales (dernière exécution, survit au reboot) ────
+
+[admin.actions.last_run]
+fr = "Dernière exécution"
+en = "Last run"
+
+[admin.actions.never_run]
+fr = "Jamais exécutée"
+en = "Never run"
+
+[admin.actions.trigger_manual]
+fr = "manuel"
+en = "manual"
+
+[admin.actions.trigger_cron]
+fr = "automatique"
+en = "scheduled"
+
+[admin.actions.outcome_error]
+fr = "échec"
+en = "failed"
+
 # ─── Page Sync & Jobs ──────────────────────────────────────────────────────
 
 [admin.sync.scheduler_section]
@@ -1574,6 +1596,18 @@ fr = "Aucune écriture batch depuis le boot."
 en = "No batch writes since boot."
 
 # ─── Page Convergence : timeline + rattrapage ──────────────────────────────
+
+[admin.convergence.last_cycle]
+fr = "Dernier cycle"
+en = "Last cycle"
+
+[admin.convergence.last_cycle_prev_boot]
+fr = "Cycle précédent (avant redémarrage)"
+en = "Previous cycle (before restart)"
+
+[admin.convergence.no_cycle_ever]
+fr = "Aucun cycle enregistré — aucune donnée connue"
+en = "No cycle recorded yet — no known data"
 
 [admin.convergence.timeline_section]
 fr = "Timeline du pipeline post-sync (dernier passage par joueur)"

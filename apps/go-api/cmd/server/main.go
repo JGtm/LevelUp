@@ -54,6 +54,7 @@ import (
 	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/platform/adminstate"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/auth/capturecli"
 	"levelup/go-api/internal/platform/auth/pool"
@@ -705,6 +706,20 @@ func main() {
 	autoScheduler := scheduler.New(cfg, settingsStore, tokenProvider, autoSyncPool)
 	schedulerCtx, cancelScheduler := context.WithCancel(ctx)
 
+	// Lot C1/C2 — persistance JSON légère (HORS DuckDB) de l'état runtime admin,
+	// pour guérir l'amnésie du dashboard au reboot : snapshot post-sync (timeline +
+	// matrice + horodatage) réhydraté au boot (C1), et journal des actions globales
+	// (dernière exécution / issue / déclencheur) partagé scheduler↔services (C2).
+	// Chemins via le PathResolver (data/global/admin_state/*.json). Best-effort :
+	// un échec de lecture/écriture est loggé et l'API sert l'état mémoire.
+	postSyncStore := adminstate.NewFileStore(pr.PostSyncSnapshotPath())
+	adminActionJournal := adminstate.NewActionJournal(adminstate.NewFileStore(pr.ActionJournalPath()))
+	if err := adminActionJournal.Load(ctx); err != nil {
+		slog.ErrorContext(ctx, "adminstate: chargement du journal des actions échoué — démarrage à vide", "err", err)
+	}
+	autoScheduler.WithSnapshotStore(postSyncStore).WithActionJournal(adminActionJournal)
+	autoScheduler.RehydrateFromDisk(ctx)
+
 	// Phase 4.9 (2026-05-24) : BatchQueue serveur-wide default ON. Set
 	// LEVELUP_PERSIST_BATCH_ASYNC=0 pour fallback path synchrone (validé Phase 4.5).
 	//
@@ -1036,6 +1051,11 @@ func main() {
 	// expiry-aware (halo.ResolveFreshPlayerTokens) re-minte via le registry quand un
 	// token est périmé. Sans ce câblage, le re-mint singleflighté est inopérant.
 	reg.WireGlobalTokenRefresher()
+
+	// Journal des actions globales (C2) : partagé avec le scheduler (câblé plus
+	// haut). Les runners d'action y écrivent leur dernière exécution ; l'endpoint
+	// GET /admin/actions/journal le sert (survit au reboot).
+	reg.WithActionJournal(adminActionJournal)
 
 	// Dashboard monitoring admin — câblage du HealthScheduler (créé plus haut,
 	// avant NewRouter). Les runners monitoring le lisent lazily à chaque

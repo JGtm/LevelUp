@@ -52,8 +52,8 @@ func MountAdminMonitoringRoutes(
 	lusrH.Mount(r.With(middleware.NoStore))
 
 	actionsH := handlers.NewAdminActionsHandler(
-		reg.RunDataHealthNow, sched, jobStore, serverCtx)
-	actionsH.Mount(r) // POST /actions/data-health/run, /actions/auto-sync/run
+		reg.RunDataHealthNow, reg.ActionJournalReport, sched, jobStore, serverCtx)
+	actionsH.Mount(r) // POST /actions/data-health/run, /actions/auto-sync/run ; GET /actions/journal
 
 	// Qualité données : compteurs/listes d'inconnus + actions de résolution
 	// (backfill registry names, traductions metadata) — Phase 2.
