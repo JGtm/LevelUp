@@ -163,35 +163,53 @@ func loadCSRBadgeResolver(metaPath, slug string) func(string, string, int) strin
 	}
 }
 
-// loadTeamNames construit un résolveur de libellé d'équipe (team_id, locale → nom
-// localisé) pour un titre additionnel depuis sa metadata (team_colors, seedé par
-// cmd/h5-metadata-fetch depuis l'API Metadata officielle /team-colors). Retourne nil si
-// la DB est absente / vide → l'adapter n'expose pas la capability → la Match View garde
-// son libellé d'équipe existant. Le résolveur est déjà scopé au titre (attaché au seul
-// adapter du titre), d'où l'absence de garde slug (contrairement à loadCSRBadgeResolver,
-// posé globalement via SetCSRBadgeResolver).
-func loadTeamNames(metaPath string) func(int, string) string {
+// teamColorResolvers regroupe les résolveurs d'équipe construits depuis team_colors :
+// libellé localisé (team_id, locale → nom) et couleur d'identité (team_id → hex #RRGGBB).
+// Les deux dérivent de la même lecture de team_colors → un seul open de la metadata. Un
+// champ nil signale l'absence de seed (l'adapter n'expose alors pas la capability).
+type teamColorResolvers struct {
+	name  func(teamID int, locale string) string
+	color func(teamID int) string
+}
+
+// loadTeamColorResolvers construit les résolveurs d'équipe (nom localisé + couleur
+// d'identité) d'un titre additionnel depuis sa metadata (team_colors, seedé par
+// cmd/h5-metadata-fetch depuis l'API Metadata officielle /team-colors). Champs nil si la
+// DB est absente / vide → l'adapter n'expose pas la capability → la Match View garde son
+// libellé et son accent d'équipe existants. Les résolveurs sont déjà scopés au titre
+// (attachés au seul adapter du titre), d'où l'absence de garde slug (contrairement à
+// loadCSRBadgeResolver, posé globalement via SetCSRBadgeResolver).
+func loadTeamColorResolvers(metaPath string) teamColorResolvers {
 	metaDB, err := platform_duckdb.OpenReadWriteShared(metaPath)
 	if err != nil {
-		return nil
+		return teamColorResolvers{}
 	}
 	defer func() { _ = metaDB.Close() }()
 	m := platform_duckdb.LoadTeamColorNames(context.Background(), metaDB)
 	if len(m) == 0 {
-		return nil
+		return teamColorResolvers{}
 	}
-	return func(teamID int, locale string) string {
-		tc, ok := m[teamID]
-		if !ok {
-			return ""
-		}
-		if locale == "en" {
+	return teamColorResolvers{
+		name: func(teamID int, locale string) string {
+			tc, ok := m[teamID]
+			if !ok {
+				return ""
+			}
+			if locale == "en" {
+				return tc.NameEN
+			}
+			if tc.NameFR != "" {
+				return tc.NameFR
+			}
 			return tc.NameEN
-		}
-		if tc.NameFR != "" {
-			return tc.NameFR
-		}
-		return tc.NameEN
+		},
+		color: func(teamID int) string {
+			tc, ok := m[teamID]
+			if !ok {
+				return ""
+			}
+			return tc.Color
+		},
 	}
 }
 
@@ -293,12 +311,13 @@ func wireHalo5AssetAdapters(cfg *config.AppConfig, titleResolver *games.StaticRe
 	h5CSRResolver := loadCSRBadgeResolver(config.MetadataDBPath(cfg, halo5.TitleSlug), halo5.TitleSlug)
 	platform_duckdb.SetCSRBadgeResolver(h5CSRResolver)
 
-	// Libellés d'équipe localisés (team_colors → « Rouge/Bleu ») pour la Match View H5.
-	h5TeamNames := loadTeamNames(config.MetadataDBPath(cfg, halo5.TitleSlug))
+	// Libellés d'équipe localisés + couleur d'identité (team_colors → « Rouge/Bleu » +
+	// #RRGGBB) pour la Match View H5.
+	h5Teams := loadTeamColorResolvers(config.MetadataDBPath(cfg, halo5.TitleSlug))
 
 	// C0 / G1 : TitleAssetURLAdapter pour Halo 5. Sans lui, titleResolver.AssetURL("halo_5")
 	// renvoie ErrTitleNotResolved → assetURL==nil sur la Match View. Adapter PUR (couche 3).
-	if h5CSRResolver != nil || len(h5Maps) > 0 || len(h5Weapons) > 0 || h5TeamNames != nil {
+	if h5CSRResolver != nil || len(h5Maps) > 0 || len(h5Weapons) > 0 || h5Teams.name != nil {
 		h5AssetURL := halo5.NewAssetURLAdapter().
 			WithMaps(h5Maps).
 			WithWeapons(h5Weapons)
@@ -308,14 +327,16 @@ func wireHalo5AssetAdapters(cfg *config.AppConfig, titleResolver *games.StaticRe
 					return h5CSRResolver(halo5.TitleSlug, designation, subTier)
 				})
 		}
-		if h5TeamNames != nil {
-			h5AssetURL = h5AssetURL.WithTeamNameResolver(h5TeamNames)
+		if h5Teams.name != nil {
+			h5AssetURL = h5AssetURL.
+				WithTeamNameResolver(h5Teams.name).
+				WithTeamColorResolver(h5Teams.color)
 		}
 		titleResolver.RegisterAssetURL(h5AssetURL)
 		slog.Info("adapter_loaded",
 			"title_slug", h5AssetURL.TitleSlug(), "kind", "asset_url",
 			"maps", len(h5Maps), "weapons", len(h5Weapons), "csr", h5CSRResolver != nil,
-			"teams", h5TeamNames != nil)
+			"teams", h5Teams.name != nil)
 	}
 
 	// G2/G7/D.1 : sprite médaille title-aware. Les médailles H5 sont des SPRITES (feuille +

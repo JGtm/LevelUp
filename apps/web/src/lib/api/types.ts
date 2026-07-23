@@ -1653,6 +1653,10 @@ export interface MatchScoreboardRow {
    *  depuis team_colors). Absent/vide pour les titres sans référentiel d'équipes
    *  (Halo Infinite) → le front retombe sur resolveTeamName (Eagle/Cobra). */
   team_name?: string | null
+  /** Couleur d'identité d'équipe (#RRGGBB) fournie par le backend (Halo 5 : depuis
+   *  team_colors). Absente pour Halo Infinite → le front retombe sur la map
+   *  TEAM_COLORS_HALO_INFINITE (par team_id), puis sur le token ally/enemy. */
+  team_color?: string | null
   is_me: boolean
   /** True si participant détecté comme bot (xuid au format "bid(N.0)"). */
   is_bot?: boolean

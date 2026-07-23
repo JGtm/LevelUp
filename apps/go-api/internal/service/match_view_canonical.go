@@ -58,15 +58,25 @@ type teamNameResolver interface {
 	TeamName(teamID int, locale string) string
 }
 
-// applyTeamNames renseigne row.TeamName sur chaque ligne de scoreboard quand l'adapter
-// d'assets du titre expose teamNameResolver (Halo 5). No-op si l'adapter ne l'implémente
-// pas (HINF), est nil, ou renvoie "" (team_colors vide) → dégradation gracieuse (le
-// front garde son libellé d'équipe existant). Title-agnostic : aucune comparaison de
-// slug, la capability seule décide. Appelée sur les DEUX voies (canonique live + repo
-// persisté) car un match H5 peut emprunter l'une ou l'autre selon le substrat DuckDB.
+// teamColorResolver est la capability OPTIONNELLE jumelle de teamNameResolver : résout un
+// team_id en couleur d'identité hex (#RRGGBB, Halo 5 : team_colors.color). Même pattern
+// optionnel (type-assertion) : HINF ne l'implémente pas → team_color reste vide et le
+// front retombe sur sa map de couleurs par team_id.
+type teamColorResolver interface {
+	TeamColor(teamID int) string
+}
+
+// applyTeamNames renseigne row.TeamName ET row.TeamColor sur chaque ligne de scoreboard
+// quand l'adapter d'assets du titre expose teamNameResolver / teamColorResolver (Halo 5).
+// No-op si l'adapter ne les implémente pas (HINF), est nil, ou renvoie "" (team_colors
+// vide) → dégradation gracieuse (le front garde libellé et accent d'équipe existants).
+// Title-agnostic : aucune comparaison de slug, la capability seule décide. Appelée sur les
+// DEUX voies (canonique live + repo persisté) car un match H5 peut emprunter l'une ou
+// l'autre selon le substrat DuckDB.
 func (s *MatchViewService) applyTeamNames(ctx context.Context, rows []domain.MatchScoreboardRow) {
-	resolver, ok := s.assetURL.(teamNameResolver)
-	if !ok {
+	nameResolver, hasName := s.assetURL.(teamNameResolver)
+	colorResolver, hasColor := s.assetURL.(teamColorResolver)
+	if !hasName && !hasColor {
 		return
 	}
 	locale := ctxkeys.Locale(ctx)
@@ -75,8 +85,15 @@ func (s *MatchViewService) applyTeamNames(ctx context.Context, rows []domain.Mat
 		if !ok {
 			continue
 		}
-		if name := resolver.TeamName(id, locale); name != "" {
-			rows[i].TeamName = name
+		if hasName {
+			if name := nameResolver.TeamName(id, locale); name != "" {
+				rows[i].TeamName = name
+			}
+		}
+		if hasColor {
+			if color := colorResolver.TeamColor(id); color != "" {
+				rows[i].TeamColor = color
+			}
 		}
 	}
 }

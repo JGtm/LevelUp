@@ -37,6 +37,10 @@ type AssetURLAdapter struct {
 	// Injecté depuis team_colors (server.go). Nil = pas de seed team_colors → la
 	// Match View retombe sur son libellé d'équipe existant (dégradation gracieuse).
 	teamNameResolver func(teamID int, locale string) string
+	// teamColorResolver retourne la couleur d'identité hex (#RRGGBB) pour un team_id.
+	// Injecté depuis team_colors.color (server.go). Nil = pas de seed → la Match View
+	// retombe sur son accent d'équipe existant (dégradation gracieuse).
+	teamColorResolver func(teamID int) string
 }
 
 // NewAssetURLAdapter construit un AssetURLAdapter Halo 5 vide. Les données sont
@@ -106,6 +110,24 @@ func (a *AssetURLAdapter) TeamName(teamID int, locale string) string {
 		return ""
 	}
 	return a.teamNameResolver(teamID, locale)
+}
+
+// WithTeamColorResolver injecte le résolveur de couleur d'identité d'équipe
+// (team_id → hex #RRGGBB), construit depuis team_colors.color au boot. Sans lui,
+// TeamColor renvoie "" et la Match View garde son accent d'équipe existant.
+func (a *AssetURLAdapter) WithTeamColorResolver(f func(teamID int) string) *AssetURLAdapter {
+	a.teamColorResolver = f
+	return a
+}
+
+// TeamColor retourne la couleur d'identité hex (#RRGGBB) d'un team_id (Halo 5). "" si
+// aucun résolveur n'est injecté (team_colors vide/absent) ou team_id inconnu. Implémente
+// la capability optionnelle consommée par le service Match View.
+func (a *AssetURLAdapter) TeamColor(teamID int) string {
+	if a.teamColorResolver == nil {
+		return ""
+	}
+	return a.teamColorResolver(teamID)
 }
 
 // TitleSlug retourne "halo_5".

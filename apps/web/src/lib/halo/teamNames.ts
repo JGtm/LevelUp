@@ -27,6 +27,29 @@ const TEAM_NAMES_HALO_INFINITE: Record<number, string> = {
 }
 
 /**
+ * Couleur d'identité (hex #RRGGBB) par team_id Halo Infinite — thème officiel
+ * Arrowhead / SpartanRecord, fixe par 343 Industries (indépendant du match).
+ *
+ * Ces littéraux hex vivent ici (lib/halo/), PAS dans features/ : la règle
+ * color-tokens interdit les hex dans features/components, mais un référentiel de
+ * couleurs d'identité de jeu (au même titre que rarity.ts) est un cas légitime —
+ * ce sont des données de domaine Halo, pas des choix de design UI. Le backend fournit
+ * la couleur H5 par la donnée (team_color) ; Infinite n'a pas de référentiel serveur,
+ * d'où cette map cliente.
+ */
+const TEAM_COLORS_HALO_INFINITE: Record<number, string> = {
+  0: '#3B9DFF',
+  1: '#FE3939',
+  2: '#C43AAC',
+  3: '#8D3AC4',
+  4: '#49B8FE',
+  5: '#DA3A04',
+  6: '#FFEA00',
+  7: '#DC5839',
+  8: '#8AFFBE',
+}
+
+/**
  * Parse "t{N}" → N. Retourne null si le format n'est pas reconnu (équipe vide
  * ou ancienne convention). Idempotent face à null/undefined.
  */
@@ -55,6 +78,32 @@ export function resolveTeamName(teamSide: string | null | undefined): string | n
 export function resolveTeamNameFromID(teamID: number | null | undefined): string | null {
   if (teamID == null) return null
   return TEAM_NAMES_HALO_INFINITE[teamID] ?? null
+}
+
+/**
+ * Résout la couleur d'identité (hex #RRGGBB) d'une équipe Halo Infinite par team_id.
+ * Retourne null si team_id absent de la map (équipe non standard) ou nul → le caller
+ * dégrade sur son accent d'équipe existant. La couleur H5, elle, arrive par la DONNÉE
+ * (row.team_color) et n'a pas besoin de cette map.
+ */
+export function resolveTeamColorFromID(teamID: number | null | undefined): string | null {
+  if (teamID == null) return null
+  return TEAM_COLORS_HALO_INFINITE[teamID] ?? null
+}
+
+/**
+ * Chemin de l'asset logo d'une équipe : `/titles/{slug}/teams/{teamId}.png`.
+ * Résolution d'asset uniforme title-agnostic (le slug paramètre le chemin, ce n'est
+ * pas une branche de comportement). Retourne null si l'un des deux est absent →
+ * le caller n'affiche pas de logo. Certains team_id peuvent ne pas avoir d'asset :
+ * l'onError du <img> gère le 404 côté rendu.
+ */
+export function teamLogoPath(
+  slug: string | null | undefined,
+  teamID: number | null | undefined,
+): string | null {
+  if (!slug || teamID == null) return null
+  return `/titles/${slug}/teams/${teamID}.png`
 }
 
 /**
