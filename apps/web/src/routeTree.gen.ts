@@ -20,6 +20,7 @@ import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as PlayersSplatRouteImport } from './routes/players/$'
 import { Route as OnboardingOpenspartanRouteImport } from './routes/onboarding.openspartan'
 import { Route as LabChartsRouteImport } from './routes/lab/charts'
 import { Route as AdminTitlesRouteImport } from './routes/admin/titles'
@@ -125,6 +126,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminRoute,
+} as any)
+const PlayersSplatRoute = PlayersSplatRouteImport.update({
+  id: '/players/$',
+  path: '/players/$',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const OnboardingOpenspartanRoute = OnboardingOpenspartanRouteImport.update({
   id: '/onboarding/openspartan',
@@ -486,6 +492,7 @@ export interface FileRoutesByFullPath {
   '/admin/titles': typeof AdminTitlesRoute
   '/lab/charts': typeof LabChartsRoute
   '/onboarding/openspartan': typeof OnboardingOpenspartanRoute
+  '/players/$': typeof PlayersSplatRoute
   '/admin/': typeof AdminIndexRoute
   '/{-$lang}/t/$titleSlug': typeof Char123LangChar125TTitleSlugRouteWithChildren
   '/{-$lang}/t/$titleSlug/players/$playerSlug': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRouteWithChildren
@@ -548,6 +555,7 @@ export interface FileRoutesByTo {
   '/admin/titles': typeof AdminTitlesRoute
   '/lab/charts': typeof LabChartsRoute
   '/onboarding/openspartan': typeof OnboardingOpenspartanRoute
+  '/players/$': typeof PlayersSplatRoute
   '/admin': typeof AdminIndexRoute
   '/{-$lang}/t/$titleSlug': typeof Char123LangChar125TTitleSlugRouteWithChildren
   '/{-$lang}/t/$titleSlug/players/$playerSlug': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRouteWithChildren
@@ -610,6 +618,7 @@ export interface FileRoutesById {
   '/admin/titles': typeof AdminTitlesRoute
   '/lab/charts': typeof LabChartsRoute
   '/onboarding/openspartan': typeof OnboardingOpenspartanRoute
+  '/players/$': typeof PlayersSplatRoute
   '/admin/': typeof AdminIndexRoute
   '/{-$lang}/t/$titleSlug': typeof Char123LangChar125TTitleSlugRouteWithChildren
   '/{-$lang}/t/$titleSlug/players/$playerSlug': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRouteWithChildren
@@ -675,6 +684,7 @@ export interface FileRouteTypes {
     | '/admin/titles'
     | '/lab/charts'
     | '/onboarding/openspartan'
+    | '/players/$'
     | '/admin/'
     | '/{-$lang}/t/$titleSlug'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug'
@@ -737,6 +747,7 @@ export interface FileRouteTypes {
     | '/admin/titles'
     | '/lab/charts'
     | '/onboarding/openspartan'
+    | '/players/$'
     | '/admin'
     | '/{-$lang}/t/$titleSlug'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug'
@@ -798,6 +809,7 @@ export interface FileRouteTypes {
     | '/admin/titles'
     | '/lab/charts'
     | '/onboarding/openspartan'
+    | '/players/$'
     | '/admin/'
     | '/{-$lang}/t/$titleSlug'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug'
@@ -851,6 +863,7 @@ export interface RootRouteChildren {
   SetupRoute: typeof SetupRoute
   LabChartsRoute: typeof LabChartsRoute
   OnboardingOpenspartanRoute: typeof OnboardingOpenspartanRoute
+  PlayersSplatRoute: typeof PlayersSplatRoute
   Char123LangChar125TTitleSlugRoute: typeof Char123LangChar125TTitleSlugRouteWithChildren
 }
 
@@ -932,6 +945,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/players/$': {
+      id: '/players/$'
+      path: '/players/$'
+      fullPath: '/players/$'
+      preLoaderRoute: typeof PlayersSplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/onboarding/openspartan': {
       id: '/onboarding/openspartan'
@@ -1499,6 +1519,7 @@ const rootRouteChildren: RootRouteChildren = {
   SetupRoute: SetupRoute,
   LabChartsRoute: LabChartsRoute,
   OnboardingOpenspartanRoute: OnboardingOpenspartanRoute,
+  PlayersSplatRoute: PlayersSplatRoute,
   Char123LangChar125TTitleSlugRoute:
     Char123LangChar125TTitleSlugRouteWithChildren,
 }

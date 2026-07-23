@@ -425,14 +425,25 @@ garde-rail vert ; smoke navigateur : `/t/halo_infinite/players/{p}/home` ET
 
 ### Phase 3 — Redirections legacy (moyen)
 
-- [ ] **3a.** Splat `routes/players/$.tsx` DÉCLARATIF (D-5, D-8) : composant gaté
-      `isBootstrapped`, `<Navigate replace>` calculé par `buildLegacyRedirect` (déjà
-      testée en 1a — le splat n'est qu'une projection).
-- [ ] **3b.** Re-pointer les redirections internes (objectifs→ascension,
-      palmares→community, compare→community) vers les cibles title-préfixées.
-- [ ] **3c.** Confirmer la matrice par les tests 1a (déjà verts) + navigateur : 4+
-      anciennes URLs (dont une avec `?f=`, dont une H5 — le fresh-load H5 doit rediriger
-      vers `/t/halo_5/…` grâce au gate `isBootstrapped`, PAS vers le défaut).
+- [x] **3a.** Splat `routes/players/$.tsx` DÉCLARATIF livré : gaté `isBootstrapped`,
+      projection de `buildLegacyRedirect` via `router.history.replace(href)` (le href
+      complet `?f=`/`#` ne passe pas dans un `<Navigate to>` typé sans cast/double
+      parsing — choix documenté ; round-trip `searchStr` du sérialiseur par défaut
+      VÉRIFIÉ byte-identique, y compris base64 `?f=`). BUG DE COURSE détecté par la
+      vérification navigateur de l'orchestrateur puis corrigé : après le replace, le
+      splat re-rend avec la location transitoire `/t/…` → sans garde, la branche
+      « hors matrice → index » écrasait la redirection (perte suffixe/`?f=`/hash).
+      Garde `isLegacyPath` sur LES DEUX branches + test de non-régression (rouge
+      avant fix, vert après). `/players` nu → index (aucune route legacy n'existait).
+- [~] **3b.** Re-pointage des redirections internes : DÉJÀ COUVERT par 2b (tsc a forcé
+      le retypage des redirects déplacés vers les cibles title-préfixées). Vérifié par
+      grep : aucun `to: '/players/` ne subsiste sous `routes/`.
+- [x] **3c.** Matrice navigateur exécutée par l'orchestrateur (dev server relancé
+      proprement) : legacy home → `/t/halo_infinite/…/home` direct ; suffixe +
+      `?f=TESTVALUE123` + `#deep` préservés BYTE-IDENTIQUES ; `objectifs` →
+      `ascension/objectifs` et `palmares` → `community` en UN hop ; `/players` nu →
+      index → home ; **session H5 + bookmark legacy → `/t/halo_5/…` (trou n°1 fermé
+      en conditions réelles)**. Trace des navigations consignée au journal.
 
 Gate Phase 3 : `make check-types` = 0 ; `make test-web` vert ; navigateur : redirections
 vérifiées, suffixe + `?f=` + hash préservés, aucune page morte.
@@ -651,3 +662,16 @@ déplacement (Phase 1, TDD). Backend non touché.
   TanStack à ce stade : ATTENDU, le splat arrive Phase 3. Verdicts consignés : params
   `titleSlug` requis hors from/beforeLoad/useParams (helper `useTitleSlug`) ; héritage
   `lang` OK (test routeur réel).
+
+- **[2026-07-23] Phase 3 CLOSE.** Splat legacy déclaratif (agent Opus) ; la première
+  livraison passait tsc/vitest mais la VÉRIFICATION NAVIGATEUR de l'orchestrateur a
+  détecté un bug de course post-replace (toutes les URLs legacy perdaient
+  suffixe/`?f=`/hash via un détour par `/`) — diagnostic orchestrateur, fix agent
+  (garde `isLegacyPath` double-branche) + test de non-régression rouge→vert. Gate
+  re-exécuté : tsc 0 ; vitest 296 fichiers / 2609 passés / 0 échec ; matrice
+  navigateur INTÉGRALE verte après redémarrage propre du dev server (A1 home direct,
+  A2 `?f=`+hash byte-préservés, A3 objectifs→ascension/objectifs 1 hop, A4
+  palmares→community, A5 `/players` nu→index, B1 session H5 → `/t/halo_5/…`).
+  Leçon consignée : les tests de composant du splat ne simulaient pas le re-render
+  en transition — la vérification navigateur end-to-end reste OBLIGATOIRE à chaque
+  étape (elle a payé ici).
