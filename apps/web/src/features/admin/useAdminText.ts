@@ -12,6 +12,7 @@ import { formatMessage } from '@/lib/i18n/format'
 import { intlLocale } from '@/lib/formatters'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { adminManifest, type AdminManifestKey } from '@/lib/i18n/generated/admin'
+import type { Locale } from '@/lib/i18n/locale'
 
 export type T = (key: CommonManifestKey) => string
 export type TAdmin = (key: AdminManifestKey) => string
@@ -35,7 +36,7 @@ export function useDateLocale(): string {
 }
 
 /** Locale courte ('fr' | 'en') pour les helpers purs (format.ts). */
-export function useAdminLocale(): 'fr' | 'en' {
+export function useAdminLocale(): Locale {
   const locale = useAppShellStore((s) => s.locale)
   return locale === 'fr' ? 'fr' : 'en'
 }

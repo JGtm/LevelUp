@@ -6,7 +6,10 @@
  * (asset_translations / mode_name_tr) — voir buildMatchHeader Go.
  */
 
-export type MatchViewLocale = 'fr' | 'en'
+import type { Locale } from '@/lib/i18n/locale'
+
+/** Alias de compat du type central `Locale` (lib/i18n/locale) : conservé car consommé dans plus de 5 fichiers du header match-view. */
+export type MatchViewLocale = Locale
 
 export interface MatchViewText {
   prevMatch: string

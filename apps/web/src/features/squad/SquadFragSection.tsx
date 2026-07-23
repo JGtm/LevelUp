@@ -20,7 +20,8 @@ import { buildFragBreakdownOption } from './charts/squadFragBreakdownChart'
 import { buildSquadFragTools, SQUAD_TOOLS_TOP_GUNS } from './charts/squadFragTools'
 import { SquadWeaponKillsChart } from './SquadWeaponKillsChart'
 import { SquadWeaponAccuracyBarsChart } from './SquadWeaponAccuracyBarsChart'
-import type { SquadLocale, SquadText } from './i18n'
+import type { SquadText } from './i18n'
+import type { Locale } from '@/lib/i18n/locale'
 
 /** Hauteur de la carte « Répartition des frags » (identique à SquadPerformanceCharts). */
 const FRAG_BREAKDOWN_HEIGHT = 280
@@ -34,7 +35,7 @@ interface SquadFragSectionProps {
   playerColors: Record<string, string>
   /** Ordre stable des joueurs (main d'abord, puis coéquipiers). */
   playerOrder: string[]
-  locale: SquadLocale
+  locale: Locale
   t: SquadText
 }
 

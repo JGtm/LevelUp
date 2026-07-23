@@ -18,6 +18,7 @@ import { useRecords } from './queries'
 import { getAscensionText } from './i18n'
 import { formatAscensionDate, formatMetricValue, interpolate } from './format'
 import type { PersonalBest, RecordHistory, RecordPeriod } from './types'
+import type { Locale } from '@/lib/i18n/locale'
 
 export interface RecordsTimelineProps {
   playerSlug: string
@@ -152,7 +153,7 @@ export function RecordsTimeline({ playerSlug }: RecordsTimelineProps) {
 interface PBCardProps {
   metric: string
   pbs: PersonalBest[]
-  locale: 'fr' | 'en'
+  locale: Locale
   t: ReturnType<typeof getAscensionText>
   playerSlug: string
   titleSlug: string
@@ -203,7 +204,7 @@ function PBCard({ metric, pbs, locale, t, playerSlug, titleSlug }: PBCardProps) 
 
 interface HistoryRowProps {
   entry: RecordHistory
-  locale: 'fr' | 'en'
+  locale: Locale
   t: ReturnType<typeof getAscensionText>
   playerSlug: string
   titleSlug: string

@@ -1,4 +1,4 @@
-export type HelpLocale = 'fr' | 'en'
+import type { Locale } from '@/lib/i18n/locale'
 
 export type HelpTab = 'glossary' | 'release-notes'
 
@@ -836,9 +836,9 @@ const EN_TEXT: HelpText = {
   },
 }
 
-const TEXT: Record<HelpLocale, HelpText> = { fr: FR_TEXT, en: EN_TEXT }
+const TEXT: Record<Locale, HelpText> = { fr: FR_TEXT, en: EN_TEXT }
 
-export function normalizeHelpLocale(locale?: string | null): HelpLocale {
+export function normalizeHelpLocale(locale?: string | null): Locale {
   return locale === 'en' ? 'en' : 'fr'
 }
 

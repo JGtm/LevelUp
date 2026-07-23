@@ -1,3 +1,39 @@
+## [2026-07-23] Merge feat/title-slug-in-url → main (2e des 2 branches non mergées)
+
+**Statut** : Complété (merge résolu + testé ; push prod en attente du feu vert utilisateur).
+
+**Contexte** : 2e branche après `admin-retours-diag` (déjà mergée + déployée). title-slug
+n'était plus que 5 commits en avance (lot « D7 » : lotA notifications title-préfixées, lotB
+e2e tsc/eslint, lotC migration union locale → type canonique + ratchet, docs) — le reste était
+déjà entré via admin-retours-diag (branchée depuis un point antérieur de title-slug).
+
+**Conflits résolus (5)** :
+- 3 fichiers `lab/` (DiagnosticsPanel, _labShared, i18n) en modify/delete : suppression
+  confirmée (lab déjà retiré + déployé en branche 1 ; title-slug ne faisait qu'y migrer le
+  type locale, moot). `ChartsShowcasePage` + route conservés.
+- `ExplorerTargetSampleStats.tsx` : union d'imports (`FragDistribution`/`SynthesisWeaponKillEntry`
+  de main + `Locale` de lotC).
+- `WatcherCard.tsx` : refactor de main gardé (`resolveTitleDisplayName`/`formatLastSeen`
+  extraits dans `./watcherPresence`) ; version inline de title-slug écartée.
+
+**Cascade lotC (ratchet `locale.ratchet.test.ts`)** : le ratchet, nouveau, scanne désormais
+le code de main jamais migré (admin-retours-diag/expected-fda). Migrés vers le type canonique
+`Locale` : `watcherPresence.ts` (fonction extraite par main, encore en `'fr'|'en'`),
+`ExplorerTargetSampleStats.tsx` (×2 : appLocale, locale), `SquadFragSection.tsx`
+(import `SquadLocale` supprimé par lotC → `Locale`). Import `Locale` inutile retiré de
+`WatcherCard.tsx`.
+
+**Annexe** : ajout `.gitignore` `data/global/admin_state/` (journal d'actions admin +
+snapshot post-sync = état runtime par-instance, ne doit pas être versionné).
+
+**Résultats** : `tsc -b` OK · ratchet locale vert · vitest 2740 passés / 14 skipped ·
+`go build`+`go vet ./...` OK · tests Go notifications/api/analysis/cmd-server PASS.
+
+**Prochaine étape** : push `main` (= deploy prod) après validation utilisateur. Clôture des
+2 branches non mergées.
+
+---
+
 ## [2026-07-23] Merge feat/admin-retours-diag → main (1re des 2 branches non mergées)
 
 **Statut** : Complété (merge résolu + testé ; push prod en attente du feu vert utilisateur).
@@ -1243,6 +1279,40 @@ chaque étape = non négociable.
 **Prochaine étape** : revue utilisateur de la branche, puis merge → main (= déploiement
 prod automatique : à déclencher par l'utilisateur). Différés signalés : target_route
 backend legacy (Go), outillage e2e (tsconfig/eslint), alias locale feature-local.
+
+## [2026-07-23] D7 ADDENDUM clos — les 3 découvertes différées traitées (branche feat/title-slug-in-url)
+
+**Statut** : Complété (demande utilisateur). 3 lots Opus + revue/gates orchestrateur.
+Commits : 38867c1d6 (lot A), cc56e1898 (lot B), edafa755b (lot C).
+
+**Lot A — target_route backend title-préfixé (zéro hop)** : helper canonique
+`notifications.PlayerTargetRoute` + garde-rail Go prouvé mordant ; 10 sites migrés
+(titre RÉEL du contexte, title-agnostic) ; suffixes morts corrigés vers les routes
+réelles (stubs synthesis/citations éliminés) ; `sync_error` sans TargetRoute (route
+morte + bgCtx sans titre — le fallback front délibéré /settings?jobId gouverne) ;
+REVUE orchestrateur : stock persisté paramétré `/players/{slug}/sync` passait au
+travers du Set exact-match des fantômes → prédicat `isFantomTargetRoute` via
+`playerRelativePath` (2 formats couverts) + tests. Gates Go complets (integration
+-p 1 réel) + front.
+
+**Lot B — e2e outillé** : `tsconfig.e2e.json` dans `tsc -b` (rigueur alignée sur la
+barre réelle du repo, couverture prouvée par sonde), eslint bloc dédié sans règles
+React, 12 erreurs corrigées par de vrais fixes (captureMediaCache typé, zéro any,
+disable de complaisance retiré). Baseline warnings inchangée.
+
+**Lot C — union locale centralisée** : 89 occurrences / 66 fichiers (inventaire réel
+tres au-delà des 7 alias signalés), 16 alias supprimés, 2 conservés en compat
+documentée (AdminLocale, MatchViewLocale > 5 fichiers), Record<Locale,T> partout,
+ratchet `locale.ratchet.test.ts` position-de-type sans allowlist.
+
+**Gates finaux** (re-exécutés orchestrateur) : tsc -b --force 0 ; vitest 298 fichiers
+/ 2623 passés / 0 échec ; eslint 0 erreur (67 warnings baseline) ; go test + vet +
+integration -p 1 verts ; playwright : legacy-redirect 5/5, seul rouge = slice-9
+pré-existant environnemental.
+
+**Reste ouvert (micro, consigné §7)** : prop `locale: string` d'ExplorerEncounterBriefing
+(resserrement possible) ; nettoyage DB optionnel du stock notifications legacy
+(neutralisé à la lecture). Branche toujours NON pushée.
 
 ## [2026-07-22] Mini-lot « G » G1/G2 (branche refactor/ascension-ux-2026-07)
 

@@ -3,7 +3,7 @@
  * Séparé du i18n.ts principal pour respecter SRP.
  */
 
-export type ModalsLocale = 'fr' | 'en'
+import type { Locale } from '@/lib/i18n/locale'
 
 export interface MatchPickerText {
   title: string
@@ -138,7 +138,7 @@ const EN: MediaModalsText = {
   },
 }
 
-const TEXT: Record<ModalsLocale, MediaModalsText> = { fr: FR, en: EN }
+const TEXT: Record<Locale, MediaModalsText> = { fr: FR, en: EN }
 
 export function getMediaModalsText(locale?: string | null): MediaModalsText {
   return TEXT[locale === 'en' ? 'en' : 'fr']

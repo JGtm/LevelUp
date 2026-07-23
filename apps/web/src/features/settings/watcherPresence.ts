@@ -5,6 +5,7 @@
  */
 import { intlLocale } from '@/lib/formatters'
 import type { SettingsText } from '@/features/settings/i18n'
+import type { Locale } from '@/lib/i18n/locale'
 
 /**
  * Mappe les titleNames Xbox spéciaux vers leurs labels UI. Xbox utilise
@@ -36,7 +37,7 @@ export function formatLastSeen(
   timestamp: string,
   titleName: string,
   t: SettingsText,
-  locale: 'fr' | 'en' = 'fr',
+  locale: Locale = 'fr',
   now: Date = new Date(),
 ): string {
   const past = new Date(timestamp)

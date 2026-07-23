@@ -5,8 +5,10 @@
  * placeholders.
  */
 import { intlLocale } from '@/lib/formatters'
+import type { Locale } from '@/lib/i18n/locale'
 
-export type AdminLocale = 'fr' | 'en'
+/** Alias de compat du type central `Locale` (lib/i18n/locale) : conservé car consommé dans plus de 5 fichiers du dashboard admin. */
+export type AdminLocale = Locale
 
 const REL = {
   fr: {

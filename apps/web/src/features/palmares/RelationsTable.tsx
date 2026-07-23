@@ -28,6 +28,7 @@ import { RelationBadgeLegend } from './RelationBadgeLegend'
 import { RelationBadges } from './RelationBadges'
 import { formatLastSeen } from './relationsFilter'
 import type { PalmaresText } from './i18n'
+import type { Locale } from '@/lib/i18n/locale'
 
 type RelationsLabels = PalmaresText['relations']
 
@@ -140,7 +141,7 @@ function categoryLabel(category: RelationInsight['category'], labels: RelationsL
 
 function buildColumns(
   labels: RelationsLabels,
-  locale: 'fr' | 'en',
+  locale: Locale,
   onPlayerClick: (gamertag: string) => void,
 ): ColumnDef<RelationInsight>[] {
   return [
@@ -308,7 +309,7 @@ export function RelationsTable({
 }: {
   rows: RelationInsight[]
   labels: RelationsLabels
-  locale: 'fr' | 'en'
+  locale: Locale
   onPlayerClick: (gamertag: string) => void
   emptyMessage: string
 }) {

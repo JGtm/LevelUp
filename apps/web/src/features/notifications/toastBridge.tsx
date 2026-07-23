@@ -19,6 +19,7 @@ import { resolveTarget } from './navigation'
 import { getNotificationsText } from './i18n'
 import { useMarkRead } from './mutations'
 import type { Notification, NotificationPreference } from './types'
+import type { Locale } from '@/lib/i18n/locale'
 
 /**
  * Bridge invisible. Doit être monté à un endroit où le joueur courant existe
@@ -148,6 +149,6 @@ function emitToast(
 }
 
 /** Hack typé : i18n.ts n'expose pas la locale, on la déduit du dict. */
-function currentLocale(t: ReturnType<typeof getNotificationsText>): 'fr' | 'en' {
+function currentLocale(t: ReturnType<typeof getNotificationsText>): Locale {
   return t.dropdownEmpty.includes('caught up') ? 'en' : 'fr'
 }

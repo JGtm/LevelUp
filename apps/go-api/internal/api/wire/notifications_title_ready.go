@@ -90,12 +90,16 @@ func emitTitleReadyForPlayer(
 		return fmt.Errorf("emitter factory: %w", err)
 	}
 	if err := emitter.Emit(resCtx, notifications.EmitInput{
-		Category:    notifications.CategoryTitleReady,
-		Severity:    notifications.SeveritySuccess,
-		TitleKey:    "notif.title_ready.title",
-		BodyKey:     "notif.title_ready.body",
-		Params:      map[string]any{"title_slug": titleSlug, "title_name": name, "count": inserted},
-		TargetRoute: "/players/" + playerSlug + "/home",
+		Category: notifications.CategoryTitleReady,
+		Severity: notifications.SeveritySuccess,
+		TitleKey: "notif.title_ready.title",
+		BodyKey:  "notif.title_ready.body",
+		Params:   map[string]any{"title_slug": titleSlug, "title_name": name, "count": inserted},
+		// Cible = accueil du titre ANNONCÉ (titleSlug, ex. halo_5), pas le titre par
+		// défaut où vit la notif : le clic bascule le front sur le dashboard fraîchement
+		// peuplé du titre prêt. Le playerSlug (résolu en db_profiles global) est valide
+		// dans ce titre puisqu'il vient d'y ingérer des matchs.
+		TargetRoute: notifications.PlayerTargetRoute(titleSlug, playerSlug, "home"),
 		Source:      "livesync",
 	}); err != nil {
 		return fmt.Errorf("emit: %w", err)

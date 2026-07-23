@@ -26,7 +26,8 @@ import { useAppShellStore } from '@/stores/appShellStore'
 
 import { KpiGrid } from './KpiGrid'
 import { SquadVerdict } from './SquadVerdict'
-import { getBriefingTexts, type BriefingLocale } from './i18n'
+import { getBriefingTexts } from './i18n'
+import type { Locale } from '@/lib/i18n/locale'
 import { getScoreTier } from './tier'
 
 export interface SessionBriefingSquadProps {
@@ -47,7 +48,7 @@ export interface SessionBriefingProps {
   squad?: SessionBriefingSquadProps
 }
 
-function normalizeLocale(input: string | undefined): BriefingLocale {
+function normalizeLocale(input: string | undefined): Locale {
   return input === 'en' ? 'en' : 'fr'
 }
 

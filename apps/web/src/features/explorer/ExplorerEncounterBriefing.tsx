@@ -23,6 +23,7 @@ import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { Tooltip } from '@/components/ui/tooltip'
 import { AllyEnemySplitBar, KDSplitBar } from '@/features/_shared/EncounterSplitBars'
+import type { Locale } from '@/lib/i18n/locale'
 
 // ─── Accent KPI selon le sentiment du contenu (barre colorée en haut) ────────
 // Vert (positif) / rouge (négatif) / bleu = outcome-draw (ok, égal ou neutre).
@@ -136,7 +137,7 @@ function KpiCard({ label, value, detail, accent }: KpiCardProps) {
 // ─── Composant principal ─────────────────────────────────────────────────────
 
 export function ExplorerEncounterBriefing({ stats, locale }: Props) {
-  const manifestLocale: 'fr' | 'en' = locale === 'en' ? 'en' : 'fr'
+  const manifestLocale: Locale = locale === 'en' ? 'en' : 'fr'
   const t = (key: ExplorerManifestKey, values?: Record<string, string | number>) =>
     formatMessage(explorerManifest, key, manifestLocale, values)
   const formatRelative = manifestLocale === 'en' ? formatRelativeEN : formatRelativeFR

@@ -28,6 +28,7 @@ import { RecordsTimeline } from './RecordsTimeline'
 import { MilestonesGrid } from './MilestonesGrid'
 import { HistorySection } from './HistorySection'
 import { PrestigeSquadProgress } from './PrestigeSquadProgress'
+import type { Locale } from '@/lib/i18n/locale'
 
 export function AscensionRealisationsTab() {
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
@@ -93,7 +94,7 @@ export function AscensionRealisationsTab() {
 
 interface MomentsSectionProps {
   completed: Challenge[]
-  locale: 'fr' | 'en'
+  locale: Locale
   /** id de l'item complété à ancrer/surligner (AM-5), depuis la notif. */
   selectedId?: string
 }

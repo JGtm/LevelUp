@@ -8,6 +8,8 @@
  * pas des libellés d'affichage — pattern analogue à lib/medalDifficulty.ts.
  */
 
+import type { Locale } from '@/lib/i18n/locale'
+
 export const SKILL_TIER_VALUES = [
   'Bronze',
   'Silver',
@@ -173,7 +175,7 @@ const TIER_NAME_BY_KEY: Record<string, TierNamePair> = (() => {
  * canonique EN + sous-palier séparé (ex. colonne CSR de la carrière). Une entrée
  * inconnue (vide, palier hors grille) est renvoyée telle quelle.
  */
-export function localizeTierName(name: string, locale: 'fr' | 'en'): string {
+export function localizeTierName(name: string, locale: Locale): string {
   const pair = TIER_NAME_BY_KEY[name.trim().toLowerCase()]
   if (!pair) return name
   return locale === 'en' ? pair.en : pair.fr
@@ -188,7 +190,7 @@ export function localizeTierName(name: string, locale: 'fr' | 'en'): string {
  */
 export function localizeTierLabel(
   label: string | null | undefined,
-  locale: 'fr' | 'en',
+  locale: Locale,
 ): string | null | undefined {
   if (label == null || label.trim() === '') return label
   const trimmed = label.trim()
@@ -267,7 +269,7 @@ export function skillTierSortValue(label: string | null | undefined): number | u
  * garde-rail skillTiers.guard.test.ts). Ne gère PAS les états non classés
  * (placement, tier vide) : c'est à l'appelant de les traiter en amont.
  */
-export function composeTierLabel(tier: string, subTier: number, locale: 'fr' | 'en'): string {
+export function composeTierLabel(tier: string, subTier: number, locale: Locale): string {
   const name = localizeTierName(tier, locale)
   if (tier.trim().toLowerCase() === 'onyx') return name
   return subTier >= 1 && subTier <= 6 ? `${name} ${subTierRoman(subTier)}` : name

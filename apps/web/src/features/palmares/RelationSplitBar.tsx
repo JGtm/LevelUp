@@ -8,6 +8,7 @@
  */
 import { tokenCssVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
+import type { Locale } from '@/lib/i18n/locale'
 
 interface RelationSplitBarProps {
   leftValue: number
@@ -18,7 +19,7 @@ interface RelationSplitBarProps {
   leftLabel: string
   /** Unité affichée sous le segment droit (ex. « morts »). */
   rightLabel: string
-  locale?: 'fr' | 'en'
+  locale?: Locale
 }
 
 export function RelationSplitBar({

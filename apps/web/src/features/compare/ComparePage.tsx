@@ -21,6 +21,7 @@ import { CompareBar } from './CompareBar'
 import { CompareMirrorRow } from './CompareMirrorRow'
 import { getCompareText, normalizeCompareLocale, type CompareText } from './i18n'
 import { useCompare } from './queries'
+import type { Locale } from '@/lib/i18n/locale'
 
 const CATEGORY_KEYS = {
   combat: ['win_rate', 'kda', 'kdr', 'kills_per_game', 'deaths_per_game', 'assists_per_game', 'damage_per_game', 'rendement'],
@@ -224,7 +225,7 @@ const ENCOUNTER_BADGE_TOOLTIPS: Record<string, { fr: string; en: string }> = {
   'narrative.encounter.ordinal': { fr: 'Total rencontres croisées (allié + ennemi)', en: 'Total cross encounters (ally + enemy)' },
 }
 
-function EncounterBadgesInline({ badges, locale }: { badges?: MatchEncounterBadge[]; locale: 'fr' | 'en' }) {
+function EncounterBadgesInline({ badges, locale }: { badges?: MatchEncounterBadge[]; locale: Locale }) {
   if (!badges?.length) return null
   return (
     <span className="ml-2 inline-flex flex-wrap gap-1 align-middle">
@@ -247,7 +248,7 @@ function EncounterBadgesInline({ badges, locale }: { badges?: MatchEncounterBadg
 
 // ─── Header joueurs ──────────────────────────────────────────────────────────
 
-function PlayerHeader({ data, text, locale }: { data: CompareResponse; text: CompareText; locale: 'fr' | 'en' }) {
+function PlayerHeader({ data, text, locale }: { data: CompareResponse; text: CompareText; locale: Locale }) {
   const colorA = tokenCssVar('compare-a' as SemanticToken)
   const colorB = tokenCssVar('compare-b' as SemanticToken)
   return (
@@ -270,7 +271,7 @@ function MirrorHeader({
   gamertagC: string
   badgesB?: MatchEncounterBadge[]
   badgesC?: MatchEncounterBadge[]
-  locale: 'fr' | 'en'
+  locale: Locale
 }) {
   const colorA = tokenCssVar('compare-a' as SemanticToken)
   const colorB = tokenCssVar('compare-b' as SemanticToken)

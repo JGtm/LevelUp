@@ -74,7 +74,7 @@ type NotificationInsert struct {
 	TitleKey     string  // i18n key (résolu côté frontend)
 	BodyKey      *string // i18n key optionnelle pour le body
 	Params       *string // JSON sérialisé des params pour i18n
-	TargetRoute  *string // ex: "/players/{slug}/match/{id}"
+	TargetRoute  *string // ex: "/t/{titleSlug}/players/{slug}/matches/{id}" (peut aussi porter du stock legacy "/players/…")
 	TargetSearch *string // querystring pour le route target
 	ActorXUID    *string // xuid de l'auteur (mentions sociales)
 	ActorName    *string // gamertag de l'auteur

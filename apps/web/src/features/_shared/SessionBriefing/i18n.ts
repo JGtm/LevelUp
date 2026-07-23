@@ -6,7 +6,7 @@
  * pour rester title-aware (multi-titres).
  */
 
-export type BriefingLocale = 'fr' | 'en'
+import type { Locale } from '@/lib/i18n/locale'
 
 export interface BriefingTexts {
   /** Libellé "Résultats" + helper pluralisation outcomes — utilisés dans la
@@ -125,6 +125,6 @@ const EN: BriefingTexts = {
   },
 }
 
-export function getBriefingTexts(locale: BriefingLocale): BriefingTexts {
+export function getBriefingTexts(locale: Locale): BriefingTexts {
   return locale === 'en' ? EN : FR
 }

@@ -11,13 +11,14 @@ import { unrankedBadgeURL } from '@/lib/staticAssets'
 import { localizeTierLabel } from '@/lib/skillTiers'
 import { KpiCard } from '@/components/cards/KpiCard'
 import { CompositeProgressBar } from '@/components/ui/composite-progress-bar'
+import type { Locale } from '@/lib/i18n/locale'
 
 export interface HomeSkillPeakCardProps {
   label: string
   peak: HomeSkillPeakSummary | null
   numberLocale: string
   /** Locale UI ('fr'/'en') — localise le libellé de palier (tier_label baké). */
-  locale: 'fr' | 'en'
+  locale: Locale
   testIdPrefix: string
   state: 'value' | 'placement' | 'neutral' | 'absent'
   detail: string

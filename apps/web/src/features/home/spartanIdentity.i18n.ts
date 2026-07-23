@@ -7,8 +7,7 @@
  */
 import { formatMessage } from '@/lib/i18n/format'
 import { homeManifest, type HomeManifestKey } from '@/lib/i18n/generated/home'
-
-export type SpartanIdentityLocale = 'fr' | 'en'
+import type { Locale } from '@/lib/i18n/locale'
 
 interface SpartanIdentityTextDict {
   labels: {
@@ -31,12 +30,12 @@ interface SpartanIdentityTextDict {
 
 export function normalizeSpartanIdentityLocale(
   locale?: string | null,
-): SpartanIdentityLocale {
+): Locale {
   return locale === 'en' ? 'en' : 'fr'
 }
 
 function t(
-  loc: SpartanIdentityLocale,
+  loc: Locale,
   key: HomeManifestKey,
   values?: Record<string, string | number>,
 ): string {

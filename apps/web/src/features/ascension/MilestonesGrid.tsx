@@ -14,6 +14,7 @@ import { useMilestones } from './queries'
 import { getAscensionText } from './i18n'
 import { formatAscensionDate, interpolate } from './format'
 import type { MilestoneItem } from './types'
+import type { Locale } from '@/lib/i18n/locale'
 
 export interface MilestonesGridProps {
   playerSlug: string
@@ -89,7 +90,7 @@ export function MilestonesGrid({ playerSlug }: MilestonesGridProps) {
 
 interface MilestoneCardProps {
   milestone: MilestoneItem
-  locale: 'fr' | 'en'
+  locale: Locale
   t: ReturnType<typeof getAscensionText>
 }
 

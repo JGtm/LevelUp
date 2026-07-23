@@ -117,6 +117,8 @@ data/cache/*
 !data/cache/career-rank-image/
 data/sync_cache/
 data/backup_legacy/
+# État runtime admin par-instance (journal d'actions, snapshot post-sync) — état local
+data/global/admin_state/
 backups/
 data/restore/
 # Répertoires parasites créés par des chemins Windows (backslashes mangés par bash)
