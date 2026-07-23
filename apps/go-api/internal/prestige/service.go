@@ -254,7 +254,11 @@ type BaselineProvider interface {
 // de la sémantique des matchs. titleSlug est passé pour parité (la DB partagée
 // est déjà title-scopée par chemin).
 type SquadMatchProvider interface {
-	SquadMatchMetrics(ctx context.Context, rosterXUIDs []string, titleSlug, metric string, limit int) ([]SquadMatchMetric, error)
+	// SquadMatchMetrics ne compte QUE les matchs dont le start_time est >= since
+	// (borne basse). since = created_at du défi (jamais de complétion rétroactive)
+	// éventuellement resserrée par la fenêtre (rolling_days). since zéro = pas de
+	// borne (compat).
+	SquadMatchMetrics(ctx context.Context, rosterXUIDs []string, titleSlug, metric string, limit int, since time.Time) ([]SquadMatchMetric, error)
 	// SquadUsualContexts dérive les playlists/modes dominants des matchs communs
 	// réels du roster (top par fréquence, labels résolus). Indice d'affichage
 	// auto-adaptatif (jamais stocké). Listes vides si aucun match commun.
