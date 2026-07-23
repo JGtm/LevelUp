@@ -1,3 +1,29 @@
+## [2026-07-23] Release v7.0.0 — merge share-link-on-demand + ascension-ux dans main + push deploy prod
+
+**Statut** : Complété. Merge des 2 branches demandées dans `main` local, gates vertes, push
+main (deploy VPS auto) + tag `v7.0.0` (release.yml → GitHub Release).
+
+**Décisions techniques principales** :
+- `fix/share-link-on-demand` → **fast-forward** (3 commits, main strictement en arrière).
+- `refactor/ascension-ux-2026-07` (remote only) → **vrai merge** (`--no-ff`), divergence
+  depuis `b21a59772`, main +32 commits. 2 conflits :
+  - `apps/web/src/stores/createFilterStore.ts` : ascension avait factorisé l'encodage
+    (`encodeFilterContextParam`) dans `writeToUrl`, fonction SUPPRIMÉE par le refactor
+    share-link-on-demand (remplacée par `stripUrlParam` qui n'encode plus). Résolution :
+    comportement HEAD (share-link à la demande via `buildShareUrl`) conservé, ligne
+    `encoded` orpheline + import inutilisé retirés → format des liens partagés inchangé.
+  - `.ai/thought_log.md` : concaténation des 2 jeux d'entrées (aucune perte).
+- **Scope réel du push = 46 commits** (origin/main..main) : frags v2 (6 surfaces), H5
+  metadata FR, share-link on-demand, lint baseline 69→7, ascension UX (lots A-G), etc. —
+  pas seulement les 2 branches, car main local avait déjà 32 commits en attente de push.
+
+**Gates (vertes)** : tsc 0 err ; vitest 2537 passés / 14 skip (292 fichiers) ; go build
+propre ; go test ./... vert. Aucun fichier persist/sync touché → gate intégration anti-ART
+non requis.
+
+**Prochaine étape** : `git push origin main` (deploy prod) + `git push origin v7.0.0`.
+
+---
 ## [2026-07-22] Frag Distribution v2 — Explorer : encart adversaire en v2 (sunburst + Top armes) + FragSunburst (mode nu, légende extractible, fix callouts). v2 COMPLÈTE (6 surfaces).
 
 **Statut** : Complété, VALIDÉ user. Branche `feat/frag-distribution-v2`. Commit + push branche + merge main LOCAL autorisés (main NON poussé → pas de déploiement prod). DERNIÈRE surface.
