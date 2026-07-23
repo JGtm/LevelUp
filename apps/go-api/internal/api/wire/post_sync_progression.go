@@ -76,7 +76,8 @@ type ProgressionDeps struct {
 	// Nil → étape ignorée gracieusement (pipeline reste fonctionnel).
 	CoachAdvisor coach_advisor.Service
 	// CoachProactiveMode est lu depuis settings.AppSettings.CoachProactiveMode.
-	// False (défaut) → coach_advisor.GenerateProposals short-circuit en interne.
+	// True (défaut, DEC-2) → coach_advisor.GenerateProposals actif. Un opt-out
+	// explicite (false) short-circuit GenerateProposals en interne.
 	CoachProactiveMode bool
 }
 

@@ -3,15 +3,19 @@
  *
  * Affiché uniquement si le PatternReport contient des patterns bySquad.
  */
+import type { ReactNode } from 'react'
+import { metricLabel } from '@/lib/i18n/metricLabel'
 import type { ContextualPattern } from './types'
-import type { AscensionText } from './i18n'
+import type { AscensionText, AscensionLocale } from './i18n'
+import { CombatAbbr } from './CombatAbbr'
 
 interface SquadVsSoloCardProps {
   patterns: ContextualPattern[]
   t: AscensionText
+  locale: AscensionLocale
 }
 
-export function SquadVsSoloCard({ patterns, t }: SquadVsSoloCardProps) {
+export function SquadVsSoloCard({ patterns, t, locale }: SquadVsSoloCardProps) {
   const squadPatterns = patterns.filter((p) => p.type === 'by_squad')
   if (squadPatterns.length === 0) return null
 
@@ -28,9 +32,9 @@ export function SquadVsSoloCard({ patterns, t }: SquadVsSoloCardProps) {
         <div className="space-y-1">
           <p className="text-xs font-medium text-muted-foreground">{t.squadVsSoloSolo}</p>
           <StatRow label={t.patternWinRate} value={pct(solo.win_rate)} />
-          <StatRow label={t.metric?.kda ?? 'KDA'} value={solo.avg_kda.toFixed(2)} />
-          <StatRow label="OC" value={`${Math.round(solo.avg_oc * 100)}%`} />
-          <StatRow label="DR" value={`${Math.round((solo.avg_dr - 1) * 100)}%`} />
+          <StatRow label={metricLabel('kda', locale)} value={solo.avg_kda.toFixed(2)} />
+          <StatRow label={<CombatAbbr metric="oc" t={t} />} value={`${Math.round(solo.avg_oc * 100)}%`} />
+          <StatRow label={<CombatAbbr metric="dr" t={t} />} value={`${Math.round((solo.avg_dr - 1) * 100)}%`} />
           <p className="text-[10px] text-muted-foreground">{solo.match_count} {t.patternMatches}</p>
         </div>
         <div className="space-y-1">
@@ -40,9 +44,9 @@ export function SquadVsSoloCard({ patterns, t }: SquadVsSoloCardProps) {
             value={pct(squad.win_rate)}
             highlight={better === 'squad'}
           />
-          <StatRow label={t.metric?.kda ?? 'KDA'} value={squad.avg_kda.toFixed(2)} highlight={squad.avg_kda > solo.avg_kda} />
-          <StatRow label="OC" value={`${Math.round(squad.avg_oc * 100)}%`} />
-          <StatRow label="DR" value={`${Math.round((squad.avg_dr - 1) * 100)}%`} />
+          <StatRow label={metricLabel('kda', locale)} value={squad.avg_kda.toFixed(2)} highlight={squad.avg_kda > solo.avg_kda} />
+          <StatRow label={<CombatAbbr metric="oc" t={t} />} value={`${Math.round(squad.avg_oc * 100)}%`} />
+          <StatRow label={<CombatAbbr metric="dr" t={t} />} value={`${Math.round((squad.avg_dr - 1) * 100)}%`} />
           <p className="text-[10px] text-muted-foreground">{squad.match_count} {t.patternMatches}</p>
         </div>
       </div>
@@ -50,7 +54,7 @@ export function SquadVsSoloCard({ patterns, t }: SquadVsSoloCardProps) {
   )
 }
 
-function StatRow({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
+function StatRow({ label, value, highlight = false }: { label: ReactNode; value: string; highlight?: boolean }) {
   return (
     <div className="flex items-center justify-between text-xs">
       <span className="text-muted-foreground">{label}</span>

@@ -13,9 +13,11 @@
 // L5, CLAUDE.md n°13. Ce barrel ne rebroadcaste plus que les hooks.
 export {
   useChallenges,
+  useChallengeHistory,
   useCreateChallenge,
   useUpdateChallenge,
   useAbandonChallenge,
+  usePilotMode,
 } from './hooks/useChallenges'
 export {
   useArcs,

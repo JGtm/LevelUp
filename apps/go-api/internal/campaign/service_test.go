@@ -48,6 +48,15 @@ func (r *fakeRepo) GetActive(_ context.Context, userID, titleSlug string) (Impro
 	}
 	return ImprovementCampaign{}, ErrNotFound
 }
+func (r *fakeRepo) ListEnded(_ context.Context, userID, titleSlug string) ([]ImprovementCampaign, error) {
+	var out []ImprovementCampaign
+	for _, c := range r.byID {
+		if c.UserID == userID && c.TitleSlug == titleSlug && c.IsEnded() {
+			out = append(out, c)
+		}
+	}
+	return out, nil
+}
 func (r *fakeRepo) UpdateStatus(_ context.Context, id string, status CampaignStatus, endedAt *time.Time) error {
 	c, ok := r.byID[id]
 	if !ok {
@@ -286,6 +295,57 @@ func TestMean_Helper(t *testing.T) {
 	}
 	if got := mean([]float64{1, 2, 3, 4, 5}); got != 3 {
 		t.Errorf("mean([1..5]) = %.2f, want 3", got)
+	}
+}
+
+func TestImprovementCampaign_FinalValueAndDelta(t *testing.T) {
+	raw := 1.2
+	lowess := 1.5
+	// LOWESS prioritaire sur raw.
+	c := ImprovementCampaign{SnapshotValue: 1.0, CurrentValueRaw: &raw, CurrentValueLOWESS: &lowess}
+	if fv := c.FinalValue(); fv == nil || *fv != 1.5 {
+		t.Errorf("FinalValue (lowess prioritaire): got %v, want 1.5", fv)
+	}
+	if d := c.Delta(); d == nil || *d != 0.5 {
+		t.Errorf("Delta: got %v, want 0.5", d)
+	}
+	// Sans LOWESS → repli sur raw.
+	c2 := ImprovementCampaign{SnapshotValue: 2.0, CurrentValueRaw: &raw}
+	if fv := c2.FinalValue(); fv == nil || *fv != 1.2 {
+		t.Errorf("FinalValue (repli raw): got %v, want 1.2", fv)
+	}
+	if d := c2.Delta(); d == nil || *d != -0.8 {
+		t.Errorf("Delta (repli raw): got %v, want -0.8", d)
+	}
+	// Jamais évaluée → nil.
+	c3 := ImprovementCampaign{SnapshotValue: 1.0}
+	if c3.FinalValue() != nil {
+		t.Errorf("FinalValue (non évaluée): want nil, got %v", c3.FinalValue())
+	}
+	if c3.Delta() != nil {
+		t.Errorf("Delta (non évaluée): want nil, got %v", c3.Delta())
+	}
+}
+
+func TestService_ListEnded_FiltersAndScopes(t *testing.T) {
+	repo := newFakeRepo()
+	ended := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	repo.byID["done"] = ImprovementCampaign{ID: "done", UserID: "u1", TitleSlug: "halo", Status: StatusCompleted, EndedAt: &ended}
+	repo.byID["quit"] = ImprovementCampaign{ID: "quit", UserID: "u1", TitleSlug: "halo", Status: StatusAbandoned, EndedAt: &ended}
+	repo.byID["live"] = ImprovementCampaign{ID: "live", UserID: "u1", TitleSlug: "halo", Status: StatusActive}
+	repo.byID["other"] = ImprovementCampaign{ID: "other", UserID: "u1", TitleSlug: "halo_5", Status: StatusCompleted, EndedAt: &ended}
+
+	got, err := NewService(repo, &fakeSamples{}).ListEnded(context.Background(), "u1", "halo")
+	if err != nil {
+		t.Fatalf("ListEnded: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("attendu 2 closes (scope halo), obtenu %d: %+v", len(got), got)
+	}
+	for _, c := range got {
+		if !c.IsEnded() || c.TitleSlug != "halo" {
+			t.Errorf("campagne inattendue dans l'historique: %+v", c)
+		}
 	}
 }
 

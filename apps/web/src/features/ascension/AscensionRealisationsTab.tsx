@@ -13,15 +13,20 @@
  *
  * Tout le contenu rétrospectif de l'ancienne page Parcours + Séries.
  */
+import { useEffect, useRef } from 'react'
+import { useSearch } from '@tanstack/react-router'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { getAscensionText } from './i18n'
-import { useChallenges } from '@/features/prestige/hooks'
+import { useChallenges, useChallengeHistory } from '@/features/prestige/hooks'
 import { StatsGlobales } from '@/features/prestige/components/StatsGlobales'
 import { MomentCard } from '@/features/prestige/components/MomentCard'
 import type { Challenge } from '@/lib/prestige'
 import { StreakDashboard } from './StreakDashboard'
+import { ActivityCalendarChart } from './ActivityCalendarChart'
+import { useActivityCalendar } from './queries'
 import { RecordsTimeline } from './RecordsTimeline'
 import { MilestonesGrid } from './MilestonesGrid'
+import { HistorySection } from './HistorySection'
 import { PrestigeSquadProgress } from './PrestigeSquadProgress'
 
 export function AscensionRealisationsTab() {
@@ -30,7 +35,20 @@ export function AscensionRealisationsTab() {
   const locale = useAppShellStore((s) => s.locale)
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
 
-  const { data: challengesData } = useChallenges(playerSlug, titleSlug)
+  // Ancrage AM-5 : les notifs objective_completed/challenge_completed passent
+  // l'id de l'item complété → on surligne et scrolle sa carte moment.
+  const search = useSearch({ strict: false }) as {
+    selectedObjectiveId?: string
+    selectedChallengeId?: string
+  }
+  const selectedId = search.selectedChallengeId ?? search.selectedObjectiveId
+
+  // Défis actifs + terminaux : StatsGlobales veut l'ensemble (« complétés /
+  // créés »), la célébration et l'historique n'exploitent que les terminaux.
+  const { data: activeData } = useChallenges(playerSlug, titleSlug)
+  const { data: historyData } = useChallengeHistory(playerSlug, titleSlug)
+  // Calendrier d'activité 90 j (DEC-5/D3), adossé au bloc séries.
+  const { data: activity } = useActivityCalendar(playerSlug)
 
   if (!playerSlug) {
     return (
@@ -40,8 +58,10 @@ export function AscensionRealisationsTab() {
     )
   }
 
-  const challenges: Challenge[] = challengesData?.challenges ?? []
-  const completed = challenges
+  const activeChallenges: Challenge[] = activeData?.challenges ?? []
+  const pastChallenges: Challenge[] = historyData?.challenges ?? []
+  const allChallenges = [...activeChallenges, ...pastChallenges]
+  const completed = pastChallenges
     .filter((c) => c.status === 'completed' && c.completed_at)
     .sort((a, b) => (b.completed_at ?? '').localeCompare(a.completed_at ?? ''))
 
@@ -50,20 +70,44 @@ export function AscensionRealisationsTab() {
       <PrestigeSquadProgress />
 
       <StreakDashboard playerSlug={playerSlug} />
+      {activity && (
+        <ActivityCalendarChart
+          since={activity.since}
+          until={activity.until}
+          days={activity.days}
+        />
+      )}
       <RecordsTimeline playerSlug={playerSlug} />
       <MilestonesGrid playerSlug={playerSlug} />
 
-      <StatsGlobales challenges={challenges} />
+      <HistorySection playerSlug={playerSlug} />
 
-      <MomentsSection completed={completed} locale={locale} />
+      <StatsGlobales challenges={allChallenges} />
+
+      <MomentsSection completed={completed} locale={locale} selectedId={selectedId} />
     </div>
   )
 }
 
 // ─── Moments marquants ──────────────────────────────────────────────────────
 
-function MomentsSection({ completed, locale }: { completed: Challenge[]; locale: 'fr' | 'en' }) {
+interface MomentsSectionProps {
+  completed: Challenge[]
+  locale: 'fr' | 'en'
+  /** id de l'item complété à ancrer/surligner (AM-5), depuis la notif. */
+  selectedId?: string
+}
+
+function MomentsSection({ completed, locale, selectedId }: MomentsSectionProps) {
   const t = getAscensionText(locale)
+  const selectedRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (selectedId && selectedRef.current) {
+      selectedRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [selectedId])
+
   return (
     <section className="rounded-lg border border-border bg-card p-4">
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -75,15 +119,27 @@ function MomentsSection({ completed, locale }: { completed: Challenge[]; locale:
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {completed.map((c) => (
-            <MomentCard
-              key={c.id}
-              challenge={c}
-              achievedValue={c.target}
-              matchCount={0}
-              compact
-            />
-          ))}
+          {completed.map((c) => {
+            const isSelected = !!selectedId && c.id === selectedId
+            return (
+              <div
+                key={c.id}
+                ref={isSelected ? selectedRef : undefined}
+                className={
+                  isSelected
+                    ? 'rounded-lg ring-2 ring-primary ring-offset-2 ring-offset-background'
+                    : undefined
+                }
+              >
+                <MomentCard
+                  challenge={c}
+                  achievedValue={c.target}
+                  matchCount={0}
+                  compact
+                />
+              </div>
+            )
+          })}
         </div>
       )}
     </section>

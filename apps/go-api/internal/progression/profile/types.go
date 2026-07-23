@@ -67,6 +67,13 @@ type PlayerProfile struct {
 	// MuTrend : tendance LOWESS sur μ (composite). Compat V2 (coach LOWESSPositive).
 	MuTrend LOWESSTrend `json:"mu_trend"`
 
+	// SkillTrend : sparkline 90 j de la tendance LUSR (μ lissé LOWESS, en points
+	// LUSR — même échelle que « {mu} pts LUSR »). Fenêtre FIXE (SkillTrendWindowDays),
+	// indépendante de window_days. Vide si < 3 points de rating dans la fenêtre
+	// (LOWESS non fiable) → le front n'affiche rien. Sert UNIQUEMENT du lissé, jamais
+	// le μ brut (DEC-5/D2, DEC-6). Cf. journal Lot D.
+	SkillTrend []SkillTrendPoint `json:"skill_trend,omitempty"`
+
 	// ── Section C : coaching ──────────────────────────────────────────────
 
 	Leverages           []ProgressionLeverage `json:"leverages,omitempty"`
@@ -185,6 +192,25 @@ type TierState struct {
 
 // IsEmpty retourne true si le TierState n'est pas renseigné.
 func (t TierState) IsEmpty() bool { return t.Name == "" }
+
+// SkillTrendPoint est un point de la sparkline de tendance LUSR 90 j (DEC-5/D2).
+// Value est le rating LUSR LISSÉ par LOWESS (échelle points, identique à la valeur
+// affichée « pts LUSR ») — le μ brut per-match n'est jamais servi (DEC-6).
+type SkillTrendPoint struct {
+	Date  string  `json:"date"`  // jour UTC (YYYY-MM-DD) du match noté
+	Value float64 `json:"value"` // rating LUSR lissé (points)
+}
+
+// muPoint = un rating LUSR daté, source de la sparkline de tendance (interne).
+type muPoint struct {
+	at    time.Time
+	value float64
+}
+
+// SkillTrendWindowDays : fenêtre FIXE (90 j) de la sparkline de tendance LUSR
+// (DEC-5). Indépendante du window_days du profil (sections A1/A2/B/C) : la
+// sparkline porte une sémantique « tendance sur 90 jours » stable.
+const SkillTrendWindowDays = 90
 
 // LOWESSTrend décrit une tendance lissée sur une métrique.
 type LOWESSTrend struct {

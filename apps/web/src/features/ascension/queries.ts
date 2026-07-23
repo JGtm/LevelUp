@@ -8,6 +8,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import type {
+  ActivityCalendar,
   MilestonesResponse,
   PatternReport,
   PlayerProfile,
@@ -68,6 +69,19 @@ export function usePatterns(playerSlug: string, n = 50, enabled = true) {
     queryKey: queryKeys.progressionPatterns(playerSlug, n),
     queryFn: () =>
       api.get<PatternReport>(`/players/${playerSlug}/patterns?n=${n}`),
+    enabled: !!playerSlug && enabled,
+    refetchInterval: 120_000,
+    refetchOnWindowFocus: false,
+    staleTime: 60_000,
+  })
+}
+
+/** Calendrier d'activité (jours joués sur `days` jours, défaut 90 — DEC-5/D3). */
+export function useActivityCalendar(playerSlug: string, days = 90, enabled = true) {
+  return useQuery<ActivityCalendar>({
+    queryKey: queryKeys.progressionActivity(playerSlug, days),
+    queryFn: () =>
+      api.get<ActivityCalendar>(`/players/${playerSlug}/activity-calendar?days=${days}`),
     enabled: !!playerSlug && enabled,
     refetchInterval: 120_000,
     refetchOnWindowFocus: false,

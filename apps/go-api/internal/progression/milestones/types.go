@@ -32,9 +32,14 @@ type CatalogEntry struct {
 	TitleEN   string  `json:"title_en"`
 	TitleFR   string  `json:"title_fr"`
 	Icon      string  `json:"icon,omitempty"`
-	// Condition est une description textuelle pour les milestones complexes
-	// (ex : "accuracy >= 0.50 on 30 distinct days"). Pas évaluée — purement UI.
+	// Condition est la description TECHNIQUE (formule) du milestone, non localisée
+	// (ex : "accuracy >= 0.50 on 30 distinct days"). Référence interne — n'est PLUS
+	// servie à l'UI (A9). Non évaluée.
 	Condition string `json:"condition,omitempty"`
+	// ConditionFR / ConditionEN : description lisible localisée servie à l'UI (A9).
+	// Vide si le milestone n'a pas de condition explicite → le front n'affiche rien.
+	ConditionFR string `json:"condition_fr,omitempty"`
+	ConditionEN string `json:"condition_en,omitempty"`
 }
 
 // Earned représente un milestone débloqué par un joueur.

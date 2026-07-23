@@ -35,6 +35,32 @@ func ComputeMuTrend(muSeries []float64) LOWESSTrend {
 	return out
 }
 
+// buildSkillTrend lisse une série de ratings LUSR datés (ASC) via LOWESS et
+// projette chaque point lissé sur son jour UTC (DEC-5/D2). Retourne nil si < 3
+// points (LOWESS non fiable) — le front n'affiche alors rien. Ne sert QUE le lissé
+// (jamais le μ brut, DEC-6) ; réutilise temporal.LowessSmooth (règle n°14).
+func buildSkillTrend(pts []muPoint) []SkillTrendPoint {
+	if len(pts) < 3 {
+		return nil
+	}
+	values := make([]float64, len(pts))
+	for i, p := range pts {
+		values[i] = p.value
+	}
+	smoothed := temporal.LowessSmooth(values, LOWESSAlpha)
+	out := make([]SkillTrendPoint, 0, len(pts))
+	for i := range pts {
+		if i >= len(smoothed) || math.IsNaN(smoothed[i]) {
+			continue
+		}
+		out = append(out, SkillTrendPoint{
+			Date:  pts[i].at.UTC().Format("2006-01-02"),
+			Value: smoothed[i],
+		})
+	}
+	return out
+}
+
 func firstValid(xs []float64) float64 {
 	for _, v := range xs {
 		if !math.IsNaN(v) {

@@ -66,7 +66,10 @@ export interface MilestoneItem {
   title_en: string
   title_fr: string
   icon?: string
-  condition?: string
+  /** Description lisible localisée de la condition du jalon (A9). Vide si le
+   *  jalon n'a pas de condition explicite → aucune ligne affichée. */
+  condition_fr?: string
+  condition_en?: string
   earned: boolean
   earned_at?: string | null
 }
@@ -169,6 +172,21 @@ export interface PlayerProfile {
   suggested_challenges?: SuggestedChallenge[]
 }
 
+// ── Calendrier d'activité (DEC-5/D3) ─────────────────────────────────────────
+
+/** Un jour joué (>= 1 match). Les jours vides sont omis par le backend. */
+export interface ActivityDay {
+  date: string // jour UTC (YYYY-MM-DD)
+  count: number // nb de matchs distincts ce jour-là
+}
+
+/** Réponse GET /activity-calendar — miroir de profile.ActivityCalendar. */
+export interface ActivityCalendar {
+  since: string // jour UTC (YYYY-MM-DD) inclus
+  until: string // jour UTC (YYYY-MM-DD) inclus
+  days: ActivityDay[] // uniquement les jours avec count > 0, triés ASC
+}
+
 // ── Patterns contextuels / comportementaux (phases 1-3) ──────────────────────
 
 export type ContextType = 'by_mode' | 'by_map' | 'by_squad'
@@ -179,6 +197,13 @@ export type PatternSeverity = 'low' | 'medium' | 'high'
 export interface ContextualPattern {
   type: ContextType
   key: string
+  /** Libellé lisible résolu côté backend (nom de carte pour by_map). Absent
+   *  pour by_mode (clé déjà lisible) et by_squad (libellé i18n front). */
+  label?: string
+  /** Clé de filtrage STABLE d'un lien pattern→Solo (F7) : valeur exacte que le
+   *  pipeline de filtres matche, indépendante de la locale (by_map : nom FR-first ;
+   *  by_mode : mode normalisé). À utiliser pour construire le lien, jamais `label`. */
+  filter_key?: string
   match_count: number
   win_rate: number
   avg_kda: number
@@ -202,12 +227,16 @@ export interface BehavioralPattern {
 export interface PatternLever {
   rank: number
   axis: string
-  label: string
+  /** Clé brute du contexte visé (F3) : libellé de mode (by_mode), « with_friends »/
+   *  « solo » (by_squad), ou GUID de carte (by_map — NON affiché, cf. context_label). */
+  context_key?: string
+  /** Nom d'asset résolu du contexte visé (by_map : nom de carte, title-agnostic).
+   *  Le front l'affiche pour by_map ; jamais le GUID de context_key. */
+  context_label?: string
   current_val: number
   target_val: number
   horizon: number
   impact: number
-  source_pattern: string
 }
 
 export interface PatternReport {
@@ -216,4 +245,8 @@ export interface PatternReport {
   behavior_patterns: BehavioralPattern[]
   levers: PatternLever[]
   computed_at: string
+  /** Seuil de matchs par groupe sous lequel afficher « Échantillon faible »
+   *  au lieu de Force/Faiblesse (DEC-8). Servi par le backend, jamais codé en
+   *  dur côté front. */
+  min_matches_for_signal: number
 }

@@ -73,18 +73,45 @@ func (s *service) EnablePilotMode(ctx context.Context, userID, titleSlug string)
 	return out, nil
 }
 
-// DisablePilotMode désactive le mode pilote.
+// DisablePilotMode désactive le mode pilote pour un joueur sur un titre.
 //
-// Les défis pilote en cours sont conservés (le joueur peut les terminer).
-// Aucune nouvelle auto-attribution ne se fera tant que le mode n'est pas
-// réactivé. Phase 4 minimale : pas de persistance d'un flag user — désactiver
-// = ne plus appeler EnablePilotMode. À enrichir si besoin de mémoire d'état.
+// Effet : les défis pilote ACTIFS non complétés sont archivés (statut
+// `archived` — retrait système, pas un abandon volontaire du joueur, distinct
+// pour la télémétrie/PP). Les défis pilote déjà terminaux (completed/expired…)
+// sont laissés intacts (ils restent dans l'historique/Réalisations). Aucune
+// nouvelle auto-attribution ne se fera tant que le mode n'est pas réactivé —
+// l'état ON/OFF est dérivé côté client de la présence de défis pilote actifs.
 func (s *service) DisablePilotMode(ctx context.Context, userID, titleSlug string) error {
 	if userID == "" || titleSlug == "" {
 		return fmt.Errorf("%w: user_id/title_slug requis", ErrInvalidInput)
 	}
-	slog.InfoContext(ctx, "prestige: pilot mode disabled (no-op, défis pilote actifs conservés)",
-		"user_id", userID, "title_slug", titleSlug)
+	activeStatus := StatusActive
+	pilotMode := ModePilote
+	list, err := s.deps.Challenges.List(ctx, ChallengeFilter{
+		UserID:    userID,
+		TitleSlug: titleSlug,
+		Status:    &activeStatus,
+		Mode:      &pilotMode,
+	})
+	if err != nil {
+		return fmt.Errorf("list active pilot challenges: %w", err)
+	}
+	now := s.deps.Now()
+	archived := 0
+	for _, c := range list {
+		if err := s.deps.Challenges.UpdateStatus(ctx, c.ID, StatusArchived, now); err != nil {
+			slog.WarnContext(ctx, "prestige: pilot challenge archive failed",
+				"err", err, "challenge_id", c.ID)
+			continue
+		}
+		// Trace la transition d'archivage (retrait système, distinct d'un abandon
+		// volontaire) — observabilité du churn pilote (F5), comme AbandonChallenge.
+		c.Status = StatusArchived
+		s.emitter.EmitTransition(ctx, c, TelemetryArchived)
+		archived++
+	}
+	slog.InfoContext(ctx, "prestige: pilot mode disabled",
+		"user_id", userID, "title_slug", titleSlug, "archived", archived)
 	return nil
 }
 

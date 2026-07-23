@@ -23,6 +23,17 @@ import (
 	"levelup/go-api/internal/migration"
 )
 
+// canonicalRecHistAchievedIndexDDL — définition CANONIQUE de l'index de lecture
+// de record_history : (user_id, achieved_at DESC). Sert la lecture scopée par
+// joueur triée par date (records timeline). Source unique côté migrations (F4,
+// 2026-07-22) : le rebuild de dédup ET le step correctif l'utilisent. La
+// création de base (create_progression_player_schema, steps_player_base.go) et
+// la reconstruction post-purge (ops/records_purge.go) portent la même forme,
+// verrouillée par le garde-rail idx_rec_hist_canonical_test.go (toute création
+// de cet index DOIT être (user_id, achieved_at DESC)). Historique : la dédup
+// recréait par erreur (achieved_at DESC) sans user_id → divergence corrigée.
+const canonicalRecHistAchievedIndexDDL = `CREATE INDEX IF NOT EXISTS idx_rec_hist_achieved_desc ON record_history(user_id, achieved_at DESC)`
+
 // playerSteps retourne les migrations player title-owned (consommateurs, b15).
 func playerSteps() []migration.Migration {
 	return []migration.Migration{
@@ -100,10 +111,37 @@ func playerSteps() []migration.Migration {
 					ALTER TABLE record_history ADD PRIMARY KEY (id);
 					CREATE INDEX IF NOT EXISTS idx_rec_hist_user_title_metric
 						ON record_history(user_id, title_slug, metric);
-					CREATE INDEX IF NOT EXISTS idx_rec_hist_achieved_desc
-						ON record_history(achieved_at DESC);
 				`); err != nil {
 					return fmt.Errorf("dedup_record_history: rebuild: %w", err)
+				}
+				// Index de lecture recréé via la définition canonique (F4) — évite la
+				// divergence historique (achieved_at DESC) sans user_id.
+				if _, err := db.ExecContext(migration.BootCtx(), canonicalRecHistAchievedIndexDDL); err != nil {
+					return fmt.Errorf("dedup_record_history: recreate achieved index: %w", err)
+				}
+				return nil
+			},
+		},
+		{
+			Name:     "repair_rec_hist_achieved_index_canonical_v1",
+			TargetDB: migration.TargetPlayer,
+			Description: "Réaligne idx_rec_hist_achieved_desc sur sa définition canonique " +
+				"(user_id, achieved_at DESC) pour les DBs passées par l'ancienne dédup qui le " +
+				"recréait sur (achieved_at DESC) sans user_id (F4). Idempotent : DROP + CREATE canonique.",
+			ApplySchema: func(db *sql.DB) error {
+				has, err := migration.TableExists(db, "record_history")
+				if err != nil {
+					return fmt.Errorf("repair_rec_hist_achieved_index: check table: %w", err)
+				}
+				if !has {
+					return nil
+				}
+				if _, err := db.ExecContext(migration.BootCtx(),
+					`DROP INDEX IF EXISTS idx_rec_hist_achieved_desc`); err != nil {
+					return fmt.Errorf("repair_rec_hist_achieved_index: drop: %w", err)
+				}
+				if _, err := db.ExecContext(migration.BootCtx(), canonicalRecHistAchievedIndexDDL); err != nil {
+					return fmt.Errorf("repair_rec_hist_achieved_index: recreate: %w", err)
 				}
 				return nil
 			},

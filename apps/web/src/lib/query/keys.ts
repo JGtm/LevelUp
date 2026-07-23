@@ -189,6 +189,9 @@ export const queryKeys = {
     ['progression', playerSlug, 'profile', windowDays] as const,
   progressionPatterns: (playerSlug: string, n = 50) =>
     ['progression', playerSlug, 'patterns', n] as const,
+  // Calendrier d'activité (Réalisations) — jours joués sur la fenêtre (DEC-5/D3).
+  progressionActivity: (playerSlug: string, days = 90) =>
+    ['progression', playerSlug, 'activity', days] as const,
 
   // Coach Advisor proposals (ADR 0020 Phase 10)
   coachProposals: (playerSlug: string, status?: string) =>
@@ -237,6 +240,9 @@ export const queryKeys = {
     meAll: (userId: string) => ['prestige', 'me', userId] as const,
     templates: (userId: string, titleSlug: string) =>
       ['prestige', 'templates', userId, titleSlug] as const,
+    /** Clé de mutation du mode pilote (enable/disable auto-attribution, B3). */
+    pilotMode: (userId: string, titleSlug: string) =>
+      ['prestige', 'pilot-mode', userId, titleSlug] as const,
   },
   arc: {
     list: (userId: string, titleSlug: string) =>
@@ -248,6 +254,10 @@ export const queryKeys = {
   challenge: {
     list: (userId: string, titleSlug: string) =>
       ['prestige', 'challenges', userId, titleSlug] as const,
+    /** Défis terminaux (historique Réalisations) — statuts distincts de `list`
+     *  (actifs), donc clé distincte. */
+    history: (userId: string, titleSlug: string) =>
+      ['prestige', 'challenges', 'history', userId, titleSlug] as const,
     one: (id: string) => ['prestige', 'challenge', id] as const,
   },
   squad: {
@@ -263,6 +273,10 @@ export const queryKeys = {
       ['playerProfile', 'campaign', 'active', playerSlug] as const,
     campaign: (playerSlug: string, id: string) =>
       ['playerProfile', 'campaign', playerSlug, id] as const,
+    /** Campagnes closes (historique Réalisations). Sous le préfixe `campaignAll`
+     *  → invalidée par les mutations de campagne (close/abandon refont l'historique). */
+    campaignHistory: (playerSlug: string) =>
+      ['playerProfile', 'campaign', playerSlug, 'history'] as const,
     /** Préfixe broad — invalide tous les `campaign(playerSlug, *)`. */
     campaignAll: (playerSlug: string) =>
       ['playerProfile', 'campaign', playerSlug] as const,

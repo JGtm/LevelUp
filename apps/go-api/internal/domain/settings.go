@@ -64,7 +64,8 @@ type SettingsResponse struct {
 	ShowProgression bool `json:"show_progression"`
 
 	// CoachProactiveMode active la proposition automatique de challenges/arcs
-	// Prestige par le coach (cf. ADR 0020). Opt-in, défaut : false.
+	// Prestige par le coach (cf. ADR 0020, DEC-2). Défaut : true (bascule
+	// 2026-07-22) ; opt-out explicite (false) respecté.
 	CoachProactiveMode bool `json:"coach_proactive_mode"`
 
 	// AuthProvider indique le mécanisme d'authentification actif.

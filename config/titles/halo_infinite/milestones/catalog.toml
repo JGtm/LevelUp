@@ -134,6 +134,8 @@ title_fr  = "Tireur régulier"
 title_en  = "Steady Marksman"
 icon      = "milestone_accuracy_30days"
 condition = "accuracy >= 0.50 sur 30 jours distincts"
+condition_fr = "Précision d'au moins 50 % sur 30 jours distincts"
+condition_en = "At least 50% accuracy on 30 distinct days"
 
 [[milestones]]
 id        = "halo_infinite.accuracy_consistent.90d"
@@ -143,6 +145,8 @@ title_fr  = "Tireur d'élite quotidien"
 title_en  = "Daily Marksman"
 icon      = "milestone_accuracy_90days"
 condition = "accuracy >= 0.50 sur 90 jours distincts"
+condition_fr = "Précision d'au moins 50 % sur 90 jours distincts"
+condition_en = "At least 50% accuracy on 90 distinct days"
 
 # ─── Profil de combat (OC/DR — Phase 5 PLAN_COMBAT_PROFILE_WIRING) ───────────
 # Métrique compute par l'orchestrateur post-sync depuis match_participants :
@@ -158,6 +162,8 @@ title_fr  = "Précision acquise"
 title_en  = "Precision Achieved"
 icon      = "milestone_combat_precision_1"
 condition = "10 matchs avec offensive_conversion >= 0.83"
+condition_fr = "10 matchs à forte conversion offensive"
+condition_en = "10 matches with high offensive conversion"
 
 [[milestones]]
 id        = "halo_infinite.combat.precision_2"
@@ -167,6 +173,8 @@ title_fr  = "Tireur implacable"
 title_en  = "Relentless Marksman"
 icon      = "milestone_combat_precision_2"
 condition = "50 matchs avec offensive_conversion >= 0.83"
+condition_fr = "50 matchs à forte conversion offensive"
+condition_en = "50 matches with high offensive conversion"
 
 [[milestones]]
 id        = "halo_infinite.combat.precision_3"
@@ -176,6 +184,8 @@ title_fr  = "Predator"
 title_en  = "Predator"
 icon      = "milestone_combat_precision_3"
 condition = "200 matchs avec offensive_conversion >= 0.83"
+condition_fr = "200 matchs à forte conversion offensive"
+condition_en = "200 matches with high offensive conversion"
 
 [[milestones]]
 id        = "halo_infinite.combat.endurance_1"
@@ -185,6 +195,8 @@ title_fr  = "Blindé"
 title_en  = "Armored"
 icon      = "milestone_combat_endurance_1"
 condition = "25 matchs avec defensive_resistance >= 1.59"
+condition_fr = "25 matchs à forte résistance défensive"
+condition_en = "25 matches with high defensive resistance"
 
 [[milestones]]
 id        = "halo_infinite.combat.consistency"
@@ -194,3 +206,5 @@ title_fr  = "Profil d'élite"
 title_en  = "Elite Profile"
 icon      = "milestone_combat_excellence"
 condition = "10 matchs avec OC >= 0.83 ET DR >= 1.59"
+condition_fr = "10 matchs alliant conversion offensive et résistance défensive"
+condition_en = "10 matches combining offensive conversion and defensive resistance"

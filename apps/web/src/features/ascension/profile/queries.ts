@@ -9,6 +9,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   campaignApi,
   playerProfileApi,
+  type CampaignHistoryItem,
   type ImprovementCampaign,
   type PlayerProfile,
   type StartCampaignBody,
@@ -31,6 +32,17 @@ export function useActiveCampaign(playerSlug: string | undefined) {
   return useQuery<ImprovementCampaign | null>({
     queryKey: queryKeys.playerProfile.activeCampaign(playerSlug ?? ''),
     queryFn: () => campaignApi.getActive(playerSlug!),
+    enabled: !!playerSlug,
+    staleTime: 60 * 1000,
+    retry: false,
+  })
+}
+
+/** Campagnes closes (historique Réalisations). */
+export function useCampaignHistory(playerSlug: string | undefined) {
+  return useQuery<CampaignHistoryItem[]>({
+    queryKey: queryKeys.playerProfile.campaignHistory(playerSlug ?? ''),
+    queryFn: async () => (await campaignApi.listEnded(playerSlug!)).campaigns ?? [],
     enabled: !!playerSlug,
     staleTime: 60 * 1000,
     retry: false,

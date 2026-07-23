@@ -1972,9 +1972,13 @@ en = "Commendations"
 fr = "Pass saisonnier"
 en = "Season pass"
 
-[common.nav.tab_profile_objectives]
-fr = "Profil & objectifs"
-en = "Profile & goals"
+[common.nav.tab_profile]
+fr = "Profil"
+en = "Profile"
+
+[common.nav.tab_objectives]
+fr = "Objectifs"
+en = "Objectives"
 
 [common.nav.tab_coaching]
 fr = "Entraînement"

@@ -260,23 +260,49 @@ func (h *PrestigeHandler) GetChallenge(ctx context.Context, in *idInput) (*chall
 
 // ─────────── ListActiveChallenges ───────────
 
-type listActiveChallengesInput struct {
-	UserID    string `query:"user_id"`
-	TitleSlug string `query:"title_slug"`
+type listChallengesInput struct {
+	UserID    string   `query:"user_id"`
+	TitleSlug string   `query:"title_slug"`
+	Status    []string `query:"status" doc:"Filtre statut(s), séparés par virgule (ex 'completed,abandoned'). Vide → 'active' (défaut). Valeurs : draft/active/completed/expired/abandoned/archived."`
 }
 
-func (h *PrestigeHandler) ListActiveChallenges(ctx context.Context, in *listActiveChallengesInput) (*mapOutput, error) {
+// ListActiveChallenges gère GET /prestige/challenges. Sans paramètre 'status', ne
+// sert que les défis actifs enrichis (comportement historique). Avec un ou
+// plusieurs 'status', sert les défis correspondants (défis terminaux non enrichis) :
+// alimente la surface « Historique » de l'onglet Réalisations (Lot C).
+func (h *PrestigeHandler) ListActiveChallenges(ctx context.Context, in *listChallengesInput) (*mapOutput, error) {
 	if in.UserID == "" || in.TitleSlug == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
 	}
 	if err := h.authorizeActor(ctx, in.UserID); err != nil {
 		return nil, err
 	}
-	list, err := h.svc.ListActiveChallenges(ctx, in.UserID, in.TitleSlug)
+	statuses, err := parseChallengeStatuses(in.Status)
 	if err != nil {
-		return nil, h.serviceError(ctx, err)
+		return nil, err
+	}
+	list, listErr := h.svc.ListChallenges(ctx, in.UserID, in.TitleSlug, statuses)
+	if listErr != nil {
+		return nil, h.serviceError(ctx, listErr)
 	}
 	return &mapOutput{Body: map[string]any{"challenges": list, jsonKeyCount: len(list)}}, nil
+}
+
+// parseChallengeStatuses valide les statuts fournis en query. Vide → nil (le
+// service applique le défaut 'active'). Un statut inconnu → 400 invalid_status.
+func parseChallengeStatuses(raw []string) ([]prestige.ChallengeStatus, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	out := make([]prestige.ChallengeStatus, 0, len(raw))
+	for _, s := range raw {
+		st := prestige.ChallengeStatus(s)
+		if !st.Valid() {
+			return nil, humacore.NewError(http.StatusBadRequest, "invalid_status", "statut inconnu: "+s)
+		}
+		out = append(out, st)
+	}
+	return out, nil
 }
 
 // ─────────── UpdateChallenge ───────────

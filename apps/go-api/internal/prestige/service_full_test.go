@@ -357,10 +357,81 @@ func TestService_EnablePilotMode_RequiredFields(t *testing.T) {
 	}
 }
 
-func TestService_DisablePilotMode_NoOp(t *testing.T) {
-	svc, _, _, _, _, _ := buildFullService()
+func TestService_DisablePilotMode_ArchivesActivePilotChallenges(t *testing.T) {
+	svc, chRepo, _, _, _, _ := buildFullService()
+	// List renvoie 2 défis pilote actifs (le service filtre déjà status=active
+	// + mode=pilote côté ChallengeFilter → le fake les renvoie tels quels).
+	chRepo.listResult = []Challenge{
+		{ID: "c1", Status: StatusActive, Mode: ModePilote},
+		{ID: "c2", Status: StatusActive, Mode: ModePilote},
+	}
 	if err := svc.DisablePilotMode(context.Background(), "u1", "halo_infinite"); err != nil {
 		t.Fatalf("err: %v", err)
+	}
+	if len(chRepo.statusUpdates) != 2 {
+		t.Fatalf("expected 2 status updates, got %d", len(chRepo.statusUpdates))
+	}
+	for _, u := range chRepo.statusUpdates {
+		if u.Status != StatusArchived {
+			t.Errorf("challenge %s: status=%q want %q", u.ID, u.Status, StatusArchived)
+		}
+	}
+}
+
+func TestService_DisablePilotMode_NoActivePilotChallenges(t *testing.T) {
+	svc, chRepo, _, _, _, _ := buildFullService()
+	chRepo.listResult = nil // aucun défi pilote actif
+	if err := svc.DisablePilotMode(context.Background(), "u1", "halo_infinite"); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if len(chRepo.statusUpdates) != 0 {
+		t.Errorf("expected no status update, got %d", len(chRepo.statusUpdates))
+	}
+}
+
+func TestService_DisablePilotMode_RequiredFields(t *testing.T) {
+	svc, _, _, _, _, _ := buildFullService()
+	if err := svc.DisablePilotMode(context.Background(), "", "halo_infinite"); !errors.Is(err, ErrInvalidInput) {
+		t.Errorf("expected ErrInvalidInput, got %v", err)
+	}
+}
+
+// TestService_DisablePilotMode_EmitsArchivedTelemetry (F5) : chaque défi pilote
+// archivé émet une transition `archived` (distincte d'`abandoned`), pour tracer
+// le churn du mode pilote — comme AbandonChallenge émet `abandoned`.
+func TestService_DisablePilotMode_EmitsArchivedTelemetry(t *testing.T) {
+	chRepo := &fakeChallengeRepo{}
+	telRepo := &fakeTelemetryRepo{}
+	deps := Deps{
+		Tuning:           DefaultTuning(),
+		Challenges:       chRepo,
+		Arcs:             &fakeArcRepo{},
+		SquadChallenges:  &fakeSquadChallengeRepo{},
+		Squads:           &fakeSquadRepo{},
+		Templates:        &fakeTemplateRepo{},
+		Telemetry:        telRepo,
+		Prestige:         &fakeNoOpPrestigeRepo{},
+		BaselineProvider: &fakeBaselineProvider{},
+		Now:              func() time.Time { return time.Now().UTC() },
+	}
+	svc := NewService(deps).(*service)
+	chRepo.listResult = []Challenge{
+		{ID: "c1", Status: StatusActive, Mode: ModePilote},
+		{ID: "c2", Status: StatusActive, Mode: ModePilote},
+	}
+	if err := svc.DisablePilotMode(context.Background(), "u1", "halo_infinite"); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if telRepo.count() != 2 {
+		t.Fatalf("expected 2 telemetry events, got %d", telRepo.count())
+	}
+	for _, ev := range telRepo.events {
+		if ev.EventType != TelemetryArchived {
+			t.Errorf("event_type=%q want %q", ev.EventType, TelemetryArchived)
+		}
+		if ev.Mode != ModePilote {
+			t.Errorf("mode=%q want %q", ev.Mode, ModePilote)
+		}
 	}
 }
 

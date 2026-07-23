@@ -3,7 +3,63 @@ package profile
 import (
 	"math"
 	"testing"
+	"time"
 )
+
+// lowess_test.go — comportement de ComputeMuTrend + helpers NaN + buildSkillTrend.
+
+func TestBuildSkillTrend_TooShortReturnsNil(t *testing.T) {
+	base := time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC)
+	for _, n := range []int{0, 1, 2} {
+		pts := make([]muPoint, n)
+		for i := range pts {
+			pts[i] = muPoint{at: base.AddDate(0, 0, i), value: 1500 + float64(i)}
+		}
+		if got := buildSkillTrend(pts); got != nil {
+			t.Errorf("n=%d: got %v points, want nil (< 3 → LOWESS non fiable)", n, len(got))
+		}
+	}
+}
+
+func TestBuildSkillTrend_SmoothesAndDatesInUTC(t *testing.T) {
+	// 24 points bruités (heure > minuit UTC ; le bucket doit rester le jour UTC).
+	// n=24 → window LOWESS = floor(0.3*24) = 7 : le lissage est effectif sur les
+	// points intérieurs (le poids tricube est nul aux bords, il faut window ≥ 5).
+	base := time.Date(2026, 7, 1, 23, 30, 0, 0, time.UTC)
+	const n = 24
+	pts := make([]muPoint, n)
+	raw := make([]float64, n)
+	for i := 0; i < n; i++ {
+		v := 1500.0 + float64(i)*3 // tendance montante
+		if i%2 == 0 {
+			v += 120 // bruit alterné, à écraser par le lissage
+		}
+		raw[i] = v
+		pts[i] = muPoint{at: base.AddDate(0, 0, i), value: v}
+	}
+	got := buildSkillTrend(pts)
+	if len(got) != n {
+		t.Fatalf("len = %d, want %d (1 point lissé par point d'entrée)", len(got), n)
+	}
+	// Le lissage LOWESS écrase le bruit : la valeur servie diffère du μ brut
+	// (jamais de μ brut à l'écran, DEC-6) — au moins un point intérieur lissé.
+	anySmoothed := false
+	for i := range got {
+		if math.Abs(got[i].Value-raw[i]) > 1e-6 {
+			anySmoothed = true
+		}
+		if got[i].Date != pts[i].at.UTC().Format("2006-01-02") {
+			t.Errorf("point %d: Date = %q, want %q", i, got[i].Date, pts[i].at.UTC().Format("2006-01-02"))
+		}
+	}
+	if !anySmoothed {
+		t.Errorf("aucun point lissé — LOWESS n'a rien changé (attendu sur série bruitée)")
+	}
+	// Premier jour = 2026-07-01 (23h30 UTC reste le 1er).
+	if got[0].Date != "2026-07-01" {
+		t.Errorf("premier jour = %q, want 2026-07-01", got[0].Date)
+	}
+}
 
 // lowess_test.go — comportement de ComputeMuTrend + helpers NaN.
 
