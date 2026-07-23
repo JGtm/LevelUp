@@ -58,6 +58,33 @@ Aucun code modifié au Lot 1 (diagnostic pur).
 Rejoindre/état Rejoint, affichage progression). Code + gates + commit sur la branche.
 
 ---
+## [2026-07-23] PLAN_SQUAD_CHALLENGES — Lot 2 (boucle UI) CLÔTURÉ
+
+**Statut** : Complété. Branche `fix/squad-challenges-workflow`.
+
+**Décision technique principale** : nouveau type `prestige.SquadChallengeView` qui embed
+`SquadChallenge` (JSON aplati = sur-ensemble strict, compat front) + `label_fr/label_en`
+(résolus via `Templates.GetByID`, title-agnostic) + `Participants` (via `ListParticipants`).
+`ListSquadChallenges` renvoie désormais `[]SquadChallengeView` (interface Service + wrapper
+Lazy + 2 mocks ajustés). Enrichissement best-effort dans `enrichSquadChallenge` : une lecture
+KO (template retiré, participants indispo) dégrade le champ + LOG, jamais la liste (règle 3).
+Front : `useJoinSquadChallenge` invalide le cache défis au succès (param `squadId`), bouton
+« Rejoint » désactivé si participant, composant `SquadProgressList` (gamertag via roster,
+valeur/cible, badge « Atteint »), toasts succès/erreur sur Rejoindre/Réévaluer/Créer.
+
+**Résultats observés** : go build all OK ; go test prestige+handlers+wire verts (nouveau
+test `_EnrichesLabelsAndParticipants`) ; tsc + eslint verts ; vitest `SquadFocusStrip.test.tsx`
+2/2 (label vs template_id, état Rejoint, progression). **Vérifié LIVE** (serveur air rebuild) :
+`GET /squads/{id}/challenges` renvoie `label_fr:"Briseur de couronnes"` + `participants`
+(créateur auto-joint tier heroic). Escouades de test supprimées (0 résidu).
+
+**Limite** : revue VISUELLE navigateur non faite (pas de MCP navigateur dans la session) —
+laissée à l'utilisateur. Le parcours est prouvé fonctionnel par l'API.
+
+**Conclusion / prochaine étape** : Lot 3 (cycle de vie : abandon/archivage défi + endpoint
+DELETE, cascade DeleteSquad, expires_at, fermeture bypass requested_by vide).
+
+---
 ## [2026-07-23] Réintégration + validation des 4 retouches FDA gap sur origin/main
 
 **Statut** : Complété. Branche `integrate/fda-gap-followups` rebasée sur `origin/main`

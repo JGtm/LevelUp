@@ -217,6 +217,27 @@ export interface SquadChallenge {
   created_at: string
 }
 
+/** Participation d'un membre à un défi d'escouade (réponse enrichie). */
+export interface SquadChallengeParticipant {
+  squad_challenge_id: string
+  user_id: string
+  chosen_tier?: Tier
+  data_tier: string
+  current_value: number
+  completed_at?: string
+  is_private: boolean
+  joined_at: string
+}
+
+/** Défi d'escouade enrichi pour l'affichage : libellés localisés (depuis le
+ *  template, vides si défi sans template) + participants courants. Sur-ensemble
+ *  strict de SquadChallenge (le backend aplatit le défi de base dans la vue). */
+export interface SquadChallengeView extends SquadChallenge {
+  label_fr?: string
+  label_en?: string
+  participants: SquadChallengeParticipant[]
+}
+
 /** Escouade (roster) — entité Squad côté backend (clé xuid). */
 export interface Squad {
   id: string
@@ -435,7 +456,7 @@ export const prestigeApi = {
   ) => api.post<SquadChallenge>(`${scopedToPlayer(body.created_by)}/squads/${squadId}/challenges`, body),
 
   listSquadChallenges: (squadId: string, requestedBy: string) =>
-    api.get<{ squad_challenges: SquadChallenge[]; count: number }>(
+    api.get<{ squad_challenges: SquadChallengeView[]; count: number }>(
       `${scopedToPlayer(requestedBy)}/squads/${squadId}/challenges`,
     ),
 

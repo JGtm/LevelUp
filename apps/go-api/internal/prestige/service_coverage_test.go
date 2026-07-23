@@ -144,9 +144,10 @@ func (r *stubArcRepo) Delete(_ context.Context, id string) error {
 }
 
 type stubSquadChallengeRepo struct {
-	stored      map[string]SquadChallenge
-	listBySquad []SquadChallenge
-	getErr      error
+	stored           map[string]SquadChallenge
+	listBySquad      []SquadChallenge
+	listParticipants []SquadChallengeParticipant
+	getErr           error
 }
 
 func newStubSquadChallengeRepo() *stubSquadChallengeRepo {
@@ -177,7 +178,7 @@ func (r *stubSquadChallengeRepo) UpdateParticipantProgress(_ context.Context, _,
 	return nil
 }
 func (r *stubSquadChallengeRepo) ListParticipants(_ context.Context, _ string) ([]SquadChallengeParticipant, error) {
-	return nil, nil
+	return r.listParticipants, nil
 }
 func (r *stubSquadChallengeRepo) CountActiveParticipants(_ context.Context, _ string) (int, error) {
 	return 0, nil
@@ -596,6 +597,44 @@ func TestService_ListSquadChallenges_OK(t *testing.T) {
 	if len(out) != 2 {
 		t.Errorf("expected 2, got %d", len(out))
 	}
+	// Sans participants (stub nil), la vue expose un slice non-nil (JSON = []).
+	if out[0].Participants == nil {
+		t.Errorf("Participants doit être un slice non-nil même vide")
+	}
+}
+
+// TestService_ListSquadChallenges_EnrichesLabelsAndParticipants : la liste
+// enrichit chaque défi avec les libellés localisés du template et ses
+// participants (Lot 2, boucle UI). Un défi sans template garde des libellés
+// vides (fallback côté client).
+func TestService_ListSquadChallenges_EnrichesLabelsAndParticipants(t *testing.T) {
+	svc, _, _, scRepo, _, _ := buildCoverageService()
+	svc.deps.Squads.(*fakeSquadRepo).members = []SquadMember{{Xuid: "x1", UserID: "alice"}}
+	svc.deps.Templates = &captureTemplateRepo{byID: map[string]Template{
+		"tpl_head": {ID: "tpl_head", LabelFR: "Têtes brûlées", LabelEN: "Headhunters"},
+	}}
+	scRepo.listBySquad = []SquadChallenge{
+		{ID: "sc1", TemplateID: "tpl_head", TargetPerMember: 7},
+		{ID: "sc2"}, // défi sans template
+	}
+	scRepo.listParticipants = []SquadChallengeParticipant{{SquadChallengeID: "sc1", UserID: "alice"}}
+
+	out, err := svc.ListSquadChallenges(context.Background(), "sq1", "alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(out) != 2 {
+		t.Fatalf("expected 2 views, got %d", len(out))
+	}
+	if out[0].LabelFR != "Têtes brûlées" || out[0].LabelEN != "Headhunters" {
+		t.Errorf("libellés non enrichis: fr=%q en=%q", out[0].LabelFR, out[0].LabelEN)
+	}
+	if len(out[0].Participants) != 1 || out[0].Participants[0].UserID != "alice" {
+		t.Errorf("participants non enrichis: %+v", out[0].Participants)
+	}
+	if out[1].LabelFR != "" || out[1].LabelEN != "" {
+		t.Errorf("défi sans template ne doit pas avoir de libellé: %+v", out[1])
+	}
 }
 
 // TestService_ListSquadChallenges_RejectsNonMember : garde d'appartenance
@@ -719,13 +758,17 @@ func writeTempTOML(t *testing.T, name, body string) string {
 type captureTemplateRepo struct {
 	titleSlug string
 	templates []Template
+	byID      map[string]Template
 	err       error
 }
 
 func (r *captureTemplateRepo) ListByTitle(_ context.Context, _ string) ([]Template, error) {
 	return nil, nil
 }
-func (r *captureTemplateRepo) GetByID(_ context.Context, _ string) (Template, error) {
+func (r *captureTemplateRepo) GetByID(_ context.Context, id string) (Template, error) {
+	if t, ok := r.byID[id]; ok {
+		return t, nil
+	}
 	return Template{}, nil
 }
 func (r *captureTemplateRepo) Suggest(_ context.Context, _ string, _ []string, _ int) ([]Template, error) {

@@ -64,7 +64,7 @@ type mockPrestigeService struct {
 	lastEvalSquadReqBy string
 	orientationResp    string
 
-	listSquadChallResp      []prestige.SquadChallenge
+	listSquadChallResp      []prestige.SquadChallengeView
 	listSquadChallErr       error
 	lastListSquadChallID    string
 	lastListSquadChallReqBy string
@@ -158,7 +158,7 @@ func (m *mockPrestigeService) JoinSquadChallenge(ctx context.Context, _, _ strin
 func (m *mockPrestigeService) GetSquadChallenge(ctx context.Context, _ string) (prestige.SquadChallenge, error) {
 	return prestige.SquadChallenge{}, nil
 }
-func (m *mockPrestigeService) ListSquadChallenges(ctx context.Context, squadID, requestedBy string) ([]prestige.SquadChallenge, error) {
+func (m *mockPrestigeService) ListSquadChallenges(ctx context.Context, squadID, requestedBy string) ([]prestige.SquadChallengeView, error) {
 	m.lastListSquadChallID = squadID
 	m.lastListSquadChallReqBy = requestedBy
 	return m.listSquadChallResp, m.listSquadChallErr
@@ -498,7 +498,9 @@ func newRouterAtPlayer(svc prestige.Service) *chi.Mux {
 // {player_slug} du chemin est transmis au service comme requestedBy — c'est lui
 // qui alimente la garde d'appartenance (assertMemberUser) côté service.
 func TestPrestigeHandler_ListSquadChallenges_ThreadsPathSlugAsRequester(t *testing.T) {
-	mock := &mockPrestigeService{listSquadChallResp: []prestige.SquadChallenge{{ID: "sc1", SquadID: "sq1"}}}
+	mock := &mockPrestigeService{listSquadChallResp: []prestige.SquadChallengeView{
+		{SquadChallenge: prestige.SquadChallenge{ID: "sc1", SquadID: "sq1"}},
+	}}
 	r := newRouterAtPlayer(mock)
 	req := httptest.NewRequest(http.MethodGet, "/players/alice/squads/sq1/challenges", nil)
 	w := httptest.NewRecorder()

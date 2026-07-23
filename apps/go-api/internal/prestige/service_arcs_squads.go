@@ -417,14 +417,47 @@ func (s *service) GetSquadChallenge(ctx context.Context, id string) (SquadChalle
 // slug (ownershipMW OK) pourrait lister les défis de N'IMPORTE quelle escouade
 // via un squad_id arbitraire. Même contrôle que les mutations squad
 // (assertMemberUser), appliqué en lecture.
-func (s *service) ListSquadChallenges(ctx context.Context, squadID, requestedBy string) ([]SquadChallenge, error) {
+func (s *service) ListSquadChallenges(ctx context.Context, squadID, requestedBy string) ([]SquadChallengeView, error) {
 	if squadID == "" {
 		return nil, fmt.Errorf("%w: squad_id requis", ErrInvalidInput)
 	}
 	if err := s.assertMemberUser(ctx, squadID, requestedBy); err != nil {
 		return nil, err
 	}
-	return s.deps.SquadChallenges.ListBySquad(ctx, squadID)
+	challenges, err := s.deps.SquadChallenges.ListBySquad(ctx, squadID)
+	if err != nil {
+		return nil, err
+	}
+	views := make([]SquadChallengeView, 0, len(challenges))
+	for _, c := range challenges {
+		views = append(views, s.enrichSquadChallenge(ctx, c))
+	}
+	return views, nil
+}
+
+// enrichSquadChallenge hydrate un défi d'escouade avec ses libellés localisés
+// (résolus depuis le template) et ses participants courants. Best-effort : une
+// erreur de lecture (template retiré du catalogue, participants indisponibles)
+// dégrade le champ concerné sans faire échouer la liste, et est LOGGÉE — jamais
+// avalée en silence (CLAUDE.md règle 3). Le nombre de défis par escouade étant
+// borné (poignée), le coût N+1 des lectures par défi est acceptable.
+func (s *service) enrichSquadChallenge(ctx context.Context, c SquadChallenge) SquadChallengeView {
+	view := SquadChallengeView{SquadChallenge: c, Participants: []SquadChallengeParticipant{}}
+	if c.TemplateID != "" {
+		if tpl, err := s.deps.Templates.GetByID(ctx, c.TemplateID); err != nil {
+			slog.DebugContext(ctx, "prestige: squad challenge label lookup failed (libellés omis)",
+				"err", err, "squad_challenge_id", c.ID, "template_id", c.TemplateID)
+		} else {
+			view.LabelFR, view.LabelEN = tpl.LabelFR, tpl.LabelEN
+		}
+	}
+	if parts, err := s.deps.SquadChallenges.ListParticipants(ctx, c.ID); err != nil {
+		slog.WarnContext(ctx, "prestige: squad challenge participants unavailable (liste partielle)",
+			"err", err, "squad_challenge_id", c.ID)
+	} else if parts != nil {
+		view.Participants = parts
+	}
+	return view
 }
 
 // Ensure time is imported (used pour expires_at).

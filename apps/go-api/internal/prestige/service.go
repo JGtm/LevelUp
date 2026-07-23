@@ -77,7 +77,7 @@ type Service interface {
 	// vivent dans une DB sociale partagée (tous joueurs), non isolés par player DB,
 	// donc cette garde d'appartenance ferme le BOLA objet-level (un squad_id
 	// arbitraire ne doit pas être lisible par un non-membre).
-	ListSquadChallenges(ctx context.Context, squadID, requestedBy string) ([]SquadChallenge, error)
+	ListSquadChallenges(ctx context.Context, squadID, requestedBy string) ([]SquadChallengeView, error)
 	RefreshSquadPool(ctx context.Context, squadID, titleSlug, requestedBy string) ([]Template, error)
 
 	// Escouade — roster (entité Squad / SquadMember, clé xuid). requestedBy =
