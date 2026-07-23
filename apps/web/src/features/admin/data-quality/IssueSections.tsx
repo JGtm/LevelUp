@@ -10,7 +10,7 @@ import { toast } from 'sonner'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { apiErrorMessage } from '@/lib/api/client'
 import type { AdminDataQualityIssue, DataQualityIssueKind } from '@/lib/api/types'
-import { useDataQualityIssues } from './queries'
+import { DATA_QUALITY_LOCALE, useDataQualityIssues } from './queries'
 import { useResolveAssetTranslation, useResolveModeTranslation } from './mutations'
 import { InlineResolveForm } from './InlineResolveForm'
 import { IssueTable, type IssueColumn } from './IssueTable'
@@ -84,9 +84,11 @@ export function UntranslatedModesSection() {
     },
   ]
 
+  // Libellé honnête : la locale visée (data.locale, échotée par le serveur ;
+  // défaut fr) apparaît dans le titre — « Modes sans traduction (fr) ».
   return (
     <SectionShell
-      title={tA('admin.dq.modes_section')}
+      title={`${tA('admin.dq.modes_section')} (${data?.locale ?? DATA_QUALITY_LOCALE})`}
       kind="untranslated_modes"
       emptyTitle={tA('admin.dq.modes_empty_title')}
       emptyDesc={tA('admin.dq.modes_empty_desc')}
@@ -94,6 +96,7 @@ export function UntranslatedModesSection() {
     >
       <IssueTable
         issues={data?.items ?? []}
+        matchLinkTitleSlug={data?.title_slug}
         columns={columns}
         actionLabel={tA('admin.dq.translate_btn')}
         openID={openID}
@@ -158,6 +161,7 @@ export function RawAssetsSection() {
     >
       <IssueTable
         issues={data?.items ?? []}
+        matchLinkTitleSlug={data?.title_slug}
         columns={columns}
         actionLabel={tA('admin.dq.resolve_btn')}
         openID={openID}
@@ -241,6 +245,7 @@ export function OrphanPlaylistsSection() {
     >
       <IssueTable
         issues={data?.items ?? []}
+        matchLinkTitleSlug={data?.title_slug}
         columns={columns}
         actionLabel={tA('admin.dq.resolve_btn')}
         openID={openID}
@@ -286,6 +291,7 @@ export function OrphanXuidsSection() {
     >
       <IssueTable
         issues={data?.items ?? []}
+        matchLinkTitleSlug={data?.title_slug}
         columns={columns}
         pagination={{
           pageIndex,

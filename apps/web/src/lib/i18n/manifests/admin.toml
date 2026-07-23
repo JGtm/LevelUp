@@ -769,6 +769,10 @@ en = "All resolved"
 fr = "Aucune donnée d'arme pour ce titre."
 en = "No weapon data for this title."
 
+[admin.overview.weapon_coverage_unresolved_note]
+fr = "Identifiants absents du référentiel d'armes ET du catalogue officiel du titre : sources de frags hors nomenclature d'arsenal (variantes non publiées par l'éditeur, contenu communautaire, objets ou environnement). Elles n'altèrent pas les statistiques d'arsenal et relèvent d'un résidu documenté ; les plus fréquentes peuvent justifier un ajout manuel au référentiel."
+en = "Identifiers absent from both the weapon registry and the title's official catalog: frag sources outside the arsenal nomenclature (variants not published by the vendor, community content, objects or environment). They do not affect arsenal statistics and are documented residue; the most frequent ones may warrant a manual registry entry."
+
 # ─── Audit data health (compteurs) ─────────────────────────────────────────
 
 [admin.dh.uuids_raw]
@@ -1018,8 +1022,8 @@ fr = "Assets UUID bruts"
 en = "Raw UUID assets"
 
 [admin.dq.kpi_untranslated]
-fr = "Modes sans traduction FR"
-en = "Modes without FR translation"
+fr = "Modes sans traduction"
+en = "Untranslated modes"
 
 [admin.dq.kpi_orphan_playlists]
 fr = "Sélections hors catalogue"
@@ -1134,8 +1138,8 @@ fr = "Drain UGC terminé"
 en = "UGC drain complete"
 
 [admin.dq.modes_section]
-fr = "Modes sans traduction FR"
-en = "Modes without FR translation"
+fr = "Modes sans traduction"
+en = "Untranslated modes"
 
 [admin.dq.modes_empty_title]
 fr = "Tous les modes sont traduits"
@@ -1220,6 +1224,14 @@ en = "Matches"
 [admin.dq.col_last_seen]
 fr = "Vu pour la dernière fois"
 en = "Last seen"
+
+[admin.dq.col_examples]
+fr = "Exemples"
+en = "Examples"
+
+[admin.dq.example_open]
+fr = "Ouvrir le match (nouvel onglet)"
+en = "Open match (new tab)"
 
 [admin.dq.col_mode]
 fr = "Mode (clé EN normalisée)"

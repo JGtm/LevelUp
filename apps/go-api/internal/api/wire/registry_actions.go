@@ -54,7 +54,8 @@ const acquireWriterTimeout = 60 * time.Second
 func (r *ServiceRegistry) RunRegistryNamesBackfill(ctx context.Context, titleSlug string, dryRun bool) (res domain.RegistryNamesBackfillResult, err error) {
 	res = domain.RegistryNamesBackfillResult{DryRun: dryRun}
 	if dryRun {
-		counts, cErr := r.DataQualityCounts(ctx, titleSlug)
+		// Locale sans objet ici (seuls les compteurs RawUUID* sont lus) → défaut ops.
+		counts, cErr := r.DataQualityCounts(ctx, titleSlug, "")
 		if cErr != nil {
 			return res, cErr
 		}

@@ -1688,7 +1688,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Dashboard monitoring — compteurs d'inconnus data (assets UUID bruts, modes non traduits FR, playlists hors catalogue, xuids orphelins, lying bits) (auth admin requis) */
+        /** Dashboard monitoring — compteurs d'inconnus data (assets UUID bruts, modes non traduits, playlists hors catalogue, xuids orphelins, lying bits) (auth admin requis) */
         get: operations["getAdminMonitoringDataQuality"];
         put?: never;
         post?: never;
@@ -5132,6 +5132,7 @@ export interface components {
             generated_at: string;
             /** Format: int64 */
             lying_bits_events: number;
+            locale: string;
             /** Format: int64 */
             lying_bits_weapons: number;
             /** Format: int64 */
@@ -5154,6 +5155,7 @@ export interface components {
         };
         AdminDataQualityIssue: {
             asset_kind?: string;
+            example_match_ids?: string[] | null;
             id: string;
             kind: string;
             label?: string;
@@ -5165,6 +5167,7 @@ export interface components {
             generated_at: string;
             items: components["schemas"]["AdminDataQualityIssue"][] | null;
             kind: string;
+            locale: string;
             title_slug: string;
             /** Format: int64 */
             total: number;
@@ -11571,6 +11574,8 @@ export interface operations {
         parameters: {
             query?: {
                 title?: string;
+                /** @description Locale cible du compteur untranslated_modes (défaut fr). */
+                locale?: string;
             };
             header?: never;
             path?: never;
@@ -11592,6 +11597,8 @@ export interface operations {
             query: {
                 title?: string;
                 kind: "raw_uuids" | "untranslated_modes" | "orphan_playlists" | "orphan_xuids";
+                /** @description Locale cible des modes sans traduction (défaut fr). */
+                locale?: string;
                 limit?: number;
                 /** @description Décalage de pagination serveur (défaut 0, rétrocompatible). */
                 offset?: number;

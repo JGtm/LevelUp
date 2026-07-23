@@ -245,11 +245,18 @@ sans dérive.
       racine data → statut `db_inventory_status=unavailable` + log ERROR + état UI
       explicite ; erreurs stat non-ENOENT logguées. À CONFIRMER en prod au moment du
       déploiement : vérifier `LEVELUP_REPO_ROOT` du process serveur.)
-- [ ] C6. Couverture résolution d'arme (H5) : extraire les `effective_weapon_id` classés
+- [x] C6. Couverture résolution d'arme (H5) : extraire les `effective_weapon_id` classés
       inconnus sur les données réelles ; trancher : compléter le registre metadata H5 /
       corriger la jointure / documenter la cause légitime (ex. kills sans source de
       dégât dans le carnage) ; si résidu légitime, l'UI doit l'expliquer.
-- [ ] C7. Modes sans traduction / Assets UUID bruts : (a) libellés locale-agnostiques
+      (TRANCHÉ branche 1 : les 7 stock_ids H5 étaient DÉJÀ mappés en source vers
+      `h5_other_ugc` (« Autres ») mais la migration one-shot ne re-propage jamais →
+      `ApplyWeaponRegistry` (INSERT OR IGNORE idempotent, hors surface ART) câblé au
+      boot pour la metadata du titre par défaut ET des titres additionnels (H5) ;
+      convergence prouvée par test. Effet au prochain boot serveur : couverture H5
+      0 non résolu, donut bucketé. Note UI FR/EN conservée pour les futures
+      inconnues (`unresolved > 0`).)
+- [x] C7. Modes sans traduction / Assets UUID bruts : (a) libellés locale-agnostiques
       (« Modes sans traduction (fr) » — locale paramétrée `?locale=`, défaut `fr`) ;
       (b) jusqu'à 3 IDs de matchs d'exemple cliquables par ligne (nouvel onglet vers la
       match view) pour décider traduire/résoudre en connaissance — extension du DTO
@@ -449,6 +456,32 @@ inattendu.
   (surtout la dominante), pas un bug de plomberie.
 
 ## Journal d'exécution
+
+### [2026-07-23] Sous-lot C-III (C6+C7) — CLOS, Lot C entier clos (agent Opus + extension orchestrateur + revue)
+
+- C6 : identification des 7 stock_ids H5 (natifs carnage, absents du catalogue officiel
+  `weapon_labels`, déjà classés `h5_other_ugc` en source depuis 16d2a09eb). DÉCOUVERTE
+  requalifiante : la migration `h5_add_weapon_registry` est one-shot → le mapping
+  n'atteignait jamais une DB migrée. Extension décidée par l'orchestrateur (branche 1) :
+  `ApplyWeaponRegistry` idempotent au boot (2 sites : titre par défaut après
+  `ReconcileMetadataSeeds` HINF-only, + `provisionAdditionalTitle` gardé par
+  `t.kind == TargetMetadata` — couvre H5 sans comparaison de slug). Test
+  `TestWeaponRegistry_ReconcileConverges` (delete 7 → reconcile → présents → re-run
+  no-op). Anti-ART vérifié (INSERT OR IGNORE, PK-only, guards verts). Note UI FR/EN
+  conservée pour les futures inconnues.
+- C7 : `?locale=` (défaut fr, normalisé) sur counts + issues, écho `Locale` dans les
+  DTOs, libellé honnête « Modes sans traduction (fr) » ; `example_match_ids` (≤ 3,
+  best-effort loggé, requêtes bornées sur la fenêtre servie) ; liens vers
+  `/{-lang}/t/{titleSlug}/players/{playerSlug}/matches/{id}` via `playerScopedHref`
+  (titleSlug = écho serveur, playerSlug = joueur de session, fallback texte sans
+  joueur), `target=_blank rel=noopener`. Tests Go (locale, exemples 4 kinds) + front
+  (`IssueTable.test.tsx`).
+- Gate re-exécuté par l'orchestrateur : go test ops/api/games/migration 0, vet 0,
+  build 0 ; tsc 0 ; eslint 0 erreur ; vitest 300 fichiers / 2636 passés ; matrice
+  navigateur 8/8 (note couverture en DONNÉES RÉELLES, locale=fr émis partout — vérifié
+  par écoute réseau, 3 liens exemples player-scopés D7 corrects, _blank).
+- NOTE DÉPLOIEMENT : l'effet C6 (0 non résolu H5, donut bucketé) se matérialise au
+  PROCHAIN BOOT du serveur — à vérifier au Lot H et en prod.
 
 ### [2026-07-23] Sous-lot C-II (C3+C4+C5) — CLOS (agent Opus + revue orchestrateur)
 

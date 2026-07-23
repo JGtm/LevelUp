@@ -77,7 +77,7 @@ export function AdminDataQualityPage() {
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
           {/* Accent : 0 = vert, > 0 = warning ('info' pour les compteurs informatifs). */}
           <AdminKpi label={tA('admin.dq.kpi_raw_uuids')} value={data.raw_uuid_total} accent={data.raw_uuid_total > 0 ? 'warning' : 'success'} delta={counterDelta(previous, 'raw_uuids', data.raw_uuid_total)} />
-          <AdminKpi label={tA('admin.dq.kpi_untranslated')} value={data.untranslated_modes} accent={data.untranslated_modes > 0 ? 'warning' : 'success'} delta={counterDelta(previous, 'untranslated', data.untranslated_modes)} />
+          <AdminKpi label={`${tA('admin.dq.kpi_untranslated')} (${data.locale})`} value={data.untranslated_modes} accent={data.untranslated_modes > 0 ? 'warning' : 'success'} delta={counterDelta(previous, 'untranslated', data.untranslated_modes)} />
           <AdminKpi label={tA('admin.dq.kpi_orphan_playlists')} value={data.orphan_playlists} accent={data.orphan_playlists > 0 ? 'warning' : 'success'} delta={counterDelta(previous, 'orphan_playlists', data.orphan_playlists)} />
           <AdminKpi label={tA('admin.dq.kpi_orphan_xuids')} value={data.orphan_xuids} accent={data.orphan_xuids > 0 ? 'info' : 'success'} delta={counterDelta(previous, 'orphan_xuids', data.orphan_xuids)} />
           <AdminKpi label={tA('admin.dq.kpi_lying_bits')} value={data.lying_bits_events + data.lying_bits_weapons} accent={data.lying_bits_events + data.lying_bits_weapons > 0 ? 'warning' : 'success'} delta={counterDelta(previous, 'lying_bits', data.lying_bits_events + data.lying_bits_weapons)} />

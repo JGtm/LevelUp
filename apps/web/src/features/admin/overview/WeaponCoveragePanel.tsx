@@ -94,7 +94,12 @@ function CoverageBody({ data, tA }: { data: AdminWeaponCoverage; tA: TAdmin }) {
           {tA('admin.overview.weapon_coverage_all_resolved')}
         </p>
       ) : (
-        <UnresolvedList data={data} tA={tA} />
+        <>
+          <UnresolvedList data={data} tA={tA} />
+          <p className="max-w-2xl text-xs text-muted-foreground">
+            {tA('admin.overview.weapon_coverage_unresolved_note')}
+          </p>
+        </>
       )}
     </>
   )
