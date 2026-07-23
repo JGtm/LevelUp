@@ -484,14 +484,25 @@ segment change, données/filtres basculent ; échec simulé → retour propre.
 
 ### Phase 5 — Locale par segment (rapide)
 
-- [ ] **5a.** Réconciliation locale←segment (D-12) dans le layout : `lang` présent et ≠
-      locale courante → `setLocale` + invalidation des queries localisées ; absent →
-      no-op strict. Tests.
-- [ ] **5b.** Sélecteur de langue (`features/settings/queries.ts:41-70`) : si un segment
-      lang est présent dans l'URL courante, le mettre à jour (navigate replace) ; sinon
-      comportement actuel. Test.
-- [ ] **5c.** Navigateur : `/en/t/halo_infinite/players/{p}/home` force EN (payloads +
-      header `X-LevelUp-Locale`) ; retour sans segment → locale session.
+- [x] **5a.** Réconciliation locale←segment livrée (effet SÉPARÉ dans le layout titre,
+      gardé `isKnownLocale` contre les segments aberrants ; absent/aligné → no-op
+      STRICT). AUDIT d'invalidation consigné : tous les payloads localisés portent
+      `locale` en clé (home, seasonPass, teammates, sessionDetail, field-mappings,
+      releaseNotes) → la CLÉ est l'invalidation, aucun clear global ; UNE exception —
+      `leaderboardCatalog` (display_name bakés serveur, clé sans locale) → invalidation
+      CIBLÉE dans l'effet (suppression de l'exception à la racine = lot final, cf. §7).
+      4 tests layout.
+- [x] **5b.** Sélecteur de langue : bloc défensif après mutation réussie — segment lang
+      présent ≠ nouvelle locale → navigate replace `to:'.'` avec le nouveau lang ;
+      chemin AUJOURD'HUI théorique (settings est agnostique, D-3 — documenté in-code),
+      défini pour toute future surface title-scoped. 3 tests (nouveau
+      `settings/queries.test.ts`).
+- [x] **5c.** Navigateur (orchestrateur) : `/en/t/halo_infinite/…/home` → UI
+      intégralement EN + header `X-LevelUp-Locale: en` UNIFORME dès le premier fetch
+      (câblage synchrone au boot) ; clic nav interne → segment `/en` HÉRITÉ
+      (`/en/t/…/career` — confirmation réelle du test 2g) ; retour sans segment →
+      locale session FR, headers `fr`. Le segment force SANS committer la session
+      (comportement D-12 voulu).
 
 Gate Phase 5 : `make check-types` = 0 ; `make test-web` vert ; vérification navigateur
 consignée.
@@ -704,3 +715,15 @@ déplacement (Phase 1, TDD). Backend non touché.
 - Découverte (2026-07-23, Phase 4, mineure) : `createFilterStore.test.ts:142` porte
   une référence commentée à l'ex-`switchTitle` — laissée pour honorer la contrainte
   « INCHANGÉ » du gate 4d. Rafraîchissement de commentaire → lot final.
+
+- **[2026-07-23] Phase 5 CLOSE.** Locale par segment (agent Opus, périmètre minimal
+  D-12 respecté). Audit d'invalidation : une seule clé localisée sans locale
+  (`leaderboardCatalog`) → invalidation ciblée transitoire. Gate re-exécuté : tsc 0 ;
+  vitest 297 fichiers / 2620 passés / 0 échec ; navigateur : `/en` force EN
+  (payloads + header uniforme dès le 1er fetch), héritage du segment en nav interne
+  confirmé en réel, retour sans segment = session FR.
+
+- Découverte (2026-07-23, Phase 5) : `leaderboardCatalog` (keys.ts:170) est la SEULE
+  clé au payload localisé sans `locale` — l'invalidation ciblée vit transitoirement
+  dans l'effet locale du layout titre (logique feature dans le layout, à résorber).
+  LOT FINAL : ajouter `locale` à la clé + retirer l'invalidation ciblée du layout.

@@ -5,8 +5,10 @@
  * Ne pas importer depuis features/setup/.
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from '@tanstack/react-router'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
+import { parseRouteSegments } from '@/lib/title-routing'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type {
   AsyncJobStatus,
@@ -41,6 +43,7 @@ export function useUpdateSettings() {
   const setLocale = useAppShellStore((s) => s.setLocale)
   const currentLocale = useAppShellStore((s) => s.locale)
   const demoMode = useAppShellStore((s) => s.demoMode)
+  const navigate = useNavigate()
   return useMutation({
     mutationFn: async (req: UpdateSettingsRequest) => {
       // En démo, le PATCH /settings est refusé (422 — settings figés et partagés
@@ -71,6 +74,19 @@ export function useUpdateSettings() {
           void qc.invalidateQueries() // toutes les queries — la locale touche
           // potentiellement chaque page. Côté coût : refetch on-demand,
           // pas un sync exhaustif, donc acceptable.
+
+          // DÉFENSIF (D-12, Phase 5b) : si l'URL courante porte un segment lang ≠
+          // nouvelle locale, réaligner le segment (navigate REPLACE, même route). Le
+          // chemin est AUJOURD'HUI THÉORIQUE : la page Settings est AGNOSTIQUE (hors
+          // segment, D-3) → parseRouteSegments ne renvoie jamais de lang ici, la
+          // branche n'est donc pas prise depuis /settings. Défini pour toute FUTURE
+          // surface de changement de langue title-scoped (sous /{lang}/t/…) : sans ce
+          // réalignement, l'URL garderait l'ancien segment (source de vérité) et la
+          // réconciliation du layout titre (5a) re-forcerait aussitôt l'ancienne locale.
+          const seg = parseRouteSegments(window.location.pathname)
+          if (seg.lang && seg.titleSlug && seg.lang !== next) {
+            void navigate({ to: '.', params: (prev) => ({ ...prev, lang: next }), replace: true })
+          }
         }
       }
     },
