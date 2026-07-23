@@ -14,6 +14,7 @@
  */
 import { test, expect } from '@playwright/test'
 import { skipIfNoDemoData } from './_helpers/demoData'
+import { playerPath } from './_helpers/routes'
 
 const PLAYER = 'demo-player'
 
@@ -22,7 +23,7 @@ test.describe('Split stores filtres — architecture solo/squad isolée', () => 
     // Zustand `persist` n'écrit dans localStorage qu'après une mutation
     // post-hydratation. On simule l'effet d'un clic « Analyser » sur chaque page
     // en injectant manuellement un state dans chaque clé attendue.
-    await page.goto(`/players/${PLAYER}/stats/timeseries`)
+    await page.goto(playerPath(PLAYER, 'stats/timeseries'))
     await page.waitForLoadState('networkidle')
 
     await page.evaluate(() => {
@@ -56,7 +57,7 @@ test.describe('Split stores filtres — architecture solo/squad isolée', () => 
     await skipIfNoDemoData()
     // Étape 1 : sur Squad, set la cascade côté store squad via injection directe
     // (équivaut à un user qui coche des modes et clique Analyser)
-    await page.goto(`/players/${PLAYER}/squad`)
+    await page.goto(playerPath(PLAYER, 'squad'))
     await page.waitForLoadState('networkidle')
 
     await page.evaluate(() => {
@@ -82,7 +83,7 @@ test.describe('Split stores filtres — architecture solo/squad isolée', () => 
       (req) => req.url().includes('/pages/timeseries') && req.method() === 'POST',
     )
 
-    await page.goto(`/players/${PLAYER}/stats/timeseries`)
+    await page.goto(playerPath(PLAYER, 'stats/timeseries'))
     const req = await timeseriesReq
     const body = req.postDataJSON() as {
       filters?: { cascade?: { modes?: string[] } }
@@ -94,7 +95,7 @@ test.describe('Split stores filtres — architecture solo/squad isolée', () => 
 
   test('2b. Filtre cascade Solo ne pollue pas Squad', async ({ page }) => {
     await skipIfNoDemoData()
-    await page.goto(`/players/${PLAYER}/stats/timeseries`)
+    await page.goto(playerPath(PLAYER, 'stats/timeseries'))
     await page.waitForLoadState('networkidle')
 
     // Inject cascade côté store solo
@@ -121,7 +122,7 @@ test.describe('Split stores filtres — architecture solo/squad isolée', () => 
       (req) => req.url().includes('/filters/resolve') && req.method() === 'POST',
     )
 
-    await page.goto(`/players/${PLAYER}/squad`)
+    await page.goto(playerPath(PLAYER, 'squad'))
     const req = await resolveReq
     const body = req.postDataJSON() as {
       filters?: { cascade?: { experience_types?: string[] } }
@@ -136,7 +137,7 @@ test.describe('Split stores filtres — architecture solo/squad isolée', () => 
 
   test('3a. CitationsPage a sa propre barre filtres locale (Expérience visible)', async ({ page }) => {
     await skipIfNoDemoData()
-    await page.goto(`/players/${PLAYER}/citations`)
+    await page.goto(playerPath(PLAYER, 'citations'))
     await page.waitForLoadState('networkidle')
 
     // La barre locale (useLocalFilterBar) rend le dropdown Expérience avec
@@ -150,7 +151,7 @@ test.describe('Split stores filtres — architecture solo/squad isolée', () => 
   test('3b. CitationsPage envoie un filterContext local (pas hérité du store solo)', async ({ page }) => {
     await skipIfNoDemoData()
     // Pollue le store solo avec une cascade
-    await page.goto(`/players/${PLAYER}/home`)
+    await page.goto(playerPath(PLAYER, 'home'))
     await page.evaluate(() => {
       const raw = JSON.parse(localStorage.getItem('levelup-solo-filter-v1') ?? '{}')
       raw.state = raw.state ?? {}
@@ -172,7 +173,7 @@ test.describe('Split stores filtres — architecture solo/squad isolée', () => 
     const citationsReq = page.waitForRequest(
       (req) => req.url().includes('/pages/citations') && req.method() === 'POST',
     )
-    await page.goto(`/players/${PLAYER}/citations`)
+    await page.goto(playerPath(PLAYER, 'citations'))
     const req = await citationsReq
     const body = req.postDataJSON() as {
       filters?: { cascade?: { experience_types?: string[] } }
@@ -188,7 +189,7 @@ test.describe('Split stores filtres — architecture solo/squad isolée', () => 
   test('3c. ExplorerPage envoie un filterContext local par défaut', async ({ page }) => {
     await skipIfNoDemoData()
     // Pollue le store solo
-    await page.goto(`/players/${PLAYER}/home`)
+    await page.goto(playerPath(PLAYER, 'home'))
     await page.evaluate(() => {
       const raw = JSON.parse(localStorage.getItem('levelup-solo-filter-v1') ?? '{}')
       raw.state = raw.state ?? {}
@@ -210,7 +211,7 @@ test.describe('Split stores filtres — architecture solo/squad isolée', () => 
     const explorerReq = page.waitForRequest(
       (req) => req.url().includes('/pages/explorer/matches') && req.method() === 'POST',
     )
-    await page.goto(`/players/${PLAYER}/explorer`)
+    await page.goto(playerPath(PLAYER, 'explorer'))
     const req = await explorerReq
     const body = req.postDataJSON() as {
       filters?: { cascade?: { modes?: string[] } }

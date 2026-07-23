@@ -69,6 +69,9 @@ type DataQualityIssue struct {
 	Occurrences int
 	// LastSeen : RFC3339 du match le plus récent concerné (vide si inconnu).
 	LastSeen string
+	// ExampleMatchIDs : jusqu'à 3 match_id concrets (rempli par enrichExampleMatchIDs
+	// sur la fenêtre servie — data_quality_examples.go).
+	ExampleMatchIDs []string
 }
 
 // rawUUIDColumns : colonnes (id, name) de match_registry où name == id
@@ -82,7 +85,7 @@ var rawUUIDColumns = []struct{ Kind, IDCol, NameCol string }{
 
 // CountDataQuality calcule tous les compteurs d'inconnus. Best-effort par
 // section : une requête en échec est remontée en erreur (le caller dégrade).
-func CountDataQuality(ctx context.Context, sharedDB, metaDB *sql.DB, titleSlug string) (DataQualityCounts, error) {
+func CountDataQuality(ctx context.Context, sharedDB, metaDB *sql.DB, titleSlug, locale string) (DataQualityCounts, error) {
 	var c DataQualityCounts
 	if sharedDB == nil {
 		return c, fmt.Errorf("data_quality: sharedDB nil")
@@ -98,7 +101,7 @@ func CountDataQuality(ctx context.Context, sharedDB, metaDB *sql.DB, titleSlug s
 		}
 	}
 
-	untranslated, err := listUntranslatedModes(ctx, sharedDB, metaDB, 0)
+	untranslated, err := listUntranslatedModes(ctx, sharedDB, metaDB, locale, 0)
 	if err != nil {
 		return c, err
 	}
@@ -138,30 +141,63 @@ func CountDataQuality(ctx context.Context, sharedDB, metaDB *sql.DB, titleSlug s
 	return c, nil
 }
 
-// ListDataQualityIssues retourne les lignes détaillées d'un kind donné, les
-// plus fréquentes d'abord. kind ∈ {raw_uuids, untranslated_modes,
-// orphan_playlists, orphan_xuids}. limit <= 0 → 50.
+// ListDataQualityIssues retourne une fenêtre paginée [offset, offset+limit) des
+// lignes détaillées d'un kind donné, les plus fréquentes d'abord, ET le total
+// (avant fenêtrage) pour la pagination serveur du front. kind ∈ {raw_uuids,
+// untranslated_modes, orphan_playlists, orphan_xuids}. limit <= 0 → 50 ;
+// offset < 0 → 0 (rétrocompatible : un appel sans offset pagine depuis le début).
+//
+// Chaque détecteur produit sa liste COMPLÈTE (limit interne 0), puis la fenêtre
+// est découpée en mémoire — les volumes réels sont bornés (nombre d'assets/xuids
+// distincts) et déjà scannés intégralement par CountDataQuality.
 func ListDataQualityIssues(
-	ctx context.Context, sharedDB, metaDB *sql.DB, titleSlug, kind string, limit int,
-) ([]DataQualityIssue, error) {
+	ctx context.Context, sharedDB, metaDB *sql.DB, titleSlug, kind, locale string, limit, offset int,
+) ([]DataQualityIssue, int, error) {
 	if sharedDB == nil {
-		return nil, fmt.Errorf("data_quality: sharedDB nil")
+		return nil, 0, fmt.Errorf("data_quality: sharedDB nil")
 	}
 	if limit <= 0 {
 		limit = 50
 	}
+	if offset < 0 {
+		offset = 0
+	}
+	var all []DataQualityIssue
+	var err error
 	switch kind {
 	case "raw_uuids":
-		return listRawUUIDs(ctx, sharedDB, limit)
+		all, err = listRawUUIDs(ctx, sharedDB, 0)
 	case "untranslated_modes":
-		return listUntranslatedModes(ctx, sharedDB, metaDB, limit)
+		all, err = listUntranslatedModes(ctx, sharedDB, metaDB, locale, 0)
 	case "orphan_playlists":
-		return listOrphanPlaylists(ctx, sharedDB, metaDB, titleSlug, limit)
+		all, err = listOrphanPlaylists(ctx, sharedDB, metaDB, titleSlug, 0)
 	case "orphan_xuids":
-		return listOrphanXUIDs(ctx, sharedDB, limit)
+		all, err = listOrphanXUIDs(ctx, sharedDB, 0)
 	default:
-		return nil, fmt.Errorf("data_quality: kind inconnu %q", kind)
+		return nil, 0, fmt.Errorf("data_quality: kind inconnu %q", kind)
 	}
+	if err != nil {
+		return nil, 0, err
+	}
+	// Fenêtre servie SEULEMENT : les exemples (≤3 match_id par ligne) sont résolus
+	// par requête bornée, uniquement pour les lignes rendues (data_quality_examples.go).
+	window := windowIssues(all, limit, offset)
+	enrichExampleMatchIDs(ctx, sharedDB, kind, window)
+	return window, len(all), nil
+}
+
+// windowIssues retourne la tranche [offset, offset+limit) de la liste complète
+// (pagination serveur). offset au-delà de la fin → tranche vide (jamais un
+// panic de slice), jamais nil (contrat JSON items non nul).
+func windowIssues(all []DataQualityIssue, limit, offset int) []DataQualityIssue {
+	if offset >= len(all) {
+		return []DataQualityIssue{}
+	}
+	end := offset + limit
+	if end > len(all) {
+		end = len(all)
+	}
+	return all[offset:end]
 }
 
 // listRawUUIDs liste les assets UUID bruts toutes colonnes confondues.
@@ -198,7 +234,7 @@ func listRawUUIDs(ctx context.Context, sharedDB *sql.DB, limit int) ([]DataQuali
 		rows.Close()
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Occurrences > out[j].Occurrences })
-	if len(out) > limit {
+	if limit > 0 && len(out) > limit {
 		out = out[:limit]
 	}
 	return out, nil
@@ -230,8 +266,12 @@ func metaTableExists(ctx context.Context, metaDB *sql.DB, table string) (bool, e
 //   - table mode_name_tr ABSENTE DU SCHÉMA du titre → détecteur non applicable
 //     (le titre gère ses traductions autrement) → liste vide, jamais une erreur.
 //
+// locale : langue cible de mode_name_tr (défaut « fr » si vide) — paramètre ?locale=.
 // limit <= 0 → pas de limite (usage comptage).
-func listUntranslatedModes(ctx context.Context, sharedDB, metaDB *sql.DB, limit int) ([]DataQualityIssue, error) {
+func listUntranslatedModes(ctx context.Context, sharedDB, metaDB *sql.DB, locale string, limit int) ([]DataQualityIssue, error) {
+	if locale == "" {
+		locale = "fr"
+	}
 	if metaDB != nil {
 		exists, err := metaTableExists(ctx, metaDB, "mode_name_tr")
 		if err != nil {
@@ -245,7 +285,7 @@ func listUntranslatedModes(ctx context.Context, sharedDB, metaDB *sql.DB, limit 
 	}
 	frSet := map[string]struct{}{}
 	if metaDB != nil {
-		rows, err := metaDB.QueryContext(ctx, `SELECT mode_en FROM mode_name_tr WHERE lang = 'fr'`)
+		rows, err := metaDB.QueryContext(ctx, `SELECT mode_en FROM mode_name_tr WHERE lang = ?`, locale)
 		if err != nil {
 			return nil, fmt.Errorf("load mode_name_tr: %w", err)
 		}
@@ -419,17 +459,24 @@ func listOrphanPlaylists(
 	return out, nil
 }
 
-// listOrphanXUIDs liste les xuids de match_participants sans alias gamertag.
+// listOrphanXUIDs liste les xuids de match_participants sans alias gamertag,
+// avec la date du dernier match concerné (« Vu pour la dernière fois » = dernier
+// match du xuid dans le registry, jointure match_registry + timestamp canonique
+// COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC') via le fragment
+// partagé, règle projet n°8). Lecture seule. Pas de LIMIT SQL : la fenêtre et le
+// total sont appliqués par ListDataQualityIssues (limit > 0 tronque quand même,
+// usage direct). Coût : GROUP BY sur match_participants (déjà scanné par le
+// compteur) + jointure clé-primaire sur match_registry.
 func listOrphanXUIDs(ctx context.Context, sharedDB *sql.DB, limit int) ([]DataQualityIssue, error) {
 	rows, err := sharedDB.QueryContext(ctx, `
-		SELECT mp.xuid, COUNT(DISTINCT mp.match_id)
+		SELECT mp.xuid, COUNT(DISTINCT mp.match_id), MAX(`+analysis.SQLStartTimeCanonical("r")+`)
 		FROM match_participants mp
 		LEFT JOIN xuid_aliases xa ON xa.xuid = mp.xuid
+		LEFT JOIN match_registry r ON r.match_id = mp.match_id
 		WHERE `+analysis.SQLIsNotBotCol("mp.xuid")+`
 		  AND (xa.xuid IS NULL OR xa.gamertag IS NULL OR xa.gamertag = '')
 		GROUP BY mp.xuid
-		ORDER BY 2 DESC
-		LIMIT ?`, limit)
+		ORDER BY 2 DESC`)
 	if err != nil {
 		return nil, fmt.Errorf("list orphan xuids: %w", err)
 	}
@@ -438,12 +485,21 @@ func listOrphanXUIDs(ctx context.Context, sharedDB *sql.DB, limit int) ([]DataQu
 	for rows.Next() {
 		var xuid string
 		var n int
-		if scanErr := rows.Scan(&xuid, &n); scanErr != nil {
+		var last sql.NullTime
+		if scanErr := rows.Scan(&xuid, &n, &last); scanErr != nil {
 			return nil, scanErr
 		}
-		out = append(out, DataQualityIssue{Kind: "orphan_xuid", ID: xuid, Occurrences: n})
+		out = append(out, DataQualityIssue{
+			Kind: "orphan_xuid", ID: xuid, Occurrences: n, LastSeen: formatNullTime(last),
+		})
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
+	return out, nil
 }
 
 // loadResolvedMapNames charge les noms de maps résolus (≠ UUID) pour aider

@@ -1,6 +1,7 @@
 /**
- * Tests DetectionsPanel — W4 (revue 2026-07) : annuler le prompt de note (retour null)
- * ne doit déclencher AUCUNE mutation de statut. Une validation (texte, même vide) part.
+ * Tests DetectionsPanel — flux de note in-app (dialog, plus de prompt() natif) :
+ * annuler le dialog ne déclenche AUCUNE mutation ; valider envoie le PATCH de
+ * statut (avec la note saisie). Reprend la sémantique W4 (annulation = zéro effet).
  */
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
@@ -29,14 +30,14 @@ function mockDetectionsList() {
   )
 }
 
-describe('DetectionsPanel — prompt cancel (W4)', () => {
+describe('DetectionsPanel — note dialog', () => {
   beforeEach(() => useAppShellStore.setState({ locale: 'fr' }))
   afterEach(() => {
     vi.restoreAllMocks()
     useAppShellStore.setState({ locale: 'fr' })
   })
 
-  it('Annuler le prompt (null) → aucune mutation PATCH', async () => {
+  it('Annuler le dialog → aucune mutation PATCH', async () => {
     mockDetectionsList()
     let patched = false
     server.use(
@@ -45,36 +46,46 @@ describe('DetectionsPanel — prompt cancel (W4)', () => {
         return HttpResponse.json({ fingerprint: 'fp-1', ok: true, status: 'resolved' })
       }),
     )
-    vi.spyOn(window, 'prompt').mockReturnValue(null)
 
     renderWithProviders(<DetectionsPanel />)
 
     const resolveBtn = await screen.findByRole('button', { name: /Résoudre/i })
     fireEvent.click(resolveBtn)
+
+    // Le dialog s'ouvre ; on annule.
+    const cancelBtn = await screen.findByRole('button', { name: /Annuler/i })
+    fireEvent.click(cancelBtn)
 
     // Laisser une éventuelle mutation partir (elle ne DOIT PAS partir).
     await new Promise((r) => setTimeout(r, 60))
-    expect(window.prompt).toHaveBeenCalled()
     expect(patched).toBe(false)
   })
 
-  it('Valider le prompt (texte) → mutation PATCH envoyée', async () => {
+  it('Valider le dialog → mutation PATCH envoyée avec la note', async () => {
     mockDetectionsList()
     let patchedStatus: string | undefined
+    let patchedNote: string | undefined
     server.use(
       http.patch('/api/v1/admin/monitoring/detections/:fp', async ({ request }) => {
-        const body = (await request.json()) as { status?: string }
+        const body = (await request.json()) as { status?: string; note?: string }
         patchedStatus = body.status
+        patchedNote = body.note
         return HttpResponse.json({ fingerprint: 'fp-1', ok: true, status: 'resolved' })
       }),
     )
-    vi.spyOn(window, 'prompt').mockReturnValue('note test')
 
     renderWithProviders(<DetectionsPanel />)
 
     const resolveBtn = await screen.findByRole('button', { name: /Résoudre/i })
     fireEvent.click(resolveBtn)
 
+    const textarea = await screen.findByRole('textbox')
+    fireEvent.change(textarea, { target: { value: 'note test' } })
+
+    const confirmBtn = await screen.findByRole('button', { name: /Valider/i })
+    fireEvent.click(confirmBtn)
+
     await waitFor(() => expect(patchedStatus).toBe('resolved'))
+    expect(patchedNote).toBe('note test')
   })
 })

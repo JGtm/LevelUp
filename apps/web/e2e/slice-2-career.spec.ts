@@ -12,13 +12,14 @@
  */
 import { test, expect } from '@playwright/test'
 import { skipIfNoDemoData } from './_helpers/demoData'
+import { playerPath } from './_helpers/routes'
 
 test.describe('Slice 2 — Page Carrière (DEMO_MODE)', () => {
   test("la page Carrière se charge sans erreur JS", async ({ page }) => {
     const errors: string[] = []
     page.on('pageerror', (err) => errors.push(err.message))
 
-    await page.goto('/players/demo-player/career')
+    await page.goto(playerPath('demo-player', 'career'))
     await page.waitForLoadState('networkidle')
 
     expect(
@@ -38,7 +39,7 @@ test.describe('Slice 2 — Page Carrière (DEMO_MODE)', () => {
         resp.status() === 200,
     )
 
-    await page.goto('/players/demo-player/career')
+    await page.goto(playerPath('demo-player', 'career'))
     const careerResp = await careerPromise
     const data = await careerResp.json()
 
@@ -49,7 +50,7 @@ test.describe('Slice 2 — Page Carrière (DEMO_MODE)', () => {
 
   test("le rang du joueur est visible dans la page", async ({ page }) => {
     await skipIfNoDemoData()
-    await page.goto('/players/demo-player/career')
+    await page.goto(playerPath('demo-player', 'career'))
     await page.waitForLoadState('networkidle')
 
     // Le tier Gold du demo-player doit apparaître quelque part dans la page,
@@ -64,7 +65,7 @@ test.describe('Slice 2 — Page Carrière (DEMO_MODE)', () => {
   })
 
   test("la page ne contient pas d'erreur fatale", async ({ page }) => {
-    await page.goto('/players/demo-player/career')
+    await page.goto(playerPath('demo-player', 'career'))
     await page.waitForLoadState('networkidle')
 
     await expect(page.locator('body')).not.toContainText('Erreur critique')
@@ -74,7 +75,7 @@ test.describe('Slice 2 — Page Carrière (DEMO_MODE)', () => {
 
   test("le titre Carrière est affiché", async ({ page }) => {
     await skipIfNoDemoData()
-    await page.goto('/players/demo-player/career')
+    await page.goto(playerPath('demo-player', 'career'))
     await page.waitForLoadState('networkidle')
 
     // Le heading ou titre de la page doit contenir "Carrière"

@@ -16,6 +16,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { useParams, useNavigate } from '@tanstack/react-router'
+import { useTitleSlug } from '@/lib/title-routing'
 import { PlayerDetailPanel } from './PlayerDetailPanel'
 import type {
   MatchCitationSnippet,
@@ -111,6 +112,7 @@ export function MatchScoreboard({ rows, killerVictim, citations, header, rank, t
   const [expandedXuid, setExpandedXuid] = useState<string | null>(null)
   const { playerSlug } = useParams({ strict: false }) as { playerSlug?: string }
   const navigate = useNavigate()
+  const titleSlug = useTitleSlug()
   const offensiveLabel = useFieldLabel('offensive_conversion')
   const defensiveLabel = useFieldLabel('defensive_resistance')
 
@@ -171,8 +173,8 @@ export function MatchScoreboard({ rows, killerVictim, citations, header, rank, t
     if (!playerSlug) return
     e.stopPropagation()
     void navigate({
-      to: '/players/$playerSlug/explorer',
-      params: { playerSlug },
+      to: '/{-$lang}/t/$titleSlug/players/$playerSlug/explorer',
+      params: { titleSlug, playerSlug },
       search: { mode: 'player', target: gamertag },
     })
   }

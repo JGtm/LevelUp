@@ -40,9 +40,9 @@ describe('encodeFilterContextParam', () => {
 })
 
 describe('buildSoloFilterLink', () => {
-  it('cible la page timeseries du joueur', () => {
+  it('cible la page timeseries du joueur (forme title-scoped, playerSlug encodé)', () => {
     const url = buildSoloFilterLink({ playerSlug: 'jg tm', titleSlug: 'halo_infinite' })
-    expect(url.startsWith('/players/jg%20tm/stats/timeseries?f=')).toBe(true)
+    expect(url.startsWith('/t/halo_infinite/players/jg%20tm/stats/timeseries?f=')).toBe(true)
   })
 
   it('by_mode → cascade.modes, mode période, période nulle', () => {
@@ -79,9 +79,10 @@ describe('buildSoloFilterLink', () => {
     expect(c.period).toEqual({ start_date: '2026-05-30', end_date: '2026-05-30' })
   })
 
-  it('estampille le titre actif dans l’enveloppe', () => {
+  it('estampille le titre actif dans l’enveloppe ET dans le segment /t/', () => {
     const url = buildSoloFilterLink({ playerSlug: 'p1', titleSlug: 'halo_5' })
     expect(decodeF(url).t).toBe('halo_5')
+    expect(url.startsWith('/t/halo_5/players/p1/stats/timeseries?f=')).toBe(true)
   })
 })
 

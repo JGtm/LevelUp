@@ -44,7 +44,6 @@ import (
 	"levelup/go-api/internal/platform/groupstore"
 	"levelup/go-api/internal/platform/halo"
 	jobs_platform "levelup/go-api/internal/platform/jobs"
-	lab_platform "levelup/go-api/internal/platform/lab"
 	session_platform "levelup/go-api/internal/platform/session"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/platform/userstore"
@@ -231,21 +230,6 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		)
 	}
 
-	// Diagnostic d'instance (ex-Lab). A3.5 (DC-9, 2026-07-10) : le Lab est
-	// retiré de l'app — seule la route GET /lab/diagnostics reste montée
-	// (panneau parité + garde-fous médailles de l'onglet admin Données). Les
-	// explorateurs /lab/{resources,contracts,waypoint} sont supprimés (workflow
-	// de dev servi par les CLI + docs/RUNBOOK_ADD_TITLE.md). Gardé
-	// RequireAuth+RequireAdmin (outil opérateur, durcissement 2026-06-18) ; le
-	// gate service can_manage_instance subsiste comme kill-switch d'instance.
-	// Anti-régression : lab_routes_mounted_test.go (chi.Walk sur le vrai routeur).
-	labHandler := handlers.NewLabHandler(service.NewLabService(cfg, lab_platform.NewProvider(cfg)))
-	r.Group(func(r chi.Router) {
-		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
-		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
-		labHandler.Mount(r)
-	})
-
 	// Sprint 43 : changelog (markdown brut) — MIGRÉ vers Huma (Phase 3b),
 	// enregistré en tête de bloc via registerChangelogHuma.
 
@@ -384,6 +368,11 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			slog.Default(),
 		)
 		adminTitleDiagHandler.Mount(r.With(middleware.NoStore))
+		// Diagnostic apparence Spartan ID (volet 2, Lot F du plan diag apparence) :
+		// verdict par composant (bannière/emblème/backdrop/service tag) d'un joueur
+		// suivi, à la demande. Read-only, AUCUNE écriture DB, NoStore (état courant).
+		appearanceDiagHandler := handlers.NewAdminAppearanceDiagHandler(reg.DiagnoseAppearance)
+		appearanceDiagHandler.Mount(r.With(middleware.NoStore))
 	})
 
 	// Diagnostic — loopback (127.0.0.1) uniquement, ET admin (S5, lot S :

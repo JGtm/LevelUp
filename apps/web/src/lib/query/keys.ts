@@ -4,6 +4,14 @@
  * Convention :
  * - Clés en tableau hiérarchique : ['bootstrap'], ['players'], ['player', slug, ...]
  * - Fonctions pour les clés paramétrées : queryKeys.player(slug)
+ *
+ * titleSlug / locale dans la clé — QUAND ? Inclure le segment SEULEMENT si le payload
+ * dépend du titre / de la locale ET que sa source de fetch peut vivre HORS du sous-arbre
+ * gaté par le layout titre (`$titleSlug`). Dans ce sous-arbre, un switch de titre fait
+ * déjà `queryClient.clear()` (applyActiveTitle) et le re-render re-clé : le segment est
+ * alors superflu. Le cas qui l'EXIGE : un fetch background (prefetch, poll) qui survit à la
+ * bascule ET dont le serveur bake un libellé localisé (header X-LevelUp-Locale) — sans
+ * `locale` en clé, le cache reste dans l'ancienne langue. Modèle : `home` (titleSlug + locale).
  */
 
 export const queryKeys = {
@@ -22,14 +30,20 @@ export const queryKeys = {
   settings: ['settings'] as const,
   // Groupes/familles (accès mutuel) — gestion end-user
   groups: ['groups'] as const,
-  labDiagnostics: ['lab', 'diagnostics'] as const,
 
   // Par joueur
   player: (playerSlug: string) => ['player', playerSlug] as const,
-  filtersResolve: (playerSlug: string, filterHash: string) =>
-    ['filters-resolve', playerSlug, filterHash] as const,
-  filtersPreview: (playerSlug: string, filterHash: string) =>
-    ['filters-preview', playerSlug, filterHash] as const,
+  // Le titre courant scope la clé (même motif que `home` ci-dessous) : la
+  // résolution de filtres est spécifique au titre (sessions / options cascade du
+  // titre actif). Sans lui, un switch de titre — ou une réponse mise en cache
+  // avant que le header titre soit affirmé au boot (fenêtre de course « titre
+  // implicite ») — servait des options périmées de l'autre titre, la clé ne
+  // changeant pas. Défense en profondeur du chantier D7 (titre dans l'URL) — cf.
+  // §7 PLAN_TITLE_SLUG_URL.
+  filtersResolve: (playerSlug: string, titleSlug: string, filterHash: string) =>
+    ['filters-resolve', playerSlug, titleSlug, filterHash] as const,
+  filtersPreview: (playerSlug: string, titleSlug: string, filterHash: string) =>
+    ['filters-preview', playerSlug, titleSlug, filterHash] as const,
 
   // Carrière (Slice 2)
   career: (playerSlug: string) => ['career', playerSlug] as const,
@@ -160,7 +174,11 @@ export const queryKeys = {
   // Classement (CSR mondial + stats communautaires)
   leaderboard: (playerSlug: string, category?: string, season?: string, playlist?: string) =>
     ['leaderboard', playerSlug, category ?? '', season ?? '', playlist ?? ''] as const,
-  leaderboardCatalog: (playerSlug: string) => ['leaderboard-catalog', playerSlug] as const,
+  // Locale dans la clé : le catalogue bake les display_name (saisons/playlists) localisés
+  // selon X-LevelUp-Locale — cf. commentaire `home` ci-dessus. La clé EST l'invalidation à
+  // la bascule de langue (plus d'invalidation ciblée depuis le layout titre).
+  leaderboardCatalog: (playerSlug: string, locale: string) =>
+    ['leaderboard-catalog', playerSlug, locale] as const,
 
   // Notifications in-app (per-player)
   /** Préfixe broad — invalide/matche toutes les queries notifications d'un joueur. */
@@ -216,10 +234,14 @@ export const queryKeys = {
   adminMonitoringFreshness: ['admin', 'monitoring', 'freshness'] as const,
   adminMonitoringResources: ['admin', 'monitoring', 'resources'] as const,
   adminMonitoringCrons: ['admin', 'monitoring', 'crons'] as const,
+  adminActionJournal: ['admin', 'actions', 'journal'] as const,
   adminWeaponCoverage: (slug: string) => ['admin', 'monitoring', 'weapon-coverage', slug] as const,
   adminLusrGaps: (slug: string) => ['admin', 'monitoring', 'lusr-gaps', slug] as const,
   adminDataQuality: ['admin', 'data-quality', 'counts'] as const,
-  adminDataQualityIssues: (kind: string) => ['admin', 'data-quality', 'issues', kind] as const,
+  // limit/offset dans la clé : la pagination serveur des xuids orphelins met
+  // chaque page en cache distincte (les autres kinds gardent limit=50/offset=0).
+  adminDataQualityIssues: (kind: string, limit = 50, offset = 0) =>
+    ['admin', 'data-quality', 'issues', kind, limit, offset] as const,
   adminLogModules: ['admin', 'logs', 'modules'] as const,
   adminLogTail: (module: string, level: string, contains: string, limit: number) =>
     ['admin', 'logs', 'tail', module, level, contains, limit] as const,
@@ -229,6 +251,9 @@ export const queryKeys = {
   adminTitleDiagnostic: (slug: string) => ['admin', 'titles', slug, 'diagnostic'] as const,
   // Admin — Gestion des utilisateurs (ex-adminKeys, L5)
   adminUsers: ['admin', 'users'] as const,
+  // Admin — Diagnostic apparence Spartan ID (volet 2). MUTATION à la demande
+  // (aucune query auto/refetch au focus) : clé stable pour l'identité/devtools.
+  adminAppearanceDiagMutation: ['admin', 'diag', 'appearance'] as const,
 
   // Prestige / Ascension — registres feature centralisés (L5, CLAUDE.md n°13).
   // Tableaux de clés IDENTIQUES aux ex-registres (prestigeKeys/arcKeys/…) → aucun
@@ -300,7 +325,11 @@ export const queryKeys = {
     filePath: string | null,
     windowMinutes: number,
   ) => ['media', 'match-candidates', playerSlug, filePath, windowMinutes] as const,
-  /** Préfixe broad — invalide tous les `filtersResolve(playerSlug, *)`. */
+  /** Préfixe broad — invalide tous les `filtersResolve(playerSlug, *, *)`.
+   *  RESTE broad PAR JOUEUR (n'inclut PAS le titre) : son unique usage
+   *  (invalidation post-sync, $playerSlug.tsx) doit rafraîchir la résolution du
+   *  joueur, et le préfixe `['filters-resolve', playerSlug]` matche toujours la clé
+   *  enrichie du titre. Décision orchestrateur — cf. §7 PLAN_TITLE_SLUG_URL. */
   filtersResolveAll: (playerSlug: string) => ['filters-resolve', playerSlug] as const,
   /** Préfixe broad — invalide tous les `adminDataQualityIssues(*)`. */
   adminDataQualityIssuesAll: ['admin', 'data-quality', 'issues'] as const,

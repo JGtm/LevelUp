@@ -21,6 +21,7 @@
  * franchit le seuil de proximité, la section ne rend RIEN (pas de carte vide).
  */
 import { useNavigate } from '@tanstack/react-router'
+import { useTitleSlug } from '@/lib/title-routing'
 import { CitationProgressRing } from '@/components/ui/citation-progress-ring'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
@@ -55,6 +56,7 @@ export function HomeCitationsNearCompletion({ playerSlug }: { playerSlug: string
 
 function InfiniteNearCompletion({ playerSlug }: { playerSlug: string }) {
   const navigate = useNavigate()
+  const titleSlug = useTitleSlug()
   const { data, isLoading } = useCitationsPage(
     playerSlug,
     { filters: DEFAULT_FILTER_CONTEXT },
@@ -71,7 +73,7 @@ function InfiniteNearCompletion({ playerSlug }: { playerSlug: string }) {
     <NearCompletionSection
       near={near}
       allDone={allDone}
-      onSeeAll={() => void navigate({ to: '/players/$playerSlug/citations', params: { playerSlug } })}
+      onSeeAll={() => void navigate({ to: '/{-$lang}/t/$titleSlug/players/$playerSlug/citations', params: { titleSlug, playerSlug } })}
     />
   )
 }
@@ -80,6 +82,7 @@ function InfiniteNearCompletion({ playerSlug }: { playerSlug: string }) {
 
 function NativeNearCompletion({ playerSlug }: { playerSlug: string }) {
   const navigate = useNavigate()
+  const titleSlug = useTitleSlug()
   const { data, isLoading } = useCommendationTotals(playerSlug)
   if (isLoading || !data) return null
   const items = normalizeNativeTotals(data).categories.flatMap((c) => c.items)
@@ -90,7 +93,7 @@ function NativeNearCompletion({ playerSlug }: { playerSlug: string }) {
     <NearCompletionSection
       near={near}
       allDone={allDone}
-      onSeeAll={() => void navigate({ to: '/players/$playerSlug/commendations', params: { playerSlug } })}
+      onSeeAll={() => void navigate({ to: '/{-$lang}/t/$titleSlug/players/$playerSlug/commendations', params: { titleSlug, playerSlug } })}
     />
   )
 }

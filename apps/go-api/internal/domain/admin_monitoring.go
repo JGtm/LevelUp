@@ -191,6 +191,15 @@ type ResourceDBFile struct {
 	WalBytes int64 `json:"wal_bytes,omitempty"`
 }
 
+// Statuts d'inventaire des bases (DBInventoryStatus).
+const (
+	// DBInventoryOK : racine data lisible, l'inventaire est fiable.
+	DBInventoryOK = "ok"
+	// DBInventoryUnavailable : racine data introuvable/illisible (RepoRoot mal
+	// résolu, volume non monté, permissions) — inventaire non mesurable.
+	DBInventoryUnavailable = "unavailable"
+)
+
 // AdminResourcesResponse — réponse de GET /admin/monitoring/resources (A5).
 type AdminResourcesResponse struct {
 	GeneratedAt string          `json:"generated_at"`
@@ -204,6 +213,12 @@ type AdminResourcesResponse struct {
 	// + bases globales (aliases, monitoring).
 	Databases    []ResourceDBFile `json:"databases"`
 	DBTotalBytes int64            `json:"db_total_bytes"`
+	// DBInventoryStatus : "ok" (racine data lisible) | "unavailable" (racine
+	// data introuvable/illisible — RepoRoot mal résolu ou volume non monté).
+	// Distingue à l'UI « inventaire indisponible » (environnemental) d'un
+	// « aucune base » — sans lui, une racine erronée produit silencieusement
+	// une table de tailles nulles trompeuse.
+	DBInventoryStatus string `json:"db_inventory_status"`
 	// Budgets / PoolStats : relecture des snapshots expvar existants (J1/J8).
 	Budgets   map[string]interface{} `json:"budgets,omitempty"`
 	PoolStats map[string]interface{} `json:"pool_stats,omitempty"`

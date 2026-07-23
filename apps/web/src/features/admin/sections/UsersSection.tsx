@@ -57,7 +57,6 @@ export function UsersSection({ currentUsername }: { currentUsername: string | nu
   return (
     <Card>
       <CardContent className="pt-6">
-        <h2 className="text-lg font-semibold text-foreground mb-4">{t('common.admin.users_section')}</h2>
         {isLoading ? (
           <p className="text-sm text-muted-foreground">{t('common.admin.loading')}</p>
         ) : !users?.length ? (

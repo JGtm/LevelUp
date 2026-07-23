@@ -140,10 +140,10 @@ describe('AppShellStore', () => {
     expect(s.availableTitles[0].slug).toBe('halo_infinite')
   })
 
-  it('setCurrentTitle change le titre courant', () => {
-    useAppShellStore.getState().setCurrentTitle('halo_mcc')
-    expect(useAppShellStore.getState().currentTitleSlug).toBe('halo_mcc')
-  })
+  // Note (Phase 4a) : le setter trivial setCurrentTitle a été SUPPRIMÉ (aucun caller
+  // de production ; navigate-first D-6). Son assertion « le titre courant change »
+  // est couverte par les happy-paths d'applyActiveTitle (currentTitleSlug converge)
+  // — cf. lib/title-routing/applyActiveTitle.test.ts + appShellStore.applyActiveTitle.test.ts.
 })
 
 describe('buildTitleSwitcherEntries (MT-22 / PMT-8)', () => {

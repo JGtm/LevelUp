@@ -11,13 +11,14 @@
  */
 import { test, expect } from '@playwright/test'
 import { skipIfNoDemoData } from './_helpers/demoData'
+import { playerPath } from './_helpers/routes'
 
 test.describe('Slice 4 — Explorer (DEMO_MODE)', () => {
   test("la page Explorer se charge sans erreur JS", async ({ page }) => {
     const errors: string[] = []
     page.on('pageerror', (err) => errors.push(err.message))
 
-    await page.goto('/players/demo-player/explorer')
+    await page.goto(playerPath('demo-player', 'explorer'))
     await page.waitForLoadState('networkidle')
 
     expect(
@@ -35,7 +36,7 @@ test.describe('Slice 4 — Explorer (DEMO_MODE)', () => {
         resp.status() === 200,
     )
 
-    await page.goto('/players/demo-player/explorer')
+    await page.goto(playerPath('demo-player', 'explorer'))
     const resp = await explorerPromise
     const data = await resp.json()
 
@@ -44,14 +45,14 @@ test.describe('Slice 4 — Explorer (DEMO_MODE)', () => {
 
   test("le titre Explorer est affiché", async ({ page }) => {
     await skipIfNoDemoData()
-    await page.goto('/players/demo-player/explorer')
+    await page.goto(playerPath('demo-player', 'explorer'))
     await page.waitForLoadState('networkidle')
 
     await expect(page.locator('body')).toContainText('Explorer')
   })
 
   test("la page ne contient pas d'erreur fatale", async ({ page }) => {
-    await page.goto('/players/demo-player/explorer')
+    await page.goto(playerPath('demo-player', 'explorer'))
     await page.waitForLoadState('networkidle')
 
     await expect(page.locator('body')).not.toContainText('Erreur critique')

@@ -10,6 +10,7 @@
  */
 import { test, expect } from '@playwright/test'
 import { skipIfNoDemoData, skipObsoleteSpec } from './_helpers/demoData'
+import { playerPath } from './_helpers/routes'
 
 test.describe('Slice 3 — Historique des parties (DEMO_MODE)', () => {
   // La route /players/{slug}/stats/history n'existe plus (routes actuelles :
@@ -23,7 +24,7 @@ test.describe('Slice 3 — Historique des parties (DEMO_MODE)', () => {
     const errors: string[] = []
     page.on('pageerror', (err) => errors.push(err.message))
 
-    await page.goto('/players/demo-player/stats/history')
+    await page.goto(playerPath('demo-player', 'stats/history'))
     await page.waitForLoadState('networkidle')
 
     expect(
@@ -39,7 +40,7 @@ test.describe('Slice 3 — Historique des parties (DEMO_MODE)', () => {
         resp.status() === 200,
     )
 
-    await page.goto('/players/demo-player/stats/history')
+    await page.goto(playerPath('demo-player', 'stats/history'))
     const resp = await historyPromise
     const data = await resp.json()
 
@@ -48,14 +49,14 @@ test.describe('Slice 3 — Historique des parties (DEMO_MODE)', () => {
 
   test("le titre Historique est affiché", async ({ page }) => {
     await skipIfNoDemoData()
-    await page.goto('/players/demo-player/stats/history')
+    await page.goto(playerPath('demo-player', 'stats/history'))
     await page.waitForLoadState('networkidle')
 
     await expect(page.locator('body')).toContainText('Historique')
   })
 
   test("la page ne contient pas d'erreur fatale", async ({ page }) => {
-    await page.goto('/players/demo-player/stats/history')
+    await page.goto(playerPath('demo-player', 'stats/history'))
     await page.waitForLoadState('networkidle')
 
     await expect(page.locator('body')).not.toContainText('Erreur critique')

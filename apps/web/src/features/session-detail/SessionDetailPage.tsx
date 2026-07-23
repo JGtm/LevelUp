@@ -18,6 +18,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearch, useRouter } from '@tanstack/react-router'
+import { useTitleSlug } from '@/lib/title-routing'
 
 import { Button } from '@/components/ui/button'
 import { Tooltip } from '@/components/ui/tooltip'
@@ -76,6 +77,8 @@ export function SessionDetailPage() {
   }, [sessionMatchContext])
 
   const navigate = useNavigate()
+
+  const titleSlug = useTitleSlug()
   const router = useRouter()
   const { data, isLoading, isError, error, isFetching, refetch } = useSessionDetailPage(
     playerSlug,
@@ -147,7 +150,7 @@ export function SessionDetailPage() {
               label: t('session.detail.action_home'),
               variant: 'default',
               onClick: () => {
-                navigate({ to: '/players/$playerSlug/home', params: { playerSlug } }).catch(() => {})
+                navigate({ to: '/{-$lang}/t/$titleSlug/players/$playerSlug/home', params: { titleSlug, playerSlug } }).catch(() => {})
               },
             },
             {
@@ -155,7 +158,7 @@ export function SessionDetailPage() {
               onClick: () => {
                 if (router.history.length > 1) router.history.back()
                 else
-                  navigate({ to: '/players/$playerSlug/explorer', params: { playerSlug } }).catch(
+                  navigate({ to: '/{-$lang}/t/$titleSlug/players/$playerSlug/explorer', params: { titleSlug, playerSlug } }).catch(
                     () => {},
                   )
               },
@@ -163,7 +166,7 @@ export function SessionDetailPage() {
             {
               label: t('session.detail.action_matches'),
               onClick: () => {
-                navigate({ to: '/players/$playerSlug/explorer', params: { playerSlug } }).catch(
+                navigate({ to: '/{-$lang}/t/$titleSlug/players/$playerSlug/explorer', params: { titleSlug, playerSlug } }).catch(
                   () => {},
                 )
               },

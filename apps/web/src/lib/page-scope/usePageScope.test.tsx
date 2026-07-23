@@ -43,7 +43,7 @@ const URL_KEYS = ['q', 'tags'] as const
 
 function useTestScope() {
   return usePageScope<TestApp, TestUrl>({
-    to: '/x',
+    to: '/settings',
     params: {},
     storageKey: STORAGE_KEY,
     encode: (a) => ({ q: a.q || undefined, tags: setToCsv(a.tags) }),

@@ -174,19 +174,48 @@ func refreshEmblemMapping(ctx context.Context, spartanToken, clearanceToken stri
 //
 // Spec exacte (Python `_waypoint_nameplate_png_from_emblem` +
 // `resolve_positive_emblem_cfg`).
+//
+// Wrapper MINCE sur resolveNameplate : il n'en garde que l'URL. Le diagnostic
+// structuré (verdict + detail) est exposé par DiagnoseNameplate
+// (spartan_nameplate_diagnosis.go), qui partage EXACTEMENT la même fonction
+// interne — aucune duplication du fetch mapping/CMS (règle ≤ 2 copies).
 func ResolveNameplateURL(
 	ctx context.Context,
 	emblemPath string,
 	cfg int64,
 	spartanToken, clearanceToken string,
 ) string {
+	url, _, _ := resolveNameplate(ctx, emblemPath, cfg, spartanToken, clearanceToken)
+	return url
+}
+
+// resolveNameplate est le cœur UNIQUE de la résolution nameplate : il rend l'URL
+// (byte-identique à l'ancien ResolveNameplateURL) ET le verdict/detail
+// diagnostique associé. Les deux points d'entrée publics — ResolveNameplateURL
+// (URL seule) et DiagnoseNameplate (diagnostic complet) — s'y appuient sans
+// dupliquer le fetch mapping/CMS.
+//
+// Verdicts émis (les SEULS du resolver) :
+//   - ok                : URL résolue (mapping.json OU cfg positive) ;
+//   - upstream_missing   : mapping miss + CMS 200 sans cfg positive (absence
+//     upstream DURABLE — emblème nouvelle génération sans nameplate publiée) ;
+//   - transient          : échec HTTP/parse indéterminé (retente au refresh).
+//
+// Les logs (Info sur définitif, Warn sur indéterminé) sont EXACTEMENT ceux de
+// l'ancien ResolveNameplateURL : mêmes messages, niveaux, clés, sites d'émission.
+func resolveNameplate(
+	ctx context.Context,
+	emblemPath string,
+	cfg int64,
+	spartanToken, clearanceToken string,
+) (url string, verdict Verdict, detail Detail) {
 	trimmed := strings.TrimSpace(emblemPath)
 	if trimmed == "" {
-		return ""
+		return "", VerdictTransient, DetailNoEmblemPath
 	}
 	stem := extractEmblemStem(trimmed)
 	if stem == "" {
-		return ""
+		return "", VerdictTransient, DetailNonEmblemPath
 	}
 
 	// Pattern OFFICIEL Microsoft (cf. Grunt GameCms_GetEmblemMapping) :
@@ -198,7 +227,7 @@ func ResolveNameplateURL(
 	// et autres).
 	if entry, ok := getEmblemMappingEntry(ctx, stem, cfg, spartanToken, clearanceToken); ok && entry.NameplateCmsPath != "" {
 		return fmt.Sprintf("%s/%s/Waypoint/file/%s",
-			nameplateHostFor(ctx), gamePrefixForCtx(ctx), strings.TrimPrefix(entry.NameplateCmsPath, "/"))
+			nameplateHostFor(ctx), gamePrefixForCtx(ctx), strings.TrimPrefix(entry.NameplateCmsPath, "/")), VerdictOK, DetailMappingHit
 	}
 
 	// Fallback (mapping.json indisponible ou stem absent) : ancien comportement
@@ -219,16 +248,16 @@ func ResolveNameplateURL(
 				slog.InfoContext(ctx, "nameplate_resolver: emblème sans nameplate upstream (mapping.json miss + aucune cfg positive) — la dernière bannière connue sera servie",
 					"emblem_path", trimmed, "stem", stem, "original_cfg", cfg,
 					"xuid", ctxkeys.HaloXUID(ctx))
-			} else {
-				slog.WarnContext(ctx, "nameplate_resolver: résolution nameplate échouée (fetch CMS emblem KO, indéterminé)",
-					"emblem_path", trimmed, "stem", stem, "original_cfg", cfg,
-					"xuid", ctxkeys.HaloXUID(ctx))
+				return "", VerdictUpstreamMissing, DetailNoPositiveCfg
 			}
-			return ""
+			slog.WarnContext(ctx, "nameplate_resolver: résolution nameplate échouée (fetch CMS emblem KO, indéterminé)",
+				"emblem_path", trimmed, "stem", stem, "original_cfg", cfg,
+				"xuid", ctxkeys.HaloXUID(ctx))
+			return "", VerdictTransient, DetailCMSHTTPError
 		}
 	}
 	return fmt.Sprintf("%s/%s/Waypoint/file/images/nameplates/%s_%d.png",
-		nameplateHostFor(ctx), gamePrefixForCtx(ctx), stem, resolvedCfg)
+		nameplateHostFor(ctx), gamePrefixForCtx(ctx), stem, resolvedCfg), VerdictOK, DetailMappingMiss
 }
 
 // extractEmblemStem retourne `104-001-olympus-campa-2ddbe23b` depuis
@@ -294,6 +323,24 @@ func resolvePositiveEmblemCfg(
 	if err != nil {
 		return 0, false
 	}
+	return firstPositiveEmblemCfg(body)
+}
+
+// firstPositiveEmblemCfg parse le corps JSON GameCMS d'un emblème et retourne le
+// premier ConfigurationId > 0 de AvailableConfigurations. Extrait de
+// resolvePositiveEmblemCfg pour offrir un seam testable SANS réseau (l'host
+// GameCMS n'est pas injectable dans le resolver) : les tests cadenassent le
+// verdict upstream_missing sur le JSON CMS RÉEL du cas 3806589 (thought_log
+// 2026-07-08).
+//
+//   - parsed=false       : JSON illisible → échec INDÉTERMINÉ (transitoire) ;
+//   - parsed=true, cfg==0 : CMS 200 lisible SANS aucune cfg positive → absence
+//     upstream DÉFINITIVE (emblème nouvelle génération sans nameplate publiée) ;
+//   - parsed=true, cfg>0  : première cfg positive trouvée.
+//
+// Comportement byte-identique à l'ancienne logique inline (mêmes valeurs de
+// retour pour toutes les entrées).
+func firstPositiveEmblemCfg(body []byte) (cfg int64, parsed bool) {
 	var data map[string]any
 	if err := json.Unmarshal(body, &data); err != nil {
 		return 0, false
@@ -302,15 +349,15 @@ func resolvePositiveEmblemCfg(
 	for _, c := range configs {
 		entry, _ := c.(map[string]any)
 		cfgRaw := entry["ConfigurationId"]
-		var cfg int64
-		switch v := cfgRaw.(type) {
+		var v int64
+		switch t := cfgRaw.(type) {
 		case float64:
-			cfg = int64(v)
+			v = int64(t)
 		case json.Number:
-			cfg, _ = v.Int64()
+			v, _ = t.Int64()
 		}
-		if cfg > 0 {
-			return cfg, true
+		if v > 0 {
+			return v, true
 		}
 	}
 	return 0, true

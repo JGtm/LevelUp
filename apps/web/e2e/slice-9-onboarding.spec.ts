@@ -13,6 +13,7 @@
  * 7. Le flow de navigation settings → home fonctionne sans erreur
  */
 import { test, expect } from '@playwright/test'
+import { playerPath } from './_helpers/routes'
 
 const API_BASE = 'http://localhost:8000/api/v1'
 
@@ -78,7 +79,7 @@ test.describe('Slice 9 — Onboarding flow (DEMO_MODE)', () => {
     await page.waitForLoadState('networkidle')
 
     // Naviguer vers home directement
-    await page.goto('/players/demo-player/home')
+    await page.goto(playerPath('demo-player', 'home'))
     await page.waitForLoadState('networkidle')
 
     // Vérifier qu'on est bien sur la page home sans erreur critique

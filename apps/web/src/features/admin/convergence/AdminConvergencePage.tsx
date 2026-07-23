@@ -5,12 +5,14 @@
  * résout les DBs de tous les joueurs) : staleTime 60 s + refetch au focus.
  */
 import { EmptyStateNotice } from '@/components/ui/empty-state'
-import type { AdminConvergenceReport } from '@/lib/api/types'
+import type { AdminConvergenceReport, SchedulerSnapshot } from '@/lib/api/types'
 import { useMonitoringConvergence, useMonitoringScheduler } from '../monitoring/queries'
 import { AdminKpi } from '../components/AdminKpi'
 import { counterDelta, type CountersSnapshot } from '../countersTrend'
 import { useCounterSnapshot } from '../useCounterSnapshot'
-import { useAdminT, type TAdmin } from '../useAdminText'
+import { useAdminT, useAdminLocale, type TAdmin } from '../useAdminText'
+import { adminRelativeTime, adminAbsoluteTime, type AdminLocale } from '../format'
+import { describeLastCycle, lastCycleLabelKey } from '../actionJournalDisplay'
 import { ConvergencePlayersTable } from './ConvergencePlayersTable'
 import { PostSyncMatrix } from './PostSyncMatrix'
 import { PostSyncTimeline } from './PostSyncTimeline'
@@ -22,6 +24,7 @@ export function AdminConvergencePage() {
   const { data, isLoading, isError } = useMonitoringConvergence()
   const scheduler = useMonitoringScheduler()
   const tA = useAdminT()
+  const locale = useAdminLocale()
 
   // Baseline roulante (hook canonique A8.2) : delta vs run precedent.
   const previous = useCounterSnapshot(CONVERGENCE_SNAPSHOT_KEY, data?.generated_at, () =>
@@ -71,6 +74,7 @@ export function AdminConvergencePage() {
 
       <section className="space-y-3">
         <SectionHeader title={tA('admin.convergence.timeline_section')} />
+        <LastCycleBanner snapshot={scheduler.data?.snapshot} tA={tA} locale={locale} />
         <PostSyncTimeline players={scheduler.data?.snapshot?.players ?? []} />
       </section>
 
@@ -79,6 +83,32 @@ export function AdminConvergencePage() {
         <PostSyncMatrix players={scheduler.data?.snapshot?.players ?? []} />
       </section>
     </div>
+  )
+}
+
+/**
+ * LastCycleBanner — horodatage du dernier cycle post-sync, réhydraté au boot
+ * (C1). Distingue trois états : aucune donnée connue (jamais de cycle), cycle en
+ * direct (SinceBoot), et cycle précédent daté (snapshot réhydraté d'avant le
+ * redémarrage). last_cycle_at à zéro (temps Go) sérialise en « 0001-… ».
+ */
+function LastCycleBanner({
+  snapshot,
+  tA,
+  locale,
+}: {
+  snapshot: SchedulerSnapshot | undefined
+  tA: TAdmin
+  locale: AdminLocale
+}) {
+  const display = describeLastCycle(snapshot)
+  if (display.kind === 'none') {
+    return <p className="text-xs text-muted-foreground/70">{tA('admin.convergence.no_cycle_ever')}</p>
+  }
+  return (
+    <p className="text-xs text-muted-foreground" title={adminAbsoluteTime(display.at, locale)}>
+      {tA(lastCycleLabelKey(display.kind))} : {adminRelativeTime(display.at, locale)}
+    </p>
   )
 }
 

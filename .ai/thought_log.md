@@ -1,3 +1,36 @@
+## [2026-07-23] Merge feat/admin-retours-diag → main (1re des 2 branches non mergées)
+
+**Statut** : Complété (merge résolu + testé ; push prod en attente du feu vert utilisateur).
+
+**Contexte** : `main` local était 64 commits derrière `origin/main` (fast-forward appliqué
+d'abord). Deux branches restaient non mergées vs `origin/main` : `feat/admin-retours-diag`
+(+18) et `feat/title-slug-in-url` (+12), toutes deux ~54 commits derrière → merge non trivial.
+Stratégie retenue avec l'utilisateur : une branche à la fois, tests avant chaque push.
+
+**Conflits résolus (8)** :
+- `thought_log.md` : union des deux entrées [2026-07-23].
+- `cmd/server/main.go` (2 blocs) : gardé `ReconcileWeaponRegistry(db, slug)` (origin/main,
+  surensemble strict de `ApplyWeaponRegistry` + télémétrie) ; la branche portait l'ancien
+  appel pré-upgrade. `ApplyWeaponRegistry` reste utilisé par `halo_5/metadata.go`.
+- Modify/delete `lab/` : honoré la suppression du lab diagnostics (branche + guard
+  `lab-removal.guard.test.ts`) → `git rm` DiagnosticsPanel + _labShared, **et** _labFormatters
+  (orphelin origin/main : seuls consommateurs supprimés + importait `./i18n` supprimé).
+  Conservé `ChartsShowcasePage` + `routes/lab/charts.tsx` (autonome).
+- `BackupTab.tsx` : commentaire recomposé (montage AdminBackupSection + réalité « plus de
+  planificateur ») ; corps = redesign admin de la branche conservé. L'auto-merge avait perdu
+  4 clés i18n `backupConfig*` (Title/Interval/Retention/RetentionValue) → **restaurées**
+  (type + FR + EN) depuis la branche pour rétablir le bloc config.
+- `ResourcesSection.tsx` / `MediaViewer.tsx` : imports sur-inclus retirés (tsc TS6133).
+
+**Résultats** : `tsc -b` OK ; vitest 2700 passés / 14 skipped (dont guard lab) ;
+`go build ./...` + `go vet ./...` OK ; tests Go des packages touchés (api, handlers, wire,
+domain, cmd/server, migrations, ops) PASS.
+
+**Prochaine étape** : push `main` (= deploy prod) après validation utilisateur, puis merge de
+`feat/title-slug-in-url` (2e branche) selon le même protocole.
+
+---
+
 ## [2026-07-23] Revue UX du plan revue analytique Timeseries & Escouade — élagage des ajouts
 
 **Statut** : Complété (révision du plan uniquement — exécution non commencée).
@@ -676,6 +709,428 @@ propre sur les 4 fichiers. Aucune nouvelle couleur/hex ni string i18n → règle
 **Prochaine étape** : revue visuelle utilisateur, puis push (deploy prod) sur son feu vert.
 
 ---
+## [2026-07-23] Admin retours + diag apparence — Lot A clos (branche feat/admin-retours-diag)
+
+**Statut** : En cours (Lot A/I clos), plan `.ai/PLAN_DIAG_APPARENCE_ADMIN_2026-07.md`
+sous contrat `plan-execution`. Orchestration : Fable pilote + vérifie, agents Opus
+implémentent, worktree dédié `LevelUp-wt-admin-retours`.
+
+**Décisions** : branche créée depuis `feat/title-slug-in-url` @ `7a79c7961` (D7 livré non
+mergé — demande utilisateur, consignée au plan). A1 variante : le titre unique
+« Invariants » reste porté par `AdminDataPage` (ajouter un SectionHeader enfant aurait
+recréé le doublon signalé). A3 réalisé dans `BackupTab.tsx` (siège réel des deux cartes,
+consommateur unique `AdminBackupSection` vérifié). A4 : prop `tone: success` minimale et
+rétrocompatible sur `EmptyStateNotice` (token sémantique via `tokenCssVar`, pas de hex).
+
+**Résultats/gate** (re-exécutés par l'orchestrateur) : tsc -b 0 ; eslint 0 erreur ;
+vitest 297 fichiers / 2620 passés / 0 échec ; matrice navigateur Playwright (vite
+worktree :5174, API réelle, bootstrap intercepté) : onglet Gestion dans le flux, 0 h2
+en carte, un seul titre par section, 4 états vides succès, 0 erreur console.
+
+**Découvertes consignées au plan (non traitées)** : 3 clés i18n orphelines (→ Lot B),
+`confirm()` natif dans UsersSection (→ trancher au B), C5 à re-qualifier (la table
+tailles DBs/WAL affiche en local), capabilities H5 déjà listées dans TitleDetailCards
+(B6 à vérifier sur pièces).
+
+**Prochaine étape** : Lot B (libellés, flows, clarté — détections dialog in-app, Tas Go,
+Restic, capabilities, XUIDs wording).
+
+## [2026-07-23] Admin retours — Lot B clos (branche feat/admin-retours-diag)
+
+**Statut** : Complété (Lot B/I), agent Opus + revue/gates/navigateur orchestrateur.
+
+**Décisions techniques** : note des détections via extension du composant canonique
+`AlertDialog` (slot `children` + `autoFocusConfirm=false`, rétrocompatible) — pas de 2e
+shell modal (règle ≤ 2 copies) ; sémantique W4 conservée (annuler = zéro mutation, note
+vide = mutation sans note). B3/B6 rendus FRONT SEUL : les DTOs exposaient déjà
+enabled/available et declared_capabilities — zéro Go touché. B6 : cause racine du
+retour #23 = environnement runtime + carte de détail mono-titre sur sélection (défaut
+H5) ; correctif de robustesse = capabilities du registre (TitleDescriptor) toujours
+rendues. Diagnostic titres : verdicts via StatusBadge (ok/warning si optionnel
+absent/error). CTA backup avec gestes réels vérifiés (BACKUP_ENABLED, RESTIC_REPOSITORY,
+docs/BACKUP_RESTORE.md).
+
+**Résultats/gate** (re-exécutés) : regen i18n idempotente ; tsc 0 ; eslint 0 erreur
+(baseline 67 warnings tenue) ; vitest 2620 passés ; window.prompt = 0 ; matrice
+navigateur complète (dialog annulation sans PATCH — intercepté par sécurité, 3 états
+backup dont stub !enabled, carte Infinite 15 capabilities, wording XUIDs) verte.
+
+**Découvertes consignées au plan** : weapon-coverage ignore l'en-tête titre (→ C6),
+diagnostic environnemental B6 à confirmer en prod (log mappings_loaded).
+
+**Prochaine étape** : Lot C (post-sync persisté JSON, journal des actions, XUIDs vus/
+pagination, logs « charger plus », tailles DBs, couverture arme H5, exemples DQ).
+
+## [2026-07-23] Admin retours — Sous-lot C-I clos (branche feat/admin-retours-diag)
+
+**Statut** : Complété (C1+C2, Lot C découpé en C-I/C-II/C-III). Agent Opus (relancé une
+fois par SendMessage pour finaliser son gate — protocole agents muets), revue + gates +
+navigateur orchestrateur.
+
+**Décisions techniques** : persistance JSON hors DuckDB dans le nouveau package leaf
+`internal/platform/adminstate` (FileStore atomique temp+fsync+rename, mutex, lecture
+tolérante premier-boot/corruption) ; chemins par `PathResolver`
+(`data/global/admin_state/`) ; scheduler persiste en fin de `storeCycleResult` et
+réhydrate au boot (`since_boot` distingue cycle vif / snapshot d'avant reboot) ;
+journal des actions écrit en couche service par defer nommé APRÈS les gardes
+busy/dry-run (exécutions réelles uniquement, trigger tick/manual) ; endpoint
+`GET /admin/actions/journal` + `<ActionLastRun>` sous chaque bouton.
+
+**Résultats/gate** (re-exécutés) : go test ./... exit 0, go vet 0, tsc 0, eslint 0
+erreur, vitest 2629 passés (+9), matrice navigateur 7/7 (3 états C1, journal
+rempli/vide C2). E2e réel de la réhydratation reporté au Lot H (couvert unitairement).
+
+**Prochaine étape** : C-II (C3 XUIDs vus/pagination, C4 logs charger plus, C5 tailles
+DBs re-qualifié), puis C-III (C6 armes H5, C7 locale/exemples).
+
+## [2026-07-23] Admin retours — Sous-lot C-II clos (branche feat/admin-retours-diag)
+
+**Statut** : Complété (C3+C4+C5). Agent Opus + revue/gates/navigateur orchestrateur.
+
+**Décisions techniques** : C3 last-seen par jointure registry avec le fragment
+timestamp canonique (règle n°8) et pagination serveur limit/offset/total (fenêtrage
+mémoire sur listes bornées, déjà intégralement scannées par les compteurs) + pied
+TanStack manualPagination. C4 : curseur arrière en offset octet absolu exclusif —
+seule approche qui franchit le budget 8 Mio (chaque page rebudgette depuis son
+curseur) ; useInfiniteQuery avec garde anti-boucle. C5 : verdict = la liste n'est
+JAMAIS vide par construction ; le symptôme prod est un RepoRoot mal résolu + os.Stat
+avalé → durcissement db_inventory_status/logs/EmptyState explicite (à confirmer en
+prod : LEVELUP_REPO_ROOT).
+
+**Résultats/gate** (re-exécutés) : go test ops/api/domain 0, vet 0, tsc 0, eslint 0
+erreur (+1 warning React Compiler inhérent à useReactTable — accepté, documenté),
+vitest 2632, matrice navigateur 9/9. 
+
+**Prochaine étape** : C-III (C6 identification des 7 armes H5 non résolues dont la
+dominante 2457457776 à 2353 frags, C7 locale param + exemples de matchs cliquables).
+
+## [2026-07-23] Admin retours — Sous-lot C-III clos, LOT C ENTIER CLOS (branche feat/admin-retours-diag)
+
+**Statut** : Complété (C6+C7 — Lot C : 7/7 items [x] sur 3 sous-lots). Agent Opus +
+extension décidée par l'orchestrateur + revue/gates/navigateur orchestrateur.
+
+**Décision technique majeure (C6)** : les 7 armes H5 non résolues étaient déjà mappées
+en source (`h5_other_ugc`) mais inertes — la migration `h5_add_weapon_registry` est
+one-shot et aucun chemin ne re-propage le seed. Correctif pérenne (branche 1 du plan,
+requalifiée grâce à la découverte de l'agent) : `ApplyWeaponRegistry` (INSERT OR
+IGNORE, PK-only, hors surface ART) rejoué au boot sur la metadata de CHAQUE titre
+(défaut + additionnels via `provisionAdditionalTitle`, garde par kind de target).
+Convergence + no-op stable prouvés par test. Effet visible au prochain boot serveur.
+
+**C7** : locale paramétrée (`?locale=`, défaut fr) avec écho DTO et libellé honnête ;
+3 exemples de matchs cliquables par ligne DQ, hrefs D7 via `playerScopedHref`
+(titre = écho serveur, joueur = session, fallback texte).
+
+**Résultats/gate** (re-exécutés) : go test ops/api/games/migration 0, vet 0, build 0 ;
+tsc 0 ; eslint 0 erreur ; vitest 2636 ; matrice navigateur 8/8 (note en données
+réelles, locale émise vérifiée par écoute réseau, liens player-scopés corrects).
+
+**Prochaine étape** : Lot D (purge parité/lab — suppression du panneau Diagnostics
+d'instance, décision D2 guards médailles, D3 suppression totale probable, D4
+migrate-media-paths).
+
+## [2026-07-23] Admin retours — Lot D clos, VOLET 1 COMPLET (branche feat/admin-retours-diag)
+
+**Statut** : Complété. Les 4 lots du volet 1 (A/B/C/D) sont clos — les 24 retours
+Notion sont couverts (traçabilité à statuer formellement au Lot I).
+
+**Décisions** : D2 tranché SUPPRESSION sur double preuve (API live `entry_count=0` +
+guards déjà hébergés à leur vrai site `cmd/refresh-metadata`) ; garde-fou Go
+`lab_routes_mounted_test.go` retiré CONSCIEMMENT (assertait le contraire de l'état
+cible), valeur anti-résurrection migrée et renforcée dans le garde front
+`lab-removal.guard.test.ts` ; `/lab/charts` conservé (feature distincte). D4 :
+`migrate-media-paths` documenté EN+FR (déjà exécuté en prod, valeur défensive).
+
+**Résultats/gate** (re-exécutés) : go test api/platform/service 0, vet 0, build 0 ;
+tsc 0 ; eslint 0 erreur (62 warnings, −5 vs baseline) ; vitest 2636 ; greps
+parity/parity_check/lab propres ; navigateur OK. −1434 lignes nettes.
+
+**Découvertes consignées au plan** : `can_manage_instance` n'est plus appliqué que
+côté UI (la route lab était sa seule application serveur) — à trancher hors chantier.
+
+**Prochaine étape** : VOLET 2 — Lot E (extraction diagnostique du resolver nameplate
+haloclient, byte-identique, + DiagnoseNameplate + tests fixtures 3806589).
+
+## [2026-07-23] Admin retours — Lot E clos (branche feat/admin-retours-diag)
+
+**Statut** : Complété. Agent Opus + revue/gate orchestrateur.
+
+**Décisions techniques** : cœur unique `resolveNameplate → (url, verdict, detail)` ;
+`ResolveNameplateURL` wrapper mince (signature et sémantique intactes) ;
+`DiagnoseNameplate`/`DiagnoseCustomizationImage`/`DiagnoseServiceTag` dans un fichier
+voisin du même package. Enum `Verdict` fermé 5 valeurs (resolver n'émet que
+ok/upstream_missing/transient). Byte-identique PROUVÉ : diff des tests existants =
+néant, 8 TestResolveNameplateURL_* inchangés verts. Fixture 3806589 (une cfg négative
+−1766636888, zéro positive) cadenasse upstream_missing ; pendant transient (CMS 500).
+
+**Résultats/gate** (re-exécutés) : haloclient ok (+11 tests), vet 0, archlint ok
+(garde no-halowaypoint-literal a même attrapé un commentaire de l'agent — reformulé),
+build 0.
+
+**Prochaine étape** : Lot F (service appearance_diag + endpoint Huma
+GET /admin/diag/appearance/{player_slug} — PIÈGE xuid du PROFIL, jamais HaloXUID(ctx)).
+
+## [2026-07-23] Admin retours — Lot F clos (branche feat/admin-retours-diag)
+
+**Statut** : Complété. Agent Opus + revue/gate orchestrateur.
+
+**Décisions techniques** : `AppearanceDiagService` à dépendances injectées (testable
+sans réseau/DB) ; xuid du PROFIL exclusivement (vérifié : ctxkeys importé pour
+WithTitleSlug seul) ; budget 8 s ; défaillances live = verdicts par composant, jamais
+500. H5 : capability spartan_customizer → 4 composants not_supported, valeurs servies
+seules. Enablers consignés : FetchAppearanceInputs (extraction byte-identique du
+fetch customization, GetSpartanCustomization jetait les entrées brutes),
+LoadLastFetchStatus (premier lecteur de career_progression.last_fetch_status).
+Découverte process : le drift-test openapi impose les noms de schéma auto-dérivés
+Huma — workflow OPENAPI_EMIT_OUT suivi.
+
+**Résultats/gate** (re-exécutés) : go test service/api/haloclient 0 (+9 tests), vet 0,
+build 0, tsc front 0, ratchet no_slug_comparison vert.
+
+**Prochaine étape** : Lot G (panneau front onglet Données : sélecteur joueur suivi +
+bouton Diagnostiquer, vignettes + badges verdict + explications dépliables, i18n,
+query key, tests vitest 5 verdicts).
+
+## [2026-07-23] Admin retours — Lot G clos (branche feat/admin-retours-diag)
+
+**Statut** : Complété. Agent Opus (relancé 1× après stall watchdog — protocole
+SendMessage) + revue/gates/navigateur orchestrateur.
+
+**Décisions techniques** : logique pure séparée (`appearanceDiagDisplay.ts` + garde-fou
+d'existence des clés i18n retournées) ; mutation au clic seul ; StatusBadge réutilisé
+avec upstream_missing/not_supported en NEUTRE (la grammaire info+pulse était inadaptée
+à un verdict figé ; jamais un faux « cassé ») ; CTA réauth = entrée SSO existante
+plein-page ; « Indicatif de service »/« Arrière-plan » adoptés (aucun libellé
+préexistant). i18n +59 clés FR/EN.
+
+**Résultats/gate** (re-exécutés) : regen 2665 clés, tsc 0, eslint 0 erreur, vitest
+2652 (+16) ; matrice navigateur 11/11 + revue visuelle capture (badges sémantiques
+corrects, POURQUOI/QUOI FAIRE lisibles, cohérence admin).
+
+**Prochaine étape** : Lot H — vérification fonctionnelle RÉELLE : bascule des serveurs
+sur le code du worktree (arrêt air :8000, serveur worktree LEVELUP_REPO_ROOT → données
+réelles), diagnostic JGtm (attendu upstream_missing ou ok si Microsoft a publié),
+un joueur sain (ok), un profil sans tokens (auth_required) ; vérifier aussi C6 boot
+(couverture H5 0 non résolu) et C1 (réhydratation post-reboot) ; puis restauration
+de l'environnement dev.
+
+## [2026-07-23] Admin retours — Lot H clos : vérification réelle du volet 2 (branche feat/admin-retours-diag)
+
+**Statut** : Complété (orchestrateur seul — bascule de serveurs).
+
+**Protocole** : build `server-wt.exe` depuis le worktree, arrêt du serveur dev :8000,
+lancement worktree avec `LEVELUP_REPO_ROOT` → checkout principal (données/config/env
+réels, mono-process respecté), vérifications, puis RESTAURATION du serveur d'origine
+(vérifié up). 
+
+**Constats (détail au plan, Gate H)** : JGtm = 4×ok bannière `mapping_hit` (Microsoft
+a publié la nameplate 3806589 — scénario anticipé, fixture E4 = preuve pérenne du
+upstream_missing) en 2,0 s UI ; Chocoboflor (RT mort AADSTS70000) = 4×auth_required +
+valeurs servies (carry) + CTA SSO, zéro 500 ; halo_5 = 4×not_supported ; slug inconnu
+= 404. Bonus au même boot : couverture armes H5 = 100 % (reconcile C6 réel, 0 non
+résolu contre 7), journal 200, « Aucun cycle enregistré » (C1). Navigateur réel 8/8.
+
+**Prochaine étape** : Lot I (delivery-checklist, statuts finaux + annexe traçabilité,
+CI de branche, message final utilisateur).
+
+## [2026-07-23] CLÔTURE chantier admin retours + diagnostic apparence (branche feat/admin-retours-diag)
+
+**Statut** : Complété — plan `.ai/PLAN_DIAG_APPARENCE_ADMIN_2026-07.md` passé LIVRÉ.
+Volet 1 (24 retours Notion, lots A-D) + volet 2 (diagnostic apparence Spartan ID,
+lots E-H) + clôture I. 10 commits sur worktree dédié `LevelUp-wt-admin-retours`,
+branche NON poussée (I3 [!] : base D7 non poussée — décision d'intégration
+utilisateur). Archivage `.ai/v7.1/` différé à l'après-merge (I5).
+
+**Livré** : structure UI admin canonique (titres hors cartes, Gestion dans le flux,
+états vides succès) ; flows clarifiés (dialog note in-app, sauvegarde 3 états, aide
+titres réelle) ; anti-amnésie (adminstate JSON atomique : post-sync réhydraté +
+journal des actions) ; listes durcies (last-seen + pagination xuids, logs charger
+plus, inventaire DBs explicite) ; armes H5 100 % (reconcile registre au boot) ;
+purge totale parité/lab (−1434 L) ; et le diagnostic apparence de bout en bout
+(resolver byte-identique → service verdicts → endpoint admin → panneau UI), vérifié
+sur données réelles : JGtm 4×ok en 2,0 s (Microsoft a publié la nameplate 3806589 —
+fixture E4 = preuve pérenne du upstream_missing), Chocoboflor 4×auth_required + CTA
+SSO, H5 4×not_supported, 404 propre.
+
+**Gates de clôture (delivery-checklist)** : go test -tags=integration -p 1 ./...
+COMPLET exit 0 ; go vet 0 ; gofmt purgé ; tsc -b/eslint/vitest 2652 verts (Lot G,
+aucun diff front depuis) ; 0 TODO ; joins data uniquement dans PathResolver.
+
+**Leçon d'orchestration** (Fable pilote + 8 lots Opus + 3 relances SendMessage) :
+les découvertes d'agent requalifient les décisions — 2 exemples : la découverte
+« migration one-shot inerte » a transformé C6 de « résidu documenté » en vrai
+correctif pérenne (reconcile au boot, 100 % vérifié en réel) ; la preuve API D2 a
+évité un re-hébergement inutile. Vérification sur pièces + navigateur + données
+réelles à chaque lot = le filet qui tient.
+
+**Prochaine étape** : décisions utilisateur — push de la branche (publie aussi la
+base D7) puis CI, revue, merge → main (= DEPLOY PROD AUTO ; au premier boot prod :
+vérifier couverture H5 100 %, LEVELUP_REPO_ROOT/inventaire DBs, capabilities
+Infinite). Après merge : I5 (archivage plan + MAJ project_map).
+
+## [2026-07-22] D7 titre dans l'URL — Phase 0 close (branche feat/title-slug-in-url)
+
+**Statut** : En cours (Phase 0/6 close), plan `.ai/PLAN_TITLE_SLUG_URL_2026-07.md` sous
+contrat `plan-execution`. Orchestration : Fable pilote + vérifie, agents Opus implémentent.
+
+**Décisions** : branche créée depuis `refactor/ascension-ux-2026-07` (= origin/main
+intégral + fixes Ascension — déviation du plan demandée par l'utilisateur, consignée au
+plan). Sanity-check `{-$lang}` file-based : SUPPORT OK (routeTree généré, tsc -b = 0 avec
+et sans `lang`), repli D-4 non nécessaire. Forme canonique des `to` typés :
+`'/{-$lang}/t/$titleSlug/…'` — la forme courte `'/t/$titleSlug'` est refusée par tsc.
+
+**Résultats** : baselines consignées au journal du plan (192 occ typées / 70 fichiers,
+131 strings `/players/` échappées, 26 fichiers e2e). Zéro diff de code à la clôture.
+
+**Prochaine étape** : Phase 1 (module `title-routing` TDD + câblage synchrone +
+header title-agnostic) déléguée à Opus, vérification par l'orchestrateur.
+
+## [2026-07-22] D7 Phase 1 close — module title-routing TDD (branche feat/title-slug-in-url)
+
+**Statut** : Complété (Phase 1/6), agent Opus + revue/gates orchestrateur.
+
+**Décisions techniques** : module `lib/title-routing/` (D-10) : 4 fonctions pures testées
+TDD (parse, gate, legacy redirect, init boot) + `applyActiveTitle` extraite de
+`switchTitle` (THROW sans rollback — le chemin d'erreur appartient à l'appelant, D-6) ;
+`switchTitle` = wrapper rollback store-only (bouton ISO, tests PR #59 inchangés).
+Câblage synchrone au boot dans `main.tsx` (D-9). Constat sur pièces : la suppression du
+cas spécial `halo_infinite` du header était DÉJÀ livrée par `df7f13775` → item 1d réduit
+aux commentaires (statut [~]). Clés `filtersResolve`/`filtersPreview` enrichies du titre
+(Découverte §7 du plan, défense en profondeur) ; audit des autres clés player-scoped :
+aucune fuite résiduelle, durcissement optionnel loaders/polls → lot final. Garde-rail
+ratchet `/t/` armé (allowlist = module seul) ; règle `/players/` s'armera en Phase 2e.
+
+**Résultats/gate** (re-exécutés par l'orchestrateur) : vitest 2573 passés / 0 échec ;
+tsc -b = 0 ; eslint touchés = 0 ; smoke Playwright : app inchangée, header
+`X-LevelUp-Title: halo_infinite` sur toutes les requêtes API JSON (preuve D-9), aucune
+erreur console. Remaps legacy contre-vérifiés contre les 6 redirects de routes existants.
+
+**Prochaine étape** : Phase 2 (déplacement structurel ~50 routes + littéraux + layout
+titre) — brief Opus avec précision « l'Outlet ne rend pas pendant wait/divergence ».
+
+## [2026-07-23] D7 Phase 2 close — structure /t/{slug} + layout titre (branche feat/title-slug-in-url)
+
+**Statut** : Complété (Phase 2/6), 3 lots Opus (2-A structure, 2-B surfaces échappées,
+2-C backtick emitters découverts en 2-B), revue sur pièces + gates re-exécutés par
+l'orchestrateur à chaque lot.
+
+**Décisions techniques principales** : 36 routes déplacées (renames git) sous
+`routes/{-$lang}/t/$titleSlug/players/**` ; layout titre = projection PURE de
+`resolveTitleGate` + `applyActiveTitle` sur divergence, et RÈGLE ABSOLUE : Outlet
+jamais rendu en wait/divergence/bascule (constat : `__root` rend l'Outlet nu quand
+`!isBootstrapped` — le layout titre est le seul rempart de la fenêtre pré-hydratation).
+Verdict TanStack : `titleSlug` requis dans `params` hors from/beforeLoad/useParams →
+helper unique `useTitleSlug()` ; héritage du segment `lang` par les Links PROUVÉ par
+test (vrai routeur). Nav L1/L2 typée `RouteTo = FileRouteTypes['to']` (mismatch
+`profile/citations`→`career/citations` corrigé mécaniquement) ; matchers de pathname
+centralisés (`playerRelativePath`/`routeTemplateSuffix`) ; `buildPlayerDestination`
+supprimé → `resolvePlayerSwitch` + `navigate({to:'.'})`. Filet joueur fresh-load
+déclaratif `resolvePlayerFallback` (trou n°1 revue v2 fermé). Ratchet `/players/`
+armé (0 offender) + étendu aux backticks `to:`/`href:`. `playerScopedHref` pour les
+hrefs pleine page. Écran gate i18n FR+EN (10 clés `common.title_gate.*`).
+
+**Résultats/gate** (re-exécutés) : tsc 0 ; vitest 295 fichiers / 2605 passés / 0 échec ;
+eslint 0 erreur ; smoke navigateur 2 titres : Infinite headers uniformes ; H5 fresh-load
+avec session Infinite → convergence D-6 (URL stable, ?f= halo_5, contenu H5) ;
+/t/inconnu → gate « Titre introuvable » sans fuite. Legacy /players/ = 404 (attendu,
+splat Phase 3).
+
+**Prochaine étape** : Phase 3 splat legacy déclaratif + vérif matrice navigateur.
+
+## [2026-07-23] D7 Phase 3 close — splat legacy + bug de course attrapé (branche feat/title-slug-in-url)
+
+**Statut** : Complété (Phase 3/6). Agent Opus (splat + fix), orchestrateur (diagnostic
+du bug + matrice navigateur).
+
+**Décision technique principale** : splat `routes/players/$.tsx` déclaratif — décision
+PURE `buildLegacyRedirect` (testée Phase 1) projetée par `router.history.replace(href)`
+(href complet, round-trip searchStr vérifié byte-identique). LEÇON DE REVUE : la
+première livraison passait tous les tests unitaires mais la vérification NAVIGATEUR a
+révélé une course post-replace (le splat re-rend sur la location transitoire `/t/…` →
+la branche « hors matrice → index » écrasait la redirection, perte de suffixe/?f=/hash).
+Fix : garde `isLegacyPath` sur les deux branches + test de non-régression rouge→vert.
+3b [~] : les redirects internes étaient déjà re-pointés par le retypage tsc de 2b.
+
+**Résultats/gate** : tsc 0 ; vitest 296 fichiers / 2609 passés / 0 échec ; matrice
+navigateur (serveur relancé proprement) : legacy home direct, `?f=`+hash préservés
+byte-identiques, objectifs→ascension/objectifs 1 hop, palmares→community, /players
+nu→index, et session H5 + bookmark legacy → `/t/halo_5/…` (trou n°1 fermé, vérifié).
+
+**Prochaine étape** : Phase 4 (TitleSwitcher navigate-first, chemin d'erreur D-6
+complet, courses back/forward, commentaire coexistence ?f=).
+
+## [2026-07-23] D7 Phase 4 close — navigate-first + convergence durcie (branche feat/title-slug-in-url)
+
+**Statut** : Complété (Phase 4/6). Agent Opus, revue + smoke UI orchestrateur.
+
+**Décisions techniques principales** : TitleSwitcher NAVIGATE-FIRST (le layout titre
+exécute la bascule sur divergence — inversion de contrôle finale) ; cas sans joueur =
+`applyActiveTitle` direct + navigate `/` (documenté). `switchTitle` et `setCurrentTitle`
+SUPPRIMÉS (0 caller) ; assertions de séquence PR #59 migrées telles quelles vers
+`appShellStore.applyActiveTitle.test.ts` ; `createFilterStore.test.ts` intact. Chemin
+d'erreur D-6 : toast + navigate replace vers le titre courant (avec joueur) / écran
+retry (sans joueur) — `applyFailed` jamais posé sur le chemin avec joueur car le layout
+reste monté entre segments (constat vérifié). Le test de course 4c a RÉVÉLÉ une
+fragilité réelle du layout Phase 2 : `applyingRef` relâché en `.finally` APRÈS le
+re-render synchrone Zustand → convergence calée ; fix = relâchement en tête d'effet
+sur état live, dédup StrictMode préservée. `refetchOnWindowFocus` pendant bascule :
+absorbé par la re-comparaison (test dédié).
+
+**Résultats/gate** (re-exécutés) : tsc 0 ; vitest 296 fichiers / 2613 passés / 0 échec ;
+eslint 0 ; smoke navigateur par CLICS réels : Infinite→H5→Infinite, segment et `?f=`
+ré-estampillés à chaque bascule, aucune erreur console.
+
+**Prochaine étape** : Phase 5 (locale par segment, D-12 périmètre minimal).
+
+## [2026-07-23] D7 Phase 5 close — locale par segment (branche feat/title-slug-in-url)
+
+**Statut** : Complété (Phase 5/6). Agent Opus, smoke navigateur orchestrateur.
+
+**Décisions** : réconciliation locale←segment = effet séparé du layout titre (gardé
+isKnownLocale, no-op strict sans segment). Audit d'invalidation : les clés localisées
+portent locale (la clé EST l'invalidation, zéro clear global) — seule exception
+`leaderboardCatalog` (invalidation ciblée transitoire ; lot final : locale dans la clé
+et retrait de l'exception du layout). Sélecteur de langue : réalignement défensif du
+segment (chemin théorique aujourd'hui, settings agnostique — documenté).
+
+**Résultats/gate** : tsc 0 ; vitest 297 fichiers / 2620 passés / 0 échec ; navigateur :
+/en force EN (UI + header uniforme dès le 1er fetch), héritage segment en nav interne
+confirmé, retour sans segment = session FR (le segment force sans committer la session).
+
+**Prochaine étape** : Phase 6 (migration specs e2e + spec legacy-redirect + vérif
+navigateur complète + delivery-checklist), puis lot final Découvertes.
+
+## [2026-07-23] CLÔTURE chantier D7 — titre (et langue) dans l'URL (branche feat/title-slug-in-url)
+
+**Statut** : Complété — 13/13 critères de succès du plan vérifiés, delivery-checklist
+déroulée. Plan `.ai/PLAN_TITLE_SLUG_URL_2026-07.md` passé au statut LIVRÉ (journal §10
+détaillé). Branche NON pushée (décision d'intégration utilisateur ; CI non exercée).
+
+**Architecture livrée** : l'URL est la source de vérité du titre —
+`/{-lang}/t/{titleSlug}/players/{playerSlug}/…`. Module unique `lib/title-routing/`
+(parse/gate/redirect purs testés TDD + applyActiveTitle effectful + helpers de chemin),
+layout titre déclaratif (projection resolveTitleGate, Outlet jamais rendu en
+wait/divergence — ferme la fenêtre pré-hydratation de __root), splat legacy avec
+préservation byte-identique, TitleSwitcher navigate-first, locale par segment optionnel,
+type Locale central, garde-rails ratchet (`/t/`, `/players/`, backtick nav). 8 commits :
+b38cc30d5 (P0), 67c369056 (P1), 277eb453f (P2), 7deff0e11 (P3), 110fd245d (P4),
+705a31806 (P5), + commit final P6+lot Découvertes.
+
+**Résultats** : tsc -b --force = 0 ; vitest 297 fichiers / 2620 passés / 0 échec ;
+eslint 0 erreur (baseline −1) ; e2e 44 passés / 58 skip env / 1 échec pré-existant
+environnemental (slice-9, spec DEMO_MODE) ; matrices navigateur 2 titres + legacy +
+langue consignées au plan.
+
+**Leçon d'orchestration** (Fable pilote + 7 lots Opus) : les gates unitaires des agents
+étaient TOUS verts, et la revue orchestrateur a quand même attrapé 2 bugs réels — la
+course post-replace du splat (vue en NAVIGATEUR seulement) et la convergence calée du
+layout (vue par le test de course exigé en 4c). Vérification sur pièces + navigateur à
+chaque étape = non négociable.
+
+**Prochaine étape** : revue utilisateur de la branche, puis merge → main (= déploiement
+prod automatique : à déclencher par l'utilisateur). Différés signalés : target_route
+backend legacy (Go), outillage e2e (tsconfig/eslint), alias locale feature-local.
+
 ## [2026-07-22] Mini-lot « G » G1/G2 (branche refactor/ascension-ux-2026-07)
 
 **Statut** : Complété (G1, G2), sous contrat `plan-execution` (ordre strict G1 puis G2,

@@ -76,11 +76,13 @@ func (r *ServiceRegistry) dataQualityHandles(ctx context.Context, titleSlug stri
 	return sharedSQL, metaSQL, closeAll, nil
 }
 
-// DataQualityCounts calcule les compteurs d'inconnus (lectures seules).
-func (r *ServiceRegistry) DataQualityCounts(ctx context.Context, titleSlug string) (domain.AdminDataQualityCounts, error) {
+// DataQualityCounts calcule les compteurs d'inconnus (lectures seules). locale =
+// langue cible du compteur untranslated_modes (échotée dans la réponse).
+func (r *ServiceRegistry) DataQualityCounts(ctx context.Context, titleSlug, locale string) (domain.AdminDataQualityCounts, error) {
 	resp := domain.AdminDataQualityCounts{
 		TitleSlug:   titleSlug,
 		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
+		Locale:      locale,
 	}
 	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(ctx, titleSlug)
 	if err != nil {
@@ -88,7 +90,7 @@ func (r *ServiceRegistry) DataQualityCounts(ctx context.Context, titleSlug strin
 	}
 	defer closeAll()
 
-	counts, err := ops.CountDataQuality(ctx, sharedSQL, metaSQL, titleSlug)
+	counts, err := ops.CountDataQuality(ctx, sharedSQL, metaSQL, titleSlug, locale)
 	if err != nil {
 		return resp, err
 	}
@@ -111,12 +113,14 @@ func (r *ServiceRegistry) DataQualityCounts(ctx context.Context, titleSlug strin
 	return resp, nil
 }
 
-// DataQualityIssues liste les inconnus d'un kind donné.
-func (r *ServiceRegistry) DataQualityIssues(ctx context.Context, titleSlug, kind string, limit int) (domain.AdminDataQualityIssues, error) {
+// DataQualityIssues liste les inconnus d'un kind donné (fenêtre paginée
+// [offset, offset+limit) + total avant fenêtrage).
+func (r *ServiceRegistry) DataQualityIssues(ctx context.Context, titleSlug, kind, locale string, limit, offset int) (domain.AdminDataQualityIssues, error) {
 	resp := domain.AdminDataQualityIssues{
 		TitleSlug:   titleSlug,
 		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
 		Kind:        kind,
+		Locale:      locale,
 		Items:       []domain.AdminDataQualityIssue{},
 	}
 	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(ctx, titleSlug)
@@ -125,18 +129,20 @@ func (r *ServiceRegistry) DataQualityIssues(ctx context.Context, titleSlug, kind
 	}
 	defer closeAll()
 
-	items, err := ops.ListDataQualityIssues(ctx, sharedSQL, metaSQL, titleSlug, kind, limit)
+	items, total, err := ops.ListDataQualityIssues(ctx, sharedSQL, metaSQL, titleSlug, kind, locale, limit, offset)
 	if err != nil {
 		return resp, err
 	}
+	resp.Total = total
 	for _, it := range items {
 		resp.Items = append(resp.Items, domain.AdminDataQualityIssue{
-			Kind:        it.Kind,
-			AssetKind:   it.AssetKind,
-			ID:          it.ID,
-			Label:       it.Label,
-			Occurrences: it.Occurrences,
-			LastSeen:    it.LastSeen,
+			Kind:            it.Kind,
+			AssetKind:       it.AssetKind,
+			ID:              it.ID,
+			Label:           it.Label,
+			Occurrences:     it.Occurrences,
+			LastSeen:        it.LastSeen,
+			ExampleMatchIDs: it.ExampleMatchIDs,
 		})
 	}
 	return resp, nil

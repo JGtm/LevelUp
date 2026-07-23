@@ -34,10 +34,14 @@ import {
 import { counterDelta, type CountersSnapshot } from '../countersTrend'
 import { useCounterSnapshot } from '../useCounterSnapshot'
 import { useAdminT, type TAdmin } from '../useAdminText'
-import { useAppShellStore } from '@/stores/appShellStore'
-import { DiagnosticsPanel } from '@/features/lab/DiagnosticsPanel'
-import { getLabText, normalizeLabLocale } from '@/features/lab/i18n'
-import { useLabDiagnostics } from '@/features/lab/queries'
+import {
+  ACTION_CATALOG_REFRESH,
+  ACTION_CATALOG_UGC_DRAIN,
+  ACTION_LYING_BITS_RESET,
+  ACTION_REGISTRY_NAMES,
+  invalidateActionJournal,
+} from '../actionJournal'
+import { ActionLastRun } from '../ActionLastRun'
 import { SectionHeader } from '../components/SectionHeader'
 
 const DQ_SNAPSHOT_KEY = 'admin-dq-snapshot'
@@ -45,12 +49,6 @@ const DQ_SNAPSHOT_KEY = 'admin-dq-snapshot'
 export function AdminDataQualityPage() {
   const { data, isLoading, isError } = useDataQualityCounts()
   const tA = useAdminT()
-
-  // Diagnostics d'instance (ex-Lab) : parité endpoints + guards médailles.
-  // Réutilise le panneau Lab + son i18n local ; query gardée admin via AdminLayout.
-  const labLocale = normalizeLabLocale(useAppShellStore((s) => s.locale))
-  const labText = getLabText(labLocale)
-  const diagnostics = useLabDiagnostics(true)
 
   // Baseline roulante (hook canonique A8.2) : delta vs run precedent.
   const previous = useCounterSnapshot(DQ_SNAPSHOT_KEY, data?.generated_at, () => buildDQSnapshot(data!))
@@ -69,7 +67,7 @@ export function AdminDataQualityPage() {
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
           {/* Accent : 0 = vert, > 0 = warning ('info' pour les compteurs informatifs). */}
           <AdminKpi label={tA('admin.dq.kpi_raw_uuids')} value={data.raw_uuid_total} accent={data.raw_uuid_total > 0 ? 'warning' : 'success'} delta={counterDelta(previous, 'raw_uuids', data.raw_uuid_total)} />
-          <AdminKpi label={tA('admin.dq.kpi_untranslated')} value={data.untranslated_modes} accent={data.untranslated_modes > 0 ? 'warning' : 'success'} delta={counterDelta(previous, 'untranslated', data.untranslated_modes)} />
+          <AdminKpi label={`${tA('admin.dq.kpi_untranslated')} (${data.locale})`} value={data.untranslated_modes} accent={data.untranslated_modes > 0 ? 'warning' : 'success'} delta={counterDelta(previous, 'untranslated', data.untranslated_modes)} />
           <AdminKpi label={tA('admin.dq.kpi_orphan_playlists')} value={data.orphan_playlists} accent={data.orphan_playlists > 0 ? 'warning' : 'success'} delta={counterDelta(previous, 'orphan_playlists', data.orphan_playlists)} />
           <AdminKpi label={tA('admin.dq.kpi_orphan_xuids')} value={data.orphan_xuids} accent={data.orphan_xuids > 0 ? 'info' : 'success'} delta={counterDelta(previous, 'orphan_xuids', data.orphan_xuids)} />
           <AdminKpi label={tA('admin.dq.kpi_lying_bits')} value={data.lying_bits_events + data.lying_bits_weapons} accent={data.lying_bits_events + data.lying_bits_weapons > 0 ? 'warning' : 'success'} delta={counterDelta(previous, 'lying_bits', data.lying_bits_events + data.lying_bits_weapons)} />
@@ -87,28 +85,6 @@ export function AdminDataQualityPage() {
       <RawAssetsSection />
       <OrphanPlaylistsSection />
       <OrphanXuidsSection />
-
-      <section className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <SectionHeader title={tA('admin.dq.diagnostics_section')} />
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => void diagnostics.refetch()}
-            disabled={diagnostics.isFetching}
-          >
-            {diagnostics.isFetching ? tA('admin.job.in_progress') : tA('admin.dq.diagnostics_refresh')}
-          </Button>
-        </div>
-        <DiagnosticsPanel
-          data={diagnostics.data}
-          isLoading={diagnostics.isLoading}
-          isError={diagnostics.isError}
-          onRetry={() => void diagnostics.refetch()}
-          locale={labLocale}
-          text={labText}
-        />
-      </section>
     </div>
   )
 }
@@ -133,6 +109,7 @@ function ActionHelp({ text }: { text: string }) {
 function RegistryNamesAction({ tA }: { tA: TAdmin }) {
   const run = useRunRegistryNamesBackfill()
   const catalogRefresh = useRunCatalogRefresh()
+  const queryClient = useQueryClient()
   const [lastResult, setLastResult] = useState<RegistryNamesBackfillResult | null>(null)
 
   function launch(dryRun: boolean) {
@@ -140,7 +117,10 @@ function RegistryNamesAction({ tA }: { tA: TAdmin }) {
     run.mutate(dryRun, {
       onSuccess: (res) => {
         setLastResult(res)
-        if (!res.dry_run) toast.success(`${tA('admin.actions.done')} — ${tA('admin.dq.registry_names_result')} : ${res.total_fixed}`)
+        if (!res.dry_run) {
+          toast.success(`${tA('admin.actions.done')} — ${tA('admin.dq.registry_names_result')} : ${res.total_fixed}`)
+          invalidateActionJournal(queryClient)
+        }
       },
       onError: (err) => toast.error(apiErrorMessage(err) ?? tA('admin.actions.failed')),
     })
@@ -153,6 +133,7 @@ function RegistryNamesAction({ tA }: { tA: TAdmin }) {
         toast.success(
           `${tA('admin.actions.done')} — ${tA('admin.dq.catalog_refresh_result')} : playlists ${res.playlists} · pairs ${res.pairs} · maps ${res.maps} · variants ${res.game_variants}`,
         )
+        invalidateActionJournal(queryClient)
       },
       onError: (err) => toast.error(apiErrorMessage(err) ?? tA('admin.actions.failed')),
     })
@@ -177,7 +158,9 @@ function RegistryNamesAction({ tA }: { tA: TAdmin }) {
         </Button>
       </div>
       <ActionHelp text={tA('admin.dq.run_registry_names_help')} />
+      <ActionLastRun action={ACTION_REGISTRY_NAMES} />
       <ActionHelp text={tA('admin.dq.run_catalog_refresh_help')} />
+      <ActionLastRun action={ACTION_CATALOG_REFRESH} />
       {lastResult && <RegistryNamesResult result={lastResult} tA={tA} />}
     </div>
   )
@@ -207,6 +190,7 @@ function RegistryNamesResult({ result, tA }: { result: RegistryNamesBackfillResu
  */
 function LyingBitsAction({ tA }: { tA: TAdmin }) {
   const run = useRunLyingBitsReset()
+  const queryClient = useQueryClient()
   const [lastResult, setLastResult] = useState<LyingBitsResetResult | null>(null)
 
   function launch(dryRun: boolean) {
@@ -214,7 +198,10 @@ function LyingBitsAction({ tA }: { tA: TAdmin }) {
     run.mutate(dryRun, {
       onSuccess: (res) => {
         setLastResult(res)
-        if (!res.dry_run) toast.success(`${tA('admin.actions.done')} — ${tA('admin.dq.lying_bits_result')} : ${res.total}`)
+        if (!res.dry_run) {
+          toast.success(`${tA('admin.actions.done')} — ${tA('admin.dq.lying_bits_result')} : ${res.total}`)
+          invalidateActionJournal(queryClient)
+        }
       },
       onError: (err) => toast.error(apiErrorMessage(err) ?? tA('admin.actions.failed')),
     })
@@ -231,6 +218,7 @@ function LyingBitsAction({ tA }: { tA: TAdmin }) {
         </Button>
       </div>
       <ActionHelp text={tA('admin.dq.run_lying_bits_help')} />
+      <ActionLastRun action={ACTION_LYING_BITS_RESET} />
       {lastResult && <LyingBitsResult result={lastResult} tA={tA} />}
     </div>
   )
@@ -264,10 +252,13 @@ function CatalogDrainAction({ tA }: { tA: TAdmin }) {
             invalidateDataQuality(queryClient)
             toast.success(tA('admin.dq.ugc_drain_done'))
           }
-          // Échec : JobProgressInline affiche déjà le détail, pas de toast redondant.
+          // Le drain (succès OU échec) a été journalisé côté service : rafraîchir
+          // « Dernière exécution ». Échec : JobProgressInline affiche le détail.
+          invalidateActionJournal(queryClient)
         }}
       />
       <ActionHelp text={tA('admin.dq.run_ugc_drain_help')} />
+      <ActionLastRun action={ACTION_CATALOG_UGC_DRAIN} />
     </div>
   )
 }

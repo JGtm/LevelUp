@@ -13,6 +13,12 @@
  */
 import type { CascadeInput, FilterContextInput } from '@/lib/api/types'
 import { DEFAULT_TITLE_SLUG } from '@/lib/staticAssets'
+// Import DIRECT du module pur (pas le barrel `@/lib/title-routing`) : filterLink est
+// dans le graphe du store de filtres (createFilterStore importe `encodeFilterContextParam`
+// d'ici), et le barrel ré-exporte `applyActiveTitle` → solo/squadFilterStore →
+// createFilterStore → cycle d'init (DEFAULT_FILTER_CONTEXT). playerScopedPath est un
+// module feuille sans import, donc sans cycle.
+import { playerScopedHref } from '@/lib/title-routing/playerScopedPath'
 import { DEFAULT_GAP_MINUTES } from '@/stores/filterDefaults'
 
 /**
@@ -34,9 +40,10 @@ export interface SoloFilterLinkInput {
 }
 
 /**
- * Construit le chemin `/players/{slug}/stats/timeseries?f=…` avec le contexte de
- * filtre encodé. La cascade et/ou la période fournies surchargent le contexte
- * vierge ; le reste reste par défaut (mode période, aucune session).
+ * Construit le chemin title-scoped vers stats/timeseries (préfixe titre + joueur via
+ * playerScopedHref, suffixe ?f=…) avec le contexte de filtre encodé. La cascade et/ou
+ * la période fournies surchargent le contexte vierge ; le reste reste par défaut (mode
+ * période, aucune session).
  */
 export function buildSoloFilterLink({
   playerSlug,
@@ -61,7 +68,9 @@ export function buildSoloFilterLink({
     },
   }
   const f = encodeFilterContextParam(titleSlug, ctx)
-  return `/players/${encodeURIComponent(playerSlug)}/stats/timeseries?f=${f}`
+  // Lien PLEINE PAGE (`<a href>`, cf. en-tête) : forme title-scoped construite via le
+  // helper centralisé du module title-routing (jamais de littéral `/players/` local).
+  return playerScopedHref(titleSlug, playerSlug, `/stats/timeseries?f=${f}`)
 }
 
 /** Fenêtre « la journée du record » (UTC) à partir d'un timestamp ISO. */

@@ -11,6 +11,7 @@
  */
 import { test, expect } from '@playwright/test'
 import { skipIfNoDemoData } from './_helpers/demoData'
+import { playerPath } from './_helpers/routes'
 
 // Fixtures démo absentes en CI (data/demo gitignoré) → spec entière data-dépendante.
 test.beforeEach(async () => {
@@ -61,7 +62,7 @@ test.describe('Bug : like change la vidéo', () => {
     for (const slug of candidates) {
       // Re-set current_player_slug avant chaque tentative pour que section_filter=mine match le slug visité
       await page.request.post('/api/v1/session/context', { data: { player_slug: slug } })
-      await page.goto(`/players/${slug}/media`)
+      await page.goto(playerPath(slug, 'media'))
       try {
         await page.waitForLoadState('networkidle', { timeout: 15000 })
       } catch { /* peut timeout sur poll feed-version */ }

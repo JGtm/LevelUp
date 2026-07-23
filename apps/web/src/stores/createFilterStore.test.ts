@@ -156,7 +156,7 @@ describe('createFilterStore', () => {
 
 // ---------------------------------------------------------------------------
 // Garde deep-link ?f= par titre — fix fuite inter-titres au fresh-load.
-// Le reset au switch de titre (switchTitle) ne couvre PAS le fresh-load /
+// Le reset au switch de titre (applyActiveTitle) ne couvre PAS le fresh-load /
 // bookmark : là, seul le titre estampillé dans ?f= + le titre résolu au
 // bootstrap permettent de rejeter un filtre généré pour un AUTRE titre.
 // ---------------------------------------------------------------------------

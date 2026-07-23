@@ -261,8 +261,12 @@ fr = "Disque libre :"
 en = "Free disk:"
 
 [admin.resources.heap]
-fr = "Tas Go :"
-en = "Go heap:"
+fr = "Mémoire serveur (tas Go) :"
+en = "Server memory (Go heap):"
+
+[admin.resources.heap_help]
+fr = "Mémoire allouée par le processus du serveur."
+en = "Memory allocated by the server process."
 
 [admin.resources.sys]
 fr = "sys"
@@ -295,6 +299,14 @@ en = "WAL"
 [admin.resources.total]
 fr = "Total"
 en = "Total"
+
+[admin.resources.inventory_unavailable_title]
+fr = "Inventaire des bases indisponible"
+en = "Database inventory unavailable"
+
+[admin.resources.inventory_unavailable_desc]
+fr = "La racine des données est introuvable ou illisible (chemin du dépôt mal résolu ou volume non monté). Vérifier LEVELUP_REPO_ROOT et les permissions du volume data — distinct d'une absence de base."
+en = "The data root is missing or unreadable (repo path misresolved or volume not mounted). Check LEVELUP_REPO_ROOT and the data volume permissions — distinct from having no database."
 
 [admin.resources.budgets]
 fr = "Budgets DuckDB"
@@ -355,10 +367,6 @@ fr = "Donnée d'avant le dernier redémarrage (pas encore couru depuis)"
 en = "Data predates the last restart (not run since)"
 
 # ─── Section Titres (PMT-14 volet A — gestion multi-titres) ─────────────────
-[admin.titles.heading]
-fr = "Gestion des titres"
-en = "Title management"
-
 [admin.titles.subtitle]
 fr = "Registre des titres supportés — statut, capabilities déclarées et feature-matrix calculée (lecture seule)."
 en = "Registry of supported titles — status, declared capabilities and computed feature matrix (read-only)."
@@ -415,6 +423,10 @@ en = "Yes"
 fr = "Non"
 en = "No"
 
+[admin.titles.registry_capabilities]
+fr = "Capabilities du registre"
+en = "Registry capabilities"
+
 [admin.titles.declared_capabilities]
 fr = "Capabilities déclarées"
 en = "Declared capabilities"
@@ -430,6 +442,10 @@ en = "No TOML mappings loaded for this title."
 [admin.titles.diagnostic]
 fr = "Diagnostic"
 en = "Diagnostic"
+
+[admin.titles.diag_intro]
+fr = "Cohérence entre ce qui est déclaré et la réalité : fichiers de config présents, bases et tables attendues peuplées. Chaque ligne porte un verdict."
+en = "Consistency between what is declared and reality: config files present, expected databases and tables populated. Each line carries a verdict."
 
 [admin.titles.diag_config]
 fr = "Fichiers de config"
@@ -472,12 +488,12 @@ fr = "Aucun écart détecté."
 en = "No drift detected."
 
 [admin.titles.register_help_title]
-fr = "Enregistrer un 2e titre"
-en = "Register a 2nd title"
+fr = "Enregistrer un nouveau titre"
+en = "Register a new title"
 
 [admin.titles.register_help_body]
-fr = "Procédure (aucune écriture via l'interface) : lancer « levelup add-title », déclarer le titre dans internal/domain/title/registry.go, puis « make build ». Le brouillon capabilities.toml ci-dessus sert de point de départ (à copier dans config/titles/{slug}/mappings/)."
-en = "Procedure (no write via the UI): run \"levelup add-title\", declare the title in internal/domain/title/registry.go, then \"make build\". The capabilities.toml draft above is a starting point (copy it to config/titles/{slug}/mappings/)."
+fr = "Aucune écriture via l'interface — la préparation d'un titre est un flux en ligne de commande. 1) Lancer « levelup add-title --name \"…\" [--slug s] [--capabilities c1,c2] » : la commande crée l'arborescence de données data/titles/{slug}/ (entrepôt + joueurs), ajoute la section dans db_profiles.json et imprime le bloc TitleDescriptor à coller. 2) Créer les manifests config/titles/{slug}/ : title.toml + mappings/{fields,assets,outcomes,capabilities}.toml (le brouillon capabilities.toml ci-dessus sert de point de départ). 3) Déclarer le titre dans internal/domain/title/registry.go, puis « make build ». Procédure détaillée : docs/RUNBOOK_ADD_TITLE.md."
+en = "No write via the UI — preparing a title is a command-line workflow. 1) Run \"levelup add-title --name \\\"…\\\" [--slug s] [--capabilities c1,c2]\": the command creates the data tree data/titles/{slug}/ (warehouse + players), adds the section to db_profiles.json, and prints the TitleDescriptor block to paste. 2) Create the manifests under config/titles/{slug}/: title.toml + mappings/{fields,assets,outcomes,capabilities}.toml (the capabilities.toml draft above is a starting point). 3) Declare the title in internal/domain/title/registry.go, then \"make build\". Full procedure: docs/RUNBOOK_ADD_TITLE.md."
 
 # ─── Page Logs ─────────────────────────────────────────────────────────────
 
@@ -518,8 +534,16 @@ fr = "Aucune ligne ne correspond aux filtres dans la fenêtre scannée."
 en = "No line matches the filters within the scanned window."
 
 [admin.logs.truncated]
-fr = "Fenêtre de scan atteinte (8 Mio) — affiner les filtres pour voir plus ancien."
-en = "Scan window reached (8 MiB) — narrow the filters to see older lines."
+fr = "Fenêtre de scan atteinte (8 Mio) — « Charger plus » poursuit vers les lignes plus anciennes, ou affiner les filtres."
+en = "Scan window reached (8 MiB) — “Load more” continues into older lines, or narrow the filters."
+
+[admin.logs.load_more]
+fr = "Charger plus (plus ancien)"
+en = "Load more (older)"
+
+[admin.logs.load_more_busy]
+fr = "Chargement…"
+en = "Loading…"
 
 [admin.logs.raw]
 fr = "Détail"
@@ -615,9 +639,41 @@ en = "Resolve"
 fr = "Rouvrir"
 en = "Reopen"
 
-[admin.detections.note_prompt]
-fr = "Note (optionnelle) :"
-en = "Note (optional):"
+[admin.detections.actions_help_summary]
+fr = "Que font ces actions ?"
+en = "What do these actions do?"
+
+[admin.detections.help_ack]
+fr = "Reconnaître : l'anomalie est prise en compte, elle reste visible dans la liste."
+en = "Acknowledge: the anomaly is taken into account and stays visible in the list."
+
+[admin.detections.help_mute]
+fr = "Mettre en sourdine : masquée jusqu'à ce qu'elle réapparaisse."
+en = "Mute: hidden until it reappears."
+
+[admin.detections.help_resolve]
+fr = "Résoudre : clôturée (déplacée dans « Résolues »)."
+en = "Resolve: closed (moved to \"Resolved\")."
+
+[admin.detections.help_reopen]
+fr = "Rouvrir : réactive une détection résolue."
+en = "Reopen: reactivates a resolved detection."
+
+[admin.detections.note_dialog_desc]
+fr = "Note enregistrée avec le changement de statut et conservée dans l'historique de la détection. Laissez vide pour valider sans commentaire."
+en = "Note saved with the status change and kept in the detection history. Leave empty to proceed without a comment."
+
+[admin.detections.note_placeholder]
+fr = "Ex. : cause connue, ticket lié…"
+en = "E.g. known cause, linked ticket…"
+
+[admin.detections.note_confirm]
+fr = "Valider"
+en = "Confirm"
+
+[admin.detections.note_cancel]
+fr = "Annuler"
+en = "Cancel"
 
 # ─── Vue d'ensemble (KPIs) ─────────────────────────────────────────────────
 
@@ -713,6 +769,10 @@ en = "All resolved"
 fr = "Aucune donnée d'arme pour ce titre."
 en = "No weapon data for this title."
 
+[admin.overview.weapon_coverage_unresolved_note]
+fr = "Identifiants absents du référentiel d'armes ET du catalogue officiel du titre : sources de frags hors nomenclature d'arsenal (variantes non publiées par l'éditeur, contenu communautaire, objets ou environnement). Elles n'altèrent pas les statistiques d'arsenal et relèvent d'un résidu documenté ; les plus fréquentes peuvent justifier un ajout manuel au référentiel."
+en = "Identifiers absent from both the weapon registry and the title's official catalog: frag sources outside the arsenal nomenclature (variants not published by the vendor, community content, objects or environment). They do not affect arsenal statistics and are documented residue; the most frequent ones may warrant a manual registry entry."
+
 # ─── Audit data health (compteurs) ─────────────────────────────────────────
 
 [admin.dh.uuids_raw]
@@ -780,6 +840,28 @@ en = "Action failed"
 [admin.actions.conflict]
 fr = "Déjà en cours — suivi de l'exécution active."
 en = "Already running — following the active execution."
+
+# ─── Journal des actions globales (dernière exécution, survit au reboot) ────
+
+[admin.actions.last_run]
+fr = "Dernière exécution"
+en = "Last run"
+
+[admin.actions.never_run]
+fr = "Jamais exécutée"
+en = "Never run"
+
+[admin.actions.trigger_manual]
+fr = "manuel"
+en = "manual"
+
+[admin.actions.trigger_cron]
+fr = "automatique"
+en = "scheduled"
+
+[admin.actions.outcome_error]
+fr = "échec"
+en = "failed"
 
 # ─── Page Sync & Jobs ──────────────────────────────────────────────────────
 
@@ -940,8 +1022,8 @@ fr = "Assets UUID bruts"
 en = "Raw UUID assets"
 
 [admin.dq.kpi_untranslated]
-fr = "Modes sans traduction FR"
-en = "Modes without FR translation"
+fr = "Modes sans traduction"
+en = "Untranslated modes"
 
 [admin.dq.kpi_orphan_playlists]
 fr = "Sélections hors catalogue"
@@ -962,14 +1044,6 @@ en = "Data quality counters unavailable."
 [admin.dq.actions_section]
 fr = "Actions globales"
 en = "Global actions"
-
-[admin.dq.diagnostics_section]
-fr = "Diagnostics d'instance"
-en = "Instance diagnostics"
-
-[admin.dq.diagnostics_refresh]
-fr = "Rafraîchir"
-en = "Refresh"
 
 [admin.dq.run_registry_names]
 fr = "Résoudre les noms registry"
@@ -1056,8 +1130,8 @@ fr = "Drain UGC terminé"
 en = "UGC drain complete"
 
 [admin.dq.modes_section]
-fr = "Modes sans traduction FR"
-en = "Modes without FR translation"
+fr = "Modes sans traduction"
+en = "Untranslated modes"
 
 [admin.dq.modes_empty_title]
 fr = "Tous les modes sont traduits"
@@ -1108,8 +1182,20 @@ fr = "Tous les participants ont un alias gamertag. La convergence PSA résorbe c
 en = "All participants have a gamertag alias. PSA convergence resorbs this backlog automatically."
 
 [admin.dq.orphan_xuids_hint]
-fr = "Résorbé automatiquement par la convergence PSA (coût API nul) — lancer une convergence joueur si pressé."
-en = "Automatically resorbed by PSA convergence (zero API cost) — run a player convergence if in a hurry."
+fr = "Résolution automatique au prochain cycle de convergence PSA (coût API nul). Pour forcer la résolution immédiate, lancer une convergence joueur."
+en = "Resolved automatically at the next PSA convergence cycle (zero API cost). To force immediate resolution, run a player convergence."
+
+[admin.dq.pagination_total]
+fr = "Total"
+en = "Total"
+
+[admin.dq.pagination_prev]
+fr = "Page précédente"
+en = "Previous page"
+
+[admin.dq.pagination_next]
+fr = "Page suivante"
+en = "Next page"
 
 [admin.dq.col_asset_kind]
 fr = "Type"
@@ -1130,6 +1216,14 @@ en = "Matches"
 [admin.dq.col_last_seen]
 fr = "Vu pour la dernière fois"
 en = "Last seen"
+
+[admin.dq.col_examples]
+fr = "Exemples"
+en = "Examples"
+
+[admin.dq.example_open]
+fr = "Ouvrir le match (nouvel onglet)"
+en = "Open match (new tab)"
 
 [admin.dq.col_mode]
 fr = "Mode (clé EN normalisée)"
@@ -1535,6 +1629,18 @@ en = "No batch writes since boot."
 
 # ─── Page Convergence : timeline + rattrapage ──────────────────────────────
 
+[admin.convergence.last_cycle]
+fr = "Dernier cycle"
+en = "Last cycle"
+
+[admin.convergence.last_cycle_prev_boot]
+fr = "Cycle précédent (avant redémarrage)"
+en = "Previous cycle (before restart)"
+
+[admin.convergence.no_cycle_ever]
+fr = "Aucun cycle enregistré — aucune donnée connue"
+en = "No cycle recorded yet — no known data"
+
 [admin.convergence.timeline_section]
 fr = "Timeline du pipeline post-sync (dernier passage par joueur)"
 en = "Post-sync pipeline timeline (last run per player)"
@@ -1624,3 +1730,260 @@ en = "Idle"
 [admin.status.skipped]
 fr = "Ignoré"
 en = "Skipped"
+
+# ─── Diagnostic apparence Spartan ID (volet 2, Lot G) ──────────────────────
+# Diagnostic a la demande, par joueur suivi, des 4 composants du Spartan ID.
+# Verdicts (enum ferme) : ok / upstream_missing / transient / auth_required /
+# not_supported. Details techniques = cles stables du DTO Go, traduites ici.
+
+[admin.data.section_appearance_diag]
+fr = "Diagnostic apparence Spartan"
+en = "Spartan appearance diagnosis"
+
+[admin.appearance.hint]
+fr = "Choisir un joueur suivi puis lancer le diagnostic : le verdict par composant part uniquement au clic (aucun calcul automatique)."
+en = "Pick a tracked player then run the diagnosis: the per-component verdict is computed on click only (no automatic polling)."
+
+[admin.appearance.select_label]
+fr = "Joueur suivi"
+en = "Tracked player"
+
+[admin.appearance.select_placeholder]
+fr = "Choisir un joueur"
+en = "Choose a player"
+
+[admin.appearance.diagnose]
+fr = "Diagnostiquer"
+en = "Diagnose"
+
+[admin.appearance.diagnosing]
+fr = "Diagnostic en cours…"
+en = "Diagnosing…"
+
+[admin.appearance.initial_title]
+fr = "Aucun diagnostic lancé"
+en = "No diagnosis run yet"
+
+[admin.appearance.initial_desc]
+fr = "Sélectionner un joueur suivi et cliquer sur « Diagnostiquer » pour évaluer chaque composant du Spartan ID."
+en = "Select a tracked player and click “Diagnose” to evaluate each Spartan ID component."
+
+[admin.appearance.error_title]
+fr = "Diagnostic impossible"
+en = "Diagnosis failed"
+
+[admin.appearance.error_desc]
+fr = "Le diagnostic n'a pas pu aboutir. Réessayer dans un instant."
+en = "The diagnosis could not complete. Try again shortly."
+
+[admin.appearance.generated_at]
+fr = "Généré le"
+en = "Generated at"
+
+[admin.appearance.last_fetch_label]
+fr = "Dernier fetch live"
+en = "Last live fetch"
+
+[admin.appearance.served_value_label]
+fr = "Valeur servie"
+en = "Served value"
+
+[admin.appearance.no_served_value]
+fr = "Aucune valeur servie"
+en = "No served value"
+
+[admin.appearance.why_toggle]
+fr = "Détails"
+en = "Details"
+
+[admin.appearance.why_label]
+fr = "Pourquoi"
+en = "Why"
+
+[admin.appearance.what_to_do]
+fr = "Quoi faire"
+en = "What to do"
+
+[admin.appearance.reauth_cta]
+fr = "Se connecter via Xbox"
+en = "Sign in with Xbox"
+
+# ── Libellés des 4 composants ──────────────────────────────────────────────
+
+[admin.appearance.component.banner]
+fr = "Bannière"
+en = "Banner"
+
+[admin.appearance.component.emblem]
+fr = "Emblème"
+en = "Emblem"
+
+[admin.appearance.component.backdrop]
+fr = "Arrière-plan"
+en = "Backdrop"
+
+[admin.appearance.component.service_tag]
+fr = "Indicatif de service"
+en = "Service tag"
+
+[admin.appearance.component.unknown]
+fr = "Composant inconnu"
+en = "Unknown component"
+
+# ── Libellés de verdict (badge) ────────────────────────────────────────────
+
+[admin.appearance.verdict.ok]
+fr = "À jour"
+en = "Up to date"
+
+[admin.appearance.verdict.upstream_missing]
+fr = "Absent côté Microsoft"
+en = "Missing upstream"
+
+[admin.appearance.verdict.transient]
+fr = "Temporaire"
+en = "Transient"
+
+[admin.appearance.verdict.auth_required]
+fr = "Réauthentification requise"
+en = "Re-authentication required"
+
+[admin.appearance.verdict.not_supported]
+fr = "Non pris en charge"
+en = "Not supported"
+
+[admin.appearance.verdict.unknown]
+fr = "Verdict inconnu"
+en = "Unknown verdict"
+
+# ── Quoi faire (action par verdict) ────────────────────────────────────────
+
+[admin.appearance.action.ok]
+fr = "Rien à faire — la valeur servie est à jour."
+en = "Nothing to do — the served value is up to date."
+
+[admin.appearance.action.upstream_missing]
+fr = "Rien à faire — la dernière valeur connue est servie par design ; se réparera seul si Microsoft publie l'image."
+en = "Nothing to do — the last known value is served by design; it will fix itself if Microsoft publishes the image."
+
+[admin.appearance.action.transient]
+fr = "Attendre le prochain rafraîchissement — l'échec est temporaire et se répare seul."
+en = "Wait for the next refresh — the failure is temporary and self-heals."
+
+[admin.appearance.action.auth_required]
+fr = "Réauthentifier le compte du joueur via la connexion Xbox."
+en = "Re-authenticate the player's account via Xbox sign-in."
+
+[admin.appearance.action.not_supported]
+fr = "Rien à faire — ce titre gère l'apparence par un autre pipeline ; seule la dernière valeur connue est affichée."
+en = "Nothing to do — this title handles appearance through another pipeline; only the last known value is shown."
+
+[admin.appearance.action.unknown]
+fr = "Verdict inattendu — consulter les journaux serveur."
+en = "Unexpected verdict — check the server logs."
+
+# ── Le POURQUOI : details techniques traduits ──────────────────────────────
+
+[admin.appearance.detail.mapping_hit]
+fr = "Résolu via mapping.json (palette exacte)."
+en = "Resolved via mapping.json (exact palette)."
+
+[admin.appearance.detail.mapping_miss]
+fr = "Résolu via une configuration positive (mapping absent — palette approchée)."
+en = "Resolved via a positive configuration (mapping absent — approximate palette)."
+
+[admin.appearance.detail.image_resolved]
+fr = "Image résolue depuis le descripteur du CMS."
+en = "Image resolved from the CMS descriptor."
+
+[admin.appearance.detail.service_tag_present]
+fr = "Indicatif de service présent dans la réponse live."
+en = "Service tag present in the live response."
+
+[admin.appearance.detail.no_positive_cfg]
+fr = "Le CMS répond mais ne publie aucune image pour cet emblème (aucune configuration positive)."
+en = "The CMS responds but publishes no image for this emblem (no positive configuration)."
+
+[admin.appearance.detail.cms_http_error]
+fr = "Échec réseau/HTTP/parse lors de l'appel au CMS."
+en = "Network/HTTP/parse failure while calling the CMS."
+
+[admin.appearance.detail.image_unresolved]
+fr = "La résolution de l'image a échoué (HTTP, parse ou chemin média absent)."
+en = "Image resolution failed (HTTP, parse, or missing media path)."
+
+[admin.appearance.detail.no_service_tag]
+fr = "L'indicatif de service est absent de la réponse live."
+en = "The service tag is absent from the live response."
+
+[admin.appearance.detail.no_emblem_path]
+fr = "Aucun emblème équipé n'a été fourni au résolveur."
+en = "No equipped emblem was provided to the resolver."
+
+[admin.appearance.detail.non_emblem_path]
+fr = "Le chemin fourni ne pointe pas vers un emblème."
+en = "The provided path does not point to an emblem."
+
+[admin.appearance.detail.no_banner_field]
+fr = "Aucun champ de bannière dans la réponse live."
+en = "No banner field in the live response."
+
+[admin.appearance.detail.fallback_ok]
+fr = "Résolu en direct."
+en = "Resolved live."
+
+[admin.appearance.detail.fallback_upstream_missing]
+fr = "Absence définitive côté Microsoft."
+en = "Definitive absence on Microsoft's side."
+
+[admin.appearance.detail.fallback_transient]
+fr = "Échec temporaire indéterminé."
+en = "Undetermined temporary failure."
+
+[admin.appearance.detail.fallback_auth_required]
+fr = "Les jetons d'authentification du joueur sont absents ou expirés."
+en = "The player's authentication tokens are missing or expired."
+
+[admin.appearance.detail.fallback_not_supported]
+fr = "Ce composant n'est pas fourni par ce pipeline pour ce titre."
+en = "This component is not provided by this pipeline for this title."
+
+[admin.appearance.detail.fallback_unknown]
+fr = "Détail technique non reconnu."
+en = "Unrecognized technical detail."
+
+# ── Provenance de la valeur servie ─────────────────────────────────────────
+
+[admin.appearance.served_from.live]
+fr = "Résolu en direct"
+en = "Resolved live"
+
+[admin.appearance.served_from.carry]
+fr = "Dernière valeur connue"
+en = "Last known value"
+
+# ── Dernier statut de fetch live (contexte passif) ─────────────────────────
+
+[admin.appearance.fetch_status.ok]
+fr = "OK"
+en = "OK"
+
+[admin.appearance.fetch_status.api_empty]
+fr = "Réponse vide"
+en = "Empty response"
+
+[admin.appearance.fetch_status.forbidden_403]
+fr = "Accès refusé (403)"
+en = "Forbidden (403)"
+
+[admin.appearance.fetch_status.auth_missing]
+fr = "Authentification absente"
+en = "Authentication missing"
+
+[admin.appearance.fetch_status.failed]
+fr = "Échec"
+en = "Failed"
+
+[admin.appearance.fetch_status.none]
+fr = "Jamais tenté"
+en = "Never attempted"

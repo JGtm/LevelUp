@@ -19,7 +19,7 @@ import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/com
 const PAGE_LIMIT = 50
 
 export function NotificationsPage() {
-  const params = useParams({ from: '/players/$playerSlug/notifications' })
+  const params = useParams({ from: '/{-$lang}/t/$titleSlug/players/$playerSlug/notifications' })
   const playerSlug = params.playerSlug
   const locale = useAppShellStore((s) => s.locale)
   const t = getNotificationsText(locale)

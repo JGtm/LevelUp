@@ -102,8 +102,8 @@ export function HomePage() {
       gap_minutes: filterContext.sessions?.gap_minutes ?? DEFAULT_GAP_MINUTES,
     })
     void navigate({
-      to: '/players/$playerSlug/stats/timeseries',
-      params: { playerSlug },
+      to: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/timeseries',
+      params: { titleSlug, playerSlug },
     })
   }
 
@@ -111,8 +111,8 @@ export function HomePage() {
   // pré-sélectionnés. SquadLayout consomme ces search params au montage.
   function goToSquadSession(sessionLabel: string, teammates: string[]) {
     void navigate({
-      to: '/players/$playerSlug/squad',
-      params: { playerSlug },
+      to: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad',
+      params: { titleSlug, playerSlug },
       search: {
         session: sessionLabel,
         // Gamertags joints par virgule (aucun gamertag Xbox n'en contient).

@@ -29,8 +29,13 @@ import (
 	"levelup/go-api/internal/migration"
 )
 
-// ApplyWeaponRegistry expose applyWeaponRegistry pour un éventuel CLI de reseed.
-// Idempotent (CREATE IF NOT EXISTS + INSERT OR IGNORE).
+// ApplyWeaponRegistry expose applyWeaponRegistry pour le reseed. Idempotent
+// (CREATE IF NOT EXISTS + INSERT OR IGNORE) → sert de CHEMIN DE RÉCONCILIATION au
+// boot (cmd/server/main.go, metadata du titre par défaut ET des titres additionnels
+// dont H5) : converge les stock_ids/filmshell ajoutés au seed APRÈS que la migration
+// one-shot fut marquée "done" (sans ça, inertes sur une DB déjà migrée — cas
+// h5_other_ugc). Hors surface ART (tables PK-only, aucun index secondaire, aucun
+// UPDATE/DELETE per-row).
 func ApplyWeaponRegistry(db *sql.DB) error {
 	return applyWeaponRegistry(db)
 }

@@ -25,6 +25,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
@@ -35,8 +36,8 @@ import (
 
 // Runners injectés (implémentés par ServiceRegistry).
 type (
-	DataQualityCountsRunner func(ctx context.Context, titleSlug string) (domain.AdminDataQualityCounts, error)
-	DataQualityIssuesRunner func(ctx context.Context, titleSlug, kind string, limit int) (domain.AdminDataQualityIssues, error)
+	DataQualityCountsRunner func(ctx context.Context, titleSlug, locale string) (domain.AdminDataQualityCounts, error)
+	DataQualityIssuesRunner func(ctx context.Context, titleSlug, kind, locale string, limit, offset int) (domain.AdminDataQualityIssues, error)
 	RegistryNamesRunner     func(ctx context.Context, titleSlug string, dryRun bool) (domain.RegistryNamesBackfillResult, error)
 	ModeTranslationRunner   func(ctx context.Context, titleSlug, modeEN, nameFR string) (domain.ResolveResult, error)
 	AssetTranslationRunner  func(ctx context.Context, titleSlug string, req domain.AssetTranslationRequest) (domain.ResolveResult, error)
@@ -106,13 +107,24 @@ type dqTitleInput struct {
 	Title string `query:"title"`
 }
 
-// dqIssuesInput : ?title=&kind=&limit= — limit pris en STRING pour reproduire le
-// contrat d'origine (limit non numérique ou <=0 ignoré, défaut 50, clamp 500),
-// PAS le 422 de validation Huma qu'un `int` produirait.
+// dqCountsInput : ?title= + ?locale= (défaut « fr ») — la locale cible le compteur
+// untranslated_modes (échotée pour un libellé front honnête).
+type dqCountsInput struct {
+	Title  string `query:"title"`
+	Locale string `query:"locale"`
+}
+
+// dqIssuesInput : ?title=&kind=&locale=&limit=&offset= — limit/offset pris en
+// STRING pour reproduire le contrat d'origine (valeur non numérique ou <=0
+// ignorée : limit défaut 50 / clamp 500, offset défaut 0), PAS le 422 de
+// validation Huma qu'un `int` produirait. offset rétrocompatible : absent → 0.
+// locale défaut « fr » (paramètre ; on ne construit pas d'autre locale aujourd'hui).
 type dqIssuesInput struct {
-	Title string `query:"title"`
-	Kind  string `query:"kind"`
-	Limit string `query:"limit"`
+	Title  string `query:"title"`
+	Kind   string `query:"kind"`
+	Locale string `query:"locale"`
+	Limit  string `query:"limit"`
+	Offset string `query:"offset"`
 }
 
 // dqDryRunInput : ?title= + corps OPTIONNEL {dry_run} décodé maison (corps absent
@@ -178,11 +190,24 @@ func noStoreError(err huma.StatusError) error {
 
 // ─── Endpoints ───────────────────────────────────────────────────────────────
 
+// defaultDQLocale : locale de traduction par défaut (untranslated_modes).
+const defaultDQLocale = "fr"
+
+// normalizeDQLocale : trim + minuscule, défaut « fr » si vide. Le back n'accepte
+// aujourd'hui que le paramétrage (pas de construction d'une autre locale).
+func normalizeDQLocale(raw string) string {
+	s := strings.ToLower(strings.TrimSpace(raw))
+	if s == "" {
+		return defaultDQLocale
+	}
+	return s
+}
+
 // handleGetCounts retourne les compteurs d'inconnus.
-// GET /admin/monitoring/data-quality?title={slug}.
-func (h *AdminDataQualityHandler) handleGetCounts(ctx context.Context, in *dqTitleInput) (*dqCountsOutput, error) {
+// GET /admin/monitoring/data-quality?title={slug}&locale={fr}.
+func (h *AdminDataQualityHandler) handleGetCounts(ctx context.Context, in *dqCountsInput) (*dqCountsOutput, error) {
 	titleSlug := titleOrDefaultSlug(in.Title)
-	resp, err := h.counts(ctx, titleSlug)
+	resp, err := h.counts(ctx, titleSlug, normalizeDQLocale(in.Locale))
 	if err != nil {
 		slog.ErrorContext(ctx, "admin_data_quality: counts failed", "title", titleSlug, "err", err)
 		return nil, noStoreError(humacore.NewError(http.StatusInternalServerError, "data_quality_error",
@@ -212,8 +237,14 @@ func (h *AdminDataQualityHandler) handleGetIssues(ctx context.Context, in *dqIss
 	if limit > 500 {
 		limit = 500
 	}
+	offset := 0
+	if in.Offset != "" {
+		if o, err := strconv.Atoi(in.Offset); err == nil && o > 0 {
+			offset = o
+		}
+	}
 	titleSlug := titleOrDefaultSlug(in.Title)
-	resp, err := h.issues(ctx, titleSlug, in.Kind, limit)
+	resp, err := h.issues(ctx, titleSlug, in.Kind, normalizeDQLocale(in.Locale), limit, offset)
 	if err != nil {
 		slog.ErrorContext(ctx, "admin_data_quality: issues failed",
 			"title", titleSlug, "kind", in.Kind, "err", err)

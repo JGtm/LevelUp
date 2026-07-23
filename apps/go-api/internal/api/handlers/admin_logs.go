@@ -54,14 +54,16 @@ func (h *AdminLogsHandler) Mount(r chi.Router) {
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
 
-// logsTailInput : query params du tail filtré. n et since en STRING pour
-// préserver le parsing lenient d'origine (valeur invalide ignorée).
+// logsTailInput : query params du tail filtré. n, since et before en STRING pour
+// préserver le parsing lenient d'origine (valeur invalide ignorée). before =
+// curseur arrière « charger plus » (offset octet renvoyé en next_offset).
 type logsTailInput struct {
 	Module   string `query:"module"`
 	Level    string `query:"level"`
 	Contains string `query:"contains"`
 	N        string `query:"n"`
 	Since    string `query:"since"`
+	Before   string `query:"before"`
 }
 
 type logsModulesOutput struct{ Body domain.AdminLogModules }
@@ -113,6 +115,11 @@ func (h *AdminLogsHandler) handleGetTail(ctx context.Context, in *logsTailInput)
 			opts.Since = t
 		}
 	}
+	if in.Before != "" {
+		if b, err := strconv.ParseInt(in.Before, 10, 64); err == nil && b > 0 {
+			opts.BeforeOffset = b
+		}
+	}
 
 	res, err := ops.TailModuleLog(h.logsDir, module, opts)
 	if err != nil {
@@ -127,6 +134,8 @@ func (h *AdminLogsHandler) handleGetTail(ctx context.Context, in *logsTailInput)
 		Entries:      make([]domain.AdminLogEntry, 0, len(res.Entries)),
 		ScannedBytes: res.ScannedBytes,
 		Truncated:    res.Truncated,
+		NextOffset:   res.NextOffset,
+		HasMore:      res.HasMore,
 	}
 	for _, e := range res.Entries {
 		entry := domain.AdminLogEntry{
