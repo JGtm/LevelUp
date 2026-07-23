@@ -314,6 +314,11 @@ export function TimeseriesEfficiency({
           smooth: false,
           connectNulls: true,
           lineStyle: { color: offensiveDamageGradient(dmgKill, hp), width: 2 },
+          // Essai visuel (P5) : aire du sur-coût/sous-coût vs le repère « 1 vie ».
+          // Ancrée à `hp` (origin numérique, ECharts >= 5.3.2), même dégradé offensif
+          // que le trait ; opacité faible pour rester discrète. Rendement seul —
+          // la Résistance (pointillé) reste sans aire.
+          areaStyle: { color: offensiveDamageGradient(dmgKill, hp), opacity: 0.1, origin: hp },
           markLine: {
             silent: true,
             symbol: 'none',

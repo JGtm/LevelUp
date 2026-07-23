@@ -6061,6 +6061,8 @@ export interface components {
             xuid: string;
         };
         EngagementMatchSummary: {
+            /** Format: int64 */
+            duration_seconds: number;
             /** Format: double */
             engagement_score: number | null;
             label: string;
@@ -8199,6 +8201,7 @@ export interface components {
             timeline_multi_player?: components["schemas"]["ChartSeriesChartPoint2D"][] | null;
         };
         SquadEngagementSession: {
+            durations_seconds: number[] | null;
             labels: string[] | null;
             lobby_per_player: number[] | null;
             map_names: string[] | null;

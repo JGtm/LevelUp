@@ -37,12 +37,13 @@ func (s *PlayerEngagementService) GetSquadSession(
 
 	players := buildSquadPlayers(s.xuid, s.gamertag, teammates, len(matchIDs))
 	session := &domain.SquadEngagementSession{
-		Labels:         make([]string, 0, len(matchIDs)),
-		MapNames:       make([]string, 0, len(matchIDs)),
-		LobbyPerPlayer: make([]float64, 0, len(matchIDs)),
-		TeamExpected:   make([]float64, 0, len(matchIDs)),
-		TeamObserved:   make([]float64, 0, len(matchIDs)),
-		Players:        players,
+		Labels:           make([]string, 0, len(matchIDs)),
+		MapNames:         make([]string, 0, len(matchIDs)),
+		LobbyPerPlayer:   make([]float64, 0, len(matchIDs)),
+		TeamExpected:     make([]float64, 0, len(matchIDs)),
+		TeamObserved:     make([]float64, 0, len(matchIDs)),
+		DurationsSeconds: make([]int64, 0, len(matchIDs)),
+		Players:          players,
 	}
 
 	for i, mid := range matchIDs {
@@ -98,6 +99,7 @@ func (s *PlayerEngagementService) appendMatchToSession(
 	session.LobbyPerPlayer = append(session.LobbyPerPlayer, summary.PaceLobby)
 	session.TeamExpected = append(session.TeamExpected, summary.PaceAttendu)
 	session.TeamObserved = append(session.TeamObserved, summary.PaceTeam)
+	session.DurationsSeconds = append(session.DurationsSeconds, summary.DurationSeconds)
 	for j := range session.Players {
 		var pace float64
 		if session.Players[j].XUID == s.xuid {
@@ -157,6 +159,7 @@ func (s *PlayerEngagementService) computeMatchBundle(
 		PaceAttendu:     meanPace(result.EngagementCurve, func(p domain.EngagementPoint) float64 { return p.PaceAttendu }),
 		PaceLobby:       result.MeanPaceLobby,
 		EngagementScore: result.EngagementScore,
+		DurationSeconds: durationSecondsFromContext(mctx),
 	}
 	return matchBundle{
 		summary:   summary,

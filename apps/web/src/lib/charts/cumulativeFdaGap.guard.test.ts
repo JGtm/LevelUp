@@ -1,12 +1,13 @@
 /// <reference types="node" />
 // @vitest-environment node
 /**
- * Garde-rail (CLAUDE.md n°6) : le cumul de l'écart FDA réel vs attendu (somme
- * cumulée signée avec report D5) vit UNIQUEMENT dans
- * `lib/charts/cumulativeFdaGap.ts`. L'identifiant distinctif `carryForward`
- * (accumulateur reporté quand un match n'a pas d'attendu) ne doit réapparaître
- * dans AUCUN autre fichier source — sinon la factorisation des 3 charts
- * « Écart cumulé au FDA attendu » (Sessions, Escouade, Timeseries) aurait
+ * Garde-rail (CLAUDE.md n°6) : le cumul signé avec report D5 (accumulateur
+ * `carryForward`) vit UNIQUEMENT dans le helper générique
+ * `lib/charts/cumulativeSeries.ts` — `cumulativeFdaGap.ts` y DÉLÈGUE (et le
+ * documente, d'où son maintien dans l'allowlist). L'identifiant distinctif
+ * `carryForward` ne doit réapparaître dans AUCUN autre fichier source — sinon la
+ * factorisation des charts cumulés (« Écart cumulé au FDA attendu » Sessions /
+ * Escouade / Timeseries, « Balance des dégâts » Session / Escouade) aurait
  * re-divergé. Calqué sur `divergentZeroGradient.guard.test.ts`.
  */
 import { describe, it, expect } from 'vitest'
@@ -15,7 +16,7 @@ import { join, resolve } from 'node:path'
 
 const CARRY_FORWARD = /\bcarryForward\b/
 
-const ALLOWED = new Set(['cumulativeFdaGap.ts'])
+const ALLOWED = new Set(['cumulativeSeries.ts', 'cumulativeFdaGap.ts'])
 
 function walk(dir: string): string[] {
   const out: string[] = []

@@ -533,7 +533,17 @@ func (s *PlayerEngagementService) computeMatchSummary(
 		PaceAttendu:     meanPace(result.EngagementCurve, func(p domain.EngagementPoint) float64 { return p.PaceAttendu }),
 		PaceLobby:       meanPace(result.EngagementCurve, func(p domain.EngagementPoint) float64 { return p.PaceLobby }),
 		EngagementScore: result.EngagementScore,
+		DurationSeconds: durationSecondsFromContext(mctx),
 	}, true
+}
+
+// durationSecondsFromContext derive la duree du match en secondes depuis les
+// bornes epoch ms du contexte. Clampe a 0 si bornes incoherentes/absentes.
+func durationSecondsFromContext(mctx *port.MatchEngagementContext) int64 {
+	if mctx == nil || mctx.EndTimeMS <= mctx.StartTimeMS {
+		return 0
+	}
+	return (mctx.EndTimeMS - mctx.StartTimeMS) / 1000
 }
 
 // (computePlayerPace : supprime en Phase 7 plan engagement long-term — la
