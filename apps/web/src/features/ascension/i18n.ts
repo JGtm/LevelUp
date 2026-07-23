@@ -5,8 +5,7 @@
  * Aligné avec features/{notifications,settings,help,...}/i18n.ts.
  */
 import type { StreakType, ContextType, BehaviorType } from './types'
-
-export type AscensionLocale = 'fr' | 'en'
+import type { Locale } from '@/lib/i18n/locale'
 
 export interface AscensionText {
   // Page wrapper (layout 4 onglets — refonte 2026-07, DEC-3)
@@ -649,6 +648,6 @@ const EN: AscensionText = {
   },
 }
 
-export function getAscensionText(locale: AscensionLocale): AscensionText {
+export function getAscensionText(locale: Locale): AscensionText {
   return locale === 'en' ? EN : FR
 }

@@ -27,6 +27,7 @@ import { getPrestigeText } from '@/features/prestige/i18n'
 import type { Challenge, Arc } from '@/lib/prestige'
 import { getAscensionText } from './i18n'
 import { LayerSection, SectionShell } from './AscensionLayers'
+import type { Locale } from '@/lib/i18n/locale'
 
 export function AscensionObjectivesTab() {
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
@@ -57,7 +58,7 @@ export function AscensionObjectivesTab() {
 
 interface PlayerLocaleSectionProps {
   playerSlug: string
-  locale: 'fr' | 'en'
+  locale: Locale
 }
 
 function MyObjectivesSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
@@ -249,7 +250,7 @@ function ObjectiveCard({
 }
 
 interface PilotModeToggleProps {
-  locale: 'fr' | 'en'
+  locale: Locale
   active: boolean
   pending: boolean
   onToggle: () => void
@@ -447,7 +448,7 @@ function MyArcsSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
 // ─── Confirmation de suppression d'arc ──────────────────────────────────────
 
 interface ArcDeleteConfirmProps {
-  locale: 'fr' | 'en'
+  locale: Locale
   title: string
   objectivesCount: number
   pending: boolean

@@ -1,4 +1,4 @@
-export type SettingsLocale = 'fr' | 'en'
+import type { Locale } from '@/lib/i18n/locale'
 
 export interface HintBullets {
   intro: string
@@ -857,12 +857,12 @@ const EN_TEXT: SettingsText = {
   backupIntegrityLabel: 'Integrity',
 }
 
-const TEXT: Record<SettingsLocale, SettingsText> = {
+const TEXT: Record<Locale, SettingsText> = {
   fr: FR_TEXT,
   en: EN_TEXT,
 }
 
-export function normalizeSettingsLocale(locale?: string | null): SettingsLocale {
+export function normalizeSettingsLocale(locale?: string | null): Locale {
   return locale === 'en' ? 'en' : 'fr'
 }
 

@@ -23,6 +23,7 @@ import type { ExplorerTargetRecentMatch, MedalDigestItem } from '@/lib/api/types
 import { CombatFdaChart } from './CombatFdaChart'
 import { CombatScorePlacementChart } from './CombatScorePlacementChart'
 import { ExplorerTargetMedals } from './ExplorerTargetMedals'
+import type { Locale } from '@/lib/i18n/locale'
 
 export interface ExplorerCombatProfileProps {
   /** ~20 derniers matchs fetchés en LIVE (source affichée par défaut). */
@@ -38,7 +39,7 @@ export interface ExplorerCombatProfileProps {
 const CHART_HEIGHT = 300
 
 // Libellés du toggle de source (inline FR/EN — pas de clé manifest dédiée).
-const SOURCE_LABELS: Record<'fr' | 'en', { live: string; local: string; empty: string }> = {
+const SOURCE_LABELS: Record<Locale, { live: string; local: string; empty: string }> = {
   fr: { live: 'En direct', local: 'Local', empty: 'Aucune donnée pour cette source.' },
   en: { live: 'Live', local: 'Local', empty: 'No data for this source.' },
 }

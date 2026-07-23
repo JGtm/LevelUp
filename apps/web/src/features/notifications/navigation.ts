@@ -9,6 +9,7 @@
  * Le backend peut surcharger via target_route/target_search ; ce mapping ne
  * sert que de fallback quand ces champs sont vides.
  */
+import { playerRelativePath } from '@/lib/title-routing/playerScopedPath'
 import type { Notification } from './types'
 
 export interface NotifTarget {
@@ -30,9 +31,24 @@ export interface NotifTarget {
 // la table notifications. On les ignore pour retomber sur le fallback par
 // catégorie plutôt que d'envoyer l'utilisateur sur une 404. À nettoyer côté DB
 // quand pratique (UPDATE notifications SET target_route = NULL WHERE …).
+//
+// Ce Set ne tient QUE les fantômes EXACTS (route agnostique fixe). Les fantômes
+// PARAMÉTRÉS par slug ne peuvent pas y figurer (exact-match) → isFantomTargetRoute.
 const FANTOM_TARGET_ROUTES = new Set<string>([
   '/admin/data-health', // émis par data_health_check.go avant 2026-05-20
 ])
+
+// isFantomTargetRoute : true si `route` est une cible fantôme à ignorer au profit du
+// fallback par catégorie — fantômes EXACTS (Set) ET fantômes PARAMÉTRÉS par slug.
+// Aujourd'hui, fantôme paramétré = le stock legacy sync_error `/players/{slug}/sync`
+// (route front inexistante ; l'émission n'en produit plus depuis le lot A — cf.
+// sync_handler.go — mais les notifications déjà persistées subsistent, avec un slug
+// variable jamais capté par un Set exact-match). playerRelativePath tolère l'ancien ET
+// le nouveau format → le stock est neutralisé quel que soit son format persisté.
+function isFantomTargetRoute(route: string): boolean {
+  if (FANTOM_TARGET_ROUTES.has(route)) return true
+  return playerRelativePath(route) === '/sync'
+}
 
 /**
  * Fallback par catégorie vers une page JOUEUR title-scoped : forme typée `to` (template
@@ -60,10 +76,13 @@ export function resolveTarget(
   titleSlug: string,
 ): NotifTarget | null {
   // Priorité au target_route renvoyé par le backend (mapping spécifique au runtime),
-  // sauf s'il fait partie de la liste de routes fantômes connues. NB : le backend émet
-  // encore l'ancien format `/players/…` (donnée runtime, hors périmètre lot 2-C) — pris
-  // en charge par le splat de redirection legacy (Phase 3), comme tout bookmark legacy.
-  if (notif.target_route && !FANTOM_TARGET_ROUTES.has(notif.target_route)) {
+  // sauf s'il est fantôme (isFantomTargetRoute). Depuis le lot A (2026-07-23) le backend
+  // émet le format title-préfixé sous /t/{titleSlug}/players/…, navigué VERBATIM (aucun
+  // re-préfixage) donc zéro hop. Le stock de notifications PERSISTÉES avant ce lot porte
+  // l'ancien format sous /players/… : les cibles vers une route RÉELLE sont prises en
+  // charge par le splat de redirection legacy (Phase 3, 1 hop) ; les fantômes paramétrés
+  // (sync_error /players/{slug}/sync, route morte) sont neutralisés ici → fallback catégorie.
+  if (notif.target_route && !isFantomTargetRoute(notif.target_route)) {
     return {
       to: notif.target_route,
       search: notif.target_search,

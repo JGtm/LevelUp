@@ -9,9 +9,42 @@
  *
  * Capture screenshot + DOM avant/après pour debug visuel.
  */
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import { skipIfNoDemoData } from './_helpers/demoData'
 import { playerPath } from './_helpers/routes'
+
+/** Instantané sérialisable d'une entrée du cache média TanStack Query. */
+type MediaCacheSnapshot = { key: string; itemsCount: number; firstThree: string[] }
+
+/**
+ * Lit le cache TanStack Query (exposé en debug via `window.__queryClient`) pour les
+ * requêtes `['media']` et en extrait un instantané. Retourne `null` si le handle
+ * debug n'est pas exposé par l'app. Factorisé (règle « ≤ 2 copies ») : appelé avant
+ * ET après le clic like.
+ */
+async function captureMediaCache(page: Page): Promise<MediaCacheSnapshot[] | null> {
+  return page.evaluate(() => {
+    type MediaItem = { file_path?: string; liked?: boolean }
+    type MediaPage = { items?: { items?: MediaItem[] } }
+    type DebugQueryClient = {
+      getQueriesData(filter: { queryKey: string[] }): [unknown, MediaPage | undefined][]
+    }
+    const qc = (window as unknown as { __queryClient?: DebugQueryClient }).__queryClient
+    if (!qc) return null
+    const result: MediaCacheSnapshot[] = []
+    for (const [key, data] of qc.getQueriesData({ queryKey: ['media'] })) {
+      const items = data?.items?.items
+      if (items) {
+        result.push({
+          key: JSON.stringify(key),
+          itemsCount: items.length,
+          firstThree: items.slice(0, 3).map((i) => `${i.file_path}|liked=${i.liked}`),
+        })
+      }
+    }
+    return result
+  })
+}
 
 // Fixtures démo absentes en CI (data/demo gitignoré) → spec entière data-dépendante.
 test.beforeEach(async () => {
@@ -91,7 +124,7 @@ test.describe('Bug : like change la vidéo', () => {
 
     // 2. Trouver toutes les cards de média (essayer plusieurs sélecteurs)
     const cards = page.locator('article[role="button"]')
-    let cardCount = await cards.count()
+    const cardCount = await cards.count()
     console.log(`[debug] article[role="button"]=${cardCount}`)
 
     if (cardCount === 0) {
@@ -132,23 +165,7 @@ test.describe('Bug : like change la vidéo', () => {
     console.log(`[debug] Video src AVANT like : ${videoSrcBefore}`)
 
     // Capture les items dans le query cache AVANT le clic
-    const itemsBefore = await page.evaluate(() => {
-      // @ts-ignore — debug TanStack Query cache
-      const qc = (window as any).__queryClient
-      if (!qc) return null
-      const queries = qc.getQueriesData({ queryKey: ['media'] })
-      const result: { key: string; itemsCount: number; firstThree: string[] }[] = []
-      for (const [key, data] of queries) {
-        if (data && (data as any).items?.items) {
-          result.push({
-            key: JSON.stringify(key),
-            itemsCount: (data as any).items.items.length,
-            firstThree: (data as any).items.items.slice(0, 3).map((i: any) => `${i.file_path}|liked=${i.liked}`),
-          })
-        }
-      }
-      return result
-    })
+    const itemsBefore = await captureMediaCache(page)
     console.log(`[debug] Cache AVANT like:`, JSON.stringify(itemsBefore, null, 2))
 
     networkLog.length = 0 // Reset le log juste avant le clic like
@@ -193,22 +210,7 @@ test.describe('Bug : like change la vidéo', () => {
     console.log('[network log post-clic]\n' + networkLog.join('\n'))
 
     // Capture les items APRÈS le clic
-    const itemsAfter = await page.evaluate(() => {
-      const qc = (window as any).__queryClient
-      if (!qc) return null
-      const queries = qc.getQueriesData({ queryKey: ['media'] })
-      const result: { key: string; itemsCount: number; firstThree: string[] }[] = []
-      for (const [key, data] of queries) {
-        if (data && (data as any).items?.items) {
-          result.push({
-            key: JSON.stringify(key),
-            itemsCount: (data as any).items.items.length,
-            firstThree: (data as any).items.items.slice(0, 3).map((i: any) => `${i.file_path}|liked=${i.liked}`),
-          })
-        }
-      }
-      return result
-    })
+    const itemsAfter = await captureMediaCache(page)
     console.log(`[debug] Cache APRÈS like:`, JSON.stringify(itemsAfter, null, 2))
 
     // 8. ASSERTION CRITIQUE : la vidéo affichée doit être la MÊME

@@ -5,7 +5,6 @@ package wire
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
 	"levelup/go-api/internal/notifications"
@@ -18,7 +17,7 @@ import (
 // A4 : ne jamais émettre depuis un rang « inconnu » (before=0). L'incident
 // cold-start portait previous:0 — un rang non initialisé n'est pas une montée.
 func emitCareerRankDelta(
-	ctx context.Context, emitter notifications.Emitter, slug string,
+	ctx context.Context, emitter notifications.Emitter, titleSlug, slug string,
 	before, after *PlayerSnapshot,
 ) {
 	if after.CurrentRank <= before.CurrentRank || after.CurrentRank <= 0 {
@@ -39,7 +38,7 @@ func emitCareerRankDelta(
 			"rank_name": rankSubRoman(after.CurrentRankName),
 			"previous":  before.CurrentRank,
 		},
-		TargetRoute: fmt.Sprintf("/players/%s/career", slug),
+		TargetRoute: notifications.PlayerTargetRoute(titleSlug, slug, "career"),
 		Source:      postSyncSource,
 	}); err != nil {
 		slog.WarnContext(ctx, "post_sync: career_rank", "err", err)
@@ -95,7 +94,7 @@ func emitSkillTierDeltas(
 				"previous_tier":     oldTier,
 				"previous_sub_tier": oldSub,
 			},
-			TargetRoute: fmt.Sprintf("/players/%s/synthesis", slug),
+			TargetRoute: notifications.PlayerTargetRoute(o.TitleSlug, slug, "stats/synthesis"),
 			Source:      postSyncSource,
 		}); err != nil {
 			slog.WarnContext(ctx, "post_sync: skill_tier", "playlist", playlist, "err", err)

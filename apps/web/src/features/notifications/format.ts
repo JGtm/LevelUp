@@ -9,18 +9,19 @@
  */
 import type { Notification } from './types'
 import { subTierRoman } from '@/lib/skillTiers'
-import { getNotificationsText, type NotificationsLocale } from './i18n'
+import { getNotificationsText } from './i18n'
+import type { Locale } from '@/lib/i18n/locale'
 
 export function resolveTitle(
   notif: Pick<Notification, 'title_key' | 'params'>,
-  locale: NotificationsLocale,
+  locale: Locale,
 ): string {
   return resolveTemplate(notif.title_key, notif.params, locale)
 }
 
 export function resolveBody(
   notif: Pick<Notification, 'body_key' | 'params'>,
-  locale: NotificationsLocale,
+  locale: Locale,
 ): string {
   if (!notif.body_key) return ''
   return resolveTemplate(notif.body_key, notif.params, locale)
@@ -29,7 +30,7 @@ export function resolveBody(
 function resolveTemplate(
   key: string,
   params: Record<string, unknown> | undefined,
-  locale: NotificationsLocale,
+  locale: Locale,
 ): string {
   const t = getNotificationsText(locale)
   const template = t.templates[key]
@@ -57,7 +58,7 @@ function subTierToRoman(v: unknown): string {
 // 2026-05-22 — sub_tier / previous_sub_tier convertis en chiffres romains.
 function enrichParams(
   params: Record<string, unknown> | undefined,
-  locale: NotificationsLocale,
+  locale: Locale,
 ): Record<string, unknown> | undefined {
   if (!params) return params
   const out = { ...params }

@@ -8,6 +8,7 @@
  */
 import type { FilterContextInput } from '@/lib/api/types'
 import type { ConsoleEntry, FailedRequest } from '@/lib/global-capture/buffers'
+import type { Locale } from '@/lib/i18n/locale'
 
 export interface BrowserEnv {
   url: string
@@ -15,7 +16,7 @@ export interface BrowserEnv {
   userAgent: string
   viewportWidth: number
   viewportHeight: number
-  locale: 'fr' | 'en'
+  locale: Locale
   theme: 'dark' | 'light'
   timestampIso: string
   focusedElement: string | null

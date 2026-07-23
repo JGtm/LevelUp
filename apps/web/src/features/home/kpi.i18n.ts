@@ -10,8 +10,7 @@
  */
 import { formatMessage } from '@/lib/i18n/format'
 import { homeManifest, type HomeManifestKey } from '@/lib/i18n/generated/home'
-
-export type KPILocale = 'fr' | 'en'
+import type { Locale } from '@/lib/i18n/locale'
 
 interface KPITextDict {
   labels: {
@@ -42,11 +41,11 @@ interface KPITextDict {
   kills: (count: number) => string
 }
 
-export function normalizeKPILocale(locale?: string | null): KPILocale {
+export function normalizeKPILocale(locale?: string | null): Locale {
   return locale === 'en' ? 'en' : 'fr'
 }
 
-function t(loc: KPILocale, key: HomeManifestKey): string {
+function t(loc: Locale, key: HomeManifestKey): string {
   return formatMessage(homeManifest, key, loc)
 }
 

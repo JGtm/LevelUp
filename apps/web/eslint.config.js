@@ -9,11 +9,12 @@ import noHardcodedStrings from './eslint-rules/no-hardcoded-strings.js'
 import noTitleSlugLiteral from './eslint-rules/no-title-slug-literal.js'
 
 export default defineConfig([
-  // Tests E2E Playwright : moins stricts (mocks any, ts-ignore acceptes
-  // pour test-helpers, prefer-const variable selon contexte de test).
-  globalIgnores(['dist', 'e2e/**', 'coverage/**']),
+  globalIgnores(['dist', 'coverage/**']),
   {
     files: ['**/*.{ts,tsx}'],
+    // Les specs E2E (e2e/**) ont leur propre bloc plus bas (pas de plugins
+    // React/hooks/refresh — aucun composant ni hook n'y vit).
+    ignores: ['e2e/**'],
     extends: [
       js.configs.recommended,
       tseslint.configs.recommended,
@@ -71,6 +72,29 @@ export default defineConfig([
     files: ['src/routes/**/*.{ts,tsx}', 'src/test/**/*.{ts,tsx}'],
     rules: {
       'react-refresh/only-export-components': 'off',
+    },
+  },
+  // ── Tests E2E Playwright ────────────────────────────────────────────────
+  // Specs exécutées en Node + code navigateur passé à page.evaluate(). Même base
+  // de rigueur que le repo (js.recommended + typescript-eslint recommended, donc
+  // no-explicit-any / no-unused-vars en erreur) MAIS sans les plugins React /
+  // react-hooks / react-refresh : aucun composant ni hook ne vit ici (les charts
+  // sont vérifiés via le DOM rendu, jamais montés dans la spec).
+  //
+  // Les règles maison @levelup sont volontairement absentes :
+  //   - no-hardcoded-strings ne cible que JSXText/JSXAttribute (aucun JSX dans les
+  //     .ts specs) et whiteliste déjà *.spec.ts ; les libellés UI FR attendus, en
+  //     dur dans les assertions de test, sont LÉGITIMES.
+  //   - no-title-slug-literal ne s'applique qu'à src/features|components ; les
+  //     slugs réels 'halo_infinite'/'halo_5' sont l'objet même des specs de routage
+  //     (legacy-redirect) et du helper routes.ts.
+  {
+    files: ['e2e/**/*.ts'],
+    extends: [js.configs.recommended, tseslint.configs.recommended],
+    languageOptions: {
+      ecmaVersion: 2023,
+      // Node (process.env) + navigateur (globals disponibles dans page.evaluate).
+      globals: { ...globals.node, ...globals.browser },
     },
   },
 ])

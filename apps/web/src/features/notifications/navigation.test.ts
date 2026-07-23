@@ -186,13 +186,14 @@ describe('navigation.ts - regression B1 routes notifications', () => {
   })
 
   it('rival_encounter cible la match view via le target_route backend', () => {
-    // Cas nominal : le backend renvoie déjà /players/{slug}/matches/{match_id} (format
-    // legacy verbatim — donnée runtime, redirigée par le splat Phase 3).
+    // Cas nominal : depuis le lot A (2026-07-23) le backend renvoie le format
+    // title-préfixé /t/{titleSlug}/players/{slug}/matches/{match_id}, navigué VERBATIM
+    // (zéro hop, aucun re-préfixage front).
     const notif = makeNotif('rival_encounter')
-    notif.target_route = `/players/${PLAYER_SLUG}/matches/m-42`
+    notif.target_route = `/t/${TITLE_SLUG}/players/${PLAYER_SLUG}/matches/m-42`
     const target = resolveTarget(notif, PLAYER_SLUG, TITLE_SLUG)
     expect(target).not.toBeNull()
-    expect(target!.to).toBe(`/players/${PLAYER_SLUG}/matches/m-42`)
+    expect(target!.to).toBe(`/t/${TITLE_SLUG}/players/${PLAYER_SLUG}/matches/m-42`)
     expect(target!.params).toBeUndefined()
   })
 
@@ -230,5 +231,29 @@ describe('navigation.ts - regression B1 routes notifications', () => {
     expect(target).not.toBeNull()
     expect(target!.to).toBe(`${PLAYER_TPL}/notifications`)
     expect(target!.params).toEqual(PLAYER_PARAMS)
+  })
+
+  it('sync_error legacy (stock /players/{slug}/sync paramétré) est neutralisé → fallback /settings', () => {
+    // Stock persisté antérieur au lot A : le backend émettait /players/{slug}/sync (route
+    // MORTE, paramétrée par slug → invisible au Set exact-match). isFantomTargetRoute doit
+    // l'ignorer pour retomber sur le fallback catégorie /settings (jobId préservé), et NON
+    // naviguer le target_route verbatim (qui finirait en 404 via le splat legacy).
+    const notif = makeNotif('sync_error')
+    notif.target_route = '/players/some-player/sync'
+    const target = resolveTarget(notif, PLAYER_SLUG, TITLE_SLUG)
+    expect(target).not.toBeNull()
+    expect(target!.to).toBe('/settings')
+    expect(target!.search).toMatchObject({ jobId: 'job-1' })
+  })
+
+  it('target_route nouveau format /t/{title}/players/{slug}/media reste prioritaire (non-fantôme)', () => {
+    // Le prédicat ne doit PAS attraper une route joueur RÉELLE : un target_route
+    // title-préfixé est navigué verbatim (zéro hop), prioritaire sur le fallback catégorie.
+    const notif = makeNotif('media_added')
+    notif.target_route = `/t/${TITLE_SLUG}/players/${PLAYER_SLUG}/media`
+    const target = resolveTarget(notif, PLAYER_SLUG, TITLE_SLUG)
+    expect(target).not.toBeNull()
+    expect(target!.to).toBe(`/t/${TITLE_SLUG}/players/${PLAYER_SLUG}/media`)
+    expect(target!.params).toBeUndefined()
   })
 })

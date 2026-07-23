@@ -1,7 +1,7 @@
 import Markdown from 'react-markdown'
 import { Card, CardContent } from '@/components/ui/card'
 import { tokenCssVar } from '@/lib/accessibility'
-import { type HelpLocale } from './i18n'
+import type { Locale } from '@/lib/i18n/locale'
 import { useReleaseNotes } from './queries'
 import type { SemanticToken } from '@/lib/accessibility'
 import {
@@ -14,7 +14,7 @@ import {
 } from './parseReleaseNotes'
 
 interface ReleaseNotesTabProps {
-  locale: HelpLocale
+  locale: Locale
   errorMessage: string
   loadingMessage: string
 }

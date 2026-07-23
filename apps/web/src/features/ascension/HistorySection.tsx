@@ -19,7 +19,8 @@ import { metricLabel } from '@/lib/i18n/metricLabel'
 import { useChallengeHistory, useArcs } from '@/features/prestige/hooks'
 import { useCampaignHistory } from './profile/queries'
 import { useProfileI18n } from './profile/useProfileI18n'
-import { getAscensionText, type AscensionLocale, type AscensionText } from './i18n'
+import { getAscensionText, type AscensionText } from './i18n'
+import type { Locale } from '@/lib/i18n/locale'
 import type { Challenge, ChallengeStatus, Arc } from '@/lib/prestige'
 import type { CampaignHistoryItem } from '@/lib/playerProfile'
 import type { ProfileManifestKey } from '@/lib/i18n/generated/profile'
@@ -63,7 +64,7 @@ export function HistorySection({ playerSlug }: HistorySectionProps) {
 
 interface PastObjectivesBlockProps {
   challenges: Challenge[]
-  locale: AscensionLocale
+  locale: Locale
   t: AscensionText
 }
 
@@ -97,7 +98,7 @@ function PastObjectivesBlock({ challenges, locale, t }: PastObjectivesBlockProps
 
 interface CompletedArcsBlockProps {
   arcs: Arc[]
-  locale: AscensionLocale
+  locale: Locale
   t: AscensionText
 }
 
@@ -126,7 +127,7 @@ function CompletedArcsBlock({ arcs, locale, t }: CompletedArcsBlockProps) {
 
 interface ClosedCampaignsBlockProps {
   campaigns: CampaignHistoryItem[]
-  locale: AscensionLocale
+  locale: Locale
   t: AscensionText
 }
 
@@ -252,7 +253,7 @@ function challengeResultLabel(status: ChallengeStatus, t: AscensionText): string
   }
 }
 
-function formatDate(iso: string | undefined, locale: AscensionLocale): string {
+function formatDate(iso: string | undefined, locale: Locale): string {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString(intlLocale(locale), {
     day: '2-digit',

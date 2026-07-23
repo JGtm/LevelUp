@@ -9,7 +9,8 @@
 import { CompositeProgressBar } from '@/components/ui/composite-progress-bar'
 import { Tooltip } from '@/components/ui/tooltip'
 import { formatAscensionDate, formatMultiplier, interpolate, nextPPTier, streakTierProgressPct } from './format'
-import { getAscensionText, type AscensionLocale } from './i18n'
+import { getAscensionText } from './i18n'
+import type { Locale } from '@/lib/i18n/locale'
 import type { Streak } from './types'
 
 /** Classe du badge de statut (couleurs d'état UI génériques, cf. CLAUDE.md §20). */
@@ -30,7 +31,7 @@ function streakUnit(t: ReturnType<typeof getAscensionText>, type: Streak['type']
 
 interface StreakCardProps {
   streak: Streak
-  locale: AscensionLocale
+  locale: Locale
   t: ReturnType<typeof getAscensionText>
   /** Mode compact (widget home) : padding/typo réduits, dates masquées. */
   compact?: boolean

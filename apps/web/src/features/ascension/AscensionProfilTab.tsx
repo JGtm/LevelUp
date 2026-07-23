@@ -15,6 +15,7 @@ import { PatternContextGrid } from './PatternContextGrid'
 import { SquadVsSoloCard } from './SquadVsSoloCard'
 import { BehaviorAlertList } from './BehaviorAlertList'
 import { LayerSection, SectionShell } from './AscensionLayers'
+import type { Locale } from '@/lib/i18n/locale'
 
 export function AscensionProfilTab() {
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
@@ -47,7 +48,7 @@ interface ProfilePatternsSectionProps {
   playerSlug: string
   titleSlug: string
   t: ReturnType<typeof getAscensionText>
-  locale: 'fr' | 'en'
+  locale: Locale
 }
 
 function ProfilePatternsSection({ playerSlug, titleSlug, t, locale }: ProfilePatternsSectionProps) {

@@ -27,6 +27,7 @@ import { useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import type { ExplorerTargetSampleStats, ExplorerWeaponKill, FragDistribution, SynthesisWeaponKillEntry } from '@/lib/api/types'
+import type { Locale } from '@/lib/i18n/locale'
 
 /** Libellé universel (FR=EN) quand la Résistance n'est pas calculable faute de
  *  damage_taken (Halo 5). Aligné sur `notAvailable: 'N/A'` du module compare. */
@@ -123,7 +124,7 @@ function ExplorerTargetFragV2({
 }: {
   distribution: FragDistribution | null
   weaponKills: SynthesisWeaponKillEntry[]
-  appLocale: 'fr' | 'en'
+  appLocale: Locale
 }) {
   const [hoveredClass, setHoveredClass] = useState<string | null>(null)
   const t: TFn = (key, values) => formatMessage(explorerManifest, key, appLocale, values)
@@ -178,7 +179,7 @@ function TopArmes({
 }: {
   weapons: SynthesisWeaponKillEntry[]
   title: string
-  locale: 'fr' | 'en'
+  locale: Locale
   hoveredClass: string | null
   onClassHover: (c: string | null) => void
 }) {
@@ -220,7 +221,7 @@ function TopArmes({
 
 // ─── Top armes (à droite du donut) ───────────────────────────────────────────
 
-function WeaponsTop({ weapons, locale, t }: { weapons: ExplorerWeaponKill[]; locale: 'fr' | 'en'; t: TFn }) {
+function WeaponsTop({ weapons, locale, t }: { weapons: ExplorerWeaponKill[]; locale: Locale; t: TFn }) {
   const numberLocale = intlLocale(locale)
   const maxKills = Math.max(1, ...weapons.map((w) => w.kills))
   return (

@@ -9,8 +9,7 @@
  */
 import { formatMessage } from '@/lib/i18n/format'
 import { palmaresManifest, type PalmaresManifestKey } from '@/lib/i18n/generated/palmares'
-
-export type PalmaresLocale = 'fr' | 'en'
+import type { Locale } from '@/lib/i18n/locale'
 
 export interface PalmaresText {
   intlLocale: string
@@ -194,11 +193,11 @@ export interface PalmaresText {
   }
 }
 
-export function normalizePalmaresLocale(locale?: string | null): PalmaresLocale {
+export function normalizePalmaresLocale(locale?: string | null): Locale {
   return locale === 'en' ? 'en' : 'fr'
 }
 
-function t(loc: PalmaresLocale, key: PalmaresManifestKey): string {
+function t(loc: Locale, key: PalmaresManifestKey): string {
   return formatMessage(palmaresManifest, key, loc)
 }
 

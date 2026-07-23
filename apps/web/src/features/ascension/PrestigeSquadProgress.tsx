@@ -29,6 +29,7 @@ import { interpolate } from './format'
 import { prestigeApi, type UserPrestige } from '@/lib/prestige'
 import { useAssetLabel } from '@/lib/i18n/fieldMappings'
 import type { PlayerSummary } from '@/lib/api/types'
+import type { Locale } from '@/lib/i18n/locale'
 
 interface RowData {
   slug: string
@@ -131,7 +132,7 @@ function SquadPrestigeRow({
 }: {
   row: RowData
   numberLocale: string
-  locale: 'fr' | 'en'
+  locale: Locale
 }) {
   const { prestige, gamertag, isMe } = row
   const t = getAscensionText(locale)

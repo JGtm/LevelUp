@@ -4,6 +4,16 @@ Suite end-to-end (Playwright, projet `chromium`) contre l'app réelle : API Go s
 `:8000` + Vite sur `:5173`. Config : [`../playwright.config.ts`](../playwright.config.ts)
 (`workers: 1`, `fullyParallel: false` — l'API DuckDB est mono-fichier).
 
+## Type-check & lint
+
+Depuis D7 (lot B), les specs sont **type-checkées par `tsc -b`** (projet
+[`../tsconfig.e2e.json`](../tsconfig.e2e.json), référencé dans `tsconfig.json`, `lib` DOM+node
+pour le code exécuté dans `page.evaluate`) et **lintées par `eslint .`** (bloc dédié
+`e2e/**/*.ts` dans [`../eslint.config.js`](../eslint.config.js) : base typescript-eslint sans
+les règles React/hooks/refresh). Conséquences pour une nouvelle spec : pas de `any`, pas de
+variable inutilisée, `import type` pour les imports de types. Les strings UI FR en dur dans les
+assertions restent légitimes (règles maison `@levelup/*` hors périmètre e2e).
+
 ## Lancer en local
 
 ```bash

@@ -9,7 +9,6 @@ package wire
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"time"
 
@@ -60,7 +59,7 @@ func emitRivalEncounters(
 	ctx context.Context,
 	emitter notifications.Emitter,
 	detector rivalEncounterDetector,
-	slug string,
+	titleSlug, slug string,
 	before, after *PlayerSnapshot,
 ) {
 	if emitter == nil || detector == nil || before == nil || after == nil {
@@ -94,7 +93,7 @@ func emitRivalEncounters(
 				"deaths":   e.DeathsByRival,
 				"match_id": e.MatchID,
 			},
-			TargetRoute: fmt.Sprintf("/players/%s/matches/%s", slug, e.MatchID),
+			TargetRoute: notifications.PlayerTargetRoute(titleSlug, slug, "matches/"+e.MatchID),
 			Source:      postSyncSource,
 		})
 		if emitErr != nil {

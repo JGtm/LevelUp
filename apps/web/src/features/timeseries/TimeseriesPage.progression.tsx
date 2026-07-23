@@ -31,11 +31,12 @@ import { TimeseriesSkillProgression } from './TimeseriesSkillProgression'
 import type { FilterContextInput, TimeseriesPageResponse, ExplorerMatchRow } from '@/lib/api/types'
 import type { FieldMappingsResponse } from '@/lib/i18n/fieldMappings'
 import type { TimeseriesManifestKey } from '@/lib/i18n/generated/timeseries'
+import type { Locale } from '@/lib/i18n/locale'
 
 export interface TimeseriesProgressionTabProps {
   data: TimeseriesPageResponse
   playerSlug: string
-  locale: 'fr' | 'en'
+  locale: Locale
   t: (key: TimeseriesManifestKey) => string
   fieldMappings: FieldMappingsResponse | undefined
   soloFilterContext: FilterContextInput

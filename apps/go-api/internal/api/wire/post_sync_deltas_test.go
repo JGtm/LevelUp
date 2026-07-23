@@ -411,9 +411,12 @@ func TestEmitPostSyncDeltas_PersonalRecord_SkippedWithoutPDB(t *testing.T) {
 // Si une nouvelle route fantôme réapparaît, ce test échouera avec un message
 // nominatif. Test de non-régression au sens politique transverse.
 
-// validPlayerSubpaths : sous-chemins acceptés sous /players/{slug}/.
+// validPlayerSubpaths : sous-chemins acceptés sous la racine joueur title-scopée
+// (/t/{titleSlug}/players/{slug}/…). Ce sont des routes front RÉELLES — les deux
+// entrées relocalisées (lot A 2026-07-23) `/stats/synthesis` et `/career/citations`
+// remplacent les anciens stubs de redirection `/synthesis` et `/citations` (hop).
 var validPlayerSubpaths = []string{
-	"/synthesis",
+	"/stats/synthesis",
 	"/objectifs",
 	"/objectifs/index",
 	"/ascension",
@@ -425,7 +428,7 @@ var validPlayerSubpaths = []string{
 	"/palmares/compare",
 	"/career",
 	"/career/season-pass", // route actuelle (vs. /palmares/season-pass legacy)
-	"/citations",          // 2026-05-16 — pages citations/commendations
+	"/career/citations",   // 2026-07-23 — page Citations sous la section Carrière
 	"/match",
 	"/matches",
 	"/media",
@@ -440,8 +443,9 @@ var validPlayerSubpaths = []string{
 	"/compare",
 }
 
-// targetRouteIsValid retourne true si route correspond a un prefixe valide
-// (whitelist) ou a /players/{*}/<sous-chemin valide>.
+// targetRouteIsValid retourne true si route correspond au format title-scopé
+// /t/{titleSlug}/players/{slug}/<sous-chemin valide> (lot A) ou à une route
+// agnostique connue. Le sous-chemin doit figurer dans validPlayerSubpaths.
 func targetRouteIsValid(route string) bool {
 	if route == "" {
 		return true // pas de TargetRoute = pas de risque
@@ -449,22 +453,25 @@ func targetRouteIsValid(route string) bool {
 	if route == "/changelog" || route == "/settings" {
 		return true
 	}
-	// /players/{slug}/<sous-chemin>
-	const prefix = "/players/"
-	if len(route) <= len(prefix) || route[:len(prefix)] != prefix {
+	// Format title-scopé : /t/{titleSlug}/players/{slug}/<sous-chemin>.
+	const tPrefix = "/t/"
+	if !strings.HasPrefix(route, tPrefix) {
 		return false
 	}
-	rest := route[len(prefix):]
-	// Skip the slug segment.
-	slash := -1
-	for i, c := range rest {
-		if c == '/' {
-			slash = i
-			break
-		}
+	// Retire /t/{titleSlug} → reste /players/{slug}/<sous-chemin>.
+	afterTitle := strings.IndexByte(route[len(tPrefix):], '/')
+	if afterTitle < 0 {
+		return false
 	}
+	rest := route[len(tPrefix)+afterTitle:]
+	const pPrefix = "/players/"
+	if !strings.HasPrefix(rest, pPrefix) {
+		return false
+	}
+	rest = rest[len(pPrefix):] // {slug}/<sous-chemin>
+	slash := strings.IndexByte(rest, '/')
 	if slash < 0 {
-		// /players/{slug} sans sous-chemin — accepté mais inutile en notification
+		// /t/{title}/players/{slug} sans sous-chemin — accepté mais inutile en notification
 		return true
 	}
 	subPath := rest[slash:]
@@ -508,7 +515,7 @@ func TestEmitPostSyncDeltas_AllTargetRoutesValid(t *testing.T) {
 		Winrate:                   0.60,                                            // → threshold_crossed (winrate)
 		BestKDA:                   5.5,                                             // → personal_record (best_kda)
 	}
-	EmitPostSyncDeltas(context.Background(), em, "test-player", before, after, nil, PostSyncDeltaOptions{})
+	EmitPostSyncDeltas(context.Background(), em, "test-player", before, after, nil, PostSyncDeltaOptions{TitleSlug: "halo_infinite"})
 
 	if len(em.emitted) == 0 {
 		t.Fatalf("expected at least one emit for the wide delta")
@@ -528,12 +535,13 @@ func TestEmitPostSyncDeltas_NoFantomRoutes(t *testing.T) {
 	em := &recordingEmitter{}
 	before := &PlayerSnapshot{CitationsCount: 0, ChallengePathsCount: 0}
 	after := &PlayerSnapshot{CitationsCount: 5, ChallengePathsCount: 4}
-	EmitPostSyncDeltas(context.Background(), em, "test-player", before, after, nil, PostSyncDeltaOptions{})
+	EmitPostSyncDeltas(context.Background(), em, "test-player", before, after, nil, PostSyncDeltaOptions{TitleSlug: "halo_infinite"})
 
+	// Routes fantômes B1 (format title-scopé post-lot A) : ne doivent JAMAIS réapparaître.
 	fantomRoutes := []string{
-		"/players/test-player/defis",
+		"/t/halo_infinite/players/test-player/defis",
 		"/help/changelog",
-		"/players/test-player/sync",
+		"/t/halo_infinite/players/test-player/sync",
 	}
 	for _, in := range em.emitted {
 		for _, fantom := range fantomRoutes {
