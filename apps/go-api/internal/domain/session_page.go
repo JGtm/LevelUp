@@ -81,6 +81,14 @@ type SessionDetailMatchRow struct {
 	PlacementTotal *int `json:"placement_total,omitempty"`
 	// ModeUI : libellé de mode normalisé + traduit (comme l'Explorer), via analysis.ResolveModeUI.
 	ModeUI string `json:"mode_ui,omitempty"`
+	// Stats attendues (écart CUMULÉ au FDA attendu sur la session). KdaExpected =
+	// kills_expected + assists_expected/3 − deaths_expected (analysis.ExpectedFDA).
+	// Tous nil hors titre à CapExpectedStats (Halo 5) ou match sans attendu → chart
+	// gaté par la capability côté front.
+	KillsExpected   *float64 `json:"kills_expected,omitempty"`
+	DeathsExpected  *float64 `json:"deaths_expected,omitempty"`
+	AssistsExpected *float64 `json:"assists_expected,omitempty"`
+	KdaExpected     *float64 `json:"kda_expected,omitempty"`
 }
 
 // SessionCompareSuggestion décrit la session proposée pour une comparaison rapide.

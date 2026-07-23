@@ -88,4 +88,23 @@ type SquadV2Loader interface {
 		gamertag string,
 		matchIDs []string,
 	) (map[string]int, error)
+
+	// LoadPlayerAssistsModel retourne le modèle personnel OLS d'assists attendus
+	// d'un MEMBRE (sa player DB) pour un mode (game_variant_name). nil si le membre
+	// n'a pas de modèle (< seuil d'échantillons / player DB absente) → l'appelant
+	// bascule sur le fallback populationnel. Sert l'écart au FDA attendu par joueur
+	// (teammates.16, chaîne D8).
+	LoadPlayerAssistsModel(
+		ctx context.Context,
+		slug, gamertag, gameVariantName string,
+	) (*domain.PlayerAssistsModel, error)
+
+	// LoadPopulationalAssistsCoef retourne le fallback populationnel (slope, intercept)
+	// du modèle d'assists attendus d'un mode (metadata title-level, partagée). ok=false
+	// si les coefs sont indisponibles (table absente / titre sans modèle). Résolu
+	// une fois par mode côté appelant.
+	LoadPopulationalAssistsCoef(
+		ctx context.Context,
+		slug, gameVariantName string,
+	) (slope, intercept float64, ok bool, err error)
 }

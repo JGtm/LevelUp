@@ -44,6 +44,13 @@ describe('useCapability', () => {
     const { result } = renderHook(() => useCapability('firefight'))
     expect(result.current).toBe(true)
   })
+
+  it('expected_stats : gate les 3 charts « Écart au FDA attendu » (présent → affiché, absent → masqué)', () => {
+    setTitleCaps(['expected_stats', 'ranked'])
+    expect(renderHook(() => useCapability('expected_stats')).result.current).toBe(true)
+    setTitleCaps(['ranked'])
+    expect(renderHook(() => useCapability('expected_stats')).result.current).toBe(false)
+  })
 })
 
 describe('FeatureGate', () => {

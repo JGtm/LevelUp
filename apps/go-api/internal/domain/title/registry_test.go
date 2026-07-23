@@ -52,6 +52,19 @@ func TestNewRegistry_ContainsHaloInfinite(t *testing.T) {
 	}
 }
 
+// TestNewRegistry_HaloInfiniteHasExpectedStats : halo_infinite déclare la
+// capability expected_stats (écart au FDA attendu, kills/deaths_expected natifs).
+// Un titre sans cette cap (Halo 5) masque les 3 charts côté front.
+func TestNewRegistry_HaloInfiniteHasExpectedStats(t *testing.T) {
+	hi := NewRegistry().Get(DefaultSlug)
+	if hi == nil {
+		t.Fatal("expected halo_infinite in registry")
+	}
+	if !hi.HasCapability(CapExpectedStats) {
+		t.Error("halo_infinite doit déclarer CapExpectedStats")
+	}
+}
+
 func TestRegistry_RegisterAndGet(t *testing.T) {
 	r := NewRegistry()
 	r.Register(&TitleDescriptor{

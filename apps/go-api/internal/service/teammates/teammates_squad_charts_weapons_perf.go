@@ -495,6 +495,15 @@ func (s *TeammatesService) buildSquadPerformanceSeries(
 		eventsByMatch = s.loadCanonicalKillEventsByMatch(ctx, sharedMatches)
 	}
 
+	// Écart au FDA attendu par membre (teammates.16) : gaté capability (jamais slug==).
+	// Le résolveur d'assists attendus est créé UNE fois → cache partagé entre membres
+	// (par membre+mode / par mode). nil hors CapExpectedStats (Halo 5) → aucun accès DB.
+	expectedFDA := titleHasExpectedStats(s.titleSlug)
+	var assistsResolver *squadExpectedAssistsResolver
+	if expectedFDA {
+		assistsResolver = newSquadExpectedAssistsResolver(ctx, s.squadLoader, s.titleSlug)
+	}
+
 	// squadLoader.LoadFor résout les rows par gamertag (playerMatchesRepo est bound
 	// au main et ignore l'arg gt → toutes les séries affichaient les stats du main).
 	loadFor := func(gt string) []domain.SquadPerformanceSeriesPoint {
@@ -602,6 +611,13 @@ func (s *TeammatesService) buildSquadPerformanceSeries(
 				pt.SkillPlaylistGroup = ss.PlaylistGroup
 				pt.SkillSeasonID = ss.SeasonID
 				pt.SkillMeasurementRemaining = ss.MeasurementRemaining
+			}
+			// Écart au FDA attendu (K/D natif de Self + assists attendus par membre).
+			if expectedFDA && (r.Self.KillsExpected != nil || r.Self.DeathsExpected != nil) {
+				pt.KillsExpected = r.Self.KillsExpected
+				pt.DeathsExpected = r.Self.DeathsExpected
+				pt.AssistsExpected = assistsResolver.assistsFor(gt, &r)
+				pt.KdaExpected = analysis.ExpectedFDA(r.Self.KillsExpected, r.Self.DeathsExpected, pt.AssistsExpected)
 			}
 			series = append(series, pt)
 		}
