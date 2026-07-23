@@ -21,6 +21,12 @@ main (deploy VPS auto) + tag `v7.0.0` (release.yml → GitHub Release).
 propre ; go test ./... vert. Aucun fichier persist/sync touché → gate intégration anti-ART
 non requis.
 
+**Hook pre-push `lint-no-hardcoded-fields`** : bloqué au 1er push — `metricLabel.ts` (dict
+canonique METRIC_LABEL_FR/EN, NOUVEAU via ascension Lot A) hardcodait `'Score de
+performance'`, collision avec le FieldKey `performance_score` de fields.toml. C'est un dict
+de labels pur (fonction hors React, sœur de prestige.ts/skillTiers.ts déjà whitelistés), pas
+un composant → ajouté à la whitelist du linter (fix in-design, pas de --no-verify).
+
 **Prochaine étape** : `git push origin main` (deploy prod) + `git push origin v7.0.0`.
 
 ---

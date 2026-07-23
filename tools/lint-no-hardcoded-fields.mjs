@@ -83,6 +83,7 @@ const WHITELIST_PATTERNS = [
   /\/lib\/api\/generated\.ts$/,             // types generes par openapi-typescript (enums du contrat OpenAPI)
   /\/features\/compare\/i18n\.ts$/,         // dict FR/EN local de compare
   /\/lib\/prestige\.ts$/,                   // dict TIER_LABELS_FR — fallback canonique
+  /\/lib\/i18n\/metricLabel\.ts$/,          // dict canonique METRIC_LABEL_FR/EN (source UNIQUE des libellés de métrique Ascension/Prestige, fonction pure hors React — même statut que prestige.ts/skillTiers.ts) — whitelist 2026-07-23
   /\/features\/palmares\/rarity\.ts$/,      // dict rarity Halo (asset Halo natif)
   /\/lib\/medalDifficulty\.ts$/,            // dict difficulty médailles Halo (Normal/Heroic/Legendary/Mythic — valeurs API)
   /\/lib\/skillTiers\.ts$/,                 // constantes paliers skill CSR/LUSR (Bronze/Silver/Gold… — valeurs API)
