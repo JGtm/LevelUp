@@ -294,14 +294,19 @@ func (h *SyncHandler) emitSyncError(ctx context.Context, slug, jobID, message st
 	// Coalescence 6 h (DP15) : une panne durable = UNE notif dont le count
 	// s'incrémente (dernier message conservé), pas une par tentative de sync.
 	// sync_error n'a pas d'acteur → coalescence sur la catégorie seule.
+	// Pas de TargetRoute émise (lot A, 2026-07-23) : l'ancienne cible /players/{slug}/sync
+	// est une route MORTE (aucune page front « sync » — fantôme B1). Le front route déjà
+	// délibérément la catégorie sync_error vers /settings?jobId (navigation.ts : « la
+	// gestion sync se fait dans Settings »). On lui laisse ce fallback (zéro hop, page
+	// réelle) plutôt que de dupliquer le mapping /settings côté Go — et emitSyncError tourne
+	// sur un bgCtx détaché qui ne porte pas le titre réel (pas de route title-scopée fiable).
 	if err := em.EmitCoalesced(ctx, notifications.EmitInput{
-		Category:    notifications.CategorySyncError,
-		Severity:    notifications.SeverityError,
-		TitleKey:    "notif.sync_error.title",
-		BodyKey:     "notif.sync_error.body",
-		Params:      map[string]any{"message": truncate(message, 200), "job_id": jobID},
-		TargetRoute: fmt.Sprintf("/players/%s/sync", slug),
-		Source:      "sync_handler",
+		Category: notifications.CategorySyncError,
+		Severity: notifications.SeverityError,
+		TitleKey: "notif.sync_error.title",
+		BodyKey:  "notif.sync_error.body",
+		Params:   map[string]any{"message": truncate(message, 200), "job_id": jobID},
+		Source:   "sync_handler",
 	}, syncErrorCoalesceWindow); err != nil {
 		slog.WarnContext(ctx, "notifications: sync_error emit", "err", err)
 	}

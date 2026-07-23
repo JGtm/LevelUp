@@ -22,7 +22,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"path/filepath"
@@ -35,6 +34,7 @@ import (
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/platform/dblease"
@@ -230,6 +230,10 @@ func (h *MediaHandler) emitMediaAdded(
 			slog.WarnContext(ctx, "notifications: media_added recipients", "err", err)
 		}
 	}
+	// Titre du contexte de requête (TitleExtractor). Le média et ses destinataires
+	// vivent tous dans ce titre (shared_social/shared_matches sont per-titre) —
+	// title-agnostic : on lit le titre ambiant, jamais de slug en dur.
+	titleSlug := ctxkeys.TitleSlug(ctx)
 	for _, slug := range recipients {
 		if slug == uploaderSlug {
 			continue // safety : exclure l'uploader (le resolver est censé le faire aussi)
@@ -246,7 +250,7 @@ func (h *MediaHandler) emitMediaAdded(
 			TitleKey:    "notif.media_added.title",
 			BodyKey:     "notif.media_added.body",
 			Params:      map[string]any{"actor_name": gamertag, jsonKeyCount: newIndexed},
-			TargetRoute: fmt.Sprintf("/players/%s/media", slug),
+			TargetRoute: notifications.PlayerTargetRoute(titleSlug, slug, "media"),
 			Actor:       &notifications.Actor{Name: gamertag},
 			Source:      "media_handler",
 		}, mediaCoalesceWindow)
@@ -366,13 +370,15 @@ func (h *MediaHandler) emitMediaLiked(ctx context.Context, filePath, likerSlug, 
 	if displayName == "" {
 		displayName = likerSlug
 	}
+	// Titre ambiant de la requête (like) — le média liké appartient à ce titre.
+	titleSlug := ctxkeys.TitleSlug(ctx)
 	_ = em.Emit(ctx, notifications.EmitInput{
 		Category:    notifications.CategoryMediaLiked,
 		Severity:    notifications.SeverityInfo,
 		TitleKey:    "notif.media_liked.title",
 		BodyKey:     "notif.media_liked.body",
 		Params:      map[string]any{"actor_name": displayName},
-		TargetRoute: fmt.Sprintf("/players/%s/media", ownerSlug),
+		TargetRoute: notifications.PlayerTargetRoute(titleSlug, ownerSlug, "media"),
 		Actor:       &notifications.Actor{Name: displayName},
 		Source:      "media_handler",
 	})
