@@ -57,6 +57,7 @@ const STRINGS = {
     create: 'Créer',
     creating: 'Création…',
     poolEmpty: 'Aucun défi proposé.',
+    poolError: 'Échec de la génération des défis',
     orientation: (axis: string) => `Axe à renforcer : ${axis}`,
     axisLabels: {
       combat: 'Combat',
@@ -93,6 +94,7 @@ const STRINGS = {
     create: 'Create',
     creating: 'Creating…',
     poolEmpty: 'No challenge suggested.',
+    poolError: 'Failed to generate challenges',
     orientation: (axis: string) => `Focus to improve: ${axis}`,
     axisLabels: {
       combat: 'Combat',
@@ -372,7 +374,10 @@ function SquadObjectivesPanel({
           variant="outline"
           size="sm"
           onClick={() =>
-            refreshPool.mutate({ squadId, titleSlug, requestedBy: playerSlug })
+            refreshPool.mutate(
+              { squadId, titleSlug, requestedBy: playerSlug },
+              { onError: (err) => toast.error(apiErrorMessage(err) ?? t.poolError) },
+            )
           }
           disabled={refreshPool.isPending}
         >

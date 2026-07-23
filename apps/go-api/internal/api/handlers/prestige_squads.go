@@ -482,6 +482,10 @@ func (h *PrestigeHandler) serviceError(ctx context.Context, err error) error {
 			// Cas particulier RejectTooEasy formaté avec stretch dans le message
 			return humacore.NewError(http.StatusBadRequest, "challenge_too_easy", msg)
 		}
+		// Erreur non sentinelle masquée en 500 : logger la cause AVANT de la
+		// masquer (CLAUDE.md règle 3 — jamais d'erreur avalée). Sans ce log,
+		// un 500 prestige (ex. RefreshSquadPool) n'expose sa cause qu'au client.
+		slog.ErrorContext(ctx, "prestige: unmapped service error masked as 500", "err", err)
 		return humacore.NewError(http.StatusInternalServerError, "internal_error", msg)
 	}
 }
