@@ -377,10 +377,6 @@ en = "Code generated:"
 fr = "Échec de la génération du code."
 en = "Failed to generate code."
 
-[common.admin.invariants_section]
-fr = "Intégrité des données"
-en = "Data integrity"
-
 [common.admin.invariants_refresh]
 fr = "Vérifier"
 en = "Check"
@@ -420,10 +416,6 @@ en = "Administration"
 [common.admin.back]
 fr = "Retour"
 en = "Back"
-
-[common.admin.users_section]
-fr = "Utilisateurs"
-en = "Users"
 
 [common.admin.loading]
 fr = "Chargement…"

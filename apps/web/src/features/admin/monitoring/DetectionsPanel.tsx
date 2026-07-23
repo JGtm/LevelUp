@@ -16,9 +16,11 @@ import {
   type SortingState,
 } from '@tanstack/react-table'
 
+import { AlertDialog } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
+import type { AdminManifestKey } from '@/lib/i18n/generated/admin'
 import type { MonitoringDetection } from '@/lib/api/types'
 import { useMonitoringDetections } from './queries'
 import { useSetDetectionStatus, type DetectionStatus } from './mutations'
@@ -30,6 +32,22 @@ import { SectionHeader } from '../components/SectionHeader'
 const STATUS_FILTERS = ['all', 'open', 'acked', 'muted', 'resolved'] as const
 type StatusFilter = (typeof STATUS_FILTERS)[number]
 
+/** Clé i18n du libellé d'action pour chaque statut cible. */
+const ACTION_LABEL_KEY: Record<DetectionStatus, AdminManifestKey> = {
+  open: 'admin.detections.action_reopen',
+  acked: 'admin.detections.action_ack',
+  muted: 'admin.detections.action_mute',
+  resolved: 'admin.detections.action_resolve',
+}
+
+/** Clé i18n de la micro-copie expliquant l'effet de chaque action. */
+const ACTION_HELP_KEY: Record<DetectionStatus, AdminManifestKey> = {
+  open: 'admin.detections.help_reopen',
+  acked: 'admin.detections.help_ack',
+  muted: 'admin.detections.help_mute',
+  resolved: 'admin.detections.help_resolve',
+}
+
 const columnHelper = createColumnHelper<MonitoringDetection>()
 
 export function DetectionsPanel() {
@@ -39,6 +57,8 @@ export function DetectionsPanel() {
   const setStatus = useSetDetectionStatus()
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('open')
   const [sorting, setSorting] = useState<SortingState>([{ id: 'last_seen', desc: true }])
+  const [pending, setPending] = useState<{ fingerprint: string; status: DetectionStatus } | null>(null)
+  const [note, setNote] = useState('')
 
   const detections = useMemo(
     () => filterDetectionsByStatus(data?.detections ?? [], statusFilter),
@@ -46,13 +66,19 @@ export function DetectionsPanel() {
   )
 
   function act(fingerprint: string, status: DetectionStatus) {
-    // W4 (revue 2026-07) : Annuler le prompt (retour null) DOIT tout annuler — aucune
-    // mutation. L'ancien `?? undefined` transformait null en undefined puis mutait quand
-    // même (changement de statut non voulu). Chaîne vide (OK sans texte) reste une
-    // validation → note absente mais mutation effectuée.
-    const note = window.prompt(tA('admin.detections.note_prompt'))
-    if (note === null) return
-    setStatus.mutate({ fingerprint, status, note: note || undefined })
+    // La note de suivi passe par un dialog in-app (plus de prompt() natif, banni de
+    // l'app) : ouvrir le dialog ; la mutation ne part qu'à la validation. Annuler
+    // (Escape/backdrop/bouton) n'émet AUCUNE mutation. Note vide = validation sans
+    // commentaire (mutation effectuée, note absente).
+    setNote('')
+    setPending({ fingerprint, status })
+  }
+
+  function confirmAction() {
+    if (!pending) return
+    const trimmed = note.trim()
+    setStatus.mutate({ fingerprint: pending.fingerprint, status: pending.status, note: trimmed || undefined })
+    setPending(null)
   }
 
   const columns = useMemo(
@@ -115,22 +141,50 @@ export function DetectionsPanel() {
           return (
             <div className="flex flex-wrap justify-end gap-1">
               {row.status === 'resolved' ? (
-                <Button size="sm" variant="outline" disabled={setStatus.isPending} onClick={() => act(row.fingerprint, 'open')}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="whitespace-nowrap"
+                  title={tA(ACTION_HELP_KEY.open)}
+                  disabled={setStatus.isPending}
+                  onClick={() => act(row.fingerprint, 'open')}
+                >
                   {tA('admin.detections.action_reopen')}
                 </Button>
               ) : (
                 <>
                   {row.status !== 'acked' && (
-                    <Button size="sm" variant="outline" disabled={setStatus.isPending} onClick={() => act(row.fingerprint, 'acked')}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="whitespace-nowrap"
+                      title={tA(ACTION_HELP_KEY.acked)}
+                      disabled={setStatus.isPending}
+                      onClick={() => act(row.fingerprint, 'acked')}
+                    >
                       {tA('admin.detections.action_ack')}
                     </Button>
                   )}
                   {row.status !== 'muted' && (
-                    <Button size="sm" variant="outline" disabled={setStatus.isPending} onClick={() => act(row.fingerprint, 'muted')}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="whitespace-nowrap"
+                      title={tA(ACTION_HELP_KEY.muted)}
+                      disabled={setStatus.isPending}
+                      onClick={() => act(row.fingerprint, 'muted')}
+                    >
                       {tA('admin.detections.action_mute')}
                     </Button>
                   )}
-                  <Button size="sm" variant="outline" disabled={setStatus.isPending} onClick={() => act(row.fingerprint, 'resolved')}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="whitespace-nowrap"
+                    title={tA(ACTION_HELP_KEY.resolved)}
+                    disabled={setStatus.isPending}
+                    onClick={() => act(row.fingerprint, 'resolved')}
+                  >
                     {tA('admin.detections.action_resolve')}
                   </Button>
                 </>
@@ -140,7 +194,6 @@ export function DetectionsPanel() {
         },
       }),
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [tA, locale, setStatus.isPending],
   )
 
@@ -156,9 +209,18 @@ export function DetectionsPanel() {
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-center gap-3">
-        <div>
+        <div className="space-y-1">
           <SectionHeader title={tA('admin.detections.section')} />
           <p className="text-xs text-muted-foreground">{tA('admin.detections.subtitle')}</p>
+          <details className="text-xs text-muted-foreground">
+            <summary className="cursor-pointer select-none">{tA('admin.detections.actions_help_summary')}</summary>
+            <ul className="mt-1 max-w-2xl list-disc space-y-0.5 pl-5">
+              <li>{tA('admin.detections.help_ack')}</li>
+              <li>{tA('admin.detections.help_mute')}</li>
+              <li>{tA('admin.detections.help_resolve')}</li>
+              <li>{tA('admin.detections.help_reopen')}</li>
+            </ul>
+          </details>
         </div>
         <label className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
           {tA('admin.detections.filter_status')}
@@ -213,6 +275,29 @@ export function DetectionsPanel() {
           </table>
         </div>
       )}
+
+      <AlertDialog
+        open={pending !== null}
+        onOpenChange={(o) => {
+          if (!o) setPending(null)
+        }}
+        title={pending ? tA(ACTION_LABEL_KEY[pending.status]) : ''}
+        description={tA('admin.detections.note_dialog_desc')}
+        confirmLabel={tA('admin.detections.note_confirm')}
+        cancelLabel={tA('admin.detections.note_cancel')}
+        busy={setStatus.isPending}
+        autoFocusConfirm={false}
+        onConfirm={confirmAction}
+      >
+        <textarea
+          autoFocus
+          rows={3}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder={tA('admin.detections.note_placeholder')}
+          className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground"
+        />
+      </AlertDialog>
     </section>
   )
 }
