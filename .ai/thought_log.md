@@ -112,6 +112,24 @@ ré-estampillés à chaque bascule, aucune erreur console.
 
 **Prochaine étape** : Phase 5 (locale par segment, D-12 périmètre minimal).
 
+## [2026-07-23] D7 Phase 5 close — locale par segment (branche feat/title-slug-in-url)
+
+**Statut** : Complété (Phase 5/6). Agent Opus, smoke navigateur orchestrateur.
+
+**Décisions** : réconciliation locale←segment = effet séparé du layout titre (gardé
+isKnownLocale, no-op strict sans segment). Audit d'invalidation : les clés localisées
+portent locale (la clé EST l'invalidation, zéro clear global) — seule exception
+`leaderboardCatalog` (invalidation ciblée transitoire ; lot final : locale dans la clé
+et retrait de l'exception du layout). Sélecteur de langue : réalignement défensif du
+segment (chemin théorique aujourd'hui, settings agnostique — documenté).
+
+**Résultats/gate** : tsc 0 ; vitest 297 fichiers / 2620 passés / 0 échec ; navigateur :
+/en force EN (UI + header uniforme dès le 1er fetch), héritage segment en nav interne
+confirmé, retour sans segment = session FR (le segment force sans committer la session).
+
+**Prochaine étape** : Phase 6 (migration specs e2e + spec legacy-redirect + vérif
+navigateur complète + delivery-checklist), puis lot final Découvertes.
+
 ## [2026-07-22] Mini-lot « G » G1/G2 (branche refactor/ascension-ux-2026-07)
 
 **Statut** : Complété (G1, G2), sous contrat `plan-execution` (ordre strict G1 puis G2,

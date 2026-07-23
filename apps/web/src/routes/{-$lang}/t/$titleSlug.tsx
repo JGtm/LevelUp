@@ -15,9 +15,11 @@
  */
 import { createFileRoute, Link, Outlet, useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { applyActiveTitle, resolveTitleGate, type TitleGate } from '@/lib/title-routing'
+import { applyActiveTitle, resolveTitleGate, isKnownLocale, type TitleGate } from '@/lib/title-routing'
+import { queryKeys } from '@/lib/query/keys'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
@@ -27,11 +29,14 @@ export const Route = createFileRoute('/{-$lang}/t/$titleSlug')({
 
 function TitleLayout() {
   const navigate = useNavigate()
-  const { titleSlug } = Route.useParams()
+  const queryClient = useQueryClient()
+  const { titleSlug, lang } = Route.useParams()
   const isBootstrapped = useAppShellStore((s) => s.isBootstrapped)
   const availableTitles = useAppShellStore((s) => s.availableTitles)
   const currentTitleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const isTitleSwitching = useAppShellStore((s) => s.isTitleSwitching)
+  const locale = useAppShellStore((s) => s.locale)
+  const setLocale = useAppShellStore((s) => s.setLocale)
   const [applyFailed, setApplyFailed] = useState(false)
 
   const gate = resolveTitleGate(titleSlug, availableTitles, isBootstrapped)
@@ -90,6 +95,35 @@ function TitleLayout() {
         applyingRef.current = false
       })
   }, [diverges, titleSlug, isTitleSwitching, applyFailed, navigate])
+
+  // Réconciliation locale←segment (D-12, Phase 5a) — effet SÉPARÉ de la convergence
+  // titre (responsabilités indépendantes). Segment `lang` présent (locale connue) ET
+  // ≠ locale du store → FORCE la locale via setLocale (setApiLocale pousse le header
+  // X-LevelUp-Locale + set store). Segment ABSENT (lang undefined) OU déjà aligné →
+  // NO-OP STRICT : la locale session/bootstrap reste inchangée (comportement actuel).
+  // Un segment non-locale (ex. /xyz/t/…) est ignoré (isKnownLocale) : le gate titre
+  // traite les URLs aberrantes, la locale ne bascule pas sur du bruit.
+  //
+  // Invalidation (audit D-12) : les payloads localisés qui comptent portent `locale`
+  // DANS leur clé (home, seasonPass, teammates, sessionDetail, field-mappings,
+  // releaseNotes) → le set store re-clé et TanStack refetch tout seul : la CLÉ EST
+  // l'invalidation, jamais de queryClient.clear() global. SEULE exception recensée :
+  // le catalogue leaderboard (display_name saison/playlist bakés serveur selon le
+  // header, clé SANS locale — cf. LeaderboardBlock) → invalidation CIBLÉE de sa clé.
+  //
+  // Ordre au fresh-load /en/t/… : initTitleFromLocation pose déjà le header 'en' au
+  // boot ; hydrateFromBootstrap ré-écrit ensuite la locale SESSION (ex. fr) → cet
+  // effet re-run post-hydratation et re-force 'en'. Convergence en un cycle (lang ==
+  // locale → l'effet ressort), même patron déclaratif que la convergence titre ; une
+  // ré-hydratation ultérieure (refocus) est ré-absorbée de la même façon.
+  useEffect(() => {
+    if (!lang || !isKnownLocale(lang) || lang === locale) return
+    setLocale(lang)
+    const playerSlug = useAppShellStore.getState().currentPlayer?.player_slug
+    if (playerSlug) {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.leaderboardCatalog(playerSlug) })
+    }
+  }, [lang, locale, setLocale, queryClient])
 
   // Projection DÉCLARATIVE (D-8) — cf. NOTE CRITIQUE ci-dessus.
   if (gate === 'wait') return null // pré-hydratation : ne rien décider

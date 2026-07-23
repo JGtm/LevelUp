@@ -298,3 +298,45 @@ describe('TitleLayout — course back/forward + refocus (4c)', () => {
     expect(screen.getByTestId('title-outlet')).toBeInTheDocument()
   })
 })
+
+// setLocale RÉEL capturé avant tout override (restauré en afterEach du bloc 5a).
+const realSetLocale = useAppShellStore.getState().setLocale
+
+describe('TitleLayout — réconciliation locale←segment (5a, D-12)', () => {
+  const setLocaleSpy = vi.fn()
+
+  beforeEach(() => {
+    setLocaleSpy.mockClear()
+    // On remplace setLocale du store par un spy pour observer l'appel sans effet de
+    // bord (le spy ne met PAS à jour la locale → l'effet ne re-run pas). Le beforeEach
+    // GLOBAL ne réinitialise pas setLocale (merge Zustand) → restauration explicite.
+    useAppShellStore.setState({ setLocale: setLocaleSpy })
+  })
+  afterEach(() => {
+    useAppShellStore.setState({ setLocale: realSetLocale })
+  })
+
+  it('segment lang=en + store fr → setLocale(en) appelé', () => {
+    paramsRef.lang = 'en' // store.locale = 'fr' (beforeEach global)
+    renderWithProviders(<TitleLayout />)
+    expect(setLocaleSpy).toHaveBeenCalledWith('en')
+  })
+
+  it('segment absent (lang undefined) → setLocale JAMAIS appelé (no-op strict)', () => {
+    paramsRef.lang = undefined
+    renderWithProviders(<TitleLayout />)
+    expect(setLocaleSpy).not.toHaveBeenCalled()
+  })
+
+  it('segment lang == locale (fr) → no-op, setLocale JAMAIS appelé', () => {
+    paramsRef.lang = 'fr'
+    renderWithProviders(<TitleLayout />)
+    expect(setLocaleSpy).not.toHaveBeenCalled()
+  })
+
+  it('segment lang inconnu (bruit) → ignoré, setLocale JAMAIS appelé', () => {
+    paramsRef.lang = 'xyz'
+    renderWithProviders(<TitleLayout />)
+    expect(setLocaleSpy).not.toHaveBeenCalled()
+  })
+})
