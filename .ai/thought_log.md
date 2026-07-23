@@ -578,6 +578,370 @@ propre sur les 4 fichiers. Aucune nouvelle couleur/hex ni string i18n → règle
 **Prochaine étape** : revue visuelle utilisateur, puis push (deploy prod) sur son feu vert.
 
 ---
+## [2026-07-22] Mini-lot « G » G1/G2 (branche refactor/ascension-ux-2026-07)
+
+**Statut** : Complété (G1, G2), sous contrat `plan-execution` (ordre strict G1 puis G2,
+vérif sur pièces avant/après, zéro fix hors périmètre). NON committé (décision utilisateur).
+Les 2 dernières découvertes NOUVELLE du plan Ascension (F2-restant, F7-H5) passent RÉSOLU.
+
+**Décisions techniques principales** :
+- **G1** (start_time bruts restants de `post_sync_progression_queries.go`) : les 6 sites
+  bruts — `loadProgressionSharedMatches` (SELECT PlayedAt, `WHERE start_time >= ?`,
+  `ORDER BY`) et `loadComebackContext` (SELECT, `WHERE ... IS NOT NULL`, `ORDER BY`) —
+  migrés vers `analysis.SQLStartTimeCanonical("mr")` : SELECT projeté `AS start_time`,
+  ORDER BY sur l'alias nu (forme légitime), WHERE sur le fragment, bind `since.UTC()`
+  (pattern éprouvé `analysis/match_filter.go:154`). Allowlist `rawOrderByStartTimeAllowlist` :
+  entrée du fichier RETIRÉE → ratchet actif dessus (0 occurrence). Fixture intégration
+  seedée `start_time` + `start_time_utc` (réalisme prod). Effet : match `start_time`
+  NULL/TZ-décalé mais `start_time_utc` renseigné désormais correctement daté/inclus.
+- **G2** (PILIER title-agnostic) : Mode des rows patterns dérivé via la convention
+  centralisée `analysis.ResolveModeUIWithVariant` (pair sinon game_variant) dans
+  `patterns_repo.applyPatternModes`, au lieu du `NormalizeModeLabel(pair)` pair-only.
+  `loadShared` charge les 4 sources brutes ; H5 (pair NULL + `game_variant_name` NULL au
+  registry, vérifié 3032/3032, seul `game_variant_id` présent) : nom du variant résolu
+  FR-first read-side (`asset_translations`, `PreferredLangsForLocale("fr")` FIXE) =
+  `GameVariantNameFR` du chokepoint `modeUI` des filtres → by_mode H5 groupé par variant
+  normalisé ("Assassin", "Bases") ET `filter_key` (=Key=Mode) == `modeUI` (F7 étendu à H5).
+  Infinite : pair présent → aucun id collecté → ZÉRO requête metadata (no-op) → iso prouvé.
+  `mergePatternRows` ne re-normalise plus (Mode déjà final). Garde-rail
+  `no_bare_resolve_mode_ui` respecté (forme WithVariant).
+
+**Résultats observés / gate** (exécutés cette session) : `./internal/api/wire/...`,
+`./internal/archlint/...`, `./internal/analysis/patterns/...`, `./internal/api/handlers/...`,
+`./internal/platform/duckdb/...` VERT ; `-tags=integration -p 1` sur `./internal/api/wire/...`
+et `./internal/platform/duckdb/...` VERT ; `go test ./...` complet VERT ; gofmt -l . vide ;
+go vet ./... propre. Iso Infinite PROUVÉ par tests existants inchangés
+(`TestPatternsRepo_LoadRows_EndToEnd` = m1.Mode "Slayer", package patterns, handler F7).
+Nouveau test `TestPatternsRepo_LoadRows_H5ModeFromVariant`. Front NON touché (aucun
+changement DTO/openapi/generated → pas de tsc/vitest).
+
+**Constat capability H5** : route `/patterns` NON capability-gated (montée pour tous les
+titres, `server_apiv1.go:785`) ; `match_participants.xuid` H5 peuplé (24208/24208) → les
+rows patterns chargent → fix effectif end-to-end. L'exposition front de la page Ascension
+pour H5 reste un concern séparé (non traité ici — hors périmètre).
+
+**Conclusion / prochaine étape** : mini-lot G clos, section Découvertes du plan à jour
+(2 entrées RÉSOLU). Aucune nouvelle découverte hors périmètre. Reste-à-faire orchestrateur :
+décision de commit.
+
+## [2026-07-22] Mini-lot « Finitions Ascension » F1→F8 (branche refactor/ascension-ux-2026-07)
+
+**Statut** : Complété (F1→F8), sous contrat `plan-execution` (ordre strict, vérif sur
+pièces, zéro fix hors périmètre). NON committé (décision utilisateur). Les 8 découvertes
+de la section « Découvertes en cours d'exécution » du plan Ascension sont toutes marquées
+RÉSOLU avec référence.
+
+**Décisions techniques principales** :
+- **F1** (décompte arcs 0/N) : helper pur `computeArcStepCounts` fusionnant actifs
+  (`useChallenges`) + terminaux (`useChallengeHistory`), dédup par id.
+- **F2** (start_time brut détecteur) : `CAST(analysis.SQLStartTimeCanonical("mr") AS DATE)` ;
+  ratchet archlint étendu (`rawCastStartTimeDateRE`, allowlist VIDE, regex précise ne
+  matchant pas la forme COALESCE canonique).
+- **F3** (PILIER multilingue+title-agnostic) : refonte pérenne des leviers — backend ne
+  sert PLUS de phrase. DTO `Lever.label`+`source_pattern` SUPPRIMÉS (code mort inclus le
+  consommateur coach `generator.go`), remplacés par `axis`+`context_key`+`context_label`
+  (résolu title-agnostic). `rewriteMapLeverLabels` → `setMapLeverContextLabels`. Front
+  compose via gabarits i18n FR/EN par axe (`leverPhrase`). Tous les axes couverts.
+- **F4** (index divergent) : const canonique `(user_id, achieved_at DESC)`, dédup alignée,
+  step correctif idempotent `repair_rec_hist_achieved_index_canonical_v1` (+ canonicalOrder),
+  garde-rail positif (toute création de l'index doit être canonique).
+- **F5** (télémétrie pilote) : `DisablePilotMode` émet `TelemetryArchived` (nouvelle const,
+  distincte d'`abandoned`).
+- **F6** : suppression `ascension-2tabs.spec.ts` (helper `skipObsoleteSpec` conservé, 5
+  autres consommateurs) + MAJ README e2e.
+- **F7** (PILIER title-agnostic) : champ DTO `filter_key` (clé de filtrage FR-first STABLE,
+  locale-indépendante) sur les patterns contextuels ; `ResolveMapFilterKeys` (langs fr
+  FIXE) ; front construit le lien sur `filter_key`, `label` = affichage. by_mode :
+  filter_key=key (= modeUI, vérifié).
+- **F8** : `make go-api-lint` reproduit le lint CI (golangci-lint v2.12.2 + ratchet
+  `--new-from-merge-base=origin/main`) quand le binaire est présent, sinon REPLI go vet
+  documenté (commentaire daté + renvoi au job CI qui fait foi). golangci-lint absent de
+  l'env → repli exécuté (propre).
+
+**Résultats de gate** (exécutés par l'orchestrateur) : go test unit (patterns/handlers/
+wire/prestige/migrations/archlint/coach/migration) VERT ; drift openapi MISSING=0 ;
+generate-types + tsc + vitest (285 fichiers, 2492 passés/14 skip/0 échec) VERT ; gofmt -l
+vide ; go vet ./... propre ; ESLint fichiers touchés 0 erreur (warning react-refresh
+supprimé sur helper exporté, motif catalogue). Intégration `-p 1` (migrations/duckdb/
+service/ops) : voir addendum au commit.
+
+**Conclusion / reste orchestrateur** : commit + entrée finale ; réécriture e2e 4 onglets
+= chantier dédié (F6, noté). Découvertes secondaires consignées (start_time bruts hors
+scope F2 dans le fichier détecteur ; Halo 5 by_mode dégénéré, non aggravé par F7).
+
+## [2026-07-22] CLÔTURE chantier Ascension UX — 4 lots livrés (branche refactor/ascension-ux-2026-07)
+
+**Statut** : Complété. 5 commits sur la branche (`bedf81914` Lot A, `afc606907` Lot B,
+`a42049b5f` Lot C, `62bf8f4a1` Lot D, `d1662bf78` fixes clôture). NON pushé (décision
+utilisateur — push main = deploy prod). Orchestration : Fable + 3 agents Explore (revue
+pré-exécution) + 4 agents Opus (1 par lot), gates re-vérifiés par l'orchestrateur.
+
+**Revue pré-exécution** : addendum daté AM-1..AM-11 + item B12 écrits au plan (routes
+sous players/$playerSlug/, records append-only depuis 2026-05-30, DisablePilotMode
+no-op, inventaire C1 pré-rempli, feedback collègue intégré). Décision croisement :
+PLAN_CROSS_TITLE_ARCS_2026-07 NON fusionné (séparable proprement, vérifié — reste
+déclenché par le 2e titre sur sa branche dédiée).
+
+**Delivery-checklist (clôture)** :
+- `go test ./...` : vert après fix ratchet (littéral start_time → helper
+  `analysis.SQLStartTimeCanonical` dans milestone_dates.go).
+- `go test -tags=integration -p 1 ./...` : vert SAUF 2 tests Relations HÉRITÉS de main
+  (rouges à l'identique sur `b21a59772`, vérifié en worktree isolé — fixture VALUES sans
+  les +4 colonnes Q4 du fix filtres H5). Consignés au plan, non corrigés (hors périmètre).
+- tsc (cache purgé) : vert. ESLint : 1 erreur corrigée (slug en dur filterLink.ts →
+  constante canonique) ; 68 warnings = baseline pré-existante intacte. Vitest : 2480+.
+- `make go-api-lint` : scope réduit (domain+analysis) + golangci-lint absent de l'env —
+  compensé `go vet ./...` propre (consigné).
+- CI de branche : AUCUN run (branche jamais pushée) — à vérifier au push.
+- Revue API serveur réel (4 joueurs, script node) : TOUT VERT — labels by_map sans GUID
+  + `min_matches_for_signal=10` servi, leviers sans GUID, records purgés (plus de
+  best_kda, accuracy ≤ 1, KDA plausibles), jalons avec dates RÉELLES variées
+  (ex 2025-12-23, plus aucun 2026-05-30) + condition_fr/en localisées (7/19, autres
+  sans condition affichable = rien d'affiché), skill_trend servi (266/114/174 pts,
+  null propre pour XxDaemon), activity-calendar peuplé (36/12/12/0 jours), séries
+  interrompues datées, filtre ?status= opérationnel, liste par défaut = actifs seuls,
+  campaigns/history 200. Note données : 0 défi terminal à ce jour (l'objectif FDA
+  JGtm est encore actif) → blocs Historique sur états vides tant que rien n'est clos.
+
+**Reste (utilisateur)** : revue visuelle UI des 4 onglets (rendu, i18n, sparkline,
+heatmap) sur `make dev` ; décision push/PR ; décision fix des 2 tests Relations hérités ;
+lancement ultérieur du plan arcs per-titre (branche dédiée).
+
+## [2026-07-22] Lot D « Tendance visuelle (graphes minimaux, DEC-5) » — plan Ascension UX (branche refactor/ascension-ux-2026-07)
+
+**Statut** : Complété (code + tests). Gate Lot D PASSÉ intégralement (sorties vertes).
+Aucun commit/push (à la charge de l'orchestrateur). Revue visuelle = orchestrateur.
+
+**Contexte** : items D1→D3 du `.ai/PLAN_ASCENSION_UX_2026-07.md` sous contrat
+`plan-execution`. Esprit DEC-5 : minimal et motivationnel, pas un dashboard (les pages
+Solo font l'analytique lourde).
+
+**Décisions techniques principales** :
+- **D1 (décision timeseries, confirme AM-8)** : vérifié sur pièces — `timeseries.go` ne
+  sert aucune série skill/LUSR (seul un champ per-match `SkillRatingValue`). Décision :
+  CONSTRUIRE depuis l'existant, réutiliser (règle n°14) la vue append-only
+  `match_skill_rank_latest` (ART n°2, LUSR v2 canonique, même colonne `rating_value` que
+  « pts LUSR ») + `temporal.LowessSmooth` (déjà utilisé par `ComputeMuTrend`/campagne). Le
+  lissé EST directement en points LUSR (échelle 1000-2000+). Surfaces : D2 = champ ajouté
+  à `/profile` (aucune nouvelle clé/hook/fetch, la PerformanceSection consomme déjà cette
+  réponse) ; D3 = nouvel endpoint (counts/jour inexistants nulle part).
+- **D2 (sparkline)** : `PlayerProfile.SkillTrend` (90 j FIXE, `SkillTrendWindowDays`), sert
+  UNIQUEMENT le lissé (`< 3` pts → nil, DEC-6 « jamais de μ brut »). openapi + generate-types
+  (schéma `SkillTrendPoint`, PlayerProfile ré-aligné, drift MISSING=0). Front :
+  `<TimeseriesLineChart>` compact dans PerformanceSection, tokens, aria/i18n, `< 2` pts → rien,
+  mock echarts jsdom.
+- **D3 (calendrier)** : endpoint `GET /activity-calendar?days=90` → `LoadActivityCalendar`
+  (SharedReader + fragment canonique `StartTimeCanonicalSQL` + `campaignExcl`, bucket jour
+  `t.UTC().Format` en Go = motif A6, jours vides omis). Front : `ActivityCalendarChart`
+  (compose `ChartCard` + heatmap semaine×jour, rampe NEUTRE fréquence CVD-safe,
+  `dowLabels`/`calendarChartText` réutilisés, légende sobre), sous `StreakDashboard`. openapi
+  + generate-types (schémas `ActivityCalendar`/`ActivityDay`).
+
+**Résultats observés (gate)** : `go test` profile+handlers ok ; `CGO_ENABLED=1 go test
+./internal/api/` (drift MISSING=0 + contract) ok ; intégration Go SkillTrend/ActivityCalendar
+ok ; gofmt vide, go vet clean ; `make check-types` ok ; `make test-web` 283 fichiers /
+2480 passés / 14 skippés / 0 échec ; ESLint touchés 0 erreur. `make go-api-lint` = vet
+scoped domain/analysis (périmètre du target ; golangci-lint non installé dans l'env) EXIT 0.
+
+**Découverte (consignée au plan, non traitée)** : `make go-api-lint` ne lint QUE
+domain/analysis (scope volontaire du target) — golangci-lint complet non disponible ici.
+
+**Conclusion / prochaine étape** : Lot D clos. Le plan Ascension UX (A→D) est intégralement
+implémenté sur la branche. Orchestrateur : revue visuelle (sparkline ≥ 30 matchs, heatmap
+cohérente séries), puis commit/livraison (delivery-checklist) — push `main` = deploy prod,
+prévenir l'utilisateur.
+
+## [2026-07-22] Lot C « Historique (actif vs passé) » — plan Ascension UX (branche refactor/ascension-ux-2026-07)
+
+**Statut** : Complété (code + tests). Gate Lot C PASSÉ intégralement (sorties vertes).
+Aucun commit/push (à la charge de l'orchestrateur). Revue visuelle = à faire par
+l'orchestrateur.
+
+**Contexte** : items C1→C5 du `.ai/PLAN_ASCENSION_UX_2026-07.md` sous contrat
+`plan-execution` (ordre strict, un item vérifié avant le suivant). Principe : l'onglet
+Objectifs ne montre QUE l'actif ; Réalisations devient la mémoire complète datée.
+Contrainte croisement plans (addendum) respectée : AUCUN nouveau lecteur
+`arc_titles`/`ArcsByTitle` — partition en cours/terminés via `Arc.CompletedAt`.
+
+**Décisions techniques principales** :
+- **C1 (inventaire, confirme AM-7)** : 2 trous d'API confirmés sur pièces — (1) filtre
+  `status` non exposé sur `GET /prestige/challenges` (repo prêt, service force `active`) ;
+  (2) aucune liste de campagnes closes. NON-trou : arcs terminés déjà servis par
+  `GET /arcs`.
+- **C2 (compléments API)** : Trou 1 → `ChallengeFilter.Statuses` (status IN, non
+  breaking) + service `ListChallenges(statuses)` (`ListActiveChallenges` délègue) ;
+  handler query `status` CSV (convention Huma form/explode=false), défaut `active`,
+  invalide→400. Défis terminaux NON enrichis (valeur courante/PP n'ont de sens que sur un
+  défi en cours + évite N reads shared). Pas de MAJ openapi (path non documenté, réponse
+  `mapOutput`). Trou 2 → `CampaignRepo.ListEnded` (SQL `status IN (completed,abandoned)`
+  scopé user+title, tri `ended_at DESC`) + service + handler `GET /campaigns/history` +
+  DTO `campaignHistoryItem` (delta = final−snapshot via méthodes pures `FinalValue`/
+  `Delta` sur `ImprovementCampaign`). openapi.yaml : path + 2 schémas (émis via
+  `OPENAPI_EMIT_OUT`, drift MISSING=0) ; generate-types.
+- **C3 (Historique front)** : `HistorySection` (3 blocs datés) + hooks
+  `useChallengeHistory`/`useCampaignHistory` + query keys `challenge.history`/
+  `playerProfile.campaignHistory` + types + `prestigeApi.listChallenges`/
+  `campaignApi.listEnded`. i18n FR/EN, `archived`→« Retiré » (neutre). Correction
+  cohérente : célébration (moments) + StatsGlobales alimentées par les défis terminaux
+  (avant : actifs seuls → 0 moment / complétion faussée).
+- **C4 (nettoyage actif)** : arcs de l'onglet Objectifs filtrés `!completed_at`. Défis
+  déjà actifs seuls `[~]` ; widget home séries déjà `status !== 'broken'` `[~]`.
+- **C5 (sorties matchs)** : helper partagé `filterLink.ts` (`encodeFilterContextParam`
+  source UNIQUE du format `?f=`, `createFilterStore` refactoré ; `buildSoloFilterLink`,
+  `dayWindowUTC`). Cartes patterns → `<a href>` full-nav (le `?f=` n'est décodé qu'au
+  rehydrate). Format cascade vérifié sur pièces : by_mode → `p.key` (== `modeUI`
+  `NormalizeModeLabel(pair)`), by_map → `p.label` (nom, jamais GUID, == `mapUI`). Records
+  → « voir la période » borné sur la journée UTC du record.
+
+**Résultats observés** — Gate Lot C intégral, sorties vertes :
+- `go test ./internal/prestige/... ./internal/campaign/... ./internal/api/handlers/...
+  ./internal/platform/duckdb/...` → EXIT=0 (tous ok)
+- `TestOpenAPISchemaDrift` (CGO) → MISSING=0 ; `TestContractRoutes{Registered,Documented}`
+  → PASS (path `listEndedCampaigns` enregistré+documenté)
+- `TestCampaignRepo_ListEnded` (`-tags=integration`) → PASS (SQL scope+ordre)
+- `make generate-types` → generated.ts (2 schémas + operation) ; `check-types` (tsc -b) →
+  clean ; `test-web` (vitest run) → 281 fichiers, 2469 passés / 14 skippés / 0 échec
+- `gofmt -l .` → vide ; `go vet ./...` → clean ; `make go-api-lint` → clean
+- Tests ajoutés : handler status filter (CSV/défaut/invalide), service terminal-non-enrichi,
+  domain FinalValue/Delta, service ListEnded, handler DTO, `filterLink.test.ts`
+
+**Découvertes consignées (non traitées, plan §Découvertes)** : décompte d'étapes d'arc
+faux dans l'onglet Objectifs (pré-existant, `useChallenges` actifs seuls) ; lien by_map
+sensible à la locale (cascade FR-first vs label locale) ; warning jsdom navigation bénin.
+
+**Conclusion / prochaine étape** : Lot C livré et vérifié, non poussé. Reste à
+l'orchestrateur : revue visuelle (onglet Objectifs sans items passés ; Réalisations →
+Historique peuplé, défi FDA terminé/abandonné visible ; clic pattern Super Fiesta → Solo
+filtré ; « voir la période » d'un record) ; puis Lot D (graphes) si poursuite.
+
+---
+
+## [2026-07-22] Lot B « Navigation, IA, mode pilote » — plan Ascension UX (branche refactor/ascension-ux-2026-07)
+
+**Statut** : Complété (code + tests). Gate Lot B PASSÉ intégralement (sorties vertes).
+Aucun commit/push (à la charge de l'orchestrateur). Revue visuelle 4 onglets = à faire
+par l'orchestrateur.
+
+**Contexte** : exécution des 12 items B1→B12 du `.ai/PLAN_ASCENSION_UX_2026-07.md`
+(+ amendements AM-1..AM-11) sous contrat `plan-execution` (ordre strict, un item vérifié
+avant le suivant). But : page Ascension navigable (onglets nommés selon leur contenu,
+deep-links cohérents), mode pilote fonctionnel, coach ON par défaut, vocabulaire FR sans
+anglicismes, valeurs lisibles (LUSR, barre Prestige intra-niveau, badge échantillon
+faible, pill série interrompue).
+
+**Décisions techniques principales** :
+- **B1 (restructuration 3→4 onglets, DEC-3)** : recomposition sans réécriture de feuilles.
+  Nouveau `AscensionProfilTab` (index : `PlayerProfileV3` + patterns contextuels +
+  SquadVsSoloCard + BehaviorAlertList) ; `AscensionProfileTab`→`AscensionObjectivesTab`
+  (couche Prestige inchangée) ; `AscensionCoachingTab` = cap + proposals + campagne +
+  `ProgressionSection` (EXTRAITE de `PlayerProfileV3` via wrapper `usePlayerProfile` —
+  suppression des props CTA de PlayerProfileV3, plus de code mort) + leviers calibrés.
+  `routeTree.gen.ts` régénéré par `@tanstack/router-generator` (jamais édité main).
+  Renommage clé nav `tab_profile_objectives`→`tab_profile` + `tab_objectives`
+  (common.toml régénéré). `classifyFeedback.ts` non touché : sa regex
+  `(objectifs|ascension)` couvre déjà les 4 sous-onglets (`[~]`).
+- **B2 + AM-5** : widget home → `/ascension/realisations` ; notifs *completed* →
+  Réalisations avec `selectedObjectiveId`/`selectedChallengeId` ; ancrage : `useSearch`
+  côté Réalisations, `scrollIntoView` + ring sur la carte moment correspondante.
+- **B3 + AM-4 (mode pilote, DEC-1)** : backend — `DisablePilotMode` (ex no-op) archive
+  désormais les défis pilote actifs (`List{status:active,mode:pilote}` → `UpdateStatus
+  archived`, distinct d'`abandoned` = retrait système ; slog + tests). Front —
+  `usePilotMode` (enable/disable), `prestigeApi.enable/disablePilotMode`,
+  `queryKeys.prestige.pilotMode`, état ON/OFF dérivé des défis pilote actifs (pas de flag
+  serveur), tooltip « non implémenté » (doc inversée) retiré, CTA d'activation en empty
+  state, i18n FR/EN, invalidation `challenge.list` + `prestige.meAll`. Défaut OFF.
+- **B4 (coach proactif ON, DEC-2)** : `CoachProactiveMode` défaut TRUE
+  (`defaultSettings` + `applyAbsentDefaults`, kill-switch daté commenté) ; anti
+  doc-inversée : toutes les mentions du défaut mises à jour (ADR 0020 ×3, openapi
+  comment, fallbacks front `?? true`) + tests inversés (`DefaultsTrue…` + `FalseRespected`).
+- **B5 + AM-11** : `confirm()` natif → `AlertDialog` destructive par carte
+  (`ObjectiveCard`) ; bouton « Abandonner » i18n FR/EN.
+- **B6 + AM-10** : composant partagé `CombatAbbr` (tooltip OC/DR, libellé depuis
+  `lusrComponent`) ; `target_for_tier` vérifié sur pièces = composite global requis pour
+  le palier suivant (par design — `computeLUSRComponents` applique la même cible aux 8),
+  donc PAS un bug → étiqueté via note `profile.performance.target_note`.
+- **B7** : `by_squad` retiré de `CONTEXT_ORDER` (grille = mode/carte), la comparaison
+  Solo/Escouade reste dans `SquadVsSoloCard` ; branche morte `contextLabel` supprimée.
+- **B8 (DEC-6)** : PerformanceSection affiche « {mu} pts LUSR » (clé `lusr_points`) au
+  lieu de μ/σ (clé `mu_sigma` supprimée, code mort) ; écart au palier déjà en points via
+  `gap_to_next`. DTO déjà suffisant — 0 champ Go ajouté.
+- **B10 (DEC-9)** : barre Prestige = progression intra-niveau
+  (`{total-threshold} / {next-threshold} PP vers {niveau suivant}`), total PP secondaire,
+  amis à 0 PP omis. DTO déjà suffisant (`threshold_pp`/`next_threshold_pp`).
+- **B11 (DEC-8)** : seuil `MinMatchesForSignal` (=10) promu const backend (source unique,
+  utilisée par `classifySignal`) + servi dans `PatternReport.min_matches_for_signal`
+  (openapi + generate-types + drift OK) ; front affiche « Échantillon faible » (neutre,
+  bordure+delta neutralisés) sous le seuil — aucun 10 en dur côté front.
+- **B12 (AM-6)** : « Cassée »→« Interrompue » (FR ; EN « Broken » inchangé) + tooltip
+  `streakBrokenTooltip` (date `broken_at` + reset multiplicateur PP), FR/EN.
+
+**Résultats observés (gate)** : Go (`settings`/`handlers`/`prestige`/`patterns`) ok ;
+`tsc -b` ok ; `vitest run` 2459 passés / 14 skippés / 0 échec (280 fichiers) ;
+`gofmt -l .` vide ; `go vet ./...` + `make go-api-lint` clean ; drift OpenAPI CGO ok.
+
+**Conclusion / prochaine étape** : Lot B prêt. Orchestrateur : revue visuelle 4 onglets ×
+joueurs actifs (Profil=index ; patterns dans Profil ; pistes+leviers dans Entraînement),
+aller-retour toggle pilote (enable→défis pilote→disable→archivés), coach ON par défaut,
+ancrage notif « objectif complété »→carte moment surlignée. Puis Lot C (Historique).
+
+---
+
+## [2026-07-22] Lot A « Crédibilité des données » — plan Ascension UX (branche refactor/ascension-ux-2026-07)
+
+**Statut** : Complété (code + tests + données). Gate re-vérifié par l'orchestrateur puis
+committé sur la branche (pas de push). One-offs exécutés serveur stoppé (2026-07-22) :
+purge A5 = 32 lignes hors bornes retirées (shared player_records_history 18/69 + 4 DBs
+joueurs record_history ; contre-épreuve dry-run = 0 restant ; halo_5 = 0 à purger) ;
+backfill A6 = 31 dates de jalons recalculées HINF + 41 halo_5, 0 non-dérivable (NULL).
+Fix de gate : 2 entrées justifiées datées ajoutées à sharedSocialFilesWhitelist
+(no_attach_on_social_test.go) pour cmd/purge_corrupt_records + internal/ops/records_purge
+(ratchet TestNoUnauthorizedSharedSocialMention) ; intégration duckdb/ops rejouée verte.
+
+**Contexte** : exécution des 9 items A1→A9 du `.ai/PLAN_ASCENSION_UX_2026-07.md` sous
+contrat `plan-execution` (ordre strict, un item vérifié avant le suivant). Objectif :
+zéro identifiant technique ni valeur aberrante à l'écran sur la page Ascension.
+
+**Décisions techniques principales** :
+- **A1/A2** : résolution des noms de cartes au HANDLER (le package `analysis/patterns`
+  reste pur). Nouveau port `PatternsRepository.ResolveMapLabels` réutilisant
+  `MetadataRepo.ResolveAssetNamesBulk` (même chemin que match-view/career/filtres).
+  Champ `label` sur `ContextualPattern` + repli localisé « Carte inconnue (id court) »
+  (jamais le GUID nu). Le texte des leviers `map_avoidance` : substitution GUID→nom au
+  handler via `SourcePattern` (`by_map:{id}`) — la phrase FR en dur de `levers.go`
+  reste (consignée en Découvertes).
+- **A3** : helper unique `lib/i18n/metricLabel.ts` (source de vérité des libellés de
+  métriques), migration de TOUS les affichages des deux features, suppression du code
+  mort (`metric` d'ascension i18n, 5 clés métriques de prestige i18n), 2 garde-rails
+  vitest (humanisation clé inconnue + grep interdisant `\bField[A-Z]` dans le JSX).
+- **A4** : bornes de vraisemblance nommées par métrique (`records/bounds.go`), gate
+  detector (INSERT refusé + WarnContext) + filtre read-side (métrique hors catalogue
+  non servie). Pas de MAJ openapi (le filtre masque des lignes, ne change pas le DTO).
+- **A5** : purge = recette ADR 0026 (rebuild CTAS filtré transactionnel + garde de
+  cardinalité + rollback), JAMAIS de DELETE brut. `player_records_history` (append-only,
+  vue `_latest` → retombée sur dernière version plausible) + `record_history`. Logique
+  dans `internal/ops`, commande `cmd/purge_corrupt_records` (`--dry-run` défaut).
+- **A6** : moteur PUR de recalcul des dates de franchissement (cumul par métrique,
+  fragment timezone canonique, constantes OC/DR/accuracy alignées sur le détecteur) ;
+  `milestone_earned` n'étant PAS append-only, écriture = UPDATE de `earned_at` (colonne
+  NON indexée → ART-safe) ; colonne rendue nullable (non dérivable → NULL, jamais une
+  date fausse). Commande `cmd/backfill_milestone_dates`.
+- **A9** : `condition_fr/_en` TOML+DB+DTO ; seed bumpé v2 pour re-seeder les DBs
+  existantes ; le DTO ne sert PLUS la formule technique, uniquement le libellé localisé.
+
+**Résultats observés** : gate Lot A vert — `go test` patterns/progression/handlers OK ;
+`make check-types` (tsc) OK ; `gofmt -l` vide ; `go vet ./...` propre ; tests ops A5/A6
+(DuckDB temp) OK ; test seed A9 (intégration) OK. `make test-web` : 279 fichiers,
+2442 verts / 14 skipped, 0 échec (re-vérifié par l'orchestrateur). openapi.yaml +
+`generated.ts` régénérés (label + condition_fr/_en).
+
+**Découvertes hors périmètre (consignées, non traitées)** : phrases de leviers FR en dur
+dans `levers.go` ; `accuracy_threshold_days` lit `start_time` brut au détecteur (pas le
+fragment canonique) ; divergence d'index `idx_rec_hist_achieved_desc`. Détail : section
+Découvertes du plan.
+
+**Prochaine étape (orchestrateur)** : exécuter `--apply` de A5/A6 (serveur stoppé) ;
+suite intégration anti-ART avant commit ; revue visuelle 3 onglets × JGtm ; commit du Lot A.
+
 ## [2026-07-22] Filtres L2 vides sur Halo 5 — résolution read-side ID→nom (branche fix/h5-filters-asset-names)
 
 **Statut** : Complété. NON committé (validation utilisateur avant commit).

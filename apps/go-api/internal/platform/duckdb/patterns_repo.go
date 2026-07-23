@@ -15,11 +15,14 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"sort"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/patterns"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/games"
 )
 
@@ -75,6 +78,33 @@ func (r *PatternsRepo) LoadRows(ctx context.Context, limit int) ([]patterns.Matc
 	return rows, nil
 }
 
+// ResolveMapLabels résout les noms de cartes (map_id -> nom) via le référentiel
+// metadata du titre, dans la langue du contexte. Réutilise la primitive unifiée
+// MetadataRepo.ResolveAssetNamesBulk (même chemin que match-view / career /
+// filtres). Les map_id sans traduction sont absents du résultat (repli côté
+// handler). Best-effort : si metadata n'est pas attaché, renvoie nil.
+func (r *PatternsRepo) ResolveMapLabels(ctx context.Context, mapIDs []string) (map[string]string, error) {
+	if len(mapIDs) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
+		return nil, nil
+	}
+	langs := PreferredLangsForLocale(ctxkeys.Locale(ctx))
+	return NewMetadataRepoFromDB(r.pdb.Metadata).ResolveAssetNamesBulk(ctx, "map", mapIDs, langs)
+}
+
+// ResolveMapFilterKeys résout les noms de cartes avec une préférence de langue
+// FIXE fr→en (PreferredLangsForLocale("fr")), INDÉPENDANTE de la locale de la
+// requête — la clé de filtrage stable des liens pattern→Solo (F7). Reproduit la
+// convention du pipeline de filtres (mapUI = FR-first) : en FR la résolution
+// localisée et celle-ci coïncident ; en EN elles diffèrent (le lien doit matcher
+// la clé FR, pas le libellé traduit). Best-effort : nil si metadata non attaché.
+func (r *PatternsRepo) ResolveMapFilterKeys(ctx context.Context, mapIDs []string) (map[string]string, error) {
+	if len(mapIDs) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
+		return nil, nil
+	}
+	langs := PreferredLangsForLocale("fr")
+	return NewMetadataRepoFromDB(r.pdb.Metadata).ResolveAssetNamesBulk(ctx, "map", mapIDs, langs)
+}
+
 // patternSharedRow est le résultat intermédiaire de la phase 1.
 type patternSharedRow struct {
 	MatchID       string
@@ -119,12 +149,16 @@ func (r *PatternsRepo) loadShared(ctx context.Context, limit int) ([]patternShar
 	// played_at : pattern timezone canonique du projet — start_time_utc est
 	// TIMESTAMPTZ UTC garanti, fallback sur start_time AT TIME ZONE 'UTC' pour
 	// les matchs sans start_time_utc (cf. media_repo, ADR add_start_time_utc).
-	// mode_raw : sous-mode (pair_name), normalisé en Go via NormalizeModeLabel.
+	// Sources de MODE brutes (pair + game_variant) : le mode UI est dérivé après
+	// coup via la convention centralisée analysis.ResolveModeUIWithVariant (pair,
+	// sinon game_variant) — cf. applyPatternModes. On charge donc les 4 sources
+	// séparément (les titres sans pair type Halo 5 n'ont que game_variant_id).
 	q := `
 SELECT
     r.match_id,
     ` + StartTimeCanonicalSQL("r") + ` AS played_at,
-    COALESCE(NULLIF(r.pair_name_fr, ''), r.pair_name, '') AS mode_raw,
+    r.pair_name, r.pair_name_fr,
+    r.game_variant_id, r.game_variant_name,
     r.map_id,
     p.outcome,
     r.duration_seconds,
@@ -144,14 +178,18 @@ LIMIT ?`
 	defer sqlRows.Close()
 
 	var out []patternSharedRow
+	var modeSrcs []patternModeSource
 	for sqlRows.Next() {
 		var row patternSharedRow
 		var playedAt sql.NullTime
+		var src patternModeSource
 		var accuracy, damageDlt, damageTkn sql.NullFloat64
 		var isRanked sql.NullBool
 		err := sqlRows.Scan(
 			&row.MatchID, &playedAt,
-			&row.Mode, &row.MapID,
+			&src.pairName, &src.pairNameFR,
+			&src.variantID, &src.variantName,
+			&row.MapID,
 			&row.Outcome, &row.DurationSec,
 			&row.Kills, &row.Deaths, &row.Assists,
 			&accuracy, &damageDlt, &damageTkn, &row.HeadshotKills,
@@ -176,8 +214,109 @@ LIMIT ?`
 			row.IsRanked = isRanked.Bool
 		}
 		out = append(out, row)
+		modeSrcs = append(modeSrcs, src)
 	}
-	return out, sqlRows.Err()
+	if err := sqlRows.Err(); err != nil {
+		return nil, err
+	}
+	r.applyPatternModes(ctx, out, modeSrcs)
+	return out, nil
+}
+
+// patternModeSource porte les sources brutes du MODE d'un match (pair + variant),
+// le temps de résoudre les noms de game_variant read-side (titres sans pair type
+// Halo 5) avant de dériver le libellé de mode UI.
+type patternModeSource struct {
+	pairName    sql.NullString
+	pairNameFR  sql.NullString
+	variantID   sql.NullString
+	variantName sql.NullString
+}
+
+// applyPatternModes dérive out[i].Mode via la convention centralisée
+// analysis.ResolveModeUIWithVariant (mode = pair, sinon game_variant). C'est LA
+// MÊME source que le chokepoint modeUI du pipeline de filtres → le grouping
+// by_mode des patterns ET le filter_key des liens pattern→Solo coïncident sur
+// TOUS les titres (garantie F7 étendue à Halo 5, G2). Les titres sans pair
+// n'écrivent que game_variant_id au registry (nom NULL) : le nom du variant est
+// résolu FR-first read-side depuis asset_translations — préférence de langue FIXE
+// fr→en, INDÉPENDANTE de la locale (= GameVariantNameFR du pipeline de filtres,
+// même convention que ResolveMapFilterKeys). Sur Infinite (pair présent) aucun id
+// n'est collecté → ZÉRO requête metadata (no-op strict, iso-comportement garanti).
+func (r *PatternsRepo) applyPatternModes(ctx context.Context, out []patternSharedRow, srcs []patternModeSource) {
+	variantNames := r.resolveVariantModeNames(ctx, collectVariantIDsNeedingName(srcs))
+	for i := range out {
+		s := srcs[i]
+		mode := analysis.ResolveModeUIWithVariant(
+			nullStringPtr(s.pairName), nullStringPtr(s.pairNameFR),
+			nullStringPtr(s.variantName), variantModeFRFirst(s, variantNames),
+		)
+		if mode != nil {
+			out[i].Mode = *mode
+		}
+	}
+}
+
+// collectVariantIDsNeedingName retourne les game_variant_id distincts à résoudre :
+// pair ABSENT (sinon le mode vient du pair, résolution inutile) ET nom de variant
+// absent du registry ET id présent. Déclencheur = la DONNÉE (présence du pair),
+// jamais le slug → title-agnostic.
+func collectVariantIDsNeedingName(srcs []patternModeSource) []string {
+	seen := make(map[string]struct{}, len(srcs))
+	var ids []string
+	for _, s := range srcs {
+		if strings.TrimSpace(s.pairName.String) != "" || strings.TrimSpace(s.pairNameFR.String) != "" {
+			continue // pair présent → mode dérivé du pair, pas du variant
+		}
+		if strings.TrimSpace(s.variantName.String) != "" {
+			continue // nom déjà porté par le registry
+		}
+		id := strings.TrimSpace(s.variantID.String)
+		if id == "" {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+// resolveVariantModeNames résout les noms de game_variant FR-first depuis
+// asset_translations (préférence FIXE fr→en, locale-indépendante — clé de mode
+// stable, cf. ResolveMapFilterKeys). Best-effort : nil si metadata non attaché ou
+// aucun id ; une erreur est loggée (WarnContext) puis dégrade sans casser (le mode
+// by_mode retombe alors sur la valeur brute — règle logging n°3, pas d'avalage).
+func (r *PatternsRepo) resolveVariantModeNames(ctx context.Context, variantIDs []string) map[string]string {
+	if len(variantIDs) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
+		return nil
+	}
+	langs := PreferredLangsForLocale("fr")
+	names, err := NewMetadataRepoFromDB(r.pdb.Metadata).ResolveAssetNamesBulk(ctx, "game_variant", variantIDs, langs)
+	if err != nil {
+		slog.WarnContext(ctx, "patterns: résolution des noms de game_variant échouée — mode by_mode dégradé", "err", err)
+		return nil
+	}
+	return names
+}
+
+// variantModeFRFirst retourne le nom de game_variant FR-first pour la dérivation
+// du mode : le nom du registry s'il est présent, sinon le nom résolu read-side
+// (asset_translations). nil si aucun.
+func variantModeFRFirst(s patternModeSource, resolved map[string]string) *string {
+	if v := nullStringPtr(s.variantName); v != nil {
+		return v
+	}
+	id := strings.TrimSpace(s.variantID.String)
+	if id == "" {
+		return nil
+	}
+	if name := strings.TrimSpace(resolved[id]); name != "" {
+		return &name
+	}
+	return nil
 }
 
 // loadEnrichments charge les enrichissements depuis la DB joueur.
@@ -278,9 +417,11 @@ func mergePatternRows(shared []patternSharedRow, enrichMap map[string]patternEnr
 			hsRate = float64(s.HeadshotKills) / float64(s.Kills)
 		}
 		row := patterns.MatchRow{
-			MatchID:     s.MatchID,
-			PlayedAt:    s.PlayedAt,
-			Mode:        analysis.NormalizeModeLabel(s.Mode),
+			MatchID:  s.MatchID,
+			PlayedAt: s.PlayedAt,
+			// Mode déjà dérivé + normalisé par applyPatternModes (convention
+			// centralisée pair-sinon-variant, FR-first) — ne PAS re-normaliser.
+			Mode:        s.Mode,
 			MapID:       s.MapID,
 			Outcome:     s.Outcome,
 			IsRanked:    s.IsRanked,

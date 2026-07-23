@@ -1,9 +1,12 @@
 /**
- * Anti-regression tests for PlayerProfileV3 — the merged V1+V2 player
- * profile component. Verifies that NO V1 capability was lost in the
- * refactor (mu_trend, tier progress, mu/sigma, all leverages, suggested
- * challenge descriptions, CTAs) and that the V2 addition (per-component
- * trend arrow) is wired.
+ * Anti-regression tests for PlayerProfileV3 — the player identity/style/
+ * performance orchestrator. Verifies mu_trend, tier progress, mu/sigma and
+ * the per-component trend arrow are wired.
+ *
+ * Restructuration 4 onglets (2026-07, DEC-3) : la section « Pistes de
+ * progression » (leviers + défis suggérés + CTA campagne) a été extraite vers
+ * l'onglet « Entraînement » — elle n'est plus rendue ici (couverture propre
+ * dans AscensionCoachingTab.test.tsx via le stub ProgressionSection).
  *
  * Mocks usePlayerProfile + useProfileI18n + RadarChart to isolate the
  * orchestrator. Sections internes are rendered for real so the assertions
@@ -162,53 +165,32 @@ describe('PlayerProfileV3 — anti-regression V1 capabilities', () => {
     expect(screen.getAllByText(/profile\.performance\.trend_positive/).length).toBeGreaterThan(0)
   })
 
-  it('renders the LUSR tier + mu/sigma + next-tier gap (V1 detail preserved)', () => {
+  it('renders the LUSR tier + LUSR points + next-tier gap (DEC-6 : μ/σ retirés)', () => {
     render(<PlayerProfileV3 playerSlug="JGtm" />)
     expect(screen.getByText(/Onyx/)).toBeInTheDocument()
-    // mu/sigma interpolated via key profile.performance.mu_sigma::mu=1850,sigma=95
-    expect(screen.getByText(/mu_sigma::mu=1850,sigma=95/)).toBeInTheDocument()
-    // next tier gap
+    // DEC-6 : points LUSR (mu=1850) au lieu de μ/σ bruts.
+    expect(screen.getByText(/lusr_points::points=1850/)).toBeInTheDocument()
+    // μ/σ ne doivent plus apparaître.
+    expect(screen.queryByText(/mu_sigma/)).not.toBeInTheDocument()
+    // écart au palier en points LUSR (gap_to_next).
     expect(screen.getByText(/Champion I/)).toBeInTheDocument()
     expect(screen.getByText(/gap_to_next::gap=100/)).toBeInTheDocument()
   })
 
-  it('renders ALL leverages (not capped at 2 like V2)', () => {
+  it('renders LUSR components in the performance breakdown', () => {
     render(<PlayerProfileV3 playerSlug="JGtm" />)
-    // Each leverage component appears in two places (Performance breakdown
-    // + Progression list) — we just need to confirm that the 4th leverage
-    // (objective_score) is rendered. V2 would have capped at 2.
+    // accuracy / damage_efficiency / kill_efficiency are the 3 lusr_components
+    // of the fixture, rendered by PerformanceSection.
     expect(screen.getAllByText(/profile\.lusr\.accuracy/).length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/profile\.lusr\.objective_score/).length).toBeGreaterThan(0)
-    // damage_efficiency and kill_efficiency are LUSR components too, in
-    // PerformanceSection. Together they prove the data path is intact.
+    expect(screen.getAllByText(/profile\.lusr\.damage_efficiency/).length).toBeGreaterThan(0)
   })
 
-  it('renders suggested challenges with descriptions (V2 had hidden them)', () => {
+  it('does NOT render the progression leads (extracted to the Training tab)', () => {
     render(<PlayerProfileV3 playerSlug="JGtm" />)
-    expect(screen.getByText('Précision 50% sur 20 parties')).toBeInTheDocument()
-    expect(screen.getByText("Tient la précision au-dessus de 50% pendant 20 parties consécutives.")).toBeInTheDocument()
-    expect(screen.getByText('3000 dégâts par partie sur 10 parties')).toBeInTheDocument()
-    expect(screen.getByText("Maintien d'un volume de dégâts élevé.")).toBeInTheDocument()
-  })
-
-  it('renders "Start campaign" CTA on every leverage when onStartCampaign is provided', () => {
-    const onStartCampaign = vi.fn()
-    render(<PlayerProfileV3 playerSlug="JGtm" onStartCampaign={onStartCampaign} />)
-    const buttons = screen.getAllByText(/profile\.cta\.start_campaign/)
-    // 4 leverages → 4 CTAs (V2 had dropped these entirely)
-    expect(buttons.length).toBe(4)
-  })
-
-  it('hides "Start campaign" CTA when onStartCampaign is undefined (active campaign)', () => {
-    render(<PlayerProfileV3 playerSlug="JGtm" />)
+    // Leviers + défis suggérés + CTAs now live in AscensionCoachingTab.
     expect(screen.queryByText(/profile\.cta\.start_campaign/)).not.toBeInTheDocument()
-  })
-
-  it('renders "Launch template" CTA on every suggestion when onLaunchTemplate is provided', () => {
-    const onLaunchTemplate = vi.fn()
-    render(<PlayerProfileV3 playerSlug="JGtm" onLaunchTemplate={onLaunchTemplate} />)
-    const buttons = screen.getAllByText(/profile\.cta\.launch_template/)
-    expect(buttons.length).toBe(2)
+    expect(screen.queryByText(/profile\.cta\.launch_template/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Précision 50% sur 20 parties')).not.toBeInTheDocument()
   })
 
   it('renders trend arrow on LUSR components (V2 addition kept)', () => {

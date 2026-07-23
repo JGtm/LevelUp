@@ -40,6 +40,10 @@ type Repo interface {
 	Insert(ctx context.Context, c ImprovementCampaign) error
 	GetByID(ctx context.Context, id string) (ImprovementCampaign, error)
 	GetActive(ctx context.Context, userID, titleSlug string) (ImprovementCampaign, error)
+	// ListEnded liste les campagnes closes (completed/abandoned) d'un joueur sur
+	// un titre, les plus récentes d'abord (tri par ended_at desc). Sert la
+	// surface « Historique » de l'onglet Réalisations (Lot C).
+	ListEnded(ctx context.Context, userID, titleSlug string) ([]ImprovementCampaign, error)
 	UpdateStatus(ctx context.Context, id string, status CampaignStatus, endedAt *time.Time) error
 	UpdateEvaluation(ctx context.Context, id string, eval Evaluation) error
 	LinkedChallengeIDs(ctx context.Context, campaignID string) ([]string, error)
@@ -171,6 +175,13 @@ func (s *Service) GetActive(ctx context.Context, userID, titleSlug string) (Impr
 	ids, _ := s.repo.LinkedChallengeIDs(ctx, c.ID)
 	c.LinkedChallengeIDs = ids
 	return c, nil
+}
+
+// ListEnded retourne les campagnes closes (completed/abandoned) du joueur, les
+// plus récentes d'abord. Lecture seule (pas d'hydratation des défis liés : la
+// surface historique n'en a pas besoin).
+func (s *Service) ListEnded(ctx context.Context, userID, titleSlug string) ([]ImprovementCampaign, error) {
+	return s.repo.ListEnded(ctx, userID, titleSlug)
 }
 
 // GetByID retourne une campagne par ID (hydratée avec les défis liés).

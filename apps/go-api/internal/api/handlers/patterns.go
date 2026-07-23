@@ -22,6 +22,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -29,6 +30,7 @@ import (
 
 	"levelup/go-api/internal/analysis/patterns"
 	"levelup/go-api/internal/api/humacore"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
 )
@@ -110,6 +112,7 @@ func (h *PatternsHandler) GetPatterns(ctx context.Context, in *patternsInput) (*
 		Config: patterns.DefaultPatternConfig(),
 		Now:    time.Now().UTC(),
 	})
+	h.enrichContextLabels(ctx, repo, &report)
 	slog.DebugContext(ctx, "patterns: analyse terminée",
 		"player_slug", in.PlayerSlug,
 		"rows", len(rows),
@@ -118,4 +121,110 @@ func (h *PatternsHandler) GetPatterns(ctx context.Context, in *patternsInput) (*
 		"levers", len(report.Levers),
 	)
 	return &patternsOutput{Body: report}, nil
+}
+
+// enrichContextLabels résout les libellés lisibles des patterns by_map (nom de
+// carte depuis le référentiel metadata du titre) et les pose sur le rapport. La
+// résolution SQL vit dans le repo (port) : ici on ne fait que collecter les ids,
+// appeler le port et appliquer le repli localisé. Best-effort : une résolution
+// en échec dégrade vers le repli sans casser l'endpoint.
+func (h *PatternsHandler) enrichContextLabels(ctx context.Context, repo port.PatternsRepository, report *patterns.PatternReport) {
+	mapIDs := distinctMapKeys(report.ContextPatterns)
+	if len(mapIDs) == 0 {
+		return
+	}
+	resolved, err := repo.ResolveMapLabels(ctx, mapIDs)
+	if err != nil {
+		slog.WarnContext(ctx, "patterns: résolution des libellés de carte échouée — repli local", "err", err)
+		resolved = nil
+	}
+	// Clés de filtrage stables (FR-first, indépendantes de la locale) pour les
+	// liens pattern→Solo (F7) — la valeur EXACTE que le pipeline de filtres matche.
+	filterKeys, err := repo.ResolveMapFilterKeys(ctx, mapIDs)
+	if err != nil {
+		slog.WarnContext(ctx, "patterns: résolution des clés de filtrage de carte échouée", "err", err)
+		filterKeys = nil
+	}
+	locale := ctxkeys.Locale(ctx)
+	for i := range report.ContextPatterns {
+		switch report.ContextPatterns[i].Type {
+		case patterns.ContextByMap:
+			report.ContextPatterns[i].Label = mapLabelOrFallback(resolved, report.ContextPatterns[i].Key, locale)
+			// FilterKey = nom FR-first résolu ; si non résolu, pas de clé (le front
+			// n'émet alors pas de lien plutôt que de matcher un GUID/label localisé).
+			if fk := strings.TrimSpace(filterKeys[report.ContextPatterns[i].Key]); fk != "" {
+				report.ContextPatterns[i].FilterKey = fk
+			}
+		case patterns.ContextByMode:
+			// La clé de mode est déjà la valeur normalisée (= modeUI du filtre),
+			// FR-first et locale-indépendante → clé de filtrage directe (F7).
+			report.ContextPatterns[i].FilterKey = report.ContextPatterns[i].Key
+		}
+	}
+	setMapLeverContextLabels(report.Levers, resolved, locale)
+}
+
+// setMapLeverContextLabels résout le nom d'asset (carte) du contexte visé par un
+// levier map_avoidance et le pose sur ContextLabel — donnée structurée servie au
+// front, qui compose la phrase i18n (F3). Le front n'affiche JAMAIS le
+// ContextKey (GUID) d'un levier by_map : il utilise ContextLabel (title-agnostic,
+// même mécanisme A1 que les patterns). Repli localisé « Carte inconnue » si non
+// résolu — jamais le GUID nu.
+func setMapLeverContextLabels(levers []patterns.Lever, resolved map[string]string, locale string) {
+	for i := range levers {
+		if levers[i].Axis != patterns.AxisMapAvoidance {
+			continue
+		}
+		if strings.TrimSpace(levers[i].ContextKey) == "" {
+			continue
+		}
+		levers[i].ContextLabel = mapLabelOrFallback(resolved, levers[i].ContextKey, locale)
+	}
+}
+
+// distinctMapKeys collecte les clés (map_id) distinctes des patterns by_map.
+func distinctMapKeys(pats []patterns.ContextualPattern) []string {
+	seen := make(map[string]struct{}, len(pats))
+	var out []string
+	for _, p := range pats {
+		if p.Type != patterns.ContextByMap {
+			continue
+		}
+		id := strings.TrimSpace(p.Key)
+		if id == "" {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	return out
+}
+
+// mapLabelOrFallback retourne le nom résolu, sinon un repli localisé (« Carte
+// inconnue » + id court) — jamais le GUID nu.
+func mapLabelOrFallback(resolved map[string]string, key, locale string) string {
+	if name := strings.TrimSpace(resolved[key]); name != "" {
+		return name
+	}
+	return fallbackMapLabel(key, locale)
+}
+
+// fallbackMapLabel construit le repli localisé pour une carte non résolue :
+// « Carte inconnue (xxxxxxxx) » / « Unknown map (xxxxxxxx) », l'id tronqué aux
+// 8 premiers caractères (jamais le GUID complet). Exception assumée à la règle
+// « pas de libellé FR/EN en dur » : ce repli est un état de dégradation (asset
+// absent du référentiel), pas un libellé de titre — le back doit garantir un
+// label non vide (contrat A1), et le front affiche le label tel quel.
+func fallbackMapLabel(id, locale string) string {
+	short := id
+	if len(short) > 8 {
+		short = short[:8]
+	}
+	if strings.HasPrefix(strings.ToLower(locale), "en") {
+		return "Unknown map (" + short + ")"
+	}
+	return "Carte inconnue (" + short + ")"
 }

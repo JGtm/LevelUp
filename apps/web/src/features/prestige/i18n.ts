@@ -27,11 +27,6 @@ export interface PrestigeText {
   formModeHybrid: string
   formModeAuto: string
   formFieldMetric: string
-  metricAccuracy: string
-  metricHeadshots: string
-  metricDamage: string
-  metricPersonalScore: string
-  metricWinRate: string
   formFieldTarget: string
   formFieldWindow: string
   windowSessions: string
@@ -100,11 +95,6 @@ const FR: PrestigeText = {
   formModeHybrid: 'Hybride',
   formModeAuto: 'Automatique',
   formFieldMetric: 'Métrique',
-  metricAccuracy: 'Précision',
-  metricHeadshots: 'Tirs à la tête',
-  metricDamage: 'Dégâts infligés',
-  metricPersonalScore: 'Score perso',
-  metricWinRate: 'Taux de victoire (%)',
   formFieldTarget: 'Cible',
   formFieldWindow: 'Fenêtre',
   windowSessions: 'Sessions',
@@ -164,11 +154,6 @@ const EN: PrestigeText = {
   formModeHybrid: 'Hybrid',
   formModeAuto: 'Automatic',
   formFieldMetric: 'Metric',
-  metricAccuracy: 'Accuracy',
-  metricHeadshots: 'Headshots',
-  metricDamage: 'Damage dealt',
-  metricPersonalScore: 'Personal score',
-  metricWinRate: 'Win rate (%)',
   formFieldTarget: 'Target',
   formFieldWindow: 'Window',
   windowSessions: 'Sessions',

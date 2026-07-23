@@ -15,6 +15,7 @@ import { useMemo, useState } from 'react'
 import type { Challenge, Tier, ChallengeMode } from '@/lib/prestige'
 import { TIER_COLORS, TIER_LABELS_FR } from '@/lib/prestige'
 import { useAssetLabel } from '@/lib/i18n/fieldMappings'
+import { metricLabel } from '@/lib/i18n/metricLabel'
 import { CADENCE_FREE_FALLBACK_FR } from '../fallback.i18n'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
@@ -84,7 +85,7 @@ export function StatsGlobales({ challenges }: StatsGlobalesProps) {
           <ul className="space-y-1">
             {stats.topMetrics.map(({ metric, count }) => (
               <li key={metric} className="flex items-center justify-between text-sm">
-                <span className="font-medium">{metric}</span>
+                <span className="font-medium">{metricLabel(metric, locale)}</span>
                 <span className="text-xs text-muted-foreground">{count}</span>
               </li>
             ))}

@@ -138,10 +138,14 @@ func loadProgressionSharedMatches(ctx context.Context, pdb *duckdb.PlayerDB, sin
 	}
 	defer release()
 
+	// start_time via le fragment timezone canonique (règle CLAUDE.md n°8) : SELECT,
+	// filtre et tri passent tous par COALESCE(start_time_utc, start_time AT TIME
+	// ZONE 'UTC') — un start_time brut mal-classe/exclut les imports OpenSpartan à
+	// start_time NULL/TZ-décalé mais start_time_utc renseigné (alignement G1).
 	rows, err := sharedDB.QueryContext(ctx, `
 		SELECT
 			mp.match_id,
-			mr.start_time,
+			`+analysis.SQLStartTimeCanonical("mr")+` AS start_time,
 			COALESCE(mp.kda, 0) AS kda,
 			COALESCE(mp.kills, 0) AS kills,
 			COALESCE(mp.deaths, 0) AS deaths,
@@ -153,9 +157,9 @@ func loadProgressionSharedMatches(ctx context.Context, pdb *duckdb.PlayerDB, sin
 			COALESCE(mp.damage_taken, 0) AS damage_taken
 		FROM match_participants mp
 		JOIN match_registry mr ON mp.match_id = mr.match_id
-		WHERE mp.xuid = ? AND mr.start_time >= ?
-		ORDER BY mr.start_time ASC
-	`, pdb.XUID, since)
+		WHERE mp.xuid = ? AND `+analysis.SQLStartTimeCanonical("mr")+` >= ?
+		ORDER BY start_time ASC
+	`, pdb.XUID, since.UTC())
 	if err != nil {
 		return nil, nil, fmt.Errorf("query progression matches: %w", err)
 	}
@@ -318,10 +322,13 @@ func loadPlayerStats(ctx context.Context, pdb *duckdb.PlayerDB) (milestones.Play
 		return out, fmt.Errorf("aggregate stats: %w", err)
 	}
 
-	// accuracy_threshold_days : COUNT(DISTINCT DATE(start_time)) where any match >= threshold.
+	// accuracy_threshold_days : COUNT(DISTINCT jour UTC) où au moins 1 match a
+	// accuracy >= seuil. Le bucket jour passe par le fragment timezone canonique
+	// (règle CLAUDE.md n°8) — cohérent avec le backfill A6 (ops.ComputeMilestoneCrossings) ;
+	// un CAST(start_time AS DATE) brut décalerait les jours aux frontières de fuseau.
 	var accuracyDays int64
 	if err := sharedDB.QueryRowContext(ctx, `
-		SELECT COUNT(DISTINCT CAST(mr.start_time AS DATE))
+		SELECT COUNT(DISTINCT CAST(`+analysis.SQLStartTimeCanonical("mr")+` AS DATE))
 		FROM match_participants mp
 		JOIN match_registry mr ON mp.match_id = mr.match_id
 		WHERE mp.xuid = ? AND mp.accuracy >= ?
@@ -399,12 +406,15 @@ func loadComebackContext(ctx context.Context, pdb *duckdb.PlayerDB, now time.Tim
 		return out, fmt.Errorf("loadComebackContext: %w", err)
 	}
 	defer release()
+	// start_time via le fragment timezone canonique (règle CLAUDE.md n°8), SELECT +
+	// filtre NOT NULL + tri : un match à start_time NULL mais start_time_utc
+	// renseigné compte comme activité valide (alignement G1).
 	rows, err := sharedDB.QueryContext(ctx, `
-		SELECT mr.start_time
+		SELECT `+analysis.SQLStartTimeCanonical("mr")+` AS start_time
 		FROM match_participants mp
 		JOIN match_registry mr ON mp.match_id = mr.match_id
-		WHERE mp.xuid = ? AND mr.start_time IS NOT NULL
-		ORDER BY mr.start_time DESC
+		WHERE mp.xuid = ? AND `+analysis.SQLStartTimeCanonical("mr")+` IS NOT NULL
+		ORDER BY start_time DESC
 		LIMIT 2
 	`, pdb.XUID)
 	if err != nil {

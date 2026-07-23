@@ -2777,6 +2777,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/activity-calendar": {
+        parameters: {
+            query?: {
+                /** @description Fenêtre d'activité en jours (clampé 7..180) */
+                days?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        /** Calendrier d'activité : nombre de matchs par jour UTC sur la fenêtre (jours vides omis) */
+        get: operations["getActivityCalendar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/campaigns": {
         parameters: {
             query?: never;
@@ -2809,6 +2832,26 @@ export interface paths {
         };
         /** Campagne active du joueur (null si aucune) */
         get: operations["getActiveCampaign"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/campaigns/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        /** Campagnes closes du joueur (historique, les plus récentes d'abord) */
+        get: operations["listEndedCampaigns"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3353,6 +3396,16 @@ export interface components {
             field: string;
             message: string;
             code?: string | null;
+        };
+        ActivityCalendar: {
+            days: components["schemas"]["ActivityDay"][] | null;
+            since: string;
+            until: string;
+        };
+        ActivityDay: {
+            /** Format: int64 */
+            count: number;
+            date: string;
         };
         ApiErrorSchema: {
             /**
@@ -5587,6 +5640,28 @@ export interface components {
             /** Format: int64 */
             playlists: number;
         };
+        CampaignHistoryItem: {
+            axis: string;
+            axis_kind: string;
+            /** Format: double */
+            delta?: number;
+            /** Format: date-time */
+            ended_at?: string;
+            /** Format: double */
+            final_value?: number;
+            id: string;
+            playlist_group: string;
+            /** Format: double */
+            snapshot_value: number;
+            /** Format: date-time */
+            started_at: string;
+            status: string;
+        };
+        CampaignHistoryResponse: {
+            campaigns: components["schemas"]["CampaignHistoryItem"][] | null;
+            /** Format: int64 */
+            count: number;
+        };
         ChallengeItem: {
             challenge_path: string;
             description?: string;
@@ -5781,7 +5856,9 @@ export interface components {
             avg_perf?: number;
             /** Format: double */
             delta: number;
+            filter_key?: string;
             key: string;
+            label?: string;
             /** Format: int64 */
             match_count: number;
             signal: string;
@@ -6656,16 +6733,16 @@ export interface components {
         };
         Lever: {
             axis: string;
+            context_key?: string;
+            context_label?: string;
             /** Format: double */
             current_val: number;
             /** Format: int64 */
             horizon: number;
             /** Format: double */
             impact: number;
-            label: string;
             /** Format: int64 */
             rank: number;
-            source_pattern: string;
             /** Format: double */
             target_val: number;
         };
@@ -6960,7 +7037,8 @@ export interface components {
             total_count: number;
         };
         MilestoneDTO: {
-            condition?: string;
+            condition_en?: string;
+            condition_fr?: string;
             earned: boolean;
             /** Format: date-time */
             earned_at?: string;
@@ -7149,6 +7227,8 @@ export interface components {
             context_patterns: components["schemas"]["ContextualPattern"][] | null;
             levers: components["schemas"]["Lever"][] | null;
             /** Format: int64 */
+            min_matches_for_signal: number;
+            /** Format: int64 */
             window_size: number;
         };
         PerfAPIBuckets: {
@@ -7336,6 +7416,7 @@ export interface components {
             radar_axes?: components["schemas"]["ParticipationAxisValue"][] | null;
             secondary_role?: string;
             skill_rating: components["schemas"]["SkillRatingSnapshot"];
+            skill_trend?: components["schemas"]["SkillTrendPoint"][] | null;
             strengths?: components["schemas"]["RadarAxisInsight"][] | null;
             style_signature: components["schemas"]["StyleSignature"];
             suggested_challenges?: components["schemas"]["SuggestedChallenge"][] | null;
@@ -8028,6 +8109,11 @@ export interface components {
             sub_tier: number;
             tier_name: string;
             tier_name_fr: string;
+        };
+        SkillTrendPoint: {
+            date: string;
+            /** Format: double */
+            value: number;
         };
         SkillSnapshot: {
             /** Format: double */
@@ -12934,6 +13020,37 @@ export interface operations {
             };
         };
     };
+    getActivityCalendar: {
+        parameters: {
+            query?: {
+                /** @description Fenêtre d'activité en jours (clampé 7..180) */
+                days?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ActivityCalendar */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Joueur inconnu */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     startCampaign: {
         parameters: {
             query?: never;
@@ -12987,6 +13104,29 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    listEndedCampaigns: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Liste des campagnes closes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignHistoryResponse"];
+                };
             };
         };
     };

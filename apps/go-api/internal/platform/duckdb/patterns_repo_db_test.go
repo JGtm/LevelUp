@@ -7,6 +7,7 @@ package duckdb
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/migration"
@@ -33,21 +34,24 @@ func newPatternsTestPDB(t *testing.T) *PlayerDB {
 	t.Cleanup(func() { _ = playerSQL.Close() })
 
 	// Schéma fidèle au vrai match_registry prod (cf. migration/steps_shared.go) :
-	// start_time + start_time_utc (TIMESTAMPTZ), pair_name/pair_name_fr (mode),
-	// duration_seconds. Le repo lit played_at via COALESCE(start_time_utc,
-	// start_time AT TIME ZONE 'UTC') et le mode via COALESCE(pair_name_fr, pair_name).
+	// start_time + start_time_utc (TIMESTAMPTZ), pair_name/pair_name_fr +
+	// game_variant_id/game_variant_name (sources de mode), duration_seconds. Le repo
+	// lit played_at via COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC') et le
+	// mode via analysis.ResolveModeUIWithVariant (pair prioritaire, sinon variant).
 	mustExec(t, sharedSQL, `CREATE TABLE match_registry (
 		match_id VARCHAR, start_time TIMESTAMP, start_time_utc TIMESTAMPTZ,
 		pair_name VARCHAR, pair_name_fr VARCHAR,
+		game_variant_id VARCHAR, game_variant_name VARCHAR,
 		map_id VARCHAR, duration_seconds INTEGER)`)
 	mustExec(t, sharedSQL, `CREATE TABLE match_participants (
 		match_id VARCHAR, xuid VARCHAR, outcome INTEGER, kills INTEGER,
 		deaths INTEGER, assists INTEGER, accuracy DOUBLE, damage_dealt DOUBLE,
 		damage_taken DOUBLE, headshot_kills INTEGER, team_mmr DOUBLE)`)
 	// m1 = plus récent, non ranked (team_mmr NULL) ; m2 = plus ancien, ranked.
+	// Voie Infinite : pair_name renseigné → le variant (NULL ici) n'est pas consulté.
 	mustExec(t, sharedSQL, `INSERT INTO match_registry VALUES
-		('m1', TIMESTAMP '2026-01-02 12:00:00', TIMESTAMPTZ '2026-01-02 12:00:00+00', 'Slayer', NULL, 'map1', 600),
-		('m2', TIMESTAMP '2026-01-01 12:00:00', TIMESTAMPTZ '2026-01-01 12:00:00+00', 'Oddball', NULL, 'map2', 500)`)
+		('m1', TIMESTAMP '2026-01-02 12:00:00', TIMESTAMPTZ '2026-01-02 12:00:00+00', 'Slayer', NULL, NULL, NULL, 'map1', 600),
+		('m2', TIMESTAMP '2026-01-01 12:00:00', TIMESTAMPTZ '2026-01-01 12:00:00+00', 'Oddball', NULL, NULL, NULL, 'map2', 500)`)
 	mustExec(t, sharedSQL, `INSERT INTO match_participants VALUES
 		('m1', 'p1', 2, 10, 5, 4, 0.55, 2000, 1500, 3, NULL),
 		('m2', 'p1', 3, 8, 4, 2, 0.40, 1200, 1300, 1, 1500)`)
@@ -136,6 +140,108 @@ func TestPatternsRepo_LoadRows_EndToEnd(t *testing.T) {
 	}
 	if m2.DeltaLUSR != nil {
 		t.Errorf("m2.DeltaLUSR = %v, want nil (match le plus ancien)", m2.DeltaLUSR)
+	}
+}
+
+// newH5PatternsTestPDB câble un PlayerDB façon Halo 5 : match_registry SANS pair
+// (pair_name/pair_id NULL, structurel H5) mais AVEC game_variant_id ; les noms de
+// variant (EN + FR) vivent metadata-side dans asset_translations (voie H5). Prouve
+// que le mode by_mode dérive du game_variant FR-first via la convention centralisée
+// (G2), au lieu du mode vide degenere de l'ancienne derivation pair-only.
+func newH5PatternsTestPDB(t *testing.T) *PlayerDB {
+	t.Helper()
+	ctx := context.Background()
+
+	open := func(name string) *sql.DB {
+		db, err := sql.Open("duckdb", ":memory:")
+		if err != nil {
+			t.Fatalf("open %s: %v", name, err)
+		}
+		t.Cleanup(func() { _ = db.Close() })
+		return db
+	}
+	sharedSQL := open("shared")
+	playerSQL := open("player")
+	metaSQL := open("meta")
+
+	// Registry H5 : pair NULL, game_variant_id renseigné, game_variant_name NULL.
+	mustExec(t, sharedSQL, `CREATE TABLE match_registry (
+		match_id VARCHAR, start_time TIMESTAMP, start_time_utc TIMESTAMPTZ,
+		pair_name VARCHAR, pair_name_fr VARCHAR,
+		game_variant_id VARCHAR, game_variant_name VARCHAR,
+		map_id VARCHAR, duration_seconds INTEGER)`)
+	mustExec(t, sharedSQL, `CREATE TABLE match_participants (
+		match_id VARCHAR, xuid VARCHAR, outcome INTEGER, kills INTEGER,
+		deaths INTEGER, assists INTEGER, accuracy DOUBLE, damage_dealt DOUBLE,
+		damage_taken DOUBLE, headshot_kills INTEGER, team_mmr DOUBLE)`)
+	// 2 matchs Slayer (variant vSlayer) + 1 Strongholds (variant vStrong).
+	mustExec(t, sharedSQL, `INSERT INTO match_registry VALUES
+		('h1', TIMESTAMP '2026-02-03 12:00:00', TIMESTAMPTZ '2026-02-03 12:00:00+00', NULL, NULL, 'vSlayer', NULL, 'mapA', 600),
+		('h2', TIMESTAMP '2026-02-02 12:00:00', TIMESTAMPTZ '2026-02-02 12:00:00+00', NULL, NULL, 'vSlayer', NULL, 'mapA', 600),
+		('h3', TIMESTAMP '2026-02-01 12:00:00', TIMESTAMPTZ '2026-02-01 12:00:00+00', NULL, NULL, 'vStrong', NULL, 'mapB', 500)`)
+	mustExec(t, sharedSQL, `INSERT INTO match_participants VALUES
+		('h1', 'p1', 2, 10, 5, 4, 0.5, 2000, 1500, 3, NULL),
+		('h2', 'p1', 3,  8, 4, 2, 0.4, 1200, 1300, 1, NULL),
+		('h3', 'p1', 2,  9, 6, 3, 0.5, 1800, 1400, 2, NULL)`)
+
+	// asset_translations : noms EN + FR par game_variant_id (voie metadata H5).
+	mustExec(t, metaSQL, `CREATE TABLE asset_translations (
+		asset_type VARCHAR, asset_id VARCHAR, lang VARCHAR, name VARCHAR)`)
+	mustExec(t, metaSQL, `INSERT INTO asset_translations VALUES
+		('game_variant', 'vSlayer', 'en-US', 'Slayer'),
+		('game_variant', 'vSlayer', 'fr-FR', 'Assassin'),
+		('game_variant', 'vStrong', 'en-US', 'Strongholds'),
+		('game_variant', 'vStrong', 'fr-FR', 'Bases')`)
+
+	mustExec(t, playerSQL, `CREATE TABLE player_match_enrichment (
+		match_id VARCHAR, performance_score DOUBLE, session_id VARCHAR,
+		is_with_friends BOOLEAN, engagement_score DOUBLE, engagement_score_brut DOUBLE)`)
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(playerSQL); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
+	}
+	mustExec(t, playerSQL, `CREATE TABLE match_skill_rank (
+		match_id VARCHAR, rating_value DOUBLE, rating_type VARCHAR)`)
+	mustExec(t, playerSQL, `CREATE VIEW match_skill_rank_latest AS SELECT * FROM match_skill_rank`)
+	_ = ctx
+
+	return &PlayerDB{
+		Player:   newTestDB(playerSQL, ":memory:"),
+		Shared:   newTestDB(sharedSQL, ":memory:"),
+		Metadata: newTestDB(metaSQL, ":memory:"),
+		XUID:     "p1",
+	}
+}
+
+// TestPatternsRepo_LoadRows_H5ModeFromVariant : sur des matchs façon Halo 5 (pair
+// NULL, seul game_variant_id présent), le Mode dérive du game_variant résolu
+// FR-first (donc "Assassin"/"Bases"), et JAMAIS le mode vide degenere de l'ancienne
+// dérivation pair-only. La valeur est exactement le modeUI que le pipeline de
+// filtres matche (NormalizeModeLabel du GameVariantNameFR) → le filter_key by_mode
+// (= Key = Mode, posé au handler) reste cohérent (F7 étendu à H5, G2).
+func TestPatternsRepo_LoadRows_H5ModeFromVariant(t *testing.T) {
+	repo := NewPatternsRepo(newH5PatternsTestPDB(t))
+
+	rows, err := repo.LoadRows(context.Background(), 50)
+	if err != nil {
+		t.Fatalf("LoadRows: %v", err)
+	}
+	if len(rows) != 3 {
+		t.Fatalf("len(rows) = %d, want 3", len(rows))
+	}
+
+	byMatch := make(map[string]string, len(rows))
+	for _, r := range rows {
+		if strings.TrimSpace(r.Mode) == "" {
+			t.Errorf("match %s : Mode vide (dérivation pair-only dégénérée non corrigée)", r.MatchID)
+		}
+		byMatch[r.MatchID] = r.Mode
+	}
+	// FR-first : "Assassin" (fr-FR de vSlayer), "Bases" (fr-FR de vStrong).
+	if byMatch["h1"] != "Assassin" || byMatch["h2"] != "Assassin" {
+		t.Errorf("Slayer H5 : modes = %q/%q, want Assassin/Assassin", byMatch["h1"], byMatch["h2"])
+	}
+	if byMatch["h3"] != "Bases" {
+		t.Errorf("Strongholds H5 : mode = %q, want Bases", byMatch["h3"])
 	}
 }
 

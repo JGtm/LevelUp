@@ -8,7 +8,13 @@ import type {
   LOWESSTrend,
   LUSRComponentBreakdown,
   SkillRatingSnapshot,
+  SkillTrendPoint,
 } from '@/lib/playerProfile'
+import {
+  TimeseriesLineChart,
+  type ChartPoint2D,
+} from '@/components/charts/TimeseriesLineChart'
+import type { ChartSeries } from '@/components/charts/ChartCard'
 import { useProfileI18n } from './useProfileI18n'
 import type { ProfileManifestKey } from '@/lib/i18n/generated/profile'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -18,12 +24,14 @@ interface PerformanceSectionProps {
   skillRating: SkillRatingSnapshot
   components?: LUSRComponentBreakdown[]
   muTrend?: LOWESSTrend
+  skillTrend?: SkillTrendPoint[]
 }
 
 export function PerformanceSection({
   skillRating,
   components,
   muTrend,
+  skillTrend,
 }: PerformanceSectionProps) {
   const { t } = useProfileI18n()
   return (
@@ -37,8 +45,47 @@ export function PerformanceSection({
 
       <TierBlock rating={skillRating} />
 
+      <SkillTrendSparkline points={skillTrend} />
+
       <ComponentsBreakdown components={components} />
     </section>
+  )
+}
+
+// Nombre minimal de points sous lequel on n'affiche RIEN (pas de graphe cassé).
+const MIN_TREND_POINTS = 2
+
+function SkillTrendSparkline({ points }: { points?: SkillTrendPoint[] }) {
+  const { t } = useProfileI18n()
+  // État vide propre : < 2 points → rien (DEC-5/D2). Le backend ne sert de série
+  // que si ≥ 3 points de rating ; ce garde-fou couvre aussi l'absence de champ.
+  if (!points || points.length < MIN_TREND_POINTS) return null
+
+  // DEC-6/B8 : la valeur servie est déjà le μ LISSÉ en points LUSR. On arrondit
+  // pour un tooltip lisible (échelle 1000-2000+, l'arrondi ne dénature pas la
+  // courbe). x = jour UTC (axe catégoriel : sparkline, pas d'espacement temporel).
+  const series: ChartSeries<ChartPoint2D>[] = [
+    {
+      key: 'lusr_trend',
+      datapoints: points.map((p) => ({ x: p.date, y: Math.round(p.value) })),
+    },
+  ]
+  const seriesName = t('profile.performance.trend_chart_series')
+
+  return (
+    <div role="img" aria-label={t('profile.performance.trend_chart_aria')}>
+      <TimeseriesLineChart
+        title={t('profile.performance.trend_chart_title')}
+        series={series}
+        xAxisType="category"
+        outcomeMarkers={false}
+        showSymbol={false}
+        smooth
+        seriesNameResolver={() => seriesName}
+        xAxisLabelInterval={Math.max(1, Math.floor(points.length / 4))}
+        height={96}
+      />
+    </div>
   )
 }
 
@@ -51,15 +98,15 @@ function TierBlock({ rating }: { rating: SkillRatingSnapshot }) {
   const progressPct = Math.round((rating.progress_ratio ?? 0) * 100)
   // tier_name (EN) / tier_name_fr (FR) portés par le DTO ; label/next_tier_label
   // sont composés en EN côté backend (package profile locale-agnostic) → localisés ici.
+  // DEC-6 : on affiche les points LUSR (échelle connue du joueur), pas μ/σ bruts.
+  // `mu` est la valeur de rating LUSR ; l'écart au palier (points) est rendu sur
+  // la ligne « prochain palier » via gap_to_next.
   return (
     <div>
       <div className="flex items-baseline justify-between">
         <span className="text-2xl font-bold">{(locale === 'en' ? rating.tier_name : rating.tier_name_fr) || rating.label}</span>
-        <span className="font-mono text-xs text-muted-foreground">
-          {t('profile.performance.mu_sigma', {
-            mu: rating.mu.toFixed(0),
-            sigma: rating.sigma.toFixed(0),
-          })}
+        <span className="text-xs font-semibold tabular-nums text-muted-foreground">
+          {t('profile.performance.lusr_points', { points: rating.mu.toFixed(0) })}
         </span>
       </div>
       <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
@@ -130,11 +177,18 @@ function ComponentsBreakdown({ components }: { components?: LUSRComponentBreakdo
     )
   }
   return (
-    <ul className="space-y-2">
-      {components.map((c) => (
-        <ComponentRow key={c.name} component={c} />
-      ))}
-    </ul>
+    <div className="space-y-2">
+      <ul className="space-y-2">
+        {components.map((c) => (
+          <ComponentRow key={c.name} component={c} />
+        ))}
+      </ul>
+      {/* AM-10 : la « cible » uniforme (~98 %) est le composite requis pour le
+          palier suivant, identique pour les 8 composantes — étiqueté ici. */}
+      <p className="text-2xs italic text-muted-foreground">
+        {t('profile.performance.target_note')}
+      </p>
+    </div>
   )
 }
 

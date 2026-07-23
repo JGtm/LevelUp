@@ -82,8 +82,10 @@ export function HomeAscensionWidget({ playerSlug, locale }: HomeAscensionWidgetP
             ))}
           </ul>
         )}
+        {/* Le widget montre des séries (surface du passé) → pointe l'onglet
+            « Réalisations », pas l'index Profil (B2). */}
         <Link
-          to="/players/$playerSlug/ascension"
+          to="/players/$playerSlug/ascension/realisations"
           params={{ playerSlug }}
           className="mt-auto text-xs text-muted-foreground transition-colors hover:text-foreground"
         >

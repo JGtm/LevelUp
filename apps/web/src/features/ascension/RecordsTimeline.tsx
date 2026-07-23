@@ -12,6 +12,8 @@
  * évite un doublon UI et donne un feedback proactif plutôt que statique.
  */
 import { useAppShellStore } from '@/stores/appShellStore'
+import { metricLabel } from '@/lib/i18n/metricLabel'
+import { buildSoloFilterLink, dayWindowUTC } from '@/features/filters/filterLink'
 import { useRecords } from './queries'
 import { getAscensionText } from './i18n'
 import { formatAscensionDate, formatMetricValue, interpolate } from './format'
@@ -23,8 +25,30 @@ export interface RecordsTimelineProps {
 
 const PERIOD_ORDER: RecordPeriod[] = ['30d', '90d', 'all_time']
 
+/** Lien « voir la période » : Solo borné sur la journée (UTC) du record. Full-page
+ *  nav (`<a href>`) — le `?f=` n'est décodé qu'au rehydrate du store solo. */
+function SeePeriodLink({
+  achievedAt,
+  playerSlug,
+  titleSlug,
+  label,
+}: {
+  achievedAt: string
+  playerSlug: string
+  titleSlug: string
+  label: string
+}) {
+  const href = buildSoloFilterLink({ playerSlug, titleSlug, period: dayWindowUTC(achievedAt) })
+  return (
+    <a href={href} className="text-2xs text-primary hover:underline">
+      {label}
+    </a>
+  )
+}
+
 export function RecordsTimeline({ playerSlug }: RecordsTimelineProps) {
   const locale = useAppShellStore((s) => s.locale)
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const t = getAscensionText(locale)
   const { data, isLoading, isError } = useRecords(playerSlug, { historyLimit: 50 })
 
@@ -84,7 +108,14 @@ export function RecordsTimeline({ playerSlug }: RecordsTimelineProps) {
           <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {[...pbByMetric.entries()].map(([metric, list]) => (
               <li key={metric}>
-                <PBCard metric={metric} pbs={list} locale={locale} t={t} />
+                <PBCard
+                  metric={metric}
+                  pbs={list}
+                  locale={locale}
+                  t={t}
+                  playerSlug={playerSlug}
+                  titleSlug={titleSlug}
+                />
               </li>
             ))}
           </ul>
@@ -102,7 +133,13 @@ export function RecordsTimeline({ playerSlug }: RecordsTimelineProps) {
           <ol className="space-y-2" aria-label={t.recordsTimelineTitle}>
             {history.map((h) => (
               <li key={h.id}>
-                <HistoryRow entry={h} locale={locale} t={t} />
+                <HistoryRow
+                  entry={h}
+                  locale={locale}
+                  t={t}
+                  playerSlug={playerSlug}
+                  titleSlug={titleSlug}
+                />
               </li>
             ))}
           </ol>
@@ -117,10 +154,12 @@ interface PBCardProps {
   pbs: PersonalBest[]
   locale: 'fr' | 'en'
   t: ReturnType<typeof getAscensionText>
+  playerSlug: string
+  titleSlug: string
 }
 
-function PBCard({ metric, pbs, locale, t }: PBCardProps) {
-  const label = t.metric[metric] ?? metric
+function PBCard({ metric, pbs, locale, t, playerSlug, titleSlug }: PBCardProps) {
+  const label = metricLabel(metric, locale)
   return (
     <article className="rounded-md border border-border bg-card p-4">
       <h4 className="mb-3 text-sm font-medium">{label}</h4>
@@ -146,6 +185,14 @@ function PBCard({ metric, pbs, locale, t }: PBCardProps) {
                   })}
                 </span>
               )}
+              {pb.achieved_at && (
+                <SeePeriodLink
+                  achievedAt={pb.achieved_at}
+                  playerSlug={playerSlug}
+                  titleSlug={titleSlug}
+                  label={t.recordSeePeriod}
+                />
+              )}
             </dd>
           </div>
         ))}
@@ -158,10 +205,12 @@ interface HistoryRowProps {
   entry: RecordHistory
   locale: 'fr' | 'en'
   t: ReturnType<typeof getAscensionText>
+  playerSlug: string
+  titleSlug: string
 }
 
-function HistoryRow({ entry, locale, t }: HistoryRowProps) {
-  const label = t.metric[entry.metric] ?? entry.metric
+function HistoryRow({ entry, locale, t, playerSlug, titleSlug }: HistoryRowProps) {
+  const label = metricLabel(entry.metric, locale)
   return (
     <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm">
       <div className="flex flex-1 items-baseline gap-2">
@@ -173,9 +222,17 @@ function HistoryRow({ entry, locale, t }: HistoryRowProps) {
           · {t.period[entry.period]}
         </span>
       </div>
-      <span className="text-base font-semibold">
-        {formatMetricValue(entry.metric, entry.value)}
-      </span>
+      <div className="flex items-center gap-3">
+        <SeePeriodLink
+          achievedAt={entry.achieved_at}
+          playerSlug={playerSlug}
+          titleSlug={titleSlug}
+          label={t.recordSeePeriod}
+        />
+        <span className="text-base font-semibold">
+          {formatMetricValue(entry.metric, entry.value)}
+        </span>
+      </div>
     </div>
   )
 }

@@ -74,6 +74,16 @@ export interface LOWESSTrend {
   Window?: number
 }
 
+/**
+ * Point de la sparkline de tendance LUSR 90 j (DEC-5/D2). `value` est le rating
+ * LUSR déjà LISSÉ par LOWESS côté serveur (échelle points, identique à la valeur
+ * « pts LUSR » du tier) — jamais le μ brut (DEC-6). `date` = jour UTC YYYY-MM-DD.
+ */
+export interface SkillTrendPoint {
+  date: string
+  value: number
+}
+
 // ─── Section C ──────────────────────────────────────────────────────────────
 
 export interface ProgressionLeverage {
@@ -122,6 +132,9 @@ export interface PlayerProfile {
   skill_rating: SkillRatingSnapshot
   lusr_components?: LUSRComponentBreakdown[]
   mu_trend: LOWESSTrend
+  /** Sparkline 90 j de tendance LUSR (μ lissé LOWESS, en points). Vide/absent si
+   *  < 3 points → le front n'affiche rien (DEC-5/D2). */
+  skill_trend?: SkillTrendPoint[]
 
   // C
   leverages?: ProgressionLeverage[]
@@ -162,6 +175,24 @@ export interface StartCampaignBody {
   playlist_group?: string
 }
 
+/**
+ * Campagne close (historique). DTO dédié servi par GET /campaigns/history —
+ * miroir de handlers.campaignHistoryItem. `delta` = final − snapshot (progression
+ * sur l'axe), absent si la campagne n'a jamais été évaluée.
+ */
+export interface CampaignHistoryItem {
+  id: string
+  axis: string
+  axis_kind: AxisKind
+  playlist_group: string
+  status: CampaignStatus
+  started_at: string
+  ended_at?: string
+  snapshot_value: number
+  final_value?: number
+  delta?: number
+}
+
 // ─── API client ────────────────────────────────────────────────────────────
 
 export const playerProfileApi = {
@@ -181,6 +212,12 @@ export const campaignApi = {
   getActive: (playerSlug: string) =>
     api.get<ImprovementCampaign | null>(
       `/players/${encodeURIComponent(playerSlug)}/campaigns/active`,
+    ),
+
+  /** Campagnes closes (completed/abandoned), les plus récentes d'abord. */
+  listEnded: (playerSlug: string) =>
+    api.get<{ campaigns: CampaignHistoryItem[]; count: number }>(
+      `/players/${encodeURIComponent(playerSlug)}/campaigns/history`,
     ),
 
   getById: (playerSlug: string, id: string) =>

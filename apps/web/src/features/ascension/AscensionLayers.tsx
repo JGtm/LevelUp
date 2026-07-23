@@ -1,8 +1,8 @@
 /**
  * AscensionLayers — helpers de mise en page partagés par les onglets Ascension.
  *
- * Extraits de AscensionProfileTab lors du split en onglets « Profil & objectifs »
- * / « Entraînement » (2026-06-08) pour éviter la duplication entre les deux tabs.
+ * Partagés par les onglets Ascension (Profil / Objectifs / Entraînement) pour
+ * éviter la duplication de mise en page entre les tabs.
  *
  * - LayerSection : en-tête de couche (titre + description, barre latérale).
  * - SectionShell : carte de section (titre en capitales + contenu).

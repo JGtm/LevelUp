@@ -21,7 +21,9 @@ import (
 	"levelup/go-api/internal/progression/milestones"
 )
 
-const milestonesSeedMigrationName = "seed_milestone_catalog_v1"
+// v2 (A9) : bump depuis v1 pour RE-SEEDER les DBs existantes avec les colonnes
+// condition_fr / condition_en (descriptions lisibles localisées des jalons).
+const milestonesSeedMigrationName = "seed_milestone_catalog_v2"
 
 // RegisterMilestonesSeedMigration enregistre la migration de seed du catalogue
 // milestones. configTitlesRoot = chemin vers config/titles/ (parent des dossiers
@@ -77,26 +79,39 @@ func seedMilestonesFromTOML(db *sql.DB, path string) error {
 	if err != nil {
 		return fmt.Errorf("load %s: %w", path, err)
 	}
+	// A9 : garantit les colonnes condition_fr/condition_en avant l'INSERT (le seed
+	// tourne aussi hors migration en test, sans passer par create_milestone_catalog).
+	// AddColumnIfMissing est idempotent.
+	if err := migration.AddColumnIfMissing(db, "milestone_catalog", "condition_fr", "VARCHAR"); err != nil {
+		return fmt.Errorf("add condition_fr: %w", err)
+	}
+	if err := migration.AddColumnIfMissing(db, "milestone_catalog", "condition_en", "VARCHAR"); err != nil {
+		return fmt.Errorf("add condition_en: %w", err)
+	}
 	now := time.Now().UTC()
 	for _, e := range catalogEntries {
 		_, err := db.ExecContext(migration.BootCtx(), `
 			INSERT INTO milestone_catalog (
 				id, title_slug, metric, threshold, title_en, title_fr,
-				icon, condition, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+				icon, condition, condition_fr, condition_en, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			ON CONFLICT (id) DO UPDATE SET
-				title_slug = excluded.title_slug,
-				metric     = excluded.metric,
-				threshold  = excluded.threshold,
-				title_en   = excluded.title_en,
-				title_fr   = excluded.title_fr,
-				icon       = excluded.icon,
-				condition  = excluded.condition,
-				updated_at = excluded.updated_at`,
+				title_slug   = excluded.title_slug,
+				metric       = excluded.metric,
+				threshold    = excluded.threshold,
+				title_en     = excluded.title_en,
+				title_fr     = excluded.title_fr,
+				icon         = excluded.icon,
+				condition    = excluded.condition,
+				condition_fr = excluded.condition_fr,
+				condition_en = excluded.condition_en,
+				updated_at   = excluded.updated_at`,
 			e.ID, e.TitleSlug, e.Metric, e.Threshold,
 			e.TitleEN, e.TitleFR,
 			nullableStringForSeed(e.Icon),
 			nullableStringForSeed(e.Condition),
+			nullableStringForSeed(e.ConditionFR),
+			nullableStringForSeed(e.ConditionEN),
 			now,
 		)
 		if err != nil {

@@ -174,9 +174,29 @@ go-api-coverage:
 		-coverprofile=coverage.out -covermode=atomic -timeout 60s
 	cd $(GO_API_DIR) && go tool cover -func=coverage.out | tail -1
 
-## Go API: vet + lint
+## Go API: lint (2026-07-22, F8 — aligné sur la CI)
+##
+## Le lint qui FAIT FOI est le job CI `go-lint` (.github/workflows/ci.yml) :
+## golangci-lint v2.12.2 sur TOUT apps/go-api, config apps/go-api/.golangci.yml,
+## avec RATCHET `--new-from-merge-base=origin/main` — seules les issues AJOUTÉES
+## rougissent ; la dette baseline (~479 issues gelées) reste invisible.
+##
+## Ce target reproduit CE lint QUAND golangci-lint est installé (même ratchet →
+## n'échoue jamais sur la dette gelée). Sinon (binaire absent — cas de certains
+## environnements de dev), REPLI VOLONTAIRE sur `go vet` domain+analysis (miroir
+## exact du step vet du job CI `go-test`, CGO-free) + message renvoyant au job qui
+## fait foi. Scope réduit du repli assumé : `go vet` ne couvre pas gocyclo/funlen/
+## lll ; ceux-ci sont vérifiés en CI. Retrait du repli : quand golangci-lint entre
+## dans l'image de dev standard.
 go-api-lint:
-	cd $(GO_API_DIR) && go vet ./internal/domain/... ./internal/analysis/...
+	cd $(GO_API_DIR) && \
+	if command -v golangci-lint >/dev/null 2>&1; then \
+		echo "golangci-lint présent — lint complet (ratchet CI, dette gelée exclue)."; \
+		golangci-lint run --timeout 5m --new-from-merge-base=origin/main; \
+	else \
+		echo "golangci-lint absent — REPLI go vet (domain+analysis). Le lint complet FAIT FOI en CI (job go-lint, .github/workflows/ci.yml)."; \
+		go vet ./internal/domain/... ./internal/analysis/...; \
+	fi
 
 ## Installe le hook pre-commit ADR 0021 (Phase 3.5).
 ##

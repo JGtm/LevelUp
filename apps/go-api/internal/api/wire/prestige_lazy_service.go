@@ -191,6 +191,24 @@ func (l *LazyPrestigeService) ListActiveChallenges(ctx context.Context, userID, 
 	return svc.ListActiveChallenges(ctx, userID, titleSlug)
 }
 
+func (l *LazyPrestigeService) ListChallenges(ctx context.Context, userID, titleSlug string, statuses []prestige.ChallengeStatus) ([]prestige.Challenge, error) {
+	if l.demoMode {
+		// Le mode démo n'a pas d'historique : ne sert que les défis actifs de
+		// démonstration si le filtre inclut le statut actif, sinon rien.
+		for _, st := range statuses {
+			if st == prestige.StatusActive {
+				return demoActiveChallenges(userID, titleSlug), nil
+			}
+		}
+		return nil, nil
+	}
+	svc, err := l.resolveByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return svc.ListChallenges(ctx, userID, titleSlug, statuses)
+}
+
 func (l *LazyPrestigeService) EvaluateForUser(ctx context.Context, userID, titleSlug string) ([]prestige.EvaluationOutcome, error) {
 	svc, err := l.resolveByUserID(ctx, userID)
 	if err != nil {

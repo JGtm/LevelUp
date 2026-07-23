@@ -76,6 +76,32 @@ func (c *ImprovementCampaign) IsEnded() bool {
 	return c.Status == StatusCompleted || c.Status == StatusAbandoned
 }
 
+// FinalValue retourne la meilleure estimation de la valeur finale de l'axe :
+// LOWESS lissé si disponible, sinon la valeur brute. nil si la campagne n'a
+// jamais été évaluée (aucune des deux valeurs).
+func (c *ImprovementCampaign) FinalValue() *float64 {
+	if c.CurrentValueLOWESS != nil {
+		v := *c.CurrentValueLOWESS
+		return &v
+	}
+	if c.CurrentValueRaw != nil {
+		v := *c.CurrentValueRaw
+		return &v
+	}
+	return nil
+}
+
+// Delta retourne l'écart valeur finale − snapshot de départ (progression sur
+// l'axe). nil si la valeur finale est inconnue (campagne non évaluée).
+func (c *ImprovementCampaign) Delta() *float64 {
+	final := c.FinalValue()
+	if final == nil {
+		return nil
+	}
+	d := *final - c.SnapshotValue
+	return &d
+}
+
 // MinMatchesForTrend est le seuil sous lequel le delta lissé n'est pas affiché.
 // Cf. R1 (delta lissé LOWESS) — l'UI montre "joue encore N matchs" en dessous.
 const MinMatchesForTrend = 20

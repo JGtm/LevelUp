@@ -1,15 +1,17 @@
 /**
- * PlayerProfileV3 — orchestrateur des sections A1/A2/B/C du profil joueur.
+ * PlayerProfileV3 — orchestrateur des sections A1/A2/B du profil joueur.
  *
  * Refonte Ascension : remplace `prestige/components/PlayerProfileCard` (V1)
- * et `ascension/GameProfileSection` (V2). Aucune régression :
- * - reprend toutes les sections V1 (Identité, Style/Discipline,
- *   Performance avec mu_trend et progress tier, Progression avec CTA
- *   "Démarrer campagne" et "Lancer template")
- * - ajoute le trend icon par composante LUSR (apport V2)
+ * et `ascension/GameProfileSection` (V2). Sections rendues :
+ * - Identité (radar 6 axes + rôles)
+ * - Style/Discipline (FK/FD + engagement)
+ * - Performance (tier LUSR + composantes + tendance μ)
  *
- * Les patterns V2 (PatternContextGrid, BehaviorAlertList, LeverList)
- * restent rendus séparément par le tab Profil & objectifs.
+ * Restructuration 4 onglets (2026-07, DEC-3) : la section « Pistes de
+ * progression » (ProgressionSection : leviers + défis suggérés + CTA campagne)
+ * a été extraite vers l'onglet « Entraînement » (AscensionCoachingTab). Ce
+ * composant ne porte plus que l'identité, le style et la performance —
+ * rendus dans l'onglet « Profil » (index).
  *
  * Cf. PLAN_PLAYER_PROFILE_ASCENSION.md §4 + §5.2.
  */
@@ -18,7 +20,6 @@ import { useProfileI18n } from './useProfileI18n'
 import { IdentitySection } from './IdentitySection'
 import { InsufficientDataPlaceholder } from './InsufficientDataPlaceholder'
 import { PerformanceSection } from './PerformanceSection'
-import { ProgressionSection } from './ProgressionSection'
 import { StyleDisciplineSection } from './StyleDisciplineSection'
 
 const MIN_MATCHES_FOR_PROFILE = 30
@@ -26,16 +27,9 @@ const MIN_MATCHES_FOR_PROFILE = 30
 interface PlayerProfileV3Props {
   playerSlug: string
   windowDays?: number
-  onStartCampaign?: (axis: string, axisKind: 'radar' | 'lusr_component') => void
-  onLaunchTemplate?: (templateId: string) => void
 }
 
-export function PlayerProfileV3({
-  playerSlug,
-  windowDays = 30,
-  onStartCampaign,
-  onLaunchTemplate,
-}: PlayerProfileV3Props) {
+export function PlayerProfileV3({ playerSlug, windowDays = 30 }: PlayerProfileV3Props) {
   const { data: profile, isLoading, isError } = usePlayerProfile(playerSlug, windowDays)
   const { t } = useProfileI18n()
 
@@ -74,12 +68,7 @@ export function PlayerProfileV3({
         skillRating={profile.skill_rating}
         components={profile.lusr_components}
         muTrend={profile.mu_trend}
-      />
-      <ProgressionSection
-        leverages={profile.leverages}
-        suggestions={profile.suggested_challenges}
-        onStartCampaign={onStartCampaign}
-        onLaunchTemplate={onLaunchTemplate}
+        skillTrend={profile.skill_trend}
       />
     </div>
   )

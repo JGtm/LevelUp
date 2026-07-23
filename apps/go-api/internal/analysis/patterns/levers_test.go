@@ -35,6 +35,44 @@ func TestSelectLevers_WeaknessPatternsCreateLever(t *testing.T) {
 	}
 }
 
+// TestSelectLevers_ContextLeverServesStructuredKey vérifie que le levier
+// contextuel ne porte PLUS de phrase (F3) mais des données structurées : l'axe
+// + la clé brute du contexte visé (ContextKey). ContextLabel reste vide au
+// niveau analysis (résolu au handler pour by_map uniquement).
+func TestSelectLevers_ContextLeverServesStructuredKey(t *testing.T) {
+	ctx := []ContextualPattern{
+		{Type: ContextByMode, Key: "CTF", Signal: SignalWeakness, WinRate: 0.30, Delta: -0.25},
+	}
+	levers := selectLevers(ctx, nil, nil, DefaultPatternConfig())
+	if len(levers) != 1 {
+		t.Fatalf("levers = %d, want 1", len(levers))
+	}
+	if levers[0].Axis != AxisModeSelection {
+		t.Errorf("axis = %q, want %q", levers[0].Axis, AxisModeSelection)
+	}
+	if levers[0].ContextKey != "CTF" {
+		t.Errorf("context_key = %q, want CTF", levers[0].ContextKey)
+	}
+	if levers[0].ContextLabel != "" {
+		t.Errorf("context_label doit être vide au niveau analysis (résolu au handler), got %q", levers[0].ContextLabel)
+	}
+}
+
+// TestSelectLevers_BehaviorLeverHasNoContext vérifie qu'un levier comportemental
+// n'a pas de contexte (ContextKey/ContextLabel vides) — sa phrase est fixe par axe.
+func TestSelectLevers_BehaviorLeverHasNoContext(t *testing.T) {
+	beh := []BehavioralPattern{{Type: BehaviorTilt, Severity: SeverityHigh}}
+	levers := selectLevers(nil, beh, nil, DefaultPatternConfig())
+	if len(levers) == 0 {
+		t.Fatal("aucun levier créé depuis tilt High")
+	}
+	for _, l := range levers {
+		if l.ContextKey != "" || l.ContextLabel != "" {
+			t.Errorf("levier comportemental %q ne doit porter aucun contexte, got key=%q label=%q", l.Axis, l.ContextKey, l.ContextLabel)
+		}
+	}
+}
+
 // TestSelectLevers_TiltHighCreatesSessionManagementLever vérifie la création
 // d'un levier session_management depuis un pattern tilt.
 func TestSelectLevers_TiltHighCreatesSessionManagementLever(t *testing.T) {
