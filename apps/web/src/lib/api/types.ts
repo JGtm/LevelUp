@@ -309,6 +309,9 @@ export interface EngagementMatchSummaryAPI {
   /** Nombre de matchs représentés par ce point (1 pour granularité "match",
    *  >1 pour les agrégats). */
   match_count: number
+  /** Durée du match (granularité "match") ou SOMME des durées du bucket
+   *  (session/week/month), en secondes. Pondère l'écart d'engagement cumulé. */
+  duration_seconds: number
 }
 
 /** EngagementTimeseriesResponse — réponse de POST /engagement/timeseries.
@@ -331,6 +334,9 @@ export interface SquadEngagementSessionAPI {
   lobby_per_player: number[]
   team_expected: number[]
   team_observed: number[]
+  /** Durée en secondes de chaque match, alignée sur `labels`. Pondère l'écart
+   *  d'engagement cumulé par joueur (résidu × durée). */
+  durations_seconds: number[]
   players: SquadPlayerEngagementAPI[]
 }
 

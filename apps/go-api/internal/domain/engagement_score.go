@@ -250,6 +250,10 @@ type EngagementMatchSummary struct {
 	// "match", >1 pour session/week/month). Permet au front d'afficher "n=N"
 	// dans le tooltip et de moduler l'opacite des markers.
 	MatchCount int `json:"match_count"`
+	// DurationSeconds : duree du match (granularite "match") ou SOMME des durees
+	// des matchs du bucket (session/week/month). Alimente l'ecart d'engagement
+	// cumule cote front (evenements = engagement_score x duration_seconds/60).
+	DurationSeconds int64 `json:"duration_seconds"`
 }
 
 // EngagementGranularity enumere les granularites d'un EngagementTimeseriesResponse.
@@ -281,12 +285,15 @@ type EngagementTimeseriesResponse struct {
 // SquadEngagementSession est le payload pour la Squad Page Mock 15 v2.
 // Pour chaque match commun a la squad : 3 traces team-level + per-player paces.
 type SquadEngagementSession struct {
-	Labels         []string                `json:"labels"`
-	MapNames       []string                `json:"map_names"`
-	LobbyPerPlayer []float64               `json:"lobby_per_player"`
-	TeamExpected   []float64               `json:"team_expected"`
-	TeamObserved   []float64               `json:"team_observed"`
-	Players        []SquadPlayerEngagement `json:"players"`
+	Labels         []string  `json:"labels"`
+	MapNames       []string  `json:"map_names"`
+	LobbyPerPlayer []float64 `json:"lobby_per_player"`
+	TeamExpected   []float64 `json:"team_expected"`
+	TeamObserved   []float64 `json:"team_observed"`
+	// DurationsSeconds : duree en secondes de chaque match, alignee sur Labels.
+	// Alimente l'ecart d'engagement cumule par joueur (residu x duree) cote front.
+	DurationsSeconds []int64                 `json:"durations_seconds"`
+	Players          []SquadPlayerEngagement `json:"players"`
 }
 
 // SquadPlayerEngagement = pace observe d'un membre du squad sur la session.

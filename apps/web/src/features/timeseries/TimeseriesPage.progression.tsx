@@ -24,6 +24,7 @@ import {
   TimeseriesIntensityHeatmap,
 } from './TimeseriesSquadAdapted'
 import { EngagementTimeseriesSection } from '@/features/engagement/EngagementTimeseriesSection'
+import { TimeseriesEngagementGapTrend } from './TimeseriesEngagementGapTrend'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { ExplorerMatchesTable } from '@/features/explorer/ExplorerMatchesTable'
@@ -186,6 +187,14 @@ export function TimeseriesProgressionTab({
           wrapper supplémentaire (sinon double titre). Gaté sur `engagement`. */}
       <FeatureGate capability="engagement">
         <EngagementTimeseriesSection
+          playerSlug={playerSlug}
+          filters={soloFilterContext}
+          filterHash={filterContextHash}
+          limit={30}
+        />
+        {/* Écart d'engagement cumulé (P4) — adjacent, réutilise la même query
+            d'engagement (dédup cache TanStack Query). */}
+        <TimeseriesEngagementGapTrend
           playerSlug={playerSlug}
           filters={soloFilterContext}
           filterHash={filterContextHash}

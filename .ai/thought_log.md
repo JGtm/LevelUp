@@ -1,6 +1,6 @@
-## [2026-07-23] Chantier Dynamique Escouade — P1 onglet + P2 séparation + P3 Balance des dégâts
+## [2026-07-23] Chantier Dynamique Escouade — P1 onglet + P2 séparation + P3 Balance + P4 engagement cumulé
 
-**Statut** : En cours (P1+P2+P3 livrées, P4-P5 à suivre). Plan :
+**Statut** : En cours (P1-P4 livrées, P5 à suivre). Plan :
 `.ai/PLAN_DYNAMIQUE_ESCOUADE_2026-07.md`, branche `feat/squad-dynamique` (worktree
 dédié, base main e85323beb). Exécution pilotée : Opus implémente, superviseur
 vérifie les gates et commite.
@@ -38,8 +38,21 @@ agnostic par capability `damage_taken` (useProvidesDamageTaken) — H5 masqué.
 i18n session.toml (6 clés net_lives_*) + squad i18n. Gates : tsc exit 0 ; vitest
 lib/charts + session-detail + squad = 58 fichiers / 401 tests verts.
 
-**Conclusion / prochaine étape** : P4 — écart d'engagement cumulé (Go : durées
-dans EngagementMatchSummary + payload squad ; web : 3 charts).
+**P4 (écart d'engagement cumulé, Go + web)** : Go — `duration_seconds` (somme
+par bin) dans EngagementMatchSummary + `durations_seconds` aligné Labels dans
+SquadEngagementSession ; durée = (EndTimeMS−StartTimeMS)/1000, sommée dans le
+binning ; openapi.yaml = schémas MANUELS réconciliés (TestOpenAPISchemaDrift
+vert), generate-types idempotent. Web — helper engagementGapEvents (résidu
+évén./min × durée/60 → contribution en événements, report D5, cumul via
+cumulativeSigned) ; 3 charts : TimeseriesEngagementGapTrend (adjacent à la
+courbe engagement, même query → dédup), SquadEngagementGapChart (Dynamique,
+résidu pace_observed − team_expected par joueur), SessionEngagementCumulative
+(zip match_series ↔ rows, domaine _compareScale engagementGap A/B). i18n
+engagement.toml + session.toml + squad i18n FR/EN. Gates : go test
+service/api/domain ok ; tsc exit 0 ; vitest 67 fichiers / 462 tests verts.
+
+**Conclusion / prochaine étape** : P5 — essai aire Rendement → repère « 1 vie »
+sur Timeseries (commit isolé jetable), puis gates finaux + passe visuelle.
 
 ---
 ## [2026-07-23] Réintégration + validation des 4 retouches FDA gap sur origin/main

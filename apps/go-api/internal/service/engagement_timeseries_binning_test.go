@@ -114,6 +114,52 @@ func TestRollupEngagementByPeriod_GroupementHebdoEtMensuel(t *testing.T) {
 	}
 }
 
+func TestAggregateEngagementBySession_DurationSummedPerBin(t *testing.T) {
+	t.Parallel()
+	t0 := time.Date(2026, 5, 1, 10, 0, 0, 0, time.UTC)
+	label := "Session du 01/05"
+	rows := []legacymatch.StatsMatchRow{
+		{MatchID: "m1", StartTime: t0, SessionLabel: &label},
+		{MatchID: "m2", StartTime: t0.Add(30 * time.Minute), SessionLabel: &label},
+		{MatchID: "m3", StartTime: t0.Add(2 * time.Hour)}, // singleton
+	}
+	s1 := mkSummary("m1", "M1", t0, 50)
+	s1.DurationSeconds = 600
+	s2 := mkSummary("m2", "M2", t0.Add(30*time.Minute), 70)
+	s2.DurationSeconds = 720
+	s3 := mkSummary("m3", "M3", t0.Add(2*time.Hour))
+	s3.DurationSeconds = 480
+
+	got := aggregateEngagementBySession([]domain.EngagementMatchSummary{s1, s2, s3}, rows)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 buckets, got %d", len(got))
+	}
+	// Bucket session = somme des durées de m1+m2.
+	if got[0].DurationSeconds != 1320 {
+		t.Errorf("expected session bucket duration 1320, got %d", got[0].DurationSeconds)
+	}
+	// Bucket singleton = sa propre durée.
+	if got[1].DurationSeconds != 480 {
+		t.Errorf("expected singleton bucket duration 480, got %d", got[1].DurationSeconds)
+	}
+}
+
+func TestRollupEngagementByPeriod_DurationSummedPerBin(t *testing.T) {
+	t.Parallel()
+	// W19 : deux matchs la même semaine ISO → durées sommées.
+	m1 := mkSummary("m1", "M1", time.Date(2026, 5, 4, 14, 0, 0, 0, time.UTC), 60)
+	m1.DurationSeconds = 600
+	m2 := mkSummary("m2", "M2", time.Date(2026, 5, 6, 18, 0, 0, 0, time.UTC), 80)
+	m2.DurationSeconds = 900
+	weeks := rollupEngagementByPeriod([]domain.EngagementMatchSummary{m1, m2}, "week")
+	if len(weeks) != 1 {
+		t.Fatalf("expected 1 weekly bucket, got %d", len(weeks))
+	}
+	if weeks[0].DurationSeconds != 1500 {
+		t.Errorf("expected summed duration 1500, got %d", weeks[0].DurationSeconds)
+	}
+}
+
 func TestPeriodKey_WeekISO(t *testing.T) {
 	t.Parallel()
 	// Lundi 4 mai 2026 = ISO 2026-W19 ; le bucket start doit être ce lundi.

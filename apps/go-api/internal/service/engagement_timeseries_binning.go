@@ -32,6 +32,7 @@ type engagementBucketAcc struct {
 	paceJoueur, paceTeam, paceAttendu, paceLobby float64
 	scoreSum                                     float64
 	scoreCount                                   int
+	durationSeconds                              int64
 }
 
 // addSummary integre un EngagementMatchSummary dans l'accumulateur.
@@ -47,6 +48,9 @@ func (a *engagementBucketAcc) addSummary(s domain.EngagementMatchSummary, anchor
 	a.paceTeam += s.PaceTeam
 	a.paceAttendu += s.PaceAttendu
 	a.paceLobby += s.PaceLobby
+	// Duree SOMMEE sur le bucket (pas moyennee) : l'ecart d'engagement cumule
+	// pondere le score par le temps total joue dans le bin.
+	a.durationSeconds += s.DurationSeconds
 	if s.EngagementScore != nil {
 		a.scoreSum += *s.EngagementScore
 		a.scoreCount++
@@ -151,13 +155,14 @@ func finalizeEngagementBuckets(
 			continue
 		}
 		pt := domain.EngagementMatchSummary{
-			Label:       a.label,
-			StartedAt:   a.start,
-			MatchCount:  a.count,
-			PaceJoueur:  a.paceJoueur / float64(a.count),
-			PaceTeam:    a.paceTeam / float64(a.count),
-			PaceAttendu: a.paceAttendu / float64(a.count),
-			PaceLobby:   a.paceLobby / float64(a.count),
+			Label:           a.label,
+			StartedAt:       a.start,
+			MatchCount:      a.count,
+			PaceJoueur:      a.paceJoueur / float64(a.count),
+			PaceTeam:        a.paceTeam / float64(a.count),
+			PaceAttendu:     a.paceAttendu / float64(a.count),
+			PaceLobby:       a.paceLobby / float64(a.count),
+			DurationSeconds: a.durationSeconds,
 		}
 		if a.scoreCount > 0 {
 			v := a.scoreSum / float64(a.scoreCount)
