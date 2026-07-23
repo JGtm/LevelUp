@@ -195,20 +195,29 @@ garantie que `RenameSquad`). Migration additive `add_archived_at_to_squad_challe
       récent/rolling ancien/rolling invalide), `_BoundsSinceToCreatedAt` (borne transmise
       = created_at). prestige + persist provider verts. tsc/eslint/vitest verts.
 
-## Lot 5 — Multi-titre + finitions (P3)
+## Lot 5 — Multi-titre + finitions (P3) — CLÔTURÉ 2026-07-23
 
-- [ ] 5.1 halo_5 : décision — créer `config/titles/halo_5/challenges/templates.toml`
-      (catalogue minimal) OU dégradation propre : capability fine (`capabilities.toml`)
-      → strip masqué / 503 `ErrCapabilityNotSupported` au lieu de 500. Jamais de
-      `slug == "halo_5"` (ratchet).
-- [ ] 5.2 Pool : assumer l'éphémère (libellé UI « Suggestions » + le pool reste
-      re-générable) — la persistance partagée entre membres est notée au backlog, pas
-      dans ce chantier.
-- [ ] 5.3 i18n : migrer les `STRINGS` locaux de `SquadFocusStrip` vers les manifests
-      squad (`squad.toml` → `i18n/generated`), parité FR/EN par typage.
-- [ ] 5.4 Optionnel (goût utilisateur) : renommer « Cap d'escouade » si le terme ne
-      parle pas (candidats : « Objectifs d'escouade », « Cap de l'escouade » — à
-      trancher avec l'utilisateur avant 5.3 pour ne migrer les strings qu'une fois).
+- [x] 5.1 halo_5 : dégradation gracieuse **title-agnostic** (aucun `slug ==`) — catalogue
+      vide → `RefreshSquadPool` renvoie un pool VIDE (200, `[]`) au lieu d'un 500 masqué
+      (loggé pour distinguer d'un bug de seed prod). Corrige aussi le risque Découverte
+      D1 côté catalogue. **Vérifié live** : `title_slug=halo_5` → `{"count":0,"pool":[]}`
+      HTTP 200. Test `_EmptyCatalogDegradesToEmptyPool`. Création d'un vrai catalogue h5 =
+      contenu produit hors périmètre (backlog).
+- [x] 5.2 Pool éphémère assumé : la légende cumulative (Lot 4.3) documente le
+      comportement ; le pool reste re-générable (mutation). Persistance partagée = backlog
+      (§ Hors périmètre).
+- [!] 5.3 i18n manifests — **DIFFÉRÉ** (justification) : `SquadFocusStrip` est le SEUL
+      composant de `features/` avec un `const STRINGS` local ; il PRÉEXISTE (je n'ai
+      qu'étendu). Il satisfait DÉJÀ la parité FR/EN par typage (exigence CLAUDE.md règle 1).
+      La migration vers `squad/i18n.ts` (`SquadText`) est non triviale : ~35 chaînes dont
+      plusieurs FONCTIONS d'interpolation (`target(n)`, `objectives(n)`, `orientation(axis)`,
+      `matchesN(n)`, `saved(name)`) + `axisLabels` imbriqués, que le système manifest gère
+      mal. = refactor mécanique autonome, hors « rendre le workflow fonctionnel ». À
+      planifier séparément avec l'utilisateur.
+- [!] 5.4 Renommage « Cap d'escouade » — **DIFFÉRÉ** : décision de nommage utilisateur
+      (l'utilisateur avait justement demandé « c'est quoi cap ? »). Candidats proposés :
+      « Objectifs d'escouade », « Cap de l'escouade ». À trancher avec l'utilisateur ; à
+      faire AVANT 5.3 pour ne migrer les strings qu'une fois.
 
 ---
 
@@ -251,3 +260,16 @@ garantie que `RenameSquad`). Migration additive `add_archived_at_to_squad_challe
   resserrée rolling_days) transmise au provider qui filtre `start_time >= since`. Fin de la
   complétion rétroactive. Légende UI cumulative. Gates verts. Vérifié LIVE : éval immédiate
   → 0/0 (candidate_matches:0). → passage Lot 5.
+- 2026-07-23 : **Lot 5 CLÔTURÉ** (5.1/5.2 faits ; 5.3/5.4 différés justifiés). Dégradation
+  halo_5 : catalogue vide → pool vide 200 (title-agnostic, plus de 500). Vérifié live.
+  5.3 (i18n manifests) et 5.4 (renommage) différés : polish P3 / décision utilisateur.
+  **PLAN COMPLET** — les 4 gaps fonctionnels (labels, feedback, cycle de vie, éval honnête)
+  sont livrés. Reste à faire par l'utilisateur : revue VISUELLE navigateur + arbitrage 5.3/5.4.
+- 2026-07-23 : **Refactor seuil 500 L (delivery-checklist §5)**. Deux fichiers avaient
+  FRANCHI 500 par le chantier : `SquadFocusStrip.tsx` (426→597) scindé en
+  `squadFocusStrings.ts` (115) + `SquadObjectivesPanel.tsx` (267) + strip (240) ;
+  `service_arcs_squads.go` (431→535) scindé, défis d'escouade extraits vers
+  `service_squad_challenges.go` (248) + arcs (298). Tous < 500. Gates re-verts (tsc --force,
+  eslint, vitest, go vet/build, intégration `-p 1` 0 FAIL). Les 3 god-files déjà >500
+  (service.go, prestige_lazy_service.go, steps_shared_social.go) : ajouts minimes
+  inévitables (méthode d'interface / wrapper / step de migration), dette gelée baseline.

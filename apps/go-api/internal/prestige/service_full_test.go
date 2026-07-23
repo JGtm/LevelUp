@@ -481,6 +481,21 @@ func TestService_RefreshSquadPool_RequiresRequestedBy(t *testing.T) {
 	}
 }
 
+// TestService_RefreshSquadPool_EmptyCatalogDegradesToEmptyPool (Lot 5, item 5.1) :
+// un titre sans catalogue (ex. halo_5) renvoie un pool VIDE (pas d'erreur/500).
+func TestService_RefreshSquadPool_EmptyCatalogDegradesToEmptyPool(t *testing.T) {
+	svc, _, _, _, sqRepo, tplRepo := buildFullService()
+	sqRepo.members = []SquadMember{{UserID: "u1"}}
+	tplRepo.templates = nil // catalogue vide
+	pool, err := svc.RefreshSquadPool(context.Background(), "sq1", "halo_5", "u1")
+	if err != nil {
+		t.Fatalf("catalogue vide doit dégrader en pool vide, pas échouer: %v", err)
+	}
+	if len(pool) != 0 {
+		t.Errorf("pool doit être vide pour un titre sans catalogue, got %d", len(pool))
+	}
+}
+
 // ─── Squad challenge lifecycle (Lot 3) ───
 
 // TestService_AbandonSquadChallenge_ArchivesWhenMember : abandon d'un membre-user

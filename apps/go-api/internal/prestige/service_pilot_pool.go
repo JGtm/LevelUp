@@ -203,7 +203,13 @@ func (s *service) RefreshSquadPool(ctx context.Context, squadID, titleSlug, requ
 		return nil, fmt.Errorf("list templates: %w", err)
 	}
 	if len(all) == 0 {
-		return nil, errors.New("no templates available for title")
+		// Catalogue vide (ex. titre sans challenges/templates.toml comme halo_5, ou
+		// metadata non seedée) : dégradation gracieuse — pool VIDE (200, []) plutôt
+		// qu'un 500 masqué. Title-agnostic (aucune comparaison de slug). L'UI affiche
+		// « Aucun défi proposé ». Loggé pour distinguer d'un vrai bug de seed en prod.
+		slog.InfoContext(ctx, "prestige: squad pool empty (no templates for title)",
+			"squad_id", squadID, "title_slug", titleSlug, "requested_by", requestedBy)
+		return []Template{}, nil
 	}
 
 	// Génération aléatoire d'un pool entre size_min et size_max.
