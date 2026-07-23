@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/migration"
 )
@@ -80,5 +81,65 @@ func TestPersistThenLoadCachedChallenges_ReconstructsRenderedCards(t *testing.T)
 	}
 	if _, ok := byTitle["Gagner 4 parties"]; !ok {
 		t.Error("carte t2 (titre sans image) absente")
+	}
+}
+
+// TestPersistThenLoadCachedChallenges_LocaleCoexistence — PREUVE du fix Cause B :
+// deux fetches de la MÊME liste de défis (corps /decks identique → state_hash
+// langue-indépendant) mais rendus en FR puis en EN doivent COEXISTER en cache, et le
+// reader doit servir la langue demandée. Sans la locale dans la clé de dédup, l'INSERT
+// EN serait vu « inchangé » et silencieusement sauté (seule la dernière langue
+// survivrait) ; sans le filtre locale au reader, on resservirait n'importe quelle langue.
+func TestPersistThenLoadCachedChallenges_LocaleCoexistence(t *testing.T) {
+	player := openBattlePassTestDB(t, "player_locale_rt.duckdb", migration.TargetPlayer)
+	sink := &PersistSink{PlayerPath: player.Path(), XUID: "xuid-loc"}
+
+	// Corps /decks IDENTIQUE pour les deux locales → même state_hash (langue-indépendant).
+	body := []byte(`{"AssignedDecks":[{
+		"Expiration":{"ISO8601Date":"2030-01-01T00:00:00Z"},
+		"ActiveChallenges":[
+			{"TrackingId":"t1","XPReward":500,"Threshold":10,"CurrentProgress":3}
+		],
+		"CompletedChallenges":[]
+	}]}`)
+
+	frItems := []domain.ChallengeItem{{
+		TrackingID: strPtr("t1"), ChallengePath: "ChallengeContent/Csv/DailyChallenges/d1.json",
+		Title: "Tuer 10 Spartans", Description: strPtr("Éliminez 10 Spartans"),
+	}}
+	enItems := []domain.ChallengeItem{{
+		TrackingID: strPtr("t1"), ChallengePath: "ChallengeContent/Csv/DailyChallenges/d1.json",
+		Title: "Kill 10 Spartans", Description: strPtr("Eliminate 10 Spartans"),
+	}}
+
+	ctxFR := ctxkeys.WithLocale(context.Background(), "fr")
+	ctxEN := ctxkeys.WithLocale(context.Background(), "en")
+
+	if err := sink.PersistChallengesSync(ctxFR, body, frItems); err != nil {
+		t.Fatalf("PersistChallengesSync FR: %v", err)
+	}
+	if err := sink.PersistChallengesSync(ctxEN, body, enItems); err != nil {
+		t.Fatalf("PersistChallengesSync EN: %v", err)
+	}
+
+	repo := NewHomeRepo(&PlayerDB{Player: player, XUID: "xuid-loc"})
+
+	frResp, hitFR, err := repo.LoadCachedChallenges(ctxFR, 24*time.Hour)
+	if err != nil || !hitFR || frResp == nil {
+		t.Fatalf("LoadCachedChallenges FR: hit=%v err=%v", hitFR, err)
+	}
+	enResp, hitEN, err := repo.LoadCachedChallenges(ctxEN, 24*time.Hour)
+	if err != nil || !hitEN || enResp == nil {
+		t.Fatalf("LoadCachedChallenges EN: hit=%v err=%v", hitEN, err)
+	}
+
+	if len(frResp.Items) != 1 || len(enResp.Items) != 1 {
+		t.Fatalf("attendu 1 carte par locale, got fr=%d en=%d", len(frResp.Items), len(enResp.Items))
+	}
+	if frResp.Items[0].Title != "Tuer 10 Spartans" {
+		t.Errorf("FR: titre attendu %q, got %q — l'insert FR a-t-il été écrasé ?", "Tuer 10 Spartans", frResp.Items[0].Title)
+	}
+	if enResp.Items[0].Title != "Kill 10 Spartans" {
+		t.Errorf("EN: titre attendu %q, got %q — insert EN droppé (locale absente de la dédup) ou reader non filtré", "Kill 10 Spartans", enResp.Items[0].Title)
 	}
 }

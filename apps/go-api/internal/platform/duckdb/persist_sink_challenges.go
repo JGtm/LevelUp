@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/dblease"
 )
@@ -168,17 +169,21 @@ func (s *PersistSink) insertSnapshot(
 
 	chPath := "Challenges/Tracking/" + ch.TrackingID
 	stateHash := persistHash(rawCh)
+	// CRITIQUE : state_hash est LANGUE-INDÉPENDANT (le corps /decks ne porte pas les libellés
+	// localisés) → sans la locale dans la clé de dédup, l'INSERT d'une 2e locale (même
+	// state_hash, <24h) est vu « inchangé » et sauté : seule la dernière langue survivrait.
+	locale := ctxkeys.Locale(ctx)
 
-	// Déduplication : ne pas insérer si un snapshot identique existe dans les 24h.
+	// Déduplication : ne pas insérer si un snapshot identique (même locale) existe dans les 24h.
 	var existing int
 	err := db.QueryRow(ctx, `
 		SELECT COUNT(*) FROM challenge_snapshots
-		WHERE xuid = ? AND challenge_path = ? AND state_hash = ?
+		WHERE xuid = ? AND challenge_path = ? AND state_hash = ? AND locale = ?
 		  AND snapshot_at > CURRENT_TIMESTAMP - INTERVAL 1 DAY`,
-		s.XUID, chPath, stateHash,
+		s.XUID, chPath, stateHash, locale,
 	).Scan(&existing)
 	if err == nil && existing > 0 {
-		return nil // état inchangé, pas besoin d'insérer
+		return nil // état inchangé (pour cette locale), pas besoin d'insérer
 	}
 
 	// Choix de l'expiration : priorité au champ du challenge, fallback sur le deck.
@@ -216,11 +221,11 @@ func (s *PersistSink) insertSnapshot(
 		INSERT INTO challenge_snapshots
 			(snapshot_at, xuid, challenge_path, challenge_id,
 			 status, progress_current, progress_target, xp_reward,
-			 can_reroll, expires_at, state_hash, title, description, image_url, display_path)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			 can_reroll, expires_at, state_hash, title, description, image_url, display_path, locale)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		at, s.XUID, chPath, ch.TrackingID,
 		status, ch.CurrentProgress, ch.Threshold, ch.XPReward,
-		ch.CanReroll, expiresAt, stateHash, title, description, imageURL, displayPath,
+		ch.CanReroll, expiresAt, stateHash, title, description, imageURL, displayPath, locale,
 	)
 	return err
 }

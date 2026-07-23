@@ -14,17 +14,28 @@ import (
 	"log/slog"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 )
 
 //go:embed demo_fixtures/challenges.json
 var demoChallengesJSON []byte
 
-// demoChallenges retourne la fixture défis démo (embarquée). Bypass live + cache.
-// snapshot_at = maintenant (fraîcheur ok côté UI, pas d'indicateur "périmé").
+//go:embed demo_fixtures/challenges.en.json
+var demoChallengesENJSON []byte
+
+// demoChallenges retourne la fixture défis démo (embarquée), dans la locale de la
+// requête (ctxkeys.Locale). Bypass live + cache. snapshot_at = maintenant (fraîcheur
+// ok côté UI, pas d'indicateur "périmé"). Parité FR/EN 1:1 (challenges.json /
+// challenges.en.json) : sans sélection par locale, la démo affiche les défis en FR
+// même quand l'UI passe en anglais.
 func demoChallenges(ctx context.Context) domain.ChallengesResponse {
+	fixture := demoChallengesJSON
+	if ctxkeys.Locale(ctx) == "en" {
+		fixture = demoChallengesENJSON
+	}
 	var resp domain.ChallengesResponse
-	if err := json.Unmarshal(demoChallengesJSON, &resp); err != nil {
+	if err := json.Unmarshal(fixture, &resp); err != nil {
 		slog.WarnContext(ctx, "demo challenges fixture parse failed", "err", err)
 		return domain.ChallengesResponse{Available: false}
 	}

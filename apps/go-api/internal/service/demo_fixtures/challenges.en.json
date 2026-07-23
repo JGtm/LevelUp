@@ -1,0 +1,44 @@
+{
+  "available": true,
+  "total": 4,
+  "completed": 1,
+  "xp_available": 1200,
+  "items": [
+    {
+      "challenge_path": "demo/challenge/eliminations",
+      "title": "Killing Spree",
+      "description": "Eliminate 25 opponents in Quick Play",
+      "progress_current": 18,
+      "progress_target": 25,
+      "progress_percent": 72.0,
+      "xp_reward": 500
+    },
+    {
+      "challenge_path": "demo/challenge/objectives",
+      "title": "Objective Master",
+      "description": "Capture 10 zones or flags",
+      "progress_current": 7,
+      "progress_target": 10,
+      "progress_percent": 70.0,
+      "xp_reward": 400
+    },
+    {
+      "challenge_path": "demo/challenge/headshots",
+      "title": "Deadly Precision",
+      "description": "Land 50 headshots",
+      "progress_current": 32,
+      "progress_target": 50,
+      "progress_percent": 64.0,
+      "xp_reward": 300
+    },
+    {
+      "challenge_path": "demo/challenge/assists",
+      "title": "Team Spirit",
+      "description": "Earn 15 assists while in a squad",
+      "progress_current": 15,
+      "progress_target": 15,
+      "progress_percent": 100.0,
+      "xp_reward": 250
+    }
+  ]
+}

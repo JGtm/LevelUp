@@ -15,19 +15,22 @@ import (
 )
 
 // buildTrackSummary construit un SeasonPassTrackSummary depuis les données brutes.
+// preferEN (locale de requête, cf. bpPreferEN) ordonne la résolution des libellés du
+// payload brut (nom/description) : sans lui, le fallback restait FR-first.
 func buildTrackSummary(
 	row seasonPassTrackRow,
 	state trackSnapshotState,
 	itemMap map[string]seasonPassItemMeta,
+	preferEN bool,
 ) domain.SeasonPassTrackSummary {
 	payload := parseTrackPayload(row.rawPayloadJSON)
 	name := row.rewardTrackPath
 	if row.trackName.Valid && row.trackName.String != "" {
 		name = row.trackName.String
-	} else if payloadName := localizedText(payloadNameValue(payload)); payloadName != "" {
+	} else if payloadName := localizedText(payloadNameValue(payload), preferEN); payloadName != "" {
 		name = payloadName
 	}
-	description := payloadDescription(payload)
+	description := payloadDescription(payload, preferEN)
 	xpPerRank := resolveXPPerRank(row, payload)
 	maxRank := resolveMaxRank(payload, state)
 	tiers, activeTierRank := buildTierSummaries(payload, itemMap, state)
