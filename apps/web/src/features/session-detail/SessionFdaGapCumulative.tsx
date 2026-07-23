@@ -22,52 +22,34 @@ import {
   getEChartsThemeColors,
   getTooltipBase,
 } from '@/components/charts/_utils'
+import { cumulativeFdaGap, type FdaGapCumPoint } from '@/lib/charts/cumulativeFdaGap'
 import { divergentZeroGradient } from '@/lib/charts/divergentZeroGradient'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
 
 import { sessionMatchAxisLabel, useSessionT } from './_shared'
 
-const round2 = (v: number) => Math.round(v * 100) / 100
-
-export interface FdaGapPoint {
+export interface FdaGapPoint extends FdaGapCumPoint {
+  /** Étiquette d'axe X du match (`#N` + carte/mode). */
   label: string
-  /** Écart cumulé (reporte la dernière valeur si le match courant n'a pas d'attendu). */
-  cumulative: number
-  /** FDA réel du match (null si absent/non-fini). */
-  real: number | null
-  /** FDA attendu du match (null si absent/non-fini). */
-  expected: number | null
-  /** Écart du match `réel − attendu` (null si l'attendu manque — D5). */
-  gap: number | null
-}
-
-function finite(v: number | null | undefined): number | null {
-  return v != null && Number.isFinite(v) ? v : null
 }
 
 /**
- * Cumul de l'écart au FDA attendu sur les matchs (triés chronologiquement).
- * D5 : un match sans attendu n'ajoute rien au cumul (report de la dernière
- * valeur) mais figure quand même sur l'axe (point porté à la valeur courante).
+ * Cumul de l'écart au FDA attendu sur les matchs, TRIÉS chronologiquement puis
+ * délégué au helper canonique `cumulativeFdaGap` (source unique du cumul,
+ * CLAUDE.md n°6). D5 : un match sans attendu n'ajoute rien au cumul (report de
+ * la dernière valeur) mais figure quand même sur l'axe.
  */
 // eslint-disable-next-line react-refresh/only-export-components
 export function computeCumulativeFdaGap(matches: SessionDetailMatchRow[]): FdaGapPoint[] {
   const sorted = [...matches].sort((a, b) => a.start_time.localeCompare(b.start_time))
-  let running = 0
-  return sorted.map((m, i) => {
-    const real = finite(m.kda)
-    const expected = finite(m.kda_expected)
-    const gap = real != null && expected != null ? round2(real - expected) : null
-    if (gap != null) running = round2(running + gap)
-    return {
-      label: sessionMatchAxisLabel(i, m.map_name, m.pair_name),
-      cumulative: running,
-      real: real != null ? round2(real) : null,
-      expected: expected != null ? round2(expected) : null,
-      gap,
-    }
-  })
+  const cum = cumulativeFdaGap(
+    sorted.map((m) => ({ real: m.kda ?? null, expected: m.kda_expected ?? null })),
+  )
+  return sorted.map((m, i) => ({
+    label: sessionMatchAxisLabel(i, m.map_name, m.pair_name),
+    ...cum[i],
+  }))
 }
 
 export interface FdaGapCumulativeLabels {

@@ -103,9 +103,10 @@ export function TimeseriesSummaryTab({
       smoothingLabel={t('timeseries.summary.trend')}
     />
   )
-  // Écart au FDA attendu (D1) — différentiel réel−attendu par match, aire signée
-  // divergente + tendance lissée. Self-gate `expected_stats` (null sur Halo 5).
-  // Hauteur alignée sur le FDA (360) pour la disposition côte à côte.
+  // Écart cumulé au FDA attendu (D1 + retouche UX 2026-07-23) — aire cumulée
+  // signée réel vs attendu, MÊME forme que Sessions (SessionFdaGapCumulative).
+  // Self-gate `expected_stats` (null sur Halo 5). Hauteur alignée sur le FDA
+  // (360) pour la disposition côte à côte.
   const fdaGapTrend = (
     <TimeseriesFdaGapTrend
       title={t('timeseries.summary.fda_gap_title')}
@@ -113,10 +114,10 @@ export function TimeseriesSummaryTab({
       height={360}
       rows={data.match_rows ?? []}
       labels={{
-        gap: t('timeseries.summary.fda_gap_series'),
+        series: t('timeseries.summary.fda_gap_series'),
         real: t('timeseries.summary.fda_gap_real'),
         expected: t('timeseries.summary.fda_gap_expected'),
-        smoothing: t('timeseries.summary.trend'),
+        gap: t('timeseries.summary.fda_gap_gap'),
       }}
     />
   )

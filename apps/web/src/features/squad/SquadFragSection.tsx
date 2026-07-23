@@ -11,7 +11,7 @@
  *   3. Précision par rôle (native Halo 5, gaté DATA sur weapon_accuracy) —
  *      SquadWeaponAccuracyBarsChart.
  */
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, type ReactNode } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { formatMessage } from '@/lib/i18n/format'
 import { fragsManifest } from '@/lib/i18n/generated/frags'
@@ -37,6 +37,13 @@ interface SquadFragSectionProps {
   playerOrder: string[]
   locale: Locale
   t: SquadText
+  /**
+   * Slot optionnel monté À GAUCHE de « Répartition des frags » (rangée 1) —
+   * carte « Écart cumulé au FDA attendu » sur Infinite (gate `expected_stats`
+   * côté parent). Mutuellement exclusif avec `weaponAccuracy` (natif Halo 5) :
+   * les titres se distinguent par capability, jamais les deux à la fois.
+   */
+  leftOfBreakdown?: ReactNode
 }
 
 export function SquadFragSection({
@@ -47,6 +54,7 @@ export function SquadFragSection({
   playerOrder,
   locale,
   t,
+  leftOfBreakdown,
 }: SquadFragSectionProps) {
   // Série sentinelle pour l'empty-state du ChartCard : non vide dès qu'un joueur
   // a au moins une classe de frags (buildFragBreakdownOption filtre lui-même sur
@@ -80,22 +88,37 @@ export function SquadFragSection({
     [weaponKills, fragClassesByPlayer, locale, t.weaponKills.otherWeapons],
   )
 
+  // Carte « Répartition des frags » définie UNE seule fois (≤ 2 copies), puis
+  // placée selon la composition de la rangée 1. fluid : s'étire à la hauteur de
+  // la ligne (grid align-items:stretch) → alignée avec la cellule voisine.
+  const fragBreakdownCard = (
+    <ChartCard
+      title={t.performanceCharts.fragBreakdownTitle}
+      series={fragSeries}
+      buildOption={buildFragBreakdown}
+      height={FRAG_BREAKDOWN_HEIGHT}
+      emptyMessage={t.empty.noBlockData}
+      fluid
+    />
+  )
+
   return (
     <section className="space-y-4">
-      {/* Rangée 1 : Répartition des frags | Précision par rôle (précision native H5, gate
-          DATA sur weapon_accuracy → sur Infinite la Répartition occupe seule la largeur). */}
-      <div className={weaponAccuracy ? 'grid grid-cols-1 gap-4 lg:grid-cols-2' : 'grid grid-cols-1 gap-4'}>
-        {/* fluid/fillHeight : les 2 blocs de la rangée s'étirent à la hauteur de la ligne
-            (grid align-items:stretch) → hauteurs alignées quelle que soit la donnée. */}
-        <ChartCard
-          title={t.performanceCharts.fragBreakdownTitle}
-          series={fragSeries}
-          buildOption={buildFragBreakdown}
-          height={FRAG_BREAKDOWN_HEIGHT}
-          emptyMessage={t.empty.noBlockData}
-          fluid
-        />
-        {weaponAccuracy && (
+      {/* Rangée 1 — composition mutuellement exclusive :
+          - leftOfBreakdown (Écart cumulé FDA, Infinite) → [Écart | Répartition] ;
+          - sinon weaponAccuracy (Précision native, Halo 5) → [Répartition | Précision] ;
+          - sinon → Répartition pleine largeur.
+          Les capabilities `expected_stats` (Infinite) et `weapon_accuracy` (H5)
+          sont disjointes : si jamais les deux coexistaient (cas impossible
+          aujourd'hui), la branche leftOfBreakdown l'emporte. */}
+      {leftOfBreakdown ? (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {leftOfBreakdown}
+          {fragBreakdownCard}
+        </div>
+      ) : weaponAccuracy ? (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {fragBreakdownCard}
           <SquadWeaponAccuracyBarsChart
             title={t.weaponAccuracy.title}
             emptyMessage={t.empty.noBlockData}
@@ -105,8 +128,10 @@ export function SquadFragSection({
             shotsLabel={t.weaponAccuracy.shotsLabel}
             fillHeight
           />
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4">{fragBreakdownCard}</div>
+      )}
 
       {/* Rangée 2 : Outils de destruction, seul sur sa rangée (pleine largeur). */}
       <SquadWeaponKillsChart

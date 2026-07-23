@@ -1,9 +1,11 @@
 /**
- * Tests B1 (plan PLAN_EXPECTED_FDA) — « Écart au FDA attendu ».
+ * Tests B1 (plan PLAN_EXPECTED_FDA) + retouche UX 2026-07-23 — « Écart cumulé au
+ * FDA attendu » (Timeseries), forme cumulée alignée sur Sessions.
  *
- * - `buildFdaGapDiffOption` (pur) : série nominale + trous D5 (match sans attendu
- *   = null, jamais 0). `resolveToken` renvoie '' hors runtime CSS → on teste la
- *   structure/les données, pas les couleurs.
+ * - `buildFdaGapCumulativeOption` (pur) : cumul signé ancré à 0 (1 aire
+ *   divergente + markLine 0), report D5 (report du cumul, jamais 0, point
+ *   conservé), ORDRE DU SERVICE respecté (pas de re-tri). `resolveToken` renvoie
+ *   '' hors runtime CSS → on teste la structure/les données, pas les couleurs.
  * - `TimeseriesFdaGapTrend` (composant) : masquage par capability `expected_stats`
  *   (absente → non rendu). echarts-for-react mocké (canvas jsdom instable).
  */
@@ -13,15 +15,29 @@ import { render, screen } from '@testing-library/react'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { TimeseriesMatchRow } from '@/lib/api/types'
 
-import { TimeseriesFdaGapTrend, buildFdaGapDiffOption, type FdaGapDiffLabels } from './TimeseriesFdaGapTrend'
+import {
+  TimeseriesFdaGapTrend,
+  buildFdaGapCumulativeOption,
+  type FdaGapCumulativeLabels,
+} from './TimeseriesFdaGapTrend'
 
 vi.mock('echarts-for-react', () => ({
   default: () => <div data-testid="echarts-mock" />,
 }))
 
-const LABELS: FdaGapDiffLabels = { gap: 'Écart', real: 'Réel', expected: 'Attendu', smoothing: 'Tendance' }
+const LABELS: FdaGapCumulativeLabels = {
+  series: 'Écart cumulé',
+  real: 'Réel',
+  expected: 'Attendu',
+  gap: 'Écart',
+}
 
-function row(kda: number | undefined, kdaExpected: number | undefined, map = 'Bazaar'): TimeseriesMatchRow {
+function row(
+  kda: number | undefined,
+  kdaExpected: number | undefined,
+  map = 'Bazaar',
+  start = '2025-01-01T00:00:00Z',
+): TimeseriesMatchRow {
   return {
     accuracy: null,
     assists: 0,
@@ -36,7 +52,7 @@ function row(kda: number | undefined, kdaExpected: number | undefined, map = 'Ba
     personal_score: null,
     playlist_name: 'pl',
     rank: null,
-    start_time: '2025-01-01T00:00:00Z',
+    start_time: start,
     time_played_seconds: null,
     map_name: map,
     kda: kda,
@@ -52,9 +68,8 @@ interface OptShape {
     areaStyle?: { origin?: number; color?: { type?: string } }
     lineStyle?: { color?: { type?: string } | string }
     markLine?: { data: Array<{ yAxis: number }> }
-    connectNulls?: boolean
   }>
-  xAxis: { data: string[] }
+  xAxis: { data: string[]; boundaryGap?: boolean }
 }
 
 function setTitleCaps(caps: string[]) {
@@ -70,62 +85,70 @@ afterEach(() => {
   useAppShellStore.setState({ currentTitleSlug: 'halo_infinite', availableTitles: [] })
 })
 
-describe('buildFdaGapDiffOption', () => {
+describe('buildFdaGapCumulativeOption', () => {
   it('série vide → null', () => {
-    expect(buildFdaGapDiffOption([], LABELS)).toBeNull()
+    expect(buildFdaGapCumulativeOption([], LABELS)).toBeNull()
   })
 
-  it('série nominale : aire différentielle brute + ligne lissée, markLine 0, aire ancrée à 0', () => {
-    const opt = buildFdaGapDiffOption(
+  it('cumul signé ancré à 0 : 1 aire divergente + markLine 0', () => {
+    const opt = buildFdaGapCumulativeOption(
       [row(1.5, 1.0), row(0.8, 1.2), row(2.0, 1.0)],
       LABELS,
     ) as unknown as OptShape
-    // 2 séries : aire (différentiel) + tendance lissée.
-    expect(opt.series).toHaveLength(2)
-    expect(opt.series[0].name).toBe('Écart')
-    expect(opt.series[1].name).toBe('Tendance')
-    // Différentiel brut kda - kda_expected, arrondi 2 décimales.
-    expect(opt.series[0].data).toEqual([0.5, -0.4, 1])
+    // Une seule série (plus de ligne lissée) : le cumul signé.
+    expect(opt.series).toHaveLength(1)
+    expect(opt.series[0].name).toBe('Écart cumulé')
+    // Cumul du différentiel réel − attendu, arrondi 2 décimales.
+    expect(opt.series[0].data).toEqual([0.5, 0.1, 1.1])
     // Aire ancrée à 0 + markLine 0 + dégradé divergent (linéaire).
     expect(opt.series[0].areaStyle?.origin).toBe(0)
     expect(opt.series[0].markLine?.data[0].yAxis).toBe(0)
     expect((opt.series[0].areaStyle?.color as { type?: string })?.type).toBe('linear')
+    expect(opt.xAxis.boundaryGap).toBe(false)
     expect(opt.xAxis.data).toHaveLength(3)
   })
 
-  it('trous D5 : un match sans attendu → null (jamais 0), lissage préserve le trou', () => {
-    const opt = buildFdaGapDiffOption(
+  it('report D5 : un match sans attendu reporte le cumul (jamais 0, point conservé)', () => {
+    const opt = buildFdaGapCumulativeOption(
       [row(1.5, 1.0), row(0.8, undefined), row(2.0, 1.0)],
       LABELS,
     ) as unknown as OptShape
-    // Différentiel : trou au milieu (pas 0).
-    expect(opt.series[0].data[1]).toBeNull()
-    expect(opt.series[0].data[0]).toBe(0.5)
-    expect(opt.series[0].data[2]).toBe(1)
-    // La tendance lissée saute aussi le trou (préservation).
-    expect(opt.series[1].data[1]).toBeNull()
-    // L'aire brute ne relie pas les trous.
-    expect(opt.series[0].connectNulls).toBe(false)
+    // Cumul : 0.5, report 0.5 (pas 0, pas de trou), puis reprise +1.0 = 1.5.
+    expect(opt.series[0].data).toEqual([0.5, 0.5, 1.5])
+    // Le point du match sans attendu figure quand même sur l'axe (3 catégories).
+    expect(opt.xAxis.data).toHaveLength(3)
   })
 
-  it('trou D5 côté réel manquant → null également', () => {
-    const opt = buildFdaGapDiffOption([row(undefined, 1.0), row(2.0, 1.0)], LABELS) as unknown as OptShape
-    expect(opt.series[0].data[0]).toBeNull()
-    expect(opt.series[0].data[1]).toBe(1)
+  it('report D5 côté réel manquant également', () => {
+    const opt = buildFdaGapCumulativeOption([row(undefined, 1.0), row(2.0, 1.0)], LABELS) as unknown as OptShape
+    // #1 sans réel → gap null → cumul reste 0 ; #2 → +1.0.
+    expect(opt.series[0].data).toEqual([0, 1])
+  })
+
+  it('ordre du service respecté (PAS de re-tri chronologique)', () => {
+    // start_time volontairement DÉCROISSANT : le cumul suit l'ordre du tableau
+    // (déjà trié côté service), jamais start_time (contrairement à Sessions).
+    const opt = buildFdaGapCumulativeOption(
+      [row(2.0, 1.0, 'Bazaar', '2025-01-02T00:00:00Z'), row(1.5, 1.0, 'Live Fire', '2025-01-01T00:00:00Z')],
+      LABELS,
+    ) as unknown as OptShape
+    // Ordre du tableau : #1 gap 1.0 (cum 1.0), #2 gap 0.5 (cum 1.5).
+    // Un re-tri chronologique donnerait [0.5, 1.5].
+    expect(opt.series[0].data).toEqual([1, 1.5])
   })
 })
 
 describe('TimeseriesFdaGapTrend — masquage capability', () => {
   it('capability expected_stats présente → chart rendu', async () => {
     setTitleCaps(['expected_stats'])
-    render(<TimeseriesFdaGapTrend rows={[row(1.5, 1.0), row(0.8, 1.2)]} labels={LABELS} title="Écart au FDA attendu" />)
+    render(<TimeseriesFdaGapTrend rows={[row(1.5, 1.0), row(0.8, 1.2)]} labels={LABELS} title="Écart cumulé au FDA attendu" />)
     expect(await screen.findByTestId('echarts-mock')).toBeInTheDocument()
   })
 
   it('capability expected_stats absente → non rendu (null)', () => {
     setTitleCaps(['ranked'])
     const { container } = render(
-      <TimeseriesFdaGapTrend rows={[row(1.5, 1.0), row(0.8, 1.2)]} labels={LABELS} title="Écart au FDA attendu" />,
+      <TimeseriesFdaGapTrend rows={[row(1.5, 1.0), row(0.8, 1.2)]} labels={LABELS} title="Écart cumulé au FDA attendu" />,
     )
     expect(container).toBeEmptyDOMElement()
     expect(screen.queryByTestId('echarts-mock')).toBeNull()
