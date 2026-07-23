@@ -5166,6 +5166,8 @@ export interface components {
             items: components["schemas"]["AdminDataQualityIssue"][] | null;
             kind: string;
             title_slug: string;
+            /** Format: int64 */
+            total: number;
         };
         AdminErrorBucket: {
             /** Format: int64 */
@@ -5251,6 +5253,11 @@ export interface components {
                 [key: string]: unknown;
             };
             databases: components["schemas"]["ResourceDBFile"][] | null;
+            /**
+             * @description ok = racine data lisible ; unavailable = racine data introuvable/illisible (RepoRoot mal résolu, volume non monté) — inventaire non mesurable, distinct de « aucune base ».
+             * @enum {string}
+             */
+            db_inventory_status: "ok" | "unavailable";
             /** Format: int64 */
             db_total_bytes: number;
             disk: components["schemas"]["ResourceDisk"];
@@ -5370,7 +5377,10 @@ export interface components {
         AdminLogTail: {
             entries: components["schemas"]["AdminLogEntry"][] | null;
             generated_at: string;
+            has_more: boolean;
             module: string;
+            /** Format: int64 */
+            next_offset?: number;
             /** Format: int64 */
             scanned_bytes: number;
             truncated: boolean;
@@ -11583,6 +11593,8 @@ export interface operations {
                 title?: string;
                 kind: "raw_uuids" | "untranslated_modes" | "orphan_playlists" | "orphan_xuids";
                 limit?: number;
+                /** @description Décalage de pagination serveur (défaut 0, rétrocompatible). */
+                offset?: number;
             };
             header?: never;
             path?: never;
@@ -11590,7 +11602,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Lignes détaillées, les plus fréquentes d'abord */
+            /** @description Fenêtre paginée [offset, offset+limit) + total (avant fenêtrage) */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -12029,6 +12041,8 @@ export interface operations {
                 level?: "debug" | "info" | "warn" | "error";
                 contains?: string;
                 since?: string;
+                /** @description Curseur arrière « charger plus » (offset octet renvoyé en next_offset) — charge la tranche strictement plus ancienne. */
+                before?: number;
             };
             header?: never;
             path?: never;
@@ -12036,7 +12050,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Entrées parsées (plus récentes d'abord) + truncated */
+            /** @description Entrées parsées (plus récentes d'abord) + truncated + curseur next_offset/has_more */
             200: {
                 headers: {
                     [name: string]: unknown;

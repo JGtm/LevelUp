@@ -5,6 +5,7 @@ package ops
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
@@ -130,15 +131,15 @@ func TestDataQuality_CountsAndLists(t *testing.T) {
 	}
 
 	// Listes.
-	raw, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "raw_uuids", 10)
-	if err != nil || len(raw) != 1 || raw[0].AssetKind != "playlist" || raw[0].ID != "pl-uuid-1" {
-		t.Errorf("raw_uuids = %+v, err=%v (attendu 1 playlist pl-uuid-1)", raw, err)
+	raw, rawTotal, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "raw_uuids", 10, 0)
+	if err != nil || len(raw) != 1 || rawTotal != 1 || raw[0].AssetKind != "playlist" || raw[0].ID != "pl-uuid-1" {
+		t.Errorf("raw_uuids = %+v, total=%d, err=%v (attendu 1 playlist pl-uuid-1)", raw, rawTotal, err)
 	}
 	if raw[0].LastSeen == "" {
 		t.Error("raw_uuids LastSeen vide (timestamp canonique attendu)")
 	}
 
-	modes, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "untranslated_modes", 10)
+	modes, _, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "untranslated_modes", 10, 0)
 	if err != nil || len(modes) != 1 {
 		t.Fatalf("untranslated_modes = %+v, err=%v (attendu 1)", modes, err)
 	}
@@ -146,18 +147,94 @@ func TestDataQuality_CountsAndLists(t *testing.T) {
 		t.Errorf("untranslated mode inattendu : %+v", modes[0])
 	}
 
-	orphPl, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "orphan_playlists", 10)
+	orphPl, _, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "orphan_playlists", 10, 0)
 	if err != nil || len(orphPl) != 1 || orphPl[0].ID != "pl-uuid-1" {
 		t.Errorf("orphan_playlists = %+v, err=%v", orphPl, err)
 	}
 
-	orphX, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "orphan_xuids", 10)
-	if err != nil || len(orphX) != 1 || orphX[0].ID != "x-orphan" {
-		t.Errorf("orphan_xuids = %+v, err=%v", orphX, err)
+	orphX, orphXTotal, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "orphan_xuids", 10, 0)
+	if err != nil || len(orphX) != 1 || orphXTotal != 1 || orphX[0].ID != "x-orphan" {
+		t.Errorf("orphan_xuids = %+v, total=%d, err=%v", orphX, orphXTotal, err)
+	}
+	// C3(a) : « Vu pour la dernière fois » alimenté par le dernier match du xuid
+	// (jointure match_registry, timestamp canonique) — plus jamais vide.
+	if orphX[0].LastSeen == "" {
+		t.Error("orphan_xuids LastSeen vide (dernier match du xuid attendu)")
 	}
 
-	if _, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "kind_inconnu", 10); err == nil {
+	if _, _, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "kind_inconnu", 10, 0); err == nil {
 		t.Error("kind inconnu doit retourner une erreur")
+	}
+}
+
+// TestDataQuality_OrphanXUIDsPagination : C3(b) — fenêtre serveur (limit/offset)
+// + total avant fenêtrage sur la liste longue des xuids orphelins, et
+// « Vu pour la dernière fois » = MAX des starts des matchs du xuid (C3a).
+func TestDataQuality_OrphanXUIDsPagination(t *testing.T) {
+	ctx := context.Background()
+	shared := openDQTestShared(t)
+	meta := openDQTestMeta(t)
+
+	// 3 matchs à des instants croissants (start_time_utc explicite).
+	for _, m := range []struct {
+		id string
+		ts string
+	}{
+		{"m1", "2026-01-01 10:00:00+00"},
+		{"m2", "2026-02-01 10:00:00+00"},
+		{"m3", "2026-03-01 10:00:00+00"},
+	} {
+		if _, err := shared.Exec(
+			`INSERT INTO match_registry (match_id, start_time_utc) VALUES (?, ?::TIMESTAMPTZ)`, m.id, m.ts); err != nil {
+			t.Fatalf("seed match %s: %v", m.id, err)
+		}
+	}
+	// A : m1+m2 (2 matchs, dernier = m2 fév) ; B : m3 (1, mars) ; C : m1 (1, jan).
+	// Aucun n'a d'alias → 3 orphelins. Un bot exclu.
+	for _, q := range []string{
+		`INSERT INTO match_participants VALUES ('m1', 'x-A')`,
+		`INSERT INTO match_participants VALUES ('m2', 'x-A')`,
+		`INSERT INTO match_participants VALUES ('m3', 'x-B')`,
+		`INSERT INTO match_participants VALUES ('m1', 'x-C')`,
+		`INSERT INTO match_participants VALUES ('m1', 'bid(2.0)')`,
+	} {
+		if _, err := shared.Exec(q); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Page 1 : limit 2, offset 0 → 2 items, total 3. x-A (2 matchs) en tête.
+	page1, total, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "orphan_xuids", 2, 0)
+	if err != nil {
+		t.Fatalf("page1: %v", err)
+	}
+	if total != 3 {
+		t.Errorf("total = %d (attendu 3 — bot exclu)", total)
+	}
+	if len(page1) != 2 {
+		t.Fatalf("page1 = %d items (attendu 2)", len(page1))
+	}
+	if page1[0].ID != "x-A" || page1[0].Occurrences != 2 {
+		t.Errorf("tête de page inattendue : %+v (attendu x-A / 2 matchs)", page1[0])
+	}
+	// x-A : dernier match = m2 (février), pas m1 (janvier).
+	if !strings.HasPrefix(page1[0].LastSeen, "2026-02-01") {
+		t.Errorf("x-A LastSeen = %q (attendu dernier match 2026-02-01)", page1[0].LastSeen)
+	}
+
+	// Page 2 : limit 2, offset 2 → le dernier orphelin (1 item), total inchangé.
+	page2, total2, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "orphan_xuids", 2, 2)
+	if err != nil {
+		t.Fatalf("page2: %v", err)
+	}
+	if total2 != 3 || len(page2) != 1 {
+		t.Errorf("page2 = %d items, total=%d (attendu 1 item, total 3)", len(page2), total2)
+	}
+
+	// Offset au-delà de la fin → fenêtre vide non nulle, total conservé.
+	beyond, total3, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "orphan_xuids", 2, 99)
+	if err != nil || beyond == nil || len(beyond) != 0 || total3 != 3 {
+		t.Errorf("offset hors bornes : items=%+v total=%d err=%v (attendu vide non nul, total 3)", beyond, total3, err)
 	}
 }
 
@@ -212,7 +289,7 @@ func TestDataQuality_MetaWithoutHINFReferentials(t *testing.T) {
 
 	// Les listes détaillées des kinds non applicables répondent vide, sans erreur.
 	for _, kind := range []string{"untranslated_modes", "orphan_playlists"} {
-		items, lerr := ListDataQualityIssues(ctx, shared, meta, "halo_5", kind, 10)
+		items, _, lerr := ListDataQualityIssues(ctx, shared, meta, "halo_5", kind, 10, 0)
 		if lerr != nil {
 			t.Errorf("ListDataQualityIssues(%s) : err=%v, attendu dégradation propre", kind, lerr)
 		}

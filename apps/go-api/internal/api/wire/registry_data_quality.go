@@ -111,8 +111,9 @@ func (r *ServiceRegistry) DataQualityCounts(ctx context.Context, titleSlug strin
 	return resp, nil
 }
 
-// DataQualityIssues liste les inconnus d'un kind donné.
-func (r *ServiceRegistry) DataQualityIssues(ctx context.Context, titleSlug, kind string, limit int) (domain.AdminDataQualityIssues, error) {
+// DataQualityIssues liste les inconnus d'un kind donné (fenêtre paginée
+// [offset, offset+limit) + total avant fenêtrage).
+func (r *ServiceRegistry) DataQualityIssues(ctx context.Context, titleSlug, kind string, limit, offset int) (domain.AdminDataQualityIssues, error) {
 	resp := domain.AdminDataQualityIssues{
 		TitleSlug:   titleSlug,
 		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
@@ -125,10 +126,11 @@ func (r *ServiceRegistry) DataQualityIssues(ctx context.Context, titleSlug, kind
 	}
 	defer closeAll()
 
-	items, err := ops.ListDataQualityIssues(ctx, sharedSQL, metaSQL, titleSlug, kind, limit)
+	items, total, err := ops.ListDataQualityIssues(ctx, sharedSQL, metaSQL, titleSlug, kind, limit, offset)
 	if err != nil {
 		return resp, err
 	}
+	resp.Total = total
 	for _, it := range items {
 		resp.Items = append(resp.Items, domain.AdminDataQualityIssue{
 			Kind:        it.Kind,

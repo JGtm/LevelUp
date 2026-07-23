@@ -4,6 +4,9 @@
 package ops
 
 import (
+	"errors"
+	"io/fs"
+	"log/slog"
 	"os"
 	"runtime"
 
@@ -63,16 +66,30 @@ func CollectRuntimeStats() domain.ResourceRuntime {
 }
 
 // DBFileSize retourne la taille d'une base + de son WAL adjacent (0 si absents).
-// Best-effort : un fichier manquant n'est pas une erreur (base pas encore créée).
+// Best-effort : un fichier manquant (base pas encore créée) n'est pas une erreur
+// et reste silencieux ; en revanche une erreur NON-ENOENT (permission, IO —
+// symptôme d'un déploiement mal configuré) est LOGGÉE, jamais avalée.
 func DBFileSize(name, path string) domain.ResourceDBFile {
-	out := domain.ResourceDBFile{Name: name, Path: path}
-	if info, err := os.Stat(path); err == nil {
-		out.SizeBytes = info.Size()
+	return domain.ResourceDBFile{
+		Name:      name,
+		Path:      path,
+		SizeBytes: statSizeOrLog(name, path),
+		WalBytes:  statSizeOrLog(name+" (wal)", path+".wal"),
 	}
-	if info, err := os.Stat(path + ".wal"); err == nil {
-		out.WalBytes = info.Size()
+}
+
+// statSizeOrLog retourne la taille d'un fichier, 0 s'il est absent (silencieux),
+// et logge toute autre erreur de stat (permission/IO) au lieu de l'avaler.
+func statSizeOrLog(name, path string) int64 {
+	info, err := os.Stat(path)
+	if err == nil {
+		return info.Size()
 	}
-	return out
+	if !errors.Is(err, fs.ErrNotExist) {
+		slog.Warn("resources: taille de base illisible (déploiement mal configuré ?)",
+			"module", "monitoring", "name", name, "path", path, "err", err)
+	}
+	return 0
 }
 
 // DirTotalSize agrège récursivement la taille d'un répertoire (players/ d'un

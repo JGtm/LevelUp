@@ -72,6 +72,27 @@ rempli/vide C2). E2e réel de la réhydratation reporté au Lot H (couvert unita
 **Prochaine étape** : C-II (C3 XUIDs vus/pagination, C4 logs charger plus, C5 tailles
 DBs re-qualifié), puis C-III (C6 armes H5, C7 locale/exemples).
 
+## [2026-07-23] Admin retours — Sous-lot C-II clos (branche feat/admin-retours-diag)
+
+**Statut** : Complété (C3+C4+C5). Agent Opus + revue/gates/navigateur orchestrateur.
+
+**Décisions techniques** : C3 last-seen par jointure registry avec le fragment
+timestamp canonique (règle n°8) et pagination serveur limit/offset/total (fenêtrage
+mémoire sur listes bornées, déjà intégralement scannées par les compteurs) + pied
+TanStack manualPagination. C4 : curseur arrière en offset octet absolu exclusif —
+seule approche qui franchit le budget 8 Mio (chaque page rebudgette depuis son
+curseur) ; useInfiniteQuery avec garde anti-boucle. C5 : verdict = la liste n'est
+JAMAIS vide par construction ; le symptôme prod est un RepoRoot mal résolu + os.Stat
+avalé → durcissement db_inventory_status/logs/EmptyState explicite (à confirmer en
+prod : LEVELUP_REPO_ROOT).
+
+**Résultats/gate** (re-exécutés) : go test ops/api/domain 0, vet 0, tsc 0, eslint 0
+erreur (+1 warning React Compiler inhérent à useReactTable — accepté, documenté),
+vitest 2632, matrice navigateur 9/9. 
+
+**Prochaine étape** : C-III (C6 identification des 7 armes H5 non résolues dont la
+dominante 2457457776 à 2353 frags, C7 locale param + exemples de matchs cliquables).
+
 ## [2026-07-22] D7 titre dans l'URL — Phase 0 close (branche feat/title-slug-in-url)
 
 **Statut** : En cours (Phase 0/6 close), plan `.ai/PLAN_TITLE_SLUG_URL_2026-07.md` sous

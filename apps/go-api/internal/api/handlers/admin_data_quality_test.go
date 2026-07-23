@@ -48,11 +48,14 @@ func newDQHandler(t *testing.T) *AdminDataQualityHandler {
 		func(_ context.Context, titleSlug string) (domain.AdminDataQualityCounts, error) {
 			return domain.AdminDataQualityCounts{TitleSlug: titleSlug, RawUUIDTotal: 3}, nil
 		},
-		func(_ context.Context, titleSlug, kind string, limit int) (domain.AdminDataQualityIssues, error) {
+		func(_ context.Context, titleSlug, kind string, limit, offset int) (domain.AdminDataQualityIssues, error) {
 			if limit > 500 {
 				t.Errorf("limit non clampé : %d", limit)
 			}
-			return domain.AdminDataQualityIssues{TitleSlug: titleSlug, Kind: kind,
+			if offset < 0 {
+				t.Errorf("offset négatif non normalisé : %d", offset)
+			}
+			return domain.AdminDataQualityIssues{TitleSlug: titleSlug, Kind: kind, Total: 1,
 				Items: []domain.AdminDataQualityIssue{{Kind: "untranslated_mode", ID: "Husky Raid CTF", Occurrences: 4}}}, nil
 		},
 		func(_ context.Context, _ string, dryRun bool) (domain.RegistryNamesBackfillResult, error) {
@@ -127,12 +130,12 @@ func TestAdminDQ_GetIssues_KindValidation(t *testing.T) {
 		t.Fatalf("kind invalide : status=%d (attendu 400)", rec.Code)
 	}
 
-	rec = serveAdminDataQuality(h, httptest.NewRequest(http.MethodGet, "/admin/monitoring/data-quality/issues?kind=untranslated_modes&limit=9999", nil))
+	rec = serveAdminDataQuality(h, httptest.NewRequest(http.MethodGet, "/admin/monitoring/data-quality/issues?kind=untranslated_modes&limit=9999&offset=25", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("kind valide : status=%d (attendu 200)", rec.Code)
 	}
 	var got domain.AdminDataQualityIssues
-	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil || len(got.Items) != 1 {
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil || len(got.Items) != 1 || got.Total != 1 {
 		t.Fatalf("payload inattendu : %+v err=%v", got, err)
 	}
 }

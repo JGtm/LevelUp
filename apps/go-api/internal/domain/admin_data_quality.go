@@ -40,11 +40,15 @@ type AdminDataQualityIssue struct {
 }
 
 // AdminDataQualityIssues est la réponse de GET .../data-quality/issues.
+// Items est la fenêtre paginée [offset, offset+limit) ; Total est le nombre total
+// d'inconnus de ce kind (avant fenêtrage) — alimente la pagination serveur du
+// front (table longue des xuids orphelins).
 type AdminDataQualityIssues struct {
 	TitleSlug   string                  `json:"title_slug"`
 	GeneratedAt string                  `json:"generated_at"`
 	Kind        string                  `json:"kind"`
 	Items       []AdminDataQualityIssue `json:"items"`
+	Total       int                     `json:"total"`
 }
 
 // RegistryNamesBackfillRequest — corps de POST .../registry-names/backfill.

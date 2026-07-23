@@ -151,6 +151,70 @@ func TestLogTail_ChunkBoundary(t *testing.T) {
 	}
 }
 
+// msgList extrait les msg d'un résultat (diagnostic des tests de pagination).
+func msgList(r LogTailResult) []string {
+	out := make([]string, 0, len(r.Entries))
+	for _, e := range r.Entries {
+		out = append(out, e.Msg)
+	}
+	return out
+}
+
+// TestLogTail_BackwardCursorPaging : C4 — « charger plus » via curseur arrière
+// (before=next_offset) charge une tranche strictement plus ancienne, sans
+// recouvrement ni trou, et HasMore tombe à false au début du fichier.
+func TestLogTail_BackwardCursorPaging(t *testing.T) {
+	dir := t.TempDir()
+	base := time.Date(2026, 6, 11, 10, 0, 0, 0, time.UTC)
+	var lines []string
+	for i := 0; i < 10; i++ {
+		lines = append(lines, jsonLine(base.Add(time.Duration(i)*time.Minute), "INFO", fmt.Sprintf("m%d", i), ""))
+	}
+	writeLogFile(t, dir, "sync", lines)
+
+	// Page 1 : les 3 plus récents (m9,m8,m7). HasMore + curseur > 0.
+	p1, err := TailModuleLog(dir, "sync", LogTailOptions{N: 3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p1.Entries) != 3 || p1.Entries[0].Msg != "m9" || p1.Entries[2].Msg != "m7" {
+		t.Fatalf("page1 = %v (attendu m9,m8,m7)", msgList(p1))
+	}
+	if !p1.HasMore || p1.NextOffset <= 0 {
+		t.Fatalf("page1 : HasMore=%v NextOffset=%d (attendu more + curseur > 0)", p1.HasMore, p1.NextOffset)
+	}
+
+	// Page 2 : curseur arrière → m6,m5,m4, SANS recouvrement (m7 pas répété).
+	p2, err := TailModuleLog(dir, "sync", LogTailOptions{N: 3, BeforeOffset: p1.NextOffset})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p2.Entries) != 3 || p2.Entries[0].Msg != "m6" || p2.Entries[2].Msg != "m4" {
+		t.Fatalf("page2 = %v (attendu m6,m5,m4 — pas de recouvrement)", msgList(p2))
+	}
+
+	// Aucun doublon entre les deux pages.
+	seen := map[string]bool{}
+	for _, m := range append(msgList(p1), msgList(p2)...) {
+		if seen[m] {
+			t.Fatalf("doublon dans la pagination : %s", m)
+		}
+		seen[m] = true
+	}
+
+	// Dernière page : curseur → m3..m0 puis début de fichier atteint → HasMore false.
+	p3, err := TailModuleLog(dir, "sync", LogTailOptions{N: 10, BeforeOffset: p2.NextOffset})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p3.Entries) != 4 || p3.Entries[0].Msg != "m3" || p3.Entries[3].Msg != "m0" {
+		t.Fatalf("page3 = %v (attendu m3,m2,m1,m0)", msgList(p3))
+	}
+	if p3.HasMore {
+		t.Error("dernière page : HasMore=true (attendu false — début de fichier atteint)")
+	}
+}
+
 func TestLogTail_ModuleValidation(t *testing.T) {
 	dir := t.TempDir()
 	for _, bad := range []string{"../etc/passwd", "a b", "UPPER", "", "x/y"} {
