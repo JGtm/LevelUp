@@ -222,8 +222,9 @@ func buildCompareEntryWithObjectives(
 	avgTeamMMR, avgEnemyMMR := avgMMR(matches)
 	participation := buildSessionParticipationProfile(matches, objScores, effectiveHpToKill)
 	// entry.Matches en FR par défaut (le tableau visible passe par resp.Matches,
-	// déjà locale-aware via GetPage).
-	matchRows := buildSessionDetailRows(matches, dominantCat, "fr")
+	// déjà locale-aware via GetPage). Écart au FDA attendu non consommé ici (chart
+	// cumulé = vue session principale, D2) → assists nil.
+	matchRows := buildSessionDetailRows(matches, dominantCat, "fr", nil)
 	best, worst := bestWorstMatchCompare(matches, dominantCat)
 
 	// Radar de frags : AGRÉGATS DE SESSION (= "le compte de la session", demande user) :

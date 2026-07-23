@@ -254,6 +254,50 @@ func TestBuildSquadPerformanceSeries_NoSquadLoader_EmptyResult(t *testing.T) {
 	}
 }
 
+// TestBuildSquadPerformanceSeries_ExpectedFDA vérifie l'écart au FDA attendu par
+// membre : K/D attendu depuis r.Self.KillsExpected/DeathsExpected, assists attendus
+// via le modèle personnel du membre (mock), KdaExpected = k_exp + a_exp/3 − d_exp.
+func TestBuildSquadPerformanceSeries_ExpectedFDA(t *testing.T) {
+	t0 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
+	ke, de := 11.0, 6.0
+	k, d, a := 12, 5, 4
+	mainRow := canonical.PlayerMatchRow{
+		Summary: canonical.MatchSummary{
+			MatchID: "m1", StartedAtUTC: t0, Outcome: canonical.OutcomeWin,
+			GameVariant: &canonical.AssetReference{Kind: "game_variant", DefaultLabel: "Slayer"},
+		},
+		Self: canonical.MatchParticipant{
+			Outcome: canonical.OutcomeWin, Kills: &k, Deaths: &d, Assists: &a,
+			KillsExpected: &ke, DeathsExpected: &de,
+		},
+	}
+	loader := &fakeSquadLoader{
+		rowsByGT: map[string][]canonical.PlayerMatchRow{"main": {mainRow}},
+		// Modèle personnel intercept=3, coefs 0 → assists attendus = 3.0.
+		modelByGT: map[string]*domain.PlayerAssistsModel{
+			"main": {GameVariantName: "Slayer", Intercept: 3.0},
+		},
+	}
+	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", squadLoader: loader}
+	allSquadRows := []domain.SquadMatchRow{{MatchID: "m1", StartTime: t0}}
+	got := svc.buildSquadPerformanceSeries(context.Background(), allSquadRows, "main", "", []string{"main"}, nil)
+	pts := got["main"]
+	if len(pts) != 1 {
+		t.Fatalf("want 1 point for main, got %d", len(pts))
+	}
+	p := pts[0]
+	if p.KillsExpected == nil || *p.KillsExpected != ke {
+		t.Fatalf("KillsExpected = %v, want %v", p.KillsExpected, ke)
+	}
+	if p.AssistsExpected == nil || *p.AssistsExpected != 3.0 {
+		t.Fatalf("AssistsExpected = %v, want 3.0", p.AssistsExpected)
+	}
+	// 11 + 3/3 - 6 = 6
+	if p.KdaExpected == nil || *p.KdaExpected != 6.0 {
+		t.Fatalf("KdaExpected = %v, want 6", p.KdaExpected)
+	}
+}
+
 // TestBuildSquadPerformanceSeries_PopulatesEfficiencyFields vérifie que
 // RendementOffensif et ResistanceDefensive sont calculés quand DamageDealt /
 // DamageTaken sont disponibles dans le canonical row.

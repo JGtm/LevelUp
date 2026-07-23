@@ -378,7 +378,7 @@ func TestBuildSessionDetailRows_EnrichedFields(t *testing.T) {
 		DamageTaken:       &dt,
 		Rank:              &rk,
 	}
-	out := buildSessionDetailRows([]legacymatch.StatsMatchRow{row}, nil, "fr")
+	out := buildSessionDetailRows([]legacymatch.StatsMatchRow{row}, nil, "fr", nil)
 	if len(out) != 1 {
 		t.Fatalf("expected 1 row, got %d", len(out))
 	}
@@ -432,7 +432,7 @@ func TestBuildSessionDetailRows_Locale(t *testing.T) {
 		PairName:       "Arena:Slayer on Live Fire",
 		PairNameFR:     "Arène:Massacre sur Tir réel",
 	}
-	en := buildSessionDetailRows([]legacymatch.StatsMatchRow{row}, nil, "en")[0]
+	en := buildSessionDetailRows([]legacymatch.StatsMatchRow{row}, nil, "en", nil)[0]
 	if en.MapName != "Live Fire" {
 		t.Fatalf("EN MapName: want 'Live Fire', got %q", en.MapName)
 	}
@@ -443,7 +443,7 @@ func TestBuildSessionDetailRows_Locale(t *testing.T) {
 		t.Fatalf("EN ModeUI: want %q (EN normalisé), got %q", want, en.ModeUI)
 	}
 
-	fr := buildSessionDetailRows([]legacymatch.StatsMatchRow{row}, nil, "fr")[0]
+	fr := buildSessionDetailRows([]legacymatch.StatsMatchRow{row}, nil, "fr", nil)[0]
 	if fr.MapName != "Tir réel" {
 		t.Fatalf("FR MapName: want 'Tir réel', got %q", fr.MapName)
 	}
@@ -459,7 +459,7 @@ func TestBuildSessionDetailRows_Locale(t *testing.T) {
 // pas de MMR/perf/rating → champs nil/zéro, pas de panic.
 func TestBuildSessionDetailRows_NilEnrichment(t *testing.T) {
 	row := legacymatch.StatsMatchRow{MatchID: "m1", StartTime: time.Now(), Kills: 3, Deaths: 2}
-	out := buildSessionDetailRows([]legacymatch.StatsMatchRow{row}, nil, "fr")
+	out := buildSessionDetailRows([]legacymatch.StatsMatchRow{row}, nil, "fr", nil)
 	if len(out) != 1 {
 		t.Fatalf("expected 1 row, got %d", len(out))
 	}
@@ -469,5 +469,36 @@ func TestBuildSessionDetailRows_NilEnrichment(t *testing.T) {
 	}
 	if r.PerfTier != 0 {
 		t.Fatalf("PerfTier: want 0 (no perf score), got %d", r.PerfTier)
+	}
+	// Sans attendu → KdaExpected nil (null-safety).
+	if r.KdaExpected != nil {
+		t.Fatalf("KdaExpected: want nil (no expected), got %v", *r.KdaExpected)
+	}
+}
+
+// TestBuildSessionDetailRows_ExpectedFDA vérifie la projection de l'écart au FDA
+// attendu (K/D depuis StatsMatchRow, assists depuis le batch) → KdaExpected.
+func TestBuildSessionDetailRows_ExpectedFDA(t *testing.T) {
+	ke, de := 9.0, 4.0
+	assistsExp := 3.0
+	row := legacymatch.StatsMatchRow{
+		MatchID: "m1", StartTime: time.Now(), Kills: 10, Deaths: 4,
+		KillsExpected: &ke, DeathsExpected: &de,
+	}
+	out := buildSessionDetailRows([]legacymatch.StatsMatchRow{row}, nil, "fr",
+		map[string]*float64{"m1": &assistsExp})
+	if len(out) != 1 {
+		t.Fatalf("expected 1 row, got %d", len(out))
+	}
+	r := out[0]
+	if r.KillsExpected == nil || *r.KillsExpected != ke {
+		t.Fatalf("KillsExpected = %v, want %v", r.KillsExpected, ke)
+	}
+	if r.AssistsExpected == nil || *r.AssistsExpected != assistsExp {
+		t.Fatalf("AssistsExpected = %v, want %v", r.AssistsExpected, assistsExp)
+	}
+	// 9 + 3/3 - 4 = 6
+	if r.KdaExpected == nil || *r.KdaExpected != 6.0 {
+		t.Fatalf("KdaExpected = %v, want 6", r.KdaExpected)
 	}
 }

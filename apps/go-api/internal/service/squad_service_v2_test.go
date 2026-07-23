@@ -116,6 +116,14 @@ func (f *fakeSquadLoader) LoadObjectiveScores(
 	return map[string]int{}, nil
 }
 
+func (f *fakeSquadLoader) LoadPlayerAssistsModel(_ context.Context, _, _, _ string) (*domain.PlayerAssistsModel, error) {
+	return nil, nil
+}
+
+func (f *fakeSquadLoader) LoadPopulationalAssistsCoef(_ context.Context, _, _ string) (float64, float64, bool, error) {
+	return 0, 0, false, nil
+}
+
 // row construit une PlayerMatchRow minimale avec match_id + start_time.
 func row(matchID string, startedAt time.Time, outcome canonical.Outcome) canonical.PlayerMatchRow {
 	return canonical.PlayerMatchRow{

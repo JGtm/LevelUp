@@ -27,6 +27,7 @@ import { SessionFragsRadar } from './SessionFragsRadar'
 import { SessionFdaBars } from './SessionFdaBars'
 import { SessionParticipationBars } from './SessionParticipationBars'
 import { SessionNetScoreArea } from './SessionNetScoreArea'
+import { SessionFdaGapCumulative } from './SessionFdaGapCumulative'
 import { SessionMmrDumbbell } from './SessionMmrDumbbell'
 import { SessionPerfTrend } from './SessionPerfTrend'
 import { SessionEngagementChart } from './SessionEngagementChart'
@@ -114,6 +115,12 @@ export function SessionChartStack({
       yDomain={scale?.netScore}
     />
   )
+  // Écart cumulé au FDA attendu (D2) — self-gate capability `expected_stats`
+  // (null sur un titre sans FDA attendu, ex. Halo 5). Pleine largeur (pas de
+  // wrapper grid) pour ne rien laisser d'affiché quand masqué.
+  const fdaGap = (
+    <SessionFdaGapCumulative title={t('session.detail.chart_fda_gap_title')} matches={matches} />
+  )
   const mmr = hasTeamMmr ? (
     <SessionMmrDumbbell title={t('session.detail.chart_mmr_title')} matches={matches} />
   ) : null
@@ -157,6 +164,7 @@ export function SessionChartStack({
         {fragsRadar}
         {netScore}
         {fdaBars}
+        {fdaGap}
         {participation}
         {mmr}
         {ocdr}
@@ -186,6 +194,7 @@ export function SessionChartStack({
         {netScore}
         {fdaBars}
       </div>
+      {fdaGap}
       {participation}
       {mmr ? (
         <div className="grid gap-6 xl:grid-cols-2">

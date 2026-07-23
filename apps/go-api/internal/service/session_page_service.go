@@ -41,6 +41,11 @@ type SessionPageService struct {
 	// csrThreshold (optionnel) : résolveur season_id → seuil placement CSR (5 ou 10).
 	// Sans lui, applyMatchPlacements retombe sur le défaut (5). Cf. match_history_placement.go.
 	csrThreshold CSRThresholdResolver
+	// expectedAssistsModels / expectedAssistsCoefs (optionnels) : résolution des
+	// assists attendus (chaîne personnel → populationnel) pour l'écart cumulé au FDA
+	// attendu. nil → AssistsExpected nil (l'attendu dégrade en K/D pur).
+	expectedAssistsModels assistsModelReader
+	expectedAssistsCoefs  assistsCoefReader
 }
 
 // NewSessionPageService crÃ©e un SessionPageService.
@@ -75,6 +80,15 @@ func (s *SessionPageService) WithWeaponKillsRepo(repo port.WeaponKillsRepository
 // Optionnel — nil / capability absente (Infinite) → WeaponAccuracy best-effort nil.
 func (s *SessionPageService) WithWeaponAccuracyRepo(repo port.WeaponAccuracyRepository) *SessionPageService {
 	s.weaponAccuracyRepo = repo
+	return s
+}
+
+// WithExpectedAssists injecte les résolveurs du modèle d'assists attendus (personnel
+// via player DB + populationnel via metadata) pour l'écart cumulé au FDA attendu de
+// la session. Optionnel — nil → AssistsExpected nil (l'attendu dégrade en K/D pur).
+func (s *SessionPageService) WithExpectedAssists(models assistsModelReader, coefs assistsCoefReader) *SessionPageService {
+	s.expectedAssistsModels = models
+	s.expectedAssistsCoefs = coefs
 	return s
 }
 
@@ -162,10 +176,14 @@ func (s *SessionPageService) GetPage(
 	// Navigation prev/next : reste sur le périmètre resserré (la vue principale).
 	prevLabel, nextLabel := neighboringSessionLabels(labels, currentLabel)
 
+	// Assists attendus (is_me) résolus une fois par mode — écart cumulé au FDA attendu
+	// (le cumul est fait côté front sur les rows de la session courante).
+	currentAssistsExpected := computeExpectedAssistsBatch(ctx, s.expectedAssistsModels, s.expectedAssistsCoefs, currentMatches)
+
 	resp := domain.SessionPageResponse{
 		CurrentSession:       currentEntry,
 		AvailableSessions:    compareLabels,
-		Matches:              buildSessionDetailRows(currentMatches, currentEntry.DominantCategory, req.Locale),
+		Matches:              buildSessionDetailRows(currentMatches, currentEntry.DominantCategory, req.Locale, currentAssistsExpected),
 		SuggestedCompare:     suggestion,
 		CompareEnabled:       compareEnabled,
 		CompareMatches:       []domain.SessionDetailMatchRow{},
@@ -186,7 +204,8 @@ func (s *SessionPageService) GetPage(
 		resp.CompareSession = buildCompareEntryWithObjectives(compareMatches, compareLabel, s.objectiveScores(ctx, compareMatches), hp, provideSpree)
 		if resp.CompareSession != nil {
 			resp.CompareMetrics = buildCompareMetrics(currentMatches, compareMatches)
-			resp.CompareMatches = buildSessionDetailRows(compareMatches, resp.CompareSession.DominantCategory, req.Locale)
+			resp.CompareMatches = buildSessionDetailRows(compareMatches, resp.CompareSession.DominantCategory, req.Locale,
+				computeExpectedAssistsBatch(ctx, s.expectedAssistsModels, s.expectedAssistsCoefs, compareMatches))
 			s.attachSessionFragDistribution(ctx, resp.CompareSession, canonicalRows, matchIDsFromStatsRows(compareMatches))
 		} else {
 			resp.CompareEnabled = false
@@ -429,6 +448,7 @@ func buildSessionDetailRows(
 	rows []legacymatch.StatsMatchRow,
 	dominantCategory *string,
 	locale string,
+	assistsExpected map[string]*float64,
 ) []domain.SessionDetailMatchRow {
 	// Locale-aware (aligné Home/Explorer) : FR par défaut, EN si locale == "en".
 	// Sans ça les cartes/modes/playlists restaient figés (FR si trad présente,
@@ -474,6 +494,8 @@ func buildSessionDetailRows(
 		// Libellé du palier ("Or III", "Diamant V"…) construit comme l'Explorer —
 		// la colonne "Rang" affiche le palier, pas la valeur brute. Nil si non rankée.
 		skillTierLabel := analysis.BuildSkillTierLabel(row.SkillTierCode, row.SkillTierCodeFR, row.SkillSubTier, frPreferred)
+		assistsExp := assistsExpected[row.MatchID]
+		kdaExp := analysis.ExpectedFDA(row.KillsExpected, row.DeathsExpected, assistsExp)
 		out = append(out, domain.SessionDetailMatchRow{
 			MatchID:              row.MatchID,
 			StartTime:            row.StartTime,
@@ -507,6 +529,10 @@ func buildSessionDetailRows(
 			SkillExpectedWinProb: row.SkillExpectedWinProb,
 			SkillTierLabel:       skillTierLabel,
 			ModeUI:               modeUI,
+			KillsExpected:        row.KillsExpected,
+			DeathsExpected:       row.DeathsExpected,
+			AssistsExpected:      assistsExp,
+			KdaExpected:          kdaExp,
 		})
 	}
 	return out

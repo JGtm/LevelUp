@@ -23,6 +23,29 @@ type fakeSquadLoader struct {
 	delayPerGT time.Duration
 	// objByGT : si renseigné, LoadObjectiveScores retourne ces scores par gamertag.
 	objByGT map[string]map[string]int
+	// modelByGT : si renseigné, LoadPlayerAssistsModel retourne ce modèle personnel
+	// pour le gamertag (tous modes). Sert les tests d'écart au FDA attendu (D8).
+	modelByGT map[string]*domain.PlayerAssistsModel
+	// popCoef : si ok, LoadPopulationalAssistsCoef retourne ce fallback (tous modes).
+	popCoef *struct{ slope, intercept float64 }
+}
+
+func (f *fakeSquadLoader) LoadPlayerAssistsModel(
+	_ context.Context, _, gamertag, _ string,
+) (*domain.PlayerAssistsModel, error) {
+	if f.modelByGT != nil {
+		return f.modelByGT[gamertag], nil
+	}
+	return nil, nil
+}
+
+func (f *fakeSquadLoader) LoadPopulationalAssistsCoef(
+	_ context.Context, _, _ string,
+) (float64, float64, bool, error) {
+	if f.popCoef != nil {
+		return f.popCoef.slope, f.popCoef.intercept, true, nil
+	}
+	return 0, 0, false, nil
 }
 
 func (f *fakeSquadLoader) LoadFor(

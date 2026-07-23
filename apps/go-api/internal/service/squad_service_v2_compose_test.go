@@ -52,6 +52,14 @@ func (f *fakeSquadLoaderFull) LoadObjectiveScores(_ context.Context, _, _ string
 	return map[string]int{}, nil
 }
 
+func (f *fakeSquadLoaderFull) LoadPlayerAssistsModel(_ context.Context, _, _, _ string) (*domain.PlayerAssistsModel, error) {
+	return nil, nil
+}
+
+func (f *fakeSquadLoaderFull) LoadPopulationalAssistsCoef(_ context.Context, _, _ string) (float64, float64, bool, error) {
+	return 0, 0, false, nil
+}
+
 func mkRowFull(gt, xuid, matchID string, t time.Time, outcome canonical.Outcome, kills, deaths int) canonical.PlayerMatchRow {
 	k, d := kills, deaths
 	a := 3
