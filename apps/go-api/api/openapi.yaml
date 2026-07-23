@@ -1364,6 +1364,23 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /players/{player_slug}/pages/medals:
+    post:
+      tags: [career]
+      operationId: postMedals
+      summary: "Médailles (catalogue complet + compteur joueur)"
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      responses:
+        "200":
+          description: Catalogue complet des médailles du titre avec le compteur obtenu par le joueur (0 = jamais obtenue), regroupées par catégorie et super-section
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MedalsPageResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   # Totaux à vie des commendations NATIVES (Halo 5, AXE B). Title-agnostic :
   # réponse vide pour les titres sans commendations natives.
   /players/{player_slug}/commendations/totals:
