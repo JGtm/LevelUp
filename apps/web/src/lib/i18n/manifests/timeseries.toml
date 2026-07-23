@@ -332,6 +332,16 @@ en = "Expected"
 fr = "Écart"
 en = "Gap"
 
+# KPI de pied de carte : écart moyen par match du joueur suivi (cohérent avec les
+# pastilles « écart moyen / match » de l'onglet Synergies Escouade).
+[timeseries.summary.fda_gap_avg_caption]
+fr = "Écart moyen par match"
+en = "Average gap per match"
+
+[timeseries.summary.fda_gap_per_match]
+fr = "/match"
+en = "/game"
+
 [timeseries.summary.kill_types_title]
 fr = "Répartition des frags"
 en = "Kill type distribution"

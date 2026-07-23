@@ -26,7 +26,7 @@ import {
   CHART_BG,
   escapeHtml,
 } from '@/components/charts/_utils'
-import { cumulativeFdaGap } from '@/lib/charts/cumulativeFdaGap'
+import { cumulativeFdaGap, meanFdaGap } from '@/lib/charts/cumulativeFdaGap'
 import { divergentZeroGradient } from '@/lib/charts/divergentZeroGradient'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
@@ -43,6 +43,10 @@ export interface FdaGapCumulativeLabels {
   expected: string
   /** Libellé de l'écart du match (tooltip). */
   gap: string
+  /** Caption du KPI de pied de carte (« Écart moyen par match »). */
+  avgCaption: string
+  /** Suffixe du KPI (« /match »). */
+  perMatch: string
 }
 
 /** Formate un écart : « — » si absent, préfixe « + » si signé positif. */
@@ -128,6 +132,8 @@ export interface TimeseriesFdaGapTrendProps {
   title?: ReactNode
   emptyMessage?: string
   labels: FdaGapCumulativeLabels
+  /** Locale d'affichage ('fr' | 'en') pour le formatage du KPI (séparateur décimal). */
+  locale: string
 }
 
 export function TimeseriesFdaGapTrend({
@@ -136,6 +142,7 @@ export function TimeseriesFdaGapTrend({
   emptyMessage,
   height = 320,
   labels,
+  locale,
 }: TimeseriesFdaGapTrendProps) {
   const hasExpectedStats = useCapability('expected_stats')
   const themeVersion = useThemeVersion()
@@ -146,7 +153,39 @@ export function TimeseriesFdaGapTrend({
     [rows, labels, themeVersion],
   )
 
+  // Écart moyen par match du joueur suivi (helper canonique meanFdaGap), sur les
+  // matchs AVEC attendu uniquement (D3). null → « — » (aucun match exploitable).
+  const meanGap = useMemo(
+    () => meanFdaGap(rows.map((r) => ({ real: r.kda ?? null, expected: r.kda_expected ?? null }))),
+    [rows],
+  )
+
   // Titre sans attendu (ex. Halo 5) → masquage silencieux (pas de carte vide).
   if (!hasExpectedStats) return null
-  return <ChartFromOption title={title} option={option} height={height} emptyMessage={emptyMessage} />
+
+  const nf = new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+    signDisplay: 'always',
+  })
+  const footer = (
+    <div className="flex items-center gap-2 border-t border-border px-3 py-2" data-testid="fda-gap-avg">
+      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {labels.avgCaption}
+      </span>
+      <span className="tabular-nums text-xs font-semibold text-foreground">
+        {meanGap == null ? '—' : `${nf.format(meanGap)}${labels.perMatch}`}
+      </span>
+    </div>
+  )
+
+  return (
+    <ChartFromOption
+      title={title}
+      option={option}
+      height={height}
+      emptyMessage={emptyMessage}
+      footer={footer}
+    />
+  )
 }
