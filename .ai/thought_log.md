@@ -57,10 +57,21 @@ même dégradé offensif que le trait) — commit isolé trivialement revertable
 Item 5.1 statué [~] : gates verts (tsc, vitest timeseries 5 fichiers / 43
 tests), le go/no-go VISUEL (thème clair + sombre) reste à l'utilisateur.
 
-**Conclusion / prochaine étape** : gates finaux du lot (go test ./..., vet,
-typecheck --force, lint, vitest complet) puis passe visuelle utilisateur et
-revue au merge. Intégration -tags=integration non requise : aucun fichier
-persist/sync/migration touché (P4 = service engagement + domain DTO).
+**Gates finaux du lot (tous verts)** : go test ./... 115 packages ok exit 0
+(CGO msys64 requis — un shell sans CGO donne des [setup failed] duckdb-bindings,
+pas de vrais rouges) ; go vet exit 0 ; golangci-lint 0 issue ; npm run typecheck
+(tsc -b, cache purgé) exit 0 APRÈS fix ab0a59a9d (_compareScale.test.ts resté à
+4 args sur computeCompareScale — tsc --noEmit ne couvre pas les tests, vitest ne
+typecheck pas : le gate de référence est tsc -b cache purgé) ; eslint 8 warnings
+= baseline main ; vitest complet 328 fichiers / 2807 tests verts.
+-tags=integration non requis : aucun fichier persist/sync/migration touché.
+
+**Conclusion / prochaine étape** : branche poussée pour signal CI. Restent :
+passe visuelle utilisateur (3 onglets Escouade, Session, Timeseries, thèmes
+clair+sombre, dégradation H5 ; go/no-go P5 aire) puis revue au merge. Pour le
+dev server visuel : arrêter le serveur du repo principal AVANT (mono-process
+DuckDB), données à rendre accessibles au worktree (junction — la retirer avant
+tout worktree remove).
 
 ---
 ## [2026-07-23] Réintégration + validation des 4 retouches FDA gap sur origin/main
