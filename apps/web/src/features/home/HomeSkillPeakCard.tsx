@@ -110,22 +110,27 @@ export function HomeSkillPeakCard({
           {/* Gauche (extrémité) : LABEL de palier mis en avant (le user le connaît
               mieux que le chiffre) + rating en secondaire dessous. */}
           <div className="shrink-0">
-            {(peak?.tier_label || detail) && (
-              <p
-                data-testid={peak?.tier_label && !isPlacement ? `${testIdPrefix}-tier` : `${testIdPrefix}-detail`}
-                className="truncate text-xl font-semibold text-foreground sm:text-2xl"
-              >
-                {isPlacement ? detail : (localizeTierLabel(peak?.tier_label, locale) ?? detail)}
-              </p>
-            )}
-            {isTierOnlyRating ? null : (
-              <p
-                data-testid={`${testIdPrefix}-value`}
-                className="text-xs font-medium text-muted-foreground"
-              >
-                {showRatingValue ? peak!.rating_value.toLocaleString(numberLocale, { maximumFractionDigits: 0 }) : '—'}
-              </p>
-            )}
+            {/* Rang (palier) + valeur numérique sur la MÊME ligne : la valeur passe
+                à DROITE du rang, alignée sur sa ligne de base (taille/couleur
+                inchangées). Rang en text-xl (au lieu de 2xl). */}
+            <div className="flex items-baseline gap-1.5">
+              {(peak?.tier_label || detail) && (
+                <p
+                  data-testid={peak?.tier_label && !isPlacement ? `${testIdPrefix}-tier` : `${testIdPrefix}-detail`}
+                  className="truncate text-xl font-semibold text-foreground"
+                >
+                  {isPlacement ? detail : (localizeTierLabel(peak?.tier_label, locale) ?? detail)}
+                </p>
+              )}
+              {isTierOnlyRating ? null : (
+                <p
+                  data-testid={`${testIdPrefix}-value`}
+                  className="text-xs font-medium text-muted-foreground"
+                >
+                  {showRatingValue ? peak!.rating_value.toLocaleString(numberLocale, { maximumFractionDigits: 0 }) : '—'}
+                </p>
+              )}
+            </div>
             {peakReachedText && (
               <p
                 data-testid={`${testIdPrefix}-reached-on`}

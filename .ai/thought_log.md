@@ -11882,3 +11882,9 @@ PASS. Aucun changement front (peak_achieved_at déjà câblé).
 (dégradation propre). Pour le combler il faudrait un backfill CSR historique (chantier à part).
 
 **Conclusion** : commit sur feat/v7.1-lot-c ; merge à la validation user.
+
+## [2026-07-23] Lot C — polish cards Meilleur CSR/LUSR (retour user)
+
+Rang (tier_label) passé de text-xl sm:text-2xl -> text-xl ; valeur numérique remontée à
+DROITE du rang (flex items-baseline) au lieu de dessous, taille (text-xs) et couleur
+(text-muted-foreground) inchangées. HomeSkillPeakCard.tsx. tsc/eslint/vitest home verts.
