@@ -54,7 +54,7 @@ const B = [
 
 describe('computeCompareScale', () => {
   it('combine les bornes des deux sessions', () => {
-    const s = computeCompareScale(A, entry([-1.2, 2.0]), B, entry([0.5]))
+    const s = computeCompareScale(A, entry([-1.2, 2.0]), B, entry([0.5]), 225)
 
     // Net cumulé : A=[+3, 0], B=[+8] → [min∪0, max] = [0, 8].
     expect(s.netScore).toEqual([0, 8])
@@ -70,7 +70,7 @@ describe('computeCompareScale', () => {
   })
 
   it('sessions vides → aucune borne (auto-scale partout)', () => {
-    const s = computeCompareScale([], null, [], null)
+    const s = computeCompareScale([], null, [], null, 225)
     expect(s.netScore).toBeUndefined()
     expect(s.fdaMinute).toBeUndefined()
     expect(s.engagement).toBeUndefined()
