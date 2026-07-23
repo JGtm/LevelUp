@@ -11708,3 +11708,56 @@ vitest 284 fichiers / 2434 tests exit 0. ~13 disables cibles, tous dates et just
 **Conclusion / prochaine etape** : commit sur fix/share-link-on-demand (avec le chantier
 share-link) ; les 7 warnings restants sont la nouvelle baseline attendue de
 `npm run lint`.
+
+---
+
+## [2026-07-23] Quick wins v7.1 (Lot A + Lot B) - branche feat/v7.1-quick-wins
+
+**Statut** : Complete (7 items), Partiel (1 item B3). Implemente par 5 agents Opus
+pilotes en parallele (perimetres disjoints), consolide + verifie par le superviseur.
+
+**Perimetre** : tri des items backlog Notion section "Pour la v7.1" en quick wins reels
+(effort verifie sur pieces). Points page Admin et "Path to hero title-agnostic" ecartes
+par l'utilisateur (Admin hors scope ; Path to hero attend la refonte XP/match).
+
+**Decisions techniques** :
+- A1/A2/A3 : retraits de labels/legende superflus (Synthesis "Competences Spartan &
+  assassinats" ; legende Radar synergie a serie unique ; sous-titre "Forme recente...").
+  Cles i18n devenues inutilisees purgees du TOML + regeneration manifests
+  (build_i18n_manifests.mjs) pour garantir la synchro generated/*.ts.
+- B1 : noms d'equipe H5 doubles ("Equipe Equipe Cobra") = cause presentation front. Le
+  team_name backend H5 (metadata /team-colors) contient deja "Equipe". Fix title-agnostic
+  sur la DONNEE (labelHasTeamWord dans lib/halo/teamNames.ts, detection accent/casse-
+  insensible) : prefixe applique seulement si absent -> robuste Infinite (Cobra nu) et H5.
+- B2 : exclusion assassinat/charge spartane (shoulder_bash)/coup au sol (ground_pound) du
+  DEPARTAGE MVP/LVP. Applique back (scoreboard_extremes.go, helper mvpKills + guard nil
+  *int) ET front (MatchScoreboard.logic.ts, le badge est recalcule cote front via
+  getMvpLvp et n'utilise pas is_mvp/is_lvp API) pour eviter la divergence. Frags bruts
+  affiches inchanges ; seul le comptage best/worst de la colonne kills change. Tests
+  ajoutes des deux cotes.
+- B3 : bouton "Proposer des defis" "ne fait rien" = double erreur avalee. Front : mutation
+  sans onError (aucun retour visuel sur echec). Back : serviceError mappe en 500 sans
+  slog. Corrige : onError -> toast (string poolError FR/EN), et slog.ErrorContext sur la
+  branche default de serviceError (prestige_squads.go, benefice collateral ~26 routes
+  prestige). CAUSE RACINE du 500 non eliminee (erreur DuckDB probablement transitoire/
+  lease/metadata multi-process) : symptome UX corrige, cause a surveiller via le nouveau
+  slog apres deploiement.
+- B4 : toggle reduire/masquer la synthese (briefing) mode Matchs Explorer, persiste via
+  nouveau explorerPrefsStore (zustand+persist, cle levelup-explorer-prefs, portee globale
+  facon relationsPrefsStore). Libelles FR "Reduire"/"Afficher" + aria "synthese" (evite
+  l'anglicisme "briefing", garde-rail terminologie respecte).
+- B5 : retrait de la boucle de planification restic in-app (planification restic = systemd
+  externe). Front : carte config lecture-seule retiree (BackupTab) + 4 cles i18n. Back :
+  Scheduler.Run/runCycle/OnCycleDone supprimes (code mort debranche), goroutine periodique
+  retiree de cmd/server/main.go. Conserves : RunOnce/Status/run manuel (bouton, CLI
+  backup-once, fraicheur admin). Residus notes en suivi : SchedulerStatus.Config non
+  affiche, divergence manifest vs scripts/restic-backup.sh systemd.
+
+**Resultats observes** : frontend tsc -b (cache purge) exit 0 ; eslint fichiers touches
+exit 0 (seul le warning baseline react-hooks/incompatible-library subsiste) ; vitest
+touches 166/166. Go build exit 0 ; go vet exit 0 ; go test analysis+handlers+ops+
+duckdbbackup exit 0.
+
+**Conclusion / prochaine etape** : commits par zone sur feat/v7.1-quick-wins ; merge main
+a la validation utilisateur (push main = deploy prod). B3 : surveiller l'entree
+"unmapped service error masked as 500" apres deploiement pour eliminer la cause backend.
