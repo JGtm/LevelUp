@@ -159,40 +159,61 @@ vérif visuelle Session + Dynamique · vérif H5 = masqué proprement.
 
 Backend (durées absentes des contrats engagement — seul travail Go du chantier) :
 
-- [ ] 4.1 `internal/domain/engagement_score.go` : ajouter `duration_seconds`
-      (somme par bin) à `EngagementMatchSummary`.
-- [ ] 4.2 `internal/service/engagement_player_service.go` +
-      `engagement_timeseries_binning.go` : remplir la durée (match seul = sa
-      durée ; bin session/semaine/mois = somme des durées). Test binning : somme
-      par bin correcte.
-- [ ] 4.3 `internal/service/engagement_squad_service.go` : ajouter
-      `durations_seconds []int64` (aligné sur `labels`) au payload squad
-      engagement. Test service.
-- [ ] 4.4 `make generate-types` → `generated.ts` à jour (diff revu, committé).
+- [x] 4.1 `internal/domain/engagement_score.go` : `DurationSeconds int64`
+      (`duration_seconds`) ajouté à `EngagementMatchSummary` ; `DurationsSeconds
+      []int64` (`durations_seconds`) ajouté à `SquadEngagementSession`.
+- [x] 4.2 Durée remplie : `computeMatchSummary` (helper `durationSecondsFromContext`
+      = (EndTimeMS−StartTimeMS)/1000) ; binning `engagementBucketAcc.durationSeconds`
+      SOMMÉ par bucket (session/week/month), reporté dans `finalizeEngagementBuckets`.
+      Tests : `TestAggregateEngagementBySession_DurationSummedPerBin` +
+      `TestRollupEngagementByPeriod_DurationSummedPerBin`.
+- [x] 4.3 `engagement_squad_service.go` : `DurationsSeconds` initialisé dans
+      `GetSquadSession`, rempli dans `appendMatchToSession` (aligné sur Labels),
+      durée posée dans `computeMatchBundle`. Tests `engagement_squad_service_test.go`
+      (alignement Labels + cas vide), mock `memoCountingEngagementRepo` réutilisé.
+- [x] 4.4 openapi.yaml (bloc manuel `components.schemas`) mis à jour pour les 2
+      schémas + `npm run generate-types` → `generated.ts` (diff +3 lignes additif,
+      idempotent au 2e run). Drift test `TestOpenAPISchemaDrift` vert (schémas
+      réconciliés Huma↔manuel). Interfaces miroir manuelles `types.ts` mises à jour.
 
 Frontend :
 
-- [ ] 4.5 Helper d'assemblage : écart pondéré par point =
-      `engagement_score × (duration_seconds / 60)`, cumul via le helper 3.1
-      (report si score ou durée `null`).
-- [ ] 4.6 Timeseries : chart « Écart d'engagement cumulé » adjacent à
-      `EngagementTimeseriesSection` (même onglet intensité), aire cumulée solo
-      (pattern `TimeseriesFdaGapTrend`).
-- [ ] 4.7 Dynamique : courbes cumulées par joueur — résidu joueur =
-      `pace_observed − team_expected` par match, × durée (pattern
-      `squadFdaGapChart`).
-- [ ] 4.8 Session : `SessionEngagementCumulative` — cumul de
-      `engagement_score × duration_seconds/60` (zip `match_series` ↔ rows triées
-      par `start_time`, comme `SessionEngagementChart`) ; `_compareScale` ;
-      branché dans `SessionChartStack` à côté des barres existantes (frontend
-      seul — les rows session ont déjà la durée).
-- [ ] 4.9 i18n FR/EN (`engagement.toml` + `timeseries.toml`/`session.toml` selon
-      surface) ; axe/tooltip « événements (excès/déficit) ».
-- [ ] 4.10 Tests : Go (4.2, 4.3) ; web : helper 4.5 + composants.
+- [x] 4.5 `lib/charts/engagementGap.ts` : `engagementGapEvents(residualPerMinute,
+      durationSeconds)` = résidu × (durée/60), `null` si terme absent/non-fini
+      (report D5) ; cumul délégué à `cumulativeSigned` (helper P3). Tests `engagementGap.test.ts`.
+- [x] 4.6 `features/timeseries/TimeseriesEngagementGapTrend.tsx` (calqué
+      `TimeseriesFdaGapTrend`) : résidu solo = `pace_joueur − pace_attendu`, aire
+      cumulée `divergentZeroGradient` + markLine 0. Réutilise `useEngagementTimeseries`
+      (dédup cache). Monté sous le `FeatureGate engagement` de `TimeseriesPage.progression`.
+- [x] 4.7 `features/squad/charts/squadEngagementGapChart.ts` +
+      `SquadEngagementGapChart.tsx` : 1 courbe cumulée/joueur, résidu =
+      `pace_observed − team_expected` × durée/60, couleur par joueur, markLine 0.
+      Réutilise `useSquadEngagementSession` (dédup). Monté sous le `FeatureGate
+      engagement` de `SquadDynamiquePage`.
+- [x] 4.8 `features/session-detail/SessionEngagementCumulative.tsx` : cumul de
+      `engagement_score × durée/60`, zip `match_series` (index) ↔ rows (start_time) ;
+      aire divergente + markLine 0 ; `_compareScale.engagementGap` (nouveau domaine A/B) ;
+      branché dans `SessionChartStack` sous le `FeatureGate engagement`, après les barres.
+- [x] 4.9 i18n : `engagement.toml` (`engagement.cumulative_gap.*` : title FR « Écart
+      d'engagement cumulé »/EN « Cumulative engagement gap », axis « événements
+      (excès/déficit) »), `session.toml` (`chart_engagement_cumulative_title` +
+      series/match/axis), `features/squad/i18n.ts` (`engagementGap.title`/`tooltip`
+      FR/EN). Manifests régénérés.
+- [x] 4.10 Tests : Go (4.2 binning ×2, 4.3 squad ×2) ; web : `engagementGap.test.ts`,
+      `squadEngagementGapChart.test.ts` (builder), `SessionEngagementCumulative.test.tsx`
+      (pur : compute + build). Le chart Timeseries réutilise les helpers testés
+      (`cumulativeSigned`/`engagementGapEvents`).
 
 **Gate P4** : `cd apps/go-api && go test ./internal/service/... ./internal/api/...`
 · `make generate-types` sans diff résiduel · `make check-types` · vitest ciblés ·
 vérif visuelle Timeseries + Dynamique + Session.
+
+> Journal P4 [2026-07-23] — Complété. `go test ./internal/service/... ./internal/api/...
+> ./internal/domain/...` : tout vert (drift OpenAPI inclus). `npm run generate-types`
+> idempotent (diff +3 lignes). `npx tsc --noEmit` exit 0. `npx vitest run src/lib/charts
+> src/features/engagement src/features/timeseries src/features/session-detail
+> src/features/squad` : 67 fichiers / 462 tests passés. Vérif visuelle (:8000) NON
+> exécutée (hors périmètre agent — superviseur).
 
 ## Phase 5 — Essai : aire Rendement → ligne « 1 vie » (Timeseries)
 
@@ -229,6 +250,18 @@ concluant → revert du commit P5, item passé `[!]` avec justification.
   slug==), aligné avec le masquage des autres surfaces combat (résistance), et H5
   ne déclare pas la capability → masquage propre. Le report D5 par-point
   (`cumulativeSigned`) couvre les matchs Infinite isolés sans `damage_taken`.
+- [P4, 2026-07-23] Régénération OpenAPI : le repo n'a PAS de dump auto de
+  `openapi.yaml` — le bloc `components.schemas` est MANUEL, réconcilié aux schémas
+  auto-dérivés Huma par `TestOpenAPISchemaDrift` (gate MISSING=0, DIVERGENT logué).
+  Les 2 champs ont donc été ajoutés à la main dans `openapi.yaml` (+ interfaces
+  miroir manuelles `types.ts`), puis `npm run generate-types`. Mode emit dispo si
+  besoin : `OPENAPI_EMIT_DIVERGENT_OUT=... CGO_ENABLED=1 go test ./internal/api/ -run TestOpenAPISchemaDrift`.
+- [P4, 2026-07-23] Résidu d'engagement par surface : Timeseries/Escouade exposent
+  les paces (résidu = observé − attendu) ; Session expose `engagement_score` de
+  `match_series` qui EST DÉJÀ le résidu évén./min (cf. doc SessionEngagementChart).
+  Helper `engagementGapEvents` générique (résidu, durée) ; chaque surface calcule
+  son résidu. Charts Timeseries/Squad réutilisent la query engagement existante
+  (dédup cache TanStack Query, zéro fetch supplémentaire).
 - [P3, 2026-07-23] `computeCompareScale` prend désormais un 5e paramètre `hp` (le
   domaine partagé de la balance cumulée est en vies = dégâts nets ÷ barème). Seul
   caller = `SessionDetailPage` (hp via `useEffectiveHpToKill`). Aucun autre appelant.

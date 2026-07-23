@@ -18,6 +18,7 @@ import { getSquadText } from './i18n'
 import { SquadIntensityHeatmapChart } from './SquadIntensityHeatmapChart'
 import { SquadEfficiencyChart } from './SquadEfficiencyChart'
 import { SquadNetLivesChart } from './SquadNetLivesChart'
+import { SquadEngagementGapChart } from './SquadEngagementGapChart'
 import { SquadEngagementSection } from '@/features/engagement/SquadEngagementSection'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import type { SquadTeammateEntry } from '@/features/engagement/queries'
@@ -95,6 +96,14 @@ export function SquadDynamiquePage() {
           matchIds={engagementMatchIds}
           teammates={engagementTeammates}
           colorByPlayer={playerColors}
+        />
+        <SquadEngagementGapChart
+          playerSlug={playerSlug}
+          matchIds={engagementMatchIds}
+          teammates={engagementTeammates}
+          colorByPlayer={playerColors}
+          t={t}
+          emptyMessage={t.empty.noBlockData}
         />
       </FeatureGate>
     </div>

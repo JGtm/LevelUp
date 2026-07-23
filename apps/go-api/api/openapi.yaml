@@ -9900,6 +9900,9 @@ components:
     EngagementMatchSummary:
       additionalProperties: false
       properties:
+          duration_seconds:
+              format: int64
+              type: integer
           engagement_score:
               format: double
               type: number
@@ -9938,6 +9941,7 @@ components:
           - pace_lobby
           - engagement_score
           - match_count
+          - duration_seconds
       type: object
     EngagementPoint:
       additionalProperties: false
@@ -15048,6 +15052,12 @@ components:
     SquadEngagementSession:
       additionalProperties: false
       properties:
+          durations_seconds:
+              items:
+                  format: int64
+                  type: integer
+              type: array
+              nullable: true
           labels:
               items:
                   type: string
@@ -15087,6 +15097,7 @@ components:
           - lobby_per_player
           - team_expected
           - team_observed
+          - durations_seconds
           - players
       type: object
     SquadFirstEvents:

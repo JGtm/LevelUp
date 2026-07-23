@@ -32,6 +32,7 @@ import { SessionNetLivesCumulative } from './SessionNetLivesCumulative'
 import { SessionMmrDumbbell } from './SessionMmrDumbbell'
 import { SessionPerfTrend } from './SessionPerfTrend'
 import { SessionEngagementChart } from './SessionEngagementChart'
+import { SessionEngagementCumulative } from './SessionEngagementCumulative'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { SessionDamageComposite } from './SessionDamageComposite'
@@ -142,6 +143,13 @@ export function SessionChartStack({
         matches={matches}
         entry={entry}
         yDomain={scale?.engagement}
+      />
+      {/* Écart d'engagement cumulé (P4) — cumul du résidu pondéré par la durée. */}
+      <SessionEngagementCumulative
+        title={t('session.detail.chart_engagement_cumulative_title')}
+        matches={matches}
+        entry={entry}
+        yDomain={scale?.engagementGap}
       />
     </FeatureGate>
   )

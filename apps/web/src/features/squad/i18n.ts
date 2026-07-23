@@ -210,6 +210,12 @@ export interface SquadText {
     /** Tooltip explicatif de la formule (jeton {{HP}} = barème du titre). */
     tooltip: string
   }
+  /** « Écart d'engagement cumulé » (P4 — résidu pace_observed − team_expected × durée, par joueur). */
+  engagementGap: {
+    title: string
+    /** Tooltip explicatif (unité = événements en excès/déficit). */
+    tooltip: string
+  }
   weaponKills: {
     title: string
     description: string
@@ -494,6 +500,10 @@ const FR_TEXT: SquadText = {
     title: 'Balance des dégâts cumulée',
     tooltip: 'Balance des dégâts = (dégâts infligés − dégâts subis) ÷ {{HP}} PV, exprimée en vies. Positif = tu portes l\'équipe ; négatif = tu coûtes plus que tu ne rapportes.',
   },
+  engagementGap: {
+    title: 'Écart d\'engagement cumulé',
+    tooltip: 'Écart d\'engagement = (rythme observé − rythme attendu) × durée du match, cumulé. Exprimé en événements en excès (positif) ou en déficit (négatif) vs l\'attendu.',
+  },
   weaponKills: {
     title: 'Outils de destruction',
     description: 'Frags cumulés par arme sur les matchs partagés. Tri ASC : armes peu utilisées en haut, principales en bas.',
@@ -774,6 +784,10 @@ const EN_TEXT: SquadText = {
   netLives: {
     title: 'Cumulative damage balance',
     tooltip: 'Damage balance = (damage dealt − damage taken) ÷ {{HP}} HP, expressed in lives. Positive = you carry the team; negative = you cost more than you bring.',
+  },
+  engagementGap: {
+    title: 'Cumulative engagement gap',
+    tooltip: 'Engagement gap = (observed pace − expected pace) × match duration, accumulated. Expressed in events in surplus (positive) or deficit (negative) vs expected.',
   },
   weaponKills: {
     title: 'Tools of destruction',

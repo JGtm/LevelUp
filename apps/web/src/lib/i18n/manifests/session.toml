@@ -255,6 +255,23 @@ en = "Engagement"
 fr = "évén./min vs attendu"
 en = "events/min vs expected"
 
+# Écart d'engagement cumulé (P4) — cumul du résidu évén./min pondéré par la durée.
+[session.detail.chart_engagement_cumulative_title]
+fr = "Écart d'engagement cumulé"
+en = "Cumulative engagement gap"
+
+[session.detail.engagement_cumulative_series]
+fr = "Écart cumulé"
+en = "Cumulative gap"
+
+[session.detail.engagement_cumulative_match]
+fr = "Écart du match"
+en = "Match gap"
+
+[session.detail.engagement_cumulative_axis]
+fr = "événements (excès/déficit)"
+en = "events (surplus/deficit)"
+
 [session.detail.chart_mode_breakdown_title]
 fr = "Modes joués"
 en = "Modes played"

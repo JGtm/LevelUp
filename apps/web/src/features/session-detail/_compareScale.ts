@@ -12,6 +12,7 @@
 import type { SessionCompareEntry, SessionDetailMatchRow } from '@/lib/api/types'
 import { cumulativeSigned } from '@/lib/charts/cumulativeSeries'
 import { netLives } from '@/lib/charts/netLives'
+import { engagementGapEvents } from '@/lib/charts/engagementGap'
 
 import { modalValue } from './SessionPlacementBreakdown'
 
@@ -24,6 +25,8 @@ export interface CompareScale {
   fdaMinute?: [number, number]
   /** [min, max] du score d'engagement (résidu centré sur 0), 0 inclus. */
   engagement?: [number, number]
+  /** [min, max] de l'écart d'engagement cumulé (événements), 0 inclus. */
+  engagementGap?: [number, number]
   /** Max du compte de placements (axe Y). */
   placementMaxCount?: number
   /** Nb de placements affichés (axe X #1..N) — commun aux deux sessions. */
@@ -72,6 +75,22 @@ function engagementValues(entry: SessionCompareEntry | null): number[] {
   return (entry?.match_series ?? [])
     .map((p) => p.engagement_score)
     .filter((v): v is number => v != null)
+}
+
+/**
+ * cf. SessionEngagementCumulative : cumul de engagement_score × durée/60
+ * (événements). Zip match_series (trié par index) ↔ matches (triés par start_time).
+ */
+function engagementGapCumulatives(
+  matches: SessionDetailMatchRow[],
+  entry: SessionCompareEntry | null,
+): number[] {
+  const ms = [...(entry?.match_series ?? [])].sort((a, b) => a.index - b.index)
+  if (ms.length === 0) return []
+  const sorted = [...matches].sort((a, b) => a.start_time.localeCompare(b.start_time))
+  return cumulativeSigned(
+    ms.map((p, i) => engagementGapEvents(p.engagement_score ?? null, sorted[i]?.duration_seconds ?? null)),
+  ).map((c) => c.cumulative)
 }
 
 /** cf. SessionPlacementBreakdown : compte par placement + borne d'axe (lobby modal). */
@@ -127,6 +146,13 @@ export function computeCompareScale(
 
   const engVals = [...engagementValues(aEntry), ...engagementValues(bEntry)]
   if (engVals.length > 0) scale.engagement = [Math.min(...engVals, 0), Math.max(...engVals, 0)]
+
+  const engGapVals = [
+    ...engagementGapCumulatives(aMatches, aEntry),
+    ...engagementGapCumulatives(bMatches, bEntry),
+  ]
+  if (engGapVals.length > 0)
+    scale.engagementGap = [Math.min(...engGapVals, 0), Math.max(...engGapVals, 0)]
 
   const ps = [placementBounds(aMatches), placementBounds(bMatches)].filter(
     (x): x is NonNullable<typeof x> => x != null,
