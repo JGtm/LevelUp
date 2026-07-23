@@ -71,7 +71,7 @@ func baseDeps(t *testing.T, fetcher *mockAppearanceFetcher) AppearanceDiagDeps {
 		FetchTokens: func(context.Context, string, string) (string, string, error) {
 			return "spartan-token", "clearance-token", nil
 		},
-		NewFetcher: func(string, string, string) AppearanceFetcher { return fetcher },
+		NewFetcher:           func(string, string, string) AppearanceFetcher { return fetcher },
 		HasSpartanCustomizer: func(string) bool { return false },
 		Clock:                testFixedClock,
 	}

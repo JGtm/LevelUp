@@ -50,9 +50,9 @@ type AdminDataQualityIssue struct {
 // d'inconnus de ce kind (avant fenêtrage) — alimente la pagination serveur du
 // front (table longue des xuids orphelins).
 type AdminDataQualityIssues struct {
-	TitleSlug   string                  `json:"title_slug"`
-	GeneratedAt string                  `json:"generated_at"`
-	Kind        string                  `json:"kind"`
+	TitleSlug   string `json:"title_slug"`
+	GeneratedAt string `json:"generated_at"`
+	Kind        string `json:"kind"`
 	// Locale de traduction visée (défaut « fr », paramètre ?locale=) — pertinente
 	// pour untranslated_modes, échotée pour le libellé front honnête.
 	Locale string                  `json:"locale"`

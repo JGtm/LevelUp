@@ -1,5 +1,10 @@
 # PLAN — Page admin : traitement des retours utilisateur + diagnostic apparence Spartan ID — 2026-07
 
+> **STATUT : LIVRÉ le 2026-07-23** (branche `feat/admin-retours-diag`, 10 commits,
+> worktree dédié). Volets 1 ET 2 complets, 24/24 retours statués, gates + vérification
+> fonctionnelle réelle passés (constat Gate H). Restent : push/CI (I3, décision
+> utilisateur — base D7 non poussée) et archivage `.ai/v7.1/` (I5, après merge).
+
 > Plan d'exécution pour agent. Contrat : skill `plan-execution` (ordre strict, une étape
 > à la fois, gate par lot, statuts [x]/[~]/[!], zéro fix hors périmètre).
 > Rédigé le 2026-07-08 (volet diagnostic apparence, après l'épisode « bannière JGtm
@@ -407,47 +412,59 @@ inattendu.
 
 ## Lot I — Clôture globale
 
-- [ ] I1. Skill `delivery-checklist` complet (aucun TODO introduit, fichiers ≤ 500 L,
+- [x] I1. Skill `delivery-checklist` complet (aucun TODO introduit, fichiers ≤ 500 L,
       fonctions ≤ 80 L, parité i18n FR/EN).
-- [ ] I2. Entrée `thought_log.md` + statuts finaux dans ce plan (aucun item sans statut,
+      (Déroulée le 2026-07-23 : `go test -tags=integration -p 1 ./...` COMPLET exit 0
+      (anti-ART inclus, 0 `--- FAIL:`) ; go vet 0 ; gofmt purgé (3 fichiers corrigés à
+      la clôture) ; 0 TODO introduit ; 0 println (1 hit = commentaire préexistant) ;
+      joins `data` ajoutés = 2, tous deux DANS PathResolver (site canonique) ; front :
+      gates verts à la clôture du Lot G (tsc/lint/vitest 2652), aucun fichier front
+      modifié depuis (commits H/I = .ai + gofmt Go).)
+- [x] I2. Entrée `thought_log.md` + statuts finaux dans ce plan (aucun item sans statut,
       table de traçabilité annexe statuée).
-- [ ] I3. CI de branche verte (`gh run list --branch feat/admin-retours-diag`).
-- [ ] I4. Prévenir l'utilisateur pour le merge (deploy prod auto) + lui remettre la
+- [!] I3. CI de branche verte (`gh run list --branch feat/admin-retours-diag`).
+      (BLOQUÉ décision utilisateur : la branche n'est pas poussée — sa base
+      `feat/title-slug-in-url` (chantier D7) ne l'est pas non plus, un push publierait
+      les deux. Même statut que la clôture D7. Tous les gates CI-équivalents ont été
+      rejoués localement (Go complet + integration -p 1, tsc -b forcé, eslint, vitest).
+      À pousser avec l'accord utilisateur, puis vérifier `gh run list`.)
+- [x] I4. Prévenir l'utilisateur pour le merge (deploy prod auto) + lui remettre la
       liste des retours Notion traités (le backlog Notion est SON carnet : ne pas y
-      écrire).
+      écrire). (Fait dans le message de clôture du chantier.)
 - [ ] I5. Après merge : déplacer ce plan vers `.ai/v7.1/` (créer le dossier si besoin —
       demande utilisateur du 2026-07-16) + MAJ `.ai/project_map.md`.
+      (DIFFÉRÉ PAR LE PLAN : dépendance explicite « après merge ».)
 
 ## Annexe — Traçabilité retours Notion (2026-07-16) → items du plan
 
-À statuer à la clôture, aucun retour sans statut.
+Statuée à la clôture (2026-07-23) — aucun retour sans statut.
 
-| # | Retour (résumé) | Item(s) |
-|---|---|---|
-| 1 | Plan implémenté ? / archivage `.ai/v7.1` | En-tête « Statut » + I5 |
-| 2 | Invariants / Intégrité : cases dans des cases, titres dans blocs | A1 |
-| 3 | Contention DB (sync) : même défaut | A1 |
-| 4 | Sauvegarde : deux grands blocs quasi vides | A3 |
-| 5 | Gestion : deux blocs « Utilisateurs » | A1 |
-| 6 | « Gestion des titres » mal organisé (titres/blocs/UI) | A1 + B6 |
-| 7 | « Enregistrer un 2e titre » succinct et daté | B4 |
-| 8 | Détections : boutons superposés, flow obscur, popup navigateur | B1 |
-| 9 | « Tas Go » incompréhensible | B2 |
-| 10 | Restic « introuvable » alors que non configuré | B3 |
-| 11 | Paginer les logs bruts | C4 |
-| 12 | Tailles des DBs et WAL invisibles | C5 |
-| 13 | Timeline post-sync + post-sync dernier cycle vides | C1 |
-| 14 | XUIDs orphelins : pagination, « Vu pour la dernière fois » = « - », wording | C3 + B5 |
-| 15 | « Diagnostics d'instance » : UI horrible | D1-D3 (suppression) |
-| 16 | Rapport de parité : Python inexistant + doublon | D1 |
-| 17 | Guards médailles : « Entrées analysées 0 » | D2 |
-| 18 | « Migrate-media-paths » absent | D4 |
-| 19 | Modes sans traduction FR / Assets UUID : locale + exemples concrets | C7 |
-| 20 | Actions globales : dernière exécution inconnue | C2 |
-| 21 | Couverture arme H5 : inconnues inexpliquées | C6 |
-| 22 | Onglet Gestion excentré, invisible | A2 |
-| 23 | Capabilities d'Infinite absentes + « Diagnostic » peu narratif | B6 |
-| 24 | Sélections hors catalogue : succès pas visible (placeholder) | A4 |
+| # | Retour (résumé) | Item(s) | Statut |
+|---|---|---|---|
+| 1 | Plan implémenté ? / archivage `.ai/v7.1` | En-tête « Statut » + I5 | [x] implémenté (ce chantier) ; archivage I5 après merge |
+| 2 | Invariants / Intégrité : cases dans des cases, titres dans blocs | A1 | [x] |
+| 3 | Contention DB (sync) : même défaut | A1 | [x] |
+| 4 | Sauvegarde : deux grands blocs quasi vides | A3 | [x] |
+| 5 | Gestion : deux blocs « Utilisateurs » | A1 | [x] |
+| 6 | « Gestion des titres » mal organisé (titres/blocs/UI) | A1 + B6 | [x] |
+| 7 | « Enregistrer un 2e titre » succinct et daté | B4 | [x] |
+| 8 | Détections : boutons superposés, flow obscur, popup navigateur | B1 | [x] |
+| 9 | « Tas Go » incompréhensible | B2 | [x] |
+| 10 | Restic « introuvable » alors que non configuré | B3 | [x] |
+| 11 | Paginer les logs bruts | C4 | [x] |
+| 12 | Tailles des DBs et WAL invisibles | C5 | [x] durci + verdict environnemental (à confirmer en prod : LEVELUP_REPO_ROOT) |
+| 13 | Timeline post-sync + post-sync dernier cycle vides | C1 | [x] |
+| 14 | XUIDs orphelins : pagination, « Vu pour la dernière fois » = « - », wording | C3 + B5 | [x] |
+| 15 | « Diagnostics d'instance » : UI horrible | D1-D3 (suppression) | [x] supprimé |
+| 16 | Rapport de parité : Python inexistant + doublon | D1 | [x] supprimé |
+| 17 | Guards médailles : « Entrées analysées 0 » | D2 | [x] supprimé (déjà couvert par cmd/refresh-metadata) |
+| 18 | « Migrate-media-paths » absent | D4 | [x] documenté (COMMANDS EN+FR) |
+| 19 | Modes sans traduction FR / Assets UUID : locale + exemples concrets | C7 | [x] |
+| 20 | Actions globales : dernière exécution inconnue | C2 | [x] |
+| 21 | Couverture arme H5 : inconnues inexpliquées | C6 | [x] résolu (reconcile boot : 100 % vérifié en réel) + note UI |
+| 22 | Onglet Gestion excentré, invisible | A2 | [x] |
+| 23 | Capabilities d'Infinite absentes + « Diagnostic » peu narratif | B6 | [x] + cause racine consignée (carte mono-titre sur sélection) |
+| 24 | Sélections hors catalogue : succès pas visible (placeholder) | A4 | [x] |
 
 ## Découvertes (à consigner ici, NE PAS traiter hors périmètre)
 

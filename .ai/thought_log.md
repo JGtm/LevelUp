@@ -222,6 +222,41 @@ résolu contre 7), journal 200, « Aucun cycle enregistré » (C1). Navigateur r
 **Prochaine étape** : Lot I (delivery-checklist, statuts finaux + annexe traçabilité,
 CI de branche, message final utilisateur).
 
+## [2026-07-23] CLÔTURE chantier admin retours + diagnostic apparence (branche feat/admin-retours-diag)
+
+**Statut** : Complété — plan `.ai/PLAN_DIAG_APPARENCE_ADMIN_2026-07.md` passé LIVRÉ.
+Volet 1 (24 retours Notion, lots A-D) + volet 2 (diagnostic apparence Spartan ID,
+lots E-H) + clôture I. 10 commits sur worktree dédié `LevelUp-wt-admin-retours`,
+branche NON poussée (I3 [!] : base D7 non poussée — décision d'intégration
+utilisateur). Archivage `.ai/v7.1/` différé à l'après-merge (I5).
+
+**Livré** : structure UI admin canonique (titres hors cartes, Gestion dans le flux,
+états vides succès) ; flows clarifiés (dialog note in-app, sauvegarde 3 états, aide
+titres réelle) ; anti-amnésie (adminstate JSON atomique : post-sync réhydraté +
+journal des actions) ; listes durcies (last-seen + pagination xuids, logs charger
+plus, inventaire DBs explicite) ; armes H5 100 % (reconcile registre au boot) ;
+purge totale parité/lab (−1434 L) ; et le diagnostic apparence de bout en bout
+(resolver byte-identique → service verdicts → endpoint admin → panneau UI), vérifié
+sur données réelles : JGtm 4×ok en 2,0 s (Microsoft a publié la nameplate 3806589 —
+fixture E4 = preuve pérenne du upstream_missing), Chocoboflor 4×auth_required + CTA
+SSO, H5 4×not_supported, 404 propre.
+
+**Gates de clôture (delivery-checklist)** : go test -tags=integration -p 1 ./...
+COMPLET exit 0 ; go vet 0 ; gofmt purgé ; tsc -b/eslint/vitest 2652 verts (Lot G,
+aucun diff front depuis) ; 0 TODO ; joins data uniquement dans PathResolver.
+
+**Leçon d'orchestration** (Fable pilote + 8 lots Opus + 3 relances SendMessage) :
+les découvertes d'agent requalifient les décisions — 2 exemples : la découverte
+« migration one-shot inerte » a transformé C6 de « résidu documenté » en vrai
+correctif pérenne (reconcile au boot, 100 % vérifié en réel) ; la preuve API D2 a
+évité un re-hébergement inutile. Vérification sur pièces + navigateur + données
+réelles à chaque lot = le filet qui tient.
+
+**Prochaine étape** : décisions utilisateur — push de la branche (publie aussi la
+base D7) puis CI, revue, merge → main (= DEPLOY PROD AUTO ; au premier boot prod :
+vérifier couverture H5 100 %, LEVELUP_REPO_ROOT/inventaire DBs, capabilities
+Infinite). Après merge : I5 (archivage plan + MAJ project_map).
+
 ## [2026-07-22] D7 titre dans l'URL — Phase 0 close (branche feat/title-slug-in-url)
 
 **Statut** : En cours (Phase 0/6 close), plan `.ai/PLAN_TITLE_SLUG_URL_2026-07.md` sous
