@@ -39,8 +39,7 @@ export function AdminTitlesPage() {
     <div className="space-y-4">
       <Card>
         <CardContent className="pt-6">
-          <h2 className="text-lg font-semibold text-foreground">{tA('admin.titles.heading')}</h2>
-          <p className="mt-1 text-xs text-muted-foreground">{tA('admin.titles.subtitle')}</p>
+          <p className="text-xs text-muted-foreground">{tA('admin.titles.subtitle')}</p>
 
           {isLoading ? (
             <p className="mt-4 text-sm text-muted-foreground">{tA('admin.titles.loading')}</p>

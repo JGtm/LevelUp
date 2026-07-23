@@ -2,7 +2,6 @@
  * InvariantsSection — Intégrité des données (invariants sync, plan
  * SYNC_INVARIANTS_GATE). Extraction 1:1 depuis l'ancienne AdminPage.
  */
-import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { intlLocale } from '@/lib/formatters'
@@ -35,61 +34,59 @@ export function InvariantsSection() {
     buildInvariantsSnapshot(data!),
   )
 
+  // Le titre de section « Invariants » est porté hors carte par la page parente
+  // (AdminDataPage) : ici, uniquement l'horodatage + le rafraîchissement, puis
+  // le contenu à plat (un seul niveau, plus de carte-dans-carte).
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">
-              {t('common.admin.invariants_section')}
-            </h2>
-            {data?.generated_at && (
-              <p className="text-xs text-muted-foreground">
-                {t('common.admin.invariants_generated_at')}{' '}
-                {new Date(data.generated_at).toLocaleString(intlLocale(locale))}
-              </p>
-            )}
-          </div>
-          <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isFetching}>
-            {isFetching ? t('common.admin.invariants_loading') : t('common.admin.invariants_refresh')}
-          </Button>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          {data?.generated_at && (
+            <p className="text-xs text-muted-foreground">
+              {t('common.admin.invariants_generated_at')}{' '}
+              {new Date(data.generated_at).toLocaleString(intlLocale(locale))}
+            </p>
+          )}
         </div>
+        <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isFetching}>
+          {isFetching ? t('common.admin.invariants_loading') : t('common.admin.invariants_refresh')}
+        </Button>
+      </div>
 
-        {isLoading ? (
-          <p className="text-sm text-muted-foreground">{t('common.admin.invariants_loading')}</p>
-        ) : isError ? (
-          <p className="text-sm text-destructive">{t('common.admin.invariants_load_failed')}</p>
-        ) : !data?.reports?.length ? (
-          <p className="text-sm text-muted-foreground">{t('common.admin.invariants_empty')}</p>
-        ) : (
-          <div className="space-y-3">
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">{t('common.admin.invariants_loading')}</p>
+      ) : isError ? (
+        <p className="text-sm text-destructive">{t('common.admin.invariants_load_failed')}</p>
+      ) : !data?.reports?.length ? (
+        <p className="text-sm text-muted-foreground">{t('common.admin.invariants_empty')}</p>
+      ) : (
+        <div className="space-y-3">
+          <InvariantsCard
+            title={t('common.admin.invariants_shared_scope')}
+            scope={SHARED_SCOPE_KEY}
+            checkError={data.shared_check_error}
+            failCount={data.shared_fail_count}
+            warnCount={data.shared_warn_count}
+            violations={data.shared_violations ?? []}
+            previous={previous}
+            t={t}
+          />
+          {data.reports.map((r) => (
             <InvariantsCard
-              title={t('common.admin.invariants_shared_scope')}
-              scope={SHARED_SCOPE_KEY}
-              checkError={data.shared_check_error}
-              failCount={data.shared_fail_count}
-              warnCount={data.shared_warn_count}
-              violations={data.shared_violations ?? []}
+              key={r.player_slug || r.gamertag}
+              title={r.gamertag}
+              scope={r.player_slug}
+              checkError={r.check_error}
+              failCount={r.fail_count}
+              warnCount={r.warn_count}
+              violations={r.violations ?? []}
               previous={previous}
               t={t}
             />
-            {data.reports.map((r) => (
-              <InvariantsCard
-                key={r.player_slug || r.gamertag}
-                title={r.gamertag}
-                scope={r.player_slug}
-                checkError={r.check_error}
-                failCount={r.fail_count}
-                warnCount={r.warn_count}
-                violations={r.violations ?? []}
-                previous={previous}
-                t={t}
-              />
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 

@@ -49,7 +49,14 @@ function SectionShell({
         <SectionHeader title={title} />
         {hint && <p className="mt-0.5 max-w-2xl text-xs text-muted-foreground">{hint}</p>}
       </div>
-      {count === 0 ? <EmptyStateNotice title={emptyTitle} description={emptyDesc} /> : children}
+      {/* count === 0 = plus aucune inconnue dans cette catégorie : c'est un
+          succès (catalogue complet / tout traduit / zéro orphelin), rendu en
+          vert perceptible plutôt qu'en placeholder gris. */}
+      {count === 0 ? (
+        <EmptyStateNotice title={emptyTitle} description={emptyDesc} tone="success" />
+      ) : (
+        children
+      )}
     </section>
   )
 }
