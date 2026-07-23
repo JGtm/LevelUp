@@ -254,7 +254,6 @@ export interface SettingsText {
 
   // Onglet Backup
   tabBackup: string
-  backupTitle: string
   backupStatusEnabled: string
   backupStatusDisabled: string
   backupStatusResticMissing: string
@@ -544,7 +543,6 @@ const FR_TEXT: SettingsText = {
   teamColorDefault: 'Défaut palette',
 
   tabBackup: 'Sauvegarde',
-  backupTitle: 'Sauvegarde des bases DuckDB',
   backupStatusEnabled: 'Activée',
   backupStatusDisabled: 'Désactivée',
   backupStatusResticMissing: 'Restic introuvable',
@@ -834,7 +832,6 @@ const EN_TEXT: SettingsText = {
   teamColorDefault: 'Palette default',
 
   tabBackup: 'Backup',
-  backupTitle: 'DuckDB backup',
   backupStatusEnabled: 'Enabled',
   backupStatusDisabled: 'Disabled',
   backupStatusResticMissing: 'Restic not found',

@@ -6,8 +6,8 @@
  * Architecture DC-8 (A3) — chaque onglet répond à UNE question opérateur :
  * État (/admin) « tout va bien ? » · Détections « que dois-je traiter ? » ·
  * Données « mon warehouse est-il intègre ? » · Sync « le moteur tourne-t-il ? » ·
- * Système (bas niveau) · Gestion (administration, séparée visuellement du bloc
- * observation — ordre : observation d'abord, gestion à droite, A3.4).
+ * Système (bas niveau) · Gestion (administration). Tous les onglets vivent dans
+ * le même flux horizontal (observation d'abord, gestion en fin de barre).
  */
 import { useEffect } from 'react'
 import { Outlet, Link, useNavigate, useMatchRoute } from '@tanstack/react-router'
@@ -24,8 +24,6 @@ interface AdminTab {
   labelKey: AdminManifestKey
   /** Match exact pour l'index (/admin), fuzzy pour les sous-routes. */
   exact?: boolean
-  /** Bloc gestion : séparé visuellement du bloc observation (A3.4). */
-  management?: boolean
 }
 
 const TABS: AdminTab[] = [
@@ -34,7 +32,7 @@ const TABS: AdminTab[] = [
   { to: '/admin/data', labelKey: 'admin.nav.data' },
   { to: '/admin/sync', labelKey: 'admin.nav.sync' },
   { to: '/admin/system', labelKey: 'admin.nav.system' },
-  { to: '/admin/management', labelKey: 'admin.nav.management', management: true },
+  { to: '/admin/management', labelKey: 'admin.nav.management' },
 ]
 
 export function AdminLayout() {
@@ -77,8 +75,8 @@ export function AdminLayout() {
         </Button>
       </div>
 
-      {/* Navigation onglets (pattern SquadLayout) — le bloc gestion est poussé
-          à droite (ml-auto + séparateur) pour le distinguer de l'observation. */}
+      {/* Navigation onglets (pattern SquadLayout) — tous les onglets dans le
+          flux horizontal normal, Gestion en fin de barre comme les autres. */}
       <div className="border-b">
         <nav className="flex gap-0 overflow-x-auto">
           {TABS.map((tab) => {
@@ -90,8 +88,6 @@ export function AdminLayout() {
                 key={tab.to}
                 to={tab.to}
                 className={`flex items-center gap-1.5 whitespace-nowrap px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                  tab.management ? 'ml-auto border-l pl-6' : ''
-                } ${
                   active
                     ? 'border-b-primary text-primary'
                     : 'border-b-transparent text-muted-foreground hover:text-foreground'

@@ -1,10 +1,11 @@
 /**
- * BackupTab — onglet "Sauvegarde" de SettingsPage.
+ * BackupTab — contenu de la section « Sauvegarde » (monté par
+ * AdminBackupSection, page admin Système ; le titre de section vit hors carte).
  * Affiche le statut du scheduler DuckDB/Restic et permet de déclencher
  * une sauvegarde manuelle.
  */
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { useBackupStatus, useRunBackup } from '@/features/settings/queries'
 import type { getSettingsText } from '@/features/settings/i18n'
 import type { IntegrityResult } from '@/lib/api/types'
@@ -66,75 +67,99 @@ export function BackupTab({ t, frozen }: BackupTabProps) {
 
   return (
     // En démo, la sauvegarde manuelle est figée (cf. SyncTab) : <fieldset disabled>
-    // neutralise le bouton « Lancer ». Le statut reste lisible.
+    // neutralise le bouton « Lancer ». Le statut reste lisible. Le titre de la
+    // section (« Sauvegarde ») est porté hors carte par SectionHeader côté admin :
+    // une seule carte compacte statut + configuration + action.
     <fieldset
       disabled={frozen}
-      className={`m-0 min-w-0 space-y-6 border-0 p-0 ${frozen ? 'opacity-60' : ''}`}
+      className={`m-0 min-w-0 border-0 p-0 ${frozen ? 'opacity-60' : ''}`}
     >
-      {/* Statut */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-base">{t.backupTitle}</CardTitle>
-          {badge && (
-            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${badge.cls}`}>
-              {badge.label}
-            </span>
+        <CardContent className="space-y-4 pt-6">
+          {/* Statut + badge d'état */}
+          <div className="flex items-start justify-between gap-3">
+            {isLoading ? (
+              <p className="text-sm text-muted-foreground">{t.backupNever}</p>
+            ) : status?.last_backup_at ? (
+              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+                <dt className="text-muted-foreground">{t.backupLastBackup}</dt>
+                <dd>{fmtDate(status.last_backup_at)}</dd>
+
+                {status.last_snapshot_id && (
+                  <>
+                    <dt className="text-muted-foreground">{t.backupSnapshotId}</dt>
+                    <dd className="font-mono text-xs">{status.last_snapshot_id.slice(0, 12)}</dd>
+                  </>
+                )}
+
+                {status.last_exported && status.last_exported.length > 0 && (
+                  <>
+                    <dt className="text-muted-foreground">{t.backupDatabases}</dt>
+                    <dd className="flex flex-wrap gap-1">
+                      {status.last_exported.map((key) => (
+                        <span key={key} className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
+                          {key}
+                        </span>
+                      ))}
+                    </dd>
+                  </>
+                )}
+
+                {status.integrity_checks && Object.keys(status.integrity_checks).length > 0 && (
+                  <>
+                    <dt className="text-muted-foreground">{t.backupIntegrityLabel}</dt>
+                    <dd className="flex flex-wrap gap-1">
+                      {Object.entries(status.integrity_checks).map(([key, result]) => (
+                        <span key={key} className="flex items-center gap-1">
+                          <span className="text-xs text-muted-foreground font-mono">{key}</span>
+                          <IntegrityBadge result={result} />
+                        </span>
+                      ))}
+                    </dd>
+                  </>
+                )}
+
+                {status.last_duration_ms != null && (
+                  <>
+                    <dt className="text-muted-foreground">{t.backupDuration}</dt>
+                    <dd>{fmtDuration(status.last_duration_ms)}</dd>
+                  </>
+                )}
+              </dl>
+            ) : (
+              <p className="text-sm text-muted-foreground">{t.backupNever}</p>
+            )}
+            {badge && (
+              <span
+                className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${badge.cls}`}
+              >
+                {badge.label}
+              </span>
+            )}
+          </div>
+
+          {/* Configuration (lecture seule) — repliée dans la même carte */}
+          {status?.config && (
+            <div className="space-y-1 border-t pt-3">
+              <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                {t.backupConfigTitle}
+              </div>
+              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+                <dt className="text-muted-foreground">{t.backupConfigInterval}</dt>
+                <dd className="font-mono">{status.config.interval}</dd>
+                <dt className="text-muted-foreground">{t.backupConfigRetention}</dt>
+                <dd>
+                  {t.backupConfigRetentionValue
+                    .replace('{daily}', String(status.config.keep_daily))
+                    .replace('{weekly}', String(status.config.keep_weekly))
+                    .replace('{monthly}', String(status.config.keep_monthly))}
+                </dd>
+              </dl>
+            </div>
           )}
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {isLoading ? (
-            <p className="text-sm text-muted-foreground">{t.backupNever}</p>
-          ) : status?.last_backup_at ? (
-            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-              <dt className="text-muted-foreground">{t.backupLastBackup}</dt>
-              <dd>{fmtDate(status.last_backup_at)}</dd>
 
-              {status.last_snapshot_id && (
-                <>
-                  <dt className="text-muted-foreground">{t.backupSnapshotId}</dt>
-                  <dd className="font-mono text-xs">{status.last_snapshot_id.slice(0, 12)}</dd>
-                </>
-              )}
-
-              {status.last_exported && status.last_exported.length > 0 && (
-                <>
-                  <dt className="text-muted-foreground">{t.backupDatabases}</dt>
-                  <dd className="flex flex-wrap gap-1">
-                    {status.last_exported.map((key) => (
-                      <span key={key} className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
-                        {key}
-                      </span>
-                    ))}
-                  </dd>
-                </>
-              )}
-
-              {status.integrity_checks && Object.keys(status.integrity_checks).length > 0 && (
-                <>
-                  <dt className="text-muted-foreground">{t.backupIntegrityLabel}</dt>
-                  <dd className="flex flex-wrap gap-1">
-                    {Object.entries(status.integrity_checks).map(([key, result]) => (
-                      <span key={key} className="flex items-center gap-1">
-                        <span className="text-xs text-muted-foreground font-mono">{key}</span>
-                        <IntegrityBadge result={result} />
-                      </span>
-                    ))}
-                  </dd>
-                </>
-              )}
-
-              {status.last_duration_ms != null && (
-                <>
-                  <dt className="text-muted-foreground">{t.backupDuration}</dt>
-                  <dd>{fmtDuration(status.last_duration_ms)}</dd>
-                </>
-              )}
-            </dl>
-          ) : (
-            <p className="text-sm text-muted-foreground">{t.backupNever}</p>
-          )}
-
-          <div className="flex items-center gap-3 pt-1">
+          {/* Action */}
+          <div className="flex items-center gap-3 border-t pt-3">
             <Button
               size="sm"
               disabled={runBackup.isPending || !status?.available}
@@ -152,28 +177,6 @@ export function BackupTab({ t, frozen }: BackupTabProps) {
           </div>
         </CardContent>
       </Card>
-
-      {/* Configuration (lecture seule) */}
-      {status?.config && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">{t.backupConfigTitle}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-              <dt className="text-muted-foreground">{t.backupConfigInterval}</dt>
-              <dd className="font-mono">{status.config.interval}</dd>
-              <dt className="text-muted-foreground">{t.backupConfigRetention}</dt>
-              <dd>
-                {t.backupConfigRetentionValue
-                  .replace('{daily}', String(status.config.keep_daily))
-                  .replace('{weekly}', String(status.config.keep_weekly))
-                  .replace('{monthly}', String(status.config.keep_monthly))}
-              </dd>
-            </dl>
-          </CardContent>
-        </Card>
-      )}
     </fieldset>
   )
 }

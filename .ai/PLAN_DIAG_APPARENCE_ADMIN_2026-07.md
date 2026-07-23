@@ -147,6 +147,10 @@ Volet 2 :
 ## Branche et livraison
 
 - Branche : **`feat/admin-retours-diag`**, créée depuis `main` À JOUR.
+  - DÉVIATION CONSIGNÉE (2026-07-23, demande utilisateur) : branche créée depuis
+    `feat/title-slug-in-url` @ `7a79c7961` (chantier D7 livré, non mergé) dans le
+    worktree dédié `LevelUp-wt-admin-retours` — le travail admin s'empile sur les
+    routes D7 et suivra son intégration.
 - 1 tâche = 1 branche, N commits — au moins 1 commit par lot. Prévenir l'utilisateur
   avant tout merge dans `main` (= deploy prod auto).
 - Ordre : lots A → I, strictement séquentiels.
@@ -159,23 +163,27 @@ Volet 2 :
 
 ### Lot A — Structure UI transverse (front seul)
 
-- [ ] A1. Sortir les titres des cartes et supprimer les imbrications — périmètre FERMÉ,
+- [x] A1. Sortir les titres des cartes et supprimer les imbrications — périmètre FERMÉ,
       4 composants : `InvariantsSection.tsx` (« Intégrité des données » sous la section
       « Invariants » → un seul niveau, titre via `SectionHeader` hors carte),
       `DBContentionSection.tsx` (« Contention DB (sync) »), `UsersSection.tsx` +
       `management/AdminManagementPage.tsx` (doublon « Utilisateurs » : UN seul titre de
       section, la carte perd son h2), `titles/AdminTitlesPage.tsx` (« Titres » section
       vs « Gestion des titres » carte : garder un seul niveau de titre).
-- [ ] A2. `AdminLayout.tsx` : réintégrer « Gestion » dans le flux des onglets (retirer
+- [x] A2. `AdminLayout.tsx` : réintégrer « Gestion » dans le flux des onglets (retirer
       `ml-auto border-l pl-6` et le flag `management` s'il ne sert plus qu'à ça).
       Ordre final : État, Détections, Données, Sync, Système, Gestion.
-- [ ] A3. Sauvegarde (`AdminBackupSection.tsx`) : fusionner les deux blocs quasi vides
+- [x] A3. Sauvegarde (`AdminBackupSection.tsx`) : fusionner les deux blocs quasi vides
       en UNE section (`SectionHeader` « Sauvegarde ») + une carte statut/action compacte.
-- [ ] A4. « Sélections hors catalogue » : état « catalogue complet » rendu comme un
+      (Réalisé dans `settings/BackupTab.tsx`, siège réel des deux cartes ; consommateur
+      unique = `AdminBackupSection`, vérifié par grep.)
+- [x] A4. « Sélections hors catalogue » : état « catalogue complet » rendu comme un
       succès visible (EmptyState avec icône/badge token success), plus un texte
       placeholder gris. Balayer les autres états vides de `IssueSections.tsx` pour la
       même sémantique (périmètre : ce fichier uniquement).
-- [ ] A5. Ajuster les tests vitest impactés par A1-A4 (pas de nouveau test de layout).
+- [x] A5. Ajuster les tests vitest impactés par A1-A4 (pas de nouveau test de layout).
+      (Constat : aucun test n'assertait les titres retirés — zéro adaptation nécessaire,
+      suite complète verte sans modification.)
 
 **Gate A** : gate front + vérification visuelle locale (`make dev`) sur liste fermée :
 Données (Invariants), Système (Contention, Sauvegarde), Gestion (Utilisateurs, Titres) —
@@ -403,7 +411,36 @@ inattendu.
 
 ## Découvertes (à consigner ici, NE PAS traiter hors périmètre)
 
-- (vide)
+- [Lot A] 3 clés i18n orphelines après retrait des h2 : `common.admin.invariants_section`,
+  `common.admin.users_section` (common.toml), `admin.titles.heading` (admin.toml).
+  À purger au Lot B (regen manifests incluse dans son gate).
+- [Lot A] `UsersSection.tsx` (~L30) utilise `confirm()` natif pour la suppression
+  d'utilisateur — même famille que le `window.prompt` visé par B1 ; le plan ne couvre
+  que les détections. À trancher au Lot B (extension B1 ou découverte assumée).
+- [Lot A] C5 à re-qualifier : la table tailles DBs/WAL de `/admin/system` AFFICHE des
+  données en dev local (12 bases, tailles + WAL, vérifié navigateur 2026-07-23) — le
+  symptôme « invisible » est donc environnemental (prod ?) et non un bug de rendu.
+- [Lot A] `TitleDetailCards` affiche DÉJÀ la liste détaillée des capabilities pour H5
+  (vu navigateur) — B6 devra vérifier sur pièces ce qui manque réellement (retour #23
+  visait surtout Infinite).
+
+## Journal d'exécution
+
+### [2026-07-23] Lot A — CLOS (agent Opus + revue orchestrateur)
+
+- A1-A5 tous [x]. Fichiers : `empty-state.tsx` (prop `tone` success, token sémantique),
+  `AdminLayout.tsx` (Gestion dans le flux + doc corrigée), `IssueSections.tsx`
+  (tone=success sur les 4 états vides), `DBContentionSection.tsx` + `InvariantsSection.tsx`
+  (cartes supprimées, SectionHeader hors carte), `UsersSection.tsx` + `AdminTitlesPage.tsx`
+  (h2 doublons retirés), `BackupTab.tsx` (fusion en une carte, logique Restic intacte,
+  en-tête de doc corrigé par l'orchestrateur), `settings/i18n.ts` (clé `backupTitle` retirée FR+EN).
+- Gate re-exécuté par l'orchestrateur : tsc -b 0 (purge .tmp) ; eslint 0 erreur
+  (67 warnings préexistants) ; vitest 297 fichiers / 2620 passés / 0 échec.
+- Matrice navigateur Playwright (vite worktree :5174 + API réelle :8000, bootstrap
+  intercepté is_admin) : 6 onglets dans le flux (Gestion dernier, 0 ml-auto), 0 h2 en
+  carte sur data/system/management, un seul titre Utilisateurs, « Gestion des titres »
+  disparu, 4 états vides succès (stub zéro) + 1 en données réelles, 0 erreur console.
+  Captures revues visuellement (cohérence tokens/graisse OK).
 
 ## Protocole de reprise de session
 

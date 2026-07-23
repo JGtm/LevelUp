@@ -1,3 +1,29 @@
+## [2026-07-23] Admin retours + diag apparence — Lot A clos (branche feat/admin-retours-diag)
+
+**Statut** : En cours (Lot A/I clos), plan `.ai/PLAN_DIAG_APPARENCE_ADMIN_2026-07.md`
+sous contrat `plan-execution`. Orchestration : Fable pilote + vérifie, agents Opus
+implémentent, worktree dédié `LevelUp-wt-admin-retours`.
+
+**Décisions** : branche créée depuis `feat/title-slug-in-url` @ `7a79c7961` (D7 livré non
+mergé — demande utilisateur, consignée au plan). A1 variante : le titre unique
+« Invariants » reste porté par `AdminDataPage` (ajouter un SectionHeader enfant aurait
+recréé le doublon signalé). A3 réalisé dans `BackupTab.tsx` (siège réel des deux cartes,
+consommateur unique `AdminBackupSection` vérifié). A4 : prop `tone: success` minimale et
+rétrocompatible sur `EmptyStateNotice` (token sémantique via `tokenCssVar`, pas de hex).
+
+**Résultats/gate** (re-exécutés par l'orchestrateur) : tsc -b 0 ; eslint 0 erreur ;
+vitest 297 fichiers / 2620 passés / 0 échec ; matrice navigateur Playwright (vite
+worktree :5174, API réelle, bootstrap intercepté) : onglet Gestion dans le flux, 0 h2
+en carte, un seul titre par section, 4 états vides succès, 0 erreur console.
+
+**Découvertes consignées au plan (non traitées)** : 3 clés i18n orphelines (→ Lot B),
+`confirm()` natif dans UsersSection (→ trancher au B), C5 à re-qualifier (la table
+tailles DBs/WAL affiche en local), capabilities H5 déjà listées dans TitleDetailCards
+(B6 à vérifier sur pièces).
+
+**Prochaine étape** : Lot B (libellés, flows, clarté — détections dialog in-app, Tas Go,
+Restic, capabilities, XUIDs wording).
+
 ## [2026-07-22] D7 titre dans l'URL — Phase 0 close (branche feat/title-slug-in-url)
 
 **Statut** : En cours (Phase 0/6 close), plan `.ai/PLAN_TITLE_SLUG_URL_2026-07.md` sous
