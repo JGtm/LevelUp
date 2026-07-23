@@ -159,6 +159,27 @@ build 0.
 **Prochaine étape** : Lot F (service appearance_diag + endpoint Huma
 GET /admin/diag/appearance/{player_slug} — PIÈGE xuid du PROFIL, jamais HaloXUID(ctx)).
 
+## [2026-07-23] Admin retours — Lot F clos (branche feat/admin-retours-diag)
+
+**Statut** : Complété. Agent Opus + revue/gate orchestrateur.
+
+**Décisions techniques** : `AppearanceDiagService` à dépendances injectées (testable
+sans réseau/DB) ; xuid du PROFIL exclusivement (vérifié : ctxkeys importé pour
+WithTitleSlug seul) ; budget 8 s ; défaillances live = verdicts par composant, jamais
+500. H5 : capability spartan_customizer → 4 composants not_supported, valeurs servies
+seules. Enablers consignés : FetchAppearanceInputs (extraction byte-identique du
+fetch customization, GetSpartanCustomization jetait les entrées brutes),
+LoadLastFetchStatus (premier lecteur de career_progression.last_fetch_status).
+Découverte process : le drift-test openapi impose les noms de schéma auto-dérivés
+Huma — workflow OPENAPI_EMIT_OUT suivi.
+
+**Résultats/gate** (re-exécutés) : go test service/api/haloclient 0 (+9 tests), vet 0,
+build 0, tsc front 0, ratchet no_slug_comparison vert.
+
+**Prochaine étape** : Lot G (panneau front onglet Données : sélecteur joueur suivi +
+bouton Diagnostiquer, vignettes + badges verdict + explications dépliables, i18n,
+query key, tests vitest 5 verdicts).
+
 ## [2026-07-22] D7 titre dans l'URL — Phase 0 close (branche feat/title-slug-in-url)
 
 **Statut** : En cours (Phase 0/6 close), plan `.ai/PLAN_TITLE_SLUG_URL_2026-07.md` sous
