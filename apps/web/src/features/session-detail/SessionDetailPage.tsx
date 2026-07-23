@@ -31,6 +31,8 @@ import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { useSessionContextStore } from '@/stores/sessionContextStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 
+import { useEffectiveHpToKill } from '@/lib/damage/effectiveHp'
+
 import { useSessionDetailPage } from './queries'
 import { useSessionT } from './_shared'
 import { SessionParamPills } from './SessionParamPills'
@@ -117,6 +119,9 @@ export function SessionDetailPage() {
   // Échelle PARTAGÉE A/B (mode comparaison) : bornes communes calculées une fois depuis les
   // deux sessions, passées aux DEUX colonnes → graphes directement comparables. Drawer fermé
   // (ou compare pas encore chargé) → undefined = auto-scale comme avant.
+  // Barème PV-pour-tuer du titre courant (225 Infinite, 115 H5) → conversion des
+  // dégâts en vies pour le domaine partagé de la balance des dégâts cumulée.
+  const hp = useEffectiveHpToKill()
   const compareScale = useMemo<CompareScale | undefined>(() => {
     if (!enableCompare || !data?.compare_session) return undefined
     return computeCompareScale(
@@ -124,8 +129,9 @@ export function SessionDetailPage() {
       data.current_session,
       data.compare_matches ?? [],
       data.compare_session ?? null,
+      hp,
     )
-  }, [enableCompare, data])
+  }, [enableCompare, data, hp])
 
   if (isLoading) {
     return (

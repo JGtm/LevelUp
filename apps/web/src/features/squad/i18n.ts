@@ -21,6 +21,7 @@ export interface SquadText {
   nav: {
     synergies: string
     contributions: string
+    dynamique: string
   }
   selection: {
     placeholder: (count: number) => string
@@ -170,12 +171,11 @@ export interface SquadText {
     zLabel: string
   }
   efficiencySeries: {
-    title: string
-    /** Titre en mode mono-métrique (sans résistance, ex. Halo 5). */
-    rendementTitle: string
+    /** Titre de la carte Rendement (métrique dégâts/frag). */
+    rendementCardTitle: string
+    /** Titre de la carte Résistance (métrique dégâts/mort). */
+    resistanceCardTitle: string
     description: string
-    rendementLabel: string
-    resistanceLabel: string
     refLabel: string
     noData: string
   }
@@ -203,6 +203,18 @@ export interface SquadText {
     title: string
     /** Caption de la rangée de pastilles KPI (écart moyen par match). */
     averageCaption: string
+  }
+  /** « Balance des dégâts cumulée » (P3 — dégâts nets ÷ PV-pour-tuer, cumulé par joueur). */
+  netLives: {
+    title: string
+    /** Tooltip explicatif de la formule (jeton {{HP}} = barème du titre). */
+    tooltip: string
+  }
+  /** « Écart d'engagement cumulé » (P4 — résidu pace_observed − team_expected × durée, par joueur). */
+  engagementGap: {
+    title: string
+    /** Tooltip explicatif (unité = événements en excès/déficit). */
+    tooltip: string
   }
   weaponKills: {
     title: string
@@ -264,6 +276,7 @@ const FR_TEXT: SquadText = {
   nav: {
     synergies: 'Synergies',
     contributions: 'Contributions',
+    dynamique: 'Dynamique',
   },
   selection: {
     placeholder: (count) => `Rechercher parmi ${count} coéquipiers…`,
@@ -454,11 +467,9 @@ const FR_TEXT: SquadText = {
     zLabel: 'Cadence',
   },
   efficiencySeries: {
-    title: 'Rendement & Résistance',
-    rendementTitle: 'Rendement',
-    description: 'Dégâts / frag (trait plein) = dégâts infligés / frags. Dégâts / mort (pointillé) = dégâts subis / morts. Repère 225 = 1 vie de Spartan : pour les frags, au plus proche de 225, au plus efficace ; pour les morts, au-dessus de 225 = bonne résistance.',
-    rendementLabel: 'Dégâts / frag',
-    resistanceLabel: 'Dégâts / mort',
+    rendementCardTitle: 'Rendement — dégâts par frag',
+    resistanceCardTitle: 'Résistance — dégâts par mort',
+    description: 'Dégâts / frag = dégâts infligés / frags. Dégâts / mort = dégâts subis / morts. Repère 225 = 1 vie de Spartan : pour les frags, au plus proche de 225, au plus efficace ; pour les morts, au-dessus de 225 = bonne résistance.',
     refLabel: '1 vie ({{HP}})',
     noData: 'Aucune donnée d\'efficacité disponible.',
   },
@@ -484,6 +495,14 @@ const FR_TEXT: SquadText = {
   fdaGap: {
     title: 'Écart cumulé au FDA attendu',
     averageCaption: 'Écart moyen par match',
+  },
+  netLives: {
+    title: 'Balance des dégâts cumulée',
+    tooltip: 'Balance des dégâts = (dégâts infligés − dégâts subis) ÷ {{HP}} PV, exprimée en vies. Positif = tu portes l\'équipe ; négatif = tu coûtes plus que tu ne rapportes.',
+  },
+  engagementGap: {
+    title: 'Écart d\'engagement cumulé',
+    tooltip: 'Écart d\'engagement = (rythme observé − rythme attendu) × durée du match, cumulé. Exprimé en événements en excès (positif) ou en déficit (négatif) vs l\'attendu.',
   },
   weaponKills: {
     title: 'Outils de destruction',
@@ -542,6 +561,7 @@ const EN_TEXT: SquadText = {
   nav: {
     synergies: 'Synergies',
     contributions: 'Contributions',
+    dynamique: 'Dynamics',
   },
   selection: {
     placeholder: (count) => `Search among ${count} teammates…`,
@@ -732,11 +752,9 @@ const EN_TEXT: SquadText = {
     zLabel: 'Cadence',
   },
   efficiencySeries: {
-    title: 'Offensive & Defensive Efficiency',
-    rendementTitle: 'Offensive Efficiency',
-    description: 'Damage / kill (solid) = damage dealt / kills. Damage / death (dashed) = damage taken / deaths. Reference 225 = one Spartan life: for kills, closer to 225 is more efficient; for deaths, above 225 means good resistance.',
-    rendementLabel: 'Damage / kill',
-    resistanceLabel: 'Damage / death',
+    rendementCardTitle: 'Offensive efficiency — damage per kill',
+    resistanceCardTitle: 'Defensive resistance — damage per death',
+    description: 'Damage / kill = damage dealt / kills. Damage / death = damage taken / deaths. Reference 225 = one Spartan life: for kills, closer to 225 is more efficient; for deaths, above 225 means good resistance.',
     refLabel: '1 life ({{HP}})',
     noData: 'No efficiency data available.',
   },
@@ -762,6 +780,14 @@ const EN_TEXT: SquadText = {
   fdaGap: {
     title: 'Cumulative KDA gap to expected',
     averageCaption: 'Average gap per match',
+  },
+  netLives: {
+    title: 'Cumulative damage balance',
+    tooltip: 'Damage balance = (damage dealt − damage taken) ÷ {{HP}} HP, expressed in lives. Positive = you carry the team; negative = you cost more than you bring.',
+  },
+  engagementGap: {
+    title: 'Cumulative engagement gap',
+    tooltip: 'Engagement gap = (observed pace − expected pace) × match duration, accumulated. Expressed in events in surplus (positive) or deficit (negative) vs expected.',
   },
   weaponKills: {
     title: 'Tools of destruction',

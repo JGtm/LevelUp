@@ -1,8 +1,7 @@
 /**
- * cumulativeFdaGap — source unique (CLAUDE.md n°6) du CUMUL de l'écart FDA
- * réel vs attendu, partagé par les 3 charts « Écart cumulé au FDA attendu » :
- * Sessions (SessionFdaGapCumulative), Escouade (squadFdaGapChart) et Timeseries
- * (TimeseriesFdaGapTrend).
+ * cumulativeFdaGap — CUMUL de l'écart FDA réel vs attendu, partagé par les 3
+ * charts « Écart cumulé au FDA attendu » : Sessions (SessionFdaGapCumulative),
+ * Escouade (squadFdaGapChart) et Timeseries (TimeseriesFdaGapTrend).
  *
  * Helper PUR sur des paires DÉJÀ ORDONNÉES (chaque appelant garde son propre tri
  * — start_time côté Sessions, match_order côté Escouade, ordre du service côté
@@ -11,18 +10,15 @@
  * Différentiel d'un match = `réel − attendu` (FDA réel natif ADR 0006 moins FDA
  * attendu projeté backend), `null` si l'un des termes manque ou est non-fini.
  *
- * D5 : un match sans attendu (`gap === null`) NE fait PAS avancer le cumul — la
- * courbe REPORTE la dernière valeur cumulée (jamais 0, jamais de rupture). Le
- * point figure quand même (porté à la valeur courante). L'identifiant distinctif
- * `carryForward` (accumulateur reporté) est verrouillé hors de ce fichier par
- * `cumulativeFdaGap.guard.test.ts`.
+ * DÉLÈGUE le cumul signé + report D5 au helper générique `cumulativeSeries`
+ * (source unique de l'accumulateur `carryForward`, CLAUDE.md n°6) : un match sans
+ * attendu (`gap === null`) ne fait pas avancer le cumul, la courbe reporte la
+ * dernière valeur cumulée.
  */
 
-const round2 = (v: number): number => Math.round(v * 100) / 100
+import { cumulativeSigned, finiteOrNull, meanOfValid } from './cumulativeSeries'
 
-function finite(v: number | null | undefined): number | null {
-  return v != null && Number.isFinite(v) ? v : null
-}
+const round2 = (v: number): number => Math.round(v * 100) / 100
 
 /** Une paire FDA réel / attendu d'un match (ordre déjà fixé par l'appelant). */
 export interface FdaGapPair {
@@ -42,41 +38,36 @@ export interface FdaGapCumPoint {
   cumulative: number
 }
 
+/** Écart signé d'une paire (`réel − attendu`), `null` si un terme manque (D5). */
+function gapOf(pair: FdaGapPair): number | null {
+  const real = finiteOrNull(pair.real)
+  const expected = finiteOrNull(pair.expected)
+  return real != null && expected != null ? round2(real - expected) : null
+}
+
 /**
- * Cumul signé de l'écart au FDA attendu sur des paires DÉJÀ ORDONNÉES.
- * `carryForward` = cumul courant, reporté tel quel quand un match n'a pas
- * d'attendu (D5). Valeurs arrondies à 2 décimales.
+ * Cumul signé de l'écart au FDA attendu sur des paires DÉJÀ ORDONNÉES, délégué au
+ * helper générique `cumulativeSigned`. Un match sans attendu reporte le cumul (D5).
  */
 export function cumulativeFdaGap(pairs: FdaGapPair[]): FdaGapCumPoint[] {
-  let carryForward = 0
-  return pairs.map((pair) => {
-    const real = finite(pair.real)
-    const expected = finite(pair.expected)
-    const gap = real != null && expected != null ? round2(real - expected) : null
-    if (gap != null) carryForward = round2(carryForward + gap)
+  const cum = cumulativeSigned(pairs.map(gapOf))
+  return pairs.map((pair, i) => {
+    const real = finiteOrNull(pair.real)
+    const expected = finiteOrNull(pair.expected)
     return {
       real: real != null ? round2(real) : null,
       expected: expected != null ? round2(expected) : null,
-      gap,
-      cumulative: carryForward,
+      gap: cum[i].value,
+      cumulative: cum[i].cumulative,
     }
   })
 }
 
 /**
  * Écart MOYEN par match, calculé UNIQUEMENT sur les paires avec attendu (D3,
- * pastille KPI « +0,7/match »). `null` si aucune paire exploitable.
+ * pastille KPI « +0,7/match »), délégué au helper générique `meanOfValid`.
+ * `null` si aucune paire exploitable.
  */
 export function meanFdaGap(pairs: FdaGapPair[]): number | null {
-  let sum = 0
-  let count = 0
-  for (const pair of pairs) {
-    const real = finite(pair.real)
-    const expected = finite(pair.expected)
-    if (real != null && expected != null) {
-      sum += round2(real - expected)
-      count += 1
-    }
-  }
-  return count === 0 ? null : sum / count
+  return meanOfValid(pairs.map(gapOf))
 }

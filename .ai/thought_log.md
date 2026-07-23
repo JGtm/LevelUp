@@ -248,6 +248,82 @@ voulu — un push re-déclenche un deploy (rebuild ~10 min + bref `down`→`up`)
 UP sur le bon code, inutile de la bousculer pour un commit doc.
 
 ---
+## [2026-07-23] Chantier Dynamique Escouade — P1 onglet + P2 séparation + P3 Balance + P4 engagement cumulé
+
+**Statut** : En cours (P1-P4 livrées, P5 à suivre). Plan :
+`.ai/PLAN_DYNAMIQUE_ESCOUADE_2026-07.md`, branche `feat/squad-dynamique` (worktree
+dédié, base main e85323beb). Exécution pilotée : Opus implémente, superviseur
+vérifie les gates et commite.
+
+**Décision technique principale** : l'onglet Escouade « Dynamique » (3e onglet,
+FR « Dynamique » / EN « Dynamics ») reçoit les sections intensité, rendement/
+résistance et engagement DÉPLACÉES depuis Contributions (SquadDynamiquePage
+consomme le même SquadContext, aucune query key nouvelle). routeTree.gen.ts
+régénéré via l'API programmatique @tanstack/router-generator (tsr CLI absent du
+repo ; le plugin vite fait foi en dev) — diff purement additif.
+
+**Résultats observés** : tsc exit 0 ; vitest src/features/squad = 34 fichiers /
+259 tests verts (smoke test SquadDynamiquePage inclus, tests Contributions
+adaptés). Vérification visuelle des 3 onglets reportée à la passe visuelle de fin
+de lot (doctrine gates UI en une passe finale).
+
+**P2 (séparation Rendement/Résistance)** : builder unique paramétré
+`buildSquadEfficiencyMultiOption(metric: damagePerKill|damagePerDeath)` (ex-
+RendementMulti renommé, track builder 1-joueur SUPPRIMÉ avec ses UI — 0 code
+mort) ; SquadEfficiencyChart rend 2 ChartCards multi-joueurs (couleur = joueur,
+repère « 1 vie » title-aware), H5 sans damage_taken → carte Rendement seule.
+Gradients offensifs/défensifs conservés (callers Timeseries). i18n : 2 titres de
+cartes FR/EN, 4 clés mortes retirées. Gates : tsc exit 0 ; vitest squad 35
+fichiers / 265 tests verts. Découverte consignée : efficiencySeries.description
+morte d'avant-chantier (non traitée).
+
+**P3 (« Balance des dégâts »)** : métrique `(dégâts infligés − subis) / PV-pour-
+tuer` en vies (lib/charts/netLives.ts). Cumul signé générique extrait dans
+lib/charts/cumulativeSeries.ts (`cumulativeSigned` + `meanOfValid`, carry-forward
+D5) ; `cumulativeFdaGap` délègue, garde-rail `carryForward` étendu aux 2 fichiers
+helpers. Surfaces : SquadNetLivesChart (Dynamique, 1 courbe cumulée/joueur,
+repère 0) + SessionNetLivesCumulative (aire cumulée + KPI « balance moyenne par
+match », _compareScale A/B → computeCompareScale prend `hp`). Masquage title-
+agnostic par capability `damage_taken` (useProvidesDamageTaken) — H5 masqué.
+i18n session.toml (6 clés net_lives_*) + squad i18n. Gates : tsc exit 0 ; vitest
+lib/charts + session-detail + squad = 58 fichiers / 401 tests verts.
+
+**P4 (écart d'engagement cumulé, Go + web)** : Go — `duration_seconds` (somme
+par bin) dans EngagementMatchSummary + `durations_seconds` aligné Labels dans
+SquadEngagementSession ; durée = (EndTimeMS−StartTimeMS)/1000, sommée dans le
+binning ; openapi.yaml = schémas MANUELS réconciliés (TestOpenAPISchemaDrift
+vert), generate-types idempotent. Web — helper engagementGapEvents (résidu
+évén./min × durée/60 → contribution en événements, report D5, cumul via
+cumulativeSigned) ; 3 charts : TimeseriesEngagementGapTrend (adjacent à la
+courbe engagement, même query → dédup), SquadEngagementGapChart (Dynamique,
+résidu pace_observed − team_expected par joueur), SessionEngagementCumulative
+(zip match_series ↔ rows, domaine _compareScale engagementGap A/B). i18n
+engagement.toml + session.toml + squad i18n FR/EN. Gates : go test
+service/api/domain ok ; tsc exit 0 ; vitest 67 fichiers / 462 tests verts.
+
+**P5 (essai aire Rendement)** : areaStyle sur la seule série Rendement de
+TimeseriesSquadAdapted (origin: hp = repère « 1 vie » title-aware, opacité 0.10,
+même dégradé offensif que le trait) — commit isolé trivialement revertable.
+Item 5.1 statué [~] : gates verts (tsc, vitest timeseries 5 fichiers / 43
+tests), le go/no-go VISUEL (thème clair + sombre) reste à l'utilisateur.
+
+**Gates finaux du lot (tous verts)** : go test ./... 115 packages ok exit 0
+(CGO msys64 requis — un shell sans CGO donne des [setup failed] duckdb-bindings,
+pas de vrais rouges) ; go vet exit 0 ; golangci-lint 0 issue ; npm run typecheck
+(tsc -b, cache purgé) exit 0 APRÈS fix ab0a59a9d (_compareScale.test.ts resté à
+4 args sur computeCompareScale — tsc --noEmit ne couvre pas les tests, vitest ne
+typecheck pas : le gate de référence est tsc -b cache purgé) ; eslint 8 warnings
+= baseline main ; vitest complet 328 fichiers / 2807 tests verts.
+-tags=integration non requis : aucun fichier persist/sync/migration touché.
+
+**Conclusion / prochaine étape** : branche poussée pour signal CI. Restent :
+passe visuelle utilisateur (3 onglets Escouade, Session, Timeseries, thèmes
+clair+sombre, dégradation H5 ; go/no-go P5 aire) puis revue au merge. Pour le
+dev server visuel : arrêter le serveur du repo principal AVANT (mono-process
+DuckDB), données à rendre accessibles au worktree (junction — la retirer avant
+tout worktree remove).
+
+---
 ## [2026-07-23] Réintégration + validation des 4 retouches FDA gap sur origin/main
 
 **Statut** : Complété. Branche `integrate/fda-gap-followups` rebasée sur `origin/main`

@@ -173,6 +173,26 @@ en = " — {total, plural, one {# match} other {# matches}}"
 fr = "Engagement momentanément indisponible"
 en = "Engagement temporarily unavailable"
 
+# ─── Écart d'engagement cumulé (P4) ─────────────────────────────────────────
+# Cumul du résidu d'engagement (évén./min) pondéré par la durée du match =
+# nombre d'événements en excès (positif) ou déficit (négatif) vs l'attendu.
+
+[engagement.cumulative_gap.title]
+fr = "Écart d'engagement cumulé"
+en = "Cumulative engagement gap"
+
+[engagement.cumulative_gap.series]
+fr = "Écart cumulé"
+en = "Cumulative gap"
+
+[engagement.cumulative_gap.axis]
+fr = "événements (excès/déficit)"
+en = "events (surplus/deficit)"
+
+[engagement.cumulative_gap.empty]
+fr = "Aucune donnée d'engagement pour ce scope."
+en = "No engagement data for this scope."
+
 # ─── Engagement Coefficients (profil) ───────────────────────────────────────
 
 [engagement.coef.team_share_label]
