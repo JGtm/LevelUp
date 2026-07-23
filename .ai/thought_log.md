@@ -203,6 +203,25 @@ un joueur sain (ok), un profil sans tokens (auth_required) ; vérifier aussi C6 
 (couverture H5 0 non résolu) et C1 (réhydratation post-reboot) ; puis restauration
 de l'environnement dev.
 
+## [2026-07-23] Admin retours — Lot H clos : vérification réelle du volet 2 (branche feat/admin-retours-diag)
+
+**Statut** : Complété (orchestrateur seul — bascule de serveurs).
+
+**Protocole** : build `server-wt.exe` depuis le worktree, arrêt du serveur dev :8000,
+lancement worktree avec `LEVELUP_REPO_ROOT` → checkout principal (données/config/env
+réels, mono-process respecté), vérifications, puis RESTAURATION du serveur d'origine
+(vérifié up). 
+
+**Constats (détail au plan, Gate H)** : JGtm = 4×ok bannière `mapping_hit` (Microsoft
+a publié la nameplate 3806589 — scénario anticipé, fixture E4 = preuve pérenne du
+upstream_missing) en 2,0 s UI ; Chocoboflor (RT mort AADSTS70000) = 4×auth_required +
+valeurs servies (carry) + CTA SSO, zéro 500 ; halo_5 = 4×not_supported ; slug inconnu
+= 404. Bonus au même boot : couverture armes H5 = 100 % (reconcile C6 réel, 0 non
+résolu contre 7), journal 200, « Aucun cycle enregistré » (C1). Navigateur réel 8/8.
+
+**Prochaine étape** : Lot I (delivery-checklist, statuts finaux + annexe traçabilité,
+CI de branche, message final utilisateur).
+
 ## [2026-07-22] D7 titre dans l'URL — Phase 0 close (branche feat/title-slug-in-url)
 
 **Statut** : En cours (Phase 0/6 close), plan `.ai/PLAN_TITLE_SLUG_URL_2026-07.md` sous

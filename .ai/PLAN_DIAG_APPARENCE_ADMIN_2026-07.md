@@ -377,7 +377,7 @@ inattendu.
 
 ### Lot H — vérification fonctionnelle du volet 2
 
-- [ ] H1. Vérification manuelle dev local : diagnostiquer JGtm → bannière =
+- [x] H1. Vérification manuelle dev local : diagnostiquer JGtm → bannière =
       `upstream_missing` avec l'explication « rien à faire » ; un joueur sain → `ok`.
       NOTE : si Microsoft a publié l'image entre-temps, le cas JGtm peut être devenu
       `ok` (le verdict vit) — la fixture 3806589 du test E4 reste la preuve du
@@ -385,6 +385,25 @@ inattendu.
       (profil sans tokens).
 
 **Gate H** : constat écrit dans ce plan (résultats des 2-3 diagnostics manuels).
+
+**CONSTAT GATE H (2026-07-23, serveur du worktree sur les données réelles,
+`LEVELUP_REPO_ROOT` → checkout principal, ancien serveur arrêté puis restauré)** :
+- **JGtm (Infinite)** : les 4 composants = `ok`, bannière `mapping_hit` servie en
+  live — Microsoft a PUBLIÉ la nameplate 3806589 depuis le 2026-07-08 (scénario
+  anticipé par la NOTE ci-dessus : le verdict vit ; la fixture E4 reste la preuve
+  du `upstream_missing`). Diagnostic complet en 2,0 s via l'UI (< 10 s).
+- **Chocoboflor (Infinite, refresh token mort — AADSTS70000 constaté au boot)** :
+  les 4 composants = `auth_required`, `served_from=carry`, dernières valeurs
+  connues toujours servies, CTA « réauthentifier » vers le SSO. Aucun 500.
+- **JGtm sous halo_5** : 4 composants = `not_supported` (capability
+  `spartan_customizer`), valeurs servies seules — aucun fetch cross-titre.
+- **Slug inconnu** : HTTP 404.
+- **Effets connexes vérifiés au même boot** : couverture d'armes H5 = 100 %
+  (0 non résolu, contre 7 avant — reconcile C6 opérant sur la DB réelle) ;
+  `GET /admin/actions/journal` = 200 (journal vierge → « Jamais exécutée ») ;
+  scheduler premier boot → « Aucun cycle enregistré » (C1). Parcours navigateur
+  réel 8/8, 0 erreur console. La réhydratation C1 post-cycle reste couverte par
+  les tests unitaires (aucun cycle réel déclenché — coût API).
 
 ## Lot I — Clôture globale
 
