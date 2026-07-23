@@ -12,6 +12,8 @@ import {
 
 import { Button } from '@/components/ui/button'
 import type { AdminDataQualityIssue } from '@/lib/api/types'
+import { playerScopedHref } from '@/lib/title-routing'
+import { useAppShellStore } from '@/stores/appShellStore'
 import { adminAbsoluteTime, adminRelativeTime } from '../format'
 import { useAdminT, useAdminLocale, type TAdmin } from '../useAdminText'
 
@@ -43,6 +45,9 @@ interface IssueTableProps {
   renderForm?: (issue: AdminDataQualityIssue) => ReactNode
   /** Pagination serveur (absente → pas de pied de page, comportement inchangé). */
   pagination?: IssuePagination
+  /** Titre pour construire les liens de match d'exemple (présent → colonne
+   *  « Exemples » avec jusqu'à 3 match_id cliquables, ouverture nouvel onglet). */
+  matchLinkTitleSlug?: string
 }
 
 export function IssueTable({
@@ -53,9 +58,18 @@ export function IssueTable({
   onAction,
   renderForm,
   pagination,
+  matchLinkTitleSlug,
 }: IssueTableProps) {
   const tA = useAdminT()
   const locale = useAdminLocale()
+  // Joueur cible des liens de match : la vue de match est player-scopée
+  // (/t/{slug}/players/{player}/matches/{id}). En admin il n'y a pas de scope
+  // joueur — on retient le joueur de session (sinon le premier profil disponible),
+  // qui est le propriétaire dont l'historique peuple la base partagée.
+  const currentPlayerSlug = useAppShellStore((s) => s.currentPlayer?.player_slug)
+  const fallbackPlayerSlug = useAppShellStore((s) => s.availablePlayers[0]?.player_slug)
+  const examplePlayerSlug = currentPlayerSlug ?? fallbackPlayerSlug
+  const showExamples = Boolean(matchLinkTitleSlug)
 
   return (
     <div className="flex flex-col gap-2">
@@ -70,6 +84,7 @@ export function IssueTable({
             ))}
             <th className="px-3 py-2 font-medium text-right">{tA('admin.dq.col_occurrences')}</th>
             <th className="px-3 py-2 font-medium">{tA('admin.dq.col_last_seen')}</th>
+            {showExamples && <th className="px-3 py-2 font-medium">{tA('admin.dq.col_examples')}</th>}
             {actionLabel && <th className="px-3 py-2" />}
           </tr>
         </thead>
@@ -80,7 +95,7 @@ export function IssueTable({
               <RowWithForm
                 key={rowKey}
                 open={openID === rowKey}
-                colSpan={columns.length + 2 + (actionLabel ? 1 : 0)}
+                colSpan={columns.length + 2 + (showExamples ? 1 : 0) + (actionLabel ? 1 : 0)}
                 form={renderForm?.(issue)}
               >
                 {columns.map((c) => (
@@ -100,6 +115,16 @@ export function IssueTable({
                 >
                   {adminRelativeTime(issue.last_seen, locale)}
                 </td>
+                {showExamples && (
+                  <td className="px-3 py-2">
+                    <ExampleMatchLinks
+                      ids={issue.example_match_ids}
+                      titleSlug={matchLinkTitleSlug as string}
+                      playerSlug={examplePlayerSlug}
+                      tA={tA}
+                    />
+                  </td>
+                )}
                 {actionLabel && (
                   <td className="px-3 py-2 text-right">
                     <Button size="sm" variant="outline" onClick={() => onAction?.(issue)}>
@@ -161,6 +186,55 @@ function IssueTablePagination({ pagination, tA }: { pagination: IssuePagination;
       >
         &rsaquo;
       </button>
+    </div>
+  )
+}
+
+/**
+ * Liens de match d'exemple (≤3) — ouverture NOUVEL onglet vers la vue de match
+ * (player-scopée). match_id tronqué (UUID), complet en title/aria. Sans joueur
+ * cible résolu, on affiche l'ID en clair (non cliquable) plutôt que rien.
+ */
+function ExampleMatchLinks({
+  ids,
+  titleSlug,
+  playerSlug,
+  tA,
+}: {
+  ids: string[] | null | undefined
+  titleSlug: string
+  playerSlug: string | undefined
+  tA: TAdmin
+}) {
+  const items = (ids ?? []).slice(0, 3)
+  if (items.length === 0) {
+    return <span className="text-xs text-muted-foreground">—</span>
+  }
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {items.map((id) => {
+        const short = id.length > 8 ? `${id.slice(0, 8)}…` : id
+        if (!playerSlug) {
+          return (
+            <span key={id} title={id} className="font-mono text-xs text-muted-foreground">
+              {short}
+            </span>
+          )
+        }
+        return (
+          <a
+            key={id}
+            href={playerScopedHref(titleSlug, playerSlug, `/matches/${id}`)}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={`${tA('admin.dq.example_open')} · ${id}`}
+            aria-label={tA('admin.dq.example_open')}
+            className="font-mono text-xs text-muted-foreground underline decoration-dotted underline-offset-2 transition-colors hover:text-foreground hover:decoration-solid"
+          >
+            {short}
+          </a>
+        )
+      })}
     </div>
   )
 }

@@ -93,6 +93,31 @@ vitest 2632, matrice navigateur 9/9.
 **Prochaine étape** : C-III (C6 identification des 7 armes H5 non résolues dont la
 dominante 2457457776 à 2353 frags, C7 locale param + exemples de matchs cliquables).
 
+## [2026-07-23] Admin retours — Sous-lot C-III clos, LOT C ENTIER CLOS (branche feat/admin-retours-diag)
+
+**Statut** : Complété (C6+C7 — Lot C : 7/7 items [x] sur 3 sous-lots). Agent Opus +
+extension décidée par l'orchestrateur + revue/gates/navigateur orchestrateur.
+
+**Décision technique majeure (C6)** : les 7 armes H5 non résolues étaient déjà mappées
+en source (`h5_other_ugc`) mais inertes — la migration `h5_add_weapon_registry` est
+one-shot et aucun chemin ne re-propage le seed. Correctif pérenne (branche 1 du plan,
+requalifiée grâce à la découverte de l'agent) : `ApplyWeaponRegistry` (INSERT OR
+IGNORE, PK-only, hors surface ART) rejoué au boot sur la metadata de CHAQUE titre
+(défaut + additionnels via `provisionAdditionalTitle`, garde par kind de target).
+Convergence + no-op stable prouvés par test. Effet visible au prochain boot serveur.
+
+**C7** : locale paramétrée (`?locale=`, défaut fr) avec écho DTO et libellé honnête ;
+3 exemples de matchs cliquables par ligne DQ, hrefs D7 via `playerScopedHref`
+(titre = écho serveur, joueur = session, fallback texte).
+
+**Résultats/gate** (re-exécutés) : go test ops/api/games/migration 0, vet 0, build 0 ;
+tsc 0 ; eslint 0 erreur ; vitest 2636 ; matrice navigateur 8/8 (note en données
+réelles, locale émise vérifiée par écoute réseau, liens player-scopés corrects).
+
+**Prochaine étape** : Lot D (purge parité/lab — suppression du panneau Diagnostics
+d'instance, décision D2 guards médailles, D3 suppression totale probable, D4
+migrate-media-paths).
+
 ## [2026-07-22] D7 titre dans l'URL — Phase 0 close (branche feat/title-slug-in-url)
 
 **Statut** : En cours (Phase 0/6 close), plan `.ai/PLAN_TITLE_SLUG_URL_2026-07.md` sous

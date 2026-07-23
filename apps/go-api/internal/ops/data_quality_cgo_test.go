@@ -106,7 +106,7 @@ func TestDataQuality_CountsAndLists(t *testing.T) {
 		}
 	}
 
-	counts, err := CountDataQuality(ctx, shared, meta, "halo_infinite")
+	counts, err := CountDataQuality(ctx, shared, meta, "halo_infinite", "fr")
 	if err != nil {
 		t.Fatalf("CountDataQuality: %v", err)
 	}
@@ -131,7 +131,7 @@ func TestDataQuality_CountsAndLists(t *testing.T) {
 	}
 
 	// Listes.
-	raw, rawTotal, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "raw_uuids", 10, 0)
+	raw, rawTotal, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "raw_uuids", "fr", 10, 0)
 	if err != nil || len(raw) != 1 || rawTotal != 1 || raw[0].AssetKind != "playlist" || raw[0].ID != "pl-uuid-1" {
 		t.Errorf("raw_uuids = %+v, total=%d, err=%v (attendu 1 playlist pl-uuid-1)", raw, rawTotal, err)
 	}
@@ -139,7 +139,7 @@ func TestDataQuality_CountsAndLists(t *testing.T) {
 		t.Error("raw_uuids LastSeen vide (timestamp canonique attendu)")
 	}
 
-	modes, _, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "untranslated_modes", 10, 0)
+	modes, _, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "untranslated_modes", "fr", 10, 0)
 	if err != nil || len(modes) != 1 {
 		t.Fatalf("untranslated_modes = %+v, err=%v (attendu 1)", modes, err)
 	}
@@ -147,12 +147,12 @@ func TestDataQuality_CountsAndLists(t *testing.T) {
 		t.Errorf("untranslated mode inattendu : %+v", modes[0])
 	}
 
-	orphPl, _, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "orphan_playlists", 10, 0)
+	orphPl, _, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "orphan_playlists", "fr", 10, 0)
 	if err != nil || len(orphPl) != 1 || orphPl[0].ID != "pl-uuid-1" {
 		t.Errorf("orphan_playlists = %+v, err=%v", orphPl, err)
 	}
 
-	orphX, orphXTotal, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "orphan_xuids", 10, 0)
+	orphX, orphXTotal, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "orphan_xuids", "fr", 10, 0)
 	if err != nil || len(orphX) != 1 || orphXTotal != 1 || orphX[0].ID != "x-orphan" {
 		t.Errorf("orphan_xuids = %+v, total=%d, err=%v", orphX, orphXTotal, err)
 	}
@@ -162,7 +162,7 @@ func TestDataQuality_CountsAndLists(t *testing.T) {
 		t.Error("orphan_xuids LastSeen vide (dernier match du xuid attendu)")
 	}
 
-	if _, _, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "kind_inconnu", 10, 0); err == nil {
+	if _, _, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "kind_inconnu", "fr", 10, 0); err == nil {
 		t.Error("kind inconnu doit retourner une erreur")
 	}
 }
@@ -204,7 +204,7 @@ func TestDataQuality_OrphanXUIDsPagination(t *testing.T) {
 	}
 
 	// Page 1 : limit 2, offset 0 → 2 items, total 3. x-A (2 matchs) en tête.
-	page1, total, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "orphan_xuids", 2, 0)
+	page1, total, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "orphan_xuids", "fr", 2, 0)
 	if err != nil {
 		t.Fatalf("page1: %v", err)
 	}
@@ -223,7 +223,7 @@ func TestDataQuality_OrphanXUIDsPagination(t *testing.T) {
 	}
 
 	// Page 2 : limit 2, offset 2 → le dernier orphelin (1 item), total inchangé.
-	page2, total2, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "orphan_xuids", 2, 2)
+	page2, total2, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "orphan_xuids", "fr", 2, 2)
 	if err != nil {
 		t.Fatalf("page2: %v", err)
 	}
@@ -232,7 +232,7 @@ func TestDataQuality_OrphanXUIDsPagination(t *testing.T) {
 	}
 
 	// Offset au-delà de la fin → fenêtre vide non nulle, total conservé.
-	beyond, total3, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "orphan_xuids", 2, 99)
+	beyond, total3, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "orphan_xuids", "fr", 2, 99)
 	if err != nil || beyond == nil || len(beyond) != 0 || total3 != 3 {
 		t.Errorf("offset hors bornes : items=%+v total=%d err=%v (attendu vide non nul, total 3)", beyond, total3, err)
 	}
@@ -273,7 +273,7 @@ func TestDataQuality_MetaWithoutHINFReferentials(t *testing.T) {
 	seedDQMatch(t, shared, "m1", "pl-1", "Team Slayer", "p1", "Slayer on Truth", 0)
 	seedDQMatch(t, shared, "m2", "11111111-2222-3333-4444-555555555555", "11111111-2222-3333-4444-555555555555", "", "", 0)
 
-	counts, err := CountDataQuality(ctx, shared, meta, "halo_5")
+	counts, err := CountDataQuality(ctx, shared, meta, "halo_5", "fr")
 	if err != nil {
 		t.Fatalf("CountDataQuality doit dégrader proprement sans mode_name_tr/playlists_catalog, err=%v", err)
 	}
@@ -289,7 +289,7 @@ func TestDataQuality_MetaWithoutHINFReferentials(t *testing.T) {
 
 	// Les listes détaillées des kinds non applicables répondent vide, sans erreur.
 	for _, kind := range []string{"untranslated_modes", "orphan_playlists"} {
-		items, _, lerr := ListDataQualityIssues(ctx, shared, meta, "halo_5", kind, 10, 0)
+		items, _, lerr := ListDataQualityIssues(ctx, shared, meta, "halo_5", kind, "fr", 10, 0)
 		if lerr != nil {
 			t.Errorf("ListDataQualityIssues(%s) : err=%v, attendu dégradation propre", kind, lerr)
 		}
@@ -308,7 +308,7 @@ func TestDataQuality_TranslatedModeNotListed(t *testing.T) {
 	meta := openDQTestMeta(t)
 	seedDQMatch(t, shared, "m1", "", "", "p1", "Husky Raid CTF on Empyrean", 0)
 
-	before, err := listUntranslatedModes(ctx, shared, meta, 0)
+	before, err := listUntranslatedModes(ctx, shared, meta, "fr", 0)
 	if err != nil || len(before) != 1 {
 		t.Fatalf("avant résolution : %+v, err=%v", before, err)
 	}
@@ -319,7 +319,7 @@ func TestDataQuality_TranslatedModeNotListed(t *testing.T) {
 		t.Fatalf("upsert: action=%q err=%v", action, err)
 	}
 
-	after, err := listUntranslatedModes(ctx, shared, meta, 0)
+	after, err := listUntranslatedModes(ctx, shared, meta, "fr", 0)
 	if err != nil || len(after) != 0 {
 		t.Fatalf("après résolution : %+v, err=%v (attendu vide)", after, err)
 	}
@@ -362,5 +362,66 @@ func TestDataQuality_UpsertAssetTranslation(t *testing.T) {
 	// Champs vides refusés.
 	if _, err := UpsertAssetTranslation(ctx, meta, "pair", "", "fr-FR", "x"); err == nil {
 		t.Error("asset_id vide doit être refusé")
+	}
+}
+
+// dqIDSet : ensemble des match_id (comparaison ordre-agnostique des exemples).
+func dqIDSet(ids []string) map[string]bool {
+	m := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		m[id] = true
+	}
+	return m
+}
+
+// TestDataQuality_ExampleMatchIDs : C7(b) — chaque ligne servie porte jusqu'à 3
+// match_id d'exemple concrets (requête bornée par item), par kind : colonne de
+// match_registry (assets/mode/playlist) ou match_participants (xuid).
+func TestDataQuality_ExampleMatchIDs(t *testing.T) {
+	ctx := context.Background()
+	shared := openDQTestShared(t)
+	meta := openDQTestMeta(t)
+
+	// m1+m2 : même playlist UUID brute (name == id) ET même mode non traduit.
+	seedDQMatch(t, shared, "m1", "pl-uuid", "pl-uuid", "p1", "Husky Raid CTF on Empyrean", 0)
+	seedDQMatch(t, shared, "m2", "pl-uuid", "pl-uuid", "p1", "Husky Raid CTF on Empyrean", 0)
+	if _, err := shared.Exec(`INSERT INTO match_participants VALUES ('m1', 'x-orphan')`); err != nil {
+		t.Fatal(err)
+	}
+
+	// raw_uuids : pl-uuid vue dans m1 et m2.
+	raw, _, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "raw_uuids", "fr", 10, 0)
+	if err != nil || len(raw) != 1 {
+		t.Fatalf("raw_uuids = %+v err=%v", raw, err)
+	}
+	if s := dqIDSet(raw[0].ExampleMatchIDs); len(s) != 2 || !s["m1"] || !s["m2"] {
+		t.Errorf("raw_uuids exemples = %v (attendu {m1,m2})", raw[0].ExampleMatchIDs)
+	}
+
+	// untranslated_modes : sonde via l'échantillon pair_name (Label) → m1, m2.
+	modes, _, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "untranslated_modes", "fr", 10, 0)
+	if err != nil || len(modes) != 1 {
+		t.Fatalf("untranslated_modes = %+v err=%v", modes, err)
+	}
+	if s := dqIDSet(modes[0].ExampleMatchIDs); len(s) != 2 || !s["m1"] || !s["m2"] {
+		t.Errorf("untranslated_modes exemples = %v (attendu {m1,m2})", modes[0].ExampleMatchIDs)
+	}
+
+	// orphan_playlists : pl-uuid hors catalogue → m1, m2.
+	orphPl, _, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "orphan_playlists", "fr", 10, 0)
+	if err != nil || len(orphPl) != 1 {
+		t.Fatalf("orphan_playlists = %+v err=%v", orphPl, err)
+	}
+	if s := dqIDSet(orphPl[0].ExampleMatchIDs); len(s) != 2 {
+		t.Errorf("orphan_playlists exemples = %v (attendu 2)", orphPl[0].ExampleMatchIDs)
+	}
+
+	// orphan_xuids : x-orphan n'a participé qu'à m1.
+	orphX, _, err := ListDataQualityIssues(ctx, shared, meta, "halo_infinite", "orphan_xuids", "fr", 10, 0)
+	if err != nil || len(orphX) != 1 {
+		t.Fatalf("orphan_xuids = %+v err=%v", orphX, err)
+	}
+	if got := orphX[0].ExampleMatchIDs; len(got) != 1 || got[0] != "m1" {
+		t.Errorf("orphan_xuids exemples = %v (attendu [m1])", got)
 	}
 }

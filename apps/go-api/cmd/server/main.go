@@ -1624,6 +1624,15 @@ func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConf
 		metaDB.Close()
 		return fmt.Errorf("metadata seed reconcile: %w", err)
 	}
+	// Réconciliation idempotente du registre d'armes (cross-titre) : converge les
+	// filmshell/stock_ids ajoutés au seed APRÈS que la migration one-shot
+	// add_weapon_registry fut marquée "done" (sinon inertes). INSERT OR IGNORE,
+	// coût négligeable, hors surface ART (tables PK-only). Même motif que les seeds
+	// de traduction ci-dessus. Cf. h5_other_ugc / couverture d'armes admin.
+	if err := halomigrations.ApplyWeaponRegistry(metaDB.SQLDb()); err != nil {
+		metaDB.Close()
+		return fmt.Errorf("weapon registry reconcile: %w", err)
+	}
 	metaDB.Close()
 
 	// 2. shared_matches_v2.duckdb
@@ -1716,6 +1725,18 @@ func provisionAdditionalTitle(pr *title.PathResolver, td *title.TitleDescriptor)
 		if err := migration.RunForTitleDB(db.SQLDb(), slug, t.kind); err != nil {
 			db.Close()
 			return fmt.Errorf("migrate %s (%s): %w", t.kind, t.path, err)
+		}
+		// Réconciliation du registre d'armes cross-titre sur la metadata d'un titre
+		// ADDITIONNEL (dont Halo 5) : ReconcileMetadataSeeds (mode/playlist FR) ne
+		// tourne QUE pour le titre par défaut et est HINF-spécifique (pollution du
+		// schéma H5 isolé PMT-9 interdite). Le registre, lui, est cross-titre : on le
+		// rejoue idempotemment ici, sinon les stock_ids ajoutés au seed après coup
+		// (h5_other_ugc) n'atteignent jamais une DB déjà migrée (step one-shot).
+		if t.kind == migration.TargetMetadata {
+			if err := halomigrations.ApplyWeaponRegistry(db.SQLDb()); err != nil {
+				db.Close()
+				return fmt.Errorf("weapon registry reconcile %s: %w", t.path, err)
+			}
 		}
 		db.Close()
 	}

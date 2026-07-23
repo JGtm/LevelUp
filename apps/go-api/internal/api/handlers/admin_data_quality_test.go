@@ -45,17 +45,17 @@ func dqPostJSON(path, body string) *http.Request {
 func newDQHandler(t *testing.T) *AdminDataQualityHandler {
 	t.Helper()
 	return NewAdminDataQualityHandler(
-		func(_ context.Context, titleSlug string) (domain.AdminDataQualityCounts, error) {
-			return domain.AdminDataQualityCounts{TitleSlug: titleSlug, RawUUIDTotal: 3}, nil
+		func(_ context.Context, titleSlug, locale string) (domain.AdminDataQualityCounts, error) {
+			return domain.AdminDataQualityCounts{TitleSlug: titleSlug, Locale: locale, RawUUIDTotal: 3}, nil
 		},
-		func(_ context.Context, titleSlug, kind string, limit, offset int) (domain.AdminDataQualityIssues, error) {
+		func(_ context.Context, titleSlug, kind, locale string, limit, offset int) (domain.AdminDataQualityIssues, error) {
 			if limit > 500 {
 				t.Errorf("limit non clampé : %d", limit)
 			}
 			if offset < 0 {
 				t.Errorf("offset négatif non normalisé : %d", offset)
 			}
-			return domain.AdminDataQualityIssues{TitleSlug: titleSlug, Kind: kind, Total: 1,
+			return domain.AdminDataQualityIssues{TitleSlug: titleSlug, Kind: kind, Locale: locale, Total: 1,
 				Items: []domain.AdminDataQualityIssue{{Kind: "untranslated_mode", ID: "Husky Raid CTF", Occurrences: 4}}}, nil
 		},
 		func(_ context.Context, _ string, dryRun bool) (domain.RegistryNamesBackfillResult, error) {
@@ -137,6 +137,33 @@ func TestAdminDQ_GetIssues_KindValidation(t *testing.T) {
 	var got domain.AdminDataQualityIssues
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil || len(got.Items) != 1 || got.Total != 1 {
 		t.Fatalf("payload inattendu : %+v err=%v", got, err)
+	}
+}
+
+// TestAdminDQ_LocaleParam : le paramètre ?locale= est normalisé (trim/minuscule,
+// défaut « fr ») et transmis aux runners counts + issues (échoté dans le payload
+// pour un libellé front honnête).
+func TestAdminDQ_LocaleParam(t *testing.T) {
+	h := newDQHandler(t)
+
+	// Issues sans locale → défaut « fr ».
+	rec := serveAdminDataQuality(h, httptest.NewRequest(http.MethodGet, "/admin/monitoring/data-quality/issues?kind=untranslated_modes", nil))
+	var iss domain.AdminDataQualityIssues
+	if err := json.Unmarshal(rec.Body.Bytes(), &iss); err != nil || iss.Locale != "fr" {
+		t.Fatalf("issues locale défaut = %q err=%v (attendu fr)", iss.Locale, err)
+	}
+
+	// Issues ?locale=EN → normalisé « en ».
+	rec = serveAdminDataQuality(h, httptest.NewRequest(http.MethodGet, "/admin/monitoring/data-quality/issues?kind=untranslated_modes&locale=EN", nil))
+	if err := json.Unmarshal(rec.Body.Bytes(), &iss); err != nil || iss.Locale != "en" {
+		t.Fatalf("issues locale = %q err=%v (attendu en)", iss.Locale, err)
+	}
+
+	// Counts ?locale= vide → défaut « fr ».
+	rec = serveAdminDataQuality(h, httptest.NewRequest(http.MethodGet, "/admin/monitoring/data-quality", nil))
+	var cnt domain.AdminDataQualityCounts
+	if err := json.Unmarshal(rec.Body.Bytes(), &cnt); err != nil || cnt.Locale != "fr" {
+		t.Fatalf("counts locale défaut = %q err=%v (attendu fr)", cnt.Locale, err)
 	}
 }
 

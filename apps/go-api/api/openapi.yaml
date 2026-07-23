@@ -2065,11 +2065,16 @@ paths:
     get:
       tags: [admin]
       operationId: getAdminMonitoringDataQuality
-      summary: "Dashboard monitoring — compteurs d'inconnus data (assets UUID bruts, modes non traduits FR, playlists hors catalogue, xuids orphelins, lying bits) (auth admin requis)"
+      summary: "Dashboard monitoring — compteurs d'inconnus data (assets UUID bruts, modes non traduits, playlists hors catalogue, xuids orphelins, lying bits) (auth admin requis)"
       parameters:
         - name: title
           in: query
           required: false
+          schema: { type: string }
+        - name: locale
+          in: query
+          required: false
+          description: "Locale cible du compteur untranslated_modes (défaut fr)."
           schema: { type: string }
       responses:
         "200": { description: "Compteurs qualité données" }
@@ -2088,6 +2093,11 @@ paths:
           in: query
           required: true
           schema: { type: string, enum: [raw_uuids, untranslated_modes, orphan_playlists, orphan_xuids] }
+        - name: locale
+          in: query
+          required: false
+          description: "Locale cible des modes sans traduction (défaut fr)."
+          schema: { type: string }
         - name: limit
           in: query
           required: false
@@ -7535,6 +7545,8 @@ components:
           lying_bits_events:
               format: int64
               type: integer
+          locale:
+              type: string
           lying_bits_weapons:
               format: int64
               type: integer
@@ -7567,6 +7579,7 @@ components:
       required:
           - title_slug
           - generated_at
+          - locale
           - raw_uuid_playlists
           - raw_uuid_maps
           - raw_uuid_pairs
@@ -7583,6 +7596,11 @@ components:
       properties:
           asset_kind:
               type: string
+          example_match_ids:
+              items:
+                  type: string
+              type: array
+              nullable: true
           id:
               type: string
           kind:
@@ -7611,6 +7629,8 @@ components:
               nullable: true
           kind:
               type: string
+          locale:
+              type: string
           title_slug:
               type: string
           total:
@@ -7620,6 +7640,7 @@ components:
           - title_slug
           - generated_at
           - kind
+          - locale
           - items
           - total
       type: object

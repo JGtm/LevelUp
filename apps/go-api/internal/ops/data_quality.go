@@ -69,6 +69,9 @@ type DataQualityIssue struct {
 	Occurrences int
 	// LastSeen : RFC3339 du match le plus récent concerné (vide si inconnu).
 	LastSeen string
+	// ExampleMatchIDs : jusqu'à 3 match_id concrets (rempli par enrichExampleMatchIDs
+	// sur la fenêtre servie — data_quality_examples.go).
+	ExampleMatchIDs []string
 }
 
 // rawUUIDColumns : colonnes (id, name) de match_registry où name == id
@@ -82,7 +85,7 @@ var rawUUIDColumns = []struct{ Kind, IDCol, NameCol string }{
 
 // CountDataQuality calcule tous les compteurs d'inconnus. Best-effort par
 // section : une requête en échec est remontée en erreur (le caller dégrade).
-func CountDataQuality(ctx context.Context, sharedDB, metaDB *sql.DB, titleSlug string) (DataQualityCounts, error) {
+func CountDataQuality(ctx context.Context, sharedDB, metaDB *sql.DB, titleSlug, locale string) (DataQualityCounts, error) {
 	var c DataQualityCounts
 	if sharedDB == nil {
 		return c, fmt.Errorf("data_quality: sharedDB nil")
@@ -98,7 +101,7 @@ func CountDataQuality(ctx context.Context, sharedDB, metaDB *sql.DB, titleSlug s
 		}
 	}
 
-	untranslated, err := listUntranslatedModes(ctx, sharedDB, metaDB, 0)
+	untranslated, err := listUntranslatedModes(ctx, sharedDB, metaDB, locale, 0)
 	if err != nil {
 		return c, err
 	}
@@ -148,7 +151,7 @@ func CountDataQuality(ctx context.Context, sharedDB, metaDB *sql.DB, titleSlug s
 // est découpée en mémoire — les volumes réels sont bornés (nombre d'assets/xuids
 // distincts) et déjà scannés intégralement par CountDataQuality.
 func ListDataQualityIssues(
-	ctx context.Context, sharedDB, metaDB *sql.DB, titleSlug, kind string, limit, offset int,
+	ctx context.Context, sharedDB, metaDB *sql.DB, titleSlug, kind, locale string, limit, offset int,
 ) ([]DataQualityIssue, int, error) {
 	if sharedDB == nil {
 		return nil, 0, fmt.Errorf("data_quality: sharedDB nil")
@@ -165,7 +168,7 @@ func ListDataQualityIssues(
 	case "raw_uuids":
 		all, err = listRawUUIDs(ctx, sharedDB, 0)
 	case "untranslated_modes":
-		all, err = listUntranslatedModes(ctx, sharedDB, metaDB, 0)
+		all, err = listUntranslatedModes(ctx, sharedDB, metaDB, locale, 0)
 	case "orphan_playlists":
 		all, err = listOrphanPlaylists(ctx, sharedDB, metaDB, titleSlug, 0)
 	case "orphan_xuids":
@@ -176,7 +179,11 @@ func ListDataQualityIssues(
 	if err != nil {
 		return nil, 0, err
 	}
-	return windowIssues(all, limit, offset), len(all), nil
+	// Fenêtre servie SEULEMENT : les exemples (≤3 match_id par ligne) sont résolus
+	// par requête bornée, uniquement pour les lignes rendues (data_quality_examples.go).
+	window := windowIssues(all, limit, offset)
+	enrichExampleMatchIDs(ctx, sharedDB, kind, window)
+	return window, len(all), nil
 }
 
 // windowIssues retourne la tranche [offset, offset+limit) de la liste complète
@@ -259,8 +266,12 @@ func metaTableExists(ctx context.Context, metaDB *sql.DB, table string) (bool, e
 //   - table mode_name_tr ABSENTE DU SCHÉMA du titre → détecteur non applicable
 //     (le titre gère ses traductions autrement) → liste vide, jamais une erreur.
 //
+// locale : langue cible de mode_name_tr (défaut « fr » si vide) — paramètre ?locale=.
 // limit <= 0 → pas de limite (usage comptage).
-func listUntranslatedModes(ctx context.Context, sharedDB, metaDB *sql.DB, limit int) ([]DataQualityIssue, error) {
+func listUntranslatedModes(ctx context.Context, sharedDB, metaDB *sql.DB, locale string, limit int) ([]DataQualityIssue, error) {
+	if locale == "" {
+		locale = "fr"
+	}
 	if metaDB != nil {
 		exists, err := metaTableExists(ctx, metaDB, "mode_name_tr")
 		if err != nil {
@@ -274,7 +285,7 @@ func listUntranslatedModes(ctx context.Context, sharedDB, metaDB *sql.DB, limit 
 	}
 	frSet := map[string]struct{}{}
 	if metaDB != nil {
-		rows, err := metaDB.QueryContext(ctx, `SELECT mode_en FROM mode_name_tr WHERE lang = 'fr'`)
+		rows, err := metaDB.QueryContext(ctx, `SELECT mode_en FROM mode_name_tr WHERE lang = ?`, locale)
 		if err != nil {
 			return nil, fmt.Errorf("load mode_name_tr: %w", err)
 		}
