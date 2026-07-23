@@ -1,3 +1,38 @@
+## [2026-07-23] Différentiel FDA réel vs attendu — Lot C (front Escouade / Synergies) livré
+
+**Statut** : Complété (Lot C du plan `.ai/PLAN_EXPECTED_FDA_2026-07.md` ; branche
+`feat/expected-fda-differential`, worktree `expected-fda` ; NON commité — revue superviseur).
+
+**Décision technique principale** : extraction dans un fichier frère. Le builder
+`buildFdaGapCumulativeOption` devait aller dans `squadPerformanceLineCharts.ts`, mais ce
+fichier était DÉJÀ à 511 L (> seuil 500 avant tout ajout) → nouveau fichier
+`features/squad/charts/squadFdaGapChart.ts` pour ne pas accroître la dette god-file
+(CLAUDE.md n°5). Helpers partagés `orderedPlayers`/`maxLength`/`xAxisLabels` + type
+`CommonOpts` exportés du fichier voisin et réutilisés (DRY, zéro duplication). Le builder
+consomme `kda_expected` (déjà projeté backend, D6, jamais recalculé), cumule le différentiel
+`kda − kda_expected` par `match_order` croissant : 1 line/joueur (couleur `getSquadPlayerColors`),
+markLine 0, PAS d'aire (multi-séries). D5 : match sans attendu → cumul reporte la dernière
+valeur ; trous d'intersection = null (`connectNulls`). Robuste au désordre (`sort`) et au
+non-fini (`Number.isFinite`). Chart monté via composant self-gated
+`SquadFdaGapCumulativeCard.tsx` (`useCapability('expected_stats')` → null, pattern Lot B),
+sur `SquadSynergiesPage.tsx` après `SquadFragSection`. Pastilles KPI en footer ChartCard :
+écart moyen/match par joueur (matchs AVEC attendu, D3), signé
+(`Intl.NumberFormat(intlLocale, signDisplay:'always')`), couleur token-dérivée + suffixe i18n
+`units.perGame`, « — » si vide.
+
+**Résultats observés** : Gate C verte — `tsc -b --force` exit 0 (après purge
+`node_modules/.tmp`) ; `vitest run` (squadFdaGapChart + SquadFdaGapCumulativeCard +
+squadPerformanceLineCharts + SquadSynergiesPage) → 4 fichiers / 28 tests exit 0. Tests
+builder : cumul, report D5 (attendu ET réel manquants), non-fini (Infinity), `match_order`
+désordonné, trou d'intersection, moyenne (D3), multi-joueurs/couleurs/markLine/hidden. Tests
+composant : capability présente/absente, pastilles signées + suffixe i18n + « — ». i18n squad
+FR+EN (section `fdaGap`, parité, D7 « Écart cumulé au FDA attendu », sans anglicismes).
+
+**Conclusion / prochaine étape** : Lot C clos et statué. Reste : Lot D (gates finales
+complètes `go test`/`vet`/`lint`/`typecheck`/`lint`/`test` web, `delivery-checklist`, vérif
+visuelle avant merge, point final utilisateur). Aucun `go` touché (Lot C = front pur). Vitest
+hors sandbox (limitation connue du repo).
+
 ## [2026-07-23] Différentiel FDA réel vs attendu — Lot B (front Timeseries + Sessions) livré
 
 **Statut** : Complété (Lot B du plan `.ai/PLAN_EXPECTED_FDA_2026-07.md` ; branche
