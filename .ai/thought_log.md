@@ -1,6 +1,6 @@
 ## [2026-07-23] Chantier Page Médailles + 3 correctifs Carrière — feat/career-medals-and-fixes
 
-**Statut** : En cours (Lot B livré ; C/D/A à venir).
+**Statut** : En cours (Lots B, C, D + pills + A1 backend livrés/committés ; reste A2 frontend Médailles).
 
 **Contexte** : demande utilisateur — (A) nouvelle page Médailles style Citations affichant les
 médailles JAMAIS obtenues, groupées « à la SpartanRecord », compteur rouge si 0, filtre
@@ -16,6 +16,23 @@ Import unique du mapping `medal_id→catégorie(23)+super-section(4)` de Spartan
 noms/desc/difficulté/images LevelUp ; fallback `medal_type` pour non-mappés (custom/nouvelles/H5).
 Baseline (`medal_type`+`difficulty` du titre) = grouping natif de TOUT titre ; enrichissement
 SpartanRecord = Halo Infinite only, via un port `MedalCategoryResolver` (aucun `slug ==`).
+
+**Lot A1 — backend Médailles (Complété, NON committé — superviseur)** : endpoint
+`POST /players/{slug}/pages/medals` livré en couches. `analysis/medals.go` itère le CATALOGUE
+(count=0 surfacé + orphan fallback `#<id>`), `GroupMedalsByCategory`, baseline pure. Câblage
+title-agnostic = registre `slug→MedalCategoryResolver` dans le service (miroir
+`csrBadgeResolver`/`medalSpriteResolver`) : HINF enregistre `MedalCategoryResolver{}` sous
+`halo_infinite.TitleSlug` au boot (`server_apiv1.go`), défaut baseline, AUCUN `slug ==` (ratchet
+vert). Table SpartanRecord (164 médailles → catégorie(23)+super-section(4)+sort) générée via
+`//go:generate medal_category_gen.go` depuis `AllMedals.tsx` (régénération idempotente vérifiée).
+`ListAllMedals` réutilise `medalLabelDescCoalesceSQL` ; `LoadMedalTotals` réutilise
+`Q36aMedalTotals`. **DÉCOUVERTE corrigeant le plan** : les IDs SpartanRecord/HINF (Killjoy,
+Perfect) N'EXISTENT PAS dans la metadata H5 (difficulty H5 = valeur numérique, `difficulty_index`=0
+partout, 215 médailles) → Halo 5 passe 100% en baseline `medal_type` (`mode/multikill/other/
+proficiency/spree/style`) — c'est le fallback prévu, pas la « même `medal_name_id` » supposée.
+Gates verts : `go build ./...`, unitaires (analysis/games/service/handlers), intégration
+`medals_repo` (-p 1), drift OpenAPI MISSING=0 + `generate-types`, ratchet `no_slug_comparison`.
+Reste (superviseur) : commit + Lot A2 (front FR/EN des clés catégorie/super-section/rareté).
 
 **Lot B (Complété)** : `MatchScoreboard.tsx` — colonnes `assassination/ground_pound/shoulder_bash`
 stockées 0 (pas null) sur Infinite → non retirées par le filtre `presentKeys` (`0 != null`). Gate
@@ -57,9 +74,11 @@ reader `(locale=? OR ''/NULL)` tolérant legacy. (C) `localizedText` FR-first fi
 go build, unitaires, INTÉGRATION (golden invariants + anti-ART + roundtrip coexistence FR/EN), i18n
 régénéré, tsc, vitest — tous verts. Tests ajoutés (coexistence, ordering, démo FR/EN distinct).
 
-**Conclusion / prochaine étape** : commit Lot D. Enchaîner Lot A (page Médailles, le gros lot).
-À vérifier plus tard (superviseur) : lecture prod `battlepass_snapshots.is_owned` (Lot C) ; passe
-finale complète de gates avant merge. Aucun push `main` sans feu vert (= deploy prod auto).
+**Conclusion / prochaine étape** : commit A1. Reste A2 (frontend Médailles : page style Citations,
+filtre obtenues/non-obtenues, tri, compteur rouge si 0, nav L1, i18n des clés catégorie/super-section/
+rareté fournies par A1). À vérifier avant merge (superviseur) : lecture prod
+`battlepass_snapshots.is_owned` (Lot C) ; passe finale complète de gates. Aucun push `main` sans feu
+vert (= deploy prod auto).
 
 ---
 ## [2026-07-23] Réintégration + validation des 4 retouches FDA gap sur origin/main

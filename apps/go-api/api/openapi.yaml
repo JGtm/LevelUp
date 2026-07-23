@@ -12192,6 +12192,123 @@ components:
           - top_medals
           - all_medals
       type: object
+    MedalCategoryGroup:
+      additionalProperties: false
+      properties:
+          category:
+              type: string
+          earned:
+              format: int64
+              type: integer
+          items:
+              items:
+                  $ref: '#/components/schemas/MedalSummaryItem'
+              nullable: true
+              type: array
+          super_section:
+              type: string
+          total:
+              format: int64
+              type: integer
+          total_count:
+              format: int64
+              type: integer
+      required:
+          - super_section
+          - category
+          - items
+          - earned
+          - total
+          - total_count
+      type: object
+    MedalSummaryItem:
+      additionalProperties: false
+      properties:
+          category:
+              type: string
+          count:
+              format: int64
+              type: integer
+          description:
+              type: string
+          difficulty:
+              type: string
+          difficulty_key:
+              type: string
+          difficulty_rank:
+              format: int64
+              type: integer
+          image_url:
+              type: string
+          medal_id:
+              format: int64
+              type: integer
+          name:
+              type: string
+          personal_score:
+              format: int64
+              type: integer
+          sort:
+              format: int64
+              type: integer
+          sprite_height:
+              format: int64
+              type: integer
+          sprite_left:
+              format: int64
+              type: integer
+          sprite_sheet:
+              type: string
+          sprite_top:
+              format: int64
+              type: integer
+          sprite_width:
+              format: int64
+              type: integer
+          super_section:
+              type: string
+      required:
+          - medal_id
+          - name
+          - description
+          - difficulty
+          - difficulty_key
+          - difficulty_rank
+          - category
+          - super_section
+          - personal_score
+          - count
+          - sort
+      type: object
+    MedalsPageResponse:
+      additionalProperties: false
+      properties:
+          catalog_total:
+              format: int64
+              type: integer
+          categories:
+              items:
+                  $ref: '#/components/schemas/MedalCategoryGroup'
+              nullable: true
+              type: array
+          earned_total:
+              format: int64
+              type: integer
+          medals:
+              items:
+                  $ref: '#/components/schemas/MedalSummaryItem'
+              nullable: true
+              type: array
+          total_count:
+              format: int64
+              type: integer
+      required:
+          - medals
+          - categories
+          - earned_total
+          - catalog_total
+          - total_count
+      type: object
     MedalDigestItem:
       additionalProperties: false
       properties:

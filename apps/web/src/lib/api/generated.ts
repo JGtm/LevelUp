@@ -7024,6 +7024,55 @@ export interface components {
             /** Format: int64 */
             total_count: number;
         };
+        MedalCategoryGroup: {
+            category: string;
+            /** Format: int64 */
+            earned: number;
+            items: components["schemas"]["MedalSummaryItem"][] | null;
+            super_section: string;
+            /** Format: int64 */
+            total: number;
+            /** Format: int64 */
+            total_count: number;
+        };
+        MedalSummaryItem: {
+            category: string;
+            /** Format: int64 */
+            count: number;
+            description: string;
+            difficulty: string;
+            difficulty_key: string;
+            /** Format: int64 */
+            difficulty_rank: number;
+            image_url?: string;
+            /** Format: int64 */
+            medal_id: number;
+            name: string;
+            /** Format: int64 */
+            personal_score: number;
+            /** Format: int64 */
+            sort: number;
+            /** Format: int64 */
+            sprite_height?: number;
+            /** Format: int64 */
+            sprite_left?: number;
+            sprite_sheet?: string;
+            /** Format: int64 */
+            sprite_top?: number;
+            /** Format: int64 */
+            sprite_width?: number;
+            super_section: string;
+        };
+        MedalsPageResponse: {
+            /** Format: int64 */
+            catalog_total: number;
+            categories: components["schemas"]["MedalCategoryGroup"][] | null;
+            /** Format: int64 */
+            earned_total: number;
+            medals: components["schemas"]["MedalSummaryItem"][] | null;
+            /** Format: int64 */
+            total_count: number;
+        };
         MedalDigestItem: {
             category?: string;
             description?: string;
