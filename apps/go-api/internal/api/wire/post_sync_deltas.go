@@ -72,12 +72,16 @@ const (
 // restent codés à la main dans EmitPostSyncDeltas. K1a (2026-07-05) : table-driven
 // pour dégonfler la god-function EmitPostSyncDeltas.
 type counterDelta struct {
-	field       func(s *PlayerSnapshot) int
-	category    notifications.Category
-	severity    notifications.Severity
-	titleKey    string
-	bodyKey     string
-	routeSuffix string         // segment après /players/{slug}/
+	field    func(s *PlayerSnapshot) int
+	category notifications.Category
+	severity notifications.Severity
+	titleKey string
+	bodyKey  string
+	// routeSuffix : chemin sous la racine joueur (sans « / » de tête), passé à
+	// notifications.PlayerTargetRoute. DOIT viser une route front RÉELLE pour rester
+	// zéro hop — ex. "career/citations" et non "citations" (ce dernier n'est qu'une
+	// redirection interne vers career/citations, soit un hop, cf. lot A 2026-07-23).
+	routeSuffix string
 	search      map[string]any // TargetSearch optionnel (nil = aucun)
 	logLabel    string
 }
@@ -87,8 +91,8 @@ var postSyncCounterDeltas = []counterDelta{
 	{field: func(s *PlayerSnapshot) int { return s.PersonalAwardCount }, category: notifications.CategoryObjectiveCompleted, severity: notifications.SeveritySuccess, titleKey: "notif.objective_completed.title", bodyKey: "notif.objective_completed.body", routeSuffix: "ascension", logLabel: "objective_completed"},
 	{field: func(s *PlayerSnapshot) int { return s.ChallengeCompletedCount }, category: notifications.CategoryChallengeCompleted, severity: notifications.SeveritySuccess, titleKey: "notif.challenge_completed.title", bodyKey: "notif.challenge_completed.body", routeSuffix: "ascension", search: map[string]any{"tab": "challenges"}, logLabel: "challenge_completed"},
 	{field: func(s *PlayerSnapshot) int { return s.BattlepassCompletedTracks }, category: notifications.CategoryBattlepassCompleted, severity: notifications.SeveritySuccess, titleKey: "notif.battlepass_completed.title", bodyKey: "notif.battlepass_completed.body", routeSuffix: "career/season-pass", logLabel: "battlepass_completed"},
-	{field: func(s *PlayerSnapshot) int { return s.CitationTotalEarnedTiers }, category: notifications.CategoryCitationTier, severity: notifications.SeveritySuccess, titleKey: "notif.citation_tier.title", bodyKey: "notif.citation_tier.body", routeSuffix: "citations", logLabel: "citation_tier"},
-	{field: func(s *PlayerSnapshot) int { return s.CitationMasteryCount }, category: notifications.CategoryCitationMastery, severity: notifications.SeveritySuccess, titleKey: "notif.citation_mastery.title", bodyKey: "notif.citation_mastery.body", routeSuffix: "citations", logLabel: "citation_mastery"},
+	{field: func(s *PlayerSnapshot) int { return s.CitationTotalEarnedTiers }, category: notifications.CategoryCitationTier, severity: notifications.SeveritySuccess, titleKey: "notif.citation_tier.title", bodyKey: "notif.citation_tier.body", routeSuffix: "career/citations", logLabel: "citation_tier"},
+	{field: func(s *PlayerSnapshot) int { return s.CitationMasteryCount }, category: notifications.CategoryCitationMastery, severity: notifications.SeveritySuccess, titleKey: "notif.citation_mastery.title", bodyKey: "notif.citation_mastery.body", routeSuffix: "career/citations", logLabel: "citation_mastery"},
 	{field: func(s *PlayerSnapshot) int { return s.ChallengePathsCount }, category: notifications.CategoryChallengeAdded, severity: notifications.SeverityInfo, titleKey: "notif.challenge_added.title", bodyKey: "notif.challenge_added.body", routeSuffix: "ascension", search: map[string]any{"tab": "challenges"}, logLabel: "challenge_added"},
 	// B1/DP2 (2026-07) : objective_assigned SUPPRIMÉ — doublon exact de
 	// objective_completed (les deux étaient branchés sur PersonalAwardCount, une
@@ -135,12 +139,15 @@ func BuildPostSyncDeltaHook(reg *ServiceRegistry) handlers.PostSyncDeltaHook {
 			EmitPostSyncDeltas(ctx, emitter, slug, before, after, pdb2, PostSyncDeltaOptions{
 				RecentSkillTiers: loadRecentSkillTierNotifs(ctx, pdb2),
 				Now:              time.Now().UTC(),
+				// Titre canonique du joueur syncé (jamais le slug joueur `slug`) — même
+				// source que le pipeline progression ci-dessous (PMT-4).
+				TitleSlug: pdb2.TitleSlug,
 			})
 
 			// Lot relations-E : notification « rival croisé » — nouveau duel contre
 			// un top rival ramené par cette sync. Best-effort (détection interne
 			// non bloquante) ; skippée sans nouveau match (watermark).
-			emitRivalEncounters(ctx, emitter, newRivalDetectorForPDB(pdb2), slug, before, after)
+			emitRivalEncounters(ctx, emitter, newRivalDetectorForPDB(pdb2), pdb2.TitleSlug, slug, before, after)
 
 			// Couche progression V2 (Ascension) — pipeline streaks/records/
 			// milestones/coach + coach_advisor (Phase 8 ADR 0020). Non
@@ -275,6 +282,11 @@ type PostSyncDeltaOptions struct {
 	RecentSkillTiers []notifications.Notification
 	// Now : horloge injectée (défaut time.Now().UTC()).
 	Now time.Time
+	// TitleSlug : titre canonique du joueur syncé (pdb.TitleSlug), porté ici pour
+	// construire des TargetRoute title-scopées via notifications.PlayerTargetRoute
+	// sans ajouter un 8e paramètre à EmitPostSyncDeltas (déjà à la limite lint de 7).
+	// title-agnostic : le titre voyage verbatim, aucun test sur sa valeur.
+	TitleSlug string
 }
 
 //nolint:funlen,gocyclo // Émetteur multi-événements : compare ~12 snapshots delta
@@ -326,7 +338,7 @@ func EmitPostSyncDeltas(
 			TitleKey:    d.titleKey,
 			BodyKey:     d.bodyKey,
 			Params:      map[string]any{paramKeyCount: delta},
-			TargetRoute: fmt.Sprintf("/players/%s/%s", slug, d.routeSuffix),
+			TargetRoute: notifications.PlayerTargetRoute(o.TitleSlug, slug, d.routeSuffix),
 			Source:      postSyncSource,
 		}
 		if d.search != nil {
@@ -337,7 +349,7 @@ func EmitPostSyncDeltas(
 		}
 	}
 
-	emitCareerRankDelta(ctx, emitter, slug, before, after)
+	emitCareerRankDelta(ctx, emitter, o.TitleSlug, slug, before, after)
 	emitSkillTierDeltas(ctx, emitter, slug, before, after, o)
 
 	// threshold_crossed — KD ratio (palier 0.05). On envoie metric_key (clé i18n)
@@ -349,7 +361,7 @@ func EmitPostSyncDeltas(
 			TitleKey:    "notif.threshold_crossed.title",
 			BodyKey:     "notif.threshold_crossed.body",
 			Params:      map[string]any{"metric_key": "kd_ratio", "value": fmt.Sprintf("%.2f", level)},
-			TargetRoute: fmt.Sprintf("/players/%s/synthesis", slug),
+			TargetRoute: notifications.PlayerTargetRoute(o.TitleSlug, slug, "stats/synthesis"),
 			Source:      postSyncSource,
 		})
 	}
@@ -362,7 +374,7 @@ func EmitPostSyncDeltas(
 			TitleKey:    "notif.threshold_crossed.title",
 			BodyKey:     "notif.threshold_crossed.body",
 			Params:      map[string]any{"metric_key": "winrate", "value": fmt.Sprintf("%.0f%%", level*100)},
-			TargetRoute: fmt.Sprintf("/players/%s/synthesis", slug),
+			TargetRoute: notifications.PlayerTargetRoute(o.TitleSlug, slug, "stats/synthesis"),
 			Source:      postSyncSource,
 		})
 	}
@@ -385,7 +397,7 @@ func EmitPostSyncDeltas(
 					"value":      fmt.Sprintf("%.2f", after.BestKDA),
 					"previous":   fmt.Sprintf("%.2f", oldRec.Value),
 				},
-				TargetRoute: fmt.Sprintf("/players/%s/synthesis", slug),
+				TargetRoute: notifications.PlayerTargetRoute(o.TitleSlug, slug, "stats/synthesis"),
 				Source:      postSyncSource,
 			})
 		}

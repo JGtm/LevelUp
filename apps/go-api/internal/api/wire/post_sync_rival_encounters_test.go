@@ -37,7 +37,7 @@ func TestEmitRivalEncounters_NewDuelEmitsNotification(t *testing.T) {
 	}
 	em := &recordingEmitter{}
 
-	emitRivalEncounters(context.Background(), em, det, "player-slug", before, after)
+	emitRivalEncounters(context.Background(), em, det, "halo_5", "player-slug", before, after)
 
 	if !det.called {
 		t.Fatal("le détecteur aurait dû être appelé (nouveau match présent)")
@@ -55,7 +55,7 @@ func TestEmitRivalEncounters_NewDuelEmitsNotification(t *testing.T) {
 	if in.Severity != notifications.SeveritySuccess {
 		t.Errorf("duel gagné → severity success attendue, obtenue %q", in.Severity)
 	}
-	if in.TargetRoute != "/players/player-slug/matches/m-new" {
+	if in.TargetRoute != "/t/halo_5/players/player-slug/matches/m-new" {
 		t.Errorf("target_route match view attendue, obtenue %q", in.TargetRoute)
 	}
 	if in.Source != postSyncSource {
@@ -80,7 +80,7 @@ func TestEmitRivalEncounters_LossIsInfoSeverity(t *testing.T) {
 	}
 	em := &recordingEmitter{}
 
-	emitRivalEncounters(context.Background(), em, det, "player-slug", before, after)
+	emitRivalEncounters(context.Background(), em, det, "halo_5", "player-slug", before, after)
 
 	if len(em.emitted) != 1 || em.emitted[0].Severity != notifications.SeverityInfo {
 		t.Fatalf("duel perdu → 1 notif severity info attendue, obtenu %+v", em.emitted)
@@ -96,7 +96,7 @@ func TestEmitRivalEncounters_NoNewMatchSkipsDetection(t *testing.T) {
 	}
 	em := &recordingEmitter{}
 
-	emitRivalEncounters(context.Background(), em, det, "player-slug", before, after)
+	emitRivalEncounters(context.Background(), em, det, "halo_5", "player-slug", before, after)
 
 	if det.called {
 		t.Error("aucun nouveau match → le détecteur ne doit PAS être appelé")
@@ -115,7 +115,7 @@ func TestEmitRivalEncounters_DetectorErrorIsBestEffort(t *testing.T) {
 	det := &fakeRivalDetector{err: errInjected}
 	em := &recordingEmitter{}
 
-	emitRivalEncounters(context.Background(), em, det, "slug", before, after)
+	emitRivalEncounters(context.Background(), em, det, "halo_5", "slug", before, after)
 
 	if !det.called {
 		t.Fatal("nouveau match présent → le détecteur doit être appelé avant l'erreur")
@@ -140,7 +140,7 @@ func TestEmitRivalEncounters_EmitErrorIsBestEffort(t *testing.T) {
 	}
 	em := &recordingEmitter{failOn: notifications.CategoryRivalEncounter}
 
-	emitRivalEncounters(context.Background(), em, det, "slug", before, after)
+	emitRivalEncounters(context.Background(), em, det, "halo_5", "slug", before, after)
 
 	if len(em.emitted) != 0 {
 		t.Fatalf("émetteur en échec → 0 notification enregistrée, obtenu %d", len(em.emitted))
@@ -166,7 +166,7 @@ func TestEmitRivalEncounters_NilGuards(t *testing.T) {
 	em := &recordingEmitter{}
 
 	// Détecteur nil (pdb invalide) → no-op, aucune panique.
-	emitRivalEncounters(context.Background(), em, nil, "slug", before, after)
+	emitRivalEncounters(context.Background(), em, nil, "halo_5", "slug", before, after)
 	if len(em.emitted) != 0 {
 		t.Fatalf("détecteur nil → 0 émission, obtenu %d", len(em.emitted))
 	}
