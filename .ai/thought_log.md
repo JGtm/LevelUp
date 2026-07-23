@@ -224,6 +224,29 @@ une fois le disque libéré.
 **Prochaine étape** : utilisateur libère le disque VPS puis redéploie ; vérifier lvelup.info
 repasse 200. Le code livré est sain.
 
+**RÉSOLU (2026-07-23, via `ssh lvelup`)** : récupération manuelle réussie.
+1. État : disque `/dev/vda1` 79G **100 % plein (0 dispo)**, 0 conteneur actif (prod down).
+   Build cache Docker = 44,75 GB, images = 48,9 GB (dont `levelup:latest` fraîchement build).
+2. `docker builder prune -af` → libère 44,75 GB → disque **100 % → 48 % (40 GB dispo)**,
+   images intactes (`levelup-levelup:latest` + `-demo` = code 93812f0ca).
+3. `/opt/levelup` : repo confirmé sur 93812f0ca. `docker compose up -d` (SANS rebuild,
+   images courantes) → 2 conteneurs `Started`.
+4. Boot serveur OK : `[OK] LevelUp API ready -> :8000`, conteneur `healthy`. Migration
+   `add_archived_at_to_squad_challenge` **présente dans migration.log prod**. WARN
+   `title_schema_version non écrit` = non-fatal (conflit d'update transitoire) ; WARN
+   `stats.duckdb No such file` = joueurs `auth_only` (préexistant, attendu).
+5. **lvelup.info → HTTP 200 (3/3)**. Prod rétablie sur le NOUVEAU code. CI principale verte.
+
+**Cause racine récurrente à traiter (recommandation, hors périmètre)** : `deploy.sh` ne purge
+le build cache (`docker builder prune --keep-storage=5GB`, l.98) qu'APRÈS un `up` réussi. Un
+deploy qui échoue en cours de build (disque saturé) ne l'atteint jamais → le cache s'accumule
+sans borne jusqu'à la prochaine saturation. Fix suggéré : purge du cache AVANT le build
+(ou garde disque pré-build) dans `scripts/deploy.sh`. À décider avec l'utilisateur.
+
+**Commits doc (incident + résolution) gardés LOCAUX** : ne pas pousser tant que ce n'est pas
+voulu — un push re-déclenche un deploy (rebuild ~10 min + bref `down`→`up`). Prod étant déjà
+UP sur le bon code, inutile de la bousculer pour un commit doc.
+
 ---
 ## [2026-07-23] Réintégration + validation des 4 retouches FDA gap sur origin/main
 
