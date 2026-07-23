@@ -65,6 +65,7 @@ import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityRelation
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityPrestigeRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/community/prestige'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityCompareRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/community/compare'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCareerSeasonPassRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/career/season-pass'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCareerMedalsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/career/medals'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCommendationsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/career/commendations'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCitationsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRealisationsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations'
@@ -415,6 +416,12 @@ const Char123LangChar125TTitleSlugPlayersPlayerSlugCareerSeasonPassRoute =
       getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
     } as any,
   )
+const Char123LangChar125TTitleSlugPlayersPlayerSlugCareerMedalsRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugCareerMedalsRouteImport.update({
+    id: '/career/medals',
+    path: '/career/medals',
+    getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
+  } as any)
 const Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCommendationsRoute =
   Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCommendationsRouteImport.update(
     {
@@ -511,6 +518,7 @@ export interface FileRoutesByFullPath {
   '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRealisationsRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCitationsRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/career/commendations': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCommendationsRoute
+  '/{-$lang}/t/$titleSlug/players/$playerSlug/career/medals': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerMedalsRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/career/season-pass': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerSeasonPassRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/community/compare': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityCompareRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/community/prestige': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityPrestigeRoute
@@ -572,6 +580,7 @@ export interface FileRoutesByTo {
   '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRealisationsRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCitationsRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/career/commendations': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCommendationsRoute
+  '/{-$lang}/t/$titleSlug/players/$playerSlug/career/medals': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerMedalsRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/career/season-pass': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerSeasonPassRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/community/compare': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityCompareRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/community/prestige': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityPrestigeRoute
@@ -637,6 +646,7 @@ export interface FileRoutesById {
   '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRealisationsRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCitationsRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/career/commendations': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCommendationsRoute
+  '/{-$lang}/t/$titleSlug/players/$playerSlug/career/medals': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerMedalsRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/career/season-pass': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerSeasonPassRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/community/compare': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityCompareRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/community/prestige': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityPrestigeRoute
@@ -703,6 +713,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/career/commendations'
+    | '/{-$lang}/t/$titleSlug/players/$playerSlug/career/medals'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/career/season-pass'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/community/compare'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/community/prestige'
@@ -764,6 +775,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/career/commendations'
+    | '/{-$lang}/t/$titleSlug/players/$playerSlug/career/medals'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/career/season-pass'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/community/compare'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/community/prestige'
@@ -828,6 +840,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/career/commendations'
+    | '/{-$lang}/t/$titleSlug/players/$playerSlug/career/medals'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/career/season-pass'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/community/compare'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/community/prestige'
@@ -1261,6 +1274,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerSeasonPassRouteImport
       parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
     }
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/career/medals': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/medals'
+      path: '/career/medals'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/medals'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerMedalsRouteImport
+      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
+    }
     '/{-$lang}/t/$titleSlug/players/$playerSlug/career/commendations': {
       id: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/commendations'
       path: '/career/commendations'
@@ -1411,6 +1431,7 @@ interface Char123LangChar125TTitleSlugPlayersPlayerSlugRouteChildren {
   Char123LangChar125TTitleSlugPlayersPlayerSlugSynthesisRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSynthesisRoute
   Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCitationsRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCitationsRoute
   Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCommendationsRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCommendationsRoute
+  Char123LangChar125TTitleSlugPlayersPlayerSlugCareerMedalsRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerMedalsRoute
   Char123LangChar125TTitleSlugPlayersPlayerSlugCareerSeasonPassRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerSeasonPassRoute
   Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityCompareRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityCompareRoute
   Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityPrestigeRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityPrestigeRoute
@@ -1454,6 +1475,8 @@ const Char123LangChar125TTitleSlugPlayersPlayerSlugRouteChildren: Char123LangCha
       Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCitationsRoute,
     Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCommendationsRoute:
       Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCommendationsRoute,
+    Char123LangChar125TTitleSlugPlayersPlayerSlugCareerMedalsRoute:
+      Char123LangChar125TTitleSlugPlayersPlayerSlugCareerMedalsRoute,
     Char123LangChar125TTitleSlugPlayersPlayerSlugCareerSeasonPassRoute:
       Char123LangChar125TTitleSlugPlayersPlayerSlugCareerSeasonPassRoute,
     Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityCompareRoute:

@@ -1,6 +1,6 @@
 ## [2026-07-23] Chantier Page Médailles + 3 correctifs Carrière — feat/career-medals-and-fixes
 
-**Statut** : En cours (Lots B, C, D + pills + A1 backend livrés/committés ; reste A2 frontend Médailles).
+**Statut** : En cours (Lots B, C, D + pills + A1 backend + A2 frontend livrés ; A2 NON committé — superviseur).
 
 **Contexte** : demande utilisateur — (A) nouvelle page Médailles style Citations affichant les
 médailles JAMAIS obtenues, groupées « à la SpartanRecord », compteur rouge si 0, filtre
@@ -33,6 +33,27 @@ proficiency/spree/style`) — c'est le fallback prévu, pas la « même `medal_n
 Gates verts : `go build ./...`, unitaires (analysis/games/service/handlers), intégration
 `medals_repo` (-p 1), drift OpenAPI MISSING=0 + `generate-types`, ratchet `no_slug_comparison`.
 Reste (superviseur) : commit + Lot A2 (front FR/EN des clés catégorie/super-section/rareté).
+
+**Lot A2 — frontend Médailles (Complété, NON committé — superviseur)** : sous-page Carrière
+`/players/$playerSlug/career/medals` sur le modèle Citations. Nouveaux fichiers `features/medals/`
+(`MedalsPage` conteneur + toolbar filtre/tri client, `MedalsView` rendu GÉNÉRIQUE des super-sections
+présentes — aucun nom de section en dur, `MedalCard`, `queries.useMedalsPage`, `labels.ts` résolution
+clé→libellé avec fallback clé brute pour futurs titres). Réutilise `CitationProgressRing`
+(pct=earned/total, doré si earned===total) + `MedalIcon` (sprite H5 vs PNG HINF). **Compteur rouge**
+= token sémantique `text-destructive` quand `count===0` (+ aria « Jamais obtenue » + `opacity-60` sur
+la tuile) ; sinon `text-foreground`. **Rareté** = pastille (tokens neutres) UNIQUEMENT si
+`difficulty_key ∈ {normal,heroic,legendary,mythic}` → confirme la DÉCOUVERTE A1 (H5 difficulty_key
+numérique → pas de pastille factice). Filtre client toutes/obtenues(`count>0`)/non-obtenues(`count===0`) ;
+3 tris : `category_total` (catégories par total_count desc DANS chaque super-section, grouping
+préservé), `medal_count` (médailles par count desc), `medal_name` (alpha locale-aware). Capability :
+**Halo 5 déclare `career`** (title.toml vérifié) → gate `career` suffit (parité Citations), pas de
+capability `medals` créée. i18n : manifeste `medals.toml` (54 clés : 4 super-sections + 26 catégories
++ 4 raretés + filtre/tri/aria/états) réutilisant la terminologie FR canonique de l'app (« Capture du
+drapeau », « Corps à corps », « Tireur d'élite », « Réserve », « Oddball ») ; `common.nav.tab_medals`.
+Nav L1 Carrière : onglet `medals` (frère de `citations`) + `medals` ajouté au regex `matchPathname`.
+`routeTree.gen.ts` régénéré par le watcher router (jamais édité à la main). Gates verts : `tsc -b`,
+`eslint` (color-tokens / no-hardcoded-strings / no-title-slug-literal) sur fichiers touchés, `vitest`
+ciblé (MedalCard rouge-si-0 + rareté H5, MedalsView générique — 5 tests), build i18n (parité FR/EN).
 
 **Lot B (Complété)** : `MatchScoreboard.tsx` — colonnes `assassination/ground_pound/shoulder_bash`
 stockées 0 (pas null) sur Infinite → non retirées par le filtre `presentKeys` (`0 != null`). Gate
