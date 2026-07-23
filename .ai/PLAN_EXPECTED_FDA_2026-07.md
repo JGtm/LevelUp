@@ -111,20 +111,33 @@ masqués proprement sur Halo 5 (capability), gates complètes vertes (lot D).
 
 ### Lot B — Front : Timeseries + Sessions
 
-- [ ] **B1** Timeseries (D1) : nouveau composant chart dans
-  `features/timeseries/` (modèle : `TimeseriesFormCharts.tsx:77`
-  `TimeseriesKdaValueTrend` pour le lissage ; `SessionNetScoreArea.tsx` pour l'aire
-  signée) ; monté dans `TimeseriesPage.summary.tsx` sous le chart FDA valeur, gaté
-  `useCapability('expected_stats')`. Tooltip réel/attendu/écart (D5 : trous).
-- [ ] **B2** Sessions (D2) : nouveau chart cumulé dans
-  `features/session-detail/` monté via `SessionChartStack.tsx` (à côté de
-  `SessionNetScoreArea` L110), gaté capability. Cumul D5.
-- [ ] **B3** i18n : titres/sous-titres/tooltips FR+EN dans les i18n des 2 features
-  (D7), parité `Record<Locale, T>`. Aucune couleur hex : tokens
-  `divergent-pos/divergent-neg` via `resolveToken`.
-- [ ] **B4** Tests : vitest ciblés des 2 builders/composants (mock echarts-for-react,
-  pattern existant) — cas : série nominale, trous D5, capability absente (non rendu).
-- [ ] **Gate B** : `npm run test -- <fichiers ciblés>` + `npx tsc -b --force` verts.
+- [x] **B1** Timeseries (D1) : nouveau composant `TimeseriesFdaGapTrend`
+  (`features/timeseries/TimeseriesFdaGapTrend.tsx`) — aire divergente du
+  différentiel BRUT `kda − kda_expected` (trous D5 visibles, `connectNulls:false`)
+  + ligne lissée rolling-5 (mécanique répliquée de `TimeseriesKdaValueTrend`).
+  Monté dans `TimeseriesPage.summary.tsx` sous la tendance FDA valeur. Gate =
+  self-gate `useCapability('expected_stats')` DANS le composant (retour null) —
+  décision d'implémentation (latitude du plan) pour tester « non rendu » en
+  isolation et garder DRY la double-disposition de SessionChartStack. Tooltip
+  réel/attendu/écart, « — » si attendu absent (D5).
+- [x] **B2** Sessions (D2) : nouveau composant `SessionFdaGapCumulative`
+  (`features/session-detail/SessionFdaGapCumulative.tsx`) — cumul du différentiel
+  (`computeCumulativeFdaGap`, tri chronologique, report D5 : match sans attendu
+  sauté, la courbe reporte la dernière valeur), aire signée divergente + markLine 0.
+  Monté via `SessionChartStack.tsx` juste après `SessionNetScoreArea` (dispositions
+  dense ET normale), self-gate capability.
+- [x] **B3** i18n : 4 clés `timeseries.summary.fda_gap_*` + 5 clés
+  `session.detail.fda_gap_*`/`chart_fda_gap_title` (FR+EN, sans anglicismes) dans
+  les manifests TOML, régénérés (`build_i18n_manifests.mjs`). Zéro hex/classe
+  Tailwind : dégradé via helper `divergentZeroGradient` (tokens `divergent-*`).
+- [x] **B4** Tests : `TimeseriesFdaGapTrend.test.tsx` (builder nominal + trous D5 +
+  gate présent/absent), `SessionFdaGapCumulative.test.tsx` (cumul + report D5 + tri
+  + builder + gate), `divergentZeroGradient.test.ts` (math bascule) +
+  `divergentZeroGradient.guard.test.ts` (garde-rail règle 6). echarts-for-react
+  mocké (pattern `ChartFromOption.test`).
+- [x] **Gate B** : `npx tsc -b --force` → exit 0 ; `npm run test -- run` (8 fichiers,
+  54 tests, incl. suites touchées SessionNetScoreArea/SessionDetailPage/capabilities)
+  → exit 0. Vitest hors sandbox (limitation connue).
 
 ### Lot C — Front : Escouade / Synergies
 
@@ -187,6 +200,19 @@ masqués proprement sur Halo 5 (capability), gates complètes vertes (lot D).
 - `openapi.yaml` manuel diverge de Huma sur `nullable` des pointeurs `omitempty`
   (préexistant, non gaté par `TestOpenAPISchemaDrift` qui ne gate que le MISSING).
   Nouveaux champs alignés sur la convention MANUELLE (sans `nullable`, comme `kda`).
+- **Lot B — 2 corrections IN-PÉRIMÈTRE (conséquences directes, pas opportunistes)** :
+  1. **Bloqueur tsc** : ajouter `expected_stats` à `TITLE_CAPABILITIES` (Lot A) a
+     rendu `FeatureUnavailable.tsx` (`Record<TitleCapability, {fr,en}>`) incomplet →
+     `tsc` échouait (TS2741). Entrée `expected_stats` ajoutée (FR/EN). Gate A était
+     Go-only, d'où le non-détecté en A3.
+  2. **Centralisation règle 6** : le dégradé divergent-ancré-à-0 existait DÉJÀ en 2
+     copies (`SessionNetScoreArea`, `features/palmares/CumulativeFragGapChart`). Les 2
+     charts B en faisaient 4 → extraction du helper canonique
+     `lib/charts/divergentZeroGradient.ts` + migration des 3 copies existantes +
+     garde-rail grep `divergentZeroGradient.guard.test.ts` (identifiant `zeroRatio`
+     verrouillé hors du helper). CumulativeFragGapChart (palmares) migré par
+     nécessité (anti-pattern 8 : pas de factorisation abandonnée) ; sortie visuelle
+     inchangée (même structure de dégradé).
 
 ## Journal d'exécution
 
@@ -212,3 +238,21 @@ masqués proprement sur Halo 5 (capability), gates complètes vertes (lot D).
     exit 0 ; `generate-types` OK (12 nouveaux champs dans `generated.ts`). Bonus verts :
     `platform/duckdb` (query/scan), `TestOpenAPISchemaDrift`, vitest miroir capabilities.
   - Prochaine étape : Lot B (front Timeseries + Sessions).
+- 2026-07-23 : **Lot B exécuté et clôturé** (agent Opus, worktree `expected-fda`,
+  aucun commit — revue superviseur). B1→B4 + Gate B tous `[x]`. Décisions notables :
+  - **Gate = self-gate** `useCapability('expected_stats')` dans chaque composant
+    (retour null) plutôt que booléen parent : teste « non rendu » en isolation et
+    garde DRY la double-disposition (dense/normale) de SessionChartStack. Honore D4.
+  - **B1 forme** : aire divergente du différentiel BRUT par match (trous D5 visibles,
+    `connectNulls:false`) + ligne lissée rolling-5 (réplique la mécanique de
+    `TimeseriesKdaValueTrend`, 2 séries comme le modèle). Tooltip réel/attendu/écart
+    (« — » si attendu absent).
+  - **B2 forme** : `computeCumulativeFdaGap` pur (tri chronologique + report D5) →
+    aire signée divergente ancrée à 0 (pas de coloration outcome, sémantique = signe).
+  - **Centralisation (règle 6)** : helper `lib/charts/divergentZeroGradient.ts` +
+    migration des 3 copies existantes (SessionNetScoreArea, CumulativeFragGapChart
+    palmares, + les 2 nouveaux charts) + garde-rail grep. Bloqueur tsc corrigé
+    (`FeatureUnavailable.tsx` : entrée `expected_stats`). Cf. Découvertes.
+  - Gate B verte : `tsc -b --force` exit 0 ; `vitest run` 8 fichiers / 54 tests exit 0
+    (incl. suites touchées). Aucun `go` touché (Lot B = front pur).
+  - Prochaine étape : Lot C (Escouade / Synergies), puis Lot D (gates finales, revue).

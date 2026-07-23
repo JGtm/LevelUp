@@ -24,6 +24,7 @@ import {
   TimeseriesAvgLifeTrend,
   TimeseriesKdaValueTrend,
 } from './TimeseriesFormCharts'
+import { TimeseriesFdaGapTrend } from './TimeseriesFdaGapTrend'
 import { TimeseriesSessionPerformance } from './TimeseriesSquadAdapted'
 import { WinRateVsHistoryBulletChart } from '@/features/squad/WinRateVsHistoryBulletChart'
 import { MapPerfVsHistoryChart } from '@/features/squad/MapPerfVsHistoryChart'
@@ -213,6 +214,21 @@ export function TimeseriesSummaryTab({
       ) : (
         <div className="grid grid-cols-1 gap-6">{fdaTrend}</div>
       )}
+
+      {/* Écart au FDA attendu (D1) — différentiel réel−attendu par match, aire signée
+          divergente + tendance lissée. Masqué par capability `expected_stats`
+          (self-gate : null sur un titre sans FDA attendu). */}
+      <TimeseriesFdaGapTrend
+        title={t('timeseries.summary.fda_gap_title')}
+        emptyMessage={emptyMsg}
+        rows={data.match_rows ?? []}
+        labels={{
+          gap: t('timeseries.summary.fda_gap_series'),
+          real: t('timeseries.summary.fda_gap_real'),
+          expected: t('timeseries.summary.fda_gap_expected'),
+          smoothing: t('timeseries.summary.trend'),
+        }}
+      />
 
       {/* Performance solo par session/semaine/mois — agrégat backend
           sur tous les matchs solo (cross-session, granularité auto). */}
