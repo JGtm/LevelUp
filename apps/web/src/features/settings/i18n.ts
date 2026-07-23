@@ -268,10 +268,6 @@ export interface SettingsText {
   backupRunDone: string
   backupRunSkipped: string
   backupRunError: string
-  backupConfigTitle: string
-  backupConfigInterval: string
-  backupConfigRetention: string
-  backupConfigRetentionValue: string
   backupIntegrityLabel: string
 }
 
@@ -558,10 +554,6 @@ const FR_TEXT: SettingsText = {
   backupRunDone: 'Sauvegarde terminée',
   backupRunSkipped: 'Aucune modification — cycle ignoré',
   backupRunError: 'Erreur lors de la sauvegarde',
-  backupConfigTitle: 'Configuration',
-  backupConfigInterval: 'Intervalle',
-  backupConfigRetention: 'Rétention',
-  backupConfigRetentionValue: '{daily}j / {weekly}s / {monthly}m',
   backupIntegrityLabel: 'Intégrité',
 }
 
@@ -848,10 +840,6 @@ const EN_TEXT: SettingsText = {
   backupRunDone: 'Backup complete',
   backupRunSkipped: 'No changes — cycle skipped',
   backupRunError: 'Backup error',
-  backupConfigTitle: 'Configuration',
-  backupConfigInterval: 'Interval',
-  backupConfigRetention: 'Retention',
-  backupConfigRetentionValue: '{daily}d / {weekly}w / {monthly}m',
   backupIntegrityLabel: 'Integrity',
 }
 

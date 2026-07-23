@@ -5,11 +5,9 @@ import (
 	"database/sql"
 	"os"
 	"path/filepath"
-	"time"
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/observability"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/pkg/duckdbbackup"
 )
@@ -20,15 +18,9 @@ import (
 // from the environment so that config.go stays free of any pkg dependency).
 func NewLevelUpBackupScheduler(cfg config.BackupConfig, pr *title.PathResolver) *duckdbbackup.Scheduler {
 	pkgCfg := toPkgConfig(cfg)
-	s := duckdbbackup.New(pkgCfg, func() ([]duckdbbackup.Target, error) {
+	return duckdbbackup.New(pkgCfg, func() ([]duckdbbackup.Target, error) {
 		return discoverLevelUpDBs(pr)
 	})
-	// Statut unifié des crons (A6/DC-5) : le package duckdbbackup reste
-	// standalone — le pont observabilité est câblé ici via le callback.
-	s.OnCycleDone = func(startedAt time.Time, err error, durationMs int64) {
-		observability.ReportCronRun("backup", startedAt, err, durationMs)
-	}
-	return s
 }
 
 // toPkgConfig converts a LevelUp BackupConfig to the generic duckdbbackup.Config.

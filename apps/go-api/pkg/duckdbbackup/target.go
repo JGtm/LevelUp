@@ -1,4 +1,4 @@
-// Package duckdbbackup provides scheduled, incremental DuckDB backups via restic.
+// Package duckdbbackup provides on-demand, incremental DuckDB backups via restic.
 //
 // Usage:
 //
@@ -7,7 +7,10 @@
 //	        {Key: "main", Path: "/data/myapp.duckdb"},
 //	    }, nil
 //	})
-//	go sched.Run(ctx)
+//	result, err := sched.RunOnce(ctx)
+//
+// Periodic scheduling is intentionally left to the caller's environment
+// (e.g. systemd timers) rather than an in-app loop.
 //
 // The package has no dependency on any project-specific internal package.
 // The caller supplies a discover function that returns the list of DBs to protect.

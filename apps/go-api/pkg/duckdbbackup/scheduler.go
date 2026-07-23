@@ -10,16 +10,14 @@ import (
 	"time"
 )
 
-// Scheduler runs periodic DuckDB backups via restic.
-// Instantiate with New; call Run in a goroutine.
+// Scheduler runs on-demand DuckDB backups via restic.
+// Instantiate with New; call RunOnce for a single cycle. Periodic scheduling is
+// intentionally NOT provided in-app: backups are planned externally (systemd
+// timers, cf. scripts/systemd/levelup-restic-backup.timer).
 type Scheduler struct {
 	cfg      Config
 	discover func() ([]Target, error)
 	restic   *ResticClient
-	// OnCycleDone (optional) is invoked after every cycle, success or failure —
-	// observability callback for the caller (this package stays standalone,
-	// no internal dependency). Set it BEFORE calling Run.
-	OnCycleDone func(startedAt time.Time, err error, durationMs int64)
 }
 
 // New creates a Scheduler.
@@ -33,55 +31,12 @@ func New(cfg Config, discover func() ([]Target, error)) *Scheduler {
 	}
 }
 
-// Run starts the periodic backup loop. Must be called in a goroutine.
-// The first cycle runs immediately at startup (same pattern as HealthScheduler).
-func (s *Scheduler) Run(ctx context.Context) {
-	if !s.cfg.Enabled {
-		slog.InfoContext(ctx, "backup: désactivé par config")
-		return
-	}
-	if !s.restic.IsAvailable() {
-		slog.WarnContext(ctx, "backup: binaire restic introuvable dans le PATH — scheduler désactivé",
-			"bin", s.restic.bin())
-		return
-	}
-
-	interval := s.cfg.Interval
-	if interval <= 0 {
-		interval = 6 * time.Hour
-	}
-
-	slog.InfoContext(ctx, "backup: scheduler démarré", "interval", interval)
-	s.runCycle(ctx)
-
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ticker.C:
-			s.runCycle(ctx)
-		case <-ctx.Done():
-			slog.InfoContext(ctx, "backup: arrêt scheduler")
-			return
-		}
-	}
-}
-
 // RunOnce executes a single backup cycle synchronously.
-// Useful for tests and CLI one-shots without a goroutine.
+// This is the sole entry point: invoked by the manual trigger
+// (POST /settings/backup/run) and the backup-once CLI. Periodic scheduling is
+// external (systemd), not embedded in the app.
 func (s *Scheduler) RunOnce(ctx context.Context) (*Result, error) {
 	return s.cycle(ctx)
-}
-
-func (s *Scheduler) runCycle(ctx context.Context) {
-	start := time.Now()
-	_, err := s.cycle(ctx)
-	if err != nil {
-		slog.WarnContext(ctx, "backup: cycle échoué (non-bloquant)", "err", err)
-	}
-	if s.OnCycleDone != nil {
-		s.OnCycleDone(start, err, time.Since(start).Milliseconds())
-	}
 }
 
 func (s *Scheduler) cycle(ctx context.Context) (*Result, error) {
