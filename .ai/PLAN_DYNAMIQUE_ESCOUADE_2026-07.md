@@ -113,31 +113,47 @@ visuelle Halo Infinite ET Halo 5 (dégradation mono-carte).
 
 ## Phase 3 — « Balance des dégâts » (frontend uniquement)
 
-- [ ] 3.1 `lib/charts/cumulativeSeries.ts` : extraire de `cumulativeFdaGap.ts` le
-      cumul signé générique avec report (carry-forward D5 : `null` ne fait pas
-      avancer le cumul, la courbe reporte) + moyenne sur points valides.
-      `cumulativeFdaGap` DÉLÈGUE (pas de duplication) ; étendre
-      `cumulativeFdaGap.guard.test.ts` pour interdire toute réimplémentation de
-      l'accumulateur hors de ce fichier (règle n°6 : helper + garde-rail).
-- [ ] 3.2 `lib/charts/netLives.ts` : `netLives(damageDealt, damageTaken, hpToKill)`
-      → `number | null` + tests unitaires (null si donnée manquante, division par
-      le barème du titre).
-- [ ] 3.3 Escouade (onglet Dynamique) : `SquadNetLivesChart` — 1 courbe CUMULÉE par
-      joueur sur `match_order` partagé (pattern `squadFdaGapChart.ts`), couleur
-      par joueur, ligne repère 0. Masqué si aucun joueur n'a de `damage_taken`.
-- [ ] 3.4 Session : `SessionNetLivesCumulative` (pattern
-      `SessionFdaGapCumulative.tsx`) — aire cumulée + pastille KPI « balance
-      moyenne par match » ; intégration `_compareScale` (yDomain partagé A/B) ; branché
-      dans `SessionChartStack.tsx`. Masqué si `damage_taken` absent des rows.
-- [ ] 3.5 i18n FR/EN (`session.toml` + `features/squad/i18n.ts`) ; tooltip
-      expliquant la formule avec le barème injecté via `substituteHpToken`
-      (« 225 » Infinite / « 115 » H5) ; unité 0-centrée, positif = porte l'équipe.
-- [ ] 3.6 Tests : `netLives.test.ts`, `cumulativeSeries.test.ts`, tests composants
-      session + squad (pattern des équivalents FDA gap).
+- [x] 3.1 `lib/charts/cumulativeSeries.ts` créé : `cumulativeSigned` (cumul signé +
+      report carry-forward D5), `meanOfValid` (moyenne sur points valides),
+      `finiteOrNull` (garde D5 partagée). `cumulativeFdaGap.ts` DÉLÈGUE (helper
+      local `gapOf` → `cumulativeSigned`/`meanOfValid`, plus aucune impl de
+      `carryForward`). `cumulativeFdaGap.guard.test.ts` : ALLOWED = {cumulativeSeries.ts,
+      cumulativeFdaGap.ts} (délégant documenté), regex `\bcarryForward\b` inchangée.
+- [x] 3.2 `lib/charts/netLives.ts` : `netLives(damageDealt, damageTaken, hpToKill)`
+      → `number | null` (null si terme manquant/non-fini OU barème invalide ;
+      division par le barème du titre). Tests `netLives.test.ts`.
+- [x] 3.3 `features/squad/charts/squadNetLivesChart.ts` (`cumulativeNetLivesSeries` +
+      `buildNetLivesCumulativeOption`, calqué `squadFdaGapChart.ts`) + composant
+      `SquadNetLivesChart.tsx` (1 courbe cumulée/joueur, couleur par joueur, markLine 0,
+      InfoTooltip formule). Monté dans `SquadDynamiquePage`. Masquage via capability
+      `damage_taken` (`useProvidesDamageTaken`) — voir Découvertes (gate title-agnostic
+      choisi plutôt que sonder les rows).
+- [x] 3.4 `features/session-detail/SessionNetLivesCumulative.tsx` (calqué
+      `SessionFdaGapCumulative.tsx`) — aire signée `divergentZeroGradient` ancrée à 0 +
+      markLine 0 + pastille KPI « balance moyenne par match » (`meanOfValid`). yDomain
+      via `_compareScale.netLives` (nouveau champ ; `computeCompareScale` prend `hp`,
+      passé par `SessionDetailPage`). Branché dans `SessionChartStack` (dense + principal,
+      après `fdaGap`). Masquage capability `damage_taken`.
+- [x] 3.5 i18n : `features/squad/i18n.ts` (`netLives.title`/`netLives.tooltip` FR/EN,
+      parité typée) + `session.toml` (`chart_net_lives_title`, `net_lives_series`,
+      `net_lives_match`, `net_lives_average_caption`, `net_lives_average_unit`,
+      `net_lives_tooltip`) régénéré via `node scripts/build_i18n_manifests.mjs`
+      (seul `generated/session.ts` modifié). Barème injecté via `substituteHpToken`
+      ({{HP}}). Titres FR « Balance des dégâts cumulée » / EN « Cumulative damage balance ».
+      Valeurs/axe en vies (signées, 0-centrées), positif = porte l'équipe.
+- [x] 3.6 Tests : `netLives.test.ts`, `cumulativeSeries.test.ts`,
+      `charts/squadNetLivesChart.test.ts`, `SquadNetLivesChart.test.tsx` (gate
+      capability), `SessionNetLivesCumulative.test.tsx` (pur + gate + KPI).
 
 **Gate P3** : `make check-types` ·
 `npx vitest run src/lib/charts src/features/session-detail src/features/squad` ·
 vérif visuelle Session + Dynamique · vérif H5 = masqué proprement.
+
+> Journal P3 [2026-07-23] — Complété. `npx tsc --noEmit` exit 0. `npx vitest run
+> src/lib/charts src/features/session-detail src/features/squad` : 58 fichiers /
+> 401 tests passés (dont guard cumulativeFdaGap toujours vert après ajout de
+> cumulativeSeries.ts à l'allowlist). Vérif visuelle Session/Dynamique + H5 masqué
+> (:8000) NON exécutée (hors périmètre agent — superviseur).
 
 ## Phase 4 — Écart d'engagement cumulé (Go + web)
 
@@ -206,6 +222,16 @@ concluant → revert du commit P5, item passé `[!]` avec justification.
   `getConfig`, mêmes options que le plugin : target react, autoCodeSplitting,
   routeFileIgnorePattern `\.test\.tsx?$`). Script supprimé après usage ; diff
   routeTree purement additif. À reproduire pour les prochaines routes du chantier.
+- [P3, 2026-07-23] Masquage « Balance des dégâts » : décision de gater par la
+  capability `damage_taken` (`useProvidesDamageTaken`, source unique déjà en place
+  dans `lib/damage/effectiveHp.ts`) plutôt que sonder la présence de `damage_taken`
+  dans les rows. Motif : title-agnostic (CLAUDE.md — brancher sur capability, jamais
+  slug==), aligné avec le masquage des autres surfaces combat (résistance), et H5
+  ne déclare pas la capability → masquage propre. Le report D5 par-point
+  (`cumulativeSigned`) couvre les matchs Infinite isolés sans `damage_taken`.
+- [P3, 2026-07-23] `computeCompareScale` prend désormais un 5e paramètre `hp` (le
+  domaine partagé de la balance cumulée est en vies = dégâts nets ÷ barème). Seul
+  caller = `SessionDetailPage` (hp via `useEffectiveHpToKill`). Aucun autre appelant.
 - [P2, 2026-07-23] `efficiencySeries.description` (i18n squad) est mort AVANT ce
   chantier (aucun caller — grep vide) ; conservé tel quel, hors périmètre P2
   (nettoyage non traité). Son texte mentionnait « trait plein / pointillé » qui ne

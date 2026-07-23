@@ -28,6 +28,7 @@ import { SessionFdaBars } from './SessionFdaBars'
 import { SessionParticipationBars } from './SessionParticipationBars'
 import { SessionNetScoreArea } from './SessionNetScoreArea'
 import { SessionFdaGapCumulative } from './SessionFdaGapCumulative'
+import { SessionNetLivesCumulative } from './SessionNetLivesCumulative'
 import { SessionMmrDumbbell } from './SessionMmrDumbbell'
 import { SessionPerfTrend } from './SessionPerfTrend'
 import { SessionEngagementChart } from './SessionEngagementChart'
@@ -121,6 +122,15 @@ export function SessionChartStack({
   const fdaGap = (
     <SessionFdaGapCumulative title={t('session.detail.chart_fda_gap_title')} matches={matches} />
   )
+  // Balance des dégâts cumulée (P3) — self-gate capability `damage_taken` (null
+  // sur un titre sans dégâts subis, ex. Halo 5). Pleine largeur comme fdaGap.
+  const netLives = (
+    <SessionNetLivesCumulative
+      title={t('session.detail.chart_net_lives_title')}
+      matches={matches}
+      yDomain={scale?.netLives}
+    />
+  )
   const mmr = hasTeamMmr ? (
     <SessionMmrDumbbell title={t('session.detail.chart_mmr_title')} matches={matches} />
   ) : null
@@ -165,6 +175,7 @@ export function SessionChartStack({
         {netScore}
         {fdaBars}
         {fdaGap}
+        {netLives}
         {participation}
         {mmr}
         {ocdr}
@@ -195,6 +206,7 @@ export function SessionChartStack({
         {fdaBars}
       </div>
       {fdaGap}
+      {netLives}
       {participation}
       {mmr ? (
         <div className="grid gap-6 xl:grid-cols-2">
