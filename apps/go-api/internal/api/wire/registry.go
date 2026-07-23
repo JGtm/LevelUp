@@ -40,6 +40,7 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/ops"
+	"levelup/go-api/internal/platform/adminstate"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/halo"
@@ -95,6 +96,7 @@ type ServiceRegistry struct {
 	autoSyncScheduler    *scheduler.AutoSyncScheduler         // dashboard monitoring : snapshot scheduler agrégé dans l'overview (nil → section indisponible)
 	healthScheduler      *scheduler.HealthScheduler           // dashboard monitoring : dernier audit data health + action run (nil → section indisponible)
 	monitoringStore      *ops.MonitoringStore                 // dashboard monitoring : persistance détections/crons/data-health (nil → sections dégradées, PATCH 503) — câblé au boot après NewRouter
+	actionJournal        *adminstate.ActionJournal            // dashboard monitoring : journal JSON des actions globales (dernière exécution/issue/déclencheur — survit au reboot, C2) — nil → non journalisé, endpoint sert un journal vide
 	backupScheduler      *duckdbbackup.Scheduler              // fraîcheur A4.2 : âge du dernier backup (nil → section absente)
 	startedAt            time.Time                            // boot du process (uptime overview — posé par NewServiceRegistry)
 	metaHandles          []*duckdb.DB                         // handles RW "annexes" sur metadata.duckdb (seasons/playlists catalog, ouverts hors pool joueur dans NewRouter) fermés au shutdown via Close() — sinon fuite de refCount sur le cache duckdb.openDBs (cf. INCIDENT_2026-05-21)

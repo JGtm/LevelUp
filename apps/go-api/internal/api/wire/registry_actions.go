@@ -23,6 +23,7 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/ops"
+	"levelup/go-api/internal/platform/adminstate"
 	"levelup/go-api/internal/platform/duckdb"
 	sync_pkg "levelup/go-api/internal/sync"
 )
@@ -50,12 +51,12 @@ const acquireWriterTimeout = 60 * time.Second
 // RunRegistryNamesBackfill résout les assets UUID bruts de match_registry via
 // metadata.asset_translations (sync.BackfillRegistryNames, idempotent).
 // dryRun → scan seul en RO, aucun UPDATE.
-func (r *ServiceRegistry) RunRegistryNamesBackfill(ctx context.Context, titleSlug string, dryRun bool) (domain.RegistryNamesBackfillResult, error) {
-	res := domain.RegistryNamesBackfillResult{DryRun: dryRun}
+func (r *ServiceRegistry) RunRegistryNamesBackfill(ctx context.Context, titleSlug string, dryRun bool) (res domain.RegistryNamesBackfillResult, err error) {
+	res = domain.RegistryNamesBackfillResult{DryRun: dryRun}
 	if dryRun {
-		counts, err := r.DataQualityCounts(ctx, titleSlug)
-		if err != nil {
-			return res, err
+		counts, cErr := r.DataQualityCounts(ctx, titleSlug)
+		if cErr != nil {
+			return res, cErr
 		}
 		res.PlaylistsScanned = counts.RawUUIDPlaylists
 		res.MapsScanned = counts.RawUUIDMaps
@@ -68,6 +69,9 @@ func (r *ServiceRegistry) RunRegistryNamesBackfill(ctx context.Context, titleSlu
 		return res, ErrActionBusy
 	}
 	defer registryNamesMu.Unlock()
+	// C2 : journal de l'exécution réelle (scan à blanc et rejet single-flight NON
+	// journalisés — placés avant ce defer). err = erreur finale nommée.
+	defer func() { r.journalAction(ctx, adminstate.ActionRegistryNames, err) }()
 
 	if r.cfg.SharedProvider == nil {
 		return res, fmt.Errorf("shared provider non câblé (mode legacy) — backfill indisponible")
@@ -111,18 +115,18 @@ func (r *ServiceRegistry) RunRegistryNamesBackfill(ctx context.Context, titleSlu
 // match_registry (events/weapons posés mais tables vides) + le flag
 // events_loaded menteur. Débloque le heal events/weapons au prochain sync.
 // dryRun → COUNT seul en RO (shared cache), aucun UPDATE.
-func (r *ServiceRegistry) RunLyingBitsReset(ctx context.Context, titleSlug string, dryRun bool) (domain.LyingBitsResetResult, error) {
-	res := domain.LyingBitsResetResult{DryRun: dryRun}
+func (r *ServiceRegistry) RunLyingBitsReset(ctx context.Context, titleSlug string, dryRun bool) (res domain.LyingBitsResetResult, err error) {
+	res = domain.LyingBitsResetResult{DryRun: dryRun}
 
 	if dryRun {
-		sharedSQL, _, closeAll, err := r.dataQualityHandles(ctx, titleSlug)
-		if err != nil {
-			return res, err
+		sharedSQL, _, closeAll, dErr := r.dataQualityHandles(ctx, titleSlug)
+		if dErr != nil {
+			return res, dErr
 		}
 		defer closeAll()
-		opsRes, err := ops.ResetLyingBits(ctx, sharedSQL, true)
-		if err != nil {
-			return res, err
+		opsRes, rErr := ops.ResetLyingBits(ctx, sharedSQL, true)
+		if rErr != nil {
+			return res, rErr
 		}
 		return lyingBitsToDomain(opsRes), nil
 	}
@@ -131,6 +135,9 @@ func (r *ServiceRegistry) RunLyingBitsReset(ctx context.Context, titleSlug strin
 		return res, ErrActionBusy
 	}
 	defer lyingBitsResetMu.Unlock()
+	// C2 : journal de l'exécution réelle (scan à blanc / single-flight non
+	// journalisés — placés avant ce defer). err = erreur finale nommée.
+	defer func() { r.journalAction(ctx, adminstate.ActionLyingBitsReset, err) }()
 
 	if r.cfg.SharedProvider == nil {
 		return res, fmt.Errorf("shared provider non câblé (mode legacy) — reset indisponible")
@@ -243,12 +250,15 @@ func (r *ServiceRegistry) ResolveAssetTranslation(ctx context.Context, titleSlug
 // RunCatalogRefresh seed les tables catalog metadata depuis match_registry
 // (zéro réseau — le drain DiscoveryUGC reste CLI-only). Résout les playlists
 // « hors catalogue » de la page Qualité données.
-func (r *ServiceRegistry) RunCatalogRefresh(ctx context.Context, titleSlug string) (domain.CatalogRefreshResult, error) {
-	out := domain.CatalogRefreshResult{}
+func (r *ServiceRegistry) RunCatalogRefresh(ctx context.Context, titleSlug string) (out domain.CatalogRefreshResult, err error) {
+	out = domain.CatalogRefreshResult{}
 	if !catalogRefreshMu.TryLock() {
 		return out, ErrActionBusy
 	}
 	defer catalogRefreshMu.Unlock()
+	// C2 : journal de l'exécution réelle (single-flight non journalisé — placé
+	// avant ce defer). err = erreur finale nommée.
+	defer func() { r.journalAction(ctx, adminstate.ActionCatalogRefresh, err) }()
 
 	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(ctx, titleSlug)
 	if err != nil {

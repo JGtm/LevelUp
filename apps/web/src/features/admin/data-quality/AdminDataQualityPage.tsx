@@ -34,6 +34,14 @@ import {
 import { counterDelta, type CountersSnapshot } from '../countersTrend'
 import { useCounterSnapshot } from '../useCounterSnapshot'
 import { useAdminT, type TAdmin } from '../useAdminText'
+import {
+  ACTION_CATALOG_REFRESH,
+  ACTION_CATALOG_UGC_DRAIN,
+  ACTION_LYING_BITS_RESET,
+  ACTION_REGISTRY_NAMES,
+  invalidateActionJournal,
+} from '../actionJournal'
+import { ActionLastRun } from '../ActionLastRun'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { DiagnosticsPanel } from '@/features/lab/DiagnosticsPanel'
 import { getLabText, normalizeLabLocale } from '@/features/lab/i18n'
@@ -133,6 +141,7 @@ function ActionHelp({ text }: { text: string }) {
 function RegistryNamesAction({ tA }: { tA: TAdmin }) {
   const run = useRunRegistryNamesBackfill()
   const catalogRefresh = useRunCatalogRefresh()
+  const queryClient = useQueryClient()
   const [lastResult, setLastResult] = useState<RegistryNamesBackfillResult | null>(null)
 
   function launch(dryRun: boolean) {
@@ -140,7 +149,10 @@ function RegistryNamesAction({ tA }: { tA: TAdmin }) {
     run.mutate(dryRun, {
       onSuccess: (res) => {
         setLastResult(res)
-        if (!res.dry_run) toast.success(`${tA('admin.actions.done')} — ${tA('admin.dq.registry_names_result')} : ${res.total_fixed}`)
+        if (!res.dry_run) {
+          toast.success(`${tA('admin.actions.done')} — ${tA('admin.dq.registry_names_result')} : ${res.total_fixed}`)
+          invalidateActionJournal(queryClient)
+        }
       },
       onError: (err) => toast.error(apiErrorMessage(err) ?? tA('admin.actions.failed')),
     })
@@ -153,6 +165,7 @@ function RegistryNamesAction({ tA }: { tA: TAdmin }) {
         toast.success(
           `${tA('admin.actions.done')} — ${tA('admin.dq.catalog_refresh_result')} : playlists ${res.playlists} · pairs ${res.pairs} · maps ${res.maps} · variants ${res.game_variants}`,
         )
+        invalidateActionJournal(queryClient)
       },
       onError: (err) => toast.error(apiErrorMessage(err) ?? tA('admin.actions.failed')),
     })
@@ -177,7 +190,9 @@ function RegistryNamesAction({ tA }: { tA: TAdmin }) {
         </Button>
       </div>
       <ActionHelp text={tA('admin.dq.run_registry_names_help')} />
+      <ActionLastRun action={ACTION_REGISTRY_NAMES} />
       <ActionHelp text={tA('admin.dq.run_catalog_refresh_help')} />
+      <ActionLastRun action={ACTION_CATALOG_REFRESH} />
       {lastResult && <RegistryNamesResult result={lastResult} tA={tA} />}
     </div>
   )
@@ -207,6 +222,7 @@ function RegistryNamesResult({ result, tA }: { result: RegistryNamesBackfillResu
  */
 function LyingBitsAction({ tA }: { tA: TAdmin }) {
   const run = useRunLyingBitsReset()
+  const queryClient = useQueryClient()
   const [lastResult, setLastResult] = useState<LyingBitsResetResult | null>(null)
 
   function launch(dryRun: boolean) {
@@ -214,7 +230,10 @@ function LyingBitsAction({ tA }: { tA: TAdmin }) {
     run.mutate(dryRun, {
       onSuccess: (res) => {
         setLastResult(res)
-        if (!res.dry_run) toast.success(`${tA('admin.actions.done')} — ${tA('admin.dq.lying_bits_result')} : ${res.total}`)
+        if (!res.dry_run) {
+          toast.success(`${tA('admin.actions.done')} — ${tA('admin.dq.lying_bits_result')} : ${res.total}`)
+          invalidateActionJournal(queryClient)
+        }
       },
       onError: (err) => toast.error(apiErrorMessage(err) ?? tA('admin.actions.failed')),
     })
@@ -231,6 +250,7 @@ function LyingBitsAction({ tA }: { tA: TAdmin }) {
         </Button>
       </div>
       <ActionHelp text={tA('admin.dq.run_lying_bits_help')} />
+      <ActionLastRun action={ACTION_LYING_BITS_RESET} />
       {lastResult && <LyingBitsResult result={lastResult} tA={tA} />}
     </div>
   )
@@ -264,10 +284,13 @@ function CatalogDrainAction({ tA }: { tA: TAdmin }) {
             invalidateDataQuality(queryClient)
             toast.success(tA('admin.dq.ugc_drain_done'))
           }
-          // Échec : JobProgressInline affiche déjà le détail, pas de toast redondant.
+          // Le drain (succès OU échec) a été journalisé côté service : rafraîchir
+          // « Dernière exécution ». Échec : JobProgressInline affiche le détail.
+          invalidateActionJournal(queryClient)
         }}
       />
       <ActionHelp text={tA('admin.dq.run_ugc_drain_help')} />
+      <ActionLastRun action={ACTION_CATALOG_UGC_DRAIN} />
     </div>
   )
 }

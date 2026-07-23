@@ -151,7 +151,7 @@ func (s *AutoSyncScheduler) RunOnceTrigger(ctx context.Context, trigger string) 
 		// Duration couvre le cycle COMPLET (orchestrator + sync live-only) —
 		// runOnceV2 ne mesure que l'orchestrator (parité avec le filet ci-dessous).
 		v2Res.Duration = time.Since(start)
-		s.storeCycleResult(v2Res, trigger, captureCycleLoad().deltaSince(loadBefore))
+		s.storeCycleResult(ctx, v2Res, trigger, captureCycleLoad().deltaSince(loadBefore))
 		return v2Res
 	}
 
@@ -169,7 +169,7 @@ func (s *AutoSyncScheduler) RunOnceTrigger(ctx context.Context, trigger string) 
 
 	res.Duration = time.Since(start)
 
-	s.storeCycleResult(res, trigger, captureCycleLoad().deltaSince(loadBefore))
+	s.storeCycleResult(ctx, res, trigger, captureCycleLoad().deltaSince(loadBefore))
 
 	return res
 }

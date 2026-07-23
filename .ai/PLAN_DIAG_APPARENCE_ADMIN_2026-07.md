@@ -223,14 +223,15 @@ sans dérive.
 
 ### Lot C — Données manquantes et amnésie (Go + front)
 
-- [ ] C1. Post-sync : persister en fin de cycle un snapshot léger JSON (timeline +
+- [x] C1. Post-sync : persister en fin de cycle un snapshot léger JSON (timeline +
       matrice par joueur + horodatage du cycle) HORS DuckDB, chemin via la config ;
       réhydrater au boot ; UI : afficher « Dernier cycle : <ts> » et distinguer « aucun
       cycle depuis le boot » de « aucune donnée connue ». AUCUNE écriture DuckDB.
-- [ ] C2. Actions globales : journal JSON des exécutions (par action : `last_run_at`,
+- [x] C2. Actions globales : journal JSON des exécutions (par action : `last_run_at`,
       outcome, déclencheur) écrit par les handlers d'action ; affichage « Dernière
       exécution : … » sous chaque bouton (les horodatages in-memory existants — audit
       data, cycle sync — basculent sur ce journal pour survivre au reboot).
+      (C2 statué [x] avec C1 — sous-lot C-I, voir journal.)
 - [ ] C3. XUIDs orphelins : (a) alimenter « Vu pour la dernière fois » côté Go (dernier
       match du xuid dans le registry) — aujourd'hui toujours « - » ; (b) pagination
       serveur (limit/offset sur l'endpoint issues) + pagination TanStack côté front.
@@ -435,12 +436,37 @@ inattendu.
   TitleDescriptor) couvre la visibilité dans tous les cas.
 - [Lot B] `IntegrityBadge` (BackupTab) utilise les caractères `✓`/`⚠` préexistants —
   toléré (Unicode, pas emoji), non touché.
-- [Lot B] L'endpoint `GET /admin/monitoring/weapon-coverage` renvoie les données du
-  titre par défaut même avec `X-LevelUp-Title: halo_5` (testé en live, réponses
-  identiques) — piste sérieuse pour C6 (le retour #21 « inconnues H5 » regardait
-  peut-être des données Infinite). À diagnostiquer au Lot C.
+- [Lot B — REQUALIFIÉE] weapon-coverage : fausse piste « en-tête ignoré » — le canal
+  de titre de cet endpoint est `?title=` (query param) et le panel front le passe
+  correctement. État réel H5 constaté en live (2026-07-23) : 66 armes distinctes,
+  89,4 % couvertes, 7 non résolues SEULEMENT, dont UNE dominante : `2457457776`
+  (2353 frags — les 6 autres ≤ 11 frags). Le C6 = identifier/trancher ces 7 IDs
+  (surtout la dominante), pas un bug de plomberie.
 
 ## Journal d'exécution
+
+### [2026-07-23] Sous-lot C-I (C1+C2) — CLOS (agent Opus + revue orchestrateur)
+
+- Architecture : package leaf `internal/platform/adminstate` (`FileStore` atomique
+  temp+sync+rename, mutex, lecture tolérante ; `ActionJournal` typé thread-safe).
+  Chemins via `PathResolver` : `data/global/admin_state/{post_sync_snapshot,action_journal}.json`.
+  AUCUNE écriture DuckDB.
+- C1 : persistance en fin de `storeCycleResult` (point unique tick+V2, hors verrou,
+  best-effort loggé) ; `RehydrateFromDisk` au boot ; champ `since_boot` sur
+  `SchedulerSnapshot` ; banner 3 états (« Dernier cycle » / « Cycle précédent (avant
+  redémarrage) » daté / « Aucun cycle enregistré ») sur la page Données.
+- C2 : journal écrit par la COUCHE SERVICE (defer nommé APRÈS les gardes busy/dry-run —
+  seules les exécutions réelles, outcome ok/error, trigger tick/manual) ; 6 actions ;
+  endpoint `GET /admin/actions/journal` (Huma, NoStore, openapi manuel) ;
+  `<ActionLastRun>` sous chaque bouton d'action globale (État + Données), invalidation
+  après action ; logique pure `actionJournalDisplay.ts` testée.
+- Gate re-exécuté par l'orchestrateur : go test ./... complet exit 0, go vet 0 ;
+  tsc 0 ; eslint 0 erreur ; vitest 298 fichiers / 2629 passés (+9) ; matrice navigateur
+  7/7 (3 états C1 stubés + journal rempli/vide C2, 0 pageerror — les surfaces nouvelles
+  stubées car l'API :8000 est l'ancien code ; les tests Go couvrent le chemin réel).
+- Vérification e2e réelle de la réhydratation (reboot serveur avec données) : reportée
+  au Lot H (environnement dev complet) — les tests unitaires scheduler/persistence la
+  couvrent en attendant.
 
 ### [2026-07-23] Lot B — CLOS (agent Opus + revue orchestrateur)
 

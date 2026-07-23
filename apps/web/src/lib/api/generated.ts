@@ -1664,6 +1664,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/actions/journal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dashboard monitoring — journal des actions globales (dernière exécution/issue/déclencheur par action, survit au reboot) (auth admin requis) */
+        get: operations["getAdminActionsJournal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/monitoring/data-quality": {
         parameters: {
             query?: never;
@@ -5093,6 +5110,16 @@ export interface components {
             name: string;
             xuid: string;
         };
+        AdminActionJournalEntry: {
+            action: string;
+            last_run_at: string;
+            outcome: string;
+            trigger: string;
+        };
+        AdminActionJournalResponse: {
+            actions: components["schemas"]["AdminActionJournalEntry"][] | null;
+            generated_at: string;
+        };
         AdminConvergenceReport: {
             generated_at: string;
             /** Format: int64 */
@@ -7605,6 +7632,7 @@ export interface components {
             players: components["schemas"]["PlayerOutcomeDetail"][] | null;
             /** Format: int64 */
             pool_size: number;
+            since_boot: boolean;
         };
         SeasonCalendar: {
             content_hash: string;
@@ -11506,6 +11534,26 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    getAdminActionsJournal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Journal des actions globales */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminActionJournalResponse"];
+                };
             };
         };
     };

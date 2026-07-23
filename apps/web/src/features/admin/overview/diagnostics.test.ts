@@ -70,6 +70,7 @@ function schedulerWith(history: SchedulerCycleRecord[]): AdminSchedulerStatusRes
       pool_size: 3,
       players: [],
       gate: { inflight_watcher: 0, inflight_gate: 0, granted_total: 0, coalesced_total: 0, stale_count: 0 },
+      since_boot: true,
     },
   }
 }

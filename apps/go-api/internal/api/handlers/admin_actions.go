@@ -20,6 +20,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
@@ -34,6 +35,11 @@ import (
 // ServiceRegistry.RunDataHealthNow).
 type DataHealthRunNow func(ctx context.Context) (*domain.MonitoringDataHealth, error)
 
+// ActionJournalReporter retourne le journal des actions globales (dernière
+// exécution / issue / déclencheur par action). Implémenté par
+// ServiceRegistry.ActionJournalReport. Nil → l'endpoint sert un journal vide.
+type ActionJournalReporter func(ctx context.Context) domain.AdminActionJournalResponse
+
 // forcedSyncCycleSlug est le PlayerSlug sentinelle des jobs « cycle complet »
 // (le cycle couvre tous les joueurs — la dédup FindActiveJob reste par type).
 const forcedSyncCycleSlug = "_all"
@@ -41,6 +47,7 @@ const forcedSyncCycleSlug = "_all"
 // AdminActionsHandler sert les actions correctives du dashboard monitoring.
 type AdminActionsHandler struct {
 	dataHealth DataHealthRunNow
+	journal    ActionJournalReporter // nil → GET /actions/journal sert un journal vide
 	sched      *scheduler.AutoSyncScheduler
 	jobs       *jobs.Store
 	// bgCtx : parent des goroutines de jobs — dérivé du serverCtx (annulé au
@@ -49,9 +56,10 @@ type AdminActionsHandler struct {
 }
 
 // NewAdminActionsHandler construit le handler. Chaque dépendance nil dégrade
-// l'action correspondante en 503 explicite.
+// l'action correspondante en 503 explicite (journal nil → journal vide).
 func NewAdminActionsHandler(
 	dataHealth DataHealthRunNow,
+	journal ActionJournalReporter,
 	sched *scheduler.AutoSyncScheduler,
 	jobStore *jobs.Store,
 	bgCtx context.Context,
@@ -59,7 +67,7 @@ func NewAdminActionsHandler(
 	if bgCtx == nil {
 		bgCtx = context.Background()
 	}
-	return &AdminActionsHandler{dataHealth: dataHealth, sched: sched, jobs: jobStore, bgCtx: bgCtx}
+	return &AdminActionsHandler{dataHealth: dataHealth, journal: journal, sched: sched, jobs: jobStore, bgCtx: bgCtx}
 }
 
 // Mount enregistre les 2 actions via Huma sur le sous-routeur chi (préfixe /admin
@@ -69,6 +77,7 @@ func (h *AdminActionsHandler) Mount(r chi.Router) {
 	api := humacore.NewAPI(r)
 	huma.Post(api, "/actions/data-health/run", h.handleRunDataHealth)
 	huma.Post(api, "/actions/auto-sync/run", h.handleRunSyncCycle)
+	huma.Get(api, "/actions/journal", h.handleGetJournal)
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
@@ -85,6 +94,13 @@ type runDataHealthOutput struct {
 type runSyncCycleOutput struct {
 	Status int
 	Body   any
+}
+
+// actionJournalOutput : 200 + journal des actions globales (dernière exécution
+// par action). NoStore posé en interne (état courant, jamais de cache).
+type actionJournalOutput struct {
+	CacheControl string `header:"Cache-Control"`
+	Body         domain.AdminActionJournalResponse
 }
 
 // ─── Endpoints ───────────────────────────────────────────────────────────────
@@ -161,4 +177,17 @@ func (h *AdminActionsHandler) runForcedCycle(ctx context.Context, jobID string) 
 	// Le cycle a tourné : le job est « succeeded » même avec des joueurs en
 	// échec (le détail par joueur vit dans le snapshot scheduler).
 	h.jobs.SetStatus(jobID, domain.JobStatusSucceeded, nil)
+}
+
+// handleGetJournal retourne le journal des actions globales (dernière exécution
+// / issue / déclencheur par action) — survit au reboot (C2).
+// GET /admin/actions/journal.
+func (h *AdminActionsHandler) handleGetJournal(ctx context.Context, _ *struct{}) (*actionJournalOutput, error) {
+	if h.journal == nil {
+		return &actionJournalOutput{CacheControl: noStoreCacheControl, Body: domain.AdminActionJournalResponse{
+			GeneratedAt: time.Now().UTC().Format(time.RFC3339),
+			Actions:     []domain.AdminActionJournalEntry{},
+		}}, nil
+	}
+	return &actionJournalOutput{CacheControl: noStoreCacheControl, Body: h.journal(ctx)}, nil
 }

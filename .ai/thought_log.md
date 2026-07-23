@@ -50,6 +50,28 @@ diagnostic environnemental B6 à confirmer en prod (log mappings_loaded).
 **Prochaine étape** : Lot C (post-sync persisté JSON, journal des actions, XUIDs vus/
 pagination, logs « charger plus », tailles DBs, couverture arme H5, exemples DQ).
 
+## [2026-07-23] Admin retours — Sous-lot C-I clos (branche feat/admin-retours-diag)
+
+**Statut** : Complété (C1+C2, Lot C découpé en C-I/C-II/C-III). Agent Opus (relancé une
+fois par SendMessage pour finaliser son gate — protocole agents muets), revue + gates +
+navigateur orchestrateur.
+
+**Décisions techniques** : persistance JSON hors DuckDB dans le nouveau package leaf
+`internal/platform/adminstate` (FileStore atomique temp+fsync+rename, mutex, lecture
+tolérante premier-boot/corruption) ; chemins par `PathResolver`
+(`data/global/admin_state/`) ; scheduler persiste en fin de `storeCycleResult` et
+réhydrate au boot (`since_boot` distingue cycle vif / snapshot d'avant reboot) ;
+journal des actions écrit en couche service par defer nommé APRÈS les gardes
+busy/dry-run (exécutions réelles uniquement, trigger tick/manual) ; endpoint
+`GET /admin/actions/journal` + `<ActionLastRun>` sous chaque bouton.
+
+**Résultats/gate** (re-exécutés) : go test ./... exit 0, go vet 0, tsc 0, eslint 0
+erreur, vitest 2629 passés (+9), matrice navigateur 7/7 (3 états C1, journal
+rempli/vide C2). E2e réel de la réhydratation reporté au Lot H (couvert unitairement).
+
+**Prochaine étape** : C-II (C3 XUIDs vus/pagination, C4 logs charger plus, C5 tailles
+DBs re-qualifié), puis C-III (C6 armes H5, C7 locale/exemples).
+
 ## [2026-07-22] D7 titre dans l'URL — Phase 0 close (branche feat/title-slug-in-url)
 
 **Statut** : En cours (Phase 0/6 close), plan `.ai/PLAN_TITLE_SLUG_URL_2026-07.md` sous

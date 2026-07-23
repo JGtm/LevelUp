@@ -4,6 +4,7 @@
 package scheduler
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -13,8 +14,8 @@ import (
 // premier, avec le trigger et les compteurs du cycle.
 func TestCycleHistory_OrderAndTrigger(t *testing.T) {
 	s := &AutoSyncScheduler{}
-	s.storeCycleResult(&RunOnceResult{Total: 3, Synced: 2, Skipped: 1, Duration: 1500 * time.Millisecond}, "tick", cycleLoadSnapshot{})
-	s.storeCycleResult(&RunOnceResult{Total: 3, Failed: 3, Duration: 200 * time.Millisecond}, "manual", cycleLoadSnapshot{})
+	s.storeCycleResult(context.Background(), &RunOnceResult{Total: 3, Synced: 2, Skipped: 1, Duration: 1500 * time.Millisecond}, "tick", cycleLoadSnapshot{})
+	s.storeCycleResult(context.Background(), &RunOnceResult{Total: 3, Failed: 3, Duration: 200 * time.Millisecond}, "manual", cycleLoadSnapshot{})
 
 	hist := s.History()
 	if len(hist) != 2 {
@@ -37,7 +38,7 @@ func TestCycleHistory_BoundedRing(t *testing.T) {
 	s := &AutoSyncScheduler{}
 	total := cycleHistorySize + 10
 	for i := 0; i < total; i++ {
-		s.storeCycleResult(&RunOnceResult{Total: i}, "tick", cycleLoadSnapshot{})
+		s.storeCycleResult(context.Background(), &RunOnceResult{Total: i}, "tick", cycleLoadSnapshot{})
 	}
 	hist := s.History()
 	if len(hist) != cycleHistorySize {
@@ -56,7 +57,7 @@ func TestCycleHistory_BoundedRing(t *testing.T) {
 // l'état interne (le snapshot est une copie).
 func TestCycleHistory_CopySemantics(t *testing.T) {
 	s := &AutoSyncScheduler{}
-	s.storeCycleResult(&RunOnceResult{Total: 7}, "tick", cycleLoadSnapshot{})
+	s.storeCycleResult(context.Background(), &RunOnceResult{Total: 7}, "tick", cycleLoadSnapshot{})
 	first := s.History()
 	first[0].Total = 999
 
@@ -72,7 +73,7 @@ func TestCycleHistory_CopySemantics(t *testing.T) {
 func TestCycleHistory_StoreAlsoUpdatesSnapshot(t *testing.T) {
 	s := &AutoSyncScheduler{playerOutcomes: map[string]PlayerOutcomeDetail{}}
 	res := &RunOnceResult{Total: 4, Synced: 4, Duration: time.Second}
-	s.storeCycleResult(res, "tick", cycleLoadSnapshot{})
+	s.storeCycleResult(context.Background(), res, "tick", cycleLoadSnapshot{})
 
 	// Muter le résultat source ne doit pas affecter l'état mémorisé (copie).
 	res.Synced = 0
@@ -120,7 +121,7 @@ func TestCycleLoadDelta(t *testing.T) {
 
 	// Les deltas se retrouvent dans le CycleRecord.
 	s := &AutoSyncScheduler{}
-	s.storeCycleResult(&RunOnceResult{Total: 1, Duration: time.Second}, "tick",
+	s.storeCycleResult(context.Background(), &RunOnceResult{Total: 1, Duration: time.Second}, "tick",
 		cycleLoadSnapshot{blockedMs: 800, swapCount: 2, readsRejected: 3, apiMs: 600, persistWriteMs: 150})
 	rec := s.History()[0]
 	if rec.BlockedMs != 800 || rec.SwapCount != 2 || rec.ReadsRejected != 3 || rec.APIMs != 600 || rec.PersistWriteMs != 150 {
