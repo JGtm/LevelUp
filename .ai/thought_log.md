@@ -67,6 +67,28 @@ splat Phase 3).
 
 **Prochaine étape** : Phase 3 splat legacy déclaratif + vérif matrice navigateur.
 
+## [2026-07-23] D7 Phase 3 close — splat legacy + bug de course attrapé (branche feat/title-slug-in-url)
+
+**Statut** : Complété (Phase 3/6). Agent Opus (splat + fix), orchestrateur (diagnostic
+du bug + matrice navigateur).
+
+**Décision technique principale** : splat `routes/players/$.tsx` déclaratif — décision
+PURE `buildLegacyRedirect` (testée Phase 1) projetée par `router.history.replace(href)`
+(href complet, round-trip searchStr vérifié byte-identique). LEÇON DE REVUE : la
+première livraison passait tous les tests unitaires mais la vérification NAVIGATEUR a
+révélé une course post-replace (le splat re-rend sur la location transitoire `/t/…` →
+la branche « hors matrice → index » écrasait la redirection, perte de suffixe/?f=/hash).
+Fix : garde `isLegacyPath` sur les deux branches + test de non-régression rouge→vert.
+3b [~] : les redirects internes étaient déjà re-pointés par le retypage tsc de 2b.
+
+**Résultats/gate** : tsc 0 ; vitest 296 fichiers / 2609 passés / 0 échec ; matrice
+navigateur (serveur relancé proprement) : legacy home direct, `?f=`+hash préservés
+byte-identiques, objectifs→ascension/objectifs 1 hop, palmares→community, /players
+nu→index, et session H5 + bookmark legacy → `/t/halo_5/…` (trou n°1 fermé, vérifié).
+
+**Prochaine étape** : Phase 4 (TitleSwitcher navigate-first, chemin d'erreur D-6
+complet, courses back/forward, commentaire coexistence ?f=).
+
 ## [2026-07-22] Mini-lot « G » G1/G2 (branche refactor/ascension-ux-2026-07)
 
 **Statut** : Complété (G1, G2), sous contrat `plan-execution` (ordre strict G1 puis G2,
