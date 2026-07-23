@@ -10,6 +10,7 @@
  */
 import { test, expect } from '@playwright/test'
 import { skipIfNoDemoData } from './_helpers/demoData'
+import { playerPath } from './_helpers/routes'
 
 const API_BASE = 'http://localhost:8000/api/v1'
 
@@ -47,7 +48,7 @@ test.describe('Slice 0b — Contrat de filtres (DEMO_MODE)', () => {
     const errors: string[] = []
     page.on('pageerror', (err) => errors.push(err.message))
 
-    await page.goto('/players/demo-player/home')
+    await page.goto(playerPath('demo-player', 'home'))
     await page.waitForLoadState('networkidle')
 
     expect(

@@ -12,6 +12,29 @@ cd apps/web && npx playwright test --project=chromium
 # première fois : npx playwright install chromium
 ```
 
+## URLs de route (titre dans l'URL) et redirections legacy
+
+Depuis le chantier « titre dans l'URL » (`feat/title-slug-in-url`,
+[`PLAN_TITLE_SLUG_URL_2026-07`](../../../.ai/PLAN_TITLE_SLUG_URL_2026-07.md)), les routes
+FRONT joueur sont title-préfixées : **`/t/{titleSlug}/players/{playerSlug}/…`** (le titre
+actif est un segment d'URL, plus un état de session implicite). Les specs tournent contre
+la session serveur dont le titre par défaut est `halo_infinite`.
+
+- **Ne jamais recopier le préfixe** dans un `page.goto` / une assertion d'URL. Passer par
+  [`_helpers/routes.ts`](./_helpers/routes.ts) — `playerPath(slug, suffix)` (titre par
+  défaut), `titlePath(titleSlug, slug, suffix)`, `playerUrlPattern(...)` /
+  `titleSegmentPattern(...)` (RegExp pour `waitForURL`/`toMatch`). Un seul endroit à
+  corriger si le schéma d'URL évolue (règle CLAUDE.md « ≤ 2 copies »).
+- **Les URLs d'API restent inchangées** : `/api/v1/players/{slug}/…` n'est PAS
+  title-préfixée (le titre transite par le header `X-LevelUp-Title` / la session, pas par
+  le chemin). Ne pas les construire via `routes.ts`.
+- **`legacy-redirect.spec.ts`** (spec INFRA, pas de skip) exerce en réel la matrice de
+  redirection de l'ancien format `/players/…` → `/t/{slug}/players/…` : bookmark,
+  préservation `?f=` + `#hash`, remaps internes (objectifs→ascension, palmares→community),
+  et honneur d'une session H5 committée. Le joueur y est résolu à l'exécution via
+  `GET /api/v1/players` (robuste au jeu de données du serveur). La logique pure est
+  couverte en table-driven : `src/lib/title-routing/buildLegacyRedirect.test.ts`.
+
 ## Données démo et politique de skip (« vert ou signal, jamais structurellement rouge »)
 
 En CI comme en local, le backend tourne en `LEVELUP_DEMO_MODE=true` et lit les fixtures
@@ -37,8 +60,8 @@ Politique de skip conservée : quand les fixtures sont absentes (ex. run local s
 les specs data-dépendantes appellent le garde [`_helpers/demoData.ts`](./_helpers/demoData.ts)
 et sont **SKIP (visibles, motivées)** au lieu de FAIL.
 
-- **Specs infra** (montage du shell, absence d'erreur 500, i18n, redirections,
-  onboarding) : n'appellent PAS le garde → toujours exécutées (~42 tests verts).
+- **Specs infra** (montage du shell, absence d'erreur 500, i18n, redirections de routes
+  — `legacy-redirect.spec.ts`, onboarding) : n'appellent PAS le garde → toujours exécutées.
 - **Specs / tests data-dépendants** : `await skipIfNoDemoData()` en tête (ou
   `test.beforeEach` pour une spec entièrement data-dépendante). Sonde
   `GET /api/v1/healthz/home?player=demo-player` :
@@ -77,6 +100,9 @@ Certaines specs restent skippées avec un motif explicite (helpers de
   si toute la spec en dépend.
 - Si elle ne teste que l'infra (montage, contrat HTTP sans données, i18n) : ne rien
   ajouter — elle doit rester exécutée même sans fixture.
+- Toute URL de route FRONT (`page.goto`, assertions `page.url()`/`waitForURL`) passe par
+  `_helpers/routes.ts` (`playerPath`/`titlePath`/…) — jamais de préfixe `/t/{slug}/players/`
+  recopié en dur. Les URLs d'API (`/api/v1/players/…`) restent hors de ce helper.
 
 ## CI
 

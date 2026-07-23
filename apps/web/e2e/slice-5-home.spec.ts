@@ -14,13 +14,14 @@
  */
 import { test, expect } from '@playwright/test'
 import { skipIfNoDemoData } from './_helpers/demoData'
+import { playerPath } from './_helpers/routes'
 
 test.describe('Slice 5 — Accueil / Home (DEMO_MODE)', () => {
   test("la page Home se charge sans erreur JS", async ({ page }) => {
     const errors: string[] = []
     page.on('pageerror', (err) => errors.push(err.message))
 
-    await page.goto('/players/demo-player/home')
+    await page.goto(playerPath('demo-player', 'home'))
     await page.waitForLoadState('networkidle')
 
     expect(
@@ -35,7 +36,7 @@ test.describe('Slice 5 — Accueil / Home (DEMO_MODE)', () => {
         resp.url().includes('/pages/home') && resp.status() === 200,
     )
 
-    await page.goto('/players/demo-player/home')
+    await page.goto(playerPath('demo-player', 'home'))
     const resp = await homePromise
     const data = await resp.json()
 
@@ -44,14 +45,14 @@ test.describe('Slice 5 — Accueil / Home (DEMO_MODE)', () => {
 
   test("le joueur DemoPlayer est visible dans la page", async ({ page }) => {
     await skipIfNoDemoData()
-    await page.goto('/players/demo-player/home')
+    await page.goto(playerPath('demo-player', 'home'))
     await page.waitForLoadState('networkidle')
 
     await expect(page.locator('body')).toContainText('DemoPlayer')
   })
 
   test("la page ne contient pas d'erreur fatale", async ({ page }) => {
-    await page.goto('/players/demo-player/home')
+    await page.goto(playerPath('demo-player', 'home'))
     await page.waitForLoadState('networkidle')
 
     await expect(page.locator('body')).not.toContainText('Erreur critique')
@@ -65,7 +66,7 @@ test.describe('Slice 5 — Accueil / Home (DEMO_MODE)', () => {
 
   test('les 4 sections critiques de la home rendent du contenu', async ({ page }) => {
     await skipIfNoDemoData()
-    await page.goto('/players/demo-player/home')
+    await page.goto(playerPath('demo-player', 'home'))
     await page.waitForLoadState('networkidle')
 
     // 1. Hero banner (rotation statique de 3 webp /public/titles/halo_infinite/).

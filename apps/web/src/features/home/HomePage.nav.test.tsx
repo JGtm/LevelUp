@@ -78,7 +78,7 @@ describe('HomePage — navigation cards Sessions récentes', () => {
     fireEvent.click(card)
 
     expect(navigateSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ to: '/players/$playerSlug/stats/timeseries' }),
+      expect.objectContaining({ to: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/timeseries' }),
     )
     expect(useSoloFilterStore.getState().filterContext.sessions?.picked_sessions).toEqual([SOLO_LABEL])
   })
@@ -92,7 +92,7 @@ describe('HomePage — navigation cards Sessions récentes', () => {
 
     expect(navigateSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        to: '/players/$playerSlug/squad',
+        to: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad',
         search: { session: SQUAD_LABEL, teammates: 'Alice,Bob' },
       }),
     )
@@ -121,7 +121,7 @@ describe('HomePage — navigation cards Sessions récentes', () => {
 
     expect(navigateSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        to: '/players/$playerSlug/squad',
+        to: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad',
         search: { session: SQUAD_LABEL, teammates: undefined },
       }),
     )

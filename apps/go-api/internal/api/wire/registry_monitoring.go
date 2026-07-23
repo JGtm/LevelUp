@@ -22,6 +22,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/platform/adminstate"
 	"levelup/go-api/internal/scheduler"
 	sync_pkg "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/skill"
@@ -367,6 +368,9 @@ func (r *ServiceRegistry) RunDataHealthNow(ctx context.Context) (*domain.Monitor
 	if r.healthScheduler == nil {
 		return nil, fmt.Errorf("health scheduler non câblé")
 	}
+	// C2 : journal de l'exécution (le cas « non câblé » ci-dessus n'est pas une
+	// exécution → non journalisé). RunOnce n'échoue pas (best-effort), donc issue
+	// toujours ok — journaliser marque la « dernière exécution » qui survit au reboot.
 	res := r.healthScheduler.RunOnce(ctx)
 	monitoringLog.InfoContext(ctx, "admin_actions: data health check exécuté",
 		"warnings_total", res.WarningsTotal,
@@ -374,5 +378,6 @@ func (r *ServiceRegistry) RunDataHealthNow(ctx context.Context) (*domain.Monitor
 		"duration_ms", res.Duration.Milliseconds(),
 	)
 	observability.IncCounter("admin_action_data_health_total")
+	r.journalAction(ctx, adminstate.ActionDataHealth, nil)
 	return toMonitoringDataHealth(res, time.Now()), nil
 }

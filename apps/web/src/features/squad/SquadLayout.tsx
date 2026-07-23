@@ -19,6 +19,7 @@
  */
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { Outlet, useParams, Link, useMatchRoute, useSearch } from '@tanstack/react-router'
+import { useTitleSlug } from '@/lib/title-routing'
 import { useSquadFilterStore } from '@/stores/squadFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useTeammates } from './queries'
@@ -96,6 +97,7 @@ function formatError(err: unknown): string {
 
 export function SquadLayout() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
+  const titleSlug = useTitleSlug()
   // Deep-link depuis l'accueil (card session escouade) : capturé UNE fois au montage
   // via un ref-initializer, AVANT le redirect index → /squad/synergies qui drop la
   // query. Consommé plus bas (compose = amis de la session + session pinnée).
@@ -458,8 +460,8 @@ export function SquadLayout() {
   }, [data, isPlaceholderData, confirmedGts, hasTeammates])
 
   // ── Routes actives ───────────────────────────────────────────────────────
-  const synergiesRoute = '/players/$playerSlug/squad/synergies' as const
-  const contributionsRoute = '/players/$playerSlug/squad/contributions' as const
+  const synergiesRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies' as const
+  const contributionsRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions' as const
   const isSynergies = !!matchRoute({ to: synergiesRoute, fuzzy: true })
   const isContributions = !!matchRoute({ to: contributionsRoute, fuzzy: true })
 
@@ -700,15 +702,15 @@ export function SquadLayout() {
           <div className="border-b">
             <nav className="flex gap-0">
               <Link
-                to="/players/$playerSlug/squad/synergies"
-                params={{ playerSlug }}
+                to="/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies"
+                params={{ titleSlug, playerSlug }}
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${isSynergies ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
               >
                 {t.nav.synergies}
               </Link>
               <Link
-                to="/players/$playerSlug/squad/contributions"
-                params={{ playerSlug }}
+                to="/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions"
+                params={{ titleSlug, playerSlug }}
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${isContributions ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
               >
                 {t.nav.contributions}

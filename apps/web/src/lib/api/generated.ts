@@ -1117,23 +1117,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/lab/diagnostics": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Diagnostic d'instance — parité + garde-fous médailles */
-        get: operations["getLabDiagnostics"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/auth/login": {
         parameters: {
             query?: never;
@@ -1664,6 +1647,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/actions/journal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dashboard monitoring — journal des actions globales (dernière exécution/issue/déclencheur par action, survit au reboot) (auth admin requis) */
+        get: operations["getAdminActionsJournal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/diag/appearance/{player_slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Diagnostic apparence Spartan ID — verdict par composant (bannière/emblème/backdrop/service tag) d'un joueur suivi, à la demande (auth admin requis) */
+        get: operations["getAdminDiagAppearance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/monitoring/data-quality": {
         parameters: {
             query?: never;
@@ -1671,7 +1688,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Dashboard monitoring — compteurs d'inconnus data (assets UUID bruts, modes non traduits FR, playlists hors catalogue, xuids orphelins, lying bits) (auth admin requis) */
+        /** Dashboard monitoring — compteurs d'inconnus data (assets UUID bruts, modes non traduits, playlists hors catalogue, xuids orphelins, lying bits) (auth admin requis) */
         get: operations["getAdminMonitoringDataQuality"];
         put?: never;
         post?: never;
@@ -5113,6 +5130,32 @@ export interface components {
             name: string;
             xuid: string;
         };
+        AdminActionJournalEntry: {
+            action: string;
+            last_run_at: string;
+            outcome: string;
+            trigger: string;
+        };
+        AdminActionJournalResponse: {
+            actions: components["schemas"]["AdminActionJournalEntry"][] | null;
+            generated_at: string;
+        };
+        AppearanceComponentDiagnosis: {
+            component: string;
+            detail: string;
+            served_from: string;
+            served_value: string;
+            verdict: string;
+        };
+        AppearanceDiagnosisResponse: {
+            components: components["schemas"]["AppearanceComponentDiagnosis"][] | null;
+            gamertag: string;
+            generated_at: string;
+            last_fetch_status: string;
+            player_slug: string;
+            title_slug: string;
+            xuid: string;
+        };
         AdminConvergenceReport: {
             generated_at: string;
             /** Format: int64 */
@@ -5125,6 +5168,7 @@ export interface components {
             generated_at: string;
             /** Format: int64 */
             lying_bits_events: number;
+            locale: string;
             /** Format: int64 */
             lying_bits_weapons: number;
             /** Format: int64 */
@@ -5147,6 +5191,7 @@ export interface components {
         };
         AdminDataQualityIssue: {
             asset_kind?: string;
+            example_match_ids?: string[] | null;
             id: string;
             kind: string;
             label?: string;
@@ -5158,7 +5203,10 @@ export interface components {
             generated_at: string;
             items: components["schemas"]["AdminDataQualityIssue"][] | null;
             kind: string;
+            locale: string;
             title_slug: string;
+            /** Format: int64 */
+            total: number;
         };
         AdminErrorBucket: {
             /** Format: int64 */
@@ -5244,6 +5292,11 @@ export interface components {
                 [key: string]: unknown;
             };
             databases: components["schemas"]["ResourceDBFile"][] | null;
+            /**
+             * @description ok = racine data lisible ; unavailable = racine data introuvable/illisible (RepoRoot mal résolu, volume non monté) — inventaire non mesurable, distinct de « aucune base ».
+             * @enum {string}
+             */
+            db_inventory_status: "ok" | "unavailable";
             /** Format: int64 */
             db_total_bytes: number;
             disk: components["schemas"]["ResourceDisk"];
@@ -5363,7 +5416,10 @@ export interface components {
         AdminLogTail: {
             entries: components["schemas"]["AdminLogEntry"][] | null;
             generated_at: string;
+            has_more: boolean;
             module: string;
+            /** Format: int64 */
+            next_offset?: number;
             /** Format: int64 */
             scanned_bytes: number;
             truncated: boolean;
@@ -6664,62 +6720,6 @@ export interface components {
             has_data: boolean;
             points: components["schemas"]["LUSRPoint"][] | null;
         };
-        LabDiagnosticsResponse: {
-            medal_guards?: components["schemas"]["LabMedalGuardsReport"];
-            parity_report?: components["schemas"]["LabParityReport"];
-            parity_report_file: components["schemas"]["LabFileStatus"];
-            title_slug: string;
-        };
-        LabFileStatus: {
-            exists: boolean;
-            /** Format: date-time */
-            modified_at?: string;
-            path: string;
-            /** Format: int64 */
-            size_bytes: number;
-        };
-        LabGuardResult: {
-            details?: string[] | null;
-            passed: boolean;
-            reason: string;
-        };
-        LabMedalGuardsReport: {
-            cardinality: components["schemas"]["LabGuardResult"];
-            /** Format: int64 */
-            entry_count: number;
-            images: components["schemas"]["LabGuardResult"];
-            overall: components["schemas"]["LabGuardResult"];
-            required_fields: components["schemas"]["LabGuardResult"];
-        };
-        LabParityReport: {
-            generated_at: string;
-            go_url: string;
-            player: string;
-            results: components["schemas"]["LabParityResult"][] | null;
-            summary: components["schemas"]["LabParitySummary"];
-        };
-        LabParityResult: {
-            diffs?: {
-                [key: string]: unknown;
-            }[] | null;
-            error?: string;
-            /** Format: int64 */
-            http_status?: number;
-            mode?: string;
-            name: string;
-            reason?: string;
-            status: string;
-        };
-        LabParitySummary: {
-            /** Format: int64 */
-            failed: number;
-            /** Format: int64 */
-            passed: number;
-            /** Format: int64 */
-            skipped: number;
-            /** Format: int64 */
-            total: number;
-        };
         LastSeenStatus: {
             timestamp: string;
             title_id?: string;
@@ -7629,6 +7629,7 @@ export interface components {
             players: components["schemas"]["PlayerOutcomeDetail"][] | null;
             /** Format: int64 */
             pool_size: number;
+            since_boot: boolean;
         };
         SeasonCalendar: {
             content_hash: string;
@@ -10783,31 +10784,6 @@ export interface operations {
             };
         };
     };
-    getLabDiagnostics: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Diagnostics d'instance pour le titre courant */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Diagnostic non autorisé sur cette instance (can_manage_instance) */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     postAuthLogin: {
         parameters: {
             query?: never;
@@ -11557,10 +11533,62 @@ export interface operations {
             };
         };
     };
+    getAdminActionsJournal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Journal des actions globales */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminActionJournalResponse"];
+                };
+            };
+        };
+    };
+    getAdminDiagAppearance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur suivi (db_profiles.json). */
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Diagnostic apparence par composant */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppearanceDiagnosisResponse"];
+                };
+            };
+            /** @description Joueur suivi introuvable */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     getAdminMonitoringDataQuality: {
         parameters: {
             query?: {
                 title?: string;
+                /** @description Locale cible du compteur untranslated_modes (défaut fr). */
+                locale?: string;
             };
             header?: never;
             path?: never;
@@ -11582,7 +11610,11 @@ export interface operations {
             query: {
                 title?: string;
                 kind: "raw_uuids" | "untranslated_modes" | "orphan_playlists" | "orphan_xuids";
+                /** @description Locale cible des modes sans traduction (défaut fr). */
+                locale?: string;
                 limit?: number;
+                /** @description Décalage de pagination serveur (défaut 0, rétrocompatible). */
+                offset?: number;
             };
             header?: never;
             path?: never;
@@ -11590,7 +11622,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Lignes détaillées, les plus fréquentes d'abord */
+            /** @description Fenêtre paginée [offset, offset+limit) + total (avant fenêtrage) */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -12029,6 +12061,8 @@ export interface operations {
                 level?: "debug" | "info" | "warn" | "error";
                 contains?: string;
                 since?: string;
+                /** @description Curseur arrière « charger plus » (offset octet renvoyé en next_offset) — charge la tranche strictement plus ancienne. */
+                before?: number;
             };
             header?: never;
             path?: never;
@@ -12036,7 +12070,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Entrées parsées (plus récentes d'abord) + truncated */
+            /** @description Entrées parsées (plus récentes d'abord) + truncated + curseur next_offset/has_more */
             200: {
                 headers: {
                     [name: string]: unknown;

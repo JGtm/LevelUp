@@ -74,6 +74,12 @@ type LogTailOptions struct {
 	// Since : ne pas remonter avant cet instant (zero = pas de borne).
 	// Early-exit : la lecture s'arrête dès qu'une ligne plus ancienne est vue.
 	Since time.Time
+	// BeforeOffset : curseur ARRIÈRE de « charger plus » (offset octet absolu,
+	// exclusif). La lecture démarre juste avant cet offset — la tranche déjà
+	// affichée (à partir de BeforeOffset) n'est pas re-scannée. 0 = depuis la
+	// fin (première page). Permet de paginer AU-DELÀ du budget 8 MiB (chaque
+	// page rebudgette depuis son curseur), impossible en repartant de la fin.
+	BeforeOffset int64
 }
 
 // LogEntry est une ligne de log parsée (best-effort).
@@ -98,6 +104,15 @@ type LogTailResult struct {
 	// Truncated : budget de scan épuisé avant d'atteindre N entrées — il
 	// existe peut-être des lignes plus anciennes correspondant aux filtres.
 	Truncated bool
+	// NextOffset : offset octet absolu du DÉBUT de la ligne la plus ancienne
+	// renvoyée — curseur à repasser en BeforeOffset pour « charger plus »
+	// (tranche strictement plus ancienne, sans recouvrement). 0 = début de
+	// fichier atteint.
+	NextOffset int64
+	// HasMore : des lignes plus anciennes restent au-delà de NextOffset (N
+	// atteint sans toucher le début, ou budget épuisé). false = début de
+	// fichier atteint, plus rien à charger.
+	HasMore bool
 }
 
 // TailModuleLog lit les dernières lignes de logs/{module}.log qui passent les
@@ -131,7 +146,14 @@ func TailModuleLog(logsDir, module string, opts LogTailOptions) (LogTailResult, 
 		n = logTailMaxN
 	}
 
-	collectTail(f, info.Size(), n, opts, &res)
+	// Curseur « charger plus » : démarrer juste avant BeforeOffset (exclusif)
+	// plutôt qu'à la fin du fichier — la tranche déjà affichée n'est pas relue.
+	startPos := info.Size()
+	if opts.BeforeOffset > 0 && opts.BeforeOffset < startPos {
+		startPos = opts.BeforeOffset
+	}
+
+	collectTail(f, startPos, n, opts, &res)
 	return res, nil
 }
 
@@ -141,43 +163,45 @@ func TailModuleLog(logsDir, module string, opts LogTailOptions) (LogTailResult, 
 // le découper disperserait l'invariant carry/pos.
 //
 //nolint:gocyclo // boucle de lecture inversée : chunking + carry + filtres,
-func collectTail(f *os.File, size int64, n int, opts LogTailOptions, res *LogTailResult) {
+func collectTail(f *os.File, startPos int64, n int, opts LogTailOptions, res *LogTailResult) {
 	contains := strings.ToLower(strings.TrimSpace(opts.Contains))
 	minRank, hasLevel := levelRank(opts.Level)
-	pos := size
+	pos := startPos
 	var carry []byte
 
 	for pos > 0 && len(res.Entries) < n {
 		if res.ScannedBytes >= logTailMaxScan {
-			res.Truncated = true
+			res.Truncated, res.HasMore = true, true
 			return
 		}
 		readSize := int64(logTailChunkSize)
 		if readSize > pos {
 			readSize = pos
 		}
-		start := pos - readSize
+		chunkStart := pos - readSize
 		buf := make([]byte, readSize)
-		if _, err := f.ReadAt(buf, start); err != nil {
-			res.Truncated = true
+		if _, err := f.ReadAt(buf, chunkStart); err != nil {
+			res.Truncated, res.HasMore = true, true
 			return
 		}
-		pos = start
+		pos = chunkStart
 		res.ScannedBytes += readSize
 
 		data := buf
 		if len(carry) > 0 {
 			data = append(data, carry...) //nolint:makezero // concat volontaire (suite de la dernière ligne du chunk)
 		}
-		lines := bytes.Split(data, []byte{'\n'})
-		if start > 0 {
+		// data couvre [chunkStart, chunkStart+len(data)) : offset absolu de
+		// chaque ligne = chunkStart + son décalage dans data.
+		lines, offsets := splitLinesWithOffsets(data, chunkStart)
+		if chunkStart > 0 {
 			// La première « ligne » du chunk est incomplète (sa tête est dans
 			// le chunk précédent) → reportée au prochain tour.
 			carry = append([]byte(nil), lines[0]...)
 			if len(carry) > logTailMaxLineSize {
 				carry = carry[:logTailMaxLineSize]
 			}
-			lines = lines[1:]
+			lines, offsets = lines[1:], offsets[1:]
 		} else {
 			carry = nil
 		}
@@ -202,11 +226,26 @@ func collectTail(f *os.File, size int64, n int, opts LogTailOptions, res *LogTai
 				continue
 			}
 			res.Entries = append(res.Entries, entry)
+			res.NextOffset = offsets[i] // début de la ligne la plus ancienne renvoyée
 			if len(res.Entries) >= n {
+				res.HasMore = offsets[i] > 0 // rien de plus ancien si on est au début du fichier
 				return
 			}
 		}
 	}
+}
+
+// splitLinesWithOffsets découpe data en lignes (sur '\n') et retourne l'offset
+// absolu du DÉBUT de chaque ligne (base = offset de data[0] dans le fichier).
+func splitLinesWithOffsets(data []byte, base int64) ([][]byte, []int64) {
+	lines := bytes.Split(data, []byte{'\n'})
+	offsets := make([]int64, len(lines))
+	off := base
+	for i, l := range lines {
+		offsets[i] = off
+		off += int64(len(l)) + 1 // +1 : le séparateur '\n'
+	}
+	return lines, offsets
 }
 
 // levelRank retourne le rang d'un niveau (debug<info<warn<error) et si le

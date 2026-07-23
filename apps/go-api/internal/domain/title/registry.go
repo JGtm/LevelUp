@@ -427,6 +427,15 @@ func (p *PathResolver) RepoRoot() string {
 
 // --- Chemins title-aware ---
 
+// TitlesRootDir retourne la racine commune des données par titre (le volume
+// data monté). Existe pour sonder que la racine de données est bien présente/
+// lisible (diagnostic d'inventaire des bases : distinguer « racine data
+// introuvable » — RepoRoot mal résolu / volume non monté — de « aucune base »).
+// Ex: data/titles/
+func (p *PathResolver) TitlesRootDir() string {
+	return filepath.Join(p.repoRoot, "data", "titles")
+}
+
 // TitleDataDir retourne le répertoire racine des données d'un titre.
 // Ex: data/titles/halo_infinite/
 func (p *PathResolver) TitleDataDir(titleSlug string) string {
@@ -487,6 +496,35 @@ func (p *PathResolver) GlobalXuidAliasesDBPath() string {
 // Ex: data/global/monitoring.duckdb
 func (p *PathResolver) GlobalMonitoringDB() string {
 	return filepath.Join(p.repoRoot, "data", "global", "monitoring.duckdb")
+}
+
+// AdminStateDir retourne le répertoire de l'état runtime PERSISTANT du dashboard
+// admin (JSON léger, HORS DuckDB — survit au reboot, invariants anti-ART
+// intouchés). Global et NON per-titre : l'état du dashboard (dernier cycle
+// post-sync, journal des actions globales) ne dépend d'aucun titre. Un seul
+// writer = le process serveur.
+//
+// Ex: data/global/admin_state/
+func (p *PathResolver) AdminStateDir() string {
+	return filepath.Join(p.repoRoot, "data", "global", "admin_state")
+}
+
+// PostSyncSnapshotPath retourne le chemin du snapshot post-sync persistant
+// (timeline + matrice par joueur + horodatage du dernier cycle) — réhydraté au
+// boot pour que le dashboard ne soit plus amnésique après un redémarrage (C1).
+//
+// Ex: data/global/admin_state/post_sync_snapshot.json
+func (p *PathResolver) PostSyncSnapshotPath() string {
+	return filepath.Join(p.AdminStateDir(), "post_sync_snapshot.json")
+}
+
+// ActionJournalPath retourne le chemin du journal des actions globales du
+// dashboard admin (dernière exécution / issue / déclencheur par action) — écrit
+// par la couche service + le scheduler, survit au reboot (C2).
+//
+// Ex: data/global/admin_state/action_journal.json
+func (p *PathResolver) ActionJournalPath() string {
+	return filepath.Join(p.AdminStateDir(), "action_journal.json")
 }
 
 // MetadataDBPath retourne le chemin de la base metadata d'un titre.

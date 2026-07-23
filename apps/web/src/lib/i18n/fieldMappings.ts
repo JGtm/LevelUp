@@ -20,9 +20,7 @@ import { useQuery, type UseQueryOptions } from '@tanstack/react-query'
 
 import { api } from '@/lib/api/client'
 import { useAppShellStore } from '@/stores/appShellStore'
-
-/** Locale supportée — alignée avec appShellStore. */
-export type FieldMappingLocale = 'fr' | 'en'
+import type { Locale } from '@/lib/i18n/locale'
 
 /** Forme d'un FieldMapping retourné par l'endpoint backend. */
 export interface FieldMappingDTO {
@@ -75,7 +73,7 @@ export interface FieldMappingsResponse {
  * staleTime infini car la couche sémantique ne change pas en prod sans
  * redéploiement (cf. PLAN §7.3).
  */
-export function fieldMappingsQueryKey(slug: string, locale: FieldMappingLocale) {
+export function fieldMappingsQueryKey(slug: string, locale: Locale) {
   return ['field-mappings', slug, locale] as const
 }
 
@@ -88,7 +86,7 @@ export function fieldMappingsQueryKey(slug: string, locale: FieldMappingLocale) 
  */
 export async function fetchFieldMappings(
   slug: string,
-  locale: FieldMappingLocale,
+  locale: Locale,
 ): Promise<FieldMappingsResponse> {
   try {
     return await api.get<FieldMappingsResponse>(

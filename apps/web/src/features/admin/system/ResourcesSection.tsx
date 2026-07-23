@@ -5,6 +5,7 @@
  * l'onglet État. Couleurs exclusivement via tokens sémantiques.
  */
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
+import { EmptyStateNotice } from '@/components/ui/empty-state'
 import type { AdminResourcesResponse } from '@/lib/api/types'
 import { useMonitoringResources } from '../monitoring/queries'
 import { AdminTable, AdminTd, AdminTh, AdminTr } from '../components/AdminTable'
@@ -53,7 +54,7 @@ function RuntimeSummary({ data, tA, locale }: { data: AdminResourcesResponse; tA
         </span>
         {disk.total_bytes > 0 && <span> / {formatBytes(disk.total_bytes, locale)}</span>}
       </span>
-      <span>
+      <span className="cursor-help" title={tA('admin.resources.heap_help')}>
         {tA('admin.resources.heap')}{' '}
         <span className="font-semibold tabular-nums text-foreground">{formatBytes(data.runtime.heap_alloc_bytes, locale)}</span>
         {' '}({tA('admin.resources.sys')} {formatBytes(data.runtime.sys_bytes, locale)})
@@ -75,6 +76,17 @@ function RuntimeSummary({ data, tA, locale }: { data: AdminResourcesResponse; tA
 }
 
 function DatabasesTable({ data, tA, locale }: { data: AdminResourcesResponse; tA: TAdmin; locale: AdminLocale }) {
+  // Inventaire non mesurable (racine data introuvable/illisible — RepoRoot mal
+  // résolu, volume non monté) : état EXPLICITE distinct d'un « aucune base » ou
+  // d'une table de tailles nulles silencieuse. La cause exacte est LOGGÉE côté Go.
+  if (data.db_inventory_status === 'unavailable') {
+    return (
+      <EmptyStateNotice
+        title={tA('admin.resources.inventory_unavailable_title')}
+        description={tA('admin.resources.inventory_unavailable_desc')}
+      />
+    )
+  }
   const dbs = data.databases ?? []
   return (
     <AdminTable

@@ -7,6 +7,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
+import { useTitleSlug } from '@/lib/title-routing'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { getNotificationsText } from './i18n'
 import { useNotificationsList, useUnreadCount } from './queries'
@@ -318,11 +319,12 @@ function SectionLabel({ label }: { label: string }) {
 }
 
 function BellFooter(props: { playerSlug: string; label: string; onNavigate: () => void }) {
+  const titleSlug = useTitleSlug()
   return (
     <div className="border-t border-border bg-popover">
       <Link
-        to="/players/$playerSlug/notifications"
-        params={{ playerSlug: props.playerSlug }}
+        to="/{-$lang}/t/$titleSlug/players/$playerSlug/notifications"
+        params={{ titleSlug, playerSlug: props.playerSlug }}
         onClick={props.onNavigate}
         className="block w-full px-3 py-2 text-center text-xs text-popover-foreground/80 hover:bg-accent hover:text-accent-foreground"
       >

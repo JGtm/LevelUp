@@ -5,7 +5,10 @@
 > `CLAUDE.md`, `docs/ARCHITECTURE_V6.md`, `.ai/thought_log.md` et les ADRs `docs/adr/`.
 > Affirmations connues **PÉRIMÉES** : monde Python (supprimé — migration Go terminée),
 > chemins `data/warehouse/` plats (réels = `data/titles/{slug}/warehouse/`, ADR 0008),
-> « Film Chunks NON EXPLOITABLES » (démenti — décodage kill-feed résolu). Ne pas s'appuyer
+> « Film Chunks NON EXPLOITABLES » (démenti — décodage kill-feed résolu),
+> routes front `/players/{slug}/…` (depuis 2026-07 : `/{-lang}/t/{titleSlug}/players/{slug}/…`,
+> titre et langue en segments d'URL — plan `.ai/PLAN_TITLE_SLUG_URL_2026-07.md`, les
+> anciennes URLs redirigent via un splat). Ne pas s'appuyer
 > sur les sections ci-dessous sans re-vérifier dans le code.
 
 > 📋 **Tâches et TODO centralisés** : voir `.ai/BACKLOG.md` et `.ai/PUNCHLIST.md` (handover GS↔OP, sources de vérité courtes).

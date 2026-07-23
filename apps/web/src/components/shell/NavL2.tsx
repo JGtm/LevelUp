@@ -18,20 +18,21 @@ import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useCapability } from '@/lib/capabilities/capabilities'
-import { isCommunityPath } from './shellNavigation'
+import { isCommunityPath, type RouteTo } from './shellNavigation'
+import { playerRelativePath, routeTemplateSuffix, useTitleSlug } from '@/lib/title-routing'
 
 // Onglet « Classements » de la section Communauté (gaté sur world.leaderboard).
-const COMMUNITY_LEADERBOARD_PATH = '/players/$playerSlug/community'
+const COMMUNITY_LEADERBOARD_PATH: RouteTo = '/{-$lang}/t/$titleSlug/players/$playerSlug/community'
 
 // Onglet NavL2 : libellé référencé par clé i18n (résolu au rendu via `t()`).
-type NavTab = { readonly labelKey: CommonManifestKey; readonly path: string }
+type NavTab = { readonly labelKey: CommonManifestKey; readonly path: RouteTo }
 
 // ─── Sous-onglets de la section Carrière ──────────────────────────────────────
 
 const CAREER_TABS = [
-  { labelKey: 'common.nav.tab_progression', path: '/players/$playerSlug/career' },
-  { labelKey: 'common.nav.tab_citations', path: '/players/$playerSlug/career/citations' },
-  { labelKey: 'common.nav.tab_season_pass', path: '/players/$playerSlug/career/season-pass' },
+  { labelKey: 'common.nav.tab_progression', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/career' },
+  { labelKey: 'common.nav.tab_citations', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations' },
+  { labelKey: 'common.nav.tab_season_pass', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/season-pass' },
 ] as const satisfies readonly NavTab[]
 
 // Halo 5 : les commendations sont NATIVES (carnage) — l'onglet « Citations » (moteur
@@ -43,34 +44,37 @@ const CAREER_TABS = [
 // L'inventaire REQ personnel n'étant pas servi (sonde 404), aucune surface de
 // remplacement n'est câblée → pas d'onglet « Pass saisonnier » pour h5.
 const CAREER_TABS_H5 = [
-  { labelKey: 'common.nav.tab_progression', path: '/players/$playerSlug/career' },
+  { labelKey: 'common.nav.tab_progression', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/career' },
   // Halo 5 : commendations natives. Clé `tab_citations` = FR « Citations » (terme
   // officiel Halo FR, cohérent Infinite et l'onglet L1) / EN « Commendations ».
-  { labelKey: 'common.nav.tab_citations', path: '/players/$playerSlug/career/commendations' },
+  { labelKey: 'common.nav.tab_citations', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/commendations' },
 ] as const satisfies readonly NavTab[]
 
 // Communauté : aligné sur le dropdown L1 (NavL1 section 'community'). Face-à-face
 // pointe vers /compare (hors /palmares), d'où des chemins absolus par onglet.
 const COMMUNITY_TABS = [
-  { labelKey: 'common.nav.tab_leaderboard', path: '/players/$playerSlug/community' },
-  { labelKey: 'common.nav.tab_relations', path: '/players/$playerSlug/community/relations' },
-  { labelKey: 'common.nav.tab_compare', path: '/players/$playerSlug/community/compare' },
+  { labelKey: 'common.nav.tab_leaderboard', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/community' },
+  { labelKey: 'common.nav.tab_relations', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/community/relations' },
+  { labelKey: 'common.nav.tab_compare', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/community/compare' },
 ] as const satisfies readonly NavTab[]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 type ActiveSection = 'stats' | 'squad' | 'career' | 'community' | null
 
-// Routes _personal : PersonalStatsLayout gère sa propre barre de filtres.
-const PERSONAL_STATS_RE = /\/players\/[^/]+\/stats\/(summary|maps-modes|distributions|progression|advanced)/
+// Routes _personal : PersonalStatsLayout gère sa propre barre de filtres. Matchers
+// sur le SUFFIXE relatif au joueur (playerRelativePath) — aucun littéral `/players/`.
+const PERSONAL_STATS_RE = /^\/stats\/(summary|maps-modes|distributions|progression|advanced)/
 
 function detectSection(pathname: string): ActiveSection {
-  if (PERSONAL_STATS_RE.test(pathname)) return null
+  const suffix = playerRelativePath(pathname)
+  if (suffix === null) return null
+  if (PERSONAL_STATS_RE.test(suffix)) return null
   // Synthèse gère sa propre barre de filtres (PeriodePill/SaisonPill) → pas de NavL2.
-  if (/\/players\/[^/]+\/stats\/synthesis/.test(pathname)) return null
-  if (/\/players\/[^/]+\/stats\//.test(pathname)) return 'stats'
-  if (/\/players\/[^/]+\/squad/.test(pathname)) return 'squad'
-  if (/\/players\/[^/]+\/(career|citations|commendations)/.test(pathname)) return 'career'
+  if (/^\/stats\/synthesis/.test(suffix)) return null
+  if (/^\/stats\//.test(suffix)) return 'stats'
+  if (/^\/squad/.test(suffix)) return 'squad'
+  if (/^\/(career|citations|commendations)/.test(suffix)) return 'career'
   if (isCommunityPath(pathname)) return 'community'
   return null
 }
@@ -80,16 +84,19 @@ function detectSection(pathname: string): ActiveSection {
 function NavTabBar({
   tabs,
   pathname,
-  resolvePath,
+  titleSlug,
+  playerSlug,
   ariaLabel,
   t,
 }: {
   tabs: readonly NavTab[]
   pathname: string
-  resolvePath: (tpl: string) => string
+  titleSlug: string
+  playerSlug: string
   ariaLabel: string
   t: (key: CommonManifestKey) => string
 }) {
+  const suffix = playerRelativePath(pathname)
   return (
     <div
       className="sticky top-0 z-30 shrink-0 bg-background px-6"
@@ -98,12 +105,12 @@ function NavTabBar({
     >
       <div className="flex items-center gap-0 border-b border-border">
         {tabs.map((tab) => {
-          const resolved = resolvePath(tab.path)
-          const isActive = pathname === resolved
+          const isActive = suffix !== null && suffix === routeTemplateSuffix(tab.path)
           return (
             <Link
               key={tab.path}
-              to={resolved}
+              to={tab.path}
+              params={{ titleSlug, playerSlug }}
               className={[
                 'border-b-2 px-4 py-2.5 text-sm font-medium transition-colors',
                 isActive
@@ -128,6 +135,7 @@ export function NavL2() {
   const pathname = routerState.location.pathname
   const params = useParams({ strict: false }) as { playerSlug?: string }
   const playerSlug = params.playerSlug ?? ''
+  const titleSlug = useTitleSlug()
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   // Gating multi-titre (Phase 5) — hooks appelés inconditionnellement (avant tout
@@ -141,10 +149,6 @@ export function NavL2() {
   // La section squad gère sa propre barre de filtres complète dans SquadLayout.
   if (section === 'squad') return null
 
-  function resolvePath(tpl: string): string {
-    return tpl.replace('$playerSlug', playerSlug)
-  }
-
   // Carrière & Communauté : barre d'onglets uniquement, pas de filtres analytiques.
   if (section === 'career') {
     // Titre sans capability `career` : pas de barre (la page est gatée en amont).
@@ -155,7 +159,8 @@ export function NavL2() {
       <NavTabBar
         tabs={careerTabs}
         pathname={pathname}
-        resolvePath={resolvePath}
+        titleSlug={titleSlug}
+        playerSlug={playerSlug}
         ariaLabel={t('common.shell.nav_career_aria')}
         t={t}
       />
@@ -172,7 +177,8 @@ export function NavL2() {
       <NavTabBar
         tabs={communityTabs}
         pathname={pathname}
-        resolvePath={resolvePath}
+        titleSlug={titleSlug}
+        playerSlug={playerSlug}
         ariaLabel={t('common.shell.nav_community_aria')}
         t={t}
       />
@@ -183,7 +189,7 @@ export function NavL2() {
   // match_context='solo' : Timeseries/History ne concernent que les matchs solo.
   // Page Sessions : on active le sélecteur de contexte (Solo/Escouade/Mixte) —
   // les autres pages stats restent figées sur 'solo' (aucune régression).
-  const isSessionsPage = /\/players\/[^/]+\/stats\/sessions/.test(pathname)
+  const isSessionsPage = /^\/stats\/sessions/.test(playerRelativePath(pathname) ?? '')
   return (
     <div
       className="sticky top-0 z-30 shrink-0 bg-background px-6"

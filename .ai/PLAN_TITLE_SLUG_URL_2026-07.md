@@ -1,6 +1,9 @@
 # PLAN — D7 : titre (et langue) dans l'URL (segments de route)
 
-Statut : PLANIFIE v2 (aucune ligne de code écrite).
+Statut : **LIVRÉ** (Phases 0-6 + lot final Découvertes closes le 2026-07-23 ; 13/13
+critères de succès §1 vérifiés — détail au journal §10). Branche `feat/title-slug-in-url`
+NON pushée (décision d'intégration laissée à l'utilisateur ; CI de branche non exercée
+de ce fait).
 Date : v1 2026-07-13 (architecte Opus) ; **v2 2026-07-21** (revue Fable : 4 trous corrigés,
 langue intégrée structurellement, décisions D-8..D-11 ajoutées — amendements validés par
 l'utilisateur le 2026-07-21).
@@ -312,17 +315,25 @@ dette lint pré-existante (baseline gelée).
 
 ### Phase 0 — Cadrage, baseline, sanity-check `{-$lang}` (rapide)
 
-- [ ] Créer `feat/title-slug-in-url` depuis `main` à jour (`git fetch` + vérifier
-      `git log --oneline -1 origin/main`).
-- [ ] Baselines au journal : (a) `grep -rn "players/\$playerSlug" apps/web/src
-      --include=*.tsx --include=*.ts | wc -l` (attendu ≈ 186 hors routeTree) ; (b)
-      inventaire des strings échappées (grep `"/players/` + liste §2) ; (c) `grep -rn
-      "/players/" apps/web/e2e` (specs à migrer, Phase 6).
-- [ ] **Sanity-check `{-$lang}` file-based** : créer `routes/{-$lang}/t/$titleSlug.tsx`
-      minimal (layout `<Outlet/>`), régénérer `routeTree.gen.ts` (dev ou build), vérifier
-      que tsc accepte `navigate({to: '/t/$titleSlug', params})` SANS lang et AVEC lang. Si
-      cassé → appliquer le repli D-4 (segment `$lang` obligatoire) et le consigner.
-- [ ] Relire les décisions §3 (fermes). Ne rien re-décider.
+- [x] Créer `feat/title-slug-in-url` — DÉVIATION consignée : créée depuis
+      `refactor/ascension-ux-2026-07` (demande utilisateur du 2026-07-22 : cette branche
+      contient l'intégralité d'`origin/main` — vérifié `git log HEAD..origin/main` vide —
+      PLUS les correctifs Ascension non encore mergés ; partir de main re-créerait les
+      mêmes warnings/erreurs déjà réglés).
+- [x] Baselines au journal : (a) 192 occurrences / 70 fichiers hors routeTree (attendu
+      ≈186 — écart +6 dû au chantier Ascension postérieur à la v2 du plan) ; (b) 131
+      strings `/players/` échappées (hors occurrences typées) ; (c) e2e : 26 fichiers
+      contiennent `/players/` (25 specs + `_helpers/demoData.ts`) — `ascension-2tabs.spec.ts`
+      cité §2 a été SUPPRIMÉ entre-temps (mini-lot F6 Ascension).
+- [x] **Sanity-check `{-$lang}` file-based** : SUPPORT OK — route
+      `routes/{-$lang}/t/$titleSlug.tsx` créée, routeTree régénéré (vite build),
+      `tsc -b` = 0 avec Link/navigate SANS lang et AVEC lang. Repli D-4 NON nécessaire.
+      Précision de forme : le `to` typé est `'/{-$lang}/t/$titleSlug'` (segment optionnel
+      DANS le template) ; la forme courte `'/t/$titleSlug'` est REFUSÉE par tsc (vérifié
+      par `@ts-expect-error` consommé). Tous les littéraux `to` des phases 2+ utilisent
+      donc la forme longue ; l'URL RENDUE sans lang reste `/t/…`. Artefacts de sanity
+      supprimés, routeTree restauré (zéro diff de code après Phase 0).
+- [x] Relire les décisions §3 (fermes). Ne rien re-décider. — Fait, rien à re-décider.
 
 Gate Phase 0 : `git branch --show-current` = `feat/title-slug-in-url` ; baselines
 consignées ; verdict `{-$lang}` consigné (support OK ou repli D-4 acté).
@@ -332,29 +343,32 @@ consignées ; verdict `{-$lang}` consigné (support OK ou repli D-4 acté).
 > Ordre TDD (D-11) : 1a AVANT 1b. Aucun déplacement de route dans cette phase — tout est
 > pur/testable sans toucher au routing.
 
-- [ ] **1a. Tests d'abord** (rouges) : `lib/title-routing/*.test.ts` —
-      `parseRouteSegments` (avec/sans lang, avec/sans titre, chemins agnostiques, cas
-      tordus `/t/`, `/t/x`, trailing slash) ; `resolveTitleGate` (wait/valid/unknown/
-      coming_soon/archived) ; `buildLegacyRedirect` en TABLE-DRIVEN — la matrice complète :
-      `home`, `stats/{timeseries,sessions,synthesis,index}`, `career/*`, `squad/*`,
-      `community/*`, `media`, `explorer`, `matches/$matchId(/replay)`, `ascension/*`,
-      `notifications`, `citations`/`commendations`, legacy `palmares/*` + `objectifs` +
-      `compare` + `synthesis`, chacun avec préservation `?f=` + hash ; bare `/players` et
-      `/players/{slug}` sans suffixe → `/t/{active}/players/{slug}/home`.
-- [ ] **1b.** Implémenter le module (D-10) jusqu'à tests verts. `applyActiveTitle(slug)` :
-      extraction de `switchTitle` (`appShellStore.ts:165-218`), testée (adapter/étendre
-      `appShellStore.switchTitle.test.ts` — ne pas affaiblir les assertions PR #59).
-- [ ] **1c.** Câblage synchrone au boot (D-9) : au point d'entrée (localiser sur pièces :
-      `main.tsx` / init du router), `parseRouteSegments(location.pathname)` →
-      `setApiTitleSlug` / `setApiLocale` si segments présents, AVANT la première requête.
-      Test unitaire du helper d'init (fonction pure appelée par le point d'entrée).
-- [ ] **1d.** `client.ts` : `getTitleHeader` envoie TOUJOURS le header (suppression du cas
-      spécial `halo_infinite`) ; MAJ des commentaires (`client.ts:59-63`, ordonnancement
-      dans `switchTitle`/`applyActiveTitle`) ; adapter les mocks/tests impactés.
-- [ ] **1e.** Garde-rail ratchet (D-10) : test vitest scannant `apps/web/src` — à ce stade
-      il documente l'allowlist BASELINE (les ~70 fichiers pas encore migrés y figurent en
-      liste à faire fondre) OU il est écrit pour ne s'armer qu'en Phase 2 ; choisir la
-      forme la plus simple et la consigner.
+- [x] **1a. Tests d'abord** (rouges) : `lib/title-routing/*.test.ts` — écrits AVANT le
+      module (red vérifié : 5 fichiers échouent module absent), matrice
+      `buildLegacyRedirect` table-driven complète (home, stats/*, career/*, squad/*,
+      community/*, media, explorer, matches, ascension/*, notifications, citations,
+      commendations, palmares/*, objectifs, compare, synthesis, `?f=` + hash, bare
+      `/players` → null [aucune route index legacy n'existe], `/players/{slug}` → home).
+- [x] **1b.** Module implémenté (D-10) : `parseRouteSegments`, `resolveTitleGate`,
+      `buildLegacyRedirect` (remaps internes CONTRE-VÉRIFIÉS sur pièces par
+      l'orchestrateur : objectifs→ascension/objectifs, palmares(/*)→community(/*),
+      compare→community/compare, synthesis→stats/synthesis, citations→career/citations,
+      commendations→career/commendations), `applyActiveTitle` (extraction ISO, THROW sans
+      rollback interne — chemin d'erreur à l'appelant, D-6), `switchTitle` = wrapper
+      rollback store-only (comportement bouton identique, tests PR #59 inchangés verts).
+      + `locales.ts` (KNOWN_LOCALES runtime — voir Découverte type Locale §7).
+- [x] **1c.** Câblage synchrone au boot : `initTitleFromLocation(window.location.pathname)`
+      dans `main.tsx` AVANT createRoot/installGlobalCapture ; testé unitairement. No-op
+      runtime en Phase 1 (aucune route à segment), câblage prêt.
+- [x] **1d.** Commentaires `client.ts` réécrits (3 sources : segment > hydratation/bascule
+      > null/session). `[~]` partie « suppression du cas spécial halo_infinite » : DÉJÀ
+      LIVRÉE avant D7 par `df7f13775` (getTitleHeader envoie le header pour tous les
+      titres) — constat sur pièces, aucun mock/test à adapter.
+- [x] **1e.** Garde-rail ratchet créé : `no-title-literals.ratchet.test.ts` — forme
+      choisie (consignée) : règle `/t/` ARMÉE dès Phase 1 (allowlist datée = module seul,
+      0 hit baseline) ; règle `/players/` ajoutée en Phase 2e (échelonnement du plan,
+      commentaire daté dans le test). Pattern quote/backtick/template/regex — la prose
+      des commentaires n'est pas matchée.
 
 Gate Phase 1 : `make test-web` vert (nouveaux tests inclus) ; `make check-types` = 0 ;
 `npm run lint` = 0 ; smoke navigateur : l'app fonctionne À L'IDENTIQUE (aucune route
@@ -363,29 +377,50 @@ aussi (preuve D-9).
 
 ### Phase 2 — Déplacement structurel + littéraux + layout (LOURD — cœur du chantier)
 
-- [ ] **2a.** `git mv routes/players/** → routes/{-$lang}/t/$titleSlug/players/**` (forme
-      Phase 0). Compléter le layout `t/$titleSlug.tsx` : projection de `resolveTitleGate`
-      (D-6, D-8) + `applyActiveTitle` sur divergence + écran d'indisponibilité (strings
-      FR **et** EN dans le manifest i18n approprié).
-- [ ] **2b.** Régénérer `routeTree.gen.ts`, corriger CHAQUE littéral typé cassé jusqu'à
-      `tsc -b` = 0 (Link `to=`, `navigate({to})`, `redirect({to})`, `Route.useParams()`).
-- [ ] **2c.** Surfaces échappant au typecheck (§2) : typer `ShellNavItem.to` avec le type
-      de route du routeur (fait entrer la nav L1/L2 dans tsc — le mismatch
-      `profile/citations` `shellNavigation.ts:48` sera FORCÉMENT corrigé vers la route
-      réelle `career/citations` : correction mécanique in-périmètre, la consigner) ;
-      `buildPlayerDestination` (préfixe titre+lang) ; `isCommunityPath` ; `pageTitle.ts` ;
-      callers `usePageScope`.
-- [ ] **2d.** Re-cibler l'index `/` (`routes/index.tsx`) et le guard joueur
-      (ex-`players/$playerSlug.tsx:16-50`) ; **joueur inconnu sur le titre cible** : après
-      réconciliation/re-bootstrap, si `playerSlug` absent de `availablePlayers` → premier
-      joueur disponible (même titre) sinon index — avec test.
-- [ ] **2e.** Armer le garde-rail (1e) : allowlist réduite à sa forme finale datée (module,
-      splat — créé Phase 3 : l'y inscrire par avance —, regex legacy volontaires).
-- [ ] **2f.** Adapter les tests de route/nav cassés ; tests du layout titre (wait → null ;
-      valide → rendu ; divergence → bascule ; inconnu/coming_soon → gate).
-- [ ] **2g.** Vérifier que les Links conservent le segment lang courant quand il est
-      présent (héritage des params TanStack sur param optionnel) — test ou vérification
-      consignée ; si non hérité, corriger via les helpers centralisés (pas au cas par cas).
+- [x] **2a.** 36 fichiers de route déplacés en RENAMES git vers
+      `routes/{-$lang}/t/$titleSlug/players/**`. Layout `t/$titleSlug.tsx` livré :
+      projection PURE de `resolveTitleGate` + effet `applyActiveTitle` sur divergence
+      (gardes anti-double-bascule : `isTitleSwitching`, `applyingRef` StrictMode,
+      `applyFailed`) + `TitleGateScreen` (unknown/coming_soon/archived/switch_failed,
+      10 clés i18n `common.title_gate.*` FR+EN, tokens sémantiques). RÈGLE ABSOLUE
+      implémentée : l'Outlet ne rend JAMAIS en `wait`/divergence/bascule en vol — ce
+      layout ferme la fenêtre pré-hydratation que `__root` laisse ouverte (il rend
+      l'Outlet NU quand `!isBootstrapped`, constat §7).
+- [x] **2b.** routeTree régénéré (vite build) ; ~100 littéraux typés corrigés, 108
+      erreurs tsc → 0. Verdict params : TanStack EXIGE `titleSlug` dans `params` hors
+      `from`/`beforeLoad`/`Route.useParams()` → helper central `useTitleSlug()`
+      (module title-routing) au lieu de ~30 copies. Les redirects internes déplacés
+      (objectifs/palmares/compare/synthesis/citations/commendations) retypés par tsc
+      vers les cibles title-préfixées (⇒ Phase 3b déjà couverte, cf. journal).
+- [x] **2c.** `ShellNavItem.to` typé `RouteTo = FileRouteTypes['to']` (nav L1/L2 dans
+      tsc) — mismatch `profile/citations` → `career/citations` corrigé MÉCANIQUEMENT
+      (commentaire in-code, effet attendu §7). `buildPlayerDestination` SUPPRIMÉ
+      (zéro code mort), remplacé par `resolvePlayerSwitch` (pur) + `navigate({to:'.'})`
+      qui préserve section/titre/langue. Matchers de pathname déportés sur helpers
+      uniques `playerRelativePath`/`routeTemplateSuffix` (module title-routing,
+      allowlisté) : `isCommunityPath`, `pageTitle.ts`, `navL1Sections`, `NavL2` SANS
+      littéral `/players/`. `usePageScope.to` typé `FileRouteTypes['to']`.
+- [x] **2d.** Index `/` re-ciblé (Navigate typé + `useTitleSlug`). Guard joueur :
+      beforeLoad conservé pour les nav SPA (cibles retypées, spread `...params`) +
+      filet fresh-load DÉCLARATIF `resolvePlayerFallback` (pur, testé) projeté par
+      `PlayerLayout` — commentaire expliquant la division (trou n°1 revue v2 fermé).
+- [x] **2e.** Ratchet `/players/` ARMÉ (allowlist datée 2026-07-23 : module
+      title-routing, `routes/players/` splat Phase 3 inscrit par avance,
+      feedback-drawer regex legacy volontaire, générés exclus) — 0 offender.
+      Étendu (lot 2-C) à la forme backtick en contexte `to:`/`href:` (limite
+      résiduelle documentée dans le test).
+- [x] **2f.** Tests layout titre : 7 cas (wait→null, valid→Outlet, divergence→
+      applyActiveTitle mocké puis convergence, unknown/coming_soon/archived→gate FR,
+      switch_failed→retry). Tests nav adaptés sans affaiblissement.
+- [x] **2g.** Héritage `lang` PROUVÉ par test avec vrai routeur + memory history
+      (`langSegmentInheritance.test.ts`) : depuis `/en/t/…`, un Link sans `lang`
+      préserve `/en` ; sans segment, reste sans segment. Aucun correctif nécessaire.
+- [x] **2-C (complément découvert en 2-B).** Dernière famille de littéraux : cibles de
+      route en template-literal backtick (échappent à tsc ET au ratchet) — 5 fichiers
+      migrés (notifications/navigation.ts ~11 cibles typées + params, filterLink,
+      PlayerDetailPanel, MediaViewer, CoverFlowModal) via `useTitleSlug()` et helper
+      `playerScopedHref` (title-routing, hrefs pleine page — lang omis = session).
+      Cycle d'import barrel→store évité (import du module feuille, documenté).
 
 Gate Phase 2 : `make check-types` = 0 ; `make test-web` vert ; `npm run lint` = 0 ;
 garde-rail vert ; smoke navigateur : `/t/halo_infinite/players/{p}/home` ET
@@ -393,31 +428,58 @@ garde-rail vert ; smoke navigateur : `/t/halo_infinite/players/{p}/home` ET
 
 ### Phase 3 — Redirections legacy (moyen)
 
-- [ ] **3a.** Splat `routes/players/$.tsx` DÉCLARATIF (D-5, D-8) : composant gaté
-      `isBootstrapped`, `<Navigate replace>` calculé par `buildLegacyRedirect` (déjà
-      testée en 1a — le splat n'est qu'une projection).
-- [ ] **3b.** Re-pointer les redirections internes (objectifs→ascension,
-      palmares→community, compare→community) vers les cibles title-préfixées.
-- [ ] **3c.** Confirmer la matrice par les tests 1a (déjà verts) + navigateur : 4+
-      anciennes URLs (dont une avec `?f=`, dont une H5 — le fresh-load H5 doit rediriger
-      vers `/t/halo_5/…` grâce au gate `isBootstrapped`, PAS vers le défaut).
+- [x] **3a.** Splat `routes/players/$.tsx` DÉCLARATIF livré : gaté `isBootstrapped`,
+      projection de `buildLegacyRedirect` via `router.history.replace(href)` (le href
+      complet `?f=`/`#` ne passe pas dans un `<Navigate to>` typé sans cast/double
+      parsing — choix documenté ; round-trip `searchStr` du sérialiseur par défaut
+      VÉRIFIÉ byte-identique, y compris base64 `?f=`). BUG DE COURSE détecté par la
+      vérification navigateur de l'orchestrateur puis corrigé : après le replace, le
+      splat re-rend avec la location transitoire `/t/…` → sans garde, la branche
+      « hors matrice → index » écrasait la redirection (perte suffixe/`?f=`/hash).
+      Garde `isLegacyPath` sur LES DEUX branches + test de non-régression (rouge
+      avant fix, vert après). `/players` nu → index (aucune route legacy n'existait).
+- [~] **3b.** Re-pointage des redirections internes : DÉJÀ COUVERT par 2b (tsc a forcé
+      le retypage des redirects déplacés vers les cibles title-préfixées). Vérifié par
+      grep : aucun `to: '/players/` ne subsiste sous `routes/`.
+- [x] **3c.** Matrice navigateur exécutée par l'orchestrateur (dev server relancé
+      proprement) : legacy home → `/t/halo_infinite/…/home` direct ; suffixe +
+      `?f=TESTVALUE123` + `#deep` préservés BYTE-IDENTIQUES ; `objectifs` →
+      `ascension/objectifs` et `palmares` → `community` en UN hop ; `/players` nu →
+      index → home ; **session H5 + bookmark legacy → `/t/halo_5/…` (trou n°1 fermé
+      en conditions réelles)**. Trace des navigations consignée au journal.
 
 Gate Phase 3 : `make check-types` = 0 ; `make test-web` vert ; navigateur : redirections
 vérifiées, suffixe + `?f=` + hash préservés, aucune page morte.
 
 ### Phase 4 — `switchTitle` réduit, chemin d'erreur, courses (moyen)
 
-- [ ] **4a.** `TitleSwitcher.onSelect` → simple `navigate` vers
-      `/t/{slug}/players/{player}/home` (le layout fait la bascule) ; réduire/supprimer
-      `switchTitle` bouton ; purge du code mort (POST+rebootstrap+navigate dupliqués) et de
-      ses tests obsolètes — règle « 0 code mort ».
-- [ ] **4b.** Chemin d'erreur D-6 : échec `applyActiveTitle` → navigate retour segment
-      précédent + message ; test (mock POST en échec → URL revenue, pas de boucle).
-- [ ] **4c.** Course back/forward : test popstate pendant bascule en vol → convergence
-      (re-comparaison à la complétion), pas de double bascule.
-- [ ] **4d.** Articulation `?f=` (D-7) : garde PR #59 intacte ; commentaire de coexistence
-      + critère de retrait ; tests PR #59 passent inchangés OU adaptés (justification au
-      journal, assertions non affaiblies).
+- [x] **4a.** `TitleSwitcher.onSelect` → navigate typé vers le segment cible (le layout
+      bascule sur divergence). Cas limite SANS joueur : `applyActiveTitle` direct +
+      navigate `/` (pas de route de titre nue — documenté, échec loggé). `switchTitle`
+      ET `setCurrentTitle` SUPPRIMÉS du store (plus aucun caller — grep vérifié) ;
+      assertions PR #59 MIGRÉES vers `appShellStore.applyActiveTitle.test.ts` (même
+      séquence load-bearing protégée : POST→set→resetFilters→cancel+clear→bootstrap→
+      filet ; justification : switchTitle n'était qu'un wrapper, séquence observable
+      identique). `createFilterStore.test.ts` INCHANGÉ (git diff vide).
+- [x] **4b.** Chemin d'erreur D-6 complet : échec avec joueur courant → toast sonner
+      (clé i18n `common.title_gate.switch_failed_toast` FR+EN) + navigate REPLACE vers
+      le titre courant ; sans joueur → écran `switch_failed` (retry) conservé.
+      Anti-boucle par convergence segment==store. Constat consigné : le layout reste
+      MONTÉ au changement de param → `applyFailed` persisterait → le chemin avec
+      joueur ne le pose JAMAIS (design). Testé (mock rejet → toast + navigate replace,
+      pas de re-tentative ; sans joueur → écran).
+- [x] **4c.** Test de course back/forward écrit AVANT — il a RÉVÉLÉ une fragilité
+      réelle du layout Phase 2 : `applyingRef` relâché dans `.finally` APRÈS le
+      re-render SYNCHRONE Zustand (isTitleSwitching→false) → convergence calée si le
+      segment avait changé pendant le vol. CORRIGÉ dans le layout (relâchement en tête
+      d'effet quand aucune bascule live ; dédup StrictMode préservée — applyActiveTitle
+      pose isTitleSwitching=true synchrone). Après fix : exactement 2 appels [cible,
+      retour], convergence finale. Point §7 `refetchOnWindowFocus` : test dédié vert,
+      la re-comparaison absorbe une réhydratation pendant bascule — pas de patch ad hoc.
+- [x] **4d.** Garde PR #59 INTACTE (zéro refactor, `createFilterStore.test.ts` intact
+      vert) ; commentaire de coexistence segment↔`?f=` ajouté (défense en profondeur +
+      rétro-compat) avec critère de retrait daté mesurable (≥ 1 release majeure post-D7
+      + télémétrie ≥ 1 mois sans lien legacy sans segment).
 
 Gate Phase 4 : `make check-types` = 0 ; `make test-web` vert (incl. PR #59) ; grep
 confirmant l'absence du code de switch dupliqué ; navigateur : switch via sélecteur →
@@ -425,33 +487,71 @@ segment change, données/filtres basculent ; échec simulé → retour propre.
 
 ### Phase 5 — Locale par segment (rapide)
 
-- [ ] **5a.** Réconciliation locale←segment (D-12) dans le layout : `lang` présent et ≠
-      locale courante → `setLocale` + invalidation des queries localisées ; absent →
-      no-op strict. Tests.
-- [ ] **5b.** Sélecteur de langue (`features/settings/queries.ts:41-70`) : si un segment
-      lang est présent dans l'URL courante, le mettre à jour (navigate replace) ; sinon
-      comportement actuel. Test.
-- [ ] **5c.** Navigateur : `/en/t/halo_infinite/players/{p}/home` force EN (payloads +
-      header `X-LevelUp-Locale`) ; retour sans segment → locale session.
+- [x] **5a.** Réconciliation locale←segment livrée (effet SÉPARÉ dans le layout titre,
+      gardé `isKnownLocale` contre les segments aberrants ; absent/aligné → no-op
+      STRICT). AUDIT d'invalidation consigné : tous les payloads localisés portent
+      `locale` en clé (home, seasonPass, teammates, sessionDetail, field-mappings,
+      releaseNotes) → la CLÉ est l'invalidation, aucun clear global ; UNE exception —
+      `leaderboardCatalog` (display_name bakés serveur, clé sans locale) → invalidation
+      CIBLÉE dans l'effet (suppression de l'exception à la racine = lot final, cf. §7).
+      4 tests layout.
+- [x] **5b.** Sélecteur de langue : bloc défensif après mutation réussie — segment lang
+      présent ≠ nouvelle locale → navigate replace `to:'.'` avec le nouveau lang ;
+      chemin AUJOURD'HUI théorique (settings est agnostique, D-3 — documenté in-code),
+      défini pour toute future surface title-scoped. 3 tests (nouveau
+      `settings/queries.test.ts`).
+- [x] **5c.** Navigateur (orchestrateur) : `/en/t/halo_infinite/…/home` → UI
+      intégralement EN + header `X-LevelUp-Locale: en` UNIFORME dès le premier fetch
+      (câblage synchrone au boot) ; clic nav interne → segment `/en` HÉRITÉ
+      (`/en/t/…/career` — confirmation réelle du test 2g) ; retour sans segment →
+      locale session FR, headers `fr`. Le segment force SANS committer la session
+      (comportement D-12 voulu).
 
 Gate Phase 5 : `make check-types` = 0 ; `make test-web` vert ; vérification navigateur
 consignée.
 
 ### Phase 6 — E2E + vérification navigateur complète + livraison (moyen)
 
-- [ ] **6a.** Migrer les 10 specs `e2e/*.spec.ts` vers les URLs `/t/…` (leurs assertions
-      d'URL casseraient sinon — critère 10) ; ajouter UNE spec `legacy-redirect.spec.ts`
-      exerçant la matrice principale (bookmark, `?f=`, H5).
-- [ ] **6b.** chrome-devtools, 2 titres : home / stats / career / squad / community /
-      explorer / un match — URL `/t/{slug}/`, header network, données du bon titre.
-- [ ] **6c.** Scénario fuite PR #59 : filtre session sur un titre, switch, vérifier reset ;
-      deep-link `?f=` legacy honoré/rejeté correctement.
-- [ ] **6d.** Segment invalide `/t/inconnu/players/…` + titre `coming_soon` si dispo →
-      gate propre, pas de page blanche, strings FR/EN.
-- [ ] **6e.** Suite complète : `make check-types`, `make test-web`, `npm run lint`,
-      `npm run test:e2e` (nécessite `make dev`).
-- [ ] **6f.** `thought_log` (clôture), MAJ `project_map` (la cartographie des routes
-      change), statut final de chaque item du plan, delivery-checklist.
+- [x] **6a.** 19 specs migrées (le compte réel dépassait les « 10 » du plan v2) via un
+      helper CENTRAL `e2e/_helpers/routes.ts` (titlePath/playerPath/patterns — zéro
+      littéral recopié) ; URLs d'API non touchées (le titre y transite par header).
+      Spec `legacy-redirect.spec.ts` : 5/5 VERTE en réel (bookmark, `?f=`+hash
+      byte-préservés assertés sur la PREMIÈRE URL post-redirect — contrat D-5 —,
+      objectifs→ascension, palmares→community, session H5 committée puis bookmark →
+      `/t/halo_5/…`). Baseline e2e avant/après honnête : 35→41 passed / 63 skip
+      identiques / 3→2 failed, les 2 restants PRÉ-EXISTANTS et environnementaux
+      (serveur non-DEMO_MODE), aucun nouveau rouge. README e2e à jour.
+- [x] **6b.** Navigateur (Playwright, orchestrateur) : home / stats/sessions / career /
+      squad / community / explorer × 2 titres — URLs `/t/{slug}/` stables, rendus
+      pleins, headers réseau cohérents avec le segment (seule exception attendue et
+      documentée : requêtes SHELL pré-convergence au premier fresh-load H5, D-3,
+      purgées par clear()). Page match : `[~]` route `/matches/{id}` PROUVÉE montée
+      sous `/t/` (id inexistant → erreur gérée, URL stable, 0 erreur console) +
+      couverture tsc/vitest/spec migrée — aucun lien `<a href>` de match accessible
+      en démo pour un clic réel (tableaux à sélection, pas de navigation).
+- [x] **6c.** PR #59 en réel : `?f=` estampillé `"t":"halo_infinite"` (décodage base64
+      vérifié) → switch UI H5 → `?f=` RESET et ré-estampillé `"t":"halo_5"`, zéro
+      résidu ; deep-link `?f=` Infinite INJECTÉ sous `/t/halo_5` → REJETÉ par la garde
+      (reconcileActiveTitle) et ré-estampillé halo_5. Critère 12 vérifié.
+- [x] **6d.** `/t/inconnu/…` → gate FR « Titre introuvable » ; `/en/t/inconnu/…` → gate
+      EN « Title not found » ; zéro fuite de contenu sous le gate, zéro erreur console.
+      `coming_soon` : `[~]` aucun titre coming_soon dans la config locale — couvert par
+      les tests unitaires du layout (2f, verdict + strings testés).
+- [x] **6e.** Suite complète (après lot final Découvertes, cache tsBuildInfo PURGÉ) :
+      `tsc -b --force` = 0 ; vitest 297 fichiers / 2620 passés / 14 skip pré-existants /
+      0 échec ; `eslint .` = 0 erreur (67 warnings baseline, −1 vs avant D7 : warning
+      ExplorerPage résorbé au lot final) ; Playwright 106 tests : 44 passés / 58 skip
+      (serveur non-DEMO_MODE) / 4 échecs dont 3 FLAKES de charge re-passés VERTS isolés
+      à froid — 1 seul échec systématique : `slice-9-onboarding:44`, PRÉ-EXISTANT et
+      environnemental (spec conçue pour DEMO_MODE), non causé par D7.
+- [x] **6f.** thought_log (clôture) ; project_map : ligne ajoutée aux affirmations
+      périmées de l'en-tête (le document est GELÉ depuis ~2026-04 — pas ranimé, `[~]`
+      dans l'esprit) ; statut final de chaque item : AUCUNE case vide, reports `[~]`/
+      différés tous justifiés ; delivery-checklist déroulée (aucun .go touché — les
+      sections Go ne s'appliquent pas ; typecheck de clôture NON-incrémental ; zéro
+      TODO/FIXME introduit ; fichiers nouveaux < 500 L ; garde-rails livrés avec les
+      helpers dans les mêmes commits ; CI de branche NON exercée — branche jamais
+      pushée, signalé au statut d'en-tête).
 
 Gate Phase 6 : tous les gates verts ; captures/observations consignées au journal.
 
@@ -489,6 +589,48 @@ Gate Phase 6 : tous les gates verts ; captures/observations consignées au journ
   `filtersResolve`/`filtersPreview` (même motif que `home`) en défense en profondeur, et
   vérifier au passage les autres clés player-scoped title-dépendantes sans titre
   (`career`, `timeseries`, `synthesis`, `teammates`, …) — même audit, même commit.
+  **TRAITÉ Phase 1 (2026-07-22)** : `filtersResolve`/`filtersPreview` enrichies du
+  titre (+ callers `features/filters/queries.ts` ; `filtersResolveAll` reste broad
+  par joueur, documenté). Audit des autres clés : AUCUNE fuite résiduelle nécessitant
+  un changement (`queryClient.clear()` au switch + rendu gaté bootstrap + segment
+  synchrone Phase 2) ; groupes « loader » (`career_`, `matches/$matchId`) et « poll »
+  (`media`, `notifications`, `progression`) identifiés comme candidats à un
+  durcissement OPTIONNEL — décision reportée au lot final.
+
+- [2026-07-22] Pas de type `Locale` central dans `apps/web` (le plan §Phase 1 citait
+  `lib/i18n.ts (type Locale)` qui n'existe pas) : `'fr' | 'en'` est redéclaré en 3
+  alias nommés (`ManifestLocale`, `FieldMappingLocale`, `MetricLocale`) + inline
+  (`client.ts`, `appShellStore.ts`). Le module `title-routing` porte désormais
+  `KNOWN_LOCALES`/`Locale` (besoin runtime du parsing). Décision : centralisation d'un
+  `Locale` unique = candidat LOT FINAL (règle des ≤ 2 copies déjà dépassée).
+
+- [2026-07-22] Cohérence clé-de-cache (store `currentTitleSlug`) vs header (client
+  `_currentTitleSlug`) pendant une bascule par URL : fermée structurellement si le
+  layout D-6 ne rend PAS l'Outlet pendant `wait`/divergence/bascule en vol — précision
+  d'implémentation INTÉGRÉE au brief Phase 2 (2a). Pas de changement de design.
+  **TRAITÉ Phase 2** (layout livré avec cette règle + constat aggravant : `__root` rend
+  l'Outlet NU quand `!isBootstrapped`, __root.tsx:175-177 — le layout titre est le seul
+  rempart du sous-arbre title-scoped).
+
+- [2026-07-23] (lot 2-B) Cibles de route front en template-literal backtick
+  (`` `/players/${slug}/…` ``) échappant à tsc ET au ratchet : 5 fichiers
+  (notifications/navigation, filterLink, PlayerDetailPanel, MediaViewer,
+  CoverFlowModal). L'audit §2 du plan les avait manquées. **TRAITÉ lot 2-C** (même
+  phase) : migration typée + `playerScopedHref` + extension du ratchet au contexte
+  `to:`/`href:` backtick.
+
+- [2026-07-23] (lot 2-C) `notif.target_route` ÉMIS PAR LE BACKEND porte encore l'ancien
+  format `/players/…` (donnée runtime, pas un littéral source). Couvert par le splat
+  legacy Phase 3 (1 hop). Mise à jour de l'émission backend = chantier Go HORS D7
+  (documenté in-code navigation.ts). Décision : DIFFÉRÉ (signalé utilisateur).
+
+- [2026-07-23] (lot 2-B, mineur) `ExplorerPage.tsx:168` : `eslint-disable-next-line
+  set-state-in-effect` MAL PLACÉ (désactive la ligne suivante, pas les setState
+  165-167) → warning baseline. Décision : lot final (trivial).
+
+- [2026-07-23] (lot 2-B, mineur) `NavL1MobileActions.test.tsx:42` : fixture pathname
+  ancien style `/players/test-player/home` (passe par sous-chaîne). Décision : lot
+  final (cohérence des fixtures).
 
 Points de vigilance connus :
 - Le mismatch `shellNavigation.ts:48` (`profile/citations` vs route réelle
@@ -541,5 +683,122 @@ déplacement (Phase 1, TDD). Backend non touché.
 
 ## 10. Journal du plan (rempli à l'exécution)
 
-- (vide — à alimenter à chaque clôture d'étape : date, étape, gate, statut des items,
-  observations navigateur.)
+- **[2026-07-22] Phase 0 CLOSE.** Gate : branche `feat/title-slug-in-url` active (créée
+  depuis `refactor/ascension-ux-2026-07` = origin/main + fixes Ascension, demande
+  utilisateur) ; baselines consignées (192 occ / 70 fichiers typés, 131 strings échappées,
+  26 fichiers e2e) ; verdict `{-$lang}` : SUPPORT OK, repli D-4 non nécessaire. Forme
+  canonique des `to` typés : `'/{-$lang}/t/$titleSlug/…'` (forme courte refusée par tsc).
+  Exécution pilotée : Fable orchestre + vérifie, agents Opus implémentent (phases 1-6).
+  Zéro diff de code à la clôture (artefacts sanity supprimés, routeTree restauré).
+
+- **[2026-07-22] Phase 1 CLOSE.** Agent Opus (module + tests TDD red→green), revue
+  orchestrateur sur pièces (remaps legacy contre-vérifiés contre les 6 redirects
+  existants — exacts ; extraction `applyActiveTitle` ISO-comportement vérifiée ligne à
+  ligne). Gate re-exécuté par l'orchestrateur : vitest 291 fichiers / 2573 passés /
+  14 skip pré-existants / 0 échec (+81 tests du module) ; `tsc -b` = 0 ; eslint fichiers
+  touchés = 0. Smoke navigateur (script Playwright ad hoc, serveurs dev relancés) :
+  app à l'identique sur `/players/Chocoboflor/home`, 0 erreur page, TOUTES les requêtes
+  API JSON portent `X-LevelUp-Title: halo_infinite` (titre par défaut — preuve D-9) ;
+  `/bootstrap` sans header (pré-hydratation, session autoritaire, documenté) ; assets
+  `<img>` sans header (fetch navigateur, hors client API — attendu). Découvertes
+  consignées §7 (type Locale absent, durcissement optionnel clés loader/poll → lot
+  final). Binaires Playwright chromium (ré)installés au passage (requis Phase 6).
+
+- **[2026-07-23] Phase 2 CLOSE** (3 lots Opus : 2-A structure+layout, 2-B surfaces
+  échappées, 2-C backtick emitters — chaque lot revu sur pièces par l'orchestrateur).
+  Gate re-exécuté par l'orchestrateur : `tsc -b` = 0 ; vitest **295 fichiers / 2605
+  passés / 14 skip pré-existants / 0 échec** ; `eslint .` = 0 erreur (68 warnings
+  baseline pré-existante) ; ratchet `/t/` + `/players/` vert, 0 offender. Smoke
+  navigateur (Playwright) : `/t/halo_infinite/players/Chocoboflor/home` rendu, headers
+  API uniformément `halo_infinite` ; `/t/halo_5/players/Chocoboflor/home` FRESH-LOAD
+  avec session Infinite → convergence D-6 observée (URL stable, `?f=` estampillé
+  `halo_5`, re-bootstrap, contenu H5) — les requêtes shell pré-convergence partent avec
+  l'ancien titre puis sont purgées par `clear()` (conforme D-3 : le shell suit le
+  store) ; `/t/inconnu/…` → écran gate « Titre introuvable » + lien retour, ZÉRO fuite
+  de contenu joueur sous le gate, aucune erreur console. Legacy `/players/…` = 404
+  TanStack à ce stade : ATTENDU, le splat arrive Phase 3. Verdicts consignés : params
+  `titleSlug` requis hors from/beforeLoad/useParams (helper `useTitleSlug`) ; héritage
+  `lang` OK (test routeur réel).
+
+- **[2026-07-23] Phase 3 CLOSE.** Splat legacy déclaratif (agent Opus) ; la première
+  livraison passait tsc/vitest mais la VÉRIFICATION NAVIGATEUR de l'orchestrateur a
+  détecté un bug de course post-replace (toutes les URLs legacy perdaient
+  suffixe/`?f=`/hash via un détour par `/`) — diagnostic orchestrateur, fix agent
+  (garde `isLegacyPath` double-branche) + test de non-régression rouge→vert. Gate
+  re-exécuté : tsc 0 ; vitest 296 fichiers / 2609 passés / 0 échec ; matrice
+  navigateur INTÉGRALE verte après redémarrage propre du dev server (A1 home direct,
+  A2 `?f=`+hash byte-préservés, A3 objectifs→ascension/objectifs 1 hop, A4
+  palmares→community, A5 `/players` nu→index, B1 session H5 → `/t/halo_5/…`).
+  Leçon consignée : les tests de composant du splat ne simulaient pas le re-render
+  en transition — la vérification navigateur end-to-end reste OBLIGATOIRE à chaque
+  étape (elle a payé ici).
+
+- **[2026-07-23] CLÔTURE DU CHANTIER — 13/13 critères de succès §1 vérifiés :**
+  (1) pages title-scoped sous `/t/{slug}` [36 routes, smoke 2 titres] ; (2) typecheck 0
+  [`tsc -b --force`, cache purgé] ; (3) garde-rail grep VERT [ratchet `/t/` +
+  `/players/` quotes/regex/backtick-nav, 0 offender, allowlist datée] ; (4) vitest vert
+  PR #59 inclus [2620 passés] ; (5) eslint 0 erreur [baseline −1] ; (6) redirections
+  legacy replace + préservation intégrale [matrice table-driven + navigateur
+  byte-identique + spec e2e 5/5] ; (7) TitleSwitcher change le segment,
+  données/filtres/cache basculent, échec sans divergence URL↔store [Phase 4 + smoke
+  clics] ; (8) gate propre slug inconnu/coming_soon/archived FR **et** EN [navigateur
+  FR+EN ; coming_soon par tests unitaires, aucun titre en config] ; (9) header
+  X-LevelUp-Title affirmé pour TOUS les titres [df7f13775 antérieur + segment
+  synchrone au boot ; pages agnostiques pré-hydratation = session serveur, design
+  D-3] ; (10) e2e migrées + `legacy-redirect.spec.ts` [19 specs, helper central] ;
+  (11) segment langue force la locale, absent = session [smoke `/en` + héritage
+  nav interne] ; (12) non-régression PR #59 [deep-link inter-titres REJETÉ en réel,
+  décodage base64 vérifié] ; (13) vérifications navigateur consignées [journal,
+  Phases 2-6]. Orchestration : Fable (revues sur pièces, diagnostics, gates re-exécutés,
+  matrices navigateur) + 7 lots agents Opus (P1, 2-A/B/C, P3, P4, P5, 6a, lot final).
+  2 bugs RÉELS attrapés par la revue orchestrateur au-delà des tests verts des agents :
+  course post-replace du splat (P3, navigateur) et convergence calée du layout (P4,
+  test de course exigé). Le contrat « URL source de vérité » est livré actif — aucun
+  flag OFF, aucun TODO, zéro code mort résiduel.
+
+- **[2026-07-23] Phase 4 CLOSE.** TitleSwitcher navigate-first (agent Opus) ;
+  `switchTitle`/`setCurrentTitle` supprimés (0 code mort), assertions PR #59 migrées
+  sans affaiblissement. Le test de course 4c (écrit d'abord) a détecté une fragilité
+  de convergence du layout Phase 2 (verrou vs re-render synchrone Zustand) — corrigée
+  dans le layout, pas dans le test. Chemin d'erreur D-6 complet (toast + navigate
+  replace / écran fallback sans joueur). Gate re-exécuté orchestrateur : tsc 0 ;
+  vitest 296 fichiers / 2613 passés / 0 échec ; smoke UI navigateur : switch
+  Infinite→H5→Infinite par clics réels, segment + `?f=` ré-estampillés, 0 erreur.
+
+- Découverte (2026-07-23, Phase 4, mineure) : `createFilterStore.test.ts:142` porte
+  une référence commentée à l'ex-`switchTitle` — laissée pour honorer la contrainte
+  « INCHANGÉ » du gate 4d. Rafraîchissement de commentaire → lot final.
+
+- **[2026-07-23] Phase 5 CLOSE.** Locale par segment (agent Opus, périmètre minimal
+  D-12 respecté). Audit d'invalidation : une seule clé localisée sans locale
+  (`leaderboardCatalog`) → invalidation ciblée transitoire. Gate re-exécuté : tsc 0 ;
+  vitest 297 fichiers / 2620 passés / 0 échec ; navigateur : `/en` force EN
+  (payloads + header uniforme dès le 1er fetch), héritage du segment en nav interne
+  confirmé en réel, retour sans segment = session FR.
+
+- Découverte (2026-07-23, Phase 5) : `leaderboardCatalog` (keys.ts:170) est la SEULE
+  clé au payload localisé sans `locale` — l'invalidation ciblée vit transitoirement
+  dans l'effet locale du layout titre (logique feature dans le layout, à résorber).
+  LOT FINAL : ajouter `locale` à la clé + retirer l'invalidation ciblée du layout.
+
+- **[2026-07-23] LOT FINAL DÉCOUVERTES CLOS** (agent Opus, revue orchestrateur) :
+  (1) type `Locale` CENTRALISÉ dans `lib/i18n/locale.ts` (module feuille) —
+  `FieldMappingLocale`/`MetricLocale` supprimés (0 consommateur externe),
+  `ManifestLocale` gardé en alias (~50 consommateurs), inline client/appShellStore
+  migrés, `title-routing/locales.ts` supprimé (barrel ré-exporte) ; (2)
+  `leaderboardCatalog(playerSlug, locale)` — l'invalidation ciblée du layout RETIRÉE
+  (la clé EST l'invalidation, plus aucune exception) ; (3) convention documentée en
+  tête de `keys.ts` (quand inclure titleSlug/locale) ; (4) warning
+  `set-state-in-effect` d'ExplorerPage résorbé (disable minimal AJOUTÉ — la prémisse
+  « mal placé » était imprécise : il n'y avait aucun disable pour cette règle, artefact
+  d'affichage eslint) ; (5) fixture NavL1MobileActions + commentaire
+  createFilterStore.test rafraîchis. Gates : tsc 0, vitest 2620/0 échec, eslint 0.
+
+- [2026-07-23] (6a/lot final, signalées NON traitées — hors périmètre D7) :
+  (a) `e2e/` n'est couvert par AUCUN tsconfig ni par eslint (globalIgnores) — les specs
+  ne sont ni type-checkées ni lintées, seul Playwright les exécute ; chantier outillage
+  distinct. (b) D'autres alias locale feature-local subsistent (`BriefingLocale`,
+  `HelpLocale`, `CompareLocale`, `PalmaresLocale`, `AscensionLocale`, `SettingsLocale`,
+  `SquadLocale`, …) — candidats à la migration vers `lib/i18n/locale.ts` dans un
+  chantier de cohérence i18n dédié. (c) `notif.target_route` émis par le backend au
+  format legacy (chantier Go) — le splat couvre en 1 hop, DIFFÉRÉ.

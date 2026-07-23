@@ -7,6 +7,7 @@
  */
 import { useNavigate } from '@tanstack/react-router'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useTitleSlug } from '@/lib/title-routing'
 import { CategoryIcon } from './icons'
 import { resolveTitle, resolveBody } from './format'
 import { resolveTarget } from './navigation'
@@ -28,6 +29,7 @@ export function NotificationItem(props: NotificationItemProps) {
   const locale = useAppShellStore((s) => s.locale)
   const t = getNotificationsText(locale)
   const navigate = useNavigate()
+  const titleSlug = useTitleSlug()
   const isUnread = notif.read_at == null
   const title = resolveTitle(notif, locale)
   const body = resolveBody(notif, locale)
@@ -40,9 +42,13 @@ export function NotificationItem(props: NotificationItemProps) {
     e.preventDefault()
     if (isUnread) onMarkRead(notif.id)
     onAfterClick?.()
-    const target = resolveTarget(notif, playerSlug)
+    const target = resolveTarget(notif, playerSlug, titleSlug)
     if (target) {
-      navigate({ to: target.to, search: target.search } as Parameters<typeof navigate>[0])
+      navigate({
+        to: target.to,
+        params: target.params,
+        search: target.search,
+      } as Parameters<typeof navigate>[0])
     }
   }
 

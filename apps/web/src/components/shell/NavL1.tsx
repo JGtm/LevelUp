@@ -12,7 +12,7 @@ import { useRef, useEffect, useState } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { ThemeToggle } from './ThemeToggle'
 import { TitleSwitcher } from './TitleSwitcher'
-import { buildPlayerDestination } from './shellNavigation'
+import { resolvePlayerSwitch } from './shellNavigation'
 import { HelpSplitButton } from './HelpSplitButton'
 import { LogoutButton } from './LogoutButton'
 import { NavL1MobileMenu } from './NavL1MobileMenu'
@@ -30,11 +30,11 @@ import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/com
 interface SplitButtonProps {
   section: L1Section & { tabs: L1Tab[] }
   isActive: boolean
-  resolvedDefaultPath: string
-  resolvePath: (tpl: string) => string
+  titleSlug: string
+  playerSlug: string
 }
 
-function SplitButton({ section, isActive, resolvedDefaultPath, resolvePath }: SplitButtonProps) {
+function SplitButton({ section, isActive, titleSlug, playerSlug }: SplitButtonProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const locale = useAppShellStore((s) => s.locale)
@@ -62,7 +62,8 @@ function SplitButton({ section, isActive, resolvedDefaultPath, resolvePath }: Sp
     <div ref={ref} className="relative">
       <div className={wrapperClass}>
         <Link
-          to={resolvedDefaultPath as never}
+          to={section.defaultPath}
+          params={{ titleSlug, playerSlug }}
           className="flex items-center gap-1.5 px-3 py-1.5 whitespace-nowrap"
           aria-current={isActive ? 'page' : undefined}
         >
@@ -100,7 +101,8 @@ function SplitButton({ section, isActive, resolvedDefaultPath, resolvePath }: Sp
           {section.tabs.map((tab) => (
             <Link
               key={tab.key}
-              to={resolvePath(tab.path) as never}
+              to={tab.path}
+              params={{ titleSlug, playerSlug }}
               role="menuitem"
               onClick={() => setOpen(false)}
               className="block px-3 py-1.5 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground whitespace-nowrap"
@@ -270,7 +272,7 @@ export function NavL1() {
       // h5 : « Citations » (moteur dérivé d'Infinite) → « Commendations » natif —
       // cohérent avec NavL2. Le slug est le seul signal front (aucune capability
       // coarse ne distingue h5, cf. CAREER_TABS_H5).
-      const tabs = s.tabs.filter(tabVisible).map((tab) =>
+      const tabs = s.tabs.filter(tabVisible).map((tab): L1Tab =>
         currentTitleSlug === 'halo_5' && tab.key === 'citations'
           ? {
               // Halo 5 : commendations natives. On conserve la clé i18n d'origine
@@ -278,7 +280,7 @@ export function NavL1() {
               // officiel Halo) et on ne change QUE la clé de tab + le chemin.
               ...tab,
               key: 'commendations',
-              path: '/players/$playerSlug/commendations',
+              path: '/{-$lang}/t/$titleSlug/players/$playerSlug/commendations',
             }
           : tab,
       )
@@ -305,17 +307,31 @@ export function NavL1() {
     { key: 'account', label: st.tabAccount, tab: 'account' },
   ]
 
-  function resolvePath(templatePath: string): string {
-    return templatePath.replace('$playerSlug', playerSlug)
-  }
-
   function handlePlayerChange(slug: string) {
     const player = availablePlayers.find((p) => p.player_slug === slug)
     if (!player) return
     setCurrentPlayer(player)
-    const nextPath = buildPlayerDestination(pathname, playerSlug, player.player_slug)
-    navigate({ to: nextPath as never })
+    // Changement de JOUEUR (même titre) : sur une sous-page joueur, rester sur la même
+    // route en ne changeant que le playerSlug (titre + langue hérités des params
+    // courants) ; sinon aller à l'accueil title-scoped du nouveau joueur.
+    if (resolvePlayerSwitch(pathname).kind === 'same-route') {
+      void navigate({ to: '.', params: (prev) => ({ ...prev, playerSlug: slug }) })
+    } else {
+      void navigate({
+        to: '/{-$lang}/t/$titleSlug/players/$playerSlug/home',
+        params: { titleSlug: currentTitleSlug, playerSlug: slug },
+      })
+    }
   }
+
+  const logoInner = (
+    <>
+      <img src="/logo.png" alt="LevelUp" className="h-7 w-7 shrink-0 object-contain" />
+      <span className="hidden text-sm font-bold text-sidebar-foreground sm:block">LevelUp</span>
+    </>
+  )
+  const logoClass =
+    'mr-3 flex shrink-0 items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-sidebar-accent'
 
   return (
     <nav
@@ -324,18 +340,29 @@ export function NavL1() {
       aria-label={t('common.shell.nav_main_aria')}
     >
       {/* ── Logo ────────────────────────────────────────────────────────── */}
-      <Link
-        to={playerSlug ? resolvePath('/players/$playerSlug/home') as never : '/'}
-        className="mr-3 flex shrink-0 items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-sidebar-accent"
-        aria-label={t('common.shell.logo_aria')}
-      >
-        <img src="/logo.png" alt="LevelUp" className="h-7 w-7 shrink-0 object-contain" />
-        <span className="hidden text-sm font-bold text-sidebar-foreground sm:block">LevelUp</span>
-      </Link>
+      {playerSlug ? (
+        <Link
+          to="/{-$lang}/t/$titleSlug/players/$playerSlug/home"
+          params={{ titleSlug: currentTitleSlug, playerSlug }}
+          className={logoClass}
+          aria-label={t('common.shell.logo_aria')}
+        >
+          {logoInner}
+        </Link>
+      ) : (
+        <Link to="/" className={logoClass} aria-label={t('common.shell.logo_aria')}>
+          {logoInner}
+        </Link>
+      )}
 
       {/* ── Hamburger mobile (< md) — ouvre le drawer des sections ────────── */}
       {playerSlug && (
-        <NavL1MobileMenu sections={visibleSections} pathname={pathname} resolvePath={resolvePath} />
+        <NavL1MobileMenu
+          sections={visibleSections}
+          pathname={pathname}
+          titleSlug={currentTitleSlug}
+          playerSlug={playerSlug}
+        />
       )}
 
       {/* ── Sections inline desktop (≥ md, seulement si un joueur est actif) ─ */}
@@ -343,7 +370,6 @@ export function NavL1() {
         <div className="hidden items-center gap-0.5 md:flex">
           {visibleSections.map((section) => {
             const isActive = section.matchPathname(pathname)
-            const resolvedDefaultPath = resolvePath(section.defaultPath)
 
             if (section.tabs) {
               return (
@@ -351,8 +377,8 @@ export function NavL1() {
                   key={section.key}
                   section={section as L1Section & { tabs: L1Tab[] }}
                   isActive={isActive}
-                  resolvedDefaultPath={resolvedDefaultPath}
-                  resolvePath={resolvePath}
+                  titleSlug={currentTitleSlug}
+                  playerSlug={playerSlug}
                 />
               )
             }
@@ -360,7 +386,8 @@ export function NavL1() {
             return (
               <Link
                 key={section.key}
-                to={resolvedDefaultPath as never}
+                to={section.defaultPath}
+                params={{ titleSlug: currentTitleSlug, playerSlug }}
                 className={[
                   'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors whitespace-nowrap',
                   isActive

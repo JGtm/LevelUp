@@ -159,8 +159,8 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
       <header className="flex flex-row items-center justify-between gap-3">
         <h3 className="text-base font-semibold text-foreground">{t('home.prestige.title')}</h3>
         <Link
-          to="/players/$playerSlug/ascension"
-          params={{ playerSlug }}
+          to="/{-$lang}/t/$titleSlug/players/$playerSlug/ascension"
+          params={{ titleSlug, playerSlug }}
           className="inline-flex shrink-0 items-center gap-1 rounded-md bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/20"
         >
           {t('home.prestige.manage')} →
@@ -272,8 +272,8 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
                 {totalPages > 1 && (
                   <div className="flex items-center justify-between gap-2 pt-1">
                     <Link
-                      to="/players/$playerSlug/ascension"
-                      params={{ playerSlug }}
+                      to="/{-$lang}/t/$titleSlug/players/$playerSlug/ascension"
+                      params={{ titleSlug, playerSlug }}
                       className="text-2xs uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground"
                     >
                       {t('home.prestige.objectives_view_all', { n: filteredObjectives.length })}

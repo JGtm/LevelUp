@@ -7,6 +7,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
+import { useAppShellStore } from '@/stores/appShellStore'
 import type { LeaderboardCatalog, LeaderboardResponse } from '@/lib/api/types'
 
 export interface LeaderboardParams {
@@ -45,8 +46,12 @@ export function useLeaderboard(playerSlug: string, params: LeaderboardParams = {
  * GET /players/{slug}/pages/leaderboard/catalog
  */
 export function useLeaderboardCatalog(playerSlug: string) {
+  // Locale dans la clé : à la bascule de langue, la clé change → TanStack refetch
+  // le catalogue (display_name saisons/playlists relocalisés côté backend). Remplace
+  // l'ex-invalidation ciblée du layout titre (clé = invalidation).
+  const locale = useAppShellStore((s) => s.locale)
   return useQuery<LeaderboardCatalog>({
-    queryKey: queryKeys.leaderboardCatalog(playerSlug),
+    queryKey: queryKeys.leaderboardCatalog(playerSlug, locale),
     queryFn: () =>
       api.get<LeaderboardCatalog>(`/players/${playerSlug}/pages/leaderboard/catalog`),
     enabled: !!playerSlug,

@@ -7,6 +7,9 @@ package domain
 type AdminDataQualityCounts struct {
 	TitleSlug   string `json:"title_slug"`
 	GeneratedAt string `json:"generated_at"` // RFC3339
+	// Locale de traduction visée par le compteur untranslated_modes (défaut « fr » —
+	// paramètre ?locale=). Rend le libellé front honnête (« Modes sans traduction (fr) »).
+	Locale string `json:"locale"`
 
 	// Assets dont *_name == *_id dans match_registry (cible de l'action
 	// registry-names/backfill).
@@ -37,14 +40,24 @@ type AdminDataQualityIssue struct {
 	Label       string `json:"label,omitempty"`
 	Occurrences int    `json:"occurrences"`
 	LastSeen    string `json:"last_seen,omitempty"` // RFC3339
+	// ExampleMatchIDs : jusqu'à 3 match_id concrets où l'inconnu apparaît, pour
+	// ouvrir la vue de match et décider en connaissance de cause (nouvel onglet).
+	ExampleMatchIDs []string `json:"example_match_ids,omitempty"`
 }
 
 // AdminDataQualityIssues est la réponse de GET .../data-quality/issues.
+// Items est la fenêtre paginée [offset, offset+limit) ; Total est le nombre total
+// d'inconnus de ce kind (avant fenêtrage) — alimente la pagination serveur du
+// front (table longue des xuids orphelins).
 type AdminDataQualityIssues struct {
-	TitleSlug   string                  `json:"title_slug"`
-	GeneratedAt string                  `json:"generated_at"`
-	Kind        string                  `json:"kind"`
-	Items       []AdminDataQualityIssue `json:"items"`
+	TitleSlug   string `json:"title_slug"`
+	GeneratedAt string `json:"generated_at"`
+	Kind        string `json:"kind"`
+	// Locale de traduction visée (défaut « fr », paramètre ?locale=) — pertinente
+	// pour untranslated_modes, échotée pour le libellé front honnête.
+	Locale string                  `json:"locale"`
+	Items  []AdminDataQualityIssue `json:"items"`
+	Total  int                     `json:"total"`
 }
 
 // RegistryNamesBackfillRequest — corps de POST .../registry-names/backfill.

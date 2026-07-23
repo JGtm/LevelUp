@@ -12,6 +12,7 @@ import { useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import { useNavigate } from '@tanstack/react-router'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useTitleSlug } from '@/lib/title-routing'
 import { useNotificationsList, useNotificationPreferences } from './queries'
 import { resolveTitle, resolveBody } from './format'
 import { resolveTarget } from './navigation'
@@ -27,6 +28,7 @@ export function NotificationsToastBridge() {
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
   const locale = useAppShellStore((s) => s.locale)
   const playerSlug = currentPlayer?.player_slug ?? ''
+  const titleSlug = useTitleSlug()
   const lastMaxIdRef = useRef<number | null>(null)
   const initializedRef = useRef(false)
   const navigate = useNavigate()
@@ -60,7 +62,7 @@ export function NotificationsToastBridge() {
     let emitted = 0
     for (const n of fresh) {
       if (!shouldToast(n, prefsByCat)) continue
-      emitToast(n, t, playerSlug, navigate, () => markRead.mutate([n.id]))
+      emitToast(n, t, playerSlug, titleSlug, navigate, () => markRead.mutate([n.id]))
       emitted++
     }
 
@@ -77,7 +79,7 @@ export function NotificationsToastBridge() {
       (m, n) => (n.id > m ? n.id : m),
       lastSeen,
     )
-  }, [data, prefsData, t, playerSlug, navigate, markRead])
+  }, [data, prefsData, t, playerSlug, titleSlug, navigate, markRead])
 
   // Reset quand on switche de joueur
   useEffect(() => {
@@ -108,19 +110,24 @@ function emitToast(
   n: Notification,
   t: ReturnType<typeof getNotificationsText>,
   playerSlug: string,
+  titleSlug: string,
   navigate: ReturnType<typeof useNavigate>,
   onView: () => void,
 ) {
   const title = resolveTitle(n, currentLocale(t))
   const body = resolveBody(n, currentLocale(t))
-  const target = resolveTarget(n, playerSlug)
+  const target = resolveTarget(n, playerSlug, titleSlug)
   const action = target
     ? {
         label: t.actionView,
         onClick: () => {
           onView()
-          // navigate accepte (to/search) typés ; en pratique on caste pour l'option
-          navigate({ to: target.to, search: target.search } as Parameters<typeof navigate>[0])
+          // navigate accepte (to/params/search) typés ; en pratique on caste pour l'option
+          navigate({
+            to: target.to,
+            params: target.params,
+            search: target.search,
+          } as Parameters<typeof navigate>[0])
         },
       }
     : undefined

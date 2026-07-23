@@ -10,6 +10,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { winRateColor, kdaNetColor } from '@/lib/colors/outcomePalette'
 import { useNavigate, useParams } from '@tanstack/react-router'
+import { useTitleSlug } from '@/lib/title-routing'
 
 import { KpiCard } from '@/components/cards/KpiCard'
 import { EmptyStateCard } from '@/components/ui/empty-state'
@@ -509,6 +510,7 @@ export function PalmaresRelationsPage() {
   const text = getPalmaresText(locale)
   const rel = text.relations
   const navigate = useNavigate()
+  const titleSlug = useTitleSlug()
   const filter = useRelationsPrefsStore((s) => s.filter)
   const setFilter = useRelationsPrefsStore((s) => s.setFilter)
   const includeNeverFaced = useRelationsPrefsStore((s) => s.includeNeverFaced)
@@ -542,8 +544,8 @@ export function PalmaresRelationsPage() {
 
   function goToExplorer(gamertag: string) {
     void navigate({
-      to: '/players/$playerSlug/explorer',
-      params: { playerSlug },
+      to: '/{-$lang}/t/$titleSlug/players/$playerSlug/explorer',
+      params: { titleSlug, playerSlug },
       search: { mode: 'player', target: gamertag },
     })
   }

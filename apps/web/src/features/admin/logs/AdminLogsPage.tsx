@@ -56,6 +56,10 @@ export function AdminLogsPage() {
     },
     autoRefresh,
   )
+  // Pages concaténées (plus récent → plus ancien) : « Charger plus » ajoute des
+  // tranches plus anciennes au bas de la liste via le curseur arrière.
+  const entries = tail.data?.pages.flatMap((p) => p.entries ?? []) ?? []
+  const truncated = tail.data?.pages.at(-1)?.truncated ?? false
 
   function setParam(patch: Record<string, string | undefined>) {
     void navigate({ search: (prev) => ({ ...prev, ...patch }), replace: true })
@@ -142,15 +146,27 @@ export function AdminLogsPage() {
       {/* Liste */}
       {tail.isError ? (
         <p className="text-sm text-destructive">{tA('admin.logs.unavailable')}</p>
-      ) : !tail.data || (tail.data.entries?.length ?? 0) === 0 ? (
+      ) : entries.length === 0 ? (
         <EmptyStateNotice title={tA('admin.logs.empty_title')} description={tA('admin.logs.empty_desc')} />
       ) : (
         <>
-          <LogEntriesList entries={tail.data.entries ?? []} />
-          {tail.data.truncated && (
+          <LogEntriesList entries={entries} />
+          {truncated && (
             <p className="text-xs" style={{ color: tokenCssVar('warning') }}>
               {tA('admin.logs.truncated')}
             </p>
+          )}
+          {tail.hasNextPage && (
+            <div className="flex justify-center pt-1">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void tail.fetchNextPage()}
+                disabled={tail.isFetchingNextPage}
+              >
+                {tail.isFetchingNextPage ? tA('admin.logs.load_more_busy') : tA('admin.logs.load_more')}
+              </Button>
+            </div>
           )}
         </>
       )}

@@ -377,10 +377,6 @@ en = "Code generated:"
 fr = "Échec de la génération du code."
 en = "Failed to generate code."
 
-[common.admin.invariants_section]
-fr = "Intégrité des données"
-en = "Data integrity"
-
 [common.admin.invariants_refresh]
 fr = "Vérifier"
 en = "Check"
@@ -420,10 +416,6 @@ en = "Administration"
 [common.admin.back]
 fr = "Retour"
 en = "Back"
-
-[common.admin.users_section]
-fr = "Utilisateurs"
-en = "Users"
 
 [common.admin.loading]
 fr = "Chargement…"
@@ -2069,3 +2061,52 @@ en = "90 days"
 [common.period.preset_all]
 fr = "Toutes"
 en = "All"
+
+# ─── Gate de titre (segment /t/{slug} invalide, coming_soon, archivé, ou bascule
+#     impossible) — parité RequireActiveTitle, écran d'indisponibilité title-scoped.
+[common.title_gate.unknown_heading]
+fr = "Titre introuvable"
+en = "Title not found"
+
+[common.title_gate.unknown_body]
+fr = "Ce titre n'existe pas ou n'est plus disponible."
+en = "This title does not exist or is no longer available."
+
+[common.title_gate.coming_soon_heading]
+fr = "Bientôt disponible"
+en = "Coming soon"
+
+[common.title_gate.coming_soon_body]
+fr = "Ce titre n'est pas encore accessible."
+en = "This title is not accessible yet."
+
+[common.title_gate.archived_heading]
+fr = "Titre archivé"
+en = "Archived title"
+
+[common.title_gate.archived_body]
+fr = "Ce titre a été archivé et n'est plus consultable."
+en = "This title has been archived and is no longer available."
+
+[common.title_gate.switch_failed_heading]
+fr = "Changement de titre impossible"
+en = "Cannot switch title"
+
+[common.title_gate.switch_failed_body]
+fr = "Le changement de titre a échoué. Réessaie ou reviens au titre actif."
+en = "Switching title failed. Retry or go back to the active title."
+
+# Toast émis quand la bascule échoue MAIS qu'un joueur courant existe : on revient
+# automatiquement au titre actif (D-6, Phase 4b). Distinct de switch_failed_body
+# (écran manuel « Réessaie ou reviens »), car ici le retour est AUTOMATIQUE.
+[common.title_gate.switch_failed_toast]
+fr = "Le changement de titre a échoué. Retour au titre actif."
+en = "Title switch failed. Returning to the active title."
+
+[common.title_gate.back_to_active]
+fr = "Retourner au titre actif"
+en = "Back to the active title"
+
+[common.title_gate.retry]
+fr = "Réessayer"
+en = "Retry"

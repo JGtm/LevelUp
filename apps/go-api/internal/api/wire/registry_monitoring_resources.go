@@ -11,6 +11,7 @@ package wire
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"levelup/go-api/internal/domain"
@@ -35,7 +36,7 @@ func (r *ServiceRegistry) ResourcesReport(ctx context.Context) (domain.AdminReso
 		resp.PoolStats[k] = v
 	}
 	resp.Disk = r.resourceDisk()
-	r.fillResourceDatabases(&resp)
+	r.fillResourceDatabases(ctx, &resp)
 	if r.monitoringStore != nil {
 		if n, err := r.monitoringStore.CronRunCount(ctx, "server_boot"); err == nil {
 			resp.Restarts = n
@@ -64,8 +65,19 @@ func (r *ServiceRegistry) resourceDisk() domain.ResourceDisk {
 }
 
 // fillResourceDatabases mesure les bases par titre actif + les bases globales.
-func (r *ServiceRegistry) fillResourceDatabases(resp *domain.AdminResourcesResponse) {
+// Sonde d'abord la racine data : introuvable/illisible (RepoRoot mal résolu,
+// volume non monté) → statut "unavailable" + log ERROR, plutôt qu'une table de
+// tailles nulles silencieuse (os.Stat avalé) qui a l'air d'un rendu cassé.
+func (r *ServiceRegistry) fillResourceDatabases(ctx context.Context, resp *domain.AdminResourcesResponse) {
 	pr := titlePkg.NewPathResolver(r.cfg.RepoRoot)
+	dataRoot := pr.TitlesRootDir()
+	if info, statErr := os.Stat(dataRoot); statErr != nil || !info.IsDir() {
+		resp.DBInventoryStatus = domain.DBInventoryUnavailable
+		monitoringLog.ErrorContext(ctx, "admin_resources: racine data introuvable — inventaire des bases indisponible",
+			"data_root", dataRoot, "repo_root", r.cfg.RepoRoot, "err", statErr)
+		return
+	}
+	resp.DBInventoryStatus = domain.DBInventoryOK
 	for _, desc := range titlePkg.DefaultRegistry().NonArchived() {
 		if desc.IsInternal || !desc.IsActive() {
 			continue

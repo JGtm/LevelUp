@@ -17,6 +17,11 @@ export type PlayerSummary = components['schemas']['PlayerSummary']
 
 export type CapabilityMap = components['schemas']['CapabilityMap']
 
+// Diagnostic apparence Spartan ID (admin, volet 2) — re-exports du contrat
+// OpenAPI (source unique), pas de mirror manuel (Lot G, règle G4).
+export type AppearanceDiagnosisResponse = components['schemas']['AppearanceDiagnosisResponse']
+export type AppearanceComponentDiagnosis = components['schemas']['AppearanceComponentDiagnosis']
+
 // ---------------------------------------------------------------------------
 // Bootstrap
 // ---------------------------------------------------------------------------
@@ -65,20 +70,6 @@ export interface HealthResponse {
   uptime_seconds: number
   checks: Record<string, string>
 }
-
-// ---------------------------------------------------------------------------
-// Diagnostic d'instance (ex-Lab)
-// ---------------------------------------------------------------------------
-
-// A3.5 (DC-9) : seuls les schémas du panneau Diagnostics (onglet admin
-// Données) survivent au retrait du Lab. Source de vérité = contrat.
-export type LabFileStatus = components['schemas']['LabFileStatus']
-export type LabGuardResult = components['schemas']['LabGuardResult']
-export type LabMedalGuardsReport = components['schemas']['LabMedalGuardsReport']
-export type LabParitySummary = components['schemas']['LabParitySummary']
-export type LabParityResult = components['schemas']['LabParityResult']
-export type LabParityReport = components['schemas']['LabParityReport']
-export type LabDiagnosticsResponse = components['schemas']['LabDiagnosticsResponse']
 
 // ---------------------------------------------------------------------------
 // Filtres
@@ -2247,7 +2238,15 @@ export interface SchedulerSnapshot {
   pool_size: number
   players: SchedulerPlayerOutcome[]
   gate: SchedulerGateSnapshot
+  /** true = un cycle a tourné depuis ce boot ; false = snapshot réhydraté du
+   *  disque (dernier cycle d'avant redémarrage). Combiné à last_cycle_at (vide/
+   *  zéro = aucune donnée connue) pour distinguer les trois états côté UI (C1). */
+  since_boot: boolean
 }
+
+/** Journal des actions globales admin (GET /admin/actions/journal, survit au reboot). */
+export type AdminActionJournalEntry = components['schemas']['AdminActionJournalEntry']
+export type AdminActionJournalResponse = components['schemas']['AdminActionJournalResponse']
 
 export interface SchedulerCycleRecord {
   /** RFC3339 */

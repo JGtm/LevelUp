@@ -17,6 +17,7 @@
  */
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate, useSearch } from '@tanstack/react-router'
+import { useTitleSlug } from '@/lib/title-routing'
 import { Button } from '@/components/ui/button'
 import { useDebounced } from '@/lib/hooks/useDebounced'
 import { useExplorerMatches, useExplorerPlayer } from './queries'
@@ -59,7 +60,8 @@ type ExplorerSetKey =
 export function ExplorerPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
   const navigate = useNavigate()
-  const search = useSearch({ from: '/players/$playerSlug/explorer/' }) as {
+  const titleSlug = useTitleSlug()
+  const search = useSearch({ from: '/{-$lang}/t/$titleSlug/players/$playerSlug/explorer/' }) as {
     mode?: SearchMode
     target?: string
     targetXuid?: string
@@ -78,12 +80,12 @@ export function ExplorerPage() {
   const [targetXuid, setTargetXuid] = useState(search.targetXuid ?? '')
 
   // ─── Scope filtres (URL = source de vérité + miroir localStorage) ────────────
-  const scopeParams = useMemo(() => ({ playerSlug }), [playerSlug])
+  const scopeParams = useMemo(() => ({ titleSlug, playerSlug }), [titleSlug, playerSlug])
   const { scope, setScope, reset: resetFilters } = usePageScope<
     ExplorerScope,
     EncodedExplorerScope
   >({
-    to: '/players/$playerSlug/explorer',
+    to: '/{-$lang}/t/$titleSlug/players/$playerSlug/explorer',
     params: scopeParams,
     storageKey: `levelup-explorer-scope:${playerSlug}`,
     encode: encodeExplorerScope,
@@ -170,8 +172,8 @@ export function ExplorerPage() {
   function setModeAndUrl(m: SearchMode) {
     setMode(m)
     void navigate({
-      to: '/players/$playerSlug/explorer',
-      params: { playerSlug },
+      to: '/{-$lang}/t/$titleSlug/players/$playerSlug/explorer',
+      params: { titleSlug, playerSlug },
       search: (prev) => ({ ...prev, mode: m }),
     })
   }
@@ -182,16 +184,16 @@ export function ExplorerPage() {
     // résolution locale côté backend (et on purge un éventuel xuid hérité du Classement).
     setTargetXuid('')
     void navigate({
-      to: '/players/$playerSlug/explorer',
-      params: { playerSlug },
+      to: '/{-$lang}/t/$titleSlug/players/$playerSlug/explorer',
+      params: { titleSlug, playerSlug },
       search: (prev) => ({ ...prev, mode: 'player', target: gamertag, targetXuid: undefined }),
     })
   }
 
   function openHeadToHead(gamertag: string) {
     void navigate({
-      to: '/players/$playerSlug/community/compare',
-      params: { playerSlug },
+      to: '/{-$lang}/t/$titleSlug/players/$playerSlug/community/compare',
+      params: { titleSlug, playerSlug },
       search: { target: gamertag, from: 'explorer' },
     })
   }

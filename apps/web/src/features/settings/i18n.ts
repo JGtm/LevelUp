@@ -254,10 +254,10 @@ export interface SettingsText {
 
   // Onglet Backup
   tabBackup: string
-  backupTitle: string
   backupStatusEnabled: string
-  backupStatusDisabled: string
+  backupStatusNotConfigured: string
   backupStatusResticMissing: string
+  backupNotConfiguredHint: string
   backupLastBackup: string
   backupNever: string
   backupSnapshotId: string
@@ -268,6 +268,10 @@ export interface SettingsText {
   backupRunDone: string
   backupRunSkipped: string
   backupRunError: string
+  backupConfigTitle: string
+  backupConfigInterval: string
+  backupConfigRetention: string
+  backupConfigRetentionValue: string
   backupIntegrityLabel: string
 }
 
@@ -540,10 +544,11 @@ const FR_TEXT: SettingsText = {
   teamColorDefault: 'Défaut palette',
 
   tabBackup: 'Sauvegarde',
-  backupTitle: 'Sauvegarde des bases DuckDB',
   backupStatusEnabled: 'Activée',
-  backupStatusDisabled: 'Désactivée',
+  backupStatusNotConfigured: 'Non configurées',
   backupStatusResticMissing: 'Restic introuvable',
+  backupNotConfiguredHint:
+    'Sauvegardes non configurées. Pour les activer : installer le binaire restic (sur le PATH), définir BACKUP_ENABLED=true et configurer RESTIC_REPOSITORY (+ RESTIC_PASSWORD) dans l\'environnement du serveur (.env.local). Voir docs/BACKUP_RESTORE.md.',
   backupLastBackup: 'Dernière sauvegarde',
   backupNever: 'Jamais sauvegardé',
   backupSnapshotId: 'Snapshot',
@@ -554,6 +559,10 @@ const FR_TEXT: SettingsText = {
   backupRunDone: 'Sauvegarde terminée',
   backupRunSkipped: 'Aucune modification — cycle ignoré',
   backupRunError: 'Erreur lors de la sauvegarde',
+  backupConfigTitle: 'Configuration',
+  backupConfigInterval: 'Intervalle',
+  backupConfigRetention: 'Rétention',
+  backupConfigRetentionValue: '{daily}j / {weekly}s / {monthly}m',
   backupIntegrityLabel: 'Intégrité',
 }
 
@@ -826,10 +835,11 @@ const EN_TEXT: SettingsText = {
   teamColorDefault: 'Palette default',
 
   tabBackup: 'Backup',
-  backupTitle: 'DuckDB backup',
   backupStatusEnabled: 'Enabled',
-  backupStatusDisabled: 'Disabled',
+  backupStatusNotConfigured: 'Not configured',
   backupStatusResticMissing: 'Restic not found',
+  backupNotConfiguredHint:
+    'Backups are not configured. To enable them: install the restic binary (on PATH), set BACKUP_ENABLED=true, and configure RESTIC_REPOSITORY (+ RESTIC_PASSWORD) in the server environment (.env.local). See docs/BACKUP_RESTORE.md.',
   backupLastBackup: 'Last backup',
   backupNever: 'Never backed up',
   backupSnapshotId: 'Snapshot',
@@ -840,6 +850,10 @@ const EN_TEXT: SettingsText = {
   backupRunDone: 'Backup complete',
   backupRunSkipped: 'No changes — cycle skipped',
   backupRunError: 'Backup error',
+  backupConfigTitle: 'Configuration',
+  backupConfigInterval: 'Interval',
+  backupConfigRetention: 'Retention',
+  backupConfigRetentionValue: '{daily}d / {weekly}w / {monthly}m',
   backupIntegrityLabel: 'Integrity',
 }
 

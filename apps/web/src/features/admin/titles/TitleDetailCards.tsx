@@ -9,6 +9,7 @@ import { useState } from 'react'
 
 import { Card, CardContent } from '@/components/ui/card'
 
+import { StatusBadge } from '../components/StatusBadge'
 import { useAdminT } from '../useAdminText'
 import { fetchTitleTomlDraft, useAdminTitleDetail, useAdminTitleDiagnostic } from './queries'
 
@@ -59,6 +60,27 @@ export function TitleDetailCard({ slug }: { slug: string }) {
       <CardContent className="pt-6">
         <h3 className="text-base font-semibold text-foreground">{data.name}</h3>
         <p className="font-mono text-[11px] text-muted-foreground">{data.slug}</p>
+
+        {/* Capabilities du registre — TOUJOURS visibles pour tout titre (Infinite
+            inclus), issues du TitleDescriptor et donc indépendantes du chargement
+            des mappings TOML : garantit qu'un titre affiche ses capabilities même
+            si capabilities.toml n'a pas été chargé au boot (cf. retour #23). */}
+        <div className="mt-4">
+          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {tA('admin.titles.registry_capabilities')}
+          </h4>
+          {data.capabilities.length === 0 ? (
+            <p className="text-xs text-muted-foreground">—</p>
+          ) : (
+            <ul className="flex flex-wrap gap-1">
+              {data.capabilities.map((c) => (
+                <li key={c} className="rounded-sm bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground">
+                  {c}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
         {!data.has_mappings ? (
           <p className="mt-4 text-sm text-muted-foreground">{tA('admin.titles.no_mappings')}</p>
@@ -120,6 +142,7 @@ export function TitleDiagnosticCard({ slug }: { slug: string }) {
     <Card>
       <CardContent className="pt-6">
         <h3 className="text-base font-semibold text-foreground">{tA('admin.titles.diagnostic')}</h3>
+        <p className="mt-1 max-w-2xl text-xs text-muted-foreground">{tA('admin.titles.diag_intro')}</p>
 
         <div className="mt-4">
           <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -156,9 +179,10 @@ export function TitleDiagnosticCard({ slug }: { slug: string }) {
                     {cf.name}
                     {cf.required && <span className="ml-1 text-muted-foreground">*</span>}
                   </span>
-                  <span className={cf.present ? 'text-muted-foreground' : 'text-destructive'}>
-                    {cf.present ? tA('admin.titles.diag_present') : tA('admin.titles.diag_absent')}
-                  </span>
+                  <StatusBadge
+                    status={cf.present ? 'ok' : cf.required ? 'error' : 'warning'}
+                    label={cf.present ? tA('admin.titles.diag_present') : tA('admin.titles.diag_absent')}
+                  />
                 </li>
               ))}
             </ul>
@@ -173,9 +197,10 @@ export function TitleDiagnosticCard({ slug }: { slug: string }) {
                 <li key={db.name} className="text-xs">
                   <div className="flex items-center justify-between gap-3">
                     <span className="font-mono text-foreground">{db.name}</span>
-                    {!db.exists && (
-                      <span className="text-destructive">{tA('admin.titles.diag_db_absent')}</span>
-                    )}
+                    <StatusBadge
+                      status={db.exists ? 'ok' : 'error'}
+                      label={db.exists ? tA('admin.titles.diag_present') : tA('admin.titles.diag_db_absent')}
+                    />
                   </div>
                   {db.exists && db.tables && db.tables.length > 0 && (
                     <ul className="ml-3 mt-1 space-y-0.5">

@@ -10,7 +10,7 @@ import { toast } from 'sonner'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { apiErrorMessage } from '@/lib/api/client'
 import type { AdminDataQualityIssue, DataQualityIssueKind } from '@/lib/api/types'
-import { useDataQualityIssues } from './queries'
+import { DATA_QUALITY_LOCALE, useDataQualityIssues } from './queries'
 import { useResolveAssetTranslation, useResolveModeTranslation } from './mutations'
 import { InlineResolveForm } from './InlineResolveForm'
 import { IssueTable, type IssueColumn } from './IssueTable'
@@ -49,7 +49,14 @@ function SectionShell({
         <SectionHeader title={title} />
         {hint && <p className="mt-0.5 max-w-2xl text-xs text-muted-foreground">{hint}</p>}
       </div>
-      {count === 0 ? <EmptyStateNotice title={emptyTitle} description={emptyDesc} /> : children}
+      {/* count === 0 = plus aucune inconnue dans cette catégorie : c'est un
+          succès (catalogue complet / tout traduit / zéro orphelin), rendu en
+          vert perceptible plutôt qu'en placeholder gris. */}
+      {count === 0 ? (
+        <EmptyStateNotice title={emptyTitle} description={emptyDesc} tone="success" />
+      ) : (
+        children
+      )}
     </section>
   )
 }
@@ -77,9 +84,11 @@ export function UntranslatedModesSection() {
     },
   ]
 
+  // Libellé honnête : la locale visée (data.locale, échotée par le serveur ;
+  // défaut fr) apparaît dans le titre — « Modes sans traduction (fr) ».
   return (
     <SectionShell
-      title={tA('admin.dq.modes_section')}
+      title={`${tA('admin.dq.modes_section')} (${data?.locale ?? DATA_QUALITY_LOCALE})`}
       kind="untranslated_modes"
       emptyTitle={tA('admin.dq.modes_empty_title')}
       emptyDesc={tA('admin.dq.modes_empty_desc')}
@@ -87,6 +96,7 @@ export function UntranslatedModesSection() {
     >
       <IssueTable
         issues={data?.items ?? []}
+        matchLinkTitleSlug={data?.title_slug}
         columns={columns}
         actionLabel={tA('admin.dq.translate_btn')}
         openID={openID}
@@ -151,6 +161,7 @@ export function RawAssetsSection() {
     >
       <IssueTable
         issues={data?.items ?? []}
+        matchLinkTitleSlug={data?.title_slug}
         columns={columns}
         actionLabel={tA('admin.dq.resolve_btn')}
         openID={openID}
@@ -234,6 +245,7 @@ export function OrphanPlaylistsSection() {
     >
       <IssueTable
         issues={data?.items ?? []}
+        matchLinkTitleSlug={data?.title_slug}
         columns={columns}
         actionLabel={tA('admin.dq.resolve_btn')}
         openID={openID}
@@ -246,11 +258,20 @@ export function OrphanPlaylistsSection() {
   )
 }
 
-// ─── XUIDs orphelins (lecture seule) ──────────────────────────────────────────
+// ─── XUIDs orphelins (lecture seule, liste longue → pagination serveur) ────────
+
+const ORPHAN_XUIDS_PAGE_SIZE = 25
 
 export function OrphanXuidsSection() {
   const tA = useAdminT()
-  const { data } = useDataQualityIssues('orphan_xuids')
+  const [pageIndex, setPageIndex] = useState(0)
+  // Pagination serveur : la fenêtre [offset, offset+limit) est calculée côté Go
+  // (limit/offset) et le total pilote le nombre de pages TanStack (règle 13).
+  const { data } = useDataQualityIssues(
+    'orphan_xuids',
+    ORPHAN_XUIDS_PAGE_SIZE,
+    pageIndex * ORPHAN_XUIDS_PAGE_SIZE,
+  )
 
   const columns: IssueColumn[] = [
     {
@@ -266,9 +287,19 @@ export function OrphanXuidsSection() {
       kind="orphan_xuids"
       emptyTitle={tA('admin.dq.orphan_xuids_empty_title')}
       emptyDesc={tA('admin.dq.orphan_xuids_empty_desc')}
-      count={data?.items?.length}
+      count={data?.total}
     >
-      <IssueTable issues={data?.items ?? []} columns={columns} />
+      <IssueTable
+        issues={data?.items ?? []}
+        matchLinkTitleSlug={data?.title_slug}
+        columns={columns}
+        pagination={{
+          pageIndex,
+          pageSize: ORPHAN_XUIDS_PAGE_SIZE,
+          total: data?.total ?? 0,
+          onPageChange: setPageIndex,
+        }}
+      />
     </SectionShell>
   )
 }
