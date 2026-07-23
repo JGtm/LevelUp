@@ -8,6 +8,7 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useCapability } from '@/lib/capabilities/capabilities'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { OutcomeSequenceTape, type OutcomePoint } from '@/components/charts/OutcomeSequenceTape'
 import { outcomeCodeToTapeValue } from '@/lib/outcome'
@@ -29,6 +30,10 @@ export function SquadSynergiesPage() {
   const { data: mappings } = useFieldMappings()
   const locale = useAppShellStore((s) => s.locale)
   const t = getSquadText(locale)
+  // FDA attendu natif (Infinite déclare `expected_stats`, Halo 5 non) → gate
+  // PARENT du card « Écart cumulé au FDA attendu » : pas de colonne vide dans la
+  // rangée 1 de SquadFragSection (le card conserve son self-gate en profondeur).
+  const hasExpectedStats = useCapability('expected_stats')
 
   const hasSelection = confirmedGamertags.length > 0
   const hasRows = selectedRows.length > 0
@@ -156,8 +161,11 @@ export function SquadSynergiesPage() {
         mmrAxisLabel={t.timeline.mmrAxis}
       />
       {/* Section « frags » (relocalisée depuis Contributions), juste avant « Impact
-          des coéquipiers » : Répartition des frags pleine largeur, puis Outils de
-          destruction | Précision par rôle côte à côte. */}
+          des coéquipiers ». Rangée 1 : sur Infinite « Écart cumulé au FDA attendu »
+          (gate `expected_stats`) à GAUCHE de « Répartition des frags » ; sur Halo 5
+          « Répartition » | « Précision par rôle ». Puis « Outils de destruction ».
+          Le card FDA porte ses propres pastilles KPI « écart moyen / match » et
+          garde son self-gate capability (défense en profondeur). */}
       <SquadFragSection
         fragClassesByPlayer={pageData?.frag_classes ?? {}}
         weaponKills={pageData?.weapon_kills}
@@ -166,15 +174,17 @@ export function SquadSynergiesPage() {
         playerOrder={playerOrder}
         locale={locale}
         t={t}
-      />
-      {/* Écart cumulé au FDA attendu (D3) : une courbe par joueur + pastilles KPI
-          « écart moyen / match ». Self-gate capability expected_stats (Halo 5 = masqué). */}
-      <SquadFdaGapCumulativeCard
-        rowsByPlayer={pageData?.performance_series ?? {}}
-        playerOrder={playerOrder}
-        colorByPlayer={playerColors}
-        t={t}
-        emptyMessage={t.empty.noBlockData}
+        leftOfBreakdown={
+          hasExpectedStats ? (
+            <SquadFdaGapCumulativeCard
+              rowsByPlayer={pageData?.performance_series ?? {}}
+              playerOrder={playerOrder}
+              colorByPlayer={playerColors}
+              t={t}
+              emptyMessage={t.empty.noBlockData}
+            />
+          ) : undefined
+        }
       />
       {/* Sections non-graphes toujours montées : titre + état vide géré par le
           composant (cadre bordé / carte), au lieu de disparaître. */}

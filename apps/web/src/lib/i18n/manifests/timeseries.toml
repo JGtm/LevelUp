@@ -310,14 +310,15 @@ en = "Average life (s)"
 fr = "Tendance"
 en = "Trend"
 
-# Écart au FDA attendu (D1) — différentiel réel vs attendu par match.
+# Écart cumulé au FDA attendu (D1 + retouche UX 2026-07-23) — aire cumulée
+# signée réel vs attendu, MÊME forme que Sessions (SessionFdaGapCumulative).
 [timeseries.summary.fda_gap_title]
-fr = "Écart au FDA attendu"
-en = "KDA gap to expected"
+fr = "Écart cumulé au FDA attendu"
+en = "Cumulative KDA gap to expected"
 
 [timeseries.summary.fda_gap_series]
-fr = "Écart"
-en = "Gap"
+fr = "Écart cumulé"
+en = "Cumulative gap"
 
 [timeseries.summary.fda_gap_real]
 fr = "Réel"
@@ -326,6 +327,10 @@ en = "Actual"
 [timeseries.summary.fda_gap_expected]
 fr = "Attendu"
 en = "Expected"
+
+[timeseries.summary.fda_gap_gap]
+fr = "Écart"
+en = "Gap"
 
 [timeseries.summary.kill_types_title]
 fr = "Répartition des frags"

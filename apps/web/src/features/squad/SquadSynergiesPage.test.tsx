@@ -40,12 +40,22 @@ function mockSquadContext(opts: {
   })
 }
 
+function setTitleCaps(caps: string[]) {
+  useAppShellStore.setState({
+    currentTitleSlug: 'test_title',
+    availableTitles: [
+      { slug: 'test_title', name: 'Test', status: 'active', capabilities: caps, is_default: true, effective_hp_to_kill: 225 },
+    ],
+  })
+}
+
 beforeEach(() => {
   useAppShellStore.setState({ locale: 'fr' })
 })
 
 afterEach(() => {
   vi.restoreAllMocks()
+  useAppShellStore.setState({ currentTitleSlug: 'halo_infinite', availableTitles: [] })
 })
 
 describe('SquadSynergiesPage — empty states', () => {
@@ -67,5 +77,25 @@ describe('SquadSynergiesPage — empty states', () => {
       confirmedGamertags: ['A', 'B'],
     })
     expect(() => renderWithProviders(<SquadSynergiesPage />)).not.toThrow()
+  })
+
+  it('capability expected_stats présente → « Écart cumulé au FDA attendu » à gauche de Répartition', () => {
+    setTitleCaps(['expected_stats'])
+    mockSquadContext({
+      selectedRows: [ROW('A'), ROW('B')],
+      confirmedGamertags: ['A', 'B'],
+    })
+    renderWithProviders(<SquadSynergiesPage />)
+    expect(screen.getByText('Écart cumulé au FDA attendu')).toBeInTheDocument()
+  })
+
+  it('capability expected_stats absente (Halo 5) → card Écart FDA masqué', () => {
+    setTitleCaps(['ranked'])
+    mockSquadContext({
+      selectedRows: [ROW('A'), ROW('B')],
+      confirmedGamertags: ['A', 'B'],
+    })
+    renderWithProviders(<SquadSynergiesPage />)
+    expect(screen.queryByText('Écart cumulé au FDA attendu')).toBeNull()
   })
 })

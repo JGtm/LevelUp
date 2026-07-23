@@ -1,18 +1,20 @@
 /**
- * TimeseriesFdaGapTrend — « Écart au FDA attendu » (onglet Résumé, sous la
- * tendance FDA valeur). Décision D1 du plan PLAN_EXPECTED_FDA_2026-07.
+ * TimeseriesFdaGapTrend — « Écart cumulé au FDA attendu » (onglet Résumé, à
+ * DROITE du FDA). Décision D1 du plan PLAN_EXPECTED_FDA_2026-07 + retouche UX
+ * 2026-07-23 : passage à la MÊME forme que Sessions (SessionFdaGapCumulative).
  *
- * Différentiel par match `kda − kda_expected` (FDA réel natif ADR 0006 moins FDA
- * attendu projeté côté backend). Rendu :
- *   - une AIRE divergente ancrée à 0 (dégradé vert au-dessus / rouge en dessous,
- *     bascule EXACTE sur 0 via le helper canonique `divergentZeroGradient`, PAS
- *     de visualMap) sur le différentiel BRUT — un match sans attendu = TROU
- *     (null), jamais 0 (D5) ;
- *   - une LIGNE lissée (moyenne mobile fenêtre 5, MÊME mécanique que
- *     `TimeseriesKdaValueTrend`) qui donne la tendance (le brut est bruité).
+ * Somme CUMULÉE signée du différentiel `kda − kda_expected` (FDA réel natif
+ * ADR 0006 moins FDA attendu projeté backend), match après match DANS L'ORDRE
+ * DONNÉ : les `match_rows` arrivent déjà triés chronologiquement ASC côté
+ * service → PAS de re-tri (contrairement à Sessions qui trie par start_time).
+ * Rendu : aire signée divergente ancrée à 0 (helper canonique
+ * `divergentZeroGradient`, PAS de visualMap) + markLine 0. Cumul via le helper
+ * canonique `cumulativeFdaGap` (source unique — CLAUDE.md n°6).
  *
- * Masqué par `useCapability('expected_stats')` (Halo 5 = pas d'attendu → null).
- * Tooltip : réel / attendu / écart (« — » si l'attendu manque, D5).
+ * D5 : un match sans attendu (`kda`/`kda_expected` null ou non-fini) ne fait PAS
+ * avancer le cumul (report de la dernière valeur), mais figure quand même sur
+ * l'axe. Masqué par `useCapability('expected_stats')` (Halo 5 = pas d'attendu →
+ * null). Tooltip : cumul / réel / attendu / écart du match (« — » si absent).
  */
 import { useMemo, type ReactNode } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
@@ -20,13 +22,11 @@ import type { EChartsCoreOption } from 'echarts/core'
 import {
   getEChartsThemeColors,
   getAxisBase,
-  getGridBase,
-  getLegendBase,
   getTooltipBase,
   CHART_BG,
   escapeHtml,
 } from '@/components/charts/_utils'
-import { resolveToken } from '@/lib/accessibility'
+import { cumulativeFdaGap } from '@/lib/charts/cumulativeFdaGap'
 import { divergentZeroGradient } from '@/lib/charts/divergentZeroGradient'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
@@ -34,159 +34,89 @@ import type { TimeseriesMatchRow } from '@/lib/api/types'
 import { buildMatchCategories } from './matchLabels'
 import { ChartFromOption } from './ChartFromOption'
 
-const round2 = (v: number) => Math.round(v * 100) / 100
-
-/**
- * Moyenne mobile centrée fenêtre `window`, NaN/null ignorés. Réplique la
- * mécanique de `rollingMean` de TimeseriesFormCharts (D1 : « MÊME lissage,
- * à l'identique ») — 2e occurrence tolérée (CLAUDE.md n°6, seuil = 3).
- */
-function rollingMean(values: (number | null | undefined)[], window: number): (number | null)[] {
-  const out: (number | null)[] = new Array(values.length).fill(null)
-  if (window <= 1) return values.map((v) => (v == null ? null : v))
-  const half = Math.floor(window / 2)
-  for (let i = 0; i < values.length; i++) {
-    const lo = Math.max(0, i - half)
-    const hi = Math.min(values.length - 1, i + half)
-    let sum = 0
-    let n = 0
-    for (let k = lo; k <= hi; k++) {
-      const v = values[k]
-      if (v == null || !Number.isFinite(v)) continue
-      sum += v
-      n++
-    }
-    out[i] = n > 0 ? sum / n : null
-  }
-  return out
-}
-
-/** FDA per-match si fini, sinon null. */
-function finiteKda(v: number | null | undefined): number | null {
-  return v != null && Number.isFinite(v) ? v : null
-}
-
-interface GapDetail {
-  real: number | null
-  expected: number | null
-  gap: number | null
-}
-
-interface FdaGapSeries {
-  categories: string[]
-  /** Différentiel brut par match ; null = match sans attendu (D5). */
-  rawDiff: (number | null)[]
-  /** Différentiel lissé (fenêtre 5), trous préservés. */
-  smoothed: (number | null)[]
-  /** Valeurs natives par match pour le tooltip. */
-  details: GapDetail[]
-}
-
-/** Séries dérivées d'un ensemble de matchs (différentiel brut, lissé, détails). */
-function computeFdaGapSeries(rows: TimeseriesMatchRow[]): FdaGapSeries {
-  const rawDiff: (number | null)[] = rows.map((r) => {
-    const real = finiteKda(r.kda)
-    const exp = finiteKda(r.kda_expected)
-    if (real == null || exp == null) return null
-    return round2(real - exp)
-  })
-  // Lissage fenêtre 5, mais on PRÉSERVE les trous (un match sans attendu ne doit pas
-  // être « rempli » par ses voisins) → la tendance saute proprement les ~2 % manquants.
-  const smoothed = rollingMean(rawDiff, 5).map((v, i) =>
-    rawDiff[i] == null || v == null ? null : round2(v),
-  )
-  const details = rows.map<GapDetail>((r, i) => ({
-    real: finiteKda(r.kda),
-    expected: finiteKda(r.kda_expected),
-    gap: rawDiff[i],
-  }))
-  return { categories: buildMatchCategories(rows), rawDiff, smoothed, details }
-}
-
-export interface FdaGapDiffLabels {
-  /** Libellé de l'aire différentielle (légende + tooltip). */
-  gap: string
+export interface FdaGapCumulativeLabels {
+  /** Libellé de la série cumulée (tooltip). */
+  series: string
   /** Libellé « réel » (tooltip). */
   real: string
   /** Libellé « attendu » (tooltip). */
   expected: string
-  /** Libellé de la ligne lissée (« Tendance »). */
-  smoothing: string
+  /** Libellé de l'écart du match (tooltip). */
+  gap: string
 }
 
-/** Formateur de tooltip par match : réel / attendu / écart (« — » si absent, D5). */
-function makeGapTooltip(details: GapDetail[], labels: FdaGapDiffLabels) {
-  const fmt = (v: number | null, signed = false) =>
-    v == null ? '—' : signed && v >= 0 ? `+${round2(v)}` : `${round2(v)}`
-  return (params: unknown) => {
-    const arr = Array.isArray(params) ? params : []
-    if (arr.length === 0) return ''
-    const idx = (arr[0] as { dataIndex?: number }).dataIndex ?? 0
-    const d = details[idx]
-    const cat = escapeHtml(((arr[0] as { name?: string }).name ?? '').replace(/\n/g, ' · '))
-    if (!d) return `<strong>${cat}</strong>`
-    return (
-      `<strong>${cat}</strong><br/>` +
-      `${escapeHtml(labels.real)}: ${fmt(d.real)}<br/>` +
-      `${escapeHtml(labels.expected)}: ${fmt(d.expected)}<br/>` +
-      `${escapeHtml(labels.gap)}: <b>${fmt(d.gap, true)}</b>`
-    )
-  }
+/** Formate un écart : « — » si absent, préfixe « + » si signé positif. */
+function fmtGap(v: number | null, signed = false): string {
+  if (v == null) return '—'
+  return signed && v >= 0 ? `+${v}` : `${v}`
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-export function buildFdaGapDiffOption(
+export function buildFdaGapCumulativeOption(
   rows: TimeseriesMatchRow[],
-  labels: FdaGapDiffLabels,
+  labels: FdaGapCumulativeLabels,
 ): EChartsCoreOption | null {
   if (rows.length === 0) return null
+  // Ordre du service conservé (déjà trié ASC) — pas de re-tri.
+  const points = cumulativeFdaGap(
+    rows.map((r) => ({ real: r.kda ?? null, expected: r.kda_expected ?? null })),
+  )
+  const categories = buildMatchCategories(rows)
   const tc = getEChartsThemeColors()
-  const { categories, rawDiff, smoothed, details } = computeFdaGapSeries(rows)
-  const gradient = divergentZeroGradient(rawDiff.filter((v): v is number => v != null))
-  const trendColor = resolveToken('chart-series-1')
-  const zeroLineColor = resolveToken('divergent-neutral')
+  const axis = getAxisBase(tc)
+  // Interval ADAPTATIF (Timeseries peut avoir des centaines de matchs → labels
+  // illisibles avec interval:0), aligné sur SessionFdaGapCumulative.
+  const interval = points.length > 30 ? Math.floor(points.length / 12) : 0
+  const values = points.map((p) => p.cumulative)
+  const gradient = divergentZeroGradient(values)
 
   return {
     backgroundColor: CHART_BG,
-    grid: getGridBase(),
-    tooltip: { ...getTooltipBase(tc), trigger: 'axis', formatter: makeGapTooltip(details, labels) },
-    legend: { ...getLegendBase(tc), bottom: 0 },
-    xAxis: {
-      ...getAxisBase(tc),
-      type: 'category',
-      data: categories,
-      axisLabel: { ...getAxisBase(tc).axisLabel, interval: 0, fontSize: 9 },
+    grid: { top: 24, bottom: 64, left: 48, right: 24 },
+    tooltip: {
+      ...getTooltipBase(tc),
+      trigger: 'axis',
+      formatter: (params: Array<{ dataIndex?: number }>) => {
+        if (!Array.isArray(params) || params.length === 0) return ''
+        const idx = params[0]?.dataIndex ?? 0
+        const p = points[idx]
+        if (!p) return ''
+        const cat = escapeHtml((categories[idx] ?? '').replace(/\n/g, ' · '))
+        return (
+          `<strong>${cat}</strong><br/>` +
+          `${escapeHtml(labels.series)}: <b>${fmtGap(p.cumulative, true)}</b><br/>` +
+          `${escapeHtml(labels.real)}: ${fmtGap(p.real)}<br/>` +
+          `${escapeHtml(labels.expected)}: ${fmtGap(p.expected)}<br/>` +
+          `${escapeHtml(labels.gap)}: ${fmtGap(p.gap, true)}`
+        )
+      },
     },
-    yAxis: { ...getAxisBase(tc), type: 'value', scale: true },
+    xAxis: {
+      ...axis,
+      type: 'category',
+      boundaryGap: false,
+      data: categories,
+      axisLabel: { ...(axis.axisLabel as Record<string, unknown>), interval },
+    },
+    yAxis: { ...axis, type: 'value' },
     series: [
       {
         type: 'line',
-        name: labels.gap,
-        data: rawDiff,
-        // Aire divergente ancrée à 0 (vert = au-dessus de l'attendu, rouge = en dessous).
-        areaStyle: { color: gradient, opacity: 0.18, origin: 0 },
-        lineStyle: { color: gradient, width: 1.5 },
+        name: labels.series,
+        data: values,
         showSymbol: false,
-        // Trous VISIBLES (un match sans attendu ne se relie pas — D5).
-        connectNulls: false,
-        // Ligne 0 : parité réel = attendu.
+        // Ligne + aire divergentes (vert = cumul au-dessus de l'attendu, rouge
+        // en dessous), aire ancrée à 0 (même dégradé, bascule pile sur 0).
+        lineStyle: { width: 2, color: gradient },
+        areaStyle: { color: gradient, opacity: 0.18, origin: 0 },
+        // Ligne de référence à 0 (parité cumulée réel = attendu).
         markLine: {
           silent: true,
           symbol: 'none',
-          lineStyle: { color: zeroLineColor, type: 'dashed', width: 1 },
+          lineStyle: { color: tc.axisLabel, type: 'dashed', width: 1 },
           label: { show: false },
           data: [{ yAxis: 0 }],
         },
-      },
-      {
-        type: 'line',
-        name: labels.smoothing,
-        data: smoothed,
-        showSymbol: false,
-        smooth: true,
-        connectNulls: true,
-        lineStyle: { color: trendColor, width: 2 },
-        z: 5,
       },
     ],
   }
@@ -197,7 +127,7 @@ export interface TimeseriesFdaGapTrendProps {
   height?: number
   title?: ReactNode
   emptyMessage?: string
-  labels: FdaGapDiffLabels
+  labels: FdaGapCumulativeLabels
 }
 
 export function TimeseriesFdaGapTrend({
@@ -211,7 +141,7 @@ export function TimeseriesFdaGapTrend({
   const themeVersion = useThemeVersion()
 
   const option = useMemo<EChartsCoreOption | null>(
-    () => buildFdaGapDiffOption(rows, labels),
+    () => buildFdaGapCumulativeOption(rows, labels),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [rows, labels, themeVersion],
   )

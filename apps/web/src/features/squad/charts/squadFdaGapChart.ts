@@ -27,6 +27,7 @@ import {
   getTooltipBase,
 } from '@/components/charts/_utils'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
+import { cumulativeFdaGap, meanFdaGap, type FdaGapPair } from '@/lib/charts/cumulativeFdaGap'
 
 import {
   maxLength,
@@ -35,57 +36,44 @@ import {
   type CommonOpts,
 } from './squadPerformanceLineCharts'
 
-const round2 = (v: number): number => Math.round(v * 100) / 100
-
 /**
- * Différentiel FDA réel − attendu d'un match, ou `null` si l'un des termes manque
- * ou est non-fini (D5). Le FDA réel est la valeur native (`kda`, ADR 0006), le FDA
- * attendu est projeté côté backend (`kda_expected`, helper canonique Go).
+ * Paire FDA réel / attendu d'un point de la série de performance escouade. FDA
+ * réel = valeur native (`kda`, ADR 0006) ; FDA attendu = projeté backend
+ * (`kda_expected`). Le helper canonique traite null/non-fini comme absent (D5).
  */
-function fdaGap(p: SquadPerformanceSeriesPoint): number | null {
-  const real = p.kda
-  const expected = p.kda_expected
-  if (real == null || !Number.isFinite(real)) return null
-  if (expected == null || !Number.isFinite(expected)) return null
-  return round2(real - expected)
+function toPair(p: SquadPerformanceSeriesPoint): FdaGapPair {
+  return { real: p.kda ?? null, expected: p.kda_expected ?? null }
 }
 
 /**
- * Cumul du différentiel par `match_order` croissant pour UN joueur.
+ * Cumul du différentiel par `match_order` croissant pour UN joueur, délégué au
+ * helper canonique `cumulativeFdaGap` (source unique du cumul, CLAUDE.md n°6).
  * D5 : un point sans attendu ne fait pas avancer le cumul (report), mais figure
- * quand même à la valeur courante. Les indices sans ligne restent `null`.
+ * quand même à la valeur courante. Les indices sans point (trou d'intersection)
+ * restent `null`.
  */
 export function cumulativeFdaGapSeries(
   points: SquadPerformanceSeriesPoint[],
   n: number,
 ): Array<number | null> {
-  const sorted = [...points].sort((a, b) => a.match_order - b.match_order)
+  const ordered = points
+    .filter((p) => p.match_order >= 0 && p.match_order < n)
+    .sort((a, b) => a.match_order - b.match_order)
+  const cum = cumulativeFdaGap(ordered.map(toPair))
   const data = new Array<number | null>(n).fill(null)
-  let running = 0
-  for (const p of sorted) {
-    if (p.match_order < 0 || p.match_order >= n) continue
-    const gap = fdaGap(p)
-    if (gap != null) running = round2(running + gap)
-    data[p.match_order] = running
-  }
+  ordered.forEach((p, i) => {
+    data[p.match_order] = cum[i].cumulative
+  })
   return data
 }
 
 /**
  * Écart MOYEN par match d'un joueur, calculé UNIQUEMENT sur les matchs avec attendu
- * (D3, pastille KPI « +0,7/match »). `null` si aucun match exploitable.
+ * (D3, pastille KPI « +0,7/match »), délégué au helper canonique `meanFdaGap`.
+ * `null` si aucun match exploitable.
  */
 export function meanFdaGapPerMatch(points: SquadPerformanceSeriesPoint[]): number | null {
-  let sum = 0
-  let count = 0
-  for (const p of points) {
-    const gap = fdaGap(p)
-    if (gap != null) {
-      sum += gap
-      count += 1
-    }
-  }
-  return count === 0 ? null : sum / count
+  return meanFdaGap(points.map(toPair))
 }
 
 export interface FdaGapCumulativeOpts extends CommonOpts {

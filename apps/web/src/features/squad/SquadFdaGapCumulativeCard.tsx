@@ -80,6 +80,9 @@ export function SquadFdaGapCumulativeCard({
       series={series}
       height={height}
       emptyMessage={emptyMessage}
+      // fluid : la carte s'étire à la hauteur de la rangée (grid align-items:stretch)
+      // → alignée avec « Répartition des frags » (280, fluid) dans SquadFragSection.
+      fluid
       buildOption={() =>
         buildFdaGapCumulativeOption(rowsByPlayer, {
           colorByPlayer,
