@@ -17,6 +17,11 @@ export type PlayerSummary = components['schemas']['PlayerSummary']
 
 export type CapabilityMap = components['schemas']['CapabilityMap']
 
+// Diagnostic apparence Spartan ID (admin, volet 2) — re-exports du contrat
+// OpenAPI (source unique), pas de mirror manuel (Lot G, règle G4).
+export type AppearanceDiagnosisResponse = components['schemas']['AppearanceDiagnosisResponse']
+export type AppearanceComponentDiagnosis = components['schemas']['AppearanceComponentDiagnosis']
+
 // ---------------------------------------------------------------------------
 // Bootstrap
 // ---------------------------------------------------------------------------

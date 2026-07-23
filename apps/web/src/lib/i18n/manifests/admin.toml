@@ -1730,3 +1730,260 @@ en = "Idle"
 [admin.status.skipped]
 fr = "Ignoré"
 en = "Skipped"
+
+# ─── Diagnostic apparence Spartan ID (volet 2, Lot G) ──────────────────────
+# Diagnostic a la demande, par joueur suivi, des 4 composants du Spartan ID.
+# Verdicts (enum ferme) : ok / upstream_missing / transient / auth_required /
+# not_supported. Details techniques = cles stables du DTO Go, traduites ici.
+
+[admin.data.section_appearance_diag]
+fr = "Diagnostic apparence Spartan"
+en = "Spartan appearance diagnosis"
+
+[admin.appearance.hint]
+fr = "Choisir un joueur suivi puis lancer le diagnostic : le verdict par composant part uniquement au clic (aucun calcul automatique)."
+en = "Pick a tracked player then run the diagnosis: the per-component verdict is computed on click only (no automatic polling)."
+
+[admin.appearance.select_label]
+fr = "Joueur suivi"
+en = "Tracked player"
+
+[admin.appearance.select_placeholder]
+fr = "Choisir un joueur"
+en = "Choose a player"
+
+[admin.appearance.diagnose]
+fr = "Diagnostiquer"
+en = "Diagnose"
+
+[admin.appearance.diagnosing]
+fr = "Diagnostic en cours…"
+en = "Diagnosing…"
+
+[admin.appearance.initial_title]
+fr = "Aucun diagnostic lancé"
+en = "No diagnosis run yet"
+
+[admin.appearance.initial_desc]
+fr = "Sélectionner un joueur suivi et cliquer sur « Diagnostiquer » pour évaluer chaque composant du Spartan ID."
+en = "Select a tracked player and click “Diagnose” to evaluate each Spartan ID component."
+
+[admin.appearance.error_title]
+fr = "Diagnostic impossible"
+en = "Diagnosis failed"
+
+[admin.appearance.error_desc]
+fr = "Le diagnostic n'a pas pu aboutir. Réessayer dans un instant."
+en = "The diagnosis could not complete. Try again shortly."
+
+[admin.appearance.generated_at]
+fr = "Généré le"
+en = "Generated at"
+
+[admin.appearance.last_fetch_label]
+fr = "Dernier fetch live"
+en = "Last live fetch"
+
+[admin.appearance.served_value_label]
+fr = "Valeur servie"
+en = "Served value"
+
+[admin.appearance.no_served_value]
+fr = "Aucune valeur servie"
+en = "No served value"
+
+[admin.appearance.why_toggle]
+fr = "Détails"
+en = "Details"
+
+[admin.appearance.why_label]
+fr = "Pourquoi"
+en = "Why"
+
+[admin.appearance.what_to_do]
+fr = "Quoi faire"
+en = "What to do"
+
+[admin.appearance.reauth_cta]
+fr = "Se connecter via Xbox"
+en = "Sign in with Xbox"
+
+# ── Libellés des 4 composants ──────────────────────────────────────────────
+
+[admin.appearance.component.banner]
+fr = "Bannière"
+en = "Banner"
+
+[admin.appearance.component.emblem]
+fr = "Emblème"
+en = "Emblem"
+
+[admin.appearance.component.backdrop]
+fr = "Arrière-plan"
+en = "Backdrop"
+
+[admin.appearance.component.service_tag]
+fr = "Indicatif de service"
+en = "Service tag"
+
+[admin.appearance.component.unknown]
+fr = "Composant inconnu"
+en = "Unknown component"
+
+# ── Libellés de verdict (badge) ────────────────────────────────────────────
+
+[admin.appearance.verdict.ok]
+fr = "À jour"
+en = "Up to date"
+
+[admin.appearance.verdict.upstream_missing]
+fr = "Absent côté Microsoft"
+en = "Missing upstream"
+
+[admin.appearance.verdict.transient]
+fr = "Temporaire"
+en = "Transient"
+
+[admin.appearance.verdict.auth_required]
+fr = "Réauthentification requise"
+en = "Re-authentication required"
+
+[admin.appearance.verdict.not_supported]
+fr = "Non pris en charge"
+en = "Not supported"
+
+[admin.appearance.verdict.unknown]
+fr = "Verdict inconnu"
+en = "Unknown verdict"
+
+# ── Quoi faire (action par verdict) ────────────────────────────────────────
+
+[admin.appearance.action.ok]
+fr = "Rien à faire — la valeur servie est à jour."
+en = "Nothing to do — the served value is up to date."
+
+[admin.appearance.action.upstream_missing]
+fr = "Rien à faire — la dernière valeur connue est servie par design ; se réparera seul si Microsoft publie l'image."
+en = "Nothing to do — the last known value is served by design; it will fix itself if Microsoft publishes the image."
+
+[admin.appearance.action.transient]
+fr = "Attendre le prochain rafraîchissement — l'échec est temporaire et se répare seul."
+en = "Wait for the next refresh — the failure is temporary and self-heals."
+
+[admin.appearance.action.auth_required]
+fr = "Réauthentifier le compte du joueur via la connexion Xbox."
+en = "Re-authenticate the player's account via Xbox sign-in."
+
+[admin.appearance.action.not_supported]
+fr = "Rien à faire — ce titre gère l'apparence par un autre pipeline ; seule la dernière valeur connue est affichée."
+en = "Nothing to do — this title handles appearance through another pipeline; only the last known value is shown."
+
+[admin.appearance.action.unknown]
+fr = "Verdict inattendu — consulter les journaux serveur."
+en = "Unexpected verdict — check the server logs."
+
+# ── Le POURQUOI : details techniques traduits ──────────────────────────────
+
+[admin.appearance.detail.mapping_hit]
+fr = "Résolu via mapping.json (palette exacte)."
+en = "Resolved via mapping.json (exact palette)."
+
+[admin.appearance.detail.mapping_miss]
+fr = "Résolu via une configuration positive (mapping absent — palette approchée)."
+en = "Resolved via a positive configuration (mapping absent — approximate palette)."
+
+[admin.appearance.detail.image_resolved]
+fr = "Image résolue depuis le descripteur du CMS."
+en = "Image resolved from the CMS descriptor."
+
+[admin.appearance.detail.service_tag_present]
+fr = "Indicatif de service présent dans la réponse live."
+en = "Service tag present in the live response."
+
+[admin.appearance.detail.no_positive_cfg]
+fr = "Le CMS répond mais ne publie aucune image pour cet emblème (aucune configuration positive)."
+en = "The CMS responds but publishes no image for this emblem (no positive configuration)."
+
+[admin.appearance.detail.cms_http_error]
+fr = "Échec réseau/HTTP/parse lors de l'appel au CMS."
+en = "Network/HTTP/parse failure while calling the CMS."
+
+[admin.appearance.detail.image_unresolved]
+fr = "La résolution de l'image a échoué (HTTP, parse ou chemin média absent)."
+en = "Image resolution failed (HTTP, parse, or missing media path)."
+
+[admin.appearance.detail.no_service_tag]
+fr = "L'indicatif de service est absent de la réponse live."
+en = "The service tag is absent from the live response."
+
+[admin.appearance.detail.no_emblem_path]
+fr = "Aucun emblème équipé n'a été fourni au résolveur."
+en = "No equipped emblem was provided to the resolver."
+
+[admin.appearance.detail.non_emblem_path]
+fr = "Le chemin fourni ne pointe pas vers un emblème."
+en = "The provided path does not point to an emblem."
+
+[admin.appearance.detail.no_banner_field]
+fr = "Aucun champ de bannière dans la réponse live."
+en = "No banner field in the live response."
+
+[admin.appearance.detail.fallback_ok]
+fr = "Résolu en direct."
+en = "Resolved live."
+
+[admin.appearance.detail.fallback_upstream_missing]
+fr = "Absence définitive côté Microsoft."
+en = "Definitive absence on Microsoft's side."
+
+[admin.appearance.detail.fallback_transient]
+fr = "Échec temporaire indéterminé."
+en = "Undetermined temporary failure."
+
+[admin.appearance.detail.fallback_auth_required]
+fr = "Les jetons d'authentification du joueur sont absents ou expirés."
+en = "The player's authentication tokens are missing or expired."
+
+[admin.appearance.detail.fallback_not_supported]
+fr = "Ce composant n'est pas fourni par ce pipeline pour ce titre."
+en = "This component is not provided by this pipeline for this title."
+
+[admin.appearance.detail.fallback_unknown]
+fr = "Détail technique non reconnu."
+en = "Unrecognized technical detail."
+
+# ── Provenance de la valeur servie ─────────────────────────────────────────
+
+[admin.appearance.served_from.live]
+fr = "Résolu en direct"
+en = "Resolved live"
+
+[admin.appearance.served_from.carry]
+fr = "Dernière valeur connue"
+en = "Last known value"
+
+# ── Dernier statut de fetch live (contexte passif) ─────────────────────────
+
+[admin.appearance.fetch_status.ok]
+fr = "OK"
+en = "OK"
+
+[admin.appearance.fetch_status.api_empty]
+fr = "Réponse vide"
+en = "Empty response"
+
+[admin.appearance.fetch_status.forbidden_403]
+fr = "Accès refusé (403)"
+en = "Forbidden (403)"
+
+[admin.appearance.fetch_status.auth_missing]
+fr = "Authentification absente"
+en = "Authentication missing"
+
+[admin.appearance.fetch_status.failed]
+fr = "Échec"
+en = "Failed"
+
+[admin.appearance.fetch_status.none]
+fr = "Jamais tenté"
+en = "Never attempted"

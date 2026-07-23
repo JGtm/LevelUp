@@ -180,6 +180,29 @@ build 0, tsc front 0, ratchet no_slug_comparison vert.
 bouton Diagnostiquer, vignettes + badges verdict + explications dépliables, i18n,
 query key, tests vitest 5 verdicts).
 
+## [2026-07-23] Admin retours — Lot G clos (branche feat/admin-retours-diag)
+
+**Statut** : Complété. Agent Opus (relancé 1× après stall watchdog — protocole
+SendMessage) + revue/gates/navigateur orchestrateur.
+
+**Décisions techniques** : logique pure séparée (`appearanceDiagDisplay.ts` + garde-fou
+d'existence des clés i18n retournées) ; mutation au clic seul ; StatusBadge réutilisé
+avec upstream_missing/not_supported en NEUTRE (la grammaire info+pulse était inadaptée
+à un verdict figé ; jamais un faux « cassé ») ; CTA réauth = entrée SSO existante
+plein-page ; « Indicatif de service »/« Arrière-plan » adoptés (aucun libellé
+préexistant). i18n +59 clés FR/EN.
+
+**Résultats/gate** (re-exécutés) : regen 2665 clés, tsc 0, eslint 0 erreur, vitest
+2652 (+16) ; matrice navigateur 11/11 + revue visuelle capture (badges sémantiques
+corrects, POURQUOI/QUOI FAIRE lisibles, cohérence admin).
+
+**Prochaine étape** : Lot H — vérification fonctionnelle RÉELLE : bascule des serveurs
+sur le code du worktree (arrêt air :8000, serveur worktree LEVELUP_REPO_ROOT → données
+réelles), diagnostic JGtm (attendu upstream_missing ou ok si Microsoft a publié),
+un joueur sain (ok), un profil sans tokens (auth_required) ; vérifier aussi C6 boot
+(couverture H5 0 non résolu) et C1 (réhydratation post-reboot) ; puis restauration
+de l'environnement dev.
+
 ## [2026-07-22] D7 titre dans l'URL — Phase 0 close (branche feat/title-slug-in-url)
 
 **Statut** : En cours (Phase 0/6 close), plan `.ai/PLAN_TITLE_SLUG_URL_2026-07.md` sous
