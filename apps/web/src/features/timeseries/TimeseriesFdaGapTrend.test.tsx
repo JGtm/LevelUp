@@ -30,6 +30,8 @@ const LABELS: FdaGapCumulativeLabels = {
   real: 'Réel',
   expected: 'Attendu',
   gap: 'Écart',
+  avgCaption: 'Écart moyen par match',
+  perMatch: '/match',
 }
 
 function row(
@@ -141,16 +143,48 @@ describe('buildFdaGapCumulativeOption', () => {
 describe('TimeseriesFdaGapTrend — masquage capability', () => {
   it('capability expected_stats présente → chart rendu', async () => {
     setTitleCaps(['expected_stats'])
-    render(<TimeseriesFdaGapTrend rows={[row(1.5, 1.0), row(0.8, 1.2)]} labels={LABELS} title="Écart cumulé au FDA attendu" />)
+    render(<TimeseriesFdaGapTrend rows={[row(1.5, 1.0), row(0.8, 1.2)]} labels={LABELS} locale="fr" title="Écart cumulé au FDA attendu" />)
     expect(await screen.findByTestId('echarts-mock')).toBeInTheDocument()
   })
 
   it('capability expected_stats absente → non rendu (null)', () => {
     setTitleCaps(['ranked'])
     const { container } = render(
-      <TimeseriesFdaGapTrend rows={[row(1.5, 1.0), row(0.8, 1.2)]} labels={LABELS} title="Écart cumulé au FDA attendu" />,
+      <TimeseriesFdaGapTrend rows={[row(1.5, 1.0), row(0.8, 1.2)]} labels={LABELS} locale="fr" title="Écart cumulé au FDA attendu" />,
     )
     expect(container).toBeEmptyDOMElement()
     expect(screen.queryByTestId('echarts-mock')).toBeNull()
+  })
+})
+
+describe('TimeseriesFdaGapTrend — KPI écart moyen par match', () => {
+  it('affiche l écart moyen signé formaté par locale (matchs avec attendu)', async () => {
+    setTitleCaps(['expected_stats'])
+    // gaps : +1.0 et 0.0 → moyenne +0.5 → « +0,5/match » (séparateur décimal fr).
+    render(
+      <TimeseriesFdaGapTrend
+        rows={[row(2.0, 1.0), row(1.0, 1.0)]}
+        labels={LABELS}
+        locale="fr"
+        title="Écart cumulé au FDA attendu"
+      />,
+    )
+    const kpi = await screen.findByTestId('fda-gap-avg')
+    expect(kpi).toHaveTextContent('Écart moyen par match')
+    expect(kpi).toHaveTextContent('+0,5/match')
+  })
+
+  it('aucun match avec attendu → « — »', async () => {
+    setTitleCaps(['expected_stats'])
+    render(
+      <TimeseriesFdaGapTrend
+        rows={[row(1.5, undefined), row(0.8, undefined)]}
+        labels={LABELS}
+        locale="fr"
+        title="Écart cumulé au FDA attendu"
+      />,
+    )
+    const kpi = await screen.findByTestId('fda-gap-avg')
+    expect(kpi).toHaveTextContent('—')
   })
 })

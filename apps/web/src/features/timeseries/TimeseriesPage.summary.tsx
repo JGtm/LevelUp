@@ -113,11 +113,14 @@ export function TimeseriesSummaryTab({
       emptyMessage={emptyMsg}
       height={360}
       rows={data.match_rows ?? []}
+      locale={appLocale}
       labels={{
         series: t('timeseries.summary.fda_gap_series'),
         real: t('timeseries.summary.fda_gap_real'),
         expected: t('timeseries.summary.fda_gap_expected'),
         gap: t('timeseries.summary.fda_gap_gap'),
+        avgCaption: t('timeseries.summary.fda_gap_avg_caption'),
+        perMatch: t('timeseries.summary.fda_gap_per_match'),
       }}
     />
   )

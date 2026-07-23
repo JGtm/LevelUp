@@ -35,6 +35,8 @@ export interface ChartFromOptionProps {
   className?: string
   /** Handlers d'événements ECharts (ex. legendselectchanged) transmis à ChartCard. */
   onEvents?: Record<string, (params: unknown) => void>
+  /** Pied de carte optionnel (rendu sous le graphe, ex. rangée de KPI). */
+  footer?: ReactNode
 }
 
 export function ChartFromOption({
@@ -44,6 +46,7 @@ export function ChartFromOption({
   emptyMessage,
   className,
   onEvents,
+  footer,
 }: ChartFromOptionProps) {
   return (
     <ChartCard
@@ -54,6 +57,8 @@ export function ChartFromOption({
       height={height}
       className={className}
       onEvents={onEvents}
-    />
+    >
+      {footer}
+    </ChartCard>
   )
 }
