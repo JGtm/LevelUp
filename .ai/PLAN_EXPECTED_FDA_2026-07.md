@@ -141,17 +141,39 @@ masqués proprement sur Halo 5 (capability), gates complètes vertes (lot D).
 
 ### Lot C — Front : Escouade / Synergies
 
-- [ ] **C1** Builder `buildFdaGapCumulativeOption` dans
-  `features/squad/charts/squadPerformanceLineCharts.ts` (cumul par `match_order`,
-  D5, 1 série par joueur, `colorByPlayer`) + extension `extractValue`/types si
-  pertinent.
-- [ ] **C2** Montage sur `SquadSynergiesPage.tsx` (ChartCard, ordre joueurs
-  `playerOrder` L66-68, couleurs `getSquadPlayerColors` L65), gaté capability ;
-  pastilles KPI écart moyen par joueur (D3).
-- [ ] **C3** i18n squad FR+EN (`features/squad/i18n.ts`).
-- [ ] **C4** Tests vitest : builder (cumul, trous, multi-joueurs) + rendu page
-  (pattern `SquadSynergiesPage.test.tsx`).
-- [ ] **Gate C** : vitest ciblés + typecheck verts.
+- [x] **C1** Builder `buildFdaGapCumulativeOption` (cumul par `match_order`, D5,
+  1 série line par joueur, `colorByPlayer`, markLine 0, pas d'aire). **Écart plan
+  (latitude accordée)** : `squadPerformanceLineCharts.ts` faisait déjà 511 L (> 500,
+  seuil dépassé AVANT mon ajout) → builder extrait dans un fichier frère
+  `features/squad/charts/squadFdaGapChart.ts` (helpers partagés `orderedPlayers`/
+  `maxLength`/`xAxisLabels` + `CommonOpts` exportés du fichier voisin, DRY, pas de
+  duplication). Consomme `kda_expected` (projeté backend, D6), pas de recalcul. Pas
+  d'extension `extractValue`/`PerformanceMetricKey` (cumul ≠ valeur per-match simple)
+  → helpers dédiés `cumulativeFdaGapSeries` + `meanFdaGapPerMatch` (KPI D3).
+- [x] **C2** Composant self-gated `SquadFdaGapCumulativeCard.tsx`
+  (`useCapability('expected_stats')` → null, pattern Lot B) monté sur
+  `SquadSynergiesPage.tsx` APRÈS `SquadFragSection`, AVANT la section Impact
+  (regroupe les visuels de performance par joueur). Couleurs `getSquadPlayerColors`
+  (`playerColors` L65) + ordre `playerOrder` (L66-68) déjà calculés par la page.
+  Pastilles KPI en FOOTER de la ChartCard (slot `children`) : 1 pilule/joueur (point
+  coloré token-dérivé + gamertag + écart moyen signé « +0,7/match » via
+  `Intl.NumberFormat(intlLocale, signDisplay:'always')` + suffixe i18n `units.perGame`
+  ; « — » si aucun match avec attendu).
+- [x] **C3** i18n squad FR+EN (`features/squad/i18n.ts`) : section `fdaGap`
+  `{ title, averageCaption }` (parité `Record<SquadLocale, T>`). FR « Écart cumulé au
+  FDA attendu » / « Écart moyen par match » (D7, sans anglicismes) ; EN « Cumulative
+  KDA gap to expected » / « Average gap per match ». Suffixe pastille réutilise
+  `units.perGame` existant (pas de nouvelle clé).
+- [x] **C4** Tests vitest : `squadFdaGapChart.test.ts` (13 tests — cumul, report D5,
+  non-fini, `match_order` désordonné, trou d'intersection, moyenne, builder
+  multi-joueurs/couleurs/markLine/hidden) + `SquadFdaGapCumulativeCard.test.tsx`
+  (3 tests — capability présente/absente, pastilles signées + suffixe i18n + « — »,
+  pattern `SessionFdaGapCumulative.test.tsx`). `SquadSynergiesPage.test.tsx` existant
+  reste vert (intégration page, pageData null → carte gate fail-open sans throw).
+- [x] **Gate C** : depuis `apps/web` (worktree) — `npx tsc -b --force` (après purge
+  `node_modules/.tmp`) → exit 0 ; `npm run test -- run squadFdaGapChart
+  SquadFdaGapCumulativeCard squadPerformanceLineCharts SquadSynergiesPage` →
+  4 fichiers / 28 tests passés, exit 0 (vitest hors sandbox, limitation connue).
 
 ### Lot D — Gates finales, docs, clôture
 
@@ -256,3 +278,26 @@ masqués proprement sur Halo 5 (capability), gates complètes vertes (lot D).
   - Gate B verte : `tsc -b --force` exit 0 ; `vitest run` 8 fichiers / 54 tests exit 0
     (incl. suites touchées). Aucun `go` touché (Lot B = front pur).
   - Prochaine étape : Lot C (Escouade / Synergies), puis Lot D (gates finales, revue).
+- 2026-07-23 : **Lot C exécuté et clôturé** (agent Opus, worktree `expected-fda`,
+  aucun commit — revue superviseur). C1→C4 + Gate C tous `[x]`. Décisions notables :
+  - **Extraction fichier frère** : `squadPerformanceLineCharts.ts` était déjà à 511 L
+    (> seuil 500 AVANT l'ajout) → builder `buildFdaGapCumulativeOption` placé dans
+    `features/squad/charts/squadFdaGapChart.ts` (ne pas accroître la dette god-file,
+    latitude accordée par le pilote). Helpers `orderedPlayers`/`maxLength`/`xAxisLabels`
+    + type `CommonOpts` EXPORTÉS du fichier voisin et réutilisés (DRY, zéro duplication).
+  - **Forme C1** : cumul par `match_order` croissant du différentiel `kda − kda_expected`
+    (attendu projeté backend, D6, jamais recalculé). D5 : match sans attendu → cumul
+    reporte la dernière valeur (le point figure quand même) ; trous d'intersection = null
+    (pontés `connectNulls`). 1 line/joueur, couleur `colorByPlayer`, markLine 0 sur le
+    1er joueur, PAS d'aire (multi-séries). Robuste au désordre (`sort` par match_order)
+    et au non-fini (`Number.isFinite`).
+  - **Montage C2** : composant self-gated `SquadFdaGapCumulativeCard.tsx`
+    (`useCapability('expected_stats')` → null, honore D4, pattern Lot B) monté sur
+    `SquadSynergiesPage.tsx` après `SquadFragSection`, avant Impact. Pastilles KPI en
+    footer ChartCard : écart moyen/match par joueur (matchs AVEC attendu uniquement, D3),
+    signé, couleur token-dérivée du joueur, suffixe i18n `units.perGame`, « — » si vide.
+  - **i18n C3** : section `fdaGap` FR+EN (parité), D7 « Écart cumulé au FDA attendu ».
+  - Gate C verte : `tsc -b --force` exit 0 ; `vitest run` (squadFdaGapChart +
+    SquadFdaGapCumulativeCard + squadPerformanceLineCharts + SquadSynergiesPage) →
+    4 fichiers / 28 tests exit 0. Aucun `go` touché (Lot C = front pur).
+  - Prochaine étape : Lot D (gates finales complètes, delivery-checklist, revue merge).
