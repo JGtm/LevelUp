@@ -1468,6 +1468,96 @@ func TestHomeRepo_LoadHomeSkillPeak_PeakAchievedAt(t *testing.T) {
 	}
 }
 
+// csrAlltimeSeed paramètre seedCSRAlltimeAndMatchCSR : le pic all-time
+// (player_csr_snapshots, source Waypoint sans date) + un match CSR support de
+// la corrélation (match_csrs_latest ⋈ match_registry).
+type csrAlltimeSeed struct {
+	tier          string
+	subTier       int
+	value         float64
+	matchID       string
+	matchTier     string
+	matchSubTier  int
+	matchValue    float64
+	matchStartUTC string
+}
+
+func seedCSRAlltimeAndMatchCSR(t *testing.T, pdb *PlayerDB, s csrAlltimeSeed) {
+	t.Helper()
+	ctx := context.Background()
+	// Snapshot officiel Waypoint : pic all-time (SANS date d'obtention).
+	if _, err := pdb.Player.Exec(ctx, `
+		INSERT INTO player_csr_snapshots
+			(playlist_id, season_id, alltime_value, alltime_tier, alltime_sub_tier)
+		VALUES (?, ?, ?, ?, ?)
+	`, "playlist-ranked-slayer", "s1", s.value, s.tier, s.subTier); err != nil {
+		t.Fatalf("INSERT player_csr_snapshots: %v", err)
+	}
+	// Match support de la corrélation : registry (start_time_utc connu) + match_csrs.
+	if _, err := pdb.Player.Exec(ctx, `
+		INSERT INTO shared.match_registry (match_id, start_time_utc, is_ranked, season_id)
+		VALUES (?, ?, TRUE, ?)
+	`, s.matchID, s.matchStartUTC, "s1"); err != nil {
+		t.Fatalf("INSERT shared.match_registry: %v", err)
+	}
+	if _, err := pdb.Player.Exec(ctx, `
+		INSERT INTO shared.match_csrs
+			(id, match_id, xuid, rating_type, rating_value, tier, sub_tier, season_id)
+		VALUES (?, ?, ?, 'CSR', ?, ?, ?, ?)
+	`, 1, s.matchID, pTestXUID, s.matchValue, s.matchTier, s.matchSubTier, "s1"); err != nil {
+		t.Fatalf("INSERT shared.match_csrs: %v", err)
+	}
+}
+
+// TestHomeRepo_LoadCSRAlltimePeak_PeakAchievedAt cadenasse la corrélation de la
+// DATE d'obtention du pic CSR all-time (C4). Le pic vient de
+// player_csr_snapshots.alltime_* (valeur officielle Waypoint, SANS date) ; la
+// date est retrouvée en corrélant avec l'historique par-match match_csrs_latest
+// ⋈ match_registry (MIN start_time canonique = première atteinte du pic).
+func TestHomeRepo_LoadCSRAlltimePeak_PeakAchievedAt(t *testing.T) {
+	t.Run("corrélé via match_csrs", func(t *testing.T) {
+		pdb := newTestPlayerDB(t)
+		ctx := context.Background()
+		// Cas Madina validé : pic Diamond 4 (val 1400) ⟷ match du 2025-11-06 21:25.
+		seedCSRAlltimeAndMatchCSR(t, pdb, csrAlltimeSeed{
+			tier: "Diamond", subTier: 4, value: 1400,
+			matchID: "peak_m", matchTier: "Diamond", matchSubTier: 4, matchValue: 1400,
+			matchStartUTC: "2025-11-06 21:25:00+00",
+		})
+
+		peak := NewHomeRepo(pdb).loadCSRAlltimePeak(ctx)
+		if peak == nil {
+			t.Fatal("loadCSRAlltimePeak = nil, want pic Diamond 4")
+		}
+		if peak.PeakAchievedAt == nil {
+			t.Fatal("PeakAchievedAt = nil, want 2025-11-06 21:25 (corrélé via match_csrs)")
+		}
+		if got := peak.PeakAchievedAt.UTC().Format("2006-01-02 15:04"); got != "2025-11-06 21:25" {
+			t.Errorf("PeakAchievedAt = %s, want 2025-11-06 21:25 (start_time canonique du match corrélé)", got)
+		}
+	})
+
+	t.Run("aucun match ne corrèle -> nil (pré-tracking)", func(t *testing.T) {
+		pdb := newTestPlayerDB(t)
+		ctx := context.Background()
+		// Pic all-time Diamond 4, mais le seul match CSR tracké est Gold 3 → pas
+		// de corrélation (pic atteint avant notre tracking) → date nil (dégradation).
+		seedCSRAlltimeAndMatchCSR(t, pdb, csrAlltimeSeed{
+			tier: "Diamond", subTier: 4, value: 1400,
+			matchID: "gold_m", matchTier: "Gold", matchSubTier: 3, matchValue: 1250,
+			matchStartUTC: "2025-10-01 10:00:00+00",
+		})
+
+		peak := NewHomeRepo(pdb).loadCSRAlltimePeak(ctx)
+		if peak == nil {
+			t.Fatal("loadCSRAlltimePeak = nil, want pic Diamond 4")
+		}
+		if peak.PeakAchievedAt != nil {
+			t.Errorf("PeakAchievedAt = %v, want nil (aucun match ne corrèle le pic)", peak.PeakAchievedAt)
+		}
+	})
+}
+
 // TestHomeRepo_LoadFavoriteWeapon_TableMissing : le drop silencieux est
 // préservé pour les tables absentes (instance fraîche pré-migration). C'est
 // distinct des erreurs réelles (driver, scan) qui doivent logger un warn.
