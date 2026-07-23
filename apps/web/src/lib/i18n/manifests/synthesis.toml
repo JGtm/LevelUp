@@ -304,6 +304,10 @@ en = "{pct}% of your kills come from a single category ({role}). Diversifying yo
 fr = "Victoires consécutives (max)"
 en = "Win streak (max)"
 
+[synthesis.kpi.loss_streak_max]
+fr = "Défaites consécutives (max)"
+en = "Loss streak (max)"
+
 [synthesis.kpi.killing_spree_max]
 fr = "Folie meurtrière (max)"
 en = "Killing spree (max)"

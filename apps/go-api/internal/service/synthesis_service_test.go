@@ -350,6 +350,44 @@ func TestGetSynthesisPage_Overview_MatchesScope(t *testing.T) {
 	}
 }
 
+// TestGetSynthesisPage_Overview_Streaks vérifie que la plus longue série de
+// défaites consécutives (LongestLossStreak) est calculée sur la MÊME source de
+// matchs que la série de victoires (cohérence garantie, helper analysis.LongestRun).
+// Séquence chronologique : W, L, L, L, W, L, L
+//
+//	-> plus longue série de défaites = 3 ; plus longue série de victoires = 1.
+func TestGetSynthesisPage_Overview_Streaks(t *testing.T) {
+	outcomes := []int{
+		domain.OutcomeWin,
+		domain.OutcomeLoss, domain.OutcomeLoss, domain.OutcomeLoss,
+		domain.OutcomeWin,
+		domain.OutcomeLoss, domain.OutcomeLoss,
+	}
+	rows := make([]legacymatch.SynthesisMatchRow, len(outcomes))
+	for i, oc := range outcomes {
+		rows[i] = legacymatch.SynthesisMatchRow{
+			MatchID:   fmt.Sprintf("s-%d", i),
+			StartTime: time.Now().UTC().Add(-time.Duration(len(outcomes)-i) * time.Hour),
+			Outcome:   oc,
+			Kills:     5,
+			Deaths:    5,
+		}
+	}
+	repo := &mockSynthesisRepo{synthRows: rows}
+	svc := withSynthMock(NewSynthesisService(repo), repo.synthRows, repo.synthErr)
+
+	resp, err := svc.GetSynthesisPage(context.Background(), "xuid", domain.SynthesisRequest{Period: "all"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.Overview.LongestLossStreak != 3 {
+		t.Errorf("LongestLossStreak = %d, want 3", resp.Overview.LongestLossStreak)
+	}
+	if resp.Overview.LongestWinStreak != 1 {
+		t.Errorf("LongestWinStreak = %d, want 1", resp.Overview.LongestWinStreak)
+	}
+}
+
 // TestGetSynthesisPage_Highlights_WithinScope vÃ©rifie que les MatchIDs dans
 // highlights.TopByKills appartiennent aux matchs du scope filtrÃ©.
 func TestGetSynthesisPage_Highlights_WithinScope(t *testing.T) {

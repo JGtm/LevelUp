@@ -208,19 +208,26 @@ func buildSynthesisOverviewCanonical(rows []canonical.PlayerMatchRow, soloKPIs d
 	maxStreak, _ := analysis.LongestRun(rows, func(r canonical.PlayerMatchRow) bool {
 		return r.Self.Outcome == canonical.OutcomeWin
 	})
+	// Symétrique : plus longue série de défaites consécutives, MÊME source (rows)
+	// et MÊME helper que la série de victoires — cohérence garantie
+	// (rompue par tout non-loss : win / tie / dnf).
+	maxLossStreak, _ := analysis.LongestRun(rows, func(r canonical.PlayerMatchRow) bool {
+		return r.Self.Outcome == canonical.OutcomeLoss
+	})
 
 	n := len(rows)
 	ov := domain.SynthesisOverview{
-		TotalMatches:     n,
-		TotalWins:        totalWins,
-		TotalLosses:      totalLosses,
-		TotalTies:        totalTies,
-		TotalDNF:         totalDNF,
-		TotalKills:       totalKills,
-		TotalDeaths:      totalDeaths,
-		TotalAssists:     totalAssists,
-		WinRate:          soloKPIs.WinRate,
-		LongestWinStreak: maxStreak,
+		TotalMatches:      n,
+		TotalWins:         totalWins,
+		TotalLosses:       totalLosses,
+		TotalTies:         totalTies,
+		TotalDNF:          totalDNF,
+		TotalKills:        totalKills,
+		TotalDeaths:       totalDeaths,
+		TotalAssists:      totalAssists,
+		WinRate:           soloKPIs.WinRate,
+		LongestWinStreak:  maxStreak,
+		LongestLossStreak: maxLossStreak,
 	}
 	if soloKPIs.KDRatio != nil {
 		ov.AvgKDA = soloKPIs.KDRatio

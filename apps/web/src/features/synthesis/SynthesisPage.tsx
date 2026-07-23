@@ -394,6 +394,10 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
                     <AccentCard label={t('synthesis.kpi.win_streak_max')} value={String(overview.longest_win_streak)} accent="outcome-win" />
                   )}
 
+                  {(overview.longest_loss_streak ?? 0) > 1 && (
+                    <AccentCard label={t('synthesis.kpi.loss_streak_max')} value={String(overview.longest_loss_streak)} accent="outcome-loss" />
+                  )}
+
                   <div className="grid grid-cols-2 gap-2">
                     <AccentCard label={t('synthesis.combat_profile.perfect_kills')} value={detailedStats.total_perfect_kills.toLocaleString(numLoc)} accent="perf-tier-3" />
                     <AccentCard label={fieldMappings?.fields['headshot_kills']?.label ?? 'Tirs à la tête'} value={detailedStats.total_headshot_kills.toLocaleString(numLoc)} accent="perf-tier-2" />
