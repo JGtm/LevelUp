@@ -331,7 +331,7 @@ function SeasonPassCard({ pass, intlLocale, statusLabel, labels, contentLabels, 
           <div className="flex flex-wrap gap-2">
             {isSelected && <Badge variant="default">{labels.nowShowing}</Badge>}
             {pass.is_active && pass.status !== 'active' && <Badge variant="default">{labels.active}</Badge>}
-            {pass.is_owned && <Badge variant="outline">{labels.premium}</Badge>}
+            {pass.premium_owned && <Badge variant="outline">{labels.premium}</Badge>}
             <Badge variant={statusVariant(pass.status)}>{statusLabel}</Badge>
           </div>
         </div>
@@ -461,7 +461,7 @@ function PassShowcase({
               </Badge>
               {/* status === 'active' affiche déjà « Actif » → pas de second badge. */}
               {pass.is_active && pass.status !== 'active' && <Badge variant="default">{text.seasonPass.active}</Badge>}
-              {pass.is_owned && <Badge variant="outline">{text.seasonPass.premium}</Badge>}
+              {pass.premium_owned && <Badge variant="outline">{text.seasonPass.premium}</Badge>}
             </div>
             {pass.content && (
               <OverlayContentRows
@@ -485,7 +485,7 @@ function PassShowcase({
             />
           </div>
           <div className="flex flex-wrap gap-2">
-            {pass.is_owned && <Badge variant="outline">{text.seasonPass.premium}</Badge>}
+            {pass.premium_owned && <Badge variant="outline">{text.seasonPass.premium}</Badge>}
             {pass.is_active && pass.status !== 'active' && <Badge variant="default">{text.seasonPass.active}</Badge>}
             <Badge variant={statusVariant(pass.status)}>{text.seasonPass.status[pass.status] ?? pass.status}</Badge>
           </div>

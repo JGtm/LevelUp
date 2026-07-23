@@ -152,11 +152,14 @@ func buildMinimalTrackSummary(path string, state trackSnapshotState) domain.Seas
 	status := computeSeasonPassStatus(state)
 	isOwned := state.IsOwned || state.Rank > 0 || state.IsActive
 	s := domain.SeasonPassTrackSummary{
-		RewardTrackPath:   path,
-		Name:              name,
-		Status:            status,
-		IsActive:          state.IsActive,
-		IsOwned:           isOwned,
+		RewardTrackPath: path,
+		Name:            name,
+		Status:          status,
+		IsActive:        state.IsActive,
+		IsOwned:         isOwned,
+		// PremiumOwned = signal brut d'achat premium (state.IsOwned), SANS la
+		// dilution progression/actif de IsOwned ci-dessus.
+		PremiumOwned:      state.IsOwned,
 		HasReachedMaxRank: state.HasReachedMaxRank,
 		CurrentRank:       state.Rank,
 		PartialProgress:   state.Partial,

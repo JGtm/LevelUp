@@ -7859,6 +7859,7 @@ export interface components {
             name: string;
             /** Format: int64 */
             partial_progress: number;
+            premium_owned: boolean;
             remaining_content?: components["schemas"]["SeasonPassContentSummary"];
             reward_track_path: string;
             snapshot_at?: string;
