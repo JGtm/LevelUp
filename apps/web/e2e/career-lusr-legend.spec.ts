@@ -59,12 +59,16 @@ test('Carrière — chart LUSR : 1 entrée par playlist_group, libellés FR loca
   await page.waitForTimeout(2500) // ECharts mount
 
   const seriesNames: string[] = await page.evaluate(() => {
+    type EchartsInstance = { getOption(): { series?: unknown } }
+    type EchartsGlobal = {
+      echarts?: { getInstanceByDom?: (el: Element) => EchartsInstance | undefined }
+      __echartsInstanceMap__?: Record<string, EchartsInstance | undefined>
+    }
     const containers = Array.from(document.querySelectorAll('[_echarts_instance_]')) as HTMLElement[]
     for (const el of containers) {
       const instId = el.getAttribute('_echarts_instance_')
       if (!instId) continue
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const w = window as any
+      const w = window as unknown as EchartsGlobal
       const inst = w.echarts?.getInstanceByDom?.(el) ?? w.__echartsInstanceMap__?.[instId]
       if (!inst || typeof inst.getOption !== 'function') continue
       const opt = inst.getOption()
