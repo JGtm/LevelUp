@@ -1,3 +1,30 @@
+## [2026-07-23] Différentiel FDA réel vs attendu — Lot B (front Timeseries + Sessions) livré
+
+**Statut** : Complété (Lot B du plan `.ai/PLAN_EXPECTED_FDA_2026-07.md` ; branche
+`feat/expected-fda-differential`, worktree `expected-fda` ; NON commité — revue superviseur).
+
+**Décision technique principale** : le dégradé divergent-ancré-à-0 (bascule EXACTE sur 0,
+`areaStyle.origin:0`, sans visualMap) existait déjà en 2 copies inline (`SessionNetScoreArea`,
+`palmares/CumulativeFragGapChart`) ; les 2 nouveaux charts B en faisaient 4 → extraction du
+helper canonique `lib/charts/divergentZeroGradient.ts`, migration des 3 copies existantes, et
+garde-rail grep (`divergentZeroGradient.guard.test.ts`, identifiant `zeroRatio` verrouillé
+hors du helper) — application stricte CLAUDE.md n°6 + anti-pattern 8. Gate par capability =
+self-gate `useCapability('expected_stats')` DANS chaque composant (retour null) plutôt que
+booléen parent : « non rendu » testable en isolation + DRY pour la double-disposition de
+SessionChartStack.
+
+**Résultats observés** : Gate B verte — `tsc -b --force` exit 0 (après correction d'un
+bloqueur : `FeatureUnavailable.tsx` exigeait l'entrée `expected_stats` du fait de l'ajout de
+la capability en Lot A, non détecté car Gate A Go-only) ; `vitest run` 8 fichiers / 54 tests
+exit 0 (mes 4 fichiers + suites touchées SessionNetScoreArea/SessionDetailPage/capabilities).
+B1 = aire du différentiel BRUT par match (trous D5 visibles) + ligne lissée rolling-5. B2 =
+`computeCumulativeFdaGap` (tri chronologique + report D5) → aire signée cumulée. i18n FR+EN
+via manifests TOML régénérés (4 clés timeseries, 5 clés session), sans anglicismes.
+
+**Conclusion / prochaine étape** : Lot B clos et statué. Reste : Lot C (Escouade/Synergies),
+Lot D (gates finales, `delivery-checklist`, vérif visuelle avant merge). Aucun `go` touché
+(front pur). Vitest tourne hors sandbox (limitation connue du repo).
+
 ## [2026-07-23] Différentiel FDA réel vs attendu — Lot A (backend) livré
 
 **Statut** : Complété (Lot A du plan `.ai/PLAN_EXPECTED_FDA_2026-07.md` ; branche

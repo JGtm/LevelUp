@@ -5,17 +5,17 @@
  * dessous, à bascule EXACTE sur 0 (aire ancrée à 0 via `areaStyle.origin`).
  *
  * PAS de visualMap : sur une série `line` à données scalaires + axe catégoriel,
- * il laissait la courbe invisible (cf. SessionNetScoreArea). Le dégradé est
- * calculé depuis la boîte englobante de l'aire ancrée à 0 (`zeroRatio`).
+ * il laissait la courbe invisible (cf. SessionNetScoreArea). Le dégradé divergent
+ * ancré à 0 provient du helper canonique `divergentZeroGradient` (CLAUDE.md n°6).
  *
  * Chaque point porte un SYMBOLE coloré par l'issue du duel (win/loss/neutre) →
  * l'issue se lit match par match, indépendamment du signe du cumul.
- * Aucune couleur hex directe : `resolveToken()` + `outcomeColor()`.
+ * Aucune couleur hex directe : `divergentZeroGradient()` + `outcomeColor()`.
  */
 import { Suspense, lazy, useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
-import { resolveToken } from '@/lib/accessibility'
+import { divergentZeroGradient } from '@/lib/charts/divergentZeroGradient'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 
 import { CHART_BG, getEChartsThemeColors, getTooltipBase, outcomeColor } from '@/components/charts/_utils'
@@ -46,29 +46,11 @@ export function CumulativeFragGapChart({ points, height = 120 }: CumulativeFragG
   const option = useMemo((): EChartsCoreOption => {
     if (points.length === 0) return {}
     const tc = getEChartsThemeColors()
-    const posColor = resolveToken('divergent-pos')
-    const negColor = resolveToken('divergent-neg')
 
-    // Dégradé divergent vert/rouge à bascule EXACTE sur 0, sans visualMap. L'aire
-    // ancrée à 0 → boîte [min(données,0), max(données,0)] ; 0 tombe à zeroRatio.
+    // Dégradé divergent vert/rouge à bascule EXACTE sur 0 (aire ancrée à 0),
+    // helper canonique partagé — CLAUDE.md n°6.
     const values = points.map((p) => p.cumulative)
-    const top = Math.max(...values, 0)
-    const bot = Math.min(...values, 0)
-    const span = top - bot
-    const zeroRatio = span > 0 ? Math.min(1, Math.max(0, top / span)) : 1
-    const divergentColor = {
-      type: 'linear' as const,
-      x: 0,
-      y: 0,
-      x2: 0,
-      y2: 1,
-      colorStops: [
-        { offset: 0, color: posColor },
-        { offset: zeroRatio, color: posColor },
-        { offset: zeroRatio, color: negColor },
-        { offset: 1, color: negColor },
-      ],
-    }
+    const divergentColor = divergentZeroGradient(values)
 
     const data = points.map((p) => ({
       value: p.cumulative,
