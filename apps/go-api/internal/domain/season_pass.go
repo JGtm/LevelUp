@@ -58,12 +58,17 @@ type SeasonPassContentSummary struct {
 // SnapshotAt (RFC3339) horodate le `battlepass_snapshots` le plus récent du
 // joueur pour ce track. nil si aucun snapshot n'a jamais été persisté.
 type SeasonPassTrackSummary struct {
-	RewardTrackPath           string                    `json:"reward_track_path"`
-	Name                      string                    `json:"name"`
-	Description               *string                   `json:"description,omitempty"`
-	Status                    SeasonPassStatus          `json:"status"`
-	IsActive                  bool                      `json:"is_active"`
-	IsOwned                   bool                      `json:"is_owned"`
+	RewardTrackPath string           `json:"reward_track_path"`
+	Name            string           `json:"name"`
+	Description     *string          `json:"description,omitempty"`
+	Status          SeasonPassStatus `json:"status"`
+	IsActive        bool             `json:"is_active"`
+	IsOwned         bool             `json:"is_owned"`
+	// PremiumOwned : signal BRUT d'acquisition premium du reward track (API 343i
+	// IsOwned, persisté dans battlepass_snapshots.is_owned), SANS la dilution
+	// progression/actif appliquée à IsOwned. Sert le badge « Premium » (achat réel),
+	// distinct de IsOwned laissé inchangé pour compatibilité descendante.
+	PremiumOwned              bool                      `json:"premium_owned"`
 	HasReachedMaxRank         bool                      `json:"has_reached_max_rank"`
 	CurrentRank               int                       `json:"current_rank"`
 	PartialProgress           int                       `json:"partial_progress"`

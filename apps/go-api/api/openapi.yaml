@@ -14217,6 +14217,8 @@ components:
           partial_progress:
               format: int64
               type: integer
+          premium_owned:
+              type: boolean
           remaining_content:
               $ref: '#/components/schemas/SeasonPassContentSummary'
           reward_track_path:
@@ -14239,6 +14241,7 @@ components:
           - status
           - is_active
           - is_owned
+          - premium_owned
           - has_reached_max_rank
           - current_rank
           - partial_progress

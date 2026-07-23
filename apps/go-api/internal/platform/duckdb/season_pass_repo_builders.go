@@ -37,12 +37,15 @@ func buildTrackSummary(
 	isOwned := state.IsOwned || state.Rank > 0 || state.IsActive
 
 	s := domain.SeasonPassTrackSummary{
-		RewardTrackPath:           row.rewardTrackPath,
-		Name:                      name,
-		Description:               description,
-		Status:                    status,
-		IsActive:                  state.IsActive,
-		IsOwned:                   isOwned,
+		RewardTrackPath: row.rewardTrackPath,
+		Name:            name,
+		Description:     description,
+		Status:          status,
+		IsActive:        state.IsActive,
+		IsOwned:         isOwned,
+		// PremiumOwned = signal brut d'achat premium (state.IsOwned), SANS la
+		// dilution progression/actif de IsOwned ci-dessus.
+		PremiumOwned:              state.IsOwned,
 		HasReachedMaxRank:         state.HasReachedMaxRank,
 		CurrentRank:               state.Rank,
 		PartialProgress:           state.Partial,

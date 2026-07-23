@@ -25,8 +25,22 @@ réaffiche les clés absentes de `hlKeys`). Gates : tsc exit 0 ; vitest 23/23 (M
 capabilities) ; eslint vert (baseline inchangée). Découvertes notées non traitées : commentaire
 inversé `capabilities.ts:11`, `MatchScoreboard.tsx` > 500 L, pas de test de rendu du masquage.
 
-**Conclusion / prochaine étape** : commit Lot B. Enchaîner Lot C (champ `premium_owned`). Aucun
-push `main` sans feu vert utilisateur (= deploy prod auto).
+**Lot C (Complété)** : `SeasonPassTrackSummary.PremiumOwned` (`json:premium_owned`) = signal BRUT
+`state.IsOwned` (persisté `battlepass_snapshots.is_owned` <- API 343i), sans la dilution
+`|| Rank>0 || IsActive` qui reste sur `IsOwned` (compat). Aux 2 sites builder (`buildTrackSummary`
++ `buildMinimalTrackSummary`). Badges « Premium » repointés (Home + SeasonPass). OpenAPI +
+generated.ts régénérés (drift MISSING=0). Gates : go build, tests ciblés duckdb/service, drift,
+generate-types, tsc, vitest 16/16 — verts. Démo = copie verbatim de `battlepass_snapshots` du
+joueur source (pas de fixture synthétique) → badge correct si le joueur source possède le pass.
+À VÉRIFIER EN PROD (lecture) : `is_owned` peuplé pour un compte premium connu (non bloquant, le
+chemin d'écriture est garanti côté code).
+
+**Ajout utilisateur (en cours)** : restyler les pills/badges du season pass en COULEURS PLEINES
+(réf. pills joueurs page Relations), texte BLANC, couleurs harmonieuses avec la page — tokens
+sémantiques uniquement (skill color-tokens).
+
+**Conclusion / prochaine étape** : commit Lot C, puis restyle pills season pass, puis Lot D
+(locale Défis/BP), puis Lot A (page Médailles). Aucun push `main` sans feu vert (= deploy prod auto).
 
 ---
 ## [2026-07-23] Réintégration + validation des 4 retouches FDA gap sur origin/main
