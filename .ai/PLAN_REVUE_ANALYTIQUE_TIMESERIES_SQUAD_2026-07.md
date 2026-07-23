@@ -1,9 +1,9 @@
 # Plan — Revue analytique Timeseries & Escouade (corrections, surlignage, nouveaux angles)
 
-**Date** : 2026-07-12
+**Date** : 2026-07-12 — **revise le 2026-07-23** (revue UX avec l'utilisateur, elagage des ajouts)
 **Branche Git** : `feat/analytics-review-ts-squad` (une branche, un commit par lot)
-**Statut** : En attente validation (DEC-1..9 a trancher — voir tableau)
-**Effort estime** : 4 a 7 j selon les lots retenus (detail par lot)
+**Statut** : Valide, pret a executer (DEC tranchees le 2026-07-23 — voir tableau)
+**Effort estime** : ~2,5 a 3 j (A 0,5 + B ~1,4 + C 0,1 + D 0,1 + F 0,5)
 **Contrat d'execution** : skill `plan-execution` (ordre strict, gates, statuts `[x]`/`[~]`/`[!]`,
 zero fix hors perimetre — decouvertes consignees en fin de fichier).
 
@@ -35,11 +35,36 @@ possibles, un stack Escouade V2 dormant et des angles analytiques non exploites.
 5. `.ai/V7/` est un dossier d'ARCHIVAGE : ce plan vit dans `.ai/`, comme
    `.ai/PLAN_MATCHVIEW_MOMENTUM_2026-07.md` (deplace le 2026-07-12).
 
-**Dependance** : le chantier momentum (`.ai/PLAN_MATCHVIEW_MOMENTUM_2026-07.md`)
-introduit le patron « barres divergentes autour de zero ». F4 et F7 le reutilisent :
-a la 2e utilisation, extraire un wrapper generique `DivergingBarChart` dans
-`components/charts/` (regle ≤ 2 copies) — l'extraction se fait dans le PREMIER des
-deux chantiers qui atteint la 2e occurrence.
+**Revision 2026-07-23 (revue UX avec l'utilisateur)** — le chantier est recentre sur
+« rendre juste et lisible l'existant » ; les ajouts sont elagues :
+
+- **Supprimes** : F2 fatigue intra-session (biais systematique, pas du bruit : une
+  bonne session amene des adversaires plus forts en fin de soiree via le
+  matchmaking — le « decrochage » serait un artefact, et le volume ne corrige pas
+  un biais) ; F3 premier sang (causalite inversee : les equipes qui gagnent
+  prennent le premier sang parce qu'elles sont meilleures — insight illusoire, et
+  item le plus cher du lot) ; F4 part de contribution (valeur portee par le
+  narratif, chart exigeant une interaction pour livrer) ; F5 solo vs escouade
+  (aucune des deux pages n'est le bon emplacement — candidat futur chantier
+  Synthese, consigne en Decouvertes) ; F6 breakdown par mode (breakdown statique
+  sur une page dont l'objet est le temps) ; F7a delta rating (3e lecture du skill
+  sur un onglet dont la redondance est deja questionnee en C2) ; F7b bande
+  mu±sigma (contredit la regle « afficher la metrique connue de l'utilisateur —
+  LUSR/CSR oui, mu/sigma non ») ; E1/E2/E3 (form score = metrique synthetique
+  opaque recouvrant les trends existants ; stack V2 intact, DEC-7 inchangee) ;
+  D1 heatmap jour×heure (fun-fact bruite → liste cleanup).
+- **Remplace** : F1 comeback agrege (tuiles KPI abandonnees — les flags
+  remontada/debandade/contre-remontada ne sont JAMAIS produits sans timeline de
+  score, cf. `internal/analysis/comeback.go:218` : un compteur de periode serait
+  silencieusement fausse par la couverture partielle) → nouveau lot F : dominance
+  flags affiches PAR MATCH sur la `OutcomeSequenceTape` des deux pages (fiable
+  match par match, l'absence de flag ne ment pas).
+- **B6 tri des armes** : deja traite dans un chantier dedie (constat utilisateur
+  2026-07-23) → statut `[~]`.
+
+**Dependance** : OBSOLETE depuis la revision 2026-07-23 — F4 et F7 (barres
+divergentes) sont supprimes, ce plan ne reutilise plus le patron du chantier
+momentum. Aucune extraction `DivergingBarChart` a prevoir ici.
 
 ## Objectif & critere de succes
 
@@ -59,22 +84,25 @@ statue (l'entree du manifest est retiree une fois l'item valide).
 - Nemesis/rivalites sur ces pages (reste sur Career/Palmares — non demande).
 - Refonte de la definition de l'escouade (intersection sous-ensemble) : constat
   documente, pas de changement ici.
+- Tous les items supprimes par la revision 2026-07-23 (ex-F2..F7, ex-E1..E3,
+  ex-D1) — voir le bloc Revision dans le Contexte ; F5 consigne en Decouvertes
+  comme candidat futur chantier Synthese.
 
 ---
 
-## Decisions a trancher AVANT execution (DEC)
+## Decisions (DEC) — TRANCHEES le 2026-07-23 (revue UX avec l'utilisateur)
 
-| # | Question | Options | Recommandation |
-|---|---|---|---|
-| DEC-1 | Lots retenus | A+B minimum ; C/D/E/F a la carte | Tout sauf E2/E3 (voir DEC-9) |
-| DEC-2 | B2 rendement : le vrai Combat Yield remplace `TimeseriesEfficiency` ou s'affiche a cote ? | remplacer / cote a cote | Cote a cote + badge « Suppression ? » sur l'ancien (l'utilisateur tranche a l'ecran — coherent avec « rien supprimer ») |
-| DEC-3 | B3 radar : recalibrage des seuils en P80 (comme survie/impact) | oui / seuils fixes revises | Oui, P80 uniforme |
-| DEC-4 | B4 intensite : nouvelle echelle | (a) normalisation par le max GLOBAL de la periode (b) valeurs absolues + rampe `heatmap-freq-*` | (a), avec valeurs brutes au tooltip |
-| DEC-5 | Data morte backend : brancher / marquer pour suppression ulterieure (tableau lot D) | par item | Brancher la heatmap jour×heure ; le reste → liste cleanup |
-| DEC-6 | B7 reference « vs historique » (Escouade) | (a) tous les matchs du main, toutes compositions (b) statu quo + note explicative | (a) — une vraie baseline |
-| DEC-7 | Sort du stack `squad_service_v2` (garder/substituer/supprimer) | — | HORS PERIMETRE : a instruire dans un chantier dedie apres E1 |
-| DEC-8 | Outillage badges conserve apres le chantier ? | garder (manifest vide) / retirer | Garder : outil de revue reutilisable, inerte quand le manifest est vide |
-| DEC-9 | Items optionnels : E2 (impact ranking), E3 (cadence agregee), F6 (breakdown mode), F7b (bande sigma) | par item | Differer E2/E3 (densite des pages) ; inclure F6 ; F7b selon dispo de sigma (verif E/F7) |
+| # | Question | Decision |
+|---|---|---|
+| DEC-1 | Lots retenus | **A + B + C + D + F** (F redefini : dominance flags sur la tape ; E supprime) |
+| DEC-2 | B2 rendement : Combat Yield remplace `TimeseriesEfficiency` ou cote a cote ? | **Cote a cote** + badge « Suppression ? » sur l'ancien — l'utilisateur tranche a l'ecran |
+| DEC-3 | B3 radar : recalibrage des seuils | **Oui, P80 uniforme** (comme survie/impact) |
+| DEC-4 | B4 intensite : nouvelle echelle | **(a) normalisation par le max GLOBAL de la periode**, valeurs brutes au tooltip |
+| DEC-5 | Data morte backend (tableau lot D) | **Rien n'est branche** (D1 heatmap jour×heure abandonne — fun-fact bruite) ; TOUT part en liste cleanup (D2) |
+| DEC-6 | B7 reference « vs historique » (Escouade) | **(a) tous les matchs du main, toutes compositions** — une vraie baseline |
+| DEC-7 | Sort du stack `squad_service_v2` | **HORS PERIMETRE** : chantier dedie ulterieur (inchange ; E1 supprime n'y change rien) |
+| DEC-8 | Outillage badges conserve apres le chantier ? | **Garder** : outil de revue reutilisable, inerte quand le manifest est vide |
+| DEC-9 | Items optionnels E2/E3/F6/F7b | **Sans objet** : tous supprimes par la revision 2026-07-23 |
 
 ---
 
@@ -145,8 +173,9 @@ la revue du 2026-07-12 — references ci-dessous a re-confirmer).
       par legende. Verifier si `SquadSessionTimelineChart` partage le defaut
       (meme motif perf+WR+MMR) et corriger a l'identique si confirme. Badges
       `verify` (1 ou 2 selon constat).
-- [ ] B6 **Tri armes** : `SquadWeaponKillsChart` — tri DESC (plus utilisees en
-      premier). Badge `verify`.
+- [~] B6 **Tri armes** : `SquadWeaponKillsChart` — tri DESC. COUVERT AILLEURS :
+      deja traite dans un chantier dedie (constat utilisateur 2026-07-23).
+      Verification rapide en passant sur la page (pas de code ici).
 - [ ] B7 **Reference « vs historique »** (Escouade S1/S2) : appliquer DEC-6 —
       l'« historique » devient la baseline du main toutes compositions (au lieu
       du sur-ensemble de la meme composition). Backend :
@@ -171,16 +200,16 @@ Aucun changement de code hors manifest. Notes redigees en question ouverte
 
 **Gate C** : badges visibles, `make test-web` vert.
 
-## Lot D — Data morte backend : brancher ou lister, rien supprimer — ~0,5 j
+## Lot D — Data morte backend : consigner, rien brancher, rien supprimer — ~0,1 j
 
-Champs calcules et servis par `timeseries_service` que le front ignore. Decision
-par item (DEC-5) ; dans CE chantier on ne fait que brancher ce qui est retenu ;
-les suppressions validees sont CONSIGNEES (liste ci-dessous) pour un chantier
-cleanup ulterieur.
+Champs calcules et servis par `timeseries_service` que le front ignore. DEC-5
+(2026-07-23) : **rien n'est branche** — l'ex-D1 (heatmap jour×heure) est abandonne
+(fun-fact bruite, petits effectifs par case). Tout part en liste cleanup pour un
+chantier ulterieur.
 
-| Champ | Contenu | Recommandation |
+| Champ | Contenu | Decision |
 |---|---|---|
-| `intensity_tab.heatmap_data` | heatmap jour×heure (quand tu joues/gagnes) | **BRANCHER** (D1) |
+| `intensity_tab.heatmap_data` | heatmap jour×heure (quand tu joues/gagnes) | Cleanup ulterieur (ex-D1 abandonne 2026-07-23) |
 | `intensity_tab.score_per_min_data` | score/min par periode | Cleanup ulterieur |
 | `cumul_tab` | K/D cumule + rolling 5 | Cleanup ulterieur (recouvre les trends existants) |
 | `outcomes_over_time` | V/D par periode | Cleanup ulterieur (recouvre Session Perf) |
@@ -188,104 +217,70 @@ cleanup ulterieur.
 | `distributions_tab.score_per_min_buckets` | distribution score/min | Cleanup ulterieur |
 | `correlation_points` kills↔kd_ratio | scatter jamais affiche | Cleanup ulterieur |
 
-- [ ] D1 Brancher la heatmap jour×heure : nouveau chart « Activite par jour et
-      heure » (wrapper `Heatmap2DChart` existant, rampe `heatmap-freq-*` — c'est
-      une heatmap de FREQUENCE, sans jugement bien/mal), onglet Summary. i18n
-      FR+EN. Badge `new`.
-- [ ] D2 Consigner le tableau ci-dessus (avec les choix DEC-5 finaux) dans la
-      section Decouvertes de ce plan + une ligne thought_log, comme intrant du
-      futur chantier cleanup.
+- [ ] D2 Consigner le tableau ci-dessus dans la section Decouvertes de ce plan +
+      une ligne thought_log, comme intrant du futur chantier cleanup.
 
-**Gate D** : `make check-types` + `make test-web` verts ; heatmap visible avec badge.
+**Gate D** : liste consignee dans Decouvertes + thought_log (aucun code).
 
-## Lot E — Rehabilitation PRUDENTE du stack V2 — ~0,5-1 j
+## Lot E — SUPPRIME (revision 2026-07-23)
 
-Regles de prudence (remarque utilisateur : « reliquat, prudence ») :
-- On ne bascule PAS d'endpoint : les pages restent sur `POST /pages/teammates`.
-- On PORTE la logique (code Go copie/adapte AVEC ses tests) dans le service
-  `teammates` ; le code V2 d'origine n'est ni modifie ni supprime.
-- Tout calcul porte est re-verifie sur pieces et couvert par un test unitaire
-  AVANT branchement front (code jamais passe en prod = non fiable par defaut).
+Rehabilitation du stack V2 abandonnee : E1 (form score LOWESS) = metrique
+synthetique opaque pour l'utilisateur, recouvrant les trends de perf existants —
+meme famille de probleme que mu/sigma (valeur non reliee au vecu de jeu).
+E2/E3 etaient deja differes. Le stack `squad_service_v2` reste INTACT ; son sort
+= DEC-7, chantier dedie ulterieur.
 
-- [ ] E1 **Form score lisse (LOWESS)** : porter la logique de `BuildFormScore`
-      (`squad_service_v2_timeline.go`) dans `teammates` → nouveau champ
-      `form_score` de `TeammatesPageResponse` + chart ligne lissee sur l'onglet
-      Synergies (l'i18n `form_score_title` existe deja — verifier et reutiliser).
-      Test unitaire porte. Badge `new`.
-- [ ] E2 [OPTIONNEL — DEC-9, reco : differer] Impact ranking 8 roles
-      (`BuildImpactRanking`) en complement du `SquadImpactScoreboard`.
-- [ ] E3 [OPTIONNEL — DEC-9, reco : differer] Cadence agregee multi-matchs
-      (recouvrement probable avec l'intensite — a instruire seulement apres B4).
+## Lot F — Dominance flags sur la bande d'outcomes (redefini 2026-07-23) — ~0,5 j
 
-**Gate E** : `make go-api-test` + suite Go complete verts ; `make generate-types`
-+ `make check-types` + `make test-web` verts ; chart visible avec badge.
+Seul survivant des « nouveaux angles », sous une forme differente : PAS de compteur
+agrege (les flags remontada/debandade/contre-remontada ne sont jamais produits sans
+timeline de score, cf. `internal/analysis/comeback.go:218` — un agregat de periode
+serait silencieusement fausse par la couverture). Le flag s'affiche la ou il est
+fiable : SUR le match, dans la `OutcomeSequenceTape` deja rendue sur Timeseries
+(Summary) et Escouade. L'absence de marqueur = match ordinaire OU timeline absente :
+aucun mensonge, le vocabulaire (badges Career/MatchView, colonne Dominance Explorer)
+est deja connu de l'utilisateur.
 
-## Lot F — Nouveaux angles (badge `new` partout) — ~2-3 j selon DEC-9
+Reutilisation maximale (verifie sur pieces le 2026-07-23) : cles i18n
+`narrative.dominance.*` (FR+EN, manifests existants), tokens couleur
+`narrative-domination|humiliation|remontada|debandade|contre-remontada`
+(`ExplorerMatchesTable.tsx:222-235` — memes couleurs que la colonne Explorer).
 
-Reponse a « je n'arrive pas a visualiser » : chaque item specifie Donnees /
-Representation / Narratif / Emplacement. Penchant narratif assume (remarque
-utilisateur) : chaque item porte une PHRASE de synthese FR+EN en plus (ou a la
-place) d'un chart. Zero dependance a `expected_win_prob`.
+- [ ] F1a Backend : exposer `dominance_flag` dans les rows qui alimentent les deux
+      tapes (verif sur pieces des DTOs exacts : `TimeseriesMatchRow` +
+      la reponse `teammates` qui nourrit la tape Escouade). Zero nouveau calcul —
+      champ deja persiste dans `player_match_enrichment` (lecture via la vue/le
+      chemin de lecture existant du service, pas de SQL nouveau si le champ est
+      deja charge par `StatsMatchRow`).
+- [ ] F1b Modele front : `OutcomePoint` gagne un champ optionnel
+      `dominance?: 1|2|3|4|5` (`outcomeSequence.ts`) ; `toRuns` le propage tel
+      quel. Champ ABSENT chez les autres consommateurs de la tape → leur rendu
+      reste strictement identique (meme exigence de non-regression que
+      `onMatchClick`).
+- [ ] F1c Rendu (`OutcomeSequenceTape.renderItem`) : pour chaque match d'un run
+      porteur d'un flag != none, dessiner un losange ~7 px centre sur la cellule
+      du match, A L'INTERIEUR de la bande (yCenter — ne touche pas aux brackets
+      de streaks au-dessus/en-dessous), rempli du token `narrative-*` du flag,
+      lisere 1 px `CHART_BG` pour garantir la separation avec la couleur
+      d'outcome dans les deux themes. Seuil de densite : ne rendre le losange que
+      si la largeur par match >= 6 px (bande dense → le tooltip porte l'info).
+- [ ] F1d Tooltip : suffixer la ligne du match avec le libelle du flag
+      (« · Aquarius (Slayer) — Remontada »), cles `narrative.dominance.*`
+      existantes. Verifier que ces cles sont dans un manifest charge par les DEUX
+      pages (sinon les referencer depuis le manifest commun — pas de duplication
+      de strings).
+- [ ] F1e Aucune legende ajoutee (vocabulaire connu, marqueurs rares). Aucune
+      couleur nouvelle, aucun hex.
+- [ ] F1f Tests : `outcomeSequence.ts` (propagation du champ dans `toRuns`) +
+      test de rendu leger (marqueur present si flag et largeur suffisante, absent
+      sinon ; consommateur sans le champ → option identique a l'actuelle).
+- [ ] F1g Badges review : `new` sur les deux tapes (note : « dominance flags par
+      match — memes couleurs que la colonne Dominance de l'Explorer »).
 
-- [ ] F1 **Comeback agrege** (Timeseries, Summary, pres de la tape) :
-      - Donnees : `dominance_flag` (deja stocke par match dans
-        `player_match_enrichment`) → propager dans `TimeseriesMatchRow`.
-      - Representation : 3 tuiles KPI compactes « Remontadas / Debacles /
-        Dominations » (compte + % de la periode). Pas de nouveau chart.
-      - Narratif : « 4 remontadas sur la periode — tu convertis 31 % des matchs
-        mal engages. » / EN equivalent.
-- [ ] F2 **Echauffement / fatigue intra-session** (Timeseries, Progression) :
-      - Donnees : `session_label` existant + `perf_score` par match → index du
-        match dans sa session (calcul backend trivial, agregat par index).
-      - Representation : barres « perf moyenne par position dans la session »
-        (x = 1er, 2e, … 10e+ match ; y = perf moyenne ; effectif n en tooltip),
-        colorees `perf-tier-*`.
-      - Narratif : reutiliser la logique `detectSessionFatigue`
-        (`analysis/patterns/behavioral.go`) — « au-dela du 6e match d'une
-        session, ta perf chute de 12 % en moyenne ».
-- [ ] F3 **Premier sang** (Timeseries, Progression, pres de la distribution des
-      timings existante) :
-      - Donnees : ATTENTION, les `first_events` actuels = 1er kill DU JOUEUR vs
-        sa 1re mort. Le taux « premier sang du match » demande le premier kill
-        toutes equipes → agregat backend nouveau sur `highlight_events`
-        (kills synthetises inclus pour H5, cf. `applyKVSynthesisIfNeeded`).
-      - Representation : 2 tuiles KPI (« Premier sang obtenu : X % des matchs » /
-        « concede : Y % ») + barres groupees « winrate avec premier sang obtenu
-        vs concede ».
-      - Narratif : « Quand ton equipe prend le premier sang, vous gagnez 64 %
-        des matchs (contre 41 % sinon). »
-- [ ] F4 **Part de contribution dans le temps** (Escouade, Contributions) :
-      - Donnees : `performance_series` (kills/degats/perf par match × joueur,
-        deja servi) → ecart du joueur a la moyenne de l'escouade, par match.
-      - Representation : barres divergentes autour de zero par match (joueur
-        selectionnable) — reutilise le patron momentum ; 2e occurrence →
-        extraire `DivergingBarChart` (cf. Dependance en tete de plan). PAS d'aire
-        empilee 100 % (masquerait l'amplitude — defaut qu'on eradique).
-      - Narratif : « Sur les 8 derniers matchs, X a porte l'escouade 5 fois. »
-- [ ] F5 **Solo vs escouade** (Escouade, Synergies) :
-      - Donnees : flag `is_with_friends` + agregats KDA/WR/perf du main sur la
-        meme periode, calcules en deux passes (avec / sans). Petit ajout backend
-        cote `teammates` (baseline solo).
-      - Representation : barres groupees 2 series (Solo / En escouade) sur
-        3 metriques, effectifs n affiches.
-      - Narratif : « En escouade, ton KDA gagne +0,4 et ton taux de victoire
-        +9 points (n=62 vs n=141). »
-- [ ] F6 [OPTIONNEL — DEC-9, reco : inclure] **Par categorie de mode**
-      (Timeseries, Summary) : WR/KDA par `ByModeCategory`
-      (`internal/analysis/breakdown/`, deja pret) — barres groupees. Badge `new`.
-- [ ] F7 **Skill — donnees observees uniquement** (Timeseries, Progression) :
-      - F7a : barres divergentes « points de rating gagnes/perdus par match »
-        (`SkillRatingDelta`, deja stocke — a exposer dans `TimeseriesMatchRow`).
-        Badge `new`.
-      - F7b [OPTIONNEL — DEC-9] : bande d'incertitude mu±sigma sur
-        `TimeseriesSkillProgression` — SEULEMENT si sigma est disponible dans
-        `match_skill_rank_latest` sans nouveau calcul (verif sur pieces en tete
-        d'item ; sinon differer).
-      - Exclusion ferme : rien base sur `expected_win_prob` (remarque
-        utilisateur : fiabilite douteuse — reste cantonne a sa cellule).
-
-**Gate F** : memes gates que lot E + verification visuelle de chaque nouveaute
-avec badge `new` a l'ecran.
+**Gate F** : `make generate-types` (si contrat OpenAPI modifie en F1a) ;
+`make go-api-test` + `cd apps/go-api && go test ./...` si Go touche ;
+`make check-types` + `make test-web` verts ; verification visuelle des deux tapes
+avec badge `new`.
 
 ## Cloture du chantier
 
@@ -315,5 +310,19 @@ verifier).
 
 ## Decouvertes hors perimetre (a consigner, ne pas traiter)
 
-- Liste cleanup ulterieur (alimentee par DEC-5 et la tournee Z1) : (vide)
+- Liste cleanup ulterieur (DEC-5 2026-07-23 ; a completer par la tournee Z1) :
+  - `intensity_tab.heatmap_data` (heatmap jour×heure — ex-D1 abandonne)
+  - `intensity_tab.score_per_min_data`
+  - `cumul_tab` (K/D cumule + rolling 5)
+  - `outcomes_over_time`
+  - `distributions_tab.rolling_wr_buckets`
+  - `distributions_tab.score_per_min_buckets`
+  - `correlation_points` kills↔kd_ratio
+- Candidat futur chantier Synthese (consigne 2026-07-23) : **Solo vs escouade**
+  (ex-F5) — baseline KDA/WR/perf du main avec vs sans escouade (flag
+  `is_with_friends`), barres groupees avec effectifs n + phrase narrative.
+  Emplacement pressenti : page Synthese (insight de profil « toi avec/sans
+  escouade ») — ni Timeseries (objet = temps) ni Escouade (cadree sur les matchs
+  joues ensemble). Noter que B7 (baseline toutes compositions) porte deja une
+  partie de cette information cote Escouade.
 - Autres : (vide)
