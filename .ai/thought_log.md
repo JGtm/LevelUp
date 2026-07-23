@@ -135,6 +135,39 @@ since=created_at loggé), contre le bug rétroactif 181/243 d'avant. Escouade de
 dégradation capability, pool éphémère assumé, i18n manifests, renommage éventuel).
 
 ---
+## [2026-07-23] PLAN_SQUAD_CHALLENGES — Lot 5 (multi-titre + finitions) CLÔTURÉ + livraison
+
+**Statut** : Complété (5.1/5.2 faits, 5.3/5.4 différés justifiés). Plan COMPLET.
+Branche `fix/squad-challenges-workflow`, 5 commits + refactor.
+
+**Décision technique principale** : dégradation halo_5 **title-agnostic** (aucun `slug ==`,
+ratchet respecté) — catalogue vide → `RefreshSquadPool` renvoie un pool VIDE (200, `[]`)
+au lieu d'un 500 masqué, loggé pour distinguer d'un bug de seed prod. Corrige aussi le
+risque catalogue de la Découverte D1. 5.2 : pool éphémère assumé (légende cumulative du
+Lot 4.3 documente). 5.3 (i18n manifests) et 5.4 (renommage « Cap d'escouade ») différés :
+polish P3 / décision utilisateur — justifiés dans le plan (SquadFocusStrip = seul composant
+à STRINGS local, préexistant, parité FR/EN déjà OK ; fonctions d'interpolation mappent mal
+au manifest ; renommage = préférence nommage à trancher).
+
+**Refactor delivery-checklist §5** : 2 fichiers ayant FRANCHI 500 L par le chantier scindés :
+`SquadFocusStrip.tsx` (597→240) → +`squadFocusStrings.ts`(115) +`SquadObjectivesPanel.tsx`(267) ;
+`service_arcs_squads.go` (535→298) → +`service_squad_challenges.go`(248). Tous <500.
+
+**Résultats observés** : go build/vet OK ; **intégration `-tags=integration -p 1`** sur
+persist/sync/migration/prestige/api = 0 FAIL (gate anti-ART obligatoire, sérialisé) ;
+go-api-test (domain/analysis/contract) vert ; tsc --force + eslint + vitest (316 tests
+squad+paths) verts. Vérifié LIVE : halo_5 pool vide 200. Aucun résidu de test (0 escouade).
+
+**Livraison** : 5 commits sur la branche (Lot 1 doc → Lot 5 + refactor). NON poussé (push
+main = deploy prod auto — attend feu vert utilisateur). Reste à faire par l'utilisateur :
+revue VISUELLE navigateur du parcours ; arbitrage 5.3 (i18n) / 5.4 (renommage) ; le cas
+échéant, vérif de la cause racine prod du 500 (Lot 1, commandes fournies) si réapparaît.
+
+**Conclusion / prochaine étape** : plan complet, workflow défis d'escouade fonctionnel de
+bout en bout (create→pool→create challenge→join→evaluate→abandon, cycle de vie + éval
+honnête). En attente : feu vert push utilisateur + revue visuelle + arbitrage polish.
+
+---
 ## [2026-07-23] Réintégration + validation des 4 retouches FDA gap sur origin/main
 
 **Statut** : Complété. Branche `integrate/fda-gap-followups` rebasée sur `origin/main`
