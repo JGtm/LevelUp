@@ -24,13 +24,13 @@ import {
 } from '@/features/prestige/hooks/useSquads'
 import type { Squad, SquadWithMembers } from '@/lib/prestige'
 import { findSquadByRoster } from './squadRoster'
-import { SQUAD_FOCUS_STRINGS, type SquadFocusText } from './squadFocusStrings'
+import { getSquadFocusText, type SquadFocusText } from './squadFocusStrings'
 import { SquadObjectivesPanel } from './SquadObjectivesPanel'
 
 export function SquadFocusStrip() {
   const { selectedRows, playerSlug } = useSquadContext()
   const locale = useAppShellStore((s) => s.locale)
-  const t = SQUAD_FOCUS_STRINGS[locale === 'en' ? 'en' : 'fr']
+  const t = getSquadFocusText(locale)
   const [open, setOpen] = useState(false)
 
   const selectionXuids = useMemo(

@@ -466,3 +466,185 @@ en = "Player: {gamertag}"
 [squad.v2.section_outcome_sequence]
 fr = "Séquence des matchs"
 en = "Match sequence"
+
+# ─── Cap/Objectifs d'escouade : bandeau prospectif + panneau défis (Lot 5.3) ──
+
+[squad.focus.title]
+fr = "Objectifs d'escouade"
+en = "Squad objectives"
+
+[squad.focus.saved]
+fr = "Escouade « {name} »"
+en = "Squad “{name}”"
+
+[squad.focus.manage]
+fr = "Gérer"
+en = "Manage"
+
+[squad.focus.hide]
+fr = "Masquer"
+en = "Hide"
+
+[squad.focus.save_cta]
+fr = "Enregistrer cette compo comme escouade"
+en = "Save this lineup as a squad"
+
+[squad.focus.saving]
+fr = "Enregistrement…"
+en = "Saving…"
+
+[squad.focus.save_success]
+fr = "Escouade enregistrée"
+en = "Squad saved"
+
+[squad.focus.save_error]
+fr = "Échec de l'enregistrement"
+en = "Save failed"
+
+[squad.focus.rename_cta]
+fr = "Renommer"
+en = "Rename"
+
+[squad.focus.delete_cta]
+fr = "Supprimer"
+en = "Delete"
+
+[squad.focus.confirm_delete]
+fr = "Confirmer ?"
+en = "Confirm?"
+
+[squad.focus.ok]
+fr = "OK"
+en = "OK"
+
+[squad.focus.renamed]
+fr = "Escouade renommée"
+en = "Squad renamed"
+
+[squad.focus.deleted]
+fr = "Escouade supprimée"
+en = "Squad deleted"
+
+[squad.focus.no_objectives]
+fr = "Aucun objectif actif pour cette escouade."
+en = "No active objective for this squad."
+
+[squad.focus.join]
+fr = "Rejoindre"
+en = "Join"
+
+[squad.focus.joined]
+fr = "Rejoint"
+en = "Joined"
+
+[squad.focus.joined_toast]
+fr = "Défi rejoint"
+en = "Challenge joined"
+
+[squad.focus.join_error]
+fr = "Impossible de rejoindre le défi"
+en = "Could not join the challenge"
+
+[squad.focus.evaluate]
+fr = "Réévaluer"
+en = "Re-evaluate"
+
+[squad.focus.evaluated]
+fr = "Progression recalculée"
+en = "Progress recalculated"
+
+[squad.focus.eval_error]
+fr = "Échec du recalcul"
+en = "Recalculation failed"
+
+[squad.focus.created]
+fr = "Défi créé"
+en = "Challenge created"
+
+[squad.focus.create_error]
+fr = "Échec de la création du défi"
+en = "Failed to create challenge"
+
+[squad.focus.challenge_deleted]
+fr = "Défi supprimé"
+en = "Challenge deleted"
+
+[squad.focus.challenge_delete_error]
+fr = "Échec de la suppression du défi"
+en = "Failed to delete challenge"
+
+[squad.focus.reached]
+fr = "Atteint"
+en = "Reached"
+
+[squad.focus.expired]
+fr = "Expiré"
+en = "Expired"
+
+[squad.focus.target]
+fr = "Cible {n, number} / membre"
+en = "Target {n, number} / member"
+
+[squad.focus.matches_n]
+fr = "{n, plural, one {# match} other {# matchs}}"
+en = "{n, plural, one {# match} other {# matches}}"
+
+[squad.focus.challenge]
+fr = "Défi"
+en = "Challenge"
+
+[squad.focus.propose]
+fr = "Proposer des défis"
+en = "Suggest challenges"
+
+[squad.focus.proposing]
+fr = "Génération…"
+en = "Generating…"
+
+[squad.focus.create]
+fr = "Créer"
+en = "Create"
+
+[squad.focus.creating]
+fr = "Création…"
+en = "Creating…"
+
+[squad.focus.pool_empty]
+fr = "Aucun défi proposé."
+en = "No challenge suggested."
+
+[squad.focus.pool_caption]
+fr = "Défi collectif : chaque membre cumule la métrique jusqu’à la cible, sur les matchs de l’escouade postérieurs à la création."
+en = "Team challenge: each member accumulates the metric toward the target, over squad matches after creation."
+
+[squad.focus.pool_error]
+fr = "Échec de la génération des défis"
+en = "Failed to generate challenges"
+
+[squad.focus.orientation]
+fr = "Axe à renforcer : {axis}"
+en = "Focus to improve: {axis}"
+
+[squad.focus.axis_combat]
+fr = "Combat"
+en = "Combat"
+
+[squad.focus.axis_survival]
+fr = "Survie"
+en = "Survival"
+
+[squad.focus.axis_support]
+fr = "Support"
+en = "Support"
+
+[squad.focus.axis_score]
+fr = "Score"
+en = "Score"
+
+[squad.focus.axis_objective]
+fr = "Objectif"
+en = "Objective"
+
+[squad.focus.axis_impact]
+fr = "Impact"
+en = "Impact"

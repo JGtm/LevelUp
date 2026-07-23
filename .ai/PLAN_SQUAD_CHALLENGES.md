@@ -206,18 +206,19 @@ garantie que `RenameSquad`). Migration additive `add_archived_at_to_squad_challe
 - [x] 5.2 Pool éphémère assumé : la légende cumulative (Lot 4.3) documente le
       comportement ; le pool reste re-générable (mutation). Persistance partagée = backlog
       (§ Hors périmètre).
-- [!] 5.3 i18n manifests — **DIFFÉRÉ** (justification) : `SquadFocusStrip` est le SEUL
-      composant de `features/` avec un `const STRINGS` local ; il PRÉEXISTE (je n'ai
-      qu'étendu). Il satisfait DÉJÀ la parité FR/EN par typage (exigence CLAUDE.md règle 1).
-      La migration vers `squad/i18n.ts` (`SquadText`) est non triviale : ~35 chaînes dont
-      plusieurs FONCTIONS d'interpolation (`target(n)`, `objectives(n)`, `orientation(axis)`,
-      `matchesN(n)`, `saved(name)`) + `axisLabels` imbriqués, que le système manifest gère
-      mal. = refactor mécanique autonome, hors « rendre le workflow fonctionnel ». À
-      planifier séparément avec l'utilisateur.
-- [!] 5.4 Renommage « Cap d'escouade » — **DIFFÉRÉ** : décision de nommage utilisateur
-      (l'utilisateur avait justement demandé « c'est quoi cap ? »). Candidats proposés :
-      « Objectifs d'escouade », « Cap de l'escouade ». À trancher avec l'utilisateur ; à
-      faire AVANT 5.3 pour ne migrer les strings qu'une fois.
+- [x] 5.3 i18n manifests — **FAIT** (validé utilisateur 2026-07-23). ~40 clés migrées de
+      `squadFocusStrings.ts` (objet local FR/EN) vers `lib/i18n/manifests/squad.toml`
+      namespace `[squad.focus.*]` (source unique, parité vérifiée au build manifest, ADR
+      0003). Interpolation ICU : `{name}`, `{n, number}`, `{axis}`, plural
+      `{n, plural, one {# match} other {# matchs}}`. `squadFocusStrings.ts` devient un
+      adaptateur `getSquadFocusText(locale)` qui résout via `formatMessage(squadManifest,…)`
+      en gardant l'ergonomie `t.xxx` / `t.target(n)` des composants (zéro littéral en dur).
+      Manifest régénéré (`build_i18n_manifests.mjs`, déterministe) + `generated/squad.ts`
+      versionné. tsc --force + eslint + vitest (289 tests squad+i18n) verts.
+- [x] 5.4 Renommage — **FAIT** (validé utilisateur) : « Cap d'escouade » → « Objectifs
+      d'escouade » (EN « Squad focus » → « Squad objectives »), dans le manifest
+      `squad.focus.title`. Fait dans le même commit que 5.3 (migration i18n) pour ne
+      toucher les libellés qu'une fois.
 
 ---
 
