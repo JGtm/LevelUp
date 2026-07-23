@@ -239,7 +239,10 @@ export const queryKeys = {
   adminWeaponCoverage: (slug: string) => ['admin', 'monitoring', 'weapon-coverage', slug] as const,
   adminLusrGaps: (slug: string) => ['admin', 'monitoring', 'lusr-gaps', slug] as const,
   adminDataQuality: ['admin', 'data-quality', 'counts'] as const,
-  adminDataQualityIssues: (kind: string) => ['admin', 'data-quality', 'issues', kind] as const,
+  // limit/offset dans la clé : la pagination serveur des xuids orphelins met
+  // chaque page en cache distincte (les autres kinds gardent limit=50/offset=0).
+  adminDataQualityIssues: (kind: string, limit = 50, offset = 0) =>
+    ['admin', 'data-quality', 'issues', kind, limit, offset] as const,
   adminLogModules: ['admin', 'logs', 'modules'] as const,
   adminLogTail: (module: string, level: string, contains: string, limit: number) =>
     ['admin', 'logs', 'tail', module, level, contains, limit] as const,

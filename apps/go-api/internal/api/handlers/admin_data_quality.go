@@ -36,7 +36,7 @@ import (
 // Runners injectés (implémentés par ServiceRegistry).
 type (
 	DataQualityCountsRunner func(ctx context.Context, titleSlug string) (domain.AdminDataQualityCounts, error)
-	DataQualityIssuesRunner func(ctx context.Context, titleSlug, kind string, limit int) (domain.AdminDataQualityIssues, error)
+	DataQualityIssuesRunner func(ctx context.Context, titleSlug, kind string, limit, offset int) (domain.AdminDataQualityIssues, error)
 	RegistryNamesRunner     func(ctx context.Context, titleSlug string, dryRun bool) (domain.RegistryNamesBackfillResult, error)
 	ModeTranslationRunner   func(ctx context.Context, titleSlug, modeEN, nameFR string) (domain.ResolveResult, error)
 	AssetTranslationRunner  func(ctx context.Context, titleSlug string, req domain.AssetTranslationRequest) (domain.ResolveResult, error)
@@ -106,13 +106,15 @@ type dqTitleInput struct {
 	Title string `query:"title"`
 }
 
-// dqIssuesInput : ?title=&kind=&limit= — limit pris en STRING pour reproduire le
-// contrat d'origine (limit non numérique ou <=0 ignoré, défaut 50, clamp 500),
-// PAS le 422 de validation Huma qu'un `int` produirait.
+// dqIssuesInput : ?title=&kind=&limit=&offset= — limit/offset pris en STRING pour
+// reproduire le contrat d'origine (valeur non numérique ou <=0 ignorée : limit
+// défaut 50 / clamp 500, offset défaut 0), PAS le 422 de validation Huma qu'un
+// `int` produirait. offset rétrocompatible : absent → 0 (première page).
 type dqIssuesInput struct {
-	Title string `query:"title"`
-	Kind  string `query:"kind"`
-	Limit string `query:"limit"`
+	Title  string `query:"title"`
+	Kind   string `query:"kind"`
+	Limit  string `query:"limit"`
+	Offset string `query:"offset"`
 }
 
 // dqDryRunInput : ?title= + corps OPTIONNEL {dry_run} décodé maison (corps absent
@@ -212,8 +214,14 @@ func (h *AdminDataQualityHandler) handleGetIssues(ctx context.Context, in *dqIss
 	if limit > 500 {
 		limit = 500
 	}
+	offset := 0
+	if in.Offset != "" {
+		if o, err := strconv.Atoi(in.Offset); err == nil && o > 0 {
+			offset = o
+		}
+	}
 	titleSlug := titleOrDefaultSlug(in.Title)
-	resp, err := h.issues(ctx, titleSlug, in.Kind, limit)
+	resp, err := h.issues(ctx, titleSlug, in.Kind, limit, offset)
 	if err != nil {
 		slog.ErrorContext(ctx, "admin_data_quality: issues failed",
 			"title", titleSlug, "kind", in.Kind, "err", err)

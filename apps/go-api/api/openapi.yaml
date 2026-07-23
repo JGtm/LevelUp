@@ -2092,8 +2092,13 @@ paths:
           in: query
           required: false
           schema: { type: integer, maximum: 500 }
+        - name: offset
+          in: query
+          required: false
+          description: "Décalage de pagination serveur (défaut 0, rétrocompatible)."
+          schema: { type: integer, minimum: 0 }
       responses:
-        "200": { description: "Lignes détaillées, les plus fréquentes d'abord" }
+        "200": { description: "Fenêtre paginée [offset, offset+limit) + total (avant fenêtrage)" }
         "400": { description: "kind invalide" }
 
   /admin/actions/registry-names/backfill:
@@ -2316,8 +2321,13 @@ paths:
           in: query
           required: false
           schema: { type: string, format: date-time }
+        - name: before
+          in: query
+          required: false
+          description: "Curseur arrière « charger plus » (offset octet renvoyé en next_offset) — charge la tranche strictement plus ancienne."
+          schema: { type: integer, format: int64, minimum: 0 }
       responses:
-        "200": { description: "Entrées parsées (plus récentes d'abord) + truncated" }
+        "200": { description: "Entrées parsées (plus récentes d'abord) + truncated + curseur next_offset/has_more" }
         "400": { description: "Module invalide" }
 
   # Assets (image serving)
@@ -7603,11 +7613,15 @@ components:
               type: string
           title_slug:
               type: string
+          total:
+              format: int64
+              type: integer
       required:
           - title_slug
           - generated_at
           - kind
           - items
+          - total
       type: object
     AdminErrorBucket:
       additionalProperties: false
@@ -7824,6 +7838,10 @@ components:
                   $ref: '#/components/schemas/ResourceDBFile'
               nullable: true
               type: array
+          db_inventory_status:
+              type: string
+              enum: [ok, unavailable]
+              description: "ok = racine data lisible ; unavailable = racine data introuvable/illisible (RepoRoot mal résolu, volume non monté) — inventaire non mesurable, distinct de « aucune base »."
           db_total_bytes:
               format: int64
               type: integer
@@ -7850,6 +7868,7 @@ components:
           - disk
           - databases
           - db_total_bytes
+          - db_inventory_status
       type: object
     ResourceDBFile:
       additionalProperties: false
@@ -8129,8 +8148,13 @@ components:
               nullable: true
           generated_at:
               type: string
+          has_more:
+              type: boolean
           module:
               type: string
+          next_offset:
+              format: int64
+              type: integer
           scanned_bytes:
               format: int64
               type: integer
@@ -8142,6 +8166,7 @@ components:
           - entries
           - scanned_bytes
           - truncated
+          - has_more
       type: object
     AdminLUSRGaps:
       additionalProperties: false

@@ -253,11 +253,20 @@ export function OrphanPlaylistsSection() {
   )
 }
 
-// ─── XUIDs orphelins (lecture seule) ──────────────────────────────────────────
+// ─── XUIDs orphelins (lecture seule, liste longue → pagination serveur) ────────
+
+const ORPHAN_XUIDS_PAGE_SIZE = 25
 
 export function OrphanXuidsSection() {
   const tA = useAdminT()
-  const { data } = useDataQualityIssues('orphan_xuids')
+  const [pageIndex, setPageIndex] = useState(0)
+  // Pagination serveur : la fenêtre [offset, offset+limit) est calculée côté Go
+  // (limit/offset) et le total pilote le nombre de pages TanStack (règle 13).
+  const { data } = useDataQualityIssues(
+    'orphan_xuids',
+    ORPHAN_XUIDS_PAGE_SIZE,
+    pageIndex * ORPHAN_XUIDS_PAGE_SIZE,
+  )
 
   const columns: IssueColumn[] = [
     {
@@ -273,9 +282,18 @@ export function OrphanXuidsSection() {
       kind="orphan_xuids"
       emptyTitle={tA('admin.dq.orphan_xuids_empty_title')}
       emptyDesc={tA('admin.dq.orphan_xuids_empty_desc')}
-      count={data?.items?.length}
+      count={data?.total}
     >
-      <IssueTable issues={data?.items ?? []} columns={columns} />
+      <IssueTable
+        issues={data?.items ?? []}
+        columns={columns}
+        pagination={{
+          pageIndex,
+          pageSize: ORPHAN_XUIDS_PAGE_SIZE,
+          total: data?.total ?? 0,
+          onPageChange: setPageIndex,
+        }}
+      />
     </SectionShell>
   )
 }

@@ -427,6 +427,15 @@ func (p *PathResolver) RepoRoot() string {
 
 // --- Chemins title-aware ---
 
+// TitlesRootDir retourne la racine commune des données par titre (le volume
+// data monté). Existe pour sonder que la racine de données est bien présente/
+// lisible (diagnostic d'inventaire des bases : distinguer « racine data
+// introuvable » — RepoRoot mal résolu / volume non monté — de « aucune base »).
+// Ex: data/titles/
+func (p *PathResolver) TitlesRootDir() string {
+	return filepath.Join(p.repoRoot, "data", "titles")
+}
+
 // TitleDataDir retourne le répertoire racine des données d'un titre.
 // Ex: data/titles/halo_infinite/
 func (p *PathResolver) TitleDataDir(titleSlug string) string {

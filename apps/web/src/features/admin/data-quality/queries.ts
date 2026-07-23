@@ -3,7 +3,7 @@
  * Pas de polling continu : staleTime 60 s + refetch au focus + invalidation
  * après chaque action de résolution.
  */
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
@@ -22,14 +22,17 @@ export function useDataQualityCounts() {
   })
 }
 
-export function useDataQualityIssues(kind: DataQualityIssueKind, limit = 50) {
+export function useDataQualityIssues(kind: DataQualityIssueKind, limit = 50, offset = 0) {
   return useQuery({
-    queryKey: queryKeys.adminDataQualityIssues(kind),
+    queryKey: queryKeys.adminDataQualityIssues(kind, limit, offset),
     queryFn: () =>
       api.get<AdminDataQualityIssues>(
-        `/admin/monitoring/data-quality/issues?kind=${kind}&limit=${limit}`,
+        `/admin/monitoring/data-quality/issues?kind=${kind}&limit=${limit}&offset=${offset}`,
       ),
     staleTime: 60_000,
     retry: false,
+    // Pagination serveur : garder la page précédente affichée le temps du fetch
+    // de la suivante (pas de flash de table vide entre deux pages).
+    placeholderData: keepPreviousData,
   })
 }

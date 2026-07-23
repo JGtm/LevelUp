@@ -300,6 +300,14 @@ en = "WAL"
 fr = "Total"
 en = "Total"
 
+[admin.resources.inventory_unavailable_title]
+fr = "Inventaire des bases indisponible"
+en = "Database inventory unavailable"
+
+[admin.resources.inventory_unavailable_desc]
+fr = "La racine des données est introuvable ou illisible (chemin du dépôt mal résolu ou volume non monté). Vérifier LEVELUP_REPO_ROOT et les permissions du volume data — distinct d'une absence de base."
+en = "The data root is missing or unreadable (repo path misresolved or volume not mounted). Check LEVELUP_REPO_ROOT and the data volume permissions — distinct from having no database."
+
 [admin.resources.budgets]
 fr = "Budgets DuckDB"
 en = "DuckDB budgets"
@@ -526,8 +534,16 @@ fr = "Aucune ligne ne correspond aux filtres dans la fenêtre scannée."
 en = "No line matches the filters within the scanned window."
 
 [admin.logs.truncated]
-fr = "Fenêtre de scan atteinte (8 Mio) — affiner les filtres pour voir plus ancien."
-en = "Scan window reached (8 MiB) — narrow the filters to see older lines."
+fr = "Fenêtre de scan atteinte (8 Mio) — « Charger plus » poursuit vers les lignes plus anciennes, ou affiner les filtres."
+en = "Scan window reached (8 MiB) — “Load more” continues into older lines, or narrow the filters."
+
+[admin.logs.load_more]
+fr = "Charger plus (plus ancien)"
+en = "Load more (older)"
+
+[admin.logs.load_more_busy]
+fr = "Chargement…"
+en = "Loading…"
 
 [admin.logs.raw]
 fr = "Détail"
@@ -1172,6 +1188,18 @@ en = "All participants have a gamertag alias. PSA convergence resorbs this backl
 [admin.dq.orphan_xuids_hint]
 fr = "Résolution automatique au prochain cycle de convergence PSA (coût API nul). Pour forcer la résolution immédiate, lancer une convergence joueur."
 en = "Resolved automatically at the next PSA convergence cycle (zero API cost). To force immediate resolution, run a player convergence."
+
+[admin.dq.pagination_total]
+fr = "Total"
+en = "Total"
+
+[admin.dq.pagination_prev]
+fr = "Page précédente"
+en = "Previous page"
+
+[admin.dq.pagination_next]
+fr = "Page suivante"
+en = "Next page"
 
 [admin.dq.col_asset_kind]
 fr = "Type"

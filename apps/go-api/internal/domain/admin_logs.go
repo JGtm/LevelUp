@@ -40,4 +40,11 @@ type AdminLogTail struct {
 	// Truncated : budget de scan épuisé — des lignes plus anciennes
 	// correspondant aux filtres existent peut-être.
 	Truncated bool `json:"truncated"`
+	// NextOffset : curseur « charger plus » (offset octet du début de la ligne
+	// la plus ancienne renvoyée) — à repasser en ?before= pour la tranche
+	// suivante, plus ancienne.
+	NextOffset int64 `json:"next_offset,omitempty"`
+	// HasMore : des lignes plus anciennes restent à charger au-delà de
+	// NextOffset (curseur arrière disponible).
+	HasMore bool `json:"has_more"`
 }

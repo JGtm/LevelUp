@@ -232,14 +232,19 @@ sans dérive.
       exécution : … » sous chaque bouton (les horodatages in-memory existants — audit
       data, cycle sync — basculent sur ce journal pour survivre au reboot).
       (C2 statué [x] avec C1 — sous-lot C-I, voir journal.)
-- [ ] C3. XUIDs orphelins : (a) alimenter « Vu pour la dernière fois » côté Go (dernier
+- [x] C3. XUIDs orphelins : (a) alimenter « Vu pour la dernière fois » côté Go (dernier
       match du xuid dans le registry) — aujourd'hui toujours « - » ; (b) pagination
       serveur (limit/offset sur l'endpoint issues) + pagination TanStack côté front.
-- [ ] C4. Logs bruts : « Charger plus » (curseur arrière sur le tail) en plus du
+- [x] C4. Logs bruts : « Charger plus » (curseur arrière sur le tail) en plus du
       sélecteur 50/200/500 ; conserver la troncature 8 Mio.
-- [ ] C5. Tailles DBs/WAL : diagnostiquer pourquoi `databases[]` de
+- [x] C5. Tailles DBs/WAL : diagnostiquer pourquoi `databases[]` de
       `/admin/monitoring/resources` n'affiche rien chez l'utilisateur (réponse vide ?
       chemins ? rendu conditionnel ?) et corriger — la table front existe déjà.
+      (VERDICT : liste jamais vide par construction ; cause probable = RepoRoot mal
+      résolu en prod → os.Stat ENOENT avalé → tailles nulles. Durci : sonde de la
+      racine data → statut `db_inventory_status=unavailable` + log ERROR + état UI
+      explicite ; erreurs stat non-ENOENT logguées. À CONFIRMER en prod au moment du
+      déploiement : vérifier `LEVELUP_REPO_ROOT` du process serveur.)
 - [ ] C6. Couverture résolution d'arme (H5) : extraire les `effective_weapon_id` classés
       inconnus sur les données réelles ; trancher : compléter le registre metadata H5 /
       corriger la jointure / documenter la cause légitime (ex. kills sans source de
@@ -444,6 +449,28 @@ inattendu.
   (surtout la dominante), pas un bug de plomberie.
 
 ## Journal d'exécution
+
+### [2026-07-23] Sous-lot C-II (C3+C4+C5) — CLOS (agent Opus + revue orchestrateur)
+
+- C3 : last-seen des xuids orphelins par jointure `match_registry` +
+  `MAX(SQLStartTimeCanonical("r"))` (fragment partagé, règle n°8) ; pagination serveur
+  `limit/offset/total` rétrocompatible (`windowIssues`, jamais nil) ; front pagination
+  TanStack `manualPagination` (pied de page piloté par le total, kinds sans pagination
+  inchangés).
+- C4 : curseur arrière = offset octet absolu (`BeforeOffset` exclusif, `NextOffset` =
+  début de la ligne la plus ancienne, `HasMore`) ; franchit le budget 8 Mio page par
+  page ; front `useInfiniteQuery` + garde anti-boucle (`nextLogCursor` pur, testé).
+- C5 : VERDICT documenté au statut de l'item (RepoRoot / stat avalé) + durcissement
+  livré (`db_inventory_status`, sonde racine data, logs structurés, EmptyState
+  explicite).
+- Déviation acceptée : +1 warning eslint (React Compiler skip sur `useReactTable`,
+  inhérent au pattern TanStack prescrit par la règle 13, identique aux 7 tables
+  existantes).
+- Gate re-exécuté par l'orchestrateur : go test ops/api/domain exit 0, go vet 0,
+  tsc 0, eslint 0 erreur, vitest 299 fichiers / 2632 passés ; matrice navigateur 9/9
+  (pagination 1/6→2/6 avec offset émis, « Charger plus » concatène + before= émis,
+  inventaire indisponible explicite — nouvelles surfaces stubées, chemin Go couvert
+  par tests).
 
 ### [2026-07-23] Sous-lot C-I (C1+C2) — CLOS (agent Opus + revue orchestrateur)
 
