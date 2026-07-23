@@ -10,13 +10,14 @@
  */
 import { test, expect } from '@playwright/test'
 import { skipIfNoDemoData } from './_helpers/demoData'
+import { playerPath } from './_helpers/routes'
 
 test.describe('Slice 6 — Escouade / Teammates (DEMO_MODE)', () => {
   test("la page Escouade se charge sans erreur JS", async ({ page }) => {
     const errors: string[] = []
     page.on('pageerror', (err) => errors.push(err.message))
 
-    await page.goto('/players/demo-player/squad')
+    await page.goto(playerPath('demo-player', 'squad'))
     await page.waitForLoadState('networkidle')
 
     expect(
@@ -31,7 +32,7 @@ test.describe('Slice 6 — Escouade / Teammates (DEMO_MODE)', () => {
         resp.url().includes('/pages/teammates') && resp.status() === 200,
     )
 
-    await page.goto('/players/demo-player/squad')
+    await page.goto(playerPath('demo-player', 'squad'))
     const resp = await squadPromise
     const data = await resp.json()
 
@@ -40,14 +41,14 @@ test.describe('Slice 6 — Escouade / Teammates (DEMO_MODE)', () => {
 
   test("le titre Escouade est affiché", async ({ page }) => {
     await skipIfNoDemoData()
-    await page.goto('/players/demo-player/squad')
+    await page.goto(playerPath('demo-player', 'squad'))
     await page.waitForLoadState('networkidle')
 
     await expect(page.locator('body')).toContainText('Escouade')
   })
 
   test("la page ne contient pas d'erreur fatale", async ({ page }) => {
-    await page.goto('/players/demo-player/squad')
+    await page.goto(playerPath('demo-player', 'squad'))
     await page.waitForLoadState('networkidle')
 
     await expect(page.locator('body')).not.toContainText('Erreur critique')

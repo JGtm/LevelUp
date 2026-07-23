@@ -22,13 +22,14 @@
  */
 import { test, expect } from '@playwright/test'
 import { skipIfNoDemoData, skipRequiresRealPlayer } from './_helpers/demoData'
+import { playerPath } from './_helpers/routes'
 
 const PLAYER_SLUG = 'JGtm'
 const TEAMMATES = ['Madina97294', 'Chocoboflor']
 
 test.describe('Theme switch — charts ECharts suivent le thème (pilote)', () => {
   test('CSS vars sémantiques diffèrent entre dark et light', async ({ page }) => {
-    await page.goto(`/players/${PLAYER_SLUG}`)
+    await page.goto(playerPath(PLAYER_SLUG))
 
     // S'assurer qu'un thème initial est positionné
     await page.waitForFunction(() =>
@@ -85,7 +86,7 @@ test.describe('Theme switch — charts ECharts suivent le thème (pilote)', () =
     const errors: string[] = []
     page.on('pageerror', (err) => errors.push(err.message))
 
-    await page.goto(`/players/${PLAYER_SLUG}/squad/synergies`)
+    await page.goto(playerPath(PLAYER_SLUG, 'squad/synergies'))
     await page.waitForLoadState('networkidle')
 
     // Le wrapper porte data-testid="squad-synergy-radar" depuis Phase 5c.

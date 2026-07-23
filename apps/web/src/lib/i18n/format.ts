@@ -19,9 +19,10 @@
  *   // -> "1 match"
  */
 import { IntlMessageFormat } from 'intl-messageformat'
+import type { Locale } from '@/lib/i18n/locale'
 
-/** Locales supportees par les manifests. Aligne avec FieldMappingLocale. */
-export type ManifestLocale = 'fr' | 'en'
+/** Locales supportees par les manifests. Alias du type central `Locale` (lib/i18n/locale). */
+export type ManifestLocale = Locale
 
 /**
  * Forme generique d'un manifest genere : map<key, {fr, en}>.

@@ -6,6 +6,7 @@
  */
 import { test, expect } from '@playwright/test'
 import { skipIfNoDemoData } from './_helpers/demoData'
+import { playerPath } from './_helpers/routes'
 
 // Fixtures démo absentes en CI (data/demo gitignoré) → spec entière data-dépendante.
 test.beforeEach(async () => {
@@ -99,7 +100,7 @@ test.describe('Compare — barres composites', () => {
   })
 
   test('les barres composites ont un style linear-gradient', async ({ page }) => {
-    await page.goto(`/players/${PLAYER_SLUG}/compare?target=${TARGET}`)
+    await page.goto(playerPath(PLAYER_SLUG, `compare?target=${TARGET}`))
     await page.waitForLoadState('networkidle')
 
     await expect(page.locator('text=DemoPlayer').first()).toBeVisible({ timeout: 10_000 })

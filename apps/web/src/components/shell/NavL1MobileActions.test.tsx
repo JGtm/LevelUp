@@ -39,7 +39,7 @@ const SETTINGS_TABS: SettingsTabItem[] = [
   { key: 'analyse', label: 'Analyse', tab: 'analyse' },
 ]
 
-function setup(pathname = '/players/test-player/home') {
+function setup(pathname = '/t/halo_infinite/players/test-player/home') {
   return renderWithProviders(<NavL1MobileActions settingsTabs={SETTINGS_TABS} pathname={pathname} isAdmin={false} />)
 }
 

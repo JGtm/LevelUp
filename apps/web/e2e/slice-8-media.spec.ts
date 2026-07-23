@@ -10,6 +10,7 @@
  */
 import { test, expect } from '@playwright/test'
 import { skipIfNoDemoData } from './_helpers/demoData'
+import { playerPath } from './_helpers/routes'
 
 const API_BASE = 'http://localhost:8000/api/v1'
 
@@ -18,7 +19,7 @@ test.describe('Slice 8 — Médias (DEMO_MODE)', () => {
     const errors: string[] = []
     page.on('pageerror', (err) => errors.push(err.message))
 
-    await page.goto('/players/demo-player/media')
+    await page.goto(playerPath('demo-player', 'media'))
     await page.waitForLoadState('networkidle')
 
     expect(
@@ -40,14 +41,14 @@ test.describe('Slice 8 — Médias (DEMO_MODE)', () => {
 
   test("le titre Médias est affiché", async ({ page }) => {
     await skipIfNoDemoData()
-    await page.goto('/players/demo-player/media')
+    await page.goto(playerPath('demo-player', 'media'))
     await page.waitForLoadState('networkidle')
 
     await expect(page.locator('body')).toContainText('Médias')
   })
 
   test("la page Médias ne contient pas d'erreur fatale", async ({ page }) => {
-    await page.goto('/players/demo-player/media')
+    await page.goto(playerPath('demo-player', 'media'))
     await page.waitForLoadState('networkidle')
 
     await expect(page.locator('body')).not.toContainText('Internal Server Error')

@@ -15,6 +15,7 @@
  */
 import { test, expect } from '@playwright/test'
 import { skipIfNoDemoData, skipRequiresRealPlayer } from './_helpers/demoData'
+import { playerPath } from './_helpers/routes'
 
 // Vise JGtm + coéquipiers NOMMÉS (Madina97294, Chocoboflor) avec synergies calculées
 // sur matchs communs réels — non reproductible par une fixture synthétique (le radar
@@ -76,7 +77,7 @@ test.describe('Escouade — graphes rendus pour des coéquipiers existants', () 
     const errors: string[] = []
     page.on('pageerror', (err) => errors.push(err.message))
 
-    await page.goto(`/players/${PLAYER_SLUG}/squad/synergies`)
+    await page.goto(playerPath(PLAYER_SLUG, 'squad/synergies'))
     await page.waitForLoadState('networkidle')
 
     // 1. Le KPI block "Synergies avec les coéquipiers sélectionnés"
@@ -122,7 +123,7 @@ test.describe('Escouade — graphes rendus pour des coéquipiers existants', () 
       },
       { slug: PLAYER_SLUG, gamertags: TEAMMATES },
     )
-    await page.goto(`/players/${PLAYER_SLUG}/squad/synergies`)
+    await page.goto(playerPath(PLAYER_SLUG, 'squad/synergies'))
     await page.waitForLoadState('networkidle')
 
     await expect(page.getByText('Tous les coéquipiers')).toBeVisible()

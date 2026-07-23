@@ -12,6 +12,7 @@
  */
 import { test, expect } from '@playwright/test'
 import { skipIfNoDemoData, skipObsoleteSpec } from './_helpers/demoData'
+import { playerPath } from './_helpers/routes'
 
 // Fixtures démo absentes en CI (data/demo gitignoré) → spec entière data-dépendante.
 test.beforeEach(async () => {
@@ -127,7 +128,7 @@ test.describe('P7.1 — DTOs Synthesis renommés sémantique métier', () => {
 
 test.describe('P7.1 — Pages TimeseriesPage / SynthesisPage rendent sans erreur 500', () => {
   test('TimeseriesPage charge et affiche les KPI cards', async ({ page }) => {
-    await page.goto(`/players/${PLAYER}/stats/timeseries`)
+    await page.goto(playerPath(PLAYER, 'stats/timeseries'))
     // Attendre le rendu de la page (au moins une KPI card avec un texte non vide)
     await expect(page.locator('[class*="font-bold"]').first()).toBeVisible({ timeout: 10_000 })
   })
@@ -137,7 +138,7 @@ test.describe('P7.1 — Pages TimeseriesPage / SynthesisPage rendent sans erreur
     // détectable par le sélecteur `canvas, [class*="empty-state"]` (chart migré) —
     // sélecteur à mettre à jour. Le reste de la synthèse rend correctement.
     skipObsoleteSpec('SynthesisPage : sélecteur canvas obsolète du graphique bipolaire')
-    await page.goto(`/players/${PLAYER}/synthesis`)
+    await page.goto(playerPath(PLAYER, 'synthesis'))
     // Attendre que la page Synthesis ait chargé un canvas ECharts ou un placeholder
     const hasCanvas = await page.locator('canvas, [class*="empty-state"]').first().isVisible({ timeout: 10_000 })
     expect(hasCanvas).toBe(true)

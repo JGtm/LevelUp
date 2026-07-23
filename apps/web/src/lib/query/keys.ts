@@ -4,6 +4,14 @@
  * Convention :
  * - Clés en tableau hiérarchique : ['bootstrap'], ['players'], ['player', slug, ...]
  * - Fonctions pour les clés paramétrées : queryKeys.player(slug)
+ *
+ * titleSlug / locale dans la clé — QUAND ? Inclure le segment SEULEMENT si le payload
+ * dépend du titre / de la locale ET que sa source de fetch peut vivre HORS du sous-arbre
+ * gaté par le layout titre (`$titleSlug`). Dans ce sous-arbre, un switch de titre fait
+ * déjà `queryClient.clear()` (applyActiveTitle) et le re-render re-clé : le segment est
+ * alors superflu. Le cas qui l'EXIGE : un fetch background (prefetch, poll) qui survit à la
+ * bascule ET dont le serveur bake un libellé localisé (header X-LevelUp-Locale) — sans
+ * `locale` en clé, le cache reste dans l'ancienne langue. Modèle : `home` (titleSlug + locale).
  */
 
 export const queryKeys = {
@@ -167,7 +175,11 @@ export const queryKeys = {
   // Classement (CSR mondial + stats communautaires)
   leaderboard: (playerSlug: string, category?: string, season?: string, playlist?: string) =>
     ['leaderboard', playerSlug, category ?? '', season ?? '', playlist ?? ''] as const,
-  leaderboardCatalog: (playerSlug: string) => ['leaderboard-catalog', playerSlug] as const,
+  // Locale dans la clé : le catalogue bake les display_name (saisons/playlists) localisés
+  // selon X-LevelUp-Locale — cf. commentaire `home` ci-dessus. La clé EST l'invalidation à
+  // la bascule de langue (plus d'invalidation ciblée depuis le layout titre).
+  leaderboardCatalog: (playerSlug: string, locale: string) =>
+    ['leaderboard-catalog', playerSlug, locale] as const,
 
   // Notifications in-app (per-player)
   /** Préfixe broad — invalide/matche toutes les queries notifications d'un joueur. */
