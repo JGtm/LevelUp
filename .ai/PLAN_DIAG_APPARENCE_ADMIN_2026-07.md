@@ -358,19 +358,19 @@ inattendu.
 
 ### Lot G — panneau admin (front)
 
-- [ ] G1. Section « Diagnostic apparence Spartan » dans l'onglet **Données** :
+- [x] G1. Section « Diagnostic apparence Spartan » dans l'onglet **Données** :
       `SectionHeader` (titre HORS carte — règle du Lot A) + sélecteur joueur suivi +
       bouton « Diagnostiquer » (mutation à la demande, pas de refetch auto).
-- [ ] G2. Rendu par composant (bannière/emblème/backdrop/service tag) : vignette de la
+- [x] G2. Rendu par composant (bannière/emblème/backdrop/service tag) : vignette de la
       valeur servie, badge verdict, explication dépliable (le POURQUOI + « quoi faire » :
       rien / attendre / réauthentifier). Composants canoniques (`AdminTable`, `KpiCard`,
       `EmptyState`) ; aucune couleur hex/Tailwind : tokens sémantiques uniquement
       (skill `color-tokens`).
-- [ ] G3. i18n FR **et** EN dans `admin.toml` (labels verdicts + explications + CTA),
+- [x] G3. i18n FR **et** EN dans `admin.toml` (labels verdicts + explications + CTA),
       regen manifests. Pas d'anglicisme côté FR.
-- [ ] G4. Query key dans `lib/query/keys.ts` ; types depuis `generated.ts` (pas de
+- [x] G4. Query key dans `lib/query/keys.ts` ; types depuis `generated.ts` (pas de
       types manuels dupliqués).
-- [ ] G5. Test vitest du composant (au minimum : rendu des 5 verdicts depuis des
+- [x] G5. Test vitest du composant (au minimum : rendu des 5 verdicts depuis des
       fixtures, mock API).
 
 **Gate G** : gate front (purge tsbuildinfo obligatoire).
@@ -469,6 +469,26 @@ inattendu.
   (surtout la dominante), pas un bug de plomberie.
 
 ## Journal d'exécution
+
+### [2026-07-23] Lot G — CLOS (agent Opus relancé 1× sur watchdog + revue orchestrateur)
+
+- Module `features/admin/appearance/` : logique pure `appearanceDiagDisplay.ts` (mapping
+  verdict/detail/composant → badge + clés i18n, testée + garde-fou d'existence des
+  clés), mutation à la demande (`useMutation`, part au clic SEUL), section montée dans
+  AdminDataPage (titre hors carte, pattern des sections sœurs — pas de double titre),
+  carte par composant (vignette bornée + fallback, StatusBadge, dépliable POURQUOI /
+  QUOI FAIRE, CTA réauth → `/api/v1/auth/xbox/login` = SSO existant).
+- Sémantique des badges : ok=success, transient=warning, auth_required=destructive,
+  upstream_missing/not_supported=NEUTRE (jamais un faux « cassé » — libellés distincts).
+  Sélecteur joueurs = `availablePlayers` du store (bootstrap), reset au changement.
+- i18n +59 clés FR/EN (« Indicatif de service », « Arrière-plan » — aucun libellé
+  préexistant pour service tag, convention adoptée depuis les commentaires du repo).
+- Gate re-exécuté par l'orchestrateur : regen idempotente (2665 clés), tsc 0, eslint 0
+  erreur (62 warnings baseline), vitest 302 fichiers / 2652 passés (+16) ; matrice
+  navigateur 11/11 (zéro appel auto, mutation au clic, 4 badges, dépliables, CTA SSO,
+  0 pageerror) + revue visuelle de la capture (canon UI respecté).
+- Incident process : agent calé (watchdog 600 s) pendant l'exploration — relancé par
+  message sur son contexte, livraison complète au 2e tour.
 
 ### [2026-07-23] Lot F — CLOS (agent Opus + revue orchestrateur)
 

@@ -251,6 +251,9 @@ export const queryKeys = {
   adminTitleDiagnostic: (slug: string) => ['admin', 'titles', slug, 'diagnostic'] as const,
   // Admin — Gestion des utilisateurs (ex-adminKeys, L5)
   adminUsers: ['admin', 'users'] as const,
+  // Admin — Diagnostic apparence Spartan ID (volet 2). MUTATION à la demande
+  // (aucune query auto/refetch au focus) : clé stable pour l'identité/devtools.
+  adminAppearanceDiagMutation: ['admin', 'diag', 'appearance'] as const,
 
   // Prestige / Ascension — registres feature centralisés (L5, CLAUDE.md n°13).
   // Tableaux de clés IDENTIQUES aux ex-registres (prestigeKeys/arcKeys/…) → aucun
