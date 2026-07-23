@@ -1,5 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react'
+
+// Navigate-first (Phase 4a) : le TitleSwitcher NAVIGUE (le layout `t/$titleSlug`
+// bascule). On mocke donc useNavigate + applyActiveTitle (fallback sans-joueur) et
+// on ré-cible les anciennes assertions switchTitle sur navigate.
+const navigateMock = vi.fn()
+const applyActiveTitleMock = vi.fn<(slug: string) => Promise<void>>(() => Promise.resolve())
+
+vi.mock('@tanstack/react-router', () => ({ useNavigate: () => navigateMock }))
+vi.mock('@/lib/title-routing/applyActiveTitle', () => ({
+  applyActiveTitle: (slug: string) => applyActiveTitleMock(slug),
+}))
 
 import { TitleSwitcher } from './TitleSwitcher'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -28,10 +39,16 @@ const OTHER = {
   is_default: false,
   effective_hp_to_kill: 225,
 }
+const PLAYER = {
+  player_slug: 'p1', gamertag: 'P1', xuid: '1', waypoint_player: 'P1', is_demo: false, sync_enabled: true,
+}
 
 describe('TitleSwitcher (PMT-8 / MT-22)', () => {
   beforeEach(() => {
-    useAppShellStore.setState({ locale: 'fr', isTitleSwitching: false })
+    navigateMock.mockClear()
+    applyActiveTitleMock.mockClear()
+    applyActiveTitleMock.mockImplementation(() => Promise.resolve())
+    useAppShellStore.setState({ locale: 'fr', isTitleSwitching: false, currentPlayer: PLAYER, availablePlayers: [PLAYER] })
   })
   afterEach(() => cleanup())
 
@@ -50,40 +67,45 @@ describe('TitleSwitcher (PMT-8 / MT-22)', () => {
     expect(screen.getByRole('menuitemradio', { name: /Halo MCC/ })).toBeDisabled()
   })
 
-  it('clic sur coming_soon ne déclenche PAS switchTitle', () => {
-    const switchTitle = vi.fn().mockResolvedValue(undefined)
-    useAppShellStore.setState({
-      availableTitles: [HALO, SOON],
-      currentTitleSlug: 'halo_infinite',
-      switchTitle,
-    })
+  it('clic sur coming_soon ne navigue PAS', () => {
+    useAppShellStore.setState({ availableTitles: [HALO, SOON], currentTitleSlug: 'halo_infinite' })
     render(<TitleSwitcher />)
     fireEvent.click(screen.getByRole('menuitemradio', { name: /Halo MCC/ }))
-    expect(switchTitle).not.toHaveBeenCalled()
+    expect(navigateMock).not.toHaveBeenCalled()
   })
 
-  it('clic sur un titre actif non courant déclenche switchTitle', () => {
-    const switchTitle = vi.fn().mockResolvedValue(undefined)
+  it('clic sur un titre actif non courant navigue vers le segment du titre cible', () => {
+    useAppShellStore.setState({ availableTitles: [HALO, OTHER], currentTitleSlug: 'halo_infinite' })
+    render(<TitleSwitcher />)
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Halo 3' }))
+    // Navigate-first : segment du titre CIBLE + playerSlug du titre COURANT (le
+    // layout bascule, resolvePlayerFallback re-cible si besoin).
+    expect(navigateMock).toHaveBeenCalledWith({
+      to: '/{-$lang}/t/$titleSlug/players/$playerSlug/home',
+      params: { titleSlug: 'halo_3', playerSlug: 'p1' },
+    })
+  })
+
+  it('clic sur le titre courant ne navigue pas', () => {
+    useAppShellStore.setState({ availableTitles: [HALO, OTHER], currentTitleSlug: 'halo_infinite' })
+    render(<TitleSwitcher />)
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Halo Infinite' }))
+    expect(navigateMock).not.toHaveBeenCalled()
+  })
+
+  it('aucun joueur → fallback applyActiveTitle direct puis navigate vers l’index', async () => {
+    // availablePlayers vide + aucun joueur courant → pas de route `/t/{slug}` nue :
+    // le fallback bascule directement puis renvoie à l'index (onboarding).
     useAppShellStore.setState({
       availableTitles: [HALO, OTHER],
       currentTitleSlug: 'halo_infinite',
-      switchTitle,
+      currentPlayer: null,
+      availablePlayers: [],
     })
     render(<TitleSwitcher />)
     fireEvent.click(screen.getByRole('menuitemradio', { name: 'Halo 3' }))
-    expect(switchTitle).toHaveBeenCalledWith('halo_3')
-  })
-
-  it('clic sur le titre courant ne déclenche pas switchTitle', () => {
-    const switchTitle = vi.fn().mockResolvedValue(undefined)
-    useAppShellStore.setState({
-      availableTitles: [HALO, OTHER],
-      currentTitleSlug: 'halo_infinite',
-      switchTitle,
-    })
-    render(<TitleSwitcher />)
-    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Halo Infinite' }))
-    expect(switchTitle).not.toHaveBeenCalled()
+    expect(applyActiveTitleMock).toHaveBeenCalledWith('halo_3')
+    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith({ to: '/' }))
   })
 
   // Revue UX H5 : « on met pas assez en valeur le titre actif ». Le titre courant

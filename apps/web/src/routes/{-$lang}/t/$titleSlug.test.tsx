@@ -8,13 +8,17 @@
  */
 import type { ComponentType, ReactNode } from 'react'
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest'
-import { act, fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { TitleSummary } from '@/lib/api/types'
 
 const applyActiveTitleMock = vi.fn<(slug: string) => Promise<void>>(() => Promise.resolve())
+// navigate + toast : chemin d'erreur D-6 complet (4b) — la bascule échouée toaste
+// et renvoie (replace) vers le titre courant.
+const navigateMock = vi.fn()
+const toastErrorMock = vi.fn()
 
 // paramsRef : le slug de titre porté par l'« URL » (segment $titleSlug).
 const paramsRef: { titleSlug: string; lang?: string } = { titleSlug: 'halo_infinite' }
@@ -27,10 +31,13 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
       ...opts,
       useParams: () => paramsRef,
     }),
+    useNavigate: () => navigateMock,
     Outlet: () => <div data-testid="title-outlet" />,
     Link: ({ children }: { children?: ReactNode }) => <a>{children}</a>,
   }
 })
+
+vi.mock('sonner', () => ({ toast: { error: toastErrorMock } }))
 
 vi.mock('@/lib/title-routing', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/title-routing')>()
@@ -65,6 +72,10 @@ function title(slug: string, status?: TitleSummary['status']): TitleSummary {
   } as unknown as TitleSummary
 }
 
+const PLAYER = {
+  player_slug: 'jgtm', gamertag: 'JG', xuid: '1', waypoint_player: 'JG', is_demo: false, sync_enabled: true,
+}
+
 function setStore(partial: Partial<ReturnType<typeof useAppShellStore.getState>>) {
   act(() => useAppShellStore.setState(partial))
 }
@@ -72,6 +83,8 @@ function setStore(partial: Partial<ReturnType<typeof useAppShellStore.getState>>
 beforeEach(() => {
   applyActiveTitleMock.mockClear()
   applyActiveTitleMock.mockImplementation(() => Promise.resolve())
+  navigateMock.mockClear()
+  toastErrorMock.mockClear()
   paramsRef.titleSlug = 'halo_infinite'
   paramsRef.lang = undefined
   useAppShellStore.setState({
@@ -154,5 +167,134 @@ describe('TitleLayout (2f)', () => {
       await Promise.resolve()
     })
     expect(applyActiveTitleMock).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('TitleLayout — chemin d’erreur D-6 complet (4b)', () => {
+  it('échec AVEC joueur courant → toast + navigate replace titre courant, sans boucle ni blocage', async () => {
+    paramsRef.titleSlug = 'halo_5'
+    setStore({
+      currentTitleSlug: 'halo_infinite',
+      currentPlayer: PLAYER,
+      availableTitles: [title('halo_infinite'), title('halo_5')],
+    })
+    applyActiveTitleMock.mockImplementationOnce(() => Promise.reject(new Error('boom')))
+    const { rerender } = renderWithProviders(<TitleLayout />)
+
+    // Divergence → 1er appel ; l'échec (joueur présent) toaste + navigue REPLACE vers
+    // le SEGMENT du titre courant (non basculé), PAS d'écran switch_failed.
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledTimes(1))
+    expect(applyActiveTitleMock).toHaveBeenCalledTimes(1)
+    expect(navigateMock).toHaveBeenCalledWith({
+      to: '/{-$lang}/t/$titleSlug/players/$playerSlug/home',
+      params: { titleSlug: 'halo_infinite', playerSlug: 'jgtm' },
+      replace: true,
+    })
+    expect(screen.queryByText('Changement de titre impossible')).toBeNull()
+
+    // Simuler l'arrivée sur le segment du titre courant (le navigate replace, que le
+    // mock n'exécute pas) : le layout reste MONTÉ, param → halo_infinite.
+    paramsRef.titleSlug = 'halo_infinite'
+    rerender(<TitleLayout />)
+
+    // Convergence : Outlet rendu (applyFailed jamais posé → aucun blocage), AUCUN
+    // nouvel appel (anti-boucle : segment == store → plus de divergence).
+    expect(screen.getByTestId('title-outlet')).toBeInTheDocument()
+    expect(applyActiveTitleMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('échec SANS joueur courant → écran switch_failed, ni toast ni navigate (fallback inchangé)', async () => {
+    paramsRef.titleSlug = 'halo_5'
+    setStore({
+      currentTitleSlug: 'halo_infinite',
+      currentPlayer: null,
+      availableTitles: [title('halo_infinite'), title('halo_5')],
+    })
+    applyActiveTitleMock.mockImplementationOnce(() => Promise.reject(new Error('boom')))
+    renderWithProviders(<TitleLayout />)
+
+    expect(await screen.findByText('Changement de titre impossible')).toBeInTheDocument()
+    expect(toastErrorMock).not.toHaveBeenCalled()
+    expect(navigateMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('TitleLayout — course back/forward + refocus (4c)', () => {
+  it('popstate pendant une bascule en vol → convergence, exactement 2 appels [B, A]', async () => {
+    const resolvers: Array<() => void> = []
+    // Mock PENDING contrôlable, fidèle aux effets store d'applyActiveTitle : pose
+    // isTitleSwitching + currentTitleSlug=slug à l'appel (comme le vrai, tôt), reste
+    // en vol jusqu'à resolvers[i](), remet isTitleSwitching=false à la résolution.
+    applyActiveTitleMock.mockImplementation((slug: string) => {
+      useAppShellStore.setState({ isTitleSwitching: true, currentTitleSlug: slug })
+      return new Promise<void>((resolve) => {
+        resolvers.push(() => {
+          useAppShellStore.setState({ isTitleSwitching: false })
+          resolve()
+        })
+      })
+    })
+
+    // (1) segment B / store A → applyActiveTitle(B).
+    paramsRef.titleSlug = 'halo_5'
+    setStore({
+      currentTitleSlug: 'halo_infinite',
+      availableTitles: [title('halo_infinite'), title('halo_5')],
+    })
+    const { rerender } = renderWithProviders(<TitleLayout />)
+    expect(applyActiveTitleMock).toHaveBeenCalledTimes(1)
+    expect(applyActiveTitleMock).toHaveBeenNthCalledWith(1, 'halo_5')
+
+    // (2) popstate back → segment A PENDANT le vol (isTitleSwitching=true, store=B) :
+    // AUCUN 2e appel (gardes isTitleSwitching + applyingRef).
+    paramsRef.titleSlug = 'halo_infinite'
+    rerender(<TitleLayout />)
+    expect(applyActiveTitleMock).toHaveBeenCalledTimes(1)
+
+    // (3) résolution du vol B → isTitleSwitching=false, store=B ; divergence A↔B
+    // re-détectée → 2e appel applyActiveTitle(A).
+    await act(async () => {
+      resolvers[0]()
+      await Promise.resolve()
+    })
+    await waitFor(() => expect(applyActiveTitleMock).toHaveBeenCalledTimes(2))
+    expect(applyActiveTitleMock).toHaveBeenNthCalledWith(2, 'halo_infinite')
+
+    // Convergence finale : résoudre le vol A → store=A=segment → Outlet rendu.
+    await act(async () => {
+      resolvers[1]()
+      await Promise.resolve()
+    })
+    await waitFor(() => expect(screen.getByTestId('title-outlet')).toBeInTheDocument())
+  })
+
+  it('refocus bootstrap ré-écrivant le store pendant la bascule → convergence ré-absorbe', async () => {
+    // §7 du plan : refetchOnWindowFocus peut ré-hydrater le store (currentTitleSlug ←
+    // session) PENDANT une bascule. La convergence par re-comparaison doit l'absorber.
+    // Mock qui converge immédiatement (pose currentTitleSlug=slug, résout).
+    applyActiveTitleMock.mockImplementation((slug: string) => {
+      useAppShellStore.setState({ currentTitleSlug: slug })
+      return Promise.resolve()
+    })
+
+    paramsRef.titleSlug = 'halo_5'
+    setStore({
+      currentTitleSlug: 'halo_infinite',
+      availableTitles: [title('halo_infinite'), title('halo_5')],
+    })
+    const { rerender } = renderWithProviders(<TitleLayout />)
+    await waitFor(() => expect(applyActiveTitleMock).toHaveBeenCalledTimes(1))
+    expect(screen.getByTestId('title-outlet')).toBeInTheDocument()
+
+    // Refocus : hydrateFromBootstrap ré-écrit currentTitleSlug avec la SESSION (ancien
+    // titre A) alors que le segment est encore B → re-divergence.
+    setStore({ currentTitleSlug: 'halo_infinite' })
+    rerender(<TitleLayout />)
+
+    // La convergence par re-comparaison ré-absorbe : 2e applyActiveTitle(B), pas de
+    // patch ad hoc nécessaire (le layout re-run à chaque rendu).
+    await waitFor(() => expect(applyActiveTitleMock).toHaveBeenCalledTimes(2))
+    expect(applyActiveTitleMock).toHaveBeenNthCalledWith(2, 'halo_5')
+    expect(screen.getByTestId('title-outlet')).toBeInTheDocument()
   })
 })

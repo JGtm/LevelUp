@@ -89,6 +89,29 @@ nu→index, et session H5 + bookmark legacy → `/t/halo_5/…` (trou n°1 ferm�
 **Prochaine étape** : Phase 4 (TitleSwitcher navigate-first, chemin d'erreur D-6
 complet, courses back/forward, commentaire coexistence ?f=).
 
+## [2026-07-23] D7 Phase 4 close — navigate-first + convergence durcie (branche feat/title-slug-in-url)
+
+**Statut** : Complété (Phase 4/6). Agent Opus, revue + smoke UI orchestrateur.
+
+**Décisions techniques principales** : TitleSwitcher NAVIGATE-FIRST (le layout titre
+exécute la bascule sur divergence — inversion de contrôle finale) ; cas sans joueur =
+`applyActiveTitle` direct + navigate `/` (documenté). `switchTitle` et `setCurrentTitle`
+SUPPRIMÉS (0 caller) ; assertions de séquence PR #59 migrées telles quelles vers
+`appShellStore.applyActiveTitle.test.ts` ; `createFilterStore.test.ts` intact. Chemin
+d'erreur D-6 : toast + navigate replace vers le titre courant (avec joueur) / écran
+retry (sans joueur) — `applyFailed` jamais posé sur le chemin avec joueur car le layout
+reste monté entre segments (constat vérifié). Le test de course 4c a RÉVÉLÉ une
+fragilité réelle du layout Phase 2 : `applyingRef` relâché en `.finally` APRÈS le
+re-render synchrone Zustand → convergence calée ; fix = relâchement en tête d'effet
+sur état live, dédup StrictMode préservée. `refetchOnWindowFocus` pendant bascule :
+absorbé par la re-comparaison (test dédié).
+
+**Résultats/gate** (re-exécutés) : tsc 0 ; vitest 296 fichiers / 2613 passés / 0 échec ;
+eslint 0 ; smoke navigateur par CLICS réels : Infinite→H5→Infinite, segment et `?f=`
+ré-estampillés à chaque bascule, aucune erreur console.
+
+**Prochaine étape** : Phase 5 (locale par segment, D-12 périmètre minimal).
+
 ## [2026-07-22] Mini-lot « G » G1/G2 (branche refactor/ascension-ux-2026-07)
 
 **Statut** : Complété (G1, G2), sous contrat `plan-execution` (ordre strict G1 puis G2,

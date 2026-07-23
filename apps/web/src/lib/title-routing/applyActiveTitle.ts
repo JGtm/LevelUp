@@ -11,10 +11,11 @@ import type { BootstrapResponse } from '@/lib/api/types'
  * POST /session/context → client API + store → reset filtres → purge cache →
  * re-bootstrap + hydrate → filet joueur.
  *
- * Réutilisée par le bouton (switchTitle wrapper) ET, en Phase 2+, par le layout
- * `t/$titleSlug` sur divergence segment↔store (D-6). THROW en cas d'échec, SANS
- * rollback interne : le chemin d'erreur appartient à l'APPELANT (D-6 — le layout
- * navigue en arrière, le bouton fait un rollback store-only). Gère
+ * Appelée par le layout `t/$titleSlug` sur divergence segment↔store (D-6, chemin
+ * principal — inversion de contrôle depuis Phase 4a), ET par le fallback
+ * sans-joueur du TitleSwitcher (aucune route joueur à cibler par l'URL). THROW en
+ * cas d'échec, SANS rollback interne : le chemin d'erreur appartient à l'APPELANT
+ * (D-6 — le layout toaste + navigue vers le titre courant, Phase 4b). Gère
  * `isTitleSwitching`. No-op si le slug est déjà courant.
  *
  * NB imports circulaires (store ↔ module) : ce fichier importe le store (pas

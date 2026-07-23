@@ -494,6 +494,7 @@ export const commonManifest = {
   "common.title_gate.retry": { fr: "Réessayer", en: "Retry" },
   "common.title_gate.switch_failed_body": { fr: "Le changement de titre a échoué. Réessaie ou reviens au titre actif.", en: "Switching title failed. Retry or go back to the active title." },
   "common.title_gate.switch_failed_heading": { fr: "Changement de titre impossible", en: "Cannot switch title" },
+  "common.title_gate.switch_failed_toast": { fr: "Le changement de titre a échoué. Retour au titre actif.", en: "Title switch failed. Returning to the active title." },
   "common.title_gate.unknown_body": { fr: "Ce titre n'existe pas ou n'est plus disponible.", en: "This title does not exist or is no longer available." },
   "common.title_gate.unknown_heading": { fr: "Titre introuvable", en: "Title not found" },
   "common.tooltip.more_info_aria": { fr: "Plus d'informations", en: "More information" },

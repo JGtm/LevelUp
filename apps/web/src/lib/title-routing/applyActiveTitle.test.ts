@@ -1,12 +1,12 @@
 /**
  * Tests — applyActiveTitle (module title-routing, D-6/D-10).
  *
- * Fonction effectful extraite de switchTitle. Contrats NOUVEAUX à verrouiller ici
- * (l'ordre load-bearing complet reste couvert par appShellStore.switchTitle.test.ts,
- * qui exerce le wrapper de bout en bout) :
+ * Fonction effectful (ex-switchTitle). Contrats NOUVEAUX à verrouiller ici
+ * (l'ordre load-bearing complet reste couvert par appShellStore.applyActiveTitle.test.ts,
+ * qui exerce la séquence de bout en bout) :
  *  - no-op si le slug est déjà courant ;
  *  - THROW en cas d'échec, SANS rollback interne (le chemin d'erreur appartient à
- *    l'appelant — D-6, câblé en Phase 4) ;
+ *    l'appelant — D-6, câblé Phase 4b : layout toaste + navigue) ;
  *  - isTitleSwitching remis à false dans le finally, même sur échec.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
@@ -90,8 +90,8 @@ describe('applyActiveTitle', () => {
     await expect(applyActiveTitle('halo_5')).rejects.toThrow('boom')
 
     // Aucun rollback interne : le nouveau titre posé avant l'échec RESTE en place
-    // (c'est l'appelant — switchTitle wrapper / layout Phase 4 — qui décide du
-    // chemin d'erreur, D-6).
+    // (c'est l'appelant — layout t/$titleSlug (4b) / fallback TitleSwitcher — qui
+    // décide du chemin d'erreur, D-6).
     expect(useAppShellStore.getState().currentTitleSlug).toBe('halo_5')
     // finally : drapeau de bascule bien remis à false.
     expect(useAppShellStore.getState().isTitleSwitching).toBe(false)

@@ -1,8 +1,10 @@
 import { useNavigate } from '@tanstack/react-router'
 import { useAppShellStore, buildTitleSwitcherEntries } from '@/stores/appShellStore'
+import { applyActiveTitle } from '@/lib/title-routing/applyActiveTitle'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { formatMessage } from '@/lib/i18n/format'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
+import { log } from '@/components/shell/_logger'
 
 interface TitleSwitcherProps {
   /** Appelé après le déclenchement d'un switch (ex: fermer le menu parent). */
@@ -17,8 +19,10 @@ interface TitleSwitcherProps {
  * Halo seul → aucun changement visuel). Apparaît automatiquement dès qu'un 2e
  * titre est présent dans la config (`bootstrap.available_titles`). Un titre
  * `coming_soon` est listé mais désactivé (« Bientôt disponible ») ; un titre
- * `archived` est exclu. Branche la plomberie existante (`store.switchTitle` +
- * `buildTitleSwitcherEntries`) — aucune logique nouvelle.
+ * `archived` est exclu. NAVIGATE-FIRST (D-6, Phase 4a) : le clic NAVIGUE vers le
+ * segment du titre cible ; le layout `t/$titleSlug` exécute la bascule
+ * (applyActiveTitle) sur divergence segment↔store. `buildTitleSwitcherEntries`
+ * construit la liste — aucune bascule pilotée depuis ce composant.
  *
  * Rend, quand il s'affiche, un séparateur de fin (fragment) pour s'insérer
  * proprement avant la ligne suivante du menu sans laisser de séparateur orphelin
@@ -30,7 +34,6 @@ export function TitleSwitcher({ onSwitched }: TitleSwitcherProps) {
   const availableTitles = useAppShellStore((s) => s.availableTitles)
   const currentTitleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const isTitleSwitching = useAppShellStore((s) => s.isTitleSwitching)
-  const switchTitle = useAppShellStore((s) => s.switchTitle)
 
   const entries = buildTitleSwitcherEntries(availableTitles, currentTitleSlug)
   if (entries.length <= 1) return null
@@ -39,22 +42,43 @@ export function TitleSwitcher({ onSwitched }: TitleSwitcherProps) {
 
   const onSelect = (slug: string, disabled: boolean, isCurrent: boolean) => {
     if (disabled || isCurrent || isTitleSwitching) return
-    void switchTitle(slug).then(() => {
+    // NAVIGATE-FIRST (D-6, inversion de contrôle finale — Phase 4a). On ne bascule
+    // PLUS ici : on navigue vers le SEGMENT du titre cible, et le layout
+    // `t/$titleSlug` détecte la divergence segment↔store puis exécute
+    // applyActiveTitle. Le playerSlug visé est celui du titre COURANT (joueur
+    // courant, sinon 1er disponible) : VOULU — si ce joueur n'existe pas sur le
+    // titre cible, le filet resolvePlayerFallback (PlayerLayout) re-cible au
+    // fresh-load post-bascule.
+    const state = useAppShellStore.getState()
+    const playerSlug = state.currentPlayer?.player_slug ?? state.availablePlayers[0]?.player_slug
+    if (playerSlug) {
+      void navigate({
+        to: '/{-$lang}/t/$titleSlug/players/$playerSlug/home',
+        params: { titleSlug: slug, playerSlug },
+      })
       onSwitched?.()
-      // Le switch a (re-)bootstrap les joueurs du NOUVEAU titre. L'URL pointe
-      // encore sur le playerSlug de l'ANCIEN titre → page morte. On navigue vers
-      // l'accueil du joueur courant fraîchement résolu (lu APRÈS le switch). Si
-      // le switch a échoué (rollback : titre inchangé), on ne navigue pas.
-      const state = useAppShellStore.getState()
-      if (state.currentTitleSlug !== slug) return
-      const targetSlug = state.currentPlayer?.player_slug ?? state.availablePlayers[0]?.player_slug
-      if (targetSlug) {
-        void navigate({ to: '/{-$lang}/t/$titleSlug/players/$playerSlug/home', params: { titleSlug: slug, playerSlug: targetSlug } })
-      } else {
-        // Aucun joueur pour ce titre → retour à l'index (qui gère l'onboarding).
+      return
+    }
+    // Cas limite : AUCUN joueur (availablePlayers vide, aucun joueur courant) → il
+    // n'existe pas de route de titre nue (segment sans sous-arbre joueur) à cibler
+    // par l'URL. Fallback DOCUMENTÉ :
+    // basculer DIRECTEMENT via applyActiveTitle (hors chemin URL, faute de
+    // destination joueur) puis renvoyer à l'index (qui gère l'onboarding et
+    // re-résout le titre actif). Le menu se ferme quoi qu'il arrive.
+    void (async () => {
+      try {
+        await applyActiveTitle(slug)
+      } catch (err) {
+        log.warn(
+          'title_switch:direct_fallback_failed',
+          'bascule directe (aucun joueur) échouée',
+          err,
+        )
+      } finally {
+        onSwitched?.()
         void navigate({ to: '/' })
       }
-    })
+    })()
   }
 
   return (

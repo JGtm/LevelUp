@@ -13,7 +13,6 @@ import type { BootstrapResponse, CapabilityMap, HaloIdentitySummary, PlayerSumma
 import { api, setApiTitleSlug, setApiLocale } from '@/lib/api/client'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { useSquadFilterStore } from '@/stores/squadFilterStore'
-import { applyActiveTitle } from '@/lib/title-routing/applyActiveTitle'
 
 interface AppShellState {
   // Joueur courant
@@ -63,9 +62,6 @@ interface AppShellState {
   // Actions
   hydrateFromBootstrap: (data: BootstrapResponse) => void
   setCurrentPlayer: (player: PlayerSummary) => void
-  setCurrentTitle: (titleSlug: string) => void
-  /** Switch de titre complet : POST /session/context + re-bootstrap + flush stores */
-  switchTitle: (titleSlug: string) => Promise<void>
   setLocale: (locale: 'fr' | 'en') => void
   setHintsVisible: (visible: boolean) => void
   /** Met à jour l'ID du job de sync actif (null = aucun sync en cours). */
@@ -84,7 +80,7 @@ const DEFAULT_CAPABILITIES: CapabilityMap = {
   can_manage_instance: false,
 }
 
-export const useAppShellStore = create<AppShellState>((set, get) => ({
+export const useAppShellStore = create<AppShellState>((set) => ({
   currentPlayer: null,
   availablePlayers: [],
   currentTitleSlug: 'halo_infinite',
@@ -144,7 +140,7 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
     })
     // Garde deep-link (fresh-load / bookmark) : si un `?f=` (share-link) a hydraté
     // le store solo avec un filtre généré pour un AUTRE titre, le reset. Le reset
-    // au switch de titre (switchTitle) ne couvre PAS ce chemin — au fresh-load,
+    // au switch de titre (applyActiveTitle) ne couvre PAS ce chemin — au fresh-load,
     // seul le bootstrap connaît le titre actif réel. setApiTitleSlug(titleSlug) a
     // déjà été appelé ci-dessus → un éventuel resetFilters ré-estampille l'URL au
     // bon titre. Squad n'a pas de deep-link (urlEnabled=false) → no-op inoffensif.
@@ -156,25 +152,6 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
     set({ currentPlayer: player })
     // Persister le choix côté serveur (fire-and-forget).
     api.post('/session/context', { player_slug: player.player_slug }).catch(() => {})
-  },
-  setCurrentTitle: (titleSlug) => {
-    setApiTitleSlug(titleSlug)
-    set({ currentTitleSlug: titleSlug })
-  },
-
-  switchTitle: async (titleSlug) => {
-    // WRAPPER (D-10) : la mécanique de bascule vit désormais dans applyActiveTitle
-    // (module title-routing), réutilisée par le layout `t/$titleSlug` en Phase 2+.
-    // Le bouton conserve son comportement observable IDENTIQUE : en cas d'échec,
-    // rollback store-only (le chemin d'erreur URL-source-de-vérité — navigate
-    // retour + message — est câblé côté appelant en Phase 4 / D-6).
-    const current = get().currentTitleSlug
-    try {
-      await applyActiveTitle(titleSlug)
-    } catch {
-      setApiTitleSlug(current)
-      set({ currentTitleSlug: current })
-    }
   },
 
   setLocale: (locale) => {

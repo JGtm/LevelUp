@@ -2096,6 +2096,13 @@ en = "Cannot switch title"
 fr = "Le changement de titre a échoué. Réessaie ou reviens au titre actif."
 en = "Switching title failed. Retry or go back to the active title."
 
+# Toast émis quand la bascule échoue MAIS qu'un joueur courant existe : on revient
+# automatiquement au titre actif (D-6, Phase 4b). Distinct de switch_failed_body
+# (écran manuel « Réessaie ou reviens »), car ici le retour est AUTOMATIQUE.
+[common.title_gate.switch_failed_toast]
+fr = "Le changement de titre a échoué. Retour au titre actif."
+en = "Title switch failed. Returning to the active title."
+
 [common.title_gate.back_to_active]
 fr = "Retourner au titre actif"
 en = "Back to the active title"
