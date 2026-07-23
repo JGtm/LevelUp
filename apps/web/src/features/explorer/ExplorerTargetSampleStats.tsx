@@ -17,6 +17,7 @@ import { useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import type { ExplorerTargetSampleStats, ExplorerWeaponKill } from '@/lib/api/types'
+import type { Locale } from '@/lib/i18n/locale'
 
 /** Libellé universel (FR=EN) quand la Résistance n'est pas calculable faute de
  *  damage_taken (Halo 5). Aligné sur `notAvailable: 'N/A'` du module compare. */
@@ -88,7 +89,7 @@ export function ExplorerTargetSampleStats({ sampleStats }: ExplorerTargetSampleS
 
 // ─── Top armes (à droite du donut) ───────────────────────────────────────────
 
-function WeaponsTop({ weapons, locale, t }: { weapons: ExplorerWeaponKill[]; locale: 'fr' | 'en'; t: TFn }) {
+function WeaponsTop({ weapons, locale, t }: { weapons: ExplorerWeaponKill[]; locale: Locale; t: TFn }) {
   const numberLocale = intlLocale(locale)
   const maxKills = Math.max(1, ...weapons.map((w) => w.kills))
   return (

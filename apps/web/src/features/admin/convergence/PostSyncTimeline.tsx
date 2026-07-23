@@ -10,6 +10,7 @@ import type { SchedulerPlayerOutcome } from '@/lib/api/types'
 import { buildTimelineSegments, slowestSteps, stepToken, type TimelineSegment } from './timeline'
 import { formatDurationMs } from '../format'
 import { useAdminT, useAdminLocale } from '../useAdminText'
+import type { Locale } from '@/lib/i18n/locale'
 
 export function PostSyncTimeline({ players }: { players: SchedulerPlayerOutcome[] }) {
   const tA = useAdminT()
@@ -64,7 +65,7 @@ function PlayerTimeline({
   segments: TimelineSegment[]
   slowestLabel: string
   totalLabel: string
-  locale: 'fr' | 'en'
+  locale: Locale
 }) {
   const top = slowestSteps(segments, 3)
   return (

@@ -11,6 +11,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { composeTierLabel } from '@/lib/skillTiers'
 import { unrankedBadgeURL } from '@/lib/staticAssets'
 import type { CareerPlaylistCSR } from '@/lib/api/types'
+import type { Locale } from '@/lib/i18n/locale'
 
 interface ExplorerTargetSeasonCSRProps {
   csrs: CareerPlaylistCSR[]
@@ -25,7 +26,7 @@ interface ExplorerTargetSeasonCSRProps {
  * Compose via `composeTierLabel` (source unique, cf. skillTiers.ts) — pas de mapping
  * local dupliqué ; ici on n'ajoute que le cas non classé (tier vide → "—").
  */
-function tierLabel(tier: string, subTier: number, locale: 'fr' | 'en'): string {
+function tierLabel(tier: string, subTier: number, locale: Locale): string {
   const raw = tier.trim()
   if (raw === '') return '—'
   return composeTierLabel(raw, subTier, locale)

@@ -6,13 +6,14 @@
 import type { ReactNode } from 'react'
 import { metricLabel } from '@/lib/i18n/metricLabel'
 import type { ContextualPattern } from './types'
-import type { AscensionText, AscensionLocale } from './i18n'
+import type { AscensionText } from './i18n'
+import type { Locale } from '@/lib/i18n/locale'
 import { CombatAbbr } from './CombatAbbr'
 
 interface SquadVsSoloCardProps {
   patterns: ContextualPattern[]
   t: AscensionText
-  locale: AscensionLocale
+  locale: Locale
 }
 
 export function SquadVsSoloCard({ patterns, t, locale }: SquadVsSoloCardProps) {

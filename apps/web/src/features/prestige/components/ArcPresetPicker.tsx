@@ -8,11 +8,12 @@
  */
 import { useArcPresets, useAdoptArcPreset } from '@/features/prestige/hooks'
 import type { PresetArc } from '@/lib/prestige'
+import type { Locale } from '@/lib/i18n/locale'
 
 interface ArcPresetPickerProps {
   playerSlug: string
   titleSlug: string
-  locale: 'fr' | 'en'
+  locale: Locale
   onClose: () => void
 }
 
@@ -80,7 +81,7 @@ export function ArcPresetPicker({ playerSlug, titleSlug, locale, onClose }: ArcP
 
 interface PresetRowProps {
   preset: PresetArc
-  locale: 'fr' | 'en'
+  locale: Locale
   adoptLabel: string
   objectivesLabel: string
   disabled: boolean

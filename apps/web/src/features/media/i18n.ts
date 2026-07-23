@@ -10,8 +10,7 @@
  */
 import { formatMessage } from '@/lib/i18n/format'
 import { mediaManifest, type MediaManifestKey } from '@/lib/i18n/generated/media'
-
-export type MediaLocale = 'fr' | 'en'
+import type { Locale } from '@/lib/i18n/locale'
 
 export interface MediaText {
   title: string
@@ -79,11 +78,11 @@ export interface MediaText {
   }
 }
 
-export function normalizeMediaLocale(locale?: string | null): MediaLocale {
+export function normalizeMediaLocale(locale?: string | null): Locale {
   return locale === 'en' ? 'en' : 'fr'
 }
 
-function t(locale: MediaLocale, key: MediaManifestKey, values?: Record<string, string | number>): string {
+function t(locale: Locale, key: MediaManifestKey, values?: Record<string, string | number>): string {
   return formatMessage(mediaManifest, key, locale, values)
 }
 

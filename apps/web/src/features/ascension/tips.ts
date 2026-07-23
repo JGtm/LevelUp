@@ -15,8 +15,7 @@
  */
 import type { Tip } from '@/components/ui/tips-ticker'
 import { coachingTipsManifest } from '@/lib/i18n/generated/coaching_tips'
-
-type TipLocale = 'fr' | 'en'
+import type { Locale } from '@/lib/i18n/locale'
 
 const TIPS_MANIFEST = coachingTipsManifest as Record<string, { fr: string; en: string }>
 
@@ -29,8 +28,8 @@ const TIP_KEY_RE =
 // longueur du cycle du ticker et de la liste statique en reduced-motion.
 const MAX_TIPS = 14
 
-export function buildAscensionTips(locale: TipLocale): Tip[] {
-  const lang: TipLocale = locale === 'en' ? 'en' : 'fr'
+export function buildAscensionTips(locale: Locale): Tip[] {
+  const lang: Locale = locale === 'en' ? 'en' : 'fr'
   const tips: Tip[] = []
   for (const [key, value] of Object.entries(TIPS_MANIFEST)) {
     const match = key.match(TIP_KEY_RE)

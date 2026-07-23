@@ -25,13 +25,14 @@ import { useAppShellStore } from '@/stores/appShellStore'
 
 import { CumulativeFragGapChart } from './CumulativeFragGapChart'
 import { normalizePalmaresLocale, type PalmaresText } from './i18n'
+import type { Locale } from '@/lib/i18n/locale'
 
 type MomentsText = PalmaresText['relations']['moments']
 
 // wrColor : vert si WR >= 50 %, rouge sinon (undefined si inconnu).
 // toTapePoints : duels backend → points de frise. Le tooltip d'un duel affiche un
 // libellé pré-formaté (date · mode · map — frags/morts) au lieu de l'UUID.
-function toTapePoints(rivalry: RelationRivalry, locale: 'fr' | 'en'): OutcomePoint[] {
+function toTapePoints(rivalry: RelationRivalry, locale: Locale): OutcomePoint[] {
   return (rivalry.duels ?? []).map((d) => {
     const date = d.started_at
       ? new Date(d.started_at).toLocaleDateString(locale, { day: 'numeric', month: 'short' })
@@ -56,7 +57,7 @@ function RivalryCard({
 }: {
   rivalry: RelationRivalry
   t: MomentsText
-  locale: 'fr' | 'en'
+  locale: Locale
   onMatchClick?: (matchId: string) => void
 }) {
   const tapeLabels: OutcomeSequenceLabels = {

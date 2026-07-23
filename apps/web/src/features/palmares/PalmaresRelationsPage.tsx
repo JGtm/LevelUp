@@ -25,7 +25,8 @@ import type { FilterContextInput, RelationCSR, RelationInsight } from '@/lib/api
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useRelationsPrefsStore } from '@/stores/relationsPrefsStore'
 
-import { getPalmaresText, normalizePalmaresLocale, type PalmaresLocale, type PalmaresText } from './i18n'
+import { getPalmaresText, normalizePalmaresLocale, type PalmaresText } from './i18n'
+import type { Locale } from '@/lib/i18n/locale'
 import { useRelationsMoments, useRelationsPage } from './queries'
 import { RelationBadges } from './RelationBadges'
 import { RelationSplitBar } from './RelationSplitBar'
@@ -123,7 +124,7 @@ function streakChip(streak: number | undefined, labels: RelationsText): ReactNod
  * (palier ouvert), suffixe la valeur CSR si disponible (« Onyx 1523 »). Renvoie null
  * si le palier est absent → rien n'est affiché (dégradation gracieuse, pas de « N/A »).
  */
-function nemesisRankLabel(csr: RelationCSR, locale: 'fr' | 'en'): string | null {
+function nemesisRankLabel(csr: RelationCSR, locale: Locale): string | null {
   const tier = csr.tier?.trim()
   if (!tier) return null
   const base = composeTierLabel(tier, csr.sub_tier ?? 0, locale)
@@ -176,7 +177,7 @@ function HeroRelationCard({
   relation: RelationInsight | null
   mode: 'ally' | 'enemy'
   labels: RelationsText
-  locale: 'fr' | 'en'
+  locale: Locale
   onPlayerClick: (gamertag: string) => void
   playerWinRate?: number | null
   recentForm?: string[] | null
@@ -349,7 +350,7 @@ function CoreSummaryCard({
   unit: string
   coreRows: RelationInsight[]
   labels: RelationsText
-  locale: 'fr' | 'en'
+  locale: Locale
   onPlayerClick: (gamertag: string) => void
   playerWinRate?: number | null
   recentForm?: string[] | null
@@ -631,7 +632,7 @@ function RelationsContent({
 }: {
   data: NonNullable<ReturnType<typeof useRelationsPage>['data']>
   rel: RelationsText
-  locale: PalmaresLocale
+  locale: Locale
   filter: RelationFilter
   setFilter: (f: RelationFilter) => void
   showCross: boolean

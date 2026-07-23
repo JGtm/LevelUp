@@ -13,6 +13,7 @@ import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { formatMessage } from '@/lib/i18n/format'
 import { squadManifest, type SquadManifestKey } from '@/lib/i18n/generated/squad'
 import type { RelationBadge } from '@/lib/api/types'
+import type { Locale } from '@/lib/i18n/locale'
 
 function isSemanticToken(s: string): s is SemanticToken {
   return s.startsWith('narrative-')
@@ -38,7 +39,7 @@ export function RelationBadges({
   locale,
 }: {
   badges: RelationBadge[] | null
-  locale: 'fr' | 'en'
+  locale: Locale
 }) {
   if (!badges?.length) return null
   return (

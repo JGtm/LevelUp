@@ -18,6 +18,7 @@ import { PassContentSummary, type ContentLabels } from './PassContentSummary'
 import { useSeasonPassPage } from './queries'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { isArmorItemType, rarityLabel, rarityStyle, type RarityTier } from './rarity'
+import type { Locale } from '@/lib/i18n/locale'
 
 // Le contrat OpenAPI expose `status` en `string` (cf. SeasonPassTrackSummary).
 // On accepte donc `string` et on retombe sur la branche par défaut pour toute
@@ -48,7 +49,7 @@ function OverlayContentRows({
   remaining?: SeasonPassContent | null
   labels: ContentLabels
   locale: string
-  palmaresLocale: 'fr' | 'en'
+  palmaresLocale: Locale
 }) {
   type Chip = { key: string; value: string; label: string }
   const showRemaining = remaining !== undefined
@@ -188,7 +189,7 @@ function CosmeticsUnlockedCard({ label, agg, intlLocale, palmaresLocale, accent,
   label: string
   agg: PassAggregate
   intlLocale: string
-  palmaresLocale: 'fr' | 'en'
+  palmaresLocale: Locale
   accent?: SemanticToken
   className?: string
 }) {
@@ -370,7 +371,7 @@ function PassShowcase({
 }: {
   pass: SeasonPassTrackSummary
   text: Text
-  locale: 'fr' | 'en'
+  locale: Locale
   isViewingActive: boolean
   onBackToActive: () => void
   showcaseRef?: React.Ref<HTMLDivElement>

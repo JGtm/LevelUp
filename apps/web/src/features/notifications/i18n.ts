@@ -9,8 +9,7 @@
  * les params (interpolation simple {name}, {count} sans plurals ICU pour le MVP).
  */
 import type { NotificationCategory } from './types'
-
-export type NotificationsLocale = 'fr' | 'en'
+import type { Locale } from '@/lib/i18n/locale'
 
 export interface NotificationsText {
   // Cloche & badge
@@ -503,8 +502,8 @@ const EN: NotificationsText = {
   relOnDate: (iso) => new Date(iso).toLocaleDateString('en-US'),
 }
 
-const DICTS: Record<NotificationsLocale, NotificationsText> = { fr: FR, en: EN }
+const DICTS: Record<Locale, NotificationsText> = { fr: FR, en: EN }
 
-export function getNotificationsText(locale: NotificationsLocale): NotificationsText {
+export function getNotificationsText(locale: Locale): NotificationsText {
   return DICTS[locale] ?? FR
 }
