@@ -15,11 +15,9 @@
  */
 import { createFileRoute, Link, Outlet, useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { applyActiveTitle, resolveTitleGate, isKnownLocale, type TitleGate } from '@/lib/title-routing'
-import { queryKeys } from '@/lib/query/keys'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
@@ -29,7 +27,6 @@ export const Route = createFileRoute('/{-$lang}/t/$titleSlug')({
 
 function TitleLayout() {
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
   const { titleSlug, lang } = Route.useParams()
   const isBootstrapped = useAppShellStore((s) => s.isBootstrapped)
   const availableTitles = useAppShellStore((s) => s.availableTitles)
@@ -104,12 +101,11 @@ function TitleLayout() {
   // Un segment non-locale (ex. /xyz/t/…) est ignoré (isKnownLocale) : le gate titre
   // traite les URLs aberrantes, la locale ne bascule pas sur du bruit.
   //
-  // Invalidation (audit D-12) : les payloads localisés qui comptent portent `locale`
+  // Invalidation (audit D-12) : TOUTES les clés de payloads localisés portent `locale`
   // DANS leur clé (home, seasonPass, teammates, sessionDetail, field-mappings,
-  // releaseNotes) → le set store re-clé et TanStack refetch tout seul : la CLÉ EST
-  // l'invalidation, jamais de queryClient.clear() global. SEULE exception recensée :
-  // le catalogue leaderboard (display_name saison/playlist bakés serveur selon le
-  // header, clé SANS locale — cf. LeaderboardBlock) → invalidation CIBLÉE de sa clé.
+  // releaseNotes, leaderboard-catalog) → le set store re-clé et TanStack refetch tout
+  // seul : la CLÉ EST l'invalidation, jamais de queryClient.clear() global ni
+  // d'invalidation ciblée depuis cet effet.
   //
   // Ordre au fresh-load /en/t/… : initTitleFromLocation pose déjà le header 'en' au
   // boot ; hydrateFromBootstrap ré-écrit ensuite la locale SESSION (ex. fr) → cet
@@ -119,11 +115,7 @@ function TitleLayout() {
   useEffect(() => {
     if (!lang || !isKnownLocale(lang) || lang === locale) return
     setLocale(lang)
-    const playerSlug = useAppShellStore.getState().currentPlayer?.player_slug
-    if (playerSlug) {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.leaderboardCatalog(playerSlug) })
-    }
-  }, [lang, locale, setLocale, queryClient])
+  }, [lang, locale, setLocale])
 
   // Projection DÉCLARATIVE (D-8) — cf. NOTE CRITIQUE ci-dessus.
   if (gate === 'wait') return null // pré-hydratation : ne rien décider

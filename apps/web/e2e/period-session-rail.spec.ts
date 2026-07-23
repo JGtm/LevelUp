@@ -9,6 +9,7 @@
  */
 import { test, expect } from '@playwright/test'
 import { skipIfNoDemoData, skipObsoleteSpec } from './_helpers/demoData'
+import { playerPath } from './_helpers/routes'
 
 // La spec navigue vers /players/{slug}/stats/history — route supprimée (routes
 // actuelles : stats/{index,sessions,synthesis,timeseries}) → contenu "Not Found".
@@ -23,7 +24,7 @@ test('Stats : rail rendu DANS NavL2, après FilterOmnibar, en mode all-time au c
     try { localStorage.clear() } catch { /* noop */ }
   })
 
-  await page.goto('/players/JGtm/stats/history')
+  await page.goto(playerPath('JGtm', 'stats/history'))
   await page.waitForLoadState('networkidle')
   await page.waitForTimeout(2500) // laisser /filters/resolve revenir
 
@@ -63,7 +64,7 @@ test('Squad : rail rendu DANS la barre Squad (pas dans NavL2 qui est null)', asy
     try { localStorage.clear() } catch { /* noop */ }
   })
 
-  await page.goto('/players/JGtm/squad/synergies')
+  await page.goto(playerPath('JGtm', 'squad/synergies'))
   await page.waitForLoadState('networkidle')
   await page.waitForTimeout(2500)
 

@@ -1,6 +1,9 @@
 # PLAN — D7 : titre (et langue) dans l'URL (segments de route)
 
-Statut : EN COURS D'EXECUTION (Phase 0 close le 2026-07-22).
+Statut : **LIVRÉ** (Phases 0-6 + lot final Découvertes closes le 2026-07-23 ; 13/13
+critères de succès §1 vérifiés — détail au journal §10). Branche `feat/title-slug-in-url`
+NON pushée (décision d'intégration laissée à l'utilisateur ; CI de branche non exercée
+de ce fait).
 Date : v1 2026-07-13 (architecte Opus) ; **v2 2026-07-21** (revue Fable : 4 trous corrigés,
 langue intégrée structurellement, décisions D-8..D-11 ajoutées — amendements validés par
 l'utilisateur le 2026-07-21).
@@ -509,19 +512,46 @@ consignée.
 
 ### Phase 6 — E2E + vérification navigateur complète + livraison (moyen)
 
-- [ ] **6a.** Migrer les 10 specs `e2e/*.spec.ts` vers les URLs `/t/…` (leurs assertions
-      d'URL casseraient sinon — critère 10) ; ajouter UNE spec `legacy-redirect.spec.ts`
-      exerçant la matrice principale (bookmark, `?f=`, H5).
-- [ ] **6b.** chrome-devtools, 2 titres : home / stats / career / squad / community /
-      explorer / un match — URL `/t/{slug}/`, header network, données du bon titre.
-- [ ] **6c.** Scénario fuite PR #59 : filtre session sur un titre, switch, vérifier reset ;
-      deep-link `?f=` legacy honoré/rejeté correctement.
-- [ ] **6d.** Segment invalide `/t/inconnu/players/…` + titre `coming_soon` si dispo →
-      gate propre, pas de page blanche, strings FR/EN.
-- [ ] **6e.** Suite complète : `make check-types`, `make test-web`, `npm run lint`,
-      `npm run test:e2e` (nécessite `make dev`).
-- [ ] **6f.** `thought_log` (clôture), MAJ `project_map` (la cartographie des routes
-      change), statut final de chaque item du plan, delivery-checklist.
+- [x] **6a.** 19 specs migrées (le compte réel dépassait les « 10 » du plan v2) via un
+      helper CENTRAL `e2e/_helpers/routes.ts` (titlePath/playerPath/patterns — zéro
+      littéral recopié) ; URLs d'API non touchées (le titre y transite par header).
+      Spec `legacy-redirect.spec.ts` : 5/5 VERTE en réel (bookmark, `?f=`+hash
+      byte-préservés assertés sur la PREMIÈRE URL post-redirect — contrat D-5 —,
+      objectifs→ascension, palmares→community, session H5 committée puis bookmark →
+      `/t/halo_5/…`). Baseline e2e avant/après honnête : 35→41 passed / 63 skip
+      identiques / 3→2 failed, les 2 restants PRÉ-EXISTANTS et environnementaux
+      (serveur non-DEMO_MODE), aucun nouveau rouge. README e2e à jour.
+- [x] **6b.** Navigateur (Playwright, orchestrateur) : home / stats/sessions / career /
+      squad / community / explorer × 2 titres — URLs `/t/{slug}/` stables, rendus
+      pleins, headers réseau cohérents avec le segment (seule exception attendue et
+      documentée : requêtes SHELL pré-convergence au premier fresh-load H5, D-3,
+      purgées par clear()). Page match : `[~]` route `/matches/{id}` PROUVÉE montée
+      sous `/t/` (id inexistant → erreur gérée, URL stable, 0 erreur console) +
+      couverture tsc/vitest/spec migrée — aucun lien `<a href>` de match accessible
+      en démo pour un clic réel (tableaux à sélection, pas de navigation).
+- [x] **6c.** PR #59 en réel : `?f=` estampillé `"t":"halo_infinite"` (décodage base64
+      vérifié) → switch UI H5 → `?f=` RESET et ré-estampillé `"t":"halo_5"`, zéro
+      résidu ; deep-link `?f=` Infinite INJECTÉ sous `/t/halo_5` → REJETÉ par la garde
+      (reconcileActiveTitle) et ré-estampillé halo_5. Critère 12 vérifié.
+- [x] **6d.** `/t/inconnu/…` → gate FR « Titre introuvable » ; `/en/t/inconnu/…` → gate
+      EN « Title not found » ; zéro fuite de contenu sous le gate, zéro erreur console.
+      `coming_soon` : `[~]` aucun titre coming_soon dans la config locale — couvert par
+      les tests unitaires du layout (2f, verdict + strings testés).
+- [x] **6e.** Suite complète (après lot final Découvertes, cache tsBuildInfo PURGÉ) :
+      `tsc -b --force` = 0 ; vitest 297 fichiers / 2620 passés / 14 skip pré-existants /
+      0 échec ; `eslint .` = 0 erreur (67 warnings baseline, −1 vs avant D7 : warning
+      ExplorerPage résorbé au lot final) ; Playwright 106 tests : 44 passés / 58 skip
+      (serveur non-DEMO_MODE) / 4 échecs dont 3 FLAKES de charge re-passés VERTS isolés
+      à froid — 1 seul échec systématique : `slice-9-onboarding:44`, PRÉ-EXISTANT et
+      environnemental (spec conçue pour DEMO_MODE), non causé par D7.
+- [x] **6f.** thought_log (clôture) ; project_map : ligne ajoutée aux affirmations
+      périmées de l'en-tête (le document est GELÉ depuis ~2026-04 — pas ranimé, `[~]`
+      dans l'esprit) ; statut final de chaque item : AUCUNE case vide, reports `[~]`/
+      différés tous justifiés ; delivery-checklist déroulée (aucun .go touché — les
+      sections Go ne s'appliquent pas ; typecheck de clôture NON-incrémental ; zéro
+      TODO/FIXME introduit ; fichiers nouveaux < 500 L ; garde-rails livrés avec les
+      helpers dans les mêmes commits ; CI de branche NON exercée — branche jamais
+      pushée, signalé au statut d'en-tête).
 
 Gate Phase 6 : tous les gates verts ; captures/observations consignées au journal.
 
@@ -703,6 +733,29 @@ déplacement (Phase 1, TDD). Backend non touché.
   en transition — la vérification navigateur end-to-end reste OBLIGATOIRE à chaque
   étape (elle a payé ici).
 
+- **[2026-07-23] CLÔTURE DU CHANTIER — 13/13 critères de succès §1 vérifiés :**
+  (1) pages title-scoped sous `/t/{slug}` [36 routes, smoke 2 titres] ; (2) typecheck 0
+  [`tsc -b --force`, cache purgé] ; (3) garde-rail grep VERT [ratchet `/t/` +
+  `/players/` quotes/regex/backtick-nav, 0 offender, allowlist datée] ; (4) vitest vert
+  PR #59 inclus [2620 passés] ; (5) eslint 0 erreur [baseline −1] ; (6) redirections
+  legacy replace + préservation intégrale [matrice table-driven + navigateur
+  byte-identique + spec e2e 5/5] ; (7) TitleSwitcher change le segment,
+  données/filtres/cache basculent, échec sans divergence URL↔store [Phase 4 + smoke
+  clics] ; (8) gate propre slug inconnu/coming_soon/archived FR **et** EN [navigateur
+  FR+EN ; coming_soon par tests unitaires, aucun titre en config] ; (9) header
+  X-LevelUp-Title affirmé pour TOUS les titres [df7f13775 antérieur + segment
+  synchrone au boot ; pages agnostiques pré-hydratation = session serveur, design
+  D-3] ; (10) e2e migrées + `legacy-redirect.spec.ts` [19 specs, helper central] ;
+  (11) segment langue force la locale, absent = session [smoke `/en` + héritage
+  nav interne] ; (12) non-régression PR #59 [deep-link inter-titres REJETÉ en réel,
+  décodage base64 vérifié] ; (13) vérifications navigateur consignées [journal,
+  Phases 2-6]. Orchestration : Fable (revues sur pièces, diagnostics, gates re-exécutés,
+  matrices navigateur) + 7 lots agents Opus (P1, 2-A/B/C, P3, P4, P5, 6a, lot final).
+  2 bugs RÉELS attrapés par la revue orchestrateur au-delà des tests verts des agents :
+  course post-replace du splat (P3, navigateur) et convergence calée du layout (P4,
+  test de course exigé). Le contrat « URL source de vérité » est livré actif — aucun
+  flag OFF, aucun TODO, zéro code mort résiduel.
+
 - **[2026-07-23] Phase 4 CLOSE.** TitleSwitcher navigate-first (agent Opus) ;
   `switchTitle`/`setCurrentTitle` supprimés (0 code mort), assertions PR #59 migrées
   sans affaiblissement. Le test de course 4c (écrit d'abord) a détecté une fragilité
@@ -727,3 +780,25 @@ déplacement (Phase 1, TDD). Backend non touché.
   clé au payload localisé sans `locale` — l'invalidation ciblée vit transitoirement
   dans l'effet locale du layout titre (logique feature dans le layout, à résorber).
   LOT FINAL : ajouter `locale` à la clé + retirer l'invalidation ciblée du layout.
+
+- **[2026-07-23] LOT FINAL DÉCOUVERTES CLOS** (agent Opus, revue orchestrateur) :
+  (1) type `Locale` CENTRALISÉ dans `lib/i18n/locale.ts` (module feuille) —
+  `FieldMappingLocale`/`MetricLocale` supprimés (0 consommateur externe),
+  `ManifestLocale` gardé en alias (~50 consommateurs), inline client/appShellStore
+  migrés, `title-routing/locales.ts` supprimé (barrel ré-exporte) ; (2)
+  `leaderboardCatalog(playerSlug, locale)` — l'invalidation ciblée du layout RETIRÉE
+  (la clé EST l'invalidation, plus aucune exception) ; (3) convention documentée en
+  tête de `keys.ts` (quand inclure titleSlug/locale) ; (4) warning
+  `set-state-in-effect` d'ExplorerPage résorbé (disable minimal AJOUTÉ — la prémisse
+  « mal placé » était imprécise : il n'y avait aucun disable pour cette règle, artefact
+  d'affichage eslint) ; (5) fixture NavL1MobileActions + commentaire
+  createFilterStore.test rafraîchis. Gates : tsc 0, vitest 2620/0 échec, eslint 0.
+
+- [2026-07-23] (6a/lot final, signalées NON traitées — hors périmètre D7) :
+  (a) `e2e/` n'est couvert par AUCUN tsconfig ni par eslint (globalIgnores) — les specs
+  ne sont ni type-checkées ni lintées, seul Playwright les exécute ; chantier outillage
+  distinct. (b) D'autres alias locale feature-local subsistent (`BriefingLocale`,
+  `HelpLocale`, `CompareLocale`, `PalmaresLocale`, `AscensionLocale`, `SettingsLocale`,
+  `SquadLocale`, …) — candidats à la migration vers `lib/i18n/locale.ts` dans un
+  chantier de cohérence i18n dédié. (c) `notif.target_route` émis par le backend au
+  format legacy (chantier Go) — le splat couvre en 1 hop, DIFFÉRÉ.

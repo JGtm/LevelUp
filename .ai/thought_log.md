@@ -130,6 +130,37 @@ confirmé, retour sans segment = session FR (le segment force sans committer la 
 **Prochaine étape** : Phase 6 (migration specs e2e + spec legacy-redirect + vérif
 navigateur complète + delivery-checklist), puis lot final Découvertes.
 
+## [2026-07-23] CLÔTURE chantier D7 — titre (et langue) dans l'URL (branche feat/title-slug-in-url)
+
+**Statut** : Complété — 13/13 critères de succès du plan vérifiés, delivery-checklist
+déroulée. Plan `.ai/PLAN_TITLE_SLUG_URL_2026-07.md` passé au statut LIVRÉ (journal §10
+détaillé). Branche NON pushée (décision d'intégration utilisateur ; CI non exercée).
+
+**Architecture livrée** : l'URL est la source de vérité du titre —
+`/{-lang}/t/{titleSlug}/players/{playerSlug}/…`. Module unique `lib/title-routing/`
+(parse/gate/redirect purs testés TDD + applyActiveTitle effectful + helpers de chemin),
+layout titre déclaratif (projection resolveTitleGate, Outlet jamais rendu en
+wait/divergence — ferme la fenêtre pré-hydratation de __root), splat legacy avec
+préservation byte-identique, TitleSwitcher navigate-first, locale par segment optionnel,
+type Locale central, garde-rails ratchet (`/t/`, `/players/`, backtick nav). 8 commits :
+b38cc30d5 (P0), 67c369056 (P1), 277eb453f (P2), 7deff0e11 (P3), 110fd245d (P4),
+705a31806 (P5), + commit final P6+lot Découvertes.
+
+**Résultats** : tsc -b --force = 0 ; vitest 297 fichiers / 2620 passés / 0 échec ;
+eslint 0 erreur (baseline −1) ; e2e 44 passés / 58 skip env / 1 échec pré-existant
+environnemental (slice-9, spec DEMO_MODE) ; matrices navigateur 2 titres + legacy +
+langue consignées au plan.
+
+**Leçon d'orchestration** (Fable pilote + 7 lots Opus) : les gates unitaires des agents
+étaient TOUS verts, et la revue orchestrateur a quand même attrapé 2 bugs réels — la
+course post-replace du splat (vue en NAVIGATEUR seulement) et la convergence calée du
+layout (vue par le test de course exigé en 4c). Vérification sur pièces + navigateur à
+chaque étape = non négociable.
+
+**Prochaine étape** : revue utilisateur de la branche, puis merge → main (= déploiement
+prod automatique : à déclencher par l'utilisateur). Différés signalés : target_route
+backend legacy (Go), outillage e2e (tsconfig/eslint), alias locale feature-local.
+
 ## [2026-07-22] Mini-lot « G » G1/G2 (branche refactor/ascension-ux-2026-07)
 
 **Statut** : Complété (G1, G2), sous contrat `plan-execution` (ordre strict G1 puis G2,

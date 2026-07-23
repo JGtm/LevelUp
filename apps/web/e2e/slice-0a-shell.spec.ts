@@ -7,12 +7,13 @@
  * Couverture :
  * 1. Montage du shell React sans erreur JS
  * 2. Bootstrap DEMO_MODE : joueur "DemoPlayer" visible
- * 3. Redirection index → /players/demo-player/home
+ * 3. Redirection index → /t/halo_infinite/players/demo-player/home
  * 4. Navigation vers /setup quand pas de joueur (non applicable en DEMO_MODE)
  * 5. Header / NavBar présente
  */
 import { test, expect } from '@playwright/test'
 import { skipIfNoDemoData } from './_helpers/demoData'
+import { playerPath, playerUrlPattern } from './_helpers/routes'
 
 test.describe('Slice 0a — Shell & Bootstrap (DEMO_MODE)', () => {
   test('le shell se monte sans erreur JS console', async ({ page }) => {
@@ -45,20 +46,20 @@ test.describe('Slice 0a — Shell & Bootstrap (DEMO_MODE)', () => {
     expect(data.feature_flags?.demo_mode).toBe(true)
   })
 
-  test('la racine "/" redirige vers /players/demo-player/home', async ({
+  test('la racine "/" redirige vers /t/halo_infinite/players/demo-player/home', async ({
     page,
   }) => {
     await skipIfNoDemoData()
     await page.goto('/')
-    // Attendre la redirection TanStack Router
-    await page.waitForURL(/\/players\/demo-player\/home/, { timeout: 8_000 })
-    expect(page.url()).toContain('/players/demo-player/home')
+    // Attendre la redirection TanStack Router (index → titre par défaut + joueur courant)
+    await page.waitForURL(playerUrlPattern('demo-player', 'home'), { timeout: 8_000 })
+    expect(page.url()).toContain(playerPath('demo-player', 'home'))
   })
 
   test('la NavBar est visible après le bootstrap', async ({ page }) => {
     await skipIfNoDemoData()
     await page.goto('/')
-    await page.waitForURL(/\/players\/demo-player\/home/, { timeout: 8_000 })
+    await page.waitForURL(playerUrlPattern('demo-player', 'home'), { timeout: 8_000 })
 
     // La NavBar doit être rendue (au moins un élément de navigation)
     const nav = page.locator('nav, [role="navigation"]').first()
@@ -66,7 +67,7 @@ test.describe('Slice 0a — Shell & Bootstrap (DEMO_MODE)', () => {
   })
 
   test('changer de joueur reste dans le même shell', async ({ page }) => {
-    await page.goto('/players/demo-player/home')
+    await page.goto(playerPath('demo-player', 'home'))
     await page.waitForLoadState('networkidle')
 
     // En DEMO_MODE il y a un seul joueur — la page ne doit pas planter

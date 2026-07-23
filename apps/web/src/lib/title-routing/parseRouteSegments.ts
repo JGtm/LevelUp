@@ -1,4 +1,4 @@
-import { isKnownLocale, type Locale } from './locales'
+import { isKnownLocale, type Locale } from '@/lib/i18n/locale'
 
 export interface RouteSegments {
   /** Langue forcée par l'URL (segment `/{lang}/t/…`). Absente = locale session. */

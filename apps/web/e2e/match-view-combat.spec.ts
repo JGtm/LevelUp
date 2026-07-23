@@ -14,6 +14,7 @@
  */
 import { test, expect } from '@playwright/test'
 import { skipObsoleteSpec } from './_helpers/demoData'
+import { playerPath } from './_helpers/routes'
 
 test.describe('Match view — onglet Combat (refonte 2026-05-06)', () => {
   // Le match view a été redessiné : plus d'onglet "Combat" (onglets actuels :
@@ -75,7 +76,7 @@ test.describe('Match view — onglet Combat (refonte 2026-05-06)', () => {
     test.skip(matchId == null, 'Aucun match trouvé avec kd_timeline + tug_of_war peuplés')
 
     // 3. Naviguer vers la page détail du match
-    await page.goto(`/players/${playerSlug}/matches/${matchId}`)
+    await page.goto(playerPath(playerSlug, `matches/${matchId}`))
 
     // 4. Cliquer sur l'onglet Combat
     const combatTab = page.getByRole('button', { name: 'Combat' })

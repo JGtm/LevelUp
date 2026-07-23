@@ -9,6 +9,7 @@
  */
 import { test, expect } from '@playwright/test'
 import { skipIfNoDemoData, skipRequiresRealPlayer } from './_helpers/demoData'
+import { playerPath } from './_helpers/routes'
 
 // Vise un joueur réel codé en dur (JGtm) avec des checkpoints LUSR/CSR répartis sur
 // les groupes de playlists canoniques + libellés FR spécifiques — non reproductible
@@ -38,7 +39,7 @@ test('Carrière — chart LUSR : 1 entrée par playlist_group, libellés FR loca
       resp.status() === 200,
   )
 
-  await page.goto('/players/JGtm/career')
+  await page.goto(playerPath('JGtm', 'career'))
   const resp = await careerPromise
   const data = await resp.json()
   const checkpoints = data.lusr.checkpoints as Array<{

@@ -13,7 +13,7 @@
  * de métrique en dur ni afficher `Field*`. Garde-rails : metricLabel.test.ts
  * (humanisation) + features/metric-key-guardrail.test.ts (aucun `Field*` en JSX).
  */
-export type MetricLocale = 'fr' | 'en'
+import type { Locale } from '@/lib/i18n/locale'
 
 const METRIC_LABEL_FR: Record<string, string> = {
   performance_score: 'Score de performance',
@@ -88,7 +88,7 @@ export const PRESTIGE_METRIC_OPTIONS: readonly string[] = [
 ]
 
 /** Retourne le libellé localisé d'une clé de métrique (canonique ou `Field*`). */
-export function metricLabel(key: string, locale: MetricLocale): string {
+export function metricLabel(key: string, locale: Locale): string {
   const canonical = FIELD_KEY_ALIASES[key] ?? key
   const map = locale === 'en' ? METRIC_LABEL_EN : METRIC_LABEL_FR
   return map[canonical] ?? humanizeMetricKey(key)

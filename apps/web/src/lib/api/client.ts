@@ -7,6 +7,8 @@
  * - Erreurs HTTP : transformées en ApiError lisible
  */
 
+import type { Locale } from '@/lib/i18n/locale'
+
 export interface ApiError {
   code: string
   message: string
@@ -118,10 +120,10 @@ function getTitleHeader(): Record<string, string> {
  * Le backend lit ce header en priorité (fallback sur app_settings.lang) pour
  * sélectionner les labels FR/EN dans les payloads (map names, mode names…).
  */
-let _currentLocale: 'fr' | 'en' = 'fr'
+let _currentLocale: Locale = 'fr'
 
 /** Appelé par le store pour mettre à jour la locale courante. */
-export function setApiLocale(locale: 'fr' | 'en'): void {
+export function setApiLocale(locale: Locale): void {
   _currentLocale = locale
 }
 

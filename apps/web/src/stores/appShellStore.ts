@@ -11,6 +11,7 @@
 import { create } from 'zustand'
 import type { BootstrapResponse, CapabilityMap, HaloIdentitySummary, PlayerSummary, TitleSummary } from '@/lib/api/types'
 import { api, setApiTitleSlug, setApiLocale } from '@/lib/api/client'
+import type { Locale } from '@/lib/i18n/locale'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { useSquadFilterStore } from '@/stores/squadFilterStore'
 
@@ -25,7 +26,7 @@ interface AppShellState {
   isTitleSwitching: boolean
 
   // Configuration
-  locale: 'fr' | 'en'
+  locale: Locale
   userTimezone: string
   hintsVisible: boolean
   capabilities: CapabilityMap | null
@@ -62,7 +63,7 @@ interface AppShellState {
   // Actions
   hydrateFromBootstrap: (data: BootstrapResponse) => void
   setCurrentPlayer: (player: PlayerSummary) => void
-  setLocale: (locale: 'fr' | 'en') => void
+  setLocale: (locale: Locale) => void
   setHintsVisible: (visible: boolean) => void
   /** Met à jour l'ID du job de sync actif (null = aucun sync en cours). */
   setActiveSyncJobId: (id: string | null) => void
@@ -110,7 +111,7 @@ export const useAppShellStore = create<AppShellState>((set) => ({
   hydrateFromBootstrap: (data: BootstrapResponse) => {
     const titleSlug = data.current_title_slug ?? 'halo_infinite'
     setApiTitleSlug(titleSlug)
-    const locale: 'fr' | 'en' = (data.locale as 'fr' | 'en') ?? 'fr'
+    const locale: Locale = (data.locale as Locale) ?? 'fr'
     setApiLocale(locale)
     set({
       currentPlayer: data.current_player,
