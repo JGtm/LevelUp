@@ -304,12 +304,14 @@ WHERE msr.rating_value IS NOT NULL`
 
 // Q26ePeakPhaseBRegistryTpl : Phase B (shared-only) — registry pour
 // classification. Exécutée via pdb.SharedReadDB().Get() — pas de préfixe.
-const Q26ePeakPhaseBRegistryTpl = `
+// var (non const) : le template compose StartTimeCanonicalSQL par concaténation.
+var Q26ePeakPhaseBRegistryTpl = `
 SELECT
 	mr.match_id,
 	COALESCE(mr.is_ranked, FALSE)  AS is_ranked,
 	COALESCE(mr.playlist_name, '') AS playlist_name,
-	COALESCE(mr.pair_name, '')     AS pair_name
+	COALESCE(mr.pair_name, '')     AS pair_name,
+	` + StartTimeCanonicalSQL("mr") + ` AS start_time
 FROM match_registry mr
 WHERE mr.match_id IN (%s)`
 

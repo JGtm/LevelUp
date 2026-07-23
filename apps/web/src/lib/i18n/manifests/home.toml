@@ -411,6 +411,10 @@ en = "Highest CSR"
 fr = "Meilleur LUSR"
 en = "Highest LUSR"
 
+[home.spartan.peak_reached_on]
+fr = "Atteint le {date}"
+en = "Reached on {date}"
+
 [home.spartan.current_progress]
 fr = "Progression actuelle"
 en = "Current progress"

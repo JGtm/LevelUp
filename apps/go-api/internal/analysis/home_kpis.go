@@ -97,6 +97,12 @@ func buildHomeSkillPeak(raw *domain.HomeSkillPeakRow, locale string) *domain.Hom
 		total := *raw.PlacementTotal
 		summary.PlacementTotal = &total
 	}
+	// Date d'obtention du pic (nil = non sourçable : placement, match hors
+	// registry, ou pic CSR all-time Waypoint). Propagée telle quelle au DTO JSON.
+	if raw.PeakAchievedAt != nil {
+		achieved := *raw.PeakAchievedAt
+		summary.PeakAchievedAt = &achieved
+	}
 	// Bande de progression (à droite du rating) : uniquement en phase matured
 	// (placement terminé). Progression ORDINALE via le sous-palier (indépendante
 	// de l'échelle CSR vs LUSR). Onyx → barre pleine ; sans rang → pas de bande.

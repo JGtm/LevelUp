@@ -41,6 +41,12 @@ type HomeSkillPeakRow struct {
 	// sous-palier est renseigné par chaque système (CSR/LUSR) sur sa propre échelle.
 	Tier    string
 	SubTier int
+	// PeakAchievedAt = start_time canonique du match où le rating max a été atteint
+	// (COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC') de match_registry).
+	// nil quand la date n'est pas sourçable proprement : phase de placement (pas
+	// encore de pic), match absent du registry, ou pic CSR all-time issu de
+	// player_csr_snapshots (la valeur Waypoint n'expose pas la date d'obtention).
+	PeakAchievedAt *time.Time
 }
 
 // HomeSpartanIdentityRow est la projection brute de l'identité record pour la home.
@@ -150,6 +156,11 @@ type HomeSkillPeakSummary struct {
 	// Libellé localisé du palier suivant (extrémité droite de la barre, ex.
 	// "Onyx", "Platine"). nil pour Onyx (sommet, pas de palier suivant).
 	NextTierLabel *string `json:"next_tier_label,omitempty"`
+	// PeakAchievedAt : date d'obtention du pic (start_time canonique du match où
+	// le rating max a été atteint). Omis quand non sourçable : placement, match
+	// hors registry, ou pic CSR all-time (player_csr_snapshots n'a pas la date).
+	// Le front affiche "Atteint le {date}" quand présent, rien sinon.
+	PeakAchievedAt *time.Time `json:"peak_achieved_at,omitempty"`
 }
 
 // HomePlaylistRank associe une playlist récente à son dernier rang compétitif connu.
