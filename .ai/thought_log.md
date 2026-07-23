@@ -1,3 +1,63 @@
+## [2026-07-23] Diagnostic « Proposer des défis » (Cap d'escouade) + audit workflow défis
+
+**Statut** : Complété (analyse + plan livrés — aucun code modifié, à la demande de
+l'utilisateur).
+
+**Décision technique principale** : diagnostic par test fonctionnel live de toute la
+chaîne squad-challenges via l'API locale (serveur air :8000) plutôt que lecture seule.
+Workflow backend VÉRIFIÉ FONCTIONNEL de bout en bout : create squad (201) → pool/refresh
+(200, 7 templates) → create challenge (201, auto-join créateur) → list (200) → join
+idempotent (204) → evaluate (200, progression no-overlap persistée) → delete squad (204).
+Escouade de test supprimée après coup (résidu assumé : ligne squad + défi orphelin
+sc_e0997701f9a5e98a — illustre l'absence de cascade).
+
+**Résultats observés** :
+- Le symptôme « ne fait rien » = double erreur avalée, DÉJÀ corrigé le 2026-07-23 14:16
+  (commit 04eae99ba, poussé prod) : onError→toast côté front + slog sur 500 masqué côté
+  back. Cause racine du 500 sous-jacent non confirmée — logs prod à vérifier (candidat
+  n°1 : catalogue challenge_template vide en prod → « no templates available for title »
+  = 500 masqué ; observé localement pour halo_5 qui n'a AUCUN catalogue).
+- prestige.log local (depuis le 11/07) : zéro création d'escouade et zéro pool/refresh
+  avant mon test → l'observation utilisateur venait de la prod (ou d'avant le 11/07).
+- Gaps workflow relevés : labels UI = template_id brut ; « Rejoindre » sans feedback ni
+  état « Rejoint » ; « Réévaluer » jette la progression retournée ; pas de suppression /
+  abandon de défi (ni endpoint ni UI, pas de cascade au DeleteSquad) ; expires_at jamais
+  renseigné ; fenêtre session/rolling_days non implémentée (défaut 50 derniers matchs,
+  pas de borne created_at → défi complété à la création par l'historique : 181 et 243 vs
+  cible 7 observés) ; threshold non implémenté pour squads (agrégation cumulative) ; pool
+  éphémère non partagé ; requested_by vide contourne le check de membership du pool.
+
+**Conclusion / prochaine étape** : plan en 5 lots validé par l'utilisateur et figé dans
+`.ai/PLAN_SQUAD_CHALLENGES.md` (P0 cause racine prod → P1 boucle UI complète → cycle de
+vie défis → sémantique d'évaluation → multi-titre/polish). Prochaine étape : Lot 1
+(diagnostic prod, sans code).
+
+---
+## [2026-07-23] Exécution PLAN_SQUAD_CHALLENGES — Lot 1 (cause racine) CLÔTURÉ
+
+**Statut** : Complété (diagnostic). Branche `fix/squad-challenges-workflow`.
+
+**Décision technique principale** : hypothèse initiale « catalogue vide → 500 » RÉFUTÉE
+sur pièces (local, sans accès prod) : (1) `templates.toml` versionné = 28 templates →
+déployé par `git reset --hard` ; (2) archive `metadata-prebuilt.zip` (2026-06-23, extraite
+sur clone frais) embarque 27 `challenge_template` + seed déjà `backfill_done=TRUE` → prod
+fraîche non vide ; (3) seed idempotent `ON CONFLICT DO UPDATE`, enregistré avant le run
+metadata, réessaie tant que backfill KO. Le symptôme « ne fait rien » = double erreur
+avalée, DÉJÀ corrigé par `04eae99ba` (poussé prod) — la cause du 500 est désormais loggée.
+
+**Cause racine résiduelle** : non confirmable sans logs/DB prod. Candidat n°1 = lock
+DuckDB transitoire NON mappé `ErrDBLocked` → tombe en `default` = 500 masqué (au lieu de
+503 retryable), sur `ListMembers`/`ListByTitle`. Consigné Découverte D1 (durcissement
+hors périmètre UX). Items 1.2 (logs prod) et 1.3-rowcount = `[!]` (pas d'accès VPS/session
+prod depuis l'agent), commandes fournies à l'utilisateur dans le plan.
+
+**Résultats observés** : workflow reproduit fonctionnel en LOCAL (pool 200, 7 templates).
+Aucun code modifié au Lot 1 (diagnostic pur).
+
+**Conclusion / prochaine étape** : Lot 2 (boucle UI complète : labels de défis, feedback
+Rejoindre/état Rejoint, affichage progression). Code + gates + commit sur la branche.
+
+---
 ## [2026-07-23] Réintégration + validation des 4 retouches FDA gap sur origin/main
 
 **Statut** : Complété. Branche `integrate/fda-gap-followups` rebasée sur `origin/main`
