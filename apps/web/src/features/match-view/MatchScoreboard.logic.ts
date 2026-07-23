@@ -26,9 +26,38 @@ export interface ColDef {
 export type Extremes = { min: number | null; max: number | null }
 
 export function getExtremes(rows: MatchScoreboardRow[], key: keyof MatchScoreboardRow): Extremes {
-  const vals = rows.map((r) => r[key] as number | null).filter((v): v is number => v != null)
+  return getExtremesFromValues(rows.map((r) => r[key] as number | null))
+}
+
+/**
+ * min/max d'une série de valeurs (nulls ignorés). {null,null} si moins de 2
+ * valeurs comparables. Sert aussi bien aux colonnes brutes (getExtremes) qu'à la
+ * colonne de frags AJUSTÉE pour le départage MVP/LVP (voir mvpKills / getMvpLvp).
+ */
+export function getExtremesFromValues(values: (number | null)[]): Extremes {
+  const vals = values.filter((v): v is number => v != null)
   if (vals.length < 2) return { min: null, max: null }
   return { min: Math.min(...vals), max: Math.max(...vals) }
+}
+
+/** Clé de la colonne « Frags » — la seule dont la valeur de départage MVP/LVP est ajustée. */
+const KILLS_KEY: keyof MatchScoreboardRow = 'kills'
+
+/**
+ * Frags retenus pour DÉPARTAGER le MVP/LVP : frags bruts moins les mécaniques de
+ * kill exclues (assassinat, charge spartane / shoulder_bash, coup au sol /
+ * ground_pound), qui ne reflètent pas la performance de tir. Retourne null si les
+ * frags bruts sont absents. Borné à 0.
+ *
+ * N'affecte QUE la sélection MVP/LVP : la colonne Frags affichée et son highlight
+ * best/worst gardent la valeur brute. Title-agnostic : ces champs sont nil hors
+ * Halo 5 → aucun effet sur Infinite. Miroir de analysis.mvpKills côté back.
+ */
+export function mvpKills(r: MatchScoreboardRow): number | null {
+  if (r.kills == null) return null
+  const excluded =
+    (r.assassination_kills ?? 0) + (r.shoulder_bash_kills ?? 0) + (r.ground_pound_kills ?? 0)
+  return Math.max(0, r.kills - excluded)
 }
 
 export type CellState = 'best' | 'worst' | 'neutral'
@@ -81,17 +110,26 @@ export function getMvpLvp(
   extremesByKey: Record<string, Extremes>,
 ): { mvp: string | null; lvp: string | null } {
   if (rows.length < 2) return { mvp: null, lvp: null }
+  // Colonne Frags AJUSTÉE (hors assassinat / charge spartane / coup au sol) :
+  // recalcule ses propres extremes pour ne pas départager le MVP/LVP sur des
+  // kills « gratuits ». Les autres colonnes gardent leurs extremes bruts. Aucune
+  // incidence sur la valeur/highlight affichés (uniquement le comptage MVP/LVP).
+  const adjustedKills = rows.map(mvpKills)
+  const adjustedKillsExtremes = getExtremesFromValues(adjustedKills)
   let mvpXuid: string | null = null
   let mvpBest = 1
   let lvpXuid: string | null = null
   let lvpWorst = 1
-  for (const r of rows) {
+  for (let i = 0; i < rows.length; i += 1) {
+    const r = rows[i]
     let best = 0
     let worst = 0
     for (const c of cols) {
-      const ex = extremesByKey[String(c.key)]
+      const isKills = c.key === KILLS_KEY
+      const ex = isKills ? adjustedKillsExtremes : extremesByKey[String(c.key)]
       if (!ex) continue
-      const state = cellState(r[c.key] as number | null, ex, c.inverted)
+      const value = isKills ? adjustedKills[i] : (r[c.key] as number | null)
+      const state = cellState(value, ex, c.inverted)
       if (state === 'best') best += 1
       else if (state === 'worst') worst += 1
     }

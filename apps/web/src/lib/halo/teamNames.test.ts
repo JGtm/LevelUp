@@ -4,7 +4,12 @@
  */
 import { describe, it, expect } from 'vitest'
 
-import { parseTeamSideID, resolveTeamName, resolveTeamNameFromID } from './teamNames'
+import {
+  labelHasTeamWord,
+  parseTeamSideID,
+  resolveTeamName,
+  resolveTeamNameFromID,
+} from './teamNames'
 
 describe('parseTeamSideID', () => {
   it('extrait l\'entier depuis "t{N}" pour 0..9', () => {
@@ -67,5 +72,24 @@ describe('resolveTeamNameFromID', () => {
     expect(resolveTeamNameFromID(100)).toBeNull()
     expect(resolveTeamNameFromID(null)).toBeNull()
     expect(resolveTeamNameFromID(undefined)).toBeNull()
+  })
+})
+
+describe('labelHasTeamWord', () => {
+  it('détecte le mot « équipe » déjà présent (backend Halo 5 localisé)', () => {
+    // Anti-double-préfixe : ces libellés ne doivent PAS recevoir « Équipe » à nouveau.
+    expect(labelHasTeamWord('Équipe Cobra')).toBe(true)
+    expect(labelHasTeamWord('EQUIPE Cobra')).toBe(true)
+    expect(labelHasTeamWord('equipe cobra')).toBe(true)
+    expect(labelHasTeamWord('Team Cobra')).toBe(true)
+    expect(labelHasTeamWord('Cobra Team')).toBe(true)
+  })
+
+  it('retourne false pour les noms officiels NUS (préfixe requis côté front)', () => {
+    expect(labelHasTeamWord('Cobra')).toBe(false)
+    expect(labelHasTeamWord('Eagle')).toBe(false)
+    expect(labelHasTeamWord('Hades')).toBe(false)
+    expect(labelHasTeamWord('Valkyrie')).toBe(false)
+    expect(labelHasTeamWord('Rouge')).toBe(false)
   })
 })

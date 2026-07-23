@@ -156,6 +156,37 @@ describe('getMvpLvp — lobby-wide', () => {
     expect(getMvpLvp([], cols, {})).toEqual({ mvp: null, lvp: null })
   })
 
+  it('exclut assassinat/charge spartane/coup au sol du départage MVP/LVP', () => {
+    // Miroir front du test Go ComputeMVPLVP_ExcludesMechanicKills : seules les
+    // colonnes Frags + Passes sont actives pour isoler l'effet des frags nets.
+    const twoCol: ColDef[] = [
+      { key: 'kills', label: 'Frags', inverted: false },
+      { key: 'assists', label: 'Passes', inverted: false },
+    ]
+    const ex = (r: MatchScoreboardRow[]) =>
+      Object.fromEntries(twoCol.map((c) => [String(c.key), getExtremes(r, c.key)]))
+
+    // Contrôle (frags bruts) : a domine Frags(20) et Passes(10) → MVP=a, LVP=b.
+    const raw = [row('a', { kills: 20, assists: 10 }), row('b', { kills: 8, assists: 5 })]
+    expect(getMvpLvp(raw, twoCol, ex(raw))).toEqual({ mvp: 'a', lvp: 'b' })
+
+    // Exclusion : a a 18 frags mécaniques (6+6+6) → frags nets 2 < b(8). La
+    // cellule Frags bascule vers b ; a/b se partagent 1 best + 1 worst chacun →
+    // aucun n'atteint le seuil de 2 → plus de MVP/LVP net. C'est cette bascule
+    // qui prouve que les mécaniques sont bien retranchées.
+    const adj = [
+      row('a', {
+        kills: 20,
+        assists: 10,
+        assassination_kills: 6,
+        shoulder_bash_kills: 6,
+        ground_pound_kills: 6,
+      }),
+      row('b', { kills: 8, assists: 5 }),
+    ]
+    expect(getMvpLvp(adj, twoCol, ex(adj))).toEqual({ mvp: null, lvp: null })
+  })
+
   it('respecte les colonnes inverted (deaths) : best = moins de morts', () => {
     const rows = [
       row('survivor', { kills: 5, assists: 2, deaths: 1, damage_dealt: 1000 }),
