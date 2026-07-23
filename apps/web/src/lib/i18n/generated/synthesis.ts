@@ -58,6 +58,7 @@ export const synthesisManifest = {
   "synthesis.highlights.section_title": { fr: "Performances marquantes", en: "Highlight performances" },
   "synthesis.highlights.tough_matches": { fr: "Matchs difficiles", en: "Tough matches" },
   "synthesis.kpi.killing_spree_max": { fr: "Folie meurtrière (max)", en: "Killing spree (max)" },
+  "synthesis.kpi.loss_streak_max": { fr: "Défaites consécutives (max)", en: "Loss streak (max)" },
   "synthesis.kpi.open_match": { fr: "Ouvrir le match", en: "Open match" },
   "synthesis.kpi.raw_accuracy": { fr: "Précision brute", en: "Raw accuracy" },
   "synthesis.kpi.top_accuracy": { fr: "Précision", en: "Accuracy" },

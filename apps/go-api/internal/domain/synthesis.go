@@ -74,6 +74,11 @@ type SynthesisOverview struct {
 	BestKillsMatch   *int     `json:"best_kills_match,omitempty"`
 	BestKDAMatch     *float64 `json:"best_kda_match,omitempty"`
 	LongestWinStreak int      `json:"longest_win_streak,omitempty"`
+	// LongestLossStreak : plus longue série de défaites consécutives sur le scope
+	// (rompue par tout non-loss : win / tie / dnf). Calculée sur la MÊME source de
+	// matchs que LongestWinStreak via le helper canonique analysis.LongestRun —
+	// cohérence garantie. omitempty : le front omet la carte quand la série <= 1.
+	LongestLossStreak int `json:"longest_loss_streak,omitempty"`
 
 	// Refs cliquables vers le match record pour chaque métrique. Nil si aucune
 	// donnée exploitable sur le scope (ex : accuracy nil sur tous les matchs).
