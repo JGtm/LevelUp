@@ -6004,6 +6004,8 @@ components:
               type: integer
           skill_rank:
               $ref: '#/components/schemas/MatchScoreboardSkillRank'
+          team_color:
+              type: string
           team_name:
               type: string
           team_side:
@@ -10650,6 +10652,9 @@ components:
               format: int64
               type: integer
           next_tier_label:
+              type: string
+          peak_achieved_at:
+              format: date-time
               type: string
           placement_total:
               format: int64
@@ -16401,6 +16406,9 @@ components:
               $ref: '#/components/schemas/BestMatchRef'
           best_personal_score_ref:
               $ref: '#/components/schemas/BestMatchRef'
+          longest_loss_streak:
+              format: int64
+              type: integer
           longest_win_streak:
               format: int64
               type: integer

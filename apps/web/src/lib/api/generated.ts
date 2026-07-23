@@ -4470,6 +4470,7 @@ export interface components {
             /** Format: int64 */
             shots_hit?: number;
             skill_rank?: components["schemas"]["MatchScoreboardSkillRank"];
+            team_color?: string;
             team_name?: string;
             team_side?: string;
             /** Format: int64 */
@@ -6397,6 +6398,8 @@ export interface components {
             /** Format: int64 */
             measurement_matches_remaining?: number;
             next_tier_label?: string;
+            /** Format: date-time */
+            peak_achieved_at?: string;
             /** Format: int64 */
             placement_total?: number;
             /** Format: double */
@@ -8757,6 +8760,8 @@ export interface components {
             best_kills_ref?: components["schemas"]["BestMatchRef"];
             best_perf_ref?: components["schemas"]["BestMatchRef"];
             best_personal_score_ref?: components["schemas"]["BestMatchRef"];
+            /** Format: int64 */
+            longest_loss_streak?: number;
             /** Format: int64 */
             longest_win_streak?: number;
             /** Format: int64 */
