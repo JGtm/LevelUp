@@ -31,6 +31,15 @@ const (
 	accuracyThresholdDays = 0.50 // accuracy minimale d'un « jour régulier »
 )
 
+// Clés de métrique de jalon dupliquées ailleurs dans le package (fixtures de test) :
+// constantes pour éviter les littéraux répétés (goconst). Les autres clés du switch
+// crossingFor n'apparaissent qu'une fois → littéral conservé.
+const (
+	metricMatchesPlayed = "matches_played"
+	metricKills         = "kills"
+	metricAssists       = "assists"
+)
+
 // MilestoneCrossingMatch est un match du joueur, dans l'ordre chronologique, avec
 // les champs nécessaires pour rejouer toutes les métriques de jalon.
 type MilestoneCrossingMatch struct {
@@ -108,7 +117,7 @@ func prepMatch(m MilestoneCrossingMatch, hp float64) preppedMatch {
 // crossingFor calcule la date de franchissement d'une cible selon sa métrique.
 func crossingFor(target MilestoneTarget, matches []preppedMatch) *time.Time {
 	switch target.Metric {
-	case "matches_played":
+	case metricMatchesPlayed:
 		return nthMatch(matches, target.Threshold, func(preppedMatch) bool { return true })
 	case "wins":
 		return nthMatch(matches, target.Threshold, func(m preppedMatch) bool { return m.win })
@@ -118,11 +127,11 @@ func crossingFor(target MilestoneTarget, matches []preppedMatch) *time.Time {
 		return nthMatch(matches, target.Threshold, func(m preppedMatch) bool { return m.drQualifies })
 	case "combat_excellence_matches":
 		return nthMatch(matches, target.Threshold, func(m preppedMatch) bool { return m.ocQualifies && m.drQualifies })
-	case "kills":
+	case metricKills:
 		return cumSum(matches, target.Threshold, func(m preppedMatch) float64 { return float64(m.kills) })
 	case "headshots":
 		return cumSum(matches, target.Threshold, func(m preppedMatch) float64 { return float64(m.headshots) })
-	case "assists":
+	case metricAssists:
 		return cumSum(matches, target.Threshold, func(m preppedMatch) float64 { return float64(m.assists) })
 	case "accuracy_threshold_days":
 		return nthDistinctDay(matches, target.Threshold)

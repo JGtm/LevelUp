@@ -1,3 +1,23 @@
+## [2026-07-23] Post-release v7.0.0 — CI Go Lint ratchet rouge (funlen + goconst) → fix
+
+**Statut** : Complété. Deploy VPS + Release v7.0.0 réussis INDÉPENDAMMENT (workflows séparés),
+mais le job CI `Go Lint (golangci-lint)` (ratchet `--new-from-rev=b21a59772`) a viré rouge sur
+4 violations NEUVES issues d'ascension :
+- `internal/service/teammates/teammates_squad_charts_weapons_perf.go:80` — funlen
+  `buildSquadWeaponKills` (107 > 80) → extraction du helper `aggregateSquadWeaponBars`
+  (agrégation par weapon_id + tri), fonction repasse < 80 L.
+- `internal/ops/milestone_dates.go` — goconst `matches_played`/`kills`/`assists` (≥4 occ.
+  package, fixtures test comptées) → constantes locales `metricMatchesPlayed/Kills/Assists`
+  utilisées dans le switch `crossingFor`.
+
+**Vérif locale** (golangci-lint v2.12.2, même version/base que CI) : gofmt propre, build OK,
+ratchet 0 issue, tests `internal/ops/...` + `internal/service/teammates/...` verts.
+Branche `fix/lint-ratchet-v7` → merge main + push (2e deploy prod, changement iso-comportement).
+Le release v7.0.0 (texte + binaires) n'est PAS re-déclenché (pas de nouveau tag).
+
+**Prochaine étape** : —
+
+---
 ## [2026-07-23] Release v7.0.0 — merge share-link-on-demand + ascension-ux dans main + push deploy prod
 
 **Statut** : Complété. Merge des 2 branches demandées dans `main` local, gates vertes, push
