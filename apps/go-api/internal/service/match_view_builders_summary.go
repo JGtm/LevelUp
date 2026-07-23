@@ -120,15 +120,9 @@ func computeExpectedAssists(
 		mmrDelta = *stats.TeamMMR - *stats.EnemyMMR
 	}
 
-	// 1. Modèle personnel
+	// 1. Modèle personnel (arithmétique factorisée dans analysis).
 	if m, err := repo.GetPlayerAssistsModel(ctx, gameVariantName); err == nil && m != nil {
-		raw := m.Intercept +
-			m.CoefKills*kills +
-			m.CoefDeaths*deaths +
-			m.CoefDamageDealt*dd +
-			m.CoefDamageTaken*dt +
-			m.CoefMMRDelta*mmrDelta
-		v := math.Round(raw*100) / 100
+		v := analysis.ApplyPersonalAssistsModel(m, kills, deaths, dd, dt, mmrDelta)
 		return &v
 	}
 
@@ -148,7 +142,7 @@ func computeExpectedAssists(
 	if stats.ShotsHit != nil {
 		sh = float64(*stats.ShotsHit)
 	}
-	v := math.Round((slope*(ps+sh)+intercept)*100) / 100
+	v := analysis.ApplyPopulationalAssists(slope, intercept, ps, sh)
 	return &v
 }
 

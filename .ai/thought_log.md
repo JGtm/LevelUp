@@ -1,3 +1,30 @@
+## [2026-07-23] Différentiel FDA réel vs attendu — Lot A (backend) livré
+
+**Statut** : Complété (Lot A du plan `.ai/PLAN_EXPECTED_FDA_2026-07.md` ; branche
+`feat/expected-fda-differential`, worktree `expected-fda` ; NON commité — revue superviseur).
+
+**Décision technique principale** : source UNIFIÉE de l'attendu K/D. Les 3 surfaces
+(Timeseries/Sessions via `analysis.StatsMatchRowsFromCanonical`, Escouade via
+`SquadV2Loader.LoadFor`) chargent le canonical `PlayerMatchRow` par `PlayerMatchesRepo`.
+Champs `KillsExpected/DeathsExpected` ajoutés à `canonical.MatchParticipant` et peuplés
+depuis `match_participants.kills_expected/deaths_expected` (query/scan shared étendus).
+Le plan pointait `SkillSnapshot` (canonical/match.go:286-287) — vérif sur pièces : jamais
+peuplé par ce loader → champs mis sur `MatchParticipant` (= `r.Self`, cf. libellé plan A6).
+Helper canonique unique `analysis.ExpectedFDA/FDADiff` (garde `IsBadFloat`), garde-rail
+archlint interdisant l'arithmétique `*Expected .../3` hors `analysis`.
+
+**Résultats observés** : Gate A verte — `go test` analysis/service/archlint/domain (exit 0),
+`go vet ./...` (exit 0), `generate-types` (12 nouveaux champs dans `generated.ts`). Bonus
+verts : `platform/duckdb` (query/scan +2 colonnes), `TestOpenAPISchemaDrift`, vitest miroir
+capabilities. Capability `CapExpectedStats` (halo_infinite seul) gate la feature côté Go (DI)
+et front. Assists attendus : arithmétique centralisée dans `analysis` (partagée service ↔
+teammates), batch per-mode (is_me), par-membre via 2 méthodes port `SquadV2Loader`.
+
+**Conclusion / prochaine étape** : Lot A clos et statué dans le plan. Reste : Lot B (front
+Timeseries + Sessions), Lot C (Escouade/Synergies), Lot D (gates finales). Dette signalée
+(Découvertes) : `SkillSnapshot.KillsExpected/DeathsExpected` désormais non lus en prod
+(candidat retrait futur, hors périmètre).
+
 ## [2026-07-23] Revue UX du plan revue analytique Timeseries & Escouade — élagage des ajouts
 
 **Statut** : Complété (révision du plan uniquement — exécution non commencée).

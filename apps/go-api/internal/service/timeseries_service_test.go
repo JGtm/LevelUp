@@ -296,7 +296,7 @@ func TestBuildMatchRows_Basic(t *testing.T) {
 			PlaylistName:      "Ranked Arena",
 		},
 	}
-	rows := buildMatchRows(matches, true)
+	rows := buildMatchRows(matches, true, nil)
 	if len(rows) != 1 {
 		t.Fatalf("expected 1 row, got %d", len(rows))
 	}
@@ -312,6 +312,42 @@ func TestBuildMatchRows_Basic(t *testing.T) {
 	}
 	if r.PlaylistName != "Ranked Arena" {
 		t.Errorf("PlaylistName = %q", r.PlaylistName)
+	}
+	// Sans attendu (KillsExpected/DeathsExpected nil) → KdaExpected nil.
+	if r.KdaExpected != nil {
+		t.Errorf("KdaExpected = %v, want nil (pas d'attendu)", *r.KdaExpected)
+	}
+}
+
+// TestBuildMatchRows_ExpectedFDA vérifie la projection de l'écart au FDA attendu :
+// KillsExpected/DeathsExpected passés depuis StatsMatchRow + AssistsExpected batch
+// → KdaExpected = kills_exp + assists_exp/3 − deaths_exp. Null-safety : la ligne
+// sans attendu ne renseigne rien.
+func TestBuildMatchRows_ExpectedFDA(t *testing.T) {
+	now := time.Now()
+	ke, de := 11.0, 6.0
+	assistsExp := 4.5
+	matches := []legacymatch.StatsMatchRow{
+		{MatchID: "with-exp", StartTime: now, Kills: 12, Deaths: 5, KillsExpected: &ke, DeathsExpected: &de},
+		{MatchID: "no-exp", StartTime: now.Add(time.Minute), Kills: 3, Deaths: 3},
+	}
+	rows := buildMatchRows(matches, true, map[string]*float64{"with-exp": &assistsExp})
+	if len(rows) != 2 {
+		t.Fatalf("expected 2 rows, got %d", len(rows))
+	}
+	r0 := rows[0]
+	if r0.KillsExpected == nil || *r0.KillsExpected != ke {
+		t.Errorf("KillsExpected = %v, want %v", r0.KillsExpected, ke)
+	}
+	if r0.AssistsExpected == nil || *r0.AssistsExpected != assistsExp {
+		t.Errorf("AssistsExpected = %v, want %v", r0.AssistsExpected, assistsExp)
+	}
+	// 11 + 4.5/3 - 6 = 6.5
+	if r0.KdaExpected == nil || (*r0.KdaExpected < 6.499 || *r0.KdaExpected > 6.501) {
+		t.Errorf("KdaExpected = %v, want 6.5", r0.KdaExpected)
+	}
+	if rows[1].KdaExpected != nil {
+		t.Errorf("no-exp KdaExpected = %v, want nil", *rows[1].KdaExpected)
 	}
 }
 

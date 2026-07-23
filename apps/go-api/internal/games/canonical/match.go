@@ -179,6 +179,14 @@ type MatchParticipant struct {
 	AssassinationKills *int
 	GroundPoundKills   *int
 	ShoulderBashKills  *int
+
+	// Stats attendues natives (match_participants.kills_expected / deaths_expected,
+	// depuis l'API skill). Alimentent l'écart au FDA attendu (analysis.ExpectedFDA)
+	// sur Timeseries / Sessions / Escouade. nil hors titre à CapExpectedStats
+	// (Halo 5) ou match sans skill snapshot. Des lignes +Inf existent en base →
+	// la garde IsBadFloat du helper les neutralise (jamais lues brutes).
+	KillsExpected  *float64
+	DeathsExpected *float64
 }
 
 // HighlightEvent est un événement horodaté issu de highlight_events.

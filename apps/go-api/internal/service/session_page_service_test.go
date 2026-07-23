@@ -593,15 +593,15 @@ func TestBuildSessionDetailRows_SkillTierLabel(t *testing.T) {
 		MatchID: "m1", StartTime: start, Outcome: &win, Kills: 1, Deaths: 1, SessionLabel: &label,
 		SkillRatingType: "csr", SkillTierCode: &gold, SkillTierCodeFR: &goldFR, SkillSubTier: &sub,
 	}}
-	if got := deref(buildSessionDetailRows(ranked, nil, "fr")); got != "Or III" {
+	if got := deref(buildSessionDetailRows(ranked, nil, "fr", nil)); got != "Or III" {
 		t.Fatalf("FR SkillTierLabel = %q, want %q", got, "Or III")
 	}
-	if got := deref(buildSessionDetailRows(ranked, nil, "en")); got != "Gold III" {
+	if got := deref(buildSessionDetailRows(ranked, nil, "en", nil)); got != "Gold III" {
 		t.Fatalf("EN SkillTierLabel = %q, want %q", got, "Gold III")
 	}
 	// Non rankée (pas de tier) → nil (le front affiche "-").
 	noTier := []legacymatch.StatsMatchRow{{MatchID: "m2", StartTime: start, Outcome: &win, SessionLabel: &label}}
-	if got := deref(buildSessionDetailRows(noTier, nil, "fr")); got != "<nil>" {
+	if got := deref(buildSessionDetailRows(noTier, nil, "fr", nil)); got != "<nil>" {
 		t.Fatalf("no-tier SkillTierLabel = %q, want <nil>", got)
 	}
 }
@@ -626,10 +626,10 @@ func TestBuildSessionDetailRows_ModeUILocale(t *testing.T) {
 		MatchID: "m1", StartTime: start, Outcome: &win, Kills: 10, Deaths: 8,
 		PairName: "Arena:Team Slayer on Live Fire", PairNameFR: "Slayer en équipe", SessionLabel: &label,
 	}}
-	if got := modeUIOf(buildSessionDetailRows(withFR, nil, "fr")); got != "Slayer en équipe" {
+	if got := modeUIOf(buildSessionDetailRows(withFR, nil, "fr", nil)); got != "Slayer en équipe" {
 		t.Fatalf("FR ModeUI = %q, want %q", got, "Slayer en équipe")
 	}
-	if got := modeUIOf(buildSessionDetailRows(withFR, nil, "en")); got != "Team Slayer" {
+	if got := modeUIOf(buildSessionDetailRows(withFR, nil, "en", nil)); got != "Team Slayer" {
 		t.Fatalf("EN ModeUI = %q, want %q (trad FR ignorée en EN)", got, "Team Slayer")
 	}
 
@@ -638,7 +638,7 @@ func TestBuildSessionDetailRows_ModeUILocale(t *testing.T) {
 		MatchID: "m2", StartTime: start, Outcome: &win, Kills: 5, Deaths: 5,
 		PairName: "Arena:Team Slayer on Live Fire", PairNameFR: "", SessionLabel: &label,
 	}}
-	if got := modeUIOf(buildSessionDetailRows(noFR, nil, "fr")); got != "Team Slayer" {
+	if got := modeUIOf(buildSessionDetailRows(noFR, nil, "fr", nil)); got != "Team Slayer" {
 		t.Fatalf("FR sans variant : ModeUI = %q, want %q", got, "Team Slayer")
 	}
 
@@ -652,11 +652,11 @@ func TestBuildSessionDetailRows_ModeUILocale(t *testing.T) {
 		GameVariantName: "Team Slayer:Arena", GameVariantNameFR: "Assassin en équipe : Arène",
 		SessionLabel: &label,
 	}}
-	if got := modeUIOf(buildSessionDetailRows(variantFR, nil, "fr")); got != "Assassin en équipe" {
+	if got := modeUIOf(buildSessionDetailRows(variantFR, nil, "fr", nil)); got != "Assassin en équipe" {
 		t.Fatalf("FR repli GameVariant : ModeUI = %q, want %q", got, "Assassin en équipe")
 	}
 	// En EN, le repli FR ne s'applique jamais → sous-mode normalisé EN du pair.
-	if got := modeUIOf(buildSessionDetailRows(variantFR, nil, "en")); got != "Team Slayer" {
+	if got := modeUIOf(buildSessionDetailRows(variantFR, nil, "en", nil)); got != "Team Slayer" {
 		t.Fatalf("EN avec variant FR : ModeUI = %q, want %q", got, "Team Slayer")
 	}
 }

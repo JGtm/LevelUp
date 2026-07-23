@@ -7983,6 +7983,14 @@ export interface components {
             kda?: number;
             /** Format: int64 */
             kills: number;
+            /** Format: double */
+            kills_expected?: number;
+            /** Format: double */
+            deaths_expected?: number;
+            /** Format: double */
+            assists_expected?: number;
+            /** Format: double */
+            kda_expected?: number;
             /** Format: int64 */
             lobby_size?: number;
             map_name?: string;
@@ -8382,6 +8390,14 @@ export interface components {
             kda?: number;
             /** Format: int64 */
             kills: number;
+            /** Format: double */
+            kills_expected?: number;
+            /** Format: double */
+            deaths_expected?: number;
+            /** Format: double */
+            assists_expected?: number;
+            /** Format: double */
+            kda_expected?: number;
             /** Format: int64 */
             grenade_kills?: number;
             map_name?: string;
@@ -8970,6 +8986,14 @@ export interface components {
             kda?: number;
             /** Format: int64 */
             kills: number;
+            /** Format: double */
+            kills_expected?: number;
+            /** Format: double */
+            deaths_expected?: number;
+            /** Format: double */
+            assists_expected?: number;
+            /** Format: double */
+            kda_expected?: number;
             map_name?: string;
             map_name_fr?: string;
             match_id: string;

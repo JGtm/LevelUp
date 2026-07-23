@@ -14496,6 +14496,18 @@ components:
           kills:
               format: int64
               type: integer
+          kills_expected:
+              format: double
+              type: number
+          deaths_expected:
+              format: double
+              type: number
+          assists_expected:
+              format: double
+              type: number
+          kda_expected:
+              format: double
+              type: number
           lobby_size:
               format: int64
               type: integer
@@ -15547,6 +15559,18 @@ components:
           kills:
               format: int64
               type: integer
+          kills_expected:
+              format: double
+              type: number
+          deaths_expected:
+              format: double
+              type: number
+          assists_expected:
+              format: double
+              type: number
+          kda_expected:
+              format: double
+              type: number
           grenade_kills:
               format: int64
               type: integer
@@ -16981,6 +17005,18 @@ components:
           kills:
               format: int64
               type: integer
+          kills_expected:
+              format: double
+              type: number
+          deaths_expected:
+              format: double
+              type: number
+          assists_expected:
+              format: double
+              type: number
+          kda_expected:
+              format: double
+              type: number
           map_name:
               type: string
           map_name_fr:

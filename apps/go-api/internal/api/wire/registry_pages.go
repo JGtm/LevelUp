@@ -246,7 +246,21 @@ func (r *ServiceRegistry) SessionPage(ctx context.Context, slug string) (port.Se
 		// même source que l'Explorer/match-history. Fallback 5 si absent.
 		svc = svc.WithCSRThresholds(duckdb.NewCSRThresholdsRepo(pdb.Metadata).Get)
 	}
+	if r.titleHasExpectedStats(pdb.TitleSlug) && pdb.Metadata != nil {
+		// Écart cumulé au FDA attendu : assists attendus (modèle personnel player DB
+		// → fallback populationnel metadata). Gaté capability → aucun bruit sur H5.
+		svc = svc.WithExpectedAssists(r.newMatchViewRepo(pdb), duckdb.NewMetadataRepo(pdb))
+	}
 	return svc, nil
+}
+
+// titleHasExpectedStats indique si le titre déclare CapExpectedStats (écart au FDA
+// attendu). Gate la DI des résolveurs d'assists attendus (Timeseries/Sessions) pour
+// éviter la résolution DB et le bruit de logs sur les titres sans stats attendues
+// (jamais slug== — ratchet no_slug_comparison_test.go).
+func (r *ServiceRegistry) titleHasExpectedStats(slug string) bool {
+	d := title.DefaultRegistry().Get(slug)
+	return d != nil && d.HasCapability(title.CapExpectedStats)
 }
 
 // Stats retourne un StatsService pour le joueur.
@@ -276,6 +290,11 @@ func (r *ServiceRegistry) Timeseries(ctx context.Context, slug string) (port.Tim
 		WithHighlightEventsRepo(duckdb.NewHighlightEventsRepo(pdb), pdb.XUID)
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
+	}
+	if r.titleHasExpectedStats(pdb.TitleSlug) && pdb.Metadata != nil {
+		// Écart au FDA attendu (chart Résumé) : assists attendus (modèle personnel
+		// player DB → fallback populationnel metadata). Gaté capability (jamais slug==).
+		svc = svc.WithExpectedAssists(r.newMatchViewRepo(pdb), duckdb.NewMetadataRepo(pdb))
 	}
 	return svc, nil
 }

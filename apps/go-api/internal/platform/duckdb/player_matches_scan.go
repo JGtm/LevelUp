@@ -81,7 +81,7 @@ func (r *PlayerMatchesRepo) mergePlayerMatchRows(
 	return out
 }
 
-// scanSharedPlayerMatchRow scanne la partie shared (39 cols) en
+// scanSharedPlayerMatchRow scanne la partie shared (41 cols) en
 // playerMatchScanResult (cols PME/skill_rank/identité restent zero).
 func scanSharedPlayerMatchRow(rows *sql.Rows) (playerMatchScanResult, error) {
 	var s playerMatchScanResult
@@ -102,6 +102,7 @@ func scanSharedPlayerMatchRow(rows *sql.Rows) (playerMatchScanResult, error) {
 		&s.grenadeKills, &s.meleeKills, &s.powerWeaponKills,
 		&s.assassinationKills, &s.groundPoundKills, &s.shoulderBashKills,
 		&s.shotsFired, &s.shotsHit,
+		&s.killsExpected, &s.deathsExpected,
 		&s.perfectKills,
 		&s.t0Ms,
 	); err != nil {
@@ -200,6 +201,7 @@ type playerMatchScanResult struct {
 	grenadeKills, meleeKills, powerWeaponKills              sql.NullInt64
 	assassinationKills, groundPoundKills, shoulderBashKills sql.NullInt64
 	shotsFired, shotsHit                                    sql.NullInt64
+	killsExpected, deathsExpected                           sql.NullFloat64 // match_participants.kills_expected/deaths_expected (écart FDA attendu)
 	perfectKills                                            sql.NullInt64
 	t0Ms                                                    sql.NullInt64 // countdown pré-match en ms (Match Timeline T0)
 }
