@@ -143,7 +143,6 @@ export function ExplorerCombatProfile({ liveMatches, localMatches, locale, t, to
           <h3 className="text-base font-semibold text-foreground">
             {t('explorer.combat.title')}
           </h3>
-          <p className="text-sm text-muted-foreground">{t('explorer.combat.subtitle')}</p>
         </div>
         {/* Toggle source : live (défaut) / local. Désactive une source sans données. */}
         <div

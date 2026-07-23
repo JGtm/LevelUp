@@ -21,6 +21,7 @@ import { kdaNetColor } from '@/lib/colors/outcomePalette'
 import { getPerfColor } from '@/lib/perf-color'
 import { formatDateRange, formatSignedFixed } from '@/lib/formatters'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useExplorerPrefsStore } from '@/stores/explorerPrefsStore'
 import type { ExplorerBriefing } from '@/lib/api/types'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { BriefingTile } from './BriefingTile'
@@ -51,6 +52,27 @@ interface Props {
   t: T
 }
 
+// Chevron de bascule (SVG inline, currentColor — aucune couleur en dur). Pointe
+// vers le bas quand la synthèse est repliée (« dévoiler »), vers le haut sinon.
+function BriefingToggleChevron({ collapsed }: { collapsed: boolean }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d={collapsed ? 'm6 9 6 6 6-6' : 'm18 15-6-6-6 6'} />
+    </svg>
+  )
+}
+
 function formatPeriod(
   start: string | null | undefined,
   end: string | null | undefined,
@@ -64,6 +86,8 @@ function formatPeriod(
 
 export function ExplorerBriefingStrip({ briefing, t }: Props) {
   const locale = useAppShellStore((s) => s.locale)
+  const collapsed = useExplorerPrefsStore((s) => s.briefingCollapsed)
+  const toggleCollapsed = useExplorerPrefsStore((s) => s.toggleBriefingCollapsed)
   if (!briefing) return null
 
   const scope = briefing.scope
@@ -118,8 +142,33 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap gap-2">
-        {/* Matchs + période */}
+      {/* En-tête discret : bascule réduire/afficher de la synthèse (choix mémorisé
+          par explorerPrefsStore → localStorage). Aligné à droite pour ne pas
+          concurrencer le socle de tuiles ; jamais en flex-wrap (le socle reste le
+          premier flex-wrap du bandeau). */}
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          aria-expanded={!collapsed}
+          aria-label={
+            collapsed
+              ? t('explorer.briefing.expand_aria')
+              : t('explorer.briefing.collapse_aria')
+          }
+          className="inline-flex items-center gap-1 text-2xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <span>
+            {collapsed ? t('explorer.briefing.expand') : t('explorer.briefing.collapse')}
+          </span>
+          <BriefingToggleChevron collapsed={collapsed} />
+        </button>
+      </div>
+
+      {!collapsed && (
+        <>
+          <div className="flex flex-wrap gap-2">
+            {/* Matchs + période */}
         <div className={SOCLE_TILE}>
           <BriefingTile
             label={t('explorer.briefing.matches_label')}
@@ -209,17 +258,19 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
           </div>
         )}
 
-        {/* Conditionnelles en cascade (Séries marquantes > Pic rang > Pic MMR ; les 3 tiennent) */}
-        {conditionalTiles}
-      </div>
+            {/* Conditionnelles en cascade (Séries marquantes > Pic rang > Pic MMR ; les 3 tiennent) */}
+            {conditionalTiles}
+          </div>
 
-      {/* Échantillon faible : socle seul + mention ; sinon modules conditionnels. */}
-      {briefing.low_sample ? (
-        <p className="text-2xs text-muted-foreground">
-          {t('explorer.briefing.low_sample', { n: matchesCount })}
-        </p>
-      ) : (
-        <ExplorerBriefingModules briefing={briefing} t={t} hideDelta={fullHistory} />
+          {/* Échantillon faible : socle seul + mention ; sinon modules conditionnels. */}
+          {briefing.low_sample ? (
+            <p className="text-2xs text-muted-foreground">
+              {t('explorer.briefing.low_sample', { n: matchesCount })}
+            </p>
+          ) : (
+            <ExplorerBriefingModules briefing={briefing} t={t} hideDelta={fullHistory} />
+          )}
+        </>
       )}
     </div>
   )

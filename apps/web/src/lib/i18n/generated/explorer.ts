@@ -2,12 +2,16 @@
 // Source : apps/web/src/lib/i18n/manifests/explorer.toml
 
 export const explorerManifest = {
+  "explorer.briefing.collapse": { fr: "Réduire", en: "Collapse" },
+  "explorer.briefing.collapse_aria": { fr: "Masquer la synthèse", en: "Hide summary" },
   "explorer.briefing.context_split_title": { fr: "Par contexte", en: "By context" },
   "explorer.briefing.dim_map": { fr: "Par carte", en: "By map" },
   "explorer.briefing.dim_matches": { fr: "{n, plural, one {# match} other {# matchs}}", en: "{n, plural, one {# match} other {# matches}}" },
   "explorer.briefing.dim_mode": { fr: "Par mode", en: "By mode" },
   "explorer.briefing.dim_playlist": { fr: "Par sélection", en: "By playlist" },
   "explorer.briefing.duration_total_label": { fr: "Durée totale", en: "Total time" },
+  "explorer.briefing.expand": { fr: "Afficher", en: "Show" },
+  "explorer.briefing.expand_aria": { fr: "Afficher la synthèse", en: "Show summary" },
   "explorer.briefing.fda_label": { fr: "FDA", en: "KDA" },
   "explorer.briefing.highlights_title": { fr: "Moments forts", en: "Highlights" },
   "explorer.briefing.low_sample": { fr: "Échantillon faible ({n} matchs)", en: "Small sample ({n} matches)" },
@@ -53,7 +57,6 @@ export const explorerManifest = {
   "explorer.combat.modes_title": { fr: "Répartition des modes", en: "Mode distribution" },
   "explorer.combat.score_title": { fr: "Score et placement", en: "Score and placement" },
   "explorer.combat.spree_title": { fr: "Folie meurtrière max et frags parfaits", en: "Max killing spree and perfect kills" },
-  "explorer.combat.subtitle": { fr: "Forme récente sur les derniers matchs PvP", en: "Recent form over the last PvP matches" },
   "explorer.combat.title": { fr: "Profil de combat", en: "Combat profile" },
   "explorer.encounter.empty": { fr: "Aucune rencontre antérieure avec ce joueur.", en: "No prior encounters with this player." },
   "explorer.encounter.encounters": { fr: "Rencontres", en: "Encounters" },
