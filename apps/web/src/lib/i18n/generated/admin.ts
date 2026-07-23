@@ -156,8 +156,6 @@ export const adminManifest = {
   "admin.dq.col_occurrences": { fr: "Matchs", en: "Matches" },
   "admin.dq.col_sample": { fr: "Exemple de pair_name", en: "Sample pair_name" },
   "admin.dq.counts_section": { fr: "Inconnus restants", en: "Remaining unknowns" },
-  "admin.dq.diagnostics_refresh": { fr: "Rafraîchir", en: "Refresh" },
-  "admin.dq.diagnostics_section": { fr: "Diagnostics d'instance", en: "Instance diagnostics" },
   "admin.dq.example_open": { fr: "Ouvrir le match (nouvel onglet)", en: "Open match (new tab)" },
   "admin.dq.form_cancel": { fr: "Annuler", en: "Cancel" },
   "admin.dq.form_name_en": { fr: "Nom EN", en: "EN name" },

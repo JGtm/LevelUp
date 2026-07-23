@@ -1045,14 +1045,6 @@ en = "Data quality counters unavailable."
 fr = "Actions globales"
 en = "Global actions"
 
-[admin.dq.diagnostics_section]
-fr = "Diagnostics d'instance"
-en = "Instance diagnostics"
-
-[admin.dq.diagnostics_refresh]
-fr = "Rafraîchir"
-en = "Refresh"
-
 [admin.dq.run_registry_names]
 fr = "Résoudre les noms registry"
 en = "Resolve registry names"

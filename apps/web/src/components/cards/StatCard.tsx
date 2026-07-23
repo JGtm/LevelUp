@@ -2,8 +2,8 @@
  * StatCard — carte sémantique label + valeur (+ hint optionnel).
  *
  * P8.13 (revue 2026-04-29 gap #13) : consolidation des 3 implémentations
- * dispersées :
- *   - features/lab/_labShared.tsx::MetricCard (uppercase tracking + 2xl value + hint)
+ * dispersées (l'ancienne MetricCard de features/lab/ a été retirée avec le
+ * panneau Diagnostics d'instance, Lot D 2026-07-23) :
  *   - features/synthesis/SynthesisPage.tsx::StatCell (border simple + xl value)
  *   - features/home/HomeKPICard (retiré 2026-06-06 — home migré sur components/cards/KpiCard)
  *

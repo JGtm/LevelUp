@@ -140,6 +140,22 @@ go run ./cmd/levelup reset-bitmasks                         # reset des bits de 
 go run ./cmd/levelup engagement-coefs [--with-scores]      # recompute des coefficients d'engagement
 ```
 
+### Migration des chemins média (one-shot, binaire autonome)
+
+Convertit les chemins média **absolus** (legacy) en chemins relatifs portables
+`{owner_slug}/{rel}` dans `shared_social.duckdb` (`media_files.file_path` /
+`thumbnail_path`, propagé à la PK `media_likes.media_path`). Idempotent — les chemins déjà
+relatifs sont ignorés, une miniature cassée est mise à NULL pour que le prochain
+`BackfillThumbnailPaths` la repointe. À lancer **serveur arrêté** (ouvre
+`shared_social.duckdb` en RW). Déjà exécuté en prod pour les titres existants ; conservé
+pour de futurs imports legacy qui réintroduiraient des chemins absolus.
+
+```bash
+go run ./cmd/migrate-media-paths --db data/titles/{slug}/warehouse/shared_social.duckdb [--dry-run]
+# flags : --db PATH (requis)  --captures-base DIR  --settings app_settings.json  --dry-run
+# --captures-base : défaut = media_captures_base_dir de app_settings.json
+```
+
 ### Notifications
 
 ```bash

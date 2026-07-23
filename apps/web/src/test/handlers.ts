@@ -246,38 +246,6 @@ const mediaFixture = {
   },
 }
 
-const labDiagnosticsFixture = {
-  title_slug: 'halo_infinite',
-  parity_report_file: {
-    path: 'apps/go-api/tests/fixtures/parity_report.json',
-    exists: true,
-    size_bytes: 4500,
-    modified_at: '2026-04-19T11:00:00Z',
-  },
-  parity_report: {
-    generated_at: '2026-04-19T11:00:00Z',
-    go_url: 'http://localhost:8000',
-    player: 'TestPlayer',
-    summary: {
-      total: 24,
-      passed: 20,
-      failed: 2,
-      skipped: 2,
-    },
-    results: [
-      { name: 'health', status: 'passed', http_status: 200 },
-      { name: 'media', status: 'failed', http_status: 500, error: 'fixture mismatch' },
-    ],
-  },
-  medal_guards: {
-    entry_count: 2,
-    cardinality: { passed: true, reason: 'cardinalité OK', details: [] },
-    required_fields: { passed: true, reason: 'Tous les champs requis sont présents', details: [] },
-    images: { passed: true, reason: '0 images — import sans assets visuels (accepté)', details: [] },
-    overall: { passed: true, reason: 'tous les garde-fous passent (2 entrées)', details: [] },
-  },
-}
-
 // ─── Handlers ─────────────────────────────────────────────────────────────────
 
 export const handlers = [
@@ -314,9 +282,6 @@ export const handlers = [
     const body = await request.json()
     return HttpResponse.json({ ...settingsFixture, ...(body as Record<string, unknown>) })
   }),
-
-  // Diagnostic d'instance (ex-Lab, panneau Donnees)
-  http.get(p('/lab/diagnostics'), () => HttpResponse.json(labDiagnosticsFixture)),
 
   // Career
   http.get(p(`/players/${SLUG}/pages/career`), () => HttpResponse.json(careerFixture)),

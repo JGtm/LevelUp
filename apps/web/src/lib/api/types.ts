@@ -67,20 +67,6 @@ export interface HealthResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Diagnostic d'instance (ex-Lab)
-// ---------------------------------------------------------------------------
-
-// A3.5 (DC-9) : seuls les schémas du panneau Diagnostics (onglet admin
-// Données) survivent au retrait du Lab. Source de vérité = contrat.
-export type LabFileStatus = components['schemas']['LabFileStatus']
-export type LabGuardResult = components['schemas']['LabGuardResult']
-export type LabMedalGuardsReport = components['schemas']['LabMedalGuardsReport']
-export type LabParitySummary = components['schemas']['LabParitySummary']
-export type LabParityResult = components['schemas']['LabParityResult']
-export type LabParityReport = components['schemas']['LabParityReport']
-export type LabDiagnosticsResponse = components['schemas']['LabDiagnosticsResponse']
-
-// ---------------------------------------------------------------------------
 // Filtres
 // ---------------------------------------------------------------------------
 

@@ -138,6 +138,21 @@ go run ./cmd/levelup reset-bitmasks                         # reset skill/partic
 go run ./cmd/levelup engagement-coefs [--with-scores]      # recompute engagement coefficients
 ```
 
+### Media paths migration (one-shot, standalone binary)
+
+Converts legacy **absolute** media paths to portable relative `{owner_slug}/{rel}` paths in
+`shared_social.duckdb` (`media_files.file_path` / `thumbnail_path`, propagated to the
+`media_likes.media_path` PK). Idempotent — already-relative paths are skipped, a broken
+thumbnail is nulled out so the next `BackfillThumbnailPaths` repoints it. Run with the
+**server stopped** (opens `shared_social.duckdb` RW). Already executed in prod for the
+existing titles; kept for future legacy imports that could reintroduce absolute paths.
+
+```bash
+go run ./cmd/migrate-media-paths --db data/titles/{slug}/warehouse/shared_social.duckdb [--dry-run]
+# flags: --db PATH (required)  --captures-base DIR  --settings app_settings.json  --dry-run
+# --captures-base defaults to app_settings.json media_captures_base_dir
+```
+
 ### Notifications
 
 ```bash
