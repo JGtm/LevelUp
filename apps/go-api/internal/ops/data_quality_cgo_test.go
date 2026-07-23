@@ -308,7 +308,7 @@ func TestDataQuality_TranslatedModeNotListed(t *testing.T) {
 	meta := openDQTestMeta(t)
 	seedDQMatch(t, shared, "m1", "", "", "p1", "Husky Raid CTF on Empyrean", 0)
 
-	before, err := listUntranslatedModes(ctx, shared, meta, "fr", 0)
+	before, err := listUntranslatedModes(ctx, shared, meta, "fr")
 	if err != nil || len(before) != 1 {
 		t.Fatalf("avant résolution : %+v, err=%v", before, err)
 	}
@@ -319,7 +319,7 @@ func TestDataQuality_TranslatedModeNotListed(t *testing.T) {
 		t.Fatalf("upsert: action=%q err=%v", action, err)
 	}
 
-	after, err := listUntranslatedModes(ctx, shared, meta, "fr", 0)
+	after, err := listUntranslatedModes(ctx, shared, meta, "fr")
 	if err != nil || len(after) != 0 {
 		t.Fatalf("après résolution : %+v, err=%v (attendu vide)", after, err)
 	}

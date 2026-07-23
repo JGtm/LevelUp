@@ -101,7 +101,7 @@ func CountDataQuality(ctx context.Context, sharedDB, metaDB *sql.DB, titleSlug, 
 		}
 	}
 
-	untranslated, err := listUntranslatedModes(ctx, sharedDB, metaDB, locale, 0)
+	untranslated, err := listUntranslatedModes(ctx, sharedDB, metaDB, locale)
 	if err != nil {
 		return c, err
 	}
@@ -168,7 +168,7 @@ func ListDataQualityIssues(
 	case "raw_uuids":
 		all, err = listRawUUIDs(ctx, sharedDB, 0)
 	case "untranslated_modes":
-		all, err = listUntranslatedModes(ctx, sharedDB, metaDB, locale, 0)
+		all, err = listUntranslatedModes(ctx, sharedDB, metaDB, locale)
 	case "orphan_playlists":
 		all, err = listOrphanPlaylists(ctx, sharedDB, metaDB, titleSlug, 0)
 	case "orphan_xuids":
@@ -267,8 +267,7 @@ func metaTableExists(ctx context.Context, metaDB *sql.DB, table string) (bool, e
 //     (le titre gère ses traductions autrement) → liste vide, jamais une erreur.
 //
 // locale : langue cible de mode_name_tr (défaut « fr » si vide) — paramètre ?locale=.
-// limit <= 0 → pas de limite (usage comptage).
-func listUntranslatedModes(ctx context.Context, sharedDB, metaDB *sql.DB, locale string, limit int) ([]DataQualityIssue, error) {
+func listUntranslatedModes(ctx context.Context, sharedDB, metaDB *sql.DB, locale string) ([]DataQualityIssue, error) {
 	if locale == "" {
 		locale = "fr"
 	}
@@ -324,9 +323,6 @@ func listUntranslatedModes(ctx context.Context, sharedDB, metaDB *sql.DB, locale
 		}
 		return out[i].ID < out[j].ID
 	})
-	if limit > 0 && len(out) > limit {
-		out = out[:limit]
-	}
 	return out, nil
 }
 

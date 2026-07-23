@@ -1,3 +1,26 @@
+## [2026-07-23] CI post-merge : lint unparam + baseline tests lab (2 gates rouges)
+
+**Statut** : Complété (fix poussé, CI en observation).
+
+**Contexte** : après le push des 2 merges, le workflow CI est rouge sur 2 jobs (le deploy VPS,
+lui, est passé — jobs indépendants). Deux causes, aucune régression réelle :
+- **Go Lint (golangci-lint ratchet)** : `unparam` signale `listUntranslatedModes` dont le
+  paramètre `limit` reçoit toujours `0` (4 appelants). Param mort → retiré (signature +
+  bloc `if limit > 0` jamais exécuté + 4 appelants). Comportement prod identique. Les 3
+  autres fonctions du fichier gardent leur `limit` (valeurs variables, légitimes).
+- **Go Baseline Tests** : 4 tests absents vs `.ai/baselines/tests_pre_migration.jsonl`
+  (`TestLabHandler_Forbidden`, `TestLabHandler_GetDiagnostics_OK`, `TestLabRoutesMounted`,
+  `TestIsMissingRelationError`) — tests du module lab supprimé volontairement (branche 1).
+  Baseline mise à jour (28 lignes des 4 tests + 4 lignes package-level `internal/platform/lab`
+  retirées). Les tests `*Label*` (asset labels, session filter, CSR tier) sont conservés.
+
+**Résultats locaux** : `go build ./...` + `go vet ./internal/ops/...` OK ; `go test
+./internal/ops/...` PASS. golangci-lint non installé localement → vérification par la CI.
+
+**Prochaine étape** : observer la CI verte sur le nouveau commit.
+
+---
+
 ## [2026-07-23] Merge feat/title-slug-in-url → main (2e des 2 branches non mergées)
 
 **Statut** : Complété (merge résolu + testé ; push prod en attente du feu vert utilisateur).
