@@ -124,7 +124,35 @@ func (s *TeammatesService) buildSquadWeaponKills(
 		return nil, nil
 	}
 
-	// Group by weapon_id.
+	out := aggregateSquadWeaponBars(rows, gtByXUID)
+	if len(out) == 0 {
+		return nil, nil
+	}
+
+	weaponKills := &domain.SquadWeaponKills{
+		Players: playersOrdered,
+		Bars:    out,
+	}
+	// 7. Ventilation PAR CLASSE par gamertag (D8) — réutilise les rows déjà chargées.
+	// hasMechanics capability-gated (native_kill_mechanics, jamais slug==) : sur H5 on
+	// charge les mécaniques natives par joueur (assassinats + capacités spartanes) pour
+	// alimenter le split Mêlée et la classe « Capacités spartanes » (D-P6-2 résolu). Sur
+	// Infinite (cap off) : mechByGT nil → comportement inchangé.
+	hasMechanics := titleHasNativeKillMechanics(s.titleSlug)
+	mechByGT := s.loadSquadMechanicsByGT(ctx, sharedMatches, xuids, gtByXUID, hasMechanics)
+	fragClasses := squadFragClassesByPlayer(rows, playersOrdered, xuidByPlayer, perf, mechByGT, hasMechanics)
+	// Traçabilité de l'agrégation frags par joueur (parité logFragDistribution du package
+	// service, inaccessible ici — teammates ne peut pas importer son parent). Message local
+	// distinct des marqueurs du helper (garde-rail TestFragDistributionLoggingCentralized).
+	slog.DebugContext(ctx, "teammates_frag_distribution_built",
+		"title", s.titleSlug, "players_with_classes", len(fragClasses), "has_mechanics", hasMechanics)
+	return weaponKills, fragClasses
+}
+
+// aggregateSquadWeaponBars regroupe les weapon_kills par weapon_id en barres empilées
+// par gamertag, triées ASC par total escouade (peu utilisées en haut, tie-break label).
+// Retourne nil si aucune arme agrégeable.
+func aggregateSquadWeaponBars(rows []port.WeaponKillRow, gtByXUID map[string]string) []domain.SquadWeaponBar {
 	type barAgg struct {
 		weaponID       int64
 		label          string
@@ -163,10 +191,8 @@ func (s *TeammatesService) buildSquadWeaponKills(
 		}
 	}
 	if len(bars) == 0 {
-		return nil, nil
+		return nil
 	}
-
-	// 6. Tri ASC par TotalSquad (peu utilisées en haut), tie-break par label.
 	out := make([]domain.SquadWeaponBar, 0, len(bars))
 	for _, b := range bars {
 		out = append(out, domain.SquadWeaponBar{
@@ -184,25 +210,7 @@ func (s *TeammatesService) buildSquadWeaponKills(
 		}
 		return out[i].Label < out[j].Label
 	})
-
-	weaponKills := &domain.SquadWeaponKills{
-		Players: playersOrdered,
-		Bars:    out,
-	}
-	// 7. Ventilation PAR CLASSE par gamertag (D8) — réutilise les rows déjà chargées.
-	// hasMechanics capability-gated (native_kill_mechanics, jamais slug==) : sur H5 on
-	// charge les mécaniques natives par joueur (assassinats + capacités spartanes) pour
-	// alimenter le split Mêlée et la classe « Capacités spartanes » (D-P6-2 résolu). Sur
-	// Infinite (cap off) : mechByGT nil → comportement inchangé.
-	hasMechanics := titleHasNativeKillMechanics(s.titleSlug)
-	mechByGT := s.loadSquadMechanicsByGT(ctx, sharedMatches, xuids, gtByXUID, hasMechanics)
-	fragClasses := squadFragClassesByPlayer(rows, playersOrdered, xuidByPlayer, perf, mechByGT, hasMechanics)
-	// Traçabilité de l'agrégation frags par joueur (parité logFragDistribution du package
-	// service, inaccessible ici — teammates ne peut pas importer son parent). Message local
-	// distinct des marqueurs du helper (garde-rail TestFragDistributionLoggingCentralized).
-	slog.DebugContext(ctx, "teammates_frag_distribution_built",
-		"title", s.titleSlug, "players_with_classes", len(fragClasses), "has_mechanics", hasMechanics)
-	return weaponKills, fragClasses
+	return out
 }
 
 // titleHasNativeKillMechanics indique si le titre fournit NATIVEMENT le détail des kills
