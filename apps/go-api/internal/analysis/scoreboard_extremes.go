@@ -33,6 +33,10 @@ const mvpMinCells = 2
 //	kills, assists, kda, accuracy, personal_score, damage_dealt,
 //	headshot_kills, max_killing_spree, perfect_kills
 //
+// La colonne kills utilisée ici est ajustée par mvpKills (frags bruts moins
+// assassinat / charge spartane / coup au sol) — seule la valeur de départage
+// MVP/LVP est concernée, pas les frags affichés.
+//
 // Colonnes inversées (lower-is-better = best) :
 //
 //	deaths, damage_taken
@@ -87,6 +91,33 @@ type scoreboardCol struct {
 	weight   int
 }
 
+// mvpKills retourne le nombre de frags retenu pour DÉPARTAGER le MVP/LVP :
+// frags bruts moins les mécaniques de kill exclues (assassinat, charge spartane
+// / shoulder_bash, coup au sol / ground_pound). Ces mécaniques ne reflètent pas
+// la performance de tir qui doit peser dans le badge MVP/LVP.
+//
+// N'affecte QUE la valeur de départage : les frags par-match affichés ailleurs
+// (colonne Frags du scoreboard) restent inchangés. Title-agnostic : ces trois
+// champs sont nil hors Halo 5 (Infinite ne les fournit pas) → aucun effet sur
+// Infinite. Le résultat est borné à 0 (défense en profondeur contre une donnée
+// incohérente où la somme des mécaniques dépasserait les frags bruts).
+func mvpKills(r domain.ScoreboardRaw) int {
+	k := r.Kills - intPtrOrZero(r.AssassinationKills) -
+		intPtrOrZero(r.ShoulderBashKills) - intPtrOrZero(r.GroundPoundKills)
+	if k < 0 {
+		return 0
+	}
+	return k
+}
+
+// intPtrOrZero déréférence un *int nullable en retournant 0 si nil.
+func intPtrOrZero(p *int) int {
+	if p == nil {
+		return 0
+	}
+	return *p
+}
+
 func humanPlayers(rows []domain.ScoreboardRaw) []domain.ScoreboardRaw {
 	out := make([]domain.ScoreboardRaw, 0, len(rows))
 	for _, r := range rows {
@@ -125,7 +156,7 @@ func scoreboardColumns(rows []domain.ScoreboardRaw) []scoreboardCol {
 	perfect := make([]float64, n)
 
 	for i, r := range rows {
-		kills[i] = float64(r.Kills)
+		kills[i] = float64(mvpKills(r))
 		deaths[i] = float64(r.Deaths)
 		assists[i] = float64(r.Assists)
 		kda[i] = fv(r.KDA)

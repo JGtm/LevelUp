@@ -30,7 +30,7 @@ import type { MatchViewText } from './i18n'
 import { displayTierLabel } from './MatchHeader.utils'
 import { localizeTierLabel } from '@/lib/skillTiers'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { parseTeamSideID, resolveTeamName } from '@/lib/halo/teamNames'
+import { labelHasTeamWord, parseTeamSideID, resolveTeamName } from '@/lib/halo/teamNames'
 import {
   cellState,
   cellStyle,
@@ -422,8 +422,14 @@ function TeamScoreboard({
   const backendTeamName = rows.find((r) => r.team_name)?.team_name ?? null
   const officialName = backendTeamName ?? resolveTeamName(teamSide)
   const teamID = parseTeamSideID(teamSide)
+  // Un libellé backend déjà complet (Halo 5 : « Équipe Cobra » depuis team_colors
+  // localisé) ne doit PAS être re-préfixé par teamLabelFmt, sinon on double le mot
+  // (« Équipe Équipe Cobra »). Les noms officiels résolus côté front (Eagle/Cobra)
+  // sont nus et attendent le préfixe. Décision sur la DONNÉE, pas sur le slug.
   const teamLabel = officialName
-    ? t.teamLabelFmt(officialName)
+    ? labelHasTeamWord(officialName)
+      ? officialName
+      : t.teamLabelFmt(officialName)
     : teamID != null
       ? t.teamNumberedFmt(teamID)
       : t.teamUnknown

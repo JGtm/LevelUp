@@ -56,3 +56,22 @@ export function resolveTeamNameFromID(teamID: number | null | undefined): string
   if (teamID == null) return null
   return TEAM_NAMES_HALO_INFINITE[teamID] ?? null
 }
+
+/**
+ * Détecte si un libellé d'équipe contient DÉJÀ le mot « équipe »/« team »
+ * (accents et casse ignorés). Sert à éviter le double préfixe : le backend Halo 5
+ * fournit un libellé déjà complet et localisé depuis team_colors (« Équipe Cobra »),
+ * alors que les noms officiels résolus côté front (Eagle / Cobra) sont NUS et
+ * attendent le préfixe « Équipe »/« Team » ajouté par teamLabelFmt.
+ *
+ * Title-agnostic : on teste uniquement la DONNÉE (le libellé), jamais le slug.
+ * Aucun nom d'équipe officiel Halo (Eagle/Cobra/Hades/…) ne contient ces mots,
+ * donc le test ne produit pas de faux positif sur les noms nus.
+ */
+export function labelHasTeamWord(name: string): boolean {
+  const normalized = name
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+  return /\b(equipe|team)\b/.test(normalized)
+}
