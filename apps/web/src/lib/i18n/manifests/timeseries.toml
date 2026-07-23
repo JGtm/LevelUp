@@ -310,6 +310,23 @@ en = "Average life (s)"
 fr = "Tendance"
 en = "Trend"
 
+# Écart au FDA attendu (D1) — différentiel réel vs attendu par match.
+[timeseries.summary.fda_gap_title]
+fr = "Écart au FDA attendu"
+en = "KDA gap to expected"
+
+[timeseries.summary.fda_gap_series]
+fr = "Écart"
+en = "Gap"
+
+[timeseries.summary.fda_gap_real]
+fr = "Réel"
+en = "Actual"
+
+[timeseries.summary.fda_gap_expected]
+fr = "Attendu"
+en = "Expected"
+
 [timeseries.summary.kill_types_title]
 fr = "Répartition des frags"
 en = "Kill type distribution"

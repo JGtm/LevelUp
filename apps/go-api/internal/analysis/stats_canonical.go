@@ -75,6 +75,12 @@ func StatsMatchRowFromCanonical(r canonical.PlayerMatchRow, effectiveHpToKill fl
 	if r.Self.Assists != nil {
 		out.Assists = *r.Self.Assists
 	}
+	// Stats attendues natives (Self) : source de l'écart au FDA attendu. Depuis
+	// MatchParticipant (populé quel que soit le skill snapshot), pas SkillSnapshot
+	// (nil sans rating). ShotsHit alimente le fallback populationnel des assists attendus.
+	out.KillsExpected = r.Self.KillsExpected
+	out.DeathsExpected = r.Self.DeathsExpected
+	out.ShotsHit = r.Self.ShotsHit
 	if r.Self.DamageDealt != nil {
 		v := float64(*r.Self.DamageDealt)
 		out.DamageDealt = &v
@@ -153,8 +159,8 @@ func StatsMatchRowFromCanonical(r canonical.PlayerMatchRow, effectiveHpToKill fl
 		}
 	}
 	if r.Enrichment.SkillSnapshot != nil {
-		out.KillsExpected = r.Enrichment.SkillSnapshot.KillsExpected
-		out.DeathsExpected = r.Enrichment.SkillSnapshot.DeathsExpected
+		// KillsExpected/DeathsExpected proviennent désormais de Self (ci-dessus) —
+		// populés indépendamment du skill snapshot.
 		out.SkillRatingValue = r.Enrichment.SkillSnapshot.RatingValue
 		out.SkillRatingType = string(r.Enrichment.SkillSnapshot.RatingType)
 		out.SkillPlaylistGroup = r.Enrichment.SkillSnapshot.PlaylistGroup

@@ -50,7 +50,7 @@ export type PerformanceMetricKey =
   | 'performance_score'
   | 'max_killing_spree'
 
-interface CommonOpts {
+export interface CommonOpts {
   /** Mapping gamertag → couleur hex. */
   colorByPlayer: Record<string, string>
   /** Ordre des séries (sinon ordre alphabétique). */
@@ -103,14 +103,14 @@ function fmtVal(v: number | null, decimals = 1, suffix = '', scale = 1): string 
   return `${(v * scale).toFixed(decimals)}${suffix}`
 }
 
-function orderedPlayers(rows: Record<string, SquadPerformanceSeriesPoint[]>, playerOrder?: string[]): string[] {
+export function orderedPlayers(rows: Record<string, SquadPerformanceSeriesPoint[]>, playerOrder?: string[]): string[] {
   if (playerOrder && playerOrder.length > 0) {
     return playerOrder.filter((p) => rows[p] !== undefined)
   }
   return Object.keys(rows).sort()
 }
 
-function maxLength(rows: Record<string, SquadPerformanceSeriesPoint[]>, players: string[]): number {
+export function maxLength(rows: Record<string, SquadPerformanceSeriesPoint[]>, players: string[]): number {
   let max = 0
   for (const p of players) {
     if (rows[p].length > max) max = rows[p].length
@@ -118,7 +118,7 @@ function maxLength(rows: Record<string, SquadPerformanceSeriesPoint[]>, players:
   return max
 }
 
-function xAxisLabels(n: number): string[] {
+export function xAxisLabels(n: number): string[] {
   return Array.from({ length: n }, (_, i) => `#${i + 1}`)
 }
 

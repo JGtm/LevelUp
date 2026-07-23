@@ -30,6 +30,119 @@ domain, cmd/server, migrations, ops) PASS.
 `feat/title-slug-in-url` (2e branche) selon le même protocole.
 
 ---
+## [2026-07-23] Différentiel FDA réel vs attendu — CHANTIER CLOS (Lot D, gates finales)
+
+**Statut** : Complété. Plan `.ai/PLAN_EXPECTED_FDA_2026-07.md` clos (0 case ouverte),
+branche `feat/expected-fda-differential` (worktree `expected-fda`), 4 commits :
+`d53967cf5` (A backend) · `36ddd5989` (B front Timeseries/Sessions) · `fe8ea87cb`
+(C front Synergies) · clôture (D). NON poussée, NON mergée.
+
+**Décision technique principale** : exécution supervisée — 3 agents Opus (1/lot),
+revue sur pièces + rejeu indépendant des gates avant chaque commit superviseur.
+Un correctif de revue au Lot D : dérogation `react-refresh/only-export-components`
+manquante sur `computeCumulativeFdaGap` (SessionFdaGapCumulative, B2), baseline
+eslint restaurée à 7 warnings.
+
+**Résultats observés** : gates finales toutes vertes — `go test ./...` exit 0,
+`go vet` exit 0, golangci-lint ratchet 0 issue, tsc (cache purgé) exit 0, eslint
+0 erreur/7 warnings (= baseline), vitest 298 fichiers / 2577 tests exit 0.
+Données validées en amont sur parquets du 23/07 (couverture ~98 % Infinite,
+6 lignes +Inf filtrées par les gardes, H5 = 0 attendu → capability).
+
+**Conclusion / prochaine étape** : vérification visuelle sur serveur dev (checkout
+principal, le worktree n'a pas de data/) puis merge dans main — AVANT le chantier
+`PLAN_REVUE_ANALYTIQUE_TIMESERIES_SQUAD` (collisions cartographiées dans le plan,
+section Risques).
+
+---
+## [2026-07-23] Différentiel FDA réel vs attendu — Lot C (front Escouade / Synergies) livré
+
+**Statut** : Complété (Lot C du plan `.ai/PLAN_EXPECTED_FDA_2026-07.md` ; branche
+`feat/expected-fda-differential`, worktree `expected-fda` ; NON commité — revue superviseur).
+
+**Décision technique principale** : extraction dans un fichier frère. Le builder
+`buildFdaGapCumulativeOption` devait aller dans `squadPerformanceLineCharts.ts`, mais ce
+fichier était DÉJÀ à 511 L (> seuil 500 avant tout ajout) → nouveau fichier
+`features/squad/charts/squadFdaGapChart.ts` pour ne pas accroître la dette god-file
+(CLAUDE.md n°5). Helpers partagés `orderedPlayers`/`maxLength`/`xAxisLabels` + type
+`CommonOpts` exportés du fichier voisin et réutilisés (DRY, zéro duplication). Le builder
+consomme `kda_expected` (déjà projeté backend, D6, jamais recalculé), cumule le différentiel
+`kda − kda_expected` par `match_order` croissant : 1 line/joueur (couleur `getSquadPlayerColors`),
+markLine 0, PAS d'aire (multi-séries). D5 : match sans attendu → cumul reporte la dernière
+valeur ; trous d'intersection = null (`connectNulls`). Robuste au désordre (`sort`) et au
+non-fini (`Number.isFinite`). Chart monté via composant self-gated
+`SquadFdaGapCumulativeCard.tsx` (`useCapability('expected_stats')` → null, pattern Lot B),
+sur `SquadSynergiesPage.tsx` après `SquadFragSection`. Pastilles KPI en footer ChartCard :
+écart moyen/match par joueur (matchs AVEC attendu, D3), signé
+(`Intl.NumberFormat(intlLocale, signDisplay:'always')`), couleur token-dérivée + suffixe i18n
+`units.perGame`, « — » si vide.
+
+**Résultats observés** : Gate C verte — `tsc -b --force` exit 0 (après purge
+`node_modules/.tmp`) ; `vitest run` (squadFdaGapChart + SquadFdaGapCumulativeCard +
+squadPerformanceLineCharts + SquadSynergiesPage) → 4 fichiers / 28 tests exit 0. Tests
+builder : cumul, report D5 (attendu ET réel manquants), non-fini (Infinity), `match_order`
+désordonné, trou d'intersection, moyenne (D3), multi-joueurs/couleurs/markLine/hidden. Tests
+composant : capability présente/absente, pastilles signées + suffixe i18n + « — ». i18n squad
+FR+EN (section `fdaGap`, parité, D7 « Écart cumulé au FDA attendu », sans anglicismes).
+
+**Conclusion / prochaine étape** : Lot C clos et statué. Reste : Lot D (gates finales
+complètes `go test`/`vet`/`lint`/`typecheck`/`lint`/`test` web, `delivery-checklist`, vérif
+visuelle avant merge, point final utilisateur). Aucun `go` touché (Lot C = front pur). Vitest
+hors sandbox (limitation connue du repo).
+
+## [2026-07-23] Différentiel FDA réel vs attendu — Lot B (front Timeseries + Sessions) livré
+
+**Statut** : Complété (Lot B du plan `.ai/PLAN_EXPECTED_FDA_2026-07.md` ; branche
+`feat/expected-fda-differential`, worktree `expected-fda` ; NON commité — revue superviseur).
+
+**Décision technique principale** : le dégradé divergent-ancré-à-0 (bascule EXACTE sur 0,
+`areaStyle.origin:0`, sans visualMap) existait déjà en 2 copies inline (`SessionNetScoreArea`,
+`palmares/CumulativeFragGapChart`) ; les 2 nouveaux charts B en faisaient 4 → extraction du
+helper canonique `lib/charts/divergentZeroGradient.ts`, migration des 3 copies existantes, et
+garde-rail grep (`divergentZeroGradient.guard.test.ts`, identifiant `zeroRatio` verrouillé
+hors du helper) — application stricte CLAUDE.md n°6 + anti-pattern 8. Gate par capability =
+self-gate `useCapability('expected_stats')` DANS chaque composant (retour null) plutôt que
+booléen parent : « non rendu » testable en isolation + DRY pour la double-disposition de
+SessionChartStack.
+
+**Résultats observés** : Gate B verte — `tsc -b --force` exit 0 (après correction d'un
+bloqueur : `FeatureUnavailable.tsx` exigeait l'entrée `expected_stats` du fait de l'ajout de
+la capability en Lot A, non détecté car Gate A Go-only) ; `vitest run` 8 fichiers / 54 tests
+exit 0 (mes 4 fichiers + suites touchées SessionNetScoreArea/SessionDetailPage/capabilities).
+B1 = aire du différentiel BRUT par match (trous D5 visibles) + ligne lissée rolling-5. B2 =
+`computeCumulativeFdaGap` (tri chronologique + report D5) → aire signée cumulée. i18n FR+EN
+via manifests TOML régénérés (4 clés timeseries, 5 clés session), sans anglicismes.
+
+**Conclusion / prochaine étape** : Lot B clos et statué. Reste : Lot C (Escouade/Synergies),
+Lot D (gates finales, `delivery-checklist`, vérif visuelle avant merge). Aucun `go` touché
+(front pur). Vitest tourne hors sandbox (limitation connue du repo).
+
+## [2026-07-23] Différentiel FDA réel vs attendu — Lot A (backend) livré
+
+**Statut** : Complété (Lot A du plan `.ai/PLAN_EXPECTED_FDA_2026-07.md` ; branche
+`feat/expected-fda-differential`, worktree `expected-fda` ; NON commité — revue superviseur).
+
+**Décision technique principale** : source UNIFIÉE de l'attendu K/D. Les 3 surfaces
+(Timeseries/Sessions via `analysis.StatsMatchRowsFromCanonical`, Escouade via
+`SquadV2Loader.LoadFor`) chargent le canonical `PlayerMatchRow` par `PlayerMatchesRepo`.
+Champs `KillsExpected/DeathsExpected` ajoutés à `canonical.MatchParticipant` et peuplés
+depuis `match_participants.kills_expected/deaths_expected` (query/scan shared étendus).
+Le plan pointait `SkillSnapshot` (canonical/match.go:286-287) — vérif sur pièces : jamais
+peuplé par ce loader → champs mis sur `MatchParticipant` (= `r.Self`, cf. libellé plan A6).
+Helper canonique unique `analysis.ExpectedFDA/FDADiff` (garde `IsBadFloat`), garde-rail
+archlint interdisant l'arithmétique `*Expected .../3` hors `analysis`.
+
+**Résultats observés** : Gate A verte — `go test` analysis/service/archlint/domain (exit 0),
+`go vet ./...` (exit 0), `generate-types` (12 nouveaux champs dans `generated.ts`). Bonus
+verts : `platform/duckdb` (query/scan +2 colonnes), `TestOpenAPISchemaDrift`, vitest miroir
+capabilities. Capability `CapExpectedStats` (halo_infinite seul) gate la feature côté Go (DI)
+et front. Assists attendus : arithmétique centralisée dans `analysis` (partagée service ↔
+teammates), batch per-mode (is_me), par-membre via 2 méthodes port `SquadV2Loader`.
+
+**Conclusion / prochaine étape** : Lot A clos et statué dans le plan. Reste : Lot B (front
+Timeseries + Sessions), Lot C (Escouade/Synergies), Lot D (gates finales). Dette signalée
+(Découvertes) : `SkillSnapshot.KillsExpected/DeathsExpected` désormais non lus en prod
+(candidat retrait futur, hors périmètre).
 
 ## [2026-07-23] Revue UX du plan revue analytique Timeseries & Escouade — élagage des ajouts
 

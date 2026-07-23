@@ -413,7 +413,9 @@ func buildCorrelationPoints(matches []legacymatch.StatsMatchRow) []domain.Correl
 // provideSpree : false quand le titre ne porte pas le max killing spree (Halo 5)
 // → MaxKillingSpree reste nil par ligne (la série « Folie meurtrière max » est
 // masquée) au lieu de fabriquer une valeur.
-func buildMatchRows(matches []legacymatch.StatsMatchRow, provideSpree bool) []domain.TimeseriesMatchRow {
+// assistsExpected : map match_id → assists attendus (batch per-mode, is_me).
+// nil/absent → l'attendu FDA dégrade en K/D pur (analysis.ExpectedFDA).
+func buildMatchRows(matches []legacymatch.StatsMatchRow, provideSpree bool, assistsExpected map[string]*float64) []domain.TimeseriesMatchRow {
 	rows := make([]domain.TimeseriesMatchRow, 0, len(matches))
 	for i, m := range matches {
 		// KDR canonique calcule a partir des compteurs (analysis.KDR).
@@ -423,6 +425,8 @@ func buildMatchRows(matches []legacymatch.StatsMatchRow, provideSpree bool) []do
 		if !provideSpree {
 			maxSpree = nil
 		}
+		assistsExp := assistsExpected[m.MatchID]
+		kdaExp := analysis.ExpectedFDA(m.KillsExpected, m.DeathsExpected, assistsExp)
 		rows = append(rows, domain.TimeseriesMatchRow{
 			MatchID:                   m.MatchID,
 			Index:                     i,
@@ -453,6 +457,10 @@ func buildMatchRows(matches []legacymatch.StatsMatchRow, provideSpree bool) []do
 			SkillMeasurementRemaining: m.SkillMeasurementRemaining,
 			SessionLabel:              m.SessionLabel,
 			TeamMMR:                   m.TeamMMR,
+			KillsExpected:             m.KillsExpected,
+			DeathsExpected:            m.DeathsExpected,
+			AssistsExpected:           assistsExp,
+			KdaExpected:               kdaExp,
 		})
 	}
 	return rows

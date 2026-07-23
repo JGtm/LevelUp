@@ -81,6 +81,11 @@ type TimeseriesService struct {
 	// (slug deja fixe par PlayerDB).
 	highlightEventsRepo highlightEventsLoader
 	playerXUID          string
+	// expectedAssistsModels / expectedAssistsCoefs (optionnels) : résolution des
+	// assists attendus du joueur suivi (chaîne personnel → populationnel) pour
+	// l'écart au FDA attendu. nil → AssistsExpected nil (l'attendu dégrade en K/D pur).
+	expectedAssistsModels assistsModelReader
+	expectedAssistsCoefs  assistsCoefReader
 }
 
 // highlightEventsLoader expose la sous-API du HighlightEventsRepo per-player
@@ -131,6 +136,16 @@ func (s *TimeseriesService) WithWeaponAccuracyRepo(repo port.WeaponAccuracyRepos
 func (s *TimeseriesService) WithHighlightEventsRepo(repo highlightEventsLoader, xuid string) *TimeseriesService {
 	s.highlightEventsRepo = repo
 	s.playerXUID = xuid
+	return s
+}
+
+// WithExpectedAssists injecte les résolveurs du modèle d'assists attendus du
+// joueur suivi (personnel via player DB + populationnel via metadata), pour
+// l'écart au FDA attendu du chart Résumé. Optionnel — nil → AssistsExpected nil
+// (l'attendu dégrade proprement en K/D pur).
+func (s *TimeseriesService) WithExpectedAssists(models assistsModelReader, coefs assistsCoefReader) *TimeseriesService {
+	s.expectedAssistsModels = models
+	s.expectedAssistsCoefs = coefs
 	return s
 }
 
@@ -212,9 +227,13 @@ func (s *TimeseriesService) GetPage(
 		enrichMatchesMaxKillingSpree(matches, highlightEvents, s.playerXUID)
 	}
 
+	// Assists attendus (is_me) résolus une fois par mode rencontré — alimente
+	// AssistsExpected + le terme /3 de l'écart au FDA attendu (chart Résumé).
+	assistsExpected := computeExpectedAssistsBatch(ctx, s.expectedAssistsModels, s.expectedAssistsCoefs, matches)
+
 	resp := domain.TimeseriesPageResponse{
 		TotalMatches: len(matches),
-		MatchRows:    buildMatchRows(matches, provideSpree),
+		MatchRows:    buildMatchRows(matches, provideSpree, assistsExpected),
 		SummaryTab:   buildTimeseriesSummaryTab(matches),
 		CumulTab:     buildCumulTab(matches),
 

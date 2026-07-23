@@ -198,6 +198,12 @@ export interface SquadText {
     mmrLabel: string
     fragBreakdownTitle: string
   }
+  /** « Écart cumulé au FDA attendu » (D3/D7 — différentiel FDA réel vs attendu par joueur). */
+  fdaGap: {
+    title: string
+    /** Caption de la rangée de pastilles KPI (écart moyen par match). */
+    averageCaption: string
+  }
   weaponKills: {
     title: string
     description: string
@@ -475,6 +481,10 @@ const FR_TEXT: SquadText = {
     mmrLabel: 'MMR équipe',
     fragBreakdownTitle: 'Répartition des frags',
   },
+  fdaGap: {
+    title: 'Écart cumulé au FDA attendu',
+    averageCaption: 'Écart moyen par match',
+  },
   weaponKills: {
     title: 'Outils de destruction',
     description: 'Frags cumulés par arme sur les matchs partagés. Tri ASC : armes peu utilisées en haut, principales en bas.',
@@ -748,6 +758,10 @@ const EN_TEXT: SquadText = {
     rankTitle: 'Rank & Team MMR',
     mmrLabel: 'Team MMR',
     fragBreakdownTitle: 'Kill type distribution',
+  },
+  fdaGap: {
+    title: 'Cumulative KDA gap to expected',
+    averageCaption: 'Average gap per match',
   },
   weaponKills: {
     title: 'Tools of destruction',
