@@ -168,6 +168,32 @@ bout en bout (create→pool→create challenge→join→evaluate→abandon, cycl
 honnête). En attente : feu vert push utilisateur + revue visuelle + arbitrage polish.
 
 ---
+## [2026-07-23] PLAN_SQUAD_CHALLENGES — Lots 5.3 (i18n manifests) + 5.4 (renommage) FAITS
+
+**Statut** : Complété (validé utilisateur : « ok pour Objectifs d'escouade, go pour 5.3 »).
+Branche `fix/squad-challenges-workflow`. Le plan est désormais 100 % fait (aucun `[!]`).
+
+**Décision technique principale** : ma réserve initiale (« les chaînes-fonctions mappent mal
+au manifest ») était INFONDÉE — le système manifest supporte l'interpolation ICU
+(`formatMessage` + `intl-messageformat`) : `{name}`, `{n, number}`, plural
+`{n, plural, one {# match} other {# matchs}}`. ~40 clés migrées de l'objet local
+`squadFocusStrings.ts` vers `squad.toml` `[squad.focus.*]` (source unique, parité au build).
+`squadFocusStrings.ts` devient un ADAPTATEUR `getSquadFocusText(locale)` : résout chaque clé
+via `formatMessage(squadManifest, key, locale, values)` et expose un objet `t` de même forme
+(statiques + fonctions) → composants quasi inchangés (`t.manage`, `t.target(n)`,
+`t.axisLabels.combat`). Rename intégré dans la même passe : `squad.focus.title` =
+« Objectifs d'escouade » / « Squad objectives ».
+
+**Résultats observés** : manifest régénéré (`build_i18n_manifests.mjs`, déterministe — re-run
+= mêmes 45 lignes), `generated/squad.ts` versionné (152 clés). tsc -b --force + eslint +
+vitest (289 tests squad + i18n, dont `SquadFocusStrip.test.tsx` et `format`/`squad i18n`)
+verts. Apostrophes françaises brutes OK en ICU (pattern existant confirmé).
+
+**Livraison finale** : 6 commits sur la branche. Workflow défis d'escouade COMPLET et
+fonctionnel, i18n conforme ADR 0003, seuils 500 L respectés. NON poussé (attend feu vert
+push = deploy prod). Reste utilisateur : revue VISUELLE navigateur + décision push.
+
+---
 ## [2026-07-23] Réintégration + validation des 4 retouches FDA gap sur origin/main
 
 **Statut** : Complété. Branche `integrate/fda-gap-followups` rebasée sur `origin/main`

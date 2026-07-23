@@ -1,115 +1,70 @@
 /**
- * squadFocusStrings — libellés FR/EN du bandeau « Cap d'escouade » et de son
- * panneau d'objectifs. Extrait de SquadFocusStrip.tsx pour le seuil 500 L
- * (CLAUDE.md règle 5) et pour être partagé avec SquadObjectivesPanel.
+ * squadFocusStrings — accès aux libellés du bandeau « Objectifs d'escouade » et
+ * de son panneau de défis, résolus depuis le manifest i18n `squad.focus.*`
+ * (source unique FR/EN + parité vérifiée par le build manifest, ADR 0003).
  *
- * Parité FR/EN garantie par typage : `SquadFocusText` = forme du bloc `fr`, et
- * `en` doit s'y conformer.
+ * `getSquadFocusText(locale)` adapte le manifest à un objet `t` ergonomique
+ * (statiques + fonctions d'interpolation ICU) consommé par les composants du
+ * bandeau. Ne pas remettre de littéraux FR/EN en dur ici : tout vit dans
+ * `lib/i18n/manifests/squad.toml`.
  */
-export const SQUAD_FOCUS_STRINGS = {
-  fr: {
-    title: "Cap d'escouade",
-    saved: (name: string) => `Escouade « ${name} »`,
-    objectives: (n: number) => `${n} objectif${n > 1 ? 's' : ''}`,
-    manage: 'Gérer',
-    hide: 'Masquer',
-    saveCta: 'Enregistrer cette compo comme escouade',
-    saving: 'Enregistrement…',
-    saveSuccess: 'Escouade enregistrée',
-    saveError: "Échec de l'enregistrement",
-    renameCta: 'Renommer',
-    deleteCta: 'Supprimer',
-    confirmDelete: 'Confirmer ?',
-    ok: 'OK',
-    renamed: 'Escouade renommée',
-    deleted: 'Escouade supprimée',
-    noObjectives: 'Aucun objectif actif pour cette escouade.',
-    join: 'Rejoindre',
-    joined: 'Rejoint',
-    joinedToast: 'Défi rejoint',
-    joinError: 'Impossible de rejoindre le défi',
-    evaluate: 'Réévaluer',
-    evaluated: 'Progression recalculée',
-    evalError: 'Échec du recalcul',
-    created: 'Défi créé',
-    createError: 'Échec de la création du défi',
-    challengeDeleted: 'Défi supprimé',
-    challengeDeleteError: 'Échec de la suppression du défi',
-    reached: 'Atteint',
-    expired: 'Expiré',
-    target: (n: number) => `Cible ${n} / membre`,
-    matchesN: (n: number) => `${n} match${n > 1 ? 's' : ''}`,
-    challenge: 'Défi',
-    propose: 'Proposer des défis',
-    proposing: 'Génération…',
-    create: 'Créer',
-    creating: 'Création…',
-    poolEmpty: 'Aucun défi proposé.',
-    poolCaption:
-      'Défi collectif : chaque membre cumule la métrique jusqu’à la cible, sur les matchs de l’escouade postérieurs à la création.',
-    poolError: 'Échec de la génération des défis',
-    orientation: (axis: string) => `Axe à renforcer : ${axis}`,
+import { formatMessage } from '@/lib/i18n/format'
+import { squadManifest, type SquadManifestKey } from '@/lib/i18n/generated/squad'
+import type { Locale } from '@/lib/i18n/locale'
+
+export function getSquadFocusText(locale: Locale) {
+  const m = (key: SquadManifestKey, values?: Record<string, unknown>) =>
+    formatMessage(squadManifest, key, locale, values)
+  return {
+    title: m('squad.focus.title'),
+    saved: (name: string) => m('squad.focus.saved', { name }),
+    manage: m('squad.focus.manage'),
+    hide: m('squad.focus.hide'),
+    saveCta: m('squad.focus.save_cta'),
+    saving: m('squad.focus.saving'),
+    saveSuccess: m('squad.focus.save_success'),
+    saveError: m('squad.focus.save_error'),
+    renameCta: m('squad.focus.rename_cta'),
+    deleteCta: m('squad.focus.delete_cta'),
+    confirmDelete: m('squad.focus.confirm_delete'),
+    ok: m('squad.focus.ok'),
+    renamed: m('squad.focus.renamed'),
+    deleted: m('squad.focus.deleted'),
+    noObjectives: m('squad.focus.no_objectives'),
+    join: m('squad.focus.join'),
+    joined: m('squad.focus.joined'),
+    joinedToast: m('squad.focus.joined_toast'),
+    joinError: m('squad.focus.join_error'),
+    evaluate: m('squad.focus.evaluate'),
+    evaluated: m('squad.focus.evaluated'),
+    evalError: m('squad.focus.eval_error'),
+    created: m('squad.focus.created'),
+    createError: m('squad.focus.create_error'),
+    challengeDeleted: m('squad.focus.challenge_deleted'),
+    challengeDeleteError: m('squad.focus.challenge_delete_error'),
+    reached: m('squad.focus.reached'),
+    expired: m('squad.focus.expired'),
+    target: (n: number) => m('squad.focus.target', { n }),
+    matchesN: (n: number) => m('squad.focus.matches_n', { n }),
+    challenge: m('squad.focus.challenge'),
+    propose: m('squad.focus.propose'),
+    proposing: m('squad.focus.proposing'),
+    create: m('squad.focus.create'),
+    creating: m('squad.focus.creating'),
+    poolEmpty: m('squad.focus.pool_empty'),
+    poolCaption: m('squad.focus.pool_caption'),
+    poolError: m('squad.focus.pool_error'),
+    orientation: (axis: string) => m('squad.focus.orientation', { axis }),
     axisLabels: {
-      combat: 'Combat',
-      survival: 'Survie',
-      support: 'Support',
-      score: 'Score',
-      objective: 'Objectif',
-      impact: 'Impact',
+      combat: m('squad.focus.axis_combat'),
+      survival: m('squad.focus.axis_survival'),
+      support: m('squad.focus.axis_support'),
+      score: m('squad.focus.axis_score'),
+      objective: m('squad.focus.axis_objective'),
+      impact: m('squad.focus.axis_impact'),
     },
-  },
-  en: {
-    title: 'Squad focus',
-    saved: (name: string) => `Squad “${name}”`,
-    objectives: (n: number) => `${n} objective${n > 1 ? 's' : ''}`,
-    manage: 'Manage',
-    hide: 'Hide',
-    saveCta: 'Save this lineup as a squad',
-    saving: 'Saving…',
-    saveSuccess: 'Squad saved',
-    saveError: 'Save failed',
-    renameCta: 'Rename',
-    deleteCta: 'Delete',
-    confirmDelete: 'Confirm?',
-    ok: 'OK',
-    renamed: 'Squad renamed',
-    deleted: 'Squad deleted',
-    noObjectives: 'No active objective for this squad.',
-    join: 'Join',
-    joined: 'Joined',
-    joinedToast: 'Challenge joined',
-    joinError: 'Could not join the challenge',
-    evaluate: 'Re-evaluate',
-    evaluated: 'Progress recalculated',
-    evalError: 'Recalculation failed',
-    created: 'Challenge created',
-    createError: 'Failed to create challenge',
-    challengeDeleted: 'Challenge deleted',
-    challengeDeleteError: 'Failed to delete challenge',
-    reached: 'Reached',
-    expired: 'Expired',
-    target: (n: number) => `Target ${n} / member`,
-    matchesN: (n: number) => `${n} match${n > 1 ? 'es' : ''}`,
-    challenge: 'Challenge',
-    propose: 'Suggest challenges',
-    proposing: 'Generating…',
-    create: 'Create',
-    creating: 'Creating…',
-    poolEmpty: 'No challenge suggested.',
-    poolCaption:
-      'Team challenge: each member accumulates the metric toward the target, over squad matches after creation.',
-    poolError: 'Failed to generate challenges',
-    orientation: (axis: string) => `Focus to improve: ${axis}`,
-    axisLabels: {
-      combat: 'Combat',
-      survival: 'Survival',
-      support: 'Support',
-      score: 'Score',
-      objective: 'Objective',
-      impact: 'Impact',
-    },
-  },
+  }
 }
 
-/** Forme d'un bloc de libellés (le bloc `fr` fait foi ; `en` s'y conforme). */
-export type SquadFocusText = (typeof SQUAD_FOCUS_STRINGS)['fr']
+/** Forme de l'objet de libellés résolus (consommé par les composants du bandeau). */
+export type SquadFocusText = ReturnType<typeof getSquadFocusText>
