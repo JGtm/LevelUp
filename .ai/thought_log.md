@@ -1,3 +1,34 @@
+## [2026-07-23] Revue UX du plan revue analytique Timeseries & Escouade — élagage des ajouts
+
+**Statut** : Complété (révision du plan uniquement — exécution non commencée).
+
+**Décision principale** : avec l'utilisateur, recentrage de
+`.ai/PLAN_REVUE_ANALYTIQUE_TIMESERIES_SQUAD_2026-07.md` sur « rendre juste et lisible
+l'existant » : corrections (lots A-B-C) conservées, TOUS les nouveaux angles élagués sauf un,
+toutes les DEC tranchées (effort 4-7 j → ~2,5-3 j).
+
+**Élagages et motifs** :
+- F2 fatigue intra-session : biais systématique (matchmaking sert des adversaires plus forts
+  en fin de bonne session → « décrochage » = artefact ; le volume ne corrige pas un biais).
+- F3 premier sang : causalité inversée (les équipes qui gagnent prennent le premier sang
+  parce qu'elles sont meilleures) + item le plus cher.
+- F5 solo vs escouade : aucun bon emplacement sur les 2 pages du chantier → consigné en
+  Découvertes comme candidat futur chantier Synthèse.
+- F7b mu±sigma : contredit la règle « métrique connue de l'utilisateur, pas les internals ».
+- F1 comeback agrégé : flags remontada/débandade/contre-rem JAMAIS produits sans timeline de
+  score (`analysis/comeback.go:218`) → un compteur de période mentirait silencieusement.
+- E1 form score LOWESS : métrique synthétique opaque ; F4/F6/F7a/D1 : redondance ou fit douteux.
+- B6 tri armes : déjà couvert par un chantier dédié → `[~]`.
+
+**Remplacement (nouveau lot F, ~0,5 j)** : dominance flags PAR MATCH sur la
+`OutcomeSequenceTape` des deux pages — losange ~7 px dans la bande, token `narrative-*` du
+flag (mêmes couleurs que la colonne Dominance Explorer), liséré `CHART_BG`, seuil de densité
+6 px/match, libellé au tooltip via `narrative.dominance.*` (i18n FR/EN existante). Fiable
+par match (l'absence de flag ne ment pas), zéro nouvelle couleur, zéro nouveau calcul.
+
+**Prochaine étape** : exécuter le plan (branche `feat/analytics-review-ts-squad`), lot A en tête.
+
+---
 ## [2026-07-23] Post-release v7.0.0 — CI Go Lint ratchet rouge (funlen + goconst) → fix
 
 **Statut** : Complété. Deploy VPS + Release v7.0.0 réussis INDÉPENDAMMENT (workflows séparés),
