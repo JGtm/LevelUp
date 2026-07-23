@@ -46,6 +46,21 @@ ratchet 0 issue, tests `internal/ops/...` + `internal/service/teammates/...` ver
 Branche `fix/lint-ratchet-v7` → merge main + push (2e deploy prod, changement iso-comportement).
 Le release v7.0.0 (texte + binaires) n'est PAS re-déclenché (pas de nouveau tag).
 
+**Puis job CI `Go Baseline Tests`** rouge : 3 tests baseline absents (renommés par les branches
+mergées, coverage préservée) → purge de `.ai/baselines/tests_pre_migration.jsonl` (process
+sanctionné, cf. commits fix(baseline) antérieurs) :
+- `TestStore_Load_CoachProactiveModeDefaultsFalseWhenAbsent` → renommé `...DefaultsTrueWhenAbsent`
+  (ascension bascule le défaut coach à ON, Lot B).
+- `TestService_DisablePilotMode_NoOp` → remplacé par 4 tests (le mode pilote archive désormais
+  les défis actifs, n'est plus un no-op).
+- `TestBuildKillsByRole` → refonte frags P0 (dimension FragClass), tests migrés vers
+  `match_view_frag_distribution_test.go`.
+Branche `fix/baseline-renamed-tests-v7` → merge main + push (3e deploy prod, iso-comportement).
+
+**⚠️ Working tree** : 23 fichiers modifiés + `explorerPrefsStore.ts` non commités, non-miens
+(autre chantier en cours, cf. feat/title-slug-in-url) — laissés INTACTS, jamais stashés/commités.
+Vérifié : aucun dans mes commits poussés.
+
 **Prochaine étape** : —
 
 ---

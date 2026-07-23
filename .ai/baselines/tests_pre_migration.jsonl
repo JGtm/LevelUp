@@ -40910,10 +40910,6 @@
 {"Time":"2026-06-26T23:50:46.5443534+02:00","Action":"output","Package":"levelup/go-api/internal/platform/settings","Test":"TestDefaults_CoachProactiveMode","Output":"=== RUN   TestDefaults_CoachProactiveMode\n"}
 {"Time":"2026-06-26T23:50:46.5443534+02:00","Action":"output","Package":"levelup/go-api/internal/platform/settings","Test":"TestDefaults_CoachProactiveMode","Output":"--- PASS: TestDefaults_CoachProactiveMode (0.00s)\n"}
 {"Time":"2026-06-26T23:50:46.5443534+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/settings","Test":"TestDefaults_CoachProactiveMode","Elapsed":0}
-{"Time":"2026-06-26T23:50:46.5443534+02:00","Action":"run","Package":"levelup/go-api/internal/platform/settings","Test":"TestStore_Load_CoachProactiveModeDefaultsFalseWhenAbsent"}
-{"Time":"2026-06-26T23:50:46.5443534+02:00","Action":"output","Package":"levelup/go-api/internal/platform/settings","Test":"TestStore_Load_CoachProactiveModeDefaultsFalseWhenAbsent","Output":"=== RUN   TestStore_Load_CoachProactiveModeDefaultsFalseWhenAbsent\n"}
-{"Time":"2026-06-26T23:50:46.5459263+02:00","Action":"output","Package":"levelup/go-api/internal/platform/settings","Test":"TestStore_Load_CoachProactiveModeDefaultsFalseWhenAbsent","Output":"--- PASS: TestStore_Load_CoachProactiveModeDefaultsFalseWhenAbsent (0.00s)\n"}
-{"Time":"2026-06-26T23:50:46.5459263+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/settings","Test":"TestStore_Load_CoachProactiveModeDefaultsFalseWhenAbsent","Elapsed":0}
 {"Time":"2026-06-26T23:50:46.5459263+02:00","Action":"run","Package":"levelup/go-api/internal/platform/settings","Test":"TestStore_Load_CoachProactiveModeTrueRespected"}
 {"Time":"2026-06-26T23:50:46.5459263+02:00","Action":"output","Package":"levelup/go-api/internal/platform/settings","Test":"TestStore_Load_CoachProactiveModeTrueRespected","Output":"=== RUN   TestStore_Load_CoachProactiveModeTrueRespected\n"}
 {"Time":"2026-06-26T23:50:46.5505865+02:00","Action":"output","Package":"levelup/go-api/internal/platform/settings","Test":"TestStore_Load_CoachProactiveModeTrueRespected","Output":"--- PASS: TestStore_Load_CoachProactiveModeTrueRespected (0.00s)\n"}
@@ -42037,11 +42033,6 @@
 {"Time":"2026-06-26T23:50:52.4102567+02:00","Action":"output","Package":"levelup/go-api/internal/prestige","Test":"TestService_EnablePilotMode_RequiredFields","Output":"=== RUN   TestService_EnablePilotMode_RequiredFields\n"}
 {"Time":"2026-06-26T23:50:52.4102567+02:00","Action":"output","Package":"levelup/go-api/internal/prestige","Test":"TestService_EnablePilotMode_RequiredFields","Output":"--- PASS: TestService_EnablePilotMode_RequiredFields (0.00s)\n"}
 {"Time":"2026-06-26T23:50:52.4102567+02:00","Action":"pass","Package":"levelup/go-api/internal/prestige","Test":"TestService_EnablePilotMode_RequiredFields","Elapsed":0}
-{"Time":"2026-06-26T23:50:52.4102567+02:00","Action":"run","Package":"levelup/go-api/internal/prestige","Test":"TestService_DisablePilotMode_NoOp"}
-{"Time":"2026-06-26T23:50:52.4102567+02:00","Action":"output","Package":"levelup/go-api/internal/prestige","Test":"TestService_DisablePilotMode_NoOp","Output":"=== RUN   TestService_DisablePilotMode_NoOp\n"}
-{"Time":"2026-06-26T23:50:52.4102567+02:00","Action":"output","Package":"levelup/go-api/internal/prestige","Test":"TestService_DisablePilotMode_NoOp","Output":"2026/06/26 23:50:52 INFO prestige: pilot mode disabled (no-op, défis pilote actifs conservés) user_id=u1 title_slug=halo_infinite\n"}
-{"Time":"2026-06-26T23:50:52.4102567+02:00","Action":"output","Package":"levelup/go-api/internal/prestige","Test":"TestService_DisablePilotMode_NoOp","Output":"--- PASS: TestService_DisablePilotMode_NoOp (0.00s)\n"}
-{"Time":"2026-06-26T23:50:52.4102567+02:00","Action":"pass","Package":"levelup/go-api/internal/prestige","Test":"TestService_DisablePilotMode_NoOp","Elapsed":0}
 {"Time":"2026-06-26T23:50:52.4102567+02:00","Action":"run","Package":"levelup/go-api/internal/prestige","Test":"TestService_RefreshSquadPool_RequiresMembership"}
 {"Time":"2026-06-26T23:50:52.4102567+02:00","Action":"output","Package":"levelup/go-api/internal/prestige","Test":"TestService_RefreshSquadPool_RequiresMembership","Output":"=== RUN   TestService_RefreshSquadPool_RequiresMembership\n"}
 {"Time":"2026-06-26T23:50:52.4102567+02:00","Action":"output","Package":"levelup/go-api/internal/prestige","Test":"TestService_RefreshSquadPool_RequiresMembership","Output":"--- PASS: TestService_RefreshSquadPool_RequiresMembership (0.00s)\n"}
@@ -49508,10 +49499,6 @@
 {"Time":"2026-06-26T23:51:37.8472994+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestStatsService_GetPage_All","Output":"=== RUN   TestStatsService_GetPage_All\n"}
 {"Time":"2026-06-26T23:51:37.8472994+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestStatsService_GetPage_All","Output":"--- PASS: TestStatsService_GetPage_All (0.00s)\n"}
 {"Time":"2026-06-26T23:51:37.8472994+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestStatsService_GetPage_All","Elapsed":0}
-{"Time":"2026-06-26T23:51:37.8472994+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestBuildKillsByRole"}
-{"Time":"2026-06-26T23:51:37.8472994+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildKillsByRole","Output":"=== RUN   TestBuildKillsByRole\n"}
-{"Time":"2026-06-26T23:51:37.8472994+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildKillsByRole","Output":"--- PASS: TestBuildKillsByRole (0.00s)\n"}
-{"Time":"2026-06-26T23:51:37.8472994+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestBuildKillsByRole","Elapsed":0}
 {"Time":"2026-06-26T23:51:37.8472994+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestFilterSynthesisByPeriod_All"}
 {"Time":"2026-06-26T23:51:37.8472994+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestFilterSynthesisByPeriod_All","Output":"=== RUN   TestFilterSynthesisByPeriod_All\n"}
 {"Time":"2026-06-26T23:51:37.8472994+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestFilterSynthesisByPeriod_All","Output":"--- PASS: TestFilterSynthesisByPeriod_All (0.00s)\n"}
