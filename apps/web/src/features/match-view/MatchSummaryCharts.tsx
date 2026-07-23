@@ -339,10 +339,8 @@ export function MatchSummaryRadarChart({ radar, meXUID, t }: MatchSummaryRadarCh
   const buildOption = useCallback(
     (): EChartsCoreOption => {
       const opt = buildRadarOption(radarPayload, { axisLabels }) as Record<string, unknown>
-      // Resserre le radar vers le haut pour laisser de la place à la légende
-      // en bas (sinon le label d'axe `Score` chevauche la pastille de légende).
-      opt.radar = { ...(opt.radar as object), center: ['50%', '45%'], radius: '62%' }
-      opt.legend = { ...(opt.legend as object), bottom: 4 }
+      // Serie unique (joueur actif) : aucune legende a afficher.
+      opt.legend = { show: false }
       return opt as EChartsCoreOption
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
