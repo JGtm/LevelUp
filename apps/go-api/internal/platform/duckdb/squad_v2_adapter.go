@@ -199,6 +199,49 @@ func (a *SquadV2LoaderAdapter) LoadMapStatsForSquad(
 	return stats, nil
 }
 
+// LoadPlayerAssistsModel retourne le modèle personnel OLS d'assists attendus d'un
+// MEMBRE (sa player DB) pour un mode. nil (best-effort, jamais fatal) si le membre
+// n'a pas de DB résoluble → l'appelant bascule sur le fallback populationnel.
+func (a *SquadV2LoaderAdapter) LoadPlayerAssistsModel(
+	ctx context.Context,
+	titleSlug, gamertag, gameVariantName string,
+) (*domain.PlayerAssistsModel, error) {
+	if a.resolve == nil {
+		return nil, errors.New("SquadV2LoaderAdapter: resolver non câblé")
+	}
+	pdb, err := a.resolve(ctx, titleSlug, gamertag)
+	if err != nil {
+		if isPlayerCapabilityError(err) {
+			return nil, nil // membre sans player DB → pas de modèle (fallback populationnel)
+		}
+		return nil, fmt.Errorf("SquadV2LoaderAdapter.LoadPlayerAssistsModel: resolve %s/%s: %w",
+			titleSlug, gamertag, err)
+	}
+	if pdb == nil {
+		return nil, nil
+	}
+	return NewMatchViewRepo(pdb, pdb.XUID).GetPlayerAssistsModel(ctx, gameVariantName)
+}
+
+// LoadPopulationalAssistsCoef retourne le fallback populationnel (slope, intercept)
+// d'un mode depuis la metadata title-level (partagée). ok=false si aucune player DB
+// n'est résoluble ou si la metadata est absente ; err non nil pour un vrai échec de
+// requête (l'appelant loggue). Résolu une fois par mode côté appelant.
+func (a *SquadV2LoaderAdapter) LoadPopulationalAssistsCoef(
+	ctx context.Context,
+	titleSlug, gameVariantName string,
+) (slope, intercept float64, ok bool, err error) {
+	pdb, rerr := a.resolveAnyPlayerDB(ctx, titleSlug)
+	if rerr != nil || pdb == nil || pdb.Metadata == nil {
+		return 0, 0, false, nil // pas de metadata résoluble → pas de fallback (best-effort)
+	}
+	s, i, cerr := NewMetadataRepo(pdb).GetAssistsCoef(ctx, gameVariantName)
+	if cerr != nil {
+		return 0, 0, false, cerr
+	}
+	return s, i, true, nil
+}
+
 // LoadMedals charge les medailles par (xuid, match) (chunk S9).
 func (a *SquadV2LoaderAdapter) LoadMedals(
 	ctx context.Context,

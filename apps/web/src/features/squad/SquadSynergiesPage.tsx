@@ -21,6 +21,7 @@ import { SquadSynergyHistoryTable } from './SquadSynergyHistoryTable'
 import { SquadImpactScoreboard } from './SquadImpactScoreboard'
 import { MedalDigest } from './MedalDigest'
 import { SquadFragSection } from './SquadFragSection'
+import { SquadFdaGapCumulativeCard } from './SquadFdaGapCumulativeCard'
 import { getSquadPlayerColors } from './colors'
 
 export function SquadSynergiesPage() {
@@ -165,6 +166,15 @@ export function SquadSynergiesPage() {
         playerOrder={playerOrder}
         locale={locale}
         t={t}
+      />
+      {/* Écart cumulé au FDA attendu (D3) : une courbe par joueur + pastilles KPI
+          « écart moyen / match ». Self-gate capability expected_stats (Halo 5 = masqué). */}
+      <SquadFdaGapCumulativeCard
+        rowsByPlayer={pageData?.performance_series ?? {}}
+        playerOrder={playerOrder}
+        colorByPlayer={playerColors}
+        t={t}
+        emptyMessage={t.empty.noBlockData}
       />
       {/* Sections non-graphes toujours montées : titre + état vide géré par le
           composant (cadre bordé / carte), au lieu de disparaître. */}

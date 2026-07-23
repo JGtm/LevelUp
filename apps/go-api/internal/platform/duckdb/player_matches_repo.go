@@ -256,9 +256,10 @@ func classifyOrderBy(s string) (sharedQueryHints, string, error) {
 // PlayerMatchesRepo.Load. Toutes les tables/vues référencées sont au niveau root
 // du catalogue shared_matches_v2.duckdb (pas de préfixe `shared.`).
 //
-// 40 colonnes : match metadata + participant stats + team_id + team_0/1_score
-// + perfect_kills (subquery sur medals_earned) + t0_ms (countdown pré-match,
-// Match Timeline T0 Phase 3). Les colonnes PME (session,
+// 42 colonnes : match metadata + participant stats + team_id + team_0/1_score
+// + kills_expected/deaths_expected (écart FDA attendu) + perfect_kills (subquery
+// sur medals_earned) + t0_ms (countdown pré-match, Match Timeline T0 Phase 3).
+// Les colonnes PME (session,
 // performance, dominance, had_bot, is_with_friends) et match_skill_rank (tier,
 // rating, etc.) sont hydratées en étape 2/3 (cf. mergePlayerMatchRows).
 //
@@ -317,6 +318,8 @@ SELECT
     p.shoulder_bash_kills,
     p.shots_fired,
     p.shots_hit,
+    p.kills_expected,
+    p.deaths_expected,
     COALESCE((
         SELECT SUM(me.count)
         FROM medals_earned me

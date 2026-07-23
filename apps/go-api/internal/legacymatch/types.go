@@ -104,14 +104,18 @@ type StatsMatchRow struct {
 	EnemyMMR          *float64
 	KillsExpected     *float64
 	DeathsExpected    *float64
-	Rank              *int
-	IsRanked          bool
-	IsFirefight       bool
-	IsWithFriends     bool
-	PlaylistName      string
-	PlaylistNameFR    string
-	PairName          string
-	PairNameFR        string
+	// ShotsHit : tirs au but du match (match_participants.shots_hit). Alimente le
+	// fallback populationnel du modèle d'assists attendus (slope × (personal_score +
+	// shots_hit) + intercept). nil si non chargé.
+	ShotsHit       *int
+	Rank           *int
+	IsRanked       bool
+	IsFirefight    bool
+	IsWithFriends  bool
+	PlaylistName   string
+	PlaylistNameFR string
+	PairName       string
+	PairNameFR     string
 	// GameVariant : source de repli pour le mode FR (les game_variant sont localisés,
 	// contrairement à asset_translations[pair]). Cf. buildSessionDetailRows.
 	GameVariantName     string

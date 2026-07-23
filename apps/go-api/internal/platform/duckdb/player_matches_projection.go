@@ -149,6 +149,8 @@ func projectSelfParticipant(s playerMatchScanResult, outcome canonical.Outcome, 
 		ShotsFired:         nullInt64ToIntPtr(s.shotsFired),
 		ShotsHit:           nullInt64ToIntPtr(s.shotsHit),
 		PerfectKills:       nullInt64ToIntPtr(s.perfectKills),
+		KillsExpected:      nullFloatPtr(s.killsExpected),
+		DeathsExpected:     nullFloatPtr(s.deathsExpected),
 	}
 }
 

@@ -151,7 +151,9 @@ func buildSessionParticipationProfile(
 
 // bestWorstMatchCompare sélectionne le meilleur et le pire match par PerformanceScore.
 func bestWorstMatchCompare(matches []legacymatch.StatsMatchRow, dominantCat *string) (*domain.SessionDetailMatchRow, *domain.SessionDetailMatchRow) {
-	rows := buildSessionDetailRows(matches, dominantCat, "fr")
+	// Sélection best/worst par PerformanceScore : l'écart au FDA attendu n'y est pas
+	// consommé (chart cumulé = vue session principale, D2) → assists nil.
+	rows := buildSessionDetailRows(matches, dominantCat, "fr", nil)
 	bestIdx, worstIdx := -1, -1
 	for i, r := range rows {
 		if r.PerformanceScore == nil {

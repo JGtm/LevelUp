@@ -6,8 +6,8 @@
  * sur la ligne 0. L'aire est ancrée à 0 (`areaStyle.origin`) ; la markLine matérialise le 0.
  *
  * PAS de visualMap : il rendait historiquement la courbe invisible (et une série scatter sur
- * axe catégoriel ne rendait pas non plus → graphe vide). À la place, le dégradé est calculé
- * depuis la boîte englobante de l'aire ancrée à 0 (cf. `zeroRatio`) → 100 % robuste au rendu.
+ * axe catégoriel ne rendait pas non plus → graphe vide). À la place, le dégradé divergent
+ * ancré à 0 provient du helper canonique `divergentZeroGradient` (CLAUDE.md n°6).
  *
  * Chaque match porte un POINT (le SYMBOLE de la ligne) coloré par son OUTCOME
  * (`outcome-win/loss/draw/dnf`) via `itemStyle` par point → l'issue se lit match par match,
@@ -25,7 +25,7 @@ import {
   getTooltipBase,
   outcomeColor,
 } from '@/components/charts/_utils'
-import { resolveToken } from '@/lib/accessibility'
+import { divergentZeroGradient } from '@/lib/charts/divergentZeroGradient'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 
@@ -53,31 +53,12 @@ export function buildSessionNetScoreOption(
 
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
-  const posColor = resolveToken('divergent-pos')
-  const negColor = resolveToken('divergent-neg')
   const interval = points.length > 30 ? Math.floor(points.length / 12) : 0
 
-  // Dégradé DIVERGENT vert/rouge à bascule EXACTE sur 0, SANS visualMap. L'aire étant ancrée
-  // à 0 (areaStyle.origin), sa boîte englobante en Y vaut [min(données,0), max(données,0)] :
-  // 0 y tombe à la fraction `zeroRatio` depuis le haut. Le MÊME dégradé colore ligne ET aire.
+  // Dégradé DIVERGENT vert/rouge à bascule EXACTE sur 0, SANS visualMap, ancré à 0
+  // (helper canonique partagé — CLAUDE.md n°6). Le MÊME dégradé colore ligne ET aire.
   const values = points.map((p) => p.cumulative)
-  const top = Math.max(...values, 0)
-  const bot = Math.min(...values, 0)
-  const span = top - bot
-  const zeroRatio = span > 0 ? Math.min(1, Math.max(0, top / span)) : 1
-  const divergentColor = {
-    type: 'linear' as const,
-    x: 0,
-    y: 0,
-    x2: 0,
-    y2: 1,
-    colorStops: [
-      { offset: 0, color: posColor },
-      { offset: zeroRatio, color: posColor },
-      { offset: zeroRatio, color: negColor },
-      { offset: 1, color: negColor },
-    ],
-  }
+  const divergentColor = divergentZeroGradient(values)
 
   // Un point par match : `value` = solde cumulé (scalaire, aligné par index sur l'axe
   // catégoriel) ; `itemStyle.color` = OUTCOME → le SYMBOLE révèle l'issue, indépendamment

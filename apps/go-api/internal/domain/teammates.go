@@ -209,6 +209,14 @@ type SquadPerformanceSeriesPoint struct {
 	SkillPlaylistGroup        *string  `json:"skill_playlist_group,omitempty"`        // groupe normalisé (ex: "ranked-arena")
 	SkillSeasonID             *string  `json:"skill_season_id,omitempty"`             // saison Halo (rupture de courbe si changement)
 	SkillMeasurementRemaining *int     `json:"skill_measurement_remaining,omitempty"` // matchs de placement restants
+	// Stats attendues (écart CUMULÉ au FDA attendu PAR JOUEUR). KdaExpected =
+	// kills_expected + assists_expected/3 − deaths_expected (analysis.ExpectedFDA) ;
+	// assists attendus résolus PAR MEMBRE (sa player DB). Tous nil hors titre à
+	// CapExpectedStats (Halo 5) ou match sans attendu → chart gaté par la capability.
+	KillsExpected   *float64 `json:"kills_expected,omitempty"`
+	DeathsExpected  *float64 `json:"deaths_expected,omitempty"`
+	AssistsExpected *float64 `json:"assists_expected,omitempty"`
+	KdaExpected     *float64 `json:"kda_expected,omitempty"`
 }
 
 // SquadSynergyRadarAxis est l'un des 6 axes du radar de participation
