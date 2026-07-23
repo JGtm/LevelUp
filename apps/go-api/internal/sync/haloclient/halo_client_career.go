@@ -68,45 +68,9 @@ func (c *HaloAPIClient) GetCareerProgress(ctx context.Context, xuid string) (*Ca
 // profit d'URLs /Waypoint/file/images/... qui n'existent pas sur Microsoft
 // GameCMS → 403). Si le resolve échoue, on log warn et on laisse vide.
 func (c *HaloAPIClient) GetSpartanCustomization(ctx context.Context, xuid string) (*SpartanCustomizationData, error) {
-	if strings.TrimSpace(xuid) == "" {
-		return nil, errors.New("GetSpartanCustomization: xuid vide")
-	}
-	customizationURL := fmt.Sprintf(
-		"%s/%s/players/xuid(%s)/customization/appearance",
-		c.economyHost(ctx),
-		c.gamePrefix(ctx),
-		url.PathEscape(xuid),
-	)
-	customizationBody, ok, err := c.doPlayerGatedGet(ctx, customizationURL)
+	appearance, err := c.fetchCustomizationAppearance(ctx, xuid)
 	if err != nil {
-		return nil, fmt.Errorf("GetSpartanCustomization: %w", err)
-	}
-	if !ok {
-		// `/customization/appearance` est player-gated → 403 pour un joueur TIERS
-		// (cas Explorer : adversaire non suivi). Fallback sur la vue publique
-		// `/customization?view=public`, qui expose le MÊME bloc Appearance
-		// (ServiceTag/Emblem/BackdropImagePath) pour n'importe quel joueur.
-		// Décodée par le même parseCustomizationAppearance (navigation Appearance.*).
-		publicURL := fmt.Sprintf(
-			"%s/%s/players/xuid(%s)/customization?view=public",
-			c.economyHost(ctx),
-			c.gamePrefix(ctx),
-			url.PathEscape(xuid),
-		)
-		pubBody, pubOK, pubErr := c.doPlayerGatedGet(ctx, publicURL)
-		if pubErr != nil {
-			return nil, fmt.Errorf("GetSpartanCustomization (public view): %w", pubErr)
-		}
-		if !pubOK {
-			return nil, nil
-		}
-		slog.InfoContext(ctx, "spartan_id: customization via vue publique (joueur tiers)",
-			"xuid", xuid, "bytes", len(pubBody))
-		customizationBody = pubBody
-	}
-	appearance, err := parseCustomizationAppearance(customizationBody)
-	if err != nil {
-		return nil, fmt.Errorf("GetSpartanCustomization decode: %w", err)
+		return nil, err
 	}
 	if appearance == nil {
 		return nil, nil
@@ -149,6 +113,58 @@ func (c *HaloAPIClient) GetSpartanCustomization(ctx context.Context, xuid string
 		}
 	}
 	return out, nil
+}
+
+// fetchCustomizationAppearance récupère et parse le bloc Appearance de
+// /customization/appearance (avec fallback vue publique `/customization?view=public`
+// pour les joueurs TIERS, cf. doc de GetSpartanCustomization). Retourne (nil, nil)
+// si les tokens sont absents/insuffisants (401/403) ou si la réponse est vide.
+//
+// Extrait de GetSpartanCustomization pour être partagé avec FetchAppearanceInputs
+// (diagnostic apparence admin, Lot F) SANS dupliquer le fetch/fallback/parse
+// (règle ≤ 2 copies). Comportement byte-identique pour GetSpartanCustomization.
+func (c *HaloAPIClient) fetchCustomizationAppearance(ctx context.Context, xuid string) (*customizationAppearance, error) {
+	if strings.TrimSpace(xuid) == "" {
+		return nil, errors.New("fetchCustomizationAppearance: xuid vide")
+	}
+	customizationURL := fmt.Sprintf(
+		"%s/%s/players/xuid(%s)/customization/appearance",
+		c.economyHost(ctx),
+		c.gamePrefix(ctx),
+		url.PathEscape(xuid),
+	)
+	customizationBody, ok, err := c.doPlayerGatedGet(ctx, customizationURL)
+	if err != nil {
+		return nil, fmt.Errorf("fetchCustomizationAppearance: %w", err)
+	}
+	if !ok {
+		// `/customization/appearance` est player-gated → 403 pour un joueur TIERS
+		// (cas Explorer : adversaire non suivi). Fallback sur la vue publique
+		// `/customization?view=public`, qui expose le MÊME bloc Appearance
+		// (ServiceTag/Emblem/BackdropImagePath) pour n'importe quel joueur.
+		// Décodée par le même parseCustomizationAppearance (navigation Appearance.*).
+		publicURL := fmt.Sprintf(
+			"%s/%s/players/xuid(%s)/customization?view=public",
+			c.economyHost(ctx),
+			c.gamePrefix(ctx),
+			url.PathEscape(xuid),
+		)
+		pubBody, pubOK, pubErr := c.doPlayerGatedGet(ctx, publicURL)
+		if pubErr != nil {
+			return nil, fmt.Errorf("fetchCustomizationAppearance (public view): %w", pubErr)
+		}
+		if !pubOK {
+			return nil, nil
+		}
+		slog.InfoContext(ctx, "spartan_id: customization via vue publique (joueur tiers)",
+			"xuid", xuid, "bytes", len(pubBody))
+		customizationBody = pubBody
+	}
+	appearance, err := parseCustomizationAppearance(customizationBody)
+	if err != nil {
+		return nil, fmt.Errorf("fetchCustomizationAppearance decode: %w", err)
+	}
+	return appearance, nil
 }
 
 // GetCareerRank récupère la progression du rang carrière combinée à la

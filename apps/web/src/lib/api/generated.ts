@@ -1664,6 +1664,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/diag/appearance/{player_slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Diagnostic apparence Spartan ID — verdict par composant (bannière/emblème/backdrop/service tag) d'un joueur suivi, à la demande (auth admin requis) */
+        get: operations["getAdminDiagAppearance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/monitoring/data-quality": {
         parameters: {
             query?: never;
@@ -5102,6 +5119,22 @@ export interface components {
         AdminActionJournalResponse: {
             actions: components["schemas"]["AdminActionJournalEntry"][] | null;
             generated_at: string;
+        };
+        AppearanceComponentDiagnosis: {
+            component: string;
+            detail: string;
+            served_from: string;
+            served_value: string;
+            verdict: string;
+        };
+        AppearanceDiagnosisResponse: {
+            components: components["schemas"]["AppearanceComponentDiagnosis"][] | null;
+            gamertag: string;
+            generated_at: string;
+            last_fetch_status: string;
+            player_slug: string;
+            title_slug: string;
+            xuid: string;
         };
         AdminConvergenceReport: {
             generated_at: string;
@@ -11469,6 +11502,36 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AdminActionJournalResponse"];
                 };
+            };
+        };
+    };
+    getAdminDiagAppearance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur suivi (db_profiles.json). */
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Diagnostic apparence par composant */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppearanceDiagnosisResponse"];
+                };
+            };
+            /** @description Joueur suivi introuvable */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

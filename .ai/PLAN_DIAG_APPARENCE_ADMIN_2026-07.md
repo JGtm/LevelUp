@@ -328,26 +328,26 @@ existants passent SANS modification de leurs attentes.
 
 ### Lot F — service + endpoint admin (Go)
 
-- [ ] F1. Service `internal/service/appearance_diag_service.go` : pour un `player_slug`
+- [x] F1. Service `internal/service/appearance_diag_service.go` : pour un `player_slug`
       → profil `db_profiles.json` ; **xuid = celui du PROFIL** (PIÈGE : jamais
       `HaloXUID(ctx)` = compte connecté — régression PR #63) ; tokens via
       `RefreshHaloTokensViaStoreFirst` (échec → verdict global `auth_required`, pas
       d'erreur 500) ; fetch `GetSpartanCustomization` + diagnostics du Lot E ; lecture
       des valeurs SERVIES via `LoadLastCareerRank` + dernier `last_fetch_status` ;
       assemblage DTO. Limiteur `ratebudget.ForXUID`. Aucune écriture DB.
-- [ ] F2. Multi-titre : brancher sur capabilities (JAMAIS `slug ==`). Titre avec
+- [x] F2. Multi-titre : brancher sur capabilities (JAMAIS `slug ==`). Titre avec
       `spartan_customizer` (H5, `title.toml:64`) : bannière/emblème = pipeline
       appearance dédié → verdict `not_supported` pour la résolution nameplate +
       affichage des valeurs servies uniquement. Dégradation
       `ErrCapabilityNotSupported` → réponse partielle propre, pas de 500.
-- [ ] F3. Handler Huma `GET /admin/diag/appearance/{player_slug}` : nouveau fichier
+- [x] F3. Handler Huma `GET /admin/diag/appearance/{player_slug}` : nouveau fichier
       `internal/api/handlers/` (zéro logique métier), montage façon
       `admin_invariants.go` (`Mount(r chi.Router)` + `humacore.NewAPI` + `huma.Get`)
       sur le sous-routeur `/admin` (RequireAuth/RequireAdmin + NoStore hérités) ;
       wiring `internal/api/wire/` ; OpenAPI manuel + DTO.
-- [ ] F4. Logging : `slog.InfoContext` début/fin (player, titleSlug, duration),
+- [x] F4. Logging : `slog.InfoContext` début/fin (player, titleSlug, duration),
       `ErrorContext` avec `"err"` sur échec non-trivial. Pas de token en clair.
-- [ ] F5. Tests service avec mock fetcher (verdicts par scénario, y compris tokens
+- [x] F5. Tests service avec mock fetcher (verdicts par scénario, y compris tokens
       absents et capability absente) + test handler `httptest` (200 nominal, 404 slug
       inconnu).
 
@@ -469,6 +469,25 @@ inattendu.
   (surtout la dominante), pas un bug de plomberie.
 
 ## Journal d'exécution
+
+### [2026-07-23] Lot F — CLOS (agent Opus + revue orchestrateur)
+
+- Service `AppearanceDiagService` (deps injectées par struct : LoadPlayers,
+  CareerServedReader, FetchTokens, fabrique fetcher, HasSpartanCustomizer, Clock) —
+  xuid TOUJOURS du profil (ctxkeys importé pour WithTitleSlug uniquement, piège PR #63
+  documenté en tête) ; budget fetch 8 s ; échec tokens → auth_required, fetch KO →
+  transient, JAMAIS de 500 (seuls profil introuvable→404 / énumération KO→500).
+- Multi-titre : capability `spartan_customizer` coarse → H5 = 4 composants
+  not_supported + valeurs servies seules, zéro fetch cross-titre. Aucun `slug ==`.
+- Route `GET /admin/diag/appearance/{player_slug}` (Huma, sous-routeur /admin,
+  handler mince) ; DTO `AppearanceDiagnosisResponse` (4 composants {served_value,
+  served_from, verdict, detail} + last_fetch_status) ; openapi manuel réconcilié
+  (noms auto-dérivés Huma), generated.ts +63/−0.
+- Enablers F1 consignés : `FetchAppearanceInputs` (haloclient jetait emblemPath/cfg —
+  extraction byte-identique testée) ; `LoadLastFetchStatus` sur CareerLiveRepo
+  (aucun lecteur n'existait).
+- Gate re-exécuté par l'orchestrateur : go test service/api/haloclient 0 (9 nouveaux
+  tests), vet 0, build 0, tsc front 0, grep `slug ==` vide.
 
 ### [2026-07-23] Lot E — CLOS (agent Opus + revue orchestrateur)
 

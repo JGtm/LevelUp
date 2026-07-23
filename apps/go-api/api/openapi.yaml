@@ -2049,6 +2049,27 @@ paths:
               schema:
                 $ref: '#/components/schemas/AdminActionJournalResponse'
 
+  /admin/diag/appearance/{player_slug}:
+    get:
+      tags: [admin]
+      operationId: getAdminDiagAppearance
+      summary: "Diagnostic apparence Spartan ID — verdict par composant (bannière/emblème/backdrop/service tag) d'un joueur suivi, à la demande (auth admin requis)"
+      parameters:
+        - name: player_slug
+          in: path
+          required: true
+          description: "Slug du joueur suivi (db_profiles.json)."
+          schema: { type: string }
+      responses:
+        "200":
+          description: "Diagnostic apparence par composant"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppearanceDiagnosisResponse'
+        "404":
+          description: "Joueur suivi introuvable"
+
   /admin/monitoring/data-quality:
     get:
       tags: [admin]
@@ -7500,6 +7521,55 @@ components:
       required:
           - generated_at
           - actions
+      type: object
+    AppearanceComponentDiagnosis:
+      additionalProperties: false
+      properties:
+          component:
+              type: string
+          detail:
+              type: string
+          served_from:
+              type: string
+          served_value:
+              type: string
+          verdict:
+              type: string
+      required:
+          - component
+          - served_value
+          - served_from
+          - verdict
+          - detail
+      type: object
+    AppearanceDiagnosisResponse:
+      additionalProperties: false
+      properties:
+          components:
+              items:
+                  $ref: '#/components/schemas/AppearanceComponentDiagnosis'
+              nullable: true
+              type: array
+          gamertag:
+              type: string
+          generated_at:
+              type: string
+          last_fetch_status:
+              type: string
+          player_slug:
+              type: string
+          title_slug:
+              type: string
+          xuid:
+              type: string
+      required:
+          - player_slug
+          - gamertag
+          - xuid
+          - title_slug
+          - generated_at
+          - last_fetch_status
+          - components
       type: object
     AdminConvergenceReport:
       additionalProperties: false

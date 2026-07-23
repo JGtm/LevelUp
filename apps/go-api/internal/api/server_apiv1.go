@@ -368,6 +368,11 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			slog.Default(),
 		)
 		adminTitleDiagHandler.Mount(r.With(middleware.NoStore))
+		// Diagnostic apparence Spartan ID (volet 2, Lot F du plan diag apparence) :
+		// verdict par composant (bannière/emblème/backdrop/service tag) d'un joueur
+		// suivi, à la demande. Read-only, AUCUNE écriture DB, NoStore (état courant).
+		appearanceDiagHandler := handlers.NewAdminAppearanceDiagHandler(reg.DiagnoseAppearance)
+		appearanceDiagHandler.Mount(r.With(middleware.NoStore))
 	})
 
 	// Diagnostic — loopback (127.0.0.1) uniquement, ET admin (S5, lot S :

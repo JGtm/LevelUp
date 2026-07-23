@@ -158,6 +158,42 @@ func (r *CareerLiveRepo) LoadLastCareerRank(ctx context.Context, xuid string) (*
 	return &row, nil
 }
 
+// qLoadLastFetchStatus lit la dernière issue de fetch live persistée
+// (career_progression.last_fetch_status). Passive : contexte du diagnostic
+// apparence (Lot F), jamais critique. Même workaround `xuid || ''` que
+// qLoadLastCareerRank (défait le pushdown sur l'index ART corrompu).
+const qLoadLastFetchStatus = `
+SELECT ARG_MAX(last_fetch_status, recorded_at)
+       FILTER (WHERE NULLIF(TRIM(last_fetch_status), '') IS NOT NULL) AS last_fetch_status
+FROM career_progression
+WHERE xuid || '' = ?`
+
+// LoadLastFetchStatus retourne l'issue du dernier fetch live persisté pour le
+// xuid ("ok"/"api_empty"/"forbidden_403"/"auth_missing"/"failed"), ou "" si la
+// table est vide/absente ou si aucune tentative n'a été tracée. Le caller (Lot F)
+// l'utilise en best-effort — un fetch status absent n'est jamais bloquant.
+func (r *CareerLiveRepo) LoadLastFetchStatus(ctx context.Context, xuid string) (string, error) {
+	if r == nil || r.pdb == nil || r.pdb.Player == nil {
+		return "", nil
+	}
+	rows, err := r.pdb.Player.QueryRowRecovered(ctx, qLoadLastFetchStatus, xuid)
+	if err != nil {
+		if err == sql.ErrNoRows || isTableNotFoundErr(err) {
+			return "", nil
+		}
+		return "", fmt.Errorf("LoadLastFetchStatus: %w", err)
+	}
+	defer rows.Close()
+	var status sql.NullString
+	if err := rows.Scan(&status); err != nil {
+		return "", fmt.Errorf("LoadLastFetchStatus scan: %w", err)
+	}
+	if status.Valid {
+		return strings.TrimSpace(status.String), nil
+	}
+	return "", nil
+}
+
 // CareerRankRowEqualForInsert compare deux rows sur les champs qui justifient
 // un nouveau snapshot. Volontairement excluant rank_name / rank_tier /
 // xp_for_next_rank / xp_total / adornment_path qui sont dérivés du rank via
