@@ -79,22 +79,37 @@ sandbox, cf. mémoire vitest) · vérif visuelle des 3 onglets (dev :8000).
 
 ## Phase 2 — Séparation Rendement / Résistance (multi-joueurs)
 
-- [ ] 2.1 `features/squad/charts/squadEfficiencyChart.ts` : généraliser
-      `buildSquadRendementMultiOption` en un builder paramétré par métrique
-      (`damagePerKill` | `damagePerDeath`), repère « 1 vie » conservé.
-- [ ] 2.2 `SquadEfficiencyChart.tsx` : rendre DEUX ChartCards (« Rendement — dégâts
-      par frag », « Résistance — dégâts par mort »), couleurs par joueur
-      (`colorByPlayer`), légende ECharts togglable. H5 : `hasResistance === false`
-      → seule la carte Rendement est rendue (comportement mono actuel).
-- [ ] 2.3 Supprimer le mode toggle 1-joueur : `buildSquadEfficiencyTrackOption`,
-      boutons segmentés, légende footer SVG — APRÈS grep des callers
-      (`grep -r buildSquadEfficiencyTrackOption apps/web/src`). Supprimer les
-      tests associés (règle 0 code mort).
-- [ ] 2.4 i18n : titres des 2 cartes FR/EN dans `features/squad/i18n.ts`.
-- [ ] 2.5 Tests : builder paramétré (2 métriques, bornes d'axe, joueur sans donnée).
+- [x] 2.1 `features/squad/charts/squadEfficiencyChart.ts` : `buildSquadRendementMultiOption`
+      généralisé et renommé `buildSquadEfficiencyMultiOption`, paramétré par
+      `metric: 'damagePerKill' | 'damagePerDeath'` (helper interne `metricValue`),
+      repère « 1 vie » conservé sur les deux (série fantôme hors légende).
+- [x] 2.2 `SquadEfficiencyChart.tsx` : rend DEUX ChartCards (`rendementCardTitle`,
+      `resistanceCardTitle`), 1 courbe/joueur colorée par joueur, légende ECharts
+      native togglable. H5 (`hasResistance === false`) → seule la carte Rendement
+      est rendue. Props `title`/`monoTitle` remplacées par `infoTooltip?: ReactNode`
+      (rendu à côté du titre Rendement) ; `SquadDynamiquePage` adaptée.
+- [x] 2.3 Supprimés : `buildSquadEfficiencyTrackOption` (+ `EfficiencyTrackOpts`),
+      les boutons segmentés 1-joueur, la légende footer SVG, l'état `selectedPlayer`.
+      Grep callers : `buildSquadEfficiencyTrackOption` n'avait qu'UN caller
+      (SquadEfficiencyChart). Gradients `offensiveDamageGradient`/`defensiveDamageGradient`
+      CONSERVÉS (autres callers : `features/timeseries/TimeseriesSquadAdapted.tsx`
+      + leurs tests). Aucun test associé au track builder n'existait (rien à supprimer).
+- [x] 2.4 i18n `features/squad/i18n.ts` : ajout `efficiencySeries.rendementCardTitle`
+      / `resistanceCardTitle` (FR « Rendement — dégâts par frag » / « Résistance —
+      dégâts par mort » ; EN « Offensive efficiency — damage per kill » /
+      « Defensive resistance — damage per death »), parité typée. Clés devenues
+      mortes retirées : `title`, `rendementTitle`, `rendementLabel`, `resistanceLabel`.
+- [x] 2.5 Tests : `charts/squadEfficiencyChart.test.ts` créé (6 cas : vide, 2 métriques,
+      repère/légende, bornes d'axe incluant le repère, joueur sans donnée). Le test
+      Dynamique (P1) mocke `SquadEfficiencyChart` → non impacté par la refonte interne.
 
 **Gate P2** : `make check-types` · `npx vitest run src/features/squad` · vérif
 visuelle Halo Infinite ET Halo 5 (dégradation mono-carte).
+
+> Journal P2 [2026-07-23] — Complété. `npx tsc --noEmit` exit 0. `npx vitest run
+> src/features/squad` : 35 fichiers / 265 tests passés (+1 fichier / +6 tests vs P1 :
+> le nouveau builder test). Vérif visuelle Infinite/H5 (:8000) NON exécutée
+> (hors périmètre agent — superviseur).
 
 ## Phase 3 — « Balance des dégâts » (frontend uniquement)
 
@@ -191,6 +206,10 @@ concluant → revert du commit P5, item passé `[!]` avec justification.
   `getConfig`, mêmes options que le plugin : target react, autoCodeSplitting,
   routeFileIgnorePattern `\.test\.tsx?$`). Script supprimé après usage ; diff
   routeTree purement additif. À reproduire pour les prochaines routes du chantier.
+- [P2, 2026-07-23] `efficiencySeries.description` (i18n squad) est mort AVANT ce
+  chantier (aucun caller — grep vide) ; conservé tel quel, hors périmètre P2
+  (nettoyage non traité). Son texte mentionnait « trait plein / pointillé » qui ne
+  correspond plus aux 2 cartes séparées — à réévaluer si un jour rebranché.
 
 ## Livraison
 

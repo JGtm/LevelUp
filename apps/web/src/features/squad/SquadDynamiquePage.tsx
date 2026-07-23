@@ -73,18 +73,7 @@ export function SquadDynamiquePage() {
       />
 
       <SquadEfficiencyChart
-        title={
-          <span className="flex items-center gap-1.5">
-            {t.efficiencySeries.title}
-            <InfoTooltip content={<EfficiencyTooltipText locale={locale} />} />
-          </span>
-        }
-        monoTitle={
-          <span className="flex items-center gap-1.5">
-            {t.efficiencySeries.rendementTitle}
-            <InfoTooltip content={<EfficiencyTooltipText locale={locale} />} />
-          </span>
-        }
+        infoTooltip={<InfoTooltip content={<EfficiencyTooltipText locale={locale} />} />}
         rowsByPlayer={performanceSeries ?? {}}
         playerOrder={[mainPlayerKey, ...confirmedGamertags].filter((p) => performanceSeries?.[p])}
         colorByPlayer={playerColors}
