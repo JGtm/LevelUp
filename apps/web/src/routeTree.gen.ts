@@ -57,6 +57,7 @@ import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTimeseriesRo
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSynthesisRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/stats/synthesis'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSessionsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/stats/sessions'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugSquadSynergiesRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugSquadDynamiqueRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/squad/dynamique'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugSquadContributionsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresRelationsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/relations'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresPrestigeRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/prestige'
@@ -350,6 +351,15 @@ const Char123LangChar125TTitleSlugPlayersPlayerSlugSquadSynergiesRoute =
         Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRoute,
     } as any,
   )
+const Char123LangChar125TTitleSlugPlayersPlayerSlugSquadDynamiqueRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugSquadDynamiqueRouteImport.update(
+    {
+      id: '/dynamique',
+      path: '/dynamique',
+      getParentRoute: () =>
+        Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRoute,
+    } as any,
+  )
 const Char123LangChar125TTitleSlugPlayersPlayerSlugSquadContributionsRoute =
   Char123LangChar125TTitleSlugPlayersPlayerSlugSquadContributionsRouteImport.update(
     {
@@ -519,6 +529,7 @@ export interface FileRoutesByFullPath {
   '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/prestige': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresPrestigeRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/relations': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresRelationsRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadContributionsRoute
+  '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/dynamique': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadDynamiqueRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadSynergiesRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/sessions': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSessionsRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/synthesis': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSynthesisRoute
@@ -580,6 +591,7 @@ export interface FileRoutesByTo {
   '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/prestige': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresPrestigeRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/relations': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresRelationsRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadContributionsRoute
+  '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/dynamique': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadDynamiqueRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadSynergiesRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/sessions': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSessionsRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/synthesis': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSynthesisRoute
@@ -645,6 +657,7 @@ export interface FileRoutesById {
   '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/prestige': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresPrestigeRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/relations': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresRelationsRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadContributionsRoute
+  '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/dynamique': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadDynamiqueRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadSynergiesRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/sessions': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSessionsRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/synthesis': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSynthesisRoute
@@ -711,6 +724,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/prestige'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/relations'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions'
+    | '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/dynamique'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/sessions'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/synthesis'
@@ -772,6 +786,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/prestige'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/relations'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions'
+    | '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/dynamique'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/sessions'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/synthesis'
@@ -836,6 +851,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/prestige'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/relations'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions'
+    | '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/dynamique'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/sessions'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/synthesis'
@@ -1205,6 +1221,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadSynergiesRouteImport
       parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRoute
     }
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/dynamique': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/dynamique'
+      path: '/dynamique'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/dynamique'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadDynamiqueRouteImport
+      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRoute
+    }
     '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions': {
       id: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions'
       path: '/contributions'
@@ -1364,6 +1387,7 @@ const Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRouteWithChildren =
 
 interface Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRouteChildren {
   Char123LangChar125TTitleSlugPlayersPlayerSlugSquadContributionsRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadContributionsRoute
+  Char123LangChar125TTitleSlugPlayersPlayerSlugSquadDynamiqueRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadDynamiqueRoute
   Char123LangChar125TTitleSlugPlayersPlayerSlugSquadSynergiesRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadSynergiesRoute
   Char123LangChar125TTitleSlugPlayersPlayerSlugSquadIndexRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadIndexRoute
 }
@@ -1372,6 +1396,8 @@ const Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRouteChildren: Char123La
   {
     Char123LangChar125TTitleSlugPlayersPlayerSlugSquadContributionsRoute:
       Char123LangChar125TTitleSlugPlayersPlayerSlugSquadContributionsRoute,
+    Char123LangChar125TTitleSlugPlayersPlayerSlugSquadDynamiqueRoute:
+      Char123LangChar125TTitleSlugPlayersPlayerSlugSquadDynamiqueRoute,
     Char123LangChar125TTitleSlugPlayersPlayerSlugSquadSynergiesRoute:
       Char123LangChar125TTitleSlugPlayersPlayerSlugSquadSynergiesRoute,
     Char123LangChar125TTitleSlugPlayersPlayerSlugSquadIndexRoute:

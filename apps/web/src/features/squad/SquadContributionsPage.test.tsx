@@ -22,14 +22,6 @@ vi.mock('./SquadSynergyRadarChart', () => ({
   SquadSynergyRadarChart: () => <div data-testid="synergy-radar-chart" />,
 }))
 
-const engagementProps: { matchIds?: string[] }[] = []
-vi.mock('@/features/engagement/SquadEngagementSection', () => ({
-  SquadEngagementSection: (props: { matchIds?: string[] }) => {
-    engagementProps.push(props)
-    return <div data-testid="engagement-section" />
-  },
-}))
-
 function mockSquadContext(overrides: Partial<ReturnType<typeof squadContextModule.useSquadContext>>) {
   vi.spyOn(squadContextModule, 'useSquadContext').mockReturnValue({
     selectedRows: [],
@@ -86,26 +78,5 @@ describe('SquadContributionsPage', () => {
     })
     renderWithProviders(<SquadContributionsPage />)
     expect(screen.getByTestId('synergy-radar-chart')).toBeInTheDocument()
-  })
-
-  it('passe a l engagement les match_ids du scope en ordre chronologique ASC, cap 15', () => {
-    engagementProps.length = 0
-    // match_history arrive DESC (recent d'abord) du backend : m17..m1.
-    const history = Array.from({ length: 17 }, (_, i) => ({
-      match_id: 'm' + (17 - i),
-      start_time: '2026-06-0' + ((i % 9) + 1) + 'T10:00:00Z',
-      outcome: 2,
-    }))
-    mockSquadContext({
-      confirmedGamertags: ['FriendA'],
-      pageData: { match_history: history } as unknown as TeammatesPageResponse,
-    })
-    renderWithProviders(<SquadContributionsPage />)
-    const got = engagementProps.at(-1)?.matchIds ?? []
-    // Cap 15 (aligne sur le fallback handler) sur les PLUS RECENTS (m17..m3),
-    // puis reverse → chronologique ASC : m3 d'abord, m17 en dernier.
-    expect(got).toHaveLength(15)
-    expect(got[0]).toBe('m3')
-    expect(got.at(-1)).toBe('m17')
   })
 })
