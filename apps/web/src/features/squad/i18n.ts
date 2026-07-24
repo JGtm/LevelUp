@@ -81,7 +81,6 @@ export interface SquadText {
     heatmapTitle: string
     heatmapWinAxis: string
     heatmapMatchesLabel: string
-    winRateVsHistoryTitle: string
     winRateVsHistorySession: string
     winRateVsHistoryHistory: string
     winRateVsHistoryBulletTitle: string
@@ -349,7 +348,6 @@ const FR_TEXT: SquadText = {
     heatmapTitle: 'Taux de victoire par carte (escouade)',
     heatmapWinAxis: 'Taux de victoire (%)',
     heatmapMatchesLabel: 'Matchs',
-    winRateVsHistoryTitle: 'Taux de victoire vs historique par carte',
     winRateVsHistorySession: 'Session',
     winRateVsHistoryHistory: 'Historique',
     winRateVsHistoryBulletTitle: 'Taux de victoire session vs historique',
@@ -639,7 +637,6 @@ const EN_TEXT: SquadText = {
     heatmapTitle: 'Win rate by map (squad)',
     heatmapWinAxis: 'Win rate (%)',
     heatmapMatchesLabel: 'Matches',
-    winRateVsHistoryTitle: 'Win rate vs history by map',
     winRateVsHistorySession: 'Session',
     winRateVsHistoryHistory: 'All time',
     winRateVsHistoryBulletTitle: 'Session winrate vs history',
