@@ -80,11 +80,28 @@ echo "[deploy] LEVELUP_APP_VERSION=$LEVELUP_APP_VERSION"
 
 # 2c. Rebuilder et redémarrer les services (Dockerfile = build Vite + Go CGo/DuckDB)
 echo "[deploy] docker compose up --build..."
+
+# 2c-bis. Garde pré-build : espace disque libre sur / avant de lancer le build.
+# Incident 2026-07-23 : cache BuildKit à 44,75 Go, disque saturé PENDANT le build (avant
+# même d'atteindre le bornage post-build de l'étape 3b). Si < 10 Go libres, purge
+# d'urgence du cache builder AVANT le build, avec une borne plus agressive (2 Go) que le
+# nettoyage post-deploy habituel (5 Go). Jamais silencieux : log explicite dans tous les cas.
+_avail_gb="$(df --output=avail -BG / | tail -1 | tr -dc '0-9')" || _avail_gb=""
+echo "[deploy] Espace disque libre sur / : ${_avail_gb:-?}G"
+if [[ "${_avail_gb:-0}" -lt 10 ]]; then
+    echo "[deploy] WARN: espace disque < 10 Go — purge d'urgence du cache builder avant build (max-used-space=2GB)..."
+    docker builder prune -f --max-used-space=2GB || {
+        _emerg_prune_rc=$?
+        echo "[deploy] WARN: emergency builder prune failed (exit ${_emerg_prune_rc})"
+    }
+fi
+
 docker compose up -d --build
 
-# 3. Nettoyer les images orphelines
-echo "[deploy] Nettoyage des images obsolètes..."
-docker image prune -f
+# 3. Nettoyer les images orphelines (garder les images < 24h : rollback rapide possible
+# le jour même en re-taguant l'image N-1 si le nouveau déploiement pose problème).
+echo "[deploy] Nettoyage des images obsolètes (> 24h)..."
+docker image prune -f --filter "until=24h"
 
 # 3b. Borner le cache de build BuildKit. Sans ça il croît sans limite à chaque
 # deploy (chaque build empile ses couches) et finit par saturer le disque du VPS
@@ -94,9 +111,24 @@ docker image prune -f
 # cache du builder BUILDX, mais `docker compose build` passe par le builder du DAEMON —
 # deux stores distincts. L'éviction ne touchait donc jamais le bon cache (46 Go
 # accumulés en 2 semaines). `docker builder prune` cible le builder du daemon.
-echo "[deploy] Bornage du cache de build Docker (keep 5GB)..."
-docker builder prune -f --keep-storage=5GB || true
-docker buildx prune -f --keep-storage=1GB || true
+# PIÈGE (incident 2026-07-23, disque saturé, cache BuildKit à 44,75 Go) : `--keep-storage`
+# est déprécié depuis Docker 29.4.0 / BuildKit 0.29 et silencieusement remappé vers
+# `--reserved-space`, qui est un PLANCHER d'espace réservé (jamais purgé en dessous) et
+# NON un plafond — les deux prunes ci-dessous étaient donc des no-op silencieux depuis la
+# montée de version. Le vrai plafond est `--max-used-space`. On ne masque plus l'échec
+# avec `|| true` : la sortie de la commande (dont le `Total:` récupéré) reste visible dans
+# les logs de déploiement, et un échec est loggé explicitement — sans faire échouer un
+# déploiement déjà basculé (les services tournent déjà à ce stade, cf. étape 2c).
+echo "[deploy] Bornage du cache de build Docker (max-used-space 5GB)..."
+docker builder prune -f --max-used-space=5GB || {
+    _builder_prune_rc=$?
+    echo "[deploy] WARN: builder prune failed (exit ${_builder_prune_rc})"
+}
+echo "[deploy] Bornage du cache buildx (max-used-space 1GB)..."
+docker buildx prune -f --max-used-space=1GB || {
+    _buildx_prune_rc=$?
+    echo "[deploy] WARN: buildx prune failed (exit ${_buildx_prune_rc})"
+}
 
 # Helper : attendre qu'un endpoint HTTP réponde (retry jusqu'à max_seconds)
 _wait_for_http() {
