@@ -144,6 +144,20 @@ no-op (déprécié) + cron.d mort (pas de daemon cron).
   - backfill-h5-kill-mechanics : 2 742 carnages, 4 990 lignes corrigées (1 883 matchs),
     0 erreur, 44 non mappées. JGtm : 0/0/0 → 531 assn / 252 gp / 207 sb.
 
+## Vague DETTE (2026-07-24 soir, triage utilisateur des découvertes)
+Traités et committés (4532cb4a2..d4ce17cba) : #1 chrono Stats solo ; #10 « Vol à la
+tire » H5 via MÉDAILLES medals_earned (correction user : Hijack 1219497744 +
+Skyjack 1801925525, branche commendation morte supprimée) ; #4 dense mort ; #9
+mojibake ; #17 clés orphelines (+kill_type_headshot) ; #19 cosmétique (title.toml,
+changelogs, tooltips XP i18n) ; #5 repli donut legacy Explorer supprimé
+(KillTypesDonut effacé) ; #6 deploy build-avant-bascule ; #16 coaching_tips
+(33 corrections, jargon documenté, 6 ambigus → Notion). #13 constaté DÉJÀ LIVRÉ
+(D7 lot A). Décisions : #7 ignoré (one-shot), #14 observation, #18 accepté,
+#2 ignoré, #3+#8 posés en v7.2 Notion, /groups en attente user. Gates verts
+(tsc, vitest 356 fichiers/2992, eslint, go build/vet/vet-integ/test, ratchet 0).
+CI branche VERTE sur cb4443ef4 (fix openMemDB : collision avec fichier
+integration-taggé, leçon en mémoire).
+
 ## Découvertes hors périmètre (règle 7 — noter, ne pas traiter)
 - winRateVsHistoryChart.ts (non-bullet) = builder MORT (aucun caller) → suppression incluse
   dans le périmètre I12 (même famille, décision superviseur). FAIT (W1b). Reste la clé i18n
