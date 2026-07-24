@@ -10,7 +10,9 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
+	"sort"
 	"strings"
+	"time"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
@@ -148,12 +150,21 @@ func squadModeUI(m domain.SquadMatchRow) string {
 
 // computeMapBreakdown agrège les stats par carte depuis les matchs escouade.
 // PerformanceAvg = moyenne des PerformanceScore non nil ; nil si aucun.
+//
+// Résultat trié par ordre CHRONOLOGIQUE de première apparition (firstSeen =
+// StartTime minimal des matchs de la carte), tie-break MapUI pour un ordre
+// déterministe — l'itération d'une map Go ne l'est pas, ce qui produisait un
+// ordre aléatoire d'un appel à l'autre avant ce tri (bug latent). Même
+// stratégie de tri que buildSquadMapHeatmap
+// (teammates_squad_charts_sessions_maps.go), pour une cohérence d'ordre entre
+// les charts teammates.02/13 et la heatmap teammates.03.
 func computeMapBreakdown(matches []domain.SquadMatchRow) []domain.MapBreakdownRow {
 	type stats struct {
 		mapUI       string
 		count, wins int
 		perfSum     float64
 		perfCount   int
+		firstSeen   time.Time
 	}
 	m := map[string]*stats{}
 	for _, r := range matches {
@@ -165,20 +176,24 @@ func computeMapBreakdown(matches []domain.SquadMatchRow) []domain.MapBreakdownRo
 		if key == "" {
 			key = tsLabelUnknown
 		}
-		if _, ok := m[key]; !ok {
+		s, ok := m[key]
+		if !ok {
 			lbl := r.MapUI
 			if lbl == "" {
 				lbl = tsLabelUnknown
 			}
-			m[key] = &stats{mapUI: lbl}
+			s = &stats{mapUI: lbl, firstSeen: r.StartTime}
+			m[key] = s
+		} else if r.StartTime.Before(s.firstSeen) {
+			s.firstSeen = r.StartTime
 		}
-		m[key].count++
+		s.count++
 		if r.Outcome == analysis.OutcomeWin {
-			m[key].wins++
+			s.wins++
 		}
 		if r.PerformanceScore != nil {
-			m[key].perfSum += *r.PerformanceScore
-			m[key].perfCount++
+			s.perfSum += *r.PerformanceScore
+			s.perfCount++
 		}
 	}
 	result := make([]domain.MapBreakdownRow, 0, len(m))
@@ -195,6 +210,13 @@ func computeMapBreakdown(matches []domain.SquadMatchRow) []domain.MapBreakdownRo
 		}
 		result = append(result, row)
 	}
+	sort.Slice(result, func(i, j int) bool {
+		fi, fj := m[result[i].MapID].firstSeen, m[result[j].MapID].firstSeen
+		if !fi.Equal(fj) {
+			return fi.Before(fj)
+		}
+		return result[i].MapUI < result[j].MapUI
+	})
 	return result
 }
 

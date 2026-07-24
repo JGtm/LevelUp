@@ -7,6 +7,7 @@
  */
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
@@ -94,7 +95,12 @@ export function SquadSynergiesPage() {
           est vide ou sans champs de performance. */}
       <div className="grid grid-cols-2 gap-4">
         <WinRateVsHistoryBulletChart
-          title={t.charts.winRateVsHistoryBulletTitle}
+          title={
+            <span className="flex items-center gap-1.5">
+              {t.charts.winRateVsHistoryBulletTitle}
+              <InfoTooltip content={t.charts.winRateVsHistoryBulletMapCountTooltip} />
+            </span>
+          }
           emptyMessage={t.empty.noBlockData}
           rows={mapBreakdown}
           mapLabelOf={mapLabelOf}

@@ -10,7 +10,11 @@
  * + markLine pointillé à 50 % (parité) sur la série historique
  * + markPoint rectangle vertical pour les cartes 0 % (toutes défaites — barre invisible sinon)
  *
- * Tri canonique : match_count desc + yAxis inverse (carte la plus jouée en haut).
+ * Ordre : celui reçu du backend (computeMapBreakdown trie par ordre
+ * CHRONOLOGIQUE de première apparition — cf. teammates_service_assets.go).
+ * Aucun re-tri côté front (l'ancien tri par match_count desc masquait l'ordre
+ * chronologique — I12). yAxis inverse conservé : la première entrée reçue
+ * s'affiche en haut.
  */
 import type { EChartsCoreOption } from 'echarts/core'
 import { resolveToken, tokenCssVar } from '@/lib/accessibility'
@@ -87,7 +91,8 @@ export function buildWinRateVsHistoryBulletOption(
   if (rows.length === 0) return { backgroundColor: CHART_BG }
 
   const { mapLabelOf, sessionLabel, historyLabel, parityLabel, zeroWinrateLabel, countsLabel } = opts
-  const sorted = [...rows].sort((a, b) => b.match_count - a.match_count)
+  // Ordre reçu tel quel (chronologique, cf. docstring de fichier) — aucun re-tri (I12).
+  const sorted = rows
   // Suffixe « (n) » = nombre de parties de la session sur la carte (indicateur
   // discret toujours visible ; le tooltip détaille session + historique).
   const mapLabels = sorted.map((r) => `${mapLabelOf(r.map_ui)} (${r.match_count})`)

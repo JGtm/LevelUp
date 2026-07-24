@@ -88,6 +88,8 @@ export interface SquadText {
     winRateVsHistoryBulletParity: string
     winRateVsHistoryBulletZero: string
     winRateVsHistoryBulletCounts: (session: number, history?: number) => string
+    /** Tooltip d'aide : explique le suffixe « (n) » sur les libellés d'axe Y (I9). */
+    winRateVsHistoryBulletMapCountTooltip: string
     mapPerfVsHistoryTitle: string
     mapPerfVsHistorySession: string
     mapPerfVsHistoryHistory: string
@@ -117,6 +119,8 @@ export interface SquadText {
     next: string
     pageOf: (cur: number, total: number) => string
     totalRows: (n: number) => string
+    /** aria-label/tooltip du lien « Ouvrir sur Halo Waypoint » (I19). */
+    waypointAriaLabel: string
   }
   timeline: {
     title: string
@@ -353,6 +357,8 @@ const FR_TEXT: SquadText = {
       `Session : ${session} ${session <= 1 ? 'partie' : 'parties'} · Historique : ${
         history === undefined ? '—' : `${history} ${history <= 1 ? 'partie' : 'parties'}`
       }`,
+    winRateVsHistoryBulletMapCountTooltip:
+      'Le nombre entre parenthèses est le nombre de parties jouées sur cette carte pendant la session.',
     mapPerfVsHistoryTitle: 'Performance par carte — Session vs Historique',
     mapPerfVsHistorySession: 'Session actuelle',
     mapPerfVsHistoryHistory: 'Historique',
@@ -382,6 +388,7 @@ const FR_TEXT: SquadText = {
     next: 'Suivant →',
     pageOf: (cur, total) => `Page ${cur} / ${total}`,
     totalRows: (n) => `${n} match${n > 1 ? 's' : ''}`,
+    waypointAriaLabel: 'Ouvrir sur Halo Waypoint',
   },
   timeline: {
     title: 'Performance d\'escouade par session',
@@ -639,6 +646,8 @@ const EN_TEXT: SquadText = {
       `Session: ${session} ${session <= 1 ? 'game' : 'games'} · History: ${
         history === undefined ? '—' : `${history} ${history <= 1 ? 'game' : 'games'}`
       }`,
+    winRateVsHistoryBulletMapCountTooltip:
+      'The number in parentheses is the number of games played on this map during the session.',
     mapPerfVsHistoryTitle: 'Performance per map — Session vs History',
     mapPerfVsHistorySession: 'Current session',
     mapPerfVsHistoryHistory: 'History',
@@ -668,6 +677,7 @@ const EN_TEXT: SquadText = {
     next: 'Next →',
     pageOf: (cur, total) => `Page ${cur} / ${total}`,
     totalRows: (n) => `${n} match${n > 1 ? 'es' : ''}`,
+    waypointAriaLabel: 'Open on Halo Waypoint',
   },
   timeline: {
     title: 'Squad performance by session',
