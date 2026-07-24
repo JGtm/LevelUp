@@ -122,15 +122,27 @@ interface Props {
   extraColumnsAfterId?: string
   /** Active le tri CLIENT par clic sur les en-tetes, sur TOUTES les colonnes
    *  (getSortedRowModel TanStack). Le tableau possede son propre etat de tri
-   *  (defaut : date descendante, comme l'ordre backend). Chaque colonne trie sur
-   *  sa valeur SOUS-JACENTE (numerique / timestamp / alpha / champ brut), jamais
-   *  le libelle formate. Reserve au mode Matchs (toutes les lignes du scope sont
-   *  chargees d'un coup, cap 10000). Cas extreme : si un scope depasse 10000
-   *  matchs, seules les 10000 plus recentes sont chargees donc triees (le compteur
-   *  affiche le vrai total) — aucune regression vs l'existant, non corrige.
-   *  Absent/false (mode Joueur ally/ennemi, vue session) → en-tetes statiques,
-   *  aucun tri (comportement inchange). */
+   *  (defaut : date descendante, comme l'ordre backend — surchargeable via
+   *  `defaultSort`). Chaque colonne trie sur sa valeur SOUS-JACENTE (numerique /
+   *  timestamp / alpha / champ brut), jamais le libelle formate. Toutes les lignes
+   *  du scope doivent etre chargees d'un coup (cap 10000 en mode Matchs) — le tri
+   *  est purement client. Cas extreme : si un scope depasse 10000 matchs, seules
+   *  les 10000 plus recentes sont chargees donc triees (le compteur affiche le
+   *  vrai total) — aucune regression vs l'existant, non corrige.
+   *  (I16) Activé par TOUS les consommateurs actuels (mode Matchs, mode Joueur
+   *  ally/ennemi, vue session, onglet Progression, Carrière « Matchs marquants »).
+   *  Absent/false → en-tetes statiques, aucun tri (comportement legacy conservé
+   *  pour tout futur consommateur qui ne le passerait pas explicitement). */
   sortable?: boolean
+  /** État de tri INITIAL quand `sortable` est actif (défaut : date descendante,
+   *  cf. `sortable`). Permet à un consommateur dont les lignes ne sont PAS
+   *  triées date-desc côté backend de préserver son ordre initial une fois le
+   *  tri client activé : `[]` conserve l'ordre serveur tel quel (ex. Carrière
+   *  "Matchs marquants" — listes best/worst curées par score, pas par date) ;
+   *  `[{ id: 'start_time', desc: false }]` reproduit un ordre chronologique
+   *  ASC déjà appliqué en amont (ex. vue session). Sans effet si `sortable`
+   *  est absent/false (aucune colonne triable → getSortedRowModel no-op). */
+  defaultSort?: SortingState
   /** Contenu injecté à GAUCHE du pied de tableau, à la place du compteur
    *  « N matchs trouvés » (fallback). Quand fourni : le pied devient visible même
    *  sans pagination (permet à l'Explorer d'y ancrer le bouton Export CSV, visible
@@ -253,7 +265,7 @@ function truncateName(s: string | null | undefined): string {
   return s.slice(0, NAME_TRUNCATE_MAX - 1) + '...'
 }
 
-export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDescriptor, filterSpecOverride, alwaysShowPagination, defaultPageSize, columnVisibility, extraColumns, extraColumnsAfterId, sortable, footerLeadingSlot }: Props) {
+export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDescriptor, filterSpecOverride, alwaysShowPagination, defaultPageSize, columnVisibility, extraColumns, extraColumnsAfterId, sortable, defaultSort, footerLeadingSlot }: Props) {
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: ExplorerManifestKey, values?: Record<string, string | number>) =>
     formatMessage(explorerManifest, key, locale, values)
@@ -693,14 +705,20 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
   )
 
   // Tri CLIENT possédé par le tableau (mode Matchs). Défaut : date descendante —
-  // reproduit l'ordre backend (les 10000 plus récents) au 1er rendu.
-  const [sorting, setSorting] = useState<SortingState>([{ id: 'start_time', desc: true }])
+  // reproduit l'ordre backend (les 10000 plus récents) au 1er rendu. Un
+  // consommateur dont l'ordre initial diffère (session ASC, listes curées
+  // Carrière) le surcharge via `defaultSort`.
+  const [sorting, setSorting] = useState<SortingState>(defaultSort ?? [{ id: 'start_time', desc: true }])
 
   // Insère les colonnes injectées par le consommateur après `extraColumnsAfterId`
   // (ou en fin), puis active le tri sur TOUTES les colonnes de données quand
   // `sortable` (mode Matchs) ; la colonne d'ouverture reste non triable. Les
   // autres consommateurs (mode Joueur ally/ennemi, vue session) ne passent pas
   // `sortable` → colonnes non triables, en-têtes statiques (comportement inchangé).
+  // Une colonne injectée (`extraColumns`) SANS accessorKey/accessorFn (ex. « Δ rang »
+  // de SessionMatchesTable) n'a pas de valeur triable — un `enableSorting: false`
+  // explicite posé par le consommateur est RESPECTÉ (pas écrasé) pour éviter un
+  // en-tête faussement triable (clic sans effet, cf. SessionMatchesTable.tsx).
   const columns = useMemo<ColumnDef<ExplorerMatchRow>[]>(() => {
     const merged = (() => {
       if (!extraColumns?.length) return baseColumns
@@ -710,11 +728,17 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
       if (idx === -1) return [...baseColumns, ...extraColumns]
       return [...baseColumns.slice(0, idx + 1), ...extraColumns, ...baseColumns.slice(idx + 1)]
     })()
-    return merged.map((c) => ({
-      ...c,
-      enableSorting:
-        sortable === true && columnIdOf(c) !== 'open' && columnIdOf(c) !== 'waypoint',
-    }))
+    return merged.map((c) => {
+      const explicitlyDisabled = (c as { enableSorting?: boolean }).enableSorting === false
+      return {
+        ...c,
+        enableSorting:
+          sortable === true &&
+          columnIdOf(c) !== 'open' &&
+          columnIdOf(c) !== 'waypoint' &&
+          !explicitlyDisabled,
+      }
+    })
   }, [baseColumns, extraColumns, extraColumnsAfterId, sortable])
 
   // Pagination simple : taille de page fixe (defaultPageSize en mode Joueur,

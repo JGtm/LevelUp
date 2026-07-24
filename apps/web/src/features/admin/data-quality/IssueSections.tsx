@@ -73,6 +73,7 @@ export function UntranslatedModesSection() {
     {
       header: tA('admin.dq.col_mode'),
       cell: (i) => <span className="font-medium text-foreground">{i.id}</span>,
+      sortValue: (i) => i.id,
     },
     {
       header: tA('admin.dq.col_sample'),
@@ -81,6 +82,7 @@ export function UntranslatedModesSection() {
           {i.label}
         </span>
       ),
+      sortValue: (i) => i.label ?? null,
     },
   ]
 
@@ -98,6 +100,7 @@ export function UntranslatedModesSection() {
         issues={data?.items ?? []}
         matchLinkTitleSlug={data?.title_slug}
         columns={columns}
+        sortable
         actionLabel={tA('admin.dq.translate_btn')}
         openID={openID}
         onAction={(i) => setOpenID(openID === rowKeyOf(i) ? null : rowKeyOf(i))}
@@ -139,6 +142,7 @@ export function RawAssetsSection() {
     {
       header: tA('admin.dq.col_asset_kind'),
       cell: (i) => <span className="text-xs uppercase tracking-wide text-muted-foreground">{i.asset_kind}</span>,
+      sortValue: (i) => i.asset_kind ?? null,
     },
     {
       header: tA('admin.dq.col_id'),
@@ -147,6 +151,7 @@ export function RawAssetsSection() {
           {i.id}
         </span>
       ),
+      sortValue: (i) => i.id,
     },
   ]
 
@@ -163,6 +168,7 @@ export function RawAssetsSection() {
         issues={data?.items ?? []}
         matchLinkTitleSlug={data?.title_slug}
         columns={columns}
+        sortable
         actionLabel={tA('admin.dq.resolve_btn')}
         openID={openID}
         onAction={(i) => setOpenID(openID === rowKeyOf(i) ? null : rowKeyOf(i))}
@@ -228,10 +234,12 @@ export function OrphanPlaylistsSection() {
           {i.id}
         </span>
       ),
+      sortValue: (i) => i.id,
     },
     {
       header: tA('admin.dq.col_label'),
       cell: (i) => <span className="text-foreground">{i.label || '—'}</span>,
+      sortValue: (i) => i.label ?? null,
     },
   ]
 
@@ -247,6 +255,7 @@ export function OrphanPlaylistsSection() {
         issues={data?.items ?? []}
         matchLinkTitleSlug={data?.title_slug}
         columns={columns}
+        sortable
         actionLabel={tA('admin.dq.resolve_btn')}
         openID={openID}
         onAction={(i) => setOpenID(openID === rowKeyOf(i) ? null : rowKeyOf(i))}
@@ -289,6 +298,11 @@ export function OrphanXuidsSection() {
       emptyDesc={tA('admin.dq.orphan_xuids_empty_desc')}
       count={data?.total}
     >
+      {/* I16 : PAS de `sortable` ici — pagination SERVEUR (limit/offset), un tri
+          client ne porterait que sur la page visible (25 lignes), pas le total
+          (potentiellement des milliers) → ordre FAUX. IssueTable l'ignorerait de
+          toute façon (garde défensive `pagination` prime), mais on ne le passe
+          pas pour rester honnête sur l'intention. */}
       <IssueTable
         issues={data?.items ?? []}
         matchLinkTitleSlug={data?.title_slug}

@@ -205,6 +205,10 @@ export function ExplorerPlayerMode({
               }}
               alwaysShowPagination
               defaultPageSize={10}
+              // I16 : même endpoint/tri backend (date DESC) que le mode Matchs
+              // → le défaut interne de ExplorerMatchesTable reproduit déjà
+              // l'ordre serveur, aucun `defaultSort` à surcharger.
+              sortable
             />
           )}
 
@@ -223,6 +227,7 @@ export function ExplorerPlayerMode({
               }}
               alwaysShowPagination
               defaultPageSize={10}
+              sortable
             />
           )}
 

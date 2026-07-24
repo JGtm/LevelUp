@@ -2,22 +2,56 @@
  * ConvergencePlayersTable — backlog par joueur avec action « Converger »
  * (job player_convergence suivi inline). Compteurs plafonnés affichés « N+ ».
  */
+import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { queryKeys } from '@/lib/query/keys'
 import { apiErrorMessage } from '@/lib/api/client'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
+import { SortableTh } from '@/components/ui/sortable-th'
 import type { AdminConvergenceReport, AsyncJobStatus, PlayerConvergenceReport } from '@/lib/api/types'
 import { conflictJobId } from '../monitoring/mutations'
 import { useRunPlayerConvergence } from '../data-quality/mutations'
 import { AdminActionButton } from '../components/AdminActionButton'
 import { useAdminT } from '../useAdminText'
 
+type ConvergenceSortKey = 'gamertag' | 'missing_enrichment' | 'missing_psa' | 'missing_events' | 'missing_weapons' | 'total'
+
+function convergenceRawValue(p: PlayerConvergenceReport, key: ConvergenceSortKey): string | number {
+  if (key === 'gamertag') return p.gamertag
+  if (key === 'total') return p.missing_enrichment + p.missing_psa + p.missing_events + p.missing_weapons
+  return p[key]
+}
+
+function compareConvergence(a: PlayerConvergenceReport, b: PlayerConvergenceReport, key: ConvergenceSortKey, dir: 'asc' | 'desc'): number {
+  const va = convergenceRawValue(a, key)
+  const vb = convergenceRawValue(b, key)
+  const cmp = typeof va === 'string' && typeof vb === 'string' ? va.localeCompare(vb, undefined, { numeric: true, sensitivity: 'base' }) : (va as number) - (vb as number)
+  return dir === 'asc' ? cmp : -cmp
+}
+
 export function ConvergencePlayersTable({ report }: { report: AdminConvergenceReport }) {
   const tA = useAdminT()
   const queryClient = useQueryClient()
   const runConvergence = useRunPlayerConvergence()
+  // I16 : tri CLIENT par clic sur les en-têtes. Aucun tri actif par défaut →
+  // l'ordre serveur reste affiché tant qu'aucun en-tête n'a été cliqué.
+  const [sortKey, setSortKey] = useState<ConvergenceSortKey | null>(null)
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+  function toggleSort(key: ConvergenceSortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortKey(key)
+      setSortDir(key === 'gamertag' ? 'asc' : 'desc')
+    }
+  }
+  const sortedPlayers = useMemo(() => {
+    const players = report.players ?? []
+    if (!sortKey) return players
+    return [...players].sort((a, b) => compareConvergence(a, b, sortKey, sortDir))
+  }, [report.players, sortKey, sortDir])
 
   function invalidateAfterConvergence() {
     void queryClient.invalidateQueries({ queryKey: queryKeys.adminMonitoringConvergence })
@@ -49,17 +83,17 @@ export function ConvergencePlayersTable({ report }: { report: AdminConvergenceRe
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
-            <th className="px-3 py-2 font-medium">{tA('admin.convergence.col_player')}</th>
-            <th className="px-3 py-2 font-medium text-right">{tA('admin.convergence.kpi_enrichment')}</th>
-            <th className="px-3 py-2 font-medium text-right">{tA('admin.convergence.kpi_psa')}</th>
-            <th className="px-3 py-2 font-medium text-right">{tA('admin.convergence.kpi_events')}</th>
-            <th className="px-3 py-2 font-medium text-right">{tA('admin.convergence.kpi_weapons')}</th>
-            <th className="px-3 py-2 font-medium text-right">{tA('admin.convergence.col_total')}</th>
+            <SortableTh label={tA('admin.convergence.col_player')} active={sortKey === 'gamertag'} dir={sortDir} onClick={() => toggleSort('gamertag')} className="px-3 py-2 font-medium" />
+            <SortableTh label={tA('admin.convergence.kpi_enrichment')} active={sortKey === 'missing_enrichment'} dir={sortDir} onClick={() => toggleSort('missing_enrichment')} className="px-3 py-2 font-medium text-right" />
+            <SortableTh label={tA('admin.convergence.kpi_psa')} active={sortKey === 'missing_psa'} dir={sortDir} onClick={() => toggleSort('missing_psa')} className="px-3 py-2 font-medium text-right" />
+            <SortableTh label={tA('admin.convergence.kpi_events')} active={sortKey === 'missing_events'} dir={sortDir} onClick={() => toggleSort('missing_events')} className="px-3 py-2 font-medium text-right" />
+            <SortableTh label={tA('admin.convergence.kpi_weapons')} active={sortKey === 'missing_weapons'} dir={sortDir} onClick={() => toggleSort('missing_weapons')} className="px-3 py-2 font-medium text-right" />
+            <SortableTh label={tA('admin.convergence.col_total')} active={sortKey === 'total'} dir={sortDir} onClick={() => toggleSort('total')} className="px-3 py-2 font-medium text-right" />
             <th className="px-3 py-2" />
           </tr>
         </thead>
         <tbody>
-          {(report.players ?? []).map((p) => {
+          {sortedPlayers.map((p) => {
             const total = p.missing_enrichment + p.missing_psa + p.missing_events + p.missing_weapons
             return (
               <tr key={p.xuid || p.gamertag} className="border-b align-top last:border-b-0 hover:bg-muted/30">
