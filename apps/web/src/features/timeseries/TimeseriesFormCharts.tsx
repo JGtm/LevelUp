@@ -25,7 +25,7 @@ import { perfScale } from '@/lib/accessibility/scales'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 import type { TimeseriesMatchRow } from '@/lib/api/types'
 import { buildMatchCategories } from './matchLabels'
-import { buildCareerXpSeries } from './careerXpSeries'
+import { buildCareerXpSeries } from '@/lib/charts/careerXpSeries'
 import { ChartFromOption } from './ChartFromOption'
 
 // ─── Helpers numériques ───────────────────────────────────────────────────────

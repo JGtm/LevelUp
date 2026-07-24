@@ -42,6 +42,7 @@ import { squadManifest, type SquadManifestKey } from '@/lib/i18n/generated/squad
 import { tokenVar } from '@/lib/accessibility'
 import { AllyEnemySplitBar, KDSplitBar } from '@/features/_shared/EncounterSplitBars'
 import { NUMERIC_SORT, localeTextSortingFn } from '@/features/explorer/explorerMatchesClientSort'
+import { HeaderInfoTooltip } from '@/lib/table/columnMeta'
 import { ariaSortOf, sortSuffixOf } from './sortHeader'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import type { MatchEncounterBadge, MatchEncounterRow } from '@/lib/api/types'
@@ -166,8 +167,11 @@ function EncounterTh({ header, idx }: { header: Header<MatchEncounterRow, unknow
       onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
       aria-sort={canSort ? ariaSortOf(sortDir) : undefined}
     >
-      {flexRender(header.column.columnDef.header, header.getContext())}
-      {canSort ? sortSuffixOf(sortDir) : ''}
+      <span className={`inline-flex items-center gap-1 ${idx === 0 ? '' : 'justify-end'}`}>
+        {flexRender(header.column.columnDef.header, header.getContext())}
+        {canSort ? sortSuffixOf(sortDir) : ''}
+        <HeaderInfoTooltip text={header.column.columnDef.meta?.headerTooltip} />
+      </span>
     </th>
   )
 }
@@ -233,9 +237,13 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
             roleAlly: 'ally',
             roleEnemy: 'enemy',
             encounters: 'Encounters',
+            encountersTooltip: 'Matches played with this player, split into ally and enemy.',
             wrAlly: 'WR as ally',
+            wrAllyTooltip: 'Win rate in matches where this player was your ally.',
             wrEnemy: 'WR as enemy',
+            wrEnemyTooltip: 'Win rate in matches where this player was your enemy.',
             kdCross: 'K/D',
+            kdCrossTooltip: 'Kills dealt and deaths suffered in your direct duels.',
             ratio: 'Ratio',
             ratioTooltip: 'Kill/Death ratio: kills dealt ÷ deaths suffered across all shared matches',
             lastSeen: 'Last seen',
@@ -249,9 +257,13 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
             roleAlly: 'allié',
             roleEnemy: 'ennemi',
             encounters: 'Rencontres',
+            encountersTooltip: 'Nombre de matchs joués avec ce joueur, répartis en allié et adversaire.',
             wrAlly: 'Taux de victoire allié',
+            wrAllyTooltip: 'Taux de victoire des matchs où ce joueur était ton allié.',
             wrEnemy: 'Taux de victoire ennemi',
+            wrEnemyTooltip: 'Taux de victoire des matchs où ce joueur était ton adversaire.',
             kdCross: 'F/D',
+            kdCrossTooltip: 'Frags infligés et morts subies dans vos duels directs.',
             ratio: 'Ratio',
             ratioTooltip: 'Ratio frags/morts : frags infligés ÷ morts subies sur l’ensemble des matchs communs',
             lastSeen: 'Vu pour la dernière fois',
@@ -347,6 +359,7 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
         accessorKey: 'count_together',
         ...NUMERIC_SORT,
         header: labels.encounters,
+        meta: { headerTooltip: labels.encountersTooltip },
         cell: (ctx) => {
           const r = ctx.row.original
           if (r.ally_count != null && r.enemy_count != null) {
@@ -360,6 +373,7 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
         accessorFn: (r) => r.winrate_as_ally ?? undefined,
         ...NUMERIC_SORT,
         header: labels.wrAlly,
+        meta: { headerTooltip: labels.wrAllyTooltip },
         cell: (ctx) => {
           const v = ctx.row.original.winrate_as_ally
           return <span className={`font-mono ${winRateClass(v)}`}>{formatPercentInt(v)}</span>
@@ -370,6 +384,7 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
         accessorFn: (r) => r.winrate_vs_enemy ?? undefined,
         ...NUMERIC_SORT,
         header: labels.wrEnemy,
+        meta: { headerTooltip: labels.wrEnemyTooltip },
         cell: (ctx) => {
           const v = ctx.row.original.winrate_vs_enemy
           return <span className={`font-mono ${winRateClass(v)}`}>{formatPercentInt(v)}</span>
@@ -385,6 +400,7 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
             : undefined,
         ...NUMERIC_SORT,
         header: labels.kdCross,
+        meta: { headerTooltip: labels.kdCrossTooltip },
         cell: (ctx) => {
           const r = ctx.row.original
           if (r.kills_dealt != null && r.deaths_suffered != null) {

@@ -378,7 +378,7 @@ func TestBuildSessionDetailRows_EnrichedFields(t *testing.T) {
 		DamageTaken:       &dt,
 		Rank:              &rk,
 	}
-	out := buildSessionDetailRows([]legacymatch.StatsMatchRow{row}, nil, "fr", nil)
+	out := buildSessionDetailRows([]legacymatch.StatsMatchRow{row}, nil, "fr", nil, nil)
 	if len(out) != 1 {
 		t.Fatalf("expected 1 row, got %d", len(out))
 	}
@@ -432,7 +432,7 @@ func TestBuildSessionDetailRows_Locale(t *testing.T) {
 		PairName:       "Arena:Slayer on Live Fire",
 		PairNameFR:     "Arène:Massacre sur Tir réel",
 	}
-	en := buildSessionDetailRows([]legacymatch.StatsMatchRow{row}, nil, "en", nil)[0]
+	en := buildSessionDetailRows([]legacymatch.StatsMatchRow{row}, nil, "en", nil, nil)[0]
 	if en.MapName != "Live Fire" {
 		t.Fatalf("EN MapName: want 'Live Fire', got %q", en.MapName)
 	}
@@ -443,7 +443,7 @@ func TestBuildSessionDetailRows_Locale(t *testing.T) {
 		t.Fatalf("EN ModeUI: want %q (EN normalisé), got %q", want, en.ModeUI)
 	}
 
-	fr := buildSessionDetailRows([]legacymatch.StatsMatchRow{row}, nil, "fr", nil)[0]
+	fr := buildSessionDetailRows([]legacymatch.StatsMatchRow{row}, nil, "fr", nil, nil)[0]
 	if fr.MapName != "Tir réel" {
 		t.Fatalf("FR MapName: want 'Tir réel', got %q", fr.MapName)
 	}
@@ -459,7 +459,7 @@ func TestBuildSessionDetailRows_Locale(t *testing.T) {
 // pas de MMR/perf/rating → champs nil/zéro, pas de panic.
 func TestBuildSessionDetailRows_NilEnrichment(t *testing.T) {
 	row := legacymatch.StatsMatchRow{MatchID: "m1", StartTime: time.Now(), Kills: 3, Deaths: 2}
-	out := buildSessionDetailRows([]legacymatch.StatsMatchRow{row}, nil, "fr", nil)
+	out := buildSessionDetailRows([]legacymatch.StatsMatchRow{row}, nil, "fr", nil, nil)
 	if len(out) != 1 {
 		t.Fatalf("expected 1 row, got %d", len(out))
 	}
@@ -486,7 +486,7 @@ func TestBuildSessionDetailRows_ExpectedFDA(t *testing.T) {
 		KillsExpected: &ke, DeathsExpected: &de,
 	}
 	out := buildSessionDetailRows([]legacymatch.StatsMatchRow{row}, nil, "fr",
-		map[string]*float64{"m1": &assistsExp})
+		map[string]*float64{"m1": &assistsExp}, nil)
 	if len(out) != 1 {
 		t.Fatalf("expected 1 row, got %d", len(out))
 	}

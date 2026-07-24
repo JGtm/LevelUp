@@ -85,6 +85,14 @@ en = "Compare"
 fr = "Comparer à une autre session"
 en = "Compare to another session"
 
+[session.detail.header_synergies]
+fr = "Voir les synergies"
+en = "View synergies"
+
+[session.detail.header_synergies_aria]
+fr = "Voir les synergies d'escouade de cette session"
+en = "View this session's squad synergies"
+
 [session.detail.compare_tooltip_title]
 fr = "Comparaison côte à côte"
 en = "Side-by-side comparison"
@@ -409,12 +417,12 @@ fr = "Répartition des placements"
 en = "Placement breakdown"
 
 [session.detail.ocdr_axis_oc]
-fr = "OC"
-en = "OC"
+fr = "Rendement"
+en = "Yield"
 
 [session.detail.ocdr_axis_dr]
-fr = "DR"
-en = "DR"
+fr = "Résistance"
+en = "Resistance"
 
 [session.detail.chart_frags_radar_title]
 fr = "Stats de frags"
@@ -435,6 +443,24 @@ en = "Headshots"
 [session.detail.radar_perfect]
 fr = "Frags parfaits"
 en = "Perfect kills"
+
+# XP de carrière (estimée) — MIROIR des clés Timeseries (timeseries.progression.
+# career_xp_*), titre identique par cohérence entre les deux pages (V72-13).
+[session.detail.career_xp_title]
+fr = "XP de carrière (estimée)"
+en = "Career XP (estimated)"
+
+[session.detail.career_xp_tooltip]
+fr = "Estimation : XP = multiplicateur d'éra × score personnel du match (×1 avant le 18/11/2025, ×2 depuis — Operation: Infinite). Matchs connus uniquement ; le Firefight et les playlists à multiplicateur spécial sont exclus ou approximés."
+en = "Estimate: XP = era multiplier × the match's personal score (×1 before 2025-11-18, ×2 since — Operation: Infinite). Known matches only; Firefight and playlists with special multipliers are excluded or approximated."
+
+[session.detail.career_xp_cumulative]
+fr = "XP de carrière cumulée sur la session (estimée)"
+en = "Career XP accumulated over the session (estimated)"
+
+[session.detail.career_xp_per_match]
+fr = "XP estimée gagnée par match (2 × score personnel depuis nov. 2025)"
+en = "Estimated XP earned per match (2 × personal score since Nov 2025)"
 
 [session.detail.chart_empty]
 fr = "Aucune donnée à représenter."

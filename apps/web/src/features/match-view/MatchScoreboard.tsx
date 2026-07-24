@@ -32,6 +32,7 @@ import type {
 } from '@/lib/api/types'
 import { formatDurationMMSS } from '@/lib/formatters'
 import { tokenCssVar } from '@/lib/accessibility'
+import { HeaderInfoTooltip } from '@/lib/table/columnMeta'
 import type { MatchViewText } from './i18n'
 import { displayTierLabel } from './MatchHeader.utils'
 import { localizeTierLabel } from '@/lib/skillTiers'
@@ -82,20 +83,20 @@ function buildHighlightCols(
   showNativeKillMechanics: boolean,
 ): ColDef[] {
   return [
-    { key: 'rank', label: t.sbColRank, inverted: true },
+    { key: 'rank', label: t.sbColRank, inverted: true, tooltip: t.sbColRankTooltip },
     { key: 'score', label: t.sbColScore, inverted: false, fmt: (v) => t.sbFormatScore(v) },
     { key: 'kills', label: t.combatKillsLabel, inverted: false },
     { key: 'deaths', label: t.combatDeathsLabel, inverted: true },
     { key: 'assists', label: t.sbColAssists, inverted: false },
-    { key: 'kda', label: t.sbColKda, inverted: false, fmt: (v) => v.toFixed(2) },
-    { key: 'max_killing_spree', label: t.sbColMaxSpree, inverted: false },
+    { key: 'kda', label: t.sbColKda, inverted: false, fmt: (v) => v.toFixed(2), tooltip: t.sbColKdaTooltip },
+    { key: 'max_killing_spree', label: t.sbColMaxSpree, inverted: false, tooltip: t.sbColMaxSpreeTooltip },
     { key: 'headshot_kills', label: t.sbColHeadshots, inverted: false },
-    { key: 'perfect_kills', label: t.sbColPerfectKills, inverted: false },
+    { key: 'perfect_kills', label: t.sbColPerfectKills, inverted: false, tooltip: t.sbColPerfectKillsTooltip },
     { key: 'shots_fired', label: t.sbColShotsFired, inverted: false },
     { key: 'shots_hit', label: t.sbColShotsHit, inverted: false },
-    { key: 'accuracy', label: t.sbColAccuracy, inverted: false, fmt: (v) => `${v.toFixed(1)}%` },
-    { key: 'melee_kills', label: t.sbColMeleeKills, inverted: false },
-    { key: 'power_weapon_kills', label: t.sbColPowerWeapons, inverted: false },
+    { key: 'accuracy', label: t.sbColAccuracy, inverted: false, fmt: (v) => `${v.toFixed(1)}%`, tooltip: t.sbColAccuracyTooltip },
+    { key: 'melee_kills', label: t.sbColMeleeKills, inverted: false, tooltip: t.sbColMeleeKillsTooltip },
+    { key: 'power_weapon_kills', label: t.sbColPowerWeapons, inverted: false, tooltip: t.sbColPowerWeaponsTooltip },
     ...(SHOW_GRENADE_KILLS_COLUMN ? [{ key: 'grenade_kills', label: t.labelGrenade, inverted: false } as ColDef] : []),
     // Mécaniques de kill natives Halo 5 (assassinats + compétences spartiate).
     // Gatées par la capability `native_kill_mechanics` : Halo Infinite ne les track
@@ -110,9 +111,9 @@ function buildHighlightCols(
       : []),
     { key: 'damage_dealt', label: t.sbColDamageDealt, inverted: false, fmt: (v) => v.toFixed(0) },
     { key: 'damage_taken', label: t.sbColDamageTaken, inverted: true, fmt: (v) => v.toFixed(0) },
-    { key: 'avg_life_seconds', label: t.sbColAvgLife, inverted: false, fmt: (v) => formatDurationMMSS(v, '—') },
-    { key: 'offensive_conversion', label: offensiveLabel, inverted: false, fmt: (v) => `${(v * 100).toFixed(0)}%` },
-    { key: 'defensive_resistance', label: defensiveLabel, inverted: false, fmt: (v) => v < 0 ? '∞' : `${((v - 1) * 100).toFixed(0)}%` },
+    { key: 'avg_life_seconds', label: t.sbColAvgLife, inverted: false, fmt: (v) => formatDurationMMSS(v, '—'), tooltip: t.sbColAvgLifeTooltip },
+    { key: 'offensive_conversion', label: offensiveLabel, inverted: false, fmt: (v) => `${(v * 100).toFixed(0)}%`, tooltip: t.sbColOffensiveTooltip },
+    { key: 'defensive_resistance', label: defensiveLabel, inverted: false, fmt: (v) => v < 0 ? '∞' : `${((v - 1) * 100).toFixed(0)}%`, tooltip: t.sbColDefensiveTooltip },
   ]
 }
 
@@ -339,6 +340,7 @@ function TeamScoreboard({
       return {
         id: key,
         header: c?.label ?? key,
+        meta: c?.tooltip ? { headerTooltip: c.tooltip } : undefined,
         // I16 : colonne numérique triable — accessorFn expose la valeur brute
         // (nuls coalescés en `undefined` → toujours en bas, cf. NUMERIC_SORT).
         // Le rendu de cellule reste inchangé (lit row.original directement).
@@ -355,6 +357,7 @@ function TeamScoreboard({
     const rankBadgeCol: ColumnDef<ScoreboardRowVM> = {
       id: 'csr_badge',
       header: isRanked ? t.sbColCsr : t.sbDetailLusr,
+      meta: { headerTooltip: isRanked ? t.sbColCsrTooltip : t.sbColLusrTooltip },
       // Badge image + libellé de palier : pas de valeur scalaire triable simplement.
       enableSorting: false,
       cell: (ctx) => {
@@ -456,6 +459,7 @@ function TeamScoreboard({
       {
         id: 'top_weapon',
         header: t.sbColTopWeapon,
+        meta: { headerTooltip: t.sbColTopWeaponTooltip },
         accessorFn: (r) => r.top_weapon_label ?? undefined,
         sortingFn: localeTextSortingFn,
         sortUndefined: 'last',
@@ -590,8 +594,11 @@ function TeamScoreboard({
                     onClick={canSort ? h.column.getToggleSortingHandler() : undefined}
                     aria-sort={canSort ? ariaSortOf(sortDir) : undefined}
                   >
-                    {flexRender(h.column.columnDef.header, h.getContext())}
-                    {canSort ? sortSuffixOf(sortDir) : ''}
+                    <span className={`inline-flex items-center gap-1 ${isPlayerCol ? '' : 'justify-end'}`}>
+                      {flexRender(h.column.columnDef.header, h.getContext())}
+                      {canSort ? sortSuffixOf(sortDir) : ''}
+                      <HeaderInfoTooltip text={h.column.columnDef.meta?.headerTooltip} />
+                    </span>
                   </th>
                 )
               })}

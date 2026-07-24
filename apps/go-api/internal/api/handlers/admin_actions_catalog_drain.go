@@ -82,10 +82,10 @@ func (h *AdminCatalogDrainHandler) handleRun(ctx context.Context, in *catalogDra
 
 	if active := h.jobs.FindActiveJob(domain.JobTypeCatalogUGCDrain, titleSlug); active != nil {
 		return &catalogDrainOutput{Status: http.StatusConflict, Body: map[string]any{
-			"code":      "already_running",
+			"code":      actionBusyCode,
 			"message":   "Un drain UGC est déjà en cours pour ce titre.",
 			"retryable": false,
-			"details":   map[string]string{"job_id": active.JobID},
+			"details":   map[string]string{jobDetailKeyJobID: active.JobID},
 		}}, nil
 	}
 
@@ -103,7 +103,7 @@ func (h *AdminCatalogDrainHandler) runDrain(ctx context.Context, jobID, titleSlu
 		if rec := recover(); rec != nil {
 			slog.ErrorContext(ctx, "admin_actions: panic pendant le drain UGC", "job_id", jobID, "panic", rec)
 			h.jobs.Update(jobID, func(j *domain.AsyncJobStatus) {
-				j.Error = &domain.JobErrorDetail{Code: "panic", Message: "drain interrompu par une erreur interne", Retryable: true}
+				j.Error = &domain.JobErrorDetail{Code: jobErrorCodePanic, Message: "drain interrompu par une erreur interne", Retryable: true}
 			})
 			h.jobs.SetStatus(jobID, domain.JobStatusFailed, nil)
 		}

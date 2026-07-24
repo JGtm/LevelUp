@@ -21,6 +21,8 @@ export interface ColDef {
   label: string
   inverted: boolean
   fmt?: (v: number) => string
+  /** Aide d'en-tête facultative (V72-04) : texte du tooltip ⓘ de la colonne. */
+  tooltip?: string
 }
 
 export type Extremes = { min: number | null; max: number | null }

@@ -53,6 +53,14 @@ type PlayerSnapshot struct {
 	// after > before ⇒ nouveau match ⇒ détection ; sinon SKIP (coût nul sur les
 	// syncs à vide). Zéro si aucun match (aucune détection possible).
 	LastMatchStartTime time.Time
+
+	// EarnedMedalIDs : ensemble des medal_name_id à SUM(count) > 0 pour le joueur
+	// dans le shared du titre (medals_earned, lecture brute — parité Q36a, table
+	// per-match INSERT-only sans vue _latest). Base de la détection « médaille
+	// inédite » (V72-20) : after \ before = médailles décrochées pour la première
+	// fois. nil/vide si medals_earned est absente (titre sans la capability) ou
+	// illisible → la garde cold-start de emitMedalFirstEarned sème alors sans notifier.
+	EarnedMedalIDs map[int64]struct{}
 }
 
 // SnapshotPlayerState lit l'état courant nécessaire à la détection delta.
@@ -280,6 +288,34 @@ func SnapshotPlayerState(
 			}
 			if lastStart.Valid {
 				s.LastMatchStartTime = lastStart.Time.UTC()
+			}
+
+			// EarnedMedalIDs : set des médailles déjà obtenues (V72-20). Lecture
+			// brute medals_earned (per-match INSERT-only, agrégat SUM(count) ; pas de
+			// vue _latest à consommer — parité Q36a). Table potentiellement absente
+			// (titre sans capability médailles) : erreur non-ErrNoRows loggée en Debug,
+			// le set reste nil → détection « médaille inédite » en seed silencieux.
+			medalRows, medalErr := sharedDB.QueryContext(ctx, `
+				SELECT medal_name_id
+				FROM medals_earned
+				WHERE xuid = ?
+				GROUP BY medal_name_id
+				HAVING SUM(count) > 0`, pdb.XUID)
+			if medalErr != nil && !errors.Is(medalErr, sql.ErrNoRows) {
+				slog.DebugContext(ctx, "snapshot: medals_earned", "err", medalErr)
+			}
+			if medalRows != nil {
+				s.EarnedMedalIDs = map[int64]struct{}{}
+				for medalRows.Next() {
+					var medalID sql.NullInt64
+					if err := medalRows.Scan(&medalID); err != nil {
+						continue
+					}
+					if medalID.Valid {
+						s.EarnedMedalIDs[medalID.Int64] = struct{}{}
+					}
+				}
+				_ = medalRows.Close()
 			}
 			release()
 		}

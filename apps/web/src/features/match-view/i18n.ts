@@ -185,6 +185,20 @@ export interface MatchViewText {
   sbColAvgLife: string
   sbColPlayer: string
   sbColTopWeapon: string
+  // Tooltips d'en-tête de colonne (V72-04, icône ⓘ) — colonnes non évidentes.
+  sbColCsrTooltip: string
+  sbColLusrTooltip: string
+  sbColRankTooltip: string
+  sbColKdaTooltip: string
+  sbColAccuracyTooltip: string
+  sbColMaxSpreeTooltip: string
+  sbColPerfectKillsTooltip: string
+  sbColPowerWeaponsTooltip: string
+  sbColMeleeKillsTooltip: string
+  sbColAvgLifeTooltip: string
+  sbColTopWeaponTooltip: string
+  sbColOffensiveTooltip: string
+  sbColDefensiveTooltip: string
   sbViewHistoryFmt: (gamertag: string) => string
   /** Format du score (séparateurs locale-sensitive : "12 345" FR / "12,345" EN). */
   sbFormatScore: (v: number) => string
@@ -371,6 +385,19 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sbColAvgLife: 'Vie moy.',
     sbColPlayer: 'Joueur',
     sbColTopWeapon: 'Outil de destr.',
+    sbColCsrTooltip: 'Classement compétitif en jeu (CSR) atteint sur ce match.',
+    sbColLusrTooltip: 'Classement maison (LUSR) estimé pour ce match.',
+    sbColRankTooltip: 'Place du joueur dans le match, selon le score.',
+    sbColKdaTooltip: 'FDA = (Frags + Assistances/3) − Morts ; valorise l\'impact, pas frags/morts.',
+    sbColAccuracyTooltip: 'Précision : part de tirs qui touchent la cible, en pourcentage.',
+    sbColMaxSpreeTooltip: 'Plus longue série de frags enchaînés sans mourir.',
+    sbColPerfectKillsTooltip: 'Frags parfaits : bouclier vidé puis tir à la tête sans rater.',
+    sbColPowerWeaponsTooltip: 'Frags à l\'arme lourde ramassée sur la carte.',
+    sbColMeleeKillsTooltip: 'Frags obtenus au corps à corps.',
+    sbColAvgLifeTooltip: 'Durée de vie moyenne entre deux morts.',
+    sbColTopWeaponTooltip: 'Arme ayant réalisé le plus de frags dans le match.',
+    sbColOffensiveTooltip: 'Rendement offensif : frags et assistances obtenus par dégât infligé.',
+    sbColDefensiveTooltip: 'Résistance : dégâts encaissés avant chaque mort.',
     sbViewHistoryFmt: (gamertag) => `Voir l'historique avec ${gamertag}`,
     sbFormatScore: (v) => new Intl.NumberFormat('fr-FR').format(v),
     ctxRecent: 'récents',
@@ -552,6 +579,19 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sbColAvgLife: 'Avg. life',
     sbColPlayer: 'Player',
     sbColTopWeapon: 'Top weapon',
+    sbColCsrTooltip: 'In-game competitive rank (CSR) reached this match.',
+    sbColLusrTooltip: 'In-house rating (LUSR) estimated for this match.',
+    sbColRankTooltip: 'Player\'s placement in the match, by score.',
+    sbColKdaTooltip: 'KDA = (Kills + Assists/3) − Deaths; rewards impact, not kills/deaths.',
+    sbColAccuracyTooltip: 'Accuracy: share of shots that hit the target, as a percentage.',
+    sbColMaxSpreeTooltip: 'Longest run of kills without dying.',
+    sbColPerfectKillsTooltip: 'Perfect kills: shields broken then a headshot with no missed shot.',
+    sbColPowerWeaponsTooltip: 'Kills with power weapons picked up on the map.',
+    sbColMeleeKillsTooltip: 'Kills scored in melee.',
+    sbColAvgLifeTooltip: 'Average time alive between deaths.',
+    sbColTopWeaponTooltip: 'Weapon with the most kills this match.',
+    sbColOffensiveTooltip: 'Offensive yield: kills and assists per damage dealt.',
+    sbColDefensiveTooltip: 'Resistance: damage absorbed before each death.',
     sbViewHistoryFmt: (gamertag) => `View history with ${gamertag}`,
     sbFormatScore: (v) => new Intl.NumberFormat('en-US').format(v),
     ctxRecent: 'recent',

@@ -133,6 +133,25 @@ export function SessionDetailPage() {
     )
   }, [enableCompare, data, hp])
 
+  // Bouton « Voir les synergies » (V72-09) — deep-link vers /squad scopé sur la
+  // session, MÊME pattern que la card session escouade de l'accueil
+  // (HomePage.goToSquadSession) : `session` + `teammates` (composition à
+  // pré-sélectionner). SessionCompareEntry ne porte pas de liste de coéquipiers
+  // (contrairement à SessionSummaryItem côté Home) : `teammates` par défaut vide,
+  // SquadLayout ouvre alors la session épinglée SANS composition pré-sélectionnée
+  // — chemin déjà supporté (cf. sessionCoreTeammates côté Home, même dégradation
+  // quand aucun ami n'est commun à tous les matchs).
+  function goToSquadSynergies(sessionLabel: string, teammates: string[] = []) {
+    void navigate({
+      to: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad',
+      params: { titleSlug, playerSlug },
+      search: {
+        session: sessionLabel,
+        teammates: teammates.length > 0 ? teammates.join(',') : undefined,
+      },
+    })
+  }
+
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center p-6">
@@ -273,34 +292,48 @@ export function SessionDetailPage() {
                 </button>
               </div>
 
-              {!drawerOpen && availableSessions.length >= 2 && (
-                <Tooltip
-                  content={
-                    <div className="space-y-2">
-                      <p className="font-semibold">{t('session.detail.compare_tooltip_title')}</p>
-                      <p className="text-muted-foreground">{t('session.detail.compare_tooltip_desc')}</p>
-                      {data.suggested_compare && (
-                        <div className="border-t border-border pt-2">
-                          <p>
-                            <span className="text-muted-foreground">{t('session.detail.compare_tooltip_suggested')} : </span>
-                            <span className="font-medium">{data.suggested_compare.session_label}</span>
-                          </p>
+              {!drawerOpen && (data.current_session?.with_friends || availableSessions.length >= 2) && (
+                <div className="flex items-center gap-2">
+                  {data.current_session?.with_friends && (
+                    <Button
+                      variant="outline"
+                      onClick={() => goToSquadSynergies(selectedSessionLabel)}
+                      aria-label={t('session.detail.header_synergies_aria')}
+                    >
+                      {t('session.detail.header_synergies')}
+                    </Button>
+                  )}
+
+                  {availableSessions.length >= 2 && (
+                    <Tooltip
+                      content={
+                        <div className="space-y-2">
+                          <p className="font-semibold">{t('session.detail.compare_tooltip_title')}</p>
+                          <p className="text-muted-foreground">{t('session.detail.compare_tooltip_desc')}</p>
+                          {data.suggested_compare && (
+                            <div className="border-t border-border pt-2">
+                              <p>
+                                <span className="text-muted-foreground">{t('session.detail.compare_tooltip_suggested')} : </span>
+                                <span className="font-medium">{data.suggested_compare.session_label}</span>
+                              </p>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  }
-                  className="max-w-xs"
-                >
-                  <Button
-                    onClick={() => {
-                      setCompareSessionLabel(data.suggested_compare?.session_label ?? '')
-                      setEnableCompare(true)
-                    }}
-                    aria-label={t('session.detail.header_compare_aria')}
-                  >
-                    {t('session.detail.header_compare')}
-                  </Button>
-                </Tooltip>
+                      }
+                      className="max-w-xs"
+                    >
+                      <Button
+                        onClick={() => {
+                          setCompareSessionLabel(data.suggested_compare?.session_label ?? '')
+                          setEnableCompare(true)
+                        }}
+                        aria-label={t('session.detail.header_compare_aria')}
+                      >
+                        {t('session.detail.header_compare')}
+                      </Button>
+                    </Tooltip>
+                  )}
+                </div>
               )}
             </div>
 

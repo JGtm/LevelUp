@@ -2177,6 +2177,34 @@ paths:
         "409": { description: "Convergence déjà en cours pour ce joueur (job_id en details)" }
         "503": { description: "Scheduler indisponible" }
 
+  /admin/actions/initial-sync/run:
+    post:
+      tags: [admin]
+      operationId: postAdminActionInitialSyncRun
+      summary: "Action admin — re-import complet (RunFull, plafonné à max_matches) d'un joueur au choix, tokens via le pool unifié, claim SyncGate, via le JobStore (auth admin requis)"
+      parameters:
+        - name: title
+          in: query
+          required: false
+          description: "Titre cible (fallback du title_slug du corps, sinon titre par défaut)."
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [player_slug]
+              properties:
+                player_slug: { type: string, description: "Slug (ou gamertag) du joueur suivi à re-importer." }
+                title_slug: { type: string, description: "Titre cible explicite (multi-titre) ; vide → paramètre title puis titre par défaut." }
+                max_matches: { type: integer, minimum: 1, maximum: 2000, description: "Plafond de matchs (1..2000) ; 0/absent → défaut profil (initial_max_matches) puis 200." }
+      responses:
+        "202": { description: "Job créé (suivre via GET /jobs/{job_id})" }
+        "400": { description: "player_slug requis" }
+        "409": { description: "Synchronisation initiale déjà en cours pour ce joueur (job_id en details)" }
+        "503": { description: "Scheduler indisponible" }
+
   /admin/actions/catalog/refresh:
     post:
       tags: [admin]
@@ -14705,6 +14733,9 @@ components:
               format: double
               type: number
           assists:
+              format: int64
+              type: integer
+          career_xp_estimated:
               format: int64
               type: integer
           damage_dealt:

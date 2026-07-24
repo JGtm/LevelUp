@@ -19,6 +19,7 @@ import {
 import { useMemo, useState, type ReactNode } from 'react'
 
 import { Tooltip } from '@/components/ui/tooltip'
+import { HeaderInfoTooltip } from '@/lib/table/columnMeta'
 import { tokenCssVar } from '@/lib/accessibility'
 import { formatPercent } from '@/lib/formatters'
 import { ratioColor } from '@/lib/colors/outcomePalette'
@@ -194,7 +195,12 @@ function buildColumns(
       id: 'encounters',
       accessorFn: (r) => r.total_matches,
       sortDescFirst: true,
-      header: (ctx) => <SortLabel column={ctx.column}>{labels.table.encounters}</SortLabel>,
+      header: (ctx) => (
+        <span className="inline-flex items-center gap-1">
+          <SortLabel column={ctx.column}>{labels.table.encounters}</SortLabel>
+          <HeaderInfoTooltip text={labels.table.encountersTooltip} />
+        </span>
+      ),
       cell: (ctx) => {
         const r = ctx.row.original
         return (
@@ -214,7 +220,12 @@ function buildColumns(
       accessorFn: (r) => numOrUndef(r.teammate_win_rate),
       sortUndefined: 'last',
       sortDescFirst: true,
-      header: (ctx) => <SortLabel column={ctx.column}>{labels.table.winRateAlly}</SortLabel>,
+      header: (ctx) => (
+        <span className="inline-flex items-center gap-1">
+          <SortLabel column={ctx.column}>{labels.table.winRateAlly}</SortLabel>
+          <HeaderInfoTooltip text={labels.table.winRateAllyTooltip} />
+        </span>
+      ),
       cell: (ctx) => {
         const v = ctx.row.original.teammate_win_rate
         const color = percentColor(v)
@@ -230,7 +241,12 @@ function buildColumns(
       accessorFn: (r) => numOrUndef(r.enemy_win_rate),
       sortUndefined: 'last',
       sortDescFirst: true,
-      header: (ctx) => <SortLabel column={ctx.column}>{labels.table.winRateEnemy}</SortLabel>,
+      header: (ctx) => (
+        <span className="inline-flex items-center gap-1">
+          <SortLabel column={ctx.column}>{labels.table.winRateEnemy}</SortLabel>
+          <HeaderInfoTooltip text={labels.table.winRateEnemyTooltip} />
+        </span>
+      ),
       cell: (ctx) => {
         const v = ctx.row.original.enemy_win_rate
         const color = percentColor(v)
@@ -246,7 +262,12 @@ function buildColumns(
       // Tri sur le net frags − morts (kills_dealt − deaths_suffered).
       accessorFn: (r) => r.kills_dealt - r.deaths_suffered,
       sortDescFirst: true,
-      header: (ctx) => <SortLabel column={ctx.column}>{labels.table.fragsDeaths}</SortLabel>,
+      header: (ctx) => (
+        <span className="inline-flex items-center gap-1">
+          <SortLabel column={ctx.column}>{labels.table.fragsDeaths}</SortLabel>
+          <HeaderInfoTooltip text={labels.table.fragsDeathsTooltip} />
+        </span>
+      ),
       cell: (ctx) => {
         const r = ctx.row.original
         return (

@@ -298,6 +298,7 @@ export const commonManifest = {
   "common.nav.tab_coaching": { fr: "Entraînement", en: "Coaching" },
   "common.nav.tab_compare": { fr: "Face-à-face", en: "Head-to-head" },
   "common.nav.tab_contributions": { fr: "Contributions", en: "Contributions" },
+  "common.nav.tab_dynamique": { fr: "Dynamique", en: "Dynamics" },
   "common.nav.tab_leaderboard": { fr: "Classements", en: "Leaderboards" },
   "common.nav.tab_medals": { fr: "Médailles", en: "Medals" },
   "common.nav.tab_objectives": { fr: "Objectifs", en: "Objectives" },

@@ -44,6 +44,12 @@ type ActionJournalReporter func(ctx context.Context) domain.AdminActionJournalRe
 // (le cycle couvre tous les joueurs — la dédup FindActiveJob reste par type).
 const forcedSyncCycleSlug = "_all"
 
+// Clés/codes partagés par les handlers d'actions admin (goconst).
+const (
+	jobDetailKeyJobID = "job_id"
+	jobErrorCodePanic = "panic"
+)
+
 // AdminActionsHandler sert les actions correctives du dashboard monitoring.
 type AdminActionsHandler struct {
 	dataHealth DataHealthRunNow
@@ -136,10 +142,10 @@ func (h *AdminActionsHandler) handleRunSyncCycle(ctx context.Context, _ *struct{
 		return &runSyncCycleOutput{
 			Status: http.StatusConflict,
 			Body: map[string]any{
-				"code":      "already_running",
+				"code":      actionBusyCode,
 				"message":   "Un cycle auto-sync forcé est déjà en cours.",
 				"retryable": false,
-				"details":   map[string]string{"job_id": active.JobID},
+				"details":   map[string]string{jobDetailKeyJobID: active.JobID},
 			},
 		}, nil
 	}
@@ -159,7 +165,7 @@ func (h *AdminActionsHandler) runForcedCycle(ctx context.Context, jobID string) 
 		if rec := recover(); rec != nil {
 			slog.ErrorContext(ctx, "admin_actions: panic pendant le cycle forcé", "job_id", jobID, "panic", rec)
 			h.jobs.Update(jobID, func(j *domain.AsyncJobStatus) {
-				j.Error = &domain.JobErrorDetail{Code: "panic", Message: "cycle interrompu par une erreur interne", Retryable: true}
+				j.Error = &domain.JobErrorDetail{Code: jobErrorCodePanic, Message: "cycle interrompu par une erreur interne", Retryable: true}
 			})
 			h.jobs.SetStatus(jobID, domain.JobStatusFailed, nil)
 		}

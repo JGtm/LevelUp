@@ -88,7 +88,11 @@ export function SessionFragCard({ entry, stacked = false }: Props) {
           title={detailTitle}
           hoveredClass={hoveredClass}
           onClassHover={setHoveredClass}
-          height={FRAG_CARD_HEIGHT}
+          // fluid + stretch de la grille : la card s'aligne sur la hauteur du sunburst
+          // (heightPx=FRAG_CARD_HEIGHT) — le tracé prend flex-1, la légende de pied reste
+          // flex-none. Sans fluid, le pied de légende HTML rendrait cette card plus haute
+          // que le sunburst (parité I5 cassée). Hauteur mini = formule interne (modeste).
+          fluid
           className={stacked ? '' : 'xl:col-span-1'}
         />
       )}

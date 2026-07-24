@@ -1,11 +1,10 @@
 import { describe, it, expect } from 'vitest'
 
-import { buildCareerXpSeries } from './careerXpSeries'
-import type { TimeseriesMatchRow } from '@/lib/api/types'
+import { buildCareerXpSeries, type CareerXpRow } from './careerXpSeries'
 
 /** Ligne minimale : seul career_xp_estimated importe pour ce builder. */
-function row(xp: number | null): TimeseriesMatchRow {
-  return { career_xp_estimated: xp } as unknown as TimeseriesMatchRow
+function row(xp: number | null): CareerXpRow {
+  return { career_xp_estimated: xp }
 }
 
 describe('buildCareerXpSeries', () => {
