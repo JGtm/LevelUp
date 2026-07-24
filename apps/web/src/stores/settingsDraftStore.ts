@@ -39,6 +39,11 @@ interface LocalUiPrefs {
   allyTeamColor: string | null
   /** Id couleur outline équipe ennemie (HaloOutlineColor.id ou null = défaut palette) */
   enemyTeamColor: string | null
+  /** Afficher la colonne « Ouvrir sur Halo Waypoint » sur les tableaux de matchs
+   *  (I19). Préférence purement locale — jamais envoyée au backend. Masquée de
+   *  toute façon si le titre courant ne déclare pas la capability
+   *  `waypoint_match_url` (cf. useCapability). */
+  showWaypointColumn: boolean
 }
 
 interface SettingsDraftState {
@@ -67,6 +72,7 @@ interface SettingsDraftState {
   setColorPalette: (palette: ColorPalette) => void
   setAllyTeamColor: (id: string | null) => void
   setEnemyTeamColor: (id: string | null) => void
+  setShowWaypointColumn: (value: boolean) => void
   /** Définit le dernier slug joueur pour un titre donné */
   setLastPlayerSlugForTitle: (titleSlug: string, slug: string | null) => void
   /** Récupère le dernier slug joueur pour un titre donné */
@@ -84,6 +90,7 @@ const DEFAULT_LOCAL_UI_PREFS: LocalUiPrefs = {
   lastPlayerSlugByTitle: {},
   allyTeamColor: null,
   enemyTeamColor: null,
+  showWaypointColumn: true,
 }
 
 // ---------------------------------------------------------------------------
@@ -142,6 +149,11 @@ export const useSettingsDraftStore = create<SettingsDraftState>()(
       setEnemyTeamColor: (id) =>
         set((state) => ({
           localUiPrefs: { ...state.localUiPrefs, enemyTeamColor: id },
+        })),
+
+      setShowWaypointColumn: (value) =>
+        set((state) => ({
+          localUiPrefs: { ...state.localUiPrefs, showWaypointColumn: value },
         })),
 
       setLastPlayerSlugForTitle: (titleSlug, slug) =>

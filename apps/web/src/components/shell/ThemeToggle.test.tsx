@@ -19,6 +19,7 @@ beforeEach(() => {
       lastPlayerSlugByTitle: {},
       allyTeamColor: null,
       enemyTeamColor: null,
+      showWaypointColumn: true,
     },
   })
 })

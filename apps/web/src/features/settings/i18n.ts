@@ -61,6 +61,8 @@ export interface SettingsText {
   normalizeModeLabels: string
   excludeBTB: string
   refreshClearsCaches: string
+  showWaypointColumn: string
+  showWaypointColumnHint: string
 
   // Discord
   discordTitle: string
@@ -326,6 +328,9 @@ const FR_TEXT: SettingsText = {
   normalizeModeLabels: 'Normaliser les libellés de modes',
   excludeBTB: 'Exclure BTB du classement carrière',
   refreshClearsCaches: "Vider les caches à l'actualisation",
+  showWaypointColumn: 'Colonne Halo Waypoint sur les listes de matchs',
+  showWaypointColumnHint:
+    "Ajoute un lien direct vers la page du match sur Halo Waypoint dans les tableaux de matchs. Masquée automatiquement si le titre courant ne l'expose pas (Halo 5).",
 
   discordTitle: 'Notifications Discord',
   discordEnabled: 'Activer les notifications',
@@ -616,6 +621,9 @@ const EN_TEXT: SettingsText = {
   normalizeModeLabels: 'Normalize mode labels',
   excludeBTB: 'Exclude BTB from career ranking',
   refreshClearsCaches: 'Clear caches on refresh',
+  showWaypointColumn: 'Halo Waypoint column on match lists',
+  showWaypointColumnHint:
+    "Adds a direct link to the match's Halo Waypoint page in match tables. Automatically hidden if the current title doesn't expose it (Halo 5).",
 
   discordTitle: 'Discord notifications',
   discordEnabled: 'Enable notifications',

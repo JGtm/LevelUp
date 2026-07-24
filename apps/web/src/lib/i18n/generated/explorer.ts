@@ -129,6 +129,7 @@ export const explorerManifest = {
   "explorer.matches.col_team_mmr": { fr: "MMR équipe", en: "Team MMR" },
   "explorer.matches.col_tier": { fr: "Tier", en: "Tier" },
   "explorer.matches.col_type": { fr: "Type", en: "Type" },
+  "explorer.matches.col_waypoint_aria": { fr: "Ouvrir sur Halo Waypoint", en: "Open on Halo Waypoint" },
   "explorer.matches.count_label": { fr: "{n, plural, one {# match trouvé} other {# matchs trouvés}}", en: "{n, plural, one {# match found} other {# matches found}}" },
   "explorer.matches.empty_description": { fr: "La requête n'a renvoyé aucun tableau de matchs exploitable pour ce scope.", en: "Query returned no exploitable match table for this scope." },
   "explorer.matches.empty_row": { fr: "Aucun match trouvé.", en: "No match found." },

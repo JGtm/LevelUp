@@ -15,9 +15,14 @@
  *  - Playlist + Mode tronqués à 12 chars (truncateName) avec tooltip natif
  *    sur le label complet via attribut HTML `title`.
  *
- * Colonnes : Ouvrir | Date | Carte | Playlist | Mode | Contexte | Résultat |
- *            Dominance | K | D | A | FDA | Score | Durée |
+ * Colonnes : Ouvrir | Waypoint | Date | Carte | Playlist | Mode | Contexte |
+ *            Résultat | Dominance | K | D | A | FDA | Score | Durée |
  *            Perf (color) | ΔPerf | Rang | MMR équipe | MMR adv. | ΔMMR
+ *
+ * Colonne « Waypoint » (I19) : lien externe vers la page de détail du match sur
+ * Halo Waypoint, gatée par la capability `waypoint_match_url` (absente pour
+ * Halo 5) ET par la préférence locale `localUiPrefs.showWaypointColumn`
+ * (Settings → Apparence, défaut ON).
  */
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import {
@@ -33,6 +38,7 @@ import {
 import type { ExplorerMatchRow } from '@/lib/api/types'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 import { localizeTierLabel, skillTierSortValue } from '@/lib/skillTiers'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { mmrDeltaScale, kdaDivergentScale } from '@/lib/accessibility/scales'
@@ -41,8 +47,10 @@ import { formatDate, formatDurationMMSS, displayRatingLabel, intlLocale as toInt
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
 import type { ContextDescriptor, MatchFilterSpec } from '@/lib/match-nav/navContext'
+import { buildWaypointMatchUrl, waypointLogoSrc } from '@/lib/match-nav/waypointUrl'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { useProvidesTeamMmr } from '@/lib/damage/effectiveHp'
+import { useCapability } from '@/lib/capabilities/capabilities'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { matchViewManifest, type MatchViewManifestKey } from '@/lib/i18n/generated/match_view'
@@ -266,6 +274,13 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
   // KDA NET ((k+a/3)−d) pour les deux titres (valeur API Infinite / FDA Halo 5),
   // potentiellement négatif → échelle divergente autour de 0 (jamais kdScale).
 
+  // Colonne « Ouvrir sur Halo Waypoint » (I19) : gating par capability (absente
+  // pour Halo 5, cf. registry.go CapWaypointMatchURL) ET par préférence LOCALE
+  // (Apparence → « Colonne Halo Waypoint sur les listes de matchs », défaut ON).
+  const waypointCapability = useCapability('waypoint_match_url')
+  const showWaypointColumnPref = useSettingsDraftStore((s) => s.localUiPrefs.showWaypointColumn)
+  const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
+
   const navigateToMatch = useNavigateToMatch(playerSlug)
   const filterContext = useSoloFilterStore((s) => s.filterContext)
   const allMatchIds = useMemo(() => rows.map((r) => r.match_id), [rows])
@@ -317,6 +332,28 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
               <path d="M3.5 6.75c0-.69.56-1.25 1.25-1.25H7A.75.75 0 0 0 7 4H4.75A2.75 2.75 0 0 0 2 6.75v4.5A2.75 2.75 0 0 0 4.75 14h4.5A2.75 2.75 0 0 0 12 11.25V9a.75.75 0 0 0-1.5 0v2.25c0 .69-.56 1.25-1.25 1.25h-4.5c-.69 0-1.25-.56-1.25-1.25v-4.5Z" />
             </svg>
           </button>
+        ),
+      },
+      {
+        id: 'waypoint',
+        header: '',
+        cell: (ctx) => (
+          <a
+            href={buildWaypointMatchUrl(playerSlug, ctx.row.original.match_id)}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            aria-label={t('explorer.matches.col_waypoint_aria')}
+            title={t('explorer.matches.col_waypoint_aria')}
+            className="group flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <img
+              src={waypointLogoSrc(theme)}
+              alt=""
+              aria-hidden
+              className="h-4 w-4 opacity-60 group-hover:opacity-100 transition-opacity"
+            />
+          </a>
         ),
       },
       {
@@ -652,7 +689,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         : []),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [intlLocale, mapAssets, playlistAssets, locale, goToMatch, providesTeamMmr],
+    [intlLocale, mapAssets, playlistAssets, locale, goToMatch, providesTeamMmr, playerSlug, theme],
   )
 
   // Tri CLIENT possédé par le tableau (mode Matchs). Défaut : date descendante —
@@ -675,7 +712,8 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
     })()
     return merged.map((c) => ({
       ...c,
-      enableSorting: sortable === true && columnIdOf(c) !== 'open',
+      enableSorting:
+        sortable === true && columnIdOf(c) !== 'open' && columnIdOf(c) !== 'waypoint',
     }))
   }, [baseColumns, extraColumns, extraColumnsAfterId, sortable])
 
@@ -687,12 +725,26 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
     pageSize: defaultPageSize ?? PAGE_SIZE,
   })
 
+  // Visibilité de la colonne « Ouvrir sur Halo Waypoint » : capability ET
+  // préférence locale. Fusionnée avec `columnVisibility` (prop consommateur),
+  // qui garde PRIORITÉ (ex: SessionMatchesTable variant="compact" peut la
+  // masquer explicitement via COMPACT_HIDDEN_COLUMNS).
+  const internalColumnVisibility = useMemo(
+    () => ({ waypoint: waypointCapability && showWaypointColumnPref }),
+    [waypointCapability, showWaypointColumnPref],
+  )
+
   const table = useReactTable<ExplorerMatchRow>({
     data: rows,
     columns,
     // columnVisibility piloté par le parent (prop) : pas de toggle interne donc pas
-    // de onColumnVisibilityChange. Défaut {} = toutes visibles.
-    state: { pagination, columnVisibility: columnVisibility ?? {}, sorting },
+    // de onColumnVisibilityChange. Défaut {} = toutes visibles (sauf `waypoint`,
+    // géré par internalColumnVisibility).
+    state: {
+      pagination,
+      columnVisibility: { ...internalColumnVisibility, ...(columnVisibility ?? {}) },
+      sorting,
+    },
     onPaginationChange: setPagination,
     // Tri CLIENT : toutes les lignes du scope sont chargées (cap 10000) et
     // paginées côté client, donc getSortedRowModel trie localement TOUTES les
