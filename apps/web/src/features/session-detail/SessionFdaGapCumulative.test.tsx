@@ -5,8 +5,8 @@
  * - `computeCumulativeFdaGap` (pur) : cumul chronologique + report D5 (un match
  *   sans attendu ne modifie pas le cumul, la courbe reporte la dernière valeur).
  * - `buildSessionFdaGapOption` (pur) : aire signée divergente ancrée à 0 + markLine 0,
- *   PLUS 1 courbe fine « FDA attendu » PAR MATCH sur l'axe secondaire
- *   (`yAxisIndex: 1`).
+ *   PLUS 1 courbe fine « FDA attendu » PAR MATCH sur le MÊME axe Y (pas de
+ *   double axe — retour utilisateur 2026-07-24).
  * - `SessionFdaGapCumulative` (composant) : masquage par capability `expected_stats`.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -61,7 +61,7 @@ interface OptShape {
   }>
   legend?: { data: string[] }
   xAxis?: { data: string[]; boundaryGap?: boolean }
-  yAxis?: unknown[]
+  yAxis?: unknown
 }
 
 function setTitleCaps(caps: string[]) {
@@ -149,12 +149,12 @@ describe('buildSessionFdaGapOption', () => {
     expect(opt.series![0].areaStyle?.origin).toBe(0)
     expect(opt.series![0].markLine?.data[0].yAxis).toBe(0)
     expect((opt.series![0].areaStyle?.color as { type?: string })?.type).toBe('linear')
-    // Courbe FDA attendu PAR MATCH (pas cumulée) — axe SECONDAIRE (yAxisIndex 1).
+    // Courbe FDA attendu PAR MATCH (pas cumulée) — MÊME axe Y (pas de yAxisIndex).
     expect(opt.series![1].name).toBe('Attendu')
-    expect(opt.series![1].yAxisIndex).toBe(1)
+    expect(opt.series![1].yAxisIndex).toBeUndefined()
     expect(opt.series![1].data).toEqual([1, 1.2])
-    // Axe Y en tableau (primaire + secondaire droit) + légende sur les 2 séries.
-    expect(opt.yAxis).toHaveLength(2)
+    // Axe Y UNIQUE (objet, pas tableau) + légende sur les 2 séries.
+    expect(Array.isArray(opt.yAxis)).toBe(false)
     expect(opt.legend?.data).toEqual(['Écart cumulé', 'Attendu'])
     expect(opt.xAxis?.boundaryGap).toBe(false)
   })

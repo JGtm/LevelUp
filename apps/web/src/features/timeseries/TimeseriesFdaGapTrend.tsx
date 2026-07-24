@@ -11,8 +11,8 @@
  * service → PAS de re-tri (contrairement à Sessions qui trie par start_time).
  * Rendu : aire signée divergente ancrée à 0 (helper canonique
  * `divergentZeroGradient`, PAS de visualMap) + markLine 0 sur l'axe PRIMAIRE,
- * PLUS 1 courbe fine « FDA attendu » PAR MATCH sur un axe SECONDAIRE droit
- * (`yAxisIndex: 1`, pattern dual-axis de `TimeseriesKdaBars`) — lit le champ
+ * PLUS 1 courbe fine « FDA attendu » PAR MATCH sur le MÊME axe Y (même unité
+ * FDA — retour utilisateur 2026-07-24 : pas de double axe) — lit le champ
  * `expected` de chaque point du helper canonique `cumulativeFdaGap` (source
  * unique — CLAUDE.md n°6), `null` → point troué (`connectNulls: false`).
  *
@@ -86,7 +86,7 @@ export function buildFdaGapCumulativeOption(
 
   return {
     backgroundColor: CHART_BG,
-    grid: { top: 24, bottom: 64, left: 48, right: 56 },
+    grid: { top: 24, bottom: 64, left: 48, right: 24 },
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'axis',
@@ -116,12 +116,9 @@ export function buildFdaGapCumulativeOption(
       data: categories,
       axisLabel: { ...(axis.axisLabel as Record<string, unknown>), interval },
     },
-    // Axe primaire (écart cumulé, gauche) + axe secondaire (FDA attendu
-    // par match, droite — pattern dual-axis de TimeseriesKdaBars).
-    yAxis: [
-      { ...axis, type: 'value' },
-      { ...axis, type: 'value', position: 'right' },
-    ],
+    // Axe Y UNIQUE (retour utilisateur 2026-07-24 : le double axe rendait le
+    // graphe illisible — écart cumulé et FDA attendu sont dans la même unité FDA).
+    yAxis: { ...axis, type: 'value' },
     series: [
       {
         type: 'line',
@@ -142,11 +139,10 @@ export function buildFdaGapCumulativeOption(
         },
       },
       {
-        // FDA attendu PAR MATCH (pas cumulé) — courbe fine axe secondaire.
-        // `expected` est null quand le match n'a pas d'attendu → point troué.
+        // FDA attendu PAR MATCH (pas cumulé) — courbe fine sur le MÊME axe que
+        // l'aire (même unité FDA). `expected` null → point troué.
         type: 'line',
         name: labels.expected,
-        yAxisIndex: 1,
         data: expectedValues,
         symbol: 'none',
         connectNulls: false,
