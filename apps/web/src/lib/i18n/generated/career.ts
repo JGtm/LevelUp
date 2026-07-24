@@ -4,7 +4,6 @@
 export const careerManifest = {
   "career.actions.compare": { fr: "Comparer", en: "Compare" },
   "career.charts.hero_gauge_title": { fr: "Progression vers le rang max", en: "Progress to max rank" },
-  "career.charts.hero_progress": { fr: "Progression vers le rang max", en: "Progress to max rank" },
   "career.charts.lusr_evolution_title": { fr: "Évolution LUSR / CSR", en: "LUSR / CSR evolution" },
   "career.charts.lusr_rating_axis_y": { fr: "LUSR", en: "LUSR" },
   "career.charts.lusr_rating_title": { fr: "Rating LUSR", en: "LUSR rating" },

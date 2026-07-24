@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { RankProgressGauge } from '@/components/ui/rank-progress-gauge'
 import { careerManifest } from '@/lib/i18n/generated/career'
-import type { ManifestLocale } from '@/lib/i18n/format'
+import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
+import { heroMaxRankName } from './CareerChartsSection.gauges'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { intlLocale as toIntlLocale } from '@/lib/formatters'
 import type { CareerSummary, HeroProgress, CareerProjections } from '@/lib/api/types'
@@ -107,7 +108,9 @@ export function CareerSummaryCard({ summary, heroProgress, projections }: Props)
           {heroProgress && (
             <div className="flex flex-col items-center gap-3">
               <RankProgressGauge
-                title={careerManifest['career.charts.hero_progress'][locale]}
+                title={formatMessage(careerManifest, 'career.charts.max_rank_progress', locale, {
+                  rank: heroMaxRankName(heroProgress, locale),
+                })}
                 progressPct={heroProgress.percentage / 100}
                 subtitle={`${(heroProgress.xp_total_required - heroProgress.xp_remaining).toLocaleString(intlLocale)} / ${heroProgress.xp_total_required.toLocaleString(intlLocale)} XP`}
                 size={200}

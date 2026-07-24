@@ -253,7 +253,16 @@ export function CareerHeroGaugeChart({ heroProgress, locale, intlLocale }: Caree
   if (!hasCareer) return null
   return (
     <ChartCard<GaugePoint>
-      title={careerManifest['career.charts.hero_gauge_title'][locale]}
+      // Titre AVEC le nom du rang sommet du titre (« Progression vers Héros » /
+      // « … SR 152 ») — la version la plus visible du libellé, pas seulement le
+      // label interne de la jauge. Repli générique sans payload.
+      title={
+        heroProgress
+          ? formatMessage(careerManifest, 'career.charts.max_rank_progress', locale, {
+              rank: heroMaxRankName(heroProgress, locale),
+            })
+          : careerManifest['career.charts.hero_gauge_title'][locale]
+      }
       series={heroProgress ? [heroGaugeSeries(heroProgress, intlLocale, locale)] : []}
       height={280}
       buildOption={buildHeroGaugeOption}

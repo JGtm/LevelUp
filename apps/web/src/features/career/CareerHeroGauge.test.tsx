@@ -57,7 +57,7 @@ describe('CareerHeroGaugeChart', () => {
     setTitle(['career'])
   })
 
-  it('rendu Infinite : titre générique + compteur X/272 (par titre)', () => {
+  it('rendu Infinite : titre interpolé « Progression vers Héros » + compteur X/272', () => {
     renderWithProviders(
       <CareerHeroGaugeChart
         heroProgress={hero({ current_rank: 122, total_ranks: 272, max_rank_name_fr: 'Héros' })}
@@ -65,7 +65,7 @@ describe('CareerHeroGaugeChart', () => {
         intlLocale="fr-FR"
       />,
     )
-    expect(screen.getByText('Progression vers le rang max')).toBeInTheDocument()
+    expect(screen.getByText('Progression vers Héros')).toBeInTheDocument()
     expect(screen.getByText('122/272')).toBeInTheDocument()
   })
 
