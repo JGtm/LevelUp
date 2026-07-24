@@ -13,6 +13,33 @@
 
 ## Dernières nouveautés
 
+**v7.1 — Escouade fiabilisée, données de combat Halo 5 & XP de carrière**
+
+Une version d'ajustement centrée sur la fiabilité des pages Escouade, la réparation des données de combat Halo 5 et le peaufinage de toute l'app.
+
+**Escouade — plus fiable**
+- **Historique en composition exacte** — les graphes session vs historique (performance d'escouade, performance par carte, taux de victoire) comparent désormais chaque session à votre historique avec cette composition *exacte*, au lieu d'une moyenne floue tous coéquipiers confondus
+- **Compositions enregistrées corrigées** — une escouade enregistrée affiche les mêmes membres pour tout le monde ; fini les doublons ou le coéquipier manquant chez un autre joueur
+- **Graphes en ordre chronologique** — les comparaisons par carte et de taux de victoire se lisent de gauche à droite dans l'ordre d'apparition des cartes
+- **Nouvel onglet « Dynamique »** — l'intensité (désormais un profil d'activité médian avec une enveloppe interquartile qui rend visible l'irrégularité), le rendement/résistance et l'engagement regroupés au même endroit, plus un graphe de balance des dégâts cumulée en vies
+- **Objectifs d'escouade** — la boucle de défis d'escouade est complète (libellés localisés, retour au moment de rejoindre, progression par membre en direct, abandon/expiration) ; « Cap d'escouade » est renommé « Objectifs d'escouade »
+
+**Halo 5 — données de combat réparées**
+- **Véhicules détruits & Vol à la tire** et les **mécaniques de combat** (assassinats, coups au sol, charges spartanes) sont de retour sur la Synthèse et le scoreboard après une réparation des données
+- **Citations réparées** — les victoires Firefight sont comptées, les citations de grenade sont restaurées, et les mauvais mappings de médaille sont corrigés
+
+**Carrière**
+- **XP de carrière estimée** — une courbe d'XP cumulée et l'XP par match sur les Séries temporelles, calibrées sur des données réelles
+- **Path to Hero multi-titre** — progression vers le rang maximum propre à chaque titre
+- **Page Médailles** — une nouvelle sous-page Carrière avec le catalogue complet des médailles du titre, y compris celles jamais obtenues, avec filtres toutes / obtenues / non obtenues et tris
+
+**Explorer & Accueil**
+- **Face-à-face** — des donuts de taux de victoire (ensemble / face à lui) et un graphe d'écart de frags cumulé par rapport à la cible sur « Sur XX matchs joués ensemble »
+- **Dates du pic** sur vos cartes de meilleur LUSR / CSR, plus un KPI de **plus longue série de défaites**
+
+**Confort d'utilisation**
+- **Langue dans l'URL** pour que les liens partagés conservent leur langue, une **colonne Halo Waypoint** optionnelle, **tous les tableaux triables**, des **titres d'onglet stables**, des couleurs d'identité et logos d'équipe sur le scoreboard, des légendes de graphe et étiquettes de pourcentage assainies, et une passe de purge des anglicismes
+
 **v7.0 — Nouvelle app React, Mission Control & multi-titres**
 
 Refonte majeure. LevelUp quitte Streamlit pour une app **React 19 + Go API** avec **une UX/UI entièrement repensée** et **une synchronisation désormais automatique**. Près de 400 commits de travail — voici ce que ça change pour vous :

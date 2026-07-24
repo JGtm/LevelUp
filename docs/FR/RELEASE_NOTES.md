@@ -1,5 +1,65 @@
 ## Dernières nouveautés
 
+**v7.1 — Escouade fiabilisée, données de combat Halo 5 & XP de carrière**
+
+**Escouade — plus fiable**
+- **Historique en composition exacte** — « Performance d'escouade par session », « Performance par carte — session vs historique » et « Taux de victoire — session vs historique » comparent désormais chaque session à votre historique avec cette composition *exacte*, au lieu d'une moyenne floue tous coéquipiers confondus
+- **Compositions enregistrées corrigées** — une escouade enregistrée affiche les mêmes membres pour tout le monde ; fini les doublons ou le coéquipier manquant chez un autre joueur
+- **Graphes d'escouade en ordre chronologique** — les comparaisons par carte et de taux de victoire se lisent de gauche à droite dans l'ordre d'apparition des cartes, comme la vue d'intensité
+- **Axe de taux de victoire plus clair** — le compteur « (n) » de l'axe est désormais expliqué par une infobulle au survol
+- **Nouvel onglet « Dynamique »** — les graphes d'intensité, de rendement/résistance et d'engagement sont regroupés dans un onglet Escouade dédié
+- **Intensité en profil médian** — la heatmap match × phase laisse place à un profil médian de part de frags par phase, avec une enveloppe interquartile qui rend visible l'irrégularité
+- **Rendement & Résistance** — séparés en deux graphes multi-joueurs, une couleur par joueur
+- **Balance des dégâts en vies** — cumul des dégâts infligés moins subis, exprimé en vies du titre, sur Sessions et Dynamique
+- **Écart d'engagement cumulé** — une nouvelle courbe d'écart d'engagement cumulé sur Séries temporelles, Dynamique et Sessions
+
+**Objectifs d'escouade**
+- **Boucle de défis d'escouade** — libellés localisés, retour au moment de rejoindre, progression par membre en direct, et cycle de vie complet (abandon, suppression, expiration)
+- **Renommage** — « Cap d'escouade » devient « Objectifs d'escouade »
+- **Plus d'échec silencieux** — le bouton « Proposer des défis » affiche désormais une erreur explicite au lieu de ne rien faire
+
+**Halo 5 — données de combat réparées**
+- **Véhicules détruits & Vol à la tire** — compteurs de véhicules détruits et de « Vol à la tire » sur la carte « Outils de destruction » de la Synthèse
+- **Mécaniques de combat restaurées** — les assassinats, coups au sol et charges spartanes sont réparés pour les matchs dont les valeurs avaient été enregistrées à zéro
+- **Scoreboard assaini** — noms d'équipe Halo 5 dédupliqués, et MVP/LVP ne sont plus départagés par les kills de mécanique
+- **Colonnes de mécanique masquées hors Halo 5** — les colonnes assassinat / coup au sol / charge spartane n'affichent plus des zéros sur Halo Infinite
+
+**Citations réparées**
+- **Firefight** — les « Éliminations Firefight » comptent désormais vos victoires Firefight
+- **Remaps & correctifs** — citations de grenade restaurées, « Virée sur la route » remappée sur la médaille Écrasement, et « Défenseur du drapeau » désactivée proprement (aucune source de données pour l'instant)
+
+**Carrière**
+- **XP de carrière estimée** — une courbe d'XP cumulée et l'XP par match sur les Séries temporelles, calibrées sur des données réelles
+- **Path to Hero multi-titre** — progression vers le rang maximum propre au titre (corrige Halo 5 qui visait le mauvais plafond)
+- **Page Médailles** — une nouvelle sous-page Carrière listant le catalogue complet des médailles du titre, y compris celles jamais obtenues, regroupées par section, avec filtres toutes / obtenues / non obtenues et tris
+
+**Accueil & Synthèse**
+- **Date du pic sur les cartes de rang** — vos cartes de meilleur LUSR / CSR affichent la date à laquelle le pic a été atteint
+- **Plus longue série de défaites** — une nouvelle carte KPI à côté de votre série de victoires
+
+**Explorer**
+- **Face-à-face** — la section « Sur XX matchs joués ensemble » ajoute des donuts de taux de victoire (ensemble / face à lui) et un graphe d'écart de frags cumulé par rapport à la cible
+- **Synthèse repliable** — la synthèse du mode Matchs peut être repliée, et ce choix est mémorisé
+
+**Écart au FDA attendu**
+- **Courbes d'écart attendu** — de nouveaux graphes « écart au FDA attendu » sur les Séries temporelles et les Sessions, plus un écart cumulé par membre sur les Synergies d'escouade, avec un KPI d'écart moyen par match
+- **Réel vs attendu** — de fines courbes de FDA réel et attendu cumulés sont ajoutées sur le graphe d'écart
+
+**Médias**
+- **Rôles des pistes audio par joueur** — déclarez le rôle voix / jeu / autres de chaque piste audio de vos clips, par joueur, depuis une modale engrenage dans la galerie (manuel, ou automatique)
+
+**Confort d'utilisation**
+- **Langue dans l'URL** — la langue active fait désormais partie de l'adresse, donc les liens partagés conservent leur langue
+- **Colonne Halo Waypoint** — une colonne optionnelle pour ouvrir n'importe quel match sur Halo Waypoint
+- **Tous les tableaux triables** — cliquez sur n'importe quel en-tête de colonne pour trier, sur tous les tableaux de l'app
+- **Titres d'onglet stables** — des titres d'onglet conscients de la page et de la langue au lieu d'un simple « LevelUp »
+- **Identité du scoreboard** — couleurs d'identité par équipe et logos d'équipe, plus une largeur de colonne joueur cohérente
+- **Formulation française** — une passe de purge des anglicismes remplacés par des termes français
+- **Légendes & pourcentages** — la légende « Outils de destruction » est centrée sous le graphe, avec des étiquettes de pourcentage sur les segments et les légendes et des hauteurs de graphe alignées sur Synthèse, Sessions et Escouade
+
+**Admin**
+- **Diagnostic d'apparence Spartan** — un panneau par joueur dans l'onglet Données de l'admin explique pourquoi une bannière, un emblème, un arrière-plan ou un indicatif de service n'a pas pu se charger, avec un raccourci de reconnexion
+
 **v7.0 — Nouvelle app React, Mission Control & multi-titres**
 
 Refonte majeure. LevelUp quitte Streamlit pour une app **React 19 + Go API** avec **une UX/UI entièrement repensée** et **une synchronisation désormais automatique**. Près de 400 commits de travail — voici ce que ça change pour vous :
