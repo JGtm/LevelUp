@@ -488,12 +488,12 @@ fr = "XP de carrière (estimée)"
 en = "Career XP (estimated)"
 
 [timeseries.progression.career_xp_cumulative]
-fr = "XP de carrière cumulée"
-en = "Cumulative career XP"
+fr = "XP de carrière cumulée sur la période affichée (estimée)"
+en = "Career XP accumulated over the displayed period (estimated)"
 
 [timeseries.progression.career_xp_per_match]
-fr = "XP estimée par match"
-en = "Estimated XP per match"
+fr = "XP estimée gagnée par match (2 × score personnel depuis nov. 2025)"
+en = "Estimated XP earned per match (2 × personal score since Nov 2025)"
 
 [timeseries.progression.career_xp_tooltip]
 fr = "Estimation : XP = multiplicateur d'éra × score personnel du match (×1 avant le 18/11/2025, ×2 depuis — Operation: Infinite). Matchs connus uniquement ; le Firefight et les playlists à multiplicateur spécial sont exclus ou approximés."
