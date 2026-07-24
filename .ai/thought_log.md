@@ -1,3 +1,34 @@
+## [2026-07-24] Refonte « Intensité » — Phase 2 (Timeseries solo)
+
+**Statut** : Complété (Phase 2 du PLAN_INTENSITE_PROFIL_2026-07 ; branche
+`feat/intensite-profil`, worktree dédié ; P1 déjà commitée 2f5eb07de). Phase 3
+(Sessions + suppression heatmap) non entamée.
+
+**Décision technique principale** : remplacer la heatmap solo de l'onglet
+Progression par le profil médian + enveloppe, en RÉUTILISANT le builder P1
+`buildSquadIntensityProfileOption` en N=1 (aucune duplication de géométrie).
+Nouveau composant `TimeseriesIntensityProfile` (TimeseriesSquadAdapted.tsx) :
+panel unique `label:''` (titre ECharts vide, sans impact layout), couleur
+`chart-series-2`, rows = `data.intensity_rows` (tri start_time ASC conservé).
+Détection du vide sans dupliquer la logique d'exploitabilité : le builder omet
+`series` si aucune manche exploitable → le wrapper teste `opt.series` et rend
+`null` (ChartFromOption affiche l'emptyMessage). Aucune retouche des fichiers P1
+commités.
+
+**Résultats observés** :
+- Modifiés : `TimeseriesSquadAdapted.tsx` (+composant), `TimeseriesPage.
+  progression.tsx` (import + montage swappés, sous-titre + InfoTooltip),
+  `manifests/timeseries.toml` (+5 clés FR/EN), `generated/timeseries.ts`
+  (régénéré, idempotent). Créé : `TimeseriesIntensityProfile.test.tsx`.
+- `TimeseriesIntensityHeatmap` conservé (unused, exporté) + clé `intensity_z`
+  conservée → suppression Phase 3.
+- Gates : `npm run typecheck` (tsc -b, cache purgé) propre ; `npx vitest run
+  src/features/timeseries src/features/squad` = 343 tests / 47 fichiers verts.
+
+**Conclusion / prochaine étape** : Phase 2 close. Suite = Phase 3 (Sessions solo +
+suppression heatmap : squad wrapper + builder + `TimeseriesIntensityHeatmap` +
+tests + clés i18n mortes). Commit délégué au superviseur.
+
 ## [2026-07-24] Refonte « Intensité » — Phase 1 (Coeur + Escouade/Dynamique)
 
 **Statut** : Complété (Phase 1 du PLAN_INTENSITE_PROFIL_2026-07 ; branche

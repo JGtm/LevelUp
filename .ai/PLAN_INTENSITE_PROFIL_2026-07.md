@@ -68,15 +68,25 @@ src/lib/charts` (dangerouslyDisableSandbox).
 
 ## Phase 2 — Timeseries (solo)
 
-- [ ] 2.1 `features/timeseries/TimeseriesSquadAdapted.tsx` :
-      `TimeseriesIntensityHeatmap` → `TimeseriesIntensityProfile` (un panneau
-      pleine largeur, médiane + enveloppe, réutilise le builder P1 en N=1 ou une
-      variante mono-panneau du même fichier — pas de duplication). Les rows
-      viennent de `buildIntensityRows` existant (tri start_time ASC conservé).
-- [ ] 2.2 `TimeseriesPage.progression.tsx` : câblage + titre « Intensité »
-      conservé, sous-titre i18n (timeseries.toml si c'est la surface, sinon la
-      convention existante du fichier).
-- [ ] 2.3 Adapter les tests Timeseries touchés.
+- [x] 2.1 `features/timeseries/TimeseriesSquadAdapted.tsx` : NOUVEAU composant
+      `TimeseriesIntensityProfile` (un panneau pleine largeur, médiane +
+      enveloppe) réutilisant le builder P1 `buildSquadIntensityProfileOption` en
+      N=1 (panel `label:''` → titre ECharts vide, sans impact layout ; couleur
+      `chart-series-2`). ZÉRO duplication de géométrie. Rows =
+      `data.intensity_rows` (tri start_time ASC conservé). Vide détecté via
+      l'absence de `series` dans l'option (le builder l'omet si aucune manche
+      exploitable). `TimeseriesIntensityHeatmap` CONSERVÉ (suppression Phase 3).
+- [x] 2.2 `TimeseriesPage.progression.tsx` : import + montage swappés (titre
+      « Intensité » conservé, sous-titre + InfoTooltip). Clés ajoutées dans
+      `timeseries.toml` (surface = manifeste timeseries) : `intensity_subtitle`,
+      `intensity_tooltip`, `intensity_median`, `intensity_envelope`,
+      `intensity_ref` (FR+EN) ; `node build_i18n_manifests.mjs` régénéré
+      (idempotent, seul `generated/timeseries.ts` change). `intensity_z` (heatmap)
+      conservé → retiré en Phase 3.
+- [x] 2.3 Aucun test Timeseries existant n'était cassé (aucun ne montait
+      l'intensité) → `[~]` pour « adaptation ». NOUVEAU test
+      `TimeseriesIntensityProfile.test.tsx` (rendu, liste vide, manches sans frag
+      → état vide) calqué sur `TimeseriesFdaGapTrend.test.tsx`.
 
 **Gate P2** : typecheck (référence) · `npx vitest run src/features/timeseries`.
 
@@ -133,3 +143,13 @@ suites touchées · si Go modifié : `go test ./internal/service/...` (CGO msys6
   `charts/squadIntensityHeatmapChart.test.ts` reste vert (le builder est intact).
 - **P1** Gate `npx vitest run src/features/squad src/lib/charts` : aucun besoin de
   `dangerouslyDisableSandbox` (a tourné dans le sandbox par défaut).
+- **P2** Après le swap, la fonction `TimeseriesIntensityHeatmap`
+  (TimeseriesSquadAdapted.tsx) n'a plus de consommateur (import retiré de la page)
+  mais reste EXPORTÉE (non flaggée unused par tsc) — suppression planifiée Phase 3
+  (item 3.3). Elle référence toujours `buildSquadIntensityHeatmapOption` → cet
+  import reste utilisé. La clé i18n `timeseries.progression.intensity_z` devient
+  inutilisée (aucun garde-rail de clé morte : validation manifest = fr+en présents
+  seulement) — retirée avec la heatmap en Phase 3.
+- **P2** Aucune duplication de la logique d'exploitabilité : le builder P1 signale
+  le vide en omettant `series` ; le wrapper solo teste `opt.series`. Pas de retouche
+  des fichiers P1 commités (le builder gère déjà `label:''`).
