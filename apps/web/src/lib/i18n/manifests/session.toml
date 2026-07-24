@@ -236,11 +236,11 @@ fr = "moy."
 en = "avg."
 
 [session.detail.chart_fda_per_game_title]
-fr = "Frags / Morts / Assists par match"
+fr = "Frags / Morts / Assistances par match"
 en = "Kills / Deaths / Assists per game"
 
 [session.detail.chart_fda_per_minute_title]
-fr = "Stats par minute — Frags / Morts / Assists"
+fr = "Stats par minute — Frags / Morts / Assistances"
 en = "Per-minute stats — Kills / Deaths / Assists"
 
 [session.detail.chart_fda_radar_series]
@@ -755,7 +755,7 @@ fr = "Aucune donnée de performance disponible."
 en = "No performance data available."
 
 [session.compare.highlight_kills]
-fr = "Kills"
+fr = "Frags"
 en = "Kills"
 
 [session.compare.highlight_kda]

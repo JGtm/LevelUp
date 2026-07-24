@@ -375,7 +375,7 @@ fr = "A"
 en = "A"
 
 [explorer.matches.col_assists_long]
-fr = "Assists"
+fr = "Assistances"
 en = "Assists"
 
 [explorer.matches.col_dominance]
@@ -387,7 +387,7 @@ fr = "FDA"
 en = "KDA"
 
 [explorer.matches.col_kda_tooltip]
-fr = "FDA = (Frags + Assists/3) − Morts ; peut être négatif"
+fr = "FDA = (Frags + Assistances/3) − Morts ; peut être négatif"
 en = "KDA = (Kills + Assists/3) − Deaths; can be negative"
 
 [explorer.matches.col_duration]
@@ -683,7 +683,7 @@ fr = "Morts"
 en = "Deaths"
 
 [explorer.target_profile.cadence_assists]
-fr = "Assists"
+fr = "Assistances"
 en = "Assists"
 
 [explorer.target_profile.yield_offensive]

@@ -165,7 +165,7 @@ fr = "Non classé"
 en = "Unranked"
 
 [palmares.relations.filters.playlists]
-fr = "Playlist"
+fr = "Sélection"
 en = "Playlist"
 
 [palmares.relations.filters.modes]

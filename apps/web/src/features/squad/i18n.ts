@@ -121,6 +121,8 @@ export interface SquadText {
     totalRows: (n: number) => string
     /** aria-label/tooltip du lien « Ouvrir sur Halo Waypoint » (I19). */
     waypointAriaLabel: string
+    /** aria-label du bouton de tri d'un en-tête « Trier par {col} » (I16). */
+    sortByAriaLabel: (col: string) => string
   }
   timeline: {
     title: string
@@ -389,6 +391,7 @@ const FR_TEXT: SquadText = {
     pageOf: (cur, total) => `Page ${cur} / ${total}`,
     totalRows: (n) => `${n} match${n > 1 ? 's' : ''}`,
     waypointAriaLabel: 'Ouvrir sur Halo Waypoint',
+    sortByAriaLabel: (col) => `Trier par ${col}`,
   },
   timeline: {
     title: 'Performance d\'escouade par session',
@@ -436,19 +439,19 @@ const FR_TEXT: SquadText = {
       last_casualty: 'Dernière mort subie par un joueur de l\'équipe perdante',
       last_group_kill: 'Joueur de l\'équipe dont le premier frag arrive le plus tardivement',
       first_group_death: 'Première mort subie par un membre de l\'équipe',
-      silent_hero: 'Joueur (hors Bourreau) avec le plus d\'assists et le moins de morts',
-      false_brother: 'Joueur (hors Bourreau) avec le plus de morts et le moins d\'assists',
+      silent_hero: 'Joueur (hors Bourreau) avec le plus d\'assistances et le moins de morts',
+      false_brother: 'Joueur (hors Bourreau) avec le plus de morts et le moins d\'assistances',
       top_killer: 'Joueur avec le plus grand nombre de frags du match',
       top_gun: 'Premier membre de l\'équipe à atteindre 10 frags',
       kamikaze: 'Joueur le plus tué dans les 1,5 s qui suivent ses frags',
     },
   },
   perMinute: {
-    title: 'Stats par minute — Frags / Morts / Assists',
+    title: 'Stats par minute — Frags / Morts / Assistances',
     description: 'Cadence par joueur sur le scope filtré. Les morts s\'affichent sous l\'axe (couleur joueur atténuée).',
     frags: 'Frags/min',
     deaths: 'Morts/min',
-    assists: 'Assists/min',
+    assists: 'Assistances/min',
     suffix: ' /min',
   },
   synergyRadar: {
@@ -466,7 +469,7 @@ const FR_TEXT: SquadText = {
       impact: 'Rendement offensif — 225 × (frags + ass/3) / dégâts. P80 = 0,83.',
       combat: 'Frags + tirs à la tête + frags parfaits, pondérés par la précision.',
       survival: 'Résistance défensive — dégâts / (225 × morts). P80 = 1,59.',
-      support: 'Assists × 50.',
+      support: 'Assistances × 50.',
       score: 'Score personnel par minute jouée. P80 ≈ 195/min.',
       objective: 'Points d\'objectif (PersonalScoreAwards).',
       glossaryLink: '→ Glossaire',
@@ -528,7 +531,7 @@ const FR_TEXT: SquadText = {
     shotsLabel: 'Tirs',
   },
   killMechanics: {
-    title: 'Mécaniques de kill',
+    title: 'Mécaniques de frag',
     labels: { assassination: 'Assassinats', ground_pound: 'Frappes au sol', shoulder_bash: 'Charges d\'épaule' },
   },
   firstEvents: {
@@ -678,6 +681,7 @@ const EN_TEXT: SquadText = {
     pageOf: (cur, total) => `Page ${cur} / ${total}`,
     totalRows: (n) => `${n} match${n > 1 ? 'es' : ''}`,
     waypointAriaLabel: 'Open on Halo Waypoint',
+    sortByAriaLabel: (col) => `Sort by ${col}`,
   },
   timeline: {
     title: 'Squad performance by session',
