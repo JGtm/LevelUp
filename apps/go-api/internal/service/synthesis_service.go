@@ -126,7 +126,8 @@ func (s *SynthesisService) WithWeaponAccuracyRepo(repo port.WeaponAccuracyReposi
 }
 
 // WithVehicleDestructionStatsRepo injecte la source PAR TITRE des compteurs
-// « véhicules détruits » / « vol à la tire » (Halo 5 : commendations natives). Réutilise
+// « véhicules détruits » / « vol à la tire » (Halo 5 : commendations natives pour les
+// véhicules détruits, médailles Hijack/Skyjack pour le vol à la tire). Réutilise
 // s.playerXUID (posé par WithPersonalScoreAwardsRepo, câblé en amont dans SynthesisCtx).
 func (s *SynthesisService) WithVehicleDestructionStatsRepo(repo port.VehicleDestructionStatsRepository) *SynthesisService {
 	s.vehicleDestructionRepo = repo
@@ -286,9 +287,12 @@ func (s *SynthesisService) loadAndEnrichCanonicalRows(ctx context.Context) ([]ca
 // applyFunStatsToDetailedStats charge les fun stats et les fusionne dans DetailedStats.
 // Source par défaut = personal_score_awards (Infinite : betrayals/suicides/véhicules/
 // hijacks). Pour les titres à commendations NATIVES (Halo 5), véhicules détruits + vol
-// à la tire PRIMENT depuis match_commendations (personal_score_awards y est vide) —
-// branchement par capability câblé en amont (vehicleDestructionRepo nil pour Infinite).
-// Best-effort : une source en erreur ne casse pas la page (log, dégradation).
+// à la tire PRIMENT sur les awards (vides pour ce titre) — véhicules détruits depuis
+// match_commendations, vol à la tire depuis les médailles Hijack/Skyjack de
+// medals_earned (aucune commendation « Grand Theft » n'existe côté H5, cf. doc
+// internal/platform/duckdb/vehicle_commendation_stats_repo.go) — branchement par
+// capability câblé en amont (vehicleDestructionRepo nil pour Infinite). Best-effort :
+// une source en erreur ne casse pas la page (log, dégradation).
 func (s *SynthesisService) applyFunStatsToDetailedStats(
 	ctx context.Context, detailedStats *domain.SynthesisDetailedStats, filteredCanon []canonical.PlayerMatchRow,
 ) {
@@ -311,8 +315,9 @@ func (s *SynthesisService) applyFunStatsToDetailedStats(
 		detailedStats.TotalHijacks = funStats.TotalHijacks
 	}
 
-	// Halo 5 (commendations.native) : véhicules détruits / vol à la tire depuis les
-	// commendations natives, qui PRIMENT sur les awards (vides pour ce titre).
+	// Halo 5 (commendations.native) : véhicules détruits (commendations natives) et
+	// vol à la tire (médailles Hijack/Skyjack, medals_earned) PRIMENT sur les awards
+	// (vides pour ce titre).
 	if s.vehicleDestructionRepo != nil {
 		vd, err := s.vehicleDestructionRepo.LoadVehicleDestructionStats(ctx, s.titleSlug, matchIDs, s.playerXUID)
 		if err != nil {

@@ -268,9 +268,10 @@ func (r *ServiceRegistry) SynthesisCtx(ctx context.Context, slug string) (port.S
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
 	}
-	// Titres à commendations NATIVES (Halo 5) : véhicules détruits / vol à la tire
-	// depuis match_commendations (personal_score_awards y est vide). Capability-gated,
-	// jamais slug== (parité titleHasNativeKillMechanics — cf. capabilitiesForPDB).
+	// Titres à commendations NATIVES (Halo 5) : véhicules détruits (match_commendations)
+	// et vol à la tire (médailles Hijack/Skyjack, medals_earned) — personal_score_awards
+	// y est vide. Capability-gated, jamais slug== (parité titleHasNativeKillMechanics —
+	// cf. capabilitiesForPDB).
 	if r.capabilitiesForPDB(pdb).Has(games.CapCommendationsNative) {
 		svc = svc.WithVehicleDestructionStatsRepo(duckdb.NewVehicleCommendationStatsRepo(pdb))
 	}
