@@ -118,6 +118,28 @@ no-op (déprécié) + cron.d mort (pas de daemon cron).
 ### V0 statuts
 - [x] V0.1 à V0.11 : rapports reçus et exploités (spot-check superviseur au fil des vagues).
 
+## Journal vague 4b + backfills data (2026-07-24 soir)
+- Vague 4 committée : XP carrière (ed7204082, calibration 86/87 à ±1 %), Explorer donuts+écart
+  (ae642b5bd), outil backfill H5 (d56caa22a). Vague 4b : I3 Path to hero title-agnostic
+  livré (max-rank résolu serveur en cascade source→catalogue→générique ; slug=== front
+  retiré ; bug H5 ligne 9,3 M→50 M corrigé). Gates 4b verts (tsc, vitest 355 fichiers,
+  lint, go complet, ratchet 0).
+- BACKFILLS DATA (serveur arrêté) :
+  - squad-creators dry-run : 2 squads, 0 à insérer (créateurs déjà persistés → le bug
+    I14 était 100 % résolution front). halo_5 : 0 squad.
+  - seed citation-mappings : 88 mises à jour. Recompute FORCE : 2 BUGS TROUVÉS ET
+    CORRIGÉS EN CHEMIN : (1) recreateCitationsTable recréait le schéma legacy 3 colonnes
+    (pré-ADR 0026) → Binder generation_id + boucle conversion/recréation — fix = recréation
+    via EnsureMatchCitationsAppendOnly + test intégration ; (2) loadPveStats lisait
+    total_kills (colonne inexistante — la vraie est total_enemy_kills) et sa fixture
+    reproduisait l'erreur — fix requête + fixture alignée schéma réel. 3e passe : 8 joueurs,
+    0 échec, invariants V1-V4 OK. JGtm vérifié : elite 12 / grunt 20 / jackal 31 /
+    look_ma_no_pin 597 / victoire Firefight 1 / road_trip 10.
+  - carrier_killed JGtm : awards locaux gelés au 14/06 (fraîcheur data dev, pas un bug
+    de mapping) — à vérifier en prod post-deploy.
+  - backfill-h5-kill-mechanics : 2 742 carnages, 4 990 lignes corrigées (1 883 matchs),
+    0 erreur, 44 non mappées. JGtm : 0/0/0 → 531 assn / 252 gp / 207 sb.
+
 ## Découvertes hors périmètre (règle 7 — noter, ne pas traiter)
 - winRateVsHistoryChart.ts (non-bullet) = builder MORT (aucun caller) → suppression incluse
   dans le périmètre I12 (même famille, décision superviseur). FAIT (W1b). Reste la clé i18n
