@@ -104,6 +104,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
   const showWaypointColumnPref = useSettingsDraftStore((s) => s.localUiPrefs.showWaypointColumn)
   const showWaypoint = waypointCapability && showWaypointColumnPref
   const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
+  const currentTitleSlug = useAppShellStore((s) => s.currentTitleSlug)
   // Backend envoie DESC (newest first) — on inverse pour oldest-first (chronologique).
   const sortedRows = useMemo(() => [...rows].reverse(), [rows])
   const allMatchIds = useMemo(() => sortedRows.map((r) => r.match_id), [sortedRows])
@@ -151,7 +152,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
               enableSorting: false,
               cell: (ctx) => (
                 <a
-                  href={buildWaypointMatchUrl(playerSlug, ctx.row.original.match_id)}
+                  href={buildWaypointMatchUrl(playerSlug, ctx.row.original.match_id, currentTitleSlug)}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}

@@ -94,6 +94,7 @@ export function CareerTopMatchesTable({ items, variant, title, playerSlug: slugP
   const showWaypointColumnPref = useSettingsDraftStore((s) => s.localUiPrefs.showWaypointColumn)
   const showWaypoint = waypointCapability && showWaypointColumnPref
   const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
+  const currentTitleSlug = useAppShellStore((s) => s.currentTitleSlug)
 
   const defaultTitle =
     variant === 'worst'
@@ -209,7 +210,7 @@ export function CareerTopMatchesTable({ items, variant, title, playerSlug: slugP
                   {showWaypoint && (
                     <td className="py-1.5">
                       <a
-                        href={buildWaypointMatchUrl(playerSlug, m.match_id)}
+                        href={buildWaypointMatchUrl(playerSlug, m.match_id, currentTitleSlug)}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}

@@ -292,6 +292,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
   const waypointCapability = useCapability('waypoint_match_url')
   const showWaypointColumnPref = useSettingsDraftStore((s) => s.localUiPrefs.showWaypointColumn)
   const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
+  const currentTitleSlug = useAppShellStore((s) => s.currentTitleSlug)
 
   const navigateToMatch = useNavigateToMatch(playerSlug)
   const filterContext = useSoloFilterStore((s) => s.filterContext)
@@ -351,7 +352,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         header: '',
         cell: (ctx) => (
           <a
-            href={buildWaypointMatchUrl(playerSlug, ctx.row.original.match_id)}
+            href={buildWaypointMatchUrl(playerSlug, ctx.row.original.match_id, currentTitleSlug)}
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
