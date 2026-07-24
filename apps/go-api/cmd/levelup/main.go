@@ -113,6 +113,8 @@ func main() {
 		exitErr = runConsolidateAliases(cfg, args)
 	case "recompute-friends":
 		exitErr = runRecomputeFriends(cfg, args)
+	case "backfill-squad-creators":
+		exitErr = runBackfillSquadCreators(cfg, args)
 	case "migrate":
 		exitErr = runMigrate(cfg, args)
 	case "restore-csr":
@@ -165,6 +167,7 @@ Commandes:
   rebuild-pme-art  Reconstruit l'index ART de player_match_enrichment (--all|--gamertag) — anti-corruption DuckDB 1.5.x, serveur arrêté
   consolidate-aliases  Merge la DB globale xbox_aliases dans shared.xuid_aliases (dédup par xuid) — serveur arrêté
   recompute-friends Recompute is_with_friends sur toutes les player DBs (idempotent, --dry-run dispo)
+  backfill-squad-creators Réinscrit le créateur manquant dans les escouades legacy (append-only, idempotent, --dry-run dispo, serveur arrêté)
   migrate         Migrer les donnees vers le namespace multi-titres
   restore-csr     Restaurer les CSR historiques depuis un backup DuckDB legacy (--gamertag X --backup PATH [--dry-run] [--mode preserve|overwrite])
   add-title       Initialiser l'arborescence d'un nouveau titre de jeu

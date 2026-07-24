@@ -30,6 +30,11 @@ type mockSquadRepo struct {
 	synthErr            error
 	allyRows            []domain.AllyParticipant
 	allyErr             error
+	// mapStats + captures : renvoyé par LoadMapStatsForSquad ; les slices capturent
+	// les derniers arguments reçus (composition exacte : test de l'anti-join pool).
+	mapStats             map[string]domain.MapSquadStats
+	mapStatsSquadXUIDs   []string
+	mapStatsExcludeXUIDs []string
 	// lookupAliases : gamertag normalisé (lowercase) -> xuid. Vide -> ("", false, nil).
 	lookupAliases map[string]string
 	lookupErr     error
@@ -84,8 +89,10 @@ func (m *mockSquadRepo) LoadAssetTranslationsFR(_ context.Context, assetType str
 func (m *mockSquadRepo) LoadModeTranslationsFR(_ context.Context, _ []string) (map[string]string, error) {
 	return m.modeFR, nil
 }
-func (m *mockSquadRepo) LoadMapStatsForSquad(_ context.Context, _ string, _ []string) (map[string]domain.MapSquadStats, error) {
-	return nil, nil
+func (m *mockSquadRepo) LoadMapStatsForSquad(_ context.Context, _ string, squadXUIDs, excludeXUIDs []string) (map[string]domain.MapSquadStats, error) {
+	m.mapStatsSquadXUIDs = squadXUIDs
+	m.mapStatsExcludeXUIDs = excludeXUIDs
+	return m.mapStats, nil
 }
 func (m *mockSquadRepo) LoadSynthesisMatches(_ context.Context, _ string) ([]legacymatch.SynthesisMatchRow, error) {
 	return m.synthRows, m.synthErr

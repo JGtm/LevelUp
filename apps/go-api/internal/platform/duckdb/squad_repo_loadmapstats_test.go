@@ -12,7 +12,7 @@ func TestSquadRepo_LoadMapStatsForSquad_Empty(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	repo := NewSquadRepo(pdb)
 
-	got, err := repo.LoadMapStatsForSquad(context.Background(), pTestXUID, nil)
+	got, err := repo.LoadMapStatsForSquad(context.Background(), pTestXUID, nil, nil)
 	if err != nil {
 		t.Fatalf("LoadMapStatsForSquad nil squad: %v", err)
 	}
@@ -20,7 +20,7 @@ func TestSquadRepo_LoadMapStatsForSquad_Empty(t *testing.T) {
 		t.Errorf("got %v, want nil", got)
 	}
 
-	got, err = repo.LoadMapStatsForSquad(context.Background(), "", []string{"x"})
+	got, err = repo.LoadMapStatsForSquad(context.Background(), "", []string{"x"}, nil)
 	if err != nil {
 		t.Fatalf("LoadMapStatsForSquad empty main: %v", err)
 	}
@@ -85,7 +85,7 @@ func TestSquadRepo_LoadMapStatsForSquad_StrictIntersection(t *testing.T) {
 	}
 
 	repo := NewSquadRepo(pdb)
-	stats, err := repo.LoadMapStatsForSquad(ctx, pTestXUID, []string{mate1, mate2})
+	stats, err := repo.LoadMapStatsForSquad(ctx, pTestXUID, []string{mate1, mate2}, nil)
 	if err != nil {
 		t.Fatalf("LoadMapStatsForSquad: %v", err)
 	}
@@ -113,11 +113,63 @@ func TestSquadRepo_LoadMapStatsForSquad_StrictIntersection(t *testing.T) {
 func TestSquadRepo_LoadMapStatsForSquad_NeverPlayedTogether(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	repo := NewSquadRepo(pdb)
-	stats, err := repo.LoadMapStatsForSquad(context.Background(), pTestXUID, []string{"xuid_unknown_42"})
+	stats, err := repo.LoadMapStatsForSquad(context.Background(), pTestXUID, []string{"xuid_unknown_42"}, nil)
 	if err != nil {
 		t.Fatalf("LoadMapStatsForSquad: %v", err)
 	}
 	if len(stats) != 0 {
 		t.Errorf("want empty map, got %v", stats)
+	}
+}
+
+// TestSquadRepo_LoadMapStatsForSquad_ExactCompositionExclusion : composition
+// {mate1} avec un coéquipier connu HORS sélection (mate2) sur l'équipe du main.
+// Setup 2 matchs map_id=aquarius :
+//   - m2 : main + mate1 + mate2 sur la même team → mate2 est un "extra connu"
+//   - m4 : main + mate1 seuls (mate2 absent) → composition EXACTE {mate1}
+//
+// Sans exclusion, {mate1} compte m2 ET m4 (Total=2). Avec excludeXUIDs={mate2},
+// l'anti-join écarte m2 (mate2 sur l'équipe du main) → Total=1 (m4 seul).
+func TestSquadRepo_LoadMapStatsForSquad_ExactCompositionExclusion(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	mate1, mate2 := "xuid_mate_001", "xuid_mate_002"
+
+	// m2 : main + mate1 + mate2 (win), même team_id=1.
+	execOnSharedDBs(t, pdb, ctx,
+		`INSERT INTO shared.match_registry (match_id, map_id) VALUES ('m2', 'aquarius')`)
+	for _, x := range []string{pTestXUID, mate1, mate2} {
+		execOnSharedDBs(t, pdb, ctx,
+			`INSERT INTO shared.match_participants (match_id,xuid,outcome,team_id) VALUES (?,?,?,?)`,
+			"m2", x, 2, 1)
+	}
+
+	// m4 : main + mate1 seuls (win), team_id=1 — composition exacte {mate1}.
+	execOnSharedDBs(t, pdb, ctx,
+		`INSERT INTO shared.match_registry (match_id, map_id) VALUES ('m4', 'aquarius')`)
+	for _, x := range []string{pTestXUID, mate1} {
+		execOnSharedDBs(t, pdb, ctx,
+			`INSERT INTO shared.match_participants (match_id,xuid,outcome,team_id) VALUES (?,?,?,?)`,
+			"m4", x, 2, 1)
+	}
+
+	repo := NewSquadRepo(pdb)
+
+	// Sans exclusion : {mate1} compte m2 + m4.
+	statsNoExcl, err := repo.LoadMapStatsForSquad(ctx, pTestXUID, []string{mate1}, nil)
+	if err != nil {
+		t.Fatalf("LoadMapStatsForSquad (no excl): %v", err)
+	}
+	if got := statsNoExcl["aquarius"].Total; got != 2 {
+		t.Errorf("sans exclusion, aquarius Total: want 2 (m2+m4), got %d", got)
+	}
+
+	// Avec exclusion de mate2 : m2 écarté (mate2 sur l'équipe du main) → m4 seul.
+	statsExcl, err := repo.LoadMapStatsForSquad(ctx, pTestXUID, []string{mate1}, []string{mate2})
+	if err != nil {
+		t.Fatalf("LoadMapStatsForSquad (excl mate2): %v", err)
+	}
+	if got := statsExcl["aquarius"].Total; got != 1 {
+		t.Errorf("avec exclusion mate2, aquarius Total: want 1 (m4 seul), got %d — anti-join a fui ?", got)
 	}
 }

@@ -94,6 +94,9 @@ function mockContext(selectedRows: TeammateRow[]) {
     confirmedGamertags: selectedRows.map((r) => r.gamertag),
     pageData: null,
     playerSlug: 'alice',
+    // XUID absolu du viewer (alice = xA) : le roster de matchedSquad hors xA = {xB}
+    // → apparie la sélection {Bob/xB} (matching player-agnostic par xuid).
+    currentPlayerXuid: 'xA',
   })
 }
 
