@@ -1,0 +1,50 @@
+{
+  "MatchId": "00000000-0000-0000-0000-00000000badb",
+  "MatchInfo": { "Duration": "PT11M04.000S" },
+  "Players": [
+    {
+      "PlayerId": "xuid(2500000000000001)",
+      "PlayerType": 1,
+      "LastTeamId": 0,
+      "ParticipationInfo": { "TimePlayed": "PT11M04.000S" },
+      "PlayerTeamStats": [
+        {
+          "TeamId": 0,
+          "Stats": {
+            "CoreStats": { "Kills": 24, "Deaths": 14, "Assists": 5, "PersonalScore": 4600 },
+            "OddballStats": {
+              "KillsAsSkullCarrier": 0,
+              "LongestTimeAsSkullCarrier": "PT11.7S",
+              "SkullCarriersKilled": 3,
+              "SkullGrabs": 3,
+              "SkullScoringTicks": 47,
+              "TimeAsSkullCarrier": "PT49.1S"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "PlayerId": "xuid(2500000000000002)",
+      "PlayerType": 1,
+      "LastTeamId": 1,
+      "ParticipationInfo": { "TimePlayed": "PT11M04.000S" },
+      "PlayerTeamStats": [
+        {
+          "TeamId": 1,
+          "Stats": {
+            "CoreStats": { "Kills": 18, "Deaths": 19, "Assists": 11, "PersonalScore": 3900 },
+            "OddballStats": {
+              "KillsAsSkullCarrier": 0,
+              "LongestTimeAsSkullCarrier": "PT12.1S",
+              "SkullCarriersKilled": 4,
+              "SkullGrabs": 2,
+              "SkullScoringTicks": 34,
+              "TimeAsSkullCarrier": "PT37.1S"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

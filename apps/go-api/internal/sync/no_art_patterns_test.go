@@ -108,6 +108,11 @@ var tablesProtegees = []string{
 	// sont des INSERT purs taggés ; zéro ON CONFLICT/DELETE/UPDATE. Le durcissement
 	// complémentaire (interdire UPDATE + FROM brut) vit dans append_only_state_guard_test.go.
 	"player_match_enrichment",
+	// match_objective_stats (V72-03, 2026-07-25) : stats objectifs par joueur/match
+	// (CTF/Zones/Oddball), CREEE directement append-only (id PK seq + written_at + vue
+	// match_objective_stats_latest). Writer unique = persist.persistObjectiveStats
+	// (INSERT pur dans la transaction shared). Lecture via la vue _latest UNIQUEMENT.
+	"match_objective_stats",
 }
 
 // allowlistArtPatterns : sites de prod où un pattern à risque reste

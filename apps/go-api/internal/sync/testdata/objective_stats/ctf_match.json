@@ -1,0 +1,60 @@
+{
+  "MatchId": "00000000-0000-0000-0000-0000000000c7",
+  "MatchInfo": { "Duration": "PT13M22.766S" },
+  "Players": [
+    {
+      "PlayerId": "xuid(2500000000000001)",
+      "PlayerType": 1,
+      "LastTeamId": 0,
+      "ParticipationInfo": { "TimePlayed": "PT13M22.766S" },
+      "PlayerTeamStats": [
+        {
+          "TeamId": 0,
+          "Stats": {
+            "CoreStats": { "Kills": 20, "Deaths": 12, "Assists": 5, "PersonalScore": 4200 },
+            "CaptureTheFlagStats": {
+              "FlagCaptureAssists": 0,
+              "FlagCaptures": 1,
+              "FlagCarriersKilled": 1,
+              "FlagGrabs": 9,
+              "FlagReturnersKilled": 0,
+              "FlagReturns": 2,
+              "FlagSecures": 7,
+              "FlagSteals": 3,
+              "KillsAsFlagCarrier": 0,
+              "KillsAsFlagReturner": 0,
+              "TimeAsFlagCarrier": "PT2M20S"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "PlayerId": "xuid(2500000000000002)",
+      "PlayerType": 1,
+      "LastTeamId": 1,
+      "ParticipationInfo": { "TimePlayed": "PT13M22.766S" },
+      "PlayerTeamStats": [
+        {
+          "TeamId": 1,
+          "Stats": {
+            "CoreStats": { "Kills": 8, "Deaths": 15, "Assists": 3, "PersonalScore": 1500 },
+            "CaptureTheFlagStats": {
+              "FlagCaptureAssists": 0,
+              "FlagCaptures": 0,
+              "FlagCarriersKilled": 0,
+              "FlagGrabs": 0,
+              "FlagReturnersKilled": 0,
+              "FlagReturns": 3,
+              "FlagSecures": 0,
+              "FlagSteals": 3,
+              "KillsAsFlagCarrier": 0,
+              "KillsAsFlagReturner": 0,
+              "TimeAsFlagCarrier": "PT18.8S"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

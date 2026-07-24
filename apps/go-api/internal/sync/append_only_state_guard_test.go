@@ -73,6 +73,11 @@ var appendOnlyStateTables = []string{
 	// INSERT pur taggé generation_id (par (match,xuid)). Lecture via la vue
 	// v_weapon_kills (DENSE_RANK génération MAX). Pas de PK → simple ALTER ADD COLUMN.
 	"weapon_kills",
+	// match_objective_stats (V72-03, 2026-07-25) : stats objectifs par joueur/match
+	// (CTF/Zones/Oddball), append-only créée directement (id PK seq + written_at + vue
+	// match_objective_stats_latest). Écriture = INSERT pur (persistObjectiveStats) ;
+	// aucun DELETE / ON CONFLICT / INSERT OR REPLACE|IGNORE toléré. Lecture via _latest.
+	"match_objective_stats",
 }
 
 // rawPMEReadAllowlist : accès BRUTS intentionnels à player_match_enrichment (hors
