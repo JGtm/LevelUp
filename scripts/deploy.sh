@@ -102,6 +102,15 @@ git fetch --tags --quiet origin 2>/dev/null || true
 LEVELUP_APP_VERSION="$(git describe --tags --abbrev=0 --match 'v*.*.*' 2>/dev/null || echo dev)"
 export LEVELUP_APP_VERSION
 echo "[deploy] LEVELUP_APP_VERSION=$LEVELUP_APP_VERSION"
+# Persister dans .env (gitignoré, lu automatiquement par docker compose) : tout
+# `docker compose up` hors de ce script (regen démo dans deploy.yml, ops manuelles
+# ssh, reboot) recréerait sinon le conteneur avec le défaut "dev" — c'est arrivé
+# au deploy v7.1.0 (le job demo-regen redémarre la prod dans une session SSH sans
+# la variable). L'export shell ci-dessus reste prioritaire sur .env au `up` de 2e.
+touch .env
+grep -v '^LEVELUP_APP_VERSION=' .env > .env.tmp || true
+printf 'LEVELUP_APP_VERSION=%s\n' "$LEVELUP_APP_VERSION" >> .env.tmp
+mv .env.tmp .env
 
 # 2e. Basculer : le build (2c) a réussi, donc on peut arrêter les anciens containers puis
 # redémarrer avec les images tout juste construites. PAS de --build sur le `up` : les
