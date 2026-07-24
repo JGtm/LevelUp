@@ -7,7 +7,7 @@
  * nombre par médaille / nom) sont 100% CLIENT sur les groupes déjà renvoyés triés
  * par le backend (données bornées). En-tête « Médailles — {obtenues}/{catalogue} ».
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateCard } from '@/components/ui/empty-state'
@@ -41,13 +41,6 @@ export function MedalsPage() {
   const [sort, setSort] = useState<MedalSort>('category_total')
 
   const { data, isLoading, isError, refetch } = useMedalsPage(playerSlug)
-
-  useEffect(() => {
-    document.title = `LevelUp - ${formatMessage(medalsManifest, 'medals.page_title', locale)}`
-    return () => {
-      document.title = 'LevelUp'
-    }
-  }, [locale])
 
   const vm = useMemo(
     () => (data ? buildViewModel(data.categories ?? [], filter, sort, locale) : null),

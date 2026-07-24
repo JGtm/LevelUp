@@ -2,87 +2,21 @@ import type { FileRouteTypes } from '@/routeTree.gen'
 import { playerRelativePath } from '@/lib/title-routing'
 
 /**
- * Cible de route valide du routeur généré (union des `to`). Typer `ShellNavItem.to`
- * ainsi (et non `string`) fait ENTRER la nav L1/L2 dans le typecheck : un chemin
- * inexistant (ex. l'ancien `.../profile/citations`) devient une erreur tsc au lieu
- * d'un lien mort silencieux. Source unique réutilisée par NavL1/NavL2/navL1Sections.
+ * Cible de route valide du routeur généré (union des `to`). Typer les champs `to` des
+ * items de nav ainsi (et non `string`) fait ENTRER la nav L1/L2 dans le typecheck : un
+ * chemin inexistant devient une erreur tsc au lieu d'un lien mort silencieux. Source
+ * unique réutilisée par NavL1/NavL2/navL1Sections.
  */
 export type RouteTo = FileRouteTypes['to']
 
-export interface ShellNavItem {
-  to: RouteTo
-  label: string
-  eyebrow: string
-  description: string
-}
-
-export interface ShellUtilityLink {
-  to: '/settings' | '/changelog' | '/groups'
-  label: string
-}
-
-export const PLAYER_PRIMARY_NAV_ITEMS: ShellNavItem[] = [
-  {
-    to: '/{-$lang}/t/$titleSlug/players/$playerSlug/home',
-    label: 'Accueil',
-    eyebrow: 'Mission',
-    description: 'Briefing, signaux chauds et accès prioritaires.',
-  },
-  {
-    to: '/{-$lang}/t/$titleSlug/players/$playerSlug/community',
-    label: 'Communauté',
-    eyebrow: 'Prestige',
-    description: 'Classements, relations et face-à-face joueur à joueur.',
-  },
-  {
-    to: '/{-$lang}/t/$titleSlug/players/$playerSlug/career',
-    label: 'Carrière',
-    eyebrow: 'Progression',
-    description: 'Rang, stabilité et lecture globale du niveau.',
-  },
-  {
-    to: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad',
-    label: 'Escouade',
-    eyebrow: 'Relations',
-    description: 'Cohortes, synergies et contexte d’équipe.',
-  },
-  {
-    to: '/{-$lang}/t/$titleSlug/players/$playerSlug/media',
-    label: 'Médias',
-    eyebrow: 'Captures',
-    description: 'Moments visuels, extraits et preuve terrain.',
-  },
-]
-
-export const PLAYER_SECONDARY_NAV_ITEMS: ShellNavItem[] = [
-  {
-    // Correction mécanique (2c) : l'ancien `.../profile/citations` (route inexistante,
-    // toléré des mois par `to: string`) pointe désormais vers la route réelle
-    // `career/citations` — imposé par le typage `RouteTo`.
-    to: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations',
-    label: 'Citations',
-    eyebrow: 'Référentiel',
-    description: 'Signatures de jeu, médailles et profils.',
-  },
-  {
-    to: '/{-$lang}/t/$titleSlug/players/$playerSlug/explorer',
-    label: 'Explorer',
-    eyebrow: 'Drilldown',
-    description: 'Approfondir, filtrer et descendre dans le détail.',
-  },
-  {
-    to: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/synthesis',
-    label: 'Synthèse',
-    eyebrow: 'Recap',
-    description: 'Vue consolidée et transversale.',
-  },
-]
-
-export const GLOBAL_SHELL_LINKS: ShellUtilityLink[] = [
-  { to: '/groups', label: 'Groupes' },
-  { to: '/settings', label: 'Paramètres' },
-  { to: '/changelog', label: 'Changelog' },
-]
+// NOTE (I18, 2026-07-24) : `ShellNavItem`/`ShellUtilityLink` et les tables
+// `PLAYER_PRIMARY_NAV_ITEMS` / `PLAYER_SECONDARY_NAV_ITEMS` / `GLOBAL_SHELL_LINKS`
+// (labels FR figés, eyebrow/description) ont été supprimées ici : leur SEUL
+// consommateur restant était `lib/pageTitle.ts` (dérivation du titre d'onglet), qui
+// vient de basculer sur sa propre table locale-aware (Record<Locale,string>). La nav
+// réelle (L1/L2, tabs) vit depuis longtemps dans `navL1Sections.tsx` + `NavL2.tsx`,
+// locale-aware via `commonManifest` — ces exports n'y étaient plus branchés (0 code
+// mort, règle CLAUDE.md n°7).
 
 /**
  * Section Communauté : pages /community + les legacy /palmares (hors season-pass,

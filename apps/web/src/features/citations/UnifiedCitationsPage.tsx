@@ -6,7 +6,6 @@
  * leurs données vers le même view-model et rendent la même CitationsView — UI identique,
  * seuls le calcul/les données/les images diffèrent (objectif title-agnostic).
  */
-import { useEffect } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateCard } from '@/components/ui/empty-state'
@@ -21,18 +20,9 @@ import { normalizeInfinitePage, normalizeNativeTotals } from '@/lib/citations/no
 import type { CitationSource, CitationsViewModel } from '@/lib/citations/types'
 
 export function UnifiedCitationsPage({ source }: { source: CitationSource }) {
-  const locale = useAppShellStore((s) => s.locale)
-  // Titre d'onglet aligné sur la terminologie par locale : natif → « Commendations »
-  // en EN (clé section.commendations, fr=Citations/en=Commendations) ; sinon page_title.
-  const titleKey: CitationsManifestKey =
-    source === 'native' ? 'citations.section.commendations' : 'citations.page_title'
-  useEffect(() => {
-    document.title = `LevelUp - ${formatMessage(citationsManifest, titleKey, locale)}`
-    return () => {
-      document.title = 'LevelUp'
-    }
-  }, [locale, titleKey])
-
+  // Titre d'onglet : géré par le résolveur global (lib/pageTitle.ts, distingue
+  // /career/citations vs /career/commendations par le pathname — même nuance FR
+  // Citations / EN Citations|Commendations qu'ici auparavant).
   // Chaque source appelle EXACTEMENT un data-hook → règles des hooks respectées.
   return source === 'native' ? <CitationsNativeSource /> : <CitationsInfiniteSource />
 }
