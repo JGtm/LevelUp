@@ -92,27 +92,48 @@ src/lib/charts` (dangerouslyDisableSandbox).
 
 ## Phase 3 — Sessions (solo) + suppression heatmap
 
-- [ ] 3.1 VÉRIFIER sur pièces la source de données phases pour le scope session :
-      le payload session expose-t-il les phases par match ? Sinon, deux voies
-      DÉFINIES : (a) si un endpoint existant (voie Timeseries/`buildIntensityRows`)
-      peut être requêté sur les match_ids de la session, l'utiliser (query key
-      dans `lib/query/keys.ts`, jamais inline) ; (b) sinon, exposer les phases
-      dans le payload session côté Go en MIROIR du calcul intensité existant
-      (service session + openapi — attention : schémas manuels réconciliés par
-      TestOpenAPISchemaDrift, cf. leçon P4 du lot Dynamique) puis
-      `npm run generate-types` idempotent. Choisir la voie (a) si possible,
-      documenter le choix dans le plan.
-- [ ] 3.2 `features/session-detail/SessionIntensityProfile.tsx` : panneau solo
-      médiane + enveloppe sur les manches de la session ; intégré dans
-      `SessionChartStack.tsx` ; échelle comparaison A/B (`_compareScale`) SI le
-      pattern s'applique (domaine = parts 0..max — trancher comme les autres
-      charts session). i18n session.toml FR/EN.
-- [ ] 3.3 SUPPRESSION heatmap : `SquadIntensityHeatmapChart.tsx`,
-      `squadIntensityHeatmapChart.ts`, `TimeseriesIntensityHeatmap`, leurs tests
-      et imports — APRÈS grep des callers (`grep -rn IntensityHeatmap
-      apps/web/src`). `heatmapRampTokens('frequency')` : vérifier les autres
-      callers avant toute suppression de helper partagé.
-- [ ] 3.4 Tests composant session (calquer SessionFdaGapCumulative.test).
+- [x] 3.1 VÉRIFIÉ sur pièces : le payload session n'expose PAS les phases
+      (`SessionDetailMatchRow` sans champ phases ; le service session ne charge
+      aucun event). **VOIE RETENUE : (b) Go en miroir.** Justification : la voie
+      (a) supposait « un endpoint acceptant des match_ids » — il N'EXISTE PAS
+      (l'intensité Timeseries est calculée dans `GetPage` sur les seuls `Filters`,
+      pas via match_ids) ; la seule (a) réalisable = refetch COMPLET du payload
+      timeseries scoppé par `session_label` (sur-fetch massif : weapon_kills, KPIs,
+      engagement… pour 10 flottants, ×2 en comparaison) + rupture du pattern
+      « charts session = purs depuis `matches` ». La voie (b) est le « miroir »
+      explicite : un seul round-trip, scoping garanti identique (même service, mêmes
+      matchs), architecture cohérente (le front calcule comme ses voisins). Wiring :
+      `SessionPageService.WithHighlightEventsRepo(repo, xuid)` (mirror Timeseries,
+      `registry_pages.go`), `attachSessionIntensity` (events → timelines T0 →
+      `buildIntensityRows`), champs `IntensityRows`/`CompareIntensityRows` sur
+      `SessionPageResponse` (+ openapi manuel + `generate-types` idempotent ;
+      TestOpenAPISchemaDrift VERT).
+- [x] 3.2 `features/session-detail/SessionIntensityProfile.tsx` : panneau solo
+      médiane + enveloppe réutilisant `buildSquadIntensityProfileOption` en N=1
+      (label vide, couleur `chart-series-2` ; vide via l'absence de `series`).
+      Monté dans `SessionChartStack.tsx` (branches dense + normale, après netLives),
+      threadé via `SessionColumnBody` → `SessionDetailPage` (A = `intensity_rows`,
+      B = `compare_intensity_rows`). i18n `session.toml` FR/EN (6 clés
+      `chart_intensity_*`, régénéré). `_compareScale` NON câblé → `[~]` : les parts
+      sont normalisées 0..1 (échelle intrinsèquement comparable) et plusieurs charts
+      session voisins (radar/donuts/perf) n'y participent pas non plus ; le
+      `sharedYMax` interne du builder fournit déjà une échelle data-driven stable.
+      Un override externe imposerait de modifier le builder P1 commité pour un gain
+      marginal — écarté.
+- [x] 3.3 SUPPRESSION heatmap (grep callers fait) : `SquadIntensityHeatmapChart.tsx`,
+      `charts/squadIntensityHeatmapChart.ts` (+ son `.test.ts`) supprimés ;
+      `TimeseriesIntensityHeatmap` + ses imports/props retirés. `SQUAD_INTENSITY_
+      PHASE_LABELS` (seul consommateur restant = builder P1) déplacé dans le builder
+      P1 sous `INTENSITY_PHASE_LABELS`. Clé morte `timeseries.progression.intensity_z`
+      retirée (+ regen). `heatmapRampTokens('frequency')` : CONSERVÉ — 5+ autres
+      callers (ActivityCalendar, ExplorerActivity, RelationsMoments, Synthesis
+      'divergent', Heatmap2DChart). Attention consignée : `IntensityHeatmapPoint`
+      (seriesAdapters = heatmap jour×heure) est un chart DISTINCT, non touché.
+- [x] 3.4 `SessionIntensityProfile.test.tsx` (rendu, sous-titre, liste vide, manches
+      sans frag → vide) calqué sur `SessionFdaGapCumulative.test`. Test Go
+      `TestSessionPageService_AttachSessionIntensity` (nil-repo → nil ; positif +
+      comparaison). Aucun test existant cassé par les suppressions (heatmap test
+      supprimé avec son builder).
 
 **Gate P3** : typecheck (référence) · vitest `src/features/session-detail` +
 suites touchées · si Go modifié : `go test ./internal/service/...` (CGO msys64 :

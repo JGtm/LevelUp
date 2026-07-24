@@ -524,10 +524,6 @@ en = "P25–P75 envelope"
 fr = "10 %"
 en = "10%"
 
-[timeseries.progression.intensity_z]
-fr = "frags"
-en = "kills"
-
 [timeseries.progression.match_history_title]
 fr = "Historique des matchs"
 en = "Match history"

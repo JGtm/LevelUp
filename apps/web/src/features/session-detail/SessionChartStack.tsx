@@ -11,7 +11,7 @@
  *   DROITE + couleur A en vue single, à GAUCHE + couleur B dans le drawer → effet miroir.
  */
 import type { SemanticToken } from '@/lib/accessibility'
-import type { SessionCompareEntry, SessionDetailMatchRow } from '@/lib/api/types'
+import type { IntensityMatchRow, SessionCompareEntry, SessionDetailMatchRow } from '@/lib/api/types'
 
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { EfficiencyTooltipText } from '@/components/charts/EfficiencyTooltipText'
@@ -29,6 +29,7 @@ import { SessionParticipationBars } from './SessionParticipationBars'
 import { SessionNetScoreArea } from './SessionNetScoreArea'
 import { SessionFdaGapCumulative } from './SessionFdaGapCumulative'
 import { SessionNetLivesCumulative } from './SessionNetLivesCumulative'
+import { SessionIntensityProfile } from './SessionIntensityProfile'
 import { SessionMmrDumbbell } from './SessionMmrDumbbell'
 import { SessionPerfTrend } from './SessionPerfTrend'
 import { SessionEngagementChart } from './SessionEngagementChart'
@@ -49,6 +50,8 @@ interface Props {
   participationColor?: SemanticToken
   /** Bornes d'axe partagées A/B (mode comparaison) — fige les échelles pour comparabilité. */
   scale?: CompareScale
+  /** Profil d'intensité (frags par phase) de la session — calculé côté Go (payload). */
+  intensityRows?: IntensityMatchRow[]
 }
 
 export function SessionChartStack({
@@ -59,6 +62,7 @@ export function SessionChartStack({
   participationSide = 'right',
   participationColor = 'compare-a',
   scale,
+  intensityRows,
 }: Props) {
   const t = useSessionT()
   const locale = useAppShellStore((s) => s.locale)
@@ -132,6 +136,15 @@ export function SessionChartStack({
       yDomain={scale?.netLives}
     />
   )
+  // Intensité — profil médian des parts de frags par phase + enveloppe P25–P75
+  // (pleine largeur). Phases calculées côté Go (payload intensity_rows) ; le
+  // composant retombe sur l'état vide si aucune manche exploitable.
+  const intensity = (
+    <SessionIntensityProfile
+      title={t('session.detail.chart_intensity_title')}
+      rows={intensityRows ?? []}
+    />
+  )
   const mmr = hasTeamMmr ? (
     <SessionMmrDumbbell title={t('session.detail.chart_mmr_title')} matches={matches} />
   ) : null
@@ -184,6 +197,7 @@ export function SessionChartStack({
         {fdaBars}
         {fdaGap}
         {netLives}
+        {intensity}
         {participation}
         {mmr}
         {ocdr}
@@ -215,6 +229,7 @@ export function SessionChartStack({
       </div>
       {fdaGap}
       {netLives}
+      {intensity}
       {participation}
       {mmr ? (
         <div className="grid gap-6 xl:grid-cols-2">

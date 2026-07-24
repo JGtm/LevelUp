@@ -8,8 +8,21 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
+	"levelup/go-api/internal/port"
 )
+
+// fakeSessionHighlightLoader implémente highlightEventsLoader pour tester le
+// profil d'intensité de la session sans DuckDB (renvoie des events fixes).
+type fakeSessionHighlightLoader struct {
+	events []canonical.HighlightEvent
+	err    error
+}
+
+func (f *fakeSessionHighlightLoader) Load(_ context.Context, _ port.HighlightEventFilters) ([]canonical.HighlightEvent, error) {
+	return f.events, f.err
+}
 
 func TestSessionPageService_GetPage_DefaultLatestSession(t *testing.T) {
 	now := time.Date(2026, 4, 21, 20, 0, 0, 0, time.UTC)
@@ -452,6 +465,51 @@ func TestSessionPageService_GetPage_CompareMatchesEmptyWhenDisabled(t *testing.T
 	}
 	if len(resp.CompareMatches) != 0 {
 		t.Fatalf("expected empty compare matches when compare disabled, got %d", len(resp.CompareMatches))
+	}
+}
+
+// TestSessionPageService_AttachSessionIntensity : le profil d'intensité (frags par
+// phase) est calculé pour la session courante et la comparée quand le repo highlight
+// events est câblé ; il reste nil (best-effort) sans repo. Le dénominateur retombe sur
+// le max-time des events (durées timelines vides ici), donc les phases sont non nulles.
+func TestSessionPageService_AttachSessionIntensity(t *testing.T) {
+	const xuid = "player1"
+	tt := time.Date(2026, 4, 21, 20, 0, 0, 0, time.UTC)
+	currentMatches := []legacymatch.StatsMatchRow{{MatchID: "m1", StartTime: tt, MapName: "Aquarius"}}
+	compareMatches := []legacymatch.StatsMatchRow{{MatchID: "c1", StartTime: tt, MapName: "Bazaar"}}
+	events := []canonical.HighlightEvent{
+		{MatchID: "m1", EventType: string(canonical.EventKill), TimeMS: 100, XUID: xuid},
+		{MatchID: "m1", EventType: string(canonical.EventKill), TimeMS: 900, XUID: xuid},
+		{MatchID: "c1", EventType: string(canonical.EventKill), TimeMS: 200, XUID: xuid},
+	}
+
+	// Sans repo highlight events → dégradation gracieuse (IntensityRows nil).
+	noRepo := NewSessionPageService(nil)
+	respNil := &domain.SessionPageResponse{}
+	noRepo.attachSessionIntensity(context.Background(), respNil, nil, currentMatches, compareMatches)
+	if respNil.IntensityRows != nil || respNil.CompareIntensityRows != nil {
+		t.Fatalf("sans repo highlight events, IntensityRows doit rester nil, got %#v / %#v",
+			respNil.IntensityRows, respNil.CompareIntensityRows)
+	}
+
+	// Avec repo câblé → profil courant + comparé renseignés.
+	svc := NewSessionPageService(nil).
+		WithHighlightEventsRepo(&fakeSessionHighlightLoader{events: events}, xuid)
+	resp := &domain.SessionPageResponse{}
+	svc.attachSessionIntensity(context.Background(), resp, nil, currentMatches, compareMatches)
+	if len(resp.IntensityRows) != 1 || resp.IntensityRows[0].MatchID != "m1" {
+		t.Fatalf("IntensityRows courant inattendu: %#v", resp.IntensityRows)
+	}
+	if len(resp.CompareIntensityRows) != 1 || resp.CompareIntensityRows[0].MatchID != "c1" {
+		t.Fatalf("CompareIntensityRows inattendu: %#v", resp.CompareIntensityRows)
+	}
+	// Au moins une phase non nulle (frags répartis sur la durée = max-time proxy).
+	var sum float64
+	for _, p := range resp.IntensityRows[0].Phases {
+		sum += p
+	}
+	if sum <= 0 {
+		t.Fatalf("phases du profil courant toutes nulles: %#v", resp.IntensityRows[0].Phases)
 	}
 }
 

@@ -1,3 +1,47 @@
+## [2026-07-24] Refonte « Intensité » — Phase 3 (Sessions solo + suppression heatmap) — CLÔTURE DU LOT
+
+**Statut** : Complété (Phase 3 du PLAN_INTENSITE_PROFIL_2026-07 ; branche
+`feat/intensite-profil`, worktree dédié ; P1 commitée 2f5eb07de, P2 commitée
+6c3c35334). Lot Intensité entièrement livré (P1+P2+P3), commit P3 délégué au superviseur.
+
+**Décision technique principale (3.1)** : VOIE (b) Go en miroir retenue. Vérifié sur
+pièces qu'aucun endpoint n'accepte de match_ids pour l'intensité (Timeseries calcule
+`intensity_rows` dans GetPage sur les seuls `Filters`) ; la seule voie (a) réalisable
+= refetch complet du payload Timeseries scoppé par `session_label` (sur-fetch massif,
+×2 en comparaison, rupture du pattern « charts session purs depuis matches »). Voie (b) :
+`SessionPageService.WithHighlightEventsRepo(repo, xuid)` (mirror Timeseries), helper
+`attachSessionIntensity` (events → timelines T0 `CorrectEvents` → `buildIntensityRows`),
+champs `IntensityRows`/`CompareIntensityRows` sur `SessionPageResponse` (openapi manuel +
+`generate-types` idempotent). Un seul round-trip, scoping garanti identique.
+
+**Bug trouvé et corrigé (via le test Go)** : `buildIntensityRows` émet une ligne pour
+CHAQUE match présent dans les events (le paramètre `matches` ne sert qu'aux libellés).
+Charger les events de l'UNION (session courante + comparée) puis appeler avec
+`currentMatches` faisait fuiter les matchs de la session comparée dans le profil courant.
+Corrigé par `filterHighlightEventsByMatches` (scoping strict des events par set avant
+chaque `buildIntensityRows`). Le test `TestSessionPageService_AttachSessionIntensity` a
+révélé le bug (fuite `c1` dans le profil de `m1`).
+
+**Résultats observés** :
+- Go : `domain/session_page.go` (2 champs), `service/session_page_service.go` (DI +
+  helper + fix scoping), `registry_pages.go` (wiring), `api/openapi.yaml` (schéma),
+  `session_page_service_test.go` (+test). Front : `SessionIntensityProfile.tsx` (+test),
+  threading `SessionChartStack`/`SessionColumnBody`/`SessionDetailPage`, `session.toml`
+  (+6 clés). Suppressions 3.3 : `SquadIntensityHeatmapChart.tsx`, `squadIntensityHeatmap
+  Chart.ts` (+test), `TimeseriesIntensityHeatmap`, clé `intensity_z` ; constante déplacée
+  dans le builder P1 (`INTENSITY_PHASE_LABELS`). `heatmapRampTokens` conservé (5+ callers).
+- `_compareScale` NON câblé pour l'intensité (parts normalisées 0..1 intrinsèquement
+  comparables ; voisins radar/donuts/perf non plus) — `[~]` justifié.
+- Gates de clôture : typecheck (cache purgé) propre ; `npx vitest run` COMPLET = 2835
+  passés / 14 skip (333 fichiers) ; `npm run lint` = 8 warnings baseline (0 erreur) ;
+  Go : `go test ./internal/service/...` + TestOpenAPISchemaDrift verts, `go build ./...`
+  + `go vet` propres, gofmt propre.
+
+**Conclusion / prochaine étape** : lot Intensité CLOS (P1+P2+P3). Suite = commit P3 +
+merge par le superviseur (push main = deploy) + vérification visuelle utilisateur
+(doctrine projet). Résidu : lancer `make go-api-lint` (golangci-lint) avant push si non
+couvert par la CI locale (leçon : pre-commit ne couvre pas le ratchet funlen/goconst).
+
 ## [2026-07-24] Refonte « Intensité » — Phase 2 (Timeseries solo)
 
 **Statut** : Complété (Phase 2 du PLAN_INTENSITE_PROFIL_2026-07 ; branche

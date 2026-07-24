@@ -27,10 +27,8 @@ import { ChartFromOption } from './ChartFromOption'
 import type {
   TimeseriesMatchRow,
   IntensityMatchRow,
-  SquadIntensityMatchRow,
   SoloSessionPerfPoint,
 } from '@/lib/api/types'
-import { buildSquadIntensityHeatmapOption } from '@/features/squad/charts/squadIntensityHeatmapChart'
 import { buildSquadIntensityProfileOption } from '@/features/squad/charts/squadIntensityProfileChart'
 import {
   damageAxisBounds,
@@ -214,40 +212,6 @@ export interface TimeseriesEfficiencyProps {
   rendementLabel: string
   resistanceLabel: string
   refLabel: string
-}
-
-// ─── Intensity heatmap (frags par phase de match) ────────────────────────────
-//
-// Réutilise le builder ECharts du squad (squadIntensityHeatmapChart).
-// Format `IntensityMatchRow` côté backend = `SquadIntensityMatchRow` côté UI.
-
-export interface TimeseriesIntensityHeatmapProps {
-  rows: IntensityMatchRow[]
-  height?: number
-  title?: ReactNode
-  emptyMessage?: string
-  zLabel: string
-}
-
-export function TimeseriesIntensityHeatmap({
-  rows,
-  height = 360,
-  title,
-  emptyMessage,
-  zLabel,
-}: TimeseriesIntensityHeatmapProps) {
-  const themeVersion = useThemeVersion()
-
-  const option = useMemo<EChartsCoreOption | null>(() => {
-    if (rows.length === 0) return null
-    // L'API renvoie déjà les matchs en ordre chronologique ancien→récent
-    // (buildIntensityRows trie start_time ASC, comme buildSquadIntensityProfile).
-    // Le builder consomme cet ordre tel quel : #1 (ancien) en haut → #N (récent)
-    // en bas via yAxis.inverse. Ne PAS réinverser (même contrat que la page Escouade).
-    return buildSquadIntensityHeatmapOption(rows as SquadIntensityMatchRow[], { zLabel })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, zLabel, themeVersion])
-  return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
 }
 
 // ─── Intensity profile solo (médiane des parts par phase + enveloppe P25–P75) ─

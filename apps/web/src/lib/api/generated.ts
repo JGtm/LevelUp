@@ -8074,10 +8074,12 @@ export interface components {
         SessionPageResponse: {
             available_sessions: string[] | null;
             compare_enabled: boolean;
+            compare_intensity_rows?: components["schemas"]["IntensityMatchRow"][] | null;
             compare_matches: components["schemas"]["SessionDetailMatchRow"][] | null;
             compare_metrics: components["schemas"]["SessionCompareMetricRow"][] | null;
             compare_session?: components["schemas"]["SessionCompareEntry"];
             current_session: components["schemas"]["SessionCompareEntry"];
+            intensity_rows?: components["schemas"]["IntensityMatchRow"][] | null;
             matches: components["schemas"]["SessionDetailMatchRow"][] | null;
             next_session_label?: string;
             previous_session_label?: string;
