@@ -1,7 +1,9 @@
 /**
  * TimeseriesFdaGapTrend — « Écart cumulé au FDA attendu » (onglet Résumé, à
  * DROITE du FDA). Décision D1 du plan PLAN_EXPECTED_FDA_2026-07 + retouche UX
- * 2026-07-23 : passage à la MÊME forme que Sessions (SessionFdaGapCumulative).
+ * 2026-07-24 : remplacement des 2 courbes cumulées (I11) par UNE courbe fine
+ * « FDA attendu » PAR MATCH (retour utilisateur — il voulait le par-match, pas
+ * un cumul).
  *
  * Somme CUMULÉE signée du différentiel `kda − kda_expected` (FDA réel natif
  * ADR 0006 moins FDA attendu projeté backend), match après match DANS L'ORDRE
@@ -9,18 +11,16 @@
  * service → PAS de re-tri (contrairement à Sessions qui trie par start_time).
  * Rendu : aire signée divergente ancrée à 0 (helper canonique
  * `divergentZeroGradient`, PAS de visualMap) + markLine 0 sur l'axe PRIMAIRE,
- * PLUS 2 courbes fines « FDA réel (cumulé) » / « FDA attendu (cumulé) » sur un
- * axe SECONDAIRE droit (`yAxisIndex: 1`, pattern dual-axis de
- * `TimeseriesKdaBars`) — lisent `cumulativeReal`/`cumulativeExpected` du helper
- * canonique `cumulativeFdaGap` (source unique — CLAUDE.md n°6), qui appliquent
- * le MÊME skip conjoint que le cumul d'écart (identité
- * cumulativeReal − cumulativeExpected === cumulative).
+ * PLUS 1 courbe fine « FDA attendu » PAR MATCH sur un axe SECONDAIRE droit
+ * (`yAxisIndex: 1`, pattern dual-axis de `TimeseriesKdaBars`) — lit le champ
+ * `expected` de chaque point du helper canonique `cumulativeFdaGap` (source
+ * unique — CLAUDE.md n°6), `null` → point troué (`connectNulls: false`).
  *
  * D5 : un match sans attendu (`kda`/`kda_expected` null ou non-fini) ne fait PAS
  * avancer le cumul (report de la dernière valeur), mais figure quand même sur
  * l'axe. Masqué par `useCapability('expected_stats')` (Halo 5 = pas d'attendu →
- * null). Tooltip : cumul écart / réel cumulé / attendu cumulé / réel du match /
- * attendu du match / écart du match (« — » si absent).
+ * null). Tooltip : cumul écart / réel du match / attendu du match / écart du
+ * match (« — » si absent).
  */
 import { useMemo, type ReactNode } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
@@ -47,14 +47,10 @@ export interface FdaGapCumulativeLabels {
   series: string
   /** Libellé « réel » du match (tooltip). */
   real: string
-  /** Libellé « attendu » du match (tooltip). */
+  /** Libellé « attendu » du match (tooltip + légende de la courbe par-match, axe secondaire). */
   expected: string
   /** Libellé de l'écart du match (tooltip). */
   gap: string
-  /** Libellé de la courbe « FDA réel (cumulé) » (légende + tooltip, axe secondaire). */
-  realCumulative: string
-  /** Libellé de la courbe « FDA attendu (cumulé) » (légende + tooltip, axe secondaire). */
-  expectedCumulative: string
   /** Caption du KPI de pied de carte (« Écart moyen par match »). */
   avgCaption: string
   /** Suffixe du KPI (« /match »). */
@@ -84,10 +80,8 @@ export function buildFdaGapCumulativeOption(
   // illisibles avec interval:0), aligné sur SessionFdaGapCumulative.
   const interval = points.length > 30 ? Math.floor(points.length / 12) : 0
   const values = points.map((p) => p.cumulative)
-  const realCumValues = points.map((p) => p.cumulativeReal)
-  const expectedCumValues = points.map((p) => p.cumulativeExpected)
+  const expectedValues = points.map((p) => p.expected)
   const gradient = divergentZeroGradient(values)
-  const realColor = resolveToken('chart-series-1')
   const expectedColor = resolveToken('chart-series-2')
 
   return {
@@ -105,8 +99,6 @@ export function buildFdaGapCumulativeOption(
         return (
           `<strong>${cat}</strong><br/>` +
           `${escapeHtml(labels.series)}: <b>${fmtGap(p.cumulative, true)}</b><br/>` +
-          `${escapeHtml(labels.realCumulative)}: ${fmtGap(p.cumulativeReal, true)}<br/>` +
-          `${escapeHtml(labels.expectedCumulative)}: ${fmtGap(p.cumulativeExpected, true)}<br/>` +
           `${escapeHtml(labels.real)}: ${fmtGap(p.real)}<br/>` +
           `${escapeHtml(labels.expected)}: ${fmtGap(p.expected)}<br/>` +
           `${escapeHtml(labels.gap)}: ${fmtGap(p.gap, true)}`
@@ -115,7 +107,7 @@ export function buildFdaGapCumulativeOption(
     },
     legend: {
       ...getLegendBase(tc),
-      data: [labels.series, labels.realCumulative, labels.expectedCumulative],
+      data: [labels.series, labels.expected],
     },
     xAxis: {
       ...axis,
@@ -124,8 +116,8 @@ export function buildFdaGapCumulativeOption(
       data: categories,
       axisLabel: { ...(axis.axisLabel as Record<string, unknown>), interval },
     },
-    // Axe primaire (écart cumulé, gauche) + axe secondaire (FDA réel/attendu
-    // cumulés, droite — pattern dual-axis de TimeseriesKdaBars).
+    // Axe primaire (écart cumulé, gauche) + axe secondaire (FDA attendu
+    // par match, droite — pattern dual-axis de TimeseriesKdaBars).
     yAxis: [
       { ...axis, type: 'value' },
       { ...axis, type: 'value', position: 'right' },
@@ -150,19 +142,14 @@ export function buildFdaGapCumulativeOption(
         },
       },
       {
+        // FDA attendu PAR MATCH (pas cumulé) — courbe fine axe secondaire.
+        // `expected` est null quand le match n'a pas d'attendu → point troué.
         type: 'line',
-        name: labels.realCumulative,
+        name: labels.expected,
         yAxisIndex: 1,
-        data: realCumValues,
+        data: expectedValues,
         symbol: 'none',
-        lineStyle: { width: 1, color: realColor },
-      },
-      {
-        type: 'line',
-        name: labels.expectedCumulative,
-        yAxisIndex: 1,
-        data: expectedCumValues,
-        symbol: 'none',
+        connectNulls: false,
         lineStyle: { width: 1, color: expectedColor, type: 'dashed' },
       },
     ],

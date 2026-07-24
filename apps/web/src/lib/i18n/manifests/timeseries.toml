@@ -310,8 +310,9 @@ en = "Average life (s)"
 fr = "Tendance"
 en = "Trend"
 
-# Écart cumulé au FDA attendu (D1 + retouche UX 2026-07-23) — aire cumulée
-# signée réel vs attendu, MÊME forme que Sessions (SessionFdaGapCumulative).
+# Écart cumulé au FDA attendu (D1 + retouche UX 2026-07-24) — aire cumulée
+# signée réel vs attendu + courbe FDA attendu par match (axe secondaire), MÊME
+# forme que Sessions (SessionFdaGapCumulative).
 [timeseries.summary.fda_gap_title]
 fr = "Écart cumulé au FDA attendu"
 en = "Cumulative KDA gap to expected"
@@ -327,16 +328,6 @@ en = "Actual"
 [timeseries.summary.fda_gap_expected]
 fr = "Attendu"
 en = "Expected"
-
-# Courbes cumulées ajoutées sur l'axe secondaire (légende + tooltip), distinctes
-# des libellés courts par-match ci-dessus.
-[timeseries.summary.fda_gap_real_cumulative]
-fr = "FDA réel (cumulé)"
-en = "Actual KDA (cumulative)"
-
-[timeseries.summary.fda_gap_expected_cumulative]
-fr = "FDA attendu (cumulé)"
-en = "Expected KDA (cumulative)"
 
 [timeseries.summary.fda_gap_gap]
 fr = "Écart"
