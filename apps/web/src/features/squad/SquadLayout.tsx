@@ -498,6 +498,15 @@ export function SquadLayout() {
     return labels
   }, [available, pendingCascade])
 
+  // XUID absolu du joueur courant — résolu depuis la card "moi" du header
+  // (player_cards filtré sur main_player). Sert à exclure le viewer du roster de
+  // façon player-agnostic (jamais par le slug d'URL). Vide tant que le header
+  // squad n'est pas chargé (dégradation gracieuse transitoire).
+  const currentPlayerXuid = useMemo(() => {
+    const mainGT = data?.main_player ?? ''
+    return data?.header?.player_cards?.find((c) => c.gamertag === mainGT)?.xuid ?? ''
+  }, [data])
+
   // Presets du combobox : escouades sauvegardées + groupes d'accès (charger un
   // roster), + footer de gestion (enregistrer / renommer / supprimer).
   const {
@@ -506,6 +515,7 @@ export function SquadLayout() {
     onClose: squadPresetOnClose,
   } = useSquadPresets({
     playerSlug,
+    currentPlayerXuid,
     hasLinkedIdentity,
     locale,
     selectedRows,
@@ -519,6 +529,7 @@ export function SquadLayout() {
         confirmedGamertags: confirmedGts,
         pageData: data ?? null,
         playerSlug,
+        currentPlayerXuid,
       }}
     >
       {/* ─── Barre de filtres unifiée (sticky top-12, remplace NavL2/FilterOmnibar) ─── */}
@@ -542,7 +553,13 @@ export function SquadLayout() {
             placeholder={t.selection.placeholder(availableOptions.length)}
             onAddAsFriend={setAddFriendGamertag}
             presetGroups={squadPresetGroups}
-            onLoadPreset={(gts) => setSelectedGts(gts.slice(0, MAX_SELECTION))}
+            onLoadPreset={(gts) =>
+              // Dédup vs la pill de tête (leadingPill = joueur courant) : un roster
+              // legacy peut encore contenir le viewer → on le retire avant sélection.
+              setSelectedGts(
+                gts.filter((g) => g.toLowerCase() !== playerSlug.toLowerCase()).slice(0, MAX_SELECTION),
+              )
+            }
             footer={squadPresetFooter}
             onClose={squadPresetOnClose}
           />
@@ -679,10 +696,14 @@ export function SquadLayout() {
             const header = data.header
             const soloKpis = header.solo_kpis
             if (!soloKpis) return null
-            const mainGT = data.main_player ?? ''
-            const mainXuid = header?.player_cards?.find((c) => c.gamertag === mainGT)?.xuid ?? ''
+            // Réutilise le XUID courant déjà mémoïsé (source unique, cf.
+            // currentPlayerXuid) plutôt que de le recalculer inline.
             const briefingSquad =
-              header?.squad_score && header?.player_cards && header?.team_avg_kpis && header?.kpis_by_xuid && mainXuid
+              header?.squad_score &&
+              header?.player_cards &&
+              header?.team_avg_kpis &&
+              header?.kpis_by_xuid &&
+              currentPlayerXuid
                 ? {
                     score: header.squad_score,
                     players: header.player_cards,
@@ -690,7 +711,7 @@ export function SquadLayout() {
                       Object.entries(header.kpis_by_xuid).map(([x, k]) => [x, toContractKpis(k)]),
                     ),
                     teamAvgKpis: toContractKpis(header.team_avg_kpis),
-                    activeXuid: mainXuid,
+                    activeXuid: currentPlayerXuid,
                   }
                 : undefined
             return <SessionBriefing kpis={toContractKpis(soloKpis)} squad={briefingSquad} />

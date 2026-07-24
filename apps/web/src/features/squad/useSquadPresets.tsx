@@ -25,7 +25,7 @@ import {
 } from '@/features/prestige/hooks/useSquads'
 import { useMyGroups } from '@/features/groups/queries'
 import type { TeammateRow } from '@/lib/api/types'
-import { findSquadByRoster } from './squadRoster'
+import { findSquadByRoster, squadTeammates } from './squadRoster'
 import { SQUAD_PRESETS_STRINGS, type SquadPresetsStrings } from './squadPresets.i18n'
 
 function buildUsualSubtitle(
@@ -40,6 +40,9 @@ function buildUsualSubtitle(
 
 export interface UseSquadPresetsOptions {
   playerSlug: string
+  /** XUID absolu du joueur courant — exclut le viewer du roster (player-agnostic).
+   *  Vide tant que le header n'est pas résolu (dégradation gracieuse transitoire). */
+  currentPlayerXuid: string
   hasLinkedIdentity: boolean
   locale: string
   /** Coéquipiers actuellement sélectionnés (pour « enregistrer la compo »). */
@@ -59,6 +62,7 @@ export interface UseSquadPresetsResult {
 
 export function useSquadPresets({
   playerSlug,
+  currentPlayerXuid,
   hasLinkedIdentity,
   locale,
   selectedRows,
@@ -164,10 +168,12 @@ export function useSquadPresets({
   const sortedSquads = [...(mySquads?.squads ?? [])].sort((a, b) => scoreSquad(b) - scoreSquad(a))
 
   const squadOptions = sortedSquads.map((sm) => {
-    const gamertags = sm.members
-      .filter((m) => (m.user_id ?? '').toLowerCase() !== slugLower)
+    // Player-agnostic : on exclut le viewer par SON xuid (pas par le slug), puis on
+    // mappe vers le gamertag. Charger le preset ne réinjecte donc jamais le viewer
+    // (bug « lui-même en double, créateur absent » quand le créateur ≠ viewer).
+    const gamertags = squadTeammates(sm.members, currentPlayerXuid)
       .map((m) => m.gamertag ?? '')
-      .filter((g) => g && g.toLowerCase() !== slugLower)
+      .filter((g) => g)
     return {
       id: sm.squad.id,
       name: sm.squad.name,
@@ -198,7 +204,7 @@ export function useSquadPresets({
   // shared_social sont append-only → un doublon serait persistant). Même garde
   // que SquadFocusStrip, via le helper partagé.
   const selectionXuids = selectedRows.map((r) => r.xuid).filter((x): x is string => !!x)
-  const alreadySaved = findSquadByRoster(mySquads?.squads, selectionXuids, playerSlug) != null
+  const alreadySaved = findSquadByRoster(mySquads?.squads, selectionXuids, currentPlayerXuid) != null
   const canSave = selectionXuids.length > 0 && !alreadySaved
   const handleSave = () => {
     if (!canSave) return

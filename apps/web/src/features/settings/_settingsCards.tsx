@@ -14,9 +14,17 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select } from '@/components/ui/select'
 import { useScanMedia } from '@/features/settings/queries'
+import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 import { ToggleRow, type TabProps } from './_settingsShared'
 
 export function InterfaceCard({ merged, handleChange, t, frozen }: TabProps) {
+  // Préférence purement LOCALE (jamais envoyée au backend) — cf. showWaypointColumn
+  // dans settingsDraftStore.localUiPrefs. Le masquage réel par titre reste piloté
+  // par la capability `waypoint_match_url` (Halo 5 : colonne masquée quel que soit
+  // ce réglage).
+  const showWaypointColumn = useSettingsDraftStore((s) => s.localUiPrefs.showWaypointColumn)
+  const setShowWaypointColumn = useSettingsDraftStore((s) => s.setShowWaypointColumn)
+
   return (
     <Card>
       <CardHeader>
@@ -58,6 +66,14 @@ export function InterfaceCard({ merged, handleChange, t, frozen }: TabProps) {
         <ToggleRow label={t.normalizeModeLabels} value={merged.normalize_mode_labels ?? true} onChange={(v) => handleChange('normalize_mode_labels', v)} disabled={frozen} />
         <ToggleRow label={t.excludeBTB} value={merged.career_top_exclude_btb ?? false} onChange={(v) => handleChange('career_top_exclude_btb', v)} disabled={frozen} />
         <ToggleRow label={t.refreshClearsCaches} value={merged.refresh_clears_caches ?? false} onChange={(v) => handleChange('refresh_clears_caches', v)} disabled={frozen} />
+        <div>
+          <ToggleRow
+            label={t.showWaypointColumn}
+            value={showWaypointColumn}
+            onChange={setShowWaypointColumn}
+          />
+          <span className="block pb-2 text-xs text-muted-foreground">{t.showWaypointColumnHint}</span>
+        </div>
       </CardContent>
     </Card>
   )

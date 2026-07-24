@@ -216,6 +216,9 @@ func (s *CareerService) GetCareerPage(ctx context.Context) (domain.CareerPageRes
 	xpTotal := summaryXPTotal(rank)
 	xpHeroMax := heroXPTotal(rank)
 	hero := buildHeroProgress(xpTotal, rankIDFromData(rank), xpHeroMax, heroRankMax(rank))
+	// Libellé du rang max (« Héros » / « SR 152 ») title-agnostic : source-fournie
+	// (Halo 5) ou catalogue du titre (Halo Infinite). Vide → libellé générique front.
+	hero.MaxRankNameFR, hero.MaxRankNameEN = s.resolveMaxRankNames(rank)
 	projs := buildProjections(xpHistory, xpTotal, xpHeroMax)
 	lusr := buildLUSRSummary(lusrHistory)
 
@@ -308,7 +311,30 @@ func rankDataFromCanonical(snap *canonical.CareerSnapshot) *domain.CareerRankDat
 		v := *snap.RankMax
 		row.RankMax = &v
 	}
+	// Libellé du rang max porté par la source (Halo 5 : « SR 152 »). Le service le
+	// recopie tel quel dans HeroProgress ; Halo Infinite laisse MaxRank nil et le
+	// service résout depuis son catalogue de rangs (cf. resolveMaxRankNames).
+	if snap.MaxRank != nil {
+		if fr := assetRefLabel(snap.MaxRank, "fr"); fr != "" {
+			row.MaxRankNameFR = &fr
+		}
+		if en := assetRefLabel(snap.MaxRank, "en"); en != "" {
+			row.MaxRankNameEN = &en
+		}
+	}
 	return row
+}
+
+// assetRefLabel retourne le libellé localisé d'une AssetReference : Labels[locale]
+// si présent, sinon DefaultLabel. "" si la référence est nil.
+func assetRefLabel(ref *canonical.AssetReference, locale string) string {
+	if ref == nil {
+		return ""
+	}
+	if v, ok := ref.Labels[locale]; ok && v != "" {
+		return v
+	}
+	return ref.DefaultLabel
 }
 
 // loadXPHistory centralise la résolution repo/adapter pour l'historique XP (HIGH-C).

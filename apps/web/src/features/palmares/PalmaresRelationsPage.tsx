@@ -408,7 +408,11 @@ function CoreSummaryCard({
         {/* sparkline des derniers matchs joués à côté d'un fidèle (#8, backend) */}
         <SparklineSection label={labels.core.recentForm} outcomes={form} />
 
-        {/* mini-tableau (sans en-têtes) des fidèles classés par WR (#7) */}
+        {/* mini-tableau (sans en-têtes) des fidèles classés par WR (#7).
+            EXCEPTION tri client par en-têtes (I16) : pas de <thead> — ce n'est
+            pas un tableau de données généraliste mais un aperçu classé (WR
+            desc, tiebreak volume) avec expand/collapse ; rien à cliquer pour
+            trier, le classement EST le contenu affiché. */}
         {ranked.length > 0 && (
           <div className="mt-3 border-t border-border pt-3">
             <table className="w-full border-collapse text-sm">

@@ -2,13 +2,14 @@
  * ExplorerTargetSampleStats — bloc « Répartition des frags » de la section "Sur N
  * matchs joués ensemble" de l'encart adversaire.
  *
- * Frag v2 COMPLET : quand le backend fournit `frag_distribution` (sunburst hiérarchique
- * classe→rôle), rend FragSunburst + « Outils de destruction » (FragWeaponBreakdown) —
- * MÊME rendu que les 5 autres surfaces (Synthesis/Match view/Timeseries/Sessions/Escouade),
- * survol LIÉ sunburst ↔ breakdown. Repli (cible sans données d'arme sur les matchs communs)
- * : donut kill-type (mêlée/lourde/grenade/autre) + top armes legacy. Ce fichier exporte
- * AUSSI ExplorerTargetSampleKpis (rangée KPI) et ExplorerTargetOutcome (bilan V/N/D) —
- * inchangés.
+ * Aligné sur la famille frags v2 (Synthesis/Match view/Sessions/Escouade) : quand le
+ * backend fournit `frag_distribution` (sunburst hiérarchique classe→rôle), rend FragSunburst
+ * + « Top armes » (recolorées par classe, survol LIÉ sunburst ↔ liste) via
+ * ExplorerTargetFragV2. Sinon (cible sans données d'arme sur les matchs communs → le backend
+ * renvoie frag_distribution nil), PAS de donut kill-type legacy — les autres surfaces v2
+ * n'affichent rien sans modèle v2 : le bloc conserve son titre/emplacement et affiche le top
+ * armes de la cible s'il est disponible, sinon un état vide. Ce fichier exporte AUSSI
+ * ExplorerTargetSampleKpis (rangée KPI) et ExplorerTargetOutcome (bilan V/N/D) — inchangés.
  *
  * Calcul local depuis common_matches (DuckDB), indépendant des tokens Halo.
  * Affichée seulement quand `sampleStats != null && sample_size > 0`.
@@ -16,7 +17,6 @@
 import { useState } from 'react'
 
 import { OutcomeBar } from '@/components/ui/outcome-bar'
-import { KillTypesDonut, type DonutSlice } from '@/components/charts/KillTypesDonut'
 import { FragSunburst, FragClassLegend } from '@/components/charts/FragSunburst'
 import { fragClassColor } from '@/lib/accessibility/scales'
 import { tokenCssVar } from '@/lib/accessibility'
@@ -53,12 +53,10 @@ function fmtInt(value: number, locale: string): string {
 
 export function ExplorerTargetSampleStats({ sampleStats }: ExplorerTargetSampleStatsProps) {
   const appLocale = useAppShellStore((s) => s.locale)
-  const locale = intlLocale(appLocale)
   const t: TFn = (key, values) => formatMessage(explorerManifest, key, appLocale, values)
 
-  // Frag v2 COMPLET : le backend fournit la répartition hiérarchique (sunburst
-  // classe→rôle) → FragSunburst + « Outils de destruction », comme les 5 autres surfaces.
-  // Sinon (cible sans données d'arme sur les matchs communs) → repli donut kill-type.
+  // Frag v2 : le backend fournit la répartition hiérarchique (sunburst classe→rôle)
+  // → FragSunburst + « Top armes », MÊME famille que Synthesis/Match view/Sessions/Escouade.
   const distribution = sampleStats.frag_distribution ?? null
   if ((distribution?.total_kills ?? 0) > 0) {
     return (
@@ -70,42 +68,22 @@ export function ExplorerTargetSampleStats({ sampleStats }: ExplorerTargetSampleS
     )
   }
 
-  // ── Repli legacy : partition des frags par TYPE D'ARME (mutuellement exclusifs) :
-  // melee / arme lourde / grenade / autres → la somme = total des frags. "Autres" =
-  // frags à l'arme normale = kills - (melee + lourde + grenade).
-  //
-  // IMPORTANT : on ne soustrait PAS les headshots. Un headshot est ORTHOGONAL au
-  // type d'arme (un frag à l'arme normale ou lourde peut être un headshot) ; le
-  // compter ici ferait que le donut ne somme plus au total des frags. Les
-  // "Tirs à la tête" restent exposés en KPI ("Taux de tête"), hors donut.
-  const weaponTyped = sampleStats.melee_kills + sampleStats.power_weapon_kills + sampleStats.grenade_kills
-  const other = Math.max(0, sampleStats.kills - weaponTyped)
-  //
-  // Couleurs : indices chart-series DISTINCTS (1/6/7/8) et NON 2-5 — dans la
-  // palette par défaut 1..5 est un dégradé bleu/indigo séquentiel (illisible en
-  // catégoriel, pas color-blind friendly). 1/6/7/8 sont distincts dans toutes les
-  // palettes (Okabe-Ito CB incluse). Via tokenCssVar → suit la palette active.
-  const donutSlices: DonutSlice[] = [
-    { label: t('explorer.target_profile.kill_type_melee'), count: sampleStats.melee_kills, token: 'chart-series-1' as SemanticToken },
-    { label: t('explorer.target_profile.kill_type_power_weapon'), count: sampleStats.power_weapon_kills, token: 'chart-series-6' as SemanticToken },
-    { label: t('explorer.target_profile.kill_type_grenade'), count: sampleStats.grenade_kills, token: 'chart-series-7' as SemanticToken },
-    { label: t('explorer.target_profile.kill_type_other'), count: other, token: 'chart-series-8' as SemanticToken },
-  ].filter((s) => s.count > 0)
-
-  // Bloc « Répartition des frags » : titre en barre (chrome ChartCard) + donut
-  // agrandi centré. Hauteur naturelle : le bloc cohabite avec le bilan V/N/D dans
-  // la même colonne (cf. ExplorerTargetProfileCard). Titre de section + rangée KPI
-  // rendus hors bloc.
+  // Repli : la cible n'a pas de données d'arme sur les matchs communs (le backend renvoie
+  // alors frag_distribution nil). On NE rend PAS de donut kill-type legacy — les autres
+  // surfaces v2 n'affichent rien sans modèle v2 ; ici on conserve le bloc (titre +
+  // emplacement) avec le top armes de la cible s'il est disponible, sinon un état vide.
   const topWeapons = sampleStats.top_weapons ?? []
   return (
     <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-card">
       <div className="flex-none border-b border-border px-3 py-2 text-sm font-medium">
         {t('explorer.target_profile.label_kill_types')}
       </div>
-      {/* Donut (gauche) + top 3 armes (droite) si dispo, sinon donut centré seul. */}
-      <div className={`grid items-center gap-3 p-3 ${topWeapons.length > 0 ? 'sm:grid-cols-[2fr_1fr]' : ''}`}>
-        <DonutColumn slices={donutSlices} locale={locale} t={t} />
-        {topWeapons.length > 0 && <WeaponsTop weapons={topWeapons} locale={appLocale} t={t} />}
+      <div className="p-3">
+        {topWeapons.length > 0 ? (
+          <WeaponsTop weapons={topWeapons} locale={appLocale} t={t} />
+        ) : (
+          <span className="text-xs text-muted-foreground">{t('explorer.target_profile.value_unavailable')}</span>
+        )}
       </div>
     </div>
   )
@@ -276,20 +254,6 @@ export function ExplorerTargetOutcome({ sampleStats }: ExplorerTargetSampleStats
       <div className="p-3">
         <OutcomeLegend sampleStats={sampleStats} locale={locale} t={t} />
       </div>
-    </div>
-  )
-}
-
-// ─── Colonne 1 : donut frags à connecteurs ──────────────────────────────────
-
-function DonutColumn({ slices, locale, t }: { slices: DonutSlice[]; locale: string; t: TFn }) {
-  return (
-    <div className="flex w-full flex-col items-center gap-2">
-      {slices.length > 0 ? (
-        <KillTypesDonut slices={slices} locale={locale} />
-      ) : (
-        <span className="text-xs text-muted-foreground">{t('explorer.target_profile.value_unavailable')}</span>
-      )}
     </div>
   )
 }

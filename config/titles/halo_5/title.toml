@@ -4,11 +4,11 @@
 # Handoff complet : .ai/HANDOFF_HALO5_EXPERIMENTAL.md (corrigé 2026-06-19 : Halo 5
 # est RICHE — events/carnage/commendations natives via endpoints internes cryptum).
 #
-# status = "coming_soon" : DÉCOUVERT + listé dans le switcher (« bientôt »), NON
-# servi (RequireActiveTitle -> 503) ni provisionné au boot. Pour activer :
-# (1) status="active", (2) adapter internal/games/halo_5 câblé (client interne +
-# mapping events JSON -> canonical), (3) sonde live confirmée (343 sert encore
-# Halo 5 en 2026, cf. handoff Phase 1).
+# status = "active" depuis le 2026-06-20 (commit 67db508113 — sonde live validée,
+# CSR Diamant 5 lu via probe-h5) : Halo 5 est DÉCOUVERT, listé dans le switcher ET
+# SERVI (plus de 503 RequireActiveTitle). registerAdditionalTitles câble l'adapter
+# internal/games/halo_5 (career.progression + events) ; historique/détail restent
+# Phase 2 (cf. handoff .ai/HANDOFF_HALO5_EXPERIMENTAL.md).
 #
 # xbox_title_id 219630713 = présence watcher + achievements Xbox.
 
@@ -62,4 +62,8 @@ capabilities = [
   # Personnalisateur Spartan (modale home) : masques emblèmes/nameplates recolorisables
   # côté client. Halo-5-only (masques extraits du jeu). Cf. .ai/PLAN_H5_SPARTAN_CUSTOMIZER.md
   "spartan_customizer",
+  # Page de detail de match publique sur Halo Waypoint (verifie utilisateur 2026-07-24 :
+  # /halo-5-guardians/players/{gt}/matches/arena/{id}). URL construite cote front
+  # (buildWaypointMatchUrl, segment + bucket arena par titre).
+  "waypoint_match_url",
 ]

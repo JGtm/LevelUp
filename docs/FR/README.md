@@ -13,120 +13,32 @@
 
 ## Dernières nouveautés
 
-**v7.0 — Nouvelle app React, Mission Control & multi-titres**
+**v7.1 — Escouade fiabilisée, données de combat Halo 5 & XP de carrière**
 
-Refonte majeure. LevelUp quitte Streamlit pour une app **React 19 + Go API** avec **une UX/UI entièrement repensée** et **une synchronisation désormais automatique**. Près de 400 commits de travail — voici ce que ça change pour vous :
+Une version d'ajustement centrée sur la fiabilité des pages Escouade, la réparation des données de combat Halo 5 et le peaufinage de toute l'app.
 
-**Une app entièrement repensée — nouvelle UX/UI**
-- **Frontend React 19 + Tailwind** — navigation instantanée entre pages, URL partageables pour chaque match/session/joueur, thème clair/sombre, i18n FR/EN complète
-- **Design system unifié** — palette, typographie, espacements et composants (cartes, boutons, modales, tooltips, carousels, lightbox) harmonisés sur toute l'app ; fini les pages Streamlit disparates
-- **Navigation à deux niveaux** — barre L1 (Accueil / Synthèse / Explorer / Escouade / Communauté / Ascension / Médias / Aide / Paramètres) plus onglets L2 contextuels ; tout est à un clic, plus de sidebar qui défile
-- **Interactions modernes** — transitions de page, deep-links (`?session=`, match précédent/suivant), survols, drawers latéraux, retours visuels sur chaque action, UI responsive
-- **Backend Go API** — bascule Python → Go pour un serveur plus léger, un démarrage plus rapide et une empreinte mémoire réduite
-- **Support multi-titres** — l'app gère désormais plusieurs jeux Halo (Halo 5 : Guardians, Infinite et au-delà) via un **TitleSwitcher** dans la barre de navigation ; commande CLI `levelup add-title` pour enregistrer un nouveau titre
-- **Page d'aide intégrée** — Notes de version (changelog consultable dans l'app) et Glossaire des termes Halo, avec cache local 24 h pour lecture hors-ligne
+**Escouade — plus fiable**
+- **Historique en composition exacte** — les graphes session vs historique (performance d'escouade, performance par carte, taux de victoire) comparent désormais chaque session à votre historique avec cette composition *exacte*, au lieu d'une moyenne floue tous coéquipiers confondus
+- **Compositions enregistrées corrigées** — une escouade enregistrée affiche les mêmes membres pour tout le monde ; fini les doublons ou le coéquipier manquant chez un autre joueur
+- **Graphes en ordre chronologique** — les comparaisons par carte et de taux de victoire se lisent de gauche à droite dans l'ordre d'apparition des cartes
+- **Nouvel onglet « Dynamique »** — l'intensité (désormais un profil d'activité médian avec une enveloppe interquartile qui rend visible l'irrégularité), le rendement/résistance et l'engagement regroupés au même endroit, plus un graphe de balance des dégâts cumulée en vies
+- **Objectifs d'escouade** — la boucle de défis d'escouade est complète (libellés localisés, retour au moment de rejoindre, progression par membre en direct, abandon/expiration) ; « Cap d'escouade » est renommé « Objectifs d'escouade »
 
-**Accueil « Mission Control » — entièrement redessiné**
-- **Hero banner multi-titres** — bannière dynamique par jeu avec artwork dédié
-- **Panneau Battle Pass live** — carte dédiée avec artwork d'opération, progression de tier et récompense à venir, rafraîchie à chaque visite
-- **Défis actifs restaurés** — cartes de challenges Mission Control avec expiry du deck, badge, titre/description localisés et votre progression `x/y` en temps réel
-- **Catalogue de défis multilingue** — titres et descriptions stockés dans **26 langues** (BCP-47), avec fallback `en-US` si la langue demandée manque
-- **Historisation propre** — vos défis sont snapshotés dans votre DB joueur (`challenge_snapshots`), les définitions partagées vivent dans `metadata.duckdb`
-- **Live-first, failsafe** — si la base metadata est verrouillée, la Home affiche quand même les défis en live et skip la persistance proprement (pas de blocage)
-- **Tuiles de match enrichies** — KDA, escouade, rang, headshots, citations, score de perf et scores des deux équipes directement sur chaque tuile
-- **Carousel de sessions** — FDA coloré, playlist et mode dominants, tooltip au survol
-- **Onglet médias aimés** et carousel des derniers matchs sur la Home
+**Halo 5 — données de combat réparées**
+- **Véhicules détruits & Vol à la tire** et les **mécaniques de combat** (assassinats, coups au sol, charges spartanes) sont de retour sur la Synthèse et le scoreboard après une réparation des données
+- **Citations réparées** — les victoires Firefight sont comptées, les citations de grenade sont restaurées, et les mauvais mappings de médaille sont corrigés
 
-**Synthèse — hub d'analytique carrière**
-- **Dashboard vue d'ensemble** — KDA, précision, dégâts infligés/reçus, headshots, perfect kills et séries de kills en une grille de cartes, chacune colorée par rapport à votre moyenne historique ; filtres locaux : expérience (classé / non classé), période, saison, playlist et mode
-- **Kills par arme** — décomposition complète des kills par arme avec nombre et part en pourcentage
-- **Solo vs escouade** — graphique bipolaire comparant vos métriques clés en solo vs avec votre escouade
-- **Meilleures semaines** — identifiez vos périodes de jeu les plus performantes d'un coup d'œil
-- **Résultats par carte & mode** — répartition V/D/É pour chaque carte et chaque mode que vous avez joués
-- **Heatmap d'activité** — fréquence des sessions et densité de kills par jour de la semaine et plage horaire
-- **Profil de combat** — évolution du Taux de Conversion Offensif (TC) et de la Résistance Défensive (RD) dans le temps
-- **Aperçu des relations** — meilleurs coéquipiers et adversaires les plus fréquents issus de votre historique de matchs
+**Carrière**
+- **XP de carrière estimée** — une courbe d'XP cumulée et l'XP par match sur les Séries temporelles, calibrées sur des données réelles
+- **Path to Hero multi-titre** — progression vers le rang maximum propre à chaque titre
+- **Page Médailles** — une nouvelle sous-page Carrière avec le catalogue complet des médailles du titre, y compris celles jamais obtenues, avec filtres toutes / obtenues / non obtenues et tris
 
-**Médias V2 — likes, notifications Discord, upload**
-- **Likes persistants** — aimez vos screenshots et clips directement depuis la grille, état conservé entre les rechargements
-- **Groupage intelligent** — par favoris, par session ou par contexte solo/escouade
-- **Grille allégée** — thumbnails natifs, lightbox partagée, icônes cœur pour liked / unliked
-- **Upload glisser-déposer** — ajoutez vos captures manuelles directement depuis la page Médias
-- **Scan non-destructif** — ré-indexation automatique en arrière-plan avec option `--captures-dir` dédiée
-- **Notifications Discord pour nouveaux médias** — embed avec GIF ou miniature screenshot à chaque nouvelle capture indexée ; anti-spam (chaque fichier notifié une seule fois) ; toggle `discord_notify_new_media` dans les paramètres
-- **Réassociation manuelle avec suggestions de matchs** — modale intégrée qui liste vos matchs dans une fenêtre ±15 / ±60 / ±180 min autour de la capture, avec miniature de la carte, carte · mode · playlist, heure locale + écart, badge de résultat et lobby complet par équipe ; un clic + confirmation pour corriger un média associé au mauvais match
+**Explorer & Accueil**
+- **Face-à-face** — des donuts de taux de victoire (ensemble / face à lui) et un graphe d'écart de frags cumulé par rapport à la cible sur « Sur XX matchs joués ensemble »
+- **Dates du pic** sur vos cartes de meilleur LUSR / CSR, plus un KPI de **plus longue série de défaites**
 
-**Page Match dédiée & visualisations enrichies**
-- **URL propre par match** — `/players/{gamertag}/matches/{id}`, partageable, avec navigation match précédent/suivant
-- **Timeline Tug-of-War** — courbe dynamique des retournements de score entre équipes
-- **KD Timeline** — évolution kills/morts par phase avec moyenne mobile
-- **Impact Badges** — badges narratifs (Top Killer, Silent Hero, False Brother, Comeback Champion…) calculés par match
-- **Panneau Encounters** — liste des joueurs déjà croisés lors de matchs précédents
-- **Combat Yield & Perfect Kills** — nouvelles métriques dans la vue match
-- **Scoreboard V7** — densité d'info accrue : expected stats, skill rank, média liée, citations
-- **Comparaison de sessions** — page A/B dédiée : choisissez deux sessions et comparez KDA, score de performance, Taux de Conversion Offensif / Résistance Défensive, distribution des résultats et playlist dominante côte à côte
-
-**Authentification**
-- **Connexion Xbox (standard)** — la façon standard d'utiliser LevelUp : SSO Xbox via navigateur (`/auth/xbox/login` → Microsoft → callback), avec SISU/Proof-of-Possession pour des sessions stables. Le Device Code reste un transport alternatif, et l'URI de redirection est configurable via `LEVELUP_OAUTH_REDIRECT_URI`. Aucune inscription : votre compte Xbox est votre identité.
-- **Connexion admin (mot de passe)** — l'administrateur de l'instance dispose d'un compte nom d'utilisateur/mot de passe, créé via le CLI `admin` (`create-admin` / `reset-password`). En mode Xbox, la connexion par mot de passe est réservée aux admins.
-- **Connexion locale par joueur (option)** — non standard : un joueur précis peut recevoir un compte nom d'utilisateur/mot de passe (inscription par invitation via `/register`, ou mot de passe opt-in sur un compte SSO existant) pour les déploiements qui le nécessitent. Hors flux standard.
-
-**Achievements Xbox & événements de match**
-- **Sync des achievements Xbox** — vos succès Xbox sont récupérés automatiquement depuis l'API Halo à chaque sync
-- **Suivi des achievements** — parcourez votre liste complète de succès Xbox sur la page Carrière : filtrez par débloqué / en cours / non commencé, suivez votre Gamerscore (obtenu vs total) et filtrez par jeu pour le support multi-titres
-- **Highlight events** — parseur binaire des films de match pour extraire tous les événements majeurs (medals, clutchs, spawns)
-- **Backfill weapon kills** — arme utilisée par frag reconstruite depuis le film (POV ~87 %)
-- **Badges Comeback pour coéquipiers** — Remontada / Collapse / Contre-Remontada calculés pour vos co-joueurs synchronisés en même temps que vous
-
-**Communauté — Palmarès, Relations & Face-à-face**
-- **Season Pass multilingue** — traductions des Battle Pass dans 26 langues, tier images depuis GameCMS
-- **Relations** — suivez tous les joueurs que vous avez croisés : stats par joueur, historique de matchs partagés, badges alliance et rivalité, micro-leaderboard de carrière
-- **Face-à-face** — page de comparaison 1v1 (ou 1v1v1 en miroir) : opposez deux ou trois joueurs sur les métriques Combat, Précision et Bilan ; badges de rencontre (allié, rival, adversaire coriace) issus de votre historique partagé
-
-**Objectifs & Prestige**
-- **Objectifs** — système de défis individuels et d'escouade : fixez des objectifs personnels ou créez des défis d'escouade (collectifs ou compétitifs) sur n'importe quelle métrique Halo avec des fenêtres temporelles, des paliers et des arcs narratifs ; gagnez des Prestige Points (PP) à la complétion ; deux modes d'évaluation (seuil / cumulatif) et deux modes de création (libre / piloté)
-- **Leaderboard Prestige** — classement PP dans Palmarès comparant votre score à ceux de votre escouade et de vos relations ; quatre paliers : Normal / Heroic / Legendary / Mythic
-
-**Ascension — suivi de progression & profil de jeu**
-- **Dashboard de séries** — séries de victoires, défaites et kills suivies dans le temps, avec vos records personnels all-time mis en avant
-- **Records & jalons** — meilleurs scores all-time (meilleur KDA, plus de kills en un match, plus longue série de victoires…) et grille de jalons montrant à quelle distance vous êtes du prochain objectif
-- **Radar profil de jeu 6 axes** — forces et faiblesses cartographiées sur six axes : Létalité, Précision, Résilience, Impact Équipe, Survie et Régularité
-- **Badge de style** — classification du style de jeu calculée à partir de votre historique (Fragger, Support, Sniper…)
-- **Décomposition du rating LUSR** — chaque composante de votre rating visualisée et expliquée pour savoir exactement sur quoi travailler pour progresser
-- **Détection de patterns comportementaux** — détection automatique de tilt, fatigue, plateaux d'engagement et plafonds de compétence dans vos récents matchs
-- **Patterns contextuels** — comment vos stats évoluent selon le mode, la carte et la composition d'escouade
-- **Carte solo vs escouade** — comparaison côte-à-côte de votre style de jeu en solo vs avec des coéquipiers
-- **Coach proactif** — moteur d'analyse en tâche de fond qui observe votre progression après chaque sync et envoie des alertes exclusivement positives dans le centre de notifications : nouveaux records personnels, quasi-records, palier LUSR en approche, jalons débloqués, améliorations de stats soutenues et forces contextuelles par carte, mode et type d'escouade
-
-**Centre de notifications in-app**
-- **Centre de notifications** — fil par joueur avec badge non-lus dans la barre de navigation, filtres par catégorie, timeline groupée par jour, actions groupées et rafraîchissement live toutes les 60 secondes ; préférences configurables par joueur dans les Paramètres
-
-**Synchronisation automatique & présence temps réel**
-- **Sync 100 % automatique** — finis les `python scripts/sync.py` à lancer à la main : l'app synchronise vos matchs toute seule en arrière-plan, en continu, dès qu'une nouvelle partie est jouée
-- **Déclenchement immédiat fin de partie** — dès qu'un joueur termine un match, le watcher récupère les stats sans attendre le prochain tick
-- **Présence RTA Xbox + polling Steam** — détection en ligne temps réel pour savoir qui joue et synchroniser au bon moment
-- **Scheduler intelligent** — cadence de sync adaptative selon l'activité des joueurs ; pas de requêtes inutiles quand personne ne joue
-- **Rafraîchissement autonome des tokens** — plus d'interruptions : les tokens Halo se renouvellent tout seuls en tâche de fond
-- **Reconnexion proactive** — gestion du status=3 avec refresh XSTS à la demande, reconnexion automatique au démarrage
-
-**Paramètres & admin**
-- **Auto-save des paramètres** — les réglages se sauvegardent immédiatement avec indicateur visuel éphémère
-- **Page admin** — UI de supervision (auth provider, état des jobs, privacy)
-- **Préférences navigateur** — joueur sélectionné, langue et filtres mémorisés entre sessions
-- **API endpoints configurables** — Halo Stats, SPNKr, CMS… tous paramétrables depuis les Paramètres
-
-**Assets & cartes**
-- **Cache-aside des images de cartes** — artworks de maps téléchargés et mis en cache local, plus aucune requête externe répétée
-- **CLI `populate-assets`** — commande Go pour pré-télécharger tous les assets (cartes, medals, tiers Battle Pass) avant usage hors-ligne
-
-**Accessibilité des couleurs**
-- **Palette adaptée aux daltoniens** — une nouvelle palette Okabe-Ito (conçue en 2008, recommandée universellement) est disponible dans Paramètres → Accessibilité ; elle remplace toutes les couleurs de l'app — graphiques, indicateurs de performance, résultats de match, K/D — par des teintes distinguables en cas de deutéranopie, protanopie et tritanopie
-- **Aperçu en direct** — la palette bascule instantanément sur toute l'app sans rechargement de page ; un aperçu en pastilles permet de comparer avant de valider
-- **Préférence persistante** — votre choix est sauvegardé dans le navigateur et restauré automatiquement à chaque visite
-
-**Historique complet des versions** : [RELEASE_NOTES.md](RELEASE_NOTES.md)
-
----
+**Confort d'utilisation**
+- **Langue dans l'URL** pour que les liens partagés conservent leur langue, une **colonne Halo Waypoint** optionnelle, **tous les tableaux triables**, des **titres d'onglet stables**, des couleurs d'identité et logos d'équipe sur le scoreboard, des légendes de graphe et étiquettes de pourcentage assainies, et une passe de purge des anglicismes
 
 ## Fonctionnalités
 

@@ -43,8 +43,11 @@ Each item cites its source so it can be re-verified against the code. Structure:
 - [ ] Merge on `main` with a **merge commit, no squash** (per-lot history = traceability):
       `git checkout main && git pull && git merge refactor/audits-2026-07`, then `git push`.
 - [ ] `scripts/deploy.sh` runs on the VPS (via `deploy.yml`): `git reset --hard origin/main`,
-      `docker compose down`, `up -d --build`, image prune, BuildKit cache bound to 5 GB
-      (source: `scripts/deploy.sh` — the 5 GB cap prevents the 2026-06-27 disk-fill incident).
+      **`docker compose build` while the old containers are still up**, then only on build
+      success `docker compose down` + `up -d` (no `--build` — reuses the images just built),
+      image prune, BuildKit cache bound to 5 GB (source: `scripts/deploy.sh` — build-before-down
+      ordering fixes the 2026-07-23 incident where a failed build left prod down until manual
+      intervention; the 5 GB cap prevents the separate 2026-06-27 disk-fill incident).
 - [ ] **Demo regen is NON-destructive**: it does NOT `rm` `data/demo/warehouse|players`
       before seeding (incident 2026-06-05 left the demo empty on seed failure). The ONLY
       `rm -rf` is for **phantom-directory JSON stubs** (`data/demo/db_profiles.json`,

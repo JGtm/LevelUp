@@ -77,19 +77,26 @@ describe('buildMapPerfVsHistoryOption', () => {
     expect(yAxis.data).toEqual(['A', 'C'])
   })
 
-  it('tri par nombre de matchs desc (les plus jouées en premier)', () => {
-    // perf identique, matchCount distinct → l'ordre suit matchCount DESC.
+  it('respecte l\'ordre reçu du backend, aucun re-tri par match_count — I12', () => {
+    // Le backend (computeMapBreakdown) trie déjà par première apparition
+    // chronologique ; matchCount distinct ne doit PAS réordonner l'affichage
+    // (ancien comportement : tri par match_count desc).
     const rows = [row('few', 60, 60, 2), row('many', 60, 60, 20), row('mid', 60, 60, 8)]
     const opt = buildMapPerfVsHistoryOption(makeSeries(rows), OPTS)
     const yAxis = opt.yAxis as { data: string[] }
-    expect(yAxis.data).toEqual(['MANY', 'MID', 'FEW'])
+    expect(yAxis.data).toEqual(['FEW', 'MANY', 'MID'])
   })
 
-  it('cap à 20 cartes max', () => {
-    const rows = Array.from({ length: 25 }, (_, i) => row(`m${i}`, i * 3, 50))
+  it('cap à 20 cartes max : garde les 20 PLUS JOUÉES, affichées dans l\'ordre reçu — I12', () => {
+    // 25 cartes reçues dans l'ordre chronologique (m0 = plus ancienne), avec un
+    // match_count croissant avec l'index. Les 5 moins jouées (m0..m4) doivent
+    // être exclues de la sélection top-20 ; les 20 retenues (m5..m24) restent
+    // dans leur ordre chronologique d'arrivée (pas re-triées par match_count).
+    const rows = Array.from({ length: 25 }, (_, i) => row(`m${i}`, i * 3, 50, i + 1))
     const opt = buildMapPerfVsHistoryOption(makeSeries(rows), OPTS)
     const yAxis = opt.yAxis as { data: string[] }
     expect(yAxis.data).toHaveLength(20)
+    expect(yAxis.data).toEqual(Array.from({ length: 20 }, (_, i) => `M${i + 5}`))
   })
 
   it('couleur session par palier perf (≥75 → perf-tier-1)', () => {

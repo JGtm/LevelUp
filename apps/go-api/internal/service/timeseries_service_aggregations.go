@@ -55,6 +55,11 @@ func filterStatsMatchRowsByContext(rows []legacymatch.StatsMatchRow, ctx string)
 // Clé d'agrégation : MapNameFR (priorité) puis MapName (fallback EN). Une
 // carte présente dans la session sans donnée historique reste sans
 // historical_* (la cellule front affiche alors "—" ou se masque).
+//
+// Résultat trié par ordre CHRONOLOGIQUE de première apparition (firstSeen =
+// StartTime minimal des matchs courants de la carte), tie-break MapUI pour un
+// ordre déterministe — même stratégie que computeMapBreakdown
+// (teammates_service_assets.go, commit 59e705690, I12).
 func buildSoloMapBreakdown(current, historicalSolo []legacymatch.StatsMatchRow) []domain.MapBreakdownRow {
 	if len(current) == 0 {
 		return []domain.MapBreakdownRow{}
@@ -87,10 +92,13 @@ func buildSoloMapBreakdown(current, historicalSolo []legacymatch.StatsMatchRow) 
 		}
 		out = append(out, row)
 	}
-	// Tri stable par count desc puis label asc — confort UX (top maps en haut).
+	// Tri par ordre chronologique de première apparition (firstSeen calculé
+	// dans currentByMap), tie-break MapUI déterministe — l'itération d'une map
+	// Go ne l'est pas, d'où le tie-break. Pattern computeMapBreakdown (I12).
 	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].MatchCount != out[j].MatchCount {
-			return out[i].MatchCount > out[j].MatchCount
+		fi, fj := currentByMap[out[i].MapID].firstSeen, currentByMap[out[j].MapID].firstSeen
+		if !fi.Equal(fj) {
+			return fi.Before(fj)
 		}
 		return out[i].MapUI < out[j].MapUI
 	})
@@ -102,6 +110,7 @@ type mapAgg struct {
 	count, wins int
 	perfSum     float64
 	perfCount   int
+	firstSeen   time.Time
 }
 
 func aggregateMapStats(rows []legacymatch.StatsMatchRow) map[string]*mapAgg {
@@ -117,16 +126,20 @@ func aggregateMapStats(rows []legacymatch.StatsMatchRow) map[string]*mapAgg {
 		// Clé = label affiché (StatsMatchRow n'expose pas de map_id).
 		// Cohérent avec le fallback de computeMapBreakdown côté squad.
 		key := label
-		if _, ok := m[key]; !ok {
-			m[key] = &mapAgg{label: label}
+		a, ok := m[key]
+		if !ok {
+			a = &mapAgg{label: label, firstSeen: r.StartTime}
+			m[key] = a
+		} else if r.StartTime.Before(a.firstSeen) {
+			a.firstSeen = r.StartTime
 		}
-		m[key].count++
+		a.count++
 		if r.Outcome != nil && *r.Outcome == analysis.OutcomeWin {
-			m[key].wins++
+			a.wins++
 		}
 		if r.PerfScoreComputed != nil {
-			m[key].perfSum += *r.PerfScoreComputed
-			m[key].perfCount++
+			a.perfSum += *r.PerfScoreComputed
+			a.perfCount++
 		}
 	}
 	return m

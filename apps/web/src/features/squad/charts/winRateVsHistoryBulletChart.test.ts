@@ -83,7 +83,16 @@ describe('buildWinRateVsHistoryBulletOption', () => {
     expect(yAxis.data).toEqual(['AQUARIUS (7)'])
   })
 
-  it('trie par match_count desc (ordre canonique de fréquence)', () => {
+  it('suffixe (n) masqué quand une seule partie (demande user 2026-07-24)', () => {
+    const opt = buildWinRateVsHistoryBulletOption(makeSeries([row('aquarius', 0.6, 0.5, 1)]), OPTS)
+    const yAxis = opt.yAxis as { data: string[] }
+    expect(yAxis.data).toEqual(['AQUARIUS'])
+  })
+
+  it('respecte l\'ordre reçu du backend, aucun re-tri par match_count — I12', () => {
+    // Le backend (computeMapBreakdown) trie déjà par première apparition
+    // chronologique ; le front ne doit PAS re-trier par match_count desc
+    // (ancien comportement masquant l'ordre chronologique).
     const rows = [
       row('b', 0.8, 0.5, 5),
       row('a', 0.3, 0.5, 20),
@@ -91,7 +100,7 @@ describe('buildWinRateVsHistoryBulletOption', () => {
     ]
     const opt = buildWinRateVsHistoryBulletOption(makeSeries(rows), OPTS)
     const yAxis = opt.yAxis as { data: string[] }
-    expect(yAxis.data).toEqual(['A (20)', 'C (10)', 'B (5)'])
+    expect(yAxis.data).toEqual(['B (5)', 'A (20)', 'C (10)'])
   })
 
   it('tooltip formatter → titre carte + ligne counts session/historique', () => {

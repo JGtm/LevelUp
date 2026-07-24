@@ -1,6 +1,9 @@
 package mappings
 
-import "sort"
+import (
+	"sort"
+	"time"
+)
 
 // EndpointKey identifie un host d'ingestion API d'un titre (axe MT-01).
 //
@@ -42,6 +45,21 @@ type EndpointSet struct {
 	byKey         map[EndpointKey]string
 	damageModel   DamageModelConstants
 	engagement    EngagementConstants
+	careerXPEras  []CareerXPEra
+}
+
+// CareerXPEra décrit un intervalle temporel sur lequel un multiplicateur uniforme
+// s'applique à l'XP de carrière gagnée par match (XP = multiplicateur × personal_score).
+// Chargé depuis constants.toml [[career_xp_eras]] (dates parsées + validées au boot).
+//
+// Bornes : From INCLUSIVE, To EXCLUSIVE. From.IsZero() = borne de début ouverte
+// (-inf) ; To.IsZero() = borne de fin ouverte (+inf). Multiplier > 0. Halo Infinite :
+// ×1 avant le 2025-11-18 (minuit UTC), ×2 depuis (doublement permanent Operation:
+// Infinite). Consommé via games.CareerXPErasFor → analysis.EstimateCareerXP.
+type CareerXPEra struct {
+	From       time.Time
+	To         time.Time
+	Multiplier float64
 }
 
 // EngagementConstants porte les poids d'events du score d'engagement d'un titre
@@ -149,6 +167,26 @@ func (s *EndpointSet) Engagement() (EngagementConstants, bool) {
 func (s *EndpointSet) withEngagement(e EngagementConstants) *EndpointSet {
 	if s != nil {
 		s.engagement = e
+	}
+	return s
+}
+
+// CareerXPEras retourne les éras de multiplicateur d'XP de carrière du titre et
+// true si au moins une éra est déclarée (constants.toml [[career_xp_eras]]).
+// (_, false) si absentes → le caller applique games.DefaultCareerXPEras
+// (byte-identique Infinite : ×1 avant 2025-11-18, ×2 depuis).
+func (s *EndpointSet) CareerXPEras() ([]CareerXPEra, bool) {
+	if s == nil || len(s.careerXPEras) == 0 {
+		return nil, false
+	}
+	return s.careerXPEras, true
+}
+
+// withCareerXPEras attache les éras d'XP de carrière (appelé par le loader ; même
+// package). Chaînable.
+func (s *EndpointSet) withCareerXPEras(eras []CareerXPEra) *EndpointSet {
+	if s != nil {
+		s.careerXPEras = eras
 	}
 	return s
 }

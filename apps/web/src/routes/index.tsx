@@ -2,7 +2,7 @@
  * Route index — redirige vers la page d'accueil du joueur actif.
  */
 import { createFileRoute, Navigate } from '@tanstack/react-router'
-import { useTitleSlug } from '@/lib/title-routing'
+import { useLangParam, useTitleSlug } from '@/lib/title-routing'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { resolveIndexRedirect } from '@/components/shell/shellNavigation'
 import { formatMessage } from '@/lib/i18n/format'
@@ -20,6 +20,7 @@ function IndexPage() {
   const isBootstrapped = useAppShellStore((s) => s.isBootstrapped)
   const locale = useAppShellStore((s) => s.locale)
   const titleSlug = useTitleSlug()
+  const lang = useLangParam()
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   const redirect = resolveIndexRedirect({
@@ -42,10 +43,14 @@ function IndexPage() {
   }
 
   if (redirect.kind === 'player') {
+    // I10 : on ÉMET le segment de langue (locale de session) dès ce premier hop —
+    // l'URL d'entrée devient /{lang}/t/{slug}/players/… , puis toute la navigation
+    // interne HÉRITE du segment (langSegmentInheritance.test). Sans `lang` ici, l'URL
+    // resterait /t/… (langue invisible).
     return (
       <Navigate
         to="/{-$lang}/t/$titleSlug/players/$playerSlug/home"
-        params={{ titleSlug, playerSlug: redirect.slug }}
+        params={{ lang, titleSlug, playerSlug: redirect.slug }}
         replace
       />
     )

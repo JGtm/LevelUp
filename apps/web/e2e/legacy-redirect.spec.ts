@@ -90,9 +90,14 @@ test.describe('Redirections legacy /players/ → /t/{slug}/players/', () => {
     // couverte par la matrice unitaire buildLegacyRedirect.test.ts. Asserter l'URL FINALE
     // serait fragile (la page peut légitimement réécrire un `?f=` invalide).
     await page.goto(legacyPlayerPath(player, `stats/timeseries?f=${F_VALUE}#h`))
+    // I10 : le premier hop ÉMET désormais le segment de langue de session
+    // (`/{lang}/t/…`) — on asserte donc que le pathname SE TERMINE par le chemin
+    // title-scoped (suffixe byte-exact) plutôt qu'une égalité stricte (le préfixe
+    // `/fr`|`/en` variable est légitime). Le contrat de préservation ?f=+#hash est
+    // inchangé et reste asserté byte-exact.
     await page.waitForURL(
       (url) =>
-        url.pathname === playerPath(player, 'stats/timeseries') &&
+        url.pathname.endsWith(playerPath(player, 'stats/timeseries')) &&
         url.searchParams.get('f') === F_VALUE &&
         url.hash === '#h',
       { timeout: 15_000 },

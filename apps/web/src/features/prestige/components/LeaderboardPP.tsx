@@ -7,6 +7,10 @@
  * Phase 5 minimale : version sans données réelles (le backend leaderboard
  * cross-amis dépend du wiring sources amis dérivées de squad + relations).
  * Affiche un état vide et la structure visuelle attendue.
+ *
+ * EXCEPTION tri client par en-têtes (I16) : pas de tri par en-tête pour
+ * l'instant — scaffold sans données réelles (cf. ci-dessus), classement déjà
+ * imposé (total_pp DESC). À rouvrir quand le backend sera branché.
  */
 import type { Tier } from '@/lib/prestige'
 import { TIER_COLORS, TIER_LABELS_FR } from '@/lib/prestige'

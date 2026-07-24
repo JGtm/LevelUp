@@ -8,7 +8,7 @@
  * (ops d'instance) vit désormais dans Admin · Système.
  */
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate, useRouterState } from '@tanstack/react-router'
+import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSettings, useUpdateSettings } from '@/features/settings/queries'
@@ -163,8 +163,24 @@ export function SettingsPage() {
         {activeTab === 'data' && (
           <MediaCard merged={merged} handleChange={handleChange} t={t} frozen={demoMode} />
         )}
-        {/* Compte — mot de passe opt-in (re-login rapide sans Microsoft). */}
-        {activeTab === 'account' && <SetPasswordCard />}
+        {/* Compte — mot de passe opt-in (re-login rapide sans Microsoft) +
+            accès à la gestion des groupes/familles (page /groups, auparavant
+            accessible uniquement par URL directe — retour utilisateur 2026-07-24). */}
+        {activeTab === 'account' && (
+          <>
+            <SetPasswordCard />
+            <div className="rounded-lg border border-border bg-card p-4">
+              <h3 className="text-sm font-semibold text-foreground">{t.groupsCardTitle}</h3>
+              <p className="mt-1 text-xs text-muted-foreground">{t.groupsCardDescription}</p>
+              <Link
+                to="/groups"
+                className="mt-3 inline-block rounded-md border border-input px-3 py-1.5 text-sm text-foreground hover:bg-accent"
+              >
+                {t.groupsCardOpen}
+              </Link>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )

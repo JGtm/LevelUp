@@ -32,6 +32,7 @@ func (s *TeammatesService) buildBriefingHeaderForTeammatesPage(
 	selectedGamertags []string,
 	filters *domain.FilterContextInput,
 	sessionMatchIDs map[string]bool,
+	compFilter *exactCompositionFilter,
 ) *domain.SquadHeader {
 	// Mode solo : SoloKPIs uniquement (pas de verdict squad).
 	// Egalement le cas si squadLoader pas cable (degradation gracieuse).
@@ -79,6 +80,10 @@ func (s *TeammatesService) buildBriefingHeaderForTeammatesPage(
 	squadOrder := squadagg.BuildSquadOrder(s.gamertag, selectedGamertags)
 	gtToXUID := squadagg.ExtractSquadXUIDs(squadOrder, perPlayer)
 	sharedMatches := squadagg.IntersectByMatchID(perPlayer)
+	// Composition EXACTE (maillon 2) : écarte du briefing les matchs où un
+	// coéquipier connu hors sélection était sur l'équipe du main. Désactivé
+	// (no-op) si le chargement de l'équipe alliée a échoué en amont.
+	sharedMatches = compFilter.applyShared(sharedMatches)
 
 	header := squadagg.BuildSquadHeader(ctx, s.gamertag, gtToXUID, sharedMatches)
 	// Mode degrade : si aucun match partage, le briefing repasse en mode solo

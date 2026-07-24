@@ -59,6 +59,10 @@ const codecTypeAudio = "audio"
 // audioRenditionGameSlug est le slug de la rendition « jeu » dans le master HLS.
 const audioRenditionGameSlug = "game"
 
+// audioRenditionFullSlug est le slug de la rendition « mix complet » dans le
+// master HLS (aussi le label amix de sa sortie de filtre, cf. mapSpecFull).
+const audioRenditionFullSlug = "full"
+
 // AVStreamDetail décrit une piste (vidéo ou audio) retournée par ffprobe,
 // enrichie des tags utiles au nommage des pistes audio dans le master.
 type AVStreamDetail struct {
@@ -77,6 +81,10 @@ const (
 	actionCopy     streamAction = iota // -c copy (remux pur)
 	actionReencode                     // réencodage (codec incompatible HLS)
 )
+
+// mapSpecFull est le label de filtre ffmpeg de la rendition « full » (mix complet),
+// partagé entre les planners auto (fullMixRenditions) et manuel (hls_audio_manual.go).
+const mapSpecFull = "[full]"
 
 // audioRendition décrit une rendition audio de SORTIE dans le plan HLS. Une
 // rendition n'est plus forcément une piste source 1:1 : elle peut provenir d'un
@@ -103,6 +111,12 @@ type hlsPlan struct {
 // HLSOptions configure BuildHLS.
 type HLSOptions struct {
 	SegmentDuration int // secondes ; défaut 4 si <= 0
+	// ManualAudioRoles : rôle déclaré de chaque piste audio SOURCE (ordre ffprobe :
+	// ManualAudioRoles[0] = 0:a:0, ...), valeurs "game"/"voice"/"other". Non vide et
+	// de longueur == nb pistes audio source ⇒ mapping MANUEL (bypass de l'analyse
+	// NNLS). Vide ⇒ analyse automatique (comportement historique). Une longueur
+	// incohérente est ignorée (fallback auto, WARN loggé) — jamais bloquant.
+	ManualAudioRoles []string
 }
 
 // HLSResult résume la sortie de BuildHLS.
@@ -149,6 +163,19 @@ func countAudioStreams(streams []AVStreamDetail) int {
 // Quand layout.Track0FullMix, la piste 0 est le mix complet de sortie (`full` la lit
 // directement, pas d'amix doublé / écho) et layout.GameComponent désigne la piste jeu.
 func planHLS(streams []AVStreamDetail, layout audioLayout) (hlsPlan, error) {
+	plan, srcAudios, err := collectStreamsForPlan(streams)
+	if err != nil {
+		return hlsPlan{}, err
+	}
+	plan.Audios, plan.FilterComplex = planAudioRenditions(srcAudios, layout)
+	plan.VarStreamMap = buildVarStreamMap(plan)
+	return plan, nil
+}
+
+// collectStreamsForPlan sépare les streams source en champ vidéo du plan et pistes
+// audio ordonnées (résultat[i] = 0:a:i). Partagé par planHLS (auto) et planHLSManual
+// pour ne pas dupliquer la planification vidéo. Pur. Erreur si pas de vidéo ou audio.
+func collectStreamsForPlan(streams []AVStreamDetail) (hlsPlan, []AVStreamDetail, error) {
 	var plan hlsPlan
 	hasVideo := false
 	var srcAudios []AVStreamDetail
@@ -166,14 +193,12 @@ func planHLS(streams []AVStreamDetail, layout audioLayout) (hlsPlan, error) {
 		}
 	}
 	if !hasVideo {
-		return hlsPlan{}, fmt.Errorf("planHLS: aucune piste vidéo")
+		return hlsPlan{}, nil, fmt.Errorf("planHLS: aucune piste vidéo")
 	}
 	if len(srcAudios) == 0 {
-		return hlsPlan{}, fmt.Errorf("planHLS: aucune piste audio")
+		return hlsPlan{}, nil, fmt.Errorf("planHLS: aucune piste audio")
 	}
-	plan.Audios, plan.FilterComplex = planAudioRenditions(srcAudios, layout)
-	plan.VarStreamMap = buildVarStreamMap(plan)
-	return plan, nil
+	return plan, srcAudios, nil
 }
 
 // planAudioRenditions dérive les renditions de sortie des pistes source.
@@ -226,9 +251,9 @@ func componentRenditions(src []AVStreamDetail) ([]audioRendition, string) {
 		fcParts = append(fcParts, amixFilter(rangeIdx(1, len(src)), "voices"))
 		voices.MapSpec = "[voices]"
 	}
-	fcParts = append(fcParts, amixFilter(rangeIdx(0, len(src)), "full"))
+	fcParts = append(fcParts, amixFilter(rangeIdx(0, len(src)), audioRenditionFullSlug))
 	full := audioRendition{
-		Slug: "full", Display: "full", MapSpec: "[full]", Action: actionReencode, Default: true,
+		Slug: audioRenditionFullSlug, Display: audioRenditionFullSlug, MapSpec: mapSpecFull, Action: actionReencode, Default: true,
 	}
 	return []audioRendition{game, voices, full}, strings.Join(fcParts, ";")
 }
@@ -493,23 +518,11 @@ func BuildHLS(ctx context.Context, srcPath, outDir string, opts HLSOptions) (HLS
 	if err != nil {
 		return HLSResult{}, err
 	}
-	// La piste 0 est-elle le mix complet de sortie (OBS « capture de sortie ») ? Si
-	// oui, `full` la lira directement (pas d'amix doublé = écho) et on classe quelle
-	// composante est le jeu. Décision IO (décode l'audio) faite ici pour garder planHLS pur.
-	var layout audioLayout
-	if audioStreams := audioStreamsOnly(streams); len(audioStreams) >= 2 {
-		l, r2, derr := analyzeAudioLayout(ctx, srcPath, audioStreams)
-		if derr != nil {
-			slog.WarnContext(ctx, "BuildHLS: analyse pistes audio échouée, mapping par défaut",
-				"src", srcPath, "err", derr)
-		} else {
-			layout = l
-			slog.InfoContext(ctx, "BuildHLS: analyse pistes audio",
-				"src", srcPath, "audio_count", len(audioStreams), "track0_full_mix", l.Track0FullMix,
-				"game_component", l.GameComponent, "fullmix_r2", r2)
-		}
-	}
-	plan, err := planHLS(streams, layout)
+	// Décide le plan audio : mapping MANUEL (rôles déclarés, bypass NNLS) quand
+	// opts.ManualAudioRoles est cohérent avec la source, sinon analyse automatique
+	// (OBS full-mix / classement acoustique de la composante jeu). Décision IO
+	// (décode l'audio en auto) isolée dans buildHLSPlan pour garder planHLS pur.
+	plan, err := buildHLSPlan(ctx, srcPath, streams, audioStreamsOnly(streams), opts)
 	if err != nil {
 		return HLSResult{}, err
 	}

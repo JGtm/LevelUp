@@ -62,6 +62,7 @@ export function CareerChartsSection({
             projections={projections}
             friendsXpHistory={friendsXpHistory ?? []}
             locale={locale}
+            heroProgress={heroProgress}
           />
         </div>
         {rightSlot && (

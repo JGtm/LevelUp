@@ -154,6 +154,7 @@ export function ExplorerPlayerMode({
             <ExplorerTargetProfileCard
               profile={playerQuery.data.target_profile}
               gamertag={playerQuery.data.target_gamertag || targetGamertag}
+              encounterStats={playerQuery.data.encounter_stats}
             />
           )}
 
@@ -205,6 +206,10 @@ export function ExplorerPlayerMode({
               }}
               alwaysShowPagination
               defaultPageSize={10}
+              // I16 : même endpoint/tri backend (date DESC) que le mode Matchs
+              // → le défaut interne de ExplorerMatchesTable reproduit déjà
+              // l'ordre serveur, aucun `defaultSort` à surcharger.
+              sortable
             />
           )}
 
@@ -223,6 +228,7 @@ export function ExplorerPlayerMode({
               }}
               alwaysShowPagination
               defaultPageSize={10}
+              sortable
             />
           )}
 

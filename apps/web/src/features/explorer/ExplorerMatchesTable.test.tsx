@@ -5,13 +5,45 @@
  * SANS expander (retiré — redondant avec la pagination, cf. retour user).
  * Mode legacy (defaultPageSize undefined) : PAGE_SIZE=20 par page.
  */
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, screen, within } from '@testing-library/react'
 
 import { renderWithProviders } from '@/test/render-utils'
 import type { ExplorerMatchRow } from '@/lib/api/types'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 
 import { ExplorerMatchesTable } from './ExplorerMatchesTable'
+
+/** Force les capabilities du titre courant (fail-open par défaut sinon —
+ *  cf. useCapability). Miroir du pattern SquadNetLivesChart.test.tsx. */
+function setTitleCaps(caps: string[]) {
+  useAppShellStore.setState({
+    currentTitleSlug: 'test_title',
+    availableTitles: [
+      {
+        slug: 'test_title',
+        name: 'Test',
+        status: 'active',
+        capabilities: caps,
+        is_default: true,
+        effective_hp_to_kill: 225,
+      },
+    ],
+  })
+}
+
+/** État par défaut (déterministe — n'assume rien de la valeur hydratée depuis
+ *  localStorage) : titre par défaut fail-open + préférence Waypoint ON. */
+function resetTitleAndWaypointPref() {
+  useAppShellStore.setState({ currentTitleSlug: 'halo_infinite', availableTitles: [] })
+  useSettingsDraftStore.setState((s) => ({
+    localUiPrefs: { ...s.localUiPrefs, showWaypointColumn: true },
+  }))
+}
+
+beforeEach(resetTitleAndWaypointPref)
+afterEach(resetTitleAndWaypointPref)
 
 function makeRow(i: number, overrides: Partial<ExplorerMatchRow> = {}): ExplorerMatchRow {
   return {
@@ -281,5 +313,45 @@ describe('ExplorerMatchesTable — alignement par colonne (DEC-ALIGN)', () => {
     )
     expect(screen.getByText('7').closest('td')).toHaveClass('text-right') // Frags (numérique)
     expect(screen.getByText('Zulu').closest('td')).toHaveClass('text-left') // Carte (texte)
+  })
+})
+
+describe('ExplorerMatchesTable — colonne « Ouvrir sur Halo Waypoint » (I19)', () => {
+  const WAYPOINT_LABEL = 'Ouvrir sur Halo Waypoint'
+
+  it('visible par défaut (capability fail-open + préférence locale ON)', () => {
+    renderWithProviders(
+      <ExplorerMatchesTable rows={[makeRow(1)]} playerSlug="Chocoboflor" />,
+    )
+    const link = screen.getByRole('link', { name: WAYPOINT_LABEL })
+    expect(link).toHaveAttribute(
+      'href',
+      'https://www.halowaypoint.com/halo-infinite/players/Chocoboflor/matches/match-1',
+    )
+  })
+
+  it('masquée quand le titre courant ne déclare pas la capability waypoint_match_url', () => {
+    setTitleCaps(['team_mmr'])
+    renderWithProviders(<ExplorerMatchesTable rows={[makeRow(1)]} playerSlug="me" />)
+    expect(screen.queryByRole('link', { name: WAYPOINT_LABEL })).not.toBeInTheDocument()
+  })
+
+  it('masquée quand la préférence locale showWaypointColumn est désactivée', () => {
+    useSettingsDraftStore.setState((s) => ({
+      localUiPrefs: { ...s.localUiPrefs, showWaypointColumn: false },
+    }))
+    renderWithProviders(<ExplorerMatchesTable rows={[makeRow(1)]} playerSlug="me" />)
+    expect(screen.queryByRole('link', { name: WAYPOINT_LABEL })).not.toBeInTheDocument()
+  })
+
+  it('la prop columnVisibility du consommateur garde priorité (masquage explicite)', () => {
+    renderWithProviders(
+      <ExplorerMatchesTable
+        rows={[makeRow(1)]}
+        playerSlug="me"
+        columnVisibility={{ waypoint: false }}
+      />,
+    )
+    expect(screen.queryByRole('link', { name: WAYPOINT_LABEL })).not.toBeInTheDocument()
   })
 })

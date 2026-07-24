@@ -5,6 +5,7 @@ package halo_infinite
 import (
 	"testing"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 )
 
@@ -134,5 +135,69 @@ func TestComputeVandalism_DestroyedPrefix(t *testing.T) {
 	}
 	if got := computeVandalism(ctx); got == 0 {
 		t.Errorf("attendu > 0, got 0")
+	}
+}
+
+// =============================================================================
+// Câblage citation → moteur (I7) : player_vs_everything = victoires Firefight
+// =============================================================================
+
+// TestPlayerVsEverything_FirefightWinsThroughEngine vérifie le câblage complet de
+// la décision I7 : la citation player_vs_everything (MappingType custom →
+// compute_wins_firefight, enregistrée via l'init() de ce package) traverse
+// ComputeFullMatchCitations et produit +1 par match Firefight GAGNÉ, 0 pour une
+// défaite Firefight et 0 pour une victoire PvP. Le comportement de la fonction
+// elle-même est couvert séparément (citations_custom_helpers_test.go) ; ce test
+// fige la liaison mapping ↔ dispatcher ↔ cap de palier.
+func TestPlayerVsEverything_FirefightWinsThroughEngine(t *testing.T) {
+	fn := "compute_wins_firefight"
+	tt := "5,10,15,25,50"
+	mappings := []domain.CitationFullMapping{{
+		NameNorm:       "player_vs_everything",
+		MappingType:    domain.CitationMappingTypeCustom,
+		CustomFunction: &fn,
+		TierTargets:    &tt,
+	}}
+
+	ctxFor := func(outcome int, firefight bool, playlist string) domain.CitationContext {
+		return domain.CitationContext{
+			Outcome:     outcome,
+			IsFirefight: firefight,
+			Playlist:    playlist,
+			Stats:       map[string]float64{},
+			Awards:      map[string]int{},
+			Medals:      map[int64]int{},
+		}
+	}
+	deltaFor := func(deltas []domain.CitationMatchDelta) int {
+		for _, d := range deltas {
+			if d.NameNorm == "player_vs_everything" {
+				return d.Value
+			}
+		}
+		return 0
+	}
+
+	cases := []struct {
+		name      string
+		outcome   int
+		firefight bool
+		playlist  string
+		want      int
+	}{
+		{"firefight gagné", domain.OutcomeWin, true, "firefight: kotr", 1},
+		{"firefight perdu", domain.OutcomeLoss, true, "firefight: kotr", 0},
+		{"pvp gagné", domain.OutcomeWin, false, "team slayer", 0},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			deltas := analysis.ComputeFullMatchCitations(
+				analysis.CitationProgressInput{Ctx: ctxFor(c.outcome, c.firefight, c.playlist)},
+				mappings,
+			)
+			if got := deltaFor(deltas); got != c.want {
+				t.Errorf("%s: player_vs_everything delta = %d, want %d", c.name, got, c.want)
+			}
+		})
 	}
 }

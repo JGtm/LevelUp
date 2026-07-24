@@ -35,6 +35,11 @@ export interface SettingsText {
   tabAccount: string
   tabNotifications: string
 
+  // Carte « Groupes et partage » (onglet Compte) — lien vers /groups
+  groupsCardTitle: string
+  groupsCardDescription: string
+  groupsCardOpen: string
+
   // Sync manuelle
   manualSyncTitle: string
   manualSyncButton: string
@@ -61,6 +66,8 @@ export interface SettingsText {
   normalizeModeLabels: string
   excludeBTB: string
   refreshClearsCaches: string
+  showWaypointColumn: string
+  showWaypointColumnHint: string
 
   // Discord
   discordTitle: string
@@ -302,6 +309,11 @@ const FR_TEXT: SettingsText = {
   tabAccount: 'Compte',
   tabNotifications: 'Notifications',
 
+  groupsCardTitle: 'Groupes et partage',
+  groupsCardDescription:
+    "Gère tes groupes (famille, amis) : les membres d'un même groupe ont un accès mutuel à leurs profils et statistiques. Crée un groupe puis partage son lien d'invitation.",
+  groupsCardOpen: 'Gérer mes groupes',
+
   manualSyncTitle: 'Synchronisation manuelle',
   manualSyncButton: '↻ Synchroniser tous les joueurs',
   manualSyncRunning: 'Synchronisation en cours…',
@@ -326,6 +338,9 @@ const FR_TEXT: SettingsText = {
   normalizeModeLabels: 'Normaliser les libellés de modes',
   excludeBTB: 'Exclure BTB du classement carrière',
   refreshClearsCaches: "Vider les caches à l'actualisation",
+  showWaypointColumn: 'Colonne Halo Waypoint sur les listes de matchs',
+  showWaypointColumnHint:
+    "Ajoute un lien direct vers la page du match sur Halo Waypoint dans les tableaux de matchs. Masquée automatiquement si le titre courant ne l'expose pas (Halo 5).",
 
   discordTitle: 'Notifications Discord',
   discordEnabled: 'Activer les notifications',
@@ -593,6 +608,11 @@ const EN_TEXT: SettingsText = {
   tabAccount: 'Account',
   tabNotifications: 'Notifications',
 
+  groupsCardTitle: 'Groups and sharing',
+  groupsCardDescription:
+    'Manage your groups (family, friends): members of the same group share mutual access to their profiles and stats. Create a group then share its invite link.',
+  groupsCardOpen: 'Manage my groups',
+
   manualSyncTitle: 'Manual synchronisation',
   manualSyncButton: '↻ Synchronise all players',
   manualSyncRunning: 'Synchronisation running…',
@@ -616,6 +636,9 @@ const EN_TEXT: SettingsText = {
   normalizeModeLabels: 'Normalize mode labels',
   excludeBTB: 'Exclude BTB from career ranking',
   refreshClearsCaches: 'Clear caches on refresh',
+  showWaypointColumn: 'Halo Waypoint column on match lists',
+  showWaypointColumnHint:
+    "Adds a direct link to the match's Halo Waypoint page in match tables. Automatically hidden if the current title doesn't expose it (Halo 5).",
 
   discordTitle: 'Discord notifications',
   discordEnabled: 'Enable notifications',

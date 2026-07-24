@@ -11,10 +11,6 @@
 fr = "Distribution"
 en = "Distribution"
 
-[citations.section.commendations]
-fr = "Citations"
-en = "Commendations"
-
 [citations.section.medals_summary]
 fr = "Médailles"
 en = "Medals"
@@ -130,12 +126,6 @@ en = "Modes"
 [citations.filters.reset]
 fr = "Réinitialiser"
 en = "Reset"
-
-# ─── Titre page (browser tab) ─────────────────────────────────────────────
-
-[citations.page_title]
-fr = "Citations"
-en = "Citations"
 
 # ─── Titre section Citations ────────────────────────────────────────────────
 

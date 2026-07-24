@@ -18,6 +18,7 @@ import {
   TimeseriesSpreeHeadshots,
   TimeseriesRankScore,
   TimeseriesSkillRankPerformance,
+  TimeseriesCareerXP,
 } from './TimeseriesFormCharts'
 import {
   TimeseriesEfficiency,
@@ -28,6 +29,7 @@ import { TimeseriesEngagementGapTrend } from './TimeseriesEngagementGapTrend'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { ExplorerMatchesTable } from '@/features/explorer/ExplorerMatchesTable'
+import { NUMERIC_SORT } from '@/features/explorer/explorerMatchesClientSort'
 import { TimeseriesSkillProgression } from './TimeseriesSkillProgression'
 import type { FilterContextInput, TimeseriesPageResponse, ExplorerMatchRow } from '@/lib/api/types'
 import type { FieldMappingsResponse } from '@/lib/i18n/fieldMappings'
@@ -61,6 +63,10 @@ export function TimeseriesProgressionTab({
     () => [
       {
         id: 'expected_win_prob',
+        // I16 : colonne triable (tri client, cf. `sortable` sur ExplorerMatchesTable
+        // ci-dessous) — valeur brute nullable, nuls rangés en bas (cf. NUMERIC_SORT).
+        accessorFn: (r) => r.expected_win_prob ?? undefined,
+        ...NUMERIC_SORT,
         header: t('timeseries.progression.col_win_prob'),
         cell: (ctx) => {
           const v = ctx.row.original.expected_win_prob
@@ -84,6 +90,10 @@ export function TimeseriesProgressionTab({
   const hasRanked = useCapability('ranked')
   const hasLusr = useCapability('lusr')
   const hasSkillRating = hasRanked || hasLusr
+  // XP de carrière estimée : gate DATA-DRIVEN. Le backend ne renseigne
+  // career_xp_estimated que si le titre porte la capability analytics.career_xp_estimate
+  // (Infinite) ; un titre sans capability → tous nuls → chart masqué (pas de slug côté front).
+  const hasCareerXP = (data.match_rows ?? []).some((r) => r.career_xp_estimated != null)
   return (
     <div className="space-y-8">
       {/* timeseries.11 — Premier événement (gauche) | timeseries.14 — Par minute (droite) */}
@@ -131,12 +141,30 @@ export function TimeseriesProgressionTab({
         />
       </div>
 
-      {/* Progression CSR (classé) ou LUSR (non classé) — masquée pour un titre
-          sans système de rang (CSR/LUSR). La « Répartition des frags » vit désormais
-          sur l'onglet Résumé (sunburst v2 unifié, D7) : plus de donut kill-type ici. */}
-      {hasSkillRating && (
-        <TimeseriesSkillProgression rows={data.match_rows ?? []} locale={locale} emptyMessage={emptyMsg} />
-      )}
+      {/* Progression CSR (classé) ou LUSR (non classé) | XP de carrière (estimée)
+          côte à côte (demande utilisateur 2026-07-24) ; chacun repasse pleine
+          largeur si l'autre est masqué (titre sans rang / sans capability XP).
+          La « Répartition des frags » vit désormais sur l'onglet Résumé (sunburst
+          v2 unifié, D7) : plus de donut kill-type ici. */}
+      <div className={hasSkillRating && hasCareerXP ? 'grid grid-cols-1 gap-4 lg:grid-cols-2' : ''}>
+        {hasSkillRating && (
+          <TimeseriesSkillProgression rows={data.match_rows ?? []} locale={locale} emptyMessage={emptyMsg} />
+        )}
+        {hasCareerXP && (
+          <TimeseriesCareerXP
+            title={
+              <span className="flex items-center gap-1.5">
+                {t('timeseries.progression.career_xp_title')}
+                <InfoTooltip content={t('timeseries.progression.career_xp_tooltip')} />
+              </span>
+            }
+            emptyMessage={emptyMsg}
+            rows={data.match_rows ?? []}
+            cumulativeLabel={t('timeseries.progression.career_xp_cumulative')}
+            perMatchLabel={t('timeseries.progression.career_xp_per_match')}
+          />
+        )}
+      </div>
 
       {/* timeseries.19 — Score & rang de match (générique : personal_score +
           placement). | Skill rank + Performance (CSR/LUSR, masqué sans rang).
@@ -234,6 +262,10 @@ export function TimeseriesProgressionTab({
           alwaysShowPagination
           extraColumns={winProbColumns}
           extraColumnsAfterId="outcome_code"
+          // I16 : même endpoint/tri backend (date DESC) que le mode Matchs →
+          // le défaut interne de ExplorerMatchesTable reproduit déjà l'ordre
+          // serveur, aucun `defaultSort` à surcharger (cf. ExplorerPage.playerMode).
+          sortable
         />
       )}
 

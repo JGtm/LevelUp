@@ -67,7 +67,7 @@ const FR: BriefingTexts = {
     totalDuration: 'Durée totale',
     fragsPerMatch: 'Frags par match',
     deathsPerMatch: 'Morts par match',
-    assistsPerMatch: 'Assists par match',
+    assistsPerMatch: 'Assistances par match',
     accuracy: 'Précision moy.',
     lifespan: 'Durée de vie moy.',
     perMin: '/min',

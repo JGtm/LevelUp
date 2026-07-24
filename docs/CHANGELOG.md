@@ -6,9 +6,62 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
-## [Unreleased] - 2026-06-15
+## [7.1.0] - 2026-07-24
 
-> Consolidated entry grouping the work delivered since 2026-05-02 (v7.0 not yet released). Per-domain summary, not commit-by-commit.
+> Point release consolidating the "v7.1 backlog" work plus the chantiers merged to `main` since the v7.0.0 tag (median-profile Intensity, Career Medals, Squad Dynamics, Expected-FDA differential, home/scoreboard quick wins, admin appearance diagnostic). Per-domain summary.
+
+### Added (React / TypeScript)
+
+- **Squad — Dynamics tab** — new `/squad/dynamique` tab regrouping the intensity, yield/resistance and engagement sections. Intensity reworked from a match × phase heatmap into a median frag-share profile per phase with a P25–P75 interquartile envelope (`lib/charts/phaseProfile`); Yield and Resistance split into two per-player multi-series charts (`buildSquadEfficiencyMultiOption`); damage-balance in title-lives (`netLives`, 225 Infinite / 115 H5) on Sessions and Dynamics via the generic `lib/charts/cumulativeSeries`; cumulative engagement-gap charts (`TimeseriesEngagementGapTrend`, `SquadEngagementGapChart`, `SessionEngagementCumulative`).
+- **Squad objectives (challenges)** — full UI loop: localized labels, join feedback, per-member `SquadProgressList`, abandon/delete (2-click confirm), lifecycle (expiration from template cadence). "Cap d'escouade" renamed "Objectifs d'escouade"; ~40 labels migrated to the `squad.toml` manifest (`[squad.focus.*]`, ICU interpolation, ADR 0003).
+- **Career — Medals page** — new `/career/medals` sub-page modeled on Citations: full per-title medal catalog including never-earned medals, grouped super-section → category (SpartanRecord taxonomy), all/earned/not-earned filter and three client-side sorts; multi-title (Halo Infinite rarity pill, generic grouping elsewhere).
+- **Career — estimated XP** — cumulative XP curve + XP-per-match on Timeseries, capability-gated (`analytics.career_xp_estimate`), methodology tooltip.
+- **Explorer — head-to-head panel** — "Over XX matches together" adds win-rate donuts (together / head-to-head, reusing the Relations donuts) and a cumulative frag-gap-vs-target chart; collapsible, persisted synthesis toggle (`explorerPrefsStore`).
+- **Expected-FDA charts** — `TimeseriesFdaGapTrend`, `SessionFdaGapCumulative`, per-member `SquadFdaGapCumulativeCard`; thin cumulative real/expected FDA lines added on the FDA-gap chart; canonical `divergentZeroGradient` helper (two inline copies migrated + guard-rail).
+- **Home / Synthesis** — peak-achieved date on best LUSR/CSR cards; longest-loss-streak KPI card.
+- **Scoreboard** — per-team identity colours + team logos (data-driven, `/titles/{slug}/teams/{team_id}.png`), shared player-column width.
+- **Halo Waypoint column** — optional second action column on match lists (theme-aware logo).
+- **Media — per-player audio-track roles** — gear modal in the player gallery to declare voice/game/other roles per track (manual > auto NNLS), FR/EN.
+- **Sortable tables** — 16 tables made sortable (TanStack activation on the 4 `ExplorerMatchesTable` consumers, shared `SortableTh` on 8 Career/Admin tables with an anti-redefinition guard-rail, match-view clickable headers, generic `SortingFn<T>`).
+- **Admin — Spartan appearance diagnostic** — per-player panel (Data tab) with pure `appearanceDiagDisplay` logic (verdict → status badge + i18n keys), on-click mutation and a re-authentication CTA to the existing SSO.
+
+### Added (Go API)
+
+- **Career XP estimate** — pure `analysis.xp_estimate` (era multiplier × personal_score, TOML-versioned eras: ×1 before 2025-11-18, ×2 after), additive `career_xp_estimated` on `TimeseriesMatchRow`, opt-in capability `analytics.career_xp_estimate` (Halo Infinite); calibrated to ~98.9 % on real data.
+- **Path to Hero title-agnostic** — max-rank label resolved server-side (title source → rank-catalog top → generic fallback), carried in `HeroProgress` (`max_rank_name_fr/en`); fixes the Halo 5 XP reference line (9.3M → 50M / SR152).
+- **Expected FDA** — `analysis.ExpectedFDA` / `FDADiff` (NaN/Inf guards), `CapExpectedStats` (Halo Infinite only), canonical `MatchParticipant.KillsExpected/DeathsExpected`, per-mode expected-assists batch + per-member resolver; `no_inline_expected_fda` arch-lint guard-rail.
+- **Halo 5 vehicles & hijacks** — scoped read of `match_commendations` (natural PK, `INSERT OR IGNORE` → exact `SUM`), bilingual name resolution of the 9 "Destructeur" + "Grand Theft" commendations, `commendations.native` capability; per-title hijack label ("Dépositaire" Infinite / "Vol à la tire" H5).
+- **Squad exact-composition** — centralized exact-composition predicate (`filterExactComposition`, pool = friends + top-teammates) across the three intersection sites (`GetPage`, briefing header, Q42 anti-join); `no_raw_squad_intersection` grep guard-rail. Compositions resolved by the current player's absolute XUID (`SquadContext`, `findSquadByRoster` xuid-keyed); append-only `levelup backfill-squad-creators` for legacy squads without a persisted creator.
+- **Squad chart chronological order** — `computeMapBreakdown` computes first-appearance order server-side (heatmap pattern, deterministic `mapUI` tie-break); the front no longer re-sorts.
+- **Squad challenges lifecycle (Go)** — `SquadChallengeView` (label + participants), `DELETE /squad-challenges/{id}` → `AbandonSquadChallenge` (nullable `archived_at`, non-indexed UPDATE, ART-safe), cascade archive on squad delete, template-cadence expiry.
+- **Season pass** — raw `premium_owned` signal (`state.IsOwned`, undiluted) exposed for a reliable Premium badge; server-side locale for Challenges and Battle Pass (`challenge_snapshots` locale column + locale in the dedup key, append-only migration; `preferEN` threaded through the Battle Pass builders).
+
+### Changed
+
+- **URL locale segment** — the active language is now a `{-$lang}` route segment (mechanism was already shipped but dormant), so shared links keep their language.
+- **Browser-tab titles** — single locale-aware `resolvePageTitle` mechanism, replacing the concurrent `__root` vs local-effect approach.
+- **French wording** — anglicism sweep with an i18n guard-rail (grep backstop) forbidding the old literals.
+- **Chart legends** — "Tools of destruction" legend centered below the chart; percentage labels on segments and legends; aligned chart heights across Synthesis, Sessions and Squad.
+- **Scoreboard** — Halo 5 team names de-duplicated (`labelHasTeamWord`); MVP/LVP tie-break excludes mechanic kills (assassination / shoulder bash / ground pound) on both server and client.
+- **Match view** — assassination/ground-pound/shoulder-bash columns gated by `useCapability('native_kill_mechanics')` (absent on Infinite, where they are stored as `0`, not `null`).
+
+### Fixed
+
+- **Citations (data)** — Firefight "eliminations" now count Firefight victories (`compute_wins_firefight`, tiers 5/10/15/25/50); grenade kills restored; "road trip" remapped to the Splatter medal (`221693153`); "flag defender" disabled (no measuring award); PvE stats query fixed (`total_enemy_kills`, not the non-existent `total_kills`); recompute-force now recreates `match_citations` via the append-only path (`EnsureMatchCitationsAppendOnly`, ADR 0026), no longer the legacy 3-column schema.
+- **Halo 5 combat mechanics (data)** — targeted one-shot backfill (`backfill-h5-kill-mechanics`) of `match_participants` rows written as zeros before the mapper activation (2,742 carnages, 4,990 rows across 1,883 matches).
+- **Squad** — the "Propose challenges" button no longer swallows its error (error toast front-side, `slog.ErrorContext` on the previously masked 500 branch across the prestige routes).
+
+### Ops
+
+- **Deploy — real Docker purge** — root cause of the 2026-07-23 VPS saturation: deprecated `--keep-storage` (Docker 29) silently remapped to a floor → no-op prunes. Fix: `--max-used-space` real ceiling, failures logged (no masking/abort after cutover), `image prune --filter until=24h` (keeps N-1 for same-day rollback), pre-build < 10 GB guard, versioned daily systemd units (manual VPS install, no cron daemon).
+
+### Removed
+
+- **Dead code** — `winRateVsHistoryChart` builder (0 callers) removed with its orphan i18n key; the 1-player squad-efficiency builder + its toggle/footer legend removed (superseded by the multi-player charts).
+
+## [7.0.0] - 2026-07-23
+
+> Consolidated entry grouping the work delivered since 2026-05-02 — previously labeled "Unreleased" pending the tag; shipped to prod as git `v7.0.0` on 2026-07-23. Per-domain summary, not commit-by-commit. *Version-number note: an unrelated, older `[7.0.0]` entry from the pre-migration Python/Streamlit app (2026-04-12) already exists further below in this file — kept as-is for historical continuity; the two `7.0.0` labels denote different products (Python vs. the current Go/React stack), not a re-release.*
 
 ### Added (React / TypeScript)
 

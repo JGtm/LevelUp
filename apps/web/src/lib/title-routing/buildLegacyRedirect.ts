@@ -1,24 +1,32 @@
+import type { Locale } from '@/lib/i18n/locale'
+
 export interface LegacyRedirect {
   href: string
 }
 
 /**
  * buildLegacyRedirect — mappe une URL legacy `/players/…` vers sa forme
- * title-préfixée `/t/{activeSlug}/players/…`. Fonction PURE (D-5).
+ * title-préfixée `/{lang}/t/{activeSlug}/players/…`. Fonction PURE (D-5).
  *
  * Deux transformations combinées EN UN SEUL saut :
- *  1. Préfixe titre : `/players/…` → `/t/{activeSlug}/players/…`.
+ *  1. Préfixe titre (+ langue) : `/players/…` → `/{lang}/t/{activeSlug}/players/…`.
  *  2. Remaps internes legacy déjà en place AVANT D7 (reproduits VERBATIM depuis
  *     routes/players/$playerSlug/* — cf. remapLegacySuffix).
  * Suffixe + `?search` (avec son `?`) + `#hash` (avec son `#`) re-concaténés
  * verbatim. Un pathname hors `/players` → null. `/players` sans slug → null
  * (aucune route index legacy). `/players/{slug}` sans suffixe → `.../home`.
+ *
+ * `lang` (I10) : locale de SESSION à ÉMETTRE dans le segment `/{lang}` du premier hop,
+ * pour que le bookmark legacy atterrisse directement sur une URL langue-visible (puis
+ * héritée par la nav interne). OMIS (undefined) → forme courte `/t/…` (rétro-compat :
+ * les tests 4-args de la matrice restent valides à l'identique).
  */
 export function buildLegacyRedirect(
   pathname: string,
   searchStr: string,
   hash: string,
   activeSlug: string,
+  lang?: Locale,
 ): LegacyRedirect | null {
   const segs = pathname.split('/').filter(Boolean)
   if (segs[0] !== 'players') return null
@@ -28,7 +36,8 @@ export function buildLegacyRedirect(
   const suffix = segs.slice(2)
   const targetSuffix = suffix.length === 0 ? ['home'] : remapLegacySuffix(suffix)
   const tail = targetSuffix.length ? `/${targetSuffix.join('/')}` : ''
-  const path = `/t/${activeSlug}/players/${playerSlug}${tail}`
+  const langPrefix = lang ? `/${lang}` : ''
+  const path = `${langPrefix}/t/${activeSlug}/players/${playerSlug}${tail}`
   return { href: path + suffixSearchHash(searchStr, hash) }
 }
 

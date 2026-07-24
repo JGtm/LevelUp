@@ -14,6 +14,7 @@ package sync
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -27,11 +28,16 @@ import (
 // metadataDB : connexion à metadata.duckdb (lecture citation_mappings, weapon_labels).
 // sharedDB   : connexion à shared_matches_v2.duckdb (medals, stats, events, weapon_kills).
 // playerDB   : connexion à stats.duckdb du joueur (awards en lecture, match_citations en écriture).
+// pveDB      : connexion RO à shared_pve.duckdb (stats Firefight, type de citation pve_stat).
+//
+//	Nil accepté (titre sans Firefight / DB absente) → dégradation gracieuse :
+//	les citations pve_stat restent à 0, aucune erreur (cf. loadPveStats).
+//
 // xuid       : identifiant Xbox du joueur.
 // matchIDs   : liste des match_id à traiter (triés en interne par start_time ASC).
 func BackfillMatchCitations(
 	ctx context.Context,
-	metadataDB, sharedDB, playerDB *sql.DB,
+	metadataDB, sharedDB, playerDB, pveDB *sql.DB,
 	xuid string,
 	matchIDs []string,
 ) error {
@@ -74,7 +80,7 @@ func BackfillMatchCitations(
 
 	written, skipped := 0, 0
 	for _, matchID := range sorted {
-		citCtx, err := buildCitationContext(ctx, sharedDB, playerDB, weaponNames, xuid, matchID)
+		citCtx, err := buildCitationContext(ctx, sharedDB, playerDB, pveDB, weaponNames, xuid, matchID)
 		if err != nil {
 			slog.WarnContext(ctx, "BackfillMatchCitations: context", "match_id", matchID, "err", err)
 			skipped++
@@ -127,7 +133,7 @@ func BackfillMatchCitations(
 // buildCitationContext charge toutes les données du match pour le moteur.
 func buildCitationContext(
 	ctx context.Context,
-	sharedDB, playerDB *sql.DB,
+	sharedDB, playerDB, pveDB *sql.DB,
 	weaponNames map[uint64]string,
 	xuid, matchID string,
 ) (domain.CitationContext, error) {
@@ -148,6 +154,20 @@ func buildCitationContext(
 	}
 	for k, v := range weaponKills {
 		stats["weapon_kills:"+k] = float64(v)
+	}
+
+	// BUG A (I7, 2026-07-24) : les stats PvE Firefight n'étaient JAMAIS chargées →
+	// les citations de type pve_stat (grunt_kills, elite_kills, boss_kills,
+	// total_enemy_kills, ...) restaient toujours à 0. On les injecte ici dans le
+	// même map Stats que le moteur consulte (dispatchFull, cas pve_stat).
+	// Dégradation gracieuse : pveDB nil / match non-Firefight / DB périmée →
+	// pveStats vide, WARN best-effort, aucune erreur fatale.
+	pveStats, err := loadPveStats(ctx, pveDB, matchID, xuid)
+	if err != nil {
+		slog.WarnContext(ctx, "BackfillMatchCitations: pve_stats", "match_id", matchID, "err", err)
+	}
+	for k, v := range pveStats {
+		stats[k] = v
 	}
 
 	awards, err := loadAwards(ctx, playerDB, matchID, xuid)
@@ -282,6 +302,7 @@ SELECT
     COALESCE(mp.headshot_kills, 0)   AS headshot_kills,
     COALESCE(mp.melee_kills, 0)      AS melee_kills,
     COALESCE(mp.power_weapon_kills, 0) AS power_weapon_kills,
+    COALESCE(mp.grenade_kills, 0)    AS grenade_kills,
     COALESCE(mp.max_killing_spree, 0)  AS max_killing_spree,
     COALESCE(mp.avg_life_seconds, 0.0) AS avg_life_seconds,
     COALESCE(mp.outcome, 0)          AS outcome,
@@ -297,7 +318,7 @@ LIMIT 1`
 
 	var (
 		kills, deaths, assists, score, headshotKills, meleeKills int
-		powerWeaponKills, maxKillingSpree                        int
+		powerWeaponKills, grenadeKills, maxKillingSpree          int
 		kda, damagDealt, damageTaken, accuracy, avgLife          float64
 		outcome                                                  int
 		playlist, gameVariant                                    string
@@ -307,12 +328,15 @@ LIMIT 1`
 	if err := row.Scan(
 		&kills, &deaths, &assists, &kda, &score,
 		&damagDealt, &damageTaken, &accuracy, &headshotKills,
-		&meleeKills, &powerWeaponKills, &maxKillingSpree, &avgLife,
+		&meleeKills, &powerWeaponKills, &grenadeKills, &maxKillingSpree, &avgLife,
 		&outcome, &playlist, &gameVariant, &isFirefight,
 	); err != nil {
 		return nil, 0, "", "", false, err
 	}
 
+	// BUG B (I7, 2026-07-24) : grenade_kills était omis du SELECT alors que la
+	// colonne existe et est peuplée → citation « Regarde maman, sans goupille »
+	// (look_ma_no_pin, stat_name grenade_kills) restait toujours à 0. Ajouté ici.
 	stats := map[string]float64{
 		"kills":              float64(kills),
 		"deaths":             float64(deaths),
@@ -325,10 +349,68 @@ LIMIT 1`
 		"headshot_kills":     float64(headshotKills),
 		"melee_kills":        float64(meleeKills),
 		"power_weapon_kills": float64(powerWeaponKills),
+		"grenade_kills":      float64(grenadeKills),
 		"max_killing_spree":  float64(maxKillingSpree),
 		"avg_life_seconds":   avgLife,
 	}
 	return stats, outcome, playlist, gameVariant, isFirefight, nil
+}
+
+// loadPveStats charge les stats PvE Firefight du joueur pour le match depuis
+// shared_pve.pve_match_stats_latest (vue append-only, ADR 0026 — jamais la table
+// brute). Les clés retournées correspondent aux stat_name des citations de type
+// pve_stat : les kills par type d'ennemi portent le nom de leur colonne
+// (grunt_kills, elite_kills, ...) ; total_enemy_kills est l'alias de la colonne
+// total_kills (nom réel côté shared_pve).
+//
+// Dégradation gracieuse (BUG A, I7) :
+//   - pveDB nil (titre sans Firefight / DB absente) → (nil, nil) ;
+//   - match non-Firefight (aucune ligne PvE) → (nil, nil), cas normal ;
+//   - vue absente / autre erreur SQL → (nil, err) : le caller logge WARN et
+//     poursuit (les citations pve_stat restent à 0, pas d'échec du pipeline).
+func loadPveStats(ctx context.Context, pveDB *sql.DB, matchID, xuid string) (map[string]float64, error) {
+	if pveDB == nil {
+		return nil, nil
+	}
+	const q = `
+SELECT
+    COALESCE(grunt_kills, 0),
+    COALESCE(elite_kills, 0),
+    COALESCE(jackal_kills, 0),
+    COALESCE(hunter_kills, 0),
+    COALESCE(brute_kills, 0),
+    COALESCE(skimmer_kills, 0),
+    COALESCE(sentinel_kills, 0),
+    COALESCE(marine_kills, 0),
+    COALESCE(boss_kills, 0),
+    COALESCE(total_enemy_kills, 0)
+FROM pve_match_stats_latest
+WHERE match_id = ? AND xuid = ?
+LIMIT 1`
+
+	var grunt, elite, jackal, hunter, brute, skimmer, sentinel, marine, boss, total int
+	err := pveDB.QueryRowContext(ctx, q, matchID, xuid).Scan(
+		&grunt, &elite, &jackal, &hunter, &brute,
+		&skimmer, &sentinel, &marine, &boss, &total,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil // match non-Firefight : aucune ligne PvE, comportement normal
+	}
+	if err != nil {
+		return nil, err
+	}
+	return map[string]float64{
+		"grunt_kills":       float64(grunt),
+		"elite_kills":       float64(elite),
+		"jackal_kills":      float64(jackal),
+		"hunter_kills":      float64(hunter),
+		"brute_kills":       float64(brute),
+		"skimmer_kills":     float64(skimmer),
+		"sentinel_kills":    float64(sentinel),
+		"marine_kills":      float64(marine),
+		"boss_kills":        float64(boss),
+		"total_enemy_kills": float64(total),
+	}, nil
 }
 
 // loadWeaponKills charge les kills par arme (effective_weapon_id → canonical name_en) depuis shared.

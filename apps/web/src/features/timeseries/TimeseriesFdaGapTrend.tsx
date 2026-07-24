@@ -1,27 +1,35 @@
 /**
  * TimeseriesFdaGapTrend — « Écart cumulé au FDA attendu » (onglet Résumé, à
  * DROITE du FDA). Décision D1 du plan PLAN_EXPECTED_FDA_2026-07 + retouche UX
- * 2026-07-23 : passage à la MÊME forme que Sessions (SessionFdaGapCumulative).
+ * 2026-07-24 : remplacement des 2 courbes cumulées (I11) par UNE courbe fine
+ * « FDA attendu » PAR MATCH (retour utilisateur — il voulait le par-match, pas
+ * un cumul).
  *
  * Somme CUMULÉE signée du différentiel `kda − kda_expected` (FDA réel natif
  * ADR 0006 moins FDA attendu projeté backend), match après match DANS L'ORDRE
  * DONNÉ : les `match_rows` arrivent déjà triés chronologiquement ASC côté
  * service → PAS de re-tri (contrairement à Sessions qui trie par start_time).
  * Rendu : aire signée divergente ancrée à 0 (helper canonique
- * `divergentZeroGradient`, PAS de visualMap) + markLine 0. Cumul via le helper
- * canonique `cumulativeFdaGap` (source unique — CLAUDE.md n°6).
+ * `divergentZeroGradient`, PAS de visualMap) + markLine 0 sur l'axe PRIMAIRE,
+ * PLUS 1 courbe fine « FDA attendu » PAR MATCH sur le MÊME axe Y (même unité
+ * FDA — retour utilisateur 2026-07-24 : pas de double axe) — lit le champ
+ * `expected` de chaque point du helper canonique `cumulativeFdaGap` (source
+ * unique — CLAUDE.md n°6), `null` → point troué (`connectNulls: false`).
  *
  * D5 : un match sans attendu (`kda`/`kda_expected` null ou non-fini) ne fait PAS
  * avancer le cumul (report de la dernière valeur), mais figure quand même sur
  * l'axe. Masqué par `useCapability('expected_stats')` (Halo 5 = pas d'attendu →
- * null). Tooltip : cumul / réel / attendu / écart du match (« — » si absent).
+ * null). Tooltip : cumul écart / réel du match / attendu du match / écart du
+ * match (« — » si absent).
  */
 import { useMemo, type ReactNode } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
+import { resolveToken } from '@/lib/accessibility'
 import {
   getEChartsThemeColors,
   getAxisBase,
+  getLegendBase,
   getTooltipBase,
   CHART_BG,
   escapeHtml,
@@ -35,11 +43,11 @@ import { buildMatchCategories } from './matchLabels'
 import { ChartFromOption } from './ChartFromOption'
 
 export interface FdaGapCumulativeLabels {
-  /** Libellé de la série cumulée (tooltip). */
+  /** Libellé de la série cumulée (tooltip + légende). */
   series: string
-  /** Libellé « réel » (tooltip). */
+  /** Libellé « réel » du match (tooltip). */
   real: string
-  /** Libellé « attendu » (tooltip). */
+  /** Libellé « attendu » du match (tooltip + légende de la courbe par-match, axe secondaire). */
   expected: string
   /** Libellé de l'écart du match (tooltip). */
   gap: string
@@ -72,7 +80,9 @@ export function buildFdaGapCumulativeOption(
   // illisibles avec interval:0), aligné sur SessionFdaGapCumulative.
   const interval = points.length > 30 ? Math.floor(points.length / 12) : 0
   const values = points.map((p) => p.cumulative)
+  const expectedValues = points.map((p) => p.expected)
   const gradient = divergentZeroGradient(values)
+  const expectedColor = resolveToken('chart-series-2')
 
   return {
     backgroundColor: CHART_BG,
@@ -95,6 +105,10 @@ export function buildFdaGapCumulativeOption(
         )
       },
     },
+    legend: {
+      ...getLegendBase(tc),
+      data: [labels.series, labels.expected],
+    },
     xAxis: {
       ...axis,
       type: 'category',
@@ -102,6 +116,8 @@ export function buildFdaGapCumulativeOption(
       data: categories,
       axisLabel: { ...(axis.axisLabel as Record<string, unknown>), interval },
     },
+    // Axe Y UNIQUE (retour utilisateur 2026-07-24 : le double axe rendait le
+    // graphe illisible — écart cumulé et FDA attendu sont dans la même unité FDA).
     yAxis: { ...axis, type: 'value' },
     series: [
       {
@@ -121,6 +137,16 @@ export function buildFdaGapCumulativeOption(
           label: { show: false },
           data: [{ yAxis: 0 }],
         },
+      },
+      {
+        // FDA attendu PAR MATCH (pas cumulé) — courbe fine sur le MÊME axe que
+        // l'aire (même unité FDA). `expected` null → point troué.
+        type: 'line',
+        name: labels.expected,
+        data: expectedValues,
+        symbol: 'none',
+        connectNulls: false,
+        lineStyle: { width: 1, color: expectedColor, type: 'dashed' },
       },
     ],
   }

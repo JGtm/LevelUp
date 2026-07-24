@@ -35,7 +35,7 @@ fr = "Timeline K/D par match"
 en = "K/D timeline per match"
 
 [timeseries.summary.kda_kills]
-fr = "Kills"
+fr = "Frags"
 en = "Kills"
 
 [timeseries.summary.kda_deaths]
@@ -47,7 +47,7 @@ fr = "K/D"
 en = "K/D"
 
 [timeseries.summary.kda_y_axis_left]
-fr = "Kills / Morts"
+fr = "Frags / Morts"
 en = "Kills / Deaths"
 
 [timeseries.summary.kda_y_axis_right]
@@ -77,7 +77,7 @@ fr = "Score net cumulé"
 en = "Cumulative net score"
 
 [timeseries.cumul.net_series_label]
-fr = "Kills – Morts cumulés"
+fr = "Frags – Morts cumulés"
 en = "Cumulative kills – deaths"
 
 [timeseries.cumul.rolling_title]
@@ -115,7 +115,7 @@ fr = "Pente K/D"
 en = "K/D slope"
 
 [timeseries.form.winrate_slope]
-fr = "Pente Win Rate"
+fr = "Pente du taux de victoire"
 en = "Win rate slope"
 
 [timeseries.form.r_squared]
@@ -175,11 +175,11 @@ fr = "K/D"
 en = "K/D"
 
 [timeseries.distributions.kills_title]
-fr = "Distribution Kills"
+fr = "Distribution des frags"
 en = "Kills distribution"
 
 [timeseries.distributions.kills_axis_x]
-fr = "Kills / match"
+fr = "Frags / match"
 en = "Kills / match"
 
 [timeseries.distributions.accuracy_title]
@@ -199,11 +199,11 @@ fr = "Score / min"
 en = "Score / min"
 
 [timeseries.distributions.rolling_wr_title]
-fr = "Distribution Win Rate glissant"
+fr = "Distribution du taux de victoire glissant"
 en = "Rolling win rate distribution"
 
 [timeseries.distributions.rolling_wr_axis_x]
-fr = "Win Rate (%)"
+fr = "Taux de victoire (%)"
 en = "Win rate (%)"
 
 [timeseries.distributions.correlations_title]
@@ -310,8 +310,9 @@ en = "Average life (s)"
 fr = "Tendance"
 en = "Trend"
 
-# Écart cumulé au FDA attendu (D1 + retouche UX 2026-07-23) — aire cumulée
-# signée réel vs attendu, MÊME forme que Sessions (SessionFdaGapCumulative).
+# Écart cumulé au FDA attendu (D1 + retouche UX 2026-07-24) — aire cumulée
+# signée réel vs attendu + courbe FDA attendu par match (axe secondaire), MÊME
+# forme que Sessions (SessionFdaGapCumulative).
 [timeseries.summary.fda_gap_title]
 fr = "Écart cumulé au FDA attendu"
 en = "Cumulative KDA gap to expected"
@@ -465,12 +466,29 @@ fr = "Folie meurtrière (max)"
 en = "Killing spree (max)"
 
 [timeseries.progression.perfect_kills]
-fr = "Kills parfaits"
+fr = "Frags parfaits"
 en = "Perfect kills"
 
 [timeseries.progression.rank_score_title]
 fr = "Rang et score personnel"
 en = "Rank and personal score"
+
+# XP de carrière (estimée) — série sur l'onglet Progression.
+[timeseries.progression.career_xp_title]
+fr = "XP de carrière (estimée)"
+en = "Career XP (estimated)"
+
+[timeseries.progression.career_xp_cumulative]
+fr = "XP de carrière cumulée sur la période affichée (estimée)"
+en = "Career XP accumulated over the displayed period (estimated)"
+
+[timeseries.progression.career_xp_per_match]
+fr = "XP estimée gagnée par match (2 × score personnel depuis nov. 2025)"
+en = "Estimated XP earned per match (2 × personal score since Nov 2025)"
+
+[timeseries.progression.career_xp_tooltip]
+fr = "Estimation : XP = multiplicateur d'éra × score personnel du match (×1 avant le 18/11/2025, ×2 depuis — Operation: Infinite). Matchs connus uniquement ; le Firefight et les playlists à multiplicateur spécial sont exclus ou approximés."
+en = "Estimate: XP = era multiplier × the match's personal score (×1 before 2025-11-18, ×2 since — Operation: Infinite). Known matches only; Firefight and playlists with special multipliers are excluded or approximated."
 
 [timeseries.progression.rank]
 fr = "Rang"

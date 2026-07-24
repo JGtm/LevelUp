@@ -68,7 +68,11 @@ type SquadRepository interface {
 	// du squad sont participants. Aucun filtre temporel — c'est la référence
 	// "avec cette escouade exacte" pour le chart Synergies et le tableau de
 	// matchs squad. Retourne nil sans erreur si squadXUIDs est vide.
-	LoadMapStatsForSquad(ctx context.Context, mainXUID string, squadXUIDs []string) (map[string]domain.MapSquadStats, error)
+	//
+	// excludeXUIDs (composition exacte) : coéquipiers connus HORS sélection —
+	// anti-join qui écarte les matchs où l'un d'eux figure sur l'équipe du main
+	// (parité avec le filtre allSquadRows). nil/vide = pas d'exclusion.
+	LoadMapStatsForSquad(ctx context.Context, mainXUID string, squadXUIDs, excludeXUIDs []string) (map[string]domain.MapSquadStats, error)
 
 	// P4.3 finale : LoadSynthesisMatches retiré (squad/teammates chargent
 	// canonical via PlayerMatchesRepository).
@@ -234,7 +238,7 @@ func (n *noopSquadRepo) LoadAssetTranslationsFR(_ context.Context, _ string, _ [
 func (n *noopSquadRepo) LoadModeTranslationsFR(_ context.Context, _ []string) (map[string]string, error) {
 	return nil, nil
 }
-func (n *noopSquadRepo) LoadMapStatsForSquad(_ context.Context, _ string, _ []string) (map[string]domain.MapSquadStats, error) {
+func (n *noopSquadRepo) LoadMapStatsForSquad(_ context.Context, _ string, _, _ []string) (map[string]domain.MapSquadStats, error) {
 	return nil, nil
 }
 

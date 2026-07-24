@@ -76,6 +76,11 @@ type HLSTranscodeParams struct {
 	// local ; le HLS reste servi, le source reste la copie maître). Résolu en amont
 	// par config.ResolveMediaDeleteSource (env > store > isProd).
 	DeleteSource bool
+	// ManualAudioRoles : rôle déclaré de chaque piste audio source (voix/jeu/autres),
+	// chargé par l'appelant depuis le réglage média du joueur AVANT BuildHLS. Non
+	// vide ⇒ mapping audio manuel (bypass NNLS). Vide ⇒ analyse automatique. Propagé
+	// tel quel à mediapkg.HLSOptions.ManualAudioRoles.
+	ManualAudioRoles []string
 }
 
 // DetectHLSNeeded probe le fichier et décide s'il doit être transcodé en HLS
@@ -218,7 +223,7 @@ func finalizeMediaHLS(ctx context.Context, dbPath, fileRel, hlsRel string) error
 //     ultérieurement par le backfill).
 func RunHLSTranscode(ctx context.Context, p HLSTranscodeParams) error {
 	log := slog.With("module", logModuleMedia)
-	res, err := mediapkg.BuildHLS(ctx, p.SourceAbs, p.OutDir, mediapkg.HLSOptions{})
+	res, err := mediapkg.BuildHLS(ctx, p.SourceAbs, p.OutDir, mediapkg.HLSOptions{ManualAudioRoles: p.ManualAudioRoles})
 	if err != nil {
 		log.ErrorContext(ctx, "RunHLSTranscode: BuildHLS échoué — média laissé en remux legacy",
 			"source", p.SourceAbs, "err", err)

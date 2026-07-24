@@ -22,6 +22,33 @@ func TestNormalizeLang(t *testing.T) {
 	}
 }
 
+func TestRankCatalog_MaxRank(t *testing.T) {
+	t.Parallel()
+
+	// Catalog non trié : MaxRank retourne l'entrée du rank_id le plus élevé.
+	cat := NewRankCatalog("halo_infinite", []RankEntry{
+		{ID: 100, Title: map[string]string{"en": "Colonel", "fr": "Colonel"}},
+		{ID: 272, Title: map[string]string{"en": "Hero", "fr": "Héros"}},
+		{ID: 1, Title: map[string]string{"en": "Recruit", "fr": "Recrue"}},
+	})
+	e, ok := cat.MaxRank()
+	if !ok || e.ID != 272 {
+		t.Fatalf("MaxRank = (%+v, %v), want ID 272", e, ok)
+	}
+	if fr, _ := e.FullLabel("fr"); fr != "Héros" {
+		t.Errorf("FullLabel(fr) = %q, want Héros", fr)
+	}
+
+	// Catalog vide / nil → (zero, false).
+	if _, ok := NewRankCatalog("x", nil).MaxRank(); ok {
+		t.Error("MaxRank sur catalog vide devrait retourner ok=false")
+	}
+	var nilCat *RankCatalog
+	if _, ok := nilCat.MaxRank(); ok {
+		t.Error("MaxRank sur catalog nil devrait retourner ok=false")
+	}
+}
+
 const expectedFullLabel = "Bronze I BRONZE"
 
 func TestRankEntry_FullLabel(t *testing.T) {

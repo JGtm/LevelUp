@@ -53,20 +53,24 @@ export const Route = createFileRoute('/players/$')({
 function LegacyPlayersRedirect() {
   const isBootstrapped = useAppShellStore((s) => s.isBootstrapped)
   const currentTitleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const locale = useAppShellStore((s) => s.locale)
   const location = useLocation()
   const router = useRouter()
 
   const pathname = location.pathname
   // Le splat n'est PAS démonté synchroniquement par le replace : il re-rend d'abord
-  // avec la NOUVELLE location /t/… (transition en vol, cf. en-tête COURSE POST-REPLACE).
-  // isLegacyPath distingue le pathname RÉELLEMENT legacy de cette location transitoire —
-  // sans quoi la branche finale « → index » écraserait la redirection correcte.
+  // avec la NOUVELLE location /{lang}/t/… (transition en vol, cf. en-tête COURSE
+  // POST-REPLACE). isLegacyPath distingue le pathname RÉELLEMENT legacy de cette
+  // location transitoire — sans quoi la branche finale « → index » écraserait la
+  // redirection correcte.
   const isLegacyPath = pathname === '/players' || pathname.startsWith('/players/')
 
-  // Décision PURE (D-5), gatée bootstrap (trou n°1 D-8) ET pathname legacy.
+  // Décision PURE (D-5), gatée bootstrap (trou n°1 D-8) ET pathname legacy. On ÉMET le
+  // segment de langue (locale de session) au premier hop (I10) : le bookmark legacy
+  // atterrit directement sur /{locale}/t/… (langue visible), puis héritée par la nav.
   const redirect =
     isBootstrapped && isLegacyPath
-      ? buildLegacyRedirect(pathname, location.searchStr, location.hash, currentTitleSlug)
+      ? buildLegacyRedirect(pathname, location.searchStr, location.hash, currentTitleSlug, locale)
       : null
   const href = redirect?.href ?? null
 

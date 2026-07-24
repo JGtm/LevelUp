@@ -1,3 +1,252 @@
+## [2026-07-24] XP de carrière estimée (Timeseries) — Lots B1 (backend) + B2 (front)
+
+**Statut** : Complété côté code (branche `feat/v7.1-backlog`, sans commit — gates go/front
+= superviseur, l'agent n'a pas les droits build/test/vet/npm). Suite du plan
+`.ai/PLAN_XP_CARRIERE_ESTIMEE_2026-07.md`.
+
+**Décision technique principale** :
+- Chaîne title-agnostic complète, miroir exact du précédent damage_model/engagement :
+  `constants.toml [[career_xp_eras]]` → `mappings.CareerXPEra` (dates parsées au boot) →
+  `games.CareerXPErasFor` (+ `DefaultCareerXPEras` fallback) → `analysis.EstimateCareerXP`
+  (fonction pure) → service. Capability fine `analytics.career_xp_estimate` (opt-in strict,
+  Infinite only), testée via `CapabilityMap.Has` (jamais `slug ==`).
+- Grain per-match = champ additif `CareerXPEstimated *int` sur `TimeseriesMatchRow` (pattern
+  établi des séries per-match ; découvert par exploration du stack Timeseries), peuplé dans
+  `buildMatchRows`. Aucune requête SQL ajoutée (`personal_score`/`is_firefight`/`start_time`
+  déjà projetés). Borne d'éra sur `StartTime` (canonique projeté), PAS `end_time_utc`
+  (non projeté ; ajout inutile — borne à la journée) — écart au plan assumé et justifié.
+- Front : chart `TimeseriesCareerXP` (cumul ligne + XP/match barres), gate DATA-DRIVEN
+  (`match_rows.some(career_xp_estimated != null)` — pas de slug), logique extraite pure
+  (`careerXpSeries.ts`) + testée ; i18n FR/EN (4 clés) + tooltip méthodo ; tokens (0 hex).
+
+**Résultats observés** : code écrit avec vérif sur pièces des signatures/champs (loader,
+resolver, StatsMatchRow, capability whitelist count 18→19). Non compilé par l'agent →
+gates délégués. openapi.yaml édité manuellement (style omitempty comme `max_killing_spree`).
+
+**Conclusion / prochaine étape** (superviseur) : `gofmt -w` Go touchés → gates Go
+(`go test ./...` + vet + lint) → `make generate-types` → build i18n manifests →
+`make check-types` + `make test-web` → revue visuelle JGtm (B3.3) → thought_log de clôture.
+
+## [2026-07-24] XP de carrière estimée (Timeseries) — Lot B0 calibration
+
+**Statut** : Complété (branche `feat/v7.1-backlog`, sans commit — gate superviseur).
+Exécution du plan `.ai/PLAN_XP_CARRIERE_ESTIMEE_2026-07.md` sous contrat plan-execution.
+
+**Décision technique principale** :
+- Mesures lecture seule sur parquets staging du 23/07 (diag_parquet_q, droits go exclusifs).
+- Formule `×2 × personal_score` validée sur les 3 joueurs suivis : 86/87 fenêtres à un seul
+  match propres à ±1 % du delta xp_total réel (JGtm 28/29, Madina 28/28, Chocoboflor 30/30).
+  Méthode = « une transition distincte d'xp_total = un match PvP en base », miroir des paires
+  gardes 6 min. Toutes les fenêtres sont post-18/11 (snapshots démarrent 2026-02/03) → le ×1
+  pré-doublement est invérifiable localement (B0.2 = `[!]`, source officielle seule).
+- Layering tranché sur pièces : `internal/domain` importe déjà games (cycle si type d'éra
+  dans domain) → type `CareerXPEra` dans `mappings` (précédent damage_model/engagement),
+  fonction pure dans `analysis` (qui importe déjà `games/mappings`), résolveur+défaut dans
+  `games` (miroir `EffectiveHpToKill`). Capability fine `analytics.career_xp_estimate`.
+
+**Résultats observés** :
+- Part d'XP « invisible » (fenêtres à 0 match connu) : JGtm 0,37 % · Chocoboflor 3,07 % ·
+  Madina 5,83 % — tous < 10 % → PAS de chantier audit sync PvE (aucun Firefight en base).
+- Oracle : la fenêtre JGtm Δxp=173 230 (re-crédit serveur 25/05, rang 179→184) confirme
+  qu'il ne faut PAS tracer xp_total brut ; correctement écartée par la méthode 1-match.
+- Éras versionnées ajoutées à `config/titles/halo_infinite/constants.toml` (`[[career_xp_eras]]`).
+
+**Conclusion / prochaine étape** : B0 clos. Enchaîner B1 (backend : loader mappings +
+résolveur games + fonction analysis + capability + service + openapi manuel).
+
+## [2026-07-24] I16 — Tri par en-têtes généralisé à tous les tableaux de l'app
+
+**Statut** : Complété (branche `feat/v7.1-backlog`, sans commit — gate superviseur).
+
+**Décision technique principale** :
+- Réutilisation stricte des patterns EXISTANTS plutôt qu'invention d'un nouveau système :
+  helpers `explorerMatchesClientSort.ts` (NUMERIC_SORT/dateTimeSortingFn/localeTextSortingFn)
+  pour tout tableau TanStack ; pattern DetectionsPanel minimal (clic direct sur `<th>`,
+  pas de bouton) pour MatchScoreboard/MatchEncountersTable (nouveau fichier partagé
+  `features/match-view/sortHeader.ts` : ariaSortOf/sortSuffixOf, 2 usages) ; pattern
+  hand-rolled SortableTh pour les tableaux natifs Carrière/Admin.
+- **Nouveau composant partagé** `components/ui/sortable-th.tsx` (SortableTh) + garde-rail
+  `sortable-th.guard.test.ts` (pattern `import.meta.glob` calqué sur metric-trend.guard.test.ts) :
+  8 consommateurs (CareerEncountersSection, CareerTopMatchesTable, ApiHaloSection ×2,
+  ConvergencePlayersTable, PostSyncMatrix, AdminTitlesPage, WatcherSection,
+  DBContentionSection, AdminJobsTable). EXEMPTION datée : `LeaderboardBlock.tsx` garde sa
+  copie locale (pré-existante, hors périmètre du chantier — citée uniquement comme
+  référence de pattern par le plan).
+- `ExplorerMatchesTable` : ajout prop `defaultSort` (état de tri initial surchargeable)
+  pour que les nouveaux consommateurs `sortable` ne cassent pas un ordre serveur
+  non-date-desc (session ASC, Carrière « Matchs marquants » curée par score). Fix
+  `enableSorting` sur les `extraColumns` sans accessorFn : un `enableSorting:false`
+  explicite du consommateur est désormais RESPECTÉ (avant : toujours écrasé par
+  `sortable`, ce qui aurait rendu « Δ rang » faussement triable).
+- **Découverte hors-liste** : `TimeseriesPage.progression.tsx` utilise aussi
+  `ExplorerMatchesTable` (4e consommateur non cité par le plan) — `sortable` activé +
+  colonne injectée `expected_win_prob` rendue réellement triable (accessorFn + NUMERIC_SORT).
+- Exceptions documentées par commentaire (pas de tri) : `SquadImpactScoreboard` (l'ordre
+  EST le classement Champion/Maillon faible), `SyncPlayersTable` (tri fixe
+  failed→ok→skipped intentionnel), `LeaderboardPP` (scaffold sans données réelles),
+  mini-tableau `CoreSummaryCard` dans `PalmaresRelationsPage.tsx` (aperçu sans `<thead>`).
+
+**Résultats observés** : ~40 fichiers touchés (16 composants modifiés + 3 nouveaux fichiers
+partagés + ~14 fichiers de test nouveaux/étendus). i18n : 1 nouvelle clé bilingue
+(`squad/i18n.ts` → `history.sortByAriaLabel`, parité vérifiée par `i18n.test.ts` existant).
+Gates NON exécutés (interdiction go/npm/tsc/vitest — gate superviseur) : tests écrits par
+raisonnement statique sur les types générés (`lib/api/generated.ts`) et les manifests i18n
+FR réels (pas de mock `useAdminT`/`useSquadText` sauf convention préexistante du fichier).
+
+**Points de vigilance** : (1) `check-types`/`test-web`/lint JAMAIS exécutés dans cette
+session — à faire tourner avant tout commit ; (2) plusieurs nouveaux fichiers de test
+supposent la locale par défaut `fr` du store Zustand (vérifiée dans le code, pas testée
+en CI) ; (3) `LeaderboardBlock.tsx` a une 2e implémentation de facto de SortableTh, non
+migrée (dette notée, garde-rail l'exempte explicitement) ; (4) IssueTable : nouvel accessoir
+`IssueColumn.sortValue` optionnel — les colonnes existantes sans `sortValue` restent
+non-triables même avec `sortable` (comportement voulu, pas un oubli).
+
+## [2026-07-24] Citations I7 — 3 décisions utilisateur (Firefight wins / Splatter / flag_defender)
+
+**Statut** : Complété (branche `feat/v7.1-backlog` ; suite du fix I7, sans commit — gate superviseur).
+
+**Décisions techniques principales** :
+- `player_vs_everything` (« Éliminations Firefight ») compte désormais les VICTOIRES en
+  Baptême du feu. Plutôt que d'introduire un stat `firefight_wins` (proposé au brief), on
+  RÉUTILISE la fonction custom `compute_wins_firefight` déjà implémentée + enregistrée
+  (`citations_custom.go`) mais jusqu'ici NON liée (dead code que la doc signalait comme
+  candidate). Bascule seed pve_stat/`total_enemy_kills` → custom/`compute_wins_firefight`,
+  tier recalibré kills x00 → `tierTargets5_10_15_25_50` (aligné sur flag/slayer/strongholds
+  victory). Zéro changement au loader `citations.go` : `ctx.Outcome`/`ctx.IsFirefight`
+  suffisent déjà. Réco assumée (règle 14 « vérifier l'existant » + règle 7 « 0 code mort »).
+- `road_trip` (« Virée sur la route ») remappée sur la médaille d'écrasement Splatter
+  `221693153` (catégorie vehicles, EN « Splatter », cible de la citation `splatter`) —
+  faisceau concordant. Ancien `3169118333` désormais non référencé. Palier Spartan Company
+  élevé conservé (grind long) ; duplication médaille intentionnelle comme splatter/lawnmower.
+- `flag_defender` (« Défenseur du drapeau ») DÉSACTIVÉE (Enabled=false) : aucun award
+  d'ingestion ne mesure la défense de son PROPRE drapeau (`carrier_killed` = kill du porteur
+  ENNEMI = flag_carrier_hunter). Candidat futur : `carrier_stopped`.
+- Aucun composite impacté : les 3 citations ne sont enfants d'aucun composite (vérifié).
+
+**Résultats observés** : 3 struct literals seed édités ; doc `COMMENDATIONS_REFERENCE.md`
+alignée (driver 2926348688, road_trip 221693153, player_vs_everything custom, disabled +1,
+section « unbound custom function » retirée). Tests ajoutés (pure data, hors cgo) :
+`seed_citation_mappings_test.go` (état décidé des 3) + câblage moteur
+`TestPlayerVsEverything_FirefightWinsThroughEngine` (halo_infinite). Gates NON exécutés
+(interdiction go/npm — gate superviseur). Recalcul prod requis après merge :
+`seed citation-mappings` puis `backfill --all --citations-recompute-all`.
+
+**Points de vigilance** : (1) déviation assumée du brief (firefight_wins → réutilisation
+compute_wins_firefight) — reverer trivialement si refus ; (2) mojibake pré-existant
+`"baptÃªme"` dans `computeWinsFirefight` (hors périmètre — le chemin `IsFirefight` primaire
+n'en dépend pas) ; (3) miroir FR `docs/FR/CITATIONS_REFERENCE.md` non mis à jour (brief
+scopé EN) ; (4) `total_enemy_kills` reste exposé par `loadPveStats` (loader générique,
+testé) mais plus consommé par aucune citation.
+
+## [2026-07-24] Chantier backlog Notion « Pour la v7.1 » — vagues 1+2 (12 items)
+
+**Statut** : Complété (branche `feat/v7.1-backlog` ; plan `.ai/V7.1/PLAN_V71_BACKLOG_2026-07-24.md`).
+Mode supervision : 11 agents d'investigation (V0) puis 8 agents d'implémentation ;
+gates et commits par le superviseur.
+
+**Décisions techniques principales** :
+- I13 (historique escouade) : prédicat de composition EXACTE centralisé
+  (`filterExactComposition`, pool = amis ∪ top-teammates \ sélection) appliqué aux
+  3 maillons (intersection GetPage, briefing, Q42 anti-join) + garde-rail grep
+  `no_raw_squad_intersection_test.go`. Best-effort loggé WARN si LoadMainTeamParticipants
+  échoue (jamais d'écran vide).
+- I14 (compo player-agnostic) : résolution par XUID absolu du joueur courant
+  (SquadContext.currentPlayerXuid), `findSquadByRoster` clé-xuid ; backfill append-only
+  `levelup backfill-squad-creators` (ADR 0022, serveur arrêté) pour réinjecter les
+  créateurs des escouades legacy.
+- I7 (citations) : loader stats PvE (`pve_match_stats_latest`, ADR 0026) injecté dans
+  les 3 chemins de recompute ; `grenade_kills` ajouté au SELECT ; `driver` remappé
+  3169118333→2926348688 (Wheelman) ; road_trip + flag_defender EN ATTENTE décision user
+  (commentaires datés). Recalcul à lancer : `seed citation-mappings` puis
+  `backfill --all --citations-recompute-all`.
+- I12 : tri chronologique de première apparition déplacé côté Go (computeMapBreakdown,
+  pattern heatmap) ; front = top-20 par fréquence AFFICHÉ en ordre chrono ; builder mort
+  winRateVsHistoryChart supprimé. I9 : suffixe « (n) » expliqué par InfoTooltip.
+- I11 : cumuls réel/attendu ajoutés à cumulativeFdaGap (masque conjoint D5, identité
+  réel−attendu=gap préservée) + axe Y secondaire sur les 2 graphes (pattern dual-axis).
+- I4/I5/I6 : légende ghost-series bas centré (FragWeaponBreakdown) ; % en légende
+  sunburst + hauteur fixe partagée (SessionFragCard 320px) ; étiquettes % du total
+  joueur sur squadWeaponKillsChart (seuil 5 %, barres brutes inchangées).
+- I19 : capability `waypoint_match_url` (Infinite seulement) + préférence locale
+  `showWaypointColumn` (settingsDraftStore) + helper canonique `buildWaypointMatchUrl`
+  avec garde-rail grep (tests exclus du scan — assertions littérales = contrat) ;
+  logos détourés par le superviseur (ffmpeg, rampe alpha 200/150).
+- I8 : `--keep-storage` (no-op déprécié, cause de la saturation du 23/07) →
+  `--max-used-space` ; image prune `until=24h` (rollback N-1) ; garde pré-build <10 Go ;
+  unités systemd versionnées `scripts/systemd/` (installation VPS = feu vert user).
+
+**Résultats observés (gates)** : tsc -b (cache purgé) 0 erreur ; vitest 338 fichiers
+2914 passés (après fix garde-rail waypoint : exclusion des .test du scan) ; eslint
+0 erreur / 9 warnings incompatible-library (baseline+1, useReactTable retravaillé) ;
+gofmt corrigé (2 fichiers agent) ; go build/vet OK ; go test paquets touchés OK
+(+ allowlist shared_social justifiée pour le backfill) ; intégration `-tags=integration
+-p 1` : internal/sync complet 103 s OK + exclusion compo OK ; golangci-lint
+`--new-from-merge-base=origin/main` : 0 issue.
+
+**Conclusion / prochaine étape** : commits par item puis vague 3 (I15 anglicismes,
+I10 locale URL, I16 tri tableaux, I1 véhicules H5) et vague 4 (I2 médias, I20 Explorer,
+plan XP carrière + I3). Backfills data (squad creators dry-run, recalcul citations)
+après arrêt serveur. Passe visuelle utilisateur en fin de lot. Push = deploy prod :
+feu vert requis.
+
+---
+## [2026-07-24] I18 — titres d'onglet navigateur locale-aware (mécanisme unique)
+
+**Statut** : Complété (branche `feat/v7.1-backlog`, non committé — le superviseur gère
+git). Pas de commande go/npm/vitest exécutée (interdit pour cet agent) : vérification
+par relecture sur pièces uniquement.
+
+**Décision technique principale** : `resolvePageTitle(pathname, locale)` — la table
+`RouteTitleRule.title` passe de `string` (FR figé) à `Record<Locale,'fr'|'en'>` typé.
+`__root.tsx` garde l'unique effet, keyé `[pathname, locale]` (locale vient du store
+`useAppShellStore`, comme partout ailleurs dans le repo — pas de hook `useLocale`
+dédié). Les 3 effets locaux dupliqués (MedalsPage, ComparePage, UnifiedCitationsPage)
+supprimés — ils étaient de toute façon écrasés par le résolveur global rejoué après
+eux à chaque navigation (cause du symptôme). Nuance Citations (FR/EN=Citations,
+route `/career/citations`) vs Commendations (FR=Citations/EN=Commendations, route
+`/career/commendations`) reproduite dans la table par PATTERN de route (déterministe
+depuis le pathname, comme l'ancien `UnifiedCitationsPage.titleKey`).
+
+**Découverte notable** : `shellNavigation.{PLAYER_PRIMARY,PLAYER_SECONDARY}_NAV_ITEMS`
+et `GLOBAL_SHELL_LINKS` (labels FR figés, `eyebrow`/`description`) n'avaient plus AUCUN
+consommateur réel hors `pageTitle.ts` — la nav L1/L2 vit depuis longtemps dans
+`navL1Sections.tsx`/`NavL2.tsx` (locale-aware via `commonManifest`). Supprimés avec
+leur test (règle CLAUDE.md n°7, 0 code mort) — c'est CE changement qui les rendait
+orphelins, pas une dette pré-existante trouvée par hasard.
+
+**Trous comblés (au-delà des 2 signalés)** : `/career/medals`, `/squad/dynamique`
+(libellé aligné sur `features/squad/i18n.ts` `nav.dynamique` = Dynamique/Dynamics,
+PAS la suggestion initiale « Dynamique d'escouade » — cohérence avec le tab réel),
+`/home`, `/community`, `/community/prestige`, `/squad`, `/media`, `/explorer` (perdus
+avec la suppression de la dérivation nav), et — trou non signalé au départ — les 5
+sous-onglets `/admin/{management,data,detections,sync,system}` : le pattern `/admin`
+était ANCRÉ (`^\/admin\/?$`) et ne matchait AUCUN enfant, tous retombaient sur le
+fallback.
+
+**Résultats observés (vérification par relecture, pas d'exécution)** : `pageTitle.ts`
+172 L (budget 500 L respecté). Garde-rail `pageTitle.test.ts` : scan `src/routes/**`
+(même convention que `no-title-literals.ratchet.test.ts` : `@vitest-environment
+node`, fs/readdirSync) — énumère chaque fichier de route réel (`component:` présent,
+hors 5 layouts purs + 1 splat legacy + 14 redirects `beforeLoad`-only déjà
+transitoires avant ce fix) et vérifie un titre non-fallback FR+EN ; ~44 fixtures
+attendues. Vérifié à la main : regex d'extraction de path (multi-ligne
+`createFileRoute(\n  '...'`), convention TanStack `career_` → `career` (trailing
+underscore, confirmé via `routeTree.gen.ts`), substitution des `$params`, non-
+collision avec le garde-rail `no-title-literals.ratchet.test.ts` (aucun littéral
+`'/players/` ou `` `/t/ `` introduit — vérifié par grep ciblé sur les 2 patterns).
+
+**Découverte hors périmètre (non traitée)** : 3 clés i18n désormais orphelines
+(`medals.page_title`, `citations.page_title`, `citations.section.commendations`) —
+pas de lint qui détecte les clés manifest inutilisées, donc aucun gate cassé ; les
+supprimer proprement demande d'éditer les TOML source + régénérer les `.ts` (outillage
+que cet agent n'a pas le droit d'exécuter). À traiter dans un futur passage i18n.
+
+**Conclusion / prochaine étape** : le superviseur doit faire tourner `make
+check-types` + `make test-web` (gates interdits à cet agent) avant tout commit/push —
+en particulier confirmer les ~44 fixtures du garde-rail et l'absence de régression
+sur `shellNavigation.test.ts` / `__root.test.tsx` (nouveau test de réactivité locale).
+
+---
 ## [2026-07-24] Retouches visuelles Dynamique (passe utilisateur)
 
 **Statut** : Complété (branche `fix/dynamique-retouches`, base main mergé).

@@ -47,6 +47,42 @@ describe('buildFragWeaponBreakdownOption', () => {
     expect(opt.series).toBeUndefined()
   })
 
+  it('I4 : légende des classes en bas, centrée (une entrée par classe représentée, ordre de première apparition)', () => {
+    const opt = buildFragWeaponBreakdownOption(WEAPONS, LABELS) as {
+      legend: { left?: string; bottom?: number; data?: string[] }
+      grid: { bottom: number }
+    }
+    // reverse() → ordre de balayage Inconnue (pas de classe), Épée (melee), BR75 (shoulder).
+    expect(opt.legend.data).toEqual(['class:melee', 'class:shoulder'])
+    expect(opt.legend.left).toBe('center')
+    expect(opt.legend.bottom).toBe(0)
+    // Le grid réserve de la place en bas pour la légende (pas de chevauchement).
+    expect(opt.grid.bottom).toBeGreaterThan(8)
+  })
+
+  it('I4 : la série réelle reste en premier (contrat testé), les séries fantômes de légende suivent', () => {
+    const opt = buildFragWeaponBreakdownOption(WEAPONS, LABELS) as {
+      series: Array<{ name?: string; data: unknown[]; silent?: boolean }>
+    }
+    expect(opt.series[0].data).toHaveLength(3) // série réelle (données des barres)
+    const ghosts = opt.series.slice(1)
+    expect(ghosts).toHaveLength(2)
+    for (const g of ghosts) {
+      expect(g.data).toHaveLength(0)
+      expect(g.silent).toBe(true)
+    }
+  })
+
+  it('I4 : aucune arme avec classe résolue → pas de légende, grid inchangé', () => {
+    const noClass: SynthesisWeaponKillEntry[] = [{ label: 'Inconnue', kills: 2 }]
+    const opt = buildFragWeaponBreakdownOption(noClass, LABELS) as {
+      legend: { show?: boolean }
+      grid: { bottom: number }
+    }
+    expect(opt.legend.show).toBe(false)
+    expect(opt.grid.bottom).toBe(8)
+  })
+
   it('survol lié : hoveredClass estompe les armes des AUTRES classes, garde la classe survolée', () => {
     const opt = buildFragWeaponBreakdownOption(WEAPONS, LABELS, 'shoulder') as {
       series: { data: Array<{ classKey?: string; itemStyle: { opacity: number } }> }[]

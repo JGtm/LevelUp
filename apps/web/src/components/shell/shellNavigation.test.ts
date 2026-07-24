@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  PLAYER_PRIMARY_NAV_ITEMS,
   resolveIndexRedirect,
   resolvePlayerFallback,
   resolvePlayerSwitch,
@@ -40,15 +39,6 @@ describe('resolvePlayerFallback', () => {
 
   it('aucun joueur disponible → index', () => {
     expect(resolvePlayerFallback('anyone', [])).toEqual({ kind: 'index' })
-  })
-})
-
-describe('PLAYER_PRIMARY_NAV_ITEMS', () => {
-  it('place Communauté avant Carrière dans le parcours principal', () => {
-    const labels = PLAYER_PRIMARY_NAV_ITEMS.map((item) => item.label)
-
-    expect(labels.indexOf('Communauté')).toBeGreaterThanOrEqual(0)
-    expect(labels.indexOf('Communauté')).toBeLessThan(labels.indexOf('Carrière'))
   })
 })
 

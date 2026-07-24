@@ -1,14 +1,15 @@
 /**
  * CareerSummaryCard — carte de résumé rang + XP.
  * Jauges arc SVG (C1/C2 NATIVE_COMPONENTS.md) avec stats détaillées sous chaque
- * jauge : XP prochain rang, image+nom rang actuel/prochain, XP restante Héros,
- * rang X/272.
+ * jauge : XP prochain rang, image+nom rang actuel/prochain, XP restante,
+ * rang X/N (N = total de rangs du titre, porté par le payload — title-agnostic).
  */
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { RankProgressGauge } from '@/components/ui/rank-progress-gauge'
 import { careerManifest } from '@/lib/i18n/generated/career'
-import type { ManifestLocale } from '@/lib/i18n/format'
+import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
+import { heroMaxRankName } from './CareerChartsSection.gauges'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { intlLocale as toIntlLocale } from '@/lib/formatters'
 import type { CareerSummary, HeroProgress, CareerProjections } from '@/lib/api/types'
@@ -19,18 +20,8 @@ interface Props {
   projections: CareerProjections | null
 }
 
-// Nombre total de rangs « Héros » par titre, utilisé UNIQUEMENT comme filet quand
-// le backend n'a pas fourni heroProgress.total_ranks (rare : dégradation career).
-// Halo Infinite = 272 career ranks ; Halo 5 = 152 Spartan Ranks. Source nominale =
-// total_ranks (porté par l'adapter du titre côté Go) ; ces constantes ne servent
-// qu'en repli pour ne pas afficher « X/272 » sur un joueur Halo 5.
-const HERO_RANK_TOTAL_FALLBACK_HINF = 272
-const HERO_RANK_TOTAL_FALLBACK_H5 = 152
-const TITLE_SLUG_HALO_5 = 'halo_5'
-
 export function CareerSummaryCard({ summary, heroProgress, projections }: Props) {
   const locale = useAppShellStore((s) => s.locale) as ManifestLocale
-  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const intlLocale = toIntlLocale(locale)
 
   if (!summary) {
@@ -45,11 +36,6 @@ export function CareerSummaryCard({ summary, heroProgress, projections }: Props)
 
   const nextRankName =
     locale === 'fr' ? summary.next_rank_name_fr : summary.next_rank_name_en
-  const fallbackTotalRanks =
-    titleSlug === TITLE_SLUG_HALO_5
-      ? HERO_RANK_TOTAL_FALLBACK_H5
-      : HERO_RANK_TOTAL_FALLBACK_HINF
-  const totalRanks = heroProgress?.total_ranks ?? fallbackTotalRanks
 
   return (
     <Card>
@@ -118,11 +104,13 @@ export function CareerSummaryCard({ summary, heroProgress, projections }: Props)
             )}
           </div>
 
-          {/* C2 — Progression Héros + détails */}
+          {/* C2 — Progression vers le rang max + détails */}
           {heroProgress && (
             <div className="flex flex-col items-center gap-3">
               <RankProgressGauge
-                title={careerManifest['career.charts.hero_progress'][locale]}
+                title={formatMessage(careerManifest, 'career.charts.max_rank_progress', locale, {
+                  rank: heroMaxRankName(heroProgress, locale),
+                })}
                 progressPct={heroProgress.percentage / 100}
                 subtitle={`${(heroProgress.xp_total_required - heroProgress.xp_remaining).toLocaleString(intlLocale)} / ${heroProgress.xp_total_required.toLocaleString(intlLocale)} XP`}
                 size={200}
@@ -142,7 +130,7 @@ export function CareerSummaryCard({ summary, heroProgress, projections }: Props)
                     {careerManifest['career.summary.rank_position'][locale]}
                   </div>
                   <div className="text-sm font-semibold">
-                    {heroProgress.current_rank}/{totalRanks}
+                    {heroProgress.current_rank}/{heroProgress.total_ranks}
                   </div>
                 </div>
               </div>

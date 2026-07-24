@@ -9,6 +9,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/legacymatch"
 )
 
@@ -415,7 +416,10 @@ func buildCorrelationPoints(matches []legacymatch.StatsMatchRow) []domain.Correl
 // masquée) au lieu de fabriquer une valeur.
 // assistsExpected : map match_id → assists attendus (batch per-mode, is_me).
 // nil/absent → l'attendu FDA dégrade en K/D pur (analysis.ExpectedFDA).
-func buildMatchRows(matches []legacymatch.StatsMatchRow, provideSpree bool, assistsExpected map[string]*float64) []domain.TimeseriesMatchRow {
+// careerXPEras : éras de multiplicateur d'XP de carrière (résolues + gatées par la
+// capability analytics.career_xp_estimate côté GetPage). Vide → CareerXPEstimated
+// reste nil par ligne (série « XP de carrière (estimée) » masquée).
+func buildMatchRows(matches []legacymatch.StatsMatchRow, provideSpree bool, assistsExpected map[string]*float64, careerXPEras []mappings.CareerXPEra) []domain.TimeseriesMatchRow {
 	rows := make([]domain.TimeseriesMatchRow, 0, len(matches))
 	for i, m := range matches {
 		// KDR canonique calcule a partir des compteurs (analysis.KDR).
@@ -427,6 +431,7 @@ func buildMatchRows(matches []legacymatch.StatsMatchRow, provideSpree bool, assi
 		}
 		assistsExp := assistsExpected[m.MatchID]
 		kdaExp := analysis.ExpectedFDA(m.KillsExpected, m.DeathsExpected, assistsExp)
+		careerXP := estimateMatchCareerXP(m, careerXPEras)
 		rows = append(rows, domain.TimeseriesMatchRow{
 			MatchID:                   m.MatchID,
 			Index:                     i,
@@ -439,6 +444,7 @@ func buildMatchRows(matches []legacymatch.StatsMatchRow, provideSpree bool, assi
 			Accuracy:                  m.Accuracy,
 			Outcome:                   m.Outcome,
 			PersonalScore:             m.PersonalScore,
+			CareerXPEstimated:         careerXP,
 			DamageDealt:               m.DamageDealt,
 			DamageTaken:               m.DamageTaken,
 			PerfScore:                 m.PerfScoreComputed,
@@ -464,6 +470,18 @@ func buildMatchRows(matches []legacymatch.StatsMatchRow, provideSpree bool, assi
 		})
 	}
 	return rows
+}
+
+// estimateMatchCareerXP calcule l'XP de carrière estimée d'un match (pointeur pour
+// permettre l'exclusion propre d'un point). Retourne nil si : aucune éra (capability
+// absente), match Firefight (l'XP PvE n'entre pas dans cette estimation PvP), ou
+// personal_score absent. Sinon multiplicateur d'éra × personal_score.
+func estimateMatchCareerXP(m legacymatch.StatsMatchRow, eras []mappings.CareerXPEra) *int {
+	if len(eras) == 0 || m.IsFirefight || m.PersonalScore == nil {
+		return nil
+	}
+	xp := analysis.EstimateCareerXP(*m.PersonalScore, m.StartTime, eras)
+	return &xp
 }
 
 // ---------------------------------------------------------------------------

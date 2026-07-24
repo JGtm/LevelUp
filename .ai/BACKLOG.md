@@ -96,22 +96,6 @@ les compteurs natifs. Vérifier sur un match H5 réel (bulk weapons + counts de 
 
 ---
 
-### [data/frags] Précision par arme (Synthesis) : entrée API sans classe → recoloration par label (fragile)
-
-> Noté le 2026-07-21. Le graphe « Précision par arme » (H5, Synthesis) est recoloré par CLASSE
-> d'arme pour matcher « Détails des frags » (`fragClassColor` + survol lié). Mais l'entrée
-> `SynthesisWeaponAccuracyEntry` (openapi/backend) NE PORTE PAS la classe → elle est récupérée
-> côté FRONT en mappant le `label` depuis les kills par arme (`top_weapon_kills`). Une arme tirée
-> mais jamais utilisée pour un kill (absente des kills) n'a donc pas de classe → barre NEUTRE.
-
-**Priorité : BASSE** (décision user 2026-07-21) — on n'a qu'un TOP des armes de kill, donc le cas
-« arme tirée sans kill ET hors top » est rare/peu visible. **Fix propre si besoin** : ajouter
-`class` à `SynthesisWeaponAccuracyEntry` (schéma openapi + peuplement Go via le registre d'armes),
-puis `SynthesisWeaponAccuracyChart` lit la classe directement (retirer le mapping par label + la
-prop `weaponKills`). **Effort** : petit-moyen (backend + `make generate-types`).
-
----
-
 ### [archi/match-view] Retirer le fallback LIVE (appel API à l'ouverture de page) du Match view
 
 > Noté le 2026-07-19 (décision user). Le Match view a un fallback qui, quand un match n'est PAS
@@ -129,24 +113,6 @@ dégradation propre (« match pas encore synchronisé » / 404) plutôt qu'un fe
 sert plus qu'à ça, les tests associés — **vérifier ADR 0029 et les callers avant** (ce chemin a été
 ajouté pour les titres GAMERTAG-keyés). Effet de bord frags : sur ce chemin le breakdown par arme
 retombait en « Non attribué » (ex-D-P3-2) → disparaît avec le fallback. **Effort** : moyen.
-
----
-
-### [prod/backup] Retirer le scheduler backup in-app (redondant avec le backup systemd hôte)
-
-> Noté le 2026-07-17, DÉCISION 2026-07-18. Le backup restic **canonique** tourne au niveau
-> **hôte VPS** (timer systemd, quotidien depuis 2026-06-19, repo CHIFFRÉ `/opt/levelup/restic-repo`,
-> couvre `data/titles` + `data/auth` + config). Le scheduler backup **in-app** (Go) est
-> **redondant et inférieur** : il ferait un 2ᵉ backup des mêmes données, **non chiffré**
-> (`--insecure-no-password` forcé par `toPkgConfig`), **sur le même disque** (inutile si le
-> disque lâche) ; il cherche restic dans le conteneur (absent) et loggue un WARN au boot.
-
-**DÉCISION (user 2026-07-18)** : **retirer le code du scheduler backup in-app** (le backup
-hôte reste la source unique). La suppression éteint le WARN **par construction** (0 code mort —
-règle 7). Périmètre : débrancher/supprimer `internal/ops/backup_service.go` + `pkg/duckdbbackup`
-et le câblage au boot + le flag `backup_enabled` + les tests associés (vérifier les callers avant).
-**Étape future distincte** : réplication off-site du dépôt restic hôte (identifiants cloud/SFTP
-requis — aucun aujourd'hui). **Effort** : petit-moyen (suppression + tests).
 
 ---
 
