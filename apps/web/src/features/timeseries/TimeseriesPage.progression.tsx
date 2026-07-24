@@ -141,12 +141,30 @@ export function TimeseriesProgressionTab({
         />
       </div>
 
-      {/* Progression CSR (classé) ou LUSR (non classé) — masquée pour un titre
-          sans système de rang (CSR/LUSR). La « Répartition des frags » vit désormais
-          sur l'onglet Résumé (sunburst v2 unifié, D7) : plus de donut kill-type ici. */}
-      {hasSkillRating && (
-        <TimeseriesSkillProgression rows={data.match_rows ?? []} locale={locale} emptyMessage={emptyMsg} />
-      )}
+      {/* Progression CSR (classé) ou LUSR (non classé) | XP de carrière (estimée)
+          côte à côte (demande utilisateur 2026-07-24) ; chacun repasse pleine
+          largeur si l'autre est masqué (titre sans rang / sans capability XP).
+          La « Répartition des frags » vit désormais sur l'onglet Résumé (sunburst
+          v2 unifié, D7) : plus de donut kill-type ici. */}
+      <div className={hasSkillRating && hasCareerXP ? 'grid grid-cols-1 gap-4 lg:grid-cols-2' : ''}>
+        {hasSkillRating && (
+          <TimeseriesSkillProgression rows={data.match_rows ?? []} locale={locale} emptyMessage={emptyMsg} />
+        )}
+        {hasCareerXP && (
+          <TimeseriesCareerXP
+            title={
+              <span className="flex items-center gap-1.5">
+                {t('timeseries.progression.career_xp_title')}
+                <InfoTooltip content={t('timeseries.progression.career_xp_tooltip')} />
+              </span>
+            }
+            emptyMessage={emptyMsg}
+            rows={data.match_rows ?? []}
+            cumulativeLabel={t('timeseries.progression.career_xp_cumulative')}
+            perMatchLabel={t('timeseries.progression.career_xp_per_match')}
+          />
+        )}
+      </div>
 
       {/* timeseries.19 — Score & rang de match (générique : personal_score +
           placement). | Skill rank + Performance (CSR/LUSR, masqué sans rang).
@@ -176,24 +194,6 @@ export function TimeseriesProgressionTab({
           />
         )}
       </div>
-
-      {/* XP de carrière (estimée) — pleine largeur, gaté data-driven (capability
-          analytics.career_xp_estimate côté backend). Cumul (ligne) + XP par match
-          (barres) ; méthodologie dans l'InfoTooltip du titre. */}
-      {hasCareerXP && (
-        <TimeseriesCareerXP
-          title={
-            <span className="flex items-center gap-1.5">
-              {t('timeseries.progression.career_xp_title')}
-              <InfoTooltip content={t('timeseries.progression.career_xp_tooltip')} />
-            </span>
-          }
-          emptyMessage={emptyMsg}
-          rows={data.match_rows ?? []}
-          cumulativeLabel={t('timeseries.progression.career_xp_cumulative')}
-          perMatchLabel={t('timeseries.progression.career_xp_per_match')}
-        />
-      )}
 
       {/* Rendement & Résistance — pleine largeur. */}
       <TimeseriesEfficiency

@@ -183,9 +183,20 @@ export function FragSunburst({
   // Légende des classes (pastille + nom + valeur). Position pilotée par legendSide : 'bottom'
   // = ligne sous l'anneau (défaut, autres surfaces) ; 'left' = colonne verticale le long de la
   // bordure gauche, à côté de l'anneau (opt-in Match view).
+  // En mode 'bottom' AVEC hauteur fixe (heightPx — cards Sessions, drawer compare) :
+  // hauteur de légende RÉSERVÉE constante (2 lignes), pour que deux cards côte à
+  // côte (session courante vs comparée) gardent la même hauteur totale même si
+  // leurs sessions n'ont pas le même nombre de classes de frags (parité drawer,
+  // demande utilisateur 2026-07-24).
   const legendBlock = (
     <div
-      className={legendSide === 'left' ? 'flex shrink-0 flex-col gap-1' : 'mt-2 flex flex-wrap gap-x-3 gap-y-1'}
+      className={
+        legendSide === 'left'
+          ? 'flex shrink-0 flex-col gap-1'
+          : heightPx
+            ? 'mt-2 flex min-h-12 flex-wrap content-start gap-x-3 gap-y-1'
+            : 'mt-2 flex flex-wrap gap-x-3 gap-y-1'
+      }
       data-testid="frag-legend"
     >
       {model.legend.map((row) => (
