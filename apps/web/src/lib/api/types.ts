@@ -791,6 +791,11 @@ export interface MatchEncounterBadge {
  *  (sans is_ally car pas de match courant en Explorer). */
 export type ExplorerEncounterStats = components['schemas']['ExplorerEncounterStats']
 
+/** Un point de la courbe « écart de frags cumulé » de l'encart adversaire
+ *  (cumul directionnel frags − morts + issue du duel). Miroir des cartes
+ *  revanche du hub Relations (CumulativeFragGapChart). */
+export type ExplorerFragGapPoint = components['schemas']['ExplorerFragGapPoint']
+
 export type ExplorerPlayerQueryResponse = components['schemas']['ExplorerPlayerQueryResponse']
 
 /** Encart "Profil joueur cible" composite (4 sources fetch en parallèle).
