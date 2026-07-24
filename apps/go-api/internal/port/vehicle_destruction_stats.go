@@ -5,8 +5,12 @@ import "context"
 // VehicleDestructionStats agrège, sur un scope de matchs, deux compteurs « fun »
 // liés aux véhicules : véhicules détruits et vols à la tire (hijacks). Title-agnostic
 // par construction — la SOURCE diffère par titre (Halo Infinite : personal_score_awards ;
-// Halo 5 : commendations NATIVES match_commendations) mais la sémantique produit est
-// commune (les deux alimentent SynthesisDetailedStats.TotalVehiclesDestroyed / TotalHijacks).
+// Halo 5 : véhicules détruits via commendations NATIVES match_commendations, hijacks
+// via les médailles Hijack/Skyjack de medals_earned — il n'existe PAS de commendation
+// « Grand Theft »/« Vol à la tire » dans le référentiel H5, cf. doc package
+// internal/platform/duckdb/vehicle_commendation_stats_repo.go) mais la sémantique
+// produit est commune (les deux alimentent SynthesisDetailedStats.TotalVehiclesDestroyed
+// / TotalHijacks).
 type VehicleDestructionStats struct {
 	VehiclesDestroyed int
 	Hijacks           int
@@ -22,7 +26,8 @@ type VehicleDestructionStats struct {
 // connexion coupée) — le caller la traite en best-effort (log, pas d'échec de page).
 //
 // Implémenté par internal/platform/duckdb.VehicleCommendationStatsRepo (Halo 5 :
-// commendations natives). Câblé UNIQUEMENT pour les titres portant la capability
+// commendations natives pour les véhicules détruits, médailles natives pour les
+// hijacks). Câblé UNIQUEMENT pour les titres portant la capability
 // commendations.native (jamais de gating par slug — cf. registry SynthesisCtx).
 type VehicleDestructionStatsRepository interface {
 	LoadVehicleDestructionStats(

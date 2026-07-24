@@ -1,7 +1,8 @@
 // Package service — synthesis_service_vehicle_test.go : branche PAR TITRE de la
 // source des compteurs « véhicules détruits » / « vol à la tire » (I1). Infinite =
-// personal_score_awards (inchangé) ; Halo 5 = commendations natives (repo dédié qui
-// PRIME sur les awards, vides pour ce titre). Best-effort si le repo H5 échoue.
+// personal_score_awards (inchangé) ; Halo 5 = repo dédié (commendations natives pour
+// les véhicules détruits, médailles Hijack/Skyjack pour le vol à la tire) qui PRIME
+// sur les awards, vides pour ce titre. Best-effort si le repo H5 échoue.
 package service
 
 import (
