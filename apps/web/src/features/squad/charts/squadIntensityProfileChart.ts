@@ -29,6 +29,8 @@ import {
   phaseProfile,
   type PhaseProfileResult,
 } from '@/lib/charts/phaseProfile'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest } from '@/lib/i18n/generated/common'
 import type { Locale } from '@/lib/i18n/locale'
 
 /** Libellés des 10 tranches de phase (0-10 %, …, 90-100 %) — data de l'axe X + tooltip. */
@@ -54,17 +56,19 @@ export interface IntensityAxisLabels {
   rangeSuffix: string
 }
 
-const INTENSITY_AXIS_LABELS: Record<Locale, IntensityAxisLabels> = {
-  fr: { start: 'Début', mid: 'Milieu', end: 'Fin', rangeSuffix: 'du match' },
-  en: { start: 'Start', mid: 'Midpoint', end: 'End', rangeSuffix: 'of the match' },
-}
-
 /**
  * Étiquettes d'axe X partagées par les 3 surfaces (Escouade / Timeseries /
- * Sessions) — source unique, parité FR/EN par typage `Record<Locale, …>`.
+ * Sessions) — source unique via le manifest i18n `common.charts.intensity_axis_*`
+ * (parité FR/EN garantie par le manifest, `formatMessage` étant pur et utilisable
+ * hors composant React).
  */
 export function intensityAxisLabels(locale: Locale): IntensityAxisLabels {
-  return INTENSITY_AXIS_LABELS[locale] ?? INTENSITY_AXIS_LABELS.fr
+  return {
+    start: formatMessage(commonManifest, 'common.charts.intensity_axis_start', locale),
+    mid: formatMessage(commonManifest, 'common.charts.intensity_axis_mid', locale),
+    end: formatMessage(commonManifest, 'common.charts.intensity_axis_end', locale),
+    rangeSuffix: formatMessage(commonManifest, 'common.charts.intensity_axis_range_suffix', locale),
+  }
 }
 
 /** Repère « activité uniforme » : 1/PHASE_COUNT des frags par phase. */
