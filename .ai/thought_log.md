@@ -13489,3 +13489,26 @@ PASS. Aucun changement front (peak_achieved_at déjà câblé).
 Rang (tier_label) passé de text-xl sm:text-2xl -> text-xl ; valeur numérique remontée à
 DROITE du rang (flex items-baseline) au lieu de dessous, taille (text-xs) et couleur
 (text-muted-foreground) inchangées. HomeSkillPeakCard.tsx. tsc/eslint/vitest home verts.
+
+---
+
+## [2026-07-24] Ouverture chantier v7.2 — backlog Notion complet (feat/v7.2-notion-batch)
+
+**Statut** : En cours. Mode supervision multi-agents (Fable pilote/verifie, agents implementent).
+
+**Cadre** : la section Notion « Pour la v7.2 » (30 items V72-01..30) est traitee en
+integralite sur la branche feat/v7.2-notion-batch. Echanges utilisateur via la page
+Notion (annotations bleues Fable, surlignage jaune = reponse user, barre = traite).
+Plan : .ai/V7/PLAN_V72_NOTION_BATCH.md (inventaire, lots 0-6, journal).
+
+**Decisions initiales** :
+- Vague 0 : 7 agents recon lecture seule (fuite cross-titre V72-29 + apparence H5 V72-14,
+  i18n/libelles, layout/charts, questions/backlog, Huma openapi, sync admin/notifs/parite
+  capabilities, architecture stats modes objectifs). Aucun build Go concurrent (regle cache),
+  gates batches par lot.
+- Dependabot (V72-02) : PR #51 = downgrade checkout v7 -> v6.0.3, obsolete -> fermeture
+  proposee ; PR #65 postcss dev-dep CI verte -> merge propose. Feu vert user demande dans
+  Notion (merge = deploy prod auto).
+
+**Prochaine etape** : consolider les rapports de recon, poser reponses/recos dans Notion,
+lancer les lots d'implementation.
