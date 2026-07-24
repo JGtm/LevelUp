@@ -473,6 +473,9 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
                       hoveredClass={frags.hovered}
                       onClassHover={frags.setHovered}
                       fillHeight
+                      // fluid : le tracé prend flex-1, la légende de pied reste collée au
+                      // bas de la card (sinon flex-1 laisserait un vide sous le footer).
+                      fluid
                     />
                   </div>
                 )}

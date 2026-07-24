@@ -1,3 +1,107 @@
+## [2026-07-25] V72-18 / V72-24 / V72-09 (Synergies) / V72-13 — 4 correctifs Escouade/Explorer/Sessions
+
+**Statut** : Complété (implémentation ; gates go/npm/tsc/vitest + generate-types/i18n
+délégués au superviseur — aucun build/test exécuté côté agent par contrainte de tâche).
+
+**Décision technique principale** :
+- **V72-18** (menu L1 Escouade) : ajout de l'onglet « Dynamique » manquant dans
+  `navL1Sections.tsx` (section squad, après `contributions`) + clé
+  `common.nav.tab_dynamique` (common.toml). La page/route/i18n squad existaient déjà —
+  seule la source du menu manquait. Aucun test de parité nav ne référence les tabs squad
+  (vérifié) : rien à mettre à jour côté tests.
+- **V72-24** (Explorer lent) : `setModeAndUrl`/`selectTarget` dans `ExplorerPage.tsx`
+  passent désormais `replace: true` (ces `navigate()` ne font que refléter l'état local
+  mode/target dans l'URL, comme `usePageScope` le fait déjà pour les filtres) — stoppe
+  l'empilement d'historique et le déclenchement inutile de TopProgressBar à chaque
+  sélection. `openHeadToHead` (navigation RÉELLE vers `/community/compare`) laissé en push
+  volontairement (retour arrière légitime). Aucun test ne dépend de l'empilement.
+- **V72-09 volet Synergies** : bouton « Voir les synergies » dans le header L3 de
+  `SessionDetailPage.tsx` (groupé avec le bouton Comparer), visible si
+  `current_session.with_friends` (même signal que `SessionParamPills`). Navigation =
+  copie du pattern `HomePage.goToSquadSession` (search `session`+`teammates` vers
+  `/squad`) ; `SessionCompareEntry` ne porte pas de liste de coéquipiers (contrairement à
+  `SessionSummaryItem` côté Home) → `teammates` par défaut vide, SquadLayout ouvre alors
+  la session épinglée sans composition pré-sélectionnée (chemin déjà supporté, même
+  dégradation que `sessionCoreTeammates` côté Home quand aucun ami n'est commun à tous
+  les matchs). Calculer le "cœur de coéquipiers" façon Home aurait exigé de répliquer tout
+  le pipeline `WithSquadSessionTeammates` (loader allié + résolveur amis) — hors périmètre
+  de la demande, noté comme piste d'amélioration future, pas traité.
+- **V72-13** (XP de carrière Sessions) : projection Go `CareerXPEstimated` sur
+  `SessionDetailMatchRow` (domain/session_page.go), calculée dans
+  `buildSessionDetailRows` via `estimateMatchCareerXP` (déjà exporté par
+  timeseries_service_tabs.go, même package `service`) — MIROIR EXACT du calcul Timeseries,
+  gaté par `games.ProvidesCareerXPEstimate`/`CareerXPErasFor` au niveau `GetPage`. openapi.yaml
+  édité de façon ciblée (insertion `career_xp_estimated` dans `SessionDetailMatchRow`,
+  même convention que les champs `*int,omitempty` voisins). Front : helper pur
+  `buildCareerXpSeries` DÉPLACÉ de `features/timeseries/careerXpSeries.ts` vers
+  `lib/charts/careerXpSeries.ts` avec type d'entrée structurel minimal (`CareerXpRow`,
+  `{career_xp_estimated?: number|null}`) — partagé Sessions/Timeseries SANS dépendance
+  croisée feature→feature ; `TimeseriesFormCharts.tsx` mis à jour pour importer depuis le
+  nouvel emplacement. Nouveau composant `SessionCareerXP.tsx` (features/session-detail) :
+  MIROIR de `TimeseriesCareerXP` (bar XP/match axe secondaire + ligne XP cumulée axe
+  primaire), auto-gate DATA-DRIVEN (masqué si aucun match de la session n'a
+  `career_xp_estimated`, comme Timeseries — pas de comparaison de capability par slug).
+  NON câblé dans `SessionChartStack.tsx` (fichier hors périmètre, verrouillé par un agent
+  parallèle) : posé en composant autonome + i18n (session.toml : `career_xp_title`,
+  `_tooltip`, `_cumulative`, `_per_match`, titre identique à Timeseries).
+
+**Résultats observés** : non exécuté (contrainte de tâche : aucun go/npm/tsc/vitest côté
+agent). Tests ajoutés : Go `TestBuildSessionDetailRows_CareerXPEstimated`
+(session_page_service_test.go, MIROIR de `TestBuildMatchRows_CareerXPEstimated`) ; 8 call-sites
+existants de `buildSessionDetailRows` mis à jour (signature +1 paramètre `careerXPEras`,
+sessions_page_service_test.go + session_compare_test.go + session_compare_service.go +
+session_compare_participation_helpers.go — ces 2 derniers passent `nil` car ils alimentent
+`entry.Matches`/best-worst, pas le `resp.Matches` consommé par le nouveau chart). Front :
+`lib/charts/careerXpSeries.test.ts` (migré, type structurel), `SessionCareerXP.test.tsx`
+(option pure + gate data-driven), `SessionDetailPage.test.tsx` (+2 tests bouton Synergies :
+absent en solo, présent+navigate en escouade). **Tests dépendant de clés i18n NEUVES
+(`session.detail.header_synergies*`, `session.detail.career_xp_*`, `common.nav.tab_dynamique`)
+resteront ROUGES jusqu'à régénération** (`generated/session.ts`, `generated/common.ts`) — la
+logique/gating est elle testée indépendamment de l'i18n et doit passer immédiatement.
+
+**Conclusion / prochaine étape** : superviseur doit (1) `make generate-types` (nouveau champ
+`career_xp_estimated` sur `SessionDetailMatchRow` côté generated.ts), (2) régénérer
+`common.ts`+`session.ts` (node build_i18n_manifests.mjs) pour lever les clés neuves, (3) `go
+test ./...` (+ `-tags=integration`), `go build`, `tsc`, `vitest`, `openapi_schema_drift`,
+(4) câbler `SessionCareerXP` dans `SessionChartStack.tsx` **juste après `{frags}`** (dernier
+bloc actuel, ligne ~217) avec le titre+InfoTooltip construits au call-site façon `ocdr`
+(pattern documenté en tête de `SessionCareerXP.tsx`), (5) vérif visuelle : onglet Dynamique
+au menu Escouade, Explorer sans empilement d'historique (recherche joueur rapide), bouton
+Synergies sur une session escouade, chart XP carrière sur Sessions (Halo Infinite uniquement).
+
+## [2026-07-25] V72-05 — Synchronisation initiale admin (un joueur) + légende portée sync
+
+**Statut** : Complété (implémentation ; gates go/npm/tsc + generate-types délégués au superviseur).
+
+**Décision technique principale** : nouvelle action admin POST
+`/admin/actions/initial-sync/run {player_slug, title_slug?, max_matches?}` calquée sur
+la convergence. Backend : `ServiceRegistry.RunPlayerInitialSync` (registry_actions.go) =
+miroir de `RunPlayerConvergence` mais **RunFull** (tout l'historique jusqu'au plafond)
+au lieu de RunDelta — même résolution joueur (`LoadPlayers`), même claim `SyncGate`
+(ErrSyncInFlight), même BuildEngine porté par le ctx titre. Job type DISTINCT
+`JobTypeAdminInitialSync` (self-service `/sync/initial` = JobTypeInitialSync gardé par la
+session ; l'admin passe par le pool de tokens ADR 0023 pour re-importer n'importe quel
+joueur). `resolveInitialMaxMatches` : demandé > défaut profil (initial_max_matches) > 200,
+clampé 1..2000 (bornes de /sync/initial). Handler Huma `admin_actions_initial_sync.go`
+réutilise `conflictWithJobError` + `titleOrDefaultSlug` (mêmes 400/409/503 que la
+convergence). openapi.yaml documenté à la main (route + requestBody inline).
+
+Front : carte « Synchronisation initiale (un joueur) » sur AdminSyncPage (GamertagCombobox
+max=1 allowFreeInput=false + plafond optionnel + AdminActionButton suivi inline) ; mutation
+`useRunInitialSync`. Légende `SyncActionsHelp` (portée des 4 actions : cycle forcé = delta
+global dédupliqué V2 / manuelle globale = boucle simple par joueur / convergence = delta un
+joueur / initiale = re-import complet un joueur) — réponse à la confusion « planificateur vs
+delta ». i18n FR+EN (admin.toml + generated/admin.ts hand-sync). `admin_initial_sync` ajouté
+au fast-poll de la page.
+
+**Résultats observés** : non exécuté (règle : pas de build/test côté agent). Tests handler
+ajoutés (503/400/409/202) calqués sur admin_actions_test. `/sync/all` (delta global naïf,
+sans dédup ADR 0027) NON supprimé — dette notée.
+
+**Conclusion / prochaine étape** : superviseur passe les gates (go test ./..., go build,
+`make generate-types` pour apps/web/src/lib/api/generated.ts, tsc, vitest,
+openapi_schema_drift + contract_test) + revue visuelle admin (carte + légende) avant merge.
+
 ## [2026-07-24] Backfills prod v7.1.0 — CLÔTURE du chantier backlog v7.1
 
 **Statut** : Complété (dernière étape ouverte du chantier v7.1).
@@ -13512,3 +13616,47 @@ Plan : .ai/V7/PLAN_V72_NOTION_BATCH.md (inventaire, lots 0-6, journal).
 
 **Prochaine etape** : consolider les rapports de recon, poser reponses/recos dans Notion,
 lancer les lots d'implementation.
+
+---
+
+## [2026-07-25] Chantier v7.2 — vagues 1+2 livrees sur branche (19 items V72)
+
+**Statut** : Complété (implémentation + gates). Vérifications visuelles utilisateur en attente.
+
+**Mode** : supervision multi-agents (9 agents impl Opus/Sonnet sur périmètres de fichiers
+disjoints, aucun build agent-side, gates batchés par le superviseur).
+
+**Livré** :
+- V72-29/14 : fuite cross-titre bandeau Spartan (useCapabilityStrict fail-closed sur les
+  2 bandeaux + CareerLiveCache keyé xuid+titre) ; apparence H5 par joueur (store re-keyé
+  titre::joueur, migration v3 reset) + couleurs emblème/bannière séparées. Code mort
+  supprimé : CareerPage, CareerTopMatchesTable (+tests, non routés).
+- V72-11/12 : LeaderboardBlock migré sur SortableTh partagé (exemption garde-rail retirée) ;
+  garde-rail parité capabilities Go<->TS (AST vs TITLE_CAPABILITIES, allowlist datée
+  weapon_kills).
+- V72-20 : notif médaille inédite (post-sync diff totaux, seed silencieux cold-start,
+  récap >3, noms FR/EN serveur).
+- V72-05 : sync initiale un joueur depuis l'admin (RunPlayerInitialSync, job
+  admin_initial_sync, carte + légende des portées de sync).
+- V72-04 : tooltips en-têtes de tableaux (SortableTh.tooltip + ColumnMeta.headerTooltip,
+  contenu FR/EN conforme ADR 0006 sur ~9 tableaux).
+- V72-13/09/18/24 : XP carrière sur Sessions (champ + capability + chart, câblé
+  avant le tableau) ; bouton Voir les synergies ; menu L1 Dynamique ; Explorer replace:true.
+- V72-16/23/25/21/28 : épaisseur outils de destruction rétablie (légende sortie du canvas),
+  mécanisme ChartCard.legend pied de card (légendes interactives NON migrées, documenté),
+  axe X écart de frags Explorer, état vide « aucun match en commun », alignement Carrière.
+- V72-10/19/22/26/27 : dropdown escouade (min-width+line-clamp), override Méganaute
+  (migration idempotente), Lobby->Partie, OC/DR->Rendement/Résistance, notif rang FR
+  (RankLabelResolver) + arrondi gap.
+
+**Gates** : gofmt/build/vet/go test ./.../intégration -p 1 (flake handlers vert isolé)/
+golangci-lint 0 issue (après centralisation goconst job_id/panic/already_running) ;
+i18n regen 2892 clés ; generate-types ; tsc -b exit 0 (cache purgé) ; eslint 0 erreur ;
+vitest 357/358 fichiers puis 100% après fix assertion legend SessionCareerXP.
+
+**Interventions superviseur (hors pilotage)** : câblage SessionCareerXP dans
+SessionChartStack, fix goconst, fix assertion test, gofmt, régénérations.
+
+**Prochaine étape** : rebuild serveur local (V72-07), mise à jour Notion (barrages +
+vérifs visuelles), puis lot 5 (armes V72-06, backlog V72-15, stats objectifs V72-03)
+et Huma V72-01 en dernier.

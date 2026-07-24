@@ -111,6 +111,19 @@ export function ExplorerTargetProfileCard({ profile, gamertag, encounterStats }:
         </div>
       )}
 
+      {/* Cible résolue (identité ou carrière présente) mais aucun match en commun
+          (sample_size == 0) : au lieu de masquer la section en silence (l'utilisateur
+          croit à un bug), on rend une note discrète expliquant que les comparaisons
+          directes viendront avec des parties partagées (V72-21). */}
+      {!showSample && (identity != null || careerStats != null) && (
+        <p
+          className="rounded-md border border-dashed border-border bg-muted/20 px-4 py-3 text-sm text-muted-foreground"
+          data-testid="explorer-target-no-shared-matches"
+        >
+          {t('explorer.target_profile.section_sample_empty')}
+        </p>
+      )}
+
       {/* "Sur N matchs joués ensemble" : titre en en-tête de section hors bloc
           (style "Profil de combat"), puis stats (2/3) + Cadence (1/3) à droite. */}
       {showSample && sampleStats && (

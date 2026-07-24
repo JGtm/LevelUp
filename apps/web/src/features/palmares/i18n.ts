@@ -79,6 +79,11 @@ export interface PalmaresText {
       kdaTogether: string
       lastSeen: string
       ratioTooltip: string
+      /** Tooltips d'en-tête de colonne (V72-04, icône ⓘ). */
+      encountersTooltip: string
+      winRateAllyTooltip: string
+      winRateEnemyTooltip: string
+      fragsDeathsTooltip: string
       previous: string
       next: string
     }
@@ -275,6 +280,10 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
         kdaTogether: t(loc, 'palmares.relations.table.kda_together'),
         lastSeen: t(loc, 'palmares.relations.table.last_seen'),
         ratioTooltip: t(loc, 'palmares.relations.table.ratio_tooltip'),
+        encountersTooltip: t(loc, 'palmares.relations.table.encounters_tooltip'),
+        winRateAllyTooltip: t(loc, 'palmares.relations.table.win_rate_ally_tooltip'),
+        winRateEnemyTooltip: t(loc, 'palmares.relations.table.win_rate_enemy_tooltip'),
+        fragsDeathsTooltip: t(loc, 'palmares.relations.table.frags_deaths_tooltip'),
         previous: t(loc, 'palmares.relations.table.previous'),
         next: t(loc, 'palmares.relations.table.next'),
       },

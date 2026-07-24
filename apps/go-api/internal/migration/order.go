@@ -36,6 +36,7 @@ var canonicalOrder = []string{
 	"enrich_medal_definitions_v2",                           // metadata
 	"medal_definitions_add_personal_score",                  // metadata
 	"seed_custom_vengeur_medal",                             // metadata
+	"fix_meganaut_fr_description",                           // metadata
 	"fix_super_fiesta_fr_label",                             // metadata
 	"seed_playlist_fr_translations",                         // metadata
 	"add_title_id_to_xbox_achievement_definitions",          // metadata

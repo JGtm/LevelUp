@@ -197,7 +197,7 @@ describe('ExplorerTargetProfileCard', () => {
     expect(screen.getByText(/12 matchs joués ensemble/i)).toBeInTheDocument()
   })
 
-  it('masque la section sample quand sample_size=0', () => {
+  it('masque la section sample quand sample_size=0 mais affiche une note explicite (V72-21)', () => {
     const profile: ExplorerTargetProfile = {
       identity: IDENTITY_FULL,
       career_stats: CAREER_FULL,
@@ -208,9 +208,25 @@ describe('ExplorerTargetProfileCard', () => {
     renderWithProviders(<ExplorerTargetProfileCard profile={profile} gamertag="TargetPlayer" />)
 
     expect(screen.queryByText(/matchs joués ensemble/i)).not.toBeInTheDocument()
+    // Plus de disparition silencieuse : note discrète « aucun match en commun ».
+    expect(screen.getByTestId('explorer-target-no-shared-matches')).toBeInTheDocument()
+    expect(screen.getByText(/Aucun match en commun avec ce joueur/i)).toBeInTheDocument()
     // Career et identity restent
     expect(screen.getByText(/Carrière complète/i)).toBeInTheDocument()
     expect(screen.getByText('TargetPlayer')).toBeInTheDocument()
+  })
+
+  it('n\'affiche pas la note « aucun match en commun » sur une cible non résolue (identity=null, career absente)', () => {
+    const profile: ExplorerTargetProfile = {
+      identity: undefined,
+      career_stats: undefined,
+      sample_stats: undefined,
+      privacy_warning: undefined,
+      auth_available: false,
+    }
+    renderWithProviders(<ExplorerTargetProfileCard profile={profile} gamertag="UnknownPlayer" />)
+
+    expect(screen.queryByTestId('explorer-target-no-shared-matches')).not.toBeInTheDocument()
   })
 
   it('affiche le placeholder quand identity=null', () => {

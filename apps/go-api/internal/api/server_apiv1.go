@@ -991,6 +991,20 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		WithRankImageURLsByTitle(rankImageURLsByTitle).
 		WithPlaylistLabelOverrides(playlistLabelOverrides)
 
+	// V72-27 : câble le résolveur de libellé de rang FR consommé par les
+	// notifications post-sync (career_rank) — même RankCatalog HI que
+	// CareerService ci-dessus. hiRanks.TitleSlug() == "" quand le catalog n'a
+	// pas pu être chargé (démo sans metadata, échec I/O) : FullLabel renvoie
+	// alors toujours ok=false, dégradation gracieuse vers le fallback EN déjà
+	// en place. Comparaison slug↔slug (catalog vs paramètre), pas un gate
+	// littéral — cf. archlint no_slug_comparison (pattern explicitement toléré).
+	wire.SetRankLabelResolver(func(titleSlug string, rankID int) (string, bool) {
+		if hiRanks == nil || hiRanks.TitleSlug() != titleSlug {
+			return "", false
+		}
+		return hiRanks.FullLabel(rankID, mappings.LocaleFR)
+	})
+
 	// MT-09 (PMT-12) : factory player-scoped de Halo enregistrée par SLUG (clé de
 	// map, pas de comparaison littérale). Le builder lit reg.HiCapabilities() à la
 	// volée (posé ci-dessus). Un 2e titre enregistrerait ICI son propre builder,

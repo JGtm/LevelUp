@@ -84,7 +84,9 @@ export function ExplorerTargetVersusDonuts({ encounterStats }: Props) {
             {t('explorer.target_profile.frag_gap_title')}
           </div>
           <div className="p-3">
-            <CumulativeFragGapChart points={fragPoints} height={180} />
+            {/* Explorer : axe X visible (numéro d'affrontement 1..N) — donne l'échelle
+                de la série, contrairement à la frise compacte de Relations. */}
+            <CumulativeFragGapChart points={fragPoints} height={180} showXAxis />
           </div>
         </div>
       )}

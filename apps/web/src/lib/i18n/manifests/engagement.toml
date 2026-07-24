@@ -21,7 +21,7 @@ fr = "Joueur reel"
 en = "Player (actual)"
 
 [engagement.trace.lobby]
-fr = "Lobby"
+fr = "Partie"
 en = "Lobby"
 
 [engagement.axis.events_per_min]
@@ -128,11 +128,11 @@ fr = "Engagement equipe"
 en = "Team engagement"
 
 [engagement.squad.subtitle]
-fr = "Lobby, escouade attendue, escouade reelle — clic chip pour overlay un joueur"
+fr = "Partie, escouade attendue, escouade reelle — clic chip pour overlay un joueur"
 en = "Lobby, squad expected, squad actual — click chip to overlay a player"
 
 [engagement.squad.trace.lobby]
-fr = "Lobby"
+fr = "Partie"
 en = "Lobby"
 
 [engagement.squad.trace.expected]
@@ -196,11 +196,11 @@ en = "No engagement data for this scope."
 # ─── Engagement Coefficients (profil) ───────────────────────────────────────
 
 [engagement.coef.team_share_label]
-fr = "Part equipe"
+fr = "Part équipe"
 en = "Team share"
 
 [engagement.coef.lobby_share_label]
-fr = "Part lobby"
+fr = "Part partie"
 en = "Lobby share"
 
 [engagement.coef.team_share_desc]
