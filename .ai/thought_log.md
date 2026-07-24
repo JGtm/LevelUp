@@ -1,3 +1,112 @@
+## [2026-07-24] Chantier backlog Notion « Pour la v7.1 » — vagues 1+2 (12 items)
+
+**Statut** : Complété (branche `feat/v7.1-backlog` ; plan `.ai/V7.1/PLAN_V71_BACKLOG_2026-07-24.md`).
+Mode supervision : 11 agents d'investigation (V0) puis 8 agents d'implémentation ;
+gates et commits par le superviseur.
+
+**Décisions techniques principales** :
+- I13 (historique escouade) : prédicat de composition EXACTE centralisé
+  (`filterExactComposition`, pool = amis ∪ top-teammates \ sélection) appliqué aux
+  3 maillons (intersection GetPage, briefing, Q42 anti-join) + garde-rail grep
+  `no_raw_squad_intersection_test.go`. Best-effort loggé WARN si LoadMainTeamParticipants
+  échoue (jamais d'écran vide).
+- I14 (compo player-agnostic) : résolution par XUID absolu du joueur courant
+  (SquadContext.currentPlayerXuid), `findSquadByRoster` clé-xuid ; backfill append-only
+  `levelup backfill-squad-creators` (ADR 0022, serveur arrêté) pour réinjecter les
+  créateurs des escouades legacy.
+- I7 (citations) : loader stats PvE (`pve_match_stats_latest`, ADR 0026) injecté dans
+  les 3 chemins de recompute ; `grenade_kills` ajouté au SELECT ; `driver` remappé
+  3169118333→2926348688 (Wheelman) ; road_trip + flag_defender EN ATTENTE décision user
+  (commentaires datés). Recalcul à lancer : `seed citation-mappings` puis
+  `backfill --all --citations-recompute-all`.
+- I12 : tri chronologique de première apparition déplacé côté Go (computeMapBreakdown,
+  pattern heatmap) ; front = top-20 par fréquence AFFICHÉ en ordre chrono ; builder mort
+  winRateVsHistoryChart supprimé. I9 : suffixe « (n) » expliqué par InfoTooltip.
+- I11 : cumuls réel/attendu ajoutés à cumulativeFdaGap (masque conjoint D5, identité
+  réel−attendu=gap préservée) + axe Y secondaire sur les 2 graphes (pattern dual-axis).
+- I4/I5/I6 : légende ghost-series bas centré (FragWeaponBreakdown) ; % en légende
+  sunburst + hauteur fixe partagée (SessionFragCard 320px) ; étiquettes % du total
+  joueur sur squadWeaponKillsChart (seuil 5 %, barres brutes inchangées).
+- I19 : capability `waypoint_match_url` (Infinite seulement) + préférence locale
+  `showWaypointColumn` (settingsDraftStore) + helper canonique `buildWaypointMatchUrl`
+  avec garde-rail grep (tests exclus du scan — assertions littérales = contrat) ;
+  logos détourés par le superviseur (ffmpeg, rampe alpha 200/150).
+- I8 : `--keep-storage` (no-op déprécié, cause de la saturation du 23/07) →
+  `--max-used-space` ; image prune `until=24h` (rollback N-1) ; garde pré-build <10 Go ;
+  unités systemd versionnées `scripts/systemd/` (installation VPS = feu vert user).
+
+**Résultats observés (gates)** : tsc -b (cache purgé) 0 erreur ; vitest 338 fichiers
+2914 passés (après fix garde-rail waypoint : exclusion des .test du scan) ; eslint
+0 erreur / 9 warnings incompatible-library (baseline+1, useReactTable retravaillé) ;
+gofmt corrigé (2 fichiers agent) ; go build/vet OK ; go test paquets touchés OK
+(+ allowlist shared_social justifiée pour le backfill) ; intégration `-tags=integration
+-p 1` : internal/sync complet 103 s OK + exclusion compo OK ; golangci-lint
+`--new-from-merge-base=origin/main` : 0 issue.
+
+**Conclusion / prochaine étape** : commits par item puis vague 3 (I15 anglicismes,
+I10 locale URL, I16 tri tableaux, I1 véhicules H5) et vague 4 (I2 médias, I20 Explorer,
+plan XP carrière + I3). Backfills data (squad creators dry-run, recalcul citations)
+après arrêt serveur. Passe visuelle utilisateur en fin de lot. Push = deploy prod :
+feu vert requis.
+
+---
+## [2026-07-24] I18 — titres d'onglet navigateur locale-aware (mécanisme unique)
+
+**Statut** : Complété (branche `feat/v7.1-backlog`, non committé — le superviseur gère
+git). Pas de commande go/npm/vitest exécutée (interdit pour cet agent) : vérification
+par relecture sur pièces uniquement.
+
+**Décision technique principale** : `resolvePageTitle(pathname, locale)` — la table
+`RouteTitleRule.title` passe de `string` (FR figé) à `Record<Locale,'fr'|'en'>` typé.
+`__root.tsx` garde l'unique effet, keyé `[pathname, locale]` (locale vient du store
+`useAppShellStore`, comme partout ailleurs dans le repo — pas de hook `useLocale`
+dédié). Les 3 effets locaux dupliqués (MedalsPage, ComparePage, UnifiedCitationsPage)
+supprimés — ils étaient de toute façon écrasés par le résolveur global rejoué après
+eux à chaque navigation (cause du symptôme). Nuance Citations (FR/EN=Citations,
+route `/career/citations`) vs Commendations (FR=Citations/EN=Commendations, route
+`/career/commendations`) reproduite dans la table par PATTERN de route (déterministe
+depuis le pathname, comme l'ancien `UnifiedCitationsPage.titleKey`).
+
+**Découverte notable** : `shellNavigation.{PLAYER_PRIMARY,PLAYER_SECONDARY}_NAV_ITEMS`
+et `GLOBAL_SHELL_LINKS` (labels FR figés, `eyebrow`/`description`) n'avaient plus AUCUN
+consommateur réel hors `pageTitle.ts` — la nav L1/L2 vit depuis longtemps dans
+`navL1Sections.tsx`/`NavL2.tsx` (locale-aware via `commonManifest`). Supprimés avec
+leur test (règle CLAUDE.md n°7, 0 code mort) — c'est CE changement qui les rendait
+orphelins, pas une dette pré-existante trouvée par hasard.
+
+**Trous comblés (au-delà des 2 signalés)** : `/career/medals`, `/squad/dynamique`
+(libellé aligné sur `features/squad/i18n.ts` `nav.dynamique` = Dynamique/Dynamics,
+PAS la suggestion initiale « Dynamique d'escouade » — cohérence avec le tab réel),
+`/home`, `/community`, `/community/prestige`, `/squad`, `/media`, `/explorer` (perdus
+avec la suppression de la dérivation nav), et — trou non signalé au départ — les 5
+sous-onglets `/admin/{management,data,detections,sync,system}` : le pattern `/admin`
+était ANCRÉ (`^\/admin\/?$`) et ne matchait AUCUN enfant, tous retombaient sur le
+fallback.
+
+**Résultats observés (vérification par relecture, pas d'exécution)** : `pageTitle.ts`
+172 L (budget 500 L respecté). Garde-rail `pageTitle.test.ts` : scan `src/routes/**`
+(même convention que `no-title-literals.ratchet.test.ts` : `@vitest-environment
+node`, fs/readdirSync) — énumère chaque fichier de route réel (`component:` présent,
+hors 5 layouts purs + 1 splat legacy + 14 redirects `beforeLoad`-only déjà
+transitoires avant ce fix) et vérifie un titre non-fallback FR+EN ; ~44 fixtures
+attendues. Vérifié à la main : regex d'extraction de path (multi-ligne
+`createFileRoute(\n  '...'`), convention TanStack `career_` → `career` (trailing
+underscore, confirmé via `routeTree.gen.ts`), substitution des `$params`, non-
+collision avec le garde-rail `no-title-literals.ratchet.test.ts` (aucun littéral
+`'/players/` ou `` `/t/ `` introduit — vérifié par grep ciblé sur les 2 patterns).
+
+**Découverte hors périmètre (non traitée)** : 3 clés i18n désormais orphelines
+(`medals.page_title`, `citations.page_title`, `citations.section.commendations`) —
+pas de lint qui détecte les clés manifest inutilisées, donc aucun gate cassé ; les
+supprimer proprement demande d'éditer les TOML source + régénérer les `.ts` (outillage
+que cet agent n'a pas le droit d'exécuter). À traiter dans un futur passage i18n.
+
+**Conclusion / prochaine étape** : le superviseur doit faire tourner `make
+check-types` + `make test-web` (gates interdits à cet agent) avant tout commit/push —
+en particulier confirmer les ~44 fixtures du garde-rail et l'absence de régression
+sur `shellNavigation.test.ts` / `__root.test.tsx` (nouveau test de réactivité locale).
+
+---
 ## [2026-07-24] Retouches visuelles Dynamique (passe utilisateur)
 
 **Statut** : Complété (branche `fix/dynamique-retouches`, base main mergé).
