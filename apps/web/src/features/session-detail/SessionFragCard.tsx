@@ -12,6 +12,13 @@
  * SOUS le sunburst, légende repassée en bas) quand la colonne est étroite (`stacked` — drawer
  * de comparaison ouvert / vue compacte). Alimentée par l'agrégat de session (entry.frag_
  * distribution + entry.top_weapon_kills + entry.weapon_accuracy). Rend null si aucune donnée.
+ *
+ * Hauteur (I5, V7.1) : sunburst et 2e graphe partagent la MÊME hauteur fixe FRAG_CARD_HEIGHT,
+ * dans les DEUX états (côte à côte ET empilé) — sans ça, le sunburst se met à l'échelle de sa
+ * largeur de colonne (variable selon 2/3 vs pleine largeur) alors que le 2e graphe calait sa
+ * hauteur sur son nombre d'armes : les deux cartes divergeaient visuellement, surtout quand le
+ * drawer de comparaison est déployé (colonnes rétrécies). Valeur alignée sur le défaut de
+ * ChartCard (320) pour rester cohérente avec le reste des surfaces frags.
  */
 import { useState } from 'react'
 
@@ -26,6 +33,10 @@ import { formatMessage } from '@/lib/i18n/format'
 import { fragsManifest } from '@/lib/i18n/generated/frags'
 import type { SessionCompareEntry } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
+
+/** Hauteur fixe PARTAGÉE par le sunburst et le 2e graphe (I5 — même hauteur des deux cartes
+ *  dans les deux états compare/non-compare). Alignée sur le défaut ChartCard. */
+const FRAG_CARD_HEIGHT = 320
 
 interface Props {
   entry: SessionCompareEntry | null
@@ -59,6 +70,7 @@ export function SessionFragCard({ entry, stacked = false }: Props) {
         hideCenterLabel
         maxWidthPx={480}
         legendSide={stacked ? 'bottom' : 'left'}
+        heightPx={FRAG_CARD_HEIGHT}
       />
       {accuracy.length > 0 ? (
         <div className={stacked ? 'flex min-w-0 flex-col' : 'flex min-w-0 flex-col xl:col-span-1'}>
@@ -67,7 +79,7 @@ export function SessionFragCard({ entry, stacked = false }: Props) {
             weaponKills={entry?.top_weapon_kills ?? []}
             hoveredClass={hoveredClass}
             onClassHover={setHoveredClass}
-            fillHeight
+            height={FRAG_CARD_HEIGHT}
           />
         </div>
       ) : (
@@ -76,8 +88,8 @@ export function SessionFragCard({ entry, stacked = false }: Props) {
           title={detailTitle}
           hoveredClass={hoveredClass}
           onClassHover={setHoveredClass}
+          height={FRAG_CARD_HEIGHT}
           className={stacked ? '' : 'xl:col-span-1'}
-          heightScale={1.1}
         />
       )}
     </div>

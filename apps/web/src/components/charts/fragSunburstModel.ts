@@ -246,11 +246,14 @@ export function buildSunburstModel(
     ...buildCalloutsForSide(rightSeeds, true, labels),
     ...buildCalloutsForSide(leftSeeds, false, labels),
   ]
+  // I5 (V7.1) : chaque entrée de légende affiche le POURCENTAGE du total (« Libellé — NN % »),
+  // pas le seul décompte brut — cohérent avec le tooltip des arcs (déjà valeur · %). Le tiret
+  // cadratin est un séparateur visuel (pas un libellé à traduire) : aucune clé i18n requise.
   const legend: SunLegendRow[] = classes.map((c) => ({
     classKey: c.class,
     color: colors.classColor(c.class),
     label: labels.classLabel(c.class),
-    valueLabel: labels.formatValue(c.kills),
+    valueLabel: `— ${labels.formatShare(c.kills)}`,
   }))
   return { arcs, callouts, legend }
 }

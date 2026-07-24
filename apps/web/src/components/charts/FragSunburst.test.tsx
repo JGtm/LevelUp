@@ -66,6 +66,13 @@ describe('buildSunburstModel (builder pur)', () => {
     // Légende : 1 entrée par classe, ordre conservé, couleur de classe (pas de rôle).
     expect(model.legend.map((l) => l.classKey)).toEqual(['shoulder', 'melee', 'unattributed'])
     expect(model.legend[0].color).toBe('col:shoulder')
+    // I5 (V7.1) : chaque entrée de légende affiche le POURCENTAGE (« — NN % »), pas le
+    // seul décompte brut — via labels.formatShare (déjà utilisé par le tooltip des arcs).
+    for (const row of model.legend) {
+      expect(row.valueLabel.startsWith('— ')).toBe(true)
+      expect(row.valueLabel).toContain('%')
+    }
+    expect(model.legend[0].valueLabel).toBe(`— ${LABELS.formatShare(10)}`)
   })
 
   it('côté du callout = position HORIZONTALE (cos) de l\'arc — le trait ne traverse jamais le donut', () => {
@@ -125,5 +132,23 @@ describe('FragSunburst (composant SVG)', () => {
   it('distribution absente → rend null', () => {
     const { container } = render(<FragSunburst distribution={null} />)
     expect(container).toBeEmptyDOMElement()
+  })
+
+  it('I5 (V7.1) : heightPx fixe la hauteur du conteneur SVG (h-full, pas h-auto) — aligne la carte sur un graphe voisin de hauteur fixe', () => {
+    const { container } = render(<FragSunburst distribution={DIST} heightPx={320} />)
+    const svg = container.querySelector('svg')!
+    expect(svg.getAttribute('class')).toContain('h-full')
+    expect(svg.getAttribute('class')).not.toContain('h-auto')
+    // Le conteneur direct du SVG porte la hauteur fixe demandée.
+    const svgContainer = svg.parentElement!
+    expect(svgContainer.style.height).toBe('320px')
+  })
+
+  it('sans heightPx : comportement historique inchangé (h-auto, pas de hauteur fixée)', () => {
+    const { container } = render(<FragSunburst distribution={DIST} />)
+    const svg = container.querySelector('svg')!
+    expect(svg.getAttribute('class')).toContain('h-auto')
+    const svgContainer = svg.parentElement!
+    expect(svgContainer.style.height).toBe('')
   })
 })

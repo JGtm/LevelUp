@@ -94,8 +94,69 @@ describe('buildSquadWeaponKillsOption', () => {
 
   it('label formatter masque les zéros', () => {
     const opt = buildSquadWeaponKillsOption(data(), { colorByPlayer: COLORS })
-    const series = opt.series as Array<{ label: { formatter: (p: { value: unknown }) => string } }>
-    expect(series[0].label.formatter({ value: 0 })).toBe('')
-    expect(series[0].label.formatter({ value: 12 })).toBe('12')
+    const series = opt.series as Array<{ label: { formatter: (p: { value: unknown; dataIndex: number }) => string } }>
+    expect(series[0].label.formatter({ value: 0, dataIndex: 0 })).toBe('')
+  })
+
+  describe('I6 (V7.1) — labels % du total du joueur sur les segments assez larges', () => {
+    // Me : Sniper 2, BR75 30, AR 80 → total 112 (parts ≈ 1.8 % / 26.8 % / 71.4 %).
+    // F1 : Sniper 0, BR75 25, AR 60 → total 85 (parts = 0 % / 29.4 % / 70.6 %).
+    it('longueurs de barres INCHANGÉES (valeurs brutes) — seul le label affiché change', () => {
+      const opt = buildSquadWeaponKillsOption(data(), { colorByPlayer: COLORS })
+      const series = opt.series as Array<{ name: string; data: number[] }>
+      expect(series.find((s) => s.name === 'Me')?.data).toEqual([2, 30, 80])
+      expect(series.find((s) => s.name === 'F1')?.data).toEqual([0, 25, 60])
+    })
+
+    it('segment assez large → label = % du total du joueur (arrondi), pas la valeur brute', () => {
+      const opt = buildSquadWeaponKillsOption(data(), { colorByPlayer: COLORS })
+      const series = opt.series as Array<{ name: string; label: { formatter: (p: { value: unknown; dataIndex: number }) => string } }>
+      const me = series.find((s) => s.name === 'Me')!.label.formatter
+      // BR75 (index 1) : 30 / 112 ≈ 26.8 % → arrondi 27 %.
+      expect(me({ value: 30, dataIndex: 1 })).toBe('27 %')
+      // AR (index 2) : 80 / 112 ≈ 71.4 % → arrondi 71 %.
+      expect(me({ value: 80, dataIndex: 2 })).toBe('71 %')
+    })
+
+    it('segment trop étroit (< seuil de part) → label masqué, lisible seulement au tooltip', () => {
+      const opt = buildSquadWeaponKillsOption(data(), { colorByPlayer: COLORS })
+      const series = opt.series as Array<{ name: string; label: { formatter: (p: { value: unknown; dataIndex: number }) => string } }>
+      const me = series.find((s) => s.name === 'Me')!.label.formatter
+      // Sniper (index 0) : 2 / 112 ≈ 1.8 % — sous le seuil → masqué malgré une valeur > 0.
+      expect(me({ value: 2, dataIndex: 0 })).toBe('')
+    })
+
+    it('valeur nulle → label masqué (comportement historique conservé)', () => {
+      const opt = buildSquadWeaponKillsOption(data(), { colorByPlayer: COLORS })
+      const series = opt.series as Array<{ name: string; label: { formatter: (p: { value: unknown; dataIndex: number }) => string } }>
+      const f1 = series.find((s) => s.name === 'F1')!.label.formatter
+      expect(f1({ value: 0, dataIndex: 0 })).toBe('')
+    })
+
+    it('tooltip enrichi : valeur brute + % du total du joueur pour chaque ligne', () => {
+      const opt = buildSquadWeaponKillsOption(data(), { colorByPlayer: COLORS })
+      const tooltip = opt.tooltip as { formatter: (raw: unknown) => string }
+      const html = tooltip.formatter([
+        { seriesName: 'Me', value: 30, marker: '', dataIndex: 1 },
+        { seriesName: 'F1', value: 25, marker: '', dataIndex: 1 },
+      ])
+      expect(html).toContain('BR75')
+      expect(html).toContain('Me')
+      expect(html).toContain('<b>30</b>')
+      expect(html).toContain('27 %') // 30/112
+      expect(html).toContain('<b>25</b>')
+      expect(html).toContain('29 %') // 25/85
+    })
+
+    it('tooltip : lignes à 0 exclues (même filtre que la spec existante)', () => {
+      const opt = buildSquadWeaponKillsOption(data(), { colorByPlayer: COLORS })
+      const tooltip = opt.tooltip as { formatter: (raw: unknown) => string }
+      const html = tooltip.formatter([
+        { seriesName: 'Me', value: 2, marker: '', dataIndex: 0 },
+        { seriesName: 'F1', value: 0, marker: '', dataIndex: 0 },
+      ])
+      expect(html).toContain('Me')
+      expect(html).not.toContain('F1')
+    })
   })
 })
