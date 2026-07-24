@@ -3,7 +3,13 @@
 // pas traduits en ENG » : la locale de requête doit ordonner les clés de langue.
 package duckdb
 
-import "testing"
+import (
+	"context"
+	"strings"
+	"testing"
+
+	"levelup/go-api/internal/ctxkeys"
+)
 
 func TestLocalizedText_LocaleOrdering(t *testing.T) {
 	multi := map[string]any{"fr": "Français", "en": "English", "default": "Default"}
@@ -41,5 +47,32 @@ func TestLocalizedText_LocaleOrdering(t *testing.T) {
 	// String brute : trim, indépendant de la locale.
 	if got := localizedText("  plain  ", true); got != "plain" {
 		t.Errorf("string brute: got %q, want %q", got, "plain")
+	}
+}
+
+// TestBPItemFieldCoalesce_ValueIsEnglishSource verrouille le fix « récompenses Battle
+// Pass restent en FR en UI EN » : la chaîne anglaise des items vit dans `.value`
+// (canonique en-US), PAS dans `.translations.en-US` (absent des payloads Waypoint).
+// value doit donc être classée source ANGLAISE — précéder `.translations.fr-FR` en
+// préférence EN, et rester après en préférence FR.
+func TestBPItemFieldCoalesce_ValueIsEnglishSource(t *testing.T) {
+	enSQL := bpItemFieldCoalesce(ctxkeys.WithLocale(context.Background(), "en"), "Title", "title")
+	posVal := strings.Index(enSQL, "Title.value")
+	posFR := strings.Index(enSQL, "Title.translations.fr-FR")
+	if posVal < 0 || posFR < 0 {
+		t.Fatalf("EN: expressions value/fr-FR absentes de %q", enSQL)
+	}
+	if posVal > posFR {
+		t.Errorf("EN: value (anglais) doit précéder fr-FR dans le COALESCE, got %q", enSQL)
+	}
+
+	frSQL := bpItemFieldCoalesce(ctxkeys.WithLocale(context.Background(), "fr"), "Title", "title")
+	posValFR := strings.Index(frSQL, "Title.value")
+	posFRfr := strings.Index(frSQL, "Title.translations.fr-FR")
+	if posValFR < 0 || posFRfr < 0 {
+		t.Fatalf("FR: expressions value/fr-FR absentes de %q", frSQL)
+	}
+	if posFRfr > posValFR {
+		t.Errorf("FR: fr-FR doit précéder value dans le COALESCE, got %q", frSQL)
 	}
 }
