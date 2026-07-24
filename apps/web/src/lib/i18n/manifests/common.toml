@@ -842,7 +842,7 @@ fr = "Dégâts"
 en = "Damage"
 
 [common.leaderboard.cat_assists]
-fr = "Assists"
+fr = "Assistances"
 en = "Assists"
 
 [common.leaderboard.empty_title]
@@ -1380,7 +1380,7 @@ fr = "Classement Prestige entre amis dérivés de ton escouade et tes relations.
 en = "Prestige leaderboard with friends derived from your squad and relations."
 
 [common.prestige.select_player_for_leaderboard]
-fr = "Sélectionne un joueur pour voir le leaderboard."
+fr = "Sélectionne un joueur pour voir le classement."
 en = "Select a player to see the leaderboard."
 
 [common.prestige.select_player_for_objectives]

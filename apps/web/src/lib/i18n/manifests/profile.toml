@@ -69,7 +69,7 @@ fr = "Premier sang"
 en = "First blood"
 
 [profile.role.clutch_finisher]
-fr = "Clutch finisher"
+fr = "Finisseur"
 en = "Clutch finisher"
 
 [profile.role.last_casualty]
@@ -77,7 +77,7 @@ fr = "Dernier tombé"
 en = "Last casualty"
 
 [profile.role.last_group_kill]
-fr = "Dernier kill du groupe"
+fr = "Dernier frag du groupe"
 en = "Last group kill"
 
 [profile.role.first_group_death]
@@ -141,7 +141,7 @@ fr = "Finisseur opportuniste"
 en = "Opportunistic finisher"
 
 [profile.style.opportunistic_finisher.subtitle]
-fr = "Tu cherches le dernier kill au bon moment."
+fr = "Tu cherches le dernier frag au bon moment."
 en = "You hunt the final kill at the right moment."
 
 [profile.style.overextended.title]
@@ -169,7 +169,7 @@ fr = "Style mesuré — peu de premiers contacts."
 en = "Measured play — few first contacts."
 
 [profile.style.first_kills]
-fr = "Premiers kills"
+fr = "Premiers frags"
 en = "First kills"
 
 [profile.style.first_deaths]
@@ -290,7 +290,7 @@ en = "Target = composite score required for the next tier (same across all 8 com
 # Composantes LUSR (8).
 
 [profile.lusr.kills_vs_expected]
-fr = "Kills vs attendus"
+fr = "Frags vs attendus"
 en = "Kills vs expected"
 
 [profile.lusr.deaths_vs_expected]
