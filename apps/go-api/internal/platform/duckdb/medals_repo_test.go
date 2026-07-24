@@ -93,9 +93,13 @@ func TestMedalsRepo_LoadMedalTotals(t *testing.T) {
 		{200, "m1", 1},
 	}
 	for _, in := range inserts {
+		// On n'insere QUE medal_name_id : c'est la seule colonne reelle de
+		// shared.medals_earned (migration steps_shared_core.go). La colonne medal_id
+		// du schema de test est fictive ; l'ancien Q36a la lisait par erreur, d'ou le
+		// « 0/167 obtenues » en prod. Ce test verrouille la lecture sur medal_name_id.
 		if _, err := pdb.Player.Exec(ctx,
-			`INSERT INTO shared.medals_earned (medal_id, medal_name_id, xuid, match_id, count) VALUES (?,?,?,?,?)`,
-			in.medalID, in.medalID, targetXUID, in.matchID, in.count); err != nil {
+			`INSERT INTO shared.medals_earned (medal_name_id, xuid, match_id, count) VALUES (?,?,?,?)`,
+			in.medalID, targetXUID, in.matchID, in.count); err != nil {
 			t.Fatalf("insert medals_earned: %v", err)
 		}
 	}
