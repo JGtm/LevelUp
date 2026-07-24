@@ -1,3 +1,26 @@
+## [2026-07-24] Backfills prod v7.1.0 — CLÔTURE du chantier backlog v7.1
+
+**Statut** : Complété (dernière étape ouverte du chantier v7.1).
+
+**Décision technique principale** : exécution détachée sur le VPS (nohup + log
+`/tmp/backfill_v71.log`), script sans `set -e` qui consigne le rc de chaque étape et
+REDÉMARRE TOUJOURS la prod à la fin. Prod coupée 20:42:34Z → 21:00:25Z (~18 min).
+Séquence : `levelup seed citation-mappings` → `levelup backfill --all
+--citations-recompute-all` → `levelup backfill-h5-kill-mechanics --auth-as JGtm`
+(cutoff défaut 2026-06-26T15:00Z).
+
+**Résultats observés** : seed_rc=0 ; citations 8/8 joueurs, 0 échec, invariants V1–V4
+OK (JGtm 1 088 matchs réécrits, Madina 1 222, Chocoboflor 534) ; H5 kill-mechanics
+2 742 carnages re-fetchés, 0 sauté, **4 990 lignes corrigées sur 1 883 matchs** —
+volume identique au run local du même jour (cohérence attendue). OAuth JGtm rafraîchi
+avec rotation. `/health` post-restart : ok, v7.1.0, sync repartie. Vérification UI
+(« Vol à la tire », citation porteur) laissée à l'utilisateur : l'endpoint citations
+est ownership-gated (`player_forbidden` sans session) — comportement attendu.
+
+**Conclusion / prochaine étape** : chantier backlog v7.1 CLOS de bout en bout (code,
+docs, release, deploy, data). Candidat suivant proposé : fuite d'identité Spartan H5
+sur Infinite (PLAN_TITLE_SWITCH_FILTER_LEAK).
+
 ## [2026-07-24] Release v7.1.0 — merge main, deploy prod, fix app_version=dev
 
 **Statut** : Complété (deploys sous surveillance ; backfills prod restants, fenêtre à
