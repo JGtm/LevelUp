@@ -74,10 +74,6 @@ en = "Max rank reached"
 fr = "Progression du rang"
 en = "Rank progress"
 
-[career.charts.hero_progress]
-fr = "Progression vers le rang max"
-en = "Progress to max rank"
-
 # Libellé « progression vers le rang max » avec le NOM du rang sommet interpolé
 # ({rank} = « Héros » Halo Infinite, « SR 152 » Halo 5, résolu par le titre). Le
 # vocabulaire du rang max n'est jamais codé en dur : il vient du payload/catalogue.
