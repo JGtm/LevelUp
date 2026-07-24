@@ -30,6 +30,7 @@ import { useActiveSeason, seasonToPeriod } from '@/features/squad/useActiveSeaso
 import { MultiSelectFilter, type MultiSelectOption } from '@/features/explorer/MultiSelectFilter'
 import { ExperienceDropdown, type Experience } from '@/features/_shared/ExperienceDropdown'
 import { synthesisManifest } from '@/lib/i18n/generated/synthesis'
+import { hijacksLabelKey } from './hijacksLabel'
 import type { ManifestLocale } from '@/lib/i18n/format'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import type {
@@ -166,6 +167,12 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
     fieldMappings?.fields[key]?.label ?? key
   const locale = useAppShellStore((s) => s.locale) as ManifestLocale
   const t = (key: keyof typeof synthesisManifest) => synthesisManifest[key][locale]
+  // Libellé « vol à la tire » PAR TITRE : Halo 5 = « Vol à la tire », Infinite (défaut)
+  // = « Dépositaire ». Sélection par currentTitleSlug (précédent NavL2 : slug== toléré
+  // côté front pour un simple choix de libellé, jamais côté Go). Logique extraite en
+  // helper pur (hijacksLabelKey) pour testabilité hors rendu.
+  const currentTitleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const hijacksLabel = t(hijacksLabelKey(currentTitleSlug))
   // Format nombre locale-aware (séparateurs "12 345" FR / "12,345" EN) — I2.
   const numLoc = intlLocale(locale)
   const navigateToMatch = useNavigateToMatch(playerSlug)
@@ -452,7 +459,7 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
                           <AccentCard label={t('synthesis.kpi.vehicles_destroyed')} value={detailedStats.total_vehicles_destroyed.toLocaleString(numLoc)} accent="warning" />
                         )}
                         {detailedStats.total_hijacks > 0 && (
-                          <AccentCard label={t('synthesis.combat_profile.hijacks')} value={detailedStats.total_hijacks.toLocaleString(numLoc)} accent="chart-series-4" />
+                          <AccentCard label={hijacksLabel} value={detailedStats.total_hijacks.toLocaleString(numLoc)} accent="chart-series-4" />
                         )}
                       </div>
                     </div>

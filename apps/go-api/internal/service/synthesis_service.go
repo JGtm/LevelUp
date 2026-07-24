@@ -63,6 +63,13 @@ type SynthesisService struct {
 	// weapon_accuracy (Halo 5 natif). Quand nil OU titre sans table (Infinite),
 	// le champ WeaponAccuracy est omis de la réponse.
 	weaponAccuracyRepo port.WeaponAccuracyRepository
+	// vehicleDestructionRepo : source ALTERNATIVE (par titre) des compteurs
+	// « véhicules détruits » / « vol à la tire ». Câblé UNIQUEMENT pour les titres à
+	// commendations NATIVES (Halo 5, capability commendations.native — cf. registry
+	// SynthesisCtx, jamais slug==). Quand fourni, il PRIME sur personal_score_awards
+	// pour ces deux compteurs (personal_score_awards est vide pour ces titres). nil
+	// (Infinite) → comportement inchangé : les deux compteurs viennent des awards.
+	vehicleDestructionRepo port.VehicleDestructionStatsRepository
 	// titleSlug est nécessaire pour appeler PlayerMatchesRepo.LoadPlayerMatches.
 	// Si "" et playerMatchesRepo != nil, fallback sur le repo legacy.
 	titleSlug  string
@@ -115,6 +122,14 @@ func (s *SynthesisService) WithWeaponKillsRepo(repo port.WeaponKillsRepository) 
 // WithWeaponAccuracyRepo injecte le loader pour le classement précision par arme.
 func (s *SynthesisService) WithWeaponAccuracyRepo(repo port.WeaponAccuracyRepository) *SynthesisService {
 	s.weaponAccuracyRepo = repo
+	return s
+}
+
+// WithVehicleDestructionStatsRepo injecte la source PAR TITRE des compteurs
+// « véhicules détruits » / « vol à la tire » (Halo 5 : commendations natives). Réutilise
+// s.playerXUID (posé par WithPersonalScoreAwardsRepo, câblé en amont dans SynthesisCtx).
+func (s *SynthesisService) WithVehicleDestructionStatsRepo(repo port.VehicleDestructionStatsRepository) *SynthesisService {
+	s.vehicleDestructionRepo = repo
 	return s
 }
 
@@ -268,12 +283,16 @@ func (s *SynthesisService) loadAndEnrichCanonicalRows(ctx context.Context) ([]ca
 	return canonicalRows, nil
 }
 
-// applyFunStatsToDetailedStats charge fun stats depuis personal_score_awards
-// et les fusionne dans DetailedStats. Best-effort silencieux.
+// applyFunStatsToDetailedStats charge les fun stats et les fusionne dans DetailedStats.
+// Source par défaut = personal_score_awards (Infinite : betrayals/suicides/véhicules/
+// hijacks). Pour les titres à commendations NATIVES (Halo 5), véhicules détruits + vol
+// à la tire PRIMENT depuis match_commendations (personal_score_awards y est vide) —
+// branchement par capability câblé en amont (vehicleDestructionRepo nil pour Infinite).
+// Best-effort : une source en erreur ne casse pas la page (log, dégradation).
 func (s *SynthesisService) applyFunStatsToDetailedStats(
 	ctx context.Context, detailedStats *domain.SynthesisDetailedStats, filteredCanon []canonical.PlayerMatchRow,
 ) {
-	if s.personalScoreAwardsRepo == nil || s.playerXUID == "" {
+	if s.playerXUID == "" {
 		return
 	}
 	matchIDs := make([]string, 0, len(filteredCanon))
@@ -283,11 +302,27 @@ func (s *SynthesisService) applyFunStatsToDetailedStats(
 	if len(matchIDs) == 0 {
 		return
 	}
-	funStats, _ := buildSynthesisFunStatsFromAwards(ctx, s.personalScoreAwardsRepo, s.titleSlug, matchIDs, s.playerXUID)
-	detailedStats.TotalBetrayals = funStats.TotalBetrayals
-	detailedStats.TotalSuicides = funStats.TotalSuicides
-	detailedStats.TotalVehiclesDestroyed = funStats.TotalVehiclesDestroyed
-	detailedStats.TotalHijacks = funStats.TotalHijacks
+
+	if s.personalScoreAwardsRepo != nil {
+		funStats, _ := buildSynthesisFunStatsFromAwards(ctx, s.personalScoreAwardsRepo, s.titleSlug, matchIDs, s.playerXUID)
+		detailedStats.TotalBetrayals = funStats.TotalBetrayals
+		detailedStats.TotalSuicides = funStats.TotalSuicides
+		detailedStats.TotalVehiclesDestroyed = funStats.TotalVehiclesDestroyed
+		detailedStats.TotalHijacks = funStats.TotalHijacks
+	}
+
+	// Halo 5 (commendations.native) : véhicules détruits / vol à la tire depuis les
+	// commendations natives, qui PRIMENT sur les awards (vides pour ce titre).
+	if s.vehicleDestructionRepo != nil {
+		vd, err := s.vehicleDestructionRepo.LoadVehicleDestructionStats(ctx, s.titleSlug, matchIDs, s.playerXUID)
+		if err != nil {
+			slog.WarnContext(ctx, "synthesis: vehicle destruction stats query failed (best-effort)",
+				"title", s.titleSlug, "player_xuid", s.playerXUID, "match_count", len(matchIDs), "err", err)
+		} else {
+			detailedStats.TotalVehiclesDestroyed = vd.VehiclesDestroyed
+			detailedStats.TotalHijacks = vd.Hijacks
+		}
+	}
 }
 
 // loadTopWeaponKills agrège, sur le scope filtré, les frags par arme (top 20) ET la
