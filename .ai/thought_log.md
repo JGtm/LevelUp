@@ -21,9 +21,13 @@ convenir avec l'utilisateur).
 
 **Résultats observés** : deploy 1 vert (4 min 48, regen démo incluse) ; CI branche 100 %
 verte (Coverage + Baseline inclus) ; prod healthy (1 931 matchs, sync 20:05Z) ; version
-« dev » confirmée puis corrigée à la source ; deploys 2 (docs) et 3 (fix) en cours.
+« dev » confirmée puis corrigée à la source. Deploy 3 vert et `/health` = **v7.1.0**,
+version SURVIVANTE au redémarrage du job démo (fix `.env` validé bout en bout). Deploy 2
+rouge : COURSE entre deploys concurrents (le `up` du run N a recréé un conteneur que le
+`down` du run N+1 venait de supprimer) — sans conséquence (le 3 portait aussi les docs) ;
+garde-fou ajouté : `concurrency: deploy-vps` (file sans annulation) dans deploy.yml.
 
-**Conclusion / prochaine étape** : vérifier `/health` = v7.1.0 après le deploy 3, puis
+**Conclusion / prochaine étape** : v7.1.0 vérifiée en prod ; restent uniquement les
 backfills prod (app arrêtée ~15 min, avec accord explicite) : seed citation-mappings →
 `backfill --all --citations-recompute-all` → `backfill-h5-kill-mechanics`, vérif
 carrier_killed + « Vol à la tire » JGtm.

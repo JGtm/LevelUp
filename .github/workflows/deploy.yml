@@ -4,6 +4,15 @@ on:
   push:
     branches: [main]
 
+# Un seul deploy à la fois : deux pushs rapprochés lançaient deux deploy.sh
+# CONCURRENTS sur le VPS (constaté au deploy v7.1.0 : le `compose up` du run N
+# a tenté de recréer un conteneur que le `compose down` du run N+1 venait de
+# supprimer → run N rouge). File d'attente sans annulation : le dernier push
+# attend son tour et déploie l'état final.
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
 jobs:
   # ── Job 0 : Pré-validation rapide (syntaxe — ne nécessite pas de SSH) ──────
   pre-check:
