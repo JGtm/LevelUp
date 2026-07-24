@@ -6,7 +6,7 @@
  * Stats legacy (timeseries, history) : FilterOmnibar + PeriodSessionRail.
  * Stats perso (_personal.*) : NavL2 absent — PersonalStatsLayout gère sa propre barre.
  * Escouade : FilterOmnibar uniquement (SquadLayout gère sa propre barre).
- * Carrière : sous-onglets (Progression · Citations · Pass saisonnier) uniquement.
+ * Carrière : sous-onglets (Progression · Citations · Médailles · Pass saisonnier) uniquement.
  *
  * Sticky en dessous de NavL1 (top-0 dans le conteneur scrollable). Les filtres
  * (Session, Période, cascade) sont gérés par FilterOmnibar.tsx via des pills.
@@ -32,6 +32,7 @@ type NavTab = { readonly labelKey: CommonManifestKey; readonly path: RouteTo }
 const CAREER_TABS = [
   { labelKey: 'common.nav.tab_progression', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/career' },
   { labelKey: 'common.nav.tab_citations', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations' },
+  { labelKey: 'common.nav.tab_medals', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/medals' },
   { labelKey: 'common.nav.tab_season_pass', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/season-pass' },
 ] as const satisfies readonly NavTab[]
 
@@ -48,6 +49,8 @@ const CAREER_TABS_H5 = [
   // Halo 5 : commendations natives. Clé `tab_citations` = FR « Citations » (terme
   // officiel Halo FR, cohérent Infinite et l'onglet L1) / EN « Commendations ».
   { labelKey: 'common.nav.tab_citations', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/commendations' },
+  // Halo 5 a des médailles natives (ingest medals.go) — page title-agnostic partagée.
+  { labelKey: 'common.nav.tab_medals', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/medals' },
 ] as const satisfies readonly NavTab[]
 
 // Communauté : aligné sur le dropdown L1 (NavL1 section 'community'). Face-à-face

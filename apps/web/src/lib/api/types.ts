@@ -570,6 +570,13 @@ export type CSRSeasonOption = components['schemas']['CSRSeasonOption']
 
 export type CareerCSRResponse = components['schemas']['CareerCSRResponse']
 
+// Page Médailles (sous-page Carrière) — catalogue complet du titre + compteur
+// obtenu par joueur (count=0 = jamais obtenue). Ré-exports du contrat OpenAPI
+// (source unique) : liste plate triée + groupes par catégorie. Cf. Lot A2.
+export type MedalsPageResponse = components['schemas']['MedalsPageResponse']
+export type MedalSummaryItem = components['schemas']['MedalSummaryItem']
+export type MedalCategoryGroup = components['schemas']['MedalCategoryGroup']
+
 // ---------------------------------------------------------------------------
 // Pagination — commun (Slices 3+)
 // ---------------------------------------------------------------------------

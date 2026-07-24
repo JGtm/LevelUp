@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 )
 
@@ -76,6 +77,7 @@ type challengeSnapshotRow struct {
 	title           sql.NullString
 	description     sql.NullString
 	imageURL        sql.NullString
+	locale          sql.NullString // langue des libellés résolus ; '' ou NULL = ligne legacy pré-migration
 }
 
 // LoadCachedChallenges retourne un résumé des snapshots récents depuis challenge_snapshots
@@ -96,20 +98,27 @@ func (r *HomeRepo) LoadCachedChallenges(ctx context.Context, ttl time.Duration) 
 // dans la fenêtre TTL. Retourne nil sans erreur si la table est absente.
 func (r *HomeRepo) queryRecentChallengeSnapshots(ctx context.Context, ttl time.Duration) ([]challengeSnapshotRow, error) {
 	secs := int64(ttl.Seconds())
+	// Locale de la requête (threadée par le middleware via ctxkeys). On ne sert que les
+	// snapshots de CETTE langue, plus les lignes legacy (locale '' ou NULL, pré-migration
+	// add_challenge_snapshots_locale) tolérées pour ne pas masquer un cache pré-existant.
+	// PARTITION BY challenge_path : la ligne locale-spécifique (plus récente) l'emporte
+	// naturellement sur une éventuelle legacy plus ancienne du même défi.
+	locale := ctxkeys.Locale(ctx)
 	query := fmt.Sprintf(`
 		SELECT challenge_path, display_path, status, xp_reward, progress_current, progress_target,
-		       expires_at, snapshot_at, title, description, image_url
+		       expires_at, snapshot_at, title, description, image_url, locale
 		FROM (
 			SELECT challenge_path, display_path, status, xp_reward, progress_current, progress_target,
-			       expires_at, snapshot_at, title, description, image_url,
+			       expires_at, snapshot_at, title, description, image_url, locale,
 			       ROW_NUMBER() OVER (PARTITION BY challenge_path ORDER BY snapshot_at DESC) AS rn
 			FROM challenge_snapshots
 			WHERE xuid = ?
+			  AND (locale = ? OR locale = '' OR locale IS NULL)
 			  AND snapshot_at > CURRENT_TIMESTAMP - INTERVAL '%d' SECOND
 		) t
 		WHERE rn = 1`, secs)
 
-	rows, err := r.pdb.ReadDB().QueryRecovered(ctx, query, r.pdb.XUID)
+	rows, err := r.pdb.ReadDB().QueryRecovered(ctx, query, r.pdb.XUID, locale)
 	if err != nil {
 		if isTableNotFoundErr(err) {
 			return nil, nil
@@ -122,7 +131,7 @@ func (r *HomeRepo) queryRecentChallengeSnapshots(ctx context.Context, ttl time.D
 	for rows.Next() {
 		var s challengeSnapshotRow
 		if err := rows.Scan(&s.challengePath, &s.displayPath, &s.status, &s.xpReward, &s.progressCurrent,
-			&s.progressTarget, &s.expiresAt, &s.snapshotAt, &s.title, &s.description, &s.imageURL); err != nil {
+			&s.progressTarget, &s.expiresAt, &s.snapshotAt, &s.title, &s.description, &s.imageURL, &s.locale); err != nil {
 			return nil, fmt.Errorf("home_repo: cache challenges scan: %w", err)
 		}
 		snapshots = append(snapshots, s)

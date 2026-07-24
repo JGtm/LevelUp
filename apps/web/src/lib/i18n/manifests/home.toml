@@ -675,6 +675,10 @@ en = "No description available for this pass."
 fr = "Pass actif"
 en = "Active pass"
 
+[home.battle_pass.image_alt]
+fr = "Illustration de {name}"
+en = "Illustration of {name}"
+
 [home.battle_pass.badge_current]
 fr = "Palier actuel"
 en = "Current tier"

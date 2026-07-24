@@ -905,6 +905,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/pages/medals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Médailles (catalogue complet + compteur joueur) */
+        post: operations["postMedals"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/commendations/totals": {
         parameters: {
             query?: never;
@@ -7026,6 +7043,55 @@ export interface components {
             /** Format: int64 */
             total_count: number;
         };
+        MedalCategoryGroup: {
+            category: string;
+            /** Format: int64 */
+            earned: number;
+            items: components["schemas"]["MedalSummaryItem"][] | null;
+            super_section: string;
+            /** Format: int64 */
+            total: number;
+            /** Format: int64 */
+            total_count: number;
+        };
+        MedalSummaryItem: {
+            category: string;
+            /** Format: int64 */
+            count: number;
+            description: string;
+            difficulty: string;
+            difficulty_key: string;
+            /** Format: int64 */
+            difficulty_rank: number;
+            image_url?: string;
+            /** Format: int64 */
+            medal_id: number;
+            name: string;
+            /** Format: int64 */
+            personal_score: number;
+            /** Format: int64 */
+            sort: number;
+            /** Format: int64 */
+            sprite_height?: number;
+            /** Format: int64 */
+            sprite_left?: number;
+            sprite_sheet?: string;
+            /** Format: int64 */
+            sprite_top?: number;
+            /** Format: int64 */
+            sprite_width?: number;
+            super_section: string;
+        };
+        MedalsPageResponse: {
+            /** Format: int64 */
+            catalog_total: number;
+            categories: components["schemas"]["MedalCategoryGroup"][] | null;
+            /** Format: int64 */
+            earned_total: number;
+            medals: components["schemas"]["MedalSummaryItem"][] | null;
+            /** Format: int64 */
+            total_count: number;
+        };
         MedalDigestItem: {
             category?: string;
             description?: string;
@@ -7861,6 +7927,7 @@ export interface components {
             name: string;
             /** Format: int64 */
             partial_progress: number;
+            premium_owned: boolean;
             remaining_content?: components["schemas"]["SeasonPassContentSummary"];
             reward_track_path: string;
             snapshot_at?: string;
@@ -10479,6 +10546,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": Record<string, never>;
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    postMedals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Catalogue complet des médailles du titre avec le compteur obtenu par le joueur (0 = jamais obtenue), regroupées par catégorie et super-section */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MedalsPageResponse"];
                 };
             };
             404: components["responses"]["NotFound"];

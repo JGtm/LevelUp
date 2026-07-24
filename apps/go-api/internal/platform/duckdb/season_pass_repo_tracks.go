@@ -24,19 +24,37 @@ func bpPreferEN(ctx context.Context) bool {
 	return strings.EqualFold(ctxkeys.Locale(ctx), "en")
 }
 
-// bpItemFieldCoalesce construit un COALESCE ordonné par locale pour un champ
-// textuel d'item Battle Pass : colonne de traduction dénormalisée puis fallbacks
-// JSON du payload brut, la langue préférée d'abord. jsonKey = clé CommonData
-// ("Title"/"Description"), col = colonne battlepass_item_translations.
+// bpLocaleOrderedCoalesce ordonne un COALESCE par préférence de locale : les sources
+// de la langue préférée d'abord, puis les fallbacks de l'autre langue. enExprs = sources
+// ANGLAISES (dont value = chaîne canonique en-US Waypoint), frExprs = sources françaises.
+// Centralise l'ordre locale-aware des libellés d'items Battle Pass (loadItemMetadataMap
+// + fillItemsFromAssetIndex) — évite une 3e copie divergente de l'ordonnancement.
+func bpLocaleOrderedCoalesce(preferEN bool, enExprs, frExprs []string) string {
+	ordered := make([]string, 0, len(enExprs)+len(frExprs))
+	if preferEN {
+		ordered = append(append(ordered, enExprs...), frExprs...)
+	} else {
+		ordered = append(append(ordered, frExprs...), enExprs...)
+	}
+	return "COALESCE(" + strings.Join(ordered, ", ") + ")"
+}
+
+// bpItemFieldCoalesce construit un COALESCE ordonné par locale pour un champ textuel
+// d'item Battle Pass : traduction dénormalisée puis fallbacks JSON du payload brut, la
+// langue préférée d'abord. jsonKey = clé CommonData ("Title"/"Description"), col =
+// colonne battlepass_item_translations.
+//
+// PIÈGE Waypoint : la chaîne anglaise vit dans `.value` (canonique en-US), PAS dans
+// `.translations.en-US` (absent des payloads). value est donc une source ANGLAISE et
+// doit précéder les traductions étrangères en préférence EN — sinon EN retombe sur
+// `.translations.fr-FR` (bug « récompenses Battle Pass restent en FR quand l'UI passe EN »).
 func bpItemFieldCoalesce(ctx context.Context, jsonKey, col string) string {
-	frTrans, enTrans := "t_fr."+col, "t_en."+col
 	frJSON := fmt.Sprintf("json_extract_string(d.raw_payload_json, '$.CommonData.%s.translations.fr-FR')", jsonKey)
 	enJSON := fmt.Sprintf("json_extract_string(d.raw_payload_json, '$.CommonData.%s.translations.en-US')", jsonKey)
 	val := fmt.Sprintf("json_extract_string(d.raw_payload_json, '$.CommonData.%s.value')", jsonKey)
-	if bpPreferEN(ctx) {
-		return fmt.Sprintf("COALESCE(%s, %s, %s, %s, %s)", enTrans, frTrans, enJSON, frJSON, val)
-	}
-	return fmt.Sprintf("COALESCE(%s, %s, %s, %s, %s)", frTrans, enTrans, frJSON, enJSON, val)
+	en := []string{"t_en." + col, enJSON, val}
+	fr := []string{"t_fr." + col, frJSON}
+	return bpLocaleOrderedCoalesce(bpPreferEN(ctx), en, fr)
 }
 
 func (r *SeasonPassRepo) LoadSeasonPassTracks(ctx context.Context, _, _ string) ([]domain.SeasonPassTrackSummary, error) {
@@ -114,10 +132,11 @@ func (r *SeasonPassRepo) LoadSeasonPassTracks(ctx context.Context, _, _ string) 
 		return nil, err
 	}
 
+	preferEN := bpPreferEN(ctx)
 	for _, row := range trackRows {
 		prog := progressMap[row.rewardTrackPath]
 		prog.IsActive = row.rewardTrackPath == activeTrackPath
-		summary := buildTrackSummary(row, prog, itemMap)
+		summary := buildTrackSummary(row, prog, itemMap, preferEN)
 		tracks = append(tracks, summary)
 	}
 
@@ -152,11 +171,14 @@ func buildMinimalTrackSummary(path string, state trackSnapshotState) domain.Seas
 	status := computeSeasonPassStatus(state)
 	isOwned := state.IsOwned || state.Rank > 0 || state.IsActive
 	s := domain.SeasonPassTrackSummary{
-		RewardTrackPath:   path,
-		Name:              name,
-		Status:            status,
-		IsActive:          state.IsActive,
-		IsOwned:           isOwned,
+		RewardTrackPath: path,
+		Name:            name,
+		Status:          status,
+		IsActive:        state.IsActive,
+		IsOwned:         isOwned,
+		// PremiumOwned = signal brut d'achat premium (state.IsOwned), SANS la
+		// dilution progression/actif de IsOwned ci-dessus.
+		PremiumOwned:      state.IsOwned,
 		HasReachedMaxRank: state.HasReachedMaxRank,
 		CurrentRank:       state.Rank,
 		PartialProgress:   state.Partial,
@@ -281,18 +303,29 @@ func (r *SeasonPassRepo) fillItemsFromAssetIndex(
 	itemMap map[string]seasonPassItemMeta,
 ) {
 	placeholders := strings.TrimRight(strings.Repeat("?,", len(paths)), ",")
+	// Resolution locale-aware (cf. bpItemFieldCoalesce) : value = chaine canonique en-US
+	// (source ANGLAISE), translations.{loc} = etranger. asset_index n'a pas de table de
+	// traduction denormalisee -> uniquement les fallbacks JSON du raw_json.
+	preferEN := bpPreferEN(ctx)
+	assetTitle := bpLocaleOrderedCoalesce(preferEN,
+		[]string{
+			"json_extract_string(raw_json, '$.CommonData.Title.translations.en-US')",
+			"json_extract_string(raw_json, '$.CommonData.Title.value')",
+		},
+		[]string{"json_extract_string(raw_json, '$.CommonData.Title.translations.fr-FR')"},
+	)
+	assetDesc := bpLocaleOrderedCoalesce(preferEN,
+		[]string{
+			"json_extract_string(raw_json, '$.CommonData.Description.translations.en-US')",
+			"json_extract_string(raw_json, '$.CommonData.Description.value')",
+		},
+		[]string{"json_extract_string(raw_json, '$.CommonData.Description.translations.fr-FR')"},
+	)
 	query := fmt.Sprintf(`
 		SELECT id,
 		       json_extract_string(raw_json, '$.CommonData.DisplayPath.Media.MediaUrl.Path') AS display_path,
-		       COALESCE(
-		           json_extract_string(raw_json, '$.CommonData.Title.translations.fr-FR'),
-		           json_extract_string(raw_json, '$.CommonData.Title.translations.en-US'),
-		           json_extract_string(raw_json, '$.CommonData.Title.value')
-		       )                                                                            AS title,
-		       COALESCE(
-		           json_extract_string(raw_json, '$.CommonData.Description.translations.fr-FR'),
-		           json_extract_string(raw_json, '$.CommonData.Description.value')
-		       )                                                                            AS description,
+		       %s AS title,
+		       %s AS description,
 		       json_extract_string(raw_json, '$.CommonData.Quality')                        AS quality,
 		       COALESCE(
 		           json_extract_string(raw_json, '$.CommonData.Type'),
@@ -301,7 +334,7 @@ func (r *SeasonPassRepo) fillItemsFromAssetIndex(
 		FROM asset_index
 		WHERE kind IN ('bp-item-def', 'track-def')
 		  AND id IN (%s)
-		  AND raw_json IS NOT NULL`, placeholders)
+		  AND raw_json IS NOT NULL`, assetTitle, assetDesc, placeholders)
 
 	args := make([]any, len(paths))
 	for i, p := range paths {

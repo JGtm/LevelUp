@@ -140,6 +140,12 @@ export const queryKeys = {
   citations: (playerSlug: string, filterHash: string) =>
     ['citations', playerSlug, filterHash] as const,
 
+  // Médailles (sous-page Carrière) — locale dans la clé : le backend bake les
+  // libellés/descriptions de médailles localisés (X-LevelUp-Locale). Pas de
+  // filterHash : le filtre obtenues/non-obtenues + le tri sont 100% client.
+  medals: (playerSlug: string, locale: string) =>
+    ['medals', playerSlug, locale] as const,
+
   // Totaux à vie des commendations natives (Halo 5, AXE B)
   commendationTotals: (playerSlug: string) =>
     ['commendation-totals', playerSlug] as const,

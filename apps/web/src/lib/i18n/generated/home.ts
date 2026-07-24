@@ -9,6 +9,7 @@ export const homeManifest = {
   "home.battle_pass.badge_obtained": { fr: "Obtenu", en: "Obtained" },
   "home.battle_pass.badge_owned": { fr: "Premium", en: "Premium" },
   "home.battle_pass.default_hint": { fr: "live API non configurée", en: "live API not configured" },
+  "home.battle_pass.image_alt": { fr: "Illustration de {name}", en: "Illustration of {name}" },
   "home.battle_pass.loading": { fr: "Chargement du pass de combat...", en: "Loading battle pass..." },
   "home.battle_pass.no_description": { fr: "Aucune description disponible pour ce pass.", en: "No description available for this pass." },
   "home.battle_pass.no_pass_description": { fr: "Aucune progression de pass saisonnier n'a été renvoyée pour ce joueur.", en: "No season pass progression returned for this player." },

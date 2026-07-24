@@ -662,6 +662,11 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		citations := handlers.NewCitationsHandler(reg.CitationsCtx)
 		citations.Mount(r)
 
+		// Page Médailles : catalogue complet du titre + compteur obtenu par joueur
+		// (0 = jamais). Title-agnostic (resolver de catégorie par titre, baseline défaut).
+		medals := handlers.NewMedalsHandler(reg.MedalsCtx)
+		medals.Mount(r)
+
 		// AXE B : Totaux à vie des commendations NATIVES (Halo 5). Title-agnostic
 		// (loader type-asserté depuis l'adapter ; titre sans capability → vide).
 		commendationTotals := handlers.NewCommendationTotalsHandler(reg.CommendationTotalsCtx)
@@ -1178,6 +1183,11 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	// Résolveurs d'assets title-aware Halo 5 (badge CSR + AssetURLAdapter + sprites
 	// médailles), extraits en helper (K2a). Best-effort : nil/vide → HINF inchangé.
 	wireHalo5AssetAdapters(cfg, titleResolver, h5Maps, h5Weapons, h5Medals)
+
+	// Taxonomie des médailles Halo Infinite (catégorie/super-section SpartanRecord) :
+	// enregistrée sous son slug dans le registre du service. Les autres titres (Halo 5,
+	// futurs) utilisent la baseline medal_type. Data-driven — jamais de gating par slug.
+	service.RegisterMedalCategoryResolver(halo_games.TitleSlug, halo_games.MedalCategoryResolver{})
 
 	// Fichiers statiques (images maps, médailles, armes…)
 	staticDir := filepath.Join(cfg.RepoRoot, "static")

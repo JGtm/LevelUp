@@ -22,6 +22,22 @@ import (
 // playerBaseSteps retourne la racine player title-owned (b25).
 func playerBaseSteps() []migration.Migration {
 	return []migration.Migration{
+		// ─── challenge_snapshots.locale : ALTER post-baseline additif ───
+		// Mirror du (squashé) add_challenge_snapshots_display_path : nouvelle colonne
+		// additive sur challenge_snapshots (table créée par la baseline). NON squashée —
+		// posée en step vivant post-baseline pour ne pas muter le golden de la baseline
+		// (squash_invariant_test.go : SchemaSnapshot(baseline) == historique 33 steps).
+		// La colonne porte la LANGUE des titres/descriptions résolus persistés : le
+		// state_hash étant langue-indépendant, sans cette dimension le 2e insert (autre
+		// locale) est dédupliqué et seule la dernière langue fetchée survit.
+		{
+			Name:        "add_challenge_snapshots_locale",
+			TargetDB:    migration.TargetPlayer,
+			Description: "Ajoute challenge_snapshots.locale (langue des libellés résolus) — sépare les snapshots par locale (dédup state_hash langue-indépendant sinon).",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.AddColumnIfMissing(db, tblChallenge, "locale", tyVarcharEmptyDefault)
+			},
+		},
 		// ─── schémas prestige / campaign / progression (créateurs des tables ALTERées par b15-b22) ───
 		{
 			Name:        "create_prestige_player_schema",

@@ -32,16 +32,16 @@ WHERE citation_name_norm NOT LIKE '\_%%' ESCAPE '\'
 GROUP BY citation_name_norm
 ORDER BY total DESC`
 
-// Q36a : Commendations — total de médailles gagnées par medal_id (xuid du joueur).
+// Q36a : Commendations — total de médailles gagnées par medal_name_id (xuid du joueur).
 // Paramètre : ?1 = xuid du joueur.
 // Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
 const Q36aMedalTotals = `
 SELECT
-    medal_id,
+    medal_name_id,
     SUM(count) AS total_count
 FROM medals_earned
 WHERE xuid = ?
-GROUP BY medal_id
+GROUP BY medal_name_id
 ORDER BY total_count DESC`
 
 // Q36b : Commendations â€” mappings mÃ©dailleâ†’citation depuis metadata.duckdb.

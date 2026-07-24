@@ -1,0 +1,247 @@
+# Medals i18n manifest — strings de la page Médailles (sous-page Carrière).
+#
+# Format ICU MessageFormat. Regenerer via :
+#   node apps/web/scripts/build_i18n_manifests.mjs
+#
+# Les cles de categorie / super-section / rarete sont les CLES STABLES emises par
+# le backend (POST /pages/medals). Le rendu est title-agnostic : une cle inconnue
+# (medal_type d'un futur titre) retombe sur la cle brute cote front (labels.ts).
+# Terminologie FR canonique reutilisee de l'app (asset_labels_fr) pour les modes
+# Halo : « Capture du drapeau », « Corps a corps », « Tireur d'elite », « Reserve ».
+
+# ─── Titre page (onglet navigateur) ──────────────────────────────────────────
+
+[medals.page_title]
+fr = "Médailles"
+en = "Medals"
+
+[medals.header.title]
+fr = "Médailles — {earned}/{total} obtenues"
+en = "Medals — {earned}/{total} earned"
+
+# ─── Barre de filtre (obtenues / non-obtenues / toutes) ──────────────────────
+
+[medals.filter.label]
+fr = "Affichage"
+en = "Display"
+
+[medals.filter.all]
+fr = "Toutes"
+en = "All"
+
+[medals.filter.obtained]
+fr = "Obtenues"
+en = "Earned"
+
+[medals.filter.not_obtained]
+fr = "Non obtenues"
+en = "Not earned"
+
+# ─── Tri ─────────────────────────────────────────────────────────────────────
+
+[medals.sort.label]
+fr = "Trier par"
+en = "Sort by"
+
+[medals.sort.category_total]
+fr = "Total par catégorie"
+en = "Category total"
+
+[medals.sort.medal_count]
+fr = "Nombre par médaille"
+en = "Medal count"
+
+[medals.sort.medal_name]
+fr = "Nom de médaille"
+en = "Medal name"
+
+# ─── En-tête de catégorie ────────────────────────────────────────────────────
+
+[medals.category.mastery]
+fr = "{earned}/{total} obtenues"
+en = "{earned}/{total} earned"
+
+[medals.category.total_awarded]
+fr = "{count} au total"
+en = "{count} total"
+
+# ─── Carte médaille ──────────────────────────────────────────────────────────
+
+[medals.card.never_earned_aria]
+fr = "Jamais obtenue"
+en = "Never earned"
+
+[medals.card.earned_aria]
+fr = "Obtenue {count, plural, one {# fois} other {# fois}}"
+en = "Earned {count, plural, one {# time} other {# times}}"
+
+# ─── États transverses ───────────────────────────────────────────────────────
+
+[medals.errors.load_failed]
+fr = "Erreur lors du chargement des médailles"
+en = "Failed to load medals"
+
+[medals.errors.retry]
+fr = "Réessayer"
+en = "Retry"
+
+[medals.empty.no_data]
+fr = "Médailles indisponibles"
+en = "Medals unavailable"
+
+[medals.empty.no_data_description]
+fr = "Aucune réponse exploitable n'a été renvoyée pour cette page."
+en = "No exploitable response returned for this page."
+
+[medals.empty.no_items]
+fr = "Aucune médaille à afficher"
+en = "No medal to display"
+
+[medals.empty.no_items_description]
+fr = "Aucune médaille ne correspond au filtre sélectionné."
+en = "No medal matches the selected filter."
+
+# ─── Super-sections (regroupement SpartanRecord — Halo Infinite) ─────────────
+
+[medals.super_section.classics]
+fr = "Classiques"
+en = "Classics"
+
+[medals.super_section.game_modes]
+fr = "Modes de jeu"
+en = "Game modes"
+
+[medals.super_section.weapons_equipment]
+fr = "Armes et équipement"
+en = "Weapons & equipment"
+
+[medals.super_section.other]
+fr = "Autres"
+en = "Other"
+
+# ─── Catégories ──────────────────────────────────────────────────────────────
+# 23 categories SpartanRecord (Halo Infinite) + 3 baseline medal_type
+# (mode / proficiency / style) servant les titres sans enrichissement.
+
+[medals.category.spree]
+fr = "Série"
+en = "Spree"
+
+[medals.category.multikill]
+fr = "Multi-éliminations"
+en = "Multikill"
+
+[medals.category.assault]
+fr = "Assaut"
+en = "Assault"
+
+[medals.category.ctf]
+fr = "Capture du drapeau"
+en = "Capture the Flag"
+
+[medals.category.infection]
+fr = "Infection"
+en = "Infection"
+
+[medals.category.elimination]
+fr = "Élimination"
+en = "Elimination"
+
+[medals.category.extraction]
+fr = "Extraction"
+en = "Extraction"
+
+[medals.category.juggernaut]
+fr = "Juggernaut"
+en = "Juggernaut"
+
+[medals.category.king_of_the_hill]
+fr = "Roi de la colline"
+en = "King of the Hill"
+
+[medals.category.oddball]
+fr = "Oddball"
+en = "Oddball"
+
+[medals.category.stockpile]
+fr = "Réserve"
+en = "Stockpile"
+
+[medals.category.vip]
+fr = "VIP"
+en = "VIP"
+
+[medals.category.zone]
+fr = "Zones"
+en = "Zones"
+
+[medals.category.boom]
+fr = "Explosifs"
+en = "Boom"
+
+[medals.category.equipment]
+fr = "Équipement"
+en = "Equipment"
+
+[medals.category.melee]
+fr = "Corps à corps"
+en = "Melee"
+
+[medals.category.sniper]
+fr = "Tireur d'élite"
+en = "Sniper"
+
+[medals.category.weapons]
+fr = "Armes"
+en = "Weapons"
+
+[medals.category.vehicles]
+fr = "Véhicules"
+en = "Vehicles"
+
+[medals.category.assists]
+fr = "Assistances"
+en = "Assists"
+
+[medals.category.game_end]
+fr = "Fin de partie"
+en = "Game end"
+
+[medals.category.skill]
+fr = "Talent"
+en = "Skill"
+
+[medals.category.other]
+fr = "Autres"
+en = "Other"
+
+[medals.category.mode]
+fr = "Mode"
+en = "Mode"
+
+[medals.category.proficiency]
+fr = "Maîtrise d'arme"
+en = "Proficiency"
+
+[medals.category.style]
+fr = "Style"
+en = "Style"
+
+# ─── Raretés (Halo Infinite — index de difficulté 0..3) ──────────────────────
+# Accord feminin (« une medaille ») : Normale / Heroique / Legendaire / Mythique.
+
+[medals.rarity.normal]
+fr = "Normale"
+en = "Normal"
+
+[medals.rarity.heroic]
+fr = "Héroïque"
+en = "Heroic"
+
+[medals.rarity.legendary]
+fr = "Légendaire"
+en = "Legendary"
+
+[medals.rarity.mythic]
+fr = "Mythique"
+en = "Mythic"
