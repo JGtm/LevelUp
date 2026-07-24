@@ -3,7 +3,9 @@
  *
  * - `computeCumulativeFdaGap` (pur) : cumul chronologique + report D5 (un match
  *   sans attendu ne modifie pas le cumul, la courbe reporte la dernière valeur).
- * - `buildSessionFdaGapOption` (pur) : aire signée divergente ancrée à 0 + markLine 0.
+ * - `buildSessionFdaGapOption` (pur) : aire signée divergente ancrée à 0 + markLine 0,
+ *   PLUS 2 courbes fines « FDA réel/attendu (cumulé) » sur l'axe secondaire
+ *   (`yAxisIndex: 1`).
  * - `SessionFdaGapCumulative` (composant) : masquage par capability `expected_stats`.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -49,12 +51,16 @@ interface OptShape {
   backgroundColor: string
   series?: Array<{
     type: string
+    name?: string
     data: number[]
+    yAxisIndex?: number
     areaStyle?: { origin?: number; color?: { type?: string } }
     lineStyle?: { color?: { type?: string } }
     markLine?: { data: Array<{ yAxis: number }> }
   }>
+  legend?: { data: string[] }
   xAxis?: { data: string[]; boundaryGap?: boolean }
+  yAxis?: unknown[]
 }
 
 function setTitleCaps(caps: string[]) {
@@ -112,7 +118,14 @@ describe('computeCumulativeFdaGap', () => {
 })
 
 describe('buildSessionFdaGapOption', () => {
-  const opts = { seriesLabel: 'Écart cumulé', realLabel: 'Réel', expectedLabel: 'Attendu', gapLabel: 'Écart' }
+  const opts = {
+    seriesLabel: 'Écart cumulé',
+    realLabel: 'Réel',
+    expectedLabel: 'Attendu',
+    gapLabel: 'Écart',
+    realCumulativeLabel: 'FDA réel (cumulé)',
+    expectedCumulativeLabel: 'FDA attendu (cumulé)',
+  }
 
   it('série vide → option de fond minimale (pas de série)', () => {
     const opt = buildSessionFdaGapOption([], opts) as unknown as OptShape
@@ -120,7 +133,7 @@ describe('buildSessionFdaGapOption', () => {
     expect(opt.series).toBeUndefined()
   })
 
-  it('une série ligne : data = cumul, aire ancrée à 0, markLine 0, dégradé divergent', () => {
+  it('3 séries : cumul (aire), FDA réel cumulé + FDA attendu cumulé sur axe secondaire', () => {
     const series: ChartSeries<FdaGapPoint>[] = [
       {
         key: 'g',
@@ -131,12 +144,22 @@ describe('buildSessionFdaGapOption', () => {
       },
     ]
     const opt = buildSessionFdaGapOption(series, opts) as unknown as OptShape
-    expect(opt.series).toHaveLength(1)
+    expect(opt.series).toHaveLength(3)
     expect(opt.series![0].type).toBe('line')
     expect(opt.series![0].data).toEqual([0.5, 0.1])
     expect(opt.series![0].areaStyle?.origin).toBe(0)
     expect(opt.series![0].markLine?.data[0].yAxis).toBe(0)
     expect((opt.series![0].areaStyle?.color as { type?: string })?.type).toBe('linear')
+    // Courbes FDA réel/attendu cumulés — axe SECONDAIRE (yAxisIndex 1).
+    expect(opt.series![1].name).toBe('FDA réel (cumulé)')
+    expect(opt.series![1].yAxisIndex).toBe(1)
+    expect(opt.series![1].data).toEqual([1.5, 2.3])
+    expect(opt.series![2].name).toBe('FDA attendu (cumulé)')
+    expect(opt.series![2].yAxisIndex).toBe(1)
+    expect(opt.series![2].data).toEqual([1, 2.2])
+    // Axe Y en tableau (primaire + secondaire droit) + légende sur les 3 séries.
+    expect(opt.yAxis).toHaveLength(2)
+    expect(opt.legend?.data).toEqual(['Écart cumulé', 'FDA réel (cumulé)', 'FDA attendu (cumulé)'])
     expect(opt.xAxis?.boundaryGap).toBe(false)
   })
 })

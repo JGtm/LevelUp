@@ -328,6 +328,16 @@ en = "Actual"
 fr = "Attendu"
 en = "Expected"
 
+# Courbes cumulées ajoutées sur l'axe secondaire (légende + tooltip), distinctes
+# des libellés courts par-match ci-dessus.
+[timeseries.summary.fda_gap_real_cumulative]
+fr = "FDA réel (cumulé)"
+en = "Actual KDA (cumulative)"
+
+[timeseries.summary.fda_gap_expected_cumulative]
+fr = "FDA attendu (cumulé)"
+en = "Expected KDA (cumulative)"
+
 [timeseries.summary.fda_gap_gap]
 fr = "Écart"
 en = "Gap"

@@ -8,18 +8,25 @@
  * valeur cumulée (D5 — jamais 0, jamais de trou dans le cumul).
  *
  * Même pattern visuel que `SessionNetScoreArea` : aire signée divergente ancrée à
- * 0 (helper canonique `divergentZeroGradient`, PAS de visualMap) + markLine 0.
+ * 0 (helper canonique `divergentZeroGradient`, PAS de visualMap) + markLine 0 sur
+ * l'axe PRIMAIRE, PLUS 2 courbes fines « FDA réel (cumulé) » / « FDA attendu
+ * (cumulé) » sur un axe SECONDAIRE droit (`yAxisIndex: 1`, pattern dual-axis de
+ * `TimeseriesKdaBars`) — lisent `cumulativeReal`/`cumulativeExpected` du helper
+ * canonique `cumulativeFdaGap`, qui appliquent le MÊME skip conjoint que le
+ * cumul d'écart (identité cumulativeReal − cumulativeExpected === cumulative).
  * Masqué par `useCapability('expected_stats')` (Halo 5 = pas d'attendu → null).
  */
 import { useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
+import { resolveToken } from '@/lib/accessibility'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import {
   CHART_BG,
   escapeHtml,
   getAxisBase,
   getEChartsThemeColors,
+  getLegendBase,
   getTooltipBase,
 } from '@/components/charts/_utils'
 import { cumulativeFdaGap, type FdaGapCumPoint } from '@/lib/charts/cumulativeFdaGap'
@@ -57,6 +64,10 @@ export interface FdaGapCumulativeLabels {
   realLabel: string
   expectedLabel: string
   gapLabel: string
+  /** Libellé de la courbe « FDA réel (cumulé) » (légende + tooltip, axe secondaire). */
+  realCumulativeLabel: string
+  /** Libellé de la courbe « FDA attendu (cumulé) » (légende + tooltip, axe secondaire). */
+  expectedCumulativeLabel: string
   yDomain?: [number, number]
 }
 
@@ -73,13 +84,17 @@ export function buildSessionFdaGapOption(
   const interval = points.length > 30 ? Math.floor(points.length / 12) : 0
 
   const values = points.map((p) => p.cumulative)
+  const realCumValues = points.map((p) => p.cumulativeReal)
+  const expectedCumValues = points.map((p) => p.cumulativeExpected)
   const divergentColor = divergentZeroGradient(values)
+  const realColor = resolveToken('chart-series-1')
+  const expectedColor = resolveToken('chart-series-2')
   const fmt = (v: number | null, signed = false) =>
     v == null ? '—' : signed && v >= 0 ? `+${v}` : `${v}`
 
   return {
     backgroundColor: CHART_BG,
-    grid: { top: 24, bottom: 64, left: 48, right: 24 },
+    grid: { top: 24, bottom: 64, left: 48, right: 56 },
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'axis',
@@ -91,11 +106,17 @@ export function buildSessionFdaGapOption(
         return (
           `${cat}<br/>` +
           `${escapeHtml(opts.seriesLabel)}: <b>${fmt(p.cumulative, true)}</b><br/>` +
+          `${escapeHtml(opts.realCumulativeLabel)}: ${fmt(p.cumulativeReal, true)}<br/>` +
+          `${escapeHtml(opts.expectedCumulativeLabel)}: ${fmt(p.cumulativeExpected, true)}<br/>` +
           `${escapeHtml(opts.realLabel)}: ${fmt(p.real)}<br/>` +
           `${escapeHtml(opts.expectedLabel)}: ${fmt(p.expected)}<br/>` +
           `${escapeHtml(opts.gapLabel)}: ${fmt(p.gap, true)}`
         )
       },
+    },
+    legend: {
+      ...getLegendBase(tc),
+      data: [opts.seriesLabel, opts.realCumulativeLabel, opts.expectedCumulativeLabel],
     },
     xAxis: {
       ...axis,
@@ -104,11 +125,16 @@ export function buildSessionFdaGapOption(
       data: points.map((p) => p.label),
       axisLabel: { ...(axis.axisLabel as Record<string, unknown>), interval },
     },
-    yAxis: {
-      ...axis,
-      type: 'value',
-      ...(opts.yDomain ? { min: opts.yDomain[0], max: opts.yDomain[1] } : {}),
-    },
+    // Axe primaire (écart cumulé, gauche) + axe secondaire (FDA réel/attendu
+    // cumulés, droite — pattern dual-axis de TimeseriesKdaBars).
+    yAxis: [
+      {
+        ...axis,
+        type: 'value',
+        ...(opts.yDomain ? { min: opts.yDomain[0], max: opts.yDomain[1] } : {}),
+      },
+      { ...axis, type: 'value', position: 'right' },
+    ],
     series: [
       {
         name: opts.seriesLabel,
@@ -127,6 +153,22 @@ export function buildSessionFdaGapOption(
           label: { show: false },
           data: [{ yAxis: 0 }],
         },
+      },
+      {
+        name: opts.realCumulativeLabel,
+        type: 'line',
+        yAxisIndex: 1,
+        data: realCumValues,
+        symbol: 'none',
+        lineStyle: { width: 1, color: realColor },
+      },
+      {
+        name: opts.expectedCumulativeLabel,
+        type: 'line',
+        yAxisIndex: 1,
+        data: expectedCumValues,
+        symbol: 'none',
+        lineStyle: { width: 1, color: expectedColor, type: 'dashed' },
       },
     ],
   }
@@ -163,6 +205,8 @@ export function SessionFdaGapCumulative({ title, matches, height = 280, yDomain 
           realLabel: t('session.detail.fda_gap_real'),
           expectedLabel: t('session.detail.fda_gap_expected'),
           gapLabel: t('session.detail.fda_gap_gap'),
+          realCumulativeLabel: t('session.detail.fda_gap_real_cumulative'),
+          expectedCumulativeLabel: t('session.detail.fda_gap_expected_cumulative'),
           yDomain,
         })
       }
