@@ -31,6 +31,7 @@ import type {
   SoloSessionPerfPoint,
 } from '@/lib/api/types'
 import { buildSquadIntensityHeatmapOption } from '@/features/squad/charts/squadIntensityHeatmapChart'
+import { buildSquadIntensityProfileOption } from '@/features/squad/charts/squadIntensityProfileChart'
 import {
   damageAxisBounds,
   damagePerDeath,
@@ -246,6 +247,53 @@ export function TimeseriesIntensityHeatmap({
     return buildSquadIntensityHeatmapOption(rows as SquadIntensityMatchRow[], { zLabel })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, zLabel, themeVersion])
+  return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
+}
+
+// ─── Intensity profile solo (médiane des parts par phase + enveloppe P25–P75) ─
+//
+// Remplace la heatmap : un panneau UNIQUE pleine largeur (le joueur actif), en
+// réutilisant le builder multi-grilles P1 en N=1 (aucune duplication de la
+// géométrie). Couleur série standard du chart ; titre de panneau vide (le titre
+// de la carte identifie déjà la surface). Le builder renvoie une option SANS
+// `series` quand aucune manche n'est exploitable → on la traite comme vide.
+
+export interface TimeseriesIntensityProfileProps {
+  rows: IntensityMatchRow[]
+  height?: number
+  title?: ReactNode
+  emptyMessage?: string
+  medianLabel: string
+  envelopeLabel: string
+  refLabel: string
+}
+
+export function TimeseriesIntensityProfile({
+  rows,
+  height = 340,
+  title,
+  emptyMessage,
+  medianLabel,
+  envelopeLabel,
+  refLabel,
+}: TimeseriesIntensityProfileProps) {
+  const themeVersion = useThemeVersion()
+
+  const option = useMemo<EChartsCoreOption | null>(() => {
+    if (rows.length === 0) return null
+    const color = resolveToken('chart-series-2')
+    const opt = buildSquadIntensityProfileOption({
+      panels: [
+        { key: 'solo', label: '', color, rows: rows as Array<{ phases: number[] | null }> },
+      ],
+      medianLabel,
+      envelopeLabel,
+      refLabel,
+    })
+    // Pas de manche exploitable (aucun frag) → le builder omet `series` : vide.
+    return (opt as { series?: unknown }).series ? opt : null
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, medianLabel, envelopeLabel, refLabel, themeVersion])
   return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
 }
 
