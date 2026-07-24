@@ -69,7 +69,7 @@ Tier columns are the `tier_targets` CSV; **Master** is the last (largest) tier.
 | `forced_annexation` | Annexion forcée | custom | `compute_annexion_forcee` | 3,6,9,15,**30** |
 | `assistant` | Assistant | stat | `assists` | 25,50,75,125,**250** |
 | `bulldozer` | Bulldozer | custom | `compute_bulldozer` | 3,6,9,15,**30** |
-| `flag_defender` | Défenseur du drapeau | award | `carrier_killed` (objective) | 10,20,30,50,**100** |
+| `flag_defender` | Défenseur du drapeau | award | `carrier_killed` (objective) — **disabled** (I7) | 10,20,30,50,**100** |
 | `got_you` | Je te tiens ! | award | `flag_returned` (objective) | 10,20,30,50,**100** |
 | `stakeholder` | Partie prenante | award | `zone_secured` (objective) | 10,20,30,50,**100** |
 | `flag_carrier_hunter` | Sus au porteur du drapeau | award | `carrier_killed` (objective) | 10,20,30,50,**100** |
@@ -82,7 +82,7 @@ Tier columns are the `tier_targets` CSV; **Master** is the last (largest) tier.
 | Norm | Display | Type | Source | Tiers | Subcat |
 |------|---------|------|--------|-------|--------|
 | `splatter` | Écrasement | medal | `221693153` | 10,20,30,50,**100** | Général |
-| `driver` | Pilote | medal | `3169118333` | 10,20,30,50,**100** | Général |
+| `driver` | Pilote | medal | `2926348688` | 10,20,30,50,**100** | Général |
 | `frag_grenade` | Grenade à fragmentation | medal | `2648272972` | 5,10,15,25,**50** | Grenade |
 | `plasma_grenade` | Grenade à plasma | medal | `3655682764` | 2,4,6,10,**20** | Grenade |
 
@@ -115,7 +115,7 @@ Tier columns are the `tier_targets` CSV; **Master** is the last (largest) tier.
 | `no_hard_feelings` | Sans rancune | stat | `kills` | 50000,100000,150000,240000,**486000** |
 | `positive_contribution` | Positive contribution | custom | `compute_bulldozer` | 300,600,900,1440,**2960** |
 | `power_play` | Coup de force | stat | `power_weapon_kills` | 10000,20000,30000,48000,**97200** |
-| `road_trip` | Virée sur la route | medal | `3169118333` | 3000,6000,9000,14400,**29200** |
+| `road_trip` | Virée sur la route | medal | `221693153` | 3000,6000,9000,14400,**29200** |
 | `sting_like_a_bee` | Pique comme une abeille | stat | `melee_kills` | 5000,10000,15000,24000,**48600** |
 | `the_reaper` | Le faucheur | medal | `2625820422` | 500,1000,1500,2400,**4850** |
 | `too_fast_for_you` | Trop rapide pour toi | medal | `2123530881` | 2000,4000,6000,9600,**19400** |
@@ -143,7 +143,7 @@ Tier columns are the `tier_targets` CSV; **Master** is the last (largest) tier.
 | `hunter_slayer` | Tueur de Chasseurs | pve_stat | `hunter_kills` | yes | 2,4,6,10,**20** |
 | `sentinel_slayer` | Tueur de sentinelles | pve_stat | `sentinel_kills` | no | 5,10,15,25,**50** |
 | `like_a_boss` | Comme un Boss | pve_stat | `boss_kills` | yes | 250,500,750,1200,**2400** |
-| `player_vs_everything` | Éliminations Firefight | pve_stat | `total_enemy_kills` | yes | 200,400,600,960,**1940** |
+| `player_vs_everything` | Éliminations Firefight | custom | `compute_wins_firefight` (Firefight wins, not a `pve_match_stats` column) | yes | 5,10,15,25,**50** |
 | `brute_slayer` | Tueur de Brutes | pve_stat | `brute_kills` | no | 10,20,30,50,**100** |
 | `skimmer_slayer` | Tueur de Skimmers | pve_stat | `skimmer_kills` | no | 10,20,30,50,**100** |
 | `marine_slayer` | Tueur de Marines | pve_stat | `marine_kills` | no | 20,40,60,100,**200** |
@@ -213,7 +213,7 @@ Type `composite`; value = count of mastered children.
 
 | medal_id | FR name | Used by |
 |----------|---------|---------|
-| `221693153` | Écrasement (Splatter) | `splatter`, `lawnmower`, `vehicle_mastery` (via splatter) |
+| `221693153` | Écrasement (Splatter) | `splatter`, `lawnmower`, `road_trip`, `vehicle_mastery` (via splatter) |
 | `548533137` | Par derrière (Back Smack) | `assassin` |
 | `622331684` | Double frag | `multikill`, `opportunist` |
 | `1430343434` | Boucherie (Killtacular) | `opportunist` |
@@ -225,8 +225,9 @@ Type `composite`; value = count of mastered children.
 | `2242633421` | Meurtre mort détruire (Killimanjaro) | `opportunist` |
 | `2625820422` | Frag d'outre-tombe (From the Grave) | `the_reaper` |
 | `2648272972` | Grenadier | `frag_grenade` |
+| `2926348688` | Pilote assist (Wheelman) | `driver` |
 | `3091261182` | Chargeur vide (Empty Magazine) | `lucky` |
-| `3169118333` | Violence routière (Wheelman) | `driver`, `road_trip` |
+| `3169118333` | Violence routière | — (unreferenced since I7: `driver` → `2926348688`, `road_trip` → `221693153`) |
 | `3655682764` | Collage (Stick) | `plasma_grenade` |
 | `3905838030` | La chance (Lucky) | `lucky` |
 | `4261842076` | Massacre (Killamanjaro) | `opportunist`, `spartan_carnage` |
@@ -246,6 +247,7 @@ The seed ships these with `Enabled: false` (listed, not computed):
 | `brute_slayer` | Enemy type not present in Halo 5 (no image). |
 | `skimmer_slayer` | Enemy type not present in Halo 5 (no image). |
 | `marine_slayer` | Allies — not a meaningful positive commendation. |
+| `flag_defender` | No unambiguous own-flag-defense ingestion award (`carrier_killed` = enemy-carrier kill = `flag_carrier_hunter`). Future candidate: `carrier_stopped`. |
 
 ---
 
@@ -258,13 +260,12 @@ Several commendations share the same source with very different tier targets:
 | `assists` | `assistant` (250), `helping_hand` (194400) |
 | `kills` | `spartan_killer` (200), `no_hard_feelings` (486000) |
 | `melee_kills` | `close_combat` (100), `melee_fighter` (50), `sting_like_a_bee` (48600) |
-| medal `221693153` | `splatter` (100), `lawnmower` (4900) |
-| medal `3169118333` | `driver` (100), `road_trip` (29200) |
+| medal `221693153` | `splatter` (100), `lawnmower` (4900), `road_trip` (29200) |
 | medal `1512363953` | `eagle_eye` (100), `im_just_perfect` (19400) |
 | `compute_bulldozer` | `bulldozer` (30), `positive_contribution` (2960) |
 
 ---
 
-## Unbound custom function
+## Custom functions — all bound
 
-`compute_wins_firefight` is implemented and registered in `citations_custom.go` but is not referenced by any enabled commendation — candidate for a future "Firefight win" citation.
+Every custom function registered in `citations_custom.go` (`DispatchCustom`) is now referenced by a commendation. `compute_wins_firefight` was bound to `player_vs_everything` in I7 (Firefight wins), removing the last unbound rule.

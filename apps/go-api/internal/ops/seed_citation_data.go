@@ -35,19 +35,16 @@ func defaultCitationMappings() []CitationMapping {
 			Category:    citationCatModeJeu,
 			Description: "Terminez n'importe quelle partie matchmaking Assassin avec un FDA supérieur à 8.",
 			TierTargets: tierTargets3_6_9_15_30},
-		// BUG D (I7, 2026-07-24) — EN ATTENTE DE DÉCISION UTILISATEUR : flag_defender
-		// (« Protégez le drapeau de votre équipe ») partage award_name "carrier_killed"
-		// avec flag_carrier_hunter (« Tuez un porte-drapeau ennemi »). "carrier_killed"
-		// est SÉMANTIQUEMENT CORRECT pour flag_carrier_hunter, mais pas pour la défense.
-		// Aucun award d'ingestion (refdata_personal_scores.go) n'est un « défense de
-		// drapeau » NON AMBIGU. Candidats de remap possibles (décision user) :
-		//   - "carrier_stopped" (objective, non utilisé ailleurs) — stopper le porteur
-		//     ennemi de VOTRE drapeau : le plus proche sémantiquement ;
-		//   - "flag_returned" (objective) — déjà consommé par la citation `got_you` ;
-		//   - "runner_stopped" (objective) — stopper un porteur, plus générique.
-		// Statu quo conservé (carrier_killed) tant que l'utilisateur n'a pas tranché.
+		// I7 (2026-07-24) — DÉCISION UTILISATEUR : flag_defender DÉSACTIVÉE (Enabled=false).
+		// Aucun award d'ingestion (refdata_personal_scores.go) ne mesure la défense de SON
+		// PROPRE drapeau de façon non ambiguë : "carrier_killed" (seul candidat direct) veut
+		// dire « tuer le porte-drapeau ENNEMI » = flag_carrier_hunter, pas la défense. La
+		// citation reste listée (inventaire + parité EN) mais le moteur l'ignore
+		// (loadFullCitationMappings : WHERE enabled IS NOT FALSE). Candidat futur si un award
+		// dédié apparaît : "carrier_stopped" (objective — stopper le porteur ennemi de VOTRE
+		// drapeau). Non enfant d'un composite → aucun composite rendu inatteignable.
 		{Norm: "flag_defender", Display: "Défenseur du drapeau", MappingType: mappingTypeAward,
-			AwardName: "carrier_killed", AwardCategory: awardCategoryObjective, Enabled: true,
+			AwardName: "carrier_killed", AwardCategory: awardCategoryObjective, Enabled: false,
 			ImagePath:   wpH5 + "H5G_citation_Défenseur_du_drapeau.png",
 			Category:    citationCatModeJeu,
 			Description: "Protégez le drapeau de votre équipe dans n'importe quelle partie matchmaking Capture du drapeau.",
@@ -236,15 +233,16 @@ func defaultCitationMappings() []CitationMapping {
 			Category:    citationCatSpartanCompanies,
 			Description: "Tuer un Spartan ennemi avec une arme puissante",
 			TierTargets: "10000,20000,30000,48000,97200"},
-		// BUG C (I7, 2026-07-24) — EN ATTENTE DE DÉCISION UTILISATEUR : road_trip
-		// conserve medal_id 3169118333 (« Violence routière », vehicle-kill). C'est
-		// vraisemblablement la bonne médaille pour « Tuer avec un véhicule terrestre »,
-		// mais le remap de `driver` ci-dessus lève déjà la collision fonctionnelle.
-		// Ne PAS toucher tant que l'utilisateur n'a pas tranché la médaille cible.
-		// Désactivation propre possible si besoin : passer Enabled à false (le seed
-		// écrit alors enabled=FALSE ; le moteur ignore la citation via
-		// `WHERE enabled IS NOT FALSE`, cf. loadFullCitationMappings) — non appliqué ici.
-		{Norm: "road_trip", Display: "Virée sur la route", MappingType: mappingTypeMedal, MedalID: 3169118333, Enabled: true,
+		// I7 (2026-07-24) — DÉCISION UTILISATEUR : road_trip remappée sur la médaille
+		// d'ÉCRASEMENT (Splatter) 221693153, présente au catalogue Infinite — faisceau
+		// concordant : medal_category_table.go la classe "vehicles" ; la citation `splatter`
+		// (Display « Écrasement », EN « Splatter ») pointe déjà cette médaille ; asset_labels_fr
+		// mappe "Splatter"="Écrasement". L'ancien medal_id 3169118333 (« Violence routière »)
+		// n'est plus référencé par aucune citation. Duplication de médaille intentionnelle
+		// (comme splatter/lawnmower) : road_trip conserve son palier Spartan Company élevé
+		// (grind long), splatter/lawnmower gardent les leurs. Non enfant d'un composite
+		// (vehicle_mastery cible `splatter`, pas `road_trip`) → aucun composite impacté.
+		{Norm: "road_trip", Display: "Virée sur la route", MappingType: mappingTypeMedal, MedalID: 221693153, Enabled: true,
 			ImagePath:   wpH5 + "H5G_citation_Road_Trip.png",
 			Category:    citationCatSpartanCompanies,
 			Description: "Tuer un Spartan ennemi avec un véhicule terrestre",
@@ -353,12 +351,22 @@ func defaultCitationMappings() []CitationMapping {
 			Category:    citationCatSpartanCompanies,
 			Description: "Tuer un boss dans une partie Baptême du feu zone de combat",
 			TierTargets: "250,500,750,1200,2400"},
-		{Norm: "player_vs_everything", Display: "Éliminations Firefight", MappingType: mappingTypePVEStat,
-			StatName: "total_enemy_kills", Enabled: true,
+		// I7 suite (2026-07-24) — DÉCISION UTILISATEUR : « Éliminations Firefight » compte
+		// les VICTOIRES en Baptême du feu (la description « Gagner des parties en Baptême du
+		// feu » était déjà correcte ; l'ancien stat_name total_enemy_kills comptait des kills
+		// = faux). Bascule sur la fonction custom compute_wins_firefight (déjà implémentée et
+		// enregistrée dans citations_custom.go, jusqu'ici NON liée à une citation → dead code
+		// résorbé) : renvoie 1 par match Firefight gagné (outcome == OutcomeWin), 0 sinon —
+		// même patron que flag_victory / slayer_victory / strongholds_victory, d'où le même
+		// palier de victoires tierTargets5_10_15_25_50 (recalibré depuis l'échelle kills x00).
+		// Reste thématiquement Firefight (Category inchangée). Non enfant d'un composite → la
+		// sémantique de covenant_destroyer et des autres composites reste inchangée.
+		{Norm: "player_vs_everything", Display: "Éliminations Firefight", MappingType: mappingTypeCustom,
+			CustomFunction: "compute_wins_firefight", Enabled: true,
 			ImagePath:   wpH5 + "H5G_citation_Player_vs_Everything.png",
 			Category:    citationCatSpartanCompanies,
 			Description: "Gagner des parties en Baptême du feu",
-			TierTargets: "200,400,600,960,1940"},
+			TierTargets: tierTargets5_10_15_25_50},
 		{Norm: "brute_slayer", Display: "Tueur de Brutes", MappingType: mappingTypePVEStat,
 			StatName:    "brute_kills",
 			Enabled:     false,
