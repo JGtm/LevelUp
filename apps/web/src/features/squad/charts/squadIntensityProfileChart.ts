@@ -29,12 +29,43 @@ import {
   phaseProfile,
   type PhaseProfileResult,
 } from '@/lib/charts/phaseProfile'
+import type { Locale } from '@/lib/i18n/locale'
 
-/** Libellés des 10 tranches de phase (0-10 %, …, 90-100 %) — axe X du profil. */
+/** Libellés des 10 tranches de phase (0-10 %, …, 90-100 %) — data de l'axe X + tooltip. */
 export const INTENSITY_PHASE_LABELS = [
   '0-10%', '10-20%', '20-30%', '30-40%', '40-50%',
   '50-60%', '60-70%', '70-80%', '80-90%', '90-100%',
 ]
+
+/** Index de la tranche « milieu » (0-based) affichée sur l'axe X. */
+const PHASE_MID_INDEX = Math.floor(PHASE_COUNT / 2)
+
+/**
+ * Étiquettes de l'axe X du profil d'intensité. L'axe ne montre que 3 repères
+ * (début / milieu / fin du match) — les 10 tranches restent en data (tooltip
+ * précis), mais afficher 10 pourcentages était illisible et se confondait avec
+ * l'axe Y (lui aussi en %). `rangeSuffix` complète la tranche dans le tooltip
+ * (ex. « 40-50% du match »).
+ */
+export interface IntensityAxisLabels {
+  start: string
+  mid: string
+  end: string
+  rangeSuffix: string
+}
+
+const INTENSITY_AXIS_LABELS: Record<Locale, IntensityAxisLabels> = {
+  fr: { start: 'Début', mid: 'Milieu', end: 'Fin', rangeSuffix: 'du match' },
+  en: { start: 'Start', mid: 'Midpoint', end: 'End', rangeSuffix: 'of the match' },
+}
+
+/**
+ * Étiquettes d'axe X partagées par les 3 surfaces (Escouade / Timeseries /
+ * Sessions) — source unique, parité FR/EN par typage `Record<Locale, …>`.
+ */
+export function intensityAxisLabels(locale: Locale): IntensityAxisLabels {
+  return INTENSITY_AXIS_LABELS[locale] ?? INTENSITY_AXIS_LABELS.fr
+}
 
 /** Repère « activité uniforme » : 1/PHASE_COUNT des frags par phase. */
 export const UNIFORM_SHARE = 1 / PHASE_COUNT
@@ -59,6 +90,8 @@ export interface IntensityProfileOpts {
   envelopeLabel: string
   /** Libellé du repère 10 %. */
   refLabel: string
+  /** Étiquettes de l'axe X (début / milieu / fin) + suffixe tooltip de tranche. */
+  axisLabels: IntensityAxisLabels
 }
 
 /** Panneau retenu (au moins une manche exploitable) + son profil agrégé. */
@@ -180,18 +213,21 @@ function buildPanelSeries(panel: ResolvedPanel, gi: number, refColor: string, re
 
 const asPct = (v: number): string => `${Math.round(v * 100)}%`
 
-/** Tooltip axis : phase + médiane + fourchette P25–P75 du panneau survolé. */
-function buildTooltipFormatter(medianLabel: string, envelopeLabel: string) {
+/** Tooltip axis : tranche précise + médiane + fourchette P25–P75 du panneau survolé. */
+function buildTooltipFormatter(medianLabel: string, envelopeLabel: string, rangeSuffix: string) {
   return (params: unknown): string => {
     const arr = (Array.isArray(params) ? params : [params]) as Array<{
       seriesId?: string
       seriesName?: string
-      axisValueLabel?: string
-      axisValue?: string
+      dataIndex?: number
       value?: number
     }>
     if (arr.length === 0) return ''
-    const phase = arr[0].axisValueLabel ?? arr[0].axisValue ?? ''
+    // L'axe X n'affiche que 3 repères (début/milieu/fin) : la tranche précise du
+    // tooltip vient de dataIndex (jamais de axisValueLabel, masqué hors des 3 repères).
+    const idx = typeof arr[0].dataIndex === 'number' ? arr[0].dataIndex : 0
+    const range = INTENSITY_PHASE_LABELS[idx] ?? ''
+    const phase = rangeSuffix ? `${range} ${rangeSuffix}` : range
     const median = arr.find((p) => String(p.seriesId ?? '').startsWith('median-'))
     const base = arr.find((p) => String(p.seriesId ?? '').startsWith('base-'))
     const band = arr.find((p) => String(p.seriesId ?? '').startsWith('band-'))
@@ -226,12 +262,22 @@ export function buildSquadIntensityProfileOption(opts: IntensityProfileOpts): EC
   const yMax = sharedYMax(resolved)
   const refColor = tc.axisLabel
 
+  const { start, mid, end } = opts.axisLabels
   const xAxes = grids.map((_, gi) => ({
     ...axis,
     gridIndex: gi,
     type: 'category' as const,
     data: INTENSITY_PHASE_LABELS,
-    axisLabel: { ...axis.axisLabel, rotate: -25, interval: 0, fontSize: 8 },
+    // Seuls 3 repères affichés (début / milieu / fin) — les 10 tranches restent en
+    // data pour le tooltip. Évite l'illisibilité de 10 pourcentages face à l'axe Y.
+    axisLabel: {
+      ...axis.axisLabel,
+      interval: (index: number) =>
+        index === 0 || index === PHASE_MID_INDEX || index === PHASE_COUNT - 1,
+      formatter: (_value: string, index: number) =>
+        index === 0 ? start : index === PHASE_MID_INDEX ? mid : index === PHASE_COUNT - 1 ? end : '',
+      fontSize: 9,
+    },
   }))
   const yAxes = grids.map((_, gi) => ({
     ...axis,
@@ -266,7 +312,7 @@ export function buildSquadIntensityProfileOption(opts: IntensityProfileOpts): EC
       ...getTooltipBase(tc),
       trigger: 'axis',
       axisPointer: { type: 'line' },
-      formatter: buildTooltipFormatter(opts.medianLabel, opts.envelopeLabel),
+      formatter: buildTooltipFormatter(opts.medianLabel, opts.envelopeLabel, opts.axisLabels.rangeSuffix),
     },
     xAxis: xAxes,
     yAxis: yAxes,

@@ -24,6 +24,7 @@ vi.mock('./charts/squadIntensityProfileChart', () => ({
     captured.panels = opts.panels
     return { backgroundColor: 'transparent' }
   },
+  intensityAxisLabels: () => ({ start: 'Début', mid: 'Milieu', end: 'Fin', rangeSuffix: 'du match' }),
 }))
 
 const T = getSquadText('fr')

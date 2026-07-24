@@ -26,7 +26,12 @@ function panel(key: string, n: number, phaseIdx = 0): IntensityPanelInput {
   return { key, label: key, color: '#ff8800', rows: rows(n, phaseIdx) }
 }
 
-const OPTS = { medianLabel: 'Médiane', envelopeLabel: 'Enveloppe P25–P75', refLabel: '10 %' }
+const OPTS = {
+  medianLabel: 'Médiane',
+  envelopeLabel: 'Enveloppe P25–P75',
+  refLabel: '10 %',
+  axisLabels: { start: 'Début', mid: 'Milieu', end: 'Fin', rangeSuffix: 'du match' },
+}
 
 function seriesIds(opt: ReturnType<typeof buildSquadIntensityProfileOption>): string[] {
   return (opt.series as Array<{ id?: string }>).map((s) => String(s.id ?? ''))
@@ -126,5 +131,40 @@ describe('buildSquadIntensityProfileOption', () => {
       (s) => s.id === 'median-0',
     )
     expect(median?.markLine?.data[0].yAxis).toBeCloseTo(0.1)
+  })
+
+  it('axe X : 3 repères seulement (Début/Milieu/Fin aux index 0/5/9)', () => {
+    const opt = buildSquadIntensityProfileOption({ panels: [panel('A', 5)], ...OPTS })
+    const xAxis = (opt.xAxis as Array<{
+      data: string[]
+      axisLabel: {
+        interval: (i: number) => boolean
+        formatter: (v: string, i: number) => string
+      }
+    }>)[0]
+    // Les 10 tranches restent en data (tooltip précis).
+    expect(xAxis.data).toHaveLength(10)
+    // interval : vrai seulement aux index 0, 5, 9.
+    const shown = [...Array(10).keys()].filter((i) => xAxis.axisLabel.interval(i))
+    expect(shown).toEqual([0, 5, 9])
+    // formatter : libellés i18n aux 3 repères, vide ailleurs.
+    expect(xAxis.axisLabel.formatter('', 0)).toBe('Début')
+    expect(xAxis.axisLabel.formatter('', 5)).toBe('Milieu')
+    expect(xAxis.axisLabel.formatter('', 9)).toBe('Fin')
+    expect(xAxis.axisLabel.formatter('', 4)).toBe('')
+  })
+
+  it('axe Y : formatter en pourcentage (0.1 → « 10% »)', () => {
+    const opt = buildSquadIntensityProfileOption({ panels: [panel('A', 5)], ...OPTS })
+    const yAxis = (opt.yAxis as Array<{ axisLabel: { formatter: (v: number) => string } }>)[0]
+    expect(yAxis.axisLabel.formatter(0.1)).toBe('10%')
+  })
+
+  it('tooltip : tranche précise via dataIndex + suffixe (« 40-50% du match »)', () => {
+    const opt = buildSquadIntensityProfileOption({ panels: [panel('A', 5)], ...OPTS })
+    const formatter = (opt.tooltip as { formatter: (p: unknown) => string }).formatter
+    const html = formatter([{ seriesId: 'median-0', seriesName: 'A', dataIndex: 4, value: 0.3 }])
+    expect(html).toContain('40-50% du match')
+    expect(html).toContain('Médiane')
   })
 })

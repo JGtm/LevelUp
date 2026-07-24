@@ -96,7 +96,10 @@ export function SquadEfficiencyChart({
   )
 
   return (
-    <div className="space-y-4">
+    // Rendement + Résistance côte à côte sur desktop (empilés en mobile). En mode
+    // sans résistance (Halo 5 : pas de damage_taken), la carte Rendement reste
+    // pleine largeur (pas de grille → bloc simple).
+    <div className={hasResistance ? 'grid gap-4 md:grid-cols-2' : ''}>
       <ChartCard
         title={
           <span className="flex items-center gap-1.5">

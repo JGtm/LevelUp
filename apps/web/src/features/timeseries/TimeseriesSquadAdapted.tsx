@@ -29,7 +29,10 @@ import type {
   IntensityMatchRow,
   SoloSessionPerfPoint,
 } from '@/lib/api/types'
-import { buildSquadIntensityProfileOption } from '@/features/squad/charts/squadIntensityProfileChart'
+import {
+  buildSquadIntensityProfileOption,
+  intensityAxisLabels,
+} from '@/features/squad/charts/squadIntensityProfileChart'
 import {
   damageAxisBounds,
   damagePerDeath,
@@ -242,6 +245,7 @@ export function TimeseriesIntensityProfile({
   refLabel,
 }: TimeseriesIntensityProfileProps) {
   const themeVersion = useThemeVersion()
+  const locale = useAppShellStore((s) => s.locale)
 
   const option = useMemo<EChartsCoreOption | null>(() => {
     if (rows.length === 0) return null
@@ -253,11 +257,12 @@ export function TimeseriesIntensityProfile({
       medianLabel,
       envelopeLabel,
       refLabel,
+      axisLabels: intensityAxisLabels(locale),
     })
     // Pas de manche exploitable (aucun frag) → le builder omet `series` : vide.
     return (opt as { series?: unknown }).series ? opt : null
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, medianLabel, envelopeLabel, refLabel, themeVersion])
+  }, [rows, medianLabel, envelopeLabel, refLabel, themeVersion, locale])
   return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
 }
 
