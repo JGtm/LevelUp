@@ -36,6 +36,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/fragdist"
@@ -192,6 +193,15 @@ func (s *TimeseriesService) GetPage(
 
 	provideSpree := games.ProvidesMaxKillingSpree(s.titleSlug)
 
+	// XP de carrière estimée (série Timeseries) : gatée par la capability
+	// analytics.career_xp_estimate (Infinite uniquement, jamais slug ==). Titre sans
+	// capability → éras nil → CareerXPEstimated reste nil par ligne (série absente de
+	// la réponse, dégradation silencieuse propre).
+	var careerXPEras []mappings.CareerXPEra
+	if games.ProvidesCareerXPEstimate(s.titleSlug) {
+		careerXPEras = games.CareerXPErasFor(s.titleSlug)
+	}
+
 	// Events kill/death (chart .11 first events, chart .21 intensité, ET fallback
 	// folie meurtrière) : UNE seule charge, réutilisée plus bas. Le repo synthétise
 	// depuis killer_victim_pairs pour les titres sans kills natifs dans
@@ -233,7 +243,7 @@ func (s *TimeseriesService) GetPage(
 
 	resp := domain.TimeseriesPageResponse{
 		TotalMatches: len(matches),
-		MatchRows:    buildMatchRows(matches, provideSpree, assistsExpected),
+		MatchRows:    buildMatchRows(matches, provideSpree, assistsExpected, careerXPEras),
 		SummaryTab:   buildTimeseriesSummaryTab(matches),
 		CumulTab:     buildCumulTab(matches),
 

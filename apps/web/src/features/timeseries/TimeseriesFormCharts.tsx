@@ -25,6 +25,7 @@ import { perfScale } from '@/lib/accessibility/scales'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 import type { TimeseriesMatchRow } from '@/lib/api/types'
 import { buildMatchCategories } from './matchLabels'
+import { buildCareerXpSeries } from './careerXpSeries'
 import { ChartFromOption } from './ChartFromOption'
 
 // ─── Helpers numériques ───────────────────────────────────────────────────────
@@ -723,5 +724,95 @@ export function TimeseriesRankScore({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, scoreLabel, rankLabel, themeVersion])
+  return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
+}
+
+// ─── XP de carrière (estimée) — cumul par match + delta par match ───────────
+//
+// XP estimée par match = career_xp_estimated (multiplicateur d'éra × personal_score,
+// calculé côté Go, capability analytics.career_xp_estimate). Ligne = XP de carrière
+// cumulée (trajectoire, mieux que les 25 matchs de SpartanRecord) ; barres = XP
+// estimée gagnée par match (axe secondaire). Les matchs sans estimation (Firefight /
+// score absent / titre sans capability) portent null → exclus du cumul (le point est
+// omis, pas remis à zéro).
+
+export interface TimeseriesCareerXPProps {
+  rows: TimeseriesMatchRow[]
+  height?: number
+  title?: ReactNode
+  emptyMessage?: string
+  cumulativeLabel: string
+  perMatchLabel: string
+}
+
+export function TimeseriesCareerXP({
+  rows,
+  title,
+  emptyMessage,
+  height = 320,
+  cumulativeLabel,
+  perMatchLabel,
+}: TimeseriesCareerXPProps) {
+  const themeVersion = useThemeVersion()
+
+  const option = useMemo<EChartsCoreOption | null>(() => {
+    const { hasData, perMatch, cumulative } = buildCareerXpSeries(rows)
+    if (!hasData) return null
+    const tc = getEChartsThemeColors()
+    const categories = buildMatchCategories(rows)
+    const colLine = resolveToken('chart-series-3')
+    const colBar = resolveToken('chart-series-6')
+
+    return {
+      backgroundColor: CHART_BG,
+      grid: getGridBase({ right: 64, left: 64 }),
+      tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
+      legend: { ...getLegendBase(tc), bottom: 0 },
+      xAxis: {
+        ...getAxisBase(tc),
+        type: 'category',
+        data: categories,
+        axisLabel: { ...getAxisBase(tc).axisLabel, interval: 0, fontSize: 9 },
+      },
+      yAxis: [
+        {
+          ...getAxisBase(tc),
+          type: 'value',
+          name: cumulativeLabel,
+          nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
+        },
+        {
+          ...getAxisBase(tc),
+          type: 'value',
+          name: perMatchLabel,
+          nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
+          splitLine: { show: false },
+        },
+      ],
+      series: [
+        {
+          type: 'bar',
+          name: perMatchLabel,
+          yAxisIndex: 1,
+          data: perMatch,
+          itemStyle: { color: colBar, opacity: 0.55 },
+          barMaxWidth: 10,
+        },
+        {
+          type: 'line',
+          name: cumulativeLabel,
+          yAxisIndex: 0,
+          data: cumulative,
+          showSymbol: false,
+          smooth: false,
+          connectNulls: true,
+          areaStyle: { color: colLine, opacity: 0.15 },
+          lineStyle: { color: colLine, width: 2 },
+          z: 5,
+        },
+      ],
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, cumulativeLabel, perMatchLabel, themeVersion])
   return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
 }

@@ -5,6 +5,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestLoadEndpointsFromBytes_Valid(t *testing.T) {
@@ -85,6 +86,21 @@ func TestLoadEndpointsFromBytes_Errors(t *testing.T) {
 			doc:  "[meta]\ntitle_slug=\"x\"\nschema_version=1\ngame_prefix=\"h5/pc\"\n[endpoints]\nstats = \"https://a.test\"\n",
 			want: "game_prefix invalide",
 		},
+		{
+			name: "career_xp_eras multiplicateur <= 0",
+			doc:  "[meta]\ntitle_slug=\"x\"\nschema_version=1\n[endpoints]\nstats=\"https://a.test\"\n[[career_xp_eras]]\nfrom=\"\"\nto=\"\"\nmultiplier=0\n",
+			want: "multiplier doit être > 0",
+		},
+		{
+			name: "career_xp_eras date non parsable",
+			doc:  "[meta]\ntitle_slug=\"x\"\nschema_version=1\n[endpoints]\nstats=\"https://a.test\"\n[[career_xp_eras]]\nfrom=\"18-11-2025\"\nto=\"\"\nmultiplier=2\n",
+			want: "career_xp_eras",
+		},
+		{
+			name: "career_xp_eras intervalle inversé",
+			doc:  "[meta]\ntitle_slug=\"x\"\nschema_version=1\n[endpoints]\nstats=\"https://a.test\"\n[[career_xp_eras]]\nfrom=\"2025-11-18\"\nto=\"2025-01-01\"\nmultiplier=2\n",
+			want: "intervalle inversé",
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -121,6 +137,54 @@ func TestLoadEndpointsFromBytes_GamePrefix(t *testing.T) {
 	}
 	if p, ok := set.GamePrefix(); ok || p != "" {
 		t.Errorf("GamePrefix() sans déclaration = %q ok=%v, want \"\" false", p, ok)
+	}
+}
+
+// TestLoadEndpointsFromBytes_CareerXPEras couvre le parsing de [[career_xp_eras]] :
+// dates UTC parsées (vide = borne ouverte), multiplicateurs conservés ; section
+// absente → CareerXPEras() rend (_, false) pour que le caller applique le défaut.
+func TestLoadEndpointsFromBytes_CareerXPEras(t *testing.T) {
+	t.Parallel()
+
+	const doc = `
+[meta]
+title_slug = "x"
+schema_version = 1
+[endpoints]
+stats = "https://a.test"
+[[career_xp_eras]]
+from = ""
+to = "2025-11-18"
+multiplier = 1.0
+[[career_xp_eras]]
+from = "2025-11-18"
+to = ""
+multiplier = 2.0
+`
+	set, err := LoadEndpointsFromBytes("x.toml", []byte(doc))
+	if err != nil {
+		t.Fatalf("LoadEndpointsFromBytes: %v", err)
+	}
+	eras, ok := set.CareerXPEras()
+	if !ok || len(eras) != 2 {
+		t.Fatalf("CareerXPEras() = %v ok=%v, want 2", eras, ok)
+	}
+	cut := time.Date(2025, 11, 18, 0, 0, 0, 0, time.UTC)
+	if !eras[0].From.IsZero() || !eras[0].To.Equal(cut) || eras[0].Multiplier != 1.0 {
+		t.Errorf("éra 1 = %+v, want {ouvert, %s, 1.0}", eras[0], cut)
+	}
+	if !eras[1].From.Equal(cut) || !eras[1].To.IsZero() || eras[1].Multiplier != 2.0 {
+		t.Errorf("éra 2 = %+v, want {%s, ouvert, 2.0}", eras[1], cut)
+	}
+
+	// Section absente → (_, false).
+	noEras := "[meta]\ntitle_slug=\"x\"\nschema_version=1\n[endpoints]\nstats=\"https://a.test\"\n"
+	set2, err := LoadEndpointsFromBytes("x.toml", []byte(noEras))
+	if err != nil {
+		t.Fatalf("LoadEndpointsFromBytes(sans éras): %v", err)
+	}
+	if _, ok := set2.CareerXPEras(); ok {
+		t.Error("CareerXPEras() sans section devrait être ok=false")
 	}
 }
 
@@ -179,5 +243,18 @@ func TestLoadHaloInfiniteEndpointsTOML(t *testing.T) {
 	}
 	if eng.Objective != 1.5 || eng.Assist != 0.5 || eng.Death != 0.0 || eng.Default != 1.0 {
 		t.Errorf("[engagement] HI = %+v, want {1.5 0.5 0.0 1.0}", eng)
+	}
+
+	// [[career_xp_eras]] : ×1 avant 2025-11-18, ×2 depuis (Operation: Infinite).
+	eras, ok := set.CareerXPEras()
+	if !ok || len(eras) != 2 {
+		t.Fatalf("[[career_xp_eras]] HI = %v ok=%v, want 2 éras", eras, ok)
+	}
+	cut := time.Date(2025, 11, 18, 0, 0, 0, 0, time.UTC)
+	if !eras[0].From.IsZero() || !eras[0].To.Equal(cut) || eras[0].Multiplier != 1.0 {
+		t.Errorf("éra 1 HI = %+v, want {ouvert, %s, 1.0}", eras[0], cut)
+	}
+	if !eras[1].From.Equal(cut) || !eras[1].To.IsZero() || eras[1].Multiplier != 2.0 {
+		t.Errorf("éra 2 HI = %+v, want {%s, ouvert, 2.0}", eras[1], cut)
 	}
 }

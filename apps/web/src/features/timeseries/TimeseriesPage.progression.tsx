@@ -18,6 +18,7 @@ import {
   TimeseriesSpreeHeadshots,
   TimeseriesRankScore,
   TimeseriesSkillRankPerformance,
+  TimeseriesCareerXP,
 } from './TimeseriesFormCharts'
 import {
   TimeseriesEfficiency,
@@ -89,6 +90,10 @@ export function TimeseriesProgressionTab({
   const hasRanked = useCapability('ranked')
   const hasLusr = useCapability('lusr')
   const hasSkillRating = hasRanked || hasLusr
+  // XP de carrière estimée : gate DATA-DRIVEN. Le backend ne renseigne
+  // career_xp_estimated que si le titre porte la capability analytics.career_xp_estimate
+  // (Infinite) ; un titre sans capability → tous nuls → chart masqué (pas de slug côté front).
+  const hasCareerXP = (data.match_rows ?? []).some((r) => r.career_xp_estimated != null)
   return (
     <div className="space-y-8">
       {/* timeseries.11 — Premier événement (gauche) | timeseries.14 — Par minute (droite) */}
@@ -171,6 +176,24 @@ export function TimeseriesProgressionTab({
           />
         )}
       </div>
+
+      {/* XP de carrière (estimée) — pleine largeur, gaté data-driven (capability
+          analytics.career_xp_estimate côté backend). Cumul (ligne) + XP par match
+          (barres) ; méthodologie dans l'InfoTooltip du titre. */}
+      {hasCareerXP && (
+        <TimeseriesCareerXP
+          title={
+            <span className="flex items-center gap-1.5">
+              {t('timeseries.progression.career_xp_title')}
+              <InfoTooltip content={t('timeseries.progression.career_xp_tooltip')} />
+            </span>
+          }
+          emptyMessage={emptyMsg}
+          rows={data.match_rows ?? []}
+          cumulativeLabel={t('timeseries.progression.career_xp_cumulative')}
+          perMatchLabel={t('timeseries.progression.career_xp_per_match')}
+        />
+      )}
 
       {/* Rendement & Résistance — pleine largeur. */}
       <TimeseriesEfficiency

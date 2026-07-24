@@ -115,6 +115,24 @@ func (r *MappingsEndpointResolver) EngagementFor(slug string) (mappings.Engageme
 	return set.Engagement()
 }
 
+// CareerXPErasFor résout les éras de multiplicateur d'XP de carrière d'un titre
+// (constants.toml [[career_xp_eras]]). Implémente games.CareerXPErasResolver. Même
+// précédence de slug vide que HostFor. (_, false) si le titre est inconnu ou ne
+// déclare pas d'éras → le caller applique games.DefaultCareerXPEras (byte-identique).
+func (r *MappingsEndpointResolver) CareerXPErasFor(slug string) ([]mappings.CareerXPEra, bool) {
+	if r == nil || r.reg == nil {
+		return nil, false
+	}
+	if slug == "" {
+		slug = r.defaultSlug
+	}
+	set, ok := r.reg.GetEndpoints(slug)
+	if !ok {
+		return nil, false
+	}
+	return set.CareerXPEras()
+}
+
 // CapabilitiesFor résout la CapabilityMap d'un titre (capabilities.toml).
 // Implémente games.CapabilityResolver. Même précédence de slug vide que HostFor.
 // (_, false) si le titre est inconnu, ne déclare pas de capabilities, ou si la
