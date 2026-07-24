@@ -1609,6 +1609,25 @@ en = "No match found in this window. Broaden your search."
 fr = "Rendement = efficacité offensive : à quel point tu convertis tes dégâts en éliminations. Résistance = solidité défensive : combien de dégâts tu encaisses avant de mourir. Une vie équivaut à environ {{HP}} points de dégâts. Chaque graphe trace sa propre ligne de référence indiquant un niveau « normal »."
 en = "Output = offensive efficiency: how well you turn your damage into kills. Resistance = defensive resilience: how much damage you absorb before dying. One life ≈ {{HP}} points of damage. Each chart draws its own reference line marking a \"normal\" level."
 
+# Axes du profil « Intensité » (Escouade / Séries temporelles / Sessions). L'axe X
+# ne montre que 3 repères (début / milieu / fin du match) ; rangeSuffix complète la
+# tranche dans le tooltip (ex. « 40-50% du match »).
+[common.charts.intensity_axis_start]
+fr = "Début"
+en = "Start"
+
+[common.charts.intensity_axis_mid]
+fr = "Milieu"
+en = "Midpoint"
+
+[common.charts.intensity_axis_end]
+fr = "Fin"
+en = "End"
+
+[common.charts.intensity_axis_range_suffix]
+fr = "du match"
+en = "of the match"
+
 # ── Groupes / familles (accès mutuel aux données) ──────────────────────────────
 [common.groups.title]
 fr = "Mes groupes"
