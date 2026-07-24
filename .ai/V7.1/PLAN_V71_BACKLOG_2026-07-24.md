@@ -1,6 +1,10 @@
 # PLAN — Backlog Notion « Pour la v7.1 » — 2026-07-24
 
-> Statut : EN COURS. Exécution sous contrat du skill `plan-execution`.
+> Statut : CLOS (2026-07-24 soir). 21/22 items traités ([x] ou statués), I17 [~] POSTPONED
+> par l'utilisateur. Tous barrés dans Notion avec bilans. Branche NON mergée/poussée sur
+> main — revue utilisateur au merge, backfills data à REJOUER EN PROD post-deploy
+> (seed citation-mappings + backfill --all --citations-recompute-all +
+> backfill-h5-kill-mechanics). Exécution sous contrat du skill `plan-execution`.
 > Mode : supervision (Fable pilote, agents Opus/Sonnet/Haiku exécutent).
 > Source : Notion « Backlog LevelUp », section « Pour la v7.1 »
 > (https://app.notion.com/p/39a7ae87e7a3809e8e03e4ffedcf5086).
