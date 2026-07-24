@@ -18,6 +18,18 @@
  *     palmares, admin, match_view, timeseries, explorer, session (les 3
  *     derniers ajoutés par I15-bis — anciennement exclus, dette résorbée).
  *
+ * EXCLU DÉLIBÉRÉMENT — `coaching_tips.toml` (~80 entrées, registre esport) :
+ * relecture éditoriale dédiée faite le 2026-07-24 (hors I15/I15-bis, périmètre
+ * séparé), avec correction directe des anglicismes clairs (verbes anglais bruts,
+ * termes ayant un équivalent FR déjà établi dans l'app) et conservation
+ * documentée du jargon esport assumé (strafe, clutch, carry, trade, peek, ADS,
+ * hipfire, aim assist, POV, stack, snowball, loadout, combo, timing, momentum,
+ * push, aggro, feed, rat, miss, sticky, drill, aimbot, solo queue, callout,
+ * stat-padder…). Ce jargon assumé ferait échouer FORBIDDEN_PATTERNS/l'esprit du
+ * garde-rail s'il était scanné ici — ne pas ajouter ce manifest à la liste
+ * ci-dessus sans une repasse dédiée qui distingue jargon assumé et anglicisme
+ * réel (quelques cas restent ambigus, arbitrage utilisateur via Notion).
+ *
  * MÉTHODE — on résout la valeur FR réellement servie à l'utilisateur (jamais
  * de regex sur le fichier source brut, qui mélangerait FR et EN) :
  *   - dicts hand-written : on appelle le getter/l'objet avec la locale 'fr'
