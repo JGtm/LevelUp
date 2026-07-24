@@ -33,3 +33,20 @@ export function parseRouteSegments(pathname: string): RouteSegments {
   }
   return {}
 }
+
+/**
+ * withLangSegment — INJECTE le segment de langue en tête d'un pathname title-scoped
+ * (`/t/…` → `/{lang}/t/…`). Fonction PURE (I10) — inverse de la capture de
+ * `parseRouteSegments`, utilisée pour ÉMETTRE le segment par défaut sur une URL qui
+ * n'en porte pas encore (backstop du layout titre).
+ *
+ * IDEMPOTENTE : un pathname portant déjà un segment de langue est renvoyé INCHANGÉ
+ * (jamais de double préfixe `/fr/fr/t/…`). Un pathname SANS segment de titre (page
+ * agnostique, D-3) est renvoyé inchangé (rien à préfixer). Ne touche NI le `?search`
+ * NI le `#hash` — l'appelant les re-concatène verbatim.
+ */
+export function withLangSegment(pathname: string, lang: Locale): string {
+  const seg = parseRouteSegments(pathname)
+  if (!seg.titleSlug || seg.lang) return pathname
+  return `/${lang}${pathname}`
+}
