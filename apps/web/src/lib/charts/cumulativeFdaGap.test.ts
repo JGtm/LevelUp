@@ -18,6 +18,13 @@ describe('cumulativeFdaGap', () => {
     expect(pts.map((p) => p.cumulative)).toEqual([0.5, 0.1, 1.1])
     expect(pts.map((p) => p.real)).toEqual([1.5, 0.8, 2])
     expect(pts.map((p) => p.expected)).toEqual([1, 1.2, 1])
+    // Cumuls réel/attendu (nouveaux champs) — identité cumulativeReal −
+    // cumulativeExpected === cumulative préservée à chaque point.
+    expect(pts.map((p) => p.cumulativeReal)).toEqual([1.5, 2.3, 4.3])
+    expect(pts.map((p) => p.cumulativeExpected)).toEqual([1, 2.2, 3.2])
+    pts.forEach((p) => {
+      expect(Math.round((p.cumulativeReal - p.cumulativeExpected) * 100) / 100).toBe(p.cumulative)
+    })
   })
 
   it('report D5 : un match sans attendu ne fait pas avancer le cumul', () => {
@@ -28,6 +35,11 @@ describe('cumulativeFdaGap', () => {
     ])
     expect(pts[1].gap).toBeNull()
     expect(pts.map((p) => p.cumulative)).toEqual([0.5, 0.5, 1.5])
+    // Le match sans attendu ne fait avancer NI cumulativeReal NI
+    // cumulativeExpected (report conjoint, pas seulement cumulativeExpected) —
+    // même si `real` (0.8) est bien présent sur ce match.
+    expect(pts.map((p) => p.cumulativeReal)).toEqual([1.5, 1.5, 3.5])
+    expect(pts.map((p) => p.cumulativeExpected)).toEqual([1, 1, 2])
   })
 
   it('report D5 côté réel manquant également', () => {
@@ -37,6 +49,9 @@ describe('cumulativeFdaGap', () => {
     ])
     expect(pts[1].gap).toBeNull()
     expect(pts.map((p) => p.cumulative)).toEqual([0.5, 0.5])
+    // Match #2 sans réel → cumulativeExpected reporte aussi (pas d'avance à 2.0).
+    expect(pts.map((p) => p.cumulativeReal)).toEqual([1.5, 1.5])
+    expect(pts.map((p) => p.cumulativeExpected)).toEqual([1, 1])
   })
 
   it('valeur non-finie (Infinity) traitée comme absente (D5)', () => {
@@ -46,6 +61,8 @@ describe('cumulativeFdaGap', () => {
     ])
     expect(pts[1].gap).toBeNull()
     expect(pts.map((p) => p.cumulative)).toEqual([0.5, 0.5])
+    expect(pts.map((p) => p.cumulativeReal)).toEqual([1.5, 1.5])
+    expect(pts.map((p) => p.cumulativeExpected)).toEqual([1, 1])
   })
 
   it('liste vide → []', () => {
@@ -59,6 +76,8 @@ describe('cumulativeFdaGap', () => {
     ])
     expect(pts.map((p) => p.gap)).toEqual([null, null])
     expect(pts.map((p) => p.cumulative)).toEqual([0, 0])
+    expect(pts.map((p) => p.cumulativeReal)).toEqual([0, 0])
+    expect(pts.map((p) => p.cumulativeExpected)).toEqual([0, 0])
   })
 })
 

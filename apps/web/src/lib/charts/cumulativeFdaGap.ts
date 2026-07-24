@@ -36,6 +36,15 @@ export interface FdaGapCumPoint {
   gap: number | null
   /** Écart cumulé (reporte la dernière valeur si le match n'a pas d'attendu). */
   cumulative: number
+  /**
+   * FDA réel CUMULÉ, avec le MÊME skip conjoint que `gap` (D5) : un match sans
+   * paire réel/attendu valide ne fait avancer NI ce cumul NI `cumulativeExpected`
+   * (report des deux ensemble), afin de préserver l'identité
+   * `cumulativeReal − cumulativeExpected === cumulative`.
+   */
+  cumulativeReal: number
+  /** FDA attendu CUMULÉ — même skip conjoint que `cumulativeReal` (cf. ci-dessus). */
+  cumulativeExpected: number
 }
 
 /** Écart signé d'une paire (`réel − attendu`), `null` si un terme manque (D5). */
@@ -50,7 +59,16 @@ function gapOf(pair: FdaGapPair): number | null {
  * helper générique `cumulativeSigned`. Un match sans attendu reporte le cumul (D5).
  */
 export function cumulativeFdaGap(pairs: FdaGapPair[]): FdaGapCumPoint[] {
-  const cum = cumulativeSigned(pairs.map(gapOf))
+  const gaps = pairs.map(gapOf)
+  const cum = cumulativeSigned(gaps)
+  // Masque conjoint (D5) : réel/attendu n'alimentent leurs cumuls respectifs que
+  // si la paire du match est valide (même condition que `gap`) — sinon les 3
+  // cumuls reportent ENSEMBLE, ce qui préserve cumulativeReal − cumulativeExpected
+  // === cumulative en tout point.
+  const cumReal = cumulativeSigned(pairs.map((pair, i) => (gaps[i] != null ? finiteOrNull(pair.real) : null)))
+  const cumExpected = cumulativeSigned(
+    pairs.map((pair, i) => (gaps[i] != null ? finiteOrNull(pair.expected) : null)),
+  )
   return pairs.map((pair, i) => {
     const real = finiteOrNull(pair.real)
     const expected = finiteOrNull(pair.expected)
@@ -59,6 +77,8 @@ export function cumulativeFdaGap(pairs: FdaGapPair[]): FdaGapCumPoint[] {
       expected: expected != null ? round2(expected) : null,
       gap: cum[i].value,
       cumulative: cum[i].cumulative,
+      cumulativeReal: cumReal[i].cumulative,
+      cumulativeExpected: cumExpected[i].cumulative,
     }
   })
 }

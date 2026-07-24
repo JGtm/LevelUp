@@ -119,6 +119,8 @@ export function TimeseriesSummaryTab({
         real: t('timeseries.summary.fda_gap_real'),
         expected: t('timeseries.summary.fda_gap_expected'),
         gap: t('timeseries.summary.fda_gap_gap'),
+        realCumulative: t('timeseries.summary.fda_gap_real_cumulative'),
+        expectedCumulative: t('timeseries.summary.fda_gap_expected_cumulative'),
         avgCaption: t('timeseries.summary.fda_gap_avg_caption'),
         perMatch: t('timeseries.summary.fda_gap_per_match'),
       }}
