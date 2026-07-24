@@ -36,6 +36,7 @@ import { tokenCssVar } from '@/lib/accessibility'
 import { getOutcomeColor, outcomeKey } from '@/lib/outcome-color'
 import { formatDate, formatDurationMinSec } from '@/lib/formatters'
 import { useCapability } from '@/lib/capabilities/capabilities'
+import { HeaderInfoTooltip } from '@/lib/table/columnMeta'
 import { getSquadText } from './i18n'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { buildWaypointMatchUrl, waypointLogoSrc } from '@/lib/match-nav/waypointUrl'
@@ -230,6 +231,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
       {
         accessorKey: 'win_rate_hist',
         header: labels.winRateHist,
+        meta: { headerTooltip: labels.winRateHistTooltip },
         ...NUMERIC_SORT,
         cell: (ctx) => {
           const v = ctx.getValue<number | undefined>()
@@ -250,6 +252,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
       {
         accessorKey: 'expected_win_prob',
         header: labels.winProb,
+        meta: { headerTooltip: labels.winProbTooltip },
         ...NUMERIC_SORT,
         cell: (ctx) => {
           const v = ctx.getValue<number | null | undefined>()
@@ -293,6 +296,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
             {
               accessorKey: 'team_mmr_avg',
               header: labels.teamMmr,
+              meta: { headerTooltip: labels.teamMmrTooltip },
               ...NUMERIC_SORT,
               cell: (ctx) => (
                 <span className="text-muted-foreground font-mono tabular-nums">
@@ -303,6 +307,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
             {
               accessorKey: 'enemy_mmr_avg',
               header: labels.enemyMmr,
+              meta: { headerTooltip: labels.enemyMmrTooltip },
               ...NUMERIC_SORT,
               cell: (ctx) => (
                 <span className="text-muted-foreground font-mono tabular-nums">
@@ -313,6 +318,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
             {
               accessorKey: 'delta_mmr',
               header: labels.deltaMMR,
+              meta: { headerTooltip: labels.deltaMmrTooltip },
               ...NUMERIC_SORT,
               cell: (ctx) => fmtDeltaMMR(ctx.getValue<number | undefined>()),
             } as ColumnDef<SquadMatchHistoryRow>,
@@ -369,29 +375,36 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
               <tr key={hg.id}>
                 {hg.headers.map((h) => {
                   const content = h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())
+                  const tip = h.column.columnDef.meta?.headerTooltip
                   if (!h.column.getCanSort()) {
                     return (
                       <th key={h.id} className={HISTORY_TH_CLASS}>
-                        {content}
+                        <span className="inline-flex items-center gap-1">
+                          {content}
+                          <HeaderInfoTooltip text={tip} />
+                        </span>
                       </th>
                     )
                   }
                   const sortDir = h.column.getIsSorted()
                   return (
                     <th key={h.id} className={HISTORY_TH_CLASS} aria-sort={sortAriaValue(sortDir)}>
-                      <button
-                        type="button"
-                        onClick={h.column.getToggleSortingHandler()}
-                        aria-label={labels.sortByAriaLabel(String(content ?? ''))}
-                        className={`group inline-flex items-center gap-1 whitespace-nowrap transition-colors hover:text-foreground${sortDir ? ' text-foreground' : ''}`}
-                      >
-                        {content}
-                        {sortDir && (
-                          <span aria-hidden="true" className="text-2xs leading-none">
-                            {sortDir === 'asc' ? '▲' : '▼'}
-                          </span>
-                        )}
-                      </button>
+                      <span className="inline-flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={h.column.getToggleSortingHandler()}
+                          aria-label={labels.sortByAriaLabel(String(content ?? ''))}
+                          className={`group inline-flex items-center gap-1 whitespace-nowrap transition-colors hover:text-foreground${sortDir ? ' text-foreground' : ''}`}
+                        >
+                          {content}
+                          {sortDir && (
+                            <span aria-hidden="true" className="text-2xs leading-none">
+                              {sortDir === 'asc' ? '▲' : '▼'}
+                            </span>
+                          )}
+                        </button>
+                        <HeaderInfoTooltip text={tip} />
+                      </span>
                     </th>
                   )
                 })}

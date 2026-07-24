@@ -1970,6 +1970,10 @@ en = "Synergies"
 fr = "Contributions"
 en = "Contributions"
 
+[common.nav.tab_dynamique]
+fr = "Dynamique"
+en = "Dynamics"
+
 [common.nav.tab_progression]
 fr = "Progression"
 en = "Progression"

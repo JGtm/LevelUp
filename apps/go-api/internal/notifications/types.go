@@ -75,6 +75,12 @@ const (
 	// joueur. Détection par watermark (PlayerSnapshot.LastMatchStartTime) : idempotente
 	// et sans coût sur les syncs à vide. Best-effort — jamais bloquant pour la sync.
 	CategoryRivalEncounter Category = "rival_encounter"
+	// 2026-07-24 : V72-20 — « médaille inédite ». Émise en post-sync quand une sync
+	// fait apparaître un medal_name_id jamais obtenu jusque-là (diff d'ensemble
+	// after \ before sur PlayerSnapshot.EarnedMedalIDs). Garde cold-start (before
+	// sans médaille = seed silencieux) + anti-rafale (> 3 inédites → 1 récap).
+	// Best-effort — jamais bloquant pour la sync.
+	CategoryMedalFirstEarned Category = "medal_first_earned"
 )
 
 // AllCategories retourne toutes les catégories MVP (utilisée par les tests).
@@ -104,6 +110,8 @@ func AllCategories() []Category {
 		CategoryTitleReady,
 		// Relations-E : rival croisé post-sync.
 		CategoryRivalEncounter,
+		// V72-20 : médaille inédite post-sync.
+		CategoryMedalFirstEarned,
 	}
 }
 

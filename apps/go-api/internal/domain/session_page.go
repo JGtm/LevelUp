@@ -89,6 +89,11 @@ type SessionDetailMatchRow struct {
 	DeathsExpected  *float64 `json:"deaths_expected,omitempty"`
 	AssistsExpected *float64 `json:"assists_expected,omitempty"`
 	KdaExpected     *float64 `json:"kda_expected,omitempty"`
+	// CareerXPEstimated — XP de carrière (Career Rank) ESTIMÉE gagnée sur ce match,
+	// MIROIR EXACT du calcul Timeseries (analysis.EstimateCareerXP via
+	// estimateMatchCareerXP, capability analytics.career_xp_estimate). nil hors
+	// capability / match Firefight / personal_score absent (V72-13).
+	CareerXPEstimated *int `json:"career_xp_estimated,omitempty"`
 }
 
 // SessionCompareSuggestion décrit la session proposée pour une comparaison rapide.

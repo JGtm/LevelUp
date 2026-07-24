@@ -399,6 +399,14 @@ en = "Capabilities"
 fr = "Mappings TOML"
 en = "TOML mappings"
 
+[admin.titles.col_capabilities_tooltip]
+fr = "Fonctionnalités déclarées par le titre (capabilities du manifest)."
+en = "Features declared by the title (manifest capabilities)."
+
+[admin.titles.col_mappings_tooltip]
+fr = "Présence des fichiers de correspondance TOML (libellés, assets…)."
+en = "Presence of TOML mapping files (labels, assets…)."
+
 [admin.titles.status_active]
 fr = "Actif"
 en = "Active"
@@ -575,6 +583,10 @@ en = "Detections unavailable."
 fr = "Occ."
 en = "Count"
 
+[admin.detections.col_count_tooltip]
+fr = "Nombre de fois que cette détection s'est produite (cumul)."
+en = "Number of times this detection occurred (cumulative)."
+
 [admin.detections.col_level]
 fr = "Niveau"
 en = "Level"
@@ -594,6 +606,10 @@ en = "Last"
 [admin.detections.col_status]
 fr = "Statut"
 en = "Status"
+
+[admin.detections.col_status_tooltip]
+fr = "Statut de suivi : ouvert, reconnu, en sourdine ou résolu."
+en = "Triage status: open, acknowledged, muted or resolved."
 
 [admin.detections.col_actions]
 fr = "Actions"
@@ -863,7 +879,82 @@ en = "scheduled"
 fr = "échec"
 en = "failed"
 
+# ─── Synchronisation initiale d'un joueur (re-import complet, RunFull) ──────
+
+[admin.initsync.title]
+fr = "Synchronisation initiale (un joueur)"
+en = "Initial sync (single player)"
+
+[admin.initsync.description]
+fr = "Ré-importe l'historique complet d'un joueur suivi jusqu'au plafond de matchs (sans s'arrêter au premier match connu). À utiliser après une perte de données ou pour un nouveau joueur."
+en = "Re-imports a tracked player's full history up to the match cap (without stopping at the first known match). Use after data loss or for a new player."
+
+[admin.initsync.player_label]
+fr = "Joueur"
+en = "Player"
+
+[admin.initsync.player_placeholder]
+fr = "Choisir un joueur suivi…"
+en = "Pick a tracked player…"
+
+[admin.initsync.max_label]
+fr = "Plafond de matchs"
+en = "Match cap"
+
+[admin.initsync.max_placeholder]
+fr = "défaut"
+en = "default"
+
+[admin.initsync.run]
+fr = "Lancer la synchronisation initiale"
+en = "Run initial sync"
+
+[admin.initsync.confirm]
+fr = "Ré-importer l'historique complet de ce joueur ? L'opération peut être longue selon le plafond de matchs."
+en = "Re-import this player's full history? This can take a while depending on the match cap."
+
+[admin.initsync.no_player]
+fr = "Choisis d'abord un joueur."
+en = "Pick a player first."
+
 # ─── Page Sync & Jobs ──────────────────────────────────────────────────────
+
+# Légende de portée des actions de sync (clarification « planificateur vs delta »)
+[admin.sync.help_title]
+fr = "Portée des actions de synchronisation"
+en = "Scope of sync actions"
+
+[admin.sync.help_forced_cycle_term]
+fr = "Cycle de sync forcé"
+en = "Forced sync cycle"
+
+[admin.sync.help_forced_cycle]
+fr = "delta global optimisé — déduplication inter-joueurs, planificateur V2."
+en = "optimized global delta — cross-player de-duplication, V2 scheduler."
+
+[admin.sync.help_manual_all_term]
+fr = "Synchronisation manuelle globale"
+en = "Global manual sync"
+
+[admin.sync.help_manual_all]
+fr = "delta simple, un joueur après l'autre (chemin historique, sans déduplication)."
+en = "simple delta, one player after another (legacy path, no de-duplication)."
+
+[admin.sync.help_convergence_term]
+fr = "Convergence"
+en = "Convergence"
+
+[admin.sync.help_convergence]
+fr = "delta d'un seul joueur (rattrapage des enrichissements)."
+en = "delta for a single player (catches up enrichments)."
+
+[admin.sync.help_initial_term]
+fr = "Synchronisation initiale"
+en = "Initial sync"
+
+[admin.sync.help_initial]
+fr = "re-import complet d'un seul joueur (tout l'historique jusqu'au plafond)."
+en = "full re-import of a single player (whole history up to the cap)."
 
 [admin.sync.scheduler_section]
 fr = "Scheduler auto-sync"
@@ -1315,6 +1406,28 @@ en = "Player"
 fr = "Total"
 en = "Total"
 
+# ─── Convergence - Tooltips d'en-tête (V72-04, icône ⓘ) ─────────────────────
+
+[admin.convergence.kpi_enrichment_tooltip]
+fr = "Matchs sans enrichissement joueur (stats détaillées manquantes)."
+en = "Matches without player enrichment (detailed stats missing)."
+
+[admin.convergence.kpi_psa_tooltip]
+fr = "Instantanés de rang (PSA) non encore tentés pour ces matchs."
+en = "Rank snapshots (PSA) not yet attempted for these matches."
+
+[admin.convergence.kpi_events_tooltip]
+fr = "Matchs dont la chronologie d'événements est incomplète."
+en = "Matches whose event timeline is incomplete."
+
+[admin.convergence.kpi_weapons_tooltip]
+fr = "Matchs dont l'attribution des frags par arme est incomplète."
+en = "Matches whose per-weapon kill attribution is incomplete."
+
+[admin.convergence.col_total_tooltip]
+fr = "Total de matchs incomplets pour ce joueur, toutes catégories confondues."
+en = "Total incomplete matches for this player across all categories."
+
 [admin.convergence.run_player]
 fr = "Converger"
 en = "Converge"
@@ -1501,9 +1614,17 @@ en = "Watcher stopped — live sync inactive (periodic scheduler covers)."
 fr = "État"
 en = "State"
 
+[admin.watcher.col_state_tooltip]
+fr = "État du surveillant pour ce joueur : au repos, actif ou en attente."
+en = "Watcher state for this player: idle, active or waiting."
+
 [admin.watcher.col_presence]
 fr = "Présence Xbox"
 en = "Xbox presence"
+
+[admin.watcher.col_presence_tooltip]
+fr = "Présence Xbox Live du joueur : en ligne, en jeu ou hors ligne."
+en = "Player's Xbox Live presence: online, in-game or offline."
 
 [admin.watcher.col_since]
 fr = "Depuis"
@@ -1552,6 +1673,18 @@ en = "Max"
 [admin.api.col_total]
 fr = "Cumul"
 en = "Total"
+
+[admin.api.col_avg_tooltip]
+fr = "Latence moyenne des appels, en millisecondes."
+en = "Average call latency, in milliseconds."
+
+[admin.api.col_max_tooltip]
+fr = "Latence maximale observée, en millisecondes."
+en = "Maximum observed latency, in milliseconds."
+
+[admin.api.col_total_tooltip]
+fr = "Temps cumulé passé sur ces appels, en millisecondes."
+en = "Cumulative time spent on these calls, in milliseconds."
 
 [admin.api.col_errors]
 fr = "Erreurs"

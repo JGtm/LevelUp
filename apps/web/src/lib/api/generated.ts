@@ -1800,6 +1800,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/actions/initial-sync/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Action admin — re-import complet (RunFull, plafonné à max_matches) d'un joueur au choix, tokens via le pool unifié, claim SyncGate, via le JobStore (auth admin requis) */
+        post: operations["postAdminActionInitialSyncRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/actions/catalog/refresh": {
         parameters: {
             query?: never;
@@ -8080,6 +8097,8 @@ export interface components {
             accuracy?: number;
             /** Format: int64 */
             assists: number;
+            /** Format: int64 */
+            career_xp_estimated?: number;
             /** Format: double */
             damage_dealt?: number;
             /** Format: double */
@@ -11919,6 +11938,59 @@ export interface operations {
                 content?: never;
             };
             /** @description Convergence déjà en cours pour ce joueur (job_id en details) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Scheduler indisponible */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    postAdminActionInitialSyncRun: {
+        parameters: {
+            query?: {
+                /** @description Titre cible (fallback du title_slug du corps, sinon titre par défaut). */
+                title?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Slug (ou gamertag) du joueur suivi à re-importer. */
+                    player_slug: string;
+                    /** @description Titre cible explicite (multi-titre) ; vide → paramètre title puis titre par défaut. */
+                    title_slug?: string;
+                    /** @description Plafond de matchs (1..2000) ; 0/absent → défaut profil (initial_max_matches) puis 200. */
+                    max_matches?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Job créé (suivre via GET /jobs/{job_id}) */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description player_slug requis */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Synchronisation initiale déjà en cours pour ce joueur (job_id en details) */
             409: {
                 headers: {
                     [name: string]: unknown;

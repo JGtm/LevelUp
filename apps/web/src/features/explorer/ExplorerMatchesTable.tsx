@@ -52,6 +52,7 @@ import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { useProvidesTeamMmr } from '@/lib/damage/effectiveHp'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { formatMessage } from '@/lib/i18n/format'
+import { HeaderInfoTooltip } from '@/lib/table/columnMeta'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { matchViewManifest, type MatchViewManifestKey } from '@/lib/i18n/generated/match_view'
 import {
@@ -419,6 +420,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
       {
         accessorKey: 'is_with_friends',
         header: t('explorer.matches.col_squad'),
+        meta: { headerTooltip: t('explorer.matches.col_squad_tooltip') },
         // Contexte Solo/Escouade : tri booleen naturel (Solo puis Escouade en asc).
         sortingFn: 'basic',
         // Pastille reprise du style match-card.tsx (tuiles match home).
@@ -478,6 +480,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         accessorFn: (r) => r.dominance_flag || undefined,
         id: 'dominance_flag',
         header: t('explorer.matches.col_dominance'),
+        meta: { headerTooltip: t('explorer.matches.col_dominance_tooltip') },
         ...NUMERIC_SORT,
         cell: (ctx) => {
           const flag = ctx.getValue<number | null | undefined>() ?? 0
@@ -502,11 +505,8 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
       {
         accessorFn: (r) => r.kills ?? undefined,
         id: 'kills',
-        header: () => (
-          <span title={t('explorer.matches.col_kills_long')}>
-            {t('explorer.matches.col_kills')}
-          </span>
-        ),
+        header: t('explorer.matches.col_kills'),
+        meta: { headerTooltip: t('explorer.matches.col_kills_tooltip') },
         ...NUMERIC_SORT,
         cell: (ctx) => (
           <span className="font-mono tabular-nums">
@@ -517,11 +517,8 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
       {
         accessorFn: (r) => r.deaths ?? undefined,
         id: 'deaths',
-        header: () => (
-          <span title={t('explorer.matches.col_deaths_long')}>
-            {t('explorer.matches.col_deaths')}
-          </span>
-        ),
+        header: t('explorer.matches.col_deaths'),
+        meta: { headerTooltip: t('explorer.matches.col_deaths_tooltip') },
         ...NUMERIC_SORT,
         cell: (ctx) => (
           <span className="font-mono tabular-nums">
@@ -532,11 +529,8 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
       {
         accessorFn: (r) => r.assists ?? undefined,
         id: 'assists',
-        header: () => (
-          <span title={t('explorer.matches.col_assists_long')}>
-            {t('explorer.matches.col_assists')}
-          </span>
-        ),
+        header: t('explorer.matches.col_assists'),
+        meta: { headerTooltip: t('explorer.matches.col_assists_tooltip') },
         ...NUMERIC_SORT,
         cell: (ctx) => (
           <span className="font-mono tabular-nums">
@@ -548,11 +542,8 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         accessorFn: (r) => r.kda ?? undefined,
         id: 'kda',
         // KDA net signé (peut être négatif) pour les deux titres → tooltip formule.
-        header: () => (
-          <span title={t('explorer.matches.col_kda_tooltip')}>
-            {t('explorer.matches.col_kda')}
-          </span>
-        ),
+        header: t('explorer.matches.col_kda'),
+        meta: { headerTooltip: t('explorer.matches.col_kda_tooltip') },
         ...NUMERIC_SORT,
         cell: (ctx) => {
           const v = ctx.getValue<number | null | undefined>()
@@ -596,6 +587,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         accessorFn: (r) => r.perf_score ?? undefined,
         id: 'perf_score',
         header: t('explorer.matches.col_perf'),
+        meta: { headerTooltip: t('explorer.matches.col_perf_tooltip') },
         ...NUMERIC_SORT,
         cell: (ctx) => {
           const r = ctx.row.original
@@ -614,6 +606,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         accessorFn: (r) => r.delta_perf ?? undefined,
         id: 'delta_perf',
         header: t('explorer.matches.col_delta_perf'),
+        meta: { headerTooltip: t('explorer.matches.col_delta_perf_tooltip') },
         ...NUMERIC_SORT,
         cell: (ctx) => {
           const v = ctx.getValue<number | null | undefined>()
@@ -638,6 +631,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         accessorFn: (r) => r.rating_type ?? undefined,
         id: 'rating_type',
         header: t('explorer.matches.col_rating'),
+        meta: { headerTooltip: t('explorer.matches.col_rating_tooltip') },
         sortingFn: localeTextSortingFn,
         sortUndefined: 'last',
         sortDescFirst: false,
@@ -656,6 +650,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         accessorFn: (r) => skillTierSortValue(r.skill_tier_label),
         id: 'skill_tier_label',
         header: t('explorer.matches.col_rank'),
+        meta: { headerTooltip: t('explorer.matches.col_rank_tooltip') },
         ...NUMERIC_SORT,
         cell: (ctx) => {
           const r = ctx.row.original
@@ -673,6 +668,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
               accessorFn: (r) => r.team_mmr ?? undefined,
               id: 'team_mmr',
               header: () => renderTwoLineHeader(t('explorer.matches.col_team_mmr')),
+              meta: { headerTooltip: t('explorer.matches.col_team_mmr_tooltip') },
               ...NUMERIC_SORT,
               cell: (ctx) => (
                 <span className="text-muted-foreground font-mono tabular-nums">
@@ -684,6 +680,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
               accessorFn: (r) => r.enemy_mmr ?? undefined,
               id: 'enemy_mmr',
               header: () => renderTwoLineHeader(t('explorer.matches.col_enemy_mmr')),
+              meta: { headerTooltip: t('explorer.matches.col_enemy_mmr_tooltip') },
               ...NUMERIC_SORT,
               cell: (ctx) => (
                 <span className="text-muted-foreground font-mono tabular-nums">
@@ -695,6 +692,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
               accessorFn: (r) => r.delta_mmr ?? undefined,
               id: 'delta_mmr',
               header: t('explorer.matches.col_delta_mmr'),
+              meta: { headerTooltip: t('explorer.matches.col_delta_mmr_tooltip') },
               ...NUMERIC_SORT,
               cell: (ctx) => fmtDeltaMMR(ctx.getValue<number | null | undefined>()),
             } as ColumnDef<ExplorerMatchRow>,
@@ -834,15 +832,17 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
                   const content = h.isPlaceholder
                     ? null
                     : flexRender(h.column.columnDef.header, h.getContext())
-                  // Alignement par colonne (DEC-ALIGN) : numériques à droite,
-                  // texte à gauche.
-                  const alignRight = RIGHT_ALIGNED_COLUMNS.has(h.column.id)
+                  // Aide ⓘ facultative (V72-04) : rendue en frère du bouton de tri.
+                  const tip = h.column.columnDef.meta?.headerTooltip
                   // Colonne non triable (tableau sans `sortable`, ou colonne
                   // d'ouverture) : en-tête statique.
                   if (!h.column.getCanSort()) {
                     return (
                       <th key={h.id} className={`${HEADER_TH_CLASS} ${alignClass(h.column.id)}`}>
-                        {content}
+                        <span className="inline-flex items-center gap-1">
+                          {content}
+                          <HeaderInfoTooltip text={tip} />
+                        </span>
                       </th>
                     )
                   }
@@ -852,23 +852,24 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
                   const labelKey = SORT_ARIA_LABEL_KEYS[h.column.id]
                   return (
                     <th key={h.id} className={`${HEADER_TH_CLASS} ${alignClass(h.column.id)}`} aria-sort={ariaSort}>
-                      <button
-                        type="button"
-                        onClick={h.column.getToggleSortingHandler()}
-                        aria-label={labelKey ? t('explorer.matches.sort_by', { col: t(labelKey) }) : undefined}
-                        className={
-                          // Colonne numérique : bouton pleine largeur poussant
-                          // libellé + flèche de tri à DROITE ; texte : à gauche.
-                          (alignRight
-                            ? 'group flex w-full items-center justify-end gap-1'
-                            : 'group inline-flex items-center gap-1') +
-                          ' whitespace-nowrap transition-colors hover:text-foreground' +
-                          (sortDir ? ' text-foreground' : '')
-                        }
-                      >
-                        {content}
-                        <SortIndicator dir={sortDir} />
-                      </button>
+                      {/* Le <th> porte déjà l'alignement (text-right/left) : le bouton
+                          reste inline-flex et l'icône ⓘ est sa sœur. */}
+                      <span className="inline-flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={h.column.getToggleSortingHandler()}
+                          aria-label={labelKey ? t('explorer.matches.sort_by', { col: t(labelKey) }) : undefined}
+                          className={
+                            'group inline-flex items-center gap-1' +
+                            ' whitespace-nowrap transition-colors hover:text-foreground' +
+                            (sortDir ? ' text-foreground' : '')
+                          }
+                        >
+                          {content}
+                          <SortIndicator dir={sortDir} />
+                        </button>
+                        <HeaderInfoTooltip text={tip} />
+                      </span>
                     </th>
                   )
                 })}

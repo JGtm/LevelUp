@@ -172,6 +172,7 @@ const FR: NotificationsText = {
     trend_consolidate: 'Axe à consolider',
     title_ready: 'Titre prêt',
     rival_encounter: 'Rival croisé',
+    medal_first_earned: 'Médaille inédite',
   },
   categoryDescription: {
     app_release: 'Une nouvelle version de LevelUp est disponible.',
@@ -203,6 +204,7 @@ const FR: NotificationsText = {
     trend_consolidate: 'Une composante de ta performance fléchit sur la durée — une occasion de la renforcer.',
     title_ready: 'Un titre fraîchement activé a terminé sa première synchronisation.',
     rival_encounter: 'Une sync a ramené un nouveau duel contre un de tes principaux rivaux.',
+    medal_first_earned: 'Tu as décroché une médaille que tu n\'avais jamais obtenue.',
   },
 
   // metricLabel : mapping des clés métriques (envoyées par le backend dans
@@ -289,6 +291,10 @@ const FR: NotificationsText = {
     'notif.title_ready.body': 'Tes données {title_name} sont synchronisées — explore tes stats.',
     'notif.rival_encounter.title': 'Rival croisé',
     'notif.rival_encounter.body': 'Tu as recroisé {gamertag} : {kills} frags / {deaths} morts.',
+    'notif.medal_first_earned.title': 'Médaille inédite',
+    'notif.medal_first_earned.body': 'Tu as décroché {medal_name_fr} pour la première fois — bravo !',
+    'notif.medal_first_earned.recap.title': 'Médailles inédites',
+    'notif.medal_first_earned.recap.body': '{count} médailles décrochées pour la première fois.',
   },
 
   relJustNow: 'à l’instant',
@@ -381,6 +387,7 @@ const EN: NotificationsText = {
     trend_consolidate: 'Focus to consolidate',
     title_ready: 'Title ready',
     rival_encounter: 'Rival encountered',
+    medal_first_earned: 'First-time medal',
   },
   categoryDescription: {
     app_release: 'A new LevelUp version is available.',
@@ -412,6 +419,7 @@ const EN: NotificationsText = {
     trend_consolidate: 'One of your performance areas has been trending down over time — a chance to shore it up.',
     title_ready: 'A newly activated title finished its first sync.',
     rival_encounter: 'A sync brought a new duel against one of your top rivals.',
+    medal_first_earned: 'You earned a medal you had never obtained before.',
   },
 
   metricLabel: {
@@ -493,6 +501,10 @@ const EN: NotificationsText = {
     'notif.title_ready.body': 'Your {title_name} data is synced — explore your stats.',
     'notif.rival_encounter.title': 'Rival encountered',
     'notif.rival_encounter.body': 'You crossed paths with {gamertag} again: {kills} frags / {deaths} deaths.',
+    'notif.medal_first_earned.title': 'First-time medal',
+    'notif.medal_first_earned.body': 'You earned {medal_name_en} for the first time — nice!',
+    'notif.medal_first_earned.recap.title': 'First-time medals',
+    'notif.medal_first_earned.recap.body': '{count} medals earned for the first time.',
   },
 
   relJustNow: 'just now',

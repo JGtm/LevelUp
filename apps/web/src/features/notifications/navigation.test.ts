@@ -56,6 +56,7 @@ const VALID_PLAYER_SUBPATHS = [
   '/community/compare',
   '/career',
   '/career/season-pass',
+  '/career/medals',
   '/match',
   '/matches',
   '/media',
@@ -244,6 +245,26 @@ describe('navigation.ts - regression B1 routes notifications', () => {
     expect(target).not.toBeNull()
     expect(target!.to).toBe('/settings')
     expect(target!.search).toMatchObject({ jobId: 'job-1' })
+  })
+
+  it('medal_first_earned cible la page Médailles via le target_route backend', () => {
+    // Cas nominal : le backend émet le format title-préfixé /t/{title}/players/{slug}/career/medals,
+    // navigué VERBATIM (zéro hop).
+    const notif = makeNotif('medal_first_earned')
+    notif.target_route = `/t/${TITLE_SLUG}/players/${PLAYER_SLUG}/career/medals`
+    const target = resolveTarget(notif, PLAYER_SLUG, TITLE_SLUG)
+    expect(target).not.toBeNull()
+    expect(target!.to).toBe(`/t/${TITLE_SLUG}/players/${PLAYER_SLUG}/career/medals`)
+    expect(target!.params).toBeUndefined()
+  })
+
+  it('medal_first_earned fallback sur la page Médailles si target_route absent', () => {
+    const notif = makeNotif('medal_first_earned')
+    notif.target_route = undefined
+    const target = resolveTarget(notif, PLAYER_SLUG, TITLE_SLUG)
+    expect(target).not.toBeNull()
+    expect(target!.to).toBe(`${PLAYER_TPL}/career/medals`)
+    expect(target!.params).toEqual(PLAYER_PARAMS)
   })
 
   it('target_route nouveau format /t/{title}/players/{slug}/media reste prioritaire (non-fantôme)', () => {

@@ -140,8 +140,8 @@ function WatcherPlayersTable({
         <thead>
           <tr className="border-b bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
             <SortableTh label={tA('admin.sync.col_player')} active={sortKey === 'gamertag'} dir={sortDir} onClick={() => toggleSort('gamertag')} className="px-3 py-2 font-medium" />
-            <SortableTh label={tA('admin.watcher.col_state')} active={sortKey === 'state'} dir={sortDir} onClick={() => toggleSort('state')} className="px-3 py-2 font-medium" />
-            <SortableTh label={tA('admin.watcher.col_presence')} active={sortKey === 'presence_state'} dir={sortDir} onClick={() => toggleSort('presence_state')} className="px-3 py-2 font-medium" />
+            <SortableTh label={tA('admin.watcher.col_state')} active={sortKey === 'state'} dir={sortDir} onClick={() => toggleSort('state')} className="px-3 py-2 font-medium" tooltip={tA('admin.watcher.col_state_tooltip')} />
+            <SortableTh label={tA('admin.watcher.col_presence')} active={sortKey === 'presence_state'} dir={sortDir} onClick={() => toggleSort('presence_state')} className="px-3 py-2 font-medium" tooltip={tA('admin.watcher.col_presence_tooltip')} />
             <SortableTh label={tA('admin.watcher.col_since')} active={sortKey === 'state_since'} dir={sortDir} onClick={() => toggleSort('state_since')} className="px-3 py-2 font-medium" />
             <SortableTh label={tA('admin.watcher.col_last_event')} active={sortKey === 'last_event_at'} dir={sortDir} onClick={() => toggleSort('last_event_at')} className="px-3 py-2 font-medium" />
           </tr>

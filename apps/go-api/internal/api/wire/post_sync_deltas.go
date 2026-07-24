@@ -149,6 +149,12 @@ func BuildPostSyncDeltaHook(reg *ServiceRegistry) handlers.PostSyncDeltaHook {
 			// non bloquante) ; skippée sans nouveau match (watermark).
 			emitRivalEncounters(ctx, emitter, newRivalDetectorForPDB(pdb2), pdb2.TitleSlug, slug, before, after)
 
+			// V72-20 : notification « médaille inédite » — médailles décrochées pour
+			// la première fois par cette sync (diff after \ before sur EarnedMedalIDs).
+			// Best-effort ; garde cold-start + anti-rafale internes
+			// (post_sync_medal_first_earned.go).
+			emitMedalFirstEarned(ctx, emitter, newMedalNamerForPDB(pdb2), pdb2.TitleSlug, slug, before, after)
+
 			// Couche progression V2 (Ascension) — pipeline streaks/records/
 			// milestones/coach + coach_advisor (Phase 8 ADR 0020). Non
 			// bloquant : toute erreur reste en slog.Warn.

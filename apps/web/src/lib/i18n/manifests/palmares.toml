@@ -329,6 +329,24 @@ en = "Last seen"
 fr = "Ratio frags/morts : frags infligés ÷ morts subies sur l'ensemble des matchs communs"
 en = "Frags/deaths ratio: frags dealt ÷ deaths suffered across all shared matches"
 
+# ─── Relations - Tooltips d'en-tête (V72-04, icône ⓘ) ───────────────────────
+
+[palmares.relations.table.encounters_tooltip]
+fr = "Matchs joués avec ce joueur, répartis en allié et adversaire."
+en = "Matches played with this player, split into ally and enemy."
+
+[palmares.relations.table.win_rate_ally_tooltip]
+fr = "Taux de victoire des matchs où ce joueur était ton allié."
+en = "Win rate in matches where this player was your ally."
+
+[palmares.relations.table.win_rate_enemy_tooltip]
+fr = "Taux de victoire des matchs où ce joueur était ton adversaire."
+en = "Win rate in matches where this player was your enemy."
+
+[palmares.relations.table.frags_deaths_tooltip]
+fr = "Frags infligés à ce joueur et morts subies face à lui, tous matchs confondus."
+en = "Frags dealt to this player and deaths suffered against them, across all matches."
+
 # ─── Relations - Catégorie de lien ─────────────────────────────────────────
 
 [palmares.relations.category.ally]

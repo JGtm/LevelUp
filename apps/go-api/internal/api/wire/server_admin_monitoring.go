@@ -70,6 +70,12 @@ func MountAdminMonitoringRoutes(
 		reg.RunPlayerConvergence, jobStore, serverCtx, ErrSyncInFlight)
 	convH.Mount(r) // POST /actions/convergence/run
 
+	// Synchronisation initiale (re-import complet, RunFull) d'un joueur au choix
+	// (job asynchrone, claim SyncGate, tokens via le pool unifié).
+	initialSyncH := handlers.NewAdminInitialSyncActionHandler(
+		reg.RunPlayerInitialSync, jobStore, serverCtx, ErrSyncInFlight)
+	initialSyncH.Mount(r) // POST /actions/initial-sync/run
+
 	// Drain DiscoveryUGC (job asynchrone — réseau, rate-limité). Complète le
 	// catalog/refresh zéro-réseau en hydratant les assets absents de match_registry.
 	drainH := handlers.NewAdminCatalogDrainHandler(reg.RunCatalogUGCDrain, jobStore, serverCtx)

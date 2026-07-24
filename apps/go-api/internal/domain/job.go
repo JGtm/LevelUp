@@ -38,9 +38,13 @@ const (
 	// catalogue playlists/pairs/maps metadata.
 	JobTypeForcedSyncCycle   JobType = "forced_sync_cycle"
 	JobTypePlayerConvergence JobType = "player_convergence"
-	JobTypeCatalogRefresh    JobType = "catalog_refresh"
-	JobTypeCatalogUGCDrain   JobType = "catalog_ugc_drain"
-	JobTypeOther             JobType = "other"
+	// JobTypeAdminInitialSync : re-import complet (RunFull) d'un joueur au choix
+	// déclenché depuis la page admin (distinct de JobTypeInitialSync, réservé au
+	// flux self-service /sync/initial gardé par la session courante).
+	JobTypeAdminInitialSync JobType = "admin_initial_sync"
+	JobTypeCatalogRefresh   JobType = "catalog_refresh"
+	JobTypeCatalogUGCDrain  JobType = "catalog_ugc_drain"
+	JobTypeOther            JobType = "other"
 )
 
 // JobErrorDetail encapsule les détails d'erreur d'un job.
