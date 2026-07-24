@@ -132,24 +132,6 @@ retombait en « Non attribué » (ex-D-P3-2) → disparaît avec le fallback. **
 
 ---
 
-### [prod/backup] Retirer le scheduler backup in-app (redondant avec le backup systemd hôte)
-
-> Noté le 2026-07-17, DÉCISION 2026-07-18. Le backup restic **canonique** tourne au niveau
-> **hôte VPS** (timer systemd, quotidien depuis 2026-06-19, repo CHIFFRÉ `/opt/levelup/restic-repo`,
-> couvre `data/titles` + `data/auth` + config). Le scheduler backup **in-app** (Go) est
-> **redondant et inférieur** : il ferait un 2ᵉ backup des mêmes données, **non chiffré**
-> (`--insecure-no-password` forcé par `toPkgConfig`), **sur le même disque** (inutile si le
-> disque lâche) ; il cherche restic dans le conteneur (absent) et loggue un WARN au boot.
-
-**DÉCISION (user 2026-07-18)** : **retirer le code du scheduler backup in-app** (le backup
-hôte reste la source unique). La suppression éteint le WARN **par construction** (0 code mort —
-règle 7). Périmètre : débrancher/supprimer `internal/ops/backup_service.go` + `pkg/duckdbbackup`
-et le câblage au boot + le flag `backup_enabled` + les tests associés (vérifier les callers avant).
-**Étape future distincte** : réplication off-site du dépôt restic hôte (identifiants cloud/SFTP
-requis — aucun aujourd'hui). **Effort** : petit-moyen (suppression + tests).
-
----
-
 ### [POST-V7] Housekeeping post-cutover (optionnel, non bloquant)
 
 > Le cutover Go (la branche Go est devenue `main`) est **terminé** — cf. archive « Récemment complété ».

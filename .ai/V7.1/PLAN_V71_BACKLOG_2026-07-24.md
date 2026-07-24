@@ -75,6 +75,21 @@ Gate : par feature — tsc/vitest/go test ; -tags=integration si persist touché
 | I20 scope Explorer | Écart de frags cumulé + donuts TdV ensemble/face à lui (PAS sparkline, PAS FDA avec/contre) | 2026-07-24 |
 | Nom de branche | feat/v7.1-backlog | 2026-07-24 |
 
+## Décisions utilisateur reçues via Notion (2026-07-24 après-midi)
+- I8 : FEU VERT VPS (« ssh lvelup ») → timer systemd installé + validé (716,9 Mo + image
+  orpheline récupérés, 58 %→55 %), cron.d morts supprimés. FAIT, item barré.
+- I7 : « Éliminations Firefight » = compter les VICTOIRES Baptême du feu (pas les kills) ;
+  « Virée sur la route » → remap médaille écrasement (splatter) sinon désactiver ;
+  « Défenseur du drapeau » = impossible actuellement → désactiver proprement ;
+  « Sus au porteur » : l'utilisateur a fait un Carriers Killed le 23/07 → vérifier après
+  recalcul. « Marteau antigravité » 0 kills jugé étonnant par l'user (parser ?) —
+  HORS SCOPE déclaré par l'user, noté en découverte.
+- I1 volet 2 : cards H5 invisibles chez l'user. CAUSE TROUVÉE (parquets) : toutes les
+  lignes match_participants H5 écrites avant le 23/06 13:00 (activation du mapper) ont
+  des ZÉROS (pas NULL) — JGtm ingéré le matin (1 970 lignes à zéro), 2 joueurs ingérés
+  l'après-midi ont les vraies valeurs. Correctif = backfill re-carnage ciblé sur les
+  lignes à zéro pré-activation (~11 200 lignes, vague 4).
+
 ## Décisions superviseur (autonomie, consignées)
 - I12 : cap 20 cartes conservé, sélection = top-20 par match_count, AFFICHAGE en ordre
   chronologique de première apparition (aligné heatmap). Suffixe « (n) » de l'axe Y (I9)
@@ -111,8 +126,15 @@ no-op (déprécié) + cron.d mort (pas de daemon cron).
   par MatchCount desc — même biais visuel potentiel que I12 mais AUTRE page, hors périmètre
   du signalement. À proposer à l'utilisateur en fin de lot.
 - Couverture kill mechanics H5 mesurée (parquet 23/07) : 21277/24208 lignes (88 %),
-  sommes assn=1539 gp=353 sb=1175 → cards alimentées ; ~12 % de matchs anciens sans
-  re-sync (backfill optionnel).
+  sommes assn=1539 gp=353 sb=1175. MAIS répartition par heure d'écriture : tout ce qui
+  est antérieur au 23/06 13:00 = ZÉROS écrits (pas NULL) → JGtm (ingéré le matin) est
+  à zéro partout → backfill re-carnage ciblé requis (vague 4).
+- Validation I1 véhicules H5 (parquets, superviseur) : 8 destructeurs résolus avec
+  données (corpus 1164 ; JGtm = 100 véhicules détruits) ; Phaéton résolu, 0 donnée.
+  « Grand Theft »/« Vol à la tire » ABSENT du référentiel officiel (121 défs, 0
+  orpheline) ET des deltas → PAS de source hijack H5 aujourd'hui ; la carte restera
+  masquée pour H5 (dégradation prévue par le code). Piste future : impulses carnage
+  (.ai/H5_EXPLORATION) — non persistées, chantier à part (backlog).
 - Incohérence libellé catégorie coach « lusr_tier_approach » front vs Go (relevé I15, lot D).
 - coaching_tips.toml : ~80 entrées jargon esport — relecture éditoriale dédiée à cadrer.
 - personal_score_awards : citation player_vs_everything décrit « gagner » mais compte des
@@ -138,3 +160,19 @@ no-op (déprécié) + cron.d mort (pas de daemon cron).
   gofmt 2 fichiers, emoji deploy.sh, allowlist shared_social (justifiée datée).
   Restent : I21 [x] (réponse Notion, barré), I17 [~] POSTPONED user, vagues 3-4, backfills
   data, passe visuelle, I22 [FINAL].
+- [2026-07-24] Vague 3 CLOSE (7 agents : I15+complément, I10, I16, I1 véhicules, I2 médias,
+  suite citations, fix tests SortableTh). Gates : tsc 0 err ; vitest 352 fichiers/2990
+  tests verts (gate en 2 shards — un OOM de worker Windows isolé sur MediaAudioConfigButton,
+  cause = boucle infinie seed-effect sur data instable, corrigée composant+test) ; eslint
+  0 err/13 warn (baseline+4 tables TanStack) ; go build/vet/test verts ; intégration ops
+  69 s ; golangci ratchet 0 issue. Corrections superviseur au gate : commentaire bloc
+  fermé par */ dans le garde-rail anglicismes, helpers de tri rendus génériques
+  (SortingFn<T>), fixture AsyncJobStatus, littéral backtick-/t/ des commentaires backstop
+  (ratchet), attentes $.test.tsx préfixe /fr, goconst [full]/full (constantes), INCIDENT
+  superviseur : corruption encodage hls.go/hls_audio_manual.go par Get-Content/Set-Content
+  PS 5.1 — double-encodage renversé octet par octet, diff re-vérifié propre (leçon :
+  JAMAIS de munging texte via PowerShell, outils Read/Edit uniquement).
+  Décisions user Notion intégrées : Éliminations Firefight = compute_wins_firefight
+  (réutilisation code mort testé), road_trip → médaille Écrasement 221693153,
+  flag_defender désactivée. « Vol à la tire » H5 : PAS de source données (référentiel
+  officiel complet sans commendation hijack) → carte masquée H5 par dégradation prévue.

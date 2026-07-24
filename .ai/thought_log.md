@@ -1,3 +1,87 @@
+## [2026-07-24] I16 — Tri par en-têtes généralisé à tous les tableaux de l'app
+
+**Statut** : Complété (branche `feat/v7.1-backlog`, sans commit — gate superviseur).
+
+**Décision technique principale** :
+- Réutilisation stricte des patterns EXISTANTS plutôt qu'invention d'un nouveau système :
+  helpers `explorerMatchesClientSort.ts` (NUMERIC_SORT/dateTimeSortingFn/localeTextSortingFn)
+  pour tout tableau TanStack ; pattern DetectionsPanel minimal (clic direct sur `<th>`,
+  pas de bouton) pour MatchScoreboard/MatchEncountersTable (nouveau fichier partagé
+  `features/match-view/sortHeader.ts` : ariaSortOf/sortSuffixOf, 2 usages) ; pattern
+  hand-rolled SortableTh pour les tableaux natifs Carrière/Admin.
+- **Nouveau composant partagé** `components/ui/sortable-th.tsx` (SortableTh) + garde-rail
+  `sortable-th.guard.test.ts` (pattern `import.meta.glob` calqué sur metric-trend.guard.test.ts) :
+  8 consommateurs (CareerEncountersSection, CareerTopMatchesTable, ApiHaloSection ×2,
+  ConvergencePlayersTable, PostSyncMatrix, AdminTitlesPage, WatcherSection,
+  DBContentionSection, AdminJobsTable). EXEMPTION datée : `LeaderboardBlock.tsx` garde sa
+  copie locale (pré-existante, hors périmètre du chantier — citée uniquement comme
+  référence de pattern par le plan).
+- `ExplorerMatchesTable` : ajout prop `defaultSort` (état de tri initial surchargeable)
+  pour que les nouveaux consommateurs `sortable` ne cassent pas un ordre serveur
+  non-date-desc (session ASC, Carrière « Matchs marquants » curée par score). Fix
+  `enableSorting` sur les `extraColumns` sans accessorFn : un `enableSorting:false`
+  explicite du consommateur est désormais RESPECTÉ (avant : toujours écrasé par
+  `sortable`, ce qui aurait rendu « Δ rang » faussement triable).
+- **Découverte hors-liste** : `TimeseriesPage.progression.tsx` utilise aussi
+  `ExplorerMatchesTable` (4e consommateur non cité par le plan) — `sortable` activé +
+  colonne injectée `expected_win_prob` rendue réellement triable (accessorFn + NUMERIC_SORT).
+- Exceptions documentées par commentaire (pas de tri) : `SquadImpactScoreboard` (l'ordre
+  EST le classement Champion/Maillon faible), `SyncPlayersTable` (tri fixe
+  failed→ok→skipped intentionnel), `LeaderboardPP` (scaffold sans données réelles),
+  mini-tableau `CoreSummaryCard` dans `PalmaresRelationsPage.tsx` (aperçu sans `<thead>`).
+
+**Résultats observés** : ~40 fichiers touchés (16 composants modifiés + 3 nouveaux fichiers
+partagés + ~14 fichiers de test nouveaux/étendus). i18n : 1 nouvelle clé bilingue
+(`squad/i18n.ts` → `history.sortByAriaLabel`, parité vérifiée par `i18n.test.ts` existant).
+Gates NON exécutés (interdiction go/npm/tsc/vitest — gate superviseur) : tests écrits par
+raisonnement statique sur les types générés (`lib/api/generated.ts`) et les manifests i18n
+FR réels (pas de mock `useAdminT`/`useSquadText` sauf convention préexistante du fichier).
+
+**Points de vigilance** : (1) `check-types`/`test-web`/lint JAMAIS exécutés dans cette
+session — à faire tourner avant tout commit ; (2) plusieurs nouveaux fichiers de test
+supposent la locale par défaut `fr` du store Zustand (vérifiée dans le code, pas testée
+en CI) ; (3) `LeaderboardBlock.tsx` a une 2e implémentation de facto de SortableTh, non
+migrée (dette notée, garde-rail l'exempte explicitement) ; (4) IssueTable : nouvel accessoir
+`IssueColumn.sortValue` optionnel — les colonnes existantes sans `sortValue` restent
+non-triables même avec `sortable` (comportement voulu, pas un oubli).
+
+## [2026-07-24] Citations I7 — 3 décisions utilisateur (Firefight wins / Splatter / flag_defender)
+
+**Statut** : Complété (branche `feat/v7.1-backlog` ; suite du fix I7, sans commit — gate superviseur).
+
+**Décisions techniques principales** :
+- `player_vs_everything` (« Éliminations Firefight ») compte désormais les VICTOIRES en
+  Baptême du feu. Plutôt que d'introduire un stat `firefight_wins` (proposé au brief), on
+  RÉUTILISE la fonction custom `compute_wins_firefight` déjà implémentée + enregistrée
+  (`citations_custom.go`) mais jusqu'ici NON liée (dead code que la doc signalait comme
+  candidate). Bascule seed pve_stat/`total_enemy_kills` → custom/`compute_wins_firefight`,
+  tier recalibré kills x00 → `tierTargets5_10_15_25_50` (aligné sur flag/slayer/strongholds
+  victory). Zéro changement au loader `citations.go` : `ctx.Outcome`/`ctx.IsFirefight`
+  suffisent déjà. Réco assumée (règle 14 « vérifier l'existant » + règle 7 « 0 code mort »).
+- `road_trip` (« Virée sur la route ») remappée sur la médaille d'écrasement Splatter
+  `221693153` (catégorie vehicles, EN « Splatter », cible de la citation `splatter`) —
+  faisceau concordant. Ancien `3169118333` désormais non référencé. Palier Spartan Company
+  élevé conservé (grind long) ; duplication médaille intentionnelle comme splatter/lawnmower.
+- `flag_defender` (« Défenseur du drapeau ») DÉSACTIVÉE (Enabled=false) : aucun award
+  d'ingestion ne mesure la défense de son PROPRE drapeau (`carrier_killed` = kill du porteur
+  ENNEMI = flag_carrier_hunter). Candidat futur : `carrier_stopped`.
+- Aucun composite impacté : les 3 citations ne sont enfants d'aucun composite (vérifié).
+
+**Résultats observés** : 3 struct literals seed édités ; doc `COMMENDATIONS_REFERENCE.md`
+alignée (driver 2926348688, road_trip 221693153, player_vs_everything custom, disabled +1,
+section « unbound custom function » retirée). Tests ajoutés (pure data, hors cgo) :
+`seed_citation_mappings_test.go` (état décidé des 3) + câblage moteur
+`TestPlayerVsEverything_FirefightWinsThroughEngine` (halo_infinite). Gates NON exécutés
+(interdiction go/npm — gate superviseur). Recalcul prod requis après merge :
+`seed citation-mappings` puis `backfill --all --citations-recompute-all`.
+
+**Points de vigilance** : (1) déviation assumée du brief (firefight_wins → réutilisation
+compute_wins_firefight) — reverer trivialement si refus ; (2) mojibake pré-existant
+`"baptÃªme"` dans `computeWinsFirefight` (hors périmètre — le chemin `IsFirefight` primaire
+n'en dépend pas) ; (3) miroir FR `docs/FR/CITATIONS_REFERENCE.md` non mis à jour (brief
+scopé EN) ; (4) `total_enemy_kills` reste exposé par `loadPveStats` (loader générique,
+testé) mais plus consommé par aucune citation.
+
 ## [2026-07-24] Chantier backlog Notion « Pour la v7.1 » — vagues 1+2 (12 items)
 
 **Statut** : Complété (branche `feat/v7.1-backlog` ; plan `.ai/V7.1/PLAN_V71_BACKLOG_2026-07-24.md`).
