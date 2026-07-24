@@ -192,7 +192,9 @@ func (a *SquadV2LoaderAdapter) LoadMapStatsForSquad(
 			games.ErrCapabilityNotSupported, mainGT)
 	}
 	repo := NewSquadRepo(pdb)
-	stats, err := repo.LoadMapStatsForSquad(ctx, pdb.XUID, squadXUIDs)
+	// excludeXUIDs nil : le chemin V2 (SquadV2Loader) ne porte pas de pool
+	// d'exclusion — la composition exacte est appliquée côté TeammatesService.
+	stats, err := repo.LoadMapStatsForSquad(ctx, pdb.XUID, squadXUIDs, nil)
 	if err != nil {
 		return nil, fmt.Errorf("SquadV2LoaderAdapter.LoadMapStatsForSquad: %w", err)
 	}

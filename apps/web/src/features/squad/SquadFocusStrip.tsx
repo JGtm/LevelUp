@@ -28,7 +28,7 @@ import { getSquadFocusText, type SquadFocusText } from './squadFocusStrings'
 import { SquadObjectivesPanel } from './SquadObjectivesPanel'
 
 export function SquadFocusStrip() {
-  const { selectedRows, playerSlug } = useSquadContext()
+  const { selectedRows, playerSlug, currentPlayerXuid } = useSquadContext()
   const locale = useAppShellStore((s) => s.locale)
   const t = getSquadFocusText(locale)
   const [open, setOpen] = useState(false)
@@ -43,9 +43,10 @@ export function SquadFocusStrip() {
 
   // Match : escouade dont le roster hors joueur courant == sélection (exact).
   // Helper partagé avec useSquadPresets (source unique du matching de roster).
+  // Exclusion du viewer par son XUID absolu (player-agnostic), pas par le slug.
   const matched = useMemo<SquadWithMembers | null>(
-    () => findSquadByRoster(mySquads?.squads, selectionXuids, playerSlug),
-    [mySquads, selectionXuids, playerSlug],
+    () => findSquadByRoster(mySquads?.squads, selectionXuids, currentPlayerXuid),
+    [mySquads, selectionXuids, currentPlayerXuid],
   )
 
   // Pas de composition exploitable → rien à afficher.

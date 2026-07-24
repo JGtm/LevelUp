@@ -90,7 +90,7 @@ func (m *mockSquadRepo) LoadAssetTranslationsFR(_ context.Context, assetType str
 func (m *mockSquadRepo) LoadModeTranslationsFR(_ context.Context, _ []string) (map[string]string, error) {
 	return m.modeFR, nil
 }
-func (m *mockSquadRepo) LoadMapStatsForSquad(_ context.Context, _ string, _ []string) (map[string]domain.MapSquadStats, error) {
+func (m *mockSquadRepo) LoadMapStatsForSquad(_ context.Context, _ string, _, _ []string) (map[string]domain.MapSquadStats, error) {
 	return nil, nil
 }
 func (m *mockSquadRepo) LoadSynthesisMatches(_ context.Context, _ string) ([]legacymatch.SynthesisMatchRow, error) {
