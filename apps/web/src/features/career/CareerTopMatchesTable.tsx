@@ -13,9 +13,12 @@ import { tokenCssVar } from '@/lib/accessibility'
 import { outcomeKey } from '@/lib/outcome-color'
 import { formatDate, intlLocale as toIntlLocale } from '@/lib/formatters'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
+import { buildWaypointMatchUrl, waypointLogoSrc } from '@/lib/match-nav/waypointUrl'
 import { formatMessage } from '@/lib/i18n/format'
 import { careerManifest, type CareerManifestKey } from '@/lib/i18n/generated/career'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
+import { useCapability } from '@/lib/capabilities/capabilities'
 
 interface Props {
   items: TopMatchDTO[]
@@ -48,6 +51,13 @@ export function CareerTopMatchesTable({ items, variant, title, playerSlug: slugP
   const locale = useAppShellStore((s) => s.locale)
   const intlLocale = toIntlLocale(locale)
   const t = (key: CareerManifestKey) => formatMessage(careerManifest, key, locale)
+  // Colonne « Ouvrir sur Halo Waypoint » (I19) : gating par capability (absente
+  // pour Halo 5) ET par préférence LOCALE (Apparence → « Colonne Halo Waypoint
+  // sur les listes de matchs », défaut ON).
+  const waypointCapability = useCapability('waypoint_match_url')
+  const showWaypointColumnPref = useSettingsDraftStore((s) => s.localUiPrefs.showWaypointColumn)
+  const showWaypoint = waypointCapability && showWaypointColumnPref
+  const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
 
   const defaultTitle =
     variant === 'worst'
@@ -79,6 +89,7 @@ export function CareerTopMatchesTable({ items, variant, title, playerSlug: slugP
             <thead>
               <tr className="border-b border-border text-xs font-medium text-muted-foreground">
                 <th className="pb-2 text-left">{t('career.top_matches.col_index')}</th>
+                {showWaypoint && <th className="pb-2 text-left" />}
                 <th className="pb-2 text-left">{t('career.top_matches.col_date')}</th>
                 <th className="pb-2 text-left">{t('career.top_matches.col_map_mode')}</th>
                 <th className="pb-2 text-right">{t('career.top_matches.col_kills_short')}</th>
@@ -96,6 +107,26 @@ export function CareerTopMatchesTable({ items, variant, title, playerSlug: slugP
                   onClick={() => goToMatch(m.match_id)}
                 >
                   <td className="py-1.5 text-muted-foreground font-mono text-xs">{idx + 1}</td>
+                  {showWaypoint && (
+                    <td className="py-1.5">
+                      <a
+                        href={buildWaypointMatchUrl(playerSlug, m.match_id)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label={t('career.top_matches.col_waypoint_aria')}
+                        title={t('career.top_matches.col_waypoint_aria')}
+                        className="group flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <img
+                          src={waypointLogoSrc(theme)}
+                          alt=""
+                          aria-hidden
+                          className="h-4 w-4 opacity-60 group-hover:opacity-100 transition-opacity"
+                        />
+                      </a>
+                    </td>
+                  )}
                   <td className="py-1.5 text-muted-foreground whitespace-nowrap">
                     {formatDate(m.start_time, intlLocale, { dateStyle: 'short' }, '—')}
                   </td>

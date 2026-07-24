@@ -346,6 +346,10 @@ en = "ΔMMR"
 fr = "Ouvrir"
 en = "Open"
 
+[explorer.matches.col_waypoint_aria]
+fr = "Ouvrir sur Halo Waypoint"
+en = "Open on Halo Waypoint"
+
 [explorer.matches.sort_by]
 fr = "Trier par {col}"
 en = "Sort by {col}"

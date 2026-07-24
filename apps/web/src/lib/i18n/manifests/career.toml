@@ -470,6 +470,10 @@ en = "Compare"
 fr = "#"
 en = "#"
 
+[career.top_matches.col_waypoint_aria]
+fr = "Ouvrir sur Halo Waypoint"
+en = "Open on Halo Waypoint"
+
 [career.top_matches.col_date]
 fr = "Date"
 en = "Date"

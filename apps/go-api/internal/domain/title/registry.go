@@ -109,6 +109,15 @@ const (
 	// ⇒ le front masque les 3 charts « Écart au FDA attendu » (dégradation par
 	// construction côté Go : champs additifs nil, aucun ErrCapabilityNotSupported).
 	CapExpectedStats Capability = "expected_stats"
+
+	// CapWaypointMatchURL - le titre expose une page de detail de match publique
+	// sur Halo Waypoint (halowaypoint.com/halo-infinite/players/{gamertag}/matches/{id}),
+	// permettant un lien direct "Ouvrir sur Halo Waypoint" depuis les tableaux de
+	// matchs. Halo Infinite : oui. Halo 5 : non declaree (I19) - Waypoint ne sert pas
+	// de page de detail de match Halo 5 ; le chemin d'URL est de toute facon
+	// specifique a Infinite (segment "halo-infinite"). Absente => le front masque la
+	// colonne/lien correspondant (pas de lien mort vers une page inexistante).
+	CapWaypointMatchURL Capability = "waypoint_match_url"
 )
 
 // TitleDescriptor décrit un titre supporté avec ses métadonnées.
@@ -283,6 +292,8 @@ func NewRegistry() *Registry {
 			CapTeamMMR, CapDamageTaken,
 			// Stats attendues natives (kills_expected/deaths_expected) → écart au FDA attendu.
 			CapExpectedStats,
+			// Page de détail de match publique sur Halo Waypoint (I19).
+			CapWaypointMatchURL,
 		},
 		IsDefault:        true,
 		XboxTitleID:      "2043073184",

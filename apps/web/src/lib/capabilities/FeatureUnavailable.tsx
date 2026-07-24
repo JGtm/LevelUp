@@ -28,6 +28,7 @@ const FEATURE_LABEL: Record<TitleCapability, { fr: string; en: string }> = {
   weapon_accuracy: { fr: 'la précision par arme', en: 'accuracy by weapon' },
   spartan_customizer: { fr: 'la personnalisation Spartan', en: 'Spartan customization' },
   expected_stats: { fr: 'l écart au FDA attendu', en: 'expected KDA stats' },
+  waypoint_match_url: { fr: 'les liens Halo Waypoint', en: 'Halo Waypoint links' },
 }
 
 interface FeatureUnavailableProps {

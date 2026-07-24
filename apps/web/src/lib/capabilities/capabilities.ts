@@ -30,6 +30,7 @@ export const TITLE_CAPABILITIES = [
   'weapon_accuracy',
   'spartan_customizer',
   'expected_stats',
+  'waypoint_match_url',
 ] as const
 
 export type TitleCapability = (typeof TITLE_CAPABILITIES)[number]

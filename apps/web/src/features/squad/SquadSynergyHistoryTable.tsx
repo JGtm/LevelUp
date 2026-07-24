@@ -2,8 +2,13 @@
  * SquadSynergyHistoryTable — historique des matchs partagés pour la page Synergies.
  *
  * Colonnes contextuelles (pas de stats personnelles) :
- *   Ouvrir | ↗ wp | Date | Carte | Playlist | Mode |
+ *   Ouvrir | Waypoint | Date | Carte | Playlist | Mode |
  *   Résultat | Taux hist. | Score | Durée | MMR équipe | MMR adv. | Écart MMR
+ *
+ * Colonne « Waypoint » (I19) : lien externe vers la page de détail du match sur
+ * Halo Waypoint (logo thème clair/sombre, remplace l'ancien lien texte « ↗ wp »),
+ * gatée par la capability `waypoint_match_url` (absente pour Halo 5) ET par la
+ * préférence locale `localUiPrefs.showWaypointColumn` (Settings → Apparence).
  *
  * Utilise TanStack Table v8. Pagination 20/page côté client.
  * Labels carte/playlist via useFieldMappings (assets titre).
@@ -19,12 +24,14 @@ import {
 
 import type { SquadMatchHistoryRow } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 import { tokenCssVar } from '@/lib/accessibility'
 import { getOutcomeColor, outcomeKey } from '@/lib/outcome-color'
 import { formatDate, formatDurationMinSec } from '@/lib/formatters'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { getSquadText } from './i18n'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
+import { buildWaypointMatchUrl, waypointLogoSrc } from '@/lib/match-nav/waypointUrl'
 
 const PAGE_SIZE = 20
 
@@ -67,6 +74,13 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
   // que si le titre courant fournit un MMR par match. Faux pour Halo 5 → on
   // RETIRE silencieusement les colonnes (pas de cellule "-" ni de colonne vide).
   const providesTeamMmr = useCapability('team_mmr')
+  // Lien « Ouvrir sur Halo Waypoint » (I19) : gating par capability (absente pour
+  // Halo 5) ET par préférence LOCALE (Apparence → « Colonne Halo Waypoint sur les
+  // listes de matchs », défaut ON).
+  const waypointCapability = useCapability('waypoint_match_url')
+  const showWaypointColumnPref = useSettingsDraftStore((s) => s.localUiPrefs.showWaypointColumn)
+  const showWaypoint = waypointCapability && showWaypointColumnPref
+  const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
   // Backend envoie DESC (newest first) — on inverse pour oldest-first (chronologique).
   const sortedRows = useMemo(() => [...rows].reverse(), [rows])
   const allMatchIds = useMemo(() => sortedRows.map((r) => r.match_id), [sortedRows])
@@ -78,8 +92,6 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
       navigateToMatch(matchId, { source: 'session', matchIds: allMatchIds }),
     [navigateToMatch, allMatchIds],
   )
-
-  const waypointBase = `https://www.halowaypoint.com/halo-infinite/players/${encodeURIComponent(playerSlug)}/matches`
 
   const columns = useMemo<ColumnDef<SquadMatchHistoryRow>[]>(
     () => [
@@ -103,21 +115,34 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
           </button>
         ),
       },
-      {
-        id: 'waypoint',
-        header: '',
-        cell: (ctx) => (
-          <a
-            href={`${waypointBase}/${ctx.row.original.match_id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary text-xs whitespace-nowrap"
-            onClick={(e) => e.stopPropagation()}
-          >
-            ↗ wp
-          </a>
-        ),
-      },
+      // Lien « Ouvrir sur Halo Waypoint » (I19) : capability + préférence locale
+      // (cf. showWaypoint plus haut). Halo 5 → colonne absente (pas de cellule vide).
+      ...(showWaypoint
+        ? [
+            {
+              id: 'waypoint',
+              header: '',
+              cell: (ctx) => (
+                <a
+                  href={buildWaypointMatchUrl(playerSlug, ctx.row.original.match_id)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label={labels.waypointAriaLabel}
+                  title={labels.waypointAriaLabel}
+                  className="group flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <img
+                    src={waypointLogoSrc(theme)}
+                    alt=""
+                    aria-hidden
+                    className="h-4 w-4 opacity-60 group-hover:opacity-100 transition-opacity"
+                  />
+                </a>
+              ),
+            } as ColumnDef<SquadMatchHistoryRow>,
+          ]
+        : []),
       {
         accessorKey: 'start_time',
         header: labels.date,
@@ -248,7 +273,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
         : []),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [labels, intlLocale, playerSlug, waypointBase, goToSynergyMatch, providesTeamMmr],
+    [labels, intlLocale, playerSlug, goToSynergyMatch, providesTeamMmr, showWaypoint, theme],
   )
 
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: PAGE_SIZE })

@@ -30,14 +30,16 @@ import { formatRankDelta, rankDeltaToken, useSessionT } from './_shared'
 
 /**
  * Colonnes masquées en mode comparaison (drawer 50%). Clés = ids de colonnes
- * ExplorerMatchesTable (accessorKey, ou 'open'). On retire le contextuel/large
- * (ouvrir, date, carte, playlist, solo/escouade, dominance, score, durée, ΔPerf,
- * type de rating, MMR équipe/adverse) pour ne garder que l'essentiel comparable.
+ * ExplorerMatchesTable (accessorKey, ou 'open'/'waypoint'). On retire le
+ * contextuel/large (ouvrir, lien Waypoint, date, carte, playlist, solo/escouade,
+ * dominance, score, durée, ΔPerf, type de rating, MMR équipe/adverse) pour ne
+ * garder que l'essentiel comparable.
  * Δ rang (ratingDelta) n'existe pas comme colonne Explorer → non affichable sans
  * modifier le composant ; le rang/rating courant reste visible (skill_tier_label).
  */
 const COMPACT_HIDDEN_COLUMNS: Record<string, boolean> = {
   open: false,
+  waypoint: false,
   start_time: false,
   map_ui: false,
   playlist_label: false,

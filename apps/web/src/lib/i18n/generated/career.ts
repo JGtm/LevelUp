@@ -108,6 +108,7 @@ export const careerManifest = {
   "career.top_matches.col_match": { fr: "Match", en: "Match" },
   "career.top_matches.col_outcome": { fr: "Résultat", en: "Outcome" },
   "career.top_matches.col_score": { fr: "Score", en: "Score" },
+  "career.top_matches.col_waypoint_aria": { fr: "Ouvrir sur Halo Waypoint", en: "Open on Halo Waypoint" },
   "career.top_matches.default_title_best": { fr: "Meilleurs matchs", en: "Best matches" },
   "career.top_matches.default_title_neutral": { fr: "Top matchs", en: "Top matches" },
   "career.top_matches.default_title_worst": { fr: "Pires matchs", en: "Worst matches" },
