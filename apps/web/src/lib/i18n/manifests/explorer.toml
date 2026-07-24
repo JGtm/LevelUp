@@ -664,26 +664,6 @@ en = "Combat yield"
 fr = "Répartition des frags"
 en = "Kill types"
 
-[explorer.target_profile.kill_type_headshot]
-fr = "Tirs à la tête"
-en = "Headshots"
-
-[explorer.target_profile.kill_type_melee]
-fr = "Mêlée"
-en = "Melee"
-
-[explorer.target_profile.kill_type_power_weapon]
-fr = "Arme lourde"
-en = "Power weapon"
-
-[explorer.target_profile.kill_type_grenade]
-fr = "Grenade"
-en = "Grenade"
-
-[explorer.target_profile.kill_type_other]
-fr = "Autres"
-en = "Other"
-
 [explorer.target_profile.value_unavailable]
 fr = "—"
 en = "—"
