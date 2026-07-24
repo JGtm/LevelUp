@@ -9,8 +9,10 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
 )
@@ -46,6 +48,11 @@ type SessionPageService struct {
 	// attendu. nil → AssistsExpected nil (l'attendu dégrade en K/D pur).
 	expectedAssistsModels assistsModelReader
 	expectedAssistsCoefs  assistsCoefReader
+	// highlightEventsRepo / playerXUID (optionnels) : events kill horodatés + xuid du
+	// joueur suivi, pour le profil d'intensité (frags par phase) — MIROIR du wiring
+	// Timeseries. nil / xuid vide → IntensityRows reste nil (dégradation gracieuse).
+	highlightEventsRepo highlightEventsLoader
+	playerXUID          string
 }
 
 // NewSessionPageService crÃ©e un SessionPageService.
@@ -89,6 +96,15 @@ func (s *SessionPageService) WithWeaponAccuracyRepo(repo port.WeaponAccuracyRepo
 func (s *SessionPageService) WithExpectedAssists(models assistsModelReader, coefs assistsCoefReader) *SessionPageService {
 	s.expectedAssistsModels = models
 	s.expectedAssistsCoefs = coefs
+	return s
+}
+
+// WithHighlightEventsRepo injecte le repo highlight_events + le xuid du joueur suivi
+// pour le profil d'intensité de la session (MIROIR du wiring Timeseries). Optionnel —
+// nil / xuid vide → IntensityRows reste nil (dégradation gracieuse, front en état vide).
+func (s *SessionPageService) WithHighlightEventsRepo(repo highlightEventsLoader, xuid string) *SessionPageService {
+	s.highlightEventsRepo = repo
+	s.playerXUID = xuid
 	return s
 }
 
@@ -216,6 +232,14 @@ func (s *SessionPageService) GetPage(
 		}
 	}
 
+	// Profil d'intensité (frags par phase de match) — session courante + comparée.
+	// compareMatches vide (pas de comparaison) → seule IntensityRows est renseignée.
+	var compareMatchesForIntensity []legacymatch.StatsMatchRow
+	if resp.CompareEnabled {
+		compareMatchesForIntensity = filterBySession(compareScope, compareLabel)
+	}
+	s.attachSessionIntensity(ctx, &resp, canonicalRows, currentMatches, compareMatchesForIntensity)
+
 	// Placement X/Y dans la colonne Rang (matchs de placement) — appliqué aux deux
 	// tableaux (session + comparée), comme l'Explorer.
 	applyPlacementsToRows(resp.Matches, placements)
@@ -240,6 +264,76 @@ func (s *SessionPageService) GetPage(
 	)
 
 	return resp, nil
+}
+
+// attachSessionIntensity calcule le profil d'intensité (frags par phase de match) de
+// la session courante et, en mode comparaison, de la session comparée — MIROIR du
+// calcul Timeseries (buildIntensityRows). Best-effort : sans repo highlight events ni
+// xuid, ou en cas d'erreur/absence d'events, les champs restent nil (le front affiche
+// l'état vide). Les events des deux sessions sont chargés en UN seul appel ; les
+// timelines T0 sont construites une fois sur l'historique canonical complet (même
+// source que le calcul Timeseries, scoping garanti identique).
+func (s *SessionPageService) attachSessionIntensity(
+	ctx context.Context,
+	resp *domain.SessionPageResponse,
+	canonicalRows []canonical.PlayerMatchRow,
+	currentMatches, compareMatches []legacymatch.StatsMatchRow,
+) {
+	if s.highlightEventsRepo == nil || s.playerXUID == "" || len(currentMatches) == 0 {
+		return
+	}
+	ids := matchIDsFromStatsRows(currentMatches)
+	ids = append(ids, matchIDsFromStatsRows(compareMatches)...)
+	filters := port.HighlightEventFilters{
+		MatchIDs:   ids,
+		EventTypes: []canonical.HighlightEventType{canonical.EventKill, canonical.EventFirstKill},
+	}
+	if err := filters.Validate(); err != nil {
+		slog.WarnContext(ctx, "session page: intensity filters invalid", "err", err)
+		return
+	}
+	events, err := s.highlightEventsRepo.Load(ctx, filters)
+	if err != nil {
+		slog.WarnContext(ctx, "session page: highlight events load failed (intensity)", "err", err)
+		return
+	}
+	if len(events) == 0 {
+		return
+	}
+	// T0 (référentiel gameplay) : timelines depuis l'historique canonical complet,
+	// puis correction unique des events (comme timeseries_service.go).
+	timelines := timeline.BuildTimelinesFromPlayerMatches(canonicalRows)
+	corrected := timeline.CorrectEvents(events, timelines)
+	durations := timeline.GameplayDurationsMS(timelines)
+	// buildIntensityRows produit une ligne pour CHAQUE match présent dans les events
+	// (le paramètre matches ne sert qu'aux libellés) : on scinde donc les events par
+	// session AVANT chaque appel, sinon les matchs de la session comparée fuiteraient
+	// dans le profil de la session courante (et inversement).
+	resp.IntensityRows = buildIntensityRows(
+		filterHighlightEventsByMatches(corrected, currentMatches), currentMatches, s.playerXUID, durations)
+	if len(compareMatches) > 0 {
+		resp.CompareIntensityRows = buildIntensityRows(
+			filterHighlightEventsByMatches(corrected, compareMatches), compareMatches, s.playerXUID, durations)
+	}
+}
+
+// filterHighlightEventsByMatches ne garde que les events dont le match_id figure
+// dans `matches` (scoping strict par session avant buildIntensityRows).
+func filterHighlightEventsByMatches(
+	events []canonical.HighlightEvent,
+	matches []legacymatch.StatsMatchRow,
+) []canonical.HighlightEvent {
+	ids := make(map[string]struct{}, len(matches))
+	for i := range matches {
+		ids[matches[i].MatchID] = struct{}{}
+	}
+	out := make([]canonical.HighlightEvent, 0, len(events))
+	for _, e := range events {
+		if _, ok := ids[e.MatchID]; ok {
+			out = append(out, e)
+		}
+	}
+	return out
 }
 
 // lobbySizeProvider est une capability OPTIONNELLE du repo de matchs : compte les

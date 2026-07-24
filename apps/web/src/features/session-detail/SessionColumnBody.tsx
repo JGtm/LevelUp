@@ -9,7 +9,7 @@
  * En mode `compact` (colonne divisée, drawer ouvert) : KPI abrégés + tableau compact —
  * exactement la "vue compacte" de la colonne principale.
  */
-import type { SessionCompareEntry, SessionDetailMatchRow } from '@/lib/api/types'
+import type { IntensityMatchRow, SessionCompareEntry, SessionDetailMatchRow } from '@/lib/api/types'
 
 import type { CompareScale } from './_compareScale'
 import { SessionChartStack } from './SessionChartStack'
@@ -27,6 +27,8 @@ interface Props {
   participationSide?: 'left' | 'right'
   /** Bornes d'axe partagées A/B (mode comparaison) — fige les échelles pour comparabilité. */
   scale?: CompareScale
+  /** Profil d'intensité (frags par phase) de la session — calculé côté Go (payload). */
+  intensityRows?: IntensityMatchRow[]
 }
 
 export function SessionColumnBody({
@@ -36,6 +38,7 @@ export function SessionColumnBody({
   compact,
   participationSide = 'right',
   scale,
+  intensityRows,
 }: Props) {
   const t = useSessionT()
 
@@ -50,6 +53,7 @@ export function SessionColumnBody({
         participationSide={participationSide}
         participationColor="compare-a"
         scale={scale}
+        intensityRows={intensityRows}
       />
 
       {/* Tableau "Détail des matchs" — hors bloc/Card (juste un titre + le tableau). */}

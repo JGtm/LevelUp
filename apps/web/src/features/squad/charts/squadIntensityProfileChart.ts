@@ -29,7 +29,12 @@ import {
   phaseProfile,
   type PhaseProfileResult,
 } from '@/lib/charts/phaseProfile'
-import { SQUAD_INTENSITY_PHASE_LABELS } from './squadIntensityHeatmapChart'
+
+/** Libellés des 10 tranches de phase (0-10 %, …, 90-100 %) — axe X du profil. */
+export const INTENSITY_PHASE_LABELS = [
+  '0-10%', '10-20%', '20-30%', '30-40%', '40-50%',
+  '50-60%', '60-70%', '70-80%', '80-90%', '90-100%',
+]
 
 /** Repère « activité uniforme » : 1/PHASE_COUNT des frags par phase. */
 export const UNIFORM_SHARE = 1 / PHASE_COUNT
@@ -225,7 +230,7 @@ export function buildSquadIntensityProfileOption(opts: IntensityProfileOpts): EC
     ...axis,
     gridIndex: gi,
     type: 'category' as const,
-    data: SQUAD_INTENSITY_PHASE_LABELS,
+    data: INTENSITY_PHASE_LABELS,
     axisLabel: { ...axis.axisLabel, rotate: -25, interval: 0, fontSize: 8 },
   }))
   const yAxes = grids.map((_, gi) => ({

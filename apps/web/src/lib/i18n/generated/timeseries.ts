@@ -69,7 +69,6 @@ export const timeseriesManifest = {
   "timeseries.progression.intensity_subtitle": { fr: "Répartition des frags par phase de match", en: "Frag distribution across match phases" },
   "timeseries.progression.intensity_title": { fr: "Intensité", en: "Intensity" },
   "timeseries.progression.intensity_tooltip": { fr: "Trait épais = médiane des parts de frags par phase (tranche de 10 % de la durée). Aplat = enveloppe P25–P75 : plus elle est large, plus tu es irrégulier d'une manche à l'autre. Pointillé à 10 % = activité parfaitement uniforme.", en: "Thick line = median share of frags per phase (10% slice of match duration). Shaded band = P25–P75 envelope: the wider it is, the more you vary from game to game. Dashed line at 10% = perfectly even activity." },
-  "timeseries.progression.intensity_z": { fr: "frags", en: "kills" },
   "timeseries.progression.kill_type_other": { fr: "Autres", en: "Other" },
   "timeseries.progression.kill_types_title": { fr: "Répartition des frags", en: "Kill type distribution" },
   "timeseries.progression.match_history_title": { fr: "Historique des matchs", en: "Match history" },
