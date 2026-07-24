@@ -1,3 +1,33 @@
+## [2026-07-24] Release v7.1.0 — merge main, deploy prod, fix app_version=dev
+
+**Statut** : Complété (deploys sous surveillance ; backfills prod restants, fenêtre à
+convenir avec l'utilisateur).
+
+**Décision technique principale** :
+- Séquence release : retouche finale FDA (axe Y unique partagé pour écart cumulé +
+  attendu — retour user, `f7caae2a6`) → merge `feat/v7.1-backlog` dans main local
+  (`8537f03bb`, aucun conflit, LICENSE externe `174d3d67e` préservé par ff préalable) →
+  badge README 7.1.0 (`287cf4cfe`) → push main + tag `v7.1.0` dans un seul push (git
+  describe voit le tag au build).
+- Release GitHub : auto-créée par release.yml (binaires 3 plateformes) ; corps préfixé
+  avec le What's new v7.1 (gh release edit), après réalignement des notes sur la forme
+  finale du graphe FDA (`6fe8f71e9` — la ligne décrivait les courbes cumulées abandonnées).
+- **Bug trouvé en vérification prod** : `/health` → `app_version: "dev"` malgré le tag.
+  Cause : le job demo-regen de deploy.yml redémarre la prod dans une session SSH séparée
+  sans `LEVELUP_APP_VERSION` → compose recrée le conteneur avec le défaut `dev`. Fix
+  durable : deploy.sh persiste la version dans `.env` (gitignoré, lu automatiquement par
+  compose dans tous les contextes) — `e6093a764` ; `.env` posé à la main sur le VPS en
+  attendant.
+
+**Résultats observés** : deploy 1 vert (4 min 48, regen démo incluse) ; CI branche 100 %
+verte (Coverage + Baseline inclus) ; prod healthy (1 931 matchs, sync 20:05Z) ; version
+« dev » confirmée puis corrigée à la source ; deploys 2 (docs) et 3 (fix) en cours.
+
+**Conclusion / prochaine étape** : vérifier `/health` = v7.1.0 après le deploy 3, puis
+backfills prod (app arrêtée ~15 min, avec accord explicite) : seed citation-mappings →
+`backfill --all --citations-recompute-all` → `backfill-h5-kill-mechanics`, vérif
+carrier_killed + « Vol à la tire » JGtm.
+
 ## [2026-07-24] XP de carrière estimée (Timeseries) — Lots B1 (backend) + B2 (front)
 
 **Statut** : Complété côté code (branche `feat/v7.1-backlog`, sans commit — gates go/front
