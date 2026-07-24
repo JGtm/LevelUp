@@ -17,7 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Career — Medals page** — new `/career/medals` sub-page modeled on Citations: full per-title medal catalog including never-earned medals, grouped super-section → category (SpartanRecord taxonomy), all/earned/not-earned filter and three client-side sorts; multi-title (Halo Infinite rarity pill, generic grouping elsewhere).
 - **Career — estimated XP** — cumulative XP curve + XP-per-match on Timeseries, capability-gated (`analytics.career_xp_estimate`), methodology tooltip.
 - **Explorer — head-to-head panel** — "Over XX matches together" adds win-rate donuts (together / head-to-head, reusing the Relations donuts) and a cumulative frag-gap-vs-target chart; collapsible, persisted synthesis toggle (`explorerPrefsStore`).
-- **Expected-FDA charts** — `TimeseriesFdaGapTrend`, `SessionFdaGapCumulative`, per-member `SquadFdaGapCumulativeCard`; thin cumulative real/expected FDA lines added on the FDA-gap chart; canonical `divergentZeroGradient` helper (two inline copies migrated + guard-rail).
+- **Expected-FDA charts** — `TimeseriesFdaGapTrend`, `SessionFdaGapCumulative`, per-member `SquadFdaGapCumulativeCard`; a thin per-match expected-FDA line added on the FDA-gap chart (shared axis); canonical `divergentZeroGradient` helper (two inline copies migrated + guard-rail).
 - **Home / Synthesis** — peak-achieved date on best LUSR/CSR cards; longest-loss-streak KPI card.
 - **Scoreboard** — per-team identity colours + team logos (data-driven, `/titles/{slug}/teams/{team_id}.png`), shared player-column width.
 - **Halo Waypoint column** — optional second action column on match lists (theme-aware logo).
