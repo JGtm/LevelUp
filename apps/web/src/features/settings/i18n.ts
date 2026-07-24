@@ -35,6 +35,11 @@ export interface SettingsText {
   tabAccount: string
   tabNotifications: string
 
+  // Carte « Groupes et partage » (onglet Compte) — lien vers /groups
+  groupsCardTitle: string
+  groupsCardDescription: string
+  groupsCardOpen: string
+
   // Sync manuelle
   manualSyncTitle: string
   manualSyncButton: string
@@ -303,6 +308,11 @@ const FR_TEXT: SettingsText = {
   tabData: 'Données & Médias',
   tabAccount: 'Compte',
   tabNotifications: 'Notifications',
+
+  groupsCardTitle: 'Groupes et partage',
+  groupsCardDescription:
+    "Gère tes groupes (famille, amis) : les membres d'un même groupe ont un accès mutuel à leurs profils et statistiques. Crée un groupe puis partage son lien d'invitation.",
+  groupsCardOpen: 'Gérer mes groupes',
 
   manualSyncTitle: 'Synchronisation manuelle',
   manualSyncButton: '↻ Synchroniser tous les joueurs',
@@ -597,6 +607,11 @@ const EN_TEXT: SettingsText = {
   tabData: 'Data & Media',
   tabAccount: 'Account',
   tabNotifications: 'Notifications',
+
+  groupsCardTitle: 'Groups and sharing',
+  groupsCardDescription:
+    'Manage your groups (family, friends): members of the same group share mutual access to their profiles and stats. Create a group then share its invite link.',
+  groupsCardOpen: 'Manage my groups',
 
   manualSyncTitle: 'Manual synchronisation',
   manualSyncButton: '↻ Synchronise all players',
