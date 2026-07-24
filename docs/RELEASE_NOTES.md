@@ -1,5 +1,65 @@
 ## What's new
 
+**v7.1 — Squad reliability, Halo 5 combat data & career XP**
+
+**Squad — more reliable**
+- **Exact-composition history** — "Squad performance per session", "Map performance — session vs history" and "Win rate — session vs history" now compare each session against your history with that *exact* lineup, instead of a blurred all-teammates average
+- **Fixed saved compositions** — a saved squad now shows the same members for everyone; no more duplicates or a teammate missing from another player's view
+- **Chronological squad charts** — the map and win-rate comparison charts now read left-to-right in the order the maps first appeared, matching the intensity view
+- **Clearer win-rate axis** — the "(n)" match count on the axis is now explained by a hover tooltip
+- **New "Dynamics" tab** — intensity, yield/resistance and engagement charts are grouped in a dedicated Squad tab
+- **Intensity as a median profile** — the match × phase heatmap is replaced by a median frag-share profile per phase, with an interquartile band that makes irregular play visible
+- **Yield & Resistance** — split into two multi-player charts, one colour per player
+- **Damage balance in lives** — cumulative damage dealt minus taken, expressed in the title's lives, on Sessions and Dynamics
+- **Cumulative engagement gap** — a new cumulative engagement-gap curve on Timeseries, Dynamics and Sessions
+
+**Squad objectives**
+- **Squad challenge loop** — localized challenge labels, join feedback, live per-member progress, and full lifecycle (abandon, delete, expiration)
+- **Renamed** — "Squad focus" becomes "Squad objectives"
+- **No more silent failure** — the "Propose challenges" button now shows an explicit error instead of doing nothing
+
+**Halo 5 — repaired combat data**
+- **Vehicles destroyed & hijacks** — vehicle-destroyed and hijack counters on the Synthesis "Tools of destruction" card
+- **Combat mechanics restored** — assassinations, ground pound and shoulder bash counts repaired for matches whose values had been stored as zeros
+- **Cleaner scoreboard** — Halo 5 team names de-duplicated, and MVP/LVP is no longer decided by mechanic kills
+- **Mechanic columns hidden off Halo 5** — the assassination / ground-pound / shoulder-bash columns no longer show zeros on Halo Infinite
+
+**Citations repaired**
+- **Firefight** — "Firefight eliminations" now counts your Firefight victories
+- **Remaps & fixes** — grenade citations restored, "road trip" remapped to the Splatter medal, and "flag defender" cleanly disabled (no data source for it yet)
+
+**Career**
+- **Estimated career XP** — a cumulative XP curve and XP-per-match on Timeseries, calibrated on real data
+- **Multi-title Path to Hero** — progression toward the title's own maximum rank (fixes Halo 5 aiming at the wrong ceiling)
+- **Medals page** — a new Career sub-page listing the title's full medal catalog, including medals you have never earned, grouped by section, with all / earned / not-earned filters and sorting
+
+**Home & Synthesis**
+- **Peak date on rank cards** — your best LUSR / CSR cards now show the date the peak was reached
+- **Longest loss streak** — a new KPI card next to your win streak
+
+**Explorer**
+- **Head-to-head panel** — the "Over XX matches together" section adds win-rate donuts (together / head-to-head) and a cumulative frag-gap-vs-target chart
+- **Collapsible briefing** — the Matches-mode synthesis can be folded away, and the choice is remembered
+
+**Expected FDA**
+- **Gap-to-expected curves** — new "gap to expected FDA" charts on Timeseries and Sessions, plus a per-member cumulative gap on Squad Synergies, with an average-gap-per-match KPI
+- **Real vs expected overlay** — thin cumulative real and expected FDA lines added on the FDA-gap chart
+
+**Media**
+- **Per-player audio-track roles** — declare the voice / game / other role of each audio track of your clips, per player, from a gear modal in the gallery (manual, or automatic)
+
+**Quality of life**
+- **Language in the URL** — the active language is now part of the address, so shared links keep their language
+- **Halo Waypoint column** — an optional column to open any match on Halo Waypoint
+- **Every table sortable** — click any column header to sort, across all tables in the app
+- **Stable browser-tab titles** — page- and language-aware tab titles instead of a bare "LevelUp"
+- **Scoreboard identity** — per-team identity colours and team logos, plus a consistent player-column width
+- **French wording** — a sweep of anglicisms replaced with proper French terms
+- **Chart legends & percentages** — the "Tools of destruction" legend is centered below the chart, with percentage labels on segments and legends and aligned chart heights across Synthesis, Sessions and Squad
+
+**Admin**
+- **Spartan appearance diagnostic** — a per-player panel in the admin Data tab explains why a nameplate, emblem, backdrop or service tag failed to load, with a re-authentication shortcut
+
 **v7.0 — New React app, Mission Control & multi-title support**
 
 Major overhaul. LevelUp leaves Streamlit behind for a **React 19 + Go API** app with a **fully redesigned UX/UI** and **fully automated synchronization**. Close to 400 commits of work — here's what it changes for you:

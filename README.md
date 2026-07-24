@@ -14,6 +14,33 @@
 
 ## What's new
 
+**v7.1 — Squad reliability, Halo 5 combat data & career XP**
+
+A point release focused on making the Squad pages trustworthy, repairing Halo 5 combat data, and polishing the whole app.
+
+**Squad — more reliable**
+- **Exact-composition history** — the session-vs-history charts (squad performance, map performance, win rate) now compare each session against your history with that *exact* lineup, instead of a blurred all-teammates average
+- **Fixed saved compositions** — a saved squad now shows the same members for everyone; no more duplicates or a teammate missing from another player's view
+- **Chronological charts** — the map and win-rate comparisons now read left-to-right in the order the maps first appeared
+- **New "Dynamics" tab** — intensity (now a median activity profile with an interquartile band that makes irregular play visible), yield/resistance and engagement grouped in one place, plus a cumulative damage-balance-in-lives chart
+- **Squad objectives** — the squad-challenge loop is complete (localized labels, join feedback, live per-member progress, abandon/expire); "Squad focus" is renamed "Squad objectives"
+
+**Halo 5 — repaired combat data**
+- **Vehicles destroyed & hijacks** and the **combat mechanics** (assassinations, ground pound, shoulder bash) are back on the Synthesis and scoreboard after a data repair
+- **Citations repaired** — Firefight victories are counted, grenade citations are restored, and incorrect medal mappings are fixed
+
+**Career**
+- **Estimated career XP** — a cumulative XP curve and XP-per-match on Timeseries, calibrated on real data
+- **Multi-title Path to Hero** — progression toward each title's own maximum rank
+- **Medals page** — a new Career sub-page with the title's full medal catalog, including the medals you have never earned, with all / earned / not-earned filters and sorting
+
+**Explorer & Home**
+- **Head-to-head panel** — win-rate donuts (together / head-to-head) and a cumulative frag-gap-vs-target chart on "Over XX matches together"
+- **Peak dates** on your best LUSR / CSR cards, plus a **longest loss streak** KPI
+
+**Quality of life**
+- **Language in the URL** so shared links keep their language, an optional **Halo Waypoint column**, **every table sortable**, **stable browser-tab titles**, team identity colours and logos on the scoreboard, cleaner chart legends and percentage labels, and a French-wording sweep
+
 **v7.0 — New React app, Mission Control & multi-title support**
 
 Major overhaul. LevelUp leaves Streamlit behind for a **React 19 + Go API** app with a **fully redesigned UX/UI** and **fully automated synchronization**. Close to 400 commits of work — here's what it changes for you:
