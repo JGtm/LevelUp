@@ -1,3 +1,108 @@
+## [2026-07-24] Refonte « Intensité » — Phase 3 (Sessions solo + suppression heatmap) — CLÔTURE DU LOT
+
+**Statut** : Complété (Phase 3 du PLAN_INTENSITE_PROFIL_2026-07 ; branche
+`feat/intensite-profil`, worktree dédié ; P1 commitée 2f5eb07de, P2 commitée
+6c3c35334). Lot Intensité entièrement livré (P1+P2+P3), commit P3 délégué au superviseur.
+
+**Décision technique principale (3.1)** : VOIE (b) Go en miroir retenue. Vérifié sur
+pièces qu'aucun endpoint n'accepte de match_ids pour l'intensité (Timeseries calcule
+`intensity_rows` dans GetPage sur les seuls `Filters`) ; la seule voie (a) réalisable
+= refetch complet du payload Timeseries scoppé par `session_label` (sur-fetch massif,
+×2 en comparaison, rupture du pattern « charts session purs depuis matches »). Voie (b) :
+`SessionPageService.WithHighlightEventsRepo(repo, xuid)` (mirror Timeseries), helper
+`attachSessionIntensity` (events → timelines T0 `CorrectEvents` → `buildIntensityRows`),
+champs `IntensityRows`/`CompareIntensityRows` sur `SessionPageResponse` (openapi manuel +
+`generate-types` idempotent). Un seul round-trip, scoping garanti identique.
+
+**Bug trouvé et corrigé (via le test Go)** : `buildIntensityRows` émet une ligne pour
+CHAQUE match présent dans les events (le paramètre `matches` ne sert qu'aux libellés).
+Charger les events de l'UNION (session courante + comparée) puis appeler avec
+`currentMatches` faisait fuiter les matchs de la session comparée dans le profil courant.
+Corrigé par `filterHighlightEventsByMatches` (scoping strict des events par set avant
+chaque `buildIntensityRows`). Le test `TestSessionPageService_AttachSessionIntensity` a
+révélé le bug (fuite `c1` dans le profil de `m1`).
+
+**Résultats observés** :
+- Go : `domain/session_page.go` (2 champs), `service/session_page_service.go` (DI +
+  helper + fix scoping), `registry_pages.go` (wiring), `api/openapi.yaml` (schéma),
+  `session_page_service_test.go` (+test). Front : `SessionIntensityProfile.tsx` (+test),
+  threading `SessionChartStack`/`SessionColumnBody`/`SessionDetailPage`, `session.toml`
+  (+6 clés). Suppressions 3.3 : `SquadIntensityHeatmapChart.tsx`, `squadIntensityHeatmap
+  Chart.ts` (+test), `TimeseriesIntensityHeatmap`, clé `intensity_z` ; constante déplacée
+  dans le builder P1 (`INTENSITY_PHASE_LABELS`). `heatmapRampTokens` conservé (5+ callers).
+- `_compareScale` NON câblé pour l'intensité (parts normalisées 0..1 intrinsèquement
+  comparables ; voisins radar/donuts/perf non plus) — `[~]` justifié.
+- Gates de clôture : typecheck (cache purgé) propre ; `npx vitest run` COMPLET = 2835
+  passés / 14 skip (333 fichiers) ; `npm run lint` = 8 warnings baseline (0 erreur) ;
+  Go : `go test ./internal/service/...` + TestOpenAPISchemaDrift verts, `go build ./...`
+  + `go vet` propres, gofmt propre.
+
+**Conclusion / prochaine étape** : lot Intensité CLOS (P1+P2+P3). Suite = commit P3 +
+merge par le superviseur (push main = deploy) + vérification visuelle utilisateur
+(doctrine projet). Résidu : lancer `make go-api-lint` (golangci-lint) avant push si non
+couvert par la CI locale (leçon : pre-commit ne couvre pas le ratchet funlen/goconst).
+
+## [2026-07-24] Refonte « Intensité » — Phase 2 (Timeseries solo)
+
+**Statut** : Complété (Phase 2 du PLAN_INTENSITE_PROFIL_2026-07 ; branche
+`feat/intensite-profil`, worktree dédié ; P1 déjà commitée 2f5eb07de). Phase 3
+(Sessions + suppression heatmap) non entamée.
+
+**Décision technique principale** : remplacer la heatmap solo de l'onglet
+Progression par le profil médian + enveloppe, en RÉUTILISANT le builder P1
+`buildSquadIntensityProfileOption` en N=1 (aucune duplication de géométrie).
+Nouveau composant `TimeseriesIntensityProfile` (TimeseriesSquadAdapted.tsx) :
+panel unique `label:''` (titre ECharts vide, sans impact layout), couleur
+`chart-series-2`, rows = `data.intensity_rows` (tri start_time ASC conservé).
+Détection du vide sans dupliquer la logique d'exploitabilité : le builder omet
+`series` si aucune manche exploitable → le wrapper teste `opt.series` et rend
+`null` (ChartFromOption affiche l'emptyMessage). Aucune retouche des fichiers P1
+commités.
+
+**Résultats observés** :
+- Modifiés : `TimeseriesSquadAdapted.tsx` (+composant), `TimeseriesPage.
+  progression.tsx` (import + montage swappés, sous-titre + InfoTooltip),
+  `manifests/timeseries.toml` (+5 clés FR/EN), `generated/timeseries.ts`
+  (régénéré, idempotent). Créé : `TimeseriesIntensityProfile.test.tsx`.
+- `TimeseriesIntensityHeatmap` conservé (unused, exporté) + clé `intensity_z`
+  conservée → suppression Phase 3.
+- Gates : `npm run typecheck` (tsc -b, cache purgé) propre ; `npx vitest run
+  src/features/timeseries src/features/squad` = 343 tests / 47 fichiers verts.
+
+**Conclusion / prochaine étape** : Phase 2 close. Suite = Phase 3 (Sessions solo +
+suppression heatmap : squad wrapper + builder + `TimeseriesIntensityHeatmap` +
+tests + clés i18n mortes). Commit délégué au superviseur.
+
+## [2026-07-24] Refonte « Intensité » — Phase 1 (Coeur + Escouade/Dynamique)
+
+**Statut** : Complété (Phase 1 du PLAN_INTENSITE_PROFIL_2026-07 ; branche
+`feat/intensite-profil`, worktree dédié). Phases 2 (Timeseries) et 3 (Sessions +
+suppression heatmap) non entamées — hors périmètre P1.
+
+**Décision technique principale** : remplacer la heatmap « Intensité » (matchs × 10
+phases) par un profil d'activité par phase = MÉDIANE des parts de frags par phase +
+ENVELOPPE interquartile P25–P75, en multi-panneaux (1 par joueur, grille 2 colonnes,
+échelle Y partagée). Agrégation isolée dans un helper pur `lib/charts/phaseProfile.ts`
+(part manche = `phases[i]/Σ`, `null` si Σ=0 ; quantiles R-7 ; `MIN_MATCHES_FOR_ENVELOPE=4`).
+Enveloppe ECharts = paire de séries empilées `env-{gi}` (base P25 transparente +
+(P75−P25) en areaStyle opacité 0.16 même teinte joueur) ; repère 10 % via markLine ;
+titres de panneaux via `title[]`. Réutilisation de `SQUAD_INTENSITY_PHASE_LABELS`
+(pas de 2e copie des 10 libellés).
+
+**Résultats observés** :
+- Fichiers créés : `lib/charts/phaseProfile.ts` (+test), `features/squad/charts/
+  squadIntensityProfileChart.ts` (+test), `features/squad/SquadIntensityProfileChart.tsx`
+  (+test). Modifiés : `SquadDynamiquePage.tsx` (montage), `i18n.ts` (bloc intensity
+  refondu, 4 clés heatmap mortes retirées), `SquadDynamiquePage.test.tsx` (mock).
+- Le wrapper `SquadIntensityHeatmapChart.tsx` devient orphelin côté squad mais est
+  CONSERVÉ (suppression = Phase 3) ; son builder reste utilisé par Timeseries.
+- Gates : `npm run typecheck` (tsc -b, cache purgé) propre ; `npx vitest run
+  src/features/squad src/lib/charts` = 364 tests / 51 fichiers verts.
+
+**Conclusion / prochaine étape** : Phase 1 close. Suite = Phase 2 (Timeseries :
+`TimeseriesIntensityHeatmap` → profil mono-panneau réutilisant le builder P1). Revue
+visuelle utilisateur au merge (doctrine projet). Commit délégué au superviseur.
+
 ## [2026-07-23] Diagnostic « Proposer des défis » (Cap d'escouade) + audit workflow défis
 
 **Statut** : Complété (analyse + plan livrés — aucun code modifié, à la demande de

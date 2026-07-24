@@ -21,7 +21,7 @@ import {
 } from './TimeseriesFormCharts'
 import {
   TimeseriesEfficiency,
-  TimeseriesIntensityHeatmap,
+  TimeseriesIntensityProfile,
 } from './TimeseriesSquadAdapted'
 import { EngagementTimeseriesSection } from '@/features/engagement/EngagementTimeseriesSection'
 import { TimeseriesEngagementGapTrend } from './TimeseriesEngagementGapTrend'
@@ -202,13 +202,25 @@ export function TimeseriesProgressionTab({
         />
       </FeatureGate>
 
-      {/* Intensité — frags par phase de match (pleine largeur). */}
-      <TimeseriesIntensityHeatmap
-        title={t('timeseries.progression.intensity_title')}
+      {/* Intensité — profil médian des parts de frags par phase + enveloppe
+          P25–P75 (panneau solo pleine largeur). */}
+      <TimeseriesIntensityProfile
+        title={
+          <div className="flex flex-col gap-0.5">
+            <span className="flex items-center gap-1.5">
+              {t('timeseries.progression.intensity_title')}
+              <InfoTooltip content={t('timeseries.progression.intensity_tooltip')} />
+            </span>
+            <span className="text-xs font-normal text-muted-foreground">
+              {t('timeseries.progression.intensity_subtitle')}
+            </span>
+          </div>
+        }
         emptyMessage={emptyMsg}
         rows={data.intensity_rows ?? []}
-        zLabel={t('timeseries.progression.intensity_z')}
-        height={Math.max(200, Math.min(640, (data.intensity_rows ?? []).length * 18 + 80))}
+        medianLabel={t('timeseries.progression.intensity_median')}
+        envelopeLabel={t('timeseries.progression.intensity_envelope')}
+        refLabel={t('timeseries.progression.intensity_ref')}
       />
 
       {/* Historique des matchs — tableau Explorer standalone (sans bloc ni titre)

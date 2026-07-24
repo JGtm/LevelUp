@@ -115,4 +115,11 @@ type SessionPageResponse struct {
 	CompareMetrics       []SessionCompareMetricRow `json:"compare_metrics"`
 	PreviousSessionLabel *string                   `json:"previous_session_label,omitempty"`
 	NextSessionLabel     *string                   `json:"next_session_label,omitempty"`
+	// IntensityRows / CompareIntensityRows : profil d'intensité (frags par phase de
+	// match) de la session courante et de la session comparée — MIROIR du calcul
+	// Timeseries (buildIntensityRows). Best-effort : nil si le repo highlight events
+	// n'est pas câblé ou sans events (le front affiche l'état vide). Alimente le chart
+	// « Intensité » (profil médian + enveloppe P25–P75) du drawer et de la vue principale.
+	IntensityRows        []IntensityMatchRow `json:"intensity_rows,omitempty"`
+	CompareIntensityRows []IntensityMatchRow `json:"compare_intensity_rows,omitempty"`
 }
