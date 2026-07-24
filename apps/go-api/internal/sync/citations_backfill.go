@@ -21,6 +21,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/dblease"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
@@ -163,20 +164,31 @@ ORDER BY pme.match_id`
 // Utilisé pour force=true à la place de N DELETE individuels, car le bug ART DuckDB
 // peut bloquer la suppression via index quand des lignes corrompues (value IS NULL)
 // sont présentes. DROP + CREATE évite entièrement le chemin de l'index ART.
+//
+// PIÈGE corrigé (2026-07-24, découvert au premier recompute force post-ADR 0026) :
+// l'ancienne version recréait le schéma LEGACY 3 colonnes (PK composite, sans
+// generation_id) alors que la vue match_citations_latest référence generation_id →
+// Binder Error au premier SELECT, et chaque run suivant reconvertissait puis
+// re-cassait la table en boucle. La recréation passe désormais par la recette
+// canonique EnsureMatchCitationsAppendOnly (schéma génération complet + vue).
 func recreateCitationsTable(ctx context.Context, db *sql.DB) error {
 	stmts := []string{
 		`DROP TABLE IF EXISTS match_citations`,
+		// Schéma legacy transitoire : immédiatement converti par la recette
+		// canonique ci-dessous (CTAS + id PK + generation_id + written_at + vue).
 		`CREATE TABLE match_citations (
 			match_id            VARCHAR NOT NULL,
 			citation_name_norm  VARCHAR NOT NULL,
-			value               INTEGER DEFAULT 1,
-			PRIMARY KEY (match_id, citation_name_norm)
+			value               INTEGER DEFAULT 1
 		)`,
 	}
 	for _, s := range stmts {
 		if _, err := db.ExecContext(ctx, s); err != nil {
 			return err
 		}
+	}
+	if err := migration.EnsureMatchCitationsAppendOnly(db); err != nil {
+		return fmt.Errorf("recreateCitationsTable: conversion append-only: %w", err)
 	}
 	return nil
 }

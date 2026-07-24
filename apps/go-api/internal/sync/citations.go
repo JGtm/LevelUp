@@ -383,7 +383,7 @@ SELECT
     COALESCE(sentinel_kills, 0),
     COALESCE(marine_kills, 0),
     COALESCE(boss_kills, 0),
-    COALESCE(total_kills, 0)
+    COALESCE(total_enemy_kills, 0)
 FROM pve_match_stats_latest
 WHERE match_id = ? AND xuid = ?
 LIMIT 1`
