@@ -42,7 +42,9 @@ function render(identity: HomeSpartanIdentity | null) {
 
 describe('ExplorerTargetIdentityBanner', () => {
   // Titre courant SANS spartan_customizer → bandeau normal (emblème <img>, pas la
-  // synthèse). Sinon useCapability fail-open (availableTitles vide) → synthèse Halo 5.
+  // synthèse). Le gate est useCapabilityStrict (fail-closed) : un titre résolu sans la
+  // capability rend false, et availableTitles vide rendrait aussi false (jamais de
+  // synthèse Halo 5 par fuite transitoire — V72-29).
   beforeEach(() => {
     useAppShellStore.setState({
       currentTitleSlug: 'halo_infinite',

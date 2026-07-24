@@ -39,9 +39,12 @@ type careerCustomEntry struct {
 // de re-spammer Waypoint à chaque chargement de page. Thread-safe.
 //
 // Le cache est process-level (tous les joueurs partagent l'instance) ; la clé
-// d'entrée est le xuid. Pas de borne sur le nombre d'entrées : on suppose un
-// nombre modéré de joueurs actifs simultanément (cas multi-user typique du
-// produit). Si le besoin se présente, ajouter une LRU.
+// d'entrée est le couple (xuid, titleSlug). Le titre fait partie de la clé
+// (défense en profondeur V72-29) : un token Spartan reste valide entre titres,
+// donc sans cette dimension une entrée « carrière Infinite » pourrait être servie
+// sous le même xuid pour un autre titre. Pas de borne sur le nombre d'entrées : on
+// suppose un nombre modéré de joueurs actifs simultanément (cas multi-user typique
+// du produit). Si le besoin se présente, ajouter une LRU.
 type CareerLiveCache struct {
 	progressTTL time.Duration
 	customTTL   time.Duration
@@ -88,10 +91,16 @@ func NewCareerLiveCache(cfg CareerLiveCacheConfig) *CareerLiveCache {
 	}
 }
 
+// cacheKey compose la clé d'entrée (xuid, titleSlug). Le NUL comme séparateur évite
+// toute collision entre un xuid et un slug (aucun des deux ne contient d'octet NUL).
+func cacheKey(xuid, titleSlug string) string {
+	return xuid + "\x00" + titleSlug
+}
+
 // GetProgress retourne le snapshot caché si frais, sinon (nil, false).
-func (c *CareerLiveCache) GetProgress(xuid string) (*domain.CareerRankSnapshot, bool) {
+func (c *CareerLiveCache) GetProgress(xuid, titleSlug string) (*domain.CareerRankSnapshot, bool) {
 	c.muP.RLock()
-	entry, ok := c.progress[xuid]
+	entry, ok := c.progress[cacheKey(xuid, titleSlug)]
 	c.muP.RUnlock()
 	if !ok {
 		return nil, false
@@ -103,16 +112,16 @@ func (c *CareerLiveCache) GetProgress(xuid string) (*domain.CareerRankSnapshot, 
 }
 
 // PutProgress mémorise le snapshot avec un timestamp égal à `now()`.
-func (c *CareerLiveCache) PutProgress(xuid string, data *domain.CareerRankSnapshot) {
+func (c *CareerLiveCache) PutProgress(xuid, titleSlug string, data *domain.CareerRankSnapshot) {
 	c.muP.Lock()
-	c.progress[xuid] = careerProgressEntry{data: data, fetchedAt: c.now()}
+	c.progress[cacheKey(xuid, titleSlug)] = careerProgressEntry{data: data, fetchedAt: c.now()}
 	c.muP.Unlock()
 }
 
 // GetCustomization retourne la customisation cachée si fraîche, sinon (nil, false).
-func (c *CareerLiveCache) GetCustomization(xuid string) (*domain.SpartanCustomizationData, bool) {
+func (c *CareerLiveCache) GetCustomization(xuid, titleSlug string) (*domain.SpartanCustomizationData, bool) {
 	c.muC.RLock()
-	entry, ok := c.customs[xuid]
+	entry, ok := c.customs[cacheKey(xuid, titleSlug)]
 	c.muC.RUnlock()
 	if !ok {
 		return nil, false
@@ -124,17 +133,17 @@ func (c *CareerLiveCache) GetCustomization(xuid string) (*domain.SpartanCustomiz
 }
 
 // PutCustomization mémorise la customisation avec un timestamp égal à `now()`.
-func (c *CareerLiveCache) PutCustomization(xuid string, data *domain.SpartanCustomizationData) {
+func (c *CareerLiveCache) PutCustomization(xuid, titleSlug string, data *domain.SpartanCustomizationData) {
 	c.muC.Lock()
-	c.customs[xuid] = careerCustomEntry{data: data, fetchedAt: c.now()}
+	c.customs[cacheKey(xuid, titleSlug)] = careerCustomEntry{data: data, fetchedAt: c.now()}
 	c.muC.Unlock()
 }
 
-// DoProgress exécute fn une seule fois pour un xuid donné même en cas
-// d'appels concurrents (pattern singleflight). Les erreurs ne sont pas
+// DoProgress exécute fn une seule fois pour un couple (xuid, titre) donné même en
+// cas d'appels concurrents (pattern singleflight). Les erreurs ne sont pas
 // cachées (chaque tentative suivante refait l'appel).
-func (c *CareerLiveCache) DoProgress(xuid string, fn func() (*domain.CareerRankSnapshot, error)) (*domain.CareerRankSnapshot, error) {
-	v, err, _ := c.sfProgress.Do(xuid, func() (interface{}, error) {
+func (c *CareerLiveCache) DoProgress(xuid, titleSlug string, fn func() (*domain.CareerRankSnapshot, error)) (*domain.CareerRankSnapshot, error) {
+	v, err, _ := c.sfProgress.Do(cacheKey(xuid, titleSlug), func() (interface{}, error) {
 		return fn()
 	})
 	if err != nil {
@@ -146,11 +155,11 @@ func (c *CareerLiveCache) DoProgress(xuid string, fn func() (*domain.CareerRankS
 	return v.(*domain.CareerRankSnapshot), nil
 }
 
-// DoCustomization exécute fn une seule fois pour un xuid donné même en cas
-// d'appels concurrents (pattern singleflight). Les erreurs ne sont pas
+// DoCustomization exécute fn une seule fois pour un couple (xuid, titre) donné même
+// en cas d'appels concurrents (pattern singleflight). Les erreurs ne sont pas
 // cachées.
-func (c *CareerLiveCache) DoCustomization(xuid string, fn func() (*domain.SpartanCustomizationData, error)) (*domain.SpartanCustomizationData, error) {
-	v, err, _ := c.sfCustom.Do(xuid, func() (interface{}, error) {
+func (c *CareerLiveCache) DoCustomization(xuid, titleSlug string, fn func() (*domain.SpartanCustomizationData, error)) (*domain.SpartanCustomizationData, error) {
+	v, err, _ := c.sfCustom.Do(cacheKey(xuid, titleSlug), func() (interface{}, error) {
 		return fn()
 	})
 	if err != nil {

@@ -34,6 +34,7 @@ function renderBanner() {
     <HomeSpartanIdentityBanner
       spartanIdentity={identity}
       playerName="JGtm"
+      playerSlug="jgtm"
       highestCSR={null}
       highestLUSR={null}
       hasRankedHistory={false}

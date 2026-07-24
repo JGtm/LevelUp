@@ -6,7 +6,6 @@ import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import type {
   CareerPageResponse,
-  CareerTopMatchesResponse,
   CareerEncountersResponse,
   CareerHighlightMatchesResponse,
   CareerHighlightFilters,
@@ -21,18 +20,6 @@ export function useCareerPage(playerSlug: string) {
     queryFn: () => api.get<CareerPageResponse>(`/players/${playerSlug}/pages/career`),
     enabled: !!playerSlug,
     staleTime: 5 * 60 * 1000,
-  })
-}
-
-// V8b — top matches et encounters ne sont PAS servis par /pages/career : ils ont
-// leurs endpoints dédiés, fetch d'entrée de page (le contrat renvoie best_matches /
-// worst_matches et teammates / enemies, jamais un champ preview).
-export function useCareerTopMatches(playerSlug: string) {
-  return useQuery({
-    queryKey: queryKeys.careerTopMatches(playerSlug),
-    queryFn: () => api.get<CareerTopMatchesResponse>(`/players/${playerSlug}/pages/career/top-matches`),
-    enabled: !!playerSlug,
-    staleTime: 10 * 60 * 1000,
   })
 }
 

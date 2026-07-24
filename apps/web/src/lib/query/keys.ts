@@ -47,7 +47,6 @@ export const queryKeys = {
 
   // Carrière (Slice 2)
   career: (playerSlug: string) => ['career', playerSlug] as const,
-  careerTopMatches: (playerSlug: string) => ['career', playerSlug, 'top-matches'] as const,
   careerEncounters: (playerSlug: string) => ['career', playerSlug, 'encounters'] as const,
   careerHighlightMatches: (playerSlug: string, filtersKey = '') =>
     ['career', playerSlug, 'highlight-matches', filtersKey] as const,

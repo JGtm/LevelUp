@@ -57,14 +57,21 @@ function ColorRow({
   )
 }
 
-export function SpartanCustomizerModal({ onClose }: { onClose: () => void }) {
+export function SpartanCustomizerModal({
+  onClose,
+  playerSlug,
+}: {
+  onClose: () => void
+  /** Joueur en cours d'édition — clé d'isolation de l'apparence (V72-14). */
+  playerSlug: string
+}) {
   const locale = useAppShellStore((s) => s.locale)
   const currentTitleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const t = (key: HomeManifestKey) => formatMessage(homeManifest, key, locale)
 
   // Chemin d'assets dérivé du titre actif (title-agnostic) — pas de slug en dur.
   const base = `/titles/${currentTitleSlug}/spartan`
-  const saved = useSpartanAppearance(currentTitleSlug)
+  const saved = useSpartanAppearance(currentTitleSlug, playerSlug)
   const setAppearance = useSpartanAppearanceStore((s) => s.setAppearance)
 
   const [emblemIds, setEmblemIds] = useState<string[]>([])
@@ -107,15 +114,13 @@ export function SpartanCustomizerModal({ onClose }: { onClose: () => void }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  const colors = {
-    primary: draft.primary,
-    secondary: draft.secondary,
-    tertiary: draft.tertiary,
-  }
-
   const isEmblemTab = tab === 'emblem'
   const browseIds = isEmblemTab ? emblemIds : nameplateIds
   const browseActiveId = isEmblemTab ? draft.emblemId : draft.nameplateId
+  // Couleurs de l'onglet actif : le picker et la grille éditent/reflètent le jeu de
+  // l'onglet courant (emblème → emblemColors, bannière → nameplateColors). Les deux
+  // jeux sont indépendants (V72-14).
+  const activeColors = isEmblemTab ? draft.emblemColors : draft.nameplateColors
   // Grille recolorisée EN DIRECT (mini-masques bruts) avec les couleurs du brouillon —
   // les motifs ressortent dans la palette choisie (vs vignettes figées blanches).
   const rawThumbDir = isEmblemTab ? 'emblems_thumb_raw' : 'nameplates_thumb_raw'
@@ -124,8 +129,18 @@ export function SpartanCustomizerModal({ onClose }: { onClose: () => void }) {
     setDraft((d) => (isEmblemTab ? { ...d, emblemId: id } : { ...d, nameplateId: id }))
   }
 
+  // Applique un choix de couleur au jeu de l'onglet actif (un seul point de mutation
+  // pour les 3 rangées primaire/secondaire/tertiaire → pas de copie du pattern).
+  function setActiveColor(channel: 'primary' | 'secondary' | 'tertiary', hex: string) {
+    setDraft((d) =>
+      isEmblemTab
+        ? { ...d, emblemColors: { ...d.emblemColors, [channel]: hex } }
+        : { ...d, nameplateColors: { ...d.nameplateColors, [channel]: hex } },
+    )
+  }
+
   function handleSave() {
-    setAppearance(currentTitleSlug, draft)
+    setAppearance(currentTitleSlug, playerSlug, draft)
     onClose()
   }
 
@@ -176,7 +191,7 @@ export function SpartanCustomizerModal({ onClose }: { onClose: () => void }) {
           {draft.emblemId && (
             <RecoloredMask
               src={`${base}/emblems/${draft.emblemId}.png`}
-              colors={colors}
+              colors={draft.emblemColors}
               alt={t('home.spartan_customizer.emblem_preview')}
               className="h-28 w-28 object-contain"
             />
@@ -184,7 +199,7 @@ export function SpartanCustomizerModal({ onClose }: { onClose: () => void }) {
           {draft.nameplateId && (
             <RecoloredMask
               src={`${base}/nameplates/${draft.nameplateId}.png`}
-              colors={colors}
+              colors={draft.nameplateColors}
               alt={t('home.spartan_customizer.nameplate_preview')}
               className="h-28 w-auto max-w-full object-contain"
             />
@@ -200,18 +215,18 @@ export function SpartanCustomizerModal({ onClose }: { onClose: () => void }) {
             <div className="grid gap-3 sm:grid-cols-3">
               <ColorRow
                 label={t('home.spartan_customizer.primary')}
-                value={draft.primary}
-                onPick={(hex) => setDraft((d) => ({ ...d, primary: hex }))}
+                value={activeColors.primary}
+                onPick={(hex) => setActiveColor('primary', hex)}
               />
               <ColorRow
                 label={t('home.spartan_customizer.secondary')}
-                value={draft.secondary}
-                onPick={(hex) => setDraft((d) => ({ ...d, secondary: hex }))}
+                value={activeColors.secondary}
+                onPick={(hex) => setActiveColor('secondary', hex)}
               />
               <ColorRow
                 label={t('home.spartan_customizer.tertiary')}
-                value={draft.tertiary}
-                onPick={(hex) => setDraft((d) => ({ ...d, tertiary: hex }))}
+                value={activeColors.tertiary}
+                onPick={(hex) => setActiveColor('tertiary', hex)}
               />
             </div>
 
@@ -264,7 +279,7 @@ export function SpartanCustomizerModal({ onClose }: { onClose: () => void }) {
                   >
                     <RecoloredMask
                       src={`${base}/${rawThumbDir}/${id}.png`}
-                      colors={colors}
+                      colors={activeColors}
                       alt={`#${id}`}
                       className="h-full w-full object-contain"
                     />
