@@ -80,6 +80,10 @@ func (r *ServiceRegistry) ExplorerCtxWithAuth(ctx context.Context, slug string) 
 		SeasonCSR:       seasonCSRProvider,
 		Ranks:           ranks,
 		RecentMatches:   wrapRecentMatchesAuthRetry(r.recentMatches),
+		// Agrégats relationnels (WR historique perso + timeline de duels) réutilisés
+		// par les donuts + l'écart de frags cumulé de la section « matchs joués
+		// ensemble ». CareerRepo satisfait ExplorerRelationsProvider (RelationsRepository).
+		Relations:       duckdb.NewCareerRepo(pdb),
 		LocalBannerPool: r.newExplorerLocalBannerPool(pdb.TitleSlug),
 		TitleSlug:       pdb.TitleSlug,
 	})

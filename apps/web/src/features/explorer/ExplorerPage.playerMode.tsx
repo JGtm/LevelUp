@@ -154,6 +154,7 @@ export function ExplorerPlayerMode({
             <ExplorerTargetProfileCard
               profile={playerQuery.data.target_profile}
               gamertag={playerQuery.data.target_gamertag || targetGamertag}
+              encounterStats={playerQuery.data.encounter_stats}
             />
           )}
 

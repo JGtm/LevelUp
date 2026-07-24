@@ -61,6 +61,23 @@ type ExplorerEncounterStats struct {
 	DeathsSuffered *int `json:"deaths_suffered,omitempty"`
 	// LastSeenAt = date du dernier match commun (toutes occurrences).
 	LastSeenAt *time.Time `json:"last_seen_at,omitempty"`
+	// PlayerWinRate = taux de victoire HISTORIQUE (tout-temps) du joueur principal,
+	// 0..1, nil si aucun match décisif. Repère « moyenne perso » des donuts de taux
+	// de victoire (ensemble / face à lui). Même source que RelationsOverview.PlayerWinRate.
+	PlayerWinRate *float64 `json:"player_win_rate,omitempty"`
+	// FragGapSeries = écart de frags cumulé (Σ frags − Σ morts directionnels) duel
+	// par duel contre la cible, ancien→récent — même métrique que les cartes revanche
+	// du hub Relations (CumulativeFragGapChart). Vide si jamais affrontés en ennemi.
+	FragGapSeries []ExplorerFragGapPoint `json:"frag_gap_series,omitempty"`
+}
+
+// ExplorerFragGapPoint = un point de la courbe « écart de frags cumulé » de
+// l'encart adversaire : cumul directionnel (frags infligés − morts subies) après
+// ce duel + son issue (« win » | « loss » | « other ») pour la couleur du symbole.
+// Miroir de la métrique des cartes revanche du hub Relations.
+type ExplorerFragGapPoint struct {
+	Cumulative int    `json:"cumulative"`
+	Outcome    string `json:"outcome"`
 }
 
 // ExplorerPlayerQueryResponse : réponse de la requête player-query.

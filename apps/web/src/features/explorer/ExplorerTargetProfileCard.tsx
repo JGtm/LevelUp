@@ -18,11 +18,12 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
-import type { ExplorerTargetProfile } from '@/lib/api/types'
+import type { ExplorerEncounterStats, ExplorerTargetProfile } from '@/lib/api/types'
 import { ExplorerTargetIdentityBanner } from './ExplorerTargetIdentityBanner'
 import { ExplorerTargetCareerStats } from './ExplorerTargetCareerStats'
 import { ExplorerTargetSampleStats, ExplorerTargetSampleKpis, ExplorerTargetOutcome } from './ExplorerTargetSampleStats'
 import { ExplorerTargetCadence } from './ExplorerTargetCadence'
+import { ExplorerTargetVersusDonuts } from './ExplorerTargetVersusDonuts'
 import { ExplorerTargetMedals } from './ExplorerTargetMedals'
 import { ExplorerTargetSeasonCSR } from './ExplorerTargetSeasonCSR'
 import { ExplorerTargetSeasonMatches } from './ExplorerTargetSeasonMatches'
@@ -30,9 +31,13 @@ import { ExplorerTargetSeasonMatches } from './ExplorerTargetSeasonMatches'
 interface ExplorerTargetProfileCardProps {
   profile: ExplorerTargetProfile
   gamertag: string
+  /** Stats de rencontre (WR ensemble/face à lui, moyenne perso, écart de frags) —
+   *  alimente les donuts + la courbe rendus en fin de section « matchs joués
+   *  ensemble ». Optionnel : sans lui, cette dernière rangée n'est pas rendue. */
+  encounterStats?: ExplorerEncounterStats | null
 }
 
-export function ExplorerTargetProfileCard({ profile, gamertag }: ExplorerTargetProfileCardProps) {
+export function ExplorerTargetProfileCard({ profile, gamertag, encounterStats }: ExplorerTargetProfileCardProps) {
   const appLocale = useAppShellStore((s) => s.locale)
   // Classements CSR = surface "ranked" : masquée pour un titre sans rang
   // (fail-open mono-titre, NO-OP halo_infinite qui déclare 'ranked').
@@ -127,6 +132,11 @@ export function ExplorerTargetProfileCard({ profile, gamertag }: ExplorerTargetP
               <ExplorerTargetCadence sampleStats={sampleStats} />
             </div>
           </div>
+
+          {/* En DERNIER : donuts « taux de victoires ensemble / face à lui »
+              (repère = moyenne perso historique) + écart de frags cumulé. Briques
+              réutilisées du hub Relations. Rendu seulement si encounter_stats fourni. */}
+          {encounterStats && <ExplorerTargetVersusDonuts encounterStats={encounterStats} />}
         </section>
       )}
     </div>

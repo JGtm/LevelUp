@@ -542,6 +542,40 @@ en = "Over {count, plural, one {# shared match} other {# shared matches}}"
 fr = "Répartition des résultats"
 en = "Results breakdown"
 
+# ─── Section « matchs joués ensemble » — donuts WR (ensemble / face à lui) +
+# écart de frags cumulé (repris du hub Relations). Repère = moyenne perso historique.
+[explorer.target_profile.wr_together_caption]
+fr = "Taux de victoires ensemble"
+en = "Win rate together"
+
+[explorer.target_profile.wr_versus_caption]
+fr = "Taux de victoires face à lui"
+en = "Win rate against them"
+
+[explorer.target_profile.donut_wins]
+fr = "Victoires"
+en = "Wins"
+
+[explorer.target_profile.donut_losses]
+fr = "Défaites"
+en = "Losses"
+
+[explorer.target_profile.donut_personal_avg]
+fr = "Moy. perso"
+en = "Pers. avg"
+
+[explorer.target_profile.donut_points_unit]
+fr = "pts"
+en = "pts"
+
+[explorer.target_profile.donut_lift_tooltip]
+fr = "Écart entre ce taux de victoire et ta moyenne personnelle historique."
+en = "Gap between this win rate and your historical personal average."
+
+[explorer.target_profile.frag_gap_title]
+fr = "Écart de frags cumulé"
+en = "Cumulative frag gap"
+
 [explorer.target_profile.section_sample_empty]
 fr = "Aucun match en commun pour calculer les stats détaillées."
 en = "No shared match to compute detailed stats."

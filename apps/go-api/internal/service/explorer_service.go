@@ -138,6 +138,16 @@ type ExplorerService struct {
 	weaponKillsRepo port.WeaponKillsRepository
 }
 
+// ExplorerRelationsProvider fournit les agrégats relationnels joueur↔cible
+// RÉUTILISÉS par l'encart « matchs joués ensemble » : le taux de victoire
+// historique perso (repère des donuts) et la timeline de duels (écart de frags
+// cumulé). Satisfait tel quel par duckdb.CareerRepo (port.RelationsRepository) —
+// on n'expose ici que les 2 méthodes nécessaires pour ne pas sur-coupler l'Explorer.
+type ExplorerRelationsProvider interface {
+	GetCoreEngagement(ctx context.Context, coreXUIDs []string, scope []string, limit int) (domain.CoreEngagement, error)
+	GetRivalTimeline(ctx context.Context, rivalXUID string, scope []string, limit int) ([]domain.RelationDuelRawRow, error)
+}
+
 // ExplorerTargetProfileDeps regroupe les dépendances de l'encart "Profil joueur
 // cible". Tout est optionnel (nil → sous-section masquée).
 type ExplorerTargetProfileDeps struct {
@@ -175,6 +185,10 @@ type ExplorerTargetProfileDeps struct {
 	// les graphes profil de combat. nil → pas de repli live (graphes vides pour
 	// les non-locaux, comportement historique).
 	RecentMatches port.RecentMatchesProvider
+	// Relations : agrégats relationnels du joueur principal (WR historique perso +
+	// timeline de duels) réutilisés par les donuts + l'écart de frags cumulé de la
+	// section « matchs joués ensemble ». nil → donuts sans repère + graphe masqué.
+	Relations ExplorerRelationsProvider
 	// LocalBannerPool : pool de bannières (nameplates) connues localement —
 	// banner_image_url des joueurs suivis. Résolu PARESSEUSEMENT : appelé
 	// uniquement quand la cible n'a ni bannière ni backdrop (cas non-local sans
@@ -366,6 +380,10 @@ func (s *ExplorerService) GetCommonMatches(
 	badges := narrative.ComputeEncounterBadges(stats, totalCount)
 	wins, losses := countWinsLosses(rawMatches)
 	encounterStats := convertEncounterStatsToExplorer(stats, totalCount)
+	// Enrichissement best-effort de la section « matchs joués ensemble » : repère
+	// « moyenne perso » des donuts + courbe d'écart de frags cumulé (duels). Réutilise
+	// les requêtes du hub Relations (WR historique + timeline de duels), déjà testées.
+	s.enrichEncounterRelations(ctx, encounterStats, otherXUID)
 	activityHeatmap := analysis.ComputeActivityHeatmapFromCommonMatches(rawMatches)
 
 	// Encart "Profil joueur cible" : 4 sources fetch en parallèle (best-effort).
@@ -482,6 +500,39 @@ func (s *ExplorerService) buildTargetProfile(
 		CombatProfile:      combatProfileLive,
 		CombatProfileLocal: combatProfileLocal,
 		AuthAvailable:      hasAuth,
+	}
+}
+
+// explorerFragGapTimelineLimit : nombre de duels (matchs en ennemi) conservés
+// pour la courbe « écart de frags cumulé » de la section « matchs joués ensemble »
+// — aligné sur momentsTimelineLimit du hub Relations (mêmes N derniers duels).
+const explorerFragGapTimelineLimit = 20
+
+// enrichEncounterRelations complète best-effort la section « matchs joués
+// ensemble » : PlayerWinRate (repère « moyenne perso » des donuts, WR historique
+// du joueur) + FragGapSeries (écart de frags cumulé duel par duel contre la cible).
+// no-op si stats nil (aucun match commun) ou provider non injecté. Chaque source
+// est indépendante : un échec est loggé puis ignoré (dégradation gracieuse), la
+// réponse reste servie sans le repère / le graphe.
+func (s *ExplorerService) enrichEncounterRelations(ctx context.Context, stats *domain.ExplorerEncounterStats, otherXUID string) {
+	if stats == nil || s.deps.Relations == nil {
+		return
+	}
+	// WR historique perso (tout-temps) — repère des donuts. GetCoreEngagement avec
+	// noyau vide ne calcule QUE le WR (la forme récente court-circuite).
+	if eng, err := s.deps.Relations.GetCoreEngagement(ctx, nil, nil, 0); err != nil {
+		slog.WarnContext(ctx, "explorer_player_win_rate_failed", "xuid", s.xuid, "err", err)
+	} else {
+		stats.PlayerWinRate = eng.PlayerWinRate
+	}
+	// Écart de frags cumulé — timeline des duels (matchs en ennemi contre la cible).
+	if otherXUID != "" {
+		duels, err := s.deps.Relations.GetRivalTimeline(ctx, otherXUID, nil, explorerFragGapTimelineLimit)
+		if err != nil {
+			slog.WarnContext(ctx, "explorer_frag_gap_timeline_failed", "other_xuid", otherXUID, "err", err)
+		} else {
+			stats.FragGapSeries = buildExplorerFragGapSeries(duels)
+		}
 	}
 }
 
