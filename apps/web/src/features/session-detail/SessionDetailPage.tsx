@@ -313,6 +313,7 @@ export function SessionDetailPage() {
               playerSlug={playerSlug}
               compact={drawerOpen}
               scale={compareScale}
+              intensityRows={data.intensity_rows ?? []}
             />
           </>
         ) : (
@@ -402,6 +403,7 @@ export function SessionDetailPage() {
                   compact
                   participationSide="left"
                   scale={compareScale}
+                  intensityRows={data.compare_intensity_rows ?? []}
                 />
               ) : isCompareLoading ? (
                 <div className="flex items-center justify-center py-12">

@@ -16,8 +16,8 @@ import type { TeammatesPageResponse } from '@/lib/api/types'
 import { SquadDynamiquePage } from './SquadDynamiquePage'
 
 // Stub des charts ECharts pour éviter les erreurs de résolution en env test.
-vi.mock('./SquadIntensityHeatmapChart', () => ({
-  SquadIntensityHeatmapChart: () => <div data-testid="intensity-chart" />,
+vi.mock('./SquadIntensityProfileChart', () => ({
+  SquadIntensityProfileChart: () => <div data-testid="intensity-chart" />,
 }))
 vi.mock('./SquadEfficiencyChart', () => ({
   SquadEfficiencyChart: () => <div data-testid="efficiency-chart" />,

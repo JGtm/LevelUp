@@ -14840,6 +14840,11 @@ components:
               nullable: true
           compare_enabled:
               type: boolean
+          compare_intensity_rows:
+              items:
+                  $ref: '#/components/schemas/IntensityMatchRow'
+              type: array
+              nullable: true
           compare_matches:
               items:
                   $ref: '#/components/schemas/SessionDetailMatchRow'
@@ -14854,6 +14859,11 @@ components:
               $ref: '#/components/schemas/SessionCompareEntry'
           current_session:
               $ref: '#/components/schemas/SessionCompareEntry'
+          intensity_rows:
+              items:
+                  $ref: '#/components/schemas/IntensityMatchRow'
+              type: array
+              nullable: true
           matches:
               items:
                   $ref: '#/components/schemas/SessionDetailMatchRow'
