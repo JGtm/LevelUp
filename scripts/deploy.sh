@@ -60,28 +60,7 @@ done
     || echo '{}' > "$DEPLOY_DIR/data/demo/app_settings.json"
 echo "[deploy] Stubs demo OK"
 
-# 2b. Stopper proprement les anciens containers (évite les conflits de noms
-# quand Docker recrée un container qui existe déjà)
-echo "[deploy] docker compose down..."
-docker compose down --remove-orphans || true
-
-# 2b-bis. Version de l'app pour les notifications "nouvelle version" (in-app app_release
-# + Discord). Le serveur ne notifie que si cfg.AppVersion est un vrai semver (≠ "dev") ;
-# on lui passe le dernier tag atteignable via l'env LEVELUP_APP_VERSION (interpolé par
-# docker-compose). L'anti-spam (major/minor, last_notified_version) est géré côté Go :
-# entre deux tags, la même valeur => aucune re-notification. Fallback "dev" (dépôt sans
-# tag) => notifications gardées OFF, comportement inchangé.
-# --match 'v*.*.*' : ne retenir QUE les tags de release semver (release.yml se
-# déclenche sur ce motif) et ignorer les tags de travail (ex. "Shared-social-fixed").
-git fetch --tags --quiet origin 2>/dev/null || true
-LEVELUP_APP_VERSION="$(git describe --tags --abbrev=0 --match 'v*.*.*' 2>/dev/null || echo dev)"
-export LEVELUP_APP_VERSION
-echo "[deploy] LEVELUP_APP_VERSION=$LEVELUP_APP_VERSION"
-
-# 2c. Rebuilder et redémarrer les services (Dockerfile = build Vite + Go CGo/DuckDB)
-echo "[deploy] docker compose up --build..."
-
-# 2c-bis. Garde pré-build : espace disque libre sur / avant de lancer le build.
+# 2b. Garde pré-build : espace disque libre sur / avant de lancer le build.
 # Incident 2026-07-23 : cache BuildKit à 44,75 Go, disque saturé PENDANT le build (avant
 # même d'atteindre le bornage post-build de l'étape 3b). Si < 10 Go libres, purge
 # d'urgence du cache builder AVANT le build, avec une borne plus agressive (2 Go) que le
@@ -96,7 +75,44 @@ if [[ "${_avail_gb:-0}" -lt 10 ]]; then
     }
 fi
 
-docker compose up -d --build
+# 2c. Builder les images AVANT de toucher aux containers (Dockerfile = build Vite +
+# Go CGo/DuckDB), pendant que l'ancienne prod tourne encore. Incident 2026-07-23 : avec
+# l'ancien ordre (down PUIS `up --build`), un build en échec (disque/réseau/code) laissait
+# la prod DOWN jusqu'à intervention manuelle. Ici un échec de build ne coupe rien — les
+# containers actuels ne sont ni arrêtés ni recréés. `set -euo pipefail` ferait déjà sortir
+# le script sur un `docker compose build` en échec, mais on capte explicitement l'erreur
+# pour un message sans ambiguïté (et pour documenter l'invariant : rien n'a bougé).
+echo "[deploy] docker compose build (levelup + levelup-demo)..."
+if ! docker compose build; then
+    echo "[deploy] ERREUR: docker compose build a échoué — prod NON touchée (anciens containers toujours actifs)"
+    echo "[deploy]    Corriger la cause (disque/réseau/code) puis relancer scripts/deploy.sh"
+    exit 1
+fi
+echo "[deploy] Build OK"
+
+# 2d. Version de l'app pour les notifications "nouvelle version" (in-app app_release
+# + Discord). Le serveur ne notifie que si cfg.AppVersion est un vrai semver (≠ "dev") ;
+# on lui passe le dernier tag atteignable via l'env LEVELUP_APP_VERSION (interpolé par
+# docker-compose). L'anti-spam (major/minor, last_notified_version) est géré côté Go :
+# entre deux tags, la même valeur => aucune re-notification. Fallback "dev" (dépôt sans
+# tag) => notifications gardées OFF, comportement inchangé.
+# --match 'v*.*.*' : ne retenir QUE les tags de release semver (release.yml se
+# déclenche sur ce motif) et ignorer les tags de travail (ex. "Shared-social-fixed").
+git fetch --tags --quiet origin 2>/dev/null || true
+LEVELUP_APP_VERSION="$(git describe --tags --abbrev=0 --match 'v*.*.*' 2>/dev/null || echo dev)"
+export LEVELUP_APP_VERSION
+echo "[deploy] LEVELUP_APP_VERSION=$LEVELUP_APP_VERSION"
+
+# 2e. Basculer : le build (2c) a réussi, donc on peut arrêter les anciens containers puis
+# redémarrer avec les images tout juste construites. PAS de --build sur le `up` : les
+# images sont déjà prêtes (un `--build` ici referait un build pour rien et réintroduirait
+# une fenêtre de risque après le down). Fenêtre d'indisponibilité réduite au seul temps du
+# restart (down + up), il n'y a plus de fenêtre de build entre les deux.
+echo "[deploy] docker compose down..."
+docker compose down --remove-orphans || true
+
+echo "[deploy] docker compose up -d (images déjà construites à l'étape 2c)..."
+docker compose up -d
 
 # 3. Nettoyer les images orphelines (garder les images < 24h : rollback rapide possible
 # le jour même en re-taguant l'image N-1 si le nouveau déploiement pose problème).
@@ -118,7 +134,7 @@ docker image prune -f --filter "until=24h"
 # montée de version. Le vrai plafond est `--max-used-space`. On ne masque plus l'échec
 # avec `|| true` : la sortie de la commande (dont le `Total:` récupéré) reste visible dans
 # les logs de déploiement, et un échec est loggé explicitement — sans faire échouer un
-# déploiement déjà basculé (les services tournent déjà à ce stade, cf. étape 2c).
+# déploiement déjà basculé (les services tournent déjà à ce stade, cf. étape 2e).
 echo "[deploy] Bornage du cache de build Docker (max-used-space 5GB)..."
 docker builder prune -f --max-used-space=5GB || {
     _builder_prune_rc=$?
