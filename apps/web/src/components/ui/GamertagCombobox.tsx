@@ -308,9 +308,11 @@ export function GamertagCombobox({
         )}
       </div>
 
-      {/* Dropdown */}
+      {/* Dropdown — largeur mini indépendante du déclencheur (en mode compact, le
+          conteneur peut être très étroit avant toute sélection : sans plancher, le
+          popover hérite de cette largeur et tronque les sous-titres de presets). */}
       {isOpen && hasDropdownContent && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-md max-h-64 overflow-y-auto">
+        <div className="absolute z-50 mt-1 w-full min-w-[260px] rounded-md border border-border bg-popover shadow-md max-h-64 overflow-y-auto">
           {/* Groupes de presets (escouades / groupes) — chargent un roster entier */}
           {showPresets &&
             presetGroups!.map((group) =>
@@ -331,7 +333,7 @@ export function GamertagCombobox({
                       >
                         <span className="truncate text-sm">{opt.name}</span>
                         {opt.subtitle && (
-                          <span className="truncate text-2xs text-muted-foreground">{opt.subtitle}</span>
+                          <span className="line-clamp-2 text-2xs text-muted-foreground">{opt.subtitle}</span>
                         )}
                       </button>
                       {opt.trailing && <span className="flex shrink-0 items-center gap-1">{opt.trailing}</span>}

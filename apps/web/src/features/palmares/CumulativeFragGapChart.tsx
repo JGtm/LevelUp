@@ -18,7 +18,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 import { divergentZeroGradient } from '@/lib/charts/divergentZeroGradient'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 
-import { CHART_BG, getEChartsThemeColors, getTooltipBase, outcomeColor } from '@/components/charts/_utils'
+import { CHART_BG, getAxisBase, getEChartsThemeColors, getTooltipBase, outcomeColor, tickInterval } from '@/components/charts/_utils'
 
 const ReactECharts = lazy(() =>
   import('echarts-for-react').then((m) => ({ default: m.default ?? m })),
@@ -33,6 +33,12 @@ export interface CumulativeFragPoint {
 interface CumulativeFragGapChartProps {
   points: CumulativeFragPoint[]
   height?: number
+  /**
+   * Affiche l'axe X (numéro de match 1..N). Défaut false : Relations/Palmarès rendent
+   * la courbe nue (frise compacte). Opt-in Explorer où l'échelle « n-ième affrontement »
+   * apporte du contexte. Réserve alors une marge basse pour les labels.
+   */
+  showXAxis?: boolean
 }
 
 // outcome backend ("win"|"loss"|"other") → clé OutcomeValue pour outcomeColor().
@@ -40,12 +46,13 @@ function outcomeKey(o: string): 'win' | 'loss' | 'tie' {
   return o === 'win' ? 'win' : o === 'loss' ? 'loss' : 'tie'
 }
 
-export function CumulativeFragGapChart({ points, height = 120 }: CumulativeFragGapChartProps) {
+export function CumulativeFragGapChart({ points, height = 120, showXAxis = false }: CumulativeFragGapChartProps) {
   const themeVersion = useThemeVersion()
 
   const option = useMemo((): EChartsCoreOption => {
     if (points.length === 0) return {}
     const tc = getEChartsThemeColors()
+    const axisBase = getAxisBase(tc)
 
     // Dégradé divergent vert/rouge à bascule EXACTE sur 0 (aire ancrée à 0),
     // helper canonique partagé — CLAUDE.md n°6.
@@ -57,10 +64,20 @@ export function CumulativeFragGapChart({ points, height = 120 }: CumulativeFragG
       itemStyle: { color: outcomeColor(outcomeKey(p.outcome)) },
     }))
 
+    // Labels d'axe = numéro de match (1..N, l'échelle actuelle des points). Intervalle
+    // de tick borné (tickInterval) pour ne pas surcharger les longues séries.
+    const matchNumbers = points.map((_, i) => i + 1)
     return {
       backgroundColor: CHART_BG,
-      grid: { top: 16, bottom: 16, left: 28, right: 8 },
-      xAxis: { type: 'category', show: false, data: points.map((_, i) => i + 1) },
+      grid: { top: 16, bottom: showXAxis ? 28 : 16, left: 28, right: 8 },
+      xAxis: showXAxis
+        ? {
+            ...axisBase,
+            type: 'category',
+            data: matchNumbers,
+            axisLabel: { ...axisBase.axisLabel, interval: tickInterval(points.length) - 1 },
+          }
+        : { type: 'category', show: false, data: matchNumbers },
       yAxis: { type: 'value', scale: true },
       tooltip: {
         trigger: 'axis',
@@ -94,7 +111,7 @@ export function CumulativeFragGapChart({ points, height = 120 }: CumulativeFragG
     }
     // themeVersion force le recalcul de l'option au changement de thème.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [points, themeVersion])
+  }, [points, showXAxis, themeVersion])
 
   if (points.length === 0) return null
 

@@ -70,6 +70,14 @@ export interface ChartCardProps<T = unknown> {
   className?: string
   /** Slot enfant (legende custom, footer note...). */
   children?: ReactNode
+  /**
+   * Légende HTML rendue en PIED DE CARD systématique (hors canvas, `flex-none`,
+   * collée au bord bas via un séparateur discret). Le chrome du footer (bordure +
+   * padding) est appliqué ici : l'appelant ne passe que le contenu (typiquement un
+   * `<ChartLegend>`). Distinct de `children` (slot brut sans chrome). Les couleurs
+   * doivent provenir des MÊMES résolutions de tokens que les séries.
+   */
+  legend?: ReactNode
   /** Handlers d'événements ECharts (ex. legendselectchanged). Forwarded à ReactECharts onEvents. */
   onEvents?: Record<string, (params: unknown) => void>
 }
@@ -89,6 +97,7 @@ export function ChartCard<T = unknown>({
   buildOption,
   className = '',
   children,
+  legend,
   onEvents,
 }: ChartCardProps<T>) {
   const isEmpty = !loading && !error && series.length === 0
@@ -152,6 +161,14 @@ export function ChartCard<T = unknown>({
         )}
       </div>
       {children}
+      {legend != null && (
+        <div
+          className="flex-none border-t border-border px-3 py-2"
+          data-testid="chart-card-legend"
+        >
+          {legend}
+        </div>
+      )}
     </div>
   )
 }

@@ -159,14 +159,21 @@ function buildLusrEvolutionOption(series: ChartSeries<[string, number]>[], local
 export interface CareerLusrEvolutionChartProps {
   lusrCheckpoints: CareerLusrCheckpoint[]
   locale: ManifestLocale
+  /**
+   * Étire la card pour remplir sa cellule (CSS Grid stretch) — `height` (320) devient le
+   * minimum garanti. Opt-in quand le chart partage une ligne avec « Classements » (souvent
+   * plus haut) : évite le vide sous le graphe (V72-28). Défaut false (pleine largeur).
+   */
+  fluid?: boolean
 }
 
-export function CareerLusrEvolutionChart({ lusrCheckpoints, locale }: CareerLusrEvolutionChartProps) {
+export function CareerLusrEvolutionChart({ lusrCheckpoints, locale, fluid }: CareerLusrEvolutionChartProps) {
   return (
     <ChartCard<[string, number]>
       title={careerManifest['career.charts.lusr_evolution_title'][locale]}
       series={buildLusrSeries(lusrCheckpoints, locale)}
       height={320}
+      fluid={fluid}
       buildOption={(series) => buildLusrEvolutionOption(series, locale)}
       emptyMessage={careerManifest['career.charts.placeholder_unavailable'][locale]}
     />

@@ -83,8 +83,11 @@ function enrichParams(
   // Arrondit les valeurs de métriques flottantes à 2 décimales. Le backend
   // envoie des float64 bruts (ex: pspm = 6000/11 = 545.4545…) ; sans ça les
   // templates affichaient toute la mantisse. Math.round préserve les entiers
-  // (5 → 5, pas "5.00"). Couvre aussi les notifs déjà stockées.
-  for (const key of ['value', 'target', 'previous_value'] as const) {
+  // (5 → 5, pas "5.00"). Couvre aussi les notifs déjà stockées. `gap` (écart
+  // LUSR restant, notif lusr_tier_approach — internal/progression/coach/
+  // generator.go) manquait à cette liste : le titre interpolait la mantisse
+  // flottante brute ({gap} illisible, ex. "12.847213…").
+  for (const key of ['value', 'target', 'previous_value', 'gap'] as const) {
     if (typeof out[key] === 'number') {
       out[key] = Math.round((out[key] as number) * 100) / 100
     }
