@@ -1,3 +1,33 @@
+## [2026-07-24] Refonte « Intensité » — Phase 1 (Coeur + Escouade/Dynamique)
+
+**Statut** : Complété (Phase 1 du PLAN_INTENSITE_PROFIL_2026-07 ; branche
+`feat/intensite-profil`, worktree dédié). Phases 2 (Timeseries) et 3 (Sessions +
+suppression heatmap) non entamées — hors périmètre P1.
+
+**Décision technique principale** : remplacer la heatmap « Intensité » (matchs × 10
+phases) par un profil d'activité par phase = MÉDIANE des parts de frags par phase +
+ENVELOPPE interquartile P25–P75, en multi-panneaux (1 par joueur, grille 2 colonnes,
+échelle Y partagée). Agrégation isolée dans un helper pur `lib/charts/phaseProfile.ts`
+(part manche = `phases[i]/Σ`, `null` si Σ=0 ; quantiles R-7 ; `MIN_MATCHES_FOR_ENVELOPE=4`).
+Enveloppe ECharts = paire de séries empilées `env-{gi}` (base P25 transparente +
+(P75−P25) en areaStyle opacité 0.16 même teinte joueur) ; repère 10 % via markLine ;
+titres de panneaux via `title[]`. Réutilisation de `SQUAD_INTENSITY_PHASE_LABELS`
+(pas de 2e copie des 10 libellés).
+
+**Résultats observés** :
+- Fichiers créés : `lib/charts/phaseProfile.ts` (+test), `features/squad/charts/
+  squadIntensityProfileChart.ts` (+test), `features/squad/SquadIntensityProfileChart.tsx`
+  (+test). Modifiés : `SquadDynamiquePage.tsx` (montage), `i18n.ts` (bloc intensity
+  refondu, 4 clés heatmap mortes retirées), `SquadDynamiquePage.test.tsx` (mock).
+- Le wrapper `SquadIntensityHeatmapChart.tsx` devient orphelin côté squad mais est
+  CONSERVÉ (suppression = Phase 3) ; son builder reste utilisé par Timeseries.
+- Gates : `npm run typecheck` (tsc -b, cache purgé) propre ; `npx vitest run
+  src/features/squad src/lib/charts` = 364 tests / 51 fichiers verts.
+
+**Conclusion / prochaine étape** : Phase 1 close. Suite = Phase 2 (Timeseries :
+`TimeseriesIntensityHeatmap` → profil mono-panneau réutilisant le builder P1). Revue
+visuelle utilisateur au merge (doctrine projet). Commit délégué au superviseur.
+
 ## [2026-07-23] Diagnostic « Proposer des défis » (Cap d'escouade) + audit workflow défis
 
 **Statut** : Complété (analyse + plan livrés — aucun code modifié, à la demande de

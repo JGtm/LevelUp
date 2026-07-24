@@ -165,10 +165,16 @@ export interface SquadText {
   }
   intensity: {
     title: string
-    description: string
-    toggleLabel: string
-    allLabel: string
-    zLabel: string
+    /** Sous-titre de la carte Intensité (profil médian + enveloppe). */
+    subtitle: string
+    /** Tooltip d'aide : médiane / enveloppe P25–P75 / repère 10 %. */
+    tooltip: string
+    /** Libellé tooltip du trait médian. */
+    medianLabel: string
+    /** Libellé tooltip de la fourchette interquartile. */
+    envelopeLabel: string
+    /** Libellé du repère 10 % (activité uniforme). */
+    refLabel: string
   }
   efficiencySeries: {
     /** Titre de la carte Rendement (métrique dégâts/frag). */
@@ -461,10 +467,11 @@ const FR_TEXT: SquadText = {
   },
   intensity: {
     title: 'Intensité',
-    description: 'Densité de frags par tranche de 10 % de la durée du match. Bascule entre toute l\'équipe et un joueur précis.',
-    toggleLabel: 'Filtrer par joueur :',
-    allLabel: 'Toute l\'équipe',
-    zLabel: 'Cadence',
+    subtitle: 'Répartition des frags par phase de match',
+    tooltip: 'Trait épais = médiane des parts de frags par phase (tranche de 10 % de la durée). Aplat = enveloppe P25–P75 : plus elle est large, plus le joueur est irrégulier d\'une manche à l\'autre. Pointillé à 10 % = activité parfaitement uniforme.',
+    medianLabel: 'Médiane',
+    envelopeLabel: 'Enveloppe P25–P75',
+    refLabel: '10 %',
   },
   efficiencySeries: {
     rendementCardTitle: 'Rendement — dégâts par frag',
@@ -746,10 +753,11 @@ const EN_TEXT: SquadText = {
   },
   intensity: {
     title: 'Intensity',
-    description: 'Kill density per 10% slice of match duration. Toggle between the whole team and a specific player.',
-    toggleLabel: 'Filter by player:',
-    allLabel: 'Whole team',
-    zLabel: 'Cadence',
+    subtitle: 'Frag distribution across match phases',
+    tooltip: 'Thick line = median share of frags per phase (10% slice of match duration). Shaded band = P25–P75 envelope: the wider it is, the more the player varies from game to game. Dashed line at 10% = perfectly even activity.',
+    medianLabel: 'Median',
+    envelopeLabel: 'P25–P75 envelope',
+    refLabel: '10%',
   },
   efficiencySeries: {
     rendementCardTitle: 'Offensive efficiency — damage per kill',
