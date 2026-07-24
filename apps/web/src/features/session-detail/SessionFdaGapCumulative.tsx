@@ -1,6 +1,9 @@
 /**
  * SessionFdaGapCumulative — « Écart cumulé au FDA attendu » sur les matchs d'une
- * session. Décision D2 du plan PLAN_EXPECTED_FDA_2026-07.
+ * session. Décision D2 du plan PLAN_EXPECTED_FDA_2026-07 + retouche UX
+ * 2026-07-24 : remplacement des 2 courbes cumulées (I11) par UNE courbe fine
+ * « FDA attendu » PAR MATCH (retour utilisateur — il voulait le par-match, pas
+ * un cumul).
  *
  * Somme CUMULÉE du différentiel `kda − kda_expected` (FDA réel natif ADR 0006
  * moins FDA attendu projeté backend), match après match dans l'ordre
@@ -9,12 +12,11 @@
  *
  * Même pattern visuel que `SessionNetScoreArea` : aire signée divergente ancrée à
  * 0 (helper canonique `divergentZeroGradient`, PAS de visualMap) + markLine 0 sur
- * l'axe PRIMAIRE, PLUS 2 courbes fines « FDA réel (cumulé) » / « FDA attendu
- * (cumulé) » sur un axe SECONDAIRE droit (`yAxisIndex: 1`, pattern dual-axis de
- * `TimeseriesKdaBars`) — lisent `cumulativeReal`/`cumulativeExpected` du helper
- * canonique `cumulativeFdaGap`, qui appliquent le MÊME skip conjoint que le
- * cumul d'écart (identité cumulativeReal − cumulativeExpected === cumulative).
- * Masqué par `useCapability('expected_stats')` (Halo 5 = pas d'attendu → null).
+ * l'axe PRIMAIRE, PLUS 1 courbe fine « FDA attendu » PAR MATCH sur un axe
+ * SECONDAIRE droit (`yAxisIndex: 1`, pattern dual-axis de `TimeseriesKdaBars`) —
+ * lit le champ `expected` de chaque point du helper canonique `cumulativeFdaGap`,
+ * `null` → point troué (`connectNulls: false`). Masqué par
+ * `useCapability('expected_stats')` (Halo 5 = pas d'attendu → null).
  */
 import { useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
@@ -62,12 +64,9 @@ export function computeCumulativeFdaGap(matches: SessionDetailMatchRow[]): FdaGa
 export interface FdaGapCumulativeLabels {
   seriesLabel: string
   realLabel: string
+  /** Libellé « attendu » du match (tooltip + légende de la courbe par-match, axe secondaire). */
   expectedLabel: string
   gapLabel: string
-  /** Libellé de la courbe « FDA réel (cumulé) » (légende + tooltip, axe secondaire). */
-  realCumulativeLabel: string
-  /** Libellé de la courbe « FDA attendu (cumulé) » (légende + tooltip, axe secondaire). */
-  expectedCumulativeLabel: string
   yDomain?: [number, number]
 }
 
@@ -84,10 +83,8 @@ export function buildSessionFdaGapOption(
   const interval = points.length > 30 ? Math.floor(points.length / 12) : 0
 
   const values = points.map((p) => p.cumulative)
-  const realCumValues = points.map((p) => p.cumulativeReal)
-  const expectedCumValues = points.map((p) => p.cumulativeExpected)
+  const expectedValues = points.map((p) => p.expected)
   const divergentColor = divergentZeroGradient(values)
-  const realColor = resolveToken('chart-series-1')
   const expectedColor = resolveToken('chart-series-2')
   const fmt = (v: number | null, signed = false) =>
     v == null ? '—' : signed && v >= 0 ? `+${v}` : `${v}`
@@ -106,8 +103,6 @@ export function buildSessionFdaGapOption(
         return (
           `${cat}<br/>` +
           `${escapeHtml(opts.seriesLabel)}: <b>${fmt(p.cumulative, true)}</b><br/>` +
-          `${escapeHtml(opts.realCumulativeLabel)}: ${fmt(p.cumulativeReal, true)}<br/>` +
-          `${escapeHtml(opts.expectedCumulativeLabel)}: ${fmt(p.cumulativeExpected, true)}<br/>` +
           `${escapeHtml(opts.realLabel)}: ${fmt(p.real)}<br/>` +
           `${escapeHtml(opts.expectedLabel)}: ${fmt(p.expected)}<br/>` +
           `${escapeHtml(opts.gapLabel)}: ${fmt(p.gap, true)}`
@@ -116,7 +111,7 @@ export function buildSessionFdaGapOption(
     },
     legend: {
       ...getLegendBase(tc),
-      data: [opts.seriesLabel, opts.realCumulativeLabel, opts.expectedCumulativeLabel],
+      data: [opts.seriesLabel, opts.expectedLabel],
     },
     xAxis: {
       ...axis,
@@ -125,8 +120,8 @@ export function buildSessionFdaGapOption(
       data: points.map((p) => p.label),
       axisLabel: { ...(axis.axisLabel as Record<string, unknown>), interval },
     },
-    // Axe primaire (écart cumulé, gauche) + axe secondaire (FDA réel/attendu
-    // cumulés, droite — pattern dual-axis de TimeseriesKdaBars).
+    // Axe primaire (écart cumulé, gauche) + axe secondaire (FDA attendu
+    // par match, droite — pattern dual-axis de TimeseriesKdaBars).
     yAxis: [
       {
         ...axis,
@@ -155,19 +150,14 @@ export function buildSessionFdaGapOption(
         },
       },
       {
-        name: opts.realCumulativeLabel,
+        // FDA attendu PAR MATCH (pas cumulé) — courbe fine axe secondaire.
+        // `expected` est null quand le match n'a pas d'attendu → point troué.
+        name: opts.expectedLabel,
         type: 'line',
         yAxisIndex: 1,
-        data: realCumValues,
+        data: expectedValues,
         symbol: 'none',
-        lineStyle: { width: 1, color: realColor },
-      },
-      {
-        name: opts.expectedCumulativeLabel,
-        type: 'line',
-        yAxisIndex: 1,
-        data: expectedCumValues,
-        symbol: 'none',
+        connectNulls: false,
         lineStyle: { width: 1, color: expectedColor, type: 'dashed' },
       },
     ],
@@ -205,8 +195,6 @@ export function SessionFdaGapCumulative({ title, matches, height = 280, yDomain 
           realLabel: t('session.detail.fda_gap_real'),
           expectedLabel: t('session.detail.fda_gap_expected'),
           gapLabel: t('session.detail.fda_gap_gap'),
-          realCumulativeLabel: t('session.detail.fda_gap_real_cumulative'),
-          expectedCumulativeLabel: t('session.detail.fda_gap_expected_cumulative'),
           yDomain,
         })
       }

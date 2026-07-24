@@ -288,7 +288,8 @@ en = "Cumulative net score"
 fr = "Net cumulé"
 en = "Cumulative net"
 
-# Écart cumulé au FDA attendu (D2) — cumul du différentiel réel vs attendu.
+# Écart cumulé au FDA attendu (D2 + retouche UX 2026-07-24) — cumul du
+# différentiel réel vs attendu + courbe FDA attendu par match (axe secondaire).
 [session.detail.chart_fda_gap_title]
 fr = "Écart cumulé au FDA attendu"
 en = "Cumulative KDA gap to expected"
@@ -304,16 +305,6 @@ en = "Actual"
 [session.detail.fda_gap_expected]
 fr = "Attendu"
 en = "Expected"
-
-# Courbes cumulées ajoutées sur l'axe secondaire (légende + tooltip), distinctes
-# des libellés courts par-match ci-dessus.
-[session.detail.fda_gap_real_cumulative]
-fr = "FDA réel (cumulé)"
-en = "Actual KDA (cumulative)"
-
-[session.detail.fda_gap_expected_cumulative]
-fr = "FDA attendu (cumulé)"
-en = "Expected KDA (cumulative)"
 
 [session.detail.fda_gap_gap]
 fr = "Écart"
