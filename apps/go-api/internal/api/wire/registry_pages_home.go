@@ -6,6 +6,7 @@ import (
 	"context"
 	"log/slog"
 
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/port"
@@ -266,6 +267,12 @@ func (r *ServiceRegistry) SynthesisCtx(ctx context.Context, slug string) (port.S
 		WithWeaponAccuracyRepo(duckdb.NewWeaponAccuracyRepo(pdb))
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
+	}
+	// Titres à commendations NATIVES (Halo 5) : véhicules détruits / vol à la tire
+	// depuis match_commendations (personal_score_awards y est vide). Capability-gated,
+	// jamais slug== (parité titleHasNativeKillMechanics — cf. capabilitiesForPDB).
+	if r.capabilitiesForPDB(pdb).Has(games.CapCommendationsNative) {
+		svc = svc.WithVehicleDestructionStatsRepo(duckdb.NewVehicleCommendationStatsRepo(pdb))
 	}
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
