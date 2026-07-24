@@ -13,11 +13,17 @@
  * l'Outlet si le verdict n'est pas `valid`, si le segment diverge du titre courant,
  * ou si une bascule est en vol (`isTitleSwitching`).
  */
-import { createFileRoute, Link, Outlet, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link, Outlet, useLocation, useNavigate, useRouter } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { applyActiveTitle, resolveTitleGate, isKnownLocale, type TitleGate } from '@/lib/title-routing'
+import {
+  applyActiveTitle,
+  resolveTitleGate,
+  isKnownLocale,
+  withLangSegment,
+  type TitleGate,
+} from '@/lib/title-routing'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
@@ -27,6 +33,8 @@ export const Route = createFileRoute('/{-$lang}/t/$titleSlug')({
 
 function TitleLayout() {
   const navigate = useNavigate()
+  const router = useRouter()
+  const location = useLocation()
   const { titleSlug, lang } = Route.useParams()
   const isBootstrapped = useAppShellStore((s) => s.isBootstrapped)
   const availableTitles = useAppShellStore((s) => s.availableTitles)
@@ -116,6 +124,41 @@ function TitleLayout() {
     if (!lang || !isKnownLocale(lang) || lang === locale) return
     setLocale(lang)
   }, [lang, locale, setLocale])
+
+  // Émission du segment de langue par défaut (I10) — CHOKEPOINT central. Quand l'URL
+  // title-scoped n'a PAS de segment `lang` (bookmark nu « /t/… », lien pleine page
+  // media/data-quality, ancienne URL non préfixée), on réécrit l'URL en injectant la
+  // locale de SESSION : « /t/… » devient « /{locale}/t/… » (replace). Le segment posé, TOUS les
+  // Links/navigate title-scoped l'HÉRITENT ensuite (langSegmentInheritance.test) → la
+  // langue reste visible pour toute la navigation, sans toucher aux ~100 call-sites.
+  //
+  // Préservation ?search/#hash : on reconstruit l'URL depuis `useLocation()` BRUT —
+  // `searchStr` porte son `?`, `hash` EXCLUT son `#` (champ TanStack, cf. splat
+  // routes/players/$.tsx) → on le réintroduit. Byte-identique pour l'enveloppe base64
+  // `?f=` (share-links) : mécanique PROUVÉE identique au splat legacy.
+  //
+  // Gaté sur un titre VALIDE + convergé (jamais un gate d'indispo, une divergence en
+  // cours, une bascule en vol, ni un échec de switch) : on n'injecte pas de segment
+  // dans une URL de titre invalide. IDEMPOTENT : après le replace, `lang` est défini →
+  // l'effet ressort (garde `lang` + garde d'égalité href) — aucune boucle.
+  useEffect(() => {
+    if (lang || gate !== 'valid' || diverges || isTitleSwitching || applyFailed) return
+    const hash = location.hash ? `#${location.hash}` : ''
+    const current = location.pathname + location.searchStr + hash
+    const href = withLangSegment(location.pathname, locale) + location.searchStr + hash
+    if (href !== current) router.history.replace(href)
+  }, [
+    lang,
+    gate,
+    diverges,
+    isTitleSwitching,
+    applyFailed,
+    locale,
+    location.pathname,
+    location.searchStr,
+    location.hash,
+    router,
+  ])
 
   // Projection DÉCLARATIVE (D-8) — cf. NOTE CRITIQUE ci-dessus.
   if (gate === 'wait') return null // pré-hydratation : ne rien décider

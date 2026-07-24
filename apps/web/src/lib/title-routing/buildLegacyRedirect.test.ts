@@ -8,7 +8,9 @@
  * citations→career/citations, commendations→career/commendations).
  *
  * Matrice COMPLÈTE table-driven : chaque famille de routes + préservation
- * ?search + #hash. La vérification navigateur (Phase 3) ne fait que confirmer.
+ * ?search + #hash + émission optionnelle du segment de langue (I10 : 5e arg `lang`
+ * → /{lang}/t/… ; omis → forme courte /t/… inchangée). La vérification navigateur
+ * (Phase 3) ne fait que confirmer.
  */
 import { describe, it, expect } from 'vitest'
 import { buildLegacyRedirect } from './buildLegacyRedirect'
@@ -21,6 +23,7 @@ interface Case {
   search?: string
   hash?: string
   active?: string
+  lang?: 'fr' | 'en'
   expected: string | null
 }
 
@@ -84,6 +87,14 @@ const CASES: Case[] = [
   { name: 'home sur halo_5', pathname: '/players/jgtm/home', active: 'halo_5', expected: '/t/halo_5/players/jgtm/home' },
   { name: 'legacy palmares sur halo_5', pathname: '/players/jgtm/palmares', active: 'halo_5', expected: '/t/halo_5/players/jgtm/community' },
 
+  // --- Émission du segment de langue au premier hop (I10) -----------------
+  { name: 'lang fr émis → /fr/t/…', pathname: '/players/jgtm/home', lang: 'fr', expected: '/fr/t/halo_infinite/players/jgtm/home' },
+  { name: 'lang en émis → /en/t/…', pathname: '/players/jgtm/home', lang: 'en', expected: '/en/t/halo_infinite/players/jgtm/home' },
+  { name: 'lang + remap interne (objectifs) → /en/t/…/ascension/objectifs', pathname: '/players/jgtm/objectifs', lang: 'en', expected: '/en/t/halo_infinite/players/jgtm/ascension/objectifs' },
+  { name: 'lang + activeSlug halo_5', pathname: '/players/jgtm/home', lang: 'fr', active: 'halo_5', expected: '/fr/t/halo_5/players/jgtm/home' },
+  { name: 'lang + ?f= + #hash préservés byte-exact', pathname: '/players/jgtm/stats/timeseries', search: '?f=abc123', hash: '#top', lang: 'fr', expected: '/fr/t/halo_infinite/players/jgtm/stats/timeseries?f=abc123#top' },
+  { name: 'lang + joueur seul → /fr/t/…/home', pathname: '/players/jgtm', lang: 'fr', expected: '/fr/t/halo_infinite/players/jgtm/home' },
+
   // --- null : hors périmètre legacy ---------------------------------------
   { name: 'bare /players → null', pathname: '/players', expected: null },
   { name: 'bare /players/ → null', pathname: '/players/', expected: null },
@@ -95,7 +106,7 @@ const CASES: Case[] = [
 describe('buildLegacyRedirect (matrice table-driven)', () => {
   for (const c of CASES) {
     it(c.name, () => {
-      const out = buildLegacyRedirect(c.pathname, c.search ?? '', c.hash ?? '', c.active ?? A)
+      const out = buildLegacyRedirect(c.pathname, c.search ?? '', c.hash ?? '', c.active ?? A, c.lang)
       if (c.expected === null) {
         expect(out).toBeNull()
       } else {

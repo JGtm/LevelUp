@@ -19,9 +19,18 @@ const applyActiveTitleMock = vi.fn<(slug: string) => Promise<void>>(() => Promis
 // et renvoie (replace) vers le titre courant.
 const navigateMock = vi.fn()
 const toastErrorMock = vi.fn()
+// history.replace : backstop d'émission du segment lang par défaut (I10).
+const historyReplaceMock = vi.fn()
 
 // paramsRef : le slug de titre porté par l'« URL » (segment $titleSlug).
 const paramsRef: { titleSlug: string; lang?: string } = { titleSlug: 'halo_infinite' }
+// locationRef : l'« URL » brute lue par le backstop (pathname + searchStr avec `?` +
+// hash SANS `#`, fidèle au champ TanStack useLocation()).
+const locationRef: { pathname: string; searchStr: string; hash: string } = {
+  pathname: '/t/halo_infinite/players/jgtm/home',
+  searchStr: '',
+  hash: '',
+}
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>()
@@ -32,6 +41,8 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
       useParams: () => paramsRef,
     }),
     useNavigate: () => navigateMock,
+    useLocation: () => locationRef,
+    useRouter: () => ({ history: { replace: historyReplaceMock } }),
     Outlet: () => <div data-testid="title-outlet" />,
     Link: ({ children }: { children?: ReactNode }) => <a>{children}</a>,
   }
@@ -85,8 +96,12 @@ beforeEach(() => {
   applyActiveTitleMock.mockImplementation(() => Promise.resolve())
   navigateMock.mockClear()
   toastErrorMock.mockClear()
+  historyReplaceMock.mockClear()
   paramsRef.titleSlug = 'halo_infinite'
   paramsRef.lang = undefined
+  locationRef.pathname = '/t/halo_infinite/players/jgtm/home'
+  locationRef.searchStr = ''
+  locationRef.hash = ''
   useAppShellStore.setState({
     isBootstrapped: true,
     isTitleSwitching: false,
@@ -338,5 +353,55 @@ describe('TitleLayout — réconciliation locale←segment (5a, D-12)', () => {
     paramsRef.lang = 'xyz'
     renderWithProviders(<TitleLayout />)
     expect(setLocaleSpy).not.toHaveBeenCalled()
+  })
+})
+
+describe('TitleLayout — émission du segment lang par défaut (backstop I10)', () => {
+  it('segment lang ABSENT + titre valide/convergé → history.replace vers /{locale}/t/…', () => {
+    paramsRef.lang = undefined // store.locale = 'fr' (beforeEach global)
+    renderWithProviders(<TitleLayout />)
+    expect(historyReplaceMock).toHaveBeenCalledWith('/fr/t/halo_infinite/players/jgtm/home')
+  })
+
+  it('préserve ?search + #hash byte-exact (enveloppe ?f= share-link)', () => {
+    paramsRef.lang = undefined
+    locationRef.pathname = '/t/halo_infinite/players/jgtm/stats/timeseries'
+    locationRef.searchStr = '?f=abc123'
+    locationRef.hash = 'top' // TanStack : hash SANS '#'
+    renderWithProviders(<TitleLayout />)
+    expect(historyReplaceMock).toHaveBeenCalledWith(
+      '/fr/t/halo_infinite/players/jgtm/stats/timeseries?f=abc123#top',
+    )
+  })
+
+  it('locale en → history.replace vers /en/t/…', () => {
+    paramsRef.lang = undefined
+    setStore({ locale: 'en' })
+    renderWithProviders(<TitleLayout />)
+    expect(historyReplaceMock).toHaveBeenCalledWith('/en/t/halo_infinite/players/jgtm/home')
+  })
+
+  it('segment lang DÉJÀ présent → aucun replace (idempotent)', () => {
+    paramsRef.lang = 'fr'
+    renderWithProviders(<TitleLayout />)
+    expect(historyReplaceMock).not.toHaveBeenCalled()
+  })
+
+  it('titre INVALIDE (gate unknown) → aucun replace', () => {
+    paramsRef.lang = undefined
+    paramsRef.titleSlug = 'inexistant'
+    renderWithProviders(<TitleLayout />)
+    expect(historyReplaceMock).not.toHaveBeenCalled()
+  })
+
+  it('divergence segment↔store en cours → aucun replace (attend la convergence)', () => {
+    paramsRef.lang = undefined
+    paramsRef.titleSlug = 'halo_5'
+    setStore({
+      currentTitleSlug: 'halo_infinite',
+      availableTitles: [title('halo_infinite'), title('halo_5')],
+    })
+    renderWithProviders(<TitleLayout />)
+    expect(historyReplaceMock).not.toHaveBeenCalled()
   })
 })
