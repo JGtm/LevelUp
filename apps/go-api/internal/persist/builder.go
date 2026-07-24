@@ -113,6 +113,13 @@ func (b *BatchBuilder) AddCommendations(rows []CommendationInsert) *BatchBuilder
 	return b
 }
 
+// AddObjectiveStats ajoute les rows shared.match_objective_stats (stats objectifs
+// par joueur CTF/Zones/Oddball).
+func (b *BatchBuilder) AddObjectiveStats(rows []ObjectiveStatsInsert) *BatchBuilder {
+	b.batch.Shared.ObjectiveStats = append(b.batch.Shared.ObjectiveStats, rows...)
+	return b
+}
+
 // SetEnrichment fixe la row player_match_enrichment (UNE row complète avec
 // tous les enrichments locaux computed).
 func (b *BatchBuilder) SetEnrichment(row *EnrichmentRow) *BatchBuilder {

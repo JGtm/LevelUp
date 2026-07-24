@@ -125,6 +125,10 @@ func BuildBatchFromRawForV2WithMeta(
 	if fm.Registry != nil && fm.Registry.IsFirefight {
 		fm.PveStats = ExtractPveStats(matchID, statsJSON)
 	}
+	// Objectif (CTF/Zones/Oddball) : extrait inconditionnellement du payload déjà
+	// fetché par V2 (parité PVE/PSA/Medals, ce chemin ne porte pas de SyncOptions ;
+	// ExtractObjectiveStats renvoie vide hors modes à objectif).
+	fm.ObjectiveStats = ExtractObjectiveStats(matchID, statsJSON)
 	fm.PSA = ExtractPersonalScoreAwards(statsJSON, matchID, xuid)
 	fm.HighlightData = highlightChunk
 	fm.FilmMajorVer = filmMajorVer

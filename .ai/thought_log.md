@@ -1,3 +1,98 @@
+## [2026-07-25] V72-15.4 — Retrait du fallback LIVE du Match view
+
+**Statut** : Complété (implémentation). Gates (go build/test/lint, npm typecheck/vitest,
+generate-types) délégués au superviseur — aucune commande go/npm exécutée côté agent
+(contrainte de tâche, agent parallèle exclusif sur go). Pas de commit.
+
+**Décision technique principale** : suppression intégrale de la chaîne LIVE identifiée dans
+`.ai/BACKLOG.md` (§archi/match-view, décision user 2026-07-19), pas juste un flag OFF.
+- `MatchViewService.GetMatchView` (match_view_service.go) : quand `GetMatchMeta` échoue
+  (match absent du substrat local), retourne directement `domain.ErrNotFound("match", matchID)`
+  — un `*domain.APIError{Code:"not_found"}` — au lieu d'essayer `tryCanonicalMatchView`
+  (fetch live via `DataAdapter.LoadMatchDetail`) puis de wrapper l'erreur repo brute. Le
+  handler (`handlers/match_view.go`) avait DÉJÀ la branche `Code=="not_found"` → 404
+  `match_not_found` (contrat openapi.yaml préexistant, inchangé) : zéro edit de contrat.
+- Chaîne supprimée avec tests/imports (règle 0 code mort) : `tryCanonicalMatchView` +
+  champs/méthodes `dataAdapter`/`viewerGamertag`/`WithDataAdapter`/`WithViewerGamertag` sur
+  `MatchViewService` ; `LoadMatchDetail` retiré de l'interface `games.TitleDataAdapter` et de
+  ses 3 implémentations (HINF stub, synthetic_title_b, H5 réel avec `findMatchInHistory` +
+  consts pagination) ; fichier H5 `mapping_carnage_detail.go` entièrement mort → supprimé ;
+  `enrichCommendations` (H5, spécifique au détail live) supprimé, `enrichCommendationTotals`
+  (chemin séparé, totaux à vie) conservé ; `ctxkeys.WithViewerGamertag`/`ViewerGamertag` +
+  types canonical `MatchDetail`/`Commendation` (plus aucun lecteur) supprimés.
+- Second ordre découvert EN SUIVANT LA CHAÎNE (pas hors périmètre : orphelins directs de mon
+  retrait) : `DataAdapter.WithRankedClassifier`/champ `classifier` (H5) + chargement
+  `ranked_hoppers.toml` au boot (`server_titles_additional.go`) n'avaient QUE
+  `findMatchInHistory` comme lecteur → supprimés. `classification.LoadSetClassifier` (lib
+  générique, tests dédiés validant le TOML shipped, point d'extension Phase 2 ingest non câblé)
+  volontairement CONSERVÉE — hors chaîne, pas de mon fait.
+- Front (`MatchViewPage.tsx`) : nouvelle branche `code === 'match_not_found'` → `PageUnavailable`
+  dédié (« Match pas encore synchronisé » FR / « Match not synced yet » EN, clés
+  `notSyncedTitle`/`notSyncedDescription` dans `features/match-view/i18n.ts`) au lieu de
+  l'écran d'erreur générique. Actions Accueil/Précédent/Mes matchs (même pattern que la
+  branche `match_not_participant` ADR 0029 déjà en place).
+
+**Résultats observés** : aucun gate exécuté par moi (contrainte). Vérification sur pièces :
+grep exhaustif post-édition confirmant zéro référence résiduelle à `LoadMatchDetail`/
+`tryCanonicalMatchView`/`WithViewerGamertag`/`WithRankedClassifier`/`canonical.MatchDetail`
+hors commentaires historiques explicites ; chemin de sync H5 (livesync/capture.go,
+mapping_carnage.go, persist) vérifié INTACT (aucun fichier touché) ; capability
+`CapMatchDetailCore` laissée `CapSupported` pour H5 (le détail de match reste servi, via le
+substrat DuckDB synchronisé, pas via le live).
+
+**Tests ajoutés/modifiés** : Go — `TestMatchViewService_GetMatchView_MetaError` renforcé
+(assert `*domain.APIError{Code:"not_found"}` explicite) + `TestMatchViewHandler_NotFound_404`
+nouveau (handler mappe bien en 404 `match_not_found`) ; retrait des tests du fallback mort
+(`TestAdapter_LoadMatchDetail_*` H5, `TestLoadMatchDetail_NotImplemented` HINF,
+`match_view_canonical_test.go` entier, tests `enrichCommendations`/`mapViewerCommendations`/
+`mapCarnageToCanonicalDetail`). Front — `MatchViewPage.test.tsx` nouveau (3 tests : rendu de
+l'état dédié, actions de navigation, non-régression `match_not_participant`).
+
+**Conclusion / prochaine étape** : chantier fermé côté code. Reste au superviseur : build/lint/
+test Go complet (unit + intégration -p1), `npm run typecheck`/`vitest`/`generate-types`, vérif
+visuelle (ouvrir un match_id inconnu → PageUnavailable "pas encore synchronisé" au lieu du
+spinner/erreur générique), puis mise à jour `.ai/BACKLOG.md` (déjà annoté CLOS 2026-07-25 dans
+ce commit) au moment du commit réel.
+
+## [2026-07-25] V72-03 — Stats objectifs CTF/Zones/Oddball (P0+P1+P2)
+
+**Statut** : Complété (P0, P1, P2 du PLAN_V72_OBJECTIVE_STATS.md ; P3/P4 = vague suivante,
+non commencés). Pas de commit (superviseur).
+
+**Décision technique principale** :
+- **P0** : 8 payloads réels GetMatchStats capturés (2/mode CTF/Strongholds/KOTH/Oddball)
+  via diag_q (sélection match_id sur `pair_name`) + client Halo (auth JGtm store-first
+  ADR 0023, RT vivant/roté). Schéma des 3 blocs (`CaptureTheFlagStats`/`ZonesStats`/
+  `OddballStats`, parent `Stats` comme CoreStats) FIGÉ sur payload réel. KOTH=ZonesStats
+  CONFIRMÉ (discriminant colline = `StrongholdScoringTicks>0`). Décision : stocker le JEU
+  COMPLET des champs natifs (23 colonnes métier : CTF 11, Zones 6, Oddball 6) — le backfill
+  P3 coûte 1 req API/match, capturer tout maintenant évite un 2e re-fetch complet. Fixtures
+  anonymisées `internal/sync/testdata/objective_stats/*.json`. Throwaway cmd/tmp_objcap
+  supprimé (internal/ non importable depuis un module scratchpad externe).
+- **P1** : table `match_objective_stats` CRÉÉE DIRECTEMENT append-only (séquence + id PK +
+  written_at + vue `_latest` QUALIFY + index match_id), modèle
+  create_world_csr_leaderboard_snapshots — PAS ApplyAppendOnlyRebuild. Enregistrée
+  provider (steps.go) + canonicalOrder EN FIN + 2 garde-rails ART (tablesProtegees,
+  appendOnlyStateTables).
+- **P2** : `ExtractObjectiveStats` pur (retourne `[]persist.ObjectiveStatsInsert`
+  directement — DRY, parité kill_positions/commendations) + `objectiveDurationSeconds`
+  (fractions préservées, colonnes DOUBLE). `persistObjectiveStats` INSERT-only dans la
+  transaction shared. Peuplé engine_fetch.go (opts.WithObjectiveStats, défaut true) ET
+  engine_v2bridge.go (inconditionnel, parité PVE/PSA). Colonnes du mode absent = NULL
+  (pointeurs nil).
+
+**Résultats observés (gates exécutés en séquence, CGO)** : migrations end-to-end shared +
+audit ordre canonique + garde-rails ART (4) verts (P1) ; golden 6 tests + unit
+domain/persist/sync + intégration -p 1 persist (roundtrip _latest, colonne autre-mode NULL,
+idempotence) + intégration -p 1 sync (90.6s) + re-run garde-rails ART avec persist en place,
+tous verts (P2).
+
+**Conclusion / prochaine étape** : P0-P2 livrés et vérifiés. `go build ./...` échoue
+UNIQUEMENT dans internal/service (match_view `applyTeamNames`, fragdist) = travail d'agents
+parallèles en cours (INTERDITS de ma tâche), hors périmètre — mes 4 paquets compilent/testent
+verts. RESTE : P3 (capability Go `CapMatchObjectiveStats` + miroir TS + backfill CLI) et P4
+(UI scoreboard/timeseries/synthesis/escouade + fields.toml i18n FR-EN).
+
 ## [2026-07-25] V72-18 / V72-24 / V72-09 (Synergies) / V72-13 — 4 correctifs Escouade/Explorer/Sessions
 
 **Statut** : Complété (implémentation ; gates go/npm/tsc/vitest + generate-types/i18n

@@ -207,6 +207,7 @@ var canonicalOrder = []string{
 	"add_events_empty_to_match_registry",                       // shared (statut distinct « chunk récupéré, 0 event légitime » — fin boucle parse_anomaly)
 	"create_season_catalog",                                    // shared (C2 : noms+traductions des saisons CSR Waypoint, source scrape)
 	"create_world_player_no_data",                              // shared (marqueur privés/sans-données classement mondial)
+	"shared_create_objective_stats",                            // shared (V72-03 : stats objectifs CTF/Zones/Oddball par joueur/match, append-only)
 }
 
 var canonicalIndex = func() map[string]int {

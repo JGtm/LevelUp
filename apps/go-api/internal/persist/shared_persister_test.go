@@ -776,3 +776,68 @@ func TestPersistWeaponKillsNewGeneration_SupersedesWithKillKind(t *testing.T) {
 		t.Fatalf("PersistWeaponKillsNewGeneration(nil): %v", err)
 	}
 }
+
+// ─── Test : ObjectiveStats INSERT-only + lecture via _latest + colonnes NULL ────
+//
+// FIGE le chemin objectif (V72-03) de bout en bout : un batch avec des rows CTF est
+// persisté dans match_objective_stats (INSERT pur), relu via la vue _latest, et les
+// colonnes d'un autre mode (zone_captures) restent NULL. Re-Persist du même match =
+// no-op (idempotence via le pré-check match_registry, INSERT-only préservé).
+func TestSharedPersister_ObjectiveStats_InsertsReadViaLatestAndNullOtherMode(t *testing.T) {
+	db := openSharedTestDB(t)
+	p := NewSharedPersister(db)
+	intPtr := func(v int) *int { return &v }
+	f := func(v float64) *float64 { return &v }
+
+	batch := helperBuildSampleBatch("m_obj_001", "1111", "Alice")
+	batch.Shared.ObjectiveStats = []ObjectiveStatsInsert{
+		{
+			MatchID: "m_obj_001", XUID: "1111",
+			FlagCaptures: intPtr(1), FlagGrabs: intPtr(9), FlagSecures: intPtr(7),
+			FlagSteals: intPtr(3), FlagReturns: intPtr(2), FlagCarriersKilled: intPtr(1),
+			TimeAsFlagCarrierSeconds: f(140.0),
+		},
+		{
+			MatchID: "m_obj_001", XUID: "9876543210",
+			FlagReturns: intPtr(3), FlagSteals: intPtr(3), TimeAsFlagCarrierSeconds: f(18.8),
+		},
+	}
+	if err := p.Persist(context.Background(), batch); err != nil {
+		t.Fatalf("Persist: %v", err)
+	}
+
+	if n := countRows(t, db, "match_objective_stats", "match_id = ?", "m_obj_001"); n != 2 {
+		t.Errorf("match_objective_stats = %d rows, want 2", n)
+	}
+
+	// Lecture via la vue _latest : valeurs CTF correctes + colonne d'un autre mode NULL.
+	var flagCaptures, flagGrabs, zoneCaptures sql.NullInt64
+	var timeCarrier sql.NullFloat64
+	err := db.QueryRow(`
+		SELECT flag_captures, flag_grabs, time_as_flag_carrier_seconds, zone_captures
+		FROM match_objective_stats_latest WHERE match_id = ? AND xuid = ?`,
+		"m_obj_001", "1111").Scan(&flagCaptures, &flagGrabs, &timeCarrier, &zoneCaptures)
+	if err != nil {
+		t.Fatalf("query _latest: %v", err)
+	}
+	if !flagCaptures.Valid || flagCaptures.Int64 != 1 {
+		t.Errorf("flag_captures = %+v, want 1", flagCaptures)
+	}
+	if !flagGrabs.Valid || flagGrabs.Int64 != 9 {
+		t.Errorf("flag_grabs = %+v, want 9", flagGrabs)
+	}
+	if !timeCarrier.Valid || timeCarrier.Float64 != 140.0 {
+		t.Errorf("time_as_flag_carrier_seconds = %+v, want 140", timeCarrier)
+	}
+	if zoneCaptures.Valid {
+		t.Errorf("zone_captures doit être NULL (mode CTF), got %d", zoneCaptures.Int64)
+	}
+
+	// Re-Persist = no-op idempotent (aucun doublon).
+	if err := p.Persist(context.Background(), batch); err != nil {
+		t.Fatalf("re-Persist (idempotent attendu): %v", err)
+	}
+	if n := countRows(t, db, "match_objective_stats", "match_id = ?", "m_obj_001"); n != 2 {
+		t.Errorf("idempotence cassée — match_objective_stats = %d rows après re-Persist, want 2", n)
+	}
+}

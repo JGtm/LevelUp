@@ -263,6 +263,42 @@ type PVEMatchStatsInsert struct {
 	PveBits        *int    `json:"pve_bits,omitempty"`
 }
 
+// ObjectiveStatsInsert — row pour shared.match_objective_stats (stats objectifs par
+// joueur/match des modes CTF/Zones/Oddball Halo Infinite). Table LARGE nullable : un
+// match = un mode → seuls les champs du bloc du mode joué sont renseignés, les autres
+// restent NULL (pointeurs nil). Append-only : INSERT pur, lecture via _latest.
+// Colonnes verrouillées sur payload réel GetMatchStats (P0, PLAN_V72_OBJECTIVE_STATS.md).
+type ObjectiveStatsInsert struct {
+	MatchID string `json:"match_id"`
+	XUID    string `json:"xuid"`
+	// CTF (CaptureTheFlagStats)
+	FlagCaptures             *int     `json:"flag_captures,omitempty"`
+	FlagCaptureAssists       *int     `json:"flag_capture_assists,omitempty"`
+	FlagGrabs                *int     `json:"flag_grabs,omitempty"`
+	FlagSecures              *int     `json:"flag_secures,omitempty"`
+	FlagSteals               *int     `json:"flag_steals,omitempty"`
+	FlagReturns              *int     `json:"flag_returns,omitempty"`
+	FlagCarriersKilled       *int     `json:"flag_carriers_killed,omitempty"`
+	FlagReturnersKilled      *int     `json:"flag_returners_killed,omitempty"`
+	KillsAsFlagCarrier       *int     `json:"kills_as_flag_carrier,omitempty"`
+	KillsAsFlagReturner      *int     `json:"kills_as_flag_returner,omitempty"`
+	TimeAsFlagCarrierSeconds *float64 `json:"time_as_flag_carrier_seconds,omitempty"`
+	// Zones (ZonesStats — Strongholds + KOTH)
+	ZoneCaptures       *int     `json:"zone_captures,omitempty"`
+	ZoneSecures        *int     `json:"zone_secures,omitempty"`
+	ZoneOffensiveKills *int     `json:"zone_offensive_kills,omitempty"`
+	ZoneDefensiveKills *int     `json:"zone_defensive_kills,omitempty"`
+	ZoneScoringTicks   *int     `json:"zone_scoring_ticks,omitempty"`
+	TimeInZonesSeconds *float64 `json:"time_in_zones_seconds,omitempty"`
+	// Oddball (OddballStats)
+	KillsAsSkullCarrier              *int     `json:"kills_as_skull_carrier,omitempty"`
+	SkullCarriersKilled              *int     `json:"skull_carriers_killed,omitempty"`
+	SkullGrabs                       *int     `json:"skull_grabs,omitempty"`
+	SkullScoringTicks                *int     `json:"skull_scoring_ticks,omitempty"`
+	TimeAsSkullCarrierSeconds        *float64 `json:"time_as_skull_carrier_seconds,omitempty"`
+	LongestTimeAsSkullCarrierSeconds *float64 `json:"longest_time_as_skull_carrier_seconds,omitempty"`
+}
+
 // MatchCSRInsert — row pour shared.match_csrs (CSR de tous les participants
 // d'un match ranked, pas seulement le joueur synchronisé). PK (match_id, xuid).
 //
