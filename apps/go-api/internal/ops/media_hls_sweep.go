@@ -42,6 +42,11 @@ type EnsureHLSParams struct {
 	// DeleteSource : propagé tel quel à HLSTranscodeParams.DeleteSource (politique de
 	// rétention du source après transcodage). Résolu en amont par l'appelant.
 	DeleteSource bool
+	// AudioRolesFor retourne les rôles de piste manuels d'un propriétaire (gamertag),
+	// ou nil si le joueur est en mode auto. Injecté par l'appelant (qui possède
+	// PathResolver + titleSlug) pour que ops reste découplé du réglage joueur. nil ⇒
+	// mode auto pour tous (cas CLI de rattrapage).
+	AudioRolesFor func(owner string) []string
 }
 
 // EnsureHLSStats résume un balayage.
@@ -197,9 +202,13 @@ func processHLSCandidate(ctx context.Context, c hlsCandidate, store MediaPathSto
 		log.InfoContext(ctx, "hls sweep: transcodage déjà en cours (verrou non acquis) — sauté", "file", c.filePath)
 		return
 	}
+	var manualRoles []string
+	if p.AudioRolesFor != nil {
+		manualRoles = p.AudioRolesFor(owner)
+	}
 	if err := RunHLSTranscode(ctx, HLSTranscodeParams{
 		SourceAbs: abs, OutDir: outDir, DBPath: p.DBPath, FileRel: c.filePath, HLSRel: hlsRel,
-		DeleteSource: p.DeleteSource,
+		DeleteSource: p.DeleteSource, ManualAudioRoles: manualRoles,
 	}); err != nil {
 		log.WarnContext(ctx, "hls sweep: transcodage échoué", "file", c.filePath, "err", err)
 		st.Failed++

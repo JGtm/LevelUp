@@ -210,6 +210,10 @@ type UploadRequest struct {
 	// par le handler (config.ResolveMediaDeleteSource : env > store > isProd). Propagée
 	// à HLSTranscodeParams.DeleteSource. false = conserver (défaut sûr en local).
 	DeleteSource bool
+	// ManualAudioRoles : rôles de piste audio manuels du joueur (voix/jeu/autres),
+	// chargés par le handler d'upload depuis media_audio_config.json AVANT le
+	// transcodage. Non vide ⇒ mapping audio manuel (bypass NNLS). Vide ⇒ auto.
+	ManualAudioRoles []string
 }
 
 // UploadResult résume le résultat d'un upload multi-fichiers.

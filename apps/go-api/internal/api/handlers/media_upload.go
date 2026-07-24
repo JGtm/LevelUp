@@ -15,6 +15,8 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/platform/mediaaudio"
 )
 
 func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
@@ -70,6 +72,12 @@ func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
 	slog.InfoContext(r.Context(), "upload: requête reçue",
 		"player", gamertag, "files", len(files), "captures_dir", capturesDir)
 
+	// Réglage audio du joueur (voix/jeu/autres) chargé AVANT le transcodage : en mode
+	// manuel, les rôles court-circuitent l'analyse NNLS ; en auto, nil (comportement
+	// historique). Un sidecar illisible est loggé et traité comme auto (jamais bloquant).
+	manualAudioRoles := mediaaudio.ManualRolesForPlayer(
+		r.Context(), titlePkg.NewPathResolver(h.repoRoot), titleSlug, gamertag)
+
 	req := domain.UploadRequest{
 		Files:               files,
 		CapturesDir:         capturesDir,
@@ -81,6 +89,7 @@ func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
 		Tolerance:           2,
 		TitleSlug:           titleSlug,
 		DeleteSource:        deleteSource,
+		ManualAudioRoles:    manualAudioRoles,
 	}
 
 	uploadStart := time.Now().UTC()

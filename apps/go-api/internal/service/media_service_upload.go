@@ -164,12 +164,13 @@ func (s *MediaService) launchHLSTranscoding(ctx context.Context, req domain.Uplo
 		log.InfoContext(ctx, "hls: transcoding lancé",
 			"job", job.JobID, "file", fileRel, "out_dir", outDir)
 		go s.runTranscodeJob(ops.HLSTranscodeParams{
-			SourceAbs:    dest,
-			OutDir:       outDir,
-			DBPath:       req.SharedSocialDBPath,
-			FileRel:      fileRel,
-			HLSRel:       hlsRel,
-			DeleteSource: req.DeleteSource,
+			SourceAbs:        dest,
+			OutDir:           outDir,
+			DBPath:           req.SharedSocialDBPath,
+			FileRel:          fileRel,
+			HLSRel:           hlsRel,
+			DeleteSource:     req.DeleteSource,
+			ManualAudioRoles: req.ManualAudioRoles,
 		}, job.JobID)
 	}
 }
