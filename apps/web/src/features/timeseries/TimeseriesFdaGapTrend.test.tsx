@@ -4,8 +4,9 @@
  *
  * - `buildFdaGapCumulativeOption` (pur) : cumul signé ancré à 0 (1 aire
  *   divergente + markLine 0) PLUS 1 courbe fine « FDA attendu » PAR MATCH sur
- *   l'axe secondaire (`yAxisIndex: 1`), report D5 (report du cumul, jamais 0,
- *   point conservé), ORDRE DU SERVICE respecté (pas de re-tri). `resolveToken`
+ *   le MÊME axe Y (pas de double axe — retour utilisateur 2026-07-24), report D5
+ *   (report du cumul, jamais 0, point conservé), ORDRE DU SERVICE respecté
+ *   (pas de re-tri). `resolveToken`
  *   renvoie '' hors runtime CSS → on teste la structure/les données, pas les
  *   couleurs.
  * - `TimeseriesFdaGapTrend` (composant) : masquage par capability `expected_stats`
@@ -76,7 +77,7 @@ interface OptShape {
   }>
   legend?: { data: string[] }
   xAxis: { data: string[]; boundaryGap?: boolean }
-  yAxis: unknown[]
+  yAxis: unknown
 }
 
 function setTitleCaps(caps: string[]) {
@@ -97,7 +98,7 @@ describe('buildFdaGapCumulativeOption', () => {
     expect(buildFdaGapCumulativeOption([], LABELS)).toBeNull()
   })
 
-  it('cumul signé ancré à 0 : 1 aire divergente + markLine 0 + 1 courbe FDA attendu par match sur axe secondaire', () => {
+  it('cumul signé ancré à 0 : 1 aire divergente + markLine 0 + 1 courbe FDA attendu par match sur le même axe', () => {
     const opt = buildFdaGapCumulativeOption(
       [row(1.5, 1.0), row(0.8, 1.2), row(2.0, 1.0)],
       LABELS,
@@ -111,12 +112,12 @@ describe('buildFdaGapCumulativeOption', () => {
     expect(opt.series[0].areaStyle?.origin).toBe(0)
     expect(opt.series[0].markLine?.data[0].yAxis).toBe(0)
     expect((opt.series[0].areaStyle?.color as { type?: string })?.type).toBe('linear')
-    // Courbe FDA attendu PAR MATCH (pas cumulée) — axe SECONDAIRE (yAxisIndex 1).
+    // Courbe FDA attendu PAR MATCH (pas cumulée) — MÊME axe Y (pas de yAxisIndex).
     expect(opt.series[1].name).toBe('Attendu')
-    expect(opt.series[1].yAxisIndex).toBe(1)
+    expect(opt.series[1].yAxisIndex).toBeUndefined()
     expect(opt.series[1].data).toEqual([1, 1.2, 1])
-    // Axe Y en tableau (primaire + secondaire droit) + légende sur les 2 séries.
-    expect(opt.yAxis).toHaveLength(2)
+    // Axe Y UNIQUE (objet, pas tableau) + légende sur les 2 séries.
+    expect(Array.isArray(opt.yAxis)).toBe(false)
     expect(opt.legend?.data).toEqual(['Écart cumulé', 'Attendu'])
     expect(opt.xAxis.boundaryGap).toBe(false)
     expect(opt.xAxis.data).toHaveLength(3)

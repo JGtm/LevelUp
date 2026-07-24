@@ -12,8 +12,8 @@
  *
  * Même pattern visuel que `SessionNetScoreArea` : aire signée divergente ancrée à
  * 0 (helper canonique `divergentZeroGradient`, PAS de visualMap) + markLine 0 sur
- * l'axe PRIMAIRE, PLUS 1 courbe fine « FDA attendu » PAR MATCH sur un axe
- * SECONDAIRE droit (`yAxisIndex: 1`, pattern dual-axis de `TimeseriesKdaBars`) —
+ * l'axe PRIMAIRE, PLUS 1 courbe fine « FDA attendu » PAR MATCH sur le MÊME axe Y
+ * (même unité FDA — retour utilisateur 2026-07-24 : pas de double axe) —
  * lit le champ `expected` de chaque point du helper canonique `cumulativeFdaGap`,
  * `null` → point troué (`connectNulls: false`). Masqué par
  * `useCapability('expected_stats')` (Halo 5 = pas d'attendu → null).
@@ -91,7 +91,7 @@ export function buildSessionFdaGapOption(
 
   return {
     backgroundColor: CHART_BG,
-    grid: { top: 24, bottom: 64, left: 48, right: 56 },
+    grid: { top: 24, bottom: 64, left: 48, right: 24 },
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'axis',
@@ -120,16 +120,13 @@ export function buildSessionFdaGapOption(
       data: points.map((p) => p.label),
       axisLabel: { ...(axis.axisLabel as Record<string, unknown>), interval },
     },
-    // Axe primaire (écart cumulé, gauche) + axe secondaire (FDA attendu
-    // par match, droite — pattern dual-axis de TimeseriesKdaBars).
-    yAxis: [
-      {
-        ...axis,
-        type: 'value',
-        ...(opts.yDomain ? { min: opts.yDomain[0], max: opts.yDomain[1] } : {}),
-      },
-      { ...axis, type: 'value', position: 'right' },
-    ],
+    // Axe Y UNIQUE (retour utilisateur 2026-07-24 : le double axe rendait le
+    // graphe illisible — écart cumulé et FDA attendu sont dans la même unité FDA).
+    yAxis: {
+      ...axis,
+      type: 'value',
+      ...(opts.yDomain ? { min: opts.yDomain[0], max: opts.yDomain[1] } : {}),
+    },
     series: [
       {
         name: opts.seriesLabel,
@@ -150,11 +147,10 @@ export function buildSessionFdaGapOption(
         },
       },
       {
-        // FDA attendu PAR MATCH (pas cumulé) — courbe fine axe secondaire.
-        // `expected` est null quand le match n'a pas d'attendu → point troué.
+        // FDA attendu PAR MATCH (pas cumulé) — courbe fine sur le MÊME axe que
+        // l'aire (même unité FDA). `expected` null → point troué.
         name: opts.expectedLabel,
         type: 'line',
-        yAxisIndex: 1,
         data: expectedValues,
         symbol: 'none',
         connectNulls: false,
