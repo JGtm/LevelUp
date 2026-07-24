@@ -230,29 +230,40 @@ func payloadNameValue(payload *seasonPassTrackPayload) any {
 	return payload.Name
 }
 
-func payloadDescription(payload *seasonPassTrackPayload) *string {
+func payloadDescription(payload *seasonPassTrackPayload, preferEN bool) *string {
 	if payload == nil {
 		return nil
 	}
-	value := localizedText(payload.Description)
+	value := localizedText(payload.Description, preferEN)
 	if value == "" || isPlaceholderDescription(value) {
 		return nil
 	}
 	return &value
 }
 
-func localizedText(value any) string {
+// localizedText résout un texte Battle Pass (nom/description) potentiellement
+// multilingue. preferEN (dérivé de la locale de requête, cf. bpPreferEN) ordonne les
+// clés de langue : anglais d'abord en EN, français d'abord sinon — au lieu de l'ordre
+// FR-first figé historique qui laissait les libellés de pass en français quand l'UI
+// passait en anglais.
+func localizedText(value any, preferEN bool) string {
 	switch typed := value.(type) {
 	case string:
 		return strings.TrimSpace(typed)
 	case map[string]any:
 		// Format résolu Halo : {"value": "Operation: Ground Zero", "status": "Resolved"}
-		// La clé "value" contient le texte déjà localisé.
+		// La clé "value" contient le texte déjà localisé (côté serveur Halo) : elle prime
+		// quelle que soit la locale demandée (pas de variante par langue à ce niveau).
 		if v, ok := typed["value"].(string); ok && strings.TrimSpace(v) != "" {
 			return strings.TrimSpace(v)
 		}
-		// Clés de langue explicites (stockées par le système de traduction interne).
-		for _, key := range []string{"fr", "en", "default"} {
+		// Clés de langue explicites (stockées par le système de traduction interne),
+		// ordonnées selon la locale de requête.
+		langOrder := []string{"fr", "en", "default"}
+		if preferEN {
+			langOrder = []string{"en", "default", "fr"}
+		}
+		for _, key := range langOrder {
 			candidate, ok := typed[key].(string)
 			if ok && strings.TrimSpace(candidate) != "" {
 				return strings.TrimSpace(candidate)

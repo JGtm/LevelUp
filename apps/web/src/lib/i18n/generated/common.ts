@@ -295,6 +295,7 @@ export const commonManifest = {
   "common.nav.tab_compare": { fr: "Face-à-face", en: "Head-to-head" },
   "common.nav.tab_contributions": { fr: "Contributions", en: "Contributions" },
   "common.nav.tab_leaderboard": { fr: "Classements", en: "Leaderboards" },
+  "common.nav.tab_medals": { fr: "Médailles", en: "Medals" },
   "common.nav.tab_objectives": { fr: "Objectifs", en: "Objectives" },
   "common.nav.tab_profile": { fr: "Profil", en: "Profile" },
   "common.nav.tab_progression": { fr: "Progression", en: "Progression" },

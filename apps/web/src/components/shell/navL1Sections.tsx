@@ -116,10 +116,11 @@ export const L1_SECTIONS: L1Section[] = [
     labelKey: 'common.nav.section_career',
     capability: 'career',
     defaultPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/career',
-    matchPathname: (p) => under(p, /^\/(career|citations|profile)/),
+    matchPathname: (p) => under(p, /^\/(career|citations|medals|profile)/),
     tabs: [
       { key: 'progression', labelKey: 'common.nav.tab_progression', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/career' },
       { key: 'citations', labelKey: 'common.nav.tab_citations', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations' },
+      { key: 'medals', labelKey: 'common.nav.tab_medals', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/medals' },
       {
         key: 'season-pass',
         labelKey: 'common.nav.tab_season_pass',

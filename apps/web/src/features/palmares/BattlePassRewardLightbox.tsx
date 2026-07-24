@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState } from 'react'
 
-import { Badge } from '@/components/ui/badge'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
+import { type SeasonPassBadgeRole } from './battlePassBadgeStyle'
 import { itemTypeLabel, normalizeRarity, rarityLabel, rarityStyle } from './rarity'
+import { SeasonPassBadge } from './SeasonPassBadge'
 
 export type RewardLightboxBadgeTone = 'free' | 'premium' | 'obtained' | 'current' | 'upcoming' | 'neutral'
 
@@ -30,14 +31,14 @@ export interface RewardLightboxData {
 
 const ANIM_MS = 280
 
-function badgeVariantFor(tone: RewardLightboxBadgeTone | undefined) {
+function toneRole(tone: RewardLightboxBadgeTone | undefined): SeasonPassBadgeRole {
   switch (tone) {
-    case 'current':  return 'default' as const
-    case 'obtained': return 'success' as const
-    case 'premium':  return 'outline' as const
-    case 'free':     return 'secondary' as const
-    case 'upcoming': return 'outline' as const
-    default:         return 'secondary' as const
+    case 'current':  return 'active'
+    case 'obtained': return 'completed'
+    case 'premium':  return 'premium'
+    case 'free':     return 'free'
+    case 'upcoming': return 'neutral'
+    default:         return 'neutral'
   }
 }
 
@@ -224,9 +225,7 @@ export function BattlePassRewardLightbox({
                   </span>
                 )}
                 {current.badges?.map((badge, i) => (
-                  <Badge key={`${badge.label}-${i}`} variant={badgeVariantFor(badge.tone)}>
-                    {badge.label}
-                  </Badge>
+                  <SeasonPassBadge key={`${badge.label}-${i}`} role={toneRole(badge.tone)} label={badge.label} />
                 ))}
               </div>
             </div>

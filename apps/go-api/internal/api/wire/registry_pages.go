@@ -315,6 +315,18 @@ func (r *ServiceRegistry) CitationsCtx(ctx context.Context, slug string) (port.C
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 
+// MedalsCtx retourne un MedalsService + identifiants joueur. Le resolver de catégorie
+// du titre courant est sélectionné dans le service via le registre (baseline par
+// défaut, enrichissement Halo Infinite si enregistré au boot) — jamais de gating slug.
+func (r *ServiceRegistry) MedalsCtx(ctx context.Context, slug string) (port.MedalsService, string, string, error) {
+	pdb, err := r.resolve(ctx, slug)
+	if err != nil {
+		return nil, "", "", err
+	}
+	svc := service.NewMedalsService(duckdb.NewMedalsRepo(pdb))
+	return svc, pdb.XUID, pdb.Gamertag, nil
+}
+
 // CommendationTotalsCtx retourne un CommendationTotalsService + identifiants joueur.
 // L'adapter du titre est type-asserté à la surface LoadCommendationTotals : seuls les
 // titres l'implémentant (Halo 5) renvoient des totaux natifs ; les autres → loader nil

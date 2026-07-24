@@ -241,6 +241,7 @@ describe('HomePage', () => {
             status: 'active',
             is_active: true,
             is_owned: true,
+            premium_owned: true,
             has_reached_max_rank: false,
             current_rank: 12,
             partial_progress: 300,
@@ -289,6 +290,9 @@ describe('HomePage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Operation Alpha')).toBeInTheDocument()
+      // alt localisé via la clé i18n home.battle_pass.image_alt (Lot D : plus d'alt FR
+      // figé). Le harness rend ici en FR (le store retombe sur 'fr' au render), d'où le
+      // libellé français attendu — en EN la clé produirait « Illustration of … ».
       expect(screen.getByAltText('Illustration de Operation Alpha')).toBeInTheDocument()
       expect(screen.getAllByText('Récompense 13').length).toBeGreaterThan(0)
     })
@@ -371,6 +375,7 @@ describe('HomePage', () => {
             status: 'active',
             is_active: true,
             is_owned: true,
+            premium_owned: true,
             has_reached_max_rank: false,
             current_rank: 12,
             partial_progress: 300,
@@ -454,6 +459,7 @@ describe('HomePage', () => {
             status: 'active',
             is_active: true,
             is_owned: true,
+            premium_owned: true,
             has_reached_max_rank: false,
             current_rank: 12,
             partial_progress: 300,

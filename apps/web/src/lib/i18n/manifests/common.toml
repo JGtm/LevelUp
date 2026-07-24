@@ -1960,6 +1960,10 @@ en = "Progression"
 fr = "Citations"
 en = "Commendations"
 
+[common.nav.tab_medals]
+fr = "Médailles"
+en = "Medals"
+
 [common.nav.tab_season_pass]
 fr = "Pass saisonnier"
 en = "Season pass"

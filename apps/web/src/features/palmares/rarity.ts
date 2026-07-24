@@ -38,7 +38,13 @@ const RARITY_LABELS_EN: Record<RarityTier, string> = {
 export interface RarityStyle {
   /** Dégradé de fond derrière l'image de la reward (carrousel + lightbox). */
   bg: string
-  /** Variante de Badge dans le lightbox (rappel de la rareté). */
+  /**
+   * Pastille pleine de rappel de la rareté (lightbox) : fond saturé SOMBRE +
+   * texte blanc (`text-badge-on-solid`), homogène avec les pastilles pleines du
+   * pass (cf. SeasonPassBadge). Nuances 600/700 choisies pour garantir l'AA sur
+   * blanc (slate/sky/purple/amber/rose — couleurs de rareté Halo, exception
+   * tolérée règle couleurs, cf. en-tête de fichier).
+   */
   badge: string
   /** Halo lumineux léger sur la carte (Légendaire/Mythique surtout). */
   glow: string
@@ -49,31 +55,31 @@ export interface RarityStyle {
 const RARITY_STYLES: Record<RarityTier, RarityStyle> = {
   common: {
     bg: 'bg-gradient-to-br from-slate-500/40 via-slate-600/30 to-slate-800/50',
-    badge: 'bg-slate-500/30 text-slate-100 border border-slate-400/40',
+    badge: 'bg-slate-600 text-badge-on-solid',
     glow: '',
     segment: 'bg-slate-500',
   },
   rare: {
     bg: 'bg-gradient-to-br from-sky-500/55 via-sky-600/40 to-sky-900/60',
-    badge: 'bg-sky-500/30 text-sky-100 border border-sky-400/50',
+    badge: 'bg-sky-700 text-badge-on-solid',
     glow: 'shadow-[0_0_10px_-2px_rgba(56,189,248,0.45)]',
     segment: 'bg-sky-500',
   },
   epic: {
     bg: 'bg-gradient-to-br from-purple-500/60 via-purple-600/45 to-purple-900/65',
-    badge: 'bg-purple-500/35 text-purple-100 border border-purple-400/50',
+    badge: 'bg-purple-600 text-badge-on-solid',
     glow: 'shadow-[0_0_12px_-2px_rgba(192,132,252,0.5)]',
     segment: 'bg-purple-500',
   },
   legendary: {
     bg: 'bg-gradient-to-br from-amber-400/65 via-amber-500/50 to-amber-800/70',
-    badge: 'bg-amber-500/35 text-amber-100 border border-amber-400/55',
+    badge: 'bg-amber-700 text-badge-on-solid',
     glow: 'shadow-[0_0_14px_-2px_rgba(251,191,36,0.6)]',
     segment: 'bg-amber-400',
   },
   mythic: {
     bg: 'bg-gradient-to-br from-rose-500/65 via-rose-600/50 to-rose-900/70',
-    badge: 'bg-rose-500/35 text-rose-100 border border-rose-500/55',
+    badge: 'bg-rose-600 text-badge-on-solid',
     glow: 'shadow-[0_0_16px_-2px_rgba(244,63,94,0.6)]',
     segment: 'bg-rose-500',
   },

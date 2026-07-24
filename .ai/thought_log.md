@@ -324,6 +324,164 @@ DuckDB), données à rendre accessibles au worktree (junction — la retirer ava
 tout worktree remove).
 
 ---
+## [2026-07-24] Revue visuelle Médailles — 4 correctifs code+données — feat/career-medals-and-fixes
+
+**Statut** : COMPLÉTÉ (NON committé — superviseur). 4 défauts de revue visuelle corrigés niveau
+code+données, gates ciblés verts, serveur air rebuild+restart (:8000 = 200). Aucune vérif navigateur
+(revue visuelle = utilisateur). Sous-agent Opus d'exécution.
+
+**#1 « 0/167 obtenues » alors que medals_earned rempli** : cause RUNTIME confirmée par
+`logs/service.log` → `LoadMedalTotals: Binder Error: Referenced column "medal_id" not found`.
+`Q36aMedalTotals` lisait `medal_id` (colonne INEXISTANTE ; schéma réel `steps_shared_core.go` =
+`medal_name_id BIGINT` seul). Erreur → dégradation best-effort (WarnContext medals_service.go:72) →
+`earned=nil` → tout à 0. Affecte AUSSI Commendations (même Q36a) + prod — PAS un mismatch démo (hypothèse
+du plan infirmée). Fix (working tree pré-existant, VALIDÉ sur pièces) : `medal_id`→`medal_name_id` dans
+`queries_citations.go` + `medals_repo_test.go` (le schéma de test avait une colonne `medal_id` FICTIVE qui
+masquait le bug). PREUVE data (DB démo) : Q36a corrigé rend 41 médailles distinctes pour DemoPlayer (xuid
+0000000000000000), les 41 matchent le catalogue de 167 ; l'ancienne requête reproduit le Binder Error
+exact. Test intégration `TestMedalsRepo_LoadMedalTotals` vert. Merge (clés int64 medal_name_id) correct.
+
+**#2 onglet « Médailles » absent de la barre sous-onglets Carrière** : `NavL2.tsx` a sa propre liste
+`CAREER_TABS` (A2 n'avait câblé que le dropdown L1). Ajouté après `tab_citations` dans `CAREER_TABS` ET
+`CAREER_TABS_H5` (H5 a des médailles natives) ; clé i18n `common.nav.tab_medals` déjà présente (FR
+« Médailles »/EN « Medals »), route `career/medals.tsx` existante, `detectSection` route déjà
+`/career/medals`→'career'.
+
+**#3 « symbole » identique partout** : = anneau `CitationProgressRing` de chaque carte catégorie,
+identique car TOUS à 0 % (conséquence de #1), sans `title`/`aria-label`. Ajout d'un wrapper
+`<span title/aria-label={masteryLabel}>` côté `MedalsView.tsx` (composant partagé NON touché). Se résorbe
+visuellement avec #1 (anneaux variés une fois les compteurs réels).
+
+**#4 récompenses Battle Pass restent FR en UI EN** : cause ≠ « SELECT n'threade pas la locale » (le
+primaire `bpItemFieldCoalesce` threadait déjà, pré-Lot D). VRAI bug d'ORDRE : la chaîne anglaise vit dans
+`.value` (canonique en-US Waypoint), PAS dans `.translations.en-US` (ABSENT des payloads) ; l'ordre EN
+`COALESCE(t_en,t_fr,enJSON,frJSON,val)` plaçait `frJSON`(fr-FR) AVANT `val`(anglais) → EN retombait sur le
+FR. Fix : `value` reclassé source ANGLAISE via helper `bpLocaleOrderedCoalesce` (centralise l'ordre) ;
+`fillItemsFromAssetIndex` aussi rendu locale-aware. PREUVE data (DB démo) : EN corrigé rend « Timeless
+Moss » vs « Mousse intemporelle » (buggy). Test `TestBPItemFieldCoalesce_ValueIsEnglishSource` vert.
+
+**Gates** : `go build ./...` (CGO) exit 0 ; go test non-integration (duckdb/service/analysis) OK ;
+intégration `-p 1 -run TestMedalsRepo` PASS ; `make check-types` exit 0 ; eslint (NavL2+MedalsView) 0 ;
+vitest (MedalsView+CareerHubPage) 4/4 ; air rebuild+restart, :8000/health 200.
+
+**Reste** : vérif visuelle en session authentifiée (medals/season-pass ownership-gated → 403 sans auth,
+donc confirmation live-API non faisable, comportement attendu). Commit NON fait (interdit — superviseur).
+Découverte hors périmètre (non traitée) : `battlepass_track_translations` a ses propres lignes par-lang
+(en-US présent) → track name non concerné par le bug value-vs-translations des items.
+
+## [2026-07-23] Chantier Page Médailles + 3 correctifs Carrière — feat/career-medals-and-fixes
+
+**Statut** : COMPLÉTÉ — 6 lots committés sur `feat/career-medals-and-fixes` (B `9327fad9`, C `39e6a1b0`,
+pills `cf54da9b`, D `420a8ec8`, A1 `4e5e00f8`, A2 `20d07bb5`) + fix contrat OpenAPI (path `pages/medals`
+manquant → `TestContractRoutesDocumented` rouge, corrigé : bloc calqué sur `pages/commendations`,
+`$ref MedalsPageResponse`, `generate-types` régénéré +41 l). **Passe finale de gates : 9/9 verts en
+local** — tsc, vitest 2760 passed, eslint (8 warnings baseline connus), i18n parité (0 diff), drift
+OpenAPI MISSING=0, `go test ./...`, intégration `-p 1` (TOUT anti-ART/persist/migration vert), golangci
+ratchet 0 issue, baseline 0 test manquant. **MERGE-READY** — push `main` en attente du feu vert
+utilisateur (= deploy prod auto). Résiduels CI-only (sans risque) : baseline sous-mode coverage ±1pt,
+re-confirm Linux contract/drift (fix purement documentaire). À vérifier (non bloquant) : lecture prod
+`battlepass_snapshots.is_owned` pour valider le badge Premium (Lot C) sur un compte premium réel.
+
+**Contexte** : demande utilisateur — (A) nouvelle page Médailles style Citations affichant les
+médailles JAMAIS obtenues, groupées « à la SpartanRecord », compteur rouge si 0, filtre
+obtenues/non-obtenues, tri ; multi-titre (Halo 5 + futurs, contrainte confirmée) ; (B) masquer
+Assassinat/Coup au sol/Charge spartane non trackées par Halo Infinite ; (C) badge Premium du pass
+saisonnier fiable ; (D) Défis & Battle Pass qui ignorent la locale EN. Plan approuvé
+(~/.claude/plans/je-veux-que-tu-iterative-moore.md). Exécution PILOTÉE : un agent Opus par lot,
+séquentiel ; superviseur = branche/commits/gates/journal. Ordre B→C→D→A (risque croissant), 1 branche.
+
+**Décision technique principale (Lot A)** : taxonomie médailles RÉCONCILIÉE — les 2 catalogues
+partagent le même `medal_name_id` 343i (Killjoy 3233952928, Perfect 1512363953, vérifié sur pièces).
+Import unique du mapping `medal_id→catégorie(23)+super-section(4)` de SpartanRecord ; réutilisation
+noms/desc/difficulté/images LevelUp ; fallback `medal_type` pour non-mappés (custom/nouvelles/H5).
+Baseline (`medal_type`+`difficulty` du titre) = grouping natif de TOUT titre ; enrichissement
+SpartanRecord = Halo Infinite only, via un port `MedalCategoryResolver` (aucun `slug ==`).
+
+**Lot A1 — backend Médailles (Complété, NON committé — superviseur)** : endpoint
+`POST /players/{slug}/pages/medals` livré en couches. `analysis/medals.go` itère le CATALOGUE
+(count=0 surfacé + orphan fallback `#<id>`), `GroupMedalsByCategory`, baseline pure. Câblage
+title-agnostic = registre `slug→MedalCategoryResolver` dans le service (miroir
+`csrBadgeResolver`/`medalSpriteResolver`) : HINF enregistre `MedalCategoryResolver{}` sous
+`halo_infinite.TitleSlug` au boot (`server_apiv1.go`), défaut baseline, AUCUN `slug ==` (ratchet
+vert). Table SpartanRecord (164 médailles → catégorie(23)+super-section(4)+sort) générée via
+`//go:generate medal_category_gen.go` depuis `AllMedals.tsx` (régénération idempotente vérifiée).
+`ListAllMedals` réutilise `medalLabelDescCoalesceSQL` ; `LoadMedalTotals` réutilise
+`Q36aMedalTotals`. **DÉCOUVERTE corrigeant le plan** : les IDs SpartanRecord/HINF (Killjoy,
+Perfect) N'EXISTENT PAS dans la metadata H5 (difficulty H5 = valeur numérique, `difficulty_index`=0
+partout, 215 médailles) → Halo 5 passe 100% en baseline `medal_type` (`mode/multikill/other/
+proficiency/spree/style`) — c'est le fallback prévu, pas la « même `medal_name_id` » supposée.
+Gates verts : `go build ./...`, unitaires (analysis/games/service/handlers), intégration
+`medals_repo` (-p 1), drift OpenAPI MISSING=0 + `generate-types`, ratchet `no_slug_comparison`.
+Reste (superviseur) : commit + Lot A2 (front FR/EN des clés catégorie/super-section/rareté).
+
+**Lot A2 — frontend Médailles (Complété, NON committé — superviseur)** : sous-page Carrière
+`/players/$playerSlug/career/medals` sur le modèle Citations. Nouveaux fichiers `features/medals/`
+(`MedalsPage` conteneur + toolbar filtre/tri client, `MedalsView` rendu GÉNÉRIQUE des super-sections
+présentes — aucun nom de section en dur, `MedalCard`, `queries.useMedalsPage`, `labels.ts` résolution
+clé→libellé avec fallback clé brute pour futurs titres). Réutilise `CitationProgressRing`
+(pct=earned/total, doré si earned===total) + `MedalIcon` (sprite H5 vs PNG HINF). **Compteur rouge**
+= token sémantique `text-destructive` quand `count===0` (+ aria « Jamais obtenue » + `opacity-60` sur
+la tuile) ; sinon `text-foreground`. **Rareté** = pastille (tokens neutres) UNIQUEMENT si
+`difficulty_key ∈ {normal,heroic,legendary,mythic}` → confirme la DÉCOUVERTE A1 (H5 difficulty_key
+numérique → pas de pastille factice). Filtre client toutes/obtenues(`count>0`)/non-obtenues(`count===0`) ;
+3 tris : `category_total` (catégories par total_count desc DANS chaque super-section, grouping
+préservé), `medal_count` (médailles par count desc), `medal_name` (alpha locale-aware). Capability :
+**Halo 5 déclare `career`** (title.toml vérifié) → gate `career` suffit (parité Citations), pas de
+capability `medals` créée. i18n : manifeste `medals.toml` (54 clés : 4 super-sections + 26 catégories
++ 4 raretés + filtre/tri/aria/états) réutilisant la terminologie FR canonique de l'app (« Capture du
+drapeau », « Corps à corps », « Tireur d'élite », « Réserve », « Oddball ») ; `common.nav.tab_medals`.
+Nav L1 Carrière : onglet `medals` (frère de `citations`) + `medals` ajouté au regex `matchPathname`.
+`routeTree.gen.ts` régénéré par le watcher router (jamais édité à la main). Gates verts : `tsc -b`,
+`eslint` (color-tokens / no-hardcoded-strings / no-title-slug-literal) sur fichiers touchés, `vitest`
+ciblé (MedalCard rouge-si-0 + rareté H5, MedalsView générique — 5 tests), build i18n (parité FR/EN).
+
+**Lot B (Complété)** : `MatchScoreboard.tsx` — colonnes `assassination/ground_pound/shoulder_bash`
+stockées 0 (pas null) sur Infinite → non retirées par le filtre `presentKeys` (`0 != null`). Gate
+désormais `useCapability('native_kill_mechanics')` (absente Infinite, présente H5), threadé aux DEUX
+points de définition (`buildHighlightCols` + `hlDef` de `TeamScoreboard` — sinon le filtre final
+réaffiche les clés absentes de `hlKeys`). Gates : tsc exit 0 ; vitest 23/23 (MatchScoreboard +
+capabilities) ; eslint vert (baseline inchangée). Découvertes notées non traitées : commentaire
+inversé `capabilities.ts:11`, `MatchScoreboard.tsx` > 500 L, pas de test de rendu du masquage.
+
+**Lot C (Complété)** : `SeasonPassTrackSummary.PremiumOwned` (`json:premium_owned`) = signal BRUT
+`state.IsOwned` (persisté `battlepass_snapshots.is_owned` <- API 343i), sans la dilution
+`|| Rank>0 || IsActive` qui reste sur `IsOwned` (compat). Aux 2 sites builder (`buildTrackSummary`
++ `buildMinimalTrackSummary`). Badges « Premium » repointés (Home + SeasonPass). OpenAPI +
+generated.ts régénérés (drift MISSING=0). Gates : go build, tests ciblés duckdb/service, drift,
+generate-types, tsc, vitest 16/16 — verts. Démo = copie verbatim de `battlepass_snapshots` du
+joueur source (pas de fixture synthétique) → badge correct si le joueur source possède le pass.
+À VÉRIFIER EN PROD (lecture) : `is_owned` peuplé pour un compte premium connu (non bloquant, le
+chemin d'écriture est garanti côté code).
+
+**Ajout utilisateur — pills season pass pleines (Complété)** : réutilise `NarrativeBadge solid`
+(même rendu que les pills joueurs de Relations) via un wrapper `SeasonPassBadge` +
+`battlePassBadgeStyle.ts` (map rôle→token). Tokens `narrative-encounter-*` = seul set sombre
+palette-invariant garantissant l'AA sur blanc dans TOUTES les palettes daltonisme (vérifié
+`wcagContrast.test.ts`) ; texte blanc via `text-badge-on-solid` (pas de `#fff`). Restylé :
+SeasonPassPage (statut/actif/premium), HomeBattlePassPanel (possédé/actif), BattlePassRewardLightbox,
+rarity.ts (raretés pleines — couleurs Halo iconiques, exception connue du fichier). Gates : tsc,
+eslint 0/0, vitest verts. Découvertes : badge « Now showing » mort (isSelected codé false), chips
+PassContentSummary laissés neutres.
+
+**Lot D (Complété)** : Défis & Battle Pass restaient FR en UI EN — bug 100 % serveur, 3 causes.
+(A) fixture démo `demoChallenges` FR-only → `challenges.en.json` sélectionnée via `ctxkeys.Locale(ctx)`.
+(B) `challenge_snapshots` sans locale : `state_hash` langue-indépendant → dédup droppait la 2e locale.
+Découverte : la migration `add_challenge_snapshots_display_path` a été SQUASHÉE dans la baseline
+(golden gelé `TestSquashInvariant_*`) → ajouté un NOUVEAU step ALTER post-baseline
+`add_challenge_snapshots_locale` (`playerBaseSteps` + `canonicalOrder` après `create_baseline_player_v1`),
+sans muter baseline/golden ; `locale` dans la clé de dédup writer (INSERT-only, anti-ART OK) + filtre
+reader `(locale=? OR ''/NULL)` tolérant legacy. (C) `localizedText` FR-first figé → param `preferEN`
+(réutilise `bpPreferEN`) ; front `alt`+locale intl via clé i18n `home.battle_pass.image_alt`. Gates :
+go build, unitaires, INTÉGRATION (golden invariants + anti-ART + roundtrip coexistence FR/EN), i18n
+régénéré, tsc, vitest — tous verts. Tests ajoutés (coexistence, ordering, démo FR/EN distinct).
+
+**Conclusion / prochaine étape** : commit A1. Reste A2 (frontend Médailles : page style Citations,
+filtre obtenues/non-obtenues, tri, compteur rouge si 0, nav L1, i18n des clés catégorie/super-section/
+rareté fournies par A1). À vérifier avant merge (superviseur) : lecture prod
+`battlepass_snapshots.is_owned` (Lot C) ; passe finale complète de gates. Aucun push `main` sans feu
+vert (= deploy prod auto).
+
+---
 ## [2026-07-23] Réintégration + validation des 4 retouches FDA gap sur origin/main
 
 **Statut** : Complété. Branche `integrate/fda-gap-followups` rebasée sur `origin/main`

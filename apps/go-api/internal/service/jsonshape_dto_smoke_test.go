@@ -140,6 +140,16 @@ func TestDTOs_NoNilSlicesOnEmptyInput(t *testing.T) {
 		testutil.RequireNoNilSlicesWithoutOmitempty(t, resp)
 	})
 
+	t.Run("MedalsService.GetMedalsPage", func(t *testing.T) {
+		repo := &mockMedalsRepo{catalog: []domain.MedalCatalogRow{}, earned: []domain.MedalEarnedRow{}}
+		svc := NewMedalsService(repo)
+		resp, err := svc.GetMedalsPage(context.Background(), "")
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
+		testutil.RequireNoNilSlicesWithoutOmitempty(t, resp)
+	})
+
 	t.Run("LeaderboardService.GetPage", func(t *testing.T) {
 		repo := &mockLeaderboardRepo{csrWorld: []domain.LeaderboardEntry{}}
 		svc := NewLeaderboardService(repo)

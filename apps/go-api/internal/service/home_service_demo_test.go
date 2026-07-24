@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"testing"
+
+	"levelup/go-api/internal/ctxkeys"
 )
 
 // TestGetChallenges_DemoMode : en DemoMode, GetChallenges sert la fixture embarquée
@@ -29,5 +31,33 @@ func TestGetChallenges_DemoMode(t *testing.T) {
 		if it.Title == "" {
 			t.Errorf("demo challenges: item %d sans titre", i)
 		}
+	}
+}
+
+// TestGetChallenges_DemoMode_LocaleSelectsFixture : en démo, la fixture est servie
+// dans la locale de la requête (ctxkeys.Locale). Régression du bug « défis en FR
+// quand l'UI est en anglais » : sans sélection par locale, EN retombait sur la
+// fixture FR-only.
+func TestGetChallenges_DemoMode_LocaleSelectsFixture(t *testing.T) {
+	svc := NewHomeService(nil).WithDemoMode(true)
+
+	fr := svc.GetChallenges(ctxkeys.WithLocale(context.Background(), "fr"))
+	en := svc.GetChallenges(ctxkeys.WithLocale(context.Background(), "en"))
+
+	if len(fr.Items) == 0 || len(en.Items) == 0 {
+		t.Fatalf("demo challenges: items vides (fr=%d, en=%d)", len(fr.Items), len(en.Items))
+	}
+	if len(fr.Items) != len(en.Items) {
+		t.Fatalf("demo challenges: parité FR/EN rompue (fr=%d, en=%d)", len(fr.Items), len(en.Items))
+	}
+	// Le 1er défi doit différer entre FR et EN (libellés traduits, pas la même string).
+	if fr.Items[0].Title == en.Items[0].Title {
+		t.Errorf("demo challenges: titre identique FR/EN (%q) — la locale n'est pas prise en compte", fr.Items[0].Title)
+	}
+	if en.Items[0].Title != "Killing Spree" {
+		t.Errorf("demo challenges EN: 1er titre attendu %q, got %q", "Killing Spree", en.Items[0].Title)
+	}
+	if fr.Items[0].Title != "Tueur en série" {
+		t.Errorf("demo challenges FR: 1er titre attendu %q, got %q", "Tueur en série", fr.Items[0].Title)
 	}
 }
