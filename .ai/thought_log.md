@@ -1,3 +1,48 @@
+## [2026-07-24] Revue visuelle Médailles — 4 correctifs code+données — feat/career-medals-and-fixes
+
+**Statut** : COMPLÉTÉ (NON committé — superviseur). 4 défauts de revue visuelle corrigés niveau
+code+données, gates ciblés verts, serveur air rebuild+restart (:8000 = 200). Aucune vérif navigateur
+(revue visuelle = utilisateur). Sous-agent Opus d'exécution.
+
+**#1 « 0/167 obtenues » alors que medals_earned rempli** : cause RUNTIME confirmée par
+`logs/service.log` → `LoadMedalTotals: Binder Error: Referenced column "medal_id" not found`.
+`Q36aMedalTotals` lisait `medal_id` (colonne INEXISTANTE ; schéma réel `steps_shared_core.go` =
+`medal_name_id BIGINT` seul). Erreur → dégradation best-effort (WarnContext medals_service.go:72) →
+`earned=nil` → tout à 0. Affecte AUSSI Commendations (même Q36a) + prod — PAS un mismatch démo (hypothèse
+du plan infirmée). Fix (working tree pré-existant, VALIDÉ sur pièces) : `medal_id`→`medal_name_id` dans
+`queries_citations.go` + `medals_repo_test.go` (le schéma de test avait une colonne `medal_id` FICTIVE qui
+masquait le bug). PREUVE data (DB démo) : Q36a corrigé rend 41 médailles distinctes pour DemoPlayer (xuid
+0000000000000000), les 41 matchent le catalogue de 167 ; l'ancienne requête reproduit le Binder Error
+exact. Test intégration `TestMedalsRepo_LoadMedalTotals` vert. Merge (clés int64 medal_name_id) correct.
+
+**#2 onglet « Médailles » absent de la barre sous-onglets Carrière** : `NavL2.tsx` a sa propre liste
+`CAREER_TABS` (A2 n'avait câblé que le dropdown L1). Ajouté après `tab_citations` dans `CAREER_TABS` ET
+`CAREER_TABS_H5` (H5 a des médailles natives) ; clé i18n `common.nav.tab_medals` déjà présente (FR
+« Médailles »/EN « Medals »), route `career/medals.tsx` existante, `detectSection` route déjà
+`/career/medals`→'career'.
+
+**#3 « symbole » identique partout** : = anneau `CitationProgressRing` de chaque carte catégorie,
+identique car TOUS à 0 % (conséquence de #1), sans `title`/`aria-label`. Ajout d'un wrapper
+`<span title/aria-label={masteryLabel}>` côté `MedalsView.tsx` (composant partagé NON touché). Se résorbe
+visuellement avec #1 (anneaux variés une fois les compteurs réels).
+
+**#4 récompenses Battle Pass restent FR en UI EN** : cause ≠ « SELECT n'threade pas la locale » (le
+primaire `bpItemFieldCoalesce` threadait déjà, pré-Lot D). VRAI bug d'ORDRE : la chaîne anglaise vit dans
+`.value` (canonique en-US Waypoint), PAS dans `.translations.en-US` (ABSENT des payloads) ; l'ordre EN
+`COALESCE(t_en,t_fr,enJSON,frJSON,val)` plaçait `frJSON`(fr-FR) AVANT `val`(anglais) → EN retombait sur le
+FR. Fix : `value` reclassé source ANGLAISE via helper `bpLocaleOrderedCoalesce` (centralise l'ordre) ;
+`fillItemsFromAssetIndex` aussi rendu locale-aware. PREUVE data (DB démo) : EN corrigé rend « Timeless
+Moss » vs « Mousse intemporelle » (buggy). Test `TestBPItemFieldCoalesce_ValueIsEnglishSource` vert.
+
+**Gates** : `go build ./...` (CGO) exit 0 ; go test non-integration (duckdb/service/analysis) OK ;
+intégration `-p 1 -run TestMedalsRepo` PASS ; `make check-types` exit 0 ; eslint (NavL2+MedalsView) 0 ;
+vitest (MedalsView+CareerHubPage) 4/4 ; air rebuild+restart, :8000/health 200.
+
+**Reste** : vérif visuelle en session authentifiée (medals/season-pass ownership-gated → 403 sans auth,
+donc confirmation live-API non faisable, comportement attendu). Commit NON fait (interdit — superviseur).
+Découverte hors périmètre (non traitée) : `battlepass_track_translations` a ses propres lignes par-lang
+(en-US présent) → track name non concerné par le bug value-vs-translations des items.
+
 ## [2026-07-23] Chantier Page Médailles + 3 correctifs Carrière — feat/career-medals-and-fixes
 
 **Statut** : COMPLÉTÉ — 6 lots committés sur `feat/career-medals-and-fixes` (B `9327fad9`, C `39e6a1b0`,
