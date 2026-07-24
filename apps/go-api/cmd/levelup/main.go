@@ -115,6 +115,8 @@ func main() {
 		exitErr = runRecomputeFriends(cfg, args)
 	case "backfill-squad-creators":
 		exitErr = runBackfillSquadCreators(cfg, args)
+	case "backfill-h5-kill-mechanics":
+		exitErr = runBackfillH5KillMechanics(cfg, args)
 	case "migrate":
 		exitErr = runMigrate(cfg, args)
 	case "restore-csr":
@@ -168,6 +170,7 @@ Commandes:
   consolidate-aliases  Merge la DB globale xbox_aliases dans shared.xuid_aliases (dédup par xuid) — serveur arrêté
   recompute-friends Recompute is_with_friends sur toutes les player DBs (idempotent, --dry-run dispo)
   backfill-squad-creators Réinscrit le créateur manquant dans les escouades legacy (append-only, idempotent, --dry-run dispo, serveur arrêté)
+  backfill-h5-kill-mechanics Corrige les mécaniques de kill H5 (assassination/ground_pound/shoulder_bash) écrites à 0 avant l'activation du mapper (re-fetch carnage, UPDATE ciblé, --dry-run dispo, serveur arrêté)
   migrate         Migrer les donnees vers le namespace multi-titres
   restore-csr     Restaurer les CSR historiques depuis un backup DuckDB legacy (--gamertag X --backup PATH [--dry-run] [--mode preserve|overwrite])
   add-title       Initialiser l'arborescence d'un nouveau titre de jeu
