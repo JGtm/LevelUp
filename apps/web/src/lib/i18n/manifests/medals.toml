@@ -9,12 +9,6 @@
 # Terminologie FR canonique reutilisee de l'app (asset_labels_fr) pour les modes
 # Halo : « Capture du drapeau », « Corps a corps », « Tireur d'elite », « Reserve ».
 
-# ─── Titre page (onglet navigateur) ──────────────────────────────────────────
-
-[medals.page_title]
-fr = "Médailles"
-en = "Medals"
-
 [medals.header.title]
 fr = "Médailles — {earned}/{total} obtenues"
 en = "Medals — {earned}/{total} earned"

@@ -95,7 +95,7 @@ func computeWinsFirefight(ctx domain.CitationContext) int {
 	pl := ctx.Playlist
 	gv := ctx.GameVariant
 	if ctx.IsFirefight ||
-		strings.Contains(pl, "firefight") || strings.Contains(pl, "baptÃªme") ||
+		strings.Contains(pl, "firefight") || strings.Contains(pl, "baptême") ||
 		strings.Contains(pl, "bapteme") || strings.Contains(gv, "firefight") {
 		return 1
 	}

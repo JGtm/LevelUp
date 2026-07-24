@@ -59,9 +59,9 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
 - **Code mort** — builder `winRateVsHistoryChart` (0 caller) supprimé avec sa clé i18n orpheline ; le builder d'efficacité d'escouade 1-joueur + son toggle/légende footer supprimés (supplantés par les graphes multi-joueurs).
 
-## [Non publié] - 2026-06-15
+## [7.0.0] - 2026-07-23
 
-> Entrée consolidée regroupant le travail livré depuis le 2026-05-02 (v7.0 pas encore publiée). Résumé par domaine, pas commit par commit.
+> Entrée consolidée regroupant le travail livré depuis le 2026-05-02 — auparavant étiquetée « Non publié » en attendant le tag ; déployée en prod sous le tag git `v7.0.0` le 2026-07-23. Résumé par domaine, pas commit par commit. *Note de numérotation : une entrée `[7.0.0]` plus ancienne et sans rapport, issue de l'app Python/Streamlit pré-migration (2026-04-12), existe déjà plus bas dans ce journal — conservée telle quelle pour la continuité historique ; les deux étiquettes `7.0.0` désignent des produits différents (Python vs la stack Go/React actuelle), pas une re-publication.*
 
 ### Ajouté (React / TypeScript)
 

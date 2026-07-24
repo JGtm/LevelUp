@@ -5,8 +5,7 @@
  * comparée) → comparaison "côte à côte" : on lit la session A à gauche et la session B
  * à droite, mêmes graphes alignés. Pas de graphe combiné A/B.
  *
- * - `dense` (drawer) : tout en 1 colonne (le panneau est déjà étroit).
- *   Vue principale : quelques paires en 2 colonnes.
+ * - `compact` : colonne divisée (drawer ouvert) — donuts en % interne, sunburst frags empilé.
  * - `participationSide` / `participationColor` : l'axe du profil de participation est à
  *   DROITE + couleur A en vue single, à GAUCHE + couleur B dans le drawer → effet miroir.
  */
@@ -45,7 +44,6 @@ interface Props {
   matches: SessionDetailMatchRow[]
   /** Colonne divisée (vue compacte / drawer) : donuts en % interne (pas d'étiquette externe). */
   compact?: boolean
-  dense?: boolean
   participationSide?: 'left' | 'right'
   participationColor?: SemanticToken
   /** Bornes d'axe partagées A/B (mode comparaison) — fige les échelles pour comparabilité. */
@@ -58,7 +56,6 @@ export function SessionChartStack({
   entry,
   matches,
   compact = false,
-  dense = false,
   participationSide = 'right',
   participationColor = 'compare-a',
   scale,
@@ -180,34 +177,9 @@ export function SessionChartStack({
   const damage = <SessionDamageComposite title={t('session.detail.chart_damage_title')} matches={matches} />
   // Répartition des frags v2 (sunburst classe→rôle + « Détails des frags ») — alimentée par
   // l'agrégat de session (P5). Rend null si aucune donnée. Rendu Match view (compteur seul,
-  // légende gauche, survol lié) ; EMPILÉ quand la colonne est étroite (`dense` drawer OU
-  // `compact` = colonne principale rétrécie par le drawer de comparaison).
-  const frags = <SessionFragCard entry={entry} stacked={dense || compact} />
-
-  if (dense) {
-    return (
-      <>
-        {outcomeDonut}
-        {killsDonut}
-        {modeBreakdown}
-        {placementBreakdown}
-        {fdaRadar}
-        {fragsRadar}
-        {netScore}
-        {fdaBars}
-        {fdaGap}
-        {netLives}
-        {intensity}
-        {participation}
-        {mmr}
-        {ocdr}
-        {perf}
-        {engagement}
-        {damage}
-        {frags}
-      </>
-    )
-  }
+  // légende gauche, survol lié) ; EMPILÉ quand la colonne est étroite (`compact` = colonne
+  // principale rétrécie par le drawer de comparaison).
+  const frags = <SessionFragCard entry={entry} stacked={compact} />
 
   return (
     <>

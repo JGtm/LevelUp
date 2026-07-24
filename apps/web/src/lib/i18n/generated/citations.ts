@@ -33,8 +33,6 @@ export const citationsManifest = {
   "citations.medals.col_count_filtered": { fr: "Filtré", en: "Filtered" },
   "citations.medals.col_count_total": { fr: "Total", en: "Total" },
   "citations.medals.col_name": { fr: "Médaille", en: "Medal" },
-  "citations.page_title": { fr: "Citations", en: "Citations" },
-  "citations.section.commendations": { fr: "Citations", en: "Commendations" },
   "citations.section.distribution": { fr: "Distribution", en: "Distribution" },
   "citations.section.mastery_title": { fr: "Citations — Maîtrise {completed}/{total}", en: "Commendations — Mastery {completed}/{total}" },
   "citations.section.medals_summary": { fr: "Médailles", en: "Medals" },

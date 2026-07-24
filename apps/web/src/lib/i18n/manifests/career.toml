@@ -95,6 +95,21 @@ en = "XP history"
 fr = "XP cumulé"
 en = "Cumulative XP"
 
+# Libellés courts du type de courbe dans le tooltip XP (real/estimated/optimistic).
+# `proj-normal` n'a pas d'entrée ici : son libellé est le nom du rang max résolu
+# dynamiquement (title-agnostic, cf. max_rank_generic) — jamais ces 3 clés.
+[career.charts.xp_type_real]
+fr = "réel"
+en = "actual"
+
+[career.charts.xp_type_estimated]
+fr = "estimé"
+en = "estimated"
+
+[career.charts.xp_type_optimistic]
+fr = "optimiste"
+en = "optimistic"
+
 [career.charts.lusr_rating_title]
 fr = "Rating LUSR"
 en = "LUSR rating"

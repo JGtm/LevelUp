@@ -43,7 +43,6 @@ export const medalsManifest = {
   "medals.filter.not_obtained": { fr: "Non obtenues", en: "Not earned" },
   "medals.filter.obtained": { fr: "Obtenues", en: "Earned" },
   "medals.header.title": { fr: "Médailles — {earned}/{total} obtenues", en: "Medals — {earned}/{total} earned" },
-  "medals.page_title": { fr: "Médailles", en: "Medals" },
   "medals.rarity.heroic": { fr: "Héroïque", en: "Heroic" },
   "medals.rarity.legendary": { fr: "Légendaire", en: "Legendary" },
   "medals.rarity.mythic": { fr: "Mythique", en: "Mythic" },
