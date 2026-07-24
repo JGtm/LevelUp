@@ -35,6 +35,17 @@ func defaultCitationMappings() []CitationMapping {
 			Category:    citationCatModeJeu,
 			Description: "Terminez n'importe quelle partie matchmaking Assassin avec un FDA supérieur à 8.",
 			TierTargets: tierTargets3_6_9_15_30},
+		// BUG D (I7, 2026-07-24) — EN ATTENTE DE DÉCISION UTILISATEUR : flag_defender
+		// (« Protégez le drapeau de votre équipe ») partage award_name "carrier_killed"
+		// avec flag_carrier_hunter (« Tuez un porte-drapeau ennemi »). "carrier_killed"
+		// est SÉMANTIQUEMENT CORRECT pour flag_carrier_hunter, mais pas pour la défense.
+		// Aucun award d'ingestion (refdata_personal_scores.go) n'est un « défense de
+		// drapeau » NON AMBIGU. Candidats de remap possibles (décision user) :
+		//   - "carrier_stopped" (objective, non utilisé ailleurs) — stopper le porteur
+		//     ennemi de VOTRE drapeau : le plus proche sémantiquement ;
+		//   - "flag_returned" (objective) — déjà consommé par la citation `got_you` ;
+		//   - "runner_stopped" (objective) — stopper un porteur, plus générique.
+		// Statu quo conservé (carrier_killed) tant que l'utilisateur n'a pas tranché.
 		{Norm: "flag_defender", Display: "Défenseur du drapeau", MappingType: mappingTypeAward,
 			AwardName: "carrier_killed", AwardCategory: awardCategoryObjective, Enabled: true,
 			ImagePath:   wpH5 + "H5G_citation_Défenseur_du_drapeau.png",
@@ -84,7 +95,13 @@ func defaultCitationMappings() []CitationMapping {
 			Category:    citationCatVehicule,
 			Description: "Écrasez un Spartan adverse avec un véhicule.",
 			TierTargets: tierTargets10_20_30_50_100, Subcategory: citationSubGeneral},
-		{Norm: "driver", Display: "Pilote", MappingType: mappingTypeMedal, MedalID: 3169118333, Enabled: true,
+		// BUG C (I7, 2026-07-24) : `driver` et `road_trip` pointaient tous deux la
+		// médaille 3169118333 (« Violence routière »/vehicle-kill). Le nom EN de
+		// cette citation est « Wheelman » (cf. citationDisplayEN) = médaille de
+		// pilote-assist (categorie "assists" dans medal_category_table.go:120),
+		// medal_id 2926348688 → remap ici. Distinct de 3169118333 (vehicles), ce
+		// qui lève la collision côté `driver`.
+		{Norm: "driver", Display: "Pilote", MappingType: mappingTypeMedal, MedalID: 2926348688, Enabled: true,
 			ImagePath:   wpH5 + "H5G_citation_Pilote.png",
 			Category:    citationCatVehicule,
 			Description: "Décrochez des médailles de pilote.",
@@ -219,6 +236,14 @@ func defaultCitationMappings() []CitationMapping {
 			Category:    citationCatSpartanCompanies,
 			Description: "Tuer un Spartan ennemi avec une arme puissante",
 			TierTargets: "10000,20000,30000,48000,97200"},
+		// BUG C (I7, 2026-07-24) — EN ATTENTE DE DÉCISION UTILISATEUR : road_trip
+		// conserve medal_id 3169118333 (« Violence routière », vehicle-kill). C'est
+		// vraisemblablement la bonne médaille pour « Tuer avec un véhicule terrestre »,
+		// mais le remap de `driver` ci-dessus lève déjà la collision fonctionnelle.
+		// Ne PAS toucher tant que l'utilisateur n'a pas tranché la médaille cible.
+		// Désactivation propre possible si besoin : passer Enabled à false (le seed
+		// écrit alors enabled=FALSE ; le moteur ignore la citation via
+		// `WHERE enabled IS NOT FALSE`, cf. loadFullCitationMappings) — non appliqué ici.
 		{Norm: "road_trip", Display: "Virée sur la route", MappingType: mappingTypeMedal, MedalID: 3169118333, Enabled: true,
 			ImagePath:   wpH5 + "H5G_citation_Road_Trip.png",
 			Category:    citationCatSpartanCompanies,
