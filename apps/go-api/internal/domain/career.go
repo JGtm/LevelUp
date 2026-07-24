@@ -26,6 +26,13 @@ type CareerRankData struct {
 	IsMaxRank     bool
 	XPHeroTotal   *int
 	RankMax       *int
+	// MaxRankNameFR / MaxRankNameEN (optionnels) portent le LIBELLÉ localisé du
+	// rang maximum du titre quand la source le connaît (Halo 5 : « SR 152 »). Nil
+	// = non fourni par la source → le service résout depuis son catalogue de rangs
+	// (Halo Infinite : « Héros »), sinon dégrade vers un libellé générique côté
+	// front. Title-agnostic : aucun libellé de jeu en dur dans le service.
+	MaxRankNameFR *string
+	MaxRankNameEN *string
 }
 
 // TopMatchRawRow est le type de transfert brut pour les top matches.
@@ -77,13 +84,21 @@ type CareerRankSummary struct {
 	NextRankImageURL *string    `json:"next_rank_image_url,omitempty"`
 }
 
-// HeroProgress représente la progression vers le rang maximum.
+// HeroProgress représente la progression vers le rang maximum du titre.
+//
+// MaxRankNameFR / MaxRankNameEN portent le LIBELLÉ localisé du rang sommet
+// (Halo Infinite : « Héros » / « Hero » ; Halo 5 : « SR 152 »), résolu title-
+// agnostic depuis le catalogue de rangs du titre ou la source. Vides (omitempty)
+// = le front affiche un libellé générique (« rang max »). Le vocabulaire « Héros »
+// n'est JAMAIS codé en dur côté front : il provient de ces champs.
 type HeroProgress struct {
 	XPTotalRequired int     `json:"xp_total_required"`
 	XPRemaining     int     `json:"xp_remaining"`
 	Percentage      float64 `json:"percentage"`
 	CurrentRank     int     `json:"current_rank"`
 	TotalRanks      int     `json:"total_ranks"`
+	MaxRankNameFR   string  `json:"max_rank_name_fr,omitempty"`
+	MaxRankNameEN   string  `json:"max_rank_name_en,omitempty"`
 }
 
 // CareerProjections représente les projections de date d'atteinte du rang max.

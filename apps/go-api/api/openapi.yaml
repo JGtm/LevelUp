@@ -4426,6 +4426,10 @@ components:
           current_rank:
               format: int64
               type: integer
+          max_rank_name_en:
+              type: string
+          max_rank_name_fr:
+              type: string
           percentage:
               format: double
               type: number

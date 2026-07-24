@@ -3778,6 +3778,8 @@ export interface components {
         HeroProgress: {
             /** Format: int64 */
             current_rank: number;
+            max_rank_name_en?: string;
+            max_rank_name_fr?: string;
             /** Format: double */
             percentage: number;
             /** Format: int64 */

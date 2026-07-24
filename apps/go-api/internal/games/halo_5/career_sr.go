@@ -130,6 +130,9 @@ func applyDefaultSpartanRankBounds(snap *canonical.CareerSnapshot) {
 		xpMax := h5SRStartXP[h5MaxSpartanRank-1]
 		snap.XPMax = &xpMax
 	}
+	if snap.MaxRank == nil {
+		snap.MaxRank = h5SRAssetRef(h5MaxSpartanRank)
+	}
 }
 
 // SpartanRankProgression dérive (current_xp, xp_for_next, xp_total, is_max) d'un
@@ -170,11 +173,14 @@ func applySpartanRank(snap *canonical.CareerSnapshot, spartanRank, totalXP int) 
 	snap.RankNumber = spartanRank
 	snap.CurrentRank = h5SRAssetRef(spartanRank)
 	// Bornes de progression « Héros » Halo 5 (title-agnostic : le service les lit
-	// au lieu des constantes HINF). RankMax = SR152 ; XPMax = XP cumulé au SR152.
+	// au lieu des constantes HINF). RankMax = SR152 ; XPMax = XP cumulé au SR152 ;
+	// MaxRank = libellé du rang sommet (« SR 152 ») pour le titre du gauge « path
+	// to max rank » — le service le recopie dans HeroProgress.MaxRankName*.
 	rankMax := h5MaxSpartanRank
 	xpMax := h5SRStartXP[h5MaxSpartanRank-1]
 	snap.RankMax = &rankMax
 	snap.XPMax = &xpMax
+	snap.MaxRank = h5SRAssetRef(h5MaxSpartanRank)
 	if totalXP > 0 {
 		xt := totalXP
 		snap.XPTotal = &xt

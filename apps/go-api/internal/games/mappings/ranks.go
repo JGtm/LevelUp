@@ -116,6 +116,24 @@ func (c *RankCatalog) CumulativeXPRequired(uptoRankInclusive int) int {
 	return total
 }
 
+// MaxRank retourne l'entrée du rang SOMMET du titre (rank_id le plus élevé chargé).
+// Sert à résoudre le libellé du rang maximum (« Héros » pour Halo Infinite) sans
+// coder en dur l'identifiant du rang max. Retourne (zero, false) si le catalog est
+// vide/nil.
+func (c *RankCatalog) MaxRank() (RankEntry, bool) {
+	if c == nil || len(c.byID) == 0 {
+		return RankEntry{}, false
+	}
+	maxID := -1
+	for id := range c.byID {
+		if id > maxID {
+			maxID = id
+		}
+	}
+	e, ok := c.byID[maxID]
+	return e, ok
+}
+
 // FullLabel résout le libellé complet d'un rang dans la locale demandée.
 // Retourne ("", false) si rank_id est absent.
 func (c *RankCatalog) FullLabel(id int, locale string) (string, bool) {

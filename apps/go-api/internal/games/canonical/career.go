@@ -29,6 +29,15 @@ type CareerSnapshot struct {
 	XPMax   *int
 	RankMax *int
 
+	// MaxRank (optionnel) — référence d'asset du rang MAXIMUM du titre (libellés
+	// localisés). Sert au libellé « progression vers le rang max » de la page
+	// Carrière, title-agnostic : l'adapter du titre (qui connaît le nom de son rang
+	// sommet) le renseigne — Halo 5 = « SR 152 », Halo Infinite = laissé nil (le
+	// service résout le libellé « Héros » depuis son catalogue de rangs). Nil =
+	// le service retombe sur le catalogue du titre puis, à défaut, un libellé
+	// générique côté front.
+	MaxRank *AssetReference
+
 	// Bloc Rank* enrichi (utile pour la page Carrière complète, pas seulement
 	// pour la home preview). Ces champs sont peuplés à partir du provider
 	// quand disponibles, sinon laissés à zéro.

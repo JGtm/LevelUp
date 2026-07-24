@@ -45,8 +45,8 @@ fr = "Atteinte rang max estimée"
 en = "Estimated rank cap date"
 
 [career.summary.estimated_hero]
-fr = "Rang Héros estimé"
-en = "Estimated Hero rank date"
+fr = "Atteinte du rang max estimée"
+en = "Estimated max rank date"
 
 [career.summary.xp_next_rank]
 fr = "XP prochain rang"
@@ -75,8 +75,21 @@ fr = "Progression du rang"
 en = "Rank progress"
 
 [career.charts.hero_progress]
-fr = "Progression Héros"
-en = "Hero progress"
+fr = "Progression vers le rang max"
+en = "Progress to max rank"
+
+# Libellé « progression vers le rang max » avec le NOM du rang sommet interpolé
+# ({rank} = « Héros » Halo Infinite, « SR 152 » Halo 5, résolu par le titre). Le
+# vocabulaire du rang max n'est jamais codé en dur : il vient du payload/catalogue.
+[career.charts.max_rank_progress]
+fr = "Progression vers {rank}"
+en = "Progress to {rank}"
+
+# Repli générique du nom de rang max quand la source ne le fournit pas (titre sans
+# catalogue de rangs, dégradation) — interpolé dans max_rank_progress.
+[career.charts.max_rank_generic]
+fr = "le rang max"
+en = "max rank"
 
 [career.charts.xp_history_title]
 fr = "Historique XP"
@@ -201,8 +214,8 @@ fr = "Progression vers le prochain rang"
 en = "Progress to next rank"
 
 [career.charts.hero_gauge_title]
-fr = "Progression vers le rang Héros"
-en = "Progress to Hero rank"
+fr = "Progression vers le rang max"
+en = "Progress to max rank"
 
 [career.charts.lusr_evolution_title]
 fr = "Évolution LUSR / CSR"
