@@ -65,6 +65,7 @@ func NewSyncEngineForTitle(
 		playerDBPath:   pr.PlayerDBPath(titleSlug, gamertag),
 		sharedDBPath:   pr.SharedDBPath(titleSlug),
 		metadataDBPath: pr.MetadataDBPath(titleSlug),
+		pveDBPath:      pr.SharedPVEDBPath(titleSlug),
 		syncCacheDir:   pr.SyncCacheDir(),
 		tokens:         tokens,
 		provider:       provider,

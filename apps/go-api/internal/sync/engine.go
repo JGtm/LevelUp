@@ -74,8 +74,12 @@ type SyncEngine struct {
 	playerDBPath   string
 	sharedDBPath   string
 	metadataDBPath string
-	syncCacheDir   string // Phase 2 refactor Collect→Persist : data/sync_cache/ root (cf. PathResolver.SyncCacheDir)
-	tokens         *domain.HaloTokens
+	// pveDBPath : shared_pve.duckdb du titre (stats Firefight). Lu en RO pour les
+	// citations pve_stat (BUG A / I7). Peut pointer un fichier inexistant sur un
+	// titre sans Firefight → lecture dégradée gracieusement (OpenPveReadForCitations).
+	pveDBPath    string
+	syncCacheDir string // Phase 2 refactor Collect→Persist : data/sync_cache/ root (cf. PathResolver.SyncCacheDir)
+	tokens       *domain.HaloTokens
 	// provider est utilisé pour résoudre l'access_token Xbox Live (achievements).
 	// Nil si non défini (les achievements seront ignorés).
 	provider auth.TokenProvider

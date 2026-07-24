@@ -14,6 +14,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"os"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
@@ -23,6 +24,38 @@ import (
 	"levelup/go-api/internal/platform/dblease"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
+
+// OpenPveReadForCitations ouvre shared_pve.duckdb en LECTURE pour le pipeline
+// citations (BUG A / I7). Utilise OpenReadForQuery : réutilise le handle process
+// s'il est déjà tenu (RW par le serveur, RO sinon) — jamais un 2e handle avec une
+// configuration différente (règle mono-process, ADR 0013/0016).
+//
+// Dégradation gracieuse — retourne (nil, noop) sans échec quand :
+//   - pvePath vide ;
+//   - le fichier n'existe pas (titre sans Firefight) ;
+//   - l'ouverture RO échoue.
+//
+// Le loader loadPveStats traite un pveDB nil comme « pas de stats PvE » : les
+// citations pve_stat restent à 0, aucune erreur ne remonte. Le release retourné
+// doit être différé par le caller.
+func OpenPveReadForCitations(ctx context.Context, pvePath string) (*sql.DB, func()) {
+	noop := func() {}
+	if pvePath == "" {
+		return nil, noop
+	}
+	if _, err := os.Stat(pvePath); err != nil {
+		slog.DebugContext(ctx, "citations: shared_pve absent — stats PvE ignorées",
+			"path", pvePath, "err", err)
+		return nil, noop
+	}
+	db, release, err := duckdbpkg.OpenReadForQuery(pvePath)
+	if err != nil {
+		slog.WarnContext(ctx, "citations: ouverture shared_pve échouée — stats PvE ignorées",
+			"path", pvePath, "err", err)
+		return nil, noop
+	}
+	return db, release
+}
 
 // RunBackfillCitations calcule et persiste les citations dans match_citations
 // pour les matchs du joueur. Retourne le nombre de match_ids traités.
@@ -76,11 +109,16 @@ func (e *SyncEngine) RunBackfillCitations(ctx context.Context, force bool) (int,
 		}
 	}
 
+	// shared_pve (stats Firefight) en lecture RO — BUG A / I7. Dégradation
+	// gracieuse si le titre n'a pas de Firefight (fichier absent).
+	pveDB, releasePve := OpenPveReadForCitations(ctx, e.pveDBPath)
+	defer releasePve()
+
 	slog.InfoContext(ctx, "citations: backfill en cours",
 		"player", e.gamertag, "match_count", len(matchIDs), "force", force)
 
 	if err := BackfillMatchCitations(
-		ctx, metaDB, sharedDB, playerHandle.SQLDb(),
+		ctx, metaDB, sharedDB, playerHandle.SQLDb(), pveDB,
 		e.xuid, matchIDs,
 	); err != nil {
 		return 0, fmt.Errorf("RunBackfillCitations backfill: %w", err)
@@ -342,7 +380,13 @@ func (e *SyncEngine) runPostSyncCitations(ctx context.Context, playerDB, sharedD
 	}
 	slog.InfoContext(ctx, "citations post-sync: nouveaux matchs détectés",
 		"player", e.gamertag, "count", len(matchIDs))
-	if err := BackfillMatchCitations(ctx, metaDB, sharedDB, playerDB, e.xuid, matchIDs); err != nil {
+
+	// shared_pve en lecture RO (BUG A / I7) : OpenReadForQuery réutilise le handle
+	// process s'il est déjà tenu. Dégradation gracieuse si absent.
+	pveDB, releasePve := OpenPveReadForCitations(ctx, e.pveDBPath)
+	defer releasePve()
+
+	if err := BackfillMatchCitations(ctx, metaDB, sharedDB, playerDB, pveDB, e.xuid, matchIDs); err != nil {
 		return 0, fmt.Errorf("backfill: %w", err)
 	}
 	return len(matchIDs), nil

@@ -82,9 +82,11 @@ func (s *OpenSpartanPostImportService) Run(
 	}
 	opts = applyPostImportDefaults(opts)
 
+	pr := titlePkg.NewPathResolver(s.cfg.RepoRoot)
 	playerDBPath := config.PlayerDBPath(s.cfg, opts.TitleSlug, gamertag)
 	sharedDBPath := config.SharedDBPath(s.cfg, opts.TitleSlug)
-	metadataDBPath := titlePkg.NewPathResolver(s.cfg.RepoRoot).MetadataDBPath(opts.TitleSlug)
+	metadataDBPath := pr.MetadataDBPath(opts.TitleSlug)
+	pveDBPath := pr.SharedPVEDBPath(opts.TitleSlug)
 
 	playerHandle, err := sync.OpenPlayerDB(playerDBPath)
 	if err != nil {
@@ -99,7 +101,13 @@ func (s *OpenSpartanPostImportService) Run(
 	s.recomputeLUSR(ctx, playerDB, sharedDBPath, xuid, &result)
 	s.recomputeSessions(ctx, playerDBPath, sharedDBPath, xuid, opts, &result)
 	s.recomputePerfScores(ctx, playerDB, sharedDBPath, xuid, opts.ForcePerfScores, &result)
-	s.recomputeCitations(ctx, sharedDBPath, metadataDBPath, playerDB, xuid, matchIDs, &result)
+	s.recomputeCitations(ctx, citationRecomputeInputs{
+		sharedDBPath:   sharedDBPath,
+		metadataDBPath: metadataDBPath,
+		pveDBPath:      pveDBPath,
+		xuid:           xuid,
+		matchIDs:       matchIDs,
+	}, playerDB, &result)
 	return result, nil
 }
 
@@ -248,39 +256,50 @@ func (s *OpenSpartanPostImportService) recomputePerfScores(
 	result.PerfScoresTouched = n
 }
 
+// citationRecomputeInputs regroupe les entrées de recomputeCitations (garde la
+// signature ≤ 7 arguments après l'ajout de pveDBPath — BUG A / I7).
+type citationRecomputeInputs struct {
+	sharedDBPath   string
+	metadataDBPath string
+	pveDBPath      string // shared_pve.duckdb (Firefight) — lu en RO, dégradation gracieuse
+	xuid           string
+	matchIDs       []string
+}
+
 // recomputeCitations runs sync.BackfillMatchCitations for the given match
 // IDs. Skipped if matchIDs is empty (nothing to do).
 //
 // Sprint B1 commit 15 : acquisition du shared writer à la demande via Provider.
+// BUG A (I7) : shared_pve est désormais ouvert en RO et passé au pipeline pour
+// que les citations pve_stat (Firefight) soient calculées ; absent → dégradé.
 func (s *OpenSpartanPostImportService) recomputeCitations(
 	ctx context.Context,
-	sharedDBPath string,
-	metadataDBPath string,
+	in citationRecomputeInputs,
 	playerDB *sql.DB,
-	xuid string,
-	matchIDs []string,
 	result *PostImportResult,
 ) {
-	if len(matchIDs) == 0 {
+	if len(in.matchIDs) == 0 {
 		return
 	}
-	metaSQL, releaseMeta, err := sync.AcquireMetadataWriterStandalone(ctx, metadataDBPath)
+	metaSQL, releaseMeta, err := sync.AcquireMetadataWriterStandalone(ctx, in.metadataDBPath)
 	if err != nil {
 		result.Errors = append(result.Errors, PostImportError{Stage: "open_metadata", Err: err.Error()})
 		s.log.Warn("post_import_metadata_unavailable", "err", err)
 		return
 	}
 	defer releaseMeta()
-	sharedDB, releaseShared, err := sync.AcquireSharedWriterStandalone(ctxkeys.WithDBWriterLabel(ctx, "openspartan_post_import"), s.cfg.SharedProvider, sharedDBPath)
+	sharedDB, releaseShared, err := sync.AcquireSharedWriterStandalone(ctxkeys.WithDBWriterLabel(ctx, "openspartan_post_import"), s.cfg.SharedProvider, in.sharedDBPath)
 	if err != nil {
 		result.Errors = append(result.Errors, PostImportError{Stage: "citations_acquire", Err: err.Error()})
-		s.log.Warn("post_import_citations_acquire_failed", "xuid", xuid, "err", err)
+		s.log.Warn("post_import_citations_acquire_failed", "xuid", in.xuid, "err", err)
 		return
 	}
 	defer releaseShared()
-	if err := sync.BackfillMatchCitations(ctx, metaSQL, sharedDB, playerDB, xuid, matchIDs); err != nil {
+	pveDB, releasePve := sync.OpenPveReadForCitations(ctx, in.pveDBPath)
+	defer releasePve()
+	if err := sync.BackfillMatchCitations(ctx, metaSQL, sharedDB, playerDB, pveDB, in.xuid, in.matchIDs); err != nil {
 		result.Errors = append(result.Errors, PostImportError{Stage: "citations", Err: err.Error()})
-		s.log.Warn("post_import_citations_failed", "xuid", xuid, "err", err)
+		s.log.Warn("post_import_citations_failed", "xuid", in.xuid, "err", err)
 		return
 	}
 	result.CitationsBackfilled = true
