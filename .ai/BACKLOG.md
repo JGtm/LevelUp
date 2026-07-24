@@ -96,22 +96,6 @@ les compteurs natifs. Vérifier sur un match H5 réel (bulk weapons + counts de 
 
 ---
 
-### [data/frags] Précision par arme (Synthesis) : entrée API sans classe → recoloration par label (fragile)
-
-> Noté le 2026-07-21. Le graphe « Précision par arme » (H5, Synthesis) est recoloré par CLASSE
-> d'arme pour matcher « Détails des frags » (`fragClassColor` + survol lié). Mais l'entrée
-> `SynthesisWeaponAccuracyEntry` (openapi/backend) NE PORTE PAS la classe → elle est récupérée
-> côté FRONT en mappant le `label` depuis les kills par arme (`top_weapon_kills`). Une arme tirée
-> mais jamais utilisée pour un kill (absente des kills) n'a donc pas de classe → barre NEUTRE.
-
-**Priorité : BASSE** (décision user 2026-07-21) — on n'a qu'un TOP des armes de kill, donc le cas
-« arme tirée sans kill ET hors top » est rare/peu visible. **Fix propre si besoin** : ajouter
-`class` à `SynthesisWeaponAccuracyEntry` (schéma openapi + peuplement Go via le registre d'armes),
-puis `SynthesisWeaponAccuracyChart` lit la classe directement (retirer le mapping par label + la
-prop `weaponKills`). **Effort** : petit-moyen (backend + `make generate-types`).
-
----
-
 ### [archi/match-view] Retirer le fallback LIVE (appel API à l'ouverture de page) du Match view
 
 > Noté le 2026-07-19 (décision user). Le Match view a un fallback qui, quand un match n'est PAS
