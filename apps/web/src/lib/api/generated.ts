@@ -2562,6 +2562,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/media/audio-config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        /** Réglage des pistes audio des médias du joueur */
+        get: operations["getMediaAudioConfig"];
+        /** Définit le réglage des pistes audio des médias du joueur */
+        put: operations["putMediaAudioConfig"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/notifications": {
         parameters: {
             query?: never;
@@ -5061,6 +5082,21 @@ export interface components {
         };
         MediaAuthorsResponse: {
             authors: components["schemas"]["MediaAuthor"][] | null;
+        };
+        /** @description Réglage par joueur du rôle des pistes audio de ses médias. mode=auto : analyse acoustique automatique à l'ingestion (NNLS). mode=manual : rôles déclarés (track_roles, indexé par piste audio source dans l'ordre ffprobe) — l'analyse est court-circuitée. */
+        PlayerMediaAudioConfig: {
+            /**
+             * @description Mode de résolution du rôle des pistes audio.
+             * @enum {string}
+             */
+            mode: "auto" | "manual";
+            /** @description Rôle de chaque piste audio source. Requis et non vide en mode manuel. */
+            track_roles?: ("game" | "voice" | "other")[] | null;
+            /**
+             * Format: date-time
+             * @description Horodatage serveur de la dernière écriture (ignoré en entrée).
+             */
+            updated_at?: string;
         };
         MediaFilterOptions: {
             maps: components["schemas"]["LabelValue"][] | null;
@@ -12889,6 +12925,59 @@ export interface operations {
                 };
                 content?: never;
             };
+        };
+    };
+    getMediaAudioConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Réglage audio média (défaut auto si non défini) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerMediaAudioConfig"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    putMediaAudioConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlayerMediaAudioConfig"];
+            };
+        };
+        responses: {
+            /** @description Réglage enregistré */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerMediaAudioConfig"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
         };
     };
     listNotifications: {

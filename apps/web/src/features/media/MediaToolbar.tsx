@@ -3,9 +3,11 @@ import type { LabelValue, MediaAuthor } from '@/lib/api/types'
 import { Select } from '@/components/ui/select'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import type { MediaText } from './i18n'
+import { MediaAudioConfigButton } from './MediaAudioConfigButton'
 
 interface MediaToolbarProps {
   text: MediaText
+  playerSlug: string
   kindFilter: string
   authorSlugs: string[]
   authors: MediaAuthor[]
@@ -229,6 +231,7 @@ function renderModeOptions(
 
 export function MediaToolbar({
   text,
+  playerSlug,
   kindFilter,
   authorSlugs,
   authors,
@@ -403,6 +406,10 @@ export function MediaToolbar({
           <option key={option.value} value={option.value}>{option.label}</option>
         ))}
       </Select>
+
+      <div className="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden="true" />
+
+      <MediaAudioConfigButton playerSlug={playerSlug} />
     </div>
   )
 }

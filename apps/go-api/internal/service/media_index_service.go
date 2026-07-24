@@ -17,6 +17,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/jobs"
+	"levelup/go-api/internal/platform/mediaaudio"
 )
 
 // stepNoPlayerFound est le label de step renvoye quand aucun joueur n'a ete trouve.
@@ -139,7 +140,7 @@ func (d *DirMediaIndexer) ResetAndReindex(
 	// les vidéos réindexées encore sans HLS (HEVC/AVI/multipiste). Supprime
 	// l'asymétrie upload/scan à l'origine de "media remux failed" sur HEVC.
 	if reindexAfter {
-		triggerHLSSweep(capturesBaseDir, pr.SharedSocialDBPath(titleSlug), "", deleteSource)
+		triggerHLSSweep(pr, titleSlug, capturesBaseDir, pr.SharedSocialDBPath(titleSlug), "", deleteSource)
 	}
 	return nil
 }
@@ -224,7 +225,7 @@ func (d *DirMediaIndexer) ScanAllMedia(
 
 	// Transcoder en HLS, en arrière-plan, les vidéos scannées encore sans HLS
 	// (HEVC/AVI/multipiste) — symétrique du transcoding déclenché à l'upload.
-	triggerHLSSweep(capturesBaseDir, pr.SharedSocialDBPath(titleSlug), "", deleteSource)
+	triggerHLSSweep(pr, titleSlug, capturesBaseDir, pr.SharedSocialDBPath(titleSlug), "", deleteSource)
 	return nil
 }
 
@@ -292,7 +293,7 @@ func BuildMediaScanHook(repoRoot, gamertag string, capturesBaseDirFn, timezoneFn
 		}
 		// Transcoder en HLS, en arrière-plan, les captures fraîchement scannées
 		// encore sans HLS (HEVC/AVI/multipiste) — comme à l'upload.
-		triggerHLSSweep(capturesBaseDir, pr.SharedSocialDBPath(titleSlug), gamertag, deleteSource)
+		triggerHLSSweep(pr, titleSlug, capturesBaseDir, pr.SharedSocialDBPath(titleSlug), gamertag, deleteSource)
 	}
 }
 
@@ -328,18 +329,26 @@ func effectiveMediaBase(ctx context.Context, pr *titlePkg.PathResolver, configur
 // "media remux failed" sur les captures HEVC. No-op si capturesBaseDir est vide
 // (mode legacy interne : HLSPathsFor exige une base multi-player). Le single-flight
 // est géré dans EnsurePendingHLS (un seul balayage à la fois dans le process).
-func triggerHLSSweep(capturesBaseDir, sharedSocialDBPath, onlySlug string, deleteSource bool) {
+//
+// pr + titleSlug servent à résoudre le réglage audio manuel de chaque propriétaire
+// (media_audio_config.json) : le balayage honore ainsi le même mapping voix/jeu que
+// l'upload pour les captures synchronisées (non uploadées via le web).
+func triggerHLSSweep(pr *titlePkg.PathResolver, titleSlug, capturesBaseDir, sharedSocialDBPath, onlySlug string, deleteSource bool) {
 	if capturesBaseDir == "" || sharedSocialDBPath == "" {
 		return
 	}
 	go func() {
 		ctx := context.Background()
 		log := slog.With("module", "media") // logs/media.log
+		rolesFor := func(owner string) []string {
+			return mediaaudio.ManualRolesForPlayer(ctx, pr, titleSlug, owner)
+		}
 		st, err := ops.EnsurePendingHLS(ctx, ops.EnsureHLSParams{
-			DBPath:       sharedSocialDBPath,
-			CapturesBase: capturesBaseDir,
-			OnlySlug:     onlySlug,
-			DeleteSource: deleteSource,
+			DBPath:        sharedSocialDBPath,
+			CapturesBase:  capturesBaseDir,
+			OnlySlug:      onlySlug,
+			DeleteSource:  deleteSource,
+			AudioRolesFor: rolesFor,
 		})
 		if err != nil {
 			log.ErrorContext(ctx, "post-scan hls sweep échoué", "err", err)

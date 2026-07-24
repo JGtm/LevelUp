@@ -345,6 +345,7 @@ export function MediaPage() {
       <div className="px-6">
         <MediaToolbar
           text={text}
+          playerSlug={playerSlug}
           kindFilter={kindFilter}
           authorSlugs={authorSlugs}
           authors={authors}

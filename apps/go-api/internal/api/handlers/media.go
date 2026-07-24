@@ -36,8 +36,10 @@ import (
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/platform/dblease"
+	"levelup/go-api/internal/platform/mediaaudio"
 	"levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 )
@@ -54,6 +56,8 @@ func (h *MediaHandler) Mount(r chi.Router) {
 	huma.Get(api, "/media/match-candidates", h.handleGetMediaMatchCandidates)
 	huma.Post(api, "/media/associate", h.handlePostMediaAssociate)
 	huma.Get(api, "/media/authors", h.handleGetMediaAuthors)
+	huma.Get(api, "/media/audio-config", h.handleGetMediaAudioConfig)
+	huma.Put(api, "/media/audio-config", h.handlePutMediaAudioConfig)
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
@@ -97,6 +101,22 @@ type mediaAuthorsInput struct {
 	PlayerSlug string `path:"player_slug"`
 }
 type mediaAuthorsOutput struct{ Body domain.MediaAuthorsResponse }
+
+// mediaAudioConfigInput : {player_slug} seul (GET).
+type mediaAudioConfigInput struct {
+	PlayerSlug string `path:"player_slug"`
+}
+
+// mediaAudioConfigPutInput : {player_slug} + corps REQUIS (RawBody, décodage maison
+// → 400 invalid_body ; même motif que mediaLikeInput pour éviter un schéma d'input Huma).
+type mediaAudioConfigPutInput struct {
+	PlayerSlug string `path:"player_slug"`
+	RawBody    []byte
+}
+
+type mediaAudioConfigOutput struct {
+	Body *domain.PlayerMediaAudioConfig
+}
 
 // maxUploadSize limite la taille totale d'un upload à 500 Mo.
 const maxUploadSize = 500 << 20
@@ -489,6 +509,63 @@ func (h *MediaHandler) handleGetMediaAuthors(ctx context.Context, in *mediaAutho
 	}
 
 	return &mediaAuthorsOutput{Body: domain.MediaAuthorsResponse{Authors: authors}}, nil
+}
+
+// handleGetMediaAudioConfig retourne le réglage audio média du joueur (rôle des
+// pistes voix/jeu/autres, mode auto/manuel). Défaut auto si aucun sidecar.
+// GET /api/v1/players/{player_slug}/media/audio-config
+func (h *MediaHandler) handleGetMediaAudioConfig(ctx context.Context, in *mediaAudioConfigInput) (*mediaAudioConfigOutput, error) {
+	store, err := h.audioConfigStore(ctx, in.PlayerSlug)
+	if err != nil {
+		return nil, err
+	}
+	// Load renvoie le défaut auto même en cas de sidecar illisible : on dégrade
+	// proprement (200 + auto) tout en loggant, plutôt que d'échouer le réglage.
+	cfg, loadErr := store.Load()
+	if loadErr != nil {
+		slog.WarnContext(ctx, "media audio-config: chargement échoué, défaut auto",
+			"slug", in.PlayerSlug, "err", loadErr)
+	}
+	return &mediaAudioConfigOutput{Body: &cfg}, nil
+}
+
+// handlePutMediaAudioConfig valide et persiste le réglage audio média du joueur.
+// Le champ updated_at est toujours réécrit côté serveur (autoritaire).
+// PUT /api/v1/players/{player_slug}/media/audio-config
+func (h *MediaHandler) handlePutMediaAudioConfig(ctx context.Context, in *mediaAudioConfigPutInput) (*mediaAudioConfigOutput, error) {
+	store, err := h.audioConfigStore(ctx, in.PlayerSlug)
+	if err != nil {
+		return nil, err
+	}
+	var cfg domain.PlayerMediaAudioConfig
+	if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&cfg); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+	}
+	if err := cfg.Validate(); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_audio_config", err.Error())
+	}
+	cfg.UpdatedAt = time.Now().UTC()
+	if err := store.Save(cfg); err != nil {
+		return nil, humacore.NewError(http.StatusInternalServerError, "audio_config_save_error", err.Error())
+	}
+	slog.InfoContext(ctx, "media audio-config: enregistré",
+		"slug", in.PlayerSlug, "mode", cfg.Mode, "tracks", len(cfg.TrackRoles))
+	return &mediaAudioConfigOutput{Body: &cfg}, nil
+}
+
+// audioConfigStore résout slug → (titleSlug, gamertag) via newPlayerCtx puis construit
+// le store du sidecar media_audio_config.json (PathResolver, pas de MediaRepository).
+func (h *MediaHandler) audioConfigStore(ctx context.Context, slug string) (*mediaaudio.Store, error) {
+	if h.newPlayerCtx == nil {
+		return nil, humacore.NewError(http.StatusNotImplemented, "audio_config_not_configured",
+			"résolution joueur non configurée")
+	}
+	titleSlug, gamertag, err := h.newPlayerCtx(ctx, slug)
+	if err != nil {
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+	}
+	path := titlePkg.NewPathResolver(h.repoRoot).PlayerMediaAudioConfigPath(titleSlug, gamertag)
+	return mediaaudio.NewStore(path), nil
 }
 
 // authorGamertags retourne un index lower(slug|gamertag) → gamertag construit depuis

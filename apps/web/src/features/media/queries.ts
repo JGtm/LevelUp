@@ -375,6 +375,46 @@ export function useMediaAuthors(playerSlug: string) {
   })
 }
 
+/** Rôle acoustique déclaré d'une piste audio source (voix / jeu / autres). */
+export type AudioTrackRole = 'game' | 'voice' | 'other'
+
+/** Mode de résolution du rôle des pistes audio des médias du joueur. */
+export type MediaAudioMode = 'auto' | 'manual'
+
+/**
+ * Réglage audio média d'un joueur. Type local (miroir du schéma serveur
+ * PlayerMediaAudioConfig) : le contrat généré (generated.ts) sera régénéré depuis
+ * openapi.yaml, mais la feature reste autonome de cette regénération.
+ */
+export interface PlayerMediaAudioConfig {
+  mode: MediaAudioMode
+  track_roles?: AudioTrackRole[]
+  updated_at?: string
+}
+
+/** Réglage audio média du joueur (rôle voix/jeu/autres des pistes, mode auto/manuel). */
+export function useMediaAudioConfig(playerSlug: string) {
+  return useQuery({
+    queryKey: queryKeys.mediaAudioConfig(playerSlug),
+    queryFn: () =>
+      api.get<PlayerMediaAudioConfig>(`/players/${playerSlug}/media/audio-config`),
+    enabled: !!playerSlug,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+/** Mutation : persiste le réglage audio média et met à jour le cache. */
+export function useUpdateMediaAudioConfig(playerSlug: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (config: PlayerMediaAudioConfig) =>
+      api.put<PlayerMediaAudioConfig>(`/players/${playerSlug}/media/audio-config`, config),
+    onSuccess: (saved) => {
+      queryClient.setQueryData(queryKeys.mediaAudioConfig(playerSlug), saved)
+    },
+  })
+}
+
 // Effet de bord : invalide le cache médias quand la version change.
 export function useInvalidateOnFeedVersion(playerSlug: string) {
   const queryClient = useQueryClient()

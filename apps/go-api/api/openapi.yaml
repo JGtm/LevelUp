@@ -2810,6 +2810,44 @@ paths:
       responses:
         "200": { description: "Association créée" }
 
+  /players/{player_slug}/media/audio-config:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+    get:
+      tags: [media]
+      operationId: getMediaAudioConfig
+      summary: "Réglage des pistes audio des médias du joueur"
+      responses:
+        "200":
+          description: Réglage audio média (défaut auto si non défini)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayerMediaAudioConfig"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [media]
+      operationId: putMediaAudioConfig
+      summary: "Définit le réglage des pistes audio des médias du joueur"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlayerMediaAudioConfig"
+      responses:
+        "200":
+          description: Réglage enregistré
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayerMediaAudioConfig"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   # Notifications
   /players/{player_slug}/notifications:
     parameters:
@@ -7343,6 +7381,32 @@ components:
       required:
           - authors
       type: object
+    PlayerMediaAudioConfig:
+      type: object
+      additionalProperties: false
+      description: >-
+        Réglage par joueur du rôle des pistes audio de ses médias. mode=auto :
+        analyse acoustique automatique à l'ingestion (NNLS). mode=manual : rôles
+        déclarés (track_roles, indexé par piste audio source dans l'ordre ffprobe)
+        — l'analyse est court-circuitée.
+      properties:
+        mode:
+          type: string
+          enum: [auto, manual]
+          description: Mode de résolution du rôle des pistes audio.
+        track_roles:
+          type: array
+          nullable: true
+          items:
+            type: string
+            enum: [game, voice, other]
+          description: Rôle de chaque piste audio source. Requis et non vide en mode manuel.
+        updated_at:
+          type: string
+          format: date-time
+          description: Horodatage serveur de la dernière écriture (ignoré en entrée).
+      required:
+        - mode
     MediaFilterOptions:
       additionalProperties: false
       properties:
