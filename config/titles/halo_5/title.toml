@@ -62,4 +62,8 @@ capabilities = [
   # Personnalisateur Spartan (modale home) : masques emblèmes/nameplates recolorisables
   # côté client. Halo-5-only (masques extraits du jeu). Cf. .ai/PLAN_H5_SPARTAN_CUSTOMIZER.md
   "spartan_customizer",
+  # Page de detail de match publique sur Halo Waypoint (verifie utilisateur 2026-07-24 :
+  # /halo-5-guardians/players/{gt}/matches/arena/{id}). URL construite cote front
+  # (buildWaypointMatchUrl, segment + bucket arena par titre).
+  "waypoint_match_url",
 ]

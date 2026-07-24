@@ -1,8 +1,13 @@
 /**
  * waypointUrl — construction centralisée du lien « Ouvrir sur Halo Waypoint »
- * (I19). Halo Infinite uniquement : gating côté appelant via
- * `useCapability('waypoint_match_url')` (absente pour Halo 5 — le segment
- * d'URL "halo-infinite" ne s'appliquerait pas à un autre titre).
+ * (I19). Title-aware : gating côté appelant via
+ * `useCapability('waypoint_match_url')`, segment d'URL résolu par titre.
+ *
+ * Formats vérifiés (2026-07-24, fournis/valides par l'utilisateur) :
+ *   - Halo Infinite : /halo-infinite/players/{gt}/matches/{id}
+ *   - Halo 5        : /halo-5-guardians/players/{gt}/matches/arena/{id}
+ *     (bucket "arena" constant : le corpus suivi est du matchmaking Arena —
+ *     Warzone est exclu du sync, les customs ne sont pas listées).
  *
  * Centralisé au 3e point d'usage (ExplorerMatchesTable, SquadSynergyHistoryTable,
  * CareerTopMatchesTable) — cf. règle CLAUDE.md « ≤ 2 copies d'un même pattern ».
@@ -11,9 +16,17 @@
  */
 import type { UiTheme } from '@/stores/settingsDraftStore'
 
+/** Segment de chemin Waypoint par titre. Fallback = segment Infinite (un titre
+ *  futur sans page Waypoint ne déclare simplement pas la capability). */
+function waypointTitleSegment(titleSlug: string): string {
+  return titleSlug === 'halo_5' ? 'halo-5-guardians' : 'halo-infinite'
+}
+
 /** URL publique de la page de détail d'un match sur Halo Waypoint. */
-export function buildWaypointMatchUrl(playerSlug: string, matchId: string): string {
-  return `https://www.halowaypoint.com/halo-infinite/players/${encodeURIComponent(playerSlug)}/matches/${matchId}`
+export function buildWaypointMatchUrl(playerSlug: string, matchId: string, titleSlug = 'halo_infinite'): string {
+  const seg = waypointTitleSegment(titleSlug)
+  const bucket = titleSlug === 'halo_5' ? 'arena/' : ''
+  return `https://www.halowaypoint.com/${seg}/players/${encodeURIComponent(playerSlug)}/matches/${bucket}${matchId}`
 }
 
 /** Chemin du logo Halo Waypoint selon le thème local — même convention que
