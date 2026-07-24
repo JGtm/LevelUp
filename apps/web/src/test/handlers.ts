@@ -65,7 +65,7 @@ const careerFixture = {
     is_max_rank: false,
     recorded_at: null,
   },
-  hero_progress: { xp_total_required: 100000, xp_remaining: 50000, percentage: 50, current_rank: 12 },
+  hero_progress: { xp_total_required: 100000, xp_remaining: 50000, percentage: 50, current_rank: 12, total_ranks: 272, max_rank_name_fr: 'Héros', max_rank_name_en: 'Hero' },
   projections: null,
   xp_history: [],
   lusr: null,

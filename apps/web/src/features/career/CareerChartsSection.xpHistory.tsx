@@ -2,7 +2,9 @@
  * CareerChartsSection — career.03 — XP history + projections (joueur + amis).
  *
  * Découpé depuis CareerChartsSection.tsx (audit #6 god-file split).
- * Inclut : real XP + estimé pré-sync + projection Héros + projection optimiste.
+ * Inclut : real XP + estimé pré-sync + projection vers le rang max + projection
+ * optimiste. Title-agnostic : la borne XP du rang max et son libellé viennent du
+ * payload (heroProgress) — jamais une constante Halo Infinite en dur.
  *
  * Constantes métier issues de career_logic.py (src Python branche main) :
  *   CAREER_XP_LAUNCH_DATE = 2023-06-20 (CU32, introduction du système de rangs)
@@ -23,16 +25,17 @@ import {
 } from '@/components/charts/_utils'
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 import { careerManifest } from '@/lib/i18n/generated/career'
-import type { ManifestLocale } from '@/lib/i18n/format'
+import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
 import type {
   CareerHistoryPoint,
   CareerProjections,
   FriendXPHistory,
+  HeroProgress,
 } from '@/lib/api/types'
+import { heroMaxRankName } from './CareerChartsSection.gauges'
 
 // ── Constantes métier ──────────────────────────────────────────────────────
 
-const HERO_XP_TOTAL = 9_319_350
 const CAREER_XP_LAUNCH_DATE = '2023-06-20'
 const WEEKLY_CHALLENGE_XP = 950
 const DAILY_CHALLENGE_XP = 500
@@ -62,11 +65,12 @@ interface XpSeriesMeta {
   lineType: 'real' | 'estimated' | 'proj-normal' | 'proj-optimiste'
 }
 
-// Label court du type de courbe affiché dans le tooltip.
+// Label court du type de courbe affiché dans le tooltip. 'proj-normal' est résolu
+// dynamiquement au nom du rang max du titre (title-agnostic) dans le tooltip.
 const XP_TYPE_LABELS: Record<XpSeriesMeta['lineType'], string> = {
   'real': 'réel',
   'estimated': 'estimé',
-  'proj-normal': 'Héros',
+  'proj-normal': '',
   'proj-optimiste': 'optimiste',
 }
 
@@ -76,7 +80,11 @@ function buildXpSeries(
   history: CareerHistoryPoint[],
   projections: CareerProjections | null,
   friendsXpHistory: FriendXPHistory[],
+  maxXp: number,
 ): ChartSeries<[string, number]>[] {
+  // maxXp <= 0 (heroProgress absent) : les courbes réelles/estimées restent
+  // affichées ; seules les projections + la markLine du rang max sont désactivées
+  // (le gating `lastXp < maxXp` est alors faux, cf. plus bas).
   if (history.length === 0) return []
   const series: ChartSeries<[string, number]>[] = []
 
@@ -96,11 +104,11 @@ function buildXpSeries(
 
   if (projections && projections.xp_per_day_active > 0) {
     const lastXp = history[history.length - 1].xp_total
-    if (lastXp < HERO_XP_TOTAL) {
-      const normalCurve = buildNormalProjection(history, projections)
+    if (lastXp < maxXp) {
+      const normalCurve = buildNormalProjection(history, projections, maxXp)
       if (normalCurve.length > 0) push('career.xp.proj.hero', 'Vous', 0, 'proj-normal', normalCurve)
 
-      const optCurve = buildOptimisticProjection(history, projections)
+      const optCurve = buildOptimisticProjection(history, projections, maxXp)
       if (optCurve.length > 0) push('career.xp.proj.opt', 'Vous', 0, 'proj-optimiste', optCurve)
     }
   }
@@ -120,14 +128,14 @@ function buildXpSeries(
     const friendEst = buildEstimatedXpPoints(friendHistory)
     if (friendEst.length > 0) push(`career.xp.friend.${gt}.est`, gt, idx, 'estimated', friendEst)
 
-    const friendProjs = deriveFriendProjections(friendHistory)
+    const friendProjs = deriveFriendProjections(friendHistory, maxXp)
     if (friendProjs) {
       const lastXp = friendHistory[friendHistory.length - 1].xp_total
-      if (lastXp < HERO_XP_TOTAL) {
-        const nc = buildNormalProjection(friendHistory, friendProjs)
+      if (lastXp < maxXp) {
+        const nc = buildNormalProjection(friendHistory, friendProjs, maxXp)
         if (nc.length > 0) push(`career.xp.friend.${gt}.proj.normal`, gt, idx, 'proj-normal', nc)
 
-        const oc = buildOptimisticProjection(friendHistory, friendProjs)
+        const oc = buildOptimisticProjection(friendHistory, friendProjs, maxXp)
         if (oc.length > 0) push(`career.xp.friend.${gt}.proj.opt`, gt, idx, 'proj-optimiste', oc)
       }
     }
@@ -154,11 +162,11 @@ function computeXPPerDayActive(history: CareerHistoryPoint[]): number {
   return totalActiveDays > 0 ? xpDelta / totalActiveDays : 0
 }
 
-function deriveFriendProjections(history: CareerHistoryPoint[]): CareerProjections | null {
+function deriveFriendProjections(history: CareerHistoryPoint[], maxXp: number): CareerProjections | null {
   const xpPerDay = computeXPPerDayActive(history)
   if (xpPerDay <= 0) return null
   const last = history[history.length - 1]
-  const xpRemaining = HERO_XP_TOTAL - last.xp_total
+  const xpRemaining = maxXp - last.xp_total
   if (xpRemaining <= 0) return null
   const daysToHero = Math.min(xpRemaining / xpPerDay, 365 * 10)
   const heroDate = new Date(new Date(last.recorded_at).getTime() + daysToHero * 86_400_000)
@@ -182,6 +190,7 @@ function buildEstimatedXpPoints(history: CareerHistoryPoint[]): [string, number]
 function buildNormalProjection(
   history: CareerHistoryPoint[],
   projections: CareerProjections,
+  maxXp: number,
 ): [string, number][] {
   const last = history[history.length - 1]
   const lastDate = new Date(last.recorded_at.slice(0, 10))
@@ -189,22 +198,23 @@ function buildNormalProjection(
     ? new Date(projections.estimated_hero_date)
     : null
   if (!endDate) return []
-  return buildWeeklyCurve(lastDate, last.xp_total, projections.xp_per_day_active, endDate)
+  return buildWeeklyCurve(lastDate, last.xp_total, projections.xp_per_day_active, endDate, maxXp)
 }
 
 function buildOptimisticProjection(
   history: CareerHistoryPoint[],
   projections: CareerProjections,
+  maxXp: number,
 ): [string, number][] {
   const last = history[history.length - 1]
   const lastDate = new Date(last.recorded_at.slice(0, 10))
   const challengeXpPerDay = WEEKLY_CHALLENGE_XP / 7.0 + DAILY_CHALLENGE_XP
   const optimisticRate = (projections.xp_per_day_active + challengeXpPerDay) * XP_BOOST_MULTIPLIER
   if (optimisticRate <= 0) return []
-  const xpRemaining = HERO_XP_TOTAL - last.xp_total
+  const xpRemaining = maxXp - last.xp_total
   const daysNeeded = Math.min(xpRemaining / optimisticRate, 365 * 10)
   const heroDate = new Date(lastDate.getTime() + daysNeeded * 86_400_000)
-  return buildWeeklyCurve(lastDate, last.xp_total, optimisticRate, heroDate)
+  return buildWeeklyCurve(lastDate, last.xp_total, optimisticRate, heroDate, maxXp)
 }
 
 function buildWeeklyCurve(
@@ -212,20 +222,26 @@ function buildWeeklyCurve(
   startXp: number,
   xpPerDay: number,
   heroDate: Date,
+  maxXp: number,
 ): [string, number][] {
   const points: [string, number][] = [[startDate.toISOString().slice(0, 10), startXp]]
   const totalDays = (heroDate.getTime() - startDate.getTime()) / 86_400_000
   const weeks = Math.ceil(totalDays / 7)
   for (let w = 1; w <= weeks; w++) {
     const d = new Date(startDate.getTime() + w * 7 * 86_400_000)
-    const xp = Math.min(Math.round(startXp + xpPerDay * w * 7), HERO_XP_TOTAL)
+    const xp = Math.min(Math.round(startXp + xpPerDay * w * 7), maxXp)
     points.push([d.toISOString().slice(0, 10), xp])
-    if (xp >= HERO_XP_TOTAL) break
+    if (xp >= maxXp) break
   }
   return points
 }
 
-function buildXpHistoryOption(series: ChartSeries<[string, number]>[], locale: ManifestLocale): EChartsCoreOption {
+function buildXpHistoryOption(
+  series: ChartSeries<[string, number]>[],
+  locale: ManifestLocale,
+  maxXp: number,
+  maxRankName: string,
+): EChartsCoreOption {
   const tc = getEChartsThemeColors()
   const axisBase = getAxisBase(tc)
   const intlLocale = toIntlLocale(locale)
@@ -259,7 +275,9 @@ function buildXpHistoryOption(series: ChartSeries<[string, number]>[], locale: M
       symbolSize: isReal ? 5 : 0,
       showSymbol: isReal,
       smooth: false,
-      ...(s.key === 'career.xp.history' ? { markLine: buildHeroMarkLine() } : {}),
+      ...(s.key === 'career.xp.history' && maxXp > 0
+        ? { markLine: buildMaxRankMarkLine(maxXp, maxRankName) }
+        : {}),
     }
   })
 
@@ -275,7 +293,13 @@ function buildXpHistoryOption(series: ChartSeries<[string, number]>[], locale: M
       .filter((p) => p.value != null && p.value[1] != null)
       .map((p) => {
         const m = metaByIdx.get(p.seriesIndex as number)
-        const typeLabel = m ? XP_TYPE_LABELS[m.lineType] : ''
+        // proj-normal = projection vers le rang max : libellé = nom du rang max du
+        // titre (title-agnostic), pas un « Héros » codé en dur.
+        const typeLabel = m
+          ? m.lineType === 'proj-normal'
+            ? maxRankName
+            : XP_TYPE_LABELS[m.lineType]
+          : ''
         const name = m?.playerName ?? p.seriesName
         return `${p.marker as string} <b>${escapeHtml(name ?? '')}</b> — ${typeLabel} : ${fmtXp(p.value[1] as number)}`
       })
@@ -311,16 +335,18 @@ function buildXpHistoryOption(series: ChartSeries<[string, number]>[], locale: M
   }
 }
 
-function buildHeroMarkLine() {
+// buildMaxRankMarkLine trace la ligne-seuil du rang MAX du titre (title-agnostic) :
+// yAxis = borne XP du payload ; libellé = nom du rang max (« Héros », « SR 152 »…).
+function buildMaxRankMarkLine(maxXp: number, maxRankName: string) {
   return {
     silent: true,
     symbol: 'none',
     data: [{
-      yAxis: HERO_XP_TOTAL,
+      yAxis: maxXp,
       lineStyle: { color: resolveToken('perf-tier-3') + '60', width: 1, type: 'dotted' },
       label: {
         show: true,
-        formatter: 'Rang Héros',
+        formatter: maxRankName,
         position: 'insideStartTop',
         color: resolveToken('perf-tier-3') + '99',
         fontSize: 10,
@@ -336,6 +362,9 @@ export interface CareerXpHistoryChartProps {
   projections: CareerProjections | null
   friendsXpHistory: FriendXPHistory[]
   locale: ManifestLocale
+  // Progression vers le rang max (par titre) : fournit la borne XP + le nom du rang
+  // max pour la markLine et les projections. Null = pas de seuil/projection tracés.
+  heroProgress: HeroProgress | null
 }
 
 export function CareerXpHistoryChart({
@@ -343,13 +372,19 @@ export function CareerXpHistoryChart({
   projections,
   friendsXpHistory,
   locale,
+  heroProgress,
 }: CareerXpHistoryChartProps) {
+  // Borne XP + libellé du rang max, title-agnostic (jamais une constante HINF).
+  const maxXp = heroProgress?.xp_total_required ?? 0
+  const maxRankName = heroProgress
+    ? heroMaxRankName(heroProgress, locale)
+    : formatMessage(careerManifest, 'career.charts.max_rank_generic', locale)
   return (
     <ChartCard<[string, number]>
       title={careerManifest['career.charts.xp_history_title'][locale]}
-      series={buildXpSeries(xpHistory, projections, friendsXpHistory)}
+      series={buildXpSeries(xpHistory, projections, friendsXpHistory, maxXp)}
       height={340}
-      buildOption={(series) => buildXpHistoryOption(series, locale)}
+      buildOption={(series) => buildXpHistoryOption(series, locale, maxXp, maxRankName)}
       emptyMessage={careerManifest['career.charts.placeholder_unavailable'][locale]}
     />
   )

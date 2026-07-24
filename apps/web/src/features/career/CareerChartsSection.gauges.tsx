@@ -1,5 +1,5 @@
 /**
- * CareerChartsSection — jauges career.01 (rang) + career.02 (Héros).
+ * CareerChartsSection — jauges career.01 (rang) + career.02 (rang max, title-agnostic).
  *
  * Découpé depuis CareerChartsSection.tsx (audit #6 god-file split).
  * Sortie : 2 ChartCard<GaugePoint> avec leur footer enrichi.
@@ -13,12 +13,9 @@ import {
 } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
 import { careerManifest } from '@/lib/i18n/generated/career'
-import type { ManifestLocale } from '@/lib/i18n/format'
+import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
+import { useCapability } from '@/lib/capabilities/capabilities'
 import type { CareerSummary, HeroProgress } from '@/lib/api/types'
-
-// ── Constantes métier (Héros) ──────────────────────────────────────────────
-const HERO_XP_TOTAL = 9_319_350
-const HERO_RANK_TOTAL_FALLBACK = 272
 
 interface GaugePoint { value: number; label: string; detail: string }
 
@@ -43,9 +40,18 @@ function buildRankGaugeOption(series: ChartSeries<GaugePoint>[]): EChartsCoreOpt
   return buildGaugeOption(point, resolveToken('chart-series-1'), getEChartsThemeColors())
 }
 
-// ── career.02 — jauge Héros ────────────────────────────────────────────────
+// ── career.02 — jauge « progression vers le rang max » (title-agnostic) ─────
 
-function heroGaugeSeries(hero: HeroProgress, numLoc: string): ChartSeries<GaugePoint> {
+// heroMaxRankName résout le NOM du rang sommet du titre depuis le payload
+// (« Héros » Halo Infinite, « SR 152 » Halo 5), avec repli générique quand la
+// source ne le fournit pas. Aucun vocabulaire de jeu codé en dur côté front.
+// Exportée pour test unitaire (résolution title-agnostic du libellé).
+export function heroMaxRankName(hero: HeroProgress, locale: ManifestLocale): string {
+  const fromPayload = locale === 'fr' ? hero.max_rank_name_fr : hero.max_rank_name_en
+  return fromPayload || formatMessage(careerManifest, 'career.charts.max_rank_generic', locale)
+}
+
+function heroGaugeSeries(hero: HeroProgress, numLoc: string, locale: ManifestLocale): ChartSeries<GaugePoint> {
   // percentage est déjà en 0..100 côté API Go (× 100 fait côté service)
   const pct = Math.min(100, hero.percentage)
   const acquired = hero.xp_total_required - hero.xp_remaining
@@ -53,8 +59,11 @@ function heroGaugeSeries(hero: HeroProgress, numLoc: string): ChartSeries<GaugeP
     key: 'career.gauge.hero',
     datapoints: [{
       value: pct,
-      label: 'Progression vers Héros',
-      detail: `${acquired.toLocaleString(numLoc)} / ${HERO_XP_TOTAL.toLocaleString(numLoc)} XP`,
+      label: formatMessage(careerManifest, 'career.charts.max_rank_progress', locale, {
+        rank: heroMaxRankName(hero, locale),
+      }),
+      // Borne XP = xp_total_required du payload (par titre) — jamais une constante HINF.
+      detail: `${acquired.toLocaleString(numLoc)} / ${hero.xp_total_required.toLocaleString(numLoc)} XP`,
     }],
   }
 }
@@ -183,7 +192,8 @@ function HeroGaugeFooter({
   locale: ManifestLocale
   intlLocale: string
 }) {
-  const totalRanks = hero.total_ranks ?? HERO_RANK_TOTAL_FALLBACK
+  // total_ranks vient du payload par titre (272 HINF / 152 H5) — jamais codé en dur.
+  const totalRanks = hero.total_ranks
   return (
     <div className="grid grid-cols-2 gap-4 border-t border-border px-3 py-3 text-center">
       <div>
@@ -237,10 +247,14 @@ export interface CareerHeroGaugeChartProps {
 }
 
 export function CareerHeroGaugeChart({ heroProgress, locale, intlLocale }: CareerHeroGaugeChartProps) {
+  // Gating title-agnostic : masqué pour un titre sans progression de carrière
+  // (capability `career`). NO-OP pour Halo Infinite / Halo 5 (tous deux la déclarent).
+  const hasCareer = useCapability('career')
+  if (!hasCareer) return null
   return (
     <ChartCard<GaugePoint>
       title={careerManifest['career.charts.hero_gauge_title'][locale]}
-      series={heroProgress ? [heroGaugeSeries(heroProgress, intlLocale)] : []}
+      series={heroProgress ? [heroGaugeSeries(heroProgress, intlLocale, locale)] : []}
       height={280}
       buildOption={buildHeroGaugeOption}
       emptyMessage={careerManifest['career.charts.placeholder_unavailable'][locale]}
