@@ -20,13 +20,16 @@
  *
  * Construit avec TanStack Table v8.
  */
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { formatPercentInt } from '@/lib/formatters'
 import { kdRatioColor, winRateClass } from '@/lib/colors/outcomePalette'
 import {
   type ColumnDef,
+  type Header,
+  type SortingState,
   flexRender,
   getCoreRowModel,
+  getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
 import { useNavigate, useParams } from '@tanstack/react-router'
@@ -38,6 +41,8 @@ import { formatMessage } from '@/lib/i18n/format'
 import { squadManifest, type SquadManifestKey } from '@/lib/i18n/generated/squad'
 import { tokenVar } from '@/lib/accessibility'
 import { AllyEnemySplitBar, KDSplitBar } from '@/features/_shared/EncounterSplitBars'
+import { NUMERIC_SORT, localeTextSortingFn } from '@/features/explorer/explorerMatchesClientSort'
+import { ariaSortOf, sortSuffixOf } from './sortHeader'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import type { MatchEncounterBadge, MatchEncounterRow } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
@@ -137,6 +142,34 @@ function formatKDRatio(kills: number | null | undefined, deaths: number | null |
   if (kills == null || deaths == null) return '—'
   if (deaths === 0) return kills > 0 ? '∞' : '—'
   return (kills / deaths).toFixed(2)
+}
+
+/** Valeur numérique triable du ratio F/D (I16) — même logique que formatKDRatio,
+ *  0 mort + 0 frag → non triable (`undefined`, rangé en bas), 0 mort + N frags →
+ *  `Infinity` (ratio le plus favorable possible, en tête en tri descendant). */
+function ratioValue(kills: number | null | undefined, deaths: number | null | undefined): number | undefined {
+  if (kills == null || deaths == null) return undefined
+  if (deaths === 0) return kills > 0 ? Number.POSITIVE_INFINITY : undefined
+  return kills / deaths
+}
+
+/** En-tête de colonne triable (I16, pattern DetectionsPanel minimal — clic direct
+ *  sur le <th>, pas de bouton dédié). Partagé par les 2 rendus (hideCardWrapper
+ *  true/false, sinon même style dupliqué 2× dans ce fichier). */
+function EncounterTh({ header, idx }: { header: Header<MatchEncounterRow, unknown>; idx: number }) {
+  const canSort = header.column.getCanSort()
+  const sortDir = header.column.getIsSorted()
+  const align = idx === 0 ? 'text-left' : 'text-right'
+  return (
+    <th
+      className={`border border-border border-b-2 px-2 pb-1 pt-1 ${align} ${canSort ? 'cursor-pointer select-none' : ''}`}
+      onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
+      aria-sort={canSort ? ariaSortOf(sortDir) : undefined}
+    >
+      {flexRender(header.column.columnDef.header, header.getContext())}
+      {canSort ? sortSuffixOf(sortDir) : ''}
+    </th>
+  )
 }
 
 // SplitBar / AllyEnemySplitBar / KDSplitBar : extraits vers
@@ -243,6 +276,9 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
     () => [
       {
         id: 'player',
+        accessorFn: (r) => r.gamertag,
+        sortingFn: localeTextSortingFn,
+        sortDescFirst: false,
         header: () => (
           <span className="inline-flex items-center gap-1">
             {labels.player}
@@ -287,6 +323,8 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
       },
       {
         id: 'role',
+        accessorFn: (r) => r.is_ally,
+        sortingFn: 'basic',
         header: labels.role,
         cell: (ctx) => {
           const r = ctx.row.original
@@ -306,6 +344,8 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
       },
       {
         id: 'encounters',
+        accessorKey: 'count_together',
+        ...NUMERIC_SORT,
         header: labels.encounters,
         cell: (ctx) => {
           const r = ctx.row.original
@@ -317,6 +357,8 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
       },
       {
         id: 'wr_ally',
+        accessorFn: (r) => r.winrate_as_ally ?? undefined,
+        ...NUMERIC_SORT,
         header: labels.wrAlly,
         cell: (ctx) => {
           const v = ctx.row.original.winrate_as_ally
@@ -325,6 +367,8 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
       },
       {
         id: 'wr_enemy',
+        accessorFn: (r) => r.winrate_vs_enemy ?? undefined,
+        ...NUMERIC_SORT,
         header: labels.wrEnemy,
         cell: (ctx) => {
           const v = ctx.row.original.winrate_vs_enemy
@@ -333,6 +377,13 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
       },
       {
         id: 'kd_cross',
+        // Tri sur le net frags − morts (comme RelationsTable). Non calculable
+        // (les deux valeurs absentes) → undefined, rangé en bas.
+        accessorFn: (r) =>
+          r.kills_dealt != null || r.deaths_suffered != null
+            ? (r.kills_dealt ?? 0) - (r.deaths_suffered ?? 0)
+            : undefined,
+        ...NUMERIC_SORT,
         header: labels.kdCross,
         cell: (ctx) => {
           const r = ctx.row.original
@@ -344,6 +395,8 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
       },
       {
         id: 'ratio',
+        accessorFn: (r) => ratioValue(r.kills_dealt, r.deaths_suffered),
+        ...NUMERIC_SORT,
         header: () => (
           <Tooltip content={labels.ratioTooltip}>
             <span className="cursor-help border-b border-dashed border-current">{labels.ratio}</span>
@@ -361,6 +414,8 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
       },
       {
         id: 'last_seen',
+        accessorFn: (r) => (r.last_seen_at ? Date.parse(r.last_seen_at) : undefined),
+        ...NUMERIC_SORT,
         header: labels.lastSeen,
         cell: (ctx) => {
           const ts = ctx.row.original.last_seen_at
@@ -376,10 +431,18 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
     [labels, playerSlug, formatRelative, onPlayerClick],
   )
 
+  // I16 : tri CLIENT par clic sur les en-têtes (pattern DetectionsPanel minimal).
+  // Aucun tri actif par défaut → l'ordre serveur (celui de `rows`) reste affiché
+  // tant qu'aucune colonne n'a été cliquée.
+  const [sorting, setSorting] = useState<SortingState>([])
+
   const table = useReactTable<MatchEncounterRow>({
     data: rows,
     columns,
+    state: { sorting },
+    onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
   })
 
   if (!rows || rows.length === 0) {
@@ -408,12 +471,7 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id} className="text-muted-foreground">
                 {hg.headers.map((h, idx) => (
-                  <th
-                    key={h.id}
-                    className={`border border-border border-b-2 px-2 pb-1 pt-1 ${idx === 0 ? 'text-left' : 'text-right'}`}
-                  >
-                    {flexRender(h.column.columnDef.header, h.getContext())}
-                  </th>
+                  <EncounterTh key={h.id} header={h} idx={idx} />
                 ))}
               </tr>
             ))}
@@ -454,12 +512,7 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
               {table.getHeaderGroups().map((hg) => (
                 <tr key={hg.id} className="text-muted-foreground">
                   {hg.headers.map((h, idx) => (
-                    <th
-                      key={h.id}
-                      className={`border border-border border-b-2 px-2 pb-1 pt-1 ${idx === 0 ? 'text-left' : 'text-right'}`}
-                    >
-                      {flexRender(h.column.columnDef.header, h.getContext())}
-                    </th>
+                    <EncounterTh key={h.id} header={h} idx={idx} />
                   ))}
                 </tr>
               ))}

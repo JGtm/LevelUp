@@ -2,6 +2,11 @@
  * SyncPlayersTable — détail par joueur du dernier cycle auto-sync : outcome,
  * raison, durée, inserts, compteur zero-insert (alerte au seuil backend).
  * Tri : échecs d'abord, puis OK, puis ignorés (à outcome égal : gamertag).
+ *
+ * EXCEPTION tri client par en-têtes (I16) : volontairement NON triable.
+ * Le tri fixe failed→ok→skipped est INTENTIONNEL (les problèmes remontent en
+ * premier, c'est la valeur diagnostique de cette table) — un tri par en-tête
+ * le remplacerait par un ordre arbitraire et masquerait les échecs.
  */
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { SchedulerPlayerOutcome } from '@/lib/api/types'

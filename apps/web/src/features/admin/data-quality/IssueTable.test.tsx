@@ -4,7 +4,7 @@
  * simple sans joueur cible, et reste absente sans matchLinkTitleSlug.
  */
 import { describe, it, expect, afterEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 
 import type { AdminDataQualityIssue, PlayerSummary } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -69,5 +69,73 @@ describe('IssueTable — colonne Exemples (C7b)', () => {
     useAppShellStore.setState({ currentPlayer: player('JGtm'), availablePlayers: [], locale: 'fr' })
     render(<IssueTable issues={[issue(['m-1'])]} columns={columns} />)
     expect(screen.queryByRole('link')).toBeNull()
+  })
+})
+
+/** Ordre des lignes du tbody, identifiées par l'id qu'elles contiennent. */
+function rowOrder(names: string[]): string[] {
+  const tbody = document.querySelector('tbody')
+  return Array.from(tbody?.querySelectorAll('tr') ?? []).map((tr) => {
+    const txt = tr.textContent ?? ''
+    return names.find((n) => txt.includes(n)) ?? '?'
+  })
+}
+
+function issueWithId(id: string, occurrences: number): AdminDataQualityIssue {
+  return { kind: 'raw_uuid', id, occurrences }
+}
+
+describe('IssueTable — tri CLIENT par en-têtes (I16)', () => {
+  const sortableColumns: IssueColumn[] = [{ header: 'ID', cell: (i) => i.id, sortValue: (i) => i.id }]
+  const names = ['alpha', 'bravo', 'charlie']
+
+  it('sans `sortable` : ordre serveur conservé, en-têtes non triables', () => {
+    render(
+      <IssueTable
+        issues={[issueWithId('charlie', 1), issueWithId('alpha', 2), issueWithId('bravo', 3)]}
+        columns={sortableColumns}
+      />,
+    )
+    expect(rowOrder(names)).toEqual(['charlie', 'alpha', 'bravo'])
+    expect(screen.getByText('ID').closest('th')?.querySelector('button')).not.toBeInTheDocument()
+  })
+
+  it('avec `sortable` : clic sur la colonne ID trie alphabétiquement (asc au 1er clic)', () => {
+    render(
+      <IssueTable
+        issues={[issueWithId('charlie', 1), issueWithId('alpha', 2), issueWithId('bravo', 3)]}
+        columns={sortableColumns}
+        sortable
+      />,
+    )
+    const header = screen.getByText('ID')
+    fireEvent.click(header)
+    expect(rowOrder(names)).toEqual(['alpha', 'bravo', 'charlie'])
+  })
+
+  it('avec `sortable` : clic sur « Matchs » (occurrences) trie numériquement (desc au 1er clic)', () => {
+    render(
+      <IssueTable
+        issues={[issueWithId('charlie', 1), issueWithId('alpha', 2), issueWithId('bravo', 3)]}
+        columns={sortableColumns}
+        sortable
+      />,
+    )
+    const header = screen.getByText('Matchs')
+    fireEvent.click(header)
+    expect(rowOrder(names)).toEqual(['bravo', 'alpha', 'charlie'])
+  })
+
+  it('`sortable` + `pagination` : le tri reste désactivé (garde défensive)', () => {
+    render(
+      <IssueTable
+        issues={[issueWithId('charlie', 1), issueWithId('alpha', 2), issueWithId('bravo', 3)]}
+        columns={sortableColumns}
+        sortable
+        pagination={{ pageIndex: 0, pageSize: 25, total: 3, onPageChange: () => {} }}
+      />,
+    )
+    expect(rowOrder(names)).toEqual(['charlie', 'alpha', 'bravo'])
+    expect(screen.getByText('ID').closest('th')?.querySelector('button')).not.toBeInTheDocument()
   })
 })

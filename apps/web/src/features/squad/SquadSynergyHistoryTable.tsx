@@ -12,13 +12,20 @@
  *
  * Utilise TanStack Table v8. Pagination 20/page côté client.
  * Labels carte/playlist via useFieldMappings (assets titre).
+ *
+ * Tri CLIENT par clic sur les en-têtes (I16) : toutes les colonnes de données sont
+ * triables (helpers partagés `explorerMatchesClientSort.ts`), sauf Ouvrir/Waypoint.
+ * Aucun tri actif par défaut (ordre serveur = chronologique ASC, cf. `sortedRows`) ;
+ * le tri réinitialise la pagination en page 1 (pattern RelationsTable).
  */
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import {
   type ColumnDef,
+  type SortingState,
   flexRender,
   getCoreRowModel,
   getPaginationRowModel,
+  getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
 
@@ -32,6 +39,11 @@ import { useCapability } from '@/lib/capabilities/capabilities'
 import { getSquadText } from './i18n'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { buildWaypointMatchUrl, waypointLogoSrc } from '@/lib/match-nav/waypointUrl'
+import {
+  NUMERIC_SORT,
+  dateTimeSortingFn,
+  localeTextSortingFn,
+} from '@/features/explorer/explorerMatchesClientSort'
 
 const PAGE_SIZE = 20
 
@@ -41,6 +53,17 @@ const HISTORY_DATE_OPTS: Intl.DateTimeFormatOptions = {
   year: '2-digit',
   hour: '2-digit',
   minute: '2-digit',
+}
+
+// Classe des cellules d'en-tête (inchangée par le tri — I16).
+const HISTORY_TH_CLASS =
+  'px-3 py-2 text-left whitespace-nowrap text-xs font-medium text-muted-foreground border-r border-border last:border-r-0'
+
+/** aria-sort du <th> pour un état de tri TanStack (I16, miroir ExplorerMatchesTable). */
+function sortAriaValue(dir: false | 'asc' | 'desc'): 'ascending' | 'descending' | 'none' {
+  if (dir === 'asc') return 'ascending'
+  if (dir === 'desc') return 'descending'
+  return 'none'
 }
 
 interface SquadSynergyHistoryTableProps {
@@ -98,6 +121,8 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
       {
         id: 'open',
         header: '',
+        // Icône d'ouverture : jamais triable (I16, comme ExplorerMatchesTable).
+        enableSorting: false,
         cell: (ctx) => (
           <button
             type="button"
@@ -122,6 +147,8 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
             {
               id: 'waypoint',
               header: '',
+              // Lien externe : jamais triable (I16, comme ExplorerMatchesTable).
+              enableSorting: false,
               cell: (ctx) => (
                 <a
                   href={buildWaypointMatchUrl(playerSlug, ctx.row.original.match_id)}
@@ -146,6 +173,8 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
       {
         accessorKey: 'start_time',
         header: labels.date,
+        // Tri chronologique sur le timestamp brut (pas le libellé formaté).
+        sortingFn: dateTimeSortingFn,
         cell: (ctx) => (
           <span className="text-muted-foreground">
             {formatDate(ctx.getValue<string>(), intlLocale, HISTORY_DATE_OPTS)}
@@ -155,11 +184,16 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
       {
         accessorKey: 'map_ui',
         header: labels.map,
+        // Colonnes texte : tri alpha locale-aware, ascendant au 1er clic.
+        sortingFn: localeTextSortingFn,
+        sortDescFirst: false,
         cell: (ctx) => ctx.getValue<string>() || '-',
       },
       {
         accessorKey: 'playlist_name',
         header: labels.playlist,
+        sortingFn: localeTextSortingFn,
+        sortDescFirst: false,
         cell: (ctx) => (
           <span className="text-muted-foreground">
             {ctx.getValue<string | undefined>() || '-'}
@@ -169,6 +203,8 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
       {
         accessorKey: 'mode_ui',
         header: labels.mode,
+        sortingFn: localeTextSortingFn,
+        sortDescFirst: false,
         cell: (ctx) => (
           <span className="text-muted-foreground">
             {ctx.getValue<string | undefined>() || ctx.row.original.pair_name || '-'}
@@ -178,6 +214,8 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
       {
         accessorKey: 'outcome',
         header: labels.outcome,
+        // Tri sur le code brut (2=V, 3=D, 1=N, 4=DNF), jamais le libellé traduit.
+        sortingFn: 'basic',
         cell: (ctx) => {
           const o = ctx.getValue<number>()
           const key = outcomeKey(o)
@@ -191,6 +229,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
       {
         accessorKey: 'win_rate_hist',
         header: labels.winRateHist,
+        ...NUMERIC_SORT,
         cell: (ctx) => {
           const v = ctx.getValue<number | undefined>()
           if (v == null) return <span className="text-muted-foreground">—</span>
@@ -210,6 +249,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
       {
         accessorKey: 'expected_win_prob',
         header: labels.winProb,
+        ...NUMERIC_SORT,
         cell: (ctx) => {
           const v = ctx.getValue<number | null | undefined>()
           if (v == null) return <span className="text-muted-foreground">—</span>
@@ -225,6 +265,8 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
       {
         accessorKey: 'score_label',
         header: labels.score,
+        // Score « 50-30 » : tri alphanumérique naturel (comme ExplorerMatchesTable).
+        sortingFn: 'alphanumeric',
         cell: (ctx) => (
           <span className="text-muted-foreground font-mono">
             {ctx.getValue<string | undefined>() || '-'}
@@ -236,6 +278,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
         // Durée réelle de gameplay (countdown retranché) préférée, fallback brut.
         accessorFn: (r) => r.gameplay_duration_seconds ?? r.duration_seconds,
         header: labels.duration,
+        ...NUMERIC_SORT,
         cell: (ctx) => (
           <span className="text-muted-foreground font-mono tabular-nums">
             {formatDurationMinSec(ctx.getValue<number | undefined>())}
@@ -249,6 +292,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
             {
               accessorKey: 'team_mmr_avg',
               header: labels.teamMmr,
+              ...NUMERIC_SORT,
               cell: (ctx) => (
                 <span className="text-muted-foreground font-mono tabular-nums">
                   {fmtMmr(ctx.getValue<number>())}
@@ -258,6 +302,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
             {
               accessorKey: 'enemy_mmr_avg',
               header: labels.enemyMmr,
+              ...NUMERIC_SORT,
               cell: (ctx) => (
                 <span className="text-muted-foreground font-mono tabular-nums">
                   {fmtMmr(ctx.getValue<number | undefined>())}
@@ -267,6 +312,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
             {
               accessorKey: 'delta_mmr',
               header: labels.deltaMMR,
+              ...NUMERIC_SORT,
               cell: (ctx) => fmtDeltaMMR(ctx.getValue<number | undefined>()),
             } as ColumnDef<SquadMatchHistoryRow>,
           ]
@@ -276,14 +322,24 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
     [labels, intlLocale, playerSlug, goToSynergyMatch, providesTeamMmr, showWaypoint, theme],
   )
 
+  // I16 : tri CLIENT par clic sur les en-têtes. Pas d'état de tri initial : l'ordre
+  // serveur déjà appliqué ci-dessus (`sortedRows` — chronologique ASC) reste affiché
+  // tant qu'aucun en-tête n'est cliqué (pattern RelationsTable A3).
+  const [sorting, setSorting] = useState<SortingState>([])
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: PAGE_SIZE })
 
   const table = useReactTable<SquadMatchHistoryRow>({
     data: sortedRows,
     columns,
-    state: { pagination },
+    state: { sorting, pagination },
+    // Reset en page 1 au changement de tri (pattern RelationsTable A4).
+    onSortingChange: (updater) => {
+      setSorting(updater)
+      setPagination((p) => ({ ...p, pageIndex: 0 }))
+    },
     onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
   })
 
@@ -310,11 +366,34 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
           <thead className="bg-muted border-b">
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>
-                {hg.headers.map((h) => (
-                  <th key={h.id} className="px-3 py-2 text-left whitespace-nowrap text-xs font-medium text-muted-foreground border-r border-border last:border-r-0">
-                    {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
-                  </th>
-                ))}
+                {hg.headers.map((h) => {
+                  const content = h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())
+                  if (!h.column.getCanSort()) {
+                    return (
+                      <th key={h.id} className={HISTORY_TH_CLASS}>
+                        {content}
+                      </th>
+                    )
+                  }
+                  const sortDir = h.column.getIsSorted()
+                  return (
+                    <th key={h.id} className={HISTORY_TH_CLASS} aria-sort={sortAriaValue(sortDir)}>
+                      <button
+                        type="button"
+                        onClick={h.column.getToggleSortingHandler()}
+                        aria-label={labels.sortByAriaLabel(String(content ?? ''))}
+                        className={`group inline-flex items-center gap-1 whitespace-nowrap transition-colors hover:text-foreground${sortDir ? ' text-foreground' : ''}`}
+                      >
+                        {content}
+                        {sortDir && (
+                          <span aria-hidden="true" className="text-2xs leading-none">
+                            {sortDir === 'asc' ? '▲' : '▼'}
+                          </span>
+                        )}
+                      </button>
+                    </th>
+                  )
+                })}
               </tr>
             ))}
           </thead>

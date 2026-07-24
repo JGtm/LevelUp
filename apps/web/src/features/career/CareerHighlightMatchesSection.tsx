@@ -18,6 +18,7 @@
  */
 import { useMemo, useState } from 'react'
 import { useParams } from '@tanstack/react-router'
+import type { SortingState } from '@tanstack/react-table'
 import { ExplorerMatchesTable } from '@/features/explorer/ExplorerMatchesTable'
 import { MultiSelectFilter, type MultiSelectOption } from '@/features/explorer/MultiSelectFilter'
 import { ExperienceDropdown, type Experience, type ExperienceCount } from '@/features/_shared/ExperienceDropdown'
@@ -31,6 +32,13 @@ import { tokenCssVar } from '@/lib/accessibility'
 import type { CareerHighlightFilters } from '@/lib/api/types'
 
 type Variant = 'best' | 'worst'
+
+// I16 : tri client activé (sortable) — l'ordre serveur (best_matches/worst_matches,
+// classés par performance_score/dominance — cf. CareerRepo.GetHighlightMatchIDs) doit
+// rester l'ordre affiché tant qu'aucun en-tête n'est cliqué. `[]` = pas de tri actif au
+// 1er rendu (le défaut interne de ExplorerMatchesTable, date DESC, casserait ce
+// classement curé — pattern identique à RelationsTable, cf. explorerMatchesClientSort).
+const NO_DEFAULT_SORT: SortingState = []
 
 export function CareerHighlightMatchesSection() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
@@ -248,6 +256,8 @@ export function CareerHighlightMatchesSection() {
           playerSlug={playerSlug}
           contextDescriptor={{ kind: 'top_matches' }}
           alwaysShowPagination={false}
+          sortable
+          defaultSort={NO_DEFAULT_SORT}
         />
       )}
     </section>

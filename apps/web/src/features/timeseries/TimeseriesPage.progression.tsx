@@ -28,6 +28,7 @@ import { TimeseriesEngagementGapTrend } from './TimeseriesEngagementGapTrend'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { ExplorerMatchesTable } from '@/features/explorer/ExplorerMatchesTable'
+import { NUMERIC_SORT } from '@/features/explorer/explorerMatchesClientSort'
 import { TimeseriesSkillProgression } from './TimeseriesSkillProgression'
 import type { FilterContextInput, TimeseriesPageResponse, ExplorerMatchRow } from '@/lib/api/types'
 import type { FieldMappingsResponse } from '@/lib/i18n/fieldMappings'
@@ -61,6 +62,10 @@ export function TimeseriesProgressionTab({
     () => [
       {
         id: 'expected_win_prob',
+        // I16 : colonne triable (tri client, cf. `sortable` sur ExplorerMatchesTable
+        // ci-dessous) — valeur brute nullable, nuls rangés en bas (cf. NUMERIC_SORT).
+        accessorFn: (r) => r.expected_win_prob ?? undefined,
+        ...NUMERIC_SORT,
         header: t('timeseries.progression.col_win_prob'),
         cell: (ctx) => {
           const v = ctx.row.original.expected_win_prob
@@ -234,6 +239,10 @@ export function TimeseriesProgressionTab({
           alwaysShowPagination
           extraColumns={winProbColumns}
           extraColumnsAfterId="outcome_code"
+          // I16 : même endpoint/tri backend (date DESC) que le mode Matchs →
+          // le défaut interne de ExplorerMatchesTable reproduit déjà l'ordre
+          // serveur, aucun `defaultSort` à surcharger (cf. ExplorerPage.playerMode).
+          sortable
         />
       )}
 

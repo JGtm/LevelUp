@@ -3,7 +3,7 @@
  * insérée en 2e colonne (juste après le rang #).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 
 import { renderWithProviders } from '@/test/render-utils'
 import type { TopMatchDTO } from '@/lib/api/types'
@@ -92,5 +92,47 @@ describe('CareerTopMatchesTable — colonne « Ouvrir sur Halo Waypoint » (I19)
     }))
     renderWithProviders(<CareerTopMatchesTable items={[makeItem()]} playerSlug="me" />)
     expect(screen.queryByRole('link', { name: WAYPOINT_LABEL })).not.toBeInTheDocument()
+  })
+})
+
+/** Ordre des lignes du tbody, identifiées par la carte qu'elles contiennent. */
+function rowOrder(names: string[]): string[] {
+  const tbody = document.querySelector('tbody')
+  return Array.from(tbody?.querySelectorAll('tr') ?? []).map((tr) => {
+    const txt = tr.textContent ?? ''
+    return names.find((n) => txt.includes(n)) ?? '?'
+  })
+}
+
+describe('CareerTopMatchesTable — tri CLIENT par en-têtes (I16)', () => {
+  const names = ['Alpha', 'Bravo', 'Charlie']
+
+  function rows(): TopMatchDTO[] {
+    return [
+      makeItem({ match_id: 'm1', map_ui: 'Alpha', kills: 5 }),
+      makeItem({ match_id: 'm2', map_ui: 'Bravo', kills: 20 }),
+      makeItem({ match_id: 'm3', map_ui: 'Charlie', kills: 10 }),
+    ]
+  }
+
+  it('sans clic : ordre serveur conservé (liste curée best/worst)', () => {
+    renderWithProviders(<CareerTopMatchesTable items={rows()} playerSlug="me" />)
+    expect(rowOrder(names)).toEqual(['Alpha', 'Bravo', 'Charlie'])
+  })
+
+  it('clic sur « K » trie par frags, un 2e clic inverse l’ordre', () => {
+    renderWithProviders(<CareerTopMatchesTable items={rows()} playerSlug="me" />)
+    const header = screen.getByText('K')
+    fireEvent.click(header)
+    // 1er clic numérique → descendant : 20, 10, 5.
+    expect(rowOrder(names)).toEqual(['Bravo', 'Charlie', 'Alpha'])
+    fireEvent.click(header)
+    expect(rowOrder(names)).toEqual(['Alpha', 'Charlie', 'Bravo'])
+  })
+
+  it('colonne « # » (index de ligne) n’est jamais triable', () => {
+    renderWithProviders(<CareerTopMatchesTable items={rows()} playerSlug="me" />)
+    const header = screen.getByText('#').closest('th')
+    expect(header?.querySelector('button')).not.toBeInTheDocument()
   })
 })

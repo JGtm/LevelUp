@@ -7,9 +7,10 @@
  * GET /admin/titles[/{slug}] qui réutilise la logique capabilities/feature-matrix
  * (1.7a/b) côté Go. Couleurs via tokens sémantiques (foreground/muted/destructive).
  */
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { Card, CardContent } from '@/components/ui/card'
+import { SortableTh } from '@/components/ui/sortable-th'
 import type { AdminManifestKey } from '@/lib/i18n/generated/admin'
 
 import { useAdminT } from '../useAdminText'
@@ -27,12 +28,51 @@ function statusKey(s: TitleStatus): AdminManifestKey {
   }
 }
 
+type TitleSortKey = 'name' | 'status' | 'capabilities' | 'has_mappings'
+
+function titleRawValue(t: AdminTitleSummary, key: TitleSortKey): string | number {
+  switch (key) {
+    case 'name':
+      return t.name
+    case 'status':
+      return t.status
+    case 'capabilities':
+      return t.capabilities.length
+    case 'has_mappings':
+      return t.has_mappings ? 1 : 0
+  }
+}
+
+function compareTitles(a: AdminTitleSummary, b: AdminTitleSummary, key: TitleSortKey, dir: 'asc' | 'desc'): number {
+  const va = titleRawValue(a, key)
+  const vb = titleRawValue(b, key)
+  const cmp = typeof va === 'string' && typeof vb === 'string' ? va.localeCompare(vb, undefined, { numeric: true, sensitivity: 'base' }) : (va as number) - (vb as number)
+  return dir === 'asc' ? cmp : -cmp
+}
+
 export function AdminTitlesPage() {
   const tA = useAdminT()
   const { data, isLoading, isError } = useAdminTitles()
   const [selected, setSelected] = useState<string | null>(null)
+  // I16 : tri CLIENT — registre statique (peu de titres), aucun tri actif par
+  // défaut (ordre serveur conservé).
+  const [sortKey, setSortKey] = useState<TitleSortKey | null>(null)
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  function toggleSort(key: TitleSortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortKey(key)
+      setSortDir(key === 'name' || key === 'status' ? 'asc' : 'desc')
+    }
+  }
 
   const titles = data?.titles ?? []
+  const sortedTitles = useMemo(() => {
+    if (!sortKey) return titles
+    return [...titles].sort((a, b) => compareTitles(a, b, sortKey, sortDir))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [titles, sortKey, sortDir])
   const activeSlug = selected ?? titles[0]?.slug ?? null
 
   return (
@@ -52,14 +92,14 @@ export function AdminTitlesPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-xs text-muted-foreground">
-                    <th className="py-2 pr-4 font-medium">{tA('admin.titles.col_title')}</th>
-                    <th className="py-2 pr-4 font-medium">{tA('admin.titles.col_status')}</th>
-                    <th className="py-2 pr-4 font-medium">{tA('admin.titles.col_capabilities')}</th>
-                    <th className="py-2 pr-4 font-medium">{tA('admin.titles.col_mappings')}</th>
+                    <SortableTh label={tA('admin.titles.col_title')} active={sortKey === 'name'} dir={sortDir} onClick={() => toggleSort('name')} className="py-2 pr-4 font-medium" />
+                    <SortableTh label={tA('admin.titles.col_status')} active={sortKey === 'status'} dir={sortDir} onClick={() => toggleSort('status')} className="py-2 pr-4 font-medium" />
+                    <SortableTh label={tA('admin.titles.col_capabilities')} active={sortKey === 'capabilities'} dir={sortDir} onClick={() => toggleSort('capabilities')} className="py-2 pr-4 font-medium" />
+                    <SortableTh label={tA('admin.titles.col_mappings')} active={sortKey === 'has_mappings'} dir={sortDir} onClick={() => toggleSort('has_mappings')} className="py-2 pr-4 font-medium" />
                   </tr>
                 </thead>
                 <tbody>
-                  {titles.map((ti) => (
+                  {sortedTitles.map((ti) => (
                     <TitleRow
                       key={ti.slug}
                       title={ti}

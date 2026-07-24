@@ -93,6 +93,14 @@ describe('AdminTitlesPage', () => {
     expect(screen.getByText('match_history')).toBeTruthy()
   })
 
+  it('en-tête « col_title » triable (I16) : clic ne casse pas le rendu', () => {
+    render(<AdminTitlesPage />)
+    const header = screen.getByText('admin.titles.col_title').closest('th') as HTMLElement
+    expect(header.querySelector('button')).toBeInTheDocument()
+    fireEvent.click(header)
+    expect(screen.getAllByText('Halo Infinite').length).toBeGreaterThan(0)
+  })
+
   it('copie le brouillon TOML dans le presse-papier (D10)', async () => {
     const writeText = vi.fn(() => Promise.resolve())
     Object.assign(navigator, { clipboard: { writeText } })

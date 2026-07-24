@@ -3,16 +3,55 @@
  * (films, stats, skill…) + buckets d'erreurs (429/auth/5xx/réseau). Identifie
  * si le goulot de sync est côté API (343) ou côté app.
  */
+import { useMemo, useState } from 'react'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
+import { SortableTh } from '@/components/ui/sortable-th'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
-import type { AdminPerfStats } from '@/lib/api/types'
+import type { AdminPerfStats, PerfCallStats, PerfPlayerCallStats } from '@/lib/api/types'
 import { formatDurationMs } from '../format'
 import { useAdminT, useAdminLocale } from '../useAdminText'
 import { SectionHeader } from '../components/SectionHeader'
 
+type CallSortKey = 'name' | 'count' | 'avg_ms' | 'max_ms' | 'sum_ms' | 'errors'
+
+function callRawValue(c: PerfCallStats, key: CallSortKey): string | number {
+  if (key === 'name') return c.name
+  if (key === 'errors') return c.errors ?? 0
+  return c[key]
+}
+
+function compareCallStats(a: PerfCallStats, b: PerfCallStats, key: CallSortKey, dir: 'asc' | 'desc'): number {
+  const va = callRawValue(a, key)
+  const vb = callRawValue(b, key)
+  const cmp = typeof va === 'string' && typeof vb === 'string' ? va.localeCompare(vb, undefined, { numeric: true, sensitivity: 'base' }) : (va as number) - (vb as number)
+  return dir === 'asc' ? cmp : -cmp
+}
+
+/** Hook de tri client hand-rolled (I16) — table entièrement chargée (perf boot),
+ *  aucun tri actif par défaut (ordre serveur conservé). */
+function useCallSort() {
+  const [sortKey, setSortKey] = useState<CallSortKey | null>(null)
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+  function toggleSort(key: CallSortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortKey(key)
+      setSortDir(key === 'name' ? 'asc' : 'desc')
+    }
+  }
+  return { sortKey, sortDir, toggleSort }
+}
+
 export function ApiHaloSection({ perf }: { perf: AdminPerfStats | undefined }) {
   const tA = useAdminT()
   const locale = useAdminLocale()
+  const { sortKey, sortDir, toggleSort } = useCallSort()
+  const sortedCalls = useMemo(() => {
+    const calls = perf?.api_calls ?? []
+    if (!sortKey) return calls
+    return [...calls].sort((a, b) => compareCallStats(a, b, sortKey, sortDir))
+  }, [perf?.api_calls, sortKey, sortDir])
 
   return (
     <section className="space-y-3">
@@ -31,16 +70,16 @@ export function ApiHaloSection({ perf }: { perf: AdminPerfStats | undefined }) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
-                  <th className="px-3 py-2 font-medium">{tA('admin.api.col_call')}</th>
-                  <th className="px-3 py-2 text-right font-medium">{tA('admin.api.col_count')}</th>
-                  <th className="px-3 py-2 text-right font-medium">{tA('admin.api.col_avg')}</th>
-                  <th className="px-3 py-2 text-right font-medium">{tA('admin.api.col_max')}</th>
-                  <th className="px-3 py-2 text-right font-medium">{tA('admin.api.col_total')}</th>
-                  <th className="px-3 py-2 text-right font-medium">{tA('admin.api.col_errors')}</th>
+                  <SortableTh label={tA('admin.api.col_call')} active={sortKey === 'name'} dir={sortDir} onClick={() => toggleSort('name')} className="px-3 py-2 font-medium" />
+                  <SortableTh label={tA('admin.api.col_count')} active={sortKey === 'count'} dir={sortDir} onClick={() => toggleSort('count')} className="px-3 py-2 text-right font-medium" />
+                  <SortableTh label={tA('admin.api.col_avg')} active={sortKey === 'avg_ms'} dir={sortDir} onClick={() => toggleSort('avg_ms')} className="px-3 py-2 text-right font-medium" />
+                  <SortableTh label={tA('admin.api.col_max')} active={sortKey === 'max_ms'} dir={sortDir} onClick={() => toggleSort('max_ms')} className="px-3 py-2 text-right font-medium" />
+                  <SortableTh label={tA('admin.api.col_total')} active={sortKey === 'sum_ms'} dir={sortDir} onClick={() => toggleSort('sum_ms')} className="px-3 py-2 text-right font-medium" />
+                  <SortableTh label={tA('admin.api.col_errors')} active={sortKey === 'errors'} dir={sortDir} onClick={() => toggleSort('errors')} className="px-3 py-2 text-right font-medium" />
                 </tr>
               </thead>
               <tbody>
-                {(perf.api_calls ?? []).map((c) => (
+                {sortedCalls.map((c) => (
                   <tr key={c.name} className="border-b last:border-b-0 hover:bg-muted/30">
                     <td className="px-3 py-2 font-mono text-xs text-foreground">{c.name}</td>
                     <td className="px-3 py-2 text-right font-mono text-xs tabular-nums text-muted-foreground">{c.count}</td>
@@ -65,10 +104,39 @@ export function ApiHaloSection({ perf }: { perf: AdminPerfStats | undefined }) {
   )
 }
 
+type PlayerCallSortKey = 'player' | 'call' | 'count' | 'avg_ms' | 'max_ms' | 'errors'
+
+function playerCallRawValue(s: PerfPlayerCallStats, key: PlayerCallSortKey): string | number {
+  return s[key]
+}
+
+function comparePlayerCallStats(a: PerfPlayerCallStats, b: PerfPlayerCallStats, key: PlayerCallSortKey, dir: 'asc' | 'desc'): number {
+  const va = playerCallRawValue(a, key)
+  const vb = playerCallRawValue(b, key)
+  const cmp = typeof va === 'string' && typeof vb === 'string' ? va.localeCompare(vb, undefined, { numeric: true, sensitivity: 'base' }) : (va as number) - (vb as number)
+  return dir === 'asc' ? cmp : -cmp
+}
+
 /** Sous-tableau des appels API attribuables par joueur (erreurs desc). */
 function ApiByPlayerTable({ perf }: { perf: AdminPerfStats }) {
   const tA = useAdminT()
   const locale = useAdminLocale()
+  const [sortKey, setSortKey] = useState<PlayerCallSortKey | null>(null)
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+  function toggleSort(key: PlayerCallSortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortKey(key)
+      setSortDir(key === 'player' || key === 'call' ? 'asc' : 'desc')
+    }
+  }
+  const sortedStats = useMemo(() => {
+    const stats = perf.api_by_player ?? []
+    if (!sortKey) return stats
+    return [...stats].sort((a, b) => comparePlayerCallStats(a, b, sortKey, sortDir))
+  }, [perf.api_by_player, sortKey, sortDir])
+
   return (
     <div className="space-y-1.5">
       <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -78,16 +146,16 @@ function ApiByPlayerTable({ perf }: { perf: AdminPerfStats }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <th className="px-3 py-2 font-medium">{tA('admin.api.col_player')}</th>
-              <th className="px-3 py-2 font-medium">{tA('admin.api.col_call')}</th>
-              <th className="px-3 py-2 text-right font-medium">{tA('admin.api.col_count')}</th>
-              <th className="px-3 py-2 text-right font-medium">{tA('admin.api.col_avg')}</th>
-              <th className="px-3 py-2 text-right font-medium">{tA('admin.api.col_max')}</th>
-              <th className="px-3 py-2 text-right font-medium">{tA('admin.api.col_errors')}</th>
+              <SortableTh label={tA('admin.api.col_player')} active={sortKey === 'player'} dir={sortDir} onClick={() => toggleSort('player')} className="px-3 py-2 font-medium" />
+              <SortableTh label={tA('admin.api.col_call')} active={sortKey === 'call'} dir={sortDir} onClick={() => toggleSort('call')} className="px-3 py-2 font-medium" />
+              <SortableTh label={tA('admin.api.col_count')} active={sortKey === 'count'} dir={sortDir} onClick={() => toggleSort('count')} className="px-3 py-2 text-right font-medium" />
+              <SortableTh label={tA('admin.api.col_avg')} active={sortKey === 'avg_ms'} dir={sortDir} onClick={() => toggleSort('avg_ms')} className="px-3 py-2 text-right font-medium" />
+              <SortableTh label={tA('admin.api.col_max')} active={sortKey === 'max_ms'} dir={sortDir} onClick={() => toggleSort('max_ms')} className="px-3 py-2 text-right font-medium" />
+              <SortableTh label={tA('admin.api.col_errors')} active={sortKey === 'errors'} dir={sortDir} onClick={() => toggleSort('errors')} className="px-3 py-2 text-right font-medium" />
             </tr>
           </thead>
           <tbody>
-            {(perf.api_by_player ?? []).map((s, i) => (
+            {sortedStats.map((s, i) => (
               <tr key={`${s.player}-${s.call}-${i}`} className="border-b last:border-b-0 hover:bg-muted/30">
                 <td className="px-3 py-2 font-mono text-xs text-foreground">{s.player}</td>
                 <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{s.call}</td>

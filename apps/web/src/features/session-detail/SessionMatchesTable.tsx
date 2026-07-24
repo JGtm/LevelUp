@@ -17,7 +17,7 @@
  * n'en a pas — elle ne doit PAS apparaître sur la page Explorer.
  */
 import { useMemo } from 'react'
-import { type ColumnDef } from '@tanstack/react-table'
+import { type ColumnDef, type SortingState } from '@tanstack/react-table'
 
 import { ExplorerMatchesTable } from '@/features/explorer/ExplorerMatchesTable'
 import type { ExplorerMatchRow, SessionDetailMatchRow } from '@/lib/api/types'
@@ -37,6 +37,13 @@ import { formatRankDelta, rankDeltaToken, useSessionT } from './_shared'
  * Δ rang (ratingDelta) n'existe pas comme colonne Explorer → non affichable sans
  * modifier le composant ; le rang/rating courant reste visible (skill_tier_label).
  */
+// I16 : tri client activé (sortable) — l'ordre initial doit reproduire le tri
+// chronologique ASC déjà appliqué manuellement ci-dessous (`rows` useMemo),
+// PAS le défaut interne de ExplorerMatchesTable (date DESC, pensé pour le
+// mode Matchs). Sans ce surcharge, le 1er rendu inverserait silencieusement
+// l'ordre de la session (régression).
+const SESSION_DEFAULT_SORT: SortingState = [{ id: 'start_time', desc: false }]
+
 const COMPACT_HIDDEN_COLUMNS: Record<string, boolean> = {
   open: false,
   waypoint: false,
@@ -128,6 +135,11 @@ export function SessionMatchesTable({ matches, playerSlug, variant = 'full', wit
       {
         id: 'delta_rating',
         header: deltaRatingLabel,
+        // Pas d'accessorKey/accessorFn (valeur lue via row.original dans la
+        // cellule) → rien de triable. `enableSorting: false` explicite est
+        // RESPECTÉ par ExplorerMatchesTable même quand `sortable` est actif
+        // (cf. commentaire columns dans ExplorerMatchesTable.tsx).
+        enableSorting: false,
         cell: (ctx) => {
           const d = ctx.row.original.skill_rating_delta
           if (d == null) return '-'
@@ -162,6 +174,8 @@ export function SessionMatchesTable({ matches, playerSlug, variant = 'full', wit
       columnVisibility={variant === 'compact' ? COMPACT_HIDDEN_COLUMNS : undefined}
       extraColumns={extraColumns}
       extraColumnsAfterId="skill_tier_label"
+      sortable
+      defaultSort={SESSION_DEFAULT_SORT}
     />
   )
 }

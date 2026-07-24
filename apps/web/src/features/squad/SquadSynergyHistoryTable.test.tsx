@@ -79,6 +79,57 @@ describe('SquadSynergyHistoryTable — non-régression', () => {
   })
 })
 
+/** Ordre des lignes du tbody, identifiées par la carte qu'elles contiennent. */
+function bodyMapOrder(names: string[]): string[] {
+  const tbody = screen.getByTestId('squad-synergy-history-table').querySelector('tbody')
+  return Array.from(tbody?.querySelectorAll('tr') ?? []).map((tr) => {
+    const txt = tr.textContent ?? ''
+    return names.find((n) => txt.includes(n)) ?? '?'
+  })
+}
+
+describe('SquadSynergyHistoryTable — tri CLIENT par en-têtes (I16)', () => {
+  const names = ['Alpha', 'Bravo', 'Charlie']
+
+  function rowsForSort(): SquadMatchHistoryRow[] {
+    return [
+      makeRow({ match_id: 'm1', map_ui: 'Charlie' }),
+      makeRow({ match_id: 'm2', map_ui: 'Alpha' }),
+      makeRow({ match_id: 'm3', map_ui: 'Bravo' }),
+    ]
+  }
+
+  it('sans clic : ordre serveur conservé (aucun tri actif par défaut)', () => {
+    renderWithProviders(<SquadSynergyHistoryTable rows={rowsForSort()} playerSlug="me" />)
+    // Le composant inverse les lignes reçues (backend DESC → affichage ASC) ; sans
+    // clic sur un en-tête, cet ordre reste inchangé (Bravo, Alpha, Charlie).
+    expect(bodyMapOrder(names)).toEqual(['Bravo', 'Alpha', 'Charlie'])
+    const dateHeader = screen.getByRole('columnheader', { name: 'Date' })
+    expect(dateHeader).toHaveAttribute('aria-sort', 'none')
+  })
+
+  it('clic sur « Carte » trie alphabétiquement ASC, un 2e clic bascule en DESC', () => {
+    renderWithProviders(<SquadSynergyHistoryTable rows={rowsForSort()} playerSlug="me" />)
+    const btn = screen.getByRole('button', { name: 'Trier par Carte' })
+    fireEvent.click(btn)
+    expect(bodyMapOrder(names)).toEqual(['Alpha', 'Bravo', 'Charlie'])
+    expect(btn.closest('th')).toHaveAttribute('aria-sort', 'ascending')
+    fireEvent.click(btn)
+    expect(bodyMapOrder(names)).toEqual(['Charlie', 'Bravo', 'Alpha'])
+    expect(btn.closest('th')).toHaveAttribute('aria-sort', 'descending')
+  })
+
+  it('colonnes Ouvrir / Waypoint : jamais triables (pas de bouton d’en-tête)', () => {
+    renderWithProviders(<SquadSynergyHistoryTable rows={[makeRow()]} playerSlug="Chocoboflor" />)
+    const theadRow = screen.getByTestId('squad-synergy-history-table').querySelector('thead tr')
+    const firstHeaderCells = Array.from(theadRow?.querySelectorAll('th') ?? []).slice(0, 2)
+    for (const th of firstHeaderCells) {
+      expect(th.querySelector('button')).not.toBeInTheDocument()
+      expect(th).not.toHaveAttribute('aria-sort')
+    }
+  })
+})
+
 describe('SquadSynergyHistoryTable — lien « Ouvrir sur Halo Waypoint » (I19)', () => {
   it('visible par défaut (capability fail-open + préférence locale ON)', () => {
     renderWithProviders(
