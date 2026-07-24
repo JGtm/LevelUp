@@ -76,7 +76,15 @@ function MedalCategoryCard({ category, locale }: { category: MedalCategoryView; 
   return (
     <div className="rounded-lg border border-border bg-card">
       <div className="flex items-center gap-3 border-b border-border px-3 py-2">
-        <CitationProgressRing pct={category.pct} isMastered={category.isMastered} size={40} />
+        {/* title/aria-label explicites : lève l'ambiguïté « symbole identique partout »
+            (l'anneau seul ne porte pas de libellé — CitationProgressRing est décoratif). */}
+        <span
+          title={category.masteryLabel}
+          aria-label={category.masteryLabel}
+          className="flex shrink-0 items-center"
+        >
+          <CitationProgressRing pct={category.pct} isMastered={category.isMastered} size={40} />
+        </span>
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-medium text-foreground">{category.label}</div>
           <div className="text-xs text-muted-foreground">{category.masteryLabel}</div>
