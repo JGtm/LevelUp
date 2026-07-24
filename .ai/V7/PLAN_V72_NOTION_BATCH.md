@@ -18,7 +18,7 @@ concurrentes (cache) ; intégration `-p 1` ; vérifs visuelles = utilisateur.
 | V72-05 | Options de sync page admin (Initial single-player, Delta, forcer planificateur) | 4 | [ ] |
 | V72-06 | Unifier le nom des armes (voir fichier backlog) | 5 | [ ] |
 | V72-07 | Sélecteur de jeu absent du menu déroulant en local | 2 | [ ] |
-| V72-08 | Question : c'est quoi le graphe « Net score cumulé » ? | 1 | [ ] |
+| V72-08 | Question : c'est quoi le graphe « Net score cumulé » ? | 1 | [x] répondu (frags−morts cumulé) ; renommage FR « Solde frags − morts cumulé » à faire en lot 2 |
 | V72-09 | Page Sessions : « Ouvrir sur Waypoint » et Synergies ne marchent pas | 2 | [ ] |
 | V72-10 | Dropdown sélection escouade : « surtout… » + playlists/modes/maps en anglais | 2 | [ ] |
 | V72-11 | Migrer tri LeaderboardBlock vers SortableTh (dette v7.1) | 4 | [ ] |
@@ -27,7 +27,7 @@ concurrentes (cache) ; intégration `-p 1` ; vérifs visuelles = utilisateur.
 | V72-14 | Bannière/emblème H5 partagés entre joueurs (doit être par joueur) + couleurs séparées | 3 | [ ] |
 | V72-15 | Traiter les items du backlog (hors Tauri et housekeeping) | 5 | [ ] |
 | V72-16 | Épaisseur barres graphe « Outils de destruction » réduite (régression) | 2 | [ ] |
-| V72-17 | Question : c'est quoi le « t » dans le slug URL ? | 1 | [ ] |
+| V72-17 | Question : c'est quoi le « t » dans le slug URL ? | 1 | [x] répondu (namespace route « titre », barré dans Notion) |
 | V72-18 | Menu Escouade L1 : ajouter « Dynamique » | 2 | [ ] |
 | V72-19 | Description de Meganaute mal traduite | 2 | [ ] |
 | V72-20 | Notif quand médaille jamais obtenue est décrochée | 4 | [ ] |
