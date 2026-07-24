@@ -65,13 +65,20 @@ interface XpSeriesMeta {
   lineType: 'real' | 'estimated' | 'proj-normal' | 'proj-optimiste'
 }
 
-// Label court du type de courbe affiché dans le tooltip. 'proj-normal' est résolu
-// dynamiquement au nom du rang max du titre (title-agnostic) dans le tooltip.
-const XP_TYPE_LABELS: Record<XpSeriesMeta['lineType'], string> = {
-  'real': 'réel',
-  'estimated': 'estimé',
-  'proj-normal': '',
-  'proj-optimiste': 'optimiste',
+// Label court du type de courbe affiché dans le tooltip (manifest career, parité
+// FR/EN). 'proj-normal' est résolu dynamiquement au nom du rang max du titre
+// (title-agnostic) dans le tooltip — jamais une entrée de cette table.
+function xpTypeLabel(lineType: XpSeriesMeta['lineType'], locale: ManifestLocale): string {
+  switch (lineType) {
+    case 'real':
+      return careerManifest['career.charts.xp_type_real'][locale]
+    case 'estimated':
+      return careerManifest['career.charts.xp_type_estimated'][locale]
+    case 'proj-optimiste':
+      return careerManifest['career.charts.xp_type_optimistic'][locale]
+    case 'proj-normal':
+      return ''
+  }
 }
 
 // ── Séries ─────────────────────────────────────────────────────────────────
@@ -298,7 +305,7 @@ function buildXpHistoryOption(
         const typeLabel = m
           ? m.lineType === 'proj-normal'
             ? maxRankName
-            : XP_TYPE_LABELS[m.lineType]
+            : xpTypeLabel(m.lineType, locale)
           : ''
         const name = m?.playerName ?? p.seriesName
         return `${p.marker as string} <b>${escapeHtml(name ?? '')}</b> — ${typeLabel} : ${fmtXp(p.value[1] as number)}`

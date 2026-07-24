@@ -754,10 +754,6 @@ en = "Worst match"
 fr = "Aucune donnée de performance disponible."
 en = "No performance data available."
 
-[session.compare.highlight_kills]
-fr = "Frags"
-en = "Kills"
-
 [session.compare.highlight_kda]
 fr = "K/D"
 en = "K/D"

@@ -21,7 +21,6 @@ export const sessionManifest = {
   "session.compare.highlight_best": { fr: "Meilleur match", en: "Best match" },
   "session.compare.highlight_empty": { fr: "Aucune donnée de performance disponible.", en: "No performance data available." },
   "session.compare.highlight_kda": { fr: "K/D", en: "K/D" },
-  "session.compare.highlight_kills": { fr: "Frags", en: "Kills" },
   "session.compare.highlight_score": { fr: "Score", en: "Score" },
   "session.compare.highlight_title": { fr: "Matchs marquants", en: "Match highlights" },
   "session.compare.highlight_worst": { fr: "Pire match", en: "Worst match" },
