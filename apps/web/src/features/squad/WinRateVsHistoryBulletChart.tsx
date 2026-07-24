@@ -4,7 +4,7 @@
  * Spec : .ai/charts_specs/teammates/02_map_winrate_bullet.yaml
  * Builder : ./charts/winRateVsHistoryBulletChart.ts
  */
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, type ReactNode } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import type { MapBreakdownRow } from '@/lib/api/types'
 import {
@@ -13,7 +13,8 @@ import {
 } from './charts/winRateVsHistoryBulletChart'
 
 interface WinRateVsHistoryBulletChartProps extends WinRateVsHistoryBulletOpts {
-  title?: string
+  /** ReactNode pour permettre un titre composé (texte + InfoTooltip, cf. I9). */
+  title?: ReactNode
   emptyMessage?: string
   rows: MapBreakdownRow[]
 }
