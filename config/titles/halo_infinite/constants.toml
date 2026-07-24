@@ -78,3 +78,31 @@ objective = 1.5   # event_type "mode" (objectif, leadership — porter > fragger
 assist    = 0.5   # support (action menée, pas un double comptage du frag)
 death     = 0.0   # mort subie (chaque affrontement compte une fois, côté acteur)
 default   = 1.0   # kill, medal, first_kill/death, finisher, clutch…
+
+# ─── Éras de multiplicateur d'XP de carrière (Career Rank) ───────────────────
+# XP de carrière gagnée par match = multiplicateur(éra) × personal_score. La
+# progression Career Rank d'Halo Infinite crédite le Personal/Applied Score du
+# match (343). Depuis Operation: Infinite (18 novembre 2025), « the Applied Score
+# multipliers for all matchmaking playlists will be doubled » (annonce officielle
+# halowaypoint.com/news/operation-infinite-preview ; patch notes support.halowaypoint.com ;
+# @HaloSupport 18/11/2025 = doublement permanent). Donc ×1 avant le 2025-11-18,
+# ×2 depuis (borne à minuit UTC — l'imprécision d'heure de déploiement est
+# négligeable à l'échelle d'un graphe par match). Validation empirique locale sur
+# 3 joueurs suivis : 86/87 fenêtres à un seul match propres à ±1 % du delta
+# xp_total réel (JGtm 28/29, Madina 28/28, Chocoboflor 30/30), toutes post-18/11.
+#
+# from/to : date UTC "YYYY-MM-DD" ; vide = borne ouverte (from vide = -inf,
+# to vide = +inf). from INCLUSIF, to EXCLUSIF. multiplier > 0.
+# v1 = multiplicateur UNIFORME par éra (pas de multiplicateur par playlist : BTB
+# SpartanRecord ×1,8 et bots non calibrables sur nos données — raffinement backlog).
+# Consommé via games.CareerXPErasFor(slug) → analysis.EstimateCareerXP. Un titre
+# sans cette section retombe sur games.DefaultCareerXPEras (byte-identique Infinite).
+[[career_xp_eras]]
+from = ""
+to = "2025-11-18"
+multiplier = 1.0
+
+[[career_xp_eras]]
+from = "2025-11-18"
+to = ""
+multiplier = 2.0

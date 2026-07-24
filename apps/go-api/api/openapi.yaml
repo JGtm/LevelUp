@@ -10239,12 +10239,20 @@ components:
           enemy_count:
               format: int64
               type: integer
+          frag_gap_series:
+              items:
+                  $ref: '#/components/schemas/ExplorerFragGapPoint'
+              type: array
+              nullable: true
           kills_dealt:
               format: int64
               type: integer
           last_seen_at:
               format: date-time
               type: string
+          player_win_rate:
+              format: double
+              type: number
           winrate_as_ally:
               format: double
               type: number
@@ -10253,6 +10261,18 @@ components:
               type: number
       required:
           - count_together
+      type: object
+    ExplorerFragGapPoint:
+      additionalProperties: false
+      properties:
+          cumulative:
+              format: int64
+              type: integer
+          outcome:
+              type: string
+      required:
+          - cumulative
+          - outcome
       type: object
     ExplorerMatchesRow:
       additionalProperties: false
@@ -17218,6 +17238,9 @@ components:
               type: number
               nullable: true
           assists:
+              format: int64
+              type: integer
+          career_xp_estimated:
               format: int64
               type: integer
           damage_dealt:

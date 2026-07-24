@@ -6231,14 +6231,22 @@ export interface components {
             deaths_suffered?: number;
             /** Format: int64 */
             enemy_count?: number;
+            frag_gap_series?: components["schemas"]["ExplorerFragGapPoint"][] | null;
             /** Format: int64 */
             kills_dealt?: number;
             /** Format: date-time */
             last_seen_at?: string;
             /** Format: double */
+            player_win_rate?: number;
+            /** Format: double */
             winrate_as_ally?: number;
             /** Format: double */
             winrate_vs_enemy?: number;
+        };
+        ExplorerFragGapPoint: {
+            /** Format: int64 */
+            cumulative: number;
+            outcome: string;
         };
         ExplorerMatchesRow: {
             /** Format: int64 */
@@ -9084,6 +9092,8 @@ export interface components {
             accuracy: number | null;
             /** Format: int64 */
             assists: number;
+            /** Format: int64 */
+            career_xp_estimated?: number;
             /** Format: double */
             damage_dealt: number | null;
             /** Format: double */

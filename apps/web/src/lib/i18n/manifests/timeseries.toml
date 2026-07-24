@@ -482,6 +482,23 @@ en = "Perfect kills"
 fr = "Rang et score personnel"
 en = "Rank and personal score"
 
+# XP de carrière (estimée) — série sur l'onglet Progression.
+[timeseries.progression.career_xp_title]
+fr = "XP de carrière (estimée)"
+en = "Career XP (estimated)"
+
+[timeseries.progression.career_xp_cumulative]
+fr = "XP de carrière cumulée"
+en = "Cumulative career XP"
+
+[timeseries.progression.career_xp_per_match]
+fr = "XP estimée par match"
+en = "Estimated XP per match"
+
+[timeseries.progression.career_xp_tooltip]
+fr = "Estimation : XP = multiplicateur d'éra × score personnel du match (×1 avant le 18/11/2025, ×2 depuis — Operation: Infinite). Matchs connus uniquement ; le Firefight et les playlists à multiplicateur spécial sont exclus ou approximés."
+en = "Estimate: XP = era multiplier × the match's personal score (×1 before 2025-11-18, ×2 since — Operation: Infinite). Known matches only; Firefight and playlists with special multipliers are excluded or approximated."
+
 [timeseries.progression.rank]
 fr = "Rang"
 en = "Rank"

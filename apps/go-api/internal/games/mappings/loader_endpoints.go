@@ -5,18 +5,35 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/pelletier/go-toml/v2"
 )
 
 // endpointsTOML est la projection brute de constants.toml (sections [endpoints]
-// + [damage_model]).
+// + [damage_model] + [engagement] + [[career_xp_eras]]).
 type endpointsTOML struct {
-	Meta        metaSection       `toml:"meta"`
-	Endpoints   map[string]string `toml:"endpoints"`
-	DamageModel damageModelTOML   `toml:"damage_model"`
-	Engagement  engagementTOML    `toml:"engagement"`
+	Meta         metaSection       `toml:"meta"`
+	Endpoints    map[string]string `toml:"endpoints"`
+	DamageModel  damageModelTOML   `toml:"damage_model"`
+	Engagement   engagementTOML    `toml:"engagement"`
+	CareerXPEras []careerXPEraTOML `toml:"career_xp_eras"`
 }
+
+// careerXPEraTOML projette une entrée [[career_xp_eras]] (éra de multiplicateur
+// d'XP de carrière). from/to = date UTC "YYYY-MM-DD" ; vide = borne ouverte.
+// Optionnelle : section absente → éras non déclarées, le caller applique
+// games.DefaultCareerXPEras (byte-identique Infinite).
+type careerXPEraTOML struct {
+	From       string  `toml:"from"`
+	To         string  `toml:"to"`
+	Multiplier float64 `toml:"multiplier"`
+}
+
+// careerXPEraDateLayout — format des bornes d'éra (date seule, interprétée à
+// minuit UTC). L'imprécision d'heure de déploiement est négligeable à l'échelle
+// d'un graphe par match (décision plan XP carrière).
+const careerXPEraDateLayout = "2006-01-02"
 
 // engagementTOML projette la section [engagement] (poids d'events du score
 // d'engagement, chantier F7). Optionnelle : absente (default == 0) → poids non
@@ -134,6 +151,10 @@ func LoadEndpointsFromBytes(path string, raw []byte) (*EndpointSet, error) {
 		errs = append(errs, fmt.Errorf("[engagement] : les poids doivent être >= 0 (reçu objective=%v assist=%v death=%v default=%v)", e.Objective, e.Assist, e.Death, e.Default))
 	}
 
+	// [[career_xp_eras]] optionnel : dates parsées + multiplicateurs validés.
+	eras, eraErrs := parseCareerXPEras(doc.CareerXPEras)
+	errs = append(errs, eraErrs...)
+
 	if len(errs) > 0 {
 		return nil, fmt.Errorf("validation %s: %w", path, errors.Join(errs...))
 	}
@@ -152,7 +173,50 @@ func LoadEndpointsFromBytes(path string, raw []byte) (*EndpointSet, error) {
 		Default:   doc.Engagement.Default,
 	}
 	return NewEndpointSet(doc.Meta.TitleSlug, doc.Meta.SchemaVersion, gamePrefix, byKey).
-		withDamageModel(dm).withEngagement(eng), nil
+		withDamageModel(dm).withEngagement(eng).withCareerXPEras(eras), nil
+}
+
+// parseCareerXPEras convertit les entrées brutes [[career_xp_eras]] en []CareerXPEra
+// (dates UTC parsées, multiplicateurs validés). Retourne (nil, nil) si la section est
+// absente. Erreurs agrégées (indexées) : date non parsable, multiplicateur <= 0, ou
+// intervalle inversé (from >= to quand les deux bornes sont fermées).
+func parseCareerXPEras(raw []careerXPEraTOML) ([]CareerXPEra, []error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	var errs []error
+	eras := make([]CareerXPEra, 0, len(raw))
+	for i, e := range raw {
+		from, err := parseEraDate(e.From)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("[[career_xp_eras]][%d].from %q: %w", i, e.From, err))
+		}
+		to, err := parseEraDate(e.To)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("[[career_xp_eras]][%d].to %q: %w", i, e.To, err))
+		}
+		if e.Multiplier <= 0 {
+			errs = append(errs, fmt.Errorf("[[career_xp_eras]][%d].multiplier doit être > 0 (reçu %v)", i, e.Multiplier))
+		}
+		if !from.IsZero() && !to.IsZero() && !from.Before(to) {
+			errs = append(errs, fmt.Errorf("[[career_xp_eras]][%d] intervalle inversé (from %q >= to %q)", i, e.From, e.To))
+		}
+		eras = append(eras, CareerXPEra{From: from, To: to, Multiplier: e.Multiplier})
+	}
+	if len(errs) > 0 {
+		return nil, errs
+	}
+	return eras, nil
+}
+
+// parseEraDate parse une borne d'éra : "" → time.Time{} (borne ouverte) ; sinon
+// "YYYY-MM-DD" interprété à minuit UTC.
+func parseEraDate(s string) (time.Time, error) {
+	trimmed := strings.TrimSpace(s)
+	if trimmed == "" {
+		return time.Time{}, nil
+	}
+	return time.Parse(careerXPEraDateLayout, trimmed)
 }
 
 // isValidGamePrefix vérifie qu'un game_prefix est un segment d'URL sûr : une

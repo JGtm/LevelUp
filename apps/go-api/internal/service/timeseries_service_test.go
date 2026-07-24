@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/legacymatch"
 )
 
@@ -296,7 +297,7 @@ func TestBuildMatchRows_Basic(t *testing.T) {
 			PlaylistName:      "Ranked Arena",
 		},
 	}
-	rows := buildMatchRows(matches, true, nil)
+	rows := buildMatchRows(matches, true, nil, nil)
 	if len(rows) != 1 {
 		t.Fatalf("expected 1 row, got %d", len(rows))
 	}
@@ -319,6 +320,44 @@ func TestBuildMatchRows_Basic(t *testing.T) {
 	}
 }
 
+// TestBuildMatchRows_CareerXPEstimated vérifie la série « XP de carrière (estimée) » :
+// éras appliquées par date (×2 post-18/11/2025, ×1 avant), exclusion Firefight et
+// personal_score nil (point exclu → nil), et absence d'éras (capability absente) → nil.
+func TestBuildMatchRows_CareerXPEstimated(t *testing.T) {
+	eras := games.DefaultCareerXPEras() // ×1 avant 2025-11-18, ×2 depuis
+	psPost, psPre, psFF := 1200, 1000, 1500
+	post := time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
+	pre := time.Date(2025, 6, 1, 12, 0, 0, 0, time.UTC)
+	matches := []legacymatch.StatsMatchRow{
+		{MatchID: "post", StartTime: post, PersonalScore: &psPost},                // 1200 × 2 = 2400
+		{MatchID: "pre", StartTime: pre, PersonalScore: &psPre},                   // 1000 × 1 = 1000
+		{MatchID: "ff", StartTime: post, PersonalScore: &psFF, IsFirefight: true}, // exclu (Firefight)
+		{MatchID: "nops", StartTime: post, PersonalScore: nil},                    // exclu (score nil)
+	}
+
+	rows := buildMatchRows(matches, true, nil, eras)
+	if rows[0].CareerXPEstimated == nil || *rows[0].CareerXPEstimated != 2400 {
+		t.Errorf("post-cutover XP = %v, want 2400 (1200×2)", rows[0].CareerXPEstimated)
+	}
+	if rows[1].CareerXPEstimated == nil || *rows[1].CareerXPEstimated != 1000 {
+		t.Errorf("pre-cutover XP = %v, want 1000 (1000×1)", rows[1].CareerXPEstimated)
+	}
+	if rows[2].CareerXPEstimated != nil {
+		t.Errorf("Firefight XP = %v, want nil (exclu)", *rows[2].CareerXPEstimated)
+	}
+	if rows[3].CareerXPEstimated != nil {
+		t.Errorf("personal_score nil XP = %v, want nil (exclu)", *rows[3].CareerXPEstimated)
+	}
+
+	// Capability absente (éras nil) → aucune ligne ne porte d'XP estimée.
+	noEras := buildMatchRows(matches, true, nil, nil)
+	for i, r := range noEras {
+		if r.CareerXPEstimated != nil {
+			t.Errorf("row[%d] CareerXPEstimated = %v sans éras, want nil", i, *r.CareerXPEstimated)
+		}
+	}
+}
+
 // TestBuildMatchRows_ExpectedFDA vérifie la projection de l'écart au FDA attendu :
 // KillsExpected/DeathsExpected passés depuis StatsMatchRow + AssistsExpected batch
 // → KdaExpected = kills_exp + assists_exp/3 − deaths_exp. Null-safety : la ligne
@@ -331,7 +370,7 @@ func TestBuildMatchRows_ExpectedFDA(t *testing.T) {
 		{MatchID: "with-exp", StartTime: now, Kills: 12, Deaths: 5, KillsExpected: &ke, DeathsExpected: &de},
 		{MatchID: "no-exp", StartTime: now.Add(time.Minute), Kills: 3, Deaths: 3},
 	}
-	rows := buildMatchRows(matches, true, map[string]*float64{"with-exp": &assistsExp})
+	rows := buildMatchRows(matches, true, map[string]*float64{"with-exp": &assistsExp}, nil)
 	if len(rows) != 2 {
 		t.Fatalf("expected 2 rows, got %d", len(rows))
 	}
