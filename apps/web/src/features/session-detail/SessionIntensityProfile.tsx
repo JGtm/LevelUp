@@ -16,9 +16,11 @@ import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { resolveToken } from '@/lib/accessibility'
 import { phaseShares } from '@/lib/charts/phaseProfile'
+import { useAppShellStore } from '@/stores/appShellStore'
 import type { IntensityMatchRow } from '@/lib/api/types'
 import {
   buildSquadIntensityProfileOption,
+  intensityAxisLabels,
   type IntensityPanelInput,
 } from '@/features/squad/charts/squadIntensityProfileChart'
 
@@ -32,6 +34,7 @@ interface Props {
 
 export function SessionIntensityProfile({ title, rows, height = 300 }: Props) {
   const t = useSessionT()
+  const locale = useAppShellStore((s) => s.locale)
 
   // Panneau solo unique : couleur série standard du chart, titre de panneau vide
   // (le titre de la carte identifie déjà la session). Absent si aucune manche
@@ -75,6 +78,7 @@ export function SessionIntensityProfile({ title, rows, height = 300 }: Props) {
           medianLabel: t('session.detail.chart_intensity_median'),
           envelopeLabel: t('session.detail.chart_intensity_envelope'),
           refLabel: t('session.detail.chart_intensity_ref'),
+          axisLabels: intensityAxisLabels(locale),
         })
       }
     />

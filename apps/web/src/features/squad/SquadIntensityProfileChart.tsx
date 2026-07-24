@@ -12,9 +12,11 @@ import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { resolveToken } from '@/lib/accessibility'
 import { phaseShares } from '@/lib/charts/phaseProfile'
+import { useAppShellStore } from '@/stores/appShellStore'
 import type { SquadIntensityProfile } from '@/lib/api/types'
 import {
   buildSquadIntensityProfileOption,
+  intensityAxisLabels,
   type IntensityPanelInput,
 } from './charts/squadIntensityProfileChart'
 
@@ -84,9 +86,11 @@ export function SquadIntensityProfileChart({
     [panels],
   )
 
+  const locale = useAppShellStore((s) => s.locale)
+  const axisLabels = intensityAxisLabels(locale)
   const buildOption = useCallback(
-    () => buildSquadIntensityProfileOption({ panels, medianLabel, envelopeLabel, refLabel }),
-    [panels, medianLabel, envelopeLabel, refLabel],
+    () => buildSquadIntensityProfileOption({ panels, medianLabel, envelopeLabel, refLabel, axisLabels }),
+    [panels, medianLabel, envelopeLabel, refLabel, axisLabels],
   )
 
   const rowsCount = panels.length <= 1 ? 1 : Math.ceil(panels.length / 2)

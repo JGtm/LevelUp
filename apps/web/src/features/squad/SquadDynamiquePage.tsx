@@ -86,20 +86,24 @@ export function SquadDynamiquePage() {
       />
 
       <FeatureGate capability="engagement">
-        <SquadEngagementSection
-          playerSlug={playerSlug}
-          matchIds={engagementMatchIds}
-          teammates={engagementTeammates}
-          colorByPlayer={playerColors}
-        />
-        <SquadEngagementGapChart
-          playerSlug={playerSlug}
-          matchIds={engagementMatchIds}
-          teammates={engagementTeammates}
-          colorByPlayer={playerColors}
-          t={t}
-          emptyMessage={t.empty.noBlockData}
-        />
+        {/* Engagement + Écart d'engagement cumulé côte à côte sur desktop (empilés
+            en mobile). */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <SquadEngagementSection
+            playerSlug={playerSlug}
+            matchIds={engagementMatchIds}
+            teammates={engagementTeammates}
+            colorByPlayer={playerColors}
+          />
+          <SquadEngagementGapChart
+            playerSlug={playerSlug}
+            matchIds={engagementMatchIds}
+            teammates={engagementTeammates}
+            colorByPlayer={playerColors}
+            t={t}
+            emptyMessage={t.empty.noBlockData}
+          />
+        </div>
       </FeatureGate>
     </div>
   )

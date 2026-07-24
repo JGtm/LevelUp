@@ -1,3 +1,25 @@
+## [2026-07-24] Retouches visuelles Dynamique (passe utilisateur)
+
+**Statut** : Complété (branche `fix/dynamique-retouches`, base main mergé).
+
+**Décision technique principale** : axes du profil « Intensité » clarifiés dans
+le BUILDER PARTAGÉ (les 3 surfaces en profitent) — axe X : 3 repères seulement
+(Début / Milieu / Fin, index 0/5/9, tranche précise « 40-50 % du match »
+reconstruite au tooltip via dataIndex) ; axe Y déjà en % ; libellés d'axes =
+constante partagée `intensityAxisLabels(locale)` (FR/EN, parité typée) plutôt
+que 12 clés i18n dupliquées. Mises en page : Rendement/Résistance côte à côte
+(grid md:grid-cols-2, pleine largeur en H5 mono-carte) ; Engagement / Écart
+d'engagement cumulé côte à côte (même pattern) dans SquadDynamiquePage.
+
+**Résultats observés** : tsc -b (cache purgé) 0 erreur ; vitest squad +
+timeseries + session-detail = 61 fichiers / 419 tests verts (3 tests d'axes
+ajoutés).
+
+**Conclusion / prochaine étape** : merge dans main local pour la suite de la
+passe visuelle utilisateur. Refonte « Premier frag / première mort » en
+discussion (options A/B/C proposées).
+
+---
 ## [2026-07-24] Refonte « Intensité » — Phase 3 (Sessions solo + suppression heatmap) — CLÔTURE DU LOT
 
 **Statut** : Complété (Phase 3 du PLAN_INTENSITE_PROFIL_2026-07 ; branche
