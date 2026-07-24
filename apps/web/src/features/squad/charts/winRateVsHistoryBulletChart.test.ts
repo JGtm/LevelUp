@@ -83,6 +83,12 @@ describe('buildWinRateVsHistoryBulletOption', () => {
     expect(yAxis.data).toEqual(['AQUARIUS (7)'])
   })
 
+  it('suffixe (n) masqué quand une seule partie (demande user 2026-07-24)', () => {
+    const opt = buildWinRateVsHistoryBulletOption(makeSeries([row('aquarius', 0.6, 0.5, 1)]), OPTS)
+    const yAxis = opt.yAxis as { data: string[] }
+    expect(yAxis.data).toEqual(['AQUARIUS'])
+  })
+
   it('respecte l\'ordre reçu du backend, aucun re-tri par match_count — I12', () => {
     // Le backend (computeMapBreakdown) trie déjà par première apparition
     // chronologique ; le front ne doit PAS re-trier par match_count desc

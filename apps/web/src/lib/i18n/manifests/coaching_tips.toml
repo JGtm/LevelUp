@@ -110,7 +110,7 @@ fr = "Ton rendement offensif mesure combien de frags et d'assistances tu obtiens
 en = "Your offensive conversion measures how many kills and assists you earn per point of damage dealt. « Precise » style (high conversion) = you finish your own duels efficiently; « generous » style (low conversion) = you create pressure and damage that teammates convert into kills."
 
 [coaching_tips.combat.strategic.4]
-fr = "Style offensif précis ou généreux, les deux sont des atouts : le précis maximise ton impact individuel, le généreux fonctionne mieux dans les équipes qui team-shot bien. Si tu es « généreux » en solo queue, travailler ta finition de duel est plus rentable qu'augmenter ton volume de dégâts brut."
+fr = "Style offensif précis ou généreux, les deux sont des atouts : le précis maximise ton impact individuel, le généreux fonctionne mieux dans les équipes qui savent tirer groupé. Si tu es « généreux » en solo queue, travailler ta finition de duel est plus rentable qu'augmenter ton volume de dégâts brut."
 en = "Precise or generous offensive style, both are assets: precise maximizes individual impact, generous works best in teams that team-shot well. If you're « generous » in solo queue, working on your duel-finishing is more profitable than increasing raw damage volume."
 
 [coaching_tips.combat.settings.1]
@@ -188,7 +188,7 @@ fr = "Si tu portes une arme spéciale (Lance-roquettes, Fusil de précision, Emb
 en = "If you're carrying a power weapon (Rocket Launcher, Sniper, Skewer), your top priority flips: no more seeking kills, just survive to keep it. Dying hands the weapon to the enemy and flips the match dynamic."
 
 [coaching_tips.survival.strategic.2]
-fr = "« Knowing numbers » : ne pousse jamais sans savoir combien d'ennemis tu peux croiser. Compte les X de morts dans le feed, les repères d'équipe, le radar. Si l'autre équipe est all-up et la tienne est staggered, replie-toi. Si trois X adverses viennent de tomber, pousse l'objectif. La discipline numérique sépare le Diamant du Onyx."
+fr = "« Connaître les chiffres » : ne pousse jamais sans savoir combien d'ennemis tu peux croiser. Compte les X de morts dans le feed, les repères d'équipe, le radar. Si l'autre équipe est toute vivante et la tienne en réapparitions dispersées, replie-toi. Si trois X adverses viennent de tomber, pousse l'objectif. La discipline numérique sépare le Diamant du Onyx."
 en = "« Knowing numbers »: never push without knowing how many enemies you might meet. Count death X's in the feed, team markers, radar. If their team is all-up and yours is staggered, fall back. If three of theirs just died, push the objective. Numerical discipline separates Diamond from Onyx."
 
 [coaching_tips.survival.strategic.3]
@@ -226,7 +226,7 @@ fr = "Assistances, dégâts qui mènent à un frag allié, présence en croiseme
 en = "Assists, damage leading to teammate kills, crossfire presence, mark assist kills"
 
 [coaching_tips.support.tactical.1]
-fr = "Si un coéquipier tombe en duel dans ton champ de vision et que tu peux placer un tir, fais-le même si tu pensais aller ailleurs. Un seul tir transforme son 1c1 en 2c1 — c'est la définition de l'avantage de tir croisé Halo."
+fr = "Si un coéquipier tombe en duel dans ton champ de vision et que tu peux placer un tir, fais-le même si tu pensais aller ailleurs. Un seul tir transforme son 1v1 en 2v1 — c'est la définition de l'avantage de tir croisé Halo."
 en = "If a teammate is dueling in your line of sight and you can land one shot, take it even if you were going elsewhere. One shot turns his 1v1 into a 2v1 — that's the textbook Halo crossfire advantage."
 
 [coaching_tips.support.tactical.2]
@@ -310,7 +310,7 @@ fr = "Strongholds — la meilleure prise de zones est A+B (les plus proches l'un
 en = "Strongholds — the best hold is A+B (the closest pair, defenses overlap). If you're stuck and can't break B, fall back to A+C: you keep score ticking, regain momentum, then push B with an Overshield or power weapons. A+C fallback beats dying 5 times on B."
 
 [coaching_tips.objective.strategic.3]
-fr = "CTF / Capture du drapeau : tu n'es pas obligé d'être le porteur. Escorter, ouvrir un couloir, tuer les chasseurs vaut autant qu'un carry. Un porteur sans escorte meurt à mi-chemin, deux escortes sans porteur ne marquent jamais. Et ne déclenche pas un pull de drapeau quand l'autre équipe est all-up — c'est un jeu solo perdant."
+fr = "CTF / Capture du drapeau : tu n'es pas obligé d'être le porteur. Escorter, ouvrir un couloir, tuer les chasseurs vaut autant qu'un carry. Un porteur sans escorte meurt à mi-chemin, deux escortes sans porteur ne marquent jamais. Et ne déclenche pas une tentative de prise de drapeau quand l'autre équipe est toute vivante — c'est un jeu solo perdant."
 en = "CTF / Capture the Flag: you don't have to be the carrier. Escorting, clearing a lane, killing chasers is worth as much as a carry. A carrier without escort dies halfway, two escorts without a carrier never score. And don't pull the flag when their team is all-up — that's losing solo play."
 
 [coaching_tips.objective.strategic.4]

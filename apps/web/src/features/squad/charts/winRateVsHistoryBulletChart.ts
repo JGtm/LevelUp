@@ -93,9 +93,12 @@ export function buildWinRateVsHistoryBulletOption(
   const { mapLabelOf, sessionLabel, historyLabel, parityLabel, zeroWinrateLabel, countsLabel } = opts
   // Ordre reçu tel quel (chronologique, cf. docstring de fichier) — aucun re-tri (I12).
   const sorted = rows
-  // Suffixe « (n) » = nombre de parties de la session sur la carte (indicateur
-  // discret toujours visible ; le tooltip détaille session + historique).
-  const mapLabels = sorted.map((r) => `${mapLabelOf(r.map_ui)} (${r.match_count})`)
+  // Suffixe « (n) » = nombre de parties de la session sur la carte — MASQUÉ quand
+  // n = 1 (demande utilisateur 2026-07-24 : une seule partie n'apporte rien, le
+  // tooltip détaille de toute façon session + historique).
+  const mapLabels = sorted.map((r) =>
+    r.match_count > 1 ? `${mapLabelOf(r.map_ui)} (${r.match_count})` : mapLabelOf(r.map_ui),
+  )
   const negColor = resolveToken('divergent-neg')
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
