@@ -1,3 +1,59 @@
+## [2026-07-24] XP de carrière estimée (Timeseries) — Lots B1 (backend) + B2 (front)
+
+**Statut** : Complété côté code (branche `feat/v7.1-backlog`, sans commit — gates go/front
+= superviseur, l'agent n'a pas les droits build/test/vet/npm). Suite du plan
+`.ai/PLAN_XP_CARRIERE_ESTIMEE_2026-07.md`.
+
+**Décision technique principale** :
+- Chaîne title-agnostic complète, miroir exact du précédent damage_model/engagement :
+  `constants.toml [[career_xp_eras]]` → `mappings.CareerXPEra` (dates parsées au boot) →
+  `games.CareerXPErasFor` (+ `DefaultCareerXPEras` fallback) → `analysis.EstimateCareerXP`
+  (fonction pure) → service. Capability fine `analytics.career_xp_estimate` (opt-in strict,
+  Infinite only), testée via `CapabilityMap.Has` (jamais `slug ==`).
+- Grain per-match = champ additif `CareerXPEstimated *int` sur `TimeseriesMatchRow` (pattern
+  établi des séries per-match ; découvert par exploration du stack Timeseries), peuplé dans
+  `buildMatchRows`. Aucune requête SQL ajoutée (`personal_score`/`is_firefight`/`start_time`
+  déjà projetés). Borne d'éra sur `StartTime` (canonique projeté), PAS `end_time_utc`
+  (non projeté ; ajout inutile — borne à la journée) — écart au plan assumé et justifié.
+- Front : chart `TimeseriesCareerXP` (cumul ligne + XP/match barres), gate DATA-DRIVEN
+  (`match_rows.some(career_xp_estimated != null)` — pas de slug), logique extraite pure
+  (`careerXpSeries.ts`) + testée ; i18n FR/EN (4 clés) + tooltip méthodo ; tokens (0 hex).
+
+**Résultats observés** : code écrit avec vérif sur pièces des signatures/champs (loader,
+resolver, StatsMatchRow, capability whitelist count 18→19). Non compilé par l'agent →
+gates délégués. openapi.yaml édité manuellement (style omitempty comme `max_killing_spree`).
+
+**Conclusion / prochaine étape** (superviseur) : `gofmt -w` Go touchés → gates Go
+(`go test ./...` + vet + lint) → `make generate-types` → build i18n manifests →
+`make check-types` + `make test-web` → revue visuelle JGtm (B3.3) → thought_log de clôture.
+
+## [2026-07-24] XP de carrière estimée (Timeseries) — Lot B0 calibration
+
+**Statut** : Complété (branche `feat/v7.1-backlog`, sans commit — gate superviseur).
+Exécution du plan `.ai/PLAN_XP_CARRIERE_ESTIMEE_2026-07.md` sous contrat plan-execution.
+
+**Décision technique principale** :
+- Mesures lecture seule sur parquets staging du 23/07 (diag_parquet_q, droits go exclusifs).
+- Formule `×2 × personal_score` validée sur les 3 joueurs suivis : 86/87 fenêtres à un seul
+  match propres à ±1 % du delta xp_total réel (JGtm 28/29, Madina 28/28, Chocoboflor 30/30).
+  Méthode = « une transition distincte d'xp_total = un match PvP en base », miroir des paires
+  gardes 6 min. Toutes les fenêtres sont post-18/11 (snapshots démarrent 2026-02/03) → le ×1
+  pré-doublement est invérifiable localement (B0.2 = `[!]`, source officielle seule).
+- Layering tranché sur pièces : `internal/domain` importe déjà games (cycle si type d'éra
+  dans domain) → type `CareerXPEra` dans `mappings` (précédent damage_model/engagement),
+  fonction pure dans `analysis` (qui importe déjà `games/mappings`), résolveur+défaut dans
+  `games` (miroir `EffectiveHpToKill`). Capability fine `analytics.career_xp_estimate`.
+
+**Résultats observés** :
+- Part d'XP « invisible » (fenêtres à 0 match connu) : JGtm 0,37 % · Chocoboflor 3,07 % ·
+  Madina 5,83 % — tous < 10 % → PAS de chantier audit sync PvE (aucun Firefight en base).
+- Oracle : la fenêtre JGtm Δxp=173 230 (re-crédit serveur 25/05, rang 179→184) confirme
+  qu'il ne faut PAS tracer xp_total brut ; correctement écartée par la méthode 1-match.
+- Éras versionnées ajoutées à `config/titles/halo_infinite/constants.toml` (`[[career_xp_eras]]`).
+
+**Conclusion / prochaine étape** : B0 clos. Enchaîner B1 (backend : loader mappings +
+résolveur games + fonction analysis + capability + service + openapi manuel).
+
 ## [2026-07-24] I16 — Tri par en-têtes généralisé à tous les tableaux de l'app
 
 **Statut** : Complété (branche `feat/v7.1-backlog`, sans commit — gate superviseur).
