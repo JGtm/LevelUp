@@ -63,7 +63,7 @@ func seedVehicleCommendationFixture(t *testing.T, meta, shared *DB) {
 	}
 }
 
-func openMemDB(t *testing.T) *DB {
+func openVehicleTestMemDB(t *testing.T) *DB {
 	t.Helper()
 	db, err := OpenReadWrite(":memory:")
 	if err != nil {
@@ -74,8 +74,8 @@ func openMemDB(t *testing.T) *DB {
 }
 
 func TestVehicleCommendationStats_ScopedSum(t *testing.T) {
-	meta := openMemDB(t)
-	shared := openMemDB(t)
+	meta := openVehicleTestMemDB(t)
+	shared := openVehicleTestMemDB(t)
 	seedVehicleCommendationFixture(t, meta, shared)
 
 	repo := NewVehicleCommendationStatsRepo(&PlayerDB{Shared: shared, Metadata: meta, XUID: "xA"})
@@ -92,9 +92,9 @@ func TestVehicleCommendationStats_ScopedSum(t *testing.T) {
 }
 
 func TestVehicleCommendationStats_ReferentialAbsent(t *testing.T) {
-	shared := openMemDB(t)
+	shared := openVehicleTestMemDB(t)
 	// Metadata SANS table commendation_definitions → résolution échoue → 0/0 sans erreur.
-	emptyMeta := openMemDB(t)
+	emptyMeta := openVehicleTestMemDB(t)
 	repo := NewVehicleCommendationStatsRepo(&PlayerDB{Shared: shared, Metadata: emptyMeta, XUID: "xA"})
 	got, err := repo.LoadVehicleDestructionStats(context.Background(), "halo_5", []string{"m1"}, "xA")
 	if err != nil {
@@ -106,8 +106,8 @@ func TestVehicleCommendationStats_ReferentialAbsent(t *testing.T) {
 }
 
 func TestVehicleCommendationStats_ReferentialEmpty(t *testing.T) {
-	shared := openMemDB(t)
-	meta := openMemDB(t)
+	shared := openVehicleTestMemDB(t)
+	meta := openVehicleTestMemDB(t)
 	// Table présente mais VIDE (aucun nom ne matche) → 0/0 sans erreur.
 	if _, err := meta.Exec(context.Background(),
 		`CREATE TABLE commendation_definitions (commendation_id VARCHAR, name_en VARCHAR, name_fr VARCHAR)`); err != nil {
@@ -121,8 +121,8 @@ func TestVehicleCommendationStats_ReferentialEmpty(t *testing.T) {
 }
 
 func TestVehicleCommendationStats_NeutralInputs(t *testing.T) {
-	meta := openMemDB(t)
-	shared := openMemDB(t)
+	meta := openVehicleTestMemDB(t)
+	shared := openVehicleTestMemDB(t)
 	seedVehicleCommendationFixture(t, meta, shared)
 	repo := NewVehicleCommendationStatsRepo(&PlayerDB{Shared: shared, Metadata: meta, XUID: "xA"})
 	ctx := context.Background()
