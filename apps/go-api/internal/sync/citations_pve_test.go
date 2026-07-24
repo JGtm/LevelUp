@@ -28,29 +28,26 @@ func buildPveTestDB(t *testing.T) *sql.DB {
 	t.Helper()
 	return openFixtureDB(t, `
 CREATE SEQUENCE pve_id_seq;
+-- Fixture ALIGNÉE sur le schéma RÉEL de shared_pve.pve_match_stats (vérifié sur
+-- pièces 2026-07-24 : la colonne est total_enemy_kills, PAS total_kills — la
+-- première version de cette fixture divergeait et masquait un Binder Error prod).
 CREATE TABLE pve_match_stats (
-    id              INTEGER PRIMARY KEY DEFAULT nextval('pve_id_seq'),
-    match_id        VARCHAR NOT NULL,
-    xuid            VARCHAR NOT NULL,
-    waves_completed INTEGER DEFAULT 0,
-    boss_kills      INTEGER DEFAULT 0,
-    grunt_kills     INTEGER DEFAULT 0,
-    elite_kills     INTEGER DEFAULT 0,
-    jackal_kills    INTEGER DEFAULT 0,
-    brute_kills     INTEGER DEFAULT 0,
-    hunter_kills    INTEGER DEFAULT 0,
-    skimmer_kills   INTEGER DEFAULT 0,
-    crawler_kills   INTEGER DEFAULT 0,
-    soldier_kills   INTEGER DEFAULT 0,
-    knight_kills    INTEGER DEFAULT 0,
-    warden_kills    INTEGER DEFAULT 0,
-    sentinel_kills  INTEGER DEFAULT 0,
-    marine_kills    INTEGER DEFAULT 0,
-    total_kills     INTEGER DEFAULT 0,
-    deaths          INTEGER DEFAULT 0,
-    damage_dealt    DOUBLE DEFAULT 0,
-    pve_bits        BIGINT DEFAULT 0,
-    written_at      TIMESTAMP DEFAULT now()
+    id                INTEGER PRIMARY KEY DEFAULT nextval('pve_id_seq'),
+    match_id          VARCHAR NOT NULL,
+    xuid              VARCHAR NOT NULL,
+    total_enemy_kills INTEGER DEFAULT 0,
+    boss_kills        INTEGER DEFAULT 0,
+    grunt_kills       INTEGER DEFAULT 0,
+    elite_kills       INTEGER DEFAULT 0,
+    jackal_kills      INTEGER DEFAULT 0,
+    brute_kills       INTEGER DEFAULT 0,
+    hunter_kills      INTEGER DEFAULT 0,
+    skimmer_kills     INTEGER DEFAULT 0,
+    sentinel_kills    INTEGER DEFAULT 0,
+    marine_kills      INTEGER DEFAULT 0,
+    pve_bits          BIGINT DEFAULT 0,
+    created_at        TIMESTAMP DEFAULT now(),
+    written_at        TIMESTAMP DEFAULT now()
 );
 CREATE OR REPLACE VIEW pve_match_stats_latest AS
     SELECT * FROM pve_match_stats
@@ -63,16 +60,16 @@ func insertPveRow(t *testing.T, db *sql.DB) {
 	t.Helper()
 	mustExec(t, db, `
 INSERT INTO pve_match_stats (
-    match_id, xuid, waves_completed, boss_kills,
+    match_id, xuid, boss_kills,
     grunt_kills, elite_kills, jackal_kills, brute_kills,
     hunter_kills, skimmer_kills, sentinel_kills, marine_kills,
-    total_kills, deaths, damage_dealt, pve_bits
-) VALUES (?, ?, 5, 1, 12, 4, 3, 0, 2, 0, 0, 0, 21, 4, 4200, 0)`,
+    total_enemy_kills, pve_bits
+) VALUES (?, ?, 1, 12, 4, 3, 0, 2, 0, 0, 0, 21, 0)`,
 		pveTestMatchID, pveTestXUID)
 }
 
-// TestLoadPveStats vérifie le loader isolé : mapping colonnes → clés stat_name,
-// alias total_kills → total_enemy_kills, et dégradation gracieuse (nil / no rows).
+// TestLoadPveStats vérifie le loader isolé : mapping colonnes → clés stat_name
+// (total_enemy_kills lue telle quelle) et dégradation gracieuse (nil / no rows).
 func TestLoadPveStats(t *testing.T) {
 	ctx := context.Background()
 	pve := buildPveTestDB(t)
@@ -88,7 +85,7 @@ func TestLoadPveStats(t *testing.T) {
 		"jackal_kills":      3,
 		"hunter_kills":      2,
 		"boss_kills":        1,
-		"total_enemy_kills": 21, // alias de la colonne total_kills
+		"total_enemy_kills": 21,
 	}
 	for k, v := range want {
 		if got := stats[k]; got != v {
