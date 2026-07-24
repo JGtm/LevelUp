@@ -158,6 +158,17 @@ changelogs, tooltips XP i18n) ; #5 repli donut legacy Explorer supprimé
 CI branche VERTE sur cb4443ef4 (fix openMemDB : collision avec fichier
 integration-taggé, leçon en mémoire).
 
+## Vérification BTB post-lot (demande user 2026-07-24 soir)
+Madina97294 = 590 matchs BTB MAIS quasi tous antérieurs à mars 2026 (avant le début
+du tracking career_progression). Un seul BTB dans la fenêtre calibrable, contaminé
+(left_in_progress, score partiel) → multiplicateur BTB NON vérifiable chez nous
+(confirme le hors-périmètre du plan XP). Contrôle béton : 28/28 fenêtres 1-match
+non-BTB à ratio exactement 2,0000 → ×2 uniforme solide, le score reste la bonne
+source (conclusion user validée). DÉCOUVERTE annexe : la série xp_total de Madina
+tombe à 0 depuis le 2026-05-25 (conséquence du RT mort AADSTS70000 connu) — se
+réparera au re-onboarding de son token. Requêtes rejouables : scratchpad
+q_windows4.sql (extensible à JGtm/Chocoboflor).
+
 ## Découvertes hors périmètre (règle 7 — noter, ne pas traiter)
 - winRateVsHistoryChart.ts (non-bullet) = builder MORT (aucun caller) → suppression incluse
   dans le périmètre I12 (même famille, décision superviseur). FAIT (W1b). Reste la clé i18n
