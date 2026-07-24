@@ -15,7 +15,7 @@ import { EfficiencyTooltipText } from '@/components/charts/EfficiencyTooltipText
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSquadContext } from './SquadContext'
 import { getSquadText } from './i18n'
-import { SquadIntensityHeatmapChart } from './SquadIntensityHeatmapChart'
+import { SquadIntensityProfileChart } from './SquadIntensityProfileChart'
 import { SquadEfficiencyChart } from './SquadEfficiencyChart'
 import { SquadNetLivesChart } from './SquadNetLivesChart'
 import { SquadEngagementGapChart } from './SquadEngagementGapChart'
@@ -54,24 +54,19 @@ export function SquadDynamiquePage() {
     () => (pageData?.match_history ?? []).slice(0, 15).map((m) => m.match_id).reverse(),
     [pageData?.match_history],
   )
-  const intensityProfileLocalized = intensityProfile
-    ? {
-        ...intensityProfile,
-        // Le backend renvoie "all" comme label brut — on le localise ici.
-        options: intensityProfile.options.map((o) =>
-          o.key === 'all' ? { ...o, label: t.intensity.allLabel } : o,
-        ),
-      }
-    : undefined
-
   return (
     <div className="space-y-4">
-      <SquadIntensityHeatmapChart
+      <SquadIntensityProfileChart
         title={t.intensity.title}
+        subtitle={t.intensity.subtitle}
+        tooltip={t.intensity.tooltip}
+        medianLabel={t.intensity.medianLabel}
+        envelopeLabel={t.intensity.envelopeLabel}
+        refLabel={t.intensity.refLabel}
         emptyMessage={t.empty.noBlockData}
-        profile={intensityProfileLocalized ?? { options: [], rows: {} }}
+        profile={intensityProfile ?? { options: [], rows: {} }}
         colorByPlayer={playerColors}
-        zLabel={t.intensity.zLabel}
+        playerOrder={[mainPlayerKey, ...confirmedGamertags]}
       />
 
       <SquadEfficiencyChart
