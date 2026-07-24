@@ -7,7 +7,7 @@
 import { CompositeProgressBar } from '@/components/ui/composite-progress-bar'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { intlLocale } from '@/lib/formatters'
-import { useCapability } from '@/lib/capabilities/capabilities'
+import { useCapability, useCapabilityStrict } from '@/lib/capabilities/capabilities'
 import type { HomeSkillPeakSummary, HomeSpartanIdentity } from '@/lib/api/types'
 import { getSpartanIdentityText } from './spartanIdentity.i18n'
 import { HomeSkillPeakCard } from './HomeSkillPeakCard'
@@ -18,6 +18,8 @@ import { useSpartanAppearance } from '@/features/spartan-customizer/store'
 interface HomeSpartanIdentityBannerProps {
   spartanIdentity: HomeSpartanIdentity
   playerName: string
+  /** Slug du joueur de la page — clé d'isolation de l'apparence Spartan (V72-14). */
+  playerSlug: string
   highestCSR: HomeSkillPeakSummary | null
   highestLUSR: HomeSkillPeakSummary | null
   hasRankedHistory: boolean
@@ -34,6 +36,7 @@ interface HomeSpartanIdentityBannerProps {
 export function HomeSpartanIdentityBanner({
   spartanIdentity,
   playerName,
+  playerSlug,
   highestCSR,
   highestLUSR,
   hasRankedHistory,
@@ -49,17 +52,14 @@ export function HomeSpartanIdentityBanner({
 
   // Bannière SYNTHÉTISÉE (emblème + nameplate recolorisés) pour les titres déclarant la
   // capability `spartan_customizer` : leur banner_image_url n'est pas une vraie bannière
-  // (Halo 5 = render full-body du Spartan). Gating par CAPABILITY, pas par slug.
+  // (Halo 5 = render full-body du Spartan). Gating STRICT (fail-closed) par CAPABILITY :
+  // pendant la fenêtre transitoire de re-bootstrap au switch de titre, un fail-open
+  // synthétiserait des visuels Halo 5 sur Infinite (fuite cross-titre V72-29).
   const currentTitleSlug = useAppShellStore((s) => s.currentTitleSlug)
-  const synthesizeBanner = useCapability('spartan_customizer')
-  // Apparence Spartan (emblème + couleurs) choisie-ou-défaut (#160), PAR TITRE → sert à
-  // composer le bandeau. Jamais vide.
-  const spartanApp = useSpartanAppearance(currentTitleSlug)
-  const spartanColors = {
-    primary: spartanApp.primary,
-    secondary: spartanApp.secondary,
-    tertiary: spartanApp.tertiary,
-  }
+  const synthesizeBanner = useCapabilityStrict('spartan_customizer')
+  // Apparence Spartan (emblème + couleurs) choisie-ou-défaut (#160), PAR TITRE ET PAR
+  // JOUEUR → compose le bandeau. Couleurs emblème/bannière indépendantes. Jamais vide.
+  const spartanApp = useSpartanAppearance(currentTitleSlug, playerSlug)
   const spartanEmblemId = spartanApp.emblemId ?? '160'
   const spartanNameplateId = spartanApp.nameplateId ?? '160'
   const activeBannerUrl = synthesizeBanner ? null : (spartanIdentity.banner_image_url ?? null)
@@ -127,7 +127,7 @@ export function HomeSpartanIdentityBanner({
             <>
               <RecoloredMask
                 src={`/titles/${currentTitleSlug}/spartan/nameplates/${spartanNameplateId}.png`}
-                colors={spartanColors}
+                colors={spartanApp.nameplateColors}
                 alt=""
                 className="pointer-events-none absolute inset-0 h-full w-full object-cover"
               />
@@ -168,7 +168,7 @@ export function HomeSpartanIdentityBanner({
                 // visuellement au nameplate de fond.
                 <RecoloredMask
                   src={`/titles/${currentTitleSlug}/spartan/emblems/${spartanEmblemId}.png`}
-                  colors={spartanColors}
+                  colors={spartanApp.emblemColors}
                   alt={`Emblème ${playerName}`}
                   className="h-20 w-20 shrink-0 object-contain drop-shadow-[0_2px_6px_rgba(8,15,28,0.5)] sm:h-24 sm:w-24"
                 />

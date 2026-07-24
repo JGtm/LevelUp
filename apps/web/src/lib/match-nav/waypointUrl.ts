@@ -9,8 +9,8 @@
  *     (bucket "arena" constant : le corpus suivi est du matchmaking Arena —
  *     Warzone est exclu du sync, les customs ne sont pas listées).
  *
- * Centralisé au 3e point d'usage (ExplorerMatchesTable, SquadSynergyHistoryTable,
- * CareerTopMatchesTable) — cf. règle CLAUDE.md « ≤ 2 copies d'un même pattern ».
+ * Centralisé à la 3e copie du pattern — cf. règle CLAUDE.md « ≤ 2 copies d'un même
+ * pattern ». Appelants actuels : ExplorerMatchesTable, SquadSynergyHistoryTable.
  * Garde-rail : waypointUrl.guard.test.ts interdit toute reconstruction ad hoc du
  * domaine halowaypoint.com ailleurs dans apps/web/src.
  */

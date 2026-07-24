@@ -11,7 +11,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 
 import { FeatureGate } from './FeatureGate'
 import { RouteCapabilityGate } from './RouteCapabilityGate'
-import { hasCapabilityIn, useCapability, useTitleCapabilities } from './capabilities'
+import { hasCapabilityIn, useCapability, useCapabilityStrict, useTitleCapabilities } from './capabilities'
 
 function setTitleCaps(caps: string[]) {
   useAppShellStore.setState({
@@ -50,6 +50,37 @@ describe('useCapability', () => {
     expect(renderHook(() => useCapability('expected_stats')).result.current).toBe(true)
     setTitleCaps(['ranked'])
     expect(renderHook(() => useCapability('expected_stats')).result.current).toBe(false)
+  })
+})
+
+describe('useCapabilityStrict (fail-closed)', () => {
+  it('false quand aucun titre n\'est chargé (availableTitles vide) — jamais fail-open', () => {
+    useAppShellStore.setState({ currentTitleSlug: 'halo_5', availableTitles: [] })
+    const { result } = renderHook(() => useCapabilityStrict('spartan_customizer'))
+    expect(result.current).toBe(false)
+  })
+
+  it('false quand le titre courant est introuvable (fenêtre transitoire de re-bootstrap)', () => {
+    useAppShellStore.setState({
+      currentTitleSlug: 'halo_infinite',
+      availableTitles: [
+        { slug: 'halo_5', name: 'Halo 5', status: 'active', capabilities: ['spartan_customizer'], is_default: false, effective_hp_to_kill: 225 },
+      ],
+    })
+    const { result } = renderHook(() => useCapabilityStrict('spartan_customizer'))
+    expect(result.current).toBe(false)
+  })
+
+  it('false quand le titre résolu ne déclare pas la capability', () => {
+    setTitleCaps(['ranked'])
+    const { result } = renderHook(() => useCapabilityStrict('spartan_customizer'))
+    expect(result.current).toBe(false)
+  })
+
+  it('true uniquement quand le titre résolu déclare la capability', () => {
+    setTitleCaps(['spartan_customizer'])
+    const { result } = renderHook(() => useCapabilityStrict('spartan_customizer'))
+    expect(result.current).toBe(true)
   })
 })
 

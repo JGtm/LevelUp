@@ -237,6 +237,7 @@ export function HomePage() {
             <HomeSpartanIdentityBanner
               spartanIdentity={spartanIdentity ?? {}}
               playerName={hero.player_name}
+              playerSlug={playerSlug}
               highestCSR={highestCSR}
               highestLUSR={highestLUSR}
               hasRankedHistory={hasRankedHistory}
@@ -249,7 +250,10 @@ export function HomePage() {
               spartanCustomizeLabel={t('home.spartan_customizer.open_aria')}
             />
             {hasSpartanCustomizer && customizerOpen && (
-              <SpartanCustomizerModal onClose={() => setCustomizerOpen(false)} />
+              <SpartanCustomizerModal
+                onClose={() => setCustomizerOpen(false)}
+                playerSlug={playerSlug}
+              />
             )}
 
             <HomeHeroKPIGrid

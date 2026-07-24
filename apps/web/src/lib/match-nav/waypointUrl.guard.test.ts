@@ -4,9 +4,10 @@
  * Garde-rail I19 (règle CLAUDE.md « ≤ 2 copies d'un même pattern ») : la
  * construction de l'URL Halo Waypoint d'un match DOIT passer par
  * `buildWaypointMatchUrl` (waypointUrl.ts). Interdit toute reconstruction ad
- * hoc du littéral "halowaypoint.com" ailleurs dans apps/web/src — la 3e copie
- * (ExplorerMatchesTable, SquadSynergyHistoryTable, CareerTopMatchesTable) a
- * motivé la centralisation ; ce garde-rail empêche la dette de re-diverger.
+ * hoc du littéral "halowaypoint.com" ailleurs dans apps/web/src — la 3e copie du
+ * pattern (ExplorerMatchesTable, SquadSynergyHistoryTable, et un tableau carrière
+ * depuis retiré) a motivé la centralisation ; ce garde-rail empêche la dette de
+ * re-diverger.
  */
 import { describe, it, expect } from 'vitest'
 import { readdirSync, readFileSync } from 'node:fs'

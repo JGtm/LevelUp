@@ -4,6 +4,7 @@ export { RouteCapabilityGate } from './RouteCapabilityGate'
 export {
   TITLE_CAPABILITIES,
   useCapability,
+  useCapabilityStrict,
   useTitleCapabilities,
   hasCapabilityIn,
   type TitleCapability,
