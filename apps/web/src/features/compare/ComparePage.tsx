@@ -315,11 +315,6 @@ export function ComparePage() {
   const rightCompare = useCompare(playerSlug)  // A vs C (mirror uniquement)
 
   useEffect(() => {
-    document.title = `LevelUp - ${text.pageTitle}`
-    return () => { document.title = 'LevelUp' }
-  }, [text.pageTitle])
-
-  useEffect(() => {
     leftCompare.reset()
     if (target?.trim()) leftCompare.mutate({ target_gamertag: target.trim() })
     // eslint-disable-next-line react-hooks/exhaustive-deps

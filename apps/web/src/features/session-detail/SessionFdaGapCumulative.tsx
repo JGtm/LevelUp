@@ -1,6 +1,9 @@
 /**
  * SessionFdaGapCumulative — « Écart cumulé au FDA attendu » sur les matchs d'une
- * session. Décision D2 du plan PLAN_EXPECTED_FDA_2026-07.
+ * session. Décision D2 du plan PLAN_EXPECTED_FDA_2026-07 + retouche UX
+ * 2026-07-24 : remplacement des 2 courbes cumulées (I11) par UNE courbe fine
+ * « FDA attendu » PAR MATCH (retour utilisateur — il voulait le par-match, pas
+ * un cumul).
  *
  * Somme CUMULÉE du différentiel `kda − kda_expected` (FDA réel natif ADR 0006
  * moins FDA attendu projeté backend), match après match dans l'ordre
@@ -8,18 +11,24 @@
  * valeur cumulée (D5 — jamais 0, jamais de trou dans le cumul).
  *
  * Même pattern visuel que `SessionNetScoreArea` : aire signée divergente ancrée à
- * 0 (helper canonique `divergentZeroGradient`, PAS de visualMap) + markLine 0.
- * Masqué par `useCapability('expected_stats')` (Halo 5 = pas d'attendu → null).
+ * 0 (helper canonique `divergentZeroGradient`, PAS de visualMap) + markLine 0 sur
+ * l'axe PRIMAIRE, PLUS 1 courbe fine « FDA attendu » PAR MATCH sur le MÊME axe Y
+ * (même unité FDA — retour utilisateur 2026-07-24 : pas de double axe) —
+ * lit le champ `expected` de chaque point du helper canonique `cumulativeFdaGap`,
+ * `null` → point troué (`connectNulls: false`). Masqué par
+ * `useCapability('expected_stats')` (Halo 5 = pas d'attendu → null).
  */
 import { useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
+import { resolveToken } from '@/lib/accessibility'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import {
   CHART_BG,
   escapeHtml,
   getAxisBase,
   getEChartsThemeColors,
+  getLegendBase,
   getTooltipBase,
 } from '@/components/charts/_utils'
 import { cumulativeFdaGap, type FdaGapCumPoint } from '@/lib/charts/cumulativeFdaGap'
@@ -55,6 +64,7 @@ export function computeCumulativeFdaGap(matches: SessionDetailMatchRow[]): FdaGa
 export interface FdaGapCumulativeLabels {
   seriesLabel: string
   realLabel: string
+  /** Libellé « attendu » du match (tooltip + légende de la courbe par-match, axe secondaire). */
   expectedLabel: string
   gapLabel: string
   yDomain?: [number, number]
@@ -73,7 +83,9 @@ export function buildSessionFdaGapOption(
   const interval = points.length > 30 ? Math.floor(points.length / 12) : 0
 
   const values = points.map((p) => p.cumulative)
+  const expectedValues = points.map((p) => p.expected)
   const divergentColor = divergentZeroGradient(values)
+  const expectedColor = resolveToken('chart-series-2')
   const fmt = (v: number | null, signed = false) =>
     v == null ? '—' : signed && v >= 0 ? `+${v}` : `${v}`
 
@@ -97,6 +109,10 @@ export function buildSessionFdaGapOption(
         )
       },
     },
+    legend: {
+      ...getLegendBase(tc),
+      data: [opts.seriesLabel, opts.expectedLabel],
+    },
     xAxis: {
       ...axis,
       type: 'category',
@@ -104,6 +120,8 @@ export function buildSessionFdaGapOption(
       data: points.map((p) => p.label),
       axisLabel: { ...(axis.axisLabel as Record<string, unknown>), interval },
     },
+    // Axe Y UNIQUE (retour utilisateur 2026-07-24 : le double axe rendait le
+    // graphe illisible — écart cumulé et FDA attendu sont dans la même unité FDA).
     yAxis: {
       ...axis,
       type: 'value',
@@ -127,6 +145,16 @@ export function buildSessionFdaGapOption(
           label: { show: false },
           data: [{ yAxis: 0 }],
         },
+      },
+      {
+        // FDA attendu PAR MATCH (pas cumulé) — courbe fine sur le MÊME axe que
+        // l'aire (même unité FDA). `expected` null → point troué.
+        name: opts.expectedLabel,
+        type: 'line',
+        data: expectedValues,
+        symbol: 'none',
+        connectNulls: false,
+        lineStyle: { width: 1, color: expectedColor, type: 'dashed' },
       },
     ],
   }

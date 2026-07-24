@@ -12,6 +12,11 @@
  *  - Header de colonne match : fond coloré selon outcome du joueur principal.
  *  - Tri serveur : players DESC par score → Champion (rank=1) / Passager
  *    clandestin (rank=N, score≥0) / Maillon faible (rank=N, score<0).
+ *
+ * EXCEPTION tri client par en-têtes (I16) : volontairement NON triable.
+ * L'ordre des lignes EST le classement lui-même (rank dérivé de la position,
+ * cf. buildRows) — un tri client casserait la sémantique Champion / Maillon
+ * faible / Passager clandestin, qui dépend de la position 1re/dernière.
  */
 import { useMemo, type CSSProperties } from 'react'
 import {

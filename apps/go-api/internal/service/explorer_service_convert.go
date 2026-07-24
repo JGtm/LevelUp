@@ -2,6 +2,7 @@ package service
 
 import (
 	"levelup/go-api/internal/analysis/narrative"
+	"levelup/go-api/internal/analysis/relations"
 	"levelup/go-api/internal/domain"
 )
 
@@ -34,6 +35,30 @@ func convertEncounterStatsToExplorer(s narrative.EncounterStats, totalCount int)
 		WinrateAsAlly:  s.WinrateAsAlly,
 		WinrateVsEnemy: s.WinrateVsEnemy,
 		LastSeenAt:     s.LastSeen,
+	}
+	return out
+}
+
+// buildExplorerFragGapSeries projette la timeline de duels (matchs joués EN
+// ENNEMI contre la cible, ancien→récent) en une courbe « écart de frags cumulé »
+// prête pour CumulativeFragGapChart : somme préfixe directionnelle
+// (frags infligés − morts subies) + issue canonique du duel par point. Retourne
+// nil si aucun duel (jamais affrontés en ennemi) → le front masque le graphe.
+// Même métrique que les cartes revanche du hub Relations (relations.ResultToDuel
+// + duelOutcomeLabel réutilisés, zéro duplication de mapping).
+func buildExplorerFragGapSeries(raw []domain.RelationDuelRawRow) []domain.ExplorerFragGapPoint {
+	if len(raw) == 0 {
+		return nil
+	}
+	out := make([]domain.ExplorerFragGapPoint, 0, len(raw))
+	cumulative := 0
+	for i := range raw {
+		d := &raw[i]
+		cumulative += d.KillsOnRival - d.DeathsByRival
+		out = append(out, domain.ExplorerFragGapPoint{
+			Cumulative: cumulative,
+			Outcome:    duelOutcomeLabel(relations.ResultToDuel(d.Result)),
+		})
 	}
 	return out
 }

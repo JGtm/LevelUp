@@ -40,6 +40,10 @@ schema_version = 1
 "match.skill.snapshot"   = "degraded"
 "career.progression"     = "supported"
 "career.rank_catalog"    = "supported"
+# XP de carrière estimée par match (série Timeseries) — XP = multiplicateur d'éra ×
+# personal_score. Infinite uniquement (Career Rank fondé sur le Personal Score) ;
+# absente pour un titre à système d'XP distinct (Halo 5 = Spartan Rank).
+"analytics.career_xp_estimate" = "supported"
 "pve.firefight_stats"    = "supported"
 "analytics.timeseries"   = "not_exposed"
 "match.scoreboard.extra" = "not_exposed"

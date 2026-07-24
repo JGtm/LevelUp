@@ -10,9 +10,8 @@
  * Remplace l'ancien tri SERVEUR (mapping sortKey ⇄ SortingState, manualSorting)
  * limite a 5 colonnes — cf. thought_log 2026-07-17.
  */
-import type { SortingFn } from '@tanstack/react-table'
+import type { Row } from '@tanstack/react-table'
 
-import type { ExplorerMatchRow } from '@/lib/api/types'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 
 /**
@@ -24,8 +23,9 @@ import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
  */
 export const NUMERIC_SORT = { sortingFn: 'basic', sortUndefined: 'last' } as const
 
-/** Tri chronologique sur un timestamp ISO brut (pas le libelle de date formate). */
-export const dateTimeSortingFn: SortingFn<ExplorerMatchRow> = (a, b, id) => {
+/** Tri chronologique sur un timestamp ISO brut (pas le libelle de date formate).
+ *  Generique : n'accede qu'a `getValue(id)`, reutilisable par tout tableau TanStack. */
+export const dateTimeSortingFn = <T,>(a: Row<T>, b: Row<T>, id: string): number => {
   const ta = Date.parse(a.getValue<string>(id) || '')
   const tb = Date.parse(b.getValue<string>(id) || '')
   const na = Number.isNaN(ta)
@@ -37,8 +37,9 @@ export const dateTimeSortingFn: SortingFn<ExplorerMatchRow> = (a, b, id) => {
 }
 
 /** Tri alphabetique locale-aware + numerique naturel ("Map2" < "Map10") pour les
- *  colonnes texte (valeur brute map_ui / mode_ui / playlist_label / rating_type). */
-export const localeTextSortingFn: SortingFn<ExplorerMatchRow> = (a, b, id) => {
+ *  colonnes texte (valeur brute map_ui / mode_ui / playlist_label / rating_type).
+ *  Generique : n'accede qu'a `getValue(id)`, reutilisable par tout tableau TanStack. */
+export const localeTextSortingFn = <T,>(a: Row<T>, b: Row<T>, id: string): number => {
   const sa = String(a.getValue(id) ?? '')
   const sb = String(b.getValue(id) ?? '')
   return sa.localeCompare(sb, undefined, { numeric: true, sensitivity: 'base' })

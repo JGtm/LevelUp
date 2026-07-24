@@ -223,11 +223,16 @@ type TimeseriesMatchRow struct {
 	// KDA et KDRatio exposés par P2.5 (revue 2026-04-29 ADR 0006).
 	// Ils débloquent la suppression du recompute K/D côté front
 	// (TimeseriesKdaBars.tsx:78 — voir B3).
-	KDA               *float64 `json:"kda,omitempty"`
-	KDRatio           *float64 `json:"kd_ratio,omitempty"`
-	Accuracy          *float64 `json:"accuracy"`
-	Outcome           *int     `json:"outcome"`
-	PersonalScore     *int     `json:"personal_score"`
+	KDA           *float64 `json:"kda,omitempty"`
+	KDRatio       *float64 `json:"kd_ratio,omitempty"`
+	Accuracy      *float64 `json:"accuracy"`
+	Outcome       *int     `json:"outcome"`
+	PersonalScore *int     `json:"personal_score"`
+	// CareerXPEstimated — XP de carrière (Career Rank) ESTIMÉE gagnée sur ce match :
+	// multiplicateur d'éra × personal_score (analysis.EstimateCareerXP). nil hors
+	// titre à capability analytics.career_xp_estimate (Infinite), match Firefight, ou
+	// personal_score absent → le point est exclu de la série « XP de carrière (estimée) ».
+	CareerXPEstimated *int     `json:"career_xp_estimated,omitempty"`
 	DamageDealt       *float64 `json:"damage_dealt"`
 	DamageTaken       *float64 `json:"damage_taken"`
 	PerfScore         *float64 `json:"perf_score"`

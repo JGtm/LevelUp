@@ -102,65 +102,11 @@ en = "Tie"
 fr = "Non terminé"
 en = "Did not finish"
 
-# ─── Onglet Résumé ──────────────────────────────────────────────────────────
-
-[match_view.summary.kpi_kills]
-fr = "Frags"
-en = "Kills"
-
-[match_view.summary.kpi_deaths]
-fr = "Morts"
-en = "Deaths"
-
-[match_view.summary.kpi_assists]
-fr = "Assistances"
-en = "Assists"
-
-[match_view.summary.kpi_kda]
-fr = "K/D/A"
-en = "K/D/A"
-
-[match_view.summary.kpi_accuracy]
-fr = "Précision"
-en = "Accuracy"
-
-[match_view.summary.kpi_personal_score]
-fr = "Score personnel"
-en = "Personal score"
-
-[match_view.summary.kpi_avg_life]
-fr = "Vie moyenne"
-en = "Average lifespan"
-
-[match_view.summary.kpi_max_spree]
-fr = "Série max"
-en = "Max killing spree"
-
-[match_view.summary.kpi_headshots]
-fr = "Headshots"
-en = "Headshots"
-
-[match_view.summary.kpi_perfect_kills]
-fr = "Kills parfaits"
-en = "Perfect kills"
-
-[match_view.summary.expected_label]
-fr = "Attendu"
-en = "Expected"
-
-[match_view.summary.delta_label]
-fr = "Écart"
-en = "Delta"
-
 # ─── Onglet Combat ──────────────────────────────────────────────────────────
 
 [match_view.combat.section_weapons]
 fr = "Armes utilisées"
 en = "Weapons used"
-
-[match_view.combat.section_kill_feed]
-fr = "Chronologie des kills"
-en = "Kill feed"
 
 [match_view.combat.section_tug_of_war]
 fr = "Bras de fer territorial"
@@ -173,14 +119,6 @@ en = "K/D over time"
 [match_view.combat.section_impact]
 fr = "Rôles d'impact"
 en = "Impact roles"
-
-[match_view.combat.cadence_title]
-fr = "Cadence des kills par phase"
-en = "Kill cadence by phase"
-
-[match_view.combat.cadence_caption]
-fr = "Kills regroupés par phase de {seconds, number} secondes"
-en = "Kills grouped by phases of {seconds, number} seconds"
 
 # ─── Onglet Équipe ──────────────────────────────────────────────────────────
 

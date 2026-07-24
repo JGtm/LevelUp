@@ -172,6 +172,12 @@ func TestCareerService_GetCareerPage_H5TotalRanks152(t *testing.T) {
 		CurrentRank: &canonical.AssetReference{Kind: "spartan_rank", ID: "SR 111", DefaultLabel: "SR 111"},
 		RankMax:     &rankMax152,
 		XPMax:       &xpMax,
+		// Libellé du rang max porté par l'adapter h5 (« SR 152 ») — le service le
+		// recopie dans HeroProgress.MaxRankName* SANS passer par le catalogue HINF.
+		MaxRank: &canonical.AssetReference{
+			Kind: "spartan_rank", ID: "SR 152", DefaultLabel: "SR 152",
+			Labels: map[string]string{"fr": "SR 152", "en": "SR152"},
+		},
 	}
 	adapter := &h5CareerStubAdapter{snap: snap}
 
@@ -200,6 +206,60 @@ func TestCareerService_GetCareerPage_H5TotalRanks152(t *testing.T) {
 	// Le label SR doit survivre : le catalogue HINF (titre ≠) ne l'écrase pas.
 	if resp.Summary.RankLabel != "SR 111" {
 		t.Errorf("RankLabel = %q, want \"SR 111\" (catalogue HINF ne doit PAS écraser le label SR h5)", resp.Summary.RankLabel)
+	}
+	// Le libellé du rang max vient de la source h5 (« SR 152 »), pas du catalogue HINF.
+	if resp.HeroProgress.MaxRankNameFR != "SR 152" {
+		t.Errorf("MaxRankNameFR = %q, want \"SR 152\" (source h5, pas le catalogue HINF)", resp.HeroProgress.MaxRankNameFR)
+	}
+	if resp.HeroProgress.MaxRankNameEN != "SR152" {
+		t.Errorf("MaxRankNameEN = %q, want \"SR152\"", resp.HeroProgress.MaxRankNameEN)
+	}
+}
+
+// TestCareerService_GetCareerPage_MaxRankNameFromCatalog : pour un titre dont le
+// catalogue s'applique (Halo Infinite), le libellé du rang MAX du gauge « path to
+// max rank » provient de l'entrée SOMMET du catalogue (« Héros » / « Hero »), jamais
+// d'un littéral. La source ne fournit pas MaxRankName* → résolution via catalogue.
+func TestCareerService_GetCareerPage_MaxRankNameFromCatalog(t *testing.T) {
+	t.Parallel()
+
+	rankData := &domain.CareerRankData{RankNumber: 100, RecordedAt: time.Now()}
+	catalog := mappings.NewRankCatalog("halo_infinite", []mappings.RankEntry{
+		{ID: 100, Title: map[string]string{"fr": "Colonel", "en": "Colonel"}},
+		{ID: 272, Title: map[string]string{"fr": "Héros", "en": "Hero"}},
+	})
+	svc := NewCareerService(&mockCareerRepo{rank: rankData}).
+		WithTitleSlug("halo_infinite").
+		WithRankCatalog(catalog)
+
+	resp, err := svc.GetCareerPage(context.Background())
+	if err != nil {
+		t.Fatalf("GetCareerPage: %v", err)
+	}
+	if resp.HeroProgress.MaxRankNameFR != "Héros" {
+		t.Errorf("MaxRankNameFR = %q, want \"Héros\" (entrée sommet du catalogue)", resp.HeroProgress.MaxRankNameFR)
+	}
+	if resp.HeroProgress.MaxRankNameEN != "Hero" {
+		t.Errorf("MaxRankNameEN = %q, want \"Hero\"", resp.HeroProgress.MaxRankNameEN)
+	}
+}
+
+// TestCareerService_GetCareerPage_MaxRankName_DegradesEmpty : sans catalogue
+// applicable NI libellé de source, HeroProgress.MaxRankName* reste vide (dégradation
+// propre — le front affiche alors un libellé générique). Aucune panique, aucun
+// vocabulaire d'un autre titre.
+func TestCareerService_GetCareerPage_MaxRankName_DegradesEmpty(t *testing.T) {
+	t.Parallel()
+
+	rankData := &domain.CareerRankData{RankNumber: 50, RecordedAt: time.Now()}
+	svc := NewCareerService(&mockCareerRepo{rank: rankData}) // ni titleSlug ni catalogue
+
+	resp, err := svc.GetCareerPage(context.Background())
+	if err != nil {
+		t.Fatalf("GetCareerPage: %v", err)
+	}
+	if resp.HeroProgress.MaxRankNameFR != "" || resp.HeroProgress.MaxRankNameEN != "" {
+		t.Errorf("MaxRankName* = (%q, %q), want vides (dégradation)", resp.HeroProgress.MaxRankNameFR, resp.HeroProgress.MaxRankNameEN)
 	}
 }
 

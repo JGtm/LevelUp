@@ -134,6 +134,7 @@ export const queryKeys = {
   media: (playerSlug: string, requestHash: string) => ['media', playerSlug, requestHash] as const,
   mediaRail: (playerSlug: string, limit: number, likedOnly = false) => ['media', playerSlug, 'rail', limit, likedOnly] as const,
   mediaAuthors: (playerSlug: string) => ['media', playerSlug, 'authors'] as const,
+  mediaAudioConfig: (playerSlug: string) => ['media', playerSlug, 'audio-config'] as const,
   feedVersion: ['media', 'feed-version'] as const,
 
   // Citations (Slice 2B)

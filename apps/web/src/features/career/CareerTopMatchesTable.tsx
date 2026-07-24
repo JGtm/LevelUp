@@ -5,17 +5,22 @@
  * /pages/career/top-matches : best_matches / worst_matches). Les listes best/worst
  * sont déjà séparées côté backend — le composant reçoit un tableau prêt à rendre.
  */
+import { useMemo, useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { SortableTh } from '@/components/ui/sortable-th'
 import type { TopMatchDTO } from '@/lib/api/types'
 import { tokenCssVar } from '@/lib/accessibility'
 import { outcomeKey } from '@/lib/outcome-color'
 import { formatDate, intlLocale as toIntlLocale } from '@/lib/formatters'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
+import { buildWaypointMatchUrl, waypointLogoSrc } from '@/lib/match-nav/waypointUrl'
 import { formatMessage } from '@/lib/i18n/format'
 import { careerManifest, type CareerManifestKey } from '@/lib/i18n/generated/career'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
+import { useCapability } from '@/lib/capabilities/capabilities'
 
 interface Props {
   items: TopMatchDTO[]
@@ -24,6 +29,40 @@ interface Props {
   variant?: 'best' | 'worst'
   title?: string
   playerSlug?: string
+}
+
+type TopMatchSortKey = 'start_time' | 'map_mode' | 'kills' | 'deaths' | 'kda' | 'performance_score' | 'outcome_code'
+
+// Valeur brute triable (I16). `map_mode` trie sur la carte (map_ui), pas le
+// libellé "Carte · Mode" affiché. Nulls coalescés en `null` explicite → rangés
+// en bas quel que soit le sens (cf. compareTopMatches).
+function topMatchRawValue(m: TopMatchDTO, key: TopMatchSortKey): string | number | null {
+  switch (key) {
+    case 'start_time':
+      return m.start_time ? Date.parse(m.start_time) : null
+    case 'map_mode':
+      return (m.map_ui ?? '').toLowerCase()
+    case 'kills':
+      return m.kills
+    case 'deaths':
+      return m.deaths
+    case 'kda':
+      return m.kda
+    case 'performance_score':
+      return m.performance_score
+    case 'outcome_code':
+      return m.outcome_code
+  }
+}
+
+function compareTopMatches(a: TopMatchDTO, b: TopMatchDTO, key: TopMatchSortKey, dir: 'asc' | 'desc'): number {
+  const va = topMatchRawValue(a, key)
+  const vb = topMatchRawValue(b, key)
+  if (va == null && vb == null) return 0
+  if (va == null) return 1
+  if (vb == null) return -1
+  const cmp = typeof va === 'string' && typeof vb === 'string' ? va.localeCompare(vb, undefined, { numeric: true, sensitivity: 'base' }) : (va as number) - (vb as number)
+  return dir === 'asc' ? cmp : -cmp
 }
 
 /**
@@ -48,6 +87,14 @@ export function CareerTopMatchesTable({ items, variant, title, playerSlug: slugP
   const locale = useAppShellStore((s) => s.locale)
   const intlLocale = toIntlLocale(locale)
   const t = (key: CareerManifestKey) => formatMessage(careerManifest, key, locale)
+  // Colonne « Ouvrir sur Halo Waypoint » (I19) : gating par capability (absente
+  // pour Halo 5) ET par préférence LOCALE (Apparence → « Colonne Halo Waypoint
+  // sur les listes de matchs », défaut ON).
+  const waypointCapability = useCapability('waypoint_match_url')
+  const showWaypointColumnPref = useSettingsDraftStore((s) => s.localUiPrefs.showWaypointColumn)
+  const showWaypoint = waypointCapability && showWaypointColumnPref
+  const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
+  const currentTitleSlug = useAppShellStore((s) => s.currentTitleSlug)
 
   const defaultTitle =
     variant === 'worst'
@@ -55,6 +102,24 @@ export function CareerTopMatchesTable({ items, variant, title, playerSlug: slugP
       : variant === 'best'
         ? t('career.top_matches.default_title_best')
         : t('career.top_matches.default_title_neutral')
+
+  // I16 : tri CLIENT par clic sur les en-têtes. Aucun tri actif par défaut →
+  // l'ordre serveur (liste curée best/worst, cf. CareerRepo.GetHighlightMatchIDs)
+  // reste affiché tant qu'aucun en-tête n'a été cliqué.
+  const [sortKey, setSortKey] = useState<TopMatchSortKey | null>(null)
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+  function toggleSort(key: TopMatchSortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortKey(key)
+      setSortDir(key === 'map_mode' ? 'asc' : 'desc')
+    }
+  }
+  const sortedItems = useMemo(() => {
+    if (!sortKey) return items
+    return [...items].sort((a, b) => compareTopMatches(a, b, sortKey, sortDir))
+  }, [items, sortKey, sortDir])
 
   function goToMatch(matchId: string) {
     navigateToMatch(matchId, {
@@ -78,24 +143,90 @@ export function CareerTopMatchesTable({ items, variant, title, playerSlug: slugP
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-xs font-medium text-muted-foreground">
+                {/* Index de ligne (position d'affichage) : jamais triable — se
+                    renumérote naturellement selon l'ordre courant. */}
                 <th className="pb-2 text-left">{t('career.top_matches.col_index')}</th>
-                <th className="pb-2 text-left">{t('career.top_matches.col_date')}</th>
-                <th className="pb-2 text-left">{t('career.top_matches.col_map_mode')}</th>
-                <th className="pb-2 text-right">{t('career.top_matches.col_kills_short')}</th>
-                <th className="pb-2 text-right">{t('career.top_matches.col_deaths_short')}</th>
-                <th className="pb-2 text-right">{t('career.top_matches.col_kd')}</th>
-                <th className="pb-2 text-right">{t('career.top_matches.col_score')}</th>
-                <th className="pb-2 text-right">{t('career.top_matches.col_outcome')}</th>
+                {/* Colonne Waypoint (I19) : jamais triable, comme partout ailleurs. */}
+                {showWaypoint && <th className="pb-2 text-left" />}
+                <SortableTh
+                  label={t('career.top_matches.col_date')}
+                  active={sortKey === 'start_time'}
+                  dir={sortDir}
+                  onClick={() => toggleSort('start_time')}
+                  className="pb-2 text-left"
+                />
+                <SortableTh
+                  label={t('career.top_matches.col_map_mode')}
+                  active={sortKey === 'map_mode'}
+                  dir={sortDir}
+                  onClick={() => toggleSort('map_mode')}
+                  className="pb-2 text-left"
+                />
+                <SortableTh
+                  label={t('career.top_matches.col_kills_short')}
+                  active={sortKey === 'kills'}
+                  dir={sortDir}
+                  onClick={() => toggleSort('kills')}
+                  className="pb-2 text-right"
+                />
+                <SortableTh
+                  label={t('career.top_matches.col_deaths_short')}
+                  active={sortKey === 'deaths'}
+                  dir={sortDir}
+                  onClick={() => toggleSort('deaths')}
+                  className="pb-2 text-right"
+                />
+                <SortableTh
+                  label={t('career.top_matches.col_kd')}
+                  active={sortKey === 'kda'}
+                  dir={sortDir}
+                  onClick={() => toggleSort('kda')}
+                  className="pb-2 text-right"
+                />
+                <SortableTh
+                  label={t('career.top_matches.col_score')}
+                  active={sortKey === 'performance_score'}
+                  dir={sortDir}
+                  onClick={() => toggleSort('performance_score')}
+                  className="pb-2 text-right"
+                />
+                <SortableTh
+                  label={t('career.top_matches.col_outcome')}
+                  active={sortKey === 'outcome_code'}
+                  dir={sortDir}
+                  onClick={() => toggleSort('outcome_code')}
+                  className="pb-2 text-right"
+                />
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {items.map((m, idx) => (
+              {sortedItems.map((m, idx) => (
                 <tr
                   key={m.match_id}
                   className="cursor-pointer transition-colors hover:bg-accent"
                   onClick={() => goToMatch(m.match_id)}
                 >
                   <td className="py-1.5 text-muted-foreground font-mono text-xs">{idx + 1}</td>
+                  {showWaypoint && (
+                    <td className="py-1.5">
+                      <a
+                        href={buildWaypointMatchUrl(playerSlug, m.match_id, currentTitleSlug)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label={t('career.top_matches.col_waypoint_aria')}
+                        title={t('career.top_matches.col_waypoint_aria')}
+                        className="group flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <img
+                          src={waypointLogoSrc(theme)}
+                          alt=""
+                          aria-hidden
+                          className="h-4 w-4 opacity-60 group-hover:opacity-100 transition-opacity"
+                        />
+                      </a>
+                    </td>
+                  )}
                   <td className="py-1.5 text-muted-foreground whitespace-nowrap">
                     {formatDate(m.start_time, intlLocale, { dateStyle: 'short' }, '—')}
                   </td>

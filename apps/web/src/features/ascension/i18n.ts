@@ -335,7 +335,7 @@ const FR: AscensionText = {
   lusrTop20: 'Top 20% :',
   lusrTargetForTier: 'Cible pour le rang',
   lusrComponent: {
-    kills_vs_expected: 'Kills vs attendu',
+    kills_vs_expected: 'Frags vs attendu',
     deaths_vs_expected: 'Morts vs attendu',
     win_factor: 'Facteur victoire',
     damage_efficiency: 'Efficacité dégâts',

@@ -297,6 +297,20 @@ JOIN squad_matches sm       ON sm.match_id = mp.match_id
 WHERE mp.xuid = ?` + campaignExclusionToken + `
   AND COALESCE(r.map_id, '') <> ''`
 
+// Q42MapStatsSquadExtraExclusionFrag : fragment optionnel appended à
+// Q42MapStatsForSquadSharedTpl pour la COMPOSITION EXACTE. Écarte les matchs où
+// un coéquipier connu hors sélection (excludeXUIDs) figure sur l'ÉQUIPE du main
+// (même team_id que mp = la ligne du joueur principal). Sans lui, l'historique
+// "avec cette escouade" inclurait à tort les matchs joués avec un 3e coéquipier.
+// Le '%s' est la liste de placeholders des excludeXUIDs. Omis si la liste est vide.
+const Q42MapStatsSquadExtraExclusionFrag = `
+  AND NOT EXISTS (
+      SELECT 1 FROM match_participants ex
+      WHERE ex.match_id = mp.match_id
+        AND ex.team_id  = mp.team_id
+        AND ex.xuid IN (%s)
+  )`
+
 // Q42MapStatsForSquadTemplate (legacy non-shared) RETIRÉ (PMT-5 / dead-code) :
 // aucun consommateur — superseded par Q42MapStatsForSquadSharedTpl (ci-dessus,
 // chemin shared-DB actif). Son unique littéral `mp.outcome = 2` partait donc en

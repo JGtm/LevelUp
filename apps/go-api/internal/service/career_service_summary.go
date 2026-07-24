@@ -194,6 +194,34 @@ func heroRankMax(rank *domain.CareerRankData) int {
 	return rankMax
 }
 
+// resolveMaxRankNames résout le libellé localisé (fr, en) du rang MAXIMUM du titre,
+// title-agnostic, pour le gauge « progression vers le rang max » de la page Carrière.
+// Ordre de résolution :
+//  1. Libellé fourni par la source (CareerRankData.MaxRankName*) — l'adapter du
+//     titre le connaît (Halo 5 : « SR 152 »).
+//  2. Catalogue de rangs DU titre s'il s'applique (Halo Infinite : entrée sommet
+//     du career_ranks = « Héros » / « Hero »).
+//  3. ("", "") — dégradation : le front affiche alors un libellé générique. Aucun
+//     vocabulaire de jeu (« Héros ») n'est jamais codé en dur.
+func (s *CareerService) resolveMaxRankNames(rank *domain.CareerRankData) (string, string) {
+	if rank != nil && rank.MaxRankNameFR != nil && *rank.MaxRankNameFR != "" {
+		fr := *rank.MaxRankNameFR
+		en := fr
+		if rank.MaxRankNameEN != nil && *rank.MaxRankNameEN != "" {
+			en = *rank.MaxRankNameEN
+		}
+		return fr, en
+	}
+	if s.rankCatalogApplies() && s.rankCatalog != nil {
+		if e, ok := s.rankCatalog.MaxRank(); ok {
+			fr, _ := e.FullLabel("fr")
+			en, _ := e.FullLabel("en")
+			return rankSubRoman(strings.TrimSpace(fr)), rankSubRoman(strings.TrimSpace(en))
+		}
+	}
+	return "", ""
+}
+
 func buildHeroProgress(xpTotal, currentRank, xpHeroMax, totalRanks int) domain.HeroProgress {
 	if xpHeroMax <= 0 {
 		xpHeroMax = xpHeroTotal

@@ -50,7 +50,7 @@ export const palmaresManifest = {
   "palmares.relations.filters.include_never_faced": { fr: "Inclure les coéquipiers", en: "Include teammates" },
   "palmares.relations.filters.modes": { fr: "Modes", en: "Modes" },
   "palmares.relations.filters.never_faced_included": { fr: "Coéquipiers inclus", en: "Teammates included" },
-  "palmares.relations.filters.playlists": { fr: "Playlist", en: "Playlist" },
+  "palmares.relations.filters.playlists": { fr: "Sélection", en: "Playlist" },
   "palmares.relations.filters.reset": { fr: "Réinitialiser", en: "Reset" },
   "palmares.relations.filters.view": { fr: "Contexte", en: "Context" },
   "palmares.relations.filters.view_all": { fr: "Tous", en: "All" },

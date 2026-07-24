@@ -42,8 +42,16 @@ en = "suicides"
 fr = "Frags parfaits"
 en = "Perfect kills"
 
-[synthesis.combat_profile.hijacks]
-fr = "Hijacks"
+# Libellé « vol à la tire » PAR TITRE (le terme officiel diffère) : Halo Infinite =
+# « Dépositaire », Halo 5 = « Vol à la tire ». EN commun = « Hijacks ». La sélection se
+# fait côté SynthesisPage via currentTitleSlug (précédent NavL2 — le gating slug== est
+# interdit côté Go, autorisé côté front pour un simple choix de libellé).
+[synthesis.combat_profile.hijacks_infinite]
+fr = "Dépositaire"
+en = "Hijacks"
+
+[synthesis.combat_profile.hijacks_h5]
+fr = "Vol à la tire"
 en = "Hijacks"
 
 [synthesis.section.top_stats]

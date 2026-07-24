@@ -734,7 +734,7 @@ fr = "Couverture résolution d'arme"
 en = "Weapon resolution coverage"
 
 [admin.overview.weapon_coverage_hint]
-fr = "Par titre : weapon_id distincts (vus dans les kills) résolus par le registre, par labels seuls, ou non résolus."
+fr = "Par titre : weapon_id distincts (vus dans les frags) résolus par le registre, par labels seuls, ou non résolus."
 en = "Per title: distinct weapon_id (seen in kills) resolved by the registry, by labels only, or unresolved."
 
 [admin.overview.weapon_coverage_distinct]
@@ -758,7 +758,7 @@ fr = "Couverture"
 en = "Coverage"
 
 [admin.overview.weapon_coverage_top_unresolved]
-fr = "Top IDs non résolus (kills)"
+fr = "Top IDs non résolus (frags)"
 en = "Top unresolved IDs (kills)"
 
 [admin.overview.weapon_coverage_all_resolved]
@@ -1296,7 +1296,7 @@ fr = "Events incomplets"
 en = "Incomplete events"
 
 [admin.convergence.kpi_weapons]
-fr = "Weapon kills incomplets"
+fr = "Frags d'arme incomplets"
 en = "Incomplete weapon kills"
 
 [admin.convergence.unavailable]
@@ -1674,7 +1674,7 @@ fr = "Events"
 en = "Events"
 
 [admin.convergence.caught_weapons]
-fr = "Weapon kills"
+fr = "Frags par arme"
 en = "Weapon kills"
 
 [admin.convergence.caught_psa]

@@ -71,7 +71,7 @@ describe('LegacyPlayersRedirect (3a)', () => {
     setStore({ isBootstrapped: true, currentTitleSlug: 'halo_5' })
     renderWithProviders(<LegacyPlayersRedirect />)
     expect(historyReplace).toHaveBeenCalledTimes(1)
-    expect(historyReplace).toHaveBeenCalledWith('/t/halo_5/players/x/stats/timeseries?f=abc#h')
+    expect(historyReplace).toHaveBeenCalledWith('/fr/t/halo_5/players/x/stats/timeseries?f=abc#h')
     expect(screen.queryByTestId('navigate')).toBeNull()
   })
 
@@ -95,14 +95,14 @@ describe('LegacyPlayersRedirect (3a)', () => {
     // 1er rendu : redirection legacy correcte (suffixe + ?f= + #hash préservés).
     expect(historyReplace).toHaveBeenCalledTimes(1)
     expect(historyReplace).toHaveBeenLastCalledWith(
-      '/t/halo_5/players/x/stats/timeseries?f=abc#deep',
+      '/fr/t/halo_5/players/x/stats/timeseries?f=abc#deep',
     )
 
     // Transition : le routeur a basculé la location vers la cible /t/… ; le splat
     // re-rend avec cette location transitoire AVANT son démontage.
     historyReplace.mockClear()
     act(() => {
-      locationRef.pathname = '/t/halo_5/players/x/stats/timeseries'
+      locationRef.pathname = '/fr/t/halo_5/players/x/stats/timeseries'
     })
     rerender(<LegacyPlayersRedirect />)
 

@@ -397,6 +397,35 @@ func TestComputeMapBreakdown_EmptyMapUIFallback(t *testing.T) {
 	}
 }
 
+// TestComputeMapBreakdown_OrderedByFirstAppearance verrouille le tri des
+// cartes par ordre CHRONOLOGIQUE de première apparition, calqué sur
+// TestBuildSquadMapHeatmap_MapsOrderedByFirstAppearance
+// (teammates_squad_charts_test.go). "Early" (1 match) est jouée avant "Mid"
+// (2 matchs) avant "Late" (3 matchs) : l'ordre fréquence (match_count DESC)
+// serait l'inverse (Late>Mid>Early), donc ce test distingue les deux tris.
+func TestComputeMapBreakdown_OrderedByFirstAppearance(t *testing.T) {
+	base := time.Date(2026, 5, 1, 18, 0, 0, 0, time.UTC)
+	matches := []domain.SquadMatchRow{
+		{MatchID: "l1", StartTime: base.Add(2 * time.Hour), MapUI: "Late", Outcome: domain.OutcomeWin},
+		{MatchID: "l2", StartTime: base.Add(150 * time.Minute), MapUI: "Late", Outcome: domain.OutcomeWin},
+		{MatchID: "l3", StartTime: base.Add(3 * time.Hour), MapUI: "Late", Outcome: domain.OutcomeWin},
+		{MatchID: "m1", StartTime: base.Add(1 * time.Hour), MapUI: "Mid", Outcome: domain.OutcomeWin},
+		{MatchID: "m2", StartTime: base.Add(90 * time.Minute), MapUI: "Mid", Outcome: domain.OutcomeWin},
+		{MatchID: "e1", StartTime: base, MapUI: "Early", Outcome: domain.OutcomeWin},
+	}
+	rows := computeMapBreakdown(matches)
+	want := []string{"Early", "Mid", "Late"}
+	if len(rows) != len(want) {
+		t.Fatalf("want %d maps, got %d (%v)", len(want), len(rows), rows)
+	}
+	for i, w := range want {
+		if rows[i].MapUI != w {
+			t.Errorf("rows[%d]: want %q, got %q (ordre chronologique cassé, got order: %v)",
+				i, w, rows[i].MapUI, rows)
+		}
+	}
+}
+
 // ---------- enrichMapBreakdownWithSquadStats ----------
 
 // TestEnrichMapBreakdownWithSquadStats_JoinByMapID vérifie le chemin nominal :

@@ -19,7 +19,7 @@ import { intlLocale } from '@/lib/formatters'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { ChartCard, type ChartSeries } from './ChartCard'
-import { CHART_BG, escapeHtml, getEChartsThemeColors } from './_utils'
+import { CHART_BG, escapeHtml, getEChartsThemeColors, getLegendBase } from './_utils'
 
 /** Libellés injectés (builder pur, testable sans i18n). */
 export interface FragWeaponLabels {
@@ -47,12 +47,38 @@ export function buildFragWeaponBreakdownOption(
   // Barres triées kills desc → afficher la plus grande en HAUT (yAxis inverse via reverse()).
   const ordered = [...weapons].reverse()
   const dimOpacity = (cls?: string) => (hoveredClass && cls !== hoveredClass ? DIM_OPACITY : 1)
+
+  // Légende des CLASSES en bas, centrée (I4, V7.1) : ce graphe est UNE série de barres
+  // recolorée PAR DATUM (itemStyle), donc ECharts n'a pas de légende native par catégorie
+  // ici (contrairement à un pie / bar multi-séries où chaque nom porte sa propre couleur).
+  // On ajoute une série FANTÔME (data vide, `silent`) PAR CLASSE représentée, uniquement
+  // pour porter le nom + la couleur au composant `legend` — la vraie série de barres reste
+  // sans `name` correspondant, donc non togglable (cliquer une entrée de légende n'affecte
+  // jamais les barres réelles ; légende purement informative ici).
+  const classOrder: string[] = []
+  for (const w of ordered) {
+    if (w.class && !classOrder.includes(w.class)) classOrder.push(w.class)
+  }
+  const legendGhostSeries = classOrder.map((cls) => ({
+    name: labels.classLabel(cls),
+    type: 'bar' as const,
+    data: [] as number[],
+    itemStyle: { color: fragClassColor(cls) },
+    silent: true,
+  }))
+
   return {
     backgroundColor: CHART_BG,
     // Survol lié : l'option est reconstruite à chaque changement de `hoveredClass` ;
     // animation coupée pour un estompage instantané (pas de re-croissance des barres).
     animation: false,
-    grid: { top: 8, bottom: 8, left: 8, right: 80, containLabel: true },
+    // bottom élargi quand une légende est rendue (place réservée, pas de chevauchement
+    // avec les barres — même convention que BarStackedChart bottom:40).
+    grid: { top: 8, bottom: classOrder.length > 0 ? 40 : 8, left: 8, right: 80, containLabel: true },
+    legend:
+      classOrder.length > 0
+        ? { ...getLegendBase(tc), left: 'center', data: classOrder.map((c) => labels.classLabel(c)) }
+        : { show: false },
     tooltip: {
       backgroundColor: tc.tooltipBg,
       borderColor: tc.tooltipBorder,
@@ -91,6 +117,9 @@ export function buildFragWeaponBreakdownOption(
           formatter: (p: { value: number }) => labels.formatValue(p.value),
         },
       },
+      // Séries fantômes APRÈS la série réelle (index 0 = données réelles, contrat testé) —
+      // portent uniquement les entrées de légende (cf. commentaire plus haut).
+      ...legendGhostSeries,
     ],
   }
 }

@@ -6,9 +6,62 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
-## [Non publié] - 2026-06-15
+## [7.1.0] - 2026-07-24
 
-> Entrée consolidée regroupant le travail livré depuis le 2026-05-02 (v7.0 pas encore publiée). Résumé par domaine, pas commit par commit.
+> Version d'ajustement consolidant le travail du « backlog v7.1 » plus les chantiers mergés sur `main` depuis le tag v7.0.0 (Intensité en profil médian, Médailles Carrière, Dynamique d'escouade, différentiel FDA attendu, quick wins accueil/scoreboard, diagnostic d'apparence admin). Résumé par domaine.
+
+### Ajouté (React / TypeScript)
+
+- **Escouade — onglet Dynamique** — nouvel onglet `/squad/dynamique` regroupant les sections intensité, rendement/résistance et engagement. L'intensité passe d'une heatmap match × phase à un profil médian de part de frags par phase avec une enveloppe interquartile P25–P75 (`lib/charts/phaseProfile`) ; Rendement et Résistance séparés en deux graphes multi-séries par joueur (`buildSquadEfficiencyMultiOption`) ; balance des dégâts en vies du titre (`netLives`, 225 Infinite / 115 H5) sur Sessions et Dynamique via le générique `lib/charts/cumulativeSeries` ; graphes d'écart d'engagement cumulé (`TimeseriesEngagementGapTrend`, `SquadEngagementGapChart`, `SessionEngagementCumulative`).
+- **Objectifs d'escouade (défis)** — boucle UI complète : libellés localisés, retour au moment de rejoindre, `SquadProgressList` par membre, abandon/suppression (confirmation en 2 clics), cycle de vie (expiration selon la cadence du template). « Cap d'escouade » renommé « Objectifs d'escouade » ; ~40 libellés migrés vers le manifest `squad.toml` (`[squad.focus.*]`, interpolation ICU, ADR 0003).
+- **Carrière — page Médailles** — nouvelle sous-page `/career/medals` sur le modèle des Citations : catalogue complet des médailles du titre y compris celles jamais obtenues, regroupées super-section → catégorie (taxonomie SpartanRecord), filtre toutes/obtenues/non-obtenues et trois tris côté client ; multi-titre (pastille de rareté Halo Infinite, regroupement générique ailleurs).
+- **Carrière — XP estimée** — courbe d'XP cumulée + XP par match sur les Séries temporelles, gated par capability (`analytics.career_xp_estimate`), tooltip méthodologique.
+- **Explorer — face-à-face** — « Sur XX matchs joués ensemble » ajoute des donuts de taux de victoire (ensemble / face à lui, donuts Relations réutilisés) et un graphe d'écart de frags cumulé par rapport à la cible ; toggle de synthèse repliable persistant (`explorerPrefsStore`).
+- **Graphes FDA attendu** — `TimeseriesFdaGapTrend`, `SessionFdaGapCumulative`, `SquadFdaGapCumulativeCard` par membre ; de fines courbes de FDA réel/attendu cumulés ajoutées sur le graphe d'écart ; helper canonique `divergentZeroGradient` (deux copies inline migrées + garde-rail).
+- **Accueil / Synthèse** — date d'obtention du pic sur les cartes meilleur LUSR/CSR ; carte KPI de plus longue série de défaites.
+- **Scoreboard** — couleurs d'identité par équipe + logos d'équipe (data-driven, `/titles/{slug}/teams/{team_id}.png`), largeur de colonne joueur commune.
+- **Colonne Halo Waypoint** — deuxième colonne d'action optionnelle sur les listes de matchs (logo conscient du thème).
+- **Médias — rôles des pistes audio par joueur** — modale engrenage dans la galerie du joueur pour déclarer les rôles voix/jeu/autres par piste (manuel > auto NNLS), FR/EN.
+- **Tableaux triables** — 16 tableaux rendus triables (activation TanStack sur les 4 consommateurs `ExplorerMatchesTable`, `SortableTh` partagé sur 8 tables Carrière/Admin avec garde-rail anti-redéfinition, en-têtes cliquables de la vue match, `SortingFn<T>` générique).
+- **Admin — diagnostic d'apparence Spartan** — panneau par joueur (onglet Données) avec logique pure `appearanceDiagDisplay` (verdict → badge de statut + clés i18n), mutation au clic et CTA de reconnexion vers le SSO existant.
+
+### Ajouté (API Go)
+
+- **Estimation d'XP de carrière** — `analysis.xp_estimate` pure (multiplicateur d'era × personal_score, eras versionnées en TOML : ×1 avant 2025-11-18, ×2 après), champ additif `career_xp_estimated` sur `TimeseriesMatchRow`, capability opt-in `analytics.career_xp_estimate` (Halo Infinite) ; calibrée à ~98,9 % sur données réelles.
+- **Path to Hero title-agnostic** — libellé du rang max résolu côté serveur (source du titre → sommet du catalogue de rangs → repli générique), transporté dans `HeroProgress` (`max_rank_name_fr/en`) ; corrige la ligne-repère XP Halo 5 (9,3 M → 50 M / SR152).
+- **FDA attendu** — `analysis.ExpectedFDA` / `FDADiff` (gardes NaN/Inf), `CapExpectedStats` (Halo Infinite seul), `MatchParticipant.KillsExpected/DeathsExpected` canoniques, batch d'assistances attendues par mode + résolveur par membre ; garde-rail archlint `no_inline_expected_fda`.
+- **Véhicules & Vol à la tire Halo 5** — lecture scopée de `match_commendations` (PK naturelle, `INSERT OR IGNORE` → `SUM` exact), résolution bilingue des 9 commendations « Destructeur » + « Grand Theft », capability `commendations.native` ; libellé hijack par titre (« Dépositaire » Infinite / « Vol à la tire » H5).
+- **Composition exacte d'escouade** — prédicat de composition exacte centralisé (`filterExactComposition`, pool = amis + top-teammates) appliqué aux trois maillons d'intersection (`GetPage`, en-tête briefing, anti-join Q42) ; garde-rail grep `no_raw_squad_intersection`. Compositions résolues par le XUID absolu du joueur courant (`SquadContext`, `findSquadByRoster` clé-xuid) ; backfill append-only `levelup backfill-squad-creators` pour les escouades legacy sans créateur persisté.
+- **Ordre chronologique des graphes d'escouade** — `computeMapBreakdown` calcule l'ordre de première apparition côté serveur (pattern heatmap, tie-break `mapUI` déterministe) ; le front ne re-trie plus.
+- **Cycle de vie des défis d'escouade (Go)** — `SquadChallengeView` (libellé + participants), `DELETE /squad-challenges/{id}` → `AbandonSquadChallenge` (`archived_at` nullable, UPDATE non indexé, sûr vis-à-vis d'ART), archivage en cascade à la suppression de l'escouade, expiration selon la cadence du template.
+- **Season pass** — signal brut `premium_owned` (`state.IsOwned`, non dilué) exposé pour un badge Premium fiable ; locale côté serveur pour les Défis et le Battle Pass (colonne locale de `challenge_snapshots` + locale dans la clé de dédup, migration append-only ; `preferEN` threadé dans les builders Battle Pass).
+
+### Modifié
+
+- **Segment de langue dans l'URL** — la langue active est désormais un segment de route `{-$lang}` (mécanisme déjà livré mais dormant), donc les liens partagés conservent leur langue.
+- **Titres d'onglet navigateur** — mécanisme unique `resolvePageTitle` conscient de la locale, en remplacement de l'approche concurrente `__root` vs effets locaux.
+- **Formulation française** — passe de purge des anglicismes avec un garde-rail i18n (backstop grep) interdisant les anciens littéraux.
+- **Légendes de graphe** — légende « Outils de destruction » centrée sous le graphe ; étiquettes de pourcentage sur les segments et les légendes ; hauteurs de graphe alignées sur Synthèse, Sessions et Escouade.
+- **Scoreboard** — noms d'équipe Halo 5 dédupliqués (`labelHasTeamWord`) ; le départage MVP/LVP exclut les kills de mécanique (assassinat / charge spartane / coup au sol) côté serveur et client.
+- **Vue match** — colonnes assassinat/coup au sol/charge spartane gated par `useCapability('native_kill_mechanics')` (absente sur Infinite, où elles sont stockées à `0`, pas `null`).
+
+### Corrigé
+
+- **Citations (données)** — les « Éliminations Firefight » comptent désormais les victoires Firefight (`compute_wins_firefight`, paliers 5/10/15/25/50) ; kills de grenade restaurés ; « Virée sur la route » remappée sur la médaille Écrasement (`221693153`) ; « Défenseur du drapeau » désactivée (aucun award ne la mesure) ; requête stats PvE corrigée (`total_enemy_kills`, pas la colonne inexistante `total_kills`) ; le recompute-force recrée désormais `match_citations` via le chemin append-only (`EnsureMatchCitationsAppendOnly`, ADR 0026), plus le schéma legacy 3 colonnes.
+- **Mécaniques de combat Halo 5 (données)** — backfill one-shot ciblé (`backfill-h5-kill-mechanics`) des lignes `match_participants` écrites à zéro avant l'activation du mapper (2 742 carnages, 4 990 lignes sur 1 883 matchs).
+- **Escouade** — le bouton « Proposer des défis » n'avale plus son erreur (toast d'erreur côté front, `slog.ErrorContext` sur la branche 500 auparavant masquée, sur les routes prestige).
+
+### Ops
+
+- **Déploiement — purge Docker réelle** — cause racine de la saturation VPS du 23/07 : `--keep-storage` déprécié (Docker 29) remappé silencieusement vers un plancher → prunes no-op. Fix : plafond réel `--max-used-space`, échecs loggés (sans masquage ni abort après bascule), `image prune --filter until=24h` (garde N-1 pour rollback jour-même), garde pré-build < 10 Go, unités systemd quotidiennes versionnées (installation VPS manuelle, pas de daemon cron).
+
+### Supprimé
+
+- **Code mort** — builder `winRateVsHistoryChart` (0 caller) supprimé avec sa clé i18n orpheline ; le builder d'efficacité d'escouade 1-joueur + son toggle/légende footer supprimés (supplantés par les graphes multi-joueurs).
+
+## [7.0.0] - 2026-07-23
+
+> Entrée consolidée regroupant le travail livré depuis le 2026-05-02 — auparavant étiquetée « Non publié » en attendant le tag ; déployée en prod sous le tag git `v7.0.0` le 2026-07-23. Résumé par domaine, pas commit par commit. *Note de numérotation : une entrée `[7.0.0]` plus ancienne et sans rapport, issue de l'app Python/Streamlit pré-migration (2026-04-12), existe déjà plus bas dans ce journal — conservée telle quelle pour la continuité historique ; les deux étiquettes `7.0.0` désignent des produits différents (Python vs la stack Go/React actuelle), pas une re-publication.*
 
 ### Ajouté (React / TypeScript)
 

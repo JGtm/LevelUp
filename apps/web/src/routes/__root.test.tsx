@@ -8,7 +8,7 @@
  *    (le chemin logout — reload plein sur '/' — reste intact).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, act } from '@testing-library/react'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { log } from '@/components/shell/_logger'
 import type { BootstrapResponse } from '@/lib/api/types'
@@ -153,5 +153,40 @@ describe('RootLayout — listener levelup:auth-required (Fix A)', () => {
     window.dispatchEvent(new CustomEvent('levelup:auth-required'))
 
     expect(assignMock).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * Mécanisme UNIQUE de titre d'onglet (I18, 2026-07-24) : l'effet `[pathname, locale]`
+ * doit réagir à un changement de LOCALE seul (Paramètres → langue), sans navigation —
+ * `useRouterState` est mocké constant sur '/' (cf. mock ci-dessus), donc tout changement
+ * de `document.title` observé ici ne peut venir QUE de la locale.
+ */
+describe('RootLayout — titre d’onglet locale-aware (I18)', () => {
+  beforeEach(() => {
+    log._resetForTests()
+    useAppShellStore.setState({
+      currentUsername: null,
+      isBootstrapped: false,
+      authMode: 'none',
+      firstLaunch: false,
+      setupRequired: false,
+      locale: 'fr',
+    })
+  })
+
+  afterEach(() => {
+    queryData = undefined
+  })
+
+  it('reflète la locale du store sans navigation (pathname inchangé)', () => {
+    render(<RootLayout />)
+    expect(document.title).toBe('LevelUp - Accueil')
+
+    act(() => {
+      useAppShellStore.setState({ locale: 'en' })
+    })
+
+    expect(document.title).toBe('LevelUp - Home')
   })
 })

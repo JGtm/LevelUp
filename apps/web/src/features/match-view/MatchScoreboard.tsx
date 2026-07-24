@@ -11,10 +11,14 @@ import { Fragment, useMemo, useState } from 'react'
 import { useFieldLabel } from '@/lib/i18n/fieldMappings'
 import {
   type ColumnDef,
+  type SortingState,
   flexRender,
   getCoreRowModel,
+  getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
+import { NUMERIC_SORT, localeTextSortingFn } from '@/features/explorer/explorerMatchesClientSort'
+import { ariaSortOf, sortSuffixOf } from './sortHeader'
 import { useParams, useNavigate } from '@tanstack/react-router'
 import { useTitleSlug } from '@/lib/title-routing'
 import { useCapability } from '@/lib/capabilities/capabilities'
@@ -335,6 +339,11 @@ function TeamScoreboard({
       return {
         id: key,
         header: c?.label ?? key,
+        // I16 : colonne numérique triable — accessorFn expose la valeur brute
+        // (nuls coalescés en `undefined` → toujours en bas, cf. NUMERIC_SORT).
+        // Le rendu de cellule reste inchangé (lit row.original directement).
+        accessorFn: (r) => (r[key as keyof MatchScoreboardRow] as number | null | undefined) ?? undefined,
+        ...NUMERIC_SORT,
         cell: (ctx) => {
           const val = ctx.row.original[key as keyof MatchScoreboardRow] as number | null
           const formatted = val == null ? '—' : c?.fmt ? c.fmt(val) : String(val)
@@ -346,6 +355,8 @@ function TeamScoreboard({
     const rankBadgeCol: ColumnDef<ScoreboardRowVM> = {
       id: 'csr_badge',
       header: isRanked ? t.sbColCsr : t.sbDetailLusr,
+      // Badge image + libellé de palier : pas de valeur scalaire triable simplement.
+      enableSorting: false,
       cell: (ctx) => {
         const url = ctx.row.original.skill_rank?.icon_url
         // Palier baké au sync (FR Infinite / EN H5) → nom localisé, puis
@@ -380,6 +391,10 @@ function TeamScoreboard({
       {
         id: 'gamertag',
         header: t.sbColPlayer,
+        // I16 : tri alpha locale-aware sur le gamertag brut (pas le badge Bot/MVP/LVP).
+        accessorFn: (r) => r.gamertag,
+        sortingFn: localeTextSortingFn,
+        sortDescFirst: false,
         cell: (ctx) => {
           const r = ctx.row.original
           const isExpanded = expandedXuid === r.xuid
@@ -441,6 +456,10 @@ function TeamScoreboard({
       {
         id: 'top_weapon',
         header: t.sbColTopWeapon,
+        accessorFn: (r) => r.top_weapon_label ?? undefined,
+        sortingFn: localeTextSortingFn,
+        sortUndefined: 'last',
+        sortDescFirst: false,
         cell: (ctx) => {
           const lbl = ctx.row.original.top_weapon_label
           return <span className="text-muted-foreground">{lbl ?? '—'}</span>
@@ -473,10 +492,18 @@ function TeamScoreboard({
     return cols.filter((c) => !hlKeys.has(c.id ?? '') || presentKeys.has(c.id ?? ''))
   }, [highlightCols, showNativeKillMechanics, presentKeys, expandedXuid, playerSlug, onPlayerClick, isRanked, t, locale])
 
+  // I16 : tri CLIENT par clic sur les en-têtes (pattern DetectionsPanel minimal).
+  // Aucun tri actif par défaut → l'ordre serveur (celui de `rows`) reste affiché
+  // tant qu'aucune colonne n'a été cliquée.
+  const [sorting, setSorting] = useState<SortingState>([])
+
   const table = useReactTable<ScoreboardRowVM>({
     data,
     columns,
+    state: { sorting },
+    onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
   })
 
   // Résolution du nom d'équipe. Priorité au libellé fourni par le backend (Halo 5 :
@@ -553,13 +580,18 @@ function TeamScoreboard({
               {hg.headers.map((h) => {
                 const isPlayerCol = h.column.id === 'gamertag'
                 const align = isPlayerCol ? 'text-left' : 'text-right'
+                const canSort = h.column.getCanSort()
+                const sortDir = h.column.getIsSorted()
                 return (
                   <th
                     key={h.id}
-                    className={`border border-border border-b-2 px-2 pb-1 pt-1 ${align}`}
+                    className={`border border-border border-b-2 px-2 pb-1 pt-1 ${align} ${canSort ? 'cursor-pointer select-none' : ''}`}
                     style={isPlayerCol ? { width: playerColWidth, minWidth: playerColWidth } : undefined}
+                    onClick={canSort ? h.column.getToggleSortingHandler() : undefined}
+                    aria-sort={canSort ? ariaSortOf(sortDir) : undefined}
                   >
                     {flexRender(h.column.columnDef.header, h.getContext())}
+                    {canSort ? sortSuffixOf(sortDir) : ''}
                   </th>
                 )
               })}

@@ -5,7 +5,7 @@
  * `/t/`. Aucune validation de la VALEUR du slug (D-2, verbatim).
  */
 import { describe, it, expect } from 'vitest'
-import { parseRouteSegments } from './parseRouteSegments'
+import { parseRouteSegments, withLangSegment } from './parseRouteSegments'
 
 describe('parseRouteSegments', () => {
   it('capture le titre sous /t/{slug} (sans langue)', () => {
@@ -76,5 +76,34 @@ describe('parseRouteSegments', () => {
   it('une langue inconnue en tête n’est pas capturée et ne libère pas le titre', () => {
     // 'de' ∉ locales connues → pas de lang ; et segs[0] !== 't' → pas de titre.
     expect(parseRouteSegments('/de/t/halo_5/players/x')).toEqual({})
+  })
+})
+
+describe('withLangSegment (émission par défaut du segment, I10)', () => {
+  it('injecte le segment devant un pathname title-scoped SANS langue', () => {
+    expect(withLangSegment('/t/halo_infinite/players/x/home', 'fr')).toBe(
+      '/fr/t/halo_infinite/players/x/home',
+    )
+    expect(withLangSegment('/t/halo_5/players/x/stats/timeseries', 'en')).toBe(
+      '/en/t/halo_5/players/x/stats/timeseries',
+    )
+  })
+
+  it('IDEMPOTENTE : pathname portant déjà une langue → inchangé (pas de double préfixe)', () => {
+    expect(withLangSegment('/en/t/halo_5/players/x/home', 'fr')).toBe(
+      '/en/t/halo_5/players/x/home',
+    )
+  })
+
+  it('pathname sans segment de titre (page agnostique) → inchangé', () => {
+    expect(withLangSegment('/settings', 'fr')).toBe('/settings')
+    expect(withLangSegment('/', 'en')).toBe('/')
+  })
+
+  it('ne touche PAS le ?search/#hash (l’appelant les re-concatène)', () => {
+    // withLangSegment ne reçoit que le pathname ; search/hash restent hors de son ressort.
+    expect(withLangSegment('/t/halo_infinite/players/x/home', 'fr')).toBe(
+      '/fr/t/halo_infinite/players/x/home',
+    )
   })
 })

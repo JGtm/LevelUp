@@ -253,6 +253,7 @@ var sharedSocialFilesWhitelist = map[string]string{
 	"cmd/purge_player_media/main.go":                                                    "outil one-shot purge media joueur",
 	"cmd/purge_corrupt_records/main.go":                                                 "outil one-shot purge records hors bornes (plan Ascension UX A5, 2026-07-22) : rebuild ADR 0026 de player_records_history (vit dans shared_social.duckdb), serveur arrêté",
 	"internal/ops/records_purge.go":                                                     "logique de purge records A5 (2026-07-22) : rebuild CTAS transactionnel ADR 0026 sur player_records_history/record_history via le handle injecté par le caller (CLI serveur arrêté)",
+	"cmd/levelup/cmd_backfill_squad_creators.go":                                        "backfill one-shot créateurs d'escouades legacy (I14, 2026-07-24) : INSERT append-only via PrestigeSquadRepo.AddMember + CHECKPOINT (ADR 0022), serveur arrêté",
 	"cmd/rebuild_shared_social/main.go":                                                 "outil one-shot reconstruction (ADR 0021)",
 	"cmd/regen-thumbnails/main.go":                                                      "outil one-shot regen thumbnails",
 	"cmd/reindex-media-thumbs/main.go":                                                  "outil one-shot reindex thumbnails",

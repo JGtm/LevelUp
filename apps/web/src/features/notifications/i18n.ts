@@ -274,7 +274,7 @@ const FR: NotificationsText = {
     'notif.citation_mastery.body': '{count} citation(s) à 100 % — bravo !',
     // ─── Progression V2 (Ascension) — coach proactif ─────────────────────
     'notif.record_near_miss.title': 'Tu approches d\'un record',
-    'notif.record_near_miss.body': 'Ton {metric_label} sur {period_label} approche de ton PB ({value} vs {target}).',
+    'notif.record_near_miss.body': 'Ton {metric_label} sur {period_label} approche de ton record personnel ({value} vs {target}).',
     'notif.milestone_unlocked.title': 'Jalon débloqué : {title_fr}',
     'notif.milestone_unlocked.body': 'Tu viens de débloquer « {title_fr} » — bravo !',
     'notif.milestone_near_miss.title': 'À deux doigts d\'un jalon',

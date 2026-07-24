@@ -109,6 +109,15 @@ const (
 	// ⇒ le front masque les 3 charts « Écart au FDA attendu » (dégradation par
 	// construction côté Go : champs additifs nil, aucun ErrCapabilityNotSupported).
 	CapExpectedStats Capability = "expected_stats"
+
+	// CapWaypointMatchURL - le titre expose une page de detail de match publique
+	// sur le site officiel Halo Waypoint (URL construite cote front, helper canonique
+	// buildWaypointMatchUrl dans apps/web), permettant un lien direct "Ouvrir sur
+	// Halo Waypoint" depuis les tableaux de matchs. Halo Infinite : oui. Halo 5 :
+	// non declaree (I19) - Waypoint ne sert pas de page de detail de match Halo 5 ;
+	// le chemin d'URL est de toute facon specifique a Infinite. Absente => le front
+	// masque la colonne/lien correspondant (pas de lien mort).
+	CapWaypointMatchURL Capability = "waypoint_match_url"
 )
 
 // TitleDescriptor décrit un titre supporté avec ses métadonnées.
@@ -283,6 +292,8 @@ func NewRegistry() *Registry {
 			CapTeamMMR, CapDamageTaken,
 			// Stats attendues natives (kills_expected/deaths_expected) → écart au FDA attendu.
 			CapExpectedStats,
+			// Page de détail de match publique sur Halo Waypoint (I19).
+			CapWaypointMatchURL,
 		},
 		IsDefault:        true,
 		XboxTitleID:      "2043073184",
@@ -598,6 +609,14 @@ func (p *PathResolver) PlayerArchiveDir(titleSlug, gamertag string) string {
 // Ex: data/titles/halo_infinite/players/Chocoboflor/captures/
 func (p *PathResolver) PlayerCapturesDir(titleSlug, gamertag string) string {
 	return filepath.Join(p.PlayerDir(titleSlug, gamertag), "captures")
+}
+
+// PlayerMediaAudioConfigPath retourne le chemin du sidecar de réglage audio média
+// d'un joueur (rôle voix/jeu/autres des pistes source, mode auto/manuel). Placé à
+// côté du dossier captures dans le répertoire joueur du titre.
+// Ex: data/titles/halo_infinite/players/Chocoboflor/media_audio_config.json
+func (p *PathResolver) PlayerMediaAudioConfigPath(titleSlug, gamertag string) string {
+	return filepath.Join(p.PlayerDir(titleSlug, gamertag), "media_audio_config.json")
 }
 
 // ResolveCapturesDir centralise la résolution du dossier captures d'un joueur.

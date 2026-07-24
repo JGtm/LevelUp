@@ -15,6 +15,9 @@ export interface SquadContextValue {
   pageData: TeammatesPageResponse | null
   /** Slug du joueur principal (URL param) — utilisé par les enfants pour navigation. */
   playerSlug: string
+  /** XUID absolu du joueur courant (résolu depuis header.player_cards). Sert à
+   *  exclure le viewer du roster de façon player-agnostic (jamais par le slug). */
+  currentPlayerXuid: string
 }
 
 export const SquadContext = createContext<SquadContextValue>({
@@ -22,6 +25,7 @@ export const SquadContext = createContext<SquadContextValue>({
   confirmedGamertags: [],
   pageData: null,
   playerSlug: '',
+  currentPlayerXuid: '',
 })
 
 export function useSquadContext(): SquadContextValue {

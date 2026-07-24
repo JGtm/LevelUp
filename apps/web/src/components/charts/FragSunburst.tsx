@@ -100,6 +100,16 @@ export interface FragSunburstProps {
    *  titre) — pour intégrer le sunburst dans un bloc parent (ex. encart Explorer) sans
    *  bloc-dans-bloc. Défaut false = carte complète (comportement des autres surfaces). */
   bare?: boolean
+  /**
+   * Hauteur fixe (px, opt-in) du contenu SVG — remplace le calage naturel par LARGEUR
+   * (aspect ratio 440:300 du viewBox, `h-auto`). À utiliser quand la carte doit avoir la
+   * MÊME hauteur qu'une carte voisine dont la hauteur est elle-même fixe (ex. session-detail
+   * « Répartition des frags » / « Outils de destruction », I5 V7.1) — sans ça, le sunburst
+   * se met à l'échelle de sa largeur de colonne (2/3 vs 1/3, ou pleine largeur en pile) et sa
+   * hauteur rendue diverge de celle du graphe voisin. Le SVG garde son ratio (`preserveAspectRatio`
+   * par défaut = `xMidYMid meet`) à l'intérieur de la boîte fixée, centré, sans déformation.
+   */
+  heightPx?: number
 }
 
 export function FragSunburst({
@@ -112,6 +122,7 @@ export function FragSunburst({
   maxWidthPx,
   legendSide = 'bottom',
   bare = false,
+  heightPx,
 }: FragSunburstProps) {
   const appLocale = useAppShellStore((s) => s.locale)
   const paletteVersion = useColorPaletteVersion()
@@ -172,9 +183,20 @@ export function FragSunburst({
   // Légende des classes (pastille + nom + valeur). Position pilotée par legendSide : 'bottom'
   // = ligne sous l'anneau (défaut, autres surfaces) ; 'left' = colonne verticale le long de la
   // bordure gauche, à côté de l'anneau (opt-in Match view).
+  // En mode 'bottom' AVEC hauteur fixe (heightPx — cards Sessions, drawer compare) :
+  // hauteur de légende RÉSERVÉE constante (2 lignes), pour que deux cards côte à
+  // côte (session courante vs comparée) gardent la même hauteur totale même si
+  // leurs sessions n'ont pas le même nombre de classes de frags (parité drawer,
+  // demande utilisateur 2026-07-24).
   const legendBlock = (
     <div
-      className={legendSide === 'left' ? 'flex shrink-0 flex-col gap-1' : 'mt-2 flex flex-wrap gap-x-3 gap-y-1'}
+      className={
+        legendSide === 'left'
+          ? 'flex shrink-0 flex-col gap-1'
+          : heightPx
+            ? 'mt-2 flex min-h-12 flex-wrap content-start gap-x-3 gap-y-1'
+            : 'mt-2 flex flex-wrap gap-x-3 gap-y-1'
+      }
       data-testid="frag-legend"
     >
       {model.legend.map((row) => (
@@ -204,13 +226,18 @@ export function FragSunburst({
       {!bare && <div className="flex-none border-b border-border px-3 py-2 text-sm font-medium">{cardTitle}</div>}
       <div className={legendSide === 'left' ? 'flex items-center gap-3 p-3' : 'p-3'}>
         {legendSide === 'left' && legendBlock}
-        <div className={`relative flex items-center justify-center ${legendSide === 'left' ? 'min-w-0 flex-1' : ''}`}>
+        <div
+          className={`relative flex items-center justify-center ${legendSide === 'left' ? 'min-w-0 flex-1' : ''}`}
+          style={heightPx ? { height: heightPx } : undefined}
+        >
           <svg
             viewBox={`0 0 ${W} ${H}`}
             role="img"
             aria-label={cardTitle}
-            className={`h-auto w-full ${maxWidthPx ? 'mx-auto block' : ''}`}
-            style={maxWidthPx ? { overflow: 'visible', maxWidth: maxWidthPx } : { overflow: 'visible' }}
+            // heightPx fourni → hauteur FIXE (preserveAspectRatio par défaut centre/contient
+            // sans déformer) ; sinon comportement historique (hauteur pilotée par la largeur).
+            className={`w-full ${heightPx ? 'h-full' : 'h-auto'} ${maxWidthPx ? 'mx-auto block' : ''}`}
+            style={{ overflow: 'visible', ...(maxWidthPx ? { maxWidth: maxWidthPx } : {}) }}
           >
             {model.arcs.map((a) => (
               <path

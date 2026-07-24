@@ -28,6 +28,7 @@ function mockSquadContext(overrides: Partial<ReturnType<typeof squadContextModul
     confirmedGamertags: [],
     pageData: null as unknown as TeammatesPageResponse,
     playerSlug: 'test',
+    currentPlayerXuid: '',
     ...overrides,
   })
 }

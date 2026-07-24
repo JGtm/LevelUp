@@ -1,11 +1,14 @@
 /**
- * Tests B1 (plan PLAN_EXPECTED_FDA) + retouche UX 2026-07-23 — « Écart cumulé au
- * FDA attendu » (Timeseries), forme cumulée alignée sur Sessions.
+ * Tests B1 (plan PLAN_EXPECTED_FDA) + retouche UX 2026-07-24 — « Écart cumulé au
+ * FDA attendu » (Timeseries), forme alignée sur Sessions.
  *
  * - `buildFdaGapCumulativeOption` (pur) : cumul signé ancré à 0 (1 aire
- *   divergente + markLine 0), report D5 (report du cumul, jamais 0, point
- *   conservé), ORDRE DU SERVICE respecté (pas de re-tri). `resolveToken` renvoie
- *   '' hors runtime CSS → on teste la structure/les données, pas les couleurs.
+ *   divergente + markLine 0) PLUS 1 courbe fine « FDA attendu » PAR MATCH sur
+ *   le MÊME axe Y (pas de double axe — retour utilisateur 2026-07-24), report D5
+ *   (report du cumul, jamais 0, point conservé), ORDRE DU SERVICE respecté
+ *   (pas de re-tri). `resolveToken`
+ *   renvoie '' hors runtime CSS → on teste la structure/les données, pas les
+ *   couleurs.
  * - `TimeseriesFdaGapTrend` (composant) : masquage par capability `expected_stats`
  *   (absente → non rendu). echarts-for-react mocké (canvas jsdom instable).
  */
@@ -67,11 +70,14 @@ interface OptShape {
     type: string
     name: string
     data: (number | null)[]
+    yAxisIndex?: number
     areaStyle?: { origin?: number; color?: { type?: string } }
     lineStyle?: { color?: { type?: string } | string }
     markLine?: { data: Array<{ yAxis: number }> }
   }>
+  legend?: { data: string[] }
   xAxis: { data: string[]; boundaryGap?: boolean }
+  yAxis: unknown
 }
 
 function setTitleCaps(caps: string[]) {
@@ -92,13 +98,13 @@ describe('buildFdaGapCumulativeOption', () => {
     expect(buildFdaGapCumulativeOption([], LABELS)).toBeNull()
   })
 
-  it('cumul signé ancré à 0 : 1 aire divergente + markLine 0', () => {
+  it('cumul signé ancré à 0 : 1 aire divergente + markLine 0 + 1 courbe FDA attendu par match sur le même axe', () => {
     const opt = buildFdaGapCumulativeOption(
       [row(1.5, 1.0), row(0.8, 1.2), row(2.0, 1.0)],
       LABELS,
     ) as unknown as OptShape
-    // Une seule série (plus de ligne lissée) : le cumul signé.
-    expect(opt.series).toHaveLength(1)
+    // 2 séries : le cumul signé (aire) + FDA attendu par match.
+    expect(opt.series).toHaveLength(2)
     expect(opt.series[0].name).toBe('Écart cumulé')
     // Cumul du différentiel réel − attendu, arrondi 2 décimales.
     expect(opt.series[0].data).toEqual([0.5, 0.1, 1.1])
@@ -106,17 +112,27 @@ describe('buildFdaGapCumulativeOption', () => {
     expect(opt.series[0].areaStyle?.origin).toBe(0)
     expect(opt.series[0].markLine?.data[0].yAxis).toBe(0)
     expect((opt.series[0].areaStyle?.color as { type?: string })?.type).toBe('linear')
+    // Courbe FDA attendu PAR MATCH (pas cumulée) — MÊME axe Y (pas de yAxisIndex).
+    expect(opt.series[1].name).toBe('Attendu')
+    expect(opt.series[1].yAxisIndex).toBeUndefined()
+    expect(opt.series[1].data).toEqual([1, 1.2, 1])
+    // Axe Y UNIQUE (objet, pas tableau) + légende sur les 2 séries.
+    expect(Array.isArray(opt.yAxis)).toBe(false)
+    expect(opt.legend?.data).toEqual(['Écart cumulé', 'Attendu'])
     expect(opt.xAxis.boundaryGap).toBe(false)
     expect(opt.xAxis.data).toHaveLength(3)
   })
 
-  it('report D5 : un match sans attendu reporte le cumul (jamais 0, point conservé)', () => {
+  it('report D5 : un match sans attendu reporte le cumul (jamais 0, point conservé) et troue la courbe par-match', () => {
     const opt = buildFdaGapCumulativeOption(
       [row(1.5, 1.0), row(0.8, undefined), row(2.0, 1.0)],
       LABELS,
     ) as unknown as OptShape
     // Cumul : 0.5, report 0.5 (pas 0, pas de trou), puis reprise +1.0 = 1.5.
     expect(opt.series[0].data).toEqual([0.5, 0.5, 1.5])
+    // La courbe FDA attendu par match reflète directement kda_expected par
+    // match — null quand absent (point troué, pas de report).
+    expect(opt.series[1].data).toEqual([1, null, 1])
     // Le point du match sans attendu figure quand même sur l'axe (3 catégories).
     expect(opt.xAxis.data).toHaveLength(3)
   })

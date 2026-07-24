@@ -75,16 +75,17 @@ export function useUpdateSettings() {
           // potentiellement chaque page. Côté coût : refetch on-demand,
           // pas un sync exhaustif, donc acceptable.
 
-          // DÉFENSIF (D-12, Phase 5b) : si l'URL courante porte un segment lang ≠
-          // nouvelle locale, réaligner le segment (navigate REPLACE, même route). Le
-          // chemin est AUJOURD'HUI THÉORIQUE : la page Settings est AGNOSTIQUE (hors
-          // segment, D-3) → parseRouteSegments ne renvoie jamais de lang ici, la
-          // branche n'est donc pas prise depuis /settings. Défini pour toute FUTURE
-          // surface de changement de langue title-scoped (sous /{lang}/t/…) : sans ce
-          // réalignement, l'URL garderait l'ancien segment (source de vérité) et la
-          // réconciliation du layout titre (5a) re-forcerait aussitôt l'ancienne locale.
+          // Réalignement du segment lang (D-12, I10) : si l'URL courante est
+          // TITLE-SCOPED (seg.titleSlug), réécrire — ou INJECTER si absent — le segment
+          // lang vers la nouvelle locale (navigate REPLACE, même route). La condition
+          // couvre les DEUX cas : segment présent mais périmé, ET segment absent sur une
+          // URL title-scoped. Sans ce réalignement, le segment (source de vérité) et la
+          // réconciliation du layout titre (5a) re-forceraient aussitôt l'ancienne locale.
+          // La page Settings étant AGNOSTIQUE (hors segment, D-3), l'URL y est '/settings'
+          // → seg.titleSlug undefined → NO-OP : ce chemin ne s'active que depuis une
+          // surface title-scoped offrant un sélecteur de langue.
           const seg = parseRouteSegments(window.location.pathname)
-          if (seg.lang && seg.titleSlug && seg.lang !== next) {
+          if (seg.titleSlug && seg.lang !== next) {
             void navigate({ to: '.', params: (prev) => ({ ...prev, lang: next }), replace: true })
           }
         }

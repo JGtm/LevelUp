@@ -134,6 +134,7 @@ CREATE TABLE match_participants (
     headshot_kills      INTEGER DEFAULT 0,
     melee_kills         INTEGER DEFAULT 0,
     power_weapon_kills  INTEGER DEFAULT 0,
+    grenade_kills       INTEGER DEFAULT 0,
     max_killing_spree   INTEGER DEFAULT 0,
     kills_expected      DOUBLE,
     deaths_expected     DOUBLE,
@@ -859,7 +860,7 @@ func TestPipelineFixture_Citations(t *testing.T) {
 
 	err := BackfillMatchCitations(
 		context.Background(),
-		f.metadata, f.shared, f.player,
+		f.metadata, f.shared, f.player, nil,
 		fixXUID,
 		[]string{fixM1},
 	)
@@ -894,7 +895,7 @@ func TestPipelineFixture_Citations_Idempotent(t *testing.T) {
 	runCitations := func() {
 		if err := BackfillMatchCitations(
 			context.Background(),
-			f.metadata, f.shared, f.player, fixXUID, []string{fixM1},
+			f.metadata, f.shared, f.player, nil, fixXUID, []string{fixM1},
 		); err != nil {
 			t.Fatalf("BackfillMatchCitations: %v", err)
 		}
@@ -938,7 +939,7 @@ func TestPipelineFixture_Citations_NoMedals(t *testing.T) {
 
 	err := BackfillMatchCitations(
 		context.Background(),
-		f.metadata, f.shared, f.player,
+		f.metadata, f.shared, f.player, nil,
 		fixXUID,
 		[]string{fixM3},
 	)
@@ -1134,7 +1135,7 @@ func TestPipelineFixture_FullSequence(t *testing.T) {
 	}
 
 	// Étape 5 — citations
-	if err := BackfillMatchCitations(ctx, f.metadata, f.shared, f.player, fixXUID,
+	if err := BackfillMatchCitations(ctx, f.metadata, f.shared, f.player, nil, fixXUID,
 		[]string{fixM1, fixM2, fixM3}); err != nil {
 		t.Fatalf("[étape 5] citations: %v", err)
 	}

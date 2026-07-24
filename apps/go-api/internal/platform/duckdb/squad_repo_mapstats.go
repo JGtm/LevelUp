@@ -10,7 +10,7 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
-func (r *SquadRepo) LoadMapStatsForSquad(ctx context.Context, mainXUID string, squadXUIDs []string) (map[string]domain.MapSquadStats, error) {
+func (r *SquadRepo) LoadMapStatsForSquad(ctx context.Context, mainXUID string, squadXUIDs, excludeXUIDs []string) (map[string]domain.MapSquadStats, error) {
 	if mainXUID == "" || len(squadXUIDs) == 0 {
 		return nil, nil
 	}
@@ -18,7 +18,7 @@ func (r *SquadRepo) LoadMapStatsForSquad(ctx context.Context, mainXUID string, s
 	defer cancel()
 
 	// Étape 1 : shared per-match rows.
-	matchRows, err := r.loadMapStatsSquadShared(ctx, mainXUID, squadXUIDs)
+	matchRows, err := r.loadMapStatsSquadShared(ctx, mainXUID, squadXUIDs, excludeXUIDs)
 	if err != nil {
 		return nil, fmt.Errorf("LoadMapStatsForSquad: %w", err)
 	}
@@ -83,7 +83,8 @@ type mapStatsSquadMatchRow struct {
 }
 
 // loadMapStatsSquadShared exécute l'étape 1 du split LoadMapStatsForSquad.
-func (r *SquadRepo) loadMapStatsSquadShared(ctx context.Context, mainXUID string, squadXUIDs []string) ([]mapStatsSquadMatchRow, error) {
+// excludeXUIDs non vide -> anti-join composition exacte (Q42MapStatsSquadExtraExclusionFrag).
+func (r *SquadRepo) loadMapStatsSquadShared(ctx context.Context, mainXUID string, squadXUIDs, excludeXUIDs []string) ([]mapStatsSquadMatchRow, error) {
 	db, release, err := r.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("shared reader: %w", err)
@@ -94,11 +95,19 @@ func (r *SquadRepo) loadMapStatsSquadShared(ctx context.Context, mainXUID string
 	// (sans placeholder). No-op Infinite. Item backlog H1.
 	tpl := resolveCampaignExclusion(Q42MapStatsForSquadSharedTpl, pdbTitleSlug(r.pdb), "r")
 	q := fmt.Sprintf(tpl, Placeholders(len(squadXUIDs)), len(uniqueXUIDs(squadXUIDs)))
-	args := make([]any, 0, len(squadXUIDs)+1)
+	args := make([]any, 0, len(squadXUIDs)+1+len(excludeXUIDs))
 	for _, x := range squadXUIDs {
 		args = append(args, x)
 	}
 	args = append(args, mainXUID)
+	// Anti-join composition exacte (appended APRÈS le mainXUID : ordre positionnel
+	// des placeholders). Omis si aucun coéquipier connu hors sélection.
+	if len(excludeXUIDs) > 0 {
+		q += fmt.Sprintf(Q42MapStatsSquadExtraExclusionFrag, Placeholders(len(excludeXUIDs)))
+		for _, x := range excludeXUIDs {
+			args = append(args, x)
+		}
+	}
 
 	rows, err := db.QueryContext(ctx, q, args...)
 	if err != nil {

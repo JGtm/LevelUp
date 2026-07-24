@@ -50,7 +50,8 @@ function gapOf(pair: FdaGapPair): number | null {
  * helper générique `cumulativeSigned`. Un match sans attendu reporte le cumul (D5).
  */
 export function cumulativeFdaGap(pairs: FdaGapPair[]): FdaGapCumPoint[] {
-  const cum = cumulativeSigned(pairs.map(gapOf))
+  const gaps = pairs.map(gapOf)
+  const cum = cumulativeSigned(gaps)
   return pairs.map((pair, i) => {
     const real = finiteOrNull(pair.real)
     const expected = finiteOrNull(pair.expected)

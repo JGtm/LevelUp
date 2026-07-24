@@ -180,6 +180,16 @@ func TestPathResolver_PlayerDBPath(t *testing.T) {
 	}
 }
 
+func TestPathResolver_PlayerMediaAudioConfigPath(t *testing.T) {
+	r := NewRegistry()
+	pr := NewPathResolver("/repo", r)
+	got := pr.PlayerMediaAudioConfigPath("halo_infinite", "Chocoboflor")
+	want := filepath.Join("/repo", "data", "titles", "halo_infinite", "players", "Chocoboflor", "media_audio_config.json")
+	if got != want {
+		t.Errorf("PlayerMediaAudioConfigPath: got %q, want %q", got, want)
+	}
+}
+
 func TestPathResolver_BackupDir(t *testing.T) {
 	r := NewRegistry()
 	pr := NewPathResolver("/repo", r)

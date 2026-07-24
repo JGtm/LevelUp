@@ -43,11 +43,17 @@ const (
 	CapCareerRankCatalog  CapabilityKey = "career.rank_catalog" // rangs de carrière = catalogue table-backed avec icône par palier (Infinite ; absent pour h5, SR numérique)
 	CapPveFirefight       CapabilityKey = "pve.firefight_stats"
 	CapTimeseries         CapabilityKey = "analytics.timeseries"
-	CapScoreboardExtra    CapabilityKey = "match.scoreboard.extra" // champs étendus du scoreboard
-	CapCitationsEngine    CapabilityKey = "citations.engine"       // moteur de citations
-	CapEngagement         CapabilityKey = "engagement.score"       // score + courbe + coefficients d'engagement
-	CapBattlePass         CapabilityKey = "battlepass.progression" // progression battle pass / season pass
-	CapChallenges         CapabilityKey = "challenges.surface"     // surface défis (hebdo/quotidiens)
+	// CapAnalyticsCareerXPEstimate — série « XP de carrière (estimée) » par match sur
+	// la page Timeseries (XP = multiplicateur d'éra × personal_score). Halo Infinite
+	// uniquement (progression Career Rank fondée sur le Personal Score) ; ABSENTE pour
+	// un titre à système d'XP distinct (Halo 5 = Spartan Rank). Lue via CapabilityMap
+	// au service Timeseries (jamais de slug ==).
+	CapAnalyticsCareerXPEstimate CapabilityKey = "analytics.career_xp_estimate"
+	CapScoreboardExtra           CapabilityKey = "match.scoreboard.extra" // champs étendus du scoreboard
+	CapCitationsEngine           CapabilityKey = "citations.engine"       // moteur de citations
+	CapEngagement                CapabilityKey = "engagement.score"       // score + courbe + coefficients d'engagement
+	CapBattlePass                CapabilityKey = "battlepass.progression" // progression battle pass / season pass
+	CapChallenges                CapabilityKey = "challenges.surface"     // surface défis (hebdo/quotidiens)
 	// Timeline d'événements de match (canonical MatchEvents). Halo 5 natif ;
 	// Infinite reconstitué depuis highlight_events (cf. PLAN_CANONICAL_MATCH_EVENTS).
 	CapMatchEventsTimeline  CapabilityKey = "match.events.timeline"   // timeline horodatée (kills/médailles/armes/spawns)

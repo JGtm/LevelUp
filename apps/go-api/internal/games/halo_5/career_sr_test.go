@@ -62,6 +62,11 @@ func TestApplySpartanRank_Max(t *testing.T) {
 	if snap.RankNumber != 152 {
 		t.Errorf("RankNumber = %d, want 152", snap.RankNumber)
 	}
+	// MaxRank (libellé du rang sommet, title-agnostic) doit être posé (« SR 152 »)
+	// pour que le service alimente HeroProgress.MaxRankName* côté page Carrière.
+	if snap.MaxRank == nil || snap.MaxRank.Labels["fr"] != "SR 152" || snap.MaxRank.Labels["en"] != "SR152" {
+		t.Errorf("MaxRank = %+v, want libellés SR 152 / SR152", snap.MaxRank)
+	}
 }
 
 // TestApplySpartanRank_OutOfBounds : un SR hors [1..152] laisse le snapshot intact.
@@ -98,6 +103,11 @@ func TestLoadCareerSnapshot_AlwaysRankMax152(t *testing.T) {
 	}
 	if snap.XPMax == nil || *snap.XPMax != h5SRStartXP[h5MaxSpartanRank-1] {
 		t.Errorf("XPMax = %v, want %d (XP cumulé au SR152)", snap.XPMax, h5SRStartXP[h5MaxSpartanRank-1])
+	}
+	// Le filet déterministe pose aussi le libellé du rang max (« SR 152 ») pour le
+	// gauge « path to max rank », même sans SR réel enrichi.
+	if snap.MaxRank == nil || snap.MaxRank.DefaultLabel != "SR 152" {
+		t.Errorf("MaxRank = %+v, want libellé 'SR 152' (filet déterministe)", snap.MaxRank)
 	}
 	// SR réel inconnu (pas d'enrichissement) → RankNumber 0, pas de CurrentRank SR
 	// inventé. Le CSR (palier Diamant du service record) reste intact.

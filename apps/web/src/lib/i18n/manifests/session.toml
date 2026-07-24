@@ -236,11 +236,11 @@ fr = "moy."
 en = "avg."
 
 [session.detail.chart_fda_per_game_title]
-fr = "Frags / Morts / Assists par match"
+fr = "Frags / Morts / Assistances par match"
 en = "Kills / Deaths / Assists per game"
 
 [session.detail.chart_fda_per_minute_title]
-fr = "Stats par minute — Frags / Morts / Assists"
+fr = "Stats par minute — Frags / Morts / Assistances"
 en = "Per-minute stats — Kills / Deaths / Assists"
 
 [session.detail.chart_fda_radar_series]
@@ -288,7 +288,8 @@ en = "Cumulative net score"
 fr = "Net cumulé"
 en = "Cumulative net"
 
-# Écart cumulé au FDA attendu (D2) — cumul du différentiel réel vs attendu.
+# Écart cumulé au FDA attendu (D2 + retouche UX 2026-07-24) — cumul du
+# différentiel réel vs attendu + courbe FDA attendu par match (axe secondaire).
 [session.detail.chart_fda_gap_title]
 fr = "Écart cumulé au FDA attendu"
 en = "Cumulative KDA gap to expected"
@@ -743,10 +744,6 @@ en = "Worst match"
 [session.compare.highlight_empty]
 fr = "Aucune donnée de performance disponible."
 en = "No performance data available."
-
-[session.compare.highlight_kills]
-fr = "Kills"
-en = "Kills"
 
 [session.compare.highlight_kda]
 fr = "K/D"

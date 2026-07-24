@@ -194,6 +194,9 @@ func fallbackCapabilities() games.CapabilityMap {
 		// l'affichage (analysis.NormalizePlaylistLabel) — trait Halo Infinite,
 		// absent des autres titres (cf. capabilities.toml).
 		games.CapPlaylistCategoryStrip: games.CapSupported,
+		// Serie « XP de carriere (estimee) » par match (plan XP CARRIERE ESTIMEE,
+		// 2026-07-24) : formule multiplicateur(era) x personal_score — Infinite only.
+		games.CapAnalyticsCareerXPEstimate: games.CapSupported,
 	}
 }
 

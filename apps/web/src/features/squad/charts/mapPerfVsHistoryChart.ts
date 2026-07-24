@@ -8,7 +8,11 @@
  *   - Session (couleur par palier perf-tier-1..5 selon performance_avg)
  *
  * Filtrage : jointure interne sur les cartes ayant un performance_avg ET un
- * historical_performance_avg non nuls. Tri par performance_avg ASC + head 20.
+ * historical_performance_avg non nuls. Sélection : top MAX_MAPS=20 par nombre
+ * de matchs (match_count desc). Affichage : ordre CHRONOLOGIQUE reçu du
+ * backend (computeMapBreakdown trie déjà par première apparition — I12) ;
+ * aucun re-tri par fréquence ou par perf côté front, seule la SÉLECTION des
+ * 20 cartes retenues s'appuie sur match_count.
  * markLine pointillé à xAxis: 0 (référence visuelle, cohérent avec spec).
  *
  * Échelle perf 0..100 (cf. SCORE_THRESHOLDS Python : 75/60/45/30).
@@ -57,9 +61,13 @@ function joinAndSort(rows: MapBreakdownRow[]): JoinedRow[] {
       matchCount: r.match_count,
     })
   }
-  // Tri par nombre de matchs DESC (les cartes les plus jouées en haut).
-  joined.sort((a, b) => b.matchCount - a.matchCount)
-  return joined.slice(0, MAX_MAPS)
+  // Sélection : top MAX_MAPS cartes par nombre de matchs (les plus jouées).
+  // Affichage : ordre chronologique reçu (celui de `joined`, hérité de `rows`)
+  // — on ne re-trie donc PAS `joined`, on filtre seulement sur l'ensemble des
+  // cartes retenues par fréquence (I12 : plus de tri par match_count/perf ici).
+  const topByFrequency = [...joined].sort((a, b) => b.matchCount - a.matchCount).slice(0, MAX_MAPS)
+  const keep = new Set(topByFrequency.map((r) => r.mapUI))
+  return joined.filter((r) => keep.has(r.mapUI))
 }
 
 export function buildMapPerfVsHistoryOption(

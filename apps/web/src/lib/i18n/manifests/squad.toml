@@ -156,7 +156,7 @@ fr = "Premier sang"
 en = "First blood"
 
 [narrative.role.clutch_finisher]
-fr = "Finisher clutch"
+fr = "Finisseur"
 en = "Clutch finisher"
 
 [narrative.role.last_casualty]
@@ -164,11 +164,11 @@ fr = "Dernier mort"
 en = "Last casualty"
 
 [narrative.role.last_group_kill]
-fr = "Dernier kill du squad"
+fr = "Dernier frag de l'escouade"
 en = "Last squad kill"
 
 [narrative.role.first_group_death]
-fr = "Premier mort du squad"
+fr = "Premier mort de l'escouade"
 en = "First squad death"
 
 [narrative.role.silent_hero]
@@ -254,7 +254,7 @@ fr = "Frags ↑ / Morts ↓"
 en = "Kills ↑ / Deaths ↓"
 
 [squad.contrib.killing_spree_title]
-fr = "Série de kills (max lissé)"
+fr = "Série de frags (max lissé)"
 en = "Killing spree (smoothed max)"
 
 [squad.contrib.hs_pk_title]
@@ -292,11 +292,11 @@ en = "Performance score per match"
 # ─── S6 : Cadence + Intensité ───────────────────────────────────────────────
 
 [squad.synergies.cadence_title]
-fr = "Cadence des kills par phase"
+fr = "Cadence des frags par phase"
 en = "Kill cadence by phase"
 
 [squad.synergies.cadence_caption]
-fr = "Kills regroupés par phase de {seconds, number} secondes"
+fr = "Frags regroupés par phase de {seconds, number} secondes"
 en = "Kills grouped by phases of {seconds, number} seconds"
 
 [squad.synergies.intensity_title]
@@ -396,7 +396,7 @@ fr = "Total"
 en = "Total"
 
 [squad.weapons.min_kills_label]
-fr = "Min. kills : {n, number}"
+fr = "Min. frags : {n, number}"
 en = "Min. kills: {n, number}"
 
 [squad.weapons.grenade_melee_marker]

@@ -49,9 +49,15 @@ export function RootLayout() {
     retryDelay: (n) => Math.min(500 * 2 ** n, 4000),
   })
 
+  // Mécanisme UNIQUE de titre d'onglet (I18) : keyé sur [pathname, locale] — un
+  // changement de langue dans Paramètres (sans navigation) met aussi à jour l'onglet.
+  // resolvePageTitle est locale-aware (table Record<Locale,string> par route) ; les
+  // anciens effets locaux dupliqués (MedalsPage/ComparePage/UnifiedCitationsPage) sont
+  // supprimés — ils étaient de toute façon écrasés par CET effet, rejoué à chaque
+  // navigation après les effets enfants.
   useEffect(() => {
-    document.title = resolvePageTitle(pathname)
-  }, [pathname])
+    document.title = resolvePageTitle(pathname, locale)
+  }, [pathname, locale])
 
   // Vraie expiration de session (TTL 7 j atteint, logout dans un autre onglet) :
   // le client HTTP dispatche `levelup:auth-required` sur un 401 `auth_required`
