@@ -43,7 +43,7 @@
 
 **Écart au FDA attendu**
 - **Courbes d'écart attendu** — de nouveaux graphes « écart au FDA attendu » sur les Séries temporelles et les Sessions, plus un écart cumulé par membre sur les Synergies d'escouade, avec un KPI d'écart moyen par match
-- **Réel vs attendu** — de fines courbes de FDA réel et attendu cumulés sont ajoutées sur le graphe d'écart
+- **Superposition du FDA attendu** — une fine courbe de FDA attendu par match est ajoutée sur le graphe d'écart, sur le même axe
 
 **Médias**
 - **Rôles des pistes audio par joueur** — déclarez le rôle voix / jeu / autres de chaque piste audio de vos clips, par joueur, depuis une modale engrenage dans la galerie (manuel, ou automatique)

@@ -43,7 +43,7 @@
 
 **Expected FDA**
 - **Gap-to-expected curves** — new "gap to expected FDA" charts on Timeseries and Sessions, plus a per-member cumulative gap on Squad Synergies, with an average-gap-per-match KPI
-- **Real vs expected overlay** — thin cumulative real and expected FDA lines added on the FDA-gap chart
+- **Expected-FDA overlay** — a thin per-match expected-FDA line added on the FDA-gap chart, sharing the same axis
 
 **Media**
 - **Per-player audio-track roles** — declare the voice / game / other role of each audio track of your clips, per player, from a gear modal in the gallery (manual, or automatic)
