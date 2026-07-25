@@ -289,7 +289,7 @@ fr = "matchs"
 en = "matches"
 
 [session.detail.chart_net_score_title]
-fr = "Net score cumulé"
+fr = "Solde frags − morts cumulé"
 en = "Cumulative net score"
 
 [session.detail.net_score_series]
