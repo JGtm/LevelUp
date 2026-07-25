@@ -25,15 +25,39 @@ import {
 } from '@/features/prestige/hooks/useSquads'
 import { useMyGroups } from '@/features/groups/queries'
 import type { TeammateRow } from '@/lib/api/types'
+import { normalizeModeLabel } from '@/lib/halo/modeLabel'
 import { findSquadByRoster, squadTeammates } from './squadRoster'
 import { SQUAD_PRESETS_STRINGS, type SquadPresetsStrings } from './squadPresets.i18n'
 
-function buildUsualSubtitle(
+/**
+ * buildUsualSubtitle — indice « surtout <playlists> · <mode> » de la liste des
+ * compositions enregistrées (V72-10). Exporté pour test.
+ *
+ * `modes` arrive du backend (`GET /squads` → `usual_modes`, cf.
+ * `prestige_squad_match_provider.go SquadUsualContexts`) sous forme de `pair_name`
+ * BRUT — potentiellement "Slayer on Bazaar" / "Arena:Slayer on Bazaar" (mode ET
+ * carte collés, cf. `reference_mode_label_cross_lang_strip`). On applique le même
+ * strip canonique que `match-card.tsx`/`format.ts` (`normalizeModeLabel`, pas de
+ * mapLabel connu ici → seul le filet générique "on/sur <reste>" s'applique, mais
+ * il est TOUJOURS déclenché quelle que soit la langue) :
+ *  - retire la carte collée au mode (décision utilisateur V72-10 : la carte
+ *    n'apporte rien dans cet indice, playlist + mode suffisent) ;
+ *  - extrait le sous-mode propre du préfixe technique ("Arena:Slayer" → "Slayer").
+ *
+ * `playlists` n'a pas ce problème (pas de suffixe carte) — laissé tel quel. Le
+ * FR-d'abord est déjà appliqué côté SQL (COALESCE playlist_name_fr/pair_name_fr
+ * avant repli EN) ; un résidu anglais au-delà de ce point est un trou de
+ * traduction côté données (asset_translations / mode_name_tr), pas un bug front.
+ */
+export function buildUsualSubtitle(
   playlists: string[] | undefined,
   modes: string[] | undefined,
   t: SquadPresetsStrings,
 ): string | undefined {
-  const parts = [...(playlists ?? []).slice(0, 2), ...(modes ?? []).slice(0, 1)]
+  const cleanModes = (modes ?? [])
+    .map((m) => normalizeModeLabel(m, undefined))
+    .filter((m): m is string => !!m)
+  const parts = [...(playlists ?? []).slice(0, 2), ...cleanModes.slice(0, 1)]
   if (parts.length === 0) return undefined
   return `${t.usualPrefix} ${parts.join(' · ')}`
 }

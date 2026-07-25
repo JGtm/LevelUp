@@ -133,4 +133,32 @@ describe('SessionMatchesTable — rendu (réutilise ExplorerMatchesTable)', () =
     expect(screen.getByText('3/5')).toBeInTheDocument()
     expect(screen.queryByText('Or III')).not.toBeInTheDocument() // placement prime sur le palier
   })
+
+})
+
+// V72-09b : la colonne « Ouvrir sur Halo Waypoint » (I19) est un simple passage
+// à travers ExplorerMatchesTable (aucune duplication) — mais AUCUN test existant
+// ne couvrait ce consommateur précis (seuls ExplorerMatchesTable.test.tsx et
+// SquadSynergyHistoryTable.test.tsx l'assertaient). Couverture manquante = seul
+// filet qui aurait détecté une régression de gating sur cette page spécifique.
+describe('SessionMatchesTable — colonne « Ouvrir sur Halo Waypoint » (I19, V72-09b)', () => {
+  const WAYPOINT_LABEL = 'Ouvrir sur Halo Waypoint'
+
+  it('vue full : lien Waypoint présent avec un href valide (capability fail-open + pref ON par défaut)', () => {
+    renderWithProviders(
+      <SessionMatchesTable matches={[makeRow()]} playerSlug="Chocoboflor" variant="full" />,
+    )
+    const link = screen.getByRole('link', { name: WAYPOINT_LABEL })
+    expect(link).toHaveAttribute(
+      'href',
+      'https://www.halowaypoint.com/halo-infinite/players/Chocoboflor/matches/m1',
+    )
+  })
+
+  it('vue compact (drawer) : colonne Waypoint masquée par COMPACT_HIDDEN_COLUMNS', () => {
+    renderWithProviders(
+      <SessionMatchesTable matches={[makeRow()]} playerSlug="Chocoboflor" variant="compact" />,
+    )
+    expect(screen.queryByRole('link', { name: WAYPOINT_LABEL })).not.toBeInTheDocument()
+  })
 })
