@@ -223,6 +223,9 @@ passage »). NB : chemins Go préfixés `apps/go-api/`.
       + assertion que les ~20 paths chi-brut du fragment survivent à la régénération.
       Filtrer les wrappers anonymes par-route. Archiver openapi_fastapi_reference.yaml.
 - [ ] **H7 — generate-types (S→M).** Diff massif attendu dans generated.ts (14 010 L).
+      AJOUT (25/07, consolidation H5) : rendre les schemas Group/GroupMember fideles
+      (tag enum owner,member sur Role + non-nullite de members cote Go) puis re-shimer
+      types.ts et RETIRER Group/GroupMember de BASELINE_COLLISIONS (lint-contract-ratchet).
       GARDE SÉMANTIQUE (revue) : snapshot des noms de types exportés + membres d'enums
       de generated.ts (test dédié) — pas seulement tsc ; `response-types.guard.test.ts`
       rendu assertif sur les types critiques. Attention 3.1 `type:[X,"null"]` vs 3.0

@@ -32,6 +32,12 @@ const GENERATED_TS = join(REPO_ROOT, 'apps/web/src/lib/api/generated.ts')
 // Collisions LÉGITIMES connues (view-models enrichis OU types Input producteur).
 // Post-Étape 3 + re-shim Phase D. Trié alpha.
 const BASELINE_COLLISIONS = new Set([
+  // V72-01 H5 (2026-07-25) : Group/GroupMember émis par Huma depuis la migration des
+  // routes groups, mais le schéma dérivé est MOINS strict que le type manuel
+  // (role: string au lieu de l'union 'owner'|'member' ; members nullable). À re-shimer
+  // quand H6/H7 rendront le schéma fidèle (tag enum + non-nullité côté Go).
+  'Group',
+  'GroupMember',
   'AdminJobsResponse',
   'AdminLogEntry',
   'AdminSchedulerStatusResponse',
