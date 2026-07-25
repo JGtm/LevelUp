@@ -81,6 +81,17 @@ const (
 	// entier — le strip Infinite le tronquerait en "Fête"). Lue via CapabilityMap au
 	// site de résolution du libellé (jamais de slug ==).
 	CapPlaylistCategoryStrip CapabilityKey = "playlist.label.strip_category"
+
+	// CapMatchObjectiveStats — stats objectifs PAR JOUEUR PAR MATCH des modes à
+	// objectif (CTF/Zones (Strongholds+KOTH)/Oddball), extraites nativement du
+	// payload GetMatchStats (Players[].PlayerTeamStats[0].Stats.<BlocMode>) et
+	// stockées dans shared.match_objective_stats. Halo Infinite : supported.
+	// Halo 5 : not_exposed (le carnage n'agrège pas ces objectifs ; promotion
+	// degraded par agrégation d'impulses = chantier ultérieur distinct). Gouverne
+	// le chemin de DONNÉES serveur (JOIN _latest au scoreboard/synthesis/squad) ;
+	// la porte d'AFFICHAGE UI passe par la capability title-level `objective_stats`
+	// (registry.go, useCapability). Cf. PLAN_V72_OBJECTIVE_STATS.md.
+	CapMatchObjectiveStats CapabilityKey = "match.objective.stats"
 )
 
 // CapabilityMap décrit l'état des capabilities produit d'un adapter à un instant T.
@@ -116,7 +127,6 @@ type TitleDataAdapter interface {
 	Capabilities() CapabilityMap
 
 	LoadMatchSummaries(ctx context.Context, matchIDs []string) ([]canonical.MatchSummary, error)
-	LoadMatchDetail(ctx context.Context, matchID string) (*canonical.MatchDetail, error)
 	LoadPlayerStats(ctx context.Context, xuid string, scope canonical.StatsScope) (*canonical.PlayerStats, error)
 	LoadCareerSnapshot(ctx context.Context, xuid string, opts canonical.CareerOptions) (*canonical.CareerSnapshot, error)
 	LoadEncounters(ctx context.Context, xuid string) ([]canonical.EncounterRow, error)
@@ -146,9 +156,9 @@ type TitleDataAdapter interface {
 	LoadFriendsXUIDs(ctx context.Context, xuid string) ([]string, error)
 
 	// LoadMatchEvents : timeline d'événements BRUTE et complète d'un match
-	// (CapMatchEventsTimeline). Surface SÉPARÉE chargée on-demand (ne pas mettre
-	// dans LoadMatchDetail). ErrCapabilityNotSupported si le titre ne sert pas
-	// d'events. Cf. PLAN_CANONICAL_MATCH_EVENTS.
+	// (CapMatchEventsTimeline). Surface SÉPARÉE chargée on-demand.
+	// ErrCapabilityNotSupported si le titre ne sert pas d'events.
+	// Cf. PLAN_CANONICAL_MATCH_EVENTS.
 	LoadMatchEvents(ctx context.Context, matchID string, opts canonical.MatchEventOptions) (*canonical.MatchEventTimeline, error)
 }
 

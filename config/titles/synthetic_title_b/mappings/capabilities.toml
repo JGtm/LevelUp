@@ -27,3 +27,5 @@ schema_version = 1
 "match.events.timeline"  = "supported"
 "match.killfeed.per_kill" = "supported"
 "match.events.spatial"   = "supported"
+# Stats objectifs par match : fixture 2e titre, non exposée (pas de substrat objectif).
+"match.objective.stats"  = "not_exposed"

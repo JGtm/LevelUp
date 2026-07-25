@@ -1,0 +1,50 @@
+{
+  "MatchId": "00000000-0000-0000-0000-00000000575a",
+  "MatchInfo": { "Duration": "PT9M21.547S" },
+  "Players": [
+    {
+      "PlayerId": "xuid(2500000000000001)",
+      "PlayerType": 1,
+      "LastTeamId": 0,
+      "ParticipationInfo": { "TimePlayed": "PT9M21.547S" },
+      "PlayerTeamStats": [
+        {
+          "TeamId": 0,
+          "Stats": {
+            "CoreStats": { "Kills": 18, "Deaths": 10, "Assists": 6, "PersonalScore": 3800 },
+            "ZonesStats": {
+              "StrongholdCaptures": 9,
+              "StrongholdDefensiveKills": 1,
+              "StrongholdOccupationTime": "PT1M52.7S",
+              "StrongholdOffensiveKills": 3,
+              "StrongholdScoringTicks": 0,
+              "StrongholdSecures": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "PlayerId": "xuid(2500000000000002)",
+      "PlayerType": 1,
+      "LastTeamId": 1,
+      "ParticipationInfo": { "TimePlayed": "PT9M21.547S" },
+      "PlayerTeamStats": [
+        {
+          "TeamId": 1,
+          "Stats": {
+            "CoreStats": { "Kills": 12, "Deaths": 14, "Assists": 4, "PersonalScore": 2600 },
+            "ZonesStats": {
+              "StrongholdCaptures": 4,
+              "StrongholdDefensiveKills": 2,
+              "StrongholdOccupationTime": "PT51.9S",
+              "StrongholdOffensiveKills": 3,
+              "StrongholdScoringTicks": 0,
+              "StrongholdSecures": 2
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

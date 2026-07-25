@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -230,13 +231,30 @@ func TestMatchViewService_GetMatchView_OK(t *testing.T) {
 	}
 }
 
+// TestMatchViewService_GetMatchView_MetaError : un match absent du substrat local
+// (jamais synchronisé, ou pas encore) renvoie un APIError 404 typé "not_found"
+// (le handler le traduit en code "match_not_found", cf. handlers/match_view.go),
+// PAS un fetch live vers l'API du titre — décision user 2026-07-19 (BACKLOG
+// "Retirer le fallback LIVE du Match view"). MatchViewService n'expose plus aucun
+// hook DataAdapter/viewer gamertag : il est structurellement impossible qu'un
+// appel API live parte de ce service.
 func TestMatchViewService_GetMatchView_MetaError(t *testing.T) {
-	repo := &mockMatchViewRepo{metaErr: errors.New("not found")}
+	repo := &mockMatchViewRepo{metaErr: errors.New("no rows in result set")}
 	svc := NewMatchViewService(repo, "xuid1")
 
 	_, err := svc.GetMatchView(context.Background(), "m1")
 	if err == nil {
-		t.Error("expected error when meta fails")
+		t.Fatal("expected error when meta fails")
+	}
+	var apiErr *domain.APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("attendu un *domain.APIError typé, obtenu %T: %v", err, err)
+	}
+	if apiErr.Code != "not_found" {
+		t.Errorf("Code = %q, want 'not_found' (traduit en 'match_not_found' par le handler)", apiErr.Code)
+	}
+	if !strings.Contains(apiErr.Message, "m1") {
+		t.Errorf("Message = %q, doit citer le match_id demandé", apiErr.Message)
 	}
 }
 

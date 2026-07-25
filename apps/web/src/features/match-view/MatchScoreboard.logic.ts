@@ -14,13 +14,15 @@
  *
  * Tests : MatchScoreboard.test.ts (tests unitaires sans rendu).
  */
-import type { MatchScoreboardRow } from '@/lib/api/types'
+import type { MatchScoreboardObjective, MatchScoreboardRow } from '@/lib/api/types'
 
 export interface ColDef {
   key: keyof MatchScoreboardRow
   label: string
   inverted: boolean
   fmt?: (v: number) => string
+  /** Aide d'en-tête facultative (V72-04) : texte du tooltip ⓘ de la colonne. */
+  tooltip?: string
 }
 
 export type Extremes = { min: number | null; max: number | null }
@@ -148,4 +150,84 @@ export function getMvpLvp(
 export function formatRank(rank: number | null): string {
   if (rank == null) return '—'
   return String(rank)
+}
+
+// ---------------------------------------------------------------------------
+// Section « Objectifs » (V72-03) — logique pure : détection du mode à objectif,
+// colonnes pertinentes par mode, agrégat équipe. Le rendu vit dans
+// MatchObjectivesSection.tsx ; les libellés viennent de l'i18n match-view.
+// ---------------------------------------------------------------------------
+
+/** Mode à objectif détecté sur le scoreboard (blocs mutuellement exclusifs). */
+export type ObjectiveMode = 'ctf' | 'zones' | 'oddball'
+
+/**
+ * Colonne objectif : clé du bloc, agrégat équipe (`sum` = cumul ; `max` pour les
+ * « meilleurs temps » où une somme n'a pas de sens), et flag durée (secondes →
+ * mm:ss). Les libellés/tooltips sont résolus côté rendu via l'i18n (key → label).
+ */
+export interface ObjectiveColSpec {
+  key: keyof MatchScoreboardObjective
+  agg: 'sum' | 'max'
+  duration?: boolean
+}
+
+const CTF_COLS: ObjectiveColSpec[] = [
+  { key: 'flag_captures', agg: 'sum' },
+  { key: 'flag_returns', agg: 'sum' },
+  { key: 'flag_steals', agg: 'sum' },
+  { key: 'time_as_flag_carrier_seconds', agg: 'sum', duration: true },
+]
+const ZONES_COLS: ObjectiveColSpec[] = [
+  { key: 'zone_captures', agg: 'sum' },
+  { key: 'zone_secures', agg: 'sum' },
+  { key: 'time_in_zones_seconds', agg: 'sum', duration: true },
+]
+const ODDBALL_COLS: ObjectiveColSpec[] = [
+  { key: 'skull_grabs', agg: 'sum' },
+  { key: 'time_as_skull_carrier_seconds', agg: 'sum', duration: true },
+  { key: 'longest_time_as_skull_carrier_seconds', agg: 'max', duration: true },
+]
+
+/**
+ * detectObjectiveMode — mode à objectif du match d'après le premier bloc non-nil
+ * rencontré. null si aucune ligne ne porte de stats objectif (Slayer / titre non
+ * supporté → section masquée). Discriminants : grab OU capture/scoring-ticks.
+ */
+export function detectObjectiveMode(rows: MatchScoreboardRow[]): ObjectiveMode | null {
+  for (const r of rows) {
+    const o = r.objective
+    if (!o) continue
+    if (o.flag_grabs != null || o.flag_captures != null) return 'ctf'
+    if (o.zone_captures != null || o.zone_scoring_ticks != null) return 'zones'
+    if (o.skull_grabs != null || o.skull_scoring_ticks != null) return 'oddball'
+  }
+  return null
+}
+
+/** objectiveColsFor — colonnes affichées pour un mode donné. */
+export function objectiveColsFor(mode: ObjectiveMode): ObjectiveColSpec[] {
+  switch (mode) {
+    case 'ctf':
+      return CTF_COLS
+    case 'zones':
+      return ZONES_COLS
+    case 'oddball':
+      return ODDBALL_COLS
+  }
+}
+
+/**
+ * objectiveTeamTotal — agrégat équipe d'une colonne (SUM cumulée, ou MAX pour un
+ * « meilleur temps »). null si aucune valeur dans le groupe (cellule « — »).
+ */
+export function objectiveTeamTotal(
+  rows: MatchScoreboardRow[],
+  col: ObjectiveColSpec,
+): number | null {
+  const vals = rows
+    .map((r) => (r.objective ? (r.objective[col.key] as number | null | undefined) : null))
+    .filter((v): v is number => v != null)
+  if (vals.length === 0) return null
+  return col.agg === 'max' ? Math.max(...vals) : vals.reduce((a, b) => a + b, 0)
 }

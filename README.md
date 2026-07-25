@@ -2,7 +2,7 @@
 
 > **Analyze your Halo 5: Guardians and Halo Infinite stats match by match, track your progress over time, and compare your performance with your squad.**
 
-[![Version](https://img.shields.io/badge/Version-7.1.0-blue.svg)](https://github.com/JGtm/LevelUp/releases/tag/v7.1.0)
+[![Version](https://img.shields.io/badge/Version-7.2.0-blue.svg)](https://github.com/JGtm/LevelUp/releases/tag/v7.2.0)
 [![Go](https://img.shields.io/badge/Go-1.26%2B-00ADD8.svg)](https://go.dev/)
 [![React](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev/)
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.4%2B-FEE14E.svg)](https://duckdb.org/)
@@ -14,32 +14,30 @@
 
 ## What's new
 
-**v7.1 — Squad reliability, Halo 5 combat data & career XP**
+**v7.2 — Objective modes, title isolation & instant player search**
 
-A point release focused on making the Squad pages trustworthy, repairing Halo 5 combat data, and polishing the whole app.
+A release focused on objective game modes, on sealing Halo 5 data away from Halo Infinite, and on making Explorer usable again on any player.
 
-**Squad — more reliable**
-- **Exact-composition history** — the session-vs-history charts (squad performance, map performance, win rate) now compare each session against your history with that *exact* lineup, instead of a blurred all-teammates average
-- **Fixed saved compositions** — a saved squad now shows the same members for everyone; no more duplicates or a teammate missing from another player's view
-- **Chronological charts** — the map and win-rate comparisons now read left-to-right in the order the maps first appeared
-- **New "Dynamics" tab** — intensity (now a median activity profile with an interquartile band that makes irregular play visible), yield/resistance and engagement grouped in one place, plus a cumulative damage-balance-in-lives chart
-- **Squad objectives** — the squad-challenge loop is complete (localized labels, join feedback, live per-member progress, abandon/expire); "Squad focus" is renamed "Squad objectives"
+**Objective modes — Capture the Flag, Strongholds, King of the Hill, Oddball**
+- **Your objective stats everywhere** — flag captures, returns, steals and time as carrier, zone captures and time held, skull grabs and possession time, now collected for every match
+- **Per team in the match view**, aggregated on Synthesis, Squad and Timeseries, and wired into four objective citations that count real actions instead of medals
 
-**Halo 5 — repaired combat data**
-- **Vehicles destroyed & hijacks** and the **combat mechanics** (assassinations, ground pound, shoulder bash) are back on the Synthesis and scoreboard after a data repair
-- **Citations repaired** — Firefight victories are counted, grenade citations are restored, and incorrect medal mappings are fixed
+**No more Halo 5 data leaking into Halo Infinite**
+- **Strict title gate** — the Spartan banner never shows another game's nameplate, emblem, backdrop or service tag, not even while a page loads or while you switch games
+- **Appearance per player and per title** — Halo 5 identities are no longer shared between players, and every server response now states the title it belongs to
 
-**Career**
-- **Estimated career XP** — a cumulative XP curve and XP-per-match on Timeseries, calibrated on real data
-- **Multi-title Path to Hero** — progression toward each title's own maximum rank
-- **Medals page** — a new Career sub-page with the title's full medal catalog, including the medals you have never earned, with all / earned / not-earned filters and sorting
+**Explorer**
+- **Instant player search** — local suggestions in about 200 ms, with an explicit "Search on Xbox" button when you want to go further
+- **Any player readable again** — a searched player's career, medals and seasons go through the pool of healthy credentials, and a discreet badge now says when live data could not be fetched instead of leaving an empty card
 
-**Explorer & Home**
-- **Head-to-head panel** — win-rate donuts (together / head-to-head) and a cumulative frag-gap-vs-target chart on "Over XX matches together"
-- **Peak dates** on your best LUSR / CSR cards, plus a **longest loss streak** KPI
+**Halo 5**
+- **Medal categories** — 215 medals grouped into 11 categories the way Halo Infinite's are, and three medals absent from the official catalog no longer pollute the page
 
-**Quality of life**
-- **Language in the URL** so shared links keep their language, an optional **Halo Waypoint column**, **every table sortable**, **stable browser-tab titles**, team identity colours and logos on the scoreboard, cleaner chart legends and percentage labels, and a French-wording sweep
+**Readability**
+- **Column tooltips** on every table header, **legends at the foot of the block** (which restores the "Tools of destruction" bar thickness), **grenades split by type** in the frag sunburst, **one weapon name per title**, and **"In placement"** instead of a blank performance score
+
+**Notifications, admin & quality of life**
+- **A notification the first time you ever earn a medal**, Discord alerts that no longer burst after a restart, an **initial sync for a single player** in the admin, the **"Dynamics"** tab back in the Squad menu, the **career-XP chart on Sessions**, and a clear "Match not synced yet" screen instead of a generic error
 
 ## Features
 

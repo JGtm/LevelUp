@@ -162,7 +162,7 @@ export const homeManifest = {
   "home.spartan_customizer.cancel": { fr: "Annuler", en: "Cancel" },
   "home.spartan_customizer.choose_emblem": { fr: "Emblème", en: "Emblem" },
   "home.spartan_customizer.close": { fr: "Fermer", en: "Close" },
-  "home.spartan_customizer.description": { fr: "Choisis un emblème et une bannière (onglets), puis tes couleurs — elles s'appliquent aux deux. L'aperçu et les vignettes se mettent à jour en direct.", en: "Pick an emblem and a banner (tabs), then your colors — they apply to both. The preview and thumbnails update live." },
+  "home.spartan_customizer.description": { fr: "Choisis un emblème et une bannière (onglets), avec des couleurs propres à chacun. L'aperçu et les vignettes se mettent à jour en direct.", en: "Pick an emblem and a banner (tabs), each with its own colors. The preview and thumbnails update live." },
   "home.spartan_customizer.emblem_preview": { fr: "Emblème", en: "Emblem" },
   "home.spartan_customizer.nameplate_preview": { fr: "Bannière", en: "Nameplate" },
   "home.spartan_customizer.open_aria": { fr: "Personnaliser l'identité Spartan", en: "Customize Spartan identity" },

@@ -74,8 +74,17 @@ type MatchHistoryRawRow struct {
 	// Tous deux nil si le match n'est pas en placement.
 	PlacementDone  *int
 	PlacementTotal *int
-	MyTeamScore    *int // score de l'équipe du joueur (depuis team_id)
-	EnemyTeamScore *int // score de l'équipe adverse
+	// PerfPlacementDone/PerfPlacementTotal : placement de la chaîne de PERFORMANCE
+	// (perf_score), DISTINCT du placement LUSR/CSR ci-dessus. Renseignés quand la
+	// chaîne perf du match (GetPerformanceChain) compte ≤ MinMatchesPerChainForRelative
+	// matchs perf-éligibles (outcome != DNF, non exclus) → aucun perf_score possible.
+	// Done = nombre de matchs éligibles de la chaîne (identique pour tous les matchs
+	// de la chaîne), Total = seuil. Indépendant de l'état LUSR/CSR (un LUSR peut
+	// exister sans perf_score : chaîne perf < 10). Cf. match_history_placement.go.
+	PerfPlacementDone  *int
+	PerfPlacementTotal *int
+	MyTeamScore        *int // score de l'équipe du joueur (depuis team_id)
+	EnemyTeamScore     *int // score de l'équipe adverse
 	// DominanceFlag : 0=none, 1=domination, 2=humiliation, 3=remontada,
 	// 4=débandade, 5=contre-remontada (cf. canonical.DominanceFlag).
 	// Peuplé par sync.BackfillDominanceFlags via engine.RunBackfillComebackBadges.
@@ -127,8 +136,16 @@ type MatchHistoryRow struct {
 	// PlacementDone/PlacementTotal : phase de placement (X/Y).
 	// CSR : remaining parsé de "Placement (N restants)" + threshold csr_placement_thresholds.
 	// LUSR : rang chronologique parmi les 10 plus anciens matchs sans LUSR de la chaîne.
-	PlacementDone       *int   `json:"placement_done,omitempty"`
-	PlacementTotal      *int   `json:"placement_total,omitempty"`
+	// Consommé aussi par ExplorerMatchesTable (front) pour le badge « En placement »
+	// des colonnes Perf/ΔPerf/Note quand PerformanceScoreRelative/SkillRatingType
+	// sont nil pour la même raison (V72-32, cf. ExplorerMatchesRow.PlacementDone).
+	PlacementDone  *int `json:"placement_done,omitempty"`
+	PlacementTotal *int `json:"placement_total,omitempty"`
+	// PerfPlacementDone/PerfPlacementTotal : placement de la chaîne de PERFORMANCE
+	// (colonnes Perf/ΔPerf du front), distinct de PlacementDone/Total (colonne Note).
+	// Nil hors placement perf. Voir MatchHistoryRawRow.PerfPlacementDone.
+	PerfPlacementDone   *int   `json:"perf_placement_done,omitempty"`
+	PerfPlacementTotal  *int   `json:"perf_placement_total,omitempty"`
 	AverageLifeMMSS     string `json:"average_life_mmss"`
 	DurationSeconds     *int   `json:"duration_seconds,omitempty"`
 	MatchURL            string `json:"match_url"`

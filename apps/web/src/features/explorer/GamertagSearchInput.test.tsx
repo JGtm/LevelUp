@@ -98,4 +98,37 @@ describe('GamertagSearchInput', () => {
     fireEvent.keyDown(input, { key: 'Enter' })
     expect(onSelect).toHaveBeenCalledWith('Zz')
   })
+
+  // ─── Repli live Xbox explicite (V72-24) ──────────────────────────────────────
+
+  it('propose « Rechercher sur Xbox » pour un joueur inconnu et affiche le résultat live au clic', async () => {
+    useAppShellStore.setState({ availablePlayers: [] })
+    server.use(
+      http.get('*/directory/gamertags/search', ({ request }) => {
+        const live = new URL(request.url).searchParams.get('live')
+        if (live === '1') {
+          return HttpResponse.json<GamertagSearchResponse>({
+            query: 'NeverSeen',
+            items: [{ gamertag: 'NeverSeen', xuid: 'xuid-live', score: 0, exact_match: true }],
+          })
+        }
+        // Recherche locale (typeahead) : rien, mais aucun blocage live.
+        return HttpResponse.json<GamertagSearchResponse>({ query: 'NeverSeen', items: [] })
+      }),
+    )
+    const onSelect = vi.fn()
+    renderWithProviders(<GamertagSearchInput onSelect={onSelect} />)
+    const input = screen.getByPlaceholderText(/Rechercher un joueur/i)
+    fireEvent.focus(input)
+    fireEvent.change(input, { target: { value: 'NeverSeen' } })
+
+    // Le bouton apparaît une fois la recherche locale revenue bredouille.
+    const btn = await screen.findByText('Rechercher sur Xbox', undefined, { timeout: 2000 })
+    fireEvent.click(btn)
+
+    // Le joueur résolu côté Xbox devient sélectionnable.
+    const hit = await screen.findByText('NeverSeen', undefined, { timeout: 2000 })
+    fireEvent.click(hit)
+    expect(onSelect).toHaveBeenCalledWith('NeverSeen')
+  })
 })

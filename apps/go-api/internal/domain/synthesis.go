@@ -148,6 +148,12 @@ type SynthesisPageV2Response struct {
 	// Bloc profil combat (OC + DR + descripteurs) — nil si < 15 matchs dans le scope.
 	// Ref : PLAN_COMBAT_PROFILE_WIRING.md Phase 1.
 	CombatProfile *CombatProfileBlock `json:"combat_profile,omitempty"`
+
+	// Bloc KPI objectifs (cumul CTF/Zones/Oddball sur le scope) — nil pour un titre
+	// sans capability match.objective.stats (Halo 5) ou un scope sans match à objectif.
+	// Gated (registry SynthesisCtx) + data-driven (front n'affiche que les KPI > 0).
+	// Cf. PLAN_V72_OBJECTIVE_STATS.md.
+	ObjectiveStats *ObjectiveAggregate `json:"objective_stats,omitempty"`
 }
 
 // SynthesisWeaponKillEntry est une ligne du classement frags par arme. Class/Role

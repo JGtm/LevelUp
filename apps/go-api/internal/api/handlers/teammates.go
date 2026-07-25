@@ -38,9 +38,9 @@ func NewTeammatesHandler(newSvc ContextFactory[port.TeammatesService]) *Teammate
 
 // Mount enregistre la route via Huma sur le sous-routeur chi (préfixe
 // /players/{player_slug} + middleware ownership/title hérités).
-func (h *TeammatesHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Post(api, "/pages/teammates", h.handleGetPage)
+func (h *TeammatesHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Post(api, "/pages/teammates", h.handleGetPage, humacore.Op("postTeammatesPage", "Analyse coéquipiers (filtres en body)", "teammates"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

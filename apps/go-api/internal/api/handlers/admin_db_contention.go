@@ -38,9 +38,9 @@ func NewAdminDBContentionHandler(get DBContentionProvider) *AdminDBContentionHan
 
 // Mount enregistre la route via Huma sur le sous-routeur chi (préfixe /admin +
 // middleware RequireAuth/RequireAdmin + NoStore hérités).
-func (h *AdminDBContentionHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Get(api, "/db-contention", h.handleGet)
+func (h *AdminDBContentionHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Get(api, "/db-contention", h.handleGet, humacore.Op("getAdminDBContention", "Contention DB — compteurs du shared provider B-swap (auth admin requis)", "admin"))
 }
 
 type adminDBContentionOutput struct {

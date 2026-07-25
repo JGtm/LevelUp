@@ -30,8 +30,10 @@ import (
 // fetchProgressCached retourne la progression depuis le cache si frais, sinon
 // fait l'appel live (avec singleflight). Erreurs live → log warn + nil.
 func (s *CareerLiveService) fetchProgressCached(ctx context.Context, xuid string) *domain.CareerRankSnapshot {
+	// Titre du contexte : dimension de la clé de cache (isolation cross-titre V72-29).
+	slug := ctxkeys.TitleSlug(ctx)
 	if s.cache != nil {
-		if cached, hit := s.cache.GetProgress(xuid); hit {
+		if cached, hit := s.cache.GetProgress(xuid, slug); hit {
 			careerLiveProgressCache.Add(1)
 			slog.DebugContext(ctx, careerLiveLogModule+": progress cache hit", "xuid", xuid)
 			return cached
@@ -55,7 +57,7 @@ func (s *CareerLiveService) fetchProgressCached(ctx context.Context, xuid string
 		err  error
 	)
 	if s.cache != nil {
-		data, err = s.cache.DoProgress(xuid, fetch)
+		data, err = s.cache.DoProgress(xuid, slug, fetch)
 	} else {
 		data, err = fetch()
 	}
@@ -75,15 +77,17 @@ func (s *CareerLiveService) fetchProgressCached(ctx context.Context, xuid string
 	}
 	careerLiveProgressLive.Add(1)
 	if s.cache != nil {
-		s.cache.PutProgress(xuid, data)
+		s.cache.PutProgress(xuid, slug, data)
 	}
 	return data
 }
 
 // fetchCustomizationCached : pendant pour la customisation (TTL 6 h).
 func (s *CareerLiveService) fetchCustomizationCached(ctx context.Context, xuid string) *domain.SpartanCustomizationData {
+	// Titre du contexte : dimension de la clé de cache (isolation cross-titre V72-29).
+	slug := ctxkeys.TitleSlug(ctx)
 	if s.cache != nil {
-		if cached, hit := s.cache.GetCustomization(xuid); hit {
+		if cached, hit := s.cache.GetCustomization(xuid, slug); hit {
 			careerLiveCustomCache.Add(1)
 			slog.DebugContext(ctx, careerLiveLogModule+": customization cache hit", "xuid", xuid)
 			return cached
@@ -105,7 +109,7 @@ func (s *CareerLiveService) fetchCustomizationCached(ctx context.Context, xuid s
 		err  error
 	)
 	if s.cache != nil {
-		data, err = s.cache.DoCustomization(xuid, fetch)
+		data, err = s.cache.DoCustomization(xuid, slug, fetch)
 	} else {
 		data, err = fetch()
 	}
@@ -122,7 +126,7 @@ func (s *CareerLiveService) fetchCustomizationCached(ctx context.Context, xuid s
 	}
 	careerLiveCustomLive.Add(1)
 	if s.cache != nil {
-		s.cache.PutCustomization(xuid, data)
+		s.cache.PutCustomization(xuid, slug, data)
 	}
 	return data
 }

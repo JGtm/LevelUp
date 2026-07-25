@@ -4,9 +4,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
+import { useAppShellStore } from '@/stores/appShellStore'
 import type {
   CareerPageResponse,
-  CareerTopMatchesResponse,
   CareerEncountersResponse,
   CareerHighlightMatchesResponse,
   CareerHighlightFilters,
@@ -16,29 +16,19 @@ import type {
 } from '@/lib/api/types'
 
 export function useCareerPage(playerSlug: string) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
-    queryKey: queryKeys.career(playerSlug),
+    queryKey: queryKeys.career(playerSlug, titleSlug),
     queryFn: () => api.get<CareerPageResponse>(`/players/${playerSlug}/pages/career`),
     enabled: !!playerSlug,
     staleTime: 5 * 60 * 1000,
   })
 }
 
-// V8b — top matches et encounters ne sont PAS servis par /pages/career : ils ont
-// leurs endpoints dédiés, fetch d'entrée de page (le contrat renvoie best_matches /
-// worst_matches et teammates / enemies, jamais un champ preview).
-export function useCareerTopMatches(playerSlug: string) {
-  return useQuery({
-    queryKey: queryKeys.careerTopMatches(playerSlug),
-    queryFn: () => api.get<CareerTopMatchesResponse>(`/players/${playerSlug}/pages/career/top-matches`),
-    enabled: !!playerSlug,
-    staleTime: 10 * 60 * 1000,
-  })
-}
-
 export function useCareerEncounters(playerSlug: string) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
-    queryKey: queryKeys.careerEncounters(playerSlug),
+    queryKey: queryKeys.careerEncounters(playerSlug, titleSlug),
     queryFn: () => api.get<CareerEncountersResponse>(`/players/${playerSlug}/pages/career/encounters`),
     enabled: !!playerSlug,
     staleTime: 10 * 60 * 1000,
@@ -50,9 +40,10 @@ export function useCareerEncounters(playerSlug: string) {
 // La réponse inclut les cascade counts (available_experience, available_seasons)
 // pour alimenter les dropdowns.
 export function useCareerHighlightMatches(playerSlug: string, filters: CareerHighlightFilters = {}) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const params = buildHighlightFilterParams(filters)
   return useQuery({
-    queryKey: queryKeys.careerHighlightMatches(playerSlug, params),
+    queryKey: queryKeys.careerHighlightMatches(playerSlug, titleSlug, params),
     queryFn: () => {
       const qs = params ? `?${params}` : ''
       return api.get<CareerHighlightMatchesResponse>(
@@ -86,8 +77,9 @@ function buildHighlightFilterParams(filters: CareerHighlightFilters): string {
 
 // Section "Joueurs les plus croisés (hors amis)" — 10 lignes MatchEncounterRow.
 export function useCareerTopEncounters(playerSlug: string) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
-    queryKey: queryKeys.careerTopEncounters(playerSlug),
+    queryKey: queryKeys.careerTopEncounters(playerSlug, titleSlug),
     queryFn: () =>
       api.get<CareerTopEncountersResponse>(`/players/${playerSlug}/pages/career/top-encounters`),
     enabled: !!playerSlug,
@@ -97,8 +89,9 @@ export function useCareerTopEncounters(playerSlug: string) {
 
 // Section "Top némésis" / "Top souffre-douleur" — 10 chacun.
 export function useCareerRivals(playerSlug: string) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
-    queryKey: queryKeys.careerRivals(playerSlug),
+    queryKey: queryKeys.careerRivals(playerSlug, titleSlug),
     queryFn: () => api.get<CareerRivalsResponse>(`/players/${playerSlug}/pages/career/rivals`),
     enabled: !!playerSlug,
     staleTime: 5 * 60 * 1000,
@@ -109,8 +102,9 @@ export function useCareerRivals(playerSlug: string) {
 // inactif quand aucune saison antérieure n'existe — sinon la query key
 // careerCSRs(slug, undefined) collisionnerait avec l'appel principal.
 export function useCareerCSRs(playerSlug: string, season?: string, enabled = true) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
-    queryKey: queryKeys.careerCSRs(playerSlug, season),
+    queryKey: queryKeys.careerCSRs(playerSlug, titleSlug, season),
     queryFn: () =>
       api.get<CareerCSRResponse>(
         `/players/${playerSlug}/pages/career/csrs${season ? `?season=${encodeURIComponent(season)}` : ''}`,

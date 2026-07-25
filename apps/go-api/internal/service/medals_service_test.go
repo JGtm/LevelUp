@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/testutil"
 )
@@ -89,5 +90,92 @@ func TestMedalsService_CatalogError_Propagates(t *testing.T) {
 	repo := &mockMedalsRepo{catErr: errors.New("metadata indisponible")}
 	if _, err := NewMedalsService(repo).GetMedalsPage(context.Background(), "xuid-1"); err == nil {
 		t.Fatal("erreur catalogue attendue, got nil")
+	}
+}
+
+// TestMedalsService_GetMedalsPage_GhostMedalMasked (V72-33) : une médaille gagnée en
+// match réel mais enregistrée comme fantôme (sans nom ni icône exploitables, cf.
+// halo_5.GhostMedalIDs) est exclue de la réponse — la médaille normale du même
+// catalogue est conservée, et les totaux n'incluent pas le fantôme. Slug de test
+// dédié (pas halo_5/halo_infinite) pour ne pas muter l'état global partagé par les
+// autres tests du package (RegisterGhostMedalIDs est un registre boot-once).
+func TestMedalsService_GetMedalsPage_GhostMedalMasked(t *testing.T) {
+	const testSlug = "test_ghost_title"
+	const ghostID = int64(999888777)
+	RegisterGhostMedalIDs(testSlug, map[int64]bool{ghostID: true})
+
+	repo := &mockMedalsRepo{
+		catalog: []domain.MedalCatalogRow{
+			{MedalID: 10, Label: "Killjoy", Difficulty: "Normal", MedalType: "skill"},
+		},
+		earned: []domain.MedalEarnedRow{
+			{MedalID: 10, TotalCount: 2},
+			{MedalID: ghostID, TotalCount: 5}, // gagnée mais absente du catalogue + masquée
+		},
+	}
+	ctx := ctxkeys.WithTitleSlug(context.Background(), testSlug)
+	resp, err := NewMedalsService(repo).GetMedalsPage(ctx, "xuid-1")
+	if err != nil {
+		t.Fatalf("GetMedalsPage: %v", err)
+	}
+	if len(resp.Medals) != 1 || resp.Medals[0].MedalID != 10 {
+		t.Fatalf("Medals = %+v, want [medal 10 seul] (fantôme %d masqué)", resp.Medals, ghostID)
+	}
+	if resp.CatalogTotal != 1 || resp.TotalCount != 2 {
+		t.Errorf("totaux = catalog %d count %d, want 1/2 (fantôme exclu des agrégats)",
+			resp.CatalogTotal, resp.TotalCount)
+	}
+}
+
+// TestMedalsService_GetMedalsPage_NoGhostRegistered_NormalMedalKept : un titre sans
+// allowlist fantôme enregistrée conserve toutes ses médailles obtenues (comportement
+// par défaut inchangé — aucune régression sur les titres non concernés par V72-33).
+func TestMedalsService_GetMedalsPage_NoGhostRegistered_NormalMedalKept(t *testing.T) {
+	repo := &mockMedalsRepo{
+		catalog: []domain.MedalCatalogRow{{MedalID: 10, Label: "Killjoy", MedalType: "skill"}},
+		earned:  []domain.MedalEarnedRow{{MedalID: 10, TotalCount: 2}},
+	}
+	ctx := ctxkeys.WithTitleSlug(context.Background(), "test_no_ghost_title")
+	resp, err := NewMedalsService(repo).GetMedalsPage(ctx, "xuid-1")
+	if err != nil {
+		t.Fatalf("GetMedalsPage: %v", err)
+	}
+	if len(resp.Medals) != 1 || resp.Medals[0].MedalID != 10 {
+		t.Fatalf("Medals = %+v, want [medal 10] (médaille normale conservée)", resp.Medals)
+	}
+}
+
+// TestFilterGhostMedals couvre la fonction pure (0 dépendance service) : ID masqué
+// retiré, ID inconnu conservé, allowlist vide/nil = no-op.
+func TestFilterGhostMedals(t *testing.T) {
+	items := []domain.MedalSummaryItem{
+		{MedalID: 1, Name: "A"},
+		{MedalID: 2, Name: "#2"},
+		{MedalID: 3, Name: "C"},
+	}
+	out := filterGhostMedals(items, map[int64]bool{2: true})
+	if len(out) != 2 || out[0].MedalID != 1 || out[1].MedalID != 3 {
+		t.Fatalf("out = %+v, want medals [1,3] (2 masqué)", out)
+	}
+
+	// Aucun ID masqué pour ce titre → no-op (slice indépendante de l'appel ci-dessus,
+	// filterGhostMedals ne mute jamais son entrée).
+	fresh := []domain.MedalSummaryItem{{MedalID: 1}, {MedalID: 2}, {MedalID: 3}}
+	out2 := filterGhostMedals(fresh, nil)
+	if len(out2) != 3 {
+		t.Errorf("ghosts vide : len = %d, want 3 (no-op)", len(out2))
+	}
+}
+
+// TestRegisterGhostMedalIDs_NoopGuards : slug vide ou allowlist vide/nil n'altère pas
+// le registre (miroir de RegisterMedalCategoryResolver).
+func TestRegisterGhostMedalIDs_NoopGuards(t *testing.T) {
+	before := len(ghostMedalIDsBySlug)
+	RegisterGhostMedalIDs("", map[int64]bool{1: true})
+	RegisterGhostMedalIDs("some_slug_never_used_elsewhere", nil)
+	RegisterGhostMedalIDs("some_slug_never_used_elsewhere", map[int64]bool{})
+	if len(ghostMedalIDsBySlug) != before {
+		t.Errorf("no-op attendu (slug vide ou ids vide), registre a changé : %d → %d",
+			before, len(ghostMedalIDsBySlug))
 	}
 }

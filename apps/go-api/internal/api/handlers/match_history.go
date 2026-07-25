@@ -46,9 +46,9 @@ func NewMatchHistoryHandler(newSvc ContextFactory[port.MatchHistoryService]) *Ma
 // Mount enregistre la route POST query via Huma sur le sous-routeur chi
 // (préfixe /players/{player_slug} + middleware ownership/title hérités).
 // La route GET export reste enregistrée en chi inline (server.go) — non migrée.
-func (h *MatchHistoryHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Post(api, "/pages/match-history/query", h.handleQuery)
+func (h *MatchHistoryHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Post(api, "/pages/match-history/query", h.handleQuery, humacore.Op("queryMatchHistory", "Requête paginée de l'historique des parties", "match-history"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

@@ -154,10 +154,10 @@ func (h *MatchViewHandler) WithMediaURLs(store *settings.Store, repoRoot string)
 
 // Mount enregistre les 2 routes via Huma sur le sous-routeur chi (préfixe
 // /players/{player_slug} + middleware ownership/title hérités).
-func (h *MatchViewHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Get(api, "/matches/{match_id}", h.handleGetMatchView)
-	huma.Get(api, "/matches/{match_id}/neighbors", h.handleGetMatchNeighbors)
+func (h *MatchViewHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Get(api, "/matches/{match_id}", h.handleGetMatchView, humacore.Op("getMatchView", "Détail complet d'un match", "match-view"))
+	huma.Get(api, "/matches/{match_id}/neighbors", h.handleGetMatchNeighbors, humacore.Op("getMatchNeighbors", "Match précédent / suivant pour navigation", "match-view"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

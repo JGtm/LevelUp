@@ -44,6 +44,11 @@ var gunFragClasses = map[string]bool{
 // > 0). hasMechanics gate spartan_ability et le niveau 2 de Mêlée (invariant d — cap
 // off ⇒ pas de spartan + Mêlée feuille).
 //
+// Niveau 2 de la classe Grenade (V72-15.2) = TYPE (frag/plasma/dynamo/splinter) dérivé de
+// la FAMILLE des rows class=grenade, réconcilié au total API (grenadeRoles). Anti-double-
+// comptage H5 (V72-15.3) : les MechanicKills (mêlée/assassinat attribués à l'arme tenue,
+// kill_kind <> 'weapon') sont retranchés des classes gun — servis par les compteurs natifs.
+//
 // counts est un struct NEUTRE (domain.FragKillTypeCounts) : le builder est ainsi
 // partagé tel quel par Synthesis (agrégat SynthesisDetailedStats), Match view
 // (ligne scoreboard native du viewer) ET Escouade (agrégat par gamertag) — jamais
@@ -57,7 +62,7 @@ func Build(
 	for _, e := range buildGunFragClasses(rows) {
 		byClass[e.Class] = e
 	}
-	for _, e := range buildAPIFragClasses(counts, hasMechanics) {
+	for _, e := range buildAPIFragClasses(rows, counts, hasMechanics) {
 		byClass[e.Class] = e
 	}
 	// Non attribué = résidu calculé (invariant a : Σ classes == total ; invariant c :
@@ -84,6 +89,11 @@ func Build(
 // buildGunFragClasses agrège les classes gun (shoulder/sidearm/heavy) + leurs rôles
 // depuis le registre (rows). Exclut les sentinels grenade/melee et les rows sans
 // class/role résolu (dégradation propre, comme buildKillsByRole).
+//
+// Anti-double-comptage V72-15.3 : on retranche MechanicKills des kills gun. Sur H5 une
+// mêlée/un assassinat est attribué à l'ARME TENUE dans weapon_kills (kill_kind <> 'weapon')
+// → sans ce retrait le kill compte à la fois dans la classe gun ET dans le compteur natif
+// Mêlée/Capacités spartanes (Σ classes > total). Sur Infinite MechanicKills == 0 → inchangé.
 func buildGunFragClasses(rows []port.WeaponKillRow) []domain.FragClassEntry {
 	type acc struct {
 		kills  int
@@ -94,13 +104,17 @@ func buildGunFragClasses(rows []port.WeaponKillRow) []domain.FragClassEntry {
 		if r.IsGrenadeMelee || r.Class == "" || r.Role == "" || !gunFragClasses[r.Class] {
 			continue
 		}
+		weaponKills := r.Kills - r.MechanicKills // kills d'ARME seuls (hors mécaniques natives)
+		if weaponKills <= 0 {
+			continue
+		}
 		a := agg[r.Class]
 		if a == nil {
 			a = &acc{byRole: make(map[string]int)}
 			agg[r.Class] = a
 		}
-		a.kills += r.Kills
-		a.byRole[r.Role] += r.Kills
+		a.kills += weaponKills
+		a.byRole[r.Role] += weaponKills
 	}
 	out := make([]domain.FragClassEntry, 0, len(agg))
 	for class, a := range agg {
@@ -140,8 +154,9 @@ func rolesFromMap(byRole map[string]int, class string) []domain.FragRoleEntry {
 
 // buildAPIFragClasses construit les classes servies par les compteurs kill-type API
 // canoniques (Authoritative=true) : Mêlée, Grenade, et — si hasMechanics — Capacités
-// spartanes.
-func buildAPIFragClasses(counts domain.FragKillTypeCounts, hasMechanics bool) []domain.FragClassEntry {
+// spartanes. rows alimente UNIQUEMENT le niveau 2 de la classe Grenade (TYPE de grenade,
+// V72-15.2) : le total de la classe reste le compteur API autoritatif.
+func buildAPIFragClasses(rows []port.WeaponKillRow, counts domain.FragKillTypeCounts, hasMechanics bool) []domain.FragClassEntry {
 	out := make([]domain.FragClassEntry, 0, 3)
 	// Total de la classe Mêlée = mêlées directes + assassinats. Sur H5 l'API expose
 	// deux compteurs DISJOINTS (melee_kills n'inclut PAS les assassinats) : on additionne
@@ -156,6 +171,7 @@ func buildAPIFragClasses(counts domain.FragKillTypeCounts, hasMechanics bool) []
 	if gk := counts.Grenade; gk > 0 {
 		out = append(out, domain.FragClassEntry{
 			Class: domain.FragClassGrenade, Kills: gk, Authoritative: true,
+			Roles: grenadeRoles(rows, gk),
 		})
 	}
 	if hasMechanics {
@@ -204,5 +220,61 @@ func spartanRoles(groundPound, shoulderBash int) []domain.FragRoleEntry {
 	if shoulderBash > 0 {
 		roles = append(roles, domain.FragRoleEntry{Role: domain.FragRoleShoulderBash, Kills: shoulderBash})
 	}
+	return roles
+}
+
+// grenadeRoles construit le niveau 2 de la classe Grenade par TYPE (V72-15.2), dérivé de
+// la FAMILLE registre des rows class=grenade (Infinite frag/plasma/dynamo ; H5 frag/plasma/
+// splinter ; famille inconnue → « Autre grenade »). Le total de la classe reste le compteur
+// API autoritatif (classTotal = counts.Grenade) ; les types en sont une VENTILATION,
+// réconciliée pour tenir l'invariant b (Σ rôles == kills de la classe) :
+//   - Σ types < classTotal : résidu « Autre grenade » = classTotal − Σ types ;
+//   - Σ types > classTotal (registre sur-attribue vs compteur natif) : FEUILLE (nil) — pas
+//     de ventilation trompeuse ; l'anomalie reste visible via le total central.
+//
+// FEUILLE (nil) si aucune row grenade typée : dégradation DATA-DRIVEN (ni Infinite ni H5 en
+// dur — un titre/scope sans grenade dans weapon_kills garde une classe Grenade feuille).
+func grenadeRoles(rows []port.WeaponKillRow, classTotal int) []domain.FragRoleEntry {
+	if classTotal <= 0 {
+		return nil
+	}
+	byType := make(map[string]int, len(domain.GrenadeTypeRoleOrder))
+	typedSum := 0
+	for _, r := range rows {
+		if r.IsGrenadeMelee || r.Class != domain.FragClassGrenade || r.Kills <= 0 {
+			continue
+		}
+		role, _ := domain.GrenadeTypeRoleForFamily(r.Family)
+		byType[role] += r.Kills
+		typedSum += r.Kills
+	}
+	if typedSum == 0 || typedSum > classTotal {
+		return nil // pas de type distinguable, ou sur-attribution → classe feuille
+	}
+	if typedSum < classTotal {
+		byType[domain.FragRoleGrenadeOther] += classTotal - typedSum // résidu non typé
+	}
+	return sortedGrenadeRoles(byType)
+}
+
+// sortedGrenadeRoles trie les types de grenade (kills desc, tie-break ordre canonique
+// GrenadeTypeRoleOrder → « Autre grenade » en dernier à kills égaux) et écarte les zéros.
+func sortedGrenadeRoles(byType map[string]int) []domain.FragRoleEntry {
+	rank := make(map[string]int, len(domain.GrenadeTypeRoleOrder))
+	for i, role := range domain.GrenadeTypeRoleOrder {
+		rank[role] = i
+	}
+	roles := make([]domain.FragRoleEntry, 0, len(byType))
+	for role, kills := range byType {
+		if kills > 0 {
+			roles = append(roles, domain.FragRoleEntry{Role: role, Kills: kills})
+		}
+	}
+	sort.Slice(roles, func(i, j int) bool {
+		if roles[i].Kills != roles[j].Kills {
+			return roles[i].Kills > roles[j].Kills
+		}
+		return rank[roles[i].Role] < rank[roles[j].Role]
+	})
 	return roles
 }

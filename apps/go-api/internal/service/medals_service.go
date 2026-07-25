@@ -44,6 +44,43 @@ func medalCategoryResolverFor(slug string) port.MedalCategoryResolver {
 	return analysis.BaselineMedalCategoryResolver{}
 }
 
+// ghostMedalIDsBySlug : registre slug → allowlist des medal_name_id à masquer côté
+// page Médailles (décision V72-33, 2026-07-25 — cf. halo_5.GhostMedalIDs pour le
+// détail du constat). Même modèle que medalCategoryResolvers : peuplé UNE fois au
+// boot par service.RegisterGhostMedalIDs, lu en read-only ensuite. Un titre non
+// enregistré ne masque rien (comportement inchangé, aucune médaille perdue).
+var ghostMedalIDsBySlug = map[string]map[int64]bool{}
+
+// RegisterGhostMedalIDs enregistre l'allowlist de medal_name_id à masquer pour un
+// titre (boot). slug vide ou ids vide/nil = no-op.
+func RegisterGhostMedalIDs(slug string, ids map[int64]bool) {
+	if slug == "" || len(ids) == 0 {
+		return
+	}
+	ghostMedalIDsBySlug[slug] = ids
+}
+
+// filterGhostMedals retire de items les médailles masquées pour ce titre (V72-33) :
+// obtenues en match réel mais sans nom ni icône exploitables (absentes du catalogue
+// officiel ET de la référence wiki communautaire). Filtre EXPLICITE par ID (pas de
+// heuristique nom/icône vide générique) : le fallback "#<id>" de MergeMedalCatalog
+// sert précisément à ne jamais perdre une médaille gagnée dont le catalogue n'a pas
+// encore été (re)synchronisé — un filtre générique masquerait aussi ce cas légitime.
+// Aucun ID masqué pour ce titre → items retourné inchangé (no-op, aucune allocation).
+func filterGhostMedals(items []domain.MedalSummaryItem, ghosts map[int64]bool) []domain.MedalSummaryItem {
+	if len(ghosts) == 0 {
+		return items
+	}
+	out := make([]domain.MedalSummaryItem, 0, len(items))
+	for _, it := range items {
+		if ghosts[it.MedalID] {
+			continue
+		}
+		out = append(out, it)
+	}
+	return out
+}
+
 // MedalsService orchestre les données de la page Médailles.
 type MedalsService struct {
 	repo port.MedalsRepository
@@ -75,6 +112,7 @@ func (s *MedalsService) GetMedalsPage(ctx context.Context, playerXUID string) (*
 
 	resolver := medalCategoryResolverFor(titleSlug)
 	items := analysis.MergeMedalCatalog(catalog, earned, resolver.Resolve)
+	items = filterGhostMedals(items, ghostMedalIDsBySlug[titleSlug])
 	for i := range items {
 		enrichMedalImage(&items[i], titleSlug)
 	}

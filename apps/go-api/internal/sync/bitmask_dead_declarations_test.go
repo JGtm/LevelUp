@@ -56,6 +56,12 @@ func TestNoDeadBitDeclaration(t *testing.T) {
 		"PBitAllStats":     "groupe public PBitSkill|PBitCoreStats|PBitMedals|PBitKillerVictim",
 		"PveBitAllEnemies": "groupe public sommant tous les enemy types",
 		"PveBitFullPVE":    "groupe public PveBitTotalKills|PveBitBossKills|PveBitAllEnemies",
+		// 2026-07-25 (V72-03) : bit consommé par le CLI de backfill objectifs
+		// (cmd/backfill_objective_stats : sélection `& MBitObjectiveStats = 0` + mark),
+		// PAS par le package sync/ — le mark est inline dans le CLI (ratchet K3c
+		// sync_root_freeze interdit un nouveau fichier sync/ racine). Le bit reste
+		// déclaré ici (registre canonique des MatchBits) pour réserver le bit 23.
+		"MBitObjectiveStats": "consommé par cmd/backfill_objective_stats (CLI), pas par sync/ (K3c freeze)",
 	}
 
 	var dead []string

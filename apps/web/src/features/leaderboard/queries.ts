@@ -23,6 +23,7 @@ export interface LeaderboardParams {
  */
 export function useLeaderboard(playerSlug: string, params: LeaderboardParams = {}) {
   const { category, season, playlist, limit } = params
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const qs = new URLSearchParams()
   if (category) qs.set('category', category)
   if (season) qs.set('season', season)
@@ -31,7 +32,7 @@ export function useLeaderboard(playerSlug: string, params: LeaderboardParams = {
   const suffix = qs.toString() ? `?${qs.toString()}` : ''
 
   return useQuery<LeaderboardResponse>({
-    queryKey: queryKeys.leaderboard(playerSlug, category, season, playlist),
+    queryKey: queryKeys.leaderboard(playerSlug, titleSlug, category, season, playlist),
     queryFn: () =>
       api.get<LeaderboardResponse>(`/players/${playerSlug}/pages/leaderboard${suffix}`),
     enabled: !!playerSlug,
@@ -50,8 +51,9 @@ export function useLeaderboardCatalog(playerSlug: string) {
   // le catalogue (display_name saisons/playlists relocalisés côté backend). Remplace
   // l'ex-invalidation ciblée du layout titre (clé = invalidation).
   const locale = useAppShellStore((s) => s.locale)
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery<LeaderboardCatalog>({
-    queryKey: queryKeys.leaderboardCatalog(playerSlug, locale),
+    queryKey: queryKeys.leaderboardCatalog(playerSlug, titleSlug, locale),
     queryFn: () =>
       api.get<LeaderboardCatalog>(`/players/${playerSlug}/pages/leaderboard/catalog`),
     enabled: !!playerSlug,

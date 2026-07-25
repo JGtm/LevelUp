@@ -172,6 +172,11 @@ export function resolveTarget(
             params: { titleSlug, playerSlug, matchId: String(notif.params.match_id) },
           }
         : null
+    case 'medal_first_earned':
+      // V72-20 : la page Médailles du joueur. Le backend renvoie déjà ce
+      // target_route (priorité ci-dessus) ; ce fallback couvre le cas où il serait
+      // absent (notif persistée sans route).
+      return playerTarget(titleSlug, playerSlug, '/career/medals')
     default:
       return null
   }

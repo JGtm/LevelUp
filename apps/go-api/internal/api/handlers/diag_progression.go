@@ -51,9 +51,9 @@ func NewDiagProgressionHandler(newProvider ProgressionDiagFactory) *DiagProgress
 
 // Mount enregistre la route via Huma au point de montage chi (préfixe /api/v1
 // + middleware NoStore hérité). Lit {player_slug} dans son propre path.
-func (h *DiagProgressionHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Get(api, "/_diag/progression/{player_slug}", h.handleGetDiag)
+func (h *DiagProgressionHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Get(api, "/_diag/progression/{player_slug}", h.handleGetDiag, humacore.Op("getDiagProgression", "Diag pipeline progression V2 (Ascension)", "diagnostics"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

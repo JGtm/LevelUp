@@ -179,15 +179,6 @@ func TestLoadTimeseries_NotImplemented(t *testing.T) {
 	}
 }
 
-func TestLoadMatchDetail_NotImplemented(t *testing.T) {
-	t.Parallel()
-	a := newSilentAdapter(&stubCareer{})
-	_, err := a.LoadMatchDetail(context.Background(), "match-1")
-	if !errors.Is(err, games.ErrCapabilityNotSupported) {
-		t.Errorf("err = %v", err)
-	}
-}
-
 func TestLoadPlayerStats_NotImplemented(t *testing.T) {
 	t.Parallel()
 	a := newSilentAdapter(&stubCareer{})

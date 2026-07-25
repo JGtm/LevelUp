@@ -38,6 +38,7 @@ import { useCapability } from '@/lib/capabilities/capabilities'
 import { SessionDamageComposite } from './SessionDamageComposite'
 import { SessionOcdrBars } from './SessionOcdrBars'
 import { SessionFragCard } from './SessionFragCard'
+import { SessionCareerXP } from './SessionCareerXP'
 
 interface Props {
   entry: SessionCompareEntry | null
@@ -181,6 +182,20 @@ export function SessionChartStack({
   // principale rétrécie par le drawer de comparaison).
   const frags = <SessionFragCard entry={entry} stacked={compact} />
 
+  // XP de carrière estimée (V72-13) — avant-dernier bloc, avant le tableau des matchs.
+  // Auto-gate data-driven : masqué si aucun match ne porte career_xp_estimated (H5).
+  const careerXp = (
+    <SessionCareerXP
+      title={
+        <span className="flex items-center gap-1.5">
+          {t('session.detail.career_xp_title')}
+          <InfoTooltip content={t('session.detail.career_xp_tooltip')} />
+        </span>
+      }
+      matches={matches}
+    />
+  )
+
   return (
     <>
       <div className="grid gap-6 xl:grid-cols-2">
@@ -215,6 +230,7 @@ export function SessionChartStack({
       {engagement}
       {damage}
       {frags}
+      {careerXp}
     </>
   )
 }

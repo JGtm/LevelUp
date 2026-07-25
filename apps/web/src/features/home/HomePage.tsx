@@ -35,7 +35,7 @@ import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { DEFAULT_GAP_MINUTES } from '@/stores/filterDefaults'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { intlLocale } from '@/lib/formatters'
-import { useCapability } from '@/lib/capabilities/capabilities'
+import { useCapability, useCapabilityStrict } from '@/lib/capabilities/capabilities'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { OutcomeSequenceTape } from '@/components/charts/OutcomeSequenceTape'
 import { getHighlightText } from './highlights.i18n'
@@ -67,7 +67,10 @@ export function HomePage() {
   const hasSeasonPass = useCapability('season_pass')
   // Halo 5 only : personnalisateur Spartan (emblème/nameplate recolorisables) accessible
   // via la bannière d'identité. Absent sur Infinite ⇒ bannière non cliquable, modale jamais montée.
-  const hasSpartanCustomizer = useCapability('spartan_customizer')
+  // Gating STRICT (fail-closed) — parité avec la synthèse du bandeau (V72-29) : le fail-open
+  // de useCapability offrirait transitoirement l'affordance « personnaliser » (et monterait la
+  // modale H5) sur Infinite pendant la fenêtre de re-bootstrap au switch de titre.
+  const hasSpartanCustomizer = useCapabilityStrict('spartan_customizer')
   const { data, isLoading, isError, refetch } = useHomePage(playerSlug)
   const {
     data: seasonPass,
@@ -237,6 +240,7 @@ export function HomePage() {
             <HomeSpartanIdentityBanner
               spartanIdentity={spartanIdentity ?? {}}
               playerName={hero.player_name}
+              playerSlug={playerSlug}
               highestCSR={highestCSR}
               highestLUSR={highestLUSR}
               hasRankedHistory={hasRankedHistory}
@@ -249,7 +253,10 @@ export function HomePage() {
               spartanCustomizeLabel={t('home.spartan_customizer.open_aria')}
             />
             {hasSpartanCustomizer && customizerOpen && (
-              <SpartanCustomizerModal onClose={() => setCustomizerOpen(false)} />
+              <SpartanCustomizerModal
+                onClose={() => setCustomizerOpen(false)}
+                playerSlug={playerSlug}
+              />
             )}
 
             <HomeHeroKPIGrid

@@ -70,6 +70,15 @@ func (s *GroupStore) load() (*groupsFile, error) {
 	if f.Groups == nil {
 		f.Groups = make(map[string]domain.Group)
 	}
+	// Invariant de contrat (V72-01 / H7) : `Group.members` est non nullable dans
+	// l'OpenAPI généré. Un fichier legacy (ou un `"members": null`) donnerait une slice
+	// nil, sérialisée `null` par encoding/json. Normalisation au SEUL point de lecture.
+	for id, g := range f.Groups {
+		if g.Members == nil {
+			g.Members = []domain.GroupMember{}
+			f.Groups[id] = g
+		}
+	}
 	return &f, nil
 }
 

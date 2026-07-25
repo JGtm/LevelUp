@@ -213,12 +213,10 @@ type AdminResourcesResponse struct {
 	// + bases globales (aliases, monitoring).
 	Databases    []ResourceDBFile `json:"databases"`
 	DBTotalBytes int64            `json:"db_total_bytes"`
-	// DBInventoryStatus : "ok" (racine data lisible) | "unavailable" (racine
-	// data introuvable/illisible — RepoRoot mal résolu ou volume non monté).
-	// Distingue à l'UI « inventaire indisponible » (environnemental) d'un
-	// « aucune base » — sans lui, une racine erronée produit silencieusement
-	// une table de tailles nulles trompeuse.
-	DBInventoryStatus string `json:"db_inventory_status"`
+	// DBInventoryStatus distingue à l'UI « inventaire indisponible »
+	// (environnemental) d'un « aucune base » — sans lui, une racine erronée
+	// produit silencieusement une table de tailles nulles trompeuse.
+	DBInventoryStatus string `json:"db_inventory_status" enum:"ok,unavailable" doc:"ok = racine data lisible ; unavailable = racine data introuvable/illisible (RepoRoot mal résolu ou volume non monté)."`
 	// Budgets / PoolStats : relecture des snapshots expvar existants (J1/J8).
 	Budgets   map[string]interface{} `json:"budgets,omitempty"`
 	PoolStats map[string]interface{} `json:"pool_stats,omitempty"`

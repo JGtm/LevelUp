@@ -28,29 +28,38 @@ export async function applyActiveTitle(slug: string): Promise<void> {
 
   store.setState({ isTitleSwitching: true })
   try {
-    // 1. Commit côté serveur. Le header X-LevelUp-Title affirme le titre sur CHAQUE
-    // requête (getTitleHeader) → la résolution per-requête ne dépend plus de la
-    // session : ce POST n'est PLUS sur le chemin critique de l'ordre des refetch.
-    // Il reste requis pour la PERSISTANCE/REPRISE (F5) : /bootstrap dérive
-    // current_title_slug de la SESSION, pas du header.
+    // SÉQUENCE ANTI-FUITE CROSS-TITRE (V72-29). L'ordre est load-bearing : header,
+    // session et clé de cache doivent bouger ENSEMBLE, et aucune requête de l'ancien
+    // titre ne doit survivre dans la fenêtre du nouveau. `isTitleSwitching` reste vrai
+    // sur toute la fenêtre → le layout `t/$titleSlug` rend `null` (sous-arbre joueur
+    // démonté) et le refetch window-focus du bootstrap est neutralisé (cf. __root).
+    //
+    // 1. Annuler les requêtes EN VOL d'abord — avant tout changement d'état. Une
+    //    réponse de l'ancien titre partie avant la bascule ne doit pas atterrir dans
+    //    le cache après le clear (source de la fuite : donnée H5 sous la clé Infinite).
+    await queryClient.cancelQueries()
+    // 2. Commit serveur CONFIRMÉ. Le header n'est pas encore basculé : session et
+    //    header restent cohérents (ancien titre) pendant l'attente — aucune fenêtre où
+    //    le header dit un titre et la session un autre. /bootstrap dérive
+    //    current_title_slug de la SESSION → ce commit doit précéder le re-bootstrap.
     await api.post('/session/context', { title_slug: slug })
-    // 2. Basculer client API + store AVANT tout refetch.
+    // 3. Basculer client API + store SEULEMENT après confirmation du POST. Header et
+    //    clé de cache (via le store) passent au nouveau titre de façon synchrone.
     setApiTitleSlug(slug)
     store.setState({ currentTitleSlug: slug })
-    // 2bis. Reset des filtres contextuels (state solo/squad lié à l'ancien titre :
-    // picked_sessions, cascade modes/maps/playlists). resetFilters réécrit aussi
-    // l'URL (?f=) et le localStorage — synchrone ici.
+    // 4. Reset des filtres contextuels (state solo/squad lié à l'ancien titre :
+    //    picked_sessions, cascade modes/maps/playlists). resetFilters réécrit aussi
+    //    l'URL (?f=) et le localStorage — synchrone ici, estampillé au NOUVEAU titre.
     useSoloFilterStore.getState().resetFilters()
     useSquadFilterStore.getState().resetFilters()
-    // 3. Annuler les requêtes en vol PUIS purger tout le cache (après le commit du
-    // titre : aucune donnée de l'ancien titre ne survit ni ne se re-peuple).
-    await queryClient.cancelQueries()
+    // 5. Purger tout le cache APRÈS la bascule du titre : aucune donnée de l'ancien
+    //    titre ne survit ni ne se re-peuple sous une clé du nouveau.
     queryClient.clear()
-    // 4. Re-bootstrap → données du nouveau titre + réhydratation.
+    // 6. Re-bootstrap → données du nouveau titre + réhydratation (header = nouveau).
     const bootstrap = await api.get<BootstrapResponse>('/bootstrap')
     store.getState().hydrateFromBootstrap(bootstrap)
-    // 5. Filet joueur : si le bootstrap n'a pas désigné de joueur courant alors que
-    // des joueurs existent, sélectionner le premier (sinon la NavL1 reste vide).
+    // 7. Filet joueur : si le bootstrap n'a pas désigné de joueur courant alors que
+    //    des joueurs existent, sélectionner le premier (sinon la NavL1 reste vide).
     const after = store.getState()
     if (after.currentPlayer == null && after.availablePlayers.length > 0) {
       after.setCurrentPlayer(after.availablePlayers[0])

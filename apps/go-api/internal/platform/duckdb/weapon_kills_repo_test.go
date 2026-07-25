@@ -266,6 +266,38 @@ func TestWeaponKillsRepo_Load_IncludeGrenadeMelee(t *testing.T) {
 	}
 }
 
+// TestWeaponKillsRepo_Load_MechanicKills_H5KillKind (V72-15.3) : la colonne mechanic_kills
+// compte, par arme, les kills dont kill_kind <> 'weapon' (mêlée/assassinat attribués à
+// l'arme TENUE sur H5). Kills reste le total (breakdown inchangé) ; mechanic_kills alimente
+// le retrait anti-double-comptage côté fragdist. kill_kind NULL (Infinite) → 0.
+func TestWeaponKillsRepo_Load_MechanicKills_H5KillKind(t *testing.T) {
+	pdb := newTestPlayerDB(t) // seed pTestXUID <-> pTestGamertag dans xuid_aliases
+	ctx := context.Background()
+	wkInsert := `INSERT INTO shared.weapon_kills (match_id, xuid, weapon_id, kill_kind) VALUES (?,?,?,?)`
+	// Arme tenue 77 : 2 kills d'arme + 2 mêlées + 1 assassinat (tous attribués à 77).
+	execOnSharedDBs(t, pdb, ctx, wkInsert, "mh5", pTestXUID, uint64(77), "weapon")
+	execOnSharedDBs(t, pdb, ctx, wkInsert, "mh5", pTestXUID, uint64(77), "weapon")
+	execOnSharedDBs(t, pdb, ctx, wkInsert, "mh5", pTestXUID, uint64(77), "melee")
+	execOnSharedDBs(t, pdb, ctx, wkInsert, "mh5", pTestXUID, uint64(77), "melee")
+	execOnSharedDBs(t, pdb, ctx, wkInsert, "mh5", pTestXUID, uint64(77), "assassination")
+
+	repo := NewWeaponKillsRepo(pdb)
+	rows, err := repo.LoadWeaponKillsAggregated(ctx, "halo_infinite",
+		port.WeaponKillFilters{MatchIDs: []string{"mh5"}, Gamertag: pTestGamertag})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("len(rows) = %d, want 1", len(rows))
+	}
+	if rows[0].Kills != 5 {
+		t.Errorf("Kills = %d, want 5 (total inchangé)", rows[0].Kills)
+	}
+	if rows[0].MechanicKills != 3 {
+		t.Errorf("MechanicKills = %d, want 3 (2 mêlées + 1 assassinat, kill_kind <> 'weapon')", rows[0].MechanicKills)
+	}
+}
+
 func TestWeaponKillsRepo_Load_NoResults(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	// Pas de seedWeaponKills : la table existe mais vide

@@ -23,6 +23,8 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/sync/objective"
 )
 
 // fetchedMatch contient les données extraites d'un GetMatchStats, prêtes pour
@@ -59,6 +61,12 @@ type fetchedMatch struct {
 	// firefight (GameVariantCategory 41/42). Vide sinon.
 	// Utilisé par batch.PVE.Stats (slice).
 	PveStats []PveMatchStatsRow
+
+	// ObjectiveStats : stats objectifs (CTF/Zones/Oddball) pour tous les
+	// participants d'un match à objectif (1 row par joueur ayant un bloc). Produit
+	// par ExtractObjectiveStats sous opts.WithObjectiveStats. Vide pour Slayer.
+	// Utilisé par batch.Shared.ObjectiveStats.
+	ObjectiveStats []persist.ObjectiveStatsInsert
 }
 
 // fetchMatchData exécute le fetch et l'extraction pour un match (pur, sans DB).
@@ -125,6 +133,12 @@ func (e *SyncEngine) fetchMatchData(
 	// shared_pve.pve_match_stats PK (match_id, xuid). Cf. batch.PVE.Stats.
 	if fm.Registry != nil && fm.Registry.IsFirefight {
 		fm.PveStats = ExtractPveStats(matchID, matchJSON)
+	}
+	// Objectif (CTF/Zones/Oddball) — extraits du même payload participants (aucun
+	// appel réseau). ExtractObjectiveStats ne renvoie que les joueurs d'un match à
+	// objectif ; vide pour Slayer/Firefight. Écrit dans shared.match_objective_stats.
+	if opts.WithObjectiveStats {
+		fm.ObjectiveStats = objective.ExtractObjectiveStats(matchID, matchJSON)
 	}
 	// PersonalScores du joueur courant — toujours extraits (pas de flag dédié,
 	// même cycle de vie que les participants). La table n'est pas dans shared :

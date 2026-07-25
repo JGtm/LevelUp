@@ -45,9 +45,31 @@ function match(over: Partial<ExplorerTargetRecentMatch> & { match_id: string }):
 }
 
 describe('ExplorerCombatProfile', () => {
-  it('ne rend rien si aucun match', () => {
+  it('ne rend rien si aucun match et aucun statut live à signaler', () => {
     renderWithProviders(<ExplorerCombatProfile liveMatches={[]} localMatches={[]} locale="fr" t={t} />)
     expect(screen.queryByTestId('explorer-combat-profile')).toBeNull()
+  })
+
+  // Lot A3 (fin de la dégradation muette) : quand les 2 sources sont vides MAIS
+  // que le statut live explique pourquoi (no_auth/failed/local_partial), un
+  // rendu minimal titré + badge remplace l'absence silencieuse.
+  it('rend un bloc titré + badge quand tout est vide mais le statut explique pourquoi', () => {
+    renderWithProviders(
+      <ExplorerCombatProfile liveMatches={[]} localMatches={[]} locale="fr" t={t} combatLiveStatus="no_auth" />,
+    )
+    expect(screen.getByTestId('explorer-combat-profile-status-only')).toBeInTheDocument()
+    expect(screen.getByTestId('explorer-live-status-badge-no_auth')).toBeInTheDocument()
+  })
+
+  // Le tab "En direct" vide (mais le local a des données) est expliqué par un
+  // badge dans l'en-tête plutôt qu'un simple disabled muet.
+  it('affiche le badge dans l\'en-tête quand live est vide mais local a des données', () => {
+    const local = [match({ match_id: 'C1' })]
+    renderWithProviders(
+      <ExplorerCombatProfile liveMatches={[]} localMatches={local} locale="fr" t={t} combatLiveStatus="failed" />,
+    )
+    expect(screen.getByTestId('explorer-combat-profile')).toBeInTheDocument()
+    expect(screen.getByTestId('explorer-live-status-badge-failed')).toBeInTheDocument()
   })
 
   it('rend la section + 5 graphes quand des matchs sont fournis', async () => {

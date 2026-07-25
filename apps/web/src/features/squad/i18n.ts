@@ -122,6 +122,12 @@ export interface SquadText {
     waypointAriaLabel: string
     /** aria-label du bouton de tri d'un en-tête « Trier par {col} » (I16). */
     sortByAriaLabel: (col: string) => string
+    /** Tooltips d'en-tête de colonne (V72-04, icône ⓘ). */
+    winRateHistTooltip: string
+    winProbTooltip: string
+    teamMmrTooltip: string
+    enemyMmrTooltip: string
+    deltaMmrTooltip: string
   }
   timeline: {
     title: string
@@ -145,6 +151,9 @@ export interface SquadText {
     colPlayer: string
     colScore: string
     colBadge: string
+    /** Tooltips d'en-tête de colonne (V72-04, icône ⓘ). */
+    colScoreTooltip: string
+    colBadgeTooltip: string
     badgeChampion: string
     badgeChampionShort: string
     badgeWeakLink: string
@@ -276,6 +285,19 @@ export interface SquadText {
   errors: {
     loadError: (message: string) => string
   }
+  /** KPI objectifs cumulés de l'escouade (CTF/Zones/Oddball) — V72-03. */
+  objectives: {
+    title: string
+    flagCaptures: string
+    flagReturns: string
+    flagSteals: string
+    flagCarrierTime: string
+    zoneCaptures: string
+    zoneSecures: string
+    zoneTime: string
+    skullGrabs: string
+    skullCarrierTime: string
+  }
 }
 
 const FR_TEXT: SquadText = {
@@ -390,6 +412,11 @@ const FR_TEXT: SquadText = {
     totalRows: (n) => `${n} match${n > 1 ? 's' : ''}`,
     waypointAriaLabel: 'Ouvrir sur Halo Waypoint',
     sortByAriaLabel: (col) => `Trier par ${col}`,
+    winRateHistTooltip: 'Taux de victoire de cette escouade sur tous ses matchs communs.',
+    winProbTooltip: 'Probabilité de victoire estimée avant le match, d\'après les MMR des deux équipes.',
+    teamMmrTooltip: 'Niveau de compétence moyen estimé (MMR) de ton équipe.',
+    enemyMmrTooltip: 'Niveau de compétence moyen estimé (MMR) de l\'équipe adverse.',
+    deltaMmrTooltip: 'Écart de MMR entre ton équipe et l\'équipe adverse.',
   },
   timeline: {
     title: 'Performance d\'escouade par session',
@@ -413,6 +440,8 @@ const FR_TEXT: SquadText = {
     colPlayer: 'Joueur',
     colScore: 'Score',
     colBadge: 'Rang',
+    colScoreTooltip: 'Score d\'impact cumulé : chaque pastille positive ajoute, chaque négative retire.',
+    colBadgeTooltip: 'Rôle dans l\'escouade : Champion (1er), Passager clandestin ou Maillon faible (dernier).',
     badgeChampion: 'Champion (rang #1)',
     badgeChampionShort: 'Champion',
     badgeWeakLink: 'Maillon faible (rang dernier, score négatif)',
@@ -565,6 +594,18 @@ const FR_TEXT: SquadText = {
   errors: {
     loadError: (message) => `Erreur : ${message}`,
   },
+  objectives: {
+    title: 'Objectifs de l’escouade',
+    flagCaptures: 'Captures de drapeau',
+    flagReturns: 'Retours de drapeau',
+    flagSteals: 'Vols de drapeau',
+    flagCarrierTime: 'Temps porteur (drapeau)',
+    zoneCaptures: 'Zones capturées',
+    zoneSecures: 'Zones sécurisées',
+    zoneTime: 'Temps en zone',
+    skullGrabs: 'Récupérations du crâne',
+    skullCarrierTime: 'Temps porteur (crâne)',
+  },
 }
 
 const EN_TEXT: SquadText = {
@@ -679,6 +720,11 @@ const EN_TEXT: SquadText = {
     totalRows: (n) => `${n} match${n > 1 ? 'es' : ''}`,
     waypointAriaLabel: 'Open on Halo Waypoint',
     sortByAriaLabel: (col) => `Sort by ${col}`,
+    winRateHistTooltip: 'Win rate for this squad across all their shared matches.',
+    winProbTooltip: 'Win probability estimated before the match, from both teams\' MMR.',
+    teamMmrTooltip: 'Average estimated skill level (MMR) of your team.',
+    enemyMmrTooltip: 'Average estimated skill level (MMR) of the enemy team.',
+    deltaMmrTooltip: 'MMR gap between your team and the enemy team.',
   },
   timeline: {
     title: 'Squad performance by session',
@@ -702,6 +748,8 @@ const EN_TEXT: SquadText = {
     colPlayer: 'Player',
     colScore: 'Score',
     colBadge: 'Rank',
+    colScoreTooltip: 'Cumulative impact score: each positive pill adds, each negative one subtracts.',
+    colBadgeTooltip: 'Role in the squad: Champion (1st), Stowaway or Weak link (last).',
     badgeChampion: 'Champion (rank #1)',
     badgeChampionShort: 'Champion',
     badgeWeakLink: 'Weak link (last rank, negative score)',
@@ -853,6 +901,18 @@ const EN_TEXT: SquadText = {
   },
   errors: {
     loadError: (message) => `Error: ${message}`,
+  },
+  objectives: {
+    title: 'Squad objectives',
+    flagCaptures: 'Flag captures',
+    flagReturns: 'Flag returns',
+    flagSteals: 'Flag steals',
+    flagCarrierTime: 'Flag carrier time',
+    zoneCaptures: 'Zones captured',
+    zoneSecures: 'Zones secured',
+    zoneTime: 'Time in zones',
+    skullGrabs: 'Skull grabs',
+    skullCarrierTime: 'Skull carrier time',
   },
 }
 

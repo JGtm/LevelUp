@@ -47,9 +47,13 @@ func NewAdminCatalogDrainHandler(run CatalogDrainRunner, jobStore *jobs.Store, b
 
 // Mount enregistre la route via Huma sur le routeur chi (point de montage
 // /admin/actions/catalog, middleware RequireAuth/RequireAdmin hérités du groupe).
-func (h *AdminCatalogDrainHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Post(api, "/actions/catalog/ugc-drain", h.handleRun)
+func (h *AdminCatalogDrainHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Post(api, "/actions/catalog/ugc-drain", h.handleRun, humacore.Op(
+		"postAdminActionCatalogUGCDrain",
+		"Action admin — recense les asset IDs vus en jeu (catalog_fetch_queue) puis les résout via l'API DiscoveryUGC (réseau, rate-limité) ; complète "+
+			"le catalog/refresh zéro-réseau pour les assets absents de match_registry ; job asynchrone (auth admin requis)",
+		"admin"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
@@ -82,10 +86,10 @@ func (h *AdminCatalogDrainHandler) handleRun(ctx context.Context, in *catalogDra
 
 	if active := h.jobs.FindActiveJob(domain.JobTypeCatalogUGCDrain, titleSlug); active != nil {
 		return &catalogDrainOutput{Status: http.StatusConflict, Body: map[string]any{
-			"code":      "already_running",
+			"code":      actionBusyCode,
 			"message":   "Un drain UGC est déjà en cours pour ce titre.",
 			"retryable": false,
-			"details":   map[string]string{"job_id": active.JobID},
+			"details":   map[string]string{jobDetailKeyJobID: active.JobID},
 		}}, nil
 	}
 
@@ -103,7 +107,7 @@ func (h *AdminCatalogDrainHandler) runDrain(ctx context.Context, jobID, titleSlu
 		if rec := recover(); rec != nil {
 			slog.ErrorContext(ctx, "admin_actions: panic pendant le drain UGC", "job_id", jobID, "panic", rec)
 			h.jobs.Update(jobID, func(j *domain.AsyncJobStatus) {
-				j.Error = &domain.JobErrorDetail{Code: "panic", Message: "drain interrompu par une erreur interne", Retryable: true}
+				j.Error = &domain.JobErrorDetail{Code: jobErrorCodePanic, Message: "drain interrompu par une erreur interne", Retryable: true}
 			})
 			h.jobs.SetStatus(jobID, domain.JobStatusFailed, nil)
 		}

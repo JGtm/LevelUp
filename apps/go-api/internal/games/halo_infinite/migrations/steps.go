@@ -491,6 +491,35 @@ func Steps() []migration.Migration {
 				`)
 			},
 		},
+		{
+			// Description FR défectueuse de la médaille « Méganaute » (id 2005352812) :
+			// la loc officielle Waypoint reprend des termes anglais non traduits
+			// ("surshield", "active camo"). Calqué sur fix_super_fiesta_fr_label : UPDATE
+			// idempotent conditionné sur l'ANCIENNE valeur fautive (WHERE description_fr
+			// = <bad>) — aucun code Go ne réécrit ensuite ce champ (medal_definitions
+			// n'est jamais ré-upserté par refresh-metadata, qui ne touche que
+			// difficulty/medal_type via PromoteMedalDifficultyType), donc le correctif
+			// survit à un re-seed. medal_translations est traité par précaution (table
+			// vide en pratique — aucun INSERT Go ne la peuple pour les médailles — donc
+			// no-op si absente ; cf. medal_label_resolve.go).
+			Name:        "fix_meganaut_fr_description",
+			TargetDB:    migration.TargetMetadata,
+			Description: "medal_definitions/medal_translations : corrige la description FR anglicisée de la médaille Méganaute (2005352812)",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					UPDATE medal_definitions
+					SET description_fr = 'Éliminez un ennemi disposant à la fois d''un Sur-bouclier et d''un Camouflage actif.'
+					WHERE medal_name_id = 2005352812
+					  AND description_fr = 'Tuez un ennemi possédant un surshield et une active camo.';
+
+					UPDATE medal_translations
+					SET description = 'Éliminez un ennemi disposant à la fois d''un Sur-bouclier et d''un Camouflage actif.'
+					WHERE medal_name_id = 2005352812
+					  AND lang = 'fr-FR'
+					  AND description = 'Tuez un ennemi possédant un surshield et une active camo.';
+				`)
+			},
+		},
 		// Famille xbox_achievement_definitions (base + 4 ALTER/DELETE) → migrée ATOMIQUEMENT (b8).
 		{
 			Name:        "add_xbox_achievement_definitions",
@@ -1396,6 +1425,9 @@ func Steps() []migration.Migration {
 	// Schéma de référence inter-titres : compteur par-match des commendations natives
 	// (Halo 5 natif, AXE B prod-gate). Cf. steps_shared_commendations.go.
 	steps = append(steps, sharedCommendationsSteps()...)
+	// Stats objectifs par joueur/match (CTF/Zones/Oddball), append-only creee
+	// directement (id PK + written_at + vue _latest). Cf. steps_shared_objective_stats.go.
+	steps = append(steps, sharedObjectiveStatsSteps()...)
 	// Steps social CONSOMMATEURS (media ALTERs, records family, purge, rekey) → b19.
 	steps = append(steps, sharedSocialSteps()...)
 	// Racines du tier social (schémas de base media/notifications/prestige) → b24.

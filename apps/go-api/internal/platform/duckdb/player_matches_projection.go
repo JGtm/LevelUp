@@ -159,6 +159,7 @@ func projectEnrichment(s playerMatchScanResult, skillSnap *canonical.SkillSnapsh
 	return canonical.PlayerMatchEnrichment{
 		SessionID:           nullStringPtr(s.sessionID),
 		SessionLabel:        nullStringPtr(s.sessionLabel),
+		PairName:            strValueToPtr(s.pairName),
 		PerformanceScore:    nullFloatPtr(s.performanceScore),
 		DominanceFlag:       canonical.DominanceFlag(s.dominanceFlag),
 		HadBotTeammate:      s.hadBotTeammate,
@@ -301,6 +302,15 @@ func nullFloatPtr(n sql.NullFloat64) *float64 {
 	}
 	v := n.Float64
 	return &v
+}
+
+// strValueToPtr renvoie nil pour la chaîne vide, sinon un pointeur vers la valeur.
+// Utilisé pour surfacer pair_name (colonne shared non-nullable, "" = absent).
+func strValueToPtr(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }
 
 // nullInt64ToIntPtr convertit sql.NullInt64 en *int.

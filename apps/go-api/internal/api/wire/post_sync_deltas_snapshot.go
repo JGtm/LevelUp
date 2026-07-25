@@ -53,6 +53,14 @@ type PlayerSnapshot struct {
 	// after > before ⇒ nouveau match ⇒ détection ; sinon SKIP (coût nul sur les
 	// syncs à vide). Zéro si aucun match (aucune détection possible).
 	LastMatchStartTime time.Time
+
+	// EarnedMedalIDs : ensemble des medal_name_id à SUM(count) > 0 pour le joueur
+	// dans le shared du titre (medals_earned, lecture brute — parité Q36a, table
+	// per-match INSERT-only sans vue _latest). Base de la détection « médaille
+	// inédite » (V72-20) : after \ before = médailles décrochées pour la première
+	// fois. nil/vide si medals_earned est absente (titre sans la capability) ou
+	// illisible → la garde cold-start de emitMedalFirstEarned sème alors sans notifier.
+	EarnedMedalIDs map[int64]struct{}
 }
 
 // SnapshotPlayerState lit l'état courant nécessaire à la détection delta.
@@ -281,11 +289,63 @@ func SnapshotPlayerState(
 			if lastStart.Valid {
 				s.LastMatchStartTime = lastStart.Time.UTC()
 			}
+
+			// EarnedMedalIDs : set des médailles déjà obtenues (V72-20). nil =
+			// INVALIDE (cf. loadEarnedMedalIDs) → détection « médaille inédite »
+			// en seed silencieux.
+			s.EarnedMedalIDs = loadEarnedMedalIDs(ctx, sharedDB, pdb.XUID)
 			release()
 		}
 	}
 
 	return s, nil
+}
+
+// loadEarnedMedalIDs retourne l'ensemble des medal_name_id déjà décrochés par le
+// joueur : lecture BRUTE de medals_earned (table per-match INSERT-only, agrégat
+// SUM(count) > 0 ; pas de vue _latest à consommer — parité Q36a).
+//
+// CONTRAT D'INVALIDITÉ (contre-revue V7.2, 2026-07-25) : retourne nil dès que le
+// set ne peut pas être garanti COMPLET — table absente (titre sans capability
+// médailles), requête en erreur, échec de scan, ou rows.Err() non nul après une
+// itération partielle. Un set TRONQUÉ est PIRE qu'un set absent : côté snapshot
+// « before » il fait passer des médailles déjà connues pour inédites, donc de
+// FAUSSES notifications « médaille inédite ». nil ⇒ la garde cold-start de
+// emitMedalFirstEarned sème silencieusement et le diff se tait pour ce cycle
+// (même pattern que snapshotLooksCold). Un set VIDE non-nil (0 ligne, requête
+// saine) reste un état valide et légitime : joueur sans médaille.
+func loadEarnedMedalIDs(ctx context.Context, sharedDB *sql.DB, xuid string) map[int64]struct{} {
+	rows, err := sharedDB.QueryContext(ctx, `
+		SELECT medal_name_id
+		FROM medals_earned
+		WHERE xuid = ?
+		GROUP BY medal_name_id
+		HAVING SUM(count) > 0`, xuid)
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			slog.DebugContext(ctx, "snapshot: medals_earned indisponible — set médailles invalidé", "err", err)
+		}
+		return nil
+	}
+	defer rows.Close()
+
+	out := map[int64]struct{}{}
+	for rows.Next() {
+		var medalID sql.NullInt64
+		if err := rows.Scan(&medalID); err != nil {
+			slog.WarnContext(ctx, "snapshot: medals_earned scan — set médailles invalidé (diff supprimé)", "err", err)
+			return nil
+		}
+		if medalID.Valid {
+			out[medalID.Int64] = struct{}{}
+		}
+	}
+	if err := rows.Err(); err != nil {
+		slog.WarnContext(ctx, "snapshot: medals_earned itération interrompue — set médailles invalidé (diff supprimé)",
+			"err", err, "partiel", len(out))
+		return nil
+	}
+	return out
 }
 
 // thresholdCrossed retourne true si une métrique est passée au-dessus d'un palier

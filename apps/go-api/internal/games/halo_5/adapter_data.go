@@ -27,7 +27,6 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
-	"levelup/go-api/internal/games/classification"
 )
 
 // h5Source est la surface live minimale consommee par l'adapter (interface ->
@@ -90,19 +89,16 @@ type DataAdapter struct {
 	staticCaps     games.CapabilityMap
 	placementTotal int // TitleDescriptor.PlacementMatches (0 -> defaut h5DefaultPlacementMatches)
 	logger         *slog.Logger
-	// classifier (optionnel) — résout le caractère classé/PvE d'un match depuis le
-	// HopperId (set-membership). Quand nil, les refs IsRanked/IsPvE du header
-	// MatchDetail restent INDETERMINEES (nil) — comportement conservateur identique
-	// à mapMatchSummaries(nil). Injecté via WithRankedClassifier au boot/wiring.
-	classifier classification.RankedClassifier
 	// matchHistory (optionnel) — source de lecture de l'historique LOCAL (shared h5)
 	// projeté en canonical.MatchSummary. nil → LoadMatchSummaries dégrade en
 	// ErrCapabilityNotSupported. Injecté via WithMatchHistorySource au builder
 	// player-scoped (porte l'identité du joueur, cf. MatchHistorySource).
 	matchHistory MatchHistorySource
-	// commendationDefs (optionnel) — référentiel natif (nom + icône) des commendations
-	// par UUID, lu dans la metadata h5 (commendation_definitions). nil → les
-	// commendations du MatchDetail restent brutes (ID + count, le front dégrade sur
+	// commendationDefs (optionnel) — référentiel natif (nom + icône + catégorie +
+	// paliers) des commendations par UUID, lu dans la metadata h5
+	// (commendation_definitions). Consommé par LoadCommendationTotals
+	// (enrichCommendationTotals, commendation_totals.go) : nil → les
+	// canonical.CommendationTotal restent bruts (ID + total, le front dégrade sur
 	// l'ID court). Injecté via WithCommendationDefs au builder (AXE B définitions).
 	commendationDefs CommendationDefSource
 	// commendationTotals (optionnel) — totaux à vie par commendation (dernier progress
@@ -149,15 +145,6 @@ func (a *DataAdapter) WithPlacementTotal(n int) *DataAdapter {
 	return a
 }
 
-// WithRankedClassifier injecte le classifier ranked/PvE (set-membership HopperId)
-// utilisé pour renseigner IsRanked/IsPvE des refs header de LoadMatchDetail. nil
-// (défaut) -> verdicts INDETERMINES (header sans isRanked), comme l'historique
-// sans classifier. Chainable.
-func (a *DataAdapter) WithRankedClassifier(c classification.RankedClassifier) *DataAdapter {
-	a.classifier = c
-	return a
-}
-
 // WithMatchHistorySource injecte la source de lecture de l'historique LOCAL (shared
 // h5 → canonical.MatchSummary) utilisée par LoadMatchSummaries. nil (défaut) ->
 // LoadMatchSummaries reste dégradé (ErrCapabilityNotSupported). Chainable.
@@ -166,9 +153,10 @@ func (a *DataAdapter) WithMatchHistorySource(s MatchHistorySource) *DataAdapter 
 	return a
 }
 
-// WithCommendationDefs injecte le référentiel natif (nom + icône) des commendations
-// utilisé pour enrichir MatchDetail.Commendations (AXE B définitions). nil (défaut)
-// -> commendations laissées brutes (ID + count). Chainable.
+// WithCommendationDefs injecte le référentiel natif (nom + icône + catégorie +
+// paliers) des commendations, utilisé pour enrichir les canonical.CommendationTotal
+// servis par LoadCommendationTotals (AXE B définitions). nil (défaut) -> totaux
+// laissés bruts (ID + total). Chainable.
 func (a *DataAdapter) WithCommendationDefs(s CommendationDefSource) *DataAdapter {
 	a.commendationDefs = s
 	return a
@@ -226,7 +214,9 @@ func (a *DataAdapter) Capabilities() games.CapabilityMap {
 // fallbackCapabilities est la CapabilityMap par defaut (filet boot si capabilities.toml
 // n'a pas pu etre injecte). HONNETE : seules les methodes REELLEMENT cablees sont
 // exposees. career.progression = supported (LoadCareerSnapshot) ; match.detail.core =
-// supported (LoadMatchDetail, carnage → canonical) ; match.history = supported
+// supported (match view servi depuis le substrat DuckDB synchronisé — mapping_carnage.go
+// / capture.go — un match non encore synchronisé renvoie un 404 propre, PAS de fetch
+// live, cf. BACKLOG "Retirer le fallback LIVE du Match view") ; match.history = supported
 // (LoadMatchSummaries, shared h5 local → canonical, AXE A prod-gate). Le reste =
 // not_exposed tant que la methode est un stub (remonte a mesure du cablage :
 // scoreboard, timeseries...). Parite avec config/titles/halo_5/mappings/capabilities.toml
@@ -234,7 +224,7 @@ func (a *DataAdapter) Capabilities() games.CapabilityMap {
 func fallbackCapabilities() games.CapabilityMap {
 	return games.CapabilityMap{
 		games.CapMatchHistory:       games.CapSupported, // CÂBLÉ : LoadMatchSummaries (shared h5 local → canonical.MatchSummary)
-		games.CapMatchDetailCore:    games.CapSupported, // CÂBLÉ : LoadMatchDetail (carnage → canonical.MatchDetail)
+		games.CapMatchDetailCore:    games.CapSupported, // CÂBLÉ : match view via le substrat DuckDB synchronisé (pas de fetch live)
 		games.CapScoreboardExtra:    games.CapNotExposed,
 		games.CapMatchSkillSnapshot: games.CapNotExposed,
 		games.CapCareerProgression:  games.CapSupported,
@@ -242,8 +232,9 @@ func fallbackCapabilities() games.CapabilityMap {
 		games.CapEngagement:         games.CapSupported, // F7 E6b (2026-07-13) : gate humain validé → calibration=validated (badge retiré). Poids = candidats Infinite (rapport E4c)
 		games.CapCitationsEngine:    games.CapNotExposed,
 		// Commendations NATIVES par match : CÂBLÉ (AXE B). carnage
-		// ProgressiveCommendationDeltas → shared.match_commendations (ingest) +
-		// MatchDetail.Commendations (LoadMatchDetail). DISTINCTE de citations.engine.
+		// ProgressiveCommendationDeltas → shared.match_commendations (ingest), lu par
+		// le Match view via CitationsRepo.LoadMatchCommendationsRich. DISTINCTE de
+		// citations.engine.
 		games.CapCommendationsNative: games.CapSupported,
 		games.CapPveFirefight:        games.CapNotExposed,
 		games.CapBattlePass:          games.CapNotExposed,
@@ -255,6 +246,10 @@ func fallbackCapabilities() games.CapabilityMap {
 		// Précision par arme : CÂBLÉ. ShotsFired/ShotsLanded natifs des events
 		// weapon_drop → table weapon_accuracy (cf. ingest/weapon_accuracy.go).
 		games.CapWeaponAccuracy: games.CapSupported,
+		// Stats objectifs par match : le carnage h5 n'agrège pas ces objectifs
+		// (durées non fiables, impulses partiels) → not_exposed au lancement.
+		// Promotion degraded (agrégation d'impulses) = chantier ultérieur distinct.
+		games.CapMatchObjectiveStats: games.CapNotExposed,
 	}
 }
 

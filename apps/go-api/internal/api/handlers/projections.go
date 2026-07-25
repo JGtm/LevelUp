@@ -37,6 +37,8 @@ func BuildExplorerRowFromMatchHistory(item domain.MatchHistoryRow) domain.Explor
 		ExpectedWinProb:     item.ExpectedWinProb,
 		PlacementDone:       item.PlacementDone,
 		PlacementTotal:      item.PlacementTotal,
+		PerfPlacementDone:   item.PerfPlacementDone,
+		PerfPlacementTotal:  item.PerfPlacementTotal,
 		DeltaMMR:            item.DeltaMMR,
 		TeamMMR:             item.TeamMMR,
 		EnemyMMR:            item.EnemyMMR,

@@ -78,6 +78,7 @@ const (
 	MBitPVEStats          = matchflags.MBitPVEStats
 	MBitWeaponKills       = matchflags.MBitWeaponKills
 	MBitWeaponKillsNoFilm = matchflags.MBitWeaponKillsNoFilm
+	MBitObjectiveStats    = matchflags.MBitObjectiveStats
 )
 
 // ─────────────────────────────────────────────────────────────────────────────

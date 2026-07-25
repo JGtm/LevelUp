@@ -72,9 +72,9 @@ export function ApiHaloSection({ perf }: { perf: AdminPerfStats | undefined }) {
                 <tr className="border-b bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
                   <SortableTh label={tA('admin.api.col_call')} active={sortKey === 'name'} dir={sortDir} onClick={() => toggleSort('name')} className="px-3 py-2 font-medium" />
                   <SortableTh label={tA('admin.api.col_count')} active={sortKey === 'count'} dir={sortDir} onClick={() => toggleSort('count')} className="px-3 py-2 text-right font-medium" />
-                  <SortableTh label={tA('admin.api.col_avg')} active={sortKey === 'avg_ms'} dir={sortDir} onClick={() => toggleSort('avg_ms')} className="px-3 py-2 text-right font-medium" />
-                  <SortableTh label={tA('admin.api.col_max')} active={sortKey === 'max_ms'} dir={sortDir} onClick={() => toggleSort('max_ms')} className="px-3 py-2 text-right font-medium" />
-                  <SortableTh label={tA('admin.api.col_total')} active={sortKey === 'sum_ms'} dir={sortDir} onClick={() => toggleSort('sum_ms')} className="px-3 py-2 text-right font-medium" />
+                  <SortableTh label={tA('admin.api.col_avg')} active={sortKey === 'avg_ms'} dir={sortDir} onClick={() => toggleSort('avg_ms')} className="px-3 py-2 text-right font-medium" tooltip={tA('admin.api.col_avg_tooltip')} />
+                  <SortableTh label={tA('admin.api.col_max')} active={sortKey === 'max_ms'} dir={sortDir} onClick={() => toggleSort('max_ms')} className="px-3 py-2 text-right font-medium" tooltip={tA('admin.api.col_max_tooltip')} />
+                  <SortableTh label={tA('admin.api.col_total')} active={sortKey === 'sum_ms'} dir={sortDir} onClick={() => toggleSort('sum_ms')} className="px-3 py-2 text-right font-medium" tooltip={tA('admin.api.col_total_tooltip')} />
                   <SortableTh label={tA('admin.api.col_errors')} active={sortKey === 'errors'} dir={sortDir} onClick={() => toggleSort('errors')} className="px-3 py-2 text-right font-medium" />
                 </tr>
               </thead>
@@ -149,8 +149,8 @@ function ApiByPlayerTable({ perf }: { perf: AdminPerfStats }) {
               <SortableTh label={tA('admin.api.col_player')} active={sortKey === 'player'} dir={sortDir} onClick={() => toggleSort('player')} className="px-3 py-2 font-medium" />
               <SortableTh label={tA('admin.api.col_call')} active={sortKey === 'call'} dir={sortDir} onClick={() => toggleSort('call')} className="px-3 py-2 font-medium" />
               <SortableTh label={tA('admin.api.col_count')} active={sortKey === 'count'} dir={sortDir} onClick={() => toggleSort('count')} className="px-3 py-2 text-right font-medium" />
-              <SortableTh label={tA('admin.api.col_avg')} active={sortKey === 'avg_ms'} dir={sortDir} onClick={() => toggleSort('avg_ms')} className="px-3 py-2 text-right font-medium" />
-              <SortableTh label={tA('admin.api.col_max')} active={sortKey === 'max_ms'} dir={sortDir} onClick={() => toggleSort('max_ms')} className="px-3 py-2 text-right font-medium" />
+              <SortableTh label={tA('admin.api.col_avg')} active={sortKey === 'avg_ms'} dir={sortDir} onClick={() => toggleSort('avg_ms')} className="px-3 py-2 text-right font-medium" tooltip={tA('admin.api.col_avg_tooltip')} />
+              <SortableTh label={tA('admin.api.col_max')} active={sortKey === 'max_ms'} dir={sortDir} onClick={() => toggleSort('max_ms')} className="px-3 py-2 text-right font-medium" tooltip={tA('admin.api.col_max_tooltip')} />
               <SortableTh label={tA('admin.api.col_errors')} active={sortKey === 'errors'} dir={sortDir} onClick={() => toggleSort('errors')} className="px-3 py-2 text-right font-medium" />
             </tr>
           </thead>

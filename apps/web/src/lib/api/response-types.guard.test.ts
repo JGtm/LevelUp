@@ -22,10 +22,22 @@
  *      apparaît dans `unexpected`).
  *   2. RETRAIT — migrer une entrée vers generated.ts sans retirer sa ligne
  *      d'allowlist → rouge (le nom apparaît dans `stale`, self-check).
+ *
+ * DURCISSEMENT V72-01 / H7 (2026-07-25) — le garde-rail ci-dessus est NÉGATIF (il
+ * interdit les nouveaux types manuels) : il ne dit rien de la VALIDITÉ des ré-exports
+ * existants. Depuis H6 le contrat est GÉNÉRÉ, donc un renommage côté Go peut rendre un
+ * `components['schemas']['X']` orphelin — TypeScript le résout alors en `unknown`
+ * (index d'une clé absente sur un type d'interface indexé) sans forcément casser tous
+ * les appelants. Deux assertions POSITIVES sont ajoutées :
+ *   3. RÉSOLUTION — tout `components['schemas']['X']` cité dans `src/` désigne un schéma
+ *      RÉELLEMENT présent dans generated.ts.
+ *   4. TYPES CRITIQUES — les réponses de page les plus exposées restent des ré-exports
+ *      du contrat (interdiction de les re-hand-writer).
  */
 import { describe, it, expect } from 'vitest'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+import { extractContractSurface } from './contractSurface'
 
 // Déclaration hand-written d'un type de réponse :
 //   - `export interface XxxResponse {`  (toujours manuel)
@@ -72,6 +84,40 @@ const ALLOWLIST = new Set<string>([
   'FieldMappingsResponse',      // lib/i18n/fieldMappings.ts — mappings TOML backend-driven
 ])
 
+// Réponses CRITIQUES (V72-01 H7) : pages à fort trafic + endpoints d'amorçage. Elles
+// DOIVENT rester des ré-exports du contrat généré (`export type X = components[...]`).
+// Liste POSITIVE, croissante : on y ajoute un type dès qu'il quitte l'ALLOWLIST.
+const CRITICAL_CONTRACT_TYPES = [
+  'BootstrapResponse',
+  'PlayersListResponse',
+  'MatchHistoryPageResponse',
+  'SessionPageResponse',
+  'MedalsPageResponse',
+  'CitationsPageResponse',
+  'AchievementsPageResponse',
+  'SeasonPassPageResponse',
+  'TimeseriesPageResponse',
+  'RelationsPageResponse',
+  'LeaderboardResponse',
+  'ExplorerPlayerQueryResponse',
+  'ExplorerMatchesQueryResponse',
+  'EngagementTimeseriesResponse',
+  // Régression historique A2 (cf. en-tête) : contrat {best_matches, worst_matches}.
+  'CareerTopMatchesResponse',
+  'CareerEncountersResponse',
+  'GamertagSearchResponse',
+  'DeviceFlowStatusResponse',
+  'WatcherStatusResponse',
+  'LoginResponse',
+] as const
+
+// `export type X = components['schemas']['Y']` (le suffixe `& { … }` d'un view-model
+// enrichi est toléré : la base reste le contrat).
+const CONTRACT_REEXPORT_RE =
+  /export\s+type\s+(\w+)\s*=\s*components\['schemas'\]\['(\w+)'\]/g
+// Toute citation d'un schéma du contrat, où qu'elle soit (types.ts, features/…).
+const SCHEMA_REF_RE = /components\['schemas'\]\['(\w+)'\]/g
+
 function walk(dir: string): string[] {
   const out: string[] = []
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -106,6 +152,25 @@ function collectHandWrittenResponses(files: string[]): Set<string> {
   return found
 }
 
+/** Schémas du contrat cités par le front : `fichier → { nom du schéma }`. */
+function collectSchemaRefs(files: string[]): Map<string, Set<string>> {
+  const byFile = new Map<string, Set<string>>()
+  for (const f of files) {
+    const src = readFileSync(f, 'utf8')
+    const names = new Set<string>()
+    for (const m of src.matchAll(SCHEMA_REF_RE)) names.add(m[1])
+    if (names.size > 0) byFile.set(f, names)
+  }
+  return byFile
+}
+
+/** Ré-exports du contrat déclarés dans types.ts : `nom exporté → nom de schéma`. */
+function collectContractReexports(typesTs: string): Map<string, string> {
+  const out = new Map<string, string>()
+  for (const m of typesTs.matchAll(CONTRACT_REEXPORT_RE)) out.set(m[1], m[2])
+  return out
+}
+
 describe('garde-rail types de réponse API (V8d — source unique generated.ts)', () => {
   const srcRoot = resolve(process.cwd(), 'src')
   const files = walk(srcRoot)
@@ -127,6 +192,49 @@ describe('garde-rail types de réponse API (V8d — source unique generated.ts)'
       stale,
       `Entrée(s) d'allowlist sans type hand-written correspondant (migré ? supprimé ?) : ` +
         `${stale.join(', ')}. Retirer la ligne de l'ALLOWLIST.`,
+    ).toEqual([])
+  })
+
+  // --- Durcissement H7 : assertions POSITIVES sur le contrat généré -----------------
+  const generated = readFileSync(join(srcRoot, 'lib/api/generated.ts'), 'utf8')
+  const schemas = new Set(extractContractSurface(generated).schemas)
+  const refsByFile = collectSchemaRefs(files)
+  const reexports = collectContractReexports(readFileSync(join(srcRoot, 'lib/api/types.ts'), 'utf8'))
+
+  it("extraction non vacuante (schémas du contrat, citations front, ré-exports)", () => {
+    expect(schemas.size, 'schémas du contrat').toBeGreaterThan(400)
+    expect(refsByFile.size, 'fichiers citant un schéma').toBeGreaterThan(0)
+    expect(reexports.size, 'ré-exports de types.ts').toBeGreaterThan(200)
+  })
+
+  it('tout schéma cité par le front existe dans generated.ts (aucun ré-export orphelin)', () => {
+    const orphans: string[] = []
+    for (const [file, names] of refsByFile) {
+      const rel = file.slice(srcRoot.length + 1).replaceAll('\\', '/')
+      for (const n of [...names].sort()) {
+        if (!schemas.has(n)) orphans.push(`${rel} → components['schemas']['${n}']`)
+      }
+    }
+    expect(
+      orphans,
+      `Citation(s) d'un schéma ABSENT du contrat généré :\n  ${orphans.join('\n  ')}\n` +
+        `TypeScript résout un index inexistant en \`unknown\` sans casser tous les appelants : ` +
+        `le front lirait des champs qui n'existent pas. Repointer le ré-export vers le schéma ` +
+        `réellement émis (le contrat est GÉNÉRÉ : voir apps/go-api/api/openapi.yaml).`,
+    ).toEqual([])
+  })
+
+  it('les réponses CRITIQUES restent des ré-exports du contrat', () => {
+    const broken = CRITICAL_CONTRACT_TYPES.filter((n) => {
+      const schema = reexports.get(n)
+      return schema === undefined || !schemas.has(schema)
+    }).sort()
+    expect(
+      broken,
+      `Réponse(s) critique(s) qui ne sont plus des ré-exports valides du contrat : ${broken.join(', ')}.\n` +
+        `Ces types portent des pages entières : les re-hand-writer rouvre la classe de bugs A2 ` +
+        `(champ lu côté front, absent côté Go). Rétablir ` +
+        `\`export type X = components['schemas']['X']\` dans lib/api/types.ts.`,
     ).toEqual([])
   })
 })

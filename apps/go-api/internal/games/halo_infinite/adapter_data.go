@@ -197,16 +197,14 @@ func fallbackCapabilities() games.CapabilityMap {
 		// Serie « XP de carriere (estimee) » par match (plan XP CARRIERE ESTIMEE,
 		// 2026-07-24) : formule multiplicateur(era) x personal_score — Infinite only.
 		games.CapAnalyticsCareerXPEstimate: games.CapSupported,
+		// Stats objectifs par joueur/match (CTF/Zones/Oddball) extraites du payload
+		// GetMatchStats → shared.match_objective_stats (PLAN_V72_OBJECTIVE_STATS).
+		games.CapMatchObjectiveStats: games.CapSupported,
 	}
 }
 
 // LoadMatchSummaries n'est pas câblée en Phase B. Elle remontera en Phase C.
 func (a *DataAdapter) LoadMatchSummaries(ctx context.Context, matchIDs []string) ([]canonical.MatchSummary, error) {
-	return nil, games.ErrCapabilityNotSupported
-}
-
-// LoadMatchDetail n'est pas câblée en Phase B.
-func (a *DataAdapter) LoadMatchDetail(ctx context.Context, matchID string) (*canonical.MatchDetail, error) {
 	return nil, games.ErrCapabilityNotSupported
 }
 

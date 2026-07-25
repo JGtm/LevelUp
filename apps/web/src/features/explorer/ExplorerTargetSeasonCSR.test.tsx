@@ -49,4 +49,28 @@ describe('ExplorerTargetSeasonCSR', () => {
     expect(screen.getByTestId('explorer-target-season-csr-empty')).toBeInTheDocument()
     expect(screen.getByText('Aucun classement CSR à afficher')).toBeInTheDocument()
   })
+
+  // Lot A3 (fin de la dégradation muette) : badge discret dans la barre de titre
+  // quand liveStatus explique un vide/partiel — sans lui (status="ok"/absent),
+  // aucun badge (cf. tests ci-dessus, pas de régression).
+  it('affiche le badge live_status quand no_auth (liste vide)', () => {
+    renderWithProviders(
+      <ExplorerTargetSeasonCSR
+        csrs={[]}
+        title="CSR"
+        emptyMessage="Aucun classement CSR à afficher"
+        liveStatus="no_auth"
+      />,
+    )
+    expect(screen.getByTestId('explorer-live-status-badge-no_auth')).toBeInTheDocument()
+    expect(screen.getByText('Données live indisponibles (authentification)')).toBeInTheDocument()
+  })
+
+  it("n'affiche aucun badge quand liveStatus vaut ok (liste non vide)", () => {
+    const csrs = [csr({ playlist_id: 'p1', playlist_name: 'Ranked Arena' })]
+    renderWithProviders(
+      <ExplorerTargetSeasonCSR csrs={csrs} title="CSR" emptyMessage="Aucun classement" liveStatus="ok" />,
+    )
+    expect(screen.queryByTestId(/explorer-live-status-badge-/)).not.toBeInTheDocument()
+  })
 })

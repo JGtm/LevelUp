@@ -18,19 +18,24 @@ import type { EChartsCoreOption } from 'echarts/core'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
-import type { SeasonMatchCount } from '@/lib/api/types'
+import type { ExplorerLiveSectionStatus, SeasonMatchCount } from '@/lib/api/types'
 import type { SemanticToken } from '@/lib/accessibility'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { buildBarStackedOption, type ChartPointStacked } from '@/components/charts/BarStackedChart'
+import { ExplorerLiveStatusBadge } from './ExplorerLiveStatusBadge'
 
 interface ExplorerTargetSeasonMatchesProps {
   seasons: SeasonMatchCount[]
   title: string
+  /** Statut live de la section (Lot A3) — badge discret dans la barre de titre
+   *  quand != "ok" (no_auth avant tout fetch, local_partial en repli bucketing
+   *  local — cf. computeSeasonBreakdown côté Go). */
+  liveStatus?: ExplorerLiveSectionStatus | null
 }
 
 const MATCHES_TOKEN: SemanticToken = 'chart-series-1'
 
-export function ExplorerTargetSeasonMatches({ seasons, title }: ExplorerTargetSeasonMatchesProps) {
+export function ExplorerTargetSeasonMatches({ seasons, title, liveStatus }: ExplorerTargetSeasonMatchesProps) {
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: ExplorerManifestKey) => formatMessage(explorerManifest, key, locale)
   const matchesLabel = t('explorer.target_profile.label_matches')
@@ -51,7 +56,12 @@ export function ExplorerTargetSeasonMatches({ seasons, title }: ExplorerTargetSe
   return (
     <div data-testid="explorer-target-season-matches">
       <ChartCard
-        title={title}
+        title={
+          <span className="flex items-center gap-2">
+            <span>{title}</span>
+            <ExplorerLiveStatusBadge status={liveStatus} />
+          </span>
+        }
         series={series}
         emptyMessage={t('explorer.target_profile.matches_per_season_empty')}
         height={220}

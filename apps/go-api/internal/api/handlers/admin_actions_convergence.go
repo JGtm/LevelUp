@@ -55,9 +55,12 @@ func NewAdminConvergenceActionHandler(
 // Mount enregistre la route via Huma sur le sous-routeur chi /admin (middleware
 // RequireAuth/RequireAdmin hérités). Le body est REQUIS (décodage maison →
 // 400 invalid_input si JSON malformé OU player_slug absent, contrat préservé).
-func (h *AdminConvergenceActionHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Post(api, "/actions/convergence/run", h.handleRun)
+func (h *AdminConvergenceActionHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Post(api, "/actions/convergence/run", h.handleRun, humacore.Op(
+		"postAdminActionConvergenceRun",
+		"Action admin — relance la convergence d'un joueur (RunDelta + post-sync, claim SyncGate) via le JobStore (auth admin requis)",
+		"admin"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
@@ -107,10 +110,10 @@ func (h *AdminConvergenceActionHandler) handleRun(ctx context.Context, in *conve
 
 	if active := h.jobs.FindActiveJob(domain.JobTypePlayerConvergence, req.PlayerSlug); active != nil {
 		return nil, &conflictWithJobError{
-			Code:      "already_running",
+			Code:      actionBusyCode,
 			Message:   "Une convergence est déjà en cours pour ce joueur.",
 			Retryable: false,
-			Details:   map[string]string{"job_id": active.JobID},
+			Details:   map[string]string{jobDetailKeyJobID: active.JobID},
 		}
 	}
 
@@ -129,7 +132,7 @@ func (h *AdminConvergenceActionHandler) runConvergence(ctx context.Context, jobI
 		if rec := recover(); rec != nil {
 			slog.ErrorContext(ctx, "admin_actions: panic pendant la convergence", "job_id", jobID, "panic", rec)
 			h.jobs.Update(jobID, func(j *domain.AsyncJobStatus) {
-				j.Error = &domain.JobErrorDetail{Code: "panic", Message: "convergence interrompue par une erreur interne", Retryable: true}
+				j.Error = &domain.JobErrorDetail{Code: jobErrorCodePanic, Message: "convergence interrompue par une erreur interne", Retryable: true}
 			})
 			h.jobs.SetStatus(jobID, domain.JobStatusFailed, nil)
 		}

@@ -5,23 +5,26 @@
 // la metadata du titre courant), il renvoie le NOM d'affichage + les dimensions
 // canoniques du registre (weapon_key / role / family / faction).
 //
-// POLITIQUE DE NOM = FR D'ABORD (label PUIS registre), EN EN DERNIER REPLI (décision
-// user 2026-07-19, amende l'ordre « labels d'abord » du même jour qui laissait un
-// name_en non vide court-circuiter le registre FR) : le nom FR prime TOUJOURS, qu'il
-// vienne de weapon_labels (wl.name_fr) ou du registre (w.name_fr) ; le label EN
-// (wl.name_en) puis le nom registre brut (w.name) ne servent qu'en dernier repli.
-// Ordre : wl.name_fr > w.name_fr > wl.name_en > w.name. Sur Halo Infinite, dont les
-// weapon_labels ont TOUJOURS un name_fr, wl.name_fr gagne en 1re position → résolution
-// Infinite byte-INCHANGÉE (parité préservée). Sur H5, où weapon_labels ne porte qu'un
-// name_en majuscule NON VIDE (« FRAG GRENADE », « lightrifle ») sans name_fr, l'ANCIEN
-// ordre (wl.name_en avant w.name_fr) s'arrêtait sur l'EN et n'atteignait jamais le
-// registre FR ; en plaçant le registre FR AVANT le label EN, w.name_fr comble le trou
-// (« Grenade à fragmentation », « Fusil léger »). label = "" seulement si l'id est
-// absent de weapon_labels ET du registre.
+// POLITIQUE DE NOM = SOURCE UNIQUE keyée par weapon_key (V72-06). Le nom d'affichage
+// vient de la table `weapon_name_labels` (title_slug, weapon_key, name_en, name_fr),
+// seedée depuis config/titles/{slug}/mappings/weapon_names.toml
+// (halo_infinite/migrations.ReconcileWeaponNameLabels). Résolution :
+// weapon_id → weapon_ids → weapon_key → {en, fr}. Toutes les variantes brutes d'une
+// même arme (« FRAG GRENADE » / « Frag Grenade », skins…) retombent sur UNE seule
+// traduction → tue le mismatch keyé par nom EN brut de l'ancien modèle.
 //
-// Robustesse : si le registre (weapons/weapon_ids) est absent (vieux schéma,
-// metadata de test non migrée), on retombe sur une résolution weapon_labels seule
-// — best-effort, jamais de panic, parité garantie.
+// Ordre du label : wnl.name_fr > wnl.name_en > wl.name_fr > wl.name_en. Le registre
+// `weapons` ne porte PLUS de nom d'affichage (son name_fr « inventé » a été retiré) :
+// il ne fournit que les dimensions (weapon_key / role / class / family / faction).
+// weapon_labels reste utilisé pour name_en (URL image, AssetURLAdapter) et comme
+// repli de nom pour les ids SANS weapon_key (sentinelles 0/1/2 = grenade/mêlée/
+// véhicule, ids inconnus). Sur Halo Infinite, weapon_names.toml reprend EXACTEMENT le
+// name_fr historique de weapon_labels → résolution byte-INCHANGÉE (parité préservée).
+//
+// Robustesse (best-effort, jamais de panic) : registre (weapons/weapon_ids) absent
+// (vieux schéma, metadata de test non migrée) → résolution weapon_labels seule ;
+// weapon_name_labels absente (metadata non encore seedée) → nom depuis weapon_labels,
+// dimensions du registre préservées. En prod les 3 tables existent dès le boot.
 package duckdb
 
 import (
@@ -64,11 +67,20 @@ func resolveWeaponMeta(ctx context.Context, meta *DB, titleSlug string, weaponID
 		parts[i] = "('" + strconv.FormatUint(uint64(id), 10) + "')" //nolint:gosec
 	}
 	// titleSlug = identifiant de titre interne (jamais user input) → littéral sûr.
-	// label = FR d'abord (label puis registre), EN en dernier repli (wl.name_fr >
-	// w.name_fr > wl.name_en > w.name) ; name_en reste weapon_labels seul (URL image).
-	// label "" → id inconnu des DEUX sources (caller décide).
+	// label = SOURCE UNIQUE keyée par weapon_key (weapon_name_labels via weapon_ids)
+	// quand la table existe (toujours vrai en prod, créée au boot par
+	// ReconcileWeaponNameLabels) ; weapon_labels seul en repli pour le nom (ids sans
+	// weapon_key, ou metadata non seedée en test). Le registre `weapons` ne fournit
+	// PLUS de nom (dimensions seules). name_en reste weapon_labels (URL image). label ""
+	// → id inconnu de toutes les sources (caller décide).
+	labelExpr := "COALESCE(NULLIF(wl.name_fr,''), NULLIF(wl.name_en,''), '')"
+	nameJoin := ""
+	if weaponNameLabelsAvailable(ctx, meta) {
+		labelExpr = "COALESCE(NULLIF(wnl.name_fr,''), NULLIF(wnl.name_en,''), NULLIF(wl.name_fr,''), NULLIF(wl.name_en,''), '')"
+		nameJoin = " LEFT JOIN weapon_name_labels wnl ON wnl.title_slug = wi.title_slug AND wnl.weapon_key = wi.weapon_key"
+	}
 	query := "SELECT ids.v," +
-		" COALESCE(NULLIF(wl.name_fr,''), NULLIF(w.name_fr,''), NULLIF(wl.name_en,''), NULLIF(w.name,''), '') AS label," +
+		" " + labelExpr + " AS label," +
 		" COALESCE(wl.name_en, '') AS name_en," +
 		" COALESCE(w.weapon_key, '') AS weapon_key," +
 		" COALESCE(w.role, '') AS role," +
@@ -78,7 +90,8 @@ func resolveWeaponMeta(ctx context.Context, meta *DB, titleSlug string, weaponID
 		" FROM (VALUES " + strings.Join(parts, ", ") + ") AS ids(v)" +
 		" LEFT JOIN weapon_labels wl ON wl.weapon_id = CAST(ids.v AS UBIGINT)" +
 		" LEFT JOIN weapon_ids wi ON wi.title_slug = '" + titleSlug + "' AND wi.id_value = ids.v" +
-		" LEFT JOIN weapons w ON w.title_slug = wi.title_slug AND w.weapon_key = wi.weapon_key"
+		" LEFT JOIN weapons w ON w.title_slug = wi.title_slug AND w.weapon_key = wi.weapon_key" +
+		nameJoin
 	rows, err := meta.Query(ctx, query)
 	if err != nil {
 		// weaponRegistryAvailable a confirmé la présence des tables du registre : une
@@ -109,13 +122,24 @@ func resolveWeaponMeta(ctx context.Context, meta *DB, titleSlug string, weaponID
 }
 
 // weaponRegistryAvailable vérifie (sans log d'erreur) que les tables du registre
-// existent dans cette metadata. QueryRow sur information_schema (toujours présent)
-// → pas d'ERROR loggée si le registre manque.
+// (weapons/weapon_ids) existent dans cette metadata. QueryRow sur information_schema
+// (toujours présent) → pas d'ERROR loggée si le registre manque.
 func weaponRegistryAvailable(ctx context.Context, meta *DB) bool {
 	var n int
 	err := meta.QueryRow(ctx,
 		"SELECT COUNT(*) FROM information_schema.tables WHERE table_name IN ('weapons','weapon_ids')").Scan(&n)
 	return err == nil && n >= 2
+}
+
+// weaponNameLabelsAvailable vérifie (sans log) la présence de weapon_name_labels, la
+// SOURCE UNIQUE des noms keyée par weapon_key (V72-06). Toujours vraie en prod (créée
+// au boot par ReconcileWeaponNameLabels) ; absente seulement sur une metadata non
+// seedée (test) → le resolver sert alors le nom depuis weapon_labels, dims préservées.
+func weaponNameLabelsAvailable(ctx context.Context, meta *DB) bool {
+	var n int
+	err := meta.QueryRow(ctx,
+		"SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'weapon_name_labels'").Scan(&n)
+	return err == nil && n >= 1
 }
 
 // resolveWeaponLabelsOnly — fallback parité : weapon_labels seul (name_fr>name_en),

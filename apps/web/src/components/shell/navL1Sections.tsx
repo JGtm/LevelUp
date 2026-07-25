@@ -109,6 +109,7 @@ export const L1_SECTIONS: L1Section[] = [
     tabs: [
       { key: 'synergies', labelKey: 'common.nav.tab_synergies', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies' },
       { key: 'contributions', labelKey: 'common.nav.tab_contributions', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions' },
+      { key: 'dynamique', labelKey: 'common.nav.tab_dynamique', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/dynamique' },
     ],
   },
   {

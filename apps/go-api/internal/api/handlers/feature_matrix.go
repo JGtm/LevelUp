@@ -51,9 +51,9 @@ func NewFeatureMatrixHandler(reg CapabilitiesRegistry, logger *slog.Logger) *Fea
 // Mount enregistre la route via Huma sur le routeur chi `r` (qui porte déjà le
 // préfixe /api/v1). Le chemin relatif est repris à l'identique de l'ancien
 // r.Get(".../feature-matrix", ...).
-func (h *FeatureMatrixHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Get(api, "/titles/{slug}/feature-matrix", h.handleGet)
+func (h *FeatureMatrixHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Get(api, "/titles/{slug}/feature-matrix", h.handleGet, humacore.Op("getTitleFeatureMatrix", "Matrice de features (cascade capabilities) d'un titre", "titles"))
 }
 
 type featureMatrixResponse struct {

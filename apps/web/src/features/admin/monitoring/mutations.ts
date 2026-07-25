@@ -48,6 +48,28 @@ export function useRunSyncCycle() {
   })
 }
 
+/** Paramètres du re-import initial admin d'un joueur (title optionnel). */
+export interface InitialSyncVars {
+  player_slug: string
+  /** Plafond de matchs (1..2000) ; omis → défaut profil (initial_max_matches) puis 200. */
+  max_matches?: number
+  /** Titre cible explicite (multi-titre) ; omis → titre par défaut côté serveur. */
+  title_slug?: string
+}
+
+/**
+ * Déclenche un re-import complet (RunFull, plafonné) d'un joueur au choix via
+ * POST /admin/actions/initial-sync/run (202 + AsyncJobStatus à suivre). Un 409
+ * `already_running` renvoie le job DÉJÀ en vol (job_id en details) — le caller
+ * le suit via conflictJobId au lieu d'en créer un doublon.
+ */
+export function useRunInitialSync() {
+  return useMutation({
+    mutationFn: (vars: InitialSyncVars) =>
+      api.post<AsyncJobStatus>('/admin/actions/initial-sync/run', vars),
+  })
+}
+
 /** Accusé d'un replay LUSR (nombre de lignes LUSR réécrites). */
 export interface LusrRecomputeResult {
   gamertag: string

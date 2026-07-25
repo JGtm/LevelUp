@@ -20,6 +20,8 @@ import {
   type AdminLocale,
 } from '../format'
 import { AdminQuickActions } from '../overview/AdminQuickActions'
+import { AdminInitialSyncCard } from './AdminInitialSyncCard'
+import { SyncActionsHelp } from './SyncActionsHelp'
 import { TokenHealthSection } from '../sections/TokenHealthSection'
 import { SyncPlayersTable } from './SyncPlayersTable'
 import { SyncCycleHistory } from './SyncCycleHistory'
@@ -37,12 +39,23 @@ export function AdminSyncPage() {
   const syncJobActive = (jobsQuery.data?.jobs ?? []).some(
     (j) =>
       (j.status === 'running' || j.status === 'queued') &&
-      (j.job_type === 'forced_sync_cycle' || j.job_type === 'delta_sync_all' || j.job_type === 'initial_sync'),
+      (j.job_type === 'forced_sync_cycle' ||
+        j.job_type === 'delta_sync_all' ||
+        j.job_type === 'initial_sync' ||
+        j.job_type === 'admin_initial_sync'),
   )
   const { data, isLoading, isError } = useMonitoringScheduler({ fastPoll: syncJobActive })
   const perf = usePerfStats()
   const tA = useAdminT()
   const locale = useAdminLocale()
+
+  // Invalidations partagées par les actions de sync (cycle forcé, audit, sync
+  // initiale) quand elles se règlent — l'état des joueurs/jobs a bougé.
+  const invalidateSyncViews = () => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.adminMonitoringScheduler })
+    queryClient.invalidateQueries({ queryKey: queryKeys.adminMonitoringOverview })
+    queryClient.invalidateQueries({ queryKey: queryKeys.adminMonitoringJobs })
+  }
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">…</p>
@@ -56,13 +69,9 @@ export function AdminSyncPage() {
       <section className="space-y-3">
         <SectionHeader title={tA('admin.sync.scheduler_section')} />
         <SchedulerSummary data={data} tA={tA} locale={locale} />
-        <AdminQuickActions
-          onAnyActionSettled={() => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.adminMonitoringScheduler })
-            queryClient.invalidateQueries({ queryKey: queryKeys.adminMonitoringOverview })
-            queryClient.invalidateQueries({ queryKey: queryKeys.adminMonitoringJobs })
-          }}
-        />
+        <AdminQuickActions onAnyActionSettled={invalidateSyncViews} />
+        <SyncActionsHelp tA={tA} />
+        <AdminInitialSyncCard onJobSettled={invalidateSyncViews} />
       </section>
 
       {data?.available && data.snapshot && (

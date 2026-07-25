@@ -45,16 +45,16 @@ func NewAdminHandler(users *userstore.Store, invites *userstore.InviteStore) *Ad
 // Mount enregistre les 7 routes via Huma sur le sous-routeur chi (préfixe /admin
 // + middleware RequireAuth/RequireAdmin hérités). Le body POST /invites est
 // OPTIONNEL (MarkRequestBodyOptional) — corps absent → défaut 7 jours.
-func (h *AdminHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Get(api, "/users", h.handleListUsers)
-	huma.Delete(api, "/users/{username}", h.handleDeleteUser)
-	huma.Patch(api, "/users/{username}/role", h.handleChangeRole)
-	huma.Patch(api, "/users/{username}/password", h.handleResetPassword)
-	huma.Get(api, "/invites", h.handleListInvites)
-	huma.Post(api, "/invites", h.handleGenerateInvite)
+func (h *AdminHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Get(api, "/users", h.handleListUsers, humacore.Op("listAdminUsers", "Liste des utilisateurs (auth admin requis)", "admin"))
+	huma.Delete(api, "/users/{username}", h.handleDeleteUser, humacore.Op("deleteAdminUser", "Supprime un compte utilisateur", "admin"))
+	huma.Patch(api, "/users/{username}/role", h.handleChangeRole, humacore.Op("patchAdminUserRole", "Modifie le rôle d'un utilisateur (admin/user)", "admin"))
+	huma.Patch(api, "/users/{username}/password", h.handleResetPassword, humacore.Op("patchAdminUserPassword", "Reset password d'un utilisateur", "admin"))
+	huma.Get(api, "/invites", h.handleListInvites, humacore.Op("listAdminInvites", "Liste des invitations admin (auth admin requis)", "admin"))
+	huma.Post(api, "/invites", h.handleGenerateInvite, humacore.Op("createAdminInvite", "Crée une invitation", "admin"))
 	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/invites")
-	huma.Delete(api, "/invites/{code}", h.handleRevokeInvite)
+	huma.Delete(api, "/invites/{code}", h.handleRevokeInvite, humacore.Op("deleteAdminInvite", "Révoque une invitation", "admin"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

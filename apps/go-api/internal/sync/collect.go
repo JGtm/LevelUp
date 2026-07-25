@@ -208,6 +208,12 @@ func buildBatchFromFetchedMatchCtx(
 		builder.AddPVEStats(pveInserts)
 	}
 
+	// Objectif (CTF/Zones/Oddball) — déjà en persist.ObjectiveStatsInsert (extraction
+	// pure), ajoutés tels quels à shared.match_objective_stats.
+	if len(fm.ObjectiveStats) > 0 {
+		builder.AddObjectiveStats(fm.ObjectiveStats)
+	}
+
 	// Enrichment placeholder — les enrichments post-sync compute
 	// (performance_score, session_id, is_with_friends, dominance_flag,
 	// engagement_*) sont UPDATEd post-Submit par les fonctions

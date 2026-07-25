@@ -71,5 +71,11 @@ export function RecoloredMask({ src, colors, alt, className }: RecoloredMaskProp
     ctx.putImageData(imageData, 0, 0)
   }, [img, primary, secondary, tertiary])
 
-  return <canvas ref={canvasRef} role="img" aria-label={alt} className={className} />
+  // `data-mask-src` expose l'URL de l'asset title-scopé dans le DOM (le rendu passe par
+  // canvas + `new Image()`, donc la src n'y apparaîtrait pas sinon) : indispensable pour
+  // que les garde-rails anti-fuite cross-titre (V72-29) assertent qu'aucun asset d'un
+  // autre titre n'est rendu quand le titre courant ne le déclare pas.
+  return (
+    <canvas ref={canvasRef} role="img" aria-label={alt} className={className} data-mask-src={src} />
+  )
 }

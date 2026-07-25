@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/api/handlers"
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/observability/logging"
 	jobs_platform "levelup/go-api/internal/platform/jobs"
@@ -32,6 +33,7 @@ func MountAdminMonitoringRoutes(
 	sched *scheduler.AutoSyncScheduler,
 	jobStore *jobs_platform.Store,
 	serverCtx context.Context,
+	apiOpt humacore.MountOption,
 ) {
 	reg.WithAutoSyncScheduler(sched)
 
@@ -39,21 +41,21 @@ func MountAdminMonitoringRoutes(
 		reg.MonitoringOverview, reg.ConvergenceReport, reg.PerfStats, reg.ErrorStats,
 		reg.DetectionsReport, reg.SetDetectionStatus, reg.FreshnessReport, reg.ResourcesReport, reg.CronsReport, sched, jobStore)
 	// 6 GET /monitoring/* migrés vers Huma (Phase 3b), NoStore.
-	monitoringH.Mount(r.With(middleware.NoStore))
+	monitoringH.Mount(r.With(middleware.NoStore), apiOpt)
 
 	// Couverture de résolution d'arme (registre vs weapon_labels vs non résolu),
 	// par titre. GET /monitoring/weapon-coverage?title=.
 	coverageH := handlers.NewAdminWeaponCoverageHandler(reg.WeaponCoverage)
-	coverageH.Mount(r.With(middleware.NoStore))
+	coverageH.Mount(r.With(middleware.NoStore), apiOpt)
 
 	// Trous d'intérieur LUSR (garde-fou notes LUSR) + action replay par joueur.
 	// GET /monitoring/lusr-gaps?title= ; POST /monitoring/lusr-gaps/{player}/recompute.
 	lusrH := handlers.NewAdminLUSRGapsHandler(reg.LUSRGapsReport, reg.RecomputeLUSRGapsForPlayer)
-	lusrH.Mount(r.With(middleware.NoStore))
+	lusrH.Mount(r.With(middleware.NoStore), apiOpt)
 
 	actionsH := handlers.NewAdminActionsHandler(
 		reg.RunDataHealthNow, reg.ActionJournalReport, sched, jobStore, serverCtx)
-	actionsH.Mount(r) // POST /actions/data-health/run, /actions/auto-sync/run ; GET /actions/journal
+	actionsH.Mount(r, apiOpt) // POST /actions/data-health/run, /actions/auto-sync/run ; GET /actions/journal
 
 	// Qualité données : compteurs/listes d'inconnus + actions de résolution
 	// (backfill registry names, traductions metadata) — Phase 2.
@@ -63,19 +65,25 @@ func MountAdminMonitoringRoutes(
 		reg.RunRegistryNamesBackfill, reg.ResolveModeTranslation, reg.ResolveAssetTranslation,
 		reg.RunCatalogRefresh, reg.RunLyingBitsReset,
 		ErrActionBusy)
-	dqH.Mount(r)
+	dqH.Mount(r, apiOpt)
 
 	// Convergence ciblée d'un joueur (job asynchrone, claim SyncGate).
 	convH := handlers.NewAdminConvergenceActionHandler(
 		reg.RunPlayerConvergence, jobStore, serverCtx, ErrSyncInFlight)
-	convH.Mount(r) // POST /actions/convergence/run
+	convH.Mount(r, apiOpt) // POST /actions/convergence/run
+
+	// Synchronisation initiale (re-import complet, RunFull) d'un joueur au choix
+	// (job asynchrone, claim SyncGate, tokens via le pool unifié).
+	initialSyncH := handlers.NewAdminInitialSyncActionHandler(
+		reg.RunPlayerInitialSync, jobStore, serverCtx, ErrSyncInFlight)
+	initialSyncH.Mount(r, apiOpt) // POST /actions/initial-sync/run
 
 	// Drain DiscoveryUGC (job asynchrone — réseau, rate-limité). Complète le
 	// catalog/refresh zéro-réseau en hydratant les assets absents de match_registry.
 	drainH := handlers.NewAdminCatalogDrainHandler(reg.RunCatalogUGCDrain, jobStore, serverCtx)
-	drainH.Mount(r) // POST /actions/catalog/ugc-drain
+	drainH.Mount(r, apiOpt) // POST /actions/catalog/ugc-drain
 
 	// Viewer de logs : modules + tail filtré (lecture par la fin chunkée).
 	logsH := handlers.NewAdminLogsHandler(logging.LoadConfig(reg.cfg.RepoRoot).LogsDir)
-	logsH.Mount(r.With(middleware.NoStore)) // GET /monitoring/logs/{modules,tail}
+	logsH.Mount(r.With(middleware.NoStore), apiOpt) // GET /monitoring/logs/{modules,tail}
 }

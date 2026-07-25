@@ -56,11 +56,11 @@ func (h *HealthHandler) WithMediaTooling(status domain.MediaToolingStatus) *Heal
 
 // Mount enregistre les 3 routes RACINE via Huma sur le routeur chi `r`
 // (montées sans préfixe /api/v1, à l'identique des routes chi d'origine).
-func (h *HealthHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Get(api, "/health", h.handleHealth)
-	huma.Get(api, "/healthz", h.handleLiveness)
-	huma.Get(api, "/readyz", h.handleReadiness)
+func (h *HealthHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Get(api, "/health", h.handleHealth, humacore.Op("getHealth", "Health check", "health"))
+	huma.Get(api, "/healthz", h.handleLiveness, humacore.Op("getHealthz", "Liveness probe (process vivant, pas d'I/O DB)", "health"))
+	huma.Get(api, "/readyz", h.handleReadiness, humacore.Op("getReadyz", "Readiness probe (DuckDB + filesystem + capability registry)", "health"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

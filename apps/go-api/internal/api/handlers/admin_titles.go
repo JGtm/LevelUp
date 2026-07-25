@@ -64,11 +64,14 @@ func NewAdminTitlesHandler(titles TitleLister, caps CapabilitiesRegistry, logger
 // /admin de server.go : middleware RequireAuth+RequireAdmin+NoStore hérités). Le
 // chemin relatif EXACT est repris tel quel (/titles, /titles/{slug},
 // /titles/{slug}/toml-draft).
-func (h *AdminTitlesHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Get(api, "/titles", h.handleList)
-	huma.Get(api, "/titles/{slug}", h.handleDetail)
-	huma.Get(api, "/titles/{slug}/toml-draft", h.handleTOMLDraft)
+func (h *AdminTitlesHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Get(api, "/titles", h.handleList, humacore.Op("getAdminTitles", "Liste des titres enregistrés (slug, nom, Status lifecycle, capabilities, has_mappings) (auth admin requis)", "admin"))
+	huma.Get(api, "/titles/{slug}", h.handleDetail, humacore.Op("getAdminTitleDetail", "Détail d'un titre : descripteur + capabilities déclarées (TOML) + feature-matrix calculée (auth admin requis)", "admin"))
+	huma.Get(api, "/titles/{slug}/toml-draft", h.handleTOMLDraft, humacore.Op(
+		"getAdminTitleTOMLDraft",
+		"Brouillon capabilities.toml collable pour un titre — ZÉRO écriture serveur (D10, auth admin requis)",
+		"admin"))
 }
 
 // adminTitleSlugInput : path param {slug} commun à Detail et TOMLDraft.

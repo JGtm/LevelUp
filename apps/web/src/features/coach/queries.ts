@@ -10,6 +10,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 import type {
   AcceptResponse,
@@ -26,8 +27,9 @@ import type {
  * qui décide d'afficher ou non la carte).
  */
 export function useCoachProposals(playerSlug: string, status: ProposalStatus | undefined) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
-    queryKey: queryKeys.coachProposals(playerSlug, status),
+    queryKey: queryKeys.coachProposals(playerSlug, titleSlug, status),
     queryFn: () => {
       const qs = status ? `?status=${status}` : ''
       return api.get<ProposalsListResponse>(`/players/${playerSlug}/coach/proposals${qs}`)

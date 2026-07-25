@@ -360,6 +360,46 @@ en = "Open match"
 fr = "Véhicules détruits"
 en = "Vehicles destroyed"
 
+[synthesis.kpi.objectives_title]
+fr = "Objectifs"
+en = "Objectives"
+
+[synthesis.kpi.flag_captures]
+fr = "Captures de drapeau"
+en = "Flag captures"
+
+[synthesis.kpi.flag_returns]
+fr = "Retours de drapeau"
+en = "Flag returns"
+
+[synthesis.kpi.flag_steals]
+fr = "Vols de drapeau"
+en = "Flag steals"
+
+[synthesis.kpi.flag_carrier_time]
+fr = "Temps porteur (drapeau)"
+en = "Flag carrier time"
+
+[synthesis.kpi.zone_captures]
+fr = "Zones capturées"
+en = "Zones captured"
+
+[synthesis.kpi.zone_secures]
+fr = "Zones sécurisées"
+en = "Zones secured"
+
+[synthesis.kpi.zone_time]
+fr = "Temps en zone"
+en = "Time in zones"
+
+[synthesis.kpi.skull_grabs]
+fr = "Récupérations du crâne"
+en = "Skull grabs"
+
+[synthesis.kpi.skull_carrier_time]
+fr = "Temps porteur (crâne)"
+en = "Skull carrier time"
+
 [synthesis.empty.synthesis_unavailable]
 fr = "Synthèse indisponible"
 en = "Synthesis unavailable"

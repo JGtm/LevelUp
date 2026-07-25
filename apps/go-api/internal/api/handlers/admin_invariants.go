@@ -41,9 +41,9 @@ func NewAdminInvariantsHandler(run InvariantsRunner) *AdminInvariantsHandler {
 
 // Mount enregistre la route via Huma sur le sous-routeur chi (préfixe /admin +
 // middleware RequireAuth/RequireAdmin + NoStore hérités).
-func (h *AdminInvariantsHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Get(api, "/invariants", h.handleGet)
+func (h *AdminInvariantsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Get(api, "/invariants", h.handleGet, humacore.Op("getAdminInvariants", "Intégrité des données — invariants du pipeline sync par joueur (auth admin requis)", "admin"))
 }
 
 // adminInvariantsInput : ?title= optionnel (défaut : titre par défaut).

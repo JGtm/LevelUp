@@ -77,9 +77,9 @@ func NewMediaFeedVersionHandler() *MediaFeedVersionHandler {
 }
 
 // Mount enregistre GET /media/feed-version via Huma sur le routeur chi fourni.
-func (h *MediaFeedVersionHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Get(api, "/media/feed-version", h.handleFeedVersion)
+func (h *MediaFeedVersionHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Get(api, "/media/feed-version", h.handleFeedVersion, humacore.Op("getMediaFeedVersion", "Version du feed médias (pour invalidation cache front)", "media"))
 }
 
 // mediaFeedVersionOutput : corps {"version": <int64>} — même forme que

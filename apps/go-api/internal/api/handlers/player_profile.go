@@ -60,10 +60,10 @@ func (h *PlayerProfileHandler) WithAwardMapping(set *mappings.AwardMappingSet) *
 
 // Mount enregistre /profile via Huma (Phase 3b) sur le sous-routeur chi
 // (préfixe /players/{player_slug} + middleware ownership/title hérités).
-func (h *PlayerProfileHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Get(api, "/profile", h.handleGetProfile)
-	huma.Get(api, "/activity-calendar", h.handleGetActivityCalendar)
+func (h *PlayerProfileHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Get(api, "/profile", h.handleGetProfile, humacore.Op("getPlayerProfile", "Profil joueur complet (radar 6 axes, style FK/FD, tier LUSR + 8 composantes, leviers, suggestions)", "progression"))
+	huma.Get(api, "/activity-calendar", h.handleGetActivityCalendar, humacore.Op("getActivityCalendar", "Calendrier d'activité : nombre de matchs par jour UTC sur la fenêtre (jours vides omis)", "progression"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

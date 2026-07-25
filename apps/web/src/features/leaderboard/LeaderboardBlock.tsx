@@ -27,6 +27,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { MetricWithTrend } from '@/components/ui/metric-trend'
+import { SortableTh } from '@/components/ui/sortable-th'
 import type { LeaderboardEntry } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
@@ -231,8 +232,6 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
   // scoreboard : meilleur en vert, pire en rouge ; cf. LeaderboardBlock.highlight).
   const extremes = useMemo(() => computeColumnExtremes(entries), [entries])
 
-  const sortIcon = (key: string): string => (sortKey === key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '')
-
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -303,31 +302,31 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
             <table className="w-full">
             <thead>
               <tr className="border-b bg-muted text-[11px] uppercase tracking-wide text-muted-foreground divide-x divide-border">
-                <SortableTh label="#" className="w-12 text-center" onClick={() => toggleSort('rank')} suffix={sortIcon('rank')} />
+                <SortableTh label="#" active={sortKey === 'rank'} dir={sortDir} onClick={() => toggleSort('rank')} className="px-3 py-2 font-medium w-12 text-center" />
                 <th className="px-3 py-2 text-left font-medium">{t('common.leaderboard.col_player')}</th>
                 {isWorld ? (
                   <>
                     <th className="px-3 py-2 text-center font-medium">{t('common.leaderboard.col_tier')}</th>
-                    <SortableTh label={t('common.leaderboard.col_csr')} className="text-center" onClick={() => toggleSort('csr')} suffix={sortIcon('csr')} />
+                    <SortableTh label={t('common.leaderboard.col_csr')} active={sortKey === 'csr'} dir={sortDir} onClick={() => toggleSort('csr')} className="px-3 py-2 font-medium text-center" />
                     {hasEnrichment && (
                       <>
-                        <SortableTh label={t('common.leaderboard.col_kda')} className={`text-center ${COL_HIDE_SM}`} onClick={() => toggleSort('kda')} suffix={sortIcon('kda')} />
-                        <SortableTh label={t('common.leaderboard.col_frags')} className={`text-center ${COL_HIDE_SM}`} onClick={() => toggleSort('kills')} suffix={sortIcon('kills')} />
-                        <SortableTh label={t('common.leaderboard.col_deaths')} className={`text-center ${COL_HIDE_SM}`} onClick={() => toggleSort('deaths')} suffix={sortIcon('deaths')} />
-                        <SortableTh label={t('common.leaderboard.col_assists')} className={`text-center ${COL_HIDE_SM}`} onClick={() => toggleSort('assists')} suffix={sortIcon('assists')} />
-                        <SortableTh label={t('common.leaderboard.col_win_rate')} className={`text-center ${COL_HIDE_SM}`} onClick={() => toggleSort('win_rate')} suffix={sortIcon('win_rate')} />
-                        <SortableTh label={t('common.leaderboard.col_matches')} className={`text-center ${COL_HIDE_LG}`} onClick={() => toggleSort('world_matches')} suffix={sortIcon('world_matches')} />
-                        <SortableTh label={t('common.leaderboard.col_accuracy')} className={`text-center ${COL_HIDE_LG}`} onClick={() => toggleSort('accuracy')} suffix={sortIcon('accuracy')} />
-                        <SortableTh label={t('common.leaderboard.col_dmg_per_kill')} className={`text-center ${COL_HIDE_LG}`} onClick={() => toggleSort('dmg_per_kill')} suffix={sortIcon('dmg_per_kill')} />
-                        <SortableTh label={t('common.leaderboard.col_dmg_per_death')} className={`text-center ${COL_HIDE_LG}`} onClick={() => toggleSort('dmg_per_death')} suffix={sortIcon('dmg_per_death')} />
+                        <SortableTh label={t('common.leaderboard.col_kda')} active={sortKey === 'kda'} dir={sortDir} onClick={() => toggleSort('kda')} className={`px-3 py-2 font-medium text-center ${COL_HIDE_SM}`} />
+                        <SortableTh label={t('common.leaderboard.col_frags')} active={sortKey === 'kills'} dir={sortDir} onClick={() => toggleSort('kills')} className={`px-3 py-2 font-medium text-center ${COL_HIDE_SM}`} />
+                        <SortableTh label={t('common.leaderboard.col_deaths')} active={sortKey === 'deaths'} dir={sortDir} onClick={() => toggleSort('deaths')} className={`px-3 py-2 font-medium text-center ${COL_HIDE_SM}`} />
+                        <SortableTh label={t('common.leaderboard.col_assists')} active={sortKey === 'assists'} dir={sortDir} onClick={() => toggleSort('assists')} className={`px-3 py-2 font-medium text-center ${COL_HIDE_SM}`} />
+                        <SortableTh label={t('common.leaderboard.col_win_rate')} active={sortKey === 'win_rate'} dir={sortDir} onClick={() => toggleSort('win_rate')} className={`px-3 py-2 font-medium text-center ${COL_HIDE_SM}`} />
+                        <SortableTh label={t('common.leaderboard.col_matches')} active={sortKey === 'world_matches'} dir={sortDir} onClick={() => toggleSort('world_matches')} className={`px-3 py-2 font-medium text-center ${COL_HIDE_LG}`} />
+                        <SortableTh label={t('common.leaderboard.col_accuracy')} active={sortKey === 'accuracy'} dir={sortDir} onClick={() => toggleSort('accuracy')} className={`px-3 py-2 font-medium text-center ${COL_HIDE_LG}`} />
+                        <SortableTh label={t('common.leaderboard.col_dmg_per_kill')} active={sortKey === 'dmg_per_kill'} dir={sortDir} onClick={() => toggleSort('dmg_per_kill')} className={`px-3 py-2 font-medium text-center ${COL_HIDE_LG}`} />
+                        <SortableTh label={t('common.leaderboard.col_dmg_per_death')} active={sortKey === 'dmg_per_death'} dir={sortDir} onClick={() => toggleSort('dmg_per_death')} className={`px-3 py-2 font-medium text-center ${COL_HIDE_LG}`} />
                         <th className={`px-3 py-2 text-center font-medium ${COL_HIDE_LG}`}>{t('common.leaderboard.col_rank_delta')}</th>
                       </>
                     )}
                   </>
                 ) : (
                   <>
-                    <SortableTh label={t('common.leaderboard.col_matches')} className="text-center" onClick={() => toggleSort('matches')} suffix={sortIcon('matches')} />
-                    <SortableTh label={t('common.leaderboard.col_value')} className="text-right" onClick={() => toggleSort('value')} suffix={sortIcon('value')} />
+                    <SortableTh label={t('common.leaderboard.col_matches')} active={sortKey === 'matches'} dir={sortDir} onClick={() => toggleSort('matches')} className="px-3 py-2 font-medium text-center" />
+                    <SortableTh label={t('common.leaderboard.col_value')} active={sortKey === 'value'} dir={sortDir} onClick={() => toggleSort('value')} className="px-3 py-2 font-medium text-right" />
                   </>
                 )}
               </tr>
@@ -354,18 +353,6 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
         )}
       </CardContent>
     </Card>
-  )
-}
-
-/** En-tête de colonne triable. */
-function SortableTh({ label, className, onClick, suffix }: { label: string; className?: string; onClick: () => void; suffix: string }) {
-  return (
-    <th className={`px-3 py-2 font-medium ${className ?? ''}`}>
-      <button type="button" onClick={onClick} className="transition-colors hover:text-foreground">
-        {label}
-        {suffix}
-      </button>
-    </th>
   )
 }
 

@@ -4,6 +4,7 @@
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
+import { useAppShellStore } from '@/stores/appShellStore'
 import type {
   ExplorerMatchesQueryRequest,
   ExplorerMatchesQueryResponse,
@@ -17,6 +18,7 @@ export function useExplorerMatches(
   filterHash: string,
   enabled: boolean = true,
 ) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const perfTiers = request.perf_tiers ?? []
   const skillTiers = request.skill_tiers ?? []
   const rankedContext = request.ranked_context ?? ''
@@ -33,7 +35,7 @@ export function useExplorerMatches(
     [...(request.match_ids ?? [])].sort().join(','),
   ].join('|')
   return useQuery({
-    queryKey: queryKeys.explorer(playerSlug, filterHash, perfTiers, skillTiers, rankedContext, outcomeFilter, matchFiltersKey),
+    queryKey: queryKeys.explorer(playerSlug, titleSlug, filterHash, perfTiers, skillTiers, rankedContext, outcomeFilter, matchFiltersKey),
     queryFn: () =>
       api.post<ExplorerMatchesQueryResponse>(
         `/players/${playerSlug}/pages/explorer/matches-query`,
@@ -46,9 +48,11 @@ export function useExplorerMatches(
 }
 
 export function useExplorerPlayer(playerSlug: string, request: ExplorerPlayerQueryRequest) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
     queryKey: queryKeys.explorerPlayer(
       playerSlug,
+      titleSlug,
       request.target_gamertag,
       request.target_xuid ?? '',
       request.page ?? 1,

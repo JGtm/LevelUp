@@ -100,6 +100,11 @@ type SharedBatch struct {
 	// MatchCSRs : CSR de tous les participants d'un match ranked (lobby
 	// context pour match view / compare). Vide pour les matchs non-ranked.
 	MatchCSRs []MatchCSRInsert `json:"match_csrs,omitempty"`
+
+	// ObjectiveStats : stats objectifs par joueur (CTF/Zones/Oddball). 1 row par
+	// participant d'un match à objectif ; vide pour Slayer et les titres qui
+	// n'exposent pas ces stats (Halo 5 = capability not_exposed).
+	ObjectiveStats []ObjectiveStatsInsert `json:"objective_stats,omitempty"`
 }
 
 // PlayerBatch contient les écritures pour stats.duckdb (du joueur Player).

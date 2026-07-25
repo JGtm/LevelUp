@@ -87,16 +87,42 @@ func NewAdminDataQualityHandler(
 // Mount enregistre les 7 routes via Huma sur le sous-routeur chi (préfixe /admin
 // + middleware RequireAuth/RequireAdmin hérités). Les corps {dry_run} des actions
 // backfill/reset sont OPTIONNELS (MarkRequestBodyOptional) — corps absent → run réel.
-func (h *AdminDataQualityHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Get(api, "/monitoring/data-quality", h.handleGetCounts)
-	huma.Get(api, "/monitoring/data-quality/issues", h.handleGetIssues)
-	huma.Post(api, "/actions/registry-names/backfill", h.handleRegistryNamesBackfill)
+func (h *AdminDataQualityHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Get(api, "/monitoring/data-quality", h.handleGetCounts, humacore.Op(
+		"getAdminMonitoringDataQuality",
+		"Dashboard monitoring — compteurs d'inconnus data (assets UUID bruts, modes non traduits, playlists hors catalogue, xuids orphelins, lying bits) "+
+			"(auth admin requis)",
+		"admin"))
+	huma.Get(api, "/monitoring/data-quality/issues", h.handleGetIssues, humacore.Op(
+		"getAdminMonitoringDataQualityIssues",
+		"Dashboard monitoring — listes détaillées des inconnus d'un kind (alimente les formulaires de résolution) (auth admin requis)",
+		"admin"))
+	huma.Post(api, "/actions/registry-names/backfill", h.handleRegistryNamesBackfill, humacore.Op(
+		"postAdminActionRegistryNamesBackfill",
+		"Action admin — résout les assets UUID bruts de match_registry via metadata.asset_translations (dry_run supporté, writer shared sérialisé "+
+			"dblease) (auth admin requis)",
+		"admin"))
 	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/actions/registry-names/backfill")
-	huma.Post(api, "/actions/translations/mode", h.handleResolveModeTranslation)
-	huma.Post(api, "/actions/translations/asset", h.handleResolveAssetTranslation)
-	huma.Post(api, "/actions/catalog/refresh", h.handleRunCatalogRefresh)
-	huma.Post(api, "/actions/lying-bits/reset", h.handleRunLyingBitsReset)
+	huma.Post(api, "/actions/translations/mode", h.handleResolveModeTranslation, humacore.Op(
+		"postAdminActionModeTranslation",
+		"Action admin — upsert mode_name_tr[fr] pour un mode normalisé (résout un mode non traduit, effet immédiat) (auth admin requis)",
+		"admin"))
+	huma.Post(api, "/actions/translations/asset", h.handleResolveAssetTranslation, humacore.Op(
+		"postAdminActionAssetTranslation",
+		"Action admin — upsert asset_translations (en-US et/ou fr-FR) pour un asset playlist/map/pair/game_variant (résolution effective des UUID inconnus) "+
+			"(auth admin requis)",
+		"admin"))
+	huma.Post(api, "/actions/catalog/refresh", h.handleRunCatalogRefresh, humacore.Op(
+		"postAdminActionCatalogRefresh",
+		"Action admin — seed les tables catalog metadata (playlists/maps/pairs/variants) depuis match_registry, zéro réseau (le drain DiscoveryUGC reste "+
+			"CLI-only) (auth admin requis)",
+		"admin"))
+	huma.Post(api, "/actions/lying-bits/reset", h.handleRunLyingBitsReset, humacore.Op(
+		"postAdminActionLyingBitsReset",
+		"Action admin — clear les bits backfill_completed menteurs de match_registry (events/weapons posés mais tables vides) + events_loaded menteur, "+
+			"débloque le heal au prochain sync (dry_run supporté, writer shared sérialisé dblease) (auth admin requis)",
+		"admin"))
 	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/actions/lying-bits/reset")
 }
 

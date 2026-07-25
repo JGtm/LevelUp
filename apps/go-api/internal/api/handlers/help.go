@@ -69,9 +69,9 @@ func NewHelpHandler(builder ReleaseNotesBuilder, cacheDir string) *HelpHandler {
 }
 
 // Mount enregistre GET /help/release-notes via Huma sur le routeur chi.
-func (h *HelpHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Get(api, "/help/release-notes", h.handleGetReleaseNotes)
+func (h *HelpHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Get(api, "/help/release-notes", h.handleGetReleaseNotes, humacore.Op("getReleaseNotes", "Notes de release dérivées du git log", "health"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

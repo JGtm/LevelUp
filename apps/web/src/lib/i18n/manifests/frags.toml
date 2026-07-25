@@ -120,3 +120,27 @@ en = "Ground pound"
 [frags.role.shoulder_bash]
 fr = "Charge spartane"
 en = "Shoulder bash"
+
+# ── Rôles (niveau 2) — TYPE de grenade (classe Grenade, V72-15.2) ──────────────
+# Libellés COURTS (le type s'affiche sous l'arc « Grenade », le mot « grenade » est
+# déjà porté par la classe). grenade_other = familles non typées + résidu de
+# réconciliation vers le total API.
+[frags.role.grenade_frag]
+fr = "Fragmentation"
+en = "Fragmentation"
+
+[frags.role.grenade_plasma]
+fr = "Plasma"
+en = "Plasma"
+
+[frags.role.grenade_dynamo]
+fr = "Dynamo"
+en = "Dynamo"
+
+[frags.role.grenade_splinter]
+fr = "Splinter"
+en = "Splinter"
+
+[frags.role.grenade_other]
+fr = "Autre grenade"
+en = "Other grenade"

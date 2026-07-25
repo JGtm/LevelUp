@@ -84,11 +84,11 @@ export function ConvergencePlayersTable({ report }: { report: AdminConvergenceRe
         <thead>
           <tr className="border-b bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
             <SortableTh label={tA('admin.convergence.col_player')} active={sortKey === 'gamertag'} dir={sortDir} onClick={() => toggleSort('gamertag')} className="px-3 py-2 font-medium" />
-            <SortableTh label={tA('admin.convergence.kpi_enrichment')} active={sortKey === 'missing_enrichment'} dir={sortDir} onClick={() => toggleSort('missing_enrichment')} className="px-3 py-2 font-medium text-right" />
-            <SortableTh label={tA('admin.convergence.kpi_psa')} active={sortKey === 'missing_psa'} dir={sortDir} onClick={() => toggleSort('missing_psa')} className="px-3 py-2 font-medium text-right" />
-            <SortableTh label={tA('admin.convergence.kpi_events')} active={sortKey === 'missing_events'} dir={sortDir} onClick={() => toggleSort('missing_events')} className="px-3 py-2 font-medium text-right" />
-            <SortableTh label={tA('admin.convergence.kpi_weapons')} active={sortKey === 'missing_weapons'} dir={sortDir} onClick={() => toggleSort('missing_weapons')} className="px-3 py-2 font-medium text-right" />
-            <SortableTh label={tA('admin.convergence.col_total')} active={sortKey === 'total'} dir={sortDir} onClick={() => toggleSort('total')} className="px-3 py-2 font-medium text-right" />
+            <SortableTh label={tA('admin.convergence.kpi_enrichment')} active={sortKey === 'missing_enrichment'} dir={sortDir} onClick={() => toggleSort('missing_enrichment')} className="px-3 py-2 font-medium text-right" tooltip={tA('admin.convergence.kpi_enrichment_tooltip')} />
+            <SortableTh label={tA('admin.convergence.kpi_psa')} active={sortKey === 'missing_psa'} dir={sortDir} onClick={() => toggleSort('missing_psa')} className="px-3 py-2 font-medium text-right" tooltip={tA('admin.convergence.kpi_psa_tooltip')} />
+            <SortableTh label={tA('admin.convergence.kpi_events')} active={sortKey === 'missing_events'} dir={sortDir} onClick={() => toggleSort('missing_events')} className="px-3 py-2 font-medium text-right" tooltip={tA('admin.convergence.kpi_events_tooltip')} />
+            <SortableTh label={tA('admin.convergence.kpi_weapons')} active={sortKey === 'missing_weapons'} dir={sortDir} onClick={() => toggleSort('missing_weapons')} className="px-3 py-2 font-medium text-right" tooltip={tA('admin.convergence.kpi_weapons_tooltip')} />
+            <SortableTh label={tA('admin.convergence.col_total')} active={sortKey === 'total'} dir={sortDir} onClick={() => toggleSort('total')} className="px-3 py-2 font-medium text-right" tooltip={tA('admin.convergence.col_total_tooltip')} />
             <th className="px-3 py-2" />
           </tr>
         </thead>

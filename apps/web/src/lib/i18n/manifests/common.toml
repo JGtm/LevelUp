@@ -995,6 +995,27 @@ en = "Frequent teammates"
 fr = "Aucun joueur trouvé pour \""
 en = "No player found for \""
 
+# Repli live explicite (V72-24) : bouton affiché quand la recherche locale ne
+# trouve pas le joueur, déclenchant la résolution Xbox (round-trip ~2-3 s).
+[common.gamertag.search_on_xbox]
+fr = "Rechercher sur Xbox"
+en = "Search on Xbox"
+
+[common.gamertag.searching_xbox]
+fr = "Recherche sur Xbox…"
+en = "Searching on Xbox…"
+
+# Retour explicite quand le repli live a abouti SANS aucun joueur : sans ce
+# message l'utilisateur voit le bouton disparaître sans rien afficher et croit
+# que la recherche n'a pas fonctionné.
+[common.gamertag.no_xbox_result]
+fr = "Aucun résultat Xbox"
+en = "No Xbox result"
+
+[common.gamertag.xbox_badge]
+fr = "Xbox"
+en = "Xbox"
+
 # ─── Info tooltip ───────────────────────────────────────────────────────
 
 [common.tooltip.more_info_aria]
@@ -1969,6 +1990,10 @@ en = "Synergies"
 [common.nav.tab_contributions]
 fr = "Contributions"
 en = "Contributions"
+
+[common.nav.tab_dynamique]
+fr = "Dynamique"
+en = "Dynamics"
 
 [common.nav.tab_progression]
 fr = "Progression"

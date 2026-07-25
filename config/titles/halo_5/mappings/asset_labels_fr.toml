@@ -9,33 +9,11 @@
 # l'EN (aucune traduction inventée). Identiques EN/FR volontairement omis (DMR,
 # Magnum, Needler, Railgun, SAW, Hydra…).
 
-[weapons]
-"Assault Rifle" = "Fusil d'assaut"
-"Battle Rifle" = "Fusil de combat"
-"SMG" = "Mitraillette"
-"Shotgun" = "Fusil à pompe"
-"Sniper Rifle" = "Fusil de sniper"
-"Rocket Launcher" = "Lance-roquettes"
-"Spartan Laser" = "Laser Spartan"
-"Grenade Launcher" = "Lance-grenades"
-"Frag Grenade" = "Grenade à fragmentation"
-"Carbine" = "Carabine covenante"
-"Energy Sword" = "Épée à énergie"
-"Plasma Pistol" = "Pistolet à plasma"
-"Brute Plasma Rifle" = "Fusil à plasma brute"
-"Fuel Rod Cannon" = "Canon à combustible"
-"Storm Rifle" = "Fusil Storm"
-"Beam Rifle" = "Fusil de sniper covenant"
-"Plasma Caster" = "Grenadier-plasma"
-"Plasma Grenade" = "Grenade à plasma"
-"Gravity Hammer" = "Marteau antigravité"
-"Light Rifle" = "Fusil léger"
-"Binary Rifle" = "Fusil binaire"
-"Boltshot" = "Pistolet à particules"
-"Suppressor" = "Éradicateur"
-"Scattershot" = "Répercuteur"
-"Incineration Cannon" = "Canon incendiaire"
-"Sentinel Beam" = "Laser de Sentinelle"
+# [weapons] RETIRÉ (V72-06) : les noms d'armes FR sont désormais la SOURCE UNIQUE
+# keyée par weapon_key dans config/titles/halo_5/mappings/weapon_names.toml (résolu
+# via weapon_id -> weapon_ids -> weapon_key). Les traductions confirmées de cette
+# section y ont été migrées. Ne PAS ré-ajouter [weapons] ici (clé = nom EN brut,
+# fragile — c'est précisément la source de mismatch que V72-06 supprime).
 
 [medals]
 # 184 médailles (wiki.halo.fr, pattern FR ( EN )). Reste EN = noms non listés/non matchés.

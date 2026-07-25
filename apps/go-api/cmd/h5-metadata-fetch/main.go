@@ -43,8 +43,14 @@ const defaultConfigRoot = "c:/Users/Guillaume/Downloads/Scripts/levelup-multitit
 
 // frLabels — overrides de noms FR (localisation officielle Halo 5), versionnés dans
 // config/titles/halo_5/mappings/asset_labels_fr.toml. Clé = nom EN exact de l'API.
+//
+// PAS de champ Weapons : la section [weapons] a été RETIRÉE du TOML par V72-06 —
+// les noms d'armes FR sont la source unique de weapon_names.toml, keyée par
+// weapon_key (résolue via weapon_id → weapon_ids → weapon_key) et non par nom EN
+// brut. Le champ et sa branche d'override étaient donc morts (map toujours vide) ;
+// supprimés à la contre-revue V7.2. Ne pas les réintroduire : le keying par nom EN
+// est précisément la source de mismatch que V72-06 supprime.
 type frLabels struct {
-	Weapons           map[string]string `toml:"weapons"`
 	Medals            map[string]string `toml:"medals"`
 	Maps              map[string]string `toml:"maps"`
 	MedalDescriptions map[string]string `toml:"medal_descriptions"`
@@ -65,15 +71,12 @@ type mapIDOverride struct {
 // loadFRLabels lit les overrides FR. Fichier absent / illisible → maps vides
 // (name_fr = name_en, dégradation propre). Best-effort.
 func loadFRLabels(path string) frLabels {
-	fr := frLabels{Weapons: map[string]string{}, Medals: map[string]string{}, Maps: map[string]string{}, MedalDescriptions: map[string]string{}, Commendations: map[string]string{}}
+	fr := frLabels{Medals: map[string]string{}, Maps: map[string]string{}, MedalDescriptions: map[string]string{}, Commendations: map[string]string{}}
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return fr
 	}
 	_ = toml.Unmarshal(b, &fr)
-	if fr.Weapons == nil {
-		fr.Weapons = map[string]string{}
-	}
 	if fr.Medals == nil {
 		fr.Medals = map[string]string{}
 	}
@@ -167,13 +170,13 @@ func main() {
 		configRoot = positional[0]
 	}
 	fr := loadFRLabels(filepath.Join(configRoot, "config", "titles", halo5.TitleSlug, "mappings", "asset_labels_fr.toml"))
-	fmt.Printf("FR overrides: %d armes, %d médailles, %d maps (nom EN), %d maps (par id), %d commendations\n",
-		len(fr.Weapons), len(fr.Medals), len(fr.Maps), len(fr.MapsByID), len(fr.Commendations))
+	fmt.Printf("FR overrides: %d médailles, %d maps (nom EN), %d maps (par id), %d commendations\n",
+		len(fr.Medals), len(fr.Maps), len(fr.MapsByID), len(fr.Commendations))
 
 	if !overridesOnly {
 		seedMedals(db, key, fr.Medals, fr.MedalDescriptions)
 		seedMaps(db, key)
-		seedWeapons(db, key, fr.Weapons)
+		seedWeapons(db, key)
 		seedCSRDesignations(db, key)
 		seedTeamColors(db, key)
 		seedCommendations(db, key, fr.Commendations)
@@ -462,7 +465,7 @@ type apiWeapon struct {
 
 // fetchWeaponsFR refetch /weapons en fr-FR (l'API Metadata HONORE Accept-Language, cf.
 // fetchMetaLang) et indexe le nom FR par id d'arme. Best-effort : endpoint FR en échec
-// ou parse KO -> map vide ; chooseFR retombera alors sur l'override TOML puis l'EN.
+// ou parse KO -> map vide ; seedWeapons retombera alors sur le nom EN.
 func fetchWeaponsFR(key string) map[string]string {
 	out := map[string]string{}
 	body, err := fetchMetaLang(key, "weapons", langFR)
@@ -485,10 +488,14 @@ func fetchWeaponsFR(key string) map[string]string {
 
 // seedWeapons peuple weapon_labels (id -> nom EN/FR, icône, type) depuis l'API
 // Metadata officielle. name_fr : la localisation FR vient de l'API elle-même (pass
-// fr-FR via fetchWeaponsFR), les overrides TOML restant prioritaires (cf. chooseFR) ;
-// EN en dernier repli (jamais name_fr vide). Sans ce pass FR, les armes sans override
-// TOML restaient en anglais (« lightrifle », « FRAG GRENADE ») côté match view.
-func seedWeapons(db *sql.DB, key string, fr map[string]string) {
+// fr-FR via fetchWeaponsFR) ; EN en dernier repli (jamais name_fr vide). Sans ce
+// pass FR, les armes restaient en anglais (« lightrifle », « FRAG GRENADE ») côté
+// match view.
+//
+// AUCUN override TOML ici (contre-revue V7.2) : la section [weapons] de
+// asset_labels_fr.toml a été retirée par V72-06 au profit de weapon_names.toml
+// keyé par weapon_key — la branche d'override par nom EN était inatteignable.
+func seedWeapons(db *sql.DB, key string) {
 	body, err := fetchMeta(key, "weapons")
 	if err != nil {
 		fmt.Printf("weapons: SKIP (%v)\n", err)
@@ -508,7 +515,10 @@ func seedWeapons(db *sql.DB, key string, fr map[string]string) {
 		if perr != nil {
 			continue
 		}
-		nameFR := chooseFR(fr, w.Name, frByID[w.ID])
+		// Pas d'override TOML pour les armes (cf. en-tête) : nom FR de l'API,
+		// sinon EN. chooseFR reste la SEULE implémentation de cette cascade
+		// (override nil = branche neutre) — pas de 2e variante à maintenir.
+		nameFR := chooseFR(nil, w.Name, frByID[w.ID])
 		_, err := db.Exec(`INSERT OR REPLACE INTO weapon_labels
 			(weapon_id, name_en, name_fr, icon_url, weapon_type) VALUES (?,?,?,?,?)`,
 			id, w.Name, nameFR, w.LargeIconImageURL, w.Type)
@@ -724,8 +734,8 @@ func fetchCommendationsFR(key string) map[string]commFR {
 // seedCommendations peuple commendation_definitions depuis l'API Metadata officielle
 // (/commendations) → nom/description/icône CDN + type + catégorie, par UUID. La clé
 // `id` est exactement le ProgressiveCommendationDeltas[].Id du carnage (jointure
-// read-time pour peupler canonical.Commendation Name/IconURL). Tous les types
-// (Progressive/Meta/Daily) sont seedés.
+// read-time pour peupler Name/IconURL des commendations, cf.
+// halo_5.enrichCommendationTotals). Tous les types (Progressive/Meta/Daily) sont seedés.
 //
 // name_fr / description_fr : la localisation FR vient de l'API elle-même (pass fr-FR
 // via fetchCommendationsFR), les overrides TOML restant prioritaires (cf. chooseFR).

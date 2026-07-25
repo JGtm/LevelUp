@@ -19,7 +19,7 @@ import { resolveSkillPeakState } from '@/features/home/skillPeakState'
 import { getSpartanIdentityText } from '@/features/home/spartanIdentity.i18n'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { intlLocale } from '@/lib/formatters'
-import { useCapability } from '@/lib/capabilities/capabilities'
+import { useCapabilityStrict } from '@/lib/capabilities/capabilities'
 import type { HomeSpartanIdentity } from '@/lib/api/types'
 import { RecoloredMask } from '@/features/spartan-customizer/RecoloredMask'
 import { useSpartanAppearance } from '@/features/spartan-customizer/store'
@@ -48,14 +48,13 @@ export function ExplorerTargetIdentityBanner({
   // Halo 5 : bandeau composé (emblème carré + nameplate recolorisés, apparence
   // choisie-ou-défaut #160) — parité avec HomeSpartanIdentityBanner.
   const currentTitleSlug = useAppShellStore((s) => s.currentTitleSlug)
-  // Gating par CAPABILITY (pas par slug) — parité HomeSpartanIdentityBanner.
-  const synthesizeBanner = useCapability('spartan_customizer')
-  const spartanApp = useSpartanAppearance(currentTitleSlug)
-  const spartanColors = {
-    primary: spartanApp.primary,
-    secondary: spartanApp.secondary,
-    tertiary: spartanApp.tertiary,
-  }
+  // Gating STRICT (fail-closed) par CAPABILITY — parité HomeSpartanIdentityBanner :
+  // pas de synthèse de visuels d'un autre titre pendant le re-bootstrap (fuite V72-29).
+  const synthesizeBanner = useCapabilityStrict('spartan_customizer')
+  // Apparence de la CIBLE du bandeau (jamais le propriétaire) : clé d'isolation = son
+  // gamertag (identifiant stable du joueur affiché en mode Explorer). Couleurs
+  // emblème/bannière indépendantes (V72-14).
+  const spartanApp = useSpartanAppearance(currentTitleSlug, gamertag)
   const spartanEmblemId = spartanApp.emblemId ?? '160'
   const spartanNameplateId = spartanApp.nameplateId ?? '160'
 
@@ -83,7 +82,7 @@ export function ExplorerTargetIdentityBanner({
           <div className="relative overflow-hidden">
             <RecoloredMask
               src={`/titles/${currentTitleSlug}/spartan/nameplates/${spartanNameplateId}.png`}
-              colors={spartanColors}
+              colors={spartanApp.nameplateColors}
               alt=""
               className="pointer-events-none absolute inset-0 h-full w-full object-cover"
             />
@@ -94,7 +93,7 @@ export function ExplorerTargetIdentityBanner({
             <div className="relative z-[2] flex min-h-[7rem] items-center gap-4 px-5 py-5">
               <RecoloredMask
                 src={`/titles/${currentTitleSlug}/spartan/emblems/${spartanEmblemId}.png`}
-                colors={spartanColors}
+                colors={spartanApp.emblemColors}
                 alt=""
                 className="h-16 w-16 shrink-0 object-contain drop-shadow-[0_2px_6px_rgba(8,15,28,0.5)] sm:h-20 sm:w-20"
               />
@@ -154,7 +153,7 @@ export function ExplorerTargetIdentityBanner({
             <>
               <RecoloredMask
                 src={`/titles/${currentTitleSlug}/spartan/nameplates/${spartanNameplateId}.png`}
-                colors={spartanColors}
+                colors={spartanApp.nameplateColors}
                 alt=""
                 className="pointer-events-none absolute inset-0 h-full w-full object-cover"
               />
@@ -200,7 +199,7 @@ export function ExplorerTargetIdentityBanner({
               {synthesizeBanner ? (
                 <RecoloredMask
                   src={`/titles/${currentTitleSlug}/spartan/emblems/${spartanEmblemId}.png`}
-                  colors={spartanColors}
+                  colors={spartanApp.emblemColors}
                   alt=""
                   className="h-16 w-16 object-contain drop-shadow-[0_2px_6px_rgba(8,15,28,0.5)] sm:h-20 sm:w-20"
                 />

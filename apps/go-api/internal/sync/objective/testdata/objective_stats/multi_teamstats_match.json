@@ -1,0 +1,86 @@
+{
+  "MatchId": "00000000-0000-0000-0000-0000000000mt",
+  "MatchInfo": { "Duration": "PT11M03.000S" },
+  "Players": [
+    {
+      "_comment": "PlayerTeamStats MULTI-ENTREES : les 2 entrees portent un bloc Stats. La PREMIERE gagne (findStatsBundle).",
+      "PlayerId": "xuid(2500000000000001)",
+      "PlayerType": 1,
+      "LastTeamId": 0,
+      "PlayerTeamStats": [
+        {
+          "TeamId": 0,
+          "Stats": {
+            "CoreStats": { "Kills": 14, "Deaths": 9 },
+            "CaptureTheFlagStats": {
+              "FlagCaptures": 4,
+              "FlagGrabs": 6,
+              "TimeAsFlagCarrier": "PT1M10S"
+            }
+          }
+        },
+        {
+          "TeamId": 1,
+          "Stats": {
+            "CoreStats": { "Kills": 1, "Deaths": 1 },
+            "CaptureTheFlagStats": {
+              "FlagCaptures": 99,
+              "FlagGrabs": 99,
+              "TimeAsFlagCarrier": "PT9M99S"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "_comment": "Premiere entree SANS bloc Stats : c'est le premier bloc Stats TROUVE qui est retenu, pas l'index 0.",
+      "PlayerId": "xuid(2500000000000002)",
+      "PlayerType": 1,
+      "LastTeamId": 1,
+      "PlayerTeamStats": [
+        { "TeamId": 0 },
+        {
+          "TeamId": 1,
+          "Stats": {
+            "CoreStats": { "Kills": 3, "Deaths": 11 },
+            "CaptureTheFlagStats": {
+              "FlagCaptures": 7,
+              "FlagGrabs": 8,
+              "TimeAsFlagCarrier": "PT30S"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "_comment": "Bot, forme integrale : la cle doit rester bid(3.0) — identique a match_participants (predicat LIKE 'bid(%').",
+      "PlayerId": "bid(3.0)",
+      "PlayerType": 2,
+      "LastTeamId": 1,
+      "PlayerTeamStats": [
+        {
+          "TeamId": 1,
+          "Stats": {
+            "CoreStats": { "Kills": 2, "Deaths": 7 },
+            "CaptureTheFlagStats": { "FlagCaptures": 1, "FlagGrabs": 2 }
+          }
+        }
+      ]
+    },
+    {
+      "_comment": "Bot, forme tronquee renvoyee par l'API (parenthese fermante absente) : normalisee en bid(4.0).",
+      "PlayerId": "bid(4.0",
+      "PlayerType": 2,
+      "LastTeamId": 1,
+      "PlayerTeamStats": [
+        {
+          "TeamId": 1,
+          "Stats": {
+            "CoreStats": { "Kills": 0, "Deaths": 5 },
+            "CaptureTheFlagStats": { "FlagCaptures": 0, "FlagGrabs": 3 }
+          }
+        }
+      ]
+    }
+  ]
+}

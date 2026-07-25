@@ -1039,12 +1039,21 @@ func main() {
 		routerCtx = schedulerCtx
 	}
 	var router http.Handler
-	router, reg = api.NewRouter(routerCtx, cfg, bootRepo, bootSvc, watcherCtrl, tokenProvider, autoScheduler, backupSched, groupStore)
+	// 3e retour = document OpenAPI PARTAGÉ (V72-01 / H1) : non exposé en HTTP à ce
+	// stade (DocsPath/OpenAPIPath désactivés), réservé à la génération hors-ligne (H6).
+	router, reg, _ = api.NewRouter(routerCtx, cfg, bootRepo, bootSvc, watcherCtrl, tokenProvider, autoScheduler, backupSched, groupStore)
 
 	// Câble le hook global de re-dérivation des tokens per-player : le cache
 	// expiry-aware (halo.ResolveFreshPlayerTokens) re-minte via le registry quand un
 	// token est périmé. Sans ce câblage, le re-mint singleflighté est inopérant.
 	reg.WireGlobalTokenRefresher()
+
+	// A1 : câble le pool de tokens partagé comme source de fallback pour les
+	// LECTURES PUBLIQUES de tiers (player-query Explorer). Quand le RT du profil
+	// sélectionné est mort, un token SAIN du pool porte quand même les fetchs live
+	// de la cible (ADR 0023 : aucune re-capture, lecture publique uniquement).
+	// autoSyncPool peut être nil (aucun credential découvert) → no-op.
+	reg.WithTokenPool(autoSyncPool)
 
 	// Journal des actions globales (C2) : partagé avec le scheduler (câblé plus
 	// haut). Les runners d'action y écrivent leur dernière exécution ; l'endpoint
@@ -1628,6 +1637,14 @@ func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConf
 		metaDB.Close()
 		return fmt.Errorf("metadata weapon registry reconcile: %w", err)
 	}
+	// V72-06 : source unique des noms d'armes (weapon_name_labels keyée par weapon_key),
+	// seedée depuis config/titles/{slug}/mappings/weapon_names.toml. Idempotent au boot
+	// (comme le registre). prestigeConfigDir = config/titles/{DefaultSlug}.
+	if _, err := halomigrations.ReconcileWeaponNameLabels(metaDB.SQLDb(), migration.DefaultSlug,
+		filepath.Join(prestigeConfigDir, "mappings", "weapon_names.toml")); err != nil {
+		metaDB.Close()
+		return fmt.Errorf("metadata weapon name labels reconcile: %w", err)
+	}
 	metaDB.Close()
 
 	// 2. shared_matches_v2.duckdb
@@ -1729,6 +1746,12 @@ func provisionAdditionalTitle(pr *title.PathResolver, td *title.TitleDescriptor)
 			if _, err := halomigrations.ReconcileWeaponRegistry(db.SQLDb(), slug); err != nil {
 				db.Close()
 				return fmt.Errorf("reconcile weapon registry %s (%s): %w", slug, t.path, err)
+			}
+			// V72-06 : source unique des noms d'armes du titre additionnel (idempotent).
+			if _, err := halomigrations.ReconcileWeaponNameLabels(db.SQLDb(), slug,
+				filepath.Join(pr.RepoRoot(), "config", "titles", slug, "mappings", "weapon_names.toml")); err != nil {
+				db.Close()
+				return fmt.Errorf("reconcile weapon name labels %s (%s): %w", slug, t.path, err)
 			}
 		}
 		db.Close()
@@ -2045,22 +2068,8 @@ func startWatcherDaemon(
 	// watcher tombe en mode legacy : pas de SharedProvider → conflit
 	// "different configuration" sur shared_matches_v2.duckdb (incident
 	// 2026-05-26 23:05+).
-	syncTrigger := syncpkg.NewTrigger(cfg.RepoRoot, &staticTokenProvider{tokens: *tokens}, domain.SyncOptions{
-		MatchType:        "matchmaking",
-		MaxMatches:       25,
-		WithParticipants: true,
-		WithMedals:       true,
-		// Le chemin live (watcher) DOIT récupérer les highlight events au 1er
-		// passage : ils alimentent highlight_events → killer_victim_pairs →
-		// weapon_kills (frags par arme). Sans ce flag (zéro-value false), le
-		// watcher insérait registry+participants SANS events ; le scheduler
-		// (DefaultSyncOptions, true) ne pouvait pas rattraper car son delta
-		// s'arrête sur le match déjà "connu". Le heal events qui masquait ce
-		// trou a été décommissionné le 2026-06-01 → events_loaded=false figé
-		// sur tous les matchs depuis. Cf. .ai/thought_log 2026-06-04.
-		WithHighlightEvents: true,
-		RequestsPerSecond:   5,
-	}).WithEngineFactory(autoScheduler.BuildEngine).
+	syncTrigger := syncpkg.NewTrigger(cfg.RepoRoot, &staticTokenProvider{tokens: *tokens}, watcherSyncOptions()).
+		WithEngineFactory(autoScheduler.BuildEngine).
 		// Titres live-only (Halo 5+) : router le watcher vers leur pipeline dédié,
 		// auth pinnée depuis le pool auto-sync. Sans ça, un joueur h5 détecté en
 		// présence ferait fetcher des matchs Infinite dans le store h5 (corruption).

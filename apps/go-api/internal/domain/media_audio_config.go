@@ -57,9 +57,9 @@ const (
 // TrackRoles est indexé par piste audio SOURCE dans l'ordre ffprobe (TrackRoles[0]
 // = 0:a:0, ...). Vide en mode auto.
 type PlayerMediaAudioConfig struct {
-	Mode       MediaAudioMode   `json:"mode"`
-	TrackRoles []AudioTrackRole `json:"track_roles,omitempty"`
-	UpdatedAt  time.Time        `json:"updated_at"`
+	Mode       MediaAudioMode   `json:"mode" enum:"auto,manual" doc:"Mode de résolution du rôle des pistes audio."`
+	TrackRoles []AudioTrackRole `json:"track_roles,omitempty" enum:"game,voice,other" doc:"Rôle de chaque piste audio source. Requis et non vide en mode manuel."`
+	UpdatedAt  time.Time        `json:"updated_at" doc:"Horodatage serveur de la dernière écriture (ignoré en entrée)."`
 }
 
 // DefaultPlayerMediaAudioConfig retourne le réglage par défaut (mode auto) appliqué

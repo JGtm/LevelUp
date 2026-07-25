@@ -87,6 +87,10 @@ type TimeseriesService struct {
 	// l'écart au FDA attendu. nil → AssistsExpected nil (l'attendu dégrade en K/D pur).
 	expectedAssistsModels assistsModelReader
 	expectedAssistsCoefs  assistsCoefReader
+	// objectiveStatsRepo (carte « Objectifs » du bandeau) : cumul CTF/Zones/Oddball
+	// du joueur suivi sur le scope. Câblé gated (capability match.objective.stats,
+	// Infinite) ; nil → bloc ObjectiveStats omis. Best-effort.
+	objectiveStatsRepo port.ObjectiveStatsRepository
 }
 
 // highlightEventsLoader expose la sous-API du HighlightEventsRepo per-player
@@ -98,6 +102,14 @@ type highlightEventsLoader interface {
 // NewTimeseriesService cree un TimeseriesService.
 func NewTimeseriesService(repo port.StatsRepository) *TimeseriesService {
 	return &TimeseriesService{statsRepo: repo}
+}
+
+// WithObjectiveStatsRepo injecte la source du cumul des stats objectifs (CTF/Zones/
+// Oddball) du joueur suivi sur le scope. Câblé gated (Timeseries wiring) ; nil → bloc
+// objective_stats omis de la réponse.
+func (s *TimeseriesService) WithObjectiveStatsRepo(repo port.ObjectiveStatsRepository) *TimeseriesService {
+	s.objectiveStatsRepo = repo
+	return s
 }
 
 // WithDataAdapter injecte le DataAdapter multi-titres pour activer une
@@ -256,6 +268,16 @@ func (s *TimeseriesService) GetPage(
 		KillTypes:        buildTimeseriesKillTypes(matches),
 	}
 
+	// KPI objectifs (cumul CTF/Zones/Oddball sur le scope) : best-effort, gated (repo
+	// nil hors capability match.objective.stats). Bloc omis si aucun match à objectif.
+	if s.objectiveStatsRepo != nil && s.playerXUID != "" && len(matches) > 0 {
+		objIDs := make([]string, 0, len(matches))
+		for _, m := range matches {
+			objIDs = append(objIDs, m.MatchID)
+		}
+		resp.ObjectiveStats = s.loadObjectiveStats(ctx, objIDs)
+	}
+
 	// Top weapons (chart .04) + répartition hiérarchique des frags (sunburst v2) :
 	// UNE seule charge weapon_kills (ResolveRoles=true → Role ET Class en une passe).
 	// Degradation gracieuse si weaponKillsRepo nil : la FragDistribution reste servie
@@ -326,6 +348,18 @@ func (s *TimeseriesService) GetPage(
 // depuis les compteurs kill-type agrégés (kt, via buildTimeseriesKillTypes) ; classes
 // gun shoulder/sidearm/heavy + rôles depuis le registre (weaponRows). Nil si aucun
 // frag. hasMechanics capability-gated (titleHasNativeKillMechanics, jamais slug==).
+// loadObjectiveStats agrège (SUM) les stats objectifs du joueur suivi sur le scope.
+// Best-effort : nil si erreur SQL ou aucun match à objectif (bloc omis de la réponse).
+func (s *TimeseriesService) loadObjectiveStats(ctx context.Context, matchIDs []string) *domain.ObjectiveAggregate {
+	byXUID, err := s.objectiveStatsRepo.LoadAggregatedByXUID(ctx, matchIDs, []string{s.playerXUID})
+	if err != nil {
+		slog.WarnContext(ctx, "timeseries: objective stats query failed (best-effort)",
+			"player_xuid", s.playerXUID, "match_count", len(matchIDs), "err", err)
+		return nil
+	}
+	return byXUID[s.playerXUID]
+}
+
 func (s *TimeseriesService) buildTimeseriesFragDistribution(
 	ctx context.Context,
 	weaponRows []port.WeaponKillRow,

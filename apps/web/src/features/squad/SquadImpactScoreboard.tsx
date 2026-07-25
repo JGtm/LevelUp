@@ -35,6 +35,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { tokenCssVar } from '@/lib/accessibility'
 import { BadgeIcon } from '@/components/feedback/BadgeIcon'
 import { Tooltip } from '@/components/ui/tooltip'
+import { HeaderInfoTooltip } from '@/lib/table/columnMeta'
 import { getSquadText } from './i18n'
 
 /** Badges où un count élevé est PIRE (rouge=worst au lieu de best). */
@@ -250,6 +251,7 @@ export function SquadImpactScoreboard({ matrix }: SquadImpactScoreboardProps) {
       {
         id: 'score',
         header: i18n.colScore,
+        meta: { headerTooltip: i18n.colScoreTooltip },
         cell: (ctx) => {
           const s = ctx.row.original.score
           const formatted = s > 0 ? `+${s}` : `${s}`
@@ -266,6 +268,7 @@ export function SquadImpactScoreboard({ matrix }: SquadImpactScoreboardProps) {
       {
         id: 'badge',
         header: i18n.colBadge,
+        meta: { headerTooltip: i18n.colBadgeTooltip },
         cell: (ctx) => {
           switch (ctx.row.original.badge) {
             case 'champion':
@@ -330,7 +333,10 @@ export function SquadImpactScoreboard({ matrix }: SquadImpactScoreboardProps) {
                   key={h.id}
                   className={`px-2 py-1 text-center align-bottom font-medium ${idx > 0 ? 'border-l border-border/60' : ''}`}
                 >
-                  {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
+                  <span className="inline-flex items-center gap-1">
+                    {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
+                    <HeaderInfoTooltip text={h.column.columnDef.meta?.headerTooltip} />
+                  </span>
                 </th>
               ))}
             </tr>

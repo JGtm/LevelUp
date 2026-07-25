@@ -4,6 +4,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
+import { useAppShellStore } from '@/stores/appShellStore'
 import type {
   MediaAssociateRequest,
   MediaAssociateResponse,
@@ -179,6 +180,7 @@ export function useMediaPage(
   request: MediaQueryRequest,
   page: number,
 ) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   // La clé inclut tous les filtres actifs pour que chaque combinaison soit indépendante.
   const requestHash = JSON.stringify({
     p: page,
@@ -194,7 +196,7 @@ export function useMediaPage(
   })
 
   return useQuery({
-    queryKey: queryKeys.media(playerSlug, requestHash),
+    queryKey: queryKeys.media(playerSlug, titleSlug, requestHash),
     queryFn: () =>
       api.post<MediaPageApiResponse>(
         `/players/${playerSlug}/pages/media`,
@@ -207,6 +209,7 @@ export function useMediaPage(
 }
 
 export function useRecentMediaRail(playerSlug: string, limit: number, likedOnly = false) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const request: MediaQueryRequest = {
     sort: DEFAULT_MEDIA_SORT,
     liked_only: likedOnly || null,
@@ -214,7 +217,7 @@ export function useRecentMediaRail(playerSlug: string, limit: number, likedOnly 
   }
 
   return useQuery({
-    queryKey: queryKeys.mediaRail(playerSlug, limit, likedOnly),
+    queryKey: queryKeys.mediaRail(playerSlug, titleSlug, limit, likedOnly),
     queryFn: () =>
       api.post<MediaPageApiResponse>(
         `/players/${playerSlug}/pages/media`,
@@ -341,8 +344,9 @@ export function useMediaMatchCandidates(
   windowMinutes: number,
   enabled = true,
 ) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
-    queryKey: queryKeys.mediaMatchCandidates(playerSlug, filePath, windowMinutes),
+    queryKey: queryKeys.mediaMatchCandidates(playerSlug, titleSlug, filePath, windowMinutes),
     queryFn: () =>
       api.get<MediaMatchCandidatesResponse>(
         `/players/${playerSlug}/media/match-candidates?file_path=${encodeURIComponent(filePath ?? '')}&window_minutes=${windowMinutes}`,
@@ -367,8 +371,9 @@ export function useAssociateMediaToMatch(playerSlug: string) {
 
 /** Liste des auteurs (db_profiles ∩ ≥1 média sur disque) pour le filtre Auteur. */
 export function useMediaAuthors(playerSlug: string) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
-    queryKey: queryKeys.mediaAuthors(playerSlug),
+    queryKey: queryKeys.mediaAuthors(playerSlug, titleSlug),
     queryFn: () => api.get<MediaAuthorsResponse>(`/players/${playerSlug}/media/authors`),
     enabled: !!playerSlug,
     staleTime: 5 * 60 * 1000,
@@ -394,8 +399,9 @@ export interface PlayerMediaAudioConfig {
 
 /** Réglage audio média du joueur (rôle voix/jeu/autres des pistes, mode auto/manuel). */
 export function useMediaAudioConfig(playerSlug: string) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
-    queryKey: queryKeys.mediaAudioConfig(playerSlug),
+    queryKey: queryKeys.mediaAudioConfig(playerSlug, titleSlug),
     queryFn: () =>
       api.get<PlayerMediaAudioConfig>(`/players/${playerSlug}/media/audio-config`),
     enabled: !!playerSlug,
@@ -410,7 +416,10 @@ export function useUpdateMediaAudioConfig(playerSlug: string) {
     mutationFn: (config: PlayerMediaAudioConfig) =>
       api.put<PlayerMediaAudioConfig>(`/players/${playerSlug}/media/audio-config`, config),
     onSuccess: (saved) => {
-      queryClient.setQueryData(queryKeys.mediaAudioConfig(playerSlug), saved)
+      queryClient.setQueryData(
+        queryKeys.mediaAudioConfig(playerSlug, useAppShellStore.getState().currentTitleSlug),
+        saved,
+      )
     },
   })
 }

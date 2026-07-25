@@ -7,6 +7,7 @@
 #   make go-api-test   # Lance les tests Go
 #   make install-web   # Installe les dépendances npm
 #   make test-web      # Tests Vitest frontend
+#   make openapi-gen   # Régénère api/openapi.yaml (Huma + fragment manuel)
 #   make generate-types # Génère les types TypeScript depuis openapi.yaml
 #   make check-types   # Vérifie les types TypeScript
 # =============================================================================
@@ -22,7 +23,7 @@ LOAD_DOTENV := if [ -f .env.local ]; then set -a; . ./.env.local; set +a; fi; \
         generate-types install-web \
         go-api-build go-api-test go-api-dev _go-api-run \
         go-api-test-shared-social-gate install-git-hooks \
-        go-api-test-coverage-ratchet
+        go-api-test-coverage-ratchet openapi-gen openapi-check
 
 ## Affiche cette aide
 help:
@@ -98,6 +99,22 @@ else
 GO_API_CLEANUP_CMD := true
 STOP_SERVERS_CMD := bash -c 'for p in $(API_PORT) 5173; do pid=$$(lsof -ti tcp:$$p 2>/dev/null); [ -n "$$pid" ] && kill -9 $$pid 2>/dev/null; done; pkill -f bin/air 2>/dev/null; true'
 endif
+
+## Régénère apps/go-api/api/openapi.yaml (document Huma + fragment manuel)
+## Usage : make openapi-gen   puis   make generate-types
+## Le contrat est GÉNÉRÉ : ne jamais éditer openapi.yaml à la main — éditer le
+## handler/DTO Go, ou api/openapi_manual_fragment.yaml pour le non-dérivable.
+## Verrouillé par TestOpenAPIYAMLIsUpToDate (go test ./internal/api/).
+openapi-gen:
+	cd $(GO_API_DIR) && CGO_ENABLED=1 go run ./cmd/openapi-gen
+
+## Vérifie que openapi.yaml est à jour sans l'écrire (sortie 1 si drift), PUIS que
+## generated.ts en dérive bien (sinon le front resterait typé sur l'ancien contrat
+## avec un tsc vert). Le second maillon est aussi joué par la CI (job Frontend) via
+## src/lib/api/generated-types-fresh.guard.test.ts — même script, une seule logique.
+openapi-check:
+	cd $(GO_API_DIR) && CGO_ENABLED=1 go run ./cmd/openapi-gen -check
+	node tools/check-generated-types-fresh.mjs
 
 ## Go API: compile le binaire server (Linux — requiert CGo/DuckDB)
 go-api-build:

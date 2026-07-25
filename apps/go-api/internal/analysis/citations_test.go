@@ -234,6 +234,50 @@ func TestComputeFullMatchCitations_StatType(t *testing.T) {
 	}
 }
 
+func makeObjectiveStatMapping(norm, stat string) domain.CitationFullMapping {
+	s := stat
+	return domain.CitationFullMapping{
+		NameNorm:    norm,
+		NameDisplay: norm,
+		MappingType: domain.CitationMappingTypeObjectiveStat,
+		StatName:    &s,
+	}
+}
+
+// TestComputeFullMatchCitations_ObjectiveStatType : une citation objective_stat lit
+// sa colonne (StatName) depuis ctx.Stats (injectée par sync.loadObjectiveStats).
+func TestComputeFullMatchCitations_ObjectiveStatType(t *testing.T) {
+	mappings := []domain.CitationFullMapping{
+		makeObjectiveStatMapping("charge", "zone_captures"),
+	}
+	ctx := domain.CitationContext{
+		Medals: map[int64]int{},
+		Stats:  map[string]float64{"zone_captures": 7},
+		Awards: map[string]int{},
+	}
+	deltas := ComputeFullMatchCitations(CitationProgressInput{Ctx: ctx}, mappings)
+	if len(deltas) != 1 || deltas[0].NameNorm != "charge" || deltas[0].Value != 7 {
+		t.Errorf("attendu charge=7, got %v", deltas)
+	}
+}
+
+// TestComputeFullMatchCitations_ObjectiveStatMissingColumn : colonne absente de Stats
+// (match non-objectif / colonne non peuplée) → valeur 0 → aucun delta (pas de crash).
+func TestComputeFullMatchCitations_ObjectiveStatMissingColumn(t *testing.T) {
+	mappings := []domain.CitationFullMapping{
+		makeObjectiveStatMapping("flag_carrier_hunter", "flag_carriers_killed"),
+	}
+	ctx := domain.CitationContext{
+		Medals: map[int64]int{},
+		Stats:  map[string]float64{}, // colonne absente → 0
+		Awards: map[string]int{},
+	}
+	deltas := ComputeFullMatchCitations(CitationProgressInput{Ctx: ctx}, mappings)
+	if len(deltas) != 0 {
+		t.Errorf("colonne objective_stat absente → 0, aucun delta attendu, got %v", deltas)
+	}
+}
+
 func TestComputeFullMatchCitations_AwardType(t *testing.T) {
 	mappings := []domain.CitationFullMapping{
 		makeAwardMapping("hijack_cit", "hijacked_mongoose"),

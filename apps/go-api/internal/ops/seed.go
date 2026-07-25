@@ -47,13 +47,25 @@ const (
 
 // Mapping types pour citation_mappings.mapping_type.
 const (
-	mappingTypeAward      = "award"
-	mappingTypeStat       = "stat"
-	mappingTypePVEStat    = "pve_stat"
-	mappingTypeWeaponStat = "weapon_stat"
-	mappingTypeMedal      = "medal"
-	mappingTypeComposite  = "composite"
-	mappingTypeCustom     = "custom"
+	mappingTypeAward         = "award"
+	mappingTypeStat          = "stat"
+	mappingTypePVEStat       = "pve_stat"
+	mappingTypeObjectiveStat = "objective_stat"
+	mappingTypeWeaponStat    = "weapon_stat"
+	mappingTypeMedal         = "medal"
+	mappingTypeComposite     = "composite"
+	mappingTypeCustom        = "custom"
+)
+
+// Norms des 4 citations d'objectif basculées en source objective_stat (v7.2) —
+// constantes pour éviter la duplication littérale du norm (goconst) entre la
+// définition seedée (defaultCitationMappings) et son garde-rail de test
+// (TestObjectiveStatCitations_MappedToColumns).
+const (
+	citationNormCharge            = "charge"
+	citationNormGotYou            = "got_you"
+	citationNormStakeholder       = "stakeholder"
+	citationNormFlagCarrierHunter = "flag_carrier_hunter"
 )
 
 // Catégories citation_mappings.category (libellés FR — UI Cockpit).

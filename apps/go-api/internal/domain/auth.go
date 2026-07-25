@@ -12,17 +12,16 @@ import "time"
 // Le frontend doit afficher user_code à l'utilisateur et ouvrir verification_uri.
 type DeviceFlowStartResponse struct {
 	AttemptID       string `json:"attempt_id"`
-	UserCode        string `json:"user_code"`
+	UserCode        string `json:"user_code" doc:"Code à afficher à l'utilisateur"`
 	VerificationURI string `json:"verification_uri"`
-	ExpiresIn       int    `json:"expires_in"` // secondes
-	PollIntervalSec int    `json:"poll_interval_seconds"`
+	ExpiresIn       int    `json:"expires_in" doc:"Durée de validité en secondes"`
+	PollIntervalSec int    `json:"poll_interval_seconds" default:"5"`
 }
 
 // DeviceFlowStatusResponse est la réponse à GET /auth/device-flow/{id}.
-// Status : "pending" | "authorized" | "provisioned" | "failed" | "expired"
 type DeviceFlowStatusResponse struct {
 	AttemptID   string  `json:"attempt_id"`
-	Status      string  `json:"status"`
+	Status      string  `json:"status" enum:"pending,authorized,provisioned,failed,expired"`
 	Gamertag    *string `json:"gamertag,omitempty"`
 	XUID        *string `json:"xuid,omitempty"`
 	ErrorCode   *string `json:"error_code,omitempty"`

@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 )
 
@@ -87,6 +88,41 @@ func TestCachedStatsProvider_ErrorNotCached(t *testing.T) {
 	}
 	if n := inner.calls.Load(); n != 2 {
 		t.Fatalf("attendu 2 appels (erreur non cachée), got %d", n)
+	}
+}
+
+// fakeSeasonStatsProvider implémente ServiceRecordProvider (via embed) ET
+// SeasonStatsProvider, en comptant les appels season pour vérifier l'isolation de clé.
+type fakeSeasonStatsProvider struct {
+	fakeStatsProvider
+	seasonCalls atomic.Int64
+}
+
+func (f *fakeSeasonStatsProvider) FetchSeasonServiceRecord(_ context.Context, _, _ string, _ *bool) (int, error) {
+	return int(f.seasonCalls.Add(1)), nil
+}
+
+// TestCachedStatsProvider_SeasonKeyIsolatedByTitle vérifie qu'un même (gamertag,
+// seasonID) sous deux titres différents ne se croise pas dans le cache season
+// (V72-29) : le titre lu du contexte fait partie de la clé.
+func TestCachedStatsProvider_SeasonKeyIsolatedByTitle(t *testing.T) {
+	inner := &fakeSeasonStatsProvider{}
+	c := NewCachedStatsProvider(inner, time.Minute, nil)
+
+	ctxHI := ctxkeys.WithTitleSlug(context.Background(), "halo_infinite")
+	ctxH5 := ctxkeys.WithTitleSlug(context.Background(), "halo_5")
+
+	// Même gamertag + même seasonID brut, deux titres → deux appels distincts.
+	_, _ = c.FetchSeasonServiceRecord(ctxHI, "GT", "Seasons/Season7.json", nil)
+	_, _ = c.FetchSeasonServiceRecord(ctxH5, "GT", "Seasons/Season7.json", nil)
+	if n := inner.seasonCalls.Load(); n != 2 {
+		t.Fatalf("clé season par titre attendue → 2 appels, got %d", n)
+	}
+
+	// Relecture même (titre, GT, season) → hit, pas de nouvel appel.
+	_, _ = c.FetchSeasonServiceRecord(ctxHI, "GT", "Seasons/Season7.json", nil)
+	if n := inner.seasonCalls.Load(); n != 2 {
+		t.Errorf("relecture devait être un hit, got %d appels", n)
 	}
 }
 

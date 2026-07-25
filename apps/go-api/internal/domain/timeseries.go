@@ -288,6 +288,12 @@ type TimeseriesPageResponse struct {
 	// donut). Types d'arme + mécaniques natives Halo 5. Nil si aucun match.
 	// Capability-gated côté front (donut masqué hors h5).
 	KillTypes *TimeseriesKillTypes `json:"kill_types,omitempty"`
+	// ObjectiveStats : cumul CTF/Zones/Oddball du joueur suivi sur le scope (carte
+	// « Objectifs » sobre du bandeau). nil pour un titre sans capability
+	// match.objective.stats (Halo 5) ou un scope sans match à objectif. Choix P4 :
+	// KPI agrégé de scope (pas de champs par-match sur TimeseriesMatchRow) — cf.
+	// PLAN_V72_OBJECTIVE_STATS.md, Journal P4.
+	ObjectiveStats *ObjectiveAggregate `json:"objective_stats,omitempty"`
 	// OutcomesOverTime : V/D/N/X agrégés par période (chart .05).
 	// La granularité (jour/semaine/mois) est choisie automatiquement selon
 	// la durée du scope : <=14j → jour, <=120j → semaine, sinon mois.

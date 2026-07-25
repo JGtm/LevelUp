@@ -145,7 +145,11 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
       {/* En-tête discret : bascule réduire/afficher de la synthèse (choix mémorisé
           par explorerPrefsStore → localStorage). Aligné à droite pour ne pas
           concurrencer le socle de tuiles ; jamais en flex-wrap (le socle reste le
-          premier flex-wrap du bandeau). */}
+          premier flex-wrap du bandeau). whitespace-nowrap + flex-shrink-0 sur le
+          bouton : le libellé "Afficher le résumé"/"Show briefing" (expand) est
+          nettement plus long que "Réduire"/"Collapse" (collapse) — sans ces
+          classes le texte peut passer sur 2 lignes sous contrainte de largeur, ce
+          qui décentre verticalement le chevron par rapport au texte replié. */}
       <div className="flex justify-end">
         <button
           type="button"
@@ -156,7 +160,7 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
               ? t('explorer.briefing.expand_aria')
               : t('explorer.briefing.collapse_aria')
           }
-          className="inline-flex items-center gap-1 text-2xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+          className="inline-flex flex-shrink-0 items-center gap-1 whitespace-nowrap text-2xs font-medium text-muted-foreground hover:text-foreground transition-colors"
         >
           <span>
             {collapsed ? t('explorer.briefing.expand') : t('explorer.briefing.collapse')}

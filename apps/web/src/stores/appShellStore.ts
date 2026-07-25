@@ -115,7 +115,7 @@ export const useAppShellStore = create<AppShellState>((set) => ({
     setApiLocale(locale)
     set({
       currentPlayer: data.current_player,
-      availablePlayers: data.available_players,
+      availablePlayers: data.available_players ?? [],
       currentTitleSlug: titleSlug,
       availableTitles: data.available_titles ?? [],
       locale,

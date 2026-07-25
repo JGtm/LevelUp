@@ -11,7 +11,7 @@
  * SquadTables, useSquadV2, ...) ont ete retires : plus aucun consommateur cote web.
  */
 
-import type { CombatProfileBlock } from '@/lib/api/types'
+import type { CombatProfileBlock, ObjectiveAggregate } from '@/lib/api/types'
 
 /** KPIs personnels (header). */
 export interface KPIStats {
@@ -67,4 +67,8 @@ export interface SquadHeader {
   kpis_by_xuid?: Record<string, KPIStats>
   /** Moyenne arithmetique field-by-field des kpis_by_xuid (reference trends). */
   team_avg_kpis?: KPIStats
+  /** Cumul des stats objectifs (CTF/Zones/Oddball) par xuid sur les matchs partagés.
+   *  Omis pour un titre sans capability match.objective.stats (Halo 5) ou sans match à
+   *  objectif ; seuls les xuids avec des stats objectif figurent (data-driven). */
+  objective_stats_by_xuid?: Record<string, ObjectiveAggregate>
 }

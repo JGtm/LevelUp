@@ -38,9 +38,9 @@ func NewSessionPageHandler(newSvc ServiceFactory[port.SessionPageService]) *Sess
 
 // Mount enregistre la route via Huma sur le sous-routeur chi (préfixe
 // /players/{player_slug} + middleware ownership/title hérités).
-func (h *SessionPageHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Post(api, "/pages/sessions/detail", h.GetPage)
+func (h *SessionPageHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Post(api, "/pages/sessions/detail", h.GetPage, humacore.Op("postSessionDetailPage", "Détail d'une session avec suggestion de comparaison", "timeseries"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

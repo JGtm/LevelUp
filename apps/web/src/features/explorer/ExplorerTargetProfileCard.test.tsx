@@ -96,6 +96,8 @@ describe('ExplorerTargetProfileCard', () => {
       sample_stats: SAMPLE_FULL,
       privacy_warning: { level: 'none', message: '' },
       auth_available: true,
+      // Cas heureux : tout a été fetché avec succès, rien à signaler.
+      live_status: { identity: 'ok', career: 'ok', season_csrs: 'ok', seasons: 'ok', combat_live: 'ok' },
     }
     renderWithProviders(<ExplorerTargetProfileCard profile={profile} gamertag="TargetPlayer" />)
 
@@ -143,6 +145,8 @@ describe('ExplorerTargetProfileCard', () => {
         },
       ],
       auth_available: true,
+      // Cas heureux enrichi : carrière + médailles + CSR tous fetchés avec succès.
+      live_status: { identity: 'ok', career: 'ok', season_csrs: 'ok', seasons: 'ok', combat_live: 'ok' },
     }
     renderWithProviders(<ExplorerTargetProfileCard profile={profile} gamertag="TargetPlayer" />)
 
@@ -170,6 +174,10 @@ describe('ExplorerTargetProfileCard', () => {
       sample_stats: SAMPLE_FULL,
       privacy_warning: { level: 'full', message: 'Profil privé.' },
       auth_available: true,
+      // auth dispo mais career_stats absent : le fetch a été tenté et n'a rien
+      // renvoyé (rec nil) → failed, pas ok (career_stats ne serait jamais nil
+      // si le service record avait réussi, cf. fetchTargetServiceRecord côté Go).
+      live_status: { identity: 'ok', career: 'failed', season_csrs: 'ok', seasons: 'ok', combat_live: 'ok' },
     }
     renderWithProviders(<ExplorerTargetProfileCard profile={profile} gamertag="PrivatePlayer" />)
 
@@ -186,6 +194,10 @@ describe('ExplorerTargetProfileCard', () => {
       sample_stats: SAMPLE_FULL,
       privacy_warning: undefined,
       auth_available: false,
+      // Sans auth : identity reste ok (résolue localement, indépendante des
+      // tokens) ; les 4 sections qui dépendent des tokens (career/CSR/saisons/
+      // combat live) n'ont jamais été tentées → no_auth partout ailleurs.
+      live_status: { identity: 'ok', career: 'no_auth', season_csrs: 'no_auth', seasons: 'no_auth', combat_live: 'no_auth' },
     }
     renderWithProviders(<ExplorerTargetProfileCard profile={profile} gamertag="NoAuthPlayer" />)
 
@@ -197,20 +209,41 @@ describe('ExplorerTargetProfileCard', () => {
     expect(screen.getByText(/12 matchs joués ensemble/i)).toBeInTheDocument()
   })
 
-  it('masque la section sample quand sample_size=0', () => {
+  it('masque la section sample quand sample_size=0 mais affiche une note explicite (V72-21)', () => {
     const profile: ExplorerTargetProfile = {
       identity: IDENTITY_FULL,
       career_stats: CAREER_FULL,
       sample_stats: { ...SAMPLE_FULL, sample_size: 0 },
       privacy_warning: undefined,
       auth_available: true,
+      // Carrière/identité fetchées avec succès ; sample_size=0 est un fait LOCAL
+      // (aucun match commun), indépendant des statuts live.
+      live_status: { identity: 'ok', career: 'ok', season_csrs: 'ok', seasons: 'ok', combat_live: 'ok' },
     }
     renderWithProviders(<ExplorerTargetProfileCard profile={profile} gamertag="TargetPlayer" />)
 
     expect(screen.queryByText(/matchs joués ensemble/i)).not.toBeInTheDocument()
+    // Plus de disparition silencieuse : note discrète « aucun match en commun ».
+    expect(screen.getByTestId('explorer-target-no-shared-matches')).toBeInTheDocument()
+    expect(screen.getByText(/Aucun match en commun avec ce joueur/i)).toBeInTheDocument()
     // Career et identity restent
     expect(screen.getByText(/Carrière complète/i)).toBeInTheDocument()
     expect(screen.getByText('TargetPlayer')).toBeInTheDocument()
+  })
+
+  it('n\'affiche pas la note « aucun match en commun » sur une cible non résolue (identity=null, career absente)', () => {
+    const profile: ExplorerTargetProfile = {
+      identity: undefined,
+      career_stats: undefined,
+      sample_stats: undefined,
+      privacy_warning: undefined,
+      auth_available: false,
+      // Cible totalement non résolue, sans auth : rien n'a jamais été tenté.
+      live_status: { identity: 'no_auth', career: 'no_auth', season_csrs: 'no_auth', seasons: 'no_auth', combat_live: 'no_auth' },
+    }
+    renderWithProviders(<ExplorerTargetProfileCard profile={profile} gamertag="UnknownPlayer" />)
+
+    expect(screen.queryByTestId('explorer-target-no-shared-matches')).not.toBeInTheDocument()
   })
 
   it('affiche le placeholder quand identity=null', () => {
@@ -220,6 +253,8 @@ describe('ExplorerTargetProfileCard', () => {
       sample_stats: undefined,
       privacy_warning: undefined,
       auth_available: false,
+      // Cible totalement non résolue, sans auth : rien n'a jamais été tenté.
+      live_status: { identity: 'no_auth', career: 'no_auth', season_csrs: 'no_auth', seasons: 'no_auth', combat_live: 'no_auth' },
     }
     renderWithProviders(<ExplorerTargetProfileCard profile={profile} gamertag="UnknownPlayer" />)
 
@@ -227,5 +262,117 @@ describe('ExplorerTargetProfileCard', () => {
     expect(screen.getByText('UnknownPlayer')).toBeInTheDocument()
     // Message identité non disponible (reformulé, non alarmant)
     expect(screen.getByText(/Identité Spartan non disponible/i)).toBeInTheDocument()
+  })
+
+  // --- Lot A3 (fin de la dégradation muette) : badges live_status par section ---
+
+  it('affiche l\'en-tête « Carrière complète » + badge quand career_stats est vide mais live_status.career explique pourquoi', () => {
+    const profile: ExplorerTargetProfile = {
+      identity: IDENTITY_FULL,
+      career_stats: undefined,
+      sample_stats: SAMPLE_FULL,
+      auth_available: true,
+      live_status: {
+        identity: 'ok',
+        career: 'failed',
+        season_csrs: 'ok',
+        seasons: 'ok',
+        combat_live: 'ok',
+      },
+    }
+    renderWithProviders(<ExplorerTargetProfileCard profile={profile} gamertag="TargetPlayer" />)
+
+    // Header rendu même sans données (avant A3 : section absente en silence).
+    expect(screen.getByText(/Carrière complète/i)).toBeInTheDocument()
+    expect(screen.getByTestId('explorer-live-status-badge-failed')).toBeInTheDocument()
+    expect(screen.getByText('Données live indisponibles (erreur)')).toBeInTheDocument()
+  })
+
+  it('n\'affiche pas l\'en-tête « Carrière complète » quand live_status.career vaut ok malgré l\'absence de career_stats (rien à signaler)', () => {
+    const profile: ExplorerTargetProfile = {
+      identity: IDENTITY_FULL,
+      career_stats: undefined,
+      sample_stats: SAMPLE_FULL,
+      auth_available: false,
+      // Robustesse défensive : même si le statut ne signale AUCUN problème
+      // (ok), l'absence de career_stats ne doit jamais faire apparaître un
+      // header vide — showCareerSection exige explicitement un statut != ok
+      // pour se rabattre sur le header+badge (identity reste ok : résolue
+      // localement, indépendante des tokens ; les autres sections restent
+      // no_auth, cohérent avec auth_available=false, mais non exercées ici).
+      live_status: { identity: 'ok', career: 'ok', season_csrs: 'no_auth', seasons: 'no_auth', combat_live: 'no_auth' },
+    }
+    renderWithProviders(<ExplorerTargetProfileCard profile={profile} gamertag="TargetPlayer" />)
+
+    // Le hint no-auth mentionne aussi "carrière complète" en texte libre (hors
+    // heading) : on cible spécifiquement le TITRE de section (role heading) pour
+    // ne pas confondre les deux — seul le heading doit être absent ici.
+    expect(screen.queryByRole('heading', { name: /Carrière complète/i })).not.toBeInTheDocument()
+  })
+
+  it('ne duplique pas le badge carrière pour les médailles (même fetch, un seul badge affiché)', () => {
+    // top_medals vide découle TOUJOURS du même échec que career_stats (même
+    // fetch service record) : un seul badge (section Carrière) doit apparaître,
+    // pas un second redondant à côté d'un bloc "Top médailles" vide.
+    const profile: ExplorerTargetProfile = {
+      identity: IDENTITY_FULL,
+      career_stats: undefined,
+      sample_stats: SAMPLE_FULL,
+      top_medals: [],
+      auth_available: false,
+      live_status: {
+        identity: 'ok',
+        career: 'no_auth',
+        season_csrs: 'ok',
+        seasons: 'ok',
+        combat_live: 'no_auth',
+      },
+    }
+    renderWithProviders(<ExplorerTargetProfileCard profile={profile} gamertag="TargetPlayer" />)
+
+    // Un seul badge no_auth au total (section Carrière) — pas de doublon médailles.
+    expect(screen.getAllByTestId('explorer-live-status-badge-no_auth')).toHaveLength(1)
+    expect(screen.queryByText(/Top médailles/i)).not.toBeInTheDocument()
+  })
+
+  it('affiche un badge sous le bandeau identité quand identity=null et live_status.identity != ok', () => {
+    // Seul le statut identity est renseigné != ok (les autres = ok) pour isoler
+    // le badge du bandeau identité de ceux des autres sections (career/seasons).
+    const profile: ExplorerTargetProfile = {
+      identity: undefined,
+      career_stats: undefined,
+      sample_stats: undefined,
+      auth_available: false,
+      live_status: {
+        identity: 'no_auth',
+        career: 'ok',
+        season_csrs: 'ok',
+        seasons: 'ok',
+        combat_live: 'ok',
+      },
+    }
+    renderWithProviders(<ExplorerTargetProfileCard profile={profile} gamertag="UnknownPlayer" />)
+
+    expect(screen.getByTestId('explorer-live-status-badge-no_auth')).toBeInTheDocument()
+  })
+
+  it('affiche le badge « Live partiel » sur la section saisons quand live_status.seasons = local_partial', () => {
+    const profile: ExplorerTargetProfile = {
+      identity: IDENTITY_FULL,
+      career_stats: CAREER_FULL,
+      sample_stats: SAMPLE_FULL,
+      auth_available: true,
+      live_status: {
+        identity: 'ok',
+        career: 'ok',
+        season_csrs: 'ok',
+        seasons: 'local_partial',
+        combat_live: 'ok',
+      },
+    }
+    renderWithProviders(<ExplorerTargetProfileCard profile={profile} gamertag="TargetPlayer" />)
+
+    expect(screen.getByTestId('explorer-live-status-badge-local_partial')).toBeInTheDocument()
+    expect(screen.getByText('Live partiel')).toBeInTheDocument()
   })
 })

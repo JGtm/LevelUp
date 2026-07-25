@@ -31,10 +31,10 @@ func NewFiltersHandler(newSvc ServiceFactory[port.FiltersService]) *FiltersHandl
 
 // Mount enregistre les 2 routes via Huma sur le sous-routeur chi (préfixe
 // /players/{player_slug} + middleware ownership/title hérités).
-func (h *FiltersHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Post(api, "/filters/resolve", h.Resolve)
-	huma.Post(api, "/filters/match-ids", h.MatchIDs)
+func (h *FiltersHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Post(api, "/filters/resolve", h.Resolve, humacore.Op("resolveFilters", "Résoudre le contexte de filtres", "filters"))
+	huma.Post(api, "/filters/match-ids", h.MatchIDs, humacore.Op("filtersMatchIDs", "Résoudre la liste des match_ids correspondant à un contexte de filtres", "filters"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

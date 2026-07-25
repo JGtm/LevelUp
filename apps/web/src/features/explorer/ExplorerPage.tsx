@@ -169,12 +169,17 @@ export function ExplorerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // `replace: true` : ces deux navigate() ne font que refléter l'état local
+  // (mode/target) dans l'URL — pas une navigation de page. Sans replace, chaque
+  // sélection de cible ou changement de mode empilait l'historique et déclenchait
+  // inutilement le pipeline de transition de route (TopProgressBar) (V72-24).
   function setModeAndUrl(m: SearchMode) {
     setMode(m)
     void navigate({
       to: '/{-$lang}/t/$titleSlug/players/$playerSlug/explorer',
       params: { titleSlug, playerSlug },
       search: (prev) => ({ ...prev, mode: m }),
+      replace: true,
     })
   }
 
@@ -187,6 +192,7 @@ export function ExplorerPage() {
       to: '/{-$lang}/t/$titleSlug/players/$playerSlug/explorer',
       params: { titleSlug, playerSlug },
       search: (prev) => ({ ...prev, mode: 'player', target: gamertag, targetXuid: undefined }),
+      replace: true,
     })
   }
 

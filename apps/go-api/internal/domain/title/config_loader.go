@@ -49,6 +49,7 @@ var knownCapabilities = map[Capability]struct{}{
 	CapSpartanCustomizer:   {},
 	CapExpectedStats:       {},
 	CapWaypointMatchURL:    {},
+	CapObjectiveStats:      {},
 }
 
 func knownStatus(s Status) bool {

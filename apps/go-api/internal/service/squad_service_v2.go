@@ -29,11 +29,22 @@ import (
 // vit désormais dans le package feuille squadagg (K3b, ré-exporté ici en alias).
 type SquadServiceV2 struct {
 	loader SquadV2Loader
+	// objectiveStatsRepo : cumul des stats objectifs par xuid sur les matchs partagés.
+	// Câblé gated par la capability match.objective.stats (SquadV2Ctx) ; nil → bloc
+	// objective_stats_by_xuid omis. Best-effort.
+	objectiveStatsRepo port.ObjectiveStatsRepository
 }
 
 // NewSquadServiceV2 construit le service avec un loader injecté.
 func NewSquadServiceV2(loader SquadV2Loader) *SquadServiceV2 {
 	return &SquadServiceV2{loader: loader}
+}
+
+// WithObjectiveStatsRepo injecte la source du cumul des stats objectifs (CTF/Zones/
+// Oddball) par xuid. Câblé gated (SquadV2Ctx) ; nil → bloc omis de la réponse.
+func (s *SquadServiceV2) WithObjectiveStatsRepo(repo port.ObjectiveStatsRepository) *SquadServiceV2 {
+	s.objectiveStatsRepo = repo
+	return s
 }
 
 // MaxTeammates est la borne haute du nombre de coéquipiers acceptés (cohérent
@@ -115,6 +126,22 @@ func (s *SquadServiceV2) GetSquadPage(
 	squadXUIDs := extractSquadXUIDs(squadOrder, perPlayer)
 
 	resp.Header = buildSquadHeader(ctx, mainGT, squadXUIDs, resp.SharedMatches)
+
+	// KPI objectifs par xuid (CTF/Zones/Oddball) : best-effort, gated (repo nil hors
+	// capability match.objective.stats). Renseigné dès qu'il y a des matchs partagés ;
+	// les xuids sans stats objectif sont absents (data-driven côté front).
+	if s.objectiveStatsRepo != nil && resp.Header != nil && len(resp.SharedMatches) > 0 {
+		xuids := make([]string, 0, len(squadXUIDs))
+		for _, x := range squadXUIDs {
+			xuids = append(xuids, x)
+		}
+		if agg, err := s.objectiveStatsRepo.LoadAggregatedByXUID(ctx, matchIDsOf(resp.SharedMatches), xuids); err != nil {
+			slog.WarnContext(ctx, "squad: objective stats query failed (best-effort)",
+				"main", mainGT, "match_count", len(resp.SharedMatches), "err", err)
+		} else if len(agg) > 0 {
+			resp.Header.ObjectiveStatsByXUID = agg
+		}
+	}
 
 	// Si pas de matchs partages, retourner sans charger les sections lourdes.
 	if len(resp.SharedMatches) == 0 {
