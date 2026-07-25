@@ -19,8 +19,9 @@ const (
 
 // NotifyDiskAlert envoie un embed d'alerte (ou de rétablissement) disque.
 // status : domain.FreshnessStatusWarn | Critical | OK (OK = recovery).
-// L'anti-spam (transition / rappel 24 h) est décidé par le caller via
-// ops.ShouldNotifyDisk — cette fonction envoie sans condition de fréquence.
+// L'anti-spam (transition / aggravation, sans rappel périodique — V72-31) est décidé
+// par le caller via ops.ShouldNotifyDisk — cette fonction envoie sans condition de
+// fréquence.
 // Retourne true si Discord a accepté le message.
 func NotifyDiskAlert(cfg NotifyConfig, status, path string, freeBytes, totalBytes uint64, usedPercent float64) bool {
 	if cfg.WebhookURL == "" || !cfg.NotifyDisk {

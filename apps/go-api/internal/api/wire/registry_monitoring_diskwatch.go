@@ -8,7 +8,8 @@
 //   - un log WARN/ERROR à message STABLE → détection persistée du monitoring
 //     (ErrorCollector → detections_latest, badge admin) ;
 //   - une notification Discord si le webhook est configuré (transition de
-//     statut + rappel 24 h + rétablissement — politique ops.ShouldNotifyDisk) ;
+//     statut + rétablissement, sans rappel périodique — politique
+//     ops.ShouldNotifyDisk, V72-31) ;
 //   - des gauges expvar (levelup.disk_data_*).
 //
 // Mesure = r.resourceDisk() (même source que l'onglet Ressources admin, seuils
