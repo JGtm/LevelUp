@@ -42,9 +42,9 @@ func NewCatalogHandler(repo port.CatalogRepo) *CatalogHandler {
 // (préfixe exact /titles/{slug}/catalog/... relatif au point de montage).
 func (h *CatalogHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/titles/{slug}/catalog/playlists", h.handlePlaylists)
-	huma.Get(api, "/titles/{slug}/catalog/pairs", h.handlePairs)
-	huma.Get(api, "/titles/{slug}/catalog/maps", h.handleMaps)
+	huma.Get(api, "/titles/{slug}/catalog/playlists", h.handlePlaylists, humacore.Op("getTitleCatalogPlaylists", "Catalogue des playlists d'un titre", "titles"))
+	huma.Get(api, "/titles/{slug}/catalog/pairs", h.handlePairs, humacore.Op("getTitleCatalogPairs", "Catalogue des paires mode/map d'un titre", "titles"))
+	huma.Get(api, "/titles/{slug}/catalog/maps", h.handleMaps, humacore.Op("getTitleCatalogMaps", "Catalogue des maps d'un titre", "titles"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

@@ -32,7 +32,7 @@ func NewBootstrapHandler(svc *service.BootstrapService) *BootstrapHandler {
 // (chemin relatif identique à l'ancien r.Get("/bootstrap", ...)).
 func (h *BootstrapHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/bootstrap", h.handleBootstrap)
+	huma.Get(api, "/bootstrap", h.handleBootstrap, humacore.Op("getBootstrap", "Bootstrap du shell React", "bootstrap"))
 }
 
 // bootstrapOutput : 200 avec le BootstrapResponse complet (contrat préservé —
@@ -63,7 +63,7 @@ func NewPlayersHandler(svc *service.BootstrapService) *PlayersHandler {
 // (chemin relatif identique à l'ancien r.Get("/players", ...)).
 func (h *PlayersHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/players", h.handlePlayers)
+	huma.Get(api, "/players", h.handlePlayers, humacore.Op("getPlayers", "Liste des joueurs disponibles", "bootstrap"))
 }
 
 // playersOutput : 200 avec la liste des joueurs disponibles (contrat préservé —

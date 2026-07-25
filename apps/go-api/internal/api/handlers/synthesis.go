@@ -47,7 +47,7 @@ func NewSynthesisHandler(newSvc ContextFactory[port.SynthesisService]) *Synthesi
 // /players/{player_slug} + middleware ownership/title hérités).
 func (h *SynthesisHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Post(api, "/pages/synthesis", h.handleGetSynthesisPage)
+	huma.Post(api, "/pages/synthesis", h.handleGetSynthesisPage, humacore.Op("postSynthesisPage", "Synthèse globale (filtres en body)", "synthesis"))
 	// Body OPTIONNEL (décodé seulement si présent) : RawBody requis par défaut
 	// côté Huma → optionnel pour préserver le 200 sur corps absent.
 	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/pages/synthesis")

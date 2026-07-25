@@ -41,8 +41,8 @@ func NewLeaderboardHandler(newSvc ContextFactory[port.LeaderboardService]) *Lead
 // /players/{player_slug} + middleware ownership/title hérités).
 func (h *LeaderboardHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/pages/leaderboard", h.handleGetPage)
-	huma.Get(api, "/pages/leaderboard/catalog", h.handleGetCatalog)
+	huma.Get(api, "/pages/leaderboard", h.handleGetPage, humacore.Op("getLeaderboardPage", "Résumé CSR local du joueur courant", "leaderboard"))
+	huma.Get(api, "/pages/leaderboard/catalog", h.handleGetCatalog, humacore.Op("getLeaderboardCatalog", "Saisons + playlists disponibles pour les sélecteurs du classement CSR mondial", "leaderboard"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

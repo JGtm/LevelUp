@@ -49,7 +49,11 @@ func NewAdminCatalogDrainHandler(run CatalogDrainRunner, jobStore *jobs.Store, b
 // /admin/actions/catalog, middleware RequireAuth/RequireAdmin hérités du groupe).
 func (h *AdminCatalogDrainHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Post(api, "/actions/catalog/ugc-drain", h.handleRun)
+	huma.Post(api, "/actions/catalog/ugc-drain", h.handleRun, humacore.Op(
+		"postAdminActionCatalogUGCDrain",
+		"Action admin — recense les asset IDs vus en jeu (catalog_fetch_queue) puis les résout via l'API DiscoveryUGC (réseau, rate-limité) ; complète "+
+			"le catalog/refresh zéro-réseau pour les assets absents de match_registry ; job asynchrone (auth admin requis)",
+		"admin"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

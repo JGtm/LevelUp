@@ -43,7 +43,7 @@ func NewAdminInvariantsHandler(run InvariantsRunner) *AdminInvariantsHandler {
 // middleware RequireAuth/RequireAdmin + NoStore hérités).
 func (h *AdminInvariantsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/invariants", h.handleGet)
+	huma.Get(api, "/invariants", h.handleGet, humacore.Op("getAdminInvariants", "Intégrité des données — invariants du pipeline sync par joueur (auth admin requis)", "admin"))
 }
 
 // adminInvariantsInput : ?title= optionnel (défaut : titre par défaut).

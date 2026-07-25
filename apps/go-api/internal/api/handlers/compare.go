@@ -49,7 +49,7 @@ func NewCompareHandler(newSvc CompareAuthFactory) *CompareHandler {
 // /players/{player_slug} + middleware ownership/title hérités).
 func (h *CompareHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Post(api, "/pages/compare", h.PostComparePage)
+	huma.Post(api, "/pages/compare", h.PostComparePage, humacore.Op("postComparePage", "Comparaison joueur vs joueur (12 KPIs)", "compare"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

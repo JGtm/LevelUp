@@ -62,9 +62,9 @@ func (h *ProgressionHandler) WithDemoMode(demo bool) *ProgressionHandler {
 // hérite du middleware du sous-groupe (cf. TestHumaNestedSubrouterProbe).
 func (h *ProgressionHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/streaks", h.handleStreaks)
-	huma.Get(api, "/records", h.handleRecords)
-	huma.Get(api, "/milestones", h.handleMilestones)
+	huma.Get(api, "/streaks", h.handleStreaks, humacore.Op("listProgressionStreaks", "Liste des streaks du joueur (active + historique)", "progression"))
+	huma.Get(api, "/records", h.handleRecords, humacore.Op("listProgressionRecords", "PB courants + timeline des records battus", "progression"))
+	huma.Get(api, "/milestones", h.handleMilestones, humacore.Op("listProgressionMilestones", "Catalogue de milestones + statut Earned par milestone", "progression"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

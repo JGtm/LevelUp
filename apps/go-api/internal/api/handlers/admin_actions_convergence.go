@@ -57,7 +57,10 @@ func NewAdminConvergenceActionHandler(
 // 400 invalid_input si JSON malformé OU player_slug absent, contrat préservé).
 func (h *AdminConvergenceActionHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Post(api, "/actions/convergence/run", h.handleRun)
+	huma.Post(api, "/actions/convergence/run", h.handleRun, humacore.Op(
+		"postAdminActionConvergenceRun",
+		"Action admin — relance la convergence d'un joueur (RunDelta + post-sync, claim SyncGate) via le JobStore (auth admin requis)",
+		"admin"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

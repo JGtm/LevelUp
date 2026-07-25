@@ -46,7 +46,7 @@ func NewDiagPrestigeTelemetryHandler(newProvider PrestigeTelemetryDiagFactory) *
 // middleware hérités). Lit {player_slug} dans son propre path.
 func (h *DiagPrestigeTelemetryHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/_diag/prestige/telemetry/{player_slug}", h.handleGetDiag)
+	huma.Get(api, "/_diag/prestige/telemetry/{player_slug}", h.handleGetDiag, humacore.Op("getDiagPrestigeTelemetry", "Diag agrégation télémétrie Prestige par origine du défi", "diagnostics"))
 }
 
 // diagPrestigeTelemetryInput : path param {player_slug}.

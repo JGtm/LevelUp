@@ -38,7 +38,7 @@ func NewStatsHandler(newSvc ServiceFactory[port.StatsService]) *StatsHandler {
 // /players/{player_slug} + middleware ownership/title hérités).
 func (h *StatsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Post(api, "/pages/stats/query", h.handleGetPage)
+	huma.Post(api, "/pages/stats/query", h.handleGetPage, humacore.Op("postStatsQuery", "Séries temporelles (legacy — voir aussi POST /pages/timeseries)", "timeseries"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

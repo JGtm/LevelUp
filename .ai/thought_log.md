@@ -1,3 +1,56 @@
+## [2026-07-25] V72-01 — H2 : Tags/Summary/OperationID stables sur les 204 routes Huma
+
+**Statut** : Complété (H2 du PLAN_V72_HUMA_OPENAPI.md ; H3-H8 restent). Pas de commit
+(superviseur). Branche `feat/v7.2-notion-batch`. Comportement HTTP inchangé.
+
+**Objectif** : chaque opération Huma porte OperationID + Summary + Tags stables et cohérents
+pour que le document généré (H6) reproduise le groupage `tags:` du yaml manuel et préserve
+les operationId dont dépend generated.ts (H7).
+
+**Ergonomie retenue** : helper mince `humacore.Op(opID, summary string, tags ...string)
+func(*huma.Operation)` (nouveau `humacore/operation.go`), passé en DERNIER argument
+variadique de `huma.Get/Post/...`. PAS de conversion vers `huma.Register` : préserve la
+signature des 204 call-sites + l'inférence de type générique, diff minimal. Poser
+OperationID/Summary EXPLICITEMENT désactive la régén auto de huma — y compris le
+`PrefixModifier` du sous-routeur, qui ne re-préfixe l'operationID que s'il est resté celui
+de la convenience (`_convenience_id`) : ma valeur explicite survit, seul le chemin gagne le
+préfixe absolu. Prouvé par le gate H2.
+
+**Application** : mécanique via un générateur go/ast jetable (scratchpad) — repère chaque
+`huma.X(api,"local",handler)`, résout le préfixe absolu (table Mount→préfixe lue dans
+server_apiv1.go, split par fonction pour sync_handler), dérive le yamlpath, insère
+`, humacore.Op(...)` à l'offset du Rparen. Forme multi-ligne + summary concaténé (`"a "+"b"`)
+quand la ligne dépasse 210 char (lll max 220). Source des métadonnées : baseline H0
+(`.ai/V7/openapi_baseline_v72.txt`, dérivée du yaml) pour 159 routes en parité EXACTE ;
+supplément hand-authored pour 45 (cf. plan §Découvertes).
+
+**Réconciliation 204 statique → 166 runtime (doc démo)** : delta 38 = 29 Prestige (bundle
+nil en démo) + 3 catalog (metadata DB indispo) + 3 diag auto-sync (scheduler nil dans le
+test) + 3 assets_metadata (2 branches mutuellement exclusives, 6 call-sites → 3 montées).
+
+**Différences de parité documentées** (le CODE fait foi) : 6 renommages de param
+(admin `{username}`/`{code}`, notifications `{id}` vs yaml `{user_id}`/`{invite_id}`/
+`{notification_id}` — operationId REPRIS du yaml sémantique) ; 1 divergence sémantique
+watcher (yaml `/watcher/auth/{provider}` callback OBSOLÈTE → invented `getWatcherAuthStatus`
+sur la vraie route `/watcher/auth/{attempt_id}`) ; 38 routes Go-only inventées (nouveaux
+tags `prestige`, `titles`) ; tag `jobs` non déclaré dans le bloc `tags:` du yaml — préservé.
+
+**Gate** : nouveau `openapi_operation_metadata_test.go` (charge yaml via kin-openapi, vérifie
+(a) OperationID+Summary+≥1 Tag sur toute op du doc, (b) parité operationId+tags sur chemins
+communs) → 166 ops, metadata OK=166, parité vérifiée 156, échecs 0.
+
+**Verdicts gates** : `gofmt -l` vide · `go build ./...` exit 0 · `go vet ./...` exit 0 ·
+`go test ./internal/api/...` ok · `go test ./...` exit 0 · `make go-api-lint` 0 issues.
+
+**Périmètre** : `humacore/operation.go` (nouveau), `huma_routes.go` (+import), 74 handlers,
+`openapi_operation_metadata_test.go` (nouveau) — ZÉRO autre fichier Go. NB : 3 fichiers
+`apps/web/*` modifiés dans le working tree ne sont PAS de ce chantier (acteur concurrent).
+
+**Prochaine étape** : H3 (instrumenter les DTOs — descriptions/enums/defaults/examples en
+tags struct Go), à ne démarrer qu'après clôture H2.
+
+---
+
 ## [2026-07-25] V72-01 — H1 : document OpenAPI PARTAGÉ câblé sur tous les Mount
 
 **Statut** : Complété (H1 du PLAN_V72_HUMA_OPENAPI.md ; H2-H8 restent). Pas de commit

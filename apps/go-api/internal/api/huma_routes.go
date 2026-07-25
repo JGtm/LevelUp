@@ -17,6 +17,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 
 	"levelup/go-api/internal/api/handlers"
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 )
 
@@ -38,7 +39,7 @@ func registerChangelogHuma(api huma.API, h *handlers.ChangelogHandler) {
 		out := &changelogHumaOutput{}
 		out.Body.Content = content
 		return out, nil
-	})
+	}, humacore.Op("getChangelog", "Changelog Markdown du projet", "health"))
 }
 
 // jobStatusHumaInput : path param du GET /jobs/{job_id}.
@@ -63,7 +64,7 @@ func registerJobsHuma(api huma.API, h *handlers.JobsHandler) {
 			return nil, newHumaError(http.StatusNotFound, "job_not_found", "Job introuvable ou expiré : "+in.JobID)
 		}
 		return &jobStatusHumaOutput{Body: job}, nil
-	})
+	}, humacore.Op("getJob", "Statut d'un job long", "jobs"))
 }
 
 // gamertagSearchHumaInput : query param ?q= du GET /directory/gamertags/search.
@@ -90,5 +91,5 @@ func registerGamertagHuma(api huma.API, h *handlers.GamertagHandler) {
 			return nil, newHumaError(http.StatusInternalServerError, "gamertag_search_error", err.Error())
 		}
 		return &gamertagSearchHumaOutput{Body: resp}, nil
-	})
+	}, humacore.Op("searchGamertags", "Recherche floue de gamertags", "explorer"))
 }

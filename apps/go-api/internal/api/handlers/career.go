@@ -52,13 +52,13 @@ func NewCareerHandler(
 // /players/{player_slug} + middleware ownership/title hérités).
 func (h *CareerHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/pages/career", h.handleGetCareer)
-	huma.Get(api, "/pages/career/top-matches", h.handleGetTopMatches)
-	huma.Get(api, "/pages/career/encounters", h.handleGetEncounters)
-	huma.Get(api, "/pages/career/highlight-matches", h.handleGetHighlightMatches)
-	huma.Get(api, "/pages/career/top-encounters", h.handleGetTopEncountersRich)
-	huma.Get(api, "/pages/career/rivals", h.handleGetRivals)
-	huma.Get(api, "/pages/career/csrs", h.handleGetCareerCSRs)
+	huma.Get(api, "/pages/career", h.handleGetCareer, humacore.Op("getCareerPage", "Page Carrière complète", "career"))
+	huma.Get(api, "/pages/career/top-matches", h.handleGetTopMatches, humacore.Op("getCareerTopMatches", "Top matchs du joueur", "career"))
+	huma.Get(api, "/pages/career/encounters", h.handleGetEncounters, humacore.Op("getCareerEncounters", "Encounters du joueur", "career"))
+	huma.Get(api, "/pages/career/highlight-matches", h.handleGetHighlightMatches, humacore.Op("getCareerHighlightMatches", "Matchs marquants — 15 best + 15 worst (format Explorer)", "career"))
+	huma.Get(api, "/pages/career/top-encounters", h.handleGetTopEncountersRich, humacore.Op("getCareerTopEncounters", "Joueurs les plus croisés (hors amis)", "career"))
+	huma.Get(api, "/pages/career/rivals", h.handleGetRivals, humacore.Op("getCareerRivals", "Top némésis + Top souffre-douleur", "career"))
+	huma.Get(api, "/pages/career/csrs", h.handleGetCareerCSRs, humacore.Op("getCareerCSRs", "Classements CSR par playlist (snapshots current / season / all-time)", "career"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

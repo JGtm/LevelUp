@@ -51,14 +51,14 @@ func NewCampaignHandler(resolve ProgressionResolver, titleSlug string) *Campaign
 // /players/{player_slug} + middleware ownership/title hérités).
 func (h *CampaignHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Post(api, "/campaigns", h.handleStart)
-	huma.Get(api, "/campaigns/active", h.handleGetActive)
-	huma.Get(api, "/campaigns/history", h.handleListEnded)
-	huma.Get(api, "/campaigns/{id}", h.handleGetByID)
-	huma.Post(api, "/campaigns/{id}/pause", h.handlePause)
-	huma.Post(api, "/campaigns/{id}/resume", h.handleResume)
-	huma.Post(api, "/campaigns/{id}/close", h.handleClose)
-	huma.Post(api, "/campaigns/{id}/abandon", h.handleAbandon)
+	huma.Post(api, "/campaigns", h.handleStart, humacore.Op("startCampaign", "Démarrer une campagne d'amélioration sur un axe (snapshot des 100 derniers matchs)", "progression"))
+	huma.Get(api, "/campaigns/active", h.handleGetActive, humacore.Op("getActiveCampaign", "Campagne active du joueur (null si aucune)", "progression"))
+	huma.Get(api, "/campaigns/history", h.handleListEnded, humacore.Op("listEndedCampaigns", "Campagnes closes du joueur (historique, les plus récentes d'abord)", "progression"))
+	huma.Get(api, "/campaigns/{id}", h.handleGetByID, humacore.Op("getCampaignByID", "Détail d'une campagne + défis liés", "progression"))
+	huma.Post(api, "/campaigns/{id}/pause", h.handlePause, humacore.Op("pauseCampaign", "Mettre une campagne active en pause", "progression"))
+	huma.Post(api, "/campaigns/{id}/resume", h.handleResume, humacore.Op("resumeCampaign", "Reprendre une campagne en pause", "progression"))
+	huma.Post(api, "/campaigns/{id}/close", h.handleClose, humacore.Op("closeCampaign", "Clôturer une campagne (status=completed)", "progression"))
+	huma.Post(api, "/campaigns/{id}/abandon", h.handleAbandon, humacore.Op("abandonCampaign", "Abandonner une campagne (status=abandoned, sans pénalité)", "progression"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

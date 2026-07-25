@@ -40,7 +40,7 @@ func NewSessionPageHandler(newSvc ServiceFactory[port.SessionPageService]) *Sess
 // /players/{player_slug} + middleware ownership/title hérités).
 func (h *SessionPageHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Post(api, "/pages/sessions/detail", h.GetPage)
+	huma.Post(api, "/pages/sessions/detail", h.GetPage, humacore.Op("postSessionDetailPage", "Détail d'une session avec suggestion de comparaison", "timeseries"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

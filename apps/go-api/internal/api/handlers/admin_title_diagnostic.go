@@ -44,7 +44,7 @@ func NewAdminTitleDiagnosticHandler(svc titleDiagnoser, logger *slog.Logger) *Ad
 // RequireAuth/RequireAdmin/NoStore hérités).
 func (h *AdminTitleDiagnosticHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/titles/{slug}/diagnostic", h.handleGet)
+	huma.Get(api, "/titles/{slug}/diagnostic", h.handleGet, humacore.Op("getAdminTitleDiagnostic", "Diagnostic santé d'un titre : présence des mappings TOML + réalité DB (auth admin requis)", "admin"))
 }
 
 // adminTitleDiagnosticInput : path param {slug}.

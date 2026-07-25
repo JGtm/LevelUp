@@ -58,7 +58,7 @@ func NewProgressionBackfillHandler(newRunner ProgressionBackfillFactory) *Progre
 // POST est OPTIONNEL (MarkRequestBodyOptional) — il n'est pas lu par le backfill.
 func (h *ProgressionBackfillHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Post(api, "/_admin/progression/backfill/{player_slug}", h.handleRunBackfill)
+	huma.Post(api, "/_admin/progression/backfill/{player_slug}", h.handleRunBackfill, humacore.Op("backfillProgression", "Backfill progression V2 (Ascension) pour un joueur", "diagnostics"))
 	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/_admin/progression/backfill/{player_slug}")
 }
 
