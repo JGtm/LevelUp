@@ -1,3 +1,49 @@
+## [2026-07-25] Explorer live repair — Lot A1 : pool-first pour les lectures publiques de tiers
+
+**Statut** : Complété + VALIDÉ end-to-end (Lot A1 de `.ai/V7.1/PLAN_EXPLORER_LIVE_REPAIR_2026-07.md`).
+Lots A2 (saisons) et A3 (dégradation muette) NON TRAITÉS (statut `[!]` justifié dans le plan) ;
+A0 = action utilisateur (SSO). Pas de commit (superviseur). Branche `feat/v7.2-notion-batch`.
+
+**Challenge user** : « le fetch d'infos Explorer n'utilise pas du tout le pool de tokens —
+avec Madina97294 (RT expiré) aucune donnée live, alors que le pool a 4-6 tokens valides ».
+
+**Décision technique principale** : nouveau `enrichWithHaloTokensPublicRead(ctx, pdb)`
+(registry_auth.go) réservé au player-query Explorer (lectures PUBLIQUES de tiers, xuid cible
+explicite). Ordre : token de session frais strict → profil sélectionné
+(`ResolveFreshPlayerTokens`) → **token SAIN du pool** (`Acquire(PolicyAnyPublic)` via
+adaptateur `poolPublicReadAdapter` → interface `pooledTokenSource`, nouveau
+`registry_pool_source.go`). Champ optionnel `publicReadTokenSrc` du ServiceRegistry +
+`WithTokenPool(autoSyncPool)` câblé au boot (cmd/server/main.go). WARN `halo_auth: fallback
+pool` (clés profile_xuid/pool_gamertag, jamais le token) + compteurs expvar
+`explorer_live_token_source_{session,profile,pool,none}`. ADR 0023 respecté : aucune
+re-capture, le pool porte une lecture PUBLIQUE avec un RT vivant, jamais une donnée privée
+(SeasonPass/Home restent sur `enrichWithHaloTokens` — garde-rail `TestPublicReadPerimeter_Guard`
++ exemption ratchet ExplorerCtxWithAuth retirée).
+
+**Résultats observés** : gates VERTS — gofmt -l vide ; `go build ./...` ; `go vet ./...` ;
+`go test ./...` ; `-tags=integration -p 1 ./internal/api/wire ./internal/api` ;
+`make go-api-lint` 0 issue (après renommage `publicReadTokenSrc` ≤ 20 c. pour ne pas
+re-flag lll d'alignement gofmt sur 4 commentaires pré-existants). TEST RÉEL via l'API
+locale (serveur reconstruit lancé avec LEVELUP_AUTH_MODE=none pour ouvrir la garde
+d'ownership, fetchs live RÉELS ; air arrêté puis relancé après) :
+- **Madina97294 (RT mort) → Nilton410** : `auth_available:true`, carrière/identité/top
+  médailles (20)/saisons (14) NON NULLES, rang live « Héros » — IDENTIQUE à JGtm (RT sain).
+- Log `halo_auth: fallback pool profile_xuid=2533274858283686 pool_gamertag=JGtm` (1 fois) ;
+  expvar `explorer_live_token_source_pool:1` (Madina) + `_profile:1` (JGtm, contrôle).
+Le pool ne contient que des tokens sains (boot skip des slots RT mort ; size=7 local).
+
+**Investigation annexe — latence des suggestions de gamartags** (diagnostiquée + mesurée,
+NON corrigée) : cause = fallback live SYNCHRONE (`LiveFallbackGamertagSearch`, timeout 6 s)
+sur toute query plausible sans match exact local. Mesures : `Mad`/`abc` = 2,0–2,9 s (1er hit),
+`Madina97294` (match exact) = 0,22 s, 2e `Mad` (neg-cache) = 0,21 s. La SQL locale
+(`Q11GamertagSearch`) n'est PAS le goulot (~200 ms). Correctif recommandé (non appliqué,
+UX/comportement hors périmètre + risque collision front) : fallback live non bloquant pour
+le typeahead (`?live=0` défaut, `live=1` sur intention explicite) ou résolution async.
+
+**Conclusion / prochaine étape** : Lot A1 livrable seul (fix le symptôme user). A2/A3 =
+chantiers dédiés (A2 : sourcing 14 saisons + gate humain ; A3 : DTO live_status + badges
+front). Latence suggestions : décision produit à trancher (opt-in live).
+
 ## [2026-07-25] V72-01 — H3 : instrumentation sémantique des DTOs (tags Huma)
 
 **Statut** : Complété (H3 du PLAN_V72_HUMA_OPENAPI.md ; H4-H8 restent). Pas de commit

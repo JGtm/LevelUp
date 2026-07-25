@@ -36,11 +36,13 @@ var forcePageIdentityExemptions = map[string]string{
 	// identité dérivée de ctxkeys.HaloXUID, aucune écriture sous xuid de page.
 	// Exempté 2026-07-17 (revue A2).
 	"Compare": "FetchRemoteStats cible xuid(pdb) explicite ; pas de sujet ambiant (2026-07-17)",
-	// ExplorerCtxWithAuth : les providers de profil cible (FetchLiveIdentity(ctx,
-	// targetXUID), FetchRemoteStats caché) reçoivent le xuid cible EXPLICITE. Réfuté
-	// #4 de la revue (chemin dédié, pas de fuite du compte connecté).
-	// Exempté 2026-07-17 (revue A2).
-	"ExplorerCtxWithAuth": "providers de profil cible à xuid explicite ; réfuté #4 revue (2026-07-17)",
+	// ExplorerCtxWithAuth : RETIRÉ 2026-07-25 (A1). Le player-query Explorer est
+	// passé de enrichWithHaloTokens à enrichWithHaloTokensPublicRead (résolution
+	// pool-first pour les lectures publiques de tiers) → il n'appelle plus
+	// enrichWithHaloTokens, donc n'entre plus dans le périmètre de ce ratchet.
+	// Son périmètre est désormais gardé par TestPublicReadPerimeter_Guard
+	// (registry_pool_source_test.go). Les providers ciblent toujours un xuid
+	// explicite (FetchLiveIdentity(ctx, targetXUID)) — aucune fuite du compte connecté.
 }
 
 func TestEnrichCallersForcePageIdentity(t *testing.T) {

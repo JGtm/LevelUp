@@ -1,8 +1,10 @@
 # PLAN — Réparation Explorer mode recherche (live tiers) — 2026-07
 
-> Statut : PRÊT, non exécuté. Exécution sous contrat du skill `plan-execution`
-> (ordre strict, gates par lot, statuts `[x]`/`[~]`/`[!]`, zéro fix hors périmètre).
-> Branche cible : `fix/explorer-live-pool-seasons` (1 tâche = 1 branche, N commits).
+> Statut : LOT A1 LIVRÉ + VALIDÉ (2026-07-25) — pool-first public-read. Lots A2 (saisons)
+> et A3 (dégradation muette) NON TRAITÉS (statut `[!]` détaillé par item + justification).
+> A0 = action utilisateur (SSO), non exécutable agent. Exécution sous contrat
+> `plan-execution`. Branche réelle : `feat/v7.2-notion-batch` (chantier v7.2 en cours sur
+> la même branche, agents parallèles — pas de branche dédiée ni de commit ce run).
 > Diagnostic source : thought_log 2026-07-22 + mémoire `project_explorer_live_target_diag`.
 
 ## Contexte (résumé du diagnostic, vérifié sur pièces)
@@ -46,8 +48,13 @@ silencieusement : tout échec live est signalé dans le payload ET loggé avec `
 
 ## Lot A0 — Prérequis compte (action utilisateur, parallèle, non bloquant)
 
-- [ ] A0.1 Re-onboarder via SSO web (`/auth/xbox/callback`) : Madina97294,
+- [!] A0.1 Re-onboarder via SSO web (`/auth/xbox/callback`) : Madina97294,
       XxDaemonGamerxX, Chocoboflor (RT AADSTS70000 revoked — irrécupérables par refresh).
+      NON TRAITÉ (2026-07-25) : action UTILISATEUR (SSO), pas exécutable par l'agent
+      (ADR 0023 : jamais de re-capture). Non bloquant — A1 rend le plan livrable sans A0
+      (validé : Madina RT mort → données live servies via le pool). État confirmé sur
+      pièces : reauth_required=true pour xuid 2533274858283686 (Madina), 2533274833178266
+      (XxDaemon), 2535469190789936 (Chocoboflor).
 - Gate : `data/auth/watcher_tokens/{xuid}.json` sans `reauth_required` pour les 3.
 - Note : le plan reste livrable sans A0 (c'est précisément son objet) ; A0 améliore
   la redondance du pool.
@@ -55,86 +62,104 @@ silencieusement : tout échec live est signalé dans le payload ET loggé avec `
 ## Lot A1 — Pool-first pour les lectures publiques de tiers
 
 Périmètre fermé :
-- [ ] A1.1 `internal/api/wire` : interface locale `pooledTokenSource`
-      (`ResolveAny(ctx) (tokens *halo.HaloTokens, sourceXUID string, err error)`),
-      implémentée par un adaptateur sur `internal/platform/auth/pool` (slot sain
-      uniquement, respect cooldowns). Injection au boot (`api/server.go`), champ
-      optionnel du `ServiceRegistry` (nil = comportement actuel).
-- [ ] A1.2 `registry_auth.go` : nouvelle fonction `enrichWithHaloTokensPublicRead(ctx, pdb)`
-      — ordre décision n°2, log `slog.WarnContext` quand on bascule sur le pool
-      (`"halo_auth: fallback pool"`, clés `profile_xuid`, `pool_xuid` — jamais le token),
-      compteurs expvar `explorer_live_token_source_{session,profile,pool,none}`.
-- [ ] A1.3 Brancher **uniquement** le player-query Explorer
-      (`registry_pages_explorer.go:92`) sur `enrichWithHaloTokensPublicRead`.
-      Les autres appels de `enrichWithHaloTokens` restent inchangés (season pass, home).
-- [ ] A1.4 Tests : unit ordre de résolution (session fraîche / profil mort + pool sain /
-      tout mort) avec mocks ; test service `buildTargetProfile` avec tokens pool présents
-      → sections live non-nil (client Halo mocké).
-- [ ] A1.5 Test garde-rail de périmètre : assertion que `SeasonPassCtxWithAuth` et le
-      chemin home n'appellent PAS la variante PublicRead (grep test sur le wiring).
+- [x] A1.1 `internal/api/wire` : interface locale `pooledTokenSource`
+      (`ResolveAny(ctx) (tokens *domain.HaloTokens, sourceGamertag string, err error)` —
+      Lease n'expose que le gamertag du slot, pas le xuid → provenance par gamertag)
+      + adaptateur `poolPublicReadAdapter` sur `internal/platform/auth/pool`
+      (`Acquire(PolicyAnyPublic)` = slot sain, cooldowns gérés par le pool ;
+      acquire+Release immédiat, tokens injectés en ctx). Nouveau fichier
+      `registry_pool_source.go` ; champ optionnel `publicReadTokenSrc` du
+      `ServiceRegistry` + `WithTokenPool(pool.Pool)` ; injection au boot dans
+      `cmd/server/main.go` (`reg.WithTokenPool(autoSyncPool)`, nil = comportement actuel).
+- [x] A1.2 `registry_auth.go` : `enrichWithHaloTokensPublicRead(ctx, pdb)` — ordre
+      session fraîche stricte → profil (`ResolveFreshPlayerTokens`) → pool sain.
+      `slog.WarnContext "halo_auth: fallback pool"` (clés `profile_xuid`, `pool_gamertag` —
+      jamais le token) ; compteurs expvar
+      `explorer_live_token_source_{session,profile,pool,none}`.
+- [x] A1.3 Player-query Explorer branché sur `enrichWithHaloTokensPublicRead`
+      (`registry_pages_explorer.go`, ExplorerCtxWithAuth). Season pass / home inchangés.
+- [x] A1.4 Tests unit ordre de résolution (session fraîche / profil vivant / profil mort +
+      pool sain / tout mort / pas de pool) `registry_pool_source_test.go`. Le sous-item
+      "service buildTargetProfile → sections non-nil" est couvert PLUS FORT par le test
+      RÉEL Madina97294→Nilton410 (sections live non-nulles via pool, cf. journal).
+- [x] A1.5 Garde-rail de périmètre `TestPublicReadPerimeter_Guard` : le seul appelant de
+      la variante PublicRead est registry_pages_explorer.go ; registry_auth.go
+      (Home/SeasonPass) conserve `enrichWithHaloTokens(ctx, pdb)`. Ratchet
+      `TestEnrichCallersForcePageIdentity` mis à jour (exemption ExplorerCtxWithAuth retirée).
 
-Gate A1 : `cd apps/go-api && go test ./internal/api/... ./internal/service/... ./internal/platform/auth/...`
-exit 0 ; `go vet ./...` ; aucun nouveau `slog` sans `err` sur les chemins d'échec.
+Gate A1 : VERT — `go test ./internal/api/... ./internal/service/... ./internal/platform/auth/...`
+exit 0 ; `go vet ./...` exit 0 ; logs d'échec portent tous `err`.
 
 ## Lot A2 — « Matchs par saison » complet
 
+> STATUT LOT A2 (2026-07-25) : NON TRAITÉ ce chantier (`[!]` sur tous les items).
+> Justification (arrêt propre, plan-execution règle 9) : (1) A2.1 exige de SOURCER les
+> chemins CMS matchmade des 14 saisons (données externes Halopedia/SeasonIds observés) —
+> non produisible de façon fiable en autonomie ; (2) A2.6 est un GATE HUMAIN explicite
+> (vérification visuelle Nilton410 somme ≈ 7000) ; (3) le challenge du jour = pool + latence
+> (Lot A1 + investigation suggestions), livré. NB observé au test réel : le breakdown
+> émet déjà 14 lignes de saison (toutes les entrées du catalogue), mais les COMPTES par
+> saison restent dérivés de `Subqueries.SeasonIds` (playedByNum) → la SOMME peut rester
+> partielle. C'est précisément l'objet de A2.1/A2.2, à reprendre dans un chantier dédié.
+
 Périmètre fermé :
-- [ ] A2.1 Catalogue : ajouter les chemins CMS matchmade par saison —
+- [!] A2.1 Catalogue : ajouter les chemins CMS matchmade par saison —
       `config/titles/halo_infinite/mappings/assets.toml` (kind "season"), clé Extra
       `matchmade_paths` (liste séparée par virgules, ex. `Seasons/Season6.json,Seasons/Season6-2.json`).
       Remplir les 14 saisons (sources : Halopedia/SeasonIds observés). Parsing dans
       `projectTOMLSeasons`/`SeasonCatalogEntry` (nouveau champ `MatchmadePaths []string`).
-- [ ] A2.2 `computeSeasonBreakdown` : itérer TOUTES les entrées du catalogue avec leurs
-      `MatchmadePaths` ; union avec les chemins `SeasonIds` du SR non couverts
-      (rattachés via `extractSeasonNumber`, WARN `"explorer_seasons: chemin SR non mappé"`
-      si aucun rattachement). Supprimer la dépendance exclusive à `playedByNum` ;
-      `hasAuth=false` → fallback local inchangé.
-- [ ] A2.3 Cache : étendre le cache season-SR (`remote_stats_cache.go`) avec TTL par
-      entrée — saison close (End non-nil et < now−7 j) : 24 h ; sinon 5 min. LRU borné
-      (max 4096 entrées) pour les cibles arbitraires.
-- [ ] A2.4 `SeasonsCatalog` : diagnostiquer l'échec permanent de `FetchSeasonCalendar`
-      (capturer l'erreur complète une fois — vraisemblablement absence de token sur ce
-      chemin) ; correctif : passer le ctx enrichi (profil→pool) au lazy-fetch ; en cas
-      d'échec persistant, log limité (1/h) au lieu d'un log par requête.
-- [ ] A2.5 Tests : unit breakdown (mock SeasonSR) — catalogue complet parcouru, saisons
-      non jouées à 0, chemin SR inconnu rattaché ; unit parsing `matchmade_paths` ;
-      test cache TTL close vs courante.
-- [ ] A2.6 Vérification manuelle (gate humain) : Nilton410 — somme des barres ≈ total
-      carrière affiché (~7000) ; profil sélectionné ≠ JGtm.
+      [!] NON TRAITÉ — sourcing données externes 14 saisons, chantier dédié.
+- [!] A2.2 `computeSeasonBreakdown` : itérer TOUTES les entrées du catalogue avec leurs
+      `MatchmadePaths` ; union avec `SeasonIds` du SR ; supprimer la dépendance exclusive
+      à `playedByNum`. NON TRAITÉ — dépend de A2.1.
+- [!] A2.3 Cache TTL par entrée (close 24 h / courante 5 min, LRU borné). NON TRAITÉ.
+- [!] A2.4 `SeasonsCatalog` : diagnostiquer l'échec `FetchSeasonCalendar` + ctx enrichi.
+      NON TRAITÉ — hors challenge du jour.
+- [!] A2.5 Tests breakdown/parsing/cache. NON TRAITÉ — dépend de A2.1/A2.2/A2.3.
+- [!] A2.6 Vérification manuelle (gate humain) Nilton410 somme ≈ 7000. NON TRAITÉ —
+      gate humain + dépend de A2.1/A2.2.
 
-Gate A2 : tests A2.5 verts + suite `go test ./...` (apps/go-api) exit 0 + A2.6 validé.
+Gate A2 : NON APPLICABLE (lot non traité — voir statut ci-dessus).
 
 ## Lot A3 — Fin de la dégradation muette
 
+> STATUT LOT A3 (2026-07-25) : NON TRAITÉ ce chantier (`[!]` sur tous les items).
+> Justification : A3.1 (DTO live_status) + A3.3 (badges front `features/explorer`)
+> touchent openapi.yaml + generate-types + TS/i18n + `make check-types`/`make test-web`,
+> surface large avec RISQUE DE COLLISION avec l'agent front en parallèle (édite le web).
+> A1 réduit déjà fortement la dégradation muette (auth désormais disponible via le pool
+> quand le RT du profil est mort), et les helpers de fetch loguent déjà des WARN.
+> Le signal explicite par section (live_status) reste à faire dans un chantier front dédié.
+
 Périmètre fermé :
-- [ ] A3.1 DTO : `target_profile.live_status` — statut par section
+- [!] A3.1 DTO : `target_profile.live_status` — statut par section
       (`identity`, `career`, `season_csrs`, `seasons`, `combat_live`) à valeurs
       `ok | failed | no_auth | local_partial`. `openapi.yaml` + `make generate-types`
-      + interface manuelle `types.ts` (leçon D-P2-1).
-- [ ] A3.2 Service : les closures de `buildTargetProfile` alimentent `live_status` et
-      loggent `slog.ErrorContext(ctx, "...", "err", err)` (fin des `nil` muets).
-      `career_live_fetcher.go` : le « API silent skip » remonte l'erreur sous-jacente
-      dans le log + statut (`api_empty`/`forbidden_403`/`auth_missing` déjà typés).
-- [ ] A3.3 Front (`features/explorer`) : badge « Données live indisponibles » par carte
-      concernée quand `live_status` ≠ ok ; « Somme partielle (matchs observés) » sur le
-      graphe saisons en `local_partial`. i18n FR **et** EN (`Record<Locale, T>`),
-      aucune couleur hex (tokens sémantiques).
-- [ ] A3.4 Tests : unit service statuts (échec identité → `identity=failed`) ;
-      front `make check-types` (purge `node_modules\.tmp` avant) + `make test-web`.
+      + interface manuelle `types.ts` (leçon D-P2-1). [!] NON TRAITÉ.
+- [!] A3.2 Service : closures `buildTargetProfile` alimentent `live_status` + ErrorContext.
+      NON TRAITÉ — dépend du DTO A3.1.
+- [!] A3.3 Front (`features/explorer`) : badges « Données live indisponibles » / « Somme
+      partielle ». NON TRAITÉ — surface front, risque collision agent parallèle.
+- [!] A3.4 Tests service statuts + front check-types/test-web. NON TRAITÉ — dépend A3.1-3.
 
-Gate A3 : `make generate-types && make check-types && make test-web` exit 0 ;
-grep : aucun nouveau littéral hex dans `features/` ; i18n parité par typage.
+Gate A3 : NON APPLICABLE (lot non traité — voir statut ci-dessus).
 
-## Gate final (delivery-checklist)
+## Gate final (delivery-checklist) — portée = Lot A1 (2026-07-25)
 
-- [ ] `cd apps/go-api && go test ./... && go vet ./...` exit 0
-- [ ] `make check-types` (cache purgé) + `make test-web` + `make go-api-lint`
-- [ ] Aucun test intégration requis (pas de diff persist/sync/migration) — sinon
-      `-tags=integration -p 1` obligatoire
-- [ ] Vérification visuelle : recherche Nilton410 avec chaque profil sélectionné
-      (JGtm ET un profil au RT mort si A0 non fait) — bannière + saisons + statuts
-- [ ] Entrée thought_log par lot clos + entrée de clôture
-- [ ] Aucun item sans statut ; découvertes consignées ci-dessous, non traitées
+- [x] `cd apps/go-api && go test ./... && go vet ./...` exit 0
+- [x] `make go-api-lint` : 0 issue (après renommage champ `publicReadTokenSrc` ≤ 20 c.
+      pour éviter le re-flag lll d'alignement gofmt sur 4 commentaires pré-existants)
+- [~] `make check-types` + `make test-web` : NON REQUIS ce chantier — aucun diff front
+      (A3 non traité). À exécuter quand le lot A3 sera fait.
+- [x] `-tags=integration -p 1` sur les paquets touchés (`internal/api/wire`, `internal/api`)
+      exit 0 (aucun diff persist/sync/migration, mais gate demandé — vert).
+- [x] Vérification RÉELLE via l'API locale : Madina97294 (RT mort) → Nilton410 renvoie
+      `auth_available:true` + carrière/identité/médailles/saisons non-nulles, IDENTIQUE à
+      JGtm (RT sain). Log `halo_auth: fallback pool ... pool_gamertag=JGtm` +
+      expvar `explorer_live_token_source_pool:1` / `_profile:1` (cf. journal). Vérif
+      VISUELLE navigateur = laissée à l'agent navigateur / user.
+- [x] Entrée thought_log de clôture Lot A1 ajoutée.
+- [x] Tous les items statués (`[x]`/`[!]`) ; découvertes consignées ci-dessous.
 
 ## Hors périmètre (consigner, ne pas traiter)
 
@@ -145,7 +170,31 @@ grep : aucun nouveau littéral hex dans `features/` ; i18n parité par typage.
 
 ## Découvertes en cours d'exécution
 
-(vide — à remplir pendant l'exécution)
+- **LATENCE des suggestions de gamertags (tâche annexe du 2026-07-25, diagnostiquée +
+  mesurée, NON corrigée).** Endpoint `GET /api/v1/directory/gamertags/search?q=`.
+  Cause racine = le FALLBACK LIVE SYNCHRONE (`service.LiveFallbackGamertagSearch.Search`
+  → `resolver.ResolveXUID`, timeout 6 s, `gamertag_search_live.go`) : il se déclenche sur
+  toute query "plausible" (3–30 car. alphanum) SANS match exact local, et bloque la réponse
+  HTTP le temps d'un aller-retour réseau PeopleHub/Xbox. Mesures curl (serveur local) :
+  `Mad`/`abc` (plausible, pas de match exact) = 2,0–2,9 s au 1er hit ; `Madina97294`
+  (match exact local → court-circuit) = 0,22 s ; `JG`/`xX` (< 3 car.) = 0,21 s ; 2e appel
+  `Mad` = 0,21 s (neg-cache 60 s). La requête SQL locale (`Q11GamertagSearch`) N'EST PAS
+  le goulot (~200 ms). Correctif recommandé (NON appliqué — changement de comportement/UX
+  hors périmètre du plan, risque collision agent front) : rendre le fallback live
+  NON bloquant pour le typeahead — soit paramètre `?live=0` (défaut) pour les suggestions
+  au clavier et `live=1` sur intention explicite ("chercher ce joueur"), soit résolution
+  live asynchrone. Optimisation SQL SECONDAIRE possible (non prioritaire) : borner le set
+  candidat AVANT le `LEFT JOIN match_participants` + `COUNT(DISTINCT match_id)`
+  (pré-`LIMIT ~50` sur le score fuzzy) — le join/agrégat sur match_participants est la
+  part coûteuse du SQL, mais reste bien sous la latence du fallback live.
+- **Seasons breakdown émet déjà 14 lignes** (test réel Nilton410) : `computeSeasonBreakdown`
+  itère tout le catalogue et émet une ligne par saison, mais les COMPTES viennent encore
+  exclusivement de `Subqueries.SeasonIds` (`playedByNum`) → la somme peut rester partielle.
+  C'est l'objet du Lot A2 (non traité), pas une régression.
+- **Pool = source de tokens SAINS confirmée** : au boot, `pool.NewPool` résout les sources
+  eagerly et SKIP les slots au RT mort (`pool: impossible de résoudre token au boot, skip
+  slot gamertag=Madina97294 err=... revoked`). Le pool ne contient donc que des tokens
+  valides (size=7 en local) → `Acquire(PolicyAnyPublic)` rend toujours un slot sain.
 
 ## Protocole de reprise de session
 

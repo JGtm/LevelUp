@@ -92,6 +92,7 @@ type ServiceRegistry struct {
 	prestigeBundle       *PrestigeBundle                      // nil si feature désactivée ; possède 2 *DB (sharedSocial + metadata) à fermer au shutdown
 	advisorBundle        *CoachAdvisorBundle                  // nil → coach_advisor désactivé (ADR 0020 Phase 8)
 	authStore            auth.UserTokenStore                  // ADR 0023 : source unique tokens auth (nil → fallback legacy DuckDB+env)
+	publicReadTokenSrc   pooledTokenSource                    // A1 : source de token SAIN du pool pour les LECTURES PUBLIQUES de tiers (Explorer) ; nil → pas de fallback pool (comportement historique)
 	jobStore             *jobs_platform.Store                 // nil → transcoding HLS désactivé (médias servis via remux WebM live)
 	autoSyncScheduler    *scheduler.AutoSyncScheduler         // dashboard monitoring : snapshot scheduler agrégé dans l'overview (nil → section indisponible)
 	healthScheduler      *scheduler.HealthScheduler           // dashboard monitoring : dernier audit data health + action run (nil → section indisponible)
