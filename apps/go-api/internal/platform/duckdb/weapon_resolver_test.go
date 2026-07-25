@@ -1,11 +1,12 @@
 //go:build integration
 
 // weapon_resolver_test.go — vérifie le PASSAGE PRINCIPAL P4 (resolveWeaponMeta) :
-//   - PARITÉ : le nom reste celui de weapon_labels (« BR75 », PAS « Fusil de combat »).
-//   - DIMENSIONS : role/family/faction/weapon_key viennent du registre.
-//   - sentinel grenade (0) : nom weapon_labels, role vide.
+//   - SOURCE UNIQUE (V72-06) : le nom vient de weapon_name_labels, keyé par weapon_key
+//     (weapon_id → weapon_ids → weapon_key → {en,fr}). BR75 = « BR75 » (parité).
+//   - DIMENSIONS : role/family/faction/weapon_key viennent du registre (plus de nom).
+//   - sentinel grenade (0) : nom weapon_labels (pas de weapon_key), role vide.
 //   - id inconnu : label vide (filtré en aval).
-//   - fallback silencieux quand le registre est absent (parité conservée).
+//   - fallback silencieux quand le registre/la source de noms sont absents.
 
 package duckdb
 
@@ -35,6 +36,24 @@ func resolverTestMeta(t *testing.T, withRegistry bool) *DB {
 		if err := halomigrations.ApplyWeaponRegistry(meta.SQLDb()); err != nil {
 			t.Fatalf("ApplyWeaponRegistry: %v", err)
 		}
+		// V72-06 : SOURCE UNIQUE des noms keyée par weapon_key. Le resolver joint
+		// weapon_name_labels (weapon_id → weapon_ids → weapon_key → {en,fr}). On seede
+		// les 3 clés exercées par les tests ; les autres ids retombent sur weapon_labels
+		// (sentinelles) ou "" (inconnus).
+		if _, err := meta.Exec(ctx, `CREATE TABLE weapon_name_labels (
+			title_slug VARCHAR, weapon_key VARCHAR, name_en VARCHAR, name_fr VARCHAR,
+			PRIMARY KEY (title_slug, weapon_key))`); err != nil {
+			t.Fatalf("create weapon_name_labels: %v", err)
+		}
+		for _, ins := range []string{
+			"INSERT INTO weapon_name_labels VALUES ('halo_infinite', 'hinf_br75', 'BR75', 'BR75')",
+			"INSERT INTO weapon_name_labels VALUES ('halo_5', 'h5_light_rifle', 'Light Rifle', 'Fusil léger')",
+			"INSERT INTO weapon_name_labels VALUES ('halo_5', 'h5_frag_grenade', 'Frag Grenade', 'Grenade à fragmentation')",
+		} {
+			if _, err := meta.Exec(ctx, ins); err != nil {
+				t.Fatalf("seed weapon_name_labels: %v", err)
+			}
+		}
 	}
 	return meta
 }
@@ -59,48 +78,46 @@ func TestResolveWeaponMeta_ParityAndDims(t *testing.T) {
 	}
 }
 
-// TestResolveWeaponMeta_RegistryFRFallbackH5 fige la politique « FR d'abord (label
-// puis registre), EN en dernier repli » (décision user 2026-07-19, ordre
-// wl.name_fr > w.name_fr > wl.name_en > w.name) :
+// TestResolveWeaponMeta_WeaponKeyNameSourceH5 fige la SOURCE UNIQUE keyée par
+// weapon_key (V72-06, ordre wnl.name_fr > wnl.name_en > wl.name_fr > wl.name_en) :
 //
-//	(a) parité Infinite : BR75, dont le weapon_labels porte déjà un name_fr, résout
-//	    le MÊME nom qu'avant (« BR75 ») — le registre n'intervient jamais ;
-//	(b) repli H5, label ABSENT : une arme absente de weapon_labels récupère le nom FR
-//	    du registre (w.name_fr) au lieu de rester vide ;
-//	(c) repli H5, label EN-ONLY : une arme dont le weapon_labels porte un name_en NON
-//	    VIDE mais un name_fr vide (cas RÉEL H5 : « lightrifle », « FRAG GRENADE ») doit
-//	    résoudre le nom FR du REGISTRE, PAS le label EN. C'est précisément le bug que
-//	    l'ancien ordre (wl.name_en avant w.name_fr) laissait passer : sans ligne label,
-//	    (b) réussissait déjà même avec l'ancien ordre → il ne captait pas la régression.
-func TestResolveWeaponMeta_RegistryFRFallbackH5(t *testing.T) {
+//	(a) parité Infinite : BR75 résout le MÊME nom qu'avant (« BR75 ») via
+//	    weapon_name_labels ;
+//	(b) H5, aucune ligne weapon_labels : h5_light_rifle (id 2511447508) récupère le nom
+//	    depuis weapon_name_labels (weapon_key h5_light_rifle) au lieu de rester vide ;
+//	(c) H5, label EN-ONLY POURRI : une arme dont le weapon_labels porte un name_en NON
+//	    VIDE (« FRAG GRENADE », casse API) mais un name_fr vide doit résoudre le nom de
+//	    weapon_name_labels (« Grenade à fragmentation »), PAS le label EN. C'est le bug
+//	    d'origine : l'EN brut de weapon_labels fuyait sur le Match view H5. La source
+//	    keyée par weapon_key le prime désormais.
+func TestResolveWeaponMeta_WeaponKeyNameSourceH5(t *testing.T) {
 	meta := resolverTestMeta(t, true)
 	ctx := context.Background()
 
-	// (a) Parité Infinite : BR75 (name_fr de label présent) → byte-inchangé.
+	// (a) Parité Infinite : BR75 (weapon_name_labels hinf_br75) → byte-inchangé.
 	brID := int64(0x2b1824d542c9679f)
 	if br := resolveWeaponMeta(ctx, meta, "halo_infinite", []int64{brID})[brID]; br.label != "BR75" {
-		t.Errorf("BR75 label = %q, want \"BR75\" (parité, registre non consulté)", br.label)
+		t.Errorf("BR75 label = %q, want \"BR75\" (parité, source keyée weapon_key)", br.label)
 	}
 
-	// (b) Repli H5, label absent : h5_light_rifle (id 2511447508) n'a PAS de ligne
-	// weapon_labels → wl.name_fr/wl.name_en NULL → COALESCE tombe sur w.name_fr.
+	// (b) H5, aucune ligne weapon_labels : h5_light_rifle (id 2511447508) → nom résolu
+	// via weapon_ids → weapon_key h5_light_rifle → weapon_name_labels (« Fusil léger »).
 	const lightRifleID = int64(2511447508)
 	if lr := resolveWeaponMeta(ctx, meta, "halo_5", []int64{lightRifleID})[lightRifleID]; lr.label != "Fusil léger" {
-		t.Errorf("h5 light rifle label = %q, want \"Fusil léger\" (repli registre FR)", lr.label)
+		t.Errorf("h5 light rifle label = %q, want \"Fusil léger\" (source weapon_key)", lr.label)
 	}
 
-	// (c) Repli H5, label EN-only : on seede une ligne weapon_labels avec name_en NON
+	// (c) H5, label EN-only POURRI : on seede une ligne weapon_labels avec name_en NON
 	// VIDE et name_fr VIDE (« FRAG GRENADE », comme en prod H5) pour l'id frag grenade
-	// (stock_id 4106030681 → h5_frag_grenade, w.name_fr = « Grenade à fragmentation »).
-	// Sous l'ANCIEN ordre, wl.name_en (« FRAG GRENADE ») gagnait → le registre FR n'était
-	// jamais atteint. Le nouvel ordre place w.name_fr AVANT wl.name_en.
+	// (stock_id 4106030681 → h5_frag_grenade). La source weapon_name_labels
+	// (« Grenade à fragmentation ») doit primer l'EN brut de weapon_labels.
 	const fragGrenadeID = int64(4106030681)
 	if _, err := meta.Exec(ctx,
 		"INSERT INTO weapon_labels VALUES ("+strconv.FormatInt(fragGrenadeID, 10)+", 'FRAG GRENADE', '')"); err != nil {
 		t.Fatalf("seed h5 frag grenade EN-only label: %v", err)
 	}
 	if fg := resolveWeaponMeta(ctx, meta, "halo_5", []int64{fragGrenadeID})[fragGrenadeID]; fg.label != "Grenade à fragmentation" {
-		t.Errorf("h5 frag grenade label = %q, want \"Grenade à fragmentation\" (registre FR AVANT label EN)", fg.label)
+		t.Errorf("h5 frag grenade label = %q, want \"Grenade à fragmentation\" (weapon_name_labels prime l'EN brut)", fg.label)
 	}
 }
 

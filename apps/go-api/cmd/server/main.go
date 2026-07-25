@@ -1628,6 +1628,14 @@ func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConf
 		metaDB.Close()
 		return fmt.Errorf("metadata weapon registry reconcile: %w", err)
 	}
+	// V72-06 : source unique des noms d'armes (weapon_name_labels keyée par weapon_key),
+	// seedée depuis config/titles/{slug}/mappings/weapon_names.toml. Idempotent au boot
+	// (comme le registre). prestigeConfigDir = config/titles/{DefaultSlug}.
+	if _, err := halomigrations.ReconcileWeaponNameLabels(metaDB.SQLDb(), migration.DefaultSlug,
+		filepath.Join(prestigeConfigDir, "mappings", "weapon_names.toml")); err != nil {
+		metaDB.Close()
+		return fmt.Errorf("metadata weapon name labels reconcile: %w", err)
+	}
 	metaDB.Close()
 
 	// 2. shared_matches_v2.duckdb
@@ -1729,6 +1737,12 @@ func provisionAdditionalTitle(pr *title.PathResolver, td *title.TitleDescriptor)
 			if _, err := halomigrations.ReconcileWeaponRegistry(db.SQLDb(), slug); err != nil {
 				db.Close()
 				return fmt.Errorf("reconcile weapon registry %s (%s): %w", slug, t.path, err)
+			}
+			// V72-06 : source unique des noms d'armes du titre additionnel (idempotent).
+			if _, err := halomigrations.ReconcileWeaponNameLabels(db.SQLDb(), slug,
+				filepath.Join(pr.RepoRoot(), "config", "titles", slug, "mappings", "weapon_names.toml")); err != nil {
+				db.Close()
+				return fmt.Errorf("reconcile weapon name labels %s (%s): %w", slug, t.path, err)
 			}
 		}
 		db.Close()

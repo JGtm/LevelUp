@@ -49,7 +49,7 @@ func TestRegistry_ByKey(t *testing.T) {
 		t.Fatal("hinf_br75 introuvable")
 	}
 	if w.Name != "BR75" || w.Class != "shoulder" || w.Role != "precision" ||
-		w.FamilyKey != "battle_rifle" || w.Faction != "human" || w.NameFR != "Fusil de combat" {
+		w.FamilyKey != "battle_rifle" || w.Faction != "human" {
 		t.Errorf("BR75 mal résolu: %+v", w)
 	}
 	if _, ok := reg.ByKey("nope"); ok {
