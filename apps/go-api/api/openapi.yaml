@@ -232,6 +232,10 @@ paths:
       operationId: postAdminActionAutoSyncRun
       responses:
         "202":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AsyncJobStatus'
           description: Job créé (suivre via GET /jobs/{job_id})
         "409":
           description: Un cycle forcé est déjà en vol (job_id en details)
@@ -286,6 +290,10 @@ paths:
             type: string
       responses:
         "202":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AsyncJobStatus'
           description: Job créé (suivre via GET /jobs/{job_id})
         "409":
           description: Drain déjà en cours pour ce titre (job_id en details)
@@ -309,8 +317,27 @@ paths:
           name: title
           schema:
             type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                player_slug:
+                  description: Slug du joueur à faire converger
+                  type: string
+                title_slug:
+                  description: Slug du titre (défaut = titre par défaut)
+                  type: string
+              required:
+                - player_slug
+              type: object
+        required: true
       responses:
         "202":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AsyncJobStatus'
           description: Job créé (suivre via GET /jobs/{job_id})
         "400":
           description: player_slug requis
@@ -380,6 +407,10 @@ paths:
         required: true
       responses:
         "202":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AsyncJobStatus'
           description: Job créé (suivre via GET /jobs/{job_id})
         "400":
           description: player_slug requis
@@ -1931,8 +1962,24 @@ paths:
         - groups
     post:
       operationId: createGroup
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                name:
+                  description: Nom du groupe (1-60 caractères).
+                  type: string
+              required:
+                - name
+              type: object
+        required: true
       responses:
         "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
           description: Groupe créé
         "400":
           $ref: '#/components/responses/BadRequest'
@@ -1980,6 +2027,18 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                name:
+                  description: Nouveau nom du groupe (1-60 caractères).
+                  type: string
+              required:
+                - name
+              type: object
+        required: true
       responses:
         "200":
           content:
@@ -2011,8 +2070,22 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                expires_in_days:
+                  description: Durée de validité de l'invitation en jours
+                  type: integer
+              type: object
+        required: false
       responses:
         "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InviteCode'
           description: Invitation créée
         "403":
           description: Accès refusé (propriétaire/membre requis)
@@ -2321,6 +2394,10 @@ paths:
         required: true
       responses:
         "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImprovementCampaign'
           description: Campagne créée
         "400":
           description: Axe invalide

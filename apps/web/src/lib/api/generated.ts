@@ -9635,7 +9635,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AsyncJobStatus"];
+                };
             };
             /** @description Un cycle forcé est déjà en vol (job_id en details) */
             409: {
@@ -9723,7 +9725,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AsyncJobStatus"];
+                };
             };
             /** @description Drain déjà en cours pour ce titre (job_id en details) */
             409: {
@@ -9759,14 +9763,25 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Slug du joueur à faire converger */
+                    player_slug: string;
+                    /** @description Slug du titre (défaut = titre par défaut) */
+                    title_slug?: string;
+                };
+            };
+        };
         responses: {
             /** @description Job créé (suivre via GET /jobs/{job_id}) */
             202: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AsyncJobStatus"];
+                };
             };
             /** @description player_slug requis */
             400: {
@@ -9864,7 +9879,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AsyncJobStatus"];
+                };
             };
             /** @description player_slug requis */
             400: {
@@ -11759,14 +11776,23 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Nom du groupe (1-60 caractères). */
+                    name: string;
+                };
+            };
+        };
         responses: {
             /** @description Groupe créé */
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["Group"];
+                };
             };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
@@ -11827,7 +11853,14 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Nouveau nom du groupe (1-60 caractères). */
+                    name: string;
+                };
+            };
+        };
         responses: {
             /** @description Groupe renommé */
             200: {
@@ -11867,14 +11900,23 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** @description Durée de validité de l'invitation en jours */
+                    expires_in_days?: number;
+                };
+            };
+        };
         responses: {
             /** @description Invitation créée */
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["InviteCode"];
+                };
             };
             /** @description Accès refusé (propriétaire/membre requis) */
             403: {
@@ -12282,7 +12324,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ImprovementCampaign"];
+                };
             };
             /** @description Axe invalide */
             400: {

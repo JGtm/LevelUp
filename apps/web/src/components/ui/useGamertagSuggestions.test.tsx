@@ -229,6 +229,91 @@ describe('useGamertagSuggestions', () => {
     expect(result.current.liveAttempted).toBe(true)
   })
 
+  it('ne garde AUCUN résultat live quand la query change (pas de placeholder rémanent)', async () => {
+    // Contre-revue V72 : `placeholderData: keepPreviousData` sur la query live
+    // (désarmée par défaut) faisait persister les hits Xbox de la recherche
+    // PRÉCÉDENTE sous une saisie qui n'a jamais interrogé Xbox.
+    server.use(
+      http.get('*/directory/gamertags/search', ({ request }) => {
+        const url = new URL(request.url)
+        if (url.searchParams.get('live') === '1') {
+          return HttpResponse.json<GamertagSearchResponse>({
+            query: 'NeverSeen',
+            items: [{ gamertag: 'NeverSeen', xuid: 'xuid-live', score: 0, exact_match: true }],
+          })
+        }
+        return HttpResponse.json<GamertagSearchResponse>({ query: '', items: [] })
+      }),
+    )
+    useAppShellStore.setState({ availablePlayers: [] })
+
+    const { result, rerender } = renderHook(
+      ({ q }: { q: string }) => useGamertagSuggestions({ query: q, frequentOptions: [] }),
+      { wrapper: makeWrapper(), initialProps: { q: 'NeverSeen' } },
+    )
+    await waitFor(() => expect(result.current.remoteAttempted).toBe(true), { timeout: 2000 })
+    act(() => result.current.triggerLiveSearch())
+    await waitFor(() => expect(result.current.liveResults).toHaveLength(1), { timeout: 2000 })
+
+    // L'utilisateur continue de taper : la nouvelle saisie n'a JAMAIS été résolue
+    // en live → aucun résultat Xbox ne doit rester affiché.
+    rerender({ q: 'NeverSeenX' })
+    await waitFor(() => expect(result.current.liveAttempted).toBe(false), { timeout: 2000 })
+    expect(result.current.liveResults).toHaveLength(0)
+    expect(result.current.liveEmpty).toBe(false)
+  })
+
+  it('liveEmpty=true quand le repli Xbox aboutit sans aucun joueur', async () => {
+    server.use(
+      http.get('*/directory/gamertags/search', () =>
+        HttpResponse.json<GamertagSearchResponse>({ query: 'GhostGT', items: [] }),
+      ),
+    )
+    useAppShellStore.setState({ availablePlayers: [] })
+
+    const { result } = renderHook(
+      () => useGamertagSuggestions({ query: 'GhostGT', frequentOptions: [] }),
+      { wrapper: makeWrapper() },
+    )
+    await waitFor(() => expect(result.current.remoteAttempted).toBe(true), { timeout: 2000 })
+    expect(result.current.liveEmpty).toBe(false) // repli non déclenché → pas de verdict
+
+    act(() => result.current.triggerLiveSearch())
+    await waitFor(() => expect(result.current.liveEmpty).toBe(true), { timeout: 2000 })
+    expect(result.current.isLiveLoading).toBe(false)
+  })
+
+  it('liveEmpty=false quand Xbox répond mais que le hit est déjà affiché ailleurs', async () => {
+    // Réponse live NON vide dont l'unique hit est déjà dans les joueurs configurés :
+    // liveResults est vide après déduplication, mais ce n'est PAS « aucun résultat ».
+    server.use(
+      http.get('*/directory/gamertags/search', ({ request }) => {
+        const url = new URL(request.url)
+        if (url.searchParams.get('live') === '1') {
+          return HttpResponse.json<GamertagSearchResponse>({
+            query: 'AlphaPlayer',
+            items: [
+              { gamertag: 'AlphaPlayer', xuid: 'xuid-AlphaPlayer', score: 1, exact_match: true },
+            ],
+          })
+        }
+        return HttpResponse.json<GamertagSearchResponse>({ query: '', items: [] })
+      }),
+    )
+
+    const { result } = renderHook(
+      () => useGamertagSuggestions({ query: 'AlphaPlayer', frequentOptions: [] }),
+      { wrapper: makeWrapper() },
+    )
+    await waitFor(() => expect(result.current.remoteAttempted).toBe(true), { timeout: 2000 })
+    act(() => result.current.triggerLiveSearch())
+    await waitFor(() => expect(result.current.liveAttempted).toBe(true), { timeout: 2000 })
+    await waitFor(() => expect(result.current.isLiveLoading).toBe(false), { timeout: 2000 })
+
+    expect(result.current.liveResults).toHaveLength(0) // dédupliqué de « configurés »
+    expect(result.current.liveEmpty).toBe(false)
+  })
+
   it('produit hasAnyResult=false et remoteAttempted=true sur 0 résultat', async () => {
     server.use(
       http.get('*/directory/gamertags/search', () =>

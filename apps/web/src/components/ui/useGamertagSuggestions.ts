@@ -65,6 +65,14 @@ export interface UseGamertagSuggestionsResult {
   isLiveLoading: boolean
   /** True quand un repli live a été déclenché pour la query courante. */
   liveAttempted: boolean
+  /**
+   * True quand le repli live de la query COURANTE a abouti et que Xbox n'a
+   * renvoyé AUCUN joueur. Calculé sur la réponse BRUTE (avant déduplication) :
+   * une réponse non vide dont tous les hits sont déjà affichés ailleurs n'est pas
+   * un « aucun résultat ». Permet au composant de donner un retour explicite au
+   * lieu de laisser le bouton disparaître sans rien afficher.
+   */
+  liveEmpty: boolean
   /** Déclenche le repli live Xbox pour la query courante (intention explicite). */
   triggerLiveSearch: () => void
 }
@@ -133,8 +141,17 @@ export function useGamertagSuggestions({
       ),
     enabled: liveEnabled,
     staleTime: 60 * 1000,
-    placeholderData: keepPreviousData,
+    // PAS de keepPreviousData ici (contrairement au typeahead local) : le repli live
+    // est DÉSARMÉ par défaut et ré-armé par-query. Un placeholder ferait persister
+    // indéfiniment les hits Xbox d'une recherche précédente sous une query qui n'a
+    // jamais interrogé Xbox — l'utilisateur lirait des résultats périmés comme s'ils
+    // concernaient sa saisie courante.
   })
+  // Second verrou, indispensable même sans placeholder : `staleTime` garde la réponse
+  // en cache, donc revenir sur une query DÉJÀ résolue en live rendrait ses items alors
+  // que la query est désarmée. On ne lit la réponse que quand le repli est armé pour
+  // la query courante (référence stable : jamais de littéral recréé à chaque rendu).
+  const liveData = liveEnabled ? liveQuery.data : undefined
   const triggerLiveSearch = useCallback(() => {
     if (trimmed.length >= REMOTE_MIN_CHARS) setLiveArmedQuery(trimmed)
   }, [trimmed])
@@ -198,8 +215,8 @@ export function useGamertagSuggestions({
     // Repli live : items du fetch Xbox, dédupliqués de TOUTES les sources déjà affichées
     // (configuré / fréquent / remote local) → seuls les hits réellement nouveaux restent.
     const remoteGts = new Set(remote.map((r) => r.gamertag))
-    const liveItems: GamertagSuggestion[] = liveQuery.data?.items ?? []
-    const liveResults: RemoteItem[] = liveItems
+    const liveRaw: GamertagSuggestion[] = liveData?.items ?? []
+    const liveResults: RemoteItem[] = liveRaw
       .filter(
         (r) =>
           !excluded.has(r.gamertag) &&
@@ -224,6 +241,8 @@ export function useGamertagSuggestions({
       liveResults,
       isLiveLoading: liveEnabled && liveQuery.isFetching,
       liveAttempted: liveArmedQuery !== null && liveArmedQuery === trimmed,
+      liveEmpty:
+        liveEnabled && liveQuery.isSuccess && !liveQuery.isFetching && liveRaw.length === 0,
       triggerLiveSearch,
     }
   }, [
@@ -235,8 +254,9 @@ export function useGamertagSuggestions({
     remoteQuery.data,
     remoteQuery.isFetching,
     remoteEnabled,
-    liveQuery.data,
+    liveData,
     liveQuery.isFetching,
+    liveQuery.isSuccess,
     liveEnabled,
     liveArmedQuery,
     triggerLiveSearch,

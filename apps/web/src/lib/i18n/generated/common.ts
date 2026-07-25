@@ -168,6 +168,7 @@ export const commonManifest = {
   "common.filters.with_selection_hint": { fr: "avec la sélection actuelle. Cliquez Analyser pour", en: "with the current selection. Click Analyze to" },
   "common.gamertag.frequent_teammates": { fr: "Coéquipiers fréquents", en: "Frequent teammates" },
   "common.gamertag.no_player_found_prefix": { fr: "Aucun joueur trouvé pour \"", en: "No player found for \"" },
+  "common.gamertag.no_xbox_result": { fr: "Aucun résultat Xbox", en: "No Xbox result" },
   "common.gamertag.players_configured": { fr: "Joueurs configurés", en: "Configured players" },
   "common.gamertag.search_on_xbox": { fr: "Rechercher sur Xbox", en: "Search on Xbox" },
   "common.gamertag.searching_xbox": { fr: "Recherche sur Xbox…", en: "Searching on Xbox…" },

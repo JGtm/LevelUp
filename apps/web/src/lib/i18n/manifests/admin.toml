@@ -917,6 +917,13 @@ en = "Re-import this player's full history? This can take a while depending on t
 fr = "Choisis d'abord un joueur."
 en = "Pick a player first."
 
+# Titre (jeu) ciblé par le job : le re-import part sur le jeu ACTIF du shell,
+# envoyé en title_slug. Affiché sur la carte pour que l'admin voie sur quel jeu
+# l'action va s'exécuter avant de confirmer.
+[admin.initsync.target_title]
+fr = "Jeu ciblé :"
+en = "Target game:"
+
 # ─── Page Sync & Jobs ──────────────────────────────────────────────────────
 
 # Légende de portée des actions de sync (clarification « planificateur vs delta »)

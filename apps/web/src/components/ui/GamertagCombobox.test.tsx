@@ -81,6 +81,32 @@ describe('GamertagCombobox', () => {
     )
   })
 
+  it('affiche « Aucun résultat Xbox » quand le repli live n’a rien trouvé', async () => {
+    // Contre-revue V72 : après « Rechercher sur Xbox » sans aucun hit, le bouton
+    // disparaissait sans aucun retour — l'utilisateur croyait à un échec silencieux.
+    useAppShellStore.setState({ availablePlayers: [] })
+    server.use(
+      http.get('*/directory/gamertags/search', () =>
+        HttpResponse.json<GamertagSearchResponse>({ query: 'GhostGT', items: [] }),
+      ),
+    )
+
+    renderWithProviders(<GamertagCombobox selected={[]} onChange={() => {}} />)
+    const input = screen.getByPlaceholderText(/Rechercher un gamertag/i)
+    fireEvent.focus(input)
+    fireEvent.change(input, { target: { value: 'GhostGT' } })
+
+    const cta = await screen.findByText('Rechercher sur Xbox', {}, { timeout: 2000 })
+    fireEvent.click(cta)
+
+    await waitFor(
+      () => expect(screen.getByText('Aucun résultat Xbox')).toBeInTheDocument(),
+      { timeout: 2000 },
+    )
+    // Un seul message « rien trouvé » (pas d'empilement avec le message local).
+    expect(screen.queryByText(/Aucun joueur trouvé pour/)).not.toBeInTheDocument()
+  })
+
   it('affiche les presets (escouades/groupes) et charge le roster au clic', () => {
     let loaded: string[] | null = null
     renderWithProviders(

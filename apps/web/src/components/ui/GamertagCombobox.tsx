@@ -151,6 +151,7 @@ export function GamertagCombobox({
     liveResults,
     isLiveLoading,
     liveAttempted,
+    liveEmpty,
     triggerLiveSearch,
   } = useGamertagSuggestions({ query, frequentOptions, excludeGamertags })
 
@@ -201,6 +202,7 @@ export function GamertagCombobox({
     canSearchLive ||
     isRemoteLoading ||
     isLiveLoading ||
+    liveEmpty ||
     showEmptyMessage
 
   // ─── Actions ────────────────────────────────────────────────────────────────
@@ -449,8 +451,18 @@ export function GamertagCombobox({
             <div className="px-3 py-2 text-sm text-muted-foreground">{t('common.gamertag.searching_xbox')}</div>
           )}
 
-          {/* Message vide */}
-          {showEmptyMessage && !isLiveLoading && liveResults.length === 0 && (
+          {/* Repli Xbox terminé SANS aucun résultat — sans ce retour, le bouton
+              « Rechercher sur Xbox » disparaît et rien ne s'affiche : l'utilisateur
+              croit que la recherche n'a pas fonctionné. */}
+          {liveEmpty && (
+            <div className="px-3 py-2 text-sm text-muted-foreground">
+              {t('common.gamertag.no_xbox_result')}
+            </div>
+          )}
+
+          {/* Message vide (recherche locale) — masqué quand le message Xbox ci-dessus
+              couvre déjà le cas, pour ne pas empiler deux « rien trouvé ». */}
+          {showEmptyMessage && !isLiveLoading && !liveEmpty && liveResults.length === 0 && (
             <div className="px-3 py-2 text-sm text-muted-foreground">
               {t('common.gamertag.no_player_found_prefix')}{trimmed}"
             </div>
