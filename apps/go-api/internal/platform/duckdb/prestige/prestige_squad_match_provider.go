@@ -17,20 +17,58 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/prestige"
 )
 
+// ModeTranslatorFR traduit une liste de libellés de mode EN normalisés vers leur
+// forme FR (metadata.mode_name_tr, lang='fr'). Signature alignée sur
+// duckdb.SquadRepo.LoadModeTranslationsFR — SOURCE UNIQUE du littéral SQL
+// mode_name_tr : ne pas redupliquer la requête ici (règle ≤2 copies).
+type ModeTranslatorFR func(ctx context.Context, modeENs []string) (map[string]string, error)
+
+// PlaylistTranslatorFR traduit une liste de playlist_id (UUID metadata) vers leur
+// nom FR (metadata.asset_translations, asset_type='playlist'). Signature alignée
+// sur duckdb.SquadRepo.LoadAssetTranslationsFR("playlist", ids) — même résolveur
+// par IDENTIFIANT que la page Carrière (ResolveAssetNamesBulk), qui comble le
+// trou de données où match_registry.playlist_name_fr est vide pour certaines
+// playlists (« Quick Play », « Big Team Battle » — V72-10 suite).
+type PlaylistTranslatorFR func(ctx context.Context, playlistIDs []string) (map[string]string, error)
+
 // PrestigeSquadMatchProvider lit match_participants pour l'évaluation des défis
 // d'escouade.
 type PrestigeSquadMatchProvider struct {
-	reader duckdb.SharedReader
+	reader               duckdb.SharedReader
+	translateModesFR     ModeTranslatorFR     // optionnel : résolution FR des modes de l'indice escouade
+	translatePlaylistsFR PlaylistTranslatorFR // optionnel : résolution FR des playlists par id (comble le trou name_fr vide)
 }
 
 // NewPrestigeSquadMatchProvider construit le provider depuis un duckdb.SharedReader
 // (passer pdb.SharedReadDB() côté caller, comme HaloBaselineProvider).
 func NewPrestigeSquadMatchProvider(reader duckdb.SharedReader) *PrestigeSquadMatchProvider {
 	return &PrestigeSquadMatchProvider{reader: reader}
+}
+
+// WithModeTranslatorFR injecte la résolution FR canonique des modes de l'indice
+// escouade (« Slayer » → « Assassin »), pour que l'API serve des libellés prêts à
+// afficher en contexte FR (parité home / match-view / historique). Best-effort :
+// sans traducteur, ou s'il échoue, l'indice reste en EN (jamais vide). Chaînable.
+func (p *PrestigeSquadMatchProvider) WithModeTranslatorFR(fn ModeTranslatorFR) *PrestigeSquadMatchProvider {
+	p.translateModesFR = fn
+	return p
+}
+
+// WithPlaylistTranslatorFR injecte la résolution FR par IDENTIFIANT des
+// playlists de l'indice escouade (comble le trou « Quick Play »/« Big Team
+// Battle » dont match_registry.playlist_name_fr est vide — V72-10 suite, même
+// mécanisme que career : résolution par playlist_id via asset_translations,
+// jamais par nom). Best-effort : sans traducteur, ou s'il échoue, le libellé
+// COALESCE(playlist_name_fr, playlist_name) existant est conservé (jamais
+// vide). Chaînable.
+func (p *PrestigeSquadMatchProvider) WithPlaylistTranslatorFR(fn PlaylistTranslatorFR) *PrestigeSquadMatchProvider {
+	p.translatePlaylistsFR = fn
+	return p
 }
 
 var _ prestige.SquadMatchProvider = (*PrestigeSquadMatchProvider)(nil)
@@ -188,6 +226,7 @@ func (p *PrestigeSquadMatchProvider) SquadUsualContexts(ctx context.Context, ros
 			LIMIT %d
 		)
 		SELECT
+			COALESCE(r.playlist_id, '')                                    AS playlist_id,
 			COALESCE(NULLIF(r.playlist_name_fr, ''), r.playlist_name, '') AS playlist,
 			COALESCE(NULLIF(r.pair_name_fr, ''), r.pair_name, '')         AS mode
 		FROM cm
@@ -202,15 +241,18 @@ func (p *PrestigeSquadMatchProvider) SquadUsualContexts(ctx context.Context, ros
 	}
 	defer rows.Close()
 
-	plCount := map[string]int{}
+	tally := newPlaylistTally()
 	mdCount := map[string]int{}
 	for rows.Next() {
-		var pl, md string
-		if err := rows.Scan(&pl, &md); err != nil {
+		var plID, pl, md string
+		if err := rows.Scan(&plID, &pl, &md); err != nil {
 			return nil, nil, fmt.Errorf("SquadUsualContexts: scan: %w", err)
 		}
+		// pair_name est un libellé composé mode+carte (« Slayer on Bazaar ») :
+		// normaliser pour ne servir que le mode (V72-10, parité match view).
+		md = analysis.NormalizeModeLabel(md)
 		if pl != "" && !uuidLabelRE.MatchString(pl) {
-			plCount[pl]++
+			tally.add(plID, pl)
 		}
 		if md != "" && !uuidLabelRE.MatchString(md) {
 			mdCount[md]++
@@ -219,7 +261,134 @@ func (p *PrestigeSquadMatchProvider) SquadUsualContexts(ctx context.Context, ros
 	if err := rows.Err(); err != nil {
 		return nil, nil, err
 	}
-	return topNByFreq(plCount, 2), topNByFreq(mdCount, 2), nil
+	topLabels, idByLabel := tally.top(2)
+	playlists = p.applyPlaylistTranslationsFR(ctx, topLabels, idByLabel)
+	modes = p.applyModeTranslationsFR(ctx, topNByFreq(mdCount, 2))
+	return playlists, modes, nil
+}
+
+// playlistTally compte les playlists de l'indice escouade par IDENTITÉ —
+// playlist_id quand il est connu, libellé en dernier repli — et non par libellé
+// (contre-revue V7.2, 2026-07-25).
+//
+// Pourquoi : deux libellés peuvent désigner la MÊME playlist (renommage
+// saisonnier, playlist_name_fr renseigné sur une partie des lignes seulement,
+// casse/espaces divergents dans le registre). Compter par libellé éclatait alors
+// une playlist dominante en deux entrées sous-comptées, capables de sortir du
+// top 2 au profit d'une playlist réellement moins jouée — ou d'y apparaître deux
+// fois. La traduction FR reste appliquée APRÈS le comptage, par id
+// (applyPlaylistTranslationsFR), donc elle ne peut plus scinder ni fusionner un
+// compte.
+type playlistTally struct {
+	count   map[string]int    // clé d'identité → occurrences
+	labelBy map[string]string // clé d'identité → libellé représentatif (le premier vu)
+	idBy    map[string]string // clé d'identité → playlist_id ("" si identité = libellé)
+}
+
+func newPlaylistTally() *playlistTally {
+	return &playlistTally{
+		count:   map[string]int{},
+		labelBy: map[string]string{},
+		idBy:    map[string]string{},
+	}
+}
+
+// add comptabilise une occurrence. id vide (registre sans playlist_id) ⇒ repli sur
+// le libellé, qui redevient la seule identité disponible.
+func (t *playlistTally) add(id, label string) {
+	key := id
+	if key == "" {
+		key = label
+	}
+	t.count[key]++
+	if _, ok := t.labelBy[key]; !ok {
+		t.labelBy[key] = label
+		t.idBy[key] = id
+	}
+}
+
+// top retourne les n playlists les plus jouées (libellés représentatifs, ordre
+// topNByFreq) et la table libellé → playlist_id attendue par
+// applyPlaylistTranslationsFR.
+func (t *playlistTally) top(n int) (labels []string, idByLabel map[string]string) {
+	keys := topNByFreq(t.count, n)
+	labels = make([]string, 0, len(keys))
+	idByLabel = make(map[string]string, len(keys))
+	for _, k := range keys {
+		label := t.labelBy[k]
+		labels = append(labels, label)
+		if id := t.idBy[k]; id != "" {
+			idByLabel[label] = id
+		}
+	}
+	return labels, idByLabel
+}
+
+// applyModeTranslationsFR remplace chaque libellé de mode EN normalisé par sa
+// traduction FR (mode_name_tr) si disponible ; conserve l'EN sinon — un libellé
+// n'est JAMAIS vidé. Best-effort : traducteur nil ou en erreur → modes inchangés
+// (dégradation gracieuse, indice servi en anglais plutôt qu'absent). Un mode sans
+// entrée mode_name_tr[fr] (trou de couverture) reste en EN = rattrapage données.
+func (p *PrestigeSquadMatchProvider) applyModeTranslationsFR(ctx context.Context, modes []string) []string {
+	if p.translateModesFR == nil || len(modes) == 0 {
+		return modes
+	}
+	fr, err := p.translateModesFR(ctx, modes)
+	if err != nil {
+		slog.WarnContext(ctx, "SquadUsualContexts: traduction FR des modes indisponible (indice servi en anglais)",
+			"err", err, "modes", modes)
+		return modes
+	}
+	out := make([]string, len(modes))
+	for i, m := range modes {
+		if t, ok := fr[m]; ok && strings.TrimSpace(t) != "" {
+			out[i] = t
+		} else {
+			out[i] = m
+		}
+	}
+	return out
+}
+
+// applyPlaylistTranslationsFR remplace chaque libellé de playlist de l'indice
+// escouade par sa traduction FR résolue par IDENTIFIANT (metadata.asset_translations,
+// même résolveur — ResolveAssetNamesBulk — que la page Carrière), quand disponible.
+// Comble le trou de données : la requête SQL sert COALESCE(playlist_name_fr,
+// playlist_name) sur match_registry, où playlist_name_fr est vide pour certaines
+// playlists (« Quick Play », « Big Team Battle » — V72-10 suite). Priorité :
+// traduction par id > name_fr de match_registry (déjà encodé dans idByLabel/label)
+// > name EN. Best-effort : traducteur nil, id inconnu/absent, ou en erreur →
+// libellé COALESCE existant conservé (un libellé n'est jamais vidé).
+func (p *PrestigeSquadMatchProvider) applyPlaylistTranslationsFR(ctx context.Context, playlists []string, idByLabel map[string]string) []string {
+	if p.translatePlaylistsFR == nil || len(playlists) == 0 {
+		return playlists
+	}
+	ids := make([]string, 0, len(playlists))
+	for _, label := range playlists {
+		if id := idByLabel[label]; id != "" {
+			ids = append(ids, id)
+		}
+	}
+	if len(ids) == 0 {
+		return playlists
+	}
+	fr, err := p.translatePlaylistsFR(ctx, ids)
+	if err != nil {
+		slog.WarnContext(ctx, "SquadUsualContexts: traduction FR des playlists indisponible (indice servi en anglais/partiel)",
+			"err", err, "playlists", playlists)
+		return playlists
+	}
+	out := make([]string, len(playlists))
+	for i, label := range playlists {
+		if id, ok := idByLabel[label]; ok {
+			if t, ok2 := fr[id]; ok2 && strings.TrimSpace(t) != "" {
+				out[i] = t
+				continue
+			}
+		}
+		out[i] = label
+	}
+	return out
 }
 
 // topNByFreq retourne les n clés les plus fréquentes (fréquence desc, départage

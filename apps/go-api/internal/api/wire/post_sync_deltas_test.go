@@ -429,6 +429,7 @@ var validPlayerSubpaths = []string{
 	"/career",
 	"/career/season-pass", // route actuelle (vs. /palmares/season-pass legacy)
 	"/career/citations",   // 2026-07-23 — page Citations sous la section Carrière
+	"/career/medals",      // V72-20 — page Médailles (cible « médaille inédite »)
 	"/match",
 	"/matches",
 	"/media",

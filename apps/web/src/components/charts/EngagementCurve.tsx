@@ -98,7 +98,7 @@ const DEFAULT_SERIES_LABELS: EngagementSeriesLabels = {
   team: 'Équipe réelle',
   expected: 'Joueur attendu',
   player: 'Joueur réel',
-  lobby: 'Lobby',
+  lobby: 'Partie',
 }
 
 /**

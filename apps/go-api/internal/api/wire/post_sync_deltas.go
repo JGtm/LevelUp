@@ -112,14 +112,18 @@ func BuildPostSyncDeltaHook(reg *ServiceRegistry) handlers.PostSyncDeltaHook {
 			return nil
 		}
 		xuid := pdb.XUID // capturé pour l'invalidation — indépendant du resolve post-sync
+		// titleSlug : TITRE canonique du joueur résolu, JAMAIS `slug` (= PlayerSlug,
+		// cf. sync_handler.postSync). HomeService pose son entrée de cache sous
+		// (xuid, s.titleSlug) — invalider avec le slug joueur ne supprimait jamais
+		// rien (no-op permanent + log « invalidé » mensonger, contre-revue V7.2).
+		titleSlug := pdb.TitleSlug
 		before, err := SnapshotPlayerState(ctx, pdb, newCitationsServiceForPDB(pdb))
 		if err != nil {
 			slog.WarnContext(ctx, "post_sync: snapshot before", "slug", slug, "err", err)
 		}
 		return func(ctx context.Context) {
 			// Invalider le cache home en premier — le sync a réussi, les données DB sont à jour.
-			reg.homeMatchesCache.Invalidate(xuid)
-			slog.InfoContext(ctx, "post_sync: home cache invalidé", "slug", slug, "xuid", xuid)
+			invalidateHomeCacheAfterSync(ctx, reg.homeMatchesCache, xuid, titleSlug, slug)
 
 			pdb2, err := reg.resolve(ctx, slug)
 			if err != nil {
@@ -149,6 +153,12 @@ func BuildPostSyncDeltaHook(reg *ServiceRegistry) handlers.PostSyncDeltaHook {
 			// non bloquante) ; skippée sans nouveau match (watermark).
 			emitRivalEncounters(ctx, emitter, newRivalDetectorForPDB(pdb2), pdb2.TitleSlug, slug, before, after)
 
+			// V72-20 : notification « médaille inédite » — médailles décrochées pour
+			// la première fois par cette sync (diff after \ before sur EarnedMedalIDs).
+			// Best-effort ; garde cold-start + anti-rafale internes
+			// (post_sync_medal_first_earned.go).
+			emitMedalFirstEarned(ctx, emitter, newMedalNamerForPDB(pdb2), pdb2.TitleSlug, slug, before, after)
+
 			// Couche progression V2 (Ascension) — pipeline streaks/records/
 			// milestones/coach + coach_advisor (Phase 8 ADR 0020). Non
 			// bloquant : toute erreur reste en slog.Warn.
@@ -170,6 +180,29 @@ func BuildPostSyncDeltaHook(reg *ServiceRegistry) handlers.PostSyncDeltaHook {
 			}
 		}
 	}
+}
+
+// invalidateHomeCacheAfterSync supprime l'entrée de cache Home du couple
+// (xuid, TITRE) après une sync réussie.
+//
+// PIÈGE (contre-revue V7.2, 2026-07-25) : la clé du HomeMatchesCache est
+// (xuid, TITLE slug) — HomeService pose son entrée avec `s.titleSlug`, câblé sur
+// `pdb.TitleSlug` (registry_pages_home.HomeCtx → WithPlayerMatchesRepo). Le hook
+// post-sync, lui, ne reçoit qu'un PLAYER slug (sync_handler.postSync). Passer ce
+// slug joueur à Invalidate ne supprimait JAMAIS rien : invalidation no-op
+// permanente (la page Home servait ses données jusqu'à l'expiration du TTL) et
+// log « invalidé » mensonger. Les deux identifiants sont donc explicites ici, et
+// le playerSlug ne sert QU'au log.
+// Garde-rail : TestInvalidateHomeCacheAfterSync_UsesTitleSlug.
+func invalidateHomeCacheAfterSync(ctx context.Context, cache *service.HomeMatchesCache, xuid, titleSlug, playerSlug string) {
+	if cache == nil || xuid == "" {
+		return
+	}
+	// V72-29 : n'invalider que l'entrée du titre synchronisé (un même xuid peut
+	// avoir des entrées Home sur plusieurs titres).
+	cache.Invalidate(xuid, titleSlug)
+	slog.InfoContext(ctx, "post_sync: home cache invalidé",
+		"player_slug", playerSlug, "title_slug", titleSlug, "xuid", xuid)
 }
 
 // readCoachProactiveMode lit le toggle coach proactif RÉSOLU pour le titre

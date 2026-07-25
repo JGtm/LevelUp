@@ -33,9 +33,9 @@ func NewCommendationTotalsHandler(newSvc ContextFactory[port.CommendationTotalsS
 
 // Mount enregistre la route via Huma sur le sous-routeur chi (préfixe
 // /players/{player_slug} + middleware ownership/title hérités).
-func (h *CommendationTotalsHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Get(api, "/commendations/totals", h.handleGetTotals)
+func (h *CommendationTotalsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Get(api, "/commendations/totals", h.handleGetTotals, humacore.Op("getCommendationTotals", "Totaux à vie des commendations natives (Halo 5)", "career"))
 }
 
 type commendationTotalsInput struct {

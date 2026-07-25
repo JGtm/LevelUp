@@ -7,6 +7,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
+import { useAppShellStore } from '@/stores/appShellStore'
 import type {
   MarkResult,
   Notification,
@@ -100,7 +101,10 @@ export function useUpdatePreferences({ playerSlug }: MutationCtx) {
         { items },
       ),
     onSuccess: (data) => {
-      qc.setQueryData(queryKeys.notificationsPreferences(playerSlug), data)
+      qc.setQueryData(
+        queryKeys.notificationsPreferences(playerSlug, useAppShellStore.getState().currentTitleSlug),
+        data,
+      )
     },
   })
 }
@@ -161,10 +165,13 @@ function patchUnreadCount(
   playerSlug: string,
   delta: number,
 ) {
-  qc.setQueryData<UnreadCount>(queryKeys.notificationsUnreadCount(playerSlug), (cur) => {
-    if (!cur) return cur
-    return { ...cur, count: Math.max(0, cur.count + delta) }
-  })
+  qc.setQueryData<UnreadCount>(
+    queryKeys.notificationsUnreadCount(playerSlug, useAppShellStore.getState().currentTitleSlug),
+    (cur) => {
+      if (!cur) return cur
+      return { ...cur, count: Math.max(0, cur.count + delta) }
+    },
+  )
 }
 
 function restore(qc: ReturnType<typeof useQueryClient>, snap: CacheSnapshot | undefined) {

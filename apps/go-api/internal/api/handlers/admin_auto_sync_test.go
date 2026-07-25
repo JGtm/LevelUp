@@ -75,7 +75,7 @@ func buildProbeHandler(t *testing.T, dbProfilesJSON string) (chi.Router, string)
 	h := handlers.NewAdminAutoSyncHandler(sched, cfg, noopProvider{})
 
 	r := chi.NewRouter()
-	r.Route("/_diag/auto-sync", h.Mount)
+	r.Route("/_diag/auto-sync", func(r chi.Router) { h.Mount(r) })
 	return r, repoRoot
 }
 

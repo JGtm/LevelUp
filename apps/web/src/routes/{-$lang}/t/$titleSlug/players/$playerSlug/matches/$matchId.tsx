@@ -29,14 +29,14 @@ export const Route = createFileRoute('/{-$lang}/t/$titleSlug/players/$playerSlug
 
     // Prefetch parallèle : la vue + les voisins (prev/next).
     void context.queryClient.prefetchQuery({
-      queryKey: queryKeys.matchView(params.playerSlug, params.matchId),
+      queryKey: queryKeys.matchView(params.playerSlug, params.titleSlug, params.matchId),
       queryFn: () =>
         api.get<MatchViewResponse>(
           `/players/${params.playerSlug}/matches/${params.matchId}`,
         ),
     })
     void context.queryClient.prefetchQuery({
-      queryKey: queryKeys.matchNeighbors(params.playerSlug, params.matchId),
+      queryKey: queryKeys.matchNeighbors(params.playerSlug, params.titleSlug, params.matchId),
       queryFn: () =>
         api.get<MatchNeighbors>(
           `/players/${params.playerSlug}/matches/${params.matchId}/neighbors`,

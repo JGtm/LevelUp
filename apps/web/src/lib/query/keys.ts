@@ -2,16 +2,29 @@
  * Query keys TanStack Query — centralisés pour éviter les doublons.
  *
  * Convention :
- * - Clés en tableau hiérarchique : ['bootstrap'], ['players'], ['player', slug, ...]
- * - Fonctions pour les clés paramétrées : queryKeys.player(slug)
+ * - Clés en tableau hiérarchique : ['bootstrap'], ['players'], ['career', slug, titre, ...]
+ * - Fonctions pour les clés paramétrées : queryKeys.career(playerSlug, titleSlug)
  *
- * titleSlug / locale dans la clé — QUAND ? Inclure le segment SEULEMENT si le payload
- * dépend du titre / de la locale ET que sa source de fetch peut vivre HORS du sous-arbre
- * gaté par le layout titre (`$titleSlug`). Dans ce sous-arbre, un switch de titre fait
- * déjà `queryClient.clear()` (applyActiveTitle) et le re-render re-clé : le segment est
- * alors superflu. Le cas qui l'EXIGE : un fetch background (prefetch, poll) qui survit à la
- * bascule ET dont le serveur bake un libellé localisé (header X-LevelUp-Locale) — sans
- * `locale` en clé, le cache reste dans l'ancienne langue. Modèle : `home` (titleSlug + locale).
+ * titleSlug dans la clé — INVARIANT STRUCTUREL (V72-29). TOUTE clé par-joueur dont le
+ * payload dépend du titre porte `titleSlug` en 2e segment (juste après `playerSlug`).
+ * Ne PAS s'appuyer sur le seul `queryClient.clear()` du switch (applyActiveTitle) pour
+ * séparer les titres : une course (refetch background, réponse en vol au switch) re-clé
+ * sinon des DONNÉES d'un autre titre sous la clé du titre courant (fuite cross-titre
+ * corrigée le 2026-07 — cf. .ai/archive/V7/PLAN_TITLE_HEADER_LEAK_2026-07.md §Secondaire).
+ * La clé EST la garde, indépendante du timing. Position imposée (2e segment) : les
+ * préfixes larges d'invalidation `['x', playerSlug]` (ex. matchHistoryAll, mediaBase,
+ * notificationsAll, coachAll) restent des préfixes valides des clés enrichies du titre —
+ * leur sémantique « tout le joueur » est préservée (ils balaient désormais tous les
+ * titres du joueur, ce qui reste correct pour un refresh post-sync).
+ *
+ * Garde-rail : `keys.title-slug.guard.test.ts` invoque CHAQUE fabrique par-joueur et
+ * échoue si le slug n'apparaît pas dans la clé ; toute nouvelle fabrique non classée
+ * (title-scopée vs agnostique documentée) y fait échouer la complétude.
+ *
+ * locale dans la clé — QUAND ? En plus du titre, si le serveur bake un libellé localisé
+ * (header X-LevelUp-Locale) dans le payload (ex. `home`, `medals`, `seasonPass`). Sans
+ * `locale` en clé, un fetch background survivant à la bascule de langue reste dans
+ * l'ancienne langue. Modèle : `home` (playerSlug + titleSlug + locale).
  */
 
 export const queryKeys = {
@@ -31,8 +44,7 @@ export const queryKeys = {
   // Groupes/familles (accès mutuel) — gestion end-user
   groups: ['groups'] as const,
 
-  // Par joueur
-  player: (playerSlug: string) => ['player', playerSlug] as const,
+  // Par joueur (titleSlug en 2e segment — invariant structurel, cf. en-tête).
   // Le titre courant scope la clé (même motif que `home` ci-dessous) : la
   // résolution de filtres est spécifique au titre (sessions / options cascade du
   // titre actif). Sans lui, un switch de titre — ou une réponse mise en cache
@@ -46,28 +58,32 @@ export const queryKeys = {
     ['filters-preview', playerSlug, titleSlug, filterHash] as const,
 
   // Carrière (Slice 2)
-  career: (playerSlug: string) => ['career', playerSlug] as const,
-  careerTopMatches: (playerSlug: string) => ['career', playerSlug, 'top-matches'] as const,
-  careerEncounters: (playerSlug: string) => ['career', playerSlug, 'encounters'] as const,
-  careerHighlightMatches: (playerSlug: string, filtersKey = '') =>
-    ['career', playerSlug, 'highlight-matches', filtersKey] as const,
-  careerTopEncounters: (playerSlug: string) => ['career', playerSlug, 'top-encounters'] as const,
-  careerRivals: (playerSlug: string) => ['career', playerSlug, 'rivals'] as const,
-  careerCSRs: (playerSlug: string, season?: string) =>
-    ['career', playerSlug, 'csrs', season ?? ''] as const,
+  career: (playerSlug: string, titleSlug: string) => ['career', playerSlug, titleSlug] as const,
+  careerEncounters: (playerSlug: string, titleSlug: string) =>
+    ['career', playerSlug, titleSlug, 'encounters'] as const,
+  careerHighlightMatches: (playerSlug: string, titleSlug: string, filtersKey = '') =>
+    ['career', playerSlug, titleSlug, 'highlight-matches', filtersKey] as const,
+  careerTopEncounters: (playerSlug: string, titleSlug: string) =>
+    ['career', playerSlug, titleSlug, 'top-encounters'] as const,
+  careerRivals: (playerSlug: string, titleSlug: string) =>
+    ['career', playerSlug, titleSlug, 'rivals'] as const,
+  careerCSRs: (playerSlug: string, titleSlug: string, season?: string) =>
+    ['career', playerSlug, titleSlug, 'csrs', season ?? ''] as const,
 
-  // Achievements Xbox (bilingues EN/FR, statiques après backfill)
-  achievements: (playerSlug: string) => ['achievements', playerSlug] as const,
+  // Achievements Xbox (bilingues EN/FR, statiques après backfill) — par titre (jeu).
+  achievements: (playerSlug: string, titleSlug: string) =>
+    ['achievements', playerSlug, titleSlug] as const,
 
   // Historique des matchs (Slice 3)
-  matchHistory: (playerSlug: string, filterHash: string, page: number, soloSessions: string[] = []) =>
-    ['match-history', playerSlug, filterHash, page, [...soloSessions].sort().join(',')] as const,
+  matchHistory: (playerSlug: string, titleSlug: string, filterHash: string, page: number, soloSessions: string[] = []) =>
+    ['match-history', playerSlug, titleSlug, filterHash, page, [...soloSessions].sort().join(',')] as const,
   /** Préfixe broad — invalide tout le cache match-history d'un joueur. */
   matchHistoryAll: (playerSlug: string) => ['match-history', playerSlug] as const,
 
   // Explorer (Slice 4)
   explorer: (
     playerSlug: string,
+    titleSlug: string,
     filterHash: string,
     perfTiers: number[] = [],
     skillTiers: string[] = [],
@@ -76,28 +92,30 @@ export const queryKeys = {
     matchFiltersKey = '',
   ) =>
     [
-      'explorer', playerSlug, filterHash,
+      'explorer', playerSlug, titleSlug, filterHash,
       [...perfTiers].sort().join(','),
       [...skillTiers].sort().join(','),
       rankedContext,
       [...outcomeFilter].sort().join(','),
       matchFiltersKey,
     ] as const,
-  explorerPlayer: (playerSlug: string, targetGamertag: string, targetXuid: string, page: number) =>
-    ['explorer-player', playerSlug, targetGamertag, targetXuid, page] as const,
-  gamertagSearch: (q: string) => ['gamertag-search', q] as const,
-  matchView: (playerSlug: string, matchId: string) =>
-    ['match-view', playerSlug, matchId] as const,
+  explorerPlayer: (playerSlug: string, titleSlug: string, targetGamertag: string, targetXuid: string, page: number) =>
+    ['explorer-player', playerSlug, titleSlug, targetGamertag, targetXuid, page] as const,
+  // gamertagSearch : recherche globale (Xbox), title-agnostic — pas de titleSlug.
+  // `live` distingue le repli Xbox explicite (V72-24) de la recherche locale rapide.
+  gamertagSearch: (q: string, live = false) => ['gamertag-search', q, live] as const,
+  matchView: (playerSlug: string, titleSlug: string, matchId: string) =>
+    ['match-view', playerSlug, titleSlug, matchId] as const,
 
   // Engagement (Phase 4 plan engagement)
-  engagementMatch: (playerSlug: string, matchId: string) =>
-    ['engagement', 'match', playerSlug, matchId] as const,
-  engagementProfile: (playerSlug: string) =>
-    ['engagement', 'profile', playerSlug] as const,
-  engagementTimeseries: (playerSlug: string, filterHash: string, limit: number) =>
-    ['engagement', 'timeseries', playerSlug, filterHash, limit] as const,
-  engagementSquadSession: (playerSlug: string, matchIds: string[], teammates: string[]) =>
-    ['engagement', 'squad-session', playerSlug, matchIds.join(','), teammates.join(',')] as const,
+  engagementMatch: (playerSlug: string, titleSlug: string, matchId: string) =>
+    ['engagement', 'match', playerSlug, titleSlug, matchId] as const,
+  engagementProfile: (playerSlug: string, titleSlug: string) =>
+    ['engagement', 'profile', playerSlug, titleSlug] as const,
+  engagementTimeseries: (playerSlug: string, titleSlug: string, filterHash: string, limit: number) =>
+    ['engagement', 'timeseries', playerSlug, titleSlug, filterHash, limit] as const,
+  engagementSquadSession: (playerSlug: string, titleSlug: string, matchIds: string[], teammates: string[]) =>
+    ['engagement', 'squad-session', playerSlug, titleSlug, matchIds.join(','), teammates.join(',')] as const,
 
   // Accueil / Home (Slice 5)
   // Le titre courant fait partie de la clé : la réponse /pages/home est
@@ -115,113 +133,128 @@ export const queryKeys = {
   // Palmares
   // Locale dans la clé : mêmes libellés backend-bakés (nom du pass, titres de
   // défis de saison) selon X-LevelUp-Locale — cf. commentaire `home` ci-dessus.
-  seasonPass: (playerSlug: string, locale: string) =>
-    ['palmares', playerSlug, 'season-pass', locale] as const,
-  palmaresRelations: (playerSlug: string) => ['palmares', playerSlug, 'relations'] as const,
+  seasonPass: (playerSlug: string, titleSlug: string, locale: string) =>
+    ['palmares', playerSlug, titleSlug, 'season-pass', locale] as const,
+  // Relations / social (followers) — stockage shared_social PAR TITRE.
+  palmaresRelations: (playerSlug: string, titleSlug: string) =>
+    ['palmares', playerSlug, titleSlug, 'relations'] as const,
 
   // Escouade / Teammates (Slice 6)
-  teammates: (playerSlug: string, filterHash: string, selectedGts: string[], sessionLabels: string[] = [], locale = '') =>
-    ['teammates', playerSlug, filterHash, [...selectedGts].sort().join(','), [...sessionLabels].sort().join(','), locale] as const,
-  /** Préfixe broad — invalide toutes les queries teammates (ex. après ajout d'ami). */
+  teammates: (playerSlug: string, titleSlug: string, filterHash: string, selectedGts: string[], sessionLabels: string[] = [], locale = '') =>
+    ['teammates', playerSlug, titleSlug, filterHash, [...selectedGts].sort().join(','), [...sessionLabels].sort().join(','), locale] as const,
+  /** Préfixe broad — invalide toutes les queries teammates (ex. après ajout d'ami).
+   *  Title-agnostic PAR DESIGN (balaie tous les joueurs/titres). */
   teammatesAll: ['teammates'] as const,
 
   // Synthèse (Slice 7 — Sprint 55 D8 : scopeHash = period + filtres)
-  synthesis: (playerSlug: string, scopeHash: string) =>
-    ['synthesis', playerSlug, scopeHash] as const,
+  synthesis: (playerSlug: string, titleSlug: string, scopeHash: string) =>
+    ['synthesis', playerSlug, titleSlug, scopeHash] as const,
 
   // Médias (Slice 8)
+  /** Préfixe broad — matche toutes les queries média du joueur (patch like/upload).
+   *  Reste un préfixe `['media', playerSlug]` : matche les clés enrichies du titre. */
   mediaBase: (playerSlug: string) => ['media', playerSlug] as const,
-  media: (playerSlug: string, requestHash: string) => ['media', playerSlug, requestHash] as const,
-  mediaRail: (playerSlug: string, limit: number, likedOnly = false) => ['media', playerSlug, 'rail', limit, likedOnly] as const,
-  mediaAuthors: (playerSlug: string) => ['media', playerSlug, 'authors'] as const,
-  mediaAudioConfig: (playerSlug: string) => ['media', playerSlug, 'audio-config'] as const,
+  media: (playerSlug: string, titleSlug: string, requestHash: string) =>
+    ['media', playerSlug, titleSlug, requestHash] as const,
+  mediaRail: (playerSlug: string, titleSlug: string, limit: number, likedOnly = false) =>
+    ['media', playerSlug, titleSlug, 'rail', limit, likedOnly] as const,
+  mediaAuthors: (playerSlug: string, titleSlug: string) =>
+    ['media', playerSlug, titleSlug, 'authors'] as const,
+  mediaAudioConfig: (playerSlug: string, titleSlug: string) =>
+    ['media', playerSlug, titleSlug, 'audio-config'] as const,
   feedVersion: ['media', 'feed-version'] as const,
 
   // Citations (Slice 2B)
-  citations: (playerSlug: string, filterHash: string) =>
-    ['citations', playerSlug, filterHash] as const,
+  citations: (playerSlug: string, titleSlug: string, filterHash: string) =>
+    ['citations', playerSlug, titleSlug, filterHash] as const,
 
   // Médailles (sous-page Carrière) — locale dans la clé : le backend bake les
   // libellés/descriptions de médailles localisés (X-LevelUp-Locale). Pas de
   // filterHash : le filtre obtenues/non-obtenues + le tri sont 100% client.
-  medals: (playerSlug: string, locale: string) =>
-    ['medals', playerSlug, locale] as const,
+  medals: (playerSlug: string, titleSlug: string, locale: string) =>
+    ['medals', playerSlug, titleSlug, locale] as const,
 
-  // Totaux à vie des commendations natives (Halo 5, AXE B)
-  commendationTotals: (playerSlug: string) =>
-    ['commendation-totals', playerSlug] as const,
+  // Totaux à vie des commendations natives (Halo 5, AXE B) — par titre.
+  commendationTotals: (playerSlug: string, titleSlug: string) =>
+    ['commendation-totals', playerSlug, titleSlug] as const,
 
   // Timeseries (Slice 3B) — 'solo' dans la clé pour invalider tout cache pré-fix
-  timeseries: (playerSlug: string, filterHash: string) =>
-    ['timeseries', 'solo', playerSlug, filterHash] as const,
+  timeseries: (playerSlug: string, titleSlug: string, filterHash: string) =>
+    ['timeseries', 'solo', playerSlug, titleSlug, filterHash] as const,
 
   // Session Detail (session page revamp)
   sessionDetail: (
     playerSlug: string,
+    titleSlug: string,
     filterHash: string,
     sessionLabel: string,
     compareSessionLabel: string,
     enableCompare: boolean,
     locale: string,
   ) =>
-    ['session-detail', playerSlug, filterHash, sessionLabel, compareSessionLabel, enableCompare, locale] as const,
+    ['session-detail', playerSlug, titleSlug, filterHash, sessionLabel, compareSessionLabel, enableCompare, locale] as const,
 
   // Compare joueur vs joueur (Sprint 54-C)
-  comparePlayer: (playerSlug: string, targetGamertag: string) =>
-    ['compare', playerSlug, targetGamertag] as const,
+  comparePlayer: (playerSlug: string, titleSlug: string, targetGamertag: string) =>
+    ['compare', playerSlug, titleSlug, targetGamertag] as const,
 
   // Navigation prev/next entre matchs (V7).
   // Phase 2b : spec optionnel pour différencier les caches global vs filtré.
   matchNeighbors: (
     playerSlug: string,
+    titleSlug: string,
     matchId: string,
     spec?: Record<string, unknown> | null,
-  ) => ['match-neighbors', playerSlug, matchId, spec ?? null] as const,
+  ) => ['match-neighbors', playerSlug, titleSlug, matchId, spec ?? null] as const,
 
   // Classement (CSR mondial + stats communautaires)
-  leaderboard: (playerSlug: string, category?: string, season?: string, playlist?: string) =>
-    ['leaderboard', playerSlug, category ?? '', season ?? '', playlist ?? ''] as const,
+  leaderboard: (playerSlug: string, titleSlug: string, category?: string, season?: string, playlist?: string) =>
+    ['leaderboard', playerSlug, titleSlug, category ?? '', season ?? '', playlist ?? ''] as const,
   // Locale dans la clé : le catalogue bake les display_name (saisons/playlists) localisés
   // selon X-LevelUp-Locale — cf. commentaire `home` ci-dessus. La clé EST l'invalidation à
   // la bascule de langue (plus d'invalidation ciblée depuis le layout titre).
-  leaderboardCatalog: (playerSlug: string, locale: string) =>
-    ['leaderboard-catalog', playerSlug, locale] as const,
+  leaderboardCatalog: (playerSlug: string, titleSlug: string, locale: string) =>
+    ['leaderboard-catalog', playerSlug, titleSlug, locale] as const,
 
-  // Notifications in-app (per-player)
-  /** Préfixe broad — invalide/matche toutes les queries notifications d'un joueur. */
+  // Notifications in-app (per-player) — stockage shared_social PAR TITRE (routes
+  // notifications title-scopées /t/{slug}/…) → le titre scope les clés feuilles.
+  /** Préfixe broad — invalide/matche toutes les queries notifications d'un joueur.
+   *  Reste `['notifications', playerSlug]` : préfixe valide des clés enrichies du titre. */
   notificationsAll: (playerSlug: string) => ['notifications', playerSlug] as const,
-  notifications: (playerSlug: string, filter: object) =>
-    ['notifications', playerSlug, 'list', filter] as const,
-  notificationsUnreadCount: (playerSlug: string) =>
-    ['notifications', playerSlug, 'unread-count'] as const,
-  notificationsPreferences: (playerSlug: string) =>
-    ['notifications', playerSlug, 'preferences'] as const,
+  notifications: (playerSlug: string, titleSlug: string, filter: object) =>
+    ['notifications', playerSlug, titleSlug, 'list', filter] as const,
+  notificationsUnreadCount: (playerSlug: string, titleSlug: string) =>
+    ['notifications', playerSlug, titleSlug, 'unread-count'] as const,
+  notificationsPreferences: (playerSlug: string, titleSlug: string) =>
+    ['notifications', playerSlug, titleSlug, 'preferences'] as const,
 
   // Asset Drawer (Phase 2)
   assetMaps: (titleSlug: string, q: string) => ['assets', titleSlug, 'maps', q] as const,
   assetWeapons: (titleSlug: string, q: string) => ['assets', titleSlug, 'weapons', q] as const,
   assetMedals: (titleSlug: string, q: string) => ['assets', titleSlug, 'medals', q] as const,
 
-  // Progression V2 (Ascension) — cf. PLAN_PROGRESSION_TRACKING_ASCENSION.md §8.1
-  progressionStreaks: (playerSlug: string) =>
-    ['progression', playerSlug, 'streaks'] as const,
-  progressionRecords: (playerSlug: string, historyLimit?: number) =>
-    ['progression', playerSlug, 'records', historyLimit ?? 50] as const,
-  progressionMilestones: (playerSlug: string) =>
-    ['progression', playerSlug, 'milestones'] as const,
+  // Progression V2 (Ascension) — cf. PLAN_PROGRESSION_TRACKING_ASCENSION.md §8.1.
+  // Dérivée des matchs du titre → titleSlug scope la clé.
+  progressionStreaks: (playerSlug: string, titleSlug: string) =>
+    ['progression', playerSlug, titleSlug, 'streaks'] as const,
+  progressionRecords: (playerSlug: string, titleSlug: string, historyLimit?: number) =>
+    ['progression', playerSlug, titleSlug, 'records', historyLimit ?? 50] as const,
+  progressionMilestones: (playerSlug: string, titleSlug: string) =>
+    ['progression', playerSlug, titleSlug, 'milestones'] as const,
   // Pattern Engine (phases 0.2-3)
-  progressionProfile: (playerSlug: string, windowDays = 30) =>
-    ['progression', playerSlug, 'profile', windowDays] as const,
-  progressionPatterns: (playerSlug: string, n = 50) =>
-    ['progression', playerSlug, 'patterns', n] as const,
+  progressionProfile: (playerSlug: string, titleSlug: string, windowDays = 30) =>
+    ['progression', playerSlug, titleSlug, 'profile', windowDays] as const,
+  progressionPatterns: (playerSlug: string, titleSlug: string, n = 50) =>
+    ['progression', playerSlug, titleSlug, 'patterns', n] as const,
   // Calendrier d'activité (Réalisations) — jours joués sur la fenêtre (DEC-5/D3).
-  progressionActivity: (playerSlug: string, days = 90) =>
-    ['progression', playerSlug, 'activity', days] as const,
+  progressionActivity: (playerSlug: string, titleSlug: string, days = 90) =>
+    ['progression', playerSlug, titleSlug, 'activity', days] as const,
 
-  // Coach Advisor proposals (ADR 0020 Phase 10)
-  coachProposals: (playerSlug: string, status?: string) =>
-    ['coach', playerSlug, 'proposals', status ?? 'all'] as const,
-  /** Préfixe broad — invalide toutes les queries coach d'un joueur. */
+  // Coach Advisor proposals (ADR 0020 Phase 10) — dérivé des matchs du titre.
+  coachProposals: (playerSlug: string, titleSlug: string, status?: string) =>
+    ['coach', playerSlug, titleSlug, 'proposals', status ?? 'all'] as const,
+  /** Préfixe broad — invalide toutes les queries coach d'un joueur.
+   *  Reste `['coach', playerSlug]` : préfixe valide des clés enrichies du titre. */
   coachAll: (playerSlug: string) => ['coach', playerSlug] as const,
 
   // Admin — Intégrité des données (invariants sync, plan SYNC_INVARIANTS_GATE)
@@ -299,17 +332,18 @@ export const queryKeys = {
       ['prestige', 'squad-orientation', squadId, requestedBy] as const,
   },
   playerProfile: {
-    profile: (playerSlug: string, windowDays: number) =>
-      ['playerProfile', playerSlug, windowDays] as const,
-    activeCampaign: (playerSlug: string) =>
-      ['playerProfile', 'campaign', 'active', playerSlug] as const,
-    campaign: (playerSlug: string, id: string) =>
-      ['playerProfile', 'campaign', playerSlug, id] as const,
+    profile: (playerSlug: string, titleSlug: string, windowDays: number) =>
+      ['playerProfile', playerSlug, titleSlug, windowDays] as const,
+    activeCampaign: (playerSlug: string, titleSlug: string) =>
+      ['playerProfile', 'campaign', 'active', playerSlug, titleSlug] as const,
+    campaign: (playerSlug: string, titleSlug: string, id: string) =>
+      ['playerProfile', 'campaign', playerSlug, titleSlug, id] as const,
     /** Campagnes closes (historique Réalisations). Sous le préfixe `campaignAll`
      *  → invalidée par les mutations de campagne (close/abandon refont l'historique). */
-    campaignHistory: (playerSlug: string) =>
-      ['playerProfile', 'campaign', playerSlug, 'history'] as const,
-    /** Préfixe broad — invalide tous les `campaign(playerSlug, *)`. */
+    campaignHistory: (playerSlug: string, titleSlug: string) =>
+      ['playerProfile', 'campaign', playerSlug, titleSlug, 'history'] as const,
+    /** Préfixe broad — invalide tous les `campaign(playerSlug, *)`.
+     *  Reste `['playerProfile', 'campaign', playerSlug]` : préfixe des clés du titre. */
     campaignAll: (playerSlug: string) =>
       ['playerProfile', 'campaign', playerSlug] as const,
   },
@@ -325,13 +359,14 @@ export const queryKeys = {
     ['feedback-drawer', 'similar-issues', query] as const,
   mediaMatchCandidates: (
     playerSlug: string,
+    titleSlug: string,
     // `filePath` peut être null tant que la sélection média n'est pas faite ;
     // le hook associé est alors désactivé (`enabled: !!filePath`) et ne fetch
     // jamais avec cette valeur. La forme de clé pour un filePath non-null reste
     // byte-identique (rien inséré/retiré) — pas d'invalidation de cache.
     filePath: string | null,
     windowMinutes: number,
-  ) => ['media', 'match-candidates', playerSlug, filePath, windowMinutes] as const,
+  ) => ['media', 'match-candidates', playerSlug, titleSlug, filePath, windowMinutes] as const,
   /** Préfixe broad — invalide tous les `filtersResolve(playerSlug, *, *)`.
    *  RESTE broad PAR JOUEUR (n'inclut PAS le titre) : son unique usage
    *  (invalidation post-sync, $playerSlug.tsx) doit rafraîchir la résolution du

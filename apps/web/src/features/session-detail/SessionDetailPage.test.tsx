@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { delay, http, HttpResponse } from "msw";
 
@@ -18,6 +18,10 @@ vi.mock("echarts-for-react", () => ({
   default: () => null,
 }));
 
+// Mock partagé (pas une nouvelle instance par appel) : permet aux tests
+// V72-09 (bouton "Voir les synergies") d'asserter les params de navigate().
+const mockNavigate = vi.fn();
+
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("@tanstack/react-router")>();
@@ -29,7 +33,7 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
     // defaut — les tests qui ont besoin d'une session preselectionnee la
     // setteraient via override.
     useSearch: () => ({}),
-    useNavigate: () => vi.fn(),
+    useNavigate: () => mockNavigate,
   };
 });
 
@@ -84,6 +88,10 @@ function buildBaseResponse() {
 }
 
 describe("SessionDetailPage", () => {
+  beforeEach(() => {
+    mockNavigate.mockClear();
+  });
+
   it("ne rend pas de loader plein écran pendant le chargement (TopProgressBar globale)", () => {
     server.use(
       http.post(
@@ -152,6 +160,38 @@ describe("SessionDetailPage", () => {
     // Le tableau réutilise désormais ExplorerMatchesTable → l'issue est rendue via
     // le manifest explorer (bundlé) : outcome 2 → "Victoire" (FR), pas la clé brute.
     expect(screen.getByText("Victoire")).toBeInTheDocument();
+    // Session solo (with_friends: false) → pas de bouton "Voir les synergies" (V72-09).
+    expect(
+      screen.queryByRole("button", { name: /Voir les synergies/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("affiche le bouton Voir les synergies pour une session avec amis et navigue vers /squad (V72-09)", async () => {
+    server.use(
+      http.post("/api/v1/players/:playerSlug/pages/sessions/detail", () =>
+        HttpResponse.json({
+          ...buildBaseResponse(),
+          current_session: {
+            ...buildBaseResponse().current_session,
+            with_friends: true,
+          },
+        }),
+      ),
+    );
+
+    renderWithProviders(<SessionDetailPage />);
+
+    const synergiesButton = await screen.findByRole("button", {
+      name: /Voir les synergies/i,
+    });
+
+    fireEvent.click(synergiesButton);
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/{-$lang}/t/$titleSlug/players/$playerSlug/squad",
+      params: { titleSlug: "halo_infinite", playerSlug: "test-player" },
+      search: { session: "2026-04-21 19h30", teammates: undefined },
+    });
   });
 
   it("active la comparaison suggérée et affiche la lecture comparative", async () => {

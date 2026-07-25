@@ -76,4 +76,18 @@ describe('ChartCard', () => {
     const loading = screen.getByTestId('chart-card-loading')
     expect(loading.style.minHeight).toBe('500px')
   })
+
+  it('rend la légende en pied de card quand la prop legend est fournie', () => {
+    render(
+      <ChartCard {...baseProps} legend={<div data-testid="legend-content">Légende</div>} />,
+    )
+    // Footer dédié avec chrome (bordure + padding) appliqué par ChartCard.
+    expect(screen.getByTestId('chart-card-legend')).toBeTruthy()
+    expect(screen.getByTestId('legend-content').textContent).toBe('Légende')
+  })
+
+  it('pas de pied de légende quand la prop legend est absente', () => {
+    render(<ChartCard {...baseProps} />)
+    expect(screen.queryByTestId('chart-card-legend')).toBeNull()
+  })
 })

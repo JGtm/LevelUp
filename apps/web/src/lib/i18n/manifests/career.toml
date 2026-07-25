@@ -470,6 +470,24 @@ en = "As teammate"
 fr = "Adverse"
 en = "As enemy"
 
+# ─── Tooltips d'en-tête (V72-04, icône ⓘ) ────────────────────────────────────
+
+[career.encounters.col_count_tooltip]
+fr = "Nombre total de matchs joués avec ce joueur, alliés et adversaires confondus."
+en = "Total matches played with this player, allies and enemies combined."
+
+[career.encounters.col_as_teammate_tooltip]
+fr = "Nombre de matchs où ce joueur était dans ton équipe."
+en = "Matches where this player was on your team."
+
+[career.encounters.col_as_enemy_tooltip]
+fr = "Nombre de matchs où ce joueur était dans l'équipe adverse."
+en = "Matches where this player was on the enemy team."
+
+[career.encounters.col_avg_kda_tooltip]
+fr = "FDA moyen de ce joueur sur vos matchs communs (impact par match, pas frags/morts)."
+en = "This player's average KDA across your shared matches (per-match impact, not kills/deaths)."
+
 [career.encounters.players_suffix]
 fr = "joueurs"
 en = "players"

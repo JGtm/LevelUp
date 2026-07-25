@@ -84,6 +84,44 @@ const (
 	FragRoleShoulderBash  = "shoulder_bash" // Capacité spartane niv.2
 )
 
+// Clés de rôle du niveau 2 de la classe Grenade — TYPE de grenade (V72-15.2). Dérivées
+// de la FAMILLE registre (frag_grenade/plasma_grenade/dynamo_grenade/splinter_grenade) des
+// rows class=grenade ; grenade_other regroupe les familles non typées + le résidu de
+// réconciliation vers le total API autoritatif (Σ types == kills de la classe).
+const (
+	FragRoleGrenadeFrag     = "grenade_frag"
+	FragRoleGrenadePlasma   = "grenade_plasma"
+	FragRoleGrenadeDynamo   = "grenade_dynamo"
+	FragRoleGrenadeSplinter = "grenade_splinter"
+	FragRoleGrenadeOther    = "grenade_other"
+)
+
+// GrenadeTypeRoleOrder fixe l'ordre canonique (déterministe) des types de grenade pour le
+// tie-break du niveau 2 (à kills égaux). « Autre grenade » en dernier.
+var GrenadeTypeRoleOrder = []string{
+	FragRoleGrenadeFrag, FragRoleGrenadePlasma, FragRoleGrenadeDynamo,
+	FragRoleGrenadeSplinter, FragRoleGrenadeOther,
+}
+
+// GrenadeTypeRoleForFamily mappe une FAMILLE d'arme registre (row class=grenade) vers son
+// rôle « type de grenade » canonique. ok=false (→ FragRoleGrenadeOther) pour une famille
+// non typée : dégradation propre, jamais de comparaison de slug de titre — toute famille
+// grenade connue des deux titres (Infinite : frag/plasma/dynamo ; H5 : frag/plasma/splinter)
+// est couverte, une famille inconnue retombe dans « Autre grenade ».
+func GrenadeTypeRoleForFamily(family string) (string, bool) {
+	switch family {
+	case "frag_grenade":
+		return FragRoleGrenadeFrag, true
+	case "plasma_grenade":
+		return FragRoleGrenadePlasma, true
+	case "dynamo_grenade":
+		return FragRoleGrenadeDynamo, true
+	case "splinter_grenade":
+		return FragRoleGrenadeSplinter, true
+	}
+	return FragRoleGrenadeOther, false
+}
+
 // FragKillTypeCounts porte les compteurs de kill-type NATIFS (API canonique) qui
 // alimentent le niveau 1 de la FragDistribution : Mêlée, Grenade et — sous capability
 // native_kill_mechanics — Capacités spartanes (ground pound + shoulder bash), plus le

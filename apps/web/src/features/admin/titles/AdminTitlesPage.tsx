@@ -94,8 +94,8 @@ export function AdminTitlesPage() {
                   <tr className="border-b text-left text-xs text-muted-foreground">
                     <SortableTh label={tA('admin.titles.col_title')} active={sortKey === 'name'} dir={sortDir} onClick={() => toggleSort('name')} className="py-2 pr-4 font-medium" />
                     <SortableTh label={tA('admin.titles.col_status')} active={sortKey === 'status'} dir={sortDir} onClick={() => toggleSort('status')} className="py-2 pr-4 font-medium" />
-                    <SortableTh label={tA('admin.titles.col_capabilities')} active={sortKey === 'capabilities'} dir={sortDir} onClick={() => toggleSort('capabilities')} className="py-2 pr-4 font-medium" />
-                    <SortableTh label={tA('admin.titles.col_mappings')} active={sortKey === 'has_mappings'} dir={sortDir} onClick={() => toggleSort('has_mappings')} className="py-2 pr-4 font-medium" />
+                    <SortableTh label={tA('admin.titles.col_capabilities')} active={sortKey === 'capabilities'} dir={sortDir} onClick={() => toggleSort('capabilities')} className="py-2 pr-4 font-medium" tooltip={tA('admin.titles.col_capabilities_tooltip')} />
+                    <SortableTh label={tA('admin.titles.col_mappings')} active={sortKey === 'has_mappings'} dir={sortDir} onClick={() => toggleSort('has_mappings')} className="py-2 pr-4 font-medium" tooltip={tA('admin.titles.col_mappings_tooltip')} />
                   </tr>
                 </thead>
                 <tbody>

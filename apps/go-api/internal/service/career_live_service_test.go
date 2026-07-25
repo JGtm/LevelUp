@@ -419,9 +419,10 @@ func TestCareerLive_GetIdentity_SwRBehavior(t *testing.T) {
 		builder := &mockIdentityBuilder{}
 		factory := func(_ context.Context) CareerFetcher { return fetcher }
 		cache := NewCareerLiveCache(CareerLiveCacheConfig{})
-		// Pré-populate cache pour simuler un précédent refresh background
-		cache.PutProgress("1234567890123456", &syncpkg.CareerRankData{CurrentRank: 99, CurrentXP: 9999})
-		cache.PutCustomization("1234567890123456", &syncpkg.SpartanCustomizationData{SpartanID: "SR-LIVE"})
+		// Pré-populate cache pour simuler un précédent refresh background (slug =
+		// défaut "halo_infinite" du ctx de test, cohérent avec la clé de lecture).
+		cache.PutProgress("1234567890123456", "halo_infinite", &syncpkg.CareerRankData{CurrentRank: 99, CurrentXP: 9999})
+		cache.PutCustomization("1234567890123456", "halo_infinite", &syncpkg.SpartanCustomizationData{SpartanID: "SR-LIVE"})
 		svc := NewCareerLiveService(repo, builder, factory, cache)
 
 		got, err := svc.GetSpartanIdentityFor(ctxWithTokens(t, true), ctxTokensXUID)
@@ -568,8 +569,9 @@ func TestCareerLive_TitleSansCatalogue_SkipLiveFetch(t *testing.T) {
 		builder := &mockIdentityBuilder{}
 		factory := func(_ context.Context) CareerFetcher { return fetcher }
 		cache := NewCareerLiveCache(CareerLiveCacheConfig{})
-		// Cache pré-rempli avec une progression HINF : le gating doit l'ignorer.
-		cache.PutProgress(xuid, &syncpkg.CareerRankData{CurrentRank: 272, CurrentXP: 99999})
+		// Cache pré-rempli avec une progression HINF : le gating doit l'ignorer
+		// (et, avec la clé par titre, la lecture halo_5 ne matcherait pas non plus).
+		cache.PutProgress(xuid, "halo_infinite", &syncpkg.CareerRankData{CurrentRank: 272, CurrentXP: 99999})
 		svc := NewCareerLiveService(repo, builder, factory, cache)
 
 		ctx := ctxkeys.WithTitleSlug(ctxWithTokens(t, true), "halo_5")
@@ -592,8 +594,8 @@ func TestCareerLive_TitleSansCatalogue_SkipLiveFetch(t *testing.T) {
 		builder := &mockIdentityBuilder{}
 		factory := func(_ context.Context) CareerFetcher { return fetcher }
 		cache := NewCareerLiveCache(CareerLiveCacheConfig{})
-		cache.PutProgress(xuid, &syncpkg.CareerRankData{CurrentRank: 99, CurrentXP: 9999})
-		cache.PutCustomization(xuid, &syncpkg.SpartanCustomizationData{SpartanID: "SR-LIVE"})
+		cache.PutProgress(xuid, "halo_infinite", &syncpkg.CareerRankData{CurrentRank: 99, CurrentXP: 9999})
+		cache.PutCustomization(xuid, "halo_infinite", &syncpkg.SpartanCustomizationData{SpartanID: "SR-LIVE"})
 		svc := NewCareerLiveService(repo, builder, factory, cache)
 
 		ctx := ctxkeys.WithTitleSlug(ctxWithTokens(t, true), "halo_infinite")
@@ -922,7 +924,7 @@ func TestCareerLive_NilAPIResponse_NotCached(t *testing.T) {
 	// Le cache ne doit PAS contenir une entrée nil pour progress.
 	// Si nil était caché, GetProgress retournerait (nil, true) et needRefresh
 	// resterait false → le refresh ne se redéclencherait jamais.
-	if p, hit := cache.GetProgress("1234567890123456"); hit {
+	if p, hit := cache.GetProgress("1234567890123456", "halo_infinite"); hit {
 		t.Errorf("nil progress ne devrait pas être caché (got hit=true, data=%v)", p)
 	}
 

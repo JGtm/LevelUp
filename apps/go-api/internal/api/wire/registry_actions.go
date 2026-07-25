@@ -349,3 +349,89 @@ func (r *ServiceRegistry) RunPlayerConvergence(ctx context.Context, titleSlug, p
 	observability.IncCounter("admin_action_player_convergence_total")
 	return result, nil
 }
+
+// initialSyncMaxMatchesCap / initialSyncDefaultMaxMatches bornent le re-import
+// initial admin — mêmes bornes que POST /sync/initial (1..2000, défaut 200).
+const (
+	initialSyncMaxMatchesCap     = 2000
+	initialSyncDefaultMaxMatches = 200
+)
+
+// resolveInitialMaxMatches borne le plafond de matchs du re-import initial :
+// valeur demandée > défaut profil (initial_max_matches) > 200, clampée
+// [1, initialSyncMaxMatchesCap]. Aligné sur StartInitialSync (sync_handler.go).
+func resolveInitialMaxMatches(requested, profileDefault int) int {
+	m := requested
+	if m <= 0 {
+		m = profileDefault
+	}
+	if m <= 0 {
+		m = initialSyncDefaultMaxMatches
+	}
+	if m > initialSyncMaxMatchesCap {
+		m = initialSyncMaxMatchesCap
+	}
+	if m < 1 {
+		m = 1
+	}
+	return m
+}
+
+// RunPlayerInitialSync relance un re-import complet (RunFull, plafonné) pour un
+// joueur — miroir de RunPlayerConvergence : même résolution joueur + claim du
+// SyncGate, mais RunFull (tout l'historique jusqu'au plafond, sans arrêt au
+// premier match connu du delta) au lieu de RunDelta. ErrSyncInFlight si une
+// autre source sync déjà ce joueur. maxMatches <= 0 → défaut profil puis 200.
+func (r *ServiceRegistry) RunPlayerInitialSync(ctx context.Context, titleSlug, playerSlug string, maxMatches int) (map[string]any, error) {
+	if r.autoSyncScheduler == nil {
+		return nil, fmt.Errorf("scheduler auto-sync non câblé")
+	}
+	players, err := r.cfg.LoadPlayers(titleSlug)
+	if err != nil {
+		return nil, err
+	}
+	var gamertag, xuid string
+	var profileMax int
+	for _, p := range players {
+		if p.PlayerSlug == playerSlug || p.Gamertag == playerSlug {
+			gamertag, xuid, profileMax = p.Gamertag, p.XUID, p.InitialMaxMatches
+			break
+		}
+	}
+	if gamertag == "" || xuid == "" {
+		return nil, fmt.Errorf("joueur inconnu %q pour %s", playerSlug, titleSlug)
+	}
+
+	release, ok := r.autoSyncScheduler.Gate().TryClaimT(titleSlug, gamertag)
+	if !ok {
+		return nil, ErrSyncInFlight
+	}
+	defer release()
+
+	// MT-11 / PMT-3 : porter le titre dans le ctx pour que BuildEngine écrive
+	// dans les DB du bon titre (identique à RunPlayerConvergence).
+	ctx = ctxkeys.WithTitleSlug(ctx, titleSlug)
+	engine := r.autoSyncScheduler.BuildEngine(ctx, gamertag, xuid)
+	opts := domain.DefaultSyncOptions()
+	opts.MaxMatches = resolveInitialMaxMatches(maxMatches, profileMax)
+	syncRes, err := engine.RunFull(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	result := map[string]any{
+		"gamertag":         gamertag,
+		"matches_inserted": syncRes.MatchesInserted,
+		"matches_skipped":  syncRes.MatchesSkipped,
+		"status":           syncRes.Status(),
+		"error_count":      len(syncRes.Errors),
+		"max_matches":      opts.MaxMatches,
+	}
+	if syncRes.PostSync != nil {
+		result["post_sync"] = *syncRes.PostSync
+	}
+	monitoringLog.InfoContext(ctx, "admin_actions: sync initiale joueur terminée",
+		"title", titleSlug, "gamertag", gamertag, "inserted", syncRes.MatchesInserted,
+		"max_matches", opts.MaxMatches, "status", syncRes.Status())
+	observability.IncCounter("admin_action_player_initial_sync_total")
+	return result, nil
+}

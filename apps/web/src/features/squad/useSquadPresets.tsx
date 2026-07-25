@@ -25,17 +25,108 @@ import {
 } from '@/features/prestige/hooks/useSquads'
 import { useMyGroups } from '@/features/groups/queries'
 import type { TeammateRow } from '@/lib/api/types'
+import { normalizeModeLabel } from '@/lib/halo/modeLabel'
 import { findSquadByRoster, squadTeammates } from './squadRoster'
 import { SQUAD_PRESETS_STRINGS, type SquadPresetsStrings } from './squadPresets.i18n'
 
-function buildUsualSubtitle(
+/**
+ * buildUsualSubtitle — indice « surtout <playlists> · <mode> » de la liste des
+ * compositions enregistrées (V72-10). Exporté pour test.
+ *
+ * `modes` arrive du backend (`GET /squads` → `usual_modes`, cf.
+ * `prestige_squad_match_provider.go SquadUsualContexts`). Depuis V72-10.1 le serveur
+ * sert des modes NORMALISÉS et TRADUITS en FR (mode_name_tr : « Team Slayer » →
+ * « Assassin en équipe ») — la forme `pair_name` BRUTE des origines n'est plus le cas
+ * nominal. Le strip canonique reste appliqué ici pour la DÉGRADATION GRACIEUSE de
+ * `SquadUsualContexts` (traducteur absent / en erreur), qui peut encore servir un
+ * libellé composé « Assassin en équipe sur Bazaar » ou « Arena:Slayer on Bazaar »
+ * (mode ET carte collés, cf. `reference_mode_label_cross_lang_strip`). Même strip que
+ * `match-card.tsx`/`format.ts` (`normalizeModeLabel`, pas de mapLabel connu ici → seul
+ * le filet générique "on/sur <reste>" s'applique, mais il est TOUJOURS déclenché
+ * quelle que soit la langue) :
+ *  - retire la carte collée au mode (décision utilisateur V72-10 : la carte
+ *    n'apporte rien dans cet indice, playlist + mode suffisent) ;
+ *  - extrait le sous-mode propre du préfixe technique ("Arena:Slayer" → "Slayer").
+ * Sur un libellé déjà propre, `normalizeModeLabel` est idempotent — appliquer le strip
+ * au cas nominal ne coûte rien (même choix que `contextMatchKey`, juste en dessous).
+ *
+ * `playlists` n'a pas ce problème (pas de suffixe carte) — laissé tel quel. Le
+ * FR-d'abord est déjà appliqué côté SQL (COALESCE playlist_name_fr/pair_name_fr
+ * avant repli EN) ; un résidu anglais au-delà de ce point est un trou de
+ * traduction côté données (asset_translations / mode_name_tr), pas un bug front.
+ */
+export function buildUsualSubtitle(
   playlists: string[] | undefined,
   modes: string[] | undefined,
   t: SquadPresetsStrings,
 ): string | undefined {
-  const parts = [...(playlists ?? []).slice(0, 2), ...(modes ?? []).slice(0, 1)]
+  const cleanModes = (modes ?? [])
+    .map((m) => normalizeModeLabel(m, undefined))
+    .filter((m): m is string => !!m)
+  const parts = [...(playlists ?? []).slice(0, 2), ...cleanModes.slice(0, 1)]
   if (parts.length === 0) return undefined
   return `${t.usualPrefix} ${parts.join(' · ')}`
+}
+
+/**
+ * contextMatchKey — forme COMMUNE de comparaison d'un libellé de contexte
+ * (playlist ou mode), pour le tri souple des compositions.
+ *
+ * Pourquoi (constat 2026-07-25) : les deux côtés de la comparaison ne sont pas
+ * garantis dans la même forme.
+ *  - Côté filtre actif (`activeContextLabels`, cf. SquadLayout) : libellés
+ *    d'affichage des options de cascade — pour les modes, `service.modeUI` =
+ *    `analysis.ResolveModeUIWithVariant` → déjà normalisé et FR-d'abord.
+ *  - Côté composition (`usual_modes` de `GET /squads`) : depuis V72-10.1 le
+ *    backend normalise ET traduit en FR (mode_name_tr, « Team Slayer » →
+ *    « Assassin en équipe »), mais la dégradation gracieuse de
+ *    `SquadUsualContexts` (traducteur absent / en erreur) peut encore servir la
+ *    forme brute composée « Assassin en équipe sur Bazaar ».
+ *
+ * Une comparaison sur les chaînes brutes échouait donc silencieusement dès qu'un
+ * suffixe de carte ou un préfixe technique subsistait d'UN SEUL côté — alors que
+ * `buildUsualSubtitle`, juste au-dessus, normalise déjà. On applique le MÊME
+ * strip canonique (`normalizeModeLabel`, idempotent sur un libellé propre) aux
+ * DEUX côtés, puis on compare sans tenir compte de la casse.
+ *
+ * Appliqué aussi aux playlists : la transformation est symétrique (même fonction
+ * des deux côtés), donc elle ne peut pas créer de faux négatif ; au pire deux
+ * libellés distincts se replient sur la même clé, ce qui reste acceptable pour un
+ * indice de tri souple (jamais un verrou).
+ *
+ * Limite connue, NON traitée ici : si la traduction FR n'existe que d'un côté
+ * (mode_name_tr couvre le mode mais pas l'asset du filtre, ou l'inverse), les
+ * clés restent FR vs EN et ne matchent pas. C'est un trou de données
+ * (asset_translations / mode_name_tr), pas un défaut de ce comparateur.
+ */
+function contextMatchKey(label: string): string {
+  return (normalizeModeLabel(label, undefined) ?? label).trim().toLowerCase()
+}
+
+/** Clés de comparaison des libellés du filtre courant. Exporté pour test. */
+export function buildActiveContextKeys(labels: string[] | undefined): Set<string> {
+  const out = new Set<string>()
+  for (const l of labels ?? []) {
+    const key = contextMatchKey(l)
+    if (key) out.add(key)
+  }
+  return out
+}
+
+/**
+ * scoreSquadContext — nombre de contextes habituels de la composition qui
+ * matchent le filtre courant. 0 si aucun filtre actif → ordre d'origine (stable).
+ * Exporté pour test.
+ */
+export function scoreSquadContext(
+  sm: { usual_playlists?: string[]; usual_modes?: string[] },
+  activeKeys: Set<string>,
+): number {
+  if (activeKeys.size === 0) return 0
+  return [...(sm.usual_playlists ?? []), ...(sm.usual_modes ?? [])].reduce(
+    (n, l) => (activeKeys.has(contextMatchKey(l)) ? n + 1 : n),
+    0,
+  )
 }
 
 export interface UseSquadPresetsOptions {
@@ -156,16 +247,12 @@ export function useSquadPresets({
   }
 
   // Tri souple : escouades dont les playlists/modes habituels matchent le filtre
-  // courant remontent en tête. Score 0 si aucun filtre → ordre d'origine (stable).
-  const activeSet = new Set((activeContextLabels ?? []).map((l) => l.toLowerCase()))
-  const scoreSquad = (sm: { usual_playlists?: string[]; usual_modes?: string[] }): number => {
-    if (activeSet.size === 0) return 0
-    return [...(sm.usual_playlists ?? []), ...(sm.usual_modes ?? [])].reduce(
-      (n, l) => (activeSet.has(l.toLowerCase()) ? n + 1 : n),
-      0,
-    )
-  }
-  const sortedSquads = [...(mySquads?.squads ?? [])].sort((a, b) => scoreSquad(b) - scoreSquad(a))
+  // courant remontent en tête. Comparaison sur la forme commune normalisée +
+  // insensible à la casse (cf. contextMatchKey).
+  const activeKeys = buildActiveContextKeys(activeContextLabels)
+  const sortedSquads = [...(mySquads?.squads ?? [])].sort(
+    (a, b) => scoreSquadContext(b, activeKeys) - scoreSquadContext(a, activeKeys),
+  )
 
   const squadOptions = sortedSquads.map((sm) => {
     // Player-agnostic : on exclut le viewer par SON xuid (pas par le slug), puis on

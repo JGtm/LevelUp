@@ -78,6 +78,19 @@ describe('toExplorerRow — adapter session → Explorer', () => {
     expect(r.placement_done).toBe(3)
     expect(r.placement_total).toBe(5)
   })
+
+  it('placement de chaîne perf (perf_placement_done/total) mappé indépendamment (V72-34)', () => {
+    const r = toExplorerRow(
+      // placement_* absents (schéma généré : number | undefined) = pas de placement
+      // de classement ; seul le signal perf est posé — c'est le cas JGtm.
+      { ...makeRow(), placement_done: undefined, placement_total: undefined, perf_placement_done: 8, perf_placement_total: 10 },
+      false,
+      'fr',
+    )
+    expect(r.perf_placement_done).toBe(8)
+    expect(r.perf_placement_total).toBe(10)
+    expect(r.placement_done).toBeNull()
+  })
 })
 
 describe('SessionMatchesTable — rendu (réutilise ExplorerMatchesTable)', () => {
@@ -132,5 +145,33 @@ describe('SessionMatchesTable — rendu (réutilise ExplorerMatchesTable)', () =
     renderWithProviders(<SessionMatchesTable matches={[row]} playerSlug="me" variant="full" />)
     expect(screen.getByText('3/5')).toBeInTheDocument()
     expect(screen.queryByText('Or III')).not.toBeInTheDocument() // placement prime sur le palier
+  })
+
+})
+
+// V72-09b : la colonne « Ouvrir sur Halo Waypoint » (I19) est un simple passage
+// à travers ExplorerMatchesTable (aucune duplication) — mais AUCUN test existant
+// ne couvrait ce consommateur précis (seuls ExplorerMatchesTable.test.tsx et
+// SquadSynergyHistoryTable.test.tsx l'assertaient). Couverture manquante = seul
+// filet qui aurait détecté une régression de gating sur cette page spécifique.
+describe('SessionMatchesTable — colonne « Ouvrir sur Halo Waypoint » (I19, V72-09b)', () => {
+  const WAYPOINT_LABEL = 'Ouvrir sur Halo Waypoint'
+
+  it('vue full : lien Waypoint présent avec un href valide (capability fail-open + pref ON par défaut)', () => {
+    renderWithProviders(
+      <SessionMatchesTable matches={[makeRow()]} playerSlug="Chocoboflor" variant="full" />,
+    )
+    const link = screen.getByRole('link', { name: WAYPOINT_LABEL })
+    expect(link).toHaveAttribute(
+      'href',
+      'https://www.halowaypoint.com/halo-infinite/players/Chocoboflor/matches/m1',
+    )
+  })
+
+  it('vue compact (drawer) : colonne Waypoint masquée par COMPACT_HIDDEN_COLUMNS', () => {
+    renderWithProviders(
+      <SessionMatchesTable matches={[makeRow()]} playerSlug="Chocoboflor" variant="compact" />,
+    )
+    expect(screen.queryByRole('link', { name: WAYPOINT_LABEL })).not.toBeInTheDocument()
   })
 })

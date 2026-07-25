@@ -442,6 +442,14 @@ func (s *ExplorerService) buildTargetProfile(
 		sampleStats        *domain.ExplorerTargetSampleStats
 		combatProfileLive  []domain.ExplorerTargetRecentMatch
 		combatProfileLocal []domain.ExplorerTargetRecentMatch
+
+		// Statuts par section (A3 — fin de la dégradation muette). Chaque goroutine
+		// statue SA section ; jamais de valeur vide en sortie de buildTargetProfile.
+		identityStatus   domain.ExplorerLiveSectionStatus
+		careerStatus     domain.ExplorerLiveSectionStatus
+		seasonCSRsStatus domain.ExplorerLiveSectionStatus
+		seasonsStatus    domain.ExplorerLiveSectionStatus
+		combatStatus     domain.ExplorerLiveSectionStatus
 	)
 	g, gctx := errgroup.WithContext(ctx)
 
@@ -451,7 +459,7 @@ func (s *ExplorerService) buildTargetProfile(
 	defer cancelLive()
 
 	g.Go(func() error {
-		identityRaw = s.fetchTargetIdentityRaw(liveCtx, targetXUID, targetGamertag, hasAuth)
+		identityRaw, identityStatus = s.fetchTargetIdentityRaw(liveCtx, targetXUID, targetGamertag, hasAuth)
 		return nil
 	})
 	g.Go(func() error {
@@ -459,17 +467,20 @@ func (s *ExplorerService) buildTargetProfile(
 		// (Subqueries.SeasonIds) + playlists engagées (PlaylistAssetIds), puis
 		// breakdown par saison (séquentiel car dépendant). Un seul appel lifetime.
 		var seasonIDs, engagedPlaylists []string
-		careerStats, topMedals, seasonIDs, engagedPlaylists = s.fetchTargetServiceRecord(liveCtx, targetGamertag, hasAuth)
-		matchsPerSea = s.computeSeasonBreakdown(liveCtx, targetXUID, targetGamertag, hasAuth, seasonIDs, engagedPlaylists)
+		careerStats, topMedals, seasonIDs, engagedPlaylists, careerStatus = s.fetchTargetServiceRecord(liveCtx, targetGamertag, hasAuth)
+		matchsPerSea, seasonsStatus = s.computeSeasonBreakdown(liveCtx, targetXUID, targetGamertag, hasAuth, seasonIDs, engagedPlaylists)
 		return nil
 	})
-	g.Go(func() error { seasonCSRs = s.fetchTargetCSR(liveCtx, targetXUID, hasAuth); return nil })
+	g.Go(func() error {
+		seasonCSRs, seasonCSRsStatus = s.fetchTargetCSR(liveCtx, targetXUID, hasAuth)
+		return nil
+	})
 	g.Go(func() error { sampleStats = s.computeTargetSampleStats(gctx, targetXUID, rawMatches); return nil })
 	// Profil de combat : deux sources servies en parallèle pour alimenter le toggle.
 	// LIVE (défaut) = ~20 derniers matchs via l'API (liveCtx borné) ; LOCAL = matchs
 	// de la cible en base (gctx, non borné, gratuit).
 	g.Go(func() error {
-		combatProfileLive = s.computeTargetCombatProfileLive(liveCtx, targetXUID, hasAuth)
+		combatProfileLive, combatStatus = s.computeTargetCombatProfileLive(liveCtx, targetXUID, hasAuth)
 		return nil
 	})
 	g.Go(func() error {
@@ -500,6 +511,13 @@ func (s *ExplorerService) buildTargetProfile(
 		CombatProfile:      combatProfileLive,
 		CombatProfileLocal: combatProfileLocal,
 		AuthAvailable:      hasAuth,
+		LiveStatus: domain.ExplorerLiveStatus{
+			Identity:   identityStatus,
+			Career:     careerStatus,
+			SeasonCSRs: seasonCSRsStatus,
+			Seasons:    seasonsStatus,
+			CombatLive: combatStatus,
+		},
 	}
 }
 

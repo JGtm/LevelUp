@@ -16,10 +16,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 
 	"levelup/go-api/internal/api/handlers"
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/api/wire"
 	"levelup/go-api/internal/assets/static"
@@ -616,10 +618,16 @@ func NewRouter(
 	autoSyncScheduler *scheduler.AutoSyncScheduler,
 	backupScheduler *duckdbbackup.Scheduler,
 	groupStore *groupstore.GroupStore,
-) (http.Handler, *wire.ServiceRegistry) {
+) (http.Handler, *wire.ServiceRegistry, *huma.OpenAPI) {
 	if tokenProvider == nil {
 		tokenProvider = auth_platform.NewSISUProvider()
 	}
+	// V72-01 / H1 : LE document OpenAPI PARTAGÉ. Construit UNE fois ici, injecté à
+	// tous les Mount via WithSharedDoc (buildAPIV1Deps → mountAPIV1) — toutes les
+	// routes Huma fusionnent dans son unique *huma.OpenAPI, sous leur préfixe absolu.
+	// DocsPath/OpenAPIPath restent désactivés (aucune route HTTP auto). Retourné pour
+	// l'accès hors HTTP (H6 : génération openapi.yaml).
+	humaSharedConfig := humacore.NewSharedConfig()
 	// Sprint 14 : session store + Sprint 15 : attempt store auth
 	// Le flag Secure du cookie + HSTS sont décidés PAR REQUÊTE selon le schéma réel
 	// (TLS natif ou X-Forwarded-Proto derrière un proxy de confiance), pas figés au
@@ -657,7 +665,13 @@ func NewRouter(
 	// restent disponibles). L'endpoint /field-mappings n'est exposé que si le
 	// flag MULTI_TITLE_API_ENABLED est activé. Les slugs viennent du registre
 	// (non-archivés) → un 2e titre config charge automatiquement ses mappings.
-	deps := buildAPIV1Deps(r, apiV1Inputs{serverCtx: serverCtx, cfg: cfg, bootRepo: bootRepo, bootSvc: bootSvc, daemon: daemon, tokenProvider: tokenProvider, autoSyncScheduler: autoSyncScheduler, backupScheduler: backupScheduler, groupStore: groupStore, sessionStore: sessionStore, attemptStore: attemptStore, settingsStore: settingsStore, jobStore: jobStore, users: users, invites: invites, titleRegistry: titleRegistry})
+	deps := buildAPIV1Deps(r, apiV1Inputs{
+		serverCtx: serverCtx, cfg: cfg, bootRepo: bootRepo, bootSvc: bootSvc, daemon: daemon,
+		tokenProvider: tokenProvider, autoSyncScheduler: autoSyncScheduler, backupScheduler: backupScheduler,
+		groupStore: groupStore, sessionStore: sessionStore, attemptStore: attemptStore,
+		settingsStore: settingsStore, jobStore: jobStore, users: users, invites: invites,
+		titleRegistry: titleRegistry, humaSharedConfig: humaSharedConfig,
+	})
 	reg := deps.reg
 	// /auth/xbox/callback (sans /api/v1). Comme le SPA est servi par ce backend, ce
 	// chemin tombait sur le catch-all `/*` (index.html) → le handler OAuth ne tournait
@@ -686,12 +700,13 @@ func NewRouter(
 	}
 
 	// v1 API
-	r.Route("/api/v1", func(r chi.Router) {
+	r.Route(apiV1BasePath, func(r chi.Router) {
 		xboxOAuthRoot = mountAPIV1(r, deps)
 	})
 
 	// SPA React (catch-all /*) — cf. mountSPA.
 	mountSPA(r, serverCtx, cfg, reg)
 
-	return r, reg
+	// humaSharedConfig.OpenAPI = le document fusionné (accès composition pour H6).
+	return r, reg, humaSharedConfig.OpenAPI
 }

@@ -44,6 +44,12 @@ type ActionJournalReporter func(ctx context.Context) domain.AdminActionJournalRe
 // (le cycle couvre tous les joueurs — la dédup FindActiveJob reste par type).
 const forcedSyncCycleSlug = "_all"
 
+// Clés/codes partagés par les handlers d'actions admin (goconst).
+const (
+	jobDetailKeyJobID = "job_id"
+	jobErrorCodePanic = "panic"
+)
+
 // AdminActionsHandler sert les actions correctives du dashboard monitoring.
 type AdminActionsHandler struct {
 	dataHealth DataHealthRunNow
@@ -73,11 +79,20 @@ func NewAdminActionsHandler(
 // Mount enregistre les 2 actions via Huma sur le sous-routeur chi (préfixe /admin
 // + middleware RequireAuth/RequireAdmin hérités). Aucun body de requête (POST
 // sans corps) — les deux actions sont déclenchées sans payload.
-func (h *AdminActionsHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Post(api, "/actions/data-health/run", h.handleRunDataHealth)
-	huma.Post(api, "/actions/auto-sync/run", h.handleRunSyncCycle)
-	huma.Get(api, "/actions/journal", h.handleGetJournal)
+func (h *AdminActionsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Post(api, "/actions/data-health/run", h.handleRunDataHealth, humacore.Op(
+		"postAdminActionDataHealthRun",
+		"Action admin — exécute l'audit data health immédiatement (lectures RO, synchrone) (auth admin requis)",
+		"admin"))
+	huma.Post(api, "/actions/auto-sync/run", h.handleRunSyncCycle, humacore.Op(
+		"postAdminActionAutoSyncRun",
+		"Action admin — force un cycle auto-sync complet, suivi via le JobStore (auth admin requis)",
+		"admin"))
+	huma.Get(api, "/actions/journal", h.handleGetJournal, humacore.Op(
+		"getAdminActionsJournal",
+		"Dashboard monitoring — journal des actions globales (dernière exécution/issue/déclencheur par action, survit au reboot) (auth admin requis)",
+		"admin"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
@@ -136,10 +151,10 @@ func (h *AdminActionsHandler) handleRunSyncCycle(ctx context.Context, _ *struct{
 		return &runSyncCycleOutput{
 			Status: http.StatusConflict,
 			Body: map[string]any{
-				"code":      "already_running",
+				"code":      actionBusyCode,
 				"message":   "Un cycle auto-sync forcé est déjà en cours.",
 				"retryable": false,
-				"details":   map[string]string{"job_id": active.JobID},
+				"details":   map[string]string{jobDetailKeyJobID: active.JobID},
 			},
 		}, nil
 	}
@@ -159,7 +174,7 @@ func (h *AdminActionsHandler) runForcedCycle(ctx context.Context, jobID string) 
 		if rec := recover(); rec != nil {
 			slog.ErrorContext(ctx, "admin_actions: panic pendant le cycle forcé", "job_id", jobID, "panic", rec)
 			h.jobs.Update(jobID, func(j *domain.AsyncJobStatus) {
-				j.Error = &domain.JobErrorDetail{Code: "panic", Message: "cycle interrompu par une erreur interne", Retryable: true}
+				j.Error = &domain.JobErrorDetail{Code: jobErrorCodePanic, Message: "cycle interrompu par une erreur interne", Retryable: true}
 			})
 			h.jobs.SetStatus(jobID, domain.JobStatusFailed, nil)
 		}

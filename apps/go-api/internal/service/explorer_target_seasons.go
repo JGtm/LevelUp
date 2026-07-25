@@ -72,14 +72,20 @@ func buildMatchesPerSeason(starts []time.Time, seasons []SeasonCatalogEntry) []d
 // service record live filtré par saison + isRanked) + pic de rang CSR (badge).
 // Best-effort, borné par le contexte (résultat partiel si le budget est dépassé).
 // Fallback sur le bucketing local (computeMatchesPerSeason) sans auth / sans
-// provider / sans saison jouée.
+// provider / sans saison jouée. Statut (A3) : no_auth si jamais tenté,
+// local_partial si repli local (matchs communs uniquement — cf. Lot A2, non
+// traité : la somme peut rester partielle même en mode ok), ok si le breakdown
+// live par saison a tourné.
 func (s *ExplorerService) computeSeasonBreakdown(
 	ctx context.Context, targetXUID, targetGamertag string, hasAuth bool,
 	playedSeasonIDs, engagedPlaylistIDs []string,
-) []domain.SeasonMatchCount {
+) ([]domain.SeasonMatchCount, domain.ExplorerLiveSectionStatus) {
+	if !hasAuth {
+		return s.computeMatchesPerSeason(ctx, targetXUID), domain.ExplorerLiveNoAuth
+	}
 	playedByNum := groupMatchmadeSeasonsByNumber(playedSeasonIDs)
-	if !hasAuth || s.deps.SeasonSR == nil || len(s.deps.Seasons) == 0 || len(playedByNum) == 0 {
-		return s.computeMatchesPerSeason(ctx, targetXUID) // fallback local (total seul)
+	if s.deps.SeasonSR == nil || len(s.deps.Seasons) == 0 || len(playedByNum) == 0 {
+		return s.computeMatchesPerSeason(ctx, targetXUID), domain.ExplorerLiveLocalPartial
 	}
 
 	out := make([]domain.SeasonMatchCount, len(s.deps.Seasons))
@@ -109,7 +115,7 @@ func (s *ExplorerService) computeSeasonBreakdown(
 
 	slog.InfoContext(ctx, "explorer_season_breakdown",
 		"xuid", targetXUID, "seasons_total", len(out), "seasons_played", resolved)
-	return out
+	return out, domain.ExplorerLiveOK
 }
 
 // fetchSeasonRow remplit une SeasonMatchCount via les appels live : total des

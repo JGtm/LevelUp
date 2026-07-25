@@ -169,7 +169,11 @@ export interface DeviceFlowStartResponse {
 
 export type DeviceFlowStatus = 'pending' | 'authorized' | 'provisioned' | 'failed' | 'expired'
 
-export type ApiErrorSchema = components['schemas']['ApiErrorSchema']
+// Le backend a unifié le schéma d'erreur riche « ApiErrorSchema » avec l'ApiError
+// auto-émis (Huma H4/H5) : le schéma OpenAPI s'appelle désormais « ApiError ». On
+// conserve l'alias local ApiErrorSchema (surface stable pour les consommateurs) en
+// le repointant vers le schéma renommé — mêmes champs (code/message/retryable/…).
+export type ApiErrorSchema = components['schemas']['ApiError']
 
 export type DeviceFlowStatusResponse = components['schemas']['DeviceFlowStatusResponse']
 
@@ -686,10 +690,20 @@ export interface ExplorerMatchRow {
   /** Proba de victoire pré-match de l'équipe (LUSR v2, 0..1). Porteur de données
    *  pour une colonne « Pronostic » INJECTÉE par la vue session. Undefined côté Explorer. */
   expected_win_prob?: number | null
-  /** Progression placement (X). Si défini avec placement_total, l'UI affiche "X/Y" dans la cellule Rang à la place du skill_tier_label. */
+  /** Progression placement (X). Si défini avec placement_total, l'UI affiche "X/Y" dans la
+   *  cellule Rang à la place du skill_tier_label, ET un badge « En placement » (V72-32,
+   *  cf. ExplorerMatchesTable.placement.tsx) dans les cellules Perf/ΔPerf/Note à la place
+   *  du "-" quand perf_score/delta_perf/rating_type sont nuls pour la même raison. */
   placement_done?: number | null
   /** Seuil placement (Y). CSR : 5 ou 10 selon saison. LUSR : 10. */
   placement_total?: number | null
+  /** Placement de la chaîne de PERFORMANCE (X/Y) — signal DÉDIÉ aux colonnes Perf/ΔPerf,
+   *  distinct de placement_done/total (colonne Note/Rang). Renseigné quand la chaîne perf
+   *  du match compte moins de Y matchs éligibles → perf_score structurellement absent.
+   *  Un match peut avoir une Note LUSR établie ET être en placement perf (chaîne perf
+   *  jeune, cas BTB). Cf. ExplorerMatchesTable.placement.tsx. */
+  perf_placement_done?: number | null
+  perf_placement_total?: number | null
   delta_mmr?: number | null
   team_mmr?: number | null
   enemy_mmr?: number | null
@@ -802,6 +816,14 @@ export type ExplorerPlayerQueryResponse = components['schemas']['ExplorerPlayerQ
  *  Toutes les sous-sections sont nullable : le front masque celles à null
  *  et affiche un hint "Connexion Halo requise" quand auth_available=false. */
 export type ExplorerTargetProfile = components['schemas']['ExplorerTargetProfile']
+
+/** Statut par section live de l'encart "Profil joueur cible" (Lot A3, fin de la
+ *  dégradation muette) — pourquoi une section est vide/partielle plutôt que
+ *  silencieuse. Cf. ExplorerLiveStatusBadge (features/explorer). */
+export type ExplorerLiveStatus = components['schemas']['ExplorerLiveStatus']
+
+/** Un statut de section individuel ("ok" | "failed" | "no_auth" | "local_partial"). */
+export type ExplorerLiveSectionStatus = ExplorerLiveStatus['identity']
 
 /** ExplorerTargetRecentMatch — un match PvP récent du joueur cible, projeté pour
  *  les graphes profil de combat. Miroir exact du DTO Go (JSON snake_case).
@@ -930,6 +952,12 @@ export interface RecentMatchItem {
   assists?: number | null
   deaths?: number | null
   performance_score_relative?: number | null
+  /** Placement de la chaîne de PERFORMANCE (X/Y) : renseigné (avec
+   *  performance_score_relative nul) quand la chaîne du match compte moins de Y matchs
+   *  éligibles → aucune perf calculable. La tuile affiche « En placement (X/Y) » au lieu
+   *  d'un vide. JAMAIS un 0 fabriqué pour une perf absente. Cf. PlacementPendingNote. */
+  perf_placement_done?: number | null
+  perf_placement_total?: number | null
   offensive_conversion?: number | null
   defensive_resistance?: number | null
   offensive_finishing?: number | null
@@ -1399,7 +1427,13 @@ export interface SynthesisPageResponse {
   weapon_accuracy?: SynthesisWeaponAccuracyEntry[]
   // PLAN_COMBAT_PROFILE_WIRING Phase 1
   combat_profile?: CombatProfileBlock | null
+  // KPI objectifs (cumul CTF/Zones/Oddball sur le scope) — omis pour un titre sans
+  // capability match.objective.stats (Halo 5) ou un scope sans match à objectif.
+  objective_stats?: ObjectiveAggregate | null
 }
+
+// Cumul des stats objectifs (CTF/Zones/Oddball) sur un scope — partagé Synthèse/Escouade.
+export type ObjectiveAggregate = components['schemas']['ObjectiveAggregate']
 
 export type SynthesisWeaponKillEntry = components['schemas']['SynthesisWeaponKillEntry']
 
@@ -1714,9 +1748,14 @@ export interface MatchScoreboardRow {
   had_bot_teammate?: boolean
   /** Skill rank (CSR/LUSR) pour ce match — uniquement pour les joueurs trackés. */
   skill_rank?: MatchScoreboardSkillRank | null
+  /** Stats objectifs (CTF/Zones/Oddball) — null hors mode à objectif ou titre non
+   *  supporté (capability objective_stats). Seuls les champs du mode joué sont non-nil. */
+  objective?: MatchScoreboardObjective | null
 }
 
 export type MatchScoreboardSkillRank = components['schemas']['MatchScoreboardSkillRank']
+
+export type MatchScoreboardObjective = components['schemas']['MatchScoreboardObjective']
 
 export type MatchRosterRow = components['schemas']['MatchRosterRow']
 
@@ -2007,25 +2046,14 @@ export type InviteCode = components['schemas']['InviteCode'] & {
 // ---------------------------------------------------------------------------
 // Groupes / familles (accès mutuel aux données)
 // ---------------------------------------------------------------------------
-// Types non encore exposés par l'OpenAPI généré ; consommés par features/groups/.
+// Contrat GÉNÉRÉ depuis Huma (V72-01 / H5 puis H7) : les routes /groups sont typées côté
+// Go, avec `role` en enum (owner|member) et `members` non nullable → ré-export direct,
+// plus de type manuel à maintenir en parallèle.
 
-export type GroupRole = 'owner' | 'member'
-
-export interface GroupMember {
-  xuid: string
-  gamertag: string
-  role: GroupRole
-  joined_at: string
-}
-
-export interface Group {
-  id: string
-  name: string
-  owner_xuid: string
-  members: GroupMember[]
-  created_at: string
-  updated_at: string
-}
+export type GroupMember = components['schemas']['GroupMember']
+export type Group = components['schemas']['Group']
+/** Union dérivée du contrat (pas de littéral en dur : l'enum vit dans domain/group.go). */
+export type GroupRole = GroupMember['role']
 
 // ---------------------------------------------------------------------------
 // Watcher présence Xbox RTA

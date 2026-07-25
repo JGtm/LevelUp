@@ -4,6 +4,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
+import { useAppShellStore } from '@/stores/appShellStore'
 import type { CitationsPageResponse, CitationsQueryRequest } from '@/lib/api/types'
 
 export function useCitationsPage(
@@ -11,8 +12,9 @@ export function useCitationsPage(
   request: CitationsQueryRequest,
   filterHash: string,
 ) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
-    queryKey: queryKeys.citations(playerSlug, filterHash),
+    queryKey: queryKeys.citations(playerSlug, titleSlug, filterHash),
     queryFn: () =>
       api.post<CitationsPageResponse>(`/players/${playerSlug}/pages/citations`, request),
     enabled: !!playerSlug,

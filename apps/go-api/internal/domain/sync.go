@@ -33,6 +33,10 @@ type SyncOptions struct {
 	// Alimente highlight_events et killer_victim_pairs dans shared_matches_v2.
 	// Activé par défaut (identique au comportement Python).
 	WithHighlightEvents bool
+	// WithObjectiveStats active l'extraction des stats objectifs par joueur (CTF/Zones/Oddball)
+	// depuis GetMatchStats vers shared.match_objective_stats. Activé par défaut (données déjà
+	// présentes dans le payload participants, aucun appel réseau supplémentaire).
+	WithObjectiveStats bool
 	// RequestsPerSecond contrôle le rate limiting vers l'API Halo.
 	RequestsPerSecond int
 }
@@ -63,6 +67,7 @@ func DefaultSyncOptions() SyncOptions {
 		WithParticipants:    true,
 		WithMedals:          true,
 		WithHighlightEvents: true,
+		WithObjectiveStats:  true,
 		RequestsPerSecond:   10,
 	}
 }

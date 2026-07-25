@@ -137,10 +137,25 @@ func extractPlayerXUID(playerMap map[string]any) string {
 	return ""
 }
 
-// cleanXUID retire le préfixe/suffixe "xuid(…)".
+// cleanXUID normalise la clé joueur du payload en parité avec extractXUID :
+// humain "xuid(123)" -> "123" ; bot "bid(3.0"/"bid(3.0)" -> "bid(3.0)" (forme
+// canonique de match_participants — l'ancien TrimSuffix nu tronquait la
+// parenthèse et produisait des lignes orphelines) ; autre forme -> "" (sauté).
 func cleanXUID(raw string) string {
-	raw = strings.TrimPrefix(raw, "xuid(")
-	raw = strings.TrimSuffix(raw, ")")
+	if strings.HasPrefix(raw, "xuid(") {
+		if inner := strings.TrimSuffix(strings.TrimPrefix(raw, "xuid("), ")"); inner != "" {
+			return inner
+		}
+		return ""
+	}
+	if strings.HasPrefix(raw, "bid(") {
+		if !strings.HasSuffix(raw, ")") {
+			return raw + ")"
+		}
+		return raw
+	}
+	// Contrat historique PvE : les formes nues (chiffres sans enveloppe) passent
+	// inchangées (TestCleanXUID_NoPrefix).
 	return raw
 }
 

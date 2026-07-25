@@ -190,6 +190,8 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFor
 		ExpectedWinProb:          r.SkillExpectedWinProb,
 		PlacementDone:            r.PlacementDone,
 		PlacementTotal:           r.PlacementTotal,
+		PerfPlacementDone:        r.PerfPlacementDone,
+		PerfPlacementTotal:       r.PerfPlacementTotal,
 		AverageLifeMMSS:          formatLifeSeconds(r.AverageLifeSeconds),
 		DurationSeconds:          r.TimePlayedSeconds,
 		MatchURL:                 matchURL,

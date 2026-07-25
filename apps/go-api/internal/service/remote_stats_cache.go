@@ -24,6 +24,7 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
@@ -192,7 +193,12 @@ func (c *CachedStatsProvider) FetchSeasonServiceRecord(ctx context.Context, game
 			rk = "social"
 		}
 	}
-	key := "season|" + strings.ToLower(strings.TrimSpace(gamertag)) + "|" + seasonID + "|" + rk
+	// Titre inclus dans la clé (défense en profondeur V72-29, 2026-07-25) : ce cache est
+	// un singleton partagé entre tous les titres (registry.go), et le seasonID est un
+	// chemin CMS brut ("Seasons/SeasonN.json") — rien ne garantit qu'un autre titre ne
+	// réutilisera pas la même chaîne. On aligne donc la clé sur celle de FetchServiceRecord
+	// (qui porte déjà titleSlug) pour éliminer tout croisement cross-titre sous un même GT.
+	key := "season|" + ctxkeys.TitleSlug(ctx) + "|" + strings.ToLower(strings.TrimSpace(gamertag)) + "|" + seasonID + "|" + rk
 
 	if v, ok := c.getSeason(key); ok {
 		remoteStatsCacheHit.Add(1)

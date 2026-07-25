@@ -86,10 +86,10 @@ func (h *AuthHandler) WithLinkStrategy(s auth_platform.LinkStrategy) *AuthHandle
 // MountDeviceFlow enregistre les 2 routes Device Code Flow via Huma sur le routeur
 // fourni (/api/v1, sans authz : bootstrap auth public). Le path param {attempt_id}
 // est local à la route GET.
-func (h *AuthHandler) MountDeviceFlow(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Post(api, "/auth/device-flow/start", h.handleStartDeviceFlow)
-	huma.Get(api, "/auth/device-flow/{attempt_id}", h.handleGetDeviceFlowStatus)
+func (h *AuthHandler) MountDeviceFlow(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Post(api, "/auth/device-flow/start", h.handleStartDeviceFlow, humacore.Op("postAuthDeviceFlowStart", "Initier un Device Code Flow Microsoft", "setup"))
+	huma.Get(api, "/auth/device-flow/{attempt_id}", h.handleGetDeviceFlowStatus, humacore.Op("getAuthDeviceFlowStatus", "Statut d'un Device Code Flow en cours", "setup"))
 }
 
 // deviceFlowStatusInput : path param {attempt_id}.

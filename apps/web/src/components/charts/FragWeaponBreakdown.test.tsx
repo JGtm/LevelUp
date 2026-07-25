@@ -47,40 +47,17 @@ describe('buildFragWeaponBreakdownOption', () => {
     expect(opt.series).toBeUndefined()
   })
 
-  it('I4 : légende des classes en bas, centrée (une entrée par classe représentée, ordre de première apparition)', () => {
+  it('V72-16 : plus de légende ECharts interne (rendue en pied de card HTML) → grid.bottom restauré à 8, une seule série', () => {
     const opt = buildFragWeaponBreakdownOption(WEAPONS, LABELS) as {
-      legend: { left?: string; bottom?: number; data?: string[] }
+      legend?: unknown
       grid: { bottom: number }
+      series: unknown[]
     }
-    // reverse() → ordre de balayage Inconnue (pas de classe), Épée (melee), BR75 (shoulder).
-    expect(opt.legend.data).toEqual(['class:melee', 'class:shoulder'])
-    expect(opt.legend.left).toBe('center')
-    expect(opt.legend.bottom).toBe(0)
-    // Le grid réserve de la place en bas pour la légende (pas de chevauchement).
-    expect(opt.grid.bottom).toBeGreaterThan(8)
-  })
-
-  it('I4 : la série réelle reste en premier (contrat testé), les séries fantômes de légende suivent', () => {
-    const opt = buildFragWeaponBreakdownOption(WEAPONS, LABELS) as {
-      series: Array<{ name?: string; data: unknown[]; silent?: boolean }>
-    }
-    expect(opt.series[0].data).toHaveLength(3) // série réelle (données des barres)
-    const ghosts = opt.series.slice(1)
-    expect(ghosts).toHaveLength(2)
-    for (const g of ghosts) {
-      expect(g.data).toHaveLength(0)
-      expect(g.silent).toBe(true)
-    }
-  })
-
-  it('I4 : aucune arme avec classe résolue → pas de légende, grid inchangé', () => {
-    const noClass: SynthesisWeaponKillEntry[] = [{ label: 'Inconnue', kills: 2 }]
-    const opt = buildFragWeaponBreakdownOption(noClass, LABELS) as {
-      legend: { show?: boolean }
-      grid: { bottom: number }
-    }
-    expect(opt.legend.show).toBe(false)
+    // La légende ECharts interne + les séries fantômes de bf21c7180 sont retirées :
+    // l'espace de tracé (bottom 8, pas 40) revient aux barres — épaisseur restaurée.
+    expect(opt.legend).toBeUndefined()
     expect(opt.grid.bottom).toBe(8)
+    expect(opt.series).toHaveLength(1) // série de barres seule (aucune série fantôme)
   })
 
   it('survol lié : hoveredClass estompe les armes des AUTRES classes, garde la classe survolée', () => {
@@ -108,5 +85,19 @@ describe('FragWeaponBreakdown (composant)', () => {
   it('avec armes → monte le chart', async () => {
     render(<FragWeaponBreakdown weapons={WEAPONS} />)
     expect(await screen.findByTestId('echarts-mock')).toBeInTheDocument()
+  })
+
+  it('légende HTML en pied de card : une entrée par CLASSE représentée (armes sans classe exclues)', () => {
+    render(<FragWeaponBreakdown weapons={WEAPONS} />)
+    // Pied de card rendu par ChartCard.legend (hors canvas).
+    expect(screen.getByTestId('chart-card-legend')).toBeInTheDocument()
+    const legend = screen.getByTestId('chart-legend')
+    // WEAPONS : BR75 (shoulder) + Épée (melee) ; « Inconnue » sans classe → exclue.
+    expect(legend.querySelectorAll('li')).toHaveLength(2)
+  })
+
+  it('aucune classe résolue → pas de pied de légende', () => {
+    render(<FragWeaponBreakdown weapons={[{ label: 'Inconnue', kills: 2 }]} />)
+    expect(screen.queryByTestId('chart-card-legend')).not.toBeInTheDocument()
   })
 })

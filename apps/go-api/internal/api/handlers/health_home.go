@@ -51,9 +51,9 @@ func NewHealthHomeHandler(newSvc HomeAuthFactory) *HealthHomeHandler {
 // Mount enregistre la route via Huma au point de montage chi (préfixe /api/v1 +
 // middleware racine hérités). Le chemin relatif /healthz/home est identique à la
 // route chi d'origine.
-func (h *HealthHomeHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Get(api, "/healthz/home", h.handleCheck)
+func (h *HealthHomeHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Get(api, "/healthz/home", h.handleCheck, humacore.Op("getHealthzHome", "Smoke endpoint contenu home (banner, peaks CSR/LUSR, playlists, arme favorite)", "health"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

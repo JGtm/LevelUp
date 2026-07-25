@@ -388,6 +388,7 @@ func buildViewerFragDistribution(
 		}
 		rows = append(rows, port.WeaponKillRow{
 			Label: w.WeaponLabel, Kills: w.Kills, Class: w.Class, Role: w.Role,
+			Family: w.Family, MechanicKills: w.MechanicKills,
 		})
 	}
 	counts := domain.FragKillTypeCounts{

@@ -1,0 +1,2265 @@
+# Rapport de non-regression semantique FINAL — chantier V72-01 (H8, 2026-07-25)
+#
+# Outil        : apps/go-api/cmd/openapi-diff (kin-openapi, sortie deterministe)
+# Baseline H0  : .ai/V7/openapi_baseline_v72.txt (openapi.yaml MANUEL d'avant bascule)
+# Document     : apps/go-api/api/openapi.yaml (GENERE, apres H7)
+# Commande     : cd apps/go-api && go run ./cmd/openapi-diff -diff ../../.ai/V7/openapi_baseline_v72.txt
+#
+# ---------------------------------------------------------------------------
+# VERDICT : 0 PERTE HORS INVENTAIRE (inchange depuis H6).
+# ---------------------------------------------------------------------------
+#
+# Comptage brut (multiset de lignes) : +1384 ajoutees / -840 retirees.
+# Ce comptage de LIGNES est plus bruyant que le comptage de FAITS de H6
+# (597 ajouts / 69 modifications / 16 pertes, refs resolues) : une propriete
+# passee d'un schema inline a un $ref nomme compte ici comme 1 retrait + 1 ajout.
+# Le verdict de reference reste celui de H6, dont l'inventaire des 16 pertes est
+# reproduit ci-dessous ; H8 en apporte la PREUVE DE STABILITE.
+#
+# Preuve de stabilite H6 -> H7 (aucune perte NOUVELLE introduite par H7) :
+#   1. Ensemble des lignes RETIREES vs baseline H0, calcule sur l'openapi.yaml de
+#      H6 (commit 597d5cc0c) et sur celui d'apres H7 : IDENTIQUES (diff vide).
+#   2. Ensemble des lignes AJOUTEES : differe sur 2 lignes EXACTEMENT, toutes deux
+#      des ENRICHISSEMENTS du lot Group/GroupMember :
+#        -   node members: type=array|null      (H6)
+#        +   node members: type=array           (H7, non-nullabilite)
+#        -   node role: type=string             (H6)
+#        +   node role: type=string enum=["member","owner"]   (H7, enum)
+#   3. Diff direct des deux resumes semantiques (H6 vs H7) : ces 2 lignes, rien d'autre.
+#
+# Inventaire des 16 pertes (etabli en H6, toujours valide) :
+#   - 5 descriptions de reponse 200 sur des operations qui repondent 204 (aucun
+#     corps : le document genere fait foi) ;
+#   - 7 parametres de chemin au nom perime ({user_id} x3, {invite_id}, {title_slug} x3)
+#     — Decouvertes H2, le CODE fait foi (CLAUDE.md) ;
+#   - 4 champs de schema sans equivalent Go (DeviceFlowStartResponse.verification_uri_complete,
+#     DeviceFlowStatusResponse.error, CombatProfileBlock.avg_residual_brut,
+#     SessionCompareEntry.avg_residual_brut) — yaml perime.
+#
+# Suit le rapport brut de l'outil (lignes "- " = retirees vs baseline, "+ " = ajoutees).
+# ---------------------------------------------------------------------------
+
+-       req    required: excluded
+-       req    required: status
+-       req  node (root): type=object
+-       req  node (root): type=object
+-       req  node excluded: type=boolean desc=true = ignorer ce match, false = réactiver
+-       req  node note: type=string
+-       req  node status: type=string enum=["acked","muted","open","resolved"]
+-       req application/json -> object
+-       req application/json -> object
+-       resp    required: all_time,current,input,playlist_id,playlist_name,queue,season
+-       resp    required: available_experience,available_seasons,best_matches,worst_matches
+-       resp    required: available_seasons,playlists,season_id
+-       resp    required: behavior_patterns,computed_at,context_patterns,levers,window_size
+-       resp    required: count,value
+-       resp    required: count,value
+-       resp    required: deaths,frags,gamertag,match_count,ratio
+-       resp    required: deaths,frags,gamertag,match_count,ratio
+-       resp    required: granularity,points,total_matches
+-       resp    required: items
+-       resp    required: nemeses,victims
+-       resp  node (root): type=object
+-       resp  node (root): type=object
+-       resp  node (root): type=object
+-       resp  node (root): type=object
+-       resp  node (root): type=object
+-       resp  node (root): type=object
+-       resp  node (root): type=object
+-       resp  node (root): type=object
+-       resp  node (root): type=object
+-       resp  node (root): type=object
+-       resp  node (root): type=object
+-       resp  node (root): type=object desc=SessionPageResponse — session courante, matchs détaillés, suggestion et éventuelle comparaison
+-       resp  node (root): type=object desc=TODO Sprint 32 : aligner avec TimeseriesPageResponse FastAPI
+-       resp  node available_experience: type=array
+-       resp  node available_experience[].count: type=integer
+-       resp  node available_experience[].value: type=string enum=["all","ranked","unranked"]
+-       resp  node available_experience[]: type=object
+-       resp  node available_seasons: type=array
+-       resp  node available_seasons: type=array desc=Saisons proposables dans le menu déroulant (CSR uniquement)
+-       resp  node available_seasons[].count: type=integer
+-       resp  node available_seasons[].value: type=string
+-       resp  node available_seasons[]: $ref:CSRSeasonOption
+-       resp  node available_seasons[]: type=object
+-       resp  node behavior_patterns: type=array
+-       resp  node behavior_patterns[]: type=object desc=Pattern comportemental (tilt/fatigue/...) — schéma libre
+-       resp  node best_matches: type=array
+-       resp  node best_matches[]: type=object
+-       resp  node computed_at: type=string format=date-time
+-       resp  node content: type=string desc=Contenu Markdown du changelog
+-       resp  node context_patterns: type=array
+-       resp  node context_patterns[]: type=object desc=Pattern contextuel (mode/map/squad) — schéma libre côté frontend
+-       resp  node granularity: type=string enum=["match","month","session","week"]
+-       resp  node items: type=array
+-       resp  node items[]: type=object
+-       resp  node levers: type=array
+-       resp  node levers[]: type=object desc=Levier calibré (axe d'amélioration p60)
+-       resp  node nemeses: type=array
+-       resp  node nemeses[].deaths: type=integer
+-       resp  node nemeses[].frags: type=integer
+-       resp  node nemeses[].gamertag: type=string
+-       resp  node nemeses[].match_count: type=integer
+-       resp  node nemeses[].ratio: type=number
+-       resp  node nemeses[]: type=object
+-       resp  node playlists: type=array
+-       resp  node playlists: type=array
+-       resp  node playlists[].all_time: $ref:CareerCSRRank
+-       resp  node playlists[].current: $ref:CareerCSRRank
+-       resp  node playlists[].display_name: type=string
+-       resp  node playlists[].id: type=string
+-       resp  node playlists[].input: type=string
+-       resp  node playlists[].playlist_id: type=string
+-       resp  node playlists[].playlist_name: type=string
+-       resp  node playlists[].queue: type=string
+-       resp  node playlists[].season: $ref:CareerCSRRank
+-       resp  node playlists[]: type=object
+-       resp  node playlists[]: type=object
+-       resp  node points: type=array
+-       resp  node points[]: type=object
+-       resp  node season_id: type=string desc=Saison effectivement retournée (sélectionnée ou courante)
+-       resp  node seasons: type=array
+-       resp  node seasons[].display_name: type=string
+-       resp  node seasons[].id: type=string
+-       resp  node seasons[]: type=object
+-       resp  node total_matches: type=integer
+-       resp  node truncated_to_recent: type=integer
+-       resp  node victims: type=array
+-       resp  node victims[].deaths: type=integer
+-       resp  node victims[].frags: type=integer
+-       resp  node victims[].gamertag: type=string
+-       resp  node victims[].match_count: type=integer
+-       resp  node victims[].ratio: type=number
+-       resp  node victims[]: type=object
+-       resp  node window_size: type=integer desc=Taille effective de la fenêtre analysée
+-       resp  node worst_matches: type=array
+-       resp  node worst_matches[]: type=object
+-       resp application/json -> $ref:ApiErrorSchema
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"auth_required","message":"Authentification requise.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"auth_required","message":"Authentification requise.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"auth_required","message":"Authentification requise.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"auth_required","message":"Authentification requise.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"auth_required","message":"Authentification requise.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"last_active_title","message":"Au moins un titre doit rester actif pour ce joueur.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"last_active_title","message":"Au moins un titre doit rester actif pour ce joueur.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> $ref:ApiErrorSchema example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
+-       resp application/json -> object
+-       resp application/json -> object
+-       resp application/json -> object
+-       resp application/json -> object
+-       resp application/json -> object
+-       resp application/json -> object
+-       resp application/json -> object
+-       resp application/json -> object
+-       resp application/json -> object
+-       resp application/json -> object
+-       resp application/json -> object
+-       resp application/json -> object
+-       resp application/json -> object
+-     param before in=query required=false type=integer desc=Curseur arrière « charger plus » (offset octet renvoyé en next_offset) — charge la tranche strictement plus ancienne.
+-     param invite_id in=path required=true type=string
+-     param limit in=query required=false type=integer
+-     param limit in=query required=false type=integer
+-     param n in=query required=false type=integer
+-     param n in=query required=false type=integer default=50 desc=Nombre de matchs récents à analyser (10 ≤ n ≤ 200, défaut 50).
+-     param offset in=query required=false type=integer desc=Décalage de pagination serveur (défaut 0, rétrocompatible).
+-     param title_slug in=path required=true type=string
+-     param title_slug in=path required=true type=string
+-     param title_slug in=path required=true type=string
+-     param user_id in=path required=true type=string
+-     param user_id in=path required=true type=string
+-     param user_id in=path required=true type=string
+-     required: Accuracy,Assists,AvgLifeSeconds,DamageDealt,DamageTaken,Deaths,GrenadeKills,HeadshotKills,Identity,IsBot,KDA,Kills,MaxKillingSpree,MeleeKills,Outcome,PerfectKills,PersonalScore,PowerWeaponKills,RankInMatch,Score,ShotsFired,ShotsHit,TeamID,TimePlayed,TopWeaponID
+-     required: DominanceFlag,EnemyMMR,EngagementScoreBrut,FriendsXUIDs,HadBotTeammate,IsWithFriends,PerformanceScore,SessionID,SessionLabel,SkillSnapshot,TeamMMR
+-     required: achievements_synced,career_synced,citations_computed,converged_events,converged_psa,dominance_flags_computed,duration_ms,engagement_coefs_updated,engagement_scores_computed,lusr_updated,matches_promoted_friends,perf_scores_computed,sessions_assigned,views_refreshed,weapon_kills_no_film,weapon_kills_processed
+-     required: assists,deaths,kills,map_ui,match_id,outcome,start_time,team_mmr_avg
+-     required: auth_available
+-     required: capabilities,effective_hp_to_kill,is_default,name,slug,status
+-     required: capabilities,has_mappings,icon_url,is_default,name,provider,slug,status,steam_app_id,xbox_title_id
+-     required: capabilities,has_mappings,icon_url,is_default,name,provider,slug,status,steam_app_id,xbox_title_id
+-     required: code,message,retryable
+-     required: coef_lobby_share,last_updated,mode_category,n_matches,xuid
+-     required: deaths,kda,kills,map_ui,match_id,mode_ui,outcome_code,outcome_label,performance_score
+-     required: file_path,like_count,liked
+-     required: items,total_mine,total_teammates,total_unassigned
+-     required: mode
+-     response 200 desc=Logged out
+-     response 200 desc=Mot de passe réinitialisé
+-     response 200 desc=Notification mise à jour
+-     response 200 desc=Notification émise
+-     response 200 desc=Rôle mis à jour
+-   node (root): type=object
+-   node (root): type=object
+-   node (root): type=object
+-   node Accuracy: type=number format=double
+-   node Assists: type=integer format=int64
+-   node AvgLifeSeconds: type=number format=double
+-   node DamageDealt: type=integer format=int64
+-   node DamageTaken: type=integer format=int64
+-   node Deaths: type=integer format=int64
+-   node DeathsExpected: type=number format=double
+-   node Delta: type=number format=double
+-   node DurationSeconds: type=integer format=int64
+-   node EnemyMMR: type=number format=double
+-   node EngagementScoreBrut: type=number format=double
+-   node ExpectedWinProb: type=number format=double
+-   node FriendsXUIDs: type=array
+-   node GrenadeKills: type=integer format=int64
+-   node HeadshotKills: type=integer format=int64
+-   node IsBot: type=boolean
+-   node IsPvE: type=boolean
+-   node IsRanked: type=boolean
+-   node KDA: type=number format=double
+-   node Kills: type=integer format=int64
+-   node KillsExpected: type=number format=double
+-   node LastMatchAt: type=string format=date-time
+-   node MMR: type=number format=double
+-   node MaxKillingSpree: type=integer format=int64
+-   node MeasurementRemaining: type=integer format=int64
+-   node MeleeKills: type=integer format=int64
+-   node ParticipantsXUIDs: type=array
+-   node PerfectKills: type=integer format=int64
+-   node PerformanceScore: type=number format=double
+-   node PersonalScore: type=integer format=int64
+-   node PlaylistGroup: type=string
+-   node PowerWeaponKills: type=integer format=int64
+-   node RankInMatch: type=integer format=int64
+-   node RatingValue: type=number format=double
+-   node Score: type=integer format=int64
+-   node Score: type=integer format=int64
+-   node SeasonID: type=string
+-   node SessionID: type=string
+-   node SessionLabel: type=string
+-   node ShotsFired: type=integer format=int64
+-   node ShotsHit: type=integer format=int64
+-   node SubTier: type=integer format=int64
+-   node T0Ms: type=integer format=int64
+-   node TeamID: type=integer format=int64
+-   node TeamMMR: type=number format=double
+-   node Teams: type=array
+-   node TierCode: type=string
+-   node TierCodeFR: type=string
+-   node TimePlayed: type=integer format=int64
+-   node TopWeaponID: type=string
+-   node accuracy: type=number format=double
+-   node accuracy: type=number format=double
+-   node accuracy: type=number format=double
+-   node accuracy: type=number format=double
+-   node accuracy_buckets: type=array
+-   node accuracy_timeseries: type=array
+-   node achievements: type=array
+-   node actions: type=array
+-   node activity_heatmap: type=array
+-   node all_medals: type=array
+-   node all_sessions: type=array
+-   node api_by_player: type=array
+-   node api_calls: type=array
+-   node assignments: type=array
+-   node assists_per_game: type=number format=double
+-   node assists_per_min: type=number format=double
+-   node assists_timeseries: type=array
+-   node authors: type=array
+-   node available_columns: type=array
+-   node available_experience: type=array
+-   node available_experience_types: type=array
+-   node available_experience_types: type=array
+-   node available_maps: type=array
+-   node available_maps: type=array
+-   node available_modes: type=array
+-   node available_modes: type=array
+-   node available_modes: type=array
+-   node available_outcomes: type=array
+-   node available_outcomes: type=array
+-   node available_perf_tiers: type=array
+-   node available_perf_tiers: type=array
+-   node available_players: type=array
+-   node available_playlists: type=array
+-   node available_playlists: type=array
+-   node available_playlists: type=array
+-   node available_ranked_contexts: type=array
+-   node available_ranked_contexts: type=array
+-   node available_seasons: type=array
+-   node available_seasons: type=array
+-   node available_sessions: type=array
+-   node available_skill_tiers: type=array
+-   node available_skill_tiers: type=array
+-   node available_sort_fields: type=array
+-   node available_squad_scopes: type=array
+-   node available_squad_scopes: type=array
+-   node available_titles: type=array
+-   node available_titles: type=array desc=Sprint 44 : titres disponibles (title switcher) — active + coming_soon.
+-   node avg_damage_dealt: type=number format=double
+-   node avg_damage_taken: type=number format=double
+-   node avg_kda: type=number format=double
+-   node avg_kda_against: type=number format=double
+-   node avg_kda_with: type=number format=double
+-   node avg_life_seconds: type=number format=double
+-   node avg_life_timeseries: type=array
+-   node avg_max_killing_spree: type=number format=double
+-   node avg_residual_brut: type=number format=double
+-   node avg_residual_brut: type=number format=double
+-   node axes: type=array
+-   node badge_keys: type=array
+-   node badge_ord: type=array
+-   node badges: type=array
+-   node badges: type=array
+-   node badges: type=array
+-   node bars: type=array
+-   node bars: type=array
+-   node bars: type=array
+-   node behavior_patterns: type=array
+-   node best_matches: type=array
+-   node best_matches: type=array
+-   node bin_labels: type=array
+-   node bins: type=array
+-   node buckets: type=array
+-   node buckets: type=array
+-   node by_source: type=array
+-   node campaigns: type=array
+-   node candidates: type=array
+-   node capabilities: type=array
+-   node capabilities: type=array
+-   node capabilities: type=array
+-   node capabilities: type=array
+-   node categories: type=array
+-   node categories: type=array
+-   node categories: type=array
+-   node categories: type=array
+-   node cells: type=array
+-   node cells: type=array
+-   node challenge_ids: type=array
+-   node checkpoints: type=array
+-   node citations: type=array
+-   node citations: type=array
+-   node citations_by_category: type=array
+-   node claims: type=array
+-   node classes: type=array
+-   node code: type=string
+-   node code: type=string
+-   node code: type=string example="player_not_found" desc=Code d'erreur stable (snake_case)
+-   node combat_profile: type=array
+-   node combat_profile_local: type=array
+-   node commendations: type=array
+-   node common_matches: type=array
+-   node compare_intensity_rows: type=array
+-   node compare_matches: type=array
+-   node compare_metrics: type=array
+-   node comparison_metrics: type=array
+-   node components: type=array
+-   node composition_sessions: type=array
+-   node config_files: type=array
+-   node content: type=string
+-   node context_patterns: type=array
+-   node core_recent_form: type=array
+-   node correlation_points: type=array
+-   node counts: type=array
+-   node crons: type=array
+-   node cumulative_kd: type=array
+-   node cumulative_kd: type=array
+-   node cumulative_net: type=array
+-   node cumulative_net: type=array
+-   node current_player|allOf[0]: $ref:PlayerSummary
+-   node current_playlist_group: type=string
+-   node current_rating: type=number format=double
+-   node current_rating: type=number format=double
+-   node current_tier_label: type=string
+-   node current_username: type=string
+-   node damage_dealt: type=number format=double
+-   node damage_taken: type=number format=double
+-   node databases: type=array
+-   node databases: type=array
+-   node datapoints: type=array
+-   node datapoints: type=array
+-   node datapoints: type=array
+-   node days: type=array
+-   node db_inventory_status: type=string enum=["ok","unavailable"] desc=ok = racine data lisible ; unavailable = racine data introuvable/illisible (RepoRoot mal résolu, volume non monté) — inventaire non mesurable, distinct de « aucune base ».
+-   node death_counts: type=array
+-   node deaths_per_min: type=number format=double
+-   node default_player_slug: type=string
+-   node delta: type=string
+-   node delta: type=string
+-   node delta_mmr: type=number format=double
+-   node details: type=-
+-   node details|oneOf[0]: type=object
+-   node details|oneOf[1]: type=array
+-   node detections: type=array
+-   node dimensions: type=array
+-   node dominant_category: type=string
+-   node drifts: type=array
+-   node duel_ratio: type=number format=double
+-   node duels: type=array
+-   node durations_seconds: type=array
+-   node encounter_badges: type=array
+-   node encounters: type=array
+-   node end_date: type=string format=date-time
+-   node end_time: type=string
+-   node enemies: type=array
+-   node enemy_mmr: type=number format=double
+-   node enemy_win_rate: type=number format=double
+-   node engagement_curve: type=array
+-   node engagement_score: type=number format=double
+-   node engagement_score: type=number format=double
+-   node entries: type=array
+-   node entries: type=array
+-   node entries: type=array
+-   node entries: type=array
+-   node error: $ref:ApiErrorSchema
+-   node estimated_hero_date: type=string
+-   node estimated_rank_cap_date: type=string
+-   node events: type=array
+-   node example_match_ids: type=array
+-   node experience_type_label: type=string
+-   node experience_types: type=array
+-   node experience_types: type=array
+-   node experiences: type=array
+-   node expires_in: type=integer desc=Durée de validité en secondes
+-   node fatal_errors: type=array
+-   node features: type=array
+-   node field: type=string
+-   node field_errors: type=array
+-   node field_errors[]: $ref:FieldErrorSchema
+-   node filters_applied: type=array
+-   node filters_ignored: type=array
+-   node first_seen_at: type=string
+-   node frag_classes{}: type=array
+-   node frag_gap_series: type=array
+-   node free_rewards: type=array
+-   node freshness: type=string
+-   node friends_xp_history: type=array
+-   node global_win_rate: type=number format=double
+-   node granularity: type=string
+-   node had_bot_teammate: type=boolean
+-   node headshots_per_match: type=number format=double
+-   node heatmap: type=array
+-   node heatmap_data: type=array
+-   node heatmap_data: type=array
+-   node heatmap_dow: type=array
+-   node highlight_events: type=array
+-   node history: type=array
+-   node history: type=array
+-   node history: type=array
+-   node history: type=array
+-   node holders: type=array
+-   node ids: type=array
+-   node impact_badges: type=array
+-   node impact_ranking: type=array
+-   node impact_roles: type=array
+-   node improvement_areas: type=array
+-   node intensity_rows: type=array
+-   node intensity_rows: type=array
+-   node items: type=array
+-   node items: type=array
+-   node items: type=array
+-   node items: type=array
+-   node items: type=array
+-   node items: type=array
+-   node items: type=array
+-   node items: type=array
+-   node items: type=array
+-   node items: type=array
+-   node items: type=array
+-   node items: type=array
+-   node items: type=array
+-   node items: type=array
+-   node items: type=array
+-   node items: type=array
+-   node items: type=array
+-   node items: type=array
+-   node items[]: $ref:MediaItemRow
+-   node jobs: type=array
+-   node kd_ratio: type=number format=double
+-   node kd_ratio: type=number format=double
+-   node kd_timeline: type=array
+-   node kda: type=number format=double
+-   node kda: type=number format=double
+-   node kda_buckets: type=array
+-   node kda_timeseries: type=array
+-   node kill_counts: type=array
+-   node killer_victim: type=array
+-   node killing_spree_max: type=array
+-   node kills_buckets: type=array
+-   node kills_per_game: type=number format=double
+-   node kills_per_min: type=number format=double
+-   node kinds: type=array
+-   node kpi_cards: type=array
+-   node labels: type=array
+-   node langs: type=array
+-   node last_seen_at: type=string
+-   node leverages: type=array
+-   node levers: type=array
+-   node life_buckets: type=array
+-   node like_count: type=integer
+-   node likers: type=array
+-   node limitations: type=array
+-   node linked_challenge_ids: type=array
+-   node linked_halo_identity|allOf[0]: $ref:HaloIdentitySummary
+-   node lobby: type=array
+-   node lobby_per_player: type=array
+-   node lusr_components: type=array
+-   node map_breakdown: type=array
+-   node map_breakdown: type=array
+-   node map_names: type=array
+-   node map_ui: type=string
+-   node map_ui: type=string
+-   node map_ui: type=string
+-   node maps: type=array
+-   node maps: type=array
+-   node maps: type=array
+-   node maps_topn: type=array
+-   node match_history: type=array
+-   node match_ids: type=array
+-   node match_ids: type=array
+-   node match_rows: type=array
+-   node match_rows: type=array
+-   node match_series: type=array
+-   node match_series{}: type=array
+-   node matches: type=array
+-   node matches: type=array
+-   node matches: type=array
+-   node matches_per_season: type=array
+-   node max_killing_spree_buckets: type=array
+-   node me: type=number format=double
+-   node mean: type=number format=double
+-   node medal_digest: type=array
+-   node medals: type=array
+-   node medals: type=array
+-   node medals: type=array
+-   node medals: type=array
+-   node medals: type=array
+-   node media_items: type=array
+-   node message: type=string
+-   node message: type=string
+-   node metrics: type=array
+-   node mode_categories: type=array
+-   node mode_ui: type=string
+-   node mode_ui: type=string
+-   node mode_ui: type=string
+-   node modes: type=array
+-   node modes: type=array
+-   node modes: type=array
+-   node modes_skipped: type=array
+-   node modes_updated: type=array
+-   node modules: type=array
+-   node narrative_axes: type=array
+-   node native_commendations: type=array
+-   node nemeses: type=array
+-   node nemesis: type=array
+-   node nemesis_duels: type=array
+-   node next_match_id: type=string
+-   node open_count: type=integer
+-   node options: type=array
+-   node options: type=array
+-   node outcome: type=integer format=int64
+-   node outcome: type=integer format=int64
+-   node outcomes_over_time: type=array
+-   node pace_observed: type=array
+-   node partial_reasons: type=array
+-   node participation: type=array
+-   node passes: type=array
+-   node peak_ranks: type=array
+-   node per_minute_stats: type=array
+-   node perf_score: type=number format=double
+-   node perf_score_buckets: type=array
+-   node perfect_kills_per_match: type=number format=double
+-   node performance_score: type=number format=double
+-   node performance_score: type=number format=double
+-   node performance_score_relative: type=integer format=int64
+-   node performance_series{}: type=array
+-   node performance_timeseries: type=array
+-   node period_label: type=string
+-   node period_presets: type=array
+-   node persist_phases: type=array
+-   node personal_bests: type=array
+-   node personal_score: type=integer format=int64
+-   node personal_score_buckets: type=array
+-   node phases: type=array
+-   node phases: type=array
+-   node picked_session_label: type=string
+-   node picked_sessions: type=array
+-   node picked_solo_session_label: type=string
+-   node picked_squad_session_label: type=string
+-   node player_cards: type=array
+-   node player_win_rate: type=number format=double
+-   node players: type=array
+-   node players: type=array
+-   node players: type=array
+-   node players: type=array
+-   node players: type=array
+-   node players: type=array
+-   node players: type=array
+-   node players: type=array
+-   node players: type=array
+-   node players: type=array
+-   node players: type=array
+-   node players: type=array
+-   node playlist_group: type=string
+-   node playlist_label: type=string
+-   node playlist_label: type=string
+-   node playlist_names: type=array
+-   node playlists: type=array
+-   node playlists: type=array
+-   node playlists: type=array
+-   node playlists: type=array
+-   node playlists: type=array
+-   node playlists: type=array
+-   node points: type=array
+-   node points: type=array
+-   node points: type=array
+-   node points: type=array
+-   node points: type=array
+-   node points: type=array
+-   node points: type=array
+-   node poll_interval_seconds: type=integer default=5
+-   node post_sync_history_ms: type=array
+-   node postsync_steps: type=array
+-   node previous_match_id: type=string
+-   node privacy|allOf[0]: $ref:MatchPrivacyInfo
+-   node provides_damage_taken: type=boolean desc=false si l'API du titre ne fournit pas damage_taken (Halo 5) — le front neutralise la Résistance défensive (N/A) au lieu d'afficher 0.
+-   node provides_max_killing_spree: type=boolean desc=true si le titre supporte le max killing spree par match — valeur native (Infinite) ou calculée depuis les events kill/death horodatés (Halo 5). Le front masque la série « Folie meurtrière max » uniquement si false (titre sans events horodatés).
+-   node provides_team_mmr: type=boolean desc=false si l'API du titre ne fournit pas de MMR d'équipe/adverse par match (Halo 5) — le front masque la colonne MMR du tableau Escouade/Explorer au lieu d'afficher 0.
+-   node radar: type=array
+-   node radar: type=array
+-   node radar_axes: type=array
+-   node rank: type=integer format=int64
+-   node rating_value: type=number format=double
+-   node recent: type=array
+-   node recent_win_rate: type=number format=double
+-   node recorded_at: type=string format=date-time
+-   node recorded_at: type=string format=date-time
+-   node relations: type=array
+-   node reports: type=array
+-   node retryable: type=boolean
+-   node retryable: type=boolean default=false
+-   node rivalries: type=array
+-   node roles: type=array
+-   node roles_by_player{}: type=array
+-   node rolling_kd: type=array
+-   node rolling_win_rate: type=array
+-   node rolling_win_rate: type=array
+-   node rolling_win_rate[]: type=number format=double
+-   node rolling_wr_buckets: type=array
+-   node roster: type=array
+-   node rows: type=array
+-   node rows{}: type=array
+-   node sample: type=array
+-   node score: type=number format=double
+-   node score: type=number format=double
+-   node score: type=number format=double
+-   node score_per_min: type=array
+-   node score_per_min_buckets: type=array
+-   node score_per_min_data: type=array
+-   node scoreboard: type=array
+-   node season_counts: type=array
+-   node season_csrs: type=array
+-   node season_id: type=string
+-   node seasons: type=array
+-   node session_timeline: type=array
+-   node sessions: type=array
+-   node shared_matches: type=array
+-   node shared_violations: type=array
+-   node skill_trend: type=array
+-   node solo: type=array
+-   node solo_labels: type=array
+-   node squad: type=array
+-   node squad_gamertags: type=array
+-   node squad_labels: type=array
+-   node squad_perf: type=number format=double
+-   node start_date: type=string format=date-time
+-   node start_time: type=string
+-   node start_time: type=string format=date-time
+-   node started_at: type=string
+-   node step_timings: type=array
+-   node strengths: type=array
+-   node sub_tier: type=integer format=int64
+-   node subscribed_players: type=array
+-   node subscribed_players: type=array
+-   node suggested_challenges: type=array
+-   node synergy_radar: type=array
+-   node tables: type=array
+-   node team_expected: type=array
+-   node team_mmr: type=number format=double
+-   node team_observed: type=array
+-   node teammate: type=number format=double
+-   node teammate_win_rate: type=number format=double
+-   node teammates: type=array
+-   node teammates: type=array
+-   node teammates: type=array
+-   node tier: type=string
+-   node tier_label: type=string
+-   node tiers: type=array
+-   node time_played_seconds: type=integer format=int64
+-   node timeline_multi_player: type=array
+-   node timeseries: type=array
+-   node timeseries: type=array
+-   node titles: type=array
+-   node titles: type=array
+-   node token: type=string
+-   node top_ally_recent_form: type=array
+-   node top_by_kda: type=array
+-   node top_by_kills: type=array
+-   node top_gaps: type=array
+-   node top_maps: type=array
+-   node top_medals: type=array
+-   node top_medals: type=array
+-   node top_modes: type=array
+-   node top_nemesis_recent_form: type=array
+-   node top_teammates: type=array
+-   node top_unresolved: type=array
+-   node top_weapon_kills: type=array
+-   node top_weapon_kills: type=array
+-   node top_weapon_kills: type=array
+-   node top_weapons: type=array
+-   node top_weapons: type=array
+-   node top_weeks: type=array
+-   node total_mine: type=integer
+-   node total_teammates: type=integer
+-   node total_unassigned: type=integer
+-   node track_roles: type=array desc=Rôle de chaque piste audio source. Requis et non vide en mode manuel.
+-   node trend_label: type=string
+-   node tug_of_war: type=array
+-   node used_at: type=string
+-   node used_at: type=string
+-   node used_by: type=string
+-   node used_by: type=string
+-   node value: type=string
+-   node verification_uri: type=string format=uri
+-   node verification_uri_complete: type=string format=uri
+-   node victims: type=array
+-   node violations: type=array
+-   node warnings: type=array
+-   node warnings: type=array
+-   node weapon_accuracy: type=array
+-   node weapon_accuracy: type=array
+-   node weapon_accuracy: type=array
+-   node weapon_kills: type=array
+-   node weapon_kills: type=array
+-   node weapons: type=array
+-   node win_rate: type=number format=double
+-   node win_rate_hist: type=number format=double
+-   node win_rate_hist_total: type=integer format=int64
+-   node window_size: type=integer format=int64
+-   node winner: type=string
+-   node worst_by_deaths: type=array
+-   node worst_matches: type=array
+-   node worst_matches: type=array
+-   node xp_history: type=array
+-   operationId: getWatcherAuthCallback
+-   summary: Callback OAuth watcher (Xbox / Steam)
+-   summary: Capabilities produit déclarées pour un titre (phase 1.7a)
+-   summary: Field mappings TOML pour un titre (cf. fields.toml)
+-   summary: Matrice de features (cascade capabilities → 3 états, phase 1.7b)
+-   tags: bootstrap
+-   tags: bootstrap
+-   tags: bootstrap
+- # schemas=520
+- DELETE /admin/invites/{invite_id}
+- DELETE /admin/users/{user_id}
+- DELETE /players/{player_slug}/notifications/{notification_id}
+- GET /titles/{title_slug}/capabilities
+- GET /titles/{title_slug}/feature-matrix
+- GET /titles/{title_slug}/field-mappings
+- GET /watcher/auth/{provider}
+- PATCH /admin/users/{user_id}/password
+- PATCH /admin/users/{user_id}/role
+- PATCH /players/{player_slug}/notifications/{notification_id}/unread
+- schema ApiErrorSchema
+- schema FieldErrorSchema
++ 
++ 
++       req application/json -> $ref:DetectionPatchInputBody
++       req application/json -> $ref:NotifMarkAllReadInputBody
++       req application/json -> $ref:NotifMarkReadInputBody
++       req application/json -> $ref:NotifUpdatePrefsInputBody
++       req application/json -> $ref:SetMatchExclusionRequest
++       req application/json -> $ref:StartCampaignRequest
++       resp  node (root): type=-
++       resp  node (root): type=-
++       resp  node (root): type=-
++       resp  node (root): type=-
++       resp  node (root): type=array|null
++       resp  node (root): type=array|null
++       resp  node (root): type=array|null
++       resp  node (root): type=array|null
++       resp  node (root): type=array|null
++       resp  node (root): type=array|null
++       resp  node (root): type=array|null
++       resp  node []: $ref:AdminInviteSummary
++       resp  node []: $ref:AdminUserSummary
++       resp  node []: $ref:AssetMeta
++       resp  node []: $ref:AssetMeta
++       resp  node []: $ref:AssetMeta
++       resp  node []: $ref:EngagementProfile
++       resp  node []: $ref:Group
++       resp  node {}: type=-
++       resp  node {}: type=-
++       resp  node {}: type=integer format=int64
++       resp  node {}: type=string
++       resp application/json -> $ref:AcceptResponse
++       resp application/json -> $ref:ActivityCalendar
++       resp application/json -> $ref:AdminConvergenceReport
++       resp application/json -> $ref:AdminDataQualityCounts
++       resp application/json -> $ref:AdminDataQualityIssues
++       resp application/json -> $ref:AdminDetectionPatchResponse
++       resp application/json -> $ref:AdminErrorStats
++       resp application/json -> $ref:AdminInvariantsResponse
++       resp application/json -> $ref:AdminJobsResponse
++       resp application/json -> $ref:AdminLUSRGaps
++       resp application/json -> $ref:AdminLUSRRecomputeResponse
++       resp application/json -> $ref:AdminLogModules
++       resp application/json -> $ref:AdminLogTail
++       resp application/json -> $ref:AdminMonitoringOverview
++       resp application/json -> $ref:AdminPerfStats
++       resp application/json -> $ref:AdminSchedulerStatusResponse
++       resp application/json -> $ref:AdminTitleDetail
++       resp application/json -> $ref:AdminTitlesListResponse
++       resp application/json -> $ref:AdminWeaponCoverage
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError
++       resp application/json -> $ref:ApiError example={"code":"auth_required","message":"Authentification requise.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"auth_required","message":"Authentification requise.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"auth_required","message":"Authentification requise.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"auth_required","message":"Authentification requise.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"auth_required","message":"Authentification requise.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"bad_request","message":"Paramètre invalide.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"internal_error","message":"Erreur interne du serveur.","retryable":true}
++       resp application/json -> $ref:ApiError example={"code":"last_active_title","message":"Au moins un titre doit rester actif pour ce joueur.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"last_active_title","message":"Au moins un titre doit rester actif pour ce joueur.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:ApiError example={"code":"player_not_found","message":"Joueur introuvable.","retryable":false}
++       resp application/json -> $ref:AsyncJobStatus
++       resp application/json -> $ref:AsyncJobStatus
++       resp application/json -> $ref:AsyncJobStatus
++       resp application/json -> $ref:AsyncJobStatus
++       resp application/json -> $ref:AsyncJobStatus
++       resp application/json -> $ref:CareerCSRResponse
++       resp application/json -> $ref:CareerHighlightMatchesResponse
++       resp application/json -> $ref:CareerRivalsResponse
++       resp application/json -> $ref:CareerTopEncountersResponse
++       resp application/json -> $ref:CatalogRefreshResult
++       resp application/json -> $ref:ChangelogHumaOutputBody
++       resp application/json -> $ref:CitationsPageResponse
++       resp application/json -> $ref:CommendationsPageResponse
++       resp application/json -> $ref:DBContentionResponse
++       resp application/json -> $ref:DismissResponse
++       resp application/json -> $ref:EngagementScoreResult
++       resp application/json -> $ref:EngagementTimeseriesResponse
++       resp application/json -> $ref:FilterMatchIDsResponse
++       resp application/json -> $ref:Group
++       resp application/json -> $ref:ImprovementCampaign
++       resp application/json -> $ref:ImprovementCampaign
++       resp application/json -> $ref:InviteCode
++       resp application/json -> $ref:LeaderboardCatalog
++       resp application/json -> $ref:ListResult
++       resp application/json -> $ref:LoginResponse
++       resp application/json -> $ref:LyingBitsResetResult
++       resp application/json -> $ref:MarkResult
++       resp application/json -> $ref:MarkResult
++       resp application/json -> $ref:MatchFavoriteResponse
++       resp application/json -> $ref:MatchNeighbors
++       resp application/json -> $ref:MediaAssociateResponse
++       resp application/json -> $ref:MediaAuthorsResponse
++       resp application/json -> $ref:MediaMatchCandidatesResponse
++       resp application/json -> $ref:MilestonesResponse
++       resp application/json -> $ref:MonitoringDataHealth
++       resp application/json -> $ref:NotifPrefsOutputBody
++       resp application/json -> $ref:NotifPrefsOutputBody
++       resp application/json -> $ref:PatternReport
++       resp application/json -> $ref:PlayerProfile
++       resp application/json -> $ref:ProposalsListResponse
++       resp application/json -> $ref:RecomputeReport
++       resp application/json -> $ref:RecordsResponse
++       resp application/json -> $ref:RegisterResponse
++       resp application/json -> $ref:RegistryNamesBackfillResult
++       resp application/json -> $ref:RelationsMomentsResponse
++       resp application/json -> $ref:RelationsPageResponse
++       resp application/json -> $ref:ResolveResult
++       resp application/json -> $ref:ResolveResult
++       resp application/json -> $ref:SeasonPassPageResponse
++       resp application/json -> $ref:SessionPageResponse
++       resp application/json -> $ref:SessionsResponse
++       resp application/json -> $ref:SquadEngagementSession
++       resp application/json -> $ref:SquadPageResponse
++       resp application/json -> $ref:SquadPageV2Response
++       resp application/json -> $ref:StatsPageResponse
++       resp application/json -> $ref:StreaksResponse
++       resp application/json -> $ref:SynthesisPageV2Response
++       resp application/json -> $ref:TeammatesPageResponse
++       resp application/json -> $ref:TimeseriesPageResponse
++       resp application/json -> $ref:TitleDiagnostic
++       resp application/json -> $ref:TokenHealthResponse
++       resp application/json -> $ref:UnreadCount
++       resp application/json -> $ref:WatcherAuthStartResponse
++       resp application/json -> $ref:WatcherAuthStatusResponse
++       resp application/json -> $ref:WatcherStatusResponse
++       resp application/json -> $ref:WatcherSubscriptionsOutputBody
++       resp application/json -> -
++       resp application/json -> -
++       resp application/json -> -
++       resp application/json -> -
++       resp application/json -> array<$ref:AdminInviteSummary>
++       resp application/json -> array<$ref:AdminUserSummary>
++       resp application/json -> array<$ref:AssetMeta>
++       resp application/json -> array<$ref:AssetMeta>
++       resp application/json -> array<$ref:AssetMeta>
++       resp application/json -> array<$ref:EngagementProfile>
++       resp application/json -> array<$ref:Group>
++     param If-None-Match in=header required=false type=string
++     param If-None-Match in=header required=false type=string
++     param If-None-Match in=header required=false type=string
++     param If-None-Match in=header required=false type=string
++     param X-LevelUp-Locale in=header required=false type=string
++     param attempt_id in=path required=true type=string
++     param before in=query required=false type=string desc=Curseur arrière « charger plus » (offset octet renvoyé en next_offset) — charge la tranche strictement plus ancienne.
++     param before_id in=query required=false type=integer
++     param category in=query required=false type=string
++     param category in=query required=false type=string
++     param code in=path required=true type=string
++     param days in=query required=false type=string desc=Fenêtre en jours (clampé 7..180, défaut 90)
++     param experience_types in=query required=false type=string
++     param file_path in=query required=false type=string
++     param gap_minutes in=query required=false type=string
++     param history_limit in=query required=false type=integer
++     param id in=path required=true type=string
++     param id in=path required=true type=string
++     param id in=path required=true type=string
++     param id in=path required=true type=string
++     param id in=path required=true type=string
++     param id in=path required=true type=string
++     param id in=path required=true type=string
++     param id in=path required=true type=string
++     param id in=path required=true type=string
++     param lang in=query required=false type=string
++     param limit in=query required=false type=string
++     param limit in=query required=false type=string
++     param limit in=query required=false type=string
++     param limit in=query required=false type=string
++     param live in=query required=false type=boolean default=false desc=Arme le repli LIVE (résolution Xbox d'un joueur jamais croisé localement). Défaut false : recherche locale seule, rapide (typeahead). true uniquement sur intention explicite de l'utilisateur (« Rechercher sur Xbox ») car il ajoute un round-trip Xbox de 2-3 s (challenge V72-24).
++     param maps in=query required=false type=string
++     param match_id in=path required=true type=string
++     param match_id in=path required=true type=string
++     param match_id in=path required=true type=string
++     param match_id in=path required=true type=string
++     param match_ids in=query required=false type=string
++     param mode in=query required=false type=string
++     param mode_uis in=query required=false type=string
++     param modes in=query required=false type=string
++     param n in=query required=false type=string
++     param n in=query required=false type=string default=50 desc=Nombre de matchs récents à analyser (10 ≤ n ≤ 200, défaut 50).
++     param offset in=query required=false type=string desc=Décalage de pagination serveur (défaut 0, rétrocompatible).
++     param period in=query required=false type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param player_slug in=path required=true type=string
++     param playlist_names in=query required=false type=string
++     param playlists in=query required=false type=string
++     param q in=query required=false type=string
++     param q in=query required=false type=string
++     param q in=query required=false type=string
++     param slug in=path required=true type=string
++     param slug in=path required=true type=string
++     param slug in=path required=true type=string
++     param split_ranked in=query required=false type=string
++     param status in=query required=false type=string
++     param teammate in=query required=false type=string
++     param teammate_gamertags in=query required=false type=string
++     param teammates in=query required=false type=string
++     param teammates in=query required=false type=string
++     param title in=query required=false type=string
++     param title in=query required=false type=string
++     param title in=query required=false type=string
++     param title in=query required=false type=string
++     param title in=query required=false type=string
++     param title in=query required=false type=string
++     param title in=query required=false type=string
++     param title in=query required=false type=string
++     param title in=query required=false type=string
++     param title_slug in=query required=false type=string
++     param types in=query required=false type=array<string> desc=Filtre optionnel par type d'event (kill, medal, impulse, ...). Répétable ou CSV. Vide = tous.
++     param unread_only in=query required=false type=boolean
++     param username in=path required=true type=string
++     param username in=path required=true type=string
++     param username in=path required=true type=string
++     param window_days in=query required=false type=string
++     param window_minutes in=query required=false type=string
++     requestBody required=false
++     requestBody required=true
++     requestBody required=true
++     requestBody required=true
++     required: Accuracy,AssassinationKills,Assists,AvgLifeSeconds,DamageDealt,DamageTaken,Deaths,DeathsExpected,GrenadeKills,GroundPoundKills,HeadshotKills,Identity,IsBot,KDA,Kills,KillsExpected,MaxKillingSpree,MeleeKills,Outcome,PerfectKills,PersonalScore,PowerWeaponKills,RankInMatch,Score,ShotsFired,ShotsHit,ShoulderBashKills,TeamID,TimePlayed,TopWeaponID
++     required: DominanceFlag,EnemyMMR,EngagementPaceRatio,EngagementScoreBrut,FriendsXUIDs,HadBotTeammate,IsWithFriends,PairName,PerformanceScore,SessionID,SessionLabel,SkillSnapshot,TeamMMR
++     required: achievements_synced,career_synced,citations_computed,converged_events,converged_psa,dominance_flags_computed,duration_ms,engagement_coefs_updated,engagement_scores_computed,lusr_updated,matches_promoted_friends,perf_scores_computed,sessions_assigned,snapshot_ready_marked,views_refreshed,weapon_kills_no_film,weapon_kills_processed
++     required: assists,deaths,kills,map_ui,match_id,outcome,start_time
++     required: auth_available,live_status
++     required: available_filters,items,total_mine,total_teammates,total_unassigned
++     required: bins,coef_lobby_share,last_updated,mode_category,n_matches,xuid
++     required: capabilities,csr_season_id,has_mappings,icon_url,is_default,is_internal,media_filename_prefixes,name,placement_matches,provider,slug,status,steam_app_id,xbox_title_id
++     required: capabilities,csr_season_id,has_mappings,icon_url,is_default,is_internal,media_filename_prefixes,name,placement_matches,provider,slug,status,steam_app_id,xbox_title_id
++     required: capabilities,effective_hp_to_kill,is_default,name,offensive_conversion_p80,provides_damage_taken,provides_max_killing_spree,provides_team_mmr,slug,status
++     required: career,combat_live,identity,season_csrs,seasons
++     required: created_at,id,members,name,owner_xuid,updated_at
++     required: deaths,kda,kills,map_ui,match_id,mode_ui,outcome_code,outcome_label,performance_score,start_time
++     required: file_path,like_count,liked,total_likers
++     required: gamertag,joined_at,role,xuid
++     required: mode,updated_at
++     response 204 desc=No Content
++     response 204 desc=No Content
++     response 204 desc=No Content
++     response 204 desc=No Content
++     response 204 desc=No Content
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++     response default desc=Error
++   node (root): type=object desc=Levier calibré (axe d'amélioration p60)
++   node (root): type=object desc=Pattern comportemental (tilt/fatigue/...) — schéma libre
++   node (root): type=object desc=Pattern contextuel (mode/map/squad) — schéma libre côté frontend
++   node (root): type=object desc=SessionPageResponse — session courante, matchs détaillés, suggestion et éventuelle comparaison
++   node (root): type=object desc=TODO Sprint 32 : aligner avec TimeseriesPageResponse FastAPI
++   node Accuracy: type=null|number format=double
++   node AssassinationKills: type=integer|null format=int64
++   node Assists: type=integer|null format=int64
++   node AvgLifeSeconds: type=null|number format=double
++   node DamageDealt: type=integer|null format=int64
++   node DamageTaken: type=integer|null format=int64
++   node Deaths: type=integer|null format=int64
++   node DeathsExpected: type=null|number format=double
++   node DeathsExpected: type=null|number format=double
++   node Delta: type=null|number format=double
++   node DurationSeconds: type=integer|null format=int64
++   node EnemyMMR: type=null|number format=double
++   node EngagementPaceRatio: type=null|number format=double
++   node EngagementScoreBrut: type=null|number format=double
++   node ExpectedWinProb: type=null|number format=double
++   node FriendsXUIDs: type=array|null
++   node GrenadeKills: type=integer|null format=int64
++   node GroundPoundKills: type=integer|null format=int64
++   node HeadshotKills: type=integer|null format=int64
++   node IsBot: type=boolean|null
++   node IsPvE: type=boolean|null
++   node IsRanked: type=boolean|null
++   node KDA: type=null|number format=double
++   node Kills: type=integer|null format=int64
++   node KillsExpected: type=null|number format=double
++   node KillsExpected: type=null|number format=double
++   node LastMatchAt: type=null|string format=date-time
++   node MMR: type=null|number format=double
++   node MaxKillingSpree: type=integer|null format=int64
++   node MeasurementRemaining: type=integer|null format=int64
++   node MeleeKills: type=integer|null format=int64
++   node PairName: type=null|string
++   node ParticipantsXUIDs: type=array|null
++   node PerfectKills: type=integer|null format=int64
++   node PerformanceScore: type=null|number format=double
++   node PersonalScore: type=integer|null format=int64
++   node PlaylistGroup: type=null|string
++   node PowerWeaponKills: type=integer|null format=int64
++   node RankInMatch: type=integer|null format=int64
++   node RatingValue: type=null|number format=double
++   node Score: type=integer|null format=int64
++   node Score: type=integer|null format=int64
++   node SeasonID: type=null|string
++   node SessionID: type=null|string
++   node SessionLabel: type=null|string
++   node ShotsFired: type=integer|null format=int64
++   node ShotsHit: type=integer|null format=int64
++   node ShoulderBashKills: type=integer|null format=int64
++   node SubTier: type=integer|null format=int64
++   node T0Ms: type=integer|null format=int64
++   node TeamID: type=integer|null format=int64
++   node TeamMMR: type=null|number format=double
++   node Teams: type=array|null
++   node TierCode: type=null|string
++   node TierCodeFR: type=null|string
++   node TimePlayed: type=integer|null format=int64
++   node TopWeaponID: type=null|string
++   node accuracy: type=null|number format=double
++   node accuracy: type=null|number format=double
++   node accuracy: type=null|number format=double
++   node accuracy: type=null|number format=double
++   node accuracy_buckets: type=array|null
++   node accuracy_timeseries: type=array|null
++   node achievements: type=array|null
++   node actions: type=array|null
++   node activity_heatmap: type=array|null
++   node all_medals: type=array|null
++   node all_sessions: type=array|null
++   node api_by_player: type=array|null
++   node api_calls: type=array|null
++   node assignments: type=array|null
++   node assists: type=array|null
++   node assists[]: $ref:PlayerIdentity
++   node assists_per_game: type=null|number format=double
++   node assists_per_min: type=null|number format=double
++   node assists_timeseries: type=array|null
++   node auth_only: type=boolean
++   node authors: type=array|null
++   node available_columns: type=array|null
++   node available_experience: type=array|null
++   node available_experience_types: type=array|null
++   node available_experience_types: type=array|null
++   node available_filters: $ref:MediaFilterOptions
++   node available_maps: type=array|null
++   node available_maps: type=array|null
++   node available_modes: type=array|null
++   node available_modes: type=array|null
++   node available_modes: type=array|null
++   node available_outcomes: type=array|null
++   node available_outcomes: type=array|null
++   node available_perf_tiers: type=array|null
++   node available_perf_tiers: type=array|null
++   node available_players: type=array|null
++   node available_playlists: type=array|null
++   node available_playlists: type=array|null
++   node available_playlists: type=array|null
++   node available_ranked_contexts: type=array|null
++   node available_ranked_contexts: type=array|null
++   node available_seasons: type=array|null
++   node available_seasons: type=array|null desc=Saisons proposables dans le menu déroulant (CSR uniquement)
++   node available_sessions: type=array|null
++   node available_skill_tiers: type=array|null
++   node available_skill_tiers: type=array|null
++   node available_sort_fields: type=array|null
++   node available_squad_scopes: type=array|null
++   node available_squad_scopes: type=array|null
++   node available_titles: type=array|null
++   node available_titles: type=array|null desc=Sprint 44 : titres disponibles (title switcher) : active + coming_soon.
++   node avg_damage_dealt: type=null|number format=double
++   node avg_damage_taken: type=null|number format=double
++   node avg_kda: type=null|number format=double
++   node avg_kda_against: type=null|number format=double
++   node avg_kda_with: type=null|number format=double
++   node avg_life_seconds: type=null|number format=double
++   node avg_life_timeseries: type=array|null
++   node avg_max_killing_spree: type=null|number format=double
++   node avg_pace_ratio: type=number format=double
++   node avg_pace_ratio: type=number format=double
++   node axes: type=array|null
++   node badge_keys: type=array|null
++   node badge_ord: type=array|null
++   node badges: type=array|null
++   node badges: type=array|null
++   node badges: type=array|null
++   node bars: type=array|null
++   node bars: type=array|null
++   node bars: type=array|null
++   node behavior_patterns: type=array|null
++   node best_matches: type=array|null
++   node best_matches: type=array|null
++   node bin_labels: type=array|null
++   node bins: type=array|null
++   node buckets: type=array|null
++   node buckets: type=array|null
++   node by_source: type=array|null
++   node campaigns: type=array|null
++   node candidates: type=array|null
++   node capabilities: type=array|null
++   node capabilities: type=array|null
++   node capabilities: type=array|null
++   node capabilities: type=array|null
++   node career: type=string enum=["failed","local_partial","no_auth","ok"]
++   node categories: type=array|null
++   node categories: type=array|null
++   node categories: type=array|null
++   node categories: type=array|null
++   node cells: type=array|null
++   node cells: type=array|null
++   node challenge_ids: type=array|null
++   node checkpoints: type=array|null
++   node citations: type=array|null
++   node citations: type=array|null
++   node citations_by_category: type=array|null
++   node claims: type=array|null
++   node classes: type=array|null
++   node code: type=string desc=Code d'erreur stable (snake_case)
++   node code: type=string desc=Code machine optionnel de l'erreur de champ
++   node combat_live: type=string enum=["failed","local_partial","no_auth","ok"]
++   node combat_profile: type=array|null
++   node combat_profile_local: type=array|null
++   node commendations: type=array|null
++   node common_matches: type=array|null
++   node compare_intensity_rows: type=array|null
++   node compare_matches: type=array|null
++   node compare_metrics: type=array|null
++   node comparison_metrics: type=array|null
++   node components: type=array|null
++   node composition_sessions: type=array|null
++   node config_files: type=array|null
++   node content: type=string desc=Contenu Markdown du changelog
++   node context_patterns: type=array|null
++   node core_recent_form: type=array|null
++   node correlation_points: type=array|null
++   node counts: type=array|null
++   node created_at: type=string
++   node crons: type=array|null
++   node csr_season_id: type=string
++   node csr_season_id: type=string
++   node cumulative_kd: type=array|null
++   node cumulative_kd: type=array|null
++   node cumulative_net: type=array|null
++   node cumulative_net: type=array|null
++   node current_player|anyOf[0]: $ref:PlayerSummary
++   node current_player|anyOf[1]: type=null
++   node current_playlist_group: type=null|string
++   node current_rating: type=null|number format=double
++   node current_rating: type=null|number format=double
++   node current_tier_label: type=null|string
++   node current_username: type=null|string
++   node damage_dealt: type=null|number format=double
++   node damage_taken: type=null|number format=double
++   node databases: type=array|null
++   node databases: type=array|null
++   node datapoints: type=array|null
++   node datapoints: type=array|null
++   node datapoints: type=array|null
++   node days: type=array|null
++   node db_inventory_status: type=string enum=["ok","unavailable"] desc=ok = racine data lisible ; unavailable = racine data introuvable/illisible (RepoRoot mal résolu ou volume non monté).
++   node death_counts: type=array|null
++   node deaths_per_min: type=null|number format=double
++   node default_player_slug: type=null|string
++   node delta: type=null|string
++   node delta: type=null|string
++   node delta_mmr: type=null|number format=double
++   node details: type=- desc=Contexte structuré optionnel (objet ou tableau)
++   node detections: type=array|null
++   node dimensions: type=array|null
++   node dominant_category: type=null|string
++   node drifts: type=array|null
++   node duel_ratio: type=null|number format=double
++   node duels: type=array|null
++   node durations_seconds: type=array|null
++   node encounter_badges: type=array|null
++   node encounters: type=array|null
++   node end_date: type=null|string format=date-time
++   node end_time: type=null|string
++   node enemies: type=array|null
++   node enemy_mmr: type=null|number format=double
++   node enemy_win_rate: type=null|number format=double
++   node engagement_curve: type=array|null
++   node engagement_score: type=null|number format=double
++   node engagement_score: type=null|number format=double
++   node entries: type=array|null
++   node entries: type=array|null
++   node entries: type=array|null
++   node entries: type=array|null
++   node error_code: type=string
++   node error_detail: type=string
++   node estimated_hero_date: type=null|string
++   node estimated_rank_cap_date: type=null|string
++   node events: type=array|null
++   node example_match_ids: type=array|null
++   node experience_type_label: type=string default="Non classé"
++   node experience_types: type=array|null
++   node experience_types: type=array|null
++   node experiences: type=array|null
++   node expires_in: type=integer format=int64 desc=Durée de validité en secondes
++   node fatal_errors: type=array|null
++   node features: type=array|null
++   node field: type=string desc=Nom du champ en erreur
++   node field_errors: type=array|null desc=Erreurs de validation par champ (corps de requête)
++   node field_errors[]: $ref:FieldError
++   node filters_applied: type=array|null
++   node filters_ignored: type=array|null
++   node first_seen_at: type=null|string
++   node frag_classes{}: type=array|null
++   node frag_gap_series: type=array|null
++   node free_rewards: type=array|null
++   node freshness: type=null|string
++   node friends_xp_history: type=array|null
++   node gamertag: type=string
++   node global_win_rate: type=null|number format=double
++   node granularity: type=string enum=["match","month","session","week"]
++   node group_id: type=string
++   node had_bot_teammate: type=boolean desc=Un coéquipier était un bot. Exposé sur les best_matches de la carrière (les LOSS avec bot sont exclus côté backend).
++   node headshots_per_match: type=null|number format=double
++   node heatmap: type=array|null
++   node heatmap_data: type=array|null
++   node heatmap_data: type=array|null
++   node heatmap_dow: type=array|null
++   node highlight_events: type=array|null
++   node history: type=array|null
++   node history: type=array|null
++   node history: type=array|null
++   node history: type=array|null
++   node holders: type=array|null
++   node id: type=string
++   node identity: type=string enum=["failed","local_partial","no_auth","ok"]
++   node ids: type=array|null
++   node impact_badges: type=array|null
++   node impact_ranking: type=array|null
++   node impact_roles: type=array|null
++   node improvement_areas: type=array|null
++   node intensity_rows: type=array|null
++   node intensity_rows: type=array|null
++   node is_internal: type=boolean
++   node is_internal: type=boolean
++   node items: type=array|null
++   node items: type=array|null
++   node items: type=array|null
++   node items: type=array|null
++   node items: type=array|null
++   node items: type=array|null
++   node items: type=array|null
++   node items: type=array|null
++   node items: type=array|null
++   node items: type=array|null
++   node items: type=array|null
++   node items: type=array|null
++   node items: type=array|null
++   node items: type=array|null
++   node items: type=array|null
++   node items: type=array|null
++   node items: type=array|null
++   node items: type=array|null
++   node items[]: $ref:MediaItem
++   node jobs: type=array|null
++   node joined_at: type=string
++   node kd_ratio: type=null|number format=double
++   node kd_ratio: type=null|number format=double
++   node kd_timeline: type=array|null
++   node kda: type=null|number format=double
++   node kda: type=null|number format=double
++   node kda_buckets: type=array|null
++   node kda_timeseries: type=array|null
++   node kill_counts: type=array|null
++   node killer_victim: type=array|null
++   node killing_spree_max: type=array|null
++   node kills_buckets: type=array|null
++   node kills_per_game: type=null|number format=double
++   node kills_per_min: type=null|number format=double
++   node kinds: type=array|null
++   node kpi_cards: type=array|null
++   node labels: type=array|null
++   node langs: type=array|null
++   node last_seen_at: type=null|string
++   node leverages: type=array|null
++   node levers: type=array|null
++   node life_buckets: type=array|null
++   node like_count: type=integer format=int64
++   node likers: type=array|null
++   node likers: type=array|null
++   node likers[]: type=string
++   node limitations: type=array|null
++   node linked_challenge_ids: type=array|null
++   node linked_halo_identity|anyOf[0]: $ref:HaloIdentitySummary
++   node linked_halo_identity|anyOf[1]: type=null
++   node live_status: $ref:ExplorerLiveStatus
++   node lobby: type=array|null
++   node lobby_per_player: type=array|null
++   node lusr_components: type=array|null
++   node map_breakdown: type=array|null
++   node map_breakdown: type=array|null
++   node map_names: type=array|null
++   node map_ui: type=null|string
++   node map_ui: type=null|string
++   node map_ui: type=null|string
++   node maps: type=array|null
++   node maps: type=array|null
++   node maps: type=array|null
++   node maps_topn: type=array|null
++   node match_history: type=array|null
++   node match_ids: type=array|null
++   node match_ids: type=array|null
++   node match_rows: type=array|null
++   node match_rows: type=array|null
++   node match_series: type=array|null
++   node match_series{}: type=array|null
++   node matches: type=array|null
++   node matches: type=array|null
++   node matches: type=array|null
++   node matches_per_season: type=array|null
++   node max_killing_spree_buckets: type=array|null
++   node me: type=null|number format=double
++   node mean: type=null|number format=double
++   node medal_digest: type=array|null
++   node medals: type=array|null
++   node medals: type=array|null
++   node medals: type=array|null
++   node medals: type=array|null
++   node medals: type=array|null
++   node media_filename_prefixes: type=array|null
++   node media_filename_prefixes: type=array|null
++   node media_filename_prefixes[]: type=string
++   node media_filename_prefixes[]: type=string
++   node media_items: type=array|null
++   node members: type=array
++   node members[]: $ref:GroupMember
++   node message: type=string desc=Message d'erreur lisible pour ce champ
++   node metrics: type=array|null
++   node mode_categories: type=array|null
++   node mode_ui: type=null|string
++   node mode_ui: type=null|string
++   node mode_ui: type=null|string
++   node modes: type=array|null
++   node modes: type=array|null
++   node modes: type=array|null
++   node modes_skipped: type=array|null
++   node modes_updated: type=array|null
++   node modules: type=array|null
++   node name: type=string
++   node narrative_axes: type=array|null
++   node native_commendations: type=array|null
++   node native_kill_mechanics: $ref:SquadKillMechanics
++   node nemeses: type=array|null
++   node nemesis: type=array|null
++   node nemesis_duels: type=array|null
++   node next_match_id: type=null|string
++   node open_count: type=integer format=int64
++   node options: type=array|null
++   node options: type=array|null
++   node outcome: type=integer|null format=int64
++   node outcome: type=integer|null format=int64
++   node outcomes_over_time: type=array|null
++   node owner_xuid: type=string
++   node pace_observed: type=array|null
++   node partial_reasons: type=array|null
++   node participation: type=array|null
++   node passes: type=array|null
++   node peak_ranks: type=array|null
++   node per_minute_stats: type=array|null
++   node perf_placement_done: type=integer format=int64
++   node perf_placement_done: type=integer format=int64
++   node perf_placement_done: type=integer format=int64
++   node perf_placement_total: type=integer format=int64
++   node perf_placement_total: type=integer format=int64
++   node perf_placement_total: type=integer format=int64
++   node perf_score: type=null|number format=double
++   node perf_score_buckets: type=array|null
++   node perfect_kills_per_match: type=null|number format=double
++   node performance_score: type=null|number format=double
++   node performance_score: type=null|number format=double
++   node performance_score_relative: type=integer|null format=int64
++   node performance_series{}: type=array|null
++   node performance_timeseries: type=array|null
++   node period_label: type=null|string
++   node period_presets: type=array|null
++   node persist_phases: type=array|null
++   node personal_bests: type=array|null
++   node personal_score: type=integer|null format=int64
++   node personal_score_buckets: type=array|null
++   node phases: type=array|null
++   node phases: type=array|null
++   node picked_session_label: type=null|string
++   node picked_sessions: type=array|null
++   node picked_solo_session_label: type=null|string
++   node picked_squad_session_label: type=null|string
++   node placement_matches: type=integer format=int64
++   node placement_matches: type=integer format=int64
++   node player_cards: type=array|null
++   node player_win_rate: type=null|number format=double
++   node players: type=array|null
++   node players: type=array|null
++   node players: type=array|null
++   node players: type=array|null
++   node players: type=array|null
++   node players: type=array|null
++   node players: type=array|null
++   node players: type=array|null
++   node players: type=array|null
++   node players: type=array|null
++   node players: type=array|null
++   node players: type=array|null
++   node playlist_group: type=null|string
++   node playlist_label: type=null|string
++   node playlist_label: type=null|string
++   node playlist_names: type=array|null
++   node playlists: type=array|null
++   node playlists: type=array|null
++   node playlists: type=array|null
++   node playlists: type=array|null
++   node playlists: type=array|null
++   node playlists: type=array|null
++   node points: type=array|null
++   node points: type=array|null
++   node points: type=array|null
++   node points: type=array|null
++   node points: type=array|null
++   node points: type=array|null
++   node points: type=array|null
++   node poll_interval_seconds: type=integer format=int64 default=5
++   node post_sync_history_ms: type=array|null
++   node postsync_steps: type=array|null
++   node previous_match_id: type=null|string
++   node privacy|anyOf[0]: $ref:MatchPrivacyInfo
++   node privacy|anyOf[1]: type=null
++   node provides_damage_taken: type=boolean desc=false si l'API du titre ne fournit pas damage_taken (Halo 5) : le front neutralise la Résistance défensive (N/A) au lieu d'afficher 0.
++   node provides_max_killing_spree: type=boolean desc=true si le titre fournit la folie meurtrière max par match (native ou calculée via events horodatés). Front masque la série si false.
++   node provides_team_mmr: type=boolean desc=false si l'API du titre ne fournit pas de MMR d'équipe/adverse par match (Halo 5) : le front masque la colonne MMR au lieu d'afficher 0.
++   node radar: type=array|null
++   node radar: type=array|null
++   node radar_axes: type=array|null
++   node rank: type=integer|null format=int64
++   node rating_value: type=null|number format=double
++   node recent: type=array|null
++   node recent_win_rate: type=null|number format=double
++   node recorded_at: type=null|string format=date-time
++   node recorded_at: type=null|string format=date-time
++   node relations: type=array|null
++   node reports: type=array|null
++   node retryable: type=boolean desc=Vrai si l'appelant peut réessayer (5xx / indisponibilité transitoire)
++   node rivalries: type=array|null
++   node role: type=string enum=["member","owner"]
++   node roles: type=array|null
++   node roles_by_player{}: type=array|null
++   node rolling_kd: type=array|null
++   node rolling_win_rate: type=array|null
++   node rolling_win_rate: type=array|null
++   node rolling_win_rate[]: type=null|number format=double
++   node rolling_wr_buckets: type=array|null
++   node roster: type=array|null
++   node rows: type=array|null
++   node rows{}: type=array|null
++   node sample: type=array|null
++   node score: type=null|number format=double
++   node score: type=null|number format=double
++   node score: type=number format=double default=1
++   node score_per_min: type=array|null
++   node score_per_min_buckets: type=array|null
++   node score_per_min_data: type=array|null
++   node scoreboard: type=array|null
++   node season_counts: type=array|null
++   node season_csrs: type=array|null
++   node season_csrs: type=string enum=["failed","local_partial","no_auth","ok"]
++   node season_id: type=string desc=Saison effectivement retournée (sélectionnée ou courante)
++   node seasons: type=array|null
++   node seasons: type=string enum=["failed","local_partial","no_auth","ok"]
++   node session_timeline: type=array|null
++   node sessions: type=array|null
++   node shared_matches: type=array|null
++   node shared_violations: type=array|null
++   node shots_fired: type=integer format=int64
++   node shots_landed: type=integer format=int64
++   node skill_trend: type=array|null
++   node snapshot_ready_marked: type=integer format=int64
++   node solo: type=array|null
++   node solo_labels: type=array|null
++   node sprite_height: type=integer format=int64
++   node sprite_height: type=integer format=int64
++   node sprite_height: type=integer format=int64
++   node sprite_left: type=integer format=int64
++   node sprite_left: type=integer format=int64
++   node sprite_left: type=integer format=int64
++   node sprite_sheet: type=string
++   node sprite_sheet: type=string
++   node sprite_sheet: type=string
++   node sprite_top: type=integer format=int64
++   node sprite_top: type=integer format=int64
++   node sprite_top: type=integer format=int64
++   node sprite_width: type=integer format=int64
++   node sprite_width: type=integer format=int64
++   node sprite_width: type=integer format=int64
++   node squad: type=array|null
++   node squad_gamertags: type=array|null
++   node squad_labels: type=array|null
++   node squad_perf: type=null|number format=double
++   node start_date: type=null|string format=date-time
++   node start_time: type=null|string
++   node start_time: type=null|string
++   node started_at: type=null|string
++   node step_timings: type=array|null
++   node strengths: type=array|null
++   node sub_tier: type=integer|null format=int64
++   node subscribed_players: type=array|null
++   node subscribed_players: type=array|null
++   node suggested_challenges: type=array|null
++   node synergy_radar: type=array|null
++   node tables: type=array|null
++   node team_expected: type=array|null
++   node team_mmr: type=null|number format=double
++   node team_observed: type=array|null
++   node teammate: type=null|number format=double
++   node teammate_win_rate: type=null|number format=double
++   node teammates: type=array|null
++   node teammates: type=array|null
++   node teammates: type=array|null
++   node tier: type=null|string
++   node tier_label: type=null|string
++   node tiers: type=array|null
++   node time_played_seconds: type=integer|null format=int64
++   node timeline_multi_player: type=array|null
++   node timeseries: type=array|null
++   node timeseries: type=array|null
++   node titles: type=array|null
++   node titles: type=array|null
++   node token: type=null|string
++   node top_ally_recent_form: type=array|null
++   node top_by_kda: type=array|null
++   node top_by_kills: type=array|null
++   node top_gaps: type=array|null
++   node top_maps: type=array|null
++   node top_medals: type=array|null
++   node top_medals: type=array|null
++   node top_modes: type=array|null
++   node top_nemesis_recent_form: type=array|null
++   node top_teammates: type=array|null
++   node top_unresolved: type=array|null
++   node top_weapon_kills: type=array|null
++   node top_weapon_kills: type=array|null
++   node top_weapon_kills: type=array|null
++   node top_weapons: type=array|null
++   node top_weapons: type=array|null
++   node top_weeks: type=array|null
++   node total_likers: type=integer format=int64
++   node total_mine: type=integer format=int64
++   node total_teammates: type=integer format=int64
++   node total_unassigned: type=integer format=int64
++   node track_roles: type=array|null desc=Rôle de chaque piste audio source. Requis et non vide en mode manuel.
++   node trend_label: type=null|string
++   node tug_of_war: type=array|null
++   node updated_at: type=string
++   node used_at: type=null|string
++   node used_at: type=null|string
++   node used_by: type=null|string
++   node used_by: type=null|string
++   node value: type=string enum=["all","ranked","unranked"]
++   node verification_uri: type=string
++   node victims: type=array|null
++   node violations: type=array|null
++   node warnings: type=array|null
++   node warnings: type=array|null
++   node weapon_accuracy: type=array|null
++   node weapon_accuracy: type=array|null
++   node weapon_accuracy: type=array|null
++   node weapon_kills: type=array|null
++   node weapon_kills: type=array|null
++   node weapons: type=array|null
++   node win_rate: type=null|number format=double
++   node win_rate_hist: type=null|number format=double
++   node win_rate_hist_total: type=integer|null format=int64
++   node window_size: type=integer format=int64 desc=Taille effective de la fenêtre analysée
++   node winner: type=null|string
++   node worst_by_deaths: type=array|null
++   node worst_matches: type=array|null
++   node worst_matches: type=array|null
++   node xp_history: type=array|null
++   node xuid: type=string
++   operationId: getWatcherAuthStatus
++   summary: Capabilities produit déclarées par un titre
++   summary: Field mappings TOML d'un titre
++   summary: Matrice de features (cascade capabilities) d'un titre
++   summary: Statut d'une tentative d'authentification watcher
++   tags: titles
++   tags: titles
++   tags: titles
++ # schemas=522
++ DELETE /admin/invites/{code}
++ DELETE /admin/users/{username}
++ DELETE /players/{player_slug}/notifications/{id}
++ GET /titles/{slug}/capabilities
++ GET /titles/{slug}/feature-matrix
++ GET /titles/{slug}/field-mappings
++ GET /watcher/auth/{attempt_id}
++ PATCH /admin/users/{username}/password
++ PATCH /admin/users/{username}/role
++ PATCH /players/{player_slug}/notifications/{id}/unread
++ schema ExplorerLiveStatus
++ schema FieldError
++ schema Group
++ schema GroupMember

@@ -13,7 +13,7 @@ import { SectionHeader } from '../components/SectionHeader'
 
 // DBContentionHolder n'est pas ré-exporté séparément par lib/api/types.ts
 // (seul DBContentionResponse l'est) — dérivé par indexation du tableau.
-type DBContentionHolder = DBContentionResponse['holders'][number]
+type DBContentionHolder = NonNullable<DBContentionResponse['holders']>[number]
 
 type HolderSortKey = 'label' | 'count' | 'total_ms' | 'avg_ms' | 'max_ms' | 'watchdog_fired'
 
@@ -107,7 +107,7 @@ export function DBContentionSection() {
           {/* Étape 0 attribution : ventilation de la détention writer par label
               (trié total desc côté API) — désigne les cibles du refactor
               « writer non tenu pendant I/O ». */}
-          {data.holders.length > 0 && (
+          {(data.holders?.length ?? 0) > 0 && (
             <div>
               <h3 className="mb-2 text-sm font-medium text-foreground">
                 {t('common.admin.contention_holders_title')}

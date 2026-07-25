@@ -108,6 +108,48 @@ func computeScoreboardRowCombatYield(s domain.ScoreboardRaw, effectiveHpToKill f
 	return oc, dr, dpk, dpd
 }
 
+// buildScoreboardObjective mappe ObjectiveRaw (Q12 LEFT JOIN) vers le DTO
+// MatchScoreboardObjective. Retourne nil si aucun bloc objectif n'est présent
+// (Slayer / titre non supporté → table vide) — le front n'affiche alors pas de
+// section. Ne recopie QUE les champs du bloc du mode joué (les autres restent nil,
+// omitempty côté JSON) — data-driven par mode.
+func buildScoreboardObjective(o domain.ObjectiveRaw) *domain.MatchScoreboardObjective {
+	if !o.HasObjective() {
+		return nil
+	}
+	out := &domain.MatchScoreboardObjective{}
+	if o.HasCTF() {
+		out.FlagCaptures = o.FlagCaptures
+		out.FlagCaptureAssists = o.FlagCaptureAssists
+		out.FlagGrabs = o.FlagGrabs
+		out.FlagSecures = o.FlagSecures
+		out.FlagSteals = o.FlagSteals
+		out.FlagReturns = o.FlagReturns
+		out.FlagCarriersKilled = o.FlagCarriersKilled
+		out.FlagReturnersKilled = o.FlagReturnersKilled
+		out.KillsAsFlagCarrier = o.KillsAsFlagCarrier
+		out.KillsAsFlagReturner = o.KillsAsFlagReturner
+		out.TimeAsFlagCarrierSeconds = o.TimeAsFlagCarrierSeconds
+	}
+	if o.HasZones() {
+		out.ZoneCaptures = o.ZoneCaptures
+		out.ZoneSecures = o.ZoneSecures
+		out.ZoneOffensiveKills = o.ZoneOffensiveKills
+		out.ZoneDefensiveKills = o.ZoneDefensiveKills
+		out.ZoneScoringTicks = o.ZoneScoringTicks
+		out.TimeInZonesSeconds = o.TimeInZonesSeconds
+	}
+	if o.HasOddball() {
+		out.KillsAsSkullCarrier = o.KillsAsSkullCarrier
+		out.SkullCarriersKilled = o.SkullCarriersKilled
+		out.SkullGrabs = o.SkullGrabs
+		out.SkullScoringTicks = o.SkullScoringTicks
+		out.TimeAsSkullCarrierSeconds = o.TimeAsSkullCarrierSeconds
+		out.LongestTimeAsSkullCarrierSeconds = o.LongestTimeAsSkullCarrierSeconds
+	}
+	return out
+}
+
 // indexBulkMedalsByXUID indexe les médailles bulk par XUID pour O(1) lookup.
 // Icône title-aware via static.MedalImage (comme convertMedals du résumé) : PNG pour
 // Halo Infinite, sprite (feuille + offset) pour Halo 5. L'ancien chemin

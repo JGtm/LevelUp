@@ -31,6 +31,7 @@ export const TITLE_CAPABILITIES = [
   'spartan_customizer',
   'expected_stats',
   'waypoint_match_url',
+  'objective_stats',
 ] as const
 
 export type TitleCapability = (typeof TITLE_CAPABILITIES)[number]
@@ -51,7 +52,27 @@ export function useCapability(capability: TitleCapability): boolean {
   return useAppShellStore((s) => {
     const title = s.availableTitles.find((t) => t.slug === s.currentTitleSlug)
     if (!title) return true
-    return title.capabilities.includes(capability)
+    return (title.capabilities ?? []).includes(capability)
+  })
+}
+
+/**
+ * useCapabilityStrict — variante **fail-CLOSED** de {@link useCapability}.
+ *
+ * Retourne `false` si `availableTitles` est vide OU si `currentTitleSlug` n'y est
+ * pas résolu ; `true` UNIQUEMENT quand le titre résolu déclare `capability`.
+ *
+ * Contrainte : réservé aux PORTES D'AFFICHAGE de visuels title-specific (assets
+ * `/titles/{slug}/...`). Le fail-open de {@link useCapability} synthétiserait un
+ * emblème/nameplate d'un autre titre pendant la fenêtre transitoire de re-bootstrap
+ * au switch de titre → fuite cross-titre (V72-29). Ici on masque plutôt que fuiter :
+ * jamais fail-open.
+ */
+export function useCapabilityStrict(capability: TitleCapability): boolean {
+  return useAppShellStore((s) => {
+    const title = s.availableTitles.find((t) => t.slug === s.currentTitleSlug)
+    if (!title) return false
+    return (title.capabilities ?? []).includes(capability)
   })
 }
 

@@ -66,8 +66,8 @@ fr = "Personnalisation Spartan"
 en = "Spartan customization"
 
 [home.spartan_customizer.description]
-fr = "Choisis un emblème et une bannière (onglets), puis tes couleurs — elles s'appliquent aux deux. L'aperçu et les vignettes se mettent à jour en direct."
-en = "Pick an emblem and a banner (tabs), then your colors — they apply to both. The preview and thumbnails update live."
+fr = "Choisis un emblème et une bannière (onglets), avec des couleurs propres à chacun. L'aperçu et les vignettes se mettent à jour en direct."
+en = "Pick an emblem and a banner (tabs), each with its own colors. The preview and thumbnails update live."
 
 [home.spartan_customizer.choose_emblem]
 fr = "Emblème"

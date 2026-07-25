@@ -75,6 +75,35 @@ describe('buildSunburstModel (builder pur)', () => {
     expect(model.legend[0].valueLabel).toBe(`— ${LABELS.formatShare(10)}`)
   })
 
+  it('classe Grenade avec niveau 2 (types) → arcs de rôle + lignes de rappel, pas de feuille (V72-15.2)', () => {
+    const dist: FragDistribution = {
+      total_kills: 10,
+      classes: [
+        {
+          class: 'grenade',
+          kills: 6,
+          authoritative: true,
+          roles: [
+            { role: 'grenade_frag', kills: 3 },
+            { role: 'grenade_plasma', kills: 2 },
+            { role: 'grenade_other', kills: 1 },
+          ],
+        },
+        { class: 'shoulder', kills: 4, authoritative: false },
+      ],
+    }
+    const model = buildSunburstModel(dist.classes ?? [], dist.total_kills, COLORS, LABELS)
+    // Grenade : 3 arcs de rôle (types) + AUCUNE feuille grenade ; shoulder reste une feuille.
+    expect(model.arcs.filter((a) => a.kind === 'role' && a.classKey === 'grenade')).toHaveLength(3)
+    expect(model.arcs.filter((a) => a.kind === 'leaf' && a.classKey === 'grenade')).toHaveLength(0)
+    // Une ligne de rappel par type de grenade (labels via roleLabel).
+    expect(model.callouts.map((c) => c.label).sort()).toEqual([
+      'role:grenade_frag',
+      'role:grenade_other',
+      'role:grenade_plasma',
+    ])
+  })
+
   it('côté du callout = position HORIZONTALE (cos) de l\'arc — le trait ne traverse jamais le donut', () => {
     // 4 rôles en quadrants (repère polaire interne : q1 45° HAUT-DROITE, q2 135° BAS-DROITE,
     // q3 225° BAS-GAUCHE, q4 315° HAUT-GAUCHE). Côté = cos(mid-90) = signe de X : moitié

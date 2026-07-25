@@ -44,6 +44,11 @@ export interface MatchViewText {
   pageErrorTitle: string
   pageRetry: string
   pagePartialLoad: string
+  // État dédié 404 match_not_found — match absent du substrat local (pas encore
+  // synchronisé, ou identifiant invalide). Remplace l'écran d'erreur générique
+  // (retiré le 2026-07-25 avec le fallback LIVE du Match view, cf. BACKLOG).
+  notSyncedTitle: string
+  notSyncedDescription: string
   noRank: string
   exitContext: string
   outcomeWin: string
@@ -185,6 +190,20 @@ export interface MatchViewText {
   sbColAvgLife: string
   sbColPlayer: string
   sbColTopWeapon: string
+  // Tooltips d'en-tête de colonne (V72-04, icône ⓘ) — colonnes non évidentes.
+  sbColCsrTooltip: string
+  sbColLusrTooltip: string
+  sbColRankTooltip: string
+  sbColKdaTooltip: string
+  sbColAccuracyTooltip: string
+  sbColMaxSpreeTooltip: string
+  sbColPerfectKillsTooltip: string
+  sbColPowerWeaponsTooltip: string
+  sbColMeleeKillsTooltip: string
+  sbColAvgLifeTooltip: string
+  sbColTopWeaponTooltip: string
+  sbColOffensiveTooltip: string
+  sbColDefensiveTooltip: string
   sbViewHistoryFmt: (gamertag: string) => string
   /** Format du score (séparateurs locale-sensitive : "12 345" FR / "12,345" EN). */
   sbFormatScore: (v: number) => string
@@ -202,6 +221,13 @@ export interface MatchViewText {
   ctxModeFmt: (category: string) => string
   /** Compteur intégré : "Matchs récents 12/47" / "Recent matches 12/47". */
   matchCounterCtxFmt: (label: string, n: number, total: number) => string
+  /** Section « Objectifs » du scoreboard (CTF/Zones/Oddball) — V72-03. `cols` :
+   *  libellé + tooltip d'en-tête par clé de colonne objectif. */
+  objectives: {
+    title: string
+    teamTotal: string
+    cols: Record<string, { label: string; tooltip: string }>
+  }
 }
 
 export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
@@ -238,6 +264,9 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     pageErrorTitle: 'Match introuvable ou erreur de chargement.',
     pageRetry: 'Réessayer',
     pagePartialLoad: 'Ce match n\'a pas pu être chargé en totalité.',
+    notSyncedTitle: 'Match pas encore synchronisé',
+    notSyncedDescription:
+      "Ce match n'est pas encore présent dans la base locale. S'il vient d'être joué, il apparaîtra ici après la prochaine synchronisation — reviens dans quelques minutes. Vérifie aussi que le lien du match est correct.",
     noRank: 'Pas de rang',
     exitContext: 'Sortir du contexte',
     outcomeWin: 'Victoires',
@@ -371,6 +400,19 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sbColAvgLife: 'Vie moy.',
     sbColPlayer: 'Joueur',
     sbColTopWeapon: 'Outil de destr.',
+    sbColCsrTooltip: 'Classement compétitif en jeu (CSR) atteint sur ce match.',
+    sbColLusrTooltip: 'Classement maison (LUSR) estimé pour ce match.',
+    sbColRankTooltip: 'Place du joueur dans le match, selon le score.',
+    sbColKdaTooltip: 'FDA = (Frags + Assistances/3) − Morts ; valorise l\'impact, pas frags/morts.',
+    sbColAccuracyTooltip: 'Précision : part de tirs qui touchent la cible, en pourcentage.',
+    sbColMaxSpreeTooltip: 'Plus longue série de frags enchaînés sans mourir.',
+    sbColPerfectKillsTooltip: 'Frags parfaits : bouclier vidé puis tir à la tête sans rater.',
+    sbColPowerWeaponsTooltip: 'Frags à l\'arme lourde ramassée sur la carte.',
+    sbColMeleeKillsTooltip: 'Frags obtenus au corps à corps.',
+    sbColAvgLifeTooltip: 'Durée de vie moyenne entre deux morts.',
+    sbColTopWeaponTooltip: 'Arme ayant réalisé le plus de frags dans le match.',
+    sbColOffensiveTooltip: 'Rendement offensif : frags et assistances obtenus par dégât infligé.',
+    sbColDefensiveTooltip: 'Résistance : dégâts encaissés avant chaque mort.',
     sbViewHistoryFmt: (gamertag) => `Voir l'historique avec ${gamertag}`,
     sbFormatScore: (v) => new Intl.NumberFormat('fr-FR').format(v),
     ctxRecent: 'récents',
@@ -385,6 +427,31 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     ctxPlaylistFmt: (name) => `en ${name}`,
     ctxModeFmt: (category) => `en ${category}`,
     matchCounterCtxFmt: (label, n, total) => `Matchs ${label} ${n}/${total}`,
+    objectives: {
+      title: 'Objectifs',
+      teamTotal: 'Total équipe',
+      cols: {
+        flag_captures: { label: 'Captures', tooltip: 'Captures de drapeau' },
+        flag_returns: { label: 'Retours', tooltip: 'Retours de drapeau' },
+        flag_steals: { label: 'Vols', tooltip: 'Vols de drapeau' },
+        time_as_flag_carrier_seconds: {
+          label: 'Temps porteur',
+          tooltip: 'Temps en tant que porteur du drapeau',
+        },
+        zone_captures: { label: 'Captures', tooltip: 'Zones capturées' },
+        zone_secures: { label: 'Sécurisées', tooltip: 'Zones sécurisées' },
+        time_in_zones_seconds: { label: 'Temps en zone', tooltip: 'Temps passé en zone' },
+        skull_grabs: { label: 'Récup.', tooltip: 'Récupérations du crâne' },
+        time_as_skull_carrier_seconds: {
+          label: 'Temps porteur',
+          tooltip: 'Temps en tant que porteur du crâne',
+        },
+        longest_time_as_skull_carrier_seconds: {
+          label: 'Meilleur temps',
+          tooltip: 'Plus longue possession du crâne',
+        },
+      },
+    },
   },
   en: {
     prevMatch: 'Previous match',
@@ -419,6 +486,9 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     pageErrorTitle: 'Match not found or load error.',
     pageRetry: 'Retry',
     pagePartialLoad: 'This match could not be fully loaded.',
+    notSyncedTitle: 'Match not synced yet',
+    notSyncedDescription:
+      "This match isn't in the local database yet. If it was just played, it will show up here after the next sync — check back in a few minutes. Also double-check that the match link is correct.",
     noRank: 'No rank',
     exitContext: 'Exit context',
     outcomeWin: 'Wins',
@@ -552,6 +622,19 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sbColAvgLife: 'Avg. life',
     sbColPlayer: 'Player',
     sbColTopWeapon: 'Top weapon',
+    sbColCsrTooltip: 'In-game competitive rank (CSR) reached this match.',
+    sbColLusrTooltip: 'In-house rating (LUSR) estimated for this match.',
+    sbColRankTooltip: 'Player\'s placement in the match, by score.',
+    sbColKdaTooltip: 'KDA = (Kills + Assists/3) − Deaths; rewards impact, not kills/deaths.',
+    sbColAccuracyTooltip: 'Accuracy: share of shots that hit the target, as a percentage.',
+    sbColMaxSpreeTooltip: 'Longest run of kills without dying.',
+    sbColPerfectKillsTooltip: 'Perfect kills: shields broken then a headshot with no missed shot.',
+    sbColPowerWeaponsTooltip: 'Kills with power weapons picked up on the map.',
+    sbColMeleeKillsTooltip: 'Kills scored in melee.',
+    sbColAvgLifeTooltip: 'Average time alive between deaths.',
+    sbColTopWeaponTooltip: 'Weapon with the most kills this match.',
+    sbColOffensiveTooltip: 'Offensive yield: kills and assists per damage dealt.',
+    sbColDefensiveTooltip: 'Resistance: damage absorbed before each death.',
     sbViewHistoryFmt: (gamertag) => `View history with ${gamertag}`,
     sbFormatScore: (v) => new Intl.NumberFormat('en-US').format(v),
     ctxRecent: 'recent',
@@ -566,6 +649,25 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     ctxPlaylistFmt: (name) => `in ${name}`,
     ctxModeFmt: (category) => `in ${category}`,
     matchCounterCtxFmt: (label, n, total) => `${capitalize(label)} matches ${n}/${total}`,
+    objectives: {
+      title: 'Objectives',
+      teamTotal: 'Team total',
+      cols: {
+        flag_captures: { label: 'Captures', tooltip: 'Flag captures' },
+        flag_returns: { label: 'Returns', tooltip: 'Flag returns' },
+        flag_steals: { label: 'Steals', tooltip: 'Flag steals' },
+        time_as_flag_carrier_seconds: { label: 'Carrier time', tooltip: 'Time as flag carrier' },
+        zone_captures: { label: 'Captures', tooltip: 'Zones captured' },
+        zone_secures: { label: 'Secured', tooltip: 'Zones secured' },
+        time_in_zones_seconds: { label: 'Zone time', tooltip: 'Time spent in zones' },
+        skull_grabs: { label: 'Grabs', tooltip: 'Skull grabs' },
+        time_as_skull_carrier_seconds: { label: 'Carrier time', tooltip: 'Time as skull carrier' },
+        longest_time_as_skull_carrier_seconds: {
+          label: 'Longest',
+          tooltip: 'Longest skull possession',
+        },
+      },
+    },
   },
 }
 

@@ -5,6 +5,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
+import { useAppShellStore } from '@/stores/appShellStore'
 import type { CompareRequest, CompareResponse } from '@/lib/api/types'
 
 /**
@@ -29,7 +30,11 @@ export function useComparePrefetch(playerSlug: string) {
 
   return function prefetchCompare(targetGamertag: string) {
     void queryClient.prefetchQuery({
-      queryKey: queryKeys.comparePlayer(playerSlug, targetGamertag),
+      queryKey: queryKeys.comparePlayer(
+        playerSlug,
+        useAppShellStore.getState().currentTitleSlug,
+        targetGamertag,
+      ),
       queryFn: () =>
         api.post<CompareResponse>(`/players/${playerSlug}/pages/compare`, {
           target_gamertag: targetGamertag,

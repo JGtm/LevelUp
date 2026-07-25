@@ -28,6 +28,10 @@ function setTitleCaps(caps: string[]) {
         capabilities: caps,
         is_default: true,
         effective_hp_to_kill: 225,
+        provides_damage_taken: true,
+        provides_team_mmr: true,
+        provides_max_killing_spree: true,
+        offensive_conversion_p80: 0.9,
       },
     ],
   })
@@ -353,5 +357,102 @@ describe('ExplorerMatchesTable — colonne « Ouvrir sur Halo Waypoint » (I19)'
       />,
     )
     expect(screen.queryByRole('link', { name: WAYPOINT_LABEL })).not.toBeInTheDocument()
+  })
+})
+
+// V72-32, corrigé V72-34 : badge « En placement » sur Perf/ΔPerf/Note quand la
+// note manque parce que la phase CORRESPONDANTE est en placement. Deux signaux
+// ÉTANCHES : Perf/ΔPerf lisent perf_placement_* (chaîne de performance), la Note
+// lit placement_* (classement LUSR/CSR). Sans le signal correspondant → "-"
+// inchangé, pas de faux état fabriqué.
+describe('ExplorerMatchesTable — badge « En placement » (Perf/ΔPerf/Note, V72-34)', () => {
+  it('placement des DEUX phases → badge sur Perf + ΔPerf + Note (3 cellules)', () => {
+    const row = makeRow(1, {
+      perf_score: null,
+      perf_tier: undefined,
+      delta_perf: null,
+      rating_type: null,
+      placement_done: 3,
+      placement_total: 10,
+      perf_placement_done: 3,
+      perf_placement_total: 10,
+    })
+    renderWithProviders(<ExplorerMatchesTable rows={[row]} playerSlug="me" />)
+    const badges = screen.getAllByText('En placement')
+    expect(badges).toHaveLength(3)
+    for (const badge of badges) {
+      expect(badge).toHaveAttribute('title', expect.stringContaining('7'))
+    }
+  })
+
+  // LE cas de la correction (JGtm, 3 matchs BTB du 24/07) : Note LUSR établie mais
+  // chaîne de performance encore en calibration (8/10) → badge sur Perf/ΔPerf
+  // UNIQUEMENT, la colonne Note affiche son rating normalement.
+  it('JGtm : LUSR établi + chaîne perf sous le seuil → badge sur Perf/ΔPerf seulement, Note intacte', () => {
+    const row = makeRow(1, {
+      perf_score: null,
+      perf_tier: undefined,
+      delta_perf: null,
+      rating_type: 'LUSR',
+      skill_tier_label: 'Gold II',
+      placement_done: null,
+      placement_total: null,
+      perf_placement_done: 8,
+      perf_placement_total: 10,
+    })
+    renderWithProviders(<ExplorerMatchesTable rows={[row]} playerSlug="me" />)
+    const badges = screen.getAllByText('En placement')
+    expect(badges).toHaveLength(2) // Perf + ΔPerf, PAS la Note
+    for (const badge of badges) {
+      expect(badge).toHaveAttribute('title', expect.stringContaining('2')) // 10 - 8
+    }
+    expect(screen.getByText('LUSR')).toBeInTheDocument()
+  })
+
+  // Symétrique : placement de classement seul (aucune perf en calibration) ne doit
+  // PAS colorer Perf/ΔPerf — c'était le faux positif du signal partagé V72-32.
+  it('placement de classement SEUL → badge sur la Note uniquement', () => {
+    const row = makeRow(1, {
+      perf_score: null,
+      perf_tier: undefined,
+      delta_perf: null,
+      rating_type: null,
+      placement_done: 3,
+      placement_total: 10,
+      perf_placement_done: null,
+      perf_placement_total: null,
+    })
+    renderWithProviders(<ExplorerMatchesTable rows={[row]} playerSlug="me" />)
+    expect(screen.getAllByText('En placement')).toHaveLength(1)
+  })
+
+  it('cas structurel (perf_score nul SANS aucun signal) → "-" inchangé, pas de badge', () => {
+    const row = makeRow(1, {
+      perf_score: null,
+      perf_tier: undefined,
+      delta_perf: null,
+      rating_type: null,
+      placement_done: null,
+      placement_total: null,
+      perf_placement_done: null,
+      perf_placement_total: null,
+    })
+    renderWithProviders(<ExplorerMatchesTable rows={[row]} playerSlug="me" />)
+    expect(screen.queryByText('En placement')).not.toBeInTheDocument()
+  })
+
+  it('note présente (hors placement) → valeur affichée normalement, pas de badge', () => {
+    const row = makeRow(1, {
+      perf_score: 73,
+      perf_tier: 2,
+      delta_perf: 23,
+      rating_type: 'LUSR',
+      placement_done: null,
+      placement_total: null,
+    })
+    renderWithProviders(<ExplorerMatchesTable rows={[row]} playerSlug="me" />)
+    expect(screen.queryByText('En placement')).not.toBeInTheDocument()
+    expect(screen.getByText('73')).toBeInTheDocument()
+    expect(screen.getByText('LUSR')).toBeInTheDocument()
   })
 })

@@ -1,3 +1,983 @@
+## [2026-07-25] Release v7.2.0 — préparation merge main + ops VPS
+
+**Statut** : En cours (feu vert utilisateur : merge main local, backfills VPS, push).
+Décisions : (1) le binaire `cmd/backfill_objective_stats` est AJOUTÉ à l'image Docker
+(bloc build + COPY miroir du CLI levelup) — sans lui les backfills objectifs sont
+inexécutables sur le VPS (l'image runtime n'a pas de toolchain Go) ; (2) badges de
+version des 2 README bumpés 7.1.0→7.2.0 dans le commit chore(release) au moment du tag
+(précédent cc9d82b2d) ; (3) tag annoté `v7.2.0` posé sur main avant push — deploy.sh
+bake `git describe --tags --abbrev=0` dans le binaire, et last_notified_version est
+pré-semé à v7.1.0 sur le VPS → la notif Discord de release doit partir au boot ;
+(4) validation du Dockerfile modifié par le Deploy Pre-Check de la branche AVANT merge.
+Ordre imposé par la technique : deploy d'abord, backfills VPS ensuite (le binaire v7.2
+n'existe sur le VPS qu'après build), serveur coupé pendant les backfills (lock RW).
+
+## [2026-07-25] Clôture v7.2 — réparation CI baseline + push final
+
+**Statut** : Complété. La delivery-checklist (§0 état CI) a révélé le workflow CI de la
+branche ROUGE sur les 3 derniers push : job « Go Baseline Tests » (Linux), 25 tests de la
+baseline absents du run courant — tous supprimés VOLONTAIREMENT par le chantier (repli
+LIVE de la vue de match, drift-detector openapi, TestBuildCanonicalCitationsTab renommé).
+Le gate local l'avait signalé mais la sortie tronquée avait été mal lue (leçon : ancrer le
+motif et vérifier le code de sortie, pas la sortie filtrée). Correctif : purge des 118
+lignes correspondantes de `.ai/baselines/tests_pre_migration.jsonl`, justification dans le
+message de commit (`15993febe`), vérif préalable que plus aucun des 25 noms n'existe dans
+le code. **Résultat : run CI 30168201673 (push `f43aa01f9`) entièrement VERT** — baseline,
+build/test 2 OS, lint, coverage, contrat OpenAPI, frontend. Deploy Pre-Check vert aussi.
+Prochaine étape : merge main = décision utilisateur (deploy prod auto), puis backfills VPS
+orchestrés (coupure autorisée) + vérification de la notif Discord release v7.2.0.
+
+## [2026-07-25] V72-30 — What's new + changelogs + notes de version in-app v7.2
+
+**Statut** : Complété. Pas de commit (superviseur). Item FINAL du lot 6 du
+`PLAN_V72_NOTION_BATCH.md`.
+
+**Périmètre / décision.** 6 fichiers, 3 publics distincts, aucun code touché :
+`README.md` + `docs/FR/README.md` (bloc « What's new » / « Dernières nouveautés » = joueur
+final, **une seule version affichée** — précédent `f16192cad` « What's new = v7.1 uniquement,
+demande utilisateur » : le bloc v7.1 est donc REMPLACÉ, pas empilé) ; `docs/RELEASE_NOTES.md` +
+`docs/FR/RELEASE_NOTES.md` (source unique des notes in-app servies par
+`service.ReleaseNotesService` → `/help`, versions empilées, bloc v7.2 inséré en tête) ;
+`docs/CHANGELOG.md` + `docs/FR/CHANGELOG.md` (technique, Keep a Changelog, section `[7.2.0]`).
+Sources : `git log v7.1.0..HEAD` (46 commits), plan V72-01..34, entrées thought log du 24-25/07.
+
+**Choix éditoriaux.** (1) Date `2026-07-25` sur l'entrée changelog, alignée sur le précédent
+v7.1.0 (datée au jour de rédaction = jour du deploy) — À BUMPER dans le commit de release si le
+merge main glisse. (2) Badge de version README laissé à **7.1.0** : le précédent `cc9d82b2d` le
+laisse explicitement au tag N-1 jusqu'au tag (« chore(release): badge version X »). (3) Les
+actions post-déploiement (backfill objectifs, re-seed + recompute citations, `make openapi-gen`
+pour les contributeurs) sont en tête de la section `Ops` du changelog UNIQUEMENT — jamais dans
+les notes joueur. (4) Libellés cités vérifiés sur pièces dans les manifests i18n / le seed
+(« Rechercher sur Xbox », « En placement », « Données live indisponibles (authentification) »,
+« Partie », « Rendement / Résistance » (EN « Yield / Resistance »), « SPNKr à combustible »,
+noms FR des 4 citations d'objectif : À la charge / Je te tiens ! / Partie prenante / Sus au
+porteur du drapeau). Corrigé en cours de route : « Solde frags − morts cumulé » et « Partie »
+sont des renommages FR SEULS (EN inchangés) — la formulation EN les décrit comme tels.
+
+**Gates.** Parsing des notes in-app validé contre les DEUX lecteurs (Go
+`extractWhatsNewBlocks`/`extractVersionKey` et front `parseReleaseNotes.ts`) : v7.2 détectée en
+tête, 8 sections, 0 ligne de description, tri descendant v7.2 > v7.1 > v7.0 > … OK sur les deux
+langues. `go test ./internal/api/handlers/ -run 'Help|ReleaseNotes'` vert ;
+`vitest run src/features/help` 4/4 vert. Aucun emoji ni mojibake introduit (les occurrences
+restantes du changelog sont dans les entrées Python historiques, hors périmètre).
+
+**Prochaine étape.** Merge main (= deploy prod) puis, au moment du tag : bump du badge de
+version README EN+FR vers 7.2.0 et, si la date de deploy diffère, correction de la date de
+l'entrée `[7.2.0]`.
+
+## [2026-07-25] Lot des découvertes v7.2 — arrondi coach, tri escouades, centralisation mode_name_tr, purges code mort
+
+**Statut** : Complété (7 items). Pas de commit ni de commande `go` (backfill long en cours) —
+gates Go au superviseur ; gates front joués ici (vitest 364 verts sur les dossiers touchés,
+`npm run typecheck` OK, eslint OK).
+
+**Arrondi coach (1)** — `buildLUSRTierApproachAlert` émet `current_mu`/`next_tier_mu` en float64
+bruts dans le MÊME `Params` que `gap` (corrigé la veille). Vérifié sur pièces : **aucun template
+front ne les interpole** (`notif.lusr_tier_approach.title/body` n'utilisent que `{gap}` et
+`{next_tier_name}` — le μ TrueSkill en avait été retiré volontairement). Ils sont quand même
+ajoutés à la liste d'arrondi de `format.ts` en DÉFENSE, avec le constat écrit en commentaire.
+`enrichParams` exporté pour test (l'effet n'est pas observable via `resolveTitle` faute de
+template consommateur) + 4 tests, dont un qui documente l'absence d'interpolation.
+
+**Tri des escouades (3)** — constat vérifié : `activeContextLabels` porte les LIBELLÉS
+d'affichage des options de cascade (modes = `service.modeUI` → `ResolveModeUIWithVariant`, donc
+déjà normalisé et FR-d'abord ; playlists = `COALESCE(playlist_name_fr, playlist_name)`), et
+`usual_modes` est normalisé + traduit FR côté Go depuis V72-10.1. Le matching nominal FR↔FR
+fonctionne donc, MAIS `scoreSquad` comparait les chaînes BRUTES (simple `toLowerCase`) alors que
+`buildUsualSubtitle`, dix lignes plus haut, normalisait déjà : toute forme composée résiduelle
+(dégradation gracieuse de `SquadUsualContexts` → `pair_name` brut « Assassin en équipe sur
+Bazaar ») cassait le tri EN SILENCE. Correction : `contextMatchKey` applique `normalizeModeLabel`
+aux DEUX côtés + comparaison insensible à la casse ; `buildActiveContextKeys` /
+`scoreSquadContext` extraits et testés (8 cas). Limite documentée, NON traitée : si la traduction
+FR n'existe que d'un côté, les clés restent FR vs EN — trou de données, pas de comparateur.
+
+**Centralisation `mode_name_tr` (4)** — le décompte de 4 copies était un plancher : **6**
+exemplaires dans `internal/platform/duckdb` (career_repo_highlights, explorer_repo,
+match_history_fr_translations, squad_repo_mapstats au littéral près ; home_repo_translations et
+media_repo_translations en variante de mise en forme), chacun avec sa propre gestion du vide, de
+la table absente et du handle FATAL-invalidated. Source unique créée :
+`duckdb/mode_name_tr.go` (`queryModeNameTrFR` + variante best-effort `loadModeNamesFRForKeys` +
+`loadKnownModesEN` déplacé pour que le garde-rail n'ait pas d'allowlist). Le point d'entrée
+EXPORTÉ reste `SquadRepo.LoadModeTranslationsFR` (port + injection prestige inchangés).
+Deux effets de bord ASSUMÉS et bénéfiques : les 4 copies sur `Query` passent à `QueryRecovered`
+(auto-réparation ART, déjà le comportement de home et match_history), et deux erreurs jusqu'ici
+avalées en silence (explorer, media) sont désormais loguées. Garde-rail
+`no_mode_name_tr_literal_test.go` : interdit tout `FROM|JOIN mode_name_tr` hors du fichier
+canonique sous `internal/platform/duckdb`, **allowlist VIDE** (les lectures ops/ et cmd/ sont
+d'autres requêtes dans d'autres couches, hors périmètre).
+
+**Purges de code mort (5, 6)** — `queryKeys.player()` : zéro call-site confirmé par grep (seul
+le garde-rail l'invoquait), supprimée avec son entrée de classification ; le volet « symétrie »
+du garde-rail aurait de toute façon échoué si on avait oublié l'un des deux.
+`internal/games/weaponregistry` : **aucun import** dans tout le repo (seul son propre test
+in-package le référençait) — role/class/family sont en réalité résolus en SQL sur
+`metadata.weapons` par `duckdb/weapon_resolver.go`. Package supprimé (3 fichiers) + 2
+commentaires devenus faux corrigés (`port/weapon_kills.go`, `migrations/weapon_registry.go`).
+**Effet de bord traité** : ses 4 tests figuraient dans `.ai/baselines/tests_pre_migration.jsonl`
+→ `scripts/check_test_baseline.sh` aurait signalé une régression ; les 24 lignes du package ont
+été retirées de la baseline (procédure déjà appliquée le 2026-05-22 pour des tests renommés).
+
+**Découverte NON traitée (zéro élargissement)** : 53 fichiers de `internal/api/wire` portent un
+en-tête `// Package api` alors que le paquet est `wire` — seul `post_sync_deltas_bespoke.go`
+était dans le périmètre et a été corrigé ; le reste est une dette systémique de renommage
+api→wire, à traiter en une passe dédiée.
+
+**Prochaine étape** : gates Go au superviseur — `make go-api-lint`, `go test ./...` (dont
+`internal/platform/duckdb` pour le nouveau garde-rail et les 6 repos migrés,
+`internal/games/...` pour la suppression du package), puis `bash scripts/check_test_baseline.sh
+tests` pour valider la baseline amputée.
+
+---
+
+## [2026-07-25] V72-01 / H7 + H8 — verrous front du contrat généré, lot Group, CLÔTURE du chantier
+
+**Statut** : Complété — **chantier V72-01 INTÉGRALEMENT CLOS** (H0 à H8 `[x]`, bonus `[!]`
+justifiés et reportés). Pas de commit (superviseur applique les gates). Plan
+`.ai/V7/PLAN_V72_HUMA_OPENAPI.md`, section « CLÔTURE » ajoutée.
+
+**Décision technique H7 — le contrat généré a besoin d'un verrou CÔTÉ FRONT, pas seulement de
+tsc.** Constat qui motive tout : depuis H6 le contrat est dérivé du code Go, donc une
+régression de génération est SILENCIEUSE pour TypeScript — un enum qui redevient `string` est
+un type plus permissif (aucune erreur), un schéma retiré rend `components['schemas']['X']`
+égal à `unknown` (les appelants qui ne lisent pas le champ compilent toujours). D'où deux
+garde-rails complémentaires. (a) **Surface figée** : analyseur STATIQUE
+`apps/web/src/lib/api/contractSurface.ts` (commentaires retirés, littéraux de chaîne
+neutralisés — les gabarits `{player_slug}` et les exemples JSON en commentaire fausseraient le
+comptage d'accolades —, profondeur suivie ligne à ligne) + `contract-surface.guard.test.ts`
+comparant à `contract-surface.snapshot.json` : **176 chemins / 522 schémas / 182 opérations /
+5 réponses partagées / 1 paramètre partagé / 30 enums**. Sémantique asymétrique ASSUMÉE :
+l'AJOUT est toléré (le contrat doit pouvoir croître sans friction), la DISPARITION est rouge ;
+mise à jour explicite par `UPDATE_CONTRACT_SURFACE=1`. (b) **`response-types.guard.test.ts`
+durci** : ses 2 assertions étaient NÉGATIVES (interdire un nouveau type de réponse manuel) ;
+ajout de 2 assertions POSITIVES — RÉSOLUTION (les 274 citations `components['schemas'][...]`
+de `src/` désignent un schéma réellement émis) et TYPES CRITIQUES (20 réponses de page doivent
+rester des ré-exports du contrat, verrou contre la réouverture de la classe de bugs A2).
+Extraction CENTRALISÉE (CLAUDE.md n°6) : `contractSurface.ts` sert les deux tests ; le ratchet
+`tools/lint-contract-ratchet.mjs` garde la sienne (script Node hors `apps/web`, frontière
+ESM/TS) — 2 implémentations, pas 3, et les deux comptent 522 schémas indépendamment.
+
+**Morsure PROUVÉE, pas supposée** (les deux garde-rails testés sur une copie mutée de
+`generated.ts`, restaurée md5 à l'identique) : schéma retiré → rouge ; enum dégradé en `string`
+→ rouge ; membre `"desc"` retiré d'un enum → rouge ; schéma renommé → les 2 nouvelles
+assertions de `response-types.guard` rouges.
+
+**Lot Group/GroupMember (H7).** Le schéma dérivé était MOINS strict que le type manuel qu'il
+devait remplacer (`role: string`, `members` nullable) — d'où la baseline datée du 25/07. Corrigé
+à la SOURCE : `domain/group.go` porte `enum:"owner,member"` sur `Role` (type de SORTIE
+uniquement — les corps entrants sont décodés à la main en `RawBody`, donc zéro risque de 422
+Huma) et `nullable:"false"` sur `Members`. Le tag ne suffit pas : Go sérialise une slice nil en
+`null`. L'invariant runtime est tenu à la source, en UN seul point — `groupstore.load()`
+normalise nil → `[]` (couvre Get/List/ListForXUID ; `Create` initialisait déjà) — avec test
+`TestMembersNeverNilOnRead` (fixture legacy `"members":null` → `"members":[]` sérialisé).
+`types.ts` re-shimé : `Group`/`GroupMember` = ré-exports, et `GroupRole = GroupMember['role']`
+DÉRIVÉE (plus aucun littéral `'owner' | 'member'` en dur côté front) ; les deux noms retirés de
+`BASELINE_COLLISIONS`.
+
+**Résultats observés.** Régénération d'une propreté chirurgicale : `openapi.yaml` = **4 lignes
+de diff** (`members.type: array` au lieu de `[array,"null"]`, `role.enum: [owner, member]`),
+`generated.ts` = 3 lignes. Diff sémantique H8 vs baseline H0 (`cmd/openapi-diff`, rapport
+archivé `.ai/V7/openapi_diff_final_v72.txt`) : **0 perte hors inventaire, PROUVÉ** — l'ensemble
+des lignes retirées vs H0 est strictement IDENTIQUE entre l'openapi.yaml de H6 (597d5cc0c) et
+celui d'après H7, et l'ensemble des lignes ajoutées ne diffère que sur les 2 enrichissements
+Group. Le comptage brut (+1 384 / −840 lignes) est plus bruyant que le comptage de FAITS de H6
+(597/69/16) parce qu'un schéma inline devenu `$ref` compte 1 retrait + 1 ajout : l'inventaire
+des 16 pertes de H6 reste la référence, reproduit dans le rapport archivé. Correction d'un
+chiffre du plan au passage : les « 530 noms de schéma » de H6 étaient un décompte d'une autre
+base — les deux extracteurs indépendants disent **522**.
+
+**CI : rien à ajouter, vérifié sur pièces.** Le golden `TestOpenAPIYAMLIsUpToDate`
+(`//go:build cgo`) tourne DÉJÀ dans le job `go-coverage` (`go test -tags=integration -p 1
+./...`, `CGO_ENABLED: "1"`) ; `go-build` (CGO=0, domain/analysis/contracttest) et
+`go-contract-test` (`-run TestContract`) ne le couvrent pas, mais un verrou suffit. Workflow
+NON modifié (consigne). Réserve consignée au plan : ce verrou vit dans le job le plus lourd et
+le plus sujet aux flakes DuckDB — si `go-coverage` était allégé, y déplacer `make openapi-check`.
+
+**Restes statués.** Bonus post-bascule `[!]` (« hors périmètre v7.2 ») — dont la validation
+automatique des inputs, qui n'est PAS neutre : elle imposerait de convertir les 16 corps
+`RawBody` en `Body` typé, remplaçant le 400 `{invalid_body}` historique par le 422 de Huma
+(rupture de contrat front, décision produit). Découvertes reportées au `.ai/BACKLOG.md`
+(section « [archi/contrat] Reliquats du chantier V72-01 ») : `DefaultStatus` sur 11 handlers,
+**38 routes Go absentes du contrat publié** (29 Prestige + 3 catalog + 3 diag auto-sync +
+3 assets_metadata — le document est rendu depuis le routeur de DÉMO, qui ne les monte pas),
+bonus Huma, sémantiques non exprimables en tag. Les 6 renommages de paramètre et la divergence
+watcher sont RÉSOLUS par la régénération (le code fait foi) — rien à reporter.
+
+**Gates** (tous exécutés dans la session) : `gofmt -l .` vide ; `go build ./...` 0 ;
+`go vet ./...` 0 ; `go test ./...` 0 (aucun FAIL) ; `go test -tags=integration -p 1
+./internal/api/...` ok ; `make go-api-lint` **0 issues** ; `make openapi-check` à jour ;
+`npm run typecheck` 0 erreur ; `npx vitest run` **365 fichiers / 3 103 tests, 14 skippés,
+0 échec** ; `node tools/lint-contract-ratchet.mjs` clean (49 collisions, 112 interfaces,
+522 schémas).
+
+**Conclusion / prochaine étape.** V72-01 est CLOS : `openapi.yaml` est généré, fidèle, gaté
+byte-à-byte côté Go ET verrouillé en surface côté front. Prochaine étape = revue + commit par
+le superviseur (aucun commit posé). Le seul reliquat à valeur immédiate est le lot « 38 routes
+absentes du contrat publié » : elles portent déjà leur `humacore.Op`, il ne manque que leur
+montage dans le harnais de rendu.
+
+## [2026-07-25] V72-01 / H6 — api/openapi.yaml devient GÉNÉRÉ (Huma + fragment manuel, golden)
+
+**Statut** : Complété. Pas de commit (superviseur applique les gates). Plan
+`.ai/V7/PLAN_V72_HUMA_OPENAPI.md` (H0-H5 clos, H6 statué `[x]`).
+
+**Décision technique.** Le contrat n'est plus écrit à la main : `api/openapi.yaml` est la FUSION du
+document OpenAPI partagé de Huma (posé en H1-H5) et d'un fragment manuel VERSIONNÉ
+(`api/openapi_manual_fragment.yaml`, 3 090 L). Nouveau paquet `internal/api/openapigen` :
+`BuildDemoRouter` (LE harnais d'assemblage du routeur de démo — `contract_helpers_test.go` délègue
+désormais, donc le contrat publié et les tests de contrat décrivent la MÊME surface) +
+`Render` + `Generate` (un seul chemin de code pour la commande et pour le golden). Rendu
+DÉTERMINISTE : JSON Huma → arbre (json.Number → int64, sinon `1e+06`) → `yaml.Node` ordonné
+(openapi/info/servers/tags/paths/components, clés internes triées), indent 2, bandeau
+« FICHIER GÉNÉRÉ ». Trois passes avant fusion : chemins absolus → relatifs au server `/api/v1`
+(collision = erreur), retrait des WRAPPERS OPAQUES par-route (requestBody `application/octet-stream`
+d'un `RawBody []byte` supprimé ; schéma de réponse `{type:string,contentEncoding:base64}` d'un
+`Body []byte` réduit à `{}`) — les schémas nommés/référencés ne sont JAMAIS touchés. Précédence du
+fragment = JSON Merge Patch : objets fusionnés clé à clé, `null` SUPPRIME la clé dérivée, listes
+`parameters` fusionnées par `(name,in)`. Commande : `make openapi-gen` / `make openapi-check`
+(`cmd/openapi-gen`, flags `-out/-fragment/-check/-v`).
+
+**Fragment (ce que Huma ne dérive pas)** : 9 chemins chi-brut (assets images, upload/service média,
+export CSV, + la route documentée non implémentée), 15 request bodies RawBody, 187 réponses d'erreur,
+154 descriptions de réponse, 33 descriptions d'opération, enrichissements de paramètres
+(description/required/enum/default), 5 exemples d'erreur `components.responses`,
+`components.parameters`, 55 schémas (39 sans type Go, 5 descriptions racine, 11 sémantiques
+TRANSFÉRÉES des schémas inline du yaml vers le schéma nommé dérivé), info/servers/tags (dont 12 tags
+utilisés mais jamais déclarés). Deux usages du `null` de suppression : 11 statuts 201/202 posés par un
+champ `Status` que Huma documente à 200, et 3 `$ref` de pointeur-vers-struct rendus nullables par
+`anyOf` (`BootstrapResponse.current_player` notamment — sinon le front perdait `| null`).
+
+**Garde-rails.** Nouveau `openapi_golden_test.go` : `TestOpenAPIYAMLIsUpToDate` (régénère en mémoire
+dans un autre répertoire temporaire → prouve aussi le déterminisme, diff byte-à-byte, message
+« relancer make openapi-gen ») + `TestManualFragmentPathsSurviveGeneration` (les 9 chemins chi-brut
+survivent). `openapi_schema_drift_test.go` SUPPRIMÉ (sous génération un schéma dérivé ne peut plus
+manquer) avec ses helpers et le hook `humacore.OnAPICreated` devenu mort. H3 Partie B recâblée :
+l'allowlist statique de 5 entrées cède la place au FRAGMENT (perte légitime ⟺ déclarée au fragment),
+avec anti-caducité inversée — elle a immédiatement attrapé une description redondante que j'avais
+mise au fragment alors que le tag Go la produit déjà. `openapi_fastapi_reference.yaml` archivé
+(`docs/archive/`).
+
+**Résultats observés.** Diff sémantique vs baseline H0 (comparaison de FAITS, `$ref` résolus, pas de
+lignes) : 5 755 faits avant / 6 336 après → **597 ajouts, 69 modifications, 16 pertes, toutes
+inventoriées** : 5 descriptions de réponse 200 sur des ops qui répondent 204 (aucun corps : le doc
+fait foi), 7 paramètres de chemin au nom périmé ({user_id}×3, {invite_id}, {title_slug}×3 —
+Découvertes H2, le code fait foi), 4 champs de schéma sans équivalent Go (yaml périmé). Les
+modifications : 19 inline→`$ref` nommé (25/27 nœuds retrouvés via la ref ; les 2 restants sont deux
+des 4 champs périmés), 7 types de paramètre integer→string (params dérivés des input structs,
+inventaire item 6), 8 metadata H2 (summary/tags/operationId), 32 schémas (required conformes au Go,
+descriptions H3 reformulées, `$ref` enrichis). Tailles : yaml 18 066 → 20 962 L ;
+generated.ts 14 204 → 15 839 L avec **530 noms de schéma INCHANGÉS** (0 ajout, 0 retrait → aucun
+re-export `types.ts` à repointer, contrairement à ce que H7 anticipait). Retombées front : 6
+corrections de source (gardes `capabilities ?? []`, `available_players ?? []`, `holders` nullable, et
+surtout `status.error?.message|code` → `error_detail`/`error_code` — le front lisait un champ qui
+N'EXISTE PAS côté Go, hérité d'un yaml périmé) + 15 fixtures de test complétées des 4 champs
+`TitleSummary` désormais requis.
+
+**Gates** : gofmt -l vide ; `go build ./...` 0 ; `go vet ./...` 0 ; `go test ./internal/api/...` ok ;
+`go test ./...` exit 0 ; `make go-api-lint` 0 issue ; `go run ./cmd/openapi-gen -check` à jour ;
+`make generate-types` ok ; `npm run typecheck` 0 erreur ; `node tools/lint-contract-ratchet.mjs`
+clean ; `npx vitest run src/lib` 78 fichiers / 826 tests ; suite vitest complète 364 / 3 093.
+
+**Conclusion / prochaine étape.** H7 : garde sémantique de `generated.ts` (snapshot des noms exportés
++ membres d'enums), `response-types.guard.test.ts` rendu assertif, lot Group/GroupMember (enum Role,
+non-nullité `members`, retrait de `BASELINE_COLLISIONS`) — la régénération des types est déjà faite et
+verte. Découverte notée, NON traitée (hors périmètre H6) : Huma documente `DefaultStatus=200` pour
+11 handlers qui posent 201/202 via leur champ `Status` ; corrigé DANS le fragment, la correction propre
+(poser `DefaultStatus` côté Go) réduirait le fragment d'autant. Limite connue : le document est
+généré depuis le routeur de DÉMO — les 29 routes Prestige et les 3 routes catalog non montées en démo
+restent hors contrat (statu quo, elles n'étaient pas documentées non plus avant).
+
+## [2026-07-25] V72-34 — signal de placement DÉDIÉ à la chaîne de performance (Perf/ΔPerf + tuiles Accueil)
+
+**Statut** : Complété. Pas de commit (superviseur applique les gates). Agents parallèles actifs
+(medals, explorer live/prestige) : leurs fichiers NON touchés.
+
+**Problème.** La Perf (perf_score/delta_perf) exige `MinMatchesPerChainForRelative`=10 matchs dans la
+CHAÎNE perf du match (invariant de conception, non modifié). Le badge « En placement » V72-32 lisait
+`placement_done/total` posés par `applyLUSRPlacements`, qui SAUTE les matchs ayant déjà un LUSR
+(:140-142) — correct pour la colonne Note, mais laissait un trou : **LUSR établi + chaîne perf < 10 →
+Perf/ΔPerf affichaient un tiret nu**. V72-32 avait diagnostiqué à tort un retard de sync ; la cause est
+structurelle et se CALCULE. Cas réel vérifié (JGtm) : 10 matchs BTB dont 2 DNF → 8 perf-éligibles.
+
+**Décision.** Champs dédiés `perf_placement_done/total` (nullable, omitempty), INDÉPENDANTS de l'état
+LUSR/CSR. Mécanique (`computePerfPlacements`, une seule implémentation partagée Explorer/Sessions/
+Accueil) : chaîne via `GetPerformanceChain` (title-aware) ; éligibilité = miroir du batch perf
+(`outcome != DNF` + non exclus, cf. WHERE de `loadHistoryForPerf`) ; `done` = TAILLE de la chaîne
+éligible (identique pour tous ses matchs — progression de calibration, PAS un rang par-match),
+`total` = seuil. Renseigné UNIQUEMENT si `1 ≤ taille ≤ seuil` ET match sans perf_score : une chaîne
+> seuil est calibrée, un trou y est un retard de sync → aucun badge (on ne masque pas un défaut de
+fraîcheur, règle « pas de faux état »).
+
+**Surfaces.** Perf/ΔPerf lisent le nouveau signal (`hasPerfPlacementSignal` + `PlacementPendingCell
+variant="perf"`), la colonne Note garde `placement_*` inchangé ; Sessions/Timeseries/Carrière suivent
+par mutualisation. **Tuiles Accueil** (extension) : `canonical.PlayerMatchEnrichment.PairName` surfacé
+(MatchSummary ne porte que la catégorie PairMode, insuffisante pour classer btb/chaos) → MatchCard
+affiche « En placement (8/10) » (clé i18n EXISTANTE `common.home.rank_placement_progress`) au lieu du
+bloc perf vide. Verdict « 0 littéral » : AUCUN zéro fabriqué côté back (perf NULL en DB, champ omis du
+JSON, `performance_score_relative === 0` count = 0) — les agrégats home (avgPlayerPerf,
+ComputeSquadPerformanceScore) renvoient déjà nil sans score.
+
+**Validation réelle** (serveur local rebuild + session JGtm) : les 3 BTB du 24/07 renvoient
+`perf_placement 8/10` avec `perf_score: null`, `rating_type: "LUSR"`, `skill_tier_label: "Or II"` et
+`placement_done: null` — Note intacte. 3 matchs marqués sur 1087 (aucune sur-application), 0 incohérence
+(jamais perf_score ET perf_placement). Idem sur les tuiles Accueil.
+
+**Gates** : gofmt -l vide ; `go build ./...` 0 ; `go vet ./...` 0 ; `go test ./...` green ;
+`-tags=integration -p 1 ./internal/service/... ./internal/api/...` 8 pkg ok (dont drift OpenAPI) ;
+`make go-api-lint` 0 issue ; `npm run typecheck` (cache purgé) OK sur mes fichiers ; vitest 61 fichiers /
+436 tests verts ; `lint-contract-ratchet` clean. **Réserve** : 8 erreurs tsc résiduelles dans
+`ExplorerTargetProfileCard.test.tsx` (fixtures sans `live_status`) — appartiennent à l'agent explorer
+live ; `live_status` absent de HEAD, matérialisé dans generated.ts par mon `make generate-types`
+(obligatoire pour mes 2 champs). À corriger par cet agent, hors de mon périmètre.
+## [2026-07-25] V72-01 (H4+H5) — modèle d'erreur unifié Huma + migration groups.go vers Huma
+
+**Statut** : Complété (H4 clos AVANT H5, contrat plan-execution). Pas de commit (superviseur applique
+les gates). Chantier PLAN_V72_HUMA_OPENAPI.md. Un agent parallèle (V72-31) travaille simultanément ;
+ses fichiers (halo_5/medal_category*, scheduler/auto_sync_notify*) portent des issues lint résiduelles
+hors de mon périmètre — NON corrigées (interférence notée, un replay effectué).
+
+**H4 — modèle d'erreur unifié.** Deux schémas d'erreur coexistaient : `ApiErrorSchema` (riche, manuel,
+7 `$ref`) et `ApiError` (auto-émis par Huma depuis `humacore.apiError`, pauvre, 0 `$ref`). Décision :
+UN seul type Go porté par `humacore.apiError`, enrichi de `Details any` + `FieldErrors []FieldError`
+(nouveau type exporté `FieldError{Field,Message,Code}`), les deux `omitempty` → **contrat runtime
+{code,message,retryable} INCHANGÉ** (nil absent du corps ; `TestNewError_*` verts). Tags Huma H3-style
+(code doc+example `player_not_found`, message/retryable/details/field_errors doc). Compat front VÉRIFIÉE :
+`apps/web/src/lib/api/client.ts` lit déjà `code/message/retryable/details/field_errors` (interfaces
+ApiError+FieldError présentes) → aucune casse. YAML convergé (édition ciblée) : 7 `$ref` → `ApiError`
+réécrit fidèle au riche (dérivé du type Go via emit Huma) ; `FieldError` ajouté (MISSING résorbé) ;
+`ApiErrorSchema`/`FieldErrorSchema` supprimés (0 réf orpheline). Semantics H3 Partie B : `ApiError`
+désormais commun doc∩yaml, parité code/message/details/field_errors vérifiée, allowlist inchangée.
+5 exemples d'erreur = response-level (components.responses) NON exprimables en tag → fragment H6.
+
+**H5 — migration groups.go.** Les 7 routes (writeJSON manuel → chi brut) passent en Huma typé :
+structs input/output, `RawBody` + décodage maison (préserve 400 {invalid_body}), erreurs via le modèle
+H4, `Mount(r, apiOpt)` sur le document PARTAGÉ (groupe RequireAuth, docPrefix /api/v1), `humacore.Op`
+en parité operationId/tags avec le yaml. Contrat JSON runtime IDENTIQUE : 5 tests groups verts, ZÉRO
+changement d'assertion (harness passé à `h.Mount(r)` + URLs `/groups` sans trailing-slash). Huma dérive
+`Group`+`GroupMember` (ajoutés au yaml). Fidélité H1 : exclusion chi-brut `/api/v1/groups` retirée → les
+7 routes comptent comme Huma (173 ops/167 paths). Metadata H2 : 173 ops, parité 163, 0 échec.
+
+**Gates (H4 et H5)** : gofmt -l vide ; `go build ./...` 0 ; `go vet ./...` 0 ; `go test ./internal/api/...`
+ok (contract/fidélité/metadata/drift/semantics) ; `go test ./...` green ; `make go-api-lint` 0 issue sur
+mes fichiers. **Reste H6** (pipeline génération + golden) : ne démarre qu'après H2-H5 clos — c'est le cas.
+
+## [2026-07-25] V72-31 — alertes Discord : anti-rafale disque (état persistant) + notif release durcie + notif sync auto
+
+**Statut** : Complété (3 volets). Pas de commit (superviseur applique les gates). Édition sans
+compilation (agent parallèle Huma détient l'exclusivité `go`). VPS injoignable depuis le sandbox
+(ssh timeout) → diagnostic par lecture repo, commandes VPS read-only listées au superviseur.
+
+**Volet 1 — rafale d'alertes disque = état process-local.** Émetteur RÉEL = `wire.diskWatchTick`
+→ `notify.NotifyDiskAlert` (SEUL chemin Discord disque ; deploy.sh/restic n'envoient rien à Discord).
+`ops.ShouldNotifyDisk` avait déjà l'anti-spam (aggravation immédiate, rappel 24 h, rétablissement vert
+débouncé 2 ticks) mais l'état `DiskWatchState` était PROCESS-LOCAL (« repart de zéro au boot ») → chaque
+restart du conteneur en warn/critical (deploy à chaque push main, crash-loop disque plein) re-notifiait
+via le chemin « boot ». Fix : PERSISTER l'état hors DuckDB (JSON atomique `adminstate.FileStore`,
+nouveau `PathResolver.DiskWatchStatePath()` = `data/global/admin_state/disk_watch_state.json`, survit
+au recreate car data/ = bind mount). Tags JSON sur `DiskWatchState` ; `RunDiskWatchLoop` load au boot +
+save après chaque tick (uniquement si l'état change). L'anti-spam ET la garantie « rétablissement notifié
+une seule fois » survivent désormais aux restarts. Rappel 24 h conservé (1/jour ≠ rafale) — signalé.
+
+**Volet 2 — releases v7.0.0/v7.1.0 sans notif = AppVersion="dev".** Chronologie OK : câblage notif
+release `cf1d3c15c` (2026-07-19) PRÉCÈDE les releases (07-23/07-24) → PAS la cause. Cause exacte :
+`wire.EmitAppReleaseForAllPlayers` retourne tôt si `AppVersion=="dev"` → NI Discord (`NotifyNewVersion`)
+NI in-app. Or prod tournait en `dev` (env `LEVELUP_APP_VERSION` perdu au recreate demo-regen). DÉJÀ
+corrigé côté env par `e6093a764` (persist .env, POST v7.1.0). Durcissement AJOUTÉ (défense en profondeur) :
+BAKER la version dans le binaire via build-arg — `docker-compose.yml` service levelup `build.args.VERSION=${LEVELUP_APP_VERSION:-dev}` (Dockerfile a déjà `ARG VERSION` → ldflags `-X main.version`), et
+`scripts/deploy.sh` calcule/exporte `LEVELUP_APP_VERSION` AVANT le build (bloc déplacé 2d→2c, build 2c→2d).
+Même si l'env runtime est reperdu, `main.go` fallback `cfg.AppVersion=version` (baké) reste correct.
+Action prod à VÉRIFIER (superviseur, non modifiable ici) : `discord_notifications_enabled:true` + webhook
+présents (le sont, sinon zéro alerte disque) ; `last_notified_version` déjà seedé à un vrai semver depuis
+un boot post-fix → prochaine bascule mineure notifiera (le premier boot post-fix seed en silence, par design).
+
+**Volet 3 — aucune notif sync de nouveaux matchs depuis le VPS.** Piste user CONFIRMÉE : `match_synced`
+(a) n'est émis QUE par le handler HTTP, jamais par l'auto-sync scheduler, et (b) hors
+`DefaultForwardedCategories` (relais coach only, verrou `TestDefaultForwardedCategories_MirrorsCoach`,
+gaté par `discord_notify_coach`). Voie propre choisie : honorer le toggle EXISTANT `discord_notify_sync`
+(défaut ON, déjà exposé UI) en câblant `notify.NotifySync` dans le cycle auto-sync — jamais appelé hors
+CLI. Nouveau `scheduler/auto_sync_notify.go` : `notifyDiscordSyncCycle` (gaté sur trigger périodique
+« tick » seul, no-op si webhook absent/toggle off, rien si 0 nouveau match) + `mergeCycleNewMatchPlayers`
+(pur, testé) fusionne joueurs moteur V2 (`RunOnceResult.newMatchPlayers` peuplé depuis
+`CycleResult.PerPlayer`) + live/filet (`Snapshot().Players`, filtrés `AttemptedAt>=cycleStart`),
+dédup par gamertag. Appelé aux 2 points de sortie de `RunOnceTrigger`. Garde-rail coach INTACT (aucun
+changement de défaut). Aucune string i18n nouvelle (réutilise `discord_completed_in`/`discord_matches_synced`
+FR/EN inline dans discord.go).
+
+**Tests Go écrits (NON exécutés — à jouer par le superviseur)** : `ops` —
+`TestDiskWatchState_JSONRoundTrip`, `TestShouldNotifyDisk_PersistedStateKillsRestartBurst` ; `scheduler` —
+`TestMergeCycleNewMatchPlayers` (4 sous-cas). Gates à passer : `gofmt -l`, `go build ./...`, `go vet ./...`,
+`go test ./internal/ops/... ./internal/scheduler/... ./internal/api/wire/...`, `make go-api-lint`.
+Fichiers : `internal/domain/title/registry.go` (+DiskWatchStatePath), `internal/ops/disk_watch.go` (tags JSON),
+`internal/api/wire/registry_monitoring_diskwatch.go` (persistance), `internal/scheduler/{auto_sync.go,auto_sync_run.go,auto_sync_notify.go}`,
+`docker-compose.yml`, `scripts/deploy.sh`.
+
+## [2026-07-25] Lot v7.2 — citations objective_stat + caches keyés par titre + recherche gamertag live non bloquante
+
+**Statut** : Complété (3 volets A/B/C). Pas de commit (superviseur). Branche `feat/v7.2-notion-batch`.
+NE PAS toucher `ExplorerBriefingStrip.tsx` ni `explorer.toml` (agent parallèle + modif user non commitée) — respecté.
+
+**Volet A — plomberie citations objective_stat.** Nouveau type de citation `objective_stat`
+(`domain.CitationMappingTypeObjectiveStat` + `mappingTypeObjectiveStat` seed) ajouté à la branche
+stat/pve_stat/weapon_stat de `dispatchFull`. Nouveau loader `sync.loadObjectiveStats` calqué sur
+`loadPveStats` : lit `match_objective_stats_latest` (MÊME sharedDB, ADR 0026 vue `_latest`), mappe
+les 23 colonnes CTF/Zones/Oddball → clés Stats (CAST DOUBLE, *_seconds tronqués à l'entier par le
+moteur), best-effort intégral (map seule, jamais d'erreur : Slayer/vue absente → nil + Debug),
+fusionné dans `buildCitationContext`. **Bascule des 4 citations** award→objective_stat :
+charge→zone_captures, got_you→flag_returns, stakeholder→zone_secures,
+flag_carrier_hunter→flag_carriers_killed (norms extraits en constantes `citationNorm*` pour
+lever goconst au garde-rail). Tests : moteur (progresse + colonne absente=0), loader (mapping +
+dégradation), intégration `buildCitationContext`, garde-rail seed. **À REJOUER (non exécuté ici,
+long)** : `levelup seed citation-mappings` puis `levelup backfill --all --citations-recompute-all`
+en LOCAL et en PROD — la progression des 4 citations est recalculée depuis l'historique
+(match_objective_stats), donc pas de perte mais valeurs révisées (source awards→colonnes).
+
+**Volet B — caches serveur keyés par titre (fuite cross-titre V72-29).**
+`HomeMatchesCache.Get/Set/Invalidate` : clé (xuid) → (xuid, titleSlug) via `cacheKey` NUL
+(call-sites home_service `s.titleSlug`, post_sync `slug`) ; fichier réécrit propre (mojibake purgé).
+`CachedRecentMatchesProvider` : clé (xuid|limit) → (titleSlug|xuid|limit), slug lu du ctx.
+`remote_stats_cache` seasonEntries : cache SINGLETON partagé inter-titres + seasonID = chemin CMS
+brut → jugé AMBIGU, slug ajouté à la clé (aligné sur FetchServiceRecord, commentaire daté). Tests
+d'isolation par titre pour les 3 + gate `go test ./internal/service/` vert (inclut
+TestCareerLiveCache_*_DistinctTitles).
+
+**Volet C — suggestions gamertag : repli live NON bloquant (V72-24).** Param `live` sur
+l'endpoint (`gamertagSearchHumaInput.Live`, openapi.yaml manuel) → `GamertagHandler.Query(ctx,q,live)`
+→ `ctxkeys.WithGamertagLiveSearch` → gate dans `LiveFallbackGamertagSearch.Search` (défaut live=0 :
+local seul, ~200 ms ; live=1 : résolution Xbox 2-3 s). **Décision : TOUS les appelants en live=0 par
+défaut** (typeahead ET combobox setup/admin) + affordance explicite « Rechercher sur Xbox » — cohérent,
+aucune latence surprise nulle part, un seul point d'armement. Front : hook `useGamertagSuggestions`
+gagne `liveResults/isLiveLoading/liveAttempted/triggerLiveSearch` (2e query `&live=1` désarmée,
+réinit par-query) ; bouton « Rechercher sur Xbox » dans `GamertagSearchInput` (Explorer) ET
+`GamertagCombobox` (générique). i18n dans **common.toml** (`common.gamertag.search_on_xbox` /
+`searching_xbox` / `xbox_badge`, FR+EN) — PAS explorer.toml. Tests : handler (spy : live=0 ne touche
+jamais le resolver, live=1 oui), décorateur (flag), hook + composant front (immédiat local + affordance).
+
+**Résultats — GATES TOUS VERTS** : gofmt -l vide ; `go build ./...` ; `go vet ./...` ;
+`go test ./...` ; `-tags=integration -p 1 ./internal/service/... ./internal/api/... ./internal/sync/...` ;
+`make go-api-lint` 0 issue ; `node build_i18n_manifests` (20 manifests) ; `make generate-types` ;
+`npm run typecheck` (tsc -b) ; `npx vitest run` (26 tests des 4 fichiers touchés).
+
+**Prochaine étape** : rejeu backfill citations (local+prod) pour matérialiser la bascule des 4
+citations d'objectif. Décisions produit à valider au merge (superviseur).
+
+## [2026-07-25] Explorer live repair — Lot A1 : pool-first pour les lectures publiques de tiers
+
+**Statut** : Complété + VALIDÉ end-to-end (Lot A1 de `.ai/V7.1/PLAN_EXPLORER_LIVE_REPAIR_2026-07.md`).
+Lots A2 (saisons) et A3 (dégradation muette) NON TRAITÉS (statut `[!]` justifié dans le plan) ;
+A0 = action utilisateur (SSO). Pas de commit (superviseur). Branche `feat/v7.2-notion-batch`.
+
+**Challenge user** : « le fetch d'infos Explorer n'utilise pas du tout le pool de tokens —
+avec Madina97294 (RT expiré) aucune donnée live, alors que le pool a 4-6 tokens valides ».
+
+**Décision technique principale** : nouveau `enrichWithHaloTokensPublicRead(ctx, pdb)`
+(registry_auth.go) réservé au player-query Explorer (lectures PUBLIQUES de tiers, xuid cible
+explicite). Ordre : token de session frais strict → profil sélectionné
+(`ResolveFreshPlayerTokens`) → **token SAIN du pool** (`Acquire(PolicyAnyPublic)` via
+adaptateur `poolPublicReadAdapter` → interface `pooledTokenSource`, nouveau
+`registry_pool_source.go`). Champ optionnel `publicReadTokenSrc` du ServiceRegistry +
+`WithTokenPool(autoSyncPool)` câblé au boot (cmd/server/main.go). WARN `halo_auth: fallback
+pool` (clés profile_xuid/pool_gamertag, jamais le token) + compteurs expvar
+`explorer_live_token_source_{session,profile,pool,none}`. ADR 0023 respecté : aucune
+re-capture, le pool porte une lecture PUBLIQUE avec un RT vivant, jamais une donnée privée
+(SeasonPass/Home restent sur `enrichWithHaloTokens` — garde-rail `TestPublicReadPerimeter_Guard`
++ exemption ratchet ExplorerCtxWithAuth retirée).
+
+**Résultats observés** : gates VERTS — gofmt -l vide ; `go build ./...` ; `go vet ./...` ;
+`go test ./...` ; `-tags=integration -p 1 ./internal/api/wire ./internal/api` ;
+`make go-api-lint` 0 issue (après renommage `publicReadTokenSrc` ≤ 20 c. pour ne pas
+re-flag lll d'alignement gofmt sur 4 commentaires pré-existants). TEST RÉEL via l'API
+locale (serveur reconstruit lancé avec LEVELUP_AUTH_MODE=none pour ouvrir la garde
+d'ownership, fetchs live RÉELS ; air arrêté puis relancé après) :
+- **Madina97294 (RT mort) → Nilton410** : `auth_available:true`, carrière/identité/top
+  médailles (20)/saisons (14) NON NULLES, rang live « Héros » — IDENTIQUE à JGtm (RT sain).
+- Log `halo_auth: fallback pool profile_xuid=2533274858283686 pool_gamertag=JGtm` (1 fois) ;
+  expvar `explorer_live_token_source_pool:1` (Madina) + `_profile:1` (JGtm, contrôle).
+Le pool ne contient que des tokens sains (boot skip des slots RT mort ; size=7 local).
+
+**Investigation annexe — latence des suggestions de gamartags** (diagnostiquée + mesurée,
+NON corrigée) : cause = fallback live SYNCHRONE (`LiveFallbackGamertagSearch`, timeout 6 s)
+sur toute query plausible sans match exact local. Mesures : `Mad`/`abc` = 2,0–2,9 s (1er hit),
+`Madina97294` (match exact) = 0,22 s, 2e `Mad` (neg-cache) = 0,21 s. La SQL locale
+(`Q11GamertagSearch`) n'est PAS le goulot (~200 ms). Correctif recommandé (non appliqué,
+UX/comportement hors périmètre + risque collision front) : fallback live non bloquant pour
+le typeahead (`?live=0` défaut, `live=1` sur intention explicite) ou résolution async.
+
+**Conclusion / prochaine étape** : Lot A1 livrable seul (fix le symptôme user). A2/A3 =
+chantiers dédiés (A2 : sourcing 14 saisons + gate humain ; A3 : DTO live_status + badges
+front). Latence suggestions : décision produit à trancher (opt-in live).
+
+## [2026-07-25] V72-01 — H3 : instrumentation sémantique des DTOs (tags Huma)
+
+**Statut** : Complété (H3 du PLAN_V72_HUMA_OPENAPI.md ; H4-H8 restent). Pas de commit
+(superviseur). Branche `feat/v7.2-notion-batch`. Comportement HTTP inchangé (tags de doc
+uniquement ; enums posés sur des OUTPUTS ou inputs RawBody non validés → 0 risque 422).
+
+**Objectif** : porter la sémantique de schéma.champ du yaml manuel en tags struct Go
+(`doc`/`enum`/`default`/`example`) pour que le doc généré par Huma (H6) soit au moins aussi
+riche, et produire l'INVENTAIRE FERMÉ des sémantiques non portables.
+
+**Décision technique principale** : le recon annonçait « 402 desc / 21 enum / 30 default /
+6 example ». Mesure sur pièces (script kin-openapi jetable) : ces chiffres sont des
+comptages BRUTS de tout le doc — 175 des 232 `description:` sont des descriptions de
+RÉPONSE/paramètre (niveau opération, PAS schéma.champ, non exprimables en tag de champ) ;
+enum=21/default=30/example=6 confirmés au grep mais majoritairement au niveau param ou sur
+des schémas d'entrée manuels. Le PORTABLE en tag de CHAMP = 31 schémas, dont **11 seulement
+ont un type Go réellement généré par Huma** (outputs / imbriqués dans un output). Constat
+clé : les types « *Request » sont décodés à la main (`RawBody` / `var req domain.X`), donc
+Huma ne génère JAMAIS leur schéma → leur sémantique reste dans le fragment manuel (H6), pas
+en tags. 10 autres schémas yaml n'ont aucun type Go (chi-brut backup, champ scalaire,
+legacy Plotly).
+
+**Posé** : 19 descriptions + 11 enums + 5 defaults sur 10 types Go (bootstrap, auth,
+engagement_score, media_audio_config, settings, admin_monitoring, explorer, career).
+Vérifié empiriquement (registre Huma neuf) que les enums de types string custom
+(`MediaAudioMode`, `AudioTrackRole`) sont INLINE (pas de `$ref`), et que Huma expose les
+descriptions SIBLING sur les champs `$ref` (3.1). 2 descriptions raccourcies pour lll ≤ 220.
+Commentaires Go redondants (enum listés en `//`) remplacés par le tag.
+
+**Non portable → inventaire fermé** (8 catégories dans le plan) : descriptions de schéma
+RACINE (Huma n'a pas de tag type-level ; seul `SchemaTransformer`, hors périmètre tag) ;
+schémas sans type Go / à décodage manuel ; `ApiErrorSchema` + double schéma d'erreur → H4 ;
+dérives de nom yaml↔Go ; defaults triviaux (zéro) ; sémantique de paramètre + enums d'input
+NON posés par prudence (lang/status/provider) → H6 ; 5 exemples de réponse d'erreur → H4 ;
+16 request bodies RawBody → fragment manuel.
+
+**Gate** : nouveau `openapi_schema_semantics_test.go` — Partie A (indépendante du routage :
+régénère chaque type via registre neuf, 35 sémantiques vérifiées / 10 types, couvre les
+types non montés en démo) + Partie B (doc partagé en mémoire vs yaml, schéma.champ commun,
+allowlist = inventaire + compteurs anti-caducité). Résultats : Partie A 35/35 ; Partie B
+28 en parité, 5 pertes = 5 descriptions racine allowlistées, **0 perte hors inventaire**.
+
+**Résultats gates** : gofmt -l vide ; `go build ./...` ok ; `go vet ./...` ok ;
+`go test ./internal/api/...` ok ; `go test ./...` 118 pkg ok / 0 fail ; `make go-api-lint`
+0 issue. Périmètre : 8 fichiers `internal/domain/*` + le test — ZÉRO autre fichier Go, ZÉRO
+`apps/web` (agent front en parallèle, non touché).
+
+**Conclusion / prochaine étape** : H3 clos. H4 (modèle d'erreur unifié `humacore.apiError`
++ fusion `ApiErrorSchema`/`ApiError`) — l'inventaire H3 y aiguille déjà les exemples
+d'erreur et le double schéma.
+
+## [2026-07-25] V72-01 — H2 : Tags/Summary/OperationID stables sur les 204 routes Huma
+
+**Statut** : Complété (H2 du PLAN_V72_HUMA_OPENAPI.md ; H3-H8 restent). Pas de commit
+(superviseur). Branche `feat/v7.2-notion-batch`. Comportement HTTP inchangé.
+
+**Objectif** : chaque opération Huma porte OperationID + Summary + Tags stables et cohérents
+pour que le document généré (H6) reproduise le groupage `tags:` du yaml manuel et préserve
+les operationId dont dépend generated.ts (H7).
+
+**Ergonomie retenue** : helper mince `humacore.Op(opID, summary string, tags ...string)
+func(*huma.Operation)` (nouveau `humacore/operation.go`), passé en DERNIER argument
+variadique de `huma.Get/Post/...`. PAS de conversion vers `huma.Register` : préserve la
+signature des 204 call-sites + l'inférence de type générique, diff minimal. Poser
+OperationID/Summary EXPLICITEMENT désactive la régén auto de huma — y compris le
+`PrefixModifier` du sous-routeur, qui ne re-préfixe l'operationID que s'il est resté celui
+de la convenience (`_convenience_id`) : ma valeur explicite survit, seul le chemin gagne le
+préfixe absolu. Prouvé par le gate H2.
+
+**Application** : mécanique via un générateur go/ast jetable (scratchpad) — repère chaque
+`huma.X(api,"local",handler)`, résout le préfixe absolu (table Mount→préfixe lue dans
+server_apiv1.go, split par fonction pour sync_handler), dérive le yamlpath, insère
+`, humacore.Op(...)` à l'offset du Rparen. Forme multi-ligne + summary concaténé (`"a "+"b"`)
+quand la ligne dépasse 210 char (lll max 220). Source des métadonnées : baseline H0
+(`.ai/V7/openapi_baseline_v72.txt`, dérivée du yaml) pour 159 routes en parité EXACTE ;
+supplément hand-authored pour 45 (cf. plan §Découvertes).
+
+**Réconciliation 204 statique → 166 runtime (doc démo)** : delta 38 = 29 Prestige (bundle
+nil en démo) + 3 catalog (metadata DB indispo) + 3 diag auto-sync (scheduler nil dans le
+test) + 3 assets_metadata (2 branches mutuellement exclusives, 6 call-sites → 3 montées).
+
+**Différences de parité documentées** (le CODE fait foi) : 6 renommages de param
+(admin `{username}`/`{code}`, notifications `{id}` vs yaml `{user_id}`/`{invite_id}`/
+`{notification_id}` — operationId REPRIS du yaml sémantique) ; 1 divergence sémantique
+watcher (yaml `/watcher/auth/{provider}` callback OBSOLÈTE → invented `getWatcherAuthStatus`
+sur la vraie route `/watcher/auth/{attempt_id}`) ; 38 routes Go-only inventées (nouveaux
+tags `prestige`, `titles`) ; tag `jobs` non déclaré dans le bloc `tags:` du yaml — préservé.
+
+**Gate** : nouveau `openapi_operation_metadata_test.go` (charge yaml via kin-openapi, vérifie
+(a) OperationID+Summary+≥1 Tag sur toute op du doc, (b) parité operationId+tags sur chemins
+communs) → 166 ops, metadata OK=166, parité vérifiée 156, échecs 0.
+
+**Verdicts gates** : `gofmt -l` vide · `go build ./...` exit 0 · `go vet ./...` exit 0 ·
+`go test ./internal/api/...` ok · `go test ./...` exit 0 · `make go-api-lint` 0 issues.
+
+**Périmètre** : `humacore/operation.go` (nouveau), `huma_routes.go` (+import), 74 handlers,
+`openapi_operation_metadata_test.go` (nouveau) — ZÉRO autre fichier Go. NB : 3 fichiers
+`apps/web/*` modifiés dans le working tree ne sont PAS de ce chantier (acteur concurrent).
+
+**Prochaine étape** : H3 (instrumenter les DTOs — descriptions/enums/defaults/examples en
+tags struct Go), à ne démarrer qu'après clôture H2.
+
+---
+
+## [2026-07-25] V72-01 — H1 : document OpenAPI PARTAGÉ câblé sur tous les Mount
+
+**Statut** : Complété (H1 du PLAN_V72_HUMA_OPENAPI.md ; H2-H8 restent). Pas de commit
+(superviseur). Branche `feat/v7.2-notion-batch`. Comportement HTTP STRICTEMENT inchangé.
+
+**Objectif** : tous les enregistrements de routes Huma (71 `Mount()` + 3 registres inline)
+pointent vers UN document OpenAPI partagé, avec leur CHEMIN ABSOLU dans le doc.
+
+**Ergonomie retenue** : `humacore.NewAPI` rendu VARIADIC — `NewAPI(r, opts ...MountOption)`.
+Sans option = legacy (doc isolé jeté, byte-identique). Avec `WithSharedDoc(cfg, docPrefix)` =
+document partagé (délègue à `NewAPIWithConfig` si docPrefix=="" sinon `NewSubrouterAPI`).
+Raison : préserve la signature `Mount(r)` des ~130 call-sites de tests handlers (variadic →
+`Mount(r)` compile inchangé). Chaque `Mount` devient `Mount(r, opts ...humacore.MountOption)`
++ `NewAPI(r, opts...)` (74 fichiers, 77 méthodes, sed mécanique). Config partagée construite
+UNE fois dans `NewRouter` (`humacore.NewSharedConfig`), threadée `apiV1Inputs`→`apiV1Deps`,
+injectée par option scopée à côté de chaque `r.Route` (préfixe absolu = `apiV1BasePath` +
+suffixe du r.Route, source unique → jamais de préfixe dupliqué). Accesseur H6 : `NewRouter`
+retourne un 3e résultat `*huma.OpenAPI` (doc fusionné, DocsPath/OpenAPIPath désactivés).
+
+**Cartographie (Mount → point de montage → préfixe de document)** :
+- racine (r nu) : health → `""` (NewAPIWithConfig, chemins déjà absolus /health,/healthz,/readyz)
+- sous /api/v1 (r, r.With(mw), r.Group(mw)) : bootstrap, players, health-home, diag-csr/-prog/
+  -prestige, progression-backfill, field-mappings/capabilities/feature-matrix/catalog, help,
+  session, auth-device-flow, user-auth, settings, setup, jobs, sync-initial/all, backfill,
+  media-feed-version, asset-metadata, changelog+gamertag (inline) → `"/api/v1"`
+- sous-routeurs à préfixe : `/api/v1/admin` (adminHandler + 9 monitoring via
+  MountAdminMonitoringRoutes + titles/diag/appearance/invariants/contention/token-health) ·
+  `/api/v1/_diag/auto-sync` · `/api/v1/watcher` · `/api/v1/profiles/{player_slug}/titles/{slug}` ·
+  `/api/v1/players/{player_slug}` (35 handlers, y compris sous-groupes capability career/
+  achievements/engagement/media/prestige — r.Group ne change pas le préfixe de path)
+
+**Points durs résolus** :
+1. `MarkRequestBodyOptional` (15 handlers) passe le chemin LOCAL ; sous doc partagé le doc porte
+   l'absolu → `NewSubrouterAPI` renvoie un `subrouterAPI` qui expose `DocPrefix()` ; la fonction
+   résout localPath→absolu. Sans ça, corps optionnel silencieusement redevenu REQUIS (400).
+2. Garde-rail anti-collision : sous doc PARTAGÉ, huma écrase silencieusement une collision
+   (méthode, chemin) → invisible dans le doc final. Nouveau hook `OnOperationRegistered(method,
+   absPath)` (nil en prod ; fired par prefixStripAdapter + observingAdapter) ;
+   `TestNoDuplicateRouteRegistration` réécrit dessus (détection par chemin absolu, PLUS fine :
+   couvre aussi deux r.With/r.Group d'un même arbre — l'ancienne LIMITE documentée).
+
+**Nouveau garde-rail FIDÉLITÉ** : `shared_openapi_doc_test.go` —
+`TestSharedOpenAPIDocCoversAllHumaRoutes` construit le vrai routeur + doc, vérifie (1) chaque op
+Huma est dans le doc avec son chemin absolu, (2) chaque op ⟺ chi.Walk (routage réel), (3) pas de
+path fantôme, (4) toute route chi hors doc est une chi-brut connue (sinon = oubli de
+WithSharedDoc). Mesures : 166 ops Huma fusionnées → 162 paths ; chi total 208 (42 chi-brut).
+
+**Exclusions** : aucune. Les 71 Mount + 3 inline câblés (aucun cas de préfixe dynamique/double
+montage). Les ~20 routes chi-brut (assets binaires, média multipart, export CSV, redirects
+OAuth, groups.go, import OpenSpartan, /static, /debug/vars, SPA) restent hors doc, exclues
+explicitement par le test §4.
+
+**Gates (tous verts, séquentiels, CGO)** : `gofmt -l` vide · `go build ./...` · `go vet ./...` ·
+`go test ./internal/api/...` (contract, drift, TestHumaNestedSubrouterProbe, route-collision,
+fidélité) · `go test ./...` complet (exit 0, 118 ok, 0 fail) · `make go-api-lint` (0 issue,
+après multi-ligne du littéral apiV1Inputs qui dépassait lll 220). **H2 = suivant** (tags/summary/
+operationID via huma.Register + huma.Operation sur les 203 routes).
+
+## [2026-07-25] V72-01 — openapi.yaml généré par Huma : H0 (baseline) + H0.5 (spike) EXÉCUTÉS
+
+**Statut** : Complété (H0 + H0.5 du PLAN_V72_HUMA_OPENAPI.md ; H1-H8 restent à faire). Pas de
+commit (superviseur). Branche `feat/v7.2-notion-batch`. Gates exécutés par l'agent — verts.
+
+**H0 — baseline diff sémantique** : outil Go `apps/go-api/cmd/openapi-diff/main.go` (kin-openapi
+v0.144.0, ajouté en dep DIRECTE via `go mod tidy` ; chargement SANS validation stricte car le
+doc déclare 3.1.0 avec un corps de style 3.0). Émet un résumé trié/déterministe : paths +
+méthodes + operationId + summary + tags + params (+enum/default/example inline) + requestBody +
+responses (+desc) + media-type example ; schémas walkés RÉCURSIVEMENT (inline ; `$ref` nommés
+listés 1× en section SCHEMAS, jamais expansés → pas de cycle). Baseline
+`.ai/V7/openapi_baseline_v72.txt` : 176 paths / 182 ops / 520 schémas ; enum=26 default=30
+(match exact du plan) example=124 (les exemples media-type des réponses d'erreur PARTAGÉES sont
+résolus/dupliqués par kin-openapi — informatif pour l'inventaire « fragment manuel » H3).
+DÉTERMINISTE (2 runs byte-identiques), mode `-diff` self-check = exit 0.
+
+**H0.5 — spike (BLOQUANT) : CONCLUANT.** Objectif prouvé = UN DOCUMENT partagé, PAS une instance
+huma unique. Mécanisme (huma v2.38.0, code lu dans le module cache) :
+- PARTAGE DOC : `huma.Config` incorpore `*huma.OpenAPI` ; `api.OpenAPI()` renvoie
+  `config.OpenAPI` (api.go:327). Passer la MÊME `huma.Config` à N `humachi.New` → tous les
+  adaptateurs écrivent dans LE MÊME doc + registre (`huma.NewAPI` initialise Components/Schemas
+  de façon idempotente à travers ce pointeur, api.go:475-489). Registre déduplique par nom de
+  type (DefaultSchemaNamer).
+- PRÉFIXE PARENT (le point dur) : `huma.Register` enregistre le MÊME `op.Path` dans le doc
+  (`oapi.AddOperation`) ET sur le routeur (`chiAdapter.Handle` → `MethodFunc`). Découplage via
+  `huma.NewGroup(api, prefix)` (group.go) : préfixe le chemin DU DOCUMENT + régénère
+  l'operationID (PrefixModifier/ModifyOperation) ; l'adaptateur sous-jacent est un
+  `prefixStripAdapter` qui RETIRE le préfixe avant `MethodFunc` → le sous-routeur chi (déjà monté
+  sous ce préfixe) reçoit le chemin LOCAL → middlewares + path params parents intacts.
+
+**Ajouts humacore (OPT-IN, défaut `NewAPI` INCHANGÉ)** : `NewSharedConfig`, `NewAPIWithConfig`
+(routeur racine / groupe middleware-only), `NewSubrouterAPI(r, cfg, docPrefix)` (sous-routeur à
+préfixe path-param) + types `prefixStripAdapter`/`apiWithAdapter`. Refactor confiné :
+extraction `newConfig`/`installErrorOverride`/`notifyCreated` (comportement identique).
+
+**POC** `internal/api/humacore/shared_doc_poc_test.go` (2 archétypes : GROUPE A sous
+`/api/v1/players/{player_slug}` + middleware témoin via NewSubrouterAPI ; GROUPE B plat
+`/matches/{match_id}` + RequireAuth-like via NewAPIWithConfig) prouve : (a) params parents lus +
+middleware exécuté + gate 401 ; (b) doc fusionné porte les paths ABSOLUS, le chemin local nu est
+ABSENT ; (c) `CommonMeta` enregistré 1× + `$ref` depuis les DTOs des DEUX groupes, operationIDs
+uniques.
+
+**Gates verts** : `go test ./internal/api/humacore/` (POC + existants) ; `go test ./internal/api/`
+(incl. `TestHumaNestedSubrouterProbe` NON modifié, drift, contract, route-collision, 10.8s) ;
+`go build ./...`. Périmètre touché : humacore.go, POC test, cmd/openapi-diff/, go.mod/go.sum,
+plan, cette entrée — RIEN d'autre.
+
+**Recommandation H1** : construire UNE `NewSharedConfig()` au point de composition
+(`server_apiv1.go`), router chaque Mount vers `NewAPIWithConfig` ou `NewSubrouterAPI`. RISQUE
+RÉSIDUEL : le `docPrefix` absolu doit être fourni depuis `server_apiv1.go` (chi n'expose pas le
+préfixe de montage à l'enregistrement) → les `Mount(r)` devront recevoir leur préfixe. Conclusion :
+H1-H8 = GO.
+
+## [2026-07-25] V72-03 — Stats objectifs (CTF/Zones/Oddball) : P3 capability+backfill, P4 UI
+
+**Statut** : Complété (P3 + P4 du PLAN_V72_OBJECTIVE_STATS.md ; P0-P2 déjà clos). Pas de
+commit (superviseur). Gates exécutés par l'agent (droits confirmés) — verdicts ci-dessous.
+
+**Décision capability (2 axes, précédent engagement/weapon_accuracy/expected_stats)** :
+- AXE SERVEUR (`internal/games`, capabilities.toml, `HasCapability`) :
+  `CapMatchObjectiveStats = "match.objective.stats"` — gouverne le chemin de DONNÉES.
+  Ajouté adapter.go + AllCapabilityKeys (19→20) + 2 `fallbackCapabilities` (parité stricte :
+  infinite=supported, halo_5=not_exposed) + 3 capabilities.toml + count h5 skeleton (16→17).
+- AXE TITRE (`internal/domain/title` registry.go + TS `TITLE_CAPABILITIES` + `useCapability`,
+  garde-rail `capabilities_ts_mirror_test`) : `CapObjectiveStats = "objective_stats"` —
+  gouverne l'AFFICHAGE UI. Ajouté registry.go + knownCapabilities + descripteur halo_infinite
+  + TS. Halo 5 NE déclare PAS `objective_stats` → sections masquées côté front.
+  Refinement documenté vs plan (« ajouter la clé à TITLE_CAPABILITIES ») : valeur AXE TITRE en
+  snake_case `objective_stats` (convention des caps data sœurs), distincte de la valeur AXE
+  SERVEUR — 2 namespaces séparés (cf. engagement=`engagement.score`/`engagement`).
+
+**Backfill (P3)** : `cmd/backfill_objective_stats/main.go` — candidats = matchs SANS bit
+`MBitObjectiveStats` (1<<23) ET SANS ligne `_latest`. Écriture append-only INSERT-only via
+`persist.InsertObjectiveStats` (wrapper exporté réutilisant `persistObjectiveStats`, DRY). Bit
+posé TOUJOURS (helper `markObjectiveDone` INLINE dans le CLI — PAS un fichier sync/ racine :
+ratchet K3c `sync_root_freeze` gèle sync/ à 80 fichiers ; le CLI est exclu du guard ART
+`shared_write_guard` ET du freeze). DRY-RUN LOCAL CONCLUANT : migration P1 appliquée à la DB
+locale via `cmd/apply_shared_migrations` (server.exe local était périmé pré-P1), backfill
+--limit 25 = 25 fetchés, 4 matchs à objectif, 101 lignes (CTF 70 / Zones 31), 25 marqués ;
+diag_q : _latest sert 101 lignes plausibles (captures/grabs/retours/temps porteur ;
+zone_scoring_ticks=0 → Strongholds). Serveur relancé (air), bootstrap OK.
+
+**UI (P4) — 4 surfaces**, toutes gated (double porte capability + data-driven), zéro code mort :
+- Match View (phare) : LEFT JOIN `match_objective_stats_latest` (index match_id) dans Q12 →
+  `ObjectiveRaw` → `MatchScoreboardRow.Objective` → section `MatchObjectivesSection.tsx` (par
+  équipe, colonnes par mode, ligne « Total équipe » SUM/MAX). Q12 tourne pour tous les titres
+  mais la table existe aussi dans le shared h5 (h5 délègue `StepsFor(TargetShared)`) → JOIN sûr.
+- Synthèse : bloc `objective_stats` (précédent weapon_accuracy) via repo partagé
+  `ObjectiveStatsRepo` (SUM par xuid, SharedReadDB), gated SynthesisCtx ; front grille AccentCard.
+- Escouade : `objective_stats_by_xuid` sur SquadHeader, même repo gated ; front
+  `SquadObjectiveStatsPanel.tsx` (cumul escouade).
+- Timeseries : DÉCISION documentée — KPI de SCOPE (`objective_stats` sur TimeseriesPageResponse)
+  + `TimeseriesObjectiveCard.tsx` gated, AU LIEU de champs par-match omitempty sur
+  TimeseriesMatchRow (le tableau par-match est alimenté par un payload distinct ExplorerMatchRow ;
+  graphe dédié disproportionné pour « sobre »). Réutilise le repo partagé.
+- i18n FR-EN : manifests classiques (pas fields.toml — réservé aux métriques canoniques
+  composites) : Match View/Squad = dicos typés (Record<Locale,T>) ; Synthèse/Timeseries = TOML +
+  build_i18n_manifests. FR sans anglicismes.
+- Contrats : openapi.yaml MANUEL (MatchScoreboardObjective + ObjectiveAggregate + 3 champs) +
+  generate-types + `TestOpenAPISchemaDrift` vert.
+
+**Résultats (gates)** : gofmt -l vide ; go build ./... OK ; go vet ./... OK ; go test ./...
+vert (2 échecs initiaux sync_root_freeze + shared_write_guard résolus en inlinant le mark dans
+le CLII) ; TestOpenAPISchemaDrift PASS ; capabilities parité + TS mirror + count PASS ;
+npm run typecheck vert ; vitest touched (match-view/squad/synthesis/timeseries) 110 tests verts ;
+build_i18n_manifests OK (2917 clés) ; generate-types OK. Intégration -p 1 + go-api-lint : en
+cours de finalisation au moment de l'écriture (verdict au superviseur).
+
+**Conclusion / prochaine étape** : chantier V72-03 P3+P4 livré. RESTE : backfill PROD
+(`cmd/backfill_objective_stats`, go séparé au déploiement, serveur prod arrêté) + coup d'œil
+visuel utilisateur (scoreboard CTF/Zones/Oddball, KPI Synthèse/Escouade/Timeseries).
+
+## [2026-07-25] V72-15.4 — Retrait du fallback LIVE du Match view
+
+**Statut** : Complété (implémentation). Gates (go build/test/lint, npm typecheck/vitest,
+generate-types) délégués au superviseur — aucune commande go/npm exécutée côté agent
+(contrainte de tâche, agent parallèle exclusif sur go). Pas de commit.
+
+**Décision technique principale** : suppression intégrale de la chaîne LIVE identifiée dans
+`.ai/BACKLOG.md` (§archi/match-view, décision user 2026-07-19), pas juste un flag OFF.
+- `MatchViewService.GetMatchView` (match_view_service.go) : quand `GetMatchMeta` échoue
+  (match absent du substrat local), retourne directement `domain.ErrNotFound("match", matchID)`
+  — un `*domain.APIError{Code:"not_found"}` — au lieu d'essayer `tryCanonicalMatchView`
+  (fetch live via `DataAdapter.LoadMatchDetail`) puis de wrapper l'erreur repo brute. Le
+  handler (`handlers/match_view.go`) avait DÉJÀ la branche `Code=="not_found"` → 404
+  `match_not_found` (contrat openapi.yaml préexistant, inchangé) : zéro edit de contrat.
+- Chaîne supprimée avec tests/imports (règle 0 code mort) : `tryCanonicalMatchView` +
+  champs/méthodes `dataAdapter`/`viewerGamertag`/`WithDataAdapter`/`WithViewerGamertag` sur
+  `MatchViewService` ; `LoadMatchDetail` retiré de l'interface `games.TitleDataAdapter` et de
+  ses 3 implémentations (HINF stub, synthetic_title_b, H5 réel avec `findMatchInHistory` +
+  consts pagination) ; fichier H5 `mapping_carnage_detail.go` entièrement mort → supprimé ;
+  `enrichCommendations` (H5, spécifique au détail live) supprimé, `enrichCommendationTotals`
+  (chemin séparé, totaux à vie) conservé ; `ctxkeys.WithViewerGamertag`/`ViewerGamertag` +
+  types canonical `MatchDetail`/`Commendation` (plus aucun lecteur) supprimés.
+- Second ordre découvert EN SUIVANT LA CHAÎNE (pas hors périmètre : orphelins directs de mon
+  retrait) : `DataAdapter.WithRankedClassifier`/champ `classifier` (H5) + chargement
+  `ranked_hoppers.toml` au boot (`server_titles_additional.go`) n'avaient QUE
+  `findMatchInHistory` comme lecteur → supprimés. `classification.LoadSetClassifier` (lib
+  générique, tests dédiés validant le TOML shipped, point d'extension Phase 2 ingest non câblé)
+  volontairement CONSERVÉE — hors chaîne, pas de mon fait.
+- Front (`MatchViewPage.tsx`) : nouvelle branche `code === 'match_not_found'` → `PageUnavailable`
+  dédié (« Match pas encore synchronisé » FR / « Match not synced yet » EN, clés
+  `notSyncedTitle`/`notSyncedDescription` dans `features/match-view/i18n.ts`) au lieu de
+  l'écran d'erreur générique. Actions Accueil/Précédent/Mes matchs (même pattern que la
+  branche `match_not_participant` ADR 0029 déjà en place).
+
+**Résultats observés** : aucun gate exécuté par moi (contrainte). Vérification sur pièces :
+grep exhaustif post-édition confirmant zéro référence résiduelle à `LoadMatchDetail`/
+`tryCanonicalMatchView`/`WithViewerGamertag`/`WithRankedClassifier`/`canonical.MatchDetail`
+hors commentaires historiques explicites ; chemin de sync H5 (livesync/capture.go,
+mapping_carnage.go, persist) vérifié INTACT (aucun fichier touché) ; capability
+`CapMatchDetailCore` laissée `CapSupported` pour H5 (le détail de match reste servi, via le
+substrat DuckDB synchronisé, pas via le live).
+
+**Tests ajoutés/modifiés** : Go — `TestMatchViewService_GetMatchView_MetaError` renforcé
+(assert `*domain.APIError{Code:"not_found"}` explicite) + `TestMatchViewHandler_NotFound_404`
+nouveau (handler mappe bien en 404 `match_not_found`) ; retrait des tests du fallback mort
+(`TestAdapter_LoadMatchDetail_*` H5, `TestLoadMatchDetail_NotImplemented` HINF,
+`match_view_canonical_test.go` entier, tests `enrichCommendations`/`mapViewerCommendations`/
+`mapCarnageToCanonicalDetail`). Front — `MatchViewPage.test.tsx` nouveau (3 tests : rendu de
+l'état dédié, actions de navigation, non-régression `match_not_participant`).
+
+**Conclusion / prochaine étape** : chantier fermé côté code. Reste au superviseur : build/lint/
+test Go complet (unit + intégration -p1), `npm run typecheck`/`vitest`/`generate-types`, vérif
+visuelle (ouvrir un match_id inconnu → PageUnavailable "pas encore synchronisé" au lieu du
+spinner/erreur générique), puis mise à jour `.ai/BACKLOG.md` (déjà annoté CLOS 2026-07-25 dans
+ce commit) au moment du commit réel.
+
+## [2026-07-25] V72-03 — Stats objectifs CTF/Zones/Oddball (P0+P1+P2)
+
+**Statut** : Complété (P0, P1, P2 du PLAN_V72_OBJECTIVE_STATS.md ; P3/P4 = vague suivante,
+non commencés). Pas de commit (superviseur).
+
+**Décision technique principale** :
+- **P0** : 8 payloads réels GetMatchStats capturés (2/mode CTF/Strongholds/KOTH/Oddball)
+  via diag_q (sélection match_id sur `pair_name`) + client Halo (auth JGtm store-first
+  ADR 0023, RT vivant/roté). Schéma des 3 blocs (`CaptureTheFlagStats`/`ZonesStats`/
+  `OddballStats`, parent `Stats` comme CoreStats) FIGÉ sur payload réel. KOTH=ZonesStats
+  CONFIRMÉ (discriminant colline = `StrongholdScoringTicks>0`). Décision : stocker le JEU
+  COMPLET des champs natifs (23 colonnes métier : CTF 11, Zones 6, Oddball 6) — le backfill
+  P3 coûte 1 req API/match, capturer tout maintenant évite un 2e re-fetch complet. Fixtures
+  anonymisées `internal/sync/testdata/objective_stats/*.json`. Throwaway cmd/tmp_objcap
+  supprimé (internal/ non importable depuis un module scratchpad externe).
+- **P1** : table `match_objective_stats` CRÉÉE DIRECTEMENT append-only (séquence + id PK +
+  written_at + vue `_latest` QUALIFY + index match_id), modèle
+  create_world_csr_leaderboard_snapshots — PAS ApplyAppendOnlyRebuild. Enregistrée
+  provider (steps.go) + canonicalOrder EN FIN + 2 garde-rails ART (tablesProtegees,
+  appendOnlyStateTables).
+- **P2** : `ExtractObjectiveStats` pur (retourne `[]persist.ObjectiveStatsInsert`
+  directement — DRY, parité kill_positions/commendations) + `objectiveDurationSeconds`
+  (fractions préservées, colonnes DOUBLE). `persistObjectiveStats` INSERT-only dans la
+  transaction shared. Peuplé engine_fetch.go (opts.WithObjectiveStats, défaut true) ET
+  engine_v2bridge.go (inconditionnel, parité PVE/PSA). Colonnes du mode absent = NULL
+  (pointeurs nil).
+
+**Résultats observés (gates exécutés en séquence, CGO)** : migrations end-to-end shared +
+audit ordre canonique + garde-rails ART (4) verts (P1) ; golden 6 tests + unit
+domain/persist/sync + intégration -p 1 persist (roundtrip _latest, colonne autre-mode NULL,
+idempotence) + intégration -p 1 sync (90.6s) + re-run garde-rails ART avec persist en place,
+tous verts (P2).
+
+**Conclusion / prochaine étape** : P0-P2 livrés et vérifiés. `go build ./...` échoue
+UNIQUEMENT dans internal/service (match_view `applyTeamNames`, fragdist) = travail d'agents
+parallèles en cours (INTERDITS de ma tâche), hors périmètre — mes 4 paquets compilent/testent
+verts. RESTE : P3 (capability Go `CapMatchObjectiveStats` + miroir TS + backfill CLI) et P4
+(UI scoreboard/timeseries/synthesis/escouade + fields.toml i18n FR-EN).
+
+## [2026-07-25] V72-18 / V72-24 / V72-09 (Synergies) / V72-13 — 4 correctifs Escouade/Explorer/Sessions
+
+**Statut** : Complété (implémentation ; gates go/npm/tsc/vitest + generate-types/i18n
+délégués au superviseur — aucun build/test exécuté côté agent par contrainte de tâche).
+
+**Décision technique principale** :
+- **V72-18** (menu L1 Escouade) : ajout de l'onglet « Dynamique » manquant dans
+  `navL1Sections.tsx` (section squad, après `contributions`) + clé
+  `common.nav.tab_dynamique` (common.toml). La page/route/i18n squad existaient déjà —
+  seule la source du menu manquait. Aucun test de parité nav ne référence les tabs squad
+  (vérifié) : rien à mettre à jour côté tests.
+- **V72-24** (Explorer lent) : `setModeAndUrl`/`selectTarget` dans `ExplorerPage.tsx`
+  passent désormais `replace: true` (ces `navigate()` ne font que refléter l'état local
+  mode/target dans l'URL, comme `usePageScope` le fait déjà pour les filtres) — stoppe
+  l'empilement d'historique et le déclenchement inutile de TopProgressBar à chaque
+  sélection. `openHeadToHead` (navigation RÉELLE vers `/community/compare`) laissé en push
+  volontairement (retour arrière légitime). Aucun test ne dépend de l'empilement.
+- **V72-09 volet Synergies** : bouton « Voir les synergies » dans le header L3 de
+  `SessionDetailPage.tsx` (groupé avec le bouton Comparer), visible si
+  `current_session.with_friends` (même signal que `SessionParamPills`). Navigation =
+  copie du pattern `HomePage.goToSquadSession` (search `session`+`teammates` vers
+  `/squad`) ; `SessionCompareEntry` ne porte pas de liste de coéquipiers (contrairement à
+  `SessionSummaryItem` côté Home) → `teammates` par défaut vide, SquadLayout ouvre alors
+  la session épinglée sans composition pré-sélectionnée (chemin déjà supporté, même
+  dégradation que `sessionCoreTeammates` côté Home quand aucun ami n'est commun à tous
+  les matchs). Calculer le "cœur de coéquipiers" façon Home aurait exigé de répliquer tout
+  le pipeline `WithSquadSessionTeammates` (loader allié + résolveur amis) — hors périmètre
+  de la demande, noté comme piste d'amélioration future, pas traité.
+- **V72-13** (XP de carrière Sessions) : projection Go `CareerXPEstimated` sur
+  `SessionDetailMatchRow` (domain/session_page.go), calculée dans
+  `buildSessionDetailRows` via `estimateMatchCareerXP` (déjà exporté par
+  timeseries_service_tabs.go, même package `service`) — MIROIR EXACT du calcul Timeseries,
+  gaté par `games.ProvidesCareerXPEstimate`/`CareerXPErasFor` au niveau `GetPage`. openapi.yaml
+  édité de façon ciblée (insertion `career_xp_estimated` dans `SessionDetailMatchRow`,
+  même convention que les champs `*int,omitempty` voisins). Front : helper pur
+  `buildCareerXpSeries` DÉPLACÉ de `features/timeseries/careerXpSeries.ts` vers
+  `lib/charts/careerXpSeries.ts` avec type d'entrée structurel minimal (`CareerXpRow`,
+  `{career_xp_estimated?: number|null}`) — partagé Sessions/Timeseries SANS dépendance
+  croisée feature→feature ; `TimeseriesFormCharts.tsx` mis à jour pour importer depuis le
+  nouvel emplacement. Nouveau composant `SessionCareerXP.tsx` (features/session-detail) :
+  MIROIR de `TimeseriesCareerXP` (bar XP/match axe secondaire + ligne XP cumulée axe
+  primaire), auto-gate DATA-DRIVEN (masqué si aucun match de la session n'a
+  `career_xp_estimated`, comme Timeseries — pas de comparaison de capability par slug).
+  NON câblé dans `SessionChartStack.tsx` (fichier hors périmètre, verrouillé par un agent
+  parallèle) : posé en composant autonome + i18n (session.toml : `career_xp_title`,
+  `_tooltip`, `_cumulative`, `_per_match`, titre identique à Timeseries).
+
+**Résultats observés** : non exécuté (contrainte de tâche : aucun go/npm/tsc/vitest côté
+agent). Tests ajoutés : Go `TestBuildSessionDetailRows_CareerXPEstimated`
+(session_page_service_test.go, MIROIR de `TestBuildMatchRows_CareerXPEstimated`) ; 8 call-sites
+existants de `buildSessionDetailRows` mis à jour (signature +1 paramètre `careerXPEras`,
+sessions_page_service_test.go + session_compare_test.go + session_compare_service.go +
+session_compare_participation_helpers.go — ces 2 derniers passent `nil` car ils alimentent
+`entry.Matches`/best-worst, pas le `resp.Matches` consommé par le nouveau chart). Front :
+`lib/charts/careerXpSeries.test.ts` (migré, type structurel), `SessionCareerXP.test.tsx`
+(option pure + gate data-driven), `SessionDetailPage.test.tsx` (+2 tests bouton Synergies :
+absent en solo, présent+navigate en escouade). **Tests dépendant de clés i18n NEUVES
+(`session.detail.header_synergies*`, `session.detail.career_xp_*`, `common.nav.tab_dynamique`)
+resteront ROUGES jusqu'à régénération** (`generated/session.ts`, `generated/common.ts`) — la
+logique/gating est elle testée indépendamment de l'i18n et doit passer immédiatement.
+
+**Conclusion / prochaine étape** : superviseur doit (1) `make generate-types` (nouveau champ
+`career_xp_estimated` sur `SessionDetailMatchRow` côté generated.ts), (2) régénérer
+`common.ts`+`session.ts` (node build_i18n_manifests.mjs) pour lever les clés neuves, (3) `go
+test ./...` (+ `-tags=integration`), `go build`, `tsc`, `vitest`, `openapi_schema_drift`,
+(4) câbler `SessionCareerXP` dans `SessionChartStack.tsx` **juste après `{frags}`** (dernier
+bloc actuel, ligne ~217) avec le titre+InfoTooltip construits au call-site façon `ocdr`
+(pattern documenté en tête de `SessionCareerXP.tsx`), (5) vérif visuelle : onglet Dynamique
+au menu Escouade, Explorer sans empilement d'historique (recherche joueur rapide), bouton
+Synergies sur une session escouade, chart XP carrière sur Sessions (Halo Infinite uniquement).
+
+## [2026-07-25] V72-05 — Synchronisation initiale admin (un joueur) + légende portée sync
+
+**Statut** : Complété (implémentation ; gates go/npm/tsc + generate-types délégués au superviseur).
+
+**Décision technique principale** : nouvelle action admin POST
+`/admin/actions/initial-sync/run {player_slug, title_slug?, max_matches?}` calquée sur
+la convergence. Backend : `ServiceRegistry.RunPlayerInitialSync` (registry_actions.go) =
+miroir de `RunPlayerConvergence` mais **RunFull** (tout l'historique jusqu'au plafond)
+au lieu de RunDelta — même résolution joueur (`LoadPlayers`), même claim `SyncGate`
+(ErrSyncInFlight), même BuildEngine porté par le ctx titre. Job type DISTINCT
+`JobTypeAdminInitialSync` (self-service `/sync/initial` = JobTypeInitialSync gardé par la
+session ; l'admin passe par le pool de tokens ADR 0023 pour re-importer n'importe quel
+joueur). `resolveInitialMaxMatches` : demandé > défaut profil (initial_max_matches) > 200,
+clampé 1..2000 (bornes de /sync/initial). Handler Huma `admin_actions_initial_sync.go`
+réutilise `conflictWithJobError` + `titleOrDefaultSlug` (mêmes 400/409/503 que la
+convergence). openapi.yaml documenté à la main (route + requestBody inline).
+
+Front : carte « Synchronisation initiale (un joueur) » sur AdminSyncPage (GamertagCombobox
+max=1 allowFreeInput=false + plafond optionnel + AdminActionButton suivi inline) ; mutation
+`useRunInitialSync`. Légende `SyncActionsHelp` (portée des 4 actions : cycle forcé = delta
+global dédupliqué V2 / manuelle globale = boucle simple par joueur / convergence = delta un
+joueur / initiale = re-import complet un joueur) — réponse à la confusion « planificateur vs
+delta ». i18n FR+EN (admin.toml + generated/admin.ts hand-sync). `admin_initial_sync` ajouté
+au fast-poll de la page.
+
+**Résultats observés** : non exécuté (règle : pas de build/test côté agent). Tests handler
+ajoutés (503/400/409/202) calqués sur admin_actions_test. `/sync/all` (delta global naïf,
+sans dédup ADR 0027) NON supprimé — dette notée.
+
+**Conclusion / prochaine étape** : superviseur passe les gates (go test ./..., go build,
+`make generate-types` pour apps/web/src/lib/api/generated.ts, tsc, vitest,
+openapi_schema_drift + contract_test) + revue visuelle admin (carte + légende) avant merge.
+
 ## [2026-07-24] Backfills prod v7.1.0 — CLÔTURE du chantier backlog v7.1
 
 **Statut** : Complété (dernière étape ouverte du chantier v7.1).
@@ -13489,3 +14469,326 @@ PASS. Aucun changement front (peak_achieved_at déjà câblé).
 Rang (tier_label) passé de text-xl sm:text-2xl -> text-xl ; valeur numérique remontée à
 DROITE du rang (flex items-baseline) au lieu de dessous, taille (text-xs) et couleur
 (text-muted-foreground) inchangées. HomeSkillPeakCard.tsx. tsc/eslint/vitest home verts.
+
+---
+
+## [2026-07-24] Ouverture chantier v7.2 — backlog Notion complet (feat/v7.2-notion-batch)
+
+**Statut** : En cours. Mode supervision multi-agents (Fable pilote/verifie, agents implementent).
+
+**Cadre** : la section Notion « Pour la v7.2 » (30 items V72-01..30) est traitee en
+integralite sur la branche feat/v7.2-notion-batch. Echanges utilisateur via la page
+Notion (annotations bleues Fable, surlignage jaune = reponse user, barre = traite).
+Plan : .ai/V7/PLAN_V72_NOTION_BATCH.md (inventaire, lots 0-6, journal).
+
+**Decisions initiales** :
+- Vague 0 : 7 agents recon lecture seule (fuite cross-titre V72-29 + apparence H5 V72-14,
+  i18n/libelles, layout/charts, questions/backlog, Huma openapi, sync admin/notifs/parite
+  capabilities, architecture stats modes objectifs). Aucun build Go concurrent (regle cache),
+  gates batches par lot.
+- Dependabot (V72-02) : PR #51 = downgrade checkout v7 -> v6.0.3, obsolete -> fermeture
+  proposee ; PR #65 postcss dev-dep CI verte -> merge propose. Feu vert user demande dans
+  Notion (merge = deploy prod auto).
+
+**Prochaine etape** : consolider les rapports de recon, poser reponses/recos dans Notion,
+lancer les lots d'implementation.
+
+---
+
+## [2026-07-25] Chantier v7.2 — vagues 1+2 livrees sur branche (19 items V72)
+
+**Statut** : Complété (implémentation + gates). Vérifications visuelles utilisateur en attente.
+
+**Mode** : supervision multi-agents (9 agents impl Opus/Sonnet sur périmètres de fichiers
+disjoints, aucun build agent-side, gates batchés par le superviseur).
+
+**Livré** :
+- V72-29/14 : fuite cross-titre bandeau Spartan (useCapabilityStrict fail-closed sur les
+  2 bandeaux + CareerLiveCache keyé xuid+titre) ; apparence H5 par joueur (store re-keyé
+  titre::joueur, migration v3 reset) + couleurs emblème/bannière séparées. Code mort
+  supprimé : CareerPage, CareerTopMatchesTable (+tests, non routés).
+- V72-11/12 : LeaderboardBlock migré sur SortableTh partagé (exemption garde-rail retirée) ;
+  garde-rail parité capabilities Go<->TS (AST vs TITLE_CAPABILITIES, allowlist datée
+  weapon_kills).
+- V72-20 : notif médaille inédite (post-sync diff totaux, seed silencieux cold-start,
+  récap >3, noms FR/EN serveur).
+- V72-05 : sync initiale un joueur depuis l'admin (RunPlayerInitialSync, job
+  admin_initial_sync, carte + légende des portées de sync).
+- V72-04 : tooltips en-têtes de tableaux (SortableTh.tooltip + ColumnMeta.headerTooltip,
+  contenu FR/EN conforme ADR 0006 sur ~9 tableaux).
+- V72-13/09/18/24 : XP carrière sur Sessions (champ + capability + chart, câblé
+  avant le tableau) ; bouton Voir les synergies ; menu L1 Dynamique ; Explorer replace:true.
+- V72-16/23/25/21/28 : épaisseur outils de destruction rétablie (légende sortie du canvas),
+  mécanisme ChartCard.legend pied de card (légendes interactives NON migrées, documenté),
+  axe X écart de frags Explorer, état vide « aucun match en commun », alignement Carrière.
+- V72-10/19/22/26/27 : dropdown escouade (min-width+line-clamp), override Méganaute
+  (migration idempotente), Lobby->Partie, OC/DR->Rendement/Résistance, notif rang FR
+  (RankLabelResolver) + arrondi gap.
+
+**Gates** : gofmt/build/vet/go test ./.../intégration -p 1 (flake handlers vert isolé)/
+golangci-lint 0 issue (après centralisation goconst job_id/panic/already_running) ;
+i18n regen 2892 clés ; generate-types ; tsc -b exit 0 (cache purgé) ; eslint 0 erreur ;
+vitest 357/358 fichiers puis 100% après fix assertion legend SessionCareerXP.
+
+**Interventions superviseur (hors pilotage)** : câblage SessionCareerXP dans
+SessionChartStack, fix goconst, fix assertion test, gofmt, régénérations.
+
+**Prochaine étape** : rebuild serveur local (V72-07), mise à jour Notion (barrages +
+vérifs visuelles), puis lot 5 (armes V72-06, backlog V72-15, stats objectifs V72-03)
+et Huma V72-01 en dernier.
+
+---
+
+## [2026-07-25] Challenge V72-29 — blindage anti-fuites cross-titre (classe fermee)
+
+**Statut** : Complété (front + 1 test Go ; gates front verts, gate Go au prochain lot).
+
+**Livré** : titleSlug dans 48 fabriques de clés TanStack par-joueur (2e segment,
+invalidations par préfixe préservées) + garde-rail keys.title-slug.guard.test.ts
+(classification exhaustive, une clé non classée échoue) ; garde-rail
+spartan-customizer-strict.guard.test.ts (interdit le fail-open — a trouvé et corrigé
+une violation résiduelle HomePage.tsx:70) ; 12 scénarios bandeaux (états transitoires,
+switch à chaud, assertion data-mask-src : aucun asset halo_5 sous Infinite) ;
+TestCareerLiveCache_Customization_DistinctTitles ajouté.
+
+**Découverte à traiter (prochain lot Go)** : caches serveur keyés sans titre —
+home_matches_cache.go (xuid SEUL, risque HAUT, surface exacte de V72-29),
+recent_matches_cache.go (xuid|limit), remote_stats_cache.go seasonEntries (à vérifier).
+
+**Gates** : tsc -b PASS, eslint 0 erreur, vitest complet 3042 passés / 0 échec.
+
+---
+
+## [2026-07-25] V72-10 suite — sous-titre « surtout » : modes FR servis par l'API
+
+**Statut** : Complété (vérifié bout en bout dans le navigateur ; gates Go cibles à la
+prochaine fenêtre — le code compile, air l'a rebuildé et sert le FR).
+
+**Diagnostic** : la « disparition » du sous-titre était transitoire (fenêtre de rebuild
+air : SquadUsualContexts en erreur -> best-effort vide -> omitempty). Le vrai défaut
+révélé = jetons de mode EN servis bruts. Correctif : ModeTranslatorFR injecté dans
+PrestigeSquadMatchProvider (WithModeTranslatorFR, cablage wire via
+SquadRepo.LoadModeTranslationsFR — zéro nouvelle copie du littéral mode_name_tr),
+repli EN jamais vide. Front inchangé (normalisation idempotente conservée).
+
+**Reste** : playlists EN (« Quick Play », « Big Team Battle ») = trou de donnée
+playlist_name_fr — correctif propre planifié (résolution asset_translations par
+playlist_id, lot suivant). Dette notée : 4 copies préexistantes de mode_name_tr à
+centraliser + garde-rail.
+
+---
+
+## [2026-07-25] Vague V72-31/32/33 + Huma H4/H5 — consolidation et livraison
+
+**Statut** : Complété (consolidation : 13 issues lint réparées, generated.ts regénéré —
+il était périmé après les edits openapi de H4/H5 —, alias ApiErrorSchema repointé vers
+ApiError). Batterie complète verte : gofmt/build/vet/test (flake handlers rejoué isolé
+2x ok)/intégration -p 1/lint 0 issue/typecheck/vitest 3061 tests 0 échec.
+
+**Livré** : Huma H4 (modèle d'erreur unifié, contrat runtime intact) + H5 (7 routes
+groups en Huma typé, 173 ops au document partagé) ; V72-31 Discord (état disk_watch
+persistant data/global/admin_state, version bakée au build compose/deploy.sh, notif de
+fin de cycle auto-sync sur toggle existant) ; V72-33 (215 médailles H5 en 11 catégories
+via resolver read-time, exclusion ST1003 halo_5 alignée sur les autres slugs) ; V72-32
+(badge En placement partagé Explorer/Sessions/Timeseries/Carrière ; découverte : Perf
+manquantes du dernier sync JGtm = fraîcheur batchComputePerformanceScores, PAS un
+placement — investigation dédiée au prochain lot).
+
+**Notes** : VPS injoignable en SSH depuis le poste (timeout 22) — vérifs prod lecture
+seule déléguées à l'utilisateur (LEVELUP_APP_VERSION, last_notified_version).
+
+## [2026-07-25] V72-33 (suite) médailles H5 fantômes masquées + V72-31 (suite) suppression rappel disque 24h
+
+**Statut** : Complété (2 corrections indépendantes). Pas de commit (superviseur applique les
+gates). Édition sans compilation (agent parallèle détient l'exclusivité `go` sur ce chantier) ;
+identification des données faite via CLI DuckDB officiel (v1.5.5, téléchargé en scratchpad,
+`-readonly`) — pas de MCP duckdb ni de duckdb CLI local disponibles dans ce sandbox.
+
+**V72-33 (médailles H5 fantômes)** : diff exhaustif `medals_earned` (shared_matches_v2.duckdb,
+196 medal_name_id distincts gagnés) vs `medal_definitions` (metadata.duckdb, 215/215 lignes,
+aucune sans nom/sprite) → exactement 3 ID gagnés en match réel sans AUCUNE ligne catalogue :
+505244449 (82 occ./4 joueurs), 883611709 (11/3), 3566983914 (19/4). Absents aussi de
+medalCategoryTable (couvre les 215/215). Mécanisme confirmé dans le code : le fallback
+générique `analysis.MergeMedalCatalog` (Name="#<id>", catégorie "other") les fait remonter
+dans "Autres" sans image ni titre. Croisement halopedia (List_of_Halo_5:_Guardians_medals,
+fetch confirmé) : ~220 médailles retail documentées par catégorie + une section séparée
+"unused/beta-only" sans ID stable — cohérent avec des ID absents du catalogue officiel
+(aucun nom résolvable pour recherche textuelle directe, mais absence totale du catalogue
+API = absence de l'ensemble que le wiki documente comme actif).
+
+Décision : masquage EXPLICITE par ID (pas de filtre générique nom/icône vide — le fallback
+`#<id>` existe pour ne jamais perdre une médaille gagnée dont le catalogue n'a pas encore
+été synchronisé). Nouveau fichier `internal/games/halo_5/medal_ghost_ids.go`
+(`GhostMedalIDs`), nouveau registre `service.RegisterGhostMedalIDs` (miroir exact de
+`RegisterMedalCategoryResolver`/`medalCategoryResolvers`), filtre `filterGhostMedals` appliqué
+dans `MedalsService.GetMedalsPage` avant enrichissement image et regroupement (les totaux
+`CatalogTotal`/`EarnedTotal`/`TotalCount` excluent donc aussi les fantômes). Câblage boot dans
+`server_apiv1.go` juste après les resolvers de catégorie. Scope volontairement limité à la
+page Médailles : `CitationsRepo.LoadMedalTotals` (même requête Q36a, page Citations) est
+inchangé. Tests écrits (non exécutés — gate superviseur) dans `medals_service_test.go` :
+fantôme exclu + médaille normale conservée + totaux corrects, no-op si aucun ID enregistré
+pour le titre, garde-fous `RegisterGhostMedalIDs`/`filterGhostMedals` isolés.
+
+**V72-31 (suite) — suppression du rappel 24h** : `ops.ShouldNotifyDisk`, cas `default`
+(statut stable == dernier confirmé) : retrait de la relance périodique
+(`now.Sub(state.LastNotifiedAt) >= DiskRenotifyInterval`) et de la constante
+`DiskRenotifyInterval` (code mort après retrait, aucun autre caller). Conservé : notif
+d'entrée en alerte, notif immédiate d'aggravation (warn→critical, cas `sevCur > sevLast`),
+notif unique de rétablissement (débounce `diskConfirmTicks`). Tests : sous-test "rappel 24h en
+breach persistant" remplacé par "breach persistant longue durée : jamais de rappel" (24h puis
+240h, aucune notif) ; 3 commentaires de tests avec framing "< 24h" désormais stale corrigés
+(statut stable, sans référence à un seuil temporel). Docs adjacentes mises à jour dans le même
+lot (règle anti doc-inversée) : `internal/notify/disk.go` et
+`internal/api/wire/registry_monitoring_diskwatch.go` ne mentionnent plus le rappel 24h.
+
+**Fichiers** : `internal/games/halo_5/medal_ghost_ids.go` (nouveau) ;
+`internal/service/medals_service.go` + `_test.go` ; `internal/api/server_apiv1.go` ;
+`internal/ops/disk_watch.go` + `_test.go` ; `internal/notify/disk.go` ;
+`internal/api/wire/registry_monitoring_diskwatch.go`.
+
+**Reste** : gates superviseur (gofmt/build/vet/test/lint — aucune commande `go` lancée côté
+agent, conflit d'exclusivité avec le chantier parallèle). Nettoyage scratchpad (CLI DuckDB +
+dumps) effectué en fin de tâche.
+
+## [2026-07-25] Lot A3 Explorer live_status (fin dégradation muette) + playlists FR par id (V72-10 suite)
+
+**Statut** : Complété (2 chantiers indépendants, mêmes contraintes que le lot précédent —
+aucune commande `go` lancée, agent parallèle Perf détient l'exclusivité ; tests Go écrits non
+compilés, vérifiés par relecture croisée du code existant). Front vérifié réellement (node
+autorisé) : `npm run typecheck`, `npx vitest run` (suite complète 364 fichiers/3078 tests
+verts), `npx eslint` sur les fichiers touchés, `node build_i18n_manifests.mjs`.
+
+**A3 — DTO `live_status`** : `domain.ExplorerLiveSectionStatus` (`ok|failed|no_auth|
+local_partial`) + `domain.ExplorerLiveStatus{Identity,Career,SeasonCSRs,Seasons,CombatLive}`
+sur `ExplorerTargetProfile.LiveStatus` (`explorer.go`). Les 5 fetchs du plan A3.2
+(`fetchTargetIdentityRaw`, `fetchTargetServiceRecord`, `fetchTargetCSR`,
+`computeTargetCombatProfileLive`, `computeSeasonBreakdown`) renvoient désormais un 2e retour
+statué : no_auth avant tout essai (hasAuth=false — jamais de fetch tenté), failed sur erreur/
+dépendance absente, ok sur succès (liste vide sans erreur = ok, ex. joueur non classé),
+local_partial pour le repli bucketing local des saisons (Lot A2 non traité) et le cas identité
+"auth dispo mais LiveIdentity non câblé". `buildTargetProfile` capture chaque statut par
+goroutine et les assemble dans `LiveStatus`. `openapi.yaml` : nouveau schéma
+`ExplorerLiveStatus` (enum sur les 5 champs) + `live_status` ajouté à `ExplorerTargetProfile`
+(propriété + required) — **`make generate-types` À LANCER côté superviseur** (non exécuté,
+consigne explicite de la tâche : signaler plutôt qu'exécuter) ; `npm run typecheck` confirme
+que les seules erreurs actuelles portent sur `live_status`/`ExplorerLiveStatus` absents de
+`generated.ts` (attendu, rien d'autre).
+
+**Front (badges discrets, wording du plan repris littéralement)** : nouveau
+`ExplorerLiveStatusBadge` (`features/explorer`, `Badge variant="outline"`, ne rend rien pour
+"ok"/absent) + 3 clés manifest `explorer.target_profile.live_status.{no_auth,failed,
+local_partial}` FR/EN (« Données live indisponibles (authentification) » / « … (erreur) » /
+« Live partiel »). Câblé sur : bandeau identité (badge si identity=null et statut≠ok),
+section "Carrière complète" (header + badge désormais rendus même sans career_stats quand le
+statut explique pourquoi — avant A3 la section disparaissait en silence), `ExplorerTargetSeasonCSR`
+et `ExplorerTargetSeasonMatches` (badge dans la barre de titre via nouveau prop `liveStatus`,
+`ChartCard.title` accepte déjà un ReactNode), `ExplorerCombatProfile` (badge dans l'en-tête si
+le tab "En direct" est vide ; nouveau bloc titré+badge quand LIVE et LOCAL sont vides mais que
+le statut explique pourquoi — remplace l'ancien `return null` muet). Décision : PAS de second
+badge pour "Top médailles" (partage le même fetch/statut que Carrière → aurait toujours
+dupliqué le badge déjà visible juste au-dessus, testé explicitement
+`ExplorerTargetProfileCard.test.tsx`). Chaque composant reste rétro-compatible : `liveStatus`
+optionnel, badge nil-safe → aucune régression sur les fixtures/tests antérieurs sans le champ
+(vérifié : suite complète verte avant toute modif de test).
+
+**Playlists FR par id (V72-10 suite)** : `PrestigeSquadMatchProvider.SquadUsualContexts`
+(`prestige_squad_match_provider.go`) servait les playlists via
+`COALESCE(playlist_name_fr, playlist_name)` sur `match_registry` — trou pour "Quick Play"/
+"Big Team Battle" (`playlist_name_fr` vide). Mécanisme retenu : MÊME pattern que
+`ModeTranslatorFR`/`WithModeTranslatorFR` déjà en place (résolution FR canonique injectée en
+closure) — nouveau type `PlaylistTranslatorFR` + `WithPlaylistTranslatorFR`, requête étendue
+pour sélectionner aussi `playlist_id`, nouvelle map `plIDByLabel` (libellé COALESCE →
+playlist_id représentatif) construite pendant le scan, puis `applyPlaylistTranslationsFR`
+(miroir `applyModeTranslationsFR`) résout par id via `metadata.asset_translations` — MÊME
+résolveur que la page Carrière (`SquadRepo.LoadAssetTranslationsFR("playlist", ids)` →
+`MetadataRepo.ResolveAssetNamesBulk`), pas un nouveau littéral SQL. Câblage
+`prestige_setup.go` : closure `LoadAssetTranslationsFR(ctx, "playlist", ids)` sur le
+`pdb.Metadata` du joueur — indépendant du `SharedReader` (shared_matches_v2.duckdb) utilisé
+par le provider, donc pas d'ATTACH cross-DB à gérer. Priorité : traduction par id > libellé
+COALESCE existant (name_fr > name EN), jamais vide. Best-effort intégral (traducteur nil/id
+inconnu/erreur → libellé COALESCE conservé, WARN loggé).
+
+**Tests** : Go — `explorer_service_target_status_test.go` (nouveau, 18 tests unitaires directs
+sur les 4 fetchs + 1 test bout-en-bout `TestBuildTargetProfile_LiveStatusPopulated` prouvant
+qu'aucune section n'est jamais vide-string) ; `explorer_target_seasons_test.go` (3 tests
+existants adaptés au 2e retour) ; `prestige_squad_match_provider_test.go`
+(`TestApplyPlaylistTranslationsFR`, miroir `TestApplyModeTranslationsFR`) ;
+`prestige_squad_match_provider_playlist_fr_test.go` (nouveau, intégration DuckDB réelle
+`//go:build integration`, 3 tests dont le scénario demandé "name_fr vide mais traduit par id
+→ FR servi"). Front — `ExplorerLiveStatusBadge.test.tsx` (nouveau) + tests ajoutés/adaptés
+dans `ExplorerTargetProfileCard`, `ExplorerTargetSeasonCSR`, `ExplorerTargetSeasonMatches`,
+`ExplorerCombatProfile` (tous verts, suite complète vérifiée).
+
+**Fichiers** : Go — `internal/domain/explorer.go`, `internal/service/explorer_service.go`,
+`explorer_service_target.go` (+`_status_test.go` nouveau), `explorer_target_seasons.go`
+(+`_test.go`), `internal/platform/duckdb/prestige/prestige_squad_match_provider.go`
+(+`_test.go`, +`_playlist_fr_test.go` nouveau), `internal/api/wire/prestige_setup.go`,
+`api/openapi.yaml`. Front — nouveau `features/explorer/ExplorerLiveStatusBadge.tsx`
+(+`.test.tsx`), `ExplorerTargetProfileCard.tsx` (+test), `ExplorerTargetSeasonCSR.tsx`
+(+test), `ExplorerTargetSeasonMatches.tsx` (+test), `ExplorerCombatProfile.tsx` (+test),
+`ExplorerPage.playerMode.tsx`, `lib/api/types.ts`, `lib/i18n/manifests/explorer.toml`
+(+`generated/explorer.ts` régénéré via `node build_i18n_manifests.mjs`).
+
+**Reste / gates superviseur** : `make generate-types` (openapi.yaml → `generated.ts`, requis
+avant que `npm run typecheck` soit vert — actuellement 8 erreurs, toutes `live_status`/
+`ExplorerLiveStatus` manquants, confirmé par lecture des messages tsc) ; `cd apps/go-api &&
+go build ./... && go vet ./... && go test ./... && go test -tags=integration -p 1
+./internal/platform/duckdb/prestige/... ./internal/service/...` (aucune commande go lancée
+côté agent, cf. exclusivité) ; `make go-api-lint`. Vérif visuelle navigateur Explorer mode
+Joueur (badges saisons/carrière/combat) laissée à l'agent navigateur/user — non faite ici (pas
+de serveur backend buildable dans ce run).
+
+**Suite (même jour)** : `make generate-types` exécuté par l'agent parallèle → `live_status`
+matérialisé dans `generated.ts`, devenu champ **requis** de `ExplorerTargetProfile` côté TS
+(cohérent avec `required` dans `openapi.yaml` — jamais absent en réponse réelle, toujours
+statué par `buildTargetProfile`). 8 fixtures `ExplorerTargetProfileCard.test.tsx` sans
+`live_status` cassaient `npm run typecheck`. Complétées une par une avec des états cohérents
+avec CE QUE chaque test simule (pas de "ok" partout en aveugle) : succès complet → tout ok ;
+`career_stats` absent avec `auth_available=true` → `career: 'failed'` (un service record nil
+ne peut PAS coexister avec un statut ok côté Go, cf. `fetchTargetServiceRecord`) ; hint no-auth
+(`auth_available=false`) → `identity: 'ok'` (résolue localement, indépendante des tokens) et
+tout le reste `no_auth` ; cible totalement non résolue (identity+career absents, pas d'auth) →
+`no_auth` partout. Le test "sans live_status (compat antérieure)" n'avait plus de sens une
+fois le champ requis : repensé en test de robustesse défensive — `career: 'ok'` explicite
+malgré `career_stats` absent, pour prouver que `showCareerSection` n'affiche jamais un header
+vide même si le statut (à tort) ne signale rien ; titre et commentaire du test mis à jour en
+conséquence. Vérifié : `npm run typecheck` (racine + apps/web) 0 erreur ;
+`npx vitest run src/features/explorer` 24 fichiers / 197 tests verts ; `npx eslint` propre.
+Aucune commande `go`. Fichier touché : `apps/web/src/features/explorer/ExplorerTargetProfileCard.test.tsx`
+(8 fixtures complétées + 1 test renommé/reciblé).
+
+---
+
+## [2026-07-25] Cloture v7.2 — contre-revue ultracode, corrections, backfills, decouvertes
+
+**Statut** : Complété. Contre-revue workflow (6 dimensions + vérification adversariale,
+11 agents) : 5 majeurs confirmés / 0 réfuté / 23 mineurs.
+
+**Majeurs corrigés** : watcher sans WithObjectiveStats (fix structurel : dérive de
+DefaultSyncOptions + garde-rail par réflexion — la feature phare V72-03 serait restée
+vide en prod sur les matchs live) ; invalidation cache Home avec player slug (no-op
+permanent) ; sync initiale admin sans titre (pastille + envoi du titre actif) ;
+7 réponses 201/202 sans corps au contrat (+2 requestBody manquants +2 découverts) ;
+test de la course de bascule ajouté (mordant vérifié).
+
+**Mineurs traités** : garde d'écho limitée aux GET (mutations = warn, anti double-
+soumission) ; suggestions live périmées ; état « Aucun résultat Xbox » ; verrou
+generated.ts<->openapi (guard vitest CI-enforced) ; contractSurface enums de tableaux ;
+garde spartan à parenthèses équilibrées ; assertion du POST session/context ; xuid bot
+tronqué (objective strict, pve contrat historique préservé) ; rows.Err medals snapshot
+(invalide => seed silencieux) ; dédup notif Discord par agrégation ; éligibilité
+placement alignée batch (start_time) ; top-2 playlists par id ; tests chaîne objectifs.
+
+**Lot découvertes** : arrondis current_mu/next_tier_mu (défense) ; scoreSquad normalisé
+2 côtés ; mode_name_tr centralisé (6 copies -> 1 + garde-rail allowlist vide) ;
+queryKeys.player() et package weaponregistry supprimés (morts vérifiés, baseline tests
+ajustée) ; notes backlog (weapons.name_fr résiduel, seedWeapons vestigial, en-têtes
+package wire erronés x53).
+
+**Backfills locaux** : citations reseed+recompute OK ; objectifs 1882 matchs fetches /
+396 à objectifs / 5656 lignes ; serveur relancé. VPS : last_notified_version pré-semé
+v7.1.0 (backup à côté) ; backfills prod à orchestrer post-merge/deploy (coupure autorisée).
+
+**Gates finaux** : gofmt/build/vet/go test ./.../intégration -p 1 (tous paquets touchés)/
+lint 0 issue/baseline OK ; tsc 0 ; vitest 3139/0 ; ratchets contrat clean ;
+openapi-gen + generate-types en phase (golden vert).

@@ -303,3 +303,88 @@ func TestTitleStepsRunEndToEnd_SharedSocial(t *testing.T) {
 		t.Errorf("idx_pn_xuid_unread présent — drop_idx_pn_xuid_unread non appliqué")
 	}
 }
+
+// TestFixMeganautFrDescription : la description FR anglicisée de la médaille
+// Méganaute (2005352812) — loc officielle Waypoint défectueuse ("surshield",
+// "active camo") — est corrigée par fix_meganaut_fr_description de façon
+// idempotente (même garde que fix_super_fiesta_fr_label : seule l'ANCIENNE
+// valeur fautive déclenche la réécriture, donc une ré-application n'écrase
+// jamais une correction manuelle ultérieure). medal_definitions n'est jamais
+// re-seedée en code pour les médailles réelles (seul le custom Vengeur l'est,
+// cf. TestTitleStepsRunEndToEnd_Metadata) : la ligne Méganaute est insérée ici
+// pour simuler l'état prod (donnée Waypoint) tel qu'il existait avant ce fix.
+func TestFixMeganautFrDescription(t *testing.T) {
+	db, err := sql.Open("duckdb", ":memory:")
+	if err != nil {
+		t.Fatalf("open duckdb: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	migration.SetTitleStepsProvider(StepsFor)
+	if err := migration.RunForDB(db, migration.TargetMetadata); err != nil {
+		t.Fatalf("RunForDB(Metadata): %v", err)
+	}
+
+	const badFR = "Tuez un ennemi possédant un surshield et une active camo."
+	if _, err := db.Exec(`
+		INSERT INTO medal_definitions (medal_name_id, name_fr, name_en, description_fr, description_en, is_custom)
+		VALUES (2005352812, 'Méganaute', 'Meganaut', ?, 'Kill an enemy with both overshield and active camo.', FALSE)`,
+		badFR,
+	); err != nil {
+		t.Fatalf("seed bad Meganaut row: %v", err)
+	}
+	if _, err := db.Exec(`
+		INSERT INTO medal_translations (medal_name_id, lang, name, description)
+		VALUES (2005352812, 'fr-FR', 'Méganaute', ?)`,
+		badFR,
+	); err != nil {
+		t.Fatalf("seed bad medal_translations row: %v", err)
+	}
+
+	// Le step est déjà marqué schema_done par le RunForDB ci-dessus (no-op :
+	// la ligne n'existait pas encore) — on rejoue directement SA fonction
+	// ApplySchema pour tester la SQL, indépendamment du tracking schema_migrations.
+	steps := StepsFor(migration.TargetMetadata)
+	idx := -1
+	for i, m := range steps {
+		if m.Name == "fix_meganaut_fr_description" {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		t.Fatal("step fix_meganaut_fr_description introuvable dans StepsFor(TargetMetadata)")
+	}
+	applyFix := steps[idx].ApplySchema
+	if err := applyFix(db); err != nil {
+		t.Fatalf("ApplySchema fix_meganaut_fr_description: %v", err)
+	}
+
+	const wantFR = "Éliminez un ennemi disposant à la fois d'un Sur-bouclier et d'un Camouflage actif."
+	var gotDefFR, gotTrFR string
+	if err := db.QueryRow(`SELECT description_fr FROM medal_definitions WHERE medal_name_id = 2005352812`).Scan(&gotDefFR); err != nil {
+		t.Fatalf("query medal_definitions: %v", err)
+	}
+	if gotDefFR != wantFR {
+		t.Errorf("medal_definitions.description_fr = %q, want %q", gotDefFR, wantFR)
+	}
+	if err := db.QueryRow(`SELECT description FROM medal_translations WHERE medal_name_id = 2005352812 AND lang = 'fr-FR'`).Scan(&gotTrFR); err != nil {
+		t.Fatalf("query medal_translations: %v", err)
+	}
+	if gotTrFR != wantFR {
+		t.Errorf("medal_translations.description = %q, want %q", gotTrFR, wantFR)
+	}
+
+	// Idempotence : rejouer le step une 2e fois ne doit rien changer (la valeur
+	// courante n'est plus l'ancienne valeur fautive du WHERE).
+	if err := applyFix(db); err != nil {
+		t.Fatalf("2e ApplySchema: %v", err)
+	}
+	var gotDefFR2 string
+	if err := db.QueryRow(`SELECT description_fr FROM medal_definitions WHERE medal_name_id = 2005352812`).Scan(&gotDefFR2); err != nil {
+		t.Fatalf("query medal_definitions (2e passage): %v", err)
+	}
+	if gotDefFR2 != wantFR {
+		t.Errorf("medal_definitions.description_fr après 2e passage = %q, want %q (non-idempotent)", gotDefFR2, wantFR)
+	}
+}

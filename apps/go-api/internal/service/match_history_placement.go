@@ -20,6 +20,7 @@ import (
 	"sort"
 	"strconv"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/sync"
 )
@@ -59,15 +60,108 @@ func applyMatchPlacements(
 ) {
 	csrCount := applyCSRPlacements(ctx, rows, csrThreshold)
 	lusrCount := applyLUSRPlacements(rows)
-	if csrCount > 0 || lusrCount > 0 {
+	perfCount := applyPerfPlacements(ctx, rows)
+	if csrCount > 0 || lusrCount > 0 || perfCount > 0 {
 		// DebugContext : volume potentiellement élevé (1 appel/page Explorer).
 		// Active via LEVELUP_LOG_LEVEL=debug ; dispatch auto vers logs/service.log.
 		slog.DebugContext(ctx, "match_history.placements_applied",
 			"rows_total", len(rows),
 			"csr_placements", csrCount,
 			"lusr_placements", lusrCount,
+			"perf_placements", perfCount,
 		)
 	}
+}
+
+// perfPlacementInput décrit un match pour le calcul du placement de la chaîne de
+// PERFORMANCE (perf_score) : sa chaîne perf, son éligibilité (comptée par le batch
+// perf) et s'il porte déjà un perf_score. Structure pivot partagée par l'Explorer/
+// Sessions (MatchHistoryRawRow) et l'Accueil (canonical) — une seule implémentation
+// de l'algorithme (computePerfPlacements) pour toutes les surfaces (CLAUDE.md §6).
+type perfPlacementInput struct {
+	matchID string
+	chain   string
+	// eligible : le match est-il COMPTÉ par le batch perf dans sa chaîne ?
+	// Miroir EXACT du périmètre de batchComputePerformanceScores (sync/performance.go) :
+	//   - WHERE de loadHistoryForPerf : mr.start_time IS NOT NULL
+	//     ET COALESCE(mp.outcome, 0) != 4 (DNF) ;
+	//   - filtre loadExcludedMatchIDs : is_excluded retiré de allMatches AVANT la
+	//     boucle, donc jamais compté dans la fenêtre de chaîne.
+	// Toute divergence fait afficher un « X/10 » qui ne correspond pas au compteur
+	// réel du batch (contre-revue V7.2 : le critère start_time manquait).
+	eligible bool
+	hasScore bool // perf_score déjà calculé (chaîne calibrée)
+}
+
+// computePerfPlacements renvoie matchID → [done, total] pour les matchs SANS
+// perf_score dont la chaîne de performance est réellement SOUS LE SEUIL, c.-à-d.
+// compte ≤ threshold matchs perf-éligibles (donc structurellement aucun perf_score :
+// le 1er score n'arrive qu'au (threshold+1)-ième match de la chaîne). `done` = nombre
+// de matchs éligibles de la chaîne (IDENTIQUE pour tous les matchs de la chaîne — c'est
+// une progression de calibration, pas un rang par-match), `total` = threshold.
+//
+// Une chaîne à > threshold matchs est CALIBRÉE : ses matchs sans perf_score sont des
+// trous structurels (fenêtre de calibration passée) ou un retard de sync — jamais un
+// « placement » (on ne masque pas un bug de fraîcheur, cf. V72-32) → non renseignés.
+// Les matchs non éligibles (DNF, exclus) ne comptent pas et ne sont jamais renseignés.
+func computePerfPlacements(inputs []perfPlacementInput, threshold int) map[string][2]int {
+	counts := make(map[string]int, 6)
+	for _, in := range inputs {
+		if in.eligible && in.chain != "" {
+			counts[in.chain]++
+		}
+	}
+	out := make(map[string][2]int)
+	for _, in := range inputs {
+		if !in.eligible || in.hasScore || in.chain == "" {
+			continue
+		}
+		c := counts[in.chain]
+		if c >= 1 && c <= threshold {
+			out[in.matchID] = [2]int{c, threshold}
+		}
+	}
+	return out
+}
+
+// applyPerfPlacements remplit rows[i].PerfPlacementDone/Total pour les matchs en
+// placement de chaîne de PERFORMANCE. Modifie rows en place. Idempotent. `rows` DOIT
+// contenir TOUS les matchs du joueur (comptage par chaîne sur l'historique global).
+// Retourne le nombre de matchs marqués.
+func applyPerfPlacements(ctx context.Context, rows []domain.MatchHistoryRawRow) int {
+	slug := ctxkeys.TitleSlug(ctx)
+	inputs := make([]perfPlacementInput, len(rows))
+	for i := range rows {
+		r := &rows[i]
+		pair := ""
+		if r.PairName != nil {
+			pair = *r.PairName
+		}
+		inputs[i] = perfPlacementInput{
+			matchID: r.MatchID,
+			chain:   sync.GetPerformanceChain(slug, pair, r.IsRanked, r.IsFirefight),
+			// Les 3 critères du batch, dans l'ordre du commentaire de
+			// perfPlacementInput.eligible. `r.StartTime == nil` reproduit le
+			// `mr.start_time IS NOT NULL` de loadHistoryForPerf : un match sans
+			// start_time n'entre PAS dans l'historique du batch, il ne doit donc
+			// pas gonfler le « X/10 » affiché.
+			eligible: r.StartTime != nil && r.Outcome != domain.OutcomeDNF && !r.IsExcluded,
+			hasScore: r.PerformanceScore != nil,
+		}
+	}
+	placements := computePerfPlacements(inputs, sync.MinMatchesPerChainForRelative)
+	count := 0
+	for i := range rows {
+		dt, ok := placements[rows[i].MatchID]
+		if !ok {
+			continue
+		}
+		d, t := dt[0], dt[1]
+		rows[i].PerfPlacementDone = &d
+		rows[i].PerfPlacementTotal = &t
+		count++
+	}
+	return count
 }
 
 // applyCSRPlacements : pour les matchs CSR avec tier_label "Placement (N restants)",

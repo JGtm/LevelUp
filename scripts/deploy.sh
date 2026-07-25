@@ -75,7 +75,35 @@ if [[ "${_avail_gb:-0}" -lt 10 ]]; then
     }
 fi
 
-# 2c. Builder les images AVANT de toucher aux containers (Dockerfile = build Vite +
+# 2c. Version de l'app pour les notifications "nouvelle version" (in-app app_release
+# + Discord). Le serveur ne notifie que si cfg.AppVersion est un vrai semver (≠ "dev").
+# CALCULÉE AVANT LE BUILD : la version est désormais BAKÉE dans le binaire via le
+# build-arg VERSION (docker-compose interpole ${LEVELUP_APP_VERSION} → Dockerfile
+# ARG VERSION → ldflags -X main.version). Elle survit donc à toute perte de l'env
+# runtime (recreate demo-regen sans la variable = cause des notifs manquées v7.0.0/
+# v7.1.0). L'export shell ci-dessous est lu à la fois par le `build` (2d) et le `up`
+# (2e). L'anti-spam (major/minor, last_notified_version) est géré côté Go : entre
+# deux tags, la même valeur => aucune re-notification. Fallback "dev" (dépôt sans tag)
+# => notifications gardées OFF, comportement inchangé.
+# --match 'v*.*.*' : ne retenir QUE les tags de release semver (release.yml se
+# déclenche sur ce motif) et ignorer les tags de travail (ex. "Shared-social-fixed").
+git fetch --tags --quiet origin 2>/dev/null || true
+LEVELUP_APP_VERSION="$(git describe --tags --abbrev=0 --match 'v*.*.*' 2>/dev/null || echo dev)"
+export LEVELUP_APP_VERSION
+echo "[deploy] LEVELUP_APP_VERSION=$LEVELUP_APP_VERSION (bakée au build + env runtime)"
+# Persister dans .env (gitignoré, lu automatiquement par docker compose) : tout
+# `docker compose up` hors de ce script (regen démo dans deploy.yml, ops manuelles
+# ssh, reboot) recréerait sinon le conteneur avec le défaut "dev" — c'est arrivé
+# au deploy v7.1.0 (le job demo-regen redémarre la prod dans une session SSH sans
+# la variable). L'export shell ci-dessus reste prioritaire sur .env au `up` de 2e.
+# Défense en profondeur : même si le conteneur repart avec l'env "dev", le binaire
+# baké (2d) garde la vraie version → la notif « nouvelle version » reste correcte.
+touch .env
+grep -v '^LEVELUP_APP_VERSION=' .env > .env.tmp || true
+printf 'LEVELUP_APP_VERSION=%s\n' "$LEVELUP_APP_VERSION" >> .env.tmp
+mv .env.tmp .env
+
+# 2d. Builder les images AVANT de toucher aux containers (Dockerfile = build Vite +
 # Go CGo/DuckDB), pendant que l'ancienne prod tourne encore. Incident 2026-07-23 : avec
 # l'ancien ordre (down PUIS `up --build`), un build en échec (disque/réseau/code) laissait
 # la prod DOWN jusqu'à intervention manuelle. Ici un échec de build ne coupe rien — les
@@ -90,29 +118,7 @@ if ! docker compose build; then
 fi
 echo "[deploy] Build OK"
 
-# 2d. Version de l'app pour les notifications "nouvelle version" (in-app app_release
-# + Discord). Le serveur ne notifie que si cfg.AppVersion est un vrai semver (≠ "dev") ;
-# on lui passe le dernier tag atteignable via l'env LEVELUP_APP_VERSION (interpolé par
-# docker-compose). L'anti-spam (major/minor, last_notified_version) est géré côté Go :
-# entre deux tags, la même valeur => aucune re-notification. Fallback "dev" (dépôt sans
-# tag) => notifications gardées OFF, comportement inchangé.
-# --match 'v*.*.*' : ne retenir QUE les tags de release semver (release.yml se
-# déclenche sur ce motif) et ignorer les tags de travail (ex. "Shared-social-fixed").
-git fetch --tags --quiet origin 2>/dev/null || true
-LEVELUP_APP_VERSION="$(git describe --tags --abbrev=0 --match 'v*.*.*' 2>/dev/null || echo dev)"
-export LEVELUP_APP_VERSION
-echo "[deploy] LEVELUP_APP_VERSION=$LEVELUP_APP_VERSION"
-# Persister dans .env (gitignoré, lu automatiquement par docker compose) : tout
-# `docker compose up` hors de ce script (regen démo dans deploy.yml, ops manuelles
-# ssh, reboot) recréerait sinon le conteneur avec le défaut "dev" — c'est arrivé
-# au deploy v7.1.0 (le job demo-regen redémarre la prod dans une session SSH sans
-# la variable). L'export shell ci-dessus reste prioritaire sur .env au `up` de 2e.
-touch .env
-grep -v '^LEVELUP_APP_VERSION=' .env > .env.tmp || true
-printf 'LEVELUP_APP_VERSION=%s\n' "$LEVELUP_APP_VERSION" >> .env.tmp
-mv .env.tmp .env
-
-# 2e. Basculer : le build (2c) a réussi, donc on peut arrêter les anciens containers puis
+# 2e. Basculer : le build (2d) a réussi, donc on peut arrêter les anciens containers puis
 # redémarrer avec les images tout juste construites. PAS de --build sur le `up` : les
 # images sont déjà prêtes (un `--build` ici referait un build pour rien et réintroduirait
 # une fenêtre de risque après le down). Fenêtre d'indisponibilité réduite au seul temps du
@@ -120,7 +126,7 @@ mv .env.tmp .env
 echo "[deploy] docker compose down..."
 docker compose down --remove-orphans || true
 
-echo "[deploy] docker compose up -d (images déjà construites à l'étape 2c)..."
+echo "[deploy] docker compose up -d (images déjà construites à l'étape 2d)..."
 docker compose up -d
 
 # 3. Nettoyer les images orphelines (garder les images < 24h : rollback rapide possible

@@ -31,9 +31,9 @@ func NewAchievementsHandler(newSvc ServiceFactory[port.AchievementsService]) *Ac
 
 // Mount enregistre la route via Huma sur le sous-routeur chi (préfixe
 // /players/{player_slug} + middleware ownership/title hérités).
-func (h *AchievementsHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Get(api, "/pages/achievements", h.GetAchievementsPage)
+func (h *AchievementsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Get(api, "/pages/achievements", h.GetAchievementsPage, humacore.Op("getAchievementsPage", "Page Achievements Xbox du joueur", "career"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

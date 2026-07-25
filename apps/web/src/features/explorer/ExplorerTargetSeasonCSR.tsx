@@ -10,8 +10,9 @@
 import { useAppShellStore } from '@/stores/appShellStore'
 import { composeTierLabel } from '@/lib/skillTiers'
 import { unrankedBadgeURL } from '@/lib/staticAssets'
-import type { CareerPlaylistCSR } from '@/lib/api/types'
+import type { CareerPlaylistCSR, ExplorerLiveSectionStatus } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
+import { ExplorerLiveStatusBadge } from './ExplorerLiveStatusBadge'
 
 interface ExplorerTargetSeasonCSRProps {
   csrs: CareerPlaylistCSR[]
@@ -19,6 +20,9 @@ interface ExplorerTargetSeasonCSRProps {
   /** Message du placeholder quand aucune donnée CSR — la carte titrée reste rendue
    *  (jamais masquée en silence : visibilité des manques de données). */
   emptyMessage: string
+  /** Statut live de la section (Lot A3) — badge discret dans la barre de titre
+   *  quand != "ok" (auth manquante / échec / repli local). */
+  liveStatus?: ExplorerLiveSectionStatus | null
 }
 
 /**
@@ -32,8 +36,14 @@ function tierLabel(tier: string, subTier: number, locale: Locale): string {
   return composeTierLabel(raw, subTier, locale)
 }
 
-export function ExplorerTargetSeasonCSR({ csrs, title, emptyMessage }: ExplorerTargetSeasonCSRProps) {
+export function ExplorerTargetSeasonCSR({ csrs, title, emptyMessage, liveStatus }: ExplorerTargetSeasonCSRProps) {
   const locale = useAppShellStore((s) => s.locale)
+  const titleBar = (
+    <div className="flex flex-none items-center gap-2 border-b border-border px-4 py-2 text-sm font-medium">
+      <span>{title}</span>
+      <ExplorerLiveStatusBadge status={liveStatus} />
+    </div>
+  )
   // Liste vide : on rend quand même la carte titrée + un message centré (même chrome
   // que ChartCard.empty) au lieu de masquer le bloc, pour repérer les manques.
   if (csrs.length === 0) {
@@ -42,9 +52,7 @@ export function ExplorerTargetSeasonCSR({ csrs, title, emptyMessage }: ExplorerT
         className="flex h-full flex-col rounded-lg border border-border bg-card"
         data-testid="explorer-target-season-csr"
       >
-        <div className="flex-none border-b border-border px-4 py-2 text-sm font-medium">
-          {title}
-        </div>
+        {titleBar}
         <div
           className="flex flex-1 items-center justify-center px-4 py-3 text-sm text-muted-foreground"
           data-testid="explorer-target-season-csr-empty"
@@ -60,9 +68,7 @@ export function ExplorerTargetSeasonCSR({ csrs, title, emptyMessage }: ExplorerT
       className="flex h-full flex-col rounded-lg border border-border bg-card"
       data-testid="explorer-target-season-csr"
     >
-      <div className="flex-none border-b border-border px-4 py-2 text-sm font-medium">
-        {title}
-      </div>
+      {titleBar}
       <div className="flex flex-1 items-center px-4 py-3">
         <ul className="flex w-full flex-col divide-y divide-border/40">
           {csrs.map((c) => {

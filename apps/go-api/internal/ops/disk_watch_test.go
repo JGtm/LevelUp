@@ -2,11 +2,62 @@
 package ops
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
 	"levelup/go-api/internal/domain"
 )
+
+// TestDiskWatchState_JSONRoundTrip garantit que l'état se sérialise/désérialise
+// sans perte (tags JSON présents) — prérequis de la persistance FileStore qui
+// tue la rafale d'alertes au redémarrage.
+func TestDiskWatchState_JSONRoundTrip(t *testing.T) {
+	t0 := time.Date(2026, 7, 25, 8, 30, 0, 0, time.UTC)
+	in := DiskWatchState{
+		LastStatus:          domain.FreshnessStatusWarn,
+		LastNotifiedAt:      t0,
+		PendingImprove:      domain.FreshnessStatusOK,
+		PendingImproveTicks: 1,
+	}
+	raw, err := json.Marshal(in)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var out DiskWatchState
+	if err := json.Unmarshal(raw, &out); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if out.LastStatus != in.LastStatus || !out.LastNotifiedAt.Equal(in.LastNotifiedAt) ||
+		out.PendingImprove != in.PendingImprove || out.PendingImproveTicks != in.PendingImproveTicks {
+		t.Fatalf("round-trip divergent : in=%+v out=%+v", in, out)
+	}
+}
+
+// TestShouldNotifyDisk_PersistedStateKillsRestartBurst documente le cœur du fix
+// anti-rafale : un état RÉHYDRATÉ (warn déjà notifié) ne re-notifie PAS au boot,
+// là où un état vide (rafale historique) re-notifierait à chaque redémarrage.
+func TestShouldNotifyDisk_PersistedStateKillsRestartBurst(t *testing.T) {
+	t0 := time.Date(2026, 7, 25, 12, 0, 0, 0, time.UTC)
+
+	// Rafale historique : sans persistance, chaque boot part d'un état vide et
+	// re-notifie via le chemin « boot en warn/critical ».
+	notifyBurst, _ := ShouldNotifyDisk(DiskWatchState{}, domain.FreshnessStatusWarn, t0)
+	if !notifyBurst {
+		t.Fatal("état vide (boot sans persistance) : notification attendue (rafale historique)")
+	}
+
+	// Après le fix : l'état persisté (warn notifié il y a 1 h) est réhydraté. Un
+	// boot qui ré-observe warn ne re-notifie pas (statut stable, aucun rappel).
+	restored := DiskWatchState{LastStatus: domain.FreshnessStatusWarn, LastNotifiedAt: t0}
+	notifyRestart, next := ShouldNotifyDisk(restored, domain.FreshnessStatusWarn, t0.Add(time.Hour))
+	if notifyRestart {
+		t.Fatal("état réhydraté (warn déjà notifié) : AUCUNE re-notification attendue au restart")
+	}
+	if next.LastNotifiedAt != t0 {
+		t.Fatalf("LastNotifiedAt doit être préservé à travers le restart (got %v, want %v)", next.LastNotifiedAt, t0)
+	}
+}
 
 func TestShouldNotifyDisk(t *testing.T) {
 	t0 := time.Date(2026, 7, 13, 12, 0, 0, 0, time.UTC)
@@ -30,7 +81,7 @@ func TestShouldNotifyDisk(t *testing.T) {
 		}
 		notify, _ = ShouldNotifyDisk(st, domain.FreshnessStatusWarn, t0.Add(time.Hour))
 		if notify {
-			t.Fatal("warn persistant < 24h : pas de re-notification attendue")
+			t.Fatal("warn persistant : pas de re-notification attendue (aucun rappel, V72-31)")
 		}
 	})
 
@@ -42,15 +93,18 @@ func TestShouldNotifyDisk(t *testing.T) {
 		}
 	})
 
-	t.Run("rappel 24h en breach persistant", func(t *testing.T) {
+	t.Run("breach persistant longue durée : jamais de rappel (V72-31)", func(t *testing.T) {
+		// Suppression du rappel 24h : un breach qui persiste plusieurs jours ne
+		// re-notifie jamais tant qu'il n'aggrave pas (warn→critical) ou ne se rétablit
+		// pas (débounce diskConfirmTicks). Seule l'entrée en alerte a notifié.
 		st := DiskWatchState{LastStatus: domain.FreshnessStatusWarn, LastNotifiedAt: t0}
-		notify, st := ShouldNotifyDisk(st, domain.FreshnessStatusWarn, t0.Add(DiskRenotifyInterval))
-		if !notify {
-			t.Fatal("breach >= 24h : rappel attendu")
-		}
-		notify, _ = ShouldNotifyDisk(st, domain.FreshnessStatusWarn, t0.Add(DiskRenotifyInterval+time.Hour))
+		notify, st := ShouldNotifyDisk(st, domain.FreshnessStatusWarn, t0.Add(24*time.Hour))
 		if notify {
-			t.Fatal("rappel déjà envoyé : silence attendu jusqu'au prochain intervalle")
+			t.Fatal("breach stable après 24h : aucun rappel attendu")
+		}
+		notify, _ = ShouldNotifyDisk(st, domain.FreshnessStatusWarn, t0.Add(240*time.Hour))
+		if notify {
+			t.Fatal("breach stable après 10 jours : aucun rappel attendu")
 		}
 	})
 
@@ -81,7 +135,7 @@ func TestShouldNotifyDisk(t *testing.T) {
 		if next.LastStatus != domain.FreshnessStatusWarn {
 			t.Fatalf("unknown ne doit pas écraser LastStatus (got %q)", next.LastStatus)
 		}
-		// Le breach warn reste actif : un retour en warn ne re-notifie pas (< 24h)...
+		// Le breach warn reste actif : un retour en warn ne re-notifie pas (statut stable)...
 		notify, _ = ShouldNotifyDisk(next, domain.FreshnessStatusWarn, t0.Add(2*time.Hour))
 		if notify {
 			t.Fatal("warn après unknown transitoire : pas une nouvelle transition")

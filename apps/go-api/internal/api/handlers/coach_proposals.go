@@ -56,11 +56,14 @@ func NewCoachProposalsHandler(resolve CoachAdvisorResolver, titleSlug string) *C
 // Mount enregistre les 3 routes via Huma (Phase 3b) sur un sous-routeur déjà
 // préfixé par /players/{player_slug} (humacore.NewAPI lit le path param parent
 // et hérite du middleware ownership/title du sous-groupe).
-func (h *CoachProposalsHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Get(api, "/coach/proposals", h.handleListProposals)
-	huma.Post(api, "/coach/proposals/{id}/accept", h.handleAcceptProposal)
-	huma.Post(api, "/coach/proposals/{id}/dismiss", h.handleDismissProposal)
+func (h *CoachProposalsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Get(api, "/coach/proposals", h.handleListProposals, humacore.Op("listCoachProposals", "Liste des proposals coach (challenges/arcs Prestige calibrés sur signaux récents)", "progression"))
+	huma.Post(api, "/coach/proposals/{id}/accept", h.handleAcceptProposal, humacore.Op(
+		"acceptCoachProposal",
+		"Matérialise une proposal coach via prestige.CreateChallenge ou CreateArc (Source=\"coach\")",
+		"progression"))
+	huma.Post(api, "/coach/proposals/{id}/dismiss", h.handleDismissProposal, humacore.Op("dismissCoachProposal", "Marque une proposal comme dismissed (idempotent — no-op si déjà résolue)", "progression"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

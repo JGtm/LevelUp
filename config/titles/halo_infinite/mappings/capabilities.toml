@@ -74,3 +74,8 @@ schema_version = 1
 # titre lu au site de résolution du libellé (match_view_repo) — absente pour un titre
 # dont les noms de playlist officiels n'ont pas ce préfixe (Halo 5).
 "playlist.label.strip_category" = "supported"
+# Stats objectifs par joueur/match (CTF/Zones (Strongholds+KOTH)/Oddball) extraites
+# nativement du payload GetMatchStats (Players[].PlayerTeamStats[0].Stats.<BlocMode>)
+# → shared.match_objective_stats. Gouverne le JOIN _latest servi au scoreboard /
+# synthesis / squad. Cf. PLAN_V72_OBJECTIVE_STATS.md.
+"match.objective.stats"  = "supported"

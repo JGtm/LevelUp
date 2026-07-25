@@ -56,6 +56,7 @@ surfaced in the match view and the favorite-weapon home KPI.
 | Attribution result struct | `internal/analysis/kill_attribution.go` |
 | Aggregated read repository | `internal/platform/duckdb/weapon_kills_repo.go` |
 | Label / role resolution (metadata) | `internal/platform/duckdb/weapon_resolver.go` |
+| Display-name source (per title, keyed by `weapon_key`) | `config/titles/{slug}/mappings/weapon_names.toml` + loader `internal/games/mappings/loader_weapon_names.go` + boot seed `internal/games/halo_infinite/migrations/weapon_name_labels.go` (`ReconcileWeaponNameLabels`) |
 | Schema (table + view) | `internal/games/halo_infinite/migrations/steps_shared_core.go` (`add_weapon_kills`, `add_weapon_kills_reconciled_as`) |
 | Append-only conversion | `internal/migration/steps_shared_append_only_weapon_kills.go` |
 | CLI backfill | `apps/go-api/cmd/levelup` — `backfill --weapons` |
@@ -219,10 +220,20 @@ view **`v_weapon_kills`**, which:
 UNION-ALLs the `grenade_kills` / `melee_kills` totals from `match_participants`
 under the sentinel IDs `0` and `1`.
 
-Labels (EN/FR) and roles are attached in Go from `metadata.weapon_labels`
-(`weapon_id UBIGINT`, `name_en`, `name_fr`) via `weapon_resolver.go` — the
-metadata DB is separate, so it cannot be SQL-joined to the shared DB. Display
-name is `name_fr` first, then `name_en`.
+Labels (EN/FR) and roles are attached in Go via `weapon_resolver.go` — the
+metadata DB is separate, so it cannot be SQL-joined to the shared DB.
+
+**Display name — single source keyed by `weapon_key` (V72-06).** The display name
+is resolved `weapon_id → weapon_ids → weapon_key → {en, fr}` from
+`metadata.weapon_name_labels` (`title_slug`, `weapon_key`, `name_en`, `name_fr`),
+seeded at boot from `config/titles/{slug}/mappings/weapon_names.toml`
+(`ReconcileWeaponNameLabels`). All raw id variants of one weapon collapse to a
+single translation (kills the `FRAG GRENADE` vs `Frag Grenade` mismatch). Label
+priority: `weapon_name_labels.name_fr > .name_en > weapon_labels.name_fr >
+weapon_labels.name_en` — the last two only cover ids **without** a `weapon_key`
+(sentinels `0/1/2`, unknowns). The `weapons` registry no longer carries a display
+name (`name_fr` removed); it provides only the dimensions (role/class/family/faction).
+`weapon_labels.name_en` still drives the image URL (`AssetURLAdapter`).
 
 If `weapon_kills` / `v_weapon_kills` is absent (e.g. a title that does not
 support it), the repo returns `games.ErrCapabilityNotSupported`.
@@ -267,9 +278,13 @@ When a new weapon ships, or an unresolved WID is positively identified:
    `apps/go-api/internal/analysis/weapon_data.go` (hex -> name). Place it in the
    right group (standard / Energy Sword family / Gravity Hammer family /
    grenade). If the weapon class is new, add a `WeaponTimingByName` entry.
-2. Add the EN/FR label to `metadata.weapon_labels` (seed via
-   `cmd/seed-weapon-labels`, or insert directly) so the read path can display
-   it.
+2. Add the weapon to the canonical registry (`weaponRegistryWeapons` +
+   `weaponRegistry*IDs` in `internal/games/halo_infinite/migrations/weapon_registry.go`)
+   so the raw id resolves to a `weapon_key`, **and** add the display name (en/fr)
+   keyed by that `weapon_key` in `config/titles/{slug}/mappings/weapon_names.toml`.
+   A registry `weapon_key` without a `weapon_names.toml` entry (or vice versa) fails
+   the completeness guard (`weapon_names_completeness_test.go`). `weapon_labels` is
+   still seeded (EN name for the image URL), but no longer carries the display name.
 3. Re-run `go run ./cmd/levelup backfill --weapons --force` for affected
    matches if you want existing rows re-attributed; new matches pick up the
    mapping automatically.

@@ -131,6 +131,9 @@ func (p *SharedPersister) Persist(ctx context.Context, batch *MatchBatch) error 
 	if err := persistCommendations(ctx, tx, s.Commendations); err != nil {
 		return err
 	}
+	if err := persistObjectiveStats(ctx, tx, s.ObjectiveStats); err != nil {
+		return err
+	}
 
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("persist: Commit %s: %w", s.Match.MatchID, err)
@@ -484,6 +487,75 @@ func persistCommendations(ctx context.Context, tx *sql.Tx, rows []CommendationIn
 			return fmt.Errorf("persist: INSERT match_commendations %s/%s/%s: %w",
 				row.MatchID, row.XUID, row.CommendationID, err)
 		}
+	}
+	return nil
+}
+
+// persistObjectiveStats insère les stats objectifs par joueur (match_objective_stats).
+// INSERT pur — table append-only créée directement (id PK seq + written_at + vue
+// _latest). Colonnes du mode absent = NULL (pointeurs nil). Aucun UPDATE / ON CONFLICT
+// (ART-safe #23046) ; la relecture passe par match_objective_stats_latest.
+func persistObjectiveStats(ctx context.Context, tx *sql.Tx, rows []ObjectiveStatsInsert) error {
+	if len(rows) == 0 {
+		return nil
+	}
+	const q = `
+		INSERT INTO match_objective_stats (
+			match_id, xuid,
+			flag_captures, flag_capture_assists, flag_grabs, flag_secures, flag_steals,
+			flag_returns, flag_carriers_killed, flag_returners_killed,
+			kills_as_flag_carrier, kills_as_flag_returner, time_as_flag_carrier_seconds,
+			zone_captures, zone_secures, zone_offensive_kills, zone_defensive_kills,
+			zone_scoring_ticks, time_in_zones_seconds,
+			kills_as_skull_carrier, skull_carriers_killed, skull_grabs, skull_scoring_ticks,
+			time_as_skull_carrier_seconds, longest_time_as_skull_carrier_seconds
+		) VALUES (
+			?, ?,
+			?, ?, ?, ?, ?,
+			?, ?, ?,
+			?, ?, ?,
+			?, ?, ?, ?,
+			?, ?,
+			?, ?, ?, ?,
+			?, ?
+		)`
+	for _, r := range rows {
+		_, err := tx.ExecContext(ctx, q,
+			r.MatchID, r.XUID,
+			r.FlagCaptures, r.FlagCaptureAssists, r.FlagGrabs, r.FlagSecures, r.FlagSteals,
+			r.FlagReturns, r.FlagCarriersKilled, r.FlagReturnersKilled,
+			r.KillsAsFlagCarrier, r.KillsAsFlagReturner, r.TimeAsFlagCarrierSeconds,
+			r.ZoneCaptures, r.ZoneSecures, r.ZoneOffensiveKills, r.ZoneDefensiveKills,
+			r.ZoneScoringTicks, r.TimeInZonesSeconds,
+			r.KillsAsSkullCarrier, r.SkullCarriersKilled, r.SkullGrabs, r.SkullScoringTicks,
+			r.TimeAsSkullCarrierSeconds, r.LongestTimeAsSkullCarrierSeconds,
+		)
+		if err != nil {
+			return fmt.Errorf("persist: INSERT match_objective_stats %s/%s: %w", r.MatchID, r.XUID, err)
+		}
+	}
+	return nil
+}
+
+// InsertObjectiveStats est le point d'entrée EXPORTÉ (backfill CLI) pour écrire
+// des rows match_objective_stats hors du chemin SharedBatch : ouvre une
+// transaction sur db et réutilise persistObjectiveStats (INSERT-only ART-safe,
+// #23046). DRY — une seule copie du SQL d'INSERT (persistObjectiveStats).
+// Pré-requis : db en accès RW exclusif (serveur arrêté, un seul writer par DB).
+func InsertObjectiveStats(ctx context.Context, db txBeginner, rows []ObjectiveStatsInsert) error {
+	if len(rows) == 0 {
+		return nil
+	}
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("persist: begin tx objective_stats: %w", err)
+	}
+	if err := persistObjectiveStats(ctx, tx, rows); err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("persist: commit objective_stats: %w", err)
 	}
 	return nil
 }

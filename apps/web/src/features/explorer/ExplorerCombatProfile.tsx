@@ -19,10 +19,11 @@ import type { ChartPointDonut } from '@/components/charts/DonutChart'
 import type { SemanticToken } from '@/lib/accessibility'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
-import type { ExplorerTargetRecentMatch, MedalDigestItem } from '@/lib/api/types'
+import type { ExplorerLiveSectionStatus, ExplorerTargetRecentMatch, MedalDigestItem } from '@/lib/api/types'
 import { CombatFdaChart } from './CombatFdaChart'
 import { CombatScorePlacementChart } from './CombatScorePlacementChart'
 import { ExplorerTargetMedals } from './ExplorerTargetMedals'
+import { ExplorerLiveStatusBadge } from './ExplorerLiveStatusBadge'
 import type { Locale } from '@/lib/i18n/locale'
 
 export interface ExplorerCombatProfileProps {
@@ -34,6 +35,9 @@ export interface ExplorerCombatProfileProps {
   t: (key: ExplorerManifestKey) => string
   /** Top médailles lifetime de la cible — rendu à droite du donut modes. */
   topMedals?: MedalDigestItem[]
+  /** Statut de la source LIVE (Lot A3) — badge discret dans l'en-tête quand
+   *  != "ok" (explique pourquoi le tab "En direct" est vide/désactivé). */
+  combatLiveStatus?: ExplorerLiveSectionStatus | null
 }
 
 const CHART_HEIGHT = 300
@@ -44,7 +48,14 @@ const SOURCE_LABELS: Record<Locale, { live: string; local: string; empty: string
   en: { live: 'Live', local: 'Local', empty: 'No data for this source.' },
 }
 
-export function ExplorerCombatProfile({ liveMatches, localMatches, locale, t, topMedals = [] }: ExplorerCombatProfileProps) {
+export function ExplorerCombatProfile({
+  liveMatches,
+  localMatches,
+  locale,
+  t,
+  topMedals = [],
+  combatLiveStatus,
+}: ExplorerCombatProfileProps) {
   const hasLive = liveMatches.length > 0
   const hasLocal = localMatches.length > 0
   // Défaut : LIVE (les 20 derniers via l'API) ; bascule sur le local au besoin. Si
@@ -125,7 +136,26 @@ export function ExplorerCombatProfile({ liveMatches, localMatches, locale, t, to
     ]
   }, [matches, t])
 
-  if (!hasLive && !hasLocal) return null
+  // Aucune donnée dans les 2 sources : silence uniquement si le statut live
+  // n'explique rien (cas "ok" — historique, ex. cible sans aucun match PvP).
+  // Sinon (no_auth/failed/local_partial), rendu minimal titré + badge — A3, ne
+  // jamais masquer une section en silence quand la cause est connue.
+  if (!hasLive && !hasLocal) {
+    if (!combatLiveStatus || combatLiveStatus === 'ok') return null
+    return (
+      <section className="space-y-3" data-testid="explorer-combat-profile-status-only">
+        <header className="flex items-center gap-2">
+          <h3 className="text-base font-semibold text-foreground">
+            {t('explorer.combat.title')}
+          </h3>
+          <ExplorerLiveStatusBadge status={combatLiveStatus} />
+        </header>
+        <p className="rounded-lg border border-dashed border-border bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground">
+          {SOURCE_LABELS[locale === 'en' ? 'en' : 'fr'].empty}
+        </p>
+      </section>
+    )
+  }
 
   const lbl = SOURCE_LABELS[locale === 'en' ? 'en' : 'fr']
   const damageColors: Record<string, SemanticToken> = {
@@ -140,10 +170,14 @@ export function ExplorerCombatProfile({ liveMatches, localMatches, locale, t, to
   return (
     <section className="space-y-3" data-testid="explorer-combat-profile">
       <header className="flex items-start justify-between gap-3">
-        <div>
+        <div className="flex items-center gap-2">
           <h3 className="text-base font-semibold text-foreground">
             {t('explorer.combat.title')}
           </h3>
+          {/* Badge live (A3) : n'explique le tab "En direct" que s'il est
+              effectivement vide (source live sans donnée exploitable) — un
+              tab live plein n'a jamais besoin d'un badge. */}
+          {!hasLive && <ExplorerLiveStatusBadge status={combatLiveStatus} />}
         </div>
         {/* Toggle source : live (défaut) / local. Désactive une source sans données. */}
         <div

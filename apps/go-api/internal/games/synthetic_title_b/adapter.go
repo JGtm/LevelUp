@@ -67,10 +67,6 @@ func (a *DataAdapter) LoadMatchSummaries(ctx context.Context, matchIDs []string)
 	return []canonical.MatchSummary{}, nil
 }
 
-func (a *DataAdapter) LoadMatchDetail(ctx context.Context, matchID string) (*canonical.MatchDetail, error) {
-	return nil, games.ErrCapabilityNotSupported
-}
-
 // LoadPlayerStats projette les FakePlayerStats injectées vers le canonique.
 func (a *DataAdapter) LoadPlayerStats(ctx context.Context, xuid string, scope canonical.StatsScope) (*canonical.PlayerStats, error) {
 	if a.stats == nil {

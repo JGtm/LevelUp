@@ -31,6 +31,7 @@ func AllCapabilityKeys() []CapabilityKey {
 		CapCommendationsNative,
 		CapWeaponAccuracy,
 		CapPlaylistCategoryStrip,
+		CapMatchObjectiveStats,
 	}
 }
 

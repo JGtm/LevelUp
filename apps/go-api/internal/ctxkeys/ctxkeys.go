@@ -10,15 +10,15 @@ import (
 type contextKey string
 
 const (
-	titleSlugKey       contextKey = "title_slug"
-	haloTokensKey      contextKey = "halo_tokens"
-	haloXUIDKey        contextKey = "halo_xuid"
-	tokensOwnerXUIDKey contextKey = "tokens_owner_xuid"
-	viewerGamertagKey  contextKey = "viewer_gamertag"
-	requestIDKey       contextKey = "request_id"
-	eventIDKey         contextKey = "event_id"
-	localeKey          contextKey = "locale"
-	dbWriterLabelKey   contextKey = "db_writer_label"
+	titleSlugKey          contextKey = "title_slug"
+	haloTokensKey         contextKey = "halo_tokens"
+	haloXUIDKey           contextKey = "halo_xuid"
+	tokensOwnerXUIDKey    contextKey = "tokens_owner_xuid"
+	requestIDKey          contextKey = "request_id"
+	eventIDKey            contextKey = "event_id"
+	localeKey             contextKey = "locale"
+	dbWriterLabelKey      contextKey = "db_writer_label"
+	gamertagLiveSearchKey contextKey = "gamertag_live_search"
 )
 
 // WithLocale place la locale UI ("fr"/"en") dans le contexte. Utilisée par les
@@ -123,30 +123,6 @@ func TokensOwnerXUID(ctx context.Context) string {
 	return v
 }
 
-// WithViewerGamertag place le GAMERTAG du joueur de la page (le "viewer") dans le
-// contexte. Indispensable aux titres GAMERTAG-keyés (Halo 5) dont l'API match ne
-// porte aucun xuid (Player.Xuid toujours null) : pour résoudre le MODE de la
-// carnage + les refs header (map/playlist/startTime/isRanked) d'un match, l'adapter
-// doit retrouver l'entrée de l'historique du joueur via GetPlayerMatches(gamertag).
-// Or les signatures canoniques ID-keyées (LoadMatchDetail(ctx, matchID)) ne portent
-// pas de viewer ; le contexte est donc le seul canal propre, à l'image du
-// SpartanToken (ctxkeys.HaloTokens).
-//
-// Câblage : le registry/handler de la route /players/{slug}/... connaît le
-// gamertag du joueur (pdb.Gamertag) et le pose ici au moment de construire le
-// service. Title-agnostic : un titre xuid-keyé (Halo Infinite) ignore cette clé.
-func WithViewerGamertag(ctx context.Context, gamertag string) context.Context {
-	return context.WithValue(ctx, viewerGamertagKey, gamertag)
-}
-
-// ViewerGamertag extrait le gamertag du joueur de la page depuis le contexte.
-// Retourne "" si absent (les titres xuid-keyés n'en ont pas besoin ; les titres
-// gamertag-keyés dégradent gracieusement quand il manque).
-func ViewerGamertag(ctx context.Context) string {
-	v, _ := ctx.Value(viewerGamertagKey).(string)
-	return v
-}
-
 // WithRequestID place l'identifiant de requête dans le contexte.
 // P6.4 (revue 2026-04-29 axe 8 BLOQUANT) : permet de corréler une ligne
 // d'accès middleware (`request_id` log) avec les `slog.*Context` émis par
@@ -212,4 +188,20 @@ func DBWriterLabel(ctx context.Context) string {
 		return v
 	}
 	return DBWriterLabelUnlabeled
+}
+
+// WithGamertagLiveSearch arme (ou non) le REPLI LIVE de la recherche de gamertag
+// (résolution Xbox d'un joueur jamais croisé). Posé par le handler à partir du
+// paramètre ?live= de l'endpoint. Défaut (absent) = false : recherche LOCALE seule,
+// rapide — le repli live (2-3 s bloquants) n'est armé que sur intention explicite de
+// l'utilisateur (bouton « Rechercher sur Xbox »). Challenge V72-24 (latence typeahead).
+func WithGamertagLiveSearch(ctx context.Context, enabled bool) context.Context {
+	return context.WithValue(ctx, gamertagLiveSearchKey, enabled)
+}
+
+// GamertagLiveSearch indique si le repli live de la recherche de gamertag est armé
+// pour cette requête. Retourne false si absent (défaut : local seul).
+func GamertagLiveSearch(ctx context.Context) bool {
+	v, _ := ctx.Value(gamertagLiveSearchKey).(bool)
+	return v
 }

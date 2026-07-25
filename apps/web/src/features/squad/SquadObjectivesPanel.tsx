@@ -244,10 +244,12 @@ function SquadProgressList({
   const gamertagByXuid = new Map(members.map((m) => [m.xuid, m.gamertag]))
   return (
     <ul className="mt-2 space-y-1 border-t border-border pt-2">
-      {progress.map((p) => {
+      {progress.map((p, idx) => {
         const name = gamertagByXuid.get(p.xuid) || p.xuid.slice(0, 8)
         return (
-          <li key={p.xuid} className="flex items-center justify-between gap-2 text-2xs">
+          // Clé composite : le xuid peut être vide (joueurs H5 sans xuid) → collisions
+          // key="" entre entrées. L'index désambiguïse.
+          <li key={`${p.xuid}||${idx}`} className="flex items-center justify-between gap-2 text-2xs">
             <span className="truncate text-muted-foreground">{name}</span>
             <span className="flex shrink-0 items-center gap-2">
               <span className="tabular-nums">

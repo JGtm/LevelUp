@@ -79,6 +79,11 @@ type SessionDetailMatchRow struct {
 	// la colonne "Rang" affiche "X/Y" à la place du palier (comme l'Explorer).
 	PlacementDone  *int `json:"placement_done,omitempty"`
 	PlacementTotal *int `json:"placement_total,omitempty"`
+	// PerfPlacementDone/PerfPlacementTotal : placement de la chaîne de performance
+	// (colonnes Perf/ΔPerf), distinct de PlacementDone/Total (colonne Rang).
+	// Voir ExplorerMatchesRow.PerfPlacementDone.
+	PerfPlacementDone  *int `json:"perf_placement_done,omitempty"`
+	PerfPlacementTotal *int `json:"perf_placement_total,omitempty"`
 	// ModeUI : libellé de mode normalisé + traduit (comme l'Explorer), via analysis.ResolveModeUI.
 	ModeUI string `json:"mode_ui,omitempty"`
 	// Stats attendues (écart CUMULÉ au FDA attendu sur la session). KdaExpected =
@@ -89,6 +94,11 @@ type SessionDetailMatchRow struct {
 	DeathsExpected  *float64 `json:"deaths_expected,omitempty"`
 	AssistsExpected *float64 `json:"assists_expected,omitempty"`
 	KdaExpected     *float64 `json:"kda_expected,omitempty"`
+	// CareerXPEstimated — XP de carrière (Career Rank) ESTIMÉE gagnée sur ce match,
+	// MIROIR EXACT du calcul Timeseries (analysis.EstimateCareerXP via
+	// estimateMatchCareerXP, capability analytics.career_xp_estimate). nil hors
+	// capability / match Firefight / personal_score absent (V72-13).
+	CareerXPEstimated *int `json:"career_xp_estimated,omitempty"`
 }
 
 // SessionCompareSuggestion décrit la session proposée pour une comparaison rapide.

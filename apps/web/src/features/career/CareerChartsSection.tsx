@@ -78,11 +78,14 @@ export function CareerChartsSection({
           Graphe LUSR gaté sur `lusr` ; le slot gauche (CareerRankingBlock, gating
           CSR/LUSR interne) reste affiché pour un titre `ranked` sans `lusr`. */}
       {lusrLeftSlot ? (
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[0.9fr_2fr]">
+        // items-stretch + h-full des deux cellules : la colonne « Évolution LUSR / CSR »
+        // (ChartCard fluid) s'étire à la hauteur de « Classements » quand ce dernier est
+        // plus haut — plus de vide sous le graphe (V72-28).
+        <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-[0.9fr_2fr]">
           <div className="min-w-0 h-full">{lusrLeftSlot}</div>
-          <div className="min-w-0">
+          <div className="min-w-0 h-full">
             <FeatureGate capability="lusr">
-              <CareerLusrEvolutionChart lusrCheckpoints={lusrCheckpoints} locale={locale} />
+              <CareerLusrEvolutionChart lusrCheckpoints={lusrCheckpoints} locale={locale} fluid />
             </FeatureGate>
           </div>
         </div>

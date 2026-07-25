@@ -146,7 +146,52 @@ type ScoreboardRaw struct {
 	// LocallyEstimated : K/D attendus issus du modèle local (count∝durée, Halo 5),
 	// pas de l'API skill. Posé sur la ligne is_me → label « Estimé localement » du drawer.
 	LocallyEstimated bool
+	// Objectifs (match_objective_stats_latest, LEFT JOIN Q12) — nil hors mode à
+	// objectif ou titre non supporté (table vide). Blocs mutuellement exclusifs par
+	// mode : seul le bloc du mode joué est non-nil. Le service construit
+	// MatchScoreboardRow.Objective uniquement si un bloc est présent.
+	Obj ObjectiveRaw
 }
+
+// ObjectiveRaw : stats objectifs par joueur (Q12 LEFT JOIN match_objective_stats_latest).
+// Blocs mutuellement exclusifs par mode (CTF / Zones / Oddball). HasObjective() vrai
+// dès qu'un discriminant de bloc est non-nil.
+type ObjectiveRaw struct {
+	// CTF (CaptureTheFlagStats)
+	FlagCaptures             *int
+	FlagCaptureAssists       *int
+	FlagGrabs                *int
+	FlagSecures              *int
+	FlagSteals               *int
+	FlagReturns              *int
+	FlagCarriersKilled       *int
+	FlagReturnersKilled      *int
+	KillsAsFlagCarrier       *int
+	KillsAsFlagReturner      *int
+	TimeAsFlagCarrierSeconds *float64
+	// Zones (ZonesStats — Strongholds + KOTH)
+	ZoneCaptures       *int
+	ZoneSecures        *int
+	ZoneOffensiveKills *int
+	ZoneDefensiveKills *int
+	ZoneScoringTicks   *int
+	TimeInZonesSeconds *float64
+	// Oddball (OddballStats)
+	KillsAsSkullCarrier              *int
+	SkullCarriersKilled              *int
+	SkullGrabs                       *int
+	SkullScoringTicks                *int
+	TimeAsSkullCarrierSeconds        *float64
+	LongestTimeAsSkullCarrierSeconds *float64
+}
+
+// HasCTF / HasZones / HasOddball : discriminants de bloc (un grab non-nil suffit).
+func (o ObjectiveRaw) HasCTF() bool     { return o.FlagGrabs != nil || o.FlagCaptures != nil }
+func (o ObjectiveRaw) HasZones() bool   { return o.ZoneCaptures != nil || o.ZoneScoringTicks != nil }
+func (o ObjectiveRaw) HasOddball() bool { return o.SkullGrabs != nil || o.SkullScoringTicks != nil }
+
+// HasObjective : au moins un bloc objectif présent.
+func (o ObjectiveRaw) HasObjective() bool { return o.HasCTF() || o.HasZones() || o.HasOddball() }
 
 // BulkMedalRaw : une ligne de Q27 (médailles de tous les joueurs du match).
 type BulkMedalRaw struct {
@@ -164,12 +209,18 @@ type BulkWeaponKillRaw struct {
 	Kills       int
 	WeaponLabel string
 	NameEN      string // nom EN officiel → lookup WeaponImageURL dans l'adapter
-	// Class / Role : dimensions du registre d'armes (axe manipulation + fonction de
-	// combat), résolues dans la même passe que le label (resolveWeaponMeta). Vides si
-	// l'arme est absente du registre. Alimentent la FragDistribution par-match (sunburst
-	// v2) : Class recolore le breakdown par arme, la ventilation gun → classe/rôle.
-	Class string
-	Role  string
+	// Class / Role / Family : dimensions du registre d'armes (axe manipulation + fonction
+	// de combat + famille), résolues dans la même passe que le label (resolveWeaponMeta).
+	// Vides si l'arme est absente du registre. Alimentent la FragDistribution par-match
+	// (sunburst v2) : Class recolore le breakdown par arme + la ventilation gun → classe ;
+	// Family alimente le TYPE de grenade au niveau 2 (V72-15.2 : frag/plasma/dynamo/splinter).
+	Class  string
+	Role   string
+	Family string
+	// MechanicKills : sous-ensemble de Kills non-arme (mêlée/assassinat/coup au sol/charge
+	// d'épaule attribués à l'arme TENUE, kill_kind <> 'weapon' sur H5 ; 0 sur Infinite).
+	// buildFragDistribution les retire des classes gun (anti-double-comptage V72-15.3).
+	MechanicKills int
 }
 
 // MatchEnrichmentRaw : données brutes de Q18.

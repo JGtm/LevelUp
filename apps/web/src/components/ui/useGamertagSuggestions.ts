@@ -10,7 +10,7 @@
  * Recherche serveur : déclenchée à partir de 2 caractères, debounce 250 ms,
  * dédupliquée des sources locales.
  */
-import { useMemo, useEffect, useState } from 'react'
+import { useMemo, useEffect, useState, useCallback } from 'react'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { api } from '@/lib/api/client'
@@ -55,6 +55,26 @@ export interface UseGamertagSuggestionsResult {
   hasAnyResult: boolean
   /** True si la query est suffisamment longue pour avoir consulté le serveur. */
   remoteAttempted: boolean
+  /**
+   * Repli LIVE Xbox EXPLICITE (V72-24) : résultats de la résolution Xbox d'un joueur
+   * jamais croisé localement, dédupliqués des autres sources. Vide tant que
+   * l'utilisateur n'a pas déclenché triggerLiveSearch (bouton « Rechercher sur Xbox »).
+   */
+  liveResults: RemoteItem[]
+  /** True pendant le round-trip du repli live (2-3 s). */
+  isLiveLoading: boolean
+  /** True quand un repli live a été déclenché pour la query courante. */
+  liveAttempted: boolean
+  /**
+   * True quand le repli live de la query COURANTE a abouti et que Xbox n'a
+   * renvoyé AUCUN joueur. Calculé sur la réponse BRUTE (avant déduplication) :
+   * une réponse non vide dont tous les hits sont déjà affichés ailleurs n'est pas
+   * un « aucun résultat ». Permet au composant de donner un retour explicite au
+   * lieu de laisser le bouton disparaître sans rien afficher.
+   */
+  liveEmpty: boolean
+  /** Déclenche le repli live Xbox pour la query courante (intention explicite). */
+  triggerLiveSearch: () => void
 }
 
 interface UseGamertagSuggestionsArgs {
@@ -104,6 +124,37 @@ export function useGamertagSuggestions({
     staleTime: 60 * 1000,
     placeholderData: keepPreviousData,
   })
+
+  // Repli LIVE Xbox (V72-24) : désarmé par défaut (typeahead rapide, local seul).
+  // Déclenché explicitement par triggerLiveSearch. Réinitialisé à chaque changement
+  // de query — le repli est décidé par-query, jamais rémanent.
+  const [liveArmedQuery, setLiveArmedQuery] = useState<string | null>(null)
+  useEffect(() => {
+    setLiveArmedQuery(null)
+  }, [trimmed])
+  const liveEnabled = liveArmedQuery !== null && liveArmedQuery === trimmed && remoteEnabled
+  const liveQuery = useQuery({
+    queryKey: queryKeys.gamertagSearch(trimmed, true),
+    queryFn: () =>
+      api.get<GamertagSearchResponse>(
+        `/directory/gamertags/search?q=${encodeURIComponent(trimmed)}&limit=${REMOTE_LIMIT}&live=1`,
+      ),
+    enabled: liveEnabled,
+    staleTime: 60 * 1000,
+    // PAS de keepPreviousData ici (contrairement au typeahead local) : le repli live
+    // est DÉSARMÉ par défaut et ré-armé par-query. Un placeholder ferait persister
+    // indéfiniment les hits Xbox d'une recherche précédente sous une query qui n'a
+    // jamais interrogé Xbox — l'utilisateur lirait des résultats périmés comme s'ils
+    // concernaient sa saisie courante.
+  })
+  // Second verrou, indispensable même sans placeholder : `staleTime` garde la réponse
+  // en cache, donc revenir sur une query DÉJÀ résolue en live rendrait ses items alors
+  // que la query est désarmée. On ne lit la réponse que quand le repli est armé pour
+  // la query courante (référence stable : jamais de littéral recréé à chaque rendu).
+  const liveData = liveEnabled ? liveQuery.data : undefined
+  const triggerLiveSearch = useCallback(() => {
+    if (trimmed.length >= REMOTE_MIN_CHARS) setLiveArmedQuery(trimmed)
+  }, [trimmed])
 
   return useMemo<UseGamertagSuggestionsResult>(() => {
     const q = query.trim()
@@ -161,6 +212,25 @@ export function useGamertagSuggestions({
 
     const hasAnyResult = configured.length + frequent.length + remote.length > 0
 
+    // Repli live : items du fetch Xbox, dédupliqués de TOUTES les sources déjà affichées
+    // (configuré / fréquent / remote local) → seuls les hits réellement nouveaux restent.
+    const remoteGts = new Set(remote.map((r) => r.gamertag))
+    const liveRaw: GamertagSuggestion[] = liveData?.items ?? []
+    const liveResults: RemoteItem[] = liveRaw
+      .filter(
+        (r) =>
+          !excluded.has(r.gamertag) &&
+          !configuredGts.has(r.gamertag) &&
+          !frequentGts.has(r.gamertag) &&
+          !remoteGts.has(r.gamertag),
+      )
+      .map((r) => ({
+        gamertag: r.gamertag,
+        xuid: r.xuid,
+        exact_match: r.exact_match,
+        isConfigured: false as const,
+      }))
+
     return {
       configured,
       frequent,
@@ -168,14 +238,27 @@ export function useGamertagSuggestions({
       isRemoteLoading: remoteEnabled && remoteQuery.isFetching,
       hasAnyResult,
       remoteAttempted: remoteEnabled,
+      liveResults,
+      isLiveLoading: liveEnabled && liveQuery.isFetching,
+      liveAttempted: liveArmedQuery !== null && liveArmedQuery === trimmed,
+      liveEmpty:
+        liveEnabled && liveQuery.isSuccess && !liveQuery.isFetching && liveRaw.length === 0,
+      triggerLiveSearch,
     }
   }, [
     query,
+    trimmed,
     availablePlayers,
     frequentOptions,
     excludeGamertags,
     remoteQuery.data,
     remoteQuery.isFetching,
     remoteEnabled,
+    liveData,
+    liveQuery.isFetching,
+    liveQuery.isSuccess,
+    liveEnabled,
+    liveArmedQuery,
+    triggerLiveSearch,
   ])
 }

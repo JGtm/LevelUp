@@ -45,9 +45,9 @@ func NewSynthesisHandler(newSvc ContextFactory[port.SynthesisService]) *Synthesi
 
 // Mount enregistre la route via Huma sur le sous-routeur chi (préfixe
 // /players/{player_slug} + middleware ownership/title hérités).
-func (h *SynthesisHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Post(api, "/pages/synthesis", h.handleGetSynthesisPage)
+func (h *SynthesisHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Post(api, "/pages/synthesis", h.handleGetSynthesisPage, humacore.Op("postSynthesisPage", "Synthèse globale (filtres en body)", "synthesis"))
 	// Body OPTIONNEL (décodé seulement si présent) : RawBody requis par défaut
 	// côté Huma → optionnel pour préserver le 200 sur corps absent.
 	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/pages/synthesis")

@@ -29,6 +29,7 @@ const FEATURE_LABEL: Record<TitleCapability, { fr: string; en: string }> = {
   spartan_customizer: { fr: 'la personnalisation Spartan', en: 'Spartan customization' },
   expected_stats: { fr: 'l écart au FDA attendu', en: 'expected KDA stats' },
   waypoint_match_url: { fr: 'les liens Halo Waypoint', en: 'Halo Waypoint links' },
+  objective_stats: { fr: 'les stats objectifs (CTF/Zones/Oddball)', en: 'objective stats (CTF/Zones/Oddball)' },
 }
 
 interface FeatureUnavailableProps {

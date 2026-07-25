@@ -413,7 +413,7 @@ type CareerRivalsResponse struct {
 type GamertagSearchResult struct {
 	Gamertag   string  `json:"gamertag"`
 	XUID       string  `json:"xuid"`
-	Score      float64 `json:"score"`
+	Score      float64 `json:"score" default:"1"`
 	ExactMatch bool    `json:"exact_match"`
 }
 

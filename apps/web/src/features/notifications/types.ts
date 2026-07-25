@@ -39,6 +39,7 @@ export type NotificationCategory =
   | 'trend_consolidate'      // 2026-06-09 — coach soft-négatif : axe en baisse « à consolider » (neutre)
   | 'title_ready'            // 2026-06-23 — MT-19/axe E : titre fraîchement activé prêt (1er sync)
   | 'rival_encounter'        // 2026-07-17 — lot relations-E : nouveau duel contre un top rival post-sync
+  | 'medal_first_earned'     // 2026-07-24 — V72-20 : médaille jamais obtenue décrochée post-sync
 
 export const ALL_CATEGORIES: NotificationCategory[] = [
   'app_release',
@@ -73,6 +74,8 @@ export const ALL_CATEGORIES: NotificationCategory[] = [
   'title_ready',
   // Relations-E — rival croisé post-sync.
   'rival_encounter',
+  // V72-20 — médaille inédite post-sync.
+  'medal_first_earned',
 ]
 
 export type NotificationSeverity = 'info' | 'success' | 'warn' | 'error'

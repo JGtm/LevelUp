@@ -38,9 +38,9 @@ func NewSquadHandler(newSvc ContextFactory[port.SquadService]) *SquadHandler {
 
 // Mount enregistre la route via Huma sur le sous-routeur chi (préfixe
 // /players/{player_slug} + middleware ownership/title hérités).
-func (h *SquadHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Get(api, "/pages/squad", h.handleGetSquadPage)
+func (h *SquadHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Get(api, "/pages/squad", h.handleGetSquadPage, humacore.Op("getSquadPage", "Escouade (GET legacy — voir aussi POST /pages/teammates)", "teammates"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

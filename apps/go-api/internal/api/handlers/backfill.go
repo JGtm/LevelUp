@@ -52,9 +52,9 @@ func NewBackfillHandler(cfg *config.AppConfig, jobStore *jobs.Store) *BackfillHa
 
 // Mount enregistre la route via Huma sur le routeur chi (point de montage
 // /backfill/start, middleware RequireAuth/RequireAdmin hérités du groupe).
-func (h *BackfillHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Post(api, "/backfill/start", h.handleStartBackfill)
+func (h *BackfillHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Post(api, "/backfill/start", h.handleStartBackfill, humacore.Op("postBackfillStart", "Lance un backfill (job long)", "sync"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

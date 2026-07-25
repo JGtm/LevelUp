@@ -286,36 +286,17 @@ func (r *CareerRepo) GetHighlightPool(ctx context.Context) ([]domain.HighlightMa
 
 // LoadModeTranslationsFR retourne le mapping EN→FR depuis metadata.mode_name_tr
 // (lang='fr'). Best-effort : silencieusement vide si Metadata absent ou table
-// non trouvée. Calqué sur SquadRepo.LoadModeTranslationsFR.
+// non trouvée. Le SQL vit dans mode_name_tr.go, source unique du littéral
+// (garde-rail no_mode_name_tr_literal_test.go).
 func (r *CareerRepo) LoadModeTranslationsFR(ctx context.Context, modeENs []string) (map[string]string, error) {
 	if len(modeENs) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
 		return nil, nil
 	}
-	placeholders := strings.TrimRight(strings.Repeat("?,", len(modeENs)), ",")
-	q := fmt.Sprintf(`SELECT mode_en, name FROM mode_name_tr WHERE lang = 'fr' AND mode_en IN (%s)`, placeholders)
-	args := make([]any, len(modeENs))
-	for i, n := range modeENs {
-		args[i] = n
-	}
-	rows, err := r.pdb.Metadata.Query(ctx, q, args...)
+	out, err := queryModeNameTrFR(ctx, r.pdb.Metadata, modeENs)
 	if err != nil {
-		if isTableNotFoundErr(err) {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("CareerRepo.LoadModeTranslationsFR: %w", err)
 	}
-	defer rows.Close()
-	result := make(map[string]string, len(modeENs))
-	for rows.Next() {
-		var en, fr string
-		if err := rows.Scan(&en, &fr); err != nil {
-			continue
-		}
-		if strings.TrimSpace(fr) != "" {
-			result[en] = fr
-		}
-	}
-	return result, rows.Err()
+	return out, nil
 }
 
 // LoadPlaylistAssetTranslationsFR retourne le mapping playlist_id→nom FR via

@@ -103,6 +103,97 @@ export function getApiTitleSlug(): string {
   return _currentTitleSlug ?? 'halo_infinite'
 }
 
+/**
+ * Code d'erreur ApiError émis par la garde anti-fuite cross-titre (V72-29) quand
+ * une réponse porte un titre résolu divergent du titre actif du client.
+ */
+export const TITLE_MISMATCH_CODE = 'title_mismatch'
+
+/** Header de réponse par lequel le serveur échoie le titre qu'il a résolu. */
+const RESOLVED_TITLE_HEADER = 'X-LevelUp-Title-Resolved'
+
+/**
+ * Méthodes dont la réponse ALIMENTE le cache TanStack — les seules que la garde
+ * anti-fuite peut rejeter sans casser une écriture déjà appliquée (cf.
+ * guardResolvedTitle).
+ */
+const CACHE_FEEDING_METHODS = new Set(['GET', 'HEAD'])
+
+/**
+ * Garde anti-fuite cross-titre (V72-29) — défense en profondeur décisive. Le serveur
+ * échoie le titre résolu dans `X-LevelUp-Title-Resolved` (middleware TitleExtractor).
+ * On REJETTE toute réponse de LECTURE dont ce titre résolu diverge du titre que le
+ * client considère ACTIF à l'instant où la réponse arrive : c'est le cas d'une requête
+ * partie avec l'ancien titre (course de bascule) puis revenue APRÈS que le client a
+ * basculé — sans ce rejet, sa donnée (d'un autre titre) se rangerait sous la clé de
+ * cache du titre courant et y resterait poisonnée (le `queryClient.clear()` du switch
+ * a déjà eu lieu). Ainsi AUCUNE réponse d'un autre titre ne peut entrer dans le cache
+ * TanStack, quelle que soit la course.
+ *
+ * Ne s'applique QUE si CE client a affirmé un titre (`sentTitle` non nul) : les flux
+ * sans header (boot d'une page agnostique, CLI, callbacks SSO) laissent la session
+ * serveur autoritaire et ne sont pas gardés ici. On compare au titre courant LIVE (et
+ * non au header figé qu'on a envoyé) : le serveur HONORANT le header (header > session
+ * > défaut), le titre résolu ÉGALE toujours le header envoyé — une comparaison figée
+ * serait un no-op contre la course même qu'on doit fermer. C'est la divergence entre
+ * le titre résolu de la réponse et le titre ACTIF du client qui trahit une réponse
+ * périmée.
+ *
+ * MUTATIONS (POST/PATCH/PUT/DELETE, y compris postForm) : la garde N'ÉCHOUE PAS, elle
+ * se contente d'un `console.warn` structuré. Une mutation part avec le header du titre
+ * courant au moment du clic — c'est l'INTENTION de l'utilisateur — et le serveur l'a
+ * DÉJÀ appliquée à ce titre-là quand la réponse revient. Rejeter parce que
+ * l'utilisateur a basculé de jeu pendant le vol rapporterait un échec sur une écriture
+ * réussie : toast d'erreur trompeur, et surtout re-soumission (manuelle ou par le
+ * retry TanStack, la garde étant `retryable`) donc DOUBLE écriture. La garde ne protège
+ * que le CACHE des queries ; une écriture n'y entre pas.
+ */
+function guardResolvedTitle(
+  response: Response,
+  sentTitle: string | null,
+  path: string,
+  method: string,
+): void {
+  if (sentTitle === null) return
+  const resolved = response.headers.get(RESOLVED_TITLE_HEADER)
+  if (!resolved) return
+  const active = _currentTitleSlug
+  if (active === null || resolved === active) return
+
+  if (!CACHE_FEEDING_METHODS.has(method.toUpperCase())) {
+    // Non gardé en DEV seulement : c'est l'UNIQUE trace d'une bascule de titre
+    // pendant une écriture en vol (diagnostic d'un « j'ai cliqué sur le mauvais
+    // jeu »), elle doit rester visible en production.
+    console.warn('[title-guard] mutation appliquée à un autre titre que le titre actif', {
+      path,
+      method,
+      resolved,
+      active,
+      sent: sentTitle,
+    })
+    return
+  }
+
+  if (import.meta.env.DEV) {
+    console.warn('[title-guard] réponse rejetée : titre résolu divergent', {
+      path,
+      resolved,
+      active,
+      sent: sentTitle,
+    })
+  }
+  const err: ApiError = {
+    code: TITLE_MISMATCH_CODE,
+    message: `Réponse d'un autre titre rejetée (résolu « ${resolved} », attendu « ${active} »)`,
+    // Retryable (status 503-like) : TanStack Query re-tente → la requête repart avec
+    // le header du titre courant et converge sur la bonne donnée.
+    retryable: true,
+    status: 503,
+    details: { path, resolved, active, sent: sentTitle },
+  }
+  throw err
+}
+
 function getTitleHeader(): Record<string, string> {
   // Affirmer le titre dès qu'il est connu — segment d'URL posé au boot
   // (initTitleFromLocation) OU hydratation/bascule du store — pour TOUS les titres,
@@ -145,6 +236,9 @@ async function request<T>(
   },
 ): Promise<T> {
   const url = `${BASE_URL}${path}`
+  // Titre affirmé sur CETTE requête (peut être nul : page agnostique au boot). Capturé
+  // avant le fetch pour la garde anti-fuite cross-titre (guardResolvedTitle).
+  const sentTitle = _currentTitleSlug
   const response = await fetch(url, {
     method,
     credentials: 'include', // cookies httpOnly (session)
@@ -180,6 +274,11 @@ async function request<T>(
     }
     throw err
   }
+
+  // Anti-fuite cross-titre (V72-29) : rejette une LECTURE d'un autre titre AVANT
+  // qu'elle ne serve de donnée (et donc n'entre dans le cache TanStack) ; une
+  // mutation est seulement tracée (cf. guardResolvedTitle).
+  guardResolvedTitle(response, sentTitle, path, method)
 
   if (response.status === 204) {
     return undefined as unknown as T
@@ -218,6 +317,7 @@ export const api = {
    */
   postForm: async <T>(path: string, form: FormData): Promise<T> => {
     const url = `${BASE_URL}${path}`
+    const sentTitle = _currentTitleSlug
     const response = await fetch(url, {
       method: 'POST',
       credentials: 'include',
@@ -245,6 +345,10 @@ export const api = {
       }
       throw err
     }
+
+    // Anti-fuite cross-titre (V72-29) — même garde que request() : upload = mutation,
+    // donc trace sans rejet (l'upload a déjà été appliqué au titre du header envoyé).
+    guardResolvedTitle(response, sentTitle, path, 'POST')
 
     return response.json() as Promise<T>
   },

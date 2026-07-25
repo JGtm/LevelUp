@@ -8,9 +8,12 @@
  * re-ciblées sur la fonction survivante `applyActiveTitle` (module title-routing,
  * appelée par le layout et le fallback sans-joueur du TitleSwitcher).
  *
- * Vérifie l'ORDRE load-bearing : le titre (header X-LevelUp-Title + store) est
- * committé AVANT le re-bootstrap, puis cancelQueries() + clear() purgent le cache
- * AVANT le re-bootstrap → aucune requête/cache de l'ancien titre ne survit.
+ * Vérifie l'ORDRE load-bearing (séquence anti-fuite cross-titre V72-29) :
+ *   cancelQueries() D'ABORD (annule les requêtes de l'ancien titre en vol AVANT tout
+ *   changement d'état) → POST /session/context confirmé → titre committé (header
+ *   X-LevelUp-Title + store) → reset filtres → clear() → re-bootstrap.
+ * Aucune requête/cache de l'ancien titre ne survit ni ne se re-peuple sous une clé du
+ * nouveau, et le commit du titre suit la confirmation du POST session.
  *
  * Les 2 derniers cas exercent hydrateFromBootstrap (garde deep-link `?f=`, PR #59) —
  * chemin fresh-load/bookmark qui SURVIT, distinct de la bascule applyActiveTitle.
@@ -19,10 +22,20 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 
 const calls: string[] = []
 
+/**
+ * Requêtes POST réellement émises (chemin + CORPS). Le mock avalait auparavant le
+ * corps : rien ne vérifiait que /session/context reçoit bien le titre CIBLE — une
+ * régression envoyant l'ancien titre (ou rien) aurait gardé la séquence verte alors
+ * que la session serveur serait restée sur le titre précédent (fuite cross-titre au
+ * re-bootstrap, /bootstrap dérivant current_title_slug de la SESSION).
+ */
+const posts: Array<{ path: string; body: unknown }> = []
+
 vi.mock('@/lib/api/client', () => ({
   api: {
-    post: vi.fn(async () => {
+    post: vi.fn(async (path: string, body?: unknown) => {
       calls.push('post')
+      posts.push({ path, body })
     }),
     get: vi.fn(async () => {
       calls.push('get')
@@ -81,6 +94,7 @@ const BOOTSTRAP_H5 = {
 describe('applyActiveTitle (ordre load-bearing — ex-switchTitle #10)', () => {
   beforeEach(() => {
     calls.length = 0
+    posts.length = 0
     vi.restoreAllMocks()
     useAppShellStore.setState({ currentTitleSlug: 'halo_infinite', currentPlayer: PLAYER, availablePlayers: [PLAYER] })
     // Repartir de filtres propres avant chaque test.
@@ -88,7 +102,7 @@ describe('applyActiveTitle (ordre load-bearing — ex-switchTitle #10)', () => {
     useSquadFilterStore.getState().resetFilters()
   })
 
-  it('committe le titre AVANT le clear, reset les filtres solo/squad, et purge le cache AVANT le re-bootstrap', async () => {
+  it('annule les requêtes en vol D\'ABORD, committe le titre après le POST session, puis clear avant le re-bootstrap', async () => {
     // Instrumenter l'ordre du reset filtres (sans exécuter le vrai reset ici :
     // l'assertion de contenu est couverte par le test dédié ci-dessous).
     vi.spyOn(useSoloFilterStore.getState(), 'resetFilters').mockImplementation(() => {
@@ -103,23 +117,29 @@ describe('applyActiveTitle (ordre load-bearing — ex-switchTitle #10)', () => {
     // Le store reflète le nouveau titre.
     expect(useAppShellStore.getState().currentTitleSlug).toBe('halo_5')
 
-    // Ordre load-bearing.
+    // Ordre load-bearing (séquence anti-fuite V72-29).
+    const iCancel = calls.indexOf('cancelQueries')
     const iPost = calls.indexOf('post')
     const iSet = calls.indexOf('setApiTitleSlug:halo_5')
     const iResetSolo = calls.indexOf('resetSolo')
     const iResetSquad = calls.indexOf('resetSquad')
-    const iCancel = calls.indexOf('cancelQueries')
     const iClear = calls.indexOf('clear')
     const iGet = calls.indexOf('get')
 
-    expect(iPost).toBeGreaterThanOrEqual(0)
-    expect(iSet).toBeGreaterThan(iPost) // header committé après le POST session
+    expect(iCancel).toBeGreaterThanOrEqual(0)
+    expect(iCancel).toBeLessThan(iPost) // annulation des requêtes en vol AVANT le POST session
+    expect(iSet).toBeGreaterThan(iPost) // header committé après confirmation du POST session
     expect(iResetSolo).toBeGreaterThan(iSet) // filtres reset APRÈS le commit du titre
     expect(iResetSquad).toBeGreaterThan(iSet)
-    expect(iCancel).toBeGreaterThan(iResetSolo) // cancel/clear APRÈS le reset filtres
-    expect(iCancel).toBeGreaterThan(iResetSquad)
-    expect(iClear).toBeGreaterThan(iCancel)
+    expect(iClear).toBeGreaterThan(iResetSolo) // clear APRÈS le reset filtres
+    expect(iClear).toBeGreaterThan(iResetSquad)
     expect(iGet).toBeGreaterThan(iClear) // re-bootstrap APRÈS le clear (pas avant)
+  })
+
+  it('poste le titre CIBLE sur /session/context (corps, pas seulement l’appel)', async () => {
+    await applyActiveTitle('halo_5')
+
+    expect(posts).toEqual([{ path: '/session/context', body: { title_slug: 'halo_5' } }])
   })
 
   it('réinitialise les filtres solo/squad pollués au switch', async () => {

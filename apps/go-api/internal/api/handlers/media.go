@@ -48,16 +48,16 @@ import (
 // /players/{player_slug} + middleware ownership/title/CapMedia hérités). Seul
 // /pages/media a un corps optionnel (MarkRequestBodyOptional). PostUploadMedia
 // (multipart) et ServeMediaFile (binaire) restent enregistrés en chi par server.go.
-func (h *MediaHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Post(api, "/pages/media", h.handleGetMediaLibrary)
+func (h *MediaHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Post(api, "/pages/media", h.handleGetMediaLibrary, humacore.Op("postMediaLibrary", "Galerie médias (filtres en body)", "media"))
 	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/pages/media")
-	huma.Patch(api, "/media/likes", h.handlePatchMediaLike)
-	huma.Get(api, "/media/match-candidates", h.handleGetMediaMatchCandidates)
-	huma.Post(api, "/media/associate", h.handlePostMediaAssociate)
-	huma.Get(api, "/media/authors", h.handleGetMediaAuthors)
-	huma.Get(api, "/media/audio-config", h.handleGetMediaAudioConfig)
-	huma.Put(api, "/media/audio-config", h.handlePutMediaAudioConfig)
+	huma.Patch(api, "/media/likes", h.handlePatchMediaLike, humacore.Op("patchMediaLike", "Like / unlike d'un média", "media"))
+	huma.Get(api, "/media/match-candidates", h.handleGetMediaMatchCandidates, humacore.Op("getMediaMatchCandidates", "Candidats de match pour associer un média", "media"))
+	huma.Post(api, "/media/associate", h.handlePostMediaAssociate, humacore.Op("postMediaAssociate", "Associe un média à un match", "media"))
+	huma.Get(api, "/media/authors", h.handleGetMediaAuthors, humacore.Op("getMediaAuthors", "Liste des auteurs de médias visibles pour ce joueur", "media"))
+	huma.Get(api, "/media/audio-config", h.handleGetMediaAudioConfig, humacore.Op("getMediaAudioConfig", "Réglage des pistes audio des médias du joueur", "media"))
+	huma.Put(api, "/media/audio-config", h.handlePutMediaAudioConfig, humacore.Op("putMediaAudioConfig", "Définit le réglage des pistes audio des médias du joueur", "media"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

@@ -14,6 +14,7 @@
  * fusionner ici.
  */
 import type { ReactNode } from 'react'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 
 export interface SortableThProps {
   /** Libellé de la colonne (texte ou nœud). */
@@ -26,25 +27,41 @@ export interface SortableThProps {
   onClick: () => void
   /** Classes du <th> (alignement/padding) — reprend le style du tableau appelant. */
   className?: string
+  /** Aide facultative (V72-04) : texte/nœud affiché au survol d'une icône ⓘ
+   *  discrète APRÈS le libellé. L'icône est rendue en FRÈRE du bouton de tri
+   *  (jamais à l'intérieur : `InfoTooltip` rend un `<button>`, imbriquer deux
+   *  boutons est du HTML invalide). Absent = pas d'icône (rendu inchangé). */
+  tooltip?: ReactNode
 }
 
 /** En-tête de colonne triable : bouton pleine cellule + flèche ▲/▼ (active only)
- *  + aria-sort porté par le <th>. */
-export function SortableTh({ label, active, dir, onClick, className }: SortableThProps) {
+ *  + aria-sort porté par le <th>. Une icône ⓘ facultative (prop `tooltip`) est
+ *  ajoutée à côté, sœur du bouton de tri (respecte l'alignement du <th>). */
+export function SortableTh({ label, active, dir, onClick, className, tooltip }: SortableThProps) {
+  const button = (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-0.5 whitespace-nowrap transition-colors hover:text-foreground${active ? ' text-foreground' : ''}`}
+    >
+      {label}
+      {active && (
+        <span aria-hidden="true" className="text-2xs leading-none">
+          {dir === 'asc' ? '▲' : '▼'}
+        </span>
+      )}
+    </button>
+  )
   return (
     <th className={className} aria-sort={active ? (dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
-      <button
-        type="button"
-        onClick={onClick}
-        className={`inline-flex items-center gap-0.5 whitespace-nowrap transition-colors hover:text-foreground${active ? ' text-foreground' : ''}`}
-      >
-        {label}
-        {active && (
-          <span aria-hidden="true" className="text-2xs leading-none">
-            {dir === 'asc' ? '▲' : '▼'}
-          </span>
-        )}
-      </button>
+      {tooltip != null ? (
+        <span className="inline-flex items-center gap-1">
+          {button}
+          <InfoTooltip content={tooltip} iconClass="w-3 h-3" />
+        </span>
+      ) : (
+        button
+      )}
     </th>
   )
 }

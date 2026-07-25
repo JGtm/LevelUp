@@ -291,13 +291,13 @@ func (s *CareerLiveService) fetchAndMerge(ctx context.Context, xuid string, allo
 		needRefresh    bool
 	)
 	if hasAuth && s.cache != nil {
-		if p, hit := s.cache.GetProgress(xuid); hit {
+		if p, hit := s.cache.GetProgress(xuid, slug); hit {
 			cachedProgress = p
 			careerLiveProgressCache.Add(1)
 		} else {
 			needRefresh = true
 		}
-		if c, hit := s.cache.GetCustomization(xuid); hit {
+		if c, hit := s.cache.GetCustomization(xuid, slug); hit {
 			cachedCustom = c
 			careerLiveCustomCache.Add(1)
 		} else {

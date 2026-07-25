@@ -169,6 +169,24 @@ export function MatchViewPage() {
         />
       )
     }
+    if (code === 'match_not_found') {
+      // Match absent du substrat local (jamais synchronisé, ou pas encore) : le
+      // backend ne fait plus AUCUN fetch live vers l'API du titre depuis cette
+      // page (fallback LIVE retiré le 2026-07-25, cf. BACKLOG "Retirer le
+      // fallback LIVE du Match view"). État dédié plutôt qu'un écran d'erreur
+      // générique — même famille que match_not_participant ci-dessus.
+      return (
+        <PageUnavailable
+          title={t.notSyncedTitle}
+          description={t.notSyncedDescription}
+          actions={[
+            { label: isEN ? 'Home' : 'Accueil', onClick: goHome, variant: 'default' },
+            { label: isEN ? 'Back' : 'Précédent', onClick: goBack },
+            { label: isEN ? 'My matches' : 'Mes matchs', onClick: goMatches },
+          ]}
+        />
+      )
+    }
     // 404 strict ou erreur réseau. On garde la barre de navigation pour
     // permettre à l'utilisateur de continuer à naviguer entre les matchs.
     return (

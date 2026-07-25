@@ -8,10 +8,12 @@
  * et le tooltip nomme les deux (couleur jamais seule porteuse d'info). Les armes
  * sans classe résolue (registre muet) retombent sur la teinte neutre.
  */
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { fragClassColor } from '@/lib/accessibility/scales'
+import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
+import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 import type { SynthesisWeaponKillEntry } from '@/lib/api/types'
 import { formatMessage } from '@/lib/i18n/format'
 import { fragsManifest } from '@/lib/i18n/generated/frags'
@@ -19,7 +21,8 @@ import { intlLocale } from '@/lib/formatters'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { ChartCard, type ChartSeries } from './ChartCard'
-import { CHART_BG, escapeHtml, getEChartsThemeColors, getLegendBase } from './_utils'
+import { ChartLegend, type ChartLegendItem } from './ChartLegend'
+import { CHART_BG, escapeHtml, getEChartsThemeColors } from './_utils'
 
 /** Libellés injectés (builder pur, testable sans i18n). */
 export interface FragWeaponLabels {
@@ -48,37 +51,17 @@ export function buildFragWeaponBreakdownOption(
   const ordered = [...weapons].reverse()
   const dimOpacity = (cls?: string) => (hoveredClass && cls !== hoveredClass ? DIM_OPACITY : 1)
 
-  // Légende des CLASSES en bas, centrée (I4, V7.1) : ce graphe est UNE série de barres
-  // recolorée PAR DATUM (itemStyle), donc ECharts n'a pas de légende native par catégorie
-  // ici (contrairement à un pie / bar multi-séries où chaque nom porte sa propre couleur).
-  // On ajoute une série FANTÔME (data vide, `silent`) PAR CLASSE représentée, uniquement
-  // pour porter le nom + la couleur au composant `legend` — la vraie série de barres reste
-  // sans `name` correspondant, donc non togglable (cliquer une entrée de légende n'affecte
-  // jamais les barres réelles ; légende purement informative ici).
-  const classOrder: string[] = []
-  for (const w of ordered) {
-    if (w.class && !classOrder.includes(w.class)) classOrder.push(w.class)
-  }
-  const legendGhostSeries = classOrder.map((cls) => ({
-    name: labels.classLabel(cls),
-    type: 'bar' as const,
-    data: [] as number[],
-    itemStyle: { color: fragClassColor(cls) },
-    silent: true,
-  }))
-
+  // Légende des CLASSES : rendue en PIED DE CARD (HTML, hors canvas) par le composant —
+  // cf. <ChartLegend> passé à ChartCard.legend. AUCUNE légende ECharts interne ici :
+  // grid.bottom reste à 8 (l'espace de tracé revient aux barres, épaisseur d'avant la
+  // régression bf21c7180). Ce graphe est UNE série recolorée PAR DATUM : ECharts n'aurait
+  // de toute façon pas de légende native par classe.
   return {
     backgroundColor: CHART_BG,
     // Survol lié : l'option est reconstruite à chaque changement de `hoveredClass` ;
     // animation coupée pour un estompage instantané (pas de re-croissance des barres).
     animation: false,
-    // bottom élargi quand une légende est rendue (place réservée, pas de chevauchement
-    // avec les barres — même convention que BarStackedChart bottom:40).
-    grid: { top: 8, bottom: classOrder.length > 0 ? 40 : 8, left: 8, right: 80, containLabel: true },
-    legend:
-      classOrder.length > 0
-        ? { ...getLegendBase(tc), left: 'center', data: classOrder.map((c) => labels.classLabel(c)) }
-        : { show: false },
+    grid: { top: 8, bottom: 8, left: 8, right: 80, containLabel: true },
     tooltip: {
       backgroundColor: tc.tooltipBg,
       borderColor: tc.tooltipBorder,
@@ -117,9 +100,6 @@ export function buildFragWeaponBreakdownOption(
           formatter: (p: { value: number }) => labels.formatValue(p.value),
         },
       },
-      // Séries fantômes APRÈS la série réelle (index 0 = données réelles, contrat testé) —
-      // portent uniquement les entrées de légende (cf. commentaire plus haut).
-      ...legendGhostSeries,
     ],
   }
 }
@@ -131,6 +111,14 @@ export interface FragWeaponBreakdownProps {
   /** Multiplicateur de hauteur (défaut 1) — ex. 1.1 pour +10 % côté match view. */
   heightScale?: number
   fillHeight?: boolean
+  /**
+   * Mode fluide : la card s'étire pour remplir sa cellule (CSS Grid `stretch`) —
+   * le tracé prend `flex-1`, la légende de pied reste `flex-none`. À utiliser quand
+   * la card doit s'aligner sur la hauteur d'une card voisine fixe (ex. SessionFragCard
+   * côte à côte avec le sunburst) SANS que le pied de légende casse la parité de hauteur.
+   * `height` devient alors le minimum garanti.
+   */
+  fluid?: boolean
   /** Classe(s) utilitaire(s) fusionnée(s) sur la ChartCard (ex. `lg:col-span-1`). */
   className?: string
   /**
@@ -143,9 +131,13 @@ export interface FragWeaponBreakdownProps {
   onClassHover?: (classKey: string | null) => void
 }
 
-export function FragWeaponBreakdown({ weapons, title, height, heightScale = 1, fillHeight, className = '', hoveredClass = null, onClassHover }: FragWeaponBreakdownProps) {
+export function FragWeaponBreakdown({ weapons, title, height, heightScale = 1, fillHeight, fluid, className = '', hoveredClass = null, onClassHover }: FragWeaponBreakdownProps) {
   const appLocale = useAppShellStore((s) => s.locale)
   const numLoc = intlLocale(appLocale)
+  // Réactivité couleurs de la légende HTML (pied de card) au changement de palette/thème :
+  // fragClassColor résout des tokens → il faut re-render pour re-résoudre (cf. FragSunburst).
+  const paletteVersion = useColorPaletteVersion()
+  const themeVersion = useThemeVersion()
   const list = weapons ?? []
 
   const labels: FragWeaponLabels = {
@@ -153,6 +145,24 @@ export function FragWeaponBreakdown({ weapons, title, height, heightScale = 1, f
     formatValue: (n: number) => n.toLocaleString(numLoc),
     killsSuffix: formatMessage(fragsManifest, 'frags.charts.center_total_label', appLocale).toLowerCase(),
   }
+
+  // Légende des CLASSES représentées, en pied de card (HTML, hors canvas). Ordre = première
+  // apparition dans la liste triée (kills desc). Survol lié : onClassHover + estompage des
+  // entrées hors classe survolée. Les armes sans classe résolue ne portent pas d'entrée.
+  const legendItems = useMemo<ChartLegendItem[]>(() => {
+    const classes: string[] = []
+    for (const w of list) {
+      if (w.class && !classes.includes(w.class)) classes.push(w.class)
+    }
+    return classes.map((cls) => ({
+      key: cls,
+      label: labels.classLabel(cls),
+      color: fragClassColor(cls),
+      dimmed: hoveredClass != null && cls !== hoveredClass,
+    }))
+    // labels dérive de appLocale ; paletteVersion/themeVersion forcent la re-résolution couleur.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [list, appLocale, hoveredClass, paletteVersion, themeVersion])
 
   const buildOption = useCallback(
     (s: ChartSeries<SynthesisWeaponKillEntry>[]) => buildFragWeaponBreakdownOption(s[0]?.datapoints ?? [], labels, hoveredClass),
@@ -175,14 +185,18 @@ export function FragWeaponBreakdown({ weapons, title, height, heightScale = 1, f
   const emptyMessage = formatMessage(fragsManifest, 'frags.empty.no_data', appLocale)
   const computedHeight = Math.round((height ?? Math.max(180, list.length * 28 + 16)) * heightScale)
 
+  const legend = legendItems.length > 0 ? <ChartLegend items={legendItems} onItemHover={onClassHover} /> : undefined
+
   return (
     <ChartCard
       title={cardTitle}
       series={series}
       buildOption={buildOption}
       height={computedHeight}
+      fluid={fluid}
       emptyMessage={emptyMessage}
       className={[fillHeight ? 'flex-1' : '', className].filter(Boolean).join(' ')}
+      legend={legend}
       onEvents={onEvents}
     />
   )

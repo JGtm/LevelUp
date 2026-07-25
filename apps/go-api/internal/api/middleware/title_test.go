@@ -102,6 +102,44 @@ func TestTitleExtractor_ComingSoonHeader_Resolved(t *testing.T) {
 	}
 }
 
+// Anti-fuite cross-titre V72-29 : le serveur ÉCHOIE le titre résolu dans le header
+// de réponse X-LevelUp-Title-Resolved. Le client API compare cet écho au titre qu'il
+// considère actif et rejette toute réponse divergente → aucune réponse d'un autre
+// titre ne peut polluer le cache, quelle que soit la course de bascule. On prouve ici
+// que l'écho reflète bien la résolution (header ici) ET qu'il est posé même si le
+// handler n'écrit rien explicitement.
+func TestTitleExtractor_EchoesResolvedTitleHeader(t *testing.T) {
+	registry := titlePkg.NewRegistry()
+	registry.Register(&titlePkg.TitleDescriptor{
+		Slug: "halo_5", Name: "Halo 5", Status: titlePkg.StatusActive,
+	})
+	mw := middleware.TitleExtractor(registry)
+	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	cases := []struct {
+		name   string
+		header string
+		want   string
+	}{
+		{"header connu échoié tel quel", "halo_5", "halo_5"},
+		{"header inconnu → défaut échoié", "nonexistent_game", titlePkg.DefaultSlug},
+		{"aucun header → défaut échoié", "", titlePkg.DefaultSlug},
+	}
+	for _, c := range cases {
+		req := httptest.NewRequest(http.MethodGet, "/test", nil)
+		if c.header != "" {
+			req.Header.Set("X-LevelUp-Title", c.header)
+		}
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+		if got := w.Header().Get(middleware.ResolvedTitleHeader); got != c.want {
+			t.Errorf("%s : écho %s=%q, want %q", c.name, middleware.ResolvedTitleHeader, got, c.want)
+		}
+	}
+}
+
 // La locale UI est extraite du header X-LevelUp-Locale et placée dans le contexte
 // (ctxkeys.Locale) — alimente les lectures localisées (noms de commendations H5).
 func TestTitleExtractor_LocaleFromHeader(t *testing.T) {

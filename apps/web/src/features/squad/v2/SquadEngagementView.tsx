@@ -63,7 +63,7 @@ export interface SquadEngagementSeriesLabels {
 }
 
 const DEFAULT_SQUAD_LABELS: SquadEngagementSeriesLabels = {
-  lobby: 'Lobby',
+  lobby: 'Partie',
   expected: 'Escouade attendue',
   observed: 'Escouade réelle',
 }
@@ -114,13 +114,15 @@ export function SquadEngagementView(props: SquadEngagementViewProps) {
     >
       {session.players.length > 0 && (
         <div className="flex flex-wrap gap-1 px-3 pb-3">
-          {session.players.map((p) => {
+          {session.players.map((p, idx) => {
             const isActive = p.xuid === selectedXUID
             // color-allow: hex résolu depuis semantic tokens via colorHex ou resolveToken
             const accentHex = p.colorHex ?? resolveToken(p.colorToken)
             return (
               <button
-                key={p.xuid}
+                // Clé composite : le xuid peut être vide (joueurs H5 sans xuid) →
+                // collisions key="" entre boutons. gamertag + index désambiguïsent.
+                key={`${p.xuid}||${p.gamertag}||${idx}`}
                 type="button"
                 onClick={() => setSelectedXUID(isActive ? null : p.xuid)}
                 aria-pressed={isActive}

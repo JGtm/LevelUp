@@ -41,9 +41,9 @@ func NewMatchExclusionHandler(newSvc ServiceFactory[port.MatchExclusionService])
 
 // Mount enregistre la route via Huma sur le sous-routeur chi (préfixe
 // /players/{player_slug} + middleware ownership/title hérités).
-func (h *MatchExclusionHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Patch(api, "/matches/{match_id}/exclusion", h.SetExclusion)
+func (h *MatchExclusionHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Patch(api, "/matches/{match_id}/exclusion", h.SetExclusion, humacore.Op("setMatchExclusion", "Marquer ou démarquer un match comme non pertinent", "match-exclusion"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

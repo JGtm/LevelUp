@@ -97,6 +97,7 @@ function EncounterTable({ items }: { items: EncounterDTO[] }) {
               dir={sortDir}
               onClick={() => toggleSort('match_count')}
               className="pb-2 text-right"
+              tooltip={t('career.encounters.col_count_tooltip')}
             />
             <SortableTh
               label={t('career.encounters.col_as_teammate')}
@@ -104,6 +105,7 @@ function EncounterTable({ items }: { items: EncounterDTO[] }) {
               dir={sortDir}
               onClick={() => toggleSort('as_teammate')}
               className="pb-2 text-right"
+              tooltip={t('career.encounters.col_as_teammate_tooltip')}
             />
             <SortableTh
               label={t('career.encounters.col_as_enemy')}
@@ -111,6 +113,7 @@ function EncounterTable({ items }: { items: EncounterDTO[] }) {
               dir={sortDir}
               onClick={() => toggleSort('as_enemy')}
               className="pb-2 text-right"
+              tooltip={t('career.encounters.col_as_enemy_tooltip')}
             />
             <SortableTh
               label={labelOf('kda')}
@@ -118,6 +121,7 @@ function EncounterTable({ items }: { items: EncounterDTO[] }) {
               dir={sortDir}
               onClick={() => toggleSort('avg_kda')}
               className="pb-2 text-right"
+              tooltip={t('career.encounters.col_avg_kda_tooltip')}
             />
           </tr>
         </thead>

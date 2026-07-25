@@ -8,9 +8,11 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/sync"
 )
 
 // fakeSessionHighlightLoader implémente highlightEventsLoader pour tester le
@@ -619,8 +621,11 @@ func TestComputeSessionPlacements_CSR(t *testing.T) {
 	if p, ok := pl["m1"]; !ok || p.done != 3 || p.total != 5 {
 		t.Fatalf("m1 placement = %+v (ok=%v), want {done:3 total:5}", pl["m1"], ok)
 	}
-	if _, ok := pl["m2"]; ok {
-		t.Fatal("m2 ne doit pas être en placement (pas de remaining)")
+	// m2 : CSR établi → AUCUN placement de CLASSEMENT (done/total à zéro). L'entrée
+	// peut exister dans la map car elle porte aussi le placement de chaîne de
+	// PERFORMANCE (V72-34, champs perfDone/perfTotal) — signal distinct.
+	if p := pl["m2"]; p.total != 0 || p.done != 0 {
+		t.Fatalf("m2 ne doit pas être en placement de classement (pas de remaining), got %+v", p)
 	}
 
 	// applyPlacementsToRows renseigne les rows correspondantes.
@@ -631,6 +636,49 @@ func TestComputeSessionPlacements_CSR(t *testing.T) {
 	}
 	if detail[1].PlacementDone != nil {
 		t.Fatal("m2 row ne doit pas avoir de placement")
+	}
+}
+
+// TestComputeSessionPlacements_PerfChain (V72-34) : la vue Session expose le
+// placement de la chaîne de PERFORMANCE sur ses lignes, indépendamment du placement
+// de classement — même signal que l'Explorer (Perf/ΔPerf), via applyPerfPlacements.
+func TestComputeSessionPlacements_PerfChain(t *testing.T) {
+	svc := &SessionPageService{}
+	start := time.Date(2026, 7, 24, 19, 0, 0, 0, time.UTC)
+	win := domain.OutcomeWin
+	scored := 61.0
+	rows := []legacymatch.StatsMatchRow{
+		// 2 matchs BTB sans perf : chaîne "btb" à 3 éligibles < 10 → 3/10 attendu.
+		{MatchID: "btb1", StartTime: start, Outcome: &win, PairName: "BTB:CTF on Highpower", SkillRatingType: "lusr"},
+		{MatchID: "btb2", StartTime: start.Add(time.Hour), Outcome: &win, PairName: "BTB:Slayer on Behemoth", SkillRatingType: "lusr"},
+		{MatchID: "btb3", StartTime: start.Add(2 * time.Hour), Outcome: &win, PairName: "BTB:Total Control on Insolence", SkillRatingType: "lusr"},
+		// Match déjà scoré : jamais annoncé en placement perf.
+		{MatchID: "btb4", StartTime: start.Add(3 * time.Hour), Outcome: &win, PairName: "BTB:CTF on Fortitude",
+			SkillRatingType: "lusr", PerfScoreComputed: &scored},
+	}
+	pl := svc.computeSessionPlacements(context.Background(), rows)
+
+	// 4 matchs éligibles dans la chaîne btb (le scoré compte dans la taille de chaîne).
+	for _, id := range []string{"btb1", "btb2", "btb3"} {
+		p, ok := pl[id]
+		if !ok || p.perfDone != 4 || p.perfTotal != sync.MinMatchesPerChainForRelative {
+			t.Errorf("%s: perf placement = %+v (ok=%v), want perfDone=4 perfTotal=%d",
+				id, p, ok, sync.MinMatchesPerChainForRelative)
+		}
+	}
+	if p := pl["btb4"]; p.perfTotal != 0 {
+		t.Errorf("btb4 (perf déjà calculée) ne doit pas être en placement perf, got %+v", p)
+	}
+
+	detail := []domain.SessionDetailMatchRow{{MatchID: "btb1"}, {MatchID: "btb4"}}
+	applyPlacementsToRows(detail, pl)
+	if detail[0].PerfPlacementDone == nil || *detail[0].PerfPlacementDone != 4 ||
+		detail[0].PerfPlacementTotal == nil || *detail[0].PerfPlacementTotal != 10 {
+		t.Errorf("btb1 row : perf placement non appliqué (done=%v total=%v)",
+			detail[0].PerfPlacementDone, detail[0].PerfPlacementTotal)
+	}
+	if detail[1].PerfPlacementDone != nil {
+		t.Errorf("btb4 row ne doit pas porter de placement perf, got %v", detail[1].PerfPlacementDone)
 	}
 }
 
@@ -651,15 +699,15 @@ func TestBuildSessionDetailRows_SkillTierLabel(t *testing.T) {
 		MatchID: "m1", StartTime: start, Outcome: &win, Kills: 1, Deaths: 1, SessionLabel: &label,
 		SkillRatingType: "csr", SkillTierCode: &gold, SkillTierCodeFR: &goldFR, SkillSubTier: &sub,
 	}}
-	if got := deref(buildSessionDetailRows(ranked, nil, "fr", nil)); got != "Or III" {
+	if got := deref(buildSessionDetailRows(ranked, nil, "fr", nil, nil)); got != "Or III" {
 		t.Fatalf("FR SkillTierLabel = %q, want %q", got, "Or III")
 	}
-	if got := deref(buildSessionDetailRows(ranked, nil, "en", nil)); got != "Gold III" {
+	if got := deref(buildSessionDetailRows(ranked, nil, "en", nil, nil)); got != "Gold III" {
 		t.Fatalf("EN SkillTierLabel = %q, want %q", got, "Gold III")
 	}
 	// Non rankée (pas de tier) → nil (le front affiche "-").
 	noTier := []legacymatch.StatsMatchRow{{MatchID: "m2", StartTime: start, Outcome: &win, SessionLabel: &label}}
-	if got := deref(buildSessionDetailRows(noTier, nil, "fr", nil)); got != "<nil>" {
+	if got := deref(buildSessionDetailRows(noTier, nil, "fr", nil, nil)); got != "<nil>" {
 		t.Fatalf("no-tier SkillTierLabel = %q, want <nil>", got)
 	}
 }
@@ -684,10 +732,10 @@ func TestBuildSessionDetailRows_ModeUILocale(t *testing.T) {
 		MatchID: "m1", StartTime: start, Outcome: &win, Kills: 10, Deaths: 8,
 		PairName: "Arena:Team Slayer on Live Fire", PairNameFR: "Slayer en équipe", SessionLabel: &label,
 	}}
-	if got := modeUIOf(buildSessionDetailRows(withFR, nil, "fr", nil)); got != "Slayer en équipe" {
+	if got := modeUIOf(buildSessionDetailRows(withFR, nil, "fr", nil, nil)); got != "Slayer en équipe" {
 		t.Fatalf("FR ModeUI = %q, want %q", got, "Slayer en équipe")
 	}
-	if got := modeUIOf(buildSessionDetailRows(withFR, nil, "en", nil)); got != "Team Slayer" {
+	if got := modeUIOf(buildSessionDetailRows(withFR, nil, "en", nil, nil)); got != "Team Slayer" {
 		t.Fatalf("EN ModeUI = %q, want %q (trad FR ignorée en EN)", got, "Team Slayer")
 	}
 
@@ -696,7 +744,7 @@ func TestBuildSessionDetailRows_ModeUILocale(t *testing.T) {
 		MatchID: "m2", StartTime: start, Outcome: &win, Kills: 5, Deaths: 5,
 		PairName: "Arena:Team Slayer on Live Fire", PairNameFR: "", SessionLabel: &label,
 	}}
-	if got := modeUIOf(buildSessionDetailRows(noFR, nil, "fr", nil)); got != "Team Slayer" {
+	if got := modeUIOf(buildSessionDetailRows(noFR, nil, "fr", nil, nil)); got != "Team Slayer" {
 		t.Fatalf("FR sans variant : ModeUI = %q, want %q", got, "Team Slayer")
 	}
 
@@ -710,11 +758,50 @@ func TestBuildSessionDetailRows_ModeUILocale(t *testing.T) {
 		GameVariantName: "Team Slayer:Arena", GameVariantNameFR: "Assassin en équipe : Arène",
 		SessionLabel: &label,
 	}}
-	if got := modeUIOf(buildSessionDetailRows(variantFR, nil, "fr", nil)); got != "Assassin en équipe" {
+	if got := modeUIOf(buildSessionDetailRows(variantFR, nil, "fr", nil, nil)); got != "Assassin en équipe" {
 		t.Fatalf("FR repli GameVariant : ModeUI = %q, want %q", got, "Assassin en équipe")
 	}
 	// En EN, le repli FR ne s'applique jamais → sous-mode normalisé EN du pair.
-	if got := modeUIOf(buildSessionDetailRows(variantFR, nil, "en", nil)); got != "Team Slayer" {
+	if got := modeUIOf(buildSessionDetailRows(variantFR, nil, "en", nil, nil)); got != "Team Slayer" {
 		t.Fatalf("EN avec variant FR : ModeUI = %q, want %q", got, "Team Slayer")
+	}
+}
+
+// TestBuildSessionDetailRows_CareerXPEstimated verrouille le champ CareerXPEstimated
+// (V72-13, MIROIR EXACT de TestBuildMatchRows_CareerXPEstimated côté Timeseries) :
+// éras appliquées par date, exclusion Firefight et personal_score nil, et absence
+// d'éras (capability analytics.career_xp_estimate absente) → nil sur toutes les lignes.
+func TestBuildSessionDetailRows_CareerXPEstimated(t *testing.T) {
+	eras := games.DefaultCareerXPEras() // ×1 avant 2025-11-18, ×2 depuis
+	psPost, psPre, psFF := 1200, 1000, 1500
+	post := time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
+	pre := time.Date(2025, 6, 1, 12, 0, 0, 0, time.UTC)
+	matches := []legacymatch.StatsMatchRow{
+		{MatchID: "post", StartTime: post, PersonalScore: &psPost},                // 1200 × 2 = 2400
+		{MatchID: "pre", StartTime: pre, PersonalScore: &psPre},                   // 1000 × 1 = 1000
+		{MatchID: "ff", StartTime: post, PersonalScore: &psFF, IsFirefight: true}, // exclu (Firefight)
+		{MatchID: "nops", StartTime: post, PersonalScore: nil},                    // exclu (score nil)
+	}
+
+	rows := buildSessionDetailRows(matches, nil, "fr", nil, eras)
+	if rows[0].CareerXPEstimated == nil || *rows[0].CareerXPEstimated != 2400 {
+		t.Errorf("post-cutover XP = %v, want 2400 (1200×2)", rows[0].CareerXPEstimated)
+	}
+	if rows[1].CareerXPEstimated == nil || *rows[1].CareerXPEstimated != 1000 {
+		t.Errorf("pre-cutover XP = %v, want 1000 (1000×1)", rows[1].CareerXPEstimated)
+	}
+	if rows[2].CareerXPEstimated != nil {
+		t.Errorf("Firefight XP = %v, want nil (exclu)", *rows[2].CareerXPEstimated)
+	}
+	if rows[3].CareerXPEstimated != nil {
+		t.Errorf("personal_score nil XP = %v, want nil (exclu)", *rows[3].CareerXPEstimated)
+	}
+
+	// Capability absente (éras nil) → aucune ligne ne porte d'XP estimée.
+	noEras := buildSessionDetailRows(matches, nil, "fr", nil, nil)
+	for i, r := range noEras {
+		if r.CareerXPEstimated != nil {
+			t.Errorf("row[%d] CareerXPEstimated = %v sans éras, want nil", i, *r.CareerXPEstimated)
+		}
 	}
 }

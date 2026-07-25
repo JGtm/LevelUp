@@ -34,9 +34,9 @@ func NewMedalsHandler(newSvc ContextFactory[port.MedalsService]) *MedalsHandler 
 
 // Mount enregistre la route via Huma sur le sous-routeur chi (préfixe
 // /players/{player_slug} + middleware ownership/title hérités).
-func (h *MedalsHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
-	huma.Post(api, "/pages/medals", h.handleGetMedals)
+func (h *MedalsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Post(api, "/pages/medals", h.handleGetMedals, humacore.Op("postMedals", "Médailles (catalogue complet + compteur joueur)", "career"))
 	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/pages/medals")
 }
 

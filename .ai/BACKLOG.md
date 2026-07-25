@@ -10,6 +10,30 @@
 
 ---
 
+### [data/objectifs] Étendre match_objective_stats aux 4 blocs restants (Stockpile, Elimination, Extraction, Infection)
+
+Constat (investigation citations v7.2, 2026-07-25) : `StatsBundle` (internal/openspartan/models.go)
+porte encore 4 blocs de stats de mode en `json.RawMessage` non extraits : `StockpileStats`,
+`EliminationStats`, `ExtractionStats`, `InfectionStats`. Extension naturelle du chantier
+V72-03 : mêmes mécanique et coût (ALTER ADD COLUMN nullable sur `match_objective_stats`,
+extraction dans `internal/sync/objective/`, backfill re-fetch 1 req/match). Prérequis : P0
+payloads réels de chaque mode pour figer les noms de champs. **Effort : M.**
+
+### [feat/citations] Nouvelles citations Mode de jeu Infinite depuis match_objective_stats (v7.3)
+
+La table d'écarts complète (agent 2026-07-25, transmise dans Notion) liste ~19 citations
+nouvelles calculables dès maintenant : CTF (score de drapeau — trou préexistant le plus
+criant —, vols, prises, sécurisations, assistances, frags porteur, chasse aux rapatrieurs,
+temps de porteur), Zones (frags off/déf, ticks KOTH, temps en zone), Oddball (6 compteurs).
+Prérequis fait en v7.2 : source `objective_stat` branchée au citations_engine. Reste :
+choix utilisateur des citations + visuels (assets H5 repurposables : Conquérant, GOAL!!!!,
+Is that my ball?, My castle, Imparable) + lignes de seed + re-seed + backfill citations
+(procédure docs/COMMENDATIONS.md). Non calculables aujourd'hui : Jouets éducatifs
+(ramassages non tracés), Situation critique/Imparable (manches Élimination — dépend de
+l'extension EliminationStats ci-dessus). **Effort : S par citation une fois les visuels fournis.**
+
+---
+
 ### [archi/data] Unifier la SOURCE des noms d'armes (lieu unique de traduction, keyé par weapon_key)
 
 > Noté le 2026-07-21 (décision user : « à maintenir c'est impossible, une vraie galère »). Constat
@@ -48,6 +72,28 @@ uniquement après validation. **Bloqueur API** : l'endpoint officiel a migré (`
 azure-api.net`, backend `linearmeta.svc.halowaypoint.com`) et exige désormais une auth Spartan, pas juste la
 clé d'abonnement → re-fetch H5 KO tant que l'auth n'est pas recâblée (le fix code `fetchWeaponsFR` est prêt mais
 non vérifiable). **Effort** : moyen (refactor résolution nom) + petit (one-shot data).
+
+---
+
+### [data/armes] Colonne résiduelle `weapons.name_fr` dans les metadata déjà migrées
+
+Noté le 2026-07-25 (lot découvertes v7.2). V72-06 a retiré `name_fr` du schéma du registre
+(CREATE de `applyWeaponRegistry`) et de tout le code de lecture — le nom d'affichage vient de
+`weapon_name_labels`, keyé par `weapon_key`. Sur une `metadata.duckdb` **déjà migrée** (prod), la
+colonne **subsiste** : DuckDB refuse `ALTER … DROP COLUMN` tant que la PK ART
+(`title_slug`+`weapon_key`) existe, d'où le non-DROP volontaire documenté dans
+`internal/games/halo_infinite/migrations/weapon_registry.go`. **Statut : inerte** — plus jamais
+lue, aucun impact fonctionnel ni de taille. Purge = migration dédiée de type rebuild
+(table-rename), **non urgente**. **Effort : S.**
+
+### [ops/h5] `cmd/h5-metadata-fetch` (seedWeapons) écrit encore `weapon_labels.name_fr`
+
+Noté le 2026-07-25 (lot découvertes v7.2). Le CLI de fetch metadata H5 continue de peupler
+`weapon_labels.name_fr`, colonne désormais **shadowée par `weapon_name_labels`** (source unique du
+nom d'affichage, keyée par `weapon_key`). Plomberie **vestigiale** : l'écriture n'est pas
+consommée par le resolver. À simplifier **au prochain passage sur ce CLI** (pas de chantier
+dédié) — cohérent avec le point 1 de la décision « unifier la SOURCE des noms d'armes »
+ci-dessus. **Effort : S.**
 
 ---
 
@@ -96,23 +142,65 @@ les compteurs natifs. Vérifier sur un match H5 réel (bulk weapons + counts de 
 
 ---
 
-### [archi/match-view] Retirer le fallback LIVE (appel API à l'ouverture de page) du Match view
+### [archi/match-view] Retirer le fallback LIVE (appel API à l'ouverture de page) du Match view — CLOS 2026-07-25
 
-> Noté le 2026-07-19 (décision user). Le Match view a un fallback qui, quand un match n'est PAS
-> en base (`GetMatchMeta` / `match_registry` miss), va chercher la partie **EN DIRECT depuis l'API** :
-> `tryCanonicalMatchView` (`internal/service/match_view_service.go:307,314`) → `DataAdapter.LoadMatchDetail`.
-> Pour H5 (`internal/games/halo_5/adapter_data_loaders.go:204`), ça fait **2 appels API live**
-> (`GetPlayerMatches` historique + `GetMatchCarnage`). Déclenché seulement pour un match **non encore
-> synchronisé** (Infinite et H5 persistés passent par la DB → jamais concernés). Design existant
-> (ADR 0029 + tests `TestAdapter_LoadMatchDetail_Live` / `…CarnageHTTPErrorDegrades`).
+> Noté le 2026-07-19 (décision user). Le Match view avait un fallback qui, quand un match n'était PAS
+> en base (`GetMatchMeta` / `match_registry` miss), allait chercher la partie **EN DIRECT depuis l'API**.
 
-**DÉCISION (user 2026-07-19)** : **à SUPPRIMER**. Un appel API live à l'ouverture d'une page match
-n'est pas voulu (latence, dépendance token, échec réseau à l'affichage). Le remplacer par une
-dégradation propre (« match pas encore synchronisé » / 404) plutôt qu'un fetch live. Périmètre :
-`tryCanonicalMatchView` + câblage `DataAdapter`/`viewerGamertag`, le loader `LoadMatchDetail` H5 s'il ne
-sert plus qu'à ça, les tests associés — **vérifier ADR 0029 et les callers avant** (ce chemin a été
-ajouté pour les titres GAMERTAG-keyés). Effet de bord frags : sur ce chemin le breakdown par arme
-retombait en « Non attribué » (ex-D-P3-2) → disparaît avec le fallback. **Effort** : moyen.
+**RÉSOLU (V72-15.4, 2026-07-25)** : chaîne supprimée intégralement.
+- `tryCanonicalMatchView` (match_view_service.go) + champs `dataAdapter`/`viewerGamertag` +
+  `WithDataAdapter`/`WithViewerGamertag` sur `MatchViewService` — supprimés. `GetMatchView` renvoie
+  désormais `domain.ErrNotFound("match", matchID)` (APIError `not_found` → handler mappe déjà en 404
+  `match_not_found`, contrat openapi.yaml inchangé, AUCUN edit de contrat nécessaire).
+- `halo_5.DataAdapter.LoadMatchDetail` (+ `findMatchInHistory`, consts pagination) — supprimé, ainsi
+  que `LoadMatchDetail` sur l'interface `games.TitleDataAdapter` et ses 3 implémentations (HINF stub,
+  synthetic_title_b, H5 réel). Fichier `mapping_carnage_detail.go` (H5) entièrement mort → supprimé.
+  `commendation_defs.go` : `enrichCommendations` (spécifique au détail live) supprimé, `enrichCommendationTotals`
+  (totaux à vie, chemin séparé) conservé.
+- Second ordre découvert en suivant la chaîne : `WithRankedClassifier`/champ `classifier` sur le
+  DataAdapter H5 + chargement `ranked_hoppers.toml` au boot (`server_titles_additional.go`) n'avaient
+  QUE ce fallback comme lecteur → supprimés aussi. `classification.LoadSetClassifier` (lib générique,
+  tests dédiés, autre callsite potentiel Phase 2 ingest) conservé intact.
+- `ctxkeys.WithViewerGamertag`/`ViewerGamertag` — supprimés (plus aucun appelant).
+- `canonical.MatchDetail`/`canonical.Commendation` (types canonical) — supprimés, plus aucun lecteur.
+- Front : `MatchViewPage.tsx` — nouvel état dédié `code === 'match_not_found'` (PageUnavailable,
+  FR/EN via `MATCH_VIEW_TEXT.notSyncedTitle/notSyncedDescription`) au lieu de l'écran d'erreur générique.
+- Tests : Go (service `TestMatchViewService_GetMatchView_MetaError` renforcé + handler
+  `TestMatchViewHandler_NotFound_404` nouveau) + retrait des tests du fallback mort ; front
+  `MatchViewPage.test.tsx` nouveau (3 tests : état dédié, actions nav, non-régression match_not_participant).
+- H5 : comportement identique à HINF (même branche `GetMatchView`, aucune comparaison de slug) ; le
+  chemin de sync normal (livesync/capture.go, mapping_carnage.go, persist) est INTACT — non touché.
+
+---
+
+### [archi/contrat] Reliquats du chantier V72-01 (openapi.yaml généré par Huma) — clos le 2026-07-25
+
+> Le contrat est désormais GÉNÉRÉ (`make openapi-gen` : document Huma partagé + fragment
+> manuel `api/openapi_manual_fragment.yaml`, golden `TestOpenAPIYAMLIsUpToDate`). Plan clos :
+> `.ai/V7/PLAN_V72_HUMA_OPENAPI.md`. Restent 4 chantiers HORS périmètre v7.2, notés ici pour
+> ne pas les perdre — aucun n'est bloquant, le contrat publié est fidèle et gaté.
+
+- [ ] **`DefaultStatus` côté Go (11 handlers)** — Huma documente `200` pour 11 handlers qui
+      répondent 201/202 via leur champ `Status` ; le fragment manuel corrige le statut à la
+      main. Poser `DefaultStatus` sur l'opération (Huma) rendrait la correction inutile et
+      **shrinkerait le fragment d'autant**. Effort : S. Découverte H6.
+- [ ] **38 routes Go ABSENTES du contrat publié** — le document est rendu depuis le
+      `BuildDemoRouter` (`internal/api/openapigen`) : les routes que la démo ne monte pas
+      n'entrent pas dans le yaml. Manquent **29 Prestige** (bundle nil en démo), **3 catalog**
+      (`/titles/{slug}/catalog/{playlists,pairs,maps}` — metadata DB indisponible), **3 diag
+      auto-sync** (`/_diag/auto-sync/*`, scheduler nil) et **3 assets_metadata** (2 branches
+      mutuellement exclusives). Elles PORTENT déjà `humacore.Op` (operationId/summary/tags,
+      posés en H2) : il ne manque que leur montage dans le harnais de rendu (ou un second
+      harnais « contrat complet »). Effort : M. Découverte H2, réconciliation 204 statique
+      → 173 runtime.
+- [ ] **Bonus post-bascule Huma** — `/docs` (UI OpenAPI) gaté hors prod, `securitySchemes`
+      (aucun déclaré aujourd'hui), validation automatique des inputs (impliquerait de passer
+      les 16 corps `RawBody` en `Body` typé → change le contrat d'erreur 400 → 422 : décision
+      produit), résolveurs cross-champs. Effort : S chacun. Statués `[!]` au plan.
+- [ ] **Sémantiques non exprimables en tag struct** — `ApiError.details` (`oneOf[object,array]`
+      réduit à `{}` par le type Go `any`) et les 7 descriptions de SCHÉMA RACINE (Huma n'a pas
+      de tag type-level) vivent au fragment manuel ; un `SchemaTransformer` léger les
+      rapatrierait côté Go. Effort : S. Inventaire fermé H3 (items 1 et 2 du plan).
 
 ---
 

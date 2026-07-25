@@ -2,10 +2,12 @@ package service
 
 import (
 	"context"
+	"strconv"
 	"testing"
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/sync"
 )
 
 func TestParsePlacementRemaining(t *testing.T) {
@@ -184,5 +186,242 @@ func TestApplyLUSRPlacements_skipRankedAndFirefight(t *testing.T) {
 	}
 	if rows[2].PlacementDone == nil || *rows[2].PlacementDone != 1 {
 		t.Errorf("btb doit être placement 1/10, got %v", rows[2].PlacementDone)
+	}
+}
+
+// TestApplyLUSRPlacements_bigTeamBattle_fewerThan10_userReportedScenario reproduit
+// le signalement V72-32 : un joueur ayant joué SEULEMENT quelques matchs Big Team
+// Battle (chaîne "btb") au total, dont plusieurs "hier". Confirme le mécanisme
+// exact — < sync.LUSRPlacementThreshold (10) matchs dans LA CHAÎNE BTB, pas un
+// total global de matchs joués — et que TOUS les matchs BTB de la chaîne (donc
+// ceux d'hier) reçoivent PlacementDone/PlacementTotal, jamais nil silencieux.
+// C'est ce signal que consomme ExplorerMatchesTable.placement.tsx (front) pour
+// afficher « En placement » sur Perf/ΔPerf/Note à la place du "-".
+func TestApplyLUSRPlacements_bigTeamBattle_fewerThan10_userReportedScenario(t *testing.T) {
+	base := time.Date(2026, 7, 20, 18, 0, 0, 0, time.UTC)
+	// 6 matchs BTB au total (< 10) : 3 "il y a plusieurs jours" + 3 "hier"
+	// (24/07), aucun n'a encore de LUSR (chaîne trop jeune).
+	rows := []domain.MatchHistoryRawRow{
+		{MatchID: "btb-old-1", StartTime: tPtr(base), PairName: strPtr("BTB:CTF on Highpower")},
+		{MatchID: "btb-old-2", StartTime: tPtr(base.Add(24 * time.Hour)), PairName: strPtr("BTB:Slayer on Behemoth")},
+		{MatchID: "btb-old-3", StartTime: tPtr(base.Add(48 * time.Hour)), PairName: strPtr("BTB:Stockpile on Deadlock")},
+		{MatchID: "btb-yday-1", StartTime: tPtr(base.Add(96 * time.Hour)), PairName: strPtr("BTB:CTF on Fragmentation")},
+		{MatchID: "btb-yday-2", StartTime: tPtr(base.Add(97 * time.Hour)), PairName: strPtr("BTB:Slayer on Highpower")},
+		{MatchID: "btb-yday-3", StartTime: tPtr(base.Add(98 * time.Hour)), PairName: strPtr("BTB:Stockpile on Behemoth")},
+		// Un match Ranked le même jour ne doit pas polluer la chaîne "btb".
+		{MatchID: "ranked-same-day", StartTime: tPtr(base.Add(50 * time.Hour)), PairName: strPtr("Ranked:Slayer")},
+	}
+	count := applyLUSRPlacements(rows)
+	if count != 6 {
+		t.Fatalf("6 matchs BTB attendus en placement (< 10 dans la chaîne), got %d", count)
+	}
+	for i, want := range []int{1, 2, 3, 4, 5, 6} {
+		r := rows[i]
+		if r.PlacementDone == nil || *r.PlacementDone != want {
+			t.Errorf("%s: PlacementDone want %d, got %v", r.MatchID, want, r.PlacementDone)
+		}
+		if r.PlacementTotal == nil || *r.PlacementTotal != sync.LUSRPlacementThreshold {
+			t.Errorf("%s: PlacementTotal want %d, got %v", r.MatchID, sync.LUSRPlacementThreshold, r.PlacementTotal)
+		}
+	}
+	if rows[6].PlacementDone != nil {
+		t.Errorf("ranked-same-day (chaîne différente) ne doit pas être en placement BTB, got %v", rows[6].PlacementDone)
+	}
+}
+
+func tPtr(t time.Time) *time.Time { return &t }
+
+// f64Ptr : helper local pour les PerformanceScore des tests de placement perf.
+func f64Ptr(v float64) *float64 { return &v }
+
+// btbRow construit un match BTB (chaîne perf "btb") avec un perf_score et un
+// LUSR optionnels. lusr=true simule une chaîne LUSR DÉJÀ calibrée (le cas JGtm).
+func btbRow(id string, at time.Time, perf *float64, lusr bool) domain.MatchHistoryRawRow {
+	r := domain.MatchHistoryRawRow{
+		MatchID:          id,
+		StartTime:        tPtr(at),
+		PairName:         strPtr("BTB:CTF on Highpower"),
+		Outcome:          domain.OutcomeWin,
+		PerformanceScore: perf,
+	}
+	if lusr {
+		r.SkillRatingType = strPtr("LUSR")
+		r.SkillTierLabel = strPtr("Or II")
+	}
+	return r
+}
+
+// TestApplyPerfPlacements_jgtmBTB_lusrEstabli_chaineSousLeSeuil reproduit LE cas
+// signalé (V72-34, vérifié sur les données réelles de JGtm) : chaîne BTB de 8 matchs
+// perf-éligibles, LUSR DÉJÀ établi (Rang "Or II") sur chacun. Le placement LUSR ne
+// couvre pas ces matchs (applyLUSRPlacements saute ceux qui ont un LUSR) — c'est
+// précisément le trou que le signal perf dédié comble : Perf/ΔPerf doivent afficher
+// « En placement (8/10) » alors que la colonne Note reste inchangée.
+func TestApplyPerfPlacements_jgtmBTB_lusrEstabli_chaineSousLeSeuil(t *testing.T) {
+	base := time.Date(2026, 7, 24, 19, 0, 0, 0, time.UTC)
+	rows := make([]domain.MatchHistoryRawRow, 0, 8)
+	for i := 0; i < 8; i++ {
+		rows = append(rows, btbRow("btb-"+strconv.Itoa(i), base.Add(time.Duration(i)*time.Hour), nil, true))
+	}
+	if got := applyPerfPlacements(context.Background(), rows); got != 8 {
+		t.Fatalf("8 matchs BTB attendus en placement perf, got %d", got)
+	}
+	// done = TAILLE DE LA CHAÎNE (8), identique sur tous les matchs — progression de
+	// calibration, pas un rang par-match.
+	for i := range rows {
+		r := &rows[i]
+		if r.PerfPlacementDone == nil || *r.PerfPlacementDone != 8 {
+			t.Errorf("%s: PerfPlacementDone want 8, got %v", r.MatchID, r.PerfPlacementDone)
+		}
+		if r.PerfPlacementTotal == nil || *r.PerfPlacementTotal != sync.MinMatchesPerChainForRelative {
+			t.Errorf("%s: PerfPlacementTotal want %d, got %v", r.MatchID, sync.MinMatchesPerChainForRelative, r.PerfPlacementTotal)
+		}
+		// Le signal de classement (colonne Note) reste vierge : LUSR établi.
+		if r.PlacementDone != nil {
+			t.Errorf("%s: PlacementDone doit rester nil (LUSR établi), got %v", r.MatchID, r.PlacementDone)
+		}
+	}
+}
+
+// TestApplyPerfPlacements_chaineCalibree_aucunSignal : ≥ 10 matchs éligibles dans la
+// chaîne → la chaîne est calibrée. Un match sans perf_score y est un trou structurel
+// ou un retard de sync : AUCUN champ perf_placement (on ne masque pas un défaut de
+// fraîcheur derrière un faux état de placement).
+func TestApplyPerfPlacements_chaineCalibree_aucunSignal(t *testing.T) {
+	base := time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC)
+	rows := make([]domain.MatchHistoryRawRow, 0, 12)
+	for i := 0; i < 11; i++ {
+		rows = append(rows, btbRow("scored-"+strconv.Itoa(i), base.Add(time.Duration(i)*time.Hour), f64Ptr(55), true))
+	}
+	// 12e match de la chaîne, sans perf_score (retard de sync).
+	rows = append(rows, btbRow("lagging", base.Add(50*time.Hour), nil, true))
+
+	applyPerfPlacements(context.Background(), rows)
+	for i := range rows {
+		if rows[i].PerfPlacementDone != nil || rows[i].PerfPlacementTotal != nil {
+			t.Errorf("%s: chaîne calibrée (12 matchs) → aucun signal perf attendu, got %v/%v",
+				rows[i].MatchID, rows[i].PerfPlacementDone, rows[i].PerfPlacementTotal)
+		}
+	}
+}
+
+// TestApplyPerfPlacements_matchAvecPerfScore_aucunSignal : un match qui a DÉJÀ sa
+// perf n'est jamais annoncé « en placement », même si sa chaîne est courte (cas
+// limite : la chaîne vient d'atteindre le seuil).
+func TestApplyPerfPlacements_matchAvecPerfScore_aucunSignal(t *testing.T) {
+	base := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
+	rows := []domain.MatchHistoryRawRow{
+		btbRow("with-score", base, f64Ptr(72), true),
+		btbRow("without-score", base.Add(time.Hour), nil, true),
+	}
+	applyPerfPlacements(context.Background(), rows)
+	if rows[0].PerfPlacementDone != nil {
+		t.Errorf("match avec perf_score ne doit jamais porter le signal, got %v", rows[0].PerfPlacementDone)
+	}
+	// L'autre match de la chaîne (2 éligibles < 10) est bien marqué 2/10.
+	if rows[1].PerfPlacementDone == nil || *rows[1].PerfPlacementDone != 2 {
+		t.Errorf("without-score: PerfPlacementDone want 2 (taille de chaîne), got %v", rows[1].PerfPlacementDone)
+	}
+}
+
+// TestApplyPerfPlacements_dnfEtExclus_nonComptesEtNonMarques : les matchs DNF
+// (outcome=4) et exclus manuellement ne sont pas perf-éligibles — miroir du
+// périmètre du batch : WHERE de loadHistoryForPerf (COALESCE(outcome,0) != 4)
+// + filtre loadExcludedMatchIDs appliqué à allMatches avant la boucle de chaîne
+// (sync/performance.go). Ils ne gonflent pas le compteur de chaîne et ne
+// reçoivent jamais le badge. 3e critère couvert par
+// TestApplyPerfPlacements_sansStartTime_nonCompte.
+func TestApplyPerfPlacements_dnfEtExclus_nonComptesEtNonMarques(t *testing.T) {
+	base := time.Date(2026, 5, 1, 10, 0, 0, 0, time.UTC)
+	rows := []domain.MatchHistoryRawRow{
+		btbRow("ok-1", base, nil, false),
+		btbRow("ok-2", base.Add(time.Hour), nil, false),
+	}
+	dnf := btbRow("dnf", base.Add(2*time.Hour), nil, false)
+	dnf.Outcome = domain.OutcomeDNF
+	excluded := btbRow("excluded", base.Add(3*time.Hour), nil, false)
+	excluded.IsExcluded = true
+	rows = append(rows, dnf, excluded)
+
+	applyPerfPlacements(context.Background(), rows)
+
+	// 2 éligibles seulement → les 2 matchs OK portent 2/10.
+	for _, i := range []int{0, 1} {
+		if rows[i].PerfPlacementDone == nil || *rows[i].PerfPlacementDone != 2 {
+			t.Errorf("%s: PerfPlacementDone want 2 (DNF/exclus non comptés), got %v",
+				rows[i].MatchID, rows[i].PerfPlacementDone)
+		}
+	}
+	for _, i := range []int{2, 3} {
+		if rows[i].PerfPlacementDone != nil {
+			t.Errorf("%s: match non éligible ne doit pas porter le signal, got %v",
+				rows[i].MatchID, rows[i].PerfPlacementDone)
+		}
+	}
+}
+
+// TestApplyPerfPlacements_sansStartTime_nonCompte : 3e critère d'éligibilité du
+// batch, jusqu'ici absent du placement (contre-revue V7.2). loadHistoryForPerf
+// filtre `mr.start_time IS NOT NULL` : un match sans start_time n'entre PAS dans
+// l'historique de chaîne du batch. Le compter côté placement affichait un « X/10 »
+// supérieur au compteur réel du batch (le badge « En placement » aurait annoncé
+// 3/10 quand le batch n'en voit que 2).
+func TestApplyPerfPlacements_sansStartTime_nonCompte(t *testing.T) {
+	base := time.Date(2026, 3, 1, 10, 0, 0, 0, time.UTC)
+	rows := []domain.MatchHistoryRawRow{
+		btbRow("ok-1", base, nil, false),
+		btbRow("ok-2", base.Add(time.Hour), nil, false),
+	}
+	noStart := btbRow("sans-start-time", base.Add(2*time.Hour), nil, false)
+	noStart.StartTime = nil
+	rows = append(rows, noStart)
+
+	applyPerfPlacements(context.Background(), rows)
+
+	for _, i := range []int{0, 1} {
+		if rows[i].PerfPlacementDone == nil || *rows[i].PerfPlacementDone != 2 {
+			t.Errorf("%s: PerfPlacementDone want 2 (match sans start_time non compté par le batch), got %v",
+				rows[i].MatchID, rows[i].PerfPlacementDone)
+		}
+	}
+	if rows[2].PerfPlacementDone != nil {
+		t.Errorf("sans-start-time: match hors périmètre du batch, aucun signal attendu, got %v",
+			rows[2].PerfPlacementDone)
+	}
+}
+
+// TestApplyPerfPlacements_chainesIndependantes : le comptage est PAR CHAÎNE. Une
+// chaîne courte (btb) reçoit le signal sans que la chaîne longue (ranked) soit
+// affectée, et les compteurs ne se mélangent pas.
+func TestApplyPerfPlacements_chainesIndependantes(t *testing.T) {
+	base := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
+	var rows []domain.MatchHistoryRawRow
+	// 3 matchs BTB sans perf (chaîne courte).
+	for i := 0; i < 3; i++ {
+		rows = append(rows, btbRow("btb-"+strconv.Itoa(i), base.Add(time.Duration(i)*time.Hour), nil, false))
+	}
+	// 11 matchs Ranked scorés (chaîne calibrée, chaîne perf "ranked").
+	for i := 0; i < 11; i++ {
+		rows = append(rows, domain.MatchHistoryRawRow{
+			MatchID:          "ranked-" + strconv.Itoa(i),
+			StartTime:        tPtr(base.Add(time.Duration(100+i) * time.Hour)),
+			PairName:         strPtr("Ranked:Slayer"),
+			IsRanked:         true,
+			Outcome:          domain.OutcomeWin,
+			PerformanceScore: f64Ptr(60),
+		})
+	}
+	applyPerfPlacements(context.Background(), rows)
+
+	for i := 0; i < 3; i++ {
+		if rows[i].PerfPlacementDone == nil || *rows[i].PerfPlacementDone != 3 {
+			t.Errorf("%s: want 3/10 (chaîne btb isolée), got %v", rows[i].MatchID, rows[i].PerfPlacementDone)
+		}
+	}
+	for i := 3; i < len(rows); i++ {
+		if rows[i].PerfPlacementDone != nil {
+			t.Errorf("%s: chaîne ranked calibrée+scorée → aucun signal, got %v",
+				rows[i].MatchID, rows[i].PerfPlacementDone)
+		}
 	}
 }

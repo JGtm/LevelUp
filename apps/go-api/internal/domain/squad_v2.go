@@ -116,6 +116,11 @@ type SquadHeader struct {
 	// Sert de reference pour les fleches de tendance (▲▼) du SessionBriefing
 	// (PAS l'historique all-time — la comparaison est intra-session).
 	TeamAvgKPIs *KPIStats `json:"team_avg_kpis,omitempty"`
+	// ObjectiveStatsByXUID : cumul des stats objectifs (CTF/Zones/Oddball) par xuid
+	// sur les matchs partagés du scope. nil/omis pour un titre sans capability
+	// match.objective.stats (Halo 5) ou sans match à objectif. Seuls les xuids avec
+	// des stats objectifs figurent (data-driven). Cf. PLAN_V72_OBJECTIVE_STATS.md.
+	ObjectiveStatsByXUID map[string]*ObjectiveAggregate `json:"objective_stats_by_xuid,omitempty"`
 }
 
 // KPIStats agrege les indicateurs personnels affiches dans le bandeau header.

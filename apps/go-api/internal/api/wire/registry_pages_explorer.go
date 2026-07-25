@@ -93,7 +93,12 @@ func (r *ServiceRegistry) ExplorerCtxWithAuth(ctx context.Context, slug string) 
 	// l'encart cible : même loader weapon_kills que Synthesis/Sessions (frag v2). Le repo
 	// concret fournit aussi les mécaniques natives H5 (LoadKillMechanicsAggregated).
 	svc = svc.WithWeaponKillsRepo(duckdb.NewWeaponKillsRepo(pdb))
-	enriched := r.enrichWithHaloTokens(ctx, pdb)
+	// A1.3 : le player-query Explorer est une LECTURE PUBLIQUE de tiers → résolution
+	// pool-first (session → profil → pool sain). Quand le RT du profil sélectionné
+	// est mort, un token sain du pool porte quand même les fetchs live de la cible.
+	// Les autres chemins (SeasonPassCtxWithAuth, HomeCtxWithAuth) restent sur
+	// enrichWithHaloTokens (identité du profil) — le pool ne sert JAMAIS une donnée privée.
+	enriched := r.enrichWithHaloTokensPublicRead(ctx, pdb)
 	return svc, enriched, pdb.XUID, pdb.Gamertag, nil
 }
 

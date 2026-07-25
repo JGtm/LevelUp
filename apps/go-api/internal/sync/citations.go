@@ -170,6 +170,16 @@ func buildCitationContext(
 		stats[k] = v
 	}
 
+	// Plomberie citations objective_stat (v7.2) : stats objectifs (CTF/Zones/Oddball)
+	// depuis shared.match_objective_stats_latest (MÊME sharedDB que match_participants).
+	// Les citations objective_stat (charge/zone_captures, got_you/flag_returns,
+	// stakeholder/zone_secures, flag_carrier_hunter/flag_carriers_killed) les consultent
+	// via Stats (dispatchFull, cas objective_stat). Best-effort intégral : match
+	// non-objectif (Slayer) / vue absente → aucune stat, aucune erreur (cf. loadObjectiveStats).
+	for k, v := range loadObjectiveStats(ctx, sharedDB, matchID, xuid) {
+		stats[k] = v
+	}
+
 	awards, err := loadAwards(ctx, playerDB, matchID, xuid)
 	if err != nil {
 		slog.WarnContext(ctx, "BackfillMatchCitations: awards", "match_id", matchID, "err", err)
@@ -411,6 +421,70 @@ LIMIT 1`
 		"boss_kills":        float64(boss),
 		"total_enemy_kills": float64(total),
 	}, nil
+}
+
+// objectiveStatColumns — colonnes de match_objective_stats (schéma shared-core CTF/
+// Zones/Oddball, cf. steps_shared_objective_stats). Chaque colonne devient une clé du
+// map Stats (nom identique) → stat_name des citations objective_stat. Slice unique
+// (source de vérité pour le SELECT ET les clés du map — pas de désync possible).
+var objectiveStatColumns = []string{
+	// CTF
+	"flag_captures", "flag_capture_assists", "flag_grabs", "flag_secures",
+	"flag_steals", "flag_returns", "flag_carriers_killed", "flag_returners_killed",
+	"kills_as_flag_carrier", "kills_as_flag_returner", "time_as_flag_carrier_seconds",
+	// Zones (Strongholds + KOTH)
+	"zone_captures", "zone_secures", "zone_offensive_kills", "zone_defensive_kills",
+	"zone_scoring_ticks", "time_in_zones_seconds",
+	// Oddball
+	"kills_as_skull_carrier", "skull_carriers_killed", "skull_grabs",
+	"skull_scoring_ticks", "time_as_skull_carrier_seconds", "longest_time_as_skull_carrier_seconds",
+}
+
+// loadObjectiveStats charge les stats objectifs du joueur pour le match depuis
+// shared.match_objective_stats_latest (vue append-only, ADR 0026 — jamais la table
+// brute). Les clés portent le nom de leur colonne (zone_captures, flag_returns,
+// flag_carriers_killed, ...) → stat_name des citations objective_stat. La table vit
+// sur le MÊME sharedDB que match_participants (shared-core) — pas de handle dédié.
+// Toutes les colonnes sont castées DOUBLE côté SQL → scan homogène en float64 (les
+// *_seconds restent des secondes, tronquées à l'entier par le moteur).
+//
+// Best-effort intégral (plomberie citations objective_stat, v7.2) : retourne toujours
+// une map (nil = aucune stat), jamais d'erreur. Cas dégradés → (nil) :
+//   - sharedDB nil (titre sans handle) ;
+//   - match sans ligne objectif (mode Slayer / non-objectif : ErrNoRows) ;
+//   - vue absente (DB non migrée) / autre erreur SQL → Debug best-effort.
+//     Les citations objective_stat restent alors à 0, jamais d'échec du pipeline.
+func loadObjectiveStats(ctx context.Context, sharedDB *sql.DB, matchID, xuid string) map[string]float64 {
+	if sharedDB == nil {
+		return nil
+	}
+	sel := make([]string, len(objectiveStatColumns))
+	for i, c := range objectiveStatColumns {
+		sel[i] = "COALESCE(CAST(" + c + " AS DOUBLE), 0)"
+	}
+	q := "SELECT " + strings.Join(sel, ", ") +
+		" FROM match_objective_stats_latest WHERE match_id = ? AND xuid = ? LIMIT 1"
+
+	vals := make([]float64, len(objectiveStatColumns))
+	dst := make([]any, len(objectiveStatColumns))
+	for i := range vals {
+		dst[i] = &vals[i]
+	}
+	err := sharedDB.QueryRowContext(ctx, q, matchID, xuid).Scan(dst...)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil // match non-objectif : aucune ligne, comportement normal
+	}
+	if err != nil {
+		// vue absente sur une DB non migrée, ou autre erreur SQL : best-effort.
+		slog.DebugContext(ctx, "citations: objective_stats indisponible (best-effort)",
+			"match_id", matchID, "err", err)
+		return nil
+	}
+	out := make(map[string]float64, len(objectiveStatColumns))
+	for i, c := range objectiveStatColumns {
+		out[c] = vals[i]
+	}
+	return out
 }
 
 // loadWeaponKills charge les kills par arme (effective_weapon_id → canonical name_en) depuis shared.

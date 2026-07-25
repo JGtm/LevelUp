@@ -40,7 +40,15 @@ export function RootLayout() {
     // du bootstrap : le back l'efface dès qu'un refresh par-joueur réussit. On
     // re-fetche au retour sur l'onglet pour que la bannière disparaisse sans
     // rechargement dur. Les redirections du useEffect([data]) sont idempotentes.
-    refetchOnWindowFocus: true,
+    //
+    // NEUTRALISÉ PENDANT UNE BASCULE DE TITRE (anti-fuite cross-titre V72-29) :
+    // hydrateFromBootstrap réécrit currentTitleSlug/header/currentPlayer depuis la
+    // SESSION. Un refetch window-focus déclenché dans la fenêtre d'applyActiveTitle
+    // (session/header transitoires) rejouerait l'ancien titre par-dessus la bascule
+    // en cours → identité/rang d'un autre titre affichés. Tant que isTitleSwitching
+    // est vrai, on ne refetch pas au focus ; applyActiveTitle fait lui-même le
+    // re-bootstrap final avec le bon header.
+    refetchOnWindowFocus: () => !useAppShellStore.getState().isTitleSwitching,
     // Le serveur Go peut mettre 5–15 s à démarrer (CGO + DuckDB) en dev
     // (`air`) ou sur VPS (cold start, redéploiement). On retry en backoff
     // exponentiel pour absorber la fenêtre de démarrage avant d'afficher

@@ -246,7 +246,7 @@ linters:
       # (coherence avec title.DefaultSlug = "halo_infinite" et les configs
       # config/titles/{slug}/). Renommer ferait perdre la lisibilite 1-pour-1
       # avec les slugs canoniques. Couvre revive (var-naming) + staticcheck (ST1003).
-      - path: "internal/games/(halo_infinite|synthetic_title_b)/"
+      - path: "internal/games/(halo_infinite|halo_5|synthetic_title_b)/"
         linters: [revive, staticcheck]
         text: "(var-naming: don't use an underscore in package name|ST1003)"
 

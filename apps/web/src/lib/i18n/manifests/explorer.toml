@@ -390,6 +390,56 @@ en = "KDA"
 fr = "FDA = (Frags + Assistances/3) − Morts ; peut être négatif"
 en = "KDA = (Kills + Assists/3) − Deaths; can be negative"
 
+# ─── Tooltips d'en-tête de colonnes (V72-04, icône ⓘ) ────────────────────────
+
+[explorer.matches.col_squad_tooltip]
+fr = "Partie jouée en solo ou en escouade (au moins un coéquipier connu)."
+en = "Match played solo or as a squad (at least one known teammate)."
+
+[explorer.matches.col_dominance_tooltip]
+fr = "Fait marquant : domination, humiliation, remontada, débandade ou contre-remontada."
+en = "Storyline: domination, humiliation, comeback, collapse or counter-comeback."
+
+[explorer.matches.col_kills_tooltip]
+fr = "Frags réalisés durant le match."
+en = "Kills scored during the match."
+
+[explorer.matches.col_deaths_tooltip]
+fr = "Morts durant le match."
+en = "Deaths during the match."
+
+[explorer.matches.col_assists_tooltip]
+fr = "Assistances : coups portés à un adversaire achevé par un allié."
+en = "Assists: damage on an enemy finished off by a teammate."
+
+[explorer.matches.col_perf_tooltip]
+fr = "Score de performance 0–100 relatif à l'historique du joueur (50 = habituel)."
+en = "Performance score 0–100 relative to the player's own history (50 = usual)."
+
+[explorer.matches.col_delta_perf_tooltip]
+fr = "Écart de performance de ce match par rapport au niveau habituel du joueur."
+en = "This match's performance gap versus the player's usual level."
+
+[explorer.matches.col_rating_tooltip]
+fr = "Type de classement du match : CSR (classé en jeu) ou LUSR (classement maison)."
+en = "Match rating type: CSR (in-game ranked) or LUSR (in-house rating)."
+
+[explorer.matches.col_rank_tooltip]
+fr = "Palier de classement atteint sur ce match, ou progression de placement en cours."
+en = "Ranking tier reached this match, or placement progress if unranked."
+
+[explorer.matches.col_team_mmr_tooltip]
+fr = "Niveau de compétence moyen estimé (MMR) de ton équipe."
+en = "Average estimated skill level (MMR) of your team."
+
+[explorer.matches.col_enemy_mmr_tooltip]
+fr = "Niveau de compétence moyen estimé (MMR) de l'équipe adverse."
+en = "Average estimated skill level (MMR) of the enemy team."
+
+[explorer.matches.col_delta_mmr_tooltip]
+fr = "Écart de MMR entre ton équipe et l'équipe adverse."
+en = "MMR gap between your team and the enemy team."
+
 [explorer.matches.col_duration]
 fr = "Durée"
 en = "Duration"
@@ -577,12 +627,27 @@ fr = "Écart de frags cumulé"
 en = "Cumulative frag gap"
 
 [explorer.target_profile.section_sample_empty]
-fr = "Aucun match en commun pour calculer les stats détaillées."
-en = "No shared match to compute detailed stats."
+fr = "Aucun match en commun avec ce joueur — les comparaisons directes apparaîtront après des parties partagées."
+en = "No matches in common with this player yet — direct comparisons will appear after you play shared games."
 
 [explorer.target_profile.no_auth_hint]
 fr = "Connecte un compte Halo pour voir la carrière complète et le profil live de ce joueur."
 en = "Connect a Halo account to see this player's full career and live profile."
+
+# Badges par section live (Lot A3 — fin de la dégradation muette). Wording FR
+# sobre demandé par le plan : "Données live indisponibles (authentification)" /
+# "Live partiel". "failed" reprend le même gabarit avec la cause "erreur".
+[explorer.target_profile.live_status.no_auth]
+fr = "Données live indisponibles (authentification)"
+en = "Live data unavailable (authentication)"
+
+[explorer.target_profile.live_status.failed]
+fr = "Données live indisponibles (erreur)"
+en = "Live data unavailable (error)"
+
+[explorer.target_profile.live_status.local_partial]
+fr = "Live partiel"
+en = "Partial live data"
 
 [explorer.target_profile.identity_unknown_title]
 fr = "Identité Spartan non disponible"
@@ -860,16 +925,16 @@ fr = "Réduire"
 en = "Collapse"
 
 [explorer.briefing.expand]
-fr = "Afficher"
-en = "Show"
+fr = "Afficher le résumé"
+en = "Show briefing"
 
 [explorer.briefing.collapse_aria]
-fr = "Masquer la synthèse"
-en = "Hide summary"
+fr = "Masquer le résumé"
+en = "Hide briefing"
 
 [explorer.briefing.expand_aria]
-fr = "Afficher la synthèse"
-en = "Show summary"
+fr = "Afficher le résumé"
+en = "Show briefing"
 
 # ─── Bandeau briefing : modules conditionnels (Lot C) ──────────────────────────
 

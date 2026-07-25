@@ -1,0 +1,47 @@
+# config/titles/halo_infinite/mappings/weapon_names.toml
+#
+# SOURCE UNIQUE des noms d'armes affiches Halo Infinite (V72-06). Keye par
+# weapon_key (identifiant canonique stable du registre weapons/weapon_ids), PAS par
+# le nom EN brut. La resolution d'un kill fait weapon_id -> weapon_ids -> weapon_key
+# -> {en, fr} depuis ce fichier (cf. internal/platform/duckdb/weapon_resolver.go).
+#
+# RExGLE : une entree par weapon_key present dans le registre (garde-rail de
+# completude : weapon_names_completeness_test.go). en ET fr obligatoires ; si aucun
+# FR officiel n'est connu, mettre le EN dans les deux (jamais de FR invente).
+#
+# Ces valeurs FR reproduisent EXACTEMENT le seed historique weapon_labels.go
+# (name_fr) pour preserver la parite d'affichage Halo Infinite byte-pour-byte. Note
+[meta]
+title_slug     = "halo_infinite"
+schema_version = 1
+
+[weapons]
+hinf_br75           = { en = "BR75", fr = "BR75" }
+hinf_bandit         = { en = "M392 Bandit", fr = "Bandit EVO" }
+hinf_ma40_ar        = { en = "MA40 AR", fr = "MA40 AR" }
+hinf_ma5k_avenger   = { en = "MA5K Avenger", fr = "MA5K Avenger" }
+hinf_vk78_commando  = { en = "VK78 Commando", fr = "VK78 Commando" }
+hinf_s7_sniper      = { en = "S7 Sniper", fr = "S7 Sniper" }
+hinf_cqs48_bulldog  = { en = "CQS48 Bulldog", fr = "CQS48 Bulldog" }
+hinf_hydra          = { en = "MLRS-2 Hydra", fr = "Hydra" }
+hinf_m41_spnkr      = { en = "M41 SPNKr", fr = "M41 SPNKr" }
+hinf_fuel_rod_spnkr = { en = "Fuel Rod SPNKr", fr = "SPNKr à combustible" }
+hinf_sidekick       = { en = "Mk50 Sidekick", fr = "MK50 Sidekick" }
+hinf_plasma_pistol  = { en = "Plasma Pistol", fr = "Pistolet à plasma" }
+hinf_needler        = { en = "Needler", fr = "Needler" }
+hinf_sentinel_beam  = { en = "Sentinel Beam", fr = "Rayon de Sentinelle" }
+hinf_energy_sword   = { en = "Energy Sword", fr = "Épée à énergie" }
+hinf_gravity_hammer = { en = "Gravity Hammer", fr = "Marteau antigravité" }
+hinf_skewer         = { en = "Skewer", fr = "Empaleur" }
+hinf_cindershot     = { en = "Cindershot", fr = "Crémateur" }
+hinf_heatwave       = { en = "Heatwave", fr = "Calcineur" }
+hinf_ravager        = { en = "Ravager", fr = "Ravageur" }
+hinf_shock_rifle    = { en = "Shock Rifle", fr = "Fusil électrique" }
+hinf_disruptor      = { en = "Disruptor", fr = "Disrupteur" }
+hinf_mangler        = { en = "Mangler", fr = "Déchiqueteur" }
+hinf_pulse_carbine  = { en = "Pulse Carbine", fr = "Carabine à impulsion" }
+hinf_stalker_rifle  = { en = "Stalker Rifle", fr = "Fusil traqueur" }
+hinf_vestige_carbine = { en = "Vestige Carbine", fr = "Carabine Vestige" }
+hinf_frag_grenade   = { en = "Frag Grenade", fr = "Grenade frag" }
+hinf_plasma_grenade = { en = "Plasma Grenade", fr = "Grenade plasma" }
+hinf_dynamo_grenade = { en = "Dynamo Grenade", fr = "Grenade dynamo" }
