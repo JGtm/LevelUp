@@ -2,8 +2,8 @@
 // Source : apps/web/src/lib/i18n/manifests/explorer.toml
 
 export const explorerManifest = {
-  "explorer.briefing.collapse": { fr: "Masquer le résumé", en: "Collapse briefing" },
-  "explorer.briefing.collapse_aria": { fr: "Masquer la synthèse", en: "Hide summary" },
+  "explorer.briefing.collapse": { fr: "Réduire", en: "Collapse" },
+  "explorer.briefing.collapse_aria": { fr: "Masquer le résumé", en: "Hide briefing" },
   "explorer.briefing.context_split_title": { fr: "Par contexte", en: "By context" },
   "explorer.briefing.dim_map": { fr: "Par carte", en: "By map" },
   "explorer.briefing.dim_matches": { fr: "{n, plural, one {# match} other {# matchs}}", en: "{n, plural, one {# match} other {# matches}}" },
@@ -11,7 +11,7 @@ export const explorerManifest = {
   "explorer.briefing.dim_playlist": { fr: "Par sélection", en: "By playlist" },
   "explorer.briefing.duration_total_label": { fr: "Durée totale", en: "Total time" },
   "explorer.briefing.expand": { fr: "Afficher le résumé", en: "Show briefing" },
-  "explorer.briefing.expand_aria": { fr: "Afficher la synthèse", en: "Show summary" },
+  "explorer.briefing.expand_aria": { fr: "Afficher le résumé", en: "Show briefing" },
   "explorer.briefing.fda_label": { fr: "FDA", en: "KDA" },
   "explorer.briefing.highlights_title": { fr: "Moments forts", en: "Highlights" },
   "explorer.briefing.low_sample": { fr: "Échantillon faible ({n} matchs)", en: "Small sample ({n} matches)" },

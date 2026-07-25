@@ -910,16 +910,16 @@ fr = "Réduire"
 en = "Collapse"
 
 [explorer.briefing.expand]
-fr = "Afficher"
-en = "Show"
+fr = "Afficher le résumé"
+en = "Show briefing"
 
 [explorer.briefing.collapse_aria]
-fr = "Masquer la synthèse"
-en = "Hide summary"
+fr = "Masquer le résumé"
+en = "Hide briefing"
 
 [explorer.briefing.expand_aria]
-fr = "Afficher la synthèse"
-en = "Show summary"
+fr = "Afficher le résumé"
+en = "Show briefing"
 
 # ─── Bandeau briefing : modules conditionnels (Lot C) ──────────────────────────
 
