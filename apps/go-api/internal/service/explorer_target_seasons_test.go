@@ -5,6 +5,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"levelup/go-api/internal/domain"
 )
 
 func tm(s string) time.Time {
@@ -145,7 +147,10 @@ func TestComputeSeasonBreakdown_Live(t *testing.T) {
 
 	played := []string{"Seasons/Season6.json", "Seasons/Season6-2.json", "Seasons/Season7.json", "Csr/Seasons/CsrSeason6-1.json"}
 	engaged := []string{"ranked-arena-asset"}
-	out := svc.computeSeasonBreakdown(ctxAuth(true, "me"), "target-xuid", "Target", true, played, engaged)
+	out, status := svc.computeSeasonBreakdown(ctxAuth(true, "me"), "target-xuid", "Target", true, played, engaged)
+	if status != domain.ExplorerLiveOK {
+		t.Errorf("status attendu ok (breakdown live), got %q", status)
+	}
 
 	if len(out) != 3 {
 		t.Fatalf("attendu 3 saisons (catalogue complet), got %d", len(out))
@@ -179,10 +184,13 @@ func TestComputeSeasonBreakdown_FallbackNoAuth(t *testing.T) {
 		})
 
 	// hasAuth=false → fallback bucketing local : aucun appel live par saison.
-	_ = svc.computeSeasonBreakdown(context.Background(), "target-xuid", "Target", false,
+	_, status := svc.computeSeasonBreakdown(context.Background(), "target-xuid", "Target", false,
 		[]string{"Seasons/Season7.json"}, []string{"ranked-arena-asset"})
 	if atomic.LoadInt32(&sr.calls) != 0 {
 		t.Errorf("aucun appel SeasonSR attendu sans auth, got %d", sr.calls)
+	}
+	if status != domain.ExplorerLiveNoAuth {
+		t.Errorf("status attendu no_auth, got %q", status)
 	}
 }
 
@@ -204,8 +212,11 @@ func TestComputeSeasonBreakdown_NoEngagedPlaylists_SkipsCSR(t *testing.T) {
 			Seasons: breakdownTestSeasons(), SeasonSR: sr, SeasonCSR: csr, TitleSlug: "halo_infinite",
 		})
 
-	out := svc.computeSeasonBreakdown(ctxAuth(true, "me"), "target-xuid", "Target", true,
+	out, status := svc.computeSeasonBreakdown(ctxAuth(true, "me"), "target-xuid", "Target", true,
 		[]string{"Seasons/Season7.json"}, nil /* aucune playlist engagée */)
+	if status != domain.ExplorerLiveOK {
+		t.Errorf("status attendu ok (breakdown live), got %q", status)
+	}
 
 	if out[1].Matches != 12 {
 		t.Errorf("S7 total attendu 12, got %+v", out[1])

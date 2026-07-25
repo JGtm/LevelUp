@@ -4810,6 +4810,12 @@ components:
               type: integer
           outcome_label:
               type: string
+          perf_placement_done:
+              format: int64
+              type: integer
+          perf_placement_total:
+              format: int64
+              type: integer
           perf_tier:
               format: int64
               type: integer
@@ -10465,6 +10471,31 @@ components:
           - cumulative
           - outcome
       type: object
+    ExplorerLiveStatus:
+      additionalProperties: false
+      properties:
+          career:
+              type: string
+              enum: [ok, failed, no_auth, local_partial]
+          combat_live:
+              type: string
+              enum: [ok, failed, no_auth, local_partial]
+          identity:
+              type: string
+              enum: [ok, failed, no_auth, local_partial]
+          season_csrs:
+              type: string
+              enum: [ok, failed, no_auth, local_partial]
+          seasons:
+              type: string
+              enum: [ok, failed, no_auth, local_partial]
+      required:
+          - identity
+          - career
+          - season_csrs
+          - seasons
+          - combat_live
+      type: object
     ExplorerMatchesRow:
       additionalProperties: false
       properties:
@@ -10519,6 +10550,12 @@ components:
               type: integer
           outcome_label:
               type: string
+          perf_placement_done:
+              format: int64
+              type: integer
+          perf_placement_total:
+              format: int64
+              type: integer
           perf_score:
               format: int64
               type: integer
@@ -10649,6 +10686,8 @@ components:
               nullable: true
           identity:
               $ref: '#/components/schemas/HomeSpartanIdentity'
+          live_status:
+              $ref: '#/components/schemas/ExplorerLiveStatus'
           matches_per_season:
               items:
                   $ref: '#/components/schemas/SeasonMatchCount'
@@ -10670,6 +10709,7 @@ components:
               nullable: true
       required:
           - auth_available
+          - live_status
       type: object
     ExplorerTargetRecentMatch:
       additionalProperties: false
@@ -14960,6 +15000,12 @@ components:
               type: integer
           pair_name:
               type: string
+          perf_placement_done:
+              format: int64
+              type: integer
+          perf_placement_total:
+              format: int64
+              type: integer
           perf_tier:
               format: int64
               type: integer

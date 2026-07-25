@@ -634,6 +634,21 @@ en = "No matches in common with this player yet — direct comparisons will appe
 fr = "Connecte un compte Halo pour voir la carrière complète et le profil live de ce joueur."
 en = "Connect a Halo account to see this player's full career and live profile."
 
+# Badges par section live (Lot A3 — fin de la dégradation muette). Wording FR
+# sobre demandé par le plan : "Données live indisponibles (authentification)" /
+# "Live partiel". "failed" reprend le même gabarit avec la cause "erreur".
+[explorer.target_profile.live_status.no_auth]
+fr = "Données live indisponibles (authentification)"
+en = "Live data unavailable (authentication)"
+
+[explorer.target_profile.live_status.failed]
+fr = "Données live indisponibles (erreur)"
+en = "Live data unavailable (error)"
+
+[explorer.target_profile.live_status.local_partial]
+fr = "Live partiel"
+en = "Partial live data"
+
 [explorer.target_profile.identity_unknown_title]
 fr = "Identité Spartan non disponible"
 en = "Spartan identity not available"

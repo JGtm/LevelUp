@@ -121,20 +121,25 @@ func recentMatchesFromCanonical(cs []canonical.RecentMatchRow) []domain.Explorer
 // computeTargetCombatProfileLive fetche en LIVE les ~20 derniers matchs PvP de la
 // cible (RecentMatchesProvider, borné par liveCtx, cache 20 min). C'est la source
 // AFFICHÉE PAR DÉFAUT. nil si pas de provider / pas d'auth / pas de xuid / erreur.
-func (s *ExplorerService) computeTargetCombatProfileLive(liveCtx context.Context, targetXUID string, hasAuth bool) []domain.ExplorerTargetRecentMatch {
-	if s.deps.RecentMatches == nil || !hasAuth || targetXUID == "" {
-		return nil
+// Statut (A3) : no_auth si jamais tenté (pas de token), failed si le fetch live
+// a échoué, ok sinon (y compris 0 match récent, état valide).
+func (s *ExplorerService) computeTargetCombatProfileLive(liveCtx context.Context, targetXUID string, hasAuth bool) ([]domain.ExplorerTargetRecentMatch, domain.ExplorerLiveSectionStatus) {
+	if !hasAuth {
+		return nil, domain.ExplorerLiveNoAuth
+	}
+	if s.deps.RecentMatches == nil || targetXUID == "" {
+		return nil, domain.ExplorerLiveFailed
 	}
 	live, err := s.deps.RecentMatches.FetchRecentMatches(liveCtx, targetXUID, explorerCombatProfileLimit)
 	if err != nil {
 		slog.WarnContext(liveCtx, "explorer_target_combat_profile_live_failed", "xuid", targetXUID, "err", err)
-		return nil
+		return nil, domain.ExplorerLiveFailed
 	}
 	// Traduit les sous-modes EN normalisés en FR (mode_name_tr) — MÊME résolution
 	// que la source locale, pour un donut "Répartition des modes" homogène.
 	s.repo.TranslateModeUIsFR(liveCtx, live)
 	slog.DebugContext(liveCtx, "explorer_target_combat_profile", "xuid", targetXUID, "matches", len(live), "source", "live")
-	return live
+	return live, domain.ExplorerLiveOK
 }
 
 // computeMatchesPerSeason agrège les matchs du target par saison (calcul local
@@ -157,23 +162,34 @@ func (s *ExplorerService) computeMatchesPerSeason(ctx context.Context, targetXUI
 // emblem/backdrop). Applique le fallback bannière → backdrop. Retourne nil si
 // rien. La conversion vers le DTO snake_case (BuildSpartanIdentity) est faite
 // par l'appelant buildTargetProfile.
-func (s *ExplorerService) fetchTargetIdentityRaw(ctx context.Context, targetXUID, targetGamertag string, hasAuth bool) *domain.HomeSpartanIdentityRow {
+//
+// Statut (A3) : ok si identité locale ou live résolue ; failed si la cible est
+// non-locale, l'auth est disponible, mais le fetch live a échoué ; no_auth si
+// la cible est non-locale et sans auth (live jamais tenté) ; local_partial si
+// auth disponible mais aucune identité réelle résolue (LiveIdentity non câblé/
+// sans xuid) — dans les 3 derniers cas, l'identité retournée peut être la
+// nameplate de repli du pool (jamais nil sans raison si le pool est câblé).
+func (s *ExplorerService) fetchTargetIdentityRaw(
+	ctx context.Context, targetXUID, targetGamertag string, hasAuth bool,
+) (*domain.HomeSpartanIdentityRow, domain.ExplorerLiveSectionStatus) {
 	if s.deps.LocalIdentity != nil {
 		if id := s.deps.LocalIdentity.LocalSpartanIdentity(ctx, targetGamertag); id != nil {
 			// Joueur suivi : on garde sa vraie bannière (preferPool=false).
 			s.applyBannerFallbacks(ctx, id, targetXUID, false)
-			return id
+			return id, domain.ExplorerLiveOK
 		}
 	}
+	liveFailed := false
 	if hasAuth && s.deps.LiveIdentity != nil && targetXUID != "" {
 		id, err := s.deps.LiveIdentity.FetchLiveIdentity(ctx, targetXUID)
 		if err != nil {
 			slog.WarnContext(ctx, "explorer_target_identity_live_failed", "xuid", targetXUID, "err", err)
+			liveFailed = true
 			// On ne retourne pas : on tente quand même la bannière de repli ci-dessous.
 		} else if id != nil {
 			// Cible non-locale : nameplate live souvent 404 → préférer le pool (preferPool=true).
 			s.applyBannerFallbacks(ctx, id, targetXUID, true)
-			return id
+			return id, domain.ExplorerLiveOK
 		}
 	}
 	// Aucune identité exploitable (cible non suivie + pas d'auth / live indisponible
@@ -181,11 +197,18 @@ func (s *ExplorerService) fetchTargetIdentityRaw(ctx context.Context, targetXUID
 	// de repli déterministe du pool local, pour qu'une cible non-locale ne soit
 	// jamais affichée sans bannière. nil si pas de xuid / pool vide → l'appelant
 	// retombe sur le placeholder "identité indisponible".
+	status := domain.ExplorerLiveNoAuth
+	switch {
+	case liveFailed:
+		status = domain.ExplorerLiveFailed
+	case hasAuth:
+		status = domain.ExplorerLiveLocalPartial
+	}
 	if id := s.fallbackBannerOnlyIdentity(ctx, targetXUID); id != nil {
-		return id
+		return id, status
 	}
 	slog.DebugContext(ctx, "explorer_target_identity_unavailable", "gamertag", targetGamertag)
-	return nil
+	return nil, status
 }
 
 // fallbackBannerOnlyIdentity construit une identité minimale ne portant qu'une
@@ -266,42 +289,51 @@ func applyBannerFallback(id *domain.HomeSpartanIdentityRow) {
 // fetchTargetServiceRecord fetch le service record live (stats + temps de jeu +
 // médailles lifetime) et en dérive les stats carrière + le top médailles + la
 // liste des saisons jouées (Subqueries.SeasonIds, pour le breakdown par saison).
-// Skip sans auth ; (nil, nil, nil) en cas d'erreur.
-func (s *ExplorerService) fetchTargetServiceRecord(ctx context.Context, targetGamertag string, hasAuth bool) (*domain.NormalizedPlayerStats, []domain.MedalDigestItem, []string, []string) {
-	if s.deps.RemoteStats == nil {
-		return nil, nil, nil, nil
-	}
+// Skip sans auth ; (nil, nil, nil, nil) en cas d'erreur. Statut (A3) : no_auth
+// si jamais tenté, failed si provider absent / erreur / réponse vide, ok sinon.
+func (s *ExplorerService) fetchTargetServiceRecord(
+	ctx context.Context, targetGamertag string, hasAuth bool,
+) (*domain.NormalizedPlayerStats, []domain.MedalDigestItem, []string, []string, domain.ExplorerLiveSectionStatus) {
 	if !hasAuth {
 		slog.DebugContext(ctx, "explorer_target_career_skipped",
 			"gamertag", targetGamertag, "reason", "no_auth_tokens")
-		return nil, nil, nil, nil
+		return nil, nil, nil, nil, domain.ExplorerLiveNoAuth
+	}
+	if s.deps.RemoteStats == nil {
+		return nil, nil, nil, nil, domain.ExplorerLiveFailed
 	}
 	rec, err := s.deps.RemoteStats.FetchServiceRecord(ctx, targetGamertag, s.deps.TitleSlug)
 	if err != nil {
 		slog.WarnContext(ctx, "explorer_target_career_failed", "gamertag", targetGamertag, "err", err)
-		return nil, nil, nil, nil
+		return nil, nil, nil, nil, domain.ExplorerLiveFailed
 	}
 	if rec == nil {
-		return nil, nil, nil, nil
+		return nil, nil, nil, nil, domain.ExplorerLiveFailed
 	}
 	stats := rec.Stats
 	medals := buildTargetTopMedals(ctx, s.deps.MedalDefs, rec.Medals, s.deps.TitleSlug, ctxkeys.Locale(ctx))
-	return &stats, medals, rec.SeasonIDs, rec.PlaylistAssetIDs
+	return &stats, medals, rec.SeasonIDs, rec.PlaylistAssetIDs, domain.ExplorerLiveOK
 }
 
 // fetchTargetCSR fetch les classements CSR de la saison courante de la cible
 // (endpoint skill public — tout xuid). Skip sans auth / sans provider / sans
-// saison. nil en cas d'erreur (logguée).
-func (s *ExplorerService) fetchTargetCSR(ctx context.Context, targetXUID string, hasAuth bool) []domain.CareerPlaylistCSR {
-	if s.deps.CSR == nil || !hasAuth || targetXUID == "" || s.deps.CurrentSeasonID == "" {
-		return nil
+// saison. Statut (A3) : no_auth si jamais tenté, failed si provider/saison
+// absents ou erreur, ok sinon (y compris liste vide, joueur non classé).
+func (s *ExplorerService) fetchTargetCSR(
+	ctx context.Context, targetXUID string, hasAuth bool,
+) ([]domain.CareerPlaylistCSR, domain.ExplorerLiveSectionStatus) {
+	if !hasAuth {
+		return nil, domain.ExplorerLiveNoAuth
+	}
+	if s.deps.CSR == nil || targetXUID == "" || s.deps.CurrentSeasonID == "" {
+		return nil, domain.ExplorerLiveFailed
 	}
 	csrs, err := s.deps.CSR.SeasonCSRs(ctx, targetXUID, s.deps.CurrentSeasonID)
 	if err != nil {
 		slog.WarnContext(ctx, "explorer_target_csr_failed", "xuid", targetXUID, "err", err)
-		return nil
+		return nil, domain.ExplorerLiveFailed
 	}
-	return csrs
+	return csrs, domain.ExplorerLiveOK
 }
 
 // computeTargetSampleStats agrège les stats du target sur les matchs communs

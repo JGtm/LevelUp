@@ -175,8 +175,14 @@ func (b *PrestigeBundle) serviceAndPlayerDB(ctx context.Context, playerSlug stri
 		BaselineProvider: prestigedb.NewHaloBaselineProvider(pdb.SharedReadDB()),
 		// Indice escouade : modes servis en FR canonique (mode_name_tr) prêts à
 		// afficher, comme home/match-view — le sous-titre « surtout … » était en EN.
+		// Playlists : résolution FR par playlist_id (asset_translations, même
+		// résolveur que la page Carrière) — comble le trou "Quick Play"/"Big Team
+		// Battle" dont playlist_name_fr est vide dans match_registry (V72-10 suite).
 		SquadMatches: prestigedb.NewPrestigeSquadMatchProvider(pdb.SharedReadDB()).
-			WithModeTranslatorFR(platform_duckdb.NewSquadRepo(pdb).LoadModeTranslationsFR),
+			WithModeTranslatorFR(platform_duckdb.NewSquadRepo(pdb).LoadModeTranslationsFR).
+			WithPlaylistTranslatorFR(func(ctx context.Context, ids []string) (map[string]string, error) {
+				return platform_duckdb.NewSquadRepo(pdb).LoadAssetTranslationsFR(ctx, "playlist", ids)
+			}),
 		SquadProfile: b.squadProfile,
 	}
 	return pdb, prestige.NewService(deps), nil

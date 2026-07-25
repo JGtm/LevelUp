@@ -3940,6 +3940,10 @@ export interface components {
             outcome_code: number;
             outcome_label: string;
             /** Format: int64 */
+            perf_placement_done?: number;
+            /** Format: int64 */
+            perf_placement_total?: number;
+            /** Format: int64 */
             perf_tier?: number;
             /** Format: int64 */
             performance_score_relative: number | null;
@@ -6352,6 +6356,18 @@ export interface components {
             cumulative: number;
             outcome: string;
         };
+        ExplorerLiveStatus: {
+            /** @enum {string} */
+            career: "ok" | "failed" | "no_auth" | "local_partial";
+            /** @enum {string} */
+            combat_live: "ok" | "failed" | "no_auth" | "local_partial";
+            /** @enum {string} */
+            identity: "ok" | "failed" | "no_auth" | "local_partial";
+            /** @enum {string} */
+            season_csrs: "ok" | "failed" | "no_auth" | "local_partial";
+            /** @enum {string} */
+            seasons: "ok" | "failed" | "no_auth" | "local_partial";
+        };
         ExplorerMatchesRow: {
             /** Format: int64 */
             assists?: number;
@@ -6383,6 +6399,10 @@ export interface components {
             /** Format: int64 */
             outcome_code: number;
             outcome_label: string;
+            /** Format: int64 */
+            perf_placement_done?: number;
+            /** Format: int64 */
+            perf_placement_total?: number;
             /** Format: int64 */
             perf_score?: number;
             /** Format: int64 */
@@ -6424,6 +6444,7 @@ export interface components {
             combat_profile?: components["schemas"]["ExplorerTargetRecentMatch"][] | null;
             combat_profile_local?: components["schemas"]["ExplorerTargetRecentMatch"][] | null;
             identity?: components["schemas"]["HomeSpartanIdentity"];
+            live_status: components["schemas"]["ExplorerLiveStatus"];
             matches_per_season?: components["schemas"]["SeasonMatchCount"][] | null;
             privacy_warning?: components["schemas"]["MatchPrivacyWarning"];
             sample_stats?: components["schemas"]["ExplorerTargetSampleStats"];
@@ -8224,6 +8245,10 @@ export interface components {
             /** Format: int64 */
             outcome?: number;
             pair_name: string;
+            /** Format: int64 */
+            perf_placement_done?: number;
+            /** Format: int64 */
+            perf_placement_total?: number;
             /** Format: int64 */
             perf_tier?: number;
             /** Format: double */
