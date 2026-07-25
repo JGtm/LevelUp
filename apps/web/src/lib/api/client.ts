@@ -103,6 +103,65 @@ export function getApiTitleSlug(): string {
   return _currentTitleSlug ?? 'halo_infinite'
 }
 
+/**
+ * Code d'erreur ApiError émis par la garde anti-fuite cross-titre (V72-29) quand
+ * une réponse porte un titre résolu divergent du titre actif du client.
+ */
+export const TITLE_MISMATCH_CODE = 'title_mismatch'
+
+/** Header de réponse par lequel le serveur échoie le titre qu'il a résolu. */
+const RESOLVED_TITLE_HEADER = 'X-LevelUp-Title-Resolved'
+
+/**
+ * Garde anti-fuite cross-titre (V72-29) — défense en profondeur décisive. Le serveur
+ * échoie le titre résolu dans `X-LevelUp-Title-Resolved` (middleware TitleExtractor).
+ * On REJETTE toute réponse dont ce titre résolu diverge du titre que le client
+ * considère ACTIF à l'instant où la réponse arrive : c'est le cas d'une requête
+ * partie avec l'ancien titre (course de bascule) puis revenue APRÈS que le client a
+ * basculé — sans ce rejet, sa donnée (d'un autre titre) se rangerait sous la clé de
+ * cache du titre courant et y resterait poisonnée (le `queryClient.clear()` du switch
+ * a déjà eu lieu). Ainsi AUCUNE réponse d'un autre titre ne peut entrer dans le cache
+ * TanStack, quelle que soit la course.
+ *
+ * Ne s'applique QUE si CE client a affirmé un titre (`sentTitle` non nul) : les flux
+ * sans header (boot d'une page agnostique, CLI, callbacks SSO) laissent la session
+ * serveur autoritaire et ne sont pas gardés ici. On compare au titre courant LIVE (et
+ * non au header figé qu'on a envoyé) : le serveur HONORANT le header (header > session
+ * > défaut), le titre résolu ÉGALE toujours le header envoyé — une comparaison figée
+ * serait un no-op contre la course même qu'on doit fermer. C'est la divergence entre
+ * le titre résolu de la réponse et le titre ACTIF du client qui trahit une réponse
+ * périmée.
+ */
+function assertResolvedTitleMatchesActive(
+  response: Response,
+  sentTitle: string | null,
+  path: string,
+): void {
+  if (sentTitle === null) return
+  const resolved = response.headers.get(RESOLVED_TITLE_HEADER)
+  if (!resolved) return
+  const active = _currentTitleSlug
+  if (active === null || resolved === active) return
+  if (import.meta.env.DEV) {
+    console.warn('[title-guard] réponse rejetée : titre résolu divergent', {
+      path,
+      resolved,
+      active,
+      sent: sentTitle,
+    })
+  }
+  const err: ApiError = {
+    code: TITLE_MISMATCH_CODE,
+    message: `Réponse d'un autre titre rejetée (résolu « ${resolved} », attendu « ${active} »)`,
+    // Retryable (status 503-like) : TanStack Query re-tente → la requête repart avec
+    // le header du titre courant et converge sur la bonne donnée.
+    retryable: true,
+    status: 503,
+    details: { path, resolved, active, sent: sentTitle },
+  }
+  throw err
+}
+
 function getTitleHeader(): Record<string, string> {
   // Affirmer le titre dès qu'il est connu — segment d'URL posé au boot
   // (initTitleFromLocation) OU hydratation/bascule du store — pour TOUS les titres,
@@ -145,6 +204,9 @@ async function request<T>(
   },
 ): Promise<T> {
   const url = `${BASE_URL}${path}`
+  // Titre affirmé sur CETTE requête (peut être nul : page agnostique au boot). Capturé
+  // avant le fetch pour la garde anti-fuite cross-titre (assertResolvedTitleMatchesActive).
+  const sentTitle = _currentTitleSlug
   const response = await fetch(url, {
     method,
     credentials: 'include', // cookies httpOnly (session)
@@ -180,6 +242,10 @@ async function request<T>(
     }
     throw err
   }
+
+  // Anti-fuite cross-titre (V72-29) : rejette une réponse d'un autre titre AVANT
+  // qu'elle ne serve de donnée (et donc n'entre dans le cache TanStack).
+  assertResolvedTitleMatchesActive(response, sentTitle, path)
 
   if (response.status === 204) {
     return undefined as unknown as T
@@ -218,6 +284,7 @@ export const api = {
    */
   postForm: async <T>(path: string, form: FormData): Promise<T> => {
     const url = `${BASE_URL}${path}`
+    const sentTitle = _currentTitleSlug
     const response = await fetch(url, {
       method: 'POST',
       credentials: 'include',
@@ -245,6 +312,9 @@ export const api = {
       }
       throw err
     }
+
+    // Anti-fuite cross-titre (V72-29) — même garde que request().
+    assertResolvedTitleMatchesActive(response, sentTitle, path)
 
     return response.json() as Promise<T>
   },
