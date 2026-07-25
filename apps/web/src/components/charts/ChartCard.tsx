@@ -21,6 +21,9 @@ import type { EChartsCoreOption } from 'echarts/core'
 import { Spinner } from '@/components/ui/spinner'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
+import { chartReview } from '@/lib/review/chart-review'
+
+import { ReviewBadge } from './ReviewBadge'
 
 // echarts-for-react lazy : evite de payer le cout du bundle echarts (~600KB)
 // avant qu'un chart soit reellement rendu.
@@ -80,6 +83,13 @@ export interface ChartCardProps<T = unknown> {
   legend?: ReactNode
   /** Handlers d'événements ECharts (ex. legendselectchanged). Forwarded à ReactECharts onEvents. */
   onEvents?: Record<string, (params: unknown) => void>
+  /**
+   * Identifiant stable du graphe pour la tournée de revue visuelle
+   * (`lib/review/chart-review`). Rend un `<ReviewBadge>` à droite du titre
+   * UNIQUEMENT si la clé figure dans le manifeste ; sinon aucun nœud n'est
+   * ajouté. Prop absente = rendu strictement identique à l'existant.
+   */
+  reviewKey?: string
 }
 
 /**
@@ -99,6 +109,7 @@ export function ChartCard<T = unknown>({
   children,
   legend,
   onEvents,
+  reviewKey,
 }: ChartCardProps<T>) {
   const isEmpty = !loading && !error && series.length === 0
   // Le themeVersion s'incrémente lors d'un toggle data-theme : on l'inclut
@@ -135,7 +146,16 @@ export function ChartCard<T = unknown>({
     <div className={outerCls} data-testid="chart-card">
       {title && (
         <div className="flex-none border-b border-border px-3 py-2 text-sm font-medium">
-          {title}
+          {/* Hors tournée de revue (clé absente du manifeste), le titre est rendu
+              TEL QUEL — aucun conteneur ajouté, donc zéro risque de décalage. */}
+          {chartReview(reviewKey) ? (
+            <span className="flex flex-wrap items-center">
+              {title}
+              <ReviewBadge reviewKey={reviewKey} />
+            </span>
+          ) : (
+            title
+          )}
         </div>
       )}
       <div className={contentCls} style={contentStyle}>

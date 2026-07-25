@@ -54,6 +54,7 @@ var canonicalOrder = []string{
 	"drop_playlists_catalog_secondary_indexes",              // metadata
 	"create_milestone_catalog_metadata",                     // metadata
 	"create_prestige_metadata_schema",                       // metadata
+	"purge_weapons_name_fr_column",                          // metadata (V721-05.1 : rebuild CTAS-swap, doit suivre add_weapon_registry — cf. order_dependency_test.go)
 	"rebuild_catalog_fetch_queue_drop_art_indexes",          // metadata
 	"seed_ranked_playlists_catalog",                         // metadata
 	"challenge_template_add_source_column",                  // metadata
@@ -65,31 +66,40 @@ var canonicalOrder = []string{
 	// ALTER post-baseline additif : challenge_snapshots.locale (mirror du squashé
 	// add_challenge_snapshots_display_path, désormais dans la baseline). Doit suivre
 	// create_baseline_player_v1 (créateur de la table). Cf. steps_player_base.go.
-	"add_challenge_snapshots_locale",                   // player
-	"player_append_only_match_citations_v1",            // player
-	"player_append_only_match_enrichment_v1",           // player
-	"player_append_only_match_skill_rank_v1",           // player
-	"msr_written_at_default_now_repair_v1",             // player
-	"player_append_only_personal_score_awards_v1",      // player
-	"create_streak_history_append_only",                // player
-	"add_player_assists_model",                         // player
-	"create_coach_proposal_player_schema",              // player
-	"dedup_record_history_v1",                          // player
-	"drop_challenge_mutated_art_indexes_v1",            // player
-	"drop_coach_proposal_status_art_index_v1",          // player
-	"drop_engagement_coefficients_xuid_art_index_v1",   // player
-	"fix_career_xp_total_default_zero",                 // player
-	"lusr_chain_rework_v1",                             // player
-	"create_lusr_component_history",                    // player
-	"player_append_only_lusr_component_history_v1",     // player
-	"player_msr_view_lusr_over_v2_v1",                  // player
-	"player_msr_view_priority_csr_v1",                  // player
-	"create_notifications_in_shared_social",            // shared_social
-	"drop_notifications_from_player_db",                // player
-	"drop_idx_pn_xuid_unread",                          // shared_social
-	"player_match_enrichment_performance_chain_v1",     // player
-	"create_prestige_player_schema",                    // player
-	"create_arc_titles_join",                           // player (cross-titre arcs backend)
+	"add_challenge_snapshots_locale",                 // player
+	"player_append_only_match_citations_v1",          // player
+	"player_append_only_match_enrichment_v1",         // player
+	"player_append_only_match_skill_rank_v1",         // player
+	"msr_written_at_default_now_repair_v1",           // player
+	"player_append_only_personal_score_awards_v1",    // player
+	"create_streak_history_append_only",              // player
+	"add_player_assists_model",                       // player
+	"create_coach_proposal_player_schema",            // player
+	"dedup_record_history_v1",                        // player
+	"drop_challenge_mutated_art_indexes_v1",          // player
+	"drop_coach_proposal_status_art_index_v1",        // player
+	"drop_engagement_coefficients_xuid_art_index_v1", // player
+	"fix_career_xp_total_default_zero",               // player
+	"lusr_chain_rework_v1",                           // player
+	"create_lusr_component_history",                  // player
+	"player_append_only_lusr_component_history_v1",   // player
+	"player_msr_view_lusr_over_v2_v1",                // player
+	"player_msr_view_priority_csr_v1",                // player
+	"create_notifications_in_shared_social",          // shared_social
+	"drop_notifications_from_player_db",              // player
+	"drop_idx_pn_xuid_unread",                        // shared_social
+	"player_match_enrichment_performance_chain_v1",   // player
+	"create_prestige_player_schema",                  // player
+	// arc_titles : structure retirée le 2026-07-25 (décision produit 2026-07-18 — arcs,
+	// défis et points de progression strictement indépendants par titre). L'entrée
+	// historique create_arc_titles_join RESTE ici À DESSEIN : c'est un enregistrement
+	// de schema_migrations présent sur toutes les bases joueur existantes, pas du code
+	// mort exécutable — la retirer désynchroniserait le registre et ferait échouer
+	// l'audit bidirectionnel (order_audit_test.go : « canonicalOrder référence X absent
+	// de (global + title) »). NE PAS la supprimer. drop_arc_titles DOIT la suivre : sur
+	// une base vierge le créateur tourne avant le dropper (cf. order_dependency_test.go).
+	"create_arc_titles_join",                           // player (historique — table retirée par drop_arc_titles)
+	"drop_arc_titles",                                  // player (V721-09 : retrait de la capacité multi-titres d'arc)
 	"create_improvement_campaign_schema",               // player
 	"create_progression_player_schema",                 // player
 	"repair_rec_hist_achieved_index_canonical_v1",      // player (F4 : index record_history canonique)
@@ -208,6 +218,7 @@ var canonicalOrder = []string{
 	"create_season_catalog",                                    // shared (C2 : noms+traductions des saisons CSR Waypoint, source scrape)
 	"create_world_player_no_data",                              // shared (marqueur privés/sans-données classement mondial)
 	"shared_create_objective_stats",                            // shared (V72-03 : stats objectifs CTF/Zones/Oddball par joueur/match, append-only)
+	"shared_objective_stats_add_stockpile_extraction",          // shared (V721-02 : +18 colonnes Stockpile/Extraction/VIP + vue _latest recréée)
 }
 
 var canonicalIndex = func() map[string]int {

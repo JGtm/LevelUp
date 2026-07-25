@@ -26,6 +26,7 @@ import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 import type { TimeseriesMatchRow } from '@/lib/api/types'
 import { buildMatchCategories } from './matchLabels'
 import { buildCareerXpSeries } from '@/lib/charts/careerXpSeries'
+import { matchAvgLifeSeconds } from '@/lib/charts/avgLife'
 import { ChartFromOption } from './ChartFromOption'
 
 // ─── Helpers numériques ───────────────────────────────────────────────────────
@@ -56,11 +57,19 @@ interface CommonRenderProps {
   option: EChartsCoreOption | null
   title?: ReactNode
   emptyMessage?: string
+  /** Clé de tournée de revue (badge inerte hors tournée, cf. lib/review). */
+  reviewKey?: string
 }
 
-function ChartRender({ option, height, title, emptyMessage }: CommonRenderProps) {
+function ChartRender({ option, height, title, emptyMessage, reviewKey }: CommonRenderProps) {
   return (
-    <ChartFromOption title={title} option={option} height={height} emptyMessage={emptyMessage} />
+    <ChartFromOption
+      title={title}
+      option={option}
+      height={height}
+      emptyMessage={emptyMessage}
+      reviewKey={reviewKey}
+    />
   )
 }
 
@@ -146,7 +155,15 @@ export function TimeseriesKdaValueTrend({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, fdaLabel, smoothingLabel, themeVersion])
-  return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
+  return (
+    <ChartRender
+      option={option}
+      height={height}
+      title={title}
+      emptyMessage={emptyMessage}
+      reviewKey="timeseries.fda_value_trend"
+    />
+  )
 }
 
 // ─── timeseries.12 — Performance bars colorées par palier + smoothing ─────────
@@ -430,10 +447,11 @@ export function TimeseriesAvgLifeTrend({
     const tc = getEChartsThemeColors()
     const accent = resolveToken('chart-series-3')
     const categories = buildMatchCategories(rows)
+    // Durée de vie RÉELLE (avg_life_seconds) ; repli sur l'ancien proxy
+    // temps joué / (morts + 1) pour les matchs antérieurs à la colonne.
     const values: (number | null)[] = rows.map((r) => {
-      if (r.time_played_seconds == null || r.time_played_seconds <= 0) return null
-      const life = r.time_played_seconds / (r.deaths + 1)
-      return Math.round(life * 10) / 10
+      const life = matchAvgLifeSeconds(r)
+      return life == null ? null : Math.round(life * 10) / 10
     })
     return {
       backgroundColor: CHART_BG,
@@ -461,7 +479,15 @@ export function TimeseriesAvgLifeTrend({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, lifeLabel, themeVersion])
-  return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
+  return (
+    <ChartRender
+      option={option}
+      height={height}
+      title={title}
+      emptyMessage={emptyMessage}
+      reviewKey="timeseries.avg_life_trend"
+    />
+  )
 }
 
 // ─── timeseries.16 — Spree + Headshots + Perfect kills (grouped bars) ───────
@@ -637,7 +663,15 @@ export function TimeseriesSkillRankPerformance({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, ratingLabel, perfLabel, themeVersion])
-  return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
+  return (
+    <ChartRender
+      option={option}
+      height={height}
+      title={title}
+      emptyMessage={emptyMessage}
+      reviewKey="timeseries.skill_rank_perf"
+    />
+  )
 }
 
 // ─── timeseries.19 — Rank score (personal_score + rank Y2 inversé) ──────────

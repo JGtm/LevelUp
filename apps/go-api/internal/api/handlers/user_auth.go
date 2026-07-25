@@ -86,7 +86,8 @@ func (h *UserAuthHandler) isInstanceLocked() bool {
 func (h *UserAuthHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
 	huma.Post(api, "/auth/login", h.handleLogin, humacore.Op("postAuthLogin", "Authentification email + password", "auth"))
-	huma.Post(api, "/auth/register", h.handleRegister, humacore.Op("postAuthRegister", "Création de compte (mode invite-only ou public selon registration_mode)", "auth"))
+	huma.Post(api, "/auth/register", h.handleRegister, humacore.Op("postAuthRegister", "Création de compte (mode invite-only ou public selon registration_mode)", "auth"),
+		humacore.DefaultStatus(http.StatusCreated))
 	huma.Post(api, "/auth/logout", h.handleLogout, humacore.Op("postAuthLogout", "Invalide la session courante", "auth"))
 	huma.Post(api, "/auth/password", h.handleSetPassword, humacore.Op("postAuthPassword", "Définit/change le mot de passe de l'utilisateur connecté (opt-in, PR-C)", "auth"))
 }
@@ -101,9 +102,10 @@ type authBodyInput struct {
 
 type loginOutput struct{ Body domain.LoginResponse }
 
+// registerOutput : 201 Created (statut posé par humacore.DefaultStatus au
+// montage — source unique, runtime ET document).
 type registerOutput struct {
-	Status int
-	Body   domain.RegisterResponse
+	Body domain.RegisterResponse
 }
 
 // authNoContent : réponse 204 sans corps (Status override la valeur par défaut).
@@ -243,7 +245,7 @@ func (h *UserAuthHandler) handleRegister(ctx context.Context, in *authBodyInput)
 
 	slog.Info("auth: inscription réussie", "username", user.Username, "role", user.Role)
 
-	return &registerOutput{Status: http.StatusCreated, Body: domain.RegisterResponse{
+	return &registerOutput{Body: domain.RegisterResponse{
 		Username: user.Username,
 		Role:     user.Role,
 	}}, nil

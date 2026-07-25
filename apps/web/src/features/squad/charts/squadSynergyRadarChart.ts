@@ -26,6 +26,24 @@ export interface SquadSynergyRadarOpts {
   colorByPlayer: Record<string, string>
   /** axis.key → label affiché (i18n). */
   axisLabels: Record<string, string>
+  /**
+   * Préfixe i18n de la valeur BRUTE au survol (« brut » / « raw »). Le DTO porte
+   * déjà `raw` à côté de `value` : sans lui, le radar n'affiche qu'un score
+   * normalisé 0-100 impossible à relier à une grandeur de jeu.
+   */
+  rawLabel: string
+}
+
+/**
+ * Formatage de la valeur brute : les 6 axes n'ont pas le même ordre de grandeur
+ * (Combat ~ centaines de points, Survie ~ 1,6, Score ~ 195/min). On adapte la
+ * précision plutôt que d'imposer un arrondi qui écraserait les axes ratio.
+ */
+function formatRaw(v: number): string {
+  const a = Math.abs(v)
+  if (a >= 100) return v.toFixed(0)
+  if (a >= 10) return v.toFixed(1)
+  return v.toFixed(2)
 }
 
 export function buildSquadSynergyRadarOption(
@@ -41,6 +59,12 @@ export function buildSquadSynergyRadarOption(
     name: opts.axisLabels[a.axis] ?? a.axis,
     max: 100,
   }))
+
+  // Valeurs BRUTES par joueur, dans l'ordre des axes : le tooltip les affiche à
+  // côté du normalisé (B3(3)). Le DTO les porte déjà (SquadSynergyRadarAxis.raw).
+  const rawByPlayer = new Map<string, number[]>(
+    series.map((s) => [s.player, (s.axes ?? []).map((a) => a.raw)]),
+  )
 
   const data = series.map((s) => {
     const color = opts.colorByPlayer[s.player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
@@ -60,7 +84,16 @@ export function buildSquadSynergyRadarOption(
     tooltip: {
       ...getTooltipBase(tc),
       formatter: (params: { name: string; value: number[] }) => {
-        const lines = axes.map((a, i) => `${escapeHtml(a.name ?? '')}: <b>${params.value[i].toFixed(0)}</b>`)
+        const raws = rawByPlayer.get(params.name) ?? []
+        const lines = axes.map((a, i) => {
+          const norm = `${escapeHtml(a.name ?? '')}: <b>${params.value[i].toFixed(0)}</b>`
+          const raw = raws[i]
+          // Valeur brute absente (profil partiel) → on n'affiche que le normalisé
+          // plutôt qu'un « (brut NaN) ». `Number.isFinite` couvre aussi undefined.
+          return !Number.isFinite(raw)
+            ? norm
+            : `${norm} <span style="opacity:.7">(${escapeHtml(opts.rawLabel)} ${formatRaw(raw)})</span>`
+        })
         return `<b>${escapeHtml(params.name ?? '')}</b><br/>${lines.join('<br/>')}`
       },
     },

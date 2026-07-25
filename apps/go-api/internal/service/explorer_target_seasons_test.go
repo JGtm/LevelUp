@@ -2,11 +2,15 @@ package service
 
 import (
 	"context"
+	"errors"
+	"path/filepath"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/mappings"
 )
 
 func tm(s string) time.Time {
@@ -97,14 +101,29 @@ func TestGroupMatchmadeSeasonsByNumber(t *testing.T) {
 }
 
 // mockSeasonSR : compte de matchs canné par (chemin CMS, filtre ranked).
+// `fail` simule un chemin CMS en erreur (404 saison inconnue / API en panne) ;
+// `perPath` trace le nombre d'appels par chemin (garde-rail anti-double-appel).
 type mockSeasonSR struct {
 	ranked   map[string]int
 	unranked map[string]int
+	fail     map[string]error
 	calls    int32
+
+	mu      sync.Mutex
+	perPath map[string]int
 }
 
 func (m *mockSeasonSR) FetchSeasonServiceRecord(_ context.Context, _, seasonID string, isRanked *bool) (int, error) {
 	atomic.AddInt32(&m.calls, 1)
+	m.mu.Lock()
+	if m.perPath == nil {
+		m.perPath = make(map[string]int)
+	}
+	m.perPath[seasonID]++
+	m.mu.Unlock()
+	if err := m.fail[seasonID]; err != nil {
+		return 0, err
+	}
 	if isRanked == nil {
 		return m.ranked[seasonID] + m.unranked[seasonID], nil
 	}
@@ -112,6 +131,13 @@ func (m *mockSeasonSR) FetchSeasonServiceRecord(_ context.Context, _, seasonID s
 		return m.ranked[seasonID], nil
 	}
 	return m.unranked[seasonID], nil
+}
+
+// pathCalls retourne le nombre d'appels effectués sur un chemin CMS donné.
+func (m *mockSeasonSR) pathCalls(seasonID string) int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.perPath[seasonID]
 }
 
 func breakdownTestSeasons() []SeasonCatalogEntry {
@@ -223,5 +249,235 @@ func TestComputeSeasonBreakdown_NoEngagedPlaylists_SkipsCSR(t *testing.T) {
 	}
 	if csrCalls != 0 {
 		t.Errorf("aucun appel CSR attendu sans playlist engagée, got %d", csrCalls)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// V721-06 — union catalogue + live des chemins CMS
+// ---------------------------------------------------------------------------
+
+func TestDeterministicSeasonPath(t *testing.T) {
+	mk := func(id string, extra map[string]string) SeasonCatalogEntry {
+		return SeasonCatalogEntry{ID: id, Label: id, Extra: extra}
+	}
+	cases := []struct {
+		name  string
+		entry SeasonCatalogEntry
+		want  string
+	}{
+		{"id numéroté", mk("season7", nil), "Seasons/Season7.json"},
+		{"id numéroté deux chiffres", mk("season13", nil), "Seasons/Season13.json"},
+		{"id hors gabarit sans extra", mk("season_winter_22", map[string]string{"short_label": "Winter 22"}), ""},
+		{
+			"extra matchmade_path",
+			mk("season_winter_22", map[string]string{"matchmade_path": "Seasons/Season-Winter-Break-22.json"}),
+			"Seasons/Season-Winter-Break-22.json",
+		},
+		// L'override TOML prime sur le gabarit (permet de corriger un chemin
+		// sans toucher au code si Waypoint renomme une saison numérotée).
+		{"extra prioritaire", mk("season4", map[string]string{"matchmade_path": "Seasons/Custom4.json"}), "Seasons/Custom4.json"},
+		{"id non saison", mk("winter", nil), ""},
+	}
+	for _, c := range cases {
+		if got := deterministicSeasonPath(&c.entry); got != c.want {
+			t.Errorf("%s : deterministicSeasonPath(%q) = %q, want %q", c.name, c.entry.ID, got, c.want)
+		}
+	}
+}
+
+// TestSeasonCMSPaths_UnionDedup : l'union met le chemin déterministe en tête,
+// ajoute les opérations intra-saison remontées par le live, et ne duplique JAMAIS
+// un chemin présent dans les deux sources (sinon double comptage du total).
+func TestSeasonCMSPaths_UnionDedup(t *testing.T) {
+	live := map[int][]string{
+		6: {"Seasons/Season6.json", "Seasons/Season6-2.json"},
+		9: {"Seasons/Season9.json"},
+	}
+	s6 := SeasonCatalogEntry{ID: "season6", Label: "season6", Extra: map[string]string{"short_label": "S6"}}
+	got := seasonCMSPaths(&s6, live)
+	want := []string{"Seasons/Season6.json", "Seasons/Season6-2.json"}
+	if len(got) != len(want) {
+		t.Fatalf("S6 : %d chemins (%v), want %d (%v)", len(got), got, len(want), want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("S6 chemin %d = %q, want %q", i, got[i], want[i])
+		}
+	}
+
+	// Saison au catalogue absente du live : le chemin déterministe suffit.
+	s7 := SeasonCatalogEntry{ID: "season7", Label: "season7"}
+	if got := seasonCMSPaths(&s7, live); len(got) != 1 || got[0] != "Seasons/Season7.json" {
+		t.Errorf("S7 attendu [Seasons/Season7.json], got %v", got)
+	}
+
+	// Saison hors gabarit sans extra ni chemin live : rien à interroger.
+	orphan := SeasonCatalogEntry{ID: "operation_alpha", Label: "Alpha"}
+	if got := seasonCMSPaths(&orphan, live); got != nil {
+		t.Errorf("saison sans chemin déductible ni live → nil, got %v", got)
+	}
+}
+
+// TestComputeSeasonBreakdown_CatalogSeasonMissingFromLive — CŒUR DU CORRECTIF
+// (V721-06) : Subqueries.SeasonIds ne liste PAS tout l'historique du joueur
+// (5 saisons sur 14 observées le 2026-07-22). Les saisons du catalogue absentes
+// de cette liste doivent quand même être interrogées via leur chemin déterministe.
+// Sans le correctif, S7 et S8 restent à 0 (barres vides) : ce test échoue.
+func TestComputeSeasonBreakdown_CatalogSeasonMissingFromLive(t *testing.T) {
+	sr := &mockSeasonSR{
+		unranked: map[string]int{
+			"Seasons/Season6.json": 13,
+			"Seasons/Season7.json": 28,
+			"Seasons/Season8.json": 42,
+		},
+	}
+	svc := NewExplorerService(&mockExplorerRepo{}, "me").
+		WithTargetProfileProviders(ExplorerTargetProfileDeps{
+			Seasons: breakdownTestSeasons(), SeasonSR: sr, TitleSlug: "halo_infinite",
+		})
+
+	// Le live ne remonte que S6 — S7 et S8 sont pourtant jouées.
+	out, status := svc.computeSeasonBreakdown(ctxAuth(true, "me"), "target-xuid", "Target", true,
+		[]string{"Seasons/Season6.json"}, nil)
+	if status != domain.ExplorerLiveOK {
+		t.Errorf("status attendu ok, got %q", status)
+	}
+	if len(out) != 3 {
+		t.Fatalf("attendu 3 saisons (catalogue complet), got %d", len(out))
+	}
+	if out[0].Matches != 13 {
+		t.Errorf("S6 (remontée par le live) attendu 13, got %+v", out[0])
+	}
+	if out[1].Matches != 28 {
+		t.Errorf("S7 absente du live : attendu 28 via le chemin déterministe, got %+v", out[1])
+	}
+	if out[2].Matches != 42 {
+		t.Errorf("S8 absente du live : attendu 42 via le chemin déterministe, got %+v", out[2])
+	}
+	for i := range out {
+		if out[i].Unresolved {
+			t.Errorf("saison %q ne doit pas être indéterminée (l'API a répondu) : %+v", out[i].SeasonID, out[i])
+		}
+	}
+	if got := int(atomic.LoadInt32(&sr.calls)); got != 3 {
+		t.Errorf("3 appels SR attendus (1 par saison du catalogue), got %d", got)
+	}
+}
+
+// TestComputeSeasonBreakdown_NoDoubleCountOnOverlap : quand le live remonte
+// EXACTEMENT le chemin déterministe, le chemin n'est interrogé qu'une fois et le
+// total n'est pas doublé (une union naïve donnerait 56 et 2 appels).
+func TestComputeSeasonBreakdown_NoDoubleCountOnOverlap(t *testing.T) {
+	sr := &mockSeasonSR{unranked: map[string]int{"Seasons/Season7.json": 28}}
+	svc := NewExplorerService(&mockExplorerRepo{}, "me").
+		WithTargetProfileProviders(ExplorerTargetProfileDeps{
+			Seasons: breakdownTestSeasons(), SeasonSR: sr, TitleSlug: "halo_infinite",
+		})
+
+	out, _ := svc.computeSeasonBreakdown(ctxAuth(true, "me"), "target-xuid", "Target", true,
+		[]string{"Seasons/Season7.json"}, nil)
+	if out[1].Matches != 28 {
+		t.Errorf("S7 attendu 28 (chemin compté une seule fois), got %+v", out[1])
+	}
+	if n := sr.pathCalls("Seasons/Season7.json"); n != 1 {
+		t.Errorf("Seasons/Season7.json attendu 1 appel (dédup union), got %d", n)
+	}
+}
+
+// TestComputeSeasonBreakdown_FailedSeasonIsUnresolved : les trois états sont
+// distincts — jouée (>0), NON jouée (l'API répond 0), indéterminée (appel en
+// échec). Avant V721-06 les deux derniers étaient confondus en "barre vide".
+func TestComputeSeasonBreakdown_FailedSeasonIsUnresolved(t *testing.T) {
+	sr := &mockSeasonSR{
+		unranked: map[string]int{"Seasons/Season6.json": 13}, // S7 → 0 (non jouée)
+		fail:     map[string]error{"Seasons/Season8.json": errors.New("doGet: HTTP 500")},
+	}
+	svc := NewExplorerService(&mockExplorerRepo{}, "me").
+		WithTargetProfileProviders(ExplorerTargetProfileDeps{
+			Seasons: breakdownTestSeasons(), SeasonSR: sr, TitleSlug: "halo_infinite",
+		})
+
+	out, status := svc.computeSeasonBreakdown(ctxAuth(true, "me"), "target-xuid", "Target", true, nil, nil)
+	if out[0].Matches != 13 || out[0].Unresolved {
+		t.Errorf("S6 attendu jouée (13 matchs, résolue), got %+v", out[0])
+	}
+	if out[1].Matches != 0 || out[1].Unresolved {
+		t.Errorf("S7 attendu NON jouée (0 match, résolue — l'API a répondu), got %+v", out[1])
+	}
+	if !out[2].Unresolved || out[2].Matches != 0 {
+		t.Errorf("S8 attendu indéterminée (appel en échec), got %+v", out[2])
+	}
+	if status != domain.ExplorerLiveLocalPartial {
+		t.Errorf("status attendu local_partial (live partiel), got %q", status)
+	}
+}
+
+// TestComputeSeasonBreakdown_AllSeasonsFailed : aucune saison résolue → statut
+// failed (et non ok), toutes les lignes indéterminées.
+func TestComputeSeasonBreakdown_AllSeasonsFailed(t *testing.T) {
+	boom := errors.New("doGet: HTTP 503")
+	sr := &mockSeasonSR{fail: map[string]error{
+		"Seasons/Season6.json": boom,
+		"Seasons/Season7.json": boom,
+		"Seasons/Season8.json": boom,
+	}}
+	svc := NewExplorerService(&mockExplorerRepo{}, "me").
+		WithTargetProfileProviders(ExplorerTargetProfileDeps{
+			Seasons: breakdownTestSeasons(), SeasonSR: sr, TitleSlug: "halo_infinite",
+		})
+
+	out, status := svc.computeSeasonBreakdown(ctxAuth(true, "me"), "target-xuid", "Target", true, nil, nil)
+	if status != domain.ExplorerLiveFailed {
+		t.Errorf("status attendu failed, got %q", status)
+	}
+	for i := range out {
+		if !out[i].Unresolved {
+			t.Errorf("saison %q attendue indéterminée, got %+v", out[i].SeasonID, out[i])
+		}
+	}
+}
+
+// TestComputeSeasonBreakdown_NoCMSPathFallsBackLocal : un titre dont les saisons
+// n'ont ni ID numéroté, ni matchmade_path, ni chemin live → aucun appel réseau,
+// repli sur le bucketing local (dégradation propre, title-agnostic).
+func TestComputeSeasonBreakdown_NoCMSPathFallsBackLocal(t *testing.T) {
+	sr := &mockSeasonSR{}
+	svc := NewExplorerService(&mockExplorerRepo{}, "me").
+		WithTargetProfileProviders(ExplorerTargetProfileDeps{
+			Seasons:  []SeasonCatalogEntry{{ID: "operation_alpha", Label: "Alpha"}},
+			SeasonSR: sr, TitleSlug: "halo_5",
+		})
+
+	_, status := svc.computeSeasonBreakdown(ctxAuth(true, "me"), "target-xuid", "Target", true, nil, nil)
+	if status != domain.ExplorerLiveLocalPartial {
+		t.Errorf("status attendu local_partial (repli local), got %q", status)
+	}
+	if got := atomic.LoadInt32(&sr.calls); got != 0 {
+		t.Errorf("aucun appel SR attendu sans chemin CMS, got %d", got)
+	}
+}
+
+// TestDeterministicSeasonPath_RealCatalog cadenasse l'objectif « 14/14 » : CHAQUE
+// saison du catalogue Halo Infinite doit avoir un chemin CMS interrogeable sans
+// dépendre du live (ID numéroté, ou extra.matchmade_path pour l'opération
+// hivernale). Un ajout de saison hors gabarit sans matchmade_path fait échouer
+// ce test — c'est le garde-rail de la couverture complète.
+func TestDeterministicSeasonPath_RealCatalog(t *testing.T) {
+	// apps/go-api/internal/service → racine du repo = 4 niveaux.
+	tomlPath := filepath.Join("..", "..", "..", "..",
+		"config", "titles", "halo_infinite", "mappings", "assets.toml")
+	set, err := mappings.LoadAssetsFromFile(tomlPath)
+	if err != nil {
+		t.Fatalf("LoadAssetsFromFile(%s): %v", tomlPath, err)
+	}
+	catalog := projectTOMLSeasons(set)
+	if len(catalog) < 14 {
+		t.Fatalf("catalogue saisons = %d entrées, want >= 14 (S1-S13 + Winter Update)", len(catalog))
+	}
+	for i := range catalog {
+		if p := deterministicSeasonPath(&catalog[i]); p == "" {
+			t.Errorf("saison %q : aucun chemin CMS déductible — ajouter extra.matchmade_path dans assets.toml",
+				catalog[i].ID)
+		}
 	}
 }

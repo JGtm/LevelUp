@@ -51,7 +51,8 @@ func NewCampaignHandler(resolve ProgressionResolver, titleSlug string) *Campaign
 // /players/{player_slug} + middleware ownership/title hérités).
 func (h *CampaignHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Post(api, "/campaigns", h.handleStart, humacore.Op("startCampaign", "Démarrer une campagne d'amélioration sur un axe (snapshot des 100 derniers matchs)", "progression"))
+	huma.Post(api, "/campaigns", h.handleStart, humacore.Op("startCampaign", "Démarrer une campagne d'amélioration sur un axe (snapshot des 100 derniers matchs)", "progression"),
+		humacore.DefaultStatus(http.StatusCreated))
 	huma.Get(api, "/campaigns/active", h.handleGetActive, humacore.Op("getActiveCampaign", "Campagne active du joueur (null si aucune)", "progression"))
 	huma.Get(api, "/campaigns/history", h.handleListEnded, humacore.Op("listEndedCampaigns", "Campagnes closes du joueur (historique, les plus récentes d'abord)", "progression"))
 	huma.Get(api, "/campaigns/{id}", h.handleGetByID, humacore.Op("getCampaignByID", "Détail d'une campagne + défis liés", "progression"))
@@ -86,10 +87,10 @@ type startCampaignRequest struct {
 	PlaylistGroup string `json:"playlist_group,omitempty"`
 }
 
-// campaignCreatedOutput : 201 Created avec la campagne créée.
+// campaignCreatedOutput : 201 Created avec la campagne créée (le 201 est posé par
+// humacore.DefaultStatus au montage — source unique, runtime ET document).
 type campaignCreatedOutput struct {
-	Status int
-	Body   campaign.ImprovementCampaign
+	Body campaign.ImprovementCampaign
 }
 
 // campaignOutput : 200 avec la campagne (GetByID).
@@ -165,7 +166,7 @@ func (h *CampaignHandler) handleStart(ctx context.Context, in *startCampaignInpu
 			return nil, humacore.NewError(http.StatusInternalServerError, "start_campaign_error", err.Error())
 		}
 	}
-	return &campaignCreatedOutput{Status: http.StatusCreated, Body: c}, nil
+	return &campaignCreatedOutput{Body: c}, nil
 }
 
 // handleGetActive : GET /campaigns/active → campagne active du joueur (ou null).

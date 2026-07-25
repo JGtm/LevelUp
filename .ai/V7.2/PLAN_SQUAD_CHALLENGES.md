@@ -49,7 +49,7 @@ cascade ni de suppression de défi).
 | D | Aucun endpoint ni UI de suppression/abandon de défi d'escouade ; `DeleteSquad` ne cascade pas → défis orphelins éternels | [prestige.go:108-120](apps/go-api/internal/api/handlers/prestige.go#L108-L120) |
 | E | `expires_at` jamais renseigné (front ne l'envoie pas, service ne le calcule pas) | [service_arcs_squads.go:326](apps/go-api/internal/prestige/service_arcs_squads.go#L326) |
 | F | Fenêtre d'évaluation non implémentée : `session`/`rolling_days` → fallback 50 derniers matchs escouade, sans borne `created_at` → défi complété à la création par l'historique (observé : 181 et 243 vs cible 7) | [service_squads.go:366](apps/go-api/internal/prestige/service_squads.go#L366) (`squadWindowLimit`), [squad_progress.go:125](apps/go-api/internal/prestige/squad_progress.go#L125) |
-| G | `eval_type=threshold` non implémenté pour les squads (agrégation cumulative pour tout — documenté V1) alors que le pool propose des templates threshold | [squad_progress.go:123](apps/go-api/internal/prestige/squad_progress.go#L123) |
+| G | `eval_type=threshold` non implémenté pour les squads (agrégation cumulative pour tout — documenté V1) alors que le pool propose des templates threshold — **fermé au Lot 6.4** : ces templates ne sont plus proposés | [squad_progress.go:123](apps/go-api/internal/prestige/squad_progress.go#L123) |
 | H | Pool éphémère : état de mutation local, non persisté, non partagé entre membres (Phase 4 « simple » documentée) | [service_pilot_pool.go:174](apps/go-api/internal/prestige/service_pilot_pool.go#L174) |
 | I | `requested_by` vide contourne le contrôle de membership du pool | [service_pilot_pool.go:191](apps/go-api/internal/prestige/service_pilot_pool.go#L191) |
 
@@ -222,20 +222,99 @@ garantie que `RenameSquad`). Migration additive `add_archived_at_to_squad_challe
 
 ---
 
+## Lot 6 — Robustesse lectures metadata + honnêteté du pool (V721-08) — CLÔTURÉ 2026-07-25
+
+Traite la Découverte D1 (cause racine résiduelle du 500 prod) et le gap G du tableau
+d'audit (`eval_type=threshold` proposé au pool alors que l'évaluation est cumulative).
+
+- [x] 6.1 **Cause du 500 prod — routage recovery des lectures metadata.** Les 6 requêtes
+      de [prestige_metadata_repo.go](apps/go-api/internal/platform/duckdb/prestige/prestige_metadata_repo.go)
+      passaient par `db.Query` / `db.QueryRow` PLATS (templates : `ListByTitle`:33,
+      `GetByID`:52, `Suggest`:80 ; preset arcs : `ListByTitle`:224, `GetByID`:250,
+      `GetSteps`:263) — routées vers `QueryRecovered` / `QueryRowRecovered`
+      (Reopen + retry une fois, cf. `duckdb/db_recovery.go`). Vérifié sur pièces : le
+      helper `*Recovered` ne fait PAS de traduction d'erreur de verrou (contrairement à
+      l'hypothèse de reconnaissance) ; sa sémantique est la ré-ouverture sur invalidation
+      — exactement la classe d'incident qui rendait `metadata.duckdb` inutilisable
+      jusqu'au restart (FATAL ART / `sql: database is closed`) et donc le 500 permanent
+      sur `pool/refresh`. `Replace` (les 2) passait déjà par `UpsertNoConflict`, lui-même
+      sous `WithReopenOnInvalidated` — inchangé.
+- [x] 6.2 **Traduction d'erreur minimale → 503.** Helper `translateLockErr(ctx, err)`
+      (même fichier) : `duckdb.IsFileLockError(err)` → `dblease.ErrDBLocked` (wrap
+      `errors.Join`, warn `slog` structuré). C'est la seule erreur transitoire/retryable
+      de cette chaîne (un autre process tient le fichier, ou `Reopen()` ne peut pas
+      rouvrir le DSN). `PrestigeHandler.serviceError`
+      ([prestige_squads.go:455](apps/go-api/internal/api/handlers/prestige_squads.go#L455))
+      la mappe en 503 + `Retry-After: 5`. Toute autre erreur — `sql.ErrNoRows` inclus —
+      est rendue telle quelle : mapping `ErrChallengeNotFound` / `ErrArcNotFound` inchangé.
+- [x] 6.3 **Tests avec mordant** — `prestige_metadata_reopen_test.go` (tag `cgo`, patron de
+      `prestige_player_reopen_test.go`) : handle fermée AVANT chacun des 6 appels, chacun
+      doit récupérer et rendre la ligne seedée ; 7e cas = `GetByID(absent)` doit toujours
+      donner `ErrChallengeNotFound` (la recovery ne masque pas le not-found). Pré-fix,
+      chaque appel remonte « sql: database is closed » → FAIL. Le maillon lock→503 n'est
+      pas simulable in-process (2e process détenteur requis) : couvert par un test unitaire
+      de `translateLockErr` sur les signatures DuckDB exactes + pass-through, et par
+      `TestPrestigeHandler_*_DBLocked_Returns503` (handlers) pour le maillon final.
+- [x] 6.4 **Pool d'escouade : plus de défi `threshold`.** `squadEligibleTemplates`
+      ([service_pilot_pool.go](apps/go-api/internal/prestige/service_pilot_pool.go)) écarte
+      les templates `eval_type=threshold` du pool — leur règle affichée (« atteindre X sur
+      un match ») ne correspond pas à l'évaluation réelle, cumulative pour tous en V1
+      ([squad_progress.go:117-124](apps/go-api/internal/prestige/squad_progress.go#L117)).
+      Filtre title-agnostic (branché sur `eval_type`, aucun `slug ==`), placé AVANT le
+      test de vacuité : la dégradation gracieuse existante (pool vide → 200 + `[]` + log)
+      couvre désormais aussi « catalogue entièrement écarté ». Nombre d'écartés loggé en
+      `slog` structuré (`discarded` / `eligible` / `catalog`). Catalogue halo_infinite :
+      28 templates dont 19 threshold → 9 éligibles, pool de 6 à 9 toujours servi.
+- [x] 6.5 Tests pool : `_ExcludesThresholdTemplates` (mordant : sans filtre, les threshold
+      sont dans le pool), `_AllThresholdDegradesToEmptyPool` (dégradation préservée),
+      `TestSquadEligibleTemplates_CountsDiscarded` (compteur du log + ordre stable).
+
+---
+
 ## Découvertes (règle 7 — noté, pas traité hors gate)
 
 - **D1 (Lot 1)** — Lecture DuckDB non mappée `ErrDBLocked` → 500 masqué au lieu de 503
   retryable. Concerne les lectures `RefreshSquadPool` (`ListMembers` shared_social,
-  `ListByTitle` metadata via `r.db.Query`). Candidat n°1 du 500 prod résiduel. Durcissement
-  (mapper les erreurs de lock vers `ErrDBLocked`) = hors périmètre de ce chantier UX ;
-  à porter dans un chantier « robustesse lectures prestige » si le log prod le confirme.
+  `ListByTitle` metadata via `r.db.Query`). Candidat n°1 du 500 prod résiduel.
+  → **TRAITÉE au Lot 6** (2026-07-25) côté metadata : diagnostic affiné (la cause
+  dominante n'est pas le verrou mais l'INVALIDATION de la handle, non récupérée faute de
+  `*Recovered`) + traduction lock→`ErrDBLocked`. `ListMembers` (shared_social) utilisait
+  déjà `QueryRecovered` — non concerné.
+- **D2 (Lot 6, 2026-07-25)** — `prestige_social_repo.go` conserve 5 lectures mono-ligne
+  PLATES `r.db.QueryRow(` (lignes 95, 110, 232, 344, 481 : `GetUserPrestige`,
+  `GetUserPrestigeCrossTitle`, `PrestigeSquadRepo.Get`, `PrestigeSquadChallengeRepo.Get`,
+  `CountActiveParticipants`) alors que le reste du fichier est en `QueryRecovered`. Même
+  classe de trou que D1 sur shared_social. Non traité (hors périmètre V721-08, qui scope
+  le fichier metadata) — à porter dans un lot « robustesse lectures shared_social ».
+- **D3 (Lot 6, 2026-07-25)** — Le garde-rail `player_db_recovery_routing_test.go` ne voit
+  que les formes explicites `pdb.Player.Query(` / `pdb.ReadDB().Query(` ; les repos à champ
+  nu `db *duckdb.DB` (metadata, shared_social) restent invisibles au grep et ne sont pas
+  fermés par le type (`PlayerReadHandle` ne couvre que les player DB, par conception).
+  Un ratchet équivalent pour ces couches supposerait de traiter D2 d'abord.
 
 ## Hors périmètre (noté, non traité — règle « zéro fix opportuniste »)
 
-- Threshold squad complet (évaluation par match) — backlog.
-- Persistance/partage du pool entre membres — backlog.
-- Intégration des défis d'escouade dans la page Ascension/Réalisations — backlog.
-- Durcissement lock→503 des lectures prestige (Découverte D1) — backlog robustesse.
+- [!] **Threshold squad par match (évaluation complète)** — non traité. Justification :
+  demande un 2e mode d'agrégation dans `AggregateSquadProgress` (cible atteinte sur UN
+  match vs cumul) + un choix produit sur la sémantique collective (« tous les membres »
+  vs « au moins un »). Le défaut *utilisateur* (règle affichée ≠ règle appliquée) est
+  fermé autrement par le Lot 6.4 (ces templates ne sont plus proposés). Backlog.
+- [!] **Persistance / partage du pool entre membres** — non traité. Justification : le
+  pool est aujourd'hui un état de mutation local (Phase 4 « simple » assumée, gap H) ; le
+  persister suppose une table `squad_pool` + une politique de péremption
+  (`refresh_period_days` existe déjà en tuning mais n'est pas appliqué) — chantier de
+  schéma à part entière, sans lien avec les défauts corrigés ici. Backlog.
+- [!] **Catalogue de templates Halo 5** — non traité. Justification : c'est du CONTENU
+  produit (rédiger `config/titles/halo_5/challenges/templates.toml` : métriques
+  disponibles pour H5, paliers calibrés, libellés FR/EN), pas du code ; il exige un
+  arbitrage utilisateur sur les métriques H5 pertinentes. Le comportement code sans
+  catalogue est correct et testé (pool vide, 200, log — item 5.1). Backlog.
+- [!] **Intégration des défis d'escouade dans Ascension / Réalisations** — non traité.
+  Justification : nouvelle surface produit (agrégation des défis collectifs dans la
+  progression individuelle + règles PP associées), hors du périmètre « réparer la boucle
+  Escouade ». Backlog.
+- [~] **Durcissement lock→503 des lectures prestige (Découverte D1)** — couvert au Lot 6
+  (items 6.1/6.2) pour la voie metadata. Reste D2 (shared_social) au backlog.
 
 ## Journal d'exécution
 
@@ -261,11 +340,16 @@ garantie que `RenameSquad`). Migration additive `add_archived_at_to_squad_challe
   resserrée rolling_days) transmise au provider qui filtre `start_time >= since`. Fin de la
   complétion rétroactive. Légende UI cumulative. Gates verts. Vérifié LIVE : éval immédiate
   → 0/0 (candidate_matches:0). → passage Lot 5.
-- 2026-07-23 : **Lot 5 CLÔTURÉ** (5.1/5.2 faits ; 5.3/5.4 différés justifiés). Dégradation
-  halo_5 : catalogue vide → pool vide 200 (title-agnostic, plus de 500). Vérifié live.
-  5.3 (i18n manifests) et 5.4 (renommage) différés : polish P3 / décision utilisateur.
+- 2026-07-23 : **Lot 5 CLÔTURÉ — 5.1/5.2/5.3/5.4 TOUS FAITS.** Dégradation halo_5 :
+  catalogue vide → pool vide 200 (title-agnostic, plus de 500). Vérifié live. 5.3
+  (migration i18n de `squadFocusStrings.ts` vers le manifest `squad.toml`) et 5.4
+  (« Cap d'escouade » → « Objectifs d'escouade ») ont été livrés dans la foulée, validés
+  par l'utilisateur le même jour — commits `ac7ae83d7` / `93812f0ca`.
+  *(Correctif de journal 2026-07-25 : cette entrée annonçait « 5.3/5.4 différés justifiés »,
+  en contradiction avec les cases `[x]` du Lot 5 et avec les commits. Les cases faisaient
+  foi ; le journal était périmé.)*
   **PLAN COMPLET** — les 4 gaps fonctionnels (labels, feedback, cycle de vie, éval honnête)
-  sont livrés. Reste à faire par l'utilisateur : revue VISUELLE navigateur + arbitrage 5.3/5.4.
+  sont livrés. Reste à faire par l'utilisateur : revue VISUELLE navigateur.
 - 2026-07-23 : **Refactor seuil 500 L (delivery-checklist §5)**. Deux fichiers avaient
   FRANCHI 500 par le chantier : `SquadFocusStrip.tsx` (426→597) scindé en
   `squadFocusStrings.ts` (115) + `SquadObjectivesPanel.tsx` (267) + strip (240) ;
@@ -274,3 +358,16 @@ garantie que `RenameSquad`). Migration additive `add_archived_at_to_squad_challe
   eslint, vitest, go vet/build, intégration `-p 1` 0 FAIL). Les 3 god-files déjà >500
   (service.go, prestige_lazy_service.go, steps_shared_social.go) : ajouts minimes
   inévitables (méthode d'interface / wrapper / step de migration), dette gelée baseline.
+- 2026-07-25 : **Lot 6 CLÔTURÉ (item V721-08)** — branche `feat/v7.2.1-notion-batch`.
+  (a) Cause du 500 prod : les 6 lectures de `prestige_metadata_repo.go` étaient PLATES ;
+  une handle metadata invalidée (FATAL ART) ou fermée (`sql: database is closed`) rendait
+  le catalogue Prestige illisible jusqu'au restart → `default` du handler = 500 masqué.
+  Routées vers `QueryRecovered` / `QueryRowRecovered`. (b) `translateLockErr` mappe la
+  contention fichier vers `dblease.ErrDBLocked` → 503 + `Retry-After: 5`. (c) Le pool
+  d'escouade n'expose plus de template `eval_type=threshold` (évaluation cumulative en V1)
+  — filtre title-agnostic + log structuré des écartés, dégradation pool vide préservée.
+  Tests : `prestige_metadata_reopen_test.go` (7 cas, mordant : FAIL pré-fix) +
+  3 tests pool dans `service_squads_test.go`. **PLAN CLOS** : tous les items du plan sont
+  statués (`[x]` / `[~]` / `[!]` justifiés). Restent au backlog les 4 items hors périmètre
+  et les découvertes D2/D3. **Reste à faire par l'utilisateur : revue VISUELLE navigateur**
+  du parcours Escouade (pool proposé, plus de défi « seuil », toasts, progression).

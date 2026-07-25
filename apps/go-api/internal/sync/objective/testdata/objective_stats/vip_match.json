@@ -1,0 +1,77 @@
+{
+  "MatchId": "00000000-0000-0000-0000-00000000cafe",
+  "MatchInfo": { "Duration": "PT7M7.8262287S" },
+  "Players": [
+    {
+      "PlayerId": "xuid(2500000000000001)",
+      "PlayerType": 1,
+      "LastTeamId": 0,
+      "ParticipationInfo": { "TimePlayed": "PT7M7.829S" },
+      "PlayerTeamStats": [
+        {
+          "TeamId": 0,
+          "Stats": {
+            "CoreStats": { "Kills": 7, "Deaths": 10, "Assists": 5, "PersonalScore": 1000 },
+            "VipStats": {
+              "KillsAsVip": 2,
+              "LongestTimeAsVip": "PT48S",
+              "MaxKillingSpreeAsVip": 1,
+              "TimeAsVip": "PT1M49.5S",
+              "TimesSelectedAsVip": 4,
+              "VipAssists": 0,
+              "VipKills": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "_comment": "2e joueur : plus longue possession du match (PT3M25S = 205 s, minutes entieres sans fraction) et meilleure serie en VIP.",
+      "PlayerId": "xuid(2500000000000002)",
+      "PlayerType": 1,
+      "LastTeamId": 1,
+      "ParticipationInfo": { "TimePlayed": "PT7M7.829S" },
+      "PlayerTeamStats": [
+        {
+          "TeamId": 1,
+          "Stats": {
+            "CoreStats": { "Kills": 10, "Deaths": 4, "Assists": 3, "PersonalScore": 1160 },
+            "VipStats": {
+              "KillsAsVip": 5,
+              "LongestTimeAsVip": "PT3M25S",
+              "MaxKillingSpreeAsVip": 5,
+              "TimeAsVip": "PT3M25S",
+              "TimesSelectedAsVip": 1,
+              "VipAssists": 1,
+              "VipKills": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "_comment": "3e joueur : chasseur de VIP (VipKills = 6, aucun frag en tant que VIP) — couvre les compteurs a zero, distincts d'un champ absent.",
+      "PlayerId": "xuid(2500000000000003)",
+      "PlayerType": 1,
+      "LastTeamId": 1,
+      "ParticipationInfo": { "TimePlayed": "PT7M7.829S" },
+      "PlayerTeamStats": [
+        {
+          "TeamId": 1,
+          "Stats": {
+            "CoreStats": { "Kills": 10, "Deaths": 6, "Assists": 5, "PersonalScore": 1290 },
+            "VipStats": {
+              "KillsAsVip": 0,
+              "LongestTimeAsVip": "PT31.9S",
+              "MaxKillingSpreeAsVip": 0,
+              "TimeAsVip": "PT31.9S",
+              "TimesSelectedAsVip": 1,
+              "VipAssists": 1,
+              "VipKills": 6
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

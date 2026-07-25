@@ -12,9 +12,11 @@
  * Cadrage produit (universel, non culpabilisant) : « X mérite ton attention » /
  * « tu consolides X » — jamais « tu régresses ». Cf. PLAN_COACH_V3_GENERATION
  * Phase A (option B « Cap du moment »).
+ *
+ * i18n : manifest `profile.coach.*` (`lib/i18n/manifests/profile.toml`, ADR 0003)
+ * — dernier composant coach migré depuis un objet FR/EN local (V721-07.3).
  */
 import { KpiCard } from '@/components/cards/KpiCard'
-import { useAppShellStore } from '@/stores/appShellStore'
 import type { ProfileManifestKey } from '@/lib/i18n/generated/profile'
 import { usePlayerProfile } from './profile/queries'
 import { useProfileI18n } from './profile/useProfileI18n'
@@ -23,28 +25,7 @@ import { useProfileI18n } from './profile/useProfileI18n'
 // aligné sur TREND_THRESHOLD de PerformanceSection).
 const FOCUS_THRESHOLD = 0.02
 
-const STR = {
-  fr: {
-    title: 'Cap du moment',
-    progression: 'en progression',
-    consolidate: 'à consolider',
-    up: (axis: string) => `Tu consolides ${axis}, continue sur ta lancée.`,
-    down: (axis: string) => `${axis} mérite ton attention en ce moment.`,
-    cta: 'Voir le défi →',
-  },
-  en: {
-    title: 'Current focus',
-    progression: 'improving',
-    consolidate: 'to consolidate',
-    up: (axis: string) => `You're consolidating ${axis} — keep it up.`,
-    down: (axis: string) => `${axis} deserves your attention right now.`,
-    cta: 'See the challenge →',
-  },
-}
-
 export function CoachFocusCard({ playerSlug }: { playerSlug: string }) {
-  const locale = useAppShellStore((s) => s.locale)
-  const str = STR[locale === 'en' ? 'en' : 'fr']
   const { t } = useProfileI18n()
   const { data: profile } = usePlayerProfile(playerSlug)
 
@@ -63,12 +44,14 @@ export function CoachFocusCard({ playerSlug }: { playerSlug: string }) {
   return (
     <KpiCard accent={positive ? 'success' : 'info'}>
       <div className="p-3">
-        <p className="text-2xs uppercase tracking-wide text-muted-foreground">{str.title}</p>
+        <p className="text-2xs uppercase tracking-wide text-muted-foreground">
+          {t('profile.coach.title')}
+        </p>
         <p className="text-sm font-semibold text-foreground">
-          {axis} · {positive ? str.progression : str.consolidate}
+          {axis} · {positive ? t('profile.coach.progression') : t('profile.coach.consolidate')}
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {positive ? str.up(axis) : str.down(axis)}
+          {positive ? t('profile.coach.up', { axis }) : t('profile.coach.down', { axis })}
         </p>
         <button
           type="button"
@@ -79,7 +62,7 @@ export function CoachFocusCard({ playerSlug }: { playerSlug: string }) {
               ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
           }
         >
-          {str.cta}
+          {t('profile.coach.cta')}
         </button>
       </div>
     </KpiCard>

@@ -2,7 +2,9 @@
 
 French version: [FR/CITATIONS_REFERENCE.md](FR/CITATIONS_REFERENCE.md)
 
-This document is the **human-readable mirror** of the authoritative Go seed `internal/ops/seed_citation_data.go` (`defaultCitationMappings`). That function is the single source of truth — if this table and the seed ever disagree, the seed wins. The seed defines **88 commendations** (the `enabled = false` ones are listed but not computed).
+This document is the **human-readable mirror** of the authoritative Go seed `internal/ops/seed_citation_data.go` (`defaultCitationMappings`). That function is the single source of truth — if this table and the seed ever disagree, the seed wins. The seed defines **98 commendations** (the `enabled = false` ones are listed but not computed): 88 from the original port + 10 objective-based commendations added in v7.2.1 (see "PvP — Game mode" below).
+
+> v7.2 note: `charge`, `got_you`, `stakeholder`, and `flag_carrier_hunter` used to be `award` type (matched against `personal_score_awards` event names). They now run on `objective_stat` (columns of `match_objective_stats_latest`), the same mechanism as the 10 commendations added in v7.2.1 — more reliable than the award feed. Any retouch to these tiers requires a `--citations-recompute-all` backfill (progression is recomputed from history).
 
 > Stack note: this used to be rebuilt from `scripts/populate_citation_mappings.py`; that Python script and `src/ui/commendations.py` have been removed. To rebuild `citation_mappings`, run `levelup seed citation-mappings`.
 
@@ -61,21 +63,35 @@ There is **no runtime normalization function** any more (the old Python `_normal
 
 Tier columns are the `tier_targets` CSV; **Master** is the last (largest) tier.
 
-### PvP — Game mode (11)
+### PvP — Game mode (21)
+
+`objective_stat` sources are columns of `match_objective_stats_latest` (read the `_latest` view only — append-only table, ADR 0026).
 
 | Norm | Display | Type | Source | Tiers |
 |------|---------|------|--------|-------|
-| `charge` | À la charge | award | `zone_captured` (objective) | 10,20,30,50,**100** |
+| `charge` | À la charge | objective_stat | `zone_captures` | 10,20,30,50,**100** |
 | `forced_annexation` | Annexion forcée | custom | `compute_annexion_forcee` | 3,6,9,15,**30** |
 | `assistant` | Assistant | stat | `assists` | 25,50,75,125,**250** |
 | `bulldozer` | Bulldozer | custom | `compute_bulldozer` | 3,6,9,15,**30** |
 | `flag_defender` | Défenseur du drapeau | award | `carrier_killed` (objective) — **disabled** (I7) | 10,20,30,50,**100** |
-| `got_you` | Je te tiens ! | award | `flag_returned` (objective) | 10,20,30,50,**100** |
-| `stakeholder` | Partie prenante | award | `zone_secured` (objective) | 10,20,30,50,**100** |
-| `flag_carrier_hunter` | Sus au porteur du drapeau | award | `carrier_killed` (objective) | 10,20,30,50,**100** |
+| `got_you` | Je te tiens ! | objective_stat | `flag_returns` | 10,20,30,50,**100** |
+| `stakeholder` | Partie prenante | objective_stat | `zone_secures` | 10,20,30,50,**100** |
+| `flag_carrier_hunter` | Sus au porteur du drapeau | objective_stat | `flag_carriers_killed` | 10,20,30,50,**100** |
 | `flag_victory` | Victoire au drapeau | custom | `compute_wins_ctf` | 5,10,15,25,**50** |
 | `slayer_victory` | Victoire en assassin | custom | `compute_wins_slayer` | 5,10,15,25,**50** |
 | `strongholds_victory` | Victoire en bases | custom | `compute_wins_strongholds` | 5,10,15,25,**50** |
+| `flag_captures` | Capture du drapeau | objective_stat | `flag_captures` | 10,25,50,75,**125** |
+| `flag_secures` | Sécurisation du drapeau | objective_stat | `flag_secures` | 50,100,200,350,**600** |
+| `flag_steals` | Vol du drapeau | objective_stat | `flag_steals` | 25,50,100,175,**300** |
+| `returner_takedown` | Chasse au rapatrieur | objective_stat | `flag_returners_killed` | 5,10,20,35,**60** |
+| `unstoppable_carrier` | Porteur imparable | objective_stat | `kills_as_flag_carrier` | 1,2,3,5,**10** |
+| `aggressive_return` | Rapatriement agressif | objective_stat | `kills_as_flag_returner` | 5,10,20,30,**50** |
+| `zone_defense` | Défense de zone | objective_stat | `zone_defensive_kills` | 25,50,100,200,**350** |
+| `untouchable_carrier` | Crâne intouchable | objective_stat | `kills_as_skull_carrier` | 1,2,3,5,**10** |
+| `skull_carrier_takedown` | Chasse au porteur | objective_stat | `skull_carriers_killed` | 2,5,10,20,**40** |
+| `skull_grabs` | Prise du crâne | objective_stat | `skull_grabs` | 2,5,10,20,**40** |
+
+`flag_captures`…`skull_grabs` (10 rows) were added in v7.2.1 (V721-03). Tiers are calibrated on real v7.2.1 data (304-match reference player), not the generic tier-target families used elsewhere in this document — see the tier-target comment block in `seed.go` before retouching them.
 
 ### PvP — Vehicle / Grenade (4)
 

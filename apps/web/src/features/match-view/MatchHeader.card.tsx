@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/badge'
 import { AlertDialog } from '@/components/ui/alert-dialog'
 import { tokenCssVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility'
+import { asDominance } from '@/components/charts/outcomeSequence'
+import { DOMINANCE_COLOR_TOKENS } from '@/lib/narrative/dominance'
 import { useToggleMatchFavorite } from './queries'
 import { useSetMatchExclusion } from '@/features/match-history/queries'
 import {
@@ -367,14 +369,9 @@ function OutcomeRow({ header, outcomeColor, locale }: OutcomeRowProps) {
 // ── DominanceBadgeInline ───────────────────────────────────────────────────
 
 // Le color_token backend ("narrative.dominance.loss.strong") ne correspond pas
-// aux SemanticTokens frontend — on mappe par flag numérique comme ExplorerMatchesTable.
-const DOMINANCE_TOKENS: Partial<Record<number, SemanticToken>> = {
-  1: 'narrative-dominant',
-  2: 'narrative-humiliation',
-  3: 'narrative-remontada',
-  4: 'narrative-debacle',
-  5: 'narrative-contre-remontada',
-}
+// aux SemanticTokens frontend — on mappe par flag numérique via la table CANONIQUE
+// partagée avec ExplorerMatchesTable et la bande de résultats (lib/narrative/dominance,
+// D-10 V721-14a — ex-copie locale DOMINANCE_TOKENS supprimée).
 
 interface DominanceBadgeInlineProps {
   labelKey: string
@@ -408,7 +405,8 @@ export function RankedIcon({ className }: { className?: string }) {
 export function DominanceBadgeInline({ labelKey, flag, locale }: DominanceBadgeInlineProps) {
   const entry = matchViewManifest[labelKey as MatchViewManifestKey]
   const label = entry ? entry[locale] : labelKey
-  const token = DOMINANCE_TOKENS[flag]
+  const dominanceValue = asDominance(flag)
+  const token = dominanceValue ? DOMINANCE_COLOR_TOKENS[dominanceValue] : undefined
   if (!token) return null
   const bgColor = tokenCssVar(token)
   const textColor = tokenCssVar(`${token}-text` as SemanticToken)

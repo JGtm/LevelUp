@@ -23,6 +23,15 @@ import (
 // Halo 5 : les colonnes objectif ne sont pas exposées (capability match.objective.stats =
 // not_exposed) — la table reste vide pour ce titre au lancement. Colonnes verrouillées sur
 // payload réel GetMatchStats (P0, PLAN_V72_OBJECTIVE_STATS.md § « P0 — Mapping figé »).
+//
+// EXTENSION v7.2.1 (V721-02) : 2e step `shared_objective_stats_add_stockpile_extraction`
+// (ALTER ADD COLUMN IF NOT EXISTS ×18 : Stockpile 6 + Extraction 5 + VIP 7). Step SÉPARÉ et non
+// édition du CREATE : les DBs déjà migrées ne rejoueraient pas `shared_create_objective_stats`
+// (migrations name-keyed) et resteraient sans les colonnes. La vue `_latest` est RECRÉÉE dans
+// le même step : DuckDB fige la liste de colonnes d'un `SELECT *` à la création de la vue — sans
+// CREATE OR REPLACE, la vue ignorerait les nouvelles colonnes (voire échouerait « Contents of
+// view were altered »). Un ALTER ADD COLUMN est du DDL pur, hors périmètre du bug ART #23046
+// (suppression de lignes d'index) — aucun garde-rail ART touché.
 func sharedObjectiveStatsSteps() []migration.Migration {
 	return []migration.Migration{
 		{
@@ -68,6 +77,43 @@ func sharedObjectiveStatsSteps() []migration.Migration {
 
 					CREATE INDEX IF NOT EXISTS idx_match_objective_stats_match
 						ON match_objective_stats(match_id);
+
+					CREATE OR REPLACE VIEW match_objective_stats_latest AS
+						SELECT *
+						FROM match_objective_stats
+						QUALIFY ROW_NUMBER() OVER (
+							PARTITION BY match_id, xuid
+							ORDER BY written_at DESC, id DESC
+						) = 1;
+				`)
+			},
+		},
+		{
+			Name:        "shared_objective_stats_add_stockpile_extraction",
+			TargetDB:    migration.TargetShared,
+			Description: "match_objective_stats : +18 colonnes nullable Stockpile (StockpileStats), Extraction (ExtractionStats) et VIP (VipStats) + recréation de la vue _latest (SELECT * figé au CREATE)",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					ALTER TABLE match_objective_stats ADD COLUMN IF NOT EXISTS kills_as_power_seed_carrier        INTEGER;
+					ALTER TABLE match_objective_stats ADD COLUMN IF NOT EXISTS power_seed_carriers_killed         INTEGER;
+					ALTER TABLE match_objective_stats ADD COLUMN IF NOT EXISTS power_seeds_deposited              INTEGER;
+					ALTER TABLE match_objective_stats ADD COLUMN IF NOT EXISTS power_seeds_stolen                 INTEGER;
+					ALTER TABLE match_objective_stats ADD COLUMN IF NOT EXISTS time_as_power_seed_carrier_seconds DOUBLE;
+					ALTER TABLE match_objective_stats ADD COLUMN IF NOT EXISTS time_as_power_seed_driver_seconds  DOUBLE;
+
+					ALTER TABLE match_objective_stats ADD COLUMN IF NOT EXISTS extraction_conversions_completed   INTEGER;
+					ALTER TABLE match_objective_stats ADD COLUMN IF NOT EXISTS extraction_conversions_denied      INTEGER;
+					ALTER TABLE match_objective_stats ADD COLUMN IF NOT EXISTS extraction_initiations_completed   INTEGER;
+					ALTER TABLE match_objective_stats ADD COLUMN IF NOT EXISTS extraction_initiations_denied      INTEGER;
+					ALTER TABLE match_objective_stats ADD COLUMN IF NOT EXISTS successful_extractions             INTEGER;
+
+					ALTER TABLE match_objective_stats ADD COLUMN IF NOT EXISTS kills_as_vip                       INTEGER;
+					ALTER TABLE match_objective_stats ADD COLUMN IF NOT EXISTS vip_kills                          INTEGER;
+					ALTER TABLE match_objective_stats ADD COLUMN IF NOT EXISTS vip_assists                        INTEGER;
+					ALTER TABLE match_objective_stats ADD COLUMN IF NOT EXISTS times_selected_as_vip              INTEGER;
+					ALTER TABLE match_objective_stats ADD COLUMN IF NOT EXISTS max_killing_spree_as_vip           INTEGER;
+					ALTER TABLE match_objective_stats ADD COLUMN IF NOT EXISTS time_as_vip_seconds                DOUBLE;
+					ALTER TABLE match_objective_stats ADD COLUMN IF NOT EXISTS longest_time_as_vip_seconds        DOUBLE;
 
 					CREATE OR REPLACE VIEW match_objective_stats_latest AS
 						SELECT *

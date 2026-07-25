@@ -2,7 +2,8 @@
  * MatchObjectivesSection — section « Objectifs » du scoreboard Match View (V72-03).
  *
  * Affiche, PAR ÉQUIPE, les stats objectifs par joueur du mode joué (CTF / Zones
- * (Strongholds+KOTH) / Oddball) + une ligne « Total équipe » (agrégat à la LECTURE :
+ * (Strongholds+KOTH) / Oddball / Stockpile / Extraction / VIP — V721-02 pour les 3
+ * derniers) + une ligne « Total équipe » (agrégat à la LECTURE :
  * SUM cumulée, ou MAX pour les « meilleurs temps »). Colonnes pertinentes pilotées
  * par le mode détecté (data-driven). Durées formatées mm:ss.
  *

@@ -112,7 +112,11 @@ func (s *service) JoinSquadChallenge(ctx context.Context, challengeID, userID st
 		// (logs/prestige.log).
 		slog.WarnContext(ctx, "prestige: squad challenge lookup failed on join",
 			"err", err, "squad_challenge_id", challengeID, "user_id", userID)
-		return fmt.Errorf("%w: défi d'escouade introuvable", ErrInvalidInput)
+		// La cause reste dans la chaîne (2e %w) : une panne d'infrastructure
+		// (base verrouillée/invalidée) doit ressortir en 503 et non en 400 —
+		// serviceError teste ErrDBLocked AVANT ErrInvalidInput. Sans ce wrap,
+		// un lock se déguisait en « défi introuvable » (V721-08b).
+		return fmt.Errorf("%w: défi d'escouade introuvable (%w)", ErrInvalidInput, err)
 	}
 	if err := s.assertMemberUser(ctx, sc.SquadID, userID); err != nil {
 		return err
@@ -151,7 +155,9 @@ func (s *service) AbandonSquadChallenge(ctx context.Context, challengeID, reques
 		// On LOGGE (règle 10) puis on refuse — challenge_id inexistant OU lecture KO.
 		slog.WarnContext(ctx, "prestige: squad challenge lookup failed on abandon",
 			"err", err, "squad_challenge_id", challengeID, "requested_by", requestedBy)
-		return fmt.Errorf("%w: défi d'escouade introuvable", ErrInvalidInput)
+		// Cf. JoinSquadChallenge : la cause reste dans la chaîne pour qu'un lock
+		// ressorte en 503 et non en 400 (V721-08b).
+		return fmt.Errorf("%w: défi d'escouade introuvable (%w)", ErrInvalidInput, err)
 	}
 	if err := s.assertMemberUser(ctx, sc.SquadID, requestedBy); err != nil {
 		return err

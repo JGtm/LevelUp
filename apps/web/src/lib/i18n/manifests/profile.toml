@@ -343,6 +343,32 @@ en = "—"
 fr = "Démarrer une campagne"
 en = "Start a campaign"
 
+# CoachFocusCard — « Cap du moment » (Coach V3 Phase A, ADR 0014 amendement 2026-07-25).
+
+[profile.coach.title]
+fr = "Cap du moment"
+en = "Current focus"
+
+[profile.coach.progression]
+fr = "en progression"
+en = "improving"
+
+[profile.coach.consolidate]
+fr = "à consolider"
+en = "to consolidate"
+
+[profile.coach.up]
+fr = "Tu consolides {axis}, continue sur ta lancée."
+en = "You're consolidating {axis} — keep it up."
+
+[profile.coach.down]
+fr = "{axis} mérite ton attention en ce moment."
+en = "{axis} deserves your attention right now."
+
+[profile.coach.cta]
+fr = "Voir le défi →"
+en = "See the challenge →"
+
 [profile.r2_disclaimer]
 fr = "On t'aide à voir ta trajectoire — pas à la garantir."
 en = "We help you see your trajectory — not guarantee it."

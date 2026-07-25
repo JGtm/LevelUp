@@ -841,3 +841,155 @@ func TestSharedPersister_ObjectiveStats_InsertsReadViaLatestAndNullOtherMode(t *
 		t.Errorf("idempotence cassée — match_objective_stats = %d rows après re-Persist, want 2", n)
 	}
 }
+
+// ─── Test : ObjectiveStats Stockpile + Extraction + VIP (V721-02) ─────────────
+//
+// Verrouille les 18 colonnes ajoutées par shared_objective_stats_add_stockpile_extraction
+// de bout en bout : INSERT pur via SharedPersister → relecture par la vue _latest (donc
+// vue bien RECRÉÉE après l'ALTER) → colonnes des autres modes NULL. L'INSERT de
+// persistObjectiveStats aligne 43 colonnes / 43 placeholders / 43 arguments : un décalage
+// d'un cran écrirait la valeur dans la mauvaise colonne — ce test l'attrape (les valeurs
+// choisies sont toutes distinctes).
+func TestSharedPersister_ObjectiveStats_StockpileAndExtraction(t *testing.T) {
+	db := openSharedTestDB(t)
+	p := NewSharedPersister(db)
+	intPtr := func(v int) *int { return &v }
+	f := func(v float64) *float64 { return &v }
+
+	batch := helperBuildSampleBatch("m_obj_sp", "1111", "Alice")
+	batch.Shared.ObjectiveStats = []ObjectiveStatsInsert{
+		{
+			MatchID: "m_obj_sp", XUID: "1111",
+			KillsAsPowerSeedCarrier: intPtr(2), PowerSeedCarriersKilled: intPtr(1),
+			PowerSeedsDeposited: intPtr(6), PowerSeedsStolen: intPtr(3),
+			TimeAsPowerSeedCarrierSeconds: f(59.1), TimeAsPowerSeedDriverSeconds: f(64.2),
+		},
+		{
+			MatchID: "m_obj_sp", XUID: "9876543210",
+			ExtractionConversionsCompleted: intPtr(11), ExtractionConversionsDenied: intPtr(12),
+			ExtractionInitiationsCompleted: intPtr(13), ExtractionInitiationsDenied: intPtr(14),
+			SuccessfulExtractions: intPtr(15),
+		},
+		{
+			MatchID: "m_obj_sp", XUID: "5555",
+			KillsAsVip: intPtr(21), VipKills: intPtr(22), VipAssists: intPtr(23),
+			TimesSelectedAsVip: intPtr(24), MaxKillingSpreeAsVip: intPtr(25),
+			TimeAsVipSeconds: f(109.5), LongestTimeAsVipSeconds: f(48),
+		},
+	}
+	if err := p.Persist(context.Background(), batch); err != nil {
+		t.Fatalf("Persist: %v", err)
+	}
+
+	// Ligne Stockpile : 6 valeurs distinctes + colonnes CTF/Extraction NULL.
+	var killsCarrier, carriersKilled, deposited, stolen sql.NullInt64
+	var carrierSecs, driverSecs sql.NullFloat64
+	var flagCaptures, successfulExtractions sql.NullInt64
+	err := db.QueryRow(`
+		SELECT kills_as_power_seed_carrier, power_seed_carriers_killed, power_seeds_deposited,
+		       power_seeds_stolen, time_as_power_seed_carrier_seconds, time_as_power_seed_driver_seconds,
+		       flag_captures, successful_extractions
+		FROM match_objective_stats_latest WHERE match_id = ? AND xuid = ?`,
+		"m_obj_sp", "1111").Scan(&killsCarrier, &carriersKilled, &deposited, &stolen,
+		&carrierSecs, &driverSecs, &flagCaptures, &successfulExtractions)
+	if err != nil {
+		t.Fatalf("query _latest (stockpile): %v", err)
+	}
+	for _, c := range []struct {
+		got  sql.NullInt64
+		want int64
+		name string
+	}{
+		{killsCarrier, 2, "kills_as_power_seed_carrier"},
+		{carriersKilled, 1, "power_seed_carriers_killed"},
+		{deposited, 6, "power_seeds_deposited"},
+		{stolen, 3, "power_seeds_stolen"},
+	} {
+		if !c.got.Valid || c.got.Int64 != c.want {
+			t.Errorf("%s = %+v, want %d", c.name, c.got, c.want)
+		}
+	}
+	if !carrierSecs.Valid || carrierSecs.Float64 != 59.1 {
+		t.Errorf("time_as_power_seed_carrier_seconds = %+v, want 59.1", carrierSecs)
+	}
+	if !driverSecs.Valid || driverSecs.Float64 != 64.2 {
+		t.Errorf("time_as_power_seed_driver_seconds = %+v, want 64.2", driverSecs)
+	}
+	if flagCaptures.Valid {
+		t.Errorf("flag_captures doit être NULL (mode Stockpile), got %d", flagCaptures.Int64)
+	}
+	if successfulExtractions.Valid {
+		t.Errorf("successful_extractions doit être NULL (mode Stockpile), got %d", successfulExtractions.Int64)
+	}
+
+	// Ligne Extraction : 5 compteurs distincts + toutes les durées NULL.
+	var convDone, convDenied, initDone, initDenied, extractions sql.NullInt64
+	var spCarrierSecs sql.NullFloat64
+	err = db.QueryRow(`
+		SELECT extraction_conversions_completed, extraction_conversions_denied,
+		       extraction_initiations_completed, extraction_initiations_denied,
+		       successful_extractions, time_as_power_seed_carrier_seconds
+		FROM match_objective_stats_latest WHERE match_id = ? AND xuid = ?`,
+		"m_obj_sp", "9876543210").Scan(&convDone, &convDenied, &initDone, &initDenied,
+		&extractions, &spCarrierSecs)
+	if err != nil {
+		t.Fatalf("query _latest (extraction): %v", err)
+	}
+	for _, c := range []struct {
+		got  sql.NullInt64
+		want int64
+		name string
+	}{
+		{convDone, 11, "extraction_conversions_completed"},
+		{convDenied, 12, "extraction_conversions_denied"},
+		{initDone, 13, "extraction_initiations_completed"},
+		{initDenied, 14, "extraction_initiations_denied"},
+		{extractions, 15, "successful_extractions"},
+	} {
+		if !c.got.Valid || c.got.Int64 != c.want {
+			t.Errorf("%s = %+v, want %d", c.name, c.got, c.want)
+		}
+	}
+	if spCarrierSecs.Valid {
+		t.Errorf("time_as_power_seed_carrier_seconds doit être NULL (mode Extraction), got %v", spCarrierSecs.Float64)
+	}
+
+	// Ligne VIP : 5 compteurs + 2 durées, toutes distinctes ; colonnes des autres modes NULL.
+	var killsAsVip, vipKills, vipAssists, timesSelected, maxSpree sql.NullInt64
+	var vipSecs, longestVipSecs sql.NullFloat64
+	var vipFlagCaptures sql.NullInt64
+	err = db.QueryRow(`
+		SELECT kills_as_vip, vip_kills, vip_assists, times_selected_as_vip,
+		       max_killing_spree_as_vip, time_as_vip_seconds, longest_time_as_vip_seconds,
+		       flag_captures
+		FROM match_objective_stats_latest WHERE match_id = ? AND xuid = ?`,
+		"m_obj_sp", "5555").Scan(&killsAsVip, &vipKills, &vipAssists, &timesSelected,
+		&maxSpree, &vipSecs, &longestVipSecs, &vipFlagCaptures)
+	if err != nil {
+		t.Fatalf("query _latest (vip): %v", err)
+	}
+	for _, c := range []struct {
+		got  sql.NullInt64
+		want int64
+		name string
+	}{
+		{killsAsVip, 21, "kills_as_vip"},
+		{vipKills, 22, "vip_kills"},
+		{vipAssists, 23, "vip_assists"},
+		{timesSelected, 24, "times_selected_as_vip"},
+		{maxSpree, 25, "max_killing_spree_as_vip"},
+	} {
+		if !c.got.Valid || c.got.Int64 != c.want {
+			t.Errorf("%s = %+v, want %d", c.name, c.got, c.want)
+		}
+	}
+	if !vipSecs.Valid || vipSecs.Float64 != 109.5 {
+		t.Errorf("time_as_vip_seconds = %+v, want 109.5", vipSecs)
+	}
+	if !longestVipSecs.Valid || longestVipSecs.Float64 != 48 {
+		t.Errorf("longest_time_as_vip_seconds = %+v, want 48", longestVipSecs)
+	}
+	if vipFlagCaptures.Valid {
+		t.Errorf("flag_captures doit être NULL (mode VIP), got %d", vipFlagCaptures.Int64)
+	}
+}

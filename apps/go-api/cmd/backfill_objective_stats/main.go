@@ -1,6 +1,7 @@
 // cmd/backfill_objective_stats — peuple shared.match_objective_stats pour
-// l'historique des matchs à objectif (CTF / Strongholds / KOTH / Oddball) en
-// re-fetchant GetMatchStats et en extrayant les blocs objectif du payload.
+// l'historique des matchs à objectif (CTF / Strongholds / KOTH / Oddball /
+// Stockpile / Extraction / VIP) en re-fetchant GetMatchStats et en extrayant les
+// blocs objectif du payload.
 //
 // Contexte : les stats objectifs par joueur/match sont DÉJÀ dans le payload
 // GetMatchStats (Players[].PlayerTeamStats[0].Stats.<BlocMode>) mais n'étaient
@@ -13,6 +14,14 @@
 // dans match_registry.backfill_completed ET pas encore de ligne _latest. Après
 // traitement, le bit est TOUJOURS posé (même pour un match sans mode à objectif,
 // qui ne produit aucune ligne — Slayer) → pas de re-fetch inutile au run suivant.
+//
+// CONSÉQUENCE lors de l'AJOUT d'un bloc de mode (V721-02 : Stockpile, Extraction, VIP) :
+// les matchs de ce mode déjà parcourus par un run antérieur portent le bit alors
+// qu'ils n'ont produit AUCUNE ligne (le bloc n'était pas encore extrait) — ils ne
+// sont donc plus candidats. Il faut RETIRER le bit sur ces seuls matchs avant de
+// relancer (reset ciblé par mode via match_registry.pair_name / game_variant_name,
+// cf. PLAN_V721_NOTION_BATCH.md § V721-02, item 02.6). Le sync natif, lui, ne pose
+// JAMAIS ce bit : les matchs synchronisés depuis restent candidats sans reset.
 //
 // Usage (serveur LevelUp ARRÊTÉ — accès RW exclusif à la shared DB) :
 //

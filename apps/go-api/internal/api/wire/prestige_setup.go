@@ -28,11 +28,14 @@ import (
 
 // PrestigeBundle regroupe les ressources globales du module Prestige.
 //
-// Bases ouvertes :
+// Bases ouvertes, TOUTES DEUX sur le titre par défaut (cf. le bloc « ÉPINGLAGE AU
+// TITRE PAR DÉFAUT » de NewPrestigeBundle — contrainte, pas oubli) :
 //   - sharedSocialDB : pool partagé sur shared_social.duckdb (events, user_prestige, squad)
 //   - metadataDB     : pool partagé sur metadata.duckdb (templates, preset_arcs)
 //
-// Le PlayerDB (par-joueur) est résolu à la demande via PlayerResolver.
+// Le PlayerDB (par-joueur) est résolu à la demande via PlayerResolver — lui EST
+// per-titre (ServiceRegistry.resolve lit ctxkeys.TitleSlug) : arcs, défis, moments
+// et baselines d'un joueur sont donc bien isolés par titre.
 type PrestigeBundle struct {
 	enabled        bool
 	tuning         prestige.Tuning
@@ -55,6 +58,41 @@ type PrestigeBundle struct {
 //
 // Si une étape échoue (TOML absent, DB injoignable), retourne nil + error.
 // L'appelant (server.go) doit décider de booter sans Prestige.
+//
+// ─── ÉPINGLAGE AU TITRE PAR DÉFAUT — constat daté 2026-07-25 (V721-14a / D-06) ───
+//
+// Les DEUX bases ouvertes ici le sont sur `titlePkg.DefaultSlug`, quel que soit le
+// titre de la requête. Ce n'est PAS un oubli de câblage : c'est la conséquence de
+// deux propriétés du modèle Prestige, qui rendent un bundle par titre impossible
+// sans décision produit préalable.
+//
+//  1. metadata.duckdb — le CATALOGUE Prestige (`challenge_template`, `preset_arc`)
+//     est un référentiel possédé par Halo Infinite : il est créé et seedé par
+//     `internal/games/halo_infinite/migrations` depuis `config/titles/halo_infinite/
+//     {challenges,arcs}/*.toml`. Le set de migrations d'un titre additionnel qui
+//     possède son target metadata (cf. `TitleMigrationSet.OwnsTarget`) ne crée PAS
+//     ces tables — c'est un invariant TESTÉ (anti-pollution, cf.
+//     internal/games/halo_5/migrations/metadata_test.go). Ouvrir la metadata du
+//     titre courant ferait donc échouer toute lecture de catalogue pour un titre
+//     qui n'en a pas.
+//
+//  2. shared_social.duckdb — les entités cross-joueurs `squad` et `squad_member`
+//     ne portent AUCUNE colonne `title_slug` (cf. steps_shared_social.go) : une
+//     escouade n'appartient à aucun titre. Isoler shared_social par titre
+//     scinderait les escouades elles-mêmes et orphelinerait les `squad_challenge`
+//     (qui, eux, portent un title_slug).
+//
+// Portée du problème aujourd'hui : les lignes écrites ici portent le VRAI
+// title_slug de la requête et toutes les lectures per-titre filtrent dessus — il
+// n'y a donc pas de fusion sémantique entre titres. Ce qui est violé, c'est
+// l'isolation PAR CHEMIN (ADR 0008) : les points de progression gagnés sur un
+// titre additionnel atterrissent physiquement dans le shared_social d'Halo
+// Infinite. Les données déjà écrites y resteraient après tout correctif de
+// câblage — leur déplacement demanderait une migration dédiée.
+//
+// Ne pas « corriger » ce point en n'isolant qu'une des deux bases : l'analyse
+// complète et les options chiffrées sont dans .ai/V7.2.1/PLAN_V721_NOTION_BATCH.md,
+// lot V721-14a, découverte D-06.
 func NewPrestigeBundle(repoRoot string, resolve PlayerResolver, enabled bool) (*PrestigeBundle, error) {
 	pr := titlePkg.NewPathResolver(repoRoot)
 	titleSlug := titlePkg.DefaultSlug

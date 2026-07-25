@@ -113,9 +113,11 @@ type ExplorerPlayerQueryResponse struct {
 //     morts) — le fetch live n'a JAMAIS été tenté.
 //   - "failed"        : fetch live tenté et en échec (erreur déjà loggée côté
 //     service au moment de l'appel, cf. explorer_target_*_failed).
-//   - "local_partial" : repli sur un calcul/bucketing local structurellement
-//     incomplet (ex. "matchs par saison" sans service record filtré par
-//     saison — cf. Lot A2, non traité).
+//   - "local_partial" : réponse structurellement incomplète — soit repli sur un
+//     calcul/bucketing local (ex. "matchs par saison" sans service record
+//     filtré par saison), soit live partiel, une partie seulement des
+//     sous-requêtes ayant abouti (V721-06 : au moins une saison indéterminée,
+//     cf. SeasonMatchCount.Unresolved). Libellé front : « Live partiel ».
 type ExplorerLiveSectionStatus string
 
 const (
@@ -240,12 +242,24 @@ type ExplorerTargetRecentMatch struct {
 // rang CSR de la saison est exposé (tier + image du badge, rendu au-dessus de la
 // barre). En mode dégradé (bucketing local sans auth), seul Matches est rempli.
 //
+// Trois états distincts (V721-06) :
+//   - saison jouée         : Unresolved=false, Matches > 0
+//   - saison NON jouée     : Unresolved=false, Matches = 0 (l'API a répondu)
+//   - saison indéterminée  : Unresolved=true (aucun chemin CMS n'a répondu) —
+//     Matches n'est alors pas significatif.
+//
 // Le split classé/non-classé n'est pas exposé : l'API Waypoint rejette
 // `seasonId + isRanked` seul (cf. fetchSeasonRow).
 type SeasonMatchCount struct {
 	SeasonID   string `json:"season_id"`
 	SeasonName string `json:"season_name"`
 	Matches    int    `json:"matches"`
+	// Unresolved : la saison n'a PAS pu être interrogée (tous ses chemins CMS en
+	// erreur, ou aucun chemin exploitable pour ce titre) — à distinguer d'une
+	// saison réellement non jouée, pour laquelle l'API a répondu 0. Champ
+	// optionnel (omitempty : absent quand false) → rétrocompatible pour les
+	// clients antérieurs à V721-06, qui continuent de lire matches seul.
+	Unresolved bool `json:"unresolved,omitempty"`
 	// CSRTier / CSRSubTier / CSRBadgeImageURL : pic de rang CSR du joueur sur la
 	// saison (plus haut tier parmi les playlists ranked engagées). Vide si aucune
 	// donnée CSR pour la saison.

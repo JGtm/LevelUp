@@ -202,13 +202,25 @@ func (s *service) RefreshSquadPool(ctx context.Context, squadID, titleSlug, requ
 	if err != nil {
 		return nil, fmt.Errorf("list templates: %w", err)
 	}
-	if len(all) == 0 {
-		// Catalogue vide (ex. titre sans challenges/templates.toml comme halo_5, ou
-		// metadata non seedée) : dégradation gracieuse — pool VIDE (200, []) plutôt
-		// qu'un 500 masqué. Title-agnostic (aucune comparaison de slug). L'UI affiche
-		// « Aucun défi proposé ». Loggé pour distinguer d'un vrai bug de seed en prod.
-		slog.InfoContext(ctx, "prestige: squad pool empty (no templates for title)",
-			"squad_id", squadID, "title_slug", titleSlug, "requested_by", requestedBy)
+
+	// Écarte les templates que l'évaluateur d'escouade ne sait pas évaluer
+	// honnêtement (cf. squadEligibleTemplates).
+	eligible, discarded := squadEligibleTemplates(all)
+	if discarded > 0 {
+		slog.InfoContext(ctx, "prestige: squad pool discarded templates with unsupported eval_type",
+			"squad_id", squadID, "title_slug", titleSlug,
+			"catalog", len(all), "eligible", len(eligible), "discarded", discarded)
+	}
+	if len(eligible) == 0 {
+		// Aucun template proposable : catalogue vide (titre sans
+		// challenges/templates.toml comme halo_5, ou metadata non seedée) OU
+		// catalogue entièrement écarté par le filtre eval_type. Dégradation
+		// gracieuse — pool VIDE (200, []) plutôt qu'un 500 masqué. Title-agnostic
+		// (aucune comparaison de slug). L'UI affiche « Aucun défi proposé ». Loggé
+		// pour distinguer d'un vrai bug de seed en prod.
+		slog.InfoContext(ctx, "prestige: squad pool empty (no eligible templates for title)",
+			"squad_id", squadID, "title_slug", titleSlug, "requested_by", requestedBy,
+			"catalog", len(all))
 		return []Template{}, nil
 	}
 
@@ -217,15 +229,15 @@ func (s *service) RefreshSquadPool(ctx context.Context, squadID, titleSlug, requ
 	if s.deps.Tuning.SquadPool.SizeMax > size {
 		size += rand.Intn(s.deps.Tuning.SquadPool.SizeMax - s.deps.Tuning.SquadPool.SizeMin + 1)
 	}
-	if size > len(all) {
-		size = len(all)
+	if size > len(eligible) {
+		size = len(eligible)
 	}
 
 	// Mélange, puis biais coach : si un profil d'escouade est disponible, on place
 	// en tête les templates ciblant l'axe le plus faible de l'escouade (au lieu du
 	// shuffle pur). Sans provider/profil, focusAxis == "" → shuffle inchangé.
-	shuffled := make([]Template, len(all))
-	copy(shuffled, all)
+	shuffled := make([]Template, len(eligible))
+	copy(shuffled, eligible)
 	rand.Shuffle(len(shuffled), func(i, j int) {
 		shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
 	})
@@ -236,6 +248,33 @@ func (s *service) RefreshSquadPool(ctx context.Context, squadID, titleSlug, requ
 		"squad_id", squadID, "title_slug", titleSlug,
 		"requested_by", requestedBy, "size", size)
 	return pool, nil
+}
+
+// squadEligibleTemplates ne garde que les templates dont la règle AFFICHÉE
+// correspond à l'évaluation RÉELLE d'un défi d'escouade, et retourne le nombre
+// d'écartés.
+//
+// L'évaluation d'escouade est CUMULATIVE pour tous les défis en V1
+// (AggregateSquadProgress somme la métrique par membre sur les matchs de
+// l'escouade ; le mode « threshold » — cible atteinte SUR UN match — n'est pas
+// couvert, cf. squad_progress.go). Proposer un template `eval_type=threshold`
+// revenait donc à afficher une règle que le back n'applique pas : le défi se
+// complétait par cumul. On les retire du pool plutôt que d'exposer une règle
+// mensongère.
+//
+// Title-agnostic : le filtre branche sur `eval_type` (donnée du catalogue), jamais
+// sur le slug du titre. À retirer quand le threshold d'escouade sera implémenté
+// (item « threshold squad par match » du backlog, PLAN_SQUAD_CHALLENGES).
+func squadEligibleTemplates(templates []Template) (eligible []Template, discarded int) {
+	eligible = make([]Template, 0, len(templates))
+	for _, t := range templates {
+		if t.EvalType == EvalThreshold {
+			discarded++
+			continue
+		}
+		eligible = append(eligible, t)
+	}
+	return eligible, discarded
 }
 
 // isMember vérifie qu'un user_id est dans la liste des membres.

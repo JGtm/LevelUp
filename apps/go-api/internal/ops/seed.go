@@ -68,6 +68,24 @@ const (
 	citationNormFlagCarrierHunter = "flag_carrier_hunter"
 )
 
+// Norms des 10 citations d'objectif ajoutées en v7.2.1 (V721-03). Même raison que
+// le bloc ci-dessus : chaque norm est cité 4 fois (ligne seedée + clé du nom EN +
+// clé de la description EN + garde-rail de test), ce que goconst refuse en littéral.
+// 9 autres colonnes exploitables ont été écartées par l'utilisateur — ne pas les
+// re-proposer sans arbitrage.
+const (
+	citationNormFlagCaptures         = "flag_captures"
+	citationNormFlagSecures          = "flag_secures"
+	citationNormFlagSteals           = "flag_steals"
+	citationNormReturnerTakedown     = "returner_takedown"
+	citationNormUnstoppableCarrier   = "unstoppable_carrier"
+	citationNormAggressiveReturn     = "aggressive_return"
+	citationNormZoneDefense          = "zone_defense"
+	citationNormUntouchableCarrier   = "untouchable_carrier"
+	citationNormSkullCarrierTakedown = "skull_carrier_takedown"
+	citationNormSkullGrabs           = "skull_grabs"
+)
+
 // Catégories citation_mappings.category (libellés FR — UI Cockpit).
 const (
 	citationCatModeJeu          = "Mode de jeu"
@@ -102,6 +120,31 @@ const (
 	tierTargets10_20_30_50_100  = "10,20,30,50,100"
 	tierTargets10_20_40_80_200  = "10,20,40,80,200"
 	tierTargets10_25_50_100_250 = "10,25,50,100,250"
+)
+
+// Tier targets des citations d'objectif ajoutées en v7.2.1 (source objective_stat,
+// colonnes match_objective_stats_latest). CALIBRÉS sur les données réelles au 2026-07-25
+// (joueur de référence : 304 matchs à objectifs), PAS repris des paliers génériques
+// ci-dessus — un réalignement rendrait quatre de ces citations inatteignables.
+//
+// Deux régimes assumés :
+//   - citations à volume (captures/sécurisations/vols de drapeau, défense de zone) :
+//     palier maître ≈ 1,2–1,35 × le total actuel du meilleur joueur ;
+//   - exploits intrinsèquement rares (frags en portant le drapeau ou le crâne : 3 et 1
+//     occurrences au total) et mode peu joué (26 matchs Oddball en base) : paliers bas
+//     (1,2,3,5,10 / 2,5,10,20,40) — volontaire, ce n'est pas une erreur de calibration.
+//
+// Toute retouche de ces valeurs impose un `backfill --citations-recompute-all` (la
+// progression est recalculée depuis l'historique, cf. docs/COMMENDATIONS.md).
+const (
+	tierTargets1_2_3_5_10         = "1,2,3,5,10"
+	tierTargets2_5_10_20_40       = "2,5,10,20,40"
+	tierTargets5_10_20_30_50      = "5,10,20,30,50"
+	tierTargets5_10_20_35_60      = "5,10,20,35,60"
+	tierTargets10_25_50_75_125    = "10,25,50,75,125"
+	tierTargets25_50_100_175_300  = "25,50,100,175,300"
+	tierTargets25_50_100_200_350  = "25,50,100,200,350"
+	tierTargets50_100_200_350_600 = "50,100,200,350,600"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -415,7 +458,8 @@ func citationDisplayENOr(norm, fallbackFR string) interface{} {
 // citationDescriptionEN, clé = norm) ou nil si absente. Contrairement à
 // citationDisplayENOr, on NE retombe PAS sur le FR : description_en reste NULL et le read
 // locale-aware sert alors le nom seul sous UI EN (principe GH-5b « EN n'injecte jamais de
-// FR »). La map couvre les 88 citations → nil en pratique = citation ajoutée sans EN.
+// FR »). La map couvre les 98 citations → nil en pratique = citation ajoutée sans EN
+// (interdit par TestCitationDescriptionEN_CoversAllCitations).
 func citationDescriptionENOr(norm string) interface{} {
 	if en, ok := citationDescriptionEN[norm]; ok && en != "" {
 		return en
@@ -423,16 +467,11 @@ func citationDescriptionENOr(norm string) interface{} {
 	return nil
 }
 
-// defaultCitationMappings — 88 règles citations portées de
-// scripts/populate_citation_mappings.py (branche main, source de vérité).
-//
-// Catégories : Mode de jeu, Multijoueur, Spartan Companies, Véhicule, Arme,
-// Ennemi (PVE) + composites.
-//
-// Toute modification ici doit être reportée dans le script Python pour garder
-// les deux branches en parité.
-//
-//nolint:funlen,maintidx // Données de seed — préfère lisibilité linéaire.
+// SeedMedalDefinitions ne peuple PLUS rien : medal_definitions est désormais
+// alimentée par les migrations (portage historique de populate_medal_metadata.py).
+// Cette fonction se limite à vérifier que la table existe et à retourner son
+// décompte de lignes (Skipped) — un compte à 0 avec la table présente signale
+// des migrations non jouées, pas une absence de code de seed.
 func SeedMedalDefinitions(ctx context.Context, opts SeedOptions) (SeedResult, error) {
 	db, err := sql.Open("duckdb", opts.MetaDBPath)
 	if err != nil {

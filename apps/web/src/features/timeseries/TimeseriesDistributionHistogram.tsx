@@ -29,6 +29,8 @@ export interface TimeseriesDistributionHistogramProps {
   /** Optionnel : retourne un token sémantique par bucket (perf-tier-1..5 par
    *  exemple). Si présent, prend précédence sur `colorToken`. */
   colorTokenByBucket?: (b: DistributionBucket) => SemanticToken
+  /** Clé de tournée de revue (l'histogramme est monté 6× : la clé vient du caller). */
+  reviewKey?: string
 }
 
 /** Médiane interpolée à partir des buckets [lower, upper). Null si total nul. */
@@ -56,6 +58,7 @@ export function TimeseriesDistributionHistogram({
   xAxisLabel,
   medianLabel,
   colorTokenByBucket,
+  reviewKey,
 }: TimeseriesDistributionHistogramProps) {
   const themeVersion = useThemeVersion()
 
@@ -151,6 +154,12 @@ export function TimeseriesDistributionHistogram({
   }, [buckets, colorToken, xAxisLabel, medianLabel, themeVersion])
 
   return (
-    <ChartFromOption title={title} option={option} height={height} emptyMessage={emptyMessage} />
+    <ChartFromOption
+      title={title}
+      option={option}
+      height={height}
+      emptyMessage={emptyMessage}
+      reviewKey={reviewKey}
+    />
   )
 }

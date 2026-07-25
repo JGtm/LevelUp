@@ -1,3 +1,11 @@
+// halo_api_payload.go — types miroir des réponses de l'API Halo officielle.
+//
+// Renommé depuis `models.go` le 2026-07-26 (v7.2.1, V721-11, arbitrage utilisateur).
+// Raison : ces structs ne décrivent AUCUN format propre à OpenSpartan — elles
+// décrivent le JSON de l'API Halo, qu'OpenSpartan/grunt se contente de stocker
+// verbatim dans `MatchStats.ResponseBody`. Le nom `models.go` sous un paquet
+// `openspartan` laissait croire l'inverse au premier coup d'œil. Aucun changement
+// de comportement : ces types ne sortent jamais du duo `openspartan`/`mapper`.
 package openspartan
 
 import (
@@ -93,6 +101,9 @@ type StatsBundle struct {
 	OddballStats        json.RawMessage `json:"OddballStats,omitempty"`
 	ZonesStats          json.RawMessage `json:"ZonesStats,omitempty"`
 	StockpileStats      json.RawMessage `json:"StockpileStats,omitempty"`
+	// VipStats : bloc RÉEL du mode Arena:VIP, absent de l'inventaire initial —
+	// ajouté V721-02 après capture du payload (GameVariantCategory 23).
+	VipStats json.RawMessage `json:"VipStats,omitempty"`
 }
 
 // CoreStats is the per-player-per-team core stats block.

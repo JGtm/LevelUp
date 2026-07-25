@@ -4,6 +4,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"math"
 
@@ -205,7 +206,10 @@ func buildIntensityTab(matches []legacymatch.StatsMatchRow) domain.TimeseriesInt
 // provideSpree : false quand le titre ne porte pas le max killing spree (Halo 5) →
 // MaxKillingSpreeBuckets reste vide (l'histogramme « Folie meurtrière » est masqué)
 // au lieu de buckets fabriqués. Slice vide (jamais nil) pour ne pas crasher le front.
-func buildDistributionsTab(matches []legacymatch.StatsMatchRow, provideSpree bool) domain.TimeseriesDistributionsTab {
+//
+// ctx : seulement pour la télémétrie du repli « durée de vie » (buildLifeBuckets
+// logge en Debug le nombre de matchs retombés sur le proxy time_played/(morts+1)).
+func buildDistributionsTab(ctx context.Context, matches []legacymatch.StatsMatchRow, provideSpree bool) domain.TimeseriesDistributionsTab {
 	if len(matches) == 0 {
 		// Init [] plutôt que nil sur TOUS les champs slice : un slice nil
 		// sérialise en JSON `null` et crashe le front. Cf. testutil.RequireNoNilSlicesWithoutOmitempty.
@@ -235,11 +239,11 @@ func buildDistributionsTab(matches []legacymatch.StatsMatchRow, provideSpree boo
 		AccuracyBuckets:        buildAccuracyBuckets(matches),
 		ScorePerMinBuckets:     buildScorePerMinBuckets(matches),
 		RollingWRBuckets:       buildRollingWRBuckets(matches),
-		LifeBuckets:            buildLifeBuckets(matches),
+		LifeBuckets:            buildLifeBuckets(ctx, matches),
 		PerfScoreBuckets:       buildPerfScoreBuckets(matches),
 		PersonalScoreBuckets:   buildPersonalScoreBuckets(matches),
 		MaxKillingSpreeBuckets: spreeBuckets,
-		CorrelationPoints:      buildCorrelationPoints(matches),
+		CorrelationPoints:      buildCorrelationPoints(ctx, matches),
 	}
 }
 
@@ -353,55 +357,9 @@ func buildKillsBuckets(matches []legacymatch.StatsMatchRow) []domain.Distributio
 	return buckets
 }
 
-// buildCorrelationPoints construit les paires de corrÃ©lation pour 5 types de scatter.
-func buildCorrelationPoints(matches []legacymatch.StatsMatchRow) []domain.CorrelationDataPair {
-	points := make([]domain.CorrelationDataPair, 0, len(matches)*5)
-	for _, m := range matches {
-		kd := 0.0
-		if m.Deaths > 0 {
-			kd = float64(m.Kills) / float64(m.Deaths)
-		}
-		// DurÃ©e de vie approchÃ©e : time_played / (deaths+1)
-		lifespan := 0.0
-		if m.TimePlayedSeconds != nil && *m.TimePlayedSeconds > 0 {
-			lifespan = float64(*m.TimePlayedSeconds) / float64(m.Deaths+1)
-		}
-
-		// P7.1 (revue 2026-04-29) : Label composite ("kills_vs_kd") séparé en
-		// MetricXKey/MetricYKey ; X/Y → XValue/YValue.
-		points = append(points, domain.CorrelationDataPair{
-			MetricXKey: tsMetricKeyKills, MetricYKey: "kd_ratio",
-			XValue: float64(m.Kills), YValue: math.Round(kd*100) / 100, Outcome: m.Outcome,
-		})
-		points = append(points, domain.CorrelationDataPair{
-			MetricXKey: "lifespan", MetricYKey: tsMetricKeyKills,
-			XValue: math.Round(lifespan*10) / 10, YValue: float64(m.Kills), Outcome: m.Outcome,
-		})
-		if m.Accuracy != nil && m.KDA != nil {
-			// Accuracy déjà en % 0..100 (sync/transforms.go:315) — round à 1 décimale
-			// sans re-multiplier (bug historique du *100 qui sortait du domaine).
-			points = append(points, domain.CorrelationDataPair{
-				MetricXKey: tsMetricKeyAccuracy, MetricYKey: "kda",
-				XValue: math.Round(*m.Accuracy*10) / 10, YValue: math.Round(*m.KDA*100) / 100, Outcome: m.Outcome,
-			})
-		}
-		points = append(points, domain.CorrelationDataPair{
-			MetricXKey: "lifespan", MetricYKey: "deaths",
-			XValue: math.Round(lifespan*10) / 10, YValue: float64(m.Deaths), Outcome: m.Outcome,
-		})
-		points = append(points, domain.CorrelationDataPair{
-			MetricXKey: tsMetricKeyKills, MetricYKey: "deaths",
-			XValue: float64(m.Kills), YValue: float64(m.Deaths), Outcome: m.Outcome,
-		})
-		if m.TeamMMR != nil && m.EnemyMMR != nil {
-			points = append(points, domain.CorrelationDataPair{
-				MetricXKey: "mmr_team", MetricYKey: "mmr_enemy",
-				XValue: math.Round(*m.TeamMMR*100) / 100, YValue: math.Round(*m.EnemyMMR*100) / 100, Outcome: m.Outcome,
-			})
-		}
-	}
-	return points
-}
+// buildCorrelationPoints : déplacé dans timeseries_service_correlation.go
+// (extraction god-file, V721-14a D-09 — ce fichier dépassait le seuil de 500 L
+// du CLAUDE.md après l'ajout de la télémétrie de repli).
 
 // ---------------------------------------------------------------------------
 // Lignes match brutes (pour les charts timeline React)
@@ -451,6 +409,8 @@ func buildMatchRows(matches []legacymatch.StatsMatchRow, provideSpree bool, assi
 			Rank:                      m.Rank,
 			PlaylistName:              m.PlaylistName,
 			TimePlayedSeconds:         m.TimePlayedSeconds,
+			AvgLifeSeconds:            m.AvgLifeSeconds,
+			DominanceFlag:             m.DominanceFlag,
 			MaxKillingSpree:           maxSpree,
 			HeadshotKills:             m.HeadshotKills,
 			PerfectKills:              m.PerfectKills,

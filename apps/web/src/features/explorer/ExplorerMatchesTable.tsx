@@ -41,6 +41,8 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 import { localizeTierLabel, skillTierSortValue } from '@/lib/skillTiers'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
+import { asDominance } from '@/components/charts/outcomeSequence'
+import { DOMINANCE_COLOR_TOKENS, DOMINANCE_LABEL_KEYS } from '@/lib/narrative/dominance'
 import { mmrDeltaScale, kdaDivergentScale } from '@/lib/accessibility/scales'
 import { getOutcomeColor, outcomeKey } from '@/lib/outcome-color'
 import { formatDate, formatDurationMMSS, displayRatingLabel, intlLocale as toIntlLocale } from '@/lib/formatters'
@@ -242,24 +244,9 @@ function renderTwoLineHeader(label: string): ReactNode {
   )
 }
 
-// Mapping flag DominanceFlag (Go canonical.DominanceFlag) → clé i18n
-// match_view manifest. 0/undefined = pas de badge → "-" en cellule.
-const DOMINANCE_LABEL_KEYS: Record<number, MatchViewManifestKey> = {
-  1: 'narrative.dominance.domination',
-  2: 'narrative.dominance.humiliation',
-  3: 'narrative.dominance.remontada',
-  4: 'narrative.dominance.debandade',
-  5: 'narrative.dominance.contre_remontada',
-}
-
-// Mapping flag → SemanticToken frontend (cf. semantic-tokens.ts).
-const DOMINANCE_COLOR_TOKENS: Record<number, SemanticToken> = {
-  1: 'narrative-dominant',
-  2: 'narrative-humiliation',
-  3: 'narrative-remontada',
-  4: 'narrative-debacle',
-  5: 'narrative-contre-remontada',
-}
+// Mappings flag DominanceFlag (Go canonical.DominanceFlag) → clé i18n / token
+// couleur : table CANONIQUE partagée avec le marqueur de la bande de résultats
+// (lib/narrative/dominance). 0/undefined = pas de badge → "-" en cellule.
 
 const NAME_TRUNCATE_MAX = 12
 
@@ -488,9 +475,9 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         meta: { headerTooltip: t('explorer.matches.col_dominance_tooltip') },
         ...NUMERIC_SORT,
         cell: (ctx) => {
-          const flag = ctx.getValue<number | null | undefined>() ?? 0
-          const labelKey = DOMINANCE_LABEL_KEYS[flag]
-          const colorToken = DOMINANCE_COLOR_TOKENS[flag]
+          const flag = asDominance(ctx.getValue<number | null | undefined>())
+          const labelKey = flag ? DOMINANCE_LABEL_KEYS[flag] : undefined
+          const colorToken = flag ? DOMINANCE_COLOR_TOKENS[flag] : undefined
           if (!labelKey || !colorToken) return <span className="text-muted-foreground">-</span>
           const color = tokenCssVar(colorToken)
           return (

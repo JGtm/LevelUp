@@ -45,10 +45,10 @@ type squadWithMembers struct {
 	UsualModes     []string               `json:"usual_modes,omitempty"`
 }
 
-// squadCreatedOutput : 201 — objet Squad créé.
+// squadCreatedOutput : 201 — objet Squad créé (statut posé par
+// humacore.DefaultStatus au montage : source unique, runtime ET document).
 type squadCreatedOutput struct {
-	Status int
-	Body   prestige.Squad
+	Body prestige.Squad
 }
 
 // playerDirectory construit les maps xuid→slug, slug→xuid et xuid→gamertag
@@ -140,7 +140,7 @@ func (h *PrestigeHandler) CreateSquad(ctx context.Context, in *rawBodyInput) (*s
 	if err != nil {
 		return nil, h.serviceError(ctx, err)
 	}
-	return &squadCreatedOutput{Status: http.StatusCreated, Body: sc}, nil
+	return &squadCreatedOutput{Body: sc}, nil
 }
 
 type listMySquadsInput struct {

@@ -176,6 +176,8 @@ export interface SquadText {
     description: string
     axes: { combat: string; survival: string; support: string; score: string; objective: string; impact: string }
     tooltip: { impact: string; combat: string; survival: string; support: string; score: string; objective: string; glossaryLink: string }
+    /** Préfixe de la valeur BRUTE affichée au survol, à côté de la valeur normalisée. */
+    rawLabel: string
   }
   intensity: {
     title: string
@@ -501,6 +503,7 @@ const FR_TEXT: SquadText = {
       objective: 'Points d\'objectif (PersonalScoreAwards).',
       glossaryLink: '→ Glossaire',
     },
+    rawLabel: 'brut',
   },
   intensity: {
     title: 'Intensité',
@@ -809,6 +812,7 @@ const EN_TEXT: SquadText = {
       objective: 'Objective points (PersonalScoreAwards).',
       glossaryLink: '→ Glossary',
     },
+    rawLabel: 'raw',
   },
   intensity: {
     title: 'Intensity',

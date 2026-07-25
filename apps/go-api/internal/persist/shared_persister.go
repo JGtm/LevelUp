@@ -499,6 +499,9 @@ func persistObjectiveStats(ctx context.Context, tx *sql.Tx, rows []ObjectiveStat
 	if len(rows) == 0 {
 		return nil
 	}
+	// 43 colonnes / 43 placeholders / 43 arguments — 2 clés + 11 CTF + 6 Zones +
+	// 6 Oddball + 6 Stockpile + 5 Extraction + 7 VIP. Toute évolution : recompter les
+	// 3 listes (le décalage silencieux d'un cran est l'erreur classique de cet INSERT).
 	const q = `
 		INSERT INTO match_objective_stats (
 			match_id, xuid,
@@ -508,7 +511,13 @@ func persistObjectiveStats(ctx context.Context, tx *sql.Tx, rows []ObjectiveStat
 			zone_captures, zone_secures, zone_offensive_kills, zone_defensive_kills,
 			zone_scoring_ticks, time_in_zones_seconds,
 			kills_as_skull_carrier, skull_carriers_killed, skull_grabs, skull_scoring_ticks,
-			time_as_skull_carrier_seconds, longest_time_as_skull_carrier_seconds
+			time_as_skull_carrier_seconds, longest_time_as_skull_carrier_seconds,
+			kills_as_power_seed_carrier, power_seed_carriers_killed, power_seeds_deposited,
+			power_seeds_stolen, time_as_power_seed_carrier_seconds, time_as_power_seed_driver_seconds,
+			extraction_conversions_completed, extraction_conversions_denied,
+			extraction_initiations_completed, extraction_initiations_denied, successful_extractions,
+			kills_as_vip, vip_kills, vip_assists, times_selected_as_vip,
+			max_killing_spree_as_vip, time_as_vip_seconds, longest_time_as_vip_seconds
 		) VALUES (
 			?, ?,
 			?, ?, ?, ?, ?,
@@ -517,7 +526,13 @@ func persistObjectiveStats(ctx context.Context, tx *sql.Tx, rows []ObjectiveStat
 			?, ?, ?, ?,
 			?, ?,
 			?, ?, ?, ?,
-			?, ?
+			?, ?,
+			?, ?, ?,
+			?, ?, ?,
+			?, ?,
+			?, ?, ?,
+			?, ?, ?, ?,
+			?, ?, ?
 		)`
 	for _, r := range rows {
 		_, err := tx.ExecContext(ctx, q,
@@ -529,6 +544,12 @@ func persistObjectiveStats(ctx context.Context, tx *sql.Tx, rows []ObjectiveStat
 			r.ZoneScoringTicks, r.TimeInZonesSeconds,
 			r.KillsAsSkullCarrier, r.SkullCarriersKilled, r.SkullGrabs, r.SkullScoringTicks,
 			r.TimeAsSkullCarrierSeconds, r.LongestTimeAsSkullCarrierSeconds,
+			r.KillsAsPowerSeedCarrier, r.PowerSeedCarriersKilled, r.PowerSeedsDeposited,
+			r.PowerSeedsStolen, r.TimeAsPowerSeedCarrierSeconds, r.TimeAsPowerSeedDriverSeconds,
+			r.ExtractionConversionsCompleted, r.ExtractionConversionsDenied,
+			r.ExtractionInitiationsCompleted, r.ExtractionInitiationsDenied, r.SuccessfulExtractions,
+			r.KillsAsVip, r.VipKills, r.VipAssists, r.TimesSelectedAsVip,
+			r.MaxKillingSpreeAsVip, r.TimeAsVipSeconds, r.LongestTimeAsVipSeconds,
 		)
 		if err != nil {
 			return fmt.Errorf("persist: INSERT match_objective_stats %s/%s: %w", r.MatchID, r.XUID, err)

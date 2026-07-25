@@ -375,6 +375,76 @@ func TestService_RefreshSquadPool_NoProfileNoBias(t *testing.T) {
 	}
 }
 
+// ─── Pool d'escouade : filtre eval_type (V721-08.2) ───
+
+// TestService_RefreshSquadPool_ExcludesThresholdTemplates : l'évaluation
+// d'escouade est CUMULATIVE pour tous les défis en V1 (AggregateSquadProgress —
+// squad_progress.go). Un template `eval_type=threshold` proposé au pool
+// afficherait une règle (« atteindre X sur un match ») que le back n'applique
+// pas ; il ne doit plus apparaître dans le pool.
+func TestService_RefreshSquadPool_ExcludesThresholdTemplates(t *testing.T) {
+	svc, _, _, _, sqRepo, tplRepo := buildFullService()
+	sqRepo.members = []SquadMember{{SquadID: "sq1", Xuid: xA, UserID: "alice"}}
+	tplRepo.templates = []Template{
+		{ID: "cum1", Metric: "kills_total", Cadence: CadenceWeekly, EvalType: EvalCumulative},
+		{ID: "thr1", Metric: "kills_total", Cadence: CadenceWeekly, EvalType: EvalThreshold},
+		{ID: "cum2", Metric: "assists", Cadence: CadenceWeekly, EvalType: EvalCumulative},
+		{ID: "thr2", Metric: "assists", Cadence: CadenceWeekly, EvalType: EvalThreshold},
+	}
+	pool, err := svc.RefreshSquadPool(context.Background(), "sq1", "halo_infinite", "alice")
+	if err != nil {
+		t.Fatalf("RefreshSquadPool: %v", err)
+	}
+	if len(pool) == 0 {
+		t.Fatal("pool vide alors que 2 templates cumulatifs sont éligibles")
+	}
+	for _, tpl := range pool {
+		if tpl.EvalType == EvalThreshold {
+			t.Errorf("template threshold %q proposé au pool d'escouade (évalué cumulativement en V1)", tpl.ID)
+		}
+	}
+}
+
+// TestService_RefreshSquadPool_AllThresholdDegradesToEmptyPool : si le filtre
+// eval_type vide le pool, la dégradation gracieuse existante reste valable
+// (pool vide + log structuré, donc 200 côté handler), jamais une erreur/500.
+func TestService_RefreshSquadPool_AllThresholdDegradesToEmptyPool(t *testing.T) {
+	svc, _, _, _, sqRepo, tplRepo := buildFullService()
+	sqRepo.members = []SquadMember{{SquadID: "sq1", Xuid: xA, UserID: "alice"}}
+	tplRepo.templates = []Template{
+		{ID: "thr1", Metric: "kills_total", Cadence: CadenceWeekly, EvalType: EvalThreshold},
+		{ID: "thr2", Metric: "assists", Cadence: CadenceWeekly, EvalType: EvalThreshold},
+		{ID: "thr3", Metric: "deaths_total", Cadence: CadenceWeekly, EvalType: EvalThreshold},
+	}
+	pool, err := svc.RefreshSquadPool(context.Background(), "sq1", "halo_infinite", "alice")
+	if err != nil {
+		t.Fatalf("catalogue 100 pourcent threshold doit dégrader en pool vide, pas échouer: %v", err)
+	}
+	if len(pool) != 0 {
+		t.Errorf("pool doit être vide (aucun template évaluable), got %d", len(pool))
+	}
+}
+
+// TestSquadEligibleTemplates_CountsDiscarded : le compteur alimente le log
+// structuré (aucun écart silencieux) et le filtre préserve l'ordre d'entrée.
+func TestSquadEligibleTemplates_CountsDiscarded(t *testing.T) {
+	in := []Template{
+		{ID: "a", EvalType: EvalCumulative},
+		{ID: "b", EvalType: EvalThreshold},
+		{ID: "c", EvalType: EvalCumulative},
+	}
+	eligible, discarded := squadEligibleTemplates(in)
+	if discarded != 1 {
+		t.Errorf("discarded = %d, want 1", discarded)
+	}
+	if len(eligible) != 2 || eligible[0].ID != "a" || eligible[1].ID != "c" {
+		t.Errorf("eligible = %+v, want [a c] dans l'ordre", eligible)
+	}
+	if _, d := squadEligibleTemplates(nil); d != 0 {
+		t.Errorf("catalogue nil: discarded = %d, want 0", d)
+	}
+}
+
 func TestService_SquadOrientation_WeakestAxis(t *testing.T) {
 	svc, _, _, _, sqRepo, _ := buildFullService()
 	sqRepo.members = []SquadMember{{SquadID: "sq1", Xuid: xA, UserID: "alice"}}

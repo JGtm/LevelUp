@@ -1,18 +1,11 @@
 services:
   levelup:
+    # Aucun build-arg : la version n'est plus une entrée de build (V721-15, cf. le
+    # commentaire du Dockerfile). Les deux services partagent donc exactement la
+    # même couche go-builder — une seule compilation CGO, et un changement de
+    # version ne recompile plus rien. Elle est injectée au runtime ci-dessous.
     build:
       context: .
-      args:
-        # Version BAKÉE dans le binaire via ldflags (-X main.version, cf. Dockerfile
-        # ARG VERSION). Interpolée depuis le shell de `docker compose build` :
-        # scripts/deploy.sh exporte le dernier tag semver AVANT le build. Sans ce
-        # build-arg, le binaire portait toujours "dev" et la notif « nouvelle version »
-        # (in-app app_release + Discord) ne partait jamais dès que l'env runtime
-        # LEVELUP_APP_VERSION était perdu (recreate demo-regen sans la variable →
-        # AppVersion="dev" aux deploy v7.0.0/v7.1.0). Bakée au build, la version
-        # survit à toute perte de l'env runtime (fallback main.go: cfg.AppVersion=version).
-        # Défaut "dev" (build local sans tag) => notifs de version gardées OFF.
-        VERSION: ${LEVELUP_APP_VERSION:-dev}
     ports:
       # API FastAPI exposée en local uniquement — nginx fait le reverse proxy en prod
       - "127.0.0.1:8000:8000"
@@ -69,15 +62,12 @@ services:
       retries: 3
 
   levelup-demo:
+    # Aucun build-arg — voir le service levelup. La divergence des couches go-builder
+    # (qui avait provoqué deux compilations CGO simultanées et l'épuisement mémoire
+    # du VPS le 2026-07-25) est désormais impossible par construction, et non plus
+    # évitée par alignement manuel de deux valeurs.
     build:
       context: .
-      args:
-        # MÊME build-arg VERSION que le service levelup — OBLIGATOIRE : avec des args
-        # différents (prod=v7.x.y, demo=dev) les couches go-builder divergent et
-        # BuildKit lance DEUX builds CGO complets EN PARALLÈLE (2 vCPU/2 Go → OOM,
-        # VPS gelé, incident 2026-07-25 deploy v7.2.0). Args identiques = couches
-        # dédupliquées = UN SEUL build Go pour les deux images.
-        VERSION: ${LEVELUP_APP_VERSION:-dev}
     ports:
       - "127.0.0.1:8001:8000"
     environment:
@@ -85,6 +75,11 @@ services:
       - LEVELUP_DATA=/app/data
       - LEVELUP_WEB_DIST=/app/apps/web/dist
       - LEVELUP_DEMO_MODE=true
+      # Version affichée par la démo. Auparavant elle venait du binaire baké et
+      # valait "dev" (aucun build-arg n'ayant jamais été passé à ce service en
+      # pratique) ; la démo tourne pourtant exactement le même code que la prod.
+      # Lue depuis .env, que scripts/deploy.sh réécrit à chaque déploiement.
+      - LEVELUP_APP_VERSION=${LEVELUP_APP_VERSION:-dev}
       # Origines CORS/CSRF autorisées : sans ça, défaut localhost → tous les POST
       # (timeseries, teammates, squad, media, filters/resolve) sont rejetés en 403
       # csrf_rejected pour l'origine https://demo.lvelup.info et les pages ne rendent pas.
