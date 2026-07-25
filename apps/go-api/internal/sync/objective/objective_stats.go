@@ -1,12 +1,16 @@
-// Package sync — objective_stats.go : extraction des stats objectifs par joueur
+// Package objective — objective_stats.go : extraction des stats objectifs par joueur
 // (modes CTF / Zones (Strongholds+KOTH) / Oddball) depuis le payload GetMatchStats
 // Halo Infinite vers shared.match_objective_stats.
+//
+// Sous-package cohésif extrait de la racine internal/sync/ (ratchet god-package K3c) :
+// le seul point d'entrée est ExtractObjectiveStats, consommé par engine_fetch.go et
+// engine_v2bridge.go via objective.ExtractObjectiveStats.
 //
 // Les données sont DÉJÀ dans le payload participants (Players[].PlayerTeamStats[0].
 // Stats.<BlocMode>), même parent que CoreStats — aucun appel réseau supplémentaire.
 // Pur (aucune I/O). Calqué sur ExtractPveStats (pve.go). Colonnes verrouillées sur
 // payload réel (P0, PLAN_V72_OBJECTIVE_STATS.md § « P0 — Mapping figé »).
-package sync
+package objective
 
 import (
 	"regexp"

@@ -1,4 +1,4 @@
-package sync
+package objective
 
 // objective_stats_test.go — tests golden purs de ExtractObjectiveStats sur les fixtures
 // P0 (payloads réels anonymisés, PLAN_V72_OBJECTIVE_STATS). Vérifie : mapping exact des
