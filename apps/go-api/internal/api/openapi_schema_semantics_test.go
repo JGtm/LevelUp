@@ -22,9 +22,11 @@
 //   - descriptions de SCHÉMA RACINE (Huma n'a pas de tag type-level ; seul
 //     SchemaProvider/SchemaTransformer, hors périmètre tag) : cf. rootDescAllowlist.
 //   - schémas SANS type Go huma-généré (chi-brut / décodage manuel RawBody /
-//     champ Go scalaire) : ApiErrorSchema (→ H4), FreshnessInfo (Go *string),
-//     SortSpec, MatchHistoryExportRequest, PlotlyFigurePayload (legacy Python),
+//     champ Go scalaire) : FreshnessInfo (Go *string), SortSpec,
+//     MatchHistoryExportRequest, PlotlyFigurePayload (legacy Python),
 //     BackupStatusResponse/BackupRunResult/IntegrityCheckResult (backup chi-brut).
+//     (ApiErrorSchema : RÉSOLU en H4 — fusionné dans le type Go huma-généré
+//     ApiError, désormais riche : code/message/retryable/details/field_errors.)
 //   - schémas d'ENTRÉE décodés à la main (var req domain.X) donc jamais générés
 //     par Huma : CompareRequest, MatchHistoryQueryRequest, PaginationRequest,
 //     MediaPageRequest, SessionContextRequest, ExplorerMatchesQueryRequest.
@@ -34,7 +36,9 @@
 //     sur le type Go réel ; le nom yaml diverge (H6/H7).
 //   - defaults triviaux (valeur zéro : bool false / int 0) NON posés (no-op).
 //   - sémantique de PARAMÈTRE (enum/default de query/path) et exemples de RÉPONSE
-//     (5 exemples d'erreur sur ApiErrorSchema) : hors schéma.champ, → H6.
+//     (5 exemples d'erreur, désormais sur l'ApiError unifié H4, portés au niveau
+//     components.responses) : hors schéma.champ → restent au fragment manuel H6.
+//     L'exemple de CHAMP code=player_not_found est, lui, porté en tag Huma (H4).
 //   - 16 request bodies RawBody : → fragment manuel.
 
 package api_test

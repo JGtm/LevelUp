@@ -169,7 +169,11 @@ export interface DeviceFlowStartResponse {
 
 export type DeviceFlowStatus = 'pending' | 'authorized' | 'provisioned' | 'failed' | 'expired'
 
-export type ApiErrorSchema = components['schemas']['ApiErrorSchema']
+// Le backend a unifié le schéma d'erreur riche « ApiErrorSchema » avec l'ApiError
+// auto-émis (Huma H4/H5) : le schéma OpenAPI s'appelle désormais « ApiError ». On
+// conserve l'alias local ApiErrorSchema (surface stable pour les consommateurs) en
+// le repointant vers le schéma renommé — mêmes champs (code/message/retryable/…).
+export type ApiErrorSchema = components['schemas']['ApiError']
 
 export type DeviceFlowStatusResponse = components['schemas']['DeviceFlowStatusResponse']
 
@@ -686,7 +690,10 @@ export interface ExplorerMatchRow {
   /** Proba de victoire pré-match de l'équipe (LUSR v2, 0..1). Porteur de données
    *  pour une colonne « Pronostic » INJECTÉE par la vue session. Undefined côté Explorer. */
   expected_win_prob?: number | null
-  /** Progression placement (X). Si défini avec placement_total, l'UI affiche "X/Y" dans la cellule Rang à la place du skill_tier_label. */
+  /** Progression placement (X). Si défini avec placement_total, l'UI affiche "X/Y" dans la
+   *  cellule Rang à la place du skill_tier_label, ET un badge « En placement » (V72-32,
+   *  cf. ExplorerMatchesTable.placement.tsx) dans les cellules Perf/ΔPerf/Note à la place
+   *  du "-" quand perf_score/delta_perf/rating_type sont nuls pour la même raison. */
   placement_done?: number | null
   /** Seuil placement (Y). CSR : 5 ou 10 selon saison. LUSR : 10. */
   placement_total?: number | null

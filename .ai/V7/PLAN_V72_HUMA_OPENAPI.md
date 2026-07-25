@@ -157,9 +157,64 @@ passage »). NB : chemins Go préfixés `apps/go-api/`.
       hors inventaire**). Gates : gofmt -l vide, `go build ./...`, `go vet ./...`,
       `go test ./internal/api/...`, `go test ./...` (118 pkg ok, 0 fail), `make go-api-lint`
       (0 issue) — TOUS verts. Aucun commit (superviseur). Inventaire fermé ci-dessous. [x]
-- [ ] **H4 — Modèle d'erreur unifié (M).** Fusion ApiErrorSchema/ApiError sur
-      `humacore.apiError` enrichi. Gate : call-sites NewError OK.
-- [ ] **H5 — Migrer groups.go vers Huma (S).** 7 routes writeJSON → typées.
+- [x] **H4 — Modèle d'erreur unifié (M).** FAIT (2026-07-25, agent Opus). Cartographie :
+      `humacore.apiError` (internal/api/humacore/humacore.go) = SEUL type d'erreur, SEUL
+      constructeur `NewError(status, code, message)` (458 occurrences `NewError(` sur 81
+      fichiers, tous `humacore.NewError` au contrat {code,message,retryable}, signature
+      INCHANGÉE). Deux schémas yaml coexistaient : `ApiErrorSchema` (riche, manuel, 7 `$ref`)
+      et `ApiError` (auto-émis par Huma depuis `apiError`, pauvre, 0 `$ref`). **Champs
+      unifiés** : `apiError` enrichi de `Details any` + `FieldErrors []FieldError` (nouveau
+      type exporté `FieldError{Field,Message,Code}`), tous deux `omitempty` → **contrat
+      runtime {code,message,retryable} INCHANGÉ** (nil absent du corps ; `TestNewError_*`
+      verts sans modif). Tags Huma posés (style H3) : `code` doc+example `player_not_found`,
+      `message` doc, `retryable` doc, `details` doc, `field_errors` doc. **Compat front
+      VÉRIFIÉE** : `apps/web/src/lib/api/client.ts` lit déjà `code/message/retryable/details/
+      field_errors` (interface ApiError + FieldError présentes) → `errorBody.details ?? …`
+      tolère l'absence ; AUCUN changement de contrat runtime. **YAML convergé** (édition
+      ciblée) : les 7 `$ref` ApiErrorSchema → `ApiError` ; `ApiError` réécrit fidèle au riche
+      (dérivé du type Go via emit Huma : code/message/retryable/details/field_errors→FieldError,
+      required [code,message,retryable]) ; `FieldError` ajouté (MISSING résorbé) ;
+      `ApiErrorSchema` + `FieldErrorSchema` supprimés (0 réf orpheline). Drift : MISSING=0
+      (gate) ; `ApiError` reste DIVERGENT non-gaté (représentation `example`/`examples`,
+      `details:any` vs `oneOf` — non exprimable en tag, cf. inventaire). Semantics H3 Partie B :
+      `ApiError` désormais COMMUN doc∩yaml, parité code(desc+example)/message(desc)/details(desc)/
+      field_errors(desc) VÉRIFIÉE ; `rootDescAllowlist` INCHANGÉE (5 entrées, anti-caducité OK) ;
+      inventaire du test mis à jour (ApiErrorSchema résolu). **5 exemples d'erreur (item 7
+      inventaire)** : exemples de RÉPONSE (components.responses BadRequest/Unauthorized/NotFound/
+      InternalError/Conflict), NON exprimables en tag struct (full-object, 5 distincts) →
+      restent au fragment manuel H6 ; SEUL l'exemple de CHAMP `code=player_not_found` est porté
+      en tag. Gates : gofmt -l vide, `go build ./...` (0), `go vet ./...` (0), `go test
+      ./internal/api/...` (ok : drift/semantics/metadata/contract/fidélité), `go test ./...`
+      (117 ok, 0 fail), `make go-api-lint` (0 issue) — TOUS verts. Périmètre : humacore.go,
+      openapi.yaml (édition ciblée), openapi_schema_semantics_test.go (commentaire inventaire).
+      Aucun commit (superviseur). [x]
+- [x] **H5 — Migrer groups.go vers Huma (S).** FAIT (2026-07-25, agent Opus). Les 7 routes
+      groups (`server_apiv1.go` : `r.Get/Post/Patch/Delete("/groups...")` writeJSON manuel)
+      passent en huma typé : structs input/output (`groupIDInput`, `groupBodyInput`,
+      `groupIDBodyInput`, `groupMemberInput` ; sorties `groupsListOutput`/`groupCreatedOutput`
+      (201)/`groupOutput` (200)/`inviteCreatedOutput` (201)/`groupsNoContent` (204)), corps via
+      `RawBody` + décodage maison (préserve le 400 {invalid_body}, PAS le 422 Huma) ; erreurs
+      via le modèle UNIFIÉ H4 (`humacore.NewError`). Enregistrement via le document PARTAGÉ :
+      `groupsHandler.Mount(r, apiOpt)` dans le groupe middleware-only RequireAuth (docPrefix
+      `/api/v1`, comme les voisins settings/setup/sync). `humacore.Op` en PARITÉ avec le yaml
+      (operationId listMyGroups/createGroup/renameGroup/deleteGroup/createGroupInvite/leaveGroup/
+      removeGroupMember, tag `groups`) ; `MarkRequestBodyOptional` sur POST /groups/{id}/invites
+      (corps optionnel). **MÊME contrat JSON runtime** : les 5 tests groups passent avec ZÉRO
+      changement d'assertion (harness `groups_test.go` : `h.Mount(r)` + URLs `/groups` sans
+      trailing-slash — Content-Type NON requis pour RawBody ici). openapi.yaml : les 7 routes
+      étaient déjà documentées (parité vérifiée) ; Huma dérive désormais les schémas de sortie
+      `Group` + `GroupMember` (ajoutés à components.schemas, MISSING résorbé). Test de fidélité
+      H1 : les 7 routes comptent MAINTENANT comme Huma (exclusion chi-brut `/api/v1/groups`
+      RETIRÉE de `isKnownChiBrut`) — 173 ops Huma fusionnées (166+7), 167 paths (162+5).
+      Metadata H2 : 173 ops, metadata OK=173, parité 163 (0 échec). Gates : gofmt -l vide,
+      `go build ./...` (0), `go vet ./...` (0), `go test ./internal/api/...` (ok : contract_test
+      + TestSharedOpenAPIDocCoversAllHumaRoutes + openapi_operation_metadata_test + drift +
+      semantics), `go test ./...` (green), `make go-api-lint` : 0 issue SUR MES FICHIERS (les
+      issues résiduelles goconst/gofmt/staticcheck/unparam sont dans les fichiers d'un agent
+      parallèle — halo_5/medal_category*, scheduler/auto_sync_notify* — hors périmètre H5, non
+      corrigées). Périmètre : handlers/groups.go (réécrit), handlers/groups_test.go (harness),
+      server_apiv1.go (Mount), shared_openapi_doc_test.go (exclusion retirée), openapi.yaml
+      (Group/GroupMember). Aucun commit (superviseur). [x]
 - [ ] **H6 — Pipeline génération + golden (M). NE DÉMARRE PAS tant que H2, H3, H4, H5
       ne sont pas CLOS** (tous items statués, gates verts) — sinon le golden fige une
       spec appauvrie. `api.OpenAPI().YAML()` + fusion fragment manuel VERSIONNÉ
@@ -219,8 +274,12 @@ racine) ; le reste n'apparaît pas dans le doc généré (schémas non-Huma) don
    (mécanisme identifié) OU fragment manuel H6.
 2. **Schémas SANS type Go Huma-généré** (chi-brut / champ Go scalaire / legacy) — leur
    schéma yaml est écrit à la main, Huma ne le régénère pas → **fragment manuel H6** :
-   - `ApiErrorSchema` (code desc+example, message desc, retryable default) → **H4** (modèle
-     d'erreur unifié) + le double schéma `ApiErrorSchema`/`ApiError`.
+   - `ApiErrorSchema` (code desc+example, message desc, retryable default) → **RÉSOLU H4** :
+     fusionné dans le type Go huma-généré `ApiError` (enrichi details/field_errors,
+     code desc+example + message desc portés en tags) ; `ApiErrorSchema`/`FieldErrorSchema`
+     supprimés, 7 `$ref` repointés. `retryable default:false` = trivial (zéro), NON posé
+     (cohérent item 5). `details:oneOf[object,array]` non exprimable en tag (`any` → `{}`)
+     → seul reliquat au fragment/SchemaTransformer H6 si l'on veut restaurer le `oneOf`.
    - `FreshnessInfo` (source enum+default, sync_status enum+default) — le champ Go est
      `*string` / `interface{}`, pas un objet.
    - `SortSpec` (direction enum+default), `MatchHistoryExportRequest` (format default) —
@@ -253,9 +312,11 @@ racine) ; le reste n'apparaît pas dans le doc généré (schémas non-Huma) don
    (proposals status), `enum: [xbox,steam]` (watcher provider — sur chemin yaml OBSOLÈTE, cf.
    Découvertes H2). **Enums d'input NON posés par prudence** : les 3 ci-dessus (validation
    422 potentielle + exhaustivité non garantie côté route).
-7. **Exemples de RÉPONSE** (5 exemples d'erreur `ApiErrorSchema` dans `components.responses`)
-   → **H4** / fragment manuel : bad_request, auth_required, player_not_found, internal_error,
-   last_active_title.
+7. **Exemples de RÉPONSE** (5 exemples d'erreur dans `components.responses`, désormais sur
+   l'`ApiError` unifié H4) : bad_request, auth_required, player_not_found, internal_error,
+   last_active_title. Full-object, 5 distincts, NON exprimables en tag struct → **restent au
+   fragment manuel H6** (components.responses préservé). L'exemple de CHAMP
+   `code=player_not_found` est, lui, porté en tag Huma (H4).
 8. **16 request bodies `RawBody`** (contrat d'erreur 400 historique, non dérivable) →
    fragment manuel H6 (déjà acté dans l'état des lieux).
 
@@ -266,6 +327,18 @@ racine) ; le reste n'apparaît pas dans le doc généré (schémas non-Huma) don
   « document partagé » (pas instance unique), comptages corrigés (71 Mount), inventaire
   fermé H3, précédence + golden du fragment H6, garde sémantique generated.ts H7,
   outillage H0 tranché (kin-openapi), blindage plan-execution.
+- 2026-07-25 : **H4 + H5 EXÉCUTÉS (agent Opus).** H4 : modèle d'erreur UNIFIÉ — `humacore.apiError`
+  enrichi (`Details any` + `FieldErrors []FieldError`, omitempty → contrat runtime {code,message,
+  retryable} inchangé, tags doc/example H3-style) ; yaml convergé (7 `$ref` ApiErrorSchema →
+  `ApiError` réécrit fidèle au riche via emit Huma, `FieldError` ajouté, ApiErrorSchema/
+  FieldErrorSchema supprimés) ; compat front `client.ts` vérifiée (lit déjà details/field_errors) ;
+  5 exemples d'erreur = response-level → restent fragment H6 (seul l'exemple champ
+  code=player_not_found porté en tag). H5 : 7 routes groups.go writeJSON → Huma typé
+  (Mount + humacore.Op parité yaml + RawBody + modèle d'erreur H4), schémas Group/GroupMember
+  dérivés ajoutés au yaml, exclusion chi-brut retirée (fidélité H1 : 173 ops/167 paths). Contrat
+  JSON runtime IDENTIQUE (5 tests groups, 0 changement d'assertion). Gates : gofmt/build/vet/
+  `go test ./internal/api/...`/`go test ./...` verts ; lint 0 issue sur mes fichiers (résidus =
+  fichiers d'un agent parallèle V72-31, hors périmètre, notés non corrigés). Aucun commit. H6 = suivant.
 - 2026-07-25 : **H3 EXÉCUTÉ (agent Opus).** Sémantique de schéma.champ portée en tags
       Huma sur 10 types Go DTO : **19 descriptions + 11 enums + 5 defaults** (bootstrap/auth/
       engagement_score/media_audio_config/settings/admin_monitoring/explorer/career). Constat

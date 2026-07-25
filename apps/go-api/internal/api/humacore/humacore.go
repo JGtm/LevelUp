@@ -152,15 +152,35 @@ var JSONFormat = huma.Format{
 // Modèle d'erreur (identique à handlers.writeError).
 // ---------------------------------------------------------------------------
 
+// FieldError décrit une erreur de validation ciblant un champ précis du corps de
+// requête. Porté par apiError.FieldErrors (tableau optionnel). Le contrat runtime
+// actuel n'en émet pas encore ; le type UNIFIE le schéma OpenAPI (H4 : fusion
+// ApiErrorSchema/ApiError) et l'interface front (apps/web/src/lib/api/client.ts
+// FieldError : {field, message, code?}).
+type FieldError struct {
+	Field   string `json:"field" doc:"Nom du champ en erreur"`
+	Message string `json:"message" doc:"Message d'erreur lisible pour ce champ"`
+	Code    string `json:"code,omitempty" doc:"Code machine optionnel de l'erreur de champ"`
+}
+
 // apiError reproduit le contrat d'erreur de handlers.writeError : corps JSON
 // {code, message, retryable}, message générique « internal error » sur 5xx.
 // Implémente huma.StatusError → Huma le sérialise tel quel (erreurs handler ET
 // erreurs de validation Huma via NewError override).
+//
+// Details et FieldErrors sont OPTIONNELS (omitempty → absents du corps quand nil,
+// contrat runtime {code, message, retryable} inchangé) ; ils UNIFIENT le schéma
+// OpenAPI d'erreur (H4 : un seul type porté par Huma, fidèle à l'ancien
+// ApiErrorSchema riche) et l'interface front (client.ts ApiError : details?,
+// field_errors?). Aucun call-site NewError ne les peuple aujourd'hui — ils sont
+// disponibles pour un enrichissement ultérieur sans re-diverger le contrat.
 type apiError struct {
-	status    int
-	Code      string `json:"code"`
-	Message   string `json:"message"`
-	Retryable bool   `json:"retryable"`
+	status      int
+	Code        string       `json:"code" doc:"Code d'erreur stable (snake_case)" example:"player_not_found"`
+	Message     string       `json:"message" doc:"Message humain localisé"`
+	Retryable   bool         `json:"retryable" doc:"Vrai si l'appelant peut réessayer (5xx / indisponibilité transitoire)"`
+	Details     any          `json:"details,omitempty" doc:"Contexte structuré optionnel (objet ou tableau)"`
+	FieldErrors []FieldError `json:"field_errors,omitempty" doc:"Erreurs de validation par champ (corps de requête)"`
 }
 
 func (e *apiError) Error() string  { return e.Message }

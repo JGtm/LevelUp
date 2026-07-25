@@ -35,15 +35,10 @@ func newGroupsRouter(t *testing.T) (*chi.Mux, *session.Store, *groupstore.GroupS
 
 	r := chi.NewRouter()
 	r.Use(middleware.WithSession(sessStore, middleware.SecureCookiePolicy{}))
-	r.Route("/groups", func(r chi.Router) {
-		r.Get("/", h.ListMyGroups)
-		r.Post("/", h.CreateGroup)
-		r.Patch("/{id}", h.RenameGroup)
-		r.Delete("/{id}", h.DeleteGroup)
-		r.Post("/{id}/invites", h.GenerateInvite)
-		r.Delete("/{id}/members/me", h.LeaveGroup)
-		r.Delete("/{id}/members/{xuid}", h.RemoveMember)
-	})
+	// Routes montées via Huma (V72-01 / H5). Le handler fait sa propre garde
+	// d'identité (401) + ownership (403) ; RequireAuth n'est PAS branché ici (testé
+	// ailleurs). Chemins ABSOLUS /groups (plus de trailing slash du r.Route/"/" chi).
+	h.Mount(r)
 	return r, sessStore, groups, invites
 }
 
@@ -64,7 +59,7 @@ func TestGroups_CreateAndList(t *testing.T) {
 	cookie := authCookie(t, sessStore, "alice-x", "Alice")
 
 	// Create.
-	req := httptest.NewRequest(http.MethodPost, "/groups/", strings.NewReader(`{"name":"Famille"}`))
+	req := httptest.NewRequest(http.MethodPost, "/groups", strings.NewReader(`{"name":"Famille"}`))
 	req.AddCookie(cookie)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -80,7 +75,7 @@ func TestGroups_CreateAndList(t *testing.T) {
 	}
 
 	// List → contient le groupe.
-	lreq := httptest.NewRequest(http.MethodGet, "/groups/", nil)
+	lreq := httptest.NewRequest(http.MethodGet, "/groups", nil)
 	lreq.AddCookie(cookie)
 	lw := httptest.NewRecorder()
 	r.ServeHTTP(lw, lreq)
@@ -99,7 +94,7 @@ func TestGroups_CreateAndList(t *testing.T) {
 func TestGroups_Unauthenticated_401(t *testing.T) {
 	r, _, _, _ := newGroupsRouter(t)
 	// Aucun cookie → session anonyme (pas d'identité) → 401.
-	req := httptest.NewRequest(http.MethodPost, "/groups/", strings.NewReader(`{"name":"X"}`))
+	req := httptest.NewRequest(http.MethodPost, "/groups", strings.NewReader(`{"name":"X"}`))
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusUnauthorized {
@@ -113,7 +108,7 @@ func TestGroups_InviteMemberVsStranger(t *testing.T) {
 	stranger := authCookie(t, sessStore, "bob-x", "Bob")
 
 	// Alice crée un groupe.
-	creq := httptest.NewRequest(http.MethodPost, "/groups/", strings.NewReader(`{"name":"Fam"}`))
+	creq := httptest.NewRequest(http.MethodPost, "/groups", strings.NewReader(`{"name":"Fam"}`))
 	creq.AddCookie(owner)
 	cw := httptest.NewRecorder()
 	r.ServeHTTP(cw, creq)
@@ -153,7 +148,7 @@ func TestGroups_OwnerOnlyDelete(t *testing.T) {
 	owner := authCookie(t, sessStore, "alice-x", "Alice")
 	stranger := authCookie(t, sessStore, "bob-x", "Bob")
 
-	creq := httptest.NewRequest(http.MethodPost, "/groups/", strings.NewReader(`{"name":"Fam"}`))
+	creq := httptest.NewRequest(http.MethodPost, "/groups", strings.NewReader(`{"name":"Fam"}`))
 	creq.AddCookie(owner)
 	cw := httptest.NewRecorder()
 	r.ServeHTTP(cw, creq)
@@ -185,7 +180,7 @@ func TestGroups_RemoveAndLeaveMember(t *testing.T) {
 	bob := authCookie(t, sessStore, "bob-x", "Bob")
 
 	// Alice crée un groupe, Bob en devient membre (ajout direct via le store).
-	creq := httptest.NewRequest(http.MethodPost, "/groups/", strings.NewReader(`{"name":"Fam"}`))
+	creq := httptest.NewRequest(http.MethodPost, "/groups", strings.NewReader(`{"name":"Fam"}`))
 	creq.AddCookie(owner)
 	cw := httptest.NewRecorder()
 	r.ServeHTTP(cw, creq)

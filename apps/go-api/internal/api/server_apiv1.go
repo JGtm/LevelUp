@@ -335,13 +335,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	groupsHandler := handlers.NewGroupsHandler(groupStore, invites, users)
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
-		r.Get("/groups", groupsHandler.ListMyGroups)
-		r.Post("/groups", groupsHandler.CreateGroup)
-		r.Patch("/groups/{id}", groupsHandler.RenameGroup)
-		r.Delete("/groups/{id}", groupsHandler.DeleteGroup)
-		r.Post("/groups/{id}/invites", groupsHandler.GenerateInvite)
-		r.Delete("/groups/{id}/members/me", groupsHandler.LeaveGroup)
-		r.Delete("/groups/{id}/members/{xuid}", groupsHandler.RemoveMember)
+		groupsHandler.Mount(r, apiOpt) // 7 routes /groups migrées vers Huma (V72-01 / H5)
 	})
 
 	// Admin : gestion utilisateurs + invitations (protégé par RequireAuth + RequireAdmin).
@@ -1223,10 +1217,12 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	// médailles), extraits en helper (K2a). Best-effort : nil/vide → HINF inchangé.
 	wireHalo5AssetAdapters(cfg, titleResolver, h5Maps, h5Weapons, h5Medals)
 
-	// Taxonomie des médailles Halo Infinite (catégorie/super-section SpartanRecord) :
-	// enregistrée sous son slug dans le registre du service. Les autres titres (Halo 5,
-	// futurs) utilisent la baseline medal_type. Data-driven — jamais de gating par slug.
+	// Taxonomie des médailles par titre (catégorie/super-section fines) : chaque titre
+	// enregistre sa table sous son slug dans le registre du service. Halo Infinite via
+	// SpartanRecord, Halo 5 via le référentiel wiki halo.fr. Les titres non enregistrés
+	// utilisent la baseline medal_type. Data-driven — jamais de gating par slug.
 	service.RegisterMedalCategoryResolver(halo_games.TitleSlug, halo_games.MedalCategoryResolver{})
+	service.RegisterMedalCategoryResolver(halo5.TitleSlug, halo5.MedalCategoryResolver{})
 
 	// Fichiers statiques (images maps, médailles, armes…)
 	staticDir := filepath.Join(cfg.RepoRoot, "static")
