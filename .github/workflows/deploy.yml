@@ -61,6 +61,9 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: deploy
           key: ${{ secrets.VPS_SSH_KEY }}
+          # Défaut appleboy = 10m : tué le build v7.2.0 en plein go build (2 vCPU,
+          # 3 binaires CGO à compiler après invalidation du layer source). 40m.
+          command_timeout: 40m
           script: |
             git config --global --add safe.directory /opt/levelup
             cd /opt/levelup
@@ -79,6 +82,8 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: deploy
           key: ${{ secrets.VPS_SSH_KEY }}
+          # Même garde que le job deploy : build image demo possible (piège n°4).
+          command_timeout: 40m
           script: |
             set -euo pipefail
             cd /opt/levelup

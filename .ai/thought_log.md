@@ -1,3 +1,20 @@
+## [2026-07-25] Incident deploy v7.2.0 — timeout SSH 10 min + tag absent du VPS
+
+**Statut** : Résolu (correctif poussé dans ce commit). Le job « Deploy lvelup.info » du
+push v7.2.0 a été tué à ~10 min EN PLEIN go build : `appleboy/ssh-action` sans
+`command_timeout` = défaut 10 min, jamais atteint avant (build v7.2 plus long : gros diff
+= layer source invalidé + 3e binaire backfill_objective_stats ajouté à l'image). Le build
+BuildKit a SURVÉCU au kill du client côté démon → VPS 2 vCPU/2 Go saturé (SSH, prod et
+demo injoignables) → reboot IONOS par l'utilisateur. **Correctif : `command_timeout: 40m`
+sur les 2 jobs SSH de deploy.yml.** Anomalie n°2 : version bakée v7.1.0 au lieu de
+v7.2.0 — le `git reset --hard` du deploy remplace deploy.sh PENDANT que bash exécute
+l'ancien inode, donc le run tué exécutait l'ANCIEN deploy.sh (sans le `git fetch --tags`
+explicite ajouté en V72-31) et l'auto-follow de `git fetch origin main` n'a pas ramené le
+tag. Résolu : fetch --tags manuel (sudo -u deploy — jamais root, piège n°6), tag v7.2.0
+présent, deploy.sh à jour sur disque ; les prochains runs exécutent le nouveau script dès
+le départ. Leçon durable : toute modification de deploy.sh ne prend effet qu'au deploy
+SUIVANT (inode retenu par bash).
+
 ## [2026-07-25] Release v7.2.0 — préparation merge main + ops VPS
 
 **Statut** : En cours (feu vert utilisateur : merge main local, backfills VPS, push).
