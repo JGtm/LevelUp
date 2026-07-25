@@ -17,10 +17,12 @@ import type {
   SquadEngagementSessionAPI,
 } from '@/lib/api/types'
 import { queryKeys } from '@/lib/query/keys'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 export function useMatchEngagement(playerSlug: string, matchId: string) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
-    queryKey: queryKeys.engagementMatch(playerSlug, matchId),
+    queryKey: queryKeys.engagementMatch(playerSlug, titleSlug, matchId),
     queryFn: () =>
       api.get<EngagementScoreResultAPI>(
         `/players/${playerSlug}/matches/${matchId}/engagement`,
@@ -34,8 +36,9 @@ export function useMatchEngagement(playerSlug: string, matchId: string) {
 }
 
 export function useEngagementProfile(playerSlug: string) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
-    queryKey: queryKeys.engagementProfile(playerSlug),
+    queryKey: queryKeys.engagementProfile(playerSlug, titleSlug),
     queryFn: () =>
       api.get<EngagementProfileAPI[]>(`/players/${playerSlug}/engagement_profile`),
     enabled: !!playerSlug,
@@ -62,8 +65,9 @@ export function useEngagementTimeseries(
   filterHash: string,
   limit: number = 50,
 ) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
-    queryKey: queryKeys.engagementTimeseries(playerSlug, filterHash, limit),
+    queryKey: queryKeys.engagementTimeseries(playerSlug, titleSlug, filterHash, limit),
     queryFn: () =>
       api.post<EngagementTimeseriesResponse>(
         `/players/${playerSlug}/engagement/timeseries`,
@@ -85,10 +89,11 @@ export function useSquadEngagementSession(
   matchIds: string[],
   teammates: SquadTeammateEntry[],
 ) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const xuids = teammates.map((t) => t.xuid)
   const gamertags = teammates.map((t) => t.gamertag)
   return useQuery({
-    queryKey: queryKeys.engagementSquadSession(playerSlug, matchIds, xuids),
+    queryKey: queryKeys.engagementSquadSession(playerSlug, titleSlug, matchIds, xuids),
     queryFn: () => {
       const params = new URLSearchParams()
       if (matchIds.length > 0) params.set('match_ids', matchIds.join(','))

@@ -14,6 +14,11 @@ import type { AchievementsPageResponse } from '@/lib/api/types'
 
 vi.mock('@/lib/api/client', () => ({
   api: { get: vi.fn() },
+  // Le hook lit désormais le titre courant (useAppShellStore -> soloFilterStore ->
+  // getApiTitleSlug) : le mock doit exposer ces exports sinon l'import du store échoue.
+  getApiTitleSlug: () => 'halo_infinite',
+  setApiTitleSlug: vi.fn(),
+  setApiLocale: vi.fn(),
 }))
 
 const mockResponse: AchievementsPageResponse = {
@@ -63,9 +68,9 @@ describe('useAchievementsPage', () => {
     expect(result.current.data).toEqual(mockResponse)
   })
 
-  it('utilise le query key queryKeys.achievements(slug)', () => {
-    const key = queryKeys.achievements('test-player')
-    expect(key).toEqual(['achievements', 'test-player'])
+  it('utilise le query key queryKeys.achievements(slug, titleSlug)', () => {
+    const key = queryKeys.achievements('test-player', 'halo_infinite')
+    expect(key).toEqual(['achievements', 'test-player', 'halo_infinite'])
   })
 
   it('désactivé quand le slug est vide', () => {

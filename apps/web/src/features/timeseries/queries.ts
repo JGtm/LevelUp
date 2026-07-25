@@ -4,6 +4,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
+import { useAppShellStore } from '@/stores/appShellStore'
 import type {
   TimeseriesPageResponse,
   TimeseriesQueryRequest,
@@ -14,8 +15,9 @@ export function useTimeseriesPage(
   request: TimeseriesQueryRequest,
   filterHash: string,
 ) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
-    queryKey: queryKeys.timeseries(playerSlug, filterHash),
+    queryKey: queryKeys.timeseries(playerSlug, titleSlug, filterHash),
     queryFn: () =>
       api.post<TimeseriesPageResponse>(`/players/${playerSlug}/pages/timeseries`, request),
     enabled: !!playerSlug,

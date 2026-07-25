@@ -14,8 +14,9 @@ import type { MedalsPageResponse } from '@/lib/api/types'
 
 export function useMedalsPage(playerSlug: string) {
   const locale = useAppShellStore((s) => s.locale)
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
-    queryKey: queryKeys.medals(playerSlug, locale),
+    queryKey: queryKeys.medals(playerSlug, titleSlug, locale),
     queryFn: () => api.post<MedalsPageResponse>(`/players/${playerSlug}/pages/medals`, {}),
     enabled: !!playerSlug,
     staleTime: 5 * 60 * 1000,

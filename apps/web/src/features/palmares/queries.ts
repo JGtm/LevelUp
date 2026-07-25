@@ -14,8 +14,9 @@ export function useSeasonPassPage(playerSlug: string) {
   // Locale dans la clé : libellés du pass bakés serveur selon X-LevelUp-Locale
   // au fetch → refetch à la bascule de langue (cf. queryKeys.seasonPass).
   const locale = useAppShellStore((s) => s.locale)
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery<SeasonPassPageResponse>({
-    queryKey: queryKeys.seasonPass(playerSlug, locale),
+    queryKey: queryKeys.seasonPass(playerSlug, titleSlug, locale),
     queryFn: () =>
       api.get<SeasonPassPageResponse>(`/players/${playerSlug}/pages/palmares/season-pass`),
     enabled: !!playerSlug,
@@ -30,8 +31,9 @@ export function useSeasonPassPage(playerSlug: string) {
 // l'agrégation au sous-ensemble de matchs. `hash` (hash stable du contexte
 // committed) participe à la queryKey → refetch au clic « Analyser ».
 export function useRelationsPage(playerSlug: string, filterContext: FilterContextInput, hash: string) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery<RelationsPageResponse>({
-    queryKey: [...queryKeys.palmaresRelations(playerSlug), hash],
+    queryKey: [...queryKeys.palmaresRelations(playerSlug, titleSlug), hash],
     queryFn: () =>
       api.post<RelationsPageResponse>(`/players/${playerSlug}/pages/palmares/relations`, filterContext),
     enabled: !!playerSlug,
@@ -50,8 +52,9 @@ export function useRelationsMoments(
   hash: string,
   enabled: boolean,
 ) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery<RelationsMomentsResponse>({
-    queryKey: [...queryKeys.palmaresRelations(playerSlug), 'moments', hash],
+    queryKey: [...queryKeys.palmaresRelations(playerSlug, titleSlug), 'moments', hash],
     queryFn: () =>
       api.post<RelationsMomentsResponse>(
         `/players/${playerSlug}/pages/palmares/relations/moments`,

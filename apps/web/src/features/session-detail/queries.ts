@@ -3,6 +3,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import type { SessionPageRequest, SessionPageResponse } from '@/lib/api/types'
 import { queryKeys } from '@/lib/query/keys'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 export function useSessionDetailPage(
   playerSlug: string,
@@ -13,9 +14,11 @@ export function useSessionDetailPage(
   enableCompare: boolean,
   locale: string,
 ) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
     queryKey: queryKeys.sessionDetail(
       playerSlug,
+      titleSlug,
       filterHash,
       sessionLabel,
       compareSessionLabel,

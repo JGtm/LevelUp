@@ -21,6 +21,7 @@ import { useRouterState } from '@tanstack/react-router'
 import { api } from '@/lib/api/client'
 import type { MatchNeighbors } from '@/lib/api/types'
 import { queryKeys } from '@/lib/query/keys'
+import { useAppShellStore } from '@/stores/appShellStore'
 import {
   filterSpecToQueryString,
   parseFilterSpecFromSearch,
@@ -42,9 +43,11 @@ function useMatchNeighborsAPI(
   matchId: string,
   spec: MatchFilterSpec | null,
 ) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
     queryKey: queryKeys.matchNeighbors(
       playerSlug,
+      titleSlug,
       matchId,
       spec as Record<string, unknown> | null,
     ),

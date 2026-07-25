@@ -17,7 +17,7 @@ import { RouteCapabilityGate } from '@/lib/capabilities/RouteCapabilityGate'
 export const Route = createFileRoute('/{-$lang}/t/$titleSlug/players/$playerSlug/career_')({
   loader: ({ params, context }) => {
     void context.queryClient.prefetchQuery({
-      queryKey: queryKeys.career(params.playerSlug),
+      queryKey: queryKeys.career(params.playerSlug, params.titleSlug),
       queryFn: () =>
         api.get<CareerPageResponse>(`/players/${params.playerSlug}/pages/career`),
     })

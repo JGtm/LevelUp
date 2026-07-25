@@ -34,13 +34,19 @@ describe('query keys locale-aware (bascule de langue -> refetch naturel)', () =>
 
   describe('seasonPass (defis / libelles du pass)', () => {
     it('FR vs EN : cles distinctes', () => {
-      const fr = queryKeys.seasonPass('player-1', 'fr')
-      const en = queryKeys.seasonPass('player-1', 'en')
+      const fr = queryKeys.seasonPass('player-1', 'halo_infinite', 'fr')
+      const en = queryKeys.seasonPass('player-1', 'halo_infinite', 'en')
       expect(fr).not.toEqual(en)
     })
 
-    it('forme attendue avec locale en dernier segment', () => {
-      expect(queryKeys.seasonPass('p', 'en')).toEqual(['palmares', 'p', 'season-pass', 'en'])
+    it('forme attendue avec titleSlug puis locale en dernier segment', () => {
+      expect(queryKeys.seasonPass('p', 'halo_infinite', 'en')).toEqual([
+        'palmares',
+        'p',
+        'halo_infinite',
+        'season-pass',
+        'en',
+      ])
     })
   })
 })

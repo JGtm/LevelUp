@@ -125,6 +125,30 @@ func TestCareerLiveCache_DistinctTitles(t *testing.T) {
 	}
 }
 
+// TestCareerLiveCache_Customization_DistinctTitles vérifie l'isolation par titre du
+// sous-cache CUSTOMISATION (Spartan ID / ServiceTag / images) — la donnée précisément
+// à l'origine de la fuite V72-29 (Spartan ID Halo 5 affiché sur Infinite). Le sous-cache
+// progress était couvert par TestCareerLiveCache_DistinctTitles ; celui-ci ferme le trou
+// symétrique côté customisation : deux titres sous un même xuid restent isolés, et une
+// lecture sur un titre jamais écrit renvoie un miss (jamais le Spartan ID d'un autre titre).
+func TestCareerLiveCache_Customization_DistinctTitles(t *testing.T) {
+	cache, _ := newTestCache(t, 5*time.Minute, 6*time.Hour)
+	cache.PutCustomization("shared-xuid", "halo_infinite", &syncpkg.SpartanCustomizationData{SpartanID: "SR-INF"})
+	cache.PutCustomization("shared-xuid", "halo_5", &syncpkg.SpartanCustomizationData{SpartanID: "SR-H5"})
+
+	hi, hitHI := cache.GetCustomization("shared-xuid", "halo_infinite")
+	h5, hitH5 := cache.GetCustomization("shared-xuid", "halo_5")
+	if !hitHI || !hitH5 || hi.SpartanID != "SR-INF" || h5.SpartanID != "SR-H5" {
+		t.Errorf("isolation customisation par titre cassée: hi=%+v hit=%v h5=%+v hit=%v", hi, hitHI, h5, hitH5)
+	}
+
+	// Un titre jamais écrit sous ce xuid ne doit renvoyer aucune customisation : le
+	// Spartan ID d'un autre titre ne doit jamais fuiter (cœur de V72-29).
+	if _, hit := cache.GetCustomization("shared-xuid", "halo_mcc"); hit {
+		t.Error("miss attendu pour un titre non écrit (fuite Spartan ID cross-titre)")
+	}
+}
+
 // TestCareerLiveCache_DoProgress_SingleflightDedupes vérifie que plusieurs
 // goroutines appelant DoProgress simultanément pour le même (xuid, titre) voient
 // fn invoqué une seule fois (pattern singleflight).
