@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/prestige"
 )
@@ -209,6 +210,9 @@ func (p *PrestigeSquadMatchProvider) SquadUsualContexts(ctx context.Context, ros
 		if err := rows.Scan(&pl, &md); err != nil {
 			return nil, nil, fmt.Errorf("SquadUsualContexts: scan: %w", err)
 		}
+		// pair_name est un libellé composé mode+carte (« Slayer on Bazaar ») :
+		// normaliser pour ne servir que le mode (V72-10, parité match view).
+		md = analysis.NormalizeModeLabel(md)
 		if pl != "" && !uuidLabelRE.MatchString(pl) {
 			plCount[pl]++
 		}
