@@ -1,3 +1,22 @@
+## [2026-07-25] v7.2.0 DÉPLOYÉE EN PROD + backfills VPS + release GitHub
+
+**Statut** : Complété. Après les 2 incidents (voir entrées suivantes), le deploy n°3 a été
+fait EN MANUEL sur le VPS (deploy auto GitHub annulé volontairement) : démo coupée pendant
+le build, repo synchronisé `sudo -u deploy`, deploy.sh détaché avec log. Résultat : UN SEUL
+build Go (dédup des couches rétablie par l'alignement des build-args), version v7.2.0
+bakée, prod prête en 12 s, ~4 min au total (cache chaud). **Vérifs** : prod et demo 200 ;
+notif Discord release v7.2.0 PARTIE (confirmée reçue par l'utilisateur — premier test
+grandeur nature du fix V72-31) ; `disk_watch_state.json` créé ; pas de doublon de notif au
+redémarrage (last_notified recalé host-side, cf. backlog EBUSY). **Backfills VPS** (script
+/root/backfill_v72.sh, serveur coupé) : seed citations OK, recompute citations tous
+joueurs OK (JGtm 1088 matchs), objectifs 1933 candidats / 412 avec données / 5853 lignes,
+serveur relancé auto. **CI main verte** sur 74d968faa (le durcissement de
+TestAdminInitialSync_Accepted a réglé le job Coverage, 2 échecs consécutifs avant).
+**Release GitHub v7.2.0** : corps auto (gabarit installation + binaires) préfixé du
+changelog 7.2.0 complet. Découvertes consignées au backlog : rename EBUSY sur
+app_settings.json bind-monté (notif part mais persistance échoue), bruit WARN app_release
+des comptes auth_only. Reste côté utilisateur : re-onboarding SSO des 3 comptes RT morts.
+
 ## [2026-07-25] Incident deploy v7.2.0 n°2 — double build CGO parallèle → OOM VPS
 
 **Statut** : Correctif commité (push au retour du VPS). Le 2e run de deploy (timeout 40m
