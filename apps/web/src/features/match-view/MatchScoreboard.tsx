@@ -631,7 +631,9 @@ function TeamScoreboard({
                   }
                 : {}
             return (
-              <Fragment key={r.xuid}>
+              // Clé = row.id TanStack (unique et stable) plutôt que r.xuid : le xuid peut
+              // être vide (joueurs H5 sans xuid) → collisions de clés entre lignes.
+              <Fragment key={row.id}>
                 <tr
                   className={`cursor-pointer hover:bg-accent transition-colors ${rowBg}`}
                   onClick={() => onToggleExpand(r.xuid)}

@@ -13,7 +13,7 @@
  * resolveTitleSlug côté backend : header > session > défaut.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { api, setApiTitleSlug } from './client'
+import { api, setApiTitleSlug, TITLE_MISMATCH_CODE } from './client'
 
 describe('api client — header X-LevelUp-Title', () => {
   let fetchSpy: ReturnType<typeof vi.spyOn>
@@ -61,5 +61,61 @@ describe('api client — header X-LevelUp-Title', () => {
     setApiTitleSlug('halo_5')
     await api.get('/home')
     expect(lastRequestHeaders().get('X-LevelUp-Title')).toBe('halo_5')
+  })
+})
+
+/**
+ * Garde anti-fuite cross-titre V72-29 (défense en profondeur décisive) : le serveur
+ * échoie le titre résolu dans X-LevelUp-Title-Resolved ; le client REJETTE toute
+ * réponse dont ce titre diverge du titre qu'il considère actif. Une réponse d'un autre
+ * titre (course de bascule) est ainsi jetée AVANT d'entrer dans le cache TanStack.
+ */
+describe('api client — garde anti-fuite cross-titre (X-LevelUp-Title-Resolved)', () => {
+  let fetchSpy: ReturnType<typeof vi.spyOn>
+
+  function mockResolved(resolved: string | null, body: unknown = {}): void {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (resolved !== null) headers['X-LevelUp-Title-Resolved'] = resolved
+    fetchSpy.mockResolvedValue(
+      new Response(JSON.stringify(body), { status: 200, headers }),
+    )
+  }
+
+  beforeEach(() => {
+    setApiTitleSlug(null)
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    fetchSpy = vi.spyOn(globalThis, 'fetch')
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    setApiTitleSlug(null)
+  })
+
+  it('REJETTE (title_mismatch) une réponse dont le titre résolu diverge du titre actif', async () => {
+    setApiTitleSlug('halo_infinite')
+    mockResolved('halo_5', { leaked: true })
+    await expect(api.get('/players/p/pages/home')).rejects.toMatchObject({
+      code: TITLE_MISMATCH_CODE,
+    })
+  })
+
+  it('ACCEPTE une réponse dont le titre résolu correspond au titre actif', async () => {
+    setApiTitleSlug('halo_infinite')
+    mockResolved('halo_infinite', { ok: true })
+    await expect(api.get('/players/p/pages/home')).resolves.toEqual({ ok: true })
+  })
+
+  it("n'applique PAS la garde sans header envoyé (page agnostique au boot, session autoritaire)", async () => {
+    // slug null → aucun header X-LevelUp-Title : la session serveur fait autorité, on
+    // ne rejette pas même si l'écho diverge (flux CLI / SSO / boot non gardés).
+    mockResolved('halo_5', { ok: true })
+    await expect(api.get('/home')).resolves.toEqual({ ok: true })
+  })
+
+  it("n'applique PAS la garde si le serveur n'échoie aucun titre (rétro-compat)", async () => {
+    setApiTitleSlug('halo_infinite')
+    mockResolved(null, { ok: true })
+    await expect(api.get('/players/p/pages/home')).resolves.toEqual({ ok: true })
   })
 })

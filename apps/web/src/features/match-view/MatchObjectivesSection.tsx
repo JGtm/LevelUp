@@ -130,8 +130,10 @@ export function MatchObjectivesSection({ rows, teams, myTeamSide, t }: Props) {
                     {label}
                   </th>
                 </tr>
-                {teamRows.map((r) => (
-                  <tr key={r.xuid} className={r.is_me ? 'bg-info/10' : ''}>
+                {teamRows.map((r, idx) => (
+                  // Clé composite : le xuid peut être vide (joueurs H5 sans xuid) →
+                  // plusieurs lignes key="" en collision. gamertag + index désambiguïsent.
+                  <tr key={`${r.xuid}||${r.gamertag}||${idx}`} className={r.is_me ? 'bg-info/10' : ''}>
                     <td className="border border-border px-2 py-1 text-left">{r.gamertag}</td>
                     {cols.map((c) => (
                       <td key={String(c.key)} className="border border-border px-2 py-1 text-right tabular-nums">
