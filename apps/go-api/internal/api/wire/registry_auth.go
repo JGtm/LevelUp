@@ -157,6 +157,62 @@ func (r *ServiceRegistry) enrichWithHaloTokens(ctx context.Context, pdb *duckdb.
 	return ctxkeys.WithHaloAuth(ctx, tokens, xuid)
 }
 
+// enrichWithHaloTokensPublicRead : variante de enrichWithHaloTokens réservée aux
+// LECTURES PUBLIQUES DE TIERS (player-query Explorer). Ordre de résolution (A1,
+// décision plan n°2) :
+//
+//  1. token de session frais STRICT (compte connecté) — réutilisé tel quel ;
+//  2. token du PROFIL sélectionné (pdb.XUID) via ResolveFreshPlayerTokens ;
+//  3. token SAIN du POOL partagé (PolicyAnyPublic) — sert les données live d'une
+//     cible même quand le RT du profil sélectionné est mort (AADSTS70000). Aucune
+//     re-capture (ADR 0023) : le pool porte une lecture PUBLIQUE avec un RT vivant.
+//
+// Aucune donnée privée ne transite par ce chemin : les endpoints du player-query
+// Explorer ciblent un xuid explicite en paramètre (careerranks/servicerecord/CSR
+// batch), jamais l'identité dérivée du token porteur. Le SUJET du contexte reste
+// pdb.XUID (parité avec le chemin profil). Provenance tracée (log + compteurs
+// expvar explorer_live_token_source_{session,profile,pool,none}).
+func (r *ServiceRegistry) enrichWithHaloTokensPublicRead(ctx context.Context, pdb *duckdb.PlayerDB) context.Context {
+	// 1. Session fraîche stricte (expiry connue et valide).
+	if sess := ctxkeys.HaloTokens(ctx); halo.TokensFreshStrict(sess) {
+		incExplorerTokenSource(explorerTokenSrcSession)
+		return ctx
+	}
+	xuid := pdb.XUID
+
+	// 2. Profil sélectionné.
+	if tokens, err := halo.ResolveFreshPlayerTokens(ctx, xuid); err == nil && tokens != nil {
+		incExplorerTokenSource(explorerTokenSrcProfile)
+		return ctxkeys.WithHaloAuth(ctx, tokens, xuid)
+	} else if err != nil {
+		slog.DebugContext(ctx, "halo_auth: profil sélectionné indisponible pour lecture publique — tentative pool",
+			"profile_xuid", xuid, "err", err)
+	}
+
+	// 3. Pool sain (fallback lecture publique).
+	if r.publicReadTokenSrc != nil {
+		poolCtx, cancel := context.WithTimeout(ctx, publicReadPoolAcquireTimeout)
+		tokens, poolGamertag, err := r.publicReadTokenSrc.ResolveAny(poolCtx)
+		cancel()
+		if err == nil && tokens != nil {
+			// Succès : bascule sur le pool tracée (jamais le token en clair).
+			slog.WarnContext(ctx, "halo_auth: fallback pool",
+				"profile_xuid", xuid, "pool_gamertag", poolGamertag)
+			incExplorerTokenSource(explorerTokenSrcPool)
+			return ctxkeys.WithHaloAuth(ctx, tokens, xuid)
+		}
+		if err != nil {
+			slog.WarnContext(ctx, "halo_auth: pool indisponible pour lecture publique",
+				"profile_xuid", xuid, "err", err)
+		}
+	}
+
+	// 4. Rien de sain : on garde le token de session existant (souvent nil) →
+	// dégradation gracieuse (sections live vides), pas de régression.
+	incExplorerTokenSource(explorerTokenSrcNone)
+	return ctx
+}
+
 // WireGlobalTokenRefresher branche le hook global de re-dérivation des tokens
 // (halo.ResolveFreshPlayerTokens) sur le minting registry. À appeler une fois au boot,
 // après construction du registry. Idempotent.

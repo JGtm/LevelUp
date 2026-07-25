@@ -1048,6 +1048,13 @@ func main() {
 	// token est périmé. Sans ce câblage, le re-mint singleflighté est inopérant.
 	reg.WireGlobalTokenRefresher()
 
+	// A1 : câble le pool de tokens partagé comme source de fallback pour les
+	// LECTURES PUBLIQUES de tiers (player-query Explorer). Quand le RT du profil
+	// sélectionné est mort, un token SAIN du pool porte quand même les fetchs live
+	// de la cible (ADR 0023 : aucune re-capture, lecture publique uniquement).
+	// autoSyncPool peut être nil (aucun credential découvert) → no-op.
+	reg.WithTokenPool(autoSyncPool)
+
 	// Journal des actions globales (C2) : partagé avec le scheduler (câblé plus
 	// haut). Les runners d'action y écrivent leur dernière exécution ; l'endpoint
 	// GET /admin/actions/journal le sert (survit au reboot).
