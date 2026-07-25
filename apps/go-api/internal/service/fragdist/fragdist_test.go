@@ -209,3 +209,98 @@ func TestBuild_NoResidualWhenExact(t *testing.T) {
 		t.Error("attribution exacte : aucune classe unattributed attendue")
 	}
 }
+
+// findFragRole projette (role -> kills) des rôles d'une classe.
+func findFragRole(c domain.FragClassEntry, role string) (int, bool) {
+	for _, r := range c.Roles {
+		if r.Role == role {
+			return r.Kills, true
+		}
+	}
+	return 0, false
+}
+
+// TestBuild_GrenadeSubLevelByType (V72-15.2) : le niveau 2 de la classe Grenade ventile par
+// TYPE (famille registre) ; le total de la classe reste le compteur API autoritatif et le
+// résidu « autre grenade » absorbe l'écart (Σ types == kills de la classe, invariant b).
+func TestBuild_GrenadeSubLevelByType(t *testing.T) {
+	rows := []port.WeaponKillRow{
+		{WeaponID: 50, Kills: 3, Class: "grenade", Role: "grenade", Family: "frag_grenade"},
+		{WeaponID: 51, Kills: 2, Class: "grenade", Role: "grenade", Family: "plasma_grenade"},
+	}
+	// total API grenade = 6 ; typé = 5 (frag 3 + plasma 2) → résidu « autre grenade » = 1.
+	counts := domain.FragKillTypeCounts{Grenade: 6, Total: 20}
+	fd := Build(rows, counts, false)
+	assertFragInvariants(t, fd)
+	g, ok := findFragClass(fd, domain.FragClassGrenade)
+	if !ok || g.Kills != 6 || !g.Authoritative {
+		t.Fatalf("grenade = %+v, want kills=6 Authoritative (total API)", g)
+	}
+	if len(g.Roles) != 3 {
+		t.Fatalf("grenade.Roles = %+v, want 3 types (frag/plasma/autre)", g.Roles)
+	}
+	if g.Roles[0].Role != domain.FragRoleGrenadeFrag || g.Roles[0].Kills != 3 {
+		t.Errorf("grenade.Roles[0] = %+v, want frag(3) en tête (kills desc)", g.Roles[0])
+	}
+	if k, ok := findFragRole(g, domain.FragRoleGrenadePlasma); !ok || k != 2 {
+		t.Errorf("type plasma = %d (present=%v), want 2", k, ok)
+	}
+	if k, ok := findFragRole(g, domain.FragRoleGrenadeOther); !ok || k != 1 {
+		t.Errorf("résidu autre grenade = %d (present=%v), want 1", k, ok)
+	}
+}
+
+// TestBuild_GrenadeLeafWhenNoTypedRows : sans row grenade typée (donnée absente), la classe
+// Grenade reste une FEUILLE (dégradation data-driven, ni Infinite ni H5 en dur).
+func TestBuild_GrenadeLeafWhenNoTypedRows(t *testing.T) {
+	fd := Build(nil, domain.FragKillTypeCounts{Grenade: 4, Total: 10}, false)
+	assertFragInvariants(t, fd)
+	g, ok := findFragClass(fd, domain.FragClassGrenade)
+	if !ok || g.Kills != 4 || g.Roles != nil {
+		t.Fatalf("grenade = %+v, want kills=4 FEUILLE (Roles nil) sans row typée", g)
+	}
+}
+
+// TestBuild_GrenadeLeafWhenOverAttributed : si le registre sur-attribue (Σ types > total API),
+// la classe Grenade reste feuille (pas de ventilation trompeuse) — le total garde le compteur
+// API et l'invariant b tient trivialement.
+func TestBuild_GrenadeLeafWhenOverAttributed(t *testing.T) {
+	rows := []port.WeaponKillRow{
+		{WeaponID: 50, Kills: 5, Class: "grenade", Role: "grenade", Family: "frag_grenade"},
+	}
+	fd := Build(rows, domain.FragKillTypeCounts{Grenade: 4, Total: 10}, false)
+	assertFragInvariants(t, fd)
+	g, ok := findFragClass(fd, domain.FragClassGrenade)
+	if !ok || g.Kills != 4 || g.Roles != nil {
+		t.Fatalf("grenade = %+v, want kills=4 FEUILLE (sur-attribution registre)", g)
+	}
+}
+
+// TestBuild_MechanicKillsExcludedFromGunClasses (V72-15.3) : sur H5 une mêlée/un assassinat
+// attribué à l'arme TENUE (MechanicKills) est RETIRÉ de la classe gun — sans ce retrait il
+// double-compterait avec le compteur natif Mêlée et ferait Σ classes > total. Dataset choisi
+// pour que le non-retrait DÉBORDE (Σ > total).
+func TestBuild_MechanicKillsExcludedFromGunClasses(t *testing.T) {
+	// 10 frags au total = 7 BR (arme) + 3 mêlées, dont 2 mêlées attribuées à l'arme tenue
+	// (BR) dans weapon_kills (MechanicKills=2). Compteur natif Mêlée = 3.
+	rows := []port.WeaponKillRow{
+		{WeaponID: 60, Kills: 9, Class: "shoulder", Role: "automatic", MechanicKills: 2},
+	}
+	counts := domain.FragKillTypeCounts{Melee: 3, Total: 10}
+	fd := Build(rows, counts, true)
+	assertFragInvariants(t, fd) // Σ classes == 10 (sinon le non-retrait ferait 12 > 10)
+	sh, ok := findFragClass(fd, domain.FragClassShoulder)
+	if !ok || sh.Kills != 7 {
+		t.Fatalf("shoulder = %+v, want kills=7 (9 - 2 mécaniques natives)", sh)
+	}
+	if len(sh.Roles) != 1 || sh.Roles[0].Kills != 7 {
+		t.Errorf("shoulder.Roles = %+v, want [automatic(7)] (rôle porte les kills d'arme seuls)", sh.Roles)
+	}
+	melee, ok := findFragClass(fd, domain.FragClassMelee)
+	if !ok || melee.Kills != 3 {
+		t.Errorf("melee = %+v, want kills=3 (compteur natif, sert les 2 mêlées attribuées à l'arme)", melee)
+	}
+	if _, ok := findFragClass(fd, domain.FragClassUnattributed); ok {
+		t.Error("attribution exacte après retrait : aucune classe unattributed attendue")
+	}
+}

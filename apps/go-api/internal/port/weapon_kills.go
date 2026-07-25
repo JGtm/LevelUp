@@ -88,9 +88,20 @@ type WeaponKillRow struct {
 	// quand ResolveRoles=true (COALESCE(w.class) du registre). Vide sinon. Sert
 	// l'agregation par CLASSE (buildFragDistribution, sunburst v2).
 	Class string `json:"class,omitempty"`
+	// Family : famille d'arme registre (battle_rifle/frag_grenade/…), resolue dans la
+	// MÊME passe que Role/Class (COALESCE(w.family_key)). Vide sinon. Sert le niveau 2
+	// de la classe Grenade (TYPE de grenade, V72-15.2 : frag/plasma/dynamo/splinter).
+	Family string `json:"family,omitempty"`
 	// IsGrenadeMelee : true si la valeur vient d'highlight_events (grenade ou
 	// melee), false si elle vient de weapon_kills (arme primaire).
 	IsGrenadeMelee bool `json:"is_grenade_melee,omitempty"`
+	// MechanicKills : sous-ensemble de Kills qui ne sont PAS des kills d'ARME mais des
+	// mécaniques natives Halo 5 (mêlée/assassinat/coup au sol/charge d'épaule) attribuées
+	// à l'arme TENUE dans weapon_kills (kill_kind <> 'weapon'). Sur Infinite kill_kind est
+	// NULL → 0. buildFragDistribution les RETIRE des classes gun (anti-double-comptage
+	// V72-15.3) : ces kills sont déjà servis par les compteurs natifs (Mêlée/Capacités
+	// spartanes). Le breakdown par arme, lui, garde Kills complet (arme tenue).
+	MechanicKills int `json:"mechanic_kills,omitempty"`
 }
 
 // KillMechanicsRow agrège les mécaniques de kill NATIVES Halo 5 par joueur (xuid)

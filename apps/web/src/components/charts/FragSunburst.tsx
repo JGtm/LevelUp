@@ -131,12 +131,13 @@ export function FragSunburst({
   const total = distribution?.total_kills ?? 0
   const classes = distribution?.classes ?? []
   // Dénominateur des ANGLES d'arc ET du ratio %. En données SAINES, Σ classes == total
-  // (unattributed = résidu) → arcTotal == total → rendu INCHANGÉ. Si une anomalie backend
-  // fait Σ classes > total (double-comptage : sur H5 un kill mêlée/assassinat est attribué à
-  // l'arme tenue dans les weapon kills ET recompté dans le compteur natif), on borne par Σ :
-  // les arcs remplissent EXACTEMENT 360° sans déborder ni se chevaucher — sinon les derniers
-  // arcs recouvrent les premiers et deux rôles se retrouvent au même angle (étiquettes qui
-  // semblent partir de la même source). Le centre garde le vrai total (me.Kills).
+  // (unattributed = résidu) → arcTotal == total → « % du total » exact.
+  // Le double-comptage H5 (mêlée/assassinat attribués à l'arme tenue ET recomptés dans le
+  // compteur natif) est désormais corrigé À LA SOURCE (V72-15.3 : fragdist retire les
+  // MechanicKills des classes gun) → Σ classes == total. Le Math.max reste comme garde-fou
+  // défensif : si une anomalie de données résiduelle sur-attribuait (Σ classes > total ;
+  // signalée côté backend par logFragDistribution), on borne par Σ pour que les arcs
+  // remplissent EXACTEMENT 360° sans déborder ni se chevaucher. Le centre garde le vrai total.
   const arcTotal = Math.max(total, classes.reduce((s, c) => s + c.kills, 0)) || 1
   const [hovered, setHovered] = useState<string | null>(null)
   const [tip, setTip] = useState<TipState | null>(null)
