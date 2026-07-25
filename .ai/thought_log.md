@@ -1,3 +1,18 @@
+## [2026-07-25] Clôture v7.2 — réparation CI baseline + push final
+
+**Statut** : Complété. La delivery-checklist (§0 état CI) a révélé le workflow CI de la
+branche ROUGE sur les 3 derniers push : job « Go Baseline Tests » (Linux), 25 tests de la
+baseline absents du run courant — tous supprimés VOLONTAIREMENT par le chantier (repli
+LIVE de la vue de match, drift-detector openapi, TestBuildCanonicalCitationsTab renommé).
+Le gate local l'avait signalé mais la sortie tronquée avait été mal lue (leçon : ancrer le
+motif et vérifier le code de sortie, pas la sortie filtrée). Correctif : purge des 118
+lignes correspondantes de `.ai/baselines/tests_pre_migration.jsonl`, justification dans le
+message de commit (`15993febe`), vérif préalable que plus aucun des 25 noms n'existe dans
+le code. **Résultat : run CI 30168201673 (push `f43aa01f9`) entièrement VERT** — baseline,
+build/test 2 OS, lint, coverage, contrat OpenAPI, frontend. Deploy Pre-Check vert aussi.
+Prochaine étape : merge main = décision utilisateur (deploy prod auto), puis backfills VPS
+orchestrés (coupure autorisée) + vérification de la notif Discord release v7.2.0.
+
 ## [2026-07-25] V72-30 — What's new + changelogs + notes de version in-app v7.2
 
 **Statut** : Complété. Pas de commit (superviseur). Item FINAL du lot 6 du
