@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -86,6 +87,24 @@ func TestAdminInitialSync_Accepted(t *testing.T) {
 	if got.JobType != string(domain.JobTypeAdminInitialSync) {
 		t.Fatalf("job_type = %q (attendu %s)", got.JobType, domain.JobTypeAdminInitialSync)
 	}
+	waitInitialSyncJobDone(t, store, got.JobID)
+}
+
+// waitInitialSyncJobDone attend l'état terminal du job lancé en goroutine par le
+// handler : sans cette attente, l'écriture asynchrone de jobs.json court-circuite
+// le nettoyage du TempDir (« RemoveAll cleanup: directory not empty » — échec
+// observé 2×sur le job CI Coverage Linux, 2026-07-25).
+func waitInitialSyncJobDone(t *testing.T, store *jobs.Store, jobID string) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		st := store.Get(jobID)
+		if st != nil && st.Status != domain.JobStatusQueued && st.Status != domain.JobStatusRunning {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf("job %s toujours non terminal après 5 s", jobID)
 }
 
 // TestAdminInitialSync_ConflictWhenAlreadyRunning : un job initial-sync déjà en
