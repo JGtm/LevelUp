@@ -137,7 +137,7 @@ export function StepDeviceCode() {
   }
 
   // Codes d'erreur structurés
-  const errorCode = status?.status === 'failed' ? status.error?.code ?? null : null
+  const errorCode = status?.status === 'failed' ? status.error_code ?? null : null
 
   // recoveryExhausted : tentative balayée en boucle (backend instable) → on
   // route vers la même UI d'erreur + bouton « Réessayer » que les autres échecs.

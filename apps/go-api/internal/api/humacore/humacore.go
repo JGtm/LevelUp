@@ -260,15 +260,6 @@ func MarkRequestBodyOptional(api huma.API, method, path string) {
 	}
 }
 
-// OnAPICreated, s'il est non-nil, est invoqué avec chaque huma.API créée par
-// NewAPI. Nil par défaut → ZÉRO impact prod (le serveur ne le branche jamais).
-// SEUL l'outil de drift-detection des schémas (test cgo, openapi_schema_drift_test)
-// le branche temporairement pour capturer les instances Huma : leurs registres de
-// schémas auto-dérivés (api.OpenAPI().Components.Schemas) sont autrement créés
-// localement dans chaque Mount() puis jetés. Le brancher en prod retiendrait des
-// références API → garder nil hors test.
-var OnAPICreated func(huma.API)
-
 // OnAPICreatedRouter, s'il est non-nil, est invoqué avec le routeur chi ET la
 // huma.API de CHAQUE NewAPI. Nil par défaut → ZÉRO impact prod (le serveur ne le
 // branche jamais).
@@ -340,9 +331,6 @@ func installErrorOverride() {
 
 // notifyCreated invoque les hooks de test (nil en prod → ZÉRO impact).
 func notifyCreated(r chi.Router, api huma.API) {
-	if OnAPICreated != nil {
-		OnAPICreated(api)
-	}
 	if OnAPICreatedRouter != nil {
 		OnAPICreatedRouter(r, api)
 	}

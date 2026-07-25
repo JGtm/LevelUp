@@ -52,7 +52,7 @@ export function useCapability(capability: TitleCapability): boolean {
   return useAppShellStore((s) => {
     const title = s.availableTitles.find((t) => t.slug === s.currentTitleSlug)
     if (!title) return true
-    return title.capabilities.includes(capability)
+    return (title.capabilities ?? []).includes(capability)
   })
 }
 
@@ -72,7 +72,7 @@ export function useCapabilityStrict(capability: TitleCapability): boolean {
   return useAppShellStore((s) => {
     const title = s.availableTitles.find((t) => t.slug === s.currentTitleSlug)
     if (!title) return false
-    return title.capabilities.includes(capability)
+    return (title.capabilities ?? []).includes(capability)
   })
 }
 

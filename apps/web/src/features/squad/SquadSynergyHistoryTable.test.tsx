@@ -42,6 +42,10 @@ function setTitleCaps(caps: string[]) {
         capabilities: caps,
         is_default: true,
         effective_hp_to_kill: 225,
+        provides_damage_taken: true,
+        provides_team_mmr: true,
+        provides_max_killing_spree: true,
+        offensive_conversion_p80: 0.9,
       },
     ],
   })

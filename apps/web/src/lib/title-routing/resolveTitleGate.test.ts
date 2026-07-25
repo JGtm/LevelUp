@@ -16,6 +16,10 @@ function title(slug: string, status?: TitleSummary['status']): TitleSummary {
     capabilities: [],
     is_default: false,
     effective_hp_to_kill: 0,
+    provides_damage_taken: true,
+    provides_team_mmr: true,
+    provides_max_killing_spree: true,
+    offensive_conversion_p80: 0.9,
   } as TitleSummary
 }
 
@@ -49,7 +53,7 @@ describe('resolveTitleGate', () => {
 
   it('status absent traité comme active → valid (parité buildTitleSwitcherEntries)', () => {
     const noStatus = [
-      { slug: 'halo_x', name: 'X', capabilities: [], is_default: false, effective_hp_to_kill: 0 },
+      { slug: 'halo_x', name: 'X', capabilities: [], is_default: false, effective_hp_to_kill: 0, provides_damage_taken: true, provides_team_mmr: true, provides_max_killing_spree: true, offensive_conversion_p80: 0.9 },
     ] as unknown as TitleSummary[]
     expect(resolveTitleGate('halo_x', noStatus, true)).toBe('valid')
   })

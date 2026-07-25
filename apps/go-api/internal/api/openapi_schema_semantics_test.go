@@ -45,6 +45,7 @@ package api_test
 
 import (
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -53,6 +54,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/getkin/kin-openapi/openapi3"
+	"gopkg.in/yaml.v3"
 
 	"levelup/go-api/internal/domain"
 )
@@ -200,17 +202,11 @@ func fieldSchema(s *huma.Schema, path string) *huma.Schema {
 // Partie B — document partagé en mémoire vs yaml manuel (schéma.champ commun)
 // ---------------------------------------------------------------------------
 
-// rootDescAllowlist = inventaire fermé des descriptions de SCHÉMA RACINE non
-// portables en tag (Huma n'expose pas de tag type-level). Clé "schema|(root)|desc".
-// Ces descriptions vont au fragment manuel H6. Toute entrée doit correspondre à
-// une perte RÉELLE sur un schéma présent dans le document de démo (sinon caduque).
-var rootDescAllowlist = map[string]bool{
-	"DeviceFlowStartResponse|(root)|desc":  true,
-	"DeviceFlowStatusResponse|(root)|desc": true,
-	"MatchScoreboardObjective|(root)|desc": true,
-	"ObjectiveAggregate|(root)|desc":       true,
-	"PlayerMediaAudioConfig|(root)|desc":   true,
-}
+// H6 : l'allowlist statique des sémantiques non portables a été REMPLACÉE par le
+// fragment manuel (api/openapi_manual_fragment.yaml). Invariant vérifié ici :
+// toute sémantique du contrat que le document Huma ne porte PAS doit être
+// DÉCLARÉE dans le fragment — et réciproquement, une déclaration de fragment
+// devenue inutile (le tag Go la produit désormais) est signalée CADUQUE.
 
 type semNode struct {
 	desc    string
@@ -227,6 +223,10 @@ func TestSharedDocSchemaSemanticsVsYAML(t *testing.T) {
 	yamlSem := loadYAMLSchemaSem(t)
 	if len(yamlSem) < 100 {
 		t.Fatalf("yaml : %d schémas chargés (attendu >= 100)", len(yamlSem))
+	}
+	fragSem := loadFragmentSchemaSem(t)
+	if len(fragSem) == 0 {
+		t.Fatal("fragment manuel : aucune sémantique de schéma chargée — lecture cassée ?")
 	}
 
 	_, doc := buildTestRouterWithDoc(t)
@@ -269,26 +269,85 @@ func TestSharedDocSchemaSemanticsVsYAML(t *testing.T) {
 				}
 				key := name + "|" + path + "|" + kind
 				losses[key] = true
-				if !rootDescAllowlist[key] {
-					t.Errorf("PERTE hors inventaire : %s (yaml %s=%q, doc=%q)", key, kind, want, got)
+				if !fragSem[key] {
+					t.Errorf("PERTE hors fragment : %s (yaml %s=%q, doc=%q) — porter la sémantique en tag Go "+
+						"ou la déclarer dans api/openapi_manual_fragment.yaml", key, kind, want, got)
 				}
 			}
 		}
 	}
 
-	// Anti-caducité : toute entrée d'allowlist doit correspondre à une perte
-	// réelle observée (sinon la retirer). Empêche une allowlist qui masque.
-	for key := range rootDescAllowlist {
+	// Anti-caducité : toute sémantique déclarée par le fragment SUR UN SCHÉMA
+	// DÉRIVÉ doit correspondre à une perte réelle (sinon le tag Go la produit
+	// déjà → la retirer du fragment). Les schémas purement manuels (aucun type Go,
+	// absents du document) ne sont pas concernés.
+	for key := range fragSem {
+		name := key[:strings.Index(key, "|")]
+		if _, derived := docMap[name]; !derived {
+			continue
+		}
 		if !losses[key] {
-			t.Errorf("entrée d'allowlist CADUQUE (plus de perte observée) : %s — la retirer", key)
+			t.Errorf("déclaration de fragment CADUQUE (le document Huma porte déjà la sémantique) : %s — la retirer", key)
 		}
 	}
 
 	if common < 8 {
 		t.Fatalf("schémas communs doc∩yaml : %d (attendu >= 8) — mapping cassé ?", common)
 	}
-	t.Logf("H3 Partie B : %d schémas communs, %d sémantiques vérifiées, %d en parité, %d pertes (allowlist=%d)",
-		common, checked, matched, len(losses), len(rootDescAllowlist))
+	t.Logf("H3 Partie B : %d schémas communs, %d sémantiques vérifiées, %d en parité, %d pertes (fragment=%d)",
+		common, checked, matched, len(losses), len(fragSem))
+}
+
+// loadFragmentSchemaSem indexe les sémantiques (desc/enum/default/example) que le
+// FRAGMENT MANUEL déclare sous components.schemas, avec la même convention de
+// clé que le walker du document : "Schema|chemin|kind".
+func loadFragmentSchemaSem(t *testing.T) map[string]bool {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join("..", "..", "api", "openapi_manual_fragment.yaml"))
+	if err != nil {
+		t.Fatalf("lecture du fragment manuel : %v", err)
+	}
+	var frag struct {
+		Components struct {
+			Schemas map[string]any `yaml:"schemas"`
+		} `yaml:"components"`
+	}
+	if err := yaml.Unmarshal(raw, &frag); err != nil {
+		t.Fatalf("parse du fragment manuel : %v", err)
+	}
+	out := map[string]bool{}
+	for name, schema := range frag.Components.Schemas {
+		walkFragmentSem(schema, name, "", out)
+	}
+	return out
+}
+
+// walkFragmentSem parcourt un schéma du fragment (arbre YAML générique).
+func walkFragmentSem(node any, name, path string, out map[string]bool) {
+	m, ok := node.(map[string]any)
+	if !ok {
+		return
+	}
+	label := path
+	if label == "" {
+		label = "(root)"
+	}
+	for key, kind := range map[string]string{"description": "desc", "enum": "enum", "default": "default", "example": "example"} {
+		if _, has := m[key]; has {
+			out[name+"|"+label+"|"+kind] = true
+		}
+	}
+	if props, ok := m["properties"].(map[string]any); ok {
+		for prop, sub := range props {
+			walkFragmentSem(sub, name, join(path, prop), out)
+		}
+	}
+	if items, ok := m["items"]; ok {
+		walkFragmentSem(items, name, path+"[]", out)
+	}
+	if add, ok := m["additionalProperties"]; ok {
+		walkFragmentSem(add, name, path+"{}", out)
+	}
 }
 
 func pick(n semNode, kind string) string {

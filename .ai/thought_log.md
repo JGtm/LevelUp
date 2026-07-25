@@ -1,3 +1,74 @@
+## [2026-07-25] V72-01 / H6 — api/openapi.yaml devient GÉNÉRÉ (Huma + fragment manuel, golden)
+
+**Statut** : Complété. Pas de commit (superviseur applique les gates). Plan
+`.ai/V7/PLAN_V72_HUMA_OPENAPI.md` (H0-H5 clos, H6 statué `[x]`).
+
+**Décision technique.** Le contrat n'est plus écrit à la main : `api/openapi.yaml` est la FUSION du
+document OpenAPI partagé de Huma (posé en H1-H5) et d'un fragment manuel VERSIONNÉ
+(`api/openapi_manual_fragment.yaml`, 3 090 L). Nouveau paquet `internal/api/openapigen` :
+`BuildDemoRouter` (LE harnais d'assemblage du routeur de démo — `contract_helpers_test.go` délègue
+désormais, donc le contrat publié et les tests de contrat décrivent la MÊME surface) +
+`Render` + `Generate` (un seul chemin de code pour la commande et pour le golden). Rendu
+DÉTERMINISTE : JSON Huma → arbre (json.Number → int64, sinon `1e+06`) → `yaml.Node` ordonné
+(openapi/info/servers/tags/paths/components, clés internes triées), indent 2, bandeau
+« FICHIER GÉNÉRÉ ». Trois passes avant fusion : chemins absolus → relatifs au server `/api/v1`
+(collision = erreur), retrait des WRAPPERS OPAQUES par-route (requestBody `application/octet-stream`
+d'un `RawBody []byte` supprimé ; schéma de réponse `{type:string,contentEncoding:base64}` d'un
+`Body []byte` réduit à `{}`) — les schémas nommés/référencés ne sont JAMAIS touchés. Précédence du
+fragment = JSON Merge Patch : objets fusionnés clé à clé, `null` SUPPRIME la clé dérivée, listes
+`parameters` fusionnées par `(name,in)`. Commande : `make openapi-gen` / `make openapi-check`
+(`cmd/openapi-gen`, flags `-out/-fragment/-check/-v`).
+
+**Fragment (ce que Huma ne dérive pas)** : 9 chemins chi-brut (assets images, upload/service média,
+export CSV, + la route documentée non implémentée), 15 request bodies RawBody, 187 réponses d'erreur,
+154 descriptions de réponse, 33 descriptions d'opération, enrichissements de paramètres
+(description/required/enum/default), 5 exemples d'erreur `components.responses`,
+`components.parameters`, 55 schémas (39 sans type Go, 5 descriptions racine, 11 sémantiques
+TRANSFÉRÉES des schémas inline du yaml vers le schéma nommé dérivé), info/servers/tags (dont 12 tags
+utilisés mais jamais déclarés). Deux usages du `null` de suppression : 11 statuts 201/202 posés par un
+champ `Status` que Huma documente à 200, et 3 `$ref` de pointeur-vers-struct rendus nullables par
+`anyOf` (`BootstrapResponse.current_player` notamment — sinon le front perdait `| null`).
+
+**Garde-rails.** Nouveau `openapi_golden_test.go` : `TestOpenAPIYAMLIsUpToDate` (régénère en mémoire
+dans un autre répertoire temporaire → prouve aussi le déterminisme, diff byte-à-byte, message
+« relancer make openapi-gen ») + `TestManualFragmentPathsSurviveGeneration` (les 9 chemins chi-brut
+survivent). `openapi_schema_drift_test.go` SUPPRIMÉ (sous génération un schéma dérivé ne peut plus
+manquer) avec ses helpers et le hook `humacore.OnAPICreated` devenu mort. H3 Partie B recâblée :
+l'allowlist statique de 5 entrées cède la place au FRAGMENT (perte légitime ⟺ déclarée au fragment),
+avec anti-caducité inversée — elle a immédiatement attrapé une description redondante que j'avais
+mise au fragment alors que le tag Go la produit déjà. `openapi_fastapi_reference.yaml` archivé
+(`docs/archive/`).
+
+**Résultats observés.** Diff sémantique vs baseline H0 (comparaison de FAITS, `$ref` résolus, pas de
+lignes) : 5 755 faits avant / 6 336 après → **597 ajouts, 69 modifications, 16 pertes, toutes
+inventoriées** : 5 descriptions de réponse 200 sur des ops qui répondent 204 (aucun corps : le doc
+fait foi), 7 paramètres de chemin au nom périmé ({user_id}×3, {invite_id}, {title_slug}×3 —
+Découvertes H2, le code fait foi), 4 champs de schéma sans équivalent Go (yaml périmé). Les
+modifications : 19 inline→`$ref` nommé (25/27 nœuds retrouvés via la ref ; les 2 restants sont deux
+des 4 champs périmés), 7 types de paramètre integer→string (params dérivés des input structs,
+inventaire item 6), 8 metadata H2 (summary/tags/operationId), 32 schémas (required conformes au Go,
+descriptions H3 reformulées, `$ref` enrichis). Tailles : yaml 18 066 → 20 962 L ;
+generated.ts 14 204 → 15 839 L avec **530 noms de schéma INCHANGÉS** (0 ajout, 0 retrait → aucun
+re-export `types.ts` à repointer, contrairement à ce que H7 anticipait). Retombées front : 6
+corrections de source (gardes `capabilities ?? []`, `available_players ?? []`, `holders` nullable, et
+surtout `status.error?.message|code` → `error_detail`/`error_code` — le front lisait un champ qui
+N'EXISTE PAS côté Go, hérité d'un yaml périmé) + 15 fixtures de test complétées des 4 champs
+`TitleSummary` désormais requis.
+
+**Gates** : gofmt -l vide ; `go build ./...` 0 ; `go vet ./...` 0 ; `go test ./internal/api/...` ok ;
+`go test ./...` exit 0 ; `make go-api-lint` 0 issue ; `go run ./cmd/openapi-gen -check` à jour ;
+`make generate-types` ok ; `npm run typecheck` 0 erreur ; `node tools/lint-contract-ratchet.mjs`
+clean ; `npx vitest run src/lib` 78 fichiers / 826 tests ; suite vitest complète 364 / 3 093.
+
+**Conclusion / prochaine étape.** H7 : garde sémantique de `generated.ts` (snapshot des noms exportés
++ membres d'enums), `response-types.guard.test.ts` rendu assertif, lot Group/GroupMember (enum Role,
+non-nullité `members`, retrait de `BASELINE_COLLISIONS`) — la régénération des types est déjà faite et
+verte. Découverte notée, NON traitée (hors périmètre H6) : Huma documente `DefaultStatus=200` pour
+11 handlers qui posent 201/202 via leur champ `Status` ; corrigé DANS le fragment, la correction propre
+(poser `DefaultStatus` côté Go) réduirait le fragment d'autant. Limite connue : le document est
+généré depuis le routeur de DÉMO — les 29 routes Prestige et les 3 routes catalog non montées en démo
+restent hors contrat (statu quo, elles n'étaient pas documentées non plus avant).
+
 ## [2026-07-25] V72-34 — signal de placement DÉDIÉ à la chaîne de performance (Perf/ΔPerf + tuiles Accueil)
 
 **Statut** : Complété. Pas de commit (superviseur applique les gates). Agents parallèles actifs

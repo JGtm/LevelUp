@@ -1,0 +1,3194 @@
+# Fragment MANUEL du contrat OpenAPI — VERSIONNÉ, édité à la main.
+#
+# api/openapi.yaml est GÉNÉRÉ (`make openapi-gen`) : document OpenAPI PARTAGÉ de
+# Huma (routes + schémas dérivés des types Go) FUSIONNÉ avec ce fragment. Ce
+# fichier porte donc UNIQUEMENT ce que Huma ne peut pas dériver :
+#
+#   1. les routes chi-brut hors document Huma (images d'assets, upload/service de
+#      médias, export CSV) et la route documentée non encore implémentée ;
+#   2. les request bodies des handlers `RawBody` (corps décodé à la main pour
+#      préserver le 400 {invalid_body} — Huma ne voit qu'un []byte opaque) ;
+#   3. la sémantique d'opération non portable en tag struct : description
+#      d'opération, descriptions de réponse, réponses d'erreur (4xx/5xx),
+#      descriptions et enum/default de paramètres ;
+#   4. les 5 exemples d'erreur au niveau réponse (components.responses) ;
+#   5. les descriptions de schéma RACINE (Huma n'a aucun tag type-level) ;
+#   6. les schémas SANS type Go généré par Huma (entrées décodées à la main,
+#      routes chi-brut, legacy) ;
+#   7. l'entête documentaire : info.description, servers, tags.
+#
+# PRÉCÉDENCE : le fragment GAGNE sur toute collision. La fusion suit JSON Merge
+# Patch (cf. internal/api/openapigen/render.go) :
+#   - deux objets fusionnent clé à clé (le fragment enrichit sans effacer) ;
+#   - une valeur `null` SUPPRIME la clé dérivée (utilisé pour les statuts de
+#     succès que Huma documente à 200 alors que le handler pose 201/202 via son
+#     champ `Status`) ;
+#   - les listes `parameters` d'opération fusionnent par (name, in).
+#
+# Contenu initial dérivé (2026-07-25, V72-01 / H6) du dernier api/openapi.yaml
+# écrit à la main, moins tout ce que Huma dérive désormais. Maintenu à la main
+# depuis. Les chemins sont RELATIFS au server /api/v1 (comme le contrat publié).
+#
+# Vérifié par : TestOpenAPIYAMLIsUpToDate (golden byte-à-byte) + contract_test
+# (parité chi <-> yaml) + TestManualFragmentPathsSurviveGeneration.
+info:
+  description: |
+    API backend Go pour le dashboard LevelUp (Halo Infinite, Halo 5).
+
+    Contrat **GÉNÉRÉ** (`make openapi-gen`) : les routes et les schémas sont dérivés
+    des types Go par Huma ; la sémantique non dérivable vient du fragment manuel
+    `api/openapi_manual_fragment.yaml`. Le code Go fait foi — pour faire évoluer le
+    contrat, modifier le handler ou son DTO, puis régénérer.
+
+    Priorités d'endpoints :
+    - **P0** : bootstrap, players, session/context, filters/resolve
+    - **P1** : career, match-history, explorer, match-view
+    - **P2+** : home, timeseries, teammates, synthesis, citations, settings, setup, sync
+servers:
+  - url: /api/v1
+    description: Préfixe API v1 (tous les endpoints métier)
+  - url: /
+    description: Racine (health, static)
+tags:
+  - name: health
+    description: Health check du service
+  - name: bootstrap
+    description: Bootstrap shell React (P0)
+  - name: filters
+    description: Résolution de filtres cascade (P0)
+  - name: career
+    description: Page Carrière (P1)
+  - name: match-history
+    description: Historique des parties (P1)
+  - name: explorer
+    description: Explorer matchs + joueurs (P1)
+  - name: match-view
+    description: Détail d'un match (P1)
+  - name: home
+    description: Page d'accueil et palmarès (P2+)
+  - name: squad
+    description: Pages Escouade / Synthèse (P2+)
+  - name: media
+    description: Galerie médias (P2+)
+  - name: notifications
+    description: Notifications joueur (P3)
+  - name: settings
+    description: Settings utilisateur
+  - name: sync
+    description: Sync delta + backfill (P3)
+  - name: auth
+    description: Authentification, session, watcher (P3)
+  - name: admin
+    description: Routes administration (auth admin requis)
+  - name: assets
+    description: Servir des assets binaires (images, médias)
+  - name: diagnostics
+    description: Endpoints diagnostic admin/dev (lecture seule)
+  - name: setup
+    description: 'Onboarding : déclaration des joueurs et premières synchronisations'
+  - name: groups
+    description: Groupes de joueurs (création, invitations, membres)
+  - name: jobs
+    description: Suivi des tâches asynchrones (jobs)
+  - name: progression
+    description: 'Progression V2 (Ascension) : paliers et diagnostic'
+  - name: match-exclusion
+    description: Exclusion de matchs des agrégats d'un joueur
+  - name: compare
+    description: Comparaison de joueurs sur une période
+  - name: leaderboard
+    description: Classements (catalogue, saisons, monde)
+  - name: palmares
+    description: 'Palmarès joueur : relations, moments, faits marquants'
+  - name: timeseries
+    description: Séries temporelles agrégées (courbes)
+  - name: teammates
+    description: Coéquipiers et escouades
+  - name: synthesis
+    description: Synthèse narrative (coach)
+  - name: titles
+    description: 'Titres supportés (multi-titre) : capacités, mappings, catalogue'
+paths:
+  /health:
+    get:
+      description: |
+        Vérifie l'état du service et de ses dépendances critiques
+        (metadata.duckdb, shared_matches_v2.duckdb, db_profiles.json).
+      responses:
+        '200':
+          description: Service opérationnel ou dégradé
+  /bootstrap:
+    get:
+      description: |
+        Point d'entrée unique du shell React. Retourne l'état complet de l'application :
+        configuration du setup, état auth, joueur courant, capacités, feature flags.
+
+        Le frontend appelle cet endpoint au démarrage et après chaque action
+        susceptible de changer l'état global (auth, changement de joueur, etc.).
+
+        **Invariants :**
+        - `auth_state` ∈ {missing, partial, ready}
+        - `setup_state` ∈ {no_halo_link, halo_linked_no_profile, profile_ready_no_sync, ready}
+        - `available_players` ne doit jamais être null si la liste est connue
+        - `current_player` peut être null
+      responses:
+        '200':
+          description: Bootstrap complet
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /players:
+    get:
+      description: |
+        Retourne la liste de tous les joueurs configurés dans db_profiles.json.
+        En DEMO_MODE, retourne le joueur de démo pointant sur les fixtures.
+      responses:
+        '200':
+          description: Liste des joueurs
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /session/context:
+    post:
+      description: |
+        Met à jour le joueur courant, la locale ou les hints dans la session web.
+        N'expose jamais le contenu complet de session.
+
+        **Invariants :**
+        - `locale` ∈ {fr, en} si fourni
+        - `player_slug` doit référencer un slug existant
+        - Retourne 404 si le slug est inconnu
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionContextRequest'
+      responses:
+        '200':
+          description: Contexte de session mis à jour
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /players/{player_slug}/filters/resolve:
+    post:
+      description: |
+        Normalise FilterContextInput, calcule les options disponibles
+        (playlists/modes/cartes/sessions) et retourne le contexte résolu.
+
+        **Invariants :**
+        - `filter_mode` ∈ {period, sessions}
+        - `effective` est le FilterContextInput normalisé, pas un echo brut
+        - Les listes vides dans cascade = « tout coché » (pas de filtre restrictif)
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FilterContextInput'
+      responses:
+        '200':
+          description: Contexte de filtres résolu
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /players/{player_slug}/filters/match-ids:
+    post:
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FilterContextInput'
+      responses:
+        '200':
+          description: Liste des match_ids filtrés
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /players/{player_slug}/pages/career:
+    get:
+      description: |
+        Retourne la page Carrière complète pour un joueur :
+        rang, XP, projections, graphes, historique, rating LUSR, top matchs, encounters.
+
+        **Invariants :**
+        - `charts` peut contenir des valeurs null ciblées
+        - `summary` et `lusr` restent optionnels si la donnée manque
+        - Le contrat est page-oriented, pas une projection brute du canonique Halo
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      responses:
+        '200':
+          description: Page Carrière
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /players/{player_slug}/pages/career/top-matches:
+    get:
+      description: Retourne les meilleurs et pires matchs du joueur (tous critères confondus).
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      responses:
+        '200':
+          description: Top matchs
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /players/{player_slug}/pages/career/encounters:
+    get:
+      description: Retourne les adversaires et coéquipiers fréquents.
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      responses:
+        '200':
+          description: Encounters
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /players/{player_slug}/pages/career/highlight-matches:
+    get:
+      description: |
+        Retourne les 15 meilleurs et 15 pires matchs du joueur au format
+        ExplorerMatchesRow (mêmes colonnes que la page Explorer). Tri par
+        priorité dominance puis performance_score (DESC pour best, ASC pour worst).
+        Filtres d'éligibilité : performance_score NOT NULL, time_played≥180s,
+        is_firefight=FALSE. Asymétrie WIN/LOSS sur had_bot_teammate : les WIN
+        avec bot coéquipier sont conservés (perf personnelle méritoire malgré
+        le handicap), les LOSS avec bot coéquipier sont exclus (responsabilité
+        du joueur non isolable d'un déséquilibre 4v3).
+
+        Query params optionnels filtrent côté SQL :
+          - `experience` : "all" / "ranked" / "unranked"
+          - `season_ids` : CSV des saisons (ex. "season6,season7")
+
+        La réponse inclut les cascade counts (`available_experience`,
+        `available_seasons`) qui respectent l'autre filtre actif (cascade-aware).
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - name: experience
+          in: query
+          schema:
+            enum:
+              - all
+              - ranked
+              - unranked
+        - name: season_ids
+          in: query
+          description: CSV des IDs de saison à filtrer (ex. "season6,season7")
+      responses:
+        '200':
+          description: Highlight matches
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          description: MatchHistoryService factory indisponible (cas test)
+  /players/{player_slug}/pages/career/top-encounters:
+    get:
+      description: |
+        Retourne les 10 joueurs les plus fréquemment croisés au niveau
+        carrière, hors amis configurés (`FriendGamertags` settings résolus
+        en XUIDs via `v_gamertag_lookup`). Format MatchEncounterRow (mêmes
+        8 colonnes que Match View > "Historique de rencontre"). Inclut les
+        badges narratifs ally_plus / tough_enemy / ordinal.
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      responses:
+        '200':
+          description: Top encounters
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /players/{player_slug}/pages/career/rivals:
+    get:
+      description: |
+        Retourne le top 10 némésis (joueurs qui ont le plus tué le joueur
+        principal, tri par deaths DESC) et le top 10 souffre-douleur (joueurs
+        que le principal a le plus tué, tri par frags DESC). Source :
+        `shared.killer_victim_pairs`. Pas de seuil minimum d'interactions.
+        Bots exclus. Le ratio frags/deaths est calculé côté backend
+        (avec garde div-par-zéro : 0 morts → ratio = float64(frags)).
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      responses:
+        '200':
+          description: Rivals
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /players/{player_slug}/pages/career/csrs:
+    get:
+      description: |
+        Retourne pour chaque playlist ranked les snapshots CSR `current`,
+        `season`, `all_time`, agrégés depuis `player_csr_snapshots` (Q26) pour la
+        saison demandée. Si la table est absente, dégradation silencieuse (200
+        avec liste vide).
+
+        Le paramètre `season` sélectionne la saison CSR à afficher (vide → saison
+        courante configurée). `available_seasons` liste les saisons proposables
+        dans le menu déroulant (saisons ayant des données classées pour le joueur
+        + saison courante). LUSR n'est pas concerné (cumulatif, hors saison).
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - name: season
+          in: query
+          description: |
+            Saison CSR à afficher (ex. "CsrSeason13-1"). Vide → saison courante.
+      responses:
+        '200':
+          description: Classements CSR par playlist
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /players/{player_slug}/patterns:
+    get:
+      description: |
+        Retourne le rapport Pattern Engine (PLAN_PATTERN_ENGINE_V3) pour le
+        joueur : patterns contextuels (by mode/map/squad), patterns comportementaux
+        (tilt/fatigue/engagement/plateau/plafond), et leviers calibrés p60
+        (top 3 axes d'amélioration). Analyse sur les `n` derniers matchs.
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - name: 'n'
+          in: query
+          description: Nombre de matchs récents à analyser (10 ≤ n ≤ 200, défaut 50).
+          schema:
+            default: 50
+      responses:
+        '200':
+          description: Rapport patterns du joueur (peut être vide si aucun match)
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /players/{player_slug}/pages/achievements:
+    get:
+      description: |
+        Retourne la liste fusionnée des achievements Xbox (référentiel bilingue
+        EN/FR) avec la progression du joueur. Triés : unlocked en premier
+        (UnlockedAt DESC), puis locked par gamerscore DESC.
+
+        Données peuplées par le sync engine post-sync ou par la CLI
+        `levelup sync-achievements`. Si la table est vide (backfill jamais lancé),
+        renvoie une réponse `{summary: zeros, achievements: []}`.
+
+        Capability requise : `achievements` — middleware retourne 405 si le
+        titre courant ne supporte pas cette feature.
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      responses:
+        '200':
+          description: Page Achievements
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /players/{player_slug}/pages/match-history/query:
+    post:
+      description: |
+        Retourne la page paginée de l'historique des parties pour un joueur.
+
+        **Invariants :**
+        - `table` est une PaginatedResponse avec `items` et `pagination`
+        - `export_hint` est optionnel
+        - `match_url` est porté par chaque ligne, pas reconstruit côté frontend
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatchHistoryQueryRequest'
+      responses:
+        '200':
+          description: Historique paginé
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /players/{player_slug}/pages/match-history/export:
+    get:
+      tags:
+        - match-history
+      operationId: exportMatchHistory
+      summary: Export CSV de l'historique
+      description: |
+        Génère un jeton d'export CSV pour l'historique filtré des parties.
+        Sprint 49 : aligné sur GET (chi) — l'export utilise les filtres de session,
+        pas un body POST.
+      parameters:
+        - $ref: '#/components/parameters/PlayerSlug'
+      responses:
+        '200':
+          description: Jeton d'export
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileTokenResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /directory/gamertags/search:
+    get:
+      description: |
+        Recherche floue de gamertags dans la base partagée.
+        Accessible sans joueur courant (endpoint global).
+
+        **Invariants :**
+        - Une recherche sans résultat renvoie 200 avec items = []
+        - q minimum 2 caractères pour retourner des résultats
+      parameters:
+        - name: q
+          in: query
+          description: Requête de recherche (min. 2 caractères)
+          schema:
+            default: ''
+        - name: live
+          in: query
+          description: |
+            Arme le repli LIVE (résolution Xbox d'un joueur jamais croisé localement).
+            Défaut false : recherche locale seule, rapide (typeahead). true uniquement
+            sur intention explicite de l'utilisateur (« Rechercher sur Xbox ») car il
+            ajoute un round-trip Xbox de 2-3 s (challenge V72-24).
+          schema:
+            default: false
+        - name: limit
+          in: query
+          description: Nombre maximal de suggestions
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 8
+      responses:
+        '200':
+          description: Suggestions de gamertags
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /players/{player_slug}/pages/explorer/matches-query:
+    post:
+      description: Retourne la liste paginée et filtrée des matchs pour la vue Explorer.
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExplorerMatchesQueryRequest'
+      responses:
+        '200':
+          description: Matchs Explorer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /players/{player_slug}/pages/explorer/player-query:
+    post:
+      description: Retourne le profil d'encounter et les matchs communs avec un joueur cible.
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExplorerPlayerQueryRequest'
+      responses:
+        '200':
+          description: Profil encounter
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /players/{player_slug}/matches/{match_id}:
+    get:
+      description: |
+        Retourne le détail complet d'un match (header + rank + 5 onglets).
+
+        **Invariants :**
+        - La vue match est un contrat par onglets/blocs métier, pas un dump du MatchDetail canonique
+        - Un match introuvable renvoie 404 avec code = match_not_found
+        - Les blocs partiels sont autorisés si le contrat principal est servable
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - name: match_id
+          in: path
+          description: UUID du match Halo Infinite
+      responses:
+        '200':
+          description: Détail du match
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /players/{player_slug}/matches/{match_id}/exclusion:
+    patch:
+      description: |
+        Positionne is_excluded pour un match donné dans player_match_enrichment.
+        Un match exclu est ignoré partout dans l'app (stats, graphes, historique, export).
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - name: match_id
+          in: path
+          description: UUID du match Halo Infinite
+      responses:
+        '204':
+          description: Exclusion mise à jour avec succès
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /profiles/{player_slug}/titles/{slug}/sync:
+    patch:
+      description: |
+        Bascule sync_enabled du couple (joueur, titre) dans db_profiles.json.
+        Mettre en pause conserve les données sur disque (réactivable sans re-sync).
+        Refuse de mettre en pause le DERNIER titre actif du joueur (409).
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - name: slug
+          in: path
+          description: Slug du titre cible (ex. halo_infinite, halo_5)
+      responses:
+        '200':
+          description: État de sync mis à jour
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /profiles/{player_slug}/titles/{slug}/data:
+    delete:
+      description: |
+        Retire le couple (joueur, titre) de db_profiles.json et supprime les
+        fichiers de données du joueur pour ce titre. Refuse de purger le DERNIER
+        titre actif du joueur (409). data_removed=false si les fichiers n'ont pas
+        pu être supprimés malgré le retrait du profil (verrou disque résiduel).
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - name: slug
+          in: path
+          description: Slug du titre cible
+      responses:
+        '200':
+          description: Titre purgé
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/device-flow/start:
+    post:
+      description: |
+        Lance un Device Code Flow pour l'authentification Halo (MSAL).
+        Non disponible en DEMO_MODE.
+      responses:
+        '200':
+          description: Flow initié (user_code + verification_uri)
+        '422':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/device-flow/{attempt_id}:
+    get:
+      responses:
+        '200':
+          description: Statut du flow (pending / authorized / provisioned / failed / expired)
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /setup/players:
+    post:
+      description: |
+        Crée (ou met à jour) le couple (joueur, titre) dans db_profiles.json.
+        Onboarding multi-titre : appeler une fois par titre choisi, avec son
+        title_slug et son initial_max_matches. title_slug du body prime sur le
+        titre du contexte (header X-LevelUp-Title).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - gamertag
+              properties:
+                gamertag:
+                  type: string
+                xuid:
+                  type: string
+                profile_mode:
+                  type: string
+                  description: xbox | azure_manual
+                title_slug:
+                  type: string
+                  description: 'Titre cible (défaut: titre du contexte puis halo_infinite)'
+                initial_max_matches:
+                  type: integer
+                  description: Nb de matchs à synchroniser à l'onboarding (0 = défaut)
+      responses:
+        '200': null
+        '201':
+          description: Profil créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatePlayerProfileResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /setup/smoke-test:
+    post:
+      description: |
+        Endpoint Go uniquement — absent de FastAPI.
+        Vérifie la configuration de bout en bout (connexion DB + API Halo).
+        Son maintien versus intégration dans `/sync/initial` sera décidé au Sprint 31.
+      responses:
+        '200': null
+        '202':
+          description: Smoke test démarré
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AsyncJobStatus'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /sync/initial:
+    post:
+      description: |
+        Sync initiale title-aware. title_slug cible la bonne DB (lève l'ambiguïté
+        d'un gamertag présent sous plusieurs titres) ; à défaut, le titre du
+        contexte. max_matches : 1-2000 ; 0 = défaut du profil (initial_max_matches)
+        puis 200.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - player_slug
+              properties:
+                player_slug:
+                  type: string
+                max_matches:
+                  type: integer
+                  description: 1-2000 ; 0 = défaut profil puis 200
+                title_slug:
+                  type: string
+                  description: 'Titre cible (défaut: titre du contexte puis halo_infinite)'
+      responses:
+        '200': null
+        '202':
+          description: Sync démarrée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AsyncJobStatus'
+        '409':
+          description: Une sync est déjà en cours
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /settings:
+    get:
+      responses:
+        '200':
+          description: Configuration actuelle
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SettingsResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      responses:
+        '200':
+          description: Configuration mise à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SettingsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /settings/media/reset-index:
+    post:
+      responses:
+        '200': null
+        '202':
+          description: Reset démarré
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AsyncJobStatus'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /jobs/{job_id}:
+    get:
+      responses:
+        '200':
+          description: Statut du job
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /players/{player_slug}/pages/home:
+    get:
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      responses:
+        '200':
+          description: Page accueil (hero card, timeline, médias récents)
+          content:
+            application/json:
+              schema:
+                type: object
+                description: 'TODO Sprint 32 : schéma HomePageResponse complet'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /players/{player_slug}/pages/sessions:
+    get:
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      responses:
+        '200':
+          description: Liste des sessions avec stats agrégées
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /players/{player_slug}/pages/sessions/detail:
+    post:
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: SessionPageRequest — session ciblée, session de comparaison et filtres optionnels
+      responses:
+        '200':
+          description: Détail de session avec suggestion similaire et comparaison intégrée
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /players/{player_slug}/pages/stats/query:
+    post:
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      responses:
+        '200':
+          description: Données séries temporelles (win/loss, précision, forme, objectif)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /players/{player_slug}/pages/timeseries:
+    post:
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      responses:
+        '200':
+          description: Données séries temporelles
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /players/{player_slug}/pages/squad:
+    get:
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      responses:
+        '200':
+          description: Analyse escouade / coéquipiers
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /players/{player_slug}/pages/teammates:
+    post:
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      responses:
+        '200':
+          description: Analyse coéquipiers avec statistiques
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /players/{player_slug}/pages/synthesis:
+    post:
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      responses:
+        '200':
+          description: Synthèse globale (heatmap, top semaines, comparaison KPIs)
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /players/{player_slug}/pages/citations:
+    post:
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      responses:
+        '200':
+          description: Citations calculées (Triple Kill, Clutch, etc.)
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /players/{player_slug}/pages/commendations:
+    post:
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      responses:
+        '200':
+          description: Commendations et médailles par catégorie
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /players/{player_slug}/pages/medals:
+    post:
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      responses:
+        '200':
+          description: Catalogue complet des médailles du titre avec le compteur obtenu par le joueur (0 = jamais obtenue), regroupées par catégorie et super-section
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /players/{player_slug}/commendations/totals:
+    get:
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      responses:
+        '200':
+          description: Totaux à vie des commendations natives, groupés par catégorie
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /players/{player_slug}/pages/media:
+    post:
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MediaPageRequest'
+      responses:
+        '200':
+          description: Galerie médias paginée
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /players/{player_slug}/media/likes:
+    patch:
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MediaLikeRequest'
+      responses:
+        '200':
+          description: État liked persisté côté backend
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /players/{player_slug}/pages/compare:
+    post:
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompareRequest'
+      responses:
+        '200':
+          description: Résultat de comparaison avec 12 KPIs
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /players/{player_slug}/pages/leaderboard:
+    get:
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - name: season
+          in: query
+          description: Filtrer par saison
+        - name: playlist
+          in: query
+          description: Filtrer par playlist
+      responses:
+        '200':
+          description: Classement des joueurs
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /players/{player_slug}/pages/leaderboard/catalog:
+    get:
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      responses:
+        '200':
+          description: Catalogue saisons + playlists ayant des snapshots
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /players/{player_slug}/pages/last-match/resolve:
+    post:
+      tags:
+        - explorer
+      operationId: postLastMatchResolve
+      summary: Résoudre le dernier match
+      parameters:
+        - $ref: '#/components/parameters/PlayerSlug'
+      responses:
+        '200':
+          description: Dernier match résolu
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /changelog:
+    get:
+      responses:
+        '200':
+          description: Contenu du changelog
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /readyz:
+    get:
+      responses:
+        '200':
+          description: Prêt à servir le trafic
+        '503':
+          description: Pas prêt (un check externe échoue)
+  /healthz/home:
+    get:
+      description: |
+        Sonde le contenu de la home page Mission Control pour un joueur donné.
+        Inspecte les 5 sections critiques et liste celles qui sont vides
+        sans raison (= régression silencieuse). Pensé pour CI post-backfill
+        et alerte développeur.
+
+        Paramètre `player` obligatoire — pas d'auto-pick.
+      parameters:
+        - name: player
+          in: query
+          description: player_slug (cf. /bootstrap.player_slug)
+          required: true
+      responses:
+        '200':
+          description: Toutes les sections critiques sont peuplées
+        '400':
+          description: Param 'player' manquant
+        '404':
+          description: player_slug inconnu
+        '503':
+          description: |
+            Au moins une section est vide sans raison. Body :
+            `{ok: false, player, checks: {section: 'ok'|'missing (raison)'},
+            empty_sections: ['banner', 'highest_csr', ...]}`
+  /help/release-notes:
+    get:
+      responses:
+        '200':
+          description: Liste des release notes
+  /auth/login:
+    post:
+      responses:
+        '200':
+          description: Session créée (cookie set)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/register:
+    post:
+      responses:
+        '200':
+          description: Compte créé
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /auth/password:
+    post:
+      responses:
+        '204':
+          description: Mot de passe défini
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /groups:
+    get:
+      responses:
+        '200':
+          description: Liste des groupes
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      responses:
+        '200': null
+        '201':
+          description: Groupe créé
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /groups/{id}:
+    patch:
+      responses:
+        '200':
+          description: Groupe renommé
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          description: Accès refusé (propriétaire/membre requis)
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      responses:
+        '204':
+          description: Groupe supprimé
+        '403':
+          description: Accès refusé (propriétaire/membre requis)
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /groups/{id}/invites:
+    post:
+      responses:
+        '200': null
+        '201':
+          description: Invitation créée
+        '403':
+          description: Accès refusé (propriétaire/membre requis)
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /groups/{id}/members/me:
+    delete:
+      responses:
+        '204':
+          description: Membre retiré
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Le propriétaire ne peut pas quitter
+  /groups/{id}/members/{xuid}:
+    delete:
+      responses:
+        '204':
+          description: Membre retiré
+        '400':
+          description: Le propriétaire ne peut pas être retiré
+        '403':
+          description: Accès refusé (propriétaire requis)
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /admin/titles:
+    get:
+      responses:
+        '200':
+          description: Liste des titres enregistrés
+  /admin/titles/{slug}:
+    get:
+      responses:
+        '200':
+          description: Détail du titre
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /admin/titles/{slug}/diagnostic:
+    get:
+      responses:
+        '200':
+          description: Rapport de diagnostic du titre
+  /admin/titles/{slug}/toml-draft:
+    get:
+      responses:
+        '200':
+          description: Brouillon TOML (text/plain) à copier dans config/titles/{slug}/mappings/
+          content:
+            text/plain:
+              schema:
+                type: string
+            application/json: null
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /admin/invites:
+    get:
+      responses:
+        '200':
+          description: Liste des invitations
+    post:
+      responses:
+        '200':
+          description: Invitation créée
+  /admin/invites/{code}:
+    delete:
+      responses:
+        '204':
+          description: Invitation supprimée
+  /admin/users:
+    get:
+      responses:
+        '200':
+          description: Liste des utilisateurs
+  /admin/users/{username}:
+    delete:
+      responses:
+        '204':
+          description: Utilisateur supprimé
+  /admin/invariants:
+    get:
+      responses:
+        '200':
+          description: Rapports d'invariants par joueur
+  /admin/db-contention:
+    get:
+      responses:
+        '200':
+          description: Compteurs de contention (swaps, durées, lectures rejetées en 503)
+  /admin/token-health:
+    get:
+      responses:
+        '200':
+          description: Statuts de santé des tokens par joueur
+  /admin/monitoring/overview:
+    get:
+      responses:
+        '200':
+          description: Vue d'ensemble monitoring (sections best-effort)
+  /admin/monitoring/scheduler:
+    get:
+      responses:
+        '200':
+          description: Snapshot + historique des cycles (ring mémoire 48 entrées)
+  /admin/monitoring/convergence:
+    get:
+      responses:
+        '200':
+          description: Backlog de convergence par joueur (compteurs plafonnés à l'horizon)
+  /admin/monitoring/weapon-coverage:
+    get:
+      responses:
+        '200':
+          description: Couverture de résolution d'arme par titre
+  /admin/monitoring/lusr-gaps:
+    get:
+      responses:
+        '200':
+          description: Rapport trous LUSR par joueur + agrégats + garde-fou
+  /admin/monitoring/lusr-gaps/{player}/recompute:
+    post:
+      responses:
+        '200':
+          description: Replay effectué (nombre de lignes LUSR réécrites)
+        '500':
+          description: Replay échoué
+        '503':
+          description: Moteur de replay non câblé
+  /admin/monitoring/jobs:
+    get:
+      responses:
+        '200':
+          description: Jobs récents, actifs d'abord
+  /admin/actions/data-health/run:
+    post:
+      responses:
+        '200':
+          description: Compteurs de l'audit (UUIDs bruts, lying bits, orphelins, garbage URLs)
+        '503':
+          description: Health scheduler non câblé
+  /admin/actions/auto-sync/run:
+    post:
+      responses:
+        '200': null
+        '202':
+          description: Job créé (suivre via GET /jobs/{job_id})
+        '409':
+          description: Un cycle forcé est déjà en vol (job_id en details)
+        '503':
+          description: Scheduler indisponible
+  /admin/actions/journal:
+    get:
+      responses:
+        '200':
+          description: Journal des actions globales
+  /admin/diag/appearance/{player_slug}:
+    get:
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur suivi (db_profiles.json).
+      responses:
+        '200':
+          description: Diagnostic apparence par composant
+        '404':
+          description: Joueur suivi introuvable
+  /admin/monitoring/data-quality:
+    get:
+      parameters:
+        - name: locale
+          in: query
+          description: Locale cible du compteur untranslated_modes (défaut fr).
+      responses:
+        '200':
+          description: Compteurs qualité données
+  /admin/monitoring/data-quality/issues:
+    get:
+      parameters:
+        - name: kind
+          in: query
+          required: true
+          schema:
+            enum:
+              - raw_uuids
+              - untranslated_modes
+              - orphan_playlists
+              - orphan_xuids
+        - name: locale
+          in: query
+          description: Locale cible des modes sans traduction (défaut fr).
+        - name: offset
+          in: query
+          description: Décalage de pagination serveur (défaut 0, rétrocompatible).
+      responses:
+        '200':
+          description: Fenêtre paginée [offset, offset+limit) + total (avant fenêtrage)
+        '400':
+          description: kind invalide
+  /admin/actions/registry-names/backfill:
+    post:
+      responses:
+        '200':
+          description: Compteurs scanned/fixed par type d'asset
+        '409':
+          description: Backfill déjà en cours
+        '503':
+          description: Writer shared occupé ou metadata absente
+  /admin/actions/translations/mode:
+    post:
+      responses:
+        '200':
+          description: created | updated + clé normalisée écrite
+        '400':
+          description: Entrées invalides
+        '503':
+          description: Metadata indisponible
+  /admin/actions/translations/asset:
+    post:
+      responses:
+        '200':
+          description: created | updated + langues écrites
+        '400':
+          description: Entrées invalides
+  /admin/actions/convergence/run:
+    post:
+      responses:
+        '200': null
+        '202':
+          description: Job créé (suivre via GET /jobs/{job_id})
+        '400':
+          description: player_slug requis
+        '409':
+          description: Convergence déjà en cours pour ce joueur (job_id en details)
+        '503':
+          description: Scheduler indisponible
+  /admin/actions/initial-sync/run:
+    post:
+      parameters:
+        - name: title
+          in: query
+          description: Titre cible (fallback du title_slug du corps, sinon titre par défaut).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - player_slug
+              properties:
+                player_slug:
+                  type: string
+                  description: Slug (ou gamertag) du joueur suivi à re-importer.
+                title_slug:
+                  type: string
+                  description: Titre cible explicite (multi-titre) ; vide → paramètre title puis titre par défaut.
+                max_matches:
+                  type: integer
+                  minimum: 1
+                  maximum: 2000
+                  description: Plafond de matchs (1..2000) ; 0/absent → défaut profil (initial_max_matches) puis 200.
+      responses:
+        '200': null
+        '202':
+          description: Job créé (suivre via GET /jobs/{job_id})
+        '400':
+          description: player_slug requis
+        '409':
+          description: Synchronisation initiale déjà en cours pour ce joueur (job_id en details)
+        '503':
+          description: Scheduler indisponible
+  /admin/actions/catalog/refresh:
+    post:
+      responses:
+        '200':
+          description: Compteurs d'upserts par table catalog
+        '409':
+          description: Refresh déjà en cours
+        '503':
+          description: Metadata ou shared inaccessibles
+  /admin/actions/lying-bits/reset:
+    post:
+      responses:
+        '200':
+          description: Compteurs de matchs clearés par catégorie (ou détectés en dry-run)
+        '409':
+          description: Reset déjà en cours
+        '503':
+          description: Writer shared occupé ou shared absente
+  /admin/actions/catalog/ugc-drain:
+    post:
+      responses:
+        '200': null
+        '202':
+          description: Job créé (suivre via GET /jobs/{job_id})
+        '409':
+          description: Drain déjà en cours pour ce titre (job_id en details)
+        '503':
+          description: Drain indisponible (jobs non câblés)
+  /admin/monitoring/perf:
+    get:
+      responses:
+        '200':
+          description: Agrégats count/sum/avg/max par appel/phase/étape
+  /admin/monitoring/errors:
+    get:
+      responses:
+        '200':
+          description: Buckets d'erreurs triés par occurrences décroissantes
+  /admin/monitoring/detections:
+    get:
+      parameters:
+        - name: status
+          in: query
+          schema:
+            enum:
+              - open
+              - acked
+              - muted
+              - resolved
+      responses:
+        '200':
+          description: Détections triées par last_seen décroissant + open_count
+  /admin/monitoring/freshness:
+    get:
+      responses:
+        '200':
+          description: Fraîcheur par titre (vide = tous les titres actifs) + total critical
+  /admin/monitoring/resources:
+    get:
+      responses:
+        '200':
+          description: État ressources (best-effort par section)
+  /admin/monitoring/crons:
+    get:
+      responses:
+        '200':
+          description: Statut des crons + liveness des features
+  /admin/monitoring/detections/{fingerprint}:
+    patch:
+      responses:
+        '200':
+          description: Statut appliqué (fingerprint, status, ok)
+        '400':
+          description: Statut invalide
+        '503':
+          description: Store monitoring indisponible
+  /admin/monitoring/logs/modules:
+    get:
+      responses:
+        '200':
+          description: Modules de logs, plus actifs d'abord
+        '503':
+          description: Dossier de logs illisible
+  /admin/monitoring/logs/tail:
+    get:
+      parameters:
+        - name: module
+          in: query
+          required: true
+        - name: level
+          in: query
+          schema:
+            enum:
+              - debug
+              - info
+              - warn
+              - error
+        - name: before
+          in: query
+          description: Curseur arrière « charger plus » (offset octet renvoyé en next_offset) — charge la tranche strictement plus ancienne.
+      responses:
+        '200':
+          description: Entrées parsées (plus récentes d'abord) + truncated + curseur next_offset/has_more
+        '400':
+          description: Module invalide
+  /assets/battlepass/{title_id}/{filename}:
+    get:
+      tags:
+        - assets
+      operationId: getBattlepassAsset
+      parameters:
+        - name: title_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: filename
+          in: path
+          required: true
+          schema:
+            type: string
+      summary: Sert une image de battlepass (cache long terme)
+      responses:
+        '200':
+          description: Binary image
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /assets/challenge-badge/{title_id}/{filename}:
+    get:
+      tags:
+        - assets
+      operationId: getChallengeBadgeAsset
+      parameters:
+        - name: title_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: filename
+          in: path
+          required: true
+          schema:
+            type: string
+      summary: Sert une image de badge de défi
+      responses:
+        '200':
+          description: Binary image
+  /assets/{title_id}/maps:
+    get:
+      responses:
+        '200':
+          description: Liste des maps
+        '503':
+          description: Asset metadata DB indisponible
+  /assets/{title_id}/weapons:
+    get:
+      responses:
+        '200':
+          description: Liste des armes
+        '503':
+          description: Asset metadata DB indisponible
+  /assets/{title_id}/medals:
+    get:
+      responses:
+        '200':
+          description: Liste des médailles
+        '503':
+          description: Asset metadata DB indisponible
+  /assets/maps/{title_id}/{map_id}/image:
+    get:
+      tags:
+        - assets
+      operationId: getMapAsset
+      parameters:
+        - name: title_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: map_id
+          in: path
+          required: true
+          schema:
+            type: string
+      summary: Sert l'image d'une carte
+      responses:
+        '200':
+          description: Binary image
+  /assets/medals/{title_id}/{medal_id}/image:
+    get:
+      tags:
+        - assets
+      operationId: getMedalAsset
+      parameters:
+        - name: title_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: medal_id
+          in: path
+          required: true
+          schema:
+            type: string
+      summary: Sert l'image d'une médaille
+      responses:
+        '200':
+          description: Binary image
+  /assets/spartan/{title_id}/{xuid}/{path}:
+    get:
+      tags:
+        - assets
+      operationId: getSpartanAsset
+      parameters:
+        - name: title_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: xuid
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+      summary: Sert un asset Spartan (emblem, backdrop, etc.)
+      responses:
+        '200':
+          description: Binary image
+  /titles/{slug}/capabilities:
+    get:
+      responses:
+        '200':
+          description: Capabilities du titre
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /titles/{slug}/feature-matrix:
+    get:
+      responses:
+        '200':
+          description: Feature matrix du titre
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /titles/{slug}/field-mappings:
+    get:
+      parameters:
+        - name: locale
+          in: query
+          schema:
+            enum:
+              - fr
+              - en
+      responses:
+        '200':
+          description: Field mappings
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /players/{player_slug}/engagement_profile:
+    get:
+      responses:
+        '200':
+          description: Engagement profile
+  /players/{player_slug}/engagement/timeseries:
+    post:
+      description: |
+        Retourne les N derniers matchs PvP du scope avec leurs paces. Body aligné sur POST /pages/timeseries : `filters` honore period / cascade / sessions / match_context. `limit` optionnel (défaut 50, max 500). Un body vide équivaut à `{}` (compat smoke).
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                filters:
+                  type: object
+                limit:
+                  type: integer
+                  minimum: 1
+                  maximum: 500
+      responses:
+        '200':
+          description: |
+            EngagementTimeseriesResponse — granularity adaptative selon densité
+            filtrée : match (≤ limit) → session → week → month. Au-delà de
+            workCap=200 matchs filtrés, le binning ne couvre que les N plus
+            récents et `truncated_to_recent` est positionné.
+        '400':
+          description: invalid_json ou invalid_filters
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /players/{player_slug}/engagement/recompute_coefficients:
+    post:
+      description: |
+        Recalcule les coefficients perso (coef_team_share / coef_lobby_share) pour toutes les catégories de mode supportées, depuis les paces persistées dans player_match_enrichment. Idempotent.
+      responses:
+        '200':
+          description: Rapport de recompute
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          description: Engagement persistence unavailable
+  /players/{player_slug}/matches/{match_id}/engagement:
+    get:
+      responses:
+        '200':
+          description: Engagement match
+  /players/{player_slug}/matches/{match_id}/neighbors:
+    get:
+      responses:
+        '200':
+          description: Match neighbors
+  /players/{player_slug}/matches/{match_id}/events:
+    get:
+      responses:
+        '200':
+          description: Timeline d'events
+        '503':
+          description: Le titre n'expose pas de timeline d'events
+  /players/{player_slug}/matches/{match_id}/favorite:
+    patch:
+      responses:
+        '200':
+          description: Statut mis à jour
+  /players/{player_slug}/pages/squad/v2:
+    get:
+      responses:
+        '200':
+          description: Squad V2 page
+  /players/{player_slug}/pages/squad/v2/engagement:
+    get:
+      responses:
+        '200':
+          description: Squad engagement
+  /players/{player_slug}/pages/palmares/season-pass:
+    get:
+      responses:
+        '200':
+          description: Season pass page
+  /players/{player_slug}/pages/palmares/relations:
+    post:
+      responses:
+        '200':
+          description: Relations hub page
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /players/{player_slug}/pages/palmares/relations/moments:
+    post:
+      responses:
+        '200':
+          description: Relations moments (heatmap + rivalries)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /media/feed-version:
+    get:
+      responses:
+        '200':
+          description: Feed version
+  /players/{player_slug}/media/authors:
+    get:
+      responses:
+        '200':
+          description: Authors list
+  /players/{player_slug}/media/files/{filepath}:
+    parameters:
+      - $ref: '#/components/parameters/PlayerSlug'
+      - name: filepath
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - media
+      operationId: serveMediaFile
+      summary: Sert un fichier média (image/vidéo)
+      responses:
+        '200':
+          description: Binary content
+  /players/{player_slug}/media/match-candidates:
+    get:
+      responses:
+        '200':
+          description: Match candidates
+  /players/{player_slug}/media/upload:
+    parameters:
+      - $ref: '#/components/parameters/PlayerSlug'
+    post:
+      tags:
+        - media
+      operationId: postUploadMedia
+      summary: Upload d'un média (image/vidéo)
+      responses:
+        '200':
+          description: Media uploadé
+  /players/{player_slug}/media/associate:
+    post:
+      responses:
+        '200':
+          description: Association créée
+  /players/{player_slug}/media/audio-config:
+    get:
+      responses:
+        '200':
+          description: Réglage audio média (défaut auto si non défini)
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlayerMediaAudioConfig'
+      responses:
+        '200':
+          description: Réglage enregistré
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /players/{player_slug}/notifications:
+    get:
+      responses:
+        '200':
+          description: Notifications
+  /players/{player_slug}/notifications/{id}:
+    delete:
+      responses:
+        '204':
+          description: Notification supprimée
+  /players/{player_slug}/notifications/preferences:
+    get:
+      responses:
+        '200':
+          description: Préférences
+    patch:
+      responses:
+        '200':
+          description: Préférences mises à jour
+  /players/{player_slug}/notifications/unread-count:
+    get:
+      responses:
+        '200':
+          description: Count
+  /players/{player_slug}/streaks:
+    get:
+      responses:
+        '200':
+          description: Streaks
+  /players/{player_slug}/records:
+    get:
+      responses:
+        '200':
+          description: Records
+  /players/{player_slug}/milestones:
+    get:
+      responses:
+        '200':
+          description: Milestones
+  /players/{player_slug}/profile:
+    get:
+      responses:
+        '200':
+          description: PlayerProfile
+        '404':
+          description: Joueur inconnu
+  /players/{player_slug}/activity-calendar:
+    get:
+      responses:
+        '200':
+          description: ActivityCalendar
+        '404':
+          description: Joueur inconnu
+  /players/{player_slug}/campaigns:
+    post:
+      responses:
+        '200': null
+        '201':
+          description: Campagne créée
+        '400':
+          description: Axe invalide
+        '409':
+          description: Une campagne est déjà active
+  /players/{player_slug}/campaigns/active:
+    get:
+      responses:
+        '200':
+          description: Campagne ou null
+  /players/{player_slug}/campaigns/history:
+    get:
+      responses:
+        '200':
+          description: Liste des campagnes closes
+  /players/{player_slug}/campaigns/{id}:
+    get:
+      responses:
+        '200':
+          description: Campagne
+        '404':
+          description: Campagne inconnue
+  /players/{player_slug}/campaigns/{id}/pause:
+    post:
+      responses:
+        '204':
+          description: Campagne mise en pause
+        '404':
+          description: Campagne inconnue
+        '409':
+          description: Transition d'état invalide
+  /players/{player_slug}/campaigns/{id}/resume:
+    post:
+      responses:
+        '204':
+          description: Campagne reprise
+        '404':
+          description: Campagne inconnue
+        '409':
+          description: Transition d'état invalide
+  /players/{player_slug}/campaigns/{id}/close:
+    post:
+      responses:
+        '204':
+          description: Campagne clôturée
+        '404':
+          description: Campagne inconnue
+        '409':
+          description: Campagne déjà terminée
+  /players/{player_slug}/campaigns/{id}/abandon:
+    post:
+      responses:
+        '204':
+          description: Campagne abandonnée
+        '404':
+          description: Campagne inconnue
+        '409':
+          description: Campagne déjà terminée
+  /players/{player_slug}/coach/proposals:
+    get:
+      responses:
+        '200':
+          description: Proposals
+        '404':
+          description: Joueur inconnu
+        '503':
+          description: Coach advisor non configuré ou indisponible pour ce joueur
+  /players/{player_slug}/coach/proposals/{id}/accept:
+    post:
+      responses:
+        '200':
+          description: Accepted — challenge_id ou arc_id + challenge_ids dans la réponse
+        '400':
+          description: id manquant
+        '404':
+          description: Proposal ou joueur inconnu
+        '409':
+          description: Proposal n'est plus pending (déjà accepted/dismissed/superseded/obsoleted)
+        '503':
+          description: Coach advisor non configuré
+  /players/{player_slug}/coach/proposals/{id}/dismiss:
+    post:
+      responses:
+        '200':
+          description: Dismissed
+        '400':
+          description: id manquant
+        '404':
+          description: Joueur inconnu
+        '503':
+          description: Coach advisor non configuré
+  /watcher/auth/{attempt_id}:
+    get:
+      responses:
+        '200':
+          description: Callback OK
+  /watcher/auth/start:
+    post:
+      responses:
+        '200':
+          description: URL de redirection OAuth
+  /watcher/status:
+    get:
+      responses:
+        '200':
+          description: Watcher status
+  /watcher/subscriptions:
+    patch:
+      responses:
+        '200':
+          description: Subscriptions mises à jour
+  /settings/media/scan:
+    post:
+      responses:
+        '200':
+          description: Scan démarré
+  /settings/sessions/recalculate:
+    post:
+      responses:
+        '200':
+          description: Recalcul démarré
+  /settings/backup/status:
+    get:
+      responses:
+        '200':
+          description: Statut courant (enabled, last backup, DBs exportées, config)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupStatusResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /settings/backup/run:
+    post:
+      responses:
+        '200':
+          description: Résultat du cycle (snapshot_id, bases exportées, durée)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupRunResult'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          description: Scheduler non initialisé (backup désactivé)
+  /players/{player_slug}/sync:
+    post:
+      responses:
+        '200':
+          description: Sync démarré
+  /sync/all:
+    post:
+      responses:
+        '200':
+          description: Sync global démarré
+  /backfill/start:
+    post:
+      responses:
+        '200':
+          description: Job créé, voir GET /jobs/{job_id}
+  /_diag/csr-coverage/{player_slug}:
+    get:
+      description: |
+        Phase 9 du plan pipeline CSR. Permet de vérifier en 1 ligne si le
+        pipeline CSR a bien capturé les données (snapshots Waypoint + MSR
+        matured/placement) ou s'il faut lancer un backfill.
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      responses:
+        '200':
+          description: Couverture CSR
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /_diag/progression/{player_slug}:
+    get:
+      description: |
+        Phase 4 plan stabilisation 2026-05-22. Compte les rows dans les
+        tables V2 (streak, player_records, record_history, milestone_earned,
+        milestone_catalog) pour vérifier que EvaluateProgressionAfterSync
+        tourne bien sur l'auto-sync. Si tous les counts joueur sont à 0
+        après plusieurs cycles auto-sync (15 min × N), le pipeline V2
+        n'est pas câblé correctement.
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      responses:
+        '200':
+          description: État pipeline progression V2
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /_diag/prestige/telemetry/{player_slug}:
+    get:
+      description: |
+        ADR 0020 (coach→pont Prestige). Agrège la table append-only
+        prestige_telemetry d'un joueur par origine du défi (coach / user /
+        pilot_mode / unknown) : compteurs created/rejected/completed/expired/
+        abandoned + taux d'acceptation et de complétion. Permet de mesurer si
+        les défis proposés par le coach sont acceptés/complétés davantage que
+        ceux d'autres origines. Les défis créés avant le plumbing (source NULL)
+        sont agrégés sous "unknown". Les taux valent -1 quand non calculables
+        (dénominateur nul).
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      responses:
+        '200':
+          description: Agrégats télémétrie Prestige par origine
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /_admin/progression/backfill/{player_slug}:
+    post:
+      description: |
+        Fix 2026-05-30. Force une évaluation progression V2 in-process
+        (détecteurs streaks/records/milestones, idempotents) pour un joueur
+        dont l'historique existe déjà mais dont le pipeline post-sync n'avait
+        jamais abouti (incident timeout shared reader pendant la fenêtre de
+        swap RO↔RW). N'émet pas de notifications coach. Renvoie le diag
+        (counts) post-exécution pour vérifier que les tables se peuplent.
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      responses:
+        '200':
+          description: Diag pipeline progression V2 après backfill
+        '404':
+          $ref: '#/components/responses/NotFound'
+components:
+  parameters:
+    PlayerSlug:
+      name: player_slug
+      in: path
+      required: true
+      description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      schema:
+        type: string
+  responses:
+    BadRequest:
+      description: Requête invalide
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: bad_request
+            message: Paramètre invalide.
+            retryable: false
+    Unauthorized:
+      description: Authentification requise
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: auth_required
+            message: Authentification requise.
+            retryable: false
+    NotFound:
+      description: Ressource introuvable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: player_not_found
+            message: Joueur introuvable.
+            retryable: false
+    InternalError:
+      description: Erreur interne
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: internal_error
+            message: Erreur interne du serveur.
+            retryable: true
+    Conflict:
+      description: Conflit avec l'état courant de la ressource
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: last_active_title
+            message: Au moins un titre doit rester actif pour ce joueur.
+            retryable: false
+  schemas:
+    # Nullabilité d'un POINTEUR VERS STRUCT : Huma émet un `$ref` nu (il ne sait pas
+    # rendre un $ref nullable en 3.1), or ces trois champs valent `null` à l'exécution
+    # (pointeur sans omitempty). On remplace le $ref dérivé par un anyOf explicite
+    # ($ref: null SUPPRIME la clé dérivée, cf. précédence en tête de fichier).
+    # À retirer si Huma gagne la nullabilité des $ref (ou si les champs passent en
+    # omitempty côté Go).
+    BootstrapResponse:
+      properties:
+        current_player:
+          $ref: null
+          anyOf:
+            - $ref: '#/components/schemas/PlayerSummary'
+            - type: 'null'
+        linked_halo_identity:
+          $ref: null
+          anyOf:
+            - $ref: '#/components/schemas/HaloIdentitySummary'
+            - type: 'null'
+        privacy:
+          $ref: null
+          anyOf:
+            - $ref: '#/components/schemas/MatchPrivacyInfo'
+            - type: 'null'
+    IntegrityCheckResult:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          description: Vrai si PRAGMA integrity_check a retourné "ok"
+        detail:
+          type: string
+          description: Premier message d'erreur (absent si ok ou pragma non supporté)
+        checked_at:
+          type: string
+          format: date-time
+          description: Horodatage UTC de la vérification
+    BackupStatusResponse:
+      type: object
+      required:
+        - enabled
+        - available
+      properties:
+        enabled:
+          type: boolean
+          description: Backup activé dans app_settings.json
+        available:
+          type: boolean
+          description: Binaire restic trouvé dans le PATH
+        last_backup_at:
+          type: string
+          format: date-time
+          description: Date du dernier backup réussi (absente si jamais sauvegardé)
+        last_snapshot_id:
+          type: string
+          description: ID du dernier snapshot restic
+        last_exported:
+          type: array
+          items:
+            type: string
+          description: Clés des bases exportées lors du dernier cycle
+        last_duration_ms:
+          type: integer
+          description: Durée du dernier cycle en millisecondes
+        integrity_checks:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/IntegrityCheckResult'
+          description: Résultats PRAGMA integrity_check par base (clé = DB key, présent après le premier cycle)
+        config:
+          type: object
+          properties:
+            interval:
+              type: string
+              description: Intervalle entre cycles (ex. "6h0m0s")
+            keep_daily:
+              type: integer
+            keep_weekly:
+              type: integer
+            keep_monthly:
+              type: integer
+    BackupRunResult:
+      type: object
+      required:
+        - skipped
+      properties:
+        snapshot_id:
+          type: string
+          description: ID du snapshot créé (vide si skipped)
+        skipped:
+          type: boolean
+          description: Vrai si aucune DB n'a changé depuis le dernier backup
+        exported:
+          type: array
+          items:
+            type: string
+          description: Clés des bases exportées
+        duration_ms:
+          type: integer
+          description: Durée du cycle en millisecondes
+    SortSpec:
+      type: object
+      required:
+        - field
+      properties:
+        field:
+          type: string
+        direction:
+          type: string
+          enum:
+            - asc
+            - desc
+          default: desc
+    PaginationRequest:
+      type: object
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          default: 1
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 50
+    FreshnessInfo:
+      type: object
+      properties:
+        source:
+          type: string
+          enum:
+            - live
+            - cached
+            - mixed
+          default: cached
+        sync_status:
+          type: string
+          enum:
+            - fresh
+            - stale
+            - unknown
+          default: unknown
+        warnings:
+          type: array
+          items:
+            type: string
+    PlotlyFigurePayload:
+      type: object
+      required:
+        - figure
+      properties:
+        figure:
+          type: object
+          description: fig.to_plotly_json() — data + layout + frames
+        config_key:
+          type: string
+          enum:
+            - clean
+            - static
+          default: clean
+        revision_key:
+          type: string
+          nullable: true
+    SessionContextRequest:
+      type: object
+      properties:
+        player_slug:
+          type: string
+          nullable: true
+        title_slug:
+          type: string
+          nullable: true
+        locale:
+          type: string
+          enum:
+            - fr
+            - en
+          nullable: true
+        hints_visible:
+          type: boolean
+          nullable: true
+    SessionsInput:
+      type: object
+      properties:
+        picked_session_label:
+          type: string
+          nullable: true
+        picked_solo_session_label:
+          type: string
+          nullable: true
+        picked_squad_session_label:
+          type: string
+          nullable: true
+        picked_sessions:
+          type: array
+          items:
+            type: string
+        gap_minutes:
+          type: integer
+          minimum: 1
+          maximum: 1440
+          default: 120
+          description: 'Invariant: toujours 120 dans le code actuel.'
+    CascadeInput:
+      type: object
+      description: Listes vides = « tout coché » (pas de filtre restrictif)
+      properties:
+        experience_types:
+          type: array
+          items:
+            type: string
+        playlists:
+          type: array
+          items:
+            type: string
+        modes:
+          type: array
+          items:
+            type: string
+        maps:
+          type: array
+          items:
+            type: string
+    AvailableOptions:
+      type: object
+      properties:
+        experience_types:
+          type: array
+          items:
+            $ref: '#/components/schemas/LabelValue'
+        playlists:
+          type: array
+          items:
+            $ref: '#/components/schemas/LabelValue'
+        modes:
+          type: array
+          items:
+            $ref: '#/components/schemas/LabelValue'
+        maps:
+          type: array
+          items:
+            $ref: '#/components/schemas/LabelValue'
+    CareerSummary:
+      type: object
+      required:
+        - rank_number
+        - rank_label
+        - rank_name_raw
+        - rank_tier
+        - current_xp
+        - xp_for_next_rank
+        - xp_total
+        - progress_pct
+        - is_max_rank
+      properties:
+        rank_number:
+          type: integer
+        rank_label:
+          type: string
+        rank_name_raw:
+          type: string
+        rank_tier:
+          type: string
+        current_xp:
+          type: integer
+        xp_for_next_rank:
+          type: integer
+        xp_total:
+          type: integer
+        progress_pct:
+          type: number
+          format: float
+        is_max_rank:
+          type: boolean
+        recorded_at:
+          type: string
+          format: date-time
+          nullable: true
+    CareerHistoryPoint:
+      type: object
+      required:
+        - recorded_at
+        - rank
+        - xp_total
+      properties:
+        recorded_at:
+          type: string
+          format: date-time
+        rank:
+          type: integer
+        xp_total:
+          type: integer
+    CareerLusrCheckpoint:
+      type: object
+      required:
+        - recorded_at
+        - rating_value
+        - playlist_group
+      properties:
+        recorded_at:
+          type: string
+          format: date-time
+        rating_value:
+          type: number
+          format: float
+        playlist_group:
+          type: string
+    CareerLusrSection:
+      type: object
+      required:
+        - checkpoints
+      properties:
+        current_rating:
+          type: number
+          format: float
+          nullable: true
+        current_tier_label:
+          type: string
+          nullable: true
+        current_playlist_group:
+          type: string
+          nullable: true
+        trend_label:
+          type: string
+          nullable: true
+        checkpoints:
+          type: array
+          items:
+            $ref: '#/components/schemas/CareerLusrCheckpoint'
+    CareerTopMatch:
+      type: object
+      required:
+        - match_id
+      properties:
+        match_id:
+          type: string
+          format: uuid
+        start_time:
+          type: string
+          format: date-time
+          nullable: true
+        map_ui:
+          type: string
+          nullable: true
+        mode_ui:
+          type: string
+          nullable: true
+        playlist_label:
+          type: string
+          nullable: true
+        performance_score:
+          type: number
+          format: float
+          nullable: true
+        badge_type:
+          type: string
+          nullable: true
+        score_label:
+          type: string
+          nullable: true
+        outcome_code:
+          type: integer
+          format: int64
+          nullable: true
+        outcome_label:
+          type: string
+          nullable: true
+        kills:
+          type: integer
+          nullable: true
+        deaths:
+          type: integer
+          nullable: true
+        assists:
+          type: integer
+          nullable: true
+        kd_ratio:
+          type: number
+          format: float
+          nullable: true
+        variant:
+          type: string
+          enum:
+            - best
+            - worst
+          nullable: true
+    CareerEncounter:
+      type: object
+      required:
+        - encounter_key
+        - opponent_gamertag
+        - count_matches
+        - wins
+        - losses
+      properties:
+        encounter_key:
+          type: string
+        opponent_gamertag:
+          type: string
+        count_matches:
+          type: integer
+        wins:
+          type: integer
+        losses:
+          type: integer
+        last_seen_at:
+          type: string
+          format: date-time
+          nullable: true
+    PaginatedMatchHistoryResponse:
+      type: object
+      required:
+        - items
+        - pagination
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MatchHistoryRow'
+        pagination:
+          $ref: '#/components/schemas/PaginationMeta'
+        freshness:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/FreshnessInfo'
+    MatchHistoryQueryRequest:
+      type: object
+      properties:
+        filters:
+          $ref: '#/components/schemas/FilterContextInput'
+        pagination:
+          $ref: '#/components/schemas/PaginationRequest'
+        columns:
+          type: array
+          items:
+            type: string
+          nullable: true
+        include_export_hint:
+          type: boolean
+          default: false
+    MatchHistoryExportRequest:
+      type: object
+      properties:
+        filters:
+          $ref: '#/components/schemas/FilterContextInput'
+        sort:
+          type: array
+          items:
+            $ref: '#/components/schemas/SortSpec'
+          nullable: true
+        columns:
+          type: array
+          items:
+            type: string
+          nullable: true
+        format:
+          type: string
+          default: csv
+    FileTokenResponse:
+      type: object
+      required:
+        - file_token
+        - file_name
+        - content_type
+        - download_path
+        - expires_at
+      properties:
+        file_token:
+          type: string
+        file_name:
+          type: string
+        content_type:
+          type: string
+        download_path:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        estimated_rows:
+          type: integer
+          nullable: true
+    GamertagSuggestion:
+      type: object
+      required:
+        - gamertag
+      properties:
+        gamertag:
+          type: string
+        xuid:
+          type: string
+          nullable: true
+        score:
+          type: number
+          format: float
+          default: 1
+        exact_match:
+          type: boolean
+          default: false
+    ExplorerMatchRow:
+      type: object
+      required:
+        - match_id
+        - start_time
+        - start_time_label
+        - map_ui
+        - mode_ui
+        - playlist_label
+        - outcome_label
+        - score_label
+      properties:
+        match_id:
+          type: string
+          format: uuid
+        start_time:
+          type: string
+          format: date-time
+        start_time_label:
+          type: string
+        map_ui:
+          type: string
+        mode_ui:
+          type: string
+        playlist_label:
+          type: string
+        outcome_label:
+          type: string
+        score_label:
+          type: string
+        is_with_friends:
+          type: boolean
+          default: false
+        experience_type_label:
+          type: string
+          default: Non classé
+        kills:
+          type: integer
+          default: 0
+        deaths:
+          type: integer
+          default: 0
+        kda:
+          type: number
+          format: float
+          default: 0
+        had_bot_teammate:
+          type: boolean
+          description: |
+            Un coéquipier était un bot. Exposé uniquement sur les best_matches de la page carrière (les LOSS avec bot sont exclus côté backend pour isoler la responsabilité du joueur).
+          default: false
+    ExplorerEncounterRow:
+      type: object
+      required:
+        - gamertag
+        - count_matches
+        - wins
+        - losses
+      properties:
+        gamertag:
+          type: string
+        xuid:
+          type: string
+          nullable: true
+        count_matches:
+          type: integer
+        wins:
+          type: integer
+        losses:
+          type: integer
+        last_seen_at:
+          type: string
+          format: date-time
+          nullable: true
+        same_team:
+          type: boolean
+          nullable: true
+    ExplorerMatchesQuerySummary:
+      type: object
+      required:
+        - total_matches
+      properties:
+        total_matches:
+          type: integer
+        selected_match_id:
+          type: string
+          nullable: true
+    ExplorerPlayerTarget:
+      type: object
+      required:
+        - gamertag
+      properties:
+        gamertag:
+          type: string
+        xuid:
+          type: string
+          nullable: true
+    ExplorerPlayerSummary:
+      type: object
+      required:
+        - matches_together
+        - wins_together
+        - losses_together
+      properties:
+        matches_together:
+          type: integer
+        wins_together:
+          type: integer
+        losses_together:
+          type: integer
+        last_seen_at:
+          type: string
+          format: date-time
+          nullable: true
+    ExplorerMatchFilters:
+      type: object
+      properties:
+        selected_date:
+          type: string
+          format: date
+          nullable: true
+        squad_scope:
+          type: string
+          enum:
+            - all
+            - solo
+            - squad
+          default: all
+        experience_type:
+          type: string
+          nullable: true
+        playlist:
+          type: string
+          nullable: true
+        mode:
+          type: string
+          nullable: true
+        map:
+          type: string
+          nullable: true
+        selected_match_id:
+          type: string
+          nullable: true
+    ExplorerMatchesQueryRequest:
+      type: object
+      properties:
+        filters:
+          $ref: '#/components/schemas/FilterContextInput'
+        match_filters:
+          $ref: '#/components/schemas/ExplorerMatchFilters'
+        pagination:
+          $ref: '#/components/schemas/PaginationRequest'
+    PaginatedExplorerMatchesResponse:
+      type: object
+      required:
+        - items
+        - pagination
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExplorerMatchRow'
+        pagination:
+          $ref: '#/components/schemas/PaginationMeta'
+    ExplorerPlayerQueryRequest:
+      type: object
+      required:
+        - target_gamertag
+      properties:
+        target_gamertag:
+          type: string
+        target_xuid:
+          type: string
+        filters:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/FilterContextInput'
+    MatchScoreboardObjective:
+      description: Stats objectifs par joueur (CTF/Zones/Oddball) — blocs mutuellement exclusifs par mode, seuls les champs du mode joué sont renseignés.
+    ObjectiveAggregate:
+      description: Cumul (SUM) des stats objectifs (CTF/Zones/Oddball) d'un joueur sur un ensemble de matchs. Champs zéro omis.
+    AssociatedMediaItem:
+      type: object
+      required:
+        - file_id
+        - file_name
+        - file_path
+        - kind
+      properties:
+        file_id:
+          type: string
+        file_name:
+          type: string
+        file_path:
+          type: string
+        kind:
+          type: string
+        thumbnail_url:
+          type: string
+          nullable: true
+        duration_seconds:
+          type: number
+          format: float
+          nullable: true
+        capture_time:
+          type: string
+          format: date-time
+          nullable: true
+        liked:
+          type: boolean
+          default: false
+    MediaPageRequest:
+      type: object
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          default: 1
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 24
+        pagination:
+          $ref: '#/components/schemas/PaginationRequest'
+        kind:
+          type: string
+          nullable: true
+        kind_filter:
+          type: string
+          nullable: true
+        section_filter:
+          type: string
+          nullable: true
+        map_filter:
+          type: string
+          nullable: true
+        mode_filter:
+          type: string
+          nullable: true
+        group_by:
+          type: string
+          nullable: true
+        sort:
+          type: string
+          nullable: true
+    MediaItemRow:
+      type: object
+      required:
+        - basename
+        - file_path
+        - kind
+        - section
+        - liked
+        - like_count
+      properties:
+        basename:
+          type: string
+        file_path:
+          type: string
+        kind:
+          type: string
+        thumbnail_path:
+          type: string
+          nullable: true
+        match_id:
+          type: string
+          nullable: true
+        capture_end_utc:
+          type: string
+          format: date-time
+          nullable: true
+        match_start_time:
+          type: string
+          format: date-time
+          nullable: true
+        section:
+          type: string
+        owner_gamertag:
+          type: string
+          nullable: true
+        map_name:
+          type: string
+          nullable: true
+        liked:
+          type: boolean
+          default: false
+        like_count:
+          type: integer
+          minimum: 0
+    MediaLikeRequest:
+      type: object
+      required:
+        - file_path
+        - liked
+      properties:
+        file_path:
+          type: string
+        liked:
+          type: boolean
+    DeviceFlowStartResponse:
+      description: Réponse de POST /auth/device-flow/start
+    DeviceFlowStatusResponse:
+      description: Réponse de GET /auth/device-flow/{attempt_id}
+    SettingsResponse:
+      type: object
+      description: Configuration de l'application (GET/PATCH /settings)
+      required:
+        - lang
+        - user_timezone
+      properties:
+        lang:
+          type: string
+          enum:
+            - fr
+            - en
+        discord_lang:
+          type: string
+          enum:
+            - fr
+            - en
+        user_timezone:
+          type: string
+        normalize_mode_labels:
+          type: boolean
+        show_records:
+          type: boolean
+        refresh_clears_caches:
+          type: boolean
+        career_top_exclude_btb:
+          type: boolean
+        media_captures_base_dir:
+          type: string
+        media_delete_source_after_transcode:
+          type: boolean
+          description: Supprimer le fichier source (.mkv/.avi…) après un transcodage HLS réussi. GET renvoie la valeur effective résolue (env > réglage > défaut prod). PATCH persiste le réglage (omis = auto).
+        media_tolerance_minutes:
+          type: integer
+        media_watcher_enabled:
+          type: boolean
+        media_watcher_debounce_seconds:
+          type: integer
+        discord_notifications_enabled:
+          type: boolean
+        discord_webhook_url_present:
+          type: boolean
+        discord_notify_sync:
+          type: boolean
+        discord_notify_backfill:
+          type: boolean
+        discord_notify_new_version:
+          type: boolean
+        spnkr_auto_sync_enabled:
+          type: boolean
+        spnkr_auto_sync_interval_hours:
+          type: integer
+        spnkr_auto_sync_interval_minutes:
+          type: integer
+        watcher_presence_enabled:
+          type: boolean
+        watcher_subscribed_players:
+          type: array
+          items:
+            type: string
+        spnkr_refresh_with_backfill:
+          type: boolean
+        spnkr_refresh_backfill_medals:
+          type: boolean
+        spnkr_refresh_backfill_skill:
+          type: boolean
+        spnkr_refresh_backfill_aliases:
+          type: boolean
+        spnkr_refresh_backfill_personal_scores:
+          type: boolean
+        spnkr_refresh_backfill_performance_scores:
+          type: boolean
+        spnkr_refresh_backfill_lusr:
+          type: boolean
+        spnkr_refresh_backfill_events:
+          type: boolean
+        spnkr_refresh_backfill_weapons:
+          type: boolean
+        friend_gamertags:
+          type: array
+          items:
+            type: string
+        show_progression:
+          type: boolean
+          description: Affichage du système Objectifs/Prestige (section Accueil + nav L1).
+    CompareRequest:
+      type: object
+      required:
+        - target_gamertag
+      properties:
+        target_gamertag:
+          type: string
+        title_slug:
+          type: string
+          default: hi
+    PlayerMediaAudioConfig:
+      description: 'Réglage par joueur du rôle des pistes audio de ses médias. mode=auto : analyse acoustique automatique à l''ingestion (NNLS). mode=manual : rôles déclarés (track_roles, indexé par piste audio source dans l''ordre ffprobe) — l''analyse est court-circuitée.'
+    EngagementCoefficient:
+      additionalProperties: false
+      properties:
+        coef_lobby_share:
+          format: double
+          type: number
+        coef_team_share:
+          format: double
+          type: number
+        gamertag:
+          type: string
+        last_updated:
+          format: date-time
+          type: string
+        mode_category:
+          type: string
+        n_matches:
+          format: int64
+          type: integer
+        xuid:
+          type: string
+      required:
+        - xuid
+        - mode_category
+        - coef_team_share
+        - coef_lobby_share
+        - n_matches
+        - last_updated
+      type: object
+    EngagementTimeseriesRequest:
+      additionalProperties: false
+      properties:
+        filters:
+          $ref: '#/components/schemas/FilterContextInput'
+        limit:
+          format: int64
+          type: integer
+      required:
+        - filters
+      type: object
+    MediaItemsPage:
+      properties:
+        freshness:
+          $ref: '#/components/schemas/FreshnessInfo'
+    HighlightExperienceCount:
+      properties:
+        value:
+          enum:
+            - all
+            - ranked
+            - unranked
+    CareerCSRResponse:
+      properties:
+        season_id:
+          description: Saison effectivement retournée (sélectionnée ou courante)
+        available_seasons:
+          description: Saisons proposables dans le menu déroulant (CSR uniquement)
+    ContextualPattern:
+      description: Pattern contextuel (mode/map/squad) — schéma libre côté frontend
+    BehavioralPattern:
+      description: Pattern comportemental (tilt/fatigue/...) — schéma libre
+    Lever:
+      description: Levier calibré (axe d'amélioration p60)
+    PatternReport:
+      properties:
+        window_size:
+          description: Taille effective de la fenêtre analysée
+    SessionsResponse:
+      description: 'TODO Sprint 32 : aligner avec TimeseriesPageResponse FastAPI'
+    SessionPageResponse:
+      description: SessionPageResponse — session courante, matchs détaillés, suggestion et éventuelle comparaison
+    ChangelogHumaOutputBody:
+      properties:
+        content:
+          description: Contenu Markdown du changelog
+    EngagementTimeseriesResponse:
+      properties:
+        granularity:
+          enum:
+            - match
+            - session
+            - week
+            - month
