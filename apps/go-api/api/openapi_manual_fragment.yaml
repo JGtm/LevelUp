@@ -20,9 +20,9 @@
 # PRÉCÉDENCE : le fragment GAGNE sur toute collision. La fusion suit JSON Merge
 # Patch (cf. internal/api/openapigen/render.go) :
 #   - deux objets fusionnent clé à clé (le fragment enrichit sans effacer) ;
-#   - une valeur `null` SUPPRIME la clé dérivée (utilisé pour les statuts de
-#     succès que Huma documente à 200 alors que le handler pose 201/202 via son
-#     champ `Status`) ;
+#   - une valeur `null` SUPPRIME la clé dérivée (seul usage restant : rendre
+#     nullable un `$ref` de pointeur-vers-struct, cf. BootstrapResponse — les
+#     statuts 201/202 sont désormais DÉRIVÉS via humacore.DefaultStatus, V721-04) ;
 #   - les listes `parameters` d'opération fusionnent par (name, in).
 #
 # Contenu initial dérivé (2026-07-25, V72-01 / H6) du dernier api/openapi.yaml
@@ -696,13 +696,8 @@ paths:
                   type: integer
                   description: Nb de matchs à synchroniser à l'onboarding (0 = défaut)
       responses:
-        '200': null
         '201':
           description: Profil créé
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CreatePlayerProfileResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '500':
@@ -714,13 +709,8 @@ paths:
         Vérifie la configuration de bout en bout (connexion DB + API Halo).
         Son maintien versus intégration dans `/sync/initial` sera décidé au Sprint 31.
       responses:
-        '200': null
         '202':
           description: Smoke test démarré
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AsyncJobStatus'
         '500':
           $ref: '#/components/responses/InternalError'
   /sync/initial:
@@ -748,13 +738,8 @@ paths:
                   type: string
                   description: 'Titre cible (défaut: titre du contexte puis halo_infinite)'
       responses:
-        '200': null
         '202':
           description: Sync démarrée
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AsyncJobStatus'
         '409':
           description: Une sync est déjà en cours
           content:
@@ -789,13 +774,8 @@ paths:
   /settings/media/reset-index:
     post:
       responses:
-        '200': null
         '202':
           description: Reset démarré
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AsyncJobStatus'
         '500':
           $ref: '#/components/responses/InternalError'
   /jobs/{job_id}:
@@ -1110,7 +1090,7 @@ paths:
   /auth/register:
     post:
       responses:
-        '200':
+        '201':
           description: Compte créé
         '400':
           $ref: '#/components/responses/BadRequest'
@@ -1146,17 +1126,8 @@ paths:
                   type: string
                   description: Nom du groupe (1-60 caractères).
       responses:
-        # Le 200 dérivé (Status dynamique côté Go) est supprimé au profit du 201
-        # réellement posé ; son SCHÉMA doit être reporté ici, sinon le contrat
-        # publierait « 201 sans corps » alors que le handler renvoie le groupe
-        # créé (consommé par useCreateGroup côté web).
-        '200': null
         '201':
           description: Groupe créé
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Group'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -1208,15 +1179,8 @@ paths:
                   type: integer
                   description: Durée de validité de l'invitation en jours
       responses:
-        # Schéma reporté du 200 dérivé (cf. POST /groups) : le handler renvoie
-        # l'InviteCode généré, consommé par useCreateGroupInvite côté web.
-        '200': null
         '201':
           description: Invitation créée
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InviteCode'
         '403':
           description: Accès refusé (propriétaire/membre requis)
         '404':
@@ -1277,7 +1241,7 @@ paths:
           description: Liste des invitations
     post:
       responses:
-        '200':
+        '201':
           description: Invitation créée
   /admin/invites/{code}:
     delete:
@@ -1358,11 +1322,10 @@ paths:
   /admin/actions/auto-sync/run:
     post:
       responses:
-        # Body Go `any` (202 job / 409 conflit) → Huma ne dérive aucun schéma
-        # exploitable ; on déclare explicitement l'AsyncJobStatus du 202, que le
-        # front suit via useJobStatus. Sans ce content le contrat dirait « 202
-        # sans corps ».
-        '200': null
+        # Statut DYNAMIQUE (202 job / 409 conflit) porté par un Body Go `any` :
+        # Huma documente bien le 202 (humacore.DefaultStatus) mais ne dérive aucun
+        # schéma exploitable d'un `any`. On déclare donc l'AsyncJobStatus du 202,
+        # que le front suit via useJobStatus.
         '202':
           description: Job créé (suivre via GET /jobs/{job_id})
           content:
@@ -1465,14 +1428,8 @@ paths:
                   type: string
                   description: Slug du titre (défaut = titre par défaut)
       responses:
-        # Body Go `any` (202 job / 409 conflit) : schéma du 202 déclaré ici.
-        '200': null
         '202':
           description: Job créé (suivre via GET /jobs/{job_id})
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AsyncJobStatus'
         '400':
           description: player_slug requis
         '409':
@@ -1506,14 +1463,8 @@ paths:
                   maximum: 2000
                   description: Plafond de matchs (1..2000) ; 0/absent → défaut profil (initial_max_matches) puis 200.
       responses:
-        # Body Go `any` (202 job / 409 conflit) : schéma du 202 déclaré ici.
-        '200': null
         '202':
           description: Job créé (suivre via GET /jobs/{job_id})
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AsyncJobStatus'
         '400':
           description: player_slug requis
         '409':
@@ -1541,8 +1492,9 @@ paths:
   /admin/actions/catalog/ugc-drain:
     post:
       responses:
-        # Body Go `any` (202 job / 409 conflit) : schéma du 202 déclaré ici.
-        '200': null
+        # Statut DYNAMIQUE (202 job / 409 conflit) porté par un Body Go `any` :
+        # le 202 vient de humacore.DefaultStatus, son schéma est déclaré ici (un
+        # `any` ne dérive rien d'exploitable).
         '202':
           description: Job créé (suivre via GET /jobs/{job_id})
           content:
@@ -2009,14 +1961,8 @@ paths:
   /players/{player_slug}/campaigns:
     post:
       responses:
-        # Schéma reporté du 200 dérivé : le handler renvoie la campagne créée.
-        '200': null
         '201':
           description: Campagne créée
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ImprovementCampaign'
         '400':
           description: Axe invalide
         '409':
@@ -2130,12 +2076,12 @@ paths:
   /settings/media/scan:
     post:
       responses:
-        '200':
+        '202':
           description: Scan démarré
   /settings/sessions/recalculate:
     post:
       responses:
-        '200':
+        '202':
           description: Recalcul démarré
   /settings/backup/status:
     get:
@@ -2164,17 +2110,17 @@ paths:
   /players/{player_slug}/sync:
     post:
       responses:
-        '200':
+        '202':
           description: Sync démarré
   /sync/all:
     post:
       responses:
-        '200':
+        '202':
           description: Sync global démarré
   /backfill/start:
     post:
       responses:
-        '200':
+        '202':
           description: Job créé, voir GET /jobs/{job_id}
   /_diag/csr-coverage/{player_slug}:
     get:
@@ -2983,7 +2929,7 @@ components:
           allOf:
             - $ref: '#/components/schemas/FilterContextInput'
     MatchScoreboardObjective:
-      description: Stats objectifs par joueur (CTF/Zones/Oddball) — blocs mutuellement exclusifs par mode, seuls les champs du mode joué sont renseignés.
+      description: Stats objectifs par joueur (CTF/Zones/Oddball/Stockpile/Extraction/VIP) — blocs mutuellement exclusifs par mode, seuls les champs du mode joué sont renseignés.
     ObjectiveAggregate:
       description: Cumul (SUM) des stats objectifs (CTF/Zones/Oddball) d'un joueur sur un ensemble de matchs. Champs zéro omis.
     AssociatedMediaItem:

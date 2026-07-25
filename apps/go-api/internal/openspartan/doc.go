@@ -13,5 +13,6 @@
 // It also does NOT write to DuckDB — see apps/go-api/internal/service for the
 // orchestrating import service.
 //
-// See .ai/SPRINT_OPENSPARTAN_IMPORT.md for the full sprint plan.
+// See docs/ARCHITECTURE_V6.md ("OpenSpartan import" section) for the feature
+// overview (French counterpart: docs/FR/ARCHITECTURE_V6.md).
 package openspartan

@@ -22,6 +22,17 @@ var stepDependencies = map[string]string{
 	// table créée par shared_create_skill_v2_tables → créateur DOIT précéder. Corrigé en
 	// b27 (reorder sous sign-off). La partie (1) du test vérifie que l'ordre reste correct.
 	"shared_seed_tier_boundaries_v2": "shared_create_skill_v2_tables",
+	// purge_weapons_name_fr_column (V721-05.1) rebuild la table `weapons` créée par
+	// add_weapon_registry — le créateur DOIT précéder. Sur DB fraîche l'inversion
+	// serait inoffensive (tableExists no-op, puis add_weapon_registry crée `weapons`
+	// déjà sans name_fr) ; le garde-fou documente néanmoins l'intention et protège
+	// une future DB legacy où l'inversion romprait la garde tableExists attendue.
+	"purge_weapons_name_fr_column": "add_weapon_registry",
+	// drop_arc_titles (V721-09, 2026-07-25) ne crée pas arc_titles : il la SUPPRIME.
+	// Sur une base joueur VIERGE, si le dropper passait avant create_arc_titles_join,
+	// le DROP IF EXISTS serait un no-op et la table survivrait au provisioning —
+	// exactement ce que la décision produit 2026-07-18 interdit. Créateur AVANT dropper.
+	"drop_arc_titles": "create_arc_titles_join",
 }
 
 // knownPreExistingInversions : inversions DÉJÀ présentes dans canonicalOrder à la

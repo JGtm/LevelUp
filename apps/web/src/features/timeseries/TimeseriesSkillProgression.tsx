@@ -183,6 +183,7 @@ export function TimeseriesSkillProgression({ rows, locale, height = 280, emptyMe
       height={height}
       emptyMessage={emptyMessage}
       buildOption={() => buildOption(series, rows, locale)}
+      reviewKey="timeseries.skill_progression"
     />
   )
 }

@@ -188,9 +188,6 @@ func (r *stubSquadChallengeRepo) UpdateParticipantProgress(_ context.Context, _,
 func (r *stubSquadChallengeRepo) ListParticipants(_ context.Context, _ string) ([]SquadChallengeParticipant, error) {
 	return r.listParticipants, nil
 }
-func (r *stubSquadChallengeRepo) CountActiveParticipants(_ context.Context, _ string) (int, error) {
-	return 0, nil
-}
 
 type stubPrestigeRepo struct {
 	emitted     []PrestigeEvent
@@ -222,7 +219,7 @@ func (r *stubPrestigeRepo) UpsertUserPrestige(_ context.Context, up UserPrestige
 func (r *stubPrestigeRepo) ListEvents(_ context.Context, _, _ string, _ time.Time) ([]PrestigeEvent, error) {
 	return nil, nil
 }
-func (r *stubPrestigeRepo) GetLeaderboard(_ context.Context, _ []string, _ *string, _ time.Time) ([]LeaderboardEntry, error) {
+func (r *stubPrestigeRepo) GetLeaderboard(_ context.Context, _ []string, _ string, _ time.Time) ([]LeaderboardEntry, error) {
 	return nil, nil
 }
 

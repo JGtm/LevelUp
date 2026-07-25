@@ -147,6 +147,30 @@ func buildScoreboardObjective(o domain.ObjectiveRaw) *domain.MatchScoreboardObje
 		out.TimeAsSkullCarrierSeconds = o.TimeAsSkullCarrierSeconds
 		out.LongestTimeAsSkullCarrierSeconds = o.LongestTimeAsSkullCarrierSeconds
 	}
+	if o.HasStockpile() {
+		out.KillsAsPowerSeedCarrier = o.KillsAsPowerSeedCarrier
+		out.PowerSeedCarriersKilled = o.PowerSeedCarriersKilled
+		out.PowerSeedsDeposited = o.PowerSeedsDeposited
+		out.PowerSeedsStolen = o.PowerSeedsStolen
+		out.TimeAsPowerSeedCarrierSeconds = o.TimeAsPowerSeedCarrierSeconds
+		out.TimeAsPowerSeedDriverSeconds = o.TimeAsPowerSeedDriverSeconds
+	}
+	if o.HasExtraction() {
+		out.ExtractionConversionsCompleted = o.ExtractionConversionsCompleted
+		out.ExtractionConversionsDenied = o.ExtractionConversionsDenied
+		out.ExtractionInitiationsCompleted = o.ExtractionInitiationsCompleted
+		out.ExtractionInitiationsDenied = o.ExtractionInitiationsDenied
+		out.SuccessfulExtractions = o.SuccessfulExtractions
+	}
+	if o.HasVip() {
+		out.KillsAsVip = o.KillsAsVip
+		out.VipKills = o.VipKills
+		out.VipAssists = o.VipAssists
+		out.TimesSelectedAsVip = o.TimesSelectedAsVip
+		out.MaxKillingSpreeAsVip = o.MaxKillingSpreeAsVip
+		out.TimeAsVipSeconds = o.TimeAsVipSeconds
+		out.LongestTimeAsVipSeconds = o.LongestTimeAsVipSeconds
+	}
 	return out
 }
 

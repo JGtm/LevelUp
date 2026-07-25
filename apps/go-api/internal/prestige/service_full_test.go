@@ -81,9 +81,6 @@ func (r *fakeSquadChallengeRepo) UpdateParticipantProgress(_ context.Context, ch
 func (r *fakeSquadChallengeRepo) ListParticipants(_ context.Context, _ string) ([]SquadChallengeParticipant, error) {
 	return nil, nil
 }
-func (r *fakeSquadChallengeRepo) CountActiveParticipants(_ context.Context, _ string) (int, error) {
-	return 0, nil
-}
 
 // fakeSquadRepo capture les squads (stateful pour les tests CRUD).
 //

@@ -7,16 +7,16 @@
 //
 // Necessite CGO=1 (transitivement via platform/duckdb).
 //
-// NOTE (2026-07-16). En mode demo, buildTestRouter n'initialise PAS le bundle
-// Prestige (aucune DuckDB disponible) : les routes prestige ne sont donc jamais
-// montees ici, quel que soit le flag. L'ancien test « FlagOn_RoutesRegistered » ne
+// NOTE (2026-07-16, revue V721-04). En mode demo, buildTestRouter n'initialise pas
+// le bundle Prestige (aucune DuckDB disponible). Depuis V721-04 les routes sont
+// tout de meme montees avec un bundle nil quand le flag est ON, pour que le contrat
+// publie decrive la surface complete — mais le FLAG reste souverain, ce qui est
+// exactement ce que ce fichier verifie. L'ancien test « FlagOn_RoutesRegistered » ne
 // « passait » qu'en tapant PAR ERREUR l'ex-route home GET /challenges — supprimee
 // avec la resolution de la collision de route (home vs prestige). La verification
 // REELLE que PrestigeHandler enregistre bien ses routes (desormais sous
-// /prestige/challenges) vit maintenant dans route_collision_test.go
-// (TestHomeAndPrestigeShareNoRoute, montage handler direct sans DB). Ce fichier ne
-// conserve que l'assertion observable en demo : les routes prestige sont absentes
-// quand le flag est off.
+// /prestige/challenges) vit dans route_collision_test.go
+// (TestHomeAndPrestigeShareNoRoute, montage handler direct sans DB).
 
 //go:build cgo
 

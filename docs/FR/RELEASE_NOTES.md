@@ -1,6 +1,32 @@
 ## Dernières nouveautés
 
-**v7.2 — Modes à objectif, étanchéité entre titres & recherche de joueur instantanée**
+**v7.2.1 — Modes à objectif, étanchéité entre titres & recherche de joueur instantanée**
+
+**Trois modes à objectif de plus — Stockage, Extraction et VIP**
+- **Stockage** — graines d'énergie déposées et volées, porteurs adverses éliminés, et votre temps passé à porter une graine
+- **Extraction** — extractions réussies, amorçages menés à terme, balises adverses converties et conversions empêchées
+- **VIP** — VIP adverses abattus, nombre de fois désigné VIP, frags réalisés en étant le VIP, temps cumulé et plus longue survie en VIP
+- **Où les lire** — dans la section « Objectifs » de la vue de match, exactement comme la Capture de drapeau, les Bases, le Roi de la colline et Oddball : une colonne par statistique du mode joué, avec une ligne « Total équipe »
+
+**Dix nouvelles citations d'objectif**
+- **Autour du drapeau** — Capture du drapeau, Sécurisation du drapeau, Vol du drapeau, Chasse au rapatrieur, Porteur imparable et Rapatriement agressif
+- **Zones et Oddball** — Défense de zone, Crâne intouchable, Chasse au porteur et Prise du crâne
+- **Des paliers réglés sur le jeu réel** — chaque palier est calibré sur vos vraies données de match plutôt que sur une échelle générique, pour que les exploits rares (réaliser des frags en portant le drapeau ou le crâne) restent atteignables
+
+**Explorer — toutes les saisons, plus seulement une partie**
+- **« Matchs par saison » est complet** — la ventilation ne couvrait que les saisons que le jeu voulait bien renvoyer ; elle couvre désormais toutes les saisons du catalogue
+- **Plus rien ne manque en silence** — une saison que vous n'avez jamais jouée et une saison qui n'a pas pu être récupérée ne s'affichent plus de la même façon
+
+**Objectifs d'escouade & Prestige**
+- **« Proposer des défis » refonctionne** — le bouton pouvait tomber en erreur définitivement jusqu'au redémarrage du serveur
+- **Fini les défis dont la règle ne correspond pas** — les défis dont la règle annoncée ne correspondait pas à la façon dont ils étaient réellement évalués ne sont plus proposés
+- **Prestige sans point** — ouvrir votre prestige avant d'avoir gagné le moindre point renvoyait une erreur au lieu d'un récapitulatif vide
+
+**Des graphiques qui se lisent droit**
+- **Durée de vie moyenne réelle** — le graphe de durée de vie utilise la valeur mesurée en jeu au lieu d'une estimation tirée du temps joué et des morts, et le nuage de corrélation raconte enfin la même histoire que l'histogramme
+- **Taux de victoire et MMR sur leur propre axe** — la courbe de taux de victoire n'est plus écrasée en bas du graphe par l'échelle du MMR qu'elle partageait
+- **Domination sur la bande de résultats** — un repère signale les matchs que votre équipe a dominés
+- **Radar de synergie** — l'infobulle affiche la valeur brute à côté du score normalisé
 
 **Modes à objectif — Capture de drapeau, Bases, Roi de la colline, Oddball**
 - **Statistiques d'objectif collectées à chaque match** — captures, retours, vols de drapeau et temps en tant que porteur ; captures et sécurisations de zone et temps passé en zone ; récupérations du crâne, temps de possession et plus longue possession

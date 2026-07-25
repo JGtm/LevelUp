@@ -154,8 +154,8 @@ type ScoreboardRaw struct {
 }
 
 // ObjectiveRaw : stats objectifs par joueur (Q12 LEFT JOIN match_objective_stats_latest).
-// Blocs mutuellement exclusifs par mode (CTF / Zones / Oddball). HasObjective() vrai
-// dès qu'un discriminant de bloc est non-nil.
+// Blocs mutuellement exclusifs par mode (CTF / Zones / Oddball / Stockpile / Extraction /
+// VIP). HasObjective() vrai dès qu'un discriminant de bloc est non-nil.
 type ObjectiveRaw struct {
 	// CTF (CaptureTheFlagStats)
 	FlagCaptures             *int
@@ -183,15 +183,47 @@ type ObjectiveRaw struct {
 	SkullScoringTicks                *int
 	TimeAsSkullCarrierSeconds        *float64
 	LongestTimeAsSkullCarrierSeconds *float64
+	// Stockpile (StockpileStats — V721-02)
+	KillsAsPowerSeedCarrier       *int
+	PowerSeedCarriersKilled       *int
+	PowerSeedsDeposited           *int
+	PowerSeedsStolen              *int
+	TimeAsPowerSeedCarrierSeconds *float64
+	TimeAsPowerSeedDriverSeconds  *float64
+	// Extraction (ExtractionStats — V721-02, aucune durée)
+	ExtractionConversionsCompleted *int
+	ExtractionConversionsDenied    *int
+	ExtractionInitiationsCompleted *int
+	ExtractionInitiationsDenied    *int
+	SuccessfulExtractions          *int
+	// VIP (VipStats — V721-02)
+	KillsAsVip              *int
+	VipKills                *int
+	VipAssists              *int
+	TimesSelectedAsVip      *int
+	MaxKillingSpreeAsVip    *int
+	TimeAsVipSeconds        *float64
+	LongestTimeAsVipSeconds *float64
 }
 
-// HasCTF / HasZones / HasOddball : discriminants de bloc (un grab non-nil suffit).
+// HasCTF / HasZones / HasOddball / HasStockpile / HasExtraction / HasVip : discriminants
+// de bloc (un compteur non-nil suffit — une valeur 0 reste un pointeur non-nil).
 func (o ObjectiveRaw) HasCTF() bool     { return o.FlagGrabs != nil || o.FlagCaptures != nil }
 func (o ObjectiveRaw) HasZones() bool   { return o.ZoneCaptures != nil || o.ZoneScoringTicks != nil }
 func (o ObjectiveRaw) HasOddball() bool { return o.SkullGrabs != nil || o.SkullScoringTicks != nil }
+func (o ObjectiveRaw) HasVip() bool     { return o.TimesSelectedAsVip != nil || o.KillsAsVip != nil }
+func (o ObjectiveRaw) HasStockpile() bool {
+	return o.PowerSeedsDeposited != nil || o.PowerSeedCarriersKilled != nil
+}
+func (o ObjectiveRaw) HasExtraction() bool {
+	return o.SuccessfulExtractions != nil || o.ExtractionInitiationsCompleted != nil
+}
 
 // HasObjective : au moins un bloc objectif présent.
-func (o ObjectiveRaw) HasObjective() bool { return o.HasCTF() || o.HasZones() || o.HasOddball() }
+func (o ObjectiveRaw) HasObjective() bool {
+	return o.HasCTF() || o.HasZones() || o.HasOddball() ||
+		o.HasStockpile() || o.HasExtraction() || o.HasVip()
+}
 
 // BulkMedalRaw : une ligne de Q27 (médailles de tous les joueurs du match).
 type BulkMedalRaw struct {

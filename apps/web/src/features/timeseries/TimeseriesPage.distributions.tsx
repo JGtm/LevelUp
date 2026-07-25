@@ -50,6 +50,7 @@ export function TimeseriesDistributionsTabView({
           // l'histogramme « Précision » n'est jamais monté (pas de carte vide).
           {
             buckets: distributions_tab.accuracy_buckets ?? [],
+            reviewKey: undefined as string | undefined,
             title:
               fieldMappings?.fields['accuracy']?.label ?? 'Précision',
             colorToken: 'chart-series-2' as const,
@@ -59,6 +60,7 @@ export function TimeseriesDistributionsTabView({
           },
           {
             buckets: distributions_tab.kills_buckets ?? [],
+            reviewKey: undefined as string | undefined,
             title:
               fieldMappings?.fields['kills']?.label ?? 'Frags',
             colorToken: 'chart-series-1' as const,
@@ -68,6 +70,8 @@ export function TimeseriesDistributionsTabView({
           },
           {
             buckets: distributions_tab.life_buckets ?? [],
+            // B1 : histogramme rebasé sur la durée de vie RÉELLE (avg_life_seconds).
+            reviewKey: 'timeseries.life_histogram' as string | undefined,
             title: t('timeseries.distributions.life_title'),
             colorToken: 'chart-series-3' as const,
             xAxisLabel: t('timeseries.distributions.seconds'),
@@ -76,6 +80,7 @@ export function TimeseriesDistributionsTabView({
           },
           {
             buckets: distributions_tab.personal_score_buckets ?? [],
+            reviewKey: undefined as string | undefined,
             title:
               fieldMappings?.fields['personal_score']?.label ?? 'Score personnel',
             colorToken: 'chart-series-5' as const,
@@ -85,6 +90,7 @@ export function TimeseriesDistributionsTabView({
           },
           {
             buckets: distributions_tab.perf_score_buckets ?? [],
+            reviewKey: undefined as string | undefined,
             title:
               fieldMappings?.fields['performance_score']?.label ??
               t('timeseries.summary.perf_label'),
@@ -103,6 +109,7 @@ export function TimeseriesDistributionsTabView({
           },
           {
             buckets: distributions_tab.max_killing_spree_buckets ?? [],
+            reviewKey: undefined as string | undefined,
             title:
               t('timeseries.progression.spree_label'),
             colorToken: 'chart-series-6' as const,
@@ -122,6 +129,7 @@ export function TimeseriesDistributionsTabView({
             xAxisLabel={cfg.xAxisLabel}
             medianLabel={t('timeseries.summary.median')}
             colorTokenByBucket={cfg.colorTokenByBucket}
+            reviewKey={cfg.reviewKey}
           />
         ))}
       </div>

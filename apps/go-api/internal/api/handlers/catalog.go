@@ -157,3 +157,36 @@ func (h *CatalogHandler) handleMaps(ctx context.Context, in *catalogMapsInput) (
 	out.Body.Maps = maps
 	return out, nil
 }
+
+// EmptyCatalogRepo est le repo de REPLI du catalogue : il répond des listes vides
+// sans jamais toucher DuckDB. Employé en MODE DÉMO quand metadata.duckdb est
+// indisponible (racine isolée du rendu de contrat / des tests de contrat), pour
+// que les 3 routes /titles/{slug}/catalog/* soient montées — et donc décrites par
+// le contrat publié — au lieu de disparaître silencieusement (V721-04).
+//
+// Même parti pris que EmptyAssetMetadataHandler (assets_metadata.go), mais injecté
+// dans le MÊME CatalogHandler : les 3 routes ne sont déclarées qu'UNE fois, il n'y
+// a pas de handler jumeau à re-synchroniser. Jamais utilisé hors démo : en
+// production, metadata.duckdb absente laisse les routes non montées (comportement
+// historique inchangé, cf. server_apiv1.go).
+type EmptyCatalogRepo struct{}
+
+// PlaylistsByTitle retourne une liste vide (repli démo).
+func (EmptyCatalogRepo) PlaylistsByTitle(context.Context, string, string, bool) ([]domain.CatalogPlaylist, error) {
+	return []domain.CatalogPlaylist{}, nil
+}
+
+// PairsByPlaylist retourne une liste vide (repli démo).
+func (EmptyCatalogRepo) PairsByPlaylist(context.Context, string, string) ([]domain.CatalogPair, error) {
+	return []domain.CatalogPair{}, nil
+}
+
+// MapsByTitle retourne une liste vide (repli démo).
+func (EmptyCatalogRepo) MapsByTitle(context.Context, string, string, bool) ([]domain.CatalogMap, error) {
+	return []domain.CatalogMap{}, nil
+}
+
+// CountCatalogEntries retourne 0 (repli démo).
+func (EmptyCatalogRepo) CountCatalogEntries(context.Context, string) (int, error) { return 0, nil }
+
+var _ port.CatalogRepo = EmptyCatalogRepo{}

@@ -83,8 +83,10 @@ func isKnownChiBrut(path string) bool {
 
 // TestSharedOpenAPIDocCoversAllHumaRoutes est le garde-rail central de H1.
 func TestSharedOpenAPIDocCoversAllHumaRoutes(t *testing.T) {
-	// Flags ON pour exposer le MAXIMUM de routes (multi-titre) — même surface que
-	// contract_test. (Prestige reste indisponible en démo, cf. route_collision_test.)
+	// Flags ON pour exposer le MAXIMUM de routes (multi-titre + prestige) — même
+	// surface que contract_test et que le contrat publié (V721-04 : en démo, les
+	// routes prestige / catalog / diag auto-sync sont montées avec des dépendances
+	// de repli au lieu de disparaître).
 	t.Setenv("LEVELUP_DEMO_MODE", "true")
 	t.Setenv("MULTI_TITLE_API_ENABLED", "true")
 	t.Setenv("PRESTIGE_ENABLED", "true")

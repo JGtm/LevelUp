@@ -197,6 +197,12 @@ export function TimeseriesKdaDensity({
   }, [buckets, rows, labels, themeVersion])
 
   return (
-    <ChartFromOption title={title} option={option} height={height} emptyMessage={emptyMessage} />
+    <ChartFromOption
+      title={title}
+      option={option}
+      height={height}
+      emptyMessage={emptyMessage}
+      reviewKey="timeseries.fda_distribution"
+    />
   )
 }

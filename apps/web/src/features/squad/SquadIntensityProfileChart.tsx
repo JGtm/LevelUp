@@ -111,6 +111,7 @@ export function SquadIntensityProfileChart({
       buildOption={buildOption}
       height={height}
       emptyMessage={emptyMessage}
+      reviewKey="squad.intensity_profile"
     />
   )
 }

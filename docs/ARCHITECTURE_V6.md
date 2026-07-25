@@ -53,6 +53,10 @@ SQL views (`ensure_resolution_views()`):
 - `player_match_enrichment`: performance_score, session_id, etc.
 - `challenge_snapshots`: append-only per-player challenge state history (active/completed/upcoming, progress, XP, expiry), deduplicated on state change
 
+## OpenSpartan import
+
+LevelUp accepts a one-time SQLite upload from [OpenSpartan Workshop](https://github.com/OpenSpartan) (community Halo tracker by Den Delimarsky, credited in `docs/ACKNOWLEDGMENTS.md`), so players who already tracked matches there before switching can backfill that history. The import parses the file and writes matches into `shared_matches_v2.duckdb` through the same `persist.SharedPersister` path as live sync — no ad hoc SQL. Code: `internal/openspartan/` (reader) + `internal/openspartan/mapper/` (row mapping) + `internal/service/openspartan_import_service.go` (orchestration) + `internal/api/handlers/openspartan_import.go` (auth-gated upload endpoint, off in demo mode) + `OpenSpartanImportCard.tsx` (onboarding UI). The name comes from the third-party project it reads from, not from LevelUp's own naming.
+
 ---
 
 ## Multi-Title Architecture (Sprint 44)

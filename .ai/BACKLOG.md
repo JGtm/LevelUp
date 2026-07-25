@@ -10,189 +10,44 @@
 
 ---
 
-### [data/objectifs] Étendre match_objective_stats aux 4 blocs restants (Stockpile, Elimination, Extraction, Infection)
+### [data/objectifs] Blocs `EliminationStats` / `InfectionStats` — BLOQUÉS faute de donnée
 
-Constat (investigation citations v7.2, 2026-07-25) : `StatsBundle` (internal/openspartan/models.go)
-porte encore 4 blocs de stats de mode en `json.RawMessage` non extraits : `StockpileStats`,
-`EliminationStats`, `ExtractionStats`, `InfectionStats`. Extension naturelle du chantier
-V72-03 : mêmes mécanique et coût (ALTER ADD COLUMN nullable sur `match_objective_stats`,
-extraction dans `internal/sync/objective/`, backfill re-fetch 1 req/match). Prérequis : P0
-payloads réels de chaque mode pour figer les noms de champs. **Effort : M.**
+Réduit le 2026-07-25 (v7.2.1, V721-02). Sur les 4 blocs de mode non extraits, **3 sont
+livrés** (Stockpile, Extraction, et `VipStats` qui n'était même pas déclaré dans
+`StatsBundle`) — 18 colonnes. Les 2 restants ne sont **pas** un manque de travail mais un
+manque de donnée, établi sur payloads réels (P0, 10 matchs interrogés) :
 
-### [feat/citations] Nouvelles citations Mode de jeu Infinite depuis match_objective_stats (v7.3)
+- `EliminationStats` : les 2 seuls matchs Attrition en base ne portent **aucun** bloc de
+  mode (`Stats` = `CoreStats` seul). Aucun mode Elimination parmi les 65 modes distincts
+  présents en base.
+- `InfectionStats` : « Survive The Undead 3.0 » est un Firefight UGC (catégorie 41), pas
+  un Infection. Aucun mode Infection en base.
 
-La table d'écarts complète (agent 2026-07-25, transmise dans Notion) liste ~19 citations
-nouvelles calculables dès maintenant : CTF (score de drapeau — trou préexistant le plus
-criant —, vols, prises, sécurisations, assistances, frags porteur, chasse aux rapatrieurs,
-temps de porteur), Zones (frags off/déf, ticks KOTH, temps en zone), Oddball (6 compteurs).
-Prérequis fait en v7.2 : source `objective_stat` branchée au citations_engine. Reste :
-choix utilisateur des citations + visuels (assets H5 repurposables : Conquérant, GOAL!!!!,
-Is that my ball?, My castle, Imparable) + lignes de seed + re-seed + backfill citations
-(procédure docs/COMMENDATIONS.md). Non calculables aujourd'hui : Jouets éducatifs
-(ramassages non tracés), Situation critique/Imparable (manches Élimination — dépend de
-l'extension EliminationStats ci-dessus). **Effort : S par citation une fois les visuels fournis.**
+**Déblocage** : jouer une partie matchmaking de chacun de ces modes, puis la synchroniser.
+Le patron existe alors en triple exemplaire — **effort : S par bloc**. Interdiction
+explicite d'inventer le schéma par analogie.
 
----
+### [ops/h5] `cmd/h5-metadata-fetch` (seedWeapons) écrit `weapon_labels.name_fr` — repli VIVANT, pas à retirer sans preuve
 
-### [archi/data] Unifier la SOURCE des noms d'armes (lieu unique de traduction, keyé par weapon_key)
+Correction (2026-07-25) : la prémisse de cette entrée était FAUSSE. `weapon_resolver.go` (:76-93)
+construit `COALESCE(wnl.name_fr, wnl.name_en, wl.name_fr, wl.name_en, '')` — `wl.name_fr` (=
+`weapon_labels.name_fr`, peuplé par ce CLI) est le **3e maillon**, utilisé pour tout `weapon_id` sans
+`weapon_key` dans le registre (`weapon_ids`). Ce n'est PAS de la plomberie vestigiale : c'est le filet
+de sécurité qui évite de perdre le nom FR d'une arme H5 hors-registre, documenté en tête du resolver.
 
-> Noté le 2026-07-21 (décision user : « à maintenir c'est impossible, une vraie galère »). Constat
-> vérifié dans le code : **3 sources de noms d'arme se marchent dessus**, et le nommage est keyé par
-> le **nom EN brut** (fragile).
->
-> - **Nom affiché = table `weapon_labels`** (name_en + name_fr), peuplée DIFFÉREMMENT selon le titre :
->   - Infinite → **seed Go statique écrit à la main** : `applyWeaponLabels`
->     (`internal/games/halo_infinite/migrations/weapon_labels.go`, ~42 armes EN+FR en dur).
->   - H5 → **API Metadata officielle + overrides TOML** : `cmd/h5-metadata-fetch` (seedWeapons) →
->     name_fr = `config/titles/halo_5/mappings/asset_labels_fr.toml` [weapons] sinon EN. Lancé à la main.
-> - **Registre `weapons`** (`weapon_registry.go`, `applyWeaponRegistry`, cross-titre) : son VRAI job =
->   **dimensions** (class/role/family/faction) du graphe frags. Il porte AUSSI un `name_fr` de secours
->   **approximatif/inventé** (« Grenade Splinter », « Fusil de sniper covenant », mapping `Spartan →
->   Non attribué »). Le resolver `resolveWeaponMeta` fait `label FR > registre FR > label EN > registre name`.
-
-**Symptôme** : sur H5, `weapon_labels.name_fr` n'a jamais été rempli en FR (le fetch ne demandait pas la
-localisation FR à l'API, ET les overrides TOML ne matchent que par nom EN EXACT — or l'API renvoie des noms
-« moches » : `FRAG GRENADE` majuscule, `LightRifle` en un mot — qui ne matchent pas les clés `Frag Grenade`,
-`Light Rifle`). → le resolver retombe sur le `name_fr` POURRI du registre. C'est la source du « spartan » et
-des noms anglais du Match view.
-
-**DÉCISION (user 2026-07-21)** : garder classes/rôles du registre, mais **UNIFIER la source des noms** :
-1. **Un seul fichier de traduction par titre**, versionné, **keyé par `weapon_key`** (id canonique stable),
-   PAS par le nom EN brut. Migrer le seed Go Infinite ET le `asset_labels_fr.toml` [weapons] H5 vers ce
-   format commun.
-2. Résolution du nom **via `weapon_key`** (`weapon_id → weapon_ids → weapon_key → {en, fr}`) → toutes les
-   variantes brutes d'une même arme retombent sur UNE traduction (tue le mismatch `FRAG GRENADE` vs `Frag Grenade`).
-3. Le `weapons.name_fr` du registre **ne sert plus jamais de nom affiché** (retirer ce repli du resolver, ou
-   vider la colonne) — zéro trad inventée qui fuit. Le registre reste la source class/role.
-
-**Near-term (one-shot, séparé)** : réappliquer les trads CONFIRMÉES de `asset_labels_fr.toml` [weapons] à la
-metadata H5 par match insensible casse/espaces (corrige `FRAG GRENADE`/`LightRifle`/`PLASMA GRENADE`), rien
-d'inventé, le reste garde l'EN. Ajouter au fichier confirmé les officielles manquantes (ex. Wraith = Apparition)
-uniquement après validation. **Bloqueur API** : l'endpoint officiel a migré (`www.haloapi.com` → `s3publicapis.
-azure-api.net`, backend `linearmeta.svc.halowaypoint.com`) et exige désormais une auth Spartan, pas juste la
-clé d'abonnement → re-fetch H5 KO tant que l'auth n'est pas recâblée (le fix code `fetchWeaponsFR` est prêt mais
-non vérifiable). **Effort** : moyen (refactor résolution nom) + petit (one-shot data).
+**Action correcte** : ne rien retirer tant que la couverture du registre n'est pas prouvée. Prochaine
+étape : auditer les `weapon_id` H5 réellement observés (`v_weapon_kills` ou équivalent) contre
+`weapon_ids` — retrait de ce CLI et de la colonne envisageable **seulement** si 100 % des identifiants
+observés ont un `weapon_key` dans le registre. **Effort : S** (l'audit).
 
 ---
 
-### [data/armes] Colonne résiduelle `weapons.name_fr` dans les metadata déjà migrées
+### [archi/contrat] Reliquats du chantier V72-01 — 2 sur 4 restants
 
-Noté le 2026-07-25 (lot découvertes v7.2). V72-06 a retiré `name_fr` du schéma du registre
-(CREATE de `applyWeaponRegistry`) et de tout le code de lecture — le nom d'affichage vient de
-`weapon_name_labels`, keyé par `weapon_key`. Sur une `metadata.duckdb` **déjà migrée** (prod), la
-colonne **subsiste** : DuckDB refuse `ALTER … DROP COLUMN` tant que la PK ART
-(`title_slug`+`weapon_key`) existe, d'où le non-DROP volontaire documenté dans
-`internal/games/halo_infinite/migrations/weapon_registry.go`. **Statut : inerte** — plus jamais
-lue, aucun impact fonctionnel ni de taille. Purge = migration dédiée de type rebuild
-(table-rename), **non urgente**. **Effort : S.**
+> Réduit le 2026-07-25 (v7.2.1, V721-04) : les deux premiers sous-items sont **livrés**
+> (cf. « Récemment complété »). Les deux qui suivent restent ouverts ; aucun n'est
+> bloquant, le contrat publié est fidèle et gaté.
 
-### [ops/h5] `cmd/h5-metadata-fetch` (seedWeapons) écrit encore `weapon_labels.name_fr`
-
-Noté le 2026-07-25 (lot découvertes v7.2). Le CLI de fetch metadata H5 continue de peupler
-`weapon_labels.name_fr`, colonne désormais **shadowée par `weapon_name_labels`** (source unique du
-nom d'affichage, keyée par `weapon_key`). Plomberie **vestigiale** : l'écriture n'est pas
-consommée par le resolver. À simplifier **au prochain passage sur ce CLI** (pas de chantier
-dédié) — cohérent avec le point 1 de la décision « unifier la SOURCE des noms d'armes »
-ci-dessus. **Effort : S.**
-
----
-
-### [feat/frags] Sunburst : donner un niveau 2 à la classe « Grenade » (par TYPE de grenade)
-
-> Noté le 2026-07-21 (user). La classe **Grenade du sunburst est une FEUILLE** : `buildAPIFragClasses`
-> (`internal/service/fragdist/fragdist.go:156-160`) pose `Kills = counts.Grenade` (total API autoritatif)
-> **sans `Roles`** → pas de niveau 2. Contraste : Mêlée a un niveau 2 (Assassinat/direct), les classes gun
-> sont ventilées par rôle. Résultat : sous « Grenade », pas de sous-arc par type — le seul libellé de niveau 2
-> disponible est le nom de classe lui-même (« grenade »).
-
-**Souhait (user)** : niveau 2 = **TYPE de grenade** (frag / plasma / dynamo / splinter). Les données existent
-dans les rows registre (`class=grenade` : Infinite `Frag/Plasma/Dynamo Grenade` ; H5 `h5_frag/plasma/splinter_
-grenade`) mais sont **actuellement exclues** — grenade ∉ `gunFragClasses` (`fragdist.go:31`), donc sautée dans
-`buildGunFragClasses` (`:94`).
-
-**Piste** : même patron que Mêlée — garder le total API `counts.Grenade` comme kills de la classe, poser un
-niveau 2 depuis les rows grenade du registre, avec un résidu « autre grenade » si Σ types < total API (invariant :
-Σ niveau 2 == kills classe). Ajouter les libellés i18n manquants (`frags.role` n'a pas de type de grenade
-aujourd'hui — cf. `apps/web/src/lib/i18n/manifests/frags.toml`). Lié à la branche `feat/frag-distribution-v2`.
-**Effort** : petit-moyen.
-
----
-
-### [data/frags] H5 : Σ des classes du sunburst > total (double-comptage mêlée/assassinat)
-
-> Noté le 2026-07-21 (revue visuelle Match view). Sur un match H5, les parts du sunburst somment à
-> PLUS que le total affiché au centre (capture : 3+3+4+1+1+15 = 27 pour un total de 23, soit 117 %).
-> Cause : `buildViewerFragDistribution` (`internal/service/match_view_builders_combat.go`) additionne
-> les classes GUN (bulk weapon kills, `rows`) ET les compteurs NATIFS du scoreboard (counts.Melee /
-> Assassination / GroundPound / ShoulderBash). Or sur H5 un kill de mêlée/assassinat est attribué à
-> l'ARME TENUE dans les weapon kills (→ compté dans une classe gun) ET recompté dans le compteur natif
-> → double-comptage. `fragdist.Build` ne filtre des `rows` que `IsGrenadeMelee` : si les lignes H5
-> mêlée/assassinat ne portent pas ce flag (classe = arme tenue), elles fuient dans les classes gun.
-
-**Symptôme masqué côté affichage (2026-07-21)** : `FragSunburst` borne désormais les angles par
-`max(total, Σ classes)` → l'anneau remplit 360° sans déborder/se chevaucher (sinon les derniers arcs
-recouvraient les premiers → étiquettes de rôles au même angle, « même source »). Mais la DONNÉE reste
-fausse : le centre dit 23, les parts somment 27.
-
-**Fix data à faire** : garantir `Σ classes == total` dans `buildViewerFragDistribution` / `fragdist.Build`.
-Piste : marquer `IsGrenadeMelee` (ou exclure par `kill_kind ∈ {melee, assassination, grenade,
-ground_pound, shoulder_bash}`) les lignes bulk weapon H5 correspondantes → elles ne comptent QUE via
-les compteurs natifs. Vérifier sur un match H5 réel (bulk weapons + counts de la ligne is_me).
-**Effort** : moyen (backend + test invariant Σ=total sur dataset H5). Lié : branche `feat/frag-distribution-v2`.
-
----
-
-### [archi/match-view] Retirer le fallback LIVE (appel API à l'ouverture de page) du Match view — CLOS 2026-07-25
-
-> Noté le 2026-07-19 (décision user). Le Match view avait un fallback qui, quand un match n'était PAS
-> en base (`GetMatchMeta` / `match_registry` miss), allait chercher la partie **EN DIRECT depuis l'API**.
-
-**RÉSOLU (V72-15.4, 2026-07-25)** : chaîne supprimée intégralement.
-- `tryCanonicalMatchView` (match_view_service.go) + champs `dataAdapter`/`viewerGamertag` +
-  `WithDataAdapter`/`WithViewerGamertag` sur `MatchViewService` — supprimés. `GetMatchView` renvoie
-  désormais `domain.ErrNotFound("match", matchID)` (APIError `not_found` → handler mappe déjà en 404
-  `match_not_found`, contrat openapi.yaml inchangé, AUCUN edit de contrat nécessaire).
-- `halo_5.DataAdapter.LoadMatchDetail` (+ `findMatchInHistory`, consts pagination) — supprimé, ainsi
-  que `LoadMatchDetail` sur l'interface `games.TitleDataAdapter` et ses 3 implémentations (HINF stub,
-  synthetic_title_b, H5 réel). Fichier `mapping_carnage_detail.go` (H5) entièrement mort → supprimé.
-  `commendation_defs.go` : `enrichCommendations` (spécifique au détail live) supprimé, `enrichCommendationTotals`
-  (totaux à vie, chemin séparé) conservé.
-- Second ordre découvert en suivant la chaîne : `WithRankedClassifier`/champ `classifier` sur le
-  DataAdapter H5 + chargement `ranked_hoppers.toml` au boot (`server_titles_additional.go`) n'avaient
-  QUE ce fallback comme lecteur → supprimés aussi. `classification.LoadSetClassifier` (lib générique,
-  tests dédiés, autre callsite potentiel Phase 2 ingest) conservé intact.
-- `ctxkeys.WithViewerGamertag`/`ViewerGamertag` — supprimés (plus aucun appelant).
-- `canonical.MatchDetail`/`canonical.Commendation` (types canonical) — supprimés, plus aucun lecteur.
-- Front : `MatchViewPage.tsx` — nouvel état dédié `code === 'match_not_found'` (PageUnavailable,
-  FR/EN via `MATCH_VIEW_TEXT.notSyncedTitle/notSyncedDescription`) au lieu de l'écran d'erreur générique.
-- Tests : Go (service `TestMatchViewService_GetMatchView_MetaError` renforcé + handler
-  `TestMatchViewHandler_NotFound_404` nouveau) + retrait des tests du fallback mort ; front
-  `MatchViewPage.test.tsx` nouveau (3 tests : état dédié, actions nav, non-régression match_not_participant).
-- H5 : comportement identique à HINF (même branche `GetMatchView`, aucune comparaison de slug) ; le
-  chemin de sync normal (livesync/capture.go, mapping_carnage.go, persist) est INTACT — non touché.
-
----
-
-### [archi/contrat] Reliquats du chantier V72-01 (openapi.yaml généré par Huma) — clos le 2026-07-25
-
-> Le contrat est désormais GÉNÉRÉ (`make openapi-gen` : document Huma partagé + fragment
-> manuel `api/openapi_manual_fragment.yaml`, golden `TestOpenAPIYAMLIsUpToDate`). Plan clos :
-> `.ai/V7/PLAN_V72_HUMA_OPENAPI.md`. Restent 4 chantiers HORS périmètre v7.2, notés ici pour
-> ne pas les perdre — aucun n'est bloquant, le contrat publié est fidèle et gaté.
-
-- [ ] **`DefaultStatus` côté Go (11 handlers)** — Huma documente `200` pour 11 handlers qui
-      répondent 201/202 via leur champ `Status` ; le fragment manuel corrige le statut à la
-      main. Poser `DefaultStatus` sur l'opération (Huma) rendrait la correction inutile et
-      **shrinkerait le fragment d'autant**. Effort : S. Découverte H6.
-- [ ] **38 routes Go ABSENTES du contrat publié** — le document est rendu depuis le
-      `BuildDemoRouter` (`internal/api/openapigen`) : les routes que la démo ne monte pas
-      n'entrent pas dans le yaml. Manquent **29 Prestige** (bundle nil en démo), **3 catalog**
-      (`/titles/{slug}/catalog/{playlists,pairs,maps}` — metadata DB indisponible), **3 diag
-      auto-sync** (`/_diag/auto-sync/*`, scheduler nil) et **3 assets_metadata** (2 branches
-      mutuellement exclusives). Elles PORTENT déjà `humacore.Op` (operationId/summary/tags,
-      posés en H2) : il ne manque que leur montage dans le harnais de rendu (ou un second
-      harnais « contrat complet »). Effort : M. Découverte H2, réconciliation 204 statique
-      → 173 runtime.
 - [ ] **Bonus post-bascule Huma** — `/docs` (UI OpenAPI) gaté hors prod, `securitySchemes`
       (aucun déclaré aujourd'hui), validation automatique des inputs (impliquerait de passer
       les 16 corps `RawBody` en `Body` typé → change le contrat d'erreur 400 → 422 : décision
@@ -201,6 +56,20 @@ les compteurs natifs. Vérifier sur un match H5 réel (bulk weapons + counts de 
       réduit à `{}` par le type Go `any`) et les 7 descriptions de SCHÉMA RACINE (Huma n'a pas
       de tag type-level) vivent au fragment manuel ; un `SchemaTransformer` léger les
       rapatrierait côté Go. Effort : S. Inventaire fermé H3 (items 1 et 2 du plan).
+
+---
+
+### [ops/deps] Bump `echarts` 5.6.0 → 6.1.0 (alerte Dependabot moderate, CVE-2026-45249, XSS) — reporté à v7.3
+
+Noté le 2026-07-25. Dependabot signale une alerte moderate (CVE-2026-45249, XSS) sur `echarts`
+5.6.0 (`apps/web/package.json`), corrigée en 6.1.0. **Non traité en v7.2.1** : bump MAJEUR du
+moteur de tous les graphes de l'app (11 wrappers `apps/web/src/components/charts/` + pages
+timeseries) — l'utilisateur a explicitement refusé le risque d'instabilité à ce stade.
+
+**Cible : v7.3.** **Critère de go mesurable** : `make test-web` vert (suite charts/timeseries) +
+`make check-types` vert + tournée visuelle des pages les plus denses en graphes (Timeseries,
+Compare, Synthesis, Match view). **Effort : S-M** (bump + vérif, selon l'ampleur des breaking
+changes 6.x).
 
 ---
 
@@ -283,8 +152,6 @@ Référence : ADR 0020 — Coach proactif : pont vers Prestige. ADR 0021 — Syn
 > par défaut). Voir « Récemment complété ».
 
 **Chantiers suivis dans des plans dédiés** (retirés du backlog actif — les plans font foi) :
-- **Coach V3 génération** — 3 phases (squad coach / négatif soft / ton), validées le 2026-07-18 :
-  [.ai/PLAN_COACH_V3_GENERATION.md](.ai/PLAN_COACH_V3_GENERATION.md).
 - **Arcs multi-titres** — indépendance stricte par titre, Option A (retrait `arc_titles`)
   confirmée le 2026-07-18 : [.ai/PLAN_CROSS_TITLE_ARCS_2026-07.md](.ai/PLAN_CROSS_TITLE_ARCS_2026-07.md).
 
@@ -298,6 +165,14 @@ forwardées via settings.
 
 | Date | Item |
 |------|------|
+| 2026-07-25 | **[data/objectifs] Stockpile + Extraction + VIP extraits** (v7.2.1, V721-02) — 18 colonnes ajoutées à `match_objective_stats` par une migration séparée incluant la recréation de `match_objective_stats_latest` (une vue `SELECT *` fige ses colonnes à la création : sans ça, les 18 colonnes restaient invisibles à TOUS les lecteurs). `VipStats` n'était même pas déclaré dans `StatsBundle`. Payloads réels capturés (P0, 10 matchs), fixtures committées, INSERT pur. Vérifié sur copie des vraies bases : 27 → 45 colonnes, 5757 lignes préservées. Restent `EliminationStats`/`InfectionStats`, bloqués faute de donnée (cf. backlog actif). |
+| 2026-07-25 | **[feat/citations] 10 citations d'objectifs livrées** (v7.2.1, V721-03) — 10 retenues sur 19 (9 écartées par décision utilisateur). Paliers **calibrés sur données réelles**, ce qui a invalidé les paliers génériques initiaux : 4 de ces citations seraient restées au premier palier à vie (3, 1, 4 et 3 occurrences au total chez le meilleur joueur). Parité EN garantie par un garde-rail neuf (le nom EN n'en avait aucun, seule la description était couverte) + garde-rail d'existence des visuels sur disque. Seed vérifié : 88 → 98, 0 sans nom ni description EN. Visuels de 2 citations : bouche-trous provisoires, l'utilisateur les produit (blocage explicite avant déploiement). |
+| 2026-07-25 | **[data/armes] Colonne résiduelle `weapons.name_fr` purgée** (v7.2.1, V721-05) — migration de reconstruction CTAS-swap idempotente (no-op sur une base déjà propre), clé primaire composite recréée, garde anti-perte sur le nombre de lignes. Vérifié sur copie de la vraie metadata : colonne absente, 84 lignes et PK intactes. |
+| 2026-07-25 | **[archi/contrat] `DefaultStatus` + routes absentes du contrat** (v7.2.1, V721-04) — portée réelle **23 routes** et non 11 : 7 mentaient en silence (elles publiaient `200` pour un 201/202 sans que le fragment ne les corrige), 1 découverte en plus. Champ `Status` retiré partout où le statut est fixe (une seule source de vérité) + ratchet anti-retour. Et **35 routes** absentes du contrat (et non 38 : 3 étaient un artefact de comptage, deux implémentations déclarant le même contrat) montées via un harnais unique — un second harnais aurait rouvert le canal de dérive contrat/tests fermé en v7.2. Fragment manuel : 3291 → 3237 lignes. |
+| 2026-07-25 | **[archi/data] Unifier la SOURCE des noms d'armes** — traductions centralisées dans un fichier TOML par titre keyé `weapon_key` (`config/titles/{halo_infinite,halo_5}/mappings/weapon_names.toml`), résolution via `weapon_key` dans `weapon_resolver.go` (:76-94), colonne `name_fr` retirée du CREATE du registre (`weapon_registry.go` :177-189), garde-rail `weapon_names_completeness_test.go`. Commits `cebe2fed9` (V72-06) + `95dd7b5e3`. |
+| 2026-07-25 | **[feat/frags] Sunburst : niveau 2 pour la classe Grenade** — ventilation par type de grenade (`grenadeRoles`, `fragdist.go` :226-258) avec résidu « Autre grenade » et invariant Σ niveau 2 == kills classe respecté, i18n `frags.toml` :124-146. Commit `0eb523bb2` (V72-15.2). |
+| 2026-07-25 | **[data/frags] H5 : Σ des classes du sunburst > total (double-comptage mêlée/assassinat)** — `buildGunFragClasses` retranche désormais `MechanicKills` des kills d'arme (`fragdist.go` :93-107), invariant Σ classes == total rétabli. Commit `0eb523bb2` (V72-15.3). |
+| 2026-07-25 | **[archi/match-view] Retirer le fallback LIVE du Match view** — `GetMatchMeta` miss renvoie désormais `domain.ErrNotFound` (404 `match_not_found`) au lieu d'un fetch live API ; chaîne `tryCanonicalMatchView`/`WithDataAdapter`/`WithViewerGamertag`/`LoadMatchDetail` H5 entièrement supprimée (`match_view_service.go` :229-244). Commit `468154424` (V72-15.4). |
 | 2026-07-18 | **[bug/h5] Fuite d'affichage campagne (287 matchs) — balayage complet** — cause : le mécanisme centralisé d'exclusion (`analysis.campaignExcludedVariantIDs` + fragments) n'était pas appliqué sur `Q5SharedHistory` (LISTE historique + compteur) ni `Q4/Q4MV` (filtres). Fix appliqué à **la source** : liste/filtres + relations/career hub (Q26/Q28/Q28Scoped/QRelationsCoreForm). Un **garde-rail structurel** (scan AST de tous les lecteurs `match_participants`/`mv_player_matches` + `xuid=?`) a révélé la fuite systémique → balayage complet des lecteurs restants (Q10 rencontres, Q19 communs, Q23/Q23b détail-match, Q29Heatmap/Q30Rival moments, Q29TopTeammates/Q30SquadShared/Q31/Q42 escouade). Exempts justifiés (allowlist) : mono-match (Q17/Q17b/Q26), filtré au call site (Q25Template, QRelationsPlayerWinRate), sur-lecture inoffensive (Q25MatchParticipants), code mort (Q30SquadMatches). Nouveau résolveur `resolveCampaignExclusionByMatchID` (sous-requête sans placeholder, sûr avant Sprintf). Tests : structural coverage + comportemental (alias/by-match-id/token). PAS de purge BDD (règle ART). Même session : code mort `Q30SquadMatches` supprimé (règle 7). |
 | 2026-07-18 | **[sécurité/autZ] BOLA prestige objet-level clos** — découverte : `WithPlayerSlug` jamais câblé → les routes `{id}` pures (`GetChallenge`/`Update`/`Abandon`/`SuggestNext`/`GetArc`) + `ListMySquads`-avec-escouades échouaient en `ErrPlayerNotResolved`. Fix : middleware `prestigePlayerSlugCtx` stampe le slug du chemin (ownership-gardé) dans le contexte → répare la résolution ET clôt le BOLA par isolation player DB (défis/arcs perso en `stats.duckdb` du joueur du chemin → `{id}` étranger = 404). Défis d'escouade (shared_social, non isolés) : garde `assertMemberUser` ajoutée à `ListSquadChallenges` (`requestedBy` = slug du chemin). Tests service+handler+middleware. Même session : `JoinSquadChallenge` (rejoindre un défi d'escouade par `{id}`) reçoit la même garde d'appartenance. |
 | 2026-07-17 | **[data/h5] Classification hors-arsenal + capture mécanique de kill** — 26 IDs classés (véhicule/tourelle/environnement/non-attribué/autres) au donut, exclus de l'insight coach (`16d2a09eb`) ; colonne `kill_kind` persistée à l'ingestion H5 pour cesser de jeter la mécanique (`c13e7f6bc`). Phase 2 (backfill + découpage « Capacités Spartan »/Corps-à-corps/Non-attribué) → backlog actif. Investigations : « Spartan » = bucket d'attribution sans arme (API officielle `weapon_type=Unknown`), concentré dans les modes mêlée. |

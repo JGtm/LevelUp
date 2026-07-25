@@ -211,6 +211,10 @@ func (r *SquadRepo) LoadSquadMatches(ctx context.Context, playerXUID, teammateXU
 				results[i].PerformanceScore = &v
 			}
 			results[i].IsWithFriends = e.IsWithFriends
+			// Badge narratif du match (0 = aucun) : alimente le marqueur de
+			// dominance de la bande de résultats Escouade. Aucune requête
+			// supplémentaire — la colonne est déjà chargée par LoadPlayerMatchEnrichments.
+			results[i].DominanceFlag = e.DominanceFlag
 		}
 		if wp, ok := winProbs[results[i].MatchID]; ok {
 			v := wp

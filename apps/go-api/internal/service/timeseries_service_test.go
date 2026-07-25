@@ -106,7 +106,7 @@ func TestBuildIntensityTab_SingleMatch(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestBuildDistributionsTab_Empty(t *testing.T) {
-	tab := buildDistributionsTab(nil, true)
+	tab := buildDistributionsTab(context.Background(), nil, true)
 	if len(tab.KDABuckets) != 0 {
 		t.Errorf("expected empty KDABuckets, got %d", len(tab.KDABuckets))
 	}
@@ -125,7 +125,7 @@ func TestBuildDistributionsTab_CorrectBuckets(t *testing.T) {
 		{Kills: 15, Deaths: 5, KDA: &kda3, StartTime: time.Now()},
 		{Kills: 0, Deaths: 10, KDA: &kda4, StartTime: time.Now()},
 	}
-	tab := buildDistributionsTab(matches, true)
+	tab := buildDistributionsTab(context.Background(), matches, true)
 	if len(tab.KDABuckets) == 0 {
 		t.Fatal("expected non-empty KDABuckets")
 	}
@@ -134,6 +134,76 @@ func TestBuildDistributionsTab_CorrectBuckets(t *testing.T) {
 	// exclus car Accuracy/KDA/MMR sont nil dans ce fixture.
 	if len(tab.CorrelationPoints) != 16 {
 		t.Errorf("expected 4 matches Ã— 4 types = 16 correlation points, got %d", len(tab.CorrelationPoints))
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Durée de vie moyenne (B1) — valeur réelle prioritaire, repli sur le proxy
+// ---------------------------------------------------------------------------
+
+func TestMatchAvgLifeSeconds_PrefersRealValue(t *testing.T) {
+	real := 42.5
+	tp := 600
+	life, isReal, ok := matchAvgLifeSeconds(legacymatch.StatsMatchRow{
+		AvgLifeSeconds: &real, TimePlayedSeconds: &tp, Deaths: 9,
+	})
+	if !ok || !isReal {
+		t.Fatalf("attendu (ok=true, real=true), got ok=%v real=%v", ok, isReal)
+	}
+	if life != real {
+		t.Errorf("durée de vie: want %v (valeur API), got %v", real, life)
+	}
+}
+
+func TestMatchAvgLifeSeconds_FallbackProxy(t *testing.T) {
+	tp := 600
+	life, isReal, ok := matchAvgLifeSeconds(legacymatch.StatsMatchRow{
+		TimePlayedSeconds: &tp, Deaths: 9,
+	})
+	if !ok {
+		t.Fatal("attendu ok=true (proxy disponible)")
+	}
+	if isReal {
+		t.Error("attendu real=false : la valeur vient du proxy, pas de l'API")
+	}
+	if life != 60 { // 600 / (9 + 1)
+		t.Errorf("proxy: want 60, got %v", life)
+	}
+}
+
+func TestMatchAvgLifeSeconds_NoSource(t *testing.T) {
+	if _, _, ok := matchAvgLifeSeconds(legacymatch.StatsMatchRow{Deaths: 3}); ok {
+		t.Error("attendu ok=false quand ni la valeur réelle ni le temps joué ne sont renseignés")
+	}
+}
+
+func TestBuildLifeBuckets_UsesRealValueOverProxy(t *testing.T) {
+	// Même match : proxy = 600/(9+1) = 60 s (bucket 60-65), valeur réelle = 12 s
+	// (bucket 10-15). Le bucket produit doit être celui de la valeur RÉELLE.
+	real := 12.0
+	tp := 600
+	buckets := buildLifeBuckets(context.Background(), []legacymatch.StatsMatchRow{
+		{AvgLifeSeconds: &real, TimePlayedSeconds: &tp, Deaths: 9, StartTime: time.Now()},
+	})
+	if len(buckets) != 1 {
+		t.Fatalf("attendu 1 bucket, got %d", len(buckets))
+	}
+	if buckets[0].BucketLower != 10 || buckets[0].BucketUpper != 15 {
+		t.Errorf("bucket: want [10,15) (valeur réelle), got [%v,%v)",
+			buckets[0].BucketLower, buckets[0].BucketUpper)
+	}
+}
+
+func TestBuildLifeBuckets_FallbackWhenRealMissing(t *testing.T) {
+	tp := 600
+	buckets := buildLifeBuckets(context.Background(), []legacymatch.StatsMatchRow{
+		{TimePlayedSeconds: &tp, Deaths: 9, StartTime: time.Now()},
+	})
+	if len(buckets) != 1 {
+		t.Fatalf("attendu 1 bucket (repli proxy), got %d", len(buckets))
+	}
+	if buckets[0].BucketLower != 60 {
+		t.Errorf("bucket repli: want lower=60, got %v", buckets[0].BucketLower)
 	}
 }
 
@@ -424,45 +494,9 @@ func TestBuildAccuracyBuckets_Basic(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------------------
-// buildCorrelationPoints (types Ã©tendus)
-// ---------------------------------------------------------------------------
-
-func TestBuildCorrelationPoints_AllTypes(t *testing.T) {
-	win := 2
-	acc := 0.55
-	dur := 600
-	kda := 2.5
-	mmrTeam := 1500.0
-	mmrEnemy := 1600.0
-	matches := []legacymatch.StatsMatchRow{
-		{
-			Kills:             10,
-			Deaths:            5,
-			Assists:           2,
-			Outcome:           &win,
-			Accuracy:          &acc,
-			TimePlayedSeconds: &dur,
-			KDA:               &kda,
-			TeamMMR:           &mmrTeam,
-			EnemyMMR:          &mmrEnemy,
-		},
-	}
-	points := buildCorrelationPoints(matches)
-	if len(points) == 0 {
-		t.Fatal("expected non-empty correlation points")
-	}
-	// P7.1 : Label composite remplacé par MetricXKey + MetricYKey.
-	pairs := make(map[string]bool)
-	for _, p := range points {
-		pairs[p.MetricXKey+"_vs_"+p.MetricYKey] = true
-	}
-	for _, want := range []string{"kills_vs_kd_ratio", "kills_vs_deaths", "lifespan_vs_kills"} {
-		if !pairs[want] {
-			t.Errorf("missing pair %q", want)
-		}
-	}
-}
+// buildCorrelationPoints : tests déplacés dans timeseries_service_correlation_test.go
+// (extraction miroir de timeseries_service_correlation.go — V721-14a D-09, garder ce
+// fichier sous le seuil de 500 L du CLAUDE.md plutôt que de l'alourdir davantage).
 
 // ---------------------------------------------------------------------------
 // filterStatsMatchRows

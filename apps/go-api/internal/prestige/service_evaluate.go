@@ -111,23 +111,23 @@ func (s *service) creditCompletion(ctx context.Context, c Challenge, now time.Ti
 	out.PPCredited = pp
 
 	if pp > 0 {
-		// creditTitlesFor = point d'extension cross-titre unique. Aujourd'hui il
-		// retourne [c.TitleSlug] → exactement un événement, comportement identique
-		// à l'historique (cf. cross_title.go / PLAN_CROSS_TITLE_ARCS_BACKEND).
-		for _, slug := range creditTitlesFor(c) {
-			ev := PrestigeEvent{
-				ID:         newID("pe"),
-				UserID:     c.UserID,
-				TitleSlug:  slug,
-				SourceType: SourceChallenge,
-				SourceID:   c.ID,
-				PPAmount:   pp,
-				Tier:       c.Tier,
-				CreatedAt:  now,
-			}
-			if err := s.deps.Prestige.EmitEvent(ctx, ev); err != nil {
-				slog.WarnContext(ctx, "prestige: emit event failed", "err", err)
-			}
+		// Crédit STRICTEMENT mono-titre : les PP d'un défi vont au titre du défi et
+		// à lui seul (décision produit 2026-07-18 — arcs, défis et points de
+		// progression indépendants par titre). Le seam creditTitlesFor(), qui
+		// permettait de créditer N titres, a été retiré le 2026-07-25 ; le garde-rail
+		// no_cross_title_aggregation_test.go interdit sa réintroduction.
+		ev := PrestigeEvent{
+			ID:         newID("pe"),
+			UserID:     c.UserID,
+			TitleSlug:  c.TitleSlug,
+			SourceType: SourceChallenge,
+			SourceID:   c.ID,
+			PPAmount:   pp,
+			Tier:       c.Tier,
+			CreatedAt:  now,
+		}
+		if err := s.deps.Prestige.EmitEvent(ctx, ev); err != nil {
+			slog.WarnContext(ctx, "prestige: emit event failed", "err", err)
 		}
 	}
 	s.emitter.EmitTransition(ctx, updated, TelemetryCompleted)

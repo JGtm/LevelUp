@@ -1,3 +1,79 @@
+## [2026-07-25] V721-13 — What's new + changelogs + notes de version in-app v7.2.1
+
+**Statut** : Complété. Pas de commit (superviseur). Item FINAL du plan
+`.ai/V7.2.1/PLAN_V721_NOTION_BATCH.md`.
+
+**Périmètre / décision.** 6 fichiers, 3 publics, aucun code touché : `README.md` +
+`docs/FR/README.md` (joueur, condensé), `docs/RELEASE_NOTES.md` + `docs/FR/RELEASE_NOTES.md`
+(source unique des notes in-app servies par `service.ReleaseNotesService` → `/help`),
+`docs/CHANGELOG.md` + `docs/FR/CHANGELOG.md` (technique, Keep a Changelog, section `[7.2.1]`).
+
+**Décision technique principale — contrainte de parsing découverte, elle a dicté la forme.**
+`extractVersionKey` (`internal/service/release_notes_service.go`) tronque toute version à
+`major.minor` : `**v7.2.1 — …**` produit la clé `v7.2`. Or `extractWhatsNewBlocks` garde la
+PREMIÈRE occurrence d'une clé (`if _, exists := blocks[currentVer]; !exists`). Un bloc
+`v7.2.1` empilé AVANT le bloc `v7.2` aurait donc fait disparaître TOUTE la section v7.2 des
+notes in-app (et l'inverse aurait perdu la v7.2.1). Un correctif du service Go a été écarté
+(hors périmètre, gate vert à ne pas casser). Forme retenue : **un seul bloc pour le train 7.2**
+— la ligne de version existante est renommée `v7.2` → `v7.2.1` et les sections v7.2.1 sont
+insérées EN TÊTE du bloc. Clé Go `v7.2` unique, tri descendant intact ; côté front
+`parseReleaseNotes.ts` (`/^\*\*(v[\d.]+)…/`) affiche bien « v7.2.1 ». Même parti pris sur les
+2 README, cohérent avec la règle « une seule version affichée » (précédent `f16192cad`,
+demande utilisateur) : le bloc v7.2 n'est pas empilé, il est enrichi et rebaptisé.
+
+**Choix éditoriaux.** (1) Date `2026-07-25` sur l'entrée changelog, alignée sur les entrées
+7.1.0/7.2.0 (jour de rédaction) — à bumper au commit de release si le merge glisse.
+(2) Badges de version README laissés à **7.2.0** : le précédent `cc9d82b2d` les laisse au tag
+N-1 jusqu'au tag. (3) Actions post-déploiement (reset ciblé `MBitObjectiveStats` + backfill
+objectifs, re-seed + `--citations-recompute-all`, `drop_arc_titles` au boot) en section `Ops`
+du changelog UNIQUEMENT, jamais dans les notes joueur. (4) Chiffres vérifiés sur pièces, pas
+sur les cases du plan : 35 routes nouvellement publiées (+38 opérations / −3 dans
+`api/openapi.yaml`), 23 routes à statut nominal (11 × 201, 12 × 202), 18 colonnes objectif
+(6+5+7) dont 13 affichées (4+4+5), 10 citations (registre à 98 `Norm:`), 3 alertes Dependabot
+`high` fermées. (5) Libellés FR des modes repris du référentiel
+(`mode_playlist_fr.go`) : Stockpile → **Stockage**, Extraction, VIP.
+
+**Ce qui est délibérément ABSENT** (anti-survente) : les visuels définitifs des 2 citations
+`flag_captures` / `flag_steals` (SVG bouche-trous, PNG utilisateur attendus) — aucune mention
+côté joueur, une ligne factuelle en `Ops` du changelog ; les modes Elimination / Infection —
+documentés en `Ajouté` comme NON spécifiés faute de payload, avec la condition de reprise ;
+la purge de `weapons.name_fr` (V721-05.1) — **écartée après vérification** : ni
+`steps_metadata_purge_weapons_name_fr.go`, ni le nom d'étape dans `order.go`, et l'entrée
+`[data/armes]` est toujours dans `.ai/BACKLOG.md:37`. Le plan la coche `[x]`, le code dit non.
+
+**Gates.** Aucune commande Go/npm jouée (interdiction pilote). Parsing validé à la main contre
+les DEUX lecteurs : `**v7.2.1 — …**` passe `isVersionLine`, `extractVersionKey` → `v7.2`,
+8 clés uniques (v7.2 > v7.1 > v7.0 > v6.5 > v6.4 > v6.3 > v6.2 > v6.1), front `VERSION_RE`
+capture `v7.2.1`. Parité FR/EN : nombre de lignes ajoutées identique par paire (28/28 notes,
+11/11 README, 62/62 changelog), même découpage en sections et même nombre de puces. Aucun
+emoji, aucun mojibake (`Ã`/`â€` absents des 6 fichiers).
+
+**Prochaine étape.** Passe de gates du pilote, puis merge main (= deploy prod) ; au moment du
+tag : bump des badges de version README EN+FR vers 7.2.1, et correction de la date de
+l'entrée `[7.2.1]` si le déploiement glisse. Si la migration de purge `weapons.name_fr`
+atterrit avant le merge, ajouter une ligne dans `### Supprimé` / `### Removed`.
+
+## [2026-07-25] V721-02 P0 — capture des payloads réels des 4 blocs de mode non extraits
+
+**Statut** : Complété (fixtures non commitées, commit à la main de l'orchestrateur).
+**Décision technique** : capture par CLI JETABLE dans le dépôt principal (`cmd/tmp_objcap2`,
+supprimé après — les paquets `internal/` ne s'importent pas depuis un module externe, même
+contrainte qu'au P0 de V72-03), auth store-first `RefreshHaloTokensViaStoreFirst` (ADR 0023,
+RT roté par le refresh, aucune re-capture), 10 matchs choisis via `diag_q` sur `match_registry`.
+**Résultats** : `StockpileStats` PRÉSENT (3 matchs, 79 blocs, 6 champs stables dont 2 durées
+ISO) ; `ExtractionStats` PRÉSENT (2 matchs, 52 blocs, 5 champs INT, aucune durée) ;
+`EliminationStats` ABSENT — les 2 seuls matchs Attrition (GameVariantCategory 7) n'ont
+AUCUN bloc de mode, ni sous `Players[].PlayerTeamStats[].Stats` ni sous `Teams[].Stats` ;
+`InfectionStats` ABSENT — le mode UGC « Survive The Undead 3.0 » est un Firefight
+(catégorie 41, `PveStats`+`PvpStats`). Inventaire des 65 modes distincts de `match_registry` :
+aucun match Elimination ni Infection. Découverte notée, NON traitée (hors périmètre) : bloc
+`VipStats` réel et non déclaré dans `StatsBundle` (7 champs, 3 matchs Arena:VIP en base).
+**Conclusion / prochaine étape** : périmètre de V721-02 réduit à 2 blocs / 11 colonnes
+(`stockpile` 6 + `extraction` 5) ; Elimination et Infection restent non spécifiables — aucun
+schéma déduit par analogie. Fixtures anonymisées ajoutées :
+`internal/sync/objective/testdata/objective_stats/{stockpile,extraction}_match.json`.
+Dépôt principal vérifié propre (`git status` vide).
+
 ## [2026-07-25] Incident deploy v7.2.0 n°2 — double build CGO parallèle → OOM VPS
 
 **Statut** : Correctif commité (push au retour du VPS). Le 2e run de deploy (timeout 40m
@@ -14825,3 +14901,109 @@ v7.1.0 (backup à côté) ; backfills prod à orchestrer post-merge/deploy (coup
 **Gates finaux** : gofmt/build/vet/go test ./.../intégration -p 1 (tous paquets touchés)/
 lint 0 issue/baseline OK ; tsc 0 ; vitest 3139/0 ; ratchets contrat clean ;
 openapi-gen + generate-types en phase (golden vert).
+
+## [2026-07-25] Chantier v7.2.1 — section Notion complète (V721-01..15) + lot découvertes
+
+**Statut** : Complété (branche `feat/v7.2.1-notion-batch`, worktree dédié depuis `main`
+local `9f0f7d48b`). 13 items de la section Notion + 1 lot de découvertes requalifié par
+l'utilisateur + 1 correctif de pipeline de déploiement. 12 agents pilotés, gate joué en
+une passe sérialisée par le pilote (aucun agent n'a lancé de commande Go : builds
+concurrents = corruption de cache).
+
+**Décision technique principale** — la reconnaissance a été faite AVANT toute
+implémentation, sur pièces, et elle a invalidé trois affirmations que je portais
+moi-même depuis la v7.2 :
+
+1. « Payloads d'objectifs à capturer d'abord » : faux blocage. 39 matchs Stockpile,
+   2 Extraction, 3 VIP en base. En revanche mes 2 paris (Attrition -> EliminationStats,
+   Survive The Undead -> InfectionStats) sont INFIRMÉS sur payload réel : Attrition ne
+   porte aucun bloc de mode, et Survive The Undead est un Firefight UGC. Ces 2 blocs
+   restent non spécifiables ; aucun schéma déduit par analogie.
+2. « Chemins CMS des 14 saisons à sourcer » : faux blocage. Le chemin primaire est
+   déductible ; seules les opérations intra-saison ne le sont pas, et le live les remonte.
+3. « `weapon_labels.name_fr` = plomberie vestigiale » : FAUX. Le resolver la lit comme
+   3e repli pour les armes sans `weapon_key`. La retirer aurait supprimé leur nom FR.
+   Entrée de backlog réécrite au lieu d'écrire le « nettoyage ».
+
+**Deux plans sur quatre étaient déjà livrés à ~95 %** (`COACH_V3` depuis le 2026-06-09,
+`SQUAD_CHALLENGES`) sans que leurs fichiers le disent : piège actif, un agent lisant ces
+plans réimplémente du code existant. Corrigés, statués, archivés. Un troisième
+(`REVUE_ANALYTIQUE`) avait ~40 % de contenu périmé — réécrit avant exécution.
+
+**Cause du 500 prod (défis d'escouade) trouvée et fermée** : le handler mappait bien
+`ErrDBLocked` vers 503, mais aucune lecture n'émettait ce sentinelle. Le helper supposé
+« traduire le verrou » ne fait que rouvrir/réessayer — il fallait AUSSI une traduction
+d'erreur. Pas 1 lecture fautive mais 11 (6 metadata + 5 shared_social), plus un maillon
+cassé qui faisait sortir « rejoindre »/« abandonner » un défi en 400 au lieu de 503.
+Ratchet neuf `bare_db_recovery_routing_test.go` (allowlist VIDE sur `prestige/`), mordant
+prouvé sur les 11 violations d'origine récupérées par `git show`.
+
+**Trouvaille de sécurité (gate)** : les 3 routes `/titles/{slug}/catalog/*` étaient
+montées SANS garde d'auth, en production, et acceptent `?xuid=` + `only_played` — donc
+fuite non authentifiée de l'activité d'un joueur. Invisible au ratchet `bare_routes` :
+le harnais de démo, faute de metadata.duckdb, ne les montait jamais. C'est le montage de
+repli ajouté pour compléter le contrat (V721-04) qui les a révélées. `RequireAuth` posé
+sur les DEUX branches (zéro appelant front, vérifié).
+
+**Autres livraisons** : 18 colonnes d'objectifs (Stockpile 6 + Extraction 5 + VipStats 7,
+ce dernier n'était même pas déclaré dans `StatsBundle`) ; 10 citations avec paliers
+CALIBRÉS sur données réelles (mes paliers initiaux rendaient 4 d'entre elles
+inatteignables : 3, 1, 4 et 3 occurrences au total chez le meilleur joueur) ; contrat
+OpenAPI complété (35 routes absentes montées, 23 routes dont le statut était faux — 7
+mentaient en silence) ; retrait de `arc_titles` + ratchet AST d'indépendance par titre ;
+purge de `weapons.name_fr` ; Explorer 14/14 saisons ; 3 alertes Dependabot high fermées.
+
+**Pièges attrapés** :
+
+- Une vue DuckDB `SELECT *` FIGE sa liste de colonnes à la création : sans
+  `CREATE OR REPLACE VIEW` dans la même migration, les 18 nouvelles colonnes auraient
+  été invisibles pour TOUS les lecteurs. Test dédié qui échoue si on retire la recréation.
+- Le bit `MBitObjectiveStats` est déjà posé sur 43 des 44 matchs concernés : sans reset
+  ciblé, le backfill les saute en silence et les colonnes restent vides.
+- Le ratchet cross-titre de V721-09 échouait sur SA PROPRE preuve de mordant : sa garde
+  anti-faux-positif exigeait que « titles » soit suivi d'un non-alphabétique — elle
+  écartait bien `titleSlug` mais AUSSI `creditTitlesFor`, le seam même qu'elle doit
+  interdire. Remplacée par un découpage en mots camelCase.
+- Un `//nolint` de `seed.go` ne pouvait PAS couvrir `defaultCitationMappings` (autre
+  fichier) : il s'appliquait par accident à une fonction de 23 lignes. Repositionné.
+
+**V721-15 — pipeline de déploiement (demande utilisateur en cours de chantier)** : le VPS
+s'est gelé pendant le deploy v7.2.0 (mémoire épuisée, 2 vCPU). Cause : la version était un
+ARGUMENT DE BUILD, donc (a) chaque tag invalidait la couche Go et relançait une
+compilation CGO complète, (b) prod et démo recevant des valeurs différentes, leurs couches
+divergeaient et BuildKit lançait DEUX compilations. Le fix précédent (aligner les valeurs)
+n'avait jamais tourné — le script note lui-même que bash garde l'ancien inode pendant que
+le `git reset` remplace le fichier. Correction structurelle : la version SORT du build,
+elle ne transite plus que par l'environnement d'exécution persisté dans `.env` (que
+compose lit pour tous les services et à toute commande — c'est le cas qui avait motivé le
+bakage). Divergence impossible par construction ; un changement de version ne recompile
+plus rien. Filet ajouté : contrôle post-déploiement de la version réellement servie
+(`app_version` dans /health), pour qu'un `.env` perdu échoue bruyamment au lieu de
+désactiver silencieusement les notifications.
+
+**Lot découvertes (requalifié par l'utilisateur : « il faut les traiter »)** : 19
+consignées, 4 traitées en cours de chantier, 11 corrigées (dont un 500 sur joueur sans
+points, 2 morceaux de code mort supprimés, un 3e consommateur du proxy de durée de vie
+rebasé, une 2e copie de jetons de dominance centralisée + garde-rail, 3 corrections
+documentaires), 4 différées avec justification. Une seule REFUSÉE sciemment :
+l'épinglage de Prestige au titre par défaut est confirmé mais NON corrigé — le catalogue
+de modèles est un référentiel possédé par Halo Infinite (invariant testé côté halo_5) et
+les escouades n'ont aucune colonne de titre. C'est un arbitrage produit, pas une
+correction technique ; un demi-correctif aurait cassé le catalogue ou scindé les escouades.
+
+**Résultats observés** — gate complet vert : gofmt, `go build`, `go vet`,
+`go test ./...`, `go test -tags=integration -p 1 ./...` (exit 0), golangci-lint 0 issue,
+contrat régénéré (0 chemin perdu, +27 chemins), types front régénérés, `tsc -b` cache
+froid, vitest 3162/0, ratchet de contrat propre, eslint 0 erreur.
+**Migrations vérifiées sur une COPIE des vraies bases** (289 Mo) plutôt que sur les
+originales — le retrait d'`arc_titles` casserait le code de `main` jusqu'au merge :
+`match_objective_stats` 27 -> 45 colonnes, la vue les expose toutes, 5757 lignes
+préservées ; `weapons.name_fr` purgée, 84 lignes et PK intactes ; seed « 10 insérées, 88
+mises à jour » -> 98 citations, 0 sans nom ni description EN.
+
+**Conclusion / prochaine étape** : merge utilisateur (= déploiement prod automatique),
+PUIS backfills réels (reset ciblé du bit d'objectifs + backfill, re-seed + recompute des
+citations). **Point de blocage explicite avant tout déploiement** : les 2 visuels de
+citations sont des bouche-trous provisoires — l'utilisateur les dessine lui-même (brief
+technique complet déposé dans sa section HUMAN GATE Notion). Rien ne doit partir en
+production avec les SVG provisoires.

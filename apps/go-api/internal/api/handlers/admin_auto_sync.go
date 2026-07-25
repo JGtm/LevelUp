@@ -51,12 +51,25 @@ type AdminAutoSyncHandler struct {
 	provider  auth.TokenProvider
 }
 
-// NewAdminAutoSyncHandler crée un handler. scheduler doit être non nil
-// (le caller dans server.go garde le wiring conditionnel).
+// NewAdminAutoSyncHandler crée un handler.
 // cfg permet à ProbeTokens de localiser la player DB.
 // provider est utilisé par le Resolver instancié dans ProbeTokens.
+//
+// scheduler PEUT être nil : en MODE DÉMO (rendu du contrat / tests de contrat)
+// aucun ordonnanceur n'est câblé, mais les routes sont tout de même montées pour
+// que le contrat publié décrive la surface complète (V721-04). Les endpoints qui
+// en dépendent répondent alors 503 scheduler_unavailable — même contrat d'erreur
+// que POST /admin/actions/auto-sync/run. En production le wiring conditionnel de
+// server_apiv1.go reste inchangé (scheduler non nil dès que les routes existent).
 func NewAdminAutoSyncHandler(s *scheduler.AutoSyncScheduler, cfg *config.AppConfig, provider auth.TokenProvider) *AdminAutoSyncHandler {
 	return &AdminAutoSyncHandler{scheduler: s, cfg: cfg, provider: provider}
+}
+
+// errSchedulerUnavailable : réponse des endpoints diag quand aucun ordonnanceur
+// n'est câblé (mode démo). Aligné sur handleRunSyncCycle (admin_actions.go).
+func errSchedulerUnavailable() error {
+	return humacore.NewError(http.StatusServiceUnavailable, "scheduler_unavailable",
+		"Scheduler auto-sync indisponible.")
 }
 
 // Mount enregistre les 3 routes via Huma sur le sous-routeur chi (préfixe
@@ -85,6 +98,9 @@ type autoSyncProbeOutput struct{ Body TokenProbeResult }
 // handleGetSnapshot retourne le snapshot mémorisé du dernier cycle.
 // GET /api/v1/_diag/auto-sync/snapshot
 func (h *AdminAutoSyncHandler) handleGetSnapshot(_ context.Context, _ *struct{}) (*autoSyncSnapshotOutput, error) {
+	if h.scheduler == nil {
+		return nil, errSchedulerUnavailable()
+	}
 	return &autoSyncSnapshotOutput{Body: h.scheduler.Snapshot()}, nil
 }
 
@@ -96,6 +112,9 @@ func (h *AdminAutoSyncHandler) handleGetSnapshot(_ context.Context, _ *struct{})
 // avec les cycles automatiques (ils ne tournent pas en parallèle car
 // `Run()` séquence ses ticks via un ticker).
 func (h *AdminAutoSyncHandler) handleRunOnce(ctx context.Context, _ *struct{}) (*autoSyncSnapshotOutput, error) {
+	if h.scheduler == nil {
+		return nil, errSchedulerUnavailable()
+	}
 	_ = h.scheduler.RunOnce(ctx)
 	return &autoSyncSnapshotOutput{Body: h.scheduler.Snapshot()}, nil
 }

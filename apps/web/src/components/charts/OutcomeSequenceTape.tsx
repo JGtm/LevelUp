@@ -14,15 +14,32 @@ import type { EChartsCoreOption, EChartsType } from 'echarts/core'
 
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 
+import { resolveToken } from '@/lib/accessibility'
+// Tokens de dominance : source unique partagée avec la colonne Dominance de
+// l'Explorateur — même vocabulaire visuel, aucune palette nouvelle.
+import { DOMINANCE_COLOR_TOKENS } from '@/lib/narrative/dominance'
+
 import { CHART_BG, escapeHtml, getEChartsThemeColors, getTooltipBase, outcomeColor } from './_utils'
-import { type OutcomePoint, type Run, matchIndexAtX, startOf, toRuns } from './outcomeSequence'
+import {
+  type DominanceValue,
+  type OutcomePoint,
+  type Run,
+  matchIndexAtX,
+  startOf,
+  toRuns,
+} from './outcomeSequence'
+
+/** Largeur minimale par match (px) sous laquelle le losange n'est plus lisible. */
+const DOMINANCE_MIN_WIDTH_PX = 6
+/** Demi-diagonale du losange (px). */
+const DOMINANCE_HALF = 3.5
 
 // Ré-export des types du modèle pur : les 5 consommateurs importent toujours
 // `OutcomeValue`/`OutcomePoint` depuis ce module (frontière stable). La logique
 // pure (`matchIndexAtX`) vit dans `outcomeSequence.ts` — importée directement là
 // par les tests, jamais ré-exportée ici (react-refresh : pas d'export de valeur
 // non-composant depuis un fichier de composant).
-export type { OutcomeValue, OutcomePoint, Run } from './outcomeSequence'
+export type { OutcomeValue, OutcomePoint, Run, DominanceValue } from './outcomeSequence'
 
 const ReactECharts = lazy(() =>
   import('echarts-for-react').then((m) => ({ default: m.default ?? m })),
@@ -46,6 +63,12 @@ export interface OutcomeSequenceTapeProps {
    * et le comportement sont STRICTEMENT identiques (5 autres consommateurs).
    */
   onMatchClick?: (matchId: string) => void
+  /**
+   * Libellés des drapeaux de dominance (1..5) pour le tooltip. Absents → le
+   * marqueur reste dessiné mais le tooltip n'ajoute rien : aucun consommateur
+   * n'est obligé de fournir la traduction.
+   */
+  dominanceLabels?: Partial<Record<DominanceValue, string>>
 }
 
 export function OutcomeSequenceTape({
@@ -54,6 +77,7 @@ export function OutcomeSequenceTape({
   loading = false,
   height = 100,
   onMatchClick,
+  dominanceLabels,
 }: OutcomeSequenceTapeProps) {
   const runs = useMemo(() => toRuns(matches), [matches])
   const xMax = runs.reduce((s, r) => s + r.count, 0)
@@ -115,13 +139,15 @@ export function OutcomeSequenceTape({
           const item = p as { data: { run: Run } }
           const r = item.data.run
           const label = labels[r.outcome]
-          const lines = r.matches
-            .slice(0, 5)
-            .map((m) =>
-              m.label
-                ? `· ${escapeHtml(m.label)}`
-                : `· ${escapeHtml(m.map ?? m.matchId)}${m.mode ? ` (${escapeHtml(m.mode)})` : ''}`,
-            )
+          const lines = r.matches.slice(0, 5).map((m) => {
+            const base = m.label
+              ? `· ${escapeHtml(m.label)}`
+              : `· ${escapeHtml(m.map ?? m.matchId)}${m.mode ? ` (${escapeHtml(m.mode)})` : ''}`
+            // Suffixe de dominance : seulement si le drapeau ET sa traduction
+            // sont fournis (sinon la ligne reste strictement inchangée).
+            const dom = m.dominance ? dominanceLabels?.[m.dominance] : undefined
+            return dom ? `${base} — ${escapeHtml(dom)}` : base
+          })
           if (r.matches.length > 5) lines.push(`+${r.matches.length - 5}`)
           return [`<b>${r.count}× ${escapeHtml(label)}</b>`, ...lines].join('<br/>')
         },
@@ -168,6 +194,39 @@ export function OutcomeSequenceTape({
             if (interactive) rect.cursor = 'pointer'
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const children: any[] = [rect]
+
+            // Marqueurs de dominance (F1) : un losange centré sur la cellule du
+            // match, DANS la bande (n'empiète pas sur les brackets de séries).
+            // En dessous de DOMINANCE_MIN_WIDTH_PX par match, la bande est trop
+            // dense : on n'affiche rien et le tooltip porte l'information.
+            const perMatchW = (x1 - x0) / r.count
+            if (perMatchW >= DOMINANCE_MIN_WIDTH_PX) {
+              for (let k = 0; k < r.matches.length; k++) {
+                const flag = r.matches[k].dominance
+                if (!flag) continue
+                const cx = x0 + perMatchW * (k + 0.5)
+                children.push({
+                  type: 'polygon',
+                  shape: {
+                    points: [
+                      [cx, yCenter - DOMINANCE_HALF],
+                      [cx + DOMINANCE_HALF, yCenter],
+                      [cx, yCenter + DOMINANCE_HALF],
+                      [cx - DOMINANCE_HALF, yCenter],
+                    ],
+                  },
+                  style: {
+                    fill: resolveToken(DOMINANCE_COLOR_TOKENS[flag]),
+                    // Liseré couleur de fond de carte (var(--popover)) : effet
+                    // « découpe » qui sépare le losange de la couleur d'outcome
+                    // dans les deux thèmes (CHART_BG vaut 'transparent' et ne
+                    // séparerait rien).
+                    stroke: tc.tooltipBg,
+                    lineWidth: 1,
+                  },
+                })
+              }
+            }
 
             if (r.count >= 2 && x1 - x0 >= 8) {
               const yLine = isTop
@@ -218,7 +277,7 @@ export function OutcomeSequenceTape({
         },
       ],
     }
-  }, [runs, xMax, labels, themeVersion, interactive])
+  }, [runs, xMax, labels, themeVersion, interactive, dominanceLabels])
 
   if (loading || xMax === 0) return null
 

@@ -800,3 +800,30 @@ func TestTeammatesService_GetPage_UnknownGamertag_Skipped(t *testing.T) {
 		t.Errorf("expected 0 teammates, got %d", len(resp.Teammates))
 	}
 }
+
+// ---------- buildSquadMatchHistory : dominance_flag (F1) ----------
+
+// TestBuildSquadMatchHistory_PropagatesDominanceFlag : le badge narratif chargé
+// par le repo (player_match_enrichment) doit arriver tel quel dans la ligne
+// d'historique — c'est la source du marqueur de dominance de la bande de
+// résultats Escouade.
+func TestBuildSquadMatchHistory_PropagatesDominanceFlag(t *testing.T) {
+	rows := []domain.SquadMatchRow{
+		{MatchID: "m1", MapUI: "Aquarius", DominanceFlag: 3},
+		{MatchID: "m2", MapUI: "Recharge"}, // aucun badge
+	}
+	hist := buildSquadMatchHistory(rows, nil, "halo_infinite")
+	if len(hist) != 2 {
+		t.Fatalf("want 2 rows, got %d", len(hist))
+	}
+	byID := map[string]int{}
+	for _, h := range hist {
+		byID[h.MatchID] = h.DominanceFlag
+	}
+	if byID["m1"] != 3 {
+		t.Errorf("m1 DominanceFlag = %d, want 3 (remontada)", byID["m1"])
+	}
+	if byID["m2"] != 0 {
+		t.Errorf("m2 DominanceFlag = %d, want 0 (aucun badge)", byID["m2"])
+	}
+}
