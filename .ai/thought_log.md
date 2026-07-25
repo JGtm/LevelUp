@@ -1,3 +1,45 @@
+## [2026-07-25] V72-34 — signal de placement DÉDIÉ à la chaîne de performance (Perf/ΔPerf + tuiles Accueil)
+
+**Statut** : Complété. Pas de commit (superviseur applique les gates). Agents parallèles actifs
+(medals, explorer live/prestige) : leurs fichiers NON touchés.
+
+**Problème.** La Perf (perf_score/delta_perf) exige `MinMatchesPerChainForRelative`=10 matchs dans la
+CHAÎNE perf du match (invariant de conception, non modifié). Le badge « En placement » V72-32 lisait
+`placement_done/total` posés par `applyLUSRPlacements`, qui SAUTE les matchs ayant déjà un LUSR
+(:140-142) — correct pour la colonne Note, mais laissait un trou : **LUSR établi + chaîne perf < 10 →
+Perf/ΔPerf affichaient un tiret nu**. V72-32 avait diagnostiqué à tort un retard de sync ; la cause est
+structurelle et se CALCULE. Cas réel vérifié (JGtm) : 10 matchs BTB dont 2 DNF → 8 perf-éligibles.
+
+**Décision.** Champs dédiés `perf_placement_done/total` (nullable, omitempty), INDÉPENDANTS de l'état
+LUSR/CSR. Mécanique (`computePerfPlacements`, une seule implémentation partagée Explorer/Sessions/
+Accueil) : chaîne via `GetPerformanceChain` (title-aware) ; éligibilité = miroir du batch perf
+(`outcome != DNF` + non exclus, cf. WHERE de `loadHistoryForPerf`) ; `done` = TAILLE de la chaîne
+éligible (identique pour tous ses matchs — progression de calibration, PAS un rang par-match),
+`total` = seuil. Renseigné UNIQUEMENT si `1 ≤ taille ≤ seuil` ET match sans perf_score : une chaîne
+> seuil est calibrée, un trou y est un retard de sync → aucun badge (on ne masque pas un défaut de
+fraîcheur, règle « pas de faux état »).
+
+**Surfaces.** Perf/ΔPerf lisent le nouveau signal (`hasPerfPlacementSignal` + `PlacementPendingCell
+variant="perf"`), la colonne Note garde `placement_*` inchangé ; Sessions/Timeseries/Carrière suivent
+par mutualisation. **Tuiles Accueil** (extension) : `canonical.PlayerMatchEnrichment.PairName` surfacé
+(MatchSummary ne porte que la catégorie PairMode, insuffisante pour classer btb/chaos) → MatchCard
+affiche « En placement (8/10) » (clé i18n EXISTANTE `common.home.rank_placement_progress`) au lieu du
+bloc perf vide. Verdict « 0 littéral » : AUCUN zéro fabriqué côté back (perf NULL en DB, champ omis du
+JSON, `performance_score_relative === 0` count = 0) — les agrégats home (avgPlayerPerf,
+ComputeSquadPerformanceScore) renvoient déjà nil sans score.
+
+**Validation réelle** (serveur local rebuild + session JGtm) : les 3 BTB du 24/07 renvoient
+`perf_placement 8/10` avec `perf_score: null`, `rating_type: "LUSR"`, `skill_tier_label: "Or II"` et
+`placement_done: null` — Note intacte. 3 matchs marqués sur 1087 (aucune sur-application), 0 incohérence
+(jamais perf_score ET perf_placement). Idem sur les tuiles Accueil.
+
+**Gates** : gofmt -l vide ; `go build ./...` 0 ; `go vet ./...` 0 ; `go test ./...` green ;
+`-tags=integration -p 1 ./internal/service/... ./internal/api/...` 8 pkg ok (dont drift OpenAPI) ;
+`make go-api-lint` 0 issue ; `npm run typecheck` (cache purgé) OK sur mes fichiers ; vitest 61 fichiers /
+436 tests verts ; `lint-contract-ratchet` clean. **Réserve** : 8 erreurs tsc résiduelles dans
+`ExplorerTargetProfileCard.test.tsx` (fixtures sans `live_status`) — appartiennent à l'agent explorer
+live ; `live_status` absent de HEAD, matérialisé dans generated.ts par mon `make generate-types`
+(obligatoire pour mes 2 champs). À corriger par cet agent, hors de mon périmètre.
 ## [2026-07-25] V72-01 (H4+H5) — modèle d'erreur unifié Huma + migration groups.go vers Huma
 
 **Statut** : Complété (H4 clos AVANT H5, contrat plan-execution). Pas de commit (superviseur applique
@@ -14266,3 +14308,163 @@ placement — investigation dédiée au prochain lot).
 
 **Notes** : VPS injoignable en SSH depuis le poste (timeout 22) — vérifs prod lecture
 seule déléguées à l'utilisateur (LEVELUP_APP_VERSION, last_notified_version).
+
+## [2026-07-25] V72-33 (suite) médailles H5 fantômes masquées + V72-31 (suite) suppression rappel disque 24h
+
+**Statut** : Complété (2 corrections indépendantes). Pas de commit (superviseur applique les
+gates). Édition sans compilation (agent parallèle détient l'exclusivité `go` sur ce chantier) ;
+identification des données faite via CLI DuckDB officiel (v1.5.5, téléchargé en scratchpad,
+`-readonly`) — pas de MCP duckdb ni de duckdb CLI local disponibles dans ce sandbox.
+
+**V72-33 (médailles H5 fantômes)** : diff exhaustif `medals_earned` (shared_matches_v2.duckdb,
+196 medal_name_id distincts gagnés) vs `medal_definitions` (metadata.duckdb, 215/215 lignes,
+aucune sans nom/sprite) → exactement 3 ID gagnés en match réel sans AUCUNE ligne catalogue :
+505244449 (82 occ./4 joueurs), 883611709 (11/3), 3566983914 (19/4). Absents aussi de
+medalCategoryTable (couvre les 215/215). Mécanisme confirmé dans le code : le fallback
+générique `analysis.MergeMedalCatalog` (Name="#<id>", catégorie "other") les fait remonter
+dans "Autres" sans image ni titre. Croisement halopedia (List_of_Halo_5:_Guardians_medals,
+fetch confirmé) : ~220 médailles retail documentées par catégorie + une section séparée
+"unused/beta-only" sans ID stable — cohérent avec des ID absents du catalogue officiel
+(aucun nom résolvable pour recherche textuelle directe, mais absence totale du catalogue
+API = absence de l'ensemble que le wiki documente comme actif).
+
+Décision : masquage EXPLICITE par ID (pas de filtre générique nom/icône vide — le fallback
+`#<id>` existe pour ne jamais perdre une médaille gagnée dont le catalogue n'a pas encore
+été synchronisé). Nouveau fichier `internal/games/halo_5/medal_ghost_ids.go`
+(`GhostMedalIDs`), nouveau registre `service.RegisterGhostMedalIDs` (miroir exact de
+`RegisterMedalCategoryResolver`/`medalCategoryResolvers`), filtre `filterGhostMedals` appliqué
+dans `MedalsService.GetMedalsPage` avant enrichissement image et regroupement (les totaux
+`CatalogTotal`/`EarnedTotal`/`TotalCount` excluent donc aussi les fantômes). Câblage boot dans
+`server_apiv1.go` juste après les resolvers de catégorie. Scope volontairement limité à la
+page Médailles : `CitationsRepo.LoadMedalTotals` (même requête Q36a, page Citations) est
+inchangé. Tests écrits (non exécutés — gate superviseur) dans `medals_service_test.go` :
+fantôme exclu + médaille normale conservée + totaux corrects, no-op si aucun ID enregistré
+pour le titre, garde-fous `RegisterGhostMedalIDs`/`filterGhostMedals` isolés.
+
+**V72-31 (suite) — suppression du rappel 24h** : `ops.ShouldNotifyDisk`, cas `default`
+(statut stable == dernier confirmé) : retrait de la relance périodique
+(`now.Sub(state.LastNotifiedAt) >= DiskRenotifyInterval`) et de la constante
+`DiskRenotifyInterval` (code mort après retrait, aucun autre caller). Conservé : notif
+d'entrée en alerte, notif immédiate d'aggravation (warn→critical, cas `sevCur > sevLast`),
+notif unique de rétablissement (débounce `diskConfirmTicks`). Tests : sous-test "rappel 24h en
+breach persistant" remplacé par "breach persistant longue durée : jamais de rappel" (24h puis
+240h, aucune notif) ; 3 commentaires de tests avec framing "< 24h" désormais stale corrigés
+(statut stable, sans référence à un seuil temporel). Docs adjacentes mises à jour dans le même
+lot (règle anti doc-inversée) : `internal/notify/disk.go` et
+`internal/api/wire/registry_monitoring_diskwatch.go` ne mentionnent plus le rappel 24h.
+
+**Fichiers** : `internal/games/halo_5/medal_ghost_ids.go` (nouveau) ;
+`internal/service/medals_service.go` + `_test.go` ; `internal/api/server_apiv1.go` ;
+`internal/ops/disk_watch.go` + `_test.go` ; `internal/notify/disk.go` ;
+`internal/api/wire/registry_monitoring_diskwatch.go`.
+
+**Reste** : gates superviseur (gofmt/build/vet/test/lint — aucune commande `go` lancée côté
+agent, conflit d'exclusivité avec le chantier parallèle). Nettoyage scratchpad (CLI DuckDB +
+dumps) effectué en fin de tâche.
+
+## [2026-07-25] Lot A3 Explorer live_status (fin dégradation muette) + playlists FR par id (V72-10 suite)
+
+**Statut** : Complété (2 chantiers indépendants, mêmes contraintes que le lot précédent —
+aucune commande `go` lancée, agent parallèle Perf détient l'exclusivité ; tests Go écrits non
+compilés, vérifiés par relecture croisée du code existant). Front vérifié réellement (node
+autorisé) : `npm run typecheck`, `npx vitest run` (suite complète 364 fichiers/3078 tests
+verts), `npx eslint` sur les fichiers touchés, `node build_i18n_manifests.mjs`.
+
+**A3 — DTO `live_status`** : `domain.ExplorerLiveSectionStatus` (`ok|failed|no_auth|
+local_partial`) + `domain.ExplorerLiveStatus{Identity,Career,SeasonCSRs,Seasons,CombatLive}`
+sur `ExplorerTargetProfile.LiveStatus` (`explorer.go`). Les 5 fetchs du plan A3.2
+(`fetchTargetIdentityRaw`, `fetchTargetServiceRecord`, `fetchTargetCSR`,
+`computeTargetCombatProfileLive`, `computeSeasonBreakdown`) renvoient désormais un 2e retour
+statué : no_auth avant tout essai (hasAuth=false — jamais de fetch tenté), failed sur erreur/
+dépendance absente, ok sur succès (liste vide sans erreur = ok, ex. joueur non classé),
+local_partial pour le repli bucketing local des saisons (Lot A2 non traité) et le cas identité
+"auth dispo mais LiveIdentity non câblé". `buildTargetProfile` capture chaque statut par
+goroutine et les assemble dans `LiveStatus`. `openapi.yaml` : nouveau schéma
+`ExplorerLiveStatus` (enum sur les 5 champs) + `live_status` ajouté à `ExplorerTargetProfile`
+(propriété + required) — **`make generate-types` À LANCER côté superviseur** (non exécuté,
+consigne explicite de la tâche : signaler plutôt qu'exécuter) ; `npm run typecheck` confirme
+que les seules erreurs actuelles portent sur `live_status`/`ExplorerLiveStatus` absents de
+`generated.ts` (attendu, rien d'autre).
+
+**Front (badges discrets, wording du plan repris littéralement)** : nouveau
+`ExplorerLiveStatusBadge` (`features/explorer`, `Badge variant="outline"`, ne rend rien pour
+"ok"/absent) + 3 clés manifest `explorer.target_profile.live_status.{no_auth,failed,
+local_partial}` FR/EN (« Données live indisponibles (authentification) » / « … (erreur) » /
+« Live partiel »). Câblé sur : bandeau identité (badge si identity=null et statut≠ok),
+section "Carrière complète" (header + badge désormais rendus même sans career_stats quand le
+statut explique pourquoi — avant A3 la section disparaissait en silence), `ExplorerTargetSeasonCSR`
+et `ExplorerTargetSeasonMatches` (badge dans la barre de titre via nouveau prop `liveStatus`,
+`ChartCard.title` accepte déjà un ReactNode), `ExplorerCombatProfile` (badge dans l'en-tête si
+le tab "En direct" est vide ; nouveau bloc titré+badge quand LIVE et LOCAL sont vides mais que
+le statut explique pourquoi — remplace l'ancien `return null` muet). Décision : PAS de second
+badge pour "Top médailles" (partage le même fetch/statut que Carrière → aurait toujours
+dupliqué le badge déjà visible juste au-dessus, testé explicitement
+`ExplorerTargetProfileCard.test.tsx`). Chaque composant reste rétro-compatible : `liveStatus`
+optionnel, badge nil-safe → aucune régression sur les fixtures/tests antérieurs sans le champ
+(vérifié : suite complète verte avant toute modif de test).
+
+**Playlists FR par id (V72-10 suite)** : `PrestigeSquadMatchProvider.SquadUsualContexts`
+(`prestige_squad_match_provider.go`) servait les playlists via
+`COALESCE(playlist_name_fr, playlist_name)` sur `match_registry` — trou pour "Quick Play"/
+"Big Team Battle" (`playlist_name_fr` vide). Mécanisme retenu : MÊME pattern que
+`ModeTranslatorFR`/`WithModeTranslatorFR` déjà en place (résolution FR canonique injectée en
+closure) — nouveau type `PlaylistTranslatorFR` + `WithPlaylistTranslatorFR`, requête étendue
+pour sélectionner aussi `playlist_id`, nouvelle map `plIDByLabel` (libellé COALESCE →
+playlist_id représentatif) construite pendant le scan, puis `applyPlaylistTranslationsFR`
+(miroir `applyModeTranslationsFR`) résout par id via `metadata.asset_translations` — MÊME
+résolveur que la page Carrière (`SquadRepo.LoadAssetTranslationsFR("playlist", ids)` →
+`MetadataRepo.ResolveAssetNamesBulk`), pas un nouveau littéral SQL. Câblage
+`prestige_setup.go` : closure `LoadAssetTranslationsFR(ctx, "playlist", ids)` sur le
+`pdb.Metadata` du joueur — indépendant du `SharedReader` (shared_matches_v2.duckdb) utilisé
+par le provider, donc pas d'ATTACH cross-DB à gérer. Priorité : traduction par id > libellé
+COALESCE existant (name_fr > name EN), jamais vide. Best-effort intégral (traducteur nil/id
+inconnu/erreur → libellé COALESCE conservé, WARN loggé).
+
+**Tests** : Go — `explorer_service_target_status_test.go` (nouveau, 18 tests unitaires directs
+sur les 4 fetchs + 1 test bout-en-bout `TestBuildTargetProfile_LiveStatusPopulated` prouvant
+qu'aucune section n'est jamais vide-string) ; `explorer_target_seasons_test.go` (3 tests
+existants adaptés au 2e retour) ; `prestige_squad_match_provider_test.go`
+(`TestApplyPlaylistTranslationsFR`, miroir `TestApplyModeTranslationsFR`) ;
+`prestige_squad_match_provider_playlist_fr_test.go` (nouveau, intégration DuckDB réelle
+`//go:build integration`, 3 tests dont le scénario demandé "name_fr vide mais traduit par id
+→ FR servi"). Front — `ExplorerLiveStatusBadge.test.tsx` (nouveau) + tests ajoutés/adaptés
+dans `ExplorerTargetProfileCard`, `ExplorerTargetSeasonCSR`, `ExplorerTargetSeasonMatches`,
+`ExplorerCombatProfile` (tous verts, suite complète vérifiée).
+
+**Fichiers** : Go — `internal/domain/explorer.go`, `internal/service/explorer_service.go`,
+`explorer_service_target.go` (+`_status_test.go` nouveau), `explorer_target_seasons.go`
+(+`_test.go`), `internal/platform/duckdb/prestige/prestige_squad_match_provider.go`
+(+`_test.go`, +`_playlist_fr_test.go` nouveau), `internal/api/wire/prestige_setup.go`,
+`api/openapi.yaml`. Front — nouveau `features/explorer/ExplorerLiveStatusBadge.tsx`
+(+`.test.tsx`), `ExplorerTargetProfileCard.tsx` (+test), `ExplorerTargetSeasonCSR.tsx`
+(+test), `ExplorerTargetSeasonMatches.tsx` (+test), `ExplorerCombatProfile.tsx` (+test),
+`ExplorerPage.playerMode.tsx`, `lib/api/types.ts`, `lib/i18n/manifests/explorer.toml`
+(+`generated/explorer.ts` régénéré via `node build_i18n_manifests.mjs`).
+
+**Reste / gates superviseur** : `make generate-types` (openapi.yaml → `generated.ts`, requis
+avant que `npm run typecheck` soit vert — actuellement 8 erreurs, toutes `live_status`/
+`ExplorerLiveStatus` manquants, confirmé par lecture des messages tsc) ; `cd apps/go-api &&
+go build ./... && go vet ./... && go test ./... && go test -tags=integration -p 1
+./internal/platform/duckdb/prestige/... ./internal/service/...` (aucune commande go lancée
+côté agent, cf. exclusivité) ; `make go-api-lint`. Vérif visuelle navigateur Explorer mode
+Joueur (badges saisons/carrière/combat) laissée à l'agent navigateur/user — non faite ici (pas
+de serveur backend buildable dans ce run).
+
+**Suite (même jour)** : `make generate-types` exécuté par l'agent parallèle → `live_status`
+matérialisé dans `generated.ts`, devenu champ **requis** de `ExplorerTargetProfile` côté TS
+(cohérent avec `required` dans `openapi.yaml` — jamais absent en réponse réelle, toujours
+statué par `buildTargetProfile`). 8 fixtures `ExplorerTargetProfileCard.test.tsx` sans
+`live_status` cassaient `npm run typecheck`. Complétées une par une avec des états cohérents
+avec CE QUE chaque test simule (pas de "ok" partout en aveugle) : succès complet → tout ok ;
+`career_stats` absent avec `auth_available=true` → `career: 'failed'` (un service record nil
+ne peut PAS coexister avec un statut ok côté Go, cf. `fetchTargetServiceRecord`) ; hint no-auth
+(`auth_available=false`) → `identity: 'ok'` (résolue localement, indépendante des tokens) et
+tout le reste `no_auth` ; cible totalement non résolue (identity+career absents, pas d'auth) →
+`no_auth` partout. Le test "sans live_status (compat antérieure)" n'avait plus de sens une
+fois le champ requis : repensé en test de robustesse défensive — `career: 'ok'` explicite
+malgré `career_stats` absent, pour prouver que `showCareerSection` n'affiche jamais un header
+vide même si le statut (à tort) ne signale rien ; titre et commentaire du test mis à jour en
+conséquence. Vérifié : `npm run typecheck` (racine + apps/web) 0 erreur ;
+`npx vitest run src/features/explorer` 24 fichiers / 197 tests verts ; `npx eslint` propre.
+Aucune commande `go`. Fichier touché : `apps/web/src/features/explorer/ExplorerTargetProfileCard.test.tsx`
+(8 fixtures complétées + 1 test renommé/reciblé).

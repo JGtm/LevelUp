@@ -13,11 +13,6 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
-// DiskRenotifyInterval : tant que le disque reste en warn/critical, on renvoie
-// un rappel à cette fréquence (une alerte unique se perd ; un rappel quotidien
-// reste discret).
-const DiskRenotifyInterval = 24 * time.Hour
-
 // diskConfirmTicks : nombre d'observations CONSÉCUTIVES d'une AMÉLIORATION
 // (dé-escalade / rétablissement) avant de la confirmer. Débounce anti-oscillation :
 // l'espace libre mesuré fluctue naturellement (WAL DuckDB, fichiers temporaires,
@@ -63,7 +58,9 @@ func diskSeverity(status string) int {
 //   - aggravation (ok→warn, warn→critical) : notification IMMÉDIATE ;
 //   - amélioration (dé-escalade / rétablissement) : confirmée sur diskConfirmTicks
 //     observations consécutives (débounce anti-oscillation) puis notifiée ;
-//   - rappel périodique (DiskRenotifyInterval) tant que le breach persiste ;
+//   - breach persistant (statut stable == dernier confirmé, toujours en warn/critical) :
+//     AUCUN rappel (décision V72-31, 2026-07-25 : la notification d'entrée en alerte
+//     suffit ; une aggravation ultérieure re-notifie via le cas ci-dessus) ;
 //   - statut unknown : jamais de notification (mesure indisponible ≠ incident),
 //     et l'état n'est pas modifié (un unknown transitoire ne masque ni le breach
 //     ni un débounce en cours).
@@ -118,13 +115,12 @@ func ShouldNotifyDisk(state DiskWatchState, current string, now time.Time) (bool
 
 	default:
 		// Statut stable (== dernier confirmé) : un débounce d'amélioration en cours
-		// est réinitialisé (l'amélioration ne s'est pas maintenue). Rappel si breach.
+		// est réinitialisé (l'amélioration ne s'est pas maintenue). Aucun rappel même
+		// en breach persistant (warn/critical) — décision V72-31 : l'entrée en alerte
+		// a déjà notifié une fois, et une aggravation ultérieure re-notifie via le cas
+		// sevCur > sevLast ci-dessus.
 		next.PendingImprove = ""
 		next.PendingImproveTicks = 0
-		if sevCur > 0 && now.Sub(state.LastNotifiedAt) >= DiskRenotifyInterval {
-			next.LastNotifiedAt = now
-			return true, next
-		}
 		return false, next
 	}
 }

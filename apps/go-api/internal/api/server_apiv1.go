@@ -1224,6 +1224,11 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	service.RegisterMedalCategoryResolver(halo_games.TitleSlug, halo_games.MedalCategoryResolver{})
 	service.RegisterMedalCategoryResolver(halo5.TitleSlug, halo5.MedalCategoryResolver{})
 
+	// Masquage des médailles H5 sans nom/icône exploitables (décision V72-33, cf.
+	// halo_5.GhostMedalIDs) : obtenues en match réel mais absentes du catalogue
+	// officiel ET de la référence wiki communautaire.
+	service.RegisterGhostMedalIDs(halo5.TitleSlug, halo5.GhostMedalIDs)
+
 	// Fichiers statiques (images maps, médailles, armes…)
 	staticDir := filepath.Join(cfg.RepoRoot, "static")
 	// Handler spécial pour /static/commendations/* : fallback vers noms URL-encodés
