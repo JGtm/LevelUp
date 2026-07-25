@@ -248,39 +248,46 @@ type RecentMatchItem struct {
 	NarrativeBadges []string   `json:"narrative_badges,omitempty"`
 	IsFavorite      bool       `json:"is_favorite"`
 	// S56 — champs enrichis pour MatchCard
-	MapUI                    *string                `json:"map_ui,omitempty"`
-	ModeUI                   *string                `json:"mode_ui,omitempty"`
-	PlaylistUI               *string                `json:"playlist_ui,omitempty"`
-	Kills                    *int                   `json:"kills,omitempty"`
-	Deaths                   *int                   `json:"deaths,omitempty"`
-	Assists                  *int                   `json:"assists,omitempty"`
-	PerformanceScoreRelative *int                   `json:"performance_score_relative,omitempty"`
-	OffensiveConversion      *float64               `json:"offensive_conversion,omitempty"`
-	DefensiveResistance      *float64               `json:"defensive_resistance,omitempty"`
-	DamageDealt              *float64               `json:"damage_dealt,omitempty"`
-	DamageTaken              *float64               `json:"damage_taken,omitempty"`
-	MapImageURL              *string                `json:"map_image_url,omitempty"`
-	SkillRatingValue         *int                   `json:"skill_rating_value,omitempty"`
-	SkillRatingType          *string                `json:"skill_rating_type,omitempty"`
-	SkillTierLabel           *string                `json:"skill_tier_label,omitempty"`
-	SkillRatingDelta         *float64               `json:"skill_rating_delta,omitempty"`
-	SkillPlaylistGroup       *string                `json:"skill_playlist_group,omitempty"`
-	SkillRankImageURL        *string                `json:"skill_rank_image_url,omitempty"`
-	SkillProgressPct         *float64               `json:"skill_progress_pct,omitempty"`
-	SkillPointsInTier        *int                   `json:"skill_points_in_tier,omitempty"`
-	KDA                      *float64               `json:"kda,omitempty"`
-	DurationSecs             *int                   `json:"duration_secs,omitempty"`
-	Accuracy                 *float64               `json:"accuracy,omitempty"`
-	AvgLifeSecs              *float64               `json:"avg_life_secs,omitempty"`
-	TeamMMR                  *float64               `json:"team_mmr,omitempty"`
-	EnemyMMR                 *float64               `json:"enemy_mmr,omitempty"`
-	DeltaMMR                 *float64               `json:"delta_mmr,omitempty"`
-	IsWithFriends            *bool                  `json:"is_with_friends,omitempty"`
-	RankInTeam               *int                   `json:"rank_in_team,omitempty"`
-	HeadshotKills            *int                   `json:"headshot_kills,omitempty"`
-	PerfectKills             *int                   `json:"perfect_kills,omitempty"`
-	TopMedals                []RecentMatchMedal     `json:"top_medals,omitempty"`
-	TopCitations             []MatchCitationSnippet `json:"top_citations,omitempty"`
+	MapUI                    *string `json:"map_ui,omitempty"`
+	ModeUI                   *string `json:"mode_ui,omitempty"`
+	PlaylistUI               *string `json:"playlist_ui,omitempty"`
+	Kills                    *int    `json:"kills,omitempty"`
+	Deaths                   *int    `json:"deaths,omitempty"`
+	Assists                  *int    `json:"assists,omitempty"`
+	PerformanceScoreRelative *int    `json:"performance_score_relative,omitempty"`
+	// PerfPlacementDone/PerfPlacementTotal : placement de la chaîne de performance
+	// du match. Renseignés (et PerformanceScoreRelative nil) quand la chaîne perf
+	// compte ≤ MinMatchesPerChainForRelative matchs éligibles → la tuile MatchCard
+	// affiche « En placement (X/Y) » au lieu d'un vide (JAMAIS un 0 fabriqué pour
+	// une perf absente). Voir MatchHistoryRawRow.PerfPlacementDone.
+	PerfPlacementDone   *int                   `json:"perf_placement_done,omitempty"`
+	PerfPlacementTotal  *int                   `json:"perf_placement_total,omitempty"`
+	OffensiveConversion *float64               `json:"offensive_conversion,omitempty"`
+	DefensiveResistance *float64               `json:"defensive_resistance,omitempty"`
+	DamageDealt         *float64               `json:"damage_dealt,omitempty"`
+	DamageTaken         *float64               `json:"damage_taken,omitempty"`
+	MapImageURL         *string                `json:"map_image_url,omitempty"`
+	SkillRatingValue    *int                   `json:"skill_rating_value,omitempty"`
+	SkillRatingType     *string                `json:"skill_rating_type,omitempty"`
+	SkillTierLabel      *string                `json:"skill_tier_label,omitempty"`
+	SkillRatingDelta    *float64               `json:"skill_rating_delta,omitempty"`
+	SkillPlaylistGroup  *string                `json:"skill_playlist_group,omitempty"`
+	SkillRankImageURL   *string                `json:"skill_rank_image_url,omitempty"`
+	SkillProgressPct    *float64               `json:"skill_progress_pct,omitempty"`
+	SkillPointsInTier   *int                   `json:"skill_points_in_tier,omitempty"`
+	KDA                 *float64               `json:"kda,omitempty"`
+	DurationSecs        *int                   `json:"duration_secs,omitempty"`
+	Accuracy            *float64               `json:"accuracy,omitempty"`
+	AvgLifeSecs         *float64               `json:"avg_life_secs,omitempty"`
+	TeamMMR             *float64               `json:"team_mmr,omitempty"`
+	EnemyMMR            *float64               `json:"enemy_mmr,omitempty"`
+	DeltaMMR            *float64               `json:"delta_mmr,omitempty"`
+	IsWithFriends       *bool                  `json:"is_with_friends,omitempty"`
+	RankInTeam          *int                   `json:"rank_in_team,omitempty"`
+	HeadshotKills       *int                   `json:"headshot_kills,omitempty"`
+	PerfectKills        *int                   `json:"perfect_kills,omitempty"`
+	TopMedals           []RecentMatchMedal     `json:"top_medals,omitempty"`
+	TopCitations        []MatchCitationSnippet `json:"top_citations,omitempty"`
 	// SessionLabel : permet au frontend de filtrer recent_matches par session
 	// (ex. OutcomeSequenceTape limitée à la dernière session). Bug #6.
 	SessionLabel *string `json:"session_label,omitempty"`

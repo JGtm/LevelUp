@@ -488,8 +488,13 @@ func buildSessionCompareSuggestion(
 	}, candidateCount
 }
 
-// sessionPlacement : progression placement X/Y d'un match.
-type sessionPlacement struct{ done, total int }
+// sessionPlacement : progression placement X/Y d'un match. `done/total` = placement
+// LUSR/CSR (colonne Rang) ; `perfDone/perfTotal` = placement de la chaîne de
+// PERFORMANCE (colonnes Perf/ΔPerf), 0 si le match n'est pas en placement perf.
+type sessionPlacement struct {
+	done, total         int
+	perfDone, perfTotal int
+}
 
 // computeSessionPlacements calcule le placement X/Y par match en RÉUTILISANT la
 // logique de l'Explorer (applyMatchPlacements) — cohérence garantie avec l'app. On
@@ -505,7 +510,19 @@ func (s *SessionPageService) computeSessionPlacements(ctx context.Context, rows 
 	for i := range rows {
 		src := &rows[i]
 		st := src.StartTime
-		mr := domain.MatchHistoryRawRow{MatchID: src.MatchID, StartTime: &st, SeasonID: src.SkillSeasonID}
+		mr := domain.MatchHistoryRawRow{
+			MatchID:   src.MatchID,
+			StartTime: &st,
+			SeasonID:  src.SkillSeasonID,
+			// Champs requis par applyPerfPlacements (classification + éligibilité de la
+			// chaîne de performance) — miroir du batch perf (outcome != DNF, perf_score).
+			IsRanked:         src.IsRanked,
+			IsFirefight:      src.IsFirefight,
+			PerformanceScore: src.PerfScoreComputed,
+		}
+		if src.Outcome != nil {
+			mr.Outcome = *src.Outcome
+		}
 		if src.PairName != "" {
 			pn := src.PairName
 			mr.PairName = &pn
@@ -525,8 +542,19 @@ func (s *SessionPageService) computeSessionPlacements(ctx context.Context, rows 
 	applyMatchPlacements(ctx, raw, s.csrThreshold)
 	out := make(map[string]sessionPlacement, 8)
 	for i := range raw {
-		if raw[i].PlacementDone != nil && raw[i].PlacementTotal != nil {
-			out[raw[i].MatchID] = sessionPlacement{done: *raw[i].PlacementDone, total: *raw[i].PlacementTotal}
+		r := &raw[i]
+		var p sessionPlacement
+		hasAny := false
+		if r.PlacementDone != nil && r.PlacementTotal != nil {
+			p.done, p.total = *r.PlacementDone, *r.PlacementTotal
+			hasAny = true
+		}
+		if r.PerfPlacementDone != nil && r.PerfPlacementTotal != nil {
+			p.perfDone, p.perfTotal = *r.PerfPlacementDone, *r.PerfPlacementTotal
+			hasAny = true
+		}
+		if hasAny {
+			out[r.MatchID] = p
 		}
 	}
 	return out
@@ -540,9 +568,17 @@ func applyPlacementsToRows(rows []domain.SessionDetailMatchRow, placements map[s
 		return
 	}
 	for i := range rows {
-		if p, ok := placements[rows[i].MatchID]; ok {
+		p, ok := placements[rows[i].MatchID]
+		if !ok {
+			continue
+		}
+		if p.total > 0 {
 			d, tot := p.done, p.total
 			rows[i].PlacementDone, rows[i].PlacementTotal = &d, &tot
+		}
+		if p.perfTotal > 0 {
+			pd, pt := p.perfDone, p.perfTotal
+			rows[i].PerfPlacementDone, rows[i].PerfPlacementTotal = &pd, &pt
 		}
 	}
 }

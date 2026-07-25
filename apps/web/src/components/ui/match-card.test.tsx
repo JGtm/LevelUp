@@ -140,4 +140,43 @@ describe('MatchCard', () => {
     render(<MatchCard match={matchNoKDA} />)
     expect(screen.queryByTestId('match-card-kda-bar')).toBeNull()
   })
+
+  // V72-34 : la perf peut être structurellement absente (chaîne de performance en
+  // calibration). La tuile doit le DIRE (« En placement (8/10) ») et surtout ne
+  // JAMAIS afficher un 0 — un 0 se lirait comme la pire performance possible.
+  describe('perf en placement (chaîne de performance en calibration)', () => {
+    const IN_PLACEMENT: RecentMatchItem = {
+      ...LOSS_MATCH,
+      performance_score_relative: null,
+      perf_placement_done: 8,
+      perf_placement_total: 10,
+    }
+
+    it('affiche « En placement (8/10) » à la place du score', () => {
+      render(<MatchCard match={IN_PLACEMENT} locale="fr" />)
+      expect(screen.getByText('En placement (8/10)')).toBeTruthy()
+    })
+
+    it('n\'affiche JAMAIS un 0 fabriqué pour une perf absente', () => {
+      render(<MatchCard match={IN_PLACEMENT} locale="fr" />)
+      expect(screen.queryByText('0')).toBeNull()
+    })
+
+    it('EN : « In placement (8/10) »', () => {
+      render(<MatchCard match={IN_PLACEMENT} locale="en" />)
+      expect(screen.getByText('In placement (8/10)')).toBeTruthy()
+    })
+
+    it('perf absente SANS signal de placement → aucune mention (ni 0, ni badge)', () => {
+      render(<MatchCard match={LOSS_MATCH} locale="fr" />)
+      expect(screen.queryByText(/En placement/)).toBeNull()
+      expect(screen.queryByText('0')).toBeNull()
+    })
+
+    it('perf présente → score affiché, pas de mention de placement', () => {
+      render(<MatchCard match={WIN_MATCH} locale="fr" />)
+      expect(screen.getByText('12')).toBeTruthy()
+      expect(screen.queryByText(/En placement/)).toBeNull()
+    })
+  })
 })
