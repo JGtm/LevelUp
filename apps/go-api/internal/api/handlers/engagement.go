@@ -54,15 +54,15 @@ func NewEngagementHandler(newSvc ServiceFactory[*service.PlayerEngagementService
 // (préfixe /players/{player_slug} + middleware ownership/title hérités).
 func (h *EngagementHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/matches/{match_id}/engagement", h.handleMatchEngagement)
-	huma.Get(api, "/engagement_profile", h.handleEngagementProfile)
-	huma.Post(api, "/engagement/timeseries", h.handleEngagementTimeseries)
+	huma.Get(api, "/matches/{match_id}/engagement", h.handleMatchEngagement, humacore.Op("getMatchEngagement", "Score d'engagement + courbe pour un match (P3.2)", "match-view"))
+	huma.Get(api, "/engagement_profile", h.handleEngagementProfile, humacore.Op("getEngagementProfile", "Profil engagement long-terme du joueur", "career"))
+	huma.Post(api, "/engagement/timeseries", h.handleEngagementTimeseries, humacore.Op("postEngagementTimeseries", "Série temporelle de l'engagement filtrée (Mock 11)", "career"))
 	// Body {filters, limit} OPTIONNEL : un body absent équivaut à `{}` (compat
 	// smoke/integration). Sans ça, Huma exige le RawBody → 400 "request body is
 	// required" (régression vs l'ancien Body pointeur tolérant).
 	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/engagement/timeseries")
-	huma.Get(api, "/pages/squad/v2/engagement", h.handleSquadEngagementSession)
-	huma.Post(api, "/engagement/recompute_coefficients", h.handleRecomputeCoefficients)
+	huma.Get(api, "/pages/squad/v2/engagement", h.handleSquadEngagementSession, humacore.Op("getSquadEngagementSession", "Engagement squad pour la session courante", "squad"))
+	huma.Post(api, "/engagement/recompute_coefficients", h.handleRecomputeCoefficients, humacore.Op("postRecomputeEngagementCoefficients", "Force le recalcul des coefficients d'engagement (admin)", "career"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

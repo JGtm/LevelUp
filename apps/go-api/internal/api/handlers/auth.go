@@ -88,8 +88,8 @@ func (h *AuthHandler) WithLinkStrategy(s auth_platform.LinkStrategy) *AuthHandle
 // est local à la route GET.
 func (h *AuthHandler) MountDeviceFlow(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Post(api, "/auth/device-flow/start", h.handleStartDeviceFlow)
-	huma.Get(api, "/auth/device-flow/{attempt_id}", h.handleGetDeviceFlowStatus)
+	huma.Post(api, "/auth/device-flow/start", h.handleStartDeviceFlow, humacore.Op("postAuthDeviceFlowStart", "Initier un Device Code Flow Microsoft", "setup"))
+	huma.Get(api, "/auth/device-flow/{attempt_id}", h.handleGetDeviceFlowStatus, humacore.Op("getAuthDeviceFlowStatus", "Statut d'un Device Code Flow en cours", "setup"))
 }
 
 // deviceFlowStatusInput : path param {attempt_id}.

@@ -81,9 +81,18 @@ func NewAdminActionsHandler(
 // sans corps) — les deux actions sont déclenchées sans payload.
 func (h *AdminActionsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Post(api, "/actions/data-health/run", h.handleRunDataHealth)
-	huma.Post(api, "/actions/auto-sync/run", h.handleRunSyncCycle)
-	huma.Get(api, "/actions/journal", h.handleGetJournal)
+	huma.Post(api, "/actions/data-health/run", h.handleRunDataHealth, humacore.Op(
+		"postAdminActionDataHealthRun",
+		"Action admin — exécute l'audit data health immédiatement (lectures RO, synchrone) (auth admin requis)",
+		"admin"))
+	huma.Post(api, "/actions/auto-sync/run", h.handleRunSyncCycle, humacore.Op(
+		"postAdminActionAutoSyncRun",
+		"Action admin — force un cycle auto-sync complet, suivi via le JobStore (auth admin requis)",
+		"admin"))
+	huma.Get(api, "/actions/journal", h.handleGetJournal, humacore.Op(
+		"getAdminActionsJournal",
+		"Dashboard monitoring — journal des actions globales (dernière exécution/issue/déclencheur par action, survit au reboot) (auth admin requis)",
+		"admin"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

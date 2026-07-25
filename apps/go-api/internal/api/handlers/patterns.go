@@ -63,7 +63,7 @@ func NewPatternsHandler(resolveRepo PatternsRepoResolver, titleSlug string) *Pat
 // /players/{player_slug} + middleware ownership/title hérités).
 func (h *PatternsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/patterns", h.GetPatterns)
+	huma.Get(api, "/patterns", h.GetPatterns, humacore.Op("getPlayerPatterns", "Pattern Engine v3 — contextes, comportements, leviers calibrés", "progression"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

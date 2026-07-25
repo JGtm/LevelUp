@@ -43,8 +43,14 @@ func NewAdminLUSRGapsHandler(gaps LUSRGapsRunner, recompute LUSRRecomputeRunner)
 // Mount enregistre les routes Huma sur le sous-routeur /admin.
 func (h *AdminLUSRGapsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/monitoring/lusr-gaps", h.handleGet)
-	huma.Post(api, "/monitoring/lusr-gaps/{player}/recompute", h.handleRecompute)
+	huma.Get(api, "/monitoring/lusr-gaps", h.handleGet, humacore.Op(
+		"getAdminMonitoringLusrGaps",
+		"Dashboard monitoring — trous d'intérieur LUSR (matchs éligibles sans note, sous le watermark) + santé du garde-fou, par titre (auth admin requis)",
+		"admin"))
+	huma.Post(api, "/monitoring/lusr-gaps/{player}/recompute", h.handleRecompute, humacore.Op(
+		"postAdminMonitoringLusrGapsRecompute",
+		"Action admin — replay LUSR chronologique complet d'un joueur (comble les trous d'intérieur) (auth admin requis)",
+		"admin"))
 }
 
 type adminLUSRGapsOutput struct {

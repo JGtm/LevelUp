@@ -44,8 +44,8 @@ func NewCitationsHandler(newSvc ContextFactory[port.CitationsService]) *Citation
 // /players/{player_slug} + middleware ownership/title hérités).
 func (h *CitationsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Post(api, "/pages/citations", h.handleGetCitations)
-	huma.Post(api, "/pages/commendations", h.handleGetCommendations)
+	huma.Post(api, "/pages/citations", h.handleGetCitations, humacore.Op("postCitations", "Citations (filtres en body)", "career"))
+	huma.Post(api, "/pages/commendations", h.handleGetCommendations, humacore.Op("postCommendations", "Commendations et médailles par catégorie", "career"))
 	// Body OPTIONNEL (décodé seulement si présent) : RawBody est requis par défaut
 	// côté Huma → on le rend optionnel pour préserver le 200 sur corps absent.
 	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/pages/citations")

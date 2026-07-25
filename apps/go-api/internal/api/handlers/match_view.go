@@ -156,8 +156,8 @@ func (h *MatchViewHandler) WithMediaURLs(store *settings.Store, repoRoot string)
 // /players/{player_slug} + middleware ownership/title hérités).
 func (h *MatchViewHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/matches/{match_id}", h.handleGetMatchView)
-	huma.Get(api, "/matches/{match_id}/neighbors", h.handleGetMatchNeighbors)
+	huma.Get(api, "/matches/{match_id}", h.handleGetMatchView, humacore.Op("getMatchView", "Détail complet d'un match", "match-view"))
+	huma.Get(api, "/matches/{match_id}/neighbors", h.handleGetMatchNeighbors, humacore.Op("getMatchNeighbors", "Match précédent / suivant pour navigation", "match-view"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

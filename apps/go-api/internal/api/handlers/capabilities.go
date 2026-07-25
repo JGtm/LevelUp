@@ -52,7 +52,7 @@ func NewCapabilitiesHandler(reg CapabilitiesRegistry, logger *slog.Logger) *Capa
 // Mount enregistre la route via Huma sur le sous-routeur chi (préfixe /api/v1).
 func (h *CapabilitiesHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/titles/{slug}/capabilities", h.handleGet)
+	huma.Get(api, "/titles/{slug}/capabilities", h.handleGet, humacore.Op("getTitleCapabilities", "Capabilities produit déclarées par un titre", "titles"))
 }
 
 // ─── Input/Output Huma ───────────────────────────────────────────────────────

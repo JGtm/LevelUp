@@ -46,13 +46,19 @@ func NewRelationsHandler(newSvc RelationsFactory) *RelationsHandler {
 // Mount enregistre les routes via Huma sur le sous-routeur chi /players/{player_slug}.
 func (h *RelationsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Post(api, "/pages/palmares/relations", h.GetRelations)
+	huma.Post(api, "/pages/palmares/relations", h.GetRelations, humacore.Op(
+		"postRelationsPage",
+		"Hub Communauté > Relations segmenté (filtres en body : expérience, saison/période, playlist/mode, vue solo/escouade)",
+		"palmares"))
 	// Body OPTIONNEL (décodé seulement si présent) — préserve le 200 sur corps absent.
 	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/pages/palmares/relations")
 
 	// Phase 3a : section « Moments & Rivalités » (heatmap relation × tranche
 	// horaire + cartes revanche). Même FilterContextInput optionnel en body.
-	huma.Post(api, "/pages/palmares/relations/moments", h.GetMoments)
+	huma.Post(api, "/pages/palmares/relations/moments", h.GetMoments, humacore.Op(
+		"postRelationsMoments",
+		"Section Moments & Rivalités (heatmap relation x tranche horaire + cartes revanche), segmentée par les memes filtres en body",
+		"palmares"))
 	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/pages/palmares/relations/moments")
 }
 

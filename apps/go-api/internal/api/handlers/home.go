@@ -53,7 +53,7 @@ func NewHomeHandler(newSvc HomeAuthFactory, settingsStore *settings_platform.Sto
 // /players/{player_slug} + middleware ownership/title hérités).
 func (h *HomeHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/pages/home", h.handleGetHomePage)
+	huma.Get(api, "/pages/home", h.handleGetHomePage, humacore.Op("getHomePage", "Page Accueil", "home"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

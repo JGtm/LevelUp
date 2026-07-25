@@ -113,17 +113,52 @@ func NewAdminMonitoringHandler(
 // (middleware RequireAuth/RequireAdmin/NoStore hérités).
 func (h *AdminMonitoringHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/monitoring/overview", h.handleGetOverview)
-	huma.Get(api, "/monitoring/scheduler", h.handleGetScheduler)
-	huma.Get(api, "/monitoring/convergence", h.handleGetConvergence)
-	huma.Get(api, "/monitoring/jobs", h.handleGetJobs)
-	huma.Get(api, "/monitoring/perf", h.handleGetPerf)
-	huma.Get(api, "/monitoring/errors", h.handleGetErrors)
-	huma.Get(api, "/monitoring/detections", h.handleGetDetections)
-	huma.Patch(api, "/monitoring/detections/{fingerprint}", h.handlePatchDetection)
-	huma.Get(api, "/monitoring/freshness", h.handleGetFreshness)
-	huma.Get(api, "/monitoring/resources", h.handleGetResources)
-	huma.Get(api, "/monitoring/crons", h.handleGetCrons)
+	huma.Get(api, "/monitoring/overview", h.handleGetOverview, humacore.Op(
+		"getAdminMonitoringOverview",
+		"Dashboard monitoring — KPIs agrégés (scheduler, jobs, data health, tokens, invariants) sans I/O DuckDB (auth admin requis)",
+		"admin"))
+	huma.Get(api, "/monitoring/scheduler", h.handleGetScheduler, humacore.Op(
+		"getAdminMonitoringScheduler",
+		"Dashboard monitoring — snapshot scheduler auto-sync + historique des cycles depuis le boot (auth admin requis)",
+		"admin"))
+	huma.Get(api, "/monitoring/convergence", h.handleGetConvergence, humacore.Op(
+		"getAdminMonitoringConvergence",
+		"Dashboard monitoring — backlog de convergence (enrichment/PSA/events/weapons) par joueur (auth admin requis)",
+		"admin"))
+	huma.Get(api, "/monitoring/jobs", h.handleGetJobs, humacore.Op("getAdminMonitoringJobs", "Dashboard monitoring — jobs asynchrones récents du JobStore (auth admin requis)", "admin"))
+	huma.Get(api, "/monitoring/perf", h.handleGetPerf, humacore.Op(
+		"getAdminMonitoringPerf",
+		"Dashboard monitoring — agrégats de performance depuis le boot : latences API Halo par appel + buckets d'erreurs, phases d'écriture persist par "+
+			"DB, étapes post-sync, fenêtre d'indisponibilité des lectures shared (expvar pur, zéro I/O) (auth admin requis)",
+		"admin"))
+	huma.Get(api, "/monitoring/errors", h.handleGetErrors, humacore.Op(
+		"getAdminMonitoringErrors",
+		"Dashboard monitoring — logs WARN/ERROR agrégés par (niveau, message) depuis le boot avec compteur d'occurrences et dernier échantillon "+
+			"(collecteur mémoire, zéro I/O) (auth admin requis)",
+		"admin"))
+	huma.Get(api, "/monitoring/detections", h.handleGetDetections, humacore.Op(
+		"getAdminMonitoringDetections",
+		"Dashboard monitoring — détections persistées avec cycle de vie (open/acked/muted/resolved), survivent au restart, filtrables (auth admin requis)",
+		"admin"))
+	huma.Patch(api, "/monitoring/detections/{fingerprint}", h.handlePatchDetection, humacore.Op(
+		"patchAdminMonitoringDetection",
+		"Dashboard monitoring — statuer une détection (Reconnaître / Sourdine / Résoudre) (auth admin requis)",
+		"admin"))
+	huma.Get(api, "/monitoring/freshness", h.handleGetFreshness, humacore.Op(
+		"getAdminMonitoringFreshness",
+		"Dashboard monitoring — fraîcheur des données par joueur suivi et par titre actif (dernier match persisté, dernier cycle sync, statut DC-3, âge "+
+			"du backup) (auth admin requis)",
+		"admin"))
+	huma.Get(api, "/monitoring/resources", h.handleGetResources, humacore.Op(
+		"getAdminMonitoringResources",
+		"Dashboard monitoring — ressources machine & process : runtime Go, tailles des bases DuckDB + WAL, disque libre du volume data, budgets/pool DuckDB, "+
+			"uptime + compteur de restarts (auth admin requis)",
+		"admin"))
+	huma.Get(api, "/monitoring/crons", h.handleGetCrons, humacore.Op(
+		"getAdminMonitoringCrons",
+		"Dashboard monitoring — statut unifié des crons (dernier run/succès, échecs consécutifs, persistance cron_runs) + heartbeats de features (liste "+
+			"fermée DC-5) (auth admin requis)",
+		"admin"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

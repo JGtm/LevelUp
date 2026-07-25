@@ -53,7 +53,7 @@ func NewFeatureMatrixHandler(reg CapabilitiesRegistry, logger *slog.Logger) *Fea
 // r.Get(".../feature-matrix", ...).
 func (h *FeatureMatrixHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/titles/{slug}/feature-matrix", h.handleGet)
+	huma.Get(api, "/titles/{slug}/feature-matrix", h.handleGet, humacore.Op("getTitleFeatureMatrix", "Matrice de features (cascade capabilities) d'un titre", "titles"))
 }
 
 type featureMatrixResponse struct {

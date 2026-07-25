@@ -103,15 +103,15 @@ func (h *SettingsHandler) WithBackupScheduler(s *duckdbbackup.Scheduler) *Settin
 // préserve le 400 {invalid_body} sur corps absent ou JSON malformé.
 func (h *SettingsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/settings", h.handleGetSettings)
-	huma.Patch(api, "/settings", h.handlePatchSettings)
+	huma.Get(api, "/settings", h.handleGetSettings, humacore.Op("getSettings", "Lire la configuration", "settings"))
+	huma.Patch(api, "/settings", h.handlePatchSettings, humacore.Op("patchSettings", "Mettre à jour la configuration", "settings"))
 	humacore.MarkRequestBodyOptional(api, http.MethodPatch, "/settings")
-	huma.Post(api, "/settings/media/reset-index", h.handlePostMediaResetIndex)
+	huma.Post(api, "/settings/media/reset-index", h.handlePostMediaResetIndex, humacore.Op("postSettingsMediaResetIndex", "Réinitialiser l'index médias", "settings"))
 	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/settings/media/reset-index")
-	huma.Post(api, "/settings/media/scan", h.handlePostMediaScan)
-	huma.Post(api, "/settings/sessions/recalculate", h.handlePostRecalculateSessions)
-	huma.Get(api, "/settings/backup/status", h.handleGetBackupStatus)
-	huma.Post(api, "/settings/backup/run", h.handlePostBackupRun)
+	huma.Post(api, "/settings/media/scan", h.handlePostMediaScan, humacore.Op("postSettingsMediaScan", "Lance un scan du dossier médias", "settings"))
+	huma.Post(api, "/settings/sessions/recalculate", h.handlePostRecalculateSessions, humacore.Op("postSettingsSessionsRecalculate", "Recalcule les sessions à partir de la base actuelle", "settings"))
+	huma.Get(api, "/settings/backup/status", h.handleGetBackupStatus, humacore.Op("getBackupStatus", "Statut du scheduler de sauvegarde", "settings"))
+	huma.Post(api, "/settings/backup/run", h.handlePostBackupRun, humacore.Op("postBackupRun", "Déclenche un cycle de sauvegarde immédiat", "settings"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

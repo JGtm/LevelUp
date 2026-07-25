@@ -40,7 +40,7 @@ func NewSeasonPassHandler(newSvc SeasonPassAuthFactory) *SeasonPassHandler {
 // path absolu /players/{player_slug}/pages/palmares/season-pass de server.go.
 func (h *SeasonPassHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/pages/palmares/season-pass", h.GetSeasonPass)
+	huma.Get(api, "/pages/palmares/season-pass", h.GetSeasonPass, humacore.Op("getSeasonPassPage", "Page Season Pass (palmarès)", "home"))
 }
 
 // seasonPassInput : path param parent {player_slug}.

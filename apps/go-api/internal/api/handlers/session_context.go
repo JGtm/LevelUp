@@ -45,7 +45,7 @@ func NewSessionHandler(store *session.Store) *SessionHandler {
 // chi fourni (racine : POST /session/context, pas de path param parent).
 func (h *SessionHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Post(api, "/session/context", h.handlePostContext)
+	huma.Post(api, "/session/context", h.handlePostContext, humacore.Op("updateSessionContext", "Mise à jour du contexte de session", "bootstrap"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

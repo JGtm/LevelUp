@@ -52,7 +52,7 @@ func NewSquadV2Handler(newSvc ContextFactory[port.SquadV2Service]) *SquadV2Handl
 // /players/{player_slug} + middleware ownership/title hérités).
 func (h *SquadV2Handler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/pages/squad/v2", h.GetSquadPage)
+	huma.Get(api, "/pages/squad/v2", h.GetSquadPage, humacore.Op("getSquadV2Page", "Page Squad V2 (multi-coéquipiers, fondations Phase 0)", "squad"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

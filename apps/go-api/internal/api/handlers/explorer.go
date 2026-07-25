@@ -53,8 +53,8 @@ func NewExplorerHandler(
 // /players/{player_slug} + middleware ownership/title hérités).
 func (h *ExplorerHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Post(api, "/pages/explorer/player-query", h.handleQueryPlayer)
-	huma.Post(api, "/pages/explorer/matches-query", h.handleQueryMatches)
+	huma.Post(api, "/pages/explorer/player-query", h.handleQueryPlayer, humacore.Op("queryExplorerPlayer", "Profil d'encounter avec un joueur cible", "explorer"))
+	huma.Post(api, "/pages/explorer/matches-query", h.handleQueryMatches, humacore.Op("queryExplorerMatches", "Requête paginée des matchs Explorer", "explorer"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

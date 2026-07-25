@@ -138,7 +138,7 @@ type fieldMappingsResponse struct {
 // racine OU un sous-routeur ; le chemin relatif exact est repris tel quel.
 func (h *FieldMappingsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/titles/{slug}/field-mappings", h.handleGet)
+	huma.Get(api, "/titles/{slug}/field-mappings", h.handleGet, humacore.Op("getTitleFieldMappings", "Field mappings TOML d'un titre", "titles"))
 }
 
 // fieldMappingsInput : {slug} path + ?locale= optionnel + If-None-Match (ETag

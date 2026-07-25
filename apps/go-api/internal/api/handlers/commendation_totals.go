@@ -35,7 +35,7 @@ func NewCommendationTotalsHandler(newSvc ContextFactory[port.CommendationTotalsS
 // /players/{player_slug} + middleware ownership/title hérités).
 func (h *CommendationTotalsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/commendations/totals", h.handleGetTotals)
+	huma.Get(api, "/commendations/totals", h.handleGetTotals, humacore.Op("getCommendationTotals", "Totaux à vie des commendations natives (Halo 5)", "career"))
 }
 
 type commendationTotalsInput struct {

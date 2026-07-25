@@ -41,7 +41,11 @@ func NewAdminAppearanceDiagHandler(run AppearanceDiagRunner) *AdminAppearanceDia
 // RequireAuth/RequireAdmin + NoStore hérités).
 func (h *AdminAppearanceDiagHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/diag/appearance/{player_slug}", h.handleGet)
+	huma.Get(api, "/diag/appearance/{player_slug}", h.handleGet, humacore.Op(
+		"getAdminDiagAppearance",
+		"Diagnostic apparence Spartan ID — verdict par composant (bannière/emblème/backdrop/service tag) d'un joueur suivi, à la demande (auth admin "+
+			"requis)",
+		"admin"))
 }
 
 // appearanceDiagInput : path param {player_slug}.

@@ -57,15 +57,15 @@ func NewNotificationsHandler(newSvc NotificationsServiceFactory) *NotificationsH
 // (préfixe /players/{player_slug} + middleware ownership/title hérités).
 func (h *NotificationsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/notifications", h.handleList)
-	huma.Get(api, "/notifications/unread-count", h.handleUnreadCount)
-	huma.Post(api, "/notifications/mark-read", h.handleMarkRead)
-	huma.Post(api, "/notifications/mark-all-read", h.handleMarkAllRead)
-	huma.Patch(api, "/notifications/{id}/unread", h.handleMarkUnread)
-	huma.Delete(api, "/notifications/{id}", h.handleDelete)
-	huma.Get(api, "/notifications/preferences", h.handleGetPreferences)
-	huma.Patch(api, "/notifications/preferences", h.handleUpdatePreferences)
-	huma.Post(api, "/notifications/test", h.handlePostTest)
+	huma.Get(api, "/notifications", h.handleList, humacore.Op("listNotifications", "Liste des notifications du joueur", "notifications"))
+	huma.Get(api, "/notifications/unread-count", h.handleUnreadCount, humacore.Op("getNotificationUnreadCount", "Compteur de notifications non lues", "notifications"))
+	huma.Post(api, "/notifications/mark-read", h.handleMarkRead, humacore.Op("postMarkRead", "Marque une liste de notifications comme lues", "notifications"))
+	huma.Post(api, "/notifications/mark-all-read", h.handleMarkAllRead, humacore.Op("postMarkAllRead", "Marque toutes les notifications comme lues", "notifications"))
+	huma.Patch(api, "/notifications/{id}/unread", h.handleMarkUnread, humacore.Op("patchNotificationUnread", "Repasse une notification en non-lue", "notifications"))
+	huma.Delete(api, "/notifications/{id}", h.handleDelete, humacore.Op("deleteNotification", "Supprime une notification", "notifications"))
+	huma.Get(api, "/notifications/preferences", h.handleGetPreferences, humacore.Op("getNotificationPreferences", "Préférences notifications du joueur", "notifications"))
+	huma.Patch(api, "/notifications/preferences", h.handleUpdatePreferences, humacore.Op("patchNotificationPreferences", "Met à jour les préférences", "notifications"))
+	huma.Post(api, "/notifications/test", h.handlePostTest, humacore.Op("postNotificationTest", "Émet une notification de test (debug)", "notifications"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

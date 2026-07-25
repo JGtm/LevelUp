@@ -40,7 +40,7 @@ func NewTeammatesHandler(newSvc ContextFactory[port.TeammatesService]) *Teammate
 // /players/{player_slug} + middleware ownership/title hérités).
 func (h *TeammatesHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Post(api, "/pages/teammates", h.handleGetPage)
+	huma.Post(api, "/pages/teammates", h.handleGetPage, humacore.Op("postTeammatesPage", "Analyse coéquipiers (filtres en body)", "teammates"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

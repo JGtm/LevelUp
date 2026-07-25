@@ -50,7 +50,7 @@ func NewDiagCSRHandler(newProvider CSRCoverageFactory) *DiagCSRHandler {
 // la route via le champ Input `path:"player_slug"`.
 func (h *DiagCSRHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/_diag/csr-coverage/{player_slug}", h.GetCoverage)
+	huma.Get(api, "/_diag/csr-coverage/{player_slug}", h.GetCoverage, humacore.Op("getDiagCSRCoverage", "Diag couverture CSR pour un joueur", "diagnostics"))
 }
 
 // diagCSRInput : path param {player_slug} (présent dans le path de la route).

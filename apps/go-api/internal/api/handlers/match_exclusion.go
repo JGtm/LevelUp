@@ -43,7 +43,7 @@ func NewMatchExclusionHandler(newSvc ServiceFactory[port.MatchExclusionService])
 // /players/{player_slug} + middleware ownership/title hérités).
 func (h *MatchExclusionHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Patch(api, "/matches/{match_id}/exclusion", h.SetExclusion)
+	huma.Patch(api, "/matches/{match_id}/exclusion", h.SetExclusion, humacore.Op("setMatchExclusion", "Marquer ou démarquer un match comme non pertinent", "match-exclusion"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

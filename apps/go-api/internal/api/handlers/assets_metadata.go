@@ -39,9 +39,9 @@ func NewAssetMetadataHandler(
 // (préfixe hérité du point de montage, ex. /api/v1).
 func (h *AssetMetadataHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/assets/{title_id}/maps", h.ListMaps)
-	huma.Get(api, "/assets/{title_id}/weapons", h.ListWeapons)
-	huma.Get(api, "/assets/{title_id}/medals", h.ListMedals)
+	huma.Get(api, "/assets/{title_id}/maps", h.ListMaps, humacore.Op("listMapsMetadata", "Liste les maps du catalogue avec leurs traductions", "assets"))
+	huma.Get(api, "/assets/{title_id}/weapons", h.ListWeapons, humacore.Op("listWeaponsMetadata", "Liste les armes du catalogue avec leurs traductions", "assets"))
+	huma.Get(api, "/assets/{title_id}/medals", h.ListMedals, humacore.Op("listMedalsMetadata", "Liste les médailles du catalogue avec leurs traductions (icône sprite pour Halo 5)", "assets"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
@@ -142,9 +142,9 @@ func NewEmptyAssetMetadataHandler() *EmptyAssetMetadataHandler { return &EmptyAs
 // jamais montés en même temps — if/else mutuellement exclusif côté server.go).
 func (h *EmptyAssetMetadataHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/assets/{title_id}/maps", h.listEmpty)
-	huma.Get(api, "/assets/{title_id}/weapons", h.listEmpty)
-	huma.Get(api, "/assets/{title_id}/medals", h.listEmpty)
+	huma.Get(api, "/assets/{title_id}/maps", h.listEmpty, humacore.Op("listMapsMetadata", "Liste les maps du catalogue avec leurs traductions", "assets"))
+	huma.Get(api, "/assets/{title_id}/weapons", h.listEmpty, humacore.Op("listWeaponsMetadata", "Liste les armes du catalogue avec leurs traductions", "assets"))
+	huma.Get(api, "/assets/{title_id}/medals", h.listEmpty, humacore.Op("listMedalsMetadata", "Liste les médailles du catalogue avec leurs traductions (icône sprite pour Halo 5)", "assets"))
 }
 
 // listEmpty renvoie toujours une liste vide (slice non-nil → JSON []), inconditionnel.

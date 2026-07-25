@@ -33,7 +33,7 @@ func NewMatchEventsHandler(newSvc ServiceFactory[port.MatchEventsService]) *Matc
 // /players/{player_slug} + middleware ownership/title hérités).
 func (h *MatchEventsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/matches/{match_id}/events", h.handleGetMatchEvents)
+	huma.Get(api, "/matches/{match_id}/events", h.handleGetMatchEvents, humacore.Op("getMatchEvents", "Timeline canonique d'events d'un match (kill-feed / timeline)", "match-view"))
 }
 
 // matchEventsInput : {player_slug} parent + {match_id} + filtre optionnel par

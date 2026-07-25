@@ -48,8 +48,14 @@ func NewAdminLogsHandler(logsDir string) *AdminLogsHandler {
 // (middleware RequireAuth/RequireAdmin/NoStore hérités).
 func (h *AdminLogsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/monitoring/logs/modules", h.handleGetModules)
-	huma.Get(api, "/monitoring/logs/tail", h.handleGetTail)
+	huma.Get(api, "/monitoring/logs/modules", h.handleGetModules, humacore.Op(
+		"getAdminMonitoringLogsModules",
+		"Dashboard monitoring — fichiers logs/{module}.log disponibles (taille, dernière écriture) (auth admin requis)",
+		"admin"))
+	huma.Get(api, "/monitoring/logs/tail", h.handleGetTail, humacore.Op(
+		"getAdminMonitoringLogsTail",
+		"Dashboard monitoring — dernières lignes filtrées d'un module de logs (lecture par la fin chunkée, budget 8 MiB) (auth admin requis)",
+		"admin"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

@@ -106,8 +106,30 @@ passage »). NB : chemins Go préfixés `apps/go-api/`.
       `go test ./internal/api/...` (contract/drift/nested/collision/fidélité), `go test
       ./...` complet (exit 0, 118 ok, 0 fail), `make go-api-lint` (0 issue) — TOUS verts.
       DocsPath/OpenAPIPath restent désactivés (aucune route HTTP auto). [x]
-- [ ] **H2 — Tags/Summary/OperationID (M).** Les 203 routes (`huma.X(api,`) passent en
-      `huma.Register` + `huma.Operation`. Gate : spec en mémoire porte les tags.
+- [x] **H2 — Tags/Summary/OperationID (M).** Les 204 call-sites (`huma.X(api,`) portent
+      OperationID + Summary + Tags stables. Gate : spec en mémoire porte les tags.
+      FAIT (2026-07-25, agent Opus). Ergonomie : helper mince `humacore.Op(opID, summary,
+      tags...)` (nouveau `humacore/operation.go`) passé en DERNIER argument variadique de
+      `huma.Get/Post/...` — PAS de conversion vers `huma.Register` (préserve la signature
+      des 204 call-sites + le type inference générique ; poser OperationID/Summary
+      EXPLICITEMENT désactive la régén auto de huma, y compris le PrefixModifier du
+      sous-routeur qui ne re-préfixe l'ID que s'il est resté celui de la convenience —
+      seul le chemin gagne le préfixe absolu). Application MÉCANIQUE des 204 call-sites via
+      un générateur go/ast jetable (scratchpad, insertion à l'offset du Rparen, forme
+      multi-ligne + summary concaténé quand la ligne dépasse 210 char pour lll). Décompte
+      exact (AST) : **204 call-sites** (108 GET / 72 POST / 13 PATCH / 9 DELETE / 1 PUT —
+      révise le « 203 » estimé), dont **159 en parité EXACTE** avec api/openapi.yaml
+      (operationId/summary/tags repris verbatim) et **45 supplémentés** (cf. Découvertes).
+      RÉCONCILIATION 204 statique → 166 runtime (doc de démo) : delta 38 = 29 Prestige
+      (bundle nil en démo) + 3 catalog (`/titles/{slug}/catalog/*`, metadata DB indispo)
+      + 3 diag auto-sync (`autoSyncScheduler` nil dans le routeur de test) + 3
+      assets_metadata (2 branches mutuellement exclusives : 6 call-sites → 3 routes montées).
+      Gate H2 : nouveau `openapi_operation_metadata_test.go` (charge le yaml via kin-openapi,
+      vérifie (a) chaque op du doc partagé a OperationID+Summary+≥1 Tag, (b) parité
+      operationId+tags sur les chemins COMMUNS). Verdict : 166 ops, metadata OK=166,
+      parité vérifiée 156, échecs 0. Gates : gofmt -l vide, `go build ./...` (0),
+      `go vet ./...` (0), `go test ./internal/api/...` (ok), `go test ./...` (0),
+      `make go-api-lint` (0 issues) — TOUS verts. Aucun commit (superviseur). [x]
 - [ ] **H3 — Instrumenter les DTOs (L).** Porter 402 descriptions / 21 enums /
       30 defaults / 6 examples en tags struct Go. LIVRABLE SUPPLÉMENTAIRE (revue) :
       inventaire FERMÉ des sémantiques NON portables en tags (descriptions par-contexte
@@ -134,6 +156,31 @@ passage »). NB : chemins Go préfixés `apps/go-api/`.
 - Bonus post-bascule (optionnels, S) : `/docs` gaté hors prod, securitySchemes,
   validation auto des inputs, résolveurs cross-champs.
 
+## Découvertes (H2 — à traiter en H6, PAS maintenant)
+
+- **45 call-sites hors parité EXACTE**, statués mais à intégrer au yaml régénéré en H6 :
+  - **6 divergences de nom de PARAMÈTRE** (le CODE fait foi, CLAUDE.md) — operationId +
+    summary + tags REPRIS du yaml sémantique équivalent :
+    `/admin/users/{username}` (yaml `{user_id}`), `/admin/users/{username}/role`,
+    `/admin/users/{username}/password`, `/admin/invites/{code}` (yaml `{invite_id}`),
+    `/players/{player_slug}/notifications/{id}` + `.../{id}/unread` (yaml
+    `{notification_id}`). H6 régénérera ces chemins avec le nom de param Go → diff attendu.
+  - **1 divergence SÉMANTIQUE** : le yaml documente `GET /watcher/auth/{provider}`
+    (`getWatcherAuthCallback`, « Callback OAuth ») mais la vraie route Go est
+    `GET /watcher/auth/{attempt_id}` = `handleGetAuthStatus` (statut d'une tentative).
+    L'entrée yaml est OBSOLÈTE → operationId INVENTÉ `getWatcherAuthStatus` (tag auth).
+  - **38 routes Go-only NON documentées dans le yaml manuel** (operationId/summary/tags
+    inventés, convention du yaml suivie) : **29 Prestige** (challenges/arcs/prestige/
+    templates/squads/squad-challenges/pilot-mode) → NOUVEAU tag `prestige` ; **6 multi-titre**
+    (`/titles/{slug}/field-mappings|capabilities|feature-matrix|catalog/{playlists,pairs,maps}`)
+    → NOUVEAU tag `titles` ; **3 diag auto-sync** (`/_diag/auto-sync/{snapshot,run,probe}`)
+    → tag `diagnostics`.
+- **Nouveaux tags introduits** (`prestige`, `titles`) : H6 devra ajouter leur description
+  au bloc `tags:` régénéré (ces routes n'existaient pas dans le yaml manuel).
+- **Incohérence pré-existante du yaml manuel préservée pour parité** : le tag `jobs`
+  (op `GET /jobs/{job_id}`) est UTILISÉ sans être DÉCLARÉ dans le bloc `tags:`. Non corrigé
+  (hors périmètre H2) — H6 régénérera le bloc complet.
+
 ## Journal
 
 - 2026-07-24 : recon + plan posés. Séquencement : dernier des gros lots v7.2.
@@ -141,6 +188,17 @@ passage »). NB : chemins Go préfixés `apps/go-api/`.
   « document partagé » (pas instance unique), comptages corrigés (71 Mount), inventaire
   fermé H3, précédence + golden du fragment H6, garde sémantique generated.ts H7,
   outillage H0 tranché (kin-openapi), blindage plan-execution.
+- 2026-07-25 : **H2 EXÉCUTÉ (agent Opus).** 204 call-sites `huma.X(api,` portent
+  operationID + summary + tags via le helper variadique `humacore.Op` (nouveau
+  `humacore/operation.go`), appliqué mécaniquement (générateur go/ast jetable). 159 en
+  parité exacte avec api/openapi.yaml, 45 supplémentés (6 renommages de param + 1
+  divergence watcher + 38 routes Go-only : Prestige/multi-titre/diag) — détail section
+  Découvertes. Gate : nouveau `openapi_operation_metadata_test.go` (166 ops, metadata
+  OK=166, parité 156 vérifiée, 0 échec). Réconciliation 204 statique → 166 runtime : 29
+  Prestige + 3 catalog + 3 diag auto-sync (non montés en démo) + 3 assets_metadata (double
+  branche). gofmt/build/vet/`go test ./...`/`make go-api-lint` TOUS verts. Aucun commit.
+  Périmètre : `humacore/operation.go`, `huma_routes.go` (+import), 74 handlers,
+  `openapi_operation_metadata_test.go` — ZÉRO autre fichier Go. H3 = suivant.
 - 2026-07-25 : **H1 EXÉCUTÉ (agent Opus).** Document OpenAPI PARTAGÉ câblé sur les
   71 `Mount()` + 3 registres inline via `NewAPI` variadic + `WithSharedDoc`. Périmètre :
   humacore.go (MountOption/WithSharedDoc, `OnOperationRegistered` + observingAdapter,

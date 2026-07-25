@@ -45,7 +45,7 @@ func NewMatchFavoriteHandler(newSvc ServiceFactory[port.SocialService]) *MatchFa
 // /players/{player_slug} + middleware ownership/title hérités).
 func (h *MatchFavoriteHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Patch(api, "/matches/{match_id}/favorite", h.handlePatchFavorite)
+	huma.Patch(api, "/matches/{match_id}/favorite", h.handlePatchFavorite, humacore.Op("patchMatchFavorite", "Toggle le statut favori d'un match", "match-view"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

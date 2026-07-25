@@ -62,7 +62,11 @@ func NewAdminInitialSyncActionHandler(
 // la convergence).
 func (h *AdminInitialSyncActionHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Post(api, "/actions/initial-sync/run", h.handleRun)
+	huma.Post(api, "/actions/initial-sync/run", h.handleRun, humacore.Op(
+		"postAdminActionInitialSyncRun",
+		"Action admin — re-import complet (RunFull, plafonné à max_matches) d'un joueur au choix, tokens via le pool unifié, claim SyncGate, via le "+
+			"JobStore (auth admin requis)",
+		"admin"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
