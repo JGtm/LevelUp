@@ -41,14 +41,44 @@ passage »). NB : chemins Go préfixés `apps/go-api/`.
 
 ## Plan de bascule (étapes, effort, gates)
 
-- [ ] **H0 — Baseline diff sémantique (S).** Outillage TRANCHÉ : script Go kin-openapi
+- [x] **H0 — Baseline diff sémantique (S).** Outillage TRANCHÉ : script Go kin-openapi
       dans le repo (pas de binaire externe en CI). Rapport baseline commité.
-- [ ] **H0.5 — SPIKE de dérisquage (M, BLOQUANT).** Prouver le partage d'un seul
+      FAIT (2026-07-25) : outil `apps/go-api/cmd/openapi-diff/` (kin-openapi v0.144.0,
+      chargement sans validation stricte car doc 3.1.0 corps 3.0-style ; modes défaut/
+      `-out`/`-diff`). Baseline `.ai/V7/openapi_baseline_v72.txt` (176 paths / 182 ops /
+      520 schémas ; enum=26 default=30 example=124 desc-nodes=478 resp-desc=374). Sortie
+      DÉTERMINISTE (2 runs byte-identiques) ; `-diff` self-check = exit 0. Couverture :
+      paths+méthodes+operationId+summary+tags+params(+enum/default/example inline)+
+      requestBody+responses(+desc)+media-type example ; schémas walkés RÉCURSIVEMENT
+      (inline uniquement ; $ref nommés listés une fois en section SCHEMAS, jamais
+      expansés → pas de cycle). Gate H0 : `go build`/`go vet ./cmd/openapi-diff/` verts,
+      baseline générée. [x]
+- [x] **H0.5 — SPIKE de dérisquage (M, BLOQUANT).** Prouver le partage d'un seul
       `*huma.OpenAPI` (registre de schémas) entre plusieurs adaptateurs par-sous-routeur
       (une `NewAPI(r, sharedDoc)` par Mount) : middlewares et params parents préservés.
       Gate : `TestHumaNestedSubrouterProbe` vert + un POC 2 sous-routeurs qui émet un
       document fusionné correct. **Si le spike échoue → STOP, replanifier (NO-GO
       implicite de la revue sans ce spike).**
+      **VERDICT (2026-07-25) : spike CONCLUANT.** Mécanisme prouvé (huma v2.38.0) :
+      (1) PARTAGE DU DOC — `huma.Config` incorpore `*huma.OpenAPI` et `api.OpenAPI()`
+      renvoie `config.OpenAPI` (api.go:327) ; passer la MÊME `huma.Config` à plusieurs
+      `humachi.New` fait pointer tous les adaptateurs vers LE MÊME doc + registre
+      (huma.NewAPI initialise `Components`/`Schemas` de façon idempotente à travers ce
+      pointeur, api.go:475-489). (2) PRÉFIXE PARENT (le point dur) — huma enregistre le
+      MÊME `op.Path` dans le doc (`AddOperation`) ET sur le routeur chi
+      (`chiAdapter.Handle` → `MethodFunc`) : découplage via `huma.NewGroup(api, prefix)`
+      qui préfixe le chemin du DOCUMENT + régénère l'operationID (group.go, PrefixModifier
+      + ModifyOperation), l'adaptateur sous-jacent étant un `prefixStripAdapter` qui RETIRE
+      le préfixe avant `MethodFunc` (le sous-routeur chi est déjà monté sous ce préfixe →
+      chemin LOCAL, middlewares + params parents intacts). Ajouts humacore OPT-IN
+      (défaut `NewAPI` inchangé) : `NewSharedConfig`, `NewAPIWithConfig`, `NewSubrouterAPI`.
+      POC `internal/api/humacore/shared_doc_poc_test.go` : (a) params parents + middleware
+      témoin + gate 401 OK ; (b) doc fusionné porte les paths ABSOLUS
+      (`/api/v1/players/{player_slug}/pages/probe`, `/matches/{match_id}`), le chemin
+      local nu ABSENT ; (c) `CommonMeta` enregistré 1×, `$ref` depuis les DTOs des DEUX
+      groupes, operationIDs uniques. Gate : `go test ./internal/api/humacore/`
+      (POC + existants) + `./internal/api/` (incl. `TestHumaNestedSubrouterProbe`,
+      drift, contract, route-collision) + `go build ./...` — TOUS verts. H1-H8 = GO.
 - [ ] **H1 — Document OpenAPI partagé (L).** Généraliser le mécanisme du spike aux
       71 `Mount()`. Gate : contract_test + openapi_schema_drift_test verts (inchangés),
       `TestHumaNestedSubrouterProbe` vert.
@@ -87,3 +117,15 @@ passage »). NB : chemins Go préfixés `apps/go-api/`.
   « document partagé » (pas instance unique), comptages corrigés (71 Mount), inventaire
   fermé H3, précédence + golden du fragment H6, garde sémantique generated.ts H7,
   outillage H0 tranché (kin-openapi), blindage plan-execution.
+- 2026-07-25 : **H0 + H0.5 EXÉCUTÉS (agent Opus).** H0 : outil `cmd/openapi-diff/`
+  (kin-openapi v0.144.0, direct dep après `go mod tidy`) + baseline
+  `.ai/V7/openapi_baseline_v72.txt` (176 paths / 182 ops / 520 schémas), déterministe,
+  self-diff = 0. H0.5 : spike CONCLUANT (détail ci-dessus). Mécanisme H1 retenu :
+  UNE `NewSharedConfig()` construite au point de composition (`server_apiv1.go`),
+  chaque Mount reçoit soit `NewAPIWithConfig(r, cfg)` (routeur racine / groupe
+  middleware-only), soit `NewSubrouterAPI(r, cfg, docPrefix)` (sous-routeur à préfixe).
+  RISQUE RÉSIDUEL H1 : le `docPrefix` absolu de chaque Mount doit être fourni depuis
+  `server_apiv1.go` (chi n'expose pas le préfixe de montage à l'enregistrement) — les
+  méthodes `Mount(r)` doivent recevoir leur préfixe (nouveau paramètre ou table de
+  préfixes au point de composition). Périmètre : humacore.go + POC + go.mod/go.sum +
+  ce plan (ZÉRO autre fichier). Aucun commit (superviseur).
