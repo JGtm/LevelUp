@@ -217,48 +217,13 @@ func (r *HomeRepo) resolveAssetNames(ctx context.Context, assetType string, asse
 
 // loadHomeModeNameTranslations résout les noms FR des modes depuis mode_name_tr.
 // modeENNames est la liste de noms EN extraits de pair_name via NormalizeModeLabel.
+// Le SQL vit dans mode_name_tr.go, source unique du littéral (garde-rail
+// no_mode_name_tr_literal_test.go).
 func (r *HomeRepo) loadHomeModeNameTranslations(ctx context.Context, modeENNames []string) (map[string]string, error) {
 	if len(modeENNames) == 0 {
 		return nil, nil
 	}
-
-	placeholders := strings.TrimRight(strings.Repeat("?,", len(modeENNames)), ",")
-	query := fmt.Sprintf(`
-		SELECT mode_en, name
-		FROM mode_name_tr
-		WHERE lang = 'fr'
-		  AND mode_en IN (%s)
-	`, placeholders)
-
-	args := make([]any, len(modeENNames))
-	for i, name := range modeENNames {
-		args[i] = name
-	}
-
-	// QueryRecovered : auto-réparation si handle metadata FATAL-invalidated (bug ART).
-	rows, err := r.pdb.Metadata.QueryRecovered(ctx, query, args...)
-	if err != nil {
-		if isTableNotFoundErr(err) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	defer rows.Close()
-
-	translations := make(map[string]string)
-	for rows.Next() {
-		var modeEN, nameFR string
-		if err := rows.Scan(&modeEN, &nameFR); err != nil {
-			continue
-		}
-		if strings.TrimSpace(nameFR) != "" {
-			translations[modeEN] = nameFR
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return translations, nil
+	return queryModeNameTrFR(ctx, r.pdb.Metadata, modeENNames)
 }
 
 func needsHomeAssetTranslation(labelFR, labelEN string) bool {

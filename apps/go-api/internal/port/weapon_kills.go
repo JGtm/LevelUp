@@ -80,8 +80,9 @@ type WeaponKillRow struct {
 	// Label EN ou FR resolu cote service. Vide cote repo.
 	Label string `json:"label,omitempty"`
 	// Role : fonction de combat de l'arme (automatic/precision/sniper/shotgun/
-	// sidearm/power/special/melee/grenade), resolu via le registre d'armes
-	// (weaponregistry) quand WeaponKillFilters.ResolveRoles=true. Vide sinon.
+	// sidearm/power/special/melee/grenade), resolu depuis le referentiel
+	// metadata.weapons (duckdb/weapon_resolver.go) quand
+	// WeaponKillFilters.ResolveRoles=true. Vide sinon.
 	Role string `json:"role,omitempty"`
 	// Class : axe manipulation de l'arme (shoulder/sidearm/heavy/melee/grenade +
 	// buckets non-combat H5 vehicle/turret/…), resolu dans la MÊME passe que Role

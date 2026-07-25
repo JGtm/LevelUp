@@ -2,8 +2,8 @@
  * Query keys TanStack Query — centralisés pour éviter les doublons.
  *
  * Convention :
- * - Clés en tableau hiérarchique : ['bootstrap'], ['players'], ['player', slug, ...]
- * - Fonctions pour les clés paramétrées : queryKeys.player(slug)
+ * - Clés en tableau hiérarchique : ['bootstrap'], ['players'], ['career', slug, titre, ...]
+ * - Fonctions pour les clés paramétrées : queryKeys.career(playerSlug, titleSlug)
  *
  * titleSlug dans la clé — INVARIANT STRUCTUREL (V72-29). TOUTE clé par-joueur dont le
  * payload dépend du titre porte `titleSlug` en 2e segment (juste après `playerSlug`).
@@ -45,7 +45,6 @@ export const queryKeys = {
   groups: ['groups'] as const,
 
   // Par joueur (titleSlug en 2e segment — invariant structurel, cf. en-tête).
-  player: (playerSlug: string, titleSlug: string) => ['player', playerSlug, titleSlug] as const,
   // Le titre courant scope la clé (même motif que `home` ci-dessous) : la
   // résolution de filtres est spécifique au titre (sessions / options cascade du
   // titre actif). Sans lui, un switch de titre — ou une réponse mise en cache

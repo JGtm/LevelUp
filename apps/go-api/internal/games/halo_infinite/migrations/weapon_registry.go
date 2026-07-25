@@ -198,12 +198,15 @@ func applyWeaponRegistry(db *sql.DB) error {
 		return err
 	}
 	// V72-06 : la colonne name_fr « inventée » du registre a été retirée du schéma
-	// (CREATE ci-dessus) et de tout le code (resolver, weaponregistry) — le nom
-	// d'affichage vient désormais de weapon_name_labels, keyé par weapon_key. Sur une
-	// metadata.duckdb prod DÉJÀ migrée, la colonne subsiste (inerte, jamais lue) : on ne
-	// la DROP PAS ici car DuckDB refuse ALTER DROP COLUMN tant qu'un index (ici la PK ART
-	// title_slug+weapon_key) existe → risque d'abort au boot. Purge = migration dédiée
-	// (rebuild table-rename) hors périmètre V72-06.
+	// (CREATE ci-dessus) et de tout le code de lecture (duckdb/weapon_resolver.go ;
+	// l'ex-package internal/games/weaponregistry, jamais câblé en prod, a été
+	// supprimé le 2026-07-25) — le nom d'affichage vient désormais de
+	// weapon_name_labels, keyé par weapon_key. Sur une metadata.duckdb prod DÉJÀ
+	// migrée, la colonne subsiste (inerte, jamais lue) : on ne la DROP PAS ici car
+	// DuckDB refuse ALTER DROP COLUMN tant qu'un index (ici la PK ART
+	// title_slug+weapon_key) existe → risque d'abort au boot. Purge = migration
+	// dédiée (rebuild table-rename) hors périmètre V72-06 — cf. .ai/BACKLOG.md
+	// « [data/armes] Colonne résiduelle weapons.name_fr ».
 	if err := seedWeaponFamilies(db); err != nil {
 		return err
 	}

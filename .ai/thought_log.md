@@ -1,3 +1,67 @@
+## [2026-07-25] Lot des découvertes v7.2 — arrondi coach, tri escouades, centralisation mode_name_tr, purges code mort
+
+**Statut** : Complété (7 items). Pas de commit ni de commande `go` (backfill long en cours) —
+gates Go au superviseur ; gates front joués ici (vitest 364 verts sur les dossiers touchés,
+`npm run typecheck` OK, eslint OK).
+
+**Arrondi coach (1)** — `buildLUSRTierApproachAlert` émet `current_mu`/`next_tier_mu` en float64
+bruts dans le MÊME `Params` que `gap` (corrigé la veille). Vérifié sur pièces : **aucun template
+front ne les interpole** (`notif.lusr_tier_approach.title/body` n'utilisent que `{gap}` et
+`{next_tier_name}` — le μ TrueSkill en avait été retiré volontairement). Ils sont quand même
+ajoutés à la liste d'arrondi de `format.ts` en DÉFENSE, avec le constat écrit en commentaire.
+`enrichParams` exporté pour test (l'effet n'est pas observable via `resolveTitle` faute de
+template consommateur) + 4 tests, dont un qui documente l'absence d'interpolation.
+
+**Tri des escouades (3)** — constat vérifié : `activeContextLabels` porte les LIBELLÉS
+d'affichage des options de cascade (modes = `service.modeUI` → `ResolveModeUIWithVariant`, donc
+déjà normalisé et FR-d'abord ; playlists = `COALESCE(playlist_name_fr, playlist_name)`), et
+`usual_modes` est normalisé + traduit FR côté Go depuis V72-10.1. Le matching nominal FR↔FR
+fonctionne donc, MAIS `scoreSquad` comparait les chaînes BRUTES (simple `toLowerCase`) alors que
+`buildUsualSubtitle`, dix lignes plus haut, normalisait déjà : toute forme composée résiduelle
+(dégradation gracieuse de `SquadUsualContexts` → `pair_name` brut « Assassin en équipe sur
+Bazaar ») cassait le tri EN SILENCE. Correction : `contextMatchKey` applique `normalizeModeLabel`
+aux DEUX côtés + comparaison insensible à la casse ; `buildActiveContextKeys` /
+`scoreSquadContext` extraits et testés (8 cas). Limite documentée, NON traitée : si la traduction
+FR n'existe que d'un côté, les clés restent FR vs EN — trou de données, pas de comparateur.
+
+**Centralisation `mode_name_tr` (4)** — le décompte de 4 copies était un plancher : **6**
+exemplaires dans `internal/platform/duckdb` (career_repo_highlights, explorer_repo,
+match_history_fr_translations, squad_repo_mapstats au littéral près ; home_repo_translations et
+media_repo_translations en variante de mise en forme), chacun avec sa propre gestion du vide, de
+la table absente et du handle FATAL-invalidated. Source unique créée :
+`duckdb/mode_name_tr.go` (`queryModeNameTrFR` + variante best-effort `loadModeNamesFRForKeys` +
+`loadKnownModesEN` déplacé pour que le garde-rail n'ait pas d'allowlist). Le point d'entrée
+EXPORTÉ reste `SquadRepo.LoadModeTranslationsFR` (port + injection prestige inchangés).
+Deux effets de bord ASSUMÉS et bénéfiques : les 4 copies sur `Query` passent à `QueryRecovered`
+(auto-réparation ART, déjà le comportement de home et match_history), et deux erreurs jusqu'ici
+avalées en silence (explorer, media) sont désormais loguées. Garde-rail
+`no_mode_name_tr_literal_test.go` : interdit tout `FROM|JOIN mode_name_tr` hors du fichier
+canonique sous `internal/platform/duckdb`, **allowlist VIDE** (les lectures ops/ et cmd/ sont
+d'autres requêtes dans d'autres couches, hors périmètre).
+
+**Purges de code mort (5, 6)** — `queryKeys.player()` : zéro call-site confirmé par grep (seul
+le garde-rail l'invoquait), supprimée avec son entrée de classification ; le volet « symétrie »
+du garde-rail aurait de toute façon échoué si on avait oublié l'un des deux.
+`internal/games/weaponregistry` : **aucun import** dans tout le repo (seul son propre test
+in-package le référençait) — role/class/family sont en réalité résolus en SQL sur
+`metadata.weapons` par `duckdb/weapon_resolver.go`. Package supprimé (3 fichiers) + 2
+commentaires devenus faux corrigés (`port/weapon_kills.go`, `migrations/weapon_registry.go`).
+**Effet de bord traité** : ses 4 tests figuraient dans `.ai/baselines/tests_pre_migration.jsonl`
+→ `scripts/check_test_baseline.sh` aurait signalé une régression ; les 24 lignes du package ont
+été retirées de la baseline (procédure déjà appliquée le 2026-05-22 pour des tests renommés).
+
+**Découverte NON traitée (zéro élargissement)** : 53 fichiers de `internal/api/wire` portent un
+en-tête `// Package api` alors que le paquet est `wire` — seul `post_sync_deltas_bespoke.go`
+était dans le périmètre et a été corrigé ; le reste est une dette systémique de renommage
+api→wire, à traiter en une passe dédiée.
+
+**Prochaine étape** : gates Go au superviseur — `make go-api-lint`, `go test ./...` (dont
+`internal/platform/duckdb` pour le nouveau garde-rail et les 6 repos migrés,
+`internal/games/...` pour la suppression du package), puis `bash scripts/check_test_baseline.sh
+tests` pour valider la baseline amputée.
+
+---
+
 ## [2026-07-25] V72-01 / H7 + H8 — verrous front du contrat généré, lot Group, CLÔTURE du chantier
 
 **Statut** : Complété — **chantier V72-01 INTÉGRALEMENT CLOS** (H0 à H8 `[x]`, bonus `[!]`
@@ -14625,3 +14689,39 @@ conséquence. Vérifié : `npm run typecheck` (racine + apps/web) 0 erreur ;
 `npx vitest run src/features/explorer` 24 fichiers / 197 tests verts ; `npx eslint` propre.
 Aucune commande `go`. Fichier touché : `apps/web/src/features/explorer/ExplorerTargetProfileCard.test.tsx`
 (8 fixtures complétées + 1 test renommé/reciblé).
+
+---
+
+## [2026-07-25] Cloture v7.2 — contre-revue ultracode, corrections, backfills, decouvertes
+
+**Statut** : Complété. Contre-revue workflow (6 dimensions + vérification adversariale,
+11 agents) : 5 majeurs confirmés / 0 réfuté / 23 mineurs.
+
+**Majeurs corrigés** : watcher sans WithObjectiveStats (fix structurel : dérive de
+DefaultSyncOptions + garde-rail par réflexion — la feature phare V72-03 serait restée
+vide en prod sur les matchs live) ; invalidation cache Home avec player slug (no-op
+permanent) ; sync initiale admin sans titre (pastille + envoi du titre actif) ;
+7 réponses 201/202 sans corps au contrat (+2 requestBody manquants +2 découverts) ;
+test de la course de bascule ajouté (mordant vérifié).
+
+**Mineurs traités** : garde d'écho limitée aux GET (mutations = warn, anti double-
+soumission) ; suggestions live périmées ; état « Aucun résultat Xbox » ; verrou
+generated.ts<->openapi (guard vitest CI-enforced) ; contractSurface enums de tableaux ;
+garde spartan à parenthèses équilibrées ; assertion du POST session/context ; xuid bot
+tronqué (objective strict, pve contrat historique préservé) ; rows.Err medals snapshot
+(invalide => seed silencieux) ; dédup notif Discord par agrégation ; éligibilité
+placement alignée batch (start_time) ; top-2 playlists par id ; tests chaîne objectifs.
+
+**Lot découvertes** : arrondis current_mu/next_tier_mu (défense) ; scoreSquad normalisé
+2 côtés ; mode_name_tr centralisé (6 copies -> 1 + garde-rail allowlist vide) ;
+queryKeys.player() et package weaponregistry supprimés (morts vérifiés, baseline tests
+ajustée) ; notes backlog (weapons.name_fr résiduel, seedWeapons vestigial, en-têtes
+package wire erronés x53).
+
+**Backfills locaux** : citations reseed+recompute OK ; objectifs 1882 matchs fetches /
+396 à objectifs / 5656 lignes ; serveur relancé. VPS : last_notified_version pré-semé
+v7.1.0 (backup à côté) ; backfills prod à orchestrer post-merge/deploy (coupure autorisée).
+
+**Gates finaux** : gofmt/build/vet/go test ./.../intégration -p 1 (tous paquets touchés)/
+lint 0 issue/baseline OK ; tsc 0 ; vitest 3139/0 ; ratchets contrat clean ;
+openapi-gen + generate-types en phase (golden vert).

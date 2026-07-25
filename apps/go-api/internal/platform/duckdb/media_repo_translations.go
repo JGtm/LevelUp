@@ -386,37 +386,17 @@ func resolveMediaTitleSlug(titleSlug string) string {
 
 // loadModeNameTranslations lit les traductions FR depuis metadata.mode_name_tr,
 // keyed par mode_en (dÃ©jÃ  normalisÃ© via analysis.NormalizeModeLabel).
+// Le SQL vit dans mode_name_tr.go, source unique du littéral (garde-rail
+// no_mode_name_tr_literal_test.go). Variante best-effort : l'erreur est loguée
+// (plus avalée en silence) et la map retournée vide — jamais nil, le caller
+// indexe directement dedans.
 func (r *MediaRepo) loadModeNameTranslations(ctx context.Context, modeENNames []string) map[string]string {
 	out := make(map[string]string)
-	if r.pdb == nil || r.pdb.Metadata == nil || len(modeENNames) == 0 {
+	if r.pdb == nil || len(modeENNames) == 0 {
 		return out
 	}
-
-	placeholders := make([]string, len(modeENNames))
-	args := make([]any, len(modeENNames))
-	for i, name := range modeENNames {
-		placeholders[i] = "?"
-		args[i] = name
-	}
-
-	q := `SELECT mode_en, name
-FROM mode_name_tr
-WHERE lang = 'fr'
-  AND mode_en IN (` + joinStrings(placeholders) + `)`
-
-	rows, err := r.pdb.Metadata.Query(ctx, q, args...)
-	if err != nil {
-		return out
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var modeEN, name string
-		if err := rows.Scan(&modeEN, &name); err != nil {
-			continue
-		}
-		if strings.TrimSpace(name) != "" {
-			out[modeEN] = name
-		}
+	for modeEN, nameFR := range loadModeNamesFRForKeys(ctx, r.pdb.Metadata, modeENNames) {
+		out[modeEN] = nameFR
 	}
 	return out
 }

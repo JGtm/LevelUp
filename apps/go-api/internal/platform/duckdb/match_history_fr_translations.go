@@ -192,69 +192,10 @@ func loadModeFRBatch(ctx context.Context, pdb *PlayerDB, modeENSet map[string]st
 	return loadModeNamesFRForKeys(ctx, pdb.Metadata, enList)
 }
 
-// loadModeNamesFRForKeys charge mode_name_tr[lang='fr'] pour les mode_en
-// normalisés donnés. Helper partagé entre match_history et filters.
-// Best-effort : retourne nil/map vide en cas d'erreur (loggée pour les
-// erreurs autres que table absente).
-func loadModeNamesFRForKeys(ctx context.Context, meta *DB, enKeys []string) map[string]string {
-	if meta == nil || len(enKeys) == 0 {
-		return nil
-	}
-	ph := strings.TrimRight(strings.Repeat("?,", len(enKeys)), ",")
-	q := fmt.Sprintf(`SELECT mode_en, name FROM mode_name_tr WHERE lang = 'fr' AND mode_en IN (%s)`, ph)
-	args := make([]any, len(enKeys))
-	for i, n := range enKeys {
-		args[i] = n
-	}
-	ctx2, cancel := context.WithTimeout(ctx, 3*time.Second)
-	defer cancel()
-	// QueryRecovered : auto-réparation si le handle metadata a été FATAL-invalidated
-	// (bug ART). Sinon la traduction FR des modes retombe en EN jusqu'au restart.
-	rows, err := meta.QueryRecovered(ctx2, q, args...)
-	if err != nil {
-		if !isTableNotFoundErr(err) {
-			slog.WarnContext(ctx, "fr_translations: loadModeNamesFRForKeys failed", "err", err)
-		}
-		return nil
-	}
-	defer rows.Close()
-	out := make(map[string]string, len(enKeys))
-	for rows.Next() {
-		var en, fr string
-		if rows.Scan(&en, &fr) == nil && strings.TrimSpace(fr) != "" {
-			out[en] = fr
-		}
-	}
-	return out
-}
-
-// loadKnownModesEN charge la liste DISTINCTE des mode_en de mode_name_tr — les
-// modes canoniques connus — pour rattraper les variantes non canoniques
-// ("Legacy Slayer BR" → "Slayer") via analysis.ExtractKnownMode. Best-effort :
-// nil si meta absent ou table absente.
-func loadKnownModesEN(ctx context.Context, meta *DB) []string {
-	if meta == nil {
-		return nil
-	}
-	ctx2, cancel := context.WithTimeout(ctx, 3*time.Second)
-	defer cancel()
-	rows, err := meta.QueryRecovered(ctx2, `SELECT DISTINCT mode_en FROM mode_name_tr`)
-	if err != nil {
-		if !isTableNotFoundErr(err) {
-			slog.WarnContext(ctx, "fr_translations: loadKnownModesEN failed", "err", err)
-		}
-		return nil
-	}
-	defer rows.Close()
-	var out []string
-	for rows.Next() {
-		var m string
-		if rows.Scan(&m) == nil && strings.TrimSpace(m) != "" {
-			out = append(out, m)
-		}
-	}
-	return out
-}
+// loadModeNamesFRForKeys / loadKnownModesEN : DÉPLACÉS dans mode_name_tr.go
+// (2026-07-25) — source unique du SQL sur metadata.mode_name_tr, cf. le
+// garde-rail no_mode_name_tr_literal_test.go. Aucun changement de signature ni
+// de comportement pour les callers de ce fichier.
 
 // loadPairAssetNamesFR charge asset_translations[asset_type='pair', lang='fr'|'fr-FR']
 // pour les pair_id donnés. Helper partagé entre match_history et filters pour

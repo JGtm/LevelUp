@@ -379,8 +379,9 @@ func (r *ExplorerRepo) TranslateModeUIsFR(ctx context.Context, rows []domain.Exp
 
 // translateModeUIsFR remplace en place les libellés de mode EN normalisés
 // (ex. "CTF") par leur traduction FR depuis metadata.mode_name_tr (lang='fr').
-// Best-effort : silencieux si Metadata absent / table absente / erreur — l'EN
-// est alors conservé. Clé = sous-mode EN normalisé (même convention que career).
+// Best-effort : l'EN est conservé si Metadata est absent, la table absente ou la
+// requête en erreur (loguée par le helper canonique, pas avalée). Clé = sous-mode
+// EN normalisé (même convention que career).
 func (r *ExplorerRepo) translateModeUIsFR(ctx context.Context, rows []domain.ExplorerTargetRecentMatch) {
 	if len(rows) == 0 || r.pdb == nil {
 		return
@@ -405,27 +406,10 @@ func (r *ExplorerRepo) translateModeUIsFR(ctx context.Context, rows []domain.Exp
 	for m := range modeSet {
 		modes = append(modes, m)
 	}
-	placeholders := strings.TrimRight(strings.Repeat("?,", len(modes)), ",")
-	q := fmt.Sprintf(`SELECT mode_en, name FROM mode_name_tr WHERE lang = 'fr' AND mode_en IN (%s)`, placeholders)
-	args := make([]any, len(modes))
-	for i, m := range modes {
-		args[i] = m
-	}
-	qrows, err := r.pdb.Metadata.Query(ctx, q, args...)
-	if err != nil {
-		return
-	}
-	defer qrows.Close()
-	fr := make(map[string]string, len(modes))
-	for qrows.Next() {
-		var en, name string
-		if scanErr := qrows.Scan(&en, &name); scanErr != nil {
-			continue
-		}
-		if strings.TrimSpace(name) != "" {
-			fr[en] = name
-		}
-	}
+	// Résolution FR via la source unique du SQL mode_name_tr (mode_name_tr.go).
+	// Variante best-effort : l'erreur est loguée (plus avalée en silence) et
+	// l'EN conservé.
+	fr := loadModeNamesFRForKeys(ctx, r.pdb.Metadata, modes)
 	for i := range rows {
 		if t, ok := fr[rows[i].ModeUI]; ok {
 			rows[i].ModeUI = t

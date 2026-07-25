@@ -7,7 +7,11 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { buildUsualSubtitle } from './useSquadPresets'
+import {
+  buildUsualSubtitle,
+  buildActiveContextKeys,
+  scoreSquadContext,
+} from './useSquadPresets'
 import { SQUAD_PRESETS_STRINGS } from './squadPresets.i18n'
 
 const T_FR = SQUAD_PRESETS_STRINGS.fr
@@ -71,5 +75,59 @@ describe('buildUsualSubtitle — indice « surtout … » (V72-10)', () => {
       T_FR,
     )
     expect(subtitle).toBe('surtout Partie rapide · Baston à grande échelle · Assassin en équipe')
+  })
+})
+
+/**
+ * Tri souple des compositions : le mode usuel FR servi par l'API doit matcher le
+ * libellé du filtre actif. Constat 2026-07-25 : la comparaison se faisait sur les
+ * chaînes BRUTES (simple toLowerCase), alors que `buildUsualSubtitle` normalisait
+ * déjà — tout suffixe de carte ou préfixe technique résiduel d'un seul côté
+ * cassait le match en silence.
+ */
+describe('scoreSquadContext — matching contexte actif ↔ contextes habituels', () => {
+  it('mode usuel FR identique au filtre actif -> matche', () => {
+    const keys = buildActiveContextKeys(['Assassin en équipe'])
+    expect(scoreSquadContext({ usual_modes: ['Assassin en équipe'] }, keys)).toBe(1)
+  })
+
+  it('mode usuel FR avec carte collée -> matche quand même (normalisation)', () => {
+    const keys = buildActiveContextKeys(['Assassin en équipe'])
+    expect(scoreSquadContext({ usual_modes: ['Assassin en équipe sur Bazaar'] }, keys)).toBe(1)
+  })
+
+  it('préfixe technique côté filtre actif -> matche le mode usuel propre', () => {
+    const keys = buildActiveContextKeys(['Arena:Slayer on Bazaar'])
+    expect(scoreSquadContext({ usual_modes: ['Slayer'] }, keys)).toBe(1)
+  })
+
+  it('casse différente -> matche (comparaison insensible à la casse)', () => {
+    const keys = buildActiveContextKeys(['ASSASSIN'])
+    expect(scoreSquadContext({ usual_modes: ['Assassin'] }, keys)).toBe(1)
+  })
+
+  it('playlists et modes cumulent le score', () => {
+    const keys = buildActiveContextKeys(['Partie rapide', 'Assassin en équipe'])
+    const score = scoreSquadContext(
+      { usual_playlists: ['Partie rapide'], usual_modes: ['Assassin en équipe'] },
+      keys,
+    )
+    expect(score).toBe(2)
+  })
+
+  it('aucun filtre actif -> score 0 (ordre d origine préservé)', () => {
+    const keys = buildActiveContextKeys([])
+    expect(scoreSquadContext({ usual_modes: ['Assassin'] }, keys)).toBe(0)
+    expect(buildActiveContextKeys(undefined).size).toBe(0)
+  })
+
+  it('contexte sans rapport -> score 0 (pas de faux positif)', () => {
+    const keys = buildActiveContextKeys(['Capture du drapeau'])
+    expect(scoreSquadContext({ usual_modes: ['Assassin en équipe'] }, keys)).toBe(0)
+  })
+
+  it('composition sans contextes habituels -> score 0', () => {
+    const keys = buildActiveContextKeys(['Assassin'])
+    expect(scoreSquadContext({}, keys)).toBe(0)
   })
 })
