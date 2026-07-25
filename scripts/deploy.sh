@@ -110,9 +110,20 @@ mv .env.tmp .env
 # containers actuels ne sont ni arrêtés ni recréés. `set -euo pipefail` ferait déjà sortir
 # le script sur un `docker compose build` en échec, mais on capte explicitement l'erreur
 # pour un message sans ambiguïté (et pour documenter l'invariant : rien n'a bougé).
-echo "[deploy] docker compose build (levelup + levelup-demo)..."
-if ! docker compose build; then
-    echo "[deploy] ERREUR: docker compose build a échoué — prod NON touchée (anciens containers toujours actifs)"
+# SÉRIALISÉ service par service : un `docker compose build` nu construit les deux
+# images EN PARALLÈLE ; si leurs couches go-builder divergent (build-args différents),
+# ce sont deux builds CGO simultanés sur 2 vCPU/2 Go → OOM (incident 2026-07-25).
+# Avec les args alignés (docker-compose.yml), le 2e build est un pur cache-hit.
+# NB : une modif de CE script ne prend effet qu'au deploy suivant (bash retient
+# l'ancien inode pendant que le git reset remplace le fichier).
+echo "[deploy] docker compose build levelup (puis levelup-demo, sérialisé)..."
+if ! docker compose build levelup; then
+    echo "[deploy] ERREUR: build levelup a échoué — prod NON touchée (anciens containers toujours actifs)"
+    echo "[deploy]    Corriger la cause (disque/réseau/code) puis relancer scripts/deploy.sh"
+    exit 1
+fi
+if ! docker compose build levelup-demo; then
+    echo "[deploy] ERREUR: build levelup-demo a échoué — prod NON touchée (anciens containers toujours actifs)"
     echo "[deploy]    Corriger la cause (disque/réseau/code) puis relancer scripts/deploy.sh"
     exit 1
 fi

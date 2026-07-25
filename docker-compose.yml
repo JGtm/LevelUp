@@ -69,7 +69,15 @@ services:
       retries: 3
 
   levelup-demo:
-    build: .
+    build:
+      context: .
+      args:
+        # MÊME build-arg VERSION que le service levelup — OBLIGATOIRE : avec des args
+        # différents (prod=v7.x.y, demo=dev) les couches go-builder divergent et
+        # BuildKit lance DEUX builds CGO complets EN PARALLÈLE (2 vCPU/2 Go → OOM,
+        # VPS gelé, incident 2026-07-25 deploy v7.2.0). Args identiques = couches
+        # dédupliquées = UN SEUL build Go pour les deux images.
+        VERSION: ${LEVELUP_APP_VERSION:-dev}
     ports:
       - "127.0.0.1:8001:8000"
     environment:
