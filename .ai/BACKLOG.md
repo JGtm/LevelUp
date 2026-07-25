@@ -10,6 +10,28 @@
 
 ---
 
+### [ops/prod] Écritures app_settings.json impossibles dans le conteneur (bind-mount fichier → rename EBUSY)
+
+Constat (deploy v7.2.0, 2026-07-25) : `app_settings.json` est bind-monté FICHIER dans le
+conteneur ; le pattern d'écriture atomique (temp + rename) échoue systématiquement en prod
+(`rename ... device or resource busy` — un bind-mount fichier épingle l'inode). Vu sur
+`discord_version_persist_failed` (la notif Discord PART, mais `last_notified_version`
+n'est jamais persisté → doublon à chaque redémarrage) ; touche potentiellement TOUTE
+écriture runtime de settings (toggles admin type `discord_notify_sync`) — à auditer.
+Contournement appliqué : édition host-side EN PLACE (`printf > fichier`, même inode —
+jamais `sed -i`, qui rename). Fix propre : fallback écriture in-place (truncate+write)
+quand le rename échoue en EBUSY, ou monter le répertoire parent au lieu du fichier.
+**Effort : S.**
+
+### [ops/notifs] Bruit WARN `app_release: emit` pour les comptes auth_only (pas de player DB)
+
+À chaque release, l'émission des notifs in-app tente d'ouvrir la stats.duckdb des 5
+comptes pool/auth_only (QuiteSiren, UppedJoker, GeleJugefi, Trimbutton, DankerGlue) qui
+n'en ont pas → 5 WARN par redémarrage post-release. Filtrer les profils sans DB joueur
+(ou auth_only) avant d'émettre. **Effort : S.**
+
+---
+
 ### [data/objectifs] Étendre match_objective_stats aux 4 blocs restants (Stockpile, Elimination, Extraction, Infection)
 
 Constat (investigation citations v7.2, 2026-07-25) : `StatsBundle` (internal/openspartan/models.go)
