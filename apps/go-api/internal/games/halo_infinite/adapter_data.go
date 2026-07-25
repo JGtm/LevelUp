@@ -205,11 +205,6 @@ func (a *DataAdapter) LoadMatchSummaries(ctx context.Context, matchIDs []string)
 	return nil, games.ErrCapabilityNotSupported
 }
 
-// LoadMatchDetail n'est pas câblée en Phase B.
-func (a *DataAdapter) LoadMatchDetail(ctx context.Context, matchID string) (*canonical.MatchDetail, error) {
-	return nil, games.ErrCapabilityNotSupported
-}
-
 // LoadPlayerStats n'est pas câblée en Phase B.
 func (a *DataAdapter) LoadPlayerStats(ctx context.Context, xuid string, scope canonical.StatsScope) (*canonical.PlayerStats, error) {
 	return nil, games.ErrCapabilityNotSupported

@@ -724,8 +724,8 @@ func fetchCommendationsFR(key string) map[string]commFR {
 // seedCommendations peuple commendation_definitions depuis l'API Metadata officielle
 // (/commendations) → nom/description/icône CDN + type + catégorie, par UUID. La clé
 // `id` est exactement le ProgressiveCommendationDeltas[].Id du carnage (jointure
-// read-time pour peupler canonical.Commendation Name/IconURL). Tous les types
-// (Progressive/Meta/Daily) sont seedés.
+// read-time pour peupler Name/IconURL des commendations, cf.
+// halo_5.enrichCommendationTotals). Tous les types (Progressive/Meta/Daily) sont seedés.
 //
 // name_fr / description_fr : la localisation FR vient de l'API elle-même (pass fr-FR
 // via fetchCommendationsFR), les overrides TOML restant prioritaires (cf. chooseFR).

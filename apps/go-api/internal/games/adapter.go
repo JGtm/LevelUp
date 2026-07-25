@@ -116,7 +116,6 @@ type TitleDataAdapter interface {
 	Capabilities() CapabilityMap
 
 	LoadMatchSummaries(ctx context.Context, matchIDs []string) ([]canonical.MatchSummary, error)
-	LoadMatchDetail(ctx context.Context, matchID string) (*canonical.MatchDetail, error)
 	LoadPlayerStats(ctx context.Context, xuid string, scope canonical.StatsScope) (*canonical.PlayerStats, error)
 	LoadCareerSnapshot(ctx context.Context, xuid string, opts canonical.CareerOptions) (*canonical.CareerSnapshot, error)
 	LoadEncounters(ctx context.Context, xuid string) ([]canonical.EncounterRow, error)
@@ -146,9 +145,9 @@ type TitleDataAdapter interface {
 	LoadFriendsXUIDs(ctx context.Context, xuid string) ([]string, error)
 
 	// LoadMatchEvents : timeline d'événements BRUTE et complète d'un match
-	// (CapMatchEventsTimeline). Surface SÉPARÉE chargée on-demand (ne pas mettre
-	// dans LoadMatchDetail). ErrCapabilityNotSupported si le titre ne sert pas
-	// d'events. Cf. PLAN_CANONICAL_MATCH_EVENTS.
+	// (CapMatchEventsTimeline). Surface SÉPARÉE chargée on-demand.
+	// ErrCapabilityNotSupported si le titre ne sert pas d'events.
+	// Cf. PLAN_CANONICAL_MATCH_EVENTS.
 	LoadMatchEvents(ctx context.Context, matchID string, opts canonical.MatchEventOptions) (*canonical.MatchEventTimeline, error)
 }
 

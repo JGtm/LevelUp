@@ -9,6 +9,10 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
+// ptrInt : helper de test partagé du package (pointeur int) — utilisé par les tests
+// scoreboard/frag distribution pour renseigner les compteurs *int optionnels.
+func ptrInt(v int) *int { return &v }
+
 // ---------- indexBulkMedalsByXUID ----------
 
 func TestIndexBulkMedalsByXUID_GroupsByXUID(t *testing.T) {

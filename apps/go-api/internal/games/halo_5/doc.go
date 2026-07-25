@@ -6,8 +6,11 @@
 // GAMERTAG-keyée (Player.Xuid null). Adapters câblés au boot via
 // api/server_titles_additional.go (registry-driven, jamais slug littéral) :
 //   - games.TitleDataAdapter (adapter_data.go) : LoadPlayerStats, LoadCareerSnapshot
-//     (Spartan Rank + CSR pic), LoadMatchDetail (carnage -> canonical), LoadMatchEvents
-//     (kill-feed natif). Le reste = ErrCapabilityNotSupported (capabilities.toml honnête).
+//     (Spartan Rank + CSR pic), LoadMatchEvents (kill-feed natif). Le détail d'un match
+//     (match.detail.core) est servi par le substrat DuckDB synchronisé (livesync),
+//     PAS par un fetch live : un match pas encore synchronisé renvoie un 404 propre
+//     (cf. BACKLOG "Retirer le fallback LIVE du Match view"). Le reste =
+//     ErrCapabilityNotSupported (capabilities.toml honnête).
 //   - games.TitleSemanticAdapter (générique sur les TOML config/titles/halo_5/).
 //   - games.TitleAssetURLAdapter (adapter_asset_urls.go, pur : URLs CDN officielles).
 //

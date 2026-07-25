@@ -146,7 +146,7 @@ func TestCareerService_GetCareerPage_RepoError(t *testing.T) {
 
 // h5CareerStubAdapter : TitleDataAdapter h5-like qui ne sert QUE LoadCareerSnapshot
 // (le reste dégrade via fakeDetailAdapter embarqué, défini dans
-// match_view_canonical_test.go). Permet de tester la propagation career h5 → service
+// fake_detail_adapter_test.go). Permet de tester la propagation career h5 → service
 // sans dépendre du package halo_5 (évite un import croisé).
 type h5CareerStubAdapter struct {
 	fakeDetailAdapter

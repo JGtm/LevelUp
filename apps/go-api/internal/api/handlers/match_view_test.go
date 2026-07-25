@@ -149,6 +149,35 @@ func TestMatchViewHandler_NotParticipant_404(t *testing.T) {
 	}
 }
 
+// TestMatchViewHandler_NotFound_404 : un match absent du substrat local (jamais
+// synchronisé, ou pas encore) — APIError{Code:"not_found"} émise par
+// MatchViewService.GetMatchView (domain.ErrNotFound) — est mappé en 404 avec le
+// code "match_not_found", PAS en 500. C'est le contrat qui remplace le fallback
+// LIVE retiré le 2026-07-25 (BACKLOG "Retirer le fallback LIVE du Match view") :
+// aucun appel API live n'est tenté, le service renvoie directement ce typed error.
+func TestMatchViewHandler_NotFound_404(t *testing.T) {
+	factory := func(_ context.Context, _ string) (port.MatchViewService, error) {
+		return &mockMatchViewService{
+			err: domain.ErrNotFound("match", "unknown-match-id"),
+		}, nil
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/players/test-player/matches/unknown-match-id", nil)
+	w := httptest.NewRecorder()
+	newMatchViewRouter(factory).ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d: %s", w.Code, w.Body.String())
+	}
+	var body map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if body["code"] != "match_not_found" {
+		t.Errorf("code = %v, want match_not_found", body["code"])
+	}
+}
+
 func TestMatchViewHandler_ServiceError(t *testing.T) {
 	factory := func(_ context.Context, _ string) (port.MatchViewService, error) {
 		return &mockMatchViewService{err: errors.New("db error")}, nil

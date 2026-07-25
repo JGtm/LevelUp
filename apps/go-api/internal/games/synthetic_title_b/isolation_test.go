@@ -136,9 +136,6 @@ func TestSyntheticTitleB_AllNotExposedMethods(t *testing.T) {
 	t.Parallel()
 	a := NewDataAdapter(&FakePlayerStats{XUID: "0xB"})
 
-	if _, err := a.LoadMatchDetail(context.Background(), "m1"); err == nil {
-		t.Errorf("LoadMatchDetail devrait retourner ErrCapabilityNotSupported")
-	}
 	if _, err := a.LoadCareerSnapshot(context.Background(), "0xB", canonical.CareerOptions{}); err == nil {
 		t.Errorf("LoadCareerSnapshot devrait retourner ErrCapabilityNotSupported")
 	}
