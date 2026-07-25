@@ -22,16 +22,32 @@ import (
 	"levelup/go-api/internal/prestige"
 )
 
+// ModeTranslatorFR traduit une liste de libellés de mode EN normalisés vers leur
+// forme FR (metadata.mode_name_tr, lang='fr'). Signature alignée sur
+// duckdb.SquadRepo.LoadModeTranslationsFR — SOURCE UNIQUE du littéral SQL
+// mode_name_tr : ne pas redupliquer la requête ici (règle ≤2 copies).
+type ModeTranslatorFR func(ctx context.Context, modeENs []string) (map[string]string, error)
+
 // PrestigeSquadMatchProvider lit match_participants pour l'évaluation des défis
 // d'escouade.
 type PrestigeSquadMatchProvider struct {
-	reader duckdb.SharedReader
+	reader           duckdb.SharedReader
+	translateModesFR ModeTranslatorFR // optionnel : résolution FR des modes de l'indice escouade
 }
 
 // NewPrestigeSquadMatchProvider construit le provider depuis un duckdb.SharedReader
 // (passer pdb.SharedReadDB() côté caller, comme HaloBaselineProvider).
 func NewPrestigeSquadMatchProvider(reader duckdb.SharedReader) *PrestigeSquadMatchProvider {
 	return &PrestigeSquadMatchProvider{reader: reader}
+}
+
+// WithModeTranslatorFR injecte la résolution FR canonique des modes de l'indice
+// escouade (« Slayer » → « Assassin »), pour que l'API serve des libellés prêts à
+// afficher en contexte FR (parité home / match-view / historique). Best-effort :
+// sans traducteur, ou s'il échoue, l'indice reste en EN (jamais vide). Chaînable.
+func (p *PrestigeSquadMatchProvider) WithModeTranslatorFR(fn ModeTranslatorFR) *PrestigeSquadMatchProvider {
+	p.translateModesFR = fn
+	return p
 }
 
 var _ prestige.SquadMatchProvider = (*PrestigeSquadMatchProvider)(nil)
@@ -223,7 +239,35 @@ func (p *PrestigeSquadMatchProvider) SquadUsualContexts(ctx context.Context, ros
 	if err := rows.Err(); err != nil {
 		return nil, nil, err
 	}
-	return topNByFreq(plCount, 2), topNByFreq(mdCount, 2), nil
+	playlists = topNByFreq(plCount, 2)
+	modes = p.applyModeTranslationsFR(ctx, topNByFreq(mdCount, 2))
+	return playlists, modes, nil
+}
+
+// applyModeTranslationsFR remplace chaque libellé de mode EN normalisé par sa
+// traduction FR (mode_name_tr) si disponible ; conserve l'EN sinon — un libellé
+// n'est JAMAIS vidé. Best-effort : traducteur nil ou en erreur → modes inchangés
+// (dégradation gracieuse, indice servi en anglais plutôt qu'absent). Un mode sans
+// entrée mode_name_tr[fr] (trou de couverture) reste en EN = rattrapage données.
+func (p *PrestigeSquadMatchProvider) applyModeTranslationsFR(ctx context.Context, modes []string) []string {
+	if p.translateModesFR == nil || len(modes) == 0 {
+		return modes
+	}
+	fr, err := p.translateModesFR(ctx, modes)
+	if err != nil {
+		slog.WarnContext(ctx, "SquadUsualContexts: traduction FR des modes indisponible (indice servi en anglais)",
+			"err", err, "modes", modes)
+		return modes
+	}
+	out := make([]string, len(modes))
+	for i, m := range modes {
+		if t, ok := fr[m]; ok && strings.TrimSpace(t) != "" {
+			out[i] = t
+		} else {
+			out[i] = m
+		}
+	}
+	return out
 }
 
 // topNByFreq retourne les n clés les plus fréquentes (fréquence desc, départage

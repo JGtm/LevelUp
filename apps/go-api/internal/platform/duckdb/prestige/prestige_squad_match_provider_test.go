@@ -1,6 +1,10 @@
 package prestige
 
-import "testing"
+import (
+	"context"
+	"errors"
+	"testing"
+)
 
 // TestTopNByFreq couvre la sélection des labels dominants de l'indice escouade :
 // fréquence décroissante, départage alphabétique déterministe, bornage n.
@@ -32,5 +36,46 @@ func TestUUIDLabelRE(t *testing.T) {
 	}
 	if uuidLabelRE.MatchString("Classé") || uuidLabelRE.MatchString("Big Team Battle") {
 		t.Error("libellé normal détecté à tort comme UUID")
+	}
+}
+
+// TestApplyModeTranslationsFR couvre la résolution FR des modes de l'indice
+// escouade (V72-10.1) : EN → FR quand mode_name_tr fournit une entrée, EN
+// conservé sinon (trou de couverture, jamais vidé), et dégradation gracieuse
+// (traducteur nil / en erreur / renvoyant une chaîne vide → indice en EN).
+func TestApplyModeTranslationsFR(t *testing.T) {
+	ctx := context.Background()
+
+	// Nominal : Team Slayer traduit, CTF absent de la table → EN conservé.
+	tr := func(_ context.Context, _ []string) (map[string]string, error) {
+		return map[string]string{"Slayer": "Assassin", "Team Slayer": "Assassin par équipe"}, nil
+	}
+	p := (&PrestigeSquadMatchProvider{}).WithModeTranslatorFR(tr)
+	got := p.applyModeTranslationsFR(ctx, []string{"Team Slayer", "CTF"})
+	if len(got) != 2 || got[0] != "Assassin par équipe" || got[1] != "CTF" {
+		t.Fatalf("applyModeTranslationsFR = %v, want [Assassin par équipe CTF]", got)
+	}
+
+	// Traducteur nil → modes inchangés (indice EN plutôt qu'absent).
+	if got := (&PrestigeSquadMatchProvider{}).applyModeTranslationsFR(ctx, []string{"Slayer"}); len(got) != 1 || got[0] != "Slayer" {
+		t.Errorf("nil translator = %v, want [Slayer]", got)
+	}
+
+	// Erreur du traducteur → modes inchangés (best-effort, jamais vide).
+	pErr := (&PrestigeSquadMatchProvider{}).WithModeTranslatorFR(
+		func(context.Context, []string) (map[string]string, error) { return nil, errors.New("metadata absente") },
+	)
+	if got := pErr.applyModeTranslationsFR(ctx, []string{"Slayer"}); len(got) != 1 || got[0] != "Slayer" {
+		t.Errorf("translator error = %v, want [Slayer]", got)
+	}
+
+	// Traduction blanche → EN conservé (un libellé n'est jamais vidé).
+	pBlank := (&PrestigeSquadMatchProvider{}).WithModeTranslatorFR(
+		func(context.Context, []string) (map[string]string, error) {
+			return map[string]string{"Slayer": "  "}, nil
+		},
+	)
+	if got := pBlank.applyModeTranslationsFR(ctx, []string{"Slayer"}); len(got) != 1 || got[0] != "Slayer" {
+		t.Errorf("blank FR = %v, want [Slayer]", got)
 	}
 }
