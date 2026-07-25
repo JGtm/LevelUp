@@ -118,7 +118,8 @@ func BuildPostSyncDeltaHook(reg *ServiceRegistry) handlers.PostSyncDeltaHook {
 		}
 		return func(ctx context.Context) {
 			// Invalider le cache home en premier — le sync a réussi, les données DB sont à jour.
-			reg.homeMatchesCache.Invalidate(xuid)
+			// Clé (xuid, titleSlug) : n'invalider que l'entrée du titre synchronisé (V72-29).
+			reg.homeMatchesCache.Invalidate(xuid, slug)
 			slog.InfoContext(ctx, "post_sync: home cache invalidé", "slug", slug, "xuid", xuid)
 
 			pdb2, err := reg.resolve(ctx, slug)

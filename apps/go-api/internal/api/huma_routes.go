@@ -67,9 +67,14 @@ func registerJobsHuma(api huma.API, h *handlers.JobsHandler) {
 	}, humacore.Op("getJob", "Statut d'un job long", "jobs"))
 }
 
-// gamertagSearchHumaInput : query param ?q= du GET /directory/gamertags/search.
+// gamertagSearchHumaInput : query params du GET /directory/gamertags/search.
+//   - q    : fragment recherché.
+//   - live : arme le repli LIVE (résolution Xbox d'un joueur jamais croisé). Défaut
+//     false = recherche locale seule, rapide (typeahead). true uniquement sur intention
+//     explicite (bouton « Rechercher sur Xbox ») — challenge V72-24 (latence).
 type gamertagSearchHumaInput struct {
-	Q string `query:"q"`
+	Q    string `query:"q"`
+	Live bool   `query:"live"`
 }
 
 // gamertagSearchHumaOutput : corps = GamertagSearchResponse (writeJSON(200, resp)).
@@ -83,7 +88,7 @@ type gamertagSearchHumaOutput struct {
 // (message générique « internal error » sur 5xx, comme writeError).
 func registerGamertagHuma(api huma.API, h *handlers.GamertagHandler) {
 	huma.Get(api, "/directory/gamertags/search", func(ctx context.Context, in *gamertagSearchHumaInput) (*gamertagSearchHumaOutput, error) {
-		resp, err := h.Query(ctx, in.Q)
+		resp, err := h.Query(ctx, in.Q, in.Live)
 		if err != nil {
 			if errors.Is(err, handlers.ErrGamertagSearchUnavailable) {
 				return nil, newHumaError(http.StatusServiceUnavailable, "shared_db_unavailable", "gamertag search requires shared database")

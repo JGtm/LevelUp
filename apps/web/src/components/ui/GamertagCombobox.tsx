@@ -141,14 +141,25 @@ export function GamertagCombobox({
   const isAtMax = max != null && selected.length >= max
   const excludeGamertags = excludeGamertag ? [...selected, excludeGamertag] : selected
 
-  const { configured, frequent, remote, isRemoteLoading, hasAnyResult, remoteAttempted } =
-    useGamertagSuggestions({ query, frequentOptions, excludeGamertags })
+  const {
+    configured,
+    frequent,
+    remote,
+    isRemoteLoading,
+    hasAnyResult,
+    remoteAttempted,
+    liveResults,
+    isLiveLoading,
+    liveAttempted,
+    triggerLiveSearch,
+  } = useGamertagSuggestions({ query, frequentOptions, excludeGamertags })
 
   const trimmed = query.trim()
   const allSuggestedGts = new Set([
     ...configured.map((c) => c.gamertag),
     ...frequent.map((f) => f.gamertag),
     ...remote.map((r) => r.gamertag),
+    ...liveResults.map((r) => r.gamertag),
   ])
 
   // L'option "ajouter en libre" n'apparaît que si :
@@ -165,6 +176,16 @@ export function GamertagCombobox({
   const showEmptyMessage =
     trimmed.length > 0 && remoteAttempted && !isRemoteLoading && !hasAnyResult
 
+  // Bouton « Rechercher sur Xbox » (V72-24) : proposé quand la recherche locale a
+  // répondu sans surfacer le joueur tapé, tant que le repli live n'a pas été lancé.
+  const canSearchLive =
+    trimmed.length > 0 &&
+    !selected.includes(trimmed) &&
+    !allSuggestedGts.has(trimmed) &&
+    remoteAttempted &&
+    !isRemoteLoading &&
+    !liveAttempted
+
   // Presets (escouades / groupes) : affichés en tête quand la recherche est vide.
   const showPresets =
     trimmed.length === 0 && !!presetGroups && presetGroups.some((g) => g.options.length > 0)
@@ -175,8 +196,11 @@ export function GamertagCombobox({
     configured.length > 0 ||
     frequent.length > 0 ||
     remote.length > 0 ||
+    liveResults.length > 0 ||
     canAddFree ||
+    canSearchLive ||
     isRemoteLoading ||
+    isLiveLoading ||
     showEmptyMessage
 
   // ─── Actions ────────────────────────────────────────────────────────────────
@@ -397,13 +421,36 @@ export function GamertagCombobox({
             </div>
           )}
 
+          {/* Groupe 4 : Repli live Xbox (résolution explicite d'un joueur jamais croisé) */}
+          {liveResults.length > 0 && (
+            <div>
+              <div className="sticky top-0 bg-popover/95 px-3 py-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground border-b border-border/50">
+                {t('common.gamertag.xbox_badge')}
+              </div>
+              {liveResults.map((item) => (
+                <DropdownItem
+                  key={item.gamertag}
+                  gamertag={item.gamertag}
+                  badge={t('common.gamertag.xbox_badge')}
+                  disabled={isAtMax}
+                  onSelect={() => add(item.gamertag)}
+                />
+              ))}
+            </div>
+          )}
+
           {/* Loading recherche serveur */}
           {isRemoteLoading && (
             <div className="px-3 py-2 text-sm text-muted-foreground">Recherche…</div>
           )}
 
+          {/* Loading repli Xbox */}
+          {isLiveLoading && (
+            <div className="px-3 py-2 text-sm text-muted-foreground">{t('common.gamertag.searching_xbox')}</div>
+          )}
+
           {/* Message vide */}
-          {showEmptyMessage && (
+          {showEmptyMessage && !isLiveLoading && liveResults.length === 0 && (
             <div className="px-3 py-2 text-sm text-muted-foreground">
               {t('common.gamertag.no_player_found_prefix')}{trimmed}"
             </div>
@@ -439,6 +486,17 @@ export function GamertagCombobox({
               <span>
                 Ajouter <span className="font-medium">"{trimmed}"</span> comme ami
               </span>
+            </button>
+          )}
+
+          {/* CTA « Rechercher sur Xbox » — repli live explicite (V72-24) */}
+          {canSearchLive && (
+            <button
+              type="button"
+              onClick={triggerLiveSearch}
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent border-t border-border/50 text-primary"
+            >
+              <span>{t('common.gamertag.search_on_xbox')}</span>
             </button>
           )}
 

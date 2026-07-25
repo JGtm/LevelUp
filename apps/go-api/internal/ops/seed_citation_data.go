@@ -11,8 +11,14 @@ func defaultCitationMappings() []CitationMapping {
 	const wpHI = "static/commendations/halo_infinite/"
 	return []CitationMapping{
 		// ── PVP — Mode de jeu (11) ────────────────────────────────────
-		{Norm: "charge", Display: "À la charge", MappingType: mappingTypeAward,
-			AwardName: "zone_captured", AwardCategory: awardCategoryObjective, Enabled: true,
+		// v7.2 (décision utilisateur) — BASCULE DES 4 CITATIONS D'OBJECTIF vers la
+		// source objective_stat (colonnes match_objective_stats_latest), plus fiable
+		// que les awards personal_score : charge→zone_captures, got_you→flag_returns,
+		// stakeholder→zone_secures, flag_carrier_hunter→flag_carriers_killed. La
+		// progression est recalculée depuis l'historique au backfill citations
+		// (--citations-recompute-all) : re-seed puis rejeu requis (local + prod).
+		{Norm: citationNormCharge, Display: "À la charge", MappingType: mappingTypeObjectiveStat,
+			StatName: "zone_captures", Enabled: true,
 			ImagePath:   wpH5 + "H5G_citation_À_la_charge.png",
 			Category:    citationCatModeJeu,
 			Description: "Prenez le contrôle d'une base dans n'importe quelle partie matchmaking Bases.",
@@ -49,20 +55,20 @@ func defaultCitationMappings() []CitationMapping {
 			Category:    citationCatModeJeu,
 			Description: "Protégez le drapeau de votre équipe dans n'importe quelle partie matchmaking Capture du drapeau.",
 			TierTargets: tierTargets10_20_30_50_100},
-		{Norm: "got_you", Display: "Je te tiens !", MappingType: mappingTypeAward,
-			AwardName: "flag_returned", AwardCategory: awardCategoryObjective, Enabled: true,
+		{Norm: citationNormGotYou, Display: "Je te tiens !", MappingType: mappingTypeObjectiveStat,
+			StatName: "flag_returns", Enabled: true,
 			ImagePath:   wpH5 + "H5G_citation_Je_te_tiens_!.png",
 			Category:    citationCatModeJeu,
 			Description: "Rapportez le drapeau de votre équipe dans n'importe quelle partie matchmaking Capture du drapeau.",
 			TierTargets: tierTargets10_20_30_50_100},
-		{Norm: "stakeholder", Display: "Partie prenante", MappingType: mappingTypeAward,
-			AwardName: "zone_secured", AwardCategory: awardCategoryObjective, Enabled: true,
+		{Norm: citationNormStakeholder, Display: "Partie prenante", MappingType: mappingTypeObjectiveStat,
+			StatName: "zone_secures", Enabled: true,
 			ImagePath:   wpH5 + "H5G_citation_Partie_prenante.png",
 			Category:    citationCatModeJeu,
 			Description: "Défendez une base appartenant à votre équipe dans n'importe quelle partie matchmaking Bases.",
 			TierTargets: tierTargets10_20_30_50_100},
-		{Norm: "flag_carrier_hunter", Display: "Sus au porteur du drapeau", MappingType: mappingTypeAward,
-			AwardName: "carrier_killed", AwardCategory: awardCategoryObjective, Enabled: true,
+		{Norm: citationNormFlagCarrierHunter, Display: "Sus au porteur du drapeau", MappingType: mappingTypeObjectiveStat,
+			StatName: "flag_carriers_killed", Enabled: true,
 			ImagePath:   wpH5 + "H5G_citation_Sus_au_porteur_du_drapeau.png",
 			Category:    citationCatModeJeu,
 			Description: "Tuez un porte-drapeau ennemi dans n'importe quelle partie matchmaking Capture du drapeau.",

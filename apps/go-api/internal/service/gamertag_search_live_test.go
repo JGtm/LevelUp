@@ -6,8 +6,15 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 )
+
+// liveCtx : contexte avec le repli live ARMÉ (équivaut à ?live=1) — exerce le chemin
+// de résolution Xbox du décorateur (challenge V72-24 : désarmé par défaut).
+func liveCtx() context.Context {
+	return ctxkeys.WithGamertagLiveSearch(context.Background(), true)
+}
 
 type stubLocalSearch struct {
 	results []domain.GamertagSearchResult
@@ -34,7 +41,7 @@ func (r *stubResolver) ResolveXUID(_ context.Context, _ string) (string, error) 
 func TestLiveFallback_NilResolver_Passthrough(t *testing.T) {
 	local := &stubLocalSearch{results: []domain.GamertagSearchResult{{Gamertag: "Foo", XUID: "1"}}}
 	svc := NewLiveFallbackGamertagSearch(local, nil)
-	got, err := svc.Search(context.Background(), "Bar")
+	got, err := svc.Search(liveCtx(), "Bar")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -47,7 +54,7 @@ func TestLiveFallback_ExactLocalMatch_SkipsResolver(t *testing.T) {
 	local := &stubLocalSearch{results: []domain.GamertagSearchResult{{Gamertag: "Foo", XUID: "1"}}}
 	res := &stubResolver{xuid: "999"}
 	svc := NewLiveFallbackGamertagSearch(local, res)
-	got, err := svc.Search(context.Background(), "foo") // casse différente, match exact
+	got, err := svc.Search(liveCtx(), "foo") // casse différente, match exact
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -63,7 +70,7 @@ func TestLiveFallback_LocalEmpty_AppendsSynthetic(t *testing.T) {
 	local := &stubLocalSearch{results: nil}
 	res := &stubResolver{xuid: "2533274812345678"}
 	svc := NewLiveFallbackGamertagSearch(local, res)
-	got, err := svc.Search(context.Background(), "NeverSeen")
+	got, err := svc.Search(liveCtx(), "NeverSeen")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -84,7 +91,7 @@ func TestLiveFallback_Throttle_DegradesAndNegCaches(t *testing.T) {
 	res := &stubResolver{err: errors.New("xbox profile HTTP 429: rate limited")}
 	svc := NewLiveFallbackGamertagSearch(local, res)
 
-	got, err := svc.Search(context.Background(), "Throttled")
+	got, err := svc.Search(liveCtx(), "Throttled")
 	if err != nil {
 		t.Fatalf("throttle ne doit jamais propager d'erreur: %v", err)
 	}
@@ -92,7 +99,7 @@ func TestLiveFallback_Throttle_DegradesAndNegCaches(t *testing.T) {
 		t.Fatalf("attendu 0 résultat (local vide), got %d", len(got))
 	}
 	// 2e recherche identique : cache négatif → pas de ré-appel résolveur.
-	if _, err := svc.Search(context.Background(), "Throttled"); err != nil {
+	if _, err := svc.Search(liveCtx(), "Throttled"); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 	if res.calls != 1 {
@@ -106,12 +113,12 @@ func TestLiveFallback_NegCacheExpires(t *testing.T) {
 	svc := NewLiveFallbackGamertagSearch(local, res)
 	base := time.Unix(1_700_000_000, 0)
 	svc.now = func() time.Time { return base }
-	if _, err := svc.Search(context.Background(), "Gone"); err != nil {
+	if _, err := svc.Search(liveCtx(), "Gone"); err != nil {
 		t.Fatal(err)
 	}
 	// après expiration du TTL négatif → ré-appel autorisé.
 	svc.now = func() time.Time { return base.Add(liveFallbackNegTTL + time.Second) }
-	if _, err := svc.Search(context.Background(), "Gone"); err != nil {
+	if _, err := svc.Search(liveCtx(), "Gone"); err != nil {
 		t.Fatal(err)
 	}
 	if res.calls != 2 {
@@ -123,7 +130,7 @@ func TestLiveFallback_NotFound_DegradesNoError(t *testing.T) {
 	local := &stubLocalSearch{results: []domain.GamertagSearchResult{{Gamertag: "Sub", XUID: "1"}}}
 	res := &stubResolver{err: errors.New("xbox profile: aucun profil pour gamertag")}
 	svc := NewLiveFallbackGamertagSearch(local, res)
-	got, err := svc.Search(context.Background(), "Unknownnn")
+	got, err := svc.Search(liveCtx(), "Unknownnn")
 	if err != nil {
 		t.Fatalf("not-found ne doit pas propager: %v", err)
 	}
@@ -132,12 +139,33 @@ func TestLiveFallback_NotFound_DegradesNoError(t *testing.T) {
 	}
 }
 
+// TestLiveFallback_LiveDisabled_SkipsResolver : sans le flag live (défaut, typeahead),
+// le décorateur ne tente JAMAIS le repli Xbox, même sur une query plausible jamais
+// croisée localement. C'est le cœur du correctif V72-24 (latence).
+func TestLiveFallback_LiveDisabled_SkipsResolver(t *testing.T) {
+	local := &stubLocalSearch{results: nil}
+	res := &stubResolver{xuid: "2533274812345678"}
+	svc := NewLiveFallbackGamertagSearch(local, res)
+
+	// context.Background() sans flag → repli désarmé.
+	got, err := svc.Search(context.Background(), "NeverSeen")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if res.calls != 0 {
+		t.Fatalf("live désarmé : le résolveur ne doit PAS être appelé (calls=%d)", res.calls)
+	}
+	if len(got) != 0 {
+		t.Fatalf("attendu résultats locaux seuls (vide), got %d", len(got))
+	}
+}
+
 func TestLiveFallback_ImplausibleQuery_SkipsResolver(t *testing.T) {
 	local := &stubLocalSearch{}
 	res := &stubResolver{xuid: "1"}
 	svc := NewLiveFallbackGamertagSearch(local, res)
 	for _, q := range []string{"ab", "x", "a*b", "  "} {
-		if _, err := svc.Search(context.Background(), q); err != nil {
+		if _, err := svc.Search(liveCtx(), q); err != nil {
 			t.Fatalf("q=%q err: %v", q, err)
 		}
 	}
@@ -150,7 +178,7 @@ func TestLiveFallback_DedupByXUID(t *testing.T) {
 	local := &stubLocalSearch{results: []domain.GamertagSearchResult{{Gamertag: "AliasOld", XUID: "777"}}}
 	res := &stubResolver{xuid: "777"} // même xuid, libellé différent
 	svc := NewLiveFallbackGamertagSearch(local, res)
-	got, err := svc.Search(context.Background(), "AliasNew")
+	got, err := svc.Search(liveCtx(), "AliasNew")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -163,7 +191,7 @@ func TestLiveFallback_LocalError_Propagates(t *testing.T) {
 	local := &stubLocalSearch{err: errors.New("db down")}
 	res := &stubResolver{xuid: "1"}
 	svc := NewLiveFallbackGamertagSearch(local, res)
-	if _, err := svc.Search(context.Background(), "Whatever"); err == nil {
+	if _, err := svc.Search(liveCtx(), "Whatever"); err == nil {
 		t.Fatal("une erreur locale réelle doit être propagée")
 	}
 	if res.calls != 0 {

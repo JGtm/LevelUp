@@ -226,7 +226,7 @@ func (s *HomeService) fetchMatchesAndSessions(ctx context.Context) (
 	canonicalRows []canonical.PlayerMatchRow, fromCache bool, err error,
 ) {
 	if s.matchesCache != nil && s.xuid != "" {
-		if _, _, hit := s.matchesCache.Get(s.xuid); hit {
+		if _, _, hit := s.matchesCache.Get(s.xuid, s.titleSlug); hit {
 			// Cache hit : on doit reconstruire les canonical rows. Le cache n'est
 			// pas encore canonical-aware ; pour P4.3 finale on bypass le cache hit
 			// et recharge canonical. TODO P4.4 : adapter HomeMatchesCache Ã
@@ -250,7 +250,7 @@ func (s *HomeService) fetchMatchesAndSessions(ctx context.Context) (
 
 	// Maintien du cache pour la mÃ©trique (set vide pour invalider stale).
 	if s.matchesCache != nil && s.xuid != "" {
-		s.matchesCache.Set(s.xuid, nil, nil)
+		s.matchesCache.Set(s.xuid, s.titleSlug, nil, nil)
 	}
 	return canonicalRows, false, nil
 }

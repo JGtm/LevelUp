@@ -12,6 +12,7 @@ import { useGamertagSuggestions } from '@/components/ui/useGamertagSuggestions'
 import type { TeammateOption } from '@/lib/api/types'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 interface Props {
@@ -38,10 +39,21 @@ export function GamertagSearchInput({
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: ExplorerManifestKey, vars?: Record<string, unknown>) =>
     formatMessage(explorerManifest, key, locale, vars)
+  const tc = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   const resolvedPlaceholder = placeholder ?? t('explorer.search.placeholder')
 
-  const { configured, frequent, remote, isRemoteLoading, hasAnyResult, remoteAttempted } =
-    useGamertagSuggestions({ query, frequentOptions, excludeGamertags })
+  const {
+    configured,
+    frequent,
+    remote,
+    isRemoteLoading,
+    hasAnyResult,
+    remoteAttempted,
+    liveResults,
+    isLiveLoading,
+    liveAttempted,
+    triggerLiveSearch,
+  } = useGamertagSuggestions({ query, frequentOptions, excludeGamertags })
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -60,18 +72,25 @@ export function GamertagSearchInput({
     ...configured.map((c) => c.gamertag),
     ...frequent.map((f) => f.gamertag),
     ...remote.map((r) => r.gamertag),
+    ...liveResults.map((r) => r.gamertag),
   ])
   const canSearchFree = trimmed.length > 0 && !allSuggestedGts.has(trimmed)
   const showEmpty = trimmed.length > 0 && remoteAttempted && !isRemoteLoading && !hasAnyResult
+  // Bouton « Rechercher sur Xbox » (V72-24) : proposé quand la recherche locale a
+  // répondu sans surfacer le joueur tapé, tant que le repli live n'a pas déjà été lancé.
+  const canSearchLive = canSearchFree && remoteAttempted && !isRemoteLoading && !liveAttempted
   const showDropdown =
     open &&
     trimmed.length > 0 &&
     (configured.length > 0 ||
       frequent.length > 0 ||
       remote.length > 0 ||
+      liveResults.length > 0 ||
       isRemoteLoading ||
+      isLiveLoading ||
       showEmpty ||
-      canSearchFree)
+      canSearchFree ||
+      canSearchLive)
 
   function pick(gt: string) {
     onSelect(gt)
@@ -159,11 +178,31 @@ export function GamertagSearchInput({
             </div>
           )}
 
+          {liveResults.length > 0 && (
+            <div>
+              <div className="sticky top-0 bg-background/95 px-3 py-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground border-b border-border/50">
+                {tc('common.gamertag.xbox_badge')}
+              </div>
+              {liveResults.map((item) => (
+                <SuggestionRow
+                  key={item.gamertag}
+                  gamertag={item.gamertag}
+                  badge={tc('common.gamertag.xbox_badge')}
+                  onSelect={() => pick(item.gamertag)}
+                />
+              ))}
+            </div>
+          )}
+
           {isRemoteLoading && (
             <div className="px-4 py-2 text-sm text-muted-foreground">{t('explorer.search.loading')}</div>
           )}
 
-          {showEmpty && (
+          {isLiveLoading && (
+            <div className="px-4 py-2 text-sm text-muted-foreground">{tc('common.gamertag.searching_xbox')}</div>
+          )}
+
+          {showEmpty && !isLiveLoading && liveResults.length === 0 && (
             <div className="px-4 py-2 text-sm text-muted-foreground">
               {t('explorer.search.no_results', { query: trimmed })}
             </div>
@@ -177,6 +216,16 @@ export function GamertagSearchInput({
             >
               <span className="text-muted-foreground">+</span>
               <span>{t('explorer.search.search_for', { query: trimmed })}</span>
+            </button>
+          )}
+
+          {canSearchLive && (
+            <button
+              type="button"
+              onClick={triggerLiveSearch}
+              className="flex w-full items-center gap-2 px-4 py-2 text-sm text-left text-primary hover:bg-primary/10 transition-colors border-t border-border/50"
+            >
+              <span>{tc('common.gamertag.search_on_xbox')}</span>
             </button>
           )}
         </div>

@@ -103,7 +103,8 @@ export const queryKeys = {
   explorerPlayer: (playerSlug: string, titleSlug: string, targetGamertag: string, targetXuid: string, page: number) =>
     ['explorer-player', playerSlug, titleSlug, targetGamertag, targetXuid, page] as const,
   // gamertagSearch : recherche globale (Xbox), title-agnostic — pas de titleSlug.
-  gamertagSearch: (q: string) => ['gamertag-search', q] as const,
+  // `live` distingue le repli Xbox explicite (V72-24) de la recherche locale rapide.
+  gamertagSearch: (q: string, live = false) => ['gamertag-search', q, live] as const,
   matchView: (playerSlug: string, titleSlug: string, matchId: string) =>
     ['match-view', playerSlug, titleSlug, matchId] as const,
 

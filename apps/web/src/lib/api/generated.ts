@@ -10019,6 +10019,13 @@ export interface operations {
             query?: {
                 /** @description Requête de recherche (min. 2 caractères) */
                 q?: string;
+                /**
+                 * @description Arme le repli LIVE (résolution Xbox d'un joueur jamais croisé localement).
+                 *     Défaut false : recherche locale seule, rapide (typeahead). true uniquement
+                 *     sur intention explicite de l'utilisateur (« Rechercher sur Xbox ») car il
+                 *     ajoute un round-trip Xbox de 2-3 s (challenge V72-24).
+                 */
+                live?: boolean;
                 /** @description Nombre maximal de suggestions */
                 limit?: number;
             };

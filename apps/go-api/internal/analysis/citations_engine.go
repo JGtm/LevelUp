@@ -7,6 +7,7 @@
 //   - "medal"      : 1 ou N medal_ids → sum des counts
 //   - "stat"       : colonne match_participants → int(valeur)
 //   - "pve_stat"   : idem depuis pve_match_stats (graceful degradation si absent)
+//   - "objective_stat": colonne match_objective_stats (CTF/Zones/Oddball) → int(valeur)
 //   - "weapon_stat": "weapon_kills:<name>" dans Stats
 //   - "award"      : personal_score_awards (award_name → total)
 //   - "custom"     : dispatch via citations_custom.go
@@ -143,10 +144,14 @@ func dispatchFull(m domain.CitationFullMapping, ctx domain.CitationContext) int 
 	switch m.MappingType {
 	case domain.CitationMappingTypeMedal:
 		return computeMedalValue(m, ctx.Medals)
-	case domain.CitationMappingTypeStat, domain.CitationMappingTypePveStat, domain.CitationMappingTypeWeaponStat:
+	case domain.CitationMappingTypeStat, domain.CitationMappingTypePveStat,
+		domain.CitationMappingTypeWeaponStat, domain.CitationMappingTypeObjectiveStat:
 		if m.StatName == nil {
 			return 0
 		}
+		// objective_stat : StatName = colonne match_objective_stats (zone_captures,
+		// flag_returns, ...) injectée dans ctx.Stats par sync.loadObjectiveStats. Les
+		// colonnes *_seconds (DOUBLE) sont tronquées à l'entier (paliers en secondes).
 		return int(ctx.Stats[*m.StatName])
 	case domain.CitationMappingTypeAward:
 		if m.AwardName == nil {

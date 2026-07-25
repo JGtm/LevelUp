@@ -7,8 +7,11 @@
 // DB. L'historique des derniers matchs bouge moins vite qu'un service record
 // agrégé → TTL plus long (20 min) que DefaultRemoteStatsTTL.
 //
-// Clé = (xuid | limit). Les matchs d'une cible sont identiques quel que soit le
-// requérant → cache partagé entre utilisateurs sans fuite (données publiques).
+// Clé = (titleSlug | xuid | limit). Le titre (lu du contexte) fait partie de la clé
+// (défense en profondeur V72-29) : le même xuid peut être consulté sous plusieurs
+// titres et leurs derniers matchs ne doivent jamais se croiser. Les matchs d'une cible
+// sont identiques quel que soit le requérant → cache partagé entre utilisateurs sans
+// fuite (données publiques).
 package service
 
 import (
@@ -21,6 +24,7 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
@@ -82,7 +86,8 @@ func (c *CachedRecentMatchesProvider) FetchRecentMatches(
 	if xuid == "" || limit <= 0 {
 		return nil, nil
 	}
-	key := xuid + "|" + strconv.Itoa(limit)
+	// Titre inclus dans la clé (V72-29) : jamais de fuite cross-titre sous un même xuid.
+	key := ctxkeys.TitleSlug(ctx) + "|" + xuid + "|" + strconv.Itoa(limit)
 
 	if rows, ok := c.get(key); ok {
 		recentMatchesCacheHit.Add(1)

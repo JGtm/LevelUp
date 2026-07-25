@@ -995,6 +995,20 @@ en = "Frequent teammates"
 fr = "Aucun joueur trouvé pour \""
 en = "No player found for \""
 
+# Repli live explicite (V72-24) : bouton affiché quand la recherche locale ne
+# trouve pas le joueur, déclenchant la résolution Xbox (round-trip ~2-3 s).
+[common.gamertag.search_on_xbox]
+fr = "Rechercher sur Xbox"
+en = "Search on Xbox"
+
+[common.gamertag.searching_xbox]
+fr = "Recherche sur Xbox…"
+en = "Searching on Xbox…"
+
+[common.gamertag.xbox_badge]
+fr = "Xbox"
+en = "Xbox"
+
 # ─── Info tooltip ───────────────────────────────────────────────────────
 
 [common.tooltip.more_info_aria]
