@@ -1,3 +1,89 @@
+## [2026-07-25] V72-01 / H7 + H8 — verrous front du contrat généré, lot Group, CLÔTURE du chantier
+
+**Statut** : Complété — **chantier V72-01 INTÉGRALEMENT CLOS** (H0 à H8 `[x]`, bonus `[!]`
+justifiés et reportés). Pas de commit (superviseur applique les gates). Plan
+`.ai/V7/PLAN_V72_HUMA_OPENAPI.md`, section « CLÔTURE » ajoutée.
+
+**Décision technique H7 — le contrat généré a besoin d'un verrou CÔTÉ FRONT, pas seulement de
+tsc.** Constat qui motive tout : depuis H6 le contrat est dérivé du code Go, donc une
+régression de génération est SILENCIEUSE pour TypeScript — un enum qui redevient `string` est
+un type plus permissif (aucune erreur), un schéma retiré rend `components['schemas']['X']`
+égal à `unknown` (les appelants qui ne lisent pas le champ compilent toujours). D'où deux
+garde-rails complémentaires. (a) **Surface figée** : analyseur STATIQUE
+`apps/web/src/lib/api/contractSurface.ts` (commentaires retirés, littéraux de chaîne
+neutralisés — les gabarits `{player_slug}` et les exemples JSON en commentaire fausseraient le
+comptage d'accolades —, profondeur suivie ligne à ligne) + `contract-surface.guard.test.ts`
+comparant à `contract-surface.snapshot.json` : **176 chemins / 522 schémas / 182 opérations /
+5 réponses partagées / 1 paramètre partagé / 30 enums**. Sémantique asymétrique ASSUMÉE :
+l'AJOUT est toléré (le contrat doit pouvoir croître sans friction), la DISPARITION est rouge ;
+mise à jour explicite par `UPDATE_CONTRACT_SURFACE=1`. (b) **`response-types.guard.test.ts`
+durci** : ses 2 assertions étaient NÉGATIVES (interdire un nouveau type de réponse manuel) ;
+ajout de 2 assertions POSITIVES — RÉSOLUTION (les 274 citations `components['schemas'][...]`
+de `src/` désignent un schéma réellement émis) et TYPES CRITIQUES (20 réponses de page doivent
+rester des ré-exports du contrat, verrou contre la réouverture de la classe de bugs A2).
+Extraction CENTRALISÉE (CLAUDE.md n°6) : `contractSurface.ts` sert les deux tests ; le ratchet
+`tools/lint-contract-ratchet.mjs` garde la sienne (script Node hors `apps/web`, frontière
+ESM/TS) — 2 implémentations, pas 3, et les deux comptent 522 schémas indépendamment.
+
+**Morsure PROUVÉE, pas supposée** (les deux garde-rails testés sur une copie mutée de
+`generated.ts`, restaurée md5 à l'identique) : schéma retiré → rouge ; enum dégradé en `string`
+→ rouge ; membre `"desc"` retiré d'un enum → rouge ; schéma renommé → les 2 nouvelles
+assertions de `response-types.guard` rouges.
+
+**Lot Group/GroupMember (H7).** Le schéma dérivé était MOINS strict que le type manuel qu'il
+devait remplacer (`role: string`, `members` nullable) — d'où la baseline datée du 25/07. Corrigé
+à la SOURCE : `domain/group.go` porte `enum:"owner,member"` sur `Role` (type de SORTIE
+uniquement — les corps entrants sont décodés à la main en `RawBody`, donc zéro risque de 422
+Huma) et `nullable:"false"` sur `Members`. Le tag ne suffit pas : Go sérialise une slice nil en
+`null`. L'invariant runtime est tenu à la source, en UN seul point — `groupstore.load()`
+normalise nil → `[]` (couvre Get/List/ListForXUID ; `Create` initialisait déjà) — avec test
+`TestMembersNeverNilOnRead` (fixture legacy `"members":null` → `"members":[]` sérialisé).
+`types.ts` re-shimé : `Group`/`GroupMember` = ré-exports, et `GroupRole = GroupMember['role']`
+DÉRIVÉE (plus aucun littéral `'owner' | 'member'` en dur côté front) ; les deux noms retirés de
+`BASELINE_COLLISIONS`.
+
+**Résultats observés.** Régénération d'une propreté chirurgicale : `openapi.yaml` = **4 lignes
+de diff** (`members.type: array` au lieu de `[array,"null"]`, `role.enum: [owner, member]`),
+`generated.ts` = 3 lignes. Diff sémantique H8 vs baseline H0 (`cmd/openapi-diff`, rapport
+archivé `.ai/V7/openapi_diff_final_v72.txt`) : **0 perte hors inventaire, PROUVÉ** — l'ensemble
+des lignes retirées vs H0 est strictement IDENTIQUE entre l'openapi.yaml de H6 (597d5cc0c) et
+celui d'après H7, et l'ensemble des lignes ajoutées ne diffère que sur les 2 enrichissements
+Group. Le comptage brut (+1 384 / −840 lignes) est plus bruyant que le comptage de FAITS de H6
+(597/69/16) parce qu'un schéma inline devenu `$ref` compte 1 retrait + 1 ajout : l'inventaire
+des 16 pertes de H6 reste la référence, reproduit dans le rapport archivé. Correction d'un
+chiffre du plan au passage : les « 530 noms de schéma » de H6 étaient un décompte d'une autre
+base — les deux extracteurs indépendants disent **522**.
+
+**CI : rien à ajouter, vérifié sur pièces.** Le golden `TestOpenAPIYAMLIsUpToDate`
+(`//go:build cgo`) tourne DÉJÀ dans le job `go-coverage` (`go test -tags=integration -p 1
+./...`, `CGO_ENABLED: "1"`) ; `go-build` (CGO=0, domain/analysis/contracttest) et
+`go-contract-test` (`-run TestContract`) ne le couvrent pas, mais un verrou suffit. Workflow
+NON modifié (consigne). Réserve consignée au plan : ce verrou vit dans le job le plus lourd et
+le plus sujet aux flakes DuckDB — si `go-coverage` était allégé, y déplacer `make openapi-check`.
+
+**Restes statués.** Bonus post-bascule `[!]` (« hors périmètre v7.2 ») — dont la validation
+automatique des inputs, qui n'est PAS neutre : elle imposerait de convertir les 16 corps
+`RawBody` en `Body` typé, remplaçant le 400 `{invalid_body}` historique par le 422 de Huma
+(rupture de contrat front, décision produit). Découvertes reportées au `.ai/BACKLOG.md`
+(section « [archi/contrat] Reliquats du chantier V72-01 ») : `DefaultStatus` sur 11 handlers,
+**38 routes Go absentes du contrat publié** (29 Prestige + 3 catalog + 3 diag auto-sync +
+3 assets_metadata — le document est rendu depuis le routeur de DÉMO, qui ne les monte pas),
+bonus Huma, sémantiques non exprimables en tag. Les 6 renommages de paramètre et la divergence
+watcher sont RÉSOLUS par la régénération (le code fait foi) — rien à reporter.
+
+**Gates** (tous exécutés dans la session) : `gofmt -l .` vide ; `go build ./...` 0 ;
+`go vet ./...` 0 ; `go test ./...` 0 (aucun FAIL) ; `go test -tags=integration -p 1
+./internal/api/...` ok ; `make go-api-lint` **0 issues** ; `make openapi-check` à jour ;
+`npm run typecheck` 0 erreur ; `npx vitest run` **365 fichiers / 3 103 tests, 14 skippés,
+0 échec** ; `node tools/lint-contract-ratchet.mjs` clean (49 collisions, 112 interfaces,
+522 schémas).
+
+**Conclusion / prochaine étape.** V72-01 est CLOS : `openapi.yaml` est généré, fidèle, gaté
+byte-à-byte côté Go ET verrouillé en surface côté front. Prochaine étape = revue + commit par
+le superviseur (aucun commit posé). Le seul reliquat à valeur immédiate est le lot « 38 routes
+absentes du contrat publié » : elles portent déjà leur `humacore.Op`, il ne manque que leur
+montage dans le harnais de rendu.
+
 ## [2026-07-25] V72-01 / H6 — api/openapi.yaml devient GÉNÉRÉ (Huma + fragment manuel, golden)
 
 **Statut** : Complété. Pas de commit (superviseur applique les gates). Plan

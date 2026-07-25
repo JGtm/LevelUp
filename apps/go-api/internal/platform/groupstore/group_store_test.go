@@ -1,7 +1,10 @@
 package groupstore
 
 import (
+	"encoding/json"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/domain"
@@ -201,5 +204,43 @@ func TestMigrateDefaultRequiresOwner(t *testing.T) {
 	s := newTestStore(t)
 	if _, err := s.MigrateDefault("Foyer", "", "", nil); err != ErrMissingOwnerXUID {
 		t.Fatalf("owner vide doit donner ErrMissingOwnerXUID, got %v", err)
+	}
+}
+
+// TestMembersNeverNilOnRead — invariant de contrat (V72-01 / H7) : `Group.members` est
+// non nullable dans l'OpenAPI généré. Un fichier legacy sans `members` (ou avec `null`)
+// doit être normalisé en slice VIDE à la lecture, sinon encoding/json émet `null` et le
+// front reçoit un tableau absent là où le contrat promet un tableau.
+func TestMembersNeverNilOnRead(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "groups.json")
+	legacy := `{"version":"1.0","groups":{"grp_legacy":{"id":"grp_legacy","name":"Legacy",` +
+		`"owner_xuid":"xuid-owner","members":null,"created_at":"2026-01-01T00:00:00Z",` +
+		`"updated_at":"2026-01-01T00:00:00Z"}}}`
+	if err := os.WriteFile(path, []byte(legacy), 0o600); err != nil {
+		t.Fatalf("écriture fixture: %v", err)
+	}
+	s := NewGroupStore(path)
+
+	g, err := s.Get("grp_legacy")
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if g.Members == nil {
+		t.Fatal("Get: members nil — la normalisation nil → [] n'a pas eu lieu")
+	}
+	blob, err := json.Marshal(g)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	if !strings.Contains(string(blob), `"members":[]`) {
+		t.Fatalf("sérialisation attendue avec \"members\":[], got %s", blob)
+	}
+
+	all, err := s.List()
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(all) != 1 || all[0].Members == nil {
+		t.Fatalf("List: members nil — normalisation manquante: %+v", all)
 	}
 }

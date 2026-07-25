@@ -10680,9 +10680,7 @@ components:
         members:
           items:
             $ref: '#/components/schemas/GroupMember'
-          type:
-            - array
-            - "null"
+          type: array
         name:
           type: string
         owner_xuid:
@@ -10705,6 +10703,9 @@ components:
         joined_at:
           type: string
         role:
+          enum:
+            - owner
+            - member
           type: string
         xuid:
           type: string

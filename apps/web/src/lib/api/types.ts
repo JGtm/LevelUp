@@ -2046,25 +2046,14 @@ export type InviteCode = components['schemas']['InviteCode'] & {
 // ---------------------------------------------------------------------------
 // Groupes / familles (accès mutuel aux données)
 // ---------------------------------------------------------------------------
-// Types non encore exposés par l'OpenAPI généré ; consommés par features/groups/.
+// Contrat GÉNÉRÉ depuis Huma (V72-01 / H5 puis H7) : les routes /groups sont typées côté
+// Go, avec `role` en enum (owner|member) et `members` non nullable → ré-export direct,
+// plus de type manuel à maintenir en parallèle.
 
-export type GroupRole = 'owner' | 'member'
-
-export interface GroupMember {
-  xuid: string
-  gamertag: string
-  role: GroupRole
-  joined_at: string
-}
-
-export interface Group {
-  id: string
-  name: string
-  owner_xuid: string
-  members: GroupMember[]
-  created_at: string
-  updated_at: string
-}
+export type GroupMember = components['schemas']['GroupMember']
+export type Group = components['schemas']['Group']
+/** Union dérivée du contrat (pas de littéral en dur : l'enum vit dans domain/group.go). */
+export type GroupRole = GroupMember['role']
 
 // ---------------------------------------------------------------------------
 // Watcher présence Xbox RTA
