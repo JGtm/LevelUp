@@ -11,9 +11,6 @@
 #
 # Ces valeurs FR reproduisent EXACTEMENT le seed historique weapon_labels.go
 # (name_fr) pour preserver la parite d'affichage Halo Infinite byte-pour-byte. Note
-# de dette : hinf_fuel_rod_spnkr affiche "M41 SPNKr" en FR (heritage weapon_labels.go)
-# alors que l'arme est le Fuel Rod SPNKr — conserve par parite, a corriger avec l'user.
-
 [meta]
 title_slug     = "halo_infinite"
 schema_version = 1
@@ -28,7 +25,7 @@ hinf_s7_sniper      = { en = "S7 Sniper", fr = "S7 Sniper" }
 hinf_cqs48_bulldog  = { en = "CQS48 Bulldog", fr = "CQS48 Bulldog" }
 hinf_hydra          = { en = "MLRS-2 Hydra", fr = "Hydra" }
 hinf_m41_spnkr      = { en = "M41 SPNKr", fr = "M41 SPNKr" }
-hinf_fuel_rod_spnkr = { en = "Fuel Rod SPNKr", fr = "M41 SPNKr" }
+hinf_fuel_rod_spnkr = { en = "Fuel Rod SPNKr", fr = "SPNKr à combustible" }
 hinf_sidekick       = { en = "Mk50 Sidekick", fr = "MK50 Sidekick" }
 hinf_plasma_pistol  = { en = "Plasma Pistol", fr = "Pistolet à plasma" }
 hinf_needler        = { en = "Needler", fr = "Needler" }

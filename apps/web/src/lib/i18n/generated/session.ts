@@ -145,7 +145,7 @@ export const sessionManifest = {
   "session.detail.chart_mmr_title": { fr: "Challenge MMR", en: "MMR challenge" },
   "session.detail.chart_mode_breakdown_title": { fr: "Modes joués", en: "Modes played" },
   "session.detail.chart_net_lives_title": { fr: "Balance des dégâts cumulée", en: "Cumulative damage balance" },
-  "session.detail.chart_net_score_title": { fr: "Net score cumulé", en: "Cumulative net score" },
+  "session.detail.chart_net_score_title": { fr: "Solde frags − morts cumulé", en: "Cumulative net score" },
   "session.detail.chart_outcomes_title": { fr: "Résultats de la session", en: "Session results" },
   "session.detail.chart_perf_mean": { fr: "moy.", en: "avg." },
   "session.detail.chart_perf_series": { fr: "Score performance", en: "Performance score" },
