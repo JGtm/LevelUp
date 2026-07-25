@@ -7,8 +7,8 @@ package domain
 // SettingsResponse est le payload retourné par GET /settings.
 // discord_webhook_url n'est JAMAIS inclus — seulement discord_webhook_url_present.
 type SettingsResponse struct {
-	Lang                 string `json:"lang"`
-	DiscordLang          string `json:"discord_lang"`
+	Lang                 string `json:"lang" enum:"fr,en"`
+	DiscordLang          string `json:"discord_lang" enum:"fr,en"`
 	UserTimezone         string `json:"user_timezone"`
 	NormalizeModeLabels  bool   `json:"normalize_mode_labels"`
 	ShowRecords          bool   `json:"show_records"`
@@ -18,7 +18,7 @@ type SettingsResponse struct {
 	// MediaDeleteSourceAfterTranscode : valeur EFFECTIVE résolue (bool, pas un
 	// pointeur) de la politique de suppression du source après transcodage HLS.
 	// Résolue par le handler via config.ResolveMediaDeleteSource (env > store > isProd).
-	MediaDeleteSourceAfterTranscode    bool     `json:"media_delete_source_after_transcode"`
+	MediaDeleteSourceAfterTranscode    bool     `json:"media_delete_source_after_transcode" doc:"Supprimer le fichier source après transcodage HLS. GET renvoie la valeur effective (env > réglage > défaut prod)."`
 	MediaToleranceMinutes              int      `json:"media_tolerance_minutes"`
 	MediaWatcherEnabled                bool     `json:"media_watcher_enabled"`
 	MediaWatcherDebounceSeconds        int      `json:"media_watcher_debounce_seconds"`
@@ -61,7 +61,7 @@ type SettingsResponse struct {
 
 	// ShowProgression contrôle l'affichage du système Objectifs/Prestige
 	// (section Accueil + entrée nav L1). Défaut : true.
-	ShowProgression bool `json:"show_progression"`
+	ShowProgression bool `json:"show_progression" doc:"Affichage du système Objectifs/Prestige (section Accueil + nav L1)."`
 
 	// CoachProactiveMode active la proposition automatique de challenges/arcs
 	// Prestige par le coach (cf. ADR 0020, DEC-2). Défaut : true (bascule

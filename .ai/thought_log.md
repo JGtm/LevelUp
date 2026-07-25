@@ -1,3 +1,54 @@
+## [2026-07-25] V72-01 — H3 : instrumentation sémantique des DTOs (tags Huma)
+
+**Statut** : Complété (H3 du PLAN_V72_HUMA_OPENAPI.md ; H4-H8 restent). Pas de commit
+(superviseur). Branche `feat/v7.2-notion-batch`. Comportement HTTP inchangé (tags de doc
+uniquement ; enums posés sur des OUTPUTS ou inputs RawBody non validés → 0 risque 422).
+
+**Objectif** : porter la sémantique de schéma.champ du yaml manuel en tags struct Go
+(`doc`/`enum`/`default`/`example`) pour que le doc généré par Huma (H6) soit au moins aussi
+riche, et produire l'INVENTAIRE FERMÉ des sémantiques non portables.
+
+**Décision technique principale** : le recon annonçait « 402 desc / 21 enum / 30 default /
+6 example ». Mesure sur pièces (script kin-openapi jetable) : ces chiffres sont des
+comptages BRUTS de tout le doc — 175 des 232 `description:` sont des descriptions de
+RÉPONSE/paramètre (niveau opération, PAS schéma.champ, non exprimables en tag de champ) ;
+enum=21/default=30/example=6 confirmés au grep mais majoritairement au niveau param ou sur
+des schémas d'entrée manuels. Le PORTABLE en tag de CHAMP = 31 schémas, dont **11 seulement
+ont un type Go réellement généré par Huma** (outputs / imbriqués dans un output). Constat
+clé : les types « *Request » sont décodés à la main (`RawBody` / `var req domain.X`), donc
+Huma ne génère JAMAIS leur schéma → leur sémantique reste dans le fragment manuel (H6), pas
+en tags. 10 autres schémas yaml n'ont aucun type Go (chi-brut backup, champ scalaire,
+legacy Plotly).
+
+**Posé** : 19 descriptions + 11 enums + 5 defaults sur 10 types Go (bootstrap, auth,
+engagement_score, media_audio_config, settings, admin_monitoring, explorer, career).
+Vérifié empiriquement (registre Huma neuf) que les enums de types string custom
+(`MediaAudioMode`, `AudioTrackRole`) sont INLINE (pas de `$ref`), et que Huma expose les
+descriptions SIBLING sur les champs `$ref` (3.1). 2 descriptions raccourcies pour lll ≤ 220.
+Commentaires Go redondants (enum listés en `//`) remplacés par le tag.
+
+**Non portable → inventaire fermé** (8 catégories dans le plan) : descriptions de schéma
+RACINE (Huma n'a pas de tag type-level ; seul `SchemaTransformer`, hors périmètre tag) ;
+schémas sans type Go / à décodage manuel ; `ApiErrorSchema` + double schéma d'erreur → H4 ;
+dérives de nom yaml↔Go ; defaults triviaux (zéro) ; sémantique de paramètre + enums d'input
+NON posés par prudence (lang/status/provider) → H6 ; 5 exemples de réponse d'erreur → H4 ;
+16 request bodies RawBody → fragment manuel.
+
+**Gate** : nouveau `openapi_schema_semantics_test.go` — Partie A (indépendante du routage :
+régénère chaque type via registre neuf, 35 sémantiques vérifiées / 10 types, couvre les
+types non montés en démo) + Partie B (doc partagé en mémoire vs yaml, schéma.champ commun,
+allowlist = inventaire + compteurs anti-caducité). Résultats : Partie A 35/35 ; Partie B
+28 en parité, 5 pertes = 5 descriptions racine allowlistées, **0 perte hors inventaire**.
+
+**Résultats gates** : gofmt -l vide ; `go build ./...` ok ; `go vet ./...` ok ;
+`go test ./internal/api/...` ok ; `go test ./...` 118 pkg ok / 0 fail ; `make go-api-lint`
+0 issue. Périmètre : 8 fichiers `internal/domain/*` + le test — ZÉRO autre fichier Go, ZÉRO
+`apps/web` (agent front en parallèle, non touché).
+
+**Conclusion / prochaine étape** : H3 clos. H4 (modèle d'erreur unifié `humacore.apiError`
++ fusion `ApiErrorSchema`/`ApiError`) — l'inventaire H3 y aiguille déjà les exemples
+d'erreur et le double schéma.
+
 ## [2026-07-25] V72-01 — H2 : Tags/Summary/OperationID stables sur les 204 routes Huma
 
 **Statut** : Complété (H2 du PLAN_V72_HUMA_OPENAPI.md ; H3-H8 restent). Pas de commit
