@@ -1,3 +1,19 @@
+## [2026-07-25] Incident deploy v7.2.0 n°2 — double build CGO parallèle → OOM VPS
+
+**Statut** : Correctif commité (push au retour du VPS). Le 2e run de deploy (timeout 40m
+OK, version v7.2.0 OK) est mort à 19:03 : « remote command exited without exit status » —
+VPS regelé (SSH + HTTP morts), 2e reboot IONOS nécessaire. **Cause racine** : V72-31 a
+introduit `build.args.VERSION` sur le service `levelup` SEUL ; `levelup-demo` restait en
+`build: .` (VERSION=dev) → les couches go-builder des 2 images DIVERGENT → BuildKit lance
+DEUX builds CGO server complets EN PARALLÈLE (visibles #23/#24 dans le log) sur
+2 vCPU/2 Go → OOM. Avant V72-31, les 2 builds étaient identiques donc dédupliqués en un
+seul — c'est le premier deploy où ils divergent, d'où 2 gels le même jour. **Correctifs** :
+(1) docker-compose.yml — même `args.VERSION` sur levelup-demo (couches identiques =
+dédup = un seul build Go ; prend effet DÈS le prochain run, compose relit le yml après le
+git reset) ; (2) scripts/deploy.sh — builds sérialisés service par service (défense en
+profondeur ; effet au deploy suivant seulement, inode bash). Bénéfice collatéral : la
+démo affichera la vraie version au lieu de "dev".
+
 ## [2026-07-25] Incident deploy v7.2.0 — timeout SSH 10 min + tag absent du VPS
 
 **Statut** : Résolu (correctif poussé dans ce commit). Le job « Deploy lvelup.info » du
