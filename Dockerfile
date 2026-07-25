@@ -42,11 +42,30 @@ RUN go mod download
 # Code source Go
 COPY apps/go-api/ ./
 
-# Version injectée via ldflags. ARG VERSION peut être passé par le caller
-# (release.yml extrait depuis le tag git, docker-compose laisse "dev").
-ARG VERSION=dev
+# La version N'EST PLUS une entrée de build (V721-15, 2026-07-25).
+#
+# Elle était bakée via `ARG VERSION` + `-X main.version`. Deux conséquences, toutes
+# deux constatées en production :
+#   1. Un simple tag de release invalidait cette couche et relançait une compilation
+#      CGO complète — sur un VPS 2 vCPU / 2 Go, c'est le poste le plus lourd du
+#      déploiement.
+#   2. Les images prod et démo recevant des valeurs différentes, leurs couches
+#      go-builder divergeaient et BuildKit lançait DEUX compilations CGO au lieu
+#      d'une → épuisement mémoire, VPS gelé (incident 2026-07-25, deploy v7.2.0).
+#      Aligner les valeurs corrigeait le symptôme par convention ; les retirer
+#      supprime la divergence par construction.
+#
+# La version vient désormais UNIQUEMENT de l'environnement d'exécution
+# (`LEVELUP_APP_VERSION`, cf. config.go). scripts/deploy.sh la persiste dans `.env`,
+# que docker compose lit automatiquement pour TOUS les services et à TOUTE commande
+# (`up`, `--force-recreate`, reboot, session ssh manuelle) — c'est ce qui couvre le
+# cas ayant motivé le bakage à l'origine (env perdu au recreate de la regen démo).
+# Effet de bord voulu : changer de version ne recompile plus rien.
+#
+# `main.version` (cmd/server/main.go) reste un repli utile pour un `go build` local
+# avec ldflags ; il n'est simplement plus renseigné ici.
 RUN CGO_ENABLED=1 GOOS=linux go build \
-    -ldflags "-X main.version=${VERSION} -extldflags '-static'" \
+    -ldflags "-extldflags '-static'" \
     -o /build/levelup-server \
     ./cmd/server/
 

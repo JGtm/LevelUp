@@ -77,13 +77,18 @@ fi
 
 # 2c. Version de l'app pour les notifications "nouvelle version" (in-app app_release
 # + Discord). Le serveur ne notifie que si cfg.AppVersion est un vrai semver (≠ "dev").
-# CALCULÉE AVANT LE BUILD : la version est désormais BAKÉE dans le binaire via le
-# build-arg VERSION (docker-compose interpole ${LEVELUP_APP_VERSION} → Dockerfile
-# ARG VERSION → ldflags -X main.version). Elle survit donc à toute perte de l'env
-# runtime (recreate demo-regen sans la variable = cause des notifs manquées v7.0.0/
-# v7.1.0). L'export shell ci-dessous est lu à la fois par le `build` (2d) et le `up`
-# (2e). L'anti-spam (major/minor, last_notified_version) est géré côté Go : entre
-# deux tags, la même valeur => aucune re-notification. Fallback "dev" (dépôt sans tag)
+#
+# V721-15 (2026-07-25) : la version N'EST PLUS bakée dans le binaire. Elle transite
+# UNIQUEMENT par l'environnement d'exécution (LEVELUP_APP_VERSION), persisté dans
+# `.env` juste en dessous. Raison : en faire une entrée de build obligeait à
+# recompiler tout le Go à chaque tag, et faisait diverger les couches prod/démo —
+# donc deux compilations CGO simultanées, d'où l'épuisement mémoire du VPS au
+# deploy v7.2.0. Le `.env` couvre le cas qui avait motivé le bakage (env runtime
+# perdu quand la regen démo recrée un conteneur depuis une session ssh nue) : docker
+# compose le lit pour TOUS les services et à TOUTE commande. Cf. Dockerfile.
+#
+# L'anti-spam (major/minor, last_notified_version) est géré côté Go : entre deux
+# tags, la même valeur => aucune re-notification. Fallback "dev" (dépôt sans tag)
 # => notifications gardées OFF, comportement inchangé.
 # --match 'v*.*.*' : ne retenir QUE les tags de release semver (release.yml se
 # déclenche sur ce motif) et ignorer les tags de travail (ex. "Shared-social-fixed").
@@ -96,8 +101,10 @@ echo "[deploy] LEVELUP_APP_VERSION=$LEVELUP_APP_VERSION (bakée au build + env r
 # ssh, reboot) recréerait sinon le conteneur avec le défaut "dev" — c'est arrivé
 # au deploy v7.1.0 (le job demo-regen redémarre la prod dans une session SSH sans
 # la variable). L'export shell ci-dessus reste prioritaire sur .env au `up` de 2e.
-# Défense en profondeur : même si le conteneur repart avec l'env "dev", le binaire
-# baké (2d) garde la vraie version → la notif « nouvelle version » reste correcte.
+# Depuis V721-15 c'est le SEUL porteur de la version (plus de repli baké dans le
+# binaire) : l'étape 4b ci-dessous vérifie donc que la version réellement servie
+# correspond, pour qu'un .env perdu échoue bruyamment au lieu de désactiver
+# silencieusement les notifications de version.
 touch .env
 grep -v '^LEVELUP_APP_VERSION=' .env > .env.tmp || true
 printf 'LEVELUP_APP_VERSION=%s\n' "$LEVELUP_APP_VERSION" >> .env.tmp
@@ -111,9 +118,12 @@ mv .env.tmp .env
 # le script sur un `docker compose build` en échec, mais on capte explicitement l'erreur
 # pour un message sans ambiguïté (et pour documenter l'invariant : rien n'a bougé).
 # SÉRIALISÉ service par service : un `docker compose build` nu construit les deux
-# images EN PARALLÈLE ; si leurs couches go-builder divergent (build-args différents),
-# ce sont deux builds CGO simultanés sur 2 vCPU/2 Go → OOM (incident 2026-07-25).
-# Avec les args alignés (docker-compose.yml), le 2e build est un pur cache-hit.
+# images EN PARALLÈLE, et deux builds CGO simultanés sur 2 vCPU / 2 Go suffisent à
+# épuiser la mémoire (incident 2026-07-25, VPS gelé). Depuis V721-15 les deux
+# services n'ont plus AUCUN build-arg, donc leur couche go-builder est identique par
+# construction et le 2e build est un cache-hit garanti — la sérialisation reste
+# néanmoins en place : elle ne coûte rien et borne la mémoire même si une divergence
+# réapparaissait un jour (nouvelle dépendance de build, changement de contexte).
 # NB : une modif de CE script ne prend effet qu'au deploy suivant (bash retient
 # l'ancien inode pendant que le git reset remplace le fichier).
 echo "[deploy] docker compose build levelup (puis levelup-demo, sérialisé)..."
@@ -205,6 +215,36 @@ else
     echo "[deploy]    Logs : docker compose logs --tail=80 levelup"
     docker compose logs --tail=80 levelup || true
     exit 1
+fi
+
+# 4b. Vérifier que la version SERVIE correspond à celle qu'on vient de déployer.
+#
+# Depuis V721-15 la version n'est plus bakée dans le binaire : elle ne vient QUE de
+# LEVELUP_APP_VERSION (persisté en .env à l'étape 2c). Sans ce contrôle, un .env
+# perdu ou un conteneur recréé sans la variable ferait retomber l'app sur "dev" et
+# désactiverait SILENCIEUSEMENT les notifications de nouvelle version — exactement
+# le défaut qui avait été constaté aux deploy v7.0.0 et v7.1.0, et qui avait motivé
+# le bakage. On le rend donc bruyant plutôt que de le prévenir par redondance.
+#
+# Warn-only et non bloquant : à ce stade la prod tourne déjà et répond au
+# healthcheck ; faire échouer le déploiement pour un libellé de version serait
+# disproportionné. Le message doit en revanche être impossible à rater dans les logs.
+if [[ "$LEVELUP_APP_VERSION" != "dev" ]]; then
+    # Clé exacte du payload : "app_version" (domain.HealthResponse, json:"app_version").
+    _served_version="$(curl -sf "http://127.0.0.1:${APP_PORT}/health" 2>/dev/null \
+        | grep -o '"app_version"[[:space:]]*:[[:space:]]*"[^"]*"' \
+        | head -1 | sed 's/.*"\([^"]*\)"$/\1/')"
+    if [[ -z "$_served_version" ]]; then
+        echo "[deploy] ⚠️  Version servie illisible depuis /health — contrôle ignoré"
+    elif [[ "$_served_version" != "$LEVELUP_APP_VERSION" ]]; then
+        echo "[deploy] ❌ VERSION SERVIE INCOHÉRENTE : /health annonce '$_served_version'," \
+             "attendu '$LEVELUP_APP_VERSION'."
+        echo "[deploy]    Cause probable : .env perdu ou conteneur recréé sans LEVELUP_APP_VERSION."
+        echo "[deploy]    Conséquence : les notifications « nouvelle version » ne partiront PAS."
+        echo "[deploy]    Correctif : vérifier /opt/levelup/.env puis 'docker compose up -d levelup'."
+    else
+        echo "[deploy] ✅ Version servie conforme : $_served_version"
+    fi
 fi
 
 # 5. Vérifier le container demo (port 8001) — warn-only (non bloquant).
