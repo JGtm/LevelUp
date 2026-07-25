@@ -19,6 +19,7 @@ import (
 	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/teammates"
+	"levelup/go-api/internal/sync"
 )
 
 // HomeService orchestre les donnÃ©es de la page d'accueil.
@@ -342,6 +343,54 @@ func (s *HomeService) fetchHomePageData(ctx context.Context, locale string) (hom
 	return d, nil
 }
 
+// applyPerfPlacementsToRecentItems renseigne PerfPlacementDone/Total sur les tuiles
+// de match de l'Accueil (RecentMatchItem) dont la chaîne de PERFORMANCE est sous le
+// seuil — MÊME algorithme que l'Explorer (computePerfPlacements), une seule source de
+// vérité. La tuile affiche alors « En placement (X/Y) » au lieu d'un vide, JAMAIS un 0
+// fabriqué pour une perf absente. Le comptage par chaîne porte sur TOUT l'historique
+// (allRows) ; l'application sur les items visibles.
+//
+// Divergence assumée vs l'Explorer : la row canonique de l'Accueil ne porte pas
+// `is_excluded` (exclusions manuelles, rares et hors placement) → l'éligibilité ne
+// filtre que le DNF (miroir du COALESCE(outcome,0) != 4 de loadHistoryForPerf).
+func applyPerfPlacementsToRecentItems(ctx context.Context, allRows []canonical.PlayerMatchRow, itemLists ...[]domain.RecentMatchItem) {
+	if len(allRows) == 0 {
+		return
+	}
+	slug := ctxkeys.TitleSlug(ctx)
+	inputs := make([]perfPlacementInput, len(allRows))
+	for i := range allRows {
+		r := &allRows[i]
+		pair := ""
+		if r.Enrichment.PairName != nil {
+			pair = *r.Enrichment.PairName
+		}
+		isRanked := r.Summary.IsRanked != nil && *r.Summary.IsRanked
+		isFirefight := r.Summary.IsPvE != nil && *r.Summary.IsPvE
+		inputs[i] = perfPlacementInput{
+			matchID:  r.Summary.MatchID,
+			chain:    sync.GetPerformanceChain(slug, pair, isRanked, isFirefight),
+			eligible: r.Summary.Outcome != canonical.OutcomeDNF,
+			hasScore: r.Enrichment.PerformanceScore != nil,
+		}
+	}
+	placements := computePerfPlacements(inputs, sync.MinMatchesPerChainForRelative)
+	if len(placements) == 0 {
+		return
+	}
+	for _, items := range itemLists {
+		for i := range items {
+			dt, ok := placements[items[i].MatchID]
+			if !ok {
+				continue
+			}
+			d, t := dt[0], dt[1]
+			items[i].PerfPlacementDone = &d
+			items[i].PerfPlacementTotal = &t
+		}
+	}
+}
+
 // GetHomePage retourne la page d'accueil agrÃ©gÃ©e (hero card, highlights, matchs rÃ©cents,
 // mÃ©dias rÃ©cents, rÃ©sumÃ©s de sessions solo et escouade).
 //
@@ -371,6 +420,10 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 	highlights := analysis.BuildHighlightsFromCanonical(d.canonicalRows, locale)
 	recentMatches := analysis.BuildRecentMatchesWithFavoritesFromCanonical(d.canonicalRows, len(d.canonicalRows), d.favoriteIDs, locale, hp, s.skillBadgeResolver)
 	favoriteMatches := buildFavoriteMatchListCanonical(d.canonicalRows, d.favoriteIDs, locale, hp, s.skillBadgeResolver)
+	// Placement de chaîne de PERFORMANCE sur les tuiles de match : même signal que
+	// l'Explorer (« En placement (X/Y) » au lieu d'un vide ou d'un 0 fabriqué pour une
+	// perf structurellement absente). Comptage par chaîne sur TOUT l'historique.
+	applyPerfPlacementsToRecentItems(ctx, d.canonicalRows, recentMatches, favoriteMatches)
 	soloSession := analysis.BuildSessionSummaryFromCanonical(d.canonicalRows, false, locale, hp)
 	squadSession := analysis.BuildSessionSummaryFromCanonical(d.canonicalRows, true, locale, hp)
 	soloSessions := analysis.BuildSessionSummariesFromCanonical(d.canonicalRows, false, 20, locale, hp)

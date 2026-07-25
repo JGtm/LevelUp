@@ -12,6 +12,7 @@ import (
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/sync"
 )
 
 // fakeSessionHighlightLoader implémente highlightEventsLoader pour tester le
@@ -620,8 +621,11 @@ func TestComputeSessionPlacements_CSR(t *testing.T) {
 	if p, ok := pl["m1"]; !ok || p.done != 3 || p.total != 5 {
 		t.Fatalf("m1 placement = %+v (ok=%v), want {done:3 total:5}", pl["m1"], ok)
 	}
-	if _, ok := pl["m2"]; ok {
-		t.Fatal("m2 ne doit pas être en placement (pas de remaining)")
+	// m2 : CSR établi → AUCUN placement de CLASSEMENT (done/total à zéro). L'entrée
+	// peut exister dans la map car elle porte aussi le placement de chaîne de
+	// PERFORMANCE (V72-34, champs perfDone/perfTotal) — signal distinct.
+	if p := pl["m2"]; p.total != 0 || p.done != 0 {
+		t.Fatalf("m2 ne doit pas être en placement de classement (pas de remaining), got %+v", p)
 	}
 
 	// applyPlacementsToRows renseigne les rows correspondantes.
@@ -632,6 +636,49 @@ func TestComputeSessionPlacements_CSR(t *testing.T) {
 	}
 	if detail[1].PlacementDone != nil {
 		t.Fatal("m2 row ne doit pas avoir de placement")
+	}
+}
+
+// TestComputeSessionPlacements_PerfChain (V72-34) : la vue Session expose le
+// placement de la chaîne de PERFORMANCE sur ses lignes, indépendamment du placement
+// de classement — même signal que l'Explorer (Perf/ΔPerf), via applyPerfPlacements.
+func TestComputeSessionPlacements_PerfChain(t *testing.T) {
+	svc := &SessionPageService{}
+	start := time.Date(2026, 7, 24, 19, 0, 0, 0, time.UTC)
+	win := domain.OutcomeWin
+	scored := 61.0
+	rows := []legacymatch.StatsMatchRow{
+		// 2 matchs BTB sans perf : chaîne "btb" à 3 éligibles < 10 → 3/10 attendu.
+		{MatchID: "btb1", StartTime: start, Outcome: &win, PairName: "BTB:CTF on Highpower", SkillRatingType: "lusr"},
+		{MatchID: "btb2", StartTime: start.Add(time.Hour), Outcome: &win, PairName: "BTB:Slayer on Behemoth", SkillRatingType: "lusr"},
+		{MatchID: "btb3", StartTime: start.Add(2 * time.Hour), Outcome: &win, PairName: "BTB:Total Control on Insolence", SkillRatingType: "lusr"},
+		// Match déjà scoré : jamais annoncé en placement perf.
+		{MatchID: "btb4", StartTime: start.Add(3 * time.Hour), Outcome: &win, PairName: "BTB:CTF on Fortitude",
+			SkillRatingType: "lusr", PerfScoreComputed: &scored},
+	}
+	pl := svc.computeSessionPlacements(context.Background(), rows)
+
+	// 4 matchs éligibles dans la chaîne btb (le scoré compte dans la taille de chaîne).
+	for _, id := range []string{"btb1", "btb2", "btb3"} {
+		p, ok := pl[id]
+		if !ok || p.perfDone != 4 || p.perfTotal != sync.MinMatchesPerChainForRelative {
+			t.Errorf("%s: perf placement = %+v (ok=%v), want perfDone=4 perfTotal=%d",
+				id, p, ok, sync.MinMatchesPerChainForRelative)
+		}
+	}
+	if p := pl["btb4"]; p.perfTotal != 0 {
+		t.Errorf("btb4 (perf déjà calculée) ne doit pas être en placement perf, got %+v", p)
+	}
+
+	detail := []domain.SessionDetailMatchRow{{MatchID: "btb1"}, {MatchID: "btb4"}}
+	applyPlacementsToRows(detail, pl)
+	if detail[0].PerfPlacementDone == nil || *detail[0].PerfPlacementDone != 4 ||
+		detail[0].PerfPlacementTotal == nil || *detail[0].PerfPlacementTotal != 10 {
+		t.Errorf("btb1 row : perf placement non appliqué (done=%v total=%v)",
+			detail[0].PerfPlacementDone, detail[0].PerfPlacementTotal)
+	}
+	if detail[1].PerfPlacementDone != nil {
+		t.Errorf("btb4 row ne doit pas porter de placement perf, got %v", detail[1].PerfPlacementDone)
 	}
 }
 

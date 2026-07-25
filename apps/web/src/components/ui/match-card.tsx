@@ -78,7 +78,17 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
   const skillTierLabel = m.skill_tier_label
   const skillDelta = m.skill_rating_delta
   const skillBadgeURL = m.skill_rank_image_url
-  const hasPerfOrSkill = perfScore != null || skillValue != null
+  // Perf absente PARCE QUE la chaîne de performance du match est encore en
+  // calibration (< 10 matchs éligibles) : on affiche « En placement (X/Y) » à la
+  // place du grand nombre, JAMAIS un 0 (un 0 se lirait comme la pire perf possible
+  // alors qu'aucune perf n'existe). Signal back perf_placement_* — même source que
+  // le badge des colonnes Perf/ΔPerf de l'Explorer. Absent (chaîne calibrée) → le
+  // bloc perf reste simplement masqué, comme avant.
+  const perfPlacementDone = m.perf_placement_done
+  const perfPlacementTotal = m.perf_placement_total
+  const showPerfPlacement =
+    perfScore == null && perfPlacementDone != null && perfPlacementTotal != null
+  const hasPerfOrSkill = perfScore != null || skillValue != null || showPerfPlacement
 
   const kills = m.kills ?? 0
   const assists = m.assists ?? 0
@@ -258,8 +268,23 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
                     <span className="text-2xs font-medium leading-none text-muted-foreground">{t('common.match_card.performance')}</span>
                   </div>
                 )}
+                {/* Perf en cours de calibration : mention compacte à la place du
+                    grand nombre (jamais un 0 fabriqué pour une perf inexistante). */}
+                {showPerfPlacement && (
+                  <div className="flex flex-col items-center justify-center shrink-0 px-3 gap-0.5">
+                    <span className="text-2xs italic text-muted-foreground text-center">
+                      {formatMessage(commonManifest, 'common.home.rank_placement_progress', locale, {
+                        completed: perfPlacementDone ?? 0,
+                        total: perfPlacementTotal ?? 0,
+                      })}
+                    </span>
+                    <span className="text-2xs font-medium leading-none text-muted-foreground">
+                      {t('common.match_card.performance')}
+                    </span>
+                  </div>
+                )}
                 {/* Séparateur vertical fin */}
-                {perfScore != null && skillValue != null && (
+                {(perfScore != null || showPerfPlacement) && skillValue != null && (
                   <div className="w-px self-stretch bg-border shrink-0 my-1" />
                 )}
                 {/* Colonne droite : Skill rating */}

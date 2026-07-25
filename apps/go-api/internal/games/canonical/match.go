@@ -209,8 +209,14 @@ type PlayerMatchRow struct {
 // dans le core canonical (sessions, performance score interne, dominance flag
 // calculé au sync, contexte friends, MMR enemy si head-to-head).
 type PlayerMatchEnrichment struct {
-	SessionID           *string
-	SessionLabel        *string
+	SessionID    *string
+	SessionLabel *string
+	// PairName : pair_name brut du match (ex. "BTB:CTF on Highpower"), surfacé depuis
+	// la source shared pour permettre la classification de la chaîne de performance
+	// (GetPerformanceChain) côté service — MatchSummary ne porte que la CATÉGORIE
+	// (PairMode : "CTF"), insuffisante pour distinguer btb/arena/chaos. Nil si absent
+	// (ex. Halo 5 sans pair_name). Champ additif LevelUp-specific (ADR 0005).
+	PairName            *string
 	PerformanceScore    *float64
 	DominanceFlag       DominanceFlag
 	HadBotTeammate      bool

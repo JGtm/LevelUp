@@ -105,6 +105,10 @@ export function toExplorerRow(m: SessionDetailMatchRow, withFriends: boolean, lo
     // à la place du palier quand les deux sont présents.
     placement_done: m.placement_done ?? null,
     placement_total: m.placement_total ?? null,
+    // Placement de la chaîne de performance (colonnes Perf/ΔPerf) — signal distinct
+    // du placement de classement ci-dessus, cf. ExplorerMatchesTable.placement.tsx.
+    perf_placement_done: m.perf_placement_done ?? null,
+    perf_placement_total: m.perf_placement_total ?? null,
     team_mmr: m.team_mmr ?? null,
     enemy_mmr: m.enemy_mmr ?? null,
     delta_mmr: m.delta_mmr ?? null,

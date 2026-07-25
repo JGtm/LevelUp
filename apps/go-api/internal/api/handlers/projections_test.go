@@ -44,6 +44,43 @@ func TestBuildExplorerRowFromMatchHistory_placementPropagatesWithNilScoreAndRati
 	}
 }
 
+// TestBuildExplorerRowFromMatchHistory_perfPlacementPropagatesIndependently (V72-34)
+// vérifie que le signal DÉDIÉ aux colonnes Perf/ΔPerf traverse la projection
+// INDÉPENDAMMENT du placement de classement — cas JGtm : LUSR établi (rating_type
+// non nul, PAS de placement_done) MAIS chaîne perf sous le seuil → perf_placement 8/10
+// et perf_score nul. C'est ce couple que consomme hasPerfPlacementSignal côté front.
+func TestBuildExplorerRowFromMatchHistory_perfPlacementPropagatesIndependently(t *testing.T) {
+	item := domain.MatchHistoryRow{
+		MatchID:                  "btb-jgtm",
+		PerformanceScoreRelative: nil, // chaîne perf en calibration
+		PerfTier:                 0,
+		SkillRatingType:          strPtrHandlers("LUSR"), // Note établie
+		SkillTierLabel:           strPtrHandlers("Or II"),
+		PlacementDone:            nil, // pas en placement de CLASSEMENT
+		PlacementTotal:           nil,
+		PerfPlacementDone:        intPtr(8),
+		PerfPlacementTotal:       intPtr(10),
+	}
+	row := BuildExplorerRowFromMatchHistory(item)
+
+	if row.PerfScore != nil || row.DeltaPerf != nil {
+		t.Errorf("PerfScore/DeltaPerf want nil (chaîne perf en calibration), got %v/%v", row.PerfScore, row.DeltaPerf)
+	}
+	if row.PerfPlacementDone == nil || *row.PerfPlacementDone != 8 {
+		t.Errorf("PerfPlacementDone want 8, got %v", row.PerfPlacementDone)
+	}
+	if row.PerfPlacementTotal == nil || *row.PerfPlacementTotal != 10 {
+		t.Errorf("PerfPlacementTotal want 10, got %v", row.PerfPlacementTotal)
+	}
+	// La colonne Note garde son propre signal : rating_type présent, placement absent.
+	if row.RatingType == nil || *row.RatingType != "LUSR" {
+		t.Errorf("RatingType want LUSR (Note inchangée), got %v", row.RatingType)
+	}
+	if row.PlacementDone != nil || row.PlacementTotal != nil {
+		t.Errorf("placement de classement doit rester nil, got %v/%v", row.PlacementDone, row.PlacementTotal)
+	}
+}
+
 func TestBuildExplorerRowFromMatchHistory_deltaPerfDerivedFromScoreMinus50(t *testing.T) {
 	score := 73
 	item := domain.MatchHistoryRow{

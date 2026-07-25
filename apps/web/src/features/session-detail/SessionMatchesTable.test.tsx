@@ -78,6 +78,19 @@ describe('toExplorerRow — adapter session → Explorer', () => {
     expect(r.placement_done).toBe(3)
     expect(r.placement_total).toBe(5)
   })
+
+  it('placement de chaîne perf (perf_placement_done/total) mappé indépendamment (V72-34)', () => {
+    const r = toExplorerRow(
+      // placement_* absents (schéma généré : number | undefined) = pas de placement
+      // de classement ; seul le signal perf est posé — c'est le cas JGtm.
+      { ...makeRow(), placement_done: undefined, placement_total: undefined, perf_placement_done: 8, perf_placement_total: 10 },
+      false,
+      'fr',
+    )
+    expect(r.perf_placement_done).toBe(8)
+    expect(r.perf_placement_total).toBe(10)
+    expect(r.placement_done).toBeNull()
+  })
 })
 
 describe('SessionMatchesTable — rendu (réutilise ExplorerMatchesTable)', () => {
