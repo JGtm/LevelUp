@@ -697,6 +697,13 @@ export interface ExplorerMatchRow {
   placement_done?: number | null
   /** Seuil placement (Y). CSR : 5 ou 10 selon saison. LUSR : 10. */
   placement_total?: number | null
+  /** Placement de la chaîne de PERFORMANCE (X/Y) — signal DÉDIÉ aux colonnes Perf/ΔPerf,
+   *  distinct de placement_done/total (colonne Note/Rang). Renseigné quand la chaîne perf
+   *  du match compte moins de Y matchs éligibles → perf_score structurellement absent.
+   *  Un match peut avoir une Note LUSR établie ET être en placement perf (chaîne perf
+   *  jeune, cas BTB). Cf. ExplorerMatchesTable.placement.tsx. */
+  perf_placement_done?: number | null
+  perf_placement_total?: number | null
   delta_mmr?: number | null
   team_mmr?: number | null
   enemy_mmr?: number | null
@@ -809,6 +816,14 @@ export type ExplorerPlayerQueryResponse = components['schemas']['ExplorerPlayerQ
  *  Toutes les sous-sections sont nullable : le front masque celles à null
  *  et affiche un hint "Connexion Halo requise" quand auth_available=false. */
 export type ExplorerTargetProfile = components['schemas']['ExplorerTargetProfile']
+
+/** Statut par section live de l'encart "Profil joueur cible" (Lot A3, fin de la
+ *  dégradation muette) — pourquoi une section est vide/partielle plutôt que
+ *  silencieuse. Cf. ExplorerLiveStatusBadge (features/explorer). */
+export type ExplorerLiveStatus = components['schemas']['ExplorerLiveStatus']
+
+/** Un statut de section individuel ("ok" | "failed" | "no_auth" | "local_partial"). */
+export type ExplorerLiveSectionStatus = ExplorerLiveStatus['identity']
 
 /** ExplorerTargetRecentMatch — un match PvP récent du joueur cible, projeté pour
  *  les graphes profil de combat. Miroir exact du DTO Go (JSON snake_case).
@@ -937,6 +952,12 @@ export interface RecentMatchItem {
   assists?: number | null
   deaths?: number | null
   performance_score_relative?: number | null
+  /** Placement de la chaîne de PERFORMANCE (X/Y) : renseigné (avec
+   *  performance_score_relative nul) quand la chaîne du match compte moins de Y matchs
+   *  éligibles → aucune perf calculable. La tuile affiche « En placement (X/Y) » au lieu
+   *  d'un vide. JAMAIS un 0 fabriqué pour une perf absente. Cf. PlacementPendingNote. */
+  perf_placement_done?: number | null
+  perf_placement_total?: number | null
   offensive_conversion?: number | null
   defensive_resistance?: number | null
   offensive_finishing?: number | null

@@ -103,6 +103,41 @@ type ExplorerPlayerQueryResponse struct {
 	TargetProfile *ExplorerTargetProfile `json:"target_profile,omitempty"`
 }
 
+// ExplorerLiveSectionStatus code l'état d'une section live de l'encart "Profil
+// joueur cible" (Lot A3, .ai/V7.1/PLAN_EXPLORER_LIVE_REPAIR_2026-07.md) —
+// pourquoi une section est vide ou partielle, jamais silencieuse :
+//
+//   - "ok"            : donnée servie normalement (fetch live réussi, ou calcul
+//     local complet pour une section qui n'a pas de contrepartie live).
+//   - "no_auth"       : aucun token Halo exploitable (session/profil/pool tous
+//     morts) — le fetch live n'a JAMAIS été tenté.
+//   - "failed"        : fetch live tenté et en échec (erreur déjà loggée côté
+//     service au moment de l'appel, cf. explorer_target_*_failed).
+//   - "local_partial" : repli sur un calcul/bucketing local structurellement
+//     incomplet (ex. "matchs par saison" sans service record filtré par
+//     saison — cf. Lot A2, non traité).
+type ExplorerLiveSectionStatus string
+
+const (
+	ExplorerLiveOK           ExplorerLiveSectionStatus = "ok"
+	ExplorerLiveFailed       ExplorerLiveSectionStatus = "failed"
+	ExplorerLiveNoAuth       ExplorerLiveSectionStatus = "no_auth"
+	ExplorerLiveLocalPartial ExplorerLiveSectionStatus = "local_partial"
+)
+
+// ExplorerLiveStatus regroupe le statut par section live de l'encart "Profil
+// joueur cible" (Lot A3). Chaque section est TOUJOURS statuée par
+// ExplorerService.buildTargetProfile (jamais de valeur vide) — sert au front à
+// afficher un badge explicite (« Données live indisponibles (authentification) »,
+// « Live partiel »…) au lieu d'une section muette.
+type ExplorerLiveStatus struct {
+	Identity   ExplorerLiveSectionStatus `json:"identity" enum:"ok,failed,no_auth,local_partial"`
+	Career     ExplorerLiveSectionStatus `json:"career" enum:"ok,failed,no_auth,local_partial"`
+	SeasonCSRs ExplorerLiveSectionStatus `json:"season_csrs" enum:"ok,failed,no_auth,local_partial"`
+	Seasons    ExplorerLiveSectionStatus `json:"seasons" enum:"ok,failed,no_auth,local_partial"`
+	CombatLive ExplorerLiveSectionStatus `json:"combat_live" enum:"ok,failed,no_auth,local_partial"`
+}
+
 // ExplorerTargetProfile : encart synthétique sur le joueur cible recherché
 // dans l'Explorer mode Joueur. Composite de 4 sources :
 //
@@ -153,6 +188,9 @@ type ExplorerTargetProfile struct {
 	// pour l'Explorer ; champ gardé pour compat de schéma).
 	PrivacyWarning *MatchPrivacyWarning `json:"privacy_warning,omitempty"`
 	AuthAvailable  bool                 `json:"auth_available"`
+	// LiveStatus : état par section live (identity/career/season_csrs/seasons/
+	// combat_live) — Lot A3, fin de la dégradation muette. Voir ExplorerLiveStatus.
+	LiveStatus ExplorerLiveStatus `json:"live_status"`
 }
 
 // ExplorerTargetRecentMatch est un match PvP récent du joueur cible, projeté
@@ -411,6 +449,14 @@ type ExplorerMatchesRow struct {
 	// LUSR : 10 plus anciens matchs sans LUSR par chaîne (arena_slayer/arena_objectif/btb/chaos).
 	PlacementDone  *int `json:"placement_done,omitempty"`
 	PlacementTotal *int `json:"placement_total,omitempty"`
+	// PerfPlacementDone/PerfPlacementTotal : signal de placement DÉDIÉ aux colonnes
+	// Perf/ΔPerf (la colonne Note garde PlacementDone/Total). Renseigné quand la
+	// chaîne de performance du match est sous le seuil (≤ MinMatchesPerChainForRelative
+	// matchs perf-éligibles) → aucun perf_score. Distinct du placement LUSR/CSR : un
+	// match peut avoir une Note LUSR établie ET être en placement perf (chaîne perf < 10,
+	// cas JGtm BTB). done = nombre de matchs éligibles de la chaîne, total = seuil.
+	PerfPlacementDone  *int `json:"perf_placement_done,omitempty"`
+	PerfPlacementTotal *int `json:"perf_placement_total,omitempty"`
 	// DeltaMMR : variation de MMR/CSR/LUSR pour ce match (nil si non rankée).
 	DeltaMMR *float64 `json:"delta_mmr,omitempty"`
 	// TeamMMR : MMR moyen de l'équipe du joueur sur ce match (nil si non rankée).

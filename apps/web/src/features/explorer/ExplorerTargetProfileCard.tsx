@@ -27,6 +27,7 @@ import { ExplorerTargetVersusDonuts } from './ExplorerTargetVersusDonuts'
 import { ExplorerTargetMedals } from './ExplorerTargetMedals'
 import { ExplorerTargetSeasonCSR } from './ExplorerTargetSeasonCSR'
 import { ExplorerTargetSeasonMatches } from './ExplorerTargetSeasonMatches'
+import { ExplorerLiveStatusBadge } from './ExplorerLiveStatusBadge'
 
 interface ExplorerTargetProfileCardProps {
   profile: ExplorerTargetProfile
@@ -56,6 +57,20 @@ export function ExplorerTargetProfileCard({ profile, gamertag, encounterStats }:
   // Top médailles rendu à côté du donut "Répartition des modes" (ExplorerCombatProfile)
   // quand un profil de combat existe ; sinon repli ici pour ne jamais les perdre.
   const hasCombatProfile = (profile.combat_profile?.length ?? 0) > 0
+  // Statuts par section live (Lot A3 — fin de la dégradation muette). Champ
+  // optionnel côté type (fixtures/tests antérieurs) : undefined → aucun badge
+  // (ExplorerLiveStatusBadge est nil-safe).
+  const liveStatus = profile.live_status
+  const identityStatus = liveStatus?.identity
+  const careerStatus = liveStatus?.career
+  const seasonCSRsStatus = liveStatus?.season_csrs
+  const seasonsStatus = liveStatus?.seasons
+  // Career et top médailles partagent le même fetch live (service record) : pas
+  // de statut dédié "top_medals" côté DTO, la raison d'un vide est déjà portée
+  // par le badge de la section Carrière ci-dessous (pas de second badge
+  // redondant — ils seraient TOUJOURS simultanés : top_medals n'est jamais
+  // rempli sans career_stats, cf. fetchTargetServiceRecord côté Go).
+  const showCareerSection = careerStats != null || (!!careerStatus && careerStatus !== 'ok')
 
   return (
     <div className="flex flex-col gap-4" data-testid="explorer-target-profile-card">
@@ -65,16 +80,27 @@ export function ExplorerTargetProfileCard({ profile, gamertag, encounterStats }:
         identityUnavailableLabel={t('explorer.target_profile.identity_unknown_title')}
         identityUnavailableDescription={t('explorer.target_profile.identity_unknown_description')}
       />
+      {/* Identité indisponible ET raison connue (auth/erreur/repli) : badge discret
+          sous le bandeau plutôt qu'un silence — A3. */}
+      {identity == null && identityStatus && identityStatus !== 'ok' && (
+        <div className="flex justify-end">
+          <ExplorerLiveStatusBadge status={identityStatus} />
+        </div>
+      )}
 
-      {/* Carrière complète : titre en en-tête de section hors bloc (style "Profil de combat"). */}
-      {careerStats != null && (
+      {/* Carrière complète : titre en en-tête de section hors bloc (style "Profil
+          de combat"). La section reste rendue (header + badge) même sans
+          career_stats quand le statut explique pourquoi (A3) — jamais un vide
+          silencieux entre l'identité et les saisons. */}
+      {showCareerSection && (
         <section className="space-y-3">
-          <header>
+          <header className="flex items-center gap-2">
             <h3 className="text-base font-semibold text-foreground">
               {t('explorer.target_profile.section_career_title')}
             </h3>
+            <ExplorerLiveStatusBadge status={careerStatus} />
           </header>
-          <ExplorerTargetCareerStats careerStats={careerStats} />
+          {careerStats != null && <ExplorerTargetCareerStats careerStats={careerStats} />}
         </section>
       )}
 
@@ -88,18 +114,22 @@ export function ExplorerTargetProfileCard({ profile, gamertag, encounterStats }:
             csrs={seasonCSRs}
             title={t('explorer.target_profile.season_csr_title')}
             emptyMessage={t('explorer.target_profile.season_csr_empty')}
+            liveStatus={seasonCSRsStatus}
           />
         )}
         <div className={hasRanked ? 'lg:col-span-2' : 'lg:col-span-3'}>
           <ExplorerTargetSeasonMatches
             seasons={matchesPerSeason}
             title={t('explorer.target_profile.matches_per_season_title')}
+            liveStatus={seasonsStatus}
           />
         </div>
       </div>
 
       {/* Top médailles : repli ici uniquement si pas de profil de combat (sinon
-          rendu à côté du donut Répartition des modes, cf. ExplorerCombatProfile). */}
+          rendu à côté du donut Répartition des modes, cf. ExplorerCombatProfile).
+          Vide sans raison distincte à afficher : le badge de la section Carrière
+          ci-dessus couvre déjà ce cas (même fetch, cf. commentaire showCareerSection). */}
       {topMedals.length > 0 && !hasCombatProfile && <ExplorerTargetMedals medals={topMedals} />}
 
       {showNoAuthHint && (

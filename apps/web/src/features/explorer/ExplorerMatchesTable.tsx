@@ -67,7 +67,11 @@ import {
   explorerHlExtract,
   isExplorerHighlightKey,
 } from './ExplorerMatchesTable.highlight'
-import { hasPlacementSignal, PlacementPendingCell } from './ExplorerMatchesTable.placement'
+import {
+  hasPerfPlacementSignal,
+  hasPlacementSignal,
+  PlacementPendingCell,
+} from './ExplorerMatchesTable.placement'
 
 const PAGE_SIZE = 20
 const HISTORY_DATE_OPTS: Intl.DateTimeFormatOptions = {
@@ -593,12 +597,14 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         cell: (ctx) => {
           const r = ctx.row.original
           if (r.perf_score == null || !r.perf_tier) {
-            // V72-32 : note manquante PARCE QUE le classement (LUSR/CSR) de ce
-            // match est en placement (< 10 matchs dans sa chaîne) → badge
-            // explicite plutôt qu'un vide qui se lit comme "cassé". Sans signal
-            // de placement (absence structurelle, ex. Firefight) → "-" inchangé.
-            return hasPlacementSignal(r) ? (
-              <PlacementPendingCell row={r} locale={locale} />
+            // V72-34 : perf manquante PARCE QUE la CHAÎNE DE PERFORMANCE du match
+            // est encore en calibration (< 10 matchs éligibles dans sa chaîne) →
+            // badge explicite plutôt qu'un vide qui se lit comme "cassé". Signal
+            // DÉDIÉ (perf_placement_*), indépendant du placement LUSR/CSR : un
+            // match peut avoir une Note établie et une chaîne perf trop jeune.
+            // Sans ce signal (chaîne calibrée / retard de sync) → "-" inchangé.
+            return hasPerfPlacementSignal(r) ? (
+              <PlacementPendingCell row={r} locale={locale} variant="perf" />
             ) : (
               '-'
             )
@@ -622,11 +628,11 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         cell: (ctx) => {
           const v = ctx.getValue<number | null | undefined>()
           if (v == null) {
-            // V72-32 : même badge de placement que la colonne Perf (ΔPerf en
+            // V72-34 : même badge de placement PERF que la colonne Perf (ΔPerf en
             // dérive directement — jamais l'un sans l'autre).
             const r = ctx.row.original
-            return hasPlacementSignal(r) ? (
-              <PlacementPendingCell row={r} locale={locale} />
+            return hasPerfPlacementSignal(r) ? (
+              <PlacementPendingCell row={r} locale={locale} variant="perf" />
             ) : (
               '-'
             )

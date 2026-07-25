@@ -79,3 +79,69 @@ func TestApplyModeTranslationsFR(t *testing.T) {
 		t.Errorf("blank FR = %v, want [Slayer]", got)
 	}
 }
+
+// TestApplyPlaylistTranslationsFR couvre la résolution FR des playlists par
+// IDENTIFIANT de l'indice escouade (V72-10 suite) : une playlist dont le libellé
+// COALESCE(playlist_name_fr, playlist_name) est resté en EN — playlist_name_fr
+// vide dans match_registry, trou de données réel pour « Quick Play » / « Big
+// Team Battle » — est néanmoins servie en FR quand son playlist_id est traduit
+// (metadata.asset_translations, même résolveur — ResolveAssetNamesBulk — que la
+// page Carrière). Priorité : traduction par id > libellé COALESCE existant
+// (jamais vide).
+func TestApplyPlaylistTranslationsFR(t *testing.T) {
+	ctx := context.Background()
+	idByLabel := map[string]string{
+		"Quick Play":      "pl-quickplay-uuid",
+		"Big Team Battle": "pl-btb-uuid",
+	}
+
+	// Nominal : "Quick Play" (name_fr vide, trou de données) traduit par id ;
+	// "Big Team Battle" absent de la réponse du traducteur → COALESCE conservé.
+	tr := func(_ context.Context, ids []string) (map[string]string, error) {
+		out := map[string]string{}
+		for _, id := range ids {
+			if id == "pl-quickplay-uuid" {
+				out[id] = "Partie rapide"
+			}
+		}
+		return out, nil
+	}
+	p := (&PrestigeSquadMatchProvider{}).WithPlaylistTranslatorFR(tr)
+	got := p.applyPlaylistTranslationsFR(ctx, []string{"Quick Play", "Big Team Battle"}, idByLabel)
+	if len(got) != 2 || got[0] != "Partie rapide" || got[1] != "Big Team Battle" {
+		t.Fatalf("applyPlaylistTranslationsFR = %v, want [Partie rapide Big Team Battle]", got)
+	}
+
+	// Traducteur nil → libellés inchangés (indice servi tel quel plutôt qu'absent).
+	if got := (&PrestigeSquadMatchProvider{}).applyPlaylistTranslationsFR(ctx, []string{"Quick Play"}, idByLabel); len(got) != 1 || got[0] != "Quick Play" {
+		t.Errorf("nil translator = %v, want [Quick Play]", got)
+	}
+
+	// Erreur du traducteur → libellés inchangés (best-effort, jamais vide).
+	pErr := (&PrestigeSquadMatchProvider{}).WithPlaylistTranslatorFR(
+		func(context.Context, []string) (map[string]string, error) { return nil, errors.New("metadata absente") },
+	)
+	if got := pErr.applyPlaylistTranslationsFR(ctx, []string{"Quick Play"}, idByLabel); len(got) != 1 || got[0] != "Quick Play" {
+		t.Errorf("translator error = %v, want [Quick Play]", got)
+	}
+
+	// Traduction blanche → libellé COALESCE conservé (jamais vidé).
+	pBlank := (&PrestigeSquadMatchProvider{}).WithPlaylistTranslatorFR(
+		func(_ context.Context, ids []string) (map[string]string, error) {
+			out := map[string]string{}
+			for _, id := range ids {
+				out[id] = "  "
+			}
+			return out, nil
+		},
+	)
+	if got := pBlank.applyPlaylistTranslationsFR(ctx, []string{"Quick Play"}, idByLabel); len(got) != 1 || got[0] != "Quick Play" {
+		t.Errorf("blank FR = %v, want [Quick Play]", got)
+	}
+
+	// Aucun id connu pour le libellé (idByLabel vide) → libellé conservé, pas de
+	// traduction inutile demandée (aucun id à résoudre).
+	if got := p.applyPlaylistTranslationsFR(ctx, []string{"Ranked Arena"}, map[string]string{}); len(got) != 1 || got[0] != "Ranked Arena" {
+		t.Errorf("no known id = %v, want [Ranked Arena]", got)
+	}
+}

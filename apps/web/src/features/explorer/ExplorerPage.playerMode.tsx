@@ -160,15 +160,20 @@ export function ExplorerPlayerMode({
 
           {/* Profil de combat — 5 graphes sur les derniers matchs PvP de la
               cible (FDA, dégâts, score+placement, folie/parfaits, donut modes).
-              Masqué si la cible n'a aucun match PvP. */}
+              Masqué seulement si la cible n'a aucun match PvP ET que le statut
+              live ne signale rien (A3) : sinon monté quand même pour afficher
+              le badge/notice expliquant l'absence de données. */}
           {(playerQuery.data.target_profile?.combat_profile?.length ||
-            playerQuery.data.target_profile?.combat_profile_local?.length) ? (
+            playerQuery.data.target_profile?.combat_profile_local?.length ||
+            (playerQuery.data.target_profile?.live_status?.combat_live &&
+              playerQuery.data.target_profile.live_status.combat_live !== 'ok')) ? (
             <ExplorerCombatProfile
               liveMatches={playerQuery.data.target_profile.combat_profile ?? []}
               localMatches={playerQuery.data.target_profile.combat_profile_local ?? []}
               locale={locale}
               t={t}
               topMedals={playerQuery.data.target_profile.top_medals ?? []}
+              combatLiveStatus={playerQuery.data.target_profile.live_status?.combat_live}
             />
           ) : null}
 

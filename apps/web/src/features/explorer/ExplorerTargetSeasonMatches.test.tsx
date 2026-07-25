@@ -73,4 +73,22 @@ describe('ExplorerTargetSeasonMatches', () => {
     expect(screen.getByText('Matchs par saison')).toBeInTheDocument()
     expect(screen.getByTestId('chart-card-empty')).toBeInTheDocument()
   })
+
+  // Lot A3 (fin de la dégradation muette) : badge discret dans la barre de titre
+  // quand liveStatus explique le repli local (ex. Lot A2 non traité, bucketing
+  // local sans service record par saison).
+  it('affiche le badge live_status quand local_partial', () => {
+    renderWithProviders(
+      <ExplorerTargetSeasonMatches seasons={[]} title="Matchs par saison" liveStatus="local_partial" />,
+    )
+    expect(screen.getByTestId('explorer-live-status-badge-local_partial')).toBeInTheDocument()
+    expect(screen.getByText('Live partiel')).toBeInTheDocument()
+  })
+
+  it('n\'affiche aucun badge sans liveStatus (compat antérieure au Lot A3)', () => {
+    renderWithProviders(
+      <ExplorerTargetSeasonMatches seasons={[{ season_id: 's1', season_name: 'S1', matches: 3 }]} title="Matchs par saison" />,
+    )
+    expect(screen.queryByTestId(/explorer-live-status-badge-/)).not.toBeInTheDocument()
+  })
 })
