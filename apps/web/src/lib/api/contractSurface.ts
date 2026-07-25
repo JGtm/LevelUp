@@ -100,12 +100,29 @@ function topLevelKeys(raw: string[], code: string[], block: Block): string[] {
 }
 
 /**
+ * Déplie un TABLEAU d'énumérés vers son union interne : `("a" | "b")[]`, éventuellement
+ * `readonly` et/ou nullable (`("a" | "b")[] | null`, forme rendue par
+ * openapi-typescript pour `type: [array, "null"]`). Toute autre forme est renvoyée
+ * telle quelle.
+ *
+ * Pourquoi (constat contre-revue V72) : openapi-typescript rend les enums d'ITEMS de
+ * tableau sous cette forme PARENTHÉSÉE. Le découpage naïf sur « | » y voyait `("a` puis
+ * `"b")[]` — aucun littéral reconnu → l'enum était INVISIBLE au garde-rail, et la perte
+ * d'une valeur sur un champ tableau (ou son retour à `string[]`) passait inaperçue.
+ */
+function unwrapLiteralArray(body: string): string {
+  const m = body.match(/^(?:readonly\s+)?\((.+)\)\s*\[\](?:\s*\|\s*(?:null|undefined))*$/)
+  return m ? m[1].trim() : body
+}
+
+/**
  * Membres d'une union de littéraux de chaîne, ou null si le membre droit n'est PAS une
  * union purement littérale (`string`, `$ref`, objet inline…). `null`/`undefined` sont
- * tolérés comme marqueurs de nullabilité et ne sont pas figés comme membres.
+ * tolérés comme marqueurs de nullabilité et ne sont pas figés comme membres. Les
+ * tableaux d'énumérés sont dépliés au préalable (cf. unwrapLiteralArray).
  */
 function literalUnionMembers(rhs: string): string[] | null {
-  const body = rhs.trim().replace(/;+$/, '').trim()
+  const body = unwrapLiteralArray(rhs.trim().replace(/;+$/, '').trim())
   if (!body) return null
   const members: string[] = []
   for (const part of body.split('|')) {

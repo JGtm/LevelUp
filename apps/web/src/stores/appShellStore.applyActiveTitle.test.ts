@@ -22,10 +22,20 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 
 const calls: string[] = []
 
+/**
+ * Requêtes POST réellement émises (chemin + CORPS). Le mock avalait auparavant le
+ * corps : rien ne vérifiait que /session/context reçoit bien le titre CIBLE — une
+ * régression envoyant l'ancien titre (ou rien) aurait gardé la séquence verte alors
+ * que la session serveur serait restée sur le titre précédent (fuite cross-titre au
+ * re-bootstrap, /bootstrap dérivant current_title_slug de la SESSION).
+ */
+const posts: Array<{ path: string; body: unknown }> = []
+
 vi.mock('@/lib/api/client', () => ({
   api: {
-    post: vi.fn(async () => {
+    post: vi.fn(async (path: string, body?: unknown) => {
       calls.push('post')
+      posts.push({ path, body })
     }),
     get: vi.fn(async () => {
       calls.push('get')
@@ -84,6 +94,7 @@ const BOOTSTRAP_H5 = {
 describe('applyActiveTitle (ordre load-bearing — ex-switchTitle #10)', () => {
   beforeEach(() => {
     calls.length = 0
+    posts.length = 0
     vi.restoreAllMocks()
     useAppShellStore.setState({ currentTitleSlug: 'halo_infinite', currentPlayer: PLAYER, availablePlayers: [PLAYER] })
     // Repartir de filtres propres avant chaque test.
@@ -123,6 +134,12 @@ describe('applyActiveTitle (ordre load-bearing — ex-switchTitle #10)', () => {
     expect(iClear).toBeGreaterThan(iResetSolo) // clear APRÈS le reset filtres
     expect(iClear).toBeGreaterThan(iResetSquad)
     expect(iGet).toBeGreaterThan(iClear) // re-bootstrap APRÈS le clear (pas avant)
+  })
+
+  it('poste le titre CIBLE sur /session/context (corps, pas seulement l’appel)', async () => {
+    await applyActiveTitle('halo_5')
+
+    expect(posts).toEqual([{ path: '/session/context', body: { title_slug: 'halo_5' } }])
   })
 
   it('réinitialise les filtres solo/squad pollués au switch', async () => {

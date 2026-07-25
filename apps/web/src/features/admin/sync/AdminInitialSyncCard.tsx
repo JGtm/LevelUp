@@ -7,6 +7,13 @@
  * d'action asynchrone suivi inline (patron AdminQuickActions). Distinct du delta
  * (convergence) et du cycle global : ré-importe tout l'historique d'un joueur
  * jusqu'au plafond, sans arrêt au premier match connu.
+ *
+ * MULTI-TITRE : le job est lancé sur le titre ACTIF du shell (`currentTitleSlug`),
+ * envoyé explicitement en `title_slug`. Sans ce champ le serveur retomberait sur
+ * le paramètre `?title` puis sur le titre par défaut — un admin positionné sur
+ * Halo 5 aurait re-importé le joueur sur Halo Infinite. Le titre ciblé est
+ * AFFICHÉ sur la carte : l'action est lourde et irréversible, l'admin doit voir
+ * sur quel jeu elle part avant de confirmer.
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -14,6 +21,7 @@ import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { GamertagCombobox } from '@/components/ui/GamertagCombobox'
 import { apiErrorMessage } from '@/lib/api/client'
+import { useAppShellStore } from '@/stores/appShellStore'
 import { conflictJobId, useRunInitialSync } from '../monitoring/mutations'
 import { useAdminT } from '../useAdminText'
 import { AdminActionButton } from '../components/AdminActionButton'
@@ -28,6 +36,12 @@ export function AdminInitialSyncCard({ onJobSettled }: AdminInitialSyncCardProps
   const runInitialSync = useRunInitialSync()
   const [selected, setSelected] = useState<string[]>([])
   const [maxMatches, setMaxMatches] = useState('')
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  // Libellé du titre actif (repli sur le slug tant que le bootstrap n'a pas
+  // hydraté availableTitles) — sélecteur qui retourne une string, jamais un objet.
+  const titleName = useAppShellStore(
+    (s) => s.availableTitles.find((t) => t.slug === s.currentTitleSlug)?.name ?? s.currentTitleSlug,
+  )
 
   const playerSlug = selected[0] ?? ''
 
@@ -39,7 +53,11 @@ export function AdminInitialSyncCard({ onJobSettled }: AdminInitialSyncCardProps
     const parsed = parseInt(maxMatches, 10)
     const max = Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
     try {
-      const job = await runInitialSync.mutateAsync({ player_slug: playerSlug, max_matches: max })
+      const job = await runInitialSync.mutateAsync({
+        player_slug: playerSlug,
+        max_matches: max,
+        title_slug: titleSlug,
+      })
       toast.success(tA('admin.actions.started'))
       return job.job_id
     } catch (err) {
@@ -56,7 +74,14 @@ export function AdminInitialSyncCard({ onJobSettled }: AdminInitialSyncCardProps
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">{tA('admin.initsync.title')}</CardTitle>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle className="text-base">{tA('admin.initsync.title')}</CardTitle>
+          {/* Titre ciblé par le job — l'action part sur le jeu actif du shell. */}
+          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground">
+            <span className="text-muted-foreground">{tA('admin.initsync.target_title')}</span>
+            <span>{titleName}</span>
+          </span>
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground">{tA('admin.initsync.description')}</p>

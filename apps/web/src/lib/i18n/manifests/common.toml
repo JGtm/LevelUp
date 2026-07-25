@@ -1005,6 +1005,13 @@ en = "Search on Xbox"
 fr = "Recherche sur Xbox…"
 en = "Searching on Xbox…"
 
+# Retour explicite quand le repli live a abouti SANS aucun joueur : sans ce
+# message l'utilisateur voit le bouton disparaître sans rien afficher et croit
+# que la recherche n'a pas fonctionné.
+[common.gamertag.no_xbox_result]
+fr = "Aucun résultat Xbox"
+en = "No Xbox result"
+
 [common.gamertag.xbox_badge]
 fr = "Xbox"
 en = "Xbox"

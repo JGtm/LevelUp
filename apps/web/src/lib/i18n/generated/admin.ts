@@ -303,6 +303,7 @@ export const adminManifest = {
   "admin.initsync.player_label": { fr: "Joueur", en: "Player" },
   "admin.initsync.player_placeholder": { fr: "Choisir un joueur suivi…", en: "Pick a tracked player…" },
   "admin.initsync.run": { fr: "Lancer la synchronisation initiale", en: "Run initial sync" },
+  "admin.initsync.target_title": { fr: "Jeu ciblé :", en: "Target game:" },
   "admin.initsync.title": { fr: "Synchronisation initiale (un joueur)", en: "Initial sync (single player)" },
   "admin.job.in_progress": { fr: "En cours…", en: "In progress…" },
   "admin.job.step": { fr: "Étape", en: "Step" },

@@ -108,9 +108,13 @@ endif
 openapi-gen:
 	cd $(GO_API_DIR) && CGO_ENABLED=1 go run ./cmd/openapi-gen
 
-## Vérifie que openapi.yaml est à jour sans l'écrire (sortie 1 si drift)
+## Vérifie que openapi.yaml est à jour sans l'écrire (sortie 1 si drift), PUIS que
+## generated.ts en dérive bien (sinon le front resterait typé sur l'ancien contrat
+## avec un tsc vert). Le second maillon est aussi joué par la CI (job Frontend) via
+## src/lib/api/generated-types-fresh.guard.test.ts — même script, une seule logique.
 openapi-check:
 	cd $(GO_API_DIR) && CGO_ENABLED=1 go run ./cmd/openapi-gen -check
+	node tools/check-generated-types-fresh.mjs
 
 ## Go API: compile le binaire server (Linux — requiert CGo/DuckDB)
 go-api-build:

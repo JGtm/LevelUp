@@ -996,6 +996,11 @@
       "auto",
       "manual"
     ],
+    "PlayerMediaAudioConfig.track_roles": [
+      "game",
+      "other",
+      "voice"
+    ],
     "PlotlyFigurePayload.config_key": [
       "clean",
       "static"

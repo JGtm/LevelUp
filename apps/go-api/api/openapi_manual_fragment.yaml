@@ -1131,16 +1131,51 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
     post:
+      # Corps décodé à la main (RawBody, pour préserver le 400 {invalid_body}) :
+      # Huma ne voit qu'un []byte opaque et ne dérive donc AUCUN requestBody.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  description: Nom du groupe (1-60 caractères).
       responses:
+        # Le 200 dérivé (Status dynamique côté Go) est supprimé au profit du 201
+        # réellement posé ; son SCHÉMA doit être reporté ici, sinon le contrat
+        # publierait « 201 sans corps » alors que le handler renvoie le groupe
+        # créé (consommé par useCreateGroup côté web).
         '200': null
         '201':
           description: Groupe créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
   /groups/{id}:
     patch:
+      # Corps décodé à la main (RawBody) — non dérivable par Huma, cf. POST /groups.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  description: Nouveau nom du groupe (1-60 caractères).
       responses:
         '200':
           description: Groupe renommé
@@ -1160,10 +1195,28 @@ paths:
           $ref: '#/components/responses/NotFound'
   /groups/{id}/invites:
     post:
+      # Corps optionnel (MarkRequestBodyOptional côté Go) : envoyé par
+      # useCreateGroupInvite. Non dérivable (RawBody).
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                expires_in_days:
+                  type: integer
+                  description: Durée de validité de l'invitation en jours
       responses:
+        # Schéma reporté du 200 dérivé (cf. POST /groups) : le handler renvoie
+        # l'InviteCode généré, consommé par useCreateGroupInvite côté web.
         '200': null
         '201':
           description: Invitation créée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InviteCode'
         '403':
           description: Accès refusé (propriétaire/membre requis)
         '404':
@@ -1305,9 +1358,17 @@ paths:
   /admin/actions/auto-sync/run:
     post:
       responses:
+        # Body Go `any` (202 job / 409 conflit) → Huma ne dérive aucun schéma
+        # exploitable ; on déclare explicitement l'AsyncJobStatus du 202, que le
+        # front suit via useJobStatus. Sans ce content le contrat dirait « 202
+        # sans corps ».
         '200': null
         '202':
           description: Job créé (suivre via GET /jobs/{job_id})
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AsyncJobStatus'
         '409':
           description: Un cycle forcé est déjà en vol (job_id en details)
         '503':
@@ -1387,10 +1448,31 @@ paths:
           description: Entrées invalides
   /admin/actions/convergence/run:
     post:
+      # Corps requis au runtime (400 « player_slug requis ») : non dérivable (RawBody).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - player_slug
+              properties:
+                player_slug:
+                  type: string
+                  description: Slug du joueur à faire converger
+                title_slug:
+                  type: string
+                  description: Slug du titre (défaut = titre par défaut)
       responses:
+        # Body Go `any` (202 job / 409 conflit) : schéma du 202 déclaré ici.
         '200': null
         '202':
           description: Job créé (suivre via GET /jobs/{job_id})
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AsyncJobStatus'
         '400':
           description: player_slug requis
         '409':
@@ -1424,9 +1506,14 @@ paths:
                   maximum: 2000
                   description: Plafond de matchs (1..2000) ; 0/absent → défaut profil (initial_max_matches) puis 200.
       responses:
+        # Body Go `any` (202 job / 409 conflit) : schéma du 202 déclaré ici.
         '200': null
         '202':
           description: Job créé (suivre via GET /jobs/{job_id})
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AsyncJobStatus'
         '400':
           description: player_slug requis
         '409':
@@ -1454,9 +1541,14 @@ paths:
   /admin/actions/catalog/ugc-drain:
     post:
       responses:
+        # Body Go `any` (202 job / 409 conflit) : schéma du 202 déclaré ici.
         '200': null
         '202':
           description: Job créé (suivre via GET /jobs/{job_id})
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AsyncJobStatus'
         '409':
           description: Drain déjà en cours pour ce titre (job_id en details)
         '503':
@@ -1917,9 +2009,14 @@ paths:
   /players/{player_slug}/campaigns:
     post:
       responses:
+        # Schéma reporté du 200 dérivé : le handler renvoie la campagne créée.
         '200': null
         '201':
           description: Campagne créée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImprovementCampaign'
         '400':
           description: Axe invalide
         '409':
