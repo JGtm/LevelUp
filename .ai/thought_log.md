@@ -14144,3 +14144,22 @@ home_matches_cache.go (xuid SEUL, risque HAUT, surface exacte de V72-29),
 recent_matches_cache.go (xuid|limit), remote_stats_cache.go seasonEntries (à vérifier).
 
 **Gates** : tsc -b PASS, eslint 0 erreur, vitest complet 3042 passés / 0 échec.
+
+---
+
+## [2026-07-25] V72-10 suite — sous-titre « surtout » : modes FR servis par l'API
+
+**Statut** : Complété (vérifié bout en bout dans le navigateur ; gates Go cibles à la
+prochaine fenêtre — le code compile, air l'a rebuildé et sert le FR).
+
+**Diagnostic** : la « disparition » du sous-titre était transitoire (fenêtre de rebuild
+air : SquadUsualContexts en erreur -> best-effort vide -> omitempty). Le vrai défaut
+révélé = jetons de mode EN servis bruts. Correctif : ModeTranslatorFR injecté dans
+PrestigeSquadMatchProvider (WithModeTranslatorFR, cablage wire via
+SquadRepo.LoadModeTranslationsFR — zéro nouvelle copie du littéral mode_name_tr),
+repli EN jamais vide. Front inchangé (normalisation idempotente conservée).
+
+**Reste** : playlists EN (« Quick Play », « Big Team Battle ») = trou de donnée
+playlist_name_fr — correctif propre planifié (résolution asset_translations par
+playlist_id, lot suivant). Dette notée : 4 copies préexistantes de mode_name_tr à
+centraliser + garde-rail.

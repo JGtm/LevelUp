@@ -44,4 +44,32 @@ describe('buildUsualSubtitle — indice « surtout … » (V72-10)', () => {
     const subtitle = buildUsualSubtitle([], ['Slayer on Bazaar', 'Oddball on Forge'], T_FR)
     expect(subtitle).toBe('surtout Slayer')
   })
+
+  // Garde anti-disparition : le sous-titre s'était effacé quand le backend
+  // renvoyait des listes vides (fenêtre de rebuild → SquadUsualContexts en erreur
+  // → usual_* absents). Tant qu'une source existe (ici les playlists), le
+  // sous-titre DOIT s'afficher — jamais un blanc total.
+  it('modes vides mais playlists présentes -> affiche les playlists (jamais rien)', () => {
+    const subtitle = buildUsualSubtitle(['Quick Play', 'Big Team Battle'], [], T_FR)
+    expect(subtitle).toBe('surtout Quick Play · Big Team Battle')
+  })
+
+  // Depuis V72-10.1, l'API sert le mode déjà résolu en FR canonique
+  // (mode_name_tr, « Slayer » -> « Assassin »). Le front ne doit pas le
+  // re-mutiler : normalizeModeLabel est idempotent sur un libellé FR propre.
+  it('mode FR résolu par l API rendu tel quel (pas de sur-normalisation)', () => {
+    const subtitle = buildUsualSubtitle(['Partie rapide'], ['Assassin'], T_FR)
+    expect(subtitle).toBe('surtout Partie rapide · Assassin')
+  })
+
+  it('réponse complète FR (playlists + mode FR) -> sous-titre complet', () => {
+    // Valeurs alignées sur la prod : usual_modes = ["Assassin en équipe","Assassin"]
+    // (Team Slayer -> Assassin en équipe, Slayer -> Assassin) après trad mode_name_tr.
+    const subtitle = buildUsualSubtitle(
+      ['Partie rapide', 'Baston à grande échelle'],
+      ['Assassin en équipe', 'Assassin'],
+      T_FR,
+    )
+    expect(subtitle).toBe('surtout Partie rapide · Baston à grande échelle · Assassin en équipe')
+  })
 })

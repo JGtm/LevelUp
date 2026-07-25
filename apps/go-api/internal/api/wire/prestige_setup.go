@@ -173,8 +173,11 @@ func (b *PrestigeBundle) serviceAndPlayerDB(ctx context.Context, playerSlug stri
 		SquadChallenges:  b.squadChallRepo,
 		Squads:           b.squadRepo,
 		BaselineProvider: prestigedb.NewHaloBaselineProvider(pdb.SharedReadDB()),
-		SquadMatches:     prestigedb.NewPrestigeSquadMatchProvider(pdb.SharedReadDB()),
-		SquadProfile:     b.squadProfile,
+		// Indice escouade : modes servis en FR canonique (mode_name_tr) prêts à
+		// afficher, comme home/match-view — le sous-titre « surtout … » était en EN.
+		SquadMatches: prestigedb.NewPrestigeSquadMatchProvider(pdb.SharedReadDB()).
+			WithModeTranslatorFR(platform_duckdb.NewSquadRepo(pdb).LoadModeTranslationsFR),
+		SquadProfile: b.squadProfile,
 	}
 	return pdb, prestige.NewService(deps), nil
 }
