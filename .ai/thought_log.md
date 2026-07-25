@@ -1,3 +1,41 @@
+## [2026-07-25] V72-30 — What's new + changelogs + notes de version in-app v7.2
+
+**Statut** : Complété. Pas de commit (superviseur). Item FINAL du lot 6 du
+`PLAN_V72_NOTION_BATCH.md`.
+
+**Périmètre / décision.** 6 fichiers, 3 publics distincts, aucun code touché :
+`README.md` + `docs/FR/README.md` (bloc « What's new » / « Dernières nouveautés » = joueur
+final, **une seule version affichée** — précédent `f16192cad` « What's new = v7.1 uniquement,
+demande utilisateur » : le bloc v7.1 est donc REMPLACÉ, pas empilé) ; `docs/RELEASE_NOTES.md` +
+`docs/FR/RELEASE_NOTES.md` (source unique des notes in-app servies par
+`service.ReleaseNotesService` → `/help`, versions empilées, bloc v7.2 inséré en tête) ;
+`docs/CHANGELOG.md` + `docs/FR/CHANGELOG.md` (technique, Keep a Changelog, section `[7.2.0]`).
+Sources : `git log v7.1.0..HEAD` (46 commits), plan V72-01..34, entrées thought log du 24-25/07.
+
+**Choix éditoriaux.** (1) Date `2026-07-25` sur l'entrée changelog, alignée sur le précédent
+v7.1.0 (datée au jour de rédaction = jour du deploy) — À BUMPER dans le commit de release si le
+merge main glisse. (2) Badge de version README laissé à **7.1.0** : le précédent `cc9d82b2d` le
+laisse explicitement au tag N-1 jusqu'au tag (« chore(release): badge version X »). (3) Les
+actions post-déploiement (backfill objectifs, re-seed + recompute citations, `make openapi-gen`
+pour les contributeurs) sont en tête de la section `Ops` du changelog UNIQUEMENT — jamais dans
+les notes joueur. (4) Libellés cités vérifiés sur pièces dans les manifests i18n / le seed
+(« Rechercher sur Xbox », « En placement », « Données live indisponibles (authentification) »,
+« Partie », « Rendement / Résistance » (EN « Yield / Resistance »), « SPNKr à combustible »,
+noms FR des 4 citations d'objectif : À la charge / Je te tiens ! / Partie prenante / Sus au
+porteur du drapeau). Corrigé en cours de route : « Solde frags − morts cumulé » et « Partie »
+sont des renommages FR SEULS (EN inchangés) — la formulation EN les décrit comme tels.
+
+**Gates.** Parsing des notes in-app validé contre les DEUX lecteurs (Go
+`extractWhatsNewBlocks`/`extractVersionKey` et front `parseReleaseNotes.ts`) : v7.2 détectée en
+tête, 8 sections, 0 ligne de description, tri descendant v7.2 > v7.1 > v7.0 > … OK sur les deux
+langues. `go test ./internal/api/handlers/ -run 'Help|ReleaseNotes'` vert ;
+`vitest run src/features/help` 4/4 vert. Aucun emoji ni mojibake introduit (les occurrences
+restantes du changelog sont dans les entrées Python historiques, hors périmètre).
+
+**Prochaine étape.** Merge main (= deploy prod) puis, au moment du tag : bump du badge de
+version README EN+FR vers 7.2.0 et, si la date de deploy diffère, correction de la date de
+l'entrée `[7.2.0]`.
+
 ## [2026-07-25] Lot des découvertes v7.2 — arrondi coach, tri escouades, centralisation mode_name_tr, purges code mort
 
 **Statut** : Complété (7 items). Pas de commit ni de commande `go` (backfill long en cours) —

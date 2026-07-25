@@ -1,5 +1,50 @@
 ## Dernières nouveautés
 
+**v7.2 — Modes à objectif, étanchéité entre titres & recherche de joueur instantanée**
+
+**Modes à objectif — Capture de drapeau, Bases, Roi de la colline, Oddball**
+- **Statistiques d'objectif collectées à chaque match** — captures, retours, vols de drapeau et temps en tant que porteur ; captures et sécurisations de zone et temps passé en zone ; récupérations du crâne, temps de possession et plus longue possession
+- **Dans la vue de match** — une nouvelle section « Objectifs » par équipe, une colonne par statistique du mode joué, avec une ligne « Total équipe »
+- **Dans vos totaux** — les chiffres d'objectif agrégés sur la Synthèse, l'Escouade et les Séries temporelles, affichés uniquement là où le titre les fournit
+- **Citations d'objectif** — « À la charge », « Je te tiens ! », « Partie prenante » et « Sus au porteur du drapeau » progressent désormais sur les vrais compteurs d'objectif au lieu des médailles
+
+**Fini les données Halo 5 qui fuyaient sur Halo Infinite**
+- **Porte de titre stricte** — le bandeau Spartan (bannière, emblème, arrière-plan, indicatif de service) n'affiche plus les éléments d'un autre titre pendant le chargement d'une page ni pendant un changement de jeu
+- **Changement de jeu sans données croisées** — chaque réponse du serveur indique désormais pour quel titre elle a été résolue, et l'app refuse tout ce qui ne correspond pas au titre affiché
+- **Apparence par joueur et par titre** — les bannières et emblèmes Halo 5 ne sont plus partagés entre joueurs, et les couleurs d'emblème et de bannière sont conservées séparément
+
+**Explorer — recherche instantanée et données en direct honnêtes**
+- **Recherche de joueur instantanée** — les suggestions de gamertag viennent de vos données locales en 200 ms environ ; un bouton explicite « Rechercher sur Xbox » va interroger Xbox quand vous en avez besoin
+- **N'importe quel joueur redevient lisible** — la carrière, l'identité, les médailles et les saisons d'un joueur recherché passent par le vivier d'identifiants valides : une cible dont les identifiants sont morts n'est plus une impasse
+- **Fini la dégradation muette** — quand les données en direct ne peuvent pas être récupérées, un badge discret le dit (« Données live indisponibles (authentification) », « (erreur) », « Live partiel ») au lieu de laisser une carte vide
+- **Navigation plus fluide** — sélectionner un joueur n'empile plus une entrée d'historique par clic, le graphe « Écart de frags cumulé » retrouve son axe horizontal, et un message explicite le remplace quand vous n'avez aucun match en commun
+
+**Halo 5 — catégories de médailles**
+- **215 médailles en 11 catégories** — les médailles Halo 5 sont désormais regroupées comme celles de Halo Infinite (Bases, Zone de combat, Objectif, Capture du drapeau, Oddball, séries, multi-éliminations, armes, véhicules, infection, style) sous les quatre super-sections habituelles
+- **Médailles fantômes masquées** — trois médailles gagnées en partie mais absentes du catalogue officiel ne polluent plus la page Médailles (leurs données sont conservées)
+
+**Lisibilité**
+- **Infobulles de colonnes partout** — survolez n'importe quel en-tête de tableau pour obtenir la définition de la colonne
+- **Légendes en pied de bloc** — les légendes de graphe sortent de la zone de dessin, ce qui rétablit au passage l'épaisseur des barres d'« Outils de destruction »
+- **Grenades ventilées par type** — le sunburst des frags détaille les grenades en fragmentation / plasma / dynamo / éclats, et un double comptage Halo 5 (corps-à-corps en tenant une arme) disparaît
+- **Un seul nom d'arme par titre** — les noms d'armes viennent d'un référentiel unique par titre : « SPNKr à combustible », « Grenade à fragmentation » ou « Fusil léger » s'écrivent partout pareil
+- **« En placement » au lieu du vide** — une note de performance encore en calibration affiche « En placement (8/10) » dans les tableaux et les tuiles d'accueil plutôt qu'un tiret nu
+- **Libellés plus clairs** — « Net score cumulé » devient « Solde frags − morts cumulé », « Lobby » devient « Partie », « OC / DR » devient « Rendement / Résistance », les playlists et modes du sélecteur d'escouade sont traduits, la description de la médaille Méganaute est réparée, et les blocs de la page Carrière sont alignés en hauteur
+
+**Notifications & alertes**
+- **Notification de médaille inédite** — vous êtes prévenu la première fois que vous décrochez une médaille
+- **Alertes Discord qui se tiennent** — les alertes disque ne partent plus en rafale après chaque redémarrage, le retour à la normale est annoncé une seule fois, la notification de version porte la vraie version, et le cycle de synchronisation automatique annonce ses nouveaux matchs
+- **Notifications lisibles** — les noms de rang de carrière sont traduits et les valeurs sont arrondies
+
+**Administration & synchronisation**
+- **Synchronisation initiale d'un seul joueur** — une nouvelle carte d'administration ré-importe tout l'historique d'un joueur, avec une légende expliquant la portée de chacune des quatre actions de synchronisation
+
+**Confort d'utilisation**
+- **« Dynamique » dans le menu Escouade** — l'onglet existait mais manquait dans la navigation
+- **« Voir les synergies »** — un raccourci depuis une session d'escouade vers la vue Synergies
+- **XP de carrière sur les Sessions** — la courbe d'XP cumulée et l'XP par match, déjà présentes sur les Séries temporelles, couvrent maintenant une session
+- **Match pas encore synchronisé** — ouvrir un match absent de vos données affiche un écran dédié au lieu d'une erreur générique
+
 **v7.1 — Escouade fiabilisée, données de combat Halo 5 & XP de carrière**
 
 **Escouade — plus fiable**

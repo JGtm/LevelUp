@@ -40,7 +40,7 @@ concurrentes (cache) ; intégration `-p 1` ; vérifs visuelles = utilisateur.
 | V72-27 | Notif : valeur illisible + nom de rang en anglais | 3 | [x] rang FR par id + arrondi gap (+ current_mu/next_tier_mu defensif) |
 | V72-28 | Carrière : aligner en hauteur blocs Classements et Évolution LUSR/CSR | 2 | [x] h-full + fluid |
 | V72-29 | CRITIQUE : fuite cross-titre — nameplate/emblème H5 affichés avec Infinite actif | 3 | [x] fail-closed + cache titre + echo/rejet + sequencement + blindage cles/gardes |
-| V72-30 | [FINAL] What's new FR/EN + changelogs FR/EN + notes de version in-app | 6 | [x] What's new + changelogs FR/EN + notes in-app (agent, en finalisation) |
+| V72-30 | [FINAL] What's new FR/EN + changelogs FR/EN + notes de version in-app | 6 | [x] 6 fichiers livres (README EN/FR, RELEASE_NOTES EN/FR, CHANGELOG EN/FR) ; parsing in-app verifie sur les 2 lecteurs ; badge de version au tag |
 | V72-31 | Alertes Discord : anti-rafale disque + notif rétablissement + releases manquées + notifs sync absentes | 3 | [x] anti-rafale persistant (sans rappel 24h, acte), version bakee, notif cycle ; VPS pre-seme v7.1.0 |
 | V72-32 | Notes de performance absentes (BTB placement) : état « En placement » au lieu du vide | 2 | [x] badge En placement (tableaux + tuiles home) ; cause reelle = seuil chaine, pas un bug |
 | V72-33 | Catégories de médailles Halo 5 selon le wiki halo.fr | 2 | [x] 11 categories (Bases, Zone de combat) + 3 fantomes masques |

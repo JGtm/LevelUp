@@ -1,5 +1,50 @@
 ## What's new
 
+**v7.2 — Objective modes, title isolation & instant player search**
+
+**Objective modes — Capture the Flag, Strongholds, King of the Hill, Oddball**
+- **Objective stats collected for every match** — flag captures, returns, steals and time as flag carrier; zone captures, secures and time in zones; skull grabs, time and longest time as skull carrier
+- **In the match view** — a new "Objectives" section per team, one column per stat of the mode played, with a "Team total" line
+- **In your totals** — aggregated objective figures on Synthesis, Squad and Timeseries, shown only where the title provides them
+- **Objective citations** — "Storm the Walls", "Got You!", "Head in the Game" and "Carrier Takedown" now progress on the real objective counters instead of medal awards
+
+**No more Halo 5 data leaking into Halo Infinite**
+- **Strict title gate** — the Spartan banner (nameplate, emblem, backdrop, service tag) no longer shows another title's assets while a page is loading or while you switch games
+- **Title switch without crossed data** — every server response now states which title it was resolved for, and the app refuses anything that does not match the title you are on
+- **Appearance per player and per title** — Halo 5 nameplates and emblems are no longer shared between players, and emblem and banner colours are kept separately
+
+**Explorer — instant search and honest live data**
+- **Instant player search** — gamertag suggestions come from your local data in about 200 ms; an explicit "Search on Xbox" button looks the player up on Xbox when you need it
+- **Any player readable again** — career, identity, medals and seasons of a searched player are fetched through the pool of healthy credentials, so a target whose own credentials are dead is no longer a dead end
+- **No more silent degradation** — when live data cannot be fetched, a discreet badge says so ("Live data unavailable (authentication)", "(error)", "Partial live data") instead of leaving an empty card
+- **Smoother navigation** — selecting a player no longer stacks one history entry per click, the "Cumulative frag gap" chart gets its X axis back, and an explicit message replaces it when you have no match in common
+
+**Halo 5 — medal categories**
+- **215 medals in 11 categories** — Halo 5 medals are now grouped the way Halo Infinite's are (Strongholds, Warzone, Objective, Capture the Flag, Oddball, sprees, multikills, weapons, vehicles, infection, style) under the four usual super-sections
+- **Ghost medals hidden** — three medals earned in game but absent from the official catalog no longer pollute the Medals page (their data is kept)
+
+**Readability**
+- **Column tooltips everywhere** — hover any table header to get the definition of the column
+- **Legends at the foot of the block** — chart legends move out of the drawing area, which also restores the bar thickness of "Tools of destruction"
+- **Grenades split by type** — the frag sunburst breaks grenades down into frag / plasma / dynamo / splinter, and a Halo 5 double count (melee kills while holding a weapon) is gone
+- **One weapon name per title** — weapon names come from a single per-title reference: "Fuel Rod SPNKr", "Fragmentation grenade" or "Light Rifle" now read the same everywhere
+- **"In placement" instead of a blank** — a performance score still being calibrated shows "In placement (8/10)" on the tables and the home tiles rather than a bare dash
+- **Clearer labels** — the "OC / DR" axes become "Yield / Resistance", playlists and modes in the squad picker are localized, the French wording of the cumulative net-score chart and of the Meganaut medal description is repaired, and the Career blocks are height-aligned
+
+**Notifications & alerts**
+- **New-medal notification** — you are notified the first time you ever earn a medal
+- **Discord alerts that behave** — disk alerts no longer burst after every restart, a return to normal is announced once, the release notification carries the real version, and the automatic sync cycle reports its new matches
+- **Readable notifications** — career rank names are localized and figures are rounded
+
+**Admin & sync**
+- **Initial sync for a single player** — a new admin card re-imports one player's full history, with a legend explaining the scope of each of the four sync actions
+
+**Quality of life**
+- **"Dynamics" in the Squad menu** — the tab existed but was missing from the navigation
+- **"See synergies"** — a shortcut from a squad session to the Synergies view
+- **Career XP on Sessions** — the cumulative XP curve and XP per match, already on Timeseries, now also cover a single session
+- **Match not synced yet** — opening a match absent from your data shows a dedicated screen instead of a generic error
+
 **v7.1 — Squad reliability, Halo 5 combat data & career XP**
 
 **Squad — more reliable**
