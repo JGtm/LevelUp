@@ -22,6 +22,10 @@ const HALO = {
   capabilities: [],
   is_default: true,
   effective_hp_to_kill: 225,
+  provides_damage_taken: true,
+  provides_team_mmr: true,
+  provides_max_killing_spree: true,
+  offensive_conversion_p80: 0.9,
 }
 const SOON = {
   slug: 'halo_mcc',
@@ -30,6 +34,10 @@ const SOON = {
   capabilities: [],
   is_default: false,
   effective_hp_to_kill: 225,
+  provides_damage_taken: true,
+  provides_team_mmr: true,
+  provides_max_killing_spree: true,
+  offensive_conversion_p80: 0.9,
 }
 const OTHER = {
   slug: 'halo_3',
@@ -38,6 +46,10 @@ const OTHER = {
   capabilities: [],
   is_default: false,
   effective_hp_to_kill: 225,
+  provides_damage_taken: true,
+  provides_team_mmr: true,
+  provides_max_killing_spree: true,
+  offensive_conversion_p80: 0.9,
 }
 const PLAYER = {
   player_slug: 'p1', gamertag: 'P1', xuid: '1', waypoint_player: 'P1', is_demo: false, sync_enabled: true,

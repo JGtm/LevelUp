@@ -215,14 +215,75 @@ passage »). NB : chemins Go préfixés `apps/go-api/`.
       corrigées). Périmètre : handlers/groups.go (réécrit), handlers/groups_test.go (harness),
       server_apiv1.go (Mount), shared_openapi_doc_test.go (exclusion retirée), openapi.yaml
       (Group/GroupMember). Aucun commit (superviseur). [x]
-- [ ] **H6 — Pipeline génération + golden (M). NE DÉMARRE PAS tant que H2, H3, H4, H5
-      ne sont pas CLOS** (tous items statués, gates verts) — sinon le golden fige une
-      spec appauvrie. `api.OpenAPI().YAML()` + fusion fragment manuel VERSIONNÉ
-      (précédence DÉFINIE : le fragment manuel gagne sur toute collision de path) →
-      écrit api/openapi.yaml. Drift test remplacé par golden `TestOpenAPIYAMLIsUpToDate`
-      + assertion que les ~20 paths chi-brut du fragment survivent à la régénération.
-      Filtrer les wrappers anonymes par-route. Archiver openapi_fastapi_reference.yaml.
+- [x] **H6 — Pipeline génération + golden (M).** FAIT (2026-07-25, agent Opus).
+      `api/openapi.yaml` est GÉNÉRÉ. Architecture : nouveau paquet
+      `internal/api/openapigen` = (a) `BuildDemoRouter` — LE harnais d'assemblage du
+      routeur de démo, extrait de `contract_helpers_test.go` qui délègue désormais
+      (une seule définition : le contrat publié décrit la MÊME surface que celle des
+      tests de contrat) ; (b) `Render(doc, fragment)` — 3 passes : chemins absolus →
+      relatifs au server `/api/v1` (collision = erreur), retrait des WRAPPERS OPAQUES
+      par-route (requestBody `application/octet-stream` d'un `RawBody []byte` supprimé,
+      schéma de réponse `{type:string, contentEncoding:base64}` d'un `Body []byte`
+      réduit à `{}` — les schémas NOMMÉS ne sont jamais touchés), puis fusion du
+      fragment ; (c) `Generate` = harnais + rendu, appelé À L'IDENTIQUE par la commande
+      et par le golden. Sérialisation DÉTERMINISTE : JSON Huma → arbre (json.Number →
+      int64, sinon yaml émettrait `1e+06`) → `yaml.Node` ordonné (openapi, info,
+      servers, tags, paths, components ; clés internes triées par yaml.v3), indent 2,
+      bandeau « FICHIER GÉNÉRÉ ». En-tête `openapi: 3.1.0` INCHANGÉ mais le CORPS
+      devient du vrai 3.1 (`type: [X,"null"]`, `examples[]`) — dette « 3.1 style 3.0 »
+      résorbée ; openapi-typescript 7.13 le consomme nativement (0 erreur).
+      **Fragment** `api/openapi_manual_fragment.yaml` (3 090 L) : 9 chemins chi-brut +
+      15 request bodies RawBody + 187 réponses d'erreur + 154 descriptions de réponse +
+      33 descriptions d'opération + enrichissements de paramètres (fusion par
+      `(name,in)`) + 5 exemples `components.responses` + `components.parameters` +
+      55 schémas (39 sans type Go, 5 descriptions racine, 11 sémantiques transférées
+      depuis les schémas INLINE du yaml vers le schéma nommé dérivé) + info/servers/tags
+      (12 tags manquants déclarés : setup, groups, jobs, progression, match-exclusion,
+      compare, leaderboard, palmares, timeseries, teammates, synthesis, titles).
+      PRÉCÉDENCE = JSON Merge Patch : objets fusionnés clé à clé, `null` SUPPRIME la clé
+      dérivée (11 statuts 201/202 posés par un champ `Status` que Huma documente à 200 ;
+      3 `$ref` de pointeur-vers-struct rendus nullables par `anyOf`), listes
+      `parameters` fusionnées par `(name,in)`. Commande : `make openapi-gen` (+
+      `make openapi-check`), `cmd/openapi-gen` (flags `-out/-fragment/-check/-v`).
+      **Golden** `openapi_golden_test.go` : `TestOpenAPIYAMLIsUpToDate` (régénère en
+      mémoire, diff byte-à-byte, message « relancer make openapi-gen ») +
+      `TestManualFragmentPathsSurviveGeneration` (9 chemins chi-brut). `openapi_schema_
+      drift_test.go` SUPPRIMÉ avec ses helpers (sous génération, un schéma dérivé ne
+      peut plus manquer) et le hook `humacore.OnAPICreated` devenu mort. H3 Partie B
+      recâblée : l'allowlist statique cède la place au FRAGMENT (perte légitime ⟺
+      déclarée au fragment) + anti-caducité inversée (déclaration inutile = échec ;
+      a effectivement attrapé une description redondante). `api/openapi_fastapi_
+      reference.yaml` archivé (docs/archive/). **Diff sémantique vs baseline H0**
+      (comparaison de faits, refs résolus) : 5 755 faits avant / 6 336 après —
+      **597 ajouts, 69 modifications, 16 pertes, TOUTES inventoriées** : 5 descriptions
+      de réponse 200 sur des ops qui répondent 204 (aucun corps — le doc fait foi),
+      7 paramètres de chemin au nom périmé ({user_id}×3, {invite_id}, {title_slug}×3 —
+      Découvertes H2, le code fait foi), 4 champs de schéma sans équivalent Go
+      (DeviceFlowStartResponse.verification_uri_complete, DeviceFlowStatusResponse.error,
+      CombatProfileBlock/SessionCompareEntry.avg_residual_brut — yaml périmé). Les
+      69 modifications : 17+2 inline→`$ref` nommé (25/27 nœuds retrouvés via la ref,
+      les 2 restants = champs périmés ci-dessus), 7 types de paramètre integer→string
+      (inventaire item 6 : params dérivés des input structs), 4 summary + 3 tags +
+      1 operationId (Découvertes H2), 32 schémas (required conformes au Go, 4 descriptions
+      reformulées en H3, 3 `$ref` enrichis). Tailles : yaml 18 066 → 20 962 L
+      (507 522 → 527 360 o) ; generated.ts 14 204 → 15 839 L, **530 noms de schéma
+      INCHANGÉS** (0 ajout, 0 retrait → aucun re-export types.ts à repointer).
+      Retombées front (typecheck) : 6 corrections de source (2 gardes `capabilities ??
+      []`, `available_players ?? []`, `holders` nullable ×2, et surtout
+      `status.error?.message|code` → `error_detail`/`error_code` — le front lisait un
+      champ qui n'existe PAS côté Go) + 15 fixtures de test complétées des 4 champs
+      TitleSummary désormais requis. Gates : gofmt vide, `go build ./...`, `go vet ./...`,
+      `go test ./internal/api/...`, `go test ./...` (exit 0), `make go-api-lint`
+      (0 issue), `make generate-types`, `npm run typecheck` (0 erreur),
+      `node tools/lint-contract-ratchet.mjs` (clean), `npx vitest run src/lib`
+      (78 fichiers / 826 tests) et suite vitest complète (364 / 3 093) — TOUS verts.
+      Aucun commit (superviseur). [x]
 - [ ] **H7 — generate-types (S→M).** Diff massif attendu dans generated.ts (14 010 L).
+      NB H6 : `make generate-types` a DÉJÀ tourné (gate H6) — generated.ts est à jour,
+      typecheck vert, 530 noms de schéma inchangés (aucun repoint types.ts nécessaire).
+      Reste donc à H7 : la GARDE SÉMANTIQUE (snapshot des noms exportés + membres
+      d'enums), l'assertivité de `response-types.guard.test.ts`, et le lot Group/
+      GroupMember (enum Role, non-nullité members, retrait de BASELINE_COLLISIONS).
       AJOUT (25/07, consolidation H5) : rendre les schemas Group/GroupMember fideles
       (tag enum owner,member sur Role + non-nullite de members cote Go) puis re-shimer
       types.ts et RETIRER Group/GroupMember de BASELINE_COLLISIONS (lint-contract-ratchet).
@@ -325,6 +386,23 @@ racine) ; le reste n'apparaît pas dans le doc généré (schémas non-Huma) don
 
 ## Journal
 
+- 2026-07-25 : **H6 EXÉCUTÉ (agent Opus).** `api/openapi.yaml` devient GÉNÉRÉ :
+  `internal/api/openapigen` (harnais de routeur démo partagé avec les tests de contrat +
+  rendu YAML déterministe + fusion JSON-Merge-Patch du fragment manuel),
+  `cmd/openapi-gen` + `make openapi-gen`/`openapi-check`, fragment versionné
+  `api/openapi_manual_fragment.yaml` (3 090 L, tout le non-dérivable, précédence manuelle),
+  golden `TestOpenAPIYAMLIsUpToDate` + survie des chemins chi-brut, drift test supprimé
+  (avec le hook mort `OnAPICreated`), H3 Partie B recâblée sur le fragment (allowlist
+  statique retirée, anti-caducité inversée), `openapi_fastapi_reference.yaml` archivé.
+  Diff sémantique vs baseline H0 : 597 ajouts / 69 modifications / **16 pertes toutes
+  inventoriées** (5 descriptions de 200 sur des ops 204, 7 noms de paramètre périmés,
+  4 champs de schéma sans équivalent Go). generated.ts régénéré (14 204 → 15 839 L,
+  530 noms de schéma inchangés) ; typecheck remis à 0 erreur par 6 corrections de source
+  (dont `status.error` → `error_code`/`error_detail`, champ inexistant côté Go) et
+  15 fixtures TitleSummary complétées. Tous les gates Go et web verts. Aucun commit.
+  Découverte notée (NON traitée, hors périmètre) : Huma documente `DefaultStatus=200`
+  pour 11 handlers qui posent 201/202 via leur champ `Status` — corrigé DANS le fragment ;
+  la correction propre (poser `DefaultStatus` côté Go) shrinkerait le fragment d'autant.
 - 2026-07-24 : recon + plan posés. Séquencement : dernier des gros lots v7.2.
 - 2026-07-25 : revue plan-review intégrée : spike H0.5 bloquant ajouté, H1 reformulé
   « document partagé » (pas instance unique), comptages corrigés (71 Mount), inventaire

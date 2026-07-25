@@ -279,7 +279,7 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
     return (
       <div className="space-y-3 text-center">
         <p className="text-destructive font-medium">
-          {expired ? 'Le code a expiré.' : status?.error?.message ?? 'Échec de l\'authentification.'}
+          {expired ? 'Le code a expiré.' : status?.error_detail ?? 'Échec de l\'authentification.'}
         </p>
         <Button onClick={handleRetry}>{t('common.xbox_login.retry')}</Button>
       </div>
