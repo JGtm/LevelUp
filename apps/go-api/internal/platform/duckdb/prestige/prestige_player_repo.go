@@ -202,97 +202,20 @@ func NewPrestigeArcRepo(db *duckdb.DB) *PrestigeArcRepo {
 	return &PrestigeArcRepo{db: duckdb.NewPlayerReadHandle(db)}
 }
 
-var (
-	_ prestige.ArcRepo       = (*PrestigeArcRepo)(nil)
-	_ prestige.ArcTitlesRepo = (*PrestigeArcRepo)(nil)
-)
+var _ prestige.ArcRepo = (*PrestigeArcRepo)(nil)
 
+// Create insère un arc. Le titre de l'arc est porté par la SEULE colonne
+// arc.title_slug : un arc appartient à un titre et un seul (décision produit
+// 2026-07-18). La jointure arc_titles et les lectures ArcTitles/ArcsByTitle qui
+// vivaient ici ont été retirées le 2026-07-25 (migration drop_arc_titles).
 func (r *PrestigeArcRepo) Create(ctx context.Context, a prestige.Arc) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	if _, err := r.db.ExecRecovered(ctx, `
+	_, err := r.db.ExecRecovered(ctx, `
 		INSERT INTO arc (id, user_id, title_slug, title, description, is_preset, preset_id, created_at, completed_at)
 		VALUES (?,?,?,?,?,?,?,?,?)
-	`, a.ID, a.UserID, a.TitleSlug, a.Title, a.Description, a.IsPreset, duckdb.NullableStr(a.PresetID), a.CreatedAt, a.CompletedAt); err != nil {
-		return err
-	}
-	// Invariant cross-titre : 1 ligne (arc.id, arc.title_slug) par arc. La voie
-	// arc_titles reste ainsi un sur-ensemble des lectures mono-titre (cf.
-	// PLAN_CROSS_TITLE_ARCS_BACKEND Phase 2). ON CONFLICT DO NOTHING = idempotent.
-	_, err := r.db.ExecRecovered(ctx, `
-		INSERT INTO arc_titles (arc_id, title_slug) VALUES (?, ?) ON CONFLICT DO NOTHING
-	`, a.ID, a.TitleSlug)
+	`, a.ID, a.UserID, a.TitleSlug, a.Title, a.Description, a.IsPreset, duckdb.NullableStr(a.PresetID), a.CreatedAt, a.CompletedAt)
 	return err
-}
-
-// ArcTitles retourne les title_slug couverts par un arc via la table de jointure
-// arc_titles, avec fallback sur arc.title_slug si la jointure est vide (garde-fou
-// pré-backfill). Voir prestige.ArcTitlesRepo.
-func (r *PrestigeArcRepo) ArcTitles(ctx context.Context, arcID string) ([]string, error) {
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	rows, err := r.db.QueryRecovered(ctx, `SELECT title_slug FROM arc_titles WHERE arc_id = ? ORDER BY title_slug`, arcID)
-	if err != nil {
-		return nil, fmt.Errorf("ArcTitles: %w", err)
-	}
-	defer rows.Close()
-	var out []string
-	for rows.Next() {
-		var slug string
-		if err := rows.Scan(&slug); err != nil {
-			return nil, fmt.Errorf("ArcTitles scan: %w", err)
-		}
-		out = append(out, slug)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	if len(out) == 0 {
-		// Fallback pré-backfill : titre primaire de l'arc.
-		frows, err := r.db.QueryRowRecovered(ctx, `SELECT title_slug FROM arc WHERE id = ?`, arcID)
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, prestige.ErrArcNotFound
-		}
-		if err != nil {
-			return nil, fmt.Errorf("ArcTitles fallback: %w", err)
-		}
-		defer frows.Close()
-		var primary string
-		if err := frows.Scan(&primary); err != nil {
-			return nil, fmt.Errorf("ArcTitles fallback: %w", err)
-		}
-		return []string{primary}, nil
-	}
-	return out, nil
-}
-
-// ArcsByTitle liste les arcs d'un joueur couvrant un titre via arc_titles. En
-// mono-titre (1 ligne/arc) le résultat est strictement équivalent à l'ancienne
-// requête ListByUser sur arc.title_slug. Voir prestige.ArcTitlesRepo.
-func (r *PrestigeArcRepo) ArcsByTitle(ctx context.Context, userID, titleSlug string) ([]prestige.Arc, error) {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	rows, err := r.db.QueryRecovered(ctx, `
-		SELECT a.id, a.user_id, a.title_slug, a.title, COALESCE(a.description, ''),
-		       a.is_preset, COALESCE(a.preset_id, ''), a.created_at, a.completed_at
-		FROM arc a
-		JOIN arc_titles act ON act.arc_id = a.id
-		WHERE a.user_id = ? AND act.title_slug = ?
-		ORDER BY a.created_at DESC
-	`, userID, titleSlug)
-	if err != nil {
-		return nil, fmt.Errorf("ArcsByTitle: %w", err)
-	}
-	defer rows.Close()
-	var out []prestige.Arc
-	for rows.Next() {
-		a, err := scanArc(rows)
-		if err != nil {
-			return nil, fmt.Errorf("ArcsByTitle scan: %w", err)
-		}
-		out = append(out, a)
-	}
-	return out, rows.Err()
 }
 
 func (r *PrestigeArcRepo) Get(ctx context.Context, id string) (prestige.Arc, error) {

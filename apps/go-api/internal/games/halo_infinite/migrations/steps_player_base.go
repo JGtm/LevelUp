@@ -8,8 +8,9 @@ package migrations
 // sont désormais SQUASHÉS dans create_baseline_player_v1 (steps_player_baseline.go) —
 // leur schéma cumulé « à plat » est émis par la baseline sur une DB vierge. Restent ici
 // les racines POSTÉRIEURES à la borne du squash : create_prestige_player_schema,
-// create_arc_titles_join, create_improvement_campaign_schema, create_progression_player_schema,
-// drop_notifications_from_player_db. Les 3 helpers alors dédiés au bloc squashé
+// create_arc_titles_join + drop_arc_titles, create_improvement_campaign_schema,
+// create_progression_player_schema, drop_notifications_from_player_db.
+// Les 3 helpers alors dédiés au bloc squashé
 // (applyCareerProgressionSequence, *IdentityAssets, applyFixMvSessionStats) sont retirés
 // avec lui (archivés dans .ai/migrations/squashed/player_v1/).
 
@@ -130,10 +131,21 @@ func playerBaseSteps() []migration.Migration {
 				`)
 			},
 		},
+		// ─── arc_titles : structure RETIRÉE (décision produit 2026-07-18) ───
+		// Le couple create_arc_titles_join + drop_arc_titles ci-dessous est
+		// VOLONTAIREMENT conservé en l'état : `create_arc_titles_join` est un
+		// enregistrement présent dans schema_migrations sur toutes les bases joueur
+		// existantes ET une entrée de canonicalOrder — le supprimer désynchroniserait
+		// le registre (order_audit_test.go, audit bidirectionnel « pas d'entrée morte »).
+		// Sur une base VIERGE la table est créée puis immédiatement droppée dans le même
+		// cycle : effet net nul. NE PAS « nettoyer » cette paire.
 		{
-			Name:        "create_arc_titles_join",
-			TargetDB:    migration.TargetPlayer,
-			Description: "Table de jointure arc_titles(arc_id, title_slug) — socle cross-titre additif backend-ready (cf. PLAN_CROSS_TITLE_ARCS_BACKEND). Invariant : 1 ligne (arc.id, arc.title_slug) par arc existant.",
+			Name:     "create_arc_titles_join",
+			TargetDB: migration.TargetPlayer,
+			Description: "HISTORIQUE (2026-06-18) — table de jointure arc_titles(arc_id, title_slug). " +
+				"Structure retirée le 2026-07-25 par drop_arc_titles (décision produit 2026-07-18 : " +
+				"arcs, défis et points de progression strictement indépendants par titre). Entrée " +
+				"conservée pour la cohérence du ledger schema_migrations des bases existantes.",
 			ApplySchema: func(db *sql.DB) error {
 				return migration.ExecScript(db, `
 					CREATE TABLE IF NOT EXISTS arc_titles (
@@ -144,14 +156,30 @@ func playerBaseSteps() []migration.Migration {
 					CREATE INDEX IF NOT EXISTS idx_arc_titles_slug ON arc_titles(title_slug);
 				`)
 			},
-			ApplyBackfill: func(db *sql.DB) error {
-				// 1 ligne (arc.id, arc.title_slug) par arc existant : la voie arc_titles
-				// devient un sur-ensemble strict des lectures mono-titre actuelles. Idempotent
-				// (ON CONFLICT DO NOTHING) si le backfill est rejoué.
+			// ApplyBackfill RETIRÉ le 2026-07-25 : il remplissait arc_titles depuis arc
+			// (miroir 1:1). La table étant droppée dans le même cycle, un rejeu du backfill
+			// (cas backfill_done = FALSE) taperait une table absente et logguerait un WARN à
+			// chaque boot. ApplyBackfill == nil ⇒ applyStepBackfill no-ope (registry.go).
+		},
+		{
+			Name:     "drop_arc_titles",
+			TargetDB: migration.TargetPlayer,
+			Description: "Supprime arc_titles de stats.duckdb — retrait de la capacité multi-titres d'arc " +
+				"(décision produit 2026-07-18 : arcs, défis et points de progression strictement " +
+				"indépendants par titre ; cf. .ai/archive/PLAN_CROSS_TITLE_ARCS_2026-07.md).",
+			ApplySchema: func(db *sql.DB) error {
+				// RAISON (décision produit du 2026-07-18, Option A confirmée par l'utilisateur) :
+				// arc_titles était une jointure many-to-many arc↔titre livrée le 2026-06-18
+				// (PLAN_CROSS_TITLE_ARCS_BACKEND) qui rendait REPRÉSENTABLE un arc couvrant N
+				// titres. La décision produit interdit cette notion : un arc porte UN titre et un
+				// seul — `arc.title_slug` est la source unique.
+				// ZÉRO PERTE DE DONNÉE : la table était un miroir 1:1 de arc.title_slug (backfill
+				// d'origine = `SELECT id, title_slug FROM arc` ; unique writer applicatif =
+				// PrestigeArcRepo.Create, qui insérait (a.ID, a.TitleSlug)). Aucune ligne n'a
+				// jamais pu porter un titre absent de l'arc correspondant.
+				// IRRÉVERSIBLE côté données, mais reconstructible à l'identique depuis `arc`.
 				return migration.ExecScript(db, `
-					INSERT INTO arc_titles (arc_id, title_slug)
-					SELECT id, title_slug FROM arc
-					ON CONFLICT DO NOTHING;
+					DROP TABLE IF EXISTS arc_titles;
 				`)
 			},
 		},

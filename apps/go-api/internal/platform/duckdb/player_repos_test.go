@@ -278,9 +278,10 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 		`CREATE OR REPLACE VIEW match_csrs_latest AS
 			SELECT * FROM shared.match_csrs
 			QUALIFY ROW_NUMBER() OVER (PARTITION BY match_id, xuid ORDER BY written_at DESC, id DESC) = 1`,
-		// match_objective_stats (shared, append-only V72-03) : stats objectifs par
-		// joueur/match (CTF/Zones/Oddball). Q12 LEFT JOIN match_objective_stats_latest.
-		// Miroir de steps_shared_objective_stats.go (23 colonnes métier + written_at).
+		// match_objective_stats (shared, append-only V72-03 + V721-02) : stats objectifs
+		// par joueur/match (CTF/Zones/Oddball/Stockpile/Extraction/VIP). Q12 LEFT JOIN
+		// match_objective_stats_latest. Miroir de steps_shared_objective_stats.go
+		// (41 colonnes métier + id + written_at).
 		`CREATE TABLE shared.match_objective_stats (
 			id BIGINT, match_id VARCHAR NOT NULL, xuid VARCHAR NOT NULL,
 			flag_captures INTEGER, flag_capture_assists INTEGER, flag_grabs INTEGER,
@@ -293,6 +294,15 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 			kills_as_skull_carrier INTEGER, skull_carriers_killed INTEGER, skull_grabs INTEGER,
 			skull_scoring_ticks INTEGER, time_as_skull_carrier_seconds DOUBLE,
 			longest_time_as_skull_carrier_seconds DOUBLE,
+			kills_as_power_seed_carrier INTEGER, power_seed_carriers_killed INTEGER,
+			power_seeds_deposited INTEGER, power_seeds_stolen INTEGER,
+			time_as_power_seed_carrier_seconds DOUBLE, time_as_power_seed_driver_seconds DOUBLE,
+			extraction_conversions_completed INTEGER, extraction_conversions_denied INTEGER,
+			extraction_initiations_completed INTEGER, extraction_initiations_denied INTEGER,
+			successful_extractions INTEGER,
+			kills_as_vip INTEGER, vip_kills INTEGER, vip_assists INTEGER,
+			times_selected_as_vip INTEGER, max_killing_spree_as_vip INTEGER,
+			time_as_vip_seconds DOUBLE, longest_time_as_vip_seconds DOUBLE,
 			written_at TIMESTAMP DEFAULT now())`,
 		`CREATE OR REPLACE VIEW match_objective_stats_latest AS
 			SELECT * FROM shared.match_objective_stats

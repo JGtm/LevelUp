@@ -52,10 +52,18 @@ interface RenderProps {
   option: EChartsCoreOption | null
   title?: ReactNode
   emptyMessage?: string
+  /** Clé de tournée de revue (badge inerte hors tournée, cf. lib/review). */
+  reviewKey?: string
 }
-function ChartRender({ option, height, title, emptyMessage }: RenderProps) {
+function ChartRender({ option, height, title, emptyMessage, reviewKey }: RenderProps) {
   return (
-    <ChartFromOption title={title} option={option} height={height} emptyMessage={emptyMessage} />
+    <ChartFromOption
+      title={title}
+      option={option}
+      height={height}
+      emptyMessage={emptyMessage}
+      reviewKey={reviewKey}
+    />
   )
 }
 
@@ -124,7 +132,9 @@ export function TimeseriesSessionPerformance({
 
     return {
       backgroundColor: CHART_BG,
-      grid: { top: 24, right: 60, bottom: 64, left: 56, containLabel: true },
+      // Marge droite élargie quand l'axe MMR est présent : il est décalé de 48 px
+      // de l'axe des pourcentages (B5), il faut la place pour ses étiquettes.
+      grid: { top: 24, right: showMmr ? 116 : 60, bottom: 64, left: 56, containLabel: true },
       tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
       legend: { ...getLegendBase(tc), bottom: 0 },
       xAxis: {
@@ -133,6 +143,10 @@ export function TimeseriesSessionPerformance({
         data: categories,
         axisLabel: { ...getAxisBase(tc).axisLabel, interval: 0, fontSize: 9 },
       },
+      // B5 — un axe par UNITÉ. Le taux de victoire (0-100 %) et le MMR (milliers
+      // de points) partageaient un axe Y2 auto-échelonné : le MMR écrasait la
+      // courbe de victoire sur la ligne du bas. Y1 = performance, Y2 = taux de
+      // victoire borné [0,100], Y3 = MMR (décalé, uniquement si la série existe).
       yAxis: [
         {
           ...getAxisBase(tc),
@@ -145,12 +159,28 @@ export function TimeseriesSessionPerformance({
         {
           ...getAxisBase(tc),
           type: 'value',
-          // Sans MMR (Halo 5) : l'axe Y2 ne porte plus que le taux de victoire.
-          name: showMmr ? `${winRateLabel} / ${mmrLabel}` : winRateLabel,
-          scale: true,
+          name: winRateLabel,
+          min: 0,
+          max: 100,
           nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
+          axisLabel: { ...getAxisBase(tc).axisLabel, formatter: '{value} %' },
           splitLine: { show: false },
         },
+        // Axe MMR : ajouté seulement quand le titre fournit le MMR (Halo 5 → absent,
+        // pas d'axe fantôme). `offset` le décale de l'axe des pourcentages.
+        ...(showMmr
+          ? [
+              {
+                ...getAxisBase(tc),
+                type: 'value' as const,
+                name: mmrLabel,
+                scale: true,
+                offset: 48,
+                nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
+                splitLine: { show: false },
+              },
+            ]
+          : []),
       ],
       series: [
         {
@@ -180,7 +210,8 @@ export function TimeseriesSessionPerformance({
               {
                 type: 'line' as const,
                 name: mmrLabel,
-                yAxisIndex: 1,
+                // Axe 2 = MMR (ajouté uniquement quand showMmr, cf. yAxis ci-dessus).
+                yAxisIndex: 2,
                 data: mmr,
                 showSymbol: false,
                 smooth: false,
@@ -194,7 +225,15 @@ export function TimeseriesSessionPerformance({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [points, granularity, perfLabel, winRateLabel, mmrLabel, showMmr, themeVersion, locale])
-  return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
+  return (
+    <ChartRender
+      option={option}
+      height={height}
+      title={title}
+      emptyMessage={emptyMessage}
+      reviewKey="timeseries.session_performance"
+    />
+  )
 }
 
 // ─── Rendement & Résistance par match ────────────────────────────────────────
@@ -263,7 +302,15 @@ export function TimeseriesIntensityProfile({
     return (opt as { series?: unknown }).series ? opt : null
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, medianLabel, envelopeLabel, refLabel, themeVersion, locale])
-  return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
+  return (
+    <ChartRender
+      option={option}
+      height={height}
+      title={title}
+      emptyMessage={emptyMessage}
+      reviewKey="timeseries.intensity_profile"
+    />
+  )
 }
 
 export function TimeseriesEfficiency({

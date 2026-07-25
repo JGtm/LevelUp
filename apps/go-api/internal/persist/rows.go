@@ -264,10 +264,12 @@ type PVEMatchStatsInsert struct {
 }
 
 // ObjectiveStatsInsert — row pour shared.match_objective_stats (stats objectifs par
-// joueur/match des modes CTF/Zones/Oddball Halo Infinite). Table LARGE nullable : un
-// match = un mode → seuls les champs du bloc du mode joué sont renseignés, les autres
-// restent NULL (pointeurs nil). Append-only : INSERT pur, lecture via _latest.
-// Colonnes verrouillées sur payload réel GetMatchStats (P0, PLAN_V72_OBJECTIVE_STATS.md).
+// joueur/match des modes CTF/Zones/Oddball/Stockpile/Extraction/VIP Halo Infinite). Table
+// LARGE nullable : un match = un mode → seuls les champs du bloc du mode joué sont
+// renseignés, les autres restent NULL (pointeurs nil). Append-only : INSERT pur, lecture
+// via _latest. Colonnes verrouillées sur payload réel GetMatchStats (P0,
+// PLAN_V72_OBJECTIVE_STATS.md ; Stockpile + Extraction + VIP : V721-02,
+// PLAN_V721_NOTION_BATCH.md).
 type ObjectiveStatsInsert struct {
 	MatchID string `json:"match_id"`
 	XUID    string `json:"xuid"`
@@ -297,6 +299,27 @@ type ObjectiveStatsInsert struct {
 	SkullScoringTicks                *int     `json:"skull_scoring_ticks,omitempty"`
 	TimeAsSkullCarrierSeconds        *float64 `json:"time_as_skull_carrier_seconds,omitempty"`
 	LongestTimeAsSkullCarrierSeconds *float64 `json:"longest_time_as_skull_carrier_seconds,omitempty"`
+	// Stockpile (StockpileStats) — V721-02
+	KillsAsPowerSeedCarrier       *int     `json:"kills_as_power_seed_carrier,omitempty"`
+	PowerSeedCarriersKilled       *int     `json:"power_seed_carriers_killed,omitempty"`
+	PowerSeedsDeposited           *int     `json:"power_seeds_deposited,omitempty"`
+	PowerSeedsStolen              *int     `json:"power_seeds_stolen,omitempty"`
+	TimeAsPowerSeedCarrierSeconds *float64 `json:"time_as_power_seed_carrier_seconds,omitempty"`
+	TimeAsPowerSeedDriverSeconds  *float64 `json:"time_as_power_seed_driver_seconds,omitempty"`
+	// Extraction (ExtractionStats) — V721-02, aucune durée dans ce bloc
+	ExtractionConversionsCompleted *int `json:"extraction_conversions_completed,omitempty"`
+	ExtractionConversionsDenied    *int `json:"extraction_conversions_denied,omitempty"`
+	ExtractionInitiationsCompleted *int `json:"extraction_initiations_completed,omitempty"`
+	ExtractionInitiationsDenied    *int `json:"extraction_initiations_denied,omitempty"`
+	SuccessfulExtractions          *int `json:"successful_extractions,omitempty"`
+	// VIP (VipStats) — V721-02
+	KillsAsVip              *int     `json:"kills_as_vip,omitempty"`
+	VipKills                *int     `json:"vip_kills,omitempty"`
+	VipAssists              *int     `json:"vip_assists,omitempty"`
+	TimesSelectedAsVip      *int     `json:"times_selected_as_vip,omitempty"`
+	MaxKillingSpreeAsVip    *int     `json:"max_killing_spree_as_vip,omitempty"`
+	TimeAsVipSeconds        *float64 `json:"time_as_vip_seconds,omitempty"`
+	LongestTimeAsVipSeconds *float64 `json:"longest_time_as_vip_seconds,omitempty"`
 }
 
 // MatchCSRInsert — row pour shared.match_csrs (CSR de tous les participants

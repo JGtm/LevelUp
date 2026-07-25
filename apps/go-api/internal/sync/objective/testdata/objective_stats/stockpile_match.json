@@ -1,0 +1,73 @@
+{
+  "MatchId": "00000000-0000-0000-0000-000000005eed",
+  "MatchInfo": { "Duration": "PT12M26.4320964S" },
+  "Players": [
+    {
+      "PlayerId": "xuid(2500000000000001)",
+      "PlayerType": 1,
+      "LastTeamId": 0,
+      "ParticipationInfo": { "TimePlayed": "PT11M42.1164608S" },
+      "PlayerTeamStats": [
+        {
+          "TeamId": 0,
+          "Stats": {
+            "CoreStats": { "Kills": 13, "Deaths": 8, "Assists": 1, "PersonalScore": 2510 },
+            "StockpileStats": {
+              "KillsAsPowerSeedCarrier": 2,
+              "PowerSeedCarriersKilled": 1,
+              "PowerSeedsDeposited": 6,
+              "PowerSeedsStolen": 0,
+              "TimeAsPowerSeedCarrier": "PT59.1S",
+              "TimeAsPowerSeedDriver": "PT0S"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "PlayerId": "xuid(2500000000000002)",
+      "PlayerType": 1,
+      "LastTeamId": 1,
+      "ParticipationInfo": { "TimePlayed": "PT12M26.407S" },
+      "PlayerTeamStats": [
+        {
+          "TeamId": 1,
+          "Stats": {
+            "CoreStats": { "Kills": 8, "Deaths": 7, "Assists": 5, "PersonalScore": 1275 },
+            "StockpileStats": {
+              "KillsAsPowerSeedCarrier": 2,
+              "PowerSeedCarriersKilled": 0,
+              "PowerSeedsDeposited": 2,
+              "PowerSeedsStolen": 0,
+              "TimeAsPowerSeedCarrier": "PT1M9.6S",
+              "TimeAsPowerSeedDriver": "PT1M4.2S"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "_comment": "3e joueur : seul porteur de PowerSeedsStolen > 0 dans le match reel — couvre le champ (distinguer absent de zero).",
+      "PlayerId": "xuid(2500000000000003)",
+      "PlayerType": 1,
+      "LastTeamId": 0,
+      "ParticipationInfo": { "TimePlayed": "PT12M26.407S" },
+      "PlayerTeamStats": [
+        {
+          "TeamId": 0,
+          "Stats": {
+            "CoreStats": { "Kills": 9, "Deaths": 17, "Assists": 2, "PersonalScore": 1010 },
+            "StockpileStats": {
+              "KillsAsPowerSeedCarrier": 0,
+              "PowerSeedCarriersKilled": 0,
+              "PowerSeedsDeposited": 0,
+              "PowerSeedsStolen": 2,
+              "TimeAsPowerSeedCarrier": "PT3.8S",
+              "TimeAsPowerSeedDriver": "PT0S"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -5,6 +5,8 @@
 package service
 
 import (
+	"context"
+	"log/slog"
 	"sort"
 
 	"levelup/go-api/internal/analysis"
@@ -69,20 +71,52 @@ func buildScorePerMinBuckets(matches []legacymatch.StatsMatchRow) []domain.Distr
 	return buckets
 }
 
-// buildLifeBuckets crée des buckets de 5s pour la distribution de la durée
-// de vie moyenne (time_played_seconds / (deaths + 1)). Match avec
-// time_played non renseigné est skippé.
-func buildLifeBuckets(matches []legacymatch.StatsMatchRow) []domain.DistributionBucket {
+// matchAvgLifeSeconds retourne la durée de vie moyenne du match et la source
+// utilisée. Ordre de préférence (B1, 2026-07-25) :
+//
+//  1. AvgLifeSeconds — valeur RÉELLE de l'API (match_participants.avg_life_seconds),
+//     seule mesure fiable : elle tient compte des respawns effectifs, pas d'une
+//     division par (morts+1).
+//  2. Repli `time_played / (morts + 1)` — proxy historique, conservé pour les
+//     matchs antérieurs à la colonne (et les titres qui ne la fournissent pas).
+//
+// `isReal` distingue les deux : le caller compte les replis et les trace (jamais de
+// dégradation muette). `ok` est faux quand aucune des deux sources n'est exploitable.
+func matchAvgLifeSeconds(m legacymatch.StatsMatchRow) (life float64, isReal bool, ok bool) {
+	if m.AvgLifeSeconds != nil && *m.AvgLifeSeconds > 0 {
+		return *m.AvgLifeSeconds, true, true
+	}
+	if m.TimePlayedSeconds != nil && *m.TimePlayedSeconds > 0 {
+		return float64(*m.TimePlayedSeconds) / float64(m.Deaths+1), false, true
+	}
+	return 0, false, false
+}
+
+// buildLifeBuckets crée des buckets de 5s pour la distribution de la durée de vie
+// moyenne. Source = `avg_life_seconds` (valeur réelle de l'API) ; repli sur le
+// proxy `time_played/(morts+1)` quand elle est absente (matchs anciens). Le
+// nombre de replis est tracé en Debug — un histogramme majoritairement issu du
+// proxy est un symptôme de backfill manquant, pas un état normal.
+func buildLifeBuckets(ctx context.Context, matches []legacymatch.StatsMatchRow) []domain.DistributionBucket {
 	const binWidth = 5.0
 	maxLife := 0.0
+	fallbacks, used := 0, 0
 	for _, m := range matches {
-		if m.TimePlayedSeconds == nil || *m.TimePlayedSeconds <= 0 {
+		life, isReal, ok := matchAvgLifeSeconds(m)
+		if !ok {
 			continue
 		}
-		life := float64(*m.TimePlayedSeconds) / float64(m.Deaths+1)
+		used++
+		if !isReal {
+			fallbacks++
+		}
 		if life > maxLife {
 			maxLife = life
 		}
+	}
+	if fallbacks > 0 {
+		slog.DebugContext(ctx, "timeseries: durée de vie estimée par repli (proxy temps_joué/(morts+1))",
+			"matches_fallback", fallbacks, "matches_used", used, "matches_total", len(matches))
 	}
 	if maxLife == 0 {
 		return []domain.DistributionBucket{}
@@ -90,10 +124,10 @@ func buildLifeBuckets(matches []legacymatch.StatsMatchRow) []domain.Distribution
 	numBins := int(maxLife/binWidth) + 1
 	counts := make(map[int]int)
 	for _, m := range matches {
-		if m.TimePlayedSeconds == nil || *m.TimePlayedSeconds <= 0 {
+		life, _, ok := matchAvgLifeSeconds(m)
+		if !ok {
 			continue
 		}
-		life := float64(*m.TimePlayedSeconds) / float64(m.Deaths+1)
 		idx := int(life / binWidth)
 		if idx > numBins {
 			idx = numBins

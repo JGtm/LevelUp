@@ -14,9 +14,18 @@
 
 ## What's new
 
-**v7.2 — Objective modes, title isolation & instant player search**
+**v7.2.1 — Objective modes, title isolation & instant player search**
 
 A release focused on objective game modes, on sealing Halo 5 data away from Halo Infinite, and on making Explorer usable again on any player.
+
+**Three more objective modes — Stockpile, Extraction, VIP**
+- **Detailed in the match view like the others** — power seeds deposited and stolen and time as carrier; successful extractions, initiations and conversions; VIPs killed, kills as VIP and longest run as VIP
+- **Ten new objective citations** — flag captures, secures and steals, kills while carrying the flag or the skull, zone defence and skull grabs, with tiers calibrated on real match data instead of a generic scale
+
+**Explorer, squad and charts**
+- **Every season in "Matches by season"** — the breakdown only covered the seasons the game happened to return; a season you never played and a season that could not be retrieved are no longer shown the same way
+- **Squad objectives repaired** — "Propose challenges" no longer fails for good, and challenges whose stated rule did not match the way they were actually scored are no longer offered
+- **Charts that read straight** — real measured average lifespan instead of an estimate, win rate and MMR on their own axes, a dominance marker on the results tape, and the raw value in the synergy radar tooltip
 
 **Objective modes — Capture the Flag, Strongholds, King of the Hill, Oddball**
 - **Your objective stats everywhere** — flag captures, returns, steals and time as carrier, zone captures and time held, skull grabs and possession time, now collected for every match

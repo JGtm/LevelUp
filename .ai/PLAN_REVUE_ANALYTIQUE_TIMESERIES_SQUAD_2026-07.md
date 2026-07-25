@@ -1,328 +1,326 @@
-# Plan — Revue analytique Timeseries & Escouade (corrections, surlignage, nouveaux angles)
+# Plan — Revue analytique Timeseries & Escouade (corrections + outillage de revue)
 
-**Date** : 2026-07-12 — **revise le 2026-07-23** (revue UX avec l'utilisateur, elagage des ajouts)
-**Branche Git** : `feat/analytics-review-ts-squad` (une branche, un commit par lot)
-**Statut** : Valide, pret a executer (DEC tranchees le 2026-07-23 — voir tableau)
-**Effort estime** : ~2,5 a 3 j (A 0,5 + B ~1,4 + C 0,1 + D 0,1 + F 0,5)
-**Contrat d'execution** : skill `plan-execution` (ordre strict, gates, statuts `[x]`/`[~]`/`[!]`,
-zero fix hors perimetre — decouvertes consignees en fin de fichier).
+**Date** : 2026-07-12 — révisé le 2026-07-23 (revue UX) — **RÉÉCRIT le 2026-07-25**
+(item V721-10 : le plan avait été doublé par du code livré les 23 et 24/07 ; ~40 % de son
+contenu était périmé, dont un item qui aurait rouvert un bug corrigé).
+**Branche Git** : `feat/v7.2.1-notion-batch`
+**Statut** : **EXÉCUTÉ le 2026-07-25** — reste la tournée visuelle utilisateur (Z1).
+**Effort révisé** : ~1,5 j réalisé (estimation initiale 2,5 à 3 j — l'écart vient des lots
+devenus sans objet : B2, B4, B7 et une partie de B3).
+**Contrat d'exécution** : skill `plan-execution` (ordre strict, gates, statuts
+`[x]`/`[~]`/`[!]`, zéro fix hors périmètre — découvertes consignées en fin de fichier).
 
 ---
 
 ## Contexte
 
-Revue critique du 2026-07-12 (voir thought_log a cette date) : trois passes (Timeseries,
-Escouade, gisement backend) ont identifie des defauts de rendu, des redondances
-possibles, un stack Escouade V2 dormant et des angles analytiques non exploites.
+Revue critique du 2026-07-12 : trois passes (Timeseries, Escouade, gisement backend) ont
+identifié des défauts de rendu, des redondances possibles et des angles non exploités.
+Cadrage utilisateur inchangé : **rien n'est supprimé dans ce chantier** — les candidats
+sont SURLIGNÉS à l'écran (lot A), l'utilisateur tranche après vérification visuelle.
 
-**Remarques utilisateur integrees (cadrage ferme)** :
+### Réécriture du 2026-07-25 — ce qui a changé et pourquoi
 
-1. **Rien n'est supprime dans ce chantier.** Les candidats a suppression sont
-   SURLIGNES a l'ecran (lot A) ; l'utilisateur tranche apres verification visuelle.
-   Les suppressions validees partent dans un chantier cleanup ulterieur.
-2. **`expected_win_prob` est juge peu fiable** (constat utilisateur) : il reste
-   cantonne a sa cellule de tableau. Aucune feature nouvelle ne s'appuie dessus.
-   Les nouveautes « skill » se limitent aux donnees observees (`SkillRatingDelta`)
-   et a l'incertitude (`sigma`), voir F7.
-3. **`/pages/squad/v2` est un reliquat non identifie** : prudence. Aucune bascule
-   d'endpoint ; on PORTE ponctuellement des calculs utiles vers le stack live
-   (`teammates`), chaque port re-verifie sur pieces (le code V2 n'a jamais tourne
-   en prod → repute non fiable par defaut). Le sort du stack V2 = DEC-7, chantier
-   separe.
-4. **Les « redondances » ne sont pas actees** : l'utilisateur n'en constate pas a
-   l'usage. Elles recoivent un badge de doute avec une note posant la question
-   (le rendu/narratif varie-t-il assez ?) — aucune suppression.
-5. `.ai/V7/` est un dossier d'ARCHIVAGE : ce plan vit dans `.ai/`, comme
-   `.ai/PLAN_MATCHVIEW_MOMENTUM_2026-07.md` (deplace le 2026-07-12).
+Le plan a été écrit le 23/07 puis **jamais exécuté**. Entre-temps, trois livraisons l'ont
+partiellement rendu caduc. Vérifications sur pièces (2026-07-25) :
 
-**Revision 2026-07-23 (revue UX avec l'utilisateur)** — le chantier est recentre sur
-« rendre juste et lisible l'existant » ; les ajouts sont elagues :
+| Item | Ce que disait le plan | État réel constaté |
+|---|---|---|
+| **B2** rendement combat | « monter le composant orphelin `TimeseriesCombatYield` (`useCombatYieldHistory`) » | **Prémisse FAUSSE** : ni le composant ni le hook n'existent (grep vide sur `apps/web/src`). Ce qui existe : `components/ui/combat-yield-display.tsx`, déjà monté sur Accueil, Synthèse, cartes de match et briefing de session. `OffensiveConversion`/`DefensiveResistance` (`legacymatch/types.go`) ne sont PAS exposés dans `TimeseriesMatchRow` : l'item coûtait un contrat + un composant complet, pas un branchement. |
+| **B3** radar | « recalibrer l'axe Score (seuil `350×n` écrasant) » | **Déjà fait** (commit `642ef31f8`) : `teammates_squad_charts_synergy.go:26` définit `ScorePerMinuteP80 = 195.0` et `:34` normalise l'axe Score par un seuil CONSTANT. Le `350×n` cité est aujourd'hui l'axe **Objective**, pas Score. Seul B3(3) (valeur brute au survol) restait valide. |
+| **B4** heatmaps d'intensité | « renormaliser les 2 heatmaps par le max global » | **SANS OBJET** : les deux heatmaps ont été REMPLACÉES par un profil médian + enveloppe P25–P75 (commits `2f5eb07de`, `3bac71260`). Il n'y a plus de heatmap à renormaliser. |
+| **B5** axes WR/MMR | « corriger Timeseries, vérifier si Escouade partage le défaut » | Défaut réel sur **Timeseries UNIQUEMENT** (`TimeseriesSquadAdapted.tsx` : un axe Y2 partagé par un taux en % et un MMR en milliers). `squadSessionTimelineChart.ts:64-84` a déjà deux axes. Donc **1 badge, pas 2**. |
+| **F1a** dominance | « zéro nouveau calcul, champ déjà chargé par `StatsMatchRow` » | **Sous-estimé** : `StatsMatchRow` ne portait PAS le drapeau. Il a fallu l'ajouter (+ le converter canonical), étendre **2 DTO** (`TimeseriesMatchRow`, `SquadMatchHistoryRow`), plus `SquadMatchRow` et son hydratation repo. Aucun SQL nouveau en revanche (la colonne est déjà lue par `LoadPlayerMatchEnrichments`). |
 
-- **Supprimes** : F2 fatigue intra-session (biais systematique, pas du bruit : une
-  bonne session amene des adversaires plus forts en fin de soiree via le
-  matchmaking — le « decrochage » serait un artefact, et le volume ne corrige pas
-  un biais) ; F3 premier sang (causalite inversee : les equipes qui gagnent
-  prennent le premier sang parce qu'elles sont meilleures — insight illusoire, et
-  item le plus cher du lot) ; F4 part de contribution (valeur portee par le
-  narratif, chart exigeant une interaction pour livrer) ; F5 solo vs escouade
-  (aucune des deux pages n'est le bon emplacement — candidat futur chantier
-  Synthese, consigne en Decouvertes) ; F6 breakdown par mode (breakdown statique
-  sur une page dont l'objet est le temps) ; F7a delta rating (3e lecture du skill
-  sur un onglet dont la redondance est deja questionnee en C2) ; F7b bande
-  mu±sigma (contredit la regle « afficher la metrique connue de l'utilisateur —
-  LUSR/CSR oui, mu/sigma non ») ; E1/E2/E3 (form score = metrique synthetique
-  opaque recouvrant les trends existants ; stack V2 intact, DEC-7 inchangee) ;
-  D1 heatmap jour×heure (fun-fact bruite → liste cleanup).
-- **Remplace** : F1 comeback agrege (tuiles KPI abandonnees — les flags
-  remontada/debandade/contre-remontada ne sont JAMAIS produits sans timeline de
-  score, cf. `internal/analysis/comeback.go:218` : un compteur de periode serait
-  silencieusement fausse par la couverture partielle) → nouveau lot F : dominance
-  flags affiches PAR MATCH sur la `OutcomeSequenceTape` des deux pages (fiable
-  match par match, l'absence de flag ne ment pas).
-- **B6 tri des armes** : deja traite dans un chantier dedie (constat utilisateur
-  2026-07-23) → statut `[~]`.
+### Décisions utilisateur du 2026-07-25 (fermes — ne pas rouvrir)
 
-**Dependance** : OBSOLETE depuis la revision 2026-07-23 — F4 et F7 (barres
-divergentes) sont supprimes, ce plan ne reutilise plus le patron du chantier
-momentum. Aucune extraction `DivergingBarChart` a prevoir ici.
+- **B7 / DEC-6 — référence « vs historique » de l'Escouade** : **« on ne touche pas »**.
+  La baseline reste la **composition exacte** livrée le 24/07, verrouillée par le garde-rail
+  `internal/service/teammates/no_raw_squad_intersection_test.go`. **DEC-6 est SUPERSÉDÉE.**
+- **B2 — rendement combat sur Timeseries** : **abandon** (« option c »). C'est de la redite
+  (le rendement est déjà visible à 4 endroits) et le coût a doublé depuis l'écriture du plan.
+  `OffensiveConversion`/`DefensiveResistance` ne sont PAS exposés.
 
-## Objectif & critere de succes
+### Rappel des élagages du 2026-07-23 (inchangés)
 
-Corriger les defauts de lecture identifies, brancher les gains rapides, ajouter les
-angles valides — et que CHAQUE graphe touche, ajoute ou suspecte porte un badge
-visible a l'ecran (« A verifier » / « Nouveau » / « Suppression ? ») avec une note,
-pour que l'utilisateur puisse balayer les deux pages et statuer sans rien rater.
-Succes = tous les gates verts + tournee visuelle utilisateur ou chaque badge est
-statue (l'entree du manifest est retiree une fois l'item valide).
+Supprimés : F2 fatigue intra-session (biais systématique), F3 premier sang (causalité
+inversée), F4 part de contribution, F5 solo vs escouade (mauvais emplacement → Découvertes),
+F6 breakdown par mode, F7a/F7b (3e lecture du skill ; mu/sigma non relié au vécu),
+E1/E2/E3 (form score opaque ; stack V2 intact), D1 heatmap jour×heure.
+F1 comeback agrégé remplacé par des drapeaux de dominance PAR MATCH sur la
+`OutcomeSequenceTape` (fiable match par match, cf. `internal/analysis/comeback.go`).
 
-## Hors perimetre (explicite)
+## Objectif & critère de succès
+
+Corriger les défauts de lecture, brancher les gains rapides — et que CHAQUE graphe touché,
+ajouté ou suspecté porte un badge visible à l'écran (« À vérifier » / « Nouveau » /
+« Suppression ? ») avec une note, pour que l'utilisateur balaye les deux pages et statue
+sans rien rater. Succès = gates verts + tournée visuelle où chaque badge est statué
+(l'entrée est retirée du manifeste une fois l'item validé).
+
+## Hors périmètre (explicite)
 
 - Toute suppression (chart, champ backend, stack V2) — surlignage seulement.
-- Bascule des pages Escouade vers l'endpoint `/pages/squad/v2` (DEC-7, plus tard).
-- Toute feature fondee sur `expected_win_prob` (y compris chart de calibration).
-- Le chantier momentum Match View (plan separe).
-- Nemesis/rivalites sur ces pages (reste sur Career/Palmares — non demande).
-- Refonte de la definition de l'escouade (intersection sous-ensemble) : constat
-  documente, pas de changement ici.
-- Tous les items supprimes par la revision 2026-07-23 (ex-F2..F7, ex-E1..E3,
-  ex-D1) — voir le bloc Revision dans le Contexte ; F5 consigne en Decouvertes
-  comme candidat futur chantier Synthese.
+- Bascule des pages Escouade vers `/pages/squad/v2` (DEC-7, chantier dédié ultérieur).
+- Toute feature fondée sur `expected_win_prob`.
+- Refonte de la définition de l'escouade (**décision utilisateur : on ne touche pas**).
+- Le rendement de combat sur Timeseries (**décision utilisateur : abandon**).
+- Tous les items supprimés le 2026-07-23.
 
 ---
 
-## Decisions (DEC) — TRANCHEES le 2026-07-23 (revue UX avec l'utilisateur)
+## Décisions (DEC) — état après réécriture
 
-| # | Question | Decision |
+| # | Question | Décision |
 |---|---|---|
-| DEC-1 | Lots retenus | **A + B + C + D + F** (F redefini : dominance flags sur la tape ; E supprime) |
-| DEC-2 | B2 rendement : Combat Yield remplace `TimeseriesEfficiency` ou cote a cote ? | **Cote a cote** + badge « Suppression ? » sur l'ancien — l'utilisateur tranche a l'ecran |
-| DEC-3 | B3 radar : recalibrage des seuils | **Oui, P80 uniforme** (comme survie/impact) |
-| DEC-4 | B4 intensite : nouvelle echelle | **(a) normalisation par le max GLOBAL de la periode**, valeurs brutes au tooltip |
-| DEC-5 | Data morte backend (tableau lot D) | **Rien n'est branche** (D1 heatmap jour×heure abandonne — fun-fact bruite) ; TOUT part en liste cleanup (D2) |
-| DEC-6 | B7 reference « vs historique » (Escouade) | **(a) tous les matchs du main, toutes compositions** — une vraie baseline |
-| DEC-7 | Sort du stack `squad_service_v2` | **HORS PERIMETRE** : chantier dedie ulterieur (inchange ; E1 supprime n'y change rien) |
-| DEC-8 | Outillage badges conserve apres le chantier ? | **Garder** : outil de revue reutilisable, inerte quand le manifest est vide |
-| DEC-9 | Items optionnels E2/E3/F6/F7b | **Sans objet** : tous supprimes par la revision 2026-07-23 |
+| DEC-1 | Lots retenus | **A + B (partiel) + C + D + F** — B2/B4/B7 tombent (sans objet ou décision utilisateur) |
+| DEC-2 | B2 : Combat Yield côte à côte ? | **CADUQUE** — B2 abandonné (utilisateur, « option c ») |
+| DEC-3 | B3 : recalibrage des seuils | **DÉJÀ APPLIQUÉ** hors de ce plan (commit `642ef31f8`) |
+| DEC-4 | B4 : normalisation d'intensité | **CADUQUE** — les heatmaps n'existent plus (profil médian + enveloppe) |
+| DEC-5 | Data morte backend | **Rien n'est branché** ; tout part en liste cleanup (consigné en Découvertes) |
+| DEC-6 | B7 référence « vs historique » | **SUPERSÉDÉE 2026-07-25** — l'utilisateur ne veut pas y toucher ; baseline = composition exacte |
+| DEC-7 | Sort du stack `squad_service_v2` | **HORS PÉRIMÈTRE** : chantier dédié ultérieur (inchangé) |
+| DEC-8 | Outillage badges conservé après le chantier ? | **Garder** : réutilisable, **inerte quand le manifeste est vide** |
+| DEC-9 | Items optionnels E2/E3/F6/F7b | **Sans objet** : supprimés le 2026-07-23 |
 
 ---
 
-## Lot A — Outillage de surlignage (prerequis a tout le reste) — ~0,5 j
+## Lot A — Outillage de badges de revue (prérequis) — FAIT
 
-Mecanisme : un manifest central de revue + un badge accole aux titres de charts.
-Cycle de vie d'une entree : ajoutee par ce chantier → l'utilisateur verifie a
-l'ecran → l'entree est RETIREE du manifest (commit de cloture de la tournee).
-Manifest vide = aucun badge rendu (mecanisme inerte, DEC-8).
+Mécanisme : un manifeste central + un badge accolé aux titres de charts. Cycle de vie d'une
+entrée : ajoutée par ce chantier → l'utilisateur vérifie à l'écran → l'entrée est RETIRÉE du
+manifeste (commit de clôture). **Manifeste vide = aucun badge, aucun nœud DOM** (DEC-8).
 
-- [ ] A1 `apps/web/src/lib/review/chart-review.ts` :
-      `type ChartReviewStatus = 'verify' | 'new' | 'removal'` ;
-      `interface ChartReview { status: ChartReviewStatus; note: string }` ;
-      `const CHART_REVIEW: Record<string, ChartReview>` (cle = identifiant stable
-      du chart, ex. `timeseries.kda_density`, `squad.synergy_radar`) ;
-      helper `chartReview(key: string): ChartReview | undefined`.
-- [ ] A2 `apps/web/src/components/charts/ReviewBadge.tsx` : badge compact
-      (libelle + tooltip note). Couleurs par tokens : `verify` → `warning`,
-      `new` → `info`, `removal` → `destructive` (aucun hex — skill color-tokens).
-      Libelles i18n FR **et** EN (« A verifier »/« To verify », « Nouveau »/« New »,
-      « Suppression ? »/« Remove? ») dans `lib/review/i18n.ts`
-      (`Record<Locale, T>`).
-- [ ] A3 `ChartCard` : prop optionnelle `review?: ChartReview` → badge rendu dans
-      la barre de titre (a cote du `title`). Les surfaces non-ChartCard (tables,
-      `OutcomeSequenceTape`, tuiles KPI) posent `<ReviewBadge>` directement.
-- [ ] A4 Test vitest leger : `chartReview()` retourne l'entree, `ReviewBadge`
-      rend le libelle FR/EN selon locale.
+- [x] A1 `apps/web/src/lib/review/chart-review.ts` : `ChartReviewStatus`
+      (`verify` | `new` | `removal`), `ChartReview { status, note: Record<Locale,string> }`,
+      `CHART_REVIEW: Record<string, ChartReview>` (clé = identifiant stable du graphe),
+      helper `chartReview(key)` → `undefined` hors tournée.
+- [x] A2 `apps/web/src/components/charts/ReviewBadge.tsx` : badge compact (libellé +
+      note au survol via `title`/`aria-label`). Tokens : `verify` → `warning`,
+      `new` → `info`, `removal` → `destructive` (aucun hex, aucune classe Tailwind de
+      couleur). Libellés FR **et** EN dans `apps/web/src/lib/review/i18n.ts`
+      (`Record<Locale, Record<ChartReviewStatus, …>>`).
+- [x] A3 `ChartCard` : nouvelle prop optionnelle `reviewKey?: string` → badge rendu dans la
+      barre de titre. `ChartFromOption` la transmet. Les surfaces non-ChartCard (les deux
+      `OutcomeSequenceTape`) posent `<ReviewBadge reviewKey=… />` directement à côté de leur
+      intitulé.
+- [x] A4 Tests vitest : `components/charts/ReviewBadge.test.tsx` (inerte sans clé / clé
+      inconnue, libellé FR, libellé EN, statut `removal`) + `lib/review/chart-review.test.ts`
+      (helper + intégrité du manifeste : statut connu, notes FR **et** EN non vides).
 
-**Gate A** : `make check-types && make test-web` verts ; un badge de demonstration
-visible sur un chart puis retire.
+**Gate A** : `make check-types` + `make test-web` (joué par le pilote).
 
-## Lot B — Corrections de rendu/donnee (chaque item pose un badge `verify`) — ~1,5 j
+## Lot B — Corrections de rendu/donnée
 
-Chaque item commence par une verification sur pieces (le code a pu bouger depuis
-la revue du 2026-07-12 — references ci-dessous a re-confirmer).
+- [x] **B1 — Cesser d'estimer la durée de vie.** La valeur réelle existe et est peuplée
+      (`StatsMatchRow.AvgLifeSeconds`, alimentée par `analysis/stats_canonical.go` depuis
+      `player_matches_repo.go` / `p.avg_life_seconds`) ; les deux consommateurs utilisaient
+      encore le proxy `temps_joué / (morts + 1)`.
+      - Backend : `avg_life_seconds` exposé dans `TimeseriesMatchRow` ; helper
+        `service.matchAvgLifeSeconds` (valeur réelle → repli proxy → rien) ;
+        `buildLifeBuckets` rebasé dessus, avec `slog.DebugContext` comptant les replis
+        (`matches_fallback` / `matches_used` / `matches_total`) — jamais de dégradation muette.
+      - Front : helper `lib/charts/avgLife.ts` (même ordre de préférence) consommé par
+        `TimeseriesAvgLifeTrend`.
+      - Badges `verify` sur la courbe ET l'histogramme.
+- [!] **B2 — Rendement combat.** NON TRAITÉ, deux raisons cumulées : (1) prémisse du plan
+      invalide (aucun composant orphelin `TimeseriesCombatYield` ni hook
+      `useCombatYieldHistory` n'existe ; ce qui existe est `ui/combat-yield-display.tsx`,
+      déjà monté sur 4 surfaces) ; (2) **décision utilisateur du 2026-07-25 : abandon**
+      (« option c ») — redite payée au prix fort depuis que le coût a doublé. Aucun champ
+      `OffensiveConversion`/`DefensiveResistance` n'est exposé.
+- **B3 — Radar de synergie**
+  - [!] B3(1) diagnostic « axe Score à zéro » : sans objet, la cause est identifiée et
+        corrigée depuis le 2026-07-24.
+  - [~] B3(2) recalibrage : COUVERT AILLEURS — commit `642ef31f8`,
+        `teammates_squad_charts_synergy.go:26` (`ScorePerMinuteP80 = 195.0`) et `:34`
+        (seuil CONSTANT, comme Survie/Impact).
+  - [x] B3(3) tooltip : la valeur BRUTE (déjà portée par `SquadSynergyRadarAxis.Raw`)
+        s'affiche à côté de la normalisée, avec une précision adaptée à l'ordre de grandeur
+        de l'axe (Combat ~ centaines, Survie ~ 1,6, Score ~ 195/min). Libellé
+        « brut » / « raw » via `features/squad/i18n.ts`. Badge `verify`.
+- [!] **B4 — Heatmaps d'intensité.** SANS OBJET : les deux heatmaps ont été remplacées par
+      un profil médian + enveloppe P25–P75 (`2f5eb07de`, `3bac71260`). Il n'y a plus de
+      normalisation per-match à corriger. Les deux profils reçoivent en revanche un badge
+      `verify` (ils n'ont jamais été validés à l'écran par l'utilisateur).
+- [x] **B5 — Axes taux de victoire / MMR.** `TimeseriesSquadAdapted.TimeseriesSessionPerformance` :
+      Y1 = performance [0,100], **Y2 = taux de victoire borné [0,100] avec suffixe `%`**,
+      **Y3 = MMR** (axe propre, `offset: 48`, ajouté seulement si le titre fournit le MMR —
+      Halo 5 n'a donc aucun axe fantôme). Marge droite élargie en conséquence. Badge `verify`.
+  - [~] Chart Escouade : COUVERT AILLEURS — `squadSessionTimelineChart.ts:64-84` sépare déjà
+        les axes. **Aucune modification, 1 seul badge** (le plan en prévoyait 2 à tort).
+- [~] **B6 — Tri des armes** : déjà traité dans un chantier dédié (constat utilisateur
+      2026-07-23). Simple coup d'œil pendant la tournée Z1.
+- [!] **B7 — Référence « vs historique » (Escouade).** NON TRAITÉ — **décision utilisateur du
+      2026-07-25 : « on ne touche pas »**. La baseline reste la composition exacte livrée le
+      24/07 et verrouillée par `no_raw_squad_intersection_test.go`. DEC-6 est supersédée ;
+      aucun code n'a été écrit dans son sens.
 
-- [ ] B1 **Duree de vie reelle** (grave — constat valide utilisateur) :
-      (1) verifier que `StatsMatchRow.AvgLifeSeconds` (`legacymatch/types.go:102`)
-      est bien charge par la requete source et son taux de remplissage ;
-      (2) backend : exposer `avg_life_seconds` dans `TimeseriesMatchRow`
-      (`domain/timeseries.go`, `buildMatchRows`) et baser `buildLifeBuckets`
-      dessus, fallback documente vers le proxy `time_played/(deaths+1)` si NULL
-      (logge `slog.DebugContext`, jamais silencieux) ;
-      (3) front : `TimeseriesAvgLifeTrend` + histogramme consomment le nouveau
-      champ. Badges `verify` sur les deux charts.
-- [ ] B2 **Rendement combat** (grave — constat valide utilisateur) :
-      monter le composant orphelin `TimeseriesCombatYield`
-      (`useCombatYieldHistory`, OC/DR calcules au sync) dans l'onglet Progression,
-      selon DEC-2 a cote de `TimeseriesEfficiency`. Badges : `new` sur Combat
-      Yield, `removal` sur Efficiency (note : « recalcul brut, le Combat Yield
-      normalise est la version canonique — garder lequel ? »). Verifier au
-      passage que l'endpoint consomme bien les champs sync
-      (`OffensiveConversion`/`DefensiveResistance`).
-- [ ] B3 **Radar synergie — axe Score a zero** (axe vise par l'utilisateur) :
-      (1) diagnostiquer : valeurs `personal_score` reelles des coequipiers vs
-      seuil `350×n` (`synergyRadarThresholds`) — trancher donnee manquante vs
-      seuil ecrasant ; (2) recalibrer selon DEC-3 (P80 de l'historique, comme
-      survie/impact) ; (3) tooltip : afficher la valeur BRUTE (deja dans le DTO,
-      champ `Raw`) en plus du normalise. Badge `verify`.
-- [ ] B4 **Heatmaps d'intensite** (Timeseries `intensity_rows` + Escouade
-      `intensity_profile`) : appliquer DEC-4 — normalisation par le max GLOBAL de
-      la periode (plus de max per-match qui detruit l'amplitude inter-matchs),
-      valeurs brutes au tooltip. Point d'implementation : cote analysis
-      (`NormalizeIntensityBuckets`) ou au niveau des builders — choisir l'endroit
-      qui corrige LES DEUX pages sans dupliquer (≤ 2 copies). Badges `verify` ×2.
-- [ ] B5 **Axes WR/MMR** : `TimeseriesSessionPerformance` — WR sur un axe %
-      dedie [0,100] ; MMR sur son propre axe (offset ECharts), serie desactivable
-      par legende. Verifier si `SquadSessionTimelineChart` partage le defaut
-      (meme motif perf+WR+MMR) et corriger a l'identique si confirme. Badges
-      `verify` (1 ou 2 selon constat).
-- [~] B6 **Tri armes** : `SquadWeaponKillsChart` — tri DESC. COUVERT AILLEURS :
-      deja traite dans un chantier dedie (constat utilisateur 2026-07-23).
-      Verification rapide en passant sur la page (pas de code ici).
-- [ ] B7 **Reference « vs historique »** (Escouade S1/S2) : appliquer DEC-6 —
-      l'« historique » devient la baseline du main toutes compositions (au lieu
-      du sur-ensemble de la meme composition). Backend :
-      `LoadMapStatsForSquad` / son appelant dans `teammates_service.go`. Badges
-      `verify` sur les deux charts (note expliquant le changement de reference).
+**Gate B** : `make go-api-test` + `go test ./...` ; **`make openapi-gen` puis
+`make generate-types`** (le contrat change : `avg_life_seconds`, `dominance_flag`) ; puis
+`make check-types` + `make test-web`. Lectures seules côté DB → pas de tests d'intégration
+persist requis.
 
-**Gate B** : `make go-api-test` + `cd apps/go-api && go test ./...` verts ;
-`make generate-types` rejoue (contrat modifie en B1) puis `make check-types` +
-`make test-web` verts. Aucune ecriture DB touchee (lectures seules) → pas de
-tests integration persist requis.
+## Lot C — Redondances : surlignage SEULEMENT
 
-## Lot C — Redondances : surlignage SEULEMENT — ~0,1 j
+Aucun changement de code hors manifeste. Notes rédigées en question ouverte.
 
-Aucun changement de code hors manifest. Notes redigees en question ouverte
-(l'utilisateur juge si le rendu/narratif differe assez).
+- [x] C1 Badges `verify` sur « Distribution FDA » (`timeseries.fda_distribution`) ET
+      « FDA (valeur) » (`timeseries.fda_value_trend`).
+- [x] C2 Badges `verify` sur « Progression CSR/LUSR » (`timeseries.skill_progression`) ET
+      « Classement + Performance » (`timeseries.skill_rank_perf`).
 
-- [ ] C1 Badge `verify` sur « Distribution FDA » ET « FDA (valeur) » (Summary) —
-      note : « deux lectures de la meme metrique sur le meme onglet : distribution
-      vs sequence temporelle. Les deux apportent-elles chacune quelque chose ? »
-- [ ] C2 Badge `verify` sur « Progression CSR/LUSR » ET « Skill rank + Perf »
-      (Progression) — note equivalente (courbe longue vs barres+perf).
+## Lot D — Data morte backend : consigner, rien brancher, rien supprimer
 
-**Gate C** : badges visibles, `make test-web` vert.
+DEC-5 : **rien n'est branché**, tout part en liste cleanup.
 
-## Lot D — Data morte backend : consigner, rien brancher, rien supprimer — ~0,1 j
-
-Champs calcules et servis par `timeseries_service` que le front ignore. DEC-5
-(2026-07-23) : **rien n'est branche** — l'ex-D1 (heatmap jour×heure) est abandonne
-(fun-fact bruite, petits effectifs par case). Tout part en liste cleanup pour un
-chantier ulterieur.
-
-| Champ | Contenu | Decision |
+| Champ | Contenu | Décision |
 |---|---|---|
-| `intensity_tab.heatmap_data` | heatmap jour×heure (quand tu joues/gagnes) | Cleanup ulterieur (ex-D1 abandonne 2026-07-23) |
-| `intensity_tab.score_per_min_data` | score/min par periode | Cleanup ulterieur |
-| `cumul_tab` | K/D cumule + rolling 5 | Cleanup ulterieur (recouvre les trends existants) |
-| `outcomes_over_time` | V/D par periode | Cleanup ulterieur (recouvre Session Perf) |
-| `distributions_tab.rolling_wr_buckets` | distribution WR glissant (fenetre 14) | Cleanup ulterieur |
-| `distributions_tab.score_per_min_buckets` | distribution score/min | Cleanup ulterieur |
-| `correlation_points` kills↔kd_ratio | scatter jamais affiche | Cleanup ulterieur |
+| `intensity_tab.heatmap_data` | heatmap jour×heure | Cleanup ultérieur (ex-D1 abandonné) |
+| `intensity_tab.score_per_min_data` | score/min par période | Cleanup ultérieur |
+| `cumul_tab` | K/D cumulé + rolling 5 | Cleanup ultérieur (recouvre les trends existants) |
+| `outcomes_over_time` | V/D par période | Cleanup ultérieur (recouvre Session Perf) |
+| `distributions_tab.rolling_wr_buckets` | distribution WR glissant (fenêtre 14) | Cleanup ultérieur |
+| `distributions_tab.score_per_min_buckets` | distribution score/min | Cleanup ultérieur |
+| `correlation_points` kills↔kd_ratio | scatter jamais affiché | Cleanup ultérieur |
 
-- [ ] D2 Consigner le tableau ci-dessus dans la section Decouvertes de ce plan +
-      une ligne thought_log, comme intrant du futur chantier cleanup.
+- [x] D2 Tableau consigné dans la section Découvertes ci-dessous.
+      La ligne `thought_log` correspondante est à ajouter par le pilote (fichier réservé,
+      cf. Z2).
 
-**Gate D** : liste consignee dans Decouvertes + thought_log (aucun code).
+## Lot E — SUPPRIMÉ (révision 2026-07-23)
 
-## Lot E — SUPPRIME (revision 2026-07-23)
+Réhabilitation du stack V2 abandonnée (form score LOWESS = métrique synthétique opaque
+recouvrant les trends existants). Le stack `squad_service_v2` reste INTACT ; son sort =
+DEC-7, chantier dédié.
 
-Rehabilitation du stack V2 abandonnee : E1 (form score LOWESS) = metrique
-synthetique opaque pour l'utilisateur, recouvrant les trends de perf existants —
-meme famille de probleme que mu/sigma (valeur non reliee au vecu de jeu).
-E2/E3 etaient deja differes. Le stack `squad_service_v2` reste INTACT ; son sort
-= DEC-7, chantier dedie ulterieur.
+## Lot F — Drapeaux de dominance sur la bande de résultats
 
-## Lot F — Dominance flags sur la bande d'outcomes (redefini 2026-07-23) — ~0,5 j
+Pas de compteur agrégé (les flags ne sont jamais produits sans timeline de score,
+cf. `internal/analysis/comeback.go` — un agrégat de période serait silencieusement faussé
+par la couverture partielle). Le drapeau s'affiche là où il est fiable : SUR le match.
+L'absence de marqueur = match ordinaire OU timeline absente : aucun mensonge.
 
-Seul survivant des « nouveaux angles », sous une forme differente : PAS de compteur
-agrege (les flags remontada/debandade/contre-remontada ne sont jamais produits sans
-timeline de score, cf. `internal/analysis/comeback.go:218` — un agregat de periode
-serait silencieusement fausse par la couverture). Le flag s'affiche la ou il est
-fiable : SUR le match, dans la `OutcomeSequenceTape` deja rendue sur Timeseries
-(Summary) et Escouade. L'absence de marqueur = match ordinaire OU timeline absente :
-aucun mensonge, le vocabulaire (badges Career/MatchView, colonne Dominance Explorer)
-est deja connu de l'utilisateur.
+- [x] F1a **Backend** (coût réel supérieur à l'estimation du plan, cf. tableau de
+      réécriture) : `DominanceFlag` ajouté à `legacymatch.StatsMatchRow` et peuplé par
+      `analysis.StatsMatchRowFromCanonical` depuis `r.Enrichment.DominanceFlag` ;
+      `TimeseriesMatchRow.DominanceFlag` (`json:"dominance_flag,omitempty"`) ;
+      `domain.SquadMatchRow.DominanceFlag` hydraté dans `duckdb.SquadRepo.LoadSquadMatches`
+      depuis `LoadPlayerMatchEnrichments` (**aucune requête nouvelle** — la colonne était
+      déjà lue) ; `domain.SquadMatchHistoryRow.DominanceFlag` renseigné par
+      `buildSquadMatchHistory`.
+- [x] F1b **Modèle front** : `OutcomePoint.dominance?: DominanceValue` (1..5) dans
+      `outcomeSequence.ts` + helper `asDominance(flag)` qui ne retient que 1..5 (0, null et
+      codes inconnus d'un futur titre → `undefined`, pas de marqueur inventé). `toRuns`
+      propage le point tel quel. Champ ABSENT chez les 4 autres consommateurs de la bande →
+      rendu strictement identique.
+- [x] F1c **Rendu** : losange (7 px de diagonale) centré sur la cellule du match, À
+      L'INTÉRIEUR de la bande (ne touche pas aux brackets de séries), rempli du token
+      `narrative-*` du drapeau. Liseré 1 px couleur de fond de carte (`--popover`) —
+      **et non `CHART_BG` comme le prévoyait le plan : `CHART_BG` vaut `'transparent'` et
+      ne séparerait rien**. Seuil de densité : marqueur omis sous 6 px par match (le
+      tooltip porte alors l'information).
+- [x] F1d **Tooltip** : la ligne du match est suffixée du libellé du drapeau
+      (« · Aquarius (Slayer) — Remontada »). Libellés fournis par les pages via
+      `dominanceLabels(locale)`, qui lit les clés `narrative.dominance.*` du manifeste
+      `match_view` (FR + EN déjà présents, chargé par les deux pages). Prop optionnelle :
+      sans elle, la ligne reste inchangée.
+- [x] F1e Aucune légende ajoutée, aucune couleur nouvelle, aucun hex. Les tokens et les clés
+      i18n sont désormais centralisés dans `apps/web/src/lib/narrative/dominance.ts`, et
+      `ExplorerMatchesTable` a été migré dessus (une seule table pour les 2 surfaces —
+      évite la 3e copie interdite par la règle « ≤ 2 copies »).
+- [x] F1f **Tests** : `outcomeSequence` (propagation dans `toRuns`, `asDominance`),
+      rendu (`renderItem` : losange présent avec drapeau + largeur suffisante, absent sous
+      le seuil de densité, absent chez un consommateur sans le champ), tooltip (suffixe
+      présent avec libellé, ligne inchangée sans libellé).
+- [x] F1g Badges `new` sur les deux bandes (`timeseries.outcome_tape`, `squad.outcome_tape`).
 
-Reutilisation maximale (verifie sur pieces le 2026-07-23) : cles i18n
-`narrative.dominance.*` (FR+EN, manifests existants), tokens couleur
-`narrative-domination|humiliation|remontada|debandade|contre-remontada`
-(`ExplorerMatchesTable.tsx:222-235` — memes couleurs que la colonne Explorer).
+**Multi-titre** : `dominance_flag` est `omitempty` côté Go → absent du JSON pour Halo 5
+(pas de timeline de score) → `asDominance` renvoie `undefined` → aucun marqueur, aucun
+suffixe, aucune erreur. Dégradation gracieuse par construction, sans test de slug.
 
-- [ ] F1a Backend : exposer `dominance_flag` dans les rows qui alimentent les deux
-      tapes (verif sur pieces des DTOs exacts : `TimeseriesMatchRow` +
-      la reponse `teammates` qui nourrit la tape Escouade). Zero nouveau calcul —
-      champ deja persiste dans `player_match_enrichment` (lecture via la vue/le
-      chemin de lecture existant du service, pas de SQL nouveau si le champ est
-      deja charge par `StatsMatchRow`).
-- [ ] F1b Modele front : `OutcomePoint` gagne un champ optionnel
-      `dominance?: 1|2|3|4|5` (`outcomeSequence.ts`) ; `toRuns` le propage tel
-      quel. Champ ABSENT chez les autres consommateurs de la tape → leur rendu
-      reste strictement identique (meme exigence de non-regression que
-      `onMatchClick`).
-- [ ] F1c Rendu (`OutcomeSequenceTape.renderItem`) : pour chaque match d'un run
-      porteur d'un flag != none, dessiner un losange ~7 px centre sur la cellule
-      du match, A L'INTERIEUR de la bande (yCenter — ne touche pas aux brackets
-      de streaks au-dessus/en-dessous), rempli du token `narrative-*` du flag,
-      lisere 1 px `CHART_BG` pour garantir la separation avec la couleur
-      d'outcome dans les deux themes. Seuil de densite : ne rendre le losange que
-      si la largeur par match >= 6 px (bande dense → le tooltip porte l'info).
-- [ ] F1d Tooltip : suffixer la ligne du match avec le libelle du flag
-      (« · Aquarius (Slayer) — Remontada »), cles `narrative.dominance.*`
-      existantes. Verifier que ces cles sont dans un manifest charge par les DEUX
-      pages (sinon les referencer depuis le manifest commun — pas de duplication
-      de strings).
-- [ ] F1e Aucune legende ajoutee (vocabulaire connu, marqueurs rares). Aucune
-      couleur nouvelle, aucun hex.
-- [ ] F1f Tests : `outcomeSequence.ts` (propagation du champ dans `toRuns`) +
-      test de rendu leger (marqueur present si flag et largeur suffisante, absent
-      sinon ; consommateur sans le champ → option identique a l'actuelle).
-- [ ] F1g Badges review : `new` sur les deux tapes (note : « dominance flags par
-      match — memes couleurs que la colonne Dominance de l'Explorer »).
+**Gate F** : `make openapi-gen` + `make generate-types` (contrat modifié) ; `make go-api-test`
++ `go test ./...` ; `make check-types` + `make test-web`.
 
-**Gate F** : `make generate-types` (si contrat OpenAPI modifie en F1a) ;
-`make go-api-test` + `cd apps/go-api && go test ./...` si Go touche ;
-`make check-types` + `make test-web` verts ; verification visuelle des deux tapes
-avec badge `new`.
+## Clôture du chantier
 
-## Cloture du chantier
+- [ ] Z1 **Tournée visuelle AVEC l'utilisateur** : les deux pages, badge par badge ; chaque
+      item statué → entrée retirée de `lib/review/chart-review.ts` dans un commit de clôture.
+      Les « Suppression ? » validés partent dans la liste cleanup. **Seul report légitime :
+      cette étape requiert l'utilisateur.**
+      Badges posés (12) :
 
-- [ ] Z1 Tournee visuelle AVEC l'utilisateur (ou par lui) : les deux pages, badge
-      par badge ; chaque item statue → entree retiree du manifest dans un commit
-      de cloture. Les « Suppression ? » valides partent dans la liste cleanup.
-- [ ] Z2 Skill `delivery-checklist` ; entree thought_log (statut Complete) ;
-      demander validation avant tout commit ; rappel : push `main` = deploiement
-      prod → prevenir l'utilisateur.
+      | Clé | Statut | Page |
+      |---|---|---|
+      | `timeseries.avg_life_trend` | verify | Timeseries / Résumé |
+      | `timeseries.life_histogram` | verify | Timeseries / Distributions |
+      | `timeseries.session_performance` | verify | Timeseries / Résumé |
+      | `timeseries.fda_distribution` | verify | Timeseries / Résumé |
+      | `timeseries.fda_value_trend` | verify | Timeseries / Résumé |
+      | `timeseries.skill_progression` | verify | Timeseries / Progression |
+      | `timeseries.skill_rank_perf` | verify | Timeseries / Progression |
+      | `timeseries.intensity_profile` | verify | Timeseries / Progression |
+      | `timeseries.outcome_tape` | new | Timeseries / Résumé |
+      | `squad.synergy_radar` | verify | Escouade / Contributions |
+      | `squad.intensity_profile` | verify | Escouade / Dynamique |
+      | `squad.outcome_tape` | new | Escouade / Synergies |
 
-**Gate final** :
+- [!] Z2 Entrée `thought_log` + skill `delivery-checklist` + demande de validation avant
+      commit : **NON TRAITÉ ICI** — `.ai/thought_log.md` est réservé à un autre agent sur ce
+      chantier multi-agents. Le pilote consigne l'entrée et joue les gates en une passe
+      sérialisée. Rappel : push `main` = déploiement prod, prévenir l'utilisateur.
+
+**Gate final** (joué par le pilote, dans cet ordre) :
 ```bash
+make openapi-gen          # contrat : avg_life_seconds + dominance_flag (x2 DTO)
+make generate-types
 make go-api-lint
 make go-api-test
 cd apps/go-api && go test ./...
-make generate-types && make check-types
+make check-types
 make test-web
 ```
 
 ## Protocole de reprise de session
 
-Lire ce fichier (statuts) + la derniere entree thought_log mentionnant « revue
-analytique ». Reprendre a la premiere case non statuee de la premiere phase non
-close (une phase est close = items statues ET gate passe). Le manifest
-`chart-review.ts` reflete l'etat de la tournee visuelle (entrees restantes = a
-verifier).
+Lire ce fichier (statuts) + la dernière entrée `thought_log` mentionnant « revue
+analytique ». Le manifeste `lib/review/chart-review.ts` reflète l'état de la tournée
+visuelle : entrées restantes = graphes encore à statuer. Manifeste vide = tournée close.
 
-## Decouvertes hors perimetre (a consigner, ne pas traiter)
+## Découvertes hors périmètre (consignées, non traitées)
 
-- Liste cleanup ulterieur (DEC-5 2026-07-23 ; a completer par la tournee Z1) :
-  - `intensity_tab.heatmap_data` (heatmap jour×heure — ex-D1 abandonne)
+- **Liste cleanup ultérieur (DEC-5, D2)** — champs calculés et servis par
+  `timeseries_service` que le front ignore ; à compléter par la tournée Z1 :
+  - `intensity_tab.heatmap_data` (heatmap jour×heure — ex-D1 abandonné : fun-fact bruité,
+    petits effectifs par case)
   - `intensity_tab.score_per_min_data`
-  - `cumul_tab` (K/D cumule + rolling 5)
-  - `outcomes_over_time`
-  - `distributions_tab.rolling_wr_buckets`
+  - `cumul_tab` (K/D cumulé + rolling 5) — recouvre les trends existants
+  - `outcomes_over_time` — recouvre Session Perf
+  - `distributions_tab.rolling_wr_buckets` (fenêtre 14)
   - `distributions_tab.score_per_min_buckets`
-  - `correlation_points` kills↔kd_ratio
-- Candidat futur chantier Synthese (consigne 2026-07-23) : **Solo vs escouade**
-  (ex-F5) — baseline KDA/WR/perf du main avec vs sans escouade (flag
-  `is_with_friends`), barres groupees avec effectifs n + phrase narrative.
-  Emplacement pressenti : page Synthese (insight de profil « toi avec/sans
-  escouade ») — ni Timeseries (objet = temps) ni Escouade (cadree sur les matchs
-  joues ensemble). Noter que B7 (baseline toutes compositions) porte deja une
-  partie de cette information cote Escouade.
-- Autres : (vide)
+  - `correlation_points` kills↔kd_ratio (scatter jamais affiché)
+- **Durée de vie : troisième consommateur non migré.**
+  `service/timeseries_service_tabs.go` → `buildCorrelationPoints` calcule encore
+  `lifespan = time_played / (deaths + 1)` pour les scatters « Durée de vie vs frags » et
+  « Durée de vie vs morts » de l'onglet Distributions. Le helper `matchAvgLifeSeconds`
+  existe et s'y appliquerait tel quel (3 lignes), mais l'item B1 ne nommait que deux
+  consommateurs : **non traité pour ne pas modifier un graphe hors périmètre**. À reprendre
+  dans le chantier cleanup — sinon l'histogramme et le scatter racontent deux histoires
+  différentes de la même métrique.
+- **3e copie de la table de dominance, non migrée** :
+  `apps/web/src/features/match-view/MatchHeader.card.tsx` porte encore son propre
+  `DOMINANCE_TOKENS`. `ExplorerMatchesTable` a été migré sur la table canonique
+  (`lib/narrative/dominance.ts`) ; match-view ne l'a pas été car ce répertoire était
+  **réservé à un autre agent** pendant ce chantier. On est donc à 2 copies (limite de la
+  règle, pas au-delà) : à migrer dès que le répertoire se libère, sinon la 3e divergence
+  reviendra.
+- **Doc obsolète** : `analysis/stats_canonical.go`, en-tête de
+  `StatsMatchRowFromCanonical`, affirme encore que `OffensiveConversion`/
+  `DefensiveResistance` « restent nil » alors qu'ils sont calculés plus bas
+  (`ComputeCombatYield`). Commentaire faux, pas de bug — hors périmètre.
+- **Candidat futur chantier Synthèse** (consigné 2026-07-23) : **Solo vs escouade** (ex-F5)
+  — baseline KDA/WR/perf du main avec vs sans escouade (flag `is_with_friends`), barres
+  groupées avec effectifs n + phrase narrative. Emplacement pressenti : page Synthèse (ni
+  Timeseries, dont l'objet est le temps, ni Escouade, cadrée sur les matchs joués ensemble).
+- **`/pages/squad/v2`** : stack dormant, jamais passé en prod, non fiable par défaut. Sort =
+  DEC-7, chantier dédié.

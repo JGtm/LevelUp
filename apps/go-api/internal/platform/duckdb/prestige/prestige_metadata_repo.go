@@ -1,6 +1,17 @@
 // Package duckdb — repositories Prestige référentiels (metadata.duckdb).
 //
 // Implémente prestige.TemplateRepo et prestige.PresetArcRepo.
+//
+// Routage des lectures (V721-08.1) : toutes les requêtes passent par les
+// variantes `*Recovered` (Reopen + retry une fois sur invalidation, cf.
+// duckdb/db_query.go + db_recovery.go). metadata.duckdb est tenue en RW par le
+// serveur pour toute sa durée de vie : une invalidation FATAL DuckDB ou une
+// handle périmée (`sql: database is closed` après un Close/Reopen concurrent)
+// rendait, avec `db.Query` plat, TOUTES les lectures du catalogue Prestige
+// définitivement en erreur jusqu'au prochain restart — donc un 500 permanent sur
+// `POST /squads/{id}/challenges/pool/refresh` (RefreshSquadPool → ListByTitle).
+// La contention fichier (autre process writer) est en plus traduite en
+// dblease.ErrDBLocked par translateLockErr → 503 + Retry-After côté handler.
 
 package prestige
 
@@ -9,12 +20,41 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/prestige"
 )
+
+// translateLockErr traduit une erreur de contention fichier DuckDB (un AUTRE
+// détenteur tient metadata.duckdb : CLI backfill, 2e instance serveur, handle
+// pas encore libérée après un hot-reload — cf. duckdb.IsFileLockError) en
+// sentinelle dblease.ErrDBLocked. C'est la seule erreur de cette chaîne de
+// lecture qui soit TRANSITOIRE et retryable : PrestigeHandler.serviceError la
+// mappe en 503 + `Retry-After: 5` (api/handlers/prestige_squads.go), au lieu de
+// la branche `default` = 500 masqué non retryable (Découverte D1 du
+// PLAN_SQUAD_CHALLENGES).
+//
+// Le cas se produit notamment quand Reopen() (déclenché par les variantes
+// *Recovered sur invalidation) ne peut pas ré-ouvrir le fichier parce qu'un
+// autre process l'a saisi entre-temps.
+//
+// Toute autre erreur — y compris sql.ErrNoRows — est rendue TELLE QUELLE : le
+// mapping domaine des callers (ErrChallengeNotFound / ErrArcNotFound) est
+// inchangé. Helper partagé par les repos de ce sous-package.
+func translateLockErr(ctx context.Context, err error) error {
+	if err == nil || !duckdb.IsFileLockError(err) {
+		return err
+	}
+	// Jamais d'erreur avalée en silence (CLAUDE.md règle 3) : le 503 ne loggue
+	// rien côté handler, la cause opérationnelle doit apparaître ici.
+	slog.WarnContext(ctx, "prestige: metadata verrouillée par un autre writer, dégradation en 503",
+		"err", err)
+	return fmt.Errorf("prestige metadata locked: %w", errors.Join(dblease.ErrDBLocked, err))
+}
 
 // ─────────── TemplateRepo ───────────
 
@@ -30,9 +70,9 @@ var _ prestige.TemplateRepo = (*PrestigeTemplateRepo)(nil)
 func (r *PrestigeTemplateRepo) ListByTitle(ctx context.Context, titleSlug string) ([]prestige.Template, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	rows, err := r.db.Query(ctx, templateSelectColumns+" WHERE title_slug = ? ORDER BY cadence, id", titleSlug)
+	rows, err := r.db.QueryRecovered(ctx, templateSelectColumns+" WHERE title_slug = ? ORDER BY cadence, id", titleSlug)
 	if err != nil {
-		return nil, err
+		return nil, translateLockErr(ctx, err)
 	}
 	defer rows.Close()
 	var out []prestige.Template
@@ -49,12 +89,16 @@ func (r *PrestigeTemplateRepo) ListByTitle(ctx context.Context, titleSlug string
 func (r *PrestigeTemplateRepo) GetByID(ctx context.Context, id string) (prestige.Template, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	row := r.db.QueryRow(ctx, templateSelectColumns+" WHERE id = ?", id)
-	t, err := scanTemplate(row)
+	rows, err := r.db.QueryRowRecovered(ctx, templateSelectColumns+" WHERE id = ?", id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return prestige.Template{}, fmt.Errorf("%w: template %s", prestige.ErrChallengeNotFound, id)
 	}
-	return t, err
+	if err != nil {
+		return prestige.Template{}, translateLockErr(ctx, err)
+	}
+	// Contrat QueryRowRecovered : curseur DÉJÀ positionné, scanner sans Next().
+	defer rows.Close()
+	return scanTemplate(rows)
 }
 
 func (r *PrestigeTemplateRepo) Suggest(ctx context.Context, titleSlug string, excludeIDs []string, count int) ([]prestige.Template, error) {
@@ -77,9 +121,9 @@ func (r *PrestigeTemplateRepo) Suggest(ctx context.Context, titleSlug string, ex
 	q += " ORDER BY id LIMIT ?"
 	args = append(args, count)
 
-	rows, err := r.db.Query(ctx, q, args...)
+	rows, err := r.db.QueryRecovered(ctx, q, args...)
 	if err != nil {
-		return nil, err
+		return nil, translateLockErr(ctx, err)
 	}
 	defer rows.Close()
 	var out []prestige.Template
@@ -221,14 +265,14 @@ var _ prestige.PresetArcRepo = (*PrestigePresetArcRepo)(nil)
 func (r *PrestigePresetArcRepo) ListByTitle(ctx context.Context, titleSlug string) ([]prestige.PresetArc, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	rows, err := r.db.Query(ctx, `
+	rows, err := r.db.QueryRecovered(ctx, `
 		SELECT id, title_slug, title_en, title_fr,
 		       COALESCE(description_en, ''), COALESCE(description_fr, ''),
 		       schema_version, updated_at
 		FROM preset_arc WHERE title_slug = ? ORDER BY id
 	`, titleSlug)
 	if err != nil {
-		return nil, err
+		return nil, translateLockErr(ctx, err)
 	}
 	defer rows.Close()
 	var out []prestige.PresetArc
@@ -247,12 +291,18 @@ func (r *PrestigePresetArcRepo) GetByID(ctx context.Context, id string) (prestig
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	var p prestige.PresetArc
-	err := r.db.QueryRow(ctx, `
+	rows, err := r.db.QueryRowRecovered(ctx, `
 		SELECT id, title_slug, title_en, title_fr,
 		       COALESCE(description_en, ''), COALESCE(description_fr, ''),
 		       schema_version, updated_at
 		FROM preset_arc WHERE id = ?
-	`, id).Scan(&p.ID, &p.TitleSlug, &p.TitleEN, &p.TitleFR,
+	`, id)
+	if err != nil {
+		// Inclut sql.ErrNoRows : contrat inchangé (AdoptPresetArc mappe ErrArcNotFound).
+		return p, translateLockErr(ctx, err)
+	}
+	defer rows.Close()
+	err = rows.Scan(&p.ID, &p.TitleSlug, &p.TitleEN, &p.TitleFR,
 		&p.DescriptionEN, &p.DescriptionFR, &p.SchemaVersion, &p.UpdatedAt)
 	return p, err
 }
@@ -260,12 +310,12 @@ func (r *PrestigePresetArcRepo) GetByID(ctx context.Context, id string) (prestig
 func (r *PrestigePresetArcRepo) GetSteps(ctx context.Context, presetArcID string) ([]prestige.PresetArcStep, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	rows, err := r.db.Query(ctx, `
+	rows, err := r.db.QueryRecovered(ctx, `
 		SELECT preset_arc_id, position, template_id, target_tier
 		FROM preset_arc_step WHERE preset_arc_id = ? ORDER BY position
 	`, presetArcID)
 	if err != nil {
-		return nil, err
+		return nil, translateLockErr(ctx, err)
 	}
 	defer rows.Close()
 	var out []prestige.PresetArcStep

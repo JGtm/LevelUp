@@ -5,9 +5,12 @@
  * Contenu : outcome sequence + KDA trend + KDA density + avg life + assists +
  * top weapons + KDA trend value + perf session/week/month + map win-rate/perf.
  */
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { OutcomeSequenceTape, type OutcomePoint } from '@/components/charts/OutcomeSequenceTape'
+import { asDominance } from '@/components/charts/outcomeSequence'
+import { ReviewBadge } from '@/components/charts/ReviewBadge'
+import { dominanceLabels as buildDominanceLabels } from '@/lib/narrative/dominance'
 import { outcomeCodeToTapeValue } from '@/lib/outcome'
 import { TimeseriesKdaTrend } from './TimeseriesKdaTrend'
 import { TimeseriesKdaDensity } from './TimeseriesKdaDensity'
@@ -83,6 +86,10 @@ export function TimeseriesSummaryTab({
   // sunburst ↔ 2e graphe + résolveurs i18n partagés (fragsManifest, clé detail_title
   // « Outils de destruction »).
   const appLocale = useAppShellStore((s) => s.locale)
+  // Libellés des drapeaux de dominance (bande de résultats) — table canonique
+  // partagée avec la colonne Dominance de l'Explorateur. Mémoïsé : la bande
+  // recalcule son option ECharts quand cette référence change.
+  const dominanceLabels = useMemo(() => buildDominanceLabels(appLocale), [appLocale])
   const [hoveredClass, setHoveredClass] = useState<string | null>(null)
   const classLabel = (c: string) => formatMessage(fragsManifest, `frags.class.${c}` as never, appLocale)
   const roleLabel = (r: string) => formatMessage(fragsManifest, `frags.role.${r}` as never, appLocale)
@@ -130,8 +137,9 @@ export function TimeseriesSummaryTab({
       {/* Séquence des résultats — en haut. Libellé conservé + message court
           quand aucun match, au lieu de masquer le bloc. */}
       <div data-testid="timeseries-outcome-sequence">
-        <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <p className="mb-1 flex items-center text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {t('timeseries.summary.outcome_sequence')}
+          <ReviewBadge reviewKey="timeseries.outcome_tape" />
         </p>
         {(data.match_rows ?? []).length > 0 ? (
           <OutcomeSequenceTape
@@ -139,6 +147,9 @@ export function TimeseriesSummaryTab({
               outcome: outcomeCodeToTapeValue(r.outcome),
               matchId: r.match_id,
               mode: r.playlist_name || undefined,
+              // Absent (0/undefined, ex. Halo 5 sans timeline de score) → aucun
+              // marqueur dessiné, aucun suffixe de tooltip.
+              dominance: asDominance(r.dominance_flag),
             }))}
             labels={{
               win: outcomeLabels.win,
@@ -146,6 +157,7 @@ export function TimeseriesSummaryTab({
               tie: fieldMappings?.outcomes?.tie?.label ?? 'Égalité',
               dnf: outcomeLabels.unknown,
             }}
+            dominanceLabels={dominanceLabels}
           />
         ) : (
           <p className="text-sm text-muted-foreground">{emptyMsg}</p>

@@ -380,6 +380,12 @@ type SquadMatchHistoryRow struct {
 	// Alimente la colonne « Prob. vic. ». Nil si pré-v2 / non disponible.
 	ExpectedWinProb *float64 `json:"expected_win_prob,omitempty"`
 	SessionLabel    *string  `json:"session_label,omitempty"`
+	// DominanceFlag : badge narratif du match — 0=aucun, 1=domination,
+	// 2=humiliation, 3=remontada, 4=débandade, 5=contre-remontada
+	// (cf. canonical.DominanceFlag). `omitempty` : 0 disparaît du JSON et le front
+	// ne dessine aucun marqueur sur la bande de résultats — dégradation propre pour
+	// les titres sans timeline de score (Halo 5).
+	DominanceFlag int `json:"dominance_flag,omitempty"`
 }
 
 // TeammateRow est une ligne de résultat (stats avec vs sans un coéquipier).

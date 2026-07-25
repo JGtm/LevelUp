@@ -53,7 +53,10 @@ func (h *AdminCatalogDrainHandler) Mount(r chi.Router, opts ...humacore.MountOpt
 		"postAdminActionCatalogUGCDrain",
 		"Action admin — recense les asset IDs vus en jeu (catalog_fetch_queue) puis les résout via l'API DiscoveryUGC (réseau, rate-limité) ; complète "+
 			"le catalog/refresh zéro-réseau pour les assets absents de match_registry ; job asynchrone (auth admin requis)",
-		"admin"))
+		"admin"),
+		// Statut NOMINAL du document ; le champ Status de catalogDrainOutput reste
+		// le mécanisme runtime (202 drain lancé / 409 déjà en cours).
+		humacore.DefaultStatus(http.StatusAccepted))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
@@ -68,6 +71,9 @@ type catalogDrainInput struct {
 // conflit (code/message/retryable/details). Le 409 n'est PAS une erreur Huma
 // standard (NewError ne porte pas details.job_id) → Status explicite + Body map
 // pour préserver byte-identique l'enveloppe d'origine.
+//
+// Statut DYNAMIQUE : le champ Status est le mécanisme runtime et ne peut pas être
+// supprimé ; le statut nominal du document vient de humacore.DefaultStatus (Mount).
 type catalogDrainOutput struct {
 	Status int
 	Body   any

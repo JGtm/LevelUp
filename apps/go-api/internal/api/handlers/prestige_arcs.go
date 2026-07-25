@@ -23,10 +23,10 @@ type createArcBody struct {
 // arcOutput : 200 — objet Arc brut.
 type arcOutput struct{ Body prestige.Arc }
 
-// arcCreatedOutput : 201 — objet Arc créé.
+// arcCreatedOutput : 201 — objet Arc créé (statut posé par humacore.DefaultStatus
+// au montage : source unique, runtime ET document).
 type arcCreatedOutput struct {
-	Status int
-	Body   prestige.Arc
+	Body prestige.Arc
 }
 
 // CreateArc gère POST /arcs.
@@ -47,7 +47,7 @@ func (h *PrestigeHandler) CreateArc(ctx context.Context, in *rawBodyInput) (*arc
 	if err != nil {
 		return nil, h.serviceError(ctx, err)
 	}
-	return &arcCreatedOutput{Status: http.StatusCreated, Body: a}, nil
+	return &arcCreatedOutput{Body: a}, nil
 }
 
 // GetArc gère GET /arcs/{id}.
@@ -153,5 +153,5 @@ func (h *PrestigeHandler) AdoptPresetArc(ctx context.Context, in *idBodyInput) (
 	if err != nil {
 		return nil, h.serviceError(ctx, err)
 	}
-	return &arcCreatedOutput{Status: http.StatusCreated, Body: arc}, nil
+	return &arcCreatedOutput{Body: arc}, nil
 }

@@ -1,6 +1,6 @@
 // Package objective — objective_stats.go : extraction des stats objectifs par joueur
-// (modes CTF / Zones (Strongholds+KOTH) / Oddball) depuis le payload GetMatchStats
-// Halo Infinite vers shared.match_objective_stats.
+// (modes CTF / Zones (Strongholds+KOTH) / Oddball / Stockpile / Extraction / VIP) depuis
+// le payload GetMatchStats Halo Infinite vers shared.match_objective_stats.
 //
 // Sous-package cohésif extrait de la racine internal/sync/ (ratchet god-package K3c) :
 // le seul point d'entrée est ExtractObjectiveStats, consommé par engine_fetch.go et
@@ -26,9 +26,16 @@ var objectiveDurationRE = regexp.MustCompile(`^PT(?:(\d+)H)?(?:(\d+)M)?(?:([\d.]
 
 // ExtractObjectiveStats extrait les stats objectifs par joueur depuis un payload
 // GetMatchStats. Produit une row par (match_id, xuid) UNIQUEMENT pour les joueurs dont
-// le Stats bundle contient l'un des 3 blocs objectif (CaptureTheFlagStats / ZonesStats /
-// OddballStats — mutuellement exclusifs par mode). Les modes sans objectif (Slayer, etc.)
-// et les payloads sans bloc ne produisent aucune row (table volontairement creuse).
+// le Stats bundle contient l'un des 6 blocs objectif (CaptureTheFlagStats / ZonesStats /
+// OddballStats / StockpileStats / ExtractionStats / VipStats — mutuellement exclusifs par
+// mode). Les modes sans objectif (Slayer, etc.) et les payloads sans bloc ne produisent
+// aucune row (table volontairement creuse). Seul le niveau JOUEUR est extrait : les mêmes
+// blocs existent sous Teams[].Stats (agrégat équipe) et sont ignorés — les totaux équipe
+// sont recalculés à la lecture.
+//
+// EliminationStats et InfectionStats restent NON IMPLÉMENTÉS : aucun payload existant ne
+// les porte (V721-02 § 02.1 — les 2 matchs Attrition en base n'ont que CoreStats, aucun
+// mode Infection en base). Rien n'est déduit par analogie ; leur ajout attend un match réel.
 func ExtractObjectiveStats(matchID string, matchJSON map[string]any) []persist.ObjectiveStatsInsert {
 	players, _ := matchJSON["Players"].([]any)
 	if len(players) == 0 {
@@ -110,6 +117,36 @@ func buildObjectiveRow(matchID, xuid string, stats map[string]any) (persist.Obje
 		row.SkullScoringTicks = intPtrFrom(odd, "SkullScoringTicks")
 		row.TimeAsSkullCarrierSeconds = objectiveDurationSeconds(asString(odd["TimeAsSkullCarrier"]))
 		row.LongestTimeAsSkullCarrierSeconds = objectiveDurationSeconds(asString(odd["LongestTimeAsSkullCarrier"]))
+	}
+
+	if stock, ok := stats["StockpileStats"].(map[string]any); ok {
+		found = true
+		row.KillsAsPowerSeedCarrier = intPtrFrom(stock, "KillsAsPowerSeedCarrier")
+		row.PowerSeedCarriersKilled = intPtrFrom(stock, "PowerSeedCarriersKilled")
+		row.PowerSeedsDeposited = intPtrFrom(stock, "PowerSeedsDeposited")
+		row.PowerSeedsStolen = intPtrFrom(stock, "PowerSeedsStolen")
+		row.TimeAsPowerSeedCarrierSeconds = objectiveDurationSeconds(asString(stock["TimeAsPowerSeedCarrier"]))
+		row.TimeAsPowerSeedDriverSeconds = objectiveDurationSeconds(asString(stock["TimeAsPowerSeedDriver"]))
+	}
+
+	if extr, ok := stats["ExtractionStats"].(map[string]any); ok {
+		found = true
+		row.ExtractionConversionsCompleted = intPtrFrom(extr, "ExtractionConversionsCompleted")
+		row.ExtractionConversionsDenied = intPtrFrom(extr, "ExtractionConversionsDenied")
+		row.ExtractionInitiationsCompleted = intPtrFrom(extr, "ExtractionInitiationsCompleted")
+		row.ExtractionInitiationsDenied = intPtrFrom(extr, "ExtractionInitiationsDenied")
+		row.SuccessfulExtractions = intPtrFrom(extr, "SuccessfulExtractions")
+	}
+
+	if vip, ok := stats["VipStats"].(map[string]any); ok {
+		found = true
+		row.KillsAsVip = intPtrFrom(vip, "KillsAsVip")
+		row.VipKills = intPtrFrom(vip, "VipKills")
+		row.VipAssists = intPtrFrom(vip, "VipAssists")
+		row.TimesSelectedAsVip = intPtrFrom(vip, "TimesSelectedAsVip")
+		row.MaxKillingSpreeAsVip = intPtrFrom(vip, "MaxKillingSpreeAsVip")
+		row.TimeAsVipSeconds = objectiveDurationSeconds(asString(vip["TimeAsVip"]))
+		row.LongestTimeAsVipSeconds = objectiveDurationSeconds(asString(vip["LongestTimeAsVip"]))
 	}
 
 	return row, found

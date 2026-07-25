@@ -1,6 +1,10 @@
 // Package duckdb — repositories Prestige cross-joueurs (shared_social.duckdb).
 //
 // Implémente prestige.PrestigeRepo, prestige.SquadRepo, prestige.SquadChallengeRepo.
+//
+// Accès DB : lectures via les variantes `*Recovered` + translateSocialLockErr,
+// écritures via execCheckpointed. Helpers et détail du bug : voir
+// prestige_social_recovery.go (V721-08b).
 
 package prestige
 
@@ -24,24 +28,6 @@ type PrestigeSocialRepo struct{ db *duckdb.DB }
 func NewPrestigeSocialRepo(db *duckdb.DB) *PrestigeSocialRepo { return &PrestigeSocialRepo{db: db} }
 
 var _ prestige.PrestigeRepo = (*PrestigeSocialRepo)(nil)
-
-// execCheckpointed exécute une écriture mutative sur shared_social (avec reopen
-// auto sur invalidation) PUIS flushe le WAL via CHECKPOINT immédiat (non-fatal).
-//
-// Les writes Prestige tournent déjà sous le lease KindSharedSocial (acquis par
-// LazyPrestigeService pour le HTTP, tenu par le sync engine pour le post-sync) :
-// le CHECKPOINT s'exécute donc sous le lease, sérialisé avec le sync engine.
-// Sans lui, l'INSERT/UPDATE/DELETE reste dans le WAL et est perdu si la recovery
-// #7659 quarantine un WAL orphelin au restart — même classe de bug que les
-// mutations notifications (ADR 0022). CHECKPOINT non-fatal : la donnée est déjà
-// commit, le scheduler 5 min fera fallback.
-func execCheckpointed(ctx context.Context, db *duckdb.DB, query string, args ...any) error {
-	if _, err := db.ExecRecovered(ctx, query, args...); err != nil {
-		return err
-	}
-	_ = duckdb.CheckpointSharedSocial(ctx, db)
-	return nil
-}
 
 // EmitEvent journalise un gain de PP ET incrémente le total du joueur de façon
 // ATOMIQUE : l'INSERT dans prestige_events (journal) et l'UPSERT dans
@@ -92,13 +78,19 @@ func (r *PrestigeSocialRepo) GetUserPrestige(ctx context.Context, userID, titleS
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	var up prestige.UserPrestige
-	err := r.db.QueryRow(ctx, `
+	rows, err := r.db.QueryRowRecovered(ctx, `
 		SELECT user_id, title_slug, total_pp, current_level, updated_at
 		FROM user_prestige_latest WHERE user_id = ? AND title_slug = ?
-	`, userID, titleSlug).Scan(&up.UserID, &up.TitleSlug, &up.TotalPP, &up.CurrentLevel, &up.UpdatedAt)
+	`, userID, titleSlug)
 	if errors.Is(err, sql.ErrNoRows) {
+		// Aucun PP émis (user, titre) : prestige vide, pas une erreur (inchangé).
 		return prestige.UserPrestige{UserID: userID, TitleSlug: titleSlug}, nil
 	}
+	if err != nil {
+		return up, translateSocialLockErr(ctx, err)
+	}
+	defer rows.Close() // curseur DÉJÀ positionné par QueryRowRecovered (pas de Next()).
+	err = rows.Scan(&up.UserID, &up.TitleSlug, &up.TotalPP, &up.CurrentLevel, &up.UpdatedAt)
 	return up, err
 }
 
@@ -107,11 +99,31 @@ func (r *PrestigeSocialRepo) GetUserPrestigeCrossTitle(ctx context.Context, user
 	defer cancel()
 	var up prestige.UserPrestige
 	up.UserID = userID
-	err := r.db.QueryRow(ctx, `
+	rows, err := r.db.QueryRowRecovered(ctx, `
 		SELECT COALESCE(SUM(total_pp), 0), MAX(updated_at)
 		FROM user_prestige_latest WHERE user_id = ?
-	`, userID).Scan(&up.TotalPP, &up.UpdatedAt)
-	return up, err
+	`, userID)
+	if err != nil {
+		// Agrégat sans GROUP BY : toujours 1 ligne, donc jamais sql.ErrNoRows ici.
+		return up, translateSocialLockErr(ctx, err)
+	}
+	defer rows.Close()
+	// MAX(updated_at) est NULL quand le joueur n'a AUCUNE ligne de prestige (0 PP
+	// émis, tous titres confondus) : l'agrégat rend bien une ligne, mais son 2e
+	// champ est NULL. Le scanner directement dans un time.Time échouait
+	// (« converting NULL to time.Time is unsupported ») → 500 sur
+	// GET /prestige/me appelé sans title_slug pour tout joueur sans PP.
+	// COALESCE côté SQL est exclu : il faudrait inventer une date sentinelle.
+	// Contrat : joueur sans PP → prestige vide, UpdatedAt zéro, PAS d'erreur —
+	// identique à GetUserPrestige (branche sql.ErrNoRows ci-dessus).
+	var updatedAt sql.NullTime
+	if err := rows.Scan(&up.TotalPP, &updatedAt); err != nil {
+		return up, err
+	}
+	if updatedAt.Valid {
+		up.UpdatedAt = updatedAt.Time
+	}
+	return up, nil
 }
 
 func (r *PrestigeSocialRepo) UpsertUserPrestige(ctx context.Context, up prestige.UserPrestige) error {
@@ -135,7 +147,7 @@ func (r *PrestigeSocialRepo) ListEvents(ctx context.Context, userID, titleSlug s
 		ORDER BY created_at DESC
 	`, userID, titleSlug, since)
 	if err != nil {
-		return nil, err
+		return nil, translateSocialLockErr(ctx, err)
 	}
 	defer rows.Close()
 	var out []prestige.PrestigeEvent
@@ -152,16 +164,30 @@ func (r *PrestigeSocialRepo) ListEvents(ctx context.Context, userID, titleSlug s
 	return out, rows.Err()
 }
 
+// GetLeaderboard rend le classement PP d'un ENSEMBLE de joueurs pour UN titre.
+//
+// titleSlug est OBLIGATOIRE (V721-14a / D-08) : la branche `titleSlug == nil`
+// qui sommait `total_pp` tous titres confondus (`SUM … GROUP BY user_id`) a été
+// supprimée le 2026-07-25. Elle n'avait aucun appelant de production et
+// contredisait la décision produit du 2026-07-18 (arcs, défis et PP strictement
+// indépendants par titre — cf. internal/prestige/no_cross_title_aggregation_test.go).
+// Le type du paramètre (string, plus *string) rend la voie cross-titre
+// inexprimable à la compilation. Un slug vide est refusé explicitement plutôt
+// que dégradé en « tous titres ».
 func (r *PrestigeSocialRepo) GetLeaderboard(
 	ctx context.Context,
 	userIDs []string,
-	titleSlug *string,
+	titleSlug string,
 	since time.Time,
 ) ([]prestige.LeaderboardEntry, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	if len(userIDs) == 0 {
 		return nil, nil
+	}
+	if titleSlug == "" {
+		return nil, fmt.Errorf("GetLeaderboard: title_slug requis (pas de classement tous titres confondus): %w",
+			prestige.ErrInvalidInput)
 	}
 	// Construire les placeholders ?,?,?,...
 	placeholders := strings.Repeat("?,", len(userIDs))
@@ -172,29 +198,17 @@ func (r *PrestigeSocialRepo) GetLeaderboard(
 		args = append(args, uid)
 	}
 
-	var q string
-	if titleSlug != nil && *titleSlug != "" {
-		q = fmt.Sprintf(`
-			SELECT user_id, title_slug, total_pp
-			FROM user_prestige_latest
-			WHERE user_id IN (%s) AND title_slug = ?
-			ORDER BY total_pp DESC
-		`, placeholders)
-		args = append(args, *titleSlug)
-	} else {
-		// Cross-titre : SUM par user
-		q = fmt.Sprintf(`
-			SELECT user_id, '' AS title_slug, COALESCE(SUM(total_pp), 0) AS total_pp
-			FROM user_prestige_latest
-			WHERE user_id IN (%s)
-			GROUP BY user_id
-			ORDER BY total_pp DESC
-		`, placeholders)
-	}
+	q := fmt.Sprintf(`
+		SELECT user_id, title_slug, total_pp
+		FROM user_prestige_latest
+		WHERE user_id IN (%s) AND title_slug = ?
+		ORDER BY total_pp DESC
+	`, placeholders)
+	args = append(args, titleSlug)
 
 	rows, err := r.db.QueryRecovered(ctx, q, args...)
 	if err != nil {
-		return nil, fmt.Errorf("GetLeaderboard: %w", err)
+		return nil, fmt.Errorf("GetLeaderboard: %w", translateSocialLockErr(ctx, err))
 	}
 	defer rows.Close()
 	var out []prestige.LeaderboardEntry
@@ -229,9 +243,14 @@ func (r *PrestigeSquadRepo) Get(ctx context.Context, id string) (prestige.Squad,
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	var s prestige.Squad
-	err := r.db.QueryRow(ctx,
-		`SELECT id, name, created_by, created_at FROM squad WHERE id = ?`, id,
-	).Scan(&s.ID, &s.Name, &s.CreatedBy, &s.CreatedAt)
+	rows, err := r.db.QueryRowRecovered(ctx,
+		`SELECT id, name, created_by, created_at FROM squad WHERE id = ?`, id)
+	if err != nil {
+		// sql.ErrNoRows rendu TEL QUEL (mapping « introuvable » du service).
+		return s, translateSocialLockErr(ctx, err)
+	}
+	defer rows.Close()
+	err = rows.Scan(&s.ID, &s.Name, &s.CreatedBy, &s.CreatedAt)
 	return s, err
 }
 
@@ -273,7 +292,7 @@ func (r *PrestigeSquadRepo) ListMembers(ctx context.Context, squadID string) ([]
 		 FROM squad_member_latest
 		 WHERE squad_id = ? AND is_member = TRUE`, squadID)
 	if err != nil {
-		return nil, err
+		return nil, translateSocialLockErr(ctx, err)
 	}
 	defer rows.Close()
 	var out []prestige.SquadMember
@@ -297,7 +316,7 @@ func (r *PrestigeSquadRepo) ListSquadsForUser(ctx context.Context, userID string
 		ORDER BY s.created_at DESC
 	`, userID)
 	if err != nil {
-		return nil, err
+		return nil, translateSocialLockErr(ctx, err)
 	}
 	defer rows.Close()
 	var out []prestige.Squad
@@ -341,15 +360,20 @@ func (r *PrestigeSquadChallengeRepo) Get(ctx context.Context, id string) (presti
 	defer cancel()
 	var sc prestige.SquadChallenge
 	var mode, evalType, windowType string
-	err := r.db.QueryRow(ctx, `
+	rows, err := r.db.QueryRowRecovered(ctx, `
 		SELECT id, squad_id, COALESCE(template_id, ''), title_slug, mode, eval_type,
 		       window_type, COALESCE(window_value, ''), COALESCE(target_per_member, 0),
 		       expires_at, created_by, created_at
 		FROM squad_challenge WHERE id = ?
-	`, id).Scan(&sc.ID, &sc.SquadID, &sc.TemplateID, &sc.TitleSlug, &mode, &evalType,
-		&windowType, &sc.WindowValue, &sc.TargetPerMember,
-		&sc.ExpiresAt, &sc.CreatedBy, &sc.CreatedAt)
+	`, id)
 	if err != nil {
+		// sql.ErrNoRows rendu TEL QUEL (mapping « introuvable » du service).
+		return sc, translateSocialLockErr(ctx, err)
+	}
+	defer rows.Close()
+	if err := rows.Scan(&sc.ID, &sc.SquadID, &sc.TemplateID, &sc.TitleSlug, &mode, &evalType,
+		&windowType, &sc.WindowValue, &sc.TargetPerMember,
+		&sc.ExpiresAt, &sc.CreatedBy, &sc.CreatedAt); err != nil {
 		return sc, err
 	}
 	sc.Mode = prestige.SquadMode(mode)
@@ -371,7 +395,7 @@ func (r *PrestigeSquadChallengeRepo) ListBySquad(ctx context.Context, squadID st
 		FROM squad_challenge WHERE squad_id = ? AND archived_at IS NULL ORDER BY created_at DESC
 	`, squadID)
 	if err != nil {
-		return nil, err
+		return nil, translateSocialLockErr(ctx, err)
 	}
 	defer rows.Close()
 	var out []prestige.SquadChallenge
@@ -456,7 +480,7 @@ func (r *PrestigeSquadChallengeRepo) ListParticipants(ctx context.Context, chall
 		FROM squad_challenge_participant_latest WHERE squad_challenge_id = ?
 	`, challengeID)
 	if err != nil {
-		return nil, err
+		return nil, translateSocialLockErr(ctx, err)
 	}
 	defer rows.Close()
 	var out []prestige.SquadChallengeParticipant
@@ -472,15 +496,4 @@ func (r *PrestigeSquadChallengeRepo) ListParticipants(ctx context.Context, chall
 		out = append(out, p)
 	}
 	return out, rows.Err()
-}
-
-func (r *PrestigeSquadChallengeRepo) CountActiveParticipants(ctx context.Context, challengeID string) (int, error) {
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	var n int
-	err := r.db.QueryRow(ctx, `
-		SELECT COUNT(*) FROM squad_challenge_participant_latest
-		WHERE squad_challenge_id = ? AND completed_at IS NULL
-	`, challengeID).Scan(&n)
-	return n, err
 }

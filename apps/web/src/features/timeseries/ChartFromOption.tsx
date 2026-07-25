@@ -37,6 +37,8 @@ export interface ChartFromOptionProps {
   onEvents?: Record<string, (params: unknown) => void>
   /** Pied de carte optionnel (rendu sous le graphe, ex. rangée de KPI). */
   footer?: ReactNode
+  /** Clé de tournée de revue transmise à ChartCard (badge inerte hors tournée). */
+  reviewKey?: string
 }
 
 export function ChartFromOption({
@@ -47,6 +49,7 @@ export function ChartFromOption({
   className,
   onEvents,
   footer,
+  reviewKey,
 }: ChartFromOptionProps) {
   return (
     <ChartCard
@@ -57,6 +60,7 @@ export function ChartFromOption({
       height={height}
       className={className}
       onEvents={onEvents}
+      reviewKey={reviewKey}
     >
       {footer}
     </ChartCard>

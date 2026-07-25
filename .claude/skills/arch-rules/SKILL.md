@@ -145,6 +145,30 @@ if slug == "halo_infinite" { ... }  // couplage fort, non extensible
 
 Capabilities disponibles : `CapMatchmaking`, `CapFirefight`, `CapForge`, `CapMedia`, `CapRanked`, `CapCareer`.
 
+### Prestige / arcs / progression — per-titre STRICT (décision produit 2026-07-18)
+
+Arcs, défis, valeurs et points de progression (PP) sont **strictement indépendants par
+titre**. Un joueur a des arcs en Halo 5 ET des arcs en Halo Infinite : deux ensembles
+**disjoints**. Juxtaposer par titre côté UI = OK ; **fusionner = jamais**.
+
+```go
+// Correct — le crédit va au titre du défi, et à lui seul
+ev := PrestigeEvent{UserID: c.UserID, TitleSlug: c.TitleSlug, PPAmount: pp}
+
+// Interdit — itérer sur N titres pour un même calcul de valeur/PP
+for _, slug := range creditTitlesFor(c) { ... }   // seam retiré le 2026-07-25
+```
+
+Interdits : arc/défi couvrant plusieurs titres · objectif partagé entre deux jeux ·
+somme/prorata de PP, rating fusionné, leaderboard « tous titres confondus » · toute
+table/colonne liant une entité à N titres (la jointure `arc_titles` a été supprimée pour
+cette raison) · requête sur une table per-titre (`arc`, `challenge`, `prestige_events`,
+`streak`, `record_history`, `milestone_earned`, `baseline_state`, `improvement_campaign`,
+`user_prestige_*`) sans filtre `title_slug`.
+
+Garde-rail : `internal/prestige/no_cross_title_aggregation_test.go` (scan AST de
+`internal/prestige/` + `internal/progression/`, allowlist datée et justifiée).
+
 ### Header HTTP
 Le titre courant peut être passé par `X-LevelUp-Title` (clients API directs). Le middleware `TitleExtractor` le résout automatiquement (header → session → fallback `halo_infinite`).
 

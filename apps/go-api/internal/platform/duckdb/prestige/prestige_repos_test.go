@@ -314,9 +314,18 @@ func TestPrestigeSocialRepo_Leaderboard_PerTitle(t *testing.T) {
 			t.Fatalf("Upsert: %v", err)
 		}
 	}
+	// PP d'un SECOND titre pour le même joueur : ils ne doivent JAMAIS s'ajouter
+	// au classement d'Halo Infinite (indépendance stricte par titre, décision
+	// produit 2026-07-18). Sans ces lignes, la suppression de la branche
+	// cross-titre (V721-14a / D-08) ne serait pas observable.
+	if err := repo.UpsertUserPrestige(ctx, prestige.UserPrestige{
+		UserID: "u1", TitleSlug: "halo_5",
+		TotalPP: 700, CurrentLevel: 0, UpdatedAt: now,
+	}); err != nil {
+		t.Fatalf("Upsert halo_5: %v", err)
+	}
 
-	titleSlug := "halo_infinite"
-	board, err := repo.GetLeaderboard(ctx, []string{"u1", "u2", "u3"}, &titleSlug, time.Time{})
+	board, err := repo.GetLeaderboard(ctx, []string{"u1", "u2", "u3"}, "halo_infinite", time.Time{})
 	if err != nil {
 		t.Fatalf("GetLeaderboard: %v", err)
 	}
@@ -325,6 +334,46 @@ func TestPrestigeSocialRepo_Leaderboard_PerTitle(t *testing.T) {
 	}
 	if board[0].UserID != "u3" || board[0].TotalPP != 1500 {
 		t.Errorf("expected u3 first with 1500, got %s with %d", board[0].UserID, board[0].TotalPP)
+	}
+	for _, e := range board {
+		if e.TitleSlug != "halo_infinite" {
+			t.Errorf("entrée %q hors titre demandé: title_slug=%q", e.UserID, e.TitleSlug)
+		}
+		if e.UserID == "u1" && e.TotalPP != 1000 {
+			t.Errorf("FUSION CROSS-TITRE : u1 = %d PP (attendu 1000, halo_5 exclu)", e.TotalPP)
+		}
+	}
+}
+
+// TestPrestigeSocialRepo_Leaderboard_RejectsEmptyTitle — MORSURE de D-08.
+// Un slug vide doit être REFUSÉ, jamais dégradé en « tous titres confondus ».
+// Si la branche cross-titre supprimée le 2026-07-25 revenait (sous n'importe
+// quelle forme : *string nil, slug vide, flag), ce test la verrait : il
+// recevrait un classement au lieu d'une erreur.
+func TestPrestigeSocialRepo_Leaderboard_RejectsEmptyTitle(t *testing.T) {
+	db := setupPrestigeDB(t, migration.TargetSharedSocial)
+	repo := NewPrestigeSocialRepo(db)
+	ctx := context.Background()
+	now := time.Now().UTC().Truncate(time.Second)
+
+	for _, slug := range []string{"halo_infinite", "halo_5"} {
+		if err := repo.UpsertUserPrestige(ctx, prestige.UserPrestige{
+			UserID: "u1", TitleSlug: slug, TotalPP: 300, CurrentLevel: 0, UpdatedAt: now,
+		}); err != nil {
+			t.Fatalf("Upsert %s: %v", slug, err)
+		}
+	}
+
+	board, err := repo.GetLeaderboard(ctx, []string{"u1"}, "", time.Time{})
+	if err == nil {
+		t.Fatalf("GetLeaderboard(title_slug=\"\") a rendu %d entrée(s) au lieu d'une erreur — "+
+			"la voie cross-titre est de retour", len(board))
+	}
+	if !errors.Is(err, prestige.ErrInvalidInput) {
+		t.Errorf("GetLeaderboard(title_slug=\"\") : erreur %v, attendu ErrInvalidInput", err)
+	}
+	if board != nil {
+		t.Errorf("GetLeaderboard(title_slug=\"\") doit rendre nil, got %v", board)
 	}
 }
 

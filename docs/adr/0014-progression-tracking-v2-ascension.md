@@ -1,8 +1,48 @@
 # ADR 0014 — Progression Tracking V2 (Ascension)
 
-**Date** : 2026-05-18 ; mis à jour 2026-05-22 (Phase 4 plan stabilisation — wiring fix)
+**Date** : 2026-05-18 ; mis à jour 2026-05-22 (Phase 4 plan stabilisation — wiring fix) ;
+amended 2026-07-25 (Coach V3 Phase A/C — see below)
 **Status** : Accepted
 **Branch** : `feat/progression-tracking-ascension` (commits 1-10), `feat/ascension-pipeline-v2-wiring` (Phase 4 commits)
+
+## 2026-07-25 — Amendment: soft-negative coach signal + squad-level signal (chantier v7.2.1, item V721-07)
+
+This ADR originally documented the coach as **positive-only** (§6.1 of the source plan, cf.
+commit 5 and the "Positives" consequence below). That is no longer accurate and had drifted
+into "inverted doc" territory (CLAUDE.md anti-pattern #9): Coach V3 Phase A shipped a
+soft-negative signal on 2026-06-09 (commits `7cefd911a`, `b0dd5256a`, `b916e1191`,
+`c00b7850f`), and this ADR was never updated to reflect it. The guardrails below are read
+directly from the current code (`internal/progression/coach/`), not restated from the
+original design intent:
+
+- **Signal type**: `AlertTypeLOWESSSoftNegative` (`internal/progression/coach/types.go`) —
+  symmetrical to the pre-existing `AlertTypeLOWESSPositive`, triggered by a sustained
+  *negative* LOWESS trend on a LUSR component.
+- **Threshold**: `LOWESSSoftNegativeThreshold = -0.10` (`internal/progression/coach/generator.go`)
+  — the trend slope over the window must be below this floor (anti-noise).
+- **Minimum observation window**: `LOWESSObservationWindow = 14` days
+  (`internal/progression/coach/types.go`) — the same gate used for the positive signal;
+  `buildLOWESSSoftNegativeAlerts` discards any trend shorter than this window.
+- **Notification category**: `notifications.CategoryTrendConsolidate`
+  (`internal/progression/coach/emitter.go`) — a dedicated **neutral** category, deliberately
+  not sharing a category with any achievement/threshold-crossed alert.
+- **No "loss" rendering, ever**: the frontend (`apps/web/src/features/ascension/CoachFocusCard.tsx`)
+  renders the soft-negative case with `accent="info"` — never `outcome-loss` (red) — with
+  copy along the lines of "X deserves your attention" / "consolidate X", never "you're
+  regressing". The sibling `TrendBadge` in `profile/PerformanceSection.tsx` was neutralized
+  the same way (its red "Downtrend" pill now renders the neutral `info` token instead of
+  `outcome-loss`). The UI additionally applies its own noise floor
+  (`FOCUS_THRESHOLD = 0.02` in `CoachFocusCard.tsx`) before showing any axis at all,
+  positive or negative — and shows at most one focal axis.
+- **Squad-level signal**: this ADR also implied no squad-level coach signal existed. Also
+  stale — `internal/prestige/squad_coach.go` (`AggregateSquadAxes`, `SquadFocusAxis`)
+  computes a squad-level focus axis, consumed by `apps/web/src/features/squad/SquadFocusStrip.tsx`
+  / `SquadObjectivesPanel.tsx` (Coach V3 Phase C, same delivery window).
+
+The "10 types d'alertes positives uniquement" wording in commit 5 below and the "Feedback
+positif uniquement" bullet in Consequences are left as written for historical accuracy (they
+describe the state at original delivery, 2026-05-2x) but no longer describe current
+behavior — this section is the up-to-date reference.
 
 ## 2026-05-22 — Wiring corrigé (Phase 4 plan stabilisation)
 
@@ -75,8 +115,10 @@ Implement V2 in 10 commits over ~10 days, structured as :
    régularité). Detector marque earned une seule fois (PK composite garantit
    idempotence).
 
-5. **Coach generator** — 10 types d'alertes positives uniquement (pas de
-   feedback négatif, cf. plan §6.1). Mapping AlertType → notifications.Category
+5. **Coach generator** — at original delivery: 10 types d'alertes positives uniquement (pas de
+   feedback négatif, cf. plan §6.1). **Superseded 2026-07-25** — an 11th, soft-negative type
+   was added in Coach V3 Phase A; see the amendment section at the top of this ADR for the
+   exact guardrails. Mapping AlertType → notifications.Category
    réutilise `personal_record` et `threshold_crossed` existants + ajoute 6
    nouvelles catégories (record_near_miss, milestone_unlocked, milestone_near_miss,
    lusr_tier_approach, streak_milestone, comeback_welcome). Dédup 24h via
@@ -180,9 +222,11 @@ warning, muted = neutral), tokens du design system (`bg-primary`,
   120+ tests unit/intégration verts à chaque commit.
 - Aucune table dupliquée : tout ce qui existait (notifications, player_records,
   match_skill_rank, LowessSmooth, SkillTiers) est réutilisé.
-- Feedback positif uniquement (plan §6.1) : aucun toast/alerte sur régression.
-  Le système pousse l'utilisateur via stims positifs (paliers atteints,
-  approches, retours), pas via culpabilisation.
+- Feedback positif uniquement (plan §6.1) : aucun toast/alerte sur régression — **true at
+  original delivery only**. Coach V3 Phase A (2026-07-25 amendment above) added a soft-negative
+  signal under strict guardrails (neutral category, -0.10/14d threshold, never rendered as
+  "loss"). Le système reste net-positif dans son registre (jamais de culpabilisation) mais
+  n'est plus strictement silencieux sur les tendances négatives.
 - Extension future facile : nouveaux types de streak via `StreakType` enum +
   satisfaction predicate, nouveaux milestones via TOML edit, nouvelles
   catégories notif via 1 ligne dans `types.go` + `notifications/types.ts` +

@@ -260,7 +260,7 @@ func (s *TimeseriesService) GetPage(
 		CumulTab:     buildCumulTab(matches),
 
 		IntensityTab:     buildIntensityTab(matches),
-		DistributionsTab: buildDistributionsTab(matches, provideSpree),
+		DistributionsTab: buildDistributionsTab(ctx, matches, provideSpree),
 		OutcomesOverTime: buildOutcomesOverTime(matches),
 		MapBreakdown:     buildSoloMapBreakdown(matches, historicalSolo),
 		SoloSessionPerf:  buildSoloSessionPerf(historicalSolo),

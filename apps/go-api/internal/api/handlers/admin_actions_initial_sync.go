@@ -66,7 +66,8 @@ func (h *AdminInitialSyncActionHandler) Mount(r chi.Router, opts ...humacore.Mou
 		"postAdminActionInitialSyncRun",
 		"Action admin — re-import complet (RunFull, plafonné à max_matches) d'un joueur au choix, tokens via le pool unifié, claim SyncGate, via le "+
 			"JobStore (auth admin requis)",
-		"admin"))
+		"admin"),
+		humacore.DefaultStatus(http.StatusAccepted))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
@@ -80,10 +81,11 @@ type initialSyncRunInput struct {
 	RawBody []byte
 }
 
-// initialSyncRunOutput : 202 Accepted + AsyncJobStatus (job async démarré).
+// initialSyncRunOutput : 202 Accepted + AsyncJobStatus (job async démarré). Le
+// 409 passe par conflictWithJobError (erreur Huma), donc le statut de succès est
+// FIXE → posé UNE fois par humacore.DefaultStatus au montage.
 type initialSyncRunOutput struct {
-	Status int
-	Body   *domain.AsyncJobStatus
+	Body *domain.AsyncJobStatus
 }
 
 // handleRun démarre le re-import initial d'un joueur.
@@ -119,7 +121,7 @@ func (h *AdminInitialSyncActionHandler) handleRun(ctx context.Context, in *initi
 	go h.runInitialSync(h.bgCtx, job.JobID, titleSlug, req.PlayerSlug, req.MaxMatches)
 	slog.InfoContext(ctx, "admin_actions: sync initiale joueur démarrée",
 		"job_id", job.JobID, "player_slug", req.PlayerSlug, "title", titleSlug, "max_matches", req.MaxMatches)
-	return &initialSyncRunOutput{Status: http.StatusAccepted, Body: h.jobs.Get(job.JobID)}, nil
+	return &initialSyncRunOutput{Body: h.jobs.Get(job.JobID)}, nil
 }
 
 // runInitialSync exécute le re-import initial dans la goroutine du job.

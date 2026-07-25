@@ -17,9 +17,9 @@
 //	1. TestNoDuplicateRouteRegistration — SYSTÉMIQUE : monte le VRAI routeur assemblé
 //	   (buildTestRouter) et vérifie qu'aucun (méthode, chemin) n'est enregistré deux
 //	   fois sur un même sous-routeur. Couvre home + tous les handlers effectivement
-//	   montés. NB : en mode démo, le bundle Prestige échoue à s'initialiser (pas de
-//	   DuckDB) → les routes prestige NE SONT PAS montées ici ; c'est le point (2) qui
-//	   couvre la paire home/prestige du bug corrigé.
+//	   montés, Prestige INCLUS depuis V721-04 (le bundle échoue toujours à
+//	   s'initialiser en démo — pas de DuckDB — mais les routes sont désormais montées
+//	   avec un bundle nil pour que le contrat publié décrive la surface complète).
 //	2. TestHomeAndPrestigeShareNoRoute — CIBLÉ : monte HomeHandler ET PrestigeHandler
 //	   sur le MÊME sous-routeur (comme le groupe /players/{player_slug} en prod) via
 //	   leurs vraies méthodes Mount (deps nil : Mount n'enregistre que des method
@@ -221,10 +221,10 @@ func TestNoDuplicateRouteRegistration(t *testing.T) {
 // TestHomeAndPrestigeShareNoRoute : garde-rail CIBLÉ de la régression corrigée. Monte
 // HomeHandler ET PrestigeHandler sur le MÊME sous-routeur (le groupe
 // /players/{player_slug} en prod) via leurs vraies méthodes Mount, et vérifie
-// qu'aucun (méthode, chemin) n'est enregistré par les deux. C'est le seul test de
-// routeur où les routes prestige sont effectivement montées (le bundle prestige est
-// indisponible en mode démo, cf. TestNoDuplicateRouteRegistration). ROUGE avant le
-// fix (les deux exposaient GET /challenges), VERT après (prestige → /prestige/...).
+// qu'aucun (méthode, chemin) n'est enregistré par les deux. Reste utile depuis
+// V721-04 (où le routeur de démo monte aussi prestige) : il isole LA paire du bug
+// sans dépendre du wiring complet. ROUGE avant le fix (les deux exposaient GET
+// /challenges), VERT après (prestige → /prestige/...).
 //
 // deps nil : Mount n'enregistre que des method values (h.CreateChallenge, …) sans
 // toucher au service ni à une DB ; la dérivation de schéma Huma ne lit que les types

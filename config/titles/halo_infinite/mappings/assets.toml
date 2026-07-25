@@ -287,7 +287,10 @@ labels = { en = "Winter Update", fr = "Mise à jour hivernale" }
 display_order = 25
 start_date = "2022-11-08T17:00:00Z"
 end_date   = "2023-03-07T17:00:00Z"
-extra = { csr_season_id = "CsrSeason2-2", short_label = "Winter 22" }
+# matchmade_path : seule saison dont l'ID n'est pas numéroté → son chemin CMS
+# n'est pas déductible du gabarit "Seasons/Season{N}.json". Valeur relevée sur
+# les appels réels au service record (logs 2026-07-22). Cf. deterministicSeasonPath.
+extra = { csr_season_id = "CsrSeason2-2", short_label = "Winter 22", matchmade_path = "Seasons/Season-Winter-Break-22.json" }
 
 [assets.season.season3]
 labels = { en = "Echoes Within", fr = "Échos intérieurs" }

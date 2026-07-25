@@ -68,9 +68,11 @@ func NewSetupHandler(
 // OU malformé en 400 {invalid_body}, contrat préservé.
 func (h *SetupHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Post(api, "/setup/players", h.handleCreatePlayer, humacore.Op("postSetupPlayers", "Créer un profil joueur", "setup"))
+	huma.Post(api, "/setup/players", h.handleCreatePlayer, humacore.Op("postSetupPlayers", "Créer un profil joueur", "setup"),
+		humacore.DefaultStatus(http.StatusCreated))
 	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/setup/players")
-	huma.Post(api, "/setup/smoke-test", h.handleSmokeTest, humacore.Op("postSetupSmokeTest", "Lancer un smoke test (Go-only — à valider Sprint 31)", "setup"))
+	huma.Post(api, "/setup/smoke-test", h.handleSmokeTest, humacore.Op("postSetupSmokeTest", "Lancer un smoke test (Go-only — à valider Sprint 31)", "setup"),
+		humacore.DefaultStatus(http.StatusAccepted))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
@@ -81,16 +83,16 @@ type setupCreatePlayerInput struct {
 	RawBody []byte
 }
 
-// setupCreatePlayerOutput : 201 CreatePlayerProfileResponse.
+// setupCreatePlayerOutput : 201 CreatePlayerProfileResponse (statut posé UNE
+// fois par humacore.DefaultStatus au montage — cf. Mount).
 type setupCreatePlayerOutput struct {
-	Status int
-	Body   domain.CreatePlayerProfileResponse
+	Body domain.CreatePlayerProfileResponse
 }
 
-// setupSmokeTestOutput : 202 Accepted, corps = snapshot du job créé.
+// setupSmokeTestOutput : 202 Accepted, corps = snapshot du job créé (statut posé
+// par humacore.DefaultStatus au montage).
 type setupSmokeTestOutput struct {
-	Status int
-	Body   domain.AsyncJobStatus
+	Body domain.AsyncJobStatus
 }
 
 // ─── Endpoints ───────────────────────────────────────────────────────────────
@@ -199,7 +201,6 @@ func (h *SetupHandler) handleCreatePlayer(ctx context.Context, in *setupCreatePl
 	}
 
 	return &setupCreatePlayerOutput{
-		Status: http.StatusCreated,
 		Body: domain.CreatePlayerProfileResponse{
 			Player:    player,
 			DBCreated: dbCreated,
@@ -251,7 +252,7 @@ func (h *SetupHandler) handleSmokeTest(_ context.Context, _ *struct{}) (*setupSm
 		})
 	}()
 
-	return &setupSmokeTestOutput{Status: http.StatusAccepted, Body: jobSnapshot}, nil
+	return &setupSmokeTestOutput{Body: jobSnapshot}, nil
 }
 
 // ---------------------------------------------------------------------------

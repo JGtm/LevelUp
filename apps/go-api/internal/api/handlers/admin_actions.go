@@ -88,7 +88,10 @@ func (h *AdminActionsHandler) Mount(r chi.Router, opts ...humacore.MountOption) 
 	huma.Post(api, "/actions/auto-sync/run", h.handleRunSyncCycle, humacore.Op(
 		"postAdminActionAutoSyncRun",
 		"Action admin — force un cycle auto-sync complet, suivi via le JobStore (auth admin requis)",
-		"admin"))
+		"admin"),
+		// Statut NOMINAL du document ; le champ Status de runSyncCycleOutput reste
+		// le mécanisme runtime (202 job lancé / 409 déjà en vol).
+		humacore.DefaultStatus(http.StatusAccepted))
 	huma.Get(api, "/actions/journal", h.handleGetJournal, humacore.Op(
 		"getAdminActionsJournal",
 		"Dashboard monitoring — journal des actions globales (dernière exécution/issue/déclencheur par action, survit au reboot) (auth admin requis)",
@@ -103,9 +106,14 @@ type runDataHealthOutput struct {
 	Body *domain.MonitoringDataHealth
 }
 
-// runSyncCycleOutput : statut dynamique (202 job lancé / 409 déjà en cours).
+// runSyncCycleOutput : statut DYNAMIQUE (202 job lancé / 409 déjà en cours).
 // Body any porte soit *domain.AsyncJobStatus (202), soit le map d'erreur 409
 // {code, message, retryable, details} — byte-identique à writeJSON d'origine.
+//
+// Le champ Status est ICI le mécanisme runtime (Huma lit sa valeur, cf.
+// humacore.DefaultStatus) : il ne peut pas être supprimé. Le statut NOMINAL du
+// document est déclaré séparément par humacore.DefaultStatus au montage — seul
+// cas où le code de succès apparaît à deux endroits, par nature du contrat.
 type runSyncCycleOutput struct {
 	Status int
 	Body   any

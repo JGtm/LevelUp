@@ -3,6 +3,22 @@ package ops
 // seed_citation_data.go — table de donnees: mapping medaille -> citation.
 // Littéral de données (exempt de la regle 80L/fonction : data table).
 
+// defaultCitationMappings — 98 règles citations (88 portées de l'ancien
+// scripts/populate_citation_mappings.py, + 10 citations d'objectif v7.2.1).
+//
+// Catégories : Mode de jeu, Multijoueur, Spartan Companies, Véhicule, Arme,
+// Ennemi (PVE) + composites.
+//
+// Source de vérité unique (le script Python a été supprimé avec la migration) :
+// toute modification impose un re-seed + un backfill citations (docs/COMMENDATIONS.md).
+//
+// littéral `return []CitationMapping{...}` : funlen mord sur les lignes, pas les
+// statements). maintidx n'est pas activé dans .golangci.yml au 2026-07 (absent de
+// linters.enable et du set "standard") — la directive est donc inerte aujourd'hui ;
+// conservée pour documenter l'intention si le linter est un jour activé, plutôt
+// que de retirer sans certitude et risquer un futur gate rouge silencieux.
+//
+//nolint:funlen,maintidx // Données de seed — préfère lisibilité linéaire (un seul
 func defaultCitationMappings() []CitationMapping {
 	// Phase 6.5 (2026-04-28, commit a1d25325) a renommé les sous-dossiers vers
 	// les slugs canoniques longs. Tout chemin émis ici doit utiliser ces slugs,
@@ -91,6 +107,86 @@ func defaultCitationMappings() []CitationMapping {
 			Category:    citationCatModeJeu,
 			Description: "Remportez n'importe quelle partie matchmaking Bases.",
 			TierTargets: tierTargets5_10_15_25_50},
+
+		// ── PVP — Mode de jeu · objectifs CTF/Zones/Oddball (10, v7.2.1) ──────
+		// DÉCISION UTILISATEUR (2026-07-25) : sur les 19 colonnes de
+		// match_objective_stats restées libres après la bascule v7.2, 10 sont retenues
+		// et 9 écartées (« elles n'en valent pas la peine »). Ne pas re-proposer les 9.
+		// Paliers calibrés sur les données réelles — cf. le bloc de constantes
+		// tierTargets d'objectif (seed.go) : NE PAS les réaligner sur les paliers
+		// génériques, quatre de ces citations deviendraient inatteignables.
+		// Ordre du bloc : CTF, puis Zones, puis Oddball — celui d'objectiveStatColumns
+		// (internal/sync/citations.go), et non l'ordre alphabétique du bloc précédent.
+		//
+		// VISUELS PROVISOIRES — « Capture du drapeau » et « Vol du drapeau » pointent deux
+		// SVG bouche-trous générés en interne, uniquement pour que la chaîne soit
+		// complète et testable en local (pas de vignette cassée). L'utilisateur produit
+		// ses propres visuels sous Photoshop ; cibles attendues :
+		//   static/commendations/halo_infinite/HI_citation_Capture_du_drapeau.png
+		//   static/commendations/halo_infinite/HI_citation_Vol_du_drapeau.png
+		// Remplacement = changer `.svg` en `.png` dans les deux ImagePath ci-dessous
+		// puis re-seeder (`levelup seed citation-mappings`) — rien d'autre à toucher.
+		// NE PAS DÉPLOYER EN PROD avec les SVG (blocage acté, plan V721-03).
+		{Norm: citationNormFlagCaptures, Display: "Capture du drapeau", MappingType: mappingTypeObjectiveStat,
+			StatName: "flag_captures", Enabled: true,
+			ImagePath:   wpHI + "HI_citation_Capture_du_drapeau.svg",
+			Category:    citationCatModeJeu,
+			Description: "Capturez le drapeau ennemi dans n'importe quelle partie matchmaking Capture du drapeau.",
+			TierTargets: tierTargets10_25_50_75_125},
+		{Norm: citationNormFlagSecures, Display: "Sécurisation du drapeau", MappingType: mappingTypeObjectiveStat,
+			StatName: "flag_secures", Enabled: true,
+			ImagePath:   wpH5 + "H5G_citation_Protecteur.png",
+			Category:    citationCatModeJeu,
+			Description: "Sécurisez le drapeau de votre équipe dans n'importe quelle partie matchmaking Capture du drapeau.",
+			TierTargets: tierTargets50_100_200_350_600},
+		{Norm: citationNormFlagSteals, Display: "Vol du drapeau", MappingType: mappingTypeObjectiveStat,
+			StatName: "flag_steals", Enabled: true,
+			ImagePath:   wpHI + "HI_citation_Vol_du_drapeau.svg",
+			Category:    citationCatModeJeu,
+			Description: "Volez le drapeau ennemi à sa base dans n'importe quelle partie matchmaking Capture du drapeau.",
+			TierTargets: tierTargets25_50_100_175_300},
+		{Norm: citationNormReturnerTakedown, Display: "Chasse au rapatrieur", MappingType: mappingTypeObjectiveStat,
+			StatName: "flag_returners_killed", Enabled: true,
+			ImagePath:   wpH5 + "H5G_citation_Not_so_fast.png",
+			Category:    citationCatModeJeu,
+			Description: "Tuez les adversaires qui rapportent leur propre drapeau dans n'importe quelle partie matchmaking Capture du drapeau.",
+			TierTargets: tierTargets5_10_20_35_60},
+		{Norm: citationNormUnstoppableCarrier, Display: "Porteur imparable", MappingType: mappingTypeObjectiveStat,
+			StatName: "kills_as_flag_carrier", Enabled: true,
+			ImagePath:   wpH5 + "H5G_citation_Imparable.png",
+			Category:    citationCatModeJeu,
+			Description: "Tuez un adversaire alors que vous portez le drapeau dans n'importe quelle partie matchmaking Capture du drapeau.",
+			TierTargets: tierTargets1_2_3_5_10},
+		{Norm: citationNormAggressiveReturn, Display: "Rapatriement agressif", MappingType: mappingTypeObjectiveStat,
+			StatName: "kills_as_flag_returner", Enabled: true,
+			ImagePath:   wpH5 + "H5G_citation_Body_Guard.png",
+			Category:    citationCatModeJeu,
+			Description: "Tuez un adversaire pendant que vous rapportez le drapeau de votre équipe dans n'importe quelle partie matchmaking Capture du drapeau.",
+			TierTargets: tierTargets5_10_20_30_50},
+		{Norm: citationNormZoneDefense, Display: "Défense de zone", MappingType: mappingTypeObjectiveStat,
+			StatName: "zone_defensive_kills", Enabled: true,
+			ImagePath:   wpH5 + "H5G_citation_My_castle.png",
+			Category:    citationCatModeJeu,
+			Description: "Tuez un adversaire dans une zone contrôlée par votre équipe dans n'importe quelle partie matchmaking Bases.",
+			TierTargets: tierTargets25_50_100_200_350},
+		{Norm: citationNormUntouchableCarrier, Display: "Crâne intouchable", MappingType: mappingTypeObjectiveStat,
+			StatName: "kills_as_skull_carrier", Enabled: true,
+			ImagePath:   wpH5 + "H5G_citation_Éradicateur.png",
+			Category:    citationCatModeJeu,
+			Description: "Tuez un adversaire alors que vous portez le crâne dans n'importe quelle partie matchmaking Oddball.",
+			TierTargets: tierTargets1_2_3_5_10},
+		{Norm: citationNormSkullCarrierTakedown, Display: "Chasse au porteur", MappingType: mappingTypeObjectiveStat,
+			StatName: "skull_carriers_killed", Enabled: true,
+			ImagePath:   wpH5 + "H5G_citation_Somebody_call_for_an_extermination%3F.png",
+			Category:    citationCatModeJeu,
+			Description: "Tuez le porteur du crâne adverse dans n'importe quelle partie matchmaking Oddball.",
+			TierTargets: tierTargets2_5_10_20_40},
+		{Norm: citationNormSkullGrabs, Display: "Prise du crâne", MappingType: mappingTypeObjectiveStat,
+			StatName: "skull_grabs", Enabled: true,
+			ImagePath:   wpH5 + "H5G_citation_Is_that_my_ball%3F.png",
+			Category:    citationCatModeJeu,
+			Description: "Emparez-vous du crâne dans n'importe quelle partie matchmaking Oddball.",
+			TierTargets: tierTargets2_5_10_20_40},
 
 		// ── PVP — Véhicule (2) + Grenade (2) ──────────────────────────
 		{Norm: "splatter", Display: "Écrasement", MappingType: mappingTypeMedal, MedalID: 221693153, Enabled: true,
@@ -644,6 +740,20 @@ var citationDisplayEN = map[string]string{
 	"wasp_destroyer":      "Wasp Destroyer",
 	"wraith_destroyer":    "Wraith Destroyer",
 	"all_weapons_mastery": "Weapon Mastery",
+	// ── Citations d'objectif v7.2.1 (source objective_stat) ────────────────────
+	// Noms EN arbitrés par l'utilisateur le 2026-07-25 ; le Norm en est la forme
+	// snake_case, sauf les 4 dont le Norm reprend la colonne source (flag_captures,
+	// flag_secures, flag_steals, skull_grabs).
+	citationNormFlagCaptures:         "Flag Captures",
+	citationNormFlagSecures:          "Flag Secures",
+	citationNormFlagSteals:           "Flag Steals",
+	citationNormReturnerTakedown:     "Returner Takedown",
+	citationNormUnstoppableCarrier:   "Unstoppable Carrier",
+	citationNormAggressiveReturn:     "Aggressive Return",
+	citationNormZoneDefense:          "Zone Defense",
+	citationNormUntouchableCarrier:   "Untouchable Carrier",
+	citationNormSkullCarrierTakedown: "Skull Carrier Takedown",
+	citationNormSkullGrabs:           "Skull Grabs",
 	// ── Médailles / concepts Infinite (anglais encodé par le Norm) ─────────────
 	"avenger":               "Avenger",
 	"im_just_perfect":       "Perfect",
@@ -727,6 +837,18 @@ var citationDescriptionEN = map[string]string{
 	"flag_victory":        "Win a match in any Capture the Flag gametype in matchmaking.",
 	"slayer_victory":      "Be on the winning team of a Slayer match.",
 	"strongholds_victory": "Win a match in any Stronghold gametype in matchmaking.",
+	// ── Mode de jeu · objectifs v7.2.1 (idiome officiel H5 « … in any <mode>
+	// gametype in matchmaking. », traduction fidèle du FR) ──────────────────────
+	citationNormFlagCaptures:         "Capture the enemy flag in any Capture the Flag gametype in matchmaking.",
+	citationNormFlagSecures:          "Secure your team's flag in any Capture the Flag gametype in matchmaking.",
+	citationNormFlagSteals:           "Steal the enemy flag from its base in any Capture the Flag gametype in matchmaking.",
+	citationNormReturnerTakedown:     "Kill enemies returning their own flag in any Capture the Flag gametype in matchmaking.",
+	citationNormUnstoppableCarrier:   "Kill an enemy while carrying the flag in any Capture the Flag gametype in matchmaking.",
+	citationNormAggressiveReturn:     "Kill an enemy while returning your team's flag in any Capture the Flag gametype in matchmaking.",
+	citationNormZoneDefense:          "Kill an enemy inside a zone held by your team in any Stronghold gametype in matchmaking.",
+	citationNormUntouchableCarrier:   "Kill an enemy while carrying the skull in any Oddball gametype in matchmaking.",
+	citationNormSkullCarrierTakedown: "Kill the enemy skull carrier in any Oddball gametype in matchmaking.",
+	citationNormSkullGrabs:           "Pick up the skull in any Oddball gametype in matchmaking.",
 	// ── Véhicule + grenade (API H5) ─────────────────────────────────────────────
 	"splatter":       "Splatter an enemy Spartan with a vehicle.",
 	"driver":         "Earn Vehicle Skill medals.",

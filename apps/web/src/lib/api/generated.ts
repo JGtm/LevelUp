@@ -29,6 +29,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/_diag/auto-sync/probe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Diag sonde la résolution des tokens auth d'un joueur (loopback + admin) */
+        get: operations["getDiagAutoSyncProbe"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/_diag/auto-sync/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Diag force un cycle auto-sync (loopback + admin) */
+        post: operations["postDiagAutoSyncRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/_diag/auto-sync/snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Diag snapshot de l'ordonnanceur auto-sync */
+        get: operations["getDiagAutoSyncSnapshot"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/_diag/csr-coverage/{player_slug}": {
         parameters: {
             query?: never;
@@ -1399,6 +1450,76 @@ export interface paths {
         get: operations["getActivityCalendar"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/arcs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Liste les arcs de progression Prestige */
+        get: operations["listPrestigeArcs"];
+        put?: never;
+        /** Crée un arc de progression Prestige */
+        post: operations["createPrestigeArc"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/arcs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Détail d'un arc de progression Prestige */
+        get: operations["getPrestigeArc"];
+        put?: never;
+        post?: never;
+        /** Supprime un arc de progression Prestige */
+        delete: operations["deletePrestigeArc"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/arcs/presets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Liste les arcs Prestige prédéfinis */
+        get: operations["listPrestigeArcPresets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/arcs/presets/{id}/adopt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Adopte un arc Prestige prédéfini */
+        post: operations["adoptPrestigeArcPreset"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2777,6 +2898,111 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/pilot-mode/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Désactive le mode pilote automatique Prestige */
+        post: operations["disablePilotMode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/pilot-mode/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Active le mode pilote automatique Prestige */
+        post: operations["enablePilotMode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/prestige/challenges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Liste les défis Prestige actifs */
+        get: operations["listPrestigeChallenges"];
+        put?: never;
+        /** Crée un défi Prestige */
+        post: operations["createPrestigeChallenge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/prestige/challenges/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Détail d'un défi Prestige */
+        get: operations["getPrestigeChallenge"];
+        put?: never;
+        post?: never;
+        /** Abandonne un défi Prestige */
+        delete: operations["abandonPrestigeChallenge"];
+        options?: never;
+        head?: never;
+        /** Met à jour un défi Prestige */
+        patch: operations["updatePrestigeChallenge"];
+        trace?: never;
+    };
+    "/players/{player_slug}/prestige/challenges/{id}/suggest-next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Suggère le prochain défi Prestige */
+        post: operations["suggestNextPrestigeChallenge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/prestige/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** État Prestige du joueur courant */
+        get: operations["getMyPrestige"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/profile": {
         parameters: {
             query?: never;
@@ -2803,6 +3029,179 @@ export interface paths {
         };
         /** PB courants + timeline des records battus */
         get: operations["listProgressionRecords"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/squad-challenges/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Abandonne un défi d'escouade */
+        delete: operations["abandonSquadChallenge"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/squad-challenges/{id}/evaluate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Évalue un défi d'escouade */
+        post: operations["evaluateSquadChallenge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/squad-challenges/{id}/join": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rejoint un défi d'escouade */
+        post: operations["joinSquadChallenge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/squads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Liste les escouades du joueur */
+        get: operations["listMySquads"];
+        put?: never;
+        /** Crée une escouade Prestige */
+        post: operations["createSquad"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/squads/{squad_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Supprime une escouade */
+        delete: operations["deleteSquad"];
+        options?: never;
+        head?: never;
+        /** Renomme une escouade */
+        patch: operations["renameSquad"];
+        trace?: never;
+    };
+    "/players/{player_slug}/squads/{squad_id}/challenges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Liste les défis d'une escouade */
+        get: operations["listSquadChallenges"];
+        put?: never;
+        /** Crée un défi d'escouade */
+        post: operations["createSquadChallenge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/squads/{squad_id}/challenges/pool/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rafraîchit le pool de défis d'une escouade */
+        post: operations["refreshSquadChallengePool"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/squads/{squad_id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ajoute un membre à une escouade */
+        post: operations["addSquadMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/squads/{squad_id}/members/{xuid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Retire un membre d'une escouade */
+        delete: operations["removeSquadMember"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/squads/{squad_id}/orientation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Orientation stratégique d'une escouade */
+        get: operations["getSquadOrientation"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2839,6 +3238,23 @@ export interface paths {
         put?: never;
         /** Sync delta par joueur */
         post: operations["postPlayerSync"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/templates/suggest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Suggère des templates de défi Prestige */
+        get: operations["suggestPrestigeTemplates"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3130,6 +3546,57 @@ export interface paths {
         };
         /** Capabilities produit déclarées par un titre */
         get: operations["getTitleCapabilities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/titles/{slug}/catalog/maps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Catalogue des maps d'un titre */
+        get: operations["getTitleCatalogMaps"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/titles/{slug}/catalog/pairs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Catalogue des paires mode/map d'un titre */
+        get: operations["getTitleCatalogPairs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/titles/{slug}/catalog/playlists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Catalogue des playlists d'un titre */
+        get: operations["getTitleCatalogPlaylists"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3667,6 +4134,23 @@ export interface components {
             title_slug: string;
             xuid: string;
         };
+        Arc: {
+            /** Format: date-time */
+            completed_at?: string;
+            /** Format: int64 */
+            completion_bonus_pp?: number;
+            /** Format: date-time */
+            created_at: string;
+            description?: string;
+            id: string;
+            is_preset: boolean;
+            /** Format: int64 */
+            objectives_pp?: number;
+            preset_id?: string;
+            title: string;
+            title_slug: string;
+            user_id: string;
+        };
         AssetMeta: {
             description?: string;
             description_fr?: string;
@@ -4099,6 +4583,48 @@ export interface components {
             modes?: string[];
             playlists?: string[];
         };
+        CatalogMap: {
+            image_url?: string;
+            map_asset_id: string;
+            /** Format: int64 */
+            match_count?: number;
+            name: string;
+            title_slug: string;
+        };
+        CatalogMapsOutputBody: {
+            maps: components["schemas"]["CatalogMap"][] | null;
+            title_slug: string;
+        };
+        CatalogPair: {
+            game_variant_asset_id: string;
+            map_asset_id: string;
+            mode_category: string;
+            mode_label?: string;
+            name: string;
+            pair_asset_id: string;
+            title_slug: string;
+            /** Format: double */
+            weight?: number;
+        };
+        CatalogPairsOutputBody: {
+            pairs: components["schemas"]["CatalogPair"][] | null;
+            playlist_asset_id: string;
+            title_slug: string;
+        };
+        CatalogPlaylist: {
+            current_version_id?: string;
+            experience: string;
+            is_ranked: boolean;
+            /** Format: int64 */
+            match_count?: number;
+            name: string;
+            playlist_asset_id: string;
+            title_slug: string;
+        };
+        CatalogPlaylistsOutputBody: {
+            playlists: components["schemas"]["CatalogPlaylist"][] | null;
+            title_slug: string;
+        };
         CatalogRefreshResult: {
             /** Format: int64 */
             game_variants: number;
@@ -4108,6 +4634,49 @@ export interface components {
             pairs: number;
             /** Format: int64 */
             playlists: number;
+        };
+        Challenge: {
+            /** Format: date-time */
+            abandoned_at?: string;
+            arc_id?: string;
+            cadence: string;
+            /** Format: date-time */
+            committed_at?: string;
+            /** Format: date-time */
+            completed_at?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: double */
+            current_value?: number;
+            data_tier: string;
+            eval_type: string;
+            /** Format: date-time */
+            expired_at?: string;
+            /** Format: date-time */
+            expires_at?: string;
+            id: string;
+            is_private: boolean;
+            label?: string;
+            /** Format: date-time */
+            last_palier_recompute_at?: string;
+            metric: string;
+            mode: string;
+            /** Format: int64 */
+            position?: number;
+            /** Format: int64 */
+            pp_reward?: number;
+            source?: string;
+            status: string;
+            /** Format: double */
+            target: number;
+            /** Format: double */
+            target_per_member?: number;
+            template_id?: string;
+            tier?: string;
+            title_slug: string;
+            user_id: string;
+            window_type: string;
+            window_value?: string;
         };
         ChallengeItem: {
             challenge_path: string;
@@ -5730,6 +6299,17 @@ export interface components {
             /** Format: int64 */
             total: number;
         };
+        Level: {
+            /** Format: int64 */
+            index: number;
+            name: string;
+            /** Format: int64 */
+            next_threshold_pp: number;
+            /** Format: double */
+            progress_ratio: number;
+            /** Format: int64 */
+            threshold_pp: number;
+        };
         /** @description Levier calibré (axe d'amélioration p60) */
         Lever: {
             axis: string;
@@ -6238,8 +6818,16 @@ export interface components {
             team_side?: string;
             xuid: string;
         };
-        /** @description Stats objectifs par joueur (CTF/Zones/Oddball) — blocs mutuellement exclusifs par mode, seuls les champs du mode joué sont renseignés. */
+        /** @description Stats objectifs par joueur (CTF/Zones/Oddball/Stockpile/Extraction/VIP) — blocs mutuellement exclusifs par mode, seuls les champs du mode joué sont renseignés. */
         MatchScoreboardObjective: {
+            /** Format: int64 */
+            extraction_conversions_completed?: number;
+            /** Format: int64 */
+            extraction_conversions_denied?: number;
+            /** Format: int64 */
+            extraction_initiations_completed?: number;
+            /** Format: int64 */
+            extraction_initiations_denied?: number;
             /** Format: int64 */
             flag_capture_assists?: number;
             /** Format: int64 */
@@ -6261,21 +6849,49 @@ export interface components {
             /** Format: int64 */
             kills_as_flag_returner?: number;
             /** Format: int64 */
+            kills_as_power_seed_carrier?: number;
+            /** Format: int64 */
             kills_as_skull_carrier?: number;
+            /** Format: int64 */
+            kills_as_vip?: number;
             /** Format: double */
             longest_time_as_skull_carrier_seconds?: number;
+            /** Format: double */
+            longest_time_as_vip_seconds?: number;
+            /** Format: int64 */
+            max_killing_spree_as_vip?: number;
+            /** Format: int64 */
+            power_seed_carriers_killed?: number;
+            /** Format: int64 */
+            power_seeds_deposited?: number;
+            /** Format: int64 */
+            power_seeds_stolen?: number;
             /** Format: int64 */
             skull_carriers_killed?: number;
             /** Format: int64 */
             skull_grabs?: number;
             /** Format: int64 */
             skull_scoring_ticks?: number;
+            /** Format: int64 */
+            successful_extractions?: number;
             /** Format: double */
             time_as_flag_carrier_seconds?: number;
             /** Format: double */
+            time_as_power_seed_carrier_seconds?: number;
+            /** Format: double */
+            time_as_power_seed_driver_seconds?: number;
+            /** Format: double */
             time_as_skull_carrier_seconds?: number;
             /** Format: double */
+            time_as_vip_seconds?: number;
+            /** Format: double */
             time_in_zones_seconds?: number;
+            /** Format: int64 */
+            times_selected_as_vip?: number;
+            /** Format: int64 */
+            vip_assists?: number;
+            /** Format: int64 */
+            vip_kills?: number;
             /** Format: int64 */
             zone_captures?: number;
             /** Format: int64 */
@@ -7176,6 +7792,11 @@ export interface components {
             /** Format: double */
             value: number;
         };
+        PilotModeAttribution: {
+            daily?: components["schemas"]["Challenge"];
+            weekly_choices: components["schemas"]["Template"][] | null;
+            weekly_forced?: components["schemas"]["Challenge"];
+        };
         PlayerConvergenceReport: {
             check_error?: string;
             gamertag: string;
@@ -7800,6 +8421,7 @@ export interface components {
             matches: number;
             season_id: string;
             season_name: string;
+            unresolved?: boolean;
         };
         SeasonPassContentSummary: {
             /** Format: int64 */
@@ -8293,6 +8915,13 @@ export interface components {
             direction: "asc" | "desc";
             field: string;
         };
+        Squad: {
+            /** Format: date-time */
+            created_at: string;
+            created_by: string;
+            id: string;
+            name: string;
+        };
         SquadBreakdownStats: {
             /** Format: double */
             avg_kda: number;
@@ -8302,6 +8931,23 @@ export interface components {
             match_count: number;
             /** Format: double */
             win_rate: number;
+        };
+        SquadChallenge: {
+            /** Format: date-time */
+            created_at: string;
+            created_by: string;
+            eval_type: string;
+            /** Format: date-time */
+            expires_at?: string;
+            id: string;
+            mode: string;
+            squad_id: string;
+            /** Format: double */
+            target_per_member?: number;
+            template_id?: string;
+            title_slug: string;
+            window_type: string;
+            window_value?: string;
         };
         SquadCharts: {
             accuracy_timeseries?: components["schemas"]["ChartSeriesChartPoint2D"][] | null;
@@ -8441,6 +9087,8 @@ export interface components {
             deaths: number;
             /** Format: double */
             delta_mmr?: number;
+            /** Format: int64 */
+            dominance_flag?: number;
             /** Format: int64 */
             duration_seconds?: number;
             /** Format: double */
@@ -9065,6 +9713,38 @@ export interface components {
             weapon_accuracy?: components["schemas"]["SquadWeaponAccuracy"];
             weapon_kills?: components["schemas"]["SquadWeaponKills"];
         };
+        Template: {
+            cadence: string;
+            /** Format: date-time */
+            cooldown_ends_at?: string;
+            description_en?: string;
+            description_fr?: string;
+            eval_type: string;
+            /** Format: double */
+            heroic_target: number;
+            id: string;
+            is_long_term: boolean;
+            label_en: string;
+            label_fr: string;
+            /** Format: double */
+            legendary_target: number;
+            lusr_components?: string[] | null;
+            metric: string;
+            mode_filter: string;
+            /** Format: double */
+            mythic_target: number;
+            /** Format: double */
+            normal_target: number;
+            radar_axes?: string[] | null;
+            /** Format: int64 */
+            schema_version: number;
+            source?: string;
+            title_slug: string;
+            /** Format: date-time */
+            updated_at: string;
+            window_type: string;
+            window_value?: string;
+        };
         TemporalHeatmapCell: {
             /** Format: int64 */
             count: number;
@@ -9127,6 +9807,8 @@ export interface components {
             assists: number;
             /** Format: double */
             assists_expected?: number;
+            /** Format: double */
+            avg_life_seconds?: number;
             /** Format: int64 */
             career_xp_estimated?: number;
             /** Format: double */
@@ -9137,6 +9819,8 @@ export interface components {
             deaths: number;
             /** Format: double */
             deaths_expected?: number;
+            /** Format: int64 */
+            dominance_flag?: number;
             /** Format: int64 */
             headshot_kills?: number;
             /** Format: int64 */
@@ -9271,6 +9955,21 @@ export interface components {
             players: components["schemas"]["PlayerTokenHealth"][] | null;
             store_unavailable?: boolean;
         };
+        TokenProbeResult: {
+            discovered_in_pool: boolean;
+            gamertag: string;
+            has_msal_cache: boolean;
+            has_refresh_token: boolean;
+            /** Format: int64 */
+            refresh_token_len?: number;
+            refresh_token_sha256?: string;
+            refresh_token_was_rotated: boolean;
+            resolve_error?: string;
+            resolve_ok: boolean;
+            source?: string;
+            /** Format: int64 */
+            spartan_token_len?: number;
+        };
         TopMatchDTO: {
             /** Format: int64 */
             deaths: number;
@@ -9326,6 +10025,17 @@ export interface components {
             };
             /** Format: int64 */
             count: number;
+        };
+        UserPrestige: {
+            /** Format: int64 */
+            current_level: number;
+            level?: components["schemas"]["Level"];
+            title_slug: string;
+            /** Format: int64 */
+            total_pp: number;
+            /** Format: date-time */
+            updated_at: string;
+            user_id: string;
         };
         Vec3: {
             /** Format: double */
@@ -9511,6 +10221,95 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getDiagAutoSyncProbe: {
+        parameters: {
+            query?: {
+                gamertag?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TokenProbeResult"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postDiagAutoSyncRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchedulerSnapshot"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getDiagAutoSyncSnapshot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchedulerSnapshot"];
+                };
+            };
             /** @description Error */
             default: {
                 headers: {
@@ -10256,7 +11055,7 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Invitation créée */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11588,7 +12387,7 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Compte créé */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11618,7 +12417,7 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Job créé, voir GET /jobs/{job_id} */
-            200: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12292,6 +13091,197 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listPrestigeArcs: {
+        parameters: {
+            query?: {
+                user_id?: string;
+                title_slug?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    createPrestigeArc: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Arc"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getPrestigeArc: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Arc"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    deletePrestigeArc: {
+        parameters: {
+            query?: {
+                user_id?: string;
+                objectives?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listPrestigeArcPresets: {
+        parameters: {
+            query?: {
+                user_id?: string;
+                title_slug?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    adoptPrestigeArcPreset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Arc"];
+                };
             };
             /** @description Error */
             default: {
@@ -14995,6 +15985,283 @@ export interface operations {
             };
         };
     };
+    disablePilotMode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    enablePilotMode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PilotModeAttribution"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listPrestigeChallenges: {
+        parameters: {
+            query?: {
+                user_id?: string;
+                title_slug?: string;
+                /** @description Filtre statut(s), séparés par virgule (ex 'completed,abandoned'). Vide → 'active' (défaut). Valeurs : draft/active/completed/expired/abandoned/archived. */
+                status?: string[] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    createPrestigeChallenge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Challenge"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getPrestigeChallenge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Challenge"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    abandonPrestigeChallenge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    updatePrestigeChallenge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Challenge"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    suggestNextPrestigeChallenge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getMyPrestige: {
+        parameters: {
+            query?: {
+                user_id?: string;
+                title_slug?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserPrestige"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     getPlayerProfile: {
         parameters: {
             query?: {
@@ -15068,6 +16335,416 @@ export interface operations {
             };
         };
     };
+    abandonSquadChallenge: {
+        parameters: {
+            query?: {
+                requested_by?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    evaluateSquadChallenge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    joinSquadChallenge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listMySquads: {
+        parameters: {
+            query?: {
+                user_id?: string;
+                title_slug?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    createSquad: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Squad"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    deleteSquad: {
+        parameters: {
+            query?: {
+                requested_by?: string;
+            };
+            header?: never;
+            path: {
+                squad_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    renameSquad: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                squad_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listSquadChallenges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                squad_id: string;
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    createSquadChallenge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                squad_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SquadChallenge"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    refreshSquadChallengePool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                squad_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    addSquadMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                squad_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    removeSquadMember: {
+        parameters: {
+            query?: {
+                requested_by?: string;
+            };
+            header?: never;
+            path: {
+                squad_id: string;
+                xuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getSquadOrientation: {
+        parameters: {
+            query?: {
+                requested_by?: string;
+            };
+            header?: never;
+            path: {
+                squad_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     listProgressionStreaks: {
         parameters: {
             query?: never;
@@ -15111,12 +16788,47 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Sync démarré */
-            200: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["AsyncJobStatus"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    suggestPrestigeTemplates: {
+        parameters: {
+            query?: {
+                user_id?: string;
+                title_slug?: string;
+                count?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Error */
@@ -15450,7 +17162,7 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Scan démarré */
-            200: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -15479,7 +17191,7 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Recalcul démarré */
-            200: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -15582,7 +17294,7 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Sync global démarré */
-            200: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -15676,6 +17388,110 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getTitleCatalogMaps: {
+        parameters: {
+            query?: {
+                xuid?: string;
+                only_played?: string;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogMapsOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getTitleCatalogPairs: {
+        parameters: {
+            query?: {
+                playlist_asset_id?: string;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogPairsOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getTitleCatalogPlaylists: {
+        parameters: {
+            query?: {
+                xuid?: string;
+                only_played?: string;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogPlaylistsOutputBody"];
+                };
+            };
             /** @description Error */
             default: {
                 headers: {

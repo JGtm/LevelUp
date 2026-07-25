@@ -60,7 +60,8 @@ func (h *AdminConvergenceActionHandler) Mount(r chi.Router, opts ...humacore.Mou
 	huma.Post(api, "/actions/convergence/run", h.handleRun, humacore.Op(
 		"postAdminActionConvergenceRun",
 		"Action admin — relance la convergence d'un joueur (RunDelta + post-sync, claim SyncGate) via le JobStore (auth admin requis)",
-		"admin"))
+		"admin"),
+		humacore.DefaultStatus(http.StatusAccepted))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
@@ -74,10 +75,11 @@ type convergenceRunInput struct {
 	RawBody []byte
 }
 
-// convergenceRunOutput : 202 Accepted + AsyncJobStatus (job async démarré).
+// convergenceRunOutput : 202 Accepted + AsyncJobStatus (job async démarré). Le
+// 409 passe par conflictWithJobError (erreur Huma), donc le statut de succès est
+// FIXE → posé UNE fois par humacore.DefaultStatus au montage.
 type convergenceRunOutput struct {
-	Status int
-	Body   *domain.AsyncJobStatus
+	Body *domain.AsyncJobStatus
 }
 
 // conflictWithJobError reproduit EXACTEMENT le corps 409 d'origine
@@ -123,7 +125,7 @@ func (h *AdminConvergenceActionHandler) handleRun(ctx context.Context, in *conve
 	go h.runConvergence(h.bgCtx, job.JobID, titleSlug, req.PlayerSlug)
 	slog.InfoContext(ctx, "admin_actions: convergence joueur démarrée",
 		"job_id", job.JobID, "player_slug", req.PlayerSlug, "title", titleSlug)
-	return &convergenceRunOutput{Status: http.StatusAccepted, Body: h.jobs.Get(job.JobID)}, nil
+	return &convergenceRunOutput{Body: h.jobs.Get(job.JobID)}, nil
 }
 
 // runConvergence exécute la convergence dans la goroutine du job.

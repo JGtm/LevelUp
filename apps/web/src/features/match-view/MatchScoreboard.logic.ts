@@ -153,13 +153,14 @@ export function formatRank(rank: number | null): string {
 }
 
 // ---------------------------------------------------------------------------
-// Section « Objectifs » (V72-03) — logique pure : détection du mode à objectif,
+// Section « Objectifs » (V72-03 ; Stockpile + Extraction : V721-02) — logique pure :
+// détection du mode à objectif,
 // colonnes pertinentes par mode, agrégat équipe. Le rendu vit dans
 // MatchObjectivesSection.tsx ; les libellés viennent de l'i18n match-view.
 // ---------------------------------------------------------------------------
 
 /** Mode à objectif détecté sur le scoreboard (blocs mutuellement exclusifs). */
-export type ObjectiveMode = 'ctf' | 'zones' | 'oddball'
+export type ObjectiveMode = 'ctf' | 'zones' | 'oddball' | 'stockpile' | 'extraction' | 'vip'
 
 /**
  * Colonne objectif : clé du bloc, agrégat équipe (`sum` = cumul ; `max` pour les
@@ -188,11 +189,41 @@ const ODDBALL_COLS: ObjectiveColSpec[] = [
   { key: 'time_as_skull_carrier_seconds', agg: 'sum', duration: true },
   { key: 'longest_time_as_skull_carrier_seconds', agg: 'max', duration: true },
 ]
+// Stockpile (V721-02) : 6 champs natifs exposés, 4 affichés — dépôts et vols de
+// graines d'énergie (le cœur du mode), porteurs adverses éliminés (défense), temps
+// de portage. `time_as_power_seed_driver_seconds` et `kills_as_power_seed_carrier`
+// restent dans le DTO sans colonne dédiée (parité avec CTF : 11 exposés, 4 affichés).
+const STOCKPILE_COLS: ObjectiveColSpec[] = [
+  { key: 'power_seeds_deposited', agg: 'sum' },
+  { key: 'power_seeds_stolen', agg: 'sum' },
+  { key: 'power_seed_carriers_killed', agg: 'sum' },
+  { key: 'time_as_power_seed_carrier_seconds', agg: 'sum', duration: true },
+]
+// Extraction (V721-02) : 5 champs natifs, AUCUNE durée. 4 affichés — l'amorçage
+// refusé (`extraction_initiations_denied`) reste exposé sans colonne dédiée.
+const EXTRACTION_COLS: ObjectiveColSpec[] = [
+  { key: 'successful_extractions', agg: 'sum' },
+  { key: 'extraction_initiations_completed', agg: 'sum' },
+  { key: 'extraction_conversions_completed', agg: 'sum' },
+  { key: 'extraction_conversions_denied', agg: 'sum' },
+]
+// VIP (V721-02) : 7 champs natifs, 5 affichés — VIP adverses abattus (le score du
+// mode), fois désigné VIP, frags réalisés en VIP, temps cumulé et meilleure survie
+// en VIP (`max` : une somme de « meilleurs temps » n'a pas de sens, cf. Oddball).
+// `vip_assists` et `max_killing_spree_as_vip` restent exposés sans colonne dédiée.
+const VIP_COLS: ObjectiveColSpec[] = [
+  { key: 'vip_kills', agg: 'sum' },
+  { key: 'times_selected_as_vip', agg: 'sum' },
+  { key: 'kills_as_vip', agg: 'sum' },
+  { key: 'time_as_vip_seconds', agg: 'sum', duration: true },
+  { key: 'longest_time_as_vip_seconds', agg: 'max', duration: true },
+]
 
 /**
  * detectObjectiveMode — mode à objectif du match d'après le premier bloc non-nil
  * rencontré. null si aucune ligne ne porte de stats objectif (Slayer / titre non
- * supporté → section masquée). Discriminants : grab OU capture/scoring-ticks.
+ * supporté → section masquée). Discriminants : deux compteurs toujours présents
+ * dans le bloc du mode (une valeur 0 reste non-nil, seul l'absent est nul).
  */
 export function detectObjectiveMode(rows: MatchScoreboardRow[]): ObjectiveMode | null {
   for (const r of rows) {
@@ -201,6 +232,11 @@ export function detectObjectiveMode(rows: MatchScoreboardRow[]): ObjectiveMode |
     if (o.flag_grabs != null || o.flag_captures != null) return 'ctf'
     if (o.zone_captures != null || o.zone_scoring_ticks != null) return 'zones'
     if (o.skull_grabs != null || o.skull_scoring_ticks != null) return 'oddball'
+    if (o.power_seeds_deposited != null || o.power_seed_carriers_killed != null) return 'stockpile'
+    if (o.successful_extractions != null || o.extraction_initiations_completed != null) {
+      return 'extraction'
+    }
+    if (o.times_selected_as_vip != null || o.kills_as_vip != null) return 'vip'
   }
   return null
 }
@@ -214,6 +250,12 @@ export function objectiveColsFor(mode: ObjectiveMode): ObjectiveColSpec[] {
       return ZONES_COLS
     case 'oddball':
       return ODDBALL_COLS
+    case 'stockpile':
+      return STOCKPILE_COLS
+    case 'extraction':
+      return EXTRACTION_COLS
+    case 'vip':
+      return VIP_COLS
   }
 }
 

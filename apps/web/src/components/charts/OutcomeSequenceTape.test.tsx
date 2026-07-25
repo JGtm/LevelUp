@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
 import { OutcomeSequenceTape, type OutcomeSequenceLabels } from './OutcomeSequenceTape'
-import { matchIndexAtX, type OutcomePoint, type Run } from './outcomeSequence'
+import { asDominance, matchIndexAtX, toRuns, type OutcomePoint, type Run } from './outcomeSequence'
 
 // Mock du wrapper ECharts (canvas absent en jsdom) : on capture les props passées
 // pour vérifier le câblage `onEvents`/`onChartReady` selon la présence de la prop.
@@ -137,5 +137,118 @@ describe('OutcomeSequenceTape — handleClick (résolution du match)', () => {
     await screen.findByTestId('tape-stub')
     click({}) // pas de dataIndex, pas d'event
     expect(onMatchClick).not.toHaveBeenCalled()
+  })
+})
+
+// ─── F1 — marqueur de dominance ─────────────────────────────────────────────
+//
+// Le drapeau est OPTIONNEL : les consommateurs qui ne le fournissent pas doivent
+// garder un rendu strictement identique (même exigence que `onMatchClick`).
+
+type RenderChild = { type: string; style?: Record<string, unknown> }
+
+function renderChildren(
+  matches: OutcomePoint[],
+  opts: { pxPerMatch: number; dominanceLabels?: Record<number, string> },
+): RenderChild[] {
+  captured.length = 0
+  render(
+    <OutcomeSequenceTape
+      matches={matches}
+      labels={labels}
+      dominanceLabels={opts.dominanceLabels}
+    />,
+  )
+  const props = captured[captured.length - 1]
+  const option = props.option as {
+    series: Array<{ renderItem: (p: unknown, a: unknown) => { children: RenderChild[] } }>
+  }
+  const api = { coord: (v: number[]) => [v[0] * opts.pxPerMatch, 50] }
+  return option.series[0].renderItem({ dataIndex: 0 }, api).children
+}
+
+describe('OutcomeSequenceTape — dominance', () => {
+  beforeEach(() => {
+    captured.length = 0
+  })
+
+  it('toRuns propage le drapeau tel quel', () => {
+    const runs = toRuns([
+      { outcome: 'win', matchId: 'm1', dominance: 3 },
+      { outcome: 'win', matchId: 'm2' },
+    ])
+    expect(runs).toHaveLength(1)
+    expect(runs[0].matches[0].dominance).toBe(3)
+    expect(runs[0].matches[1].dominance).toBeUndefined()
+  })
+
+  it('asDominance ne retient que 1..5 (0, null et codes inconnus → undefined)', () => {
+    expect(asDominance(3)).toBe(3)
+    expect(asDominance(0)).toBeUndefined()
+    expect(asDominance(null)).toBeUndefined()
+    expect(asDominance(undefined)).toBeUndefined()
+    expect(asDominance(9)).toBeUndefined()
+  })
+
+  it('dessine un losange par match porteur d’un drapeau (largeur suffisante)', () => {
+    const children = renderChildren(
+      [
+        { outcome: 'win', matchId: 'm1', dominance: 1 },
+        { outcome: 'win', matchId: 'm2' },
+        { outcome: 'win', matchId: 'm3', dominance: 3 },
+      ],
+      { pxPerMatch: 20 },
+    )
+    const polygons = children.filter((c) => c.type === 'polygon')
+    expect(polygons).toHaveLength(2)
+  })
+
+  it('n’affiche aucun losange sous le seuil de densité (bande trop serrée)', () => {
+    const children = renderChildren(
+      [{ outcome: 'win', matchId: 'm1', dominance: 1 }],
+      { pxPerMatch: 4 },
+    )
+    expect(children.filter((c) => c.type === 'polygon')).toHaveLength(0)
+  })
+
+  it('consommateur SANS drapeau → aucun losange (non-régression)', () => {
+    const children = renderChildren([pt('a'), pt('b')], { pxPerMatch: 20 })
+    expect(children.filter((c) => c.type === 'polygon')).toHaveLength(0)
+  })
+
+  it('tooltip : suffixe le match avec le libellé du drapeau quand il est fourni', () => {
+    captured.length = 0
+    render(
+      <OutcomeSequenceTape
+        matches={[{ outcome: 'win', matchId: 'm1', map: 'Aquarius', dominance: 3 }]}
+        labels={labels}
+        dominanceLabels={{ 3: 'Remontada' }}
+      />,
+    )
+    const props = captured[captured.length - 1]
+    const option = props.option as {
+      series: Array<{ data: Array<{ run: Run }> }>
+      tooltip: { formatter: (p: unknown) => string }
+    }
+    const html = option.tooltip.formatter({ data: option.series[0].data[0] })
+    expect(html).toContain('Remontada')
+  })
+
+  it('tooltip : sans libellé fourni, la ligne du match reste inchangée', () => {
+    captured.length = 0
+    render(
+      <OutcomeSequenceTape
+        matches={[{ outcome: 'win', matchId: 'm1', map: 'Aquarius', dominance: 3 }]}
+        labels={labels}
+      />,
+    )
+    const props = captured[captured.length - 1]
+    const option = props.option as {
+      series: Array<{ data: Array<{ run: Run }> }>
+      tooltip: { formatter: (p: unknown) => string }
+    }
+    const html = option.tooltip.formatter({ data: option.series[0].data[0] })
+    expect(html).toContain('Aquarius')
+    expect(html).not.toContain('—')
   })
 })

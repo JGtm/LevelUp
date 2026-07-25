@@ -54,7 +54,8 @@ func NewBackfillHandler(cfg *config.AppConfig, jobStore *jobs.Store) *BackfillHa
 // /backfill/start, middleware RequireAuth/RequireAdmin hérités du groupe).
 func (h *BackfillHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Post(api, "/backfill/start", h.handleStartBackfill, humacore.Op("postBackfillStart", "Lance un backfill (job long)", "sync"))
+	huma.Post(api, "/backfill/start", h.handleStartBackfill, humacore.Op("postBackfillStart", "Lance un backfill (job long)", "sync"),
+		humacore.DefaultStatus(http.StatusAccepted))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
@@ -66,10 +67,10 @@ type backfillStartInput struct {
 	RawBody []byte
 }
 
-// backfillStartOutput : 202 Accepted, corps = snapshot du job créé.
+// backfillStartOutput : 202 Accepted, corps = snapshot du job créé (le 202 est
+// posé par humacore.DefaultStatus au montage — source unique, runtime ET document).
 type backfillStartOutput struct {
-	Status int
-	Body   *domain.AsyncJobStatus
+	Body *domain.AsyncJobStatus
 }
 
 // ─── Endpoint ────────────────────────────────────────────────────────────────
@@ -145,7 +146,7 @@ func (h *BackfillHandler) handleStartBackfill(ctx context.Context, in *backfillS
 	orch := service.NewBackfillOrchestrator(engine, h.jobStore, scope, tokens, req.DryRun)
 	go orch.Run(job.JobID)
 
-	return &backfillStartOutput{Status: http.StatusAccepted, Body: &jobSnapshot}, nil
+	return &backfillStartOutput{Body: &jobSnapshot}, nil
 }
 
 // buildSyncScope construit un SyncScope depuis le payload de requête.
