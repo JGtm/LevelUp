@@ -1,3 +1,62 @@
+## [2026-07-25] V72-03 — Stats objectifs (CTF/Zones/Oddball) : P3 capability+backfill, P4 UI
+
+**Statut** : Complété (P3 + P4 du PLAN_V72_OBJECTIVE_STATS.md ; P0-P2 déjà clos). Pas de
+commit (superviseur). Gates exécutés par l'agent (droits confirmés) — verdicts ci-dessous.
+
+**Décision capability (2 axes, précédent engagement/weapon_accuracy/expected_stats)** :
+- AXE SERVEUR (`internal/games`, capabilities.toml, `HasCapability`) :
+  `CapMatchObjectiveStats = "match.objective.stats"` — gouverne le chemin de DONNÉES.
+  Ajouté adapter.go + AllCapabilityKeys (19→20) + 2 `fallbackCapabilities` (parité stricte :
+  infinite=supported, halo_5=not_exposed) + 3 capabilities.toml + count h5 skeleton (16→17).
+- AXE TITRE (`internal/domain/title` registry.go + TS `TITLE_CAPABILITIES` + `useCapability`,
+  garde-rail `capabilities_ts_mirror_test`) : `CapObjectiveStats = "objective_stats"` —
+  gouverne l'AFFICHAGE UI. Ajouté registry.go + knownCapabilities + descripteur halo_infinite
+  + TS. Halo 5 NE déclare PAS `objective_stats` → sections masquées côté front.
+  Refinement documenté vs plan (« ajouter la clé à TITLE_CAPABILITIES ») : valeur AXE TITRE en
+  snake_case `objective_stats` (convention des caps data sœurs), distincte de la valeur AXE
+  SERVEUR — 2 namespaces séparés (cf. engagement=`engagement.score`/`engagement`).
+
+**Backfill (P3)** : `cmd/backfill_objective_stats/main.go` — candidats = matchs SANS bit
+`MBitObjectiveStats` (1<<23) ET SANS ligne `_latest`. Écriture append-only INSERT-only via
+`persist.InsertObjectiveStats` (wrapper exporté réutilisant `persistObjectiveStats`, DRY). Bit
+posé TOUJOURS (helper `markObjectiveDone` INLINE dans le CLI — PAS un fichier sync/ racine :
+ratchet K3c `sync_root_freeze` gèle sync/ à 80 fichiers ; le CLI est exclu du guard ART
+`shared_write_guard` ET du freeze). DRY-RUN LOCAL CONCLUANT : migration P1 appliquée à la DB
+locale via `cmd/apply_shared_migrations` (server.exe local était périmé pré-P1), backfill
+--limit 25 = 25 fetchés, 4 matchs à objectif, 101 lignes (CTF 70 / Zones 31), 25 marqués ;
+diag_q : _latest sert 101 lignes plausibles (captures/grabs/retours/temps porteur ;
+zone_scoring_ticks=0 → Strongholds). Serveur relancé (air), bootstrap OK.
+
+**UI (P4) — 4 surfaces**, toutes gated (double porte capability + data-driven), zéro code mort :
+- Match View (phare) : LEFT JOIN `match_objective_stats_latest` (index match_id) dans Q12 →
+  `ObjectiveRaw` → `MatchScoreboardRow.Objective` → section `MatchObjectivesSection.tsx` (par
+  équipe, colonnes par mode, ligne « Total équipe » SUM/MAX). Q12 tourne pour tous les titres
+  mais la table existe aussi dans le shared h5 (h5 délègue `StepsFor(TargetShared)`) → JOIN sûr.
+- Synthèse : bloc `objective_stats` (précédent weapon_accuracy) via repo partagé
+  `ObjectiveStatsRepo` (SUM par xuid, SharedReadDB), gated SynthesisCtx ; front grille AccentCard.
+- Escouade : `objective_stats_by_xuid` sur SquadHeader, même repo gated ; front
+  `SquadObjectiveStatsPanel.tsx` (cumul escouade).
+- Timeseries : DÉCISION documentée — KPI de SCOPE (`objective_stats` sur TimeseriesPageResponse)
+  + `TimeseriesObjectiveCard.tsx` gated, AU LIEU de champs par-match omitempty sur
+  TimeseriesMatchRow (le tableau par-match est alimenté par un payload distinct ExplorerMatchRow ;
+  graphe dédié disproportionné pour « sobre »). Réutilise le repo partagé.
+- i18n FR-EN : manifests classiques (pas fields.toml — réservé aux métriques canoniques
+  composites) : Match View/Squad = dicos typés (Record<Locale,T>) ; Synthèse/Timeseries = TOML +
+  build_i18n_manifests. FR sans anglicismes.
+- Contrats : openapi.yaml MANUEL (MatchScoreboardObjective + ObjectiveAggregate + 3 champs) +
+  generate-types + `TestOpenAPISchemaDrift` vert.
+
+**Résultats (gates)** : gofmt -l vide ; go build ./... OK ; go vet ./... OK ; go test ./...
+vert (2 échecs initiaux sync_root_freeze + shared_write_guard résolus en inlinant le mark dans
+le CLII) ; TestOpenAPISchemaDrift PASS ; capabilities parité + TS mirror + count PASS ;
+npm run typecheck vert ; vitest touched (match-view/squad/synthesis/timeseries) 110 tests verts ;
+build_i18n_manifests OK (2917 clés) ; generate-types OK. Intégration -p 1 + go-api-lint : en
+cours de finalisation au moment de l'écriture (verdict au superviseur).
+
+**Conclusion / prochaine étape** : chantier V72-03 P3+P4 livré. RESTE : backfill PROD
+(`cmd/backfill_objective_stats`, go séparé au déploiement, serveur prod arrêté) + coup d'œil
+visuel utilisateur (scoreboard CTF/Zones/Oddball, KPI Synthèse/Escouade/Timeseries).
+
 ## [2026-07-25] V72-15.4 — Retrait du fallback LIVE du Match view
 
 **Statut** : Complété (implémentation). Gates (go build/test/lint, npm typecheck/vitest,

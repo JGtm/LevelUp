@@ -6149,6 +6149,8 @@ components:
                   $ref: '#/components/schemas/PlayerWeaponKillRow'
               type: array
               nullable: true
+          objective:
+              $ref: '#/components/schemas/MatchScoreboardObjective'
           xuid:
               type: string
       required:
@@ -6156,6 +6158,112 @@ components:
           - gamertag
           - is_me
           - outcome_label
+      type: object
+    MatchScoreboardObjective:
+      additionalProperties: false
+      description: Stats objectifs par joueur (CTF/Zones/Oddball) — blocs mutuellement exclusifs par mode, seuls les champs du mode joué sont renseignés.
+      properties:
+          flag_captures:
+              format: int64
+              type: integer
+          flag_capture_assists:
+              format: int64
+              type: integer
+          flag_grabs:
+              format: int64
+              type: integer
+          flag_secures:
+              format: int64
+              type: integer
+          flag_steals:
+              format: int64
+              type: integer
+          flag_returns:
+              format: int64
+              type: integer
+          flag_carriers_killed:
+              format: int64
+              type: integer
+          flag_returners_killed:
+              format: int64
+              type: integer
+          kills_as_flag_carrier:
+              format: int64
+              type: integer
+          kills_as_flag_returner:
+              format: int64
+              type: integer
+          time_as_flag_carrier_seconds:
+              format: double
+              type: number
+          zone_captures:
+              format: int64
+              type: integer
+          zone_secures:
+              format: int64
+              type: integer
+          zone_offensive_kills:
+              format: int64
+              type: integer
+          zone_defensive_kills:
+              format: int64
+              type: integer
+          zone_scoring_ticks:
+              format: int64
+              type: integer
+          time_in_zones_seconds:
+              format: double
+              type: number
+          kills_as_skull_carrier:
+              format: int64
+              type: integer
+          skull_carriers_killed:
+              format: int64
+              type: integer
+          skull_grabs:
+              format: int64
+              type: integer
+          skull_scoring_ticks:
+              format: int64
+              type: integer
+          time_as_skull_carrier_seconds:
+              format: double
+              type: number
+          longest_time_as_skull_carrier_seconds:
+              format: double
+              type: number
+      type: object
+    ObjectiveAggregate:
+      additionalProperties: false
+      description: Cumul (SUM) des stats objectifs (CTF/Zones/Oddball) d'un joueur sur un ensemble de matchs. Champs zéro omis.
+      properties:
+          flag_captures:
+              format: int64
+              type: integer
+          flag_returns:
+              format: int64
+              type: integer
+          flag_steals:
+              format: int64
+              type: integer
+          flag_carrier_seconds:
+              format: double
+              type: number
+          zone_captures:
+              format: int64
+              type: integer
+          zone_secures:
+              format: int64
+              type: integer
+          zone_seconds:
+              format: double
+              type: number
+          skull_grabs:
+              format: int64
+              type: integer
+          skull_carrier_seconds:
+              format: double
+              type: number
       type: object
     MatchNemesisRow:
       additionalProperties: false
@@ -15429,6 +15537,10 @@ components:
               $ref: '#/components/schemas/SquadScoreCard'
           team_avg_kpis:
               $ref: '#/components/schemas/KPIStats'
+          objective_stats_by_xuid:
+              additionalProperties:
+                  $ref: '#/components/schemas/ObjectiveAggregate'
+              type: object
       type: object
     SquadImpact:
       additionalProperties: false
@@ -16772,6 +16884,8 @@ components:
               $ref: '#/components/schemas/SynthesisBreakdowns'
           combat_profile:
               $ref: '#/components/schemas/CombatProfileBlock'
+          objective_stats:
+              $ref: '#/components/schemas/ObjectiveAggregate'
           comparison_metrics:
               items:
                   $ref: '#/components/schemas/ComparisonMetricItem'
@@ -17392,6 +17506,8 @@ components:
       properties:
           briefing_kpis:
               $ref: '#/components/schemas/KPIStats'
+          objective_stats:
+              $ref: '#/components/schemas/ObjectiveAggregate'
           cumul_tab:
               $ref: '#/components/schemas/TimeseriesCumulTab'
           distributions_tab:

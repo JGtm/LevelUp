@@ -88,7 +88,8 @@ func TestHalo5_FineCapabilities(t *testing.T) {
 		games.CapMatchEventsTimeline:  games.CapSupported,
 		games.CapMatchKillfeedPerKill: games.CapSupported,
 		games.CapMatchEventsSpatial:   games.CapSupported,
-		games.CapWeaponAccuracy:       games.CapSupported, // précision par arme (events weapon_drop → weapon_accuracy)
+		games.CapWeaponAccuracy:       games.CapSupported,  // précision par arme (events weapon_drop → weapon_accuracy)
+		games.CapMatchObjectiveStats:  games.CapNotExposed, // carnage h5 n'agrège pas les objectifs (durées non fiables)
 	}
 	if len(cm) != len(want) {
 		t.Fatalf("capabilities = %d clés, want %d", len(cm), len(want))

@@ -146,7 +146,52 @@ type ScoreboardRaw struct {
 	// LocallyEstimated : K/D attendus issus du modèle local (count∝durée, Halo 5),
 	// pas de l'API skill. Posé sur la ligne is_me → label « Estimé localement » du drawer.
 	LocallyEstimated bool
+	// Objectifs (match_objective_stats_latest, LEFT JOIN Q12) — nil hors mode à
+	// objectif ou titre non supporté (table vide). Blocs mutuellement exclusifs par
+	// mode : seul le bloc du mode joué est non-nil. Le service construit
+	// MatchScoreboardRow.Objective uniquement si un bloc est présent.
+	Obj ObjectiveRaw
 }
+
+// ObjectiveRaw : stats objectifs par joueur (Q12 LEFT JOIN match_objective_stats_latest).
+// Blocs mutuellement exclusifs par mode (CTF / Zones / Oddball). HasObjective() vrai
+// dès qu'un discriminant de bloc est non-nil.
+type ObjectiveRaw struct {
+	// CTF (CaptureTheFlagStats)
+	FlagCaptures             *int
+	FlagCaptureAssists       *int
+	FlagGrabs                *int
+	FlagSecures              *int
+	FlagSteals               *int
+	FlagReturns              *int
+	FlagCarriersKilled       *int
+	FlagReturnersKilled      *int
+	KillsAsFlagCarrier       *int
+	KillsAsFlagReturner      *int
+	TimeAsFlagCarrierSeconds *float64
+	// Zones (ZonesStats — Strongholds + KOTH)
+	ZoneCaptures       *int
+	ZoneSecures        *int
+	ZoneOffensiveKills *int
+	ZoneDefensiveKills *int
+	ZoneScoringTicks   *int
+	TimeInZonesSeconds *float64
+	// Oddball (OddballStats)
+	KillsAsSkullCarrier              *int
+	SkullCarriersKilled              *int
+	SkullGrabs                       *int
+	SkullScoringTicks                *int
+	TimeAsSkullCarrierSeconds        *float64
+	LongestTimeAsSkullCarrierSeconds *float64
+}
+
+// HasCTF / HasZones / HasOddball : discriminants de bloc (un grab non-nil suffit).
+func (o ObjectiveRaw) HasCTF() bool     { return o.FlagGrabs != nil || o.FlagCaptures != nil }
+func (o ObjectiveRaw) HasZones() bool   { return o.ZoneCaptures != nil || o.ZoneScoringTicks != nil }
+func (o ObjectiveRaw) HasOddball() bool { return o.SkullGrabs != nil || o.SkullScoringTicks != nil }
+
+// HasObjective : au moins un bloc objectif présent.
+func (o ObjectiveRaw) HasObjective() bool { return o.HasCTF() || o.HasZones() || o.HasOddball() }
 
 // BulkMedalRaw : une ligne de Q27 (médailles de tous les joueurs du match).
 type BulkMedalRaw struct {

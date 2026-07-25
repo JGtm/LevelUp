@@ -291,6 +291,11 @@ func (r *ServiceRegistry) Timeseries(ctx context.Context, slug string) (port.Tim
 		// player DB → fallback populationnel metadata). Gaté capability (jamais slug==).
 		svc = svc.WithExpectedAssists(r.newMatchViewRepo(pdb), duckdb.NewMetadataRepo(pdb))
 	}
+	// KPI objectifs (CTF/Zones/Oddball) : gated par la capability match.objective.stats
+	// (Infinite ; absente pour Halo 5 → bloc objective_stats omis). Jamais slug==.
+	if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
+		svc = svc.WithObjectiveStatsRepo(duckdb.NewObjectiveStatsRepo(pdb))
+	}
 	return svc, nil
 }
 

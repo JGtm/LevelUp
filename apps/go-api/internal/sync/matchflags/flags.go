@@ -17,4 +17,7 @@ const (
 	MBitPVEStats          = 1 << 20 // 1048576 — stats PvE tentées pour ce match
 	MBitWeaponKills       = 1 << 21 // 2097152 — weapon_kills chargés
 	MBitWeaponKillsNoFilm = 1 << 22 // 4194304 — film 404/expiré, 0 chunk dispo
+	MBitObjectiveStats    = 1 << 23 // 8388608 — stats objectifs TENTÉES pour ce match
+	// (posé même sans ligne produite : un match sans mode à objectif — Slayer — est
+	// marqué "traité" pour ne pas être re-fetché par le backfill objective_stats).
 )

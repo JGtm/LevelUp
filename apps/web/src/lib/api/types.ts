@@ -1399,7 +1399,13 @@ export interface SynthesisPageResponse {
   weapon_accuracy?: SynthesisWeaponAccuracyEntry[]
   // PLAN_COMBAT_PROFILE_WIRING Phase 1
   combat_profile?: CombatProfileBlock | null
+  // KPI objectifs (cumul CTF/Zones/Oddball sur le scope) — omis pour un titre sans
+  // capability match.objective.stats (Halo 5) ou un scope sans match à objectif.
+  objective_stats?: ObjectiveAggregate | null
 }
+
+// Cumul des stats objectifs (CTF/Zones/Oddball) sur un scope — partagé Synthèse/Escouade.
+export type ObjectiveAggregate = components['schemas']['ObjectiveAggregate']
 
 export type SynthesisWeaponKillEntry = components['schemas']['SynthesisWeaponKillEntry']
 
@@ -1714,9 +1720,14 @@ export interface MatchScoreboardRow {
   had_bot_teammate?: boolean
   /** Skill rank (CSR/LUSR) pour ce match — uniquement pour les joueurs trackés. */
   skill_rank?: MatchScoreboardSkillRank | null
+  /** Stats objectifs (CTF/Zones/Oddball) — null hors mode à objectif ou titre non
+   *  supporté (capability objective_stats). Seuls les champs du mode joué sont non-nil. */
+  objective?: MatchScoreboardObjective | null
 }
 
 export type MatchScoreboardSkillRank = components['schemas']['MatchScoreboardSkillRank']
+
+export type MatchScoreboardObjective = components['schemas']['MatchScoreboardObjective']
 
 export type MatchRosterRow = components['schemas']['MatchRosterRow']
 
