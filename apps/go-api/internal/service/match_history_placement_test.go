@@ -325,9 +325,12 @@ func TestApplyPerfPlacements_matchAvecPerfScore_aucunSignal(t *testing.T) {
 }
 
 // TestApplyPerfPlacements_dnfEtExclus_nonComptesEtNonMarques : les matchs DNF
-// (outcome=4) et exclus manuellement ne sont pas perf-éligibles — miroir du WHERE de
-// loadHistoryForPerf (COALESCE(outcome,0) != 4 + filtre is_excluded). Ils ne gonflent
-// pas le compteur de chaîne et ne reçoivent jamais le badge.
+// (outcome=4) et exclus manuellement ne sont pas perf-éligibles — miroir du
+// périmètre du batch : WHERE de loadHistoryForPerf (COALESCE(outcome,0) != 4)
+// + filtre loadExcludedMatchIDs appliqué à allMatches avant la boucle de chaîne
+// (sync/performance.go). Ils ne gonflent pas le compteur de chaîne et ne
+// reçoivent jamais le badge. 3e critère couvert par
+// TestApplyPerfPlacements_sansStartTime_nonCompte.
 func TestApplyPerfPlacements_dnfEtExclus_nonComptesEtNonMarques(t *testing.T) {
 	base := time.Date(2026, 5, 1, 10, 0, 0, 0, time.UTC)
 	rows := []domain.MatchHistoryRawRow{
@@ -354,6 +357,36 @@ func TestApplyPerfPlacements_dnfEtExclus_nonComptesEtNonMarques(t *testing.T) {
 			t.Errorf("%s: match non éligible ne doit pas porter le signal, got %v",
 				rows[i].MatchID, rows[i].PerfPlacementDone)
 		}
+	}
+}
+
+// TestApplyPerfPlacements_sansStartTime_nonCompte : 3e critère d'éligibilité du
+// batch, jusqu'ici absent du placement (contre-revue V7.2). loadHistoryForPerf
+// filtre `mr.start_time IS NOT NULL` : un match sans start_time n'entre PAS dans
+// l'historique de chaîne du batch. Le compter côté placement affichait un « X/10 »
+// supérieur au compteur réel du batch (le badge « En placement » aurait annoncé
+// 3/10 quand le batch n'en voit que 2).
+func TestApplyPerfPlacements_sansStartTime_nonCompte(t *testing.T) {
+	base := time.Date(2026, 3, 1, 10, 0, 0, 0, time.UTC)
+	rows := []domain.MatchHistoryRawRow{
+		btbRow("ok-1", base, nil, false),
+		btbRow("ok-2", base.Add(time.Hour), nil, false),
+	}
+	noStart := btbRow("sans-start-time", base.Add(2*time.Hour), nil, false)
+	noStart.StartTime = nil
+	rows = append(rows, noStart)
+
+	applyPerfPlacements(context.Background(), rows)
+
+	for _, i := range []int{0, 1} {
+		if rows[i].PerfPlacementDone == nil || *rows[i].PerfPlacementDone != 2 {
+			t.Errorf("%s: PerfPlacementDone want 2 (match sans start_time non compté par le batch), got %v",
+				rows[i].MatchID, rows[i].PerfPlacementDone)
+		}
+	}
+	if rows[2].PerfPlacementDone != nil {
+		t.Errorf("sans-start-time: match hors périmètre du batch, aucun signal attendu, got %v",
+			rows[2].PerfPlacementDone)
 	}
 }
 

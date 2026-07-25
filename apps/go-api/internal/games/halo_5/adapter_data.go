@@ -94,9 +94,11 @@ type DataAdapter struct {
 	// ErrCapabilityNotSupported. Injecté via WithMatchHistorySource au builder
 	// player-scoped (porte l'identité du joueur, cf. MatchHistorySource).
 	matchHistory MatchHistorySource
-	// commendationDefs (optionnel) — référentiel natif (nom + icône) des commendations
-	// par UUID, lu dans la metadata h5 (commendation_definitions). nil → les
-	// commendations du MatchDetail restent brutes (ID + count, le front dégrade sur
+	// commendationDefs (optionnel) — référentiel natif (nom + icône + catégorie +
+	// paliers) des commendations par UUID, lu dans la metadata h5
+	// (commendation_definitions). Consommé par LoadCommendationTotals
+	// (enrichCommendationTotals, commendation_totals.go) : nil → les
+	// canonical.CommendationTotal restent bruts (ID + total, le front dégrade sur
 	// l'ID court). Injecté via WithCommendationDefs au builder (AXE B définitions).
 	commendationDefs CommendationDefSource
 	// commendationTotals (optionnel) — totaux à vie par commendation (dernier progress
@@ -151,9 +153,10 @@ func (a *DataAdapter) WithMatchHistorySource(s MatchHistorySource) *DataAdapter 
 	return a
 }
 
-// WithCommendationDefs injecte le référentiel natif (nom + icône) des commendations
-// utilisé pour enrichir MatchDetail.Commendations (AXE B définitions). nil (défaut)
-// -> commendations laissées brutes (ID + count). Chainable.
+// WithCommendationDefs injecte le référentiel natif (nom + icône + catégorie +
+// paliers) des commendations, utilisé pour enrichir les canonical.CommendationTotal
+// servis par LoadCommendationTotals (AXE B définitions). nil (défaut) -> totaux
+// laissés bruts (ID + total). Chainable.
 func (a *DataAdapter) WithCommendationDefs(s CommendationDefSource) *DataAdapter {
 	a.commendationDefs = s
 	return a

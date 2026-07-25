@@ -79,9 +79,17 @@ func applyMatchPlacements(
 // Sessions (MatchHistoryRawRow) et l'Accueil (canonical) — une seule implémentation
 // de l'algorithme (computePerfPlacements) pour toutes les surfaces (CLAUDE.md §6).
 type perfPlacementInput struct {
-	matchID  string
-	chain    string
-	eligible bool // outcome != DNF ET non exclus (miroir du WHERE de loadHistoryForPerf)
+	matchID string
+	chain   string
+	// eligible : le match est-il COMPTÉ par le batch perf dans sa chaîne ?
+	// Miroir EXACT du périmètre de batchComputePerformanceScores (sync/performance.go) :
+	//   - WHERE de loadHistoryForPerf : mr.start_time IS NOT NULL
+	//     ET COALESCE(mp.outcome, 0) != 4 (DNF) ;
+	//   - filtre loadExcludedMatchIDs : is_excluded retiré de allMatches AVANT la
+	//     boucle, donc jamais compté dans la fenêtre de chaîne.
+	// Toute divergence fait afficher un « X/10 » qui ne correspond pas au compteur
+	// réel du batch (contre-revue V7.2 : le critère start_time manquait).
+	eligible bool
 	hasScore bool // perf_score déjà calculé (chaîne calibrée)
 }
 
@@ -130,9 +138,14 @@ func applyPerfPlacements(ctx context.Context, rows []domain.MatchHistoryRawRow) 
 			pair = *r.PairName
 		}
 		inputs[i] = perfPlacementInput{
-			matchID:  r.MatchID,
-			chain:    sync.GetPerformanceChain(slug, pair, r.IsRanked, r.IsFirefight),
-			eligible: r.Outcome != domain.OutcomeDNF && !r.IsExcluded,
+			matchID: r.MatchID,
+			chain:   sync.GetPerformanceChain(slug, pair, r.IsRanked, r.IsFirefight),
+			// Les 3 critères du batch, dans l'ordre du commentaire de
+			// perfPlacementInput.eligible. `r.StartTime == nil` reproduit le
+			// `mr.start_time IS NOT NULL` de loadHistoryForPerf : un match sans
+			// start_time n'entre PAS dans l'historique du batch, il ne doit donc
+			// pas gonfler le « X/10 » affiché.
+			eligible: r.StartTime != nil && r.Outcome != domain.OutcomeDNF && !r.IsExcluded,
 			hasScore: r.PerformanceScore != nil,
 		}
 	}

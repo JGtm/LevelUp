@@ -67,36 +67,52 @@ func (s *AutoSyncScheduler) collectCycleNewMatchPlayers(cycleStart time.Time, re
 	return mergeCycleNewMatchPlayers(cycleStart, res.newMatchPlayers, s.Snapshot().Players)
 }
 
-// mergeCycleNewMatchPlayers fusionne, dédupliqués par gamertag, les joueurs ayant
+// mergeCycleNewMatchPlayers fusionne, en UNE ligne par gamertag, les joueurs ayant
 // inséré >= 1 nouveau match ce cycle depuis les deux chemins du cycle :
-//   - engine : joueurs moteur (Infinite) du pipeline V2, comptés dans
+//   - engine : joueurs moteur (titres non live-only) du pipeline V2, comptés dans
 //     CycleResult.PerPlayer (non enregistrés dans playerOutcomes) ;
 //   - snapshot : joueurs live-only (Halo 5) + filet de boot, passés par
 //     syncPlayer/recordOutcome, filtrés sur CE cycle (AttemptedAt >= cycleStart).
 //
+// AGRÉGATION, pas déduplication (contre-revue V7.2, 2026-07-25) : un même
+// gamertag est un couple (joueur, TITRE) différent à chaque occurrence — la liste
+// moteur en contient une par titre non live-only, et le même joueur peut de plus
+// figurer dans le snapshot pour son titre live-only (Halo 5). L'ancien `seen`
+// GARDAIT la première occurrence et JETAIT les suivantes : la notification
+// Discord sous-comptait silencieusement les matchs du 2e titre. On somme donc les
+// compteurs sous une seule entrée (la notif liste un joueur, pas un couple
+// joueur-titre) — aucun double comptage possible : les deux chemins traitent des
+// ensembles de titres DISJOINTS (auto_sync_run.go : orchPlayers vs livePlayers),
+// et playerOutcomes est lui-même keyé par gamertag (≤ 1 entrée snapshot).
+//
+// L'ordre de sortie suit la première apparition (engine puis snapshot) —
+// déterministe pour les tests et pour la lisibilité de l'embed Discord.
+//
 // Pure (aucune I/O) → testable directement.
 func mergeCycleNewMatchPlayers(cycleStart time.Time, engine []notify.PlayerSyncResult, snapshot []PlayerOutcomeDetail) []notify.PlayerSyncResult {
-	seen := make(map[string]struct{})
+	idx := make(map[string]int) // gamertag → index dans out
 	var out []notify.PlayerSyncResult
+
+	add := func(p notify.PlayerSyncResult) {
+		if i, ok := idx[p.Gamertag]; ok {
+			out[i].MatchesSynced += p.MatchesSynced
+			return
+		}
+		idx[p.Gamertag] = len(out)
+		out = append(out, p)
+	}
+
 	for _, p := range engine {
 		if p.MatchesSynced <= 0 {
 			continue
 		}
-		if _, dup := seen[p.Gamertag]; dup {
-			continue
-		}
-		seen[p.Gamertag] = struct{}{}
-		out = append(out, p)
+		add(p)
 	}
 	for _, d := range snapshot {
 		if d.Outcome != "ok" || d.MatchesInserted <= 0 || d.AttemptedAt.Before(cycleStart) {
 			continue
 		}
-		if _, dup := seen[d.Gamertag]; dup {
-			continue
-		}
-		seen[d.Gamertag] = struct{}{}
-		out = append(out, notify.PlayerSyncResult{Gamertag: d.Gamertag, MatchesSynced: d.MatchesInserted})
+		add(notify.PlayerSyncResult{Gamertag: d.Gamertag, MatchesSynced: d.MatchesInserted})
 	}
 	return out
 }

@@ -2068,22 +2068,8 @@ func startWatcherDaemon(
 	// watcher tombe en mode legacy : pas de SharedProvider → conflit
 	// "different configuration" sur shared_matches_v2.duckdb (incident
 	// 2026-05-26 23:05+).
-	syncTrigger := syncpkg.NewTrigger(cfg.RepoRoot, &staticTokenProvider{tokens: *tokens}, domain.SyncOptions{
-		MatchType:        "matchmaking",
-		MaxMatches:       25,
-		WithParticipants: true,
-		WithMedals:       true,
-		// Le chemin live (watcher) DOIT récupérer les highlight events au 1er
-		// passage : ils alimentent highlight_events → killer_victim_pairs →
-		// weapon_kills (frags par arme). Sans ce flag (zéro-value false), le
-		// watcher insérait registry+participants SANS events ; le scheduler
-		// (DefaultSyncOptions, true) ne pouvait pas rattraper car son delta
-		// s'arrête sur le match déjà "connu". Le heal events qui masquait ce
-		// trou a été décommissionné le 2026-06-01 → events_loaded=false figé
-		// sur tous les matchs depuis. Cf. .ai/thought_log 2026-06-04.
-		WithHighlightEvents: true,
-		RequestsPerSecond:   5,
-	}).WithEngineFactory(autoScheduler.BuildEngine).
+	syncTrigger := syncpkg.NewTrigger(cfg.RepoRoot, &staticTokenProvider{tokens: *tokens}, watcherSyncOptions()).
+		WithEngineFactory(autoScheduler.BuildEngine).
 		// Titres live-only (Halo 5+) : router le watcher vers leur pipeline dédié,
 		// auth pinnée depuis le pool auto-sync. Sans ça, un joueur h5 détecté en
 		// présence ferait fetcher des matchs Infinite dans le store h5 (corruption).
