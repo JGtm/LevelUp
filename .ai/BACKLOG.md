@@ -10,6 +10,30 @@
 
 ---
 
+### [data/objectifs] Étendre match_objective_stats aux 4 blocs restants (Stockpile, Elimination, Extraction, Infection)
+
+Constat (investigation citations v7.2, 2026-07-25) : `StatsBundle` (internal/openspartan/models.go)
+porte encore 4 blocs de stats de mode en `json.RawMessage` non extraits : `StockpileStats`,
+`EliminationStats`, `ExtractionStats`, `InfectionStats`. Extension naturelle du chantier
+V72-03 : mêmes mécanique et coût (ALTER ADD COLUMN nullable sur `match_objective_stats`,
+extraction dans `internal/sync/objective/`, backfill re-fetch 1 req/match). Prérequis : P0
+payloads réels de chaque mode pour figer les noms de champs. **Effort : M.**
+
+### [feat/citations] Nouvelles citations Mode de jeu Infinite depuis match_objective_stats (v7.3)
+
+La table d'écarts complète (agent 2026-07-25, transmise dans Notion) liste ~19 citations
+nouvelles calculables dès maintenant : CTF (score de drapeau — trou préexistant le plus
+criant —, vols, prises, sécurisations, assistances, frags porteur, chasse aux rapatrieurs,
+temps de porteur), Zones (frags off/déf, ticks KOTH, temps en zone), Oddball (6 compteurs).
+Prérequis fait en v7.2 : source `objective_stat` branchée au citations_engine. Reste :
+choix utilisateur des citations + visuels (assets H5 repurposables : Conquérant, GOAL!!!!,
+Is that my ball?, My castle, Imparable) + lignes de seed + re-seed + backfill citations
+(procédure docs/COMMENDATIONS.md). Non calculables aujourd'hui : Jouets éducatifs
+(ramassages non tracés), Situation critique/Imparable (manches Élimination — dépend de
+l'extension EliminationStats ci-dessus). **Effort : S par citation une fois les visuels fournis.**
+
+---
+
 ### [archi/data] Unifier la SOURCE des noms d'armes (lieu unique de traduction, keyé par weapon_key)
 
 > Noté le 2026-07-21 (décision user : « à maintenir c'est impossible, une vraie galère »). Constat
