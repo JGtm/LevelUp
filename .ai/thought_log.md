@@ -1,3 +1,52 @@
+## [2026-07-25] Lot v7.2 — citations objective_stat + caches keyés par titre + recherche gamertag live non bloquante
+
+**Statut** : Complété (3 volets A/B/C). Pas de commit (superviseur). Branche `feat/v7.2-notion-batch`.
+NE PAS toucher `ExplorerBriefingStrip.tsx` ni `explorer.toml` (agent parallèle + modif user non commitée) — respecté.
+
+**Volet A — plomberie citations objective_stat.** Nouveau type de citation `objective_stat`
+(`domain.CitationMappingTypeObjectiveStat` + `mappingTypeObjectiveStat` seed) ajouté à la branche
+stat/pve_stat/weapon_stat de `dispatchFull`. Nouveau loader `sync.loadObjectiveStats` calqué sur
+`loadPveStats` : lit `match_objective_stats_latest` (MÊME sharedDB, ADR 0026 vue `_latest`), mappe
+les 23 colonnes CTF/Zones/Oddball → clés Stats (CAST DOUBLE, *_seconds tronqués à l'entier par le
+moteur), best-effort intégral (map seule, jamais d'erreur : Slayer/vue absente → nil + Debug),
+fusionné dans `buildCitationContext`. **Bascule des 4 citations** award→objective_stat :
+charge→zone_captures, got_you→flag_returns, stakeholder→zone_secures,
+flag_carrier_hunter→flag_carriers_killed (norms extraits en constantes `citationNorm*` pour
+lever goconst au garde-rail). Tests : moteur (progresse + colonne absente=0), loader (mapping +
+dégradation), intégration `buildCitationContext`, garde-rail seed. **À REJOUER (non exécuté ici,
+long)** : `levelup seed citation-mappings` puis `levelup backfill --all --citations-recompute-all`
+en LOCAL et en PROD — la progression des 4 citations est recalculée depuis l'historique
+(match_objective_stats), donc pas de perte mais valeurs révisées (source awards→colonnes).
+
+**Volet B — caches serveur keyés par titre (fuite cross-titre V72-29).**
+`HomeMatchesCache.Get/Set/Invalidate` : clé (xuid) → (xuid, titleSlug) via `cacheKey` NUL
+(call-sites home_service `s.titleSlug`, post_sync `slug`) ; fichier réécrit propre (mojibake purgé).
+`CachedRecentMatchesProvider` : clé (xuid|limit) → (titleSlug|xuid|limit), slug lu du ctx.
+`remote_stats_cache` seasonEntries : cache SINGLETON partagé inter-titres + seasonID = chemin CMS
+brut → jugé AMBIGU, slug ajouté à la clé (aligné sur FetchServiceRecord, commentaire daté). Tests
+d'isolation par titre pour les 3 + gate `go test ./internal/service/` vert (inclut
+TestCareerLiveCache_*_DistinctTitles).
+
+**Volet C — suggestions gamertag : repli live NON bloquant (V72-24).** Param `live` sur
+l'endpoint (`gamertagSearchHumaInput.Live`, openapi.yaml manuel) → `GamertagHandler.Query(ctx,q,live)`
+→ `ctxkeys.WithGamertagLiveSearch` → gate dans `LiveFallbackGamertagSearch.Search` (défaut live=0 :
+local seul, ~200 ms ; live=1 : résolution Xbox 2-3 s). **Décision : TOUS les appelants en live=0 par
+défaut** (typeahead ET combobox setup/admin) + affordance explicite « Rechercher sur Xbox » — cohérent,
+aucune latence surprise nulle part, un seul point d'armement. Front : hook `useGamertagSuggestions`
+gagne `liveResults/isLiveLoading/liveAttempted/triggerLiveSearch` (2e query `&live=1` désarmée,
+réinit par-query) ; bouton « Rechercher sur Xbox » dans `GamertagSearchInput` (Explorer) ET
+`GamertagCombobox` (générique). i18n dans **common.toml** (`common.gamertag.search_on_xbox` /
+`searching_xbox` / `xbox_badge`, FR+EN) — PAS explorer.toml. Tests : handler (spy : live=0 ne touche
+jamais le resolver, live=1 oui), décorateur (flag), hook + composant front (immédiat local + affordance).
+
+**Résultats — GATES TOUS VERTS** : gofmt -l vide ; `go build ./...` ; `go vet ./...` ;
+`go test ./...` ; `-tags=integration -p 1 ./internal/service/... ./internal/api/... ./internal/sync/...` ;
+`make go-api-lint` 0 issue ; `node build_i18n_manifests` (20 manifests) ; `make generate-types` ;
+`npm run typecheck` (tsc -b) ; `npx vitest run` (26 tests des 4 fichiers touchés).
+
+**Prochaine étape** : rejeu backfill citations (local+prod) pour matérialiser la bascule des 4
+citations d'objectif. Décisions produit à valider au merge (superviseur).
+
 ## [2026-07-25] Explorer live repair — Lot A1 : pool-first pour les lectures publiques de tiers
 
 **Statut** : Complété + VALIDÉ end-to-end (Lot A1 de `.ai/V7.1/PLAN_EXPLORER_LIVE_REPAIR_2026-07.md`).

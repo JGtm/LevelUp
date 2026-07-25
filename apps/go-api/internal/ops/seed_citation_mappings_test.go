@@ -65,6 +65,34 @@ func TestRoadTrip_MappedToSplatterMedal(t *testing.T) {
 	}
 }
 
+// TestObjectiveStatCitations_MappedToColumns : les 4 citations d'objectif basculées
+// (v7.2, décision utilisateur) lisent désormais des colonnes match_objective_stats via
+// la source objective_stat (plus fiable que les awards personal_score). Fige la décision :
+// un retour accidentel à mappingTypeAward / un mauvais stat_name casse le test.
+func TestObjectiveStatCitations_MappedToColumns(t *testing.T) {
+	want := map[string]string{
+		citationNormCharge:            "zone_captures",
+		citationNormGotYou:            "flag_returns",
+		citationNormStakeholder:       "zone_secures",
+		citationNormFlagCarrierHunter: "flag_carriers_killed",
+	}
+	for norm, col := range want {
+		m := citationByNorm(t, norm)
+		if m.MappingType != mappingTypeObjectiveStat {
+			t.Errorf("%s.MappingType = %q, want %q", norm, m.MappingType, mappingTypeObjectiveStat)
+		}
+		if m.StatName != col {
+			t.Errorf("%s.StatName = %q, want %q", norm, m.StatName, col)
+		}
+		if m.AwardName != "" {
+			t.Errorf("%s.AwardName = %q, want vide (plus d'award)", norm, m.AwardName)
+		}
+		if !m.Enabled {
+			t.Errorf("%s.Enabled = false, want true", norm)
+		}
+	}
+}
+
 // TestFlagDefender_Disabled : « Défenseur du drapeau » désactivée — aucun award
 // d'ingestion ne mesure la défense de son propre drapeau (décision I7). Vérifie aussi
 // qu'elle n'est enfant d'aucun composite (sa désactivation ne rend rien inatteignable).

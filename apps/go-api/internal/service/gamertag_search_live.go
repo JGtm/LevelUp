@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
@@ -71,6 +72,12 @@ func (s *LiveFallbackGamertagSearch) Search(ctx context.Context, query string) (
 		return results, err // erreur locale réelle : propager (comportement d'origine)
 	}
 	if s.resolver == nil {
+		return results, nil
+	}
+	// Repli live désarmé (param ?live= absent/0, défaut) : réponse LOCALE rapide, sans
+	// round-trip Xbox bloquant. Le repli n'est tenté que sur intention explicite de
+	// l'utilisateur (bouton « Rechercher sur Xbox » → live=1). Challenge V72-24 (latence).
+	if !ctxkeys.GamertagLiveSearch(ctx) {
 		return results, nil
 	}
 	q := strings.TrimSpace(query)

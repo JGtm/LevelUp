@@ -205,6 +205,40 @@ SELECT * EXCLUDE (rk) FROM (
            DENSE_RANK() OVER (PARTITION BY match_id, xuid ORDER BY generation_id DESC) AS rk
     FROM weapon_kills)
 WHERE rk = 1;
+
+CREATE SEQUENCE match_objective_stats_id_seq;
+CREATE TABLE match_objective_stats (
+    id                                    BIGINT PRIMARY KEY DEFAULT nextval('match_objective_stats_id_seq'),
+    match_id                              VARCHAR NOT NULL,
+    xuid                                  VARCHAR NOT NULL,
+    flag_captures                         INTEGER,
+    flag_capture_assists                  INTEGER,
+    flag_grabs                            INTEGER,
+    flag_secures                          INTEGER,
+    flag_steals                           INTEGER,
+    flag_returns                          INTEGER,
+    flag_carriers_killed                  INTEGER,
+    flag_returners_killed                 INTEGER,
+    kills_as_flag_carrier                 INTEGER,
+    kills_as_flag_returner                INTEGER,
+    time_as_flag_carrier_seconds          DOUBLE,
+    zone_captures                         INTEGER,
+    zone_secures                          INTEGER,
+    zone_offensive_kills                  INTEGER,
+    zone_defensive_kills                  INTEGER,
+    zone_scoring_ticks                    INTEGER,
+    time_in_zones_seconds                 DOUBLE,
+    kills_as_skull_carrier                INTEGER,
+    skull_carriers_killed                 INTEGER,
+    skull_grabs                           INTEGER,
+    skull_scoring_ticks                   INTEGER,
+    time_as_skull_carrier_seconds         DOUBLE,
+    longest_time_as_skull_carrier_seconds DOUBLE,
+    written_at                            TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE OR REPLACE VIEW match_objective_stats_latest AS
+    SELECT * FROM match_objective_stats
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY match_id, xuid ORDER BY written_at DESC, id DESC) = 1;
 `
 }
 

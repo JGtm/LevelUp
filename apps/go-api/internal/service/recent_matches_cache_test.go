@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 )
 
@@ -49,6 +50,41 @@ func TestCachedRecentMatchesProvider_HitMissTTL(t *testing.T) {
 	}
 	if calls != 3 {
 		t.Errorf("clé (xuid|limit) distincte attendue, got %d appels", calls)
+	}
+}
+
+// TestCachedRecentMatchesProvider_DistinctTitles vérifie l'isolation par titre
+// (V72-29) : le même (xuid, limit) sous deux titres différents produit deux entrées
+// de cache distinctes → l'inner est appelé une fois par titre (jamais de fuite).
+func TestCachedRecentMatchesProvider_DistinctTitles(t *testing.T) {
+	calls := 0
+	inner := recentMatchesFunc(func(ctx context.Context, _ string, _ int) ([]domain.ExplorerTargetRecentMatch, error) {
+		calls++
+		return []domain.ExplorerTargetRecentMatch{{MatchID: ctxkeys.TitleSlug(ctx) + "-m1"}}, nil
+	})
+	now := time.Unix(1_000_000, 0)
+	c := NewCachedRecentMatchesProvider(inner, time.Minute, func() time.Time { return now })
+
+	ctxHI := ctxkeys.WithTitleSlug(context.Background(), "halo_infinite")
+	ctxH5 := ctxkeys.WithTitleSlug(context.Background(), "halo_5")
+
+	hi, _ := c.FetchRecentMatches(ctxHI, "x", 20)
+	h5, _ := c.FetchRecentMatches(ctxH5, "x", 20)
+	if calls != 2 {
+		t.Fatalf("clé par titre attendue → 2 appels inner, got %d", calls)
+	}
+	if len(hi) != 1 || hi[0].MatchID != "halo_infinite-m1" {
+		t.Errorf("halo_infinite: contenu inattendu %v", hi)
+	}
+	if len(h5) != 1 || h5[0].MatchID != "halo_5-m1" {
+		t.Errorf("halo_5: contenu inattendu %v", h5)
+	}
+
+	// Relire chaque titre : hit (pas de nouvel appel).
+	_, _ = c.FetchRecentMatches(ctxHI, "x", 20)
+	_, _ = c.FetchRecentMatches(ctxH5, "x", 20)
+	if calls != 2 {
+		t.Errorf("relecture par titre devait être un hit, got %d appels", calls)
 	}
 }
 
