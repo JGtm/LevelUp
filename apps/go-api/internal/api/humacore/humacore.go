@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
@@ -255,14 +256,12 @@ var OnAPICreated func(huma.API)
 // parcours.
 var OnAPICreatedRouter func(chi.Router, huma.API)
 
-// NewAPI crée une API Huma adossée au routeur chi `r` (qui peut être le routeur
-// racine OU un sous-routeur d'un r.Route/r.Group — les routes Huma héritent alors
-// du middleware du sous-groupe et lisent les path params parents, cf.
-// TestHumaNestedSubrouterProbe).
-//
-// Config : format byte-identique writeJSON, pas de $schema, aucune route auto
-// (OpenAPI/docs/schemas) — l'openapi.yaml MANUEL reste source de vérité.
-func NewAPI(r chi.Router) huma.API {
+// newConfig construit la Config Huma LevelUp : format byte-identique writeJSON,
+// pas de $schema (CreateHooks nil), aucune route auto (OpenAPI/docs/schemas vides)
+// — l'openapi.yaml MANUEL reste source de vérité. Chaque appel crée un *huma.OpenAPI
+// NEUF (doc + registre de schémas indépendants). Pour partager un document entre
+// plusieurs sous-routeurs, cf. NewSharedConfig / NewAPIWithConfig / NewSubrouterAPI.
+func newConfig() huma.Config {
 	config := huma.DefaultConfig("LevelUp API", "1.0.0")
 	config.Formats = map[string]huma.Format{
 		"application/json": JSONFormat,
@@ -272,17 +271,116 @@ func NewAPI(r chi.Router) huma.API {
 	config.DocsPath = ""
 	config.SchemasPath = ""
 	config.CreateHooks = nil
-	// huma.NewError est un var package-level (une seule instance par process) ;
-	// override idempotent (même valeur quelle que soit l'API).
+	return config
+}
+
+// installErrorOverride pose l'override huma.NewError au contrat writeError. C'est
+// un var package-level (une instance par process) ; override idempotent (même
+// valeur quelle que soit l'API).
+func installErrorOverride() {
 	huma.NewError = func(status int, msg string, _ ...error) huma.StatusError {
 		return NewError(status, ErrorCodeForStatus(status), msg)
 	}
-	api := humachi.New(r, config)
+}
+
+// notifyCreated invoque les hooks de test (nil en prod → ZÉRO impact).
+func notifyCreated(r chi.Router, api huma.API) {
 	if OnAPICreated != nil {
 		OnAPICreated(api)
 	}
 	if OnAPICreatedRouter != nil {
 		OnAPICreatedRouter(r, api)
 	}
+}
+
+// NewAPI crée une API Huma adossée au routeur chi `r` (qui peut être le routeur
+// racine OU un sous-routeur d'un r.Route/r.Group — les routes Huma héritent alors
+// du middleware du sous-groupe et lisent les path params parents, cf.
+// TestHumaNestedSubrouterProbe). Chaque appel a son PROPRE document OpenAPI (jeté
+// après usage : l'openapi.yaml manuel fait foi). Comportement inchangé.
+func NewAPI(r chi.Router) huma.API {
+	installErrorOverride()
+	api := humachi.New(r, newConfig())
+	notifyCreated(r, api)
 	return api
+}
+
+// ---------------------------------------------------------------------------
+// Document OpenAPI PARTAGÉ (chantier V72-01 — un SEUL document fusionné).
+//
+// Mécanisme (prouvé par TestSharedDocMergedFromSubrouters, spike H0.5) : huma.Config
+// incorpore *huma.OpenAPI ; api.OpenAPI() renvoie config.OpenAPI. Passer la MÊME
+// valeur de config à plusieurs humachi.New fait pointer tous les adaptateurs vers
+// LE MÊME document + LE MÊME registre de schémas (huma.NewAPI initialise
+// Components/registre de façon idempotente à travers ce pointeur partagé). Chaque
+// sous-routeur garde son propre adaptateur chi → middlewares et path params
+// parents intacts. Objectif : UN document, PAS une instance huma.API unique.
+// ---------------------------------------------------------------------------
+
+// NewSharedConfig retourne une Config Huma LevelUp destinée à être PARTAGÉE : la
+// passer (par valeur) à plusieurs NewAPIWithConfig / NewSubrouterAPI fusionne
+// toutes les routes et schémas dans son unique *huma.OpenAPI. Lire le document
+// final via `cfg.OpenAPI` (ou n'importe quelle api.OpenAPI() dérivée).
+func NewSharedConfig() huma.Config {
+	return newConfig()
+}
+
+// NewAPIWithConfig crée une API Huma sur le routeur `r` PARTAGEANT le document et
+// le registre de `config`. Les chemins enregistrés dans le document sont ceux
+// passés à huma.Get/Post — donc chemins LOCAUX au routeur. À utiliser quand le
+// chemin local == chemin absolu : routeur racine, ou groupe middleware-only
+// (`r.Group(func(r){ r.Use(auth); ... })`) SANS préfixe de path. Pour un
+// sous-routeur monté sous un préfixe (`r.Route("/players/{player_slug}", ...)`),
+// utiliser NewSubrouterAPI (sinon le document perdrait le préfixe parent).
+func NewAPIWithConfig(r chi.Router, config huma.Config) huma.API {
+	installErrorOverride()
+	api := humachi.New(r, config)
+	notifyCreated(r, api)
+	return api
+}
+
+// prefixStripAdapter enveloppe l'adaptateur d'un sous-routeur et RETIRE `prefix`
+// du chemin de l'opération avant l'enregistrement HTTP. Sous un huma.Group qui
+// préfixe le chemin pour le DOCUMENT (chemin absolu), cet adaptateur le
+// dé-préfixe pour le ROUTEUR chi : le sous-routeur étant déjà monté sous `prefix`,
+// il reçoit le chemin LOCAL → middlewares du groupe et path params parents
+// préservés (comportement HTTP identique à NewAPI sur le même sous-routeur).
+type prefixStripAdapter struct {
+	huma.Adapter
+	prefix string
+}
+
+func (a *prefixStripAdapter) Handle(op *huma.Operation, handler func(huma.Context)) {
+	local := *op
+	local.Path = strings.TrimPrefix(op.Path, a.prefix)
+	a.Adapter.Handle(&local, handler)
+}
+
+// apiWithAdapter enveloppe une huma.API en forçant son Adapter() — permet de
+// glisser prefixStripAdapter sous le huma.Group construit par NewSubrouterAPI.
+type apiWithAdapter struct {
+	huma.API
+	adapter huma.Adapter
+}
+
+func (a *apiWithAdapter) Adapter() huma.Adapter { return a.adapter }
+
+// NewSubrouterAPI crée une API Huma pour un sous-routeur chi monté sous `docPrefix`
+// (ex. "/api/v1/players/{player_slug}"), PARTAGEANT le document de `config`. Les
+// routes s'enregistrent avec leur chemin LOCAL (`huma.Get(api, "/pages/x", ...)`)
+// mais apparaissent dans le document avec leur chemin ABSOLU (docPrefix + local),
+// operationID régénéré (dé-duplication inter-groupes). Le comportement HTTP est
+// celui d'un NewAPI sur le même sous-routeur : middleware du groupe hérité, path
+// params parents lus. Renvoie un *huma.Group (implémente huma.API) : enregistrer
+// les routes dessus via huma.Get/Post/Register.
+func NewSubrouterAPI(r chi.Router, config huma.Config, docPrefix string) huma.API {
+	installErrorOverride()
+	base := humachi.New(r, config)
+	wrapped := &apiWithAdapter{
+		API:     base,
+		adapter: &prefixStripAdapter{Adapter: base.Adapter(), prefix: docPrefix},
+	}
+	group := huma.NewGroup(wrapped, docPrefix)
+	notifyCreated(r, base)
+	return group
 }

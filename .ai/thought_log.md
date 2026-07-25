@@ -1,3 +1,56 @@
+## [2026-07-25] V72-01 — openapi.yaml généré par Huma : H0 (baseline) + H0.5 (spike) EXÉCUTÉS
+
+**Statut** : Complété (H0 + H0.5 du PLAN_V72_HUMA_OPENAPI.md ; H1-H8 restent à faire). Pas de
+commit (superviseur). Branche `feat/v7.2-notion-batch`. Gates exécutés par l'agent — verts.
+
+**H0 — baseline diff sémantique** : outil Go `apps/go-api/cmd/openapi-diff/main.go` (kin-openapi
+v0.144.0, ajouté en dep DIRECTE via `go mod tidy` ; chargement SANS validation stricte car le
+doc déclare 3.1.0 avec un corps de style 3.0). Émet un résumé trié/déterministe : paths +
+méthodes + operationId + summary + tags + params (+enum/default/example inline) + requestBody +
+responses (+desc) + media-type example ; schémas walkés RÉCURSIVEMENT (inline ; `$ref` nommés
+listés 1× en section SCHEMAS, jamais expansés → pas de cycle). Baseline
+`.ai/V7/openapi_baseline_v72.txt` : 176 paths / 182 ops / 520 schémas ; enum=26 default=30
+(match exact du plan) example=124 (les exemples media-type des réponses d'erreur PARTAGÉES sont
+résolus/dupliqués par kin-openapi — informatif pour l'inventaire « fragment manuel » H3).
+DÉTERMINISTE (2 runs byte-identiques), mode `-diff` self-check = exit 0.
+
+**H0.5 — spike (BLOQUANT) : CONCLUANT.** Objectif prouvé = UN DOCUMENT partagé, PAS une instance
+huma unique. Mécanisme (huma v2.38.0, code lu dans le module cache) :
+- PARTAGE DOC : `huma.Config` incorpore `*huma.OpenAPI` ; `api.OpenAPI()` renvoie
+  `config.OpenAPI` (api.go:327). Passer la MÊME `huma.Config` à N `humachi.New` → tous les
+  adaptateurs écrivent dans LE MÊME doc + registre (`huma.NewAPI` initialise Components/Schemas
+  de façon idempotente à travers ce pointeur, api.go:475-489). Registre déduplique par nom de
+  type (DefaultSchemaNamer).
+- PRÉFIXE PARENT (le point dur) : `huma.Register` enregistre le MÊME `op.Path` dans le doc
+  (`oapi.AddOperation`) ET sur le routeur (`chiAdapter.Handle` → `MethodFunc`). Découplage via
+  `huma.NewGroup(api, prefix)` (group.go) : préfixe le chemin DU DOCUMENT + régénère
+  l'operationID (PrefixModifier/ModifyOperation) ; l'adaptateur sous-jacent est un
+  `prefixStripAdapter` qui RETIRE le préfixe avant `MethodFunc` → le sous-routeur chi (déjà monté
+  sous ce préfixe) reçoit le chemin LOCAL → middlewares + path params parents intacts.
+
+**Ajouts humacore (OPT-IN, défaut `NewAPI` INCHANGÉ)** : `NewSharedConfig`, `NewAPIWithConfig`
+(routeur racine / groupe middleware-only), `NewSubrouterAPI(r, cfg, docPrefix)` (sous-routeur à
+préfixe path-param) + types `prefixStripAdapter`/`apiWithAdapter`. Refactor confiné :
+extraction `newConfig`/`installErrorOverride`/`notifyCreated` (comportement identique).
+
+**POC** `internal/api/humacore/shared_doc_poc_test.go` (2 archétypes : GROUPE A sous
+`/api/v1/players/{player_slug}` + middleware témoin via NewSubrouterAPI ; GROUPE B plat
+`/matches/{match_id}` + RequireAuth-like via NewAPIWithConfig) prouve : (a) params parents lus +
+middleware exécuté + gate 401 ; (b) doc fusionné porte les paths ABSOLUS, le chemin local nu est
+ABSENT ; (c) `CommonMeta` enregistré 1× + `$ref` depuis les DTOs des DEUX groupes, operationIDs
+uniques.
+
+**Gates verts** : `go test ./internal/api/humacore/` (POC + existants) ; `go test ./internal/api/`
+(incl. `TestHumaNestedSubrouterProbe` NON modifié, drift, contract, route-collision, 10.8s) ;
+`go build ./...`. Périmètre touché : humacore.go, POC test, cmd/openapi-diff/, go.mod/go.sum,
+plan, cette entrée — RIEN d'autre.
+
+**Recommandation H1** : construire UNE `NewSharedConfig()` au point de composition
+(`server_apiv1.go`), router chaque Mount vers `NewAPIWithConfig` ou `NewSubrouterAPI`. RISQUE
+RÉSIDUEL : le `docPrefix` absolu doit être fourni depuis `server_apiv1.go` (chi n'expose pas le
+préfixe de montage à l'enregistrement) → les `Mount(r)` devront recevoir leur préfixe. Conclusion :
+H1-H8 = GO.
+
 ## [2026-07-25] V72-03 — Stats objectifs (CTF/Zones/Oddball) : P3 capability+backfill, P4 UI
 
 **Statut** : Complété (P3 + P4 du PLAN_V72_OBJECTIVE_STATS.md ; P0-P2 déjà clos). Pas de
