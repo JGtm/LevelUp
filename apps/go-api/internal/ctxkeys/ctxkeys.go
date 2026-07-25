@@ -14,7 +14,6 @@ const (
 	haloTokensKey      contextKey = "halo_tokens"
 	haloXUIDKey        contextKey = "halo_xuid"
 	tokensOwnerXUIDKey contextKey = "tokens_owner_xuid"
-	viewerGamertagKey  contextKey = "viewer_gamertag"
 	requestIDKey       contextKey = "request_id"
 	eventIDKey         contextKey = "event_id"
 	localeKey          contextKey = "locale"
@@ -120,30 +119,6 @@ func HaloXUID(ctx context.Context) string {
 // tokens appartiennent au compte connecté.
 func TokensOwnerXUID(ctx context.Context) string {
 	v, _ := ctx.Value(tokensOwnerXUIDKey).(string)
-	return v
-}
-
-// WithViewerGamertag place le GAMERTAG du joueur de la page (le "viewer") dans le
-// contexte. Indispensable aux titres GAMERTAG-keyés (Halo 5) dont l'API match ne
-// porte aucun xuid (Player.Xuid toujours null) : pour résoudre le MODE de la
-// carnage + les refs header (map/playlist/startTime/isRanked) d'un match, l'adapter
-// doit retrouver l'entrée de l'historique du joueur via GetPlayerMatches(gamertag).
-// Or les signatures canoniques ID-keyées (LoadMatchDetail(ctx, matchID)) ne portent
-// pas de viewer ; le contexte est donc le seul canal propre, à l'image du
-// SpartanToken (ctxkeys.HaloTokens).
-//
-// Câblage : le registry/handler de la route /players/{slug}/... connaît le
-// gamertag du joueur (pdb.Gamertag) et le pose ici au moment de construire le
-// service. Title-agnostic : un titre xuid-keyé (Halo Infinite) ignore cette clé.
-func WithViewerGamertag(ctx context.Context, gamertag string) context.Context {
-	return context.WithValue(ctx, viewerGamertagKey, gamertag)
-}
-
-// ViewerGamertag extrait le gamertag du joueur de la page depuis le contexte.
-// Retourne "" si absent (les titres xuid-keyés n'en ont pas besoin ; les titres
-// gamertag-keyés dégradent gracieusement quand il manque).
-func ViewerGamertag(ctx context.Context) string {
-	v, _ := ctx.Value(viewerGamertagKey).(string)
 	return v
 }
 

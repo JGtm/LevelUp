@@ -2,12 +2,10 @@ package wire
 
 import (
 	"log/slog"
-	"path/filepath"
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/classification"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/games/mappings"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
@@ -112,35 +110,23 @@ func registerHalo5Adapters(
 		}
 	}
 
-	// Classifier ranked/PvE (stratégie #1 set-membership HopperId, package
-	// classification) chargé UNE fois depuis le TOML autoritatif versionné
-	// config/titles/<slug>/catalog/ranked_hoppers.toml (chemin résolu comme le drain
-	// catalog, cf. registry_catalog_drain.go). Best-effort : fichier absent → set
-	// vide (verdicts nil, dégradation conservatrice), parse/schema invalide → WARN +
-	// continue SANS classifier (jamais de panic/échec boot). Injecté dans l'adapter
-	// (LoadMatchDetail header) ET le builder player-scoped (historique) via
-	// WithRankedClassifier — résout match_registry.is_ranked + CSR pour les playlists
-	// classées Halo 5 dès que le TOML est peuplé (cf. .ai/HANDOFF_H5_RANKED_CLASSIFICATION.md §5).
-	var rankedClassifier classification.RankedClassifier
-	hoppersPath := filepath.Join(reg.cfg.RepoRoot, "config", "titles", td.Slug, "catalog", "ranked_hoppers.toml")
-	if c, err := classification.LoadSetClassifier(hoppersPath); err != nil {
-		slog.Warn("h5_ranked_classifier_load_failed",
-			"title_slug", td.Slug, "path", hoppersPath, "err", err)
-	} else {
-		rankedClassifier = c
-	}
-
 	// buildLiveData reconstruit un DataAdapter live (placement title-aware +
-	// capabilities + classifier ranked/PvE). Réutilisé pour le data adapter global ET
-	// le builder player-scoped (Halo 5 ignore la player DB).
+	// capabilities). Réutilisé pour le data adapter global ET le builder
+	// player-scoped (Halo 5 ignore la player DB).
+	//
+	// Le classifier ranked/PvE HopperId (package classification, TOML
+	// config/titles/<slug>/catalog/ranked_hoppers.toml) n'est PAS câblé ici : son
+	// seul consommateur était le header LoadMatchDetail (fallback LIVE du Match
+	// view, retiré le 2026-07-25 — BACKLOG "Retirer le fallback LIVE du Match
+	// view"). La classification ranked/PvE de l'historique PERSISTÉ (ingest,
+	// CaptureOptions.Classifier) reste un point d'extension distinct et non câblé
+	// (cf. .ai/HANDOFF_H5_RANKED_CLASSIFICATION.md §5), à raccorder séparément si
+	// besoin.
 	buildLiveData := func() games.TitleDataAdapter {
 		a := halo5.NewDataAdapter(halo5.NewSpartanTokenSource, slog.Default()).
 			WithPlacementTotal(td.PlacementMatches)
 		if caps != nil {
 			a = a.WithCapabilities(caps)
-		}
-		if rankedClassifier != nil {
-			a = a.WithRankedClassifier(rankedClassifier)
 		}
 		return a
 	}

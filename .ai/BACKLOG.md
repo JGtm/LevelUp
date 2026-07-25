@@ -96,23 +96,34 @@ les compteurs natifs. Vérifier sur un match H5 réel (bulk weapons + counts de 
 
 ---
 
-### [archi/match-view] Retirer le fallback LIVE (appel API à l'ouverture de page) du Match view
+### [archi/match-view] Retirer le fallback LIVE (appel API à l'ouverture de page) du Match view — CLOS 2026-07-25
 
-> Noté le 2026-07-19 (décision user). Le Match view a un fallback qui, quand un match n'est PAS
-> en base (`GetMatchMeta` / `match_registry` miss), va chercher la partie **EN DIRECT depuis l'API** :
-> `tryCanonicalMatchView` (`internal/service/match_view_service.go:307,314`) → `DataAdapter.LoadMatchDetail`.
-> Pour H5 (`internal/games/halo_5/adapter_data_loaders.go:204`), ça fait **2 appels API live**
-> (`GetPlayerMatches` historique + `GetMatchCarnage`). Déclenché seulement pour un match **non encore
-> synchronisé** (Infinite et H5 persistés passent par la DB → jamais concernés). Design existant
-> (ADR 0029 + tests `TestAdapter_LoadMatchDetail_Live` / `…CarnageHTTPErrorDegrades`).
+> Noté le 2026-07-19 (décision user). Le Match view avait un fallback qui, quand un match n'était PAS
+> en base (`GetMatchMeta` / `match_registry` miss), allait chercher la partie **EN DIRECT depuis l'API**.
 
-**DÉCISION (user 2026-07-19)** : **à SUPPRIMER**. Un appel API live à l'ouverture d'une page match
-n'est pas voulu (latence, dépendance token, échec réseau à l'affichage). Le remplacer par une
-dégradation propre (« match pas encore synchronisé » / 404) plutôt qu'un fetch live. Périmètre :
-`tryCanonicalMatchView` + câblage `DataAdapter`/`viewerGamertag`, le loader `LoadMatchDetail` H5 s'il ne
-sert plus qu'à ça, les tests associés — **vérifier ADR 0029 et les callers avant** (ce chemin a été
-ajouté pour les titres GAMERTAG-keyés). Effet de bord frags : sur ce chemin le breakdown par arme
-retombait en « Non attribué » (ex-D-P3-2) → disparaît avec le fallback. **Effort** : moyen.
+**RÉSOLU (V72-15.4, 2026-07-25)** : chaîne supprimée intégralement.
+- `tryCanonicalMatchView` (match_view_service.go) + champs `dataAdapter`/`viewerGamertag` +
+  `WithDataAdapter`/`WithViewerGamertag` sur `MatchViewService` — supprimés. `GetMatchView` renvoie
+  désormais `domain.ErrNotFound("match", matchID)` (APIError `not_found` → handler mappe déjà en 404
+  `match_not_found`, contrat openapi.yaml inchangé, AUCUN edit de contrat nécessaire).
+- `halo_5.DataAdapter.LoadMatchDetail` (+ `findMatchInHistory`, consts pagination) — supprimé, ainsi
+  que `LoadMatchDetail` sur l'interface `games.TitleDataAdapter` et ses 3 implémentations (HINF stub,
+  synthetic_title_b, H5 réel). Fichier `mapping_carnage_detail.go` (H5) entièrement mort → supprimé.
+  `commendation_defs.go` : `enrichCommendations` (spécifique au détail live) supprimé, `enrichCommendationTotals`
+  (totaux à vie, chemin séparé) conservé.
+- Second ordre découvert en suivant la chaîne : `WithRankedClassifier`/champ `classifier` sur le
+  DataAdapter H5 + chargement `ranked_hoppers.toml` au boot (`server_titles_additional.go`) n'avaient
+  QUE ce fallback comme lecteur → supprimés aussi. `classification.LoadSetClassifier` (lib générique,
+  tests dédiés, autre callsite potentiel Phase 2 ingest) conservé intact.
+- `ctxkeys.WithViewerGamertag`/`ViewerGamertag` — supprimés (plus aucun appelant).
+- `canonical.MatchDetail`/`canonical.Commendation` (types canonical) — supprimés, plus aucun lecteur.
+- Front : `MatchViewPage.tsx` — nouvel état dédié `code === 'match_not_found'` (PageUnavailable,
+  FR/EN via `MATCH_VIEW_TEXT.notSyncedTitle/notSyncedDescription`) au lieu de l'écran d'erreur générique.
+- Tests : Go (service `TestMatchViewService_GetMatchView_MetaError` renforcé + handler
+  `TestMatchViewHandler_NotFound_404` nouveau) + retrait des tests du fallback mort ; front
+  `MatchViewPage.test.tsx` nouveau (3 tests : état dédié, actions nav, non-régression match_not_participant).
+- H5 : comportement identique à HINF (même branche `GetMatchView`, aucune comparaison de slug) ; le
+  chemin de sync normal (livesync/capture.go, mapping_carnage.go, persist) est INTACT — non touché.
 
 ---
 

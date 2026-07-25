@@ -19,12 +19,10 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 
-	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/observability"
@@ -129,12 +127,6 @@ type MatchViewService struct {
 	// titleSlug est nécessaire pour HighlightEventsRepository (capability check
 	// + selection de la DB shared). Injecté via WithTitleSlug.
 	titleSlug string
-	// dataAdapter (optionnel, Phase C+ multi-titres) : point d'extension pour
-	// router LoadMatchDetail via la couche canonique. À ce jour, le service
-	// utilise le repo direct car canonical.MatchDetail ne couvre pas encore
-	// la totalité du payload Match View (4 onglets + header). Le hook est en
-	// place pour permettre une bascule incrémentale.
-	dataAdapter games.TitleDataAdapter
 	// assetURL (optionnel) : adapter d'URLs d'assets (image map, badge rang).
 	// Injecté via WithAssetURL au boot. Si nil, MapImageURL et IconURL restent
 	// vides — le front affiche les fallbacks texte (dégradation gracieuse).
@@ -154,33 +146,11 @@ type MatchViewService struct {
 	// metadataRepo (optionnel) : lookup des coefs assists_model_coefs pour
 	// calculer expected_assists à la volée. Dégradation gracieuse si nil.
 	metadataRepo port.MetadataRepository
-	// viewerGamertag (optionnel) : gamertag du joueur de la page. Posé dans le
-	// ctx (ctxkeys.WithViewerGamertag) avant l'appel adapter de la voie canonique
-	// (LoadMatchDetail), indispensable aux titres GAMERTAG-keyés (Halo 5) dont
-	// l'API match ne porte aucun xuid. Vide pour les titres xuid-keyés (HINF) :
-	// la voie repo ne le consulte jamais. Injecté via WithViewerGamertag au boot.
-	viewerGamertag string
 }
 
 // NewMatchViewService crée un MatchViewService.
 func NewMatchViewService(repo port.MatchViewRepository, xuid string) *MatchViewService {
 	return &MatchViewService{repo: repo, xuid: xuid}
-}
-
-// WithDataAdapter injecte le DataAdapter multi-titres pour activer une
-// future bascule LoadMatchDetail. Dégradation gracieuse si nil.
-func (s *MatchViewService) WithDataAdapter(a games.TitleDataAdapter) *MatchViewService {
-	s.dataAdapter = a
-	return s
-}
-
-// WithViewerGamertag configure le gamertag du joueur de la page. Posé dans le
-// ctx avant l'appel LoadMatchDetail de la voie canonique (titres GAMERTAG-keyés,
-// cf. ctxkeys.WithViewerGamertag). Dégradation gracieuse si "" : la voie repo
-// (HINF) n'en a pas besoin et la voie canonique dégrade proprement sans viewer.
-func (s *MatchViewService) WithViewerGamertag(gamertag string) *MatchViewService {
-	s.viewerGamertag = gamertag
-	return s
 }
 
 // WithCitationsRepo injecte le CitationsRepository pour peupler l'onglet Citations.
@@ -263,18 +233,16 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 	// --- Appels séquentiels bloquants (meta est nécessaire pour la suite) ---
 	meta, err := s.repo.GetMatchMeta(ctx, matchID)
 	if err != nil {
-		// Routage repo-first / adapter-fallback (title-agnostic). Le repo ne sait
-		// pas servir ce match (HINF : substrat absent → erreur ; h5 live-only :
-		// PAS de DuckDB → GetMatchMeta erreur "no rows"). Si un DataAdapter est
-		// câblé, on tente la voie canonique LIVE (LoadMatchDetail) avant de
-		// remonter l'erreur d'origine. HINF garde la voie repo par défaut : son
-		// substrat est présent → meta OK → on ne tombe jamais ici, donc AUCUNE
-		// régression (byte-identique). Aucune comparaison de slug : le routage est
-		// piloté par « le repo peut-il servir ce match ».
-		if resp, ok := s.tryCanonicalMatchView(ctx, matchID); ok {
-			return resp, nil
-		}
-		return domain.MatchViewResponse{}, fmt.Errorf("MatchViewService: meta: %w", err)
+		// Match absent du substrat local (jamais synchronisé, ou pas encore) : 404
+		// propre et typé, title-agnostic (aucune comparaison de slug — HINF et Halo 5
+		// suivent EXACTEMENT le même chemin). AUCUN fetch live vers l'API du titre
+		// depuis cette page : décision user 2026-07-19 (BACKLOG "Retirer le fallback
+		// LIVE du Match view") — latence, dépendance token et échec réseau à
+		// l'affichage n'étaient pas acceptables. Le front affiche un état dédié
+		// « pas encore synchronisé » sur ce code (match_not_found).
+		slog.InfoContext(ctx, "match_view: match absent du substrat local (pas encore synchronisé)",
+			"match_id", matchID, "err", err)
+		return domain.MatchViewResponse{}, domain.ErrNotFound("match", matchID)
 	}
 
 	// Couche B (ADR 0029) : fail-fast si le joueur courant n'a pas participé à ce
@@ -291,43 +259,6 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 	}
 
 	return s.buildMatchViewFromData(ctx, matchID, meta, data), nil
-}
-
-// tryCanonicalMatchView tente la voie canonique LIVE (DataAdapter.LoadMatchDetail)
-// quand le repo ne sait pas servir le match (cf. routage repo-first dans
-// GetMatchView). Retourne (resp, true) en cas de succès, (zéro, false) si aucun
-// adapter n'est câblé OU si l'adapter dégrade (ErrCapabilityNotSupported / nil /
-// erreur) — le caller remonte alors l'erreur d'origine (comportement actuel).
-//
-// Le gamertag du viewer est posé dans le ctx (ctxkeys.WithViewerGamertag) pour les
-// titres GAMERTAG-keyés (Halo 5) dont LoadMatchDetail en a besoin pour retrouver
-// l'entrée d'historique du match. No-op pour un titre xuid-keyé. Si le câblage
-// (registry) a déjà posé la clé, WithViewerGamertag la ré-affirme avec la même
-// valeur (idempotent) ; quand s.viewerGamertag est vide, on ne touche pas le ctx.
-func (s *MatchViewService) tryCanonicalMatchView(ctx context.Context, matchID string) (domain.MatchViewResponse, bool) {
-	if s.dataAdapter == nil {
-		return domain.MatchViewResponse{}, false
-	}
-	if s.viewerGamertag != "" {
-		ctx = ctxkeys.WithViewerGamertag(ctx, s.viewerGamertag)
-	}
-	detail, err := s.dataAdapter.LoadMatchDetail(ctx, matchID)
-	if err != nil || detail == nil {
-		// Dégradation gracieuse : token absent, match introuvable live, capability
-		// non supportée. Le caller retombe sur l'erreur repo d'origine (404/500).
-		if err != nil && !errors.Is(err, games.ErrCapabilityNotSupported) {
-			slog.WarnContext(ctx, "match_view: voie canonique échouée (fallback erreur repo)",
-				"match_id", matchID, "err", err)
-		}
-		return domain.MatchViewResponse{}, false
-	}
-	// Enrichissement i18n des refs d'assets (map/playlist/game_variant) AVANT la
-	// projection : la voie LIVE porte des AssetReference brutes (ID seul, Labels
-	// nil) — sans ça le header affiche un mode/carte/playlist vide. Pendant LIVE
-	// de HomeRepo.EnrichCanonicalAssetTranslations (voie home/DB). No-op si la
-	// table asset_translations n'est pas peuplée (refs gardent leur DefaultLabel).
-	s.enrichCanonicalDetailTranslations(ctx, detail)
-	return s.buildMatchViewFromCanonical(ctx, detail), true
 }
 
 // participantChecker est une capability OPTIONNELLE du repo : vérifie l'existence
