@@ -127,6 +127,9 @@ type MatchHistoryRow struct {
 	// PlacementDone/PlacementTotal : phase de placement (X/Y).
 	// CSR : remaining parsé de "Placement (N restants)" + threshold csr_placement_thresholds.
 	// LUSR : rang chronologique parmi les 10 plus anciens matchs sans LUSR de la chaîne.
+	// Consommé aussi par ExplorerMatchesTable (front) pour le badge « En placement »
+	// des colonnes Perf/ΔPerf/Note quand PerformanceScoreRelative/SkillRatingType
+	// sont nil pour la même raison (V72-32, cf. ExplorerMatchesRow.PlacementDone).
 	PlacementDone       *int   `json:"placement_done,omitempty"`
 	PlacementTotal      *int   `json:"placement_total,omitempty"`
 	AverageLifeMMSS     string `json:"average_life_mmss"`

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/sync"
 )
 
 func TestParsePlacementRemaining(t *testing.T) {
@@ -186,3 +187,45 @@ func TestApplyLUSRPlacements_skipRankedAndFirefight(t *testing.T) {
 		t.Errorf("btb doit être placement 1/10, got %v", rows[2].PlacementDone)
 	}
 }
+
+// TestApplyLUSRPlacements_bigTeamBattle_fewerThan10_userReportedScenario reproduit
+// le signalement V72-32 : un joueur ayant joué SEULEMENT quelques matchs Big Team
+// Battle (chaîne "btb") au total, dont plusieurs "hier". Confirme le mécanisme
+// exact — < sync.LUSRPlacementThreshold (10) matchs dans LA CHAÎNE BTB, pas un
+// total global de matchs joués — et que TOUS les matchs BTB de la chaîne (donc
+// ceux d'hier) reçoivent PlacementDone/PlacementTotal, jamais nil silencieux.
+// C'est ce signal que consomme ExplorerMatchesTable.placement.tsx (front) pour
+// afficher « En placement » sur Perf/ΔPerf/Note à la place du "-".
+func TestApplyLUSRPlacements_bigTeamBattle_fewerThan10_userReportedScenario(t *testing.T) {
+	base := time.Date(2026, 7, 20, 18, 0, 0, 0, time.UTC)
+	// 6 matchs BTB au total (< 10) : 3 "il y a plusieurs jours" + 3 "hier"
+	// (24/07), aucun n'a encore de LUSR (chaîne trop jeune).
+	rows := []domain.MatchHistoryRawRow{
+		{MatchID: "btb-old-1", StartTime: tPtr(base), PairName: strPtr("BTB:CTF on Highpower")},
+		{MatchID: "btb-old-2", StartTime: tPtr(base.Add(24 * time.Hour)), PairName: strPtr("BTB:Slayer on Behemoth")},
+		{MatchID: "btb-old-3", StartTime: tPtr(base.Add(48 * time.Hour)), PairName: strPtr("BTB:Stockpile on Deadlock")},
+		{MatchID: "btb-yday-1", StartTime: tPtr(base.Add(96 * time.Hour)), PairName: strPtr("BTB:CTF on Fragmentation")},
+		{MatchID: "btb-yday-2", StartTime: tPtr(base.Add(97 * time.Hour)), PairName: strPtr("BTB:Slayer on Highpower")},
+		{MatchID: "btb-yday-3", StartTime: tPtr(base.Add(98 * time.Hour)), PairName: strPtr("BTB:Stockpile on Behemoth")},
+		// Un match Ranked le même jour ne doit pas polluer la chaîne "btb".
+		{MatchID: "ranked-same-day", StartTime: tPtr(base.Add(50 * time.Hour)), PairName: strPtr("Ranked:Slayer")},
+	}
+	count := applyLUSRPlacements(rows)
+	if count != 6 {
+		t.Fatalf("6 matchs BTB attendus en placement (< 10 dans la chaîne), got %d", count)
+	}
+	for i, want := range []int{1, 2, 3, 4, 5, 6} {
+		r := rows[i]
+		if r.PlacementDone == nil || *r.PlacementDone != want {
+			t.Errorf("%s: PlacementDone want %d, got %v", r.MatchID, want, r.PlacementDone)
+		}
+		if r.PlacementTotal == nil || *r.PlacementTotal != sync.LUSRPlacementThreshold {
+			t.Errorf("%s: PlacementTotal want %d, got %v", r.MatchID, sync.LUSRPlacementThreshold, r.PlacementTotal)
+		}
+	}
+	if rows[6].PlacementDone != nil {
+		t.Errorf("ranked-same-day (chaîne différente) ne doit pas être en placement BTB, got %v", rows[6].PlacementDone)
+	}
+}
+
+func tPtr(t time.Time) *time.Time { return &t }
