@@ -14029,3 +14029,23 @@ SessionChartStack, fix goconst, fix assertion test, gofmt, régénérations.
 **Prochaine étape** : rebuild serveur local (V72-07), mise à jour Notion (barrages +
 vérifs visuelles), puis lot 5 (armes V72-06, backlog V72-15, stats objectifs V72-03)
 et Huma V72-01 en dernier.
+
+---
+
+## [2026-07-25] Challenge V72-29 — blindage anti-fuites cross-titre (classe fermee)
+
+**Statut** : Complété (front + 1 test Go ; gates front verts, gate Go au prochain lot).
+
+**Livré** : titleSlug dans 48 fabriques de clés TanStack par-joueur (2e segment,
+invalidations par préfixe préservées) + garde-rail keys.title-slug.guard.test.ts
+(classification exhaustive, une clé non classée échoue) ; garde-rail
+spartan-customizer-strict.guard.test.ts (interdit le fail-open — a trouvé et corrigé
+une violation résiduelle HomePage.tsx:70) ; 12 scénarios bandeaux (états transitoires,
+switch à chaud, assertion data-mask-src : aucun asset halo_5 sous Infinite) ;
+TestCareerLiveCache_Customization_DistinctTitles ajouté.
+
+**Découverte à traiter (prochain lot Go)** : caches serveur keyés sans titre —
+home_matches_cache.go (xuid SEUL, risque HAUT, surface exacte de V72-29),
+recent_matches_cache.go (xuid|limit), remote_stats_cache.go seasonEntries (à vérifier).
+
+**Gates** : tsc -b PASS, eslint 0 erreur, vitest complet 3042 passés / 0 échec.

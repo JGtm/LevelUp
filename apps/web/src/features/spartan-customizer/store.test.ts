@@ -51,6 +51,16 @@ describe('SpartanAppearance store — clé composite (titre, joueur)', () => {
     expect(useSpartanAppearanceStore.getState().byKey[appearanceKey('halo_infinite', 'alice')]).toEqual(appB)
   })
 
+  it('lecture (hook) d\'un TITRE sans enregistrement → défaut, jamais la compo d\'un autre titre', () => {
+    // alice a réglé son apparence sur halo_5 uniquement ; lue depuis un titre où elle n'a
+    // rien enregistré, le hook renvoie le DÉFAUT (jamais la compo halo_5) — anti-fuite
+    // cross-titre au niveau du store d'apparence (V72-14/V72-29).
+    useSpartanAppearanceStore.getState().setAppearance('halo_5', 'alice', appA)
+    const { result } = renderHook(() => useSpartanAppearance('halo_infinite', 'alice'))
+    expect(result.current).toEqual(DEFAULT_SPARTAN_APPEARANCE)
+    expect(result.current).not.toEqual(appA)
+  })
+
   it('retourne le défaut (jamais vide) quand rien n\'est enregistré', () => {
     const { result } = renderHook(() => useSpartanAppearance('halo_5', 'unknown'))
     expect(result.current).toEqual(DEFAULT_SPARTAN_APPEARANCE)

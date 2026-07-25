@@ -37,8 +37,9 @@ export function useHomePage(playerSlug: string) {
 export function useSeasonPassPreview(playerSlug: string, enabled = true) {
   // Locale dans la clé : libellés du pass bakés serveur selon X-LevelUp-Locale.
   const locale = useAppShellStore((s) => s.locale)
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
-    queryKey: queryKeys.seasonPass(playerSlug, locale),
+    queryKey: queryKeys.seasonPass(playerSlug, titleSlug, locale),
     queryFn: () => api.get<SeasonPassPageResponse>(`/players/${playerSlug}/pages/palmares/season-pass`),
     enabled: !!playerSlug && enabled,
     staleTime: 5 * 60 * 1000,

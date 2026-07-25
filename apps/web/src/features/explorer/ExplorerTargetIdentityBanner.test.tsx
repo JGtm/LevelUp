@@ -3,13 +3,35 @@
  * (parité visuelle Home) + cas dégradé identity=null.
  */
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
-import { screen } from '@testing-library/react'
+import { act, screen } from '@testing-library/react'
 
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { HomeSpartanIdentity, TitleSummary } from '@/lib/api/types'
 
 import { ExplorerTargetIdentityBanner } from './ExplorerTargetIdentityBanner'
+
+const mkTitle = (slug: string, caps: string[]): TitleSummary =>
+  ({
+    slug,
+    name: slug,
+    status: 'active',
+    capabilities: caps,
+    is_default: false,
+    effective_hp_to_kill: 225,
+  }) as unknown as TitleSummary
+
+function setTitle(currentTitleSlug: string, availableTitles: TitleSummary[]) {
+  act(() => {
+    useAppShellStore.setState({ currentTitleSlug, availableTitles })
+  })
+}
+
+function maskSrcs(container: HTMLElement): string[] {
+  return Array.from(container.querySelectorAll('[data-mask-src]')).map(
+    (el) => el.getAttribute('data-mask-src') ?? '',
+  )
+}
 
 const IDENTITY_FULL: HomeSpartanIdentity = {
   banner_image_url: '/api/v1/assets/spartan/banner/halo_infinite/x.png',
@@ -136,5 +158,68 @@ describe('ExplorerTargetIdentityBanner', () => {
     })
     expect(screen.getByText('Meilleur CSR')).toBeInTheDocument()
     expect(screen.getByText('Meilleur LUSR')).toBeInTheDocument()
+  })
+})
+
+describe('ExplorerTargetIdentityBanner — portes transitoires fail-closed (anti-fuite V72-29)', () => {
+  afterEach(() => {
+    setTitle('halo_infinite', [])
+  })
+
+  it('availableTitles vide (re-bootstrap) : pas de synthèse même si currentTitleSlug=halo_5', () => {
+    setTitle('halo_5', [])
+    const { container } = render(IDENTITY_FULL)
+    expect(screen.getByTestId('explorer-target-emblem')).toBeInTheDocument()
+    expect(maskSrcs(container)).toHaveLength(0)
+  })
+
+  it('currentTitleSlug absent de availableTitles (désync) : fail-closed, aucun asset halo_5', () => {
+    setTitle('halo_5', [mkTitle('halo_infinite', ['spartan_customizer'])])
+    const { container } = render(IDENTITY_FULL)
+    expect(screen.getByTestId('explorer-target-emblem')).toBeInTheDocument()
+    expect(maskSrcs(container).some((s) => s.includes('halo_5'))).toBe(false)
+  })
+
+  it('titre résolu SANS spartan_customizer (Infinite) : emblème image, pas de synthèse', () => {
+    setTitle('halo_infinite', [mkTitle('halo_infinite', [])])
+    const { container } = render(IDENTITY_FULL)
+    expect(screen.getByTestId('explorer-target-emblem')).toBeInTheDocument()
+    expect(maskSrcs(container)).toHaveLength(0)
+  })
+
+  it('titre résolu AVEC spartan_customizer (H5) : synthèse via assets /titles/halo_5/', () => {
+    setTitle('halo_5', [mkTitle('halo_5', ['spartan_customizer'])])
+    const { container } = render(IDENTITY_FULL)
+    // La synthèse remplace l'emblème <img> par le masque recolorisé.
+    expect(screen.queryByTestId('explorer-target-emblem')).toBeNull()
+    const srcs = maskSrcs(container)
+    expect(srcs.length).toBeGreaterThan(0)
+    expect(srcs.every((s) => s.startsWith('/titles/halo_5/'))).toBe(true)
+  })
+
+  it('identity null + H5 : bandeau par défaut recolorisé sous /titles/halo_5/ (jamais vide)', () => {
+    setTitle('halo_5', [mkTitle('halo_5', ['spartan_customizer'])])
+    const { container } = render(null)
+    const srcs = maskSrcs(container)
+    expect(srcs.length).toBeGreaterThan(0)
+    expect(srcs.every((s) => s.startsWith('/titles/halo_5/'))).toBe(true)
+    expect(screen.getByText('TargetPlayer')).toBeInTheDocument()
+  })
+
+  it('identity null + Infinite : placeholder monogramme, aucun asset title-scopé', () => {
+    setTitle('halo_infinite', [mkTitle('halo_infinite', [])])
+    const { container } = render(null)
+    expect(maskSrcs(container)).toHaveLength(0)
+    expect(screen.getByText('Identité Spartan non disponible')).toBeInTheDocument()
+  })
+
+  it('switch à chaud H5 -> Infinite : aucun asset /titles/halo_5/ ne reste dans le DOM', () => {
+    setTitle('halo_5', [mkTitle('halo_5', ['spartan_customizer'])])
+    const { container } = render(IDENTITY_FULL)
+    expect(maskSrcs(container).some((s) => s.includes('/titles/halo_5/'))).toBe(true)
+
+    setTitle('halo_infinite', [mkTitle('halo_infinite', [])])
+    expect(screen.getByTestId('explorer-target-emblem')).toBeInTheDocument()
+    expect(maskSrcs(container).some((s) => s.includes('halo_5'))).toBe(false)
   })
 })

@@ -8,6 +8,7 @@
  */
 import { describe, it, expect, afterEach } from 'vitest'
 import { act, screen } from '@testing-library/react'
+import type { RenderResult } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { HomeSpartanIdentity, TitleSummary } from '@/lib/api/types'
@@ -29,8 +30,14 @@ const title = (slug: string, caps: string[]): TitleSummary =>
     effective_hp_to_kill: 225,
   }) as unknown as TitleSummary
 
-function renderBanner() {
-  renderWithProviders(
+function setTitle(currentTitleSlug: string, availableTitles: TitleSummary[]) {
+  act(() => {
+    useAppShellStore.setState({ currentTitleSlug, availableTitles })
+  })
+}
+
+function renderBanner(): RenderResult {
+  return renderWithProviders(
     <HomeSpartanIdentityBanner
       spartanIdentity={identity}
       playerName="JGtm"
@@ -42,6 +49,13 @@ function renderBanner() {
       hasPrivacyWarning={false}
       identityUnavailableLabel="—"
     />,
+  )
+}
+
+/** Toute src d'asset title-scopé (nameplate/emblème recolorisé) présente dans le DOM. */
+function maskSrcs(container: HTMLElement): string[] {
+  return Array.from(container.querySelectorAll('[data-mask-src]')).map(
+    (el) => el.getAttribute('data-mask-src') ?? '',
   )
 }
 
@@ -80,5 +94,62 @@ describe('HomeSpartanIdentityBanner — bannière synthétisée (capability spar
     expect(screen.queryByTestId('home-spartan-synthesized-backdrop')).not.toBeInTheDocument()
     // Emblème rond classique (render <img>).
     expect(screen.getByTestId('home-spartan-emblem-image')).toBeInTheDocument()
+  })
+})
+
+describe('HomeSpartanIdentityBanner — portes transitoires fail-closed (anti-fuite V72-29)', () => {
+  afterEach(() => {
+    setTitle('halo_infinite', [])
+  })
+
+  it('availableTitles vide (re-bootstrap) : AUCUNE synthèse même si currentTitleSlug=halo_5', () => {
+    // Fenêtre transitoire au switch : le store pointe encore halo_5 mais availableTitles
+    // n'est pas (encore) résolu → useCapabilityStrict = false → pas de visuel Halo 5.
+    setTitle('halo_5', [])
+    const { container } = renderBanner()
+    expect(screen.queryByTestId('home-spartan-nameplate-scrim')).not.toBeInTheDocument()
+    expect(screen.getByTestId('home-spartan-emblem-image')).toBeInTheDocument()
+    // Aucun asset title-scopé (nameplate/emblème recolorisés) rendu.
+    expect(maskSrcs(container)).toHaveLength(0)
+  })
+
+  it('currentTitleSlug absent de availableTitles (désync) : fail-closed, aucun asset halo_5', () => {
+    setTitle('halo_5', [title('halo_infinite', ['spartan_customizer'])])
+    const { container } = renderBanner()
+    expect(screen.queryByTestId('home-spartan-nameplate-scrim')).not.toBeInTheDocument()
+    expect(screen.getByTestId('home-spartan-emblem-image')).toBeInTheDocument()
+    expect(maskSrcs(container).some((s) => s.includes('halo_5'))).toBe(false)
+  })
+
+  it('titre résolu SANS spartan_customizer (Infinite) : bannière image, pas de synthèse', () => {
+    setTitle('halo_infinite', [title('halo_infinite', [])])
+    const { container } = renderBanner()
+    expect(screen.queryByTestId('home-spartan-nameplate-scrim')).not.toBeInTheDocument()
+    expect(screen.getByTestId('home-spartan-emblem-image')).toBeInTheDocument()
+    expect(maskSrcs(container)).toHaveLength(0)
+  })
+
+  it('titre résolu AVEC spartan_customizer (H5) : synthèse via assets /titles/halo_5/', () => {
+    setTitle('halo_5', [title('halo_5', ['spartan_customizer'])])
+    const { container } = renderBanner()
+    expect(screen.getByTestId('home-spartan-nameplate-scrim')).toBeInTheDocument()
+    expect(screen.queryByTestId('home-spartan-emblem-image')).not.toBeInTheDocument()
+    const srcs = maskSrcs(container)
+    // Nameplate + emblème recolorisés, TOUS sous /titles/halo_5/ (jamais un autre titre).
+    expect(srcs.length).toBeGreaterThan(0)
+    expect(srcs.every((s) => s.startsWith('/titles/halo_5/'))).toBe(true)
+  })
+
+  it('switch à chaud H5 -> Infinite : aucun asset /titles/halo_5/ ne reste dans le DOM', () => {
+    setTitle('halo_5', [title('halo_5', ['spartan_customizer'])])
+    const { container } = renderBanner()
+    // État initial H5 : synthèse active, assets halo_5 présents.
+    expect(maskSrcs(container).some((s) => s.includes('/titles/halo_5/'))).toBe(true)
+
+    // Bascule Infinite (re-render via subscription store).
+    setTitle('halo_infinite', [title('halo_infinite', [])])
+    expect(screen.queryByTestId('home-spartan-nameplate-scrim')).not.toBeInTheDocument()
+    expect(screen.getByTestId('home-spartan-emblem-image')).toBeInTheDocument()
+    expect(maskSrcs(container).some((s) => s.includes('halo_5'))).toBe(false)
   })
 })

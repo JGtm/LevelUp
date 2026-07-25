@@ -15,12 +15,14 @@ import {
   type StartCampaignBody,
 } from '@/lib/playerProfile'
 import { queryKeys } from '@/lib/query/keys'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 // ─── Queries ───────────────────────────────────────────────────────────────
 
 export function usePlayerProfile(playerSlug: string | undefined, windowDays = 30) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery<PlayerProfile>({
-    queryKey: queryKeys.playerProfile.profile(playerSlug ?? '', windowDays),
+    queryKey: queryKeys.playerProfile.profile(playerSlug ?? '', titleSlug, windowDays),
     queryFn: () => playerProfileApi.getProfile(playerSlug!, windowDays),
     enabled: !!playerSlug,
     staleTime: 5 * 60 * 1000,
@@ -29,8 +31,9 @@ export function usePlayerProfile(playerSlug: string | undefined, windowDays = 30
 }
 
 export function useActiveCampaign(playerSlug: string | undefined) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery<ImprovementCampaign | null>({
-    queryKey: queryKeys.playerProfile.activeCampaign(playerSlug ?? ''),
+    queryKey: queryKeys.playerProfile.activeCampaign(playerSlug ?? '', titleSlug),
     queryFn: () => campaignApi.getActive(playerSlug!),
     enabled: !!playerSlug,
     staleTime: 60 * 1000,
@@ -40,8 +43,9 @@ export function useActiveCampaign(playerSlug: string | undefined) {
 
 /** Campagnes closes (historique Réalisations). */
 export function useCampaignHistory(playerSlug: string | undefined) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery<CampaignHistoryItem[]>({
-    queryKey: queryKeys.playerProfile.campaignHistory(playerSlug ?? ''),
+    queryKey: queryKeys.playerProfile.campaignHistory(playerSlug ?? '', titleSlug),
     queryFn: async () => (await campaignApi.listEnded(playerSlug!)).campaigns ?? [],
     enabled: !!playerSlug,
     staleTime: 60 * 1000,
@@ -53,9 +57,10 @@ export function useCampaignHistory(playerSlug: string | undefined) {
 
 export function useCampaignMutations(playerSlug: string | undefined) {
   const qc = useQueryClient()
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const slug = playerSlug ?? ''
   const invalidate = () => {
-    qc.invalidateQueries({ queryKey: queryKeys.playerProfile.activeCampaign(slug) })
+    qc.invalidateQueries({ queryKey: queryKeys.playerProfile.activeCampaign(slug, titleSlug) })
     qc.invalidateQueries({ queryKey: queryKeys.playerProfile.campaignAll(slug) })
   }
   return {
