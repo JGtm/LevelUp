@@ -145,3 +145,66 @@ func TestApplyPlaylistTranslationsFR(t *testing.T) {
 		t.Errorf("no known id = %v, want [Ranked Arena]", got)
 	}
 }
+
+// TestPlaylistTally_CountsByIDNotLabel : régression contre-revue V7.2. Le top 2
+// des playlists de l'indice escouade doit être compté par playlist_id, pas par
+// libellé — sinon deux libellés désignant la MÊME playlist (renommage saisonnier,
+// name_fr renseigné sur une partie des lignes seulement) produisent deux entrées
+// sous-comptées, et la playlist réellement dominante peut sortir du top 2.
+func TestPlaylistTally_CountsByIDNotLabel(t *testing.T) {
+	const (
+		idQuickPlay = "aaaaaaaa-0000-0000-0000-000000000001"
+		idBTB       = "bbbbbbbb-0000-0000-0000-000000000002"
+	)
+	tally := newPlaylistTally()
+	// Même playlist (même id) sous 2 libellés : 3 + 2 = 5 occurrences.
+	for i := 0; i < 3; i++ {
+		tally.add(idQuickPlay, "Quick Play")
+	}
+	for i := 0; i < 2; i++ {
+		tally.add(idQuickPlay, "Partie rapide")
+	}
+	// Playlist concurrente : 4 occurrences — devancerait chaque moitié éclatée.
+	for i := 0; i < 4; i++ {
+		tally.add(idBTB, "Big Team Battle")
+	}
+
+	labels, idByLabel := tally.top(2)
+	if len(labels) != 2 {
+		t.Fatalf("top(2) = %v, want 2 entrées", labels)
+	}
+	if labels[0] != "Quick Play" {
+		t.Errorf("playlist dominante = %q, want \"Quick Play\" (5 occurrences agrégées par id, "+
+			"pas 3 et 2 éclatées sous deux libellés)", labels[0])
+	}
+	if labels[1] != "Big Team Battle" {
+		t.Errorf("2e playlist = %q, want \"Big Team Battle\"", labels[1])
+	}
+	// Le libellé représentatif est le PREMIER vu, et il porte son id pour la
+	// traduction FR par identifiant.
+	if idByLabel["Quick Play"] != idQuickPlay {
+		t.Errorf("idByLabel[Quick Play] = %q, want %q", idByLabel["Quick Play"], idQuickPlay)
+	}
+	if idByLabel["Big Team Battle"] != idBTB {
+		t.Errorf("idByLabel[Big Team Battle] = %q, want %q", idByLabel["Big Team Battle"], idBTB)
+	}
+}
+
+// TestPlaylistTally_FallbackOnLabelWithoutID : sans playlist_id (registre
+// incomplet), le libellé reste la seule identité disponible — comptage par
+// libellé, et aucun id exposé pour la traduction (le COALESCE existant est alors
+// conservé tel quel par applyPlaylistTranslationsFR).
+func TestPlaylistTally_FallbackOnLabelWithoutID(t *testing.T) {
+	tally := newPlaylistTally()
+	tally.add("", "Fiesta")
+	tally.add("", "Fiesta")
+	tally.add("", "Husky Raid")
+
+	labels, idByLabel := tally.top(2)
+	if len(labels) != 2 || labels[0] != "Fiesta" || labels[1] != "Husky Raid" {
+		t.Fatalf("top(2) = %v, want [Fiesta Husky Raid]", labels)
+	}
+	if len(idByLabel) != 0 {
+		t.Errorf("aucun id connu → idByLabel doit rester vide, got %v", idByLabel)
+	}
+}

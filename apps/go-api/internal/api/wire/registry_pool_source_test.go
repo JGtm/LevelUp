@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -146,6 +147,23 @@ func TestEnrichPublicRead_NoPoolSource(t *testing.T) {
 	}
 }
 
+// publicReadCallRE : APPEL de enrichWithHaloTokensPublicRead sur un receiver
+// QUELCONQUE (`<x>.enrichWithHaloTokensPublicRead(`). Le point de tête exclut la
+// DÉCLARATION (`func (r *ServiceRegistry) enrichWithHaloTokensPublicRead(`), qui
+// n'est jamais précédée d'un point.
+//
+// Durci à la contre-revue V7.2 : la version précédente cherchait le littéral
+// « r.enrichWithHaloTokensPublicRead( ». Renommer le receiver (`reg`, `s`, …) —
+// un refactor cosmétique que rien n'interdit — désarmait TOUT le garde-rail en
+// silence : plus aucun caller détecté, l'invariant 1 aurait échoué bruyamment,
+// mais un caller ajouté avec un autre receiver serait passé inaperçu.
+var publicReadCallRE = regexp.MustCompile(`\.\s*enrichWithHaloTokensPublicRead\s*\(`)
+
+// profileCallRE : appel du chemin PROFIL sur (ctx, pdb), receiver quelconque.
+// `enrichWithHaloTokens\(` ne matche pas la variante PublicRead (la parenthèse
+// suit immédiatement « Tokens »).
+var profileCallRE = regexp.MustCompile(`\.\s*enrichWithHaloTokens\(\s*ctx\s*,\s*pdb\s*\)`)
+
 // TestPublicReadPerimeter_Guard (A1.5) : garde-rail de PÉRIMÈTRE. Le fallback
 // pool-first (enrichWithHaloTokensPublicRead) ne doit être branché QUE sur le
 // player-query Explorer. Les chemins ownership-scoped (SeasonPassCtxWithAuth) et le
@@ -158,7 +176,6 @@ func TestPublicReadPerimeter_Guard(t *testing.T) {
 		t.Fatalf("lecture du répertoire package: %v", err)
 	}
 
-	const publicCall = "r.enrichWithHaloTokensPublicRead("
 	callers := map[string]bool{}
 	for _, e := range entries {
 		name := e.Name()
@@ -169,7 +186,7 @@ func TestPublicReadPerimeter_Guard(t *testing.T) {
 		if rerr != nil {
 			t.Fatalf("lecture %s: %v", name, rerr)
 		}
-		if strings.Contains(string(src), publicCall) {
+		if publicReadCallRE.Match(src) {
 			callers[name] = true
 		}
 	}
@@ -185,7 +202,7 @@ func TestPublicReadPerimeter_Guard(t *testing.T) {
 	if rerr != nil {
 		t.Fatalf("lecture registry_auth.go: %v", rerr)
 	}
-	if !strings.Contains(string(authSrc), "r.enrichWithHaloTokens(ctx, pdb)") {
+	if !profileCallRE.Match(authSrc) {
 		t.Fatal("registry_auth.go (Home/SeasonPass) doit conserver le chemin profil enrichWithHaloTokens(ctx, pdb)")
 	}
 }

@@ -1,4 +1,4 @@
-// Package api — post_sync_deltas_bespoke.go : émetteurs bespoke des deltas
+// Package wire — post_sync_deltas_bespoke.go : émetteurs bespoke des deltas
 // post-sync (career_rank, skill_tier). Extraits de post_sync_deltas.go
 // (seuil fichier 500 L / fonction 80 L).
 package wire

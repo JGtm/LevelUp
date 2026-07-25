@@ -128,7 +128,9 @@ func TestPersistTeamColors_FrenchFallsBackToEN(t *testing.T) {
 
 // TestFrOrPreservesLegacyBehaviour garantit que medals (qui passe par frOr, sans
 // localisation API des noms) conserve son comportement : override sinon EN. NB : les
-// weapons passent désormais par chooseFR (pass FR de l'API, cf. fetchWeaponsFR).
+// weapons passent par chooseFR SANS override TOML (pass FR de l'API seul, cf.
+// fetchWeaponsFR + seedWeapons) : la section [weapons] du TOML a été retirée par
+// V72-06 au profit de weapon_names.toml keyé par weapon_key.
 func TestFrOrPreservesLegacyBehaviour(t *testing.T) {
 	m := map[string]string{"Sniper": "Tireur d'élite"}
 	if got := frOr(m, "Sniper"); got != "Tireur d'élite" {

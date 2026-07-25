@@ -56,17 +56,36 @@ func TestMergeCycleNewMatchPlayers(t *testing.T) {
 		}
 	})
 
-	t.Run("dédup par gamertag : le compte moteur (V2) prime sur le snapshot", func(t *testing.T) {
-		engine := []notify.PlayerSyncResult{{Gamertag: "DoubleCompté", MatchesSynced: 3}}
+	// Régression contre-revue V7.2 : l'ancienne implémentation DÉDUPLIQUAIT par
+	// gamertag et jetait les occurrences suivantes — le 2e titre d'un même joueur
+	// disparaissait du compte de la notification Discord.
+	t.Run("même gamertag sur 2 titres moteur : comptes SOMMÉS, 1 seule entrée", func(t *testing.T) {
+		engine := []notify.PlayerSyncResult{
+			{Gamertag: "MultiTitre", MatchesSynced: 3}, // titre A
+			{Gamertag: "MultiTitre", MatchesSynced: 4}, // titre B — ne doit PAS être jeté
+		}
+		got := mergeCycleNewMatchPlayers(cycleStart, engine, nil)
+		if len(got) != 1 {
+			t.Fatalf("1 entrée par joueur attendue, obtenu %d (%+v)", len(got), got)
+		}
+		if got[0].MatchesSynced != 7 {
+			t.Fatalf("comptes des 2 titres attendus sommés (7), obtenu %d", got[0].MatchesSynced)
+		}
+	})
+
+	t.Run("même gamertag moteur + live-only : comptes SOMMÉS, 1 seule entrée", func(t *testing.T) {
+		engine := []notify.PlayerSyncResult{{Gamertag: "MoteurEtLive", MatchesSynced: 3}}
 		snapshot := []PlayerOutcomeDetail{
-			{Gamertag: "DoubleCompté", Outcome: "ok", MatchesInserted: 3, AttemptedAt: during},
+			// Titre live-only (Halo 5) du MÊME joueur : ensemble disjoint du moteur
+			// (auto_sync_run.go orchPlayers vs livePlayers) → aucun double comptage.
+			{Gamertag: "MoteurEtLive", Outcome: "ok", MatchesInserted: 2, AttemptedAt: during},
 		}
 		got := mergeCycleNewMatchPlayers(cycleStart, engine, snapshot)
 		if len(got) != 1 {
-			t.Fatalf("dédup attendue : 1 entrée, obtenu %d (%+v)", len(got), got)
+			t.Fatalf("1 entrée par joueur attendue, obtenu %d (%+v)", len(got), got)
 		}
-		if got[0].MatchesSynced != 3 {
-			t.Fatalf("le compte moteur doit primer (3), obtenu %d", got[0].MatchesSynced)
+		if got[0].MatchesSynced != 5 {
+			t.Fatalf("moteur (3) + live (2) = 5 attendu, obtenu %d", got[0].MatchesSynced)
 		}
 	})
 

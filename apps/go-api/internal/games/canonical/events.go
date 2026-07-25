@@ -151,8 +151,8 @@ type MatchEvent struct {
 }
 
 // MatchEventTimeline est la surface (séparée, chargée ON-DEMAND par
-// LoadMatchEvents) portant la timeline d'événements d'un match. NE PAS la mettre
-// dans MatchDetail (volume) — c'est un appel dédié.
+// LoadMatchEvents) portant la timeline d'événements d'un match. NE PAS l'inclure
+// dans les réponses de détail de match (volume) — c'est un appel dédié.
 type MatchEventTimeline struct {
 	MatchID string       `json:"match_id"`
 	Events  []MatchEvent `json:"events"`

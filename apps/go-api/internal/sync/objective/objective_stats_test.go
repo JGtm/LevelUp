@@ -184,6 +184,84 @@ func TestExtractObjectiveStats_SlayerProducesNoRow(t *testing.T) {
 	}
 }
 
+// TestExtractObjectiveStats_MultiTeamStatsAndBots couvre deux comportements
+// jusqu'ici non assertés (contre-revue V7.2) :
+//
+//  1. PlayerTeamStats MULTI-ENTRÉES — findStatsBundle retient le PREMIER bloc
+//     Stats trouvé (et non l'index 0 quand celui-ci n'en porte pas). Sans
+//     assertion, un refactor pourrait basculer sur la dernière entrée / fusionner
+//     les blocs sans qu'aucun test ne bronche.
+//  2. Clé BOT — un bot doit être keyé EXACTEMENT comme dans match_participants
+//     (« bid(3.0) »), y compris quand l'API renvoie la forme tronquée « bid(4.0 ».
+//     L'ancien cleanXUID produisait « bid(3.0 » → lignes définitivement orphelines
+//     dans match_objective_stats.
+func TestExtractObjectiveStats_MultiTeamStatsAndBots(t *testing.T) {
+	rows := ExtractObjectiveStats("m_mt", loadObjectiveFixture(t, "multi_teamstats_match.json"))
+	if len(rows) != 4 {
+		t.Fatalf("got %d rows, want 4 (2 humains + 2 bots)", len(rows))
+	}
+
+	// 1a — 2 entrées porteuses : la PREMIÈRE gagne (4/6, pas 99/99).
+	r := rowByXUID(rows, "2500000000000001")
+	if r == nil {
+		t.Fatal("row xuid 2500000000000001 absente")
+	}
+	wantInt(t, r.FlagCaptures, 4, "FlagCaptures (1re entrée PlayerTeamStats)")
+	wantInt(t, r.FlagGrabs, 6, "FlagGrabs (1re entrée PlayerTeamStats)")
+	wantFloat(t, r.TimeAsFlagCarrierSeconds, 70.0, "TimeAsFlagCarrierSeconds (1re entrée)") // PT1M10S
+
+	// 1b — 1re entrée SANS bloc Stats : on retient le premier bloc TROUVÉ.
+	r2 := rowByXUID(rows, "2500000000000002")
+	if r2 == nil {
+		t.Fatal("row xuid 2500000000000002 absente (1re entrée sans Stats : le 1er bloc trouvé doit être retenu)")
+	}
+	wantInt(t, r2.FlagCaptures, 7, "FlagCaptures (1er bloc Stats trouvé)")
+
+	// 2 — bots keyés comme dans match_participants (parenthèse fermante incluse).
+	bot := rowByXUID(rows, "bid(3.0)")
+	if bot == nil {
+		t.Fatalf("row bot « bid(3.0) » absente — clés présentes : %v", rowXUIDs(rows))
+	}
+	wantInt(t, bot.FlagCaptures, 1, "FlagCaptures (bot)")
+	if rowByXUID(rows, "bid(3.0") != nil {
+		t.Error("clé bot tronquée « bid(3.0 » présente : régression de cleanXUID (ligne orpheline garantie)")
+	}
+	if rowByXUID(rows, "bid(4.0)") == nil {
+		t.Errorf("forme API tronquée « bid(4.0 » non normalisée en « bid(4.0) » — clés : %v", rowXUIDs(rows))
+	}
+}
+
+// rowXUIDs : clés produites, pour des messages d'échec exploitables.
+func rowXUIDs(rows []persist.ObjectiveStatsInsert) []string {
+	out := make([]string, 0, len(rows))
+	for i := range rows {
+		out = append(out, rows[i].XUID)
+	}
+	return out
+}
+
+// TestCleanXUID_ParityWithSyncExtractXUID verrouille la parité de cleanXUID avec
+// sync.extractXUID (transforms_helpers.go), qui produit les clés de
+// match_participants. Copie locale assumée (cycle d'import) : sans ce test, les
+// deux implémentations peuvent diverger silencieusement — c'est exactement ce qui
+// s'est produit pour les bots.
+func TestCleanXUID_ParityWithSyncExtractXUID(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"xuid(2500000000000001)", "2500000000000001"},
+		{"bid(3.0)", "bid(3.0)"}, // bot : forme intégrale conservée
+		{"bid(3.0", "bid(3.0)"},  // bot : parenthèse fermante restaurée
+		{"bid(12.0)", "bid(12.0)"},
+		{"", ""},
+		{"2500000000000001", ""}, // forme nue non reconnue → sauté (pas de ligne orpheline)
+		{"garbage", ""},
+	}
+	for _, c := range cases {
+		if got := cleanXUID(c.in); got != c.want {
+			t.Errorf("cleanXUID(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}
+
 func TestObjectiveDurationSeconds(t *testing.T) {
 	cases := []struct {
 		in   string

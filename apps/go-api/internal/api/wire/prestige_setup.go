@@ -178,6 +178,16 @@ func (b *PrestigeBundle) serviceAndPlayerDB(ctx context.Context, playerSlug stri
 		// Playlists : résolution FR par playlist_id (asset_translations, même
 		// résolveur que la page Carrière) — comble le trou "Quick Play"/"Big Team
 		// Battle" dont playlist_name_fr est vide dans match_registry (V72-10 suite).
+		//
+		// LIMITATION ASSUMÉE (contre-revue V7.2, 2026-07-25) : ces traducteurs sont
+		// câblés en dur sur le FR, sans tenir compte de la locale de la requête —
+		// un client EN reçoit donc l'indice en français. C'est le comportement
+		// FR-first DÉJÀ retenu sur les autres surfaces serveur qui résolvent des
+		// libellés d'assets (home, match-view, historique : LoadModeTranslationsFR
+		// / LoadAssetTranslationsFR n'ont pas de variante locale-aware). Rendre
+		// l'indice locale-aware isolément le désalignerait du reste de l'app ; le
+		// jour où la résolution d'assets devient locale-aware, ce point de câblage
+		// suit le même mouvement — il n'a pas à le précéder.
 		SquadMatches: prestigedb.NewPrestigeSquadMatchProvider(pdb.SharedReadDB()).
 			WithModeTranslatorFR(platform_duckdb.NewSquadRepo(pdb).LoadModeTranslationsFR).
 			WithPlaylistTranslatorFR(func(ctx context.Context, ids []string) (map[string]string, error) {

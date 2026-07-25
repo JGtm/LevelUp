@@ -241,8 +241,7 @@ func (p *PrestigeSquadMatchProvider) SquadUsualContexts(ctx context.Context, ros
 	}
 	defer rows.Close()
 
-	plCount := map[string]int{}
-	plIDByLabel := map[string]string{} // libellé → playlist_id représentatif (résolution FR par id)
+	tally := newPlaylistTally()
 	mdCount := map[string]int{}
 	for rows.Next() {
 		var plID, pl, md string
@@ -253,10 +252,7 @@ func (p *PrestigeSquadMatchProvider) SquadUsualContexts(ctx context.Context, ros
 		// normaliser pour ne servir que le mode (V72-10, parité match view).
 		md = analysis.NormalizeModeLabel(md)
 		if pl != "" && !uuidLabelRE.MatchString(pl) {
-			plCount[pl]++
-			if _, ok := plIDByLabel[pl]; !ok && plID != "" {
-				plIDByLabel[pl] = plID
-			}
+			tally.add(plID, pl)
 		}
 		if md != "" && !uuidLabelRE.MatchString(md) {
 			mdCount[md]++
@@ -265,9 +261,67 @@ func (p *PrestigeSquadMatchProvider) SquadUsualContexts(ctx context.Context, ros
 	if err := rows.Err(); err != nil {
 		return nil, nil, err
 	}
-	playlists = p.applyPlaylistTranslationsFR(ctx, topNByFreq(plCount, 2), plIDByLabel)
+	topLabels, idByLabel := tally.top(2)
+	playlists = p.applyPlaylistTranslationsFR(ctx, topLabels, idByLabel)
 	modes = p.applyModeTranslationsFR(ctx, topNByFreq(mdCount, 2))
 	return playlists, modes, nil
+}
+
+// playlistTally compte les playlists de l'indice escouade par IDENTITÉ —
+// playlist_id quand il est connu, libellé en dernier repli — et non par libellé
+// (contre-revue V7.2, 2026-07-25).
+//
+// Pourquoi : deux libellés peuvent désigner la MÊME playlist (renommage
+// saisonnier, playlist_name_fr renseigné sur une partie des lignes seulement,
+// casse/espaces divergents dans le registre). Compter par libellé éclatait alors
+// une playlist dominante en deux entrées sous-comptées, capables de sortir du
+// top 2 au profit d'une playlist réellement moins jouée — ou d'y apparaître deux
+// fois. La traduction FR reste appliquée APRÈS le comptage, par id
+// (applyPlaylistTranslationsFR), donc elle ne peut plus scinder ni fusionner un
+// compte.
+type playlistTally struct {
+	count   map[string]int    // clé d'identité → occurrences
+	labelBy map[string]string // clé d'identité → libellé représentatif (le premier vu)
+	idBy    map[string]string // clé d'identité → playlist_id ("" si identité = libellé)
+}
+
+func newPlaylistTally() *playlistTally {
+	return &playlistTally{
+		count:   map[string]int{},
+		labelBy: map[string]string{},
+		idBy:    map[string]string{},
+	}
+}
+
+// add comptabilise une occurrence. id vide (registre sans playlist_id) ⇒ repli sur
+// le libellé, qui redevient la seule identité disponible.
+func (t *playlistTally) add(id, label string) {
+	key := id
+	if key == "" {
+		key = label
+	}
+	t.count[key]++
+	if _, ok := t.labelBy[key]; !ok {
+		t.labelBy[key] = label
+		t.idBy[key] = id
+	}
+}
+
+// top retourne les n playlists les plus jouées (libellés représentatifs, ordre
+// topNByFreq) et la table libellé → playlist_id attendue par
+// applyPlaylistTranslationsFR.
+func (t *playlistTally) top(n int) (labels []string, idByLabel map[string]string) {
+	keys := topNByFreq(t.count, n)
+	labels = make([]string, 0, len(keys))
+	idByLabel = make(map[string]string, len(keys))
+	for _, k := range keys {
+		label := t.labelBy[k]
+		labels = append(labels, label)
+		if id := t.idBy[k]; id != "" {
+			idByLabel[label] = id
+		}
+	}
+	return labels, idByLabel
 }
 
 // applyModeTranslationsFR remplace chaque libellé de mode EN normalisé par sa
