@@ -59,23 +59,6 @@ type ArcRepo interface {
 	Delete(ctx context.Context, id string) error
 }
 
-// ArcTitlesRepo expose la voie cross-titre (table de jointure arc_titles) EN
-// LECTURE, sans changer la sémantique mono-titre existante. La nouvelle voie est
-// un sur-ensemble strict des lectures `WHERE title_slug = ?` actuelles, qui
-// restent fonctionnelles (cf. PLAN_CROSS_TITLE_ARCS_BACKEND Phase 2).
-//
-// Garde-fou pré-backfill : si arc_titles est vide pour un arc, les deux méthodes
-// retombent sur arc.title_slug (titre primaire) — donc identiques à l'historique.
-type ArcTitlesRepo interface {
-	// ArcTitles retourne les title_slug couverts par un arc (>=1). Fallback sur
-	// [arc.title_slug] si la jointure ne contient aucune ligne pour cet arc.
-	ArcTitles(ctx context.Context, arcID string) ([]string, error)
-	// ArcsByTitle liste les arcs couvrant un titre via arc_titles. En mono-titre
-	// (1 ligne par arc), strictement équivalent à l'ancienne requête sur
-	// arc.title_slug.
-	ArcsByTitle(ctx context.Context, userID, titleSlug string) ([]Arc, error)
-}
-
 // ---------- MomentCardRepo (stats.duckdb par joueur) ----------
 
 // MomentCardRepo gère la persistance des cartes générées.
@@ -94,7 +77,11 @@ type PrestigeRepo interface {
 	GetUserPrestigeCrossTitle(ctx context.Context, userID string) (UserPrestige, error)
 	UpsertUserPrestige(ctx context.Context, up UserPrestige) error
 	ListEvents(ctx context.Context, userID, titleSlug string, since time.Time) ([]PrestigeEvent, error)
-	GetLeaderboard(ctx context.Context, userIDs []string, titleSlug *string, since time.Time) ([]LeaderboardEntry, error)
+	// GetLeaderboard classe un ensemble de joueurs sur UN titre. titleSlug est
+	// OBLIGATOIRE : la voie « tous titres confondus » (paramètre *string nil,
+	// SUM par user_id) a été supprimée le 2026-07-25 (V721-14a / D-08) — sans
+	// appelant de production et contraire à l'indépendance stricte par titre.
+	GetLeaderboard(ctx context.Context, userIDs []string, titleSlug string, since time.Time) ([]LeaderboardEntry, error)
 }
 
 // LeaderboardEntry est une ligne du leaderboard PP.
@@ -164,7 +151,6 @@ type SquadChallengeRepo interface {
 	AddParticipant(ctx context.Context, p SquadChallengeParticipant) error
 	UpdateParticipantProgress(ctx context.Context, challengeID, userID string, value float64, completedAt *time.Time) error
 	ListParticipants(ctx context.Context, challengeID string) ([]SquadChallengeParticipant, error)
-	CountActiveParticipants(ctx context.Context, challengeID string) (int, error)
 }
 
 // ---------- SquadRepo (shared_social.duckdb) ----------

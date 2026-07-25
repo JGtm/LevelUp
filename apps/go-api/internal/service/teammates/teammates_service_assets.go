@@ -302,6 +302,7 @@ func buildSquadMatchHistory(matches []domain.SquadMatchRow, mapWR map[string][2]
 			WinRateHistTotal:        winRateTotal,
 			ExpectedWinProb:         m.ExpectedWinProb,
 			SessionLabel:            m.SessionLabel,
+			DominanceFlag:           m.DominanceFlag,
 		})
 	}
 	slices.SortFunc(rows, func(a, b domain.SquadMatchHistoryRow) int {

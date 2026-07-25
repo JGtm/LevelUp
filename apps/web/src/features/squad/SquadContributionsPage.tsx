@@ -87,6 +87,7 @@ export function SquadContributionsPage() {
           emptyMessage={t.empty.noBlockData}
           colorByPlayer={playerColors}
           axisLabels={synergyAxisLabels}
+          rawLabel={t.synergyRadar.rawLabel}
         />
       </div>
 

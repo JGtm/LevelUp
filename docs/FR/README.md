@@ -13,9 +13,18 @@
 
 ## Dernières nouveautés
 
-**v7.2 — Modes à objectif, étanchéité entre titres & recherche de joueur instantanée**
+**v7.2.1 — Modes à objectif, étanchéité entre titres & recherche de joueur instantanée**
 
 Une version centrée sur les modes de jeu à objectif, sur l'étanchéité des données Halo 5 vis-à-vis de Halo Infinite, et sur un Explorer de nouveau exploitable sur n'importe quel joueur.
+
+**Trois modes à objectif de plus — Stockage, Extraction, VIP**
+- **Détaillés dans la vue de match comme les autres** — graines d'énergie déposées et volées et temps de portage ; extractions réussies, amorçages et conversions ; VIP abattus, frags en VIP et plus longue survie en VIP
+- **Dix nouvelles citations d'objectif** — captures, sécurisations et vols de drapeau, frags en portant le drapeau ou le crâne, défense de zone et prise du crâne, avec des paliers calibrés sur vos vraies données de match plutôt que sur une échelle générique
+
+**Explorer, escouade et graphiques**
+- **Toutes les saisons dans « Matchs par saison »** — la ventilation ne couvrait que les saisons que le jeu voulait bien renvoyer ; une saison jamais jouée et une saison non récupérée ne s'affichent plus de la même façon
+- **Objectifs d'escouade réparés** — « Proposer des défis » ne tombe plus en erreur définitivement, et les défis dont la règle annoncée ne correspondait pas à leur évaluation réelle ne sont plus proposés
+- **Des graphiques qui se lisent droit** — durée de vie moyenne réellement mesurée au lieu d'une estimation, taux de victoire et MMR sur leur propre axe, repère de domination sur la bande de résultats, et valeur brute dans l'infobulle du radar de synergie
 
 **Modes à objectif — Capture de drapeau, Bases, Roi de la colline, Oddball**
 - **Vos statistiques d'objectif partout** — captures, retours et vols de drapeau, temps en tant que porteur, captures de zone et temps de contrôle, récupérations du crâne et temps de possession, désormais collectés à chaque match

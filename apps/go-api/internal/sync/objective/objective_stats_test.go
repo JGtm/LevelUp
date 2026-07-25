@@ -1,10 +1,11 @@
 package objective
 
 // objective_stats_test.go — tests golden purs de ExtractObjectiveStats sur les fixtures
-// P0 (payloads réels anonymisés, PLAN_V72_OBJECTIVE_STATS). Vérifie : mapping exact des
-// champs natifs par bloc, conversion des durées ISO-8601 en secondes DOUBLE (fractions
-// préservées), exclusivité des blocs par mode (colonnes des autres modes = nil), et
-// qu'un joueur sans bloc objectif (Slayer) ne produit aucune row.
+// P0 (payloads réels anonymisés, PLAN_V72_OBJECTIVE_STATS ; Stockpile + Extraction :
+// V721-02). Vérifie : mapping exact des champs natifs par bloc, conversion des durées
+// ISO-8601 en secondes DOUBLE (fractions préservées), exclusivité des blocs par mode
+// (colonnes des autres modes = nil), et qu'un joueur sans bloc objectif (Slayer) ne
+// produit aucune row.
 
 import (
 	"encoding/json"
@@ -97,10 +98,13 @@ func TestExtractObjectiveStats_CTF(t *testing.T) {
 	wantInt(t, r.KillsAsFlagCarrier, 0, "KillsAsFlagCarrier")
 	wantInt(t, r.KillsAsFlagReturner, 0, "KillsAsFlagReturner")
 	wantFloat(t, r.TimeAsFlagCarrierSeconds, 140.0, "TimeAsFlagCarrierSeconds") // PT2M20S
-	// Exclusivité : aucune colonne Zones/Oddball.
+	// Exclusivité : aucune colonne Zones/Oddball/Stockpile/Extraction.
 	wantNilInt(t, r.ZoneCaptures, "ZoneCaptures")
 	wantNilInt(t, r.SkullGrabs, "SkullGrabs")
 	wantNilFloat(t, r.TimeInZonesSeconds, "TimeInZonesSeconds")
+	wantNilInt(t, r.PowerSeedsDeposited, "PowerSeedsDeposited")
+	wantNilInt(t, r.SuccessfulExtractions, "SuccessfulExtractions")
+	wantNilFloat(t, r.TimeAsPowerSeedCarrierSeconds, "TimeAsPowerSeedCarrierSeconds")
 
 	r2 := rowByXUID(rows, "2500000000000002")
 	if r2 == nil {
@@ -165,6 +169,145 @@ func TestExtractObjectiveStats_Oddball(t *testing.T) {
 	// Exclusivité : ni CTF ni Zones.
 	wantNilInt(t, r.FlagCaptures, "FlagCaptures")
 	wantNilInt(t, r.ZoneCaptures, "ZoneCaptures")
+}
+
+// TestExtractObjectiveStats_Stockpile — bloc StockpileStats (V721-02, capture P0 sur
+// 3 matchs BTB:Stockpile / 79 blocs). Les 2 durées passent par objectiveDurationSeconds
+// (fractions PRÉSERVÉES) : « PT1M9.6S » = 69.6 s, pas 69 — parsePTDuration tronquerait.
+func TestExtractObjectiveStats_Stockpile(t *testing.T) {
+	rows := ExtractObjectiveStats("m_stock", loadObjectiveFixture(t, "stockpile_match.json"))
+	if len(rows) != 3 {
+		t.Fatalf("got %d rows, want 3", len(rows))
+	}
+	r := rowByXUID(rows, "2500000000000001")
+	if r == nil {
+		t.Fatal("row xuid 2500000000000001 absente")
+	}
+	if r.MatchID != "m_stock" {
+		t.Errorf("MatchID = %q, want m_stock", r.MatchID)
+	}
+	wantInt(t, r.KillsAsPowerSeedCarrier, 2, "KillsAsPowerSeedCarrier")
+	wantInt(t, r.PowerSeedCarriersKilled, 1, "PowerSeedCarriersKilled")
+	wantInt(t, r.PowerSeedsDeposited, 6, "PowerSeedsDeposited")
+	wantInt(t, r.PowerSeedsStolen, 0, "PowerSeedsStolen")
+	wantFloat(t, r.TimeAsPowerSeedCarrierSeconds, 59.1, "TimeAsPowerSeedCarrierSeconds") // PT59.1S
+	wantFloat(t, r.TimeAsPowerSeedDriverSeconds, 0, "TimeAsPowerSeedDriverSeconds")      // PT0S
+	// Exclusivité : aucune colonne CTF/Zones/Oddball/Extraction.
+	wantNilInt(t, r.FlagCaptures, "FlagCaptures")
+	wantNilInt(t, r.ZoneCaptures, "ZoneCaptures")
+	wantNilInt(t, r.SkullGrabs, "SkullGrabs")
+	wantNilInt(t, r.SuccessfulExtractions, "SuccessfulExtractions")
+	wantNilFloat(t, r.TimeAsFlagCarrierSeconds, "TimeAsFlagCarrierSeconds")
+
+	// 2e joueur : minutes + fraction sur les DEUX durées (69.6 / 64.2).
+	r2 := rowByXUID(rows, "2500000000000002")
+	if r2 == nil {
+		t.Fatal("row xuid 2500000000000002 absente")
+	}
+	wantInt(t, r2.PowerSeedsDeposited, 2, "PowerSeedsDeposited(p2)")
+	wantFloat(t, r2.TimeAsPowerSeedCarrierSeconds, 69.6, "TimeAsPowerSeedCarrierSeconds(p2)") // PT1M9.6S
+	wantFloat(t, r2.TimeAsPowerSeedDriverSeconds, 64.2, "TimeAsPowerSeedDriverSeconds(p2)")   // PT1M4.2S
+
+	// 3e joueur : seul porteur de PowerSeedsStolen > 0 (distingue « absent » de « zéro »).
+	r3 := rowByXUID(rows, "2500000000000003")
+	if r3 == nil {
+		t.Fatal("row xuid 2500000000000003 absente")
+	}
+	wantInt(t, r3.PowerSeedsStolen, 2, "PowerSeedsStolen(p3)")
+	wantInt(t, r3.PowerSeedsDeposited, 0, "PowerSeedsDeposited(p3)")
+	wantFloat(t, r3.TimeAsPowerSeedCarrierSeconds, 3.8, "TimeAsPowerSeedCarrierSeconds(p3)") // PT3.8S
+}
+
+// TestExtractObjectiveStats_Extraction — bloc ExtractionStats (V721-02, capture P0 sur
+// 2 matchs BTB:Extraction / 52 blocs). 5 compteurs entiers, AUCUNE durée : toutes les
+// colonnes DOUBLE de la table doivent rester nil.
+func TestExtractObjectiveStats_Extraction(t *testing.T) {
+	rows := ExtractObjectiveStats("m_extr", loadObjectiveFixture(t, "extraction_match.json"))
+	if len(rows) != 2 {
+		t.Fatalf("got %d rows, want 2", len(rows))
+	}
+	r := rowByXUID(rows, "2500000000000001")
+	if r == nil {
+		t.Fatal("row xuid 2500000000000001 absente")
+	}
+	if r.MatchID != "m_extr" {
+		t.Errorf("MatchID = %q, want m_extr", r.MatchID)
+	}
+	wantInt(t, r.ExtractionConversionsCompleted, 1, "ExtractionConversionsCompleted")
+	wantInt(t, r.ExtractionConversionsDenied, 1, "ExtractionConversionsDenied")
+	wantInt(t, r.ExtractionInitiationsCompleted, 1, "ExtractionInitiationsCompleted")
+	wantInt(t, r.ExtractionInitiationsDenied, 0, "ExtractionInitiationsDenied")
+	wantInt(t, r.SuccessfulExtractions, 2, "SuccessfulExtractions")
+	// Exclusivité : aucune colonne CTF/Zones/Oddball/Stockpile, aucune durée.
+	wantNilInt(t, r.FlagCaptures, "FlagCaptures")
+	wantNilInt(t, r.ZoneCaptures, "ZoneCaptures")
+	wantNilInt(t, r.SkullGrabs, "SkullGrabs")
+	wantNilInt(t, r.PowerSeedsDeposited, "PowerSeedsDeposited")
+	wantNilFloat(t, r.TimeAsPowerSeedCarrierSeconds, "TimeAsPowerSeedCarrierSeconds")
+	wantNilFloat(t, r.TimeAsFlagCarrierSeconds, "TimeAsFlagCarrierSeconds")
+	wantNilFloat(t, r.TimeInZonesSeconds, "TimeInZonesSeconds")
+
+	// 2e joueur : seul porteur d'ExtractionInitiationsDenied > 0.
+	r2 := rowByXUID(rows, "2500000000000002")
+	if r2 == nil {
+		t.Fatal("row xuid 2500000000000002 absente")
+	}
+	wantInt(t, r2.ExtractionInitiationsDenied, 1, "ExtractionInitiationsDenied(p2)")
+	wantInt(t, r2.SuccessfulExtractions, 0, "SuccessfulExtractions(p2)")
+}
+
+// TestExtractObjectiveStats_Vip — bloc VipStats (V721-02, capture P0 sur le match
+// Arena:VIP 00761d27-… : 8 blocs joueur). Le bloc existe AUSSI sous Teams[].Stats
+// (agrégat équipe) : seul le niveau joueur est extrait, la fixture ne porte donc pas
+// de section Teams. VipStats était absent de StatsBundle avant ce chantier.
+func TestExtractObjectiveStats_Vip(t *testing.T) {
+	rows := ExtractObjectiveStats("m_vip", loadObjectiveFixture(t, "vip_match.json"))
+	if len(rows) != 3 {
+		t.Fatalf("got %d rows, want 3", len(rows))
+	}
+	r := rowByXUID(rows, "2500000000000001")
+	if r == nil {
+		t.Fatal("row xuid 2500000000000001 absente")
+	}
+	if r.MatchID != "m_vip" {
+		t.Errorf("MatchID = %q, want m_vip", r.MatchID)
+	}
+	wantInt(t, r.KillsAsVip, 2, "KillsAsVip")
+	wantInt(t, r.VipKills, 1, "VipKills")
+	wantInt(t, r.VipAssists, 0, "VipAssists")
+	wantInt(t, r.TimesSelectedAsVip, 4, "TimesSelectedAsVip")
+	wantInt(t, r.MaxKillingSpreeAsVip, 1, "MaxKillingSpreeAsVip")
+	// Durées ISO : PT1M49.5S = 109.5 s (fraction préservée), PT48S = 48 s.
+	wantFloat(t, r.TimeAsVipSeconds, 109.5, "TimeAsVipSeconds")
+	wantFloat(t, r.LongestTimeAsVipSeconds, 48, "LongestTimeAsVipSeconds")
+	// Exclusivité : aucune colonne CTF/Zones/Oddball/Stockpile/Extraction.
+	wantNilInt(t, r.FlagCaptures, "FlagCaptures")
+	wantNilInt(t, r.ZoneCaptures, "ZoneCaptures")
+	wantNilInt(t, r.SkullGrabs, "SkullGrabs")
+	wantNilInt(t, r.PowerSeedsDeposited, "PowerSeedsDeposited")
+	wantNilInt(t, r.SuccessfulExtractions, "SuccessfulExtractions")
+	wantNilFloat(t, r.TimeAsSkullCarrierSeconds, "TimeAsSkullCarrierSeconds")
+
+	// 2e joueur : minutes ENTIÈRES sans fraction (PT3M25S = 205 s), possession la plus longue.
+	r2 := rowByXUID(rows, "2500000000000002")
+	if r2 == nil {
+		t.Fatal("row xuid 2500000000000002 absente")
+	}
+	wantInt(t, r2.MaxKillingSpreeAsVip, 5, "MaxKillingSpreeAsVip(p2)")
+	wantInt(t, r2.VipKills, 0, "VipKills(p2)")
+	wantFloat(t, r2.TimeAsVipSeconds, 205, "TimeAsVipSeconds(p2)")               // PT3M25S
+	wantFloat(t, r2.LongestTimeAsVipSeconds, 205, "LongestTimeAsVipSeconds(p2)") // PT3M25S
+
+	// 3e joueur : chasseur de VIP (6 VIP abattus, 0 frag EN TANT QUE VIP) — un compteur
+	// à zéro doit rester non-nil (distinct d'un champ absent).
+	r3 := rowByXUID(rows, "2500000000000003")
+	if r3 == nil {
+		t.Fatal("row xuid 2500000000000003 absente")
+	}
+	wantInt(t, r3.VipKills, 6, "VipKills(p3)")
+	wantInt(t, r3.KillsAsVip, 0, "KillsAsVip(p3)")
+	wantInt(t, r3.MaxKillingSpreeAsVip, 0, "MaxKillingSpreeAsVip(p3)")
+	wantFloat(t, r3.TimeAsVipSeconds, 31.9, "TimeAsVipSeconds(p3)") // PT31.9S
 }
 
 func TestExtractObjectiveStats_SlayerProducesNoRow(t *testing.T) {

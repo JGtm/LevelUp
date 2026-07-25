@@ -52,6 +52,15 @@ var _ port.BootstrapRepository = stubBootstrapRepo{}
 
 // BuildDemoRouter assemble le routeur chi complet en mode démo et retourne le
 // document OpenAPI PARTAGÉ (3e résultat de api.NewRouter, cf. H1).
+//
+// Surface COMPLÈTE (V721-04) : la racine isolée n'a aucune base DuckDB, ce qui
+// faisait auparavant disparaître du contrat 35 routes pourtant montées en
+// production (29 Prestige, 3 catalog, 3 diag auto-sync) — leurs dépendances
+// échouaient silencieusement et le gate de montage tombait à faux. Le montage est
+// désormais satisfaisable en démo via des dépendances de REPLI décidées dans
+// api.mountAPIV1 (bundle Prestige nil toléré, handlers.EmptyCatalogRepo,
+// ordonnanceur nil + garde 503) — même esprit que stubBootstrapRepo ci-dessus, et
+// strictement borné à cfg.DemoMode : la production garde son wiring conditionnel.
 func BuildDemoRouter(ctx context.Context, opts Options) (http.Handler, *huma.OpenAPI, error) {
 	if opts.Root == "" {
 		return nil, nil, fmt.Errorf("openapigen: Root vide")

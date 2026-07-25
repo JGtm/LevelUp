@@ -151,9 +151,12 @@ func TestTitleStepsRunEndToEnd_Player(t *testing.T) {
 	}
 
 	// Tables de base + prestige/progression (title-owned depuis b25) + colonnes additives.
+	// NB : "arc_titles" a été RETIRÉE de cette liste le 2026-07-25 — la table est droppée
+	// par la migration drop_arc_titles dans le même cycle (décision produit 2026-07-18 :
+	// un arc porte un titre et un seul). Son absence est vérifiée ci-dessous.
 	for _, table := range []string{
 		"player_match_enrichment", "career_progression", "match_skill_rank", "sessions",
-		"match_citations", "arc", "arc_titles", "challenge", "moment_card", "prestige_telemetry",
+		"match_citations", "arc", "challenge", "moment_card", "prestige_telemetry",
 		"baseline_state", "improvement_campaign", "streak", "record_history", "milestone_earned",
 	} {
 		var n int
@@ -166,6 +169,22 @@ func TestTitleStepsRunEndToEnd_Player(t *testing.T) {
 			t.Errorf("table player %s absente", table)
 		}
 	}
+	// drop_arc_titles (V721-09, 2026-07-25) : la jointure many-to-many arc↔titre ne doit
+	// PLUS exister après provisioning, y compris sur une base VIERGE où
+	// create_arc_titles_join (entrée historique conservée pour le ledger
+	// schema_migrations) l'a créée plus tôt dans le même cycle. Preuve bout-en-bout de
+	// l'ordre créateur→dropper (cf. order_dependency_test.go).
+	var nArcTitles int
+	if err := db.QueryRow(
+		"SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'arc_titles'",
+	).Scan(&nArcTitles); err != nil {
+		t.Fatalf("query table arc_titles: %v", err)
+	}
+	if nArcTitles != 0 {
+		t.Errorf("table arc_titles TOUJOURS présente après RunForDB(Player) — drop_arc_titles non appliqué " +
+			"ou placé avant create_arc_titles_join dans canonicalOrder")
+	}
+
 	// Ordre load-bearing : challenge.campaign_id (ALTER create_improvement_campaign_schema)
 	// après create_prestige_player_schema (crée challenge).
 	var nCamp int

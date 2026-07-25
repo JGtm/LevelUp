@@ -88,30 +88,35 @@ func (h *PrestigeHandler) WithActorGuard(g ActorGuard) *PrestigeHandler {
 func (h *PrestigeHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
 
-	huma.Post(api, "/prestige/challenges", h.CreateChallenge, humacore.Op("createPrestigeChallenge", "Crée un défi Prestige", "prestige"))
+	huma.Post(api, "/prestige/challenges", h.CreateChallenge, humacore.Op("createPrestigeChallenge", "Crée un défi Prestige", "prestige"),
+		humacore.DefaultStatus(http.StatusCreated))
 	huma.Get(api, "/prestige/challenges", h.ListActiveChallenges, humacore.Op("listPrestigeChallenges", "Liste les défis Prestige actifs", "prestige"))
 	huma.Get(api, "/prestige/challenges/{id}", h.GetChallenge, humacore.Op("getPrestigeChallenge", "Détail d'un défi Prestige", "prestige"))
 	huma.Patch(api, "/prestige/challenges/{id}", h.UpdateChallenge, humacore.Op("updatePrestigeChallenge", "Met à jour un défi Prestige", "prestige"))
 	huma.Delete(api, "/prestige/challenges/{id}", h.AbandonChallenge, humacore.Op("abandonPrestigeChallenge", "Abandonne un défi Prestige", "prestige"))
 	huma.Post(api, "/prestige/challenges/{id}/suggest-next", h.SuggestNext, humacore.Op("suggestNextPrestigeChallenge", "Suggère le prochain défi Prestige", "prestige"))
 
-	huma.Post(api, "/arcs", h.CreateArc, humacore.Op("createPrestigeArc", "Crée un arc de progression Prestige", "prestige"))
+	huma.Post(api, "/arcs", h.CreateArc, humacore.Op("createPrestigeArc", "Crée un arc de progression Prestige", "prestige"),
+		humacore.DefaultStatus(http.StatusCreated))
 	huma.Get(api, "/arcs", h.ListArcs, humacore.Op("listPrestigeArcs", "Liste les arcs de progression Prestige", "prestige"))
 	huma.Get(api, "/arcs/presets", h.ListArcPresets, humacore.Op("listPrestigeArcPresets", "Liste les arcs Prestige prédéfinis", "prestige"))
-	huma.Post(api, "/arcs/presets/{id}/adopt", h.AdoptPresetArc, humacore.Op("adoptPrestigeArcPreset", "Adopte un arc Prestige prédéfini", "prestige"))
+	huma.Post(api, "/arcs/presets/{id}/adopt", h.AdoptPresetArc, humacore.Op("adoptPrestigeArcPreset", "Adopte un arc Prestige prédéfini", "prestige"),
+		humacore.DefaultStatus(http.StatusCreated))
 	huma.Get(api, "/arcs/{id}", h.GetArc, humacore.Op("getPrestigeArc", "Détail d'un arc de progression Prestige", "prestige"))
 	huma.Delete(api, "/arcs/{id}", h.DeleteArc, humacore.Op("deletePrestigeArc", "Supprime un arc de progression Prestige", "prestige"))
 
 	huma.Get(api, "/prestige/me", h.GetMyPrestige, humacore.Op("getMyPrestige", "État Prestige du joueur courant", "prestige"))
 	huma.Get(api, "/templates/suggest", h.SuggestTemplates, humacore.Op("suggestPrestigeTemplates", "Suggère des templates de défi Prestige", "prestige"))
 
-	huma.Post(api, "/squads/{squad_id}/challenges", h.CreateSquadChallenge, humacore.Op("createSquadChallenge", "Crée un défi d'escouade", "prestige"))
+	huma.Post(api, "/squads/{squad_id}/challenges", h.CreateSquadChallenge, humacore.Op("createSquadChallenge", "Crée un défi d'escouade", "prestige"),
+		humacore.DefaultStatus(http.StatusCreated))
 	huma.Get(api, "/squads/{squad_id}/challenges", h.ListSquadChallenges, humacore.Op("listSquadChallenges", "Liste les défis d'une escouade", "prestige"))
 	huma.Post(api, "/squads/{squad_id}/challenges/pool/refresh", h.RefreshSquadPool, humacore.Op("refreshSquadChallengePool", "Rafraîchit le pool de défis d'une escouade", "prestige"))
 	huma.Post(api, "/squad-challenges/{id}/join", h.JoinSquadChallenge, humacore.Op("joinSquadChallenge", "Rejoint un défi d'escouade", "prestige"))
 	huma.Delete(api, "/squad-challenges/{id}", h.AbandonSquadChallenge, humacore.Op("abandonSquadChallenge", "Abandonne un défi d'escouade", "prestige"))
 
-	huma.Post(api, "/squads", h.CreateSquad, humacore.Op("createSquad", "Crée une escouade Prestige", "prestige"))
+	huma.Post(api, "/squads", h.CreateSquad, humacore.Op("createSquad", "Crée une escouade Prestige", "prestige"),
+		humacore.DefaultStatus(http.StatusCreated))
 	huma.Get(api, "/squads", h.ListMySquads, humacore.Op("listMySquads", "Liste les escouades du joueur", "prestige"))
 	huma.Patch(api, "/squads/{squad_id}", h.RenameSquad, humacore.Op("renameSquad", "Renomme une escouade", "prestige"))
 	huma.Delete(api, "/squads/{squad_id}", h.DeleteSquad, humacore.Op("deleteSquad", "Supprime une escouade", "prestige"))
@@ -177,10 +182,10 @@ type noContentOutput struct {
 // challengeOutput : 200 — objet Challenge brut (contrat writeJSON inchangé).
 type challengeOutput struct{ Body prestige.Challenge }
 
-// challengeCreatedOutput : 201 — objet Challenge créé.
+// challengeCreatedOutput : 201 — objet Challenge créé (statut posé par
+// humacore.DefaultStatus au montage : source unique, runtime ET document).
 type challengeCreatedOutput struct {
-	Status int
-	Body   prestige.Challenge
+	Body prestige.Challenge
 }
 
 // mapOutput : 200 — corps map[string]any (préserve les enveloppes {challenges,count} etc.).
@@ -243,7 +248,7 @@ func (h *PrestigeHandler) CreateChallenge(ctx context.Context, in *rawBodyInput)
 	if err != nil {
 		return nil, h.serviceError(ctx, err)
 	}
-	return &challengeCreatedOutput{Status: http.StatusCreated, Body: c}, nil
+	return &challengeCreatedOutput{Body: c}, nil
 }
 
 // ─────────── GetChallenge ───────────

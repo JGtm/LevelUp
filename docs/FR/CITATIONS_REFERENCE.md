@@ -1,6 +1,6 @@
 # Référentiel des Citations (Commendations) — redirection
 
-Ce référentiel a été consolidé. La source de vérité à jour (88 commendations, schéma DuckDB, seed Go) est maintenue en anglais :
+Ce référentiel a été consolidé. La source de vérité à jour (98 commendations, schéma DuckDB, seed Go) est maintenue en anglais :
 
 - **Référence complète des données** : [../COMMENDATIONS_REFERENCE.md](../COMMENDATIONS_REFERENCE.md)
 - **Guide de la feature** : [../COMMENDATIONS.md](../COMMENDATIONS.md) — voir aussi la redirection FR [CITATIONS.md](CITATIONS.md)

@@ -52,7 +52,8 @@ func (h *AdminHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	huma.Patch(api, "/users/{username}/role", h.handleChangeRole, humacore.Op("patchAdminUserRole", "Modifie le rôle d'un utilisateur (admin/user)", "admin"))
 	huma.Patch(api, "/users/{username}/password", h.handleResetPassword, humacore.Op("patchAdminUserPassword", "Reset password d'un utilisateur", "admin"))
 	huma.Get(api, "/invites", h.handleListInvites, humacore.Op("listAdminInvites", "Liste des invitations admin (auth admin requis)", "admin"))
-	huma.Post(api, "/invites", h.handleGenerateInvite, humacore.Op("createAdminInvite", "Crée une invitation", "admin"))
+	huma.Post(api, "/invites", h.handleGenerateInvite, humacore.Op("createAdminInvite", "Crée une invitation", "admin"),
+		humacore.DefaultStatus(http.StatusCreated))
 	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/invites")
 	huma.Delete(api, "/invites/{code}", h.handleRevokeInvite, humacore.Op("deleteAdminInvite", "Révoque une invitation", "admin"))
 }
@@ -88,9 +89,11 @@ type adminListUsersOutput struct {
 type adminListInvitesOutput struct {
 	Body []domain.AdminInviteSummary
 }
+
+// adminGenerateInviteOutput : 201 Created (statut posé par humacore.DefaultStatus
+// au montage — source unique, runtime ET document).
 type adminGenerateInviteOutput struct {
-	Status int
-	Body   *domain.InviteCode
+	Body *domain.InviteCode
 }
 
 // adminNoContent : réponse 204 sans corps.
@@ -208,7 +211,7 @@ func (h *AdminHandler) handleGenerateInvite(ctx context.Context, in *adminGenera
 		return nil, humacore.NewError(http.StatusInternalServerError, "generate_error", "erreur de génération")
 	}
 	slog.Info("admin: invitation générée", "code", invite.Code, "by", createdBy, "expires_in_days", body.ExpiresInDays)
-	return &adminGenerateInviteOutput{Status: http.StatusCreated, Body: invite}, nil
+	return &adminGenerateInviteOutput{Body: invite}, nil
 }
 
 // handleRevokeInvite révoque un code d'invitation.

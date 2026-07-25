@@ -129,9 +129,15 @@ type StatsMatchRow struct {
 	MedalExploitScore   *float64
 	OffensiveConversion *float64
 	DefensiveResistance *float64
-	MaxKillingSpree     *int
-	HeadshotKills       *int
-	PerfectKills        *int
+	// DominanceFlag : enrichissement narratif du match (player_match_enrichment).
+	// 0=none, 1=domination, 2=humiliation, 3=remontada, 4=débandade,
+	// 5=contre-remontada (cf. canonical.DominanceFlag). 0 quand le titre ne
+	// reconstruit pas de timeline de score (Halo 5) ou quand le match n'a pas
+	// été traité par le pipeline post-sync → aucun marqueur côté front.
+	DominanceFlag   int
+	MaxKillingSpree *int
+	HeadshotKills   *int
+	PerfectKills    *int
 	// Kill-type breakdown (donut « répartition des frags » timeseries) : types
 	// d'arme de base + mécaniques natives Halo 5 (assassinats + compétences
 	// spartiate). Les 3 mécaniques sont nil hors h5.

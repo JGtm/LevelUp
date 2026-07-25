@@ -25,10 +25,10 @@ type createSquadChallengeBody struct {
 	CreatedBy       string  `json:"created_by"`
 }
 
-// squadChallengeCreatedOutput : 201 — objet SquadChallenge créé.
+// squadChallengeCreatedOutput : 201 — objet SquadChallenge créé (statut posé par
+// humacore.DefaultStatus au montage : source unique, runtime ET document).
 type squadChallengeCreatedOutput struct {
-	Status int
-	Body   prestige.SquadChallenge
+	Body prestige.SquadChallenge
 }
 
 // CreateSquadChallenge gère POST /squads/{squad_id}/challenges.
@@ -58,7 +58,7 @@ func (h *PrestigeHandler) CreateSquadChallenge(ctx context.Context, in *squadIDB
 	if err != nil {
 		return nil, h.serviceError(ctx, err)
 	}
-	return &squadChallengeCreatedOutput{Status: http.StatusCreated, Body: sc}, nil
+	return &squadChallengeCreatedOutput{Body: sc}, nil
 }
 
 // listSquadChallengesInput : path {squad_id} + le {player_slug} parent (l'acteur

@@ -106,10 +106,13 @@ func (h *SettingsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	huma.Get(api, "/settings", h.handleGetSettings, humacore.Op("getSettings", "Lire la configuration", "settings"))
 	huma.Patch(api, "/settings", h.handlePatchSettings, humacore.Op("patchSettings", "Mettre à jour la configuration", "settings"))
 	humacore.MarkRequestBodyOptional(api, http.MethodPatch, "/settings")
-	huma.Post(api, "/settings/media/reset-index", h.handlePostMediaResetIndex, humacore.Op("postSettingsMediaResetIndex", "Réinitialiser l'index médias", "settings"))
+	huma.Post(api, "/settings/media/reset-index", h.handlePostMediaResetIndex, humacore.Op("postSettingsMediaResetIndex", "Réinitialiser l'index médias", "settings"),
+		humacore.DefaultStatus(http.StatusAccepted))
 	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/settings/media/reset-index")
-	huma.Post(api, "/settings/media/scan", h.handlePostMediaScan, humacore.Op("postSettingsMediaScan", "Lance un scan du dossier médias", "settings"))
-	huma.Post(api, "/settings/sessions/recalculate", h.handlePostRecalculateSessions, humacore.Op("postSettingsSessionsRecalculate", "Recalcule les sessions à partir de la base actuelle", "settings"))
+	huma.Post(api, "/settings/media/scan", h.handlePostMediaScan, humacore.Op("postSettingsMediaScan", "Lance un scan du dossier médias", "settings"),
+		humacore.DefaultStatus(http.StatusAccepted))
+	huma.Post(api, "/settings/sessions/recalculate", h.handlePostRecalculateSessions, humacore.Op("postSettingsSessionsRecalculate", "Recalcule les sessions à partir de la base actuelle", "settings"),
+		humacore.DefaultStatus(http.StatusAccepted))
 	huma.Get(api, "/settings/backup/status", h.handleGetBackupStatus, humacore.Op("getBackupStatus", "Statut du scheduler de sauvegarde", "settings"))
 	huma.Post(api, "/settings/backup/run", h.handlePostBackupRun, humacore.Op("postBackupRun", "Déclenche un cycle de sauvegarde immédiat", "settings"))
 }
@@ -129,10 +132,11 @@ type settingsJSONOutput struct {
 	Body any
 }
 
-// asyncJobOutput : 202 Accepted avec un AsyncJobStatus.
+// asyncJobOutput : 202 Accepted avec un AsyncJobStatus (les 3 routes async de
+// settings partagent ce contrat ; le 202 est posé par humacore.DefaultStatus au
+// montage — source unique du statut, runtime ET document).
 type asyncJobOutput struct {
-	Status int
-	Body   *domain.AsyncJobStatus
+	Body *domain.AsyncJobStatus
 }
 
 // ─── Endpoints ───────────────────────────────────────────────────────────────
@@ -479,7 +483,7 @@ func (h *SettingsHandler) handlePostMediaResetIndex(ctx context.Context, in *set
 		})
 	}()
 
-	return &asyncJobOutput{Status: http.StatusAccepted, Body: &jobSnapshot}, nil
+	return &asyncJobOutput{Body: &jobSnapshot}, nil
 }
 
 // handlePostMediaScan lance une indexation non-destructive des médias pour tous les joueurs.
@@ -546,7 +550,7 @@ func (h *SettingsHandler) handlePostMediaScan(ctx context.Context, _ *struct{}) 
 		})
 	}()
 
-	return &asyncJobOutput{Status: http.StatusAccepted, Body: &jobSnapshot}, nil
+	return &asyncJobOutput{Body: &jobSnapshot}, nil
 }
 
 // sessionComputeOptionsFor résout les options de calcul de sessions d'un titre
@@ -635,5 +639,5 @@ func (h *SettingsHandler) handlePostRecalculateSessions(ctx context.Context, _ *
 		})
 	}()
 
-	return &asyncJobOutput{Status: http.StatusAccepted, Body: &jobSnapshot}, nil
+	return &asyncJobOutput{Body: &jobSnapshot}, nil
 }

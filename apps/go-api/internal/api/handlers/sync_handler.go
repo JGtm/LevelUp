@@ -325,10 +325,10 @@ func truncate(s string, max int) string {
 // ─── Montage Huma + types Input/Output ───────────────────────────────────────
 
 // syncJobOutput : 202 Accepted, corps = snapshot du job de sync créé (les 3
-// routes partagent ce contrat). Status override la valeur par défaut Huma.
+// routes partagent ce contrat). Le 202 est posé UNE fois par route via
+// humacore.DefaultStatus au montage (source unique : runtime ET document).
 type syncJobOutput struct {
-	Status int
-	Body   *domain.AsyncJobStatus
+	Body *domain.AsyncJobStatus
 }
 
 // syncInitialInput : corps brut décodé maison. RawBody (pas Body typé) → préserve
@@ -348,15 +348,18 @@ type syncDeltaInput struct {
 // groupe admin où server.go le monte).
 func (h *SyncHandler) MountInitialAndAll(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Post(api, "/sync/initial", h.StartInitialSync, humacore.Op("postSyncInitial", "Lancer la synchronisation initiale", "sync"))
-	huma.Post(api, "/sync/all", h.StartSyncAll, humacore.Op("postSyncAll", "Sync delta global (tous les joueurs configurés)", "sync"))
+	huma.Post(api, "/sync/initial", h.StartInitialSync, humacore.Op("postSyncInitial", "Lancer la synchronisation initiale", "sync"),
+		humacore.DefaultStatus(http.StatusAccepted))
+	huma.Post(api, "/sync/all", h.StartSyncAll, humacore.Op("postSyncAll", "Sync delta global (tous les joueurs configurés)", "sync"),
+		humacore.DefaultStatus(http.StatusAccepted))
 }
 
 // MountDelta enregistre la route /sync via Huma sur le sous-routeur chi (préfixe
 // /players/{player_slug} + middleware hérités — lit {player_slug} parent).
 func (h *SyncHandler) MountDelta(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Post(api, "/sync", h.StartDeltaSync, humacore.Op("postPlayerSync", "Sync delta par joueur", "sync"))
+	huma.Post(api, "/sync", h.StartDeltaSync, humacore.Op("postPlayerSync", "Sync delta par joueur", "sync"),
+		humacore.DefaultStatus(http.StatusAccepted))
 }
 
 // StartInitialSync lance la sync initiale pour un joueur.
@@ -489,7 +492,7 @@ func (h *SyncHandler) StartInitialSync(ctx context.Context, in *syncInitialInput
 		}
 	}()
 
-	return &syncJobOutput{Status: http.StatusAccepted, Body: &jobSnapshot}, nil
+	return &syncJobOutput{Body: &jobSnapshot}, nil
 }
 
 // StartDeltaSync lance une synchronisation delta pour un joueur donné.
@@ -572,7 +575,7 @@ func (h *SyncHandler) StartDeltaSync(ctx context.Context, in *syncDeltaInput) (*
 		}
 	}()
 
-	return &syncJobOutput{Status: http.StatusAccepted, Body: &jobSnapshot2}, nil
+	return &syncJobOutput{Body: &jobSnapshot2}, nil
 }
 
 // StartSyncAll lance une synchronisation delta pour tous les joueurs configurés.
@@ -655,5 +658,5 @@ func (h *SyncHandler) StartSyncAll(ctx context.Context, _ *struct{}) (*syncJobOu
 		}
 	}()
 
-	return &syncJobOutput{Status: http.StatusAccepted, Body: &jobSnapshot3}, nil
+	return &syncJobOutput{Body: &jobSnapshot3}, nil
 }

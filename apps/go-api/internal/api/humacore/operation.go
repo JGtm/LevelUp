@@ -32,3 +32,33 @@ func Op(operationID, summary string, tags ...string) func(o *huma.Operation) {
 		o.Tags = tags
 	}
 }
+
+// DefaultStatus fixe le code de statut de SUCCÈS de l'opération (201, 202, …) —
+// modificateur composable, à passer À CÔTÉ de Op :
+//
+//	huma.Post(api, "/groups", h.handleCreateGroup,
+//		humacore.Op("createGroup", "Crée un groupe", "groups"),
+//		humacore.DefaultStatus(http.StatusCreated))
+//
+// SOURCE UNIQUE du statut (V721-04). Huma écrit `op.DefaultStatus` au runtime ET
+// range le schéma de réponse sous ce code dans le document (huma.go, Register →
+// processOutputType) — sauf si le type de sortie porte un champ `Status int`,
+// auquel dernier cas la VALEUR DU CHAMP l'emporte au runtime, inconditionnellement
+// (`status = int(vo.Field(outStatusIndex).Int())`).
+//
+// D'où la règle :
+//   - statut FIXE → PAS de champ `Status` dans la struct de sortie, ce
+//     modificateur seul (le code n'est écrit qu'ici, et c'est exactement ce que
+//     le contrat publie) ;
+//   - statut DYNAMIQUE (une même opération répond 202 OU 409 avec un corps
+//     différent) → le champ `Status` reste le mécanisme runtime, et ce
+//     modificateur déclare le statut NOMINAL pour le document.
+//
+// Sans lui, Huma documente 200 dès que la sortie a un corps : c'est le défaut qui
+// obligeait le fragment manuel à supprimer le 200 dérivé et à redécrire un 20x
+// que Huma sait pourtant dériver.
+func DefaultStatus(status int) func(o *huma.Operation) {
+	return func(o *huma.Operation) {
+		o.DefaultStatus = status
+	}
+}

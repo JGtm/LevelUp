@@ -38,8 +38,12 @@ import (
 //   - PairName / PairNameFR : depuis Summary.PairMode (pair_name / pair_name_fr).
 //   - MapName / MapNameFR : depuis Summary.Map.
 //   - IsFirefight : depuis Summary.IsPvE.
-//   - MedalExploitScore / OffensiveConversion / DefensiveResistance : dÃ©rivÃ©s
-//     LevelUp non couverts par canonical (cf. P4_GAP_ANALYSIS.md), restent nil.
+//   - MedalExploitScore : dÃ©rivÃ© LevelUp non couvert par canonical
+//     (cf. P4_GAP_ANALYSIS.md), reste nil dans ce converter.
+//   - OffensiveConversion / DefensiveResistance : dÃ©rivÃ©s LevelUp CALCULÃ‰S
+//     ici (via ComputeCombatYield, cf. plus bas) â€” nil seulement quand aucune
+//     donnÃ©e de dÃ©gÃ¢ts n'est disponible pour le match (D-11 V721-14a :
+//     l'ancien commentaire affirmait Ã  tort qu'ils restaient toujours nil).
 func StatsMatchRowFromCanonical(r canonical.PlayerMatchRow, effectiveHpToKill float64) legacymatch.StatsMatchRow {
 	out := legacymatch.StatsMatchRow{
 		MatchID:            r.Summary.MatchID,
@@ -81,6 +85,10 @@ func StatsMatchRowFromCanonical(r canonical.PlayerMatchRow, effectiveHpToKill fl
 	out.KillsExpected = r.Self.KillsExpected
 	out.DeathsExpected = r.Self.DeathsExpected
 	out.ShotsHit = r.Self.ShotsHit
+	// DominanceFlag : enrichissement narratif déjà persisté (player_match_enrichment)
+	// et chargé par le projecteur canonical. 0 = aucun badge (titre sans timeline de
+	// score, ou match non traité par le pipeline post-sync) → aucun marqueur front.
+	out.DominanceFlag = int(r.Enrichment.DominanceFlag)
 	if r.Self.DamageDealt != nil {
 		v := float64(*r.Self.DamageDealt)
 		out.DamageDealt = &v

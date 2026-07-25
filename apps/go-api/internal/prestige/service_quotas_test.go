@@ -325,7 +325,7 @@ func (f *fakeNoOpPrestigeRepo) UpsertUserPrestige(_ context.Context, _ UserPrest
 func (f *fakeNoOpPrestigeRepo) ListEvents(_ context.Context, _, _ string, _ time.Time) ([]PrestigeEvent, error) {
 	return nil, nil
 }
-func (f *fakeNoOpPrestigeRepo) GetLeaderboard(_ context.Context, _ []string, _ *string, _ time.Time) ([]LeaderboardEntry, error) {
+func (f *fakeNoOpPrestigeRepo) GetLeaderboard(_ context.Context, _ []string, _ string, _ time.Time) ([]LeaderboardEntry, error) {
 	return nil, nil
 }
 

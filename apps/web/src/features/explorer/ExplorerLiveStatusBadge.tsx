@@ -10,8 +10,10 @@
  *  - "no_auth"       : aucun token Halo exploitable, le fetch live n'a jamais
  *    été tenté.
  *  - "failed"        : fetch live tenté et en échec (err déjà loggé côté API).
- *  - "local_partial" : repli sur un calcul/bucketing local structurellement
- *    incomplet.
+ *  - "local_partial" : réponse structurellement incomplète — repli sur un
+ *    calcul/bucketing local, OU live partiel (une partie seulement des
+ *    sous-requêtes a abouti ; ex. « matchs par saison » avec des saisons
+ *    indéterminées, cf. SeasonMatchCount.unresolved).
  * Statut absent (undefined/null) → pas de badge (dégradation gracieuse pour
  * les fixtures/tests antérieurs à Lot A3, qui ne posent pas encore le champ).
  */

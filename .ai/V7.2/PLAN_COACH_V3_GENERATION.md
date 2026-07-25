@@ -1,9 +1,21 @@
 # Plan — Coach V3 : extensions de génération
 
 > **Créé le** : 2026-06-09
-> **Statut** : Proposé — 3 phases **indépendamment livrables** (ordre suggéré, pas imposé)
+> **Statut** : **LIVRÉ à ~95 %** le 2026-06-09 (commits `7cefd911a`, `b0dd5256a`, `b916e1191`,
+> `c00b7850f`) — voir « État d'exécution » ci-dessous pour le détail par phase. Ce fichier
+> n'avait jamais été mis à jour après livraison (statut affiché « Proposé » à tort — corrigé
+> le 2026-07-25, chantier v7.2.1 item V721-07).
 > **Priorité** : 🟡 produit (chaque phase = arbitrage produit propre avant branche)
 > **Origine backlog** : section `Coach proactif × Prestige` — items Squad coach / Coach négatif soft / Coach tone
+
+## État d'exécution (2026-07-25 — vérifié sur pièces, chantier v7.2.1 item V721-07)
+
+| Phase | Statut | Preuve |
+|---|---|---|
+| A — Coach négatif soft | `[x]` fait | Détection : `internal/progression/coach/generator.go:326-354` (`LOWESSSoftNegativeThreshold = -0.10`, `buildLOWESSSoftNegativeAlerts`, gate `LOWESSObservationWindow = 14j` défini `coach/types.go:91-93`). Type d'alerte `coach/types.go:40-43` (`AlertTypeLOWESSSoftNegative`). Catégorie neutre `coach/emitter.go:42-45` (`CategoryTrendConsolidate`). Câblé dans le générateur `coach/generator.go:105`. Pont vers signal `coach_advisor/types.go:37-40` (`SignalLOWESSSoftNegative`), traduction `coach_advisor/signals.go:45-46,82-97`. UI `apps/web/src/features/ascension/CoachFocusCard.tsx` (accents `success`/`info`, `FOCUS_THRESHOLD = 0.02`), montée en 1re position dans `AscensionCoachingTab.tsx:66`. `TrendBadge` de `profile/PerformanceSection.tsx` neutralisé (`:138-164`, token `info` au lieu de `outcome-loss`). Tests `coach/generator_test.go:370-391,580-586`, `coach_advisor/signals_test.go:70-71`. ADR 0014 amendée le 2026-07-25 (§ dédiée en tête du fichier) — l'ADR affichait encore « positif uniquement », corrigé (item 07.2 du chantier v7.2.1). |
+| B — Coach tone | `[~]` couvert par A | Comme prévu par ce plan (§ Phase B « fusion de fait avec Phase A ») : aucun setting `coach_tone`, aucune matrice de tons — la banque i18n universelle IS la Phase A (`profile.coach.*` + `profile.lusr.*` dans `apps/web/src/lib/i18n/manifests/profile.toml`, catégories notif `internal/notifications/`). Rien à livrer séparément. |
+| C — Squad coach | `[x]` fait | Entité `Squad`/`SquadMember` re-keyée xuid : `internal/prestige/types.go:235` (`Squad`), `:253` (`SquadMember`), `:268` (`SquadChallenge`) — *référence corrigée : le plan disait `:246-259`, périmée*. Résolution d'accès membre-user : `internal/prestige/service_squads.go:212-226` (`assertMemberUser`). Règle no-overlap : `internal/prestige/squad_progress.go:38` (`MatchCountsForSquad`). Profil agrégé d'escouade + axe focal : `internal/prestige/squad_coach.go:16-33` (`AggregateSquadAxes`), `:35-52` (`SquadFocusAxis`), `:78-96` (`BiasTemplatesByAxis`). Provider de profil (perf 8 composantes → 6 axes) : `internal/api/wire/prestige_squad_profile.go:45-48` (`SquadAxes`), câblé `internal/api/server_apiv1.go:1063`. Filtre coach sur le pool : `internal/prestige/service_pilot_pool.go:181-239` (`RefreshSquadPool`) — *référence corrigée : le plan disait `:145-195`, périmée*. UI : `apps/web/src/features/squad/SquadFocusStrip.tsx` + `SquadObjectivesPanel.tsx`. **L'affirmation « il n'existe aucun signal coach niveau escouade » (ligne originale de ce plan, § Phase C) est invalidée — retirée ci-dessous.** |
+| Cooldown anti-répétition du cap soft-négatif (mentionné § Phase A, densité/fréquence) | `[!]` non traité — décision assumée | Jamais implémenté et **ne le sera pas** : la carte `CoachFocusCard` est déjà bornée à 1 seul axe focal affiché (`focal` = la composante qui bouge le plus, cf. boucle `Math.abs(c.trend) > Math.abs(focal.trend)`) et à un seuil d'amplitude `FOCUS_THRESHOLD = 0.02` — un cooldown ajouterait un état persistant (dernier axe montré + horodatage, par joueur) pour un bénéfice non mesuré (aucune plainte produit sur la répétition observée). Revisiter seulement si un signal utilisateur concret l'exige. |
 
 ## Cadre commun
 
@@ -18,10 +30,12 @@ ADR de référence : 0014 (couches progression), 0020 (pont coach→Prestige), 0
 
 ---
 
-## Phase A — Coach négatif soft (neutre / soft-négatif, pas pessimiste)
+## Phase A — Coach négatif soft (neutre / soft-négatif, pas pessimiste) — `[x]` LIVRÉ
 
-> Note produit : il s'agit de **neutre à soft-négatif**, jamais culpabilisant. ADR 0014 §6.1 cadre
-> aujourd'hui le coach comme strictement positif → cette phase **amende l'ADR** avec garde-fous.
+> Note produit : il s'agit de **neutre à soft-négatif**, jamais culpabilisant. ADR 0014 §6.1 cadrait
+> le coach comme strictement positif → cette phase **amende l'ADR** avec garde-fous — amendement
+> effectivement rédigé le 2026-07-25 dans `docs/adr/0014-progression-tracking-v2-ascension.md`
+> (§ dédiée en tête du fichier).
 
 ### Détection (backend)
 1. Étendre `profile/lowess.go` : exposer la **pente négative soutenue** (déjà calculable —
@@ -66,7 +80,7 @@ indépendamment ; le signal n'est **émis vers l'UI** qu'une fois `CoachFocusCar
 
 ---
 
-## Phase B — Coach tone (ton narratif **universel**)
+## Phase B — Coach tone (ton narratif **universel**) — `[~]` couvert par la Phase A
 
 > **Décision produit (2026-06-09, validée user)** : le ton n'est **PAS** un setting joueur. Un seul
 > ton **par défaut et universel** : soft, non-culpabilisant, factuel-encourageant. Pas de
@@ -88,11 +102,16 @@ indépendamment ; le signal n'est **émis vers l'UI** qu'une fois `CoachFocusCar
 
 ---
 
-## Phase C — Squad coach (signal niveau escouade)
+## Phase C — Squad coach (signal niveau escouade) — `[x]` LIVRÉ (cf. tableau État d'exécution)
 
-> La plus structurelle. `SquadChallenge` et `RefreshSquadPool` **existent déjà**
-> (`prestige/types.go:246-259`, `service_pilot_pool.go:145-195`) mais **sans filtre coach** (sélection
-> aléatoire), et il n'existe **aucun** signal coach niveau escouade.
+> La plus structurelle. Au moment de la rédaction de ce plan (2026-06-09), `SquadChallenge` et
+> `RefreshSquadPool` **existaient déjà** (`prestige/types.go:268`, `service_pilot_pool.go:181-239`
+> — références corrigées le 2026-07-25, les lignes d'origine avaient bougé) mais **sans filtre
+> coach** (sélection aléatoire), et il n'existait **aucun** signal coach niveau escouade.
+> **Ces deux lacunes sont comblées depuis le 2026-06-09** : `squad_coach.go` fournit le signal
+> (profil agrégé + axe focal) et `RefreshSquadPool` l'utilise pour biaiser le pool
+> (`BiasTemplatesByAxis`) au lieu d'un shuffle pur. Section conservée ci-dessous pour l'historique
+> de conception ; le detail livré est dans le tableau « État d'exécution » en tête de fichier.
 
 ### Backend
 1. **Profil agrégé d'escouade** : moyenne LUSR par axe sur les membres (réutiliser le profil per-user
@@ -201,6 +220,31 @@ Chaque phase = **branche dédiée**. Ne pas tout ouvrir d'un coup.
 ## Références
 - `internal/progression/coach_advisor/{service.go, signals.go, synthesis_grammar.go}`
 - `internal/progression/profile/lowess.go`
-- `internal/prestige/{types.go, service_pilot_pool.go}`
+- `internal/prestige/{types.go, service_pilot_pool.go, squad_coach.go, service_squads.go}`
 - `internal/domain/settings.go` (settings joueur)
-- ADR 0014 §6.1 (cadre positif — à amender pour Phase A), ADR 0020, ADR 0021
+- ADR 0014 §6.1 (cadre positif — **amendé le 2026-07-25**, cf. § dédiée en tête de l'ADR),
+  ADR 0020, ADR 0021
+
+## Journal d'exécution
+
+- **2026-06-09** : Phases A et C livrées (commits `7cefd911a`, `b0dd5256a`, `b916e1191`,
+  `c00b7850f`). Phase B fusionnée de fait dans A comme anticipé par ce plan. Ce fichier plan
+  n'a pas été mis à jour à ce moment (statut resté « Proposé ») — c'est la source de l'écart
+  documentaire corrigé ci-dessous.
+- **2026-07-25** (chantier v7.2.1, item V721-07 — cf. `.ai/V7.2.1/PLAN_V721_NOTION_BATCH.md`) :
+  - 07.1 — ce plan corrigé sur pièces : statut réel par phase (tableau « État d'exécution »),
+    2 références de lignes périmées corrigées (`types.go:246-259`→`:268`,
+    `service_pilot_pool.go:145-195`→`:181-239`), affirmation « aucun signal coach niveau
+    escouade » retirée/invalidée (§ Phase C), cooldown soft-négatif statué `[!]` (décision
+    assumée : pas de bénéfice mesuré face au coût d'un état persistant supplémentaire).
+  - 07.2 — ADR 0014 amendée (`docs/adr/0014-progression-tracking-v2-ascension.md`) : nouvelle
+    section datée documentant le signal soft-négatif et ses garde-fous exacts (seuil -0.10,
+    fenêtre 14j, catégorie neutre `CategoryTrendConsolidate`, jamais de rendu "défaite"), plus
+    correction ponctuelle des deux passages qui affirmaient encore "positif uniquement".
+  - 07.3 — `CoachFocusCard.tsx` migré de l'objet `STR` local vers le manifest i18n
+    `profile.coach.*` (`apps/web/src/lib/i18n/manifests/profile.toml` +
+    `apps/web/src/lib/i18n/generated/profile.ts` mis à jour à la main, cohérent avec le format
+    produit par `build_i18n_manifests.mjs` — à régénérer/vérifier au gate `make generate-types`
+    ou équivalent i18n).
+  - 07.4 — ce plan archivé vers `.ai/archive/` et retiré de `.ai/BACKLOG.md` (chantiers suivis
+    dans des plans dédiés).

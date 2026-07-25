@@ -4,9 +4,13 @@ package migrations
 // match_objective_stats, créée DIRECTEMENT en forme append-only par le step
 // shared_create_objective_stats (TargetShared), existe avec sa vue _latest, son index
 // match_id, et respecte la sémantique append-only (dernière version par (match_id,xuid)).
+//
+// V721-02 : + le step shared_objective_stats_add_stockpile_extraction (11 colonnes
+// nullable Stockpile/Extraction) et la RECRÉATION de la vue _latest qui l'accompagne.
 
 import (
 	"database/sql"
+	"strings"
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
@@ -52,6 +56,9 @@ func TestSharedObjectiveStatsAppendOnlyShape(t *testing.T) {
 		"flag_captures", "time_as_flag_carrier_seconds",
 		"zone_captures", "zone_scoring_ticks", "time_in_zones_seconds",
 		"skull_grabs", "time_as_skull_carrier_seconds", "longest_time_as_skull_carrier_seconds",
+		"power_seeds_deposited", "time_as_power_seed_carrier_seconds",
+		"successful_extractions",
+		"vip_kills", "times_selected_as_vip", "time_as_vip_seconds",
 	} {
 		var n int
 		if err := db.QueryRow(
@@ -97,5 +104,99 @@ func TestSharedObjectiveStatsAppendOnlyShape(t *testing.T) {
 	}
 	if latestVal != 3 {
 		t.Errorf("vue _latest flag_captures = %d, want 3 (dernière version par written_at)", latestVal)
+	}
+}
+
+// TestSharedObjectiveStatsStockpileExtractionColumns — step
+// shared_objective_stats_add_stockpile_extraction (V721-02) : les 18 colonnes
+// Stockpile/Extraction/VIP existent sur la TABLE **et** sont servies par la vue _latest.
+//
+// Le 2e point est le vrai piège : DuckDB fige la liste de colonnes d'un `SELECT *` au
+// CREATE VIEW. Sans le `CREATE OR REPLACE VIEW` de la migration, la vue continuerait
+// d'exposer les 25 colonnes d'origine (les lecteurs — Q12, ObjectiveStatsRepo — ne
+// verraient JAMAIS les nouvelles), voire échouerait. Le SELECT ci-dessous sur la vue
+// échoue si la recréation est retirée.
+func TestSharedObjectiveStatsStockpileExtractionColumns(t *testing.T) {
+	db, err := sql.Open("duckdb", ":memory:")
+	if err != nil {
+		t.Fatalf("open duckdb: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	migration.SetTitleStepsProvider(StepsFor)
+	if err := migration.RunForDB(db, migration.TargetShared); err != nil {
+		t.Fatalf("RunForDB(Shared): %v", err)
+	}
+
+	// Les 18 colonnes présentes sur la table, nullable, avec la bonne FAMILLE de type.
+	// Préfixe (INT… / DOUBLE…) plutôt qu'égalité stricte : le libellé exact de
+	// information_schema.data_type dépend de la version DuckDB, la famille non.
+	wantTypePrefix := map[string]string{
+		"kills_as_power_seed_carrier":        "INT",
+		"power_seed_carriers_killed":         "INT",
+		"power_seeds_deposited":              "INT",
+		"power_seeds_stolen":                 "INT",
+		"time_as_power_seed_carrier_seconds": "DOUBLE",
+		"time_as_power_seed_driver_seconds":  "DOUBLE",
+		"extraction_conversions_completed":   "INT",
+		"extraction_conversions_denied":      "INT",
+		"extraction_initiations_completed":   "INT",
+		"extraction_initiations_denied":      "INT",
+		"successful_extractions":             "INT",
+		"kills_as_vip":                       "INT",
+		"vip_kills":                          "INT",
+		"vip_assists":                        "INT",
+		"times_selected_as_vip":              "INT",
+		"max_killing_spree_as_vip":           "INT",
+		"time_as_vip_seconds":                "DOUBLE",
+		"longest_time_as_vip_seconds":        "DOUBLE",
+	}
+	for col, prefix := range wantTypePrefix {
+		var gotType, nullable string
+		err := db.QueryRow(`
+			SELECT data_type, is_nullable FROM information_schema.columns
+			WHERE table_name = 'match_objective_stats' AND column_name = ?`, col).Scan(&gotType, &nullable)
+		if err != nil {
+			t.Errorf("colonne match_objective_stats.%s absente: %v", col, err)
+			continue
+		}
+		if !strings.HasPrefix(strings.ToUpper(gotType), prefix) {
+			t.Errorf("match_objective_stats.%s type = %s, want préfixe %s", col, gotType, prefix)
+		}
+		if !strings.EqualFold(nullable, "YES") {
+			t.Errorf("match_objective_stats.%s is_nullable = %s, want YES (un mode absent = NULL)", col, nullable)
+		}
+	}
+
+	// Round-trip par la vue _latest : preuve que le CREATE OR REPLACE VIEW a bien suivi
+	// l'ALTER. Un bloc Stockpile écrit → les colonnes Extraction restent NULL.
+	if _, err := db.Exec(`
+		INSERT INTO match_objective_stats (
+			match_id, xuid, power_seeds_deposited, power_seeds_stolen,
+			time_as_power_seed_carrier_seconds
+		) VALUES ('m_sp', 'x_sp', 6, 2, 59.1)`); err != nil {
+		t.Fatalf("insert stockpile row: %v", err)
+	}
+	var deposited, stolen int
+	var carrierSeconds float64
+	var successfulExtractions, timesSelectedAsVip sql.NullInt64
+	if err := db.QueryRow(`
+		SELECT power_seeds_deposited, power_seeds_stolen, time_as_power_seed_carrier_seconds,
+		       successful_extractions, times_selected_as_vip
+		FROM match_objective_stats_latest WHERE match_id = 'm_sp' AND xuid = 'x_sp'`,
+	).Scan(&deposited, &stolen, &carrierSeconds, &successfulExtractions, &timesSelectedAsVip); err != nil {
+		t.Fatalf("SELECT sur la vue _latest (vue non recréée après l'ALTER ?): %v", err)
+	}
+	if deposited != 6 || stolen != 2 {
+		t.Errorf("_latest power_seeds_deposited/stolen = %d/%d, want 6/2", deposited, stolen)
+	}
+	if carrierSeconds != 59.1 {
+		t.Errorf("_latest time_as_power_seed_carrier_seconds = %v, want 59.1 (fraction préservée)", carrierSeconds)
+	}
+	if successfulExtractions.Valid {
+		t.Errorf("_latest successful_extractions = %d, want NULL (bloc d'un autre mode)", successfulExtractions.Int64)
+	}
+	if timesSelectedAsVip.Valid {
+		t.Errorf("_latest times_selected_as_vip = %d, want NULL (bloc d'un autre mode)", timesSelectedAsVip.Int64)
 	}
 }

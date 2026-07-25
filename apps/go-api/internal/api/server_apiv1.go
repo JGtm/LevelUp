@@ -220,17 +220,37 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// Phase H.bis — catalogue Playlists/Pairs/Maps (title-aware).
 		// OpenReadWriteShared pour compatibilité avec les connexions RW existantes
 		// (prestige presets, rank catalog) sur le même fichier DuckDB.
+		//
+		// V721-04 — SÉCURITÉ : ces 3 routes étaient montées SANS garde d'auth. Ce
+		// n'est pas un référentiel purement public : elles acceptent `?xuid=` +
+		// `only_played=true` et révèlent alors quelles playlists / cartes CE joueur
+		// a jouées — donnée d'activité, pas métadonnée de jeu. Le trou était
+		// INVISIBLE au ratchet `bare_routes_ratchet_test` parce que le harnais de
+		// démo, faute de metadata.duckdb, ne montait jamais ces routes ; le montage
+		// de repli ajouté ci-dessous l'a révélé. Fermé par RequireAuth sur les DEUX
+		// branches (aucun appelant front : vérifié par grep sur apps/web).
+		catalogRouter := r.With(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
 		if catalogMetaDB, err := platform_duckdb.OpenReadWriteShared(
 			metadataDBPathFor(cfg),
 		); err != nil {
 			slog.Warn("catalog_meta_db_unavailable", "err", err)
+			// V721-04 — contrat publié : le document OpenAPI est rendu depuis le
+			// routeur de DÉMO (racine isolée SANS metadata.duckdb). Sans ce repli,
+			// les 3 routes /titles/{slug}/catalog/* disparaissaient du contrat alors
+			// qu'elles existent en production. Repli = repo de listes vides (aucun
+			// accès DuckDB), MÊME handler donc mêmes routes/schémas. Strictement
+			// borné à la démo : hors démo, metadata absente ⇒ routes non montées,
+			// comportement de production INCHANGÉ.
+			if cfg.DemoMode {
+				handlers.NewCatalogHandler(handlers.EmptyCatalogRepo{}).Mount(catalogRouter, apiOpt)
+			}
 		} else {
 			// Handle RW persistant : le CatalogHandler le garde pour servir
 			// /catalog/*. Tracker pour fermeture au shutdown via reg.Close(),
 			// sinon fuite de refCount metadata (cf. INCIDENT_2026-05-21).
 			reg.TrackMetadataHandle(catalogMetaDB)
 			catalogH := handlers.NewCatalogHandler(platform_duckdb.NewCatalogRepo(catalogMetaDB, nil))
-			catalogH.Mount(r, apiOpt) // /titles/{slug}/catalog/{playlists,pairs,maps}
+			catalogH.Mount(catalogRouter, apiOpt) // /titles/{slug}/catalog/{playlists,pairs,maps}
 		}
 
 		slog.Info("multi_title_api_enabled",
@@ -391,7 +411,14 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// accessible au seul fait d'être sur la loopback. Permet de comprendre pourquoi
 	// le scheduler ne sync pas un joueur (raison du skip/failure). Non-loopback → 403 ;
 	// non-admin → 401/403. No-op auth en démo / auth non activée (dev inchangé).
-	if autoSyncScheduler != nil {
+	//
+	// V721-04 — contrat publié : le document OpenAPI est rendu depuis le routeur de
+	// DÉMO, où aucun ordonnanceur n'est câblé (harnais openapigen : scheduler nil).
+	// Sans le `|| cfg.DemoMode`, les 3 routes disparaissaient du contrat alors
+	// qu'elles existent en production. Le handler porte une garde nil (503
+	// scheduler_unavailable) donc aucune route montée ne peut paniquer. Hors démo,
+	// le wiring conditionnel est INCHANGÉ (scheduler nil ⇒ routes non montées).
+	if autoSyncScheduler != nil || cfg.DemoMode {
 		autoSyncH := handlers.NewAdminAutoSyncHandler(autoSyncScheduler, cfg, tokenProvider)
 		r.Route("/_diag/auto-sync", func(r chi.Router) {
 			autoSyncOpt := humacore.WithSharedDoc(d.humaSharedConfig, apiV1BasePath+"/_diag/auto-sync")
@@ -807,7 +834,16 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 
 		// Module Prestige — routes derrière feature flag PRESTIGE_ENABLED.
 		// Le bundle a été initialisé au boot ; si nil ou flag off, routes non montées.
-		if prestigeBundle != nil && cfg.PrestigeEnabled {
+		//
+		// V721-04 — contrat publié : le document OpenAPI est rendu depuis le routeur
+		// de DÉMO, dont la racine isolée n'a NI shared_social.duckdb NI
+		// metadata.duckdb → NewPrestigeBundle échoue → bundle nil. Les 29 routes
+		// Prestige disparaissaient donc du contrat MALGRÉ PrestigeEnabled=true. En
+		// démo on les monte avec un bundle nil : LazyPrestigeService est nil-safe
+		// (serviceAndPlayerDB renvoie « bundle not initialized », les lectures
+		// principales servent déjà des fixtures de démo) — aucune panique possible.
+		// Le flag reste souverain, et hors démo la condition est INCHANGÉE.
+		if cfg.PrestigeEnabled && (prestigeBundle != nil || cfg.DemoMode) {
 			lazy := wire.NewLazyPrestigeService(prestigeBundle, nil, cfg.DemoMode)
 			appPlayers := func(context.Context) ([]domain.PlayerSummary, error) {
 				return cfg.LoadPlayers()

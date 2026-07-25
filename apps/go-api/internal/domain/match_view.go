@@ -448,10 +448,11 @@ type MatchScoreboardRow struct {
 }
 
 // MatchScoreboardObjective : stats objectifs par joueur d'un match à objectif.
-// Blocs mutuellement exclusifs par mode (CTF / Zones (Strongholds+KOTH) / Oddball) :
-// seuls les champs du mode joué sont renseignés (les autres nil, omitempty). Totaux
-// équipe/lobby calculés à la LECTURE côté front (SUM par équipe). Colonnes verrouillées
-// sur payload réel GetMatchStats (PLAN_V72_OBJECTIVE_STATS.md).
+// Blocs mutuellement exclusifs par mode (CTF / Zones (Strongholds+KOTH) / Oddball /
+// Stockpile / Extraction / VIP) : seuls les champs du mode joué sont renseignés (les autres
+// nil, omitempty). Totaux équipe/lobby calculés à la LECTURE côté front (SUM par équipe).
+// Colonnes verrouillées sur payload réel GetMatchStats (PLAN_V72_OBJECTIVE_STATS.md ;
+// Stockpile + Extraction + VIP : V721-02, PLAN_V721_NOTION_BATCH.md).
 type MatchScoreboardObjective struct {
 	// CTF (CaptureTheFlagStats)
 	FlagCaptures             *int     `json:"flag_captures,omitempty"`
@@ -479,6 +480,27 @@ type MatchScoreboardObjective struct {
 	SkullScoringTicks                *int     `json:"skull_scoring_ticks,omitempty"`
 	TimeAsSkullCarrierSeconds        *float64 `json:"time_as_skull_carrier_seconds,omitempty"`
 	LongestTimeAsSkullCarrierSeconds *float64 `json:"longest_time_as_skull_carrier_seconds,omitempty"`
+	// Stockpile (StockpileStats — graines d'énergie)
+	KillsAsPowerSeedCarrier       *int     `json:"kills_as_power_seed_carrier,omitempty"`
+	PowerSeedCarriersKilled       *int     `json:"power_seed_carriers_killed,omitempty"`
+	PowerSeedsDeposited           *int     `json:"power_seeds_deposited,omitempty"`
+	PowerSeedsStolen              *int     `json:"power_seeds_stolen,omitempty"`
+	TimeAsPowerSeedCarrierSeconds *float64 `json:"time_as_power_seed_carrier_seconds,omitempty"`
+	TimeAsPowerSeedDriverSeconds  *float64 `json:"time_as_power_seed_driver_seconds,omitempty"`
+	// Extraction (ExtractionStats — aucune durée dans ce bloc)
+	ExtractionConversionsCompleted *int `json:"extraction_conversions_completed,omitempty"`
+	ExtractionConversionsDenied    *int `json:"extraction_conversions_denied,omitempty"`
+	ExtractionInitiationsCompleted *int `json:"extraction_initiations_completed,omitempty"`
+	ExtractionInitiationsDenied    *int `json:"extraction_initiations_denied,omitempty"`
+	SuccessfulExtractions          *int `json:"successful_extractions,omitempty"`
+	// VIP (VipStats)
+	KillsAsVip              *int     `json:"kills_as_vip,omitempty"`
+	VipKills                *int     `json:"vip_kills,omitempty"`
+	VipAssists              *int     `json:"vip_assists,omitempty"`
+	TimesSelectedAsVip      *int     `json:"times_selected_as_vip,omitempty"`
+	MaxKillingSpreeAsVip    *int     `json:"max_killing_spree_as_vip,omitempty"`
+	TimeAsVipSeconds        *float64 `json:"time_as_vip_seconds,omitempty"`
+	LongestTimeAsVipSeconds *float64 `json:"longest_time_as_vip_seconds,omitempty"`
 }
 
 // MatchNemesisRow : adversaire fréquent (kills reçus de lui).

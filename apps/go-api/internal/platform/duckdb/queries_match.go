@@ -95,7 +95,8 @@ SELECT
     -- Stats objectifs par joueur (match_objective_stats_latest, LEFT JOIN sur
     -- l'index match_id) : NULL hors mode à objectif ou titre non supporté. Le
     -- service ne construit MatchScoreboardRow.Objective que si un bloc est non-NULL
-    -- (data-driven par mode). CTF / Zones (Strongholds+KOTH) / Oddball.
+    -- (data-driven par mode). CTF / Zones (Strongholds+KOTH) / Oddball / Stockpile /
+    -- Extraction / VIP.
     o.flag_captures, o.flag_capture_assists, o.flag_grabs, o.flag_secures,
     o.flag_steals, o.flag_returns, o.flag_carriers_killed, o.flag_returners_killed,
     o.kills_as_flag_carrier, o.kills_as_flag_returner, o.time_as_flag_carrier_seconds,
@@ -103,7 +104,15 @@ SELECT
     o.zone_scoring_ticks, o.time_in_zones_seconds,
     o.kills_as_skull_carrier, o.skull_carriers_killed, o.skull_grabs,
     o.skull_scoring_ticks, o.time_as_skull_carrier_seconds,
-    o.longest_time_as_skull_carrier_seconds
+    o.longest_time_as_skull_carrier_seconds,
+    o.kills_as_power_seed_carrier, o.power_seed_carriers_killed, o.power_seeds_deposited,
+    o.power_seeds_stolen, o.time_as_power_seed_carrier_seconds,
+    o.time_as_power_seed_driver_seconds,
+    o.extraction_conversions_completed, o.extraction_conversions_denied,
+    o.extraction_initiations_completed, o.extraction_initiations_denied,
+    o.successful_extractions,
+    o.kills_as_vip, o.vip_kills, o.vip_assists, o.times_selected_as_vip,
+    o.max_killing_spree_as_vip, o.time_as_vip_seconds, o.longest_time_as_vip_seconds
 FROM match_participants p
 LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p.xuid
 LEFT JOIN me_perfect m ON p.xuid = m.xuid

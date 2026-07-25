@@ -5,6 +5,8 @@
  *  - no_selection : aucun coéquipier confirmé.
  *  - invalid_selection : confirmedGts > 0 mais selectedRows vide.
  */
+import { useMemo } from 'react'
+
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
@@ -12,6 +14,9 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { OutcomeSequenceTape, type OutcomePoint } from '@/components/charts/OutcomeSequenceTape'
+import { asDominance } from '@/components/charts/outcomeSequence'
+import { ReviewBadge } from '@/components/charts/ReviewBadge'
+import { dominanceLabels as buildDominanceLabels } from '@/lib/narrative/dominance'
 import { outcomeCodeToTapeValue } from '@/lib/outcome'
 import { useSquadContext } from './SquadContext'
 import { getSquadText } from './i18n'
@@ -35,6 +40,11 @@ export function SquadSynergiesPage() {
   // PARENT du card « Écart cumulé au FDA attendu » : pas de colonne vide dans la
   // rangée 1 de SquadFragSection (le card conserve son self-gate en profondeur).
   const hasExpectedStats = useCapability('expected_stats')
+  // Libellés des drapeaux de dominance (bande de résultats) — table canonique
+  // partagée avec la colonne Dominance de l'Explorateur. Mémoïsé : la bande
+  // recalcule son option ECharts quand cette référence change. Déclaré AVANT les
+  // retours anticipés (règle des hooks).
+  const tapeDominanceLabels = useMemo(() => buildDominanceLabels(locale), [locale])
 
   const hasSelection = confirmedGamertags.length > 0
   const hasRows = selectedRows.length > 0
@@ -122,8 +132,9 @@ export function SquadSynergiesPage() {
       {/* Séquence des résultats : on garde le libellé + un message court quand
           il n'y a pas d'historique, au lieu de masquer le bloc. */}
       <div>
-        <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <p className="mb-1 flex items-center text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {t.charts.outcomeSequenceTitle}
+          <ReviewBadge reviewKey="squad.outcome_tape" />
         </p>
         {matchHistory.length > 0 ? (
           <OutcomeSequenceTape
@@ -134,8 +145,12 @@ export function SquadSynergiesPage() {
               matchId: m.match_id,
               map: m.map_ui || undefined,
               mode: m.mode_ui || m.pair_name || undefined,
+              // Absent (0/undefined, ex. Halo 5 sans timeline de score) → aucun
+              // marqueur dessiné, aucun suffixe de tooltip.
+              dominance: asDominance(m.dominance_flag),
             }))}
             labels={outcomeLabels}
+            dominanceLabels={tapeDominanceLabels}
           />
         ) : (
           <p className="text-sm text-muted-foreground">{t.empty.noBlockData}</p>

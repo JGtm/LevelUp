@@ -450,6 +450,49 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
           label: 'Meilleur temps',
           tooltip: 'Plus longue possession du crâne',
         },
+        power_seeds_deposited: {
+          label: 'Déposées',
+          tooltip: "Graines d'énergie déposées dans la base",
+        },
+        power_seeds_stolen: {
+          label: 'Volées',
+          tooltip: "Graines d'énergie prises dans la base adverse",
+        },
+        power_seed_carriers_killed: {
+          label: 'Porteurs éliminés',
+          tooltip: 'Porteurs de graine adverses éliminés',
+        },
+        time_as_power_seed_carrier_seconds: {
+          label: 'Temps porteur',
+          tooltip: "Temps en tant que porteur d'une graine d'énergie",
+        },
+        successful_extractions: { label: 'Extractions', tooltip: 'Extractions réussies' },
+        extraction_initiations_completed: {
+          label: 'Amorçages',
+          tooltip: 'Amorçages de balise menés à terme',
+        },
+        extraction_conversions_completed: {
+          label: 'Conversions',
+          tooltip: 'Balises adverses converties',
+        },
+        extraction_conversions_denied: {
+          label: 'Conversions refusées',
+          tooltip: 'Conversions adverses empêchées',
+        },
+        vip_kills: { label: 'VIP abattus', tooltip: 'VIP adverses éliminés' },
+        times_selected_as_vip: {
+          label: 'Fois VIP',
+          tooltip: 'Nombre de fois désigné VIP',
+        },
+        kills_as_vip: { label: 'Frags en VIP', tooltip: 'Frags réalisés en étant le VIP' },
+        time_as_vip_seconds: {
+          label: 'Temps VIP',
+          tooltip: 'Temps passé en tant que VIP',
+        },
+        longest_time_as_vip_seconds: {
+          label: 'Meilleur temps',
+          tooltip: 'Plus longue survie en tant que VIP',
+        },
       },
     },
   },
@@ -665,6 +708,40 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
         longest_time_as_skull_carrier_seconds: {
           label: 'Longest',
           tooltip: 'Longest skull possession',
+        },
+        power_seeds_deposited: { label: 'Deposited', tooltip: 'Power seeds deposited at the base' },
+        power_seeds_stolen: {
+          label: 'Stolen',
+          tooltip: 'Power seeds taken from the enemy base',
+        },
+        power_seed_carriers_killed: {
+          label: 'Carriers killed',
+          tooltip: 'Enemy power seed carriers killed',
+        },
+        time_as_power_seed_carrier_seconds: {
+          label: 'Carrier time',
+          tooltip: 'Time as power seed carrier',
+        },
+        successful_extractions: { label: 'Extractions', tooltip: 'Successful extractions' },
+        extraction_initiations_completed: {
+          label: 'Initiations',
+          tooltip: 'Extraction initiations completed',
+        },
+        extraction_conversions_completed: {
+          label: 'Conversions',
+          tooltip: 'Enemy beacons converted',
+        },
+        extraction_conversions_denied: {
+          label: 'Conversions denied',
+          tooltip: 'Enemy conversions denied',
+        },
+        vip_kills: { label: 'VIPs killed', tooltip: 'Enemy VIPs killed' },
+        times_selected_as_vip: { label: 'Times VIP', tooltip: 'Times selected as VIP' },
+        kills_as_vip: { label: 'Kills as VIP', tooltip: 'Kills while being the VIP' },
+        time_as_vip_seconds: { label: 'VIP time', tooltip: 'Time spent as VIP' },
+        longest_time_as_vip_seconds: {
+          label: 'Longest',
+          tooltip: 'Longest survival as VIP',
         },
       },
     },

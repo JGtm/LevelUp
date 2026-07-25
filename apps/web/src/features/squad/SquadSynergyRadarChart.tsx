@@ -25,11 +25,12 @@ export function SquadSynergyRadarChart({
   emptyMessage,
   colorByPlayer,
   axisLabels,
+  rawLabel,
   height = 400,
 }: SquadSynergyRadarChartProps) {
   const buildOption = useCallback(
-    () => buildSquadSynergyRadarOption(rows, { colorByPlayer, axisLabels }),
-    [rows, colorByPlayer, axisLabels],
+    () => buildSquadSynergyRadarOption(rows, { colorByPlayer, axisLabels, rawLabel }),
+    [rows, colorByPlayer, axisLabels, rawLabel],
   )
 
   return (
@@ -41,6 +42,7 @@ export function SquadSynergyRadarChart({
         buildOption={buildOption}
         height={height}
         emptyMessage={emptyMessage}
+        reviewKey="squad.synergy_radar"
       />
     </div>
   )

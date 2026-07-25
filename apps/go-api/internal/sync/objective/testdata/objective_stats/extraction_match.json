@@ -1,0 +1,49 @@
+{
+  "MatchId": "00000000-0000-0000-0000-00000000e57c",
+  "MatchInfo": { "Duration": "PT8M24.9802664S" },
+  "Players": [
+    {
+      "PlayerId": "xuid(2500000000000001)",
+      "PlayerType": 1,
+      "LastTeamId": 0,
+      "ParticipationInfo": { "TimePlayed": "PT8M24.984S" },
+      "PlayerTeamStats": [
+        {
+          "TeamId": 0,
+          "Stats": {
+            "CoreStats": { "Kills": 26, "Deaths": 4, "Assists": 5, "PersonalScore": 4375 },
+            "ExtractionStats": {
+              "ExtractionConversionsCompleted": 1,
+              "ExtractionConversionsDenied": 1,
+              "ExtractionInitiationsCompleted": 1,
+              "ExtractionInitiationsDenied": 0,
+              "SuccessfulExtractions": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "_comment": "2e joueur : seul porteur d'ExtractionInitiationsDenied > 0 — couvre le champ (aucune duree ISO dans ce bloc).",
+      "PlayerId": "xuid(2500000000000002)",
+      "PlayerType": 1,
+      "LastTeamId": 1,
+      "ParticipationInfo": { "TimePlayed": "PT8M24.984S" },
+      "PlayerTeamStats": [
+        {
+          "TeamId": 1,
+          "Stats": {
+            "CoreStats": { "Kills": 4, "Deaths": 9, "Assists": 4, "PersonalScore": 1025 },
+            "ExtractionStats": {
+              "ExtractionConversionsCompleted": 0,
+              "ExtractionConversionsDenied": 0,
+              "ExtractionInitiationsCompleted": 0,
+              "ExtractionInitiationsDenied": 1,
+              "SuccessfulExtractions": 0
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

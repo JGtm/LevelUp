@@ -164,9 +164,11 @@ type TimeseriesDistributionsTab struct {
 	AccuracyBuckets    []DistributionBucket `json:"accuracy_buckets"`
 	ScorePerMinBuckets []DistributionBucket `json:"score_per_min_buckets"`
 	RollingWRBuckets   []DistributionBucket `json:"rolling_wr_buckets"`
-	// LifeBuckets : distribution de la durée de vie moyenne par match
-	// (time_played_seconds / (deaths + 1) — même formule que buildCorrelationPoints).
-	// Bins de 5 secondes. Alimente l'histogramme "Average life" timeseries.09.
+	// LifeBuckets : distribution de la durée de vie moyenne par match. Source =
+	// avg_life_seconds (valeur RÉELLE de l'API) ; repli sur le proxy
+	// time_played_seconds / (deaths + 1) quand elle est absente (matchAvgLifeSeconds,
+	// même helper que CorrelationPoints ci-dessous — D-09 V721-14a). Bins de 5
+	// secondes. Alimente l'histogramme "Average life" timeseries.09.
 	LifeBuckets []DistributionBucket `json:"life_buckets"`
 	// PerfScoreBuckets : distribution du performance_score par match
 	// (PerfScoreComputed du sync). Bins de 5 points sur [0, 100].
@@ -239,6 +241,18 @@ type TimeseriesMatchRow struct {
 	Rank              *int     `json:"rank"`
 	PlaylistName      string   `json:"playlist_name"`
 	TimePlayedSeconds *int     `json:"time_played_seconds"`
+	// AvgLifeSeconds : durée de vie moyenne RÉELLE du match (match_participants.
+	// avg_life_seconds, API native). Remplace l'estimation historique
+	// `time_played / (morts + 1)` côté front et côté buckets. nil sur les matchs
+	// antérieurs à la colonne / titres sans la métrique → le consommateur reprend
+	// le proxy (repli tracé, cf. service.matchAvgLifeSeconds).
+	AvgLifeSeconds *float64 `json:"avg_life_seconds,omitempty"`
+	// DominanceFlag : badge narratif du match — 0=aucun, 1=domination,
+	// 2=humiliation, 3=remontada, 4=débandade, 5=contre-remontada
+	// (cf. canonical.DominanceFlag). `omitempty` : 0 disparaît du JSON, le front
+	// ne dessine alors aucun marqueur sur la bande de résultats (titre sans
+	// timeline de score, ex. Halo 5 → dégradation silencieuse et correcte).
+	DominanceFlag int `json:"dominance_flag,omitempty"`
 	// Métriques alimentant les charts Forme (timeseries.16) — sync depuis
 	// match_participants (max_killing_spree, headshot_kills, perfect_kills).
 	MaxKillingSpree *int `json:"max_killing_spree,omitempty"`

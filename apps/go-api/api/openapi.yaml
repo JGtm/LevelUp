@@ -123,6 +123,69 @@ paths:
       summary: Backfill progression V2 (Ascension) pour un joueur
       tags:
         - diagnostics
+  /_diag/auto-sync/probe:
+    get:
+      operationId: getDiagAutoSyncProbe
+      parameters:
+        - explode: false
+          in: query
+          name: gamertag
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenProbeResult'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Diag sonde la résolution des tokens auth d'un joueur (loopback + admin)
+      tags:
+        - diagnostics
+  /_diag/auto-sync/run:
+    post:
+      operationId: postDiagAutoSyncRun
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchedulerSnapshot'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Diag force un cycle auto-sync (loopback + admin)
+      tags:
+        - diagnostics
+  /_diag/auto-sync/snapshot:
+    get:
+      operationId: getDiagAutoSyncSnapshot
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchedulerSnapshot'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Diag snapshot de l'ordonnanceur auto-sync
+      tags:
+        - diagnostics
   /_diag/csr-coverage/{player_slug}:
     get:
       description: |
@@ -662,7 +725,7 @@ paths:
     post:
       operationId: createAdminInvite
       responses:
-        "200":
+        "201":
           content:
             application/json:
               schema:
@@ -1790,7 +1853,7 @@ paths:
     post:
       operationId: postAuthRegister
       responses:
-        "200":
+        "201":
           content:
             application/json:
               schema:
@@ -1811,7 +1874,7 @@ paths:
     post:
       operationId: postBackfillStart
       responses:
-        "200":
+        "202":
           content:
             application/json:
               schema:
@@ -2377,6 +2440,166 @@ paths:
       summary: 'Calendrier d''activité : nombre de matchs par jour UTC sur la fenêtre (jours vides omis)'
       tags:
         - progression
+  /players/{player_slug}/arcs:
+    get:
+      operationId: listPrestigeArcs
+      parameters:
+        - explode: false
+          in: query
+          name: user_id
+          schema:
+            type: string
+        - explode: false
+          in: query
+          name: title_slug
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                additionalProperties: {}
+                type: object
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Liste les arcs de progression Prestige
+      tags:
+        - prestige
+    post:
+      operationId: createPrestigeArc
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Arc'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Crée un arc de progression Prestige
+      tags:
+        - prestige
+  /players/{player_slug}/arcs/{id}:
+    delete:
+      operationId: deletePrestigeArc
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - explode: false
+          in: query
+          name: user_id
+          schema:
+            type: string
+        - explode: false
+          in: query
+          name: objectives
+          schema:
+            type: string
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Supprime un arc de progression Prestige
+      tags:
+        - prestige
+    get:
+      operationId: getPrestigeArc
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Arc'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Détail d'un arc de progression Prestige
+      tags:
+        - prestige
+  /players/{player_slug}/arcs/presets:
+    get:
+      operationId: listPrestigeArcPresets
+      parameters:
+        - explode: false
+          in: query
+          name: user_id
+          schema:
+            type: string
+        - explode: false
+          in: query
+          name: title_slug
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                additionalProperties: {}
+                type: object
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Liste les arcs Prestige prédéfinis
+      tags:
+        - prestige
+  /players/{player_slug}/arcs/presets/{id}/adopt:
+    post:
+      operationId: adoptPrestigeArcPreset
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Arc'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Adopte un arc Prestige prédéfini
+      tags:
+        - prestige
   /players/{player_slug}/campaigns:
     post:
       operationId: startCampaign
@@ -4884,6 +5107,225 @@ paths:
       summary: Pattern Engine v3 — contextes, comportements, leviers calibrés
       tags:
         - progression
+  /players/{player_slug}/pilot-mode/disable:
+    post:
+      operationId: disablePilotMode
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Désactive le mode pilote automatique Prestige
+      tags:
+        - prestige
+  /players/{player_slug}/pilot-mode/enable:
+    post:
+      operationId: enablePilotMode
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PilotModeAttribution'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Active le mode pilote automatique Prestige
+      tags:
+        - prestige
+  /players/{player_slug}/prestige/challenges:
+    get:
+      operationId: listPrestigeChallenges
+      parameters:
+        - explode: false
+          in: query
+          name: user_id
+          schema:
+            type: string
+        - explode: false
+          in: query
+          name: title_slug
+          schema:
+            type: string
+        - description: 'Filtre statut(s), séparés par virgule (ex ''completed,abandoned''). Vide → ''active'' (défaut). Valeurs : draft/active/completed/expired/abandoned/archived.'
+          explode: false
+          in: query
+          name: status
+          schema:
+            description: 'Filtre statut(s), séparés par virgule (ex ''completed,abandoned''). Vide → ''active'' (défaut). Valeurs : draft/active/completed/expired/abandoned/archived.'
+            items:
+              type: string
+            type:
+              - array
+              - "null"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                additionalProperties: {}
+                type: object
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Liste les défis Prestige actifs
+      tags:
+        - prestige
+    post:
+      operationId: createPrestigeChallenge
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Challenge'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Crée un défi Prestige
+      tags:
+        - prestige
+  /players/{player_slug}/prestige/challenges/{id}:
+    delete:
+      operationId: abandonPrestigeChallenge
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Abandonne un défi Prestige
+      tags:
+        - prestige
+    get:
+      operationId: getPrestigeChallenge
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Challenge'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Détail d'un défi Prestige
+      tags:
+        - prestige
+    patch:
+      operationId: updatePrestigeChallenge
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Challenge'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Met à jour un défi Prestige
+      tags:
+        - prestige
+  /players/{player_slug}/prestige/challenges/{id}/suggest-next:
+    post:
+      operationId: suggestNextPrestigeChallenge
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                additionalProperties: {}
+                type: object
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Suggère le prochain défi Prestige
+      tags:
+        - prestige
+  /players/{player_slug}/prestige/me:
+    get:
+      operationId: getMyPrestige
+      parameters:
+        - explode: false
+          in: query
+          name: user_id
+          schema:
+            type: string
+        - explode: false
+          in: query
+          name: title_slug
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPrestige'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: État Prestige du joueur courant
+      tags:
+        - prestige
   /players/{player_slug}/profile:
     get:
       operationId: getPlayerProfile
@@ -4947,6 +5389,338 @@ paths:
       summary: PB courants + timeline des records battus
       tags:
         - progression
+  /players/{player_slug}/squad-challenges/{id}:
+    delete:
+      operationId: abandonSquadChallenge
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - explode: false
+          in: query
+          name: requested_by
+          schema:
+            type: string
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Abandonne un défi d'escouade
+      tags:
+        - prestige
+  /players/{player_slug}/squad-challenges/{id}/evaluate:
+    post:
+      operationId: evaluateSquadChallenge
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                additionalProperties: {}
+                type: object
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Évalue un défi d'escouade
+      tags:
+        - prestige
+  /players/{player_slug}/squad-challenges/{id}/join:
+    post:
+      operationId: joinSquadChallenge
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Rejoint un défi d'escouade
+      tags:
+        - prestige
+  /players/{player_slug}/squads:
+    get:
+      operationId: listMySquads
+      parameters:
+        - explode: false
+          in: query
+          name: user_id
+          schema:
+            type: string
+        - explode: false
+          in: query
+          name: title_slug
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                additionalProperties: {}
+                type: object
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Liste les escouades du joueur
+      tags:
+        - prestige
+    post:
+      operationId: createSquad
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Squad'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Crée une escouade Prestige
+      tags:
+        - prestige
+  /players/{player_slug}/squads/{squad_id}:
+    delete:
+      operationId: deleteSquad
+      parameters:
+        - in: path
+          name: squad_id
+          required: true
+          schema:
+            type: string
+        - explode: false
+          in: query
+          name: requested_by
+          schema:
+            type: string
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Supprime une escouade
+      tags:
+        - prestige
+    patch:
+      operationId: renameSquad
+      parameters:
+        - in: path
+          name: squad_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Renomme une escouade
+      tags:
+        - prestige
+  /players/{player_slug}/squads/{squad_id}/challenges:
+    get:
+      operationId: listSquadChallenges
+      parameters:
+        - in: path
+          name: squad_id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                additionalProperties: {}
+                type: object
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Liste les défis d'une escouade
+      tags:
+        - prestige
+    post:
+      operationId: createSquadChallenge
+      parameters:
+        - in: path
+          name: squad_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SquadChallenge'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Crée un défi d'escouade
+      tags:
+        - prestige
+  /players/{player_slug}/squads/{squad_id}/challenges/pool/refresh:
+    post:
+      operationId: refreshSquadChallengePool
+      parameters:
+        - in: path
+          name: squad_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                additionalProperties: {}
+                type: object
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Rafraîchit le pool de défis d'une escouade
+      tags:
+        - prestige
+  /players/{player_slug}/squads/{squad_id}/members:
+    post:
+      operationId: addSquadMember
+      parameters:
+        - in: path
+          name: squad_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Ajoute un membre à une escouade
+      tags:
+        - prestige
+  /players/{player_slug}/squads/{squad_id}/members/{xuid}:
+    delete:
+      operationId: removeSquadMember
+      parameters:
+        - in: path
+          name: squad_id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: xuid
+          required: true
+          schema:
+            type: string
+        - explode: false
+          in: query
+          name: requested_by
+          schema:
+            type: string
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Retire un membre d'une escouade
+      tags:
+        - prestige
+  /players/{player_slug}/squads/{squad_id}/orientation:
+    get:
+      operationId: getSquadOrientation
+      parameters:
+        - in: path
+          name: squad_id
+          required: true
+          schema:
+            type: string
+        - explode: false
+          in: query
+          name: requested_by
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                additionalProperties: {}
+                type: object
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Orientation stratégique d'une escouade
+      tags:
+        - prestige
   /players/{player_slug}/streaks:
     get:
       operationId: listProgressionStreaks
@@ -4982,7 +5756,7 @@ paths:
           schema:
             type: string
       responses:
-        "200":
+        "202":
           content:
             application/json:
               schema:
@@ -4997,6 +5771,42 @@ paths:
       summary: Sync delta par joueur
       tags:
         - sync
+  /players/{player_slug}/templates/suggest:
+    get:
+      operationId: suggestPrestigeTemplates
+      parameters:
+        - explode: false
+          in: query
+          name: user_id
+          schema:
+            type: string
+        - explode: false
+          in: query
+          name: title_slug
+          schema:
+            type: string
+        - explode: false
+          in: query
+          name: count
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                additionalProperties: {}
+                type: object
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Suggère des templates de défi Prestige
+      tags:
+        - prestige
   /profiles/{player_slug}/titles/{slug}/data:
     delete:
       description: |
@@ -5261,7 +6071,7 @@ paths:
     post:
       operationId: postSettingsMediaScan
       responses:
-        "200":
+        "202":
           content:
             application/json:
               schema:
@@ -5280,7 +6090,7 @@ paths:
     post:
       operationId: postSettingsSessionsRecalculate
       responses:
-        "200":
+        "202":
           content:
             application/json:
               schema:
@@ -5374,7 +6184,7 @@ paths:
     post:
       operationId: postSyncAll
       responses:
-        "200":
+        "202":
           content:
             application/json:
               schema:
@@ -5476,6 +6286,118 @@ paths:
                 $ref: '#/components/schemas/ApiError'
           description: Error
       summary: Capabilities produit déclarées par un titre
+      tags:
+        - titles
+  /titles/{slug}/catalog/maps:
+    get:
+      operationId: getTitleCatalogMaps
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema:
+            type: string
+        - explode: false
+          in: query
+          name: xuid
+          schema:
+            type: string
+        - explode: false
+          in: query
+          name: only_played
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogMapsOutputBody'
+          description: OK
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Catalogue des maps d'un titre
+      tags:
+        - titles
+  /titles/{slug}/catalog/pairs:
+    get:
+      operationId: getTitleCatalogPairs
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema:
+            type: string
+        - explode: false
+          in: query
+          name: playlist_asset_id
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogPairsOutputBody'
+          description: OK
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Catalogue des paires mode/map d'un titre
+      tags:
+        - titles
+  /titles/{slug}/catalog/playlists:
+    get:
+      operationId: getTitleCatalogPlaylists
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema:
+            type: string
+        - explode: false
+          in: query
+          name: xuid
+          schema:
+            type: string
+        - explode: false
+          in: query
+          name: only_played
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogPlaylistsOutputBody'
+          description: OK
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Catalogue des playlists d'un titre
       tags:
         - titles
   /titles/{slug}/feature-matrix:
@@ -6864,6 +7786,43 @@ components:
         - last_fetch_status
         - components
       type: object
+    Arc:
+      additionalProperties: false
+      properties:
+        completed_at:
+          format: date-time
+          type: string
+        completion_bonus_pp:
+          format: int64
+          type: integer
+        created_at:
+          format: date-time
+          type: string
+        description:
+          type: string
+        id:
+          type: string
+        is_preset:
+          type: boolean
+        objectives_pp:
+          format: int64
+          type: integer
+        preset_id:
+          type: string
+        title:
+          type: string
+        title_slug:
+          type: string
+        user_id:
+          type: string
+      required:
+        - id
+        - user_id
+        - title_slug
+        - title
+        - is_preset
+        - created_at
+      type: object
     AssetMeta:
       additionalProperties: false
       properties:
@@ -8023,6 +8982,126 @@ components:
             type: string
           type: array
       type: object
+    CatalogMap:
+      additionalProperties: false
+      properties:
+        image_url:
+          type: string
+        map_asset_id:
+          type: string
+        match_count:
+          format: int64
+          type: integer
+        name:
+          type: string
+        title_slug:
+          type: string
+      required:
+        - title_slug
+        - map_asset_id
+        - name
+      type: object
+    CatalogMapsOutputBody:
+      additionalProperties: false
+      properties:
+        maps:
+          items:
+            $ref: '#/components/schemas/CatalogMap'
+          type:
+            - array
+            - "null"
+        title_slug:
+          type: string
+      required:
+        - title_slug
+        - maps
+      type: object
+    CatalogPair:
+      additionalProperties: false
+      properties:
+        game_variant_asset_id:
+          type: string
+        map_asset_id:
+          type: string
+        mode_category:
+          type: string
+        mode_label:
+          type: string
+        name:
+          type: string
+        pair_asset_id:
+          type: string
+        title_slug:
+          type: string
+        weight:
+          format: double
+          type: number
+      required:
+        - title_slug
+        - pair_asset_id
+        - name
+        - map_asset_id
+        - game_variant_asset_id
+        - mode_category
+      type: object
+    CatalogPairsOutputBody:
+      additionalProperties: false
+      properties:
+        pairs:
+          items:
+            $ref: '#/components/schemas/CatalogPair'
+          type:
+            - array
+            - "null"
+        playlist_asset_id:
+          type: string
+        title_slug:
+          type: string
+      required:
+        - title_slug
+        - playlist_asset_id
+        - pairs
+      type: object
+    CatalogPlaylist:
+      additionalProperties: false
+      properties:
+        current_version_id:
+          type: string
+        experience:
+          type: string
+        is_ranked:
+          type: boolean
+        match_count:
+          format: int64
+          type: integer
+        name:
+          type: string
+        playlist_asset_id:
+          type: string
+        title_slug:
+          type: string
+      required:
+        - title_slug
+        - playlist_asset_id
+        - name
+        - experience
+        - is_ranked
+      type: object
+    CatalogPlaylistsOutputBody:
+      additionalProperties: false
+      properties:
+        playlists:
+          items:
+            $ref: '#/components/schemas/CatalogPlaylist'
+          type:
+            - array
+            - "null"
+        title_slug:
+          type: string
+      required:
+        - title_slug
+        - playlists
+      type: object
     CatalogRefreshResult:
       additionalProperties: false
       properties:
@@ -8043,6 +9122,94 @@ components:
         - pairs
         - maps
         - game_variants
+      type: object
+    Challenge:
+      additionalProperties: false
+      properties:
+        abandoned_at:
+          format: date-time
+          type: string
+        arc_id:
+          type: string
+        cadence:
+          type: string
+        committed_at:
+          format: date-time
+          type: string
+        completed_at:
+          format: date-time
+          type: string
+        created_at:
+          format: date-time
+          type: string
+        current_value:
+          format: double
+          type: number
+        data_tier:
+          type: string
+        eval_type:
+          type: string
+        expired_at:
+          format: date-time
+          type: string
+        expires_at:
+          format: date-time
+          type: string
+        id:
+          type: string
+        is_private:
+          type: boolean
+        label:
+          type: string
+        last_palier_recompute_at:
+          format: date-time
+          type: string
+        metric:
+          type: string
+        mode:
+          type: string
+        position:
+          format: int64
+          type: integer
+        pp_reward:
+          format: int64
+          type: integer
+        source:
+          type: string
+        status:
+          type: string
+        target:
+          format: double
+          type: number
+        target_per_member:
+          format: double
+          type: number
+        template_id:
+          type: string
+        tier:
+          type: string
+        title_slug:
+          type: string
+        user_id:
+          type: string
+        window_type:
+          type: string
+        window_value:
+          type: string
+      required:
+        - id
+        - user_id
+        - title_slug
+        - metric
+        - target
+        - window_type
+        - cadence
+        - eval_type
+        - mode
+        - data_tier
+        - status
+        - created_at
+        - is_private
       type: object
     ChallengeItem:
       additionalProperties: false
@@ -11847,6 +13014,30 @@ components:
         - title_slug
         - total
       type: object
+    Level:
+      additionalProperties: false
+      properties:
+        index:
+          format: int64
+          type: integer
+        name:
+          type: string
+        next_threshold_pp:
+          format: int64
+          type: integer
+        progress_ratio:
+          format: double
+          type: number
+        threshold_pp:
+          format: int64
+          type: integer
+      required:
+        - index
+        - name
+        - threshold_pp
+        - next_threshold_pp
+        - progress_ratio
+      type: object
     Lever:
       additionalProperties: false
       description: Levier calibré (axe d'amélioration p60)
@@ -13130,8 +14321,20 @@ components:
       type: object
     MatchScoreboardObjective:
       additionalProperties: false
-      description: Stats objectifs par joueur (CTF/Zones/Oddball) — blocs mutuellement exclusifs par mode, seuls les champs du mode joué sont renseignés.
+      description: Stats objectifs par joueur (CTF/Zones/Oddball/Stockpile/Extraction/VIP) — blocs mutuellement exclusifs par mode, seuls les champs du mode joué sont renseignés.
       properties:
+        extraction_conversions_completed:
+          format: int64
+          type: integer
+        extraction_conversions_denied:
+          format: int64
+          type: integer
+        extraction_initiations_completed:
+          format: int64
+          type: integer
+        extraction_initiations_denied:
+          format: int64
+          type: integer
         flag_capture_assists:
           format: int64
           type: integer
@@ -13162,12 +14365,33 @@ components:
         kills_as_flag_returner:
           format: int64
           type: integer
+        kills_as_power_seed_carrier:
+          format: int64
+          type: integer
         kills_as_skull_carrier:
+          format: int64
+          type: integer
+        kills_as_vip:
           format: int64
           type: integer
         longest_time_as_skull_carrier_seconds:
           format: double
           type: number
+        longest_time_as_vip_seconds:
+          format: double
+          type: number
+        max_killing_spree_as_vip:
+          format: int64
+          type: integer
+        power_seed_carriers_killed:
+          format: int64
+          type: integer
+        power_seeds_deposited:
+          format: int64
+          type: integer
+        power_seeds_stolen:
+          format: int64
+          type: integer
         skull_carriers_killed:
           format: int64
           type: integer
@@ -13177,15 +14401,36 @@ components:
         skull_scoring_ticks:
           format: int64
           type: integer
+        successful_extractions:
+          format: int64
+          type: integer
         time_as_flag_carrier_seconds:
+          format: double
+          type: number
+        time_as_power_seed_carrier_seconds:
+          format: double
+          type: number
+        time_as_power_seed_driver_seconds:
           format: double
           type: number
         time_as_skull_carrier_seconds:
           format: double
           type: number
+        time_as_vip_seconds:
+          format: double
+          type: number
         time_in_zones_seconds:
           format: double
           type: number
+        times_selected_as_vip:
+          format: int64
+          type: integer
+        vip_assists:
+          format: int64
+          type: integer
+        vip_kills:
+          format: int64
+          type: integer
         zone_captures:
           format: int64
           type: integer
@@ -15273,6 +16518,22 @@ components:
         - value
         - updated_at
       type: object
+    PilotModeAttribution:
+      additionalProperties: false
+      properties:
+        daily:
+          $ref: '#/components/schemas/Challenge'
+        weekly_choices:
+          items:
+            $ref: '#/components/schemas/Template'
+          type:
+            - array
+            - "null"
+        weekly_forced:
+          $ref: '#/components/schemas/Challenge'
+      required:
+        - weekly_choices
+      type: object
     PlayerConvergenceReport:
       additionalProperties: false
       properties:
@@ -16876,6 +18137,8 @@ components:
           type: string
         season_name:
           type: string
+        unresolved:
+          type: boolean
       required:
         - season_id
         - season_name
@@ -18088,6 +19351,24 @@ components:
       required:
         - field
       type: object
+    Squad:
+      additionalProperties: false
+      properties:
+        created_at:
+          format: date-time
+          type: string
+        created_by:
+          type: string
+        id:
+          type: string
+        name:
+          type: string
+      required:
+        - id
+        - name
+        - created_by
+        - created_at
+      type: object
     SquadBreakdownStats:
       additionalProperties: false
       properties:
@@ -18108,6 +19389,46 @@ components:
         - win_rate
         - avg_kda
         - avg_kills
+      type: object
+    SquadChallenge:
+      additionalProperties: false
+      properties:
+        created_at:
+          format: date-time
+          type: string
+        created_by:
+          type: string
+        eval_type:
+          type: string
+        expires_at:
+          format: date-time
+          type: string
+        id:
+          type: string
+        mode:
+          type: string
+        squad_id:
+          type: string
+        target_per_member:
+          format: double
+          type: number
+        template_id:
+          type: string
+        title_slug:
+          type: string
+        window_type:
+          type: string
+        window_value:
+          type: string
+      required:
+        - id
+        - squad_id
+        - title_slug
+        - mode
+        - eval_type
+        - window_type
+        - created_by
+        - created_at
       type: object
     SquadCharts:
       additionalProperties: false
@@ -18582,6 +19903,9 @@ components:
         delta_mmr:
           format: double
           type: number
+        dominance_flag:
+          format: int64
+          type: integer
         duration_seconds:
           format: int64
           type: integer
@@ -20085,6 +21409,88 @@ components:
         - session_labels
         - friends_count
       type: object
+    Template:
+      additionalProperties: false
+      properties:
+        cadence:
+          type: string
+        cooldown_ends_at:
+          format: date-time
+          type: string
+        description_en:
+          type: string
+        description_fr:
+          type: string
+        eval_type:
+          type: string
+        heroic_target:
+          format: double
+          type: number
+        id:
+          type: string
+        is_long_term:
+          type: boolean
+        label_en:
+          type: string
+        label_fr:
+          type: string
+        legendary_target:
+          format: double
+          type: number
+        lusr_components:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        metric:
+          type: string
+        mode_filter:
+          type: string
+        mythic_target:
+          format: double
+          type: number
+        normal_target:
+          format: double
+          type: number
+        radar_axes:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        schema_version:
+          format: int64
+          type: integer
+        source:
+          type: string
+        title_slug:
+          type: string
+        updated_at:
+          format: date-time
+          type: string
+        window_type:
+          type: string
+        window_value:
+          type: string
+      required:
+        - id
+        - title_slug
+        - metric
+        - window_type
+        - cadence
+        - eval_type
+        - mode_filter
+        - label_en
+        - label_fr
+        - normal_target
+        - heroic_target
+        - legendary_target
+        - mythic_target
+        - is_long_term
+        - schema_version
+        - updated_at
+      type: object
     TemporalHeatmapCell:
       additionalProperties: false
       properties:
@@ -20296,6 +21702,9 @@ components:
         assists_expected:
           format: double
           type: number
+        avg_life_seconds:
+          format: double
+          type: number
         career_xp_estimated:
           format: int64
           type: integer
@@ -20315,6 +21724,9 @@ components:
         deaths_expected:
           format: double
           type: number
+        dominance_flag:
+          format: int64
+          type: integer
         headshot_kills:
           format: int64
           type: integer
@@ -20688,6 +22100,41 @@ components:
         - generated_at
         - players
       type: object
+    TokenProbeResult:
+      additionalProperties: false
+      properties:
+        discovered_in_pool:
+          type: boolean
+        gamertag:
+          type: string
+        has_msal_cache:
+          type: boolean
+        has_refresh_token:
+          type: boolean
+        refresh_token_len:
+          format: int64
+          type: integer
+        refresh_token_sha256:
+          type: string
+        refresh_token_was_rotated:
+          type: boolean
+        resolve_error:
+          type: string
+        resolve_ok:
+          type: boolean
+        source:
+          type: string
+        spartan_token_len:
+          format: int64
+          type: integer
+      required:
+        - gamertag
+        - discovered_in_pool
+        - has_msal_cache
+        - has_refresh_token
+        - resolve_ok
+        - refresh_token_was_rotated
+      type: object
     TopMatchDTO:
       additionalProperties: false
       properties:
@@ -20820,6 +22267,31 @@ components:
         - count
         - badge_count
         - by_category
+      type: object
+    UserPrestige:
+      additionalProperties: false
+      properties:
+        current_level:
+          format: int64
+          type: integer
+        level:
+          $ref: '#/components/schemas/Level'
+        title_slug:
+          type: string
+        total_pp:
+          format: int64
+          type: integer
+        updated_at:
+          format: date-time
+          type: string
+        user_id:
+          type: string
+      required:
+        - user_id
+        - title_slug
+        - total_pp
+        - current_level
+        - updated_at
       type: object
     Vec3:
       additionalProperties: false

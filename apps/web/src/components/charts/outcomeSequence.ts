@@ -6,6 +6,14 @@
  */
 export type OutcomeValue = 'win' | 'loss' | 'tie' | 'dnf'
 
+/**
+ * Drapeau de dominance d'un match (canonical.DominanceFlag côté Go) :
+ * 1=domination, 2=humiliation, 3=remontada, 4=débandade, 5=contre-remontada.
+ * `0`/absent = match ordinaire OU titre sans timeline de score (Halo 5) →
+ * AUCUN marqueur : l'absence de drapeau ne raconte rien de faux.
+ */
+export type DominanceValue = 1 | 2 | 3 | 4 | 5
+
 export interface OutcomePoint {
   outcome: OutcomeValue
   matchId: string
@@ -13,6 +21,21 @@ export interface OutcomePoint {
   mode?: string
   /** Libellé pré-formaté pour le tooltip (ex. « 12 mars · Slayer · Aquarius — 14/9 »). */
   label?: string
+  /**
+   * Drapeau de dominance du match. Optionnel : les consommateurs de la bande
+   * qui ne le fournissent pas gardent un rendu STRICTEMENT identique.
+   */
+  dominance?: DominanceValue
+}
+
+/**
+ * asDominance — normalise un `dominance_flag` d'API (0..5, éventuellement absent)
+ * vers `DominanceValue | undefined`. Toute valeur hors 1..5 (dont 0 et les codes
+ * inconnus d'un futur titre) devient `undefined` : pas de marqueur inventé.
+ */
+export function asDominance(flag: number | null | undefined): DominanceValue | undefined {
+  if (flag == null) return undefined
+  return flag >= 1 && flag <= 5 ? (flag as DominanceValue) : undefined
 }
 
 export interface Run {

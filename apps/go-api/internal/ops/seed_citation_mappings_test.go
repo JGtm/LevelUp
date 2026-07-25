@@ -5,11 +5,14 @@ import (
 	"testing"
 )
 
-// seed_citation_mappings_test.go — garde-rails sur l'état DÉCIDÉ (décisions
-// utilisateur I7, 2026-07-24) de trois citations : player_vs_everything (victoires
-// Firefight), road_trip (médaille Splatter), flag_defender (désactivée). Pure data
-// (defaultCitationMappings, sans DB) → hors build cgo. Fige la décision pour qu'un
-// futur remap accidentel casse le test.
+// seed_citation_mappings_test.go — garde-rails sur l'état DÉCIDÉ des citations, pour
+// qu'un remap accidentel casse le test plutôt que de passer inaperçu :
+//   - décisions I7 (2026-07-24) : player_vs_everything (victoires Firefight), road_trip
+//     (médaille Splatter), flag_defender (désactivée) ;
+//   - bascule v7.2 des 4 citations d'objectif vers la source objective_stat ;
+//   - lot v7.2.1 : les 10 nouvelles citations d'objectif, colonnes ET paliers calibrés.
+//
+// Pure data (defaultCitationMappings, sans DB) → hors build cgo.
 
 // citationByNorm retourne la CitationMapping seedée pour un norm donné, ou échoue.
 func citationByNorm(t *testing.T, norm string) CitationMapping {
@@ -89,6 +92,51 @@ func TestObjectiveStatCitations_MappedToColumns(t *testing.T) {
 		}
 		if !m.Enabled {
 			t.Errorf("%s.Enabled = false, want true", norm)
+		}
+	}
+}
+
+// TestObjectiveStatCitationsV721_MappedToColumns : les 10 citations d'objectif ajoutées en
+// v7.2.1 (décision utilisateur 2026-07-25 : 10 retenues sur les 19 colonnes libres, 9
+// écartées). Fige la colonne source ET le palier calibré : un réalignement sur les paliers
+// génériques (10,20,30,50,100) rendrait « Porteur imparable », « Crâne intouchable »,
+// « Chasse au porteur » et « Prise du crâne » inatteignables (totaux réels : 3, 1, 4, 3).
+func TestObjectiveStatCitationsV721_MappedToColumns(t *testing.T) {
+	want := []struct {
+		norm  string
+		col   string
+		tiers string
+	}{
+		{citationNormFlagCaptures, "flag_captures", tierTargets10_25_50_75_125},
+		{citationNormFlagSecures, "flag_secures", tierTargets50_100_200_350_600},
+		{citationNormFlagSteals, "flag_steals", tierTargets25_50_100_175_300},
+		{citationNormReturnerTakedown, "flag_returners_killed", tierTargets5_10_20_35_60},
+		{citationNormUnstoppableCarrier, "kills_as_flag_carrier", tierTargets1_2_3_5_10},
+		{citationNormAggressiveReturn, "kills_as_flag_returner", tierTargets5_10_20_30_50},
+		{citationNormZoneDefense, "zone_defensive_kills", tierTargets25_50_100_200_350},
+		{citationNormUntouchableCarrier, "kills_as_skull_carrier", tierTargets1_2_3_5_10},
+		{citationNormSkullCarrierTakedown, "skull_carriers_killed", tierTargets2_5_10_20_40},
+		{citationNormSkullGrabs, "skull_grabs", tierTargets2_5_10_20_40},
+	}
+	for _, w := range want {
+		m := citationByNorm(t, w.norm)
+		if m.MappingType != mappingTypeObjectiveStat {
+			t.Errorf("%s.MappingType = %q, want %q", w.norm, m.MappingType, mappingTypeObjectiveStat)
+		}
+		if m.StatName != w.col {
+			t.Errorf("%s.StatName = %q, want %q", w.norm, m.StatName, w.col)
+		}
+		if m.TierTargets != w.tiers {
+			t.Errorf("%s.TierTargets = %q, want %q (paliers calibrés sur données réelles)", w.norm, m.TierTargets, w.tiers)
+		}
+		if m.Category != citationCatModeJeu {
+			t.Errorf("%s.Category = %q, want %q", w.norm, m.Category, citationCatModeJeu)
+		}
+		if !m.Enabled {
+			t.Errorf("%s.Enabled = false, want true", w.norm)
+		}
+		if m.Description == "" {
+			t.Errorf("%s.Description vide", w.norm)
 		}
 	}
 }

@@ -1,6 +1,32 @@
 ## What's new
 
-**v7.2 — Objective modes, title isolation & instant player search**
+**v7.2.1 — Objective modes, title isolation & instant player search**
+
+**Three more objective modes — Stockpile, Extraction and VIP**
+- **Stockpile** — power seeds deposited and stolen, enemy carriers killed, and your time carrying a seed
+- **Extraction** — successful extractions, initiations completed, enemy beacons converted and conversions denied
+- **VIP** — VIPs killed, times you were selected as VIP, kills while being the VIP, total VIP time and your longest run as VIP
+- **Where you read them** — the "Objectives" section of the match view, exactly like Capture the Flag, Strongholds, King of the Hill and Oddball: one column per stat of the mode played, with a "Team total" line
+
+**Ten new objective citations**
+- **Flag play** — Flag Captures, Flag Secures, Flag Steals, Returner Takedown, Unstoppable Carrier and Aggressive Return
+- **Zones and Oddball** — Zone Defense, Untouchable Carrier, Skull Carrier Takedown and Skull Grabs
+- **Tiers set on real play** — every ladder is calibrated on actual match data instead of a generic scale, so the rare feats (killing while carrying the flag or the skull) stay within reach
+
+**Explorer — every season, not just some**
+- **"Matches by season" is complete** — the breakdown only covered the seasons the game happened to return; it now covers every season of the catalog
+- **Nothing silently missing** — a season you never played and a season that could not be retrieved are no longer shown the same way
+
+**Squad objectives & Prestige**
+- **"Propose challenges" works again** — the button could fail for good until the server was restarted
+- **No more challenges whose rule does not match** — challenges whose stated rule did not correspond to the way they were actually scored are no longer offered
+- **Prestige without points** — opening your prestige before earning a single point returned an error instead of an empty summary
+
+**Charts that read straight**
+- **Real average lifespan** — the average-life chart uses the value measured in game instead of an estimate derived from time played and deaths, and the correlation cloud now tells the same story as the histogram
+- **Win rate and MMR on their own axes** — the win-rate curve is no longer flattened against the bottom by the MMR scale it used to share
+- **Dominance on the results tape** — a marker flags the matches your team dominated
+- **Synergy radar** — the tooltip shows the raw value next to the normalized score
 
 **Objective modes — Capture the Flag, Strongholds, King of the Hill, Oddball**
 - **Objective stats collected for every match** — flag captures, returns, steals and time as flag carrier; zone captures, secures and time in zones; skull grabs, time and longest time as skull carrier

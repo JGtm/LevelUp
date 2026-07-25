@@ -59,13 +59,15 @@ func (h *GroupsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	huma.Get(api, "/groups", h.handleListMyGroups,
 		humacore.Op("listMyGroups", "Liste les groupes du user courant (auth + identité Halo requise)", "groups"))
 	huma.Post(api, "/groups", h.handleCreateGroup,
-		humacore.Op("createGroup", "Crée un groupe (user courant = propriétaire)", "groups"))
+		humacore.Op("createGroup", "Crée un groupe (user courant = propriétaire)", "groups"),
+		humacore.DefaultStatus(http.StatusCreated))
 	huma.Patch(api, "/groups/{id}", h.handleRenameGroup,
 		humacore.Op("renameGroup", "Renomme un groupe (propriétaire only)", "groups"))
 	huma.Delete(api, "/groups/{id}", h.handleDeleteGroup,
 		humacore.Op("deleteGroup", "Supprime un groupe (propriétaire only)", "groups"))
 	huma.Post(api, "/groups/{id}/invites", h.handleGenerateInvite,
-		humacore.Op("createGroupInvite", "Génère une invitation 'rejoindre le groupe' (membre only)", "groups"))
+		humacore.Op("createGroupInvite", "Génère une invitation 'rejoindre le groupe' (membre only)", "groups"),
+		humacore.DefaultStatus(http.StatusCreated))
 	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/groups/{id}/invites")
 	huma.Delete(api, "/groups/{id}/members/me", h.handleLeaveGroup,
 		humacore.Op("leaveGroup", "Quitter un groupe (self ; propriétaire interdit → 409)", "groups"))
@@ -100,16 +102,17 @@ type groupMemberInput struct {
 type groupsListOutput struct {
 	Body []domain.Group
 }
+
+// groupCreatedOutput / inviteCreatedOutput : 201 posé par humacore.DefaultStatus
+// au montage (source unique du statut — runtime ET document).
 type groupCreatedOutput struct {
-	Status int
-	Body   *domain.Group
+	Body *domain.Group
 }
 type groupOutput struct {
 	Body *domain.Group
 }
 type inviteCreatedOutput struct {
-	Status int
-	Body   *domain.InviteCode
+	Body *domain.InviteCode
 }
 
 // groupsNoContent : réponse 204 sans corps.
@@ -155,7 +158,7 @@ func (h *GroupsHandler) handleCreateGroup(ctx context.Context, in *groupBodyInpu
 		return nil, humacore.NewError(http.StatusInternalServerError, "group_create_error", "Impossible de créer le groupe.")
 	}
 	slog.InfoContext(ctx, "groups: groupe créé", "id", g.ID, "owner", user.Gamertag)
-	return &groupCreatedOutput{Status: http.StatusCreated, Body: g}, nil
+	return &groupCreatedOutput{Body: g}, nil
 }
 
 // handleRenameGroup renomme un groupe (propriétaire only).
@@ -222,7 +225,7 @@ func (h *GroupsHandler) handleGenerateInvite(ctx context.Context, in *groupIDBod
 		return nil, humacore.NewError(http.StatusInternalServerError, "invite_generate_error", "Impossible de générer l'invitation.")
 	}
 	slog.InfoContext(ctx, "groups: invitation générée", "code", invite.Code, "group_id", g.ID, "by", user.Gamertag)
-	return &inviteCreatedOutput{Status: http.StatusCreated, Body: invite}, nil
+	return &inviteCreatedOutput{Body: invite}, nil
 }
 
 // handleLeaveGroup retire le user courant d'un groupe (self). Le propriétaire ne
