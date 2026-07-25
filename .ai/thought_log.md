@@ -1,3 +1,17 @@
+## [2026-07-25] Release v7.2.0 — préparation merge main + ops VPS
+
+**Statut** : En cours (feu vert utilisateur : merge main local, backfills VPS, push).
+Décisions : (1) le binaire `cmd/backfill_objective_stats` est AJOUTÉ à l'image Docker
+(bloc build + COPY miroir du CLI levelup) — sans lui les backfills objectifs sont
+inexécutables sur le VPS (l'image runtime n'a pas de toolchain Go) ; (2) badges de
+version des 2 README bumpés 7.1.0→7.2.0 dans le commit chore(release) au moment du tag
+(précédent cc9d82b2d) ; (3) tag annoté `v7.2.0` posé sur main avant push — deploy.sh
+bake `git describe --tags --abbrev=0` dans le binaire, et last_notified_version est
+pré-semé à v7.1.0 sur le VPS → la notif Discord de release doit partir au boot ;
+(4) validation du Dockerfile modifié par le Deploy Pre-Check de la branche AVANT merge.
+Ordre imposé par la technique : deploy d'abord, backfills VPS ensuite (le binaire v7.2
+n'existe sur le VPS qu'après build), serveur coupé pendant les backfills (lock RW).
+
 ## [2026-07-25] Clôture v7.2 — réparation CI baseline + push final
 
 **Statut** : Complété. La delivery-checklist (§0 état CI) a révélé le workflow CI de la

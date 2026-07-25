@@ -58,6 +58,14 @@ RUN CGO_ENABLED=1 GOOS=linux go build \
     -o /build/levelup \
     ./cmd/levelup/
 
+# CLI backfill_objective_stats — ops prod v7.2 : backfill historique des stats
+# d'objectifs (re-téléchargement API, serveur ARRÊTÉ pendant l'opération car il
+# prend le lock RW de la shared DB). Binaire dédié hors CLI levelup.
+RUN CGO_ENABLED=1 GOOS=linux go build \
+    -ldflags "-extldflags '-static'" \
+    -o /build/backfill_objective_stats \
+    ./cmd/backfill_objective_stats/
+
 # ============================================================================
 # Stage 3 — Runtime minimal (Debian slim)
 # ============================================================================
@@ -82,6 +90,8 @@ WORKDIR /app
 COPY --from=go-builder /build/levelup-server /app/levelup-server
 # CLI levelup dans le PATH (seed/seed-demo/backfill via `levelup <cmd>`).
 COPY --from=go-builder /build/levelup        /usr/local/bin/levelup
+# Backfill objectifs (ops post-deploy v7.2, serveur arrêté pendant l'opération).
+COPY --from=go-builder /build/backfill_objective_stats /usr/local/bin/backfill_objective_stats
 COPY --from=web-builder /build/web/dist       /app/apps/web/dist
 
 # Scripts d'exploitation (backfill, seed, etc.)
