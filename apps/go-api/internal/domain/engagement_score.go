@@ -72,11 +72,11 @@ type EngagementScoreResult struct {
 	//
 	// Distinct de Confidence, qui qualifie l'historique du PERCENTILE (le score),
 	// pas l'attendu. Deux signaux independants.
-	ExpectedBasis string `json:"expected_basis"`
+	ExpectedBasis string `json:"expected_basis" doc:"Base de l'attendu (modele lobby-anchored v2) : bin | global | cold_start."`
 
 	// IntensityBin est le libelle du bin d'intensite retenu quand ExpectedBasis
 	// vaut "bin" (calme / standard / chaotique). Vide sinon.
-	IntensityBin string `json:"intensity_bin"`
+	IntensityBin string `json:"intensity_bin" doc:"Libelle du bin d'intensite quand expected_basis=bin (calme|standard|chaotique). Vide sinon."`
 
 	// SignalBasis qualifie la SUFFISANCE du vecteur de signaux du match (1re porte
 	// de degradation, chantier F7 engagement title-agnostic gradue) :
@@ -87,7 +87,7 @@ type EngagementScoreResult struct {
 	//
 	// Distinct de Confidence (historique du percentile) et de ExpectedBasis (base de
 	// l'attendu). Combine avec le statut de calibration du titre pour la 2e porte.
-	SignalBasis string `json:"signal_basis,omitempty"`
+	SignalBasis string `json:"signal_basis,omitempty" doc:"1re porte F7 : suffisance du vecteur de signaux (full | partial). Vide si non calcule."`
 
 	// Calibration est la 2e porte de degradation (chantier F7) : statut de calibration
 	// des coefficients d'engagement DU TITRE pour ce score :
@@ -97,7 +97,7 @@ type EngagementScoreResult struct {
 	//
 	// Vide = titre historique valide (Infinite) traite comme validated. Injecte au
 	// niveau service (title-aware) ; le moteur temporal, pur, ne le connait pas.
-	Calibration string `json:"calibration,omitempty"`
+	Calibration string `json:"calibration,omitempty" doc:"2e porte F7 : statut de calibration du titre (validated | provisional). Vide = validated."`
 }
 
 // Valeurs de EngagementScoreResult.ExpectedBasis (chaine de fallback de l'attendu).

@@ -379,7 +379,7 @@ type ExplorerMatchesRow struct {
 	OutcomeLabel        string    `json:"outcome_label"`
 	ScoreLabel          string    `json:"score_label"`
 	IsWithFriends       bool      `json:"is_with_friends"`
-	ExperienceTypeLabel string    `json:"experience_type_label"`
+	ExperienceTypeLabel string    `json:"experience_type_label" default:"Non classé"`
 	MatchURL            string    `json:"match_url"`
 	// Combat stats
 	Kills   int `json:"kills,omitempty"`
@@ -426,7 +426,7 @@ type ExplorerMatchesRow struct {
 	// Propagé pour la section Career best_matches (les LOSS avec bot ne sont
 	// pas exposés ici : exclus côté repo, cf. CareerRepo.GetHighlightMatchIDs).
 	// Le front affiche une pill "bot" sur la card du match.
-	HadBotTeammate bool `json:"had_bot_teammate,omitempty"`
+	HadBotTeammate bool `json:"had_bot_teammate,omitempty" doc:"Un coéquipier était un bot. Exposé sur les best_matches de la carrière (les LOSS avec bot sont exclus côté backend)."`
 }
 
 // ExplorerMatchesSummary : résumé de la requête Explorer.

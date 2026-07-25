@@ -130,12 +130,33 @@ passage »). NB : chemins Go préfixés `apps/go-api/`.
       parité vérifiée 156, échecs 0. Gates : gofmt -l vide, `go build ./...` (0),
       `go vet ./...` (0), `go test ./internal/api/...` (ok), `go test ./...` (0),
       `make go-api-lint` (0 issues) — TOUS verts. Aucun commit (superviseur). [x]
-- [ ] **H3 — Instrumenter les DTOs (L).** Porter 402 descriptions / 21 enums /
-      30 defaults / 6 examples en tags struct Go. LIVRABLE SUPPLÉMENTAIRE (revue) :
-      inventaire FERMÉ des sémantiques NON portables en tags (descriptions par-contexte
-      sur type partagé, 16 request bodies RawBody, double schéma d'erreur) avec leur
-      destination = fragment manuel. Gate : diff sémantique H0 = 0 perte (hors items
-      inventoriés).
+- [x] **H3 — Instrumenter les DTOs (L).** FAIT (2026-07-25, agent Opus). Réalité mesurée
+      sur pièces (script kin-openapi jetable) : les cibles « 402/21/30/6 » du recon sont des
+      comptages BRUTS de tout le doc — 175 des 232 `description:` du yaml sont des
+      descriptions de RÉPONSE/paramètre (niveau opération, PAS schéma.champ) ;
+      enum=21/default=30/example=6 confirmés au grep. La sémantique de schéma.champ PORTABLE
+      en tag Huma (doc/enum/default/example de CHAMP) se limite à 31 schémas ; parmi eux
+      seuls **11 ont un type Go HUMA-GÉNÉRÉ** (output ou imbriqué dans un output) — les
+      « Request » sont décodés à la main (`RawBody` / `var req domain.X`) donc JAMAIS générés
+      par Huma, et 10 schémas n'ont aucun type Go (chi-brut / champ Go scalaire / legacy
+      Python). **POSÉ : 19 descriptions + 11 enums + 5 defaults sur 10 types Go** (bootstrap,
+      auth, engagement_score, media_audio_config, settings, admin_monitoring, explorer,
+      career). Vérifié empiriquement : Huma INLINE les enums des types string custom
+      (`MediaAudioMode`/`AudioTrackRole`) — pas de `$ref`, l'enum surgit sur le champ. Enums
+      d'INPUT : AUCUN risque 422 — tous les types instrumentés sont des OUTPUTS (non validés)
+      ou des inputs `RawBody` non typés Huma (vérifié call-site par call-site) ; aucun enum
+      posé sur un `Body` typé Huma. Descriptions de SCHÉMA RACINE non portables (Huma n'a pas
+      de tag type-level ; seuls `SchemaProvider`/`SchemaTransformer`, hors périmètre tag) →
+      inventaire. 2 descriptions raccourcies pour lll ≤ 220 (`provides_max_killing_spree`,
+      `media_delete_source_after_transcode`) — le texte long peut retourner au fragment H6.
+      Gate H3 : nouveau `openapi_schema_semantics_test.go` — **Partie A** (indépendante du
+      routage : régénère chaque type via un registre Huma neuf → 35 sémantiques vérifiées /
+      10 types, couvre les types dont la route n'est pas montée en démo) + **Partie B** (doc
+      partagé en mémoire vs yaml, schéma.champ COMMUN, allowlist = inventaire + compteurs
+      anti-caducité : 28 en parité, 5 pertes = 5 descriptions racine allowlistées, **0 perte
+      hors inventaire**). Gates : gofmt -l vide, `go build ./...`, `go vet ./...`,
+      `go test ./internal/api/...`, `go test ./...` (118 pkg ok, 0 fail), `make go-api-lint`
+      (0 issue) — TOUS verts. Aucun commit (superviseur). Inventaire fermé ci-dessous. [x]
 - [ ] **H4 — Modèle d'erreur unifié (M).** Fusion ApiErrorSchema/ApiError sur
       `humacore.apiError` enrichi. Gate : call-sites NewError OK.
 - [ ] **H5 — Migrer groups.go vers Huma (S).** 7 routes writeJSON → typées.
@@ -181,6 +202,63 @@ passage »). NB : chemins Go préfixés `apps/go-api/`.
   (op `GET /jobs/{job_id}`) est UTILISÉ sans être DÉCLARÉ dans le bloc `tags:`. Non corrigé
   (hors périmètre H2) — H6 régénérera le bloc complet.
 
+## Inventaire fermé H3 — sémantiques NON exprimables en tags struct
+
+Livrable de revue. Chaque entrée = sémantique du yaml manuel qui NE peut PAS être portée
+en tag Huma de champ ; destination indiquée. Le garde-rail Partie B allowliste UNIQUEMENT
+les items observés comme perdus sur un schéma présent dans le doc de démo (les descriptions
+racine) ; le reste n'apparaît pas dans le doc généré (schémas non-Huma) donc n'est pas
+« perdu » au sens du diff — il vit dans le fragment manuel H6.
+
+1. **Descriptions de SCHÉMA RACINE** (Huma n'a AUCUN tag type-level ; `SchemaProvider`
+   remplace la génération, `SchemaTransformer` ajoute une méthode — les deux hors périmètre
+   « tag »). 7 au total ; allowlistées quand le schéma est généré (5 démo-présents) :
+   `DeviceFlowStartResponse`, `DeviceFlowStatusResponse`, `MatchScoreboardObjective`,
+   `ObjectiveAggregate`, `PlayerMediaAudioConfig` (allowlist Partie B) ; +`SettingsResponse`,
+   `CascadeInput` (schéma non démo-présent). **Destination** : `SchemaTransformer` léger
+   (mécanisme identifié) OU fragment manuel H6.
+2. **Schémas SANS type Go Huma-généré** (chi-brut / champ Go scalaire / legacy) — leur
+   schéma yaml est écrit à la main, Huma ne le régénère pas → **fragment manuel H6** :
+   - `ApiErrorSchema` (code desc+example, message desc, retryable default) → **H4** (modèle
+     d'erreur unifié) + le double schéma `ApiErrorSchema`/`ApiError`.
+   - `FreshnessInfo` (source enum+default, sync_status enum+default) — le champ Go est
+     `*string` / `interface{}`, pas un objet.
+   - `SortSpec` (direction enum+default), `MatchHistoryExportRequest` (format default) —
+     route export chi-brut, aucun type Go.
+   - `PlotlyFigurePayload` (config_key enum+default, figure desc) — legacy Python (mort).
+   - `BackupStatusResponse` (8 desc), `BackupRunResult` (4 desc), `IntegrityCheckResult`
+     (3 desc) — admin backup chi-brut, aucun type Go.
+   - `AssociatedMediaItem`, `MediaItemRow` (liked default false) — default trivial (zéro).
+3. **Schémas d'ENTRÉE décodés à la main** (`RawBody` / `var req domain.X`) — jamais générés
+   par Huma → fragment manuel H6 : `CompareRequest` (title_slug default "hi"),
+   `MatchHistoryQueryRequest` (include_export_hint default), `PaginationRequest` (page/
+   page_size defaults), `MediaPageRequest` (page/page_size defaults), `SessionContextRequest`
+   (locale enum), `ExplorerMatchesQueryRequest` (squad_scope enum+default). NB : les enums
+   de ces inputs seraient de toute façon posés avec prudence (validation) — ici sans objet
+   puisque le type n'est pas généré.
+4. **Dérives de NOM yaml↔Go** — la sémantique portable a été posée sur le VRAI type Go ; le
+   nom yaml diverge (à réconcilier H6/H7) : `ExplorerMatchRow`→`ExplorerMatchesRow` (posé :
+   had_bot_teammate desc, experience_type_label default), `GamertagSuggestion`→
+   `GamertagSearchResult` (posé : score default), `CascadeInput`→`CascadeFilter` (root desc
+   → cat. 1), `CareerTopMatch` yaml (variant enum) SANS équivalent DTO (le `canonical.
+   CareerTopMatch` n'a ni json ni `variant`) → fragment manuel.
+5. **Defaults TRIVIAUX (valeur zéro)** NON posés (no-op : Huma n'applique pas de default en
+   sortie et la valeur zéro est déjà false/0) : `ExplorerMatchesRow` deaths/kills/kda/
+   is_with_friends/had_bot_teammate, `GamertagSearchResult` exact_match, `AssociatedMediaItem`/
+   `MediaItemRow` liked, `ApiErrorSchema` retryable.
+6. **Sémantique de PARAMÈTRE** (query/path, hors schéma.champ) → **H6** (Huma régénère les
+   params depuis les input structs ; enums d'input à poser avec prudence sur ces structs) :
+   `default: 50` (limit), `default: ""` (recherche q), `default: 8` (limit) ; `enum: [fr,en]`
+   (lang field-mappings), `enum: [pending,accepted,dismissed,superseded,obsoleted,stale]`
+   (proposals status), `enum: [xbox,steam]` (watcher provider — sur chemin yaml OBSOLÈTE, cf.
+   Découvertes H2). **Enums d'input NON posés par prudence** : les 3 ci-dessus (validation
+   422 potentielle + exhaustivité non garantie côté route).
+7. **Exemples de RÉPONSE** (5 exemples d'erreur `ApiErrorSchema` dans `components.responses`)
+   → **H4** / fragment manuel : bad_request, auth_required, player_not_found, internal_error,
+   last_active_title.
+8. **16 request bodies `RawBody`** (contrat d'erreur 400 historique, non dérivable) →
+   fragment manuel H6 (déjà acté dans l'état des lieux).
+
 ## Journal
 
 - 2026-07-24 : recon + plan posés. Séquencement : dernier des gros lots v7.2.
@@ -188,6 +266,21 @@ passage »). NB : chemins Go préfixés `apps/go-api/`.
   « document partagé » (pas instance unique), comptages corrigés (71 Mount), inventaire
   fermé H3, précédence + golden du fragment H6, garde sémantique generated.ts H7,
   outillage H0 tranché (kin-openapi), blindage plan-execution.
+- 2026-07-25 : **H3 EXÉCUTÉ (agent Opus).** Sémantique de schéma.champ portée en tags
+      Huma sur 10 types Go DTO : **19 descriptions + 11 enums + 5 defaults** (bootstrap/auth/
+      engagement_score/media_audio_config/settings/admin_monitoring/explorer/career). Constat
+      mesuré : les cibles 402/21/30/6 du recon = comptages bruts de tout le doc (175/232 desc
+      = réponses/params, niveau opération) ; le portable schéma.champ = 31 schémas dont 11
+      seulement ont un type Go Huma-généré (les « Request » = RawBody/décodage manuel, non
+      générés ; 10 schémas sans type Go). Enums d'input = 0 risque 422 (types instrumentés =
+      outputs ou RawBody, vérifié call-site). Descriptions racine non portables (pas de tag
+      type-level Huma) → inventaire fermé (section dédiée du plan, 8 catégories). Gate :
+      nouveau `openapi_schema_semantics_test.go` — Partie A (registre neuf, 35 sémantiques /
+      10 types) + Partie B (doc partagé vs yaml, allowlist=inventaire+compteurs : 28 parité,
+      5 pertes = descriptions racine allowlistées, 0 perte hors inventaire). gofmt/build/vet/
+      `go test ./internal/api/...`/`go test ./...` (118 ok)/`make go-api-lint` (0) verts. 2
+      descriptions raccourcies (lll ≤ 220). Périmètre : 8 fichiers domain + le test — ZÉRO
+      autre fichier Go, ZÉRO apps/web. Aucun commit (superviseur). H4 = suivant.
 - 2026-07-25 : **H2 EXÉCUTÉ (agent Opus).** 204 call-sites `huma.X(api,` portent
   operationID + summary + tags via le helper variadique `humacore.Op` (nouveau
   `humacore/operation.go`), appliqué mécaniquement (générateur go/ast jetable). 159 en
