@@ -21387,30 +21387,6 @@
 {"Time":"2026-06-26T23:46:50.8348659+02:00","Action":"output","Package":"levelup/go-api/internal/games/synthetic_title_b","Output":"PASS\n"}
 {"Time":"2026-06-26T23:46:50.8399863+02:00","Action":"output","Package":"levelup/go-api/internal/games/synthetic_title_b","Output":"ok  \tlevelup/go-api/internal/games/synthetic_title_b\t0.320s\n"}
 {"Time":"2026-06-26T23:46:50.8399863+02:00","Action":"pass","Package":"levelup/go-api/internal/games/synthetic_title_b","Elapsed":0.32}
-{"Time":"2026-06-26T23:46:52.285255+02:00","Action":"start","Package":"levelup/go-api/internal/games/weaponregistry"}
-{"Time":"2026-06-26T23:46:52.3281612+02:00","Action":"run","Package":"levelup/go-api/internal/games/weaponregistry","Test":"TestRegistry_Counts"}
-{"Time":"2026-06-26T23:46:52.3281612+02:00","Action":"output","Package":"levelup/go-api/internal/games/weaponregistry","Test":"TestRegistry_Counts","Output":"=== RUN   TestRegistry_Counts\n"}
-{"Time":"2026-06-26T23:46:52.7309161+02:00","Action":"output","Package":"levelup/go-api/internal/games/weaponregistry","Test":"TestRegistry_Counts","Output":"2026/06/26 23:46:52 INFO weapon_registry_loaded weapons=59 ids=71 families=43\n"}
-{"Time":"2026-06-26T23:46:52.7335222+02:00","Action":"output","Package":"levelup/go-api/internal/games/weaponregistry","Test":"TestRegistry_Counts","Output":"--- PASS: TestRegistry_Counts (0.41s)\n"}
-{"Time":"2026-06-26T23:46:52.7335222+02:00","Action":"pass","Package":"levelup/go-api/internal/games/weaponregistry","Test":"TestRegistry_Counts","Elapsed":0.41}
-{"Time":"2026-06-26T23:46:52.7335222+02:00","Action":"run","Package":"levelup/go-api/internal/games/weaponregistry","Test":"TestRegistry_ByKey"}
-{"Time":"2026-06-26T23:46:52.7335222+02:00","Action":"output","Package":"levelup/go-api/internal/games/weaponregistry","Test":"TestRegistry_ByKey","Output":"=== RUN   TestRegistry_ByKey\n"}
-{"Time":"2026-06-26T23:46:53.0559281+02:00","Action":"output","Package":"levelup/go-api/internal/games/weaponregistry","Test":"TestRegistry_ByKey","Output":"2026/06/26 23:46:53 INFO weapon_registry_loaded weapons=59 ids=71 families=43\n"}
-{"Time":"2026-06-26T23:46:53.0585141+02:00","Action":"output","Package":"levelup/go-api/internal/games/weaponregistry","Test":"TestRegistry_ByKey","Output":"--- PASS: TestRegistry_ByKey (0.33s)\n"}
-{"Time":"2026-06-26T23:46:53.0585141+02:00","Action":"pass","Package":"levelup/go-api/internal/games/weaponregistry","Test":"TestRegistry_ByKey","Elapsed":0.33}
-{"Time":"2026-06-26T23:46:53.0585141+02:00","Action":"run","Package":"levelup/go-api/internal/games/weaponregistry","Test":"TestRegistry_ByID_Filmshell"}
-{"Time":"2026-06-26T23:46:53.0585141+02:00","Action":"output","Package":"levelup/go-api/internal/games/weaponregistry","Test":"TestRegistry_ByID_Filmshell","Output":"=== RUN   TestRegistry_ByID_Filmshell\n"}
-{"Time":"2026-06-26T23:46:53.4265078+02:00","Action":"output","Package":"levelup/go-api/internal/games/weaponregistry","Test":"TestRegistry_ByID_Filmshell","Output":"2026/06/26 23:46:53 INFO weapon_registry_loaded weapons=59 ids=71 families=43\n"}
-{"Time":"2026-06-26T23:46:53.4290994+02:00","Action":"output","Package":"levelup/go-api/internal/games/weaponregistry","Test":"TestRegistry_ByID_Filmshell","Output":"--- PASS: TestRegistry_ByID_Filmshell (0.37s)\n"}
-{"Time":"2026-06-26T23:46:53.4290994+02:00","Action":"pass","Package":"levelup/go-api/internal/games/weaponregistry","Test":"TestRegistry_ByID_Filmshell","Elapsed":0.37}
-{"Time":"2026-06-26T23:46:53.4290994+02:00","Action":"run","Package":"levelup/go-api/internal/games/weaponregistry","Test":"TestRegistry_Family"}
-{"Time":"2026-06-26T23:46:53.4290994+02:00","Action":"output","Package":"levelup/go-api/internal/games/weaponregistry","Test":"TestRegistry_Family","Output":"=== RUN   TestRegistry_Family\n"}
-{"Time":"2026-06-26T23:46:53.8200229+02:00","Action":"output","Package":"levelup/go-api/internal/games/weaponregistry","Test":"TestRegistry_Family","Output":"2026/06/26 23:46:53 INFO weapon_registry_loaded weapons=59 ids=71 families=43\n"}
-{"Time":"2026-06-26T23:46:53.8220944+02:00","Action":"output","Package":"levelup/go-api/internal/games/weaponregistry","Test":"TestRegistry_Family","Output":"--- PASS: TestRegistry_Family (0.39s)\n"}
-{"Time":"2026-06-26T23:46:53.8227233+02:00","Action":"pass","Package":"levelup/go-api/internal/games/weaponregistry","Test":"TestRegistry_Family","Elapsed":0.39}
-{"Time":"2026-06-26T23:46:53.8227233+02:00","Action":"output","Package":"levelup/go-api/internal/games/weaponregistry","Output":"PASS\n"}
-{"Time":"2026-06-26T23:46:53.8294863+02:00","Action":"output","Package":"levelup/go-api/internal/games/weaponregistry","Output":"ok  \tlevelup/go-api/internal/games/weaponregistry\t1.544s\n"}
-{"Time":"2026-06-26T23:46:53.8294863+02:00","Action":"pass","Package":"levelup/go-api/internal/games/weaponregistry","Elapsed":1.544}
 {"Time":"2026-06-26T23:46:53.833949+02:00","Action":"start","Package":"levelup/go-api/internal/legacymatch"}
 {"Time":"2026-06-26T23:46:53.833949+02:00","Action":"output","Package":"levelup/go-api/internal/legacymatch","Output":"?   \tlevelup/go-api/internal/legacymatch\t[no test files]\n"}
 {"Time":"2026-06-26T23:46:53.833949+02:00","Action":"skip","Package":"levelup/go-api/internal/legacymatch","Elapsed":0}

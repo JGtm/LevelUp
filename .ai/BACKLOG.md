@@ -75,6 +75,28 @@ non vérifiable). **Effort** : moyen (refactor résolution nom) + petit (one-sho
 
 ---
 
+### [data/armes] Colonne résiduelle `weapons.name_fr` dans les metadata déjà migrées
+
+Noté le 2026-07-25 (lot découvertes v7.2). V72-06 a retiré `name_fr` du schéma du registre
+(CREATE de `applyWeaponRegistry`) et de tout le code de lecture — le nom d'affichage vient de
+`weapon_name_labels`, keyé par `weapon_key`. Sur une `metadata.duckdb` **déjà migrée** (prod), la
+colonne **subsiste** : DuckDB refuse `ALTER … DROP COLUMN` tant que la PK ART
+(`title_slug`+`weapon_key`) existe, d'où le non-DROP volontaire documenté dans
+`internal/games/halo_infinite/migrations/weapon_registry.go`. **Statut : inerte** — plus jamais
+lue, aucun impact fonctionnel ni de taille. Purge = migration dédiée de type rebuild
+(table-rename), **non urgente**. **Effort : S.**
+
+### [ops/h5] `cmd/h5-metadata-fetch` (seedWeapons) écrit encore `weapon_labels.name_fr`
+
+Noté le 2026-07-25 (lot découvertes v7.2). Le CLI de fetch metadata H5 continue de peupler
+`weapon_labels.name_fr`, colonne désormais **shadowée par `weapon_name_labels`** (source unique du
+nom d'affichage, keyée par `weapon_key`). Plomberie **vestigiale** : l'écriture n'est pas
+consommée par le resolver. À simplifier **au prochain passage sur ce CLI** (pas de chantier
+dédié) — cohérent avec le point 1 de la décision « unifier la SOURCE des noms d'armes »
+ci-dessus. **Effort : S.**
+
+---
+
 ### [feat/frags] Sunburst : donner un niveau 2 à la classe « Grenade » (par TYPE de grenade)
 
 > Noté le 2026-07-21 (user). La classe **Grenade du sunburst est une FEUILLE** : `buildAPIFragClasses`

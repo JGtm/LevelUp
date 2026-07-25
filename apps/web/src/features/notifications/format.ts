@@ -56,7 +56,11 @@ function subTierToRoman(v: unknown): string {
 // `metric_key`) dans ses params. Fallback sur `metric` + nouvel enrichissement
 // `period` → `period_label` pour les templates near_miss.
 // 2026-05-22 — sub_tier / previous_sub_tier convertis en chiffres romains.
-function enrichParams(
+//
+// Exporté pour test UNIQUEMENT (la résolution passe par resolveTitle/resolveBody) :
+// certains params arrondis en défense ne sont interpolés par AUCUN template, donc
+// non observables depuis resolveTitle — cf. current_mu / next_tier_mu ci-dessous.
+export function enrichParams(
   params: Record<string, unknown> | undefined,
   locale: Locale,
 ): Record<string, unknown> | undefined {
@@ -87,7 +91,17 @@ function enrichParams(
   // LUSR restant, notif lusr_tier_approach — internal/progression/coach/
   // generator.go) manquait à cette liste : le titre interpolait la mantisse
   // flottante brute ({gap} illisible, ex. "12.847213…").
-  for (const key of ['value', 'target', 'previous_value', 'gap'] as const) {
+  //
+  // `current_mu` / `next_tier_mu` : MÊME classe de défaut que `gap` — float64
+  // bruts émis par buildLUSRTierApproachAlert dans le MÊME Params. Ils sont
+  // arrondis en DÉFENSE : AUCUN template ne les interpole aujourd'hui (les
+  // templates notif.lusr_tier_approach.title/body n'utilisent que {gap} et
+  // {next_tier_name} — le μ TrueSkill brut en a été retiré volontairement, cf.
+  // « afficher la métrique connue du user, pas le μ »). Si un template les
+  // réintroduit un jour, il héritera de l'arrondi au lieu de re-livrer la
+  // mantisse ; retirer ces deux clés d'ici le jour où le backend cesse de les
+  // émettre.
+  for (const key of ['value', 'target', 'previous_value', 'gap', 'current_mu', 'next_tier_mu'] as const) {
     if (typeof out[key] === 'number') {
       out[key] = Math.round((out[key] as number) * 100) / 100
     }

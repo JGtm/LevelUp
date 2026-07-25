@@ -35,7 +35,10 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   // Filtres (déjà title-scopés avant V72-29 — verrouillés ici).
   filtersResolve: () => queryKeys.filtersResolve(P, T, 'h'),
   filtersPreview: () => queryKeys.filtersPreview(P, T, 'h'),
-  player: () => queryKeys.player(P, T),
+  // `player` retiré le 2026-07-25 : fabrique sans AUCUN call-site (enrichie du
+  // titre « par cohérence » en V72-29, jamais consommée) — code mort supprimé,
+  // règle CLAUDE.md n°7. Le volet COMPLÉTUDE ci-dessous (symétrie `stale`) fait
+  // échouer ce test si un nom classé disparaît de queryKeys sans être retiré ici.
   // Carrière.
   career: () => queryKeys.career(P, T),
   careerEncounters: () => queryKeys.careerEncounters(P, T),
