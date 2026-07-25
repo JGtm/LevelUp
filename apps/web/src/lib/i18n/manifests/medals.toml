@@ -177,11 +177,11 @@ en = "Zones"
 # medailles d'objectif transverses (multi-captures, interceptions, immortalite…).
 
 [medals.category.warzone]
-fr = "Warzone"
+fr = "Zone de combat"
 en = "Warzone"
 
 [medals.category.strongholds]
-fr = "Bastions"
+fr = "Bases"
 en = "Strongholds"
 
 [medals.category.objective]
