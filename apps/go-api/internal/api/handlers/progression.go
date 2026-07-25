@@ -60,8 +60,8 @@ func (h *ProgressionHandler) WithDemoMode(demo bool) *ProgressionHandler {
 // (qui inclut déjà le préfixe /players/{player_slug} + son middleware
 // ownership/title). humacore.NewAPI lit le path param parent {player_slug} et
 // hérite du middleware du sous-groupe (cf. TestHumaNestedSubrouterProbe).
-func (h *ProgressionHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *ProgressionHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/streaks", h.handleStreaks)
 	huma.Get(api, "/records", h.handleRecords)
 	huma.Get(api, "/milestones", h.handleMilestones)

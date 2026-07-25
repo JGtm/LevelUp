@@ -56,8 +56,8 @@ func NewCoachProposalsHandler(resolve CoachAdvisorResolver, titleSlug string) *C
 // Mount enregistre les 3 routes via Huma (Phase 3b) sur un sous-routeur déjà
 // préfixé par /players/{player_slug} (humacore.NewAPI lit le path param parent
 // et hérite du middleware ownership/title du sous-groupe).
-func (h *CoachProposalsHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *CoachProposalsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/coach/proposals", h.handleListProposals)
 	huma.Post(api, "/coach/proposals/{id}/accept", h.handleAcceptProposal)
 	huma.Post(api, "/coach/proposals/{id}/dismiss", h.handleDismissProposal)

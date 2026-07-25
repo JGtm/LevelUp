@@ -175,34 +175,43 @@ func TestNoDuplicateRouteRegistration(t *testing.T) {
 	t.Setenv("MULTI_TITLE_API_ENABLED", "true")
 	t.Setenv("PRESTIGE_ENABLED", "true")
 
-	// Le hook capture les paires (routeur, api) pendant le montage ; les Paths des
-	// apis ne sont peuplés qu'APRÈS (mutation en place par huma.Get/Post) → on lit
-	// une fois buildTestRouter terminé.
-	var caps []capturedAPI
-	humacore.OnAPICreatedRouter = func(r chi.Router, a huma.API) {
-		caps = append(caps, capturedAPI{rid: routerID(r), api: a})
+	// V72-01 / H1 : sous le document PARTAGÉ, huma écrase silencieusement une
+	// collision (méthode, chemin) — elle n'est PLUS lisible dans le document final
+	// (une seule opération survit). On observe donc CHAQUE enregistrement via
+	// OnOperationRegistered (chemin ABSOLU) : deux enregistrements d'un même
+	// (méthode, chemin absolu) = collision (écrasement chi silencieux). Détection
+	// PLUS fine que l'ancien groupement par pointeur de routeur — elle couvre aussi
+	// deux sous-groupes r.With/r.Group distincts d'un même arbre chi (l'ancienne
+	// LIMITE documentée : préfixe absolu identique ⇒ même endpoint chi écrasé).
+	type opKey struct{ method, path string }
+	counts := map[opKey]int{}
+	humacore.OnOperationRegistered = func(method, path string) {
+		counts[opKey{method, path}]++
 	}
-	defer func() { humacore.OnAPICreatedRouter = nil }()
+	defer func() { humacore.OnOperationRegistered = nil }()
 
-	_ = buildTestRouter(t) // déclenche tous les Mount → tous les NewAPI → capture
+	_ = buildTestRouter(t) // déclenche tous les Mount → tous les NewAPI → observe
 
-	rr := newRouteRegistry()
-	for _, c := range caps {
-		rr.record(c.rid, c.api)
+	total := len(counts)
+	t.Logf("capture : %d opérations Huma distinctes (document partagé)", total)
+
+	// Sanity : le hook a bien observé un grand nombre de routes. Sinon la verdeur
+	// ci-dessous serait vide de sens.
+	if total < 30 {
+		t.Fatalf("capture anormalement faible : %d opérations (attendu >= 30) — hook/collecte cassés ?", total)
 	}
 
-	t.Logf("capture : %d apis Huma, %d opérations distinctes", len(caps), rr.total())
-
-	// Sanity : le hook a bien capturé un grand nombre de routes (branché, Paths
-	// peuplé malgré OpenAPIPath=""). Sinon la verdeur ci-dessous serait vide de sens.
-	if rr.total() < 30 {
-		t.Fatalf("capture anormalement faible : %d opérations (attendu >= 30) — hook/collecte cassés ?", rr.total())
+	var dups []string
+	for k, n := range counts {
+		if n > 1 {
+			dups = append(dups, fmt.Sprintf("%s %s enregistré %d fois (écrasement chi silencieux)", k.method, k.path, n))
+		}
 	}
-
-	if dups := rr.duplicates(); len(dups) > 0 {
+	sort.Strings(dups)
+	if len(dups) > 0 {
 		t.Errorf("%d collision(s) de route détectée(s) — deux handlers enregistrent le même "+
-			"(méthode, chemin) sur le même sous-routeur chi (écrasement silencieux). "+
-			"Déplacer l'une des routes sous un préfixe non ambigu :", len(dups))
+			"(méthode, chemin absolu) sur le même arbre chi. Déplacer l'une des routes sous "+
+			"un préfixe non ambigu :", len(dups))
 		for _, d := range dups {
 			t.Errorf("  - %s", d)
 		}

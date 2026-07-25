@@ -24,7 +24,7 @@ func TestAdminTokenHealthHandler_Get_OK(t *testing.T) {
 		return want, nil
 	})
 	r := chi.NewRouter()
-	r.Route("/admin", h.Mount)
+	r.Route("/admin", func(r chi.Router) { h.Mount(r) })
 
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/admin/token-health", nil))
@@ -46,7 +46,7 @@ func TestAdminTokenHealthHandler_Get_Error(t *testing.T) {
 		return domain.TokenHealthResponse{}, errors.New("boom")
 	})
 	r := chi.NewRouter()
-	r.Route("/admin", h.Mount)
+	r.Route("/admin", func(r chi.Router) { h.Mount(r) })
 
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/admin/token-health", nil))

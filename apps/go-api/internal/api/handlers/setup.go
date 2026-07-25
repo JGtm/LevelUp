@@ -66,8 +66,8 @@ func NewSetupHandler(
 // montage que les routes chi d'origine). Le body POST /setup/players est marqué
 // OPTIONNEL (MarkRequestBodyOptional) : le décodage maison rend un corps absent
 // OU malformé en 400 {invalid_body}, contrat préservé.
-func (h *SetupHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *SetupHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Post(api, "/setup/players", h.handleCreatePlayer)
 	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/setup/players")
 	huma.Post(api, "/setup/smoke-test", h.handleSmokeTest)

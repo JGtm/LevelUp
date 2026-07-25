@@ -48,8 +48,8 @@ import (
 // /players/{player_slug} + middleware ownership/title/CapMedia hérités). Seul
 // /pages/media a un corps optionnel (MarkRequestBodyOptional). PostUploadMedia
 // (multipart) et ServeMediaFile (binaire) restent enregistrés en chi par server.go.
-func (h *MediaHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *MediaHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Post(api, "/pages/media", h.handleGetMediaLibrary)
 	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/pages/media")
 	huma.Patch(api, "/media/likes", h.handlePatchMediaLike)

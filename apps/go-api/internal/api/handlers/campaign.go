@@ -49,8 +49,8 @@ func NewCampaignHandler(resolve ProgressionResolver, titleSlug string) *Campaign
 
 // Mount enregistre les routes via Huma sur le sous-routeur chi (préfixe
 // /players/{player_slug} + middleware ownership/title hérités).
-func (h *CampaignHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *CampaignHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Post(api, "/campaigns", h.handleStart)
 	huma.Get(api, "/campaigns/active", h.handleGetActive)
 	huma.Get(api, "/campaigns/history", h.handleListEnded)

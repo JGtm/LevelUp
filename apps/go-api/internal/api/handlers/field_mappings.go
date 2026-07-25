@@ -136,8 +136,8 @@ type fieldMappingsResponse struct {
 
 // Mount enregistre l'unique GET via Huma. NewAPI(r) peut recevoir le routeur
 // racine OU un sous-routeur ; le chemin relatif exact est repris tel quel.
-func (h *FieldMappingsHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *FieldMappingsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/titles/{slug}/field-mappings", h.handleGet)
 }
 

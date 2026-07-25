@@ -16,6 +16,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2"
+
 	"levelup/go-api/internal/api"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/platform/groupstore"
@@ -51,6 +53,15 @@ func (m *mockBootstrapRepo) GetLastSyncAt(_ context.Context) (*time.Time, error)
 // ---------------------------------------------------------------------------
 
 func buildTestRouter(t *testing.T) http.Handler {
+	t.Helper()
+	router, _ := buildTestRouterWithDoc(t)
+	return router
+}
+
+// buildTestRouterWithDoc construit le routeur de test ET retourne le document
+// OpenAPI PARTAGÉ (V72-01 / H1) pour les tests qui vérifient la fidélité du
+// document fusionné (cf. shared_openapi_doc_test.go).
+func buildTestRouterWithDoc(t *testing.T) (http.Handler, *huma.OpenAPI) {
 	t.Helper()
 
 	// Répertoire temporaire isolé pour les I/O du routeur (nettoyé automatiquement)
@@ -90,8 +101,8 @@ func buildTestRouter(t *testing.T) http.Handler {
 	bootSvc := service.NewBootstrapService(cfg, bootRepo)
 
 	gs := groupstore.NewGroupStore(filepath.Join(os.TempDir(), "levelup_contract_groups.json"))
-	router, _ := api.NewRouter(context.Background(), cfg, bootRepo, bootSvc, nil, nil, nil, nil, gs)
-	return router
+	router, _, doc := api.NewRouter(context.Background(), cfg, bootRepo, bootSvc, nil, nil, nil, nil, gs)
+	return router, doc
 }
 
 // ---------------------------------------------------------------------------

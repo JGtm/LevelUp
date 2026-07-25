@@ -37,8 +37,8 @@ func NewAssetMetadataHandler(
 
 // Mount enregistre les 2 routes via Huma sur le routeur chi fourni
 // (préfixe hérité du point de montage, ex. /api/v1).
-func (h *AssetMetadataHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *AssetMetadataHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/assets/{title_id}/maps", h.ListMaps)
 	huma.Get(api, "/assets/{title_id}/weapons", h.ListWeapons)
 	huma.Get(api, "/assets/{title_id}/medals", h.ListMedals)
@@ -140,8 +140,8 @@ func NewEmptyAssetMetadataHandler() *EmptyAssetMetadataHandler { return &EmptyAs
 
 // Mount enregistre les 2 GET de fallback via Huma (mêmes paths que AssetMetadataHandler,
 // jamais montés en même temps — if/else mutuellement exclusif côté server.go).
-func (h *EmptyAssetMetadataHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *EmptyAssetMetadataHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/assets/{title_id}/maps", h.listEmpty)
 	huma.Get(api, "/assets/{title_id}/weapons", h.listEmpty)
 	huma.Get(api, "/assets/{title_id}/medals", h.listEmpty)

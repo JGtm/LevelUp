@@ -43,8 +43,8 @@ func NewSessionHandler(store *session.Store) *SessionHandler {
 
 // Mount enregistre la route via Huma au même point de montage que le routeur
 // chi fourni (racine : POST /session/context, pas de path param parent).
-func (h *SessionHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *SessionHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Post(api, "/session/context", h.handlePostContext)
 }
 

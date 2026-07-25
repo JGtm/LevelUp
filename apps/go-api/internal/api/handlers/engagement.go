@@ -52,8 +52,8 @@ func NewEngagementHandler(newSvc ServiceFactory[*service.PlayerEngagementService
 
 // Mount enregistre tous les endpoints via Huma sur le sous-routeur chi
 // (préfixe /players/{player_slug} + middleware ownership/title hérités).
-func (h *EngagementHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *EngagementHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/matches/{match_id}/engagement", h.handleMatchEngagement)
 	huma.Get(api, "/engagement_profile", h.handleEngagementProfile)
 	huma.Post(api, "/engagement/timeseries", h.handleEngagementTimeseries)

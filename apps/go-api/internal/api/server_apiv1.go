@@ -23,9 +23,11 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/api/handlers"
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/api/wire"
 	"levelup/go-api/internal/assets"
@@ -56,6 +58,12 @@ import (
 	"levelup/go-api/pkg/duckdbbackup"
 )
 
+// apiV1BasePath est le chemin de montage ABSOLU du sous-routeur de l'API v1. Source
+// UNIQUE pour (a) le montage chi (r.Route dans server.go) et (b) le préfixe du
+// document OpenAPI PARTAGÉ (WithSharedDoc) — le chemin documenté colle ainsi
+// toujours au chemin routé (chantier V72-01 / H1).
+const apiV1BasePath = "/api/v1"
+
 // server_apiv1.go — montage des routes /api/v1, extrait de NewRouter (K2a) pour
 // dé-goder la fonction d'assemblage DI. Le bloc construit ses ~55 handlers en
 // interne et les monte ; les dépendances de la portée NewRouter sont regroupées
@@ -85,6 +93,9 @@ type apiV1Deps struct {
 	jobStore              *jobs_platform.Store
 	titleRegistry         *titlePkg.Registry
 	backupScheduler       *duckdbbackup.Scheduler
+	// humaSharedConfig : LE document OpenAPI PARTAGÉ (V72-01 / H1). Toutes les routes
+	// Huma s'y enregistrent via WithSharedDoc, sous leur préfixe de montage absolu.
+	humaSharedConfig huma.Config
 }
 
 // (Mount + sous-routeurs) ; longueur/complexité inhérentes à un assembleur de routes.
@@ -120,16 +131,21 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	ownershipMW := middleware.RequirePlayerOwnership(cfg.DemoMode, cfg.AuthMode,
 		playerOwnershipXUIDResolver(cfg), users, familyXUIDResolver(groupStore, users))
 	var xboxOAuthRoot *handlers.XboxOAuthHandler
+	// V72-01 / H1 : option de document PARTAGÉ pour toutes les routes Huma montées
+	// directement sous /api/v1 (r nu, r.With(mw), r.Group(mw) — préfixe de path
+	// inchangé). Les sous-routeurs à préfixe (/admin, /players/{player_slug}, ...)
+	// déclarent leur propre option à côté de leur r.Route.
+	apiOpt := humacore.WithSharedDoc(d.humaSharedConfig, apiV1BasePath)
 	// Phase 3b : API Huma COEXISTANTE sur ce sous-routeur /api/v1. Les routes
 	// migrées (huma.Register/huma.Get) cohabitent avec les routes chi non
 	// migrées sur le MÊME *chi.Mux → mêmes middlewares racine + visibles à
 	// chi.Walk/contract_test. La migration est incrémentale, route par route.
-	humaAPI := newHumaAPI(r)
+	humaAPI := newHumaAPI(r, apiOpt)
 	registerChangelogHuma(humaAPI, handlers.NewChangelogHandler(cfg.RepoRoot))
 
 	// Endpoints P0 : bootstrap + liste joueurs
-	handlers.NewBootstrapHandler(bootSvc).Mount(r)
-	handlers.NewPlayersHandler(bootSvc).Mount(r)
+	handlers.NewBootstrapHandler(bootSvc).Mount(r, apiOpt)
+	handlers.NewPlayersHandler(bootSvc).Mount(r, apiOpt)
 
 	// Smoke endpoint pour la home page : sonde le contenu (banner, peaks
 	// CSR/LUSR, playlists récentes, arme favorite) et renvoie 503 si une
@@ -140,14 +156,14 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// RequireAuth. Pas de {player_slug} : la propriété est implicite (session). No-op
 	// en démo / auth non activée (probe CI/dev inchangée).
 	handlers.NewHealthHomeHandler(reg.HomeCtxWithAuth).Mount(
-		r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode)))
+		r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode)), apiOpt)
 
 	// Phase 9 du plan pipeline CSR : diagnostic coverage CSR pour un joueur.
 	// Permet de vérifier en 1 ligne si le pipeline a bien capturé les CSR
 	// (matured + placement) ou s'il faut lancer un backfill.
 	// S6 : révèle la couverture CSR d'un {player_slug} → RequireAuth + ownership.
 	handlers.NewDiagCSRHandler(reg.CSRCoverageProvider).Mount(
-		r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode), ownershipMW))
+		r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode), ownershipMW), apiOpt)
 
 	// Phase 4 plan stabilisation 2026-05-22 : diagnostic progression V2
 	// (Ascension). Compte les rows dans streak/player_records/record_history/
@@ -156,14 +172,14 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// ces tables restaient vides — cf. AUDIT_ASCENSION_PIPELINE_DISCONNECTED).
 	// S6 : diagnostic par {player_slug} → RequireAuth + ownership.
 	handlers.NewDiagProgressionHandler(reg.ProgressionDiagProvider).Mount(
-		r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode), ownershipMW))
+		r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode), ownershipMW), apiOpt)
 
 	// ADR 0020 (coach→pont Prestige) : agrège prestige_telemetry par origine du
 	// défi (coach / user / pilot_mode / unknown) → taux d'acceptation/complétion.
 	// Permet de mesurer l'efficacité du coach proactif sans schéma dédié.
 	// S6 : diagnostic par {player_slug} → RequireAuth + ownership.
 	handlers.NewDiagPrestigeTelemetryHandler(reg.PrestigeTelemetryDiagProvider).Mount(
-		r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode), ownershipMW))
+		r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode), ownershipMW), apiOpt)
 
 	// Fix 2026-05-30 : backfill progression V2 in-process. Force une
 	// évaluation idempotente (streaks/records/milestones) pour un joueur
@@ -174,7 +190,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// des données → RequireAuth + RequireAdmin (admin = accès à tous les joueurs).
 	handlers.NewProgressionBackfillHandler(reg.ProgressionBackfillProvider).Mount(
 		r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode),
-			middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode)))
+			middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode)), apiOpt)
 
 	// Phase A multi-titres : exposition des field mappings TOML.
 	// Derrière MULTI_TITLE_API_ENABLED.
@@ -191,15 +207,15 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		if seasonsResolver := reg.SeasonsCatalogForHandler(); seasonsResolver != nil {
 			fieldMappingsHandler = fieldMappingsHandler.WithSeasonsCatalog(seasonsResolver)
 		}
-		fieldMappingsHandler.Mount(r) // GET /titles/{slug}/field-mappings (Huma, ETag préservé)
+		fieldMappingsHandler.Mount(r, apiOpt) // GET /titles/{slug}/field-mappings (Huma, ETag préservé)
 
 		// Phase 1.7a — capabilities produit déclarées par le titre (TOML).
 		capabilitiesHandler := handlers.NewCapabilitiesHandler(fieldMappingsRegistry, slog.Default())
-		capabilitiesHandler.Mount(r)
+		capabilitiesHandler.Mount(r, apiOpt)
 
 		// Phase 1.7b — matrice de features (cascade capabilities → 3 états).
 		featureMatrixHandler := handlers.NewFeatureMatrixHandler(fieldMappingsRegistry, slog.Default())
-		featureMatrixHandler.Mount(r)
+		featureMatrixHandler.Mount(r, apiOpt)
 
 		// Phase H.bis — catalogue Playlists/Pairs/Maps (title-aware).
 		// OpenReadWriteShared pour compatibilité avec les connexions RW existantes
@@ -214,7 +230,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			// sinon fuite de refCount metadata (cf. INCIDENT_2026-05-21).
 			reg.TrackMetadataHandle(catalogMetaDB)
 			catalogH := handlers.NewCatalogHandler(platform_duckdb.NewCatalogRepo(catalogMetaDB, nil))
-			catalogH.Mount(r) // /titles/{slug}/catalog/{playlists,pairs,maps}
+			catalogH.Mount(r, apiOpt) // /titles/{slug}/catalog/{playlists,pairs,maps}
 		}
 
 		slog.Info("multi_title_api_enabled",
@@ -238,11 +254,11 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// service.ReleaseNotesService ; le handler ne fait que cache + I/O HTTP.
 	releaseBuilder := service.NewReleaseNotesService(cfg.RepoRoot)
 	help := handlers.NewHelpHandler(releaseBuilder, titlePkg.NewPathResolver(cfg.RepoRoot).CacheRootDir())
-	help.Mount(r)
+	help.Mount(r, apiOpt)
 
 	// Sprint 14 : contexte de session
 	sessionHandler := handlers.NewSessionHandler(sessionStore)
-	sessionHandler.Mount(r)
+	sessionHandler.Mount(r, apiOpt)
 
 	// Verrou « instance fermée » (lockdown) : effectif = env (LEVELUP_INSTANCE_LOCKED,
 	// verrou forcé au boot) OU app_settings.instance_locked (mutable à chaud via
@@ -286,7 +302,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	} else {
 		authHandler.WithUserStore(users)
 	}
-	authHandler.MountDeviceFlow(r) // POST /auth/device-flow/start + GET /auth/device-flow/{attempt_id} (Huma)
+	authHandler.MountDeviceFlow(r, apiOpt) // POST /auth/device-flow/start + GET /auth/device-flow/{attempt_id} (Huma)
 
 	// PR 4 — Authorization Code Flow SSO Xbox (UX redirect, plus aboutie que
 	// le Device Code). Enregistré uniquement en mode "xbox" + redirect URI
@@ -310,7 +326,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	userAuthHandler := handlers.NewUserAuthHandler(users, invites, sessionStore, cfg.RegistrationMode).
 		WithAuthMode(cfg.AuthMode).
 		WithInstanceLock(instanceLockedFn)
-	userAuthHandler.Mount(r) // login/register/logout/password migrés vers Huma (Phase 3b)
+	userAuthHandler.Mount(r, apiOpt) // login/register/logout/password migrés vers Huma (Phase 3b)
 
 	// Groupes/familles : gestion end-user (tout user authentifié + lié à une
 	// identité Halo). Inviter à un groupe = générer un code "rejoindre le groupe"
@@ -331,34 +347,35 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// Admin : gestion utilisateurs + invitations (protégé par RequireAuth + RequireAdmin).
 	adminHandler := handlers.NewAdminHandler(users, invites)
 	r.Route("/admin", func(r chi.Router) {
+		adminOpt := humacore.WithSharedDoc(d.humaSharedConfig, apiV1BasePath+"/admin")
 		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
 		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
-		adminHandler.Mount(r) // users/invites (Huma, sous RequireAuth+RequireAdmin)
+		adminHandler.Mount(r, adminOpt) // users/invites (Huma, sous RequireAuth+RequireAdmin)
 		// Intégrité des données : invariants du pipeline sync par joueur
 		// (Phase 4 du plan .ai/PLAN_SYNC_INVARIANTS_GATE.md). NoStore : le
 		// résultat reflète l'état courant des DBs, jamais de cache.
 		invariantsHandler := handlers.NewAdminInvariantsHandler(reg.RunDataInvariants)
-		invariantsHandler.Mount(r.With(middleware.NoStore))
+		invariantsHandler.Mount(r.With(middleware.NoStore), adminOpt)
 		// Contention DB (B-swap shared) : compteurs de swap RO↔RW pendant le
 		// sync (cadence + lectures rejetées en 503). Lecture seule des
 		// métriques expvar du sharedprovider. NoStore : état courant.
 		contentionHandler := handlers.NewAdminDBContentionHandler(reg.DBContention)
-		contentionHandler.Mount(r.With(middleware.NoStore))
+		contentionHandler.Mount(r.With(middleware.NoStore), adminOpt)
 		// Santé des tokens auth (MSAL / XSTS / Refresh) par joueur. Lecture
 		// seule du MultiUserTokenStore (ADR 0023), sans refresh réseau.
 		tokenHealthHandler := handlers.NewAdminTokenHealthHandler(reg.TokenHealth)
-		tokenHealthHandler.Mount(r.With(middleware.NoStore))
+		tokenHealthHandler.Mount(r.With(middleware.NoStore), adminOpt)
 		// Dashboard monitoring admin : overview/scheduler/convergence/jobs
 		// + actions correctives (data-health run, cycle auto-sync forcé).
 		// Cf. server_admin_monitoring.go.
-		wire.MountAdminMonitoringRoutes(r, reg, autoSyncScheduler, jobStore, serverCtx)
+		wire.MountAdminMonitoringRoutes(r, reg, autoSyncScheduler, jobStore, serverCtx, adminOpt)
 		// Gestion des titres (PMT-14 volet A) : liste + détail (Status lifecycle
 		// MT-22 enfin lu/exposé, capabilities + feature-matrix réutilisés de
 		// 1.7a/b sans recalcul). Read-only, admin-gated, NoStore (reflète l'état
 		// du registre des titres au boot).
 		adminTitlesHandler := handlers.NewAdminTitlesHandler(titleRegistry, fieldMappingsRegistry, slog.Default())
 		// /titles, /titles/{slug}, /titles/{slug}/toml-draft (Huma, NoStore).
-		adminTitlesHandler.Mount(r.With(middleware.NoStore))
+		adminTitlesHandler.Mount(r.With(middleware.NoStore), adminOpt)
 		// Diagnostic santé d'un titre (PMT-14 volet A — productise Phase 1.8) :
 		// présence des mappings TOML + réalité DB (lignes des tables cœur),
 		// read-only via port.TableInspector.
@@ -367,12 +384,12 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 				WithCapabilities(fieldMappingsRegistry),
 			slog.Default(),
 		)
-		adminTitleDiagHandler.Mount(r.With(middleware.NoStore))
+		adminTitleDiagHandler.Mount(r.With(middleware.NoStore), adminOpt)
 		// Diagnostic apparence Spartan ID (volet 2, Lot F du plan diag apparence) :
 		// verdict par composant (bannière/emblème/backdrop/service tag) d'un joueur
 		// suivi, à la demande. Read-only, AUCUNE écriture DB, NoStore (état courant).
 		appearanceDiagHandler := handlers.NewAdminAppearanceDiagHandler(reg.DiagnoseAppearance)
-		appearanceDiagHandler.Mount(r.With(middleware.NoStore))
+		appearanceDiagHandler.Mount(r.With(middleware.NoStore), adminOpt)
 	})
 
 	// Diagnostic — loopback (127.0.0.1) uniquement, ET admin (S5, lot S :
@@ -383,10 +400,11 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	if autoSyncScheduler != nil {
 		autoSyncH := handlers.NewAdminAutoSyncHandler(autoSyncScheduler, cfg, tokenProvider)
 		r.Route("/_diag/auto-sync", func(r chi.Router) {
+			autoSyncOpt := humacore.WithSharedDoc(d.humaSharedConfig, apiV1BasePath+"/_diag/auto-sync")
 			r.Use(middleware.LoopbackOnly)
 			r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
 			r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
-			autoSyncH.Mount(r) // /snapshot, /run, /probe (loopback + admin)
+			autoSyncH.Mount(r, autoSyncOpt) // /snapshot, /run, /probe (loopback + admin)
 		})
 	}
 
@@ -413,7 +431,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
 		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
-		settingsHandler.Mount(r) // /settings + /settings/{media,sessions,backup}/...
+		settingsHandler.Mount(r, apiOpt) // /settings + /settings/{media,sessions,backup}/...
 	})
 
 	// ProfileService PARTAGÉ : writer UNIQUE de db_profiles.json. Le store
@@ -428,7 +446,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// No-op en démo / auth non activée.
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
-		setupHandler.Mount(r) // /setup/players, /setup/smoke-test
+		setupHandler.Mount(r, apiOpt) // /setup/players, /setup/smoke-test
 	})
 
 	// Sprint 17 : Jobs longs persistants + sync initiale.
@@ -439,7 +457,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// middleware). L'API Huma est adossée à un sous-routeur gardé (humachi hérite du
 	// middleware du sous-groupe, cf. registerGamertagHuma/Mount des handlers gardés).
 	registerJobsHuma(
-		newHumaAPI(r.With(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))),
+		newHumaAPI(r.With(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode)), apiOpt),
 		handlers.NewJobsHandler(jobStore))
 	syncH := handlers.NewSyncHandler(cfg, settingsStore, jobStore, tokenProvider)
 	// Branche le hook Prestige post-sync (best-effort, no-op si flag off ou bundle nil).
@@ -476,12 +494,12 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
 		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
-		syncH.MountInitialAndAll(r) // POST /sync/initial, /sync/all (Huma)
+		syncH.MountInitialAndAll(r, apiOpt) // POST /sync/initial, /sync/all (Huma)
 		// Sprint 51-B3 : Pipeline backfill (weapon kills + détection des autres types).
 		// Audit ownership 2026-06-08 (PR-A) : backfill lit player_slug dans le BODY
 		// (hors chokepoint /players/{slug}) → opération lourde sur un joueur arbitraire.
 		// Aligné sur /sync/* : admin-gated (no-op en demo/single-user).
-		handlers.NewBackfillHandler(cfg, jobStore).Mount(r) // POST /backfill/start
+		handlers.NewBackfillHandler(cfg, jobStore).Mount(r, apiOpt) // POST /backfill/start
 	})
 
 	// OpenSpartan import (Sprint OpenSpartan PR 3.B + commit 15 sprint B1) :
@@ -521,7 +539,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	}
 
 	// Galerie médias — version de flux pour polling léger
-	handlers.NewMediaFeedVersionHandler().Mount(r) // GET /media/feed-version (Huma)
+	handlers.NewMediaFeedVersionHandler().Mount(r, apiOpt) // GET /media/feed-version (Huma)
 
 	// Assets cache-aside unifiés (médailles, maps, battlepass, badges de défi).
 	// Couche d'abstraction DefaultResolver : local-first → API-fallback + DuckDB index.
@@ -535,9 +553,9 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// Les 2 branches sont sur Huma (Phase 3b) : handler réel gaté par capability, ou
 	// fallback vide. if/else mutuellement exclusif → pas de double-registration.
 	if assetMetaHandler != nil {
-		assetMetaHandler.Mount(r) // GET /assets/{title_id}/{maps,weapons}
+		assetMetaHandler.Mount(r, apiOpt) // GET /assets/{title_id}/{maps,weapons}
 	} else {
-		handlers.NewEmptyAssetMetadataHandler().Mount(r) // fallback Huma → []
+		handlers.NewEmptyAssetMetadataHandler().Mount(r, apiOpt) // fallback Huma → []
 	}
 
 	// Sélection par titre (Pass B.5) : activer / mettre en pause / purger un
@@ -547,13 +565,18 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// (param de path) afin que la garde d'ownership raisonne sur ce titre et
 	// non sur le header (anti-bypass).
 	r.Route("/profiles/{player_slug}/titles/{slug}", func(r chi.Router) {
+		titleOpt := humacore.WithSharedDoc(d.humaSharedConfig, apiV1BasePath+"/profiles/{player_slug}/titles/{slug}")
 		r.Use(middleware.TitleSlugFromPath("slug"))
 		r.Use(ownershipMW)
-		handlers.NewTitleSyncHandler(profileService).Mount(r)
+		handlers.NewTitleSyncHandler(profileService).Mount(r, titleOpt)
 	})
 
 	// Endpoints P1 : pages par joueur (Sprint 37 — DI via wire.ServiceRegistry)
 	r.Route("/players/{player_slug}", func(r chi.Router) {
+		// V72-01 / H1 : préfixe de document du chokepoint player-scoped. Réutilisé par
+		// tous les Mount de ce bloc, y compris les sous-groupes capability (r.Group ne
+		// change pas le préfixe de path, seulement les middlewares).
+		playerOpt := humacore.WithSharedDoc(d.humaSharedConfig, apiV1BasePath+"/players/{player_slug}")
 		// MT-22 (PMT-8) : gate du cycle de vie du titre. Un titre courant
 		// coming_soon/archived/inconnu → 503 title_unavailable (machine-readable)
 		// au lieu de servir des données. No-op aujourd'hui (seul halo_infinite
@@ -575,10 +598,10 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		r.Use(ownershipMW)
 
 		filters := handlers.NewFiltersHandler(reg.Filters)
-		filters.Mount(r)
+		filters.Mount(r, playerOpt)
 
 		mh := handlers.NewMatchHistoryHandler(reg.MatchHistoryCtx)
-		mh.Mount(r) // POST /pages/match-history/query (export CSV reste chi, plus bas)
+		mh.Mount(r, playerOpt) // POST /pages/match-history/query (export CSV reste chi, plus bas)
 
 		// P6.3 : guard de capability — career routes nécessitent CapCareer.
 		// Migré vers Huma (Phase 3b) : Mount sur le sous-groupe capability
@@ -586,14 +609,14 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		career := handlers.NewCareerHandler(reg.Career, reg.MatchHistoryCtx)
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireCapability(titleRegistry, titlePkg.CapCareer))
-			career.Mount(r)
+			career.Mount(r, playerOpt)
 		})
 
 		// Achievements (Xbox bilingues) : guard CapAchievements.
 		achievements := handlers.NewAchievementsHandler(reg.Achievements)
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireCapability(titleRegistry, titlePkg.CapAchievements))
-			achievements.Mount(r)
+			achievements.Mount(r, playerOpt)
 		})
 
 		// Sprint 8 : Match View + Explorer
@@ -601,11 +624,11 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// URLs servables, comme la galerie (settingsStore + repoRoot déjà en portée).
 		mv := handlers.NewMatchViewHandler(reg.MatchView).
 			WithMediaURLs(settingsStore, cfg.RepoRoot)
-		mv.Mount(r)
+		mv.Mount(r, playerOpt)
 
 		// Canonical MatchEvents (Phase 3) : GET .../matches/{match_id}/events —
 		// timeline d'events on-demand (kill-feed/timeline), capability-gated.
-		handlers.NewMatchEventsHandler(reg.MatchEvents).Mount(r)
+		handlers.NewMatchEventsHandler(reg.MatchEvents).Mount(r, playerOpt)
 
 		// Phase 4 plan engagement : score + courbe par match + profil + timeseries + squad
 		// + admin recompute. Toutes les routes sont gated par CapEngagement
@@ -615,62 +638,62 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		eng := handlers.NewEngagementHandler(reg.Engagement)
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireCapability(titleRegistry, titlePkg.CapEngagement))
-			eng.Mount(r)
+			eng.Mount(r, playerOpt)
 		})
 
 		explorer := handlers.NewExplorerHandler(reg.ExplorerCtxWithAuth, reg.MatchHistoryCtx)
-		explorer.Mount(r) // player-query + matches-query (2 routes)
+		explorer.Mount(r, playerOpt) // player-query + matches-query (2 routes)
 
 		// Sprint 9 : Sessions
 		sessions := handlers.NewSessionsHandler(reg.Sessions)
-		sessions.Mount(r)
+		sessions.Mount(r, playerOpt)
 		sessionPage := handlers.NewSessionPageHandler(reg.SessionPage)
-		sessionPage.Mount(r)
+		sessionPage.Mount(r, playerOpt)
 
 		// Sprint 10 : Stats/Séries temporelles
 		stats := handlers.NewStatsHandler(reg.Stats)
-		stats.Mount(r)
+		stats.Mount(r, playerOpt)
 
 		// Sprint 11 : Accueil/Home + Battle Pass (migrés Huma ; en-têtes de cache
 		// ETag/max-age/no-store posés dans les Output). Le défunt GET /challenges
 		// (doublon de collision avec le module Prestige) a été retiré : la home web
 		// lit les défis via le payload season pass (pages/palmares/season-pass).
 		home := handlers.NewHomeHandler(reg.HomeCtxWithAuth, settingsStore)
-		home.Mount(r)
+		home.Mount(r, playerOpt)
 
 		// Season Pass (palmares)
 		seasonPass := handlers.NewSeasonPassHandler(reg.SeasonPassCtxWithAuth)
-		seasonPass.Mount(r)
+		seasonPass.Mount(r, playerOpt)
 
 		// Relations (hub Communauté > Relations) — page transverse non gatée.
 		relations := handlers.NewRelationsHandler(reg.RelationsCtx)
-		relations.Mount(r)
+		relations.Mount(r, playerOpt)
 
 		// Sprint 12 : Escouade | Sprint 55 D1 : Synthèse → handler autonome
 		squad := handlers.NewSquadHandler(reg.SquadCtx)
-		squad.Mount(r)
+		squad.Mount(r, playerOpt)
 
 		// Phase 1 chunk S1b : Squad V2 (multi-coéquipiers, fondations Phase 0)
 		squadV2 := handlers.NewSquadV2Handler(reg.SquadV2Ctx)
-		squadV2.Mount(r)
+		squadV2.Mount(r, playerOpt)
 
 		// Sprint 55 D1 : SynthesisHandler extrait de SquadHandler (frontière produit)
 		synthesis := handlers.NewSynthesisHandler(reg.SynthesisCtx)
-		synthesis.Mount(r)
+		synthesis.Mount(r, playerOpt)
 
 		// Sprint 13 → Sprint 32 : Citations + Commendations + Médias → POST
 		citations := handlers.NewCitationsHandler(reg.CitationsCtx)
-		citations.Mount(r)
+		citations.Mount(r, playerOpt)
 
 		// Page Médailles : catalogue complet du titre + compteur obtenu par joueur
 		// (0 = jamais). Title-agnostic (resolver de catégorie par titre, baseline défaut).
 		medals := handlers.NewMedalsHandler(reg.MedalsCtx)
-		medals.Mount(r)
+		medals.Mount(r, playerOpt)
 
 		// AXE B : Totaux à vie des commendations NATIVES (Halo 5). Title-agnostic
 		// (loader type-asserté depuis l'adapter ; titre sans capability → vide).
 		commendationTotals := handlers.NewCommendationTotalsHandler(reg.CommendationTotalsCtx)
-		commendationTotals.Mount(r)
+		commendationTotals.Mount(r, playerOpt)
 
 		// P6.3 : guard de capability — media routes nécessitent CapMedia.
 		media := handlers.NewMediaHandler(reg.Media, reg.MediaUpload, cfg.RepoRoot).
@@ -686,7 +709,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			r.Use(middleware.RequireCapability(titleRegistry, titlePkg.CapMedia))
 			// 5 routes JSON migrées vers Huma (pages/media, likes, match-candidates,
 			// associate, authors). humacore.NewAPI(r) hérite de CapMedia + ownership/title.
-			media.Mount(r)
+			media.Mount(r, playerOpt)
 			// /media/reassociate supprimé en revue 2026-04-29 P0.2 Q6 (doublon non utilisé,
 			// le front consomme /media/associate seulement).
 			// upload (multipart) + files (serve binaire) restent chi — hors scope JSON.
@@ -700,21 +723,21 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 
 		// Sprint 33 : Teammates (contrat FastAPI)
 		teammates := handlers.NewTeammatesHandler(reg.TeammatesCtx)
-		teammates.Mount(r)
+		teammates.Mount(r, playerOpt)
 
 		// Sprint 33 : Timeseries (contrat FastAPI)
 		timeseries := handlers.NewTimeseriesHandler(reg.Timeseries)
-		timeseries.Mount(r)
+		timeseries.Mount(r, playerOpt)
 
 		// Exclusion manuelle de matchs non pertinents
 		// NOTE : GET /match-exclusions supprimé en revue 2026-04-29 P0.2 Q6
 		// (orphelin côté front, vue admin jamais implémentée).
 		excl := handlers.NewMatchExclusionHandler(reg.MatchExclusion)
-		excl.Mount(r)
+		excl.Mount(r, playerOpt)
 
 		// Système de notifications in-app (per-player).
 		notifH := handlers.NewNotificationsHandler(reg.Notifications)
-		notifH.Mount(r)
+		notifH.Mount(r, playerOpt)
 
 		// Couche progression V2 (Ascension) — streaks / records / milestones.
 		// Cf. .ai/PLAN_PROGRESSION_TRACKING_ASCENSION.md §8.1.
@@ -723,7 +746,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		}
 		progressionH := handlers.NewProgressionHandler(progressionResolve, titlePkg.DefaultSlug).
 			WithDemoMode(cfg.DemoMode)
-		progressionH.Mount(r)
+		progressionH.Mount(r, playerOpt)
 
 		// Coach Advisor — proposals coach proactives (ADR 0020 Phase 9).
 		// Resolver compose PlayerDB + bundles → coach_advisor.Service.
@@ -747,7 +770,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			return ab.ServiceForPlayer(pdb, pb.TemplateRepoForCoach(), prestigeSvc), pdb.XUID, nil
 		}
 		coachH := handlers.NewCoachProposalsHandler(coachResolve, titlePkg.DefaultSlug)
-		coachH.Mount(r)
+		coachH.Mount(r, playerOpt)
 
 		// PlayerProfile V1 (Ascension) — endpoint /profile complet.
 		// Cf. PLAN_PLAYER_PROFILE_ASCENSION.md §8.1.
@@ -763,7 +786,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 				"path", awardsPath, "awards_count", len(awardSet.All()))
 			profileH = profileH.WithAwardMapping(awardSet)
 		}
-		profileH.Mount(r)
+		profileH.Mount(r, playerOpt)
 
 		// Pattern Engine v3 (PLAN_PATTERN_ENGINE.md phases 1-3).
 		// GET /api/v1/players/{player_slug}/patterns?n=50
@@ -777,16 +800,16 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			return platform_duckdb.NewPatternsRepo(pdb), nil
 		}
 		patternsH := handlers.NewPatternsHandler(patternsRepoResolve, titlePkg.DefaultSlug)
-		patternsH.Mount(r)
+		patternsH.Mount(r, playerOpt)
 
 		// ImprovementCampaign V1 — endpoints start/active/pause/close/abandon.
 		// Cf. PLAN_PLAYER_PROFILE_ASCENSION.md §4.5 + §5.1.
 		campaignH := handlers.NewCampaignHandler(progressionResolve, titlePkg.DefaultSlug)
-		campaignH.Mount(r)
+		campaignH.Mount(r, playerOpt)
 
 		// Match favoris (shared_social.duckdb)
 		fav := handlers.NewMatchFavoriteHandler(reg.Social)
-		fav.Mount(r) // PATCH /matches/{match_id}/favorite
+		fav.Mount(r, playerOpt) // PATCH /matches/{match_id}/favorite
 
 		// Module Prestige — routes derrière feature flag PRESTIGE_ENABLED.
 		// Le bundle a été initialisé au boot ; si nil ou flag off, routes non montées.
@@ -834,21 +857,21 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			// (shared_social) sont gardés à part par assertMemberUser.
 			r.Group(func(r chi.Router) {
 				r.Use(prestigePlayerSlugCtx)
-				ph.Mount(r)
+				ph.Mount(r, playerOpt)
 			})
 			slog.Info("prestige_routes_mounted", "endpoints_count", 28)
 		}
 
 		// Sprint 54 : Compare joueur vs joueur
 		compare := handlers.NewCompareHandler(reg.Compare)
-		compare.Mount(r)
+		compare.Mount(r, playerOpt)
 
 		// Sprint 54 : Classement CSR (Leaderboard)
 		leaderboard := handlers.NewLeaderboardHandler(reg.Leaderboard)
-		leaderboard.Mount(r)
+		leaderboard.Mount(r, playerOpt)
 
 		// Sync delta par joueur
-		syncH.MountDelta(r) // POST /sync (Huma, sous /players/{player_slug})
+		syncH.MountDelta(r, playerOpt) // POST /sync (Huma, sous /players/{player_slug})
 	})
 
 	// Endpoints P1 : répertoire gamertags
@@ -860,10 +883,11 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	watcherAttempts := auth_platform.NewWatcherAttemptStore()
 	watcherHandler := handlers.NewWatcherHandler(cfg, settingsStore, daemon, tokenProvider, watcherAttempts)
 	r.Route("/watcher", func(r chi.Router) {
+		watcherOpt := humacore.WithSharedDoc(d.humaSharedConfig, apiV1BasePath+"/watcher")
 		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
 		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
 		// status/auth-status/subscriptions/auth-start migrés vers Huma (watcherHandler.Mount).
-		watcherHandler.Mount(r)
+		watcherHandler.Mount(r, watcherOpt)
 	})
 	return xboxOAuthRoot
 }
@@ -886,6 +910,7 @@ type apiV1Inputs struct {
 	users             *userstore.Store
 	invites           *userstore.InviteStore
 	titleRegistry     *titlePkg.Registry
+	humaSharedConfig  huma.Config
 }
 
 //nolint:funlen,gocyclo // phase de construction DI + montage diag racine : séquentiel.
@@ -1226,7 +1251,9 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	mediaCancel()
 	healthH := handlers.NewHealthHandlerWithVersion(bootRepo, cfg.AppVersion).
 		WithMediaTooling(mediaStatus)
-	healthH.Mount(r) // /health, /healthz, /readyz (racine, Huma)
+	// Racine (r = routeur racine, pas /api/v1) → préfixe de document "" : les chemins
+	// /health, /healthz, /readyz sont déjà absolus (WithSharedDoc → NewAPIWithConfig).
+	healthH.Mount(r, humacore.WithSharedDoc(in.humaSharedConfig, "")) // /health, /healthz, /readyz (racine, Huma)
 
 	// P8.3 (revue 2026-04-29, ADR 0009) : monitoring expvar minimal.
 	// Expose /debug/vars (stdlib) avec les compteurs LevelUp publiés sous la
@@ -1274,6 +1301,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		jobStore:              jobStore,
 		titleRegistry:         titleRegistry,
 		backupScheduler:       backupScheduler,
+		humaSharedConfig:      in.humaSharedConfig,
 	}
 }
 

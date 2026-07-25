@@ -1039,7 +1039,9 @@ func main() {
 		routerCtx = schedulerCtx
 	}
 	var router http.Handler
-	router, reg = api.NewRouter(routerCtx, cfg, bootRepo, bootSvc, watcherCtrl, tokenProvider, autoScheduler, backupSched, groupStore)
+	// 3e retour = document OpenAPI PARTAGÉ (V72-01 / H1) : non exposé en HTTP à ce
+	// stade (DocsPath/OpenAPIPath désactivés), réservé à la génération hors-ligne (H6).
+	router, reg, _ = api.NewRouter(routerCtx, cfg, bootRepo, bootSvc, watcherCtrl, tokenProvider, autoScheduler, backupSched, groupStore)
 
 	// Câble le hook global de re-dérivation des tokens per-player : le cache
 	// expiry-aware (halo.ResolveFreshPlayerTokens) re-minte via le registry quand un

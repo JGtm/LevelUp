@@ -79,9 +79,33 @@ passage »). NB : chemins Go préfixés `apps/go-api/`.
       groupes, operationIDs uniques. Gate : `go test ./internal/api/humacore/`
       (POC + existants) + `./internal/api/` (incl. `TestHumaNestedSubrouterProbe`,
       drift, contract, route-collision) + `go build ./...` — TOUS verts. H1-H8 = GO.
-- [ ] **H1 — Document OpenAPI partagé (L).** Généraliser le mécanisme du spike aux
+- [x] **H1 — Document OpenAPI partagé (L).** Généraliser le mécanisme du spike aux
       71 `Mount()`. Gate : contract_test + openapi_schema_drift_test verts (inchangés),
       `TestHumaNestedSubrouterProbe` vert.
+      FAIT (2026-07-25, agent Opus). Ergonomie : `NewAPI` rendu VARIADIC
+      (`NewAPI(r, opts ...MountOption)`) — sans option = comportement legacy (doc isolé,
+      jeté), avec `WithSharedDoc(cfg, docPrefix)` = document PARTAGÉ. Choix motivé :
+      préserve la signature `Mount(r)` des ~130 call-sites de tests handlers (variadic →
+      `Mount(r)` compile inchangé, ZÉRO modif d'assertion). Chaque `Mount` devient
+      `Mount(r chi.Router, opts ...humacore.MountOption)` + `NewAPI(r, opts...)` (2 lignes
+      mécaniques × 74 fichiers, 77 méthodes). Config partagée créée UNE fois dans
+      `NewRouter` (`humacore.NewSharedConfig`), threadée via `apiV1Inputs`/`apiV1Deps`,
+      injectée par option scopée à côté de chaque `r.Route` (préfixe absolu = source
+      unique `apiV1BasePath` + suffixe du r.Route). Accesseur H6 : `NewRouter` retourne
+      un 3e résultat `*huma.OpenAPI` (document fusionné, non exposé en HTTP). Points durs
+      résolus : (a) `MarkRequestBodyOptional` (15 handlers, chemin LOCAL) — le
+      sous-routeur expose `DocPrefix()`, la fonction résout l'absolu ; (b) garde-rail
+      anti-collision — sous doc partagé huma écrase silencieusement, la lecture du doc
+      final ne voit plus la collision → nouveau hook `OnOperationRegistered` (par
+      enregistrement, chemin absolu) ; `TestNoDuplicateRouteRegistration` réécrit dessus
+      (détection PLUS fine, couvre l'ancienne LIMITE r.With/r.Group). Nouveau garde-rail
+      FIDÉLITÉ : `TestSharedOpenAPIDocCoversAllHumaRoutes` (166 ops Huma fusionnées →
+      162 paths ; chi total 208 : les 42 restants = chi-brut connus, exclusions
+      documentées) — vérifie doc ⟺ chi.Walk (chemins absolus), pas de fantôme, pas
+      d'oubli de `WithSharedDoc`. Gates : gofmt vide, `go build ./...`, `go vet ./...`,
+      `go test ./internal/api/...` (contract/drift/nested/collision/fidélité), `go test
+      ./...` complet (exit 0, 118 ok, 0 fail), `make go-api-lint` (0 issue) — TOUS verts.
+      DocsPath/OpenAPIPath restent désactivés (aucune route HTTP auto). [x]
 - [ ] **H2 — Tags/Summary/OperationID (M).** Les 203 routes (`huma.X(api,`) passent en
       `huma.Register` + `huma.Operation`. Gate : spec en mémoire porte les tags.
 - [ ] **H3 — Instrumenter les DTOs (L).** Porter 402 descriptions / 21 enums /
@@ -117,6 +141,16 @@ passage »). NB : chemins Go préfixés `apps/go-api/`.
   « document partagé » (pas instance unique), comptages corrigés (71 Mount), inventaire
   fermé H3, précédence + golden du fragment H6, garde sémantique generated.ts H7,
   outillage H0 tranché (kin-openapi), blindage plan-execution.
+- 2026-07-25 : **H1 EXÉCUTÉ (agent Opus).** Document OpenAPI PARTAGÉ câblé sur les
+  71 `Mount()` + 3 registres inline via `NewAPI` variadic + `WithSharedDoc`. Périmètre :
+  humacore.go (MountOption/WithSharedDoc, `OnOperationRegistered` + observingAdapter,
+  `subrouterAPI.DocPrefix`, `MarkRequestBodyOptional` prefix-aware) ; huma_setup.go
+  (newHumaAPI variadic) ; 74 fichiers handlers (signature Mount) ; server.go +
+  server_apiv1.go (config partagée, options scopées, `apiV1BasePath`, 3e retour doc) ;
+  wire/server_admin_monitoring.go (param option) ; cmd/server/main.go +
+  contract_helpers_test.go (3e retour) ; nouveau `shared_openapi_doc_test.go` (fidélité) ;
+  route_collision_test.go (`TestNoDuplicateRouteRegistration` sur le nouveau hook). Aucun
+  commit (superviseur). Comportement HTTP INCHANGÉ (0 modif d'assertion). H2 = suivant.
 - 2026-07-25 : **H0 + H0.5 EXÉCUTÉS (agent Opus).** H0 : outil `cmd/openapi-diff/`
   (kin-openapi v0.144.0, direct dep après `go mod tidy`) + baseline
   `.ai/V7/openapi_baseline_v72.txt` (176 paths / 182 ops / 520 schémas), déterministe,

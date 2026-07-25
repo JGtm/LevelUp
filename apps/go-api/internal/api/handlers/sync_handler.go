@@ -346,16 +346,16 @@ type syncDeltaInput struct {
 // MountInitialAndAll enregistre les routes admin /sync/initial et /sync/all via
 // Huma sur le routeur chi fourni (middleware RequireAuth/RequireAdmin hérités du
 // groupe admin où server.go le monte).
-func (h *SyncHandler) MountInitialAndAll(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *SyncHandler) MountInitialAndAll(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Post(api, "/sync/initial", h.StartInitialSync)
 	huma.Post(api, "/sync/all", h.StartSyncAll)
 }
 
 // MountDelta enregistre la route /sync via Huma sur le sous-routeur chi (préfixe
 // /players/{player_slug} + middleware hérités — lit {player_slug} parent).
-func (h *SyncHandler) MountDelta(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *SyncHandler) MountDelta(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Post(api, "/sync", h.StartDeltaSync)
 }
 

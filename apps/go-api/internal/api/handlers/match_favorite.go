@@ -43,8 +43,8 @@ func NewMatchFavoriteHandler(newSvc ServiceFactory[port.SocialService]) *MatchFa
 
 // Mount enregistre la route via Huma sur le sous-routeur chi (préfixe
 // /players/{player_slug} + middleware ownership/title hérités).
-func (h *MatchFavoriteHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *MatchFavoriteHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Patch(api, "/matches/{match_id}/favorite", h.handlePatchFavorite)
 }
 

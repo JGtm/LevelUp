@@ -39,8 +39,8 @@ func NewAdminAppearanceDiagHandler(run AppearanceDiagRunner) *AdminAppearanceDia
 
 // Mount enregistre la route via Huma sur le sous-routeur chi (préfixe /admin +
 // RequireAuth/RequireAdmin + NoStore hérités).
-func (h *AdminAppearanceDiagHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *AdminAppearanceDiagHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/diag/appearance/{player_slug}", h.handleGet)
 }
 

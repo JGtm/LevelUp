@@ -79,8 +79,8 @@ func NewAdminActionsHandler(
 // Mount enregistre les 2 actions via Huma sur le sous-routeur chi (préfixe /admin
 // + middleware RequireAuth/RequireAdmin hérités). Aucun body de requête (POST
 // sans corps) — les deux actions sont déclenchées sans payload.
-func (h *AdminActionsHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *AdminActionsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Post(api, "/actions/data-health/run", h.handleRunDataHealth)
 	huma.Post(api, "/actions/auto-sync/run", h.handleRunSyncCycle)
 	huma.Get(api, "/actions/journal", h.handleGetJournal)

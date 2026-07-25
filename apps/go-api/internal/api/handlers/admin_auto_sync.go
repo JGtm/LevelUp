@@ -61,8 +61,8 @@ func NewAdminAutoSyncHandler(s *scheduler.AutoSyncScheduler, cfg *config.AppConf
 
 // Mount enregistre les 3 routes via Huma sur le sous-routeur chi (préfixe
 // /_diag/auto-sync + middleware LoopbackOnly hérités de server.go).
-func (h *AdminAutoSyncHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *AdminAutoSyncHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/snapshot", h.handleGetSnapshot)
 	huma.Post(api, "/run", h.handleRunOnce)
 	huma.Get(api, "/probe", h.handleProbeTokens)

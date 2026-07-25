@@ -50,8 +50,8 @@ func NewCareerHandler(
 
 // Mount enregistre les 7 routes via Huma sur le sous-routeur chi (préfixe
 // /players/{player_slug} + middleware ownership/title hérités).
-func (h *CareerHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *CareerHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/pages/career", h.handleGetCareer)
 	huma.Get(api, "/pages/career/top-matches", h.handleGetTopMatches)
 	huma.Get(api, "/pages/career/encounters", h.handleGetEncounters)

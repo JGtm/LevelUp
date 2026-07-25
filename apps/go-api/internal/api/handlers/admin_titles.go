@@ -64,8 +64,8 @@ func NewAdminTitlesHandler(titles TitleLister, caps CapabilitiesRegistry, logger
 // /admin de server.go : middleware RequireAuth+RequireAdmin+NoStore hérités). Le
 // chemin relatif EXACT est repris tel quel (/titles, /titles/{slug},
 // /titles/{slug}/toml-draft).
-func (h *AdminTitlesHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *AdminTitlesHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/titles", h.handleList)
 	huma.Get(api, "/titles/{slug}", h.handleDetail)
 	huma.Get(api, "/titles/{slug}/toml-draft", h.handleTOMLDraft)

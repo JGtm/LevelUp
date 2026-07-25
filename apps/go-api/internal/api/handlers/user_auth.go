@@ -83,8 +83,8 @@ func (h *UserAuthHandler) isInstanceLocked() bool {
 // Mount enregistre les 4 routes via Huma au même point de montage que les routes
 // chi d'origine (chemins /auth/* absolus). En mode xbox/lockdown la logique métier
 // (déléguée aux handlers) reste inchangée.
-func (h *UserAuthHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *UserAuthHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Post(api, "/auth/login", h.handleLogin)
 	huma.Post(api, "/auth/register", h.handleRegister)
 	huma.Post(api, "/auth/logout", h.handleLogout)

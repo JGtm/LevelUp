@@ -111,8 +111,8 @@ func NewAdminMonitoringHandler(
 
 // Mount enregistre les routes via Huma sur le sous-routeur chi /admin
 // (middleware RequireAuth/RequireAdmin/NoStore hérités).
-func (h *AdminMonitoringHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *AdminMonitoringHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/monitoring/overview", h.handleGetOverview)
 	huma.Get(api, "/monitoring/scheduler", h.handleGetScheduler)
 	huma.Get(api, "/monitoring/convergence", h.handleGetConvergence)
