@@ -13,32 +13,30 @@
 
 ## Dernières nouveautés
 
-**v7.1 — Escouade fiabilisée, données de combat Halo 5 & XP de carrière**
+**v7.2 — Modes à objectif, étanchéité entre titres & recherche de joueur instantanée**
 
-Une version d'ajustement centrée sur la fiabilité des pages Escouade, la réparation des données de combat Halo 5 et le peaufinage de toute l'app.
+Une version centrée sur les modes de jeu à objectif, sur l'étanchéité des données Halo 5 vis-à-vis de Halo Infinite, et sur un Explorer de nouveau exploitable sur n'importe quel joueur.
 
-**Escouade — plus fiable**
-- **Historique en composition exacte** — les graphes session vs historique (performance d'escouade, performance par carte, taux de victoire) comparent désormais chaque session à votre historique avec cette composition *exacte*, au lieu d'une moyenne floue tous coéquipiers confondus
-- **Compositions enregistrées corrigées** — une escouade enregistrée affiche les mêmes membres pour tout le monde ; fini les doublons ou le coéquipier manquant chez un autre joueur
-- **Graphes en ordre chronologique** — les comparaisons par carte et de taux de victoire se lisent de gauche à droite dans l'ordre d'apparition des cartes
-- **Nouvel onglet « Dynamique »** — l'intensité (désormais un profil d'activité médian avec une enveloppe interquartile qui rend visible l'irrégularité), le rendement/résistance et l'engagement regroupés au même endroit, plus un graphe de balance des dégâts cumulée en vies
-- **Objectifs d'escouade** — la boucle de défis d'escouade est complète (libellés localisés, retour au moment de rejoindre, progression par membre en direct, abandon/expiration) ; « Cap d'escouade » est renommé « Objectifs d'escouade »
+**Modes à objectif — Capture de drapeau, Bases, Roi de la colline, Oddball**
+- **Vos statistiques d'objectif partout** — captures, retours et vols de drapeau, temps en tant que porteur, captures de zone et temps de contrôle, récupérations du crâne et temps de possession, désormais collectés à chaque match
+- **Par équipe dans la vue de match**, agrégés sur la Synthèse, l'Escouade et les Séries temporelles, et branchés sur quatre citations d'objectif qui comptent de vraies actions au lieu de médailles
 
-**Halo 5 — données de combat réparées**
-- **Véhicules détruits & Vol à la tire** et les **mécaniques de combat** (assassinats, coups au sol, charges spartanes) sont de retour sur la Synthèse et le scoreboard après une réparation des données
-- **Citations réparées** — les victoires Firefight sont comptées, les citations de grenade sont restaurées, et les mauvais mappings de médaille sont corrigés
+**Fini les données Halo 5 qui fuyaient sur Halo Infinite**
+- **Porte de titre stricte** — le bandeau Spartan n'affiche jamais la bannière, l'emblème, l'arrière-plan ni l'indicatif de service d'un autre jeu, pas même pendant le chargement d'une page ou un changement de jeu
+- **Apparence par joueur et par titre** — les identités Halo 5 ne sont plus partagées entre joueurs, et chaque réponse du serveur indique désormais à quel titre elle appartient
 
-**Carrière**
-- **XP de carrière estimée** — une courbe d'XP cumulée et l'XP par match sur les Séries temporelles, calibrées sur des données réelles
-- **Path to Hero multi-titre** — progression vers le rang maximum propre à chaque titre
-- **Page Médailles** — une nouvelle sous-page Carrière avec le catalogue complet des médailles du titre, y compris celles jamais obtenues, avec filtres toutes / obtenues / non obtenues et tris
+**Explorer**
+- **Recherche de joueur instantanée** — des suggestions locales en 200 ms environ, avec un bouton explicite « Rechercher sur Xbox » quand vous voulez aller plus loin
+- **N'importe quel joueur redevient lisible** — la carrière, les médailles et les saisons d'un joueur recherché passent par le vivier d'identifiants valides, et un badge discret indique désormais quand les données en direct n'ont pas pu être récupérées, au lieu de laisser une carte vide
 
-**Explorer & Accueil**
-- **Face-à-face** — des donuts de taux de victoire (ensemble / face à lui) et un graphe d'écart de frags cumulé par rapport à la cible sur « Sur XX matchs joués ensemble »
-- **Dates du pic** sur vos cartes de meilleur LUSR / CSR, plus un KPI de **plus longue série de défaites**
+**Halo 5**
+- **Catégories de médailles** — 215 médailles regroupées en 11 catégories comme celles de Halo Infinite, et trois médailles absentes du catalogue officiel ne polluent plus la page
 
-**Confort d'utilisation**
-- **Langue dans l'URL** pour que les liens partagés conservent leur langue, une **colonne Halo Waypoint** optionnelle, **tous les tableaux triables**, des **titres d'onglet stables**, des couleurs d'identité et logos d'équipe sur le scoreboard, des légendes de graphe et étiquettes de pourcentage assainies, et une passe de purge des anglicismes
+**Lisibilité**
+- **Infobulles de colonnes** sur chaque en-tête de tableau, **légendes en pied de bloc** (ce qui rétablit l'épaisseur des barres d'« Outils de destruction »), **grenades ventilées par type** dans le sunburst des frags, **un seul nom d'arme par titre**, et **« En placement »** au lieu d'une note de performance vide
+
+**Notifications, administration & confort**
+- **Une notification la première fois que vous décrochez une médaille**, des alertes Discord qui ne partent plus en rafale après un redémarrage, une **synchronisation initiale d'un seul joueur** dans l'administration, l'onglet **« Dynamique »** de retour dans le menu Escouade, le **graphe d'XP de carrière sur les Sessions**, et un écran clair « Match pas encore synchronisé » au lieu d'une erreur générique
 
 ## Fonctionnalités
 

@@ -6,6 +6,90 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [7.2.0] - 2026-07-25
+
+> Point release consolidating the "v7.2 Notion backlog" (items V72-01 to V72-34, branch `feat/v7.2-notion-batch`): objective-mode statistics end to end, `api/openapi.yaml` now **generated** by Huma, eradication of the cross-title leaks, Explorer live reads through the token pool, Discord alert hardening, and roughly twenty UI/i18n fixes. Per-domain summary. **Post-deploy actions are required — see *Ops*.**
+
+### Added (React / TypeScript)
+
+- **Objective stats — 4 surfaces** — `MatchObjectivesSection` (per-team scoreboard section, one column per stat of the mode played, "Team total" row aggregated at read time), Synthesis `objective_stats` block, `SquadObjectiveStatsPanel` (squad cumulative) and `TimeseriesObjectiveCard` (scope KPI, deliberately preferred over per-match `omitempty` fields). All double-gated (title capability `objective_stats` + data-driven), zero dead code; Halo 5 does not declare the capability, so the sections stay hidden.
+- **Explorer — live status badges** — `ExplorerLiveStatus` (`ok` / `failed` / `no_auth` / `local_partial`) surfaced on the 5 live fetches, with a discreet per-section badge (end of the silent degradation, plan A3).
+- **Gamertag search — explicit Xbox lookup** — `useGamertagSuggestions` gains `liveResults` / `isLiveLoading` / `liveAttempted` / `triggerLiveSearch`; "Search on Xbox" button in `GamertagSearchInput` (Explorer) and `GamertagCombobox` (generic), i18n in `common.toml`; stale live results dropped and an explicit "no Xbox result" state.
+- **Admin — initial sync for a single player** — card on `AdminSyncPage` (`GamertagCombobox` max=1, optional cap, inline `AdminActionButton`, `useRunInitialSync`, active-title pill) plus a `SyncActionsHelp` legend documenting the scope of the four sync actions (forced cycle / global manual / convergence / initial).
+- **Table-header tooltips** — `SortableTh.tooltip` + `ColumnMeta.headerTooltip`, both table families covered, FR/EN content aligned on ADR 0006.
+- **Chart legends at the foot of the block** — `ChartCard.legend` + new `ChartLegend` component; informative blocks migrated (interactive legends documented as staying on the canvas).
+- **"In placement" badge** — `PlacementPendingCell` variant `perf` on Perf / ΔPerf in the tables and on the home tiles, fed by the new `perf_placement_done/total` fields; the Note column keeps `placement_*`, and no zero is ever fabricated.
+- **Sessions** — `SessionCareerXP` chart (XP per match + cumulative XP, mirror of Timeseries, data-driven gate) and a "View synergies" button in the L3 header of a squad session.
+- **Squad menu** — the missing "Dynamics" L1 entry (`navL1Sections.tsx` + `common.nav.tab_dynamique`); the page, route and i18n already existed.
+- **Match not synced** — dedicated `PageUnavailable` screen on `match_not_found` (FR/EN), replacing the generic error screen.
+- **Contract guard-rails** — `contract-surface.guard` (static snapshot of `generated.ts`: 176 paths / 522 schemas / 30 enums, disappearance = red, bite proven by mutation), hardened `response-types.guard` (274 citations resolved, 20 critical responses re-exported), and a vitest guard locking `generated.ts` to `openapi.yaml` in CI.
+
+### Added (Go API)
+
+- **Objective stats (V72-03)** — mapping frozen on 8 real `GetMatchStats` payloads (CTF 11 fields, Zones 6 shared by Strongholds/KOTH, Oddball 6; KOTH = `ZonesStats` confirmed, hill discriminated by `StrongholdScoringTicks > 0`); table `match_objective_stats` created **directly append-only** (sequence + `written_at` + `_latest` view + `match_id` index, ART guard-rails extended); pure `ExtractObjectiveStats` + INSERT-only `persistObjectiveStats` inside the shared transaction, populated by `engine_fetch` and `engine_v2bridge`; extractor isolated in the `sync/objective` sub-package (god-package ratchet). Anonymized fixtures under `internal/sync/testdata/objective_stats/`.
+- **Objective capabilities — two axes** — `CapMatchObjectiveStats = "match.objective.stats"` (server axis, governs the data path; `halo_infinite = supported`, `halo_5 = not_exposed`) and `CapObjectiveStats = "objective_stats"` (title axis, governs the UI, mirrored in TS `TITLE_CAPABILITIES` with its parity guard-rail).
+- **Objective backfill CLI** — `cmd/backfill_objective_stats`, append-only via `persist.InsertObjectiveStats`; candidates = matches without the `MBitObjectiveStats` bit (1<<23) and without a `_latest` row, bit always set. Local run: 5,656 rows.
+- **Objective citations** — new `objective_stat` citation mapping type + `loadObjectiveStats` loader reading `match_objective_stats_latest` (23 columns mapped, integral best-effort); four citations switched from awards to counters: `charge`→`zone_captures`, `got_you`→`flag_returns`, `stakeholder`→`zone_secures`, `flag_carrier_hunter`→`flag_carriers_killed`.
+- **Explorer live through the token pool** — resolution order strict fresh session → profile → **pool** (`PolicyAnyPublic`), structured WARN + expvar counters; validated end to end on a target whose own refresh token is dead (career, identity, medals and seasons served identically to a healthy token).
+- **Admin initial sync** — `POST /admin/actions/initial-sync/run {player_slug, title_slug?, max_matches?}` → `RunPlayerInitialSync` (RunFull mirror of `RunPlayerConvergence`, distinct `JobTypeAdminInitialSync` going through the ADR 0023 token pool, `resolveInitialMaxMatches` clamped 1..2000), same 400/409/503 contract as convergence.
+- **New-medal notification** — `medal_first_earned` category: post-sync diff of medal totals, silent cold-start seed, recap beyond 3 medals, FR/EN medal names, Discord dedup per aggregation.
+- **Halo 5 medal categories** — read-time resolver mirroring Halo Infinite: 215 medals in 11 categories under the 4 super-sections (0 uncategorized), no re-seed and no backfill; completeness guard-rail plus a category→super-section allowlist.
+- **Per-title weapon names** — `weapon_names.toml` per title (29 Infinite / 55 Halo 5), validated loader, boot seed of `weapon_name_labels`, resolver `weapon_id` → `weapon_key` → `{en, fr}`; two guard-rails (registry↔TOML completeness, old sources forbidden inside the resolver).
+- **Perf placement signal** — `perf_placement_done/total` (nullable, `omitempty`) computed by the single shared `computePerfPlacements` (chain via `GetPerformanceChain`, eligibility mirroring the perf batch, filled only when `1 ≤ chain size ≤ threshold` and the match has no `perf_score`), independent of the LUSR/CSR state.
+- **Career XP on Sessions** — `CareerXPEstimated` on `SessionDetailMatchRow`, exact mirror of the Timeseries computation, gated by `games.ProvidesCareerXPEstimate` / `CareerXPErasFor`.
+- **Discord sync-cycle notification** — `scheduler/auto_sync_notify.go`: `notifyDiscordSyncCycle` wired on the scheduler's periodic tick (existing `discord_notify_sync` toggle, no-op without a webhook or with zero new matches), `mergeCycleNewMatchPlayers` merging V2-engine players and live/safety-net players, deduplicated by gamertag; coach forwarding guard-rail untouched.
+
+### Changed
+
+- **`api/openapi.yaml` is now GENERATED (V72-01)** — `make openapi-gen` renders the shared Huma document in three passes (server paths, opaque-wrapper removal, JSON Merge Patch of the manual fragment) with deterministic serialization and true OpenAPI 3.1. `api/openapi_manual_fragment.yaml` is versioned (9 raw-chi routes, 15 `RawBody`, operation errors and descriptions, 55 non-derivable schemas; the fragment takes precedence). Golden tests `TestOpenAPIYAMLIsUpToDate` and `TestManualFragmentPathsSurviveGeneration` replace the deleted drift test. Semantic diff against the H0 baseline: 597 additions, 16 losses all inventoried (stale yaml), 530 schema names unchanged. **Never edit `openapi.yaml` by hand** — edit the Go handler/DTO, or the fragment.
+- **Shared OpenAPI document across the 74 Huma mount points** — `NewAPI` variadic + `WithSharedDoc(cfg, docPrefix)` (legacy unchanged without the option), absolute prefixes at the composition point, `MarkRequestBodyOptional` resolving local→absolute, `OnOperationRegistered` anti-collision hook, fidelity test `TestSharedOpenAPIDocCoversAllHumaRoutes`.
+- **Operation metadata on the 204 Huma routes** — `humacore.Op` helper (operationID / summary / tags), verbatim parity with the previous yaml (159 exact, 45 documented supplements), gate `openapi_operation_metadata_test`.
+- **Portable DTO semantics as Huma tags** — 19 descriptions, 11 enums and 5 defaults carried by 10 domain types; gate `openapi_schema_semantics_test` (35 semantics verified, 0 loss outside the closed inventory).
+- **Unified error model** — a single Go type behind `humacore.apiError`, enriched with `Details any` + `FieldErrors []FieldError` (both `omitempty`) → runtime contract `{code, message, retryable}` unchanged across 458 call sites; `ApiErrorSchema` / `FieldErrorSchema` dropped in favour of `ApiError` / `FieldError`.
+- **`groups` routes migrated to typed Huma** — the 7 routes leave manual `writeJSON` / raw chi for the shared document (`RawBody` + in-house decoding preserving the 400 `invalid_body`), identical runtime JSON contract, zero test assertion changed; `Group` / `GroupMember` derived faithfully (`Role` enum, `members` never nil at the source).
+- **Cross-title sealing (V72-29)** — `useCapabilityStrict` (fail-closed) on the banner synthesis gates; `titleSlug` added as the 2nd segment of every per-player query-key factory (48 keys, 27 call-site files, prefix invalidations preserved) with a key-completeness guard-rail and an anti-fail-open `spartan_customizer` guard-rail; server caches keyed by title (`HomeMatchesCache`, `CachedRecentMatchesProvider`, `seasonEntries`); `CareerLiveCache` keyed `(xuid, titleSlug)`; appearance store re-keyed `title::player` (v3 migration resets it), emblem and banner colours stored separately.
+- **Title-switch race (V72-29bis)** — the Go middleware echoes `X-LevelUp-Title-Resolved` on every response (exposed in CORS); the client rejects any response whose echo diverges from the active title (`title_mismatch`, restricted to GET/HEAD — mutations only warn, as an anti-double-submit); `applyActiveTitle` cancels **before** `POST /session/context`, commits the slug after confirmation, then clears and re-bootstraps, with the bootstrap focus refetch neutralized during the switch.
+- **Gamertag search** — new `live` parameter on the endpoint (`ctxkeys.WithGamertagLiveSearch` gating `LiveFallbackGamertagSearch`); **every caller defaults to `live=0`** (local only, ~200 ms) with the Xbox lookup as an explicit action — no surprise latency anywhere, a single arming point.
+- **Frag sunburst** — grenades broken down by family (frag / plasma / dynamo / splinter) reconciled against the native total; `mechanic_kills` subtracted from the weapon classes, ending the Halo 5 double count (a melee kill while holding a weapon counted twice). Arc sum now equals the total on Halo 5; the "Frags per weapon" list is unchanged.
+- **Match view** — the LIVE fallback is gone: `GetMatchView` returns a typed `match_not_found` 404 as soon as the match is absent from the local substrate (see *Removed*); the pre-existing openapi contract is unchanged.
+- **`mode_name_tr` centralized** — 6 copies converged on `duckdb/mode_name_tr.go` with an empty-allowlist guard-rail; two previously swallowed errors are now logged. Squad-composition subtitles get their FR modes from the API (`ModeTranslatorFR` injected into the provider, `analysis.NormalizeModeLabel` for composed labels) and their FR playlists resolved by `playlist_id` (id > `name_fr` > EN).
+- **French wording** — "Lobby" → "Partie", the "OC / DR" axes → "Rendement / Résistance" (EN "Yield / Resistance"), "Net score cumulé" → "Solde frags − morts cumulé", and the Meganaut FR description fixed by an idempotent migration (Waypoint's official localization is broken).
+- **LeaderboardBlock sorting** — migrated to the shared `SortableTh` (13 headers, `aria-sort` gained), dated exemption removed; bidirectional AST guard-rail on Go `registry.go` ↔ TS `TITLE_CAPABILITIES` parity (dated `weapon_kills` allowlist).
+
+### Fixed
+
+- **Objective stats on live matches** — the watcher derives its options from `DefaultSyncOptions` plus a reflection guard-rail, so extraction flags can no longer be forgotten; without it the feature would have stayed empty on freshly synced matches.
+- **Home cache invalidation** — keyed on the player DB's real `(xuid, title)`; it was a no-op keyed on the player slug.
+- **Bot XUIDs** — `cleanXUID` handles the canonical `bid(x.y)` form on the objective **and** PvE paths (the bare-digit contract is preserved).
+- **Medal snapshot** — `rows.Err` checked; an invalid set now seeds silently instead of emitting false notifications.
+- **Explorer** — `navigate(..., { replace: true })` on mode/target selection (no more history stacking on every click); X axis restored on the "Cumulative frag gap" chart (Relations untouched) plus an explicit "no match in common" state; the briefing banner toggle no longer breaks the layout with the long label, and its aria wording matches the visible label.
+- **Notifications** — career rank names localized by id (`RankLabelResolver`), `gap` / `current_mu` / `next_tier_mu` parameters rounded defensively.
+- **Career page** — Rankings and LUSR/CSR evolution blocks height-aligned (`h-full` + fluid).
+- **Squad dropdown** — popover minimum width and two-line subtitle; composite React keys on the player lists (empty, duplicated Halo 5 XUIDs).
+- **Halo 5 ghost medals** — 3 `medal_name_id` earned in game but absent from both the official catalog and halopedia (cut/beta content) excluded from the Medals page by a dated list; the underlying data is kept.
+- **Perf placement eligibility** — aligned with the batch (`start_time`); top-2 playlists resolved by id.
+- **Front-side error reading** — the front was reading a `status.error.message` that does not exist server-side; switched to `error_detail` / `error_code`, with nullability guards. Bodies are now declared on the 7 201/202 responses and 4 missing `requestBody` entries.
+- **Squad sorting** — `scoreSquad` compares both sides normalized; residual composed labels no longer break the sort silently.
+
+### Ops
+
+**Post-deploy actions (required)**
+
+- **Objective backfill** — run `cmd/backfill_objective_stats` on prod with the server stopped. Without it, objective statistics only cover matches synced after the deployment.
+- **Citation re-seed and recompute** — `levelup seed citation-mappings` then `levelup backfill --all --citations-recompute-all`. The four objective citations are recomputed from `match_objective_stats`: nothing is lost, but their values are revised (source: awards → counters).
+- **Contributors** — `api/openapi.yaml` is generated: run `make openapi-gen` then `make generate-types`; `make openapi-check` fails on drift.
+
+**Other**
+
+- **Disk alerts — persistent anti-burst** — `DiskWatchState` persisted outside DuckDB (atomic JSON, `PathResolver.DiskWatchStatePath()` = `data/global/admin_state/disk_watch_state.json`, surviving container recreation thanks to the `data/` bind mount). Entering an alert, worsening, and the single recovery notification now survive restarts; the periodic reminder on a stable overshoot was removed.
+- **App version baked into the binary** — `docker-compose.yml` `build.args.VERSION` + `scripts/deploy.sh` computing and exporting `LEVELUP_APP_VERSION` **before** the build. Releases no longer depend on the runtime environment — root cause of the missed v7.0.0 / v7.1.0 release notifications, which returned early on `AppVersion == "dev"`.
+- **Dependabot** — #65 (postcss 8.5.16 → 8.5.23, dev dependency) merged, #51 (actions/checkout) closed.
+
+### Removed
+
+- **Match-view LIVE fallback** — the whole chain deleted together with its tests and imports: `tryCanonicalMatchView`, the `dataAdapter` / `viewerGamertag` fields and their `With*` setters, `LoadMatchDetail` on `games.TitleDataAdapter` and its 3 implementations, the Halo 5 `mapping_carnage_detail.go` file, `enrichCommendations` (lifetime totals kept), `ctxkeys.WithViewerGamertag`, the canonical `MatchDetail` / `Commendation` types, plus the orphaned `WithRankedClassifier` and the `ranked_hoppers.toml` boot load.
+- **Dead code** — `queryKeys.player()` (0 callers), package `weaponregistry` (0 imports), `CareerPage` and `CareerTopMatchesTable` with their tests (not routed), the weapon registry's invented `name_fr` fallback, and the OpenAPI drift test with its helpers (superseded by the golden tests).
+
 ## [7.1.0] - 2026-07-24
 
 > Point release consolidating the "v7.1 backlog" work plus the chantiers merged to `main` since the v7.0.0 tag (median-profile Intensity, Career Medals, Squad Dynamics, Expected-FDA differential, home/scoreboard quick wins, admin appearance diagnostic). Per-domain summary.
