@@ -1,0 +1,78 @@
+# config/titles/halo_5/mappings/weapon_names.toml
+#
+# SOURCE UNIQUE des noms d'armes affiches Halo 5: Guardians (V72-06). Keye par
+# weapon_key (identifiant canonique stable du registre weapons/weapon_ids), PAS par
+# le nom EN brut de l'API Metadata (qui varie en casse/espaces : "FRAG GRENADE",
+# "LightRifle" — d'ou l'ancien mismatch qui laissait fuir l'anglais). La resolution
+# d'un kill fait weapon_id -> weapon_ids -> weapon_key -> {en, fr} depuis ce fichier
+# (cf. internal/platform/duckdb/weapon_resolver.go).
+#
+# RExGLE : une entree par weapon_key present dans le registre (garde-rail de
+# completude : weapon_names_completeness_test.go). en ET fr obligatoires ; si aucun
+# FR officiel n'est connu, mettre le EN dans les deux (jamais de FR invente).
+#
+# FR = localisation officielle confirmee (ex-asset_labels_fr.toml [weapons],
+# wiki.halo.fr) quand elle existe, sinon le FR du registre. Trous connus corriges :
+# "FRAG GRENADE" -> "Grenade à fragmentation", "LightRifle" -> "Fusil léger",
+# "Spartan" (bucket non attribue) -> "Non attribué".
+
+[meta]
+title_slug     = "halo_5"
+schema_version = 1
+
+[weapons]
+h5_assault_rifle       = { en = "Assault Rifle", fr = "Fusil d'assaut" }
+h5_battle_rifle        = { en = "Battle Rifle", fr = "Fusil de combat" }
+h5_dmr                 = { en = "DMR", fr = "DMR" }
+h5_magnum              = { en = "Magnum", fr = "Magnum" }
+h5_smg                 = { en = "SMG", fr = "Mitraillette" }
+h5_shotgun             = { en = "Shotgun", fr = "Fusil à pompe" }
+h5_sniper_rifle        = { en = "Sniper Rifle", fr = "Fusil de sniper" }
+h5_rocket_launcher     = { en = "Rocket Launcher", fr = "Lance-roquettes" }
+h5_grenade_launcher    = { en = "Grenade Launcher", fr = "Lance-grenades" }
+h5_railgun             = { en = "Railgun", fr = "Railgun" }
+h5_saw                 = { en = "SAW", fr = "SAW" }
+h5_hydra               = { en = "Hydra", fr = "Hydra" }
+h5_spartan_laser       = { en = "Spartan Laser", fr = "Laser Spartan" }
+h5_carbine             = { en = "Carbine", fr = "Carabine covenante" }
+h5_energy_sword        = { en = "Energy Sword", fr = "Épée à énergie" }
+h5_plasma_pistol       = { en = "Plasma Pistol", fr = "Pistolet à plasma" }
+h5_plasma_rifle        = { en = "Brute Plasma Rifle", fr = "Fusil à plasma brute" }
+h5_fuel_rod            = { en = "Fuel Rod Cannon", fr = "Canon à combustible" }
+h5_storm_rifle         = { en = "Storm Rifle", fr = "Fusil Storm" }
+h5_beam_rifle          = { en = "Beam Rifle", fr = "Fusil de sniper covenant" }
+h5_plasma_caster       = { en = "Plasma Caster", fr = "Grenadier-plasma" }
+h5_needler             = { en = "Needler", fr = "Needler" }
+h5_gravity_hammer      = { en = "Gravity Hammer", fr = "Marteau antigravité" }
+h5_light_rifle         = { en = "Light Rifle", fr = "Fusil léger" }
+h5_binary_rifle        = { en = "Binary Rifle", fr = "Fusil binaire" }
+h5_boltshot            = { en = "Boltshot", fr = "Pistolet à particules" }
+h5_incineration_cannon = { en = "Incineration Cannon", fr = "Canon incendiaire" }
+h5_sentinel_beam       = { en = "Sentinel Beam", fr = "Laser de Sentinelle" }
+h5_suppressor          = { en = "Suppressor", fr = "Éradicateur" }
+h5_scattershot         = { en = "Scattershot", fr = "Répercuteur" }
+h5_frag_grenade        = { en = "Frag Grenade", fr = "Grenade à fragmentation" }
+h5_plasma_grenade      = { en = "Plasma Grenade", fr = "Grenade à plasma" }
+h5_splinter_grenade    = { en = "Splinter Grenade", fr = "Grenade Splinter" }
+h5_golf_club           = { en = "Golf Club", fr = "Club de golf" }
+h5_oddball             = { en = "Oddball", fr = "Oddball" }
+h5_vehicle_ghost       = { en = "Ghost", fr = "Ghost" }
+h5_vehicle_mongoose    = { en = "Mongoose", fr = "Mongoose" }
+h5_vehicle_warthog     = { en = "Warthog", fr = "Warthog" }
+h5_vehicle_banshee     = { en = "Banshee", fr = "Banshee" }
+h5_vehicle_mantis      = { en = "Mantis", fr = "Mantis" }
+h5_vehicle_scorpion    = { en = "Scorpion", fr = "Scorpion" }
+h5_vehicle_wraith      = { en = "Wraith", fr = "Wraith" }
+h5_vehicle_wasp        = { en = "Wasp", fr = "Wasp" }
+h5_vehicle_phaeton     = { en = "Phaeton", fr = "Phaeton" }
+h5_turret_chaingun     = { en = "Chaingun Turret", fr = "Tourelle mitrailleuse" }
+h5_turret_splinter     = { en = "Splinter Turret", fr = "Tourelle Splinter" }
+h5_turret_rocket_pod   = { en = "Rocket Pod Turret", fr = "Tourelle lance-roquettes" }
+h5_turret_gauss        = { en = "Gauss Turret", fr = "Tourelle Gauss" }
+h5_turret_shade_plasma = { en = "Shade Plasma Turret", fr = "Tourelle plasma Shade" }
+h5_turret_scorpion_ai  = { en = "Scorpion Anti-Infantry Turret", fr = "Tourelle anti-infanterie Scorpion" }
+h5_turret_plasma       = { en = "Plasma Turret", fr = "Tourelle à plasma" }
+h5_turret_hunter_arm   = { en = "Hunter Arm Turret", fr = "Tourelle bras de Hunter" }
+h5_environmental       = { en = "Environmental Explosives", fr = "Explosifs d'environnement" }
+h5_unattributed        = { en = "Unattributed", fr = "Non attribué" }
+h5_other_ugc           = { en = "Other", fr = "Autres" }

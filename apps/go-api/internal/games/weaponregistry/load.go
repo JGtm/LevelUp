@@ -31,7 +31,9 @@ func LoadFromDB(ctx context.Context, db *sql.DB) (*MemRegistry, error) {
 }
 
 func (r *MemRegistry) loadWeapons(ctx context.Context, db *sql.DB) error {
-	rows, err := db.QueryContext(ctx, `SELECT weapon_key, title_slug, name, name_fr, class, role,
+	// name_fr retiré du registre (V72-06) : le nom d'affichage est la source unique
+	// keyée par weapon_key (weapon_name_labels). Le registre ne porte que dimensions.
+	rows, err := db.QueryContext(ctx, `SELECT weapon_key, title_slug, name, class, role,
 		family_key, faction, damage_type, manufacturer, extra FROM weapons`)
 	if err != nil {
 		return err
@@ -39,12 +41,12 @@ func (r *MemRegistry) loadWeapons(ctx context.Context, db *sql.DB) error {
 	defer rows.Close()
 	for rows.Next() {
 		var w Weapon
-		var nameFR, class, role, family, faction, dmg, manu, extra sql.NullString
-		if err := rows.Scan(&w.Key, &w.TitleSlug, &w.Name, &nameFR, &class, &role,
+		var class, role, family, faction, dmg, manu, extra sql.NullString
+		if err := rows.Scan(&w.Key, &w.TitleSlug, &w.Name, &class, &role,
 			&family, &faction, &dmg, &manu, &extra); err != nil {
 			return err
 		}
-		w.NameFR, w.Class, w.Role = nameFR.String, class.String, role.String
+		w.Class, w.Role = class.String, role.String
 		w.FamilyKey, w.Faction = family.String, faction.String
 		w.DamageType, w.Manufacturer = dmg.String, manu.String
 		if extra.Valid && extra.String != "" {

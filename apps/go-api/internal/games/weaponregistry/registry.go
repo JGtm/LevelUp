@@ -8,10 +8,11 @@ package weaponregistry
 
 // Weapon — arme canonique résolue. Champs optionnels = "" / nil si non renseignés.
 type Weapon struct {
-	Key          string
-	TitleSlug    string
-	Name         string
-	NameFR       string
+	Key       string
+	TitleSlug string
+	Name      string
+	// NameFR retiré V72-06 : le nom d'affichage (en/fr) est la source unique keyée par
+	// weapon_key dans weapon_names.toml (→ weapon_name_labels). Le registre = dimensions.
 	Class        string // sidearm|shoulder|heavy|melee|grenade (manipulation)
 	Role         string // automatic|precision|sniper|shotgun|sidearm|power|special|melee|grenade
 	FamilyKey    string
