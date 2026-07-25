@@ -41,6 +41,10 @@ concurrentes (cache) ; intégration `-p 1` ; vérifs visuelles = utilisateur.
 | V72-28 | Carrière : aligner en hauteur blocs Classements et Évolution LUSR/CSR | 2 | [ ] |
 | V72-29 | CRITIQUE : fuite cross-titre — nameplate/emblème H5 affichés avec Infinite actif | 3 | [ ] |
 | V72-30 | [FINAL] What's new FR/EN + changelogs FR/EN + notes de version in-app | 6 | [ ] |
+| V72-31 | Alertes Discord : anti-rafale disque + notif rétablissement + releases manquées + notifs sync absentes | 3 | [ ] ajouté 25/07 |
+| V72-32 | Notes de performance absentes (BTB placement) : état « En placement » au lieu du vide | 2 | [ ] ajouté 25/07 |
+| V72-33 | Catégories de médailles Halo 5 selon le wiki halo.fr | 2 | [ ] ajouté 25/07 |
+| V72-34 | Question plan Explorer-live : répondu (A1 fait+validé) ; reste A3 badges live_status + éval A2 | 1 | [~] A1 via challenge V72-24 |
 
 ## Lots (ordre d'exécution)
 

@@ -67,6 +67,7 @@ import {
   explorerHlExtract,
   isExplorerHighlightKey,
 } from './ExplorerMatchesTable.highlight'
+import { hasPlacementSignal, PlacementPendingCell } from './ExplorerMatchesTable.placement'
 
 const PAGE_SIZE = 20
 const HISTORY_DATE_OPTS: Intl.DateTimeFormatOptions = {
@@ -591,7 +592,17 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         ...NUMERIC_SORT,
         cell: (ctx) => {
           const r = ctx.row.original
-          if (r.perf_score == null || !r.perf_tier) return '-'
+          if (r.perf_score == null || !r.perf_tier) {
+            // V72-32 : note manquante PARCE QUE le classement (LUSR/CSR) de ce
+            // match est en placement (< 10 matchs dans sa chaîne) → badge
+            // explicite plutôt qu'un vide qui se lit comme "cassé". Sans signal
+            // de placement (absence structurelle, ex. Firefight) → "-" inchangé.
+            return hasPlacementSignal(r) ? (
+              <PlacementPendingCell row={r} locale={locale} />
+            ) : (
+              '-'
+            )
+          }
           return (
             <span
               className="font-semibold tabular-nums"
@@ -610,7 +621,16 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         ...NUMERIC_SORT,
         cell: (ctx) => {
           const v = ctx.getValue<number | null | undefined>()
-          if (v == null) return '-'
+          if (v == null) {
+            // V72-32 : même badge de placement que la colonne Perf (ΔPerf en
+            // dérive directement — jamais l'un sans l'autre).
+            const r = ctx.row.original
+            return hasPlacementSignal(r) ? (
+              <PlacementPendingCell row={r} locale={locale} />
+            ) : (
+              '-'
+            )
+          }
           const color =
             v > 0
               ? tokenCssVar('perf-tier-1' as SemanticToken)
@@ -639,7 +659,19 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
           // Normalisé : la famille LUSR (dont la row d'audit 'LUSR_V2') s'affiche
           // 'LUSR' — la v2 est transparente pour l'utilisateur (cf. displayRatingLabel).
           const v = displayRatingLabel(ctx.getValue<string | null | undefined>())
-          return <span className="font-mono">{v ?? '-'}</span>
+          if (v == null) {
+            // V72-32 : rating_type est nil PENDANT la phase de placement (par
+            // construction, cf. applyLUSRPlacements/applyCSRPlacements) → même
+            // badge que Perf/ΔPerf plutôt qu'un "-" qui lit "aucun classement
+            // ne s'applique ici" (faux pour un match en placement).
+            const r = ctx.row.original
+            return hasPlacementSignal(r) ? (
+              <PlacementPendingCell row={r} locale={locale} />
+            ) : (
+              <span className="font-mono">-</span>
+            )
+          }
+          return <span className="font-mono">{v}</span>
         },
       },
       {

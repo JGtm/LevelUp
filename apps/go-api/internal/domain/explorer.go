@@ -400,7 +400,13 @@ type ExplorerMatchesRow struct {
 	// Alimente la colonne « Prob. vic. ». Nil si pré-v2 / non disponible.
 	ExpectedWinProb *float64 `json:"expected_win_prob,omitempty"`
 	// PlacementDone/PlacementTotal : progression placement (X/Y).
-	// Si présents, l'UI affiche "X/Y" dans la colonne Rang à la place du SkillTierLabel.
+	// Si présents, l'UI affiche "X/Y" dans la colonne Rang à la place du
+	// SkillTierLabel ET un badge « En placement » (+ tooltip matchs restants)
+	// dans les colonnes Perf/ΔPerf/Note à la place du "-" (V72-32) — ces 3
+	// colonnes sont nil PENDANT la même phase de placement (perf_score : même
+	// seuil MinMatchesPerChainForRelative=10 sur la même chaîne pour
+	// arena_slayer/arena_objectif/btb/chaos ; rating_type : nil par construction
+	// tant qu'aucun LUSR/CSR n'est calculé).
 	// CSR : remaining parsé depuis "Placement (N restants)" + threshold csr_placement_thresholds.
 	// LUSR : 10 plus anciens matchs sans LUSR par chaîne (arena_slayer/arena_objectif/btb/chaos).
 	PlacementDone  *int `json:"placement_done,omitempty"`
