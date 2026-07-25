@@ -115,7 +115,10 @@ en = "Other"
 
 # ─── Catégories ──────────────────────────────────────────────────────────────
 # 23 categories SpartanRecord (Halo Infinite) + 3 baseline medal_type
-# (mode / proficiency / style) servant les titres sans enrichissement.
+# (mode / proficiency / style) servant les titres sans enrichissement +
+# 3 categories Halo 5 (referentiel wiki halo.fr : warzone / strongholds / objective ;
+# les autres cles H5 — multikill/spree/weapons/vehicles/infection/ctf/oddball/style —
+# reutilisent les cles Infinite ci-dessus).
 
 [medals.category.spree]
 fr = "Série"
@@ -168,6 +171,22 @@ en = "VIP"
 [medals.category.zone]
 fr = "Zones"
 en = "Zones"
+
+# Categories specifiques Halo 5 (referentiel wiki halo.fr). « Warzone » et
+# « Bastions » sont les noms officiels FR des modes ; « Objectif » regroupe les
+# medailles d'objectif transverses (multi-captures, interceptions, immortalite…).
+
+[medals.category.warzone]
+fr = "Warzone"
+en = "Warzone"
+
+[medals.category.strongholds]
+fr = "Bastions"
+en = "Strongholds"
+
+[medals.category.objective]
+fr = "Objectif"
+en = "Objective"
 
 [medals.category.boom]
 fr = "Explosifs"
