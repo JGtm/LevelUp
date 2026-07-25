@@ -17,11 +17,13 @@ import (
 type weaponMetaEntry struct {
 	label  string
 	nameEN string
-	// class / role : dimensions du registre (axe manipulation + fonction de combat),
-	// résolues dans la même passe que le label (resolveWeaponMeta les porte déjà).
-	// Vides si l'arme est absente du registre. Alimentent la FragDistribution par-match.
-	class string
-	role  string
+	// class / role / family : dimensions du registre (axe manipulation + fonction de
+	// combat + famille), résolues dans la même passe que le label (resolveWeaponMeta les
+	// porte déjà). Vides si l'arme est absente du registre. Alimentent la FragDistribution
+	// par-match (family = TYPE de grenade au niveau 2, V72-15.2).
+	class  string
+	role   string
+	family string
 }
 
 // lookupWeaponMeta résout label (FR>EN) + name_en + class/role depuis le registre.
@@ -36,7 +38,7 @@ func (r *MatchViewRepo) lookupWeaponMeta(ctx context.Context, weaponIDs []int64)
 	// nom). On ne garde que les ids résolus (label non vide), comme l'ancien lookup.
 	for id, m := range resolveWeaponMeta(ctx, r.pdb.Metadata, r.pdb.TitleSlug, weaponIDs) {
 		if m.label != "" {
-			result[id] = weaponMetaEntry{label: m.label, nameEN: m.nameEN, class: m.class, role: m.role}
+			result[id] = weaponMetaEntry{label: m.label, nameEN: m.nameEN, class: m.class, role: m.role, family: m.family}
 		}
 	}
 	return result
@@ -131,12 +133,13 @@ func (r *MatchViewRepo) GetMatchBulkWeaponKills(ctx context.Context, matchID str
 		wid  int64
 	}
 	killsByKey := make(map[key]int)
+	mechanicByKey := make(map[key]int) // sous-ensemble non-arme (kill_kind <> 'weapon'), V72-15.3
 	ordered := make([]key, 0, 32)
 	for rows.Next() {
 		var xuid string
 		var widU uint64
-		var kills int
-		if err := rows.Scan(&xuid, &widU, &kills); err != nil {
+		var kills, mechanicKills int
+		if err := rows.Scan(&xuid, &widU, &kills, &mechanicKills); err != nil {
 			return nil, fmt.Errorf("MatchViewRepo.GetMatchBulkWeaponKills scan: %w", err)
 		}
 		canonicalU := widU
@@ -148,6 +151,7 @@ func (r *MatchViewRepo) GetMatchBulkWeaponKills(ctx context.Context, matchID str
 			ordered = append(ordered, k)
 		}
 		killsByKey[k] += kills
+		mechanicByKey[k] += mechanicKills
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -157,9 +161,10 @@ func (r *MatchViewRepo) GetMatchBulkWeaponKills(ctx context.Context, matchID str
 	weaponIDs := make([]int64, 0, len(ordered))
 	for _, k := range ordered {
 		results = append(results, domain.BulkWeaponKillRaw{
-			XUID:     k.xuid,
-			WeaponID: k.wid,
-			Kills:    killsByKey[k],
+			XUID:          k.xuid,
+			WeaponID:      k.wid,
+			Kills:         killsByKey[k],
+			MechanicKills: mechanicByKey[k],
 		})
 		weaponIDs = append(weaponIDs, k.wid)
 	}
@@ -171,6 +176,7 @@ func (r *MatchViewRepo) GetMatchBulkWeaponKills(ctx context.Context, matchID str
 			results[i].NameEN = m.nameEN
 			results[i].Class = m.class
 			results[i].Role = m.role
+			results[i].Family = m.family
 			continue
 		}
 		// Fallback : weapon_id en string pour les variantes absentes de

@@ -175,9 +175,9 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 		// dans Q16WeaponKills est la sortie attendue (cf. queries_match.go).
 		`CREATE TABLE shared.weapon_kills (
 			match_id VARCHAR, xuid VARCHAR, weapon_id UBIGINT, kills INTEGER DEFAULT 1,
-			reconciled_as UBIGINT)`,
+			reconciled_as UBIGINT, kill_kind VARCHAR)`,
 		`CREATE VIEW shared.v_weapon_kills AS
-			SELECT match_id, xuid, weapon_id, kills,
+			SELECT match_id, xuid, weapon_id, kills, kill_kind,
 			       COALESCE(reconciled_as, weapon_id) AS effective_weapon_id
 			FROM shared.weapon_kills`,
 		// weapon_accuracy : précision par arme (Halo 5 natif). Schéma aligné sur
@@ -209,7 +209,7 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 		`CREATE VIEW v_match_full AS SELECT * FROM shared.match_registry`,
 		`CREATE VIEW v_gamertag_lookup AS SELECT xuid, gamertag FROM shared.xuid_aliases`,
 		`CREATE VIEW v_weapon_kills AS
-			SELECT match_id, xuid, weapon_id, kills,
+			SELECT match_id, xuid, weapon_id, kills, kill_kind,
 			       COALESCE(reconciled_as, weapon_id) AS effective_weapon_id
 			FROM shared.weapon_kills`,
 		// Phase 3.bis plan stabilisation 2026-05-22 : Q12MatchScoreboard
@@ -564,9 +564,9 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 			event_type VARCHAR, tick_count INTEGER, timestamp_utc TIMESTAMPTZ, time_ms BIGINT)`,
 		`CREATE TABLE shared.weapon_kills (
 			match_id VARCHAR, xuid VARCHAR, weapon_id UBIGINT, kills INTEGER DEFAULT 1,
-			reconciled_as UBIGINT)`,
+			reconciled_as UBIGINT, kill_kind VARCHAR)`,
 		`CREATE VIEW shared.v_weapon_kills AS
-			SELECT match_id, xuid, weapon_id, kills,
+			SELECT match_id, xuid, weapon_id, kills, kill_kind,
 			       COALESCE(reconciled_as, weapon_id) AS effective_weapon_id
 			FROM shared.weapon_kills`,
 		// weapon_accuracy : précision par arme (Halo 5 natif). Schéma aligné sur
@@ -598,7 +598,7 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 		`CREATE VIEW v_match_full AS SELECT * FROM shared.match_registry`,
 		`CREATE VIEW v_gamertag_lookup AS SELECT xuid, gamertag FROM shared.xuid_aliases`,
 		`CREATE VIEW v_weapon_kills AS
-			SELECT match_id, xuid, weapon_id, kills,
+			SELECT match_id, xuid, weapon_id, kills, kill_kind,
 			       COALESCE(reconciled_as, weapon_id) AS effective_weapon_id
 			FROM shared.weapon_kills`,
 		// Phase 3.bis plan stabilisation 2026-05-22 : Q12MatchScoreboard

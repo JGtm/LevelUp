@@ -184,12 +184,13 @@ func (r *WeaponKillsRepo) queryWeaponKills(
 	var out []port.WeaponKillRow
 	for dbRows.Next() {
 		var (
-			xuid     string
-			weaponID UBigint // UBIGINT côté DuckDB (cf. ubigint_scanner.go)
-			kills    int
-			isGM     bool
+			xuid          string
+			weaponID      UBigint // UBIGINT côté DuckDB (cf. ubigint_scanner.go)
+			kills         int
+			mechanicKills int
+			isGM          bool
 		)
-		if err := dbRows.Scan(&xuid, &weaponID, &kills, &isGM); err != nil {
+		if err := dbRows.Scan(&xuid, &weaponID, &kills, &mechanicKills, &isGM); err != nil {
 			return nil, fmt.Errorf("scan: %w", err)
 		}
 		if filters.MinKills > 0 && kills < filters.MinKills {
@@ -199,6 +200,7 @@ func (r *WeaponKillsRepo) queryWeaponKills(
 			XUID:           xuid,
 			WeaponID:       weaponID.Int64(),
 			Kills:          kills,
+			MechanicKills:  mechanicKills,
 			IsGrenadeMelee: isGM,
 		})
 	}
@@ -239,6 +241,7 @@ SELECT
     wk.xuid,
     wk.effective_weapon_id AS weapon_id,
     COUNT(*) AS kills,
+    COUNT(*) FILTER (WHERE wk.kill_kind IS NOT NULL AND wk.kill_kind <> 'weapon') AS mechanic_kills,
     FALSE AS is_grenade_melee
 FROM v_weapon_kills wk
 WHERE wk.match_id IN (`)
@@ -269,6 +272,7 @@ SELECT
 	sb.WriteString(strconv.FormatInt(weaponIDGrenadeSentinel, 10))
 	sb.WriteString(`::UBIGINT AS weapon_id,
     SUM(COALESCE(mp.grenade_kills, 0))::INTEGER AS kills,
+    0 AS mechanic_kills,
     TRUE AS is_grenade_melee
 FROM match_participants mp
 WHERE mp.match_id IN (`)
@@ -291,6 +295,7 @@ SELECT
 	sb.WriteString(strconv.FormatInt(weaponIDMeleeSentinel, 10))
 	sb.WriteString(`::UBIGINT AS weapon_id,
     SUM(COALESCE(mp.melee_kills, 0))::INTEGER AS kills,
+    0 AS mechanic_kills,
     TRUE AS is_grenade_melee
 FROM match_participants mp
 WHERE mp.match_id IN (`)
@@ -354,14 +359,18 @@ func (r *WeaponKillsRepo) attachWeaponMeta(ctx context.Context, slug string, row
 			rows[i].Label = m.label
 		}
 		if withRoles {
-			// Role ET Class dans la même passe (resolveWeaponMeta les peuple
+			// Role, Class ET Family dans la même passe (resolveWeaponMeta les peuple
 			// ensemble). Sentinels grenade/melee (0/1) : absents du registre → ""
 			// (l'agrégation par classe s'appuie sur les totaux API pour ces buckets).
+			// Family alimente le TYPE de grenade au niveau 2 (V72-15.2).
 			if m.role != "" {
 				rows[i].Role = m.role
 			}
 			if m.class != "" {
 				rows[i].Class = m.class
+			}
+			if m.family != "" {
+				rows[i].Family = m.family
 			}
 		}
 	}

@@ -196,7 +196,12 @@ ORDER BY xuid, count DESC`
 
 // Q28 : Kills par arme de tous les joueurs d'un match (bulk).
 // Paramètre : ? = match_id.
-// Retourne 3 colonnes : xuid, weapon_id, kills.
+// Retourne 4 colonnes : xuid, weapon_id, kills, mechanic_kills.
+// mechanic_kills (V72-15.3) = sous-ensemble de kills attribués à cette arme mais qui sont
+// des mécaniques natives Halo 5 (kill_kind <> 'weapon' : mêlée/assassinat/coup au sol/charge
+// d'épaule, arme TENUE). Sur Infinite kill_kind est NULL → 0. buildFragDistribution les
+// retire des classes gun (déjà servis par les compteurs natifs) ; le breakdown par arme
+// garde kills complet.
 // Requête sur v_weapon_kills (append-only #23046 Phase 2 : la vue ne retourne
 // que la dernière génération par (match_id,xuid) — sinon COUNT(*) fan-out).
 // Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
@@ -204,7 +209,8 @@ const Q28BulkWeaponKills = `
 SELECT
     wk.xuid,
     wk.effective_weapon_id AS weapon_id,
-    COUNT(*) AS kills
+    COUNT(*) AS kills,
+    COUNT(*) FILTER (WHERE wk.kill_kind IS NOT NULL AND wk.kill_kind <> 'weapon') AS mechanic_kills
 FROM v_weapon_kills wk
 WHERE wk.match_id = ?
   AND wk.effective_weapon_id NOT IN (0, 1, 2)

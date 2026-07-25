@@ -6,7 +6,7 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
-// ptrInt (helper partagé, match_view_canonical_test.go) → pointeur int.
+// ptrInt (helper partagé, match_view_helpers_test.go) → pointeur int.
 
 // fragClassKills projette (class -> kills) pour des assertions concises.
 func fragClassKills(fd *domain.FragDistribution) map[string]int {
@@ -129,6 +129,81 @@ func TestBuildViewerFragDistribution_H5CapOn(t *testing.T) {
 	}
 	if !foundAssassination {
 		t.Errorf("rôle Assassinat absent de melee.Roles = %+v", meleeRoles)
+	}
+}
+
+// TestBuildViewerFragDistribution_H5MechanicKillsNoDoubleCount (V72-15.3) : sur H5 les kills
+// de mêlée/assassinat attribués à l'arme TENUE (MechanicKills sur la ligne bulk) sont retirés
+// de la classe gun et servis par le compteur natif Mêlée → Σ classes == total (pas de
+// double-comptage). Dataset choisi pour que le non-retrait DÉBORDERAIT (12 > 10).
+func TestBuildViewerFragDistribution_H5MechanicKillsNoDoubleCount(t *testing.T) {
+	me := &domain.MatchScoreboardRow{
+		XUID: "me", IsMe: true, Kills: ptrInt(10),
+		MeleeKills: ptrInt(3),
+	}
+	bulk := []domain.BulkWeaponKillRaw{
+		// 9 kills BR dont 2 mêlées attribuées à l'arme tenue (MechanicKills=2).
+		{XUID: "me", WeaponID: 1, Kills: 9, Class: "shoulder", Role: "automatic", MechanicKills: 2},
+	}
+	fd := buildViewerFragDistribution(me, bulk, true)
+	if fd == nil {
+		t.Fatal("want distribution, got nil")
+	}
+	got := fragClassKills(fd)
+	if got["shoulder"] != 7 {
+		t.Errorf("shoulder = %d, want 7 (9 - 2 mécaniques natives)", got["shoulder"])
+	}
+	if got["melee"] != 3 {
+		t.Errorf("melee = %d, want 3 (compteur natif)", got["melee"])
+	}
+	if _, ok := got["unattributed"]; ok {
+		t.Errorf("Σ exacte après retrait : aucune classe unattributed attendue, got %+v", got)
+	}
+	sum := 0
+	for _, k := range got {
+		sum += k
+	}
+	if sum != fd.TotalKills {
+		t.Errorf("Σ classes = %d != total %d (double-comptage non corrigé)", sum, fd.TotalKills)
+	}
+}
+
+// TestBuildViewerFragDistribution_GrenadeSubLevel (V72-15.2) : les rows bulk class=grenade
+// (avec Family) alimentent le niveau 2 de la classe Grenade par TYPE, le total restant le
+// compteur natif ; elles ne fuient PAS dans les classes gun.
+func TestBuildViewerFragDistribution_GrenadeSubLevel(t *testing.T) {
+	me := &domain.MatchScoreboardRow{
+		XUID: "me", IsMe: true, Kills: ptrInt(12),
+		GrenadeKills: ptrInt(5),
+	}
+	bulk := []domain.BulkWeaponKillRaw{
+		{XUID: "me", WeaponID: 1, Kills: 4, Class: "shoulder", Role: "automatic"},
+		{XUID: "me", WeaponID: 20, Kills: 3, Class: "grenade", Role: "grenade", Family: "frag_grenade"},
+		{XUID: "me", WeaponID: 21, Kills: 1, Class: "grenade", Role: "grenade", Family: "plasma_grenade"},
+	}
+	fd := buildViewerFragDistribution(me, bulk, false)
+	if fd == nil {
+		t.Fatal("want distribution, got nil")
+	}
+	got := fragClassKills(fd)
+	if got["grenade"] != 5 {
+		t.Errorf("grenade = %d, want 5 (compteur natif, pas la somme des rows)", got["grenade"])
+	}
+	if got["shoulder"] != 4 {
+		t.Errorf("shoulder = %d, want 4 (les rows grenade ne fuient pas dans les classes gun)", got["shoulder"])
+	}
+	var grenadeRoles []domain.FragRoleEntry
+	for _, c := range fd.Classes {
+		if c.Class == domain.FragClassGrenade {
+			grenadeRoles = c.Roles
+		}
+	}
+	// typé = 4 (frag 3 + plasma 1) ; total API = 5 → résidu « autre grenade » = 1.
+	if len(grenadeRoles) != 3 {
+		t.Fatalf("grenade.Roles = %+v, want 3 types (frag/plasma/autre)", grenadeRoles)
+	}
+	if grenadeRoles[0].Role != domain.FragRoleGrenadeFrag || grenadeRoles[0].Kills != 3 {
+		t.Errorf("grenade.Roles[0] = %+v, want frag(3) en tête", grenadeRoles[0])
 	}
 }
 

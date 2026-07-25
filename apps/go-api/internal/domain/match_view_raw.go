@@ -164,12 +164,18 @@ type BulkWeaponKillRaw struct {
 	Kills       int
 	WeaponLabel string
 	NameEN      string // nom EN officiel → lookup WeaponImageURL dans l'adapter
-	// Class / Role : dimensions du registre d'armes (axe manipulation + fonction de
-	// combat), résolues dans la même passe que le label (resolveWeaponMeta). Vides si
-	// l'arme est absente du registre. Alimentent la FragDistribution par-match (sunburst
-	// v2) : Class recolore le breakdown par arme, la ventilation gun → classe/rôle.
-	Class string
-	Role  string
+	// Class / Role / Family : dimensions du registre d'armes (axe manipulation + fonction
+	// de combat + famille), résolues dans la même passe que le label (resolveWeaponMeta).
+	// Vides si l'arme est absente du registre. Alimentent la FragDistribution par-match
+	// (sunburst v2) : Class recolore le breakdown par arme + la ventilation gun → classe ;
+	// Family alimente le TYPE de grenade au niveau 2 (V72-15.2 : frag/plasma/dynamo/splinter).
+	Class  string
+	Role   string
+	Family string
+	// MechanicKills : sous-ensemble de Kills non-arme (mêlée/assassinat/coup au sol/charge
+	// d'épaule attribués à l'arme TENUE, kill_kind <> 'weapon' sur H5 ; 0 sur Infinite).
+	// buildFragDistribution les retire des classes gun (anti-double-comptage V72-15.3).
+	MechanicKills int
 }
 
 // MatchEnrichmentRaw : données brutes de Q18.
