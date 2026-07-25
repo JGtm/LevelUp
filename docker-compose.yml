@@ -1,6 +1,18 @@
 services:
   levelup:
-    build: .
+    build:
+      context: .
+      args:
+        # Version BAKÉE dans le binaire via ldflags (-X main.version, cf. Dockerfile
+        # ARG VERSION). Interpolée depuis le shell de `docker compose build` :
+        # scripts/deploy.sh exporte le dernier tag semver AVANT le build. Sans ce
+        # build-arg, le binaire portait toujours "dev" et la notif « nouvelle version »
+        # (in-app app_release + Discord) ne partait jamais dès que l'env runtime
+        # LEVELUP_APP_VERSION était perdu (recreate demo-regen sans la variable →
+        # AppVersion="dev" aux deploy v7.0.0/v7.1.0). Bakée au build, la version
+        # survit à toute perte de l'env runtime (fallback main.go: cfg.AppVersion=version).
+        # Défaut "dev" (build local sans tag) => notifs de version gardées OFF.
+        VERSION: ${LEVELUP_APP_VERSION:-dev}
     ports:
       # API FastAPI exposée en local uniquement — nginx fait le reverse proxy en prod
       - "127.0.0.1:8000:8000"

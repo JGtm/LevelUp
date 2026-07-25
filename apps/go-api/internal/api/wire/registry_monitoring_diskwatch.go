@@ -21,9 +21,11 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/notify"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/ops"
+	"levelup/go-api/internal/platform/adminstate"
 )
 
 // diskWatchInterval : période de vérification. Un disque se remplit en heures
@@ -33,9 +35,15 @@ const diskWatchInterval = 15 * time.Minute
 // RunDiskWatchLoop boucle la surveillance disque jusqu'à ctx.Done(). Premier
 // check immédiat (un boot sur disque déjà plein alerte tout de suite). Câblée
 // au boot sur schedulerCtx/schedulerWG comme RunDetectionFlushLoop.
+//
+// L'état anti-spam (ops.DiskWatchState) est PERSISTÉ hors DuckDB et réhydraté ici
+// au boot : sans persistance, un redémarrage du conteneur en warn/critical (deploy
+// à chaque push main, crash-loop disque plein) re-notifiait via le chemin « boot »
+// à CHAQUE boot → rafale d'alertes Discord identiques observée en prod.
 func (r *ServiceRegistry) RunDiskWatchLoop(ctx context.Context) {
-	state := ops.DiskWatchState{}
-	state = r.diskWatchTick(ctx, state)
+	store := adminstate.NewFileStore(titlePkg.NewPathResolver(r.cfg.RepoRoot).DiskWatchStatePath())
+	state := loadDiskWatchState(ctx, store)
+	state = r.diskWatchTick(ctx, state, store)
 	t := time.NewTicker(diskWatchInterval)
 	defer t.Stop()
 	for {
@@ -43,14 +51,44 @@ func (r *ServiceRegistry) RunDiskWatchLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			state = r.diskWatchTick(ctx, state)
+			state = r.diskWatchTick(ctx, state, store)
 		}
 	}
 }
 
+// loadDiskWatchState réhydrate l'état persisté. Fichier absent (premier boot) →
+// état zéro (le premier relevé sera confirmé d'emblée). Fichier corrompu → état
+// zéro APRÈS un log (jamais avalé) — au pire une notification de plus, pas une
+// rafale : on ne supprime pas le fichier (un opérateur peut l'inspecter).
+func loadDiskWatchState(ctx context.Context, store *adminstate.FileStore) ops.DiskWatchState {
+	var state ops.DiskWatchState
+	found, err := store.Load(&state)
+	if err != nil {
+		monitoringLog.WarnContext(ctx, "disk_watch: état persisté illisible — démarrage à vide",
+			"path", store.Path(), "err", err)
+		return ops.DiskWatchState{}
+	}
+	if found {
+		monitoringLog.InfoContext(ctx, "disk_watch: état réhydraté",
+			"last_status", state.LastStatus, "last_notified_at", state.LastNotifiedAt)
+	}
+	return state
+}
+
+// saveDiskWatchState persiste l'état après chaque tick (best-effort : un échec
+// d'écriture est LOGGÉ mais ne casse pas la boucle — l'état mémoire fait foi
+// jusqu'au prochain tick). Écriture atomique via FileStore (survit à un kill).
+func saveDiskWatchState(ctx context.Context, store *adminstate.FileStore, state ops.DiskWatchState) {
+	if err := store.Save(state); err != nil {
+		monitoringLog.WarnContext(ctx, "disk_watch: persistance de l'état échouée (état mémoire conservé)",
+			"path", store.Path(), "err", err)
+	}
+}
+
 // diskWatchTick mesure, logge, met à jour les gauges et notifie si la politique
-// le décide. Retourne le nouvel état.
-func (r *ServiceRegistry) diskWatchTick(ctx context.Context, state ops.DiskWatchState) ops.DiskWatchState {
+// le décide. Persiste le nouvel état (anti-spam à travers les restarts) et le
+// retourne.
+func (r *ServiceRegistry) diskWatchTick(ctx context.Context, state ops.DiskWatchState, store *adminstate.FileStore) ops.DiskWatchState {
 	disk := r.resourceDisk()
 	usedPct := ops.DiskUsedPercent(disk.FreeBytes, disk.TotalBytes)
 
@@ -89,6 +127,12 @@ func (r *ServiceRegistry) diskWatchTick(ctx context.Context, state ops.DiskWatch
 			monitoringLog.InfoContext(ctx, "disk_watch: alerte sans notification (webhook Discord non configuré)",
 				"status", disk.Status)
 		}
+	}
+	// Persister l'état APRÈS la décision (statut confirmé + timestamp de dernière
+	// notification + débounce) pour que l'anti-spam et la garantie « rétablissement
+	// notifié une seule fois » survivent aux redémarrages du conteneur.
+	if next != state {
+		saveDiskWatchState(ctx, store, next)
 	}
 	return next
 }

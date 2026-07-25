@@ -562,6 +562,19 @@ func (p *PathResolver) ActionJournalPath() string {
 	return filepath.Join(p.AdminStateDir(), "action_journal.json")
 }
 
+// DiskWatchStatePath retourne le chemin de l'état PERSISTANT de la surveillance
+// disque (dernier statut confirmé + horodatage de la dernière notification +
+// débounce d'amélioration). Persisté hors DuckDB pour survivre au reboot : sans
+// cela l'anti-spam de ops.ShouldNotifyDisk repart de zéro à chaque redémarrage
+// du conteneur (deploy à chaque push main, crash-loop disque plein) → RAFALE de
+// notifications Discord identiques à chaque boot. Un seul writer = le process
+// serveur (boucle RunDiskWatchLoop).
+//
+// Ex: data/global/admin_state/disk_watch_state.json
+func (p *PathResolver) DiskWatchStatePath() string {
+	return filepath.Join(p.AdminStateDir(), "disk_watch_state.json")
+}
+
 // MetadataDBPath retourne le chemin de la base metadata d'un titre.
 // Ex: data/titles/halo_infinite/warehouse/metadata.duckdb
 func (p *PathResolver) MetadataDBPath(titleSlug string) string {

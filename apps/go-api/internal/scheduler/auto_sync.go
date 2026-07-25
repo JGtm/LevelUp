@@ -27,6 +27,7 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/notify"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/adminstate"
 	"levelup/go-api/internal/platform/auth"
@@ -75,6 +76,13 @@ type RunOnceResult struct {
 	Skipped  int           `json:"skipped"` // joueur absent du pool, watcher actif, etc.
 	Failed   int           `json:"failed"`  // erreur pendant RunDelta
 	Duration time.Duration `json:"duration_ns"`
+
+	// newMatchPlayers agrège les joueurs MOTEUR (Infinite/V2) ayant inséré >= 1
+	// nouveau match ce cycle — source de la notification Discord de fin de cycle
+	// (toggle discord_notify_sync). Non exporté : jamais sérialisé dans le snapshot
+	// diag ni l'historique. Les joueurs live-only (Halo 5) / filet de boot passent
+	// par recordOutcome → Snapshot(), fusionnés à l'émission (auto_sync_notify.go).
+	newMatchPlayers []notify.PlayerSyncResult
 }
 
 // PlayerOutcomeDetail capture le résultat détaillé d'une tentative de sync pour
@@ -470,6 +478,15 @@ func (s *AutoSyncScheduler) runOnceV2(ctx context.Context, players []domain.Play
 			res.Failed++
 		default:
 			res.Skipped++
+		}
+		// Collecter les joueurs moteur ayant reçu de nouveaux matchs pour la
+		// notification Discord de fin de cycle (le pipeline V2 n'enregistre pas
+		// dans playerOutcomes — seul syncPlayer le fait pour les joueurs live/filet).
+		if outcome.MatchesInserted > 0 {
+			res.newMatchPlayers = append(res.newMatchPlayers, notify.PlayerSyncResult{
+				Gamertag:      outcome.Gamertag,
+				MatchesSynced: outcome.MatchesInserted,
+			})
 		}
 	}
 	slog.InfoContext(ctx, "auto_sync: cycle V2 terminé",

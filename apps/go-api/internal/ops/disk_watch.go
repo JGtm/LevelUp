@@ -26,18 +26,24 @@ const DiskRenotifyInterval = 24 * time.Hour
 // ne sont jamais débouncées (un disque qui se remplit doit alerter tout de suite).
 const diskConfirmTicks = 2
 
-// DiskWatchState est l'état mémoire de la boucle de surveillance (process-local,
-// repart de zéro au boot — au pire une notification de plus après restart).
+// DiskWatchState est l'état de la boucle de surveillance. PERSISTÉ hors DuckDB
+// (JSON, PathResolver.DiskWatchStatePath) et réhydraté au boot : sans cela l'état
+// repartait de zéro à chaque redémarrage du conteneur (deploy à chaque push main,
+// crash-loop disque plein) → le chemin « boot en warn/critical » re-notifiait à
+// CHAQUE boot = rafale d'alertes Discord identiques. La persistance conserve
+// l'anti-spam (dernier statut confirmé + timestamp) et la garantie « une seule
+// notification de rétablissement » à travers les restarts. Les tags JSON sont
+// nécessaires à la sérialisation FileStore.
 type DiskWatchState struct {
 	// LastStatus est le dernier statut CONFIRMÉ (ok/warn/critical). Vide au boot.
-	LastStatus string
+	LastStatus string `json:"last_status"`
 	// LastNotifiedAt est l'horodatage de la dernière notification envoyée.
-	LastNotifiedAt time.Time
+	LastNotifiedAt time.Time `json:"last_notified_at"`
 	// PendingImprove : statut d'AMÉLIORATION observé, en attente de confirmation
 	// (débounce). Vide dès qu'un tick revient au statut confirmé ou aggrave.
-	PendingImprove string
+	PendingImprove string `json:"pending_improve"`
 	// PendingImproveTicks : nb d'observations consécutives de PendingImprove.
-	PendingImproveTicks int
+	PendingImproveTicks int `json:"pending_improve_ticks"`
 }
 
 // diskSeverity ordonne les statuts (ok < warn < critical) pour distinguer
