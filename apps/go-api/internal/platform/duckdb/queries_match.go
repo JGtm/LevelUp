@@ -91,11 +91,24 @@ SELECT
     p.kills_expected,
     p.deaths_expected,
     p.kills_stddev,
-    p.deaths_stddev
+    p.deaths_stddev,
+    -- Stats objectifs par joueur (match_objective_stats_latest, LEFT JOIN sur
+    -- l'index match_id) : NULL hors mode à objectif ou titre non supporté. Le
+    -- service ne construit MatchScoreboardRow.Objective que si un bloc est non-NULL
+    -- (data-driven par mode). CTF / Zones (Strongholds+KOTH) / Oddball.
+    o.flag_captures, o.flag_capture_assists, o.flag_grabs, o.flag_secures,
+    o.flag_steals, o.flag_returns, o.flag_carriers_killed, o.flag_returners_killed,
+    o.kills_as_flag_carrier, o.kills_as_flag_returner, o.time_as_flag_carrier_seconds,
+    o.zone_captures, o.zone_secures, o.zone_offensive_kills, o.zone_defensive_kills,
+    o.zone_scoring_ticks, o.time_in_zones_seconds,
+    o.kills_as_skull_carrier, o.skull_carriers_killed, o.skull_grabs,
+    o.skull_scoring_ticks, o.time_as_skull_carrier_seconds,
+    o.longest_time_as_skull_carrier_seconds
 FROM match_participants p
 LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p.xuid
 LEFT JOIN me_perfect m ON p.xuid = m.xuid
 LEFT JOIN top_weapons w ON p.xuid = w.xuid
+LEFT JOIN match_objective_stats_latest o ON o.match_id = p.match_id AND o.xuid = p.xuid
 WHERE p.match_id = ?
   AND NOT (
     COALESCE(p.kills, 0) = 0

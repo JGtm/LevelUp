@@ -197,12 +197,83 @@ existant — bots `bid(...)` conservés, parité `match_participants`/`pve_match
       `go test -tags=integration -p 1 ./internal/persist/` = ok (roundtrip _latest + colonne autre-mode NULL + idempotence) ;
       `go test -tags=integration -p 1 ./internal/sync/` = ok (90.6s) ;
       re-run garde-rails ART (persist en place) = ok.
-- [ ] **P3 — Capability (Go + TS) + backfill local.** Gate : dry-run échantillon ;
-      `capabilities_ts_mirror_test` + parité capabilities verts.
-- [ ] **P4 — Exploitation UI** (Match view → Timeseries → Synthesis → Escouade) +
-      fields.toml/i18n FR-EN. Gate : `openapi_schema_drift_test` vert, tests front,
-      dégradation H5 vérifiée (not_exposed → pas de section, pas d'erreur),
-      plan d'exécution du JOIN `_latest` au scoreboard vérifié (index utilisé).
+- [x] **P3 — Capability (Go + TS) + backfill local.** FAIT (2026-07-25, agent exécution
+      Opus). DÉCISION CAPABILITY (2 axes, précédent engagement/weapon_accuracy/expected_stats) :
+      (1) AXE SERVEUR (`internal/games`, capabilities.toml, `HasCapability`) =
+      `CapMatchObjectiveStats = "match.objective.stats"` — gouverne le chemin de DONNÉES
+      (JOIN _latest servi). Ajouté à `adapter.go` + `AllCapabilityKeys()` (count 19→20) +
+      `fallbackCapabilities()` halo_infinite=supported / halo_5=not_exposed (parité stricte
+      testée) + 3 capabilities.toml (infinite=supported, halo_5=not_exposed,
+      synthetic_title_b=not_exposed). (2) AXE TITRE (`internal/domain/title` registry.go +
+      TS `TITLE_CAPABILITIES` + `useCapability`, garde-rail `capabilities_ts_mirror_test`) =
+      `CapObjectiveStats = "objective_stats"` — gouverne l'AFFICHAGE UI (section masquée pour
+      un titre qui ne la déclare pas ; le scoreboard gate déjà via useCapability, précédent
+      `native_kill_mechanics`). Ajouté registry.go + `knownCapabilities` + descripteur
+      halo_infinite + TS. Halo 5 NE déclare PAS `objective_stats` (title.toml inchangé) →
+      section masquée côté front. Refinement documenté vs texte du plan (« ajouter la clé à
+      TITLE_CAPABILITIES ») : la valeur AXE TITRE est `objective_stats` (snake_case, convention
+      des caps data sœurs team_mmr/weapon_accuracy/damage_taken), distincte de la valeur AXE
+      SERVEUR `match.objective.stats` — les 2 axes sont des namespaces séparés (cf.
+      engagement=`engagement.score`/`engagement`). BACKFILL : `cmd/backfill_objective_stats/main.go`
+      (candidats = matchs SANS bit `MBitObjectiveStats` (1<<23, matchflags) ET SANS ligne
+      `match_objective_stats_latest` ; --rps 5, --limit, --dry-run). Écriture append-only
+      INSERT-only via `persist.InsertObjectiveStats` (wrapper exporté réutilisant
+      `persistObjectiveStats`, DRY). bit posé TOUJOURS (helper `markObjectiveDone`
+      INLINE dans le CLI — pas un fichier sync/ racine, ratchet K3c sync_root_freeze ;
+      match_registry.backfill_completed = colonne mutable non-ART, cf. MarkPveStatsDone),
+      même 0 ligne (Slayer marqué traité). DRY-RUN LOCAL CONCLUANT : migration
+      P1 appliquée à la DB locale via `cmd/apply_shared_migrations` (le server.exe local était
+      périmé, pré-P1 — table absente), backfill --limit 25 = 25 fetchés, 4 matchs à objectif,
+      101 lignes (CTF 70 / Zones 31 / Oddball 0 dans cette fenêtre), 25 marqués ; vérif diag_q :
+      _latest sert 101 lignes plausibles (CTF captures/grabs/temps porteur ; Zones
+      captures/kills/occupation ; zone_scoring_ticks=0 → Strongholds). Serveur relancé (air),
+      bootstrap OK. Gate VERT : parité capabilities (halo_5 + halo_infinite
+      TestCapabilitiesTOMLMatchesHardcoded) + `TestCapabilitiesGoTSMirror` +
+      `TestAllCapabilityKeys_Count` (20) + admin_titles = ok ; dry-run échantillon concluant.
+- [x] **P4 — Exploitation UI** (Match view + Timeseries + Synthesis + Escouade) +
+      i18n FR-EN. FAIT (2026-07-25, agent exécution Opus). Détail des 4 surfaces :
+      - `[x]` **MATCH VIEW** (surface phare) : LEFT JOIN `match_objective_stats_latest`
+        (index `idx_match_objective_stats_match`) dans `Q12MatchScoreboard` → 23 champs
+        nullables `domain.ObjectiveRaw` (scan) → `MatchScoreboardRow.Objective`
+        (`*MatchScoreboardObjective`, construit seulement si un bloc présent —
+        `buildScoreboardObjective`, data-driven par mode). Front : nouvelle section
+        `MatchObjectivesSection.tsx` (par équipe, colonnes pertinentes selon le mode
+        détecté + ligne « Total équipe » = SUM/MAX à la lecture, durées mm:ss), gated
+        `useCapability('objective_stats')` + data-driven (mode==null → rien). NB
+        title-agnostic vérifié : Q12 tourne pour TOUS les titres, mais la table existe
+        aussi dans le shared h5 (h5 délègue `StepsFor(TargetShared)` à halo_infinite) →
+        JOIN sûr, table vide pour h5.
+      - `[x]` **SYNTHÈSE** : bloc `objective_stats` (`*domain.ObjectiveAggregate`) sur
+        `SynthesisPageV2Response` (précédent `weapon_accuracy`), cumul SUM du joueur sur
+        le scope via `ObjectiveStatsRepo.LoadAggregatedByXUID` (nouveau repo partagé,
+        `SharedReadDB`), gated `WithObjectiveStatsRepo` (SynthesisCtx, cap
+        match.objective.stats). Front : grille `AccentCard` gated + data-driven (KPI > 0).
+      - `[x]` **ESCOUADE** : `objective_stats_by_xuid` sur `SquadHeader` (cumul par xuid),
+        même repo gated (SquadV2Ctx). Front : `SquadObjectiveStatsPanel.tsx` (cumul
+        ESCOUADE = somme des xuids), gated + data-driven.
+      - `[x]` **TIMESERIES** : DÉCISION documentée (refinement du plan) — bloc
+        `objective_stats` (KPI agrégé de SCOPE) sur `TimeseriesPageResponse` + carte sobre
+        `TimeseriesObjectiveCard.tsx` gated, AU LIEU des champs par-match omitempty sur
+        `TimeseriesMatchRow` : le tableau par-match de la page est alimenté par un payload
+        distinct (`ExplorerMatchRow`) et un graphe objectif dédié serait disproportionné
+        pour le périmètre « sobre » — le KPI de scope réutilise le repo partagé, cohérent
+        avec Synthèse/Escouade, zéro code mort.
+      - `[x]` **CAPABILITY DÉGRADATION H5** : `objective_stats` NON déclarée par halo_5
+        (title.toml inchangé) → `useCapability` masque toutes les sections ; côté serveur
+        les 3 repos sont non câblés (repo nil) → blocs omis, aucun ErrCapability/500.
+      - `[x]` **i18n FR-EN** : DÉCISION — manifests i18n classiques (pas fields.toml) :
+        Match View → dico typé `MatchViewText` (parité `Record<Locale,T>`) ; Synthèse +
+        Timeseries → manifests TOML (`synthesis.toml`/`timeseries.toml` → `build_i18n_manifests`) ;
+        Escouade → dico typé `SquadText`. fields.toml/useFieldLabel réservé aux métriques
+        canoniques composites (offensive/defensive_conversion) — pas aux libellés de
+        présentation objectifs. FR sans anglicismes (« Captures de drapeau », « Retours »,
+        « Vols », « Temps porteur », « Zones capturées/sécurisées », « Temps en zone »,
+        « Récupérations du crâne »).
+      - `[x]` **CONTRATS** : openapi.yaml MANUEL (schémas `MatchScoreboardObjective`,
+        `ObjectiveAggregate` + champs `objective`/`objective_stats`/`objective_stats_by_xuid`)
+        + `make generate-types` + `TestOpenAPISchemaDrift` vert.
+      Gate : voir Journal 2026-07-25 P4 (build + vet + go test ./... + intégration -p 1 +
+      lint + typecheck + vitest ciblé).
 
 ## Fichiers critiques
 
@@ -237,6 +308,27 @@ existant — bots `bid(...)` conservés, parité `match_participants`/`pve_match
   ART sync + ordre canonique). Aucun fix hors périmètre.
 - 2026-07-25 : **P2 CLOS** (agent exécution Opus). Extraction pure + persist INSERT-only +
   sync natif V1 (opts.WithObjectiveStats, défaut true) et V2 (inconditionnel, parité PVE/PSA).
+- 2026-07-25 : **P4 CLOS** (agent exécution Opus). 4 surfaces UI livrées (Match View +
+  Synthèse + Escouade + Timeseries), toutes gated (capability + data-driven), i18n FR-EN,
+  openapi manuel + generate-types. Décision Timeseries documentée (KPI de scope + carte
+  simple, pas de champs par-match). 2 régressions de test corrigées : (a) fixture scoreboard
+  (`seedPlayerSchema`) — ajout table+vue `match_objective_stats_latest` pour le nouveau JOIN
+  Q12 ; (b) `TestNoDeadBitDeclaration` — `MBitObjectiveStats` whitelisté (consommé par le
+  CLI, pas sync/, à cause du ratchet K3c). GATES TOUS VERTS : `gofmt -l` vide ;
+  `go build ./...` ok ; `go vet ./...` ok ; `go test ./...` = EXIT 0, 118 pkg ok, 0 FAIL ;
+  `go test -tags=integration -p 1` (duckdb+sync+persist+service) = 16 pkg ok, 0 FAIL ;
+  `make go-api-lint` (--new-from-merge-base origin/main) = 0 issues ; `TestOpenAPISchemaDrift`
+  PASS ; capabilities parité (halo_5+halo_infinite) + `TestCapabilitiesGoTSMirror` +
+  count(20) PASS ; `npm run typecheck` vert ; vitest ciblé (match-view/squad/synthesis/
+  timeseries) = 110 tests verts ; eslint fichiers front nouveaux = clean ;
+  `build_i18n_manifests` (2917 clés) + `generate-types` ok. Serveur local relancé (air),
+  bootstrap HTTP 200. RESTE : backfill PROD (go séparé) + vérif visuelle utilisateur.
+- 2026-07-25 : **P3 CLOS** (agent exécution Opus). Capability sur 2 axes (serveur
+  `match.objective.stats` + titre/UI `objective_stats`), backfill CLI append-only avec bit de
+  reprise `MBitObjectiveStats`, dry-run local 25 matchs = 101 lignes plausibles vérifiées
+  (diag_q). Migration P1 dut être appliquée à la DB locale via apply_shared_migrations (server.exe
+  local périmé pré-P1). Détail dans la case P3. RESTE : P4 UI + fields.toml/i18n + openapi.
+- 2026-07-25 (P2 rappel) :
   Décision d'exécution : ExtractObjectiveStats retourne directement `[]persist.ObjectiveStatsInsert`
   (DRY, parité producteurs kill_positions/commendations) au lieu d'un couple row+converter.
   Parser durée fractionnaire dédié (parsePTDuration tronque en int, colonnes DOUBLE). Tous

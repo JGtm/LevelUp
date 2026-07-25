@@ -50,3 +50,7 @@ schema_version = 1
 # Précision par arme : ShotsFired/ShotsLanded natifs des events weapon_drop,
 # agrégés par (xuid, weapon_id) dans la table weapon_accuracy (somme = carnage).
 "match.weapon.accuracy"  = "supported" # natif weapon_drop → table weapon_accuracy
+# Stats objectifs par match (CTF/Zones/Oddball) : le carnage h5 n'agrège pas ces
+# objectifs (durées non fiables, impulses partiels) → not_exposed au lancement.
+# Promotion degraded (agrégation d'impulses) = chantier ultérieur distinct.
+"match.objective.stats"  = "not_exposed"

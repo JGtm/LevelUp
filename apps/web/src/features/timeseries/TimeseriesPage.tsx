@@ -31,6 +31,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { SessionBriefing } from '@/features/_shared/SessionBriefing'
 
+import { TimeseriesObjectiveCard } from './TimeseriesObjectiveCard'
 import { TimeseriesSummaryTab, type OutcomeLabels } from './TimeseriesPage.summary'
 import { TimeseriesDistributionsTabView } from './TimeseriesPage.distributions'
 import { TimeseriesProgressionTab } from './TimeseriesPage.progression'
@@ -140,6 +141,9 @@ export function TimeseriesPage() {
           <SessionBriefing kpis={data.briefing_kpis} />
         </div>
       )}
+
+      {/* Objectifs (CTF/Zones/Oddball) — capability-gated + data-driven (KPI de scope). */}
+      <TimeseriesObjectiveCard stats={data.objective_stats} locale={locale} />
 
       {/* Onglets */}
       <div className="flex gap-0 border-b bg-background px-6">

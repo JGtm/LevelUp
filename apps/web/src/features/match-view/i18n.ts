@@ -221,6 +221,13 @@ export interface MatchViewText {
   ctxModeFmt: (category: string) => string
   /** Compteur intégré : "Matchs récents 12/47" / "Recent matches 12/47". */
   matchCounterCtxFmt: (label: string, n: number, total: number) => string
+  /** Section « Objectifs » du scoreboard (CTF/Zones/Oddball) — V72-03. `cols` :
+   *  libellé + tooltip d'en-tête par clé de colonne objectif. */
+  objectives: {
+    title: string
+    teamTotal: string
+    cols: Record<string, { label: string; tooltip: string }>
+  }
 }
 
 export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
@@ -420,6 +427,31 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     ctxPlaylistFmt: (name) => `en ${name}`,
     ctxModeFmt: (category) => `en ${category}`,
     matchCounterCtxFmt: (label, n, total) => `Matchs ${label} ${n}/${total}`,
+    objectives: {
+      title: 'Objectifs',
+      teamTotal: 'Total équipe',
+      cols: {
+        flag_captures: { label: 'Captures', tooltip: 'Captures de drapeau' },
+        flag_returns: { label: 'Retours', tooltip: 'Retours de drapeau' },
+        flag_steals: { label: 'Vols', tooltip: 'Vols de drapeau' },
+        time_as_flag_carrier_seconds: {
+          label: 'Temps porteur',
+          tooltip: 'Temps en tant que porteur du drapeau',
+        },
+        zone_captures: { label: 'Captures', tooltip: 'Zones capturées' },
+        zone_secures: { label: 'Sécurisées', tooltip: 'Zones sécurisées' },
+        time_in_zones_seconds: { label: 'Temps en zone', tooltip: 'Temps passé en zone' },
+        skull_grabs: { label: 'Récup.', tooltip: 'Récupérations du crâne' },
+        time_as_skull_carrier_seconds: {
+          label: 'Temps porteur',
+          tooltip: 'Temps en tant que porteur du crâne',
+        },
+        longest_time_as_skull_carrier_seconds: {
+          label: 'Meilleur temps',
+          tooltip: 'Plus longue possession du crâne',
+        },
+      },
+    },
   },
   en: {
     prevMatch: 'Previous match',
@@ -617,6 +649,25 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     ctxPlaylistFmt: (name) => `in ${name}`,
     ctxModeFmt: (category) => `in ${category}`,
     matchCounterCtxFmt: (label, n, total) => `${capitalize(label)} matches ${n}/${total}`,
+    objectives: {
+      title: 'Objectives',
+      teamTotal: 'Team total',
+      cols: {
+        flag_captures: { label: 'Captures', tooltip: 'Flag captures' },
+        flag_returns: { label: 'Returns', tooltip: 'Flag returns' },
+        flag_steals: { label: 'Steals', tooltip: 'Flag steals' },
+        time_as_flag_carrier_seconds: { label: 'Carrier time', tooltip: 'Time as flag carrier' },
+        zone_captures: { label: 'Captures', tooltip: 'Zones captured' },
+        zone_secures: { label: 'Secured', tooltip: 'Zones secured' },
+        time_in_zones_seconds: { label: 'Zone time', tooltip: 'Time spent in zones' },
+        skull_grabs: { label: 'Grabs', tooltip: 'Skull grabs' },
+        time_as_skull_carrier_seconds: { label: 'Carrier time', tooltip: 'Time as skull carrier' },
+        longest_time_as_skull_carrier_seconds: {
+          label: 'Longest',
+          tooltip: 'Longest skull possession',
+        },
+      },
+    },
   },
 }
 

@@ -440,6 +440,45 @@ type MatchScoreboardRow struct {
 	// Expander : données per-player chargées en bulk
 	Medals      []PlayerMedalRow      `json:"medals,omitempty"`
 	WeaponKills []PlayerWeaponKillRow `json:"weapon_kills,omitempty"`
+	// Objective : stats objectifs du joueur (CTF/Zones/Oddball). nil hors mode à
+	// objectif (Slayer) ou titre non supporté (capability objective_stats absente →
+	// table vide). Seuls les champs du bloc du mode joué sont non-nil. Affichage gated
+	// front (useCapability('objective_stats')) + data-driven par bloc présent.
+	Objective *MatchScoreboardObjective `json:"objective,omitempty"`
+}
+
+// MatchScoreboardObjective : stats objectifs par joueur d'un match à objectif.
+// Blocs mutuellement exclusifs par mode (CTF / Zones (Strongholds+KOTH) / Oddball) :
+// seuls les champs du mode joué sont renseignés (les autres nil, omitempty). Totaux
+// équipe/lobby calculés à la LECTURE côté front (SUM par équipe). Colonnes verrouillées
+// sur payload réel GetMatchStats (PLAN_V72_OBJECTIVE_STATS.md).
+type MatchScoreboardObjective struct {
+	// CTF (CaptureTheFlagStats)
+	FlagCaptures             *int     `json:"flag_captures,omitempty"`
+	FlagCaptureAssists       *int     `json:"flag_capture_assists,omitempty"`
+	FlagGrabs                *int     `json:"flag_grabs,omitempty"`
+	FlagSecures              *int     `json:"flag_secures,omitempty"`
+	FlagSteals               *int     `json:"flag_steals,omitempty"`
+	FlagReturns              *int     `json:"flag_returns,omitempty"`
+	FlagCarriersKilled       *int     `json:"flag_carriers_killed,omitempty"`
+	FlagReturnersKilled      *int     `json:"flag_returners_killed,omitempty"`
+	KillsAsFlagCarrier       *int     `json:"kills_as_flag_carrier,omitempty"`
+	KillsAsFlagReturner      *int     `json:"kills_as_flag_returner,omitempty"`
+	TimeAsFlagCarrierSeconds *float64 `json:"time_as_flag_carrier_seconds,omitempty"`
+	// Zones (ZonesStats — Strongholds + KOTH ; zone_scoring_ticks>0 distingue KOTH)
+	ZoneCaptures       *int     `json:"zone_captures,omitempty"`
+	ZoneSecures        *int     `json:"zone_secures,omitempty"`
+	ZoneOffensiveKills *int     `json:"zone_offensive_kills,omitempty"`
+	ZoneDefensiveKills *int     `json:"zone_defensive_kills,omitempty"`
+	ZoneScoringTicks   *int     `json:"zone_scoring_ticks,omitempty"`
+	TimeInZonesSeconds *float64 `json:"time_in_zones_seconds,omitempty"`
+	// Oddball (OddballStats)
+	KillsAsSkullCarrier              *int     `json:"kills_as_skull_carrier,omitempty"`
+	SkullCarriersKilled              *int     `json:"skull_carriers_killed,omitempty"`
+	SkullGrabs                       *int     `json:"skull_grabs,omitempty"`
+	SkullScoringTicks                *int     `json:"skull_scoring_ticks,omitempty"`
+	TimeAsSkullCarrierSeconds        *float64 `json:"time_as_skull_carrier_seconds,omitempty"`
+	LongestTimeAsSkullCarrierSeconds *float64 `json:"longest_time_as_skull_carrier_seconds,omitempty"`
 }
 
 // MatchNemesisRow : adversaire fréquent (kills reçus de lui).

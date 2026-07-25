@@ -278,6 +278,25 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 		`CREATE OR REPLACE VIEW match_csrs_latest AS
 			SELECT * FROM shared.match_csrs
 			QUALIFY ROW_NUMBER() OVER (PARTITION BY match_id, xuid ORDER BY written_at DESC, id DESC) = 1`,
+		// match_objective_stats (shared, append-only V72-03) : stats objectifs par
+		// joueur/match (CTF/Zones/Oddball). Q12 LEFT JOIN match_objective_stats_latest.
+		// Miroir de steps_shared_objective_stats.go (23 colonnes métier + written_at).
+		`CREATE TABLE shared.match_objective_stats (
+			id BIGINT, match_id VARCHAR NOT NULL, xuid VARCHAR NOT NULL,
+			flag_captures INTEGER, flag_capture_assists INTEGER, flag_grabs INTEGER,
+			flag_secures INTEGER, flag_steals INTEGER, flag_returns INTEGER,
+			flag_carriers_killed INTEGER, flag_returners_killed INTEGER,
+			kills_as_flag_carrier INTEGER, kills_as_flag_returner INTEGER,
+			time_as_flag_carrier_seconds DOUBLE,
+			zone_captures INTEGER, zone_secures INTEGER, zone_offensive_kills INTEGER,
+			zone_defensive_kills INTEGER, zone_scoring_ticks INTEGER, time_in_zones_seconds DOUBLE,
+			kills_as_skull_carrier INTEGER, skull_carriers_killed INTEGER, skull_grabs INTEGER,
+			skull_scoring_ticks INTEGER, time_as_skull_carrier_seconds DOUBLE,
+			longest_time_as_skull_carrier_seconds DOUBLE,
+			written_at TIMESTAMP DEFAULT now())`,
+		`CREATE OR REPLACE VIEW match_objective_stats_latest AS
+			SELECT * FROM shared.match_objective_stats
+			QUALIFY ROW_NUMBER() OVER (PARTITION BY match_id, xuid ORDER BY written_at DESC, id DESC) = 1`,
 		// Schéma append-only (Phase 2.G refactor ART) + vue latest
 		`CREATE SEQUENCE pcs_seq START 1`,
 		`CREATE TABLE player_csr_snapshots (

@@ -4551,7 +4551,78 @@ export interface components {
             top_weapon_id?: number;
             top_weapon_label?: string;
             weapon_kills?: components["schemas"]["PlayerWeaponKillRow"][] | null;
+            objective?: components["schemas"]["MatchScoreboardObjective"];
             xuid: string;
+        };
+        /** @description Stats objectifs par joueur (CTF/Zones/Oddball) — blocs mutuellement exclusifs par mode, seuls les champs du mode joué sont renseignés. */
+        MatchScoreboardObjective: {
+            /** Format: int64 */
+            flag_captures?: number;
+            /** Format: int64 */
+            flag_capture_assists?: number;
+            /** Format: int64 */
+            flag_grabs?: number;
+            /** Format: int64 */
+            flag_secures?: number;
+            /** Format: int64 */
+            flag_steals?: number;
+            /** Format: int64 */
+            flag_returns?: number;
+            /** Format: int64 */
+            flag_carriers_killed?: number;
+            /** Format: int64 */
+            flag_returners_killed?: number;
+            /** Format: int64 */
+            kills_as_flag_carrier?: number;
+            /** Format: int64 */
+            kills_as_flag_returner?: number;
+            /** Format: double */
+            time_as_flag_carrier_seconds?: number;
+            /** Format: int64 */
+            zone_captures?: number;
+            /** Format: int64 */
+            zone_secures?: number;
+            /** Format: int64 */
+            zone_offensive_kills?: number;
+            /** Format: int64 */
+            zone_defensive_kills?: number;
+            /** Format: int64 */
+            zone_scoring_ticks?: number;
+            /** Format: double */
+            time_in_zones_seconds?: number;
+            /** Format: int64 */
+            kills_as_skull_carrier?: number;
+            /** Format: int64 */
+            skull_carriers_killed?: number;
+            /** Format: int64 */
+            skull_grabs?: number;
+            /** Format: int64 */
+            skull_scoring_ticks?: number;
+            /** Format: double */
+            time_as_skull_carrier_seconds?: number;
+            /** Format: double */
+            longest_time_as_skull_carrier_seconds?: number;
+        };
+        /** @description Cumul (SUM) des stats objectifs (CTF/Zones/Oddball) d'un joueur sur un ensemble de matchs. Champs zéro omis. */
+        ObjectiveAggregate: {
+            /** Format: int64 */
+            flag_captures?: number;
+            /** Format: int64 */
+            flag_returns?: number;
+            /** Format: int64 */
+            flag_steals?: number;
+            /** Format: double */
+            flag_carrier_seconds?: number;
+            /** Format: int64 */
+            zone_captures?: number;
+            /** Format: int64 */
+            zone_secures?: number;
+            /** Format: double */
+            zone_seconds?: number;
+            /** Format: int64 */
+            skull_grabs?: number;
+            /** Format: double */
+            skull_carrier_seconds?: number;
         };
         MatchNemesisRow: {
             gamertag: string;
@@ -8363,6 +8434,9 @@ export interface components {
             solo_kpis?: components["schemas"]["KPIStats"];
             squad_score?: components["schemas"]["SquadScoreCard"];
             team_avg_kpis?: components["schemas"]["KPIStats"];
+            objective_stats_by_xuid?: {
+                [key: string]: components["schemas"]["ObjectiveAggregate"];
+            };
         };
         SquadImpact: {
             available: boolean;
@@ -8942,6 +9016,7 @@ export interface components {
         SynthesisPageV2Response: {
             breakdowns: components["schemas"]["SynthesisBreakdowns"];
             combat_profile?: components["schemas"]["CombatProfileBlock"];
+            objective_stats?: components["schemas"]["ObjectiveAggregate"];
             comparison_metrics: components["schemas"]["ComparisonMetricItem"][] | null;
             detailed_stats: components["schemas"]["SynthesisDetailedStats"];
             frag_distribution?: components["schemas"]["FragDistribution"];
@@ -9172,6 +9247,7 @@ export interface components {
         };
         TimeseriesPageResponse: {
             briefing_kpis?: components["schemas"]["KPIStats"];
+            objective_stats?: components["schemas"]["ObjectiveAggregate"];
             cumul_tab: components["schemas"]["TimeseriesCumulTab"];
             distributions_tab: components["schemas"]["TimeseriesDistributionsTab"];
             first_events?: components["schemas"]["FirstEventDistribution"];

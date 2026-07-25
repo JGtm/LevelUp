@@ -6,6 +6,48 @@
 # Phase 2 meta-plan § 6.2.1 — pilote Timeseries. Pilote 6 onglets :
 # KPIs, Cumul, Forme, Intensité, Distributions, Combat.
 
+# ─── Objectifs (CTF/Zones/Oddball) — carte sobre de scope, V72-03 ────────────
+
+[timeseries.objectives.title]
+fr = "Objectifs"
+en = "Objectives"
+
+[timeseries.objectives.flag_captures]
+fr = "Captures de drapeau"
+en = "Flag captures"
+
+[timeseries.objectives.flag_returns]
+fr = "Retours de drapeau"
+en = "Flag returns"
+
+[timeseries.objectives.flag_steals]
+fr = "Vols de drapeau"
+en = "Flag steals"
+
+[timeseries.objectives.flag_carrier_time]
+fr = "Temps porteur (drapeau)"
+en = "Flag carrier time"
+
+[timeseries.objectives.zone_captures]
+fr = "Zones capturées"
+en = "Zones captured"
+
+[timeseries.objectives.zone_secures]
+fr = "Zones sécurisées"
+en = "Zones secured"
+
+[timeseries.objectives.zone_time]
+fr = "Temps en zone"
+en = "Time in zones"
+
+[timeseries.objectives.skull_grabs]
+fr = "Récupérations du crâne"
+en = "Skull grabs"
+
+[timeseries.objectives.skull_carrier_time]
+fr = "Temps porteur (crâne)"
+en = "Skull carrier time"
+
 # ─── Tabs ──────────────────────────────────────────────────────────────────
 
 [timeseries.tabs.summary]

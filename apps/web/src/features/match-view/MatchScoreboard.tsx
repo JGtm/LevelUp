@@ -34,6 +34,7 @@ import { formatDurationMMSS } from '@/lib/formatters'
 import { tokenCssVar } from '@/lib/accessibility'
 import { HeaderInfoTooltip } from '@/lib/table/columnMeta'
 import type { MatchViewText } from './i18n'
+import { MatchObjectivesSection } from './MatchObjectivesSection'
 import { displayTierLabel } from './MatchHeader.utils'
 import { localizeTierLabel } from '@/lib/skillTiers'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -251,6 +252,9 @@ export function MatchScoreboard({ rows, killerVictim, citations, header, rank, t
           t={t}
         />
       ))}
+      {/* Section « Objectifs » (V72-03) : gated capability objective_stats +
+          data-driven par mode. Rien affiché hors mode à objectif / titre non supporté. */}
+      <MatchObjectivesSection rows={rows} teams={teams} myTeamSide={myTeamSide} t={t} />
     </div>
   )
 }

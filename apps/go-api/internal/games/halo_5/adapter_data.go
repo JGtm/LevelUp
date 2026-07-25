@@ -243,6 +243,10 @@ func fallbackCapabilities() games.CapabilityMap {
 		// Précision par arme : CÂBLÉ. ShotsFired/ShotsLanded natifs des events
 		// weapon_drop → table weapon_accuracy (cf. ingest/weapon_accuracy.go).
 		games.CapWeaponAccuracy: games.CapSupported,
+		// Stats objectifs par match : le carnage h5 n'agrège pas ces objectifs
+		// (durées non fiables, impulses partiels) → not_exposed au lancement.
+		// Promotion degraded (agrégation d'impulses) = chantier ultérieur distinct.
+		games.CapMatchObjectiveStats: games.CapNotExposed,
 	}
 }
 

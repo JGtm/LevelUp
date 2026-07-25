@@ -45,7 +45,9 @@ import type {
   SynthesisQueryRequest,
   SynthesisWeaponKillEntry,
   SynthesisWeaponAccuracyEntry,
+  ObjectiveAggregate,
 } from '@/lib/api/types'
+import { formatDurationMMSS } from '@/lib/formatters/duration'
 // EXPERIENCE_TO_CASCADE + setsEqual : source unique partagée avec useLocalFilterBar (H3).
 import { EXPERIENCE_TO_CASCADE, setsEqual } from '@/features/_shared/experienceCascade'
 
@@ -159,9 +161,10 @@ interface SynthesisOverviewSectionProps {
   fragDistribution?: FragDistribution | null
   weaponAccuracy?: SynthesisWeaponAccuracyEntry[]
   combatProfile?: CombatProfileBlock | null
+  objectiveStats?: ObjectiveAggregate | null
   playerSlug: string
 }
-function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fragDistribution, weaponAccuracy, combatProfile, playerSlug }: SynthesisOverviewSectionProps) {
+function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fragDistribution, weaponAccuracy, combatProfile, objectiveStats, playerSlug }: SynthesisOverviewSectionProps) {
   const { data: fieldMappings } = useFieldMappings()
   const labelOf = (key: string): string =>
     fieldMappings?.fields[key]?.label ?? key
@@ -203,6 +206,8 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
   // Précision par arme : Halo 5 natif (table weapon_accuracy). Capability-gated →
   // le graphe est masqué pour les titres qui ne fournissent pas la donnée (Infinite).
   const hasWeaponAccuracy = useCapability('weapon_accuracy')
+  // KPI objectifs (CTF/Zones/Oddball) : gated capability + data-driven (KPI > 0 seulement).
+  const hasObjectiveStats = useCapability('objective_stats')
 
   // Graphes frags : état survol LIÉ + « Détails des frags » + coach, remontés ici car le
   // sunburst (rangée 1) et le breakdown (rangée 2) sont sur DEUX rangées distinctes.
@@ -460,6 +465,42 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
                         )}
                         {detailedStats.total_hijacks > 0 && (
                           <AccentCard label={hijacksLabel} value={detailedStats.total_hijacks.toLocaleString(numLoc)} accent="chart-series-4" />
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Objectifs (CTF/Zones/Oddball) — capability-gated + data-driven (KPI > 0). */}
+                  {hasObjectiveStats && objectiveStats && (
+                    <div>
+                      <p className="mb-1 text-xs font-semibold text-muted-foreground">{t('synthesis.kpi.objectives_title')}</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {(objectiveStats.flag_captures ?? 0) > 0 && (
+                          <AccentCard label={t('synthesis.kpi.flag_captures')} value={(objectiveStats.flag_captures ?? 0).toLocaleString(numLoc)} accent="chart-series-1" />
+                        )}
+                        {(objectiveStats.flag_returns ?? 0) > 0 && (
+                          <AccentCard label={t('synthesis.kpi.flag_returns')} value={(objectiveStats.flag_returns ?? 0).toLocaleString(numLoc)} accent="chart-series-2" />
+                        )}
+                        {(objectiveStats.flag_steals ?? 0) > 0 && (
+                          <AccentCard label={t('synthesis.kpi.flag_steals')} value={(objectiveStats.flag_steals ?? 0).toLocaleString(numLoc)} accent="chart-series-3" />
+                        )}
+                        {(objectiveStats.flag_carrier_seconds ?? 0) > 0 && (
+                          <AccentCard label={t('synthesis.kpi.flag_carrier_time')} value={formatDurationMMSS(objectiveStats.flag_carrier_seconds)} accent="chart-series-4" />
+                        )}
+                        {(objectiveStats.zone_captures ?? 0) > 0 && (
+                          <AccentCard label={t('synthesis.kpi.zone_captures')} value={(objectiveStats.zone_captures ?? 0).toLocaleString(numLoc)} accent="chart-series-1" />
+                        )}
+                        {(objectiveStats.zone_secures ?? 0) > 0 && (
+                          <AccentCard label={t('synthesis.kpi.zone_secures')} value={(objectiveStats.zone_secures ?? 0).toLocaleString(numLoc)} accent="chart-series-2" />
+                        )}
+                        {(objectiveStats.zone_seconds ?? 0) > 0 && (
+                          <AccentCard label={t('synthesis.kpi.zone_time')} value={formatDurationMMSS(objectiveStats.zone_seconds)} accent="chart-series-3" />
+                        )}
+                        {(objectiveStats.skull_grabs ?? 0) > 0 && (
+                          <AccentCard label={t('synthesis.kpi.skull_grabs')} value={(objectiveStats.skull_grabs ?? 0).toLocaleString(numLoc)} accent="chart-series-1" />
+                        )}
+                        {(objectiveStats.skull_carrier_seconds ?? 0) > 0 && (
+                          <AccentCard label={t('synthesis.kpi.skull_carrier_time')} value={formatDurationMMSS(objectiveStats.skull_carrier_seconds)} accent="chart-series-4" />
                         )}
                       </div>
                     </div>
@@ -776,6 +817,7 @@ export function SynthesisPage() {
           fragDistribution={data.frag_distribution}
           weaponAccuracy={data.weapon_accuracy}
           combatProfile={data.combat_profile}
+          objectiveStats={data.objective_stats}
           playerSlug={playerSlug}
         />
       )}

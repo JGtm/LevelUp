@@ -98,6 +98,7 @@ func buildTeamTabFull(
 			DeathsStdDev:        s.DeathsStdDev,
 			Medals:              medalsByXUID[s.XUID],
 			WeaponKills:         weaponsByXUID[s.XUID],
+			Objective:           buildScoreboardObjective(s.Obj),
 		}
 		if s.TeamID != nil {
 			team := fmt.Sprintf("t%d", *s.TeamID)

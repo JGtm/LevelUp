@@ -118,6 +118,17 @@ const (
 	// le chemin d'URL est de toute facon specifique a Infinite. Absente => le front
 	// masque la colonne/lien correspondant (pas de lien mort).
 	CapWaypointMatchURL Capability = "waypoint_match_url"
+
+	// CapObjectiveStats — le titre expose des STATS OBJECTIFS par joueur/match des
+	// modes à objectif (CTF/Zones/Oddball) : captures/retours/vols de drapeau, zones
+	// capturées/sécurisées, temps porteur, etc. Halo Infinite : oui (extraites du
+	// payload GetMatchStats → shared.match_objective_stats). Halo 5 : non déclarée
+	// (le carnage n'agrège pas ces objectifs). Absente ⇒ le front masque la section
+	// « Objectifs » du scoreboard + les KPI objectifs (Synthèse / Escouade) — pas de
+	// section vide. Pendant title-level de la capability serveur `match.objective.stats`
+	// (games/adapter.go) qui gouverne le chemin de données ; celle-ci gouverne
+	// l'AFFICHAGE (useCapability). Cf. PLAN_V72_OBJECTIVE_STATS.md.
+	CapObjectiveStats Capability = "objective_stats"
 )
 
 // TitleDescriptor décrit un titre supporté avec ses métadonnées.
@@ -294,6 +305,9 @@ func NewRegistry() *Registry {
 			CapExpectedStats,
 			// Page de détail de match publique sur Halo Waypoint (I19).
 			CapWaypointMatchURL,
+			// Stats objectifs par match (CTF/Zones/Oddball) — section scoreboard +
+			// KPI Synthèse/Escouade (PLAN_V72_OBJECTIVE_STATS).
+			CapObjectiveStats,
 		},
 		IsDefault:        true,
 		XboxTitleID:      "2043073184",

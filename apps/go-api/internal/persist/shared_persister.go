@@ -537,6 +537,29 @@ func persistObjectiveStats(ctx context.Context, tx *sql.Tx, rows []ObjectiveStat
 	return nil
 }
 
+// InsertObjectiveStats est le point d'entrée EXPORTÉ (backfill CLI) pour écrire
+// des rows match_objective_stats hors du chemin SharedBatch : ouvre une
+// transaction sur db et réutilise persistObjectiveStats (INSERT-only ART-safe,
+// #23046). DRY — une seule copie du SQL d'INSERT (persistObjectiveStats).
+// Pré-requis : db en accès RW exclusif (serveur arrêté, un seul writer par DB).
+func InsertObjectiveStats(ctx context.Context, db txBeginner, rows []ObjectiveStatsInsert) error {
+	if len(rows) == 0 {
+		return nil
+	}
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("persist: begin tx objective_stats: %w", err)
+	}
+	if err := persistObjectiveStats(ctx, tx, rows); err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("persist: commit objective_stats: %w", err)
+	}
+	return nil
+}
+
 // ubigintArg sérialise un *uint64 en string décimale pour CAST(? AS UBIGINT)
 // côté DuckDB. Workaround driver duckdb-go qui ne supporte pas l'envoi natif
 // UBIGINT (cf. writes.go::ubigintArg).

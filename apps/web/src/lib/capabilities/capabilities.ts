@@ -31,6 +31,7 @@ export const TITLE_CAPABILITIES = [
   'spartan_customizer',
   'expected_stats',
   'waypoint_match_url',
+  'objective_stats',
 ] as const
 
 export type TitleCapability = (typeof TITLE_CAPABILITIES)[number]

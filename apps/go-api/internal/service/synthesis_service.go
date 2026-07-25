@@ -70,6 +70,10 @@ type SynthesisService struct {
 	// pour ces deux compteurs (personal_score_awards est vide pour ces titres). nil
 	// (Infinite) → comportement inchangé : les deux compteurs viennent des awards.
 	vehicleDestructionRepo port.VehicleDestructionStatsRepository
+	// objectiveStatsRepo : cumul (SUM) des stats objectifs (CTF/Zones/Oddball) sur le
+	// scope. Câblé UNIQUEMENT pour les titres à capability match.objective.stats
+	// (Infinite ; nil pour Halo 5 → bloc objective_stats omis). Best-effort.
+	objectiveStatsRepo port.ObjectiveStatsRepository
 	// titleSlug est nécessaire pour appeler PlayerMatchesRepo.LoadPlayerMatches.
 	// Si "" et playerMatchesRepo != nil, fallback sur le repo legacy.
 	titleSlug  string
@@ -131,6 +135,14 @@ func (s *SynthesisService) WithWeaponAccuracyRepo(repo port.WeaponAccuracyReposi
 // s.playerXUID (posé par WithPersonalScoreAwardsRepo, câblé en amont dans SynthesisCtx).
 func (s *SynthesisService) WithVehicleDestructionStatsRepo(repo port.VehicleDestructionStatsRepository) *SynthesisService {
 	s.vehicleDestructionRepo = repo
+	return s
+}
+
+// WithObjectiveStatsRepo injecte la source du cumul des stats objectifs (CTF/Zones/
+// Oddball) sur le scope. Câblé gated par la capability match.objective.stats
+// (SynthesisCtx) ; nil → bloc objective_stats omis de la réponse.
+func (s *SynthesisService) WithObjectiveStatsRepo(repo port.ObjectiveStatsRepository) *SynthesisService {
+	s.objectiveStatsRepo = repo
 	return s
 }
 
@@ -218,6 +230,11 @@ func (s *SynthesisService) GetSynthesisPage(
 	// titre sans table weapon_accuracy (Infinite) → champ omis.
 	weaponAccuracy := s.loadWeaponAccuracy(ctx, filteredCanon)
 
+	// KPI objectifs (cumul CTF/Zones/Oddball sur le scope) : best-effort, nil si repo
+	// absent (capability match.objective.stats non déclarée — Halo 5) ou scope sans
+	// match à objectif → bloc omis.
+	objectiveStats := s.loadObjectiveStats(ctx, filteredCanon)
+
 	scope := domain.SynthesisScope{
 		Period:         period,
 		MatchCount:     matchCount,
@@ -252,7 +269,30 @@ func (s *SynthesisService) GetSynthesisPage(
 		FragDistribution:  fragDistribution,
 		WeaponAccuracy:    weaponAccuracy,
 		CombatProfile:     combatProfile,
+		ObjectiveStats:    objectiveStats,
 	}, nil
+}
+
+// loadObjectiveStats agrège (SUM) les stats objectifs du joueur sur le scope filtré.
+// Best-effort : nil si repo non câblé (capability absente), joueur inconnu, scope vide,
+// erreur SQL, ou aucun match à objectif dans le scope (bloc omis de la réponse).
+func (s *SynthesisService) loadObjectiveStats(
+	ctx context.Context, filteredCanon []canonical.PlayerMatchRow,
+) *domain.ObjectiveAggregate {
+	if s.objectiveStatsRepo == nil || s.playerXUID == "" || len(filteredCanon) == 0 {
+		return nil
+	}
+	matchIDs := make([]string, 0, len(filteredCanon))
+	for _, r := range filteredCanon {
+		matchIDs = append(matchIDs, r.Summary.MatchID)
+	}
+	byXUID, err := s.objectiveStatsRepo.LoadAggregatedByXUID(ctx, matchIDs, []string{s.playerXUID})
+	if err != nil {
+		slog.WarnContext(ctx, "synthesis: objective stats query failed (best-effort)",
+			"player_xuid", s.playerXUID, "match_count", len(matchIDs), "err", err)
+		return nil
+	}
+	return byXUID[s.playerXUID]
 }
 
 // loadAndEnrichCanonicalRows charge les canonical rows et applique
