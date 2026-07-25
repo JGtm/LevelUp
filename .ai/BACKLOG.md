@@ -151,6 +151,37 @@ les compteurs natifs. Vérifier sur un match H5 réel (bulk weapons + counts de 
 
 ---
 
+### [archi/contrat] Reliquats du chantier V72-01 (openapi.yaml généré par Huma) — clos le 2026-07-25
+
+> Le contrat est désormais GÉNÉRÉ (`make openapi-gen` : document Huma partagé + fragment
+> manuel `api/openapi_manual_fragment.yaml`, golden `TestOpenAPIYAMLIsUpToDate`). Plan clos :
+> `.ai/V7/PLAN_V72_HUMA_OPENAPI.md`. Restent 4 chantiers HORS périmètre v7.2, notés ici pour
+> ne pas les perdre — aucun n'est bloquant, le contrat publié est fidèle et gaté.
+
+- [ ] **`DefaultStatus` côté Go (11 handlers)** — Huma documente `200` pour 11 handlers qui
+      répondent 201/202 via leur champ `Status` ; le fragment manuel corrige le statut à la
+      main. Poser `DefaultStatus` sur l'opération (Huma) rendrait la correction inutile et
+      **shrinkerait le fragment d'autant**. Effort : S. Découverte H6.
+- [ ] **38 routes Go ABSENTES du contrat publié** — le document est rendu depuis le
+      `BuildDemoRouter` (`internal/api/openapigen`) : les routes que la démo ne monte pas
+      n'entrent pas dans le yaml. Manquent **29 Prestige** (bundle nil en démo), **3 catalog**
+      (`/titles/{slug}/catalog/{playlists,pairs,maps}` — metadata DB indisponible), **3 diag
+      auto-sync** (`/_diag/auto-sync/*`, scheduler nil) et **3 assets_metadata** (2 branches
+      mutuellement exclusives). Elles PORTENT déjà `humacore.Op` (operationId/summary/tags,
+      posés en H2) : il ne manque que leur montage dans le harnais de rendu (ou un second
+      harnais « contrat complet »). Effort : M. Découverte H2, réconciliation 204 statique
+      → 173 runtime.
+- [ ] **Bonus post-bascule Huma** — `/docs` (UI OpenAPI) gaté hors prod, `securitySchemes`
+      (aucun déclaré aujourd'hui), validation automatique des inputs (impliquerait de passer
+      les 16 corps `RawBody` en `Body` typé → change le contrat d'erreur 400 → 422 : décision
+      produit), résolveurs cross-champs. Effort : S chacun. Statués `[!]` au plan.
+- [ ] **Sémantiques non exprimables en tag struct** — `ApiError.details` (`oneOf[object,array]`
+      réduit à `{}` par le type Go `any`) et les 7 descriptions de SCHÉMA RACINE (Huma n'a pas
+      de tag type-level) vivent au fragment manuel ; un `SchemaTransformer` léger les
+      rapatrierait côté Go. Effort : S. Inventaire fermé H3 (items 1 et 2 du plan).
+
+---
+
 ### [POST-V7] Housekeeping post-cutover (optionnel, non bloquant)
 
 > Le cutover Go (la branche Go est devenue `main`) est **terminé** — cf. archive « Récemment complété ».

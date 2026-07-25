@@ -5270,7 +5270,7 @@ export interface components {
         Group: {
             created_at: string;
             id: string;
-            members: components["schemas"]["GroupMember"][] | null;
+            members: components["schemas"]["GroupMember"][];
             name: string;
             owner_xuid: string;
             updated_at: string;
@@ -5278,7 +5278,8 @@ export interface components {
         GroupMember: {
             gamertag: string;
             joined_at: string;
-            role: string;
+            /** @enum {string} */
+            role: "owner" | "member";
             xuid: string;
         };
         HaloIdentitySummary: {

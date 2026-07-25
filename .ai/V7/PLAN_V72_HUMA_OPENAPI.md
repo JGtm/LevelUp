@@ -278,7 +278,7 @@ passage »). NB : chemins Go préfixés `apps/go-api/`.
       `node tools/lint-contract-ratchet.mjs` (clean), `npx vitest run src/lib`
       (78 fichiers / 826 tests) et suite vitest complète (364 / 3 093) — TOUS verts.
       Aucun commit (superviseur). [x]
-- [ ] **H7 — generate-types (S→M).** Diff massif attendu dans generated.ts (14 010 L).
+- [x] **H7 — generate-types (S→M).** Diff massif attendu dans generated.ts (14 010 L).
       NB H6 : `make generate-types` a DÉJÀ tourné (gate H6) — generated.ts est à jour,
       typecheck vert, 530 noms de schéma inchangés (aucun repoint types.ts nécessaire).
       Reste donc à H7 : la GARDE SÉMANTIQUE (snapshot des noms exportés + membres
@@ -291,10 +291,92 @@ passage »). NB : chemins Go préfixés `apps/go-api/`.
       de generated.ts (test dédié) — pas seulement tsc ; `response-types.guard.test.ts`
       rendu assertif sur les types critiques. Attention 3.1 `type:[X,"null"]` vs 3.0
       `nullable:` → vérifier la forme TS produite.
-- [ ] **H8 — Non-régression (S).** Diff sémantique 0 breaking vs H0 ; contract tests ;
+      FAIT (2026-07-25, agent Opus). **(a) Garde sémantique** : nouvel analyseur STATIQUE
+      partagé `apps/web/src/lib/api/contractSurface.ts` (`extractContractSurface` —
+      commentaires retirés, littéraux de chaîne neutralisés car les gabarits `{player_slug}`
+      et les exemples JSON en commentaire fausseraient le comptage d'accolades, profondeur
+      suivie ligne à ligne) + `contract-surface.guard.test.ts` figeant la surface dans
+      `contract-surface.snapshot.json` : **176 chemins / 522 schémas / 182 opérations /
+      5 réponses partagées / 1 paramètre partagé / 30 enums**. Sémantique du garde-rail :
+      AJOUT toléré, DISPARITION rouge (nom absent, enum redevenu `string`, membre d'enum
+      perdu) ; mise à jour assumée via `UPDATE_CONTRACT_SURFACE=1`. Morsure PROUVÉE en 3
+      points sur une copie mutée de generated.ts (schéma retiré → rouge ; enum dégradé en
+      `string` → rouge ; membre `"desc"` retiré → rouge), fichier restauré (md5 vérifié).
+      NB : le « 530 » du recon H6 était un décompte d'une autre base — le compte exact,
+      confirmé par les DEUX extracteurs indépendants (ratchet mjs et nouvel analyseur), est
+      **522 schémas**. Extraction centralisée (CLAUDE.md n°6) : 2 implémentations seulement
+      (le ratchet reste autonome, frontière ESM/TS d'un script hors `apps/web`, avec son
+      propre contrôle anti-vacuité). **(b) response-types.guard durci** : 2 assertions
+      POSITIVES ajoutées aux 2 négatives existantes — RÉSOLUTION (tout
+      `components['schemas']['X']` cité dans `src/` désigne un schéma réellement émis : 274
+      citations vérifiées ; un index orphelin se résout en `unknown` sans casser tous les
+      appelants) et TYPES CRITIQUES (20 réponses de page à fort trafic doivent rester des
+      ré-exports du contrat). Morsure prouvée (renommage d'un schéma → les 2 rouges).
+      **(c) Lot Group/GroupMember** : `domain/group.go` — `Role GroupRole` porte
+      `enum:"owner,member"` (type de SORTIE uniquement, corps entrants en RawBody → 0 risque
+      422) et `Members []GroupMember` porte `nullable:"false"` ; l'invariant runtime est tenu
+      à la SOURCE par `groupstore.load()` (normalisation nil → `[]` au seul point de lecture
+      du fichier, couvre Get/List/ListForXUID ; `Create` initialisait déjà), avec test
+      `TestMembersNeverNilOnRead` (fixture legacy `"members":null` → `"members":[]` sérialisé).
+      Régénération : diff openapi.yaml = **4 lignes exactement** (`members.type: array` au lieu
+      de `[array,"null"]`, `role.enum: [owner, member]`) ; generated.ts = 3 lignes
+      (`members: GroupMember[]`, `role: "owner" | "member"`). types.ts RE-SHIMÉ
+      (`Group`/`GroupMember` = ré-exports, `GroupRole = GroupMember['role']` dérivée — plus
+      aucun littéral en dur côté front) ; `Group`/`GroupMember` RETIRÉS de
+      `BASELINE_COLLISIONS` (ratchet clean : 49 collisions, 112 interfaces, 522 schémas).
+      Consommateurs vérifiés : `features/groups/` (`group.members.length` sans garde `?.`
+      désormais légitime, `m.role === 'owner'` compile sur l'union). Gates H7 : `make
+      openapi-check` (à jour), gofmt vide, `go build ./...`, `go vet` (api/domain/groupstore),
+      `go test ./internal/api/...` (ok) + `./internal/platform/groupstore/` (ok),
+      `npm run typecheck` (0 erreur), `node tools/lint-contract-ratchet.mjs` (clean),
+      `npx vitest run src/lib` (79 fichiers / 836 tests) + `src/features/groups` (4),
+      eslint sur les fichiers touchés (0) — TOUS verts. Aucun commit (superviseur). [x]
+- [x] **H8 — Non-régression (S).** Diff sémantique 0 breaking vs H0 ; contract tests ;
       golden en CI ; vitest ; tsc -b.
-- Bonus post-bascule (optionnels, S) : `/docs` gaté hors prod, securitySchemes,
-  validation auto des inputs, résolveurs cross-champs.
+      FAIT (2026-07-25, agent Opus). **(1) Diff sémantique final** — `cmd/openapi-diff`
+      rejoué contre `.ai/V7/openapi_baseline_v72.txt` ; rapport archivé
+      `.ai/V7/openapi_diff_final_v72.txt` (en-tête de verdict + 2 224 lignes de rapport brut).
+      Verdict : **0 PERTE HORS INVENTAIRE, inchangé depuis H6**, PROUVÉ et non pas supposé —
+      l'ensemble des lignes RETIRÉES vs la baseline H0 est IDENTIQUE (diff vide) entre
+      l'openapi.yaml de H6 (commit 597d5cc0c) et celui d'après H7 ; l'ensemble des lignes
+      AJOUTÉES ne diffère que sur **2 lignes**, les deux enrichissements Group
+      (`node members: type=array|null` → `type=array` ; `node role: type=string` →
+      `type=string enum=["member","owner"]`). Diff direct des deux résumés sémantiques :
+      ces 2 lignes, rien d'autre. Comptage brut vs H0 : +1 384 / −840 LIGNES (plus bruyant
+      que le comptage de FAITS de H6 — 597/69/16 — car un inline devenu `$ref` compte 1
+      retrait + 1 ajout ; l'inventaire des 16 pertes de H6 reste la référence, reproduit
+      dans le rapport archivé).
+      **(2) CI — RIEN À AJOUTER, vérifié sur pièces** : le golden `TestOpenAPIYAMLIsUpToDate`
+      (`internal/api/openapi_golden_test.go`, `//go:build cgo`, package `api_test`) tourne
+      DÉJÀ dans le job **`go-coverage` « Go Coverage (CGO_ENABLED=1 — ./... complet) »** de
+      `.github/workflows/ci.yml` (`go test -tags=integration -p 1 ./...`, `CGO_ENABLED: "1"`
+      → `./internal/api` inclus, tag cgo satisfait). Les autres jobs Go ne le couvrent pas
+      (`go-build` = CGO=0 sur domain/analysis/contracttest ; `go-contract-test` =
+      `./contracttest/... -run TestContract`), mais un seul verrou suffit et il est en place.
+      **AUCUNE modification du workflow** (consigne). Réserve notée : ce verrou vit dans le
+      job le plus lourd (et le plus sujet aux flakes DuckDB) — si `go-coverage` devait être
+      allégé un jour, déplacer/dupliquer `make openapi-check` dans un job léger.
+      **(3) Restes statués** : bonus post-bascule `[!]` ci-dessous ; Découvertes reportées au
+      `.ai/BACKLOG.md` (nouvelle section « [archi/contrat] Reliquats du chantier V72-01 » :
+      DefaultStatus 11 handlers, 38 routes Go absentes du contrat publié — 29 Prestige +
+      3 catalog + 3 diag auto-sync + 3 assets_metadata —, bonus Huma, sémantiques non
+      exprimables en tag). Les 6 renommages de paramètre et la divergence watcher sont
+      RÉSOLUS (le yaml régénéré porte les noms Go : le code fait foi) — rien à reporter.
+      **(4) Gates finaux COMPLETS, tous exécutés dans la session** : `gofmt -l .` vide ·
+      `go build ./...` 0 · `go vet ./...` 0 · `go test ./...` 0 (aucun FAIL) ·
+      `go test -tags=integration -p 1 ./internal/api/...` ok (api, handlers, humacore,
+      middleware, wire) · `make go-api-lint` **0 issues** · `make openapi-check` à jour ·
+      `npm run typecheck` 0 erreur · `npx vitest run` **365 fichiers / 3 103 tests, 14
+      skippés, 0 échec** · `node tools/lint-contract-ratchet.mjs` clean (49 collisions,
+      112 interfaces, 522 schémas). Aucun commit (superviseur). [x]
+- [!] **Bonus post-bascule (optionnels, S)** : `/docs` gaté hors prod, securitySchemes,
+  validation auto des inputs, résolveurs cross-champs. **NON RÉALISÉS — statués `[!]` en
+  H8 : bonus post-bascule, hors périmètre v7.2.** Justification : aucun n'est nécessaire à
+  l'objectif du chantier (« openapi.yaml généré, fidèle et gaté ») ; la validation
+  automatique des inputs, en particulier, n'est PAS un bonus neutre — elle imposerait de
+  convertir les 16 corps `RawBody` en `Body` typé Huma, ce qui remplacerait le contrat
+  d'erreur historique 400 `{invalid_body}` par le 422 de Huma (rupture de contrat côté
+  front, décision produit). Reportés au `.ai/BACKLOG.md`.
 
 ## Découvertes (H2 — à traiter en H6, PAS maintenant)
 
@@ -384,8 +466,79 @@ racine) ; le reste n'apparaît pas dans le doc généré (schémas non-Huma) don
 8. **16 request bodies `RawBody`** (contrat d'erreur 400 historique, non dérivable) →
    fragment manuel H6 (déjà acté dans l'état des lieux).
 
+## CLÔTURE — V72-01 intégralement clos (2026-07-25)
+
+**Statut : CLOS.** H0, H0.5, H1 à H8 = `[x]` ; bonus post-bascule = `[!]` (justifiés,
+reportés au backlog). Aucune case vide, aucun report non statué.
+
+### Ce qui a changé (résumé exécutif)
+
+1. **`api/openapi.yaml` n'est plus écrit à la main : il est GÉNÉRÉ.** Auparavant 17 822 L
+   de YAML manuel dérivant silencieusement du code, avec un drift test qui ne gatait que
+   les schémas MANQUANTS. Aujourd'hui : 20 962 L produites par `make openapi-gen`, gatées
+   byte-à-byte par le golden `TestOpenAPIYAMLIsUpToDate`.
+2. **Un document OpenAPI unique** (H1) : les 71 `Mount()` + 3 registres inline partagent un
+   `*huma.OpenAPI` (option `WithSharedDoc`, `NewAPI` variadique — signature `Mount(r)`
+   préservée pour ~130 call-sites de tests). Le préfixe parent est porté par
+   `huma.NewGroup`/`prefixStripAdapter` : chemins ABSOLUS au document, chemin LOCAL au
+   routeur chi → middlewares et params parents intacts.
+3. **Métadonnées d'opération sur 204 call-sites** (H2, helper `humacore.Op`), **sémantique
+   de schéma portée en tags Go** (H3 : 19 doc + 11 enum + 5 default sur 10 types),
+   **modèle d'erreur unifié** (H4 : `ApiError` seul, `ApiErrorSchema` supprimé),
+   **7 routes `groups.go` migrées chi → Huma** à contrat JSON identique (H5).
+4. **Le non-dérivable vit dans un fragment versionné** (H6) et **le front est verrouillé**
+   (H7 : garde sémantique de surface + `response-types.guard` assertif + lot Group
+   re-shimé), avec **0 perte hors inventaire** prouvée vs la baseline H0 (H8).
+
+### Comment régénérer (procédure canonique)
+
+```bash
+make openapi-gen        # apps/go-api/api/openapi.yaml (Huma + fragment)
+make generate-types     # apps/web/src/lib/api/generated.ts
+make openapi-check      # vérifie sans écrire (sortie 1 si drift)
+```
+
+Puis les garde-rails : `go test ./internal/api/...` (golden + fidélité + metadata +
+semantics + contract), `npm run typecheck`, `npx vitest run src/lib/api`,
+`node tools/lint-contract-ratchet.mjs`. **Ne JAMAIS éditer `openapi.yaml` à la main** —
+éditer le handler/DTO Go, ou le fragment pour le non-dérivable.
+
+### Où vit quoi
+
+| Élément | Emplacement |
+|---|---|
+| Rendu + harnais de démo | `apps/go-api/internal/api/openapigen/` (`BuildDemoRouter`, `Render`, `Generate`) |
+| Commande | `apps/go-api/cmd/openapi-gen/` (`-out`/`-fragment`/`-check`/`-v`) |
+| **Fragment manuel** (tout le non-dérivable, précédence JSON Merge Patch) | `apps/go-api/api/openapi_manual_fragment.yaml` |
+| Golden byte-à-byte | `apps/go-api/internal/api/openapi_golden_test.go` |
+| Partage du document / options de montage | `apps/go-api/internal/api/humacore/` (`WithSharedDoc`, `Op`, `MarkRequestBodyOptional`) |
+| Diff sémantique + baseline + rapport final | `apps/go-api/cmd/openapi-diff/`, `.ai/V7/openapi_baseline_v72.txt`, `.ai/V7/openapi_diff_final_v72.txt` |
+| Garde sémantique front (surface figée) | `apps/web/src/lib/api/contractSurface.ts` + `contract-surface.guard.test.ts` + `contract-surface.snapshot.json` |
+| Ratchet contrat ↔ types manuels | `tools/lint-contract-ratchet.mjs` |
+| Verrou CI | job `go-coverage` de `.github/workflows/ci.yml` (le golden y tourne) |
+
+### Reliquats (NON traités, reportés)
+
+`.ai/BACKLOG.md` → section « [archi/contrat] Reliquats du chantier V72-01 » : `DefaultStatus`
+sur 11 handlers, 38 routes Go absentes du contrat publié (démo ne les monte pas), bonus Huma
+(`/docs`, securitySchemes, validation d'input), sémantiques non exprimables en tag
+(`ApiError.details` `oneOf`, 7 descriptions de schéma racine).
+
 ## Journal
 
+- 2026-07-25 : **H7 + H8 EXÉCUTÉS — CHANTIER CLOS (agent Opus).** H7 : garde SÉMANTIQUE du
+  contrat généré (analyseur statique partagé `contractSurface.ts` + snapshot figeant
+  176 chemins / 522 schémas / 182 opérations / 30 enums ; ajout toléré, disparition rouge ;
+  morsure prouvée en 3 points), `response-types.guard.test.ts` durci de 2 assertions
+  POSITIVES (résolution des 274 citations `components['schemas'][...]`, 20 réponses
+  critiques obligatoirement ré-exportées), lot Group/GroupMember rendu fidèle
+  (`enum:"owner,member"` + `nullable:"false"` côté Go, invariant nil → `[]` tenu par
+  `groupstore.load()` avec test dédié) → types.ts re-shimé, `Group`/`GroupMember` RETIRÉS
+  de `BASELINE_COLLISIONS`. Diff de régénération : 4 lignes de yaml, 3 de generated.ts.
+  H8 : diff sémantique final archivé (`.ai/V7/openapi_diff_final_v72.txt`) — 0 perte hors
+  inventaire, PROUVÉ par égalité stricte de l'ensemble des pertes H6 vs H7 ; CI vérifiée
+  (le golden tourne déjà dans le job `go-coverage`, workflow NON modifié) ; bonus statués
+  `[!]` et Découvertes reportées au BACKLOG ; gates finaux complets tous verts. Aucun commit.
 - 2026-07-25 : **H6 EXÉCUTÉ (agent Opus).** `api/openapi.yaml` devient GÉNÉRÉ :
   `internal/api/openapigen` (harnais de routeur démo partagé avec les tests de contrat +
   rendu YAML déterministe + fusion JSON-Merge-Patch du fragment manuel),
