@@ -3464,11 +3464,6 @@ export interface components {
             label: string;
             season_id: string;
         };
-        FieldErrorSchema: {
-            field: string;
-            message: string;
-            code?: string | null;
-        };
         ActivityCalendar: {
             days: components["schemas"]["ActivityDay"][] | null;
             since: string;
@@ -3478,19 +3473,6 @@ export interface components {
             /** Format: int64 */
             count: number;
             date: string;
-        };
-        ApiErrorSchema: {
-            /**
-             * @description Code d'erreur stable (snake_case)
-             * @example player_not_found
-             */
-            code: string;
-            /** @description Message humain localisé */
-            message: string;
-            /** @default false */
-            retryable: boolean;
-            details?: (Record<string, never> | unknown[]) | null;
-            field_errors?: components["schemas"]["FieldErrorSchema"][] | null;
         };
         HealthResponse: {
             app_version?: string;
@@ -4811,7 +4793,7 @@ export interface components {
             status: "pending" | "authorized" | "provisioned" | "failed" | "expired";
             gamertag?: string | null;
             xuid?: string | null;
-            error?: components["schemas"]["ApiErrorSchema"];
+            error?: components["schemas"]["ApiError"];
         };
         AsyncJobStatus: {
             current_step?: string;
@@ -5704,9 +5686,41 @@ export interface components {
             weapon_id: string;
         };
         ApiError: {
+            /**
+             * @description Code d'erreur stable (snake_case)
+             * @example player_not_found
+             */
             code: string;
+            /** @description Message humain localisé */
             message: string;
+            /** @description Vrai si l'appelant peut réessayer (5xx / indisponibilité transitoire) */
             retryable: boolean;
+            /** @description Contexte structuré optionnel (objet ou tableau) */
+            details?: unknown;
+            /** @description Erreurs de validation par champ (corps de requête) */
+            field_errors?: components["schemas"]["FieldError"][] | null;
+        };
+        FieldError: {
+            /** @description Code machine optionnel de l'erreur de champ */
+            code?: string;
+            /** @description Nom du champ en erreur */
+            field: string;
+            /** @description Message d'erreur lisible pour ce champ */
+            message: string;
+        };
+        Group: {
+            created_at: string;
+            id: string;
+            members: components["schemas"]["GroupMember"][] | null;
+            name: string;
+            owner_xuid: string;
+            updated_at: string;
+        };
+        GroupMember: {
+            gamertag: string;
+            joined_at: string;
+            role: string;
+            xuid: string;
         };
         AssetReference: {
             DefaultLabel: string;
@@ -9435,7 +9449,7 @@ export interface components {
                  *       "retryable": false
                  *     }
                  */
-                "application/json": components["schemas"]["ApiErrorSchema"];
+                "application/json": components["schemas"]["ApiError"];
             };
         };
         /** @description Authentification requise */
@@ -9451,7 +9465,7 @@ export interface components {
                  *       "retryable": false
                  *     }
                  */
-                "application/json": components["schemas"]["ApiErrorSchema"];
+                "application/json": components["schemas"]["ApiError"];
             };
         };
         /** @description Ressource introuvable */
@@ -9467,7 +9481,7 @@ export interface components {
                  *       "retryable": false
                  *     }
                  */
-                "application/json": components["schemas"]["ApiErrorSchema"];
+                "application/json": components["schemas"]["ApiError"];
             };
         };
         /** @description Erreur interne */
@@ -9483,7 +9497,7 @@ export interface components {
                  *       "retryable": true
                  *     }
                  */
-                "application/json": components["schemas"]["ApiErrorSchema"];
+                "application/json": components["schemas"]["ApiError"];
             };
         };
         /** @description Conflit avec l'état courant de la ressource */
@@ -9499,7 +9513,7 @@ export interface components {
                  *       "retryable": false
                  *     }
                  */
-                "application/json": components["schemas"]["ApiErrorSchema"];
+                "application/json": components["schemas"]["ApiError"];
             };
         };
     };
@@ -10363,7 +10377,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ApiErrorSchema"];
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
             500: components["responses"]["InternalError"];

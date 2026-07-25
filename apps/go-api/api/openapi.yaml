@@ -1086,7 +1086,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ApiErrorSchema"
+                $ref: "#/components/schemas/ApiError"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -3463,7 +3463,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/ApiErrorSchema"
+            $ref: "#/components/schemas/ApiError"
           example:
             code: bad_request
             message: "Paramètre invalide."
@@ -3473,7 +3473,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/ApiErrorSchema"
+            $ref: "#/components/schemas/ApiError"
           example:
             code: auth_required
             message: "Authentification requise."
@@ -3483,7 +3483,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/ApiErrorSchema"
+            $ref: "#/components/schemas/ApiError"
           example:
             code: player_not_found
             message: "Joueur introuvable."
@@ -3493,7 +3493,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/ApiErrorSchema"
+            $ref: "#/components/schemas/ApiError"
           example:
             code: internal_error
             message: "Erreur interne du serveur."
@@ -3503,7 +3503,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/ApiErrorSchema"
+            $ref: "#/components/schemas/ApiError"
           example:
             code: last_active_title
             message: "Au moins un titre doit rester actif pour ce joueur."
@@ -3632,18 +3632,6 @@ components:
           - label
       type: object
     # --- Erreurs ---
-    FieldErrorSchema:
-      type: object
-      required: [field, message]
-      properties:
-        field:
-          type: string
-        message:
-          type: string
-        code:
-          type: string
-          nullable: true
-
     ActivityCalendar:
       additionalProperties: false
       properties:
@@ -3673,31 +3661,6 @@ components:
           - date
           - count
       type: object
-    ApiErrorSchema:
-      type: object
-      required: [code, message, retryable]
-      properties:
-        code:
-          type: string
-          description: Code d'erreur stable (snake_case)
-          example: player_not_found
-        message:
-          type: string
-          description: Message humain localisé
-        retryable:
-          type: boolean
-          default: false
-        details:
-          nullable: true
-          oneOf:
-            - type: object
-            - type: array
-        field_errors:
-          type: array
-          nullable: true
-          items:
-            $ref: "#/components/schemas/FieldErrorSchema"
-
     # --- Health ---
     HealthResponse:
       additionalProperties: false
@@ -6732,7 +6695,7 @@ components:
           type: string
           nullable: true
         error:
-          $ref: "#/components/schemas/ApiErrorSchema"
+          $ref: "#/components/schemas/ApiError"
           nullable: true
 
     AsyncJobStatus:
@@ -8894,19 +8857,97 @@ components:
           - weapon_id
           - kills
       type: object
+    # Modèle d'erreur UNIFIÉ (H4, chantier V72-01) — un seul schéma pour toutes les
+    # réponses d'erreur, dérivé du type Go humacore.apiError (Huma). Fusionne
+    # l'ancien ApiErrorSchema riche et l'ApiError auto-émis. details/field_errors
+    # sont optionnels (absents du corps quand nil → contrat runtime {code, message,
+    # retryable} inchangé). Le front lit code/message/retryable/details/field_errors
+    # (apps/web/src/lib/api/client.ts).
     ApiError:
       additionalProperties: false
       properties:
           code:
               type: string
+              description: Code d'erreur stable (snake_case)
+              example: player_not_found
           message:
               type: string
+              description: Message humain localisé
           retryable:
               type: boolean
+              description: Vrai si l'appelant peut réessayer (5xx / indisponibilité transitoire)
+          details:
+              description: Contexte structuré optionnel (objet ou tableau)
+          field_errors:
+              description: Erreurs de validation par champ (corps de requête)
+              items:
+                  $ref: '#/components/schemas/FieldError'
+              nullable: true
+              type: array
       required:
           - code
           - message
           - retryable
+      type: object
+    FieldError:
+      additionalProperties: false
+      properties:
+          code:
+              description: Code machine optionnel de l'erreur de champ
+              type: string
+          field:
+              description: Nom du champ en erreur
+              type: string
+          message:
+              description: Message d'erreur lisible pour ce champ
+              type: string
+      required:
+          - field
+          - message
+      type: object
+    # Groupes/familles (V72-01 / H5 : groups.go migré vers Huma → schémas dérivés).
+    Group:
+      additionalProperties: false
+      properties:
+          created_at:
+              type: string
+          id:
+              type: string
+          members:
+              items:
+                  $ref: '#/components/schemas/GroupMember'
+              nullable: true
+              type: array
+          name:
+              type: string
+          owner_xuid:
+              type: string
+          updated_at:
+              type: string
+      required:
+          - id
+          - name
+          - owner_xuid
+          - members
+          - created_at
+          - updated_at
+      type: object
+    GroupMember:
+      additionalProperties: false
+      properties:
+          gamertag:
+              type: string
+          joined_at:
+              type: string
+          role:
+              type: string
+          xuid:
+              type: string
+      required:
+          - xuid
+          - gamertag
+          - role
+          - joined_at
       type: object
     AssetReference:
       additionalProperties: false

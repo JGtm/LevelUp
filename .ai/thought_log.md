@@ -1,3 +1,85 @@
+## [2026-07-25] V72-01 (H4+H5) — modèle d'erreur unifié Huma + migration groups.go vers Huma
+
+**Statut** : Complété (H4 clos AVANT H5, contrat plan-execution). Pas de commit (superviseur applique
+les gates). Chantier PLAN_V72_HUMA_OPENAPI.md. Un agent parallèle (V72-31) travaille simultanément ;
+ses fichiers (halo_5/medal_category*, scheduler/auto_sync_notify*) portent des issues lint résiduelles
+hors de mon périmètre — NON corrigées (interférence notée, un replay effectué).
+
+**H4 — modèle d'erreur unifié.** Deux schémas d'erreur coexistaient : `ApiErrorSchema` (riche, manuel,
+7 `$ref`) et `ApiError` (auto-émis par Huma depuis `humacore.apiError`, pauvre, 0 `$ref`). Décision :
+UN seul type Go porté par `humacore.apiError`, enrichi de `Details any` + `FieldErrors []FieldError`
+(nouveau type exporté `FieldError{Field,Message,Code}`), les deux `omitempty` → **contrat runtime
+{code,message,retryable} INCHANGÉ** (nil absent du corps ; `TestNewError_*` verts). Tags Huma H3-style
+(code doc+example `player_not_found`, message/retryable/details/field_errors doc). Compat front VÉRIFIÉE :
+`apps/web/src/lib/api/client.ts` lit déjà `code/message/retryable/details/field_errors` (interfaces
+ApiError+FieldError présentes) → aucune casse. YAML convergé (édition ciblée) : 7 `$ref` → `ApiError`
+réécrit fidèle au riche (dérivé du type Go via emit Huma) ; `FieldError` ajouté (MISSING résorbé) ;
+`ApiErrorSchema`/`FieldErrorSchema` supprimés (0 réf orpheline). Semantics H3 Partie B : `ApiError`
+désormais commun doc∩yaml, parité code/message/details/field_errors vérifiée, allowlist inchangée.
+5 exemples d'erreur = response-level (components.responses) NON exprimables en tag → fragment H6.
+
+**H5 — migration groups.go.** Les 7 routes (writeJSON manuel → chi brut) passent en Huma typé :
+structs input/output, `RawBody` + décodage maison (préserve 400 {invalid_body}), erreurs via le modèle
+H4, `Mount(r, apiOpt)` sur le document PARTAGÉ (groupe RequireAuth, docPrefix /api/v1), `humacore.Op`
+en parité operationId/tags avec le yaml. Contrat JSON runtime IDENTIQUE : 5 tests groups verts, ZÉRO
+changement d'assertion (harness passé à `h.Mount(r)` + URLs `/groups` sans trailing-slash). Huma dérive
+`Group`+`GroupMember` (ajoutés au yaml). Fidélité H1 : exclusion chi-brut `/api/v1/groups` retirée → les
+7 routes comptent comme Huma (173 ops/167 paths). Metadata H2 : 173 ops, parité 163, 0 échec.
+
+**Gates (H4 et H5)** : gofmt -l vide ; `go build ./...` 0 ; `go vet ./...` 0 ; `go test ./internal/api/...`
+ok (contract/fidélité/metadata/drift/semantics) ; `go test ./...` green ; `make go-api-lint` 0 issue sur
+mes fichiers. **Reste H6** (pipeline génération + golden) : ne démarre qu'après H2-H5 clos — c'est le cas.
+
+## [2026-07-25] V72-31 — alertes Discord : anti-rafale disque (état persistant) + notif release durcie + notif sync auto
+
+**Statut** : Complété (3 volets). Pas de commit (superviseur applique les gates). Édition sans
+compilation (agent parallèle Huma détient l'exclusivité `go`). VPS injoignable depuis le sandbox
+(ssh timeout) → diagnostic par lecture repo, commandes VPS read-only listées au superviseur.
+
+**Volet 1 — rafale d'alertes disque = état process-local.** Émetteur RÉEL = `wire.diskWatchTick`
+→ `notify.NotifyDiskAlert` (SEUL chemin Discord disque ; deploy.sh/restic n'envoient rien à Discord).
+`ops.ShouldNotifyDisk` avait déjà l'anti-spam (aggravation immédiate, rappel 24 h, rétablissement vert
+débouncé 2 ticks) mais l'état `DiskWatchState` était PROCESS-LOCAL (« repart de zéro au boot ») → chaque
+restart du conteneur en warn/critical (deploy à chaque push main, crash-loop disque plein) re-notifiait
+via le chemin « boot ». Fix : PERSISTER l'état hors DuckDB (JSON atomique `adminstate.FileStore`,
+nouveau `PathResolver.DiskWatchStatePath()` = `data/global/admin_state/disk_watch_state.json`, survit
+au recreate car data/ = bind mount). Tags JSON sur `DiskWatchState` ; `RunDiskWatchLoop` load au boot +
+save après chaque tick (uniquement si l'état change). L'anti-spam ET la garantie « rétablissement notifié
+une seule fois » survivent désormais aux restarts. Rappel 24 h conservé (1/jour ≠ rafale) — signalé.
+
+**Volet 2 — releases v7.0.0/v7.1.0 sans notif = AppVersion="dev".** Chronologie OK : câblage notif
+release `cf1d3c15c` (2026-07-19) PRÉCÈDE les releases (07-23/07-24) → PAS la cause. Cause exacte :
+`wire.EmitAppReleaseForAllPlayers` retourne tôt si `AppVersion=="dev"` → NI Discord (`NotifyNewVersion`)
+NI in-app. Or prod tournait en `dev` (env `LEVELUP_APP_VERSION` perdu au recreate demo-regen). DÉJÀ
+corrigé côté env par `e6093a764` (persist .env, POST v7.1.0). Durcissement AJOUTÉ (défense en profondeur) :
+BAKER la version dans le binaire via build-arg — `docker-compose.yml` service levelup `build.args.VERSION=${LEVELUP_APP_VERSION:-dev}` (Dockerfile a déjà `ARG VERSION` → ldflags `-X main.version`), et
+`scripts/deploy.sh` calcule/exporte `LEVELUP_APP_VERSION` AVANT le build (bloc déplacé 2d→2c, build 2c→2d).
+Même si l'env runtime est reperdu, `main.go` fallback `cfg.AppVersion=version` (baké) reste correct.
+Action prod à VÉRIFIER (superviseur, non modifiable ici) : `discord_notifications_enabled:true` + webhook
+présents (le sont, sinon zéro alerte disque) ; `last_notified_version` déjà seedé à un vrai semver depuis
+un boot post-fix → prochaine bascule mineure notifiera (le premier boot post-fix seed en silence, par design).
+
+**Volet 3 — aucune notif sync de nouveaux matchs depuis le VPS.** Piste user CONFIRMÉE : `match_synced`
+(a) n'est émis QUE par le handler HTTP, jamais par l'auto-sync scheduler, et (b) hors
+`DefaultForwardedCategories` (relais coach only, verrou `TestDefaultForwardedCategories_MirrorsCoach`,
+gaté par `discord_notify_coach`). Voie propre choisie : honorer le toggle EXISTANT `discord_notify_sync`
+(défaut ON, déjà exposé UI) en câblant `notify.NotifySync` dans le cycle auto-sync — jamais appelé hors
+CLI. Nouveau `scheduler/auto_sync_notify.go` : `notifyDiscordSyncCycle` (gaté sur trigger périodique
+« tick » seul, no-op si webhook absent/toggle off, rien si 0 nouveau match) + `mergeCycleNewMatchPlayers`
+(pur, testé) fusionne joueurs moteur V2 (`RunOnceResult.newMatchPlayers` peuplé depuis
+`CycleResult.PerPlayer`) + live/filet (`Snapshot().Players`, filtrés `AttemptedAt>=cycleStart`),
+dédup par gamertag. Appelé aux 2 points de sortie de `RunOnceTrigger`. Garde-rail coach INTACT (aucun
+changement de défaut). Aucune string i18n nouvelle (réutilise `discord_completed_in`/`discord_matches_synced`
+FR/EN inline dans discord.go).
+
+**Tests Go écrits (NON exécutés — à jouer par le superviseur)** : `ops` —
+`TestDiskWatchState_JSONRoundTrip`, `TestShouldNotifyDisk_PersistedStateKillsRestartBurst` ; `scheduler` —
+`TestMergeCycleNewMatchPlayers` (4 sous-cas). Gates à passer : `gofmt -l`, `go build ./...`, `go vet ./...`,
+`go test ./internal/ops/... ./internal/scheduler/... ./internal/api/wire/...`, `make go-api-lint`.
+Fichiers : `internal/domain/title/registry.go` (+DiskWatchStatePath), `internal/ops/disk_watch.go` (tags JSON),
+`internal/api/wire/registry_monitoring_diskwatch.go` (persistance), `internal/scheduler/{auto_sync.go,auto_sync_run.go,auto_sync_notify.go}`,
+`docker-compose.yml`, `scripts/deploy.sh`.
+
 ## [2026-07-25] Lot v7.2 — citations objective_stat + caches keyés par titre + recherche gamertag live non bloquante
 
 **Statut** : Complété (3 volets A/B/C). Pas de commit (superviseur). Branche `feat/v7.2-notion-batch`.
@@ -14163,3 +14245,24 @@ repli EN jamais vide. Front inchangé (normalisation idempotente conservée).
 playlist_name_fr — correctif propre planifié (résolution asset_translations par
 playlist_id, lot suivant). Dette notée : 4 copies préexistantes de mode_name_tr à
 centraliser + garde-rail.
+
+---
+
+## [2026-07-25] Vague V72-31/32/33 + Huma H4/H5 — consolidation et livraison
+
+**Statut** : Complété (consolidation : 13 issues lint réparées, generated.ts regénéré —
+il était périmé après les edits openapi de H4/H5 —, alias ApiErrorSchema repointé vers
+ApiError). Batterie complète verte : gofmt/build/vet/test (flake handlers rejoué isolé
+2x ok)/intégration -p 1/lint 0 issue/typecheck/vitest 3061 tests 0 échec.
+
+**Livré** : Huma H4 (modèle d'erreur unifié, contrat runtime intact) + H5 (7 routes
+groups en Huma typé, 173 ops au document partagé) ; V72-31 Discord (état disk_watch
+persistant data/global/admin_state, version bakée au build compose/deploy.sh, notif de
+fin de cycle auto-sync sur toggle existant) ; V72-33 (215 médailles H5 en 11 catégories
+via resolver read-time, exclusion ST1003 halo_5 alignée sur les autres slugs) ; V72-32
+(badge En placement partagé Explorer/Sessions/Timeseries/Carrière ; découverte : Perf
+manquantes du dernier sync JGtm = fraîcheur batchComputePerformanceScores, PAS un
+placement — investigation dédiée au prochain lot).
+
+**Notes** : VPS injoignable en SSH depuis le poste (timeout 22) — vérifs prod lecture
+seule déléguées à l'utilisateur (LEVELUP_APP_VERSION, last_notified_version).

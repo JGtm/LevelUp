@@ -13,8 +13,10 @@
 // Trois familles de routes chi coexistent :
 //   - routes Huma PARTAGÉES (le sous-ensemble vérifié ici) ;
 //   - routes chi-brut connues, INTENTIONNELLEMENT hors document (assets binaires,
-//     média multipart, export CSV, redirects OAuth, groups.go, import OpenSpartan,
-//     /static, /debug/vars, SPA catch-all) — exclusions documentées en (4) ;
+//     média multipart, export CSV, redirects OAuth, import OpenSpartan,
+//     /static, /debug/vars, SPA catch-all) — exclusions documentées en (4).
+//     NB : groups.go est MIGRÉ vers Huma (V72-01 / H5) → ses 7 routes sont
+//     désormais dans le document partagé, plus dans les exclusions chi-brut ;
 //   - artefacts du mux (CONNECT/TRACE/OPTIONS/HEAD) — ignorés.
 
 package api_test
@@ -61,7 +63,6 @@ func isKnownChiBrut(path string) bool {
 		"/debug/vars",                // expvar stdlib (admin-only, hors contrat REST)
 		"/auth/xbox/",                // redirects OAuth racine
 		"/api/v1/auth/xbox/",         // alias OAuth /api/v1
-		"/api/v1/groups",             // groups.go (chi brut : 7 routes)
 		"/api/v1/import/openspartan", // import multipart .db OpenSpartan
 		"/api/v1/assets/",            // images binaires (medals/maps/battlepass/challenge-badge/spartan)
 	}
