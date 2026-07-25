@@ -30,8 +30,8 @@ func NewBootstrapHandler(svc *service.BootstrapService) *BootstrapHandler {
 
 // Mount enregistre GET /bootstrap via Huma sur le sous-routeur chi /api/v1
 // (chemin relatif identique à l'ancien r.Get("/bootstrap", ...)).
-func (h *BootstrapHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *BootstrapHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/bootstrap", h.handleBootstrap)
 }
 
@@ -61,8 +61,8 @@ func NewPlayersHandler(svc *service.BootstrapService) *PlayersHandler {
 
 // Mount enregistre GET /players via Huma sur le sous-routeur chi /api/v1
 // (chemin relatif identique à l'ancien r.Get("/players", ...)).
-func (h *PlayersHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *PlayersHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/players", h.handlePlayers)
 }
 

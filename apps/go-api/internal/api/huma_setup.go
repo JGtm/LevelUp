@@ -27,7 +27,8 @@ func newHumaError(status int, code, message string) huma.StatusError {
 }
 
 // newHumaAPI : alias de humacore.NewAPI (API Huma coexistante sur le routeur chi
-// `r`, racine ou sous-routeur). Voir humacore.NewAPI pour les garanties.
-func newHumaAPI(r chi.Router) huma.API {
-	return humacore.NewAPI(r)
+// `r`, racine ou sous-routeur). Les options (WithSharedDoc) sont transmises telles
+// quelles pour partager le document OpenAPI. Voir humacore.NewAPI pour les garanties.
+func newHumaAPI(r chi.Router, opts ...humacore.MountOption) huma.API {
+	return humacore.NewAPI(r, opts...)
 }

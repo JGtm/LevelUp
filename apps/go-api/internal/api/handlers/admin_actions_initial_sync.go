@@ -60,8 +60,8 @@ func NewAdminInitialSyncActionHandler(
 // RequireAuth/RequireAdmin hérités). Le body est REQUIS (décodage maison →
 // 400 invalid_input si JSON malformé OU player_slug absent, contrat aligné sur
 // la convergence).
-func (h *AdminInitialSyncActionHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *AdminInitialSyncActionHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Post(api, "/actions/initial-sync/run", h.handleRun)
 }
 

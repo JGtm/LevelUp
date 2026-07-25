@@ -46,8 +46,8 @@ func NewAdminLogsHandler(logsDir string) *AdminLogsHandler {
 
 // Mount enregistre les 2 routes via Huma sur le sous-routeur chi /admin
 // (middleware RequireAuth/RequireAdmin/NoStore hérités).
-func (h *AdminLogsHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *AdminLogsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/monitoring/logs/modules", h.handleGetModules)
 	huma.Get(api, "/monitoring/logs/tail", h.handleGetTail)
 }

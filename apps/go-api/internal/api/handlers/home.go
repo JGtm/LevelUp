@@ -51,8 +51,8 @@ func NewHomeHandler(newSvc HomeAuthFactory, settingsStore *settings_platform.Sto
 
 // Mount enregistre l'unique GET via Huma sur le sous-routeur chi (préfixe
 // /players/{player_slug} + middleware ownership/title hérités).
-func (h *HomeHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *HomeHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/pages/home", h.handleGetHomePage)
 }
 

@@ -36,8 +36,8 @@ func NewStatsHandler(newSvc ServiceFactory[port.StatsService]) *StatsHandler {
 
 // Mount enregistre la route via Huma sur le sous-routeur chi (préfixe
 // /players/{player_slug} + middleware ownership/title hérités).
-func (h *StatsHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *StatsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Post(api, "/pages/stats/query", h.handleGetPage)
 }
 

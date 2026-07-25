@@ -1,3 +1,61 @@
+## [2026-07-25] V72-01 — H1 : document OpenAPI PARTAGÉ câblé sur tous les Mount
+
+**Statut** : Complété (H1 du PLAN_V72_HUMA_OPENAPI.md ; H2-H8 restent). Pas de commit
+(superviseur). Branche `feat/v7.2-notion-batch`. Comportement HTTP STRICTEMENT inchangé.
+
+**Objectif** : tous les enregistrements de routes Huma (71 `Mount()` + 3 registres inline)
+pointent vers UN document OpenAPI partagé, avec leur CHEMIN ABSOLU dans le doc.
+
+**Ergonomie retenue** : `humacore.NewAPI` rendu VARIADIC — `NewAPI(r, opts ...MountOption)`.
+Sans option = legacy (doc isolé jeté, byte-identique). Avec `WithSharedDoc(cfg, docPrefix)` =
+document partagé (délègue à `NewAPIWithConfig` si docPrefix=="" sinon `NewSubrouterAPI`).
+Raison : préserve la signature `Mount(r)` des ~130 call-sites de tests handlers (variadic →
+`Mount(r)` compile inchangé). Chaque `Mount` devient `Mount(r, opts ...humacore.MountOption)`
++ `NewAPI(r, opts...)` (74 fichiers, 77 méthodes, sed mécanique). Config partagée construite
+UNE fois dans `NewRouter` (`humacore.NewSharedConfig`), threadée `apiV1Inputs`→`apiV1Deps`,
+injectée par option scopée à côté de chaque `r.Route` (préfixe absolu = `apiV1BasePath` +
+suffixe du r.Route, source unique → jamais de préfixe dupliqué). Accesseur H6 : `NewRouter`
+retourne un 3e résultat `*huma.OpenAPI` (doc fusionné, DocsPath/OpenAPIPath désactivés).
+
+**Cartographie (Mount → point de montage → préfixe de document)** :
+- racine (r nu) : health → `""` (NewAPIWithConfig, chemins déjà absolus /health,/healthz,/readyz)
+- sous /api/v1 (r, r.With(mw), r.Group(mw)) : bootstrap, players, health-home, diag-csr/-prog/
+  -prestige, progression-backfill, field-mappings/capabilities/feature-matrix/catalog, help,
+  session, auth-device-flow, user-auth, settings, setup, jobs, sync-initial/all, backfill,
+  media-feed-version, asset-metadata, changelog+gamertag (inline) → `"/api/v1"`
+- sous-routeurs à préfixe : `/api/v1/admin` (adminHandler + 9 monitoring via
+  MountAdminMonitoringRoutes + titles/diag/appearance/invariants/contention/token-health) ·
+  `/api/v1/_diag/auto-sync` · `/api/v1/watcher` · `/api/v1/profiles/{player_slug}/titles/{slug}` ·
+  `/api/v1/players/{player_slug}` (35 handlers, y compris sous-groupes capability career/
+  achievements/engagement/media/prestige — r.Group ne change pas le préfixe de path)
+
+**Points durs résolus** :
+1. `MarkRequestBodyOptional` (15 handlers) passe le chemin LOCAL ; sous doc partagé le doc porte
+   l'absolu → `NewSubrouterAPI` renvoie un `subrouterAPI` qui expose `DocPrefix()` ; la fonction
+   résout localPath→absolu. Sans ça, corps optionnel silencieusement redevenu REQUIS (400).
+2. Garde-rail anti-collision : sous doc PARTAGÉ, huma écrase silencieusement une collision
+   (méthode, chemin) → invisible dans le doc final. Nouveau hook `OnOperationRegistered(method,
+   absPath)` (nil en prod ; fired par prefixStripAdapter + observingAdapter) ;
+   `TestNoDuplicateRouteRegistration` réécrit dessus (détection par chemin absolu, PLUS fine :
+   couvre aussi deux r.With/r.Group d'un même arbre — l'ancienne LIMITE documentée).
+
+**Nouveau garde-rail FIDÉLITÉ** : `shared_openapi_doc_test.go` —
+`TestSharedOpenAPIDocCoversAllHumaRoutes` construit le vrai routeur + doc, vérifie (1) chaque op
+Huma est dans le doc avec son chemin absolu, (2) chaque op ⟺ chi.Walk (routage réel), (3) pas de
+path fantôme, (4) toute route chi hors doc est une chi-brut connue (sinon = oubli de
+WithSharedDoc). Mesures : 166 ops Huma fusionnées → 162 paths ; chi total 208 (42 chi-brut).
+
+**Exclusions** : aucune. Les 71 Mount + 3 inline câblés (aucun cas de préfixe dynamique/double
+montage). Les ~20 routes chi-brut (assets binaires, média multipart, export CSV, redirects
+OAuth, groups.go, import OpenSpartan, /static, /debug/vars, SPA) restent hors doc, exclues
+explicitement par le test §4.
+
+**Gates (tous verts, séquentiels, CGO)** : `gofmt -l` vide · `go build ./...` · `go vet ./...` ·
+`go test ./internal/api/...` (contract, drift, TestHumaNestedSubrouterProbe, route-collision,
+fidélité) · `go test ./...` complet (exit 0, 118 ok, 0 fail) · `make go-api-lint` (0 issue,
+après multi-ligne du littéral apiV1Inputs qui dépassait lll 220). **H2 = suivant** (tags/summary/
+operationID via huma.Register + huma.Operation sur les 203 routes).
+
 ## [2026-07-25] V72-01 — openapi.yaml généré par Huma : H0 (baseline) + H0.5 (spike) EXÉCUTÉS
 
 **Statut** : Complété (H0 + H0.5 du PLAN_V72_HUMA_OPENAPI.md ; H1-H8 restent à faire). Pas de

@@ -30,8 +30,8 @@ func NewAdminWeaponCoverageHandler(coverage WeaponCoverageRunner) *AdminWeaponCo
 }
 
 // Mount enregistre la route Huma sur le sous-routeur /admin.
-func (h *AdminWeaponCoverageHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *AdminWeaponCoverageHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/monitoring/weapon-coverage", h.handleGet)
 }
 

@@ -47,8 +47,8 @@ func NewAdminCatalogDrainHandler(run CatalogDrainRunner, jobStore *jobs.Store, b
 
 // Mount enregistre la route via Huma sur le routeur chi (point de montage
 // /admin/actions/catalog, middleware RequireAuth/RequireAdmin hérités du groupe).
-func (h *AdminCatalogDrainHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *AdminCatalogDrainHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Post(api, "/actions/catalog/ugc-drain", h.handleRun)
 }
 

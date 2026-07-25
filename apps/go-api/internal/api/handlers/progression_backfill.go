@@ -56,8 +56,8 @@ func NewProgressionBackfillHandler(newRunner ProgressionBackfillFactory) *Progre
 // Mount enregistre la route via Huma au point de montage /api/v1 (le path complet
 // /_admin/progression/backfill/{player_slug} est relatif à ce routeur). Le corps
 // POST est OPTIONNEL (MarkRequestBodyOptional) — il n'est pas lu par le backfill.
-func (h *ProgressionBackfillHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *ProgressionBackfillHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Post(api, "/_admin/progression/backfill/{player_slug}", h.handleRunBackfill)
 	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/_admin/progression/backfill/{player_slug}")
 }

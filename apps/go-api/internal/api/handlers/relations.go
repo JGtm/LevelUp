@@ -44,8 +44,8 @@ func NewRelationsHandler(newSvc RelationsFactory) *RelationsHandler {
 }
 
 // Mount enregistre les routes via Huma sur le sous-routeur chi /players/{player_slug}.
-func (h *RelationsHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *RelationsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Post(api, "/pages/palmares/relations", h.GetRelations)
 	// Body OPTIONNEL (décodé seulement si présent) — préserve le 200 sur corps absent.
 	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/pages/palmares/relations")

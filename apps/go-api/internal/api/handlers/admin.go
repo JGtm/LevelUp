@@ -45,8 +45,8 @@ func NewAdminHandler(users *userstore.Store, invites *userstore.InviteStore) *Ad
 // Mount enregistre les 7 routes via Huma sur le sous-routeur chi (préfixe /admin
 // + middleware RequireAuth/RequireAdmin hérités). Le body POST /invites est
 // OPTIONNEL (MarkRequestBodyOptional) — corps absent → défaut 7 jours.
-func (h *AdminHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *AdminHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/users", h.handleListUsers)
 	huma.Delete(api, "/users/{username}", h.handleDeleteUser)
 	huma.Patch(api, "/users/{username}/role", h.handleChangeRole)

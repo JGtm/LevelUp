@@ -87,8 +87,8 @@ func NewAdminDataQualityHandler(
 // Mount enregistre les 7 routes via Huma sur le sous-routeur chi (préfixe /admin
 // + middleware RequireAuth/RequireAdmin hérités). Les corps {dry_run} des actions
 // backfill/reset sont OPTIONNELS (MarkRequestBodyOptional) — corps absent → run réel.
-func (h *AdminDataQualityHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *AdminDataQualityHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/monitoring/data-quality", h.handleGetCounts)
 	huma.Get(api, "/monitoring/data-quality/issues", h.handleGetIssues)
 	huma.Post(api, "/actions/registry-names/backfill", h.handleRegistryNamesBackfill)

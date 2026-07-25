@@ -40,8 +40,8 @@ func NewCatalogHandler(repo port.CatalogRepo) *CatalogHandler {
 
 // Mount enregistre les 3 routes catalogue via Huma sur le routeur chi `r`
 // (préfixe exact /titles/{slug}/catalog/... relatif au point de montage).
-func (h *CatalogHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *CatalogHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/titles/{slug}/catalog/playlists", h.handlePlaylists)
 	huma.Get(api, "/titles/{slug}/catalog/pairs", h.handlePairs)
 	huma.Get(api, "/titles/{slug}/catalog/maps", h.handleMaps)

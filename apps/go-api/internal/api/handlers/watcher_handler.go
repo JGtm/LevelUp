@@ -68,8 +68,8 @@ func NewWatcherHandler(
 // PATCH /subscriptions est OPTIONNEL (MarkRequestBodyOptional) — corps absent →
 // défaut ["all"], comme l'inline d'origine. POST /auth/start ne lit aucun corps
 // (Input *struct{}) → pas de MarkRequestBodyOptional (corps absent toléré).
-func (h *WatcherHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *WatcherHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/status", h.handleGetStatus)
 	huma.Get(api, "/auth/{attempt_id}", h.handleGetAuthStatus)
 	huma.Post(api, "/auth/start", h.handleStartAuth)

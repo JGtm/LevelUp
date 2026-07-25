@@ -61,8 +61,8 @@ func NewPatternsHandler(resolveRepo PatternsRepoResolver, titleSlug string) *Pat
 
 // Mount enregistre la route via Huma sur le sous-routeur chi (préfixe
 // /players/{player_slug} + middleware ownership/title hérités).
-func (h *PatternsHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *PatternsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/patterns", h.GetPatterns)
 }
 

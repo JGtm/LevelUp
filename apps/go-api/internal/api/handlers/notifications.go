@@ -55,8 +55,8 @@ func NewNotificationsHandler(newSvc NotificationsServiceFactory) *NotificationsH
 
 // Mount enregistre tous les endpoints via Huma sur le sous-routeur chi
 // (préfixe /players/{player_slug} + middleware ownership/title hérités).
-func (h *NotificationsHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *NotificationsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/notifications", h.handleList)
 	huma.Get(api, "/notifications/unread-count", h.handleUnreadCount)
 	huma.Post(api, "/notifications/mark-read", h.handleMarkRead)

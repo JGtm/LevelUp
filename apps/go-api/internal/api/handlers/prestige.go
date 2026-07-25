@@ -85,8 +85,8 @@ func (h *PrestigeHandler) WithActorGuard(g ActorGuard) *PrestigeHandler {
 // Les routes à corps REQUIS utilisent RawBody (décodage maison) pour préserver
 // le contrat 400 {invalid_body} sur JSON malformé (un Body typé renverrait le 422
 // de validation Huma). suggest-next ne lit pas de corps → input path seul.
-func (h *PrestigeHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *PrestigeHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 
 	huma.Post(api, "/prestige/challenges", h.CreateChallenge)
 	huma.Get(api, "/prestige/challenges", h.ListActiveChallenges)

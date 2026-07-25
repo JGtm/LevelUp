@@ -101,8 +101,8 @@ func (h *SettingsHandler) WithBackupScheduler(s *duckdbbackup.Scheduler) *Settin
 // monte ces chemins en absolu). Les POST media/reset-index et le PATCH /settings
 // ont un body OPTIONNEL/décodé maison (RawBody + MarkRequestBodyOptional) :
 // préserve le 400 {invalid_body} sur corps absent ou JSON malformé.
-func (h *SettingsHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *SettingsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/settings", h.handleGetSettings)
 	huma.Patch(api, "/settings", h.handlePatchSettings)
 	humacore.MarkRequestBodyOptional(api, http.MethodPatch, "/settings")

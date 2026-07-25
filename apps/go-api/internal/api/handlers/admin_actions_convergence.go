@@ -55,8 +55,8 @@ func NewAdminConvergenceActionHandler(
 // Mount enregistre la route via Huma sur le sous-routeur chi /admin (middleware
 // RequireAuth/RequireAdmin hérités). Le body est REQUIS (décodage maison →
 // 400 invalid_input si JSON malformé OU player_slug absent, contrat préservé).
-func (h *AdminConvergenceActionHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *AdminConvergenceActionHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Post(api, "/actions/convergence/run", h.handleRun)
 }
 

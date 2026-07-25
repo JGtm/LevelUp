@@ -37,8 +37,8 @@ func NewTitleSyncHandler(profiles *service.ProfileService) *TitleSyncHandler {
 
 // Mount enregistre les routes via Huma sur le sous-routeur chi
 // (préfixe /profiles/{player_slug}/titles/{slug} + ownership hérité).
-func (h *TitleSyncHandler) Mount(r chi.Router) {
-	api := humacore.NewAPI(r)
+func (h *TitleSyncHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Patch(api, "/sync", h.SetSync)
 	huma.Delete(api, "/data", h.Purge)
 }
