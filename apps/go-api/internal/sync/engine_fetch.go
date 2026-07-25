@@ -24,6 +24,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/sync/objective"
 )
 
 // fetchedMatch contient les données extraites d'un GetMatchStats, prêtes pour
@@ -137,7 +138,7 @@ func (e *SyncEngine) fetchMatchData(
 	// appel réseau). ExtractObjectiveStats ne renvoie que les joueurs d'un match à
 	// objectif ; vide pour Slayer/Firefight. Écrit dans shared.match_objective_stats.
 	if opts.WithObjectiveStats {
-		fm.ObjectiveStats = ExtractObjectiveStats(matchID, matchJSON)
+		fm.ObjectiveStats = objective.ExtractObjectiveStats(matchID, matchJSON)
 	}
 	// PersonalScores du joueur courant — toujours extraits (pas de flag dédié,
 	// même cycle de vie que les participants). La table n'est pas dans shared :

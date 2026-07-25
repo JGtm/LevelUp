@@ -20,6 +20,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/sync/objective"
 )
 
 // RunPostSyncForV2 expose runPostSyncPipeline (méthode interne) au pipeline V2.
@@ -128,7 +129,7 @@ func BuildBatchFromRawForV2WithMeta(
 	// Objectif (CTF/Zones/Oddball) : extrait inconditionnellement du payload déjà
 	// fetché par V2 (parité PVE/PSA/Medals, ce chemin ne porte pas de SyncOptions ;
 	// ExtractObjectiveStats renvoie vide hors modes à objectif).
-	fm.ObjectiveStats = ExtractObjectiveStats(matchID, statsJSON)
+	fm.ObjectiveStats = objective.ExtractObjectiveStats(matchID, statsJSON)
 	fm.PSA = ExtractPersonalScoreAwards(statsJSON, matchID, xuid)
 	fm.HighlightData = highlightChunk
 	fm.FilmMajorVer = filmMajorVer
