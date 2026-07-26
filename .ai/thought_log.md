@@ -1,3 +1,67 @@
+## [2026-07-26] Logo Waypoint invisible : trois causes, une seule visible sous Firefox
+
+**Statut** : Complété (commit `c22627074`, main local). Fichiers
+`apps/web/src/features/explorer/ExplorerMatchesTable.tsx` et
+`apps/web/src/features/squad/SquadSynergyHistoryTable.tsx`.
+
+**Symptôme rapporté** : « je vois toujours pas le logo WP dans le tableau Explorer », puis
+« même souci page Escouade, Timeseries, Session, Carrière ». Colonne pourtant présente dans
+le DOM, `<img>` chargée, `src` correct.
+
+**Trois diagnostics ERRONÉS avant le bon** — les trois valent d'être consignés, car ils
+partagent la même faute de méthode :
+
+1. « La capability Waypoint manque pour Infinite. » FAUX : `CapWaypointMatchURL` est
+   déclarée dans le descripteur Go *built-in* (`internal/domain/title/registry.go`), pas
+   dans un TOML. Mon grep ne couvrait que `config/titles/` — j'ai conclu d'une absence dans
+   un périmètre partiel à une absence tout court.
+2. « Mauvais thème : logo blanc sur fond clair. » FAUX, corrigé par l'utilisateur : il est
+   en thème sombre et voit le logo blanc dans le code.
+3. « `flex-shrink` seul. » Partiel : le `shrink-0` n'a rien changé à lui seul.
+
+**Faute de méthode commune** : j'ai mesuré dans le SEUL navigateur où le bug n'existe pas.
+Toutes mes mesures Chrome (image 16x16, `complete: true`, rect non nul, capture montrant le
+logo) étaient exactes — et sans valeur, puisque le bug est un désaccord ENTRE moteurs.
+L'indice décisif est venu de l'utilisateur : « ça marche sur Chrome mais pas Firefox ».
+Leçon : quand un rendu diverge entre machines/navigateurs, la première question n'est pas
+« que vaut la mesure ? » mais « où la mesure a-t-elle été prise ? ».
+
+**Causes réelles, corrigées ensemble** :
+
+1. *Négociation de taille entre moteurs.* Le `<a>` était un conteneur flex sans dimension
+   propre, dans une cellule de tableau en largeur automatique (`table-auto`). Chrome et
+   Firefox ne résolvent pas la taille intrinsèque identiquement dans ce cas ; Firefox
+   écrasait l'image à zéro. Le lien porte désormais une taille FIXE (`h-4 w-5`) : plus de
+   négociation possible.
+2. *Absence de taille intrinsèque.* Attributs HTML `width`/`height` ajoutés en plus des
+   classes CSS — le moteur connaît la taille avant de résoudre le CSS. C'est le point qui
+   manquait côté Firefox.
+3. *Logotype déformé* (présent sur TOUS les navigateurs, y compris ceux où il s'affichait,
+   donc jamais rapporté). Le fichier est un logotype 360x160 (ratio 2.25) forcé dans un
+   carré 16x16 sans `object-fit` : le `fill` par défaut l'écrasait en traits sub-pixel.
+   `object-contain` rétabli, boîte 20x16.
+
+**Piste utilisateur exploitée** : « c'est l'attribut `px-2` qui est trop petit, je l'ai mis à
+`px-20` et ça fonctionne ». Diagnostic confirmé (la cellule se comprimait), mais `px-20`
+aurait décollé TOUT le tableau de ses bordures — le padding est celui du gabarit commun.
+Retenu à la place : largeur réservée par colonne d'icône (`w-9` sur `<th>` et `<td>`), qui
+règle la compression sans toucher au gabarit.
+
+**Faux positif de synchronisation** : l'utilisateur a d'abord répondu « marche pas » — mon
+correctif était committé dans le worktree pendant que son serveur de dev tournait depuis le
+dépôt principal. Vérifier D'ABORD d'où sert le serveur avant de conclure qu'un correctif
+front est inopérant.
+
+**Vérifié** : Chrome par mesure DOM + capture (image 20x16, `object-contain`, cellule 37px,
+20 liens sur 20 lignes) ; Firefox par l'utilisateur. `tsc -b` vert (cache purgé), 640 tests
+verts sur explorer/squad/session-detail/career.
+
+**Prochaine étape** : `.ai/DIAG_WAYPOINT_COLUMN_INFINITE.md` reste à corriger (9 points
+relevés par l'agent de relecture : inventaire des consommateurs incomplet, mécanisme de
+synchro inter-onglets, sémantique TanStack) — le document décrit une piste invalidée.
+
+---
+
 ## [2026-07-26] Deploy — regen démo : verrou DuckDB sur la metadata démo (jalons à 0)
 
 **Statut** : Complété (workflow modifié, non exécutable localement — vérifié par extraction
