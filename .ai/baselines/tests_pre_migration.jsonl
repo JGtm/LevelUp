@@ -18112,10 +18112,6 @@
 {"Time":"2026-06-26T23:46:24.2180672+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Output":"ok  \tlevelup/go-api/internal/games/halo_infinite\t0.242s\n"}
 {"Time":"2026-06-26T23:46:24.2180672+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite","Elapsed":0.242}
 {"Time":"2026-06-26T23:46:26.1556661+02:00","Action":"start","Package":"levelup/go-api/internal/games/halo_infinite/migrations"}
-{"Time":"2026-06-26T23:46:26.252407+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_infinite/migrations","Test":"TestArcTitlesBackfill_OneRowPerExistingArc"}
-{"Time":"2026-06-26T23:46:26.252407+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite/migrations","Test":"TestArcTitlesBackfill_OneRowPerExistingArc","Output":"=== RUN   TestArcTitlesBackfill_OneRowPerExistingArc\n"}
-{"Time":"2026-06-26T23:46:26.2829962+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite/migrations","Test":"TestArcTitlesBackfill_OneRowPerExistingArc","Output":"--- PASS: TestArcTitlesBackfill_OneRowPerExistingArc (0.03s)\n"}
-{"Time":"2026-06-26T23:46:26.2829962+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/migrations","Test":"TestArcTitlesBackfill_OneRowPerExistingArc","Elapsed":0.03}
 {"Time":"2026-06-26T23:46:26.2829962+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_infinite/migrations","Test":"TestCareerRankTranslations_GoldenParity"}
 {"Time":"2026-06-26T23:46:26.2829962+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite/migrations","Test":"TestCareerRankTranslations_GoldenParity","Output":"=== RUN   TestCareerRankTranslations_GoldenParity\n"}
 {"Time":"2026-06-26T23:46:26.2829962+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite/migrations","Test":"TestCareerRankTranslations_GoldenParity","Output":"--- PASS: TestCareerRankTranslations_GoldenParity (0.00s)\n"}
@@ -41493,10 +41489,6 @@
 {"Time":"2026-06-26T23:50:52.324605+02:00","Action":"output","Package":"levelup/go-api/internal/prestige","Test":"TestValidateResizeForRemoval","Output":"=== RUN   TestValidateResizeForRemoval\n"}
 {"Time":"2026-06-26T23:50:52.324605+02:00","Action":"output","Package":"levelup/go-api/internal/prestige","Test":"TestValidateResizeForRemoval","Output":"--- PASS: TestValidateResizeForRemoval (0.00s)\n"}
 {"Time":"2026-06-26T23:50:52.324605+02:00","Action":"pass","Package":"levelup/go-api/internal/prestige","Test":"TestValidateResizeForRemoval","Elapsed":0}
-{"Time":"2026-06-26T23:50:52.324605+02:00","Action":"run","Package":"levelup/go-api/internal/prestige","Test":"TestCreditTitlesFor_MonoTitleToday"}
-{"Time":"2026-06-26T23:50:52.324605+02:00","Action":"output","Package":"levelup/go-api/internal/prestige","Test":"TestCreditTitlesFor_MonoTitleToday","Output":"=== RUN   TestCreditTitlesFor_MonoTitleToday\n"}
-{"Time":"2026-06-26T23:50:52.324605+02:00","Action":"output","Package":"levelup/go-api/internal/prestige","Test":"TestCreditTitlesFor_MonoTitleToday","Output":"--- PASS: TestCreditTitlesFor_MonoTitleToday (0.00s)\n"}
-{"Time":"2026-06-26T23:50:52.324605+02:00","Action":"pass","Package":"levelup/go-api/internal/prestige","Test":"TestCreditTitlesFor_MonoTitleToday","Elapsed":0}
 {"Time":"2026-06-26T23:50:52.324605+02:00","Action":"run","Package":"levelup/go-api/internal/prestige","Test":"TestChallengeStatus_RoundtripAndValidation"}
 {"Time":"2026-06-26T23:50:52.324605+02:00","Action":"output","Package":"levelup/go-api/internal/prestige","Test":"TestChallengeStatus_RoundtripAndValidation","Output":"=== RUN   TestChallengeStatus_RoundtripAndValidation\n"}
 {"Time":"2026-06-26T23:50:52.324605+02:00","Action":"output","Package":"levelup/go-api/internal/prestige","Test":"TestChallengeStatus_RoundtripAndValidation","Output":"--- PASS: TestChallengeStatus_RoundtripAndValidation (0.00s)\n"}

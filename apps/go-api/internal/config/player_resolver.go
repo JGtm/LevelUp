@@ -100,6 +100,23 @@ func demoSharedSocialPath(cfg *AppConfig, titleSlug string) string {
 	return filepath.Join(demoTitleDir(cfg.DemoFixturesDir, titleSlug), "warehouse", "shared_social.duckdb")
 }
 
+// PrestigeBundleDBPaths retourne les chemins des DEUX bases ouvertes au boot par le
+// module Prestige (shared_social + metadata) pour le titre par défaut — les seules
+// que le bundle épingle (cf. wire.NewPrestigeBundleAt).
+//
+// Démo : layout PLAT des fixtures (LEVELUP_DEMO_FIXTURES_DIR/warehouse/…) ;
+// production : layout title-scopé du PathResolver. Sans cette distinction, le
+// bundle démo pointe un chemin inexistant et toute lecture Prestige adossée à une
+// base reste vide. Repli sur le layout prod si DemoFixturesDir n'est pas renseigné.
+func (cfg *AppConfig) PrestigeBundleDBPaths() (sharedSocialPath, metadataPath string) {
+	slug := title.DefaultSlug
+	if cfg.DemoMode && cfg.DemoFixturesDir != "" {
+		return demoSharedSocialPath(cfg, slug), demoMetaDBPath(cfg, slug)
+	}
+	pr := title.NewPathResolver(cfg.RepoRoot)
+	return pr.SharedSocialDBPath(slug), pr.MetadataDBPath(slug)
+}
+
 // ResolvePlayer traduit un slug joueur en PlayerDB prêt à l'emploi.
 // titleSlug est le titre courant (ex: "halo_infinite"). Si vide, DefaultSlug est utilisé.
 // En mode démo, les fixtures de test sont utilisées (slug ignoré).
