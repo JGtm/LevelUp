@@ -17,7 +17,9 @@ Each item cites its source so it can be re-verified against the code. Structure:
       gate passed: `go build && go vet && go test ./...`, then
       `-tags=integration -p 1 -timeout 900s ./...` exit 0 (serial `-p 1` is mandatory —
       integration DuckDB gate gives false green otherwise). Front: purge cache, typecheck,
-      lint, vitest.
+      lint, vitest. Since 2026-07-26 the pipeline enforces this too (the deploy waits for the
+      CI verdict, see the Deploy section) — checking it here still matters: it is what avoids
+      burning a ~30-minute deploy window to learn that the build was red.
 - [ ] **Deploy dress rehearsal on the restored prod copy** (see
       `docs/RUNBOOK_RESTORE_TEST.md`, merge plan step 2): point a local server at the
       restored `data/`, boot the branch binary, confirm boot-time migrations/views apply
@@ -42,6 +44,27 @@ Each item cites its source so it can be re-verified against the code. Structure:
 
 - [ ] Merge on `main` with a **merge commit, no squash** (per-lot history = traceability):
       `git checkout main && git pull && git merge refactor/audits-2026-07`, then `git push`.
+- [ ] **The deploy WAITS for the CI verdict** (D29, 2026-07-26 — `deploy.yml` job `attente-ci`).
+      Before that date CI and Deploy ran in parallel: production received the code before any
+      verdict, and a red CI had no consequence (40 % of `main` runs red over 14 days, no visible
+      effect). Now the first deploy job polls the Actions API every 30 s for the CI run of the
+      **same `head_sha`** and releases the deploy only on `success`. Plan for:
+      - **Latency**: production is updated ~25-35 min after the push (CI wall time, bounded by
+        the `go-coverage` job) plus the usual deploy time. It is no longer immediate.
+      - **CI red = nothing deployed.** The job fails with an explicit message; fix and re-push,
+        or use the emergency valve below. Do not re-run the deploy on a red CI — by design it
+        will keep refusing.
+      - **No CI run for that sha = nothing deployed either**: `attente-ci` polls 55 min then
+        fails. That means the trigger invariant broke: the `paths-ignore` set of `ci.yml` must
+        stay a SUBSET of `deploy.yml`'s, and the pushed branch must be covered by `ci.yml`'s
+        `branches` filter. Guard-rail test that fails the build before this can reach `main`:
+        `apps/go-api/internal/archlint/ci_deploy_triggers_test.go`.
+- [ ] **Emergency valve, urgent hotfix ONLY** — Actions > "Deploy to VPS" > *Run workflow* on
+      `main`, tick **`ignorer_attente_ci`**. It skips ONLY the CI wait: `pre-check` still runs and
+      the deploy job stays gated on `refs/heads/main` (a dispatch from any other branch deploys
+      nothing). Reserved for "production is down and the fix cannot wait ~30 min". The CI verdict
+      remains DUE: read the CI run of that commit afterwards and treat a red as a rollback
+      candidate.
 - [ ] `scripts/deploy.sh` runs on the VPS (via `deploy.yml`): `git reset --hard origin/main`,
       **`docker compose build` while the old containers are still up**, then only on build
       success `docker compose down` + `up -d` (no `--build` — reuses the images just built),

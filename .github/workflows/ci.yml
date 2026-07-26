@@ -34,11 +34,18 @@ on:
     # Journaux/plans d'agents en Markdown : aucun impact sur le code testé.
     # PRUDENCE (2026-07-26) : on ignore UNIQUEMENT le Markdown sous .ai/ —
     # `.ai/baselines/**` (tests_pre_migration.jsonl, coverage_pre_migration.*) est
-    # une ENTRÉE du gate go-baseline-tests : l'ignorer laisserait passer une
+    # une ENTRÉE du gate de non-régression (step « Vérifier suite baseline de tests
+    # pré-migration » du job go-coverage) : l'ignorer laisserait passer une
     # modification de baseline sans la rejouer. Ne PAS remplacer par `.ai/**`.
     # Le motif `**.md` (et non `**/*.md`) est celui documenté par GitHub pour
     # « tous les .md à toute profondeur » ; s'il ne matchait pas, la CI tournerait
     # quand même — le sens de l'échec est sûr.
+    #
+    # INVARIANT (D29, 2026-07-26) : cet ensemble doit rester un SOUS-ENSEMBLE du
+    # `paths-ignore` de deploy.yml. Sinon un push pourrait déclencher le déploiement
+    # SANS déclencher la CI, et le job `attente-ci` de deploy.yml sonderait un run
+    # qui n'existera jamais. Garde-rail : TestCIPathsIgnoreSubsetOfDeployPathsIgnore
+    # (apps/go-api/internal/archlint/ci_deploy_triggers_test.go).
     paths-ignore:
       - ".ai/**.md"
   pull_request:
@@ -224,51 +231,22 @@ jobs:
       - name: Check lease enforcement (no direct DB writes in service/handlers)
         run: bash scripts/check_lease_enforcement.sh
 
-  go-baseline-tests:
-    name: Go Baseline Tests (non-régression)
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
-    defaults:
-      run:
-        working-directory: apps/go-api
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: apps/go-api/go.mod
-          cache-dependency-path: apps/go-api/go.sum
-
-      - name: Vérifier GCC (CGO requis pour DuckDB)
-        run: gcc --version
-
-      - name: Vérifier suite baseline de tests pré-migration
-        run: bash ../../scripts/check_test_baseline.sh tests
-        env:
-          CGO_ENABLED: "1"
-          LEVELUP_DEMO_MODE: "true"
-          MULTI_TITLE_API_ENABLED: "true"
-          PRESTIGE_ENABLED: "true"
-
-      # Sans cet artefact, un gate rouge n'était pas diagnosticable : le JSONL du
-      # run vivait dans un mktemp détruit à la sortie du script. Uniquement en
-      # échec (le fichier pèse plusieurs Mo et n'a aucun intérêt quand c'est vert).
-      - name: Upload JSONL du run courant (diagnostic)
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: go-baseline-current-jsonl
-          path: apps/go-api/baseline_current.jsonl
-          if-no-files-found: warn
-          retention-days: 7
-
+  # go-baseline-tests SUPPRIMÉ (D3, 2026-07-26) : ce job rejouait `go test ./...`
+  # avec les mêmes tags, le même env et le même périmètre que go-coverage ci-dessous
+  # (seul le `-timeout` par package différait : 300s contre 600s, cf. le step de test) —
+  # deux exécutions complètes de la MÊME suite (~22 min chacune) à chaque push. La suite
+  # ne tourne plus qu'UNE fois : go-coverage produit `-json` (JSONL) EN PLUS du
+  # profil de couverture, et le gate de non-régression consomme ce JSONL via
+  # `check_test_baseline.sh tests --from-jsonl` (mode consommateur, aucune
+  # ré-exécution). Le mode autonome du script reste celui de `make gate-push`.
   go-coverage:
-    name: Go Coverage (CGO_ENABLED=1 — ./... complet)
+    name: Go Coverage + Baseline non-régression (CGO_ENABLED=1 — ./... complet)
     # ubuntu-latest dispose de GCC — CGO_ENABLED=1 fonctionne sans config supplémentaire
     runs-on: ubuntu-latest
     # 45 min : le job enchaîne 2 suites `-p 1` (sérialisées, contrainte DuckDB
-    # mono-process) dont chaque package plafonne à 600 s.
+    # mono-process) dont chaque package plafonne à 600 s. Inchangé par la fusion du
+    # gate baseline (D3) : le gate ajouté est une analyse de JSONL (quelques
+    # secondes), c'est l'ANCIEN job dédié de 40 min qui disparaît.
     timeout-minutes: 45
     defaults:
       run:
@@ -293,9 +271,26 @@ jobs:
       # en parallèle (défaut), platform/duckdb + sync se contendent, avortent avec des
       # durées FANTÔMES (~28000s) et MASQUENT les vraies défaillances → faux-vert
       # (incident 2026-07-03). timeout 600s = marge par package une fois sérialisé.
-      - name: go test avec couverture complète (CGO + intégration)
+      #
+      # D3 (2026-07-26) — UNE seule exécution de la suite pour DEUX gates :
+      # `-json` produit le JSONL consommé par le gate de non-régression (step
+      # suivant), `-coverprofile` produit le profil consommé par le ratchet de
+      # couverture. Les flags/env sont l'UNION des deux anciennes invocations
+      # (job go-baseline-tests supprimé + ce job) : tags=integration, CGO_ENABLED=1,
+      # -p 1, -count=1, ./..., LEVELUP_DEMO_MODE / MULTI_TITLE_API_ENABLED /
+      # PRESTIGE_ENABLED. SEULE divergence, tranchée volontairement : `-timeout 600s`
+      # (celui de ce job) et non `300s` (celui du script). 300 s était calibré pour
+      # un run NON instrumenté ; l'exécution fusionnée porte l'instrumentation de
+      # couverture (plus lente), un budget plus court fabriquerait des timeouts qui
+      # ne sont pas des régressions. Le mode autonome du script garde 300 s.
+      #
+      # `-json` retire toute sortie humaine du log : c'est le step suivant
+      # (analyse du JSONL) qui réimprime les lignes utiles en cas d'échec.
+      - name: go test avec couverture complète + JSONL (CGO + intégration)
         run: |
+          set +e
           go test \
+            -json \
             -coverprofile=coverage.raw \
             -covermode=atomic \
             -coverpkg=./... \
@@ -303,7 +298,14 @@ jobs:
             -timeout 600s \
             -count=1 \
             -p 1 \
-            ./...
+            ./... > baseline_current.jsonl 2>&1
+          rc=$?
+          set -e
+          echo "go test: exit=$rc, $(wc -l < baseline_current.jsonl) lignes JSONL"
+          if [ "$rc" -ne 0 ]; then
+            echo "::warning::Suite rouge (exit $rc). Le détail lisible (tests fautifs + leur sortie) est imprimé par le step « Vérifier suite baseline de tests pré-migration » ci-dessous, qui tourne malgré cet échec."
+          fi
+          exit $rc
         env:
           CGO_ENABLED: "1"
           LEVELUP_DEMO_MODE: "true"
@@ -311,6 +313,31 @@ jobs:
           # les chemins multi-titres + Prestige.
           MULTI_TITLE_API_ENABLED: "true"
           PRESTIGE_ENABLED: "true"
+
+      # Gate de NON-RÉGRESSION — ex-job `go-baseline-tests`, fusionné ici (D3).
+      # Contrôles : présence de TOUS les tests de .ai/baselines/tests_pre_migration.jsonl,
+      # aucun test en échec, aucun package en échec hors test. Mode CONSOMMATEUR
+      # (`--from-jsonl`) : analyse le JSONL du step précédent, ne relance RIEN.
+      #
+      # `if: always()` NON NÉGOCIABLE : ce gate doit rendre son verdict même quand
+      # le `go test` est sorti non-zéro — c'est précisément là qu'il diagnostique
+      # (test disparu, package qui ne compile plus) et qu'il réimprime la sortie
+      # humaine que `-json` a retirée du log.
+      - name: Vérifier suite baseline de tests pré-migration
+        if: always()
+        run: bash ../../scripts/check_test_baseline.sh tests --from-jsonl baseline_current.jsonl
+
+      # Sans cet artefact, un gate rouge n'était pas diagnosticable : le JSONL du
+      # run vivait dans un mktemp détruit à la sortie du script. Uniquement en
+      # échec (le fichier pèse plusieurs Mo et n'a aucun intérêt quand c'est vert).
+      - name: Upload JSONL du run courant (diagnostic)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-baseline-current-jsonl
+          path: apps/go-api/baseline_current.jsonl
+          if-no-files-found: warn
+          retention-days: 7
 
       # S45 T3 : filtrer internal/api/gen/ et cmd/msal-poc/ du profil
       - name: Filtrer exclusions (gen/ + msal-poc/)
