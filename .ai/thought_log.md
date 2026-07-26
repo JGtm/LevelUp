@@ -1,3 +1,105 @@
+## [2026-07-26] Lot G phase 2 v7.3 — FirstBloodLanes câblé : Escouade/Dynamique + Timeseries + Sessions
+
+**Statut** : Complété (branche `feat/v7.3-notion-batch`, agent + superviseur). Item Notion
+« Transformer le graphe première mort/premier frag ».
+
+**Décisions techniques.** Le délai premier frag/première mort était déjà calculé DEUX fois
+(escouade : bins 15 s ; timeseries : bins 10 s) sur la même chaîne highlight_events →
+correction T0 → min des TimeMS >= 0. Le défaut était le bucketing serveur. Refactor :
+noyau unique firstEventsAcc.note + ComputeFirstEventsByActor (N joueurs en une passe),
+DTO domain/first_blood.go (conversion ms→s en un seul point), champs `first_blood` sur
+les 3 réponses de page composites (+ compare_first_blood pour le drawer de session).
+Ancien code SUPPRIMÉ (builders bins, 4 types, 2 composants web, i18n orphelin) — les
+tests T0-shift/skip-countdown réécrits sur le nouveau builder. Front : adaptateur
+partagé features/_shared/firstBlood.ts (3 consommateurs d'emblée), maxSec = p99 arrondi
+minute sup plancher 300 (un match interminable n'écrase plus l'échelle), manifest
+first_blood.toml partagé = vocabulaire FR unifié sur les 3 pages. Emplacements :
+SquadDynamiquePage (après Intensité), TimeseriesPage.progression (case de l'ancien),
+SessionChartStack (colonne + drawer comparaison).
+
+**Résultats** : build/vet 0, go test ./... exit 0 (0 FAIL), lint ratchet 0 (1 funlen 86
+corrigé en cours de lot), openapi-gen -check à jour, types frais, tsc cache purgé 0,
+eslint 0 nouvelle, vitest ciblé 101 fichiers / 732 tests verts. Découverte consignée :
+contract-surface.snapshot.json était obsolète en ajouts (~30 chemins tolérés par le
+garde-rail), rattrapé par la régénération.
+
+**Prochaine étape** : vérification visuelle des 3 pages via le Chrome utilisateur, puis
+lot H (backlog.md), gates finaux, changelogs [FINAL].
+
+## [2026-07-26] Lot v7.3 — FirstBloodLanes phase 2 : câblage produit (Escouade/Dynamique, Timeseries, Sessions)
+
+**Statut** : Complété (branche `feat/v7.3-notion-batch`, agent). Demande Notion : « Transformer
+le graphe de la page Escouade (2 à 4 joueurs) première mort/premier frag et le déplacer dans
+l'onglet Dynamique. Puis implémenter l'équivalent 1 joueur dans Timeseries et Sessions. »
+
+**Carte de l'existant (vérifiée sur pièces).** Le délai « premier frag / première mort » était
+déjà calculé DEUX fois, sur deux formes d'events différentes : `narrative.ComputeFirstEventsPerMatch`
+(events canoniques, KillerXUID/VictimXUID, solo — servait Timeseries) et une dérivation inline
+dans `buildSquadFirstEvents` (`domain.ImpactEventRow`, XUID = acteur, multi-joueurs — servait
+l'Escouade). Les deux appliquaient la même règle non écrite : minimum des `TimeMS >= 0` après
+correction T0 (`timeline.CorrectEvents` / `CorrectSquadImpactEvents`), les events du countdown
+étant écartés. Les deux consommateurs bucketaient ensuite côté serveur (10 s pour Timeseries,
+15 s pour l'Escouade) — c'est ce bucketing, et lui seul, qui rendait le graphe illisible dès
+3 joueurs. Rien à réinventer : le calcul amont était bon, la surface de sortie était fausse.
+
+**Décision — le noyau d'agrégation devient unique.** `firstEventsAcc.note(isKill, timeMS)` est
+désormais le SEUL endroit qui décide « ce timestamp précède-t-il le minimum connu ». Deux
+adaptateurs l'utilisent dans `analysis/narrative/first_events.go` : `ComputeFirstEventsPerMatch`
+(canonical, inchangé côté contrat — ses 10 tests passent tels quels) et le nouveau
+`ComputeFirstEventsByActor(events []FirstEventActor, xuids, matchIDs)` qui sert N joueurs en une
+passe. `FirstEventActor` est la forme neutre (MatchID/XUID/IsKill/TimeMS) pour les sources qui
+n'exposent pas `canonical.HighlightEvent`. Un joueur demandé sans aucun event obtient quand même
+sa série (rows nulles) : masquer la bande est une décision d'appelant, pas d'algo.
+
+**Endpoints : extension des réponses de page, pas de route orpheline.** Les trois surfaces
+servent le MÊME DTO `domain.FirstBloodPlayerSeries` (`player` + `matches[{match_id,
+first_kill_sec, first_death_sec}]`), sans `omitempty` sur les secondes : `null` est une
+information (événement absent) et le match reste au dénominateur affiché (« 11/12 matchs »).
+`domain.NewFirstBloodPoint` est le point de conversion UNIQUE ms → secondes (arrondi au
+dixième). Champs ajoutés : `first_blood` sur `TeammatesPageResponse` / `TimeseriesPageResponse`
+/ `SessionPageResponse` + `compare_first_blood` (session comparée, miroir de
+`compare_intensity_rows`). Côté session, `attachSessionIntensity` devient
+`attachSessionEventBlocks` : les morts (`death`/`first_death`) rejoignent le filtre d'events —
+UN seul chargement alimente désormais l'intensité ET le premier frag/première mort.
+
+**Code mort supprimé (règle 7).** Go : `buildSquadFirstEvents` + `formatFirstEventsBinLabel` +
+`firstEventsBinSize`, `buildFirstEventsDistribution`, et les types `domain.SquadFirstEvents`,
+`SquadFirstEventsRow`, `FirstEventBucket`, `FirstEventDistribution`. Web :
+`SquadFirstEventsChart.tsx`, `charts/squadFirstEventsChart.ts` (+ son test),
+`TimeseriesFirstEventDistribution.tsx`, le bloc i18n `squad.firstEvents` (FR+EN) et les 5 clés
+`timeseries.progression.{first_event_title,first_kill,first_death,avg,time_axis}`. Aucun autre
+consommateur : les 4 schémas OpenAPI disparus sont un retrait ASSUMÉ, snapshot
+`contract-surface.snapshot.json` régénéré (`UPDATE_CONTRACT_SURFACE=1`) — le diff ne perd que
+ces 4 noms, le reste des lignes ajoutées comble un snapshot devenu obsolète.
+
+**Adaptateur front centralisé d'emblée.** Trois consommateurs = on ne duplique pas :
+`features/_shared/firstBlood.ts` porte `toFirstBloodSeries` (snake_case API → props camelCase du
+composant) et `firstBloodMaxSec`. Choix de la fenêtre d'axe : p99 arrondi à la minute supérieure,
+plancher 300 s — et NON le max. Une seule partie interminable (une mort à 9 min) suffirait sinon
+à écraser toutes les bandes sur le bord gauche ; le point hors fenêtre reste tracé, collé à
+droite. `FirstBloodLanes` reste ignorant du contrat HTTP. Titre/état vide/tooltips viennent du
+manifest partagé `first_blood.toml` : même vocabulaire FR (« Premier frag / première mort »)
+sur les trois pages, au lieu des trois libellés divergents d'avant.
+
+**Emplacements.** Escouade → `features/squad/SquadDynamiquePage.tsx` (après le profil
+d'intensité : les deux se lisent sur la chronologie du match) ; Timeseries → même case qu'avant
+dans `TimeseriesPage.progression.tsx` (colonne gauche, face à « Stats par minute ») ; Session →
+`features/session-detail/SessionChartStack.tsx` juste après l'intensité, donc monté à
+l'identique dans la colonne principale ET le drawer de comparaison.
+
+**Gates.** `go build ./...` et `go vet ./...` OK ; `go test ./...` UNE fois, exit 0, zéro
+`--- FAIL:` ; `golangci-lint run --new-from-merge-base=origin/main` → 0 issue (après extraction
+de `firstBloodScope` : le builder pesait 86 L > 80) ; `openapi-gen -check` à jour ;
+`check-generated-types-fresh` OK ; `npm run typecheck` OK ; `npm run lint` 0 erreur / 15
+warnings (baseline inchangée, 0 sur les fichiers touchés) ; vitest ciblé charts + _shared +
+squad + session-detail + timeseries + lib/api + lib/i18n : 101 fichiers, 732 tests verts.
+
+**Reste à vérifier visuellement** (superviseur, l'agent n'ouvre pas Chrome) :
+`/players/{gt}/squad/dynamique` avec 2 à 4 coéquipiers confirmés (une bande par joueur, le plus
+rapide en haut), `/players/{gt}/stats/timeseries` onglet Progression (bande solo à gauche de
+« Stats par minute »), et la page détail d'une session (bloc sous « Intensité », présent aussi
+dans le drawer de comparaison).
+
 ## [2026-07-26] Lot v7.3 — rotation des logs par taille + durcissement rate-limit/cache des fichiers public/
 
 **Statut** : Complété (branche `feat/v7.3-notion-batch`, agent). Items v7.3 « Nettoyer les

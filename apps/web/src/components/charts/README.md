@@ -18,7 +18,7 @@ ADR : `docs/adr/0001-charts-stack-echarts.md`. Live sandbox : `/lab/charts`.
 | 8 | `<RadarChart>` | N-series 6-axis radar | MatchView participation, Squad V2 radar |
 | 9 | `<OutcomeSequenceTape>` | RLE narrative band of recent outcomes | HomePage, MatchHistoryPage, SquadV2Page |
 | 10 | `<TimeseriesKdaBars>` (page-specific) | Bars K + bars D + line K/D ratio (dual yAxis) | TimeseriesPage summary |
-| 11 | `<FirstBloodLanes>` | One lane per player: first-kill / first-death timing clouds + median advance window | (phase 2: Squad, Timeseries, Sessions) |
+| 11 | `<FirstBloodLanes>` | One lane per player: first-kill / first-death timing clouds + median advance window | Squad "Dynamique" tab, Timeseries "Progression" tab, Session chart stack |
 
 > Wrappers 10–11 are kept in `features/timeseries/` (not in this folder) because they compose `<ChartCard>` directly with custom `buildOption` and aren't reusable elsewhere.
 
@@ -127,6 +127,8 @@ Replaces the unreadable "first kill / first death per 15 s bucket" histogram. On
 ```
 
 `null` = event absent from that match : excluded from the points and from the medians, still counted in the displayed coverage ("11/12 matchs"). Props : `data`, `maxSec` (default 300), `title` (defaults to the manifest title, `''` = no card header), `loading`, `error`, `emptyMessage`, `locale` (defaults to the app shell locale).
+
+API payloads (`first_blood` on the Squad / Timeseries / Session page responses) are mapped to `data` — and `maxSec` derived (p99 rounded up to the minute, floor 300 s) — by `features/_shared/firstBlood.ts`. Never re-map a payload inline: that helper is the single adapter for the three surfaces.
 
 Five series : one `custom` (rounded "advance window" bar spanning median first-kill → median first-death, pixel height, so neither `bar` nor `scatter` fits) plus four `scatter` (kill/death clouds via `symbolOffset ±14 px`, then the two median markers). Lanes are sorted by median first kill ascending and the category axis is `inverse`, so the fastest player is on top. Labels (gamertag, `méd. 50s → 1m04`, `+14s d'avance`) live in the left gutter through `axisLabel.formatter` + `rich`, anchored with `margin: 130 / align: 'left'` — nothing is drawn inside the plot area.
 

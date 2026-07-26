@@ -1206,12 +1206,6 @@ export type MapBreakdownRow = components['schemas']['MapBreakdownRow']
 
 export type SquadMatchSeriesPoint = components['schemas']['SquadMatchSeriesPoint']
 
-/** Une ligne (joueur) du butterfly first-events teammates.17. */
-export type SquadFirstEventsRow = components['schemas']['SquadFirstEventsRow']
-
-/** Données du chart teammates.17 — bins 15 s par défaut. */
-export type SquadFirstEvents = components['schemas']['SquadFirstEvents']
-
 /** Une ligne du chart kills par arme teammates.09. */
 export interface SquadWeaponBar {
   weapon_id: number
@@ -1329,7 +1323,8 @@ export interface TeammatesPageResponse {
    *  Précision native Halo 5 ; absent sur Infinite (capability weapon_accuracy). */
   weapon_accuracy?: SquadWeaponAccuracy
   native_kill_mechanics?: SquadKillMechanics
-  first_events?: SquadFirstEvents
+  /** Premiers frag/mort PAR MATCH, une série par joueur de l'escouade (onglet Dynamique). */
+  first_blood?: FirstBloodPlayerSeriesDTO[]
   /** Header alimente <SessionBriefing> (mode solo si pas de coéquipier sélectionné, mode squad sinon). */
   header?: import('@/features/squad/v2/types').SquadHeader
   /** Gamertag du joueur principal — sert à identifier le card "moi" dans header.player_cards. */
@@ -1887,9 +1882,13 @@ export type TimeseriesKillTypes = components['schemas']['TimeseriesKillTypes']
 
 export type OutcomesPeriodPoint = components['schemas']['OutcomesPeriodPoint']
 
-export type FirstEventBucket = components['schemas']['FirstEventBucket']
+/** Premiers frag/mort d'un joueur sur UN match (secondes, null = événement absent). */
+export type FirstBloodMatchPointDTO = components['schemas']['FirstBloodMatchPoint']
 
-export type FirstEventDistribution = components['schemas']['FirstEventDistribution']
+/** Série « premier frag / première mort » d'un joueur — payload des 3 surfaces
+ *  (Escouade/Dynamique, Timeseries, Session). Le suffixe DTO évite la collision
+ *  avec le type de props du composant `FirstBloodLanes`. */
+export type FirstBloodPlayerSeriesDTO = components['schemas']['FirstBloodPlayerSeries']
 
 /** Ligne du heatmap d'intensité solo (1 match × 10 phases normalisées). */
 export type IntensityMatchRow = components['schemas']['IntensityMatchRow']

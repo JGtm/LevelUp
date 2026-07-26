@@ -463,25 +463,9 @@ en = "Performance per map — Session vs History"
 
 # ─── Onglet Progression — labels inline (migration H-D4) ─────────────────────
 
-[timeseries.progression.first_event_title]
-fr = "Temps du premier frag / première mort"
-en = "First kill / first death timing"
-
-[timeseries.progression.first_kill]
-fr = "1er frag"
-en = "1st kill"
-
-[timeseries.progression.first_death]
-fr = "1ère mort"
-en = "1st death"
-
-[timeseries.progression.avg]
-fr = "Moy."
-en = "Avg"
-
-[timeseries.progression.time_axis]
-fr = "Temps (m s)"
-en = "Time (m s)"
+# Le bloc « Premier frag / première mort » (chart lanes) tire son titre, son état
+# vide et ses tooltips du manifest PARTAGÉ first_blood.toml — même vocabulaire sur
+# Timeseries, Escouade/Dynamique et Sessions.
 
 [timeseries.progression.per_minute_title]
 fr = "Stats par minute"

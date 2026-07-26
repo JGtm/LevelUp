@@ -254,13 +254,6 @@ export interface SquadText {
     title: string
     labels: { assassination: string; ground_pound: string; shoulder_bash: string }
   }
-  firstEvents: {
-    title: string
-    description: string
-    fragLabel: string
-    deathLabel: string
-    matchesSuffix: string
-  }
   units: {
     perGame: string
   }
@@ -564,13 +557,6 @@ const FR_TEXT: SquadText = {
     title: 'Mécaniques de frag',
     labels: { assassination: 'Assassinats', ground_pound: 'Frappes au sol', shoulder_bash: 'Charges d\'épaule' },
   },
-  firstEvents: {
-    title: 'Premier frag / première mort',
-    description: 'Histogramme butterfly : bins de 15 s. Frags positifs en haut, morts négatives en bas (couleur joueur atténuée).',
-    fragLabel: 'Premier frag',
-    deathLabel: 'Première mort',
-    matchesSuffix: 'matchs',
-  },
   units: {
     perGame: '/match',
   },
@@ -872,13 +858,6 @@ const EN_TEXT: SquadText = {
   killMechanics: {
     title: 'Kill mechanics',
     labels: { assassination: 'Assassinations', ground_pound: 'Ground Pounds', shoulder_bash: 'Shoulder Bashes' },
-  },
-  firstEvents: {
-    title: 'First frag / first death',
-    description: 'Butterfly histogram with 15 s bins. Frags above the axis, deaths below (muted player color).',
-    fragLabel: 'First frag',
-    deathLabel: 'First death',
-    matchesSuffix: 'matches',
   },
   units: {
     perGame: '/game',

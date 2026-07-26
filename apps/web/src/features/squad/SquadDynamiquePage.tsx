@@ -3,8 +3,8 @@
  *
  * Consomme le contexte SquadContext fourni par SquadLayout (même mécanisme de
  * données que Contributions : aucune query key propre). Regroupe les charts
- * d'intensité, de rendement/résistance et la section engagement — déplacés
- * depuis SquadContributionsPage.
+ * d'intensité, de rendement/résistance, le « Premier frag / première mort » et
+ * la section engagement — déplacés depuis SquadContributionsPage.
  *
  * Multi-titres : strings UI via getSquadText ; SquadEngagementSection gardée
  * derrière FeatureGate capability="engagement".
@@ -12,6 +12,8 @@
 import { useMemo } from 'react'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { EfficiencyTooltipText } from '@/components/charts/EfficiencyTooltipText'
+import { FirstBloodLanes } from '@/components/charts/FirstBloodLanes'
+import { firstBloodMaxSec, toFirstBloodSeries } from '@/features/_shared/firstBlood'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSquadContext } from './SquadContext'
 import { getSquadText } from './i18n'
@@ -54,6 +56,12 @@ export function SquadDynamiquePage() {
     () => (pageData?.match_history ?? []).slice(0, 15).map((m) => m.match_id).reverse(),
     [pageData?.match_history],
   )
+  // « Premier frag / première mort » : une bande par joueur de l'escouade, valeurs
+  // par match servies telles quelles par l'API (aucun bucketing serveur).
+  const firstBlood = useMemo(
+    () => toFirstBloodSeries(pageData?.first_blood),
+    [pageData?.first_blood],
+  )
   return (
     <div className="space-y-4">
       <SquadIntensityProfileChart
@@ -67,6 +75,15 @@ export function SquadDynamiquePage() {
         profile={intensityProfile ?? { options: [], rows: {} }}
         colorByPlayer={playerColors}
         playerOrder={[mainPlayerKey, ...confirmedGamertags]}
+      />
+
+      {/* Premier frag / première mort — bandes par joueur (2 à 4 joueurs).
+          Le titre et l'état vide viennent du manifest partagé first_blood :
+          même vocabulaire ici, sur Timeseries et sur Sessions. */}
+      <FirstBloodLanes
+        data={firstBlood}
+        maxSec={firstBloodMaxSec(firstBlood)}
+        emptyMessage={t.empty.noBlockData}
       />
 
       <SquadEfficiencyChart

@@ -258,13 +258,14 @@ func (s *SessionPageService) GetPage(
 		}
 	}
 
-	// Profil d'intensité (frags par phase de match) — session courante + comparée.
-	// compareMatches vide (pas de comparaison) → seule IntensityRows est renseignée.
-	var compareMatchesForIntensity []legacymatch.StatsMatchRow
+	// Blocs event-based (profil d'intensité + premier frag/première mort) — session
+	// courante + comparée. compareMatches vide (pas de comparaison) → seuls les
+	// champs de la session courante sont renseignés.
+	var compareMatchesForEvents []legacymatch.StatsMatchRow
 	if resp.CompareEnabled {
-		compareMatchesForIntensity = filterBySession(compareScope, compareLabel)
+		compareMatchesForEvents = filterBySession(compareScope, compareLabel)
 	}
-	s.attachSessionIntensity(ctx, &resp, canonicalRows, currentMatches, compareMatchesForIntensity)
+	s.attachSessionEventBlocks(ctx, &resp, canonicalRows, currentMatches, compareMatchesForEvents)
 
 	// Placement X/Y dans la colonne Rang (matchs de placement) — appliqué aux deux
 	// tableaux (session + comparée), comme l'Explorer.
@@ -292,14 +293,17 @@ func (s *SessionPageService) GetPage(
 	return resp, nil
 }
 
-// attachSessionIntensity calcule le profil d'intensité (frags par phase de match) de
-// la session courante et, en mode comparaison, de la session comparée — MIROIR du
-// calcul Timeseries (buildIntensityRows). Best-effort : sans repo highlight events ni
-// xuid, ou en cas d'erreur/absence d'events, les champs restent nil (le front affiche
-// l'état vide). Les events des deux sessions sont chargés en UN seul appel ; les
+// attachSessionEventBlocks calcule les blocs dérivés des events horodatés pour la
+// session courante et, en mode comparaison, pour la session comparée :
+//   - le profil d'intensité (frags par phase de match) — MIROIR de buildIntensityRows ;
+//   - le « premier frag / première mort » par match — MIROIR de buildSoloFirstBlood.
+//
+// Best-effort : sans repo highlight events ni xuid, ou en cas d'erreur/absence
+// d'events, les champs restent nil (le front affiche l'état vide). Les events des
+// deux sessions ET des deux blocs sont chargés en UN seul appel (kill + death) ; les
 // timelines T0 sont construites une fois sur l'historique canonical complet (même
 // source que le calcul Timeseries, scoping garanti identique).
-func (s *SessionPageService) attachSessionIntensity(
+func (s *SessionPageService) attachSessionEventBlocks(
 	ctx context.Context,
 	resp *domain.SessionPageResponse,
 	canonicalRows []canonical.PlayerMatchRow,
@@ -311,16 +315,21 @@ func (s *SessionPageService) attachSessionIntensity(
 	ids := matchIDsFromStatsRows(currentMatches)
 	ids = append(ids, matchIDsFromStatsRows(compareMatches)...)
 	filters := port.HighlightEventFilters{
-		MatchIDs:   ids,
-		EventTypes: []canonical.HighlightEventType{canonical.EventKill, canonical.EventFirstKill},
+		MatchIDs: ids,
+		// Les morts (death / first_death) servent au bloc « premier frag / première
+		// mort » ; l'intensité n'exploite que les frags (filtrage interne).
+		EventTypes: []canonical.HighlightEventType{
+			canonical.EventKill, canonical.EventFirstKill,
+			canonical.EventDeath, canonical.EventFirstDeath,
+		},
 	}
 	if err := filters.Validate(); err != nil {
-		slog.WarnContext(ctx, "session page: intensity filters invalid", "err", err)
+		slog.WarnContext(ctx, "session page: event blocks filters invalid", "err", err)
 		return
 	}
 	events, err := s.highlightEventsRepo.Load(ctx, filters)
 	if err != nil {
-		slog.WarnContext(ctx, "session page: highlight events load failed (intensity)", "err", err)
+		slog.WarnContext(ctx, "session page: highlight events load failed (event blocks)", "err", err)
 		return
 	}
 	if len(events) == 0 {
@@ -335,11 +344,15 @@ func (s *SessionPageService) attachSessionIntensity(
 	// (le paramètre matches ne sert qu'aux libellés) : on scinde donc les events par
 	// session AVANT chaque appel, sinon les matchs de la session comparée fuiteraient
 	// dans le profil de la session courante (et inversement).
-	resp.IntensityRows = buildIntensityRows(
-		filterHighlightEventsByMatches(corrected, currentMatches), currentMatches, s.playerXUID, durations)
+	currentEvents := filterHighlightEventsByMatches(corrected, currentMatches)
+	resp.IntensityRows = buildIntensityRows(currentEvents, currentMatches, s.playerXUID, durations)
+	resp.FirstBlood = buildSoloFirstBlood(s.gamertag, narrative.ComputeFirstEventsPerMatch(
+		currentEvents, s.playerXUID, matchIDsFromStatsRows(currentMatches)))
 	if len(compareMatches) > 0 {
-		resp.CompareIntensityRows = buildIntensityRows(
-			filterHighlightEventsByMatches(corrected, compareMatches), compareMatches, s.playerXUID, durations)
+		compareEvents := filterHighlightEventsByMatches(corrected, compareMatches)
+		resp.CompareIntensityRows = buildIntensityRows(compareEvents, compareMatches, s.playerXUID, durations)
+		resp.CompareFirstBlood = buildSoloFirstBlood(s.gamertag, narrative.ComputeFirstEventsPerMatch(
+			compareEvents, s.playerXUID, matchIDsFromStatsRows(compareMatches)))
 	}
 }
 

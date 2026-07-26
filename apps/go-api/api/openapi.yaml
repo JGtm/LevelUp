@@ -11661,44 +11661,40 @@ components:
       required:
         - match_ids
       type: object
-    FirstEventBucket:
+    FirstBloodMatchPoint:
       additionalProperties: false
       properties:
-        first_deaths:
-          format: int64
-          type: integer
-        first_kills:
-          format: int64
-          type: integer
-        lower_seconds:
+        first_death_sec:
           format: double
-          type: number
-        upper_seconds:
+          type:
+            - number
+            - "null"
+        first_kill_sec:
           format: double
-          type: number
+          type:
+            - number
+            - "null"
+        match_id:
+          type: string
       required:
-        - lower_seconds
-        - upper_seconds
-        - first_kills
-        - first_deaths
+        - match_id
+        - first_kill_sec
+        - first_death_sec
       type: object
-    FirstEventDistribution:
+    FirstBloodPlayerSeries:
       additionalProperties: false
       properties:
-        buckets:
+        matches:
           items:
-            $ref: '#/components/schemas/FirstEventBucket'
+            $ref: '#/components/schemas/FirstBloodMatchPoint'
           type:
             - array
             - "null"
-        mean_first_death_seconds:
-          format: double
-          type: number
-        mean_first_kill_seconds:
-          format: double
-          type: number
+        player:
+          type: string
       required:
-        - buckets
+        - player
+        - matches
       type: object
     FormTabResponse:
       additionalProperties: false
@@ -18940,6 +18936,12 @@ components:
             - "null"
         compare_enabled:
           type: boolean
+        compare_first_blood:
+          items:
+            $ref: '#/components/schemas/FirstBloodPlayerSeries'
+          type:
+            - array
+            - "null"
         compare_intensity_rows:
           items:
             $ref: '#/components/schemas/IntensityMatchRow'
@@ -18962,6 +18964,12 @@ components:
           $ref: '#/components/schemas/SessionCompareEntry'
         current_session:
           $ref: '#/components/schemas/SessionCompareEntry'
+        first_blood:
+          items:
+            $ref: '#/components/schemas/FirstBloodPlayerSeries'
+          type:
+            - array
+            - "null"
         intensity_rows:
           items:
             $ref: '#/components/schemas/IntensityMatchRow'
@@ -19581,53 +19589,6 @@ components:
         - team_observed
         - durations_seconds
         - players
-      type: object
-    SquadFirstEvents:
-      additionalProperties: false
-      properties:
-        bin_labels:
-          items:
-            type: string
-          type:
-            - array
-            - "null"
-        bin_size_seconds:
-          format: int64
-          type: integer
-        rows:
-          items:
-            $ref: '#/components/schemas/SquadFirstEventsRow'
-          type:
-            - array
-            - "null"
-      required:
-        - bin_size_seconds
-        - bin_labels
-        - rows
-      type: object
-    SquadFirstEventsRow:
-      additionalProperties: false
-      properties:
-        death_counts:
-          items:
-            format: int64
-            type: integer
-          type:
-            - array
-            - "null"
-        kill_counts:
-          items:
-            format: int64
-            type: integer
-          type:
-            - array
-            - "null"
-        player:
-          type: string
-      required:
-        - player
-        - kill_counts
-        - death_counts
       type: object
     SquadHeader:
       additionalProperties: false
@@ -21311,8 +21272,12 @@ components:
           type:
             - array
             - "null"
-        first_events:
-          $ref: '#/components/schemas/SquadFirstEvents'
+        first_blood:
+          items:
+            $ref: '#/components/schemas/FirstBloodPlayerSeries'
+          type:
+            - array
+            - "null"
         frag_classes:
           additionalProperties:
             items:
@@ -21848,8 +21813,12 @@ components:
           $ref: '#/components/schemas/TimeseriesCumulTab'
         distributions_tab:
           $ref: '#/components/schemas/TimeseriesDistributionsTab'
-        first_events:
-          $ref: '#/components/schemas/FirstEventDistribution'
+        first_blood:
+          items:
+            $ref: '#/components/schemas/FirstBloodPlayerSeries'
+          type:
+            - array
+            - "null"
         frag_distribution:
           $ref: '#/components/schemas/FragDistribution'
         intensity_rows:
