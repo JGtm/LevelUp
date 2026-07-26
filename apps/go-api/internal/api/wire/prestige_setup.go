@@ -20,7 +20,6 @@ import (
 	"path/filepath"
 	"sync"
 
-	titlePkg "levelup/go-api/internal/domain/title"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
 	prestigedb "levelup/go-api/internal/platform/duckdb/prestige"
 	"levelup/go-api/internal/prestige"
@@ -51,17 +50,30 @@ type PrestigeBundle struct {
 	mu             sync.Mutex
 }
 
-// NewPrestigeBundle initialise le bundle au boot.
+// NewPrestigeBundleAt initialise le bundle au boot, sur des chemins EXPLICITES.
 //
-// repoRoot = racine du repo (pour locate config/ et data/).
-// resolve  = PlayerResolver pour ouvrir les player DB à la demande.
+// repoRoot         = racine du repo (uniquement pour config/prestige/tuning.toml).
+// sharedSocialPath = shared_social.duckdb à ouvrir (cf. config.PrestigeBundleDBPaths).
+// metadataPath     = metadata.duckdb à ouvrir (idem).
+// resolve          = PlayerResolver pour ouvrir les player DB à la demande.
 //
 // Si une étape échoue (TOML absent, DB injoignable), retourne nil + error.
 // L'appelant (server.go) doit décider de booter sans Prestige.
 //
+// Raison des chemins explicites (2026-07-26) : le layout disque de la DÉMO n'est
+// pas celui de la production. Les fixtures démo vivent sous
+// LEVELUP_DEMO_FIXTURES_DIR en layout PLAT (`<dir>/warehouse/*.duckdb`, cf.
+// ops.demoTitleSubdir), là où le PathResolver résout
+// `data/titles/{slug}/warehouse/*.duckdb`. Dérivé du seul repoRoot, le bundle démo
+// pointait un chemin inexistant : l'initialisation échouait, le bundle restait nil,
+// et TOUTE lecture Prestige adossée à une base (arcs, objectifs, total de points,
+// escouades) était morte — ce que des fixtures read-time ont longtemps masqué.
+// Avec les chemins injectés, la démo lit les échantillons générés par `seed-demo`
+// (internal/ops/seed_demo_prestige.go).
+//
 // ─── ÉPINGLAGE AU TITRE PAR DÉFAUT — constat daté 2026-07-25 (V721-14a / D-06) ───
 //
-// Les DEUX bases ouvertes ici le sont sur `titlePkg.DefaultSlug`, quel que soit le
+// Les DEUX bases ouvertes ici le sont sur le titre PAR DÉFAUT, quel que soit le
 // titre de la requête. Ce n'est PAS un oubli de câblage : c'est la conséquence de
 // deux propriétés du modèle Prestige, qui rendent un bundle par titre impossible
 // sans décision produit préalable.
@@ -93,21 +105,19 @@ type PrestigeBundle struct {
 // Ne pas « corriger » ce point en n'isolant qu'une des deux bases : l'analyse
 // complète et les options chiffrées sont dans .ai/V7.2.1/PLAN_V721_NOTION_BATCH.md,
 // lot V721-14a, découverte D-06.
-func NewPrestigeBundle(repoRoot string, resolve PlayerResolver, enabled bool) (*PrestigeBundle, error) {
-	pr := titlePkg.NewPathResolver(repoRoot)
-	titleSlug := titlePkg.DefaultSlug
-
+func NewPrestigeBundleAt(repoRoot, sharedSocialPath, metadataPath string,
+	resolve PlayerResolver, enabled bool) (*PrestigeBundle, error) {
 	// 1. Charger tuning.toml (fallback géré dans LoadTuning)
 	tuning := prestige.LoadTuning(filepath.Join(repoRoot, "config", "prestige", "tuning.toml"))
 
 	// 2. Ouvrir shared_social.duckdb (partagé)
-	sharedSocialDB, err := platform_duckdb.OpenReadWriteShared(pr.SharedSocialDBPath(titleSlug))
+	sharedSocialDB, err := platform_duckdb.OpenReadWriteShared(sharedSocialPath)
 	if err != nil {
 		return nil, errors.New("prestige: cannot open shared_social.duckdb: " + err.Error())
 	}
 
 	// 3. Ouvrir metadata.duckdb (partagé)
-	metadataDB, err := platform_duckdb.OpenReadWriteShared(pr.MetadataDBPath(titleSlug))
+	metadataDB, err := platform_duckdb.OpenReadWriteShared(metadataPath)
 	if err != nil {
 		sharedSocialDB.Close()
 		return nil, errors.New("prestige: cannot open metadata.duckdb: " + err.Error())
@@ -127,8 +137,8 @@ func NewPrestigeBundle(repoRoot string, resolve PlayerResolver, enabled bool) (*
 	}
 
 	slog.Info("prestige_bundle_initialized",
-		"shared_social_path", pr.SharedSocialDBPath(titleSlug),
-		"metadata_path", pr.MetadataDBPath(titleSlug),
+		"shared_social_path", sharedSocialPath,
+		"metadata_path", metadataPath,
 		"feature_flag_enabled", enabled,
 	)
 	return bundle, nil
@@ -197,20 +207,36 @@ func (b *PrestigeBundle) serviceAndPlayerDB(ctx context.Context, playerSlug stri
 	if pdb == nil || pdb.Player == nil {
 		return nil, nil, errors.New("prestige: player db not available")
 	}
+	// FRONTIÈRE D'IDENTITÉ (correctif 2026-07-26). Ici, et ici seulement, le
+	// player_slug applicatif devient un xuid Xbox : `resolve` (config.ResolvePlayer)
+	// a lu db_profiles.json / DemoRoster et posé pdb.XUID. Le BaselineProvider est
+	// construit AVEC ce xuid — les données de match (match_participants.xuid) ne
+	// sont jamais interrogées avec un slug. Un xuid vide = profil mal déclaré :
+	// on le rend visible AVANT de dégrader (le provider renverra 0 match), car
+	// c'est précisément le silence qui a laissé le défaut survivre en production.
+	if pdb.XUID == "" {
+		slog.ErrorContext(ctx, "prestige_player_without_xuid",
+			"player_slug", playerSlug,
+			"title_slug", pdb.TitleSlug,
+			"impact", "aucun match attribué : baselines vides, jauges à 0, objectifs figés",
+			"fix", "renseigner le xuid du joueur dans db_profiles.json")
+	}
 
 	deps := prestige.Deps{
-		Tuning:           b.tuning,
-		Challenges:       prestigedb.NewPrestigeChallengeRepo(pdb.Player),
-		Arcs:             prestigedb.NewPrestigeArcRepo(pdb.Player),
-		Moments:          prestigedb.NewPrestigeMomentCardRepo(pdb.Player),
-		Prestige:         b.socialRepo,
-		Telemetry:        prestigedb.NewPrestigeTelemetryRepo(pdb.Player),
-		BaselineState:    prestigedb.NewPrestigeBaselineStateRepo(pdb.Player),
-		Templates:        b.templateRepo,
-		PresetArcs:       b.presetArcRepo,
-		SquadChallenges:  b.squadChallRepo,
-		Squads:           b.squadRepo,
-		BaselineProvider: prestigedb.NewHaloBaselineProvider(pdb.SharedReadDB()),
+		Tuning:          b.tuning,
+		Challenges:      prestigedb.NewPrestigeChallengeRepo(pdb.Player),
+		Arcs:            prestigedb.NewPrestigeArcRepo(pdb.Player),
+		Moments:         prestigedb.NewPrestigeMomentCardRepo(pdb.Player),
+		Prestige:        b.socialRepo,
+		Telemetry:       prestigedb.NewPrestigeTelemetryRepo(pdb.Player),
+		BaselineState:   prestigedb.NewPrestigeBaselineStateRepo(pdb.Player),
+		Templates:       b.templateRepo,
+		PresetArcs:      b.presetArcRepo,
+		SquadChallenges: b.squadChallRepo,
+		Squads:          b.squadRepo,
+		// Le reader ET le xuid viennent du MÊME PlayerDB : impossible de croiser
+		// le shared d'un joueur avec l'identité d'un autre.
+		BaselineProvider: prestigedb.NewHaloBaselineProvider(pdb.SharedReadDB(), pdb.XUID),
 		// Indice escouade : modes servis en FR canonique (mode_name_tr) prêts à
 		// afficher, comme home/match-view — le sous-titre « surtout … » était en EN.
 		// Playlists : résolution FR par playlist_id (asset_translations, même
