@@ -1,3 +1,87 @@
+## [2026-07-26] Doc inversée UGC + Waypoint, et garde-rail de parité des capabilities
+
+**Statut** : Complété. Branche `fix/notion-quick-wins-2` (base `b64aaa6cc`). Gates joués.
+Commentaires + un fichier de test ; **zéro changement de comportement**.
+
+**Point A — la prémisse du cadrage était périmée.** `discovery_client.go` n'affirmait
+plus que l'API est publique : son en-tête de `FetchAsset` documentait déjà « AUTH
+REQUISE » (corrigé lors de la résolution autonome des noms d'assets). La doc réellement
+inversée était **ailleurs** : `internal/assetnames/resolver.go:43-45` décrivait le Fetcher
+comme « API **publique** GameCMS, **sans token** » — faux deux fois (l'hôte est
+discovery-infiniteugc, pas gamecms-hacs ; l'appel est authentifié). Vérifié sur pièces
+côté code : `attemptHaloGet` pose `x-343-authorization-spartan` + `343-clearance` dès que
+`p.staticTokens != nil`, et `NewAssetNameFetcher` alimente toujours ce champ depuis le pool
+unifié — le client envoie donc bien un Spartan token en production. Corrigés : le commentaire
+de `resolver.go`, l'en-tête de package de `discovery_client.go` (qui annonçait
+`gamecms-hacs.svc` comme endpoint alors que le code tape `discovery-infiniteugc`), et la
+doc de `FetchAsset` (sonde anonyme datée 2026-07-25 : 401 corps vide/Kestrel ; gamecms-hacs
+401 + `WWW-Authenticate: SpartanToken`). Documentée à côté, la voie SANS jeton éprouvée
+(120/123 cartes) : page publique `ugc/maps/{assetId}` → JSON complet dans
+`<script id="__NEXT_DATA__">`, et `blobs-infiniteugc` en lecture anonyme (404 Azure sur
+chemin invalide, pas 401). Non câblée — c'est une note d'orientation, pas une dépendance.
+
+**Point B — 5 commentaires inversés (volet B de `.ai/DIAG_WAYPOINT_COLUMN_INFINITE.md`).**
+`waypoint_match_url` est déclarée par les DEUX titres depuis le 2026-07-24 (`c5dfb9bfd`) ;
+`registry.go` (const `CapWaypointMatchURL`), `ExplorerMatchesTable.tsx` (×2),
+`SquadSynergyHistoryTable.tsx` (×2) et `_settingsCards.tsx` affirmaient l'inverse. Corrigés
+avec la date d'activation et la vraie raison de non-exclusion (les chemins d'URL diffèrent
+par titre mais sont résolus par `buildWaypointMatchUrl` — segment + bucket `arena/`).
+
+**Le vrai livrable — garde-rail, et pourquoi CELUI-LÀ.** Le diag annonçait « trois listes
+sans lien, aucun garde-rail ». Mesure faite : il y en a **quatre**, et l'un des liens est
+**déjà** couvert. `TestCapabilitiesGoTSMirror` (`capabilities_ts_mirror_test.go`, V72-12)
+relie déjà const `Cap*` ↔ `TITLE_CAPABILITIES` (TS), dans les deux sens, avec allowlist
+datée (`weapon_kills` = backend-only). Le trou réel, non gardé, était
+`knownCapabilities` (`config_loader.go`) : **rien** ne vérifiait qu'il reflète les const.
+Sa gravité est supérieure à celle du miroir TS — mutation à l'appui : retirer
+`CapWaypointMatchURL: {}` du set fait échouer la validation de
+`config/titles/halo_5/title.toml`, et `LoadTitlesIntoRegistry` n'enregistre alors **pas
+Halo 5 du tout** (le titre entier disparaît du switcher, pas seulement une colonne).
+
+Nouveaux `internal/domain/title/capabilities_parity_test.go` (les 5 tests) et
+`capabilities_parity_scan_test.go` (les extracteurs — scindé pour rester sous le seuil
+de 500 L). Package `title` : réutilise l'extracteur `go/ast` déjà présent plutôt que
+d'en écrire un 2e (CLAUDE.md n°6). Les tests :
+1. `TestCapabilitiesKnownSetMirrorsConstants` — const `Cap*` ↔ clés de `knownCapabilities`,
+   parité exacte. Le sens retour attrape une const `Cap*` déclarée **hors** `registry.go`,
+   qui rendrait le miroir TS aveugle (il ne parse que ce fichier).
+2. `TestCapabilityLiteralsInFrontAreDeclaredInGo` — tout littéral de gating du front
+   (`useCapability` / `useCapabilityStrict` / `hasCapabilityIn` / prop `capability`) est une
+   const Go réelle. Défense en profondeur derrière le typage `TitleCapability` (qu'un
+   `as TitleCapability` contourne) ; scan à parenthèses équilibrées, pas une regex
+   (leçon reprise de `spartan-customizer-strict.guard.test.ts` : `\([^)]*` rate
+   `hasCapabilityIn(useTitleCapabilities(), 'x')`). Fichiers `.test.` exclus (ils portent
+   des capabilities factices).
+3. `TestCapabilitiesGrantedByAPublicTitle` — chaque capability est accordée par ≥1 titre
+   **public** (built-in Infinite ou `title.toml`) ; les titres internes (`synthetic_title_b`)
+   ne comptent pas. Utilise le vrai `NewRegistryFromConfig` (zéro parseur TOML dupliqué).
+4. `TestCapabilitiesReferencedByAConsumer` — chaque const est lue quelque part : référence
+   Go qualifiée hors du package `title`, ou littéral front. Les références `games.Cap*` sont
+   **ignorées** : le package `games` déclare des homonymes d'un AUTRE système
+   (`CapabilityKey` data-level, clés pointées — diag §4.4). Le garde-rail porte
+   exclusivement sur le title-level.
+5. `TestOrphanCapabilityAllowlistIsCurrent` — hygiène de l'allowlist (vide au 2026-07-26 :
+   les 21 capabilities sont toutes accordées et toutes lues).
+
+Anti-passage-à-vide : chaque scan Fatal si son rendement tombe sous un plancher mesuré
+(12 capabilities front, 8 références Go, 2 titres publics) — un garde-rail qui ne trouve
+plus rien doit crier, pas passer. Scans mémoïsés (`sync.Once`) : 20 s → 1,3 s à chaud.
+
+**Mordant prouvé par mutation** (introduites puis retirées, `git diff` vérifié propre) :
+(a) const `CapMutationProbe` ajoutée → **4 tests rouges** (1, 3, 4 + le miroir TS
+préexistant) ; (b) `CapWaypointMatchURL` retirée de `knownCapabilities` → test 1 rouge +
+test 3 rouge sur « 1 seul titre public chargé » (la disparition de Halo 5 décrite plus
+haut) ; (c) littéral front `'waypoint_match_urls'` → test 2 rouge avec fichier:ligne.
+
+**Gates** : `gofmt -l ./internal` vide ; `go build ./...` 0 ; `go vet ./...` 0 ;
+`go test` domain/title + archlint + assetnames + platform/halo OK ;
+`golangci-lint --new-from-merge-base=origin/main` → **0 issues** ; `tsc -b` 0 ;
+`npm run lint` 0 erreur / 15 warnings (baseline connue).
+
+**Découverte hors périmètre, non traitée** : le diag §9 affirme « aucun garde-rail » entre
+les listes de capabilities — c'est faux depuis V72-12 (`capabilities_ts_mirror_test.go`).
+Le §9 mériterait un erratum, mais le diag est un document d'enquête daté : non modifié.
+
 ## [2026-07-26] Prestige — frontière d'identité player_slug ↔ xuid (objectifs figés à zéro)
 
 **Statut** : Complété (code écrit, NON compilé — gate à jouer par le pilote).

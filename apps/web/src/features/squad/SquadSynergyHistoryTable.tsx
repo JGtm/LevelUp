@@ -7,8 +7,9 @@
  *
  * Colonne « Waypoint » (I19) : lien externe vers la page de détail du match sur
  * Halo Waypoint (logo thème clair/sombre, remplace l'ancien lien texte « ↗ wp »),
- * gatée par la capability `waypoint_match_url` (absente pour Halo 5) ET par la
- * préférence locale `localUiPrefs.showWaypointColumn` (Settings → Apparence).
+ * gatée par la capability `waypoint_match_url` (déclarée par les DEUX titres depuis
+ * le 2026-07-24) ET par la préférence locale `localUiPrefs.showWaypointColumn`
+ * (Settings → Apparence).
  *
  * Utilise TanStack Table v8. Pagination 20/page côté client.
  * Labels carte/playlist via useFieldMappings (assets titre).
@@ -98,9 +99,9 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
   // que si le titre courant fournit un MMR par match. Faux pour Halo 5 → on
   // RETIRE silencieusement les colonnes (pas de cellule "-" ni de colonne vide).
   const providesTeamMmr = useCapability('team_mmr')
-  // Lien « Ouvrir sur Halo Waypoint » (I19) : gating par capability (absente pour
-  // Halo 5) ET par préférence LOCALE (Apparence → « Colonne Halo Waypoint sur les
-  // listes de matchs », défaut ON).
+  // Lien « Ouvrir sur Halo Waypoint » (I19) : gating par capability (déclarée par
+  // les DEUX titres depuis le 2026-07-24) ET par préférence LOCALE (Apparence →
+  // « Colonne Halo Waypoint sur les listes de matchs », défaut ON).
   const waypointCapability = useCapability('waypoint_match_url')
   const showWaypointColumnPref = useSettingsDraftStore((s) => s.localUiPrefs.showWaypointColumn)
   const showWaypoint = waypointCapability && showWaypointColumnPref

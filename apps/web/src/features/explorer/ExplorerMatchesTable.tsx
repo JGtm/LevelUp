@@ -20,9 +20,9 @@
  *            Perf (color) | ΔPerf | Rang | MMR équipe | MMR adv. | ΔMMR
  *
  * Colonne « Waypoint » (I19) : lien externe vers la page de détail du match sur
- * Halo Waypoint, gatée par la capability `waypoint_match_url` (absente pour
- * Halo 5) ET par la préférence locale `localUiPrefs.showWaypointColumn`
- * (Settings → Apparence, défaut ON).
+ * Halo Waypoint, gatée par la capability `waypoint_match_url` (déclarée par les
+ * DEUX titres depuis le 2026-07-24) ET par la préférence locale
+ * `localUiPrefs.showWaypointColumn` (Settings → Apparence, défaut ON).
  */
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import {
@@ -279,9 +279,10 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
   // KDA NET ((k+a/3)−d) pour les deux titres (valeur API Infinite / FDA Halo 5),
   // potentiellement négatif → échelle divergente autour de 0 (jamais kdScale).
 
-  // Colonne « Ouvrir sur Halo Waypoint » (I19) : gating par capability (absente
-  // pour Halo 5, cf. registry.go CapWaypointMatchURL) ET par préférence LOCALE
-  // (Apparence → « Colonne Halo Waypoint sur les listes de matchs », défaut ON).
+  // Colonne « Ouvrir sur Halo Waypoint » (I19) : gating par capability (déclarée
+  // par les DEUX titres depuis le 2026-07-24, cf. registry.go CapWaypointMatchURL)
+  // ET par préférence LOCALE (Apparence → « Colonne Halo Waypoint sur les listes
+  // de matchs », défaut ON).
   const waypointCapability = useCapability('waypoint_match_url')
   const showWaypointColumnPref = useSettingsDraftStore((s) => s.localUiPrefs.showWaypointColumn)
   const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
