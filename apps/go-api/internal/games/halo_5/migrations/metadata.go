@@ -40,6 +40,7 @@ func metadataStepNames() []string {
 	return []string{
 		"h5_add_xbox_achievement_definitions",
 		"h5_create_milestone_catalog",
+		"h5_milestone_catalog_add_condition_locales",
 		"h5_seed_milestone_catalog",
 		"h5_add_asset_translations",
 		"h5_add_medal_definitions",
@@ -87,9 +88,12 @@ func MetadataSteps() []migration.Migration {
 				`)
 			},
 		},
-		// Milestones (Progression V2) — schéma + seed PROPRES à h5 (le set isolé ne
-		// retombe pas sur le create_milestone_catalog inline HINF ni le seed global).
+		// Milestones (Progression V2) — schéma + réparation additive + seed PROPRES à
+		// h5 (le set isolé ne retombe pas sur le create_milestone_catalog inline HINF
+		// ni sur le seed global). L'ALTER doit précéder le seed (qui écrit
+		// condition_fr/condition_en).
 		milestoneCatalogSchemaStep(),
+		milestoneCatalogConditionLocalesStep(),
 		milestoneCatalogSeedStep(),
 		{
 			Name:        "h5_add_asset_translations",
