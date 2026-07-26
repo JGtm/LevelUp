@@ -64,7 +64,8 @@ echo "[deploy] Stubs demo OK"
 # Incident 2026-07-23 : cache BuildKit à 44,75 Go, disque saturé PENDANT le build (avant
 # même d'atteindre le bornage post-build de l'étape 3b). Si < 10 Go libres, purge
 # d'urgence du cache builder AVANT le build, avec une borne plus agressive (2 Go) que le
-# nettoyage post-deploy habituel (5 Go). Jamais silencieux : log explicite dans tous les cas.
+# nettoyage post-deploy habituel (12 Go, étape 3b) : ici on sacrifie sciemment la vitesse
+# du build pour ne pas saturer le disque. Jamais silencieux : log explicite dans tous les cas.
 _avail_gb="$(df --output=avail -BG / | tail -1 | tr -dc '0-9')" || _avail_gb=""
 echo "[deploy] Espace disque libre sur / : ${_avail_gb:-?}G"
 if [[ "${_avail_gb:-0}" -lt 10 ]]; then
@@ -126,6 +127,20 @@ mv .env.tmp .env
 # réapparaissait un jour (nouvelle dépendance de build, changement de contexte).
 # NB : une modif de CE script ne prend effet qu'au deploy suivant (bash retient
 # l'ancien inode pendant que le git reset remplace le fichier).
+#
+# Visibilité mémoire avant build (2026-07-26) — DIAGNOSTIC SEUL, aucune garde bloquante.
+# Les 3 gels machine des 25-26/07 se sont produits exactement ici : à court de RAM et sans
+# swap, le noyau évince les pages exécutables plutôt que de tuer le build, et tout le
+# système part en livelock (aucun OOM-kill dans les logs du boot précédent — la machine ne
+# meurt pas, elle bat la page). Un swap de 2 Go a été posé à la main sur le VPS le 26/07 ;
+# ces deux lignes permettent de corréler un futur incident avec l'état mémoire réel au
+# moment du build. Volontairement PAS de seuil qui refuserait le déploiement : MemAvailable
+# est une lecture instantanée qui varie avec les cycles d'auto-sync en cours, un refus
+# serait arbitraire. `|| true` sur les deux : une sonde de diagnostic ne doit jamais faire
+# échouer un déploiement (procps absent, /proc/meminfo illisible — cf. set -euo pipefail).
+awk '/MemAvailable/ {printf "[deploy] MemAvailable avant build: %d Mo\n", $2/1024}' /proc/meminfo || true
+echo "[deploy] Mémoire/swap avant build (free -m, ligne Swap) :"
+free -m | tail -1 || true
 echo "[deploy] docker compose build levelup (puis levelup-demo, sérialisé)..."
 if ! docker compose build levelup; then
     echo "[deploy] ERREUR: build levelup a échoué — prod NON touchée (anciens containers toujours actifs)"
@@ -148,7 +163,11 @@ echo "[deploy] docker compose down..."
 docker compose down --remove-orphans || true
 
 echo "[deploy] docker compose up -d (images déjà construites à l'étape 2d)..."
-docker compose up -d
+# --remove-orphans aussi sur le up (2026-07-26) : le down qui précède le porte déjà, mais
+# si le down échoue partiellement (démon occupé) ou qu'un conteneur a été créé hors compose
+# entre les deux, le up nu échoue sur « container name already in use » (incident
+# 2026-07-23 16:30, run 30025386880 : /levelup-levelup-demo-1 déjà pris). Idempotent.
+docker compose up -d --remove-orphans
 
 # 3. Nettoyer les images orphelines (garder les images < 24h : rollback rapide possible
 # le jour même en re-taguant l'image N-1 si le nouveau déploiement pose problème).
@@ -157,8 +176,28 @@ docker image prune -f --filter "until=24h"
 
 # 3b. Borner le cache de build BuildKit. Sans ça il croît sans limite à chaque
 # deploy (chaque build empile ses couches) et finit par saturer le disque du VPS
-# — incident disque 2026-06-27 : 33 Go de cache accumulé. On garde 5 Go de cache
-# récent pour des builds incrémentaux rapides ; au-delà, BuildKit évince le plus ancien.
+# — incident disque 2026-06-27 : 33 Go de cache accumulé. Au-delà du plafond, BuildKit
+# évince les entrées les moins récemment utilisées.
+#
+# DIMENSIONNEMENT DU PLAFOND (2026-07-26) — règle contre-intuitive, à ne pas « optimiser »
+# à la baisse : le plafond doit être SUPÉRIEUR au working-set d'UN build complet. En
+# dessous, la purge d'un deploy évince le cache dont le deploy SUIVANT a besoin — chaque
+# déploiement repart alors d'un build à FROID (compilation CGO/DuckDB complète : ~7 min sur
+# 2 vCPU contre 2-4 min en incrémental) avec un pic mémoire que la machine (1,8 Go de RAM,
+# ~950 Mo résidents pour les 2 conteneurs + l'OS) n'absorbe pas. C'est la cause racine des
+# 3 gels du VPS des 25-26/07, tous survenus pendant l'étape 2d : machine morte par
+# épuisement mémoire — sans swap le noyau part en livelock au lieu d'OOM-killer le build.
+# Un build complet mesuré = ~5,7 Go de cache (`docker system df`) : l'ancien plafond de
+# 5 Go était donc STRUCTURELLEMENT plus bas que le working-set, il garantissait l'éviction
+# à chaque deploy. Son commentaire annonçait pourtant « 5 Go de cache récent pour des
+# builds incrémentaux rapides » — doc inversée (anti-patron n°9) : le plafond détruisait
+# exactement ce qu'il prétendait préserver.
+# 12 Go = deux générations de build + marge, et reste très loin des 33-46 Go des incidents
+# disque (disque de 79 Go à 50 % d'occupation : cache plein ≈ 15 % du disque). Ne pas
+# ré-abaisser cette valeur sans avoir re-mesuré le working-set d'un build.
+# Ce plafond couvre AUSSI les cache mounts Go du Dockerfile (`type=cache` : module cache +
+# cache de compilation), comptés dans le même store et purgés par la même commande — c'est
+# voulu et sans danger, 12 Go les couvre largement.
 # PIÈGE (incident 2026-07-13, disque 100%, prod down) : `docker buildx prune` vide le
 # cache du builder BUILDX, mais `docker compose build` passe par le builder du DAEMON —
 # deux stores distincts. L'éviction ne touchait donc jamais le bon cache (46 Go
@@ -171,8 +210,8 @@ docker image prune -f --filter "until=24h"
 # avec `|| true` : la sortie de la commande (dont le `Total:` récupéré) reste visible dans
 # les logs de déploiement, et un échec est loggé explicitement — sans faire échouer un
 # déploiement déjà basculé (les services tournent déjà à ce stade, cf. étape 2e).
-echo "[deploy] Bornage du cache de build Docker (max-used-space 5GB)..."
-docker builder prune -f --max-used-space=5GB || {
+echo "[deploy] Bornage du cache de build Docker (max-used-space 12GB)..."
+docker builder prune -f --max-used-space=12GB || {
     _builder_prune_rc=$?
     echo "[deploy] WARN: builder prune failed (exit ${_builder_prune_rc})"
 }

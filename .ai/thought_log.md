@@ -1,3 +1,224 @@
+## [2026-07-26] CI : suite Go jouée UNE fois (D3) + déploiement conditionné à la CI verte (D29)
+
+**Statut** : Complété (branche `fix/build-cache-ci-hardening` ; comportement réel de la
+boucle d'attente validé au premier déploiement).
+
+**D3 — déduplication.** Le job baseline relançait la suite complète déjà jouée par
+Go Coverage (~22 min de doublon par push). Désormais : `go-coverage` exécute UNE fois
+`go test -json -coverprofile` (union des flags des deux anciennes invocations ; seule
+divergence : timeout 300 s vs 600 s → 600 s retenu, l'exécution fusionnée porte
+l'instrumentation de couverture, 300 s fabriquerait des faux timeouts) et le gate baseline
+consomme le JSONL via le nouveau mode `--from-jsonl` de `check_test_baseline.sh` (le mode
+autonome reste le défaut, pour `make gate-push`). Deux durcissements nés de la fusion :
+contrôle n°3 « package en échec sans test en échec » (un package NEUF qui ne compile pas
+passait les deux contrôles existants) et `print_failure_output` (avec `-json`, la sortie
+humaine disparaît du log ; piège mesuré : une erreur de compilation arrive en
+`"Action":"build-fail"` avec `ImportPath` et AUCUN champ `Package` — un extracteur naïf
+rate exactement le cas le plus fréquent). Gain réel : ~22 runner-minutes/push et une
+surface de flake en moins ; le temps mur reste borné par go-coverage. Vérifié : 9 JSONL
+synthétiques + 2 JSONL `go test -json` réels (test rouge, package non compilable), codes
+de sortie et extraits humains contrôlés ; coexistence `-json`/`-coverprofile` prouvée.
+
+**D29 — le déploiement attend la CI.** Un push sur main déclenchait CI et deploy en
+PARALLÈLE : la prod recevait le code avant le verdict (c'est ainsi que main a tenu 14 jours
+à 40 % de rouge sans conséquence). Design retenu — job `attente-ci` en tête de deploy.yml
+plutôt qu'un `workflow_run` (qui perdrait paths-ignore et la concurrency) : sondage
+`gh api .../workflows/ci.yml/runs?head_sha=...` toutes les 30 s, ciblé par FICHIER (stable
+au renommage d'affichage), borné à 55 min pour rendre un message explicite avant le kill
+GitHub ; `success` → OK, rouge → refus avec marche à suivre, `skipped/neutral` → passe avec
+warning, 404 → échec dur (jamais d'attente silencieuse). Soupape d'urgence :
+`workflow_dispatch` avec `ignorer_attente_ci` (hotfix uniquement) ; pièges gérés : un
+`needs` sauté saute ses dépendants par défaut → `!failure() && !cancelled()` sur le job
+deploy, et la garde `github.ref == refs/heads/main` reste la SEULE autorisation de
+déployer. Vérifié : aucun required status check ne référençait le job supprimé (branche
+non protégée, ruleset = deletion + non_fast_forward).
+
+**Garde-rail anti-régression** : `internal/archlint/ci_deploy_triggers_test.go` — l'invariant
+« tout push qui déclenche le déploiement déclenche la CI » (sinon `attente-ci` sonde un run
+qui n'existera jamais : deadlock de 55 min). Deux tests (paths-ignore de ci.yml ⊆ deploy.yml ;
+branches de deploy ⊆ branches de CI), ancres qui `t.Fatalf` si un bloc devient introuvable
+(un garde-rail qui perd sa cible doit rougir, pas se taire). Mordant prouvé par 4 mutations,
+robustesse prouvée sur variations de forme YAML. actionlint 1.7.12 + shellcheck rejoués
+localement sur les 7 workflows (exit 0).
+
+**Incident d'agent consigné** : édition furtive du runbook dans le dépôt PRINCIPAL au lieu
+du worktree, détectée et restaurée par l'agent lui-même (`git status` principal vide,
+re-vérifié par le superviseur). Récidive du piège du dernier chantier (3 agents sur 12) —
+la consigne de vérification de chemin absolu reste indispensable dans tout prompt d'agent.
+
+---
+
+## [2026-07-26] Détection de secrets — gitleaks 8.30.1 (hook local + CI) + audit d'historique
+
+**Statut** : Complété (branche `fix/build-cache-ci-hardening`).
+
+**Contexte** : dépôt public manipulant des refresh tokens OAuth et un accès SSH prod.
+L'ancienne détection (detect-secrets, framework pre-commit) ne tournait PLUS depuis la
+migration lefthook — protection morte en silence. La push protection GitHub
+(`secret_scanning` + `push_protection`) a été ACTIVÉE via l'API le 2026-07-26 : première
+ligne de défense, côté serveur.
+
+**Livré** : gitleaks **8.30.1** épinglée en 3 endroits avec vérification SHA-256 (jamais de
+« latest ») ; `.gitleaks.toml` = défauts + 6 allowlists CIBLÉES (doctrine : `targetRules`
++ `condition = "AND"` dès qu'un chemin est cité — un chemin seul n'excuse rien ; contrôle
+négatif exécuté : une clé à haute entropie injectée dans un fichier allowlisté est bien
+DÉTECTÉE) ; workflow CI dédié (séparé de ci.yml à dessein, mêmes branches, binaire pinné
+hors du dossier scanné, `--redact`) ; hook lefthook pre-commit sur les fichiers stagés,
+non bloquant si le binaire manque (avertissement bruyant + marche d'installation — la CI
+et la push protection restent l'autorité). Piège de version documenté : en 8.30.1,
+`protect` et `detect --no-git` n'existent plus — les commandes sont `gitleaks dir` et
+`gitleaks git --staged`. `.secrets.baseline` supprimé (orphelin de detect-secrets).
+
+**Audit d'historique complet : AUCUN vrai secret.** 5 841 commits scannés (~15 s) →
+82 alertes, 100 % faux positifs vérifiés (48 = les empreintes SHA-1 du `.secrets.baseline`
+lui-même, 10 = noms de tests Go du baseline JSONL, 1 = clés i18n `discord_notify_*` de
+l'ère Python prises pour un secret Discord, le reste = identifiants de code). Vérifié
+aussi bout en bout : un `git commit` réel portant un faux secret est REFUSÉ par le hook,
+accepté après retrait.
+
+**Reste connu** : personne n'a le binaire installé localement (avertissement aux premiers
+commits jusqu'à `scoop install gitleaks`) ; l'historique n'est pas re-scanné en CI (audit
+manuel, procédure en tête de `.gitleaks.toml`) ; suivi possible — étendre le garde-rail
+des déclencheurs (archlint) pour geler l'alignement des listes de branches de
+gitleaks.yml/shared-social-gate.yml sur ci.yml.
+
+---
+
+## [2026-07-26] Assainissement CI — inventaire 14 jours et application des correctifs
+
+**Statut** : Complété (branche `fix/build-cache-ci-hardening`, verdict final = CI de branche).
+
+**Inventaire (agent dédié, 581 runs / 188 jobs rouges analysés)** : le bruit CI ne venait
+pas d'un empilement de bugs mais de trois causes structurelles — (1) le gate baseline,
+84 rouges à lui seul, exigeait une purge manuelle à chaque suppression de test ET mentait
+(un test en échec passait, seul un test absent rougissait — `|| true` sur le `go test` +
+comptage `pass|fail|skip`) ; (2) les trois gates les plus bruyants (baseline, lint
+ratchet, couverture : 149/188) n'avaient aucun filet local, tout arrivait rouge sur main ;
+(3) chaque commit `.ai/`/docs redéployait la prod entière. `main` n'était qu'à DEUX items
+du vert : la baseline périmée (8 lignes, tests supprimés volontairement en V721-09) et le
+test AttachAfterSwap (entrée dédiée ci-dessous).
+
+**Correctifs appliqués** (détail par item dans les messages de commit) : D1 baseline
+purgée · D2 le gate baseline dit la vérité (contrôle des `"fail"`, hint « package qui ne
+compile pas = tests absents », JSONL persisté + artefact de diagnostic en CI) · D4
+`paths-ignore` sur deploy/precheck/ci — avec mise en garde : ne JAMAIS ignorer `docs/**`,
+lu au runtime par l'API (changelog + notes de version) · D5 le gate anti-ART
+`shared-social` tournait sur `feature/*` mais JAMAIS sur `feat/**` — les chantiers v7.2
+ont réécrit `persist/` sans lui · D7 actionlint pinné v1.7.12 (11 rouges par dérive de
+version amont) · D9 timeouts par job (défaut GitHub : 360 min) · D10 `permissions` minimaux
+· D12 `compose up --remove-orphans` · D23 ×2 gardes sur les steps `if: always()` qui
+fabriquaient une seconde erreur parasite · D24 doc inversée du seuil de couverture (69.0
+réel vs 76.0 commenté) · D26/D27 un seul système de hooks : lefthook (suppression de
+`.pre-commit-config.yaml` mort qui référençait un script inexistant, de 2 scripts
+orphelins et de l'ancien pre-commit ; `make install-git-hooks` ÉCRASAIT le shim lefthook —
+réécrit en `lefthook install` ; gate ADR 0021 câblé en pre-push) · D28 cible
+`make gate-push` (filet local des 3 gates bruyants, la CI reste l'autorité) · D30 silence
+daté de l'alerte echarts (bump 5→6 reporté v7.3, décision utilisateur).
+
+**Faux problèmes purgés par l'inventaire** (à ne pas re-diagnostiquer) : les « flakes
+timing assets/persist » = 0 occurrence CI en 14 j (souvenir d'exécutions locales) ; le
+flake sharedprovider = 1/33, marginal ; l'échec « Bump postcss » = timeout SSH du VPS, pas
+un workflow Dependabot cassé ; le ratchet lint fonctionne (32 rouges = vraies fautes
+nouvelles) ; le run « cancelled » du 25/07 19:45 = comportement documenté de la
+concurrency deploy-vps.
+
+**Découvertes consignées NON traitées** (hors périmètre) : D3 le job baseline rejoue la
+même suite que Go Coverage (~22 min de doublon) · D8 pre-check dupliqué entre deploy.yml
+et test-deploy-precheck.yml · D11 Deploy Pre-Check tourne sur les branches RE (47 runs
+filmdec pour rien) · D25 auto-update du coverage baseline jamais committé (logique morte)
+· D29 deploy.yml ne dépend PAS de la CI (un push main déploie même CI rouge — décision
+utilisateur demandée) · D31 pinning hétérogène des actions · les hooks universels
+(detect-secrets, check-yaml…) ne tournaient déjà plus et n'existent plus nulle part —
+décision à prendre si on les veut en lefthook · D6 les branches filmdec embarquent un
+ci.yml d'avant le 12/07 → 47 pushes sans CI : recopier `.github/workflows/` de main avant
+toute reprise.
+
+---
+
+## [2026-07-26] Fix CI rouge — TestCopyMetadataFile_AttachAfterSwapWhileHeld (détenteur multi-process)
+
+**Statut** : Complété (branche `fix/build-cache-ci-hardening` ; preuve d'exécution Linux = CI).
+
+**Décision** : le détenteur du fichier est un VRAI second processus (ré-exécution du
+binaire de test, poignée de main READY / EOF stdin / `OLD <n>`, bornée 30 s). L'ancienne
+simulation same-process était structurellement impossible : DuckDB dédoublonne les bases
+attachées par CHEMIN CANONIQUE à l'échelle du processus (mesuré : chemin non normalisé →
+même refus ; lien dur → autre mécanisme), donc l'échange d'inode n'y change rien — d'où le
+`Unique file handle conflict` en CI, un conflit qui ne peut pas exister entre les deux
+conteneurs de prod. Test déplacé dans `seed_demo_inode_swap_integration_test.go` (le
+fichier d'origine était à 798 L ; précédent : `media_kill_brutal_test.go`).
+
+**Mordant mesuré sous Windows** (skip levé + forme fautive O_TRUNC de `cfc341b4f`
+restaurée temporairement) : `create dst: fichier utilisé par un autre processus`. Mordant
+Linux raisonné (O_TRUNC réussit sur verrou consultatif → ATTACH sur inode encore verrouillé
+→ `Conflicting lock is held`), tranché par la CI. `copyMetadataFile` non touché.
+
+**Skip Windows conservé, justification corrigée** : l'ancienne prémisse (« unlink d'un
+fichier tenu impossible sous Windows ») est fausse — mesuré, `os.Remove` réussit et le
+scénario passe en 0,08 s. Le skip reste parce que les sémantiques de partage Windows
+(verrouillage impératif) ne sont pas celles du conteneur démo Linux (verrou consultatif) :
+un vert Windows validerait autre chose que la prod. Le gate réel est la CI Linux — d'où la
+nouvelle règle de flux : pousser la BRANCHE et attendre la CI avant tout merge vers main.
+
+**Balayage des voisins** : aucun autre test ne simule un détenteur multi-process avec un
+handle same-process (`seed_demo_wal_test.go` : zéro ouverture DuckDB ;
+`TestAssociateMediaWithMatches_SharedMatchesHeldRW` : same-process VOULU, c'est le pool
+serveur qu'il modélise).
+
+---
+
+## [2026-07-26] Gels VPS au build : la vraie cause est NOTRE purge de cache du 24/07
+
+**Statut** : Complété (enquête) ; correctifs sur `fix/build-cache-ci-hardening`.
+
+**Symptôme** : 3 gels machine en 2 jours pendant `docker compose build` (v7.2.0 ×2 le
+25/07, v7.2.5 le 26/07 09:48). SSH et HTTP morts, seul un reboot IONOS en sort. « Ça
+fait 6 mois que ça fonctionne » (utilisateur) — exact, et c'est la clé de l'enquête.
+
+**Diagnostic ANTÉRIEUR invalidé** : j'avais conclu (v7.2.0) au double build CGO causé par
+les `build.args VERSION` divergents, corrigé par V721-15. Amplificateur réel, mais pas la
+cause première : le build du 26/07 09:48 était UNIQUE et sérialisé, et a gelé quand même.
+
+**Cause racine, en deux étages** :
+
+1. *Pourquoi des builds à froid ?* Le commit `4f61eca0a` (24/07 15:26, lot I8 « purge
+   Docker réelle ») a rendu effective la purge post-deploy
+   `docker builder prune --max-used-space=5GB`. Les purges précédentes étaient des no-op
+   silencieux : `--keep-storage` est déprécié depuis Docker 29.4 et remappé vers
+   `--reserved-space`, un PLANCHER, pas un plafond. Or un build complet produit ~5,7 Go de
+   cache (mesuré, `docker system df`). Plafond < working-set ⇒ chaque deploy évince le
+   cache du suivant ⇒ depuis le 24/07, tout deploy touchant du Go = compilation CGO
+   complète à froid (~7 min sur 2 vCPU), là où six mois de builds étaient incrémentaux
+   (2-4 min). Preuve dans les logs CI : `RUN go mod download` non `CACHED` + image de base
+   `golang:1.26-bookworm` re-téléchargée à 09:48 alors qu'elle avait servi à 07:44.
+   Ironie complète : le commentaire du script disait « on garde 5 Go de cache récent pour
+   des builds incrémentaux rapides » — doc inversée, le plafond détruisait précisément ce
+   qu'il prétendait préserver.
+
+2. *Pourquoi un GEL et pas un échec ?* `Swap: 0` — la machine n'a jamais eu de swap. Le
+   boot gelé (journalctl -b -1) ne montre AUCUN OOM-kill : à court de mémoire, le noyau
+   évince les pages exécutables au lieu de tuer le build, et tout le système se met à
+   battre la page (systemd-resolved qui expire au démarrage, etc.) — livelock. Avec du
+   swap, le même pic aurait donné un build lent.
+
+**Pourquoi 2 builds à froid sur 5 ont quand même réussi** (00:44, 07:44) : régime
+marginal. ~950 Mo résidents (2 conteneurs + OS) + pic de build ≈ la RAM totale ; le
+basculement dépend des pics concurrents (cycles auto-sync avec timeouts API de 92 s
+observés dans la fenêtre du gel de 09:48).
+
+**Correctifs** : swap 2 Go posé sur le VPS (fstab + `vm.swappiness=10`) — fait à la main,
+annoncé ; plafond 5→12 Go + doc réécrite (`deploy.sh`) ; cache mounts BuildKit
+(`/go/pkg/mod`, `/root/.cache/go-build`) + `-ldflags -s -w` (`Dockerfile`) — par agents
+sur cette branche. Mémoire projet mise à jour (piège n°10 du fichier deploy hazards).
+
+**Leçons** : (a) un plafond de purge se dimensionne par rapport au working-set MESURÉ d'un
+build, jamais dans l'absolu ; (b) une box de build sans swap meurt en livelock au lieu
+d'échouer proprement — poser le swap AVANT de chercher le coupable applicatif ; (c) quand
+un système « qui marchait depuis 6 mois » casse, chercher d'abord ce que NOUS avons changé
+dans la fenêtre — ici, le durcissement d'ops de la veille.
+
+---
+
 ## [2026-07-26] Release v7.2.5 — traîne opérationnelle de la v7.2.1
 
 **Statut** : Complété. Tag `v7.2.5` sur `main`, 13 commits depuis `v7.2.1`.

@@ -8,6 +8,10 @@ name: Deploy Pre-Check
 #   - Volumes bind-mount fichiers remplacés par des répertoires fantômes
 #   - Syntaxe des scripts shell/Python
 
+# Aucune écriture dans le dépôt (build Docker local + validations de syntaxe).
+permissions:
+  contents: read
+
 on:
   push:
     branches:
@@ -16,6 +20,18 @@ on:
       - fix/**
       - feat/**
       - refactor/**
+    # Même exclusion que deploy.yml (2026-07-26) : ce workflow builde 2 images
+    # Docker, inutile pour un commit qui ne touche que des notes d'agent.
+    # MISE EN GARDE identique : ne JAMAIS élargir à `docs/**` — le Dockerfile
+    # fait `COPY docs /app/docs` et l'API lit docs/CHANGELOG.md +
+    # docs/{FR/,}RELEASE_NOTES.md au runtime. Seul docs/adr/** est ignoré.
+    paths-ignore:
+      - ".ai/**"
+      - ".claude/**"
+      - "docs/adr/**"
+      - "README*.md"
+      - "CLAUDE.md"
+      - "LICENSE"
   pull_request:
     branches:
       - main
@@ -28,6 +44,7 @@ jobs:
   validate-syntax:
     name: Syntaxe (YAML / Bash / Python)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
 
@@ -36,8 +53,13 @@ jobs:
         # spécifique GitHub Actions (expressions ${{ }}, matrix, needs, etc.).
         # Remplace l'ancien python3+pyyaml qui ne validait que la syntaxe YAML.
         # Script officiel : https://github.com/rhysd/actionlint/blob/main/docs/usage.md
+        #
+        # VERSION PINNÉE (2026-07-26) : script tiré d'un TAG + version explicite en
+        # argument. Auparavant tiré de `main` sans version → une montée de version
+        # amont a rougi 11 runs les 17-18/07 sur des findings INFO. Doit rester
+        # identique au step homologue de deploy.yml.
         run: |
-          bash <(curl -sSf https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          bash <(curl -sSf https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash) 1.7.12
           ./actionlint -color
 
       - name: Validation syntaxe Bash (scripts/*.sh)
@@ -71,6 +93,7 @@ jobs:
   docker-build:
     name: Docker Build
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
 
@@ -118,6 +141,7 @@ jobs:
   permissions-simulation:
     name: Permissions entrypoint gosu (simulation VPS)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: docker-build
     steps:
       - uses: actions/checkout@v7
@@ -180,6 +204,7 @@ jobs:
   e2e-regen-demo-precheck:
     name: Simulation regen demo (sans données)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: [docker-build, permissions-simulation]
     steps:
       - uses: actions/checkout@v7
