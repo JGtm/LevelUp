@@ -636,8 +636,34 @@ func selectDynamicCorpus(ctx context.Context, opts SeedDemoOptions) dynamicCorpu
 	return dc
 }
 
-// copyMetadataFile copie src→dst (file copy bit-à-bit, équivalent shutil.copy2).
-// Crée le répertoire parent si nécessaire.
+// copyMetadataFile installe une copie bit-à-bit de src en dst en REMPLAÇANT L'INODE
+// de dst : écriture dans un temporaire du même répertoire, puis retrait de dst et
+// rename. Crée le répertoire parent si nécessaire.
+//
+// CONTRAINTE — pourquoi l'inode doit être neuf (bug prouvé en prod, 2026-07-26) :
+// jusqu'à ce jour, le seed démo du déploiement s'exécutait pendant que l'ANCIEN
+// conteneur `levelup-demo` tournait toujours (il n'était recréé qu'APRÈS le seed) et
+// tenait les DuckDB démo ouvertes avec leur verrou. L'implémentation précédente
+// ouvrait dst en O_TRUNC : elle tronquait donc un fichier DuckDB qu'un process vivant
+// utilisait (la démo servait une base invalide pendant toute la fenêtre de
+// déploiement), et l'ATTACH READ_ONLY de la phase Prestige
+// (insertDemoMilestonesEarned) échouait ensuite sur « Conflicting lock is held » →
+// table milestone_earned démo vide à chaque déploiement. Avec un inode neuf, un
+// lecteur qui tient le fichier garde le sien (délié mais intact pour lui) et le
+// fichier publié n'est tenu par personne — exactement la stratégie de
+// extractSharedTables / extractPlayerTables (retrait avant création).
+//
+// STATUT depuis le 2026-07-26 : le job deploy-demo de .github/workflows/deploy.yml
+// stoppe désormais `levelup-demo` pendant le seed (en miroir de la prod), donc la
+// cause première est traitée en amont. Ce remplacement d'inode reste la DÉFENSE EN
+// PROFONDEUR — et non plus le seul rempart : `levelup seed-demo` se lance aussi à la
+// main et en local, avec un serveur démo debout, et rien dans le code Go ne peut
+// vérifier qu'un lecteur n'est pas branché sur le fichier. Ne pas le retirer sous
+// prétexte que le workflow s'en charge.
+//
+// os.Rename n'écrase pas une cible existante sous Windows : dst est retiré d'abord.
+// Aucun repli sur une écriture en place n'est admis (ce serait ressusciter le bug),
+// donc toute erreur de retrait autre que « n'existe pas » est fatale.
 func copyMetadataFile(src, dst string) error {
 	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 		return fmt.Errorf("mkdir: %w", err)
@@ -647,15 +673,84 @@ func copyMetadataFile(src, dst string) error {
 		return fmt.Errorf("open src: %w", err)
 	}
 	defer in.Close()
-	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
+
+	tmp, err := os.CreateTemp(filepath.Dir(dst), filepath.Base(dst)+".tmp-*")
 	if err != nil {
-		return fmt.Errorf("create dst: %w", err)
+		return fmt.Errorf("create tmp: %w", err)
 	}
-	defer out.Close()
-	if _, err := io.Copy(out, in); err != nil {
+	tmpPath := tmp.Name()
+	// Nettoyage sur tout chemin d'erreur ; après un rename réussi le nom n'existe
+	// plus et le remove est un no-op.
+	defer func() {
+		_ = tmp.Close()
+		_ = os.Remove(tmpPath)
+	}()
+
+	if _, err := io.Copy(tmp, in); err != nil {
 		return fmt.Errorf("copy: %w", err)
 	}
+	// Sync avant publication : le conteneur démo recréé juste après lit ce fichier.
+	if err := tmp.Sync(); err != nil {
+		return fmt.Errorf("sync tmp: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("close tmp: %w", err)
+	}
+	// os.CreateTemp crée en 0600 ; la démo lit la metadata sous un autre uid.
+	if err := os.Chmod(tmpPath, 0o644); err != nil {
+		return fmt.Errorf("chmod tmp: %w", err)
+	}
+	if err := removeDuckDBForFreshWrite(dst); err != nil {
+		return err
+	}
+	if err := os.Rename(tmpPath, dst); err != nil {
+		return fmt.Errorf("rename tmp→dst: %w", err)
+	}
 	return nil
+}
+
+// removeForInodeSwap retire path pour libérer le nom avant un rename. Seul
+// « n'existe pas » est toléré : une erreur de retrait signifie que le fichier ne peut
+// pas être remplacé par un inode neuf, et le seul repli serait l'écriture en place —
+// interdite (cf. copyMetadataFile).
+func removeForInodeSwap(path string) error {
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("remove %s: %w", filepath.Base(path), err)
+	}
+	return nil
+}
+
+// removeDuckDBForFreshWrite libère le NOM d'une base DuckDB avant qu'un inode neuf ne
+// le reprenne — que ce soit par création directe (`sql.Open` sur un chemin inexistant)
+// ou par rename d'un temporaire. POINT DE PASSAGE UNIQUE de tous les seeds démo :
+// aucun `os.Remove` nu sur un chemin `.duckdb` dans seed_demo*.go (garde-rail
+// TestSeedDemoRemovesWALWithDB).
+//
+// Le WAL n'est PAS optionnel. Un `<db>.wal` laissé par la génération précédente
+// (conteneur démo tué sans CHECKPOINT, seed interrompu, crash) survit au retrait du
+// seul fichier `.duckdb`. Comportement MESURÉ sur DuckDB v1.4
+// (TestCopyMetadataFile_ForeignWALNotReplayedIntoPublishedDB) :
+//
+//   - base publiée par RENAME (copyMetadataFile) + WAL survivant → DuckDB rejoue le
+//     WAL SANS ERREUR dans la base neuve : tables et lignes de l'ancienne génération
+//     ressuscitent dedans, puis l'ouverture READ_ONLY suivante meurt sur « Failure
+//     while replaying WAL file ». C'est le cas prouvé, et il est silencieux ;
+//   - base CRÉÉE par DuckDB (extracteurs, générateurs synthétiques) → le WAL
+//     préexistant est écarté sans dommage. Le retrait y est une défense en
+//     profondeur : le comportement n'est pas documenté, et une extraction avortée
+//     entre le retrait et la création laisserait sinon le WAL derrière elle.
+//
+// C'est la raison — déjà appliquée par rebuildDemoSharedSocial / extractDemoMedia —
+// généralisée ici à tous les sites.
+//
+// Le WAL est retiré EN PREMIER : s'il résiste, on abandonne sans avoir délié la base,
+// donc sans laisser derrière soi un couple (base absente, WAL présent) qui est
+// exactement l'état corrupteur.
+func removeDuckDBForFreshWrite(path string) error {
+	if err := removeForInodeSwap(path + ".wal"); err != nil {
+		return err
+	}
+	return removeForInodeSwap(path)
 }
 
 // errIsMissingTable signale qu'une erreur DuckDB est due à une table source/cible
@@ -705,9 +800,12 @@ func extractSharedTables(
 	if err := os.MkdirAll(filepath.Dir(dstPath), 0o755); err != nil {
 		return nil, fmt.Errorf("mkdir: %w", err)
 	}
-	// Supprimer dst existant pour idempotence (DuckDB échoue sur ATTACH si fichier
-	// existe avec schéma différent).
-	_ = os.Remove(dstPath)
+	// Supprimer dst (+ son WAL) pour idempotence : DuckDB échoue sur ATTACH si le
+	// fichier existe avec un schéma différent, et rejouerait un WAL orphelin contre la
+	// base fraîche (cf. removeDuckDBForFreshWrite).
+	if err := removeDuckDBForFreshWrite(dstPath); err != nil {
+		return nil, err
+	}
 
 	dst, err := sql.Open("duckdb", dstPath)
 	if err != nil {
@@ -772,7 +870,9 @@ func extractPlayerTables(
 	if err := os.MkdirAll(filepath.Dir(dstPath), 0o755); err != nil {
 		return nil, fmt.Errorf("mkdir: %w", err)
 	}
-	_ = os.Remove(dstPath)
+	if err := removeDuckDBForFreshWrite(dstPath); err != nil {
+		return nil, err
+	}
 
 	dst, err := sql.Open("duckdb", dstPath)
 	if err != nil {
