@@ -163,7 +163,11 @@ echo "[deploy] docker compose down..."
 docker compose down --remove-orphans || true
 
 echo "[deploy] docker compose up -d (images déjà construites à l'étape 2d)..."
-docker compose up -d
+# --remove-orphans aussi sur le up (2026-07-26) : le down qui précède le porte déjà, mais
+# si le down échoue partiellement (démon occupé) ou qu'un conteneur a été créé hors compose
+# entre les deux, le up nu échoue sur « container name already in use » (incident
+# 2026-07-23 16:30, run 30025386880 : /levelup-levelup-demo-1 déjà pris). Idempotent.
+docker compose up -d --remove-orphans
 
 # 3. Nettoyer les images orphelines (garder les images < 24h : rollback rapide possible
 # le jour même en re-taguant l'image N-1 si le nouveau déploiement pose problème).
