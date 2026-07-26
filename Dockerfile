@@ -36,9 +36,13 @@ RUN npm run build
 
 # Garde-rail assets publics : chaque fichier de public/ doit se retrouver dans
 # dist/ (Vite copie public/ tel quel). Echec du build sinon, avec la liste des
-# manquants — defense contre un .dockerignore qui stripperait de nouveau les
-# media de public/ (bug prod : PNG absents du dist → le catch-all SPA servait
-# index.html a la place des images, sans aucune erreur visible).
+# manquants — prévention d'une régression FUTURE (option `copyPublicDir`
+# désactivée, chemin public/ déplacé/renommé...), PAS le correctif d'un bug
+# prod déjà survenu : aucune investigation n'a confirmé d'image absente en
+# production (l'hypothèse initiale — .dockerignore strippant public/ — était
+# fausse : un motif .dockerignore est ancré à la racine du contexte, `*.png`
+# ne traverse pas les sous-dossiers ; cf. .dockerignore + thought_log
+# 2026-07-26).
 RUN node scripts/verify-public-in-dist.mjs
 
 # ============================================================================
@@ -182,8 +186,10 @@ COPY static /app/static
 # release_notes_service.go (docs/FR/RELEASE_NOTES.md) et changelog.go
 # (docs/CHANGELOG.md). Sans ce COPY, /app/docs n'existe pas dans le conteneur →
 # la page "Notes de version" (/help) renvoie 500 et /changelog 404 (les deux
-# titres). Les images de docs/ sont strippées par .dockerignore (*.png/*.jpg) ;
-# seuls les .md (légers) sont embarqués. Source globale à l'app (pas par-titre).
+# titres). Note : docs/ embarque aussi les captures d'écran (docs/screenshots/,
+# ~37 PNG) — .dockerignore ne les strippe PAS (le motif `*.png` est ancré à la
+# racine du contexte de build, il ne traverse pas les sous-dossiers ; cf.
+# .dockerignore). Source globale à l'app (pas par-titre).
 COPY docs /app/docs
 
 # Stubs de config — écrasés au runtime par les volumes bind-mount

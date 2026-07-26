@@ -1,3 +1,71 @@
+## [2026-07-26] Rectification — la prémisse .dockerignore du lot assets était fausse
+
+**Statut** : Complété (branche `fix/quick-wins-post-v721`, pas de commit — superviseur).
+Rectifie l'entrée « Fix assets public/ strippés de l'image Docker... » plus bas dans ce
+même journal : son diagnostic .dockerignore était FAUX, prouvé par lecture directe de la
+prod. Le code livré par 1b18ae609 reste correct et conservé — seule sa justification
+narrative est corrigée ici (commentaires/doc uniquement, zéro changement de comportement).
+
+**Preuve prod (26/07, image v7.2.5 buildée depuis `main` SANS les négations ajoutées par
+1b18ae609).** Sur `lvelup.info` ET `demo.lvelup.info` : `/icons/halowaypoint-white.png` →
+200 `image/png` 8910 o (Last-Modified = build du matin), `/logo.png` → 200,
+`/titles/halo_5/spartan/emblems/001.png` → 200, etc. Tous les assets de
+`apps/web/public/` étaient déjà servis normalement AVANT le fix — la régression décrite
+(dist ampute, PNG absents) n'a jamais existé en prod.
+
+**Sémantique .dockerignore (la faute d'analyse).** Un motif `.dockerignore` est ancré sur
+la racine du contexte de build. `*.png` ne matche QUE `/*.png` au premier niveau — `*` ne
+traverse jamais `/`. Le bloc « media lourds » (`*.png`/`*.jpg`/`*.webp`/...) ne pouvait donc
+JAMAIS strippé quoi que ce soit sous `apps/web/public/**` ni `static/**` : il aurait fallu
+des motifs récursifs (`**/*.png`) pour ça. Les négations `!apps/web/public` +
+`!apps/web/public/**` ajoutées par 1b18ae609 sont donc défensives et INERTES aujourd'hui.
+
+**Origine du mythe.** Commit f106f0b03 (« bake static/ ») avait diagnostiqué .dockerignore
+comme cause du 404 sur `/static/*`, alors que la vraie cause était un `COPY static/` absent
+du Dockerfile. Ce faux diagnostic a été repris tel quel pour `public/` dans 1b18ae609, sans
+vérification empirique (aucun `docker build` n'a été lancé — pas de démon Docker sur ce
+poste — donc rien ne confirmait l'hypothèse avant de l'écrire dans 5 fichiers).
+
+**Ce qui est conservé, et pourquoi c'est réel indépendamment du diagnostic faux.** (1) Les
+négations `.dockerignore` : inertes mais inoffensives, gardées en prévention d'un bloc media
+qui passerait un jour en motifs récursifs. (2) `apps/web/scripts/verify-public-in-dist.mjs` +
+son branchement Dockerfile : garde-rail générique utile contre une régression FUTURE de
+`vite build`/`copyPublicDir`, reclassé comme préventif — pas correctif d'un bug passé. (3) Le
+404 franc du catch-all SPA (`mountSPA`, `staticAssetExts`/`isStaticAssetPath`,
+`server_apiv1.go`) : bug RÉEL et vérifié — avant le fix, `/ce-fichier-nexiste-pas.png`
+répondait 200 `text/html` (index.html) au lieu de 404, rendant tout asset manquant invisible
+côté client quelle qu'en soit la cause. Conservé tel quel ; seuls les commentaires qui
+l'imputaient à .dockerignore sont corrigés.
+
+**Fichiers corrigés (commentaires/doc uniquement)** : `.dockerignore`, `Dockerfile`
+(commentaire verify-public-in-dist + affirmation fausse « les images de docs/ sont
+strippées par .dockerignore » — les 37 PNG de `docs/screenshots/` sont bien embarqués),
+`apps/web/scripts/verify-public-in-dist.mjs` (en-tête + message d'erreur),
+`apps/go-api/internal/api/server_apiv1.go` (2 commentaires),
+`apps/go-api/internal/api/spa_fallback_404_test.go` (2 commentaires).
+
+**Piste latente distincte (durcissement — PAS la cause du symptôme observé).** Le
+symptôme « logo Waypoint invisible » a sa cause racine établie et corrigée sur `main`
+(v7.2.5, commit `c22627074` : trois causes CSS, dont l'écrasement à zéro spécifique
+Firefox — cf. clôture de `.ai/DIAG_WAYPOINT_COLUMN_INFINITE.md`). Reste néanmoins un
+défaut réel et indépendant : le rate-limiter
+(`internal/api/middleware/rate_limit.go`, `httprate.LimitByIP`, 300 req/min/IP par défaut)
+n'exempte que `/static/*` et `/api/v1/assets/*` — PAS les fichiers servis à la racine
+depuis `apps/web/public/` (icônes, logo, og-default, emblèmes halo_5 sous
+`/titles/*/spartan/emblems/`). Ces derniers ne portent en outre AUCUN `Cache-Control`
+(seul `isViteHashedAsset` — assets `/assets/*-hash.ext` — reçoit `immutable` ; les
+fichiers racine de public/ sont revalidés à chaque requête). Une page qui émet 100+
+requêtes d'images publiques peut donc consommer le bucket de rate-limit et déclencher des
+429 silencieux (httprate ne logge rien) — un symptôme qui ressemble à des images
+« absentes » côté utilisateur sans jamais l'être côté build.
+
+**Conclusion / prochaine étape.** Le lot 1b18ae609 reste net-positif (404 franc + garde-rail
+build légitimes) ; seule sa justification narrative était fausse, corrigée ici sans toucher
+au comportement. Durcissement rate-limiter/Cache-Control planifié au chantier v7.3, lot
+dédié : exempter les chemins statiques servis depuis `public/` au même titre que
+`/static/` et `/api/v1/assets/`, poser un `Cache-Control` adapté sur ces fichiers, et
+rendre les 429 observables (httprate ne logge rien aujourd'hui).
+
 ## [2026-07-26] Vérification d'affichage v7.2.5 — verdicts, et deux corrections de mes annonces
 
 **Statut** : Complété (vérification par agent, lecture seule ; anomalies consignées Notion
