@@ -1,3 +1,123 @@
+## [2026-07-26] Prestige — frontière d'identité player_slug ↔ xuid (objectifs figés à zéro)
+
+**Statut** : Complété (code écrit, NON compilé — gate à jouer par le pilote).
+Branche `feat/demo-prestige-samples`. Traite la « découverte hors périmètre » laissée
+par l'entrée démo ci-dessous.
+
+**Établissement des faits (sur pièces).** Deux identités coexistaient dans un même type
+`string` : le **player_slug** applicatif (`arc.user_id`, `challenge.user_id` — en prod
+c'est le gamertag : `JGtm`, `Chocoboflor`, cf. `config_players.go:142`) et le **xuid**
+Xbox (`match_participants.xuid` — numérique : `2533274823110022`, cf. `db_profiles.json`).
+`HaloBaselineProvider.RecentMatches` déclarait `userID string` et l'injectait dans
+`WHERE mp.xuid = ?` ; ses TROIS appelants le remplissaient avec `Challenge.UserID`
+(`service.computeBaselineFor`, `service.computeCurrentValue`, `service_evaluate.evaluateOne`),
+et la chaîne HTTP prouve que ce champ est bien un slug (`authorizeActor(ctx, body.UserID)`
+→ `CanAccessPlayer`, et `PrestigeBundle.RunPostSync(ctx, playerSlug, …)` →
+`RunPostSyncHook(ctx, svc, userID=playerSlug, …)`). Zéro ligne, partout, en silence.
+
+**Ce qui INFIRME une partie de l'hypothèse de départ.** (1) Il n'existe AUCUN chemin
+compensatoire : la « requête dédiée Phase 5 » annoncée par le commentaire de
+`RecentMatches` n'a jamais été écrite — `EvaluateCumulative` n'a aucun appelant de
+production (`service_evaluate.go` retombe sur `EvaluateThreshold`) et `MedalEvent` n'est
+jamais produit. (2) L'ampleur est plus étroite que « tout » : sur 28 templates du
+catalogue, 12 seulement ont une métrique mappée par `mapMetricToColumn` ; les 16 autres
+(`medal:*`, `matches_played`, `win_rate`, `*_vs_expected`, `ranked_wins`, `FieldCSRValue`…)
+étaient — et restent — non mesurées pour une raison DIFFÉRENTE, fonctionnelle.
+(3) Aucune autre occurrence de la confusion : le provider d'escouade passe par des
+`rosterXUIDs` explicites, `progression_diag_repo` utilise `pdb.XUID`.
+
+**Voie retenue : supprimer le transport de l'identité, pas le convertir.** Le provider
+est désormais LIÉ au joueur à la construction (`NewHaloBaselineProvider(reader, pdb.XUID)`,
+`wire.serviceAndPlayerDB`) et `BaselineProvider.RecentMatches` ne prend plus AUCUN
+paramètre d'identité : l'inversion n'est plus exprimable à la compilation. Écarté :
+(a) types distincts `XUID`/`PlayerSlug` — `T(x)` reste castable en Go, donc décoratif sans
+ratchet, et le ripple sur `Challenge`/JSON/repos était disproportionné ; (b) résolveur
+slug→xuid injecté dans `Deps` — aurait créé une 3e source de résolution alors que
+`config.ResolvePlayer` a DÉJÀ résolu le xuid dans le `PlayerDB` d'où sort le provider
+(CLAUDE.md n°6). Le provider rejoint ainsi le reste de `Deps`, déjà lié au joueur.
+
+**Échec rendu visible** (c'est le silence qui a permis la survie du défaut) :
+`slog.ErrorContext` à la résolution (`prestige_player_without_xuid`, avec le slug) ET à la
+dégradation (`prestige_baseline_provider_missing_xuid`), plus un `DebugContext` sur
+résultat vide. Durcissements exigés par la mise en service réelle du chemin :
+`COALESCE(CAST(col AS DOUBLE), 0)` (colonnes `INTEGER`/`SMALLINT` vs `MetricValue float64`)
+et fragment timestamp canonique `duckdb.StartTimeCanonicalSQL("mr")` + `sql.NullTime`
+(CLAUDE.md n°8 ; `start_time` brut était utilisé en projection ET en tri).
+
+**Garde-rail** : `internal/platform/duckdb/prestige/xuid_identity_ratchet_test.go` — scan
+AST, SANS build tag (gate par défaut), allowlist VIDE : une fonction du sous-paquet qui
+requête `xuid` en acceptant un paramètre d'identité applicative fait échouer la CI.
+Morsure PROUVÉE contre le code pré-fix réel, extrait par
+`git show HEAD:…/prestige_baseline_provider.go` dans `testdata/xuid_identity_prefix.go.txt`.
+Contrôles négatifs : formes conformes + log structuré contenant « xuid ».
+
+**Effets de bord PROD à connaître avant merge.** (1) Tout défi créé avant ce correctif
+porte `data_tier='tracking'` et `tier='normal'` figés (baseline 0 →
+`CalculatePalier` renvoyait `RejectInsufficientData`) : ils vont passer « acquis » en
+masse au premier sync, mais `PPForCompletion(*, tracking)` = **0 PP** (multiplicateur 0.0),
+bonus d'arc idem. (2) AUCUNE rafale de notifications : `CategoryChallengeCompleted` est
+alimentée par `challenge_snapshots` (défis du jeu), jamais par la table Prestige.
+(3) `CreateChallenge` va désormais REJETER (400) les cibles trop faciles
+(`RejectTooEasy`), ce qu'il ne faisait jamais avant ; `AdoptPresetArc` est best-effort et
+sautera les étapes concernées. (4) À recalculer (procédure NON exécutée) : rien de
+persisté n'est faux, mais `challenge.tier`/`data_tier` des défis actifs mériteraient un
+recalcul via `UpdateChallenge{Target}` (recompute palier) — sinon les PP restent à 0.
+
+**Prochaine étape** : gate pilote (`go build`, `go test ./...` ET `-tags=integration`,
+golangci-lint) puis arbitrage utilisateur sur le recalcul des paliers existants.
+
+## [2026-07-26] Démo publique — échantillons Prestige générés par seed-demo
+
+**Statut** : Complété (code écrit, NON compilé — gate à jouer par le pilote).
+Branche `feat/demo-prestige-samples`.
+
+**Constat de départ (vérifié sur pièces).** `seed-demo` extrait 8 tables joueur
+(`playerTablesWhere`) : aucune table Prestige/Progression. Les pages étaient donc
+accessibles (`prestige_enabled: true` dans `demoAppSettings`) et vides. **Découverte
+majeure, non anticipée** : en démo, `NewPrestigeBundle` était construit depuis
+`cfg.RepoRoot` seul → `data/titles/{slug}/warehouse/*.duckdb`, chemin ABSENT du conteneur
+démo (qui ne monte que `data/demo`). Le bundle restait `nil` (constat déjà écrit noir sur
+blanc dans `server_apiv1.go`, lot V721-04), et TOUTE lecture Prestige adossée à une base
+était morte. Ce que masquaient des fixtures read-time (`demoUserPrestige`, `demoArcs`,
+`demoActiveChallenges`, `demoStreaks`). Sans corriger ce câblage, seeder les tables
+n'aurait strictement rien affiché.
+
+**Stratégie retenue : synthétique DÉRIVÉ du corpus démo réel** (voie b + a). Extraire les
+vraies tables Prestige du joueur source a été écarté sur trois motifs : (1) sondage binaire
+des player DB prod — traces de `streak` chez 3 joueurs sur 4, AUCUNE trace de preset `ascension`
+ni de `prestige_events` : arcs et objectifs quasi inexistants, donc non représentatifs ;
+(2) `arc.user_id` / `challenge.user_id` portent le player_slug RÉEL → extraction = fuite
+d'identité à ré-anonymiser de toute façon ; (3) `streak`, `record_history`,
+`improvement_campaign` sont calculés sur l'HISTORIQUE COMPLET du joueur (milliers de matchs)
+alors que la démo n'expose qu'un corpus de ~50-90 matchs → chiffres qui se contredisent à
+l'écran. Le générateur lit donc les agrégats RÉELS du corpus démo déjà extrait
+(matchs/frags/morts/assistances/tirs à la tête/victoires + fenêtre temporelle) et en dérive
+cibles, dates et journal de points.
+
+**Invariant central.** `user_prestige.total_pp == SUM(prestige_events.pp_amount)` et
+`current_level == prestige.LevelFromPP(total)` — un événement PP par match du corpus, plus
+un par objectif complété, plus un bonus par arc complété, plus un bonus de série. Le total
+n'est jamais posé à la main.
+
+**Câblage rendu visible.** `wire.NewPrestigeBundleAt(repoRoot, sharedSocialPath, metadataPath, …)`
+remplace `NewPrestigeBundle` ; `config.PrestigeBundleDBPaths()` choisit le layout PLAT des
+fixtures démo ou le layout title-scopé de prod. Les 4 fixtures read-time sont SUPPRIMÉES
+(règle « 0 code mort » + elles auraient contredit les événements seedés).
+
+**Découverte hors périmètre, NON traitée.** `service.computeCurrentValue` passe
+`challenge.user_id` (un player_slug) à `HaloBaselineProvider.RecentMatches`, qui l'utilise
+comme `mp.xuid`. La valeur courante d'un objectif actif vaut donc 0 en prod comme en démo.
+Le plan démo compense en rendant la progression lisible par les STATUTS (étapes acquises
+d'un arc), pas par les jauges. **MAJ 2026-07-26** : traité depuis, cf. l'entrée
+« frontière d'identité player_slug ↔ xuid » en tête de journal. Conséquence pour la démo :
+le seul objectif actif à métrique mappée (`headshot_kills`) affichera désormais une valeur
+courante réelle — une MOYENNE par match, face à une cible dérivée d'un CUMUL du corpus.
+Le plan démo reste cohérent (l'objectif demeure « en cours »), mais cet écart
+cumul/moyenne est désormais visible et mérite un arbitrage produit.
+
+**Prochaine étape** : gate pilote (gofmt, `go build`, `go test ./...`, `-tags=integration`,
+golangci-lint) puis re-seed démo au déploiement.
+
 ## [2026-07-25] V721-13 — What's new + changelogs + notes de version in-app v7.2.1
 
 **Statut** : Complété. Pas de commit (superviseur). Item FINAL du plan

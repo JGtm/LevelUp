@@ -50,10 +50,13 @@ type SyntheticDemoOptions struct {
 
 // SyntheticDemoResult résume la génération.
 type SyntheticDemoResult struct {
-	OutDir         string
-	Matches        int
-	Sessions       int
-	Players        int
+	OutDir   string
+	Matches  int
+	Sessions int
+	Players  int
+	// PrestigeRows : lignes Prestige/Progression générées par table (arcs, objectifs,
+	// événements PP, séries, records, escouade) — même générateur que la démo réelle.
+	PrestigeRows   map[string]int
 	Duration       time.Duration
 	ConfigsWritten bool
 }
@@ -328,6 +331,16 @@ func SeedDemoSynthetic(ctx context.Context, opts SyntheticDemoOptions) (Syntheti
 		return res, fmt.Errorf("seed-demo synthetic: players: %w", err)
 	}
 	res.Players = nPlayers
+
+	// 4b. Échantillons Prestige (arcs, objectifs, points de progression, séries,
+	// records, jalons, escouade) — même générateur que la démo réelle, dérivé du
+	// corpus synthétique. Sans eux, app_settings pose prestige_enabled=true et les
+	// pages Ascension/Prestige de la fixture CI seraient vides.
+	prestigeRows, err := seedDemoPrestige(ctx, opts.OutDir, titlePkg.DefaultSlug, nil)
+	if err != nil {
+		return res, fmt.Errorf("seed-demo synthetic: prestige: %w", err)
+	}
+	res.PrestigeRows = prestigeRows
 
 	// 5. Configs (db_profiles v3 + app_settings) — même forme que la démo réelle.
 	if err := writeSyntheticConfigs(opts.OutDir, opts.ServiceTag); err != nil {
