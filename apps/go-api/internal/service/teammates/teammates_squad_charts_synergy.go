@@ -32,7 +32,7 @@ func synergyRadarThresholds(nShared int, ocP80 float64) narrative.ParticipationT
 		Survival:  analysis.DefensiveResistanceP80 * 1.25, // ~1.99 ; étire le haut au-dessus du P80
 		Support:   300.0 * n,                              // assists × 50, ~6 assists/match
 		Score:     ScorePerMinuteP80 * 1.25,               // score personnel/min, seuil constant (repère P80 ≈ 195/min)
-		Objective: 350.0 * n,                              // PSA objectif, ~350/match
+		Objective: narrative.ObjectiveIndexThreshold,      // index par opportunité (raw ∈ [0,1.25], P80 famille = 80/100)
 		Impact:    ocP80 * 1.25,                           // P80 title-aware (0.90 Infinite / 1.264 h5)
 	}
 }
@@ -100,19 +100,20 @@ func synergyMainFallbackAxes(
 	return raw
 }
 
-// loadSynergyMateAxes charge les 6 axes radar depuis canonical.PlayerMatchRow pour
+// loadSynergyMateAxes charge les axes radar depuis canonical.PlayerMatchRow pour
 // un gamertag, restreint aux matchs partagés. Formules :
 //   - Combat  : (kills + HS/2 + PK/2) × (1 + accuracy × 0.4), somme sur les matchs
 //   - Survival : résistance défensive agrégée ΣDT / (225 × ΣD)
 //   - Support  : assists × 50, somme sur les matchs
 //   - Score    : score personnel par minute jouée ΣPS / (Σtime_played / 60)
-//   - Objective: PSA catégorie "objective" via LoadObjectiveScores
 //   - Impact   : rendement offensif agrégé 225×(ΣK+ΣA/3)/ΣDD
+//
+// L'axe Objectif n'est PAS posé ici : il vient de l'index par opportunité
+// (loadSynergyObjectiveRaw, source shared) — cf. buildSquadSynergyRadar.
 func (s *TeammatesService) loadSynergyMateAxes(
 	ctx context.Context,
 	gt string,
 	sharedMatches map[string]struct{},
-	sharedMatchIDs []string,
 ) map[narrative.ParticipationAxis]float64 {
 	raw := map[narrative.ParticipationAxis]float64{}
 	if s.squadLoader == nil {
@@ -157,19 +158,31 @@ func (s *TeammatesService) loadSynergyMateAxes(
 	raw[narrative.AxisImpact] = SynergyOffensiveConversion(totalKills, totalAssists, totalDamageDlt, hp)
 	raw[narrative.AxisSurvival] = SynergyDefensiveResistance(totalDamageTkn, totalDeaths, hp)
 
-	// Objective via PSA — dégradation silencieuse si absent.
-	if objScores, err := s.squadLoader.LoadObjectiveScores(ctx, s.titleSlug, gt, sharedMatchIDs); err == nil {
-		var objTotal float64
-		for _, v := range objScores {
-			objTotal += float64(v)
-		}
-		raw[narrative.AxisObjective] = objTotal
-	}
-
 	// Score : score personnel par minute jouée (vivant et différenciant, vs
 	// l'ancien résiduel medals/streaks ≈ 0 mesuré sur Halo Infinite).
 	raw[narrative.AxisScore] = SynergyScorePerMinute(totalPS, totalTimeSec)
 	return raw
+}
+
+// loadSynergyObjectiveRaw calcule l'index de participation aux objectifs d'un
+// joueur (par gamertag — source SHARED match_objective_stats_latest, donc
+// disponible aussi pour les coéquipiers NON suivis) sur les matchs partagés.
+// Retourne (raw, n_obj) ; n_obj == 0 (aucun match à objectif, repo absent ou
+// erreur best-effort) → l'axe est retiré du radar.
+func (s *TeammatesService) loadSynergyObjectiveRaw(
+	ctx context.Context,
+	gt string,
+	sharedMatchIDs []string,
+) (float64, int) {
+	if s.objectiveIndex == nil || len(sharedMatchIDs) == 0 {
+		return 0, 0
+	}
+	input, err := s.objectiveIndex.LoadObjectiveIndexInputsByGamertag(ctx, sharedMatchIDs, gt)
+	if err != nil {
+		slog.WarnContext(ctx, "teammates_radar_objective_index_failed", "gamertag", gt, "err", err)
+		return 0, 0
+	}
+	return narrative.ComputeObjectiveIndex(input)
 }
 
 // buildSquadSynergyRadar calcule un profil de participation 6 axes par joueur
@@ -205,22 +218,43 @@ func (s *TeammatesService) buildSquadSynergyRadar(
 
 	thresholds := synergyRadarThresholds(len(sharedMatches), games.OffensiveConversionP80(s.titleSlug))
 
-	mainRaw := s.loadSynergyMateAxes(ctx, mainGamertag, sharedMatches, sharedMatchIDs)
+	mainRaw := s.loadSynergyMateAxes(ctx, mainGamertag, sharedMatches)
 	if len(mainRaw) == 0 {
 		mainRaw = synergyMainFallbackAxes(allSquadRows, sharedMatches)
 	}
 
+	// Axe Objectif : index par opportunité (source SHARED — couvre aussi les
+	// coéquipiers non suivis). Posé par joueur ; si AUCUN joueur n'a de match à
+	// objectif dans le scope (ou repo absent : capability, Halo 5), l'axe est
+	// retiré de TOUTES les séries (le front aligne indicateurs sur series[0]).
+	players := append([]string{mainGamertag}, selectedGamertags...)
+	rawByPlayer := map[string]map[narrative.ParticipationAxis]float64{mainGamertag: mainRaw}
+	for _, gt := range selectedGamertags {
+		rawByPlayer[gt] = s.loadSynergyMateAxes(ctx, gt, sharedMatches)
+	}
+	skipObjectiveAxis := true
+	for _, gt := range players {
+		objRaw, objN := s.loadSynergyObjectiveRaw(ctx, gt, sharedMatchIDs)
+		if objN > 0 {
+			rawByPlayer[gt][narrative.AxisObjective] = objRaw
+			skipObjectiveAxis = false
+		}
+	}
+
 	// Titre sans damage_taken (Halo 5) → l'axe Survie (résistance défensive) est
-	// figé à 0 et trompeur : on le retire de TOUS les joueurs (radar 5 axes
-	// cohérent ; le front aligne indicateurs+valeurs sur series[0].axes). Même
-	// règle que le radar match-view (dropUncomputableRadarAxes).
+	// figé à 0 et trompeur : on le retire de TOUS les joueurs (radar cohérent ;
+	// le front aligne indicateurs+valeurs sur series[0].axes). Même règle que le
+	// radar match-view (dropUncomputableRadarAxes).
 	skipSurvivalAxis := !games.ProvidesDamageTaken(s.titleSlug)
-	out := make([]domain.SquadSynergyRadarSeries, 0, 1+len(selectedGamertags))
+	out := make([]domain.SquadSynergyRadarSeries, 0, len(players))
 	toSeries := func(player string, raw map[narrative.ParticipationAxis]float64) domain.SquadSynergyRadarSeries {
 		scores := narrative.ComputeParticipationProfile(raw, thresholds)
 		axes := make([]domain.SquadSynergyRadarAxis, 0, len(scores))
 		for _, sc := range scores {
 			if skipSurvivalAxis && sc.Axis == narrative.AxisSurvival {
+				continue
+			}
+			if skipObjectiveAxis && sc.Axis == narrative.AxisObjective {
 				continue
 			}
 			axes = append(axes, domain.SquadSynergyRadarAxis{
@@ -232,9 +266,8 @@ func (s *TeammatesService) buildSquadSynergyRadar(
 		return domain.SquadSynergyRadarSeries{Player: player, Axes: axes}
 	}
 
-	out = append(out, toSeries(mainGamertag, mainRaw))
-	for _, gt := range selectedGamertags {
-		out = append(out, toSeries(gt, s.loadSynergyMateAxes(ctx, gt, sharedMatches, sharedMatchIDs)))
+	for _, gt := range players {
+		out = append(out, toSeries(gt, rawByPlayer[gt]))
 	}
 	return out
 }

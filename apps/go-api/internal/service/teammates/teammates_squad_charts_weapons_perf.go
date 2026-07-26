@@ -644,12 +644,13 @@ func (s *TeammatesService) buildSquadPerformanceSeries(
 // teammates.06 — Radar synergie escouade (6 axes)
 // ---------------------------------------------------------------------------
 
-// synergyRadarThresholds retourne les seuils du radar scalés par nShared.
-// Les axes absolus (combat/support/score/objective) sont proportionnels au
-// nombre de matchs partagés. Impact et Survival sont des ratios agrégés →
-// seuil fixe étiré au-dessus du P80 observé pour préserver la variance
-// inter-joueurs (un squad de joueurs corrects dépasse tous le P80, ce qui
-// aplatissait les axes à 100).
+// synergyRadarThresholds retourne les seuils du radar (cf.
+// teammates_squad_charts_synergy.go). Les axes absolus (combat/support) sont
+// proportionnels au nombre de matchs partagés. Impact, Survival, Score et
+// Objectif sont des métriques intensives (ratios/index agrégés) → seuil
+// CONSTANT étiré au-dessus du P80 pour préserver la variance inter-joueurs
+// (un squad de joueurs corrects dépasse tous le P80, ce qui aplatissait les
+// axes à 100). Objectif : index par opportunité, seuil ObjectiveIndexThreshold.
 //
 // Combat calibration : accuracy est stockée 0..100 en DB (voir transforms.go).
 // Dans loadSynergyMateAxes/synergyMainFallbackAxes acc est normalisé /100

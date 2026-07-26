@@ -79,6 +79,9 @@ func seedReaderSnapshot(t *testing.T) *title.PathResolver {
 	snapExec(t, shared, `CREATE TABLE xuid_aliases (xuid VARCHAR, gamertag VARCHAR)`)
 	snapExec(t, shared, `CREATE TABLE weapon_kills (match_id VARCHAR, xuid VARCHAR, weapon_id BIGINT, reconciled_as BIGINT, generation_id BIGINT)`)
 	snapExec(t, shared, `CREATE TABLE match_csrs (match_id VARCHAR, xuid VARCHAR, rating_value FLOAT, written_at TIMESTAMP, id BIGINT)`)
+	// Requise depuis l'ajout de match_objective_stats au snapshot (Q12 LEFT JOIN la
+	// vue _latest) — table vide : le COPY exporte un parquet vide, la vue répond vide.
+	snapExec(t, shared, `CREATE TABLE match_objective_stats (id BIGINT, match_id VARCHAR, xuid VARCHAR, flag_captures INTEGER, written_at TIMESTAMP)`)
 	now := time.Now()
 	snapExec(t, shared, `INSERT INTO match_registry (match_id, start_time, start_time_utc, is_ranked, is_firefight) VALUES ('m1', ?, ?, FALSE, FALSE)`, now, now)
 	snapExec(t, shared, `INSERT INTO match_participants (match_id, xuid, gamertag, team_id, kills, deaths) VALUES ('m1', 'x1', 'GT1', 0, 7, 3)`)

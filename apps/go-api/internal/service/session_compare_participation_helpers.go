@@ -69,17 +69,21 @@ func avgMMR(matches []legacymatch.StatsMatchRow) (*float64, *float64) {
 	return team, enemy
 }
 
-// buildSessionParticipationProfile calcule les 6 axes de participation (0..100)
-// depuis des StatsMatchRow. `objScores` (match_id → score PSA "objective") est
-// optionnel : nil → axe Objective à 0 (dégradation gracieuse). Formules alignées
-// sur le radar escouade (teammates_squad_charts_synergy.go) :
-//   - Objective : somme des scores PSA "objective" du joueur sur la session.
+// buildSessionParticipationProfile calcule les axes de participation (0..100)
+// depuis des StatsMatchRow. `objIdx` (agrégats par famille de mode,
+// match_objective_stats_latest) est optionnel : nil ou sans match à objectif →
+// l'axe Objectif est RETIRÉ (pas de 0 trompeur — patron skipSurvivalAxis).
+// Formules alignées sur le radar escouade (teammates_squad_charts_synergy.go) :
+//   - Objective : index par opportunité narrative.ComputeObjectiveIndex (raw
+//     ∈ [0, 1.25], seuil constant ObjectiveIndexThreshold — un joueur au P80 de
+//     sa famille marque 80). Remplace l'ancienne Σ PSA diluée par le nombre
+//     total de matchs (plan PLAN_AXE_OBJECTIFS_INDEX).
 //   - Score     : score personnel par minute jouée ΣPS / (Σtime_played / 60),
 //     normalisé par un seuil constant (teammates.ScorePerMinuteP80). Vivant et
 //     différenciant, vs l'ancien résiduel medals/streaks ≈ 0 (axe mort).
 func buildSessionParticipationProfile(
 	matches []legacymatch.StatsMatchRow,
-	objScores map[string]int,
+	objIdx narrative.ObjectiveIndexInput,
 	effectiveHpToKill float64,
 ) []domain.SessionParticipationAxis {
 	n := len(matches)
@@ -88,7 +92,7 @@ func buildSessionParticipationProfile(
 	}
 	rawByAxis := map[narrative.ParticipationAxis]float64{}
 	var totalKills, totalAssists, totalDeaths int
-	var totalDD, totalDT, totalPS, objTotal, totalTimeSec float64
+	var totalDD, totalDT, totalPS, totalTimeSec float64
 	for _, m := range matches {
 		hs := 0
 		if m.HeadshotKills != nil {
@@ -119,21 +123,21 @@ func buildSessionParticipationProfile(
 		if m.TimePlayedSeconds != nil {
 			totalTimeSec += float64(*m.TimePlayedSeconds)
 		}
-		if objScores != nil {
-			objTotal += float64(objScores[m.MatchID])
-		}
 	}
 	rawByAxis[narrative.AxisImpact] = teammates.SynergyOffensiveConversion(totalKills, totalAssists, totalDD, effectiveHpToKill)
 	rawByAxis[narrative.AxisSurvival] = teammates.SynergyDefensiveResistance(totalDT, totalDeaths, effectiveHpToKill)
-	rawByAxis[narrative.AxisObjective] = objTotal
 	// Score = score personnel par minute jouée (métrique intensive, seuil constant).
 	rawByAxis[narrative.AxisScore] = teammates.SynergyScorePerMinute(totalPS, totalTimeSec)
+	objRaw, objN := narrative.ComputeObjectiveIndex(objIdx)
+	if objN > 0 {
+		rawByAxis[narrative.AxisObjective] = objRaw
+	}
 	thresholds := narrative.ParticipationThresholds{
 		Combat:    25.0 * float64(n),
 		Survival:  analysis.DefensiveResistanceP80 * 1.25,
 		Support:   300.0 * float64(n),
 		Score:     teammates.ScorePerMinuteP80 * 1.25,
-		Objective: 350.0 * float64(n),
+		Objective: narrative.ObjectiveIndexThreshold,
 		// Impact (rendement OC) : P80 const Infinite — radar session-compare gardé
 		// sur la const (threading title-aware = passe dédiée, cf. PLAN_DAMAGE_MODEL §0).
 		Impact: analysis.OffensiveConversionP80 * 1.25,
@@ -141,6 +145,9 @@ func buildSessionParticipationProfile(
 	scores := narrative.ComputeParticipationProfile(rawByAxis, thresholds)
 	result := make([]domain.SessionParticipationAxis, 0, len(scores))
 	for _, s := range scores {
+		if s.Axis == narrative.AxisObjective && objN == 0 {
+			continue // aucun match à objectif dans la session → axe retiré
+		}
 		result = append(result, domain.SessionParticipationAxis{
 			Name:  string(s.Axis),
 			Value: math.Round(s.Value*10) / 10,

@@ -241,73 +241,90 @@ func TestBuildProfile_LUSRComponentsPopulated(t *testing.T) {
 	}
 }
 
-// TestBuildProfile_AwardsMappingEnrichesObjective vérifie que l'injection
-// d'un AwardMappingSet (V2 §2) remplit l'axe Objective via les
-// personal_score_awards alors que sans mapping il reste à 0.
-func TestBuildProfile_AwardsMappingEnrichesObjective(t *testing.T) {
+// TestBuildProfile_ObjectiveAxisFromIndex vérifie le nouveau modèle de l'axe
+// Objective (plan PLAN_AXE_OBJECTIFS_INDEX) : il vient de l'index par
+// opportunité (match_objective_stats_latest, shared) et NON des
+// personal_score_awards — sans match à objectif dans la fenêtre, l'axe est
+// RETIRÉ même avec un AwardMappingSet mappant des awards « objective » ;
+// awards.toml reste la source des AUTRES axes (support boosté ici).
+func TestBuildProfile_ObjectiveAxisFromIndex(t *testing.T) {
 	pdb := setupProfileEnv(t)
 	now := time.Date(2026, 5, 18, 12, 0, 0, 0, time.UTC)
 	seedMatchesForProfile(t, pdb, now, MinMatchesForProfile+5)
 
-	// Seed personal_score_awards : 3 flag_captured + 2 zone_secured.
+	// Seed personal_score_awards : awards objectifs (ne doivent PLUS alimenter
+	// l'axe) + kill_assist (doit toujours booster support via le mapping).
 	ctx := context.Background()
 	for i := 0; i < 5; i++ {
 		matchID := zeropadProfile(i, 4)
-		_, err := pdb.Player.Exec(ctx, `
+		if _, err := pdb.Player.Exec(ctx, `
 			INSERT INTO personal_score_awards (match_id, xuid, award_name, award_category, award_count, award_score)
 			VALUES (?, ?, 'flag_captured', 'objective', 1, 200)
-		`, matchID, testXUID)
-		if err != nil {
+		`, matchID, testXUID); err != nil {
 			t.Fatalf("insert award: %v", err)
 		}
-	}
-	for i := 5; i < 7; i++ {
-		matchID := zeropadProfile(i, 4)
-		_, err := pdb.Player.Exec(ctx, `
+		if _, err := pdb.Player.Exec(ctx, `
 			INSERT INTO personal_score_awards (match_id, xuid, award_name, award_category, award_count, award_score)
-			VALUES (?, ?, 'zone_secured', 'objective', 1, 100)
-		`, matchID, testXUID)
-		if err != nil {
+			VALUES (?, ?, 'kill_assist', 'support', 4, 200)
+		`, matchID, testXUID); err != nil {
 			t.Fatalf("insert award: %v", err)
 		}
 	}
-
-	// Construire un mapping minimal in-memory.
 	awardSet := mappings.NewAwardMappingSet("halo_infinite", 1, map[string]mappings.AwardMapping{
 		"flag_captured": {AwardName: "flag_captured", Axes: []string{"objective"}, Weight: 5.0},
-		"zone_secured":  {AwardName: "zone_secured", Axes: []string{"objective"}, Weight: 2.0},
+		"kill_assist":   {AwardName: "kill_assist", Axes: []string{"support"}, Weight: 1.0},
 	})
 
-	// Sans mapping : Objective = 0.
-	svcNoMap := NewServiceFromPlayerDB(pdb)
-	prof, err := svcNoMap.BuildProfile(context.Background(), testXUID, testTitle, 60, now)
+	// Sans ligne match_objective_stats : axe objective RETIRÉ (pas de 0 trompeur),
+	// malgré les awards « objective » mappés.
+	svcNoObj := NewServiceFromPlayerDB(pdb).WithAwardMapping(awardSet)
+	profNoObj, err := svcNoObj.BuildProfile(context.Background(), testXUID, testTitle, 60, now)
 	if err != nil {
-		t.Fatalf("BuildProfile no mapping: %v", err)
+		t.Fatalf("BuildProfile sans lignes objectifs: %v", err)
 	}
-	objNoMap := axisValue(prof, "objective")
-	if objNoMap != 0 {
-		t.Errorf("sans mapping: objective=%.2f, want 0", objNoMap)
+	if _, present := axisLookup(profNoObj, "objective"); present {
+		t.Errorf("axe objective présent sans match à objectif dans la fenêtre — want retiré")
+	}
+	supportNoObj, _ := axisLookup(profNoObj, "support")
+
+	// Awards toujours actifs sur les AUTRES axes : support boosté vs sans mapping.
+	profNoMap, err := NewServiceFromPlayerDB(pdb).BuildProfile(context.Background(), testXUID, testTitle, 60, now)
+	if err != nil {
+		t.Fatalf("BuildProfile sans mapping: %v", err)
+	}
+	supportNoMap, _ := axisLookup(profNoMap, "support")
+	if supportNoObj <= supportNoMap {
+		t.Errorf("support avec mapping (%.2f) devrait dépasser sans mapping (%.2f)", supportNoObj, supportNoMap)
 	}
 
-	// Avec mapping : Objective > 0.
-	svcWithMap := NewServiceFromPlayerDB(pdb).WithAwardMapping(awardSet)
-	prof, err = svcWithMap.BuildProfile(context.Background(), testXUID, testTitle, 60, now)
-	if err != nil {
-		t.Fatalf("BuildProfile with mapping: %v", err)
+	// Seed 2 lignes objectifs CTF (shared) sur des matchs de la fenêtre → axe
+	// présent, alimenté par l'index par opportunité.
+	for i, mid := range []string{zeropadProfile(0, 4), zeropadProfile(1, 4)} {
+		if _, err := pdb.Shared.Exec(ctx, `
+			INSERT INTO match_objective_stats (match_id, xuid, flag_captures, flag_secures, time_as_flag_carrier_seconds)
+			VALUES (?, ?, ?, ?, ?)
+		`, mid, testXUID, 2+i, 3, 25.0); err != nil {
+			t.Fatalf("insert match_objective_stats %s: %v", mid, err)
+		}
 	}
-	objWithMap := axisValue(prof, "objective")
-	if objWithMap <= 0 {
-		t.Errorf("avec mapping: objective=%.2f, want > 0", objWithMap)
+	profObj, err := svcNoObj.BuildProfile(context.Background(), testXUID, testTitle, 60, now)
+	if err != nil {
+		t.Fatalf("BuildProfile avec lignes objectifs: %v", err)
+	}
+	objVal, present := axisLookup(profObj, "objective")
+	if !present || objVal <= 0 {
+		t.Errorf("axe objective avec lignes objectifs: present=%v val=%.2f, want présent et > 0", present, objVal)
 	}
 }
 
-func axisValue(prof *PlayerProfile, axis string) float64 {
+// axisLookup retourne (valeur, présent) pour un axe du radar du profil.
+func axisLookup(prof *PlayerProfile, axis string) (float64, bool) {
 	for _, a := range prof.RadarAxes {
 		if a.Axis == axis {
-			return a.Value
+			return a.Value, true
 		}
 	}
-	return 0
+	return 0, false
 }
 
 // TestBuildProfile_SkillTrendPopulated vérifie que la sparkline de tendance LUSR

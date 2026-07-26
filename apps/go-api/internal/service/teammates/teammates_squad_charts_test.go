@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 )
@@ -1014,49 +1015,102 @@ func TestBuildSquadSynergyRadar_SurvivalIsDefensiveResistance(t *testing.T) {
 	}
 }
 
-// ---------- Radar synergie — axe Objective via PSA ----------
+// ---------- Radar synergie — axe Objectif (index par opportunité) ----------
 
-// TestBuildSquadSynergyRadar_ObjectiveSumsFromPSA vérifie que l'axe objective
-// est alimenté depuis LoadObjectiveScores (scores PSA catégorie "objective"),
-// et non toujours à 0.
-func TestBuildSquadSynergyRadar_ObjectiveSumsFromPSA(t *testing.T) {
+// TestBuildSquadSynergyRadar_ObjectiveFromIndex vérifie que l'axe objective est
+// alimenté par l'index par opportunité (port.ObjectiveIndexRepository, source
+// shared) : un joueur au P80 de sa famille marque raw=1.0 → 80/100 ; un joueur
+// sans ligne objectif garde l'axe (aligné sur series[0]) à 0.
+func TestBuildSquadSynergyRadar_ObjectiveFromIndex(t *testing.T) {
 	t0 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
 	loader := &fakeSquadLoader{
 		rowsByGT: map[string][]canonical.PlayerMatchRow{
 			"main":    {rowWithPersonalScore("m1", t0, 5, 3, 2, 600, 2000)},
 			"friend1": {rowWithPersonalScore("m1", t0, 3, 4, 8, 600, 1500)},
 		},
-		// main a des pts objectif sur m1, friend1 n'en a pas.
-		objByGT: map[string]map[string]int{
-			"main": {"m1": 700},
-		},
 	}
-	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", squadLoader: loader}
+	// main : 1 match CTF exactement au P80 (actions 11, hold 0.0434) → r = 1.0.
+	objRepo := &fakeObjectiveIndexRepo{inputsByGT: map[string]narrative.ObjectiveIndexInput{
+		"main": {
+			narrative.FamilyCTF: {
+				Matches:           1,
+				ColumnSums:        map[string]float64{"flag_captures": 1, "flag_steals": 1, "flag_returns": 2, "flag_secures": 1},
+				HoldSeconds:       0.0434 * 600,
+				TimePlayedSeconds: 600,
+			},
+		},
+	}}
+	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", squadLoader: loader, objectiveIndex: objRepo}
 	allRows := []domain.SquadMatchRow{{MatchID: "m1", StartTime: t0, Kills: 5, Deaths: 3}}
 
 	got := svc.buildSquadSynergyRadar(context.Background(), allRows, "main", []string{"friend1"})
 	if len(got) != 2 {
 		t.Fatalf("want 2 series, got %d", len(got))
 	}
-	axisRaw := func(s domain.SquadSynergyRadarSeries, axis string) float64 {
+	axis := func(s domain.SquadSynergyRadarSeries, name string) domain.SquadSynergyRadarAxis {
 		for _, a := range s.Axes {
-			if a.Axis == axis {
-				return a.Raw
+			if a.Axis == name {
+				return a
 			}
 		}
-		return -1
+		return domain.SquadSynergyRadarAxis{Raw: -1, Value: -1}
 	}
 	byPlayer := map[string]domain.SquadSynergyRadarSeries{}
 	for _, s := range got {
 		byPlayer[s.Player] = s
 	}
-	mainObj := axisRaw(byPlayer["main"], "objective")
-	f1Obj := axisRaw(byPlayer["friend1"], "objective")
-	if mainObj != 700 {
-		t.Errorf("main objective raw: want 700, got %v", mainObj)
+	mainObj := axis(byPlayer["main"], "objective")
+	if mainObj.Raw != 1.0 {
+		t.Errorf("main objective raw: want 1.0 (P80), got %v", mainObj.Raw)
 	}
-	if f1Obj != 0 {
-		t.Errorf("friend1 objective raw: want 0 (aucun PSA), got %v", f1Obj)
+	if mainObj.Value != 80 {
+		t.Errorf("main objective value: want 80, got %v", mainObj.Value)
+	}
+	// friend1 sans ligne objectif : l'axe reste présent (alignement series[0])
+	// avec raw 0.
+	if f1Obj := axis(byPlayer["friend1"], "objective"); f1Obj.Raw != 0 {
+		t.Errorf("friend1 objective raw: want 0, got %v", f1Obj.Raw)
+	}
+}
+
+// TestBuildSquadSynergyRadar_ObjectiveAxisDropped vérifie le retrait de l'axe
+// objective de TOUTES les séries quand : (a) le repo n'est pas câblé (titre sans
+// capability match.objective.stats) ; (b) aucun joueur n'a de match à objectif
+// dans le scope (n_obj = 0 partout).
+func TestBuildSquadSynergyRadar_ObjectiveAxisDropped(t *testing.T) {
+	t0 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
+	newLoader := func() *fakeSquadLoader {
+		return &fakeSquadLoader{
+			rowsByGT: map[string][]canonical.PlayerMatchRow{
+				"main":    {rowWithPersonalScore("m1", t0, 5, 3, 2, 600, 2000)},
+				"friend1": {rowWithPersonalScore("m1", t0, 3, 4, 8, 600, 1500)},
+			},
+		}
+	}
+	allRows := []domain.SquadMatchRow{{MatchID: "m1", StartTime: t0, Kills: 5, Deaths: 3}}
+
+	cases := []struct {
+		name string
+		svc  *TeammatesService
+	}{
+		{"repo absent (capability)", &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", squadLoader: newLoader()}},
+		{"scope sans match à objectif", &TeammatesService{
+			titleSlug: "halo_infinite", gamertag: "main", squadLoader: newLoader(),
+			objectiveIndex: &fakeObjectiveIndexRepo{},
+		}},
+	}
+	for _, tc := range cases {
+		got := tc.svc.buildSquadSynergyRadar(context.Background(), allRows, "main", []string{"friend1"})
+		if len(got) != 2 {
+			t.Fatalf("%s: want 2 series, got %d", tc.name, len(got))
+		}
+		for _, s := range got {
+			for _, a := range s.Axes {
+				if a.Axis == "objective" {
+					t.Errorf("%s: axe objective présent sur %s, want retiré de toutes les séries", tc.name, s.Player)
+				}
+			}
+		}
 	}
 }
 

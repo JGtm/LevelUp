@@ -128,6 +128,134 @@ func TestBuildMatchRadar_EmptyInputs(t *testing.T) {
 	}
 }
 
+// TestObjectiveIndexInputFromScoreboard_KeysMatchWeights : garde-rail anti-dérive
+// entre le mapping ObjectiveRaw → colonnes (match view) et la table de poids
+// narrative — toute clé produite doit exister dans les poids de sa famille, et la
+// classification (dont split KOTH/Strongholds par ticks) doit être correcte.
+func TestObjectiveIndexInputFromScoreboard_KeysMatchWeights(t *testing.T) {
+	t.Parallel()
+	ip := func(v int) *int { return &v }
+	fp := func(v float64) *float64 { return &v }
+	tp := fp(600)
+
+	cases := []struct {
+		name string
+		obj  domain.ObjectiveRaw
+		want narrative.ObjectiveFamily
+	}{
+		{"ctf", domain.ObjectiveRaw{
+			FlagCaptures: ip(1), FlagCaptureAssists: ip(1), FlagGrabs: ip(2), FlagSecures: ip(1),
+			FlagSteals: ip(1), FlagReturns: ip(2), FlagCarriersKilled: ip(1), FlagReturnersKilled: ip(1),
+			KillsAsFlagCarrier: ip(3), KillsAsFlagReturner: ip(1), TimeAsFlagCarrierSeconds: fp(30),
+		}, narrative.FamilyCTF},
+		{"strongholds", domain.ObjectiveRaw{
+			ZoneCaptures: ip(4), ZoneSecures: ip(2), ZoneOffensiveKills: ip(3), ZoneDefensiveKills: ip(2),
+			ZoneScoringTicks: ip(0), TimeInZonesSeconds: fp(100),
+		}, narrative.FamilyZonesStrongholds},
+		{"koth", domain.ObjectiveRaw{
+			ZoneCaptures: ip(4), ZoneSecures: ip(2), ZoneOffensiveKills: ip(3), ZoneDefensiveKills: ip(2),
+			ZoneScoringTicks: ip(12), TimeInZonesSeconds: fp(100),
+		}, narrative.FamilyZonesKOTH},
+		{"oddball", domain.ObjectiveRaw{
+			SkullGrabs: ip(3), SkullCarriersKilled: ip(2), SkullScoringTicks: ip(40),
+			KillsAsSkullCarrier: ip(1), TimeAsSkullCarrierSeconds: fp(70),
+		}, narrative.FamilyOddball},
+		{"stockpile", domain.ObjectiveRaw{
+			PowerSeedsDeposited: ip(4), PowerSeedsStolen: ip(2), PowerSeedCarriersKilled: ip(2),
+			KillsAsPowerSeedCarrier: ip(1), TimeAsPowerSeedCarrierSeconds: fp(40), TimeAsPowerSeedDriverSeconds: fp(20),
+		}, narrative.FamilyStockpile},
+		{"extraction", domain.ObjectiveRaw{
+			ExtractionConversionsCompleted: ip(2), ExtractionConversionsDenied: ip(1),
+			ExtractionInitiationsCompleted: ip(3), ExtractionInitiationsDenied: ip(1), SuccessfulExtractions: ip(2),
+		}, narrative.FamilyExtraction},
+		{"vip", domain.ObjectiveRaw{
+			KillsAsVip: ip(2), VipKills: ip(3), VipAssists: ip(1), TimesSelectedAsVip: ip(2),
+			MaxKillingSpreeAsVip: ip(3), TimeAsVipSeconds: fp(60),
+		}, narrative.FamilyVIP},
+	}
+	for _, tc := range cases {
+		in := objectiveIndexInputFromScoreboard(domain.ScoreboardRaw{Obj: tc.obj, TimePlayed: tp})
+		if len(in) != 1 {
+			t.Errorf("%s: want 1 famille, got %v", tc.name, in)
+			continue
+		}
+		st, ok := in[tc.want]
+		if !ok {
+			t.Errorf("%s: famille %s absente de %v", tc.name, tc.want, in)
+			continue
+		}
+		if st.Matches != 1 || st.TimePlayedSeconds != 600 {
+			t.Errorf("%s: Matches/TimePlayed = %d/%v, want 1/600", tc.name, st.Matches, st.TimePlayedSeconds)
+		}
+		weights := narrative.ObjectiveFamilyActionWeights[tc.want]
+		for col := range st.ColumnSums {
+			if _, known := weights[col]; !known {
+				t.Errorf("%s: colonne %q hors table de poids de %s", tc.name, col, tc.want)
+			}
+		}
+	}
+	// Slayer (aucun bloc) → nil.
+	if in := objectiveIndexInputFromScoreboard(domain.ScoreboardRaw{TimePlayed: tp}); in != nil {
+		t.Errorf("slayer: want nil, got %v", in)
+	}
+}
+
+// TestBuildMatchRadarFromScoreboard_ObjectiveIndex : l'axe Objectif vient de
+// l'index par opportunité (P80 → 80/100), est RETIRÉ sur un match sans bloc
+// objectif, et le PSA objectiveScore ne sert qu'au résiduel de l'axe Score.
+func TestBuildMatchRadarFromScoreboard_ObjectiveIndex(t *testing.T) {
+	t.Parallel()
+	ip := func(v int) *int { return &v }
+	fp := func(v float64) *float64 { return &v }
+	axisOf := func(series []MatchViewRadarSeries, axis narrative.ParticipationAxis) *narrative.ParticipationScore {
+		for i := range series[0].Axes {
+			if series[0].Axes[i].Axis == axis {
+				return &series[0].Axes[i]
+			}
+		}
+		return nil
+	}
+
+	// Match CTF exactement au P80 (actions 11, hold 0.0434 × 600 s).
+	ctfRow := domain.ScoreboardRaw{
+		XUID: "x1", Gamertag: "P1", Kills: 10, Deaths: 5, Assists: 2,
+		DamageDealt: fp(2500), DamageTaken: fp(2000), PersonalScore: fp(2000), TimePlayed: fp(600),
+		Obj: domain.ObjectiveRaw{
+			FlagCaptures: ip(1), FlagSteals: ip(1), FlagReturns: ip(2), FlagSecures: ip(1),
+			TimeAsFlagCarrierSeconds: fp(0.0434 * 600),
+		},
+	}
+	series := BuildMatchRadarFromScoreboard([]domain.ScoreboardRaw{ctfRow}, "x1", 500, "ctf", 225, 0.90)
+	if len(series) != 1 {
+		t.Fatalf("want 1 série, got %d", len(series))
+	}
+	obj := axisOf(series, narrative.AxisObjective)
+	if obj == nil {
+		t.Fatal("axe objective absent sur un match CTF")
+	}
+	if obj.Raw < 0.999 || obj.Raw > 1.001 {
+		t.Errorf("objective raw: want ~1.0 (P80), got %v", obj.Raw)
+	}
+	if obj.Value < 79.9 || obj.Value > 80.1 {
+		t.Errorf("objective value: want ~80, got %v", obj.Value)
+	}
+	// Résiduel Score : PSA soustrait (décision 1) — 2000 − 10×100 − 2×50 − 500 = 400.
+	if sc := axisOf(series, narrative.AxisScore); sc == nil || sc.Raw != 400 {
+		t.Errorf("score residuel: want 400, got %+v", sc)
+	}
+
+	// Match sans bloc objectif (Slayer) → axe objective RETIRÉ.
+	slayerRow := ctfRow
+	slayerRow.Obj = domain.ObjectiveRaw{}
+	series = BuildMatchRadarFromScoreboard([]domain.ScoreboardRaw{slayerRow}, "x1", 0, "slayer", 225, 0.90)
+	if len(series) != 1 {
+		t.Fatalf("want 1 série, got %d", len(series))
+	}
+	if obj := axisOf(series, narrative.AxisObjective); obj != nil {
+		t.Errorf("axe objective sur un match Slayer: want retiré, got %+v", obj)
+	}
+}
+
 func TestMatchModeFamilyFromMeta(t *testing.T) {
 	t.Parallel()
 	cases := []struct {

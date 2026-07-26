@@ -78,7 +78,7 @@ func createParquetViewStrict(ctx context.Context, db *sql.DB, viewName, file str
 // (CREATE TABLE IF NOT EXISTS + CREATE VIEW) s'appliquent sans conflit de nom.
 func sharedSnapshotRequiredTables() []string {
 	out := append([]string{}, sharedSnapshotTables...)
-	out = append(out, sharedSnapshotMatchKeyedRaw...) // weapon_kills, match_csrs (raw)
+	out = append(out, sharedSnapshotMatchKeyedRaw...) // weapon_kills, match_csrs, match_objective_stats (raw)
 	out = append(out, sharedSnapshotGlobalTables...)  // xuid_aliases
 	return out
 }
@@ -86,16 +86,19 @@ func sharedSnapshotRequiredTables() []string {
 // OpenSnapshotShared ouvre la version courante comme une DuckDB :memory: reconstruisant
 // le SCHÉMA SHARED COMPLET — toutes les tables de base + TOUTES les vues aux noms live
 // (v_gamertag_lookup, v_match_full, v_killer_victim_full, v_weapon_kills,
-// match_csrs_latest, mv_player_matches) → un SharedReader peut servir TOUTES les lectures
-// shared de l'app depuis le snapshot, hors fenêtre RW. Retourne ErrNoSnapshot (aucune
-// version) ou ErrSnapshotIncomplete (table requise absente) → le caller dégrade vers live
-// (jamais de schéma partiel servi : soit le schéma complet, soit le live).
+// match_csrs_latest, match_objective_stats_latest, mv_player_matches) → un SharedReader
+// peut servir TOUTES les lectures shared de l'app depuis le snapshot, hors fenêtre RW.
+// Retourne ErrNoSnapshot (aucune version) ou ErrSnapshotIncomplete (table requise
+// absente) → le caller dégrade vers live (jamais de schéma partiel servi : soit le
+// schéma complet, soit le live).
 //
 // Zéro divergence : les vues sont créées par les MÊMES fonctions canoniques que le boot/
 // migrations (migration.ApplyResolutionViews + ApplyMvPlayerMatchesView, qui réutilisent
-// analysis.GamertagLookupViewSQL — source unique du chokepoint gamertag). Seules
+// analysis.GamertagLookupViewSQL — source unique du chokepoint gamertag ;
+// migration.MatchObjectiveStatsLatestViewSQL pour match_objective_stats_latest). Seules
 // v_weapon_kills / match_csrs_latest sont inlinées (DDL court, gardé par le test de
-// fidélité).
+// fidélité). Le test de contrat TestOpenSnapshotShared_SchemaContract_integration liste
+// les relations que les requêtes MatchView (Q12/Q13...) attendent de ce schéma.
 func OpenSnapshotShared(ctx context.Context, paths *title.PathResolver, titleSlug string) (*SnapshotQuerier, error) {
 	if paths == nil {
 		return nil, fmt.Errorf("OpenSnapshotShared: paths nil")
@@ -135,6 +138,8 @@ func OpenSnapshotShared(ctx context.Context, paths *title.PathResolver, titleSlu
 	}
 	// v_weapon_kills (DENSE_RANK) + match_csrs_latest (QUALIFY) : DDL inline aligné sur
 	// migration/steps_shared_append_only_weapon_kills.go et sync/schema.go.
+	// match_objective_stats_latest : DDL canonique partagé (Q12 la LEFT JOIN depuis v7.2 —
+	// son absence du schéma snapshot rendait TOUT match du cut scoreboard_empty).
 	for _, ddl := range []string{
 		`CREATE OR REPLACE VIEW v_weapon_kills AS
 			SELECT * EXCLUDE (rk) FROM (
@@ -145,6 +150,7 @@ func OpenSnapshotShared(ctx context.Context, paths *title.PathResolver, titleSlu
 		`CREATE OR REPLACE VIEW match_csrs_latest AS
 			SELECT * FROM match_csrs
 			QUALIFY ROW_NUMBER() OVER (PARTITION BY match_id, xuid ORDER BY written_at DESC, id DESC) = 1`,
+		migration.MatchObjectiveStatsLatestViewSQL("match_objective_stats"),
 	} {
 		if _, err := db.ExecContext(ctx, ddl); err != nil {
 			_ = db.Close()

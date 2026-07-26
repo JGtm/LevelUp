@@ -19,8 +19,10 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -1370,9 +1372,30 @@ func serveStaticFile(w http.ResponseWriter, req *http.Request, fileServer http.H
 	fileServer.ServeHTTP(w, req)
 }
 
+// staticAssetExts : extensions de fichiers statiques attendues dans le dist Vite.
+// Un chemin qui porte l'une d'elles mais n'existe pas sur disque est un asset
+// MANQUANT (404 franc + log), jamais une route SPA — le fallback index.html
+// (200 text/html) servait du HTML aux <img> quand .dockerignore strippait les
+// PNG de apps/web/public, image vide sans aucune erreur visible (2 releases).
+var staticAssetExts = map[string]struct{}{
+	".png": {}, ".jpg": {}, ".jpeg": {}, ".webp": {}, ".gif": {}, ".svg": {},
+	".ico": {}, ".css": {}, ".js": {}, ".mjs": {}, ".map": {}, ".woff": {},
+	".woff2": {}, ".ttf": {}, ".txt": {}, ".xml": {}, ".json": {},
+}
+
+// isStaticAssetPath indique si le chemin URL porte une extension de fichier
+// statique connue (insensible a la casse) — cf. staticAssetExts.
+func isStaticAssetPath(urlPath string) bool {
+	_, ok := staticAssetExts[strings.ToLower(path.Ext(urlPath))]
+	return ok
+}
+
 // mountSPA sert le build Vite (LEVELUP_WEB_DIST) en catch-all /* : un fichier du
-// dist servi tel quel, sinon index.html (route client-side React) avec injection
-// Open Graph. Inactif si WebDistDir vide ou index.html absent. Extrait de NewRouter (K2a).
+// dist servi tel quel ; un chemin a extension statique absent du dist → 404 franc
+// (cf. staticAssetExts) ; sinon index.html (route client-side React) avec injection
+// Open Graph. Les routes /api/v1 sont montees AVANT (r.Route dans server.go) : un
+// chemin /api/v1/* inconnu tombe sur le NotFound du sous-routeur, jamais ici.
+// Inactif si WebDistDir vide ou index.html absent. Extrait de NewRouter (K2a).
 func mountSPA(r chi.Router, serverCtx context.Context, cfg *config.AppConfig, reg *wire.ServiceRegistry) {
 	if dist := cfg.WebDistDir; dist != "" {
 		indexPath := filepath.Join(dist, "index.html")
@@ -1381,6 +1404,13 @@ func mountSPA(r chi.Router, serverCtx context.Context, cfg *config.AppConfig, re
 			r.Get("/*", func(w http.ResponseWriter, req *http.Request) {
 				if fi, err := os.Stat(filepath.Join(dist, filepath.Clean(req.URL.Path))); err == nil && !fi.IsDir() {
 					serveStaticFile(w, req, fileServer)
+					return
+				}
+				if isStaticAssetPath(req.URL.Path) {
+					// Log volontairement non throttle : c'est le silence de ce
+					// fallback qui a fait survivre le bug des PNG strippes.
+					slog.WarnContext(req.Context(), "static asset not found", "path", req.URL.Path)
+					http.NotFound(w, req)
 					return
 				}
 				reg.ServeIndexWithOG(w, req, indexPath)

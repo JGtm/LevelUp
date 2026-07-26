@@ -1,3 +1,160 @@
+## [2026-07-26] Match view : Medias dernier bloc pleine largeur, fin des blocs orphelins, vignettes 200px
+
+**Statut** : Complété (branche `fix/quick-wins-post-v721`, lot frontend du batch quick wins,
+pas de commit — superviseur). Entrée écrite par le superviseur (lot exécuté par agent,
+périmètre apps/web/ uniquement).
+
+**Décision technique principale.** La composition de l'onglet Général de la Match View
+reposait sur des grilles rigides `lg:grid-cols-3` avec col-span statiques portés par les
+enfants, alors que `FragSunburst` s'auto-supprime (`return null` si distribution absente)
+sans que le parent le sache — d'où « Outils de destruction » orphelin à 1/3 de largeur.
+Correctifs : (1) la grille frags est déplacée DANS `MatchFragCard` (seul endroit qui
+connaît le nombre de cellules émises), prédicat aligné miroir exact de `FragSunburst`
+(`total_kills>0 && classes.length>0`), breakdown pleine largeur quand seul ; (2) le bloc
+Médias sort de la grille R4 et devient le dernier frère direct, seul, pleine largeur
+(règle produit) ; R4 et la rangée charts passent en grilles fluides
+`repeat(auto-fit,minmax(...))` — plus aucun orphelin quel que soit le nombre de blocs
+rendus (title-agnostic : dérive des capabilities/FeatureGate, zéro test de slug) ;
+(3) vignettes médias en `repeat(auto-fill,minmax(200px,1fr))` (conteneur, plus le
+viewport) au lieu de `lg:grid-cols-5` dans une colonne à 1/3 (~65px par vignette).
+
+**Résultats observés.** tsc/eslint/vitest verts (3167 tests) ; tests structurels ajoutés
+(`MatchFragCard.test.tsx` grille auto-consciente, `MatchViewPage.test.tsx` Médias hors
+grille, dernier enfant). Vérification visuelle utilisateur attendue au review.
+
+**Prochaine étape.** Batch complet : gates finaux superviseur puis commit unique du lot
+quick wins.
+
+## [2026-07-26] Axe « Objectifs » du profil de participation : index par opportunité (stats v7.2)
+
+**Statut** : Complété (branche `fix/quick-wins-post-v721`, pas de commit — superviseur).
+Plan : `.ai/PLAN_AXE_OBJECTIFS_INDEX.md` (toutes étapes statuées, journal dans le plan).
+
+**Décision technique principale.** L'axe Objectif des 4 surfaces vivantes (barres
+Session, radar synergie Escouade, radar Match View, radar Ascension) abandonne
+`Σ PSA objective ÷ nb TOTAL de matchs` (dilué par les matchs Slayer, seuils 350×n jamais
+calibrés) pour un **index par opportunité** sur `match_objective_stats_latest` : sous-score
+par famille de mode (ctf / zones_koth / zones_strongholds [split par ligne sur
+`zone_scoring_ticks>0`] / oddball / stockpile / extraction / vip) calculé sur les SEULS
+matchs de la famille — `r_f = min(1.25, 0.65×actions/P80 + 0.35×hold/P80)` (extraction :
+actions seul) — agrégé pondéré par n_f. Un joueur au P80 de son mode marque 80/100 ;
+n_obj == 0 → l'axe est RETIRÉ (patron dropUncomputableRadarAxes), plus jamais de 0
+trompeur. Architecture : primitive pure `narrative.ComputeObjectiveIndex` (tables de poids
+et calibrations exportées = source unique), lecture `duckdb.ObjectiveStatsRepo.
+LoadObjectiveIndexInputs[ByGamertag]` (SELECT GÉNÉRÉ depuis les tables narrative — pas de
+6e liste de colonnes ; by-gamertag via xuid_aliases → coéquipiers non suivis couverts),
+port `ObjectiveIndexRepository`, wiring capability-gated `match.objective.stats` (+ helper
+neuf `games.ProvidesObjectiveStats`, patron live_service_source). PSA conservé UNIQUEMENT
+pour le résiduel de l'axe Score (Match View) ; les chemins PSA session/squad
+(`ObjectiveScores`, `LoadObjectiveScores`) sont SUPPRIMÉS avec leurs tests/fakes.
+
+**Calibration (diag_q, population match-joueur, tp>30s, hors bots).** MESURÉS : ctf
+n=3419/234 matchs (actions P80=11, hold P80=0.0434) ; strongholds n=1639/136 (29 ;
+0.1809) ; koth n=361/47 (51 ; 0.2178). PROVISOIRES : oddball (7 matchs — mesures 35 ;
+0.1187 retenues), stockpile (20 ; 0.10), extraction (12 ; sans hold), vip (18 ; 0.12).
+Backfill local v7.2.1 (étape 1) NON exécutable : shared DB tenue RW-exclusive par le
+serveur dev (interdiction de l'arrêter) + reset ciblé `MBitObjectiveStats` non outillé
+(écriture ad hoc interdite) → fallback décision 6 documenté, re-mesure à ≥30 matchs.
+
+**Résultats observés.** Gates verts : build/vet 0 ; tests analysis + platform/duckdb +
+service + progression + prestige + api + port + games + archlint + sync exit 0 ;
+intégration profile -tags=integration exit 0 ; web typecheck 0 / lint 0 (baseline).
+Test d'intégration `TestBuildProfile_AwardsMappingEnrichesObjective` réécrit
+(`_ObjectiveAxisFromIndex`) : l'axe vient des lignes shared, plus des awards ; awards.toml
+reste la source des AUTRES axes. Doc orpheline de `synergyRadarThresholds` (fichier
+weapons_perf) re-synchronisée.
+
+**Conclusion / prochaine étape.** Superviseur : gates complets (`go test ./...` +
+intégration -p 1) + commit ; puis reset ciblé + `cmd/backfill_objective_stats` serveur
+coupé (local et prod) et re-mesure des P80 provisoires (requêtes de l'étape 2 du plan).
+Découvertes consignées au plan (dont : outiller le reset de bits de backfill).
+
+## [2026-07-26] Fix assets public/ strippés de l'image Docker + 404 franc SPA + deps useMemo Waypoint
+
+**Statut** : Complété (branche `fix/quick-wins-post-v721`, pas de commit — superviseur).
+
+**Bug confirmé prod.** `.dockerignore` exclut `*.png`/`*.jpg`/`*.webp`… et ne ré-incluait
+que `static/` (précédent f106f0b03) — `apps/web/public/` jamais ré-inclus → build Vite
+dans l'image avec un `public/` amputé → `dist/` sans les PNG (icône Waypoint, logo,
+og-default, ~1200 emblèmes halo_5). À l'exécution, le catch-all SPA (`mountSPA`,
+`internal/api/server_apiv1.go`) répondait index.html 200 text/html à tout chemin inconnu →
+`<img>` vide sans aucune erreur visible pendant deux releases.
+
+**Correctifs.** (1) `.dockerignore` : négations `!apps/web/public` + `!apps/web/public/**`
+après les globs media (l'ordre compte), commentées. (2) 404 franc : `mountSPA` renvoie
+`http.NotFound` + `slog.WarnContext("static asset not found")` (non throttlé, c'est le
+silence qui a fait survivre le bug) quand `os.Stat` échoue ET que le chemin porte une
+extension statique connue (`staticAssetExts` + `isStaticAssetPath`, `path.Ext` insensible
+à la casse) ; routes SPA sans extension inchangées (index + OG) ; /api/v1 monté AVANT le
+catch-all (NotFound du sous-routeur). (3) Tests `spa_fallback_404_test.go` (pattern
+spa_static_cache_test) : existant servi / asset manquant 404 / route SPA 200 HTML.
+(4) Garde-rail build : `apps/web/scripts/verify-public-in-dist.mjs` (générique, zéro
+énumération) compare récursivement public/ vs dist/ et échoue en listant les manquants ;
+branché dans le Dockerfile stage web-builder après `npm run build`. (5) Deps useMemo :
+`currentTitleSlug` ajouté aux deps des colonnes d'`ExplorerMatchesTable` ET de
+`SquadSynergyHistoryTable` (lien Waypoint figé sur l'ancien titre après switch) ; la
+directive exhaustive-deps devenue inutile côté Squad a été retirée (warning lint sinon).
+
+**Gates.** Go : build 0, vet 0, `go test ./internal/api/...` 0 (4 nouveaux tests PASS).
+Web : typecheck 0, lint 0 (15 warnings baseline, aucun nouveau), vitest ciblé 6 fichiers /
+64 tests PASS. Script prouvé : cas OK 1295/1295 fichiers ; cas KO simulé (copie scratchpad
+amputée de 2 fichiers) → exit 1 avec liste. Docker : `docker build --target web-builder`
+NON exécuté — aucun démon/CLI Docker sur ce poste (docker/podman/nerdctl absents) ; preuve
+finale au prochain build CI, où le garde-rail échouera bruyamment si la ré-inclusion ne
+suffisait pas.
+
+**Découvertes hors périmètre (non traitées).** (a) Violation title-agnostic
+`titleSlug === 'halo_5'` dans `apps/web/src/lib/match-nav/waypointUrl.ts`. (b) Arbitrage à
+mener : servir les ~1200 emblèmes halo_5 via le proxy `/api/v1/assets` plutôt que le
+bundle (poids du dist). (c) `manifest.webmanifest` absent de `staticAssetExts` (statu quo
+fallback SPA — à ajouter si un manifest entre dans public/). (d) Warnings « Unused
+eslint-disable directive » pré-existants dans PostSyncMatrix.tsx:81 et
+AdminTitlesPage.tsx:74.
+
+## [2026-07-26] Fix régression v7.2 — snapshot shared sans match_objective_stats → scoreboard_empty
+
+**Statut** : Complété (branche `fix/quick-wins-post-v721`, pas de commit — superviseur).
+
+**Bug.** Depuis v7.2, Q12 (scoreboard Match View, `platform/duckdb/queries_match.go:120`)
+LEFT JOIN `match_objective_stats_latest`. Or les lectures shared Match View passent par le
+reader snapshot-préféré (`sync/snapshot/snapshot_shared_reader.go` → `ops.OpenSnapshotShared`,
+DuckDB `:memory:` reconstruite depuis les parquets du cut) et le snapshot n'exportait PAS
+`match_objective_stats` ni ne recréait la vue → `Catalog Error` sur Q12 → scoreboard vide →
+`is_partial=true` / `partial_reasons=["scoreboard_empty"]` pour TOUS les matchs du cut
+(contre-épreuve : match hors cut = forceLive = scoreboard complet).
+
+**Correctifs.** (1) Export : `match_objective_stats` ajoutée à `sharedSnapshotMatchKeyedRaw`
+(`ops/snapshot_export.go`) — même famille append-only raw que `weapon_kills`/`match_csrs`.
+(2) Lecture : `OpenSnapshotShared` (`ops/snapshot_read.go`) recrée la vue `_latest`.
+(3) Centralisation : le DDL de la vue existait en 4 copies (2 steps
+`games/halo_infinite/migrations/steps_shared_objective_stats.go` + fixtures
+`sync/sync_pipeline_fixture_test.go` et `platform/duckdb/player_repos_test.go`) et une 5e
+allait naître → helper unique `migration.MatchObjectiveStatsLatestViewSQL(tableRef)`
+(`internal/migration/objective_stats_view.go`, plus bas du graphe, zéro cycle), les 5 sites
+migrés, garde-rail `archlint/no_inline_objective_latest_view_test.go` (scanne AUSSI les
+_test.go, contrairement aux autres ratchets — 2 copies étaient des fixtures).
+(4) Tests : fidélité étendue (seed 2 générations, dédup QUALIFY, filtre ready) + nouveau
+`TestOpenSnapshotShared_SchemaContract_integration` listant les relations attendues du
+schéma snapshot (une future table jointe dans Q12 cassera un test, pas la prod).
+
+**Auto-guérison vérifiée sur pièces.** Snapshot local v65 SANS le parquet → au boot du
+binaire corrigé : `ErrSnapshotIncomplete` → negative-cache `failedVersion` → fallback live
+propre (1 warn par version) ; prochain cut = v66 complet → lecture snapshot rétablie.
+Aucune action manuelle.
+
+**Gates.** `go build` 0 ; `go vet` 0 ; tests unit ops/sync/duckdb/migration/archlint/
+halo_infinite-migrations 0 ; intégration `-p 1` (ops, sync, sync/snapshot, duckdb,
+migrations, archlint) 0 — aucun `^--- FAIL:`. Bout-en-bout HTTP non rejoué : le serveur
+local :8000 (`tmp\server.exe`, démarré 02:24, parent powershell détaché — pas un enfant
+d'air) porte l'ANCIEN binaire ; le rejouer n'aurait montré que l'ancien comportement et un
+2e process sur les mêmes DBs est interdit (mono-process).
+
+**Découvertes hors périmètre (non traitées).** (a) `match_csrs_latest` + `v_weapon_kills` :
+DDL encore inline en 3 endroits (snapshot_read.go, sync/schema.go, player_repos_test.go) —
+même traitement centralisation possible. (b) Commentaire périmé `snapshot_export.go:20` :
+`OpenSnapshotForPlayer` n'existe plus. (c) La fixture player_repos_test seede 41 colonnes
+« miroir » de la migration sans garde de dérive de schéma.
+
 ## [2026-07-25] V721-13 — What's new + changelogs + notes de version in-app v7.2.1
 
 **Statut** : Complété. Pas de commit (superviseur). Item FINAL du plan

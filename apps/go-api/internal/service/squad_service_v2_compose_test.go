@@ -48,10 +48,6 @@ func (f *fakeSquadLoaderFull) LoadMapStatsForSquad(_ context.Context, _, _ strin
 	return nil, nil
 }
 
-func (f *fakeSquadLoaderFull) LoadObjectiveScores(_ context.Context, _, _ string, _ []string) (map[string]int, error) {
-	return map[string]int{}, nil
-}
-
 func (f *fakeSquadLoaderFull) LoadPlayerAssistsModel(_ context.Context, _, _, _ string) (*domain.PlayerAssistsModel, error) {
 	return nil, nil
 }

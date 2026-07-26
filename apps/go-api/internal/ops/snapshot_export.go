@@ -28,10 +28,13 @@ var sharedSnapshotTables = []string{
 
 // sharedSnapshotMatchKeyedRaw : tables shared append-only exportées RAW (toutes
 // générations des matchs ready) — leurs vues (v_weapon_kills DENSE_RANK,
-// match_csrs_latest QUALIFY) sont reconstruites à la LECTURE par les DDL canoniques.
-// Exporter le raw (et non le collapsed) permet aussi les lectures directes de ces
-// tables (weapon_kills / match_csrs) hors vue.
-var sharedSnapshotMatchKeyedRaw = []string{"weapon_kills", "match_csrs"}
+// match_csrs_latest / match_objective_stats_latest QUALIFY) sont reconstruites à la
+// LECTURE par les DDL canoniques. Exporter le raw (et non le collapsed) permet aussi
+// les lectures directes de ces tables hors vue. match_objective_stats ajoutée le
+// 2026-07-26 : Q12 (scoreboard MatchView) LEFT JOIN match_objective_stats_latest
+// depuis v7.2 — sans l'export, la vue manquait du schéma snapshot et TOUT match du
+// cut sortait scoreboard_empty (bandeau « match partiel »).
+var sharedSnapshotMatchKeyedRaw = []string{"weapon_kills", "match_csrs", "match_objective_stats"}
 
 // sharedSnapshotGlobalTables : relations shared NON match-keyed (clé xuid) exportées en
 // ENTIER (petites, globales) — requises par v_gamertag_lookup au moment de la lecture.

@@ -125,7 +125,7 @@ export function MatchMediaTab({ items, playerSlug, matchId, locale }: MatchMedia
           onClose={picker.close}
         />
       )}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))]">
         {mediaRows.map((item, idx) => (
           <MediaThumbnailCard
             key={item.file_path}

@@ -204,7 +204,11 @@ const FR_TEXT: HelpText = {
           {
             term: 'Objectif',
             definition:
-              'Points de score issus des actions d\'objectif (PersonalScoreAwards) : captures de drapeau, défenses de zone, activations de plots, contributions en mode Oddball, etc. Distingue les joueurs qui jouent l\'objectif de ceux qui se concentrent uniquement sur les frags.',
+              'Participation aux objectifs mesurée PAR OPPORTUNITÉ : seuls les matchs à objectif (Drapeau, Zones, Roi de la colline, Oddball, Stockage, Extraction, VIP) comptent — les matchs Assassin ne diluent plus la valeur, et l\'axe disparaît si aucun match à objectif n\'est dans le champ. Chaque mode combine ses actions pondérées (captures, prises, retours, sécurisations…) et le temps passé sur l\'objectif (port du drapeau, occupation de zone…), rapportés au nombre de matchs du mode et calibrés sur des repères réels : un joueur au niveau P80 de son mode marque 80/100.',
+            formula:
+              'Par mode : r = min(1,25 ; 0,65 × actions/P80 + 0,35 × temps objectif/P80)\nIndex = moyenne des r pondérée par le nombre de matchs de chaque mode',
+            example:
+              '3 matchs Drapeau au P80 (r = 1,0) + 1 match Zones moyen (r = 0,5) → (3 × 1,0 + 0,5) / 4 ≈ 0,88 → 70/100.',
           },
         ],
       },
@@ -586,7 +590,11 @@ const EN_TEXT: HelpText = {
           {
             term: 'Objective',
             definition:
-              'Score points from objective actions (PersonalScoreAwards): flag captures, zone defences, zone activations, Oddball contributions, etc. Distinguishes players who play the objective from those who focus purely on kills.',
+              'Objective participation measured PER OPPORTUNITY: only objective matches (Flag, Zones, King of the Hill, Oddball, Stockpile, Extraction, VIP) count — Slayer matches no longer dilute the value, and the axis disappears when no objective match is in scope. Each mode combines its weighted actions (captures, grabs, returns, secures…) and the time spent on the objective (flag carrying, zone occupation…), normalized by the number of matches of that mode and calibrated against real benchmarks: a player at their mode\'s P80 level scores 80/100.',
+            formula:
+              'Per mode: r = min(1.25; 0.65 × actions/P80 + 0.35 × objective time/P80)\nIndex = average of r weighted by each mode\'s match count',
+            example:
+              '3 Flag matches at P80 (r = 1.0) + 1 average Zones match (r = 0.5) → (3 × 1.0 + 0.5) / 4 ≈ 0.88 → 70/100.',
           },
         ],
       },

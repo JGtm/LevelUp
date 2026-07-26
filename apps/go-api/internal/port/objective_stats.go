@@ -3,6 +3,7 @@ package port
 import (
 	"context"
 
+	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/domain"
 )
 
@@ -23,4 +24,30 @@ type ObjectiveStatsRepository interface {
 		matchIDs []string,
 		xuids []string,
 	) (map[string]*domain.ObjectiveAggregate, error)
+}
+
+// ObjectiveIndexRepository charge, sur un scope fermé de matchs, les agrégats par
+// (joueur × famille de mode) attendus par narrative.ComputeObjectiveIndex — l'axe
+// « Objectifs » par opportunité des profils de participation (Session, Escouade,
+// Ascension ; plan PLAN_AXE_OBJECTIFS_INDEX).
+//
+// Même contrat de dégradation que ObjectiveStatsRepository : best-effort, résultat
+// vide sans échec de page (l'axe est alors retiré, pas affiché à 0). Implémenté par
+// internal/platform/duckdb.ObjectiveStatsRepo (vue match_objective_stats_latest).
+// Câblé UNIQUEMENT pour les titres portant la capability match.objective.stats.
+type ObjectiveIndexRepository interface {
+	// LoadObjectiveIndexInputs : par xuid, agrégats par famille sur le scope.
+	LoadObjectiveIndexInputs(
+		ctx context.Context,
+		matchIDs []string,
+		xuids []string,
+	) (map[string]narrative.ObjectiveIndexInput, error)
+
+	// LoadObjectiveIndexInputsByGamertag : variante gamertag (coéquipiers non
+	// suivis, résolution shared.xuid_aliases).
+	LoadObjectiveIndexInputsByGamertag(
+		ctx context.Context,
+		matchIDs []string,
+		gamertag string,
+	) (narrative.ObjectiveIndexInput, error)
 }

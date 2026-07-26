@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/legacymatch"
 )
@@ -103,23 +104,23 @@ func filterBySession(matches []legacymatch.StatsMatchRow, label string) []legacy
 // Entry builder
 // ---------------------------------------------------------------------------
 
-// buildCompareEntry : variante sans scores PSA (axe Objective à 0). Conservée pour
-// les callers sans accès au loader PSA (SessionCompare, tests). provideSpree=true
+// buildCompareEntry : variante sans agrégats objectifs (axe Objectif retiré).
+// Conservée pour les callers sans accès au repo d'index (tests). provideSpree=true
 // (défaut Infinite : le max killing spree est fourni).
 func buildCompareEntry(matches []legacymatch.StatsMatchRow, label string, effectiveHpToKill float64) *domain.SessionCompareEntry {
 	return buildCompareEntryWithObjectives(matches, label, nil, effectiveHpToKill, true)
 }
 
-// buildCompareEntryWithObjectives construit l'entry en alimentant les axes Objective
-// et Score (résiduel) du profil de participation avec les scores PSA "objective"
-// (match_id → score) ; objScores nil → dégradation gracieuse (Objective=0).
+// buildCompareEntryWithObjectives construit l'entry en alimentant l'axe Objectif
+// du profil de participation avec l'index par opportunité (agrégats par famille,
+// match_objective_stats_latest) ; objIdx nil ou sans match à objectif → axe retiré.
 //
 // provideSpree : false quand le titre ne porte pas le max killing spree (Halo 5) →
 // MaxKillingSpree reste nil (radar « Folie meurtrière » masqué) au lieu d'un 0.
 func buildCompareEntryWithObjectives(
 	matches []legacymatch.StatsMatchRow,
 	label string,
-	objScores map[string]int,
+	objIdx narrative.ObjectiveIndexInput,
 	effectiveHpToKill float64,
 	provideSpree bool,
 ) *domain.SessionCompareEntry {
@@ -220,7 +221,7 @@ func buildCompareEntryWithObjectives(
 	dominantCat := dominantSessionCategoryPtr(matches)
 	lastRating, ratingType, ratingDelta := lastSkillRating(matches)
 	avgTeamMMR, avgEnemyMMR := avgMMR(matches)
-	participation := buildSessionParticipationProfile(matches, objScores, effectiveHpToKill)
+	participation := buildSessionParticipationProfile(matches, objIdx, effectiveHpToKill)
 	// entry.Matches en FR par défaut (le tableau visible passe par resp.Matches,
 	// déjà locale-aware via GetPage). Écart au FDA attendu non consommé ici (chart
 	// cumulé = vue session principale, D2) → assists nil.

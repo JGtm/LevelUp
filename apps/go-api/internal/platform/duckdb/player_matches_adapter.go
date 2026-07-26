@@ -67,12 +67,6 @@ func (a *PlayerMatchesAdapter) LobbySizesAtCompletion(
 	return a.repo.LobbySizesAtCompletion(ctx, matchIDs)
 }
 
-// ObjectiveScores délègue à PlayerMatchesRepo (capability optionnelle consommée
-// par SessionPageService pour les axes Objective/Score du profil de participation).
-func (a *PlayerMatchesAdapter) ObjectiveScores(ctx context.Context, _ string, matchIDs []string) (map[string]int, error) {
-	return a.repo.ObjectiveScores(ctx, matchIDs)
-}
-
 // InvalidatePlayer est un no-op pour cette implémentation per-player. Le cache
 // LRU n'est pas applicable ici car chaque PlayerDB est déjà résolu une fois par
 // requête HTTP via le pool.
