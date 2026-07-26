@@ -202,11 +202,16 @@ function alignClass(colId: string): string {
  *  `w-9` = 16 px d'icône + les 2×8 px de `px-2` du gabarit commun. On réserve la
  *  largeur ICI plutôt que d'élargir le rembourrage global, qui décollerait tout le
  *  reste du tableau de ses bordures. */
-const ICON_COLUMNS = new Set<string>(['open', 'waypoint'])
+const ICON_COLUMN_WIDTHS: Record<string, string> = {
+  // Icône carrée 14 px (<svg> inline) + les 2x8 px de px-2.
+  open: 'w-9',
+  // Logotype 20x16 (ratio natif 2.25 respecté via object-contain) + px-2.
+  waypoint: 'w-9',
+}
 
 /** Classe de largeur d'une colonne : réservée pour les colonnes icône, libre sinon. */
 function widthClass(colId: string): string {
-  return ICON_COLUMNS.has(colId) ? 'w-9' : ''
+  return ICON_COLUMN_WIDTHS[colId] ?? ''
 }
 
 /** Indicateur de tri de la colonne active : ▲ ascendant / ▼ descendant. Rien sur
@@ -372,16 +377,27 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
             onClick={(e) => e.stopPropagation()}
             aria-label={t('explorer.matches.col_waypoint_aria')}
             title={t('explorer.matches.col_waypoint_aria')}
-            className="group flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+            // Boîte de taille FIXE, et non un flex qui négocie sa taille avec la
+            // cellule : voir le commentaire de l'image ci-dessous.
+            className="group inline-flex h-4 w-5 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
           >
             <img
               src={waypointLogoSrc(theme)}
               alt=""
               aria-hidden
-              // shrink-0 : l'image est un élément flexible du <a> ci-dessus. Sans
-              // lui, une colonne comprimée par le tableau l'écrase jusqu'à la
-              // faire disparaître (cf. ICON_COLUMNS).
-              className="h-4 w-4 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity"
+              // Attributs width/height HTML en PLUS des classes : ils donnent au
+              // moteur une taille INTRINSÈQUE. Sans eux, une image dans un flex
+              // à l'intérieur d'une cellule de tableau en largeur automatique est
+              // dimensionnée différemment selon le moteur — Firefox l'écrasait
+              // jusqu'à l'invisibilité alors que Chrome la rendait correctement
+              // (constaté 2026-07-26). La taille fixe du <a> ci-dessus retire
+              // toute négociation.
+              width={20}
+              height={16}
+              // object-contain : le fichier est un LOGOTYPE 360x160 (ratio 2.25).
+              // Sans lui, le `fill` par défaut l'écrasait dans un carré — déformé
+              // sur TOUS les navigateurs, y compris ceux où il s'affichait.
+              className="h-full w-full shrink-0 object-contain opacity-60 group-hover:opacity-100 transition-opacity"
             />
           </a>
         ),
