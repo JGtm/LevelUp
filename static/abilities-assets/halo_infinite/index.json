@@ -1,0 +1,101 @@
+[
+ {
+  "key": "ActiveCamouflage",
+  "fr": "Camouflage actif",
+  "en": "ActiveCamouflage",
+  "light": "ActiveCamouflage-light.png",
+  "dark": "ActiveCamouflage-dark.png",
+  "glyph_pct": 20.3,
+  "src_max_lum": 202
+ },
+ {
+  "key": "DropWall",
+  "fr": "Mur de protection",
+  "en": "DropWall",
+  "light": "DropWall-light.png",
+  "dark": "DropWall-dark.png",
+  "glyph_pct": 35.9,
+  "src_max_lum": 202
+ },
+ {
+  "key": "Grappleshot",
+  "fr": "Grappin",
+  "en": "Grappleshot",
+  "light": "Grappleshot-light.png",
+  "dark": "Grappleshot-dark.png",
+  "glyph_pct": 19.0,
+  "src_max_lum": 202
+ },
+ {
+  "key": "Overshield",
+  "fr": "Surbouclier",
+  "en": "Overshield",
+  "light": "Overshield-light.png",
+  "dark": "Overshield-dark.png",
+  "glyph_pct": 21.6,
+  "src_max_lum": 202
+ },
+ {
+  "key": "QuantumTranslocator",
+  "fr": "Translocateur quantique",
+  "en": "QuantumTranslocator",
+  "light": "QuantumTranslocator-light.png",
+  "dark": "QuantumTranslocator-dark.png",
+  "glyph_pct": 20.6,
+  "src_max_lum": 202
+ },
+ {
+  "key": "RepairField",
+  "fr": "Champ de réparation",
+  "en": "RepairField",
+  "light": "RepairField-light.png",
+  "dark": "RepairField-dark.png",
+  "glyph_pct": 20.9,
+  "src_max_lum": 202
+ },
+ {
+  "key": "Repulsor",
+  "fr": "Répulseur",
+  "en": "Repulsor",
+  "light": "Repulsor-light.png",
+  "dark": "Repulsor-dark.png",
+  "glyph_pct": 23.7,
+  "src_max_lum": 202
+ },
+ {
+  "key": "ShroudScreen",
+  "fr": "Écran occultant",
+  "en": "ShroudScreen",
+  "light": "ShroudScreen-light.png",
+  "dark": "ShroudScreen-dark.png",
+  "glyph_pct": 19.3,
+  "src_max_lum": 202
+ },
+ {
+  "key": "ThreatSeeker",
+  "fr": "Traqueur de menaces",
+  "en": "ThreatSeeker",
+  "light": "ThreatSeeker-light.png",
+  "dark": "ThreatSeeker-dark.png",
+  "glyph_pct": 26.5,
+  "src_max_lum": 202
+ },
+ {
+  "key": "ThreatSensor",
+  "fr": "Détecteur de menaces",
+  "en": "ThreatSensor",
+  "light": "ThreatSensor-light.png",
+  "dark": "ThreatSensor-dark.png",
+  "glyph_pct": 27.1,
+  "src_max_lum": 202
+ },
+ {
+  "key": "Thruster",
+  "fr": "Propulseur",
+  "en": "Thruster",
+  "light": "Thruster-light.png",
+  "dark": "Thruster-dark.png",
+  "glyph_pct": 25.9,
+  "src_max_lum": 202
+ }
+]
