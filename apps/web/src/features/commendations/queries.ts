@@ -9,8 +9,9 @@ import type { NativeCommendationsTotalsResponse } from '@/lib/api/types'
 
 export function useCommendationTotals(playerSlug: string) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const locale = useAppShellStore((s) => s.locale)
   return useQuery({
-    queryKey: queryKeys.commendationTotals(playerSlug, titleSlug),
+    queryKey: queryKeys.commendationTotals(playerSlug, titleSlug, locale),
     queryFn: () =>
       api.get<NativeCommendationsTotalsResponse>(
         `/players/${playerSlug}/commendations/totals`,

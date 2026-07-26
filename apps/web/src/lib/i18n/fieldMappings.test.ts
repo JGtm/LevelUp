@@ -2,17 +2,35 @@
  * Tests unitaires pour le hook useFieldLabel et les helpers de fetch.
  *
  * On teste la logique de fallback (mappings non chargés, key absente) sans
- * passer par le hook React, pour rester rapide et déterministe.
+ * passer par le hook React, pour rester rapide et déterministe. Exception :
+ * le gate `isBootstrapped` (G8) est testé via renderHook, car c'est un
+ * comportement de câblage React (enabled) qui ne se laisse pas extraire en
+ * fonction pure sans perdre la couverture du vrai point d'intégration.
  */
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { renderHook, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { ReactNode } from 'react'
+import { createElement } from 'react'
+import { act } from 'react'
 
 import {
   compareSeasonsRecentFirst,
   fieldMappingsQueryKey,
+  useFieldMappings,
   type FieldMappingsResponse,
   type SeasonEntry,
 } from './fieldMappings'
+import { api } from '@/lib/api/client'
+import { useAppShellStore } from '@/stores/appShellStore'
+
+vi.mock('@/lib/api/client', () => ({
+  api: { get: vi.fn() },
+  setApiTitleSlug: vi.fn(),
+  setApiLocale: vi.fn(),
+  getApiTitleSlug: () => 'halo_infinite',
+}))
 
 describe('fieldMappingsQueryKey', () => {
   it('produit une clé hiérarchique (slug, locale)', () => {
@@ -172,5 +190,76 @@ describe('FieldMappingsResponse — assets et outcomes (Phase 3 plan finition)',
     }
     expect(sample.assets).toBeUndefined()
     expect(sample.outcomes).toBeUndefined()
+  })
+})
+
+describe('useFieldMappings — gate isBootstrapped (G8, anti double-fetch boot)', () => {
+  const emptyResponse: FieldMappingsResponse = {
+    title_slug: 'halo_infinite',
+    schema_version: 1,
+    locale: 'fr',
+    fields: {},
+  }
+
+  function wrapper({ children }: { children: ReactNode }) {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    return createElement(QueryClientProvider, { client }, children)
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('ne fetch PAS tant que isBootstrapped=false (évite la requête avec locale/titre par défaut)', () => {
+    useAppShellStore.setState({ isBootstrapped: false })
+    const apiGet = vi.mocked(api.get)
+
+    const { result } = renderHook(() => useFieldMappings(), { wrapper })
+
+    expect(result.current.fetchStatus).toBe('idle')
+    expect(apiGet).not.toHaveBeenCalled()
+  })
+
+  it('fetch UNE SEULE fois une fois isBootstrapped=true (locale/titre déjà résolus)', async () => {
+    useAppShellStore.setState({
+      isBootstrapped: true,
+      currentTitleSlug: 'halo_infinite',
+      locale: 'fr',
+    })
+    const apiGet = vi.mocked(api.get)
+    apiGet.mockResolvedValueOnce(emptyResponse)
+
+    const { result } = renderHook(() => useFieldMappings(), { wrapper })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(apiGet).toHaveBeenCalledTimes(1)
+    expect(apiGet).toHaveBeenCalledWith(
+      '/titles/halo_infinite/field-mappings?locale=fr',
+    )
+  })
+
+  it('transition false -> true : une seule requête, avec la locale RÉSOLUE (pas de fetch fantôme en locale par défaut)', async () => {
+    useAppShellStore.setState({
+      isBootstrapped: false,
+      currentTitleSlug: 'halo_infinite',
+      locale: 'fr',
+    })
+    const apiGet = vi.mocked(api.get)
+    apiGet.mockResolvedValueOnce(emptyResponse)
+
+    const { result } = renderHook(() => useFieldMappings(), { wrapper })
+    expect(apiGet).not.toHaveBeenCalled()
+
+    // Hydratation tardive avec une locale de session différente du défaut store
+    // ('en', ex. démo bootstrap.locale=en) — reproduit le scénario du bug G8.
+    act(() => {
+      useAppShellStore.setState({ isBootstrapped: true, locale: 'en' })
+    })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(apiGet).toHaveBeenCalledTimes(1)
+    expect(apiGet).toHaveBeenCalledWith(
+      '/titles/halo_infinite/field-mappings?locale=en',
+    )
   })
 })

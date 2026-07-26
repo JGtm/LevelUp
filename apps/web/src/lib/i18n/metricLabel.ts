@@ -25,7 +25,14 @@ const METRIC_LABEL_FR: Record<string, string> = {
   matches_played: 'Matchs joués',
   wins: 'Victoires',
   kills: 'Éliminations',
+  // headshots : clé du catalogue milestones (config/titles/*/milestones/catalog.toml,
+  // metric = "headshots") — historique, conservée telle quelle.
+  // headshot_kills : clé canonique réelle (games/canonical/fields.go FieldHeadshotKills
+  // = "headshot_kills", fields.toml). C'est CETTE forme que reçoit metricLabel() quand
+  // le contrat fil transporte la clé canonique brute plutôt qu'un alias `Field*` —
+  // sans entrée dédiée, elle retombait sur humanizeMetricKey (jamais traduite en FR).
   headshots: 'Tirs à la tête',
+  headshot_kills: 'Tirs à la tête',
   assists: 'Assistances',
   damage_dealt: 'Dégâts infligés',
   personal_score: 'Score personnel',
@@ -47,6 +54,7 @@ const METRIC_LABEL_EN: Record<string, string> = {
   wins: 'Wins',
   kills: 'Kills',
   headshots: 'Headshots',
+  headshot_kills: 'Headshots',
   assists: 'Assists',
   damage_dealt: 'Damage dealt',
   personal_score: 'Personal score',
@@ -66,7 +74,7 @@ const FIELD_KEY_ALIASES: Record<string, string> = {
   FieldKDA: 'kda',
   FieldKDR: 'kdr',
   FieldAccuracy: 'accuracy',
-  FieldHeadshotKills: 'headshots',
+  FieldHeadshotKills: 'headshot_kills',
   FieldDamageDealt: 'damage_dealt',
   FieldPersonalScore: 'personal_score',
   FieldWinRate: 'win_rate',
