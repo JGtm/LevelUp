@@ -19,9 +19,10 @@ import { ToggleRow, type TabProps } from './_settingsShared'
 
 export function InterfaceCard({ merged, handleChange, t, frozen }: TabProps) {
   // Préférence purement LOCALE (jamais envoyée au backend) — cf. showWaypointColumn
-  // dans settingsDraftStore.localUiPrefs. Le masquage réel par titre reste piloté
-  // par la capability `waypoint_match_url` (Halo 5 : colonne masquée quel que soit
-  // ce réglage).
+  // dans settingsDraftStore.localUiPrefs. Le masquage par titre reste piloté par la
+  // capability `waypoint_match_url`, mais elle est déclarée par les DEUX titres
+  // depuis le 2026-07-24 : ce réglage est donc aujourd'hui le seul verrou effectif,
+  // sur Halo Infinite comme sur Halo 5.
   const showWaypointColumn = useSettingsDraftStore((s) => s.localUiPrefs.showWaypointColumn)
   const setShowWaypointColumn = useSettingsDraftStore((s) => s.setShowWaypointColumn)
 

@@ -1,7 +1,10 @@
 // Package halo — discovery_client.go : client API Discovery UGC (assets multilingues).
 //
 // Sprint 54 : peuplement asset_translations depuis Discovery UGC.
-// API endpoint : https://gamecms-hacs.svc.halowaypoint.com/hi/multiplayer/file/...
+// Hôte réel : https://discovery-infiniteugc.svc.halowaypoint.com/hi/{segment}/{id}/versions/{ver}
+// — PAS gamecms-hacs (cet hôte-là sert médailles/défis/BP, cf. internal/assets/
+// fetcher_gamecms.go). Les deux exigent un token Spartan (mesure 2026-07-25, cf.
+// FetchAsset).
 package halo
 
 import (
@@ -30,10 +33,22 @@ const (
 //
 //	GET https://discovery-infiniteugc.svc.halowaypoint.com/hi/{segment}/{assetId}/versions/{versionId}
 //
-// AUTH REQUISE : Spartan token + 343-clearance (posés par doGetWithLang via
-// p.staticTokens). version_id est REQUIS (l'API 404 sans, et "latest" → 400).
+// AUTH REQUISE : Spartan token + 343-clearance, réellement posés par
+// attemptHaloGet (en-têtes x-343-authorization-spartan / 343-clearance) dès que
+// p.staticTokens est non-nil — c'est toujours le cas en production, le token vient
+// du pool unifié (cf. NewAssetNameFetcher). Sonde ANONYME du 2026-07-25 : GET
+// /hi/Maps/{assetId} sans en-tête → HTTP 401 (corps vide, Server: Kestrel) ;
+// gamecms-hacs répond 401 + en-tête `WWW-Authenticate: SpartanToken`. Aucun de ces
+// hôtes n'est public. version_id est REQUIS (l'API 404 sans, et "latest" → 400).
 // titleID n'est PAS un segment ici (le préfixe jeu "hi" est fixe, comme le client
 // prouvé) — conservé pour la signature mais ignoré.
+//
+// Voie SANS jeton pour les assets UGC (éprouvée 2026-07-25 : 120/123 cartes
+// récupérées), non câblée ici mais à connaître avant de conclure « impossible sans
+// auth » : la page publique www.halowaypoint.com/halo-infinite/ugc/maps/{assetId}
+// sert le JSON d'asset COMPLET (Files.Prefix, FileRelativePaths, VersionId) dans
+// son <script id="__NEXT_DATA__">, et blobs-infiniteugc.svc.halowaypoint.com est en
+// lecture anonyme (un chemin invalide → 404 Azure BlobNotFound, pas 401).
 func (p *HaloProvider) FetchAsset(
 	ctx context.Context,
 	assetType AssetType,
