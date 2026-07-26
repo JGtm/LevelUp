@@ -3,8 +3,8 @@
  *
  * Consomme le contexte SquadContext fourni par SquadLayout. Affiche les
  * charts de contribution par joueur : K/D/A par minute, synergies radar,
- * intensité, performance, armes, premiers événements, impact scoreboard,
- * historique de matchs.
+ * performance, mécaniques de frag. Le « Premier frag / première mort » a
+ * rejoint l'onglet Dynamique (chart lanes).
  *
  * Multi-titres : strings UI via getSquadText.
  */
@@ -17,7 +17,6 @@ import { SquadPerMinuteChart } from './SquadPerMinuteChart'
 import { SquadSynergyRadarChart } from './SquadSynergyRadarChart'
 import { SquadPerformanceCharts } from './SquadPerformanceCharts'
 import { SquadKillMechanicsChart } from './SquadKillMechanicsChart'
-import { SquadFirstEventsChart } from './SquadFirstEventsChart'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { getSquadPlayerColors } from './colors'
 
@@ -28,11 +27,10 @@ export function SquadContributionsPage() {
   const perMinuteRows = pageData?.per_minute_stats ?? []
   const synergyRadar = pageData?.synergy_radar ?? []
   const performanceSeries = pageData?.performance_series
-  const firstEvents = pageData?.first_events
   // Le backend renvoie s.gamertag (casse mixte ex "Madina97294") tandis que
   // playerSlug est l'URL param (souvent lowercase). On aligne sur main_player
   // pour que le mapping couleurs matche les clés des SquadPerMinuteEntry.player
-  // / SquadSynergyRadarSeries.player / SquadFirstEventsRow.player etc.
+  // / SquadSynergyRadarSeries.player etc.
   const mainPlayerKey = pageData?.main_player ?? playerSlug
   const playerColors = getSquadPlayerColors(mainPlayerKey, confirmedGamertags)
   const synergyAxisLabels: Record<string, string> = {
@@ -113,17 +111,6 @@ export function SquadContributionsPage() {
           labelOf={(m) => t.killMechanics.labels[m as keyof typeof t.killMechanics.labels] ?? m}
         />
       </FeatureGate>
-
-      <SquadFirstEventsChart
-        title={t.firstEvents.title}
-        emptyMessage={t.empty.noBlockData}
-        data={firstEvents}
-        colorByPlayer={playerColors}
-        fragLabel={t.firstEvents.fragLabel}
-        deathLabel={t.firstEvents.deathLabel}
-        matchesSuffix={t.firstEvents.matchesSuffix}
-      />
-
     </div>
   )
 }

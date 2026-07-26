@@ -90,23 +90,6 @@ type SquadMatchSeriesPoint struct {
 	SessionLabel     *string  `json:"session_label,omitempty"`
 }
 
-// SquadFirstEventsRow est la ligne d'un joueur dans le butterfly first-events
-// teammates.17 : 2 vecteurs alignés sur les bins du chart parent (KillCounts
-// pour les premiers frags, DeathCounts pour les premières morts).
-type SquadFirstEventsRow struct {
-	Player      string `json:"player"`
-	KillCounts  []int  `json:"kill_counts"`
-	DeathCounts []int  `json:"death_counts"`
-}
-
-// SquadFirstEvents alimente teammates.17 (butterfly : premier frag positifs
-// haut, première mort négatifs bas — bins 15 s).
-type SquadFirstEvents struct {
-	BinSizeSeconds int                   `json:"bin_size_seconds"`
-	BinLabels      []string              `json:"bin_labels"` // ex: ["15s", "30s", "1m00s", ...]
-	Rows           []SquadFirstEventsRow `json:"rows"`
-}
-
 // SquadWeaponBar est une ligne du chart kills par arme teammates.09 :
 // 1 arme avec ses kills par joueur de l'escouade + total cumulé.
 type SquadWeaponBar struct {
@@ -508,9 +491,10 @@ type TeammatesPageResponse struct {
 	// (assassinats + compétences spartiate, barres empilées). Nil hors h5
 	// (capability native_kill_mechanics) ou aucune mécanique sur les matchs partagés.
 	NativeKillMechanics *SquadKillMechanics `json:"native_kill_mechanics,omitempty"`
-	// FirstEvents alimente teammates.17 (butterfly premier frag/première mort,
-	// bins 15 s). Nil si aucune donnée highlight_events.
-	FirstEvents *SquadFirstEvents `json:"first_events,omitempty"`
+	// FirstBlood alimente le chart « Premier frag / première mort » (lanes) de
+	// l'onglet Dynamique : une série PAR JOUEUR de l'escouade, valeurs par match
+	// (aucun bucketing serveur). Vide si aucune donnée highlight_events.
+	FirstBlood []FirstBloodPlayerSeries `json:"first_blood,omitempty"`
 	// Header alimente <SessionBriefing> en haut de SquadLayout (Synergies +
 	// Contributions). Mode solo (SoloKPIs uniquement) si aucun coequipier
 	// selectionne ; mode squad complet (KPIsByXUID + TeamAvgKPIs + PlayerCards

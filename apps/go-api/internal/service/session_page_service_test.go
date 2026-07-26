@@ -470,35 +470,43 @@ func TestSessionPageService_GetPage_CompareMatchesEmptyWhenDisabled(t *testing.T
 	}
 }
 
-// TestSessionPageService_AttachSessionIntensity : le profil d'intensité (frags par
-// phase) est calculé pour la session courante et la comparée quand le repo highlight
-// events est câblé ; il reste nil (best-effort) sans repo. Le dénominateur retombe sur
-// le max-time des events (durées timelines vides ici), donc les phases sont non nulles.
-func TestSessionPageService_AttachSessionIntensity(t *testing.T) {
+// TestSessionPageService_AttachSessionEventBlocks : les blocs event-based (profil
+// d'intensité + premier frag/première mort) sont calculés pour la session courante et
+// la comparée quand le repo highlight events est câblé ; ils restent nil (best-effort)
+// sans repo. Le dénominateur d'intensité retombe sur le max-time des events (durées
+// timelines vides ici), donc les phases sont non nulles.
+func TestSessionPageService_AttachSessionEventBlocks(t *testing.T) {
 	const xuid = "player1"
+	killer, victim := xuid, xuid
 	tt := time.Date(2026, 4, 21, 20, 0, 0, 0, time.UTC)
 	currentMatches := []legacymatch.StatsMatchRow{{MatchID: "m1", StartTime: tt, MapName: "Aquarius"}}
 	compareMatches := []legacymatch.StatsMatchRow{{MatchID: "c1", StartTime: tt, MapName: "Bazaar"}}
 	events := []canonical.HighlightEvent{
-		{MatchID: "m1", EventType: string(canonical.EventKill), TimeMS: 100, XUID: xuid},
-		{MatchID: "m1", EventType: string(canonical.EventKill), TimeMS: 900, XUID: xuid},
-		{MatchID: "c1", EventType: string(canonical.EventKill), TimeMS: 200, XUID: xuid},
+		{MatchID: "m1", EventType: string(canonical.EventKill), TimeMS: 100, XUID: xuid, KillerXUID: &killer},
+		{MatchID: "m1", EventType: string(canonical.EventKill), TimeMS: 900, XUID: xuid, KillerXUID: &killer},
+		{MatchID: "m1", EventType: string(canonical.EventDeath), TimeMS: 4200, XUID: xuid, VictimXUID: &victim},
+		{MatchID: "c1", EventType: string(canonical.EventKill), TimeMS: 200, XUID: xuid, KillerXUID: &killer},
 	}
 
-	// Sans repo highlight events → dégradation gracieuse (IntensityRows nil).
+	// Sans repo highlight events → dégradation gracieuse (tous les blocs nil).
 	noRepo := NewSessionPageService(nil)
 	respNil := &domain.SessionPageResponse{}
-	noRepo.attachSessionIntensity(context.Background(), respNil, nil, currentMatches, compareMatches)
+	noRepo.attachSessionEventBlocks(context.Background(), respNil, nil, currentMatches, compareMatches)
 	if respNil.IntensityRows != nil || respNil.CompareIntensityRows != nil {
 		t.Fatalf("sans repo highlight events, IntensityRows doit rester nil, got %#v / %#v",
 			respNil.IntensityRows, respNil.CompareIntensityRows)
 	}
+	if respNil.FirstBlood != nil || respNil.CompareFirstBlood != nil {
+		t.Fatalf("sans repo highlight events, FirstBlood doit rester nil, got %#v / %#v",
+			respNil.FirstBlood, respNil.CompareFirstBlood)
+	}
 
 	// Avec repo câblé → profil courant + comparé renseignés.
 	svc := NewSessionPageService(nil).
+		WithPlayerMatchesRepo(newStatsMockFromRows(nil, nil), "halo_infinite", "Test").
 		WithHighlightEventsRepo(&fakeSessionHighlightLoader{events: events}, xuid)
 	resp := &domain.SessionPageResponse{}
-	svc.attachSessionIntensity(context.Background(), resp, nil, currentMatches, compareMatches)
+	svc.attachSessionEventBlocks(context.Background(), resp, nil, currentMatches, compareMatches)
 	if len(resp.IntensityRows) != 1 || resp.IntensityRows[0].MatchID != "m1" {
 		t.Fatalf("IntensityRows courant inattendu: %#v", resp.IntensityRows)
 	}
@@ -512,6 +520,21 @@ func TestSessionPageService_AttachSessionIntensity(t *testing.T) {
 	}
 	if sum <= 0 {
 		t.Fatalf("phases du profil courant toutes nulles: %#v", resp.IntensityRows[0].Phases)
+	}
+	// Premier frag / première mort : une série (solo), scopée à la session.
+	if len(resp.FirstBlood) != 1 || len(resp.FirstBlood[0].Matches) != 1 {
+		t.Fatalf("FirstBlood courant inattendu: %#v", resp.FirstBlood)
+	}
+	pt := resp.FirstBlood[0].Matches[0]
+	if pt.MatchID != "m1" || pt.FirstKillSec == nil || *pt.FirstKillSec != 0.1 {
+		t.Fatalf("premier frag courant want m1 @0.1s, got %#v", pt)
+	}
+	if pt.FirstDeathSec == nil || *pt.FirstDeathSec != 4.2 {
+		t.Fatalf("première mort courante want 4.2s, got %#v", pt.FirstDeathSec)
+	}
+	if len(resp.CompareFirstBlood) != 1 || len(resp.CompareFirstBlood[0].Matches) != 1 ||
+		resp.CompareFirstBlood[0].Matches[0].MatchID != "c1" {
+		t.Fatalf("CompareFirstBlood inattendu: %#v", resp.CompareFirstBlood)
 	}
 }
 

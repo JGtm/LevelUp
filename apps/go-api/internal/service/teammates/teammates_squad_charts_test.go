@@ -452,13 +452,28 @@ func TestBuildSquadIntensityProfile_NoSquadLoader_NoPanic(t *testing.T) {
 	}
 }
 
-// ---------- buildSquadFirstEvents T0 (teammates.17, §4.A-bis) ----------
+// ---------- buildSquadFirstBlood T0 (§4.A-bis) ----------
 
-// TestBuildSquadFirstEvents_AppliesT0Shift cadenasse le fix §4.A-bis : le chart
+// firstKillSecOf extrait le premier frag (secondes) du joueur `player` sur le
+// match `matchID` dans les séries « premier frag / première mort ».
+func firstKillSecOf(series []domain.FirstBloodPlayerSeries, player, matchID string) *float64 {
+	for _, s := range series {
+		if s.Player != player {
+			continue
+		}
+		for _, m := range s.Matches {
+			if m.MatchID == matchID {
+				return m.FirstKillSec
+			}
+		}
+	}
+	return nil
+}
+
+// TestBuildSquadFirstBlood_AppliesT0Shift cadenasse le fix §4.A-bis : le chart
 // premier frag / première mort doit retrancher le countdown pré-match (T0).
-// Un kill à 50s de film, T0=28s → 22s de gameplay → bin plus précoce qu'en
-// chronologie brute (50s).
-func TestBuildSquadFirstEvents_AppliesT0Shift(t *testing.T) {
+// Un kill à 50s de film, T0=28s → 22s de gameplay (et non 50s bruts).
+func TestBuildSquadFirstBlood_AppliesT0Shift(t *testing.T) {
 	start := time.Date(2026, 4, 6, 18, 0, 0, 0, time.UTC)
 	mainXUID := "x_main"
 	repo := &mockSquadRepo{
@@ -472,48 +487,26 @@ func TestBuildSquadFirstEvents_AppliesT0Shift(t *testing.T) {
 	withT0 := []domain.SquadMatchRow{{MatchID: "m1", StartTime: start, DurationSeconds: 600, T0Ms: &t0ms}}
 	noT0 := []domain.SquadMatchRow{{MatchID: "m1", StartTime: start, DurationSeconds: 600}} // T0Ms nil
 
-	got := svc.buildSquadFirstEvents(context.Background(), withT0, "main", mainXUID, nil)
-	raw := svc.buildSquadFirstEvents(context.Background(), noT0, "main", mainXUID, nil)
-	if got == nil || raw == nil {
-		t.Fatal("résultats non nil attendus (1 kill du main)")
+	got := svc.buildSquadFirstBlood(context.Background(), withT0, "main", mainXUID, nil)
+	raw := svc.buildSquadFirstBlood(context.Background(), noT0, "main", mainXUID, nil)
+	gotSec := firstKillSecOf(got, "main", "m1")
+	rawSec := firstKillSecOf(raw, "main", "m1")
+	if gotSec == nil || rawSec == nil {
+		t.Fatalf("premier frag du main introuvable : avecT0=%v brut=%v", gotSec, rawSec)
 	}
-
-	binIdxLabel := func(r *domain.SquadFirstEvents) (int, string) {
-		for _, row := range r.Rows {
-			if row.Player != "main" {
-				continue
-			}
-			for i, c := range row.KillCounts {
-				if c > 0 {
-					return i, r.BinLabels[i]
-				}
-			}
-		}
-		return -1, ""
+	if *gotSec != 22 {
+		t.Errorf("avec T0 (28s de countdown) : want 22s de gameplay, got %v", *gotSec)
 	}
-	gotIdx, gotLabel := binIdxLabel(got)
-	rawIdx, rawLabel := binIdxLabel(raw)
-	if gotIdx < 0 || rawIdx < 0 {
-		t.Fatalf("kill du main introuvable : gotIdx=%d rawIdx=%d", gotIdx, rawIdx)
-	}
-	if gotIdx >= rawIdx {
-		t.Errorf("T0 doit ramener le kill à un bin plus précoce : avec T0 idx=%d (%s), brut idx=%d (%s)",
-			gotIdx, gotLabel, rawIdx, rawLabel)
-	}
-	// Valeurs précises : 22s gameplay → bin "30s" ; 50s film → bin "1m00s".
-	if gotLabel != "30s" {
-		t.Errorf("avec T0 (22s gameplay) : label want \"30s\", got %q", gotLabel)
-	}
-	if rawLabel != "1m00s" {
-		t.Errorf("brut (50s film) : label want \"1m00s\", got %q", rawLabel)
+	if *rawSec != 50 {
+		t.Errorf("sans T0 : want 50s de film, got %v", *rawSec)
 	}
 }
 
-// TestBuildSquadFirstEvents_SkipsPreGameplayEvents : un event situé dans le
-// countdown (TimeMS < T0) → temps corrigé négatif, doit être ignoré. Sinon il
-// polluerait le sentinel -1 de firstKillS et masquerait le vrai premier frag
-// (qui serait alors perdu → chart nil).
-func TestBuildSquadFirstEvents_SkipsPreGameplayEvents(t *testing.T) {
+// TestBuildSquadFirstBlood_SkipsPreGameplayEvents : un event situé dans le
+// countdown (TimeMS < T0) → temps corrigé négatif, doit être ignoré. Sinon le
+// minimum par match capturerait cet event pré-T0 et masquerait le vrai premier
+// frag du gameplay.
+func TestBuildSquadFirstBlood_SkipsPreGameplayEvents(t *testing.T) {
 	start := time.Date(2026, 4, 6, 18, 0, 0, 0, time.UTC)
 	mainXUID := "x_main"
 	repo := &mockSquadRepo{
@@ -526,27 +519,13 @@ func TestBuildSquadFirstEvents_SkipsPreGameplayEvents(t *testing.T) {
 	t0ms := int64(28000)
 	rows := []domain.SquadMatchRow{{MatchID: "m1", StartTime: start, DurationSeconds: 600, T0Ms: &t0ms}}
 
-	got := svc.buildSquadFirstEvents(context.Background(), rows, "main", mainXUID, nil)
-	if got == nil {
-		t.Fatal("résultat non nil attendu : le frag à 40s (gameplay 12s) doit subsister")
+	got := svc.buildSquadFirstBlood(context.Background(), rows, "main", mainXUID, nil)
+	sec := firstKillSecOf(got, "main", "m1")
+	if sec == nil {
+		t.Fatal("résultat attendu : le frag à 40s (gameplay 12s) doit subsister")
 	}
-	total, firstBin := 0, -1
-	for _, row := range got.Rows {
-		if row.Player != "main" {
-			continue
-		}
-		for i, c := range row.KillCounts {
-			total += c
-			if c > 0 && firstBin == -1 {
-				firstBin = i
-			}
-		}
-	}
-	if total != 1 {
-		t.Errorf("first_kill count want 1 (event countdown ignoré), got %d", total)
-	}
-	if firstBin != 0 || got.BinLabels[0] != "15s" {
-		t.Errorf("first kill à 12s → bin0 \"15s\", got bin=%d labels=%v", firstBin, got.BinLabels)
+	if *sec != 12 {
+		t.Errorf("first kill : want 12s (event countdown ignoré), got %v", *sec)
 	}
 }
 

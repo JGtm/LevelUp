@@ -132,4 +132,10 @@ type SessionPageResponse struct {
 	// « Intensité » (profil médian + enveloppe P25–P75) du drawer et de la vue principale.
 	IntensityRows        []IntensityMatchRow `json:"intensity_rows,omitempty"`
 	CompareIntensityRows []IntensityMatchRow `json:"compare_intensity_rows,omitempty"`
+	// FirstBlood / CompareFirstBlood : premiers frag/mort PAR MATCH du joueur suivi
+	// sur la session courante et sur la session comparée (une seule série en solo).
+	// Alimente le chart « Premier frag / première mort » (lanes) de la pile de
+	// graphes — MIROIR du bloc Timeseries. Vide sans repo highlight events ni event.
+	FirstBlood        []FirstBloodPlayerSeries `json:"first_blood,omitempty"`
+	CompareFirstBlood []FirstBloodPlayerSeries `json:"compare_first_blood,omitempty"`
 }

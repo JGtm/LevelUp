@@ -178,7 +178,7 @@ func TestBuildSquadWeaponAccuracy_ExcludesEmptyRole(t *testing.T) {
 // xuids alignés sur les gamertags ordonnés via xuidByPlayer) ne doit exister qu'UNE fois,
 // dans resolveSquadScope. buildSquadWeaponKills / buildSquadKillMechanics /
 // buildSquadWeaponAccuracy passent tous par le helper. Le littéral distinctif ci-dessous
-// n'existe QUE dans le scope par-arme (buildSquadFirstEvents a sa propre dérivation
+// n'existe QUE dans le scope par-arme (buildSquadFirstBlood a sa propre dérivation
 // partielle, sans slice xuids) → toute réintroduction inline le fait réapparaître.
 func TestSquadScopeCentralized(t *testing.T) {
 	const sentinel = "xuids = append(xuids, xuidByPlayer[p])"

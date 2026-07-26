@@ -347,6 +347,7 @@ export function SessionDetailPage() {
               compact={drawerOpen}
               scale={compareScale}
               intensityRows={data.intensity_rows ?? []}
+              firstBlood={data.first_blood ?? []}
             />
           </>
         ) : (
@@ -437,6 +438,7 @@ export function SessionDetailPage() {
                   participationSide="left"
                   scale={compareScale}
                   intensityRows={data.compare_intensity_rows ?? []}
+                  firstBlood={data.compare_first_blood ?? []}
                 />
               ) : isCompareLoading ? (
                 <div className="flex items-center justify-center py-12">

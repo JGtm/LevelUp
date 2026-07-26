@@ -11,7 +11,8 @@ ADR : `docs/adr/0004-narrative-engine.md`.
 | `IdentifyImpactRoles(participants) []ImpactRoleResult` | 8 roles per match per player (top_killer, silent_hero, …) |
 | `ResolveDominanceBadge(flag) *DominanceBadge` | Dominance / comeback / debacle badge from `canonical.DominanceFlag` |
 | `ComputeEncounterBadges(stats, ordinal) []EncounterBadge` | Nemesis / souffre-douleur / ally+ ordinal badges |
-| `ComputeFirstEventsPerMatch(events) []FirstEventResult` | First kill + first death per match (timing + actor) |
+| `ComputeFirstEventsPerMatch(events, xuid, matchIDs) []FirstEventsRow` | First kill + first death per match for ONE player (canonical events) |
+| `ComputeFirstEventsByActor(events, xuids, matchIDs) map[string][]FirstEventsRow` | Same aggregation for N players, from actor-resolved events (`FirstEventActor`) — squad surface |
 | `ComputeMatchIntensityProfiles(events) []MatchIntensityProfile` | Match phase intensity (4 buckets : opening / mid / late / final) |
 | `ComputeCadenceProfiles(...)` | Kill cadence by 60s buckets per player |
 | `ComputeParticipationProfile(...)` | 6-axis radar : Combat / Survie / Support / Score / Objectif / Impact |
