@@ -304,7 +304,18 @@ func insertDemoChallenges(ctx context.Context, db *sql.DB, plan demoPrestigePlan
 }
 
 // insertDemoCampaigns écrit les campagnes d'amélioration (page Ascension → Profil).
+//
+// user_id = plan.XUID, PAS plan.UserID. C'est la seule entité Prestige clée par
+// XUID : le handler (api/handlers/campaign.go) appelle GetActive/ListEnded avec
+// `pdb.XUID`, et le repo filtre `WHERE user_id = ?`. Le plan sépare correctement
+// les deux identités (cf. doc de demoPrestigePlan) et les autres surfaces clées
+// XUID — séries, records, jalons — utilisaient déjà plan.XUID ; seul cet INSERT
+// écrivait le player_slug, si bien que les 2 campagnes démo existaient en base
+// et qu'AUCUNE n'était servie (2026-07-26).
 func insertDemoCampaigns(ctx context.Context, db *sql.DB, plan demoPrestigePlan) (int, error) {
+	if err := validateDemoCampaigns(plan.Campaigns); err != nil {
+		return 0, err
+	}
 	for _, c := range plan.Campaigns {
 		if _, err := db.ExecContext(ctx, `
 			INSERT INTO improvement_campaign (
@@ -313,8 +324,8 @@ func insertDemoCampaigns(ctx context.Context, db *sql.DB, plan demoPrestigePlan)
 				current_value_raw, current_value_lowess, matches_since_start,
 				last_evaluated_at, progression_confirmed
 			) VALUES (?,?,?,?,?,?,?,?,'all',?,?,?,?,?,?,?)`,
-			c.ID, plan.UserID, plan.TitleSlug, c.Axis, c.AxisKind, c.StartedAt,
-			nullTime(c.EndedAt), c.Status, c.SnapshotValue, c.SnapshotN,
+			c.ID, plan.XUID, plan.TitleSlug, c.Axis, c.AxisKind, c.StartedAt,
+			nullTime(c.EndedAt), string(c.Status), c.SnapshotValue, c.SnapshotN,
 			c.CurrentValue, c.CurrentValue, c.MatchesSince, plan.Anchor, c.Confirmed,
 		); err != nil {
 			return 0, err

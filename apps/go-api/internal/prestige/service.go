@@ -265,6 +265,21 @@ type Deps struct {
 type BaselineProvider interface {
 	RecentMatches(ctx context.Context, titleSlug, metric string, window int) ([]MatchData, error)
 	PopulationPercentile(ctx context.Context, titleSlug, metric string, target float64) (percentile float64, popSize int, err error)
+	// CumulativeSince retourne la SOMME de `metric` sur TOUS les matchs du joueur
+	// dont le début est >= since (borne incluse), et le nombre de matchs sommés.
+	//
+	// Méthode DÉDIÉE, et non un appel à RecentMatches, parce qu'un objectif
+	// cumulatif porte sur un TOTAL dont la profondeur n'a aucune raison de tenir
+	// dans `Tuning.Baseline.WindowMatches` (20 par défaut) : « 220 tirs à la
+	// tête » peut couvrir 50 matchs comme 300. Passer par la fenêtre baseline
+	// tronquerait la somme en silence et sous-évaluerait la jauge sans rien
+	// signaler — exactement le genre de dégradation muette qui a laissé le
+	// fallback threshold survivre en prod. Il n'y a donc PAS de plafond ici : la
+	// seule borne est temporelle (`since` = created_at du défi, cf. evalSince).
+	//
+	// since zéro = pas de borne basse. (0, 0, nil) si la métrique n'a pas
+	// d'équivalent mesurable : l'appelant traite 0 comme « aucun progrès ».
+	CumulativeSince(ctx context.Context, titleSlug, metric string, since time.Time) (total float64, matchCount int, err error)
 }
 
 // SquadMatchProvider fournit, pour un roster d'escouade, les `limit` derniers
@@ -646,21 +661,20 @@ func (s *service) ListChallenges(ctx context.Context, userID, titleSlug string, 
 
 // computeCurrentValue calcule la valeur courante mesurée pour un défi sans
 // persister. Best-effort : si la source des matchs échoue, retourne 0.
+//
+// Délègue à evaluateChallengeNow — le MÊME point de mesure que l'évaluation qui
+// persiste (service_evaluate.go). Cette fonction dupliquait auparavant la
+// mesure et retombait sur EvaluateThreshold y compris pour un EvalCumulative :
+// c'est ELLE qui produisait la jauge affichée, donc un « 1.25 / 220 » sur un
+// objectif de tirs à la tête presque atteint (2026-07-26).
 func (s *service) computeCurrentValue(ctx context.Context, c Challenge, now time.Time) float64 {
-	matches, err := s.deps.BaselineProvider.RecentMatches(
-		ctx, c.TitleSlug, c.Metric, s.deps.Tuning.Baseline.WindowMatches,
-	)
+	res, err := s.evaluateChallengeNow(ctx, c, now)
 	if err != nil {
 		slog.WarnContext(ctx, "prestige: current value unavailable, defaulting to 0",
 			"err", err, "challenge_id", c.ID, "metric", c.Metric)
 		return 0
 	}
-	samples := make([]MatchSample, len(matches))
-	for i, m := range matches {
-		samples[i] = MatchSample{StartedAt: m.StartedAt, MetricValue: m.MetricValue}
-	}
-	// Threshold suffit pour Phase 2 (cumulative tombe sur le même fallback).
-	return EvaluateThreshold(s.deps.Tuning, c, samples, now).NewValue
+	return res.NewValue
 }
 
 // ---------- GetUserPrestige ----------

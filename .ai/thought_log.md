@@ -1,3 +1,42 @@
+## [2026-07-26] Chantier v7.3 (batch Notion) — lots A/B + resynchronisation de branche
+
+**Statut** : En cours (branche `feat/v7.3-notion-batch`, pilotage superviseur + agents).
+Périmètre : section Notion « Pour la v7.3 » hors Replay 2D et items [POSTPONed], plus
+anomalies A-F et G1-G8 du 26/07. Décisions utilisateur : EvaluateCumulative branché,
+backlog.md 5 items (echarts reporté), contrat Huma RawBody/400 conservé.
+
+**Décisions techniques principales.**
+- Base de branche : coupée de `fix/quick-wins-post-v721` puis resynchronisée sur `main`
+  v7.2.5 (24 commits de retard détectés par l'agent du lot B qui a REFUSÉ de coder sur
+  base périmée — les diagnostics visaient la prod v7.2.5). Rectification .dockerignore
+  commitée sur quick-wins (a2a85f65a) et rapatriée.
+- Lot A (7bab0260c) : locale dans les clés citations/commendations (motif medals), gate
+  isBootstrapped sur field-mappings (double-fetch = fenêtre d'hydratation), clé canonique
+  headshot_kills dans metricLabel.
+- Lot G phase 1 (89bf4a5df) : composant FirstBloodLanes pur (custom series pour la barre
+  d'avance, scatter pour nuages/médianes, tokens outcome-win/loss, i18n first_blood).
+- Lot B (ce commit) : évaluation Prestige cumulative unifiée en un point de mesure
+  (`evaluateChallengeNow`) — la jauge et la persistance ne peuvent plus diverger ;
+  `CumulativeSince` SQL non plafonné borné à created_at (WindowMatches=20 aurait tronqué) ;
+  MedalEvent supprimé (0 code mort) ; G4 campagnes démo (XUID + StatusCompleted + garde
+  d'énum à l'écriture) ; G7 match_objective_stats extraite vers la démo (SANS appendOnly :
+  la table naît en forme append-only, prémisse prouvée fausse par flip du flag) + colonne
+  xuid ajoutée à l'anonymisation universelle (fuite d'identifiants réels évitée dans la
+  démo publique).
+
+**Résultats observés** : lot A/G1 gates front verts (tsc cache purgé, eslint baseline,
+vitest 3173 puis 220+28) ; lot B `go build`/`go vet`/`go test ./...` EXIT 0 (117 pkgs),
+`TestSeedDemo_EndToEnd_HappyPath` intégration -p 1 ok. Suite intégration complète : aux
+gates finaux du chantier.
+
+**Découvertes consignées non traitées** : mapMetricToColumn ne mappe ni wins ni
+matches_played (jauge demo-objective-04 restera 0 — classe connue 16/28) ; AxisKind
+"metric" des campagnes démo hors énum radar|lusr_component (même classe que "closed").
+
+**Prochaine étape** : lots C (G1/G2), E (fuites DuckDB), D (rotation logs), F
+(prolongations — règle mesurée T_reg+40 s), J (rate-limit statiques), H (backlog.md),
+phase 2 FirstBloodLanes, gates finaux, changelogs [FINAL].
+
 ## [2026-07-26] Rectification — la prémisse .dockerignore du lot assets était fausse
 
 **Statut** : Complété (branche `fix/quick-wins-post-v721`, pas de commit — superviseur).

@@ -282,16 +282,12 @@ func (s *service) EvaluateSquadChallenge(ctx context.Context, squadChallengeID, 
 // Les fenêtres session / last_n_matches sont bornées par created_at (le compteur
 // de matchs `limit` gère déjà la profondeur) ; session reste une approximation
 // (pas de découpage de session côté escouade) — documenté, à affiner si besoin.
+//
+// La règle elle-même vit dans evaluator.evalSince : depuis le 2026-07-26 les
+// défis PERSONNELS cumulatifs appliquent la même borne, et deux copies auraient
+// divergé (CLAUDE.md n°6). Ce wrapper ne fait que projeter le SquadChallenge.
 func squadEvalSince(sc SquadChallenge, now time.Time) time.Time {
-	since := sc.CreatedAt
-	if sc.WindowType == WindowRollingDays {
-		if n, err := strconv.Atoi(sc.WindowValue); err == nil && n > 0 {
-			if cutoff := now.AddDate(0, 0, -n); cutoff.After(since) {
-				since = cutoff
-			}
-		}
-	}
-	return since
+	return evalSince(sc.CreatedAt, sc.WindowType, sc.WindowValue, now)
 }
 
 // SquadOrientation retourne l'axe focal de l'escouade (le plus faible du profil
