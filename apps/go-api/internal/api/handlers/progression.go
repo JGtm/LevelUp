@@ -34,10 +34,14 @@ import (
 type ProgressionResolver func(ctx context.Context, slug string) (*duckdb.PlayerDB, error)
 
 // ProgressionHandler regroupe les endpoints de progression V2.
+//
+// Pas de branche « démo » ici : depuis le 2026-07-26, `seed-demo` écrit de vraies
+// séries (streak_history), records et jalons dans les bases démo — cf.
+// internal/ops/seed_demo_prestige.go. L'ancien fixture read-time de streaks
+// masquait ces lignes et affichait des compteurs sans rapport avec le corpus.
 type ProgressionHandler struct {
 	resolve   ProgressionResolver
 	titleSlug string // typ. "halo_infinite", utilisé pour filtrer catalog/queries
-	demoMode  bool   // en démo : ListStreaks sert un fixture (pas de table streaks calculée)
 }
 
 // NewProgressionHandler construit le handler.
@@ -46,14 +50,6 @@ func NewProgressionHandler(resolve ProgressionResolver, titleSlug string) *Progr
 		titleSlug = title.DefaultSlug
 	}
 	return &ProgressionHandler{resolve: resolve, titleSlug: titleSlug}
-}
-
-// WithDemoMode active les fixtures démo (même pattern que LazyPrestigeService).
-// En démo, la player DB n'a pas de table streaks (calculée au post-sync, absent
-// sans sync) → ListStreaks sert un fixture read-time qui survit au reseed.
-func (h *ProgressionHandler) WithDemoMode(demo bool) *ProgressionHandler {
-	h.demoMode = demo
-	return h
 }
 
 // Mount enregistre les 3 routes via Huma (Phase 3b) sur le sous-routeur chi
@@ -153,9 +149,6 @@ type milestonesResponse struct {
 
 // handleStreaks : GET /streaks → toutes les streaks du joueur (active + historique).
 func (h *ProgressionHandler) handleStreaks(ctx context.Context, in *progPlayerInput) (*streaksHumaOutput, error) {
-	if h.demoMode {
-		return &streaksHumaOutput{Body: demoStreaks()}, nil
-	}
 	pdb, err := h.resolvePlayer(ctx, in.PlayerSlug)
 	if err != nil {
 		return nil, err
@@ -304,35 +297,6 @@ func toStreakDTO(s streaks.Streak) streakDTO {
 		BrokenAt:         s.BrokenAt,
 		PPMultiplier:     streaks.PPMultiplier(s.CurrentLength),
 	}
-}
-
-// demoStreaks : fixture de streaks pour la démo. La player DB démo n'a pas de
-// table streaks (calculée au post-sync, absent sans sync) → sans ce fixture le
-// dashboard Ascension affiche "aucune streak". 2 actives + 1 cassée pour peupler
-// la grille. Read-time → survit reseed + déploiement.
-func demoStreaks() streaksResponse {
-	now := time.Now().UTC()
-	mk := func(id string, typ streaks.StreakType, current, best, shieldsUsed int,
-		status streaks.StreakStatus, startedDaysAgo int, brokenAt *time.Time) streakDTO {
-		return streakDTO{
-			ID:               id,
-			Type:             string(typ),
-			StartedAt:        now.Add(time.Duration(-startedDaysAgo) * 24 * time.Hour),
-			CurrentLength:    current,
-			BestLength:       best,
-			ShieldsUsed:      shieldsUsed,
-			ShieldsAvailable: streaks.MaxShieldsPerMonth,
-			Status:           string(status),
-			BrokenAt:         brokenAt,
-			PPMultiplier:     streaks.PPMultiplier(current),
-		}
-	}
-	broken := now.Add(-2 * 24 * time.Hour)
-	return streaksResponse{Items: []streakDTO{
-		mk("demo-streak-daily-play", streaks.StreakTypeDailyPlay, 5, 12, 0, streaks.StreakStatusActive, 5, nil),
-		mk("demo-streak-weekly-play", streaks.StreakTypeWeeklyPlay, 3, 6, 0, streaks.StreakStatusActive, 21, nil),
-		mk("demo-streak-daily-perf", streaks.StreakTypeDailyPerf, 0, 8, 1, streaks.StreakStatusBroken, 30, &broken),
-	}}
 }
 
 func toPBDTO(pb records.PersonalRecord) personalBestDTO {

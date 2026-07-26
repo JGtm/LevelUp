@@ -38,6 +38,7 @@ const (
 	metricMatchesPlayed = "matches_played"
 	metricKills         = "kills"
 	metricAssists       = "assists"
+	metricWins          = "wins"
 )
 
 // MilestoneCrossingMatch est un match du joueur, dans l'ordre chronologique, avec
@@ -119,7 +120,7 @@ func crossingFor(target MilestoneTarget, matches []preppedMatch) *time.Time {
 	switch target.Metric {
 	case metricMatchesPlayed:
 		return nthMatch(matches, target.Threshold, func(preppedMatch) bool { return true })
-	case "wins":
+	case metricWins:
 		return nthMatch(matches, target.Threshold, func(m preppedMatch) bool { return m.win })
 	case "combat_precision_matches":
 		return nthMatch(matches, target.Threshold, func(m preppedMatch) bool { return m.ocQualifies })

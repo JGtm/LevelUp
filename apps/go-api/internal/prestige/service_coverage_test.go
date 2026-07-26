@@ -231,7 +231,7 @@ type matchesProvider struct {
 	popSize int
 }
 
-func (p *matchesProvider) RecentMatches(_ context.Context, _, _, _ string, _ int) ([]MatchData, error) {
+func (p *matchesProvider) RecentMatches(_ context.Context, _, _ string, _ int) ([]MatchData, error) {
 	return p.matches, p.err
 }
 func (p *matchesProvider) PopulationPercentile(_ context.Context, _, _ string, _ float64) (float64, int, error) {

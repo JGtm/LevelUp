@@ -165,8 +165,101 @@ func TestSeedDemo_EndToEnd_HappyPath(t *testing.T) {
 	outPlayer := filepath.Join(outDir, "players", DefaultDemoGamertag, "stats.duckdb")
 	verifyPlayerExtracted(t, outPlayer, sourceXUID)
 
+	// ── échantillons Prestige (player DB + shared_social)
+	verifyPrestigeSeeded(t, outDir, res)
+
 	// ── configs JSON
 	verifyConfigsWritten(t, outDir, "JGtm", "SPTA", false)
+}
+
+// verifyPrestigeSeeded : les tables Prestige/Progression de la démo sont PEUPLÉES
+// après un seed-demo (sans elles, les pages Ascension/Prestige sont vides), et les
+// invariants de cohérence tiennent en base :
+//   - total de points de progression == somme des événements qui l'ont produit ;
+//   - un événement « match » par match du corpus ;
+//   - aucun arc/objectif rattaché à une identité autre que le joueur démo ;
+//   - les objectifs couvrent plusieurs stades du cycle de vie.
+func verifyPrestigeSeeded(t *testing.T, outDir string, res SeedDemoResult) {
+	t.Helper()
+	playerDB, err := sql.Open("duckdb", filepath.Join(outDir, "players", DefaultDemoGamertag, "stats.duckdb")+"?access_mode=READ_ONLY")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer playerDB.Close()
+
+	for _, tbl := range []string{"arc", "challenge", "improvement_campaign",
+		"prestige_telemetry", "baseline_state", "streak_history", "record_history"} {
+		var n int
+		if err := playerDB.QueryRow(`SELECT COUNT(*) FROM ` + tbl).Scan(&n); err != nil {
+			t.Errorf("player démo : %s illisible: %v", tbl, err)
+			continue
+		}
+		if n == 0 {
+			t.Errorf("player démo : %s vide — la page correspondante n'afficherait rien", tbl)
+		}
+	}
+	// La vue append-only des séries doit servir exactement les séries seedées.
+	var streakRows int
+	if err := playerDB.QueryRow(`SELECT COUNT(*) FROM streak_latest`).Scan(&streakRows); err != nil {
+		t.Errorf("streak_latest illisible: %v", err)
+	} else if streakRows == 0 {
+		t.Error("streak_latest vide — les séries seedées ne seraient pas servies")
+	}
+	// Anti-fuite : aucune identité autre que celle du joueur démo.
+	var foreign int
+	if err := playerDB.QueryRow(
+		`SELECT COUNT(*) FROM challenge WHERE user_id <> ?`, DefaultDemoMainSlug).Scan(&foreign); err != nil {
+		t.Errorf("challenge.user_id illisible: %v", err)
+	} else if foreign != 0 {
+		t.Errorf("challenge : %d ligne(s) avec un user_id étranger au joueur démo", foreign)
+	}
+	var statuses int
+	if err := playerDB.QueryRow(`SELECT COUNT(DISTINCT status) FROM challenge`).Scan(&statuses); err != nil {
+		t.Errorf("challenge.status illisible: %v", err)
+	} else if statuses < 3 {
+		t.Errorf("challenge : %d statut(s) distinct(s), want >= 3 (actif/complété/terminé)", statuses)
+	}
+
+	socialDB, err := sql.Open("duckdb", filepath.Join(outDir, "warehouse", "shared_social.duckdb")+"?access_mode=READ_ONLY")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer socialDB.Close()
+
+	var eventCount, eventSum, matchEvents int
+	if err := socialDB.QueryRow(`
+		SELECT COUNT(*), COALESCE(SUM(pp_amount), 0),
+		       COALESCE(SUM(CASE WHEN source_type = 'match' THEN 1 ELSE 0 END), 0)
+		FROM prestige_events`).Scan(&eventCount, &eventSum, &matchEvents); err != nil {
+		t.Fatalf("prestige_events illisible: %v", err)
+	}
+	if eventCount == 0 {
+		t.Fatal("prestige_events vide — aucun point de progression à montrer")
+	}
+	if matchEvents != len(res.MatchIDs) {
+		t.Errorf("événements match = %d, want %d (1 par match du corpus démo)",
+			matchEvents, len(res.MatchIDs))
+	}
+	var totalPP int
+	if err := socialDB.QueryRow(
+		`SELECT total_pp FROM user_prestige_latest WHERE user_id = ?`, DefaultDemoMainSlug).Scan(&totalPP); err != nil {
+		t.Fatalf("user_prestige_latest illisible: %v", err)
+	}
+	if totalPP != eventSum {
+		t.Errorf("total_pp = %d mais somme des événements = %d (le total contredirait le journal)",
+			totalPP, eventSum)
+	}
+	for _, tbl := range []string{"squad", "squad_member_latest",
+		"squad_challenge", "squad_challenge_participant_latest", "player_records_latest"} {
+		var n int
+		if err := socialDB.QueryRow(`SELECT COUNT(*) FROM ` + tbl).Scan(&n); err != nil {
+			t.Errorf("shared_social démo : %s illisible: %v", tbl, err)
+			continue
+		}
+		if n == 0 {
+			t.Errorf("shared_social démo : %s vide", tbl)
+		}
+	}
 }
 
 func TestSeedDemo_EndToEnd_NoMatchesForXUID(t *testing.T) {
