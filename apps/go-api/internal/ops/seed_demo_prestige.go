@@ -129,8 +129,9 @@ func rebuildDemoSharedSocial(ctx context.Context, socialDBPath string) error {
 	if err := os.MkdirAll(filepath.Dir(socialDBPath), 0o755); err != nil {
 		return fmt.Errorf("mkdir shared_social démo: %w", err)
 	}
-	_ = os.Remove(socialDBPath)
-	_ = os.Remove(socialDBPath + ".wal")
+	if err := removeDuckDBForFreshWrite(socialDBPath); err != nil {
+		return err
+	}
 	if err := applyTitleMigrationsOnPath(socialDBPath, titlePkg.DefaultSlug, migration.TargetSharedSocial); err != nil {
 		return fmt.Errorf("migrations shared_social démo: %w", err)
 	}

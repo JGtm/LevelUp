@@ -10,6 +10,7 @@
 package ops
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -283,6 +284,133 @@ func TestCopyMetadataFile_SourceMissing(t *testing.T) {
 	err := copyMetadataFile(filepath.Join(dir, "missing.duckdb"), filepath.Join(dir, "out.duckdb"))
 	if err == nil {
 		t.Fatal("expected error for missing source")
+	}
+	assertNoCopyTempLeftover(t, dir)
+}
+
+// TestCopyMetadataFile_ReplacesInode : au déploiement, l'ancien conteneur démo tient
+// encore la metadata ouverte quand le seed la republie. Le fichier publié doit donc
+// être un inode NEUF — une écriture en place tronquerait la DB que ce conteneur
+// utilise (et bloquerait l'ATTACH READ_ONLY de la phase Prestige).
+func TestCopyMetadataFile_ReplacesInode(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "src.duckdb")
+	dst := filepath.Join(dir, "metadata.duckdb")
+	content := []byte{0x44, 0x55, 0x43, 0x4b, 0x00, 0x01, 0xff, 0xfe} // binaire : copie octet à octet
+	if err := os.WriteFile(src, content, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(dst, []byte("ANCIENNE_GENERATION"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	before := statFileIdentity(t, dst)
+
+	if err := copyMetadataFile(src, dst); err != nil {
+		t.Fatalf("copy: %v", err)
+	}
+
+	after := statFileIdentity(t, dst)
+	if os.SameFile(before, after) {
+		t.Error("dst pointe sur le même fichier qu'avant : écriture en place — la DB tenue par l'ancien conteneur démo serait tronquée")
+	}
+	got, err := os.ReadFile(dst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, content) {
+		t.Errorf("contenu = %v, want %v", got, content)
+	}
+	assertNoCopyTempLeftover(t, dir)
+}
+
+// TestCopyMetadataFile_PreviousInodeUntouched : un lien dur vers l'ancien fichier
+// joue le rôle du descripteur que l'ancien conteneur démo garde ouvert — il doit
+// continuer à voir SES octets après la publication de la nouvelle metadata.
+func TestCopyMetadataFile_PreviousInodeUntouched(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "src.duckdb")
+	dst := filepath.Join(dir, "metadata.duckdb")
+	if err := os.WriteFile(src, []byte("NOUVELLE_GENERATION"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(dst, []byte("ANCIENNE_GENERATION"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(dir, "handle_ancien_conteneur")
+	if err := os.Link(dst, alias); err != nil {
+		t.Skipf("liens durs indisponibles sur ce système de fichiers: %v", err)
+	}
+
+	if err := copyMetadataFile(src, dst); err != nil {
+		t.Fatalf("copy: %v", err)
+	}
+
+	old, err := os.ReadFile(alias)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(old) != "ANCIENNE_GENERATION" {
+		t.Errorf("ancien fichier modifié: %q — le lecteur qui le tient ouvert verrait sa DB changer sous lui", old)
+	}
+}
+
+// TestCopyMetadataFile_DstNotRemovable : si dst ne peut pas être retiré, le seed doit
+// échouer franchement. Le repli « écrire dans le fichier existant » ressusciterait la
+// troncature d'une DB vivante. (Cas réaliste : Docker crée un répertoire à la place
+// d'un fichier de bind-mount absent — cf. workflow test-deploy-precheck.)
+func TestCopyMetadataFile_DstNotRemovable(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "src.duckdb")
+	if err := os.WriteFile(src, []byte("NEW"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	dst := filepath.Join(dir, "metadata.duckdb")
+	if err := os.MkdirAll(filepath.Join(dst, "inner"), 0o755); err != nil { // non vide → Remove échoue
+		t.Fatal(err)
+	}
+
+	if err := copyMetadataFile(src, dst); err == nil {
+		t.Fatal("attendu : erreur quand dst ne peut pas être retiré")
+	}
+
+	if _, err := os.Stat(filepath.Join(dst, "inner")); err != nil {
+		t.Errorf("dst touché malgré l'échec: %v", err)
+	}
+	assertNoCopyTempLeftover(t, dir)
+}
+
+// statFileIdentity retourne l'identité du fichier (volume+index sous Windows, dev+ino
+// ailleurs) LUE DEPUIS UN HANDLE OUVERT, comparable ensuite avec os.SameFile.
+//
+// os.Stat ne convient pas ici : sous Windows il ne résout l'identifiant du fichier
+// qu'au moment de la comparaison, en rouvrant le CHEMIN — deux stats pris avant et
+// après un remplacement d'inode désigneraient alors le même fichier (le nouveau) et
+// l'assertion serait toujours vraie. File.Stat() capture l'identifiant tout de suite
+// (GetFileInformationByHandle / fstat), donc il survit au remplacement.
+func statFileIdentity(t *testing.T, path string) os.FileInfo {
+	t.Helper()
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return info
+}
+
+// assertNoCopyTempLeftover : aucun temporaire de copie ne survit, ni au succès ni à
+// l'échec (le répertoire warehouse démo est monté tel quel dans le conteneur).
+func assertNoCopyTempLeftover(t *testing.T, dir string) {
+	t.Helper()
+	leftover, err := filepath.Glob(filepath.Join(dir, "*.tmp-*"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(leftover) > 0 {
+		t.Errorf("temporaires laissés derrière: %v", leftover)
 	}
 }
 

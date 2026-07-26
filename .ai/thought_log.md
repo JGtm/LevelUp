@@ -1,3 +1,133 @@
+## [2026-07-26] Seed démo — metadata publiée par remplacement d'inode (démo tronquée en vol + milestone_earned vide)
+
+**Statut** : Complété. Branche `fix/seed-demo-metadata-inode`, périmètre `internal/ops/`.
+
+**Fait établi (déploiement du 2026-07-26).** Le job `deploy-demo` seede PENDANT que
+l'ancien conteneur `levelup-demo` tourne encore (il n'est recréé qu'après) : il tient
+les DuckDB démo ouvertes avec leur verrou. La prod, elle, est stoppée pendant le seed.
+Tous les extracteurs (`extractSharedTables`, `extractPlayerTables`,
+`rebuildDemoSharedSocial`, chemins média) faisaient déjà `os.Remove` avant création →
+inode neuf, aucun conflit. **Seul `copyMetadataFile` écrivait EN PLACE**
+(`os.OpenFile(dst, O_WRONLY|O_CREATE|O_TRUNC)`), donc tronquait un fichier DuckDB
+qu'un process vivant utilisait. Deux effets : la démo servait une metadata invalide
+pendant toute la fenêtre du déploiement, et l'`ATTACH … (READ_ONLY)` suivant
+(`insertDemoMilestonesEarned`) échouait sur « Conflicting lock is held » → best-effort
+avalé en warn → `milestone_earned` démo VIDE à chaque déploiement (grille Réalisations
+vide).
+
+**Décision : remplacement d'inode atomique, pas de lecture différente de la source.**
+`copyMetadataFile` écrit un temporaire DANS le répertoire de dst (`os.CreateTemp`),
+`Sync()`, `Chmod 0644` (CreateTemp crée en 0600, la démo lit sous un autre uid), puis
+`os.Remove(dst)` + `os.Rename`. Écarté : (a) ouvrir la metadata source en lecture pour
+seeder les jalons sans toucher à la démo — ça n'aurait traité que le symptôme
+`milestone_earned` en laissant la démo servir une base tronquée ; (b) `os.Rename` sans
+`Remove` préalable — échoue si la cible existe sous Windows. **Aucun repli sur
+l'écriture en place** : toute erreur de `Remove` autre que « n'existe pas » remonte
+(un repli silencieux ressusciterait le bug). Ajout du retrait de `dst + ".wal"` :
+un WAL orphelin de la génération précédente serait rejoué contre le nouveau fichier
+(même règle que `rebuildDemoSharedSocial`). Nettoyage du temporaire sur tout chemin
+d'erreur.
+
+**Tests.** 4 unitaires (`seed_demo_test.go`) : inode remplacé (identité capturée via
+`File.Stat()` — `os.Stat` seul ne discrimine pas sous Windows, il ne résout
+l'identifiant qu'à la comparaison en rouvrant le chemin), contenu binaire octet à
+octet, lien dur vers l'ancien inode intact (rôle du descripteur tenu par l'ancien
+conteneur), dst non retirable → échec franc sans écriture en place, plus l'absence de
+temporaire résiduel au succès comme à l'échec. 1 intégration
+(`TestCopyMetadataFile_AttachAfterSwapWhileHeld`) : DB tenue ouverte + copie par-dessus
++ `ATTACH READ_ONLY` qui doit réussir — `t.Skip` justifié sous Windows (unlink d'un
+fichier ouvert impossible), joué par le gate CI Linux.
+
+**Gates** : `gofmt -l ./internal/ops` vide · `go build ./...` OK · `go vet ./...` et
+`go vet -tags=integration ./internal/ops/...` OK · `go test ./internal/ops/...` OK ·
+`go test -tags=integration -p 1 ./internal/ops/...` OK (73 s, exit 0).
+
+**Découvertes hors périmètre (notées, non traitées)** : (1) `extractSharedTables` et
+`extractPlayerTables` retirent `dstPath` mais pas `dstPath + ".wal"` — même famille de
+risque (WAL orphelin rejoué), les chemins média/social le font déjà ; (2) l'ancien
+conteneur peut recréer un `.wal` APRÈS le seed puisqu'il vit jusqu'à sa recréation —
+le correctif de fond serait de le stopper avant le seed, comme la prod ; (3) les JSON
+(`writeDemoConfigs*`, manifeste) restent écrits en place par `os.WriteFile` :
+volontaire, ce sont des bind-mounts FICHIER côté compose (`./data/demo/*.json:…:ro`),
+remplacer leur inode casserait le montage.
+
+**Prochaine étape** : merge dans `main` = déploiement prod automatique. Au déploiement
+suivant, vérifier `COUNT(*) FROM milestone_earned` démo > 0, l'absence de warn « jalons
+débloqués non seedés » dans les logs du job, et la stabilité de la démo pendant la
+fenêtre de deploy.
+
+### [2026-07-26] Suite — traitement des découvertes (1) WAL orphelins et (2) conteneur démo debout
+
+**Statut** : Complété. Même branche `fix/seed-demo-metadata-inode`.
+
+**(D1) WAL — la prémisse était à moitié fausse, mesurée avant d'être codée.** Sonde
+DuckDB v1.4 (WAL réel laissé en suspens via `SET wal_autocheckpoint='1TB'` +
+`PRAGMA disable_checkpoint_on_shutdown` ; un WAL de garbage ne prouve rien, DuckDB
+l'écarte) :
+
+- base **publiée par rename** (`copyMetadataFile`) + WAL survivant → DuckDB rejoue le
+  WAL SANS ERREUR dans la base neuve : les 2000 lignes et la table de l'ancienne
+  génération ressuscitent dedans, puis l'ouverture `READ_ONLY` suivante meurt sur
+  « Failure while replaying WAL file ». **Corruption silencieuse, prouvée.**
+- base **créée par DuckDB** (`extractSharedTables`, `extractPlayerTables`, générateurs
+  synthétiques) + WAL préexistant → écarté sans dommage. Le retrait y est donc une
+  **défense en profondeur** (comportement non documenté ; et une extraction avortée
+  entre le retrait et la création laisserait sinon le WAL derrière elle), pas un
+  correctif de bug. La découverte (1) de l'entrée ci-dessus est corrigée sur ce point.
+
+**Décision** : un point de passage unique `removeDuckDBForFreshWrite(path)` (WAL
+d'abord, puis la base — s'il résiste on échoue sans avoir délié la base) construit sur
+`removeForInodeSwap` existant, appliqué aux **9 sites** de `seed_demo*.go` : les 6 qui
+retiraient la base seule (2 extracteurs + 4 générateurs synthétiques) et les 3 qui
+faisaient déjà la paire à la main (`rebuildDemoSharedSocial`, `extractDemoMedia`,
+`extractDemoMediaH5`). Erreur désormais remontée au lieu de `_ = os.Remove(...)`.
+Garde-rail `TestSeedDemoNoBareOsRemove` (scan des `seed_demo*.go`, allowlist justifiée
+de 2 lignes, sentinelles anti-faux-vert) — sans lui le pattern re-diverge à la
+prochaine base ajoutée. Les `copyFile` média (`.mp4`/miniatures, `O_TRUNC`) restent
+hors périmètre : ce ne sont pas des bases DuckDB.
+
+**(D2) Correctif de fond : `docker compose stop levelup-demo` pendant le seed.** Job
+`deploy-demo` de `.github/workflows/deploy.yml`, en miroir exact du traitement prod.
+Élimine la classe entière : plus de fichier tenu pendant le seed, plus de WAL recréé
+par l'ancien conteneur APRÈS le seed, plus de base tronquée servie pendant la fenêtre.
+**Contrepartie assumée et commentée** : demo.lvelup.info indisponible le temps du seed
+(quelques minutes) au lieu de servir des données incohérentes. Le stop est placé APRÈS
+la garde `pgrep [b]ackfill` (un SKIP ne doit rien éteindre) et APRÈS `index-media`
+(qui ne touche pas `data/demo`) pour réduire la fenêtre. Remise en service garantie
+sur TOUS les chemins de sortie par `trap 'rc=$?; ensure_demo_up || rc=1; exit $rc' EXIT`
+(désarmé sur le chemin nominal pour ne pas recréer deux fois) — sans ce filet, un seed
+rouge ou le guard « configs invalides » laisserait la démo éteinte jusqu'au prochain
+déploiement. La recréation réutilise **exactement** la commande existante
+(`docker compose up -d --force-recreate levelup-demo` depuis `/opt/levelup`), qui
+hérite de `LEVELUP_APP_VERSION` via le `.env` réécrit par `scripts/deploy.sh` : en
+inventer une autre ferait servir « dev » par la démo (piège documenté V721-15).
+
+Le remplacement d'inode de `copyMetadataFile` **reste** : son commentaire est passé de
+« seul rempart » à « défense en profondeur » (le seed se lance aussi à la main et en
+local avec un serveur démo debout ; rien côté Go ne peut vérifier qu'aucun lecteur
+n'est branché).
+
+**Tests.** 4 unitaires (`seed_demo_wal_test.go`, nouveau fichier — `seed_demo_test.go`
+était déjà à 531 L) : base+WAL retirés, absence tolérée, WAL seul retiré, WAL bloqué →
+échec sans délier la base, plus le garde-rail source. 2 intégration :
+`TestCopyMetadataFile_ForeignWALNotReplayedIntoPublishedDB` (contrôle de mutation joué :
+sans le retrait du WAL, il échoue bien sur l'injection de l'ancienne génération) et
+`TestExtractSharedTables_OrphanWALFromPreviousGeneration` (WAL en suspens préexistant →
+base extraite saine ; passe aussi sans le correctif, son commentaire le dit).
+
+**Gates** : `gofmt -l ./internal/ops` vide · `go build ./...` · `go vet ./...` ·
+`go test ./internal/ops/...` (14,7 s) · `go test -tags=integration -p 1 ./internal/ops/...`
+(97 s) · `golangci-lint run --new-from-merge-base=origin/main` → 0 issue. Workflow :
+`actionlint` 1.7.12 sur tous les workflows → 0 issue ; `bash -n` sur le script du job ;
+répétition à blanc du job avec un `docker` factice sur 5 chemins (nominal, seed KO,
+guard configs KO, restart prod KO sous `set -e`, recréation démo KO) — la démo est
+recréée dans les 4 premiers, et le job est rouge quand il doit l'être.
+
+**Prochaine étape** : au prochain déploiement, vérifier dans les logs du job la
+séquence `Stop demo` → seed → `Recréation de levelup-demo` réussie, `COUNT(*) FROM
+milestone_earned` démo > 0, et l'absence de `*.duckdb.wal` résiduel dans
+`data/demo/warehouse/`.
+
 ## [2026-07-26] Prestige — frontière d'identité player_slug ↔ xuid (objectifs figés à zéro)
 
 **Statut** : Complété (code écrit, NON compilé — gate à jouer par le pilote).

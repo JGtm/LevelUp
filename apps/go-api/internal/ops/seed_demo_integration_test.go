@@ -12,8 +12,10 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -565,5 +567,232 @@ func TestLoadVideoRealMaps(t *testing.T) {
 	// Média non "Halo Infinite" exclu (filtre file_name LIKE 'Halo Infinite%').
 	if _, ok := got["Replay clip"]; ok {
 		t.Error("média non Halo Infinite ne devrait pas être inclus")
+	}
+}
+
+// TestCopyMetadataFile_AttachAfterSwapWhileHeld rejoue la fenêtre de déploiement du
+// 2026-07-26 : le seed republie la metadata démo pendant que l'ANCIEN conteneur
+// `levelup-demo` tient encore le fichier ouvert avec son verrou DuckDB. Après le
+// remplacement d'inode, l'ATTACH READ_ONLY que fait la phase Prestige
+// (insertDemoMilestonesEarned) doit réussir — avec l'ancienne écriture en place il
+// échouait sur « Conflicting lock is held » et milestone_earned restait vide.
+func TestCopyMetadataFile_AttachAfterSwapWhileHeld(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// Windows refuse de supprimer/renommer un fichier tenu ouvert par DuckDB
+		// (sharing violation) : le scénario ne peut pas être fidèle ici. Le
+		// déploiement visé est Linux (conteneur démo) et le gate CI l'est aussi.
+		t.Skip("scénario Linux-only : unlink d'un fichier ouvert impossible sous Windows")
+	}
+	ctx := context.Background()
+	dir := t.TempDir()
+	src := filepath.Join(dir, "src_meta.duckdb")
+	dst := filepath.Join(dir, "metadata.duckdb")
+
+	// Metadata source (nouvelle génération).
+	srcDB, err := sql.Open("duckdb", src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mustExec(t, srcDB, `CREATE TABLE career_ranks (rank_id INTEGER, rank_name VARCHAR)`)
+	mustExec(t, srcDB, `INSERT INTO career_ranks VALUES (1, 'Recruit'), (2, 'Iron')`)
+	srcDB.Close()
+
+	// « Ancien conteneur démo » : DB à l'emplacement cible, OUVERTE et conservée
+	// (verrou DuckDB posé) pendant toute la copie. CHECKPOINT pour ne pas laisser de
+	// WAL en suspens qui brouillerait l'assertion.
+	heldDB, err := sql.Open("duckdb", dst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer heldDB.Close()
+	mustExec(t, heldDB, `CREATE TABLE ancienne_generation (n INTEGER)`)
+	mustExec(t, heldDB, `INSERT INTO ancienne_generation VALUES (42)`)
+	mustExec(t, heldDB, `CHECKPOINT`)
+
+	if err := copyMetadataFile(src, dst); err != nil {
+		t.Fatalf("copyMetadataFile pendant que la démo tient le fichier: %v", err)
+	}
+
+	// Lecteur suivant du seed (phase Prestige) : ATTACH READ_ONLY sur le chemin.
+	probe, err := sql.Open("duckdb", filepath.Join(dir, "probe.duckdb"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer probe.Close()
+	if _, err := probe.ExecContext(ctx, fmt.Sprintf("ATTACH '%s' AS demometa (READ_ONLY)", dst)); err != nil {
+		t.Fatalf("ATTACH READ_ONLY après remplacement d'inode: %v", err)
+	}
+	defer func() { _, _ = probe.ExecContext(ctx, "DETACH demometa") }()
+	var n int
+	if err := probe.QueryRowContext(ctx, `SELECT COUNT(*) FROM demometa.career_ranks`).Scan(&n); err != nil {
+		t.Fatalf("lecture metadata publiée: %v", err)
+	}
+	if n != 2 {
+		t.Errorf("career_ranks publiées = %d, want 2", n)
+	}
+
+	// L'ancien conteneur n'a pas vu sa base tronquée sous lui : son inode est intact.
+	var held int
+	if err := heldDB.QueryRowContext(ctx, `SELECT COUNT(*) FROM ancienne_generation`).Scan(&held); err != nil {
+		t.Fatalf("l'ancienne DB tenue ouverte est devenue illisible: %v", err)
+	}
+	if held != 1 {
+		t.Errorf("ancienne_generation = %d, want 1", held)
+	}
+}
+
+// previousGenerationWAL fabrique les octets d'un VRAI WAL DuckDB laissé en suspens
+// par une base « génération précédente » (table ancienne_generation, 2000 lignes).
+//
+// C'est l'état que produit un conteneur démo tué sans CHECKPOINT (SIGKILL) ou un
+// seed interrompu. Un WAL de garbage ne conviendrait pas ici : DuckDB l'écarte
+// silencieusement, alors qu'un VRAI WAL est rejoué (c'est tout le problème). Il faut
+// désarmer le checkpoint de fermeture, sinon `db.Close()` vide toujours le WAL.
+func previousGenerationWAL(t *testing.T, dir string) []byte {
+	t.Helper()
+	path := filepath.Join(dir, "generation_precedente.duckdb")
+	db, err := sql.Open("duckdb", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mustExec(t, db, `SET wal_autocheckpoint='1TB'`)
+	mustExec(t, db, `PRAGMA disable_checkpoint_on_shutdown`)
+	mustExec(t, db, `CREATE TABLE ancienne_generation (n INTEGER, s VARCHAR)`)
+	mustExec(t, db, `INSERT INTO ancienne_generation SELECT i, 'row' || i FROM range(2000) t(i)`)
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	wal, err := os.ReadFile(path + ".wal")
+	if err != nil {
+		t.Fatalf("aucun WAL en suspens produit (le fixture ne teste plus rien): %v", err)
+	}
+	if len(wal) == 0 {
+		t.Fatal("WAL vide : DuckDB checkpointe désormais à la fermeture malgré le pragma — revoir le fixture")
+	}
+	return wal
+}
+
+// TestCopyMetadataFile_ForeignWALNotReplayedIntoPublishedDB : la metadata démo est
+// publiée par RENAME. Si un `<db>.wal` de la génération précédente survit à côté du
+// nom publié, DuckDB le REJOUE dans la base fraîchement publiée à la première
+// ouverture — sans erreur : les tables et les lignes de l'ancienne génération sont
+// injectées dans la nouvelle metadata (vérifié sur DuckDB v1.4 : 2000 lignes
+// ressuscitées), et l'ouverture READ_ONLY suivante meurt sur « Failure while
+// replaying WAL file ». D'où le retrait du WAL par removeDuckDBForFreshWrite.
+func TestCopyMetadataFile_ForeignWALNotReplayedIntoPublishedDB(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	wal := previousGenerationWAL(t, dir)
+
+	src := filepath.Join(dir, "src_meta.duckdb")
+	srcDB, err := sql.Open("duckdb", src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mustExec(t, srcDB, `CREATE TABLE career_ranks (rank_id INTEGER, rank_name VARCHAR)`)
+	mustExec(t, srcDB, `INSERT INTO career_ranks VALUES (1, 'Recruit'), (2, 'Iron')`)
+	if err := srcDB.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Cible : metadata de la génération précédente + son WAL en suspens.
+	dst := filepath.Join(dir, "warehouse", "metadata.duckdb")
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(dst, []byte("ANCIENNE_METADATA"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(dst+".wal", wal, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := copyMetadataFile(src, dst); err != nil {
+		t.Fatalf("copyMetadataFile: %v", err)
+	}
+
+	published, err := sql.Open("duckdb", dst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer published.Close()
+	var ranks int
+	if err := published.QueryRowContext(ctx, `SELECT COUNT(*) FROM career_ranks`).Scan(&ranks); err != nil {
+		t.Fatalf("ouverture de la metadata publiée: %v", err)
+	}
+	if ranks != 2 {
+		t.Errorf("career_ranks = %d, want 2", ranks)
+	}
+	var leaked int
+	if err := published.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM duckdb_tables() WHERE table_name = 'ancienne_generation'`).Scan(&leaked); err != nil {
+		t.Fatal(err)
+	}
+	if leaked != 0 {
+		t.Error("le WAL de la génération précédente a été rejoué dans la metadata publiée : " +
+			"la démo sert des données d'une autre génération")
+	}
+}
+
+// TestExtractSharedTables_OrphanWALFromPreviousGeneration : le chemin cible porte la
+// base ET le WAL en suspens de la génération précédente. L'extraction doit produire
+// une base saine et ne rien laisser du couple précédent.
+//
+// NB (mesuré sur DuckDB v1.4) : quand DuckDB CRÉE lui-même le fichier (cas des
+// extracteurs, contrairement à la metadata publiée par rename), un WAL préexistant
+// est écarté sans erreur. Le retrait explicite est donc ici une défense en
+// profondeur — sur un comportement non documenté, et pour ne pas laisser un WAL
+// derrière une extraction avortée en cours de route.
+func TestExtractSharedTables_OrphanWALFromPreviousGeneration(t *testing.T) {
+	ctx := context.Background()
+	tmpDir, _, srcShared, _ := seedSourceDBs(t)
+	const sourceXUID = "1111111111111111"
+	wal := previousGenerationWAL(t, tmpDir)
+
+	dst := filepath.Join(tmpDir, "out", "warehouse", "shared_matches_v2.duckdb")
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	prev, err := sql.Open("duckdb", dst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mustExec(t, prev, `CREATE TABLE ancienne_generation (n INTEGER)`)
+	mustExec(t, prev, `CHECKPOINT`)
+	if err := prev.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(dst+".wal", wal, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	counts, err := extractSharedTables(ctx, srcShared, dst, []string{"m1", "m2"}, sourceXUID, demoXUIDForIndex(0))
+	if err != nil {
+		t.Fatalf("extractSharedTables avec WAL orphelin préexistant: %v", err)
+	}
+	if counts["match_registry"] != 2 {
+		t.Errorf("match_registry extraits = %d, want 2", counts["match_registry"])
+	}
+
+	// Base saine : elle se relit (le lecteur suivant du seed ouvre en READ_ONLY) et ne
+	// porte plus rien de la génération précédente.
+	out, err := sql.Open("duckdb", dst+"?access_mode=READ_ONLY")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer out.Close()
+	var n int
+	if err := out.QueryRowContext(ctx, `SELECT COUNT(*) FROM match_registry`).Scan(&n); err != nil {
+		t.Fatalf("relecture de la base extraite: %v", err)
+	}
+	if n != 2 {
+		t.Errorf("match_registry rows = %d, want 2", n)
+	}
+	if err := out.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM duckdb_tables() WHERE table_name = 'ancienne_generation'`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Error("table de la génération précédente encore présente : la base n'a pas été recréée")
 	}
 }
