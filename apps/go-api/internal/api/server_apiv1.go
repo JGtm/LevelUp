@@ -1374,9 +1374,11 @@ func serveStaticFile(w http.ResponseWriter, req *http.Request, fileServer http.H
 
 // staticAssetExts : extensions de fichiers statiques attendues dans le dist Vite.
 // Un chemin qui porte l'une d'elles mais n'existe pas sur disque est un asset
-// MANQUANT (404 franc + log), jamais une route SPA — le fallback index.html
-// (200 text/html) servait du HTML aux <img> quand .dockerignore strippait les
-// PNG de apps/web/public, image vide sans aucune erreur visible (2 releases).
+// MANQUANT (404 franc + log), jamais une route SPA — avant ce correctif, le
+// catch-all SPA servait index.html (200 text/html) pour TOUT asset absent du
+// dist, quelle qu'en soit la cause (build amputé, fichier déplacé/renommé,
+// déploiement partiel...) : le silence de ce fallback rendait ces manques
+// invisibles côté client (<img> vide, zéro erreur réseau visible).
 var staticAssetExts = map[string]struct{}{
 	".png": {}, ".jpg": {}, ".jpeg": {}, ".webp": {}, ".gif": {}, ".svg": {},
 	".ico": {}, ".css": {}, ".js": {}, ".mjs": {}, ".map": {}, ".woff": {},
@@ -1407,8 +1409,9 @@ func mountSPA(r chi.Router, serverCtx context.Context, cfg *config.AppConfig, re
 					return
 				}
 				if isStaticAssetPath(req.URL.Path) {
-					// Log volontairement non throttle : c'est le silence de ce
-					// fallback qui a fait survivre le bug des PNG strippes.
+					// Log volontairement non throttle : c'est le silence de
+					// l'ancien fallback (200 text/html sur tout asset absent)
+					// qui rendait ce genre de manque invisible en prod.
 					slog.WarnContext(req.Context(), "static asset not found", "path", req.URL.Path)
 					http.NotFound(w, req)
 					return

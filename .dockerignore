@@ -67,16 +67,25 @@ test-results/
 
 # === Assets statiques UI (re-inclus malgré les globs media ci-dessus) ===
 # Servis sous /static/ par le serveur Go (maps, ranks, medals, commendations,
-# prestige). Sans ces négations, les *.png/*.jpg de static/ sont strippés du
-# build context → 404 sur tout /static/* (cf. server.go FileServer + Dockerfile).
+# prestige). Ces négations sont défensives et INERTES aujourd'hui : un motif
+# .dockerignore est ancré sur la racine du contexte de build — `*.png` matche
+# uniquement `/*.png` à la racine, jamais `static/**/*.png` (`*` ne traverse pas
+# `/`) — donc le bloc « media lourds » ci-dessus ne strippe rien à l'intérieur
+# de static/. Le vrai incident historique (f106f0b03, 404 sur tout /static/*)
+# venait d'un `COPY static/` absent du Dockerfile, pas de .dockerignore. Ces
+# négations ne redeviendraient utiles que si le bloc media passait un jour en
+# motifs récursifs (`**/*.png`) — gardées par précaution à coût nul.
 !static
 !static/**
 
-# === Assets publics du front (re-inclus malgre les globs media ci-dessus) ===
-# apps/web/public/ est copie tel quel dans dist/ par `vite build` (icones
-# Waypoint, logo, og-default.png, emblemes halo_5...). Sans ces negations, les
-# *.png/*.webp de public/ sont strippes du contexte de build → dist/ ampute →
-# le catch-all SPA sert index.html (200 text/html) a la place des images.
+# === Assets publics du front (re-inclus malgré les globs media ci-dessus) ===
+# apps/web/public/ est copié tel quel dans dist/ par `vite build` (icônes
+# Waypoint, logo, og-default.png, emblèmes halo_5...). Même négation
+# défensive et INERTE qu'au-dessus : `*.png` étant ancré à la racine du
+# contexte, il ne peut pas strip `apps/web/public/**/*.png` (`*` ne traverse
+# pas `/`) — confirmé en prod le 2026-07-26 (images de public/ servies 200
+# sur une image buildée depuis main SANS cette négation). Gardée par
+# précaution si le bloc media passait un jour en motifs récursifs.
 !apps/web/public
 !apps/web/public/**
 

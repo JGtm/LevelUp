@@ -2,10 +2,13 @@
 // verify-public-in-dist.mjs — garde-rail build : chaque fichier de public/ doit
 // se retrouver dans dist/ apres `vite build` (Vite copie public/ tel quel a la
 // racine du dist). Si un fichier manque, le build DOIT echouer avec la liste
-// des manquants — c'est la defense contre un .dockerignore qui stripperait de
-// nouveau les media de public/ du contexte de build (bug prod : PNG absents du
-// dist → le catch-all SPA servait index.html a la place des images, image vide
-// sans erreur visible pendant deux releases).
+// des manquants — prevention d'une regression FUTURE (option `copyPublicDir`
+// desactivee, chemin public/ deplace/renomme, etc.), pas le correctif d'un bug
+// prod deja survenu : aucune investigation n'a confirme d'image absente en
+// production. L'hypothese initiale (.dockerignore strippant public/ du
+// contexte de build) etait fausse : un motif .dockerignore est ancre a la
+// racine du contexte, `*.png` ne traverse pas les sous-dossiers (cf.
+// .dockerignore + thought_log 2026-07-26).
 //
 // Generique par construction : aucune enumeration de fichiers, d'extensions ni
 // de slug — la verite est le contenu reel de public/.
@@ -55,7 +58,9 @@ if (missing.length > 0) {
     console.error(`  - ${rel.split(sep).join('/')}`)
   }
   console.error(
-    'Cause probable : fichiers strippes du contexte Docker (.dockerignore) ou copie public/ -> dist/ cassee.',
+    'Cause probable : option copyPublicDir desactivee dans la config Vite, ' +
+      'public/ deplace/renomme, ou fichier ajoute apres les negations ' +
+      '!apps/web/public/** de .dockerignore (verifier ce fichier).',
   )
   process.exit(1)
 }
