@@ -137,6 +137,23 @@ matches_played (jauge demo-objective-04 restera 0 — classe connue 16/28) ; Axi
 **Prochaine étape** : lots C (G1/G2), E (fuites DuckDB), D (rotation logs), F
 (prolongations — règle mesurée T_reg+40 s), J (rate-limit statiques), H (backlog.md),
 phase 2 FirstBloodLanes, gates finaux, changelogs [FINAL].
+## [2026-07-26] CI quick-wins au vert — 7 dettes lint remboursées + baseline réconciliée
+
+**Statut** : Complété (branche `fix/quick-wins-post-v721`, correctif par agent, commit
+superviseur). La CI de branche avait fait son travail : 7 issues golangci-lint réelles
+introduites par 1b18ae609 (funlen 87, gocyclo 18, goconst x5 sur les colonnes
+objectifs) + 4 entrées de baseline périmées (2 déjà purgées par main/2f9cccde8, 1 test
+supprimé avec son sujet, 1 renommé). Refactor de forme pur : constantes objectiveCol*
+non exportées (le canonique FieldKey est une autre frontière, ADR 0011), scission
+classification/extraction, décodage de ligne extrait. Aucune assertion modifiée, aucun
+garde-rail affaibli. Détail ligne à ligne dans le message de commit.
+
+**Piège à retenir** : le cache golangci-lint peut servir d'anciens résultats de package
+et masquer des issues (2/7 vues avant `golangci-lint cache clean`, 7/7 après). Toujours
+purger le cache avant de conclure « ratchet vert » en local.
+
+**Résultats** : lint 0 issue (cache purgé), gate baseline exit 0 (10778 tests courants,
+tous les tests baseline présents), suite complète intégration -p 1 : 0 échec.
 
 ## [2026-07-26] Rectification — la prémisse .dockerignore du lot assets était fausse
 
