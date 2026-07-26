@@ -1,0 +1,44 @@
+# config/titles/halo_infinite/mappings/regulation.toml
+#
+# Temps RÉGLEMENTAIRE par variante de jeu (en secondes) — socle du flag
+# « Prolongation » (overtime) exposé sur la Match View et l'Explorateur.
+#
+# CLÉ = `match_registry.game_variant_name`, c'est-à-dire le NOM D'ASSET UGC servi
+# par l'API du titre. Ce nom N'EST PAS un identifiant stable : 343 le fait bouger
+# au fil des saisons (renommage de variante, nouvelle déclinaison, suffixe de
+# playlist). Conséquence assumée et SÛRE : une variante absente de cette table
+# n'a pas de temps réglementaire connu → le match n'est JAMAIS flagué en
+# prolongation (jamais de faux positif ; au pire un vrai overtime non signalé).
+# Quand un renommage est constaté, ajouter la NOUVELLE clé à côté de l'ancienne
+# (les matchs historiques gardent l'ancien nom en base).
+#
+# VALEUR = mur de temps réglementaire mesuré, en secondes. Contenu initial issu
+# d'une mesure sur 1793 matchs : la durée de jeu se tasse sur un plateau net à
+# 720 s (12 min) pour toutes les variantes listées ci-dessous.
+#
+# PÉRIMÈTRE — ce qui est VOLONTAIREMENT absent :
+#   - BTB (Big Team Battle) : aucun mur de temps mesurable dans l'échantillon
+#     (distribution étalée, pas de plateau) → pas de temps réglementaire fiable.
+#   - Modes à manches (Élimination, Attrition, Extraction...) : la durée totale
+#     est la somme de N manches de longueur variable ; un seuil unique n'a pas
+#     de sens. Un futur support demanderait la durée PAR MANCHE, non disponible.
+# Ne rien ajouter ici « au jugé » : une entrée non mesurée produit des faux
+# positifs sur toute la surface produit.
+#
+# Consommation : mappings.LoadRegulationFromFile → Registry.GetRegulation(slug)
+# → service (Match View header / Explorateur) → analysis.ComputeOvertime.
+
+[meta]
+title_slug     = "halo_infinite"
+schema_version = 1
+
+[regulation_seconds]
+"CTF:Arena"                   = 720
+"CTF:Arena Neutral Flag"      = 720
+"Team Slayer:Arena"           = 720
+"Slayer:Arena"                = 720
+"Slayer:Arena Super Fiesta"   = 720
+"Slayer:Arena Tactical"       = 720
+"Strongholds:Arena"           = 720
+"Arena:Slayer"                = 720
+"Arena:Team Slayer"           = 720

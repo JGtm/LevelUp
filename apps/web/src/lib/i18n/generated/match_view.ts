@@ -75,6 +75,8 @@ export const matchViewManifest = {
   "narrative.dominance.domination": { fr: "Domination", en: "Domination" },
   "narrative.dominance.humiliation": { fr: "Humiliation", en: "Humiliation" },
   "narrative.dominance.remontada": { fr: "Remontada", en: "Comeback" },
+  "narrative.overtime.label": { fr: "Prolongation", en: "Overtime" },
+  "narrative.overtime.tooltip": { fr: "Prolongation : +{duration}", en: "Overtime: +{duration}" },
 } as const
 
 export type MatchViewManifestKey = keyof typeof matchViewManifest

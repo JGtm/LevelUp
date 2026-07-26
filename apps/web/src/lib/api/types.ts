@@ -709,6 +709,13 @@ export interface ExplorerMatchRow {
   enemy_mmr?: number | null
   kda?: number | null
   duration_seconds?: number | null
+  /** Match parti en PROLONGATION (durée de jeu au-delà du temps réglementaire de
+   *  la variante + marge mesurée). Absent/false si le titre n'a pas de table
+   *  réglementaire, si la variante y est inconnue ou si la durée n'est pas
+   *  estimable — la pastille n'est alors simplement pas rendue. */
+  is_overtime?: boolean
+  /** Dépassement réel du temps réglementaire en secondes (tooltip « Prolongation : +X »). */
+  overtime_seconds?: number
   match_url?: string
   /** 0=none, 1=domination, 2=humiliation, 3=remontada, 4=débandade, 5=contre-remontada. */
   dominance_flag?: number

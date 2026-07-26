@@ -30,6 +30,19 @@ en = "Collapse"
 fr = "Contre-remontada"
 en = "Counter-comeback"
 
+# ─── Header — badge prolongation (overtime) ─────────────────────────────────
+# Source unique côté front : lib/narrative/overtime.ts. Deux surfaces le
+# consomment : le header de la Match View et la colonne Dominance de
+# l'Explorateur. {duration} = dépassement formaté en M:SS (formatDurationMMSS).
+
+[narrative.overtime.label]
+fr = "Prolongation"
+en = "Overtime"
+
+[narrative.overtime.tooltip]
+fr = "Prolongation : +{duration}"
+en = "Overtime: +{duration}"
+
 # ─── Header — labels de surface ─────────────────────────────────────────────
 
 [match_view.header.title]

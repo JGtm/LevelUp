@@ -5474,6 +5474,7 @@ export interface components {
             experience_type_label: string;
             /** @description Un coéquipier était un bot. Exposé sur les best_matches de la carrière (les LOSS avec bot sont exclus côté backend). */
             had_bot_teammate?: boolean;
+            is_overtime?: boolean;
             is_with_friends: boolean;
             /** Format: double */
             kda?: number;
@@ -5486,6 +5487,8 @@ export interface components {
             /** Format: int64 */
             outcome_code: number;
             outcome_label: string;
+            /** Format: int64 */
+            overtime_seconds?: number;
             /** Format: int64 */
             perf_placement_done?: number;
             /** Format: int64 */
@@ -6599,6 +6602,7 @@ export interface components {
             expected_win_prob?: number;
             experience_type_label?: string;
             is_excluded: boolean;
+            is_overtime?: boolean;
             is_with_friends: boolean;
             /** Format: double */
             kda?: number;
@@ -6611,6 +6615,8 @@ export interface components {
             /** Format: int64 */
             outcome_code: number;
             outcome_label: string;
+            /** Format: int64 */
+            overtime_seconds?: number;
             /** Format: int64 */
             perf_placement_done?: number;
             /** Format: int64 */
@@ -7079,6 +7085,7 @@ export interface components {
             had_bot_teammate: boolean;
             is_excluded: boolean;
             is_favorite: boolean;
+            is_overtime?: boolean;
             is_ranked: boolean;
             map_id?: string;
             map_image_url?: string;
@@ -7090,6 +7097,8 @@ export interface components {
             outcome_color: string;
             outcome_color_token?: string;
             outcome_label: string;
+            /** Format: int64 */
+            overtime_seconds?: number;
             performance_color?: string;
             performance_color_token?: string;
             performance_display: string;

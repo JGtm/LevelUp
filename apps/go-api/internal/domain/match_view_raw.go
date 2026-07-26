@@ -70,6 +70,11 @@ type MatchMetaRaw struct {
 	// Dérivé de `epoch_ms(real_start_time AT TIME ZONE 'UTC') − epoch_ms(start_time)`.
 	// Nil si real_start_time absent → BuildForMatchMs retombe sur T0=0.
 	T0Ms *int64
+	// ElapsedSeconds : durée de JEU observée du match (médiane du temps joué des
+	// participants présents du début à la fin ; repli MAX). Chargée séparément de
+	// Q13 et best-effort (cf. duckdb/elapsed_seconds.go). Nil = non estimable →
+	// aucun flag « Prolongation ».
+	ElapsedSeconds *int
 }
 
 // PlayerMatchStatsRaw : données brutes de Q17 (match_participants filtré par xuid).

@@ -43,6 +43,7 @@ import { localizeTierLabel, skillTierSortValue } from '@/lib/skillTiers'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { asDominance } from '@/components/charts/outcomeSequence'
 import { DOMINANCE_COLOR_TOKENS, DOMINANCE_LABEL_KEYS } from '@/lib/narrative/dominance'
+import { OVERTIME_COLOR_TOKEN, overtimeLabel, overtimeTooltip } from '@/lib/narrative/overtime'
 import { mmrDeltaScale, kdaDivergentScale } from '@/lib/accessibility/scales'
 import { getOutcomeColor, outcomeKey } from '@/lib/outcome-color'
 import { formatDate, formatDurationMMSS, displayRatingLabel, intlLocale as toIntlLocale } from '@/lib/formatters'
@@ -272,6 +273,40 @@ function renderTwoLineHeader(label: string): ReactNode {
 // Mappings flag DominanceFlag (Go canonical.DominanceFlag) → clé i18n / token
 // couleur : table CANONIQUE partagée avec le marqueur de la bande de résultats
 // (lib/narrative/dominance). 0/undefined = pas de badge → "-" en cellule.
+
+/**
+ * NarrativePill — pastille narrative de la colonne Dominance : rendu UNIQUE
+ * partagé par le badge de dominance et le badge de prolongation (les deux
+ * peuvent coexister sur une même ligne). Couleur via token sémantique
+ * uniquement (CLAUDE.md §12), jamais de hex.
+ */
+function NarrativePill({
+  label,
+  colorToken,
+  title,
+  testId,
+}: {
+  label: string
+  colorToken: SemanticToken
+  title?: string
+  testId?: string
+}): ReactNode {
+  const color = tokenCssVar(colorToken)
+  return (
+    <span
+      className="inline-flex items-center rounded-full border px-2 py-0.5 text-2xs font-bold uppercase tracking-wider leading-none whitespace-nowrap"
+      style={{
+        backgroundColor: `color-mix(in oklab, ${color} 18%, transparent)`,
+        borderColor: `color-mix(in oklab, ${color} 55%, transparent)`,
+        color,
+      }}
+      title={title}
+      data-testid={testId}
+    >
+      {label}
+    </span>
+  )
+}
 
 const NAME_TRUNCATE_MAX = 12
 
@@ -518,19 +553,27 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
           const flag = asDominance(ctx.getValue<number | null | undefined>())
           const labelKey = flag ? DOMINANCE_LABEL_KEYS[flag] : undefined
           const colorToken = flag ? DOMINANCE_COLOR_TOKENS[flag] : undefined
-          if (!labelKey || !colorToken) return <span className="text-muted-foreground">-</span>
-          const color = tokenCssVar(colorToken)
+          // La prolongation est INDÉPENDANTE de la dominance : un match peut
+          // porter les deux pastilles, l'une des deux, ou aucune.
+          const row = ctx.row.original
+          const isOvertime = row.is_overtime === true
+          if ((!labelKey || !colorToken) && !isOvertime) {
+            return <span className="text-muted-foreground">-</span>
+          }
           return (
-            <span
-              className="inline-flex items-center rounded-full border px-2 py-0.5 text-2xs font-bold uppercase tracking-wider leading-none whitespace-nowrap"
-              style={{
-                backgroundColor: `color-mix(in oklab, ${color} 18%, transparent)`,
-                borderColor: `color-mix(in oklab, ${color} 55%, transparent)`,
-                color,
-              }}
-            >
-              {tMV(labelKey)}
-            </span>
+            <div className="flex flex-wrap items-center gap-1">
+              {labelKey && colorToken && (
+                <NarrativePill label={tMV(labelKey)} colorToken={colorToken} />
+              )}
+              {isOvertime && (
+                <NarrativePill
+                  label={overtimeLabel(locale)}
+                  colorToken={OVERTIME_COLOR_TOKEN}
+                  title={overtimeTooltip(locale, row.overtime_seconds)}
+                  testId="explorer-overtime-pill"
+                />
+              )}
+            </div>
           )
         },
       },

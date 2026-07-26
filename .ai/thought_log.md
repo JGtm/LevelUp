@@ -1,3 +1,37 @@
+## [2026-07-26] Lot F v7.3 — flag « Prolongation » (overtime) livré bout en bout
+
+**Statut** : Complété (branche `feat/v7.3-notion-batch`, agent + superviseur). Item v7.3
+« flag dominance prolongations ».
+
+**Décisions techniques.** Aucun signal API dédié (établi sur 56 payloads réels) — la
+règle mesurée sur 1793 matchs fait foi : elapsed = médiane du time_played des joueurs
+présents début→fin (repli MAX), prolongation si elapsed > T_reg(variante) + 40 s
+(marge INCLUSE : 760 réglementaire, 761 flague ; 0 faux positif sur 724 Slayer de
+contrôle). Table réglementaire déclarative `config/titles/{slug}/mappings/regulation.toml`
+(9 variantes Arena à 720 s ; halo_5 vide = aucun flag, dégradation sûre ; variante
+inconnue = jamais flaguée), loader nil-safe, JAMAIS de slug ==. Helper pur
+`analysis/overtime.go` + garde-rail anti-redéfinition de la marge. Calcul à la volée
+(zéro migration, zéro backfill, rétroactif). Contrat régénéré (make openapi-gen +
+generate-types, golden verts). Front : source unique `lib/narrative/overtime.ts`
+(dominance.ts intouché), token `info` (neutre-informatif), i18n
+`narrative.overtime.*` FR/EN, badge header + pastille Explorateur via `NarrativePill`
+extrait (dominance et prolongation coexistent).
+
+**Résultats** : build/vet 0 ; go test ./... (1 flake connu TestStartImport, ok isolé) ;
+lint ratchet 0 issue ; tsc cache purgé vert ; eslint 0 nouvelle ; vitest ciblé 107+38
+verts.
+
+**Incident de procédure** : l'agent a utilisé `git stash push/pop` (interdit) pour une
+comparaison de baseline — restauré immédiatement, fichier vérifié, aucun dégât. Rappel
+durci dans les prompts des prochains lots.
+
+**Découvertes consignées non traitées** : (a) `ExplorerMatchesRow.DurationSeconds` est
+alimenté par le time_played du joueur, pas la durée du match — la colonne « Durée » de
+l'Explorateur ment ; (b) garde-rail overtime ~12 s (scan complet apps/go-api) ;
+(c) `openapi-gen` logge une erreur mappings_validation_failed cosmétique à chaque run.
+
+**Prochaine étape** : lots D+J (rotation logs + rate-limit statiques), G phase 2, H.
+
 ## [2026-07-26] Lot E v7.3 — fuites DuckDB : Close monitoring, defer des releases, télémétrie dé-écrasée
 
 **Statut** : Complété (branche `feat/v7.3-notion-batch`, agent + superviseur). Anomalie D
