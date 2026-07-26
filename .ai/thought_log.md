@@ -1,3 +1,56 @@
+## [2026-07-26] v7.3 — post-sync : le film sort du burst d'écriture (split COLLECT/FLUSH events + weapons)
+
+**Statut** : Complété (branche `feat/v7.3-notion-batch`, non commité — revue superviseur).
+
+**Cause racine traitée** : les étapes 1.54 (convergence events) et 1.55 (weapon kills) du
+post-sync téléchargeaient ET parsaient le film SOUS le burst writer shared. La fenêtre RW
+était donc proportionnelle au réseau (~300-500 ms/match events, plusieurs secondes/match
+weapons) → « writer RW tenu > 2 s » 3-5 fois par cycle d'auto-sync en prod, lectures HTTP
+gatées pendant ce temps. Le chunking (3/2) bornait la fenêtre sans changer sa nature.
+
+**Décision technique** : appliquer le patron déjà en place pour la convergence PSA
+(split 4b) aux deux flux — SELECT (segment de lecture) → COLLECT (fetch + parse + lignes
+prêtes, AUCUN lease shared) → FLUSH (burst court, écriture des lignes collectées).
+Découpages : `collectHighlightEvents`/`flushHighlightEvents` (ProcessHighlightEvents
+devient leur composition, contrat inchangé), `convergeEventsCollect`/`convergeEventsFlush`,
+`collectWeaponKillsForMatch`/`flushWeaponKillsForMatch` + variantes lot. Les lectures shared
+dont dépend la corrélation weapons (`highlight_events`, `match_participants`) passent
+désormais par un segment de LECTURE relâché AVANT le burst, jamais par le writer.
+Orchestrateurs d'étape extraits de `runPostSyncPipeline` vers `postSyncFilmSteps`
+(convergence.go) — pas de nouveau fichier racine (ratchet `TestSyncRootPackageFrozen`).
+
+**Invariants préservés** : anti-TOCTOU events (`filterEventsStillMissing` toujours appelé
+SOUS le writer, juste avant l'écriture — la fenêtre qu'il couvre est simplement plus large
+puisqu'elle inclut le download) ; `defer releaseW()` sur chaque flush ; labels de
+télémétrie `sync_v2_postsync/{events,weapons}` sur les acquisitions de flush ; sémantique
+d'erreur match par match (un fetch KO ne jette pas le lot) ; garde bit-honnête weapons
+(bit21 seulement si ≥ 1 ligne insérée) ; INSERT-only via les persisters existants.
+Chunks 3/2 inchangés : ils bornent désormais la MÉMOIRE (films collectés avant flush),
+plus la durée du lease — pic mémoire identique à avant le split.
+
+**Code mort supprimé** (orphelins créés par le split, détectés par le lint) :
+`processWeaponKillsInline` et `BackfillWeaponKillsForMatch` — leurs contrats de sortie
+restent testés via deux helpers de test composant les vraies phases.
+
+**Tests ajoutés** : `engine_postsync_films_integration_test.go` — acquirer RW instrumenté ;
+un fetch/download LENT qui observerait un writer tenu (ou une acquisition faite) fait
+échouer le test. Vérifié par mutation : en ré-acquérant le writer avant le collect, les 3
+assertions tombent. Couvre aussi la parité (events écrits + `events_loaded`, lignes
+weapon_kills + bit posé, bit no-film) et l'anti-TOCTOU (match convergé pendant le fetch →
+0 event écrit).
+
+**Gates** : `go build ./...` OK ; `go vet` (+ `-tags=integration`) OK ; `gofmt` propre ;
+`go test ./...` 118 ok / 0 FAIL ; `go test -tags=integration -p 1 ./internal/sync/...
+./internal/persist/...` tout vert ; `golangci-lint` (cache purgé) `--new-from-merge-base=origin/main`
+0 issue ; ratchet god-package sync/ inchangé (80 fichiers racine).
+
+**Conclusion / prochaine étape** : revue + commit côté superviseur. À observer après
+déploiement : la métrique « writer RW tenu > 2 s » doit tomber à ~0 sur les étapes
+events/weapons (le flush SQL seul reste). Découverte non traitée (hors périmètre) :
+`convergence_backfill_events.go::processChunk` implémente déjà le même collect/flush pour
+la passe background — 2 copies, tolérées par la règle projet, à fusionner si une 3e
+apparaît.
+
 ## [2026-07-26] Chantier v7.3 (batch Notion) — CLÔTURE : 12 commits, gates finaux verts, prêt pour revue de merge
 
 **Statut** : Complété (branche `feat/v7.3-notion-batch`, pilotage superviseur + 11 lots

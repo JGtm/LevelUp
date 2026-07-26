@@ -1,10 +1,10 @@
 //go:build integration
 
 // Package sync — backfill_weapons_parallel_test.go : tests TDD pour la
-// parallélisation de `processWeaponKillsInline` (plan Phase 3.0).
+// parallélisation de `collectWeaponKillsChunk` (plan Phase 3.0).
 //
 // Cf. .ai/PLAN_SYNC_CONCURRENCY_STABILIZATION.md §3.0 + handoff §3 priorité 1.
-// Audit Agent 3 a mesuré que `processWeaponKillsInline` séquentiel coûte
+// Audit Agent 3 a mesuré que `collectWeaponKillsChunk` séquentiel coûte
 // ~210-275s par cycle Madina (21 films × ~10-13s/match). Paralléliser via
 // errgroup.SetLimit(8) doit diviser ce coût par 5-7 sans changer les outputs.
 //
@@ -94,9 +94,9 @@ func TestProcessWeaponKillsInline_Concurrent_NoRace(t *testing.T) {
 	present := matchIDs[:60]
 	client := newWeaponLatencyClient(1*time.Millisecond, present)
 
-	done, noFilm, err := processWeaponKillsInline(context.Background(), db, client, "xuid1", matchIDs)
+	done, noFilm, err := weaponKillsInline(context.Background(), db, client, "xuid1", matchIDs)
 	if err != nil {
-		t.Fatalf("processWeaponKillsInline: %v", err)
+		t.Fatalf("weaponKillsInline: %v", err)
 	}
 	if done != 60 {
 		t.Errorf("done = %d, want 60", done)
@@ -134,10 +134,10 @@ func TestProcessWeaponKillsInline_LatencyParallelFasterThanSequential(t *testing
 	client := newWeaponLatencyClient(100*time.Millisecond, matchIDs)
 
 	start := time.Now()
-	_, _, err := processWeaponKillsInline(context.Background(), db, client, "xuid1", matchIDs)
+	_, _, err := weaponKillsInline(context.Background(), db, client, "xuid1", matchIDs)
 	elapsed := time.Since(start)
 	if err != nil {
-		t.Fatalf("processWeaponKillsInline: %v", err)
+		t.Fatalf("weaponKillsInline: %v", err)
 	}
 
 	// Séquentielle attendue : 16 × 100ms = 1600ms.
@@ -156,18 +156,18 @@ func TestProcessWeaponKillsInline_LatencyParallelFasterThanSequential(t *testing
 
 // TestProcessWeaponKillsInline_Idempotent : 2 runs consécutifs sur les mêmes
 // match_ids produisent le même résultat. Important car certains heal loops
-// peuvent appeler `processWeaponKillsInline` sur des matchs déjà traités.
+// peuvent appeler `collectWeaponKillsChunk` sur des matchs déjà traités.
 func TestProcessWeaponKillsInline_Idempotent(t *testing.T) {
 	db := openWeaponDB(t)
 	matchIDs := seedMatchesInRegistry(t, db, 10, "idem")
 
 	client := newWeaponLatencyClient(1*time.Millisecond, matchIDs[:5])
 
-	done1, noFilm1, err := processWeaponKillsInline(context.Background(), db, client, "xuid1", matchIDs)
+	done1, noFilm1, err := weaponKillsInline(context.Background(), db, client, "xuid1", matchIDs)
 	if err != nil {
 		t.Fatalf("1er run: %v", err)
 	}
-	done2, noFilm2, err := processWeaponKillsInline(context.Background(), db, client, "xuid1", matchIDs)
+	done2, noFilm2, err := weaponKillsInline(context.Background(), db, client, "xuid1", matchIDs)
 	if err != nil {
 		t.Fatalf("2e run: %v", err)
 	}
@@ -197,7 +197,7 @@ func TestProcessWeaponKillsInline_CancelMidRun(t *testing.T) {
 		cancel()
 	}()
 
-	_, _, err := processWeaponKillsInline(ctx, db, client, "xuid1", matchIDs)
+	_, _, err := weaponKillsInline(ctx, db, client, "xuid1", matchIDs)
 	if err == nil {
 		t.Error("attendu une erreur ctx.Err() après cancel, got nil")
 	}

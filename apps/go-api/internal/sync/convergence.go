@@ -13,6 +13,14 @@
 //
 // Ordre imposé : events AVANT weapons — weapon_kills DÉRIVENT de highlight_events
 // (getKillsForPlayer lit highlight_events).
+//
+// Ce fichier porte AUSSI les deux orchestrateurs d'étape du post-sync
+// (postSyncFilmSteps, en fin de fichier) : sélection → COLLECT → FLUSH. Taille
+// > 500 L assumée (exemption CLAUDE.md §Seuils) : le ratchet
+// archlint.TestSyncRootPackageFrozen interdit tout NOUVEAU fichier à la racine
+// de internal/sync/, et ces orchestrateurs n'ont de sens qu'à côté des phases
+// qu'ils pilotent. Prochaine extraction du cluster convergence → sous-package
+// dédié (ADR 0027), ce fichier partira en bloc.
 
 package sync
 
@@ -22,6 +30,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
 )
 
@@ -47,14 +56,20 @@ func selectMatchesMissingEvents(ctx context.Context, playerDB, sharedDB *sql.DB,
 }
 
 // filterEventsStillMissing re-vérifie, SOUS le burst writer (sérialisé par
-// dblease), que chaque match du chunk a toujours besoin d'une convergence events
+// dblease), que chaque match du lot a toujours besoin d'une convergence events
 // (events_loaded=false et events_empty=false). Ferme la fenêtre TOCTOU ouverte
 // par l'étape 1 contention : les post-syncs de joueurs tournent désormais en
 // parallèle SANS être sérialisés par un lease global — la work-list du joueur B
 // (sélectionnée en RO) peut contenir un match partagé que le joueur A vient de
-// converger. Sans ce re-check, B re-fetcherait le film ET dupliquerait les
-// highlight_events (INSERT OR IGNORE = no-op de dédup en prod, PK auto-seq).
-// Weapons n'a pas besoin de l'équivalent : DELETE-then-INSERT auto-réparant.
+// converger. Sans ce re-check, B dupliquerait les highlight_events (INSERT OR
+// IGNORE = no-op de dédup en prod, PK auto-seq).
+//
+// Depuis le split COLLECT/FLUSH (v7.3) la fenêtre à couvrir est PLUS LARGE :
+// elle va de la sélection RO jusqu'au flush, en incluant le téléchargement du
+// film (hors lease). Ce re-check reste donc l'unique garde anti-duplication et
+// DOIT être appelé sous le writer, juste avant d'écrire.
+// Weapons n'a pas besoin de l'équivalent : écriture par génération auto-réparante
+// (v_weapon_kills ne lit que la génération MAX).
 func filterEventsStillMissing(ctx context.Context, sharedDB *sql.DB, ids []string) []string {
 	if len(ids) == 0 || sharedDB == nil {
 		return ids
@@ -356,27 +371,234 @@ func CountSharedMatchesMissingEnrichment(ctx context.Context, playerDB, sharedDB
 	return countSharedMatchesMissingEnrichment(ctx, playerDB, sharedDB, xuid)
 }
 
-// convergeEvents re-fetch les highlight events des matchs events_loaded=false
-// (matchs insérés par le watcher d'un teammate, ou film pas encore propagé au
-// 1er passage). Idempotent : un match events_loaded=true n'est jamais
-// resélectionné. ProcessHighlightEvents gère le terminal no-film (>30j →
-// MarkNoFilmDefinitive, sort du set). Retourne le nombre de matchs traités.
+// convergeEventsCollect — phase COLLECT de la convergence events : re-fetch et
+// parse les highlight events des matchs events_loaded=false (matchs insérés par
+// le watcher d'un teammate, ou film pas encore propagé au 1er passage), HORS de
+// tout lease shared. Aucune écriture, aucune lecture DB.
 //
-// IMPÉRATIF : router via ProcessHighlightEvents (qui ne touche pas le flag avant
-// écriture), JAMAIS via ReplayHighlightEventsForMatches (qui clear events_loaded
+// Best-effort par match, sémantique identique à l'ancienne boucle inline : un
+// fetch ou un parse KO est loggé et le match sort simplement du lot (il reste
+// events_loaded=false → repris au cycle suivant). Un échec ne jette JAMAIS le
+// reste du lot.
+//
+// IMPÉRATIF : ce chemin ne touche pas au flag events_loaded avant écriture —
+// JAMAIS de routage via ReplayHighlightEventsForMatches (qui clear events_loaded
 // AVANT → combiné à l'INSERT OR IGNORE non-déduplicant en prod, dupliquerait les
 // highlight_events).
-func convergeEvents(ctx context.Context, sharedDB *sql.DB, client HaloClient, ids []string) int {
-	done := 0
+func convergeEventsCollect(ctx context.Context, client HaloClient, ids []string) []collectedHighlightEvents {
+	out := make([]collectedHighlightEvents, 0, len(ids))
 	for _, mid := range ids {
 		if ctx.Err() != nil {
 			break
 		}
-		if err := ProcessHighlightEvents(ctx, client, sharedDB, mid, nil); err != nil {
+		collected, err := collectHighlightEvents(ctx, client, mid)
+		if err != nil {
 			slog.WarnContext(ctx, "convergence: events échoué", "match_id", mid, "err", err)
+			continue
+		}
+		out = append(out, collected)
+	}
+	return out
+}
+
+// convergeEventsFlush — phase FLUSH de la convergence events : burst writer
+// COURT, écritures shared seules. Re-filtre le lot SOUS le lease
+// (filterEventsStillMissing, anti-TOCTOU multi-joueurs : un post-sync parallèle
+// a pu converger ces matchs pendant notre téléchargement) puis persiste.
+// Idempotent : un match events_loaded=true n'est jamais réécrit.
+// flushHighlightEvents gère le terminal no-film (>30j → MarkNoFilmDefinitive,
+// sort du set). Retourne le nombre de matchs flushés sans erreur.
+func convergeEventsFlush(ctx context.Context, sharedDB *sql.DB, collected []collectedHighlightEvents) int {
+	if len(collected) == 0 {
+		return 0
+	}
+	ids := make([]string, 0, len(collected))
+	for _, c := range collected {
+		ids = append(ids, c.matchID)
+	}
+	still := make(map[string]bool, len(ids))
+	for _, mid := range filterEventsStillMissing(ctx, sharedDB, ids) {
+		still[mid] = true
+	}
+	done := 0
+	for _, c := range collected {
+		if ctx.Err() != nil {
+			break
+		}
+		if !still[c.matchID] {
+			continue // convergé par un post-sync parallèle entre le collect et ce flush
+		}
+		if err := flushHighlightEvents(ctx, sharedDB, c, nil); err != nil {
+			slog.WarnContext(ctx, "convergence: events échoué", "match_id", c.matchID, "err", err)
 			continue
 		}
 		done++
 	}
 	return done
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Orchestration post-sync des deux étapes « film » (1.54 events, 1.55 weapons)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// PROBLÈME RÉSOLU (v7.3) : ces deux étapes téléchargeaient et parsaient le film
+// SOUS le burst d'écriture shared. Le writer RW était donc tenu pendant tout le
+// réseau (~300-500 ms/match events, plusieurs secondes/match weapons) → les
+// « writer RW tenu > 2 s » observés 3-5 fois par cycle d'auto-sync en prod, avec
+// les lectures HTTP gatées pendant ce temps. Le chunking bornait la fenêtre mais
+// ne changeait pas sa NATURE : elle restait proportionnelle au réseau.
+//
+// PATRON CIBLE (identique au split 4b de la convergence PSA) :
+//
+//	SELECT   → segment de LECTURE court (work-list)
+//	COLLECT  → fetch réseau + parse + lignes prêtes, AUCUN lease shared tenu
+//	           (les lectures shared nécessaires passent par un segment Read)
+//	FLUSH    → burst writer COURT : écriture des lignes collectées, rien d'autre
+//
+// La fenêtre RW ne dépend donc plus que du coût SQL du flush. Le chunking est
+// conservé à l'identique (3 events / 2 weapons) — il borne désormais la MÉMOIRE
+// (nombre de films collectés avant flush), plus la durée du lease.
+//
+// Invariants préservés :
+//   - anti-TOCTOU events : filterEventsStillMissing reste appelé SOUS le writer,
+//     juste avant l'écriture (cf. convergeEventsFlush) ;
+//   - releases sous defer : le flush garde son `defer releaseW()` ;
+//   - labels de télémétrie inchangés : sync_v2_postsync/{events,weapons} ;
+//   - sémantique d'erreur par match : un fetch KO ne jette pas le lot.
+
+// postSyncFilmSteps regroupe les dépendances communes aux étapes film du
+// post-sync (struct plutôt que 6 paramètres à plat — seuil projet : 5).
+type postSyncFilmSteps struct {
+	engine   *SyncEngine
+	playerDB *sql.DB
+	shared   *SharedAccess
+	client   HaloClient
+	result   *domain.PostSyncResult
+}
+
+// withRead ouvre un segment de LECTURE shared court (délègue au helper canonique
+// du pipeline — même WARN + trackFatalErr, même dégradation best-effort).
+func (s postSyncFilmSteps) withRead(ctx context.Context, step string, fn func(sharedDB *sql.DB)) {
+	s.engine.withSharedRead(ctx, s.shared, s.result, step, fn)
+}
+
+// runEventsConvergence — étape 1.54 : convergence des highlight_events des matchs
+// events_loaded=false (matchs insérés par le watcher d'un teammate, ou film pas
+// encore propagé au 1er passage). Le sync primaire ne charge que les matchs
+// NOUVEAUX ; ce backlog ne se résorbait jamais depuis la décommission du heal
+// (2026-06-01). Idempotent (un match events_loaded=true n'est pas resélectionné)
+// + terminal no-film 30j. DOIT précéder weapon kills (qui dérivent de
+// highlight_events).
+func (s postSyncFilmSteps) runEventsConvergence(ctx context.Context) {
+	e := s.engine
+	var eventsWork []string
+	s.withRead(ctx, "events_select", func(sharedDB *sql.DB) {
+		eventsWork = selectMatchesMissingEvents(ctx, s.playerDB, sharedDB, e.xuid)
+	})
+	// Jauge "roue de secours" : en régime stationnaire ces compteurs doivent
+	// PLAFONNER (convergence = filet exceptionnel). S'ils croissent en continu,
+	// c'est que le 1er passage laisse des trous récurrents → durcir l'ingestion.
+	// Lisibles sur /debug/vars (expvar "levelup").
+	observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_events_pending_total", int64(len(eventsWork)))
+	if len(eventsWork) == 0 {
+		return
+	}
+	total := 0
+	for start := 0; start < len(eventsWork); start += postsyncEventsBurstChunk {
+		end := min(start+postsyncEventsBurstChunk, len(eventsWork))
+		// COLLECT : fetch + parse HORS de tout lease shared.
+		collected := convergeEventsCollect(ctx, s.client, eventsWork[start:end])
+		if len(collected) == 0 {
+			continue // tout le lot a échoué au fetch → rien à écrire, pas de burst
+		}
+		// FLUSH : burst writer court, écritures seules.
+		wdb, releaseW, werr := s.shared.Write(ctx, "events")
+		if werr != nil {
+			slog.WarnContext(ctx, "post-sync: burst events indisponible — reste du backlog reporté",
+				"gamertag", e.gamertag, "remaining", len(eventsWork)-start, "err", werr)
+			trackFatalErr(s.result, "events burst", werr)
+			break
+		}
+		// Corps du flush sous closure : releaseW en defer, donc la fenêtre RW est
+		// rendue même si l'écriture panique. Moment nominal de libération
+		// inchangé — fin de l'itération, avant le lot suivant.
+		func() {
+			defer releaseW()
+			total += convergeEventsFlush(ctx, wdb, collected)
+		}()
+	}
+	s.result.ConvergedEvents = total
+	observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_events_processed_total", int64(total))
+	slog.InfoContext(ctx, "post-sync: convergence events",
+		"gamertag", e.gamertag, "selected", len(eventsWork), "processed", total)
+}
+
+// runWeaponKills — étape 1.55 : pipeline film weapon kills. Convergent : nouveaux
+// matchs (insertedIDs) ∪ backlog incomplet (bits weapon non posés), bornés. La
+// sélection weapons se fait APRÈS la convergence events pour que highlight_events
+// soit peuplé. Best-effort : films absents (404/410) normaux pour les vieux
+// matchs. Garde bit-honnête préservée (MBitWeaponKills posé seulement si ≥1 ligne
+// insérée, cf. flushWeaponKillsForMatch).
+func (s postSyncFilmSteps) runWeaponKills(ctx context.Context, insertedIDs []string) {
+	e := s.engine
+	var weaponBacklog []string
+	s.withRead(ctx, "weapons_select", func(sharedDB *sql.DB) {
+		weaponBacklog = selectMatchesMissingWeapons(ctx, s.playerDB, sharedDB, e.xuid)
+	})
+	observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_weapons_pending_total", int64(len(weaponBacklog)))
+	weaponWork := mergeUniqMatchIDs(insertedIDs, weaponBacklog)
+	if len(weaponWork) == 0 {
+		return
+	}
+	totalDone, totalNoFilm := 0, 0
+	for start := 0; start < len(weaponWork); start += postsyncWeaponsBurstChunk {
+		end := min(start+postsyncWeaponsBurstChunk, len(weaponWork))
+		// COLLECT : download film + corrélation. Les lectures shared dont dépend
+		// la corrélation (highlight_events, match_participants) passent par un
+		// segment de LECTURE — jamais par le writer. Le segment est relâché AVANT
+		// le burst (garde anti-deadlock de SharedAccess.Write).
+		var collected []collectedWeaponKills
+		readOK := false
+		s.withRead(ctx, "weapons_collect", func(roDB *sql.DB) {
+			readOK = true
+			collected = collectWeaponKillsChunk(ctx, roDB, s.client, e.xuid, weaponWork[start:end])
+		})
+		if !readOK {
+			// Lecture shared indisponible (déjà loggée + trackFatalErr par withRead) :
+			// inutile de réessayer lot après lot, on reporte le reste du backlog.
+			break
+		}
+		if len(collected) == 0 {
+			continue // tout le lot a échoué au fetch film → rien à écrire, pas de burst
+		}
+		// FLUSH : burst writer court, écritures seules.
+		wdb, releaseW, werr := s.shared.Write(ctx, "weapons")
+		if werr != nil {
+			slog.WarnContext(ctx, "post-sync: burst weapons indisponible — reste du backlog reporté",
+				"gamertag", e.gamertag, "remaining", len(weaponWork)-start, "err", werr)
+			trackFatalErr(s.result, "weapons burst", werr)
+			break
+		}
+		var done, noFilm int
+		func() {
+			defer releaseW()
+			done, noFilm = flushWeaponKillsChunk(ctx, wdb, collected)
+		}()
+		totalDone += done
+		totalNoFilm += noFilm
+		if ctx.Err() != nil {
+			// Annulation en cours de cycle : on arrête proprement (le reste du
+			// backlog est repris au cycle suivant — étapes idempotentes).
+			slog.WarnContext(ctx, "post-sync: weapon kills interrompu", "gamertag", e.gamertag, "err", ctx.Err())
+			trackFatalErr(s.result, "weapon kills", ctx.Err())
+			break
+		}
+	}
+	s.result.WeaponKillsProcessed = totalDone
+	s.result.WeaponKillsNoFilm = totalNoFilm
+	observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_weapons_processed_total", int64(totalDone))
+	if totalDone > 0 || totalNoFilm > 0 {
+		slog.InfoContext(ctx, "post-sync: weapon kills",
+			"gamertag", e.gamertag, "done", totalDone, "no_film", totalNoFilm)
+	}
 }

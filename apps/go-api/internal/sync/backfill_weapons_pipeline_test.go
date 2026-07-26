@@ -3,7 +3,7 @@
 package sync
 
 // backfill_weapons_pipeline_test.go — tests bout-à-bout de BackfillWeaponKillsForMatchAll
-// et processWeaponKillsInline.
+// et le lot COLLECT+FLUSH (weaponKillsInline).
 //
 // Setup : DB in-memory DuckDB (openWeaponDB), mock HaloClient (weaponTestClient).
 // Chunks vides → ScanFireEventsAll renvoie 0 events → tous les kills via formula_a
@@ -293,13 +293,13 @@ func TestBackfillWeaponKillsForMatchAll_MeleeKillInserted(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// processWeaponKillsInline
+// Lot COLLECT+FLUSH (weaponKillsInline)
 // ─────────────────────────────────────────────────────────────────────────────
 
 // TestProcessWeaponKillsInline_NoMatches vérifie le cas trivial : liste vide.
 func TestProcessWeaponKillsInline_NoMatches(t *testing.T) {
 	db := openWeaponDB(t)
-	done, noFilm, err := processWeaponKillsInline(context.Background(), db, filmEmpty(), "xuid1", nil)
+	done, noFilm, err := weaponKillsInline(context.Background(), db, filmEmpty(), "xuid1", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -315,7 +315,7 @@ func TestProcessWeaponKillsInline_FilmAbsentCountsNoFilm(t *testing.T) {
 	db.Exec(`INSERT INTO match_registry (match_id) VALUES ('m1')`)
 	db.Exec(`INSERT INTO match_registry (match_id) VALUES ('m2')`)
 
-	done, noFilm, err := processWeaponKillsInline(context.Background(), db, filmAbsent(), "xuid1", []string{"m1", "m2"})
+	done, noFilm, err := weaponKillsInline(context.Background(), db, filmAbsent(), "xuid1", []string{"m1", "m2"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -334,7 +334,7 @@ func TestProcessWeaponKillsInline_FilmPresentCountsDone(t *testing.T) {
 	db.Exec(`INSERT INTO match_registry (match_id) VALUES ('m1')`)
 	db.Exec(`INSERT INTO match_registry (match_id) VALUES ('m2')`)
 
-	done, noFilm, err := processWeaponKillsInline(context.Background(), db, filmEmpty(), "xuid1", []string{"m1", "m2"})
+	done, noFilm, err := weaponKillsInline(context.Background(), db, filmEmpty(), "xuid1", []string{"m1", "m2"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -358,7 +358,7 @@ func TestProcessWeaponKillsInline_ContextCancelled(t *testing.T) {
 	cancel() // annuler immédiatement avant de lancer la boucle
 
 	matchIDs := []string{"m1", "m2", "m3", "m4", "m5"}
-	_, _, err := processWeaponKillsInline(ctx, db, filmEmpty(), "xuid1", matchIDs)
+	_, _, err := weaponKillsInline(ctx, db, filmEmpty(), "xuid1", matchIDs)
 	if err == nil {
 		t.Fatal("expected error from cancelled context")
 	}
