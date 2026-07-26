@@ -1,0 +1,20 @@
+# config/titles/halo_5/mappings/regulation.toml
+#
+# Temps RÉGLEMENTAIRE par variante de jeu (en secondes) — socle du flag
+# « Prolongation » (overtime).
+#
+# TABLE VIDE, VOLONTAIREMENT : aucun temps réglementaire Halo 5 n'a été mesuré.
+# Le flag « Prolongation » est donc TOUJOURS faux pour ce titre — dégradation
+# sûre, sans erreur ni entrée inventée. Le fichier existe pour rendre l'absence
+# explicite (et non « fichier oublié »).
+#
+# Pour l'activer un jour : mesurer le mur de temps par `game_variant_name` sur un
+# échantillon suffisant, puis ajouter les entrées sous [regulation_seconds] —
+# même convention que halo_infinite (clé = nom d'asset UGC, susceptible de bouger
+# au fil des mises à jour du titre).
+
+[meta]
+title_slug     = "halo_5"
+schema_version = 1
+
+[regulation_seconds]

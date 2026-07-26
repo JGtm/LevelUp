@@ -4,6 +4,7 @@ package duckdb
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"levelup/go-api/internal/domain"
@@ -52,6 +53,9 @@ func (r *MatchHistoryRepo) LoadAll(ctx context.Context) ([]domain.MatchHistoryRa
 	if err := r.mergeHistorySkillRanks(ctx, results, matchIDs); err != nil {
 		return nil, fmt.Errorf("MatchHistoryRepo.LoadAll: %w", err)
 	}
+	// Durée de jeu observée (socle du flag « Prolongation ») — merge BEST-EFFORT :
+	// une colonne de participation absente ne doit jamais faire tomber la liste.
+	r.mergeHistoryElapsedSeconds(ctx, results, matchIDs)
 
 	// Calcul my/enemy_team_score à partir de team_id et team_0/1_score.
 	for i := range results {
@@ -145,6 +149,30 @@ func (r *MatchHistoryRepo) loadSharedHistory(ctx context.Context) ([]domain.Matc
 		teamScores = append(teamScores, teamScorePair{team0: team0, team1: team1})
 	}
 	return results, teamIDs, teamScores, rows.Err()
+}
+
+// mergeHistoryElapsedSeconds hydrate ElapsedSeconds (durée de jeu observée) dans
+// rows depuis shared.match_participants. Best-effort et sans valeur de retour :
+// sur échec, les champs restent nil et l'Explorateur n'affiche simplement aucun
+// badge « Prolongation » (le WARN est émis par l'estimateur partagé).
+func (r *MatchHistoryRepo) mergeHistoryElapsedSeconds(ctx context.Context, rows []domain.MatchHistoryRawRow, matchIDs []string) {
+	ctx2, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+
+	db, release, err := r.pdb.SharedReadDB().Get(ctx2)
+	if err != nil {
+		slog.WarnContext(ctx2, "match_history: durée de jeu observée indisponible (shared reader)", "err", err)
+		return
+	}
+	defer release()
+
+	byMatch := LoadElapsedSecondsByMatch(ctx2, db, matchIDs)
+	for i := range rows {
+		if secs, ok := byMatch[rows[i].MatchID]; ok {
+			v := secs
+			rows[i].ElapsedSeconds = &v
+		}
+	}
 }
 
 // mergeHistoryEnrichments hydrate les champs player_match_enrichment dans rows.

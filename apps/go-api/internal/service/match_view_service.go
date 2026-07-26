@@ -146,6 +146,12 @@ type MatchViewService struct {
 	// metadataRepo (optionnel) : lookup des coefs assists_model_coefs pour
 	// calculer expected_assists à la volée. Dégradation gracieuse si nil.
 	metadataRepo port.MetadataRepository
+	// regulationSeconds (optionnel) : temps réglementaire par game_variant_name
+	// du TITRE COURANT (regulation.toml, chargé au boot comme les autres
+	// mappings). Nil/vide → le header n'expose jamais le flag « Prolongation »
+	// (titre sans mesure, ex. Halo 5). Jamais de comparaison de slug ici : la
+	// table injectée EST le titre.
+	regulationSeconds map[string]int
 }
 
 // NewMatchViewService crée un MatchViewService.
@@ -209,6 +215,14 @@ func (s *MatchViewService) WithAwardsRepo(r port.PersonalScoreAwardsRepository) 
 // restent vides côté response et le front affiche les fallbacks texte.
 func (s *MatchViewService) WithAssetURL(a games.TitleAssetURLAdapter) *MatchViewService {
 	s.assetURL = a
+	return s
+}
+
+// WithRegulation injecte la table `game_variant_name → temps réglementaire`
+// (secondes) du titre courant, socle du flag « Prolongation ». Sans injection
+// (ou table vide), le header ne porte jamais le flag — dégradation sûre.
+func (s *MatchViewService) WithRegulation(regulationSeconds map[string]int) *MatchViewService {
+	s.regulationSeconds = regulationSeconds
 	return s
 }
 

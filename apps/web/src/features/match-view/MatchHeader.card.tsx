@@ -13,6 +13,13 @@ import { tokenCssVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility'
 import { asDominance } from '@/components/charts/outcomeSequence'
 import { DOMINANCE_COLOR_TOKENS } from '@/lib/narrative/dominance'
+import {
+  OVERTIME_COLOR_TOKEN,
+  overtimeLabel,
+  overtimeTooltip,
+} from '@/lib/narrative/overtime'
+import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
+import { tokenVar } from '@/lib/accessibility'
 import { useToggleMatchFavorite } from './queries'
 import { useSetMatchExclusion } from '@/features/match-history/queries'
 import {
@@ -361,6 +368,17 @@ function OutcomeRow({ header, outcomeColor, locale }: OutcomeRowProps) {
             locale={locale}
           />
         </>
+      )}
+      {/* Prolongation : marqueur INDÉPENDANT du badge dominance — les deux
+          peuvent coexister sur un même match (ex. remontada en prolongation). */}
+      {header.is_overtime && (
+        <NarrativeBadge
+          className="self-center"
+          label={overtimeLabel(locale)}
+          title={overtimeTooltip(locale, header.overtime_seconds)}
+          colorVar={tokenVar(OVERTIME_COLOR_TOKEN)}
+          size="sm"
+        />
       )}
     </div>
   )

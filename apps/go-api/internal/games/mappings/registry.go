@@ -23,6 +23,7 @@ type Registry struct {
 	capabilities   map[string]*CapabilityMappingSet
 	endpoints      map[string]*EndpointSet
 	playlistLabels map[string]*PlaylistLabelSet
+	regulation     map[string]*RegulationSet
 }
 
 // NewRegistry crée un registre vide.
@@ -34,6 +35,7 @@ func NewRegistry() *Registry {
 		capabilities:   make(map[string]*CapabilityMappingSet),
 		endpoints:      make(map[string]*EndpointSet),
 		playlistLabels: make(map[string]*PlaylistLabelSet),
+		regulation:     make(map[string]*RegulationSet),
 	}
 }
 
@@ -140,6 +142,25 @@ func (r *Registry) LoadFromConfigDir(repoRoot string, slugs []string, logger *sl
 			)
 		}
 
+		// regulation.toml — optionnel : temps réglementaire par game_variant_name
+		// (socle du flag « Prolongation »). Fichier absent → aucun set → aucun
+		// flag pour ce titre (dégradation sûre, jamais d'erreur).
+		regulationPath := filepath.Join(mappingsDir, "regulation.toml")
+		if rset, loadErr := loadRegulationIfExists(regulationPath); loadErr != nil {
+			logger.Error("mappings_validation_failed", "title_slug", slug, "path", regulationPath, "err", loadErr)
+			errs = append(errs, fmt.Errorf("load regulation %s: %w", slug, loadErr))
+		} else if rset != nil {
+			r.mu.Lock()
+			r.regulation[slug] = rset
+			r.mu.Unlock()
+			logger.Info("mappings_loaded",
+				"title_slug", slug,
+				"kind", "regulation",
+				"variants_count", len(rset.SecondsMap()),
+				"schema_version", rset.SchemaVersion(),
+			)
+		}
+
 		// constants.toml — optionnel ; section [endpoints] (MT-01). Au niveau
 		// du dossier titre (pas mappings/), aligné sur le constants.toml
 		// documentaire existant.
@@ -196,6 +217,13 @@ func loadPlaylistLabelsIfExists(path string) (*PlaylistLabelSet, error) {
 	return LoadPlaylistLabelsFromFile(path)
 }
 
+func loadRegulationIfExists(path string) (*RegulationSet, error) {
+	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
+	return LoadRegulationFromFile(path)
+}
+
 // Get retourne le FieldMappingSet d'un titre s'il a été chargé.
 func (r *Registry) Get(slug string) (*FieldMappingSet, bool) {
 	r.mu.RLock()
@@ -241,6 +269,15 @@ func (r *Registry) GetPlaylistLabels(slug string) (*PlaylistLabelSet, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	v, ok := r.playlistLabels[slug]
+	return v, ok
+}
+
+// GetRegulation retourne le RegulationSet d'un titre s'il a été chargé (temps
+// réglementaire par game_variant_name, socle du flag « Prolongation »).
+func (r *Registry) GetRegulation(slug string) (*RegulationSet, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	v, ok := r.regulation[slug]
 	return v, ok
 }
 

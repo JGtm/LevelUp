@@ -11005,6 +11005,8 @@ components:
         had_bot_teammate:
           description: Un coéquipier était un bot. Exposé sur les best_matches de la carrière (les LOSS avec bot sont exclus côté backend).
           type: boolean
+        is_overtime:
+          type: boolean
         is_with_friends:
           type: boolean
         kda:
@@ -11030,6 +11032,9 @@ components:
           type: integer
         outcome_label:
           type: string
+        overtime_seconds:
+          format: int64
+          type: integer
         perf_placement_done:
           format: int64
           type: integer
@@ -13764,6 +13769,8 @@ components:
           type: string
         is_excluded:
           type: boolean
+        is_overtime:
+          type: boolean
         is_with_friends:
           type: boolean
         kda:
@@ -13789,6 +13796,9 @@ components:
           type: integer
         outcome_label:
           type: string
+        overtime_seconds:
+          format: int64
+          type: integer
         perf_placement_done:
           format: int64
           type: integer
@@ -14830,6 +14840,8 @@ components:
           type: boolean
         is_favorite:
           type: boolean
+        is_overtime:
+          type: boolean
         is_ranked:
           type: boolean
         map_id:
@@ -14851,6 +14863,9 @@ components:
           type: string
         outcome_label:
           type: string
+        overtime_seconds:
+          format: int64
+          type: integer
         performance_color:
           type: string
         performance_color_token:

@@ -73,7 +73,10 @@ func (r *ServiceRegistry) MatchHistoryCtx(ctx context.Context, slug string) (por
 	}
 	svc := service.NewMatchHistoryService(duckdb.NewMatchHistoryRepo(pdb), pdb.Gamertag).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
-		WithPlaylistDisplay(r.playlistLabelConfigFor(pdb))
+		WithPlaylistDisplay(r.playlistLabelConfigFor(pdb)).
+		// Flag « Prolongation » des lignes Explorer/historique : table
+		// réglementaire du titre (regulation.toml). Titre sans table → nil.
+		WithRegulation(r.regulationFor(pdb))
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
 	}

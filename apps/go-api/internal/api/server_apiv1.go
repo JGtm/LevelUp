@@ -1040,6 +1040,15 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 			playlistLabelOverrides[slug] = plset.OverridesMap()
 		}
 	}
+	// Temps réglementaire PAR TITRE (regulation.toml) → flag « Prolongation »
+	// (Match View + Explorateur). Titre sans fichier ou table vide (Halo 5 :
+	// aucune mesure) → absent de la map → aucun flag pour ce titre.
+	regulationSeconds := make(map[string]map[string]int)
+	for _, slug := range multiTitleSlugs {
+		if rset, ok := fieldMappingsRegistry.GetRegulation(slug); ok {
+			regulationSeconds[slug] = rset.SecondsMap()
+		}
+	}
 
 	reg := wire.NewServiceRegistry(cfg, tokenProvider).
 		WithTitleResolver(titleResolver).
@@ -1047,7 +1056,8 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		WithSettingsStore(settingsStore).
 		WithRankCatalog(hiRanks).
 		WithRankImageURLsByTitle(rankImageURLsByTitle).
-		WithPlaylistLabelOverrides(playlistLabelOverrides)
+		WithPlaylistLabelOverrides(playlistLabelOverrides).
+		WithRegulationSeconds(regulationSeconds)
 
 	// V72-27 : câble le résolveur de libellé de rang FR consommé par les
 	// notifications post-sync (career_rank) — même RankCatalog HI que
