@@ -181,6 +181,21 @@ func WithDBWriterLabel(ctx context.Context, label string) context.Context {
 	return context.WithValue(ctx, dbWriterLabelKey, label)
 }
 
+// WithDBWriterLabelIfAbsent pose le label UNIQUEMENT si le contexte n'en porte
+// pas déjà un. Destiné aux closures d'ACQUISITION intermédiaires (ex. le
+// SharedDBAcquirer du post-sync V2) : elles doivent labelliser les call-sites
+// nus, mais jamais écraser le label plus fin déjà posé par leur appelant
+// (SharedAccess.Write pose "sync_v2_postsync/weapons"). Avec WithDBWriterLabel
+// nu à cet endroit, TOUTE la ventilation par étape retombait sur le label
+// grossier — l'attribution prod du 2026-07-26 ne distinguait plus weapons
+// d'events dans les WARN watchdog.
+func WithDBWriterLabelIfAbsent(ctx context.Context, label string) context.Context {
+	if DBWriterLabel(ctx) != DBWriterLabelUnlabeled {
+		return ctx
+	}
+	return WithDBWriterLabel(ctx, label)
+}
+
 // DBWriterLabel extrait le label de détenteur du writer DB partagé.
 // Retourne DBWriterLabelUnlabeled si absent (call-site non instrumenté).
 func DBWriterLabel(ctx context.Context) string {

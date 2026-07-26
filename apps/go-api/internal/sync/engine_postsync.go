@@ -280,11 +280,17 @@ func (e *SyncEngine) runPostSyncPipeline(
 				trackFatalErr(&r, "events burst", werr)
 				break
 			}
-			// Anti-TOCTOU multi-joueurs : re-filtrer le chunk SOUS le burst — un
-			// post-sync parallèle (coéquipier partageant le match) a pu converger
-			// ces events entre notre sélection RO et ce burst.
-			total += convergeEvents(ctx, wdb, client, filterEventsStillMissing(ctx, wdb, eventsWork[start:end]))
-			releaseW()
+			// Corps du chunk sous closure : releaseW en defer, donc la fenêtre RW
+			// est rendue même si convergeEvents panique (parsing film). Le moment
+			// nominal de libération est inchangé — fin de l'itération, avant le
+			// chunk suivant.
+			func() {
+				defer releaseW()
+				// Anti-TOCTOU multi-joueurs : re-filtrer le chunk SOUS le burst — un
+				// post-sync parallèle (coéquipier partageant le match) a pu converger
+				// ces events entre notre sélection RO et ce burst.
+				total += convergeEvents(ctx, wdb, client, filterEventsStillMissing(ctx, wdb, eventsWork[start:end]))
+			}()
 		}
 		r.ConvergedEvents = total
 		observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_events_processed_total", int64(total))
@@ -319,8 +325,17 @@ func (e *SyncEngine) runPostSyncPipeline(
 				trackFatalErr(&r, "weapons burst", werr)
 				break
 			}
-			done, noFilm, werr2 := processWeaponKillsInline(ctx, wdb, client, e.xuid, weaponWork[start:end])
-			releaseW()
+			// Corps du chunk sous closure : releaseW en defer, donc la fenêtre RW
+			// est rendue même si processWeaponKillsInline panique (download +
+			// parsing film — l'étape la plus exposée). Moment nominal de
+			// libération inchangé : juste après l'appel, AVANT l'accumulation des
+			// compteurs et le test d'erreur qui peut break.
+			var done, noFilm int
+			var werr2 error
+			func() {
+				defer releaseW()
+				done, noFilm, werr2 = processWeaponKillsInline(ctx, wdb, client, e.xuid, weaponWork[start:end])
+			}()
 			totalDone += done
 			totalNoFilm += noFilm
 			if werr2 != nil {
@@ -355,8 +370,14 @@ func (e *SyncEngine) runPostSyncPipeline(
 				slog.WarnContext(ctx, "post-sync: burst psa_aliases indisponible — alias non flushés (retentés au prochain cycle)",
 					"gamertag", e.gamertag, "count", len(pairs), "err", werr)
 			} else {
-				flushAliasPairs(ctx, wdb, e.xuid, pairs)
-				releaseW()
+				// Corps du burst sous closure : releaseW en defer, donc la fenêtre
+				// RW est rendue même si flushAliasPairs panique. Moment nominal de
+				// libération inchangé — fin de la branche else, avant la reprise du
+				// pipeline. Même classe de correctif que les bursts events/weapons.
+				func() {
+					defer releaseW()
+					flushAliasPairs(ctx, wdb, e.xuid, pairs)
+				}()
 			}
 		}
 		r.ConvergedPSA = n

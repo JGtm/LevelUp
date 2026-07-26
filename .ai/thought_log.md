@@ -1,3 +1,34 @@
+## [2026-07-26] Lot E v7.3 — fuites DuckDB : Close monitoring, defer des releases, télémétrie dé-écrasée
+
+**Statut** : Complété (branche `feat/v7.3-notion-batch`, agent + superviseur). Anomalie D
+du 26/07.
+
+**Décisions techniques.** (1) `MonitoringStore` enfin fermé au shutdown via
+`ServiceRegistry.Close()` (`closeMonitoringStore()` dans le fichier thématique du store,
+`SetCronRunSink(nil)` en ceinture) — la fuite `shutdown_db_leak rw:monitoring.duckdb`
+refCount 1 à chaque arrêt venait d'un Close jamais branché ; le WAL n'était jamais
+checkpointé. Test : DumpCachedLeaks == 0 après Close, idempotence vérifiée.
+(2) Les 4 releases non-defer du chemin d'écriture partagé (bursts events/weapons/
+psa_aliases d'engine_postsync + combined_persister) passent sous closure
+`func(){ defer release(); ... }()` — moment nominal de libération inchangé. Danger réel :
+le `defer recover()` global de runPostSyncPipeline rattrapait un panic en rendant un
+résultat partiel SANS relâcher le writer RW (tenu jusqu'au restart — le vrai scénario
+des incidents de verrou).
+(3) Télémétrie : la ventilation `sync_v2_postsync/{weapons,events,psa_aliases}` existait
+DÉJÀ (SharedAccess.Write) mais la closure d'acquisition `acquireSharedRW` de
+sync_v2_wiring l'ÉCRASAIT juste avant AcquireWriter — d'où 100 % des WARN prod sous le
+label grossier. Fix : `ctxkeys.WithDBWriterLabelIfAbsent` au seul site fautif + tests de
+la propriété (« une closure d'acquisition n'écrase jamais un label plus fin »).
+Constantes de chunk/watchdog/seuil non touchées — resserrement après lecture de cette
+télémétrie en prod (décision utilisateur en attente, question 5 Notion).
+
+**Résultats** : build/vet/tests ciblés + `go test ./...` (1 flake connu
+TestStartImport_HappyPath, 3/3 PASS isolé) ; intégration -p 1 persist/sync/wire verte
+(sync 165 s puis 160 s après extension psa_aliases). Lint : 0 issue sur les fichiers
+touchés.
+
+**Prochaine étape** : lots D (rotation logs), F (prolongations), J, G phase 2, H.
+
 ## [2026-07-26] Lot C (G1/G2) — scoreboard dégradable + colonnes de jalons Halo 5
 
 **Statut** : Complété (branche `feat/v7.3-notion-batch`, travail NON commité — remis au
