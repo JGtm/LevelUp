@@ -95,6 +95,9 @@ type SeedDemoResult struct {
 	MetadataCopied bool
 	SharedRows     map[string]int // table → rows insérées
 	PlayerRows     map[string]int
+	// PrestigeRows : lignes Prestige/Progression générées (player DB + shared_social),
+	// par table. Vide si le corpus démo ne contient aucun match du joueur démo.
+	PrestigeRows   map[string]int
 	MediaCopied    int
 	ConfigsWritten bool
 	Frozen         bool // true si le corpus vient d'un manifeste figé (vs sélection dynamique)
@@ -223,7 +226,12 @@ func applyTitleMigrationsOnPath(dbPath, slug string, target migration.TargetDB) 
 // SeedDemo exécute le pipeline complet.
 func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error) {
 	start := time.Now()
-	res := SeedDemoResult{OutDir: opts.OutDir, SharedRows: map[string]int{}, PlayerRows: map[string]int{}}
+	res := SeedDemoResult{
+		OutDir:       opts.OutDir,
+		SharedRows:   map[string]int{},
+		PlayerRows:   map[string]int{},
+		PrestigeRows: map[string]int{},
+	}
 
 	if err := validateSeedDemoOpts(&opts); err != nil {
 		return res, fmt.Errorf("seed-demo: %w", err)
@@ -266,6 +274,14 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 	res.PlayerRows = playerRows
 	res.SeededPlayers = seeded
 
+	// 5b. shared_social démo : reconstruite AVANT les phases qui y écrivent (médias
+	// puis Prestige). Un seul propriétaire du cycle de vie du fichier → un reseed ne
+	// peut pas empiler deux générations de lignes.
+	outSocial := filepath.Join(titleOut, "warehouse", "shared_social.duckdb")
+	if err := rebuildDemoSharedSocial(ctx, outSocial); err != nil {
+		return res, fmt.Errorf("seed-demo: %w", err)
+	}
+
 	// 6. Médias (DemoPlayer principal).
 	if opts.IncludeMedia {
 		mediaCount, mediaErr := seedDemoMediaFiles(ctx, opts, titleOut, matchIDs)
@@ -274,6 +290,15 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 		}
 		res.MediaCopied = mediaCount
 	}
+
+	// 6b. Échantillons Prestige (arcs, objectifs, points de progression, séries,
+	// records, jalons, escouade) dérivés du corpus démo. Sans cette phase les pages
+	// Prestige/Ascension sont accessibles (prestige_enabled=true) mais vides.
+	prestigeRows, prestigeErr := seedDemoPrestige(ctx, titleOut, opts.TitleSlug, matchIDs)
+	if prestigeErr != nil {
+		return res, fmt.Errorf("seed-demo: %w", prestigeErr)
+	}
+	res.PrestigeRows = prestigeRows
 
 	// 7. Configs (db_profiles avec les 3 profils démo + app_settings). SKIP quand
 	// l'orchestrateur multi-titre les écrira une fois (v3) après tous les titres.
@@ -289,6 +314,7 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 		"duration", res.Duration,
 		"matches", len(matchIDs),
 		"media", res.MediaCopied,
+		"prestige_rows", res.PrestigeRows,
 	)
 	return res, nil
 }
