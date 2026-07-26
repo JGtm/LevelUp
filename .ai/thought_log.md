@@ -1,3 +1,54 @@
+## [2026-07-26] Deploy — regen démo : verrou DuckDB sur la metadata démo (jalons à 0)
+
+**Statut** : Complété (workflow modifié, non exécutable localement — vérifié par extraction
++ `bash -n` + harnais à stubs). Branche `feat/demo-prestige-samples`, fichier
+`.github/workflows/deploy.yml` job `deploy-demo`.
+
+**Fait établi en production (v7.2.1).** `milestone_earned = 0` sur les deux titres après
+regen, avec `WARN seed-demo prestige: jalons débloqués non seedés (best-effort)
+err="attach metadata démo: IO Error: Could not set lock on file
+/app/data/demo/warehouse/metadata.duckdb: Conflicting lock is held in PID 0"`. Cause :
+`insertDemoMilestonesEarned` (`internal/ops/seed_demo_prestige.go:460`) ATTACHe la metadata
+DÉMO en READ_ONLY pour dériver les jalons du vrai catalogue, or le job n'arrêtait que
+`levelup` (prod) et laissait `levelup-demo` tenir ce fichier. Rejeu manuel démo arrêtée :
+0 → 6 jalons par titre. L'erreur étant best-effort côté Go, le seed « réussissait ».
+
+**Correctif.** `docker compose stop levelup levelup-demo` au lieu de `stop levelup`. Le
+risque introduit n'est pas le verrou mais l'arrêt lui-même : une sortie anticipée entre le
+stop et la recréation laisserait la démo durablement hors ligne (défaut cosmétique →
+panne). D'où un trap `EXIT INT TERM HUP` armé APRÈS la garde `pgrep [b]ackfill` (qui sort
+sans rien avoir arrêté) et AVANT le stop. Le trap est le SEUL endroit qui recrée le
+conteneur démo — l'étape finale `up -d --force-recreate levelup-demo` y a été déplacée, pas
+dupliquée. Il porte aussi un `up -d levelup` idempotent, filet pour les sorties par signal
+(session SSH coupée / `command_timeout` 40m) survenant avant le redémarrage nominal de la
+prod, qui reste explicite et inchangé après le seed.
+
+**Écarté** : ordonnancement linéaire seul (recréation démo remontée avant la garde configs).
+Couvre les `exit` connus mais rien des sorties par signal ni d'un futur `exit` inséré entre
+stop et restart — c'est la classe de panne à éliminer, pas une instance.
+
+**Vérifications** (le workflow n'est pas exécutable ici) : bloc `script:` extrait et dédenté
+→ `bash -n` OK ; harnais à stubs `docker`/`pgrep` sur 7 scénarios (seed OK, seed KO, garde
+pgrep, configs invalides, échec restart prod, échec recréation démo, les deux) + SIGTERM et
+SIGHUP en plein seed. Sur tous : prod et démo relancées, sauf garde pgrep où rien n'est
+arrêté. Codes de sortie préservés (1 sur configs invalides et sur toute remise en service
+en échec, 0 sur seed KO — comportement best-effort inchangé). Non vérifiable sans le VPS :
+que `stop levelup-demo` suffise à libérer le verrou dans le conteneur (le rejeu manuel de
+l'utilisateur le prouve empiriquement) et le comportement réel d'appleboy/ssh-action au
+timeout.
+
+**Précédent interne** : le motif trap + désarmement est déjà celui de
+`scripts/restic-backup.sh:31-32,46` (`trap restart_app EXIT`, « filet de securite :
+redemarre meme si plantage »), qui arrête `levelup` seul — sans défaut équivalent, son
+snapshot ne couvre que `data/titles`/`data/auth`, jamais `data/demo`. Aucun autre lanceur
+de `seed-demo` exposé au même défaut : `scripts/deploy.sh` crée seulement les stubs JSON de
+bind-mount (étape 2a) ; `ci.yml:422` lance `seed-demo --synthetic` sur le runner GitHub
+(DuckDB vierges, aucun serveur ne tient de fichier) ; `test-deploy-precheck.yml` simule le
+regen sans jamais appeler la CLI.
+
+**Prochaine étape** : gates (actionlint via job `pre-check`) puis merge → le prochain deploy
+seede les jalons. Aucun backfill manuel nécessaire.
+
 ## [2026-07-26] Prestige — frontière d'identité player_slug ↔ xuid (objectifs figés à zéro)
 
 **Statut** : Complété (code écrit, NON compilé — gate à jouer par le pilote).
