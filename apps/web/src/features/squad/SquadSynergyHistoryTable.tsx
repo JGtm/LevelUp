@@ -160,16 +160,21 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
                   onClick={(e) => e.stopPropagation()}
                   aria-label={labels.waypointAriaLabel}
                   title={labels.waypointAriaLabel}
-                  className="group flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                  // Boîte FIXE — cf. ExplorerMatchesTable : une image dans un flex
+                  // au sein d'une cellule de tableau se dimensionne différemment
+                  // selon le moteur (invisible sous Firefox, correcte sous Chrome).
+                  className="group inline-flex h-4 w-5 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <img
                     src={waypointLogoSrc(theme)}
                     alt=""
                     aria-hidden
-                    // shrink-0 : même motif que l'Explorer — l'image est un élément
-                    // flexible et une colonne comprimée l'écraserait jusqu'à la
-                    // rendre invisible (constaté 2026-07-26 côté Explorer).
-                    className="h-4 w-4 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity"
+                    // width/height HTML : taille intrinsèque pour le moteur.
+                    // object-contain : le fichier est un logotype 360x160, le
+                    // `fill` par défaut le déformait dans un carré.
+                    width={20}
+                    height={16}
+                    className="h-full w-full shrink-0 object-contain opacity-60 group-hover:opacity-100 transition-opacity"
                   />
                 </a>
               ),
