@@ -29,12 +29,13 @@ import (
 // Thread-safe : sharedFileState (mu + files) est partagée entre TOUS les clones
 // créés via WithAttrs/WithGroup. Un seul mutex protège la map — cf. clone().
 type MultiModuleHandler struct {
-	console slog.Handler
-	logsDir string
-	level   slog.Leveler
-	attrs   []slog.Attr
-	groups  []string
-	shared  *sharedFileState // pointeur partagé entre tous les clones
+	console  slog.Handler
+	logsDir  string
+	level    slog.Leveler
+	rotation RotationPolicy
+	attrs    []slog.Attr
+	groups   []string
+	shared   *sharedFileState // pointeur partagé entre tous les clones
 }
 
 // sharedFileState regroupe le mutex et la map des file handlers.
@@ -48,11 +49,11 @@ type sharedFileState struct {
 	files map[string]*fileHandler
 }
 
-// fileHandler encapsule un slog.JSONHandler + son *os.File sous-jacent
-// pour fermeture propre au shutdown.
+// fileHandler encapsule un slog.JSONHandler + son writer rotatif sous-jacent
+// (rotation par taille, cf. rotation.go) pour fermeture propre au shutdown.
 type fileHandler struct {
 	handler slog.Handler
-	file    *os.File
+	writer  *rotatingWriter
 }
 
 // NewMultiModuleHandler construit un handler qui écrit vers console + fichiers.
@@ -64,7 +65,11 @@ type fileHandler struct {
 // Créé via MkdirAll si absent.
 // level : niveau minimal des logs écrits dans les fichiers (peut différer de
 // celui de la console pour optimiser le volume).
-func NewMultiModuleHandler(console slog.Handler, logsDir string, level slog.Leveler) (*MultiModuleHandler, error) {
+// rotation : bornes de taille appliquées à CHAQUE fichier de catégorie
+// (cf. rotation.go). Zéro-valeur = pas de rotation — passer
+// DefaultRotationPolicy() ou Config.Rotation, jamais RotationPolicy{}.
+func NewMultiModuleHandler(console slog.Handler, logsDir string, level slog.Leveler,
+	rotation RotationPolicy) (*MultiModuleHandler, error) {
 	if logsDir != "" {
 		if err := os.MkdirAll(logsDir, 0o755); err != nil {
 			return nil, fmt.Errorf("logging: mkdir logsDir %s: %w", logsDir, err)
@@ -74,10 +79,11 @@ func NewMultiModuleHandler(console slog.Handler, logsDir string, level slog.Leve
 		level = slog.LevelInfo
 	}
 	return &MultiModuleHandler{
-		console: console,
-		logsDir: logsDir,
-		level:   level,
-		shared:  &sharedFileState{files: make(map[string]*fileHandler)},
+		console:  console,
+		logsDir:  logsDir,
+		level:    level,
+		rotation: rotation,
+		shared:   &sharedFileState{files: make(map[string]*fileHandler)},
 	}, nil
 }
 
@@ -168,7 +174,7 @@ func (h *MultiModuleHandler) fileForModule(module string) (*fileHandler, error) 
 	}
 
 	path := filepath.Join(h.logsDir, module+".log")
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+	f, err := newRotatingWriter(path, h.rotation)
 	if err != nil {
 		return nil, fmt.Errorf("open %s: %w", path, err)
 	}
@@ -185,7 +191,7 @@ func (h *MultiModuleHandler) fileForModule(module string) (*fileHandler, error) 
 		handler = handler.WithGroup(g)
 	}
 
-	fh := &fileHandler{handler: handler, file: f}
+	fh := &fileHandler{handler: handler, writer: f}
 	h.shared.files[module] = fh
 	return fh, nil
 }
@@ -212,12 +218,13 @@ func (h *MultiModuleHandler) WithGroup(name string) slog.Handler {
 // la même files map quelle que soit la goroutine qui utilise ce clone.
 func (h *MultiModuleHandler) clone() *MultiModuleHandler {
 	return &MultiModuleHandler{
-		console: h.console,
-		logsDir: h.logsDir,
-		level:   h.level,
-		attrs:   append([]slog.Attr(nil), h.attrs...),
-		groups:  append([]string(nil), h.groups...),
-		shared:  h.shared, // pointeur partagé — intentionnel
+		console:  h.console,
+		logsDir:  h.logsDir,
+		level:    h.level,
+		rotation: h.rotation,
+		attrs:    append([]slog.Attr(nil), h.attrs...),
+		groups:   append([]string(nil), h.groups...),
+		shared:   h.shared, // pointeur partagé — intentionnel
 	}
 }
 
@@ -228,11 +235,11 @@ func (h *MultiModuleHandler) Close() error {
 	defer h.shared.mu.Unlock()
 	var firstErr error
 	for module, fh := range h.shared.files {
-		if fh.file != nil {
-			if err := fh.file.Close(); err != nil && firstErr == nil {
+		if fh.writer != nil {
+			if err := fh.writer.Close(); err != nil && firstErr == nil {
 				firstErr = fmt.Errorf("close %s.log: %w", module, err)
 			}
-			fh.file = nil
+			fh.writer = nil
 		}
 		delete(h.shared.files, module)
 	}

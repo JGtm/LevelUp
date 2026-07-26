@@ -103,6 +103,43 @@ func TestServeStaticFile_NoImmutableOnNonHashed(t *testing.T) {
 	}
 }
 
+// TestServeStaticFile_PublicAssetGetsShortCache : les fichiers de apps/web/public/
+// (recopiés à la racine du dist, NON fingerprintés) reçoivent un cache court —
+// avant le 2026-07-26 ils n'avaient AUCUN Cache-Control, donc chaque navigation
+// re-tirait la centaine d'images d'une page et vidait le bucket rate limit.
+func TestServeStaticFile_PublicAssetGetsShortCache(t *testing.T) {
+	fs := newDistFileServer(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/favicon.ico", nil)
+	w := httptest.NewRecorder()
+	serveStaticFile(w, req, fs)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("attendu 200, obtenu %d", w.Code)
+	}
+	if cc := w.Header().Get("Cache-Control"); cc != publicAssetCacheControl {
+		t.Errorf("fichier public/ : Cache-Control = %q, attendu %q", cc, publicAssetCacheControl)
+	}
+}
+
+// TestServeStaticFile_NoCacheControlOnNonAsset : l'entrée SPA (servie sur "/")
+// et tout chemin non statique (route API) ne reçoivent AUCUN Cache-Control —
+// index.html doit rester revalidé à chaque déploiement, et une route API ne
+// passe jamais par le cache statique.
+func TestServeStaticFile_NoCacheControlOnNonAsset(t *testing.T) {
+	fs := newDistFileServer(t)
+
+	for _, path := range []string{"/", "/index.html", "/api/v1/players/test/pages/home"} {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		w := httptest.NewRecorder()
+		serveStaticFile(w, req, fs)
+
+		if cc := w.Header().Get("Cache-Control"); cc != "" {
+			t.Errorf("%s : Cache-Control = %q, attendu vide", path, cc)
+		}
+	}
+}
+
 func TestServeStaticFile_ImmutableSurvives304(t *testing.T) {
 	fs := newDistFileServer(t)
 

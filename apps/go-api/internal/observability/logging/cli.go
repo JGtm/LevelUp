@@ -45,7 +45,7 @@ func InstallCLILevel(repoRoot string, consoleLevel slog.Level) func() {
 
 	closer := func() {}
 	if cfg.Enabled && cfg.LogsDir != "" {
-		if mh, err := NewMultiModuleHandler(handler, cfg.LogsDir, cfg.FileLevel); err == nil {
+		if mh, err := NewMultiModuleHandler(handler, cfg.LogsDir, cfg.FileLevel, cfg.Rotation); err == nil {
 			handler = mh
 			closer = func() { _ = mh.Close() }
 		} else {

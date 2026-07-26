@@ -19,10 +19,8 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -1362,6 +1360,16 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 // donc l'URL elle-même est un cache-buster (le navigateur ne revalide jamais).
 const immutableAssetCacheControl = "public, max-age=31536000, immutable"
 
+// publicAssetCacheControl : politique de cache des fichiers statiques NON
+// fingerprintés du dist (recopiés depuis apps/web/public/ : /logo.png, icônes,
+// /titles/**, polices...). 1 h, sans `immutable` : leur URL est stable d'un build
+// à l'autre, donc un cache long empêcherait de livrer une image corrigée — mais
+// sans aucun Cache-Control (état d'avant le 2026-07-26) chaque navigation
+// re-tirait la centaine d'images d'une page, ce qui vidait le bucket rate limit.
+// Le validateur Last-Modified posé par le FileServer permet un 304 peu coûteux
+// après expiration.
+const publicAssetCacheControl = "public, max-age=3600"
+
 // viteHashedAssetPattern reconnaît les fichiers émis par Vite avec un hash de
 // contenu : `/assets/<nom>-<hash>.<ext>`. Le hash par défaut de Vite fait 8
 // caractères base64url ([A-Za-z0-9_-]) ; on exige >= 8 pour ne PAS confondre un
@@ -1376,38 +1384,26 @@ func isViteHashedAsset(urlPath string) bool {
 }
 
 // serveStaticFile délègue au FileServer (qui pose ETag/Last-Modified/Content-Type)
-// après avoir ajouté Cache-Control: immutable UNIQUEMENT pour les assets hashés.
+// après avoir posé le Cache-Control adapté :
+//   - asset Vite hashé → immutable 1 an (l'URL EST le cache-buster) ;
+//   - autre fichier statique (public/ recopié à la racine du dist) → 1 h ;
+//   - index.html et tout ce qui n'est pas un fichier statique → aucun header,
+//     donc revalidation systématique (un nouveau build doit être livré).
+//
 // Le header est posé AVANT ServeHTTP : il survit aussi bien au 200 qu'au 304.
 func serveStaticFile(w http.ResponseWriter, req *http.Request, fileServer http.Handler) {
-	if isViteHashedAsset(req.URL.Path) {
+	switch {
+	case isViteHashedAsset(req.URL.Path):
 		w.Header().Set("Cache-Control", immutableAssetCacheControl)
+	case middleware.IsStaticAssetPath(req.URL.Path):
+		w.Header().Set("Cache-Control", publicAssetCacheControl)
 	}
 	fileServer.ServeHTTP(w, req)
 }
 
-// staticAssetExts : extensions de fichiers statiques attendues dans le dist Vite.
-// Un chemin qui porte l'une d'elles mais n'existe pas sur disque est un asset
-// MANQUANT (404 franc + log), jamais une route SPA — avant ce correctif, le
-// catch-all SPA servait index.html (200 text/html) pour TOUT asset absent du
-// dist, quelle qu'en soit la cause (build amputé, fichier déplacé/renommé,
-// déploiement partiel...) : le silence de ce fallback rendait ces manques
-// invisibles côté client (<img> vide, zéro erreur réseau visible).
-var staticAssetExts = map[string]struct{}{
-	".png": {}, ".jpg": {}, ".jpeg": {}, ".webp": {}, ".gif": {}, ".svg": {},
-	".ico": {}, ".css": {}, ".js": {}, ".mjs": {}, ".map": {}, ".woff": {},
-	".woff2": {}, ".ttf": {}, ".txt": {}, ".xml": {}, ".json": {},
-}
-
-// isStaticAssetPath indique si le chemin URL porte une extension de fichier
-// statique connue (insensible a la casse) — cf. staticAssetExts.
-func isStaticAssetPath(urlPath string) bool {
-	_, ok := staticAssetExts[strings.ToLower(path.Ext(urlPath))]
-	return ok
-}
-
 // mountSPA sert le build Vite (LEVELUP_WEB_DIST) en catch-all /* : un fichier du
 // dist servi tel quel ; un chemin a extension statique absent du dist → 404 franc
-// (cf. staticAssetExts) ; sinon index.html (route client-side React) avec injection
+// (cf. middleware.IsStaticAssetPath) ; sinon index.html (route client-side React) avec injection
 // Open Graph. Les routes /api/v1 sont montees AVANT (r.Route dans server.go) : un
 // chemin /api/v1/* inconnu tombe sur le NotFound du sous-routeur, jamais ici.
 // Inactif si WebDistDir vide ou index.html absent. Extrait de NewRouter (K2a).
@@ -1421,7 +1417,7 @@ func mountSPA(r chi.Router, serverCtx context.Context, cfg *config.AppConfig, re
 					serveStaticFile(w, req, fileServer)
 					return
 				}
-				if isStaticAssetPath(req.URL.Path) {
+				if middleware.IsStaticAssetPath(req.URL.Path) {
 					// Log volontairement non throttle : c'est le silence de
 					// l'ancien fallback (200 text/html sur tout asset absent)
 					// qui rendait ce genre de manque invisible en prod.
