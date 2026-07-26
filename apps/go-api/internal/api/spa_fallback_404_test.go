@@ -3,11 +3,11 @@
 // spa_fallback_404_test.go — garde-rail 404 franc du catch-all SPA (mountSPA).
 //
 // Un chemin portant une extension de fichier statique connue mais ABSENT du dist
-// doit rendre 404, jamais le fallback index.html : ce fallback (200 text/html)
-// a servi du HTML aux <img> pendant deux releases quand .dockerignore strippait
-// les PNG de apps/web/public — image vide, zero erreur visible. Les routes SPA
-// (sans extension) continuent de servir l'index ; un fichier existant est servi
-// tel quel.
+// doit rendre 404, jamais le fallback index.html : avant ce correctif, ce
+// fallback (200 text/html) servait du HTML a la place de N'IMPORTE QUEL asset
+// manquant du dist, quelle qu'en soit la cause — image vide, zero erreur
+// visible. Les routes SPA (sans extension) continuent de servir l'index ; un
+// fichier existant est servi tel quel.
 package api
 
 import (
@@ -103,7 +103,7 @@ func TestMountSPA_MissingAsset404(t *testing.T) {
 	r := newSPARouter(t)
 
 	for _, path := range []string{
-		"/icons/halowaypoint-black.png", // PNG strippe du build — le cas du bug
+		"/icons/halowaypoint-black.png", // asset absent du dist, quelle qu'en soit la cause — cas cible
 		"/assets/index-DiwrgTda.js",
 		"/og-default.png",
 	} {
