@@ -725,7 +725,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         : []),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [intlLocale, mapAssets, playlistAssets, locale, goToMatch, providesTeamMmr, playerSlug, theme],
+    [intlLocale, mapAssets, playlistAssets, locale, goToMatch, providesTeamMmr, playerSlug, theme, currentTitleSlug],
   )
 
   // Tri CLIENT possédé par le tableau (mode Matchs). Défaut : date descendante —

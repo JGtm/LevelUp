@@ -188,6 +188,12 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 		// le repo lié au PlayerDB du main charge la précision de tous les xuids de
 		// l'escouade. Miroir du câblage Synthesis/Sessions ; nil-safe hors h5.
 		WithWeaponAccuracyRepo(duckdb.NewWeaponAccuracyRepo(pdb))
+	// Axe « Objectifs » par opportunité du radar synergie : gated par la capability
+	// match.objective.stats (Infinite ; absente pour Halo 5 → axe retiré de toutes
+	// les séries). Source SHARED → couvre aussi les coéquipiers non suivis.
+	if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
+		svc = svc.WithObjectiveIndexRepo(duckdb.NewObjectiveStatsRepo(pdb))
+	}
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 

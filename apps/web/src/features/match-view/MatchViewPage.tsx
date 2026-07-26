@@ -332,7 +332,7 @@ export function MatchViewPage() {
               damagePerKill={meRow?.damage_per_kill ?? null}
               damagePerDeath={meRow?.damage_per_death ?? null}
             />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:[grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
               <MatchKdaExpectedChart
                 kpis={summary_tab.kpis}
                 expectedStats={summary_tab.expected_stats}
@@ -350,21 +350,20 @@ export function MatchViewPage() {
               />
             </div>
             {/* Répartition des frags v2 sur SA PROPRE rangée : sunburst (classe→rôle,
-                2/3 de largeur) + breakdown par arme (1/3). MatchFragCard émet ses 2
-                cartes (Fragment) comme cellules d'une grille 3 colonnes — sunburst
-                `lg:col-span-2`, breakdown `lg:col-span-1` (col-span portés par
-                MatchFragCard). Non gaté : Infinite = classes sans Spartan ; Halo 5 =
-                avec (capability native_kill_mechanics côté backend). */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-              <MatchFragCard distribution={combat_tab.frag_distribution} weapons={weaponKills} />
-            </div>
-            {/* Rangée suivante (3 colonnes) : Médailles À GAUCHE des Citations, puis le
-                bloc Média. Halo 5 : commendations NATIVES (citations_tab.native_
-                commendations) affichées À LA PLACE des citations dérivées d'Infinite
-                (summary_tab.citations vide pour h5). Un seul bloc « commendations » par
-                titre. Média gaté sur `media` : masque l'en-tête + le bloc entier pour un
-                titre sans captures/clips. */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                2/3 de largeur) + breakdown par arme (1/3). MatchFragCard porte sa
+                propre grille (breakdown pleine largeur si le sunburst n'a pas de
+                données) et rend null sans aucune donnée — pas de wrapper ici, sinon
+                un gap fantôme resterait quand la carte est absente. Non gaté :
+                Infinite = classes sans Spartan ; Halo 5 = avec (capability
+                native_kill_mechanics côté backend). */}
+            <MatchFragCard distribution={combat_tab.frag_distribution} weapons={weaponKills} />
+            {/* Rangée suivante : Médailles À GAUCHE des Citations — grille fluide
+                (auto-fit) : chaque carte garde une largeur pleine ou partagée sans
+                cellule orpheline. Halo 5 : commendations NATIVES (citations_tab.
+                native_commendations) affichées À LA PLACE des citations dérivées
+                d'Infinite (summary_tab.citations vide pour h5). Un seul bloc
+                « commendations » par titre. */}
+            <div className="grid grid-cols-1 gap-4 sm:[grid-template-columns:repeat(auto-fit,minmax(320px,1fr))]">
               <MatchMedalsSection medals={summary_tab.medals ?? []} t={t} />
               {(citations_tab?.native_commendations?.length ?? 0) > 0 ? (
                 <MatchNativeCommendationsSection
@@ -374,20 +373,24 @@ export function MatchViewPage() {
               ) : (
                 <MatchCitationsSection citations={summary_tab.citations ?? []} t={t} />
               )}
-              <FeatureGate capability="media">
-                <div className="rounded-lg border border-border bg-card">
-                  <div className="border-b border-border px-3 py-2 text-sm font-medium">{t.sectionMedia}</div>
-                  <div className="p-3">
-                    <MatchMediaTab
-                      items={media_tab.media_items ?? []}
-                      playerSlug={playerSlug}
-                      matchId={matchId}
-                      locale={locale === 'en' ? 'en' : 'fr'}
-                    />
-                  </div>
-                </div>
-              </FeatureGate>
             </div>
+            {/* Bloc Médias : TOUJOURS en dernier, seul sur sa rangée, PLEINE largeur
+                (règle produit : aucun bloc seul à largeur partielle). Gaté sur
+                `media` : masque l'en-tête + le bloc entier pour un titre sans
+                captures/clips. */}
+            <FeatureGate capability="media">
+              <div className="rounded-lg border border-border bg-card">
+                <div className="border-b border-border px-3 py-2 text-sm font-medium">{t.sectionMedia}</div>
+                <div className="p-3">
+                  <MatchMediaTab
+                    items={media_tab.media_items ?? []}
+                    playerSlug={playerSlug}
+                    matchId={matchId}
+                    locale={locale === 'en' ? 'en' : 'fr'}
+                  />
+                </div>
+              </div>
+            </FeatureGate>
           </div>
         ) : (
           <>

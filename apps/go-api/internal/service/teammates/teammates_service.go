@@ -65,6 +65,11 @@ type TeammatesService struct {
 	// précision de tous les xuids de l'escouade en 1 appel (filtre MatchIDs + XUIDs).
 	// Nil ou capability absente (Halo Infinite) → comparaison précision omise (best-effort).
 	weaponAccuracyRepo port.WeaponAccuracyRepository
+	// objectiveIndex (optionnel) : agrégats objectifs par famille de mode
+	// (match_objective_stats_latest, SHARED → couvre aussi les coéquipiers non
+	// suivis) pour l'axe « Objectifs » par opportunité du radar synergie. Câblé
+	// gated par la capability match.objective.stats ; nil → axe retiré du radar.
+	objectiveIndex port.ObjectiveIndexRepository
 }
 
 // NewTeammatesService crÃƒÂ©e un TeammatesService.
@@ -105,6 +110,15 @@ func (s *TeammatesService) WithMedalDefs(repo port.MedalDefinitionsRepository) *
 // absente sur le titre), la comparaison « Précision par arme » est omise (best-effort nil).
 func (s *TeammatesService) WithWeaponAccuracyRepo(repo port.WeaponAccuracyRepository) *TeammatesService {
 	s.weaponAccuracyRepo = repo
+	return s
+}
+
+// WithObjectiveIndexRepo injecte le repo des agrégats objectifs par famille
+// (match_objective_stats_latest) pour l'axe « Objectifs » par opportunité du
+// radar synergie. Optionnel — capability-gated au wiring (match.objective.stats) ;
+// nil → l'axe Objectif est retiré de TOUTES les séries du radar.
+func (s *TeammatesService) WithObjectiveIndexRepo(repo port.ObjectiveIndexRepository) *TeammatesService {
+	s.objectiveIndex = repo
 	return s
 }
 

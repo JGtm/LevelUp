@@ -254,9 +254,7 @@ CREATE TABLE match_objective_stats (
     longest_time_as_vip_seconds           DOUBLE,
     written_at                            TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE OR REPLACE VIEW match_objective_stats_latest AS
-    SELECT * FROM match_objective_stats
-    QUALIFY ROW_NUMBER() OVER (PARTITION BY match_id, xuid ORDER BY written_at DESC, id DESC) = 1;
+` + migration.MatchObjectiveStatsLatestViewSQL("match_objective_stats") + `;
 `
 }
 

@@ -22,9 +22,6 @@ type fakeSquadLoader struct {
 	errByGT    map[string]error
 	calls      []string // gamertags appeles dans l'ordre
 	delayPerGT time.Duration
-	// objByGT : si renseigné, LoadObjectiveScores retourne ces scores par gamertag.
-	// Clé externe = gamertag, clé interne = match_id, valeur = award_score total.
-	objByGT map[string]map[string]int
 }
 
 func (f *fakeSquadLoader) LoadFor(
@@ -99,21 +96,6 @@ func (f *fakeSquadLoader) LoadMapStatsForSquad(
 	_ []string,
 ) (map[string]domain.MapSquadStats, error) {
 	return nil, nil
-}
-
-// LoadObjectiveScores stub — retourne les scores PSA si objByGT est renseigné,
-// sinon map vide (dégradation silencieuse, comportement production).
-func (f *fakeSquadLoader) LoadObjectiveScores(
-	_ context.Context,
-	_, gamertag string,
-	_ []string,
-) (map[string]int, error) {
-	if f.objByGT != nil {
-		if scores, ok := f.objByGT[gamertag]; ok {
-			return scores, nil
-		}
-	}
-	return map[string]int{}, nil
 }
 
 func (f *fakeSquadLoader) LoadPlayerAssistsModel(_ context.Context, _, _, _ string) (*domain.PlayerAssistsModel, error) {

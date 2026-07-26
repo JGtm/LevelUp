@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
@@ -21,8 +22,6 @@ type fakeSquadLoader struct {
 	errByGT    map[string]error
 	calls      []string // gamertags appeles dans l'ordre
 	delayPerGT time.Duration
-	// objByGT : si renseigné, LoadObjectiveScores retourne ces scores par gamertag.
-	objByGT map[string]map[string]int
 	// modelByGT : si renseigné, LoadPlayerAssistsModel retourne ce modèle personnel
 	// pour le gamertag (tous modes). Sert les tests d'écart au FDA attendu (D8).
 	modelByGT map[string]*domain.PlayerAssistsModel
@@ -101,15 +100,26 @@ func (f *fakeSquadLoader) LoadMapStatsForSquad(
 	return nil, nil
 }
 
-func (f *fakeSquadLoader) LoadObjectiveScores(
-	_ context.Context, _, gamertag string, _ []string,
-) (map[string]int, error) {
-	if f.objByGT != nil {
-		if scores, ok := f.objByGT[gamertag]; ok {
-			return scores, nil
-		}
+// fakeObjectiveIndexRepo mock de port.ObjectiveIndexRepository (axe Objectif par
+// opportunité du radar synergie). inputsByGT : agrégats par gamertag.
+type fakeObjectiveIndexRepo struct {
+	inputsByGT map[string]narrative.ObjectiveIndexInput
+	err        error
+}
+
+func (f *fakeObjectiveIndexRepo) LoadObjectiveIndexInputs(
+	_ context.Context, _ []string, _ []string,
+) (map[string]narrative.ObjectiveIndexInput, error) {
+	return nil, f.err
+}
+
+func (f *fakeObjectiveIndexRepo) LoadObjectiveIndexInputsByGamertag(
+	_ context.Context, _ []string, gamertag string,
+) (narrative.ObjectiveIndexInput, error) {
+	if f.err != nil {
+		return nil, f.err
 	}
-	return map[string]int{}, nil
+	return f.inputsByGT[gamertag], nil
 }
 
 // rowWithStats construit une PlayerMatchRow avec les stats Self renseignées.

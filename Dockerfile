@@ -28,6 +28,13 @@ COPY apps/web/ ./
 # Build Vite (output : /build/web/dist)
 RUN npm run build
 
+# Garde-rail assets publics : chaque fichier de public/ doit se retrouver dans
+# dist/ (Vite copie public/ tel quel). Echec du build sinon, avec la liste des
+# manquants — defense contre un .dockerignore qui stripperait de nouveau les
+# media de public/ (bug prod : PNG absents du dist → le catch-all SPA servait
+# index.html a la place des images, sans aucune erreur visible).
+RUN node scripts/verify-public-in-dist.mjs
+
 # ============================================================================
 # Stage 2 — Build Go (CGo activé pour DuckDB bindings)
 # ============================================================================

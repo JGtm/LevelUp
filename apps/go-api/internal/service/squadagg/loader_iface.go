@@ -77,18 +77,6 @@ type SquadV2Loader interface {
 		squadXUIDs []string,
 	) (map[string]domain.MapSquadStats, error)
 
-	// LoadObjectiveScores retourne le total des award_score de catégorie
-	// "objective" par match_id pour le joueur (slug, gamertag). Utilisé pour
-	// l'axe objectif du radar synergie (teammates.06). Dégradation silencieuse
-	// : retourne map vide + nil si personal_score_awards est absent ou si le
-	// joueur est introuvable.
-	LoadObjectiveScores(
-		ctx context.Context,
-		slug string,
-		gamertag string,
-		matchIDs []string,
-	) (map[string]int, error)
-
 	// LoadPlayerAssistsModel retourne le modèle personnel OLS d'assists attendus
 	// d'un MEMBRE (sa player DB) pour un mode (game_variant_name). nil si le membre
 	// n'a pas de modèle (< seuil d'échantillons / player DB absente) → l'appelant

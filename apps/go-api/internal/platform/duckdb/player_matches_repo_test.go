@@ -164,54 +164,6 @@ func TestPlayerMatchesRepo_LobbySizesAtCompletion(t *testing.T) {
 	}
 }
 
-// TestPlayerMatchesRepo_ObjectiveScores : somme des scores PSA "objective" par match
-// (alimente les axes Objective/Score du profil de participation).
-func TestPlayerMatchesRepo_ObjectiveScores(t *testing.T) {
-	pdb := newTestPlayerDB(t)
-	ctx := context.Background()
-	// Table PSA optionnelle : créée ici pour rendre le test self-contained.
-	// Append-only #23046 (Phase 2) : born append-only (generation_id + is_tombstone) +
-	// la lecture ObjectiveScores passe par la vue personal_score_awards_latest.
-	if _, err := pdb.Player.Exec(ctx, `CREATE TABLE IF NOT EXISTS personal_score_awards
-		(match_id VARCHAR, xuid VARCHAR, award_category VARCHAR, award_score INTEGER,
-		 generation_id BIGINT DEFAULT 0, is_tombstone BOOLEAN DEFAULT FALSE)`); err != nil {
-		t.Fatalf("create personal_score_awards: %v", err)
-	}
-	if _, err := pdb.Player.Exec(ctx, `CREATE OR REPLACE VIEW personal_score_awards_latest AS
-		SELECT * EXCLUDE (rk) FROM (
-			SELECT *, DENSE_RANK() OVER (PARTITION BY match_id, xuid ORDER BY generation_id DESC) AS rk
-			FROM personal_score_awards)
-		WHERE rk = 1 AND NOT is_tombstone`); err != nil {
-		t.Fatalf("create personal_score_awards_latest view: %v", err)
-	}
-	if _, err := pdb.Player.Exec(ctx, "DELETE FROM personal_score_awards"); err != nil {
-		t.Fatalf("reset psa: %v", err)
-	}
-	ins := func(matchID, cat string, score int) {
-		if _, err := pdb.Player.Exec(ctx, `INSERT INTO personal_score_awards
-			(match_id, xuid, award_category, award_score) VALUES (?, ?, ?, ?)`,
-			matchID, pTestXUID, cat, score); err != nil {
-			t.Fatalf("insert psa: %v", err)
-		}
-	}
-	ins("o1", "objective", 200)
-	ins("o1", "objective", 100) // somme objective o1 = 300
-	ins("o1", "combat", 999)    // catégorie != objective → exclu
-	ins("o2", "objective", 50)
-
-	repo := NewPlayerMatchesRepo(pdb)
-	scores, err := repo.ObjectiveScores(ctx, []string{"o1", "o2"})
-	if err != nil {
-		t.Fatalf("ObjectiveScores: %v", err)
-	}
-	if scores["o1"] != 300 {
-		t.Fatalf("o1: want 300 (somme objective), got %d", scores["o1"])
-	}
-	if scores["o2"] != 50 {
-		t.Fatalf("o2: want 50, got %d", scores["o2"])
-	}
-}
-
 func TestPlayerMatchesRepo_Load_NoFilter(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	seedPlayerMatchesFixtures(t, pdb)

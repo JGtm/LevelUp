@@ -1,14 +1,16 @@
 /**
- * MatchFragCard — « Répartition des frags » v2 du viewer sur la Match view : émet
- * DEUX cartes CÔTE À CÔTE (Fragment → cellules de la grille parente) — le sunburst
+ * MatchFragCard — « Répartition des frags » v2 du viewer sur la Match view : rend
+ * DEUX cartes CÔTE À CÔTE dans sa propre grille — le sunburst
  * hiérarchique classe→rôle (FragSunburst) et le « Détails des frags » recoloré par
  * classe (FragWeaponBreakdown) — armes du registre + détail mêlée/grenade/capacités
  * issu de la distribution. Remplace les deux anciens graphes de frags du viewer
  * (MatchWeaponPieChart « Frags par arme » + MatchKillTypesDonut « Frags par
  * technique ») — cf. .ai/V7/PLAN_FRAG_DISTRIBUTION_V2.md P3.3.
  *
- * Chaque enfant est une ChartCard autonome (bordure/titre) → placé directement comme
- * cellule de la grille du parent (pas d'empilement vertical interne).
+ * Chaque enfant est une ChartCard autonome (bordure/titre). La grille (2/3 sunburst,
+ * 1/3 breakdown) est portée ICI : quand le sunburst n'a pas de données (distribution
+ * absente/vide), le breakdown occupe seul la pleine largeur — jamais de cellule
+ * orpheline à 1/3, ni de wrapper grille vide côté parent.
  *
  * Survol LIÉ : un état `hoveredClass` PARTAGÉ est remonté ici. Survoler une classe/rôle
  * du sunburst estompe les armes des autres classes dans le breakdown, et réciproquement
@@ -53,28 +55,33 @@ export function MatchFragCard({ distribution, weapons }: Props) {
   }))
   const breakdown = buildFragDetailBreakdown(distribution, weaponsNorm, { roleLabel, classLabel })
 
-  const hasSunburst = (distribution?.total_kills ?? 0) > 0
+  // Miroir EXACT du prédicat de rendu de FragSunburst (total > 0 ET classes non
+  // vides) : si le sunburst rendrait null, on ne réserve pas sa colonne.
+  const hasSunburst =
+    (distribution?.total_kills ?? 0) > 0 && (distribution?.classes?.length ?? 0) > 0
   if (!hasSunburst && breakdown.length === 0) return null
 
   return (
-    <>
-      <FragSunburst
-        distribution={distribution}
-        externalHoveredClass={hoveredClass}
-        onClassHover={setHoveredClass}
-        className="lg:col-span-2"
-        hideCenterLabel
-        maxWidthPx={480}
-        legendSide="left"
-      />
+    <div className={hasSunburst ? 'grid grid-cols-1 gap-4 lg:grid-cols-3' : ''}>
+      {hasSunburst && (
+        <FragSunburst
+          distribution={distribution}
+          externalHoveredClass={hoveredClass}
+          onClassHover={setHoveredClass}
+          className="lg:col-span-2"
+          hideCenterLabel
+          maxWidthPx={480}
+          legendSide="left"
+        />
+      )}
       <FragWeaponBreakdown
         weapons={breakdown}
         title={detailTitle}
         hoveredClass={hoveredClass}
         onClassHover={setHoveredClass}
-        className="lg:col-span-1"
+        className={hasSunburst ? 'lg:col-span-1' : ''}
         heightScale={1.1}
       />
-    </>
+    </div>
   )
 }

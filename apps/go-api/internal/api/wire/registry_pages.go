@@ -236,6 +236,12 @@ func (r *ServiceRegistry) SessionPage(ctx context.Context, slug string) (port.Se
 		WithWeaponKillsRepo(duckdb.NewWeaponKillsRepo(pdb)).
 		WithWeaponAccuracyRepo(duckdb.NewWeaponAccuracyRepo(pdb)).
 		WithHighlightEventsRepo(duckdb.NewHighlightEventsRepo(pdb), pdb.XUID)
+	// Axe « Objectifs » par opportunité (profil de participation Session) : gated par
+	// la capability match.objective.stats (Infinite ; absente pour Halo 5 → axe
+	// retiré). Jamais slug==.
+	if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
+		svc = svc.WithObjectiveIndexRepo(duckdb.NewObjectiveStatsRepo(pdb), pdb.XUID)
+	}
 	if pdb.Metadata != nil {
 		// Placement X/Y dans la colonne Rang : résolveur season_id → seuil CSR (5/10),
 		// même source que l'Explorer/match-history. Fallback 5 si absent.

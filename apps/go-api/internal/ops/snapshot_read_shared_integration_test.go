@@ -51,6 +51,9 @@ func seedFidelityShared(t *testing.T) *sql.DB {
 	snapExecT(t, db, `CREATE TABLE weapon_kills (match_id VARCHAR, xuid VARCHAR, weapon_id BIGINT, reconciled_as BIGINT, generation_id BIGINT)`)
 	// match_csrs RAW (colonnes lues par match_csrs_latest : written_at, id).
 	snapExecT(t, db, `CREATE TABLE match_csrs (match_id VARCHAR, xuid VARCHAR, rating_value FLOAT, written_at TIMESTAMP, id BIGINT)`)
+	// match_objective_stats RAW (colonnes lues par match_objective_stats_latest :
+	// written_at, id) — jointe par Q12 (scoreboard MatchView) depuis v7.2.
+	snapExecT(t, db, `CREATE TABLE match_objective_stats (id BIGINT, match_id VARCHAR, xuid VARCHAR, flag_captures INTEGER, written_at TIMESTAMP)`)
 
 	// Données. m1 = ready ; m2 = not-ready. Gamertag participants/kv ≠ alias → exerce
 	// la priorité de v_gamertag_lookup (alias > participant > kv).
@@ -62,6 +65,9 @@ func seedFidelityShared(t *testing.T) *sql.DB {
 		snapExecT(t, db, `INSERT INTO killer_victim_pairs (match_id, killer_xuid, killer_gamertag, victim_xuid, victim_gamertag) VALUES (?, 'xKiller', 'TueurKV', 'xVictim', 'VictimeKV')`, m)
 		snapExecT(t, db, `INSERT INTO weapon_kills (match_id, xuid, weapon_id, reconciled_as, generation_id) VALUES (?, 'xKiller', 200, NULL, 0)`, m)
 		snapExecT(t, db, `INSERT INTO match_csrs (match_id, xuid, rating_value, written_at, id) VALUES (?, 'xKiller', 1500.0, ?, 1)`, m, when)
+		// 2 générations objective stats : la vue _latest doit ne servir que la 2e.
+		snapExecT(t, db, `INSERT INTO match_objective_stats (id, match_id, xuid, flag_captures, written_at) VALUES (1, ?, 'xKiller', 1, ?)`, m, when)
+		snapExecT(t, db, `INSERT INTO match_objective_stats (id, match_id, xuid, flag_captures, written_at) VALUES (2, ?, 'xKiller', 3, ?)`, m, when.Add(time.Minute))
 	}
 	snapExecT(t, db, `INSERT INTO xuid_aliases (xuid, gamertag) VALUES ('xKiller', 'TueurAlias'), ('xVictim', 'VictimeAlias')`)
 	return db
@@ -140,6 +146,19 @@ func TestOpenSnapshotShared_Fidelity_integration(t *testing.T) {
 		t.Errorf("match_csrs_latest m1 = %d, attendu 1", n)
 	}
 
+	// 4bis. match_objective_stats_latest reconstruite (régression v7.2 : Q12 la LEFT
+	// JOIN — son absence rendait TOUT match du cut scoreboard_empty). QUALIFY : seule
+	// la dernière génération (flag_captures=3) est servie ; m2 not-ready exclu.
+	if n := scanInt(q.DB, `SELECT COUNT(*) FROM match_objective_stats_latest WHERE match_id='m1'`); n != 1 {
+		t.Errorf("match_objective_stats_latest m1 = %d, attendu 1 (dédup QUALIFY)", n)
+	}
+	if v := scanInt(q.DB, `SELECT flag_captures FROM match_objective_stats_latest WHERE match_id='m1' AND xuid='xKiller'`); v != 3 {
+		t.Errorf("match_objective_stats_latest m1 flag_captures = %d, attendu 3 (dernière version)", v)
+	}
+	if n := scanInt(q.DB, `SELECT COUNT(*) FROM match_objective_stats_latest WHERE match_id='m2'`); n != 0 {
+		t.Errorf("match_objective_stats_latest m2 (not-ready) = %d, attendu 0", n)
+	}
+
 	// 5. Faits de base filtrés ready.
 	if n := scanInt(q.DB, `SELECT COUNT(*) FROM match_registry`); n != 1 {
 		t.Errorf("match_registry = %d, attendu 1 (m1 ready ; m2 exclu)", n)
@@ -181,5 +200,62 @@ func TestOpenSnapshotShared_Incomplete_integration(t *testing.T) {
 
 	if _, err := OpenSnapshotShared(ctx, paths, slug); !errors.Is(err, ErrSnapshotIncomplete) {
 		t.Fatalf("err = %v, attendu ErrSnapshotIncomplete (xuid_aliases absente)", err)
+	}
+}
+
+// TestOpenSnapshotShared_SchemaContract_integration : CONTRAT du schéma snapshot
+// shared. Toutes les relations (tables + vues) que les lectures shared de l'app
+// référencent — en particulier les requêtes MatchView Q12/Q13 (match_participants,
+// v_gamertag_lookup, v_weapon_kills, match_csrs_latest, match_objective_stats_latest,
+// medals_earned, highlight_events, v_killer_victim_full...) — doivent exister dans le
+// schéma :memory: reconstruit. Une table nouvellement jointe par une requête MatchView
+// (précédent : Q12 → match_objective_stats_latest en v7.2) doit être ajoutée à
+// l'export (sharedSnapshotMatchKeyedRaw & co) ET à la lecture (OpenSnapshotShared),
+// sinon CE TEST casse — au lieu d'un Catalog Error silencieux en prod
+// (scoreboard_empty sur tous les matchs du cut).
+func TestOpenSnapshotShared_SchemaContract_integration(t *testing.T) {
+	ctx := context.Background()
+	paths := title.NewPathResolver(t.TempDir(), nil)
+	slug := title.DefaultSlug
+
+	shared := seedFidelityShared(t)
+	player := seedPlayerDB(t, []string{"m1"}, nil)
+
+	res, err := ProduceSnapshot(ctx, SnapshotOptions{
+		TitleSlug:    slug,
+		Paths:        paths,
+		Shared:       fakeSharedOpener{db: shared},
+		PlayerOpener: fakePlayerOpener{byGT: map[string]*sql.DB{"Solo": player}},
+		Players:      []string{"Solo"},
+		Now:          time.Date(2026, 6, 25, 9, 0, 0, 0, time.UTC),
+	})
+	if err != nil || !res.Produced {
+		t.Fatalf("produce: res=%+v err=%v", res, err)
+	}
+
+	q, err := OpenSnapshotShared(ctx, paths, slug)
+	if err != nil {
+		t.Fatalf("OpenSnapshotShared: %v", err)
+	}
+	defer q.Close()
+
+	expected := []string{
+		// Tables de base matérialisées (sharedSnapshotTables + MatchKeyedRaw + Global).
+		"match_registry", "match_participants", "medals_earned", "highlight_events",
+		"killer_victim_pairs", "weapon_kills", "match_csrs", "match_objective_stats",
+		"xuid_aliases",
+		// Vues reconstruites aux noms live.
+		"v_gamertag_lookup", "v_match_full", "v_killer_victim_full", "v_weapon_kills",
+		"match_csrs_latest", "match_objective_stats_latest", "mv_player_matches",
+	}
+	for _, rel := range expected {
+		var n int
+		if err := q.DB.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?`, rel).Scan(&n); err != nil {
+			t.Fatalf("information_schema %s: %v", rel, err)
+		}
+		if n == 0 {
+			t.Errorf("relation %q absente du schéma snapshot reconstruit (contrat lectures shared/MatchView)", rel)
+		}
 	}
 }

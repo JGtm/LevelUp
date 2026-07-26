@@ -7,6 +7,11 @@
  * {code: "match_not_found"}. Ce test vérifie que la page affiche l'état "pas
  * encore synchronisé" (PageUnavailable dédié) plutôt que l'écran d'erreur
  * générique, et que les autres branches d'erreur (ADR 0029) restent inchangées.
+ *
+ * Couvre aussi la structure de l'onglet Général : le bloc Médias est SORTI de la
+ * grille Médailles/Citations — dernier bloc, seul sur sa rangée, pleine largeur
+ * (règle produit : aucun bloc jamais seul à largeur partielle). Les enfants lourds
+ * (charts ECharts, header) sont mockés — seule la structure des rangées est testée.
  */
 import { describe, it, expect, vi } from 'vitest'
 import { screen } from '@testing-library/react'
@@ -42,8 +47,37 @@ vi.mock('@/features/settings/queries', () => ({
   useSettings: () => ({ data: { friend_gamertags: [] } }),
 }))
 
+// availableTitles vide → useCapability (FeatureGate) fail-open : le bloc Médias est rendu.
 vi.mock('@/stores/appShellStore', () => ({
-  useAppShellStore: (selector: (s: { locale: 'fr' | 'en' }) => unknown) => selector({ locale: 'fr' }),
+  useAppShellStore: (
+    selector: (s: { locale: 'fr' | 'en'; availableTitles: unknown[]; currentTitleSlug: string }) => unknown,
+  ) => selector({ locale: 'fr', availableTitles: [], currentTitleSlug: 'halo_infinite' }),
+}))
+
+// Enfants de l'onglet Général mockés : on ne teste ici que la structure des rangées.
+vi.mock('./MatchHeader', () => ({
+  MatchBreadcrumb: () => <div data-testid="breadcrumb" />,
+  MatchNavigationBar: () => <div data-testid="navbar" />,
+  MatchHeaderCard: () => <div data-testid="header-card" />,
+}))
+vi.mock('./MatchStatCards', () => ({
+  MatchSummaryCardsSection: () => <div data-testid="summary-cards" />,
+}))
+vi.mock('./MatchSummaryCharts', () => ({
+  MatchKdaExpectedChart: () => <div data-testid="chart-kda" />,
+  MatchSpreeChart: () => <div data-testid="chart-spree" />,
+  MatchSummaryRadarChart: () => <div data-testid="chart-radar" />,
+}))
+vi.mock('./MatchFragCard', () => ({
+  MatchFragCard: () => <div data-testid="frag-card" />,
+}))
+vi.mock('./MatchSummaryMedalsAndCitations', () => ({
+  MatchMedalsSection: () => <div data-testid="medals" />,
+  MatchCitationsSection: () => <div data-testid="citations" />,
+  MatchNativeCommendationsSection: () => <div data-testid="native-commendations" />,
+}))
+vi.mock('./MatchMediaTab', () => ({
+  MatchMediaTab: () => <div data-testid="media-tab" />,
 }))
 
 describe('MatchViewPage — match_not_found (pas encore synchronisé)', () => {
@@ -75,5 +109,39 @@ describe('MatchViewPage — match_not_found (pas encore synchronisé)', () => {
 
     expect(screen.getByText('Match indisponible')).toBeInTheDocument()
     expect(screen.queryByText('Match pas encore synchronisé')).not.toBeInTheDocument()
+  })
+})
+
+describe('MatchViewPage — onglet Général : structure des rangées', () => {
+  it('le bloc Médias est HORS de la grille Médailles/Citations, dernier et pleine largeur', () => {
+    hoisted.matchView.isError = false
+    hoisted.matchView.error = null
+    hoisted.matchView.data = {
+      header: { map_ui: 'Forest', mode_ui: 'Slayer', start_time_label: null },
+      rank: null,
+      summary_tab: { kpis: {}, expected_stats: null, medals: [], citations: [] },
+      combat_tab: {},
+      team_tab: {},
+      media_tab: { media_items: [] },
+      citations_tab: { native_commendations: [] },
+      radar: null,
+    }
+    renderWithProviders(<MatchViewPage />)
+
+    const medals = screen.getByTestId('medals')
+    const grid = medals.parentElement as HTMLElement
+    expect(grid.className).toContain('grid')
+    expect(grid.className).not.toContain('lg:grid-cols-3')
+    // Citations partagent la grille des Médailles.
+    expect(grid.contains(screen.getByTestId('citations'))).toBe(true)
+    // Le bloc Médias n'est PAS dans cette grille…
+    const mediaTab = screen.getByTestId('media-tab')
+    expect(grid.contains(mediaTab)).toBe(false)
+    // …c'est le DERNIER bloc de la pile summary, frère direct de la grille (pleine largeur).
+    const summaryStack = grid.parentElement as HTMLElement
+    const mediaCard = mediaTab.closest('.rounded-lg') as HTMLElement
+    expect(mediaCard.parentElement).toBe(summaryStack)
+    expect(summaryStack.lastElementChild).toBe(mediaCard)
+    expect(screen.getByText('Médias')).toBeInTheDocument()
   })
 })

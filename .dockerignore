@@ -72,6 +72,14 @@ test-results/
 !static
 !static/**
 
+# === Assets publics du front (re-inclus malgre les globs media ci-dessus) ===
+# apps/web/public/ est copie tel quel dans dist/ par `vite build` (icones
+# Waypoint, logo, og-default.png, emblemes halo_5...). Sans ces negations, les
+# *.png/*.webp de public/ sont strippes du contexte de build → dist/ ampute →
+# le catch-all SPA sert index.html (200 text/html) a la place des images.
+!apps/web/public
+!apps/web/public/**
+
 # === Bases legacy (inutiles dans l'image DuckDB v4) ===
 *.db
 *.sqlite

@@ -9,6 +9,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/prestige"
 )
@@ -160,26 +161,13 @@ func (s *Service) computeRadarAxesBase(
 	return out, matchCount, nil
 }
 
-// applyAwardsRadarAxes lit personal_score_awards dans la fenêtre, somme par
-// award_name, applique le mapping (axes + weight) et accumule par axe en
-// moyenne par match. Mutates out in place.
-//
-// Split cross-DB (ADR 0016) : Phase A charge les match_ids dans la fenêtre
-// via SharedReader, Phase B agrège personal_score_awards sur Player avec
-// WHERE match_id IN (...).
-func (s *Service) applyAwardsRadarAxes(
-	ctx context.Context, userID string, since, until time.Time,
-	matchCount int, out map[narrative.ParticipationAxis]float64,
-) {
-	ctx, cancel := context.WithTimeout(ctx, queryTimeout)
-	defer cancel()
-
-	// Phase A : match_ids dans la fenêtre via SharedReader.
+// windowMatchIDs retourne les match_id du registre partagé dans la fenêtre
+// (Campagne exclue). Source commune de applyAwardsRadarAxes (Phase A) et de
+// computeObjectiveIndexAxis — règle ≤ 2 copies. Best-effort : erreur → nil.
+func (s *Service) windowMatchIDs(ctx context.Context, since, until time.Time) []string {
 	sharedDB, release, err := s.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
-		// Dégrade gracieusement comme la version legacy (table absente / shared
-		// indispo → on garde la base V1 sans erreur).
-		return
+		return nil
 	}
 	defer release()
 	matchRows, err := sharedDB.QueryContext(ctx, `
@@ -187,8 +175,9 @@ func (s *Service) applyAwardsRadarAxes(
 		WHERE `+startTimeCanonicalMR+` >= ? AND `+startTimeCanonicalMR+` <= ?`+s.campaignExcl("mr")+`
 	`, since, until)
 	if err != nil {
-		return
+		return nil
 	}
+	defer matchRows.Close()
 	var matchIDs []string
 	for matchRows.Next() {
 		var id string
@@ -196,8 +185,30 @@ func (s *Service) applyAwardsRadarAxes(
 			matchIDs = append(matchIDs, id)
 		}
 	}
-	matchRows.Close()
+	return matchIDs
+}
+
+// applyAwardsRadarAxes lit personal_score_awards dans la fenêtre, somme par
+// award_name, applique le mapping (axes + weight) et accumule par axe en
+// moyenne par match. Mutates out in place. L'axe OBJECTIVE est ignoré ici :
+// il est alimenté par l'index par opportunité (computeObjectiveIndexAxis) —
+// awards.toml reste la source des AUTRES axes (support/impact/…), décision 1
+// du plan PLAN_AXE_OBJECTIFS_INDEX.
+//
+// Split cross-DB (ADR 0016) : Phase A charge les match_ids dans la fenêtre
+// via SharedReader (windowMatchIDs), Phase B agrège personal_score_awards sur
+// Player avec WHERE match_id IN (...).
+func (s *Service) applyAwardsRadarAxes(
+	ctx context.Context, userID string, since, until time.Time,
+	matchCount int, out map[narrative.ParticipationAxis]float64,
+) {
+	ctx, cancel := context.WithTimeout(ctx, queryTimeout)
+	defer cancel()
+
+	matchIDs := s.windowMatchIDs(ctx, since, until)
 	if len(matchIDs) == 0 {
+		// Dégrade gracieusement comme la version legacy (shared indispo /
+		// fenêtre vide → on garde la base V1 sans erreur).
 		return
 	}
 
@@ -235,9 +246,42 @@ func (s *Service) applyAwardsRadarAxes(
 		}
 		contribution := float64(total.Int64) * mapping.Weight / float64(matchCount)
 		for _, axis := range mapping.Axes {
+			if narrative.ParticipationAxis(axis) == narrative.AxisObjective {
+				continue // remplacé par l'index par opportunité
+			}
 			out[narrative.ParticipationAxis(axis)] += contribution
 		}
 	}
+}
+
+// computeObjectiveIndexAxis calcule l'axe « Objectifs » par opportunité sur la
+// fenêtre : agrégats par famille via ObjectiveStatsRepo (shared,
+// match_objective_stats_latest) → narrative.ComputeObjectiveIndex. Retourne
+// (raw, n_obj) ; n_obj == 0 (titre sans capability match.objective.stats,
+// fenêtre sans match à objectif, erreur best-effort) → l'axe est RETIRÉ du
+// radar par le caller (aggregateNarrative).
+func (s *Service) computeObjectiveIndexAxis(
+	ctx context.Context, userID string, since, until time.Time,
+) (float64, int) {
+	if s.pdb == nil || userID == "" {
+		return 0, 0
+	}
+	// Gating capability (décision 4) — jamais de slug== (ratchet no_slug_comparison).
+	if !games.ProvidesObjectiveStats(s.pdb.TitleSlug) {
+		return 0, 0
+	}
+	ctx, cancel := context.WithTimeout(ctx, queryTimeout)
+	defer cancel()
+	matchIDs := s.windowMatchIDs(ctx, since, until)
+	if len(matchIDs) == 0 {
+		return 0, 0
+	}
+	inputs, err := duckdb.NewObjectiveStatsRepo(s.pdb).
+		LoadObjectiveIndexInputs(ctx, matchIDs, []string{userID})
+	if err != nil {
+		return 0, 0
+	}
+	return narrative.ComputeObjectiveIndex(inputs[userID])
 }
 
 // computeFKFD compte les First Kill / First Death du joueur sur la fenêtre.

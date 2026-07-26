@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/legacymatch"
 )
@@ -283,9 +284,9 @@ func TestBuildCompareEntry_AvgLifeSeconds(t *testing.T) {
 }
 
 // TestBuildSessionParticipationProfile_ObjectiveAndScore couvre les axes Objective
-// (somme PSA) et Score (score personnel par minute jouée) du profil de participation.
-// Objective reste piloté par le PSA ; Score = ΣPS / (Σtime_played/60), désormais
-// indépendant du PSA (avant : résiduel medals/streaks ≈ 0, axe mort).
+// (index par opportunité — agrégats match_objective_stats) et Score (score
+// personnel par minute jouée) du profil de participation. Sans match à objectif,
+// l'axe Objectif est RETIRÉ (pas de 0 trompeur) ; Score = ΣPS / (Σtime_played/60).
 func TestBuildSessionParticipationProfile_ObjectiveAndScore(t *testing.T) {
 	dd, dt := 3000.0, 2000.0
 	ps := 2000
@@ -301,22 +302,31 @@ func TestBuildSessionParticipationProfile_ObjectiveAndScore(t *testing.T) {
 		}
 		return -1
 	}
-	// Sans scores PSA → Objective à 0 (dégradation gracieuse) ; Score reste calculé.
+	// Sans agrégats objectifs → axe Objectif RETIRÉ ; Score reste calculé.
 	without := buildSessionParticipationProfile(rows, nil, 225)
-	if v := axisVal(without, "objective"); v != 0 {
-		t.Fatalf("Objective sans PSA: want 0, got %v", v)
+	if v := axisVal(without, "objective"); v != -1 {
+		t.Fatalf("Objective sans match à objectif: want axe retiré, got %v", v)
 	}
 	// Score = 200/min normalisé (195×1.25=243.75) → ~82/100, vivant et > 0.
 	if v := axisVal(without, "score"); v <= 0 {
 		t.Fatalf("Score PS/min: want > 0, got %v", v)
 	}
-	// Avec PSA → Objective > 0 ; Score inchangé (ne dépend plus du PSA/résiduel).
-	with := buildSessionParticipationProfile(rows, map[string]int{"m1": 500}, 225)
-	if v := axisVal(with, "objective"); v <= 0 {
-		t.Fatalf("Objective avec PSA: want > 0, got %v", v)
+	// Avec agrégats objectifs (1 match CTF au P80) → axe présent, ~80/100 ;
+	// Score inchangé (indépendant de l'index objectif).
+	objIdx := narrative.ObjectiveIndexInput{
+		narrative.FamilyCTF: {
+			Matches:           1,
+			ColumnSums:        map[string]float64{"flag_captures": 1, "flag_steals": 1, "flag_returns": 2, "flag_secures": 1},
+			HoldSeconds:       0.0434 * 600,
+			TimePlayedSeconds: 600,
+		},
+	}
+	with := buildSessionParticipationProfile(rows, objIdx, 225)
+	if v := axisVal(with, "objective"); v < 79.9 || v > 80.1 {
+		t.Fatalf("Objective au P80: want ~80, got %v", v)
 	}
 	if got, exp := axisVal(with, "score"), axisVal(without, "score"); got != exp {
-		t.Fatalf("Score ne doit pas dépendre du PSA: with=%v without=%v", got, exp)
+		t.Fatalf("Score ne doit pas dépendre de l'index objectif: with=%v without=%v", got, exp)
 	}
 }
 

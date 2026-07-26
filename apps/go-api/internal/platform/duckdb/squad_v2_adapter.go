@@ -17,7 +17,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log/slog"
 	"os"
 	"strings"
 	"sync"
@@ -333,70 +332,6 @@ func (a *SquadV2LoaderAdapter) LoadEmblemURLs(
 	}
 	wg.Wait()
 	return result
-}
-
-// LoadObjectiveScores retourne le total award_score de catégorie "objective"
-// par match_id pour le joueur (slug, gamertag). Utilisé pour l'axe objectif
-// du radar synergie. Dégradation silencieuse si personal_score_awards absent.
-func (a *SquadV2LoaderAdapter) LoadObjectiveScores(
-	ctx context.Context,
-	titleSlug string,
-	gamertag string,
-	matchIDs []string,
-) (map[string]int, error) {
-	if len(matchIDs) == 0 || a.resolve == nil {
-		return map[string]int{}, nil
-	}
-	pdb, err := a.resolve(ctx, titleSlug, gamertag)
-	if err != nil || pdb == nil || pdb.XUID == "" {
-		return map[string]int{}, nil // dégradation silencieuse
-	}
-
-	var tableCount int
-	tableRows, err := pdb.ReadDB().QueryRowRecovered(ctx, `
-		SELECT COUNT(*) FROM information_schema.tables
-		WHERE table_name = 'personal_score_awards'
-	`)
-	if err != nil {
-		return map[string]int{}, nil
-	}
-	scanErr := tableRows.Scan(&tableCount)
-	tableRows.Close()
-	if scanErr != nil || tableCount == 0 {
-		return map[string]int{}, nil
-	}
-
-	ph := Placeholders(len(matchIDs))
-	args := make([]any, 0, 1+len(matchIDs))
-	args = append(args, pdb.XUID)
-	for _, id := range matchIDs {
-		args = append(args, id)
-	}
-	q := `SELECT match_id, COALESCE(SUM(award_score), 0)::INTEGER AS total
-		  FROM personal_score_awards_latest
-		  WHERE award_category = 'objective'
-		    AND xuid = ?
-		    AND match_id IN (` + ph + `)
-		  GROUP BY match_id`
-
-	rows, err := pdb.ReadDB().QueryRecovered(ctx, q, args...)
-	if err != nil {
-		slog.WarnContext(ctx, "LoadObjectiveScores: query failed",
-			"gamertag", gamertag, "titleSlug", titleSlug, "err", err)
-		return map[string]int{}, nil
-	}
-	defer rows.Close()
-
-	result := make(map[string]int, len(matchIDs))
-	for rows.Next() {
-		var matchID string
-		var total int
-		if err := rows.Scan(&matchID, &total); err != nil {
-			continue
-		}
-		result[matchID] = total
-	}
-	return result, nil
 }
 
 // SetDefaultGamertag configure le gamertag par defaut pour resoudre les DBs

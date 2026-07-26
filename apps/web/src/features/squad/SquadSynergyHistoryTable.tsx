@@ -325,8 +325,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
           ]
         : []),
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [labels, intlLocale, playerSlug, goToSynergyMatch, providesTeamMmr, showWaypoint, theme],
+    [labels, intlLocale, playerSlug, goToSynergyMatch, providesTeamMmr, showWaypoint, theme, currentTitleSlug],
   )
 
   // I16 : tri CLIENT par clic sur les en-têtes. Pas d'état de tri initial : l'ordre

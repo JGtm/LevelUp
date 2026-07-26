@@ -179,15 +179,17 @@ func BuildMatchRadar(
 	return out
 }
 
-// BuildMatchRadarFromScoreboard construit la série radar 6 axes pour le
-// JOUEUR ACTIF uniquement (myXUID). Calculée depuis les colonnes
-// match_participants (déjà chargées dans ScoreboardRaw) + le score
-// d'objectif PSA (catégorie 'objective'). Mêmes formules que le radar
-// squad (loadSynergyMateAxes), appliquées à un seul match.
+// BuildMatchRadarFromScoreboard construit la série radar pour le JOUEUR ACTIF
+// uniquement (myXUID). Calculée depuis les colonnes match_participants + le bloc
+// objectif de la ligne Q12 (déjà chargés dans ScoreboardRaw — zéro requête en
+// plus). Mêmes formules que le radar squad (loadSynergyMateAxes), appliquées à
+// un seul match.
 //
-// objectiveScore : somme des award_score PSA catégorie 'objective'.
-// 0 si la table est absente ou pas de données pour ce match → l'axe
-// Objective reste à 0 et le résiduel Score n'est pas amputé.
+// objectiveScore : somme des award_score PSA catégorie 'objective'. Conservé
+// UNIQUEMENT pour le résiduel de l'axe Score (décision 1 du plan
+// PLAN_AXE_OBJECTIFS_INDEX) — l'axe Objectif lui-même vient de l'index par
+// opportunité (narrative.ComputeObjectiveIndex sur row.Obj) et est RETIRÉ si le
+// match n'a aucun bloc objectif (Slayer…).
 //
 // Retourne une slice de 1 élément (ou nil si myXUID absent du scoreboard).
 func BuildMatchRadarFromScoreboard(
@@ -220,11 +222,14 @@ func BuildMatchRadarFromScoreboard(
 		Survival:  analysis.DefensiveResistanceP80 * 1.25,
 		Support:   300.0,
 		Score:     350.0,
-		Objective: 350.0,
+		Objective: narrative.ObjectiveIndexThreshold,
 		Impact:    offensiveConversionP80 * 1.25,
 	}
 
 	raw := computeMatchRadarRawAxes(*me, objectiveScore, effectiveHpToKill)
+	if objRaw, objN := narrative.ComputeObjectiveIndex(objectiveIndexInputFromScoreboard(*me)); objN > 0 {
+		raw[narrative.AxisObjective] = objRaw
+	}
 	axes := narrative.ComputeParticipationProfile(raw, thresholds)
 	axes = dropUncomputableRadarAxes(axes, *me)
 	return []MatchViewRadarSeries{{
@@ -236,8 +241,9 @@ func BuildMatchRadarFromScoreboard(
 }
 
 // computeMatchRadarRawAxes calcule les valeurs brutes par axe pour 1 joueur
-// sur 1 match. Reprend les formules de loadSynergyMateAxes (squad).
-// objectiveScore : score PSA catégorie 'objective' (0 si non disponible).
+// sur 1 match (hors axe Objectif — index par opportunité posé par le caller).
+// objectiveScore : score PSA catégorie 'objective' (0 si non disponible) —
+// consommé UNIQUEMENT par le résiduel de l'axe Score.
 func computeMatchRadarRawAxes(row domain.ScoreboardRaw, objectiveScore int, effectiveHpToKill float64) map[narrative.ParticipationAxis]float64 {
 	raw := map[narrative.ParticipationAxis]float64{}
 
@@ -267,9 +273,10 @@ func computeMatchRadarRawAxes(row domain.ScoreboardRaw, objectiveScore int, effe
 	raw[narrative.AxisSupport] = float64(row.Assists) * 50.0
 	raw[narrative.AxisImpact] = teammates.SynergyOffensiveConversion(row.Kills, row.Assists, dd, effectiveHpToKill)
 	raw[narrative.AxisSurvival] = teammates.SynergyDefensiveResistance(dt, row.Deaths, effectiveHpToKill)
-	raw[narrative.AxisObjective] = float64(objectiveScore)
 
 	// Score résiduel = personal_score − kills×100 − assists×50 − objectif (medals/streaks).
+	// Le terme PSA objectif reste soustrait ici (décision 1 : chargement PSA conservé
+	// pour ce seul résiduel).
 	residual := ps - float64(row.Kills)*100.0 - float64(row.Assists)*50.0 - float64(objectiveScore)
 	if residual < 0 {
 		residual = 0
@@ -278,13 +285,111 @@ func computeMatchRadarRawAxes(row domain.ScoreboardRaw, objectiveScore int, effe
 	return raw
 }
 
+// objectiveIndexInputFromScoreboard convertit le bloc objectif de la ligne Q12
+// (domain.ObjectiveRaw, 1 match) en entrée de narrative.ComputeObjectiveIndex.
+// nil si le match n'a aucun bloc objectif (Slayer…) → axe retiré. Clés de
+// colonnes ⊆ narrative.ObjectiveFamilyActionWeights (garde-rail :
+// TestObjectiveIndexInputFromScoreboard_KeysMatchWeights). Split KOTH/Strongholds
+// par zone_scoring_ticks > 0 (décision 3), même précédence que le repo.
+func objectiveIndexInputFromScoreboard(row domain.ScoreboardRaw) narrative.ObjectiveIndexInput {
+	o := row.Obj
+	if !o.HasObjective() {
+		return nil
+	}
+	fi := func(p *int) float64 {
+		if p == nil {
+			return 0
+		}
+		return float64(*p)
+	}
+	ff := func(p *float64) float64 {
+		if p == nil {
+			return 0
+		}
+		return *p
+	}
+	st := narrative.ObjectiveFamilyStats{Matches: 1}
+	if row.TimePlayed != nil {
+		st.TimePlayedSeconds = *row.TimePlayed
+	}
+	var fam narrative.ObjectiveFamily
+	switch {
+	case o.HasZones():
+		if fi(o.ZoneScoringTicks) > 0 {
+			fam = narrative.FamilyZonesKOTH
+		} else {
+			fam = narrative.FamilyZonesStrongholds
+		}
+		st.ColumnSums = map[string]float64{
+			"zone_captures":        fi(o.ZoneCaptures),
+			"zone_secures":         fi(o.ZoneSecures),
+			"zone_offensive_kills": fi(o.ZoneOffensiveKills),
+			"zone_defensive_kills": fi(o.ZoneDefensiveKills),
+		}
+		if fam == narrative.FamilyZonesKOTH {
+			st.ColumnSums["zone_scoring_ticks"] = fi(o.ZoneScoringTicks)
+		}
+		st.HoldSeconds = ff(o.TimeInZonesSeconds)
+	case o.HasCTF():
+		fam = narrative.FamilyCTF
+		st.ColumnSums = map[string]float64{
+			"flag_captures":         fi(o.FlagCaptures),
+			"flag_capture_assists":  fi(o.FlagCaptureAssists),
+			"flag_steals":           fi(o.FlagSteals),
+			"flag_secures":          fi(o.FlagSecures),
+			"flag_returns":          fi(o.FlagReturns),
+			"flag_carriers_killed":  fi(o.FlagCarriersKilled),
+			"flag_returners_killed": fi(o.FlagReturnersKilled),
+		}
+		st.HoldSeconds = ff(o.TimeAsFlagCarrierSeconds)
+	case o.HasOddball():
+		fam = narrative.FamilyOddball
+		st.ColumnSums = map[string]float64{
+			"skull_grabs":           fi(o.SkullGrabs),
+			"skull_carriers_killed": fi(o.SkullCarriersKilled),
+			"skull_scoring_ticks":   fi(o.SkullScoringTicks),
+		}
+		st.HoldSeconds = ff(o.TimeAsSkullCarrierSeconds)
+	case o.HasStockpile():
+		fam = narrative.FamilyStockpile
+		st.ColumnSums = map[string]float64{
+			"power_seeds_deposited":      fi(o.PowerSeedsDeposited),
+			"power_seeds_stolen":         fi(o.PowerSeedsStolen),
+			"power_seed_carriers_killed": fi(o.PowerSeedCarriersKilled),
+		}
+		st.HoldSeconds = ff(o.TimeAsPowerSeedCarrierSeconds) + ff(o.TimeAsPowerSeedDriverSeconds)
+	case o.HasExtraction():
+		fam = narrative.FamilyExtraction
+		st.ColumnSums = map[string]float64{
+			"extraction_conversions_completed": fi(o.ExtractionConversionsCompleted),
+			"successful_extractions":           fi(o.SuccessfulExtractions),
+			"extraction_initiations_completed": fi(o.ExtractionInitiationsCompleted),
+			"extraction_conversions_denied":    fi(o.ExtractionConversionsDenied),
+		}
+	case o.HasVip():
+		fam = narrative.FamilyVIP
+		st.ColumnSums = map[string]float64{
+			"vip_kills":                      fi(o.VipKills),
+			"vip_assists":                    fi(o.VipAssists),
+			narrative.ObjectiveColKillsAsVIP: fi(o.KillsAsVip),
+		}
+		st.HoldSeconds = ff(o.TimeAsVipSeconds)
+		st.TimesSelectedAsVIP = fi(o.TimesSelectedAsVip)
+	default:
+		return nil
+	}
+	return narrative.ObjectiveIndexInput{fam: st}
+}
+
 // dropUncomputableRadarAxes retire les axes structurellement non calculables
 // faute de donnée source, pour éviter d'afficher un axe trompeur figé à 0 (le
 // front rend dynamiquement la liste reçue : N axes au lieu de 6). Règle
 // title-agnostic, pilotée par la donnée du joueur :
 //   - Survie (résistance défensive) sans damage_taken → cas Halo 5, qui ne
 //     fournit pas les dégâts subis ;
-//   - Impact (rendement offensif) sans damage_dealt.
+//   - Impact (rendement offensif) sans damage_dealt ;
+//   - Objectif sans bloc objectif Q12 (match Slayer, titre sans
+//     match.objective.stats) → l'index par opportunité n'est pas calculable.
 func dropUncomputableRadarAxes(axes []narrative.ParticipationScore, me domain.ScoreboardRaw) []narrative.ParticipationScore {
 	drop := map[narrative.ParticipationAxis]bool{}
 	if me.DamageTaken == nil {
@@ -292,6 +397,9 @@ func dropUncomputableRadarAxes(axes []narrative.ParticipationScore, me domain.Sc
 	}
 	if me.DamageDealt == nil {
 		drop[narrative.AxisImpact] = true
+	}
+	if !me.Obj.HasObjective() {
+		drop[narrative.AxisObjective] = true
 	}
 	if len(drop) == 0 {
 		return axes

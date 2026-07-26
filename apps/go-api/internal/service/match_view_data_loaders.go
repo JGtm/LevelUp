@@ -87,8 +87,10 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 	})
 	goLoad(gctx, g, matchID, "objective score", func() error {
 		var e error
-		// Score PSA catégorie 'objective' pour le joueur courant — alimente l'axe
-		// Objective du radar synergie. Dégradation silencieuse à 0.
+		// Score PSA catégorie 'objective' pour le joueur courant — consommé
+		// UNIQUEMENT par le résiduel de l'axe Score du radar (décision 1, plan
+		// PLAN_AXE_OBJECTIFS_INDEX ; l'axe Objectif vient de l'index par
+		// opportunité sur le bloc Q12). Dégradation silencieuse à 0.
 		d.objectiveScore, e = s.repo.GetMatchObjectiveScore(gctx, s.xuid, matchID)
 		return e
 	})
@@ -409,11 +411,12 @@ func (s *MatchViewService) buildMatchViewFromData(
 	}
 	mediaTab := buildMediaTab(d.media)
 
-	// MV4.B' : radar 6 axes calculé depuis le scoreboard (kills/HS/PK/assists/
-	// accuracy/deaths/damage/score). Mêmes formules que le radar squad
-	// (loadSynergyMateAxes), appliquées à un seul match. Pas besoin de
-	// personal_score_awards — toutes les colonnes nécessaires sont déjà dans
-	// match_participants. L'axe Objective reste neutre (threshold=0).
+	// MV4.B' : radar calculé depuis le scoreboard (kills/HS/PK/assists/accuracy/
+	// deaths/damage/score + bloc objectif Q12). Mêmes formules que le radar squad
+	// (loadSynergyMateAxes), appliquées à un seul match. L'axe Objectif = index
+	// par opportunité sur row.Obj (retiré si match sans bloc objectif) ; le PSA
+	// d.objectiveScore ne sert plus qu'au résiduel de l'axe Score (décision 1,
+	// plan PLAN_AXE_OBJECTIFS_INDEX).
 	modeFamily := matchModeFamilyFromMeta(meta)
 	radarSeries := BuildMatchRadarFromScoreboard(d.scoreboard, s.xuid, d.objectiveScore, modeFamily, games.EffectiveHpToKill(s.titleSlug), games.OffensiveConversionP80(s.titleSlug))
 	radar := make([]any, 0, len(radarSeries))

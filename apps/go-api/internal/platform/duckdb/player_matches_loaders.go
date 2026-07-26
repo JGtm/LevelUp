@@ -51,61 +51,6 @@ func (r *PlayerMatchesRepo) LobbySizesAtCompletion(ctx context.Context, matchIDs
 	return out, rows.Err()
 }
 
-// ObjectiveScores retourne, par match_id, la somme des scores PSA de catégorie
-// "objective" du joueur (table personal_score_awards, DB player). Alimente l'axe
-// Objective (+ le résiduel de l'axe Score) du profil de participation de la session.
-// Dégradation silencieuse : table absente / joueur sans PSA → map vide.
-func (r *PlayerMatchesRepo) ObjectiveScores(ctx context.Context, matchIDs []string) (map[string]int, error) {
-	out := make(map[string]int, len(matchIDs))
-	if len(matchIDs) == 0 || r.pdb == nil || r.pdb.XUID == "" {
-		return out, nil
-	}
-	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
-	defer cancel()
-
-	var tableCount int
-	tblRows, err := r.pdb.ReadDB().QueryRowRecovered(ctx, `
-		SELECT COUNT(*) FROM information_schema.tables
-		WHERE table_name = 'personal_score_awards'
-	`)
-	if err != nil {
-		return out, nil
-	}
-	scanErr := tblRows.Scan(&tableCount)
-	_ = tblRows.Close()
-	if scanErr != nil || tableCount == 0 {
-		return out, nil
-	}
-
-	ph := Placeholders(len(matchIDs))
-	args := make([]any, 0, 1+len(matchIDs))
-	args = append(args, r.pdb.XUID)
-	for _, id := range matchIDs {
-		args = append(args, id)
-	}
-	q := `SELECT match_id, COALESCE(SUM(award_score), 0)::INTEGER AS total
-	      FROM personal_score_awards_latest
-	      WHERE award_category = 'objective'
-	        AND xuid = ?
-	        AND match_id IN (` + ph + `)
-	      GROUP BY match_id`
-
-	rows, err := r.pdb.ReadDB().QueryRecovered(ctx, q, args...)
-	if err != nil {
-		return nil, fmt.Errorf("objective scores query: %w", err)
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var id string
-		var total int
-		if err := rows.Scan(&id, &total); err != nil {
-			return nil, fmt.Errorf("objective scores scan: %w", err)
-		}
-		out[id] = total
-	}
-	return out, rows.Err()
-}
-
 func (r *PlayerMatchesRepo) loadSharedRows(ctx context.Context, filters port.PlayerMatchFilters) ([]playerMatchScanResult, error) {
 	q, args, _, err := r.buildSharedQuery(filters)
 	if err != nil {

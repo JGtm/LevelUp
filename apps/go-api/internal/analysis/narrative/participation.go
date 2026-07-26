@@ -45,8 +45,13 @@ type ParticipationThresholds struct {
 
 // DefaultThresholds retourne les seuils par defaut pour une famille de mode.
 // Les familles supportees sont : "slayer", "ctf", "strongholds", "oddball",
-// "custom" (defaut). Calibration initiale heuristique, a ajuster en Phase 1
-// pilote (Squad/MatchView) avec donnees reelles.
+// "custom" (defaut). Calibration initiale heuristique.
+//
+// NOTE (2026-07-26, plan PLAN_AXE_OBJECTIFS_INDEX) : le champ Objective de ces
+// seuils n'est PLUS consomme par les surfaces vivantes — elles alimentent l'axe
+// via ComputeObjectiveIndex et ecrasent le seuil par ObjectiveIndexThreshold
+// (cf. profile.aggregateNarrative, qui surcharge DefaultThresholds("custom")).
+// Les autres champs restent les defauts des heuristiques V1.
 func DefaultThresholds(modeFamily string) ParticipationThresholds {
 	switch modeFamily {
 	case "ctf":

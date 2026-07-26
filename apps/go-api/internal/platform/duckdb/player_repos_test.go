@@ -304,9 +304,7 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 			times_selected_as_vip INTEGER, max_killing_spree_as_vip INTEGER,
 			time_as_vip_seconds DOUBLE, longest_time_as_vip_seconds DOUBLE,
 			written_at TIMESTAMP DEFAULT now())`,
-		`CREATE OR REPLACE VIEW match_objective_stats_latest AS
-			SELECT * FROM shared.match_objective_stats
-			QUALIFY ROW_NUMBER() OVER (PARTITION BY match_id, xuid ORDER BY written_at DESC, id DESC) = 1`,
+		migration.MatchObjectiveStatsLatestViewSQL("shared.match_objective_stats"),
 		// Schéma append-only (Phase 2.G refactor ART) + vue latest
 		`CREATE SEQUENCE pcs_seq START 1`,
 		`CREATE TABLE player_csr_snapshots (
