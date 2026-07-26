@@ -189,6 +189,26 @@ function alignClass(colId: string): string {
   return RIGHT_ALIGNED_COLUMNS.has(colId) ? 'text-right' : 'text-left'
 }
 
+/** Colonnes ICÔNE (en-tête vide, contenu = une seule icône de 16 px).
+ *
+ *  Elles ont besoin d'une largeur RÉSERVÉE. Le tableau est en `w-full` avec une
+ *  largeur automatique : quand la place manque, le navigateur comprime en priorité
+ *  les colonnes sans contenu textuel. Le lien/bouton étant un conteneur `flex`,
+ *  l'icône est un élément flexible et se laissait écraser jusqu'à disparaître —
+ *  colonne présente dans le DOM, logo invisible à l'écran (constaté 2026-07-26 sur
+ *  l'Explorer, mode sombre). Le `<svg>` inline de la colonne « ouvrir » y résistait
+ *  mieux qu'un `<img>`, d'où un symptôme sur une seule des deux colonnes.
+ *
+ *  `w-9` = 16 px d'icône + les 2×8 px de `px-2` du gabarit commun. On réserve la
+ *  largeur ICI plutôt que d'élargir le rembourrage global, qui décollerait tout le
+ *  reste du tableau de ses bordures. */
+const ICON_COLUMNS = new Set<string>(['open', 'waypoint'])
+
+/** Classe de largeur d'une colonne : réservée pour les colonnes icône, libre sinon. */
+function widthClass(colId: string): string {
+  return ICON_COLUMNS.has(colId) ? 'w-9' : ''
+}
+
 /** Indicateur de tri de la colonne active : ▲ ascendant / ▼ descendant. Rien sur
  *  les colonnes inactives (l'affordance clic vient du <button> + hover). Tokens
  *  semantiques uniquement, aucune couleur. */
@@ -357,7 +377,10 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
               src={waypointLogoSrc(theme)}
               alt=""
               aria-hidden
-              className="h-4 w-4 opacity-60 group-hover:opacity-100 transition-opacity"
+              // shrink-0 : l'image est un élément flexible du <a> ci-dessus. Sans
+              // lui, une colonne comprimée par le tableau l'écrase jusqu'à la
+              // faire disparaître (cf. ICON_COLUMNS).
+              className="h-4 w-4 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity"
             />
           </a>
         ),
@@ -863,7 +886,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
                   // d'ouverture) : en-tête statique.
                   if (!h.column.getCanSort()) {
                     return (
-                      <th key={h.id} className={`${HEADER_TH_CLASS} ${alignClass(h.column.id)}`}>
+                      <th key={h.id} className={`${HEADER_TH_CLASS} ${alignClass(h.column.id)} ${widthClass(h.column.id)}`}>
                         <span className="inline-flex items-center gap-1">
                           {content}
                           <HeaderInfoTooltip text={tip} />
@@ -876,7 +899,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
                     sortDir === 'asc' ? 'ascending' : sortDir === 'desc' ? 'descending' : 'none'
                   const labelKey = SORT_ARIA_LABEL_KEYS[h.column.id]
                   return (
-                    <th key={h.id} className={`${HEADER_TH_CLASS} ${alignClass(h.column.id)}`} aria-sort={ariaSort}>
+                    <th key={h.id} className={`${HEADER_TH_CLASS} ${alignClass(h.column.id)} ${widthClass(h.column.id)}`} aria-sort={ariaSort}>
                       {/* Le <th> porte déjà l'alignement (text-right/left) : le bouton
                           reste inline-flex et l'icône ⓘ est sa sœur. */}
                       <span className="inline-flex items-center gap-1">
@@ -916,7 +939,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
                   return (
                     <td
                       key={cell.id}
-                      className={`px-2 py-1 whitespace-nowrap border-r border-border last:border-r-0 ${alignClass(colId)}`}
+                      className={`px-2 py-1 whitespace-nowrap border-r border-border last:border-r-0 ${alignClass(colId)} ${widthClass(colId)}`}
                       style={hlStyle}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
