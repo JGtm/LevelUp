@@ -1,3 +1,38 @@
+> # RÉSOLU LE 2026-07-26 — NE PAS TRAVAILLER À PARTIR DE CE DOCUMENT
+>
+> **La cause racine annoncée en section 0 (« le second verrou, la préférence
+> `showWaypointColumn` du localStorage ») est FAUSSE.** La colonne était visible et le
+> réglage activé ; c'est le LOGO à l'intérieur de la cellule qui ne se rendait pas.
+>
+> Correctif livré : commit `c22627074`, sur `ExplorerMatchesTable.tsx` et
+> `SquadSynergyHistoryTable.tsx`. **Trois causes CSS distinctes**, aucune liée à une
+> capability ni à une préférence :
+>
+> 1. Le lien était un conteneur flex sans dimension propre, dans une cellule de tableau en
+>    largeur automatique. Chrome et Firefox ne résolvent pas la taille intrinsèque de la
+>    même façon dans ce cas — **Firefox écrasait l'image à zéro, Chrome non**. D'où un bug
+>    invisible à toute mesure prise sous Chrome. Le lien porte désormais une taille fixe.
+> 2. Attributs HTML `width`/`height` absents : le moteur ne connaissait pas la taille avant
+>    de résoudre le CSS. C'est le point qui manquait côté Firefox.
+> 3. L'asset est un logotype 360x160 forcé dans un carré 16x16 sans `object-fit` — écrasé en
+>    traits sub-pixel sur **tous** les navigateurs, y compris ceux où il apparaissait.
+>    `object-contain` rétabli.
+>
+> **Ce qui reste valable dans ce document** : la section 1 (mécanisme des deux verrous),
+> l'établissement que `waypoint_match_url` EST bien déclarée pour Halo Infinite dans le
+> descripteur Go `internal/domain/title/registry.go` (et non dans un TOML — ne pas créer
+> `config/titles/halo_infinite/title.toml`), et le constat de documentation inversée (déjà
+> corrigé, commit `aa3c40630`).
+>
+> **Ce qui est faux ou incomplet** : le résumé exécutif, la conclusion par élimination, et
+> neuf points relevés par une contre-revue (inventaire des consommateurs incomplet, page
+> Session écartée à tort, mécanisme de synchronisation inter-onglets, sémantique TanStack de
+> `getIsVisible`, commande console non protégée contre `null`). Ils ne sont pas corrigés ici :
+> le document est clos, pas maintenu.
+>
+> Analyse complète et leçon de méthode : `.ai/thought_log.md`, entrée du 2026-07-26
+> « Logo Waypoint invisible : trois causes, une seule visible sous Firefox ».
+
 # DIAG — Colonne Halo Waypoint invisible sur Halo Infinite (Explorer)
 
 Date : 2026-07-26. Investigation seule, aucune modification de code.
