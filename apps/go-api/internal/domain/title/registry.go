@@ -113,10 +113,13 @@ const (
 	// CapWaypointMatchURL - le titre expose une page de detail de match publique
 	// sur le site officiel Halo Waypoint (URL construite cote front, helper canonique
 	// buildWaypointMatchUrl dans apps/web), permettant un lien direct "Ouvrir sur
-	// Halo Waypoint" depuis les tableaux de matchs. Halo Infinite : oui. Halo 5 :
-	// non declaree (I19) - Waypoint ne sert pas de page de detail de match Halo 5 ;
-	// le chemin d'URL est de toute facon specifique a Infinite. Absente => le front
-	// masque la colonne/lien correspondant (pas de lien mort).
+	// Halo Waypoint" depuis les tableaux de matchs. DECLAREE PAR LES DEUX TITRES
+	// depuis le 2026-07-24 (c5dfb9bfd) : Halo Infinite ici meme, Halo 5 dans
+	// config/titles/halo_5/title.toml. Les chemins d'URL DIFFERENT par titre et
+	// sont resolus cote front par buildWaypointMatchUrl (segment de titre + bucket
+	// "arena/" pour Halo 5) : la difference de format n'est donc pas un motif
+	// d'exclusion. Absente => le front masque la colonne/lien correspondant (pas
+	// de lien mort).
 	CapWaypointMatchURL Capability = "waypoint_match_url"
 
 	// CapObjectiveStats — le titre expose des STATS OBJECTIFS par joueur/match des
