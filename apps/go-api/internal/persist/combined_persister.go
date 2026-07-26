@@ -87,8 +87,16 @@ func (p *CombinedPersister) Persist(ctx context.Context, batch *MatchBatch) erro
 	}
 
 	writeStart := time.Now()
-	sharedErr := NewSharedPersister(sharedDB).Persist(ctx, batch)
-	releaseShared()
+	// releaseShared sous defer d'une closure : la libération reste ANTICIPÉE
+	// (writer rendu avant la phase player, comme avant), mais elle survit
+	// désormais à un panic dans SharedPersister.Persist. Sans ce defer, un panic
+	// pendant l'écriture laissait le writer RW tenu jusqu'au restart du process
+	// (verrou shared pour tout le monde — scénario d'incident verrou réel).
+	var sharedErr error
+	func() {
+		defer releaseShared()
+		sharedErr = NewSharedPersister(sharedDB).Persist(ctx, batch)
+	}()
 	observePersistPhase("shared_write", writeStart, sharedErr == nil)
 
 	if sharedErr != nil {

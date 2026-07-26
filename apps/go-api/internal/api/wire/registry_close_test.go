@@ -1,9 +1,11 @@
 package wire
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
 
+	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/duckdb"
 )
 
@@ -37,4 +39,33 @@ func TestServiceRegistry_Close_ReleasesTrackedMetadataHandles(t *testing.T) {
 	if refs := duckdb.DumpCachedLeaks()["rw:"+path]; refs != 0 {
 		t.Fatalf("handle metadata non libéré après reg.Close(): refCount=%d (attendu 0)", refs)
 	}
+}
+
+// TestServiceRegistry_Close_ReleasesMonitoringStore vérifie que le handle
+// monitoring.duckdb ouvert au boot (ops.NewMonitoringStore → OpenReadWrite) est
+// bien fermé par Close(). Non-régression de l'anomalie D (prod 2026-07-26) : le
+// champ monitoringStore était ignoré par Close(), et duckdb.CloseAll() ne
+// parcourt que le pool joueur — refCount=1 résiduel à CHAQUE arrêt
+// (WARN shutdown_db_leak) + WAL non checkpointé.
+func TestServiceRegistry_Close_ReleasesMonitoringStore(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "monitoring.duckdb")
+
+	store, err := ops.NewMonitoringStore(context.Background(), path)
+	if err != nil {
+		t.Fatalf("NewMonitoringStore: %v", err)
+	}
+	if refs := duckdb.DumpCachedLeaks()["rw:"+path]; refs != 1 {
+		t.Fatalf("précondition: refCount attendu 1 après ouverture, got %d", refs)
+	}
+
+	reg := &ServiceRegistry{}
+	reg.WithMonitoringStore(store)
+
+	reg.Close()
+
+	if refs := duckdb.DumpCachedLeaks()["rw:"+path]; refs != 0 {
+		t.Fatalf("store monitoring non libéré après reg.Close(): refCount=%d (attendu 0)", refs)
+	}
+	// Idempotence : un 2e Close ne doit ni paniquer ni re-fermer.
+	reg.Close()
 }

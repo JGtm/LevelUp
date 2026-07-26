@@ -2,8 +2,9 @@
  * TimeseriesPage — onglet "Progression".
  *
  * Découpé depuis TimeseriesPage.tsx (audit #6 god-file split).
- * Contenu : first event, per minute, performance, spree/headshots, rank score,
- * skill rank perf, efficiency, engagement section, intensity heatmap + table.
+ * Contenu : premier frag / première mort, per minute, performance,
+ * spree/headshots, rank score, skill rank perf, efficiency, engagement section,
+ * profil d'intensité + table.
  */
 import { useMemo } from 'react'
 import { type ColumnDef } from '@tanstack/react-table'
@@ -11,7 +12,8 @@ import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { EfficiencyTooltipText } from '@/components/charts/EfficiencyTooltipText'
 import { tokenCssVar } from '@/lib/accessibility'
 import { formatWinProb } from '@/lib/winProbCategory'
-import { TimeseriesFirstEventDistribution } from './TimeseriesFirstEventDistribution'
+import { FirstBloodLanes } from '@/components/charts/FirstBloodLanes'
+import { firstBloodMaxSec, toFirstBloodSeries } from '@/features/_shared/firstBlood'
 import {
   TimeseriesPerformanceTrend,
   TimeseriesPerMinuteTrend,
@@ -83,6 +85,9 @@ export function TimeseriesProgressionTab({
     [t],
   )
   const emptyMsg = t('timeseries.empty.no_data_description')
+  // « Premier frag / première mort » : série solo servie par le payload de page —
+  // même scope (filtres L2) que tous les autres blocs Progression.
+  const firstBlood = useMemo(() => toFirstBloodSeries(data.first_blood), [data.first_blood])
   // Charts dépendant du rating de skill (CSR/LUSR) : masqués pour un titre sans
   // système de rang. NO-OP halo_infinite (déclare 'ranked' + 'lusr'). RankScore
   // (score + placement de match) reste générique. Les deux hooks sont appelés
@@ -96,16 +101,14 @@ export function TimeseriesProgressionTab({
   const hasCareerXP = (data.match_rows ?? []).some((r) => r.career_xp_estimated != null)
   return (
     <div className="space-y-8">
-      {/* timeseries.11 — Premier événement (gauche) | timeseries.14 — Par minute (droite) */}
+      {/* Premier frag / première mort (gauche, bande solo) | timeseries.14 — Par
+          minute (droite). Titre et état vide portés par le manifest partagé
+          first_blood — même vocabulaire que l'Escouade et les Sessions. */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <TimeseriesFirstEventDistribution
-          title={t('timeseries.progression.first_event_title')}
+        <FirstBloodLanes
+          data={firstBlood}
+          maxSec={firstBloodMaxSec(firstBlood)}
           emptyMessage={emptyMsg}
-          data={data.first_events ?? { buckets: [] }}
-          killsLabel={t('timeseries.progression.first_kill')}
-          deathsLabel={t('timeseries.progression.first_death')}
-          meanLabel={t('timeseries.progression.avg')}
-          xAxisLabel={t('timeseries.progression.time_axis')}
         />
 
         <TimeseriesPerMinuteTrend

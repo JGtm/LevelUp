@@ -27,6 +27,21 @@ const (
 	StatusAbandoned CampaignStatus = "abandoned"
 )
 
+// Valid retourne true si le statut appartient à l'énum.
+//
+// La colonne `improvement_campaign.status` est un VARCHAR sans contrainte : une
+// valeur inventée s'insère sans erreur et disparaît simplement des lectures, qui
+// filtrent sur des littéraux ('active' pour GetActive, IN ('completed',
+// 'abandoned') pour ListEnded). Tout producteur de lignes doit donc valider
+// AVANT d'écrire — sinon l'invisibilité est le seul symptôme.
+func (s CampaignStatus) Valid() bool {
+	switch s {
+	case StatusActive, StatusPaused, StatusCompleted, StatusAbandoned:
+		return true
+	}
+	return false
+}
+
 // AxisKind différencie un axe radar (1 des 6 narrative) d'une composante LUSR
 // (1 des 8 du composite_score). Le tracking sera différent selon le kind :
 //

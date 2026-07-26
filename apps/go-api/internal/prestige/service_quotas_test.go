@@ -88,6 +88,9 @@ func (f *fakeBaselineProvider) RecentMatches(_ context.Context, _, _ string, _ i
 func (f *fakeBaselineProvider) PopulationPercentile(_ context.Context, _, _ string, _ float64) (float64, int, error) {
 	return 0.95, 100, nil // au-dessus de p90 → mythic éligible
 }
+func (f *fakeBaselineProvider) CumulativeSince(_ context.Context, _, _ string, _ time.Time) (float64, int, error) {
+	return 10.0, 10, nil // somme des 10 matchs ci-dessus
+}
 
 // buildServiceForQuotaTests assemble un service minimal avec un fake repo.
 //

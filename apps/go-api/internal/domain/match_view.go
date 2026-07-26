@@ -73,7 +73,16 @@ type MatchViewHeader struct {
 	// IsRanked : true si la playlist est classée (CSR officiel). Utilisé côté
 	// front pour désactiver le bouton "Exclure" (un match classé ne peut pas
 	// être exclu). Source : shared.match_registry.is_ranked.
-	IsRanked                bool   `json:"is_ranked"`
+	IsRanked bool `json:"is_ranked"`
+	// IsOvertime : le match est parti en PROLONGATION (durée de jeu observée
+	// au-delà du temps réglementaire de la variante + marge mesurée, cf.
+	// analysis.ComputeOvertime). False quand le titre n'a pas de table
+	// réglementaire, que la variante y est inconnue ou que la durée n'est pas
+	// estimable — jamais d'erreur (dégradation sûre).
+	IsOvertime bool `json:"is_overtime,omitempty"`
+	// OvertimeSeconds : dépassement réel du temps réglementaire, en secondes
+	// (0 quand IsOvertime est faux). Alimente le tooltip « Prolongation : +X ».
+	OvertimeSeconds         int    `json:"overtime_seconds,omitempty"`
 	PlayableDurationSeconds *int64 `json:"playable_duration_seconds,omitempty"`
 	WaypointURL             string `json:"waypoint_url,omitempty"`
 	// MapImageURL : URL de l'image de la map (résolue via TitleAssetURLAdapter

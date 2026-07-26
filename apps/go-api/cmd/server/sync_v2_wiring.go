@@ -156,11 +156,16 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 	// AcquireSharedWriterStandalone route via deps.Cfg.SharedProvider.AcquireWriter
 	// (B-swap) ou OpenSharedDB legacy. Le release rend le writer (RW→RO).
 	acquireSharedRW := func(ctx context.Context) (*sql.DB, func(), error) {
-		// Étape 0 attribution : SUSPECT PRINCIPAL de la fenêtre RW longue — le
-		// post-sync V2 tient le writer pendant les 14 étapes (weapon-kills réseau
-		// inclus) alors que la phase persist V2 est sub-seconde. Le label rend ce
-		// détenteur mesurable (carte admin + watchdog) avant son refactor.
-		ctx = ctxkeys.WithDBWriterLabel(ctx, "sync_v2_postsync")
+		// Étape 0 attribution : le post-sync V2 est le principal détenteur de la
+		// fenêtre RW. Le label le rend mesurable (carte admin + watchdog).
+		//
+		// IfAbsent (et pas WithDBWriterLabel nu) : en mode bursts, l'appelant est
+		// SharedAccess.Write, qui a DÉJÀ posé le label fin "sync_v2_postsync/<step>"
+		// (weapons, events, psa_aliases). Écraser ici ramenait les 3 étapes sous le
+		// même label grossier — les WARN watchdog prod n'attribuaient plus la
+		// fenêtre à l'étape fautive. Seuls les call-sites nus (chemin pinned de
+		// rollback LEVELUP_POSTSYNC_BURST=0) reçoivent le label de base.
+		ctx = ctxkeys.WithDBWriterLabelIfAbsent(ctx, "sync_v2_postsync")
 		return syncpkg.AcquireSharedWriterStandalone(ctx, deps.Cfg.SharedProvider, sharedPath)
 	}
 

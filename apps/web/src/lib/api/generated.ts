@@ -4110,7 +4110,9 @@ export interface components {
              */
             code: string;
             /** @description Contexte structuré optionnel (objet ou tableau) */
-            details?: unknown;
+            details?: {
+                [key: string]: unknown;
+            } | unknown[];
             /** @description Erreurs de validation par champ (corps de requête) */
             field_errors?: components["schemas"]["FieldError"][] | null;
             /** @description Message humain localisé */
@@ -5474,6 +5476,7 @@ export interface components {
             experience_type_label: string;
             /** @description Un coéquipier était un bot. Exposé sur les best_matches de la carrière (les LOSS avec bot sont exclus côté backend). */
             had_bot_teammate?: boolean;
+            is_overtime?: boolean;
             is_with_friends: boolean;
             /** Format: double */
             kda?: number;
@@ -5486,6 +5489,8 @@ export interface components {
             /** Format: int64 */
             outcome_code: number;
             outcome_label: string;
+            /** Format: int64 */
+            overtime_seconds?: number;
             /** Format: int64 */
             perf_placement_done?: number;
             /** Format: int64 */
@@ -5728,22 +5733,16 @@ export interface components {
         FilterMatchIDsResponse: {
             match_ids: string[] | null;
         };
-        FirstEventBucket: {
-            /** Format: int64 */
-            first_deaths: number;
-            /** Format: int64 */
-            first_kills: number;
+        FirstBloodMatchPoint: {
             /** Format: double */
-            lower_seconds: number;
+            first_death_sec: number | null;
             /** Format: double */
-            upper_seconds: number;
+            first_kill_sec: number | null;
+            match_id: string;
         };
-        FirstEventDistribution: {
-            buckets: components["schemas"]["FirstEventBucket"][] | null;
-            /** Format: double */
-            mean_first_death_seconds?: number;
-            /** Format: double */
-            mean_first_kill_seconds?: number;
+        FirstBloodPlayerSeries: {
+            matches: components["schemas"]["FirstBloodMatchPoint"][] | null;
+            player: string;
         };
         FormTabResponse: {
             has_enough_data: boolean;
@@ -6599,6 +6598,7 @@ export interface components {
             expected_win_prob?: number;
             experience_type_label?: string;
             is_excluded: boolean;
+            is_overtime?: boolean;
             is_with_friends: boolean;
             /** Format: double */
             kda?: number;
@@ -6611,6 +6611,8 @@ export interface components {
             /** Format: int64 */
             outcome_code: number;
             outcome_label: string;
+            /** Format: int64 */
+            overtime_seconds?: number;
             /** Format: int64 */
             perf_placement_done?: number;
             /** Format: int64 */
@@ -7079,6 +7081,7 @@ export interface components {
             had_bot_teammate: boolean;
             is_excluded: boolean;
             is_favorite: boolean;
+            is_overtime?: boolean;
             is_ranked: boolean;
             map_id?: string;
             map_image_url?: string;
@@ -7090,6 +7093,8 @@ export interface components {
             outcome_color: string;
             outcome_color_token?: string;
             outcome_label: string;
+            /** Format: int64 */
+            overtime_seconds?: number;
             performance_color?: string;
             performance_color_token?: string;
             performance_display: string;
@@ -8753,11 +8758,13 @@ export interface components {
         SessionPageResponse: {
             available_sessions: string[] | null;
             compare_enabled: boolean;
+            compare_first_blood?: components["schemas"]["FirstBloodPlayerSeries"][] | null;
             compare_intensity_rows?: components["schemas"]["IntensityMatchRow"][] | null;
             compare_matches: components["schemas"]["SessionDetailMatchRow"][] | null;
             compare_metrics: components["schemas"]["SessionCompareMetricRow"][] | null;
             compare_session?: components["schemas"]["SessionCompareEntry"];
             current_session: components["schemas"]["SessionCompareEntry"];
+            first_blood?: components["schemas"]["FirstBloodPlayerSeries"][] | null;
             intensity_rows?: components["schemas"]["IntensityMatchRow"][] | null;
             matches: components["schemas"]["SessionDetailMatchRow"][] | null;
             next_session_label?: string;
@@ -8979,17 +8986,6 @@ export interface components {
             players: components["schemas"]["SquadPlayerEngagement"][] | null;
             team_expected: number[] | null;
             team_observed: number[] | null;
-        };
-        SquadFirstEvents: {
-            bin_labels: string[] | null;
-            /** Format: int64 */
-            bin_size_seconds: number;
-            rows: components["schemas"]["SquadFirstEventsRow"][] | null;
-        };
-        SquadFirstEventsRow: {
-            death_counts: number[] | null;
-            kill_counts: number[] | null;
-            player: string;
         };
         SquadHeader: {
             all_time_kpis?: components["schemas"]["KPIStats"];
@@ -9679,7 +9675,7 @@ export interface components {
         };
         TeammatesPageResponse: {
             composition_sessions?: components["schemas"]["SessionLabelEntry"][] | null;
-            first_events?: components["schemas"]["SquadFirstEvents"];
+            first_blood?: components["schemas"]["FirstBloodPlayerSeries"][] | null;
             frag_classes?: {
                 [key: string]: components["schemas"]["FragClassEntry"][] | null;
             };
@@ -9870,7 +9866,7 @@ export interface components {
             briefing_kpis?: components["schemas"]["KPIStats"];
             cumul_tab: components["schemas"]["TimeseriesCumulTab"];
             distributions_tab: components["schemas"]["TimeseriesDistributionsTab"];
-            first_events?: components["schemas"]["FirstEventDistribution"];
+            first_blood?: components["schemas"]["FirstBloodPlayerSeries"][] | null;
             frag_distribution?: components["schemas"]["FragDistribution"];
             intensity_rows?: components["schemas"]["IntensityMatchRow"][] | null;
             intensity_tab: components["schemas"]["TimeseriesIntensityTab"];

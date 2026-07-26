@@ -24,6 +24,18 @@ func (p *HaloBaselineProvider) RecentMatches(ctx context.Context, _, metric stri
 	return queryMatches(ctx, p.reader, q, p.xuid, window)
 }
 
+// 1bis. Somme cumulative bornee par une DATE (livree le 2026-07-26) : le seul
+//       parametre non-metier est un `since time.Time`, pas une identite.
+func (p *HaloBaselineProvider) CumulativeSince(ctx context.Context, _, metric string, since time.Time) (float64, int, error) {
+	q := fmt.Sprintf(`
+		SELECT COALESCE(SUM(CAST(%s AS DOUBLE)), 0), COUNT(*)
+		FROM match_participants mp
+		JOIN match_registry mr ON mr.match_id = mp.match_id
+		WHERE mp.xuid = ? AND mr.start_time >= ?
+	`, mapMetricToColumn(metric))
+	return queryTotal(ctx, p.reader, q, p.xuid, since)
+}
+
 func (p *HaloBaselineProvider) PopulationPercentile(ctx context.Context, _ string, metric string, target float64) (float64, int, error) {
 	q := fmt.Sprintf(`
 		SELECT mp.xuid, AVG(%s) AS avg_metric

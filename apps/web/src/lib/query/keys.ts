@@ -164,9 +164,12 @@ export const queryKeys = {
     ['media', playerSlug, titleSlug, 'audio-config'] as const,
   feedVersion: ['media', 'feed-version'] as const,
 
-  // Citations (Slice 2B)
-  citations: (playerSlug: string, titleSlug: string, filterHash: string) =>
-    ['citations', playerSlug, titleSlug, filterHash] as const,
+  // Citations (Slice 2B) — locale dans la clé : le backend bake les libellés de
+  // citations localisés (X-LevelUp-Locale) dans le payload. Sans elle, un fetch
+  // background survivant à la bascule de langue reste dans l'ancienne langue —
+  // cf. commentaire `home` ci-dessus (même motif).
+  citations: (playerSlug: string, titleSlug: string, filterHash: string, locale: string) =>
+    ['citations', playerSlug, titleSlug, filterHash, locale] as const,
 
   // Médailles (sous-page Carrière) — locale dans la clé : le backend bake les
   // libellés/descriptions de médailles localisés (X-LevelUp-Locale). Pas de
@@ -174,9 +177,11 @@ export const queryKeys = {
   medals: (playerSlug: string, titleSlug: string, locale: string) =>
     ['medals', playerSlug, titleSlug, locale] as const,
 
-  // Totaux à vie des commendations natives (Halo 5, AXE B) — par titre.
-  commendationTotals: (playerSlug: string, titleSlug: string) =>
-    ['commendation-totals', playerSlug, titleSlug] as const,
+  // Totaux à vie des commendations natives (Halo 5, AXE B) — par titre. Locale
+  // dans la clé : le backend bake les libellés/descriptions de commendations
+  // localisés (X-LevelUp-Locale) — cf. commentaire `home` ci-dessus.
+  commendationTotals: (playerSlug: string, titleSlug: string, locale: string) =>
+    ['commendation-totals', playerSlug, titleSlug, locale] as const,
 
   // Timeseries (Slice 3B) — 'solo' dans la clé pour invalider tout cache pré-fix
   timeseries: (playerSlug: string, titleSlug: string, filterHash: string) =>

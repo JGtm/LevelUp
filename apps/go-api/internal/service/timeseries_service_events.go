@@ -5,7 +5,6 @@ package service
 
 import (
 	"context"
-	"math"
 	"sort"
 	"time"
 
@@ -170,63 +169,23 @@ func buildIntensityRows(
 	return out
 }
 
-// buildFirstEventsDistribution agrège les premiers timings en buckets de 10
-// secondes + calcule les moyennes (markLines).
-func buildFirstEventsDistribution(rows []narrative.FirstEventsRow) *domain.FirstEventDistribution {
-	const binWidthSec = 10.0
-	type acc struct {
-		kills, deaths int
-	}
-	buckets := make(map[int]*acc)
-	var killSum, deathSum float64
-	var killN, deathN int
-	for _, r := range rows {
-		if r.FirstKillMS != nil {
-			sec := float64(*r.FirstKillMS) / 1000.0
-			idx := int(sec / binWidthSec)
-			if _, ok := buckets[idx]; !ok {
-				buckets[idx] = &acc{}
-			}
-			buckets[idx].kills++
-			killSum += sec
-			killN++
-		}
-		if r.FirstDeathMS != nil {
-			sec := float64(*r.FirstDeathMS) / 1000.0
-			idx := int(sec / binWidthSec)
-			if _, ok := buckets[idx]; !ok {
-				buckets[idx] = &acc{}
-			}
-			buckets[idx].deaths++
-			deathSum += sec
-			deathN++
-		}
-	}
-	if len(buckets) == 0 {
+// buildSoloFirstBlood projette les rows d'agrégation « premier événement » du
+// joueur suivi en série produit (chart lanes « Premier frag / première mort »).
+//
+// Solo : une seule série. Partagé par la page Timeseries et la page Session —
+// même contrat par match, même conversion ms → secondes (domain.NewFirstBloodPoint).
+// Retourne nil si aucun match ne porte de premier frag ni de première mort.
+func buildSoloFirstBlood(player string, rows []narrative.FirstEventsRow) []domain.FirstBloodPlayerSeries {
+	if player == "" || len(rows) == 0 {
 		return nil
 	}
-	idxs := make([]int, 0, len(buckets))
-	for i := range buckets {
-		idxs = append(idxs, i)
+	points := make([]domain.FirstBloodMatchPoint, 0, len(rows))
+	for _, r := range rows {
+		points = append(points, domain.NewFirstBloodPoint(r.MatchID, r.FirstKillMS, r.FirstDeathMS))
 	}
-	sort.Ints(idxs)
-	out := make([]domain.FirstEventBucket, 0, len(idxs))
-	for _, i := range idxs {
-		out = append(out, domain.FirstEventBucket{
-			LowerSeconds: float64(i) * binWidthSec,
-			UpperSeconds: float64(i+1) * binWidthSec,
-			FirstKills:   buckets[i].kills,
-			FirstDeaths:  buckets[i].deaths,
-		})
+	series := domain.FirstBloodPlayerSeries{Player: player, Matches: points}
+	if !series.HasEvents() {
+		return nil
 	}
-	dist := &domain.FirstEventDistribution{Buckets: out}
-	if killN > 0 {
-		v := math.Round((killSum/float64(killN))*10) / 10
-		dist.MeanFirstKillSeconds = &v
-	}
-	if deathN > 0 {
-		v := math.Round((deathSum/float64(deathN))*10) / 10
-		dist.MeanFirstDeathSeconds = &v
-	}
-	return dist
+	return []domain.FirstBloodPlayerSeries{series}
 }

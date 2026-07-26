@@ -2,13 +2,18 @@
 //
 // Sprint 41 T2 : connecte le package analysis/ au moteur de sync.
 //
-// Flux :
+// Flux, scindé en deux phases depuis v7.3 (le download film ne doit plus tenir
+// le writer RW shared — cf. engine_postsync_films.go) :
+//
+// COLLECT (collectWeaponKillsForMatch) — hors writer, lectures via un handle RO :
 //  1. GetMatchFilm → manifest + chunks binaires
 //  2. BuildWeaponTimelines (analysis) → timelines armes par chunk
 //  3. ScanFireEventsAll (analysis) → fire events de tous les joueurs
-//  4. getKillsForPlayer (shared DB) → kills à attribuer
+//  4. getKillsForPlayer + getXuidToPI (LECTURE shared) → kills à attribuer
 //  5. CorrelateKillsGlobal (analysis) → KillAttribution par kill
-//  6. ReconcileAPIAggregates (analysis) → ajustements depuis API counts
+//  6. attributionsToRows → lignes weapon_kills prêtes
+//
+// FLUSH (flushWeaponKillsForMatch) — burst writer court, SQL seul :
 //  7. InsertWeaponKills → écriture dans weapon_kills
 //  8. MarkWeaponKillsDone → mise à jour bitmask
 package sync
@@ -26,39 +31,57 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 )
 
-// weaponBackfillParallelism plafonne les matchs traités en parallèle par
-// processWeaponKillsInline. Le parallélisme est NETWORK-ONLY (download film +
-// corrélation en mémoire, throttle réel par le rate limiter HTTP). Les écritures
-// weapon_kills (DELETE-then-INSERT par match_id) sont sérialisées par le lease
-// shared + MaxOpenConns(1) → pas de concurrence sur l'index ART malgré le DELETE.
-// NB : weapon_kills n'est PAS append-only (pas de id/written_at/_latest) — la
-// sûreté vient de la sérialisation, pas du schéma. 24 = valeur Phase 3.6. Ex-
-// healParallelismNetworkOnly, relocalisé ici à la décommission des heals (2026-06-01).
+// weaponBackfillParallelism plafonne les matchs collectés en parallèle par
+// collectWeaponKillsChunk. Le parallélisme est NETWORK-ONLY (download film +
+// corrélation en mémoire + lectures RO, throttle réel par le rate limiter HTTP) :
+// depuis le split COLLECT/FLUSH (v7.3) aucune écriture n'a lieu dans ces
+// goroutines. Les écritures weapon_kills restent séquentielles, sérialisées par
+// le lease shared + MaxOpenConns(1). NB : weapon_kills n'est pas append-only au
+// sens des vues `_latest` — la sémantique REPLACE passe par generation_id
+// (v_weapon_kills lit la génération MAX), donc INSERT-only, sans DELETE.
+// 24 = valeur Phase 3.6. Ex-healParallelismNetworkOnly, relocalisé ici à la
+// décommission des heals (2026-06-01).
 const weaponBackfillParallelism = 24
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Pipeline principal
 // ─────────────────────────────────────────────────────────────────────────────
 
-// BackfillWeaponKillsForMatch exécute le pipeline complet pour un match.
-// Retourne (filmFound, error) : filmFound=false si le film est absent (404/410).
-func BackfillWeaponKillsForMatch(
+// collectedWeaponKills porte le produit de la phase COLLECT d'un match : les
+// lignes weapon_kills prêtes à écrire. Les chunks film (plusieurs Mo) ne sont PAS
+// retenus — ils sont libérés dès la corrélation terminée, donc le pic mémoire
+// d'un lot reste celui du nombre de matchs collectés EN PARALLÈLE, pas du lot.
+type collectedWeaponKills struct {
+	matchID   string
+	xuid      string
+	filmFound bool // false = 404/410 → le FLUSH pose le bit no-film
+	rows      []WeaponKillRow
+}
+
+// collectWeaponKillsForMatch — phase COLLECT d'un match : download film, scan des
+// fire events et corrélation. AUCUNE écriture. Les LECTURES shared nécessaires
+// (kills depuis highlight_events, mapping xuid→player_index) passent par
+// `readDB` : un handle de LECTURE (RO en mode burst), JAMAIS le writer.
+//
+// Erreur non-nil = rien à flusher pour ce match (film KO ou lecture kills KO) :
+// aucun bit n'est posé, le match est repris au cycle de convergence suivant.
+func collectWeaponKillsForMatch(
 	ctx context.Context,
 	client HaloClient,
-	sharedDB *sql.DB,
+	readDB *sql.DB,
 	matchID, xuid string,
-) (bool, error) {
+) (collectedWeaponKills, error) {
+	out := collectedWeaponKills{matchID: matchID, xuid: xuid}
+
 	// 1. Télécharger les chunks film.
 	rawChunks, found, err := client.GetMatchFilm(ctx, matchID)
 	if err != nil {
-		return false, fmt.Errorf("BackfillWeaponKillsForMatch film(%s): %w", matchID, err)
+		return out, fmt.Errorf("collectWeaponKillsForMatch film(%s): %w", matchID, err)
 	}
 	if !found {
-		if err := MarkWeaponKillsDone(ctx, sharedDB, matchID, true); err != nil {
-			slog.WarnContext(ctx, "backfill_weapons: MarkWeaponKillsDone (film absent) failed", "match_id", matchID, "err", err)
-		}
-		return false, nil
+		return out, nil // filmFound=false → MarkWeaponKillsDone(noFilm) au FLUSH
 	}
+	out.filmFound = true
 
 	// 2. Convertir FilmChunkData → analysis.ChunkData.
 	chunks := make(map[int]analysis.ChunkData, len(rawChunks))
@@ -81,22 +104,22 @@ func BackfillWeaponKillsForMatch(
 		allFireEvents = append(allFireEvents, evs...)
 	}
 
-	// 5. Récupérer les kills et le mapping xuid → player_index.
-	kills, err := getKillsForPlayer(ctx, sharedDB, matchID, xuid)
+	// 5. Récupérer les kills et le mapping xuid → player_index (LECTURES).
+	kills, err := getKillsForPlayer(ctx, readDB, matchID, xuid)
 	if err != nil {
-		return true, fmt.Errorf("BackfillWeaponKillsForMatch kills(%s): %w", matchID, err)
+		return out, fmt.Errorf("collectWeaponKillsForMatch kills(%s): %w", matchID, err)
 	}
 	if len(kills) == 0 {
-		// Pas de kills à corréler côté film → on ne MARQUE PAS bit21 (= "weapon_kills
-		// chargés"). Marquer ce bit alors qu'aucune ligne n'a été insérée a vidé
-		// silencieusement la table pour ~1010 matchs en mai 2026 (cf. thought_log
-		// 2026-05-09). Le match peut être retraité plus tard si highlight_events
-		// arrivent. Pas de bit22 non plus : le film EST disponible, c'est juste
-		// que la corrélation côté DB n'est pas prête.
-		return true, nil
+		// Pas de kills à corréler côté film → aucune ligne, donc on ne MARQUERA PAS
+		// bit21 (= "weapon_kills chargés"). Marquer ce bit alors qu'aucune ligne
+		// n'a été insérée a vidé silencieusement la table pour ~1010 matchs en mai
+		// 2026 (cf. thought_log 2026-05-09). Le match peut être retraité plus tard
+		// si highlight_events arrivent. Pas de bit22 non plus : le film EST
+		// disponible, c'est juste que la corrélation côté DB n'est pas prête.
+		return out, nil
 	}
 
-	xuidToPI, err := getXuidToPI(ctx, sharedDB, matchID)
+	xuidToPI, err := getXuidToPI(ctx, readDB, matchID)
 	if err != nil {
 		slog.WarnContext(ctx, "backfill_weapons: xuidToPI non disponible", "match_id", matchID, "err", err)
 		xuidToPI = map[string]int{}
@@ -116,21 +139,35 @@ func BackfillWeaponKillsForMatch(
 	)
 
 	// 7. Convertir en WeaponKillRow pour l'insertion.
-	rows := attributionsToRows(attrs, xuid)
+	out.rows = attributionsToRows(attrs, xuid)
+	return out, nil
+}
 
-	if err := InsertWeaponKills(ctx, sharedDB, matchID, xuid, rows); err != nil {
-		return true, fmt.Errorf("BackfillWeaponKillsForMatch insert(%s): %w", matchID, err)
+// flushWeaponKillsForMatch — phase FLUSH d'un match : écritures shared
+// UNIQUEMENT (INSERT weapon_kills + bit de complétion). Aucune I/O réseau : la
+// fonction est faite pour tenir dans un burst writer court.
+func flushWeaponKillsForMatch(ctx context.Context, sharedDB *sql.DB, c collectedWeaponKills) error {
+	if !c.filmFound {
+		if err := MarkWeaponKillsDone(ctx, sharedDB, c.matchID, true); err != nil {
+			slog.WarnContext(ctx, "backfill_weapons: MarkWeaponKillsDone (film absent) failed", "match_id", c.matchID, "err", err)
+		}
+		return nil
+	}
+	// Aucune ligne extraite : InsertWeaponKills serait un no-op (garde anti-perte
+	// de données) et bit21 NE DOIT PAS être posé — cf. thought_log 2026-05-09.
+	if len(c.rows) == 0 {
+		return nil
+	}
+	if err := InsertWeaponKills(ctx, sharedDB, c.matchID, c.xuid, c.rows); err != nil {
+		return fmt.Errorf("flushWeaponKillsForMatch insert(%s): %w", c.matchID, err)
 	}
 	// On ne pose bit21 QUE si quelque chose a effectivement été inséré.
 	// Garde-fou anti-faux-positif : un MarkWeaponKillsDone systématique a
 	// causé la perte de ~1010 matchs en mai 2026 (cf. thought_log 2026-05-09).
-	if len(rows) > 0 {
-		if err := MarkWeaponKillsDone(ctx, sharedDB, matchID, false); err != nil {
-			slog.WarnContext(ctx, "backfill_weapons: MarkWeaponKillsDone failed", "match_id", matchID, "err", err)
-		}
+	if err := MarkWeaponKillsDone(ctx, sharedDB, c.matchID, false); err != nil {
+		slog.WarnContext(ctx, "backfill_weapons: MarkWeaponKillsDone failed", "match_id", c.matchID, "err", err)
 	}
-
-	return true, nil
+	return nil
 }
 
 // BackfillWeaponKillsForMatchAll exécute le pipeline complet pour un match,
@@ -240,70 +277,73 @@ func BackfillWeaponKillsForMatchAll(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Méthode SyncEngine
+// Lot post-sync : COLLECT (hors writer) → FLUSH (burst court)
 // ─────────────────────────────────────────────────────────────────────────────
 
-// processWeaponKillsInline traite une liste de matchs sur des DBs déjà ouvertes
-// (i.e. sans acquérir de lease). Utilisé depuis le PostSync chain où le shared
-// lease est déjà détenu. Coût : 1 download film par match. Films absents
-// (404/410) sont silencieux (matchs trop anciens).
+// collectWeaponKillsChunk — phase COLLECT d'un lot : download film + corrélation
+// pour chaque match, EN PARALLÈLE (errgroup.SetLimit(weaponBackfillParallelism)),
+// sans qu'AUCUN writer shared ne soit tenu. `readDB` sert les lectures (kills,
+// player_index) : handle RO en mode burst.
 //
-// Parallélisé via errgroup.SetLimit(weaponBackfillParallelism=24) — plan
-// Phase 3.0 (gain ~150-200s/cycle Madina) puis Phase 3.6 bump 8→24. Le
-// parallélisme est network-only ; les writes weapon_kills (DELETE-then-INSERT)
-// sont sérialisés par le lease shared + MaxOpenConns(1), donc sans conflit ART
-// malgré le DELETE sur table indexée (weapon_kills n'est PAS append-only). Cf.
-// .ai/PLAN_SYNC_CONCURRENCY_STABILIZATION.md §3.0+§3.6 + handoff §3 priorité 1.
+// Parallélisme network-only — plan Phase 3.0 (gain ~150-200s/cycle Madina) puis
+// Phase 3.6 bump 8→24. Cf. .ai/PLAN_SYNC_CONCURRENCY_STABILIZATION.md §3.0+§3.6.
 //
-// Contrat de sortie (lock par TDD avant impl) :
-//   - matchIDs vide → (0, 0, nil)
-//   - Tous films présents → done = len(matchIDs), noFilm = 0
-//   - Tous films absents → done = 0, noFilm = len(matchIDs)
-//   - 1 call par match_id (ni duplicate ni perte)
-//   - Idempotent sur runs consécutifs
-//   - ctx.Cancel → retourne ctx.Err() (les goroutines en cours abortent)
-//   - Erreurs par-match : loggées WARN, best-effort (ne propage pas)
-func processWeaponKillsInline(
+// Best-effort par match : une erreur (film, lecture kills) est loggée WARN et le
+// match sort du lot — les autres matchs ne sont PAS jetés.
+func collectWeaponKillsChunk(
 	ctx context.Context,
-	sharedDB *sql.DB,
+	readDB *sql.DB,
 	client HaloClient,
 	xuid string,
 	matchIDs []string,
-) (done, noFilm int, err error) {
+) []collectedWeaponKills {
 	if len(matchIDs) == 0 {
-		return 0, 0, nil
+		return nil
 	}
 	var mu sync.Mutex
+	out := make([]collectedWeaponKills, 0, len(matchIDs))
 	eg, egCtx := errgroup.WithContext(ctx)
 	eg.SetLimit(weaponBackfillParallelism)
 	for _, matchID := range matchIDs {
-		matchID := matchID // capture pour closure
 		eg.Go(func() error {
 			if egCtx.Err() != nil {
 				return egCtx.Err()
 			}
-			found, procErr := BackfillWeaponKillsForMatch(egCtx, client, sharedDB, matchID, xuid)
+			collected, procErr := collectWeaponKillsForMatch(egCtx, client, readDB, matchID, xuid)
 			if procErr != nil {
 				slog.WarnContext(egCtx, "weapon_kills: erreur match", "match_id", matchID, "err", procErr)
 				return nil // best-effort : on n'interrompt pas les autres goroutines
 			}
 			mu.Lock()
-			if found {
-				done++
-			} else {
-				noFilm++
-			}
+			out = append(out, collected)
 			mu.Unlock()
 			return nil
 		})
 	}
 	_ = eg.Wait()
-	// Propager ctx.Err() si cancellation pendant la run (préserve la sémantique
-	// de l'ancienne version séquentielle qui retournait ctx.Err()).
-	if ctx.Err() != nil {
-		return done, noFilm, ctx.Err()
+	return out
+}
+
+// flushWeaponKillsChunk — phase FLUSH d'un lot : burst writer COURT, écritures
+// SQL seules (INSERT weapon_kills + bits). Séquentiel : les writes shared sont de
+// toute façon sérialisées par le lease + MaxOpenConns(1). Retourne (done, noFilm)
+// — mêmes compteurs que l'ancienne boucle inline.
+func flushWeaponKillsChunk(ctx context.Context, sharedDB *sql.DB, collected []collectedWeaponKills) (done, noFilm int) {
+	for _, c := range collected {
+		if ctx.Err() != nil {
+			break
+		}
+		if err := flushWeaponKillsForMatch(ctx, sharedDB, c); err != nil {
+			slog.WarnContext(ctx, "weapon_kills: erreur match", "match_id", c.matchID, "err", err)
+			continue
+		}
+		if c.filmFound {
+			done++
+		} else {
+			noFilm++
+		}
 	}
-	return done, noFilm, nil
+	return done, noFilm
 }
 
 // BackfillWeaponKillsForMatches traite une liste de matchs (film pipeline).

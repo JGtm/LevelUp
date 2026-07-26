@@ -80,24 +80,6 @@ type OutcomesPeriodPoint struct {
 	DNF         int    `json:"dnf"`
 }
 
-// FirstEventBucket agrège la distribution superposée du premier kill et de la
-// première mort par bin de N secondes depuis le début du match. Alimente le
-// chart timeseries.11 (Premier événement).
-type FirstEventBucket struct {
-	LowerSeconds float64 `json:"lower_seconds"`
-	UpperSeconds float64 `json:"upper_seconds"`
-	FirstKills   int     `json:"first_kills"`
-	FirstDeaths  int     `json:"first_deaths"`
-}
-
-// FirstEventDistribution est la distribution complète + les moyennes pour les
-// markLines (Moy. 38s sur le mock).
-type FirstEventDistribution struct {
-	Buckets               []FirstEventBucket `json:"buckets"`
-	MeanFirstKillSeconds  *float64           `json:"mean_first_kill_seconds,omitempty"`
-	MeanFirstDeathSeconds *float64           `json:"mean_first_death_seconds,omitempty"`
-}
-
 // IntensityMatchRow est une ligne du heatmap d'intensité solo (chart
 // "Intensité — frags par phase de match"). 1 match × 10 phases normalisées
 // (0..1) + label affichable (carte + date).
@@ -317,10 +299,10 @@ type TimeseriesPageResponse struct {
 	// winrate) et teammates.13 (grouped-bar perf) sur la page Stats. Vide si
 	// aucun match dans le scope.
 	MapBreakdown []MapBreakdownRow `json:"map_breakdown"`
-	// FirstEvents : distribution superposée du premier kill et de la première
-	// mort, alimentée via highlight_events. Nil si HighlightEventsRepo absent
+	// FirstBlood : premiers frag/mort PAR MATCH du joueur suivi (une seule série
+	// en solo), alimenté via highlight_events. Vide si HighlightEventsRepo absent
 	// ou aucun event dans le scope.
-	FirstEvents *FirstEventDistribution `json:"first_events,omitempty"`
+	FirstBlood []FirstBloodPlayerSeries `json:"first_blood,omitempty"`
 	// IntensityRows : 1 ligne par match × 10 phases normalisées (0..1) — frags
 	// du joueur sur la timeline du match, source highlight_events.
 	IntensityRows []IntensityMatchRow `json:"intensity_rows,omitempty"`

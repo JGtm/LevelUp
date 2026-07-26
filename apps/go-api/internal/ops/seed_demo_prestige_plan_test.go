@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/campaign"
 	"levelup/go-api/internal/prestige"
 	"levelup/go-api/internal/progression/records"
 )
@@ -46,6 +47,53 @@ func TestDemoPrestigePlan_NoRealIdentity(t *testing.T) {
 	}
 	if plan.Gamertag != DefaultDemoMainGamertag {
 		t.Errorf("Gamertag = %q, want %q", plan.Gamertag, DefaultDemoMainGamertag)
+	}
+}
+
+// TestDemoPrestigePlan_CampaignStatusesInEnum — RÉGRESSION 2026-07-26. La
+// campagne close était seedée « closed », hors de l'énum
+// active|paused|completed|abandoned. La colonne étant un VARCHAR libre, l'INSERT
+// passait ; c'est ListEnded (`status IN ('completed','abandoned')`) qui ne la
+// voyait jamais. Le test verrouille le couple attendu : 1 active + 1 terminale.
+func TestDemoPrestigePlan_CampaignStatusesInEnum(t *testing.T) {
+	plan := testDemoPlan(t)
+	if len(plan.Campaigns) != 2 {
+		t.Fatalf("campagnes démo = %d, want 2 (1 en cours + 1 close)", len(plan.Campaigns))
+	}
+	if err := validateDemoCampaigns(plan.Campaigns); err != nil {
+		t.Errorf("plan démo invalide: %v", err)
+	}
+	var active, ended int
+	for _, c := range plan.Campaigns {
+		switch c.Status {
+		case campaign.StatusActive:
+			active++
+			if c.EndedAt != nil {
+				t.Errorf("campagne %s active avec un ended_at", c.ID)
+			}
+		case campaign.StatusCompleted, campaign.StatusAbandoned:
+			ended++
+			if c.EndedAt == nil {
+				t.Errorf("campagne %s terminale sans ended_at — ListEnded la trierait NULLS LAST", c.ID)
+			}
+		default:
+			t.Errorf("campagne %s : statut %q ni actif ni terminal", c.ID, c.Status)
+		}
+	}
+	if active != 1 || ended != 1 {
+		t.Errorf("répartition = %d active / %d close, want 1 / 1", active, ended)
+	}
+}
+
+// TestValidateDemoCampaigns_RejectsUnknownStatus — preuve de morsure : la garde
+// doit refuser le statut EXACT qui a causé l'incident, sans quoi elle ne protège
+// rien.
+func TestValidateDemoCampaigns_RejectsUnknownStatus(t *testing.T) {
+	err := validateDemoCampaigns([]demoPrestigeCampaign{
+		{ID: "demo-campaign-kda", Status: campaign.CampaignStatus("closed")},
+	})
+	if err == nil {
+		t.Fatal("statut « closed » accepté — la garde ne mord pas")
 	}
 }
 

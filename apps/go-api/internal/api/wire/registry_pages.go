@@ -87,6 +87,9 @@ func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.Matc
 		WithSocial(duckdb.NewSocialRepo(pdb), slug).
 		WithAssetURL(r.assetURLFor(pdb.TitleSlug)).
 		WithTitleSlug(pdb.TitleSlug).
+		// Flag « Prolongation » : table réglementaire du titre (regulation.toml).
+		// Titre sans table → nil → jamais de flag.
+		WithRegulation(r.regulationFor(pdb)).
 		WithMetadataRepo(duckdb.NewMetadataRepo(pdb)).
 		// Loader unifié des highlight_events (MV4.A) : sans lui, d.canonicalEvents
 		// reste nil et la correction T0 (vrai début de match) est du code mort sur

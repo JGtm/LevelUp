@@ -1,5 +1,43 @@
 ## Dernières nouveautés
 
+**v7.3 — Prolongation, premier frag / première mort & la page Réalisations réparée**
+
+**La prolongation sur vos matchs**
+- **Un badge dans l'en-tête du match** — un match allé au-delà de son temps réglementaire porte désormais la mention « Prolongation », avec le temps de jeu supplémentaire au survol
+- **Une pastille dans l'Explorateur** — le même repère apparaît à côté du résultat dans votre liste de matchs : les prolongations se repèrent sans ouvrir les matchs
+- **Tout votre historique, tout de suite** — le repère est déterminé au moment de la lecture : il couvre tous les matchs que vous avez joués, sans resynchronisation et sans attente
+- **Mesuré, pas deviné** — le jeu ne fournit aucun signal de prolongation ; le repère compare le temps réellement joué au temps réglementaire de la variante jouée, avec une marge de sécurité
+- **Halo 5 volontairement écarté** — aucun temps réglementaire n'y est encore déclaré, et une variante non déclarée n'est jamais signalée plutôt que signalée à tort
+
+**Premier frag / première mort — un nouveau graphe**
+- **Une bande par joueur** — les premiers frags de chaque match sont tracés au-dessus de la ligne et les premières morts en dessous : celui qui ouvre vite et celui qui tombe vite se distinguent d'un coup d'œil
+- **Médianes et fenêtre d'avance** — chaque bande porte sa médiane de premier frag, sa médiane de première mort et la barre entre les deux : l'avance dont vous disposez habituellement
+- **Trié par précocité** — les bandes sont classées par médiane de premier frag
+- **Sur trois pages** — Escouade (onglet « Dynamique », après l'Intensité), Séries temporelles (onglet « Progression ») et détail de session, où il figure aussi dans le volet de comparaison
+- **Il remplace les anciens histogrammes** — les graphes par tranches de 10 et de 15 secondes étaient illisibles et se contredisaient ; les deux disparaissent
+- **Une échelle qui tient** — un match interminable n'écrase plus la bande de tous les autres
+
+**Halo 5 — page Réalisations réparée**
+- **La page s'ouvre de nouveau** — elle répondait par une erreur au lieu d'afficher vos jalons
+- **Titre de section toujours présent** — la grille des Réalisations garde son titre, qu'elle charge, qu'elle soit vide ou en erreur
+
+**Lecture dans votre langue**
+- **Les citations suivent la bascule de langue** — leurs libellés venaient du serveur dans la langue du moment et y restaient jusqu'au rechargement de la page
+- **« Tirs à la tête » est traduit** — la statistique s'affichait sous son nom de champ brut à plusieurs endroits
+- **Un démarrage plus rapide** — le référentiel des champs n'est plus récupéré deux fois à l'ouverture de l'application
+
+**Vue de match**
+- **Une statistique d'objectif manquante ne casse plus le tableau des scores** — un match dont les données d'objectif ne pouvaient pas être lues s'affichait comme incomplet en entier ; seule la section Objectifs reste désormais vide, tout le reste est servi
+
+**Démo**
+- **Campagnes d'amélioration visibles** — le profil de démonstration n'affichait aucune campagne
+- **Statistiques d'objectif incluses** — la démo porte désormais les données d'objectif que possède l'application réelle
+- **Anonymisation renforcée** — les identifiants de joueur sont anonymisés comme le reste
+
+**Aussi livré en amont**
+- **Vue de match réorganisée** — le bloc Médias passe en dernier, seul et en pleine largeur, et les rangées de frags, de graphes et de médailles ne laissent plus une carte esseulée sur un tiers de largeur
+- **Participation aux objectifs revue** — l'axe Objectifs de votre profil est désormais un indice de ce que vous avez réellement fait au regard de ce que les modes joués avaient à offrir, au lieu d'un score brut dilué par l'ensemble de vos matchs
+
 **v7.2.1 — Modes à objectif, étanchéité entre titres & recherche de joueur instantanée**
 
 **Trois modes à objectif de plus — Stockage, Extraction et VIP**

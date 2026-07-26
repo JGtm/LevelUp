@@ -118,3 +118,24 @@ func TestWithTokensOwnerXUID_OverridesOwnerNotSubject(t *testing.T) {
 		t.Errorf("owner should be real-owner-y, got %q", got)
 	}
 }
+
+// TestWithDBWriterLabelIfAbsent_PreservesFinerLabel : une closure d'acquisition
+// intermédiaire ne doit JAMAIS écraser le label fin déjà posé par son appelant
+// (SharedAccess.Write → "sync_v2_postsync/weapons"). Non-régression de la perte
+// d'attribution des WARN watchdog constatée en prod le 2026-07-26.
+func TestWithDBWriterLabelIfAbsent_PreservesFinerLabel(t *testing.T) {
+	fine := WithDBWriterLabel(context.Background(), "sync_v2_postsync/weapons")
+	got := DBWriterLabel(WithDBWriterLabelIfAbsent(fine, "sync_v2_postsync"))
+	if got != "sync_v2_postsync/weapons" {
+		t.Errorf("label fin écrasé: got %q, want sync_v2_postsync/weapons", got)
+	}
+}
+
+// TestWithDBWriterLabelIfAbsent_LabelsBareContext : sur un contexte nu (chemin
+// pinned de rollback), le label de base est bien posé — pas d'"unlabeled".
+func TestWithDBWriterLabelIfAbsent_LabelsBareContext(t *testing.T) {
+	got := DBWriterLabel(WithDBWriterLabelIfAbsent(context.Background(), "sync_v2_postsync"))
+	if got != "sync_v2_postsync" {
+		t.Errorf("contexte nu: got %q, want sync_v2_postsync", got)
+	}
+}

@@ -211,6 +211,23 @@ func applyMatchHeaderEnrichment(
 	}
 }
 
+// applyMatchHeaderOvertime renseigne IsOvertime / OvertimeSeconds — deuxième
+// marqueur narratif du header, à côté du badge dominance (les deux coexistent).
+//
+// regulation = table `game_variant_name → temps réglementaire` du titre courant
+// (regulation.toml, injectée au boot). Nil/vide, variante inconnue ou durée non
+// estimable → aucun flag, PAS d'erreur : un titre sans table (Halo 5) n'affiche
+// simplement jamais ce badge.
+func applyMatchHeaderOvertime(h *domain.MatchViewHeader, meta *domain.MatchMetaRaw, regulation map[string]int) {
+	if h == nil || meta == nil {
+		return
+	}
+	isOvertime, seconds := analysis.ResolveOvertime(
+		strDeref(meta.GameVariantName), meta.ElapsedSeconds, regulation)
+	h.IsOvertime = isOvertime
+	h.OvertimeSeconds = seconds
+}
+
 // buildScoreLabelFromMeta construit "X-Y" depuis team_0_score/team_1_score de
 // match_registry. L'équipe du joueur (stats.TeamID) est toujours affichée en
 // premier (miroir de buildHomeScoreLabel dans analysis/home.go).

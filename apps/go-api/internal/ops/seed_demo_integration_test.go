@@ -87,6 +87,15 @@ func seedSourceDBs(t *testing.T) (tmpDir, srcPlayer, srcShared, srcMeta string) 
 		INSERT INTO xuid_aliases (xuid, gamertag) VALUES
 		('`+sourceXUID+`', 'JGtm'),
 		('2222222222222222', 'Other')`)
+	// match_objective_stats : table APPEND-ONLY créée directement sous cette forme
+	// (id + written_at, vue _latest). m1 a DEUX générations pour le même joueur —
+	// la démo doit servir la plus récente (flag_captures=3), pas la périmée.
+	mustExec(t, sharedDB, `
+		INSERT INTO match_objective_stats (id, match_id, xuid, flag_captures, written_at) VALUES
+		(1, 'm1', '`+sourceXUID+`', 1, TIMESTAMP '2026-05-22 19:00:00'),
+		(2, 'm1', '`+sourceXUID+`', 3, TIMESTAMP '2026-05-22 20:00:00'),
+		(3, 'm2', '`+sourceXUID+`', 2, TIMESTAMP '2026-05-21 19:00:00'),
+		(4, 'm3', '`+sourceXUID+`', 9, TIMESTAMP '2026-05-20 19:00:00')`)
 
 	// player stats.duckdb
 	playerDB, err := sql.Open("duckdb", srcPlayer)
@@ -380,6 +389,57 @@ func verifySharedExtracted(t *testing.T, path, sourceXUID string) {
 	}
 	if n != 2 {
 		t.Errorf("v_match_full rows = %d, want 2", n)
+	}
+
+	verifyObjectiveStatsExtracted(t, db, sourceXUID)
+}
+
+// verifyObjectiveStatsExtracted : la démo sert bien les stats objectifs (G7,
+// 2026-07-26). Trois choses distinctes, toutes nécessaires :
+//
+//  1. la table est extraite (avant, elle n'était pas dans sharedTablesWhere →
+//     toutes les surfaces « objectifs » de la démo étaient vides) ;
+//  2. la vue _latest EXISTE et est PEUPLÉE — c'est elle que lit le scoreboard
+//     (Q12 la LEFT JOIN), et c'est ce que la copie `* EXCLUDE (id, written_at)`
+//     aurait cassé : sans colonne technique, son QUALIFY ne se lie pas ;
+//  3. la vue déduplique (m1 a 2 générations → 1 ligne, la plus récente) ;
+//  4. aucun xuid réel ne fuite (la table porte une colonne d'identité).
+func verifyObjectiveStatsExtracted(t *testing.T, db *sql.DB, sourceXUID string) {
+	t.Helper()
+
+	var raw int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM match_objective_stats`).Scan(&raw); err != nil {
+		t.Fatalf("match_objective_stats absente de la démo: %v", err)
+	}
+	if raw != 3 {
+		t.Errorf("match_objective_stats rows = %d, want 3 (2 générations m1 + 1 m2 ; m3 hors corpus)", raw)
+	}
+
+	var latest int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM match_objective_stats_latest`).Scan(&latest); err != nil {
+		t.Fatalf("vue match_objective_stats_latest absente ou non liable: %v — "+
+			"c'est le symptôme d'une extraction append-only sans id/written_at", err)
+	}
+	if latest != 2 {
+		t.Errorf("match_objective_stats_latest rows = %d, want 2 (1 par (match,joueur) après dédup)", latest)
+	}
+
+	var captures int
+	if err := db.QueryRow(
+		`SELECT flag_captures FROM match_objective_stats_latest WHERE match_id = 'm1'`).Scan(&captures); err != nil {
+		t.Fatalf("lecture m1 dans la vue _latest: %v", err)
+	}
+	if captures != 3 {
+		t.Errorf("m1 flag_captures = %d, want 3 (dernière génération, pas la périmée)", captures)
+	}
+
+	var leaked int
+	if err := db.QueryRow(
+		`SELECT COUNT(*) FROM match_objective_stats WHERE xuid = ?`, sourceXUID).Scan(&leaked); err != nil {
+		t.Fatalf("contrôle anonymisation: %v", err)
+	}
+	if leaked != 0 {
+		t.Errorf("xuid source encore présent dans match_objective_stats (%d lignes) — fuite d'identité", leaked)
 	}
 }
 

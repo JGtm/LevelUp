@@ -1,6 +1,6 @@
 /**
  * SquadToggleLegendChart — wrapper de sous-chart performance escouade avec
- * légende React compacte cliquable (même modèle que SquadFirstEventsChart).
+ * légende React compacte cliquable (rendue hors ECharts, pas via `legend`).
  *
  * Deux types (ex. Frags / Morts, HS / Parfaits) + un item par joueur. Cliquer un
  * type le masque pour tous les joueurs ; cliquer un joueur masque ses deux

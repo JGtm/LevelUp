@@ -107,6 +107,11 @@ type MatchHistoryService struct {
 	// catégorie + override playlist_labels.toml), même chokepoint que la Match View
 	// et les tuiles home. Zéro-valeur = no-op. Alimente l'Explorer + l'historique.
 	playlistDisplay analysis.PlaylistLabelConfig
+	// regulationSeconds : temps réglementaire par game_variant_name du TITRE
+	// COURANT (regulation.toml, chargé au boot comme les autres mappings). Socle
+	// du flag « Prolongation » des lignes Explorer/historique. Nil/vide → aucun
+	// flag (titre sans mesure). Jamais de comparaison de slug : la table EST le titre.
+	regulationSeconds map[string]int
 }
 
 // outcomeCodeToKey mappe le code outcome Halo (domain.Outcome*) vers la clé
@@ -145,6 +150,14 @@ func (s *MatchHistoryService) WithPlaylistDisplay(cfg analysis.PlaylistLabelConf
 	return s
 }
 
+// WithRegulation injecte la table `game_variant_name → temps réglementaire`
+// (secondes) du titre courant, socle du flag « Prolongation » des lignes
+// Explorer/historique. Sans injection (ou table vide) : aucun flag.
+func (s *MatchHistoryService) WithRegulation(regulationSeconds map[string]int) *MatchHistoryService {
+	s.regulationSeconds = regulationSeconds
+	return s
+}
+
 // rowFormatters construit les résolveurs title-agnostic injectés dans
 // l'enrichissement d'une ligne : URL de page publique du match (F3, via l'adapter
 // d'assets + gamertag) et libellé d'outcome (F4, via l'adapter sémantique). Champs
@@ -155,6 +168,7 @@ func (s *MatchHistoryService) rowFormatters() rowFormatters {
 	// même « Super Fiesta » que la Match View / les tuiles home.
 	cfg := s.playlistDisplay
 	f.playlistLabel = func(rawFR string) string { return cfg.Display(rawFR) }
+	f.regulation = s.regulationSeconds
 	if s.assetURL != nil {
 		gt := s.waypointPlayer
 		f.matchURL = func(matchID string) string { return s.assetURL.PlayerMatchWebURL(gt, matchID) }

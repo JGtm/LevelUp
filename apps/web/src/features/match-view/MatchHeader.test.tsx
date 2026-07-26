@@ -9,6 +9,7 @@ import type { MatchViewHeader, MatchViewRank } from '@/lib/api/types'
 // Mocks shared
 vi.mock('@/lib/accessibility', () => ({
   tokenCssVar: (token: string) => `var(${token})`,
+  tokenVar: (token: string) => `--ac-${token}`,
 }))
 
 vi.mock('@/lib/accessibility/scales', () => ({
@@ -164,6 +165,59 @@ describe('MatchHeaderCard', () => {
     expect(aquarius.length).toBeGreaterThan(0)
     // Pas d'image
     expect(screen.queryByRole('img', { name: /Aquarius/ })).toBeNull()
+  })
+
+  it('is_overtime : affiche le badge Prolongation + tooltip du dépassement', () => {
+    const overtime: MatchViewHeader = { ...baseHeader, is_overtime: true, overtime_seconds: 43 }
+    renderWithQueryClient(
+      <MatchHeaderCard
+        header={overtime}
+        rank={baseRank}
+        matchId="m1"
+        playerSlug="MonGT"
+        matchTitle="Slayer sur Aquarius"
+        locale="fr"
+      />,
+    )
+    const badge = screen.getByText('Prolongation')
+    expect(badge).toBeInTheDocument()
+    expect(badge.closest('[data-testid="narrative-badge"]')).toHaveAttribute(
+      'title',
+      'Prolongation : +0:43',
+    )
+  })
+
+  it('is_overtime en EN : libellé et tooltip anglais', () => {
+    const overtime: MatchViewHeader = { ...baseHeader, is_overtime: true, overtime_seconds: 270 }
+    renderWithQueryClient(
+      <MatchHeaderCard
+        header={overtime}
+        rank={baseRank}
+        matchId="m1"
+        playerSlug="MonGT"
+        matchTitle="Slayer on Aquarius"
+        locale="en"
+      />,
+    )
+    const badge = screen.getByText('Overtime')
+    expect(badge.closest('[data-testid="narrative-badge"]')).toHaveAttribute(
+      'title',
+      'Overtime: +4:30',
+    )
+  })
+
+  it('sans is_overtime : aucun badge Prolongation', () => {
+    renderWithQueryClient(
+      <MatchHeaderCard
+        header={baseHeader}
+        rank={baseRank}
+        matchId="m1"
+        playerSlug="MonGT"
+        matchTitle="Slayer sur Aquarius"
+        locale="fr"
+      />,
+    )
+    expect(screen.queryByText('Prolongation')).toBeNull()
   })
 
   it('match exclu : affiche le bouton "Réactiver"', () => {

@@ -186,6 +186,38 @@ type apiError struct {
 func (e *apiError) Error() string  { return e.Message }
 func (e *apiError) GetStatus() int { return e.status }
 
+// TransformSchema restaure sur le SCHÉMA OpenAPI la seule sémantique de `apiError`
+// qu'aucun tag struct ne peut porter : `details` est déclaré `any` côté Go (le
+// contexte structuré est un objet OU un tableau selon l'émetteur), et Huma en
+// dérive un schéma VIDE `{}` — c'est-à-dire « n'importe quoi », alors que le
+// contrat historique disait `oneOf: [object, array]`.
+//
+// huma.SchemaTransformer est le mécanisme prévu pour cela : il enrichit le schéma
+// GÉNÉRÉ (contrairement à SchemaProvider qui le remplacerait, obligeant à
+// ré-écrire à la main les 5 propriétés et la liste `required`). Le reste du schéma
+// reste dérivé des tags.
+//
+// Effet CONTRAT UNIQUEMENT : aucune validation d'input ne s'appuie sur ce schéma
+// (ApiError n'est qu'une sortie), le corps runtime {code, message, retryable} est
+// inchangé.
+func (*apiError) TransformSchema(_ huma.Registry, s *huma.Schema) *huma.Schema {
+	if s == nil || s.Properties == nil {
+		return s
+	}
+	details, ok := s.Properties["details"]
+	if !ok || details == nil {
+		return s
+	}
+	details.OneOf = []*huma.Schema{
+		// `additionalProperties: true` explicite : sans lui, un `{type: object}` nu
+		// se traduit côté client généré par « objet SANS aucune clé autorisée »
+		// (openapi-typescript : Record<string, never>) — l'inverse de l'intention.
+		{Type: huma.TypeObject, AdditionalProperties: true},
+		{Type: huma.TypeArray},
+	}
+	return s
+}
+
 // NewError construit une erreur Huma au contrat writeError (équivalent de
 // writeError(ctx, w, status, code, message)).
 func NewError(status int, code, message string) huma.StatusError {

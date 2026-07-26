@@ -226,6 +226,8 @@ auto-detection) before any `os.Getenv` read.
 | `LEVELUP_LOG_FORMAT` | Console format. | text |
 | `LEVELUP_LOGS_DIR` | Per-category log file directory. | `<root>/logs` |
 | `LEVELUP_LOGS_ENABLED` | Set `false` to disable file logging. | enabled |
+| `LEVELUP_LOGS_MAX_SIZE_MB` | Size cap of each `{category}.log` before rotation. `0` disables rotation (unbounded growth). | `100` |
+| `LEVELUP_LOGS_MAX_BACKUPS` | Rotated archives kept per category (`{category}.log.1..N`). `0` keeps none. | `3` |
 
 ### Sync / feature flags
 

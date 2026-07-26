@@ -483,6 +483,15 @@ type ExplorerMatchesRow struct {
 	KDA *float64 `json:"kda,omitempty"`
 	// DurationSeconds : durée du match en secondes (nil si manquante).
 	DurationSeconds *int `json:"duration_seconds,omitempty"`
+	// IsOvertime : le match est parti en PROLONGATION — durée de jeu observée
+	// au-delà du temps réglementaire de la variante + marge mesurée
+	// (analysis.ComputeOvertime). Faux si le titre n'a pas de table
+	// réglementaire, si la variante y est inconnue ou si la durée n'est pas
+	// estimable : le front n'affiche alors aucune pastille.
+	IsOvertime bool `json:"is_overtime,omitempty"`
+	// OvertimeSeconds : dépassement réel du temps réglementaire, en secondes
+	// (0 quand IsOvertime est faux). Alimente le tooltip « Prolongation : +X ».
+	OvertimeSeconds int `json:"overtime_seconds,omitempty"`
 	// DominanceFlag : 0=none, 1=domination, 2=humiliation, 3=remontada,
 	// 4=débandade, 5=contre-remontada (cf. canonical.DominanceFlag). Le
 	// front résout le label via narrative.dominance.* (manifest match_view)

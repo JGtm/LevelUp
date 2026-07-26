@@ -173,8 +173,9 @@ func loadMissingWeaponMatches(sharedDBPath, xuid string, force bool) ([]string, 
 		if err != nil {
 			return nil, fmt.Errorf("force-weapons delete: %w", err)
 		}
-		// Effacer aussi le bit MBitWeaponKills (bit 21) pour que BackfillWeaponKillsForMatch
-		// ne skipe pas les matchs déjà marqués done.
+		// Effacer aussi le bit MBitWeaponKills (bit 21) pour que le pipeline weapons
+		// (sélection convergente + BackfillWeaponKillsForMatchAll) ne skipe pas les
+		// matchs déjà marqués done.
 		const mBitWeaponKills = 1 << 21
 		_, err = db.Exec(`
 			UPDATE match_registry

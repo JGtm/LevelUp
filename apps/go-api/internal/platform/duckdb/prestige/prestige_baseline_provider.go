@@ -82,14 +82,16 @@ var _ prestige.BaselineProvider = (*HaloBaselineProvider)(nil)
 // déjà isolée PAR CHEMIN pour le titre (ADR 0008).
 //
 // Mapping des FieldKey canoniques vers les colonnes de match_participants.
-// Les métriques cumulées (medal:*, maps_played_distinct, matches_played,
-// win_rate, *_vs_expected…) n'ont pas d'équivalent colonne : mapMetricToColumn
-// renvoie "" et cette méthode renvoie 0 match. Constat daté du 2026-07-26 : la
-// « requête dédiée Phase 5 » que promettait l'ancien commentaire n'a jamais été
-// écrite (EvaluateCumulative n'a AUCUN appelant de production, service_evaluate.go
-// retombe sur EvaluateThreshold). Ces métriques restent donc non mesurées — c'est
-// un manque FONCTIONNEL distinct du défaut d'identité corrigé ici, à traiter à
-// part.
+// Les métriques SANS équivalent colonne (medal:*, maps_played_distinct,
+// matches_played, wins, win_rate, *_vs_expected…) : mapMetricToColumn renvoie ""
+// et cette méthode renvoie 0 match.
+//
+// Le chemin CUMULATIF, lui, n'est plus un trou : depuis le 2026-07-26 il passe
+// par CumulativeSince (somme SQL non plafonnée bornée par created_at), branché
+// sur EvaluateCumulative. Reste ouverte la COUVERTURE de mapMetricToColumn : une
+// métrique agrégat (`matches_played` = COUNT(*), `wins` = COUNT filtré sur le
+// résultat) n'est pas une colonne par match et demande une expression dédiée —
+// manque FONCTIONNEL distinct, non traité ici.
 func (p *HaloBaselineProvider) RecentMatches(ctx context.Context, _, metric string, window int) ([]prestige.MatchData, error) {
 	if p.xuid == "" {
 		// Dégradation VISIBLE : sans xuid, aucun match n'est attribuable. C'est
@@ -158,6 +160,72 @@ func (p *HaloBaselineProvider) RecentMatches(ctx context.Context, _, metric stri
 			"xuid", p.xuid, "metric", metric, "column", col)
 	}
 	return out, nil
+}
+
+// CumulativeSince retourne la SOMME de `metric` sur les matchs du joueur LIÉ à ce
+// provider dont le début est >= since, et le nombre de matchs sommés.
+//
+// Aucun plafond de fenêtre — c'est la raison d'être de la méthode. Un objectif
+// cumulatif (« 220 tirs à la tête ») porte sur un total dont la profondeur n'a
+// pas de raison de tenir dans les 20 matchs de la fenêtre baseline ; passer par
+// RecentMatches tronquerait la somme sans le dire. La seule borne est `since`
+// (created_at du défi) : elle interdit qu'un défi se complète rétroactivement
+// avec l'historique antérieur à sa création.
+//
+// Aucun paramètre d'identité (cf. doc du type) ; le premier string est le
+// titleSlug, ignoré ici (base partagée isolée par chemin, ADR 0008).
+func (p *HaloBaselineProvider) CumulativeSince(ctx context.Context, _, metric string, since time.Time) (float64, int, error) {
+	if p.xuid == "" {
+		slog.ErrorContext(ctx, "prestige_baseline_provider_missing_xuid",
+			"metric", metric,
+			"impact", "cumul à 0, jauge figée pour ce joueur",
+			"fix", "vérifier le xuid du joueur dans db_profiles.json (PlayerDB.XUID vide)")
+		return 0, 0, nil
+	}
+	col := mapMetricToColumn(metric)
+	if col == "" {
+		// Métrique sans équivalent colonne (medal:*, wins, matches_played…) :
+		// pas d'erreur, pas de progrès mesurable. Tracé pour que l'absence de
+		// jauge soit diagnosticable au lieu d'être un zéro muet.
+		slog.DebugContext(ctx, "prestige_cumulative_metric_unmapped", "metric", metric)
+		return 0, 0, nil
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	// Littéral SQL INLINE, comme RecentMatches : le garde-rail
+	// xuid_identity_ratchet_test.go corrèle « paramètre d'identité applicative »
+	// et « requête xuid » DANS UNE MÊME fonction — extraire la requête le
+	// rendrait aveugle. Timestamp : fragment canonique partagé (CLAUDE.md n°8).
+	startTime := duckdb.StartTimeCanonicalSQL("mr")
+	where := "mp.xuid = ?"
+	args := []any{p.xuid}
+	if !since.IsZero() {
+		where += " AND " + startTime + " >= ?"
+		args = append(args, since.UTC())
+	}
+	q := fmt.Sprintf(`
+		SELECT COALESCE(SUM(CAST(%s AS DOUBLE)), 0), COUNT(*)
+		FROM match_participants mp
+		JOIN match_registry mr ON mr.match_id = mp.match_id
+		WHERE %s
+	`, col, where)
+
+	db, release, err := p.reader.Get(ctx)
+	if err != nil {
+		return 0, 0, fmt.Errorf("HaloBaselineProvider.CumulativeSince: shared reader: %w", err)
+	}
+	defer release()
+
+	var (
+		total float64
+		n     int
+	)
+	if err := db.QueryRowContext(ctx, q, args...).Scan(&total, &n); err != nil {
+		return 0, 0, fmt.Errorf("HaloBaselineProvider.CumulativeSince: %w", err)
+	}
+	return total, n, nil
 }
 
 // scanRecentMatches matérialise les lignes de RecentMatches.

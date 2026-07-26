@@ -266,7 +266,7 @@ func (s *TeammatesService) GetPage(
 	var weaponAccuracy *domain.SquadWeaponAccuracy
 	var fragClasses map[string][]domain.FragClassEntry
 	var nativeKillMechanics *domain.SquadKillMechanics
-	var firstEvents *domain.SquadFirstEvents
+	var firstBlood []domain.FirstBloodPlayerSeries
 	var medalDigest []domain.MedalDigestEntry
 	if len(allSquadRows) > 0 {
 		// Résout map/playlist/mode FR sur les rows (mode via la cascade
@@ -296,7 +296,7 @@ func (s *TeammatesService) GetPage(
 		weaponKills, fragClasses = s.buildSquadWeaponKills(ctx, allSquadRows, s.gamertag, playerXUID, teammates, performanceSeries)
 		weaponAccuracy = s.buildSquadWeaponAccuracy(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
 		nativeKillMechanics = s.buildSquadKillMechanics(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
-		firstEvents = s.buildSquadFirstEvents(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
+		firstBlood = s.buildSquadFirstBlood(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
 		medalDigest = s.buildMedalDigest(ctx, allSquadRows, s.gamertag, playerXUID, teammates, req.Locale)
 	}
 
@@ -358,7 +358,7 @@ func (s *TeammatesService) GetPage(
 		WeaponKills:         weaponKills,
 		WeaponAccuracy:      weaponAccuracy,
 		NativeKillMechanics: nativeKillMechanics,
-		FirstEvents:         firstEvents,
+		FirstBlood:          firstBlood,
 		Header:              header,
 		MainPlayer:          s.gamertag,
 		MedalDigest:         medalDigest,

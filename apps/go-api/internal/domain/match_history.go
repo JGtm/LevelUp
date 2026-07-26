@@ -45,12 +45,18 @@ type MatchHistoryRawRow struct {
 	AverageLifeSeconds *float64
 	TimePlayedSeconds  *int
 	DurationSeconds    *int // r.duration_seconds (v_match_full) — nil si absent ; socle « Durée totale » (DEC-DURATION)
-	IsExcluded         bool
-	PerformanceScore   *float64
-	SkillTier          *string // e.g. "Diamond" (EN, clé de filtre)
-	SkillTierFR        *string // e.g. "Diamant" (affichage FR)
-	SkillRatingType    *string // "LUSR" | "CSR"
-	SkillTierLabel     *string // e.g. "Diamant IV" (label formaté DB)
+	// ElapsedSeconds : durée de JEU observée du match (médiane du temps joué des
+	// participants présents du début à la fin ; repli MAX). DISTINCTE de
+	// DurationSeconds (durée de session, countdown/écrans inclus). Chargée par un
+	// merge best-effort (cf. duckdb/elapsed_seconds.go) ; nil = non estimable →
+	// aucun flag « Prolongation ».
+	ElapsedSeconds   *int
+	IsExcluded       bool
+	PerformanceScore *float64
+	SkillTier        *string // e.g. "Diamond" (EN, clé de filtre)
+	SkillTierFR      *string // e.g. "Diamant" (affichage FR)
+	SkillRatingType  *string // "LUSR" | "CSR"
+	SkillTierLabel   *string // e.g. "Diamant IV" (label formaté DB)
 	// PlaylistGroup / RatingValue / RatingDelta : colonnes match_skill_rank_latest
 	// exposées pour le module « Classement » du briefing, segmenté PAR CHAÎNE
 	// (rating_type, playlist_group) — DEC-RANK-BE. PlaylistGroup = "ranked" pour CSR
@@ -144,10 +150,16 @@ type MatchHistoryRow struct {
 	// PerfPlacementDone/PerfPlacementTotal : placement de la chaîne de PERFORMANCE
 	// (colonnes Perf/ΔPerf du front), distinct de PlacementDone/Total (colonne Note).
 	// Nil hors placement perf. Voir MatchHistoryRawRow.PerfPlacementDone.
-	PerfPlacementDone   *int   `json:"perf_placement_done,omitempty"`
-	PerfPlacementTotal  *int   `json:"perf_placement_total,omitempty"`
-	AverageLifeMMSS     string `json:"average_life_mmss"`
-	DurationSeconds     *int   `json:"duration_seconds,omitempty"`
+	PerfPlacementDone  *int   `json:"perf_placement_done,omitempty"`
+	PerfPlacementTotal *int   `json:"perf_placement_total,omitempty"`
+	AverageLifeMMSS    string `json:"average_life_mmss"`
+	DurationSeconds    *int   `json:"duration_seconds,omitempty"`
+	// IsOvertime / OvertimeSeconds : match parti en PROLONGATION + dépassement
+	// réel du temps réglementaire en secondes (cf. analysis.ComputeOvertime).
+	// Faux/0 quand le titre n'a pas de table réglementaire, que la variante y est
+	// inconnue ou que la durée n'est pas estimable — dégradation sûre.
+	IsOvertime          bool   `json:"is_overtime,omitempty"`
+	OvertimeSeconds     int    `json:"overtime_seconds,omitempty"`
 	MatchURL            string `json:"match_url"`
 	IsExcluded          bool   `json:"is_excluded"`
 	IsWithFriends       bool   `json:"is_with_friends"`

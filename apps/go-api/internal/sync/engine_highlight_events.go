@@ -1,14 +1,19 @@
 // Package sync — engine_highlight_events.go : parse + insert highlight events.
 //
 // Extrait de engine.go (refactor 2026-05-21). Regroupe :
-//   - ProcessHighlightEvents : path standalone (télécharge le chunk puis parse
-//   - insert). Exposé pour les outils de replay (cmd/replay_highlight_events,
-//     events_heal, events_replay). Marque MBitKillerVictim si insert réussi.
+//   - collectHighlightEvents / flushHighlightEvents : les DEUX phases du
+//     traitement d'un match (v7.3) — COLLECT = fetch chunk film + parse, ZÉRO
+//     accès DB, donc exécutable HORS de tout lease shared ; FLUSH = écritures
+//     shared seules, sous un burst writer COURT.
+//   - ProcessHighlightEvents : composition collect+flush, contrat inchangé.
+//     Exposé pour les outils de replay (cmd/replay_highlight_events,
+//     events_replay). Marque MBitKillerVictim si insert réussi.
 //   - persistCombatCompletion : écriture atomique (events + killer_victim + bits)
 //     sur le writer RW shared, via persist.EventsCompletionPersister.
 //
-// La logique de parse_anomaly (chunk non-vide mais 0 events extraits → WARN +
-// IncCounter expvar) est portée par ProcessHighlightEvents.
+// La logique de parse_anomaly (chunk non-vide mais 0 events extraits → compteurs
+// expvar côté COLLECT, WARN + marquage terminal côté FLUSH) est portée par cette
+// paire ; ProcessHighlightEvents en conserve le comportement observable.
 //
 // Voir engine.go (struct SyncEngine + run()) pour le contexte.
 package sync
@@ -155,76 +160,119 @@ func fetchHighlightChunkResilient(
 	return data, ver, found, err
 }
 
-// ProcessHighlightEvents télécharge le chunk highlight events, le parse et
-// insère les events + paires killer/victim dans la shared DB.
-// Retourne une erreur uniquement en cas de défaillance fatale (non-nil = warning
-// côté appelant : convergence highlight-events et replay standalone).
+// collectedHighlightEvents porte le produit de la phase COLLECT d'un match :
+// chunk film téléchargé + parsé. Aucune référence DB — la structure est
+// construite hors de tout lease shared puis consommée par flushHighlightEvents
+// dans un burst writer court. `data` brut n'est PAS retenu (seuls les events
+// parsés le sont) : le pic mémoire d'un lot reste borné par le nombre d'events.
+type collectedHighlightEvents struct {
+	matchID     string
+	filmVersion int
+	dataLen     int
+	filmFound   bool // réponse brute de l'API (found), avant test de vacuité
+	events      []analysis.HighlightEvent
+}
+
+// chunkUsable : le chunk est exploitable (film présent ET données non vides).
+// Faux ⇒ film absent/404 ⇒ la phase FLUSH décide du marquage terminal.
+func (c collectedHighlightEvents) chunkUsable() bool { return c.filmFound && c.dataLen > 0 }
+
+// collectHighlightEvents — phase COLLECT d'un match : télécharge le chunk
+// highlight events et le parse. RÉSEAU + CPU purs, ZÉRO accès DB : c'est ce qui
+// permet de sortir le fetch film du burst d'écriture partagé (le writer RW n'est
+// plus tenu pendant le téléchargement, cf. engine_postsync.go étape 1.54).
 //
-// Exposé (majuscule) pour les outils de replay : cmd/replay_highlight_events.
-func ProcessHighlightEvents(
+// Erreur non-nil = fetch ou parse KO : rien à flusher, le match reste
+// events_loaded=FALSE et sera repris au cycle de convergence suivant.
+func collectHighlightEvents(
 	ctx context.Context,
-	client HaloClient,
-	sharedDB *sql.DB,
+	client highlightChunkFetcher,
 	matchID string,
-	result *domain.SyncResult,
-) error {
+) (collectedHighlightEvents, error) {
+	out := collectedHighlightEvents{matchID: matchID}
 	data, filmMajorVersion, found, err := client.GetHighlightEventsChunk(ctx, matchID)
 	if err != nil {
-		return fmt.Errorf("GetHighlightEventsChunk: %w", err)
+		return out, fmt.Errorf("GetHighlightEventsChunk: %w", err)
 	}
-	if !found || len(data) == 0 {
+	out.filmVersion = filmMajorVersion
+	out.dataLen = len(data)
+	out.filmFound = found
+	if !out.chunkUsable() {
+		return out, nil // film absent / chunk vide → décision de marquage au FLUSH
+	}
+	events, err := analysis.ParseHighlightEvents(data, filmMajorVersion)
+	if err != nil {
+		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "highlight_events_parse_total_invalid_data")
+		return out, fmt.Errorf("ParseHighlightEvents: %w", err)
+	}
+	out.events = events
+	if len(events) == 0 {
+		// Anomalie : chunk téléchargé non-vide mais 0 event parsé. Les compteurs
+		// de qualité de parsing appartiennent à la phase COLLECT ; la décision
+		// terminale (events_empty) a besoin de la DB → phase FLUSH.
+		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "highlight_events_parse_anomaly_total")
+		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "highlight_events_parse_total_stale_cache")
+		return out, nil
+	}
+	observability.IncCounterT(ctxkeys.TitleSlug(ctx), "highlight_events_parse_total_ok")
+	return out, nil
+}
+
+// flushHighlightEvents — phase FLUSH d'un match : écritures shared UNIQUEMENT
+// (marquage terminal no-film / events_empty, ou complétion combat). AUCUNE I/O
+// réseau ici : la fonction est faite pour tenir dans un burst writer court.
+// `result` (optionnel) reçoit les warnings + le compteur d'events insérés.
+func flushHighlightEvents(
+	ctx context.Context,
+	sharedDB *sql.DB,
+	c collectedHighlightEvents,
+	result *domain.SyncResult,
+) error {
+	if !c.chunkUsable() {
 		// Décision de marquage sur film absent (404) : définitif (match ancien
 		// ou âge inconnu) → MarkEventsLoaded (sort du retry set) ; récent → on
 		// laisse events_loaded=FALSE pour réessayer (le film n'est peut-être pas
 		// encore propagé — éviter la perte définitive d'un film simplement
 		// retardé, cf. .ai/HANDOFF_sync_combat_completion.md).
-		definitive := isNoFilmDefinitive(ctx, sharedDB, matchID)
+		definitive := isNoFilmDefinitive(ctx, sharedDB, c.matchID)
 		slog.DebugContext(ctx, "processHighlightEvents: film absent ou chunk vide",
-			"match_id", matchID, "found", found, "data_len", len(data),
+			"match_id", c.matchID, "found", c.filmFound, "data_len", c.dataLen,
 			"definitive", definitive,
 		)
 		if definitive {
 			if markErr := persist.NewEventsCompletionPersister(sharedDB).
-				MarkNoFilmDefinitive(ctx, matchID, MBitEvents); markErr != nil {
+				MarkNoFilmDefinitive(ctx, c.matchID, MBitEvents); markErr != nil {
 				slog.DebugContext(ctx, "MarkNoFilmDefinitive échoué (no-film)",
-					"match_id", matchID, "err", markErr)
+					"match_id", c.matchID, "err", markErr)
 			}
 		}
 		return nil
 	}
 
-	events, err := analysis.ParseHighlightEvents(data, filmMajorVersion)
-	if err != nil {
-		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "highlight_events_parse_total_invalid_data")
-		return fmt.Errorf("ParseHighlightEvents: %w", err)
-	}
-	if len(events) == 0 {
-		// Anomalie : chunk téléchargé non-vide mais 0 event parsé. Traitement :
-		// définitif (vieux) → events_empty (sort du retry set sans mentir sur
-		// events_loaded) ; récent → on retente (events_loaded reste FALSE).
-		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "highlight_events_parse_anomaly_total")
-		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "highlight_events_parse_total_stale_cache")
-		definitive := isNoFilmDefinitive(ctx, sharedDB, matchID)
+	if len(c.events) == 0 {
+		// Anomalie de parse : définitif (vieux) → events_empty (sort du retry set
+		// sans mentir sur events_loaded) ; récent → on retente (events_loaded
+		// reste FALSE).
+		definitive := isNoFilmDefinitive(ctx, sharedDB, c.matchID)
 		slog.WarnContext(ctx, "highlight_events parse_anomaly: chunk non-vide mais 0 events extraits",
-			"match_id", matchID,
-			"film_version", filmMajorVersion,
-			"data_size", len(data),
+			"match_id", c.matchID,
+			"film_version", c.filmVersion,
+			"data_size", c.dataLen,
 			"definitive", definitive,
 		)
 		if definitive && sharedDB != nil {
 			if markErr := persist.NewEventsCompletionPersister(sharedDB).
-				MarkEventsEmptyDefinitive(ctx, matchID, MBitEvents); markErr != nil {
+				MarkEventsEmptyDefinitive(ctx, c.matchID, MBitEvents); markErr != nil {
 				slog.DebugContext(ctx, "MarkEventsEmptyDefinitive échoué (parse_anomaly)",
-					"match_id", matchID, "err", markErr)
+					"match_id", c.matchID, "err", markErr)
 			}
 		}
 		if result != nil {
 			result.Warnings = append(result.Warnings,
-				fmt.Sprintf("highlight_events parse_anomaly %s: chunk %d bytes v%d → 0 events (definitive=%v)", matchID, len(data), filmMajorVersion, definitive))
+				fmt.Sprintf("highlight_events parse_anomaly %s: chunk %d bytes v%d → 0 events (definitive=%v)", c.matchID, c.dataLen, c.filmVersion, definitive))
 		}
 		return nil
 	}
-	observability.IncCounterT(ctxkeys.TitleSlug(ctx), "highlight_events_parse_total_ok")
 
 	// Note alias : plus d'upsert xbox_aliases ici. Les gamertags des films
 	// alimentent killer_victim_pairs (via persistCombatCompletion) que lit
@@ -234,14 +282,14 @@ func ProcessHighlightEvents(
 	// les écritures db.Exec directes legacy (InsertHighlightEvents +
 	// InsertKillerVictimPairsFromEvents + MarkEventsLoaded/MarkKillerVictimLoaded)
 	// — règle absolue : zéro écriture shared hors package persist.
-	n, err := persistCombatCompletion(ctx, sharedDB, matchID, events)
+	n, err := persistCombatCompletion(ctx, sharedDB, c.matchID, c.events)
 	if err != nil {
 		// Log explicite : une écriture combat échouée (ex. shared read-only) ne
 		// doit JAMAIS être silencieuse — c'est précisément la classe d'incident
 		// (RC-A/RC-E) que ce module rend désormais visible. Le caller (events_heal)
 		// la compte aussi en `failed`.
 		slog.ErrorContext(ctx, "processHighlightEvents: persistCombatCompletion échoué",
-			"match_id", matchID, "events_parsed", len(events), "err", err)
+			"match_id", c.matchID, "events_parsed", len(c.events), "err", err)
 		return fmt.Errorf("persistCombatCompletion: %w", err)
 	}
 	if n > 0 && result != nil {
@@ -249,12 +297,38 @@ func ProcessHighlightEvents(
 	}
 
 	slog.DebugContext(ctx, "processHighlightEvents: terminé",
-		"match_id", matchID,
-		"film_version", filmMajorVersion,
-		"events_parsed", len(events),
+		"match_id", c.matchID,
+		"film_version", c.filmVersion,
+		"events_parsed", len(c.events),
 		"events_inserted", n,
 	)
 	return nil
+}
+
+// ProcessHighlightEvents télécharge le chunk highlight events, le parse et
+// insère les events + paires killer/victim dans la shared DB — composition
+// collect+flush, contrat et comportement observable INCHANGÉS.
+// Retourne une erreur uniquement en cas de défaillance fatale (non-nil = warning
+// côté appelant : replay standalone).
+//
+// NB : ce chemin exécute le fetch réseau et l'écriture dans la même séquence ; il
+// est réservé aux callers qui tiennent DÉJÀ le writer pour d'autres raisons
+// (outils de replay, mono-process). Le post-sync, lui, appelle les deux phases
+// séparément pour ne pas tenir le writer pendant le téléchargement.
+//
+// Exposé (majuscule) pour les outils de replay : cmd/replay_highlight_events.
+func ProcessHighlightEvents(
+	ctx context.Context,
+	client HaloClient,
+	sharedDB *sql.DB,
+	matchID string,
+	result *domain.SyncResult,
+) error {
+	collected, err := collectHighlightEvents(ctx, client, matchID)
+	if err != nil {
+		return err
+	}
+	return flushHighlightEvents(ctx, sharedDB, collected, result)
 }
 
 // persistCombatCompletion construit les rows de complétion (highlight_events +

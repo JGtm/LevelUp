@@ -2,10 +2,10 @@
  * SquadDynamiquePage.test.tsx — smoke tests.
  *
  * L'onglet Dynamique regroupe les sections déplacées depuis Contributions :
- * intensité, rendement/résistance et engagement. Les charts ECharts sont
- * stubés (résolution jsdom) ; on vérifie qu'ils sont montés même sans données,
- * et que la section engagement reçoit les match_ids du scope en ordre
- * chronologique ASC (cap 15).
+ * intensité, rendement/résistance, « Premier frag / première mort » et
+ * engagement. Les charts ECharts sont stubés (résolution jsdom) ; on vérifie
+ * qu'ils sont montés même sans données, et que la section engagement reçoit les
+ * match_ids du scope en ordre chronologique ASC (cap 15).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { screen } from '@testing-library/react'
@@ -63,6 +63,37 @@ describe('SquadDynamiquePage', () => {
     expect(screen.getByTestId('intensity-chart')).toBeInTheDocument()
     expect(screen.getByTestId('efficiency-chart')).toBeInTheDocument()
     expect(screen.getByTestId('engagement-section')).toBeInTheDocument()
+  })
+
+  it('monte le bloc « Premier frag / première mort » (état vide sans données)', () => {
+    mockSquadContext({})
+    renderWithProviders(<SquadDynamiquePage />)
+    expect(screen.getByText('Premier frag / première mort')).toBeInTheDocument()
+  })
+
+  it('alimente les bandes depuis first_blood du payload (une bande par joueur)', () => {
+    mockSquadContext({
+      confirmedGamertags: ['FriendA'],
+      pageData: {
+        main_player: 'Main',
+        first_blood: [
+          {
+            player: 'Main',
+            matches: [{ match_id: 'm1', first_kill_sec: 20, first_death_sec: 55 }],
+          },
+          {
+            player: 'FriendA',
+            matches: [{ match_id: 'm1', first_kill_sec: 35, first_death_sec: 40 }],
+          },
+        ],
+      } as unknown as TeammatesPageResponse,
+    })
+    renderWithProviders(<SquadDynamiquePage />)
+    // Le chart est rendu (pas l'état vide) dès qu'une bande porte un événement.
+    expect(screen.getByText('Premier frag / première mort')).toBeInTheDocument()
+    expect(
+      screen.queryByText('Aucun premier frag ni première mort sur ce périmètre'),
+    ).not.toBeInTheDocument()
   })
 
   it('passe a l engagement les match_ids du scope en ordre chronologique ASC, cap 15', () => {

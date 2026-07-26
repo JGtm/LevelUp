@@ -7718,6 +7718,10 @@ components:
           type: string
         details:
           description: Contexte structuré optionnel (objet ou tableau)
+          oneOf:
+            - additionalProperties: true
+              type: object
+            - type: array
         field_errors:
           description: Erreurs de validation par champ (corps de requête)
           items:
@@ -11005,6 +11009,8 @@ components:
         had_bot_teammate:
           description: Un coéquipier était un bot. Exposé sur les best_matches de la carrière (les LOSS avec bot sont exclus côté backend).
           type: boolean
+        is_overtime:
+          type: boolean
         is_with_friends:
           type: boolean
         kda:
@@ -11030,6 +11036,9 @@ components:
           type: integer
         outcome_label:
           type: string
+        overtime_seconds:
+          format: int64
+          type: integer
         perf_placement_done:
           format: int64
           type: integer
@@ -11656,44 +11665,40 @@ components:
       required:
         - match_ids
       type: object
-    FirstEventBucket:
+    FirstBloodMatchPoint:
       additionalProperties: false
       properties:
-        first_deaths:
-          format: int64
-          type: integer
-        first_kills:
-          format: int64
-          type: integer
-        lower_seconds:
+        first_death_sec:
           format: double
-          type: number
-        upper_seconds:
+          type:
+            - number
+            - "null"
+        first_kill_sec:
           format: double
-          type: number
+          type:
+            - number
+            - "null"
+        match_id:
+          type: string
       required:
-        - lower_seconds
-        - upper_seconds
-        - first_kills
-        - first_deaths
+        - match_id
+        - first_kill_sec
+        - first_death_sec
       type: object
-    FirstEventDistribution:
+    FirstBloodPlayerSeries:
       additionalProperties: false
       properties:
-        buckets:
+        matches:
           items:
-            $ref: '#/components/schemas/FirstEventBucket'
+            $ref: '#/components/schemas/FirstBloodMatchPoint'
           type:
             - array
             - "null"
-        mean_first_death_seconds:
-          format: double
-          type: number
-        mean_first_kill_seconds:
-          format: double
-          type: number
+        player:
+          type: string
       required:
-        - buckets
+        - player
+        - matches
       type: object
     FormTabResponse:
       additionalProperties: false
@@ -13764,6 +13769,8 @@ components:
           type: string
         is_excluded:
           type: boolean
+        is_overtime:
+          type: boolean
         is_with_friends:
           type: boolean
         kda:
@@ -13789,6 +13796,9 @@ components:
           type: integer
         outcome_label:
           type: string
+        overtime_seconds:
+          format: int64
+          type: integer
         perf_placement_done:
           format: int64
           type: integer
@@ -14830,6 +14840,8 @@ components:
           type: boolean
         is_favorite:
           type: boolean
+        is_overtime:
+          type: boolean
         is_ranked:
           type: boolean
         map_id:
@@ -14851,6 +14863,9 @@ components:
           type: string
         outcome_label:
           type: string
+        overtime_seconds:
+          format: int64
+          type: integer
         performance_color:
           type: string
         performance_color_token:
@@ -18925,6 +18940,12 @@ components:
             - "null"
         compare_enabled:
           type: boolean
+        compare_first_blood:
+          items:
+            $ref: '#/components/schemas/FirstBloodPlayerSeries'
+          type:
+            - array
+            - "null"
         compare_intensity_rows:
           items:
             $ref: '#/components/schemas/IntensityMatchRow'
@@ -18947,6 +18968,12 @@ components:
           $ref: '#/components/schemas/SessionCompareEntry'
         current_session:
           $ref: '#/components/schemas/SessionCompareEntry'
+        first_blood:
+          items:
+            $ref: '#/components/schemas/FirstBloodPlayerSeries'
+          type:
+            - array
+            - "null"
         intensity_rows:
           items:
             $ref: '#/components/schemas/IntensityMatchRow'
@@ -19566,53 +19593,6 @@ components:
         - team_observed
         - durations_seconds
         - players
-      type: object
-    SquadFirstEvents:
-      additionalProperties: false
-      properties:
-        bin_labels:
-          items:
-            type: string
-          type:
-            - array
-            - "null"
-        bin_size_seconds:
-          format: int64
-          type: integer
-        rows:
-          items:
-            $ref: '#/components/schemas/SquadFirstEventsRow'
-          type:
-            - array
-            - "null"
-      required:
-        - bin_size_seconds
-        - bin_labels
-        - rows
-      type: object
-    SquadFirstEventsRow:
-      additionalProperties: false
-      properties:
-        death_counts:
-          items:
-            format: int64
-            type: integer
-          type:
-            - array
-            - "null"
-        kill_counts:
-          items:
-            format: int64
-            type: integer
-          type:
-            - array
-            - "null"
-        player:
-          type: string
-      required:
-        - player
-        - kill_counts
-        - death_counts
       type: object
     SquadHeader:
       additionalProperties: false
@@ -21296,8 +21276,12 @@ components:
           type:
             - array
             - "null"
-        first_events:
-          $ref: '#/components/schemas/SquadFirstEvents'
+        first_blood:
+          items:
+            $ref: '#/components/schemas/FirstBloodPlayerSeries'
+          type:
+            - array
+            - "null"
         frag_classes:
           additionalProperties:
             items:
@@ -21833,8 +21817,12 @@ components:
           $ref: '#/components/schemas/TimeseriesCumulTab'
         distributions_tab:
           $ref: '#/components/schemas/TimeseriesDistributionsTab'
-        first_events:
-          $ref: '#/components/schemas/FirstEventDistribution'
+        first_blood:
+          items:
+            $ref: '#/components/schemas/FirstBloodPlayerSeries'
+          type:
+            - array
+            - "null"
         frag_distribution:
           $ref: '#/components/schemas/FragDistribution'
         intensity_rows:
@@ -22485,3 +22473,9 @@ components:
         - current_xp
         - xp_total
       type: object
+  securitySchemes:
+    sessionCookie:
+      description: Cookie de session HttpOnly posé par le serveur après authentification (login local, register par invitation ou SSO Xbox). Signé côté serveur ; les routes en écriture exigent en plus l'en-tête CSRF Origin/Referer d'une origine autorisée.
+      in: cookie
+      name: levelup_session
+      type: apiKey

@@ -6,12 +6,12 @@ package teammates
 import (
 	"cmp"
 	"context"
-	"fmt"
 	"log/slog"
 	"slices"
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 )
@@ -215,228 +215,125 @@ func intPtrOrZero(p *int) int {
 }
 
 // ---------------------------------------------------------------------------
-// teammates.17 — Premier frag / première mort — butterfly chronologique
+// Premier frag / première mort — séries par joueur (chart lanes, onglet Dynamique)
 // ---------------------------------------------------------------------------
 
-// firstEventsBinSize est la taille d'un bin temporel (15 s) — cf. spec.
-const firstEventsBinSize = 15
-
-// formatFirstEventsBinLabel formate la borne droite du bin selon le format spec :
-//   - < 60s    → "Ns"   (ex "15s", "45s")
-//   - >= 60s   → "MmSSs" (ex "1m00s", "2m15s")
-func formatFirstEventsBinLabel(rightEdgeSec int) string {
-	if rightEdgeSec < 60 {
-		return fmt.Sprintf("%ds", rightEdgeSec)
-	}
-	m := rightEdgeSec / 60
-	s := rightEdgeSec % 60
-	return fmt.Sprintf("%dm%02ds", m, s)
-}
-
-// buildSquadFirstEvents charge les events highlight, calcule pour chaque
-// (match_id, xuid de l'escouade) le first_kill_s et first_death_s, puis
-// bucket en bins de 15 s. Retourne nil si aucun event ou aucun joueur résolu.
+// buildSquadFirstBlood charge les events highlight de l'escouade, les ramène au
+// référentiel gameplay (T0) et produit UNE série par joueur avec les valeurs PAR
+// MATCH (first_kill_sec / first_death_sec, nil si l'événement est absent).
 //
-//nolint:funlen // chart-builder cohésif (load events → first kill/death → 15s bins).
-func (s *TeammatesService) buildSquadFirstEvents(
+// Aucun bucketing serveur : médianes, écart et fenêtre d'axe sont dérivés côté
+// front (FirstBloodLanes). L'agrégation « premier événement » est celle de
+// narrative.ComputeFirstEventsByActor — noyau partagé avec les surfaces solo
+// (Timeseries / Session).
+//
+// Retourne nil si aucun event, aucun joueur résolu, ou aucune série exploitable.
+func (s *TeammatesService) buildSquadFirstBlood(
 	ctx context.Context,
 	allSquadRows []domain.SquadMatchRow,
 	mainGamertag, mainXUID string,
 	teammates []domain.TeammateRow,
-) *domain.SquadFirstEvents {
-	if s.repo == nil || len(allSquadRows) == 0 {
+) []domain.FirstBloodPlayerSeries {
+	if s.repo == nil {
+		return nil
+	}
+	// 1. Périmètre : matchs (chronologiques) + joueurs de l'escouade.
+	matchIDs, xuidsOrdered, gtByXUID := firstBloodScope(allSquadRows, mainGamertag, mainXUID, teammates)
+	if len(matchIDs) == 0 || len(xuidsOrdered) == 0 {
 		return nil
 	}
 
-	// 1. Match IDs uniques.
-	matchIDs := make([]string, 0, len(allSquadRows))
-	seen := make(map[string]struct{}, len(allSquadRows))
+	// 2. Charger les events, puis les ramener au référentiel gameplay (T0 /
+	//    countdown pré-match retranché, §4.A-bis). CRITIQUE ici : le chart lit des
+	//    valeurs absolues (secondes depuis le début du gameplay). T0 lu depuis
+	//    allSquadRows (Q30.t0_ms) ; match sans T0 connu → identité.
+	events, err := s.repo.LoadImpactEvents(ctx, matchIDs)
+	if err != nil || len(events) == 0 {
+		if err != nil {
+			slog.WarnContext(ctx, "teammates_first_blood_load_failed", "err", err)
+		}
+		return nil
+	}
+	events = CorrectSquadImpactEvents(ctx, "squad.first_blood", events, timeline.BuildTimelinesFromSquadRows(allSquadRows))
+
+	// 3. Agrégation partagée (min des TimeMS >= 0 par (joueur, match, type)).
+	//    Les events pré-gameplay (TimeMS < 0 après correction T0) sont écartés
+	//    par ComputeFirstEventsByActor : le « premier frag » est celui du
+	//    GAMEPLAY, pas du countdown.
+	actors := make([]narrative.FirstEventActor, 0, len(events))
+	for _, e := range events {
+		switch e.EventType {
+		case analysis.EventTypeKill:
+			actors = append(actors, narrative.FirstEventActor{
+				MatchID: e.MatchID, XUID: e.XUID, IsKill: true, TimeMS: e.TimeMS,
+			})
+		case analysis.EventTypeDeath:
+			actors = append(actors, narrative.FirstEventActor{
+				MatchID: e.MatchID, XUID: e.XUID, IsKill: false, TimeMS: e.TimeMS,
+			})
+		}
+	}
+	byXUID := narrative.ComputeFirstEventsByActor(actors, xuidsOrdered, matchIDs)
+
+	// 4. Projection en séries produit — un joueur sans aucun événement exploitable
+	//    n'a pas de bande (pas de lane vide dans le chart).
+	out := make([]domain.FirstBloodPlayerSeries, 0, len(xuidsOrdered))
+	for _, xuid := range xuidsOrdered {
+		points := make([]domain.FirstBloodMatchPoint, 0, len(matchIDs))
+		for _, r := range byXUID[xuid] {
+			points = append(points, domain.NewFirstBloodPoint(r.MatchID, r.FirstKillMS, r.FirstDeathMS))
+		}
+		series := domain.FirstBloodPlayerSeries{Player: gtByXUID[xuid], Matches: points}
+		if series.HasEvents() {
+			out = append(out, series)
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+// firstBloodScope dérive le périmètre du chart « premier frag / première mort » :
+//   - matchIDs : identifiants uniques triés par start_time ASC (l'ordre ne change
+//     pas les médianes mais rend le payload lisible et stable) ;
+//   - xuidsOrdered : main puis coéquipiers, ordre canonique de la page ;
+//   - gtByXUID : résolution xuid → gamertag pour l'étiquetage des bandes.
+func firstBloodScope(
+	allSquadRows []domain.SquadMatchRow,
+	mainGamertag, mainXUID string,
+	teammates []domain.TeammateRow,
+) (matchIDs []string, xuidsOrdered []string, gtByXUID map[string]string) {
+	startByMatch := make(map[string]time.Time, len(allSquadRows))
+	matchIDs = make([]string, 0, len(allSquadRows))
 	for _, m := range allSquadRows {
-		if _, ok := seen[m.MatchID]; ok {
+		if _, ok := startByMatch[m.MatchID]; ok {
 			continue
 		}
-		seen[m.MatchID] = struct{}{}
+		startByMatch[m.MatchID] = m.StartTime
 		matchIDs = append(matchIDs, m.MatchID)
 	}
-	if len(matchIDs) == 0 {
-		return nil
-	}
+	slices.SortStableFunc(matchIDs, func(a, b string) int {
+		return startByMatch[a].Compare(startByMatch[b])
+	})
 
-	// 2. xuid → gamertag pour les joueurs de l'escouade (main + teammates).
-	gtByXUID := make(map[string]string)
-	playersOrdered := make([]string, 0, 1+len(teammates))
+	gtByXUID = make(map[string]string, 1+len(teammates))
+	xuidsOrdered = make([]string, 0, 1+len(teammates))
 	if mainXUID != "" {
+		xuidsOrdered = append(xuidsOrdered, mainXUID)
 		gtByXUID[mainXUID] = mainGamertag
-		playersOrdered = append(playersOrdered, mainGamertag)
 	}
 	for _, tm := range teammates {
 		if tm.XUID == nil || *tm.XUID == "" {
 			continue
 		}
+		if _, dup := gtByXUID[*tm.XUID]; dup {
+			continue
+		}
+		xuidsOrdered = append(xuidsOrdered, *tm.XUID)
 		gtByXUID[*tm.XUID] = tm.Gamertag
-		playersOrdered = append(playersOrdered, tm.Gamertag)
 	}
-	if len(playersOrdered) == 0 {
-		return nil
-	}
-
-	// 3. Charger les events, puis les ramener au référentiel gameplay (T0 /
-	//    countdown pré-match retranché, §4.A-bis). CRITIQUE ici : ce chart
-	//    dépend des valeurs absolues (first_kill_s / first_death_s, bins 15s).
-	//    T0 lu depuis allSquadRows (Q30.t0_ms) ; match sans T0 connu → identité.
-	events, err := s.repo.LoadImpactEvents(ctx, matchIDs)
-	if err != nil || len(events) == 0 {
-		if err != nil {
-			slog.WarnContext(ctx, "teammates_first_events_load_failed", "err", err)
-		}
-		return nil
-	}
-	events = CorrectSquadImpactEvents(ctx, "teammates.17", events, timeline.BuildTimelinesFromSquadRows(allSquadRows))
-
-	// 4. Pour chaque (match, xuid) calculer first_kill_s et first_death_s
-	// (en secondes, time_ms / 1000).
-	type firstTimes struct {
-		firstKillS  int64 // -1 si absent
-		firstDeathS int64
-	}
-	keyOf := func(matchID, xuid string) string { return matchID + "\x00" + xuid }
-	firsts := make(map[string]*firstTimes)
-	for _, e := range events {
-		gt, ok := gtByXUID[e.XUID]
-		if !ok {
-			continue
-		}
-		_ = gt
-		if e.TimeMS < 0 {
-			// Event pré-gameplay (countdown) après correction T0 — ignoré.
-			// Évite la collision avec le sentinel -1 de firstKillS/firstDeathS.
-			continue
-		}
-		k := keyOf(e.MatchID, e.XUID)
-		ft := firsts[k]
-		if ft == nil {
-			ft = &firstTimes{firstKillS: -1, firstDeathS: -1}
-			firsts[k] = ft
-		}
-		secs := e.TimeMS / 1000
-		switch e.EventType {
-		case analysis.EventTypeKill:
-			if ft.firstKillS == -1 || secs < ft.firstKillS {
-				ft.firstKillS = secs
-			}
-		case analysis.EventTypeDeath:
-			if ft.firstDeathS == -1 || secs < ft.firstDeathS {
-				ft.firstDeathS = secs
-			}
-		}
-	}
-	if len(firsts) == 0 {
-		return nil
-	}
-
-	// 5. Trouver le max bin nécessaire (max(first_kill_s, first_death_s) sur tous).
-	maxSec := 0
-	for _, ft := range firsts {
-		if ft.firstKillS > 0 && int(ft.firstKillS) > maxSec {
-			maxSec = int(ft.firstKillS)
-		}
-		if ft.firstDeathS > 0 && int(ft.firstDeathS) > maxSec {
-			maxSec = int(ft.firstDeathS)
-		}
-	}
-	if maxSec == 0 {
-		// tous les events à t=0 ou aucun kill/death — bin minimal
-		maxSec = firstEventsBinSize
-	}
-	nBins := (maxSec / firstEventsBinSize) + 1
-	if nBins < 1 {
-		nBins = 1
-	}
-
-	// 6. Bucketing : pour chaque (match, xuid), incrémenter le bin correspondant.
-	binOf := func(secs int64) int {
-		if secs < 0 {
-			return -1
-		}
-		b := int(secs) / firstEventsBinSize
-		if b >= nBins {
-			b = nBins - 1
-		}
-		return b
-	}
-
-	// kill_counts[gt][bin], death_counts[gt][bin]
-	killByGT := make(map[string][]int, len(playersOrdered))
-	deathByGT := make(map[string][]int, len(playersOrdered))
-	for _, gt := range playersOrdered {
-		killByGT[gt] = make([]int, nBins)
-		deathByGT[gt] = make([]int, nBins)
-	}
-
-	// Re-parcours du map firsts en retrouvant le gamertag depuis la clé.
-	for k, ft := range firsts {
-		// La clé est "matchID\x00xuid" — on extrait le xuid.
-		sep := -1
-		for i := 0; i < len(k); i++ {
-			if k[i] == 0 {
-				sep = i
-				break
-			}
-		}
-		if sep < 0 {
-			continue
-		}
-		xuid := k[sep+1:]
-		gt, ok := gtByXUID[xuid]
-		if !ok {
-			continue
-		}
-		if b := binOf(ft.firstKillS); b >= 0 {
-			killByGT[gt][b]++
-		}
-		if b := binOf(ft.firstDeathS); b >= 0 {
-			deathByGT[gt][b]++
-		}
-	}
-
-	// 7. Vérifier qu'au moins une cellule non nulle.
-	hasAny := false
-	for _, gt := range playersOrdered {
-		for i := 0; i < nBins; i++ {
-			if killByGT[gt][i] > 0 || deathByGT[gt][i] > 0 {
-				hasAny = true
-				break
-			}
-		}
-		if hasAny {
-			break
-		}
-	}
-	if !hasAny {
-		return nil
-	}
-
-	// 8. Build labels (borne droite de chaque bin).
-	binLabels := make([]string, nBins)
-	for i := 0; i < nBins; i++ {
-		binLabels[i] = formatFirstEventsBinLabel((i + 1) * firstEventsBinSize)
-	}
-
-	// 9. Build rows (1 par joueur dans l'ordre canonique).
-	rows := make([]domain.SquadFirstEventsRow, 0, len(playersOrdered))
-	for _, gt := range playersOrdered {
-		rows = append(rows, domain.SquadFirstEventsRow{
-			Player:      gt,
-			KillCounts:  killByGT[gt],
-			DeathCounts: deathByGT[gt],
-		})
-	}
-
-	return &domain.SquadFirstEvents{
-		BinSizeSeconds: firstEventsBinSize,
-		BinLabels:      binLabels,
-		Rows:           rows,
-	}
+	return matchIDs, xuidsOrdered, gtByXUID
 }
 
 // ---------------------------------------------------------------------------

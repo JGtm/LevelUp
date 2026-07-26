@@ -75,6 +75,11 @@ type ServiceRegistry struct {
 	// depuis playlist_labels.toml au boot. Injecté dans MatchViewRepo (ex. Halo 5
 	// « Super Fiesta Fête » → « Super Fiesta »). Map manquante/nil → no-op.
 	playlistLabelOverrides map[string]map[string]string
+	// regulationSeconds : PAR TITRE (slug → game_variant_name → temps
+	// réglementaire en secondes), chargé depuis regulation.toml au boot. Socle du
+	// flag « Prolongation » (Match View + Explorateur). Titre sans fichier →
+	// absent de la map → aucun flag pour ce titre (dégradation sûre).
+	regulationSeconds map[string]map[string]int
 	// MT-09 (PMT-12) : factory player-scoped PAR TITRE. Le slug est une CLÉ de
 	// map (lookup title-agnostic), jamais une comparaison littérale — un 2e titre
 	// enregistre son builder au boot, sans toucher aux factories. Remplace les
@@ -166,8 +171,9 @@ func (r *ServiceRegistry) WithPrestigeBundle(b *PrestigeBundle) *ServiceRegistry
 	return r
 }
 
-// Close libère les ressources détenues par le registry — actuellement le
-// PrestigeBundle (handles sharedSocial + metadata). Idempotent.
+// Close libère les ressources détenues par le registry — PrestigeBundle
+// (handles sharedSocial + metadata), resolver d'assets, store monitoring,
+// handles metadata annexes, readers snapshot. Idempotent.
 // Phase 2 plan stabilisation 2026-05-22 : appelé depuis cmd/server/main.go
 // au shutdown AVANT metaDB.Close() pour décrémenter proprement le refCount
 // sur metadata.
@@ -186,6 +192,13 @@ func (r *ServiceRegistry) Close() {
 		_ = r.assetResolver.Close(context.Background())
 		r.assetResolver = nil
 	}
+	// Store monitoring (data/global/monitoring.duckdb) ouvert au boot via
+	// ops.NewMonitoringStore → duckdb.OpenReadWrite : personne ne le fermait.
+	// duckdb.CloseAll() ne parcourt QUE le pool joueur (globalPool), pas la map
+	// openDBs — ce Close est donc le seul chemin de libération. Sans lui :
+	// refCount=1 résiduel (WARN shutdown_db_leak à CHAQUE arrêt) et surtout WAL
+	// non checkpointé, donc rejeu au boot suivant au lieu d'une base propre.
+	r.closeMonitoringStore()
 	// Handles metadata "annexes" (seasons/playlists catalog) ouverts hors pool
 	// joueur dans NewRouter : chaque Close décrémente le refCount partagé du
 	// cache duckdb. Sans ça ils restent orphelins au shutdown (verrou Air).
@@ -471,6 +484,24 @@ func (r *ServiceRegistry) playlistLabelConfigFor(pdb *duckdb.PlayerDB) analysis.
 func (r *ServiceRegistry) WithPlaylistLabelOverrides(byTitle map[string]map[string]string) *ServiceRegistry {
 	r.playlistLabelOverrides = byTitle
 	return r
+}
+
+// WithRegulationSeconds injecte la table PAR TITRE du temps réglementaire
+// (slug → game_variant_name → secondes), chargée depuis regulation.toml au boot.
+// Retourne le registry pour chaînage.
+func (r *ServiceRegistry) WithRegulationSeconds(byTitle map[string]map[string]int) *ServiceRegistry {
+	r.regulationSeconds = byTitle
+	return r
+}
+
+// regulationFor retourne la table réglementaire du titre du joueur, ou nil si le
+// titre n'en déclare pas (→ aucun flag « Prolongation »). Lookup par CLÉ de map,
+// jamais de comparaison de slug.
+func (r *ServiceRegistry) regulationFor(pdb *duckdb.PlayerDB) map[string]int {
+	if r.regulationSeconds == nil || pdb == nil {
+		return nil
+	}
+	return r.regulationSeconds[pdb.TitleSlug]
 }
 
 // GetSessionNotifier retourne le SessionNotifier enregistré pour le xuid donné.

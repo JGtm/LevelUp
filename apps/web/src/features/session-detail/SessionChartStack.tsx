@@ -10,10 +10,17 @@
  *   DROITE + couleur A en vue single, à GAUCHE + couleur B dans le drawer → effet miroir.
  */
 import type { SemanticToken } from '@/lib/accessibility'
-import type { IntensityMatchRow, SessionCompareEntry, SessionDetailMatchRow } from '@/lib/api/types'
+import type {
+  FirstBloodPlayerSeriesDTO,
+  IntensityMatchRow,
+  SessionCompareEntry,
+  SessionDetailMatchRow,
+} from '@/lib/api/types'
 
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { EfficiencyTooltipText } from '@/components/charts/EfficiencyTooltipText'
+import { FirstBloodLanes } from '@/components/charts/FirstBloodLanes'
+import { firstBloodMaxSec, toFirstBloodSeries } from '@/features/_shared/firstBlood'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { CompareScale } from './_compareScale'
 import { useSessionT } from './_shared'
@@ -51,6 +58,8 @@ interface Props {
   scale?: CompareScale
   /** Profil d'intensité (frags par phase) de la session — calculé côté Go (payload). */
   intensityRows?: IntensityMatchRow[]
+  /** Premiers frag/mort par match de la session — calculés côté Go (payload). */
+  firstBlood?: FirstBloodPlayerSeriesDTO[]
 }
 
 export function SessionChartStack({
@@ -61,6 +70,7 @@ export function SessionChartStack({
   participationColor = 'compare-a',
   scale,
   intensityRows,
+  firstBlood: firstBloodRows,
 }: Props) {
   const t = useSessionT()
   const locale = useAppShellStore((s) => s.locale)
@@ -143,6 +153,14 @@ export function SessionChartStack({
       rows={intensityRows ?? []}
     />
   )
+  // Premier frag / première mort — une bande (session solo), 1 point par match.
+  // Titre et état vide portés par le manifest partagé first_blood, comme sur
+  // l'Escouade et Timeseries. Pleine largeur, adjacent au profil d'intensité :
+  // les deux se lisent sur la chronologie du match.
+  const firstBloodSeries = toFirstBloodSeries(firstBloodRows)
+  const firstBlood = (
+    <FirstBloodLanes data={firstBloodSeries} maxSec={firstBloodMaxSec(firstBloodSeries)} />
+  )
   const mmr = hasTeamMmr ? (
     <SessionMmrDumbbell title={t('session.detail.chart_mmr_title')} matches={matches} />
   ) : null
@@ -217,6 +235,7 @@ export function SessionChartStack({
       {fdaGap}
       {netLives}
       {intensity}
+      {firstBlood}
       {participation}
       {mmr ? (
         <div className="grid gap-6 xl:grid-cols-2">
