@@ -8,10 +8,13 @@
 #   PLR0913                    -> revive argument-limit (relaxe a 7)
 #   enforce_size_limits.py     -> funlen (80 lignes / 80 statements) + lll
 #   isort                      -> goimports (no config needed)
-#   detect-secrets             -> PLUS CABLE : son seul point d'entree etait
-#                                 .pre-commit-config.yaml, supprime le 2026-07-26
-#                                 (aucun shim pre-commit installe, il ne tournait
-#                                 donc plus). .secrets.baseline reste au depot.
+#   detect-secrets             -> REMPLACE par gitleaks le 2026-07-26 (binaire Go,
+#                                 zero runtime Python) : config .gitleaks.toml a la
+#                                 racine, hook lefthook pre-commit + job CI
+#                                 .github/workflows/gitleaks.yml. detect-secrets
+#                                 n'avait plus de point d'entree depuis la suppression
+#                                 de .pre-commit-config.yaml, et son artefact
+#                                 .secrets.baseline a ete supprime avec lui.
 #
 # Seuils EFFECTIFS (cf. bloc linters.settings ci-dessous — source de verite) :
 #   Complexite cyclomatique : 15
