@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [7.2.5] - 2026-07-26
+
+> Patch release closing the operational tail of v7.2.1: the demo deployment pipeline, the Waypoint logo that rendered on Chrome but not on Firefox, and two inverted documentation comments. No schema change, no migration, no post-deploy action.
+
+### Fixed
+
+- **Waypoint logo invisible in the match tables** — three distinct causes, only one of which was browser-specific. (1) The link was a flex container with no size of its own inside an auto-width table cell; Chrome and Firefox do not resolve intrinsic size identically in that configuration and Firefox collapsed the image to zero. The link now carries a fixed size, so nothing is negotiated. (2) The HTML `width`/`height` attributes were missing, leaving the engine without a size before CSS resolution — the point that mattered to Firefox. (3) The asset is a 360×160 logotype forced into a 16×16 square with no `object-fit`: the default `fill` crushed it into sub-pixel strokes on **every** browser, including the ones where it appeared, so this part was never reported. `object-contain` restored, box set to 20×16, and width reserved per icon column (`w-9`) rather than widening the shared cell padding, which would have detached the whole table from its borders. Applied identically to `ExplorerMatchesTable.tsx` and its twin `SquadSynergyHistoryTable.tsx` — the two feed the Session, Timeseries and Career pages as well.
+- **Demo milestones stuck at 0 (deploy pipeline)** — `insertDemoMilestonesEarned` attaches the demo metadata read-only to derive milestones from the real catalog, but the regen job only stopped the prod service; the demo container kept the file locked and the step failed best-effort (`Conflicting lock is held in PID 0`). The job now stops `levelup-demo` as well, with an `EXIT/INT/TERM/HUP` trap that brings both services back whatever happens — a regen that fails mid-way can no longer leave the demo down. Milestones go from 0 to 6 on both titles. Demo DuckDB files are now published atomically (inode swap) with WAL handling, so a reader never observes a half-written database.
+- **Inverted documentation** — `discovery_client.go` claimed the UGC discovery API needs no Spartan authentication; it returns 401 today (measured anonymously on 2026-07-25). The comment described a bygone state of the API and misled anyone writing a new call. Alongside it, the anonymous route that does work is now documented: the map-variant blob path, which is what allowed 120 of 123 maps to be retrieved without authentication. The Waypoint capability comment claiming Halo 5 does not declare `waypoint_match_url` is corrected too — it has since 2026-07-24, which is what produced a false diagnosis — and the now-stale mention of Halo 5 is removed from the column hint in both locales.
+
+### Added
+
+- **Capability parity guard-rail** — `capabilities_parity_test.go` and `capabilities_parity_scan_test.go`: the capability list existed in three places (the Go descriptor, a validation set, and a front-side list) with nothing tying them together, which is exactly what let the comments drift. Bite proven by mutation: removing `CapWaypointMatchURL` from `knownCapabilities` made the whole Halo 5 title disappear from the registry. The real gap was `knownCapabilities` — the Go↔TS mirror already existed since v7.2.
+- **Demo seed integration tests** — atomic publication, WAL recovery and inode swap covered (`seed_demo_integration_test.go`, `seed_demo_wal_test.go`).
+
 ## [7.2.1] - 2026-07-25
 
 > Patch release consolidating the "v7.2.1 Notion backlog" (items V721-01 to V721-15, branch `feat/v7.2.1-notion-batch`): three more objective modes collected end to end, ten new objective citations, the Explorer season breakdown completed, the squad-challenge pool repaired, 35 routes added to the published contract, removal of the `arc_titles` structure, and the application version taken out of the build. Per-domain summary. **Post-deploy actions are required — see *Ops*.**
