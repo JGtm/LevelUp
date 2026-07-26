@@ -1,3 +1,53 @@
+## [2026-07-26] CI : suite Go jouée UNE fois (D3) + déploiement conditionné à la CI verte (D29)
+
+**Statut** : Complété (branche `fix/build-cache-ci-hardening` ; comportement réel de la
+boucle d'attente validé au premier déploiement).
+
+**D3 — déduplication.** Le job baseline relançait la suite complète déjà jouée par
+Go Coverage (~22 min de doublon par push). Désormais : `go-coverage` exécute UNE fois
+`go test -json -coverprofile` (union des flags des deux anciennes invocations ; seule
+divergence : timeout 300 s vs 600 s → 600 s retenu, l'exécution fusionnée porte
+l'instrumentation de couverture, 300 s fabriquerait des faux timeouts) et le gate baseline
+consomme le JSONL via le nouveau mode `--from-jsonl` de `check_test_baseline.sh` (le mode
+autonome reste le défaut, pour `make gate-push`). Deux durcissements nés de la fusion :
+contrôle n°3 « package en échec sans test en échec » (un package NEUF qui ne compile pas
+passait les deux contrôles existants) et `print_failure_output` (avec `-json`, la sortie
+humaine disparaît du log ; piège mesuré : une erreur de compilation arrive en
+`"Action":"build-fail"` avec `ImportPath` et AUCUN champ `Package` — un extracteur naïf
+rate exactement le cas le plus fréquent). Gain réel : ~22 runner-minutes/push et une
+surface de flake en moins ; le temps mur reste borné par go-coverage. Vérifié : 9 JSONL
+synthétiques + 2 JSONL `go test -json` réels (test rouge, package non compilable), codes
+de sortie et extraits humains contrôlés ; coexistence `-json`/`-coverprofile` prouvée.
+
+**D29 — le déploiement attend la CI.** Un push sur main déclenchait CI et deploy en
+PARALLÈLE : la prod recevait le code avant le verdict (c'est ainsi que main a tenu 14 jours
+à 40 % de rouge sans conséquence). Design retenu — job `attente-ci` en tête de deploy.yml
+plutôt qu'un `workflow_run` (qui perdrait paths-ignore et la concurrency) : sondage
+`gh api .../workflows/ci.yml/runs?head_sha=...` toutes les 30 s, ciblé par FICHIER (stable
+au renommage d'affichage), borné à 55 min pour rendre un message explicite avant le kill
+GitHub ; `success` → OK, rouge → refus avec marche à suivre, `skipped/neutral` → passe avec
+warning, 404 → échec dur (jamais d'attente silencieuse). Soupape d'urgence :
+`workflow_dispatch` avec `ignorer_attente_ci` (hotfix uniquement) ; pièges gérés : un
+`needs` sauté saute ses dépendants par défaut → `!failure() && !cancelled()` sur le job
+deploy, et la garde `github.ref == refs/heads/main` reste la SEULE autorisation de
+déployer. Vérifié : aucun required status check ne référençait le job supprimé (branche
+non protégée, ruleset = deletion + non_fast_forward).
+
+**Garde-rail anti-régression** : `internal/archlint/ci_deploy_triggers_test.go` — l'invariant
+« tout push qui déclenche le déploiement déclenche la CI » (sinon `attente-ci` sonde un run
+qui n'existera jamais : deadlock de 55 min). Deux tests (paths-ignore de ci.yml ⊆ deploy.yml ;
+branches de deploy ⊆ branches de CI), ancres qui `t.Fatalf` si un bloc devient introuvable
+(un garde-rail qui perd sa cible doit rougir, pas se taire). Mordant prouvé par 4 mutations,
+robustesse prouvée sur variations de forme YAML. actionlint 1.7.12 + shellcheck rejoués
+localement sur les 7 workflows (exit 0).
+
+**Incident d'agent consigné** : édition furtive du runbook dans le dépôt PRINCIPAL au lieu
+du worktree, détectée et restaurée par l'agent lui-même (`git status` principal vide,
+re-vérifié par le superviseur). Récidive du piège du dernier chantier (3 agents sur 12) —
+la consigne de vérification de chemin absolu reste indispensable dans tout prompt d'agent.
+
+---
+
 ## [2026-07-26] Détection de secrets — gitleaks 8.30.1 (hook local + CI) + audit d'historique
 
 **Statut** : Complété (branche `fix/build-cache-ci-hardening`).
