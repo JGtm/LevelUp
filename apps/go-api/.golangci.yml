@@ -8,7 +8,10 @@
 #   PLR0913                    -> revive argument-limit (relaxe a 7)
 #   enforce_size_limits.py     -> funlen (80 lignes / 80 statements) + lll
 #   isort                      -> goimports (no config needed)
-#   detect-secrets             -> hook pre-commit universel (inchange)
+#   detect-secrets             -> PLUS CABLE : son seul point d'entree etait
+#                                 .pre-commit-config.yaml, supprime le 2026-07-26
+#                                 (aucun shim pre-commit installe, il ne tournait
+#                                 donc plus). .secrets.baseline reste au depot.
 #
 # Seuils EFFECTIFS (cf. bloc linters.settings ci-dessous — source de verite) :
 #   Complexite cyclomatique : 15
