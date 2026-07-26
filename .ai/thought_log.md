@@ -1,3 +1,40 @@
+## [2026-07-26] Vérification d'affichage v7.2.5 — verdicts, et deux corrections de mes annonces
+
+**Statut** : Complété (vérification par agent, lecture seule ; anomalies consignées Notion
+v7.3, blocs G1-G8).
+
+**Verdicts** : échantillons Prestige démo AFFICHÉS (jalons 6/19, arcs, PP, 7 objectifs
+passés statués) ; 10 citations AFFICHÉES (FR/EN complets, 10/10 icônes dont les 2
+bouche-trous SVG, paliers conformes au plan) ; stats d'objectifs PARTIEL — migration prod
+vérifiée (00:50:58), rendu des 3 modes validé par injection de payload (max-vs-somme
+correct sur le temps VIP), mais aucune page prod OBSERVÉE (pas de session, ownership-gate)
+et les 518 lignes non retrouvées dans les logs (backfill en conteneur éphémère). La chaîne
+prod est DÉDUITE, solidement (la démo sert une copie bit-à-bit de la metadata prod), pas
+observée.
+
+**Deux corrections d'annonces** : (1) « jalons 0→6 sur les DEUX titres » — faux côté
+lecture : `/milestones` répond 500 sur halo_5 (G2 : `milestone_catalog` H5 créé sans
+`condition_fr/en` que le repo sélectionne toujours ; la grille Réalisations disparaît sans
+message ; le changelog v7.2.5 est contredit). (2) Le dev local n'est PAS un proxy de prod :
+metadata non re-seedée (10 citations absentes) et TOUS ses scoreboards tombent sur la vue
+`match_objective_stats_latest` manquante alors que sa migration a tourné — suspicion de
+décalage A/B (B-swap), diagnostic dédié à faire (G1).
+
+**Le plus grave (G1)** : le LEFT JOIN inconditionnel de `queries_match.go:120` fait tomber
+TOUT le tableau des scores quand la vue manque — survenu en prod 2×, le 25/07 au soir,
+entre le déploiement v7.2.0 et la migration ; plus aucune occurrence depuis. Fix de
+robustesse à faire : section objectifs dégradable indépendamment.
+
+**Motif transverse notable** : G4 (campagnes démo invisibles — seed par player_slug, lecture
+par XUID) est la MÊME classe que le bug d'identité corrigé en v7.2.1, côté campagnes. La
+frontière slug/xuid mérite un ratchet dédié plutôt que des corrections au cas par cas.
+
+**Prochaine étape** : G1-G8 au backlog v7.3 (Notion). Rien de bloquant pour la v7.2.5 en
+prod : les deux HAUTES sont l'une réparée d'elle-même en prod (G1, la vue existe), l'autre
+limitée à halo_5 (G2).
+
+---
+
 ## [2026-07-26] CI : suite Go jouée UNE fois (D3) + déploiement conditionné à la CI verte (D29)
 
 **Statut** : Complété (branche `fix/build-cache-ci-hardening` ; comportement réel de la
