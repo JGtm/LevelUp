@@ -14,39 +14,27 @@
 
 ## What's new
 
-**v7.2.1 — Objective modes, title isolation & instant player search**
+**v7.3 — Overtime, first kill / first death & a repaired Achievements page**
 
-A release focused on objective game modes, on sealing Halo 5 data away from Halo Infinite, and on making Explorer usable again on any player.
+A release focused on reading a match better: an overtime flag on every match that went past regulation time, a new first kill / first death chart on three pages, and a round of repairs on Halo 5, on the language switch and on the demo.
 
-**Three more objective modes — Stockpile, Extraction, VIP**
-- **Detailed in the match view like the others** — power seeds deposited and stolen and time as carrier; successful extractions, initiations and conversions; VIPs killed, kills as VIP and longest run as VIP
-- **Ten new objective citations** — flag captures, secures and steals, kills while carrying the flag or the skull, zone defence and skull grabs, with tiers calibrated on real match data instead of a generic scale
+**Overtime**
+- **A badge when the match went past regulation time** — in the match header and as a pill in the Explorer, with the extra time played
+- **Your whole history at once** — the flag is computed as you read, so every past match is covered without waiting for a re-sync; Halo 5 stays deliberately unflagged until its regulation times are declared
 
-**Explorer, squad and charts**
-- **Every season in "Matches by season"** — the breakdown only covered the seasons the game happened to return; a season you never played and a season that could not be retrieved are no longer shown the same way
-- **Squad objectives repaired** — "Propose challenges" no longer fails for good, and challenges whose stated rule did not match the way they were actually scored are no longer offered
-- **Charts that read straight** — real measured average lifespan instead of an estimate, win rate and MMR on their own axes, a dominance marker on the results tape, and the raw value in the synergy radar tooltip
-
-**Objective modes — Capture the Flag, Strongholds, King of the Hill, Oddball**
-- **Your objective stats everywhere** — flag captures, returns, steals and time as carrier, zone captures and time held, skull grabs and possession time, now collected for every match
-- **Per team in the match view**, aggregated on Synthesis, Squad and Timeseries, and wired into four objective citations that count real actions instead of medals
-
-**No more Halo 5 data leaking into Halo Infinite**
-- **Strict title gate** — the Spartan banner never shows another game's nameplate, emblem, backdrop or service tag, not even while a page loads or while you switch games
-- **Appearance per player and per title** — Halo 5 identities are no longer shared between players, and every server response now states the title it belongs to
-
-**Explorer**
-- **Instant player search** — local suggestions in about 200 ms, with an explicit "Search on Xbox" button when you want to go further
-- **Any player readable again** — a searched player's career, medals and seasons go through the pool of healthy credentials, and a discreet badge now says when live data could not be fetched instead of leaving an empty card
+**First kill / first death**
+- **A new chart replacing the old histograms** — one lane per player, first kills above, first deaths below, with each median and the advance window between the two
+- **On three pages** — Squad ("Dynamics" tab), Timeseries ("Progression" tab) and session detail, including the session comparison panel
 
 **Halo 5**
-- **Medal categories** — 215 medals grouped into 11 categories the way Halo Infinite's are, and three medals absent from the official catalog no longer pollute the page
+- **Achievements page repaired** — the page returned an error instead of your milestones, and the section title now stays in place whether the grid is loading, empty or in error
 
-**Readability**
-- **Column tooltips** on every table header, **legends at the foot of the block** (which restores the "Tools of destruction" bar thickness), **grenades split by type** in the frag sunburst, **one weapon name per title**, and **"In placement"** instead of a blank performance score
+**Reading in your language**
+- **Commendations follow the language switch** — their labels used to stay in the previous language until you reloaded the page, and "Headshots" showed up under its raw field name
 
-**Notifications, admin & quality of life**
-- **A notification the first time you ever earn a medal**, Discord alerts that no longer burst after a restart, an **initial sync for a single player** in the admin, the **"Dynamics"** tab back in the Squad menu, the **career-XP chart on Sessions**, and a clear "Match not synced yet" screen instead of a generic error
+**Match view & demo**
+- **A missing objective statistic no longer breaks the scoreboard** — the match no longer reads as incomplete; only the Objectives section stays empty
+- **A more complete demo** — improvement campaigns and objective statistics are visible at last, and player identifiers are anonymized as well
 
 ## Features
 

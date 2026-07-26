@@ -1,3 +1,32 @@
+## [2026-07-26] Chantier v7.3 (batch Notion) — CLÔTURE : 12 commits, gates finaux verts, prêt pour revue de merge
+
+**Statut** : Complété (branche `feat/v7.3-notion-batch`, pilotage superviseur + 11 lots
+d'agents). Section Notion « Pour la v7.3 » traitée intégralement hors Replay 2D (chantier
+utilisateur) et items [POSTPONED].
+
+**Livré** (commits 7bab0260c → celui-ci) : anomalies A (close sans action — comptes
+valides, aucun match joué) B/C/D + G1-G5/G7 corrigées ; flag Prolongation bout en bout
+(règle mesurée T_reg+40 s, TOML par titre, badge header + Explorateur) ; FirstBloodLanes
+sur 3 pages (Escouade/Dynamique, Timeseries, Sessions + drawer) avec suppression des 2
+anciens histogrammes et fin du bucketing serveur ; rotation des logs par taille (100 Mo
+x 3, multi-process safe) ; rate-limit/Cache-Control statiques + 429 observables ;
+backlog.md : 3 items traités (atomicfile EBUSY, filtre auth_only, securitySchemes +
+/docs + ApiError.details), entrée armes H5 reformulée, echarts marqué reporté ;
+changelogs + What's new + notes in-app v7.3.0 FR/EN. EN PARALLÈLE : quick-wins mergée
+et DÉPLOYÉE PROD (48ce99b2c) après remboursement de 7 dettes lint + réconciliation
+baseline — le backfill objectifs « à rejouer » était déjà complet (0 candidat).
+
+**Gates finaux** : go test -tags=integration -count=1 -p 1 ./... EXIT 0 (0 FAIL) ;
+tsc -b cache purgé 0 erreur ; eslint 0 erreur (15 warnings baseline) ; vitest 376
+fichiers / 3215 tests passés / 0 échec ; lint ratchet 0 issue à chaque lot (cache
+purgé) ; openapi-gen -check à jour, types frais.
+
+**Reste côté utilisateur** : revue de merge de la branche ; vérification visuelle
+FirstBloodLanes + Prolongation (session navigateur) ; réponses Notion questions 4-5.
+**Ops au déploiement v7.3** (avec préavis) : purge logs prod (troncature in-place),
+suppression ch_seed_JGtm (validée), env démo MULTI_TITLE_API_ENABLED (si OK),
+re-seed démo (B/G4/G7 visibles après), cut snapshot (réarme l'optimisation lecture).
+
 ## [2026-07-26] Lot v7.3 — backlog résiduel : écritures settings EBUSY, bruit app_release, reliquats contrat, restructuration BACKLOG
 
 **Statut** : Complété (branche `feat/v7.3-notion-batch`, agent). Périmètre décidé par

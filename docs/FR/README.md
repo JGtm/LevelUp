@@ -13,39 +13,27 @@
 
 ## Dernières nouveautés
 
-**v7.2.1 — Modes à objectif, étanchéité entre titres & recherche de joueur instantanée**
+**v7.3 — Prolongation, premier frag / première mort & la page Réalisations réparée**
 
-Une version centrée sur les modes de jeu à objectif, sur l'étanchéité des données Halo 5 vis-à-vis de Halo Infinite, et sur un Explorer de nouveau exploitable sur n'importe quel joueur.
+Une version centrée sur la lecture d'un match : un repère de prolongation sur tous les matchs allés au-delà du temps réglementaire, un nouveau graphe premier frag / première mort sur trois pages, et une série de réparations sur Halo 5, sur la bascule de langue et sur la démo.
 
-**Trois modes à objectif de plus — Stockage, Extraction, VIP**
-- **Détaillés dans la vue de match comme les autres** — graines d'énergie déposées et volées et temps de portage ; extractions réussies, amorçages et conversions ; VIP abattus, frags en VIP et plus longue survie en VIP
-- **Dix nouvelles citations d'objectif** — captures, sécurisations et vols de drapeau, frags en portant le drapeau ou le crâne, défense de zone et prise du crâne, avec des paliers calibrés sur vos vraies données de match plutôt que sur une échelle générique
+**Prolongation**
+- **Un badge quand le match est allé au-delà du temps réglementaire** — dans l'en-tête du match et en pastille dans l'Explorateur, avec le temps de jeu supplémentaire
+- **Tout votre historique d'un coup** — le repère est calculé à la lecture : tous vos matchs passés sont couverts sans attendre une resynchronisation ; Halo 5 en reste volontairement dépourvu tant que ses temps réglementaires ne sont pas déclarés
 
-**Explorer, escouade et graphiques**
-- **Toutes les saisons dans « Matchs par saison »** — la ventilation ne couvrait que les saisons que le jeu voulait bien renvoyer ; une saison jamais jouée et une saison non récupérée ne s'affichent plus de la même façon
-- **Objectifs d'escouade réparés** — « Proposer des défis » ne tombe plus en erreur définitivement, et les défis dont la règle annoncée ne correspondait pas à leur évaluation réelle ne sont plus proposés
-- **Des graphiques qui se lisent droit** — durée de vie moyenne réellement mesurée au lieu d'une estimation, taux de victoire et MMR sur leur propre axe, repère de domination sur la bande de résultats, et valeur brute dans l'infobulle du radar de synergie
-
-**Modes à objectif — Capture de drapeau, Bases, Roi de la colline, Oddball**
-- **Vos statistiques d'objectif partout** — captures, retours et vols de drapeau, temps en tant que porteur, captures de zone et temps de contrôle, récupérations du crâne et temps de possession, désormais collectés à chaque match
-- **Par équipe dans la vue de match**, agrégés sur la Synthèse, l'Escouade et les Séries temporelles, et branchés sur quatre citations d'objectif qui comptent de vraies actions au lieu de médailles
-
-**Fini les données Halo 5 qui fuyaient sur Halo Infinite**
-- **Porte de titre stricte** — le bandeau Spartan n'affiche jamais la bannière, l'emblème, l'arrière-plan ni l'indicatif de service d'un autre jeu, pas même pendant le chargement d'une page ou un changement de jeu
-- **Apparence par joueur et par titre** — les identités Halo 5 ne sont plus partagées entre joueurs, et chaque réponse du serveur indique désormais à quel titre elle appartient
-
-**Explorer**
-- **Recherche de joueur instantanée** — des suggestions locales en 200 ms environ, avec un bouton explicite « Rechercher sur Xbox » quand vous voulez aller plus loin
-- **N'importe quel joueur redevient lisible** — la carrière, les médailles et les saisons d'un joueur recherché passent par le vivier d'identifiants valides, et un badge discret indique désormais quand les données en direct n'ont pas pu être récupérées, au lieu de laisser une carte vide
+**Premier frag / première mort**
+- **Un nouveau graphe qui remplace les anciens histogrammes** — une bande par joueur, les premiers frags au-dessus, les premières morts en dessous, avec la médiane de chacun et la fenêtre d'avance entre les deux
+- **Sur trois pages** — Escouade (onglet « Dynamique »), Séries temporelles (onglet « Progression ») et détail de session, volet de comparaison compris
 
 **Halo 5**
-- **Catégories de médailles** — 215 médailles regroupées en 11 catégories comme celles de Halo Infinite, et trois médailles absentes du catalogue officiel ne polluent plus la page
+- **Page Réalisations réparée** — la page renvoyait une erreur au lieu de vos jalons, et le titre de section reste désormais en place, que la grille charge, qu'elle soit vide ou en erreur
 
-**Lisibilité**
-- **Infobulles de colonnes** sur chaque en-tête de tableau, **légendes en pied de bloc** (ce qui rétablit l'épaisseur des barres d'« Outils de destruction »), **grenades ventilées par type** dans le sunburst des frags, **un seul nom d'arme par titre**, et **« En placement »** au lieu d'une note de performance vide
+**Lecture dans votre langue**
+- **Les citations suivent la bascule de langue** — leurs libellés restaient dans la langue précédente jusqu'au rechargement de la page, et « Tirs à la tête » s'affichait sous son nom de champ brut
 
-**Notifications, administration & confort**
-- **Une notification la première fois que vous décrochez une médaille**, des alertes Discord qui ne partent plus en rafale après un redémarrage, une **synchronisation initiale d'un seul joueur** dans l'administration, l'onglet **« Dynamique »** de retour dans le menu Escouade, le **graphe d'XP de carrière sur les Sessions**, et un écran clair « Match pas encore synchronisé » au lieu d'une erreur générique
+**Vue de match & démo**
+- **Une statistique d'objectif manquante ne casse plus le tableau des scores** — le match ne se lit plus comme incomplet ; seule la section Objectifs reste vide
+- **Une démo plus complète** — les campagnes d'amélioration et les statistiques d'objectif sont enfin visibles, et les identifiants de joueur sont anonymisés eux aussi
 
 ## Fonctionnalités
 
