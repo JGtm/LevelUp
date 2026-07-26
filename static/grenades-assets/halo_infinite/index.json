@@ -1,0 +1,54 @@
+[
+ {
+  "key": "Dynamo",
+  "fr": "Dynamo",
+  "en": "Dynamo",
+  "light": "Dynamo-light.png",
+  "dark": "Dynamo-dark.png",
+  "fond_estime": 107.0,
+  "glyphe_pct": 18.8,
+  "taille_source": [
+   53,
+   56
+  ]
+ },
+ {
+  "key": "Frag",
+  "fr": "Fragmentation",
+  "en": "Frag",
+  "light": "Frag-light.png",
+  "dark": "Frag-dark.png",
+  "fond_estime": 109.0,
+  "glyphe_pct": 30.2,
+  "taille_source": [
+   52,
+   53
+  ]
+ },
+ {
+  "key": "Plasma",
+  "fr": "Plasma",
+  "en": "Plasma",
+  "light": "Plasma-light.png",
+  "dark": "Plasma-dark.png",
+  "fond_estime": 96.0,
+  "glyphe_pct": 26.0,
+  "taille_source": [
+   53,
+   49
+  ]
+ },
+ {
+  "key": "Spike",
+  "fr": "A pointes",
+  "en": "Spike",
+  "light": "Spike-light.png",
+  "dark": "Spike-dark.png",
+  "fond_estime": 99.0,
+  "glyphe_pct": 15.5,
+  "taille_source": [
+   57,
+   48
+  ]
+ }
+]
