@@ -7718,6 +7718,10 @@ components:
           type: string
         details:
           description: Contexte structuré optionnel (objet ou tableau)
+          oneOf:
+            - additionalProperties: true
+              type: object
+            - type: array
         field_errors:
           description: Erreurs de validation par champ (corps de requête)
           items:
@@ -22469,3 +22473,9 @@ components:
         - current_xp
         - xp_total
       type: object
+  securitySchemes:
+    sessionCookie:
+      description: Cookie de session HttpOnly posé par le serveur après authentification (login local, register par invitation ou SSO Xbox). Signé côté serveur ; les routes en écriture exigent en plus l'en-tête CSRF Origin/Referer d'une origine autorisée.
+      in: cookie
+      name: levelup_session
+      type: apiKey

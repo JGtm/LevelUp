@@ -16,6 +16,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"levelup/go-api/internal/platform/atomicfile"
 )
 
 const maxDiscordBody = 1900 // Discord limite les embeds à 2048 chars
@@ -29,7 +31,9 @@ const maxDiscordBody = 1900 // Discord limite les embeds à 2048 chars
 //  3. Si last_notified == currentVersion → skip (déjà notifié).
 //  4. Si seul le patch change (ex: 1.2.3 → 1.2.4) → skip.
 //  5. N'écrit last_notified_version QUE si Discord confirme (HTTP 200/204).
-//  6. Écriture atomique (tmp → rename) : pas de corruption en cas de crash.
+//  6. Écriture via atomicfile.WriteFile : atomique (tmp → rename) quand
+//     l'environnement le permet, in-place quand la cible est bind-montée fichier
+//     (conteneur prod, rename EBUSY) — cf. limites du repli dans ce package.
 //  7. Opt-in prod : la variable d'environnement LEVELUP_NOTIFY_VERSIONS=1
 //     est nécessaire pour envoyer (évite le spam en dev/staging).
 func NotifyNewVersion(cfg NotifyConfig, currentVersion string) bool {
@@ -163,8 +167,13 @@ func readLastNotifiedVersion(settingsPath string) string {
 	return strings.TrimSpace(v)
 }
 
-// writeLastNotifiedVersion persiste last_notified_version de façon atomique
-// (écriture dans un fichier temporaire, puis os.Rename — même volume garanti).
+// writeLastNotifiedVersion persiste last_notified_version dans app_settings.json.
+//
+// L'écriture passe par atomicfile.WriteFile : atomique (temp + rename) quand
+// l'environnement le permet, in-place en repli quand la cible est bind-montée
+// FICHIER dans un conteneur — cas de la PRODUCTION, où le rename répondait EBUSY
+// et où la version notifiée n'était donc JAMAIS persistée (notification Discord
+// « nouvelle version » rejouée à chaque redémarrage, constat deploy v7.2.0).
 func writeLastNotifiedVersion(settingsPath, version string) error {
 	raw, err := os.ReadFile(settingsPath)
 	if err != nil {
@@ -182,28 +191,7 @@ func writeLastNotifiedVersion(settingsPath, version string) error {
 		return fmt.Errorf("marshal app_settings: %w", err)
 	}
 
-	// Écriture atomique : tmp dans le même répertoire → rename
-	dir := filepath.Dir(settingsPath)
-	tmp, err := os.CreateTemp(dir, ".levelup_settings_tmp_")
-	if err != nil {
-		return fmt.Errorf("create temp: %w", err)
-	}
-	tmpName := tmp.Name()
-	_, writeErr := tmp.Write(updated)
-	closeErr := tmp.Close()
-	if writeErr != nil {
-		_ = os.Remove(tmpName)
-		return fmt.Errorf("write temp: %w", writeErr)
-	}
-	if closeErr != nil {
-		_ = os.Remove(tmpName)
-		return fmt.Errorf("close temp: %w", closeErr)
-	}
-	if err := os.Rename(tmpName, settingsPath); err != nil {
-		_ = os.Remove(tmpName)
-		return fmt.Errorf("rename temp → settings: %w", err)
-	}
-	return nil
+	return atomicfile.WriteFile(settingsPath, updated, 0o644)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

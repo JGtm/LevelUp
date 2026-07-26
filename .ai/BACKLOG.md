@@ -10,27 +10,6 @@
 
 ---
 
-### [ops/prod] Écritures app_settings.json impossibles dans le conteneur (bind-mount fichier → rename EBUSY)
-
-Constat (deploy v7.2.0, 2026-07-25) : `app_settings.json` est bind-monté FICHIER dans le
-conteneur ; le pattern d'écriture atomique (temp + rename) échoue systématiquement en prod
-(`rename ... device or resource busy` — un bind-mount fichier épingle l'inode). Vu sur
-`discord_version_persist_failed` (la notif Discord PART, mais `last_notified_version`
-n'est jamais persisté → doublon à chaque redémarrage) ; touche potentiellement TOUTE
-écriture runtime de settings (toggles admin type `discord_notify_sync`) — à auditer.
-Contournement appliqué : édition host-side EN PLACE (`printf > fichier`, même inode —
-jamais `sed -i`, qui rename). Fix propre : fallback écriture in-place (truncate+write)
-quand le rename échoue en EBUSY, ou monter le répertoire parent au lieu du fichier.
-**Effort : S.**
-
-### [ops/notifs] Bruit WARN `app_release: emit` pour les comptes auth_only (pas de player DB)
-
-À chaque release, l'émission des notifs in-app tente d'ouvrir la stats.duckdb des 5
-comptes pool/auth_only (QuiteSiren, UppedJoker, GeleJugefi, Trimbutton, DankerGlue) qui
-n'en ont pas → 5 WARN par redémarrage post-release. Filtrer les profils sans DB joueur
-(ou auth_only) avant d'émettre. **Effort : S.**
-
----
 ### [data/objectifs] Blocs `EliminationStats` / `InfectionStats` — BLOQUÉS faute de donnée
 
 Réduit le 2026-07-25 (v7.2.1, V721-02). Sur les 4 blocs de mode non extraits, **3 sont
@@ -48,46 +27,48 @@ manque de donnée, établi sur payloads réels (P0, 10 matchs interrogés) :
 Le patron existe alors en triple exemplaire — **effort : S par bloc**. Interdiction
 explicite d'inventer le schéma par analogie.
 
-### [ops/h5] `cmd/h5-metadata-fetch` (seedWeapons) écrit `weapon_labels.name_fr` — repli VIVANT, pas à retirer sans preuve
+### [ops/h5] `weapon_labels` / `cmd/h5-metadata-fetch` — VERDICT : à CONSERVER (seuls porteurs des icônes)
 
-Correction (2026-07-25) : la prémisse de cette entrée était FAUSSE. `weapon_resolver.go` (:76-93)
-construit `COALESCE(wnl.name_fr, wnl.name_en, wl.name_fr, wl.name_en, '')` — `wl.name_fr` (=
-`weapon_labels.name_fr`, peuplé par ce CLI) est le **3e maillon**, utilisé pour tout `weapon_id` sans
-`weapon_key` dans le registre (`weapon_ids`). Ce n'est PAS de la plomberie vestigiale : c'est le filet
-de sécurité qui évite de perdre le nom FR d'une arme H5 hors-registre, documenté en tête du resolver.
+Audit fait le 2026-07-26. Il répond à la question posée par la version précédente de cette
+entrée (« la couverture du registre est-elle totale ? ») et en déplace la conclusion.
 
-**Action correcte** : ne rien retirer tant que la couverture du registre n'est pas prouvée. Prochaine
-étape : auditer les `weapon_id` H5 réellement observés (`v_weapon_kills` ou équivalent) contre
-`weapon_ids` — retrait de ce CLI et de la colonne envisageable **seulement** si 100 % des identifiants
-observés ont un `weapon_key` dans le registre. **Effort : S** (l'audit).
+**Ce qui est établi** :
+- **Couverture du registre : 100 %.** Les 66 `weapon_id` H5 connus ont désormais un
+  `weapon_key` (`weaponRegistryH5Stock` étendu dans
+  `internal/games/halo_infinite/migrations/weapon_registry.go`, noms via
+  `config/titles/halo_5/mappings/weapon_names.toml`). Le critère de retrait posé le
+  2026-07-25 est donc **atteint pour les NOMS**.
+- **Mais la table `weapon_labels` et le CLI `cmd/h5-metadata-fetch` restent VIVANTS**, pour
+  une raison qui n'était pas dans le périmètre initial : ils sont les **seuls porteurs des
+  `icon_url` d'armes H5** (consommées par `internal/games/halo_5/adapter_asset_urls.go`, qui
+  indexe l'URL d'icône par `name_en` officiel) **et du catalogue admin d'assets**
+  (`internal/platform/duckdb/metadata_repo_assets_list.go`). Retirer le CLI, c'est perdre les
+  icônes d'armes H5, pas seulement un repli de nom.
+
+**Ce qui resterait supprimable, et sous quelle preuve** : uniquement le **3e maillon du
+COALESCE de NOM** dans `internal/platform/duckdb/weapon_resolver.go`
+(`… NULLIF(wl.name_fr,''), NULLIF(wl.name_en,'') …`), probablement mort depuis que le
+registre couvre 100 % des ids. **Preuve exigée avant retrait** : un relevé LIVE de
+`GET /admin/monitoring/weapon-coverage?title=halo_5` (session admin requise) montrant
+**0 identifiant non résolu par `weapon_name_labels`**. Tant que ce relevé n'est pas produit,
+ne rien toucher : le maillon coûte une clause SQL, son retrait à l'aveugle coûterait des noms
+d'armes vides en production.
+
+**Hors périmètre du retrait, dans tous les cas** : la colonne `weapon_labels.name_en` sert
+AUSSI de clé de résolution d'image (`COALESCE(wl.name_en,'') AS name_en` dans le même
+resolver) — elle ne suit pas le sort du maillon de nom. **Effort : S** (le relevé live).
 
 ---
 
-### [archi/contrat] Reliquats du chantier V72-01 — 2 sur 4 restants
-
-> Réduit le 2026-07-25 (v7.2.1, V721-04) : les deux premiers sous-items sont **livrés**
-> (cf. « Récemment complété »). Les deux qui suivent restent ouverts ; aucun n'est
-> bloquant, le contrat publié est fidèle et gaté.
-
-- [ ] **Bonus post-bascule Huma** — `/docs` (UI OpenAPI) gaté hors prod, `securitySchemes`
-      (aucun déclaré aujourd'hui), validation automatique des inputs (impliquerait de passer
-      les 16 corps `RawBody` en `Body` typé → change le contrat d'erreur 400 → 422 : décision
-      produit), résolveurs cross-champs. Effort : S chacun. Statués `[!]` au plan.
-- [ ] **Sémantiques non exprimables en tag struct** — `ApiError.details` (`oneOf[object,array]`
-      réduit à `{}` par le type Go `any`) et les 7 descriptions de SCHÉMA RACINE (Huma n'a pas
-      de tag type-level) vivent au fragment manuel ; un `SchemaTransformer` léger les
-      rapatrierait côté Go. Effort : S. Inventaire fermé H3 (items 1 et 2 du plan).
-
----
-
-### [ops/deps] Bump `echarts` 5.6.0 → 6.1.0 (alerte Dependabot moderate, CVE-2026-45249, XSS) — reporté à v7.3
+### [ops/deps] Bump `echarts` 5.6.0 → 6.1.0 (alerte Dependabot moderate, CVE-2026-45249, XSS) — REPORTÉ
 
 Noté le 2026-07-25. Dependabot signale une alerte moderate (CVE-2026-45249, XSS) sur `echarts`
 5.6.0 (`apps/web/package.json`), corrigée en 6.1.0. **Non traité en v7.2.1** : bump MAJEUR du
 moteur de tous les graphes de l'app (11 wrappers `apps/web/src/components/charts/` + pages
 timeseries) — l'utilisateur a explicitement refusé le risque d'instabilité à ce stade.
 
-**Cible : v7.3.** **Critère de go mesurable** : `make test-web` vert (suite charts/timeseries) +
+**Reporté (décision utilisateur 26/07) — à re-planifier** (n'a PAS été pris dans le lot v7.3).
+**Critère de go mesurable** : `make test-web` vert (suite charts/timeseries) +
 `make check-types` vert + tournée visuelle des pages les plus denses en graphes (Timeseries,
 Compare, Synthesis, Match view). **Effort : S-M** (bump + vérif, selon l'ampleur des breaking
 changes 6.x).
@@ -186,6 +167,9 @@ forwardées via settings.
 
 | Date | Item |
 |------|------|
+| 2026-07-26 | **[ops/prod] Écritures `app_settings.json` dans le conteneur (bind-mount fichier → rename EBUSY)** (v7.3, `branche feat/v7.3-notion-batch, lot backlog du 26/07`) — point d'écriture unique `internal/platform/atomicfile.WriteFile` : atomique (temp + rename) d'abord, repli **in-place** (truncate + un seul Write + fsync) quand le rename répond EBUSY ou que le répertoire parent refuse le temporaire. Toute AUTRE erreur de rename reste remontée (le repli couvre une contrainte d'environnement connue, pas un diagnostic manquant). Audit des écritures runtime de settings : **3 call sites**, tous migrés — `settings.Store.Save` (chemin de TOUS les toggles admin `PATCH /settings`, qui faisait un `os.WriteFile` nu, donc jamais atomique), `settings.Store.SaveTitleOverlay`, `notify.writeLastNotifiedVersion` (le bug d'origine : notif Discord « nouvelle version » rejouée à chaque redémarrage). Limite ASSUMÉE et documentée : le repli n'est pas atomique — risque borné (contenu déjà sérialisé en mémoire, un seul Write, fsync, fichiers reconstructibles). Garde-rail `archlint/no_bare_settings_write_test.go` (interdit `os.WriteFile`/`os.Rename` nus dans les packages writers de settings). Tests : rename EBUSY → repli, rename ENOSPC → erreur non masquée, temporaire impossible → repli, troncature, création. |
+| 2026-07-26 | **[ops/notifs] Bruit WARN `app_release: emit` pour les comptes auth_only** (v7.3, `branche feat/v7.3-notion-batch, lot backlog du 26/07`) — filtre pur `appReleaseTargets` dans `internal/api/wire/notifications_boot.go` : les profils `auth_only` de `db_profiles.json` (5 en prod, `db_path` vide — ils n'existent que pour le pool de tokens) sont écartés AVANT toute résolution, avec une trace `DebugContext` groupée au lieu de 5 WARN par redémarrage. Découverte au passage, corrigée dans le même filtre : `LoadPlayers()` sans filtre de titre renvoie une entrée par (titre, joueur) alors que la notification est per-JOUEUR → un joueur déclaré sur 2 titres était traité deux fois ; déduplication par slug + ordre d'émission stable. 5 tests unitaires. |
+| 2026-07-26 | **[archi/contrat] Reliquats V72-01 — clos** (v7.3, `branche feat/v7.3-notion-batch, lot backlog du 26/07`) — (a) **`securitySchemes`** : le contrat ne déclarait AUCUN mécanisme d'auth ; `sessionCookie` (apiKey/cookie) est désormais posé côté Go (`internal/api/openapi_security.go`) en lisant le nom du cookie à sa source unique `session.CookieName` — aucune exigence `security` par opération n'est ajoutée (une part de la surface est publique par conception ; l'inventaire route→garde reste le ratchet `bare_routes`, qui est exécutable). (b) **UI `/docs`** : `internal/api/openapi_docs.go`, montée sur le routeur RACINE (le `DocsPath` de Huma aurait enregistré la route une fois par sous-routeur, sous son préfixe) et gatée sur `IsProduction() **OU** DemoMode` — la démo est publique et ne pose pas `LEVELUP_ENV`, la gater sur la seule production l'aurait exposée. Sert le document VIVANT (`/docs/openapi.{json,yaml}`), CSP dédiée. (c) **`ApiError.details`** : `huma.SchemaTransformer` sur `humacore.apiError` restaure `oneOf: [object(additionalProperties true), array]`, perdu par le type Go `any` — corps runtime inchangé. **Statués `[!]`, non traités et pourquoi** : validation automatique des inputs + résolveurs cross-champs = CLOS par décision produit (contrat `RawBody`/400 CONSERVÉ, pas de bascule 422) ; les **7 descriptions de schéma racine** restent au fragment manuel — les rapatrier exigerait un `SchemaTransformer` sur 7 types de `internal/domain`, donc d'y importer `huma` alors que ce package n'a **aucune** dépendance externe aujourd'hui : coût architectural disproportionné pour 7 chaînes déjà présentes au contrat publié. |
 | 2026-07-25 | **[data/objectifs] Stockpile + Extraction + VIP extraits** (v7.2.1, V721-02) — 18 colonnes ajoutées à `match_objective_stats` par une migration séparée incluant la recréation de `match_objective_stats_latest` (une vue `SELECT *` fige ses colonnes à la création : sans ça, les 18 colonnes restaient invisibles à TOUS les lecteurs). `VipStats` n'était même pas déclaré dans `StatsBundle`. Payloads réels capturés (P0, 10 matchs), fixtures committées, INSERT pur. Vérifié sur copie des vraies bases : 27 → 45 colonnes, 5757 lignes préservées. Restent `EliminationStats`/`InfectionStats`, bloqués faute de donnée (cf. backlog actif). |
 | 2026-07-25 | **[feat/citations] 10 citations d'objectifs livrées** (v7.2.1, V721-03) — 10 retenues sur 19 (9 écartées par décision utilisateur). Paliers **calibrés sur données réelles**, ce qui a invalidé les paliers génériques initiaux : 4 de ces citations seraient restées au premier palier à vie (3, 1, 4 et 3 occurrences au total chez le meilleur joueur). Parité EN garantie par un garde-rail neuf (le nom EN n'en avait aucun, seule la description était couverte) + garde-rail d'existence des visuels sur disque. Seed vérifié : 88 → 98, 0 sans nom ni description EN. Visuels de 2 citations : bouche-trous provisoires, l'utilisateur les produit (blocage explicite avant déploiement). |
 | 2026-07-25 | **[data/armes] Colonne résiduelle `weapons.name_fr` purgée** (v7.2.1, V721-05) — migration de reconstruction CTAS-swap idempotente (no-op sur une base déjà propre), clé primaire composite recréée, garde anti-perte sur le nombre de lignes. Vérifié sur copie de la vraie metadata : colonne absente, 84 lignes et PK intactes. |

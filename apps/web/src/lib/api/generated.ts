@@ -4110,7 +4110,9 @@ export interface components {
              */
             code: string;
             /** @description Contexte structuré optionnel (objet ou tableau) */
-            details?: unknown;
+            details?: {
+                [key: string]: unknown;
+            } | unknown[];
             /** @description Erreurs de validation par champ (corps de requête) */
             field_errors?: components["schemas"]["FieldError"][] | null;
             /** @description Message humain localisé */

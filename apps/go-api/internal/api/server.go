@@ -704,6 +704,12 @@ func NewRouter(
 		xboxOAuthRoot = mountAPIV1(r, deps)
 	})
 
+	// Contrat OpenAPI : déclaration du mécanisme d'auth (cf. openapi_security.go)
+	// puis UI de documentation, montée UNIQUEMENT hors production (openapi_docs.go).
+	// Après le montage de /api/v1 : le document partagé est complet à cet instant.
+	declareSecuritySchemes(humaSharedConfig.OpenAPI)
+	mountOpenAPIDocs(r, cfg, humaSharedConfig.OpenAPI)
+
 	// SPA React (catch-all /*) — cf. mountSPA.
 	mountSPA(r, serverCtx, cfg, reg)
 
