@@ -1,8 +1,57 @@
 name: Deploy to VPS
 
+# Aucun accès au dépôt nécessaire côté GITHUB_TOKEN : le déploiement se fait
+# entièrement en SSH avec des secrets (VPS_HOST / VPS_SSH_KEY) et le seul
+# checkout (job pre-check) est un clone public en lecture par l'action. Token
+# sans aucune permission (2026-07-26). SEULE exception, déclarée AU NIVEAU DU JOB
+# concerné : `attente-ci` a besoin de `actions: read` pour lire le verdict de la
+# CI. Ne pas remonter cette permission ici.
+permissions: {}
+
 on:
   push:
     branches: [main]
+    # Ne pas redéployer la PROD pour un commit qui ne change rien de déployé
+    # (2026-07-26). Constaté sur pièces : 3 déploiements prod COMPLETS (build des
+    # 2 images + arrêt/redémarrage des conteneurs) déclenchés par de simples
+    # renommages de fichiers `.ai/` les 23 et 24/07 — l'un a laissé un conteneur
+    # orphelin, un autre a fini en timeout SSH.
+    #
+    # MISE EN GARDE — NE JAMAIS élargir à `docs/**` :
+    #   - le Dockerfile fait `COPY docs /app/docs` ;
+    #   - `docs/CHANGELOG.md` (handlers/changelog.go) et
+    #     `docs/RELEASE_NOTES.md` + `docs/FR/RELEASE_NOTES.md`
+    #     (service/release_notes_service.go) sont lus AU RUNTIME par l'API.
+    # Ignorer `docs/**` ferait servir en prod des notes de version périmées sans
+    # aucun signal. Seul `docs/adr/**` est ignoré : vérifié, aucun code ne lit ce
+    # sous-dossier au runtime (uniquement cité dans des commentaires).
+    #
+    # INVARIANT (D29, 2026-07-26) : le `paths-ignore` de ci.yml doit rester un
+    # SOUS-ENSEMBLE de celui-ci. Un push qui déclenche CE workflow sans déclencher
+    # la CI condamnerait le job `attente-ci` à sonder pendant 55 min un run qui
+    # n'existera jamais (déploiement refusé, prod non mise à jour, verdict inutile).
+    # Autrement dit : RETIRER un motif ici est libre, en AJOUTER un impose de
+    # vérifier qu'il n'est pas déjà (ou plus largement) ignoré par ci.yml.
+    # Garde-rail : TestCIPathsIgnoreSubsetOfDeployPathsIgnore
+    # (apps/go-api/internal/archlint/ci_deploy_triggers_test.go).
+    paths-ignore:
+      - ".ai/**"
+      - ".claude/**"
+      - "docs/adr/**"
+      - "README*.md"
+      - "CLAUDE.md"
+      - "LICENSE"
+
+  # Soupape d'urgence (D29, 2026-07-26) — déclenchement MANUEL du déploiement.
+  # Sans elle, la mise en attente du verdict CI (job `attente-ci`) rendrait tout
+  # hotfix dépendant d'une CI complète (~25-30 min) même quand la prod est à terre.
+  workflow_dispatch:
+    inputs:
+      ignorer_attente_ci:
+        description: "Hotfix urgent UNIQUEMENT : déploie sans attendre le verdict de la CI. La CI reste due a posteriori — vérifier son résultat après coup."
+        type: boolean
+        default: false
+        required: false
 
 # Un seul deploy à la fois : deux pushs rapprochés lançaient deux deploy.sh
 # CONCURRENTS sur le VPS (constaté au deploy v7.1.0 : le `compose up` du run N
@@ -14,18 +63,157 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # ── Job 0 : Pré-validation rapide (syntaxe — ne nécessite pas de SSH) ──────
+  # ── Job 0 : Attente du verdict CI (D29, 2026-07-26) ───────────────────────
+  #
+  # AVANT : push sur main = CI et Deploy lancés EN PARALLÈLE. La prod recevait le
+  # code avant tout verdict, et un rouge n'avait aucune conséquence (40 % des runs
+  # rouges sur main en 14 jours, sans effet visible : c'est comme ça que la dette
+  # de CI s'est installée). MAINTENANT : le déploiement attend que le run CI DU
+  # MÊME COMMIT soit vert.
+  #
+  # Pourquoi une boucle de sondage et pas un déclencheur `workflow_run` : ce dernier
+  # ne supporte NI `paths-ignore` (on redéploierait la prod pour un renommage de
+  # note d'agent — le défaut corrigé le 2026-07-26) NI un `concurrency` fondé sur la
+  # branche poussée, et il perd le lien direct avec le sha poussé.
+  attente-ci:
+    name: Attente du verdict CI
+    runs-on: ubuntu-latest
+    # 60 min : la CI complète dure ~25-30 min (job go-coverage ~22 min). La boucle
+    # s'arrête d'elle-même à 55 min pour rendre un message explicite AVANT que
+    # GitHub ne tue le job (un job tué ne dit rien de la cause).
+    timeout-minutes: 60
+    # Permission déclarée ICI et pas au niveau workflow (qui reste `{}`) : seul ce
+    # job lit l'API Actions. Aucun checkout, aucun accès au contenu du dépôt.
+    permissions:
+      actions: read
+    # Sauté dans deux cas SEULEMENT :
+    #   - soupape d'urgence (workflow_dispatch + ignorer_attente_ci) ;
+    #   - déclenchement manuel hors main (le job deploy ne déploiera pas de toute
+    #     façon — inutile de sonder la CI d'une branche pendant 55 min).
+    # Un job SAUTÉ ferait sauter ses dépendants par défaut : c'est pourquoi le job
+    # deploy porte `!failure() && !cancelled()` (cf. sa condition).
+    if: ${{ github.ref == 'refs/heads/main' && !(github.event_name == 'workflow_dispatch' && inputs.ignorer_attente_ci) }}
+    steps:
+      - name: Attendre que la CI de ce commit soit verte
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          # Le workflow CI est identifié par son FICHIER (ci.yml) et non par son nom
+          # d'affichage : le fichier est ce que le dépôt contrôle, et c'est déjà
+          # l'ancre du garde-rail Go. Le renommer/déplacer fait répondre 404 à l'API
+          # → échec explicite ci-dessous (jamais une attente silencieuse).
+          WORKFLOW="ci.yml"
+          INTERVALLE=30
+          MAX_SONDAGES=110 # 110 x 30 s = 55 min, sous le timeout-minutes du job
+          ERR_FILE="${RUNNER_TEMP}/gh_api_err.txt"
+
+          echo "Commit surveillé  : $SHA"
+          echo "Workflow attendu  : .github/workflows/$WORKFLOW"
+          echo "Sondage           : toutes les ${INTERVALLE}s, ${MAX_SONDAGES} fois max"
+
+          dernier_etat=""
+          for i in $(seq 1 "$MAX_SONDAGES"); do
+            if ! reponse=$(gh api "repos/${REPO}/actions/workflows/${WORKFLOW}/runs?head_sha=${SHA}&per_page=100" 2>"$ERR_FILE"); then
+              if grep -qi "not found" "$ERR_FILE"; then
+                echo "::error::Workflow .github/workflows/${WORKFLOW} introuvable via l'API Actions (renommé ou supprimé ?). Ce job doit être mis à jour — le déploiement est refusé plutôt que de partir sans verdict."
+                head -5 "$ERR_FILE"
+                exit 1
+              fi
+              # Erreur probablement transitoire (5xx, rate limit) : on retente. La
+              # borne de la boucle garantit qu'une panne durable finit en échec.
+              echo "::warning::Appel API en échec, nouvelle tentative dans ${INTERVALLE}s"
+              head -3 "$ERR_FILE"
+              sleep "$INTERVALLE"
+              continue
+            fi
+
+            # Plusieurs runs possibles pour un même sha (re-run, run de PR) : on ne
+            # regarde que le PLUS RÉCENT.
+            ligne=$(printf '%s' "$reponse" | jq -r '
+              [.workflow_runs[]?] | sort_by(.run_started_at // .created_at) | last
+              | if . == null then "absent - -"
+                else "\(.status) \(.conclusion // "-") \(.html_url)" end' 2>/dev/null || echo "illisible - -")
+            statut=${ligne%% *}
+            reste=${ligne#* }
+            conclusion=${reste%% *}
+            url=${reste#* }
+
+            case "$statut" in
+              completed)
+                case "$conclusion" in
+                  success)
+                    echo "[OK] CI verte pour ce commit — déploiement autorisé"
+                    echo "   Run : $url"
+                    exit 0
+                    ;;
+                  skipped | neutral)
+                    # Pas un rouge : la CI n'a rendu aucun verdict (tous les jobs
+                    # sautés). On laisse passer en le SIGNALANT plutôt que de bloquer
+                    # un déploiement légitime sur un cas dégénéré.
+                    echo "::warning::CI conclue « ${conclusion} » (aucun verdict rendu) — déploiement autorisé, à vérifier : $url"
+                    exit 0
+                    ;;
+                  *)
+                    echo "::error::CI rouge — déploiement refusé. Corriger puis re-pousser, ou lancer manuellement le workflow « Deploy to VPS » avec ignorer_attente_ci pour une urgence."
+                    echo "   Conclusion CI : ${conclusion}"
+                    echo "   Run : $url"
+                    exit 1
+                    ;;
+                esac
+                ;;
+              absent)
+                etat="aucun run CI enregistré pour ce commit"
+                ;;
+              illisible)
+                etat="réponse API illisible (nouvelle tentative)"
+                ;;
+              *)
+                etat="CI en cours (statut : ${statut})"
+                ;;
+            esac
+
+            if [ "$etat" != "$dernier_etat" ]; then
+              echo "[$(date -u +%H:%M:%SZ)] ${etat}"
+              dernier_etat="$etat"
+            elif [ $((i % 10)) -eq 0 ]; then
+              echo "[$(date -u +%H:%M:%SZ)] toujours en attente (sondage ${i}/${MAX_SONDAGES})"
+            fi
+            sleep "$INTERVALLE"
+          done
+
+          echo "::error::Aucun verdict CI après $((MAX_SONDAGES * INTERVALLE / 60)) min pour ${SHA} — déploiement refusé."
+          echo "   Dernier état observé : ${dernier_etat:-aucun}"
+          echo "   Si AUCUN run CI n'a jamais été enregistré, l'invariant de déclenchement est rompu :"
+          echo "   le paths-ignore de ci.yml doit rester un SOUS-ENSEMBLE de celui de deploy.yml, et"
+          echo "   la branche poussée doit figurer dans le filtre « branches » de ci.yml (garde-rail :"
+          echo "   apps/go-api/internal/archlint/ci_deploy_triggers_test.go)."
+          exit 1
+
+  # ── Job 1 : Pré-validation rapide (syntaxe — ne nécessite pas de SSH) ──────
   pre-check:
     name: Pré-validation deploy
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
 
       - name: Validation workflows GitHub Actions (actionlint)
         # actionlint : binaire Go natif, validation sémantique GitHub Actions
         # (script officiel rhysd/actionlint). Remplace l'ancien python3+pyyaml.
+        #
+        # VERSION PINNÉE (2026-07-26) : le script d'installation était tiré de
+        # `main` et sans argument de version → il installait le DERNIER actionlint
+        # publié. Une nouvelle version durcissant des règles a rougi 11 runs les
+        # 17-18/07 sur des findings INFO, sans aucun changement de notre côté. Le
+        # tag du script + la version explicite rendent ce step reproductible.
+        # Montée de version = geste volontaire (changer les deux occurrences ici
+        # et dans test-deploy-precheck.yml, qui doivent rester identiques).
         run: |
-          bash <(curl -sSf https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          bash <(curl -sSf https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash) 1.7.12
           ./actionlint -color
 
       - name: Validation syntaxe Bash (scripts/*.sh)
@@ -48,11 +236,26 @@ jobs:
           done
           echo "  ✅ Aucun répertoire fantôme à la racine"
 
-  # ── Job 1 : Déploiement VPS ────────────────────────────────────────────────
+  # ── Job 2 : Déploiement VPS ────────────────────────────────────────────────
   deploy:
     name: Deploy lvelup.info
     runs-on: ubuntu-latest
-    needs: pre-check
+    needs: [attente-ci, pre-check]
+    # Trois choses dans cette condition (D29, 2026-07-26) :
+    #   - `github.ref == refs/heads/main` : SEULE autorisation de déployer. Le
+    #     workflow_dispatch de la soupape d'urgence peut être lancé depuis
+    #     n'importe quelle branche ; rien d'autre que main ne part en prod.
+    #   - `!failure()` : bloque le déploiement si un `needs` a ÉCHOUÉ (CI rouge via
+    #     attente-ci, ou pré-validation rouge).
+    #   - `!cancelled()` : ne déploie pas un run annulé.
+    # Ce n'est PAS un `if` cosmétique : `attente-ci` peut être légitimement SAUTÉ
+    # (soupape d'urgence) et GitHub saute par défaut les jobs qui dépendent d'un job
+    # sauté. Sans cette condition, la soupape ne déploierait jamais rien.
+    if: ${{ github.ref == 'refs/heads/main' && !failure() && !cancelled() }}
+    # 50 min : DOIT rester au-dessus du `command_timeout: 40m` de l'action SSH
+    # ci-dessous, sinon GitHub tuerait le job avant que l'action puisse rapporter
+    # son propre timeout (et le VPS resterait à moitié déployé sans message clair).
+    timeout-minutes: 50
 
     steps:
       - name: Deploy via SSH
@@ -69,11 +272,13 @@ jobs:
             cd /opt/levelup
             bash /opt/levelup/scripts/deploy.sh
 
-  # ── Job 2 : Regen données démo ────────────────────────────────────────────
+  # ── Job 3 : Regen données démo ────────────────────────────────────────────
   deploy-demo:
     name: Regen demo.lvelup.info
     runs-on: ubuntu-latest
     needs: deploy
+    # 50 min : même garde que le job deploy (command_timeout: 40m côté action).
+    timeout-minutes: 50
 
     steps:
       - name: Regen données démo via SSH

@@ -5,6 +5,11 @@
 // Crée des fixtures source (shared + player + metadata), lance SeedDemo, et
 // vérifie les outputs : tables filtrées + xuid anonymisé + configs JSON.
 //
+// Le scénario « publication sous détenteur multi-process » (échange d'inode +
+// ATTACH READ_ONLY) est dans seed_demo_inode_swap_integration_test.go : il exige un
+// vrai second processus, DuckDB refusant deux ouvertures du même chemin dans un
+// même processus.
+//
 // CGO_ENABLED=1 requis (driver duckdb).
 package ops
 
@@ -12,10 +17,8 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 	"time"
 
@@ -567,77 +570,6 @@ func TestLoadVideoRealMaps(t *testing.T) {
 	// Média non "Halo Infinite" exclu (filtre file_name LIKE 'Halo Infinite%').
 	if _, ok := got["Replay clip"]; ok {
 		t.Error("média non Halo Infinite ne devrait pas être inclus")
-	}
-}
-
-// TestCopyMetadataFile_AttachAfterSwapWhileHeld rejoue la fenêtre de déploiement du
-// 2026-07-26 : le seed republie la metadata démo pendant que l'ANCIEN conteneur
-// `levelup-demo` tient encore le fichier ouvert avec son verrou DuckDB. Après le
-// remplacement d'inode, l'ATTACH READ_ONLY que fait la phase Prestige
-// (insertDemoMilestonesEarned) doit réussir — avec l'ancienne écriture en place il
-// échouait sur « Conflicting lock is held » et milestone_earned restait vide.
-func TestCopyMetadataFile_AttachAfterSwapWhileHeld(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		// Windows refuse de supprimer/renommer un fichier tenu ouvert par DuckDB
-		// (sharing violation) : le scénario ne peut pas être fidèle ici. Le
-		// déploiement visé est Linux (conteneur démo) et le gate CI l'est aussi.
-		t.Skip("scénario Linux-only : unlink d'un fichier ouvert impossible sous Windows")
-	}
-	ctx := context.Background()
-	dir := t.TempDir()
-	src := filepath.Join(dir, "src_meta.duckdb")
-	dst := filepath.Join(dir, "metadata.duckdb")
-
-	// Metadata source (nouvelle génération).
-	srcDB, err := sql.Open("duckdb", src)
-	if err != nil {
-		t.Fatal(err)
-	}
-	mustExec(t, srcDB, `CREATE TABLE career_ranks (rank_id INTEGER, rank_name VARCHAR)`)
-	mustExec(t, srcDB, `INSERT INTO career_ranks VALUES (1, 'Recruit'), (2, 'Iron')`)
-	srcDB.Close()
-
-	// « Ancien conteneur démo » : DB à l'emplacement cible, OUVERTE et conservée
-	// (verrou DuckDB posé) pendant toute la copie. CHECKPOINT pour ne pas laisser de
-	// WAL en suspens qui brouillerait l'assertion.
-	heldDB, err := sql.Open("duckdb", dst)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer heldDB.Close()
-	mustExec(t, heldDB, `CREATE TABLE ancienne_generation (n INTEGER)`)
-	mustExec(t, heldDB, `INSERT INTO ancienne_generation VALUES (42)`)
-	mustExec(t, heldDB, `CHECKPOINT`)
-
-	if err := copyMetadataFile(src, dst); err != nil {
-		t.Fatalf("copyMetadataFile pendant que la démo tient le fichier: %v", err)
-	}
-
-	// Lecteur suivant du seed (phase Prestige) : ATTACH READ_ONLY sur le chemin.
-	probe, err := sql.Open("duckdb", filepath.Join(dir, "probe.duckdb"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer probe.Close()
-	if _, err := probe.ExecContext(ctx, fmt.Sprintf("ATTACH '%s' AS demometa (READ_ONLY)", dst)); err != nil {
-		t.Fatalf("ATTACH READ_ONLY après remplacement d'inode: %v", err)
-	}
-	defer func() { _, _ = probe.ExecContext(ctx, "DETACH demometa") }()
-	var n int
-	if err := probe.QueryRowContext(ctx, `SELECT COUNT(*) FROM demometa.career_ranks`).Scan(&n); err != nil {
-		t.Fatalf("lecture metadata publiée: %v", err)
-	}
-	if n != 2 {
-		t.Errorf("career_ranks publiées = %d, want 2", n)
-	}
-
-	// L'ancien conteneur n'a pas vu sa base tronquée sous lui : son inode est intact.
-	var held int
-	if err := heldDB.QueryRowContext(ctx, `SELECT COUNT(*) FROM ancienne_generation`).Scan(&held); err != nil {
-		t.Fatalf("l'ancienne DB tenue ouverte est devenue illisible: %v", err)
-	}
-	if held != 1 {
-		t.Errorf("ancienne_generation = %d, want 1", held)
 	}
 }
 

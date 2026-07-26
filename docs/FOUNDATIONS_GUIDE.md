@@ -149,7 +149,7 @@ All UI strings in `apps/web/src/features/**` and `apps/web/src/components/**` co
 
 **ICU MessageFormat** is supported for plurals + interpolation : `{n, plural, one {# match} other {# matches}}`.
 
-**Lint** : `npm run lint` errors out on hardcoded JSX strings inside `features/` or `components/`. `node tools/lint-no-hardcoded-fields.mjs` runs in pre-commit and detects label collisions with `fields.toml`.
+**Lint** : `npm run lint` errors out on hardcoded JSX strings inside `features/` or `components/`. `node tools/lint-no-hardcoded-fields.mjs` runs in the lefthook **pre-push** hook (`lefthook.yml`) and detects label collisions with `fields.toml`.
 
 For the rules + allow-list, see ADR 0003.
 
