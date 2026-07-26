@@ -1,3 +1,39 @@
+## [2026-07-27] Chantier v7.3 DÉPLOYÉ EN PROD — merge sans tag, ops VPS, vérifications
+
+**Statut** : Complété (main `22641859c` puis `82c0098a7`). Mandat utilisateur : merge dans
+main local + push SANS TAG.
+
+**Déploiement.** 5 workflows verts (gitleaks, ADR 0021, Deploy Pre-Check, CI, Deploy to
+VPS + Regen demo). Sans tag, la prod continue de s'annoncer `v7.2.5` (deploy.sh lit le
+dernier tag semver) : pas de notification de release ni de « Quoi de neuf » utilisateur
+tant que le tag n'est pas posé — comportement voulu, la v7.3 restant ouverte côté
+utilisateur (Replay 2D).
+
+**Ops VPS.** Logs 2,2 Go -> 657 Mo : la rotation livrée s'est déclenchée SEULE au
+redémarrage (auth/general/sync archivés en .log.1 dès leur premier write) ; provider.log
+(1,6 Go, pas encore écrit donc pas encore roté) tronqué en conservant 29 Mo d'historique.
+Config démo : MULTI_TITLE_API_ENABLED déclaré sur le service démo (la prod tirait le flag
+de son app_settings.json bind-monté, la démo n'avait ni l'un ni l'autre) — vérifié après
+déploiement : field-mappings démo 200, `offensive_conversion` sert bien « Rendement ».
+
+**Correctifs observés à l'oeuvre en prod** : `atomicfile: rename EBUSY ... repli in-place`
+dans les logs (le défaut EBUSY du backlog EXISTE bien en conteneur, et l'écriture aboutit
+désormais au lieu d'être perdue) ; rotation automatique ci-dessus.
+
+**Lot K — mesure NON CONCLUANTE, à refaire.** 4 cycles post-sync depuis le déploiement :
+0 WARN « writer RW tenu > 2 s » — mais `matches_inserted: 0` sur les 4 et 0 segment
+`weapons_collect` : aucun film n'a été traité, donc le silence prouve l'absence de
+régression, PAS l'efficacité. La vraie mesure exige une session de jeu (matchs à
+ingérer). À reprendre à ce moment-là. Aucune erreur applicative depuis le déploiement
+(les 63 ERROR de service.log datent toutes du 25/07).
+
+**Reste côté utilisateur** : abandonner `ch_seed_JGtm` depuis sa page Prestige (base
+joueur tenue RW par le serveur, aucun outil SQL dans l'image — pas faisable proprement à
+distance) ; poser le tag v7.3.0 quand la version sera close.
+
+**Nettoyage** : branches `feat/v7.3-notion-batch` et `fix/quick-wins-post-v721`
+supprimées (locales + distantes).
+
 ## [2026-07-26] v7.3 — post-sync : le film sort du burst d'écriture (split COLLECT/FLUSH events + weapons)
 
 **Statut** : Complété (branche `feat/v7.3-notion-batch`, non commité — revue superviseur).
