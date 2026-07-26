@@ -55,6 +55,33 @@ func trackFatalErr(r *domain.PostSyncResult, stepName string, err error) {
 	r.FatalErrors = append(r.FatalErrors, fmt.Sprintf("%s: %v", stepName, err))
 }
 
+// withSharedRead ouvre un segment de LECTURE shared COURT pour une étape du
+// post-sync, et le relâche à la sortie de fn. Échec d'acquisition → WARN +
+// trackFatalErr, l'étape est skippée (best-effort ; en mode pinned l'acquisition
+// n'échoue jamais).
+//
+// Helper CANONIQUE : toute étape qui a besoin de lire shared passe par ici — y
+// compris les étapes extraites (engine_postsync_films.go). Ne pas ré-écrire ce
+// bloc ailleurs : le release DOIT précéder tout burst Write (garde anti-deadlock
+// de SharedAccess.Write).
+func (e *SyncEngine) withSharedRead(
+	ctx context.Context,
+	shared *SharedAccess,
+	r *domain.PostSyncResult,
+	step string,
+	fn func(sharedDB *sql.DB),
+) {
+	roDB, release, aerr := shared.Read(ctx)
+	if aerr != nil {
+		slog.WarnContext(ctx, "post-sync: lecture shared indisponible — étape skippée",
+			"gamertag", e.gamertag, "step", step, "err", aerr)
+		trackFatalErr(r, step+" shared read", aerr)
+		return
+	}
+	defer release()
+	fn(roDB)
+}
+
 // runConditionalPostSync exécute le pipeline complet si des matchs ont été insérés,
 // sinon rafraîchit au moins la carrière pour mettre à jour le snapshot joueur.
 func (e *SyncEngine) runConditionalPostSync(
@@ -188,18 +215,11 @@ func (e *SyncEngine) runPostSyncPipeline(
 			trackFatalErr(&r, "shared read-only", err)
 		}
 	}
-	// withSharedRead : segment de LECTURE court par étape. Échec d'acquisition →
-	// WARN + trackFatalErr, l'étape est skippée (best-effort ; pinned n'échoue jamais).
+	// withSharedRead : segment de LECTURE court par étape (délègue au helper
+	// canonique e.withSharedRead — même sémantique, un seul point de vérité
+	// partagé avec les étapes extraites, cf. engine_postsync_films.go).
 	withSharedRead := func(step string, fn func(sharedDB *sql.DB)) {
-		roDB, release, aerr := shared.Read(ctx)
-		if aerr != nil {
-			slog.WarnContext(ctx, "post-sync: lecture shared indisponible — étape skippée",
-				"gamertag", e.gamertag, "step", step, "err", aerr)
-			trackFatalErr(&r, step+" shared read", aerr)
-			return
-		}
-		defer release()
-		fn(roDB)
+		e.withSharedRead(ctx, shared, &r, step, fn)
 	}
 
 	// -2 Ensure player_match_enrichment rows exist for all matches where the
@@ -249,109 +269,13 @@ func (e *SyncEngine) runPostSyncPipeline(
 	e.runScoringSteps(ctx, playerDB, shared, &r)
 	clock.lap("scoring", r.EngagementScoresComputed)
 
-	// 1.54 Convergence events — re-fetch des highlight_events des matchs
-	// events_loaded=false (matchs insérés par le watcher d'un teammate, ou film
-	// pas encore propagé au 1er passage). Le sync primaire ne charge que les
-	// matchs NOUVEAUX ; ce backlog ne se résorbait jamais depuis la
-	// décommission du heal (2026-06-01). Idempotent (un match events_loaded=true
-	// n'est pas resélectionné) + terminal no-film 30j. DOIT précéder weapon kills
-	// (qui dérivent de highlight_events). Cf. convergence.go.
-	var eventsWork []string
-	withSharedRead("events_select", func(sharedDB *sql.DB) {
-		eventsWork = selectMatchesMissingEvents(ctx, playerDB, sharedDB, e.xuid)
-	})
-	// Jauge "roue de secours" : en régime stationnaire ces compteurs doivent
-	// PLAFONNER (convergence = filet exceptionnel). S'ils croissent en continu,
-	// c'est que le 1er passage laisse des trous récurrents → durcir l'ingestion.
-	// Lisibles sur /debug/vars (expvar "levelup").
-	observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_events_pending_total", int64(len(eventsWork)))
-	if len(eventsWork) > 0 {
-		// Bursts CHUNKÉS (4c) : le fetch film reste dans ProcessHighlightEvents
-		// (sémantique par match intouchée — zéro risque data), mais le writer est
-		// relâché/ré-acquis tous les postsyncEventsBurstChunk matchs → fenêtre RW
-		// bornée par construction, les lecteurs passent entre les chunks.
-		total := 0
-		for start := 0; start < len(eventsWork); start += postsyncEventsBurstChunk {
-			end := min(start+postsyncEventsBurstChunk, len(eventsWork))
-			wdb, releaseW, werr := shared.Write(ctx, "events")
-			if werr != nil {
-				slog.WarnContext(ctx, "post-sync: burst events indisponible — reste du backlog reporté",
-					"gamertag", e.gamertag, "remaining", len(eventsWork)-start, "err", werr)
-				trackFatalErr(&r, "events burst", werr)
-				break
-			}
-			// Corps du chunk sous closure : releaseW en defer, donc la fenêtre RW
-			// est rendue même si convergeEvents panique (parsing film). Le moment
-			// nominal de libération est inchangé — fin de l'itération, avant le
-			// chunk suivant.
-			func() {
-				defer releaseW()
-				// Anti-TOCTOU multi-joueurs : re-filtrer le chunk SOUS le burst — un
-				// post-sync parallèle (coéquipier partageant le match) a pu converger
-				// ces events entre notre sélection RO et ce burst.
-				total += convergeEvents(ctx, wdb, client, filterEventsStillMissing(ctx, wdb, eventsWork[start:end]))
-			}()
-		}
-		r.ConvergedEvents = total
-		observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_events_processed_total", int64(total))
-		slog.InfoContext(ctx, "post-sync: convergence events",
-			"gamertag", e.gamertag, "selected", len(eventsWork), "processed", total)
-	}
+	// 1.54 convergence events puis 1.55 weapon kills — les deux étapes « film »
+	// du post-sync, extraites dans engine_postsync_films.go (split COLLECT/FLUSH :
+	// le téléchargement du film ne tient plus le writer RW).
+	films := postSyncFilmSteps{engine: e, playerDB: playerDB, shared: shared, client: client, result: &r}
+	films.runEventsConvergence(ctx)
 	clock.lap("convergence_events", r.ConvergedEvents)
-
-	// 1.55 Weapon kills — pipeline film. Convergent : nouveaux matchs (insertedIDs)
-	// ∪ backlog incomplet (bits weapon non posés), bornés. La sélection weapons se
-	// fait APRÈS la convergence events pour que highlight_events soit peuplé.
-	// Best-effort : films absents (404/410) normaux pour les vieux matchs. Garde
-	// bit-honnête préservée (MBitWeaponKills posé seulement si ≥1 ligne insérée).
-	var weaponBacklog []string
-	withSharedRead("weapons_select", func(sharedDB *sql.DB) {
-		weaponBacklog = selectMatchesMissingWeapons(ctx, playerDB, sharedDB, e.xuid)
-	})
-	observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_weapons_pending_total", int64(len(weaponBacklog)))
-	weaponWork := mergeUniqMatchIDs(insertedIDs, weaponBacklog)
-	if len(weaponWork) > 0 {
-		// Bursts CHUNKÉS (4d) : le download film reste dans BackfillWeaponKillsForMatch
-		// (sémantique intouchée — c'était l'étape la plus risquée à scinder), mais le
-		// writer est relâché/ré-acquis tous les postsyncWeaponsBurstChunk matchs →
-		// fenêtre RW bornée, les lecteurs passent entre les chunks.
-		totalDone, totalNoFilm := 0, 0
-		for start := 0; start < len(weaponWork); start += postsyncWeaponsBurstChunk {
-			end := min(start+postsyncWeaponsBurstChunk, len(weaponWork))
-			wdb, releaseW, werr := shared.Write(ctx, "weapons")
-			if werr != nil {
-				slog.WarnContext(ctx, "post-sync: burst weapons indisponible — reste du backlog reporté",
-					"gamertag", e.gamertag, "remaining", len(weaponWork)-start, "err", werr)
-				trackFatalErr(&r, "weapons burst", werr)
-				break
-			}
-			// Corps du chunk sous closure : releaseW en defer, donc la fenêtre RW
-			// est rendue même si processWeaponKillsInline panique (download +
-			// parsing film — l'étape la plus exposée). Moment nominal de
-			// libération inchangé : juste après l'appel, AVANT l'accumulation des
-			// compteurs et le test d'erreur qui peut break.
-			var done, noFilm int
-			var werr2 error
-			func() {
-				defer releaseW()
-				done, noFilm, werr2 = processWeaponKillsInline(ctx, wdb, client, e.xuid, weaponWork[start:end])
-			}()
-			totalDone += done
-			totalNoFilm += noFilm
-			if werr2 != nil {
-				slog.WarnContext(ctx, "post-sync: weapon kills échoué", "gamertag", e.gamertag, "err", werr2)
-				trackFatalErr(&r, "weapon kills", werr2)
-				break
-			}
-		}
-		r.WeaponKillsProcessed = totalDone
-		r.WeaponKillsNoFilm = totalNoFilm
-		observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_weapons_processed_total", int64(totalDone))
-		if totalDone > 0 || totalNoFilm > 0 {
-			slog.InfoContext(ctx, "post-sync: weapon kills",
-				"gamertag", e.gamertag, "done", totalDone, "no_film", totalNoFilm)
-		}
-	}
+	films.runWeaponKills(ctx, insertedIDs)
 	clock.lap("weapon_kills", r.WeaponKillsProcessed)
 
 	// 1.56 PSA — convergence des personal_score_awards. Cas nominal : matchs
