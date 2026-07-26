@@ -1,6 +1,6 @@
 # charts — ECharts wrappers catalog
 
-11 reusable client-side chart wrappers built on top of `echarts-core` + `echarts-for-react`. Each wrapper exposes a pure builder (`buildXxxOption`) for unit tests + a React component for rendering.
+12 reusable client-side chart wrappers built on top of `echarts-core` + `echarts-for-react`. Each wrapper exposes a pure builder (`buildXxxOption`) for unit tests + a React component for rendering.
 
 ADR : `docs/adr/0001-charts-stack-echarts.md`. Live sandbox : `/lab/charts`.
 
@@ -18,6 +18,7 @@ ADR : `docs/adr/0001-charts-stack-echarts.md`. Live sandbox : `/lab/charts`.
 | 8 | `<RadarChart>` | N-series 6-axis radar | MatchView participation, Squad V2 radar |
 | 9 | `<OutcomeSequenceTape>` | RLE narrative band of recent outcomes | HomePage, MatchHistoryPage, SquadV2Page |
 | 10 | `<TimeseriesKdaBars>` (page-specific) | Bars K + bars D + line K/D ratio (dual yAxis) | TimeseriesPage summary |
+| 11 | `<FirstBloodLanes>` | One lane per player: first-kill / first-death timing clouds + median advance window | (phase 2: Squad, Timeseries, Sessions) |
 
 > Wrappers 10–11 are kept in `features/timeseries/` (not in this folder) because they compose `<ChartCard>` directly with custom `buildOption` and aren't reusable elsewhere.
 
@@ -113,6 +114,23 @@ Custom ECharts series rendering an RLE band of recent match outcomes with I-beam
   labels={{ win: 'Win', loss: 'Loss', tie: 'Tie', dnf: 'DNF' }}
 />
 ```
+
+### `<FirstBloodLanes>`
+
+Replaces the unreadable "first kill / first death per 15 s bucket" histogram. One horizontal lane per player, X axis = seconds since match start :
+
+```tsx
+<FirstBloodLanes
+  data={[{ player: 'Gamertag', matches: [{ matchId: 'm1', firstKillSec: 47, firstDeathSec: 61 }] }]}
+  maxSec={300}
+/>
+```
+
+`null` = event absent from that match : excluded from the points and from the medians, still counted in the displayed coverage ("11/12 matchs"). Props : `data`, `maxSec` (default 300), `title` (defaults to the manifest title, `''` = no card header), `loading`, `error`, `emptyMessage`, `locale` (defaults to the app shell locale).
+
+Five series : one `custom` (rounded "advance window" bar spanning median first-kill → median first-death, pixel height, so neither `bar` nor `scatter` fits) plus four `scatter` (kill/death clouds via `symbolOffset ±14 px`, then the two median markers). Lanes are sorted by median first kill ascending and the category axis is `inverse`, so the fastest player is on top. Labels (gamertag, `méd. 50s → 1m04`, `+14s d'avance`) live in the left gutter through `axisLabel.formatter` + `rich`, anchored with `margin: 130 / align: 'left'` — nothing is drawn inside the plot area.
+
+i18n : own shared manifest `lib/i18n/manifests/first_blood.toml` (FR + EN), resolved inside the component (same pattern as `FragSunburst`); the pure builder only receives resolved label callbacks. Pure model (medians by linear interpolation, sorting, time formats, geometry constants) : `firstBloodLanesModel.ts`.
 
 ## Primitives SVG pures (non-ECharts)
 
