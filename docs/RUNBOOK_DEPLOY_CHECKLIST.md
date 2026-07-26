@@ -45,9 +45,16 @@ Each item cites its source so it can be re-verified against the code. Structure:
 - [ ] `scripts/deploy.sh` runs on the VPS (via `deploy.yml`): `git reset --hard origin/main`,
       **`docker compose build` while the old containers are still up**, then only on build
       success `docker compose down` + `up -d` (no `--build` — reuses the images just built),
-      image prune, BuildKit cache bound to 5 GB (source: `scripts/deploy.sh` — build-before-down
+      image prune, BuildKit cache bound to 12 GB (source: `scripts/deploy.sh` — build-before-down
       ordering fixes the 2026-07-23 incident where a failed build left prod down until manual
-      intervention; the 5 GB cap prevents the separate 2026-06-27 disk-fill incident).
+      intervention; the cap prevents the separate 2026-06-27 disk-fill incident).
+- [ ] **Do not lower the BuildKit cache cap below one build's working set** (~5.7 GB measured).
+      It was 5 GB from 2026-07-24 to 2026-07-26: below the working set, every deploy evicted the
+      next one's cache, so every deploy became a cold CGO build whose memory peak froze the VPS
+      three times on 25-26/07. Same reasoning bans `docker system prune -a` on a schedule: it
+      deletes the tagged base images (`golang`, `node`, `debian`) because `until` filters on
+      image CREATION date and no container ever references them (source: `scripts/deploy.sh`
+      step 3b, `scripts/systemd/levelup-docker-prune.service`).
 - [ ] **Demo regen is NON-destructive**: it does NOT `rm` `data/demo/warehouse|players`
       before seeding (incident 2026-06-05 left the demo empty on seed failure). The ONLY
       `rm -rf` is for **phantom-directory JSON stubs** (`data/demo/db_profiles.json`,

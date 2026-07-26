@@ -1,3 +1,55 @@
+## [2026-07-26] Gels VPS au build : la vraie cause est NOTRE purge de cache du 24/07
+
+**Statut** : Complété (enquête) ; correctifs sur `fix/build-cache-ci-hardening`.
+
+**Symptôme** : 3 gels machine en 2 jours pendant `docker compose build` (v7.2.0 ×2 le
+25/07, v7.2.5 le 26/07 09:48). SSH et HTTP morts, seul un reboot IONOS en sort. « Ça
+fait 6 mois que ça fonctionne » (utilisateur) — exact, et c'est la clé de l'enquête.
+
+**Diagnostic ANTÉRIEUR invalidé** : j'avais conclu (v7.2.0) au double build CGO causé par
+les `build.args VERSION` divergents, corrigé par V721-15. Amplificateur réel, mais pas la
+cause première : le build du 26/07 09:48 était UNIQUE et sérialisé, et a gelé quand même.
+
+**Cause racine, en deux étages** :
+
+1. *Pourquoi des builds à froid ?* Le commit `4f61eca0a` (24/07 15:26, lot I8 « purge
+   Docker réelle ») a rendu effective la purge post-deploy
+   `docker builder prune --max-used-space=5GB`. Les purges précédentes étaient des no-op
+   silencieux : `--keep-storage` est déprécié depuis Docker 29.4 et remappé vers
+   `--reserved-space`, un PLANCHER, pas un plafond. Or un build complet produit ~5,7 Go de
+   cache (mesuré, `docker system df`). Plafond < working-set ⇒ chaque deploy évince le
+   cache du suivant ⇒ depuis le 24/07, tout deploy touchant du Go = compilation CGO
+   complète à froid (~7 min sur 2 vCPU), là où six mois de builds étaient incrémentaux
+   (2-4 min). Preuve dans les logs CI : `RUN go mod download` non `CACHED` + image de base
+   `golang:1.26-bookworm` re-téléchargée à 09:48 alors qu'elle avait servi à 07:44.
+   Ironie complète : le commentaire du script disait « on garde 5 Go de cache récent pour
+   des builds incrémentaux rapides » — doc inversée, le plafond détruisait précisément ce
+   qu'il prétendait préserver.
+
+2. *Pourquoi un GEL et pas un échec ?* `Swap: 0` — la machine n'a jamais eu de swap. Le
+   boot gelé (journalctl -b -1) ne montre AUCUN OOM-kill : à court de mémoire, le noyau
+   évince les pages exécutables au lieu de tuer le build, et tout le système se met à
+   battre la page (systemd-resolved qui expire au démarrage, etc.) — livelock. Avec du
+   swap, le même pic aurait donné un build lent.
+
+**Pourquoi 2 builds à froid sur 5 ont quand même réussi** (00:44, 07:44) : régime
+marginal. ~950 Mo résidents (2 conteneurs + OS) + pic de build ≈ la RAM totale ; le
+basculement dépend des pics concurrents (cycles auto-sync avec timeouts API de 92 s
+observés dans la fenêtre du gel de 09:48).
+
+**Correctifs** : swap 2 Go posé sur le VPS (fstab + `vm.swappiness=10`) — fait à la main,
+annoncé ; plafond 5→12 Go + doc réécrite (`deploy.sh`) ; cache mounts BuildKit
+(`/go/pkg/mod`, `/root/.cache/go-build`) + `-ldflags -s -w` (`Dockerfile`) — par agents
+sur cette branche. Mémoire projet mise à jour (piège n°10 du fichier deploy hazards).
+
+**Leçons** : (a) un plafond de purge se dimensionne par rapport au working-set MESURÉ d'un
+build, jamais dans l'absolu ; (b) une box de build sans swap meurt en livelock au lieu
+d'échouer proprement — poser le swap AVANT de chercher le coupable applicatif ; (c) quand
+un système « qui marchait depuis 6 mois » casse, chercher d'abord ce que NOUS avons changé
+dans la fenêtre — ici, le durcissement d'ops de la veille.
+
+---
+
 ## [2026-07-26] Release v7.2.5 — traîne opérationnelle de la v7.2.1
 
 **Statut** : Complété. Tag `v7.2.5` sur `main`, 13 commits depuis `v7.2.1`.
