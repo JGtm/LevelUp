@@ -1,3 +1,52 @@
+## [2026-07-26] Release v7.2.5 — traîne opérationnelle de la v7.2.1
+
+**Statut** : Complété. Tag `v7.2.5` sur `main`, 13 commits depuis `v7.2.1`.
+
+**Périmètre** : aucun changement de schéma, aucune migration, aucune action
+post-déploiement. Trois volets : le logo Waypoint (entrée ci-dessous), le pipeline de
+régénération de la démo (jalons bloqués à 0 par un verrou DuckDB tenu par le conteneur
+démo, plus publication atomique par échange d'inode), et deux documentations inversées
+(`discovery_client.go` sur l'authentification UGC, commentaire de capability Waypoint sur
+Halo 5) avec le garde-rail de parité qui manquait — `knownCapabilities` n'était relié à
+rien, c'est ce qui avait laissé les commentaires diverger.
+
+**Décision sur la version** : le numéro saute de 7.2.1 à 7.2.5, choix de l'utilisateur.
+`scripts/deploy.sh` lit `git describe --tags --abbrev=0 --match 'v*.*.*'` après un
+`git fetch --tags` : le tag DOIT donc être poussé, sinon la version servie reste celle du
+tag précédent. Corrigé au passage un message `echo` qui annonçait encore
+« bakée au build » alors que V721-15 a précisément sorti la version du build — doc
+inversée sur le mécanisme qui avait causé le gel du VPS, exactement l'anti-patron n°9.
+
+**Fichier orphelin traité** : `data/titles/halo_infinite/reference/map_quant_bounds.json`
+traînait non suivi dans le dépôt principal. C'est un artefact du chantier film-decoder
+(produit par `cmd/mapquant-build`, consommé par `internal/analysis/filmdec` et
+`internal/analysis/replay`), déjà versionné sur `feat/filmdec-continuation` et
+**byte-identique** (md5 `bf0a52b4`) à la version committée là-bas. Rien sur `main` ne le
+lit — aucun de ses producteurs ni consommateurs n'existe sur cette branche. Retiré du
+dépôt principal ; récupérable par
+`git show feat/filmdec-continuation:data/titles/halo_infinite/reference/map_quant_bounds.json`.
+
+**Vérification des effets de bord du correctif d'identité Prestige** (prédits au moment de
+livrer, restés non vérifiés) : les trois sont **NON SURVENUS**, et pour la même raison —
+le sous-système n'a quasiment aucun usage en prod. 5115 évaluations dans
+`prestige.log`, `transitions:0` sans exception ; 1 seul objectif actif sur toute la
+production (`ch_seed_JGtm`, inséré par seed, jamais via `CreateChallenge`) ; 4
+notifications le jour du correctif, toutes `app_release`, relais Discord désactivé ; 0
+création tentée, donc garde-fou `RejectTooEasy` jamais atteint. Preuve positive que le
+chemin corrigé fonctionne : `current_value: 1.25` mesuré de bout en bout sur la démo, là
+où le filtre `WHERE mp.xuid = ?` recevait auparavant un player_slug et ramenait 0 ligne ;
+et zéro `prestige_baseline_provider_missing_xuid` (ERROR ajouté par le correctif) en 8 h.
+**Le risque est différé, pas éliminé** : les effets 1 et 3 redeviennent actifs dès la
+première création d'objectif réelle. Sentinelles à surveiller dans `prestige.log` :
+premier `prestige: challenge created` et première `transitions` non nulle.
+
+**Prochaine étape** : 8 anomalies hors périmètre relevées en prod pendant cette
+vérification, consignées dans la section v7.3 de Notion (ingestion à l'arrêt depuis le
+24/07, 2,1 Go de logs sans rotation, fuite de référence RW au shutdown, incohérence
+`eval_type` cumulative/threshold désormais affichée sur la démo).
+
+---
+
 ## [2026-07-26] Logo Waypoint invisible : trois causes, une seule visible sous Firefox
 
 **Statut** : Complété (commit `c22627074`, main local). Fichiers

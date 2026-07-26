@@ -95,7 +95,7 @@ fi
 git fetch --tags --quiet origin 2>/dev/null || true
 LEVELUP_APP_VERSION="$(git describe --tags --abbrev=0 --match 'v*.*.*' 2>/dev/null || echo dev)"
 export LEVELUP_APP_VERSION
-echo "[deploy] LEVELUP_APP_VERSION=$LEVELUP_APP_VERSION (bakée au build + env runtime)"
+echo "[deploy] LEVELUP_APP_VERSION=$LEVELUP_APP_VERSION (env runtime uniquement — plus bakée au build depuis V721-15)"
 # Persister dans .env (gitignoré, lu automatiquement par docker compose) : tout
 # `docker compose up` hors de ce script (regen démo dans deploy.yml, ops manuelles
 # ssh, reboot) recréerait sinon le conteneur avec le défaut "dev" — c'est arrivé
