@@ -42,6 +42,14 @@ func (p *stubBaselineProvider) PopulationPercentile(_ context.Context, _, _ stri
 	return 50.0, 1000, nil
 }
 
+func (p *stubBaselineProvider) CumulativeSince(_ context.Context, _, _ string, _ time.Time) (float64, int, error) {
+	var total float64
+	for _, m := range p.matches {
+		total += m.MetricValue
+	}
+	return total, len(p.matches), nil
+}
+
 // e2eEnv regroupe tous les artefacts construits pour un test E2E.
 type e2eEnv struct {
 	playerDB     *duckdb.DB

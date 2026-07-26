@@ -24,6 +24,7 @@ import (
 	"math"
 	"time"
 
+	"levelup/go-api/internal/campaign"
 	"levelup/go-api/internal/prestige"
 	"levelup/go-api/internal/progression/records"
 	"levelup/go-api/internal/progression/streaks"
@@ -74,11 +75,20 @@ type demoPrestigeChallenge struct {
 }
 
 // demoPrestigeCampaign décrit une campagne d'amélioration démo.
+//
+// Status est TYPÉ campaign.CampaignStatus : la table improvement_campaign ne
+// porte pas de contrainte d'énum, et la lecture (CampaignRepo.GetActive /
+// ListEnded) filtre sur des littéraux ('active', puis IN ('completed',
+// 'abandoned')). Un statut hors énum ne casse donc RIEN à l'écriture — il rend
+// simplement la ligne invisible, silencieusement. C'est ce qui est arrivé à la
+// campagne close de la démo, seedée « closed » (2026-07-26). Le typage seul ne
+// suffit pas (une constante chaîne non typée se convertit) : la garde réelle est
+// validateDemoCampaigns, appelée à l'écriture.
 type demoPrestigeCampaign struct {
 	ID            string
 	Axis          string
 	AxisKind      string
-	Status        string
+	Status        campaign.CampaignStatus
 	StartedAt     time.Time
 	EndedAt       *time.Time
 	SnapshotValue float64
@@ -338,21 +348,47 @@ func demoRoundTargetUp(v float64) float64 {
 }
 
 // buildDemoCampaigns : 1 campagne d'amélioration en cours + 1 close et confirmée.
+//
+// La close porte campaign.StatusCompleted et NON « closed » : ce dernier
+// n'appartient pas à l'énum (active|paused|completed|abandoned) et
+// CampaignRepo.ListEnded filtre `status IN ('completed','abandoned')` — la ligne
+// était écrite puis jamais servie, laissant la page Profil sans aucune campagne
+// visible (2026-07-26). Elle a un EndedAt et Confirmed : « completed » est le
+// statut terminal qui la décrit.
 func buildDemoCampaigns(st demoCorpusStats) []demoPrestigeCampaign {
 	ended := demoNotBefore(st.Last.Add(-96*time.Hour), st.First)
 	return []demoPrestigeCampaign{
 		{
 			ID: "demo-campaign-accuracy", Axis: "accuracy", AxisKind: "metric",
-			Status: "active", StartedAt: st.First, SnapshotValue: 0.42, SnapshotN: 20,
+			Status: campaign.StatusActive, StartedAt: st.First, SnapshotValue: 0.42, SnapshotN: 20,
 			CurrentValue: 0.46, MatchesSince: st.Matches / 2,
 		},
 		{
 			ID: "demo-campaign-kda", Axis: "kda", AxisKind: "metric",
-			Status: "closed", StartedAt: st.First, EndedAt: &ended,
+			Status: campaign.StatusCompleted, StartedAt: st.First, EndedAt: &ended,
 			SnapshotValue: 1.10, SnapshotN: 20, CurrentValue: 1.45,
 			MatchesSince: st.Matches, Confirmed: true,
 		},
 	}
+}
+
+// validateDemoCampaigns refuse d'écrire une campagne dont le statut sort de
+// l'énum campaign.CampaignStatus.
+//
+// Garde POSITIONNÉE À L'ÉCRITURE et non dans le builder : c'est l'INSERT qui
+// grave la valeur, et un statut hors énum ne produit aucune erreur SQL (la
+// colonne est un VARCHAR libre) — seulement une ligne que les lectures filtrées
+// n'atteignent jamais. Sans cette garde, le prochain statut inventé repartirait
+// pour un tour de silence.
+func validateDemoCampaigns(campaigns []demoPrestigeCampaign) error {
+	for _, c := range campaigns {
+		if !c.Status.Valid() {
+			return fmt.Errorf("campagne démo %s : statut %q hors énum "+
+				"(active|paused|completed|abandoned) — la ligne serait écrite puis "+
+				"jamais servie par CampaignRepo", c.ID, c.Status)
+		}
+	}
+	return nil
 }
 
 // buildDemoStreaks : 2 séries en cours + 1 cassée (la grille Séries montre les

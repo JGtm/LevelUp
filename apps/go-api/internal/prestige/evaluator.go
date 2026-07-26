@@ -47,13 +47,6 @@ type MatchSample struct {
 	IsWin       bool
 }
 
-// MedalEvent représente un événement de médaille pour l'évaluation cumulative.
-type MedalEvent struct {
-	StartedAt time.Time
-	MedalID   string
-	Count     int
-}
-
 // EvaluateThreshold évalue un défi de type threshold (moyenne sur fenêtre).
 //
 // Pour WindowLastNMatches : l'appelant fournit les N derniers matchs.
@@ -109,25 +102,32 @@ func EvaluateThreshold(t Tuning, c Challenge, matches []MatchSample, now time.Ti
 	}
 }
 
-// EvaluateCumulative évalue un défi de type cumulative (compteur d'événements).
+// EvaluateCumulative évalue un défi de type cumulative (compteur cumulé).
 //
-// Pour les défis "5× Killtacular" : somme les Count des MedalEvent
-// dont l'ID match la métrique du défi (filtré par l'appelant).
-// Pas de fenêtre par matchs — uniquement le timer d'expiration (ExpiresAt).
+// `total` est la SOMME de la métrique du défi sur les matchs comptabilisés,
+// déjà agrégée par l'appelant depuis la borne basse `evalSince` du défi
+// (cf. service.evaluateCumulativeNow → BaselineProvider.CumulativeSince).
+//
+// Un cumulatif ne MOYENNE JAMAIS. « 220 tirs à la tête » se compare à un total,
+// pas à une moyenne par match. Défaut corrigé le 2026-07-26 : les DEUX chemins
+// d'évaluation (persistance `evaluateOne` et affichage `computeCurrentValue`)
+// retombaient sur EvaluateThreshold, si bien que la jauge affichait 1.25 (une
+// moyenne) contre une cible de 220 — soit 0,6 % de progression sur un objectif
+// en réalité presque atteint.
+//
+// La forme précédente consommait des `[]MedalEvent` qu'AUCUNE source de
+// production n'a jamais produits (le type n'avait ni écrivain ni appelant hors
+// tests) : elle a été remplacée par le total, seule donnée dont l'agrégation est
+// réellement mesurable en base. Pas de fenêtre par nombre de matchs — la
+// profondeur est temporelle (created_at) et l'échéance est portée par ExpiresAt.
 //
 // Si total ≥ target → completed (priorité sur l'expiration).
 // Si ExpiresAt dépassé et cible non atteinte → expired.
-func EvaluateCumulative(t Tuning, c Challenge, events []MedalEvent, now time.Time) EvaluationResult {
-	total := 0
-	for _, ev := range events {
-		total += ev.Count
-	}
-	totalF := float64(total)
-
+func EvaluateCumulative(_ Tuning, c Challenge, total float64, now time.Time) EvaluationResult {
 	// La cible est vérifiée avant l'expiration : si atteinte pile à la deadline → completed.
-	if totalF >= c.Target {
+	if total >= c.Target {
 		return EvaluationResult{
-			NewValue:      totalF,
+			NewValue:      total,
 			NewStatus:     StatusCompleted,
 			StatusChanged: true,
 			Reason:        EvalReasonTargetReached,
@@ -136,7 +136,7 @@ func EvaluateCumulative(t Tuning, c Challenge, events []MedalEvent, now time.Tim
 
 	if isExpirationPassed(c, now) {
 		return EvaluationResult{
-			NewValue:      totalF,
+			NewValue:      total,
 			NewStatus:     StatusExpired,
 			StatusChanged: true,
 			Reason:        EvalReasonDeadlinePassed,
@@ -144,11 +144,39 @@ func EvaluateCumulative(t Tuning, c Challenge, events []MedalEvent, now time.Tim
 	}
 
 	return EvaluationResult{
-		NewValue:      totalF,
+		NewValue:      total,
 		NewStatus:     c.Status,
 		StatusChanged: false,
 		Reason:        EvalReasonProgress,
 	}
+}
+
+// evalSince calcule la borne basse temporelle des matchs comptés pour un défi :
+//
+//   - JAMAIS avant createdAt → un défi ne se complète pas rétroactivement avec
+//     l'historique antérieur à sa création (invariant anti-complétion-rétroactive) ;
+//   - pour une fenêtre rolling_days, pas avant now - N jours (la plus récente des
+//     deux bornes l'emporte).
+//
+// Les fenêtres session / last_n_matches sont bornées par createdAt seul (leur
+// profondeur est portée par un compteur de matchs, pas par le temps).
+//
+// SOURCE UNIQUE de la règle : partagée par les défis d'escouade (squadEvalSince)
+// et par les défis personnels cumulatifs (service.evaluateCumulativeNow). Deux
+// copies de cette borne divergeraient (CLAUDE.md n°6).
+func evalSince(createdAt time.Time, windowType WindowType, windowValue string, now time.Time) time.Time {
+	since := createdAt
+	if windowType != WindowRollingDays {
+		return since
+	}
+	n, err := strconv.Atoi(windowValue)
+	if err != nil || n <= 0 {
+		return since
+	}
+	if cutoff := now.AddDate(0, 0, -n); cutoff.After(since) {
+		since = cutoff
+	}
+	return since
 }
 
 // computeAverage retourne la moyenne de la métrique sur les matchs fournis.
