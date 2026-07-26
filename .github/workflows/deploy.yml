@@ -109,8 +109,8 @@ jobs:
             # deploy_hazards). On SKIP le regen sans faire echouer le deploiement (la
             # demo garde ses donnees sur disque). Le motif [b]ackfill evite que pgrep
             # matche le mot dans sa propre ligne de commande (faux positif permanent).
-            # Ce SKIP est AVANT tout arret de conteneur : ni la prod ni la demo ne sont
-            # touchees, la demo continue de servir.
+            # Cette garde DOIT rester avant tout `docker compose stop` : sur ce chemin
+            # rien n'a encore ete arrete, prod ET demo restent donc en ligne telles quelles.
             if pgrep -f '[b]ackfill' >/dev/null 2>&1; then
               echo "[regen] Tache de fond hote detectee — regen demo SKIP (prod preservee)"
               exit 0
@@ -122,14 +122,56 @@ jobs:
             # Pas de `levelup seed` ici : seed-demo COPIE la metadata prod (référentiels
             # + rank_translations déjà présents) ; l'ancien `levelup seed` verrouillait
             # la metadata prod = cause de l'échec historique de ce job.
-            echo "[regen] Stop prod (libère les locks des DB source)..."
-            docker compose stop levelup
+            #
+            # La DÉMO est stoppée elle aussi. NE PAS retirer cet arrêt en le croyant
+            # superflu (ajouté le 2026-07-26, défaut constaté au deploy v7.2.1) : le seed
+            # des échantillons Prestige ATTACHe data/demo/warehouse/metadata.duckdb en
+            # READ_ONLY pour dériver les jalons du VRAI catalogue du titre
+            # (insertDemoMilestonesEarned, apps/go-api/internal/ops/seed_demo_prestige.go).
+            # Le conteneur levelup-demo tient ce fichier ouvert : tant qu'il tournait,
+            # l'ATTACH échouait sur « Could not set lock on file … Conflicting lock is
+            # held in PID 0 » et milestone_earned restait à 0 sur les deux titres —
+            # silencieusement, l'erreur étant best-effort côté Go (WARN « jalons
+            # débloqués non seedés »). Vérifié sur pièces : seed rejoué démo arrêtée →
+            # milestone_earned passe de 0 à 6 par titre.
+            #
+            # Corollaire : la démo DOIT revenir en ligne sur TOUS les chemins de sortie
+            # (seed KO, garde configs en échec, erreur inattendue sous `set -e`, session
+            # SSH coupée) — sinon cet arrêt transforme un défaut cosmétique en démo
+            # durablement hors ligne. D'où le trap ci-dessous : SEUL endroit qui recrée
+            # le conteneur démo (--force-recreate = nouvelle data + image + mounts à
+            # jour). Armé APRÈS la garde pgrep (qui sort sans avoir rien arrêté) et
+            # AVANT le stop, donc aucune fenêtre où la démo serait arrêtée sans filet.
+            # Le `up -d levelup` du trap n'est PAS le redémarrage nominal de la prod
+            # (qui reste explicite plus bas, juste après le seed) : c'est un filet
+            # idempotent — no-op si la prod tourne déjà — pour les sorties anticipées
+            # (signal/session SSH coupée) survenant avant ce redémarrage nominal.
+            # Le trap préserve le code de sortie en cours et le force à 1 si une
+            # remise en service échoue : un job vert ne peut pas masquer un service à terre.
+            _regen_restart_services() {
+              _rc=$?
+              trap - EXIT INT TERM HUP   # pas de 2e passage via le trap EXIT
+              docker compose up -d levelup \
+                || { _rc=1; echo "[regen] ❌ levelup (prod) n'a PAS redémarré — logs : docker compose logs levelup"; }
+              echo "[regen] Recréation du conteneur démo..."
+              if docker compose up -d --force-recreate levelup-demo; then
+                echo "[regen] ✅ levelup-demo recréé avec les données fraîches"
+              else
+                echo "[regen] ❌ levelup-demo n'a PAS redémarré — logs : docker compose logs levelup-demo"
+                _rc=1
+              fi
+              exit "$_rc"
+            }
+            trap _regen_restart_services EXIT INT TERM HUP
+
+            echo "[regen] Stop prod + démo (libère les locks des DB source ET de la metadata démo)..."
+            docker compose stop levelup levelup-demo
 
             # Indexation des captures Halo 5 (mp4 web-natifs servis en direct) : associe
             # chaque clip à son match h5 par timestamp et écrit media_files/associations
             # dans shared_social h5 — lues ensuite par seed-demo pour extraire des clips
             # démo (extractDemoMediaH5). Best-effort + IDEMPOTENT (re-association). Requiert
-            # ffmpeg (miniatures) — présent sur le VPS. Prod stoppée → DB source libres.
+            # ffmpeg (miniatures) — présent sur le VPS. Prod+démo stoppées → DB libres.
             # buffer-min 10 : les captures Game Bar sont prises en FIN de match (delta jusqu'à
             # ~8 min vs start_time). captures-dir = {media base}/JGtm (résolu par la CLI).
             echo "[regen] Index media Halo 5 (captures → associations)..."
@@ -137,41 +179,11 @@ jobs:
               levelup index-media --gamertag JGtm --title halo_5 --buffer-min 10 \
               || echo "[regen] ⚠️ index-media halo_5 a échoué (pas de clip H5 ce regen)"
 
-            # La démo est stoppée PENDANT le seed, en miroir de la prod (incident
-            # 2026-07-26). Le conteneur levelup-demo tient les DuckDB de data/demo
-            # ouvertes (verrou mono-writer + WAL) ; laissé debout, il obligeait le seed
-            # à réécrire des bases sous un process vivant : metadata démo tronquée
-            # pendant toute la fenêtre, ATTACH READ_ONLY de la phase Prestige en
-            # « Conflicting lock is held » (milestone_earned démo vide à chaque
-            # déploiement), et WAL réécrit par l'ancien conteneur APRÈS le seed.
-            # CONTREPARTIE ASSUMÉE : demo.lvelup.info est indisponible le temps du seed
-            # (quelques minutes) au lieu de servir des données incohérentes.
-            #
-            # ensure_demo_up + trap : la démo doit remonter sur TOUS les chemins de
-            # sortie (seed rouge, guard configs, set -e), sinon un run en échec la
-            # laisserait éteinte jusqu'au prochain déploiement. Recréation par le MÊME
-            # mécanisme qu'avant (docker compose up -d --force-recreate depuis
-            # /opt/levelup) : il hérite de LEVELUP_APP_VERSION via le .env que
-            # scripts/deploy.sh vient de réécrire — ne pas inventer d'autre commande,
-            # un `up` qui perd cette variable ferait servir "dev" par la démo.
-            ensure_demo_up() {
-              echo "[regen] Recréation de levelup-demo..."
-              if docker compose up -d --force-recreate levelup-demo; then
-                echo "[regen] ✅ levelup-demo recréé avec les données fraîches"
-              else
-                echo "[regen] ❌ Recréation de levelup-demo échouée — DÉMO INDISPONIBLE"
-                return 1
-              fi
-            }
-            trap 'rc=$?; ensure_demo_up || rc=1; exit $rc' EXIT
-            echo "[regen] Stop demo (libère les DuckDB de data/demo pendant le seed)..."
-            docker compose stop levelup-demo
-
             # seed-demo seede désormais TOUS les titres où JGtm a des données (dérivés de
             # db_profiles) : halo_infinite (flux HLS) + halo_5 (clips mp4 indexés ci-dessus).
             docker compose run --rm levelup \
               levelup seed-demo --gamertag JGtm --service-tag SPTA --out data/demo --max-media 12 \
-              || echo "[regen] ⚠️ seed-demo a échoué — données démo inchangées sur disque (prod redémarrée, démo recréée ensuite)"
+              || echo "[regen] ⚠️ seed-demo a échoué — données démo inchangées (prod redémarrée juste après, conteneur démo recréé à la sortie)"
             echo "[regen] Restart prod..."
             docker compose up -d levelup
 
@@ -184,12 +196,9 @@ jobs:
                 echo "[regen] ✅ $f OK"
               fi
             done
-            # Configs invalides = regen incomplet : job rouge. La démo est quand même
-            # remise en service par le trap (elle est stoppée depuis le seed) — la
-            # laisser éteinte serait pire que la laisser servir l'état sur disque.
-            $ok || { echo "[regen] ❌ Configs démo invalides — prod redémarrée, démo remise en service par le filet de sortie"; exit 1; }
+            $ok || { echo "[regen] ❌ Configs démo invalides — prod déjà redémarrée ; la recréation du conteneur démo (trap de sortie) va échouer sur le bind-mount"; exit 1; }
 
-            # Recréer le conteneur démo (nouvelle data + image + mounts à jour). Trap
-            # désarmé juste avant pour ne pas recréer deux fois sur le chemin nominal.
-            trap - EXIT
-            ensure_demo_up
+            # Fin du corps du script : le conteneur démo est recréé par le trap de sortie
+            # armé plus haut, sur CE chemin comme sur tous les autres. Ne pas rajouter de
+            # `docker compose up -d levelup-demo` ici — ce serait un second endroit à
+            # maintenir, et surtout un chemin de sortie non couvert de plus.
