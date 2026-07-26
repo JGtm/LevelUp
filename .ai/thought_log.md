@@ -27,6 +27,21 @@ chemin invalide, pas 401). Non câblée — c'est une note d'orientation, pas un
 avec la date d'activation et la vraie raison de non-exclusion (les chemins d'URL diffèrent
 par titre mais sont résolus par `buildWaypointMatchUrl` — segment + bucket `arena/`).
 
+**Complément — une 6e occurrence avait échappé au balayage (signalée par l'utilisateur).**
+Le point B ne portait que sur des commentaires de code ; une CHAÎNE UI VISIBLE portait la
+même affirmation périmée : `apps/web/src/features/settings/i18n.ts`, clé
+`showWaypointColumnHint` (tooltip du réglage « Colonne Halo Waypoint sur les listes de
+matchs »), FR et EN, terminait par « (Halo 5) » accolé à la mention de masquage
+automatique. Retiré des deux locales — la fin générique « Masquée automatiquement si le
+titre courant ne l'expose pas. » / « Automatically hidden if the current title doesn't
+expose it. » reste vraie et title-agnostic sans qualificatif. Balayage complémentaire
+exhaustif (toutes occurrences de « Waypoint » et de « Halo 5 » dans les `i18n.ts` de
+`features/` et les manifests `lib/i18n/manifests/*.toml`) : aucune autre chaîne UI ne
+associe Halo 5 à une absence/un masquage de cette capability — les autres mentions de
+« Halo 5 » trouvées (labels de mécaniques natives, commendations natives, comparatif
+précision par rôle, Personnalisateur Spartan, catégories de médailles, libellé « vol à la
+tire », badge « autre jeu » de Relations) sont toutes légitimes et hors périmètre.
+
 **Le vrai livrable — garde-rail, et pourquoi CELUI-LÀ.** Le diag annonçait « trois listes
 sans lien, aucun garde-rail ». Mesure faite : il y en a **quatre**, et l'un des liens est
 **déjà** couvert. `TestCapabilitiesGoTSMirror` (`capabilities_ts_mirror_test.go`, V72-12)
