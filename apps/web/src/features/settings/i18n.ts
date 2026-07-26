@@ -340,7 +340,7 @@ const FR_TEXT: SettingsText = {
   refreshClearsCaches: "Vider les caches à l'actualisation",
   showWaypointColumn: 'Colonne Halo Waypoint sur les listes de matchs',
   showWaypointColumnHint:
-    "Ajoute un lien direct vers la page du match sur Halo Waypoint dans les tableaux de matchs. Masquée automatiquement si le titre courant ne l'expose pas (Halo 5).",
+    "Ajoute un lien direct vers la page du match sur Halo Waypoint dans les tableaux de matchs. Masquée automatiquement si le titre courant ne l'expose pas.",
 
   discordTitle: 'Notifications Discord',
   discordEnabled: 'Activer les notifications',
@@ -638,7 +638,7 @@ const EN_TEXT: SettingsText = {
   refreshClearsCaches: 'Clear caches on refresh',
   showWaypointColumn: 'Halo Waypoint column on match lists',
   showWaypointColumnHint:
-    "Adds a direct link to the match's Halo Waypoint page in match tables. Automatically hidden if the current title doesn't expose it (Halo 5).",
+    "Adds a direct link to the match's Halo Waypoint page in match tables. Automatically hidden if the current title doesn't expose it.",
 
   discordTitle: 'Discord notifications',
   discordEnabled: 'Enable notifications',

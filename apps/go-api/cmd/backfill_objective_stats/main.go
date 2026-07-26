@@ -52,6 +52,7 @@ func main() {
 	gamertag := flag.String("gamertag", "JGtm", "Gamertag dont les tokens servent à l'auth API")
 	dryRun := flag.Bool("dry-run", false, "Lister/extraire sans écrire ni marquer")
 	limit := flag.Int("limit", 0, "Limiter au N matchs candidats les plus récents (0 = tous)")
+	force := flag.Bool("force", false, "Ignorer le bit « déjà tenté ». INDISPENSABLE après un élargissement du périmètre d'extraction : sans lui les matchs du nouveau mode sont sautés en silence. Les matchs ayant déjà des lignes restent exclus.")
 	rps := flag.Int("rps", 5, "Requêtes API par seconde")
 	flag.Parse()
 
@@ -91,12 +92,12 @@ func main() {
 	client := go_sync.NewHaloAPIClient(exch.Tokens.SpartanToken, exch.Tokens.ClearanceToken, *rps)
 
 	// 4. Lister les matchs candidats (bit absent + pas de ligne _latest).
-	matchIDs, err := listCandidateMatchIDs(ctx, db, *limit)
+	matchIDs, err := listCandidateMatchIDs(ctx, db, *limit, *force)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "list matchs: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Printf("Matchs candidats : %d (dry-run=%v)\n", len(matchIDs), *dryRun)
+	fmt.Printf("Matchs candidats : %d (dry-run=%v, force=%v)\n", len(matchIDs), *dryRun, *force)
 
 	// 5. Re-fetch + extract + persist append-only + mark.
 	var fetched, withRows, rowsInserted, marked int
@@ -165,17 +166,36 @@ func resolveXUID(cfg *config.AppConfig, gamertag string) (string, error) {
 	return "", fmt.Errorf("gamertag %q absent de db_profiles.json", gamertag)
 }
 
-// listCandidateMatchIDs retourne les match_id à traiter (bit MBitObjectiveStats
-// absent ET aucune ligne match_objective_stats_latest), triés du plus récent au
-// plus ancien. Évite le re-fetch des matchs déjà couverts ou déjà tentés.
-func listCandidateMatchIDs(ctx context.Context, db *sql.DB, limit int) ([]string, error) {
+// listCandidateMatchIDs retourne les match_id à traiter, triés du plus récent au
+// plus ancien.
+//
+// Deux garde-fous en temps normal : le bit MBitObjectiveStats absent (match jamais
+// tenté) ET aucune ligne dans match_objective_stats_latest (match pas déjà couvert).
+//
+// `force` LÈVE le premier, et c'est indispensable après tout ÉLARGISSEMENT du
+// périmètre d'extraction. Raison : `markObjectiveDone` pose le bit pour TOUT match
+// fetché, y compris ceux qui n'ont produit aucune ligne — donc après l'ajout d'un
+// bloc de stats, les matchs de ce mode sont déjà marqués « tentés » et le backfill
+// les saute EN SILENCE, laissant les nouvelles colonnes vides. C'est exactement ce
+// qui s'est produit en v7.2.1 (Stockpile/Extraction/VIP : 0 candidat sur 44 matchs
+// concernés, constaté en production le 2026-07-26).
+//
+// Le second garde-fou reste actif même sous `force` : un match qui a DÉJÀ des lignes
+// n'est jamais re-fetché, donc aucun doublon possible. Le coût de `force` est donc
+// borné aux matchs sans objectifs (Slayer et consorts), re-fetchés pour rien —
+// acceptable pour une opération ponctuelle après extension.
+func listCandidateMatchIDs(ctx context.Context, db *sql.DB, limit int, force bool) ([]string, error) {
+	bitClause := fmt.Sprintf("(COALESCE(mr.backfill_completed, 0) & %d) = 0", go_sync.MBitObjectiveStats)
+	if force {
+		bitClause = "TRUE"
+	}
 	q := fmt.Sprintf(`SELECT mr.match_id
 	      FROM match_registry mr
-	      WHERE (COALESCE(mr.backfill_completed, 0) & %d) = 0
+	      WHERE %s
 	        AND NOT EXISTS (
 	            SELECT 1 FROM match_objective_stats_latest o WHERE o.match_id = mr.match_id
 	        )
-	      ORDER BY `+analysis.SQLStartTimeCanonical("mr")+` DESC`, go_sync.MBitObjectiveStats)
+	      ORDER BY `+analysis.SQLStartTimeCanonical("mr")+` DESC`, bitClause)
 	if limit > 0 {
 		q += fmt.Sprintf(" LIMIT %d", limit)
 	}

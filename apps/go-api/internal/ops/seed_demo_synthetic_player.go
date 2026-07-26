@@ -76,7 +76,9 @@ func writeOnePlayer(ctx context.Context, path string, spec synthPlayerSpec, matc
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return fmt.Errorf("mkdir: %w", err)
 	}
-	_ = os.Remove(path)
+	if err := removeDuckDBForFreshWrite(path); err != nil {
+		return err
+	}
 	db, err := sql.Open("duckdb", path)
 	if err != nil {
 		return fmt.Errorf("open: %w", err)
@@ -97,10 +99,11 @@ func writeOnePlayer(ctx context.Context, path string, spec synthPlayerSpec, matc
 		return fmt.Errorf("psa append-only: %w", err)
 	}
 
-	// INSERT pur : la player DB est fraîche (os.Remove ci-dessus + migrations qui ne
-	// seedent jamais la clé 'xuid') → aucune collision possible. Surtout, INSERT OR
-	// REPLACE est un pattern ART interdit (garde-rail TestNoARTPatternsOnProtectedTables,
-	// scan file-level de internal/ops/) : ce fichier écrit aussi match_skill_rank /
+	// INSERT pur : la player DB est fraîche (removeDuckDBForFreshWrite ci-dessus +
+	// migrations qui ne seedent jamais la clé 'xuid') → aucune collision possible.
+	// Surtout, INSERT OR REPLACE est un pattern ART interdit (garde-rail
+	// TestNoARTPatternsOnProtectedTables, scan file-level de internal/ops/) :
+	// ce fichier écrit aussi match_skill_rank /
 	// player_csr_snapshots / player_match_enrichment (tables protégées).
 	if _, err := db.ExecContext(ctx,
 		`INSERT INTO sync_meta (key, value) VALUES ('xuid', ?)`, spec.xuid); err != nil {

@@ -11,9 +11,35 @@ name: ADR 0021 Gate — shared_social invariants
 #
 # Race-clean exigé. Cgo + DuckDB requis (linux-amd64).
 
+# Aucune écriture dans le dépôt (tests + ratchet de couverture local au runner).
+permissions:
+  contents: read
+
 on:
   push:
-    branches: [main, feature/*, refactor/*, fix/*]
+    # Liste ALIGNÉE sur ci.yml (2026-07-26). Avant : [main, feature/*, refactor/*,
+    # fix/*] — le préfixe MAJORITAIRE du repo, `feat/*`, était absent : aucune
+    # branche `feat/**` n'a jamais déclenché ce gate (45 runs vérifiés), alors que
+    # les chantiers v7.2 / v7.2.1 (branches `feat/…`) ont réécrit
+    # internal/persist/. `**` (et non `*`) matche aussi les sous-segments
+    # (feat/a/b). Liste reprise À L'IDENTIQUE de ci.yml, docs/** et chore/**
+    # inclus : le filtre `paths` ci-dessous suffit à cibler (une branche chore/
+    # qui bumpe go.mod ou touche internal/persist DOIT rejouer ce gate). Toute
+    # évolution de cette liste se fait EN MÊME TEMPS que celle de ci.yml, sinon
+    # le trou se rouvre.
+    branches:
+      [
+        main,
+        feat/**,
+        feature/**,
+        fix/**,
+        hotfix/**,
+        refactor/**,
+        perf/**,
+        docs/**,
+        chore/**,
+        integration/**,
+      ]
     paths:
       - "apps/go-api/internal/platform/duckdb/**"
       - "apps/go-api/internal/platform/dblease/**"

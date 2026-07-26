@@ -11,7 +11,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"time"
 
 	"levelup/go-api/internal/platform/dblease"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
@@ -44,12 +43,16 @@ func PlayerSlugFromContext(ctx context.Context) string {
 // Le player_slug est extrait depuis :
 //  1. la fonction extractFn fournie (lit body/query/context)
 //  2. en fallback, retourne ErrPlayerNotResolved
+//
+// Le mode démo n'a PLUS de branche ici : depuis le 2026-07-26, `seed-demo`
+// génère de vrais arcs, objectifs, événements et totaux de points de progression
+// dans les bases démo (internal/ops/seed_demo_prestige.go), et le bundle démo
+// ouvre bien ces bases (wire.NewPrestigeBundleAt). Les anciennes fixtures
+// read-time (rang figé, arc et objectifs inventés) masquaient ces données et
+// auraient contredit à l'écran les événements réellement seedés.
 type LazyPrestigeService struct {
 	bundle    *PrestigeBundle
 	extractFn func(ctx context.Context) string
-	// demoMode : en démo le DemoPlayer n'a aucune activité PP réelle → GetUserPrestige
-	// sert une fixture (rang Prestige) au lieu d'un prestige vide. Cf. demoUserPrestige.
-	demoMode bool
 }
 
 // NewLazyPrestigeService construit un wrapper.
@@ -57,11 +60,11 @@ type LazyPrestigeService struct {
 // extractFn est typiquement une closure qui lit le request en cours via
 // un middleware (chi context value). Si elle retourne "", les méthodes
 // retournent ErrPlayerNotResolved.
-func NewLazyPrestigeService(bundle *PrestigeBundle, extractFn func(ctx context.Context) string, demoMode bool) *LazyPrestigeService {
+func NewLazyPrestigeService(bundle *PrestigeBundle, extractFn func(ctx context.Context) string) *LazyPrestigeService {
 	if extractFn == nil {
 		extractFn = PlayerSlugFromContext
 	}
-	return &LazyPrestigeService{bundle: bundle, extractFn: extractFn, demoMode: demoMode}
+	return &LazyPrestigeService{bundle: bundle, extractFn: extractFn}
 }
 
 // ErrPlayerNotResolved est retournée quand le player_slug ne peut pas être
@@ -181,9 +184,6 @@ func (l *LazyPrestigeService) GetChallenge(ctx context.Context, id string) (pres
 }
 
 func (l *LazyPrestigeService) ListActiveChallenges(ctx context.Context, userID, titleSlug string) ([]prestige.Challenge, error) {
-	if l.demoMode {
-		return demoActiveChallenges(userID, titleSlug), nil
-	}
 	svc, err := l.resolveByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -192,16 +192,6 @@ func (l *LazyPrestigeService) ListActiveChallenges(ctx context.Context, userID, 
 }
 
 func (l *LazyPrestigeService) ListChallenges(ctx context.Context, userID, titleSlug string, statuses []prestige.ChallengeStatus) ([]prestige.Challenge, error) {
-	if l.demoMode {
-		// Le mode démo n'a pas d'historique : ne sert que les défis actifs de
-		// démonstration si le filtre inclut le statut actif, sinon rien.
-		for _, st := range statuses {
-			if st == prestige.StatusActive {
-				return demoActiveChallenges(userID, titleSlug), nil
-			}
-		}
-		return nil, nil
-	}
 	svc, err := l.resolveByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -218,91 +208,11 @@ func (l *LazyPrestigeService) EvaluateForUser(ctx context.Context, userID, title
 }
 
 func (l *LazyPrestigeService) GetUserPrestige(ctx context.Context, userID, titleSlug string) (prestige.UserPrestige, error) {
-	if l.demoMode {
-		return demoUserPrestige(userID, titleSlug), nil
-	}
 	svc, err := l.resolveByUserID(ctx, userID)
 	if err != nil {
 		return prestige.UserPrestige{}, err
 	}
 	return svc.GetUserPrestige(ctx, userID, titleSlug)
-}
-
-// demoUserPrestige : rang Prestige fixé pour la démo (le DemoPlayer n'a pas
-// d'activité PP réelle). Niveau "Vétéran" (cf. tuning.go Names), progression
-// plausible. Read-time → survit reseed + déploiement.
-func demoUserPrestige(userID, titleSlug string) prestige.UserPrestige {
-	return prestige.UserPrestige{
-		UserID:       userID,
-		TitleSlug:    titleSlug,
-		TotalPP:      2100,
-		CurrentLevel: 2,
-		UpdatedAt:    time.Now().UTC(),
-		Level: &prestige.Level{
-			Index:           2,
-			Name:            "Vétéran",
-			ThresholdPP:     1500,
-			NextThresholdPP: 3000,
-			ProgressRatio:   0.4,
-		},
-	}
-}
-
-const demoArcID = "demo-arc-ascension"
-
-// demoArcs : un arc Prestige démo (la section Prestige du Home affiche l'arc actif).
-//
-// ObjectivesPP / CompletionBonusPP sont calculés depuis les objectifs démo (mêmes
-// règles que l'enrichissement read-time réel) pour que la démo illustre la
-// distinction "PP cumulés des objectifs" vs "bonus de complétion d'arc".
-func demoArcs(userID, titleSlug string) []prestige.Arc {
-	tuning := prestige.DefaultTuning()
-	objectivesPP := 0
-	for _, c := range demoActiveChallenges(userID, titleSlug) {
-		objectivesPP += c.PPReward
-	}
-	return []prestige.Arc{{
-		ID:                demoArcID,
-		UserID:            userID,
-		TitleSlug:         titleSlug,
-		Title:             "Ascension du Spartan",
-		Description:       "Enchaîne les objectifs pour gravir les paliers de prestige.",
-		IsPreset:          true,
-		PresetID:          "ascension",
-		CreatedAt:         time.Now().UTC().Add(-14 * 24 * time.Hour),
-		ObjectivesPP:      objectivesPP,
-		CompletionBonusPP: prestige.PPForArcCompletion(tuning, objectivesPP),
-	}}
-}
-
-// demoActiveChallenges : objectifs Prestige démo (rattachés à l'arc). 3 en cours
-// (CurrentValue < Target) + 1 complété, pour que l'arc affiche une progression
-// (Étape 1/4) sur le Home et la page Ascension. Read-time → survit reseed.
-func demoActiveChallenges(userID, titleSlug string) []prestige.Challenge {
-	now := time.Now().UTC()
-	exp := now.Add(5 * 24 * time.Hour)
-	// PP affiché par objectif démo : tous Héroïque + données complètes (même
-	// calcul que l'enrichissement réel ListActiveChallenges → PPForCompletion).
-	ppReward := prestige.PPForCompletion(prestige.DefaultTuning(), prestige.TierHeroic, false, prestige.DataFull)
-	mk := func(id, label, metric string, pos int, target, current float64, status prestige.ChallengeStatus) prestige.Challenge {
-		return prestige.Challenge{
-			ID: id, UserID: userID, TitleSlug: titleSlug,
-			ArcID: demoArcID, Position: pos,
-			Metric: metric, Target: target, CurrentValue: current,
-			WindowType: prestige.WindowLastNMatches, WindowValue: "10",
-			Cadence: prestige.CadenceWeekly, EvalType: prestige.EvalCumulative,
-			Mode: prestige.ModeLibre, Tier: prestige.TierHeroic, DataTier: prestige.DataFull,
-			Label: label, Status: status, PPReward: ppReward,
-			ExpiresAt: &exp, CreatedAt: now.Add(-3 * 24 * time.Hour),
-		}
-	}
-	return []prestige.Challenge{
-		// 1re étape complétée → l'arc démo affiche une progression réelle (Étape 1/4).
-		mk("demo-ch-warmup", "Mise en jambe — 10 parties jouées", "matches_played", 0, 10, 10, prestige.StatusCompleted),
-		mk("demo-ch-kills", "Tueur d'élite — 100 éliminations", "kills", 1, 100, 67, prestige.StatusActive),
-		mk("demo-ch-headshots", "Précision létale — 40 tirs à la tête", "headshot_kills", 2, 40, 28, prestige.StatusActive),
-		mk("demo-ch-wins", "Série victorieuse — 8 victoires", "wins", 3, 8, 5, prestige.StatusActive),
-	}
 }
 
 func (l *LazyPrestigeService) SuggestTemplates(ctx context.Context, userID, titleSlug string, count int) ([]prestige.Template, error) {
@@ -348,9 +258,6 @@ func (l *LazyPrestigeService) DeleteArc(ctx context.Context, userID, id string, 
 }
 
 func (l *LazyPrestigeService) ListArcs(ctx context.Context, userID, titleSlug string) ([]prestige.Arc, error) {
-	if l.demoMode {
-		return demoArcs(userID, titleSlug), nil
-	}
 	svc, err := l.resolveByUserID(ctx, userID)
 	if err != nil {
 		return nil, err

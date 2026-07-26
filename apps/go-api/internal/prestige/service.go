@@ -242,8 +242,28 @@ type Deps struct {
 //
 // Implémentée hors du package par les adaptateurs `internal/games/...` —
 // le module Prestige reste découplé de la sémantique métier des matchs.
+//
+// ─── PROVIDER LIÉ AU JOUEUR — NE PAS RÉINTRODUIRE DE PARAMÈTRE D'IDENTITÉ ───
+//
+// `RecentMatches` ne prend AUCUNE identité de joueur. L'implémentation est
+// construite POUR un joueur (cf. wire.serviceAndPlayerDB, qui la bâtit à partir
+// du PlayerDB déjà résolu), au même titre que Challenges/Arcs/Telemetry/
+// BaselineState dans ces Deps — toutes déjà liées à ce joueur.
+//
+// Raison (correctif 2026-07-26). L'ancienne signature prenait un
+// `userID string` que les trois appelants remplissaient avec `Challenge.UserID`,
+// c'est-à-dire un **player_slug** ("JGtm"), tandis que l'implémentation Halo
+// l'injectait dans `WHERE match_participants.xuid = ?`, qui n'accepte qu'un
+// **xuid** ("2533274823110022"). Zéro ligne, partout, en silence : baseline
+// vide, jauges à 0, objectifs jamais évalués. Deux identités distinctes dans un
+// même type `string`, rien pour empêcher de les intervertir.
+//
+// Supprimer le paramètre supprime le transport de l'identité à travers cette
+// frontière : l'inversion n'est plus exprimable. Si un besoin futur exige de
+// viser un AUTRE joueur (ex. comparaison), passer un type dédié résolu par
+// config.ResolvePlayer — jamais un `string` nu, jamais un slug.
 type BaselineProvider interface {
-	RecentMatches(ctx context.Context, userID, titleSlug, metric string, window int) ([]MatchData, error)
+	RecentMatches(ctx context.Context, titleSlug, metric string, window int) ([]MatchData, error)
 	PopulationPercentile(ctx context.Context, titleSlug, metric string, target float64) (percentile float64, popSize int, err error)
 }
 
@@ -488,9 +508,13 @@ func validateCreateRequest(req CreateChallengeRequest) error {
 }
 
 // computeBaselineFor charge les matchs récents et calcule la baseline.
+//
+// userID (player_slug) ne sert QU'À étiqueter la Baseline retournée : il n'est
+// pas — et ne doit pas redevenir — un critère de sélection des matchs. Le
+// provider est lié au joueur (cf. BaselineProvider).
 func (s *service) computeBaselineFor(ctx context.Context, userID, titleSlug, metric string) (Baseline, error) {
 	matches, err := s.deps.BaselineProvider.RecentMatches(
-		ctx, userID, titleSlug, metric, s.deps.Tuning.Baseline.WindowMatches,
+		ctx, titleSlug, metric, s.deps.Tuning.Baseline.WindowMatches,
 	)
 	if err != nil {
 		return Baseline{}, err
@@ -624,7 +648,7 @@ func (s *service) ListChallenges(ctx context.Context, userID, titleSlug string, 
 // persister. Best-effort : si la source des matchs échoue, retourne 0.
 func (s *service) computeCurrentValue(ctx context.Context, c Challenge, now time.Time) float64 {
 	matches, err := s.deps.BaselineProvider.RecentMatches(
-		ctx, c.UserID, c.TitleSlug, c.Metric, s.deps.Tuning.Baseline.WindowMatches,
+		ctx, c.TitleSlug, c.Metric, s.deps.Tuning.Baseline.WindowMatches,
 	)
 	if err != nil {
 		slog.WarnContext(ctx, "prestige: current value unavailable, defaulting to 0",

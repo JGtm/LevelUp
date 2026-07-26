@@ -31,7 +31,7 @@ type stubBaselineProvider struct {
 	matches []prestige.MatchData
 }
 
-func (p *stubBaselineProvider) RecentMatches(_ context.Context, _, _, _ string, window int) ([]prestige.MatchData, error) {
+func (p *stubBaselineProvider) RecentMatches(_ context.Context, _, _ string, window int) ([]prestige.MatchData, error) {
 	if window > 0 && len(p.matches) > window {
 		return p.matches[:window], nil
 	}

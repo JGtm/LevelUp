@@ -1,0 +1,142 @@
+# .gitleaks.toml — configuration de la détection de secrets du dépôt LevelUp
+#
+# POURQUOI CE FICHIER EXISTE (2026-07-26)
+# Le dépôt est PUBLIC et manipule des refresh tokens OAuth, un secret client Azure et
+# un accès SSH prod. Trois lignes de défense, de la plus tardive à la plus précoce :
+#   1. push protection GitHub (secret scanning côté serveur) — attrape au push, et
+#      uniquement les motifs de ses partenaires ;
+#   2. CI (.github/workflows/gitleaks.yml) — autorité du verdict, motifs génériques
+#      inclus, mais après le push ;
+#   3. hook lefthook pre-commit (scripts/git-hooks/lefthook/gitleaks.sh) — attrape
+#      AVANT que le secret n'entre dans l'historique, même purement local (un secret
+#      commité puis jamais poussé reste dans l'historique local, aucun scan serveur
+#      ne le verra jamais).
+# gitleaks a été choisi contre detect-secrets : binaire Go unique, aucun runtime
+# Python (proscrit dans ce projet), rapide (55 Mo d'arbre scannés en ~1,5 s).
+#
+# VERSION DE RÉFÉRENCE : gitleaks 8.30.1 — pin IDENTIQUE dans
+# .github/workflows/gitleaks.yml et scripts/git-hooks/lefthook/gitleaks.sh. Un bump se
+# fait dans les trois endroits en même temps, après recalibrage (cf. plus bas).
+# Sémantique de config utilisée : `[[allowlists]]` + `targetRules` (8.25.0+),
+# `condition = "AND"` et `regexTarget` (8.19.0+).
+#
+# DOCTRINE D'ALLOWLIST — ne pas dévier :
+#   1. `useDefault = true` : on n'entretient PAS une copie du jeu de règles par défaut
+#      (il évolue à chaque version de gitleaks). Ce fichier ne contient QUE les
+#      exceptions propres au dépôt.
+#   2. Toute exception est CIBLÉE : `targetRules` nomme la seule règle qui a bruité
+#      (jamais un blanc-seing sur toutes les règles), plus un chemin exact et/ou
+#      l'empreinte exacte de la fausse alerte. Aucun motif large du type
+#      « tout apps/go-api/tests » : il masquerait un vrai secret déposé plus tard dans
+#      le même dossier.
+#   3. `condition = "AND"` dès qu'un chemin est cité : le chemin seul n'excuse rien, il
+#      faut aussi que la valeur ressemble à la fausse alerte connue. Un vrai secret
+#      collé dans un de ces fichiers reste donc détecté.
+#   4. Toute exception porte un commentaire disant POURQUOI c'est un faux positif.
+#   5. Un VRAI secret ne s'allowliste JAMAIS : rotation de la valeur côté émetteur,
+#      puis purge d'historique si la valeur a été commitée.
+#
+# RECALIBRAGE (nouveau faux positif, ou bump de version de gitleaks) — sur une copie
+# PROPRE du dépôt, jamais sur l'arbre de travail (les données locales gitignorées comme
+# data/ pollueraient le scan et ne sont pas ce que voit la CI) :
+#   git archive HEAD | tar -x -C /tmp/repo-scan
+#   gitleaks dir /tmp/repo-scan --config .gitleaks.toml --redact --verbose
+#
+# ÉTAT AU 2026-07-26 : arbre de travail PROPRE (0 finding) et historique complet
+# (5841 commits) sans aucun vrai secret — les 82 alertes de l'historique étaient toutes
+# des faux positifs de la même nature que ceux listés ci-dessous, plus les empreintes
+# SHA-1 de l'ancien .secrets.baseline (fichier supprimé).
+
+[extend]
+# On hérite du jeu de règles embarqué dans le binaire (~170 règles fournisseurs).
+# Aucune règle n'est désactivée : `generic-api-key` est bruyante mais c'est elle qui
+# couvre les secrets « maison » (LEVELUP_SESSION_SECRET, refresh tokens Halo) que la
+# push protection GitHub ne connaît pas.
+useDefault = true
+
+# ── Faux positifs du dépôt ────────────────────────────────────────────────────────
+# Tous portent sur `generic-api-key` (détection par entropie + mot-clé de proximité).
+
+[[allowlists]]
+# Nom du marqueur de migration écrit dans sync_meta. Le mot-clé « Key » du nom de la
+# constante Go déclenche la règle ; la valeur est un identifiant de migration, pas un
+# secret. Présent dans le step de migration vivant ET dans sa copie archivée sous
+# .ai/migrations/squashed/ : exception sans contrainte de chemin, la valeur suffit à
+# identifier la fausse alerte.
+description = "Marqueur de migration sync_meta career_xp_total_default_fixed_v1"
+targetRules = ["generic-api-key"]
+regexTarget = "secret"
+regexes = ['''^career_xp_total_default_fixed_v1$''']
+
+[[allowlists]]
+# Fichier d'exemple d'environnement : les valeurs sont littéralement des consignes
+# (REMPLACER_PAR_...). Un vrai secret collé à la place serait toujours détecté, il ne
+# matcherait pas ce préfixe.
+description = "Placeholders REMPLACER_PAR_* de .env.local.example"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(^|/)\.env\.local\.example$''']
+regexTarget = "secret"
+regexes = ['''^REMPLACER_PAR_[A-Z0-9_]+$''']
+
+[[allowlists]]
+# Jetons factices des tests Go d'authentification : un spartan token Halo au format
+# v4=... entièrement inventé, un refresh token de test, un client id Azure tronqué.
+# Aucune de ces valeurs n'est acceptée par un service : elles servent d'assertions
+# d'égalité (le test vérifie que la valeur n'est PAS écrasée).
+description = "Jetons factices des tests Go auth / client Halo 5"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = [
+  '''(^|/)apps/go-api/internal/games/halo_5/client_test\.go$''',
+  '''(^|/)apps/go-api/internal/platform/auth/refresh_loop_mirror_test\.go$''',
+  '''(^|/)apps/go-api/internal/platform/auth/azure_credentials_test\.go$''',
+]
+regexTarget = "secret"
+regexes = [
+  '''^v4=abc\.def\.ghi$''',
+  '''^rt_frais_[0-9a-f]{8}$''',
+  '''^39829f7a-prod$''',
+]
+
+[[allowlists]]
+# Identifiants applicatifs des tests web pris pour des clés : une FieldKey canonique
+# (contrat multi-titre, cf. skill canonical-types) et un libellé de statut du
+# diagnostic d'apparence. Valeurs de contrat, versionnées volontairement.
+description = "FieldKey et libellés de statut dans les tests web"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = [
+  '''(^|/)apps/web/src/components/charts/TimeseriesLineChart\.test\.ts$''',
+  '''(^|/)apps/web/src/features/admin/appearance/appearanceDiagDisplay\.test\.ts$''',
+]
+regexTarget = "secret"
+regexes = [
+  '''^squad\.contrib\.[a-z0-9.]+$''',
+  '''^forbidden_403$''',
+]
+
+[[allowlists]]
+# export_hint.token des golden values : base64url de l'état de filtres du share-link
+# (?f=), pas un credential — il commence par eyJmaWx0ZXJz, soit le début de {"filters"
+# en base64. Aucune authentification n'y est attachée ; c'est le préfixe qui discrimine,
+# pas le chemin.
+description = "Jeton de share-link (état de filtres base64url) des golden values"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(^|/)apps/go-api/tests/fixtures/golden_values/.*\.json$''']
+regexTarget = "secret"
+regexes = ['''^eyJmaWx0ZXJz[A-Za-z0-9_=/+-]+$''']
+
+[[allowlists]]
+# Clé d'ingestion Azure Application Insights contenue dans la page HTML publique de
+# Halo Waypoint capturée comme fixture de parsing. Elle est servie à tout visiteur du
+# site, appartient à l'éditeur du jeu, n'ouvre aucun accès en lecture, et n'est pas
+# rotable de notre côté. Ciblé sur le mot-clé InstrumentationKey : un autre type de
+# secret dans cette même fixture resterait détecté.
+description = "InstrumentationKey Application Insights de la fixture Halo Waypoint"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(^|/)apps/go-api/internal/platform/halo/testdata/leaderboard_sample\.html$''']
+regexTarget = "match"
+regexes = ['''(?i)instrumentationkey''']

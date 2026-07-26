@@ -5,6 +5,11 @@
 // Crée des fixtures source (shared + player + metadata), lance SeedDemo, et
 // vérifie les outputs : tables filtrées + xuid anonymisé + configs JSON.
 //
+// Le scénario « publication sous détenteur multi-process » (échange d'inode +
+// ATTACH READ_ONLY) est dans seed_demo_inode_swap_integration_test.go : il exige un
+// vrai second processus, DuckDB refusant deux ouvertures du même chemin dans un
+// même processus.
+//
 // CGO_ENABLED=1 requis (driver duckdb).
 package ops
 
@@ -165,8 +170,101 @@ func TestSeedDemo_EndToEnd_HappyPath(t *testing.T) {
 	outPlayer := filepath.Join(outDir, "players", DefaultDemoGamertag, "stats.duckdb")
 	verifyPlayerExtracted(t, outPlayer, sourceXUID)
 
+	// ── échantillons Prestige (player DB + shared_social)
+	verifyPrestigeSeeded(t, outDir, res)
+
 	// ── configs JSON
 	verifyConfigsWritten(t, outDir, "JGtm", "SPTA", false)
+}
+
+// verifyPrestigeSeeded : les tables Prestige/Progression de la démo sont PEUPLÉES
+// après un seed-demo (sans elles, les pages Ascension/Prestige sont vides), et les
+// invariants de cohérence tiennent en base :
+//   - total de points de progression == somme des événements qui l'ont produit ;
+//   - un événement « match » par match du corpus ;
+//   - aucun arc/objectif rattaché à une identité autre que le joueur démo ;
+//   - les objectifs couvrent plusieurs stades du cycle de vie.
+func verifyPrestigeSeeded(t *testing.T, outDir string, res SeedDemoResult) {
+	t.Helper()
+	playerDB, err := sql.Open("duckdb", filepath.Join(outDir, "players", DefaultDemoGamertag, "stats.duckdb")+"?access_mode=READ_ONLY")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer playerDB.Close()
+
+	for _, tbl := range []string{"arc", "challenge", "improvement_campaign",
+		"prestige_telemetry", "baseline_state", "streak_history", "record_history"} {
+		var n int
+		if err := playerDB.QueryRow(`SELECT COUNT(*) FROM ` + tbl).Scan(&n); err != nil {
+			t.Errorf("player démo : %s illisible: %v", tbl, err)
+			continue
+		}
+		if n == 0 {
+			t.Errorf("player démo : %s vide — la page correspondante n'afficherait rien", tbl)
+		}
+	}
+	// La vue append-only des séries doit servir exactement les séries seedées.
+	var streakRows int
+	if err := playerDB.QueryRow(`SELECT COUNT(*) FROM streak_latest`).Scan(&streakRows); err != nil {
+		t.Errorf("streak_latest illisible: %v", err)
+	} else if streakRows == 0 {
+		t.Error("streak_latest vide — les séries seedées ne seraient pas servies")
+	}
+	// Anti-fuite : aucune identité autre que celle du joueur démo.
+	var foreign int
+	if err := playerDB.QueryRow(
+		`SELECT COUNT(*) FROM challenge WHERE user_id <> ?`, DefaultDemoMainSlug).Scan(&foreign); err != nil {
+		t.Errorf("challenge.user_id illisible: %v", err)
+	} else if foreign != 0 {
+		t.Errorf("challenge : %d ligne(s) avec un user_id étranger au joueur démo", foreign)
+	}
+	var statuses int
+	if err := playerDB.QueryRow(`SELECT COUNT(DISTINCT status) FROM challenge`).Scan(&statuses); err != nil {
+		t.Errorf("challenge.status illisible: %v", err)
+	} else if statuses < 3 {
+		t.Errorf("challenge : %d statut(s) distinct(s), want >= 3 (actif/complété/terminé)", statuses)
+	}
+
+	socialDB, err := sql.Open("duckdb", filepath.Join(outDir, "warehouse", "shared_social.duckdb")+"?access_mode=READ_ONLY")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer socialDB.Close()
+
+	var eventCount, eventSum, matchEvents int
+	if err := socialDB.QueryRow(`
+		SELECT COUNT(*), COALESCE(SUM(pp_amount), 0),
+		       COALESCE(SUM(CASE WHEN source_type = 'match' THEN 1 ELSE 0 END), 0)
+		FROM prestige_events`).Scan(&eventCount, &eventSum, &matchEvents); err != nil {
+		t.Fatalf("prestige_events illisible: %v", err)
+	}
+	if eventCount == 0 {
+		t.Fatal("prestige_events vide — aucun point de progression à montrer")
+	}
+	if matchEvents != len(res.MatchIDs) {
+		t.Errorf("événements match = %d, want %d (1 par match du corpus démo)",
+			matchEvents, len(res.MatchIDs))
+	}
+	var totalPP int
+	if err := socialDB.QueryRow(
+		`SELECT total_pp FROM user_prestige_latest WHERE user_id = ?`, DefaultDemoMainSlug).Scan(&totalPP); err != nil {
+		t.Fatalf("user_prestige_latest illisible: %v", err)
+	}
+	if totalPP != eventSum {
+		t.Errorf("total_pp = %d mais somme des événements = %d (le total contredirait le journal)",
+			totalPP, eventSum)
+	}
+	for _, tbl := range []string{"squad", "squad_member_latest",
+		"squad_challenge", "squad_challenge_participant_latest", "player_records_latest"} {
+		var n int
+		if err := socialDB.QueryRow(`SELECT COUNT(*) FROM ` + tbl).Scan(&n); err != nil {
+			t.Errorf("shared_social démo : %s illisible: %v", tbl, err)
+			continue
+		}
+		if n == 0 {
+			t.Errorf("shared_social démo : %s vide", tbl)
+		}
+	}
 }
 
 func TestSeedDemo_EndToEnd_NoMatchesForXUID(t *testing.T) {
@@ -472,5 +570,161 @@ func TestLoadVideoRealMaps(t *testing.T) {
 	// Média non "Halo Infinite" exclu (filtre file_name LIKE 'Halo Infinite%').
 	if _, ok := got["Replay clip"]; ok {
 		t.Error("média non Halo Infinite ne devrait pas être inclus")
+	}
+}
+
+// previousGenerationWAL fabrique les octets d'un VRAI WAL DuckDB laissé en suspens
+// par une base « génération précédente » (table ancienne_generation, 2000 lignes).
+//
+// C'est l'état que produit un conteneur démo tué sans CHECKPOINT (SIGKILL) ou un
+// seed interrompu. Un WAL de garbage ne conviendrait pas ici : DuckDB l'écarte
+// silencieusement, alors qu'un VRAI WAL est rejoué (c'est tout le problème). Il faut
+// désarmer le checkpoint de fermeture, sinon `db.Close()` vide toujours le WAL.
+func previousGenerationWAL(t *testing.T, dir string) []byte {
+	t.Helper()
+	path := filepath.Join(dir, "generation_precedente.duckdb")
+	db, err := sql.Open("duckdb", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mustExec(t, db, `SET wal_autocheckpoint='1TB'`)
+	mustExec(t, db, `PRAGMA disable_checkpoint_on_shutdown`)
+	mustExec(t, db, `CREATE TABLE ancienne_generation (n INTEGER, s VARCHAR)`)
+	mustExec(t, db, `INSERT INTO ancienne_generation SELECT i, 'row' || i FROM range(2000) t(i)`)
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	wal, err := os.ReadFile(path + ".wal")
+	if err != nil {
+		t.Fatalf("aucun WAL en suspens produit (le fixture ne teste plus rien): %v", err)
+	}
+	if len(wal) == 0 {
+		t.Fatal("WAL vide : DuckDB checkpointe désormais à la fermeture malgré le pragma — revoir le fixture")
+	}
+	return wal
+}
+
+// TestCopyMetadataFile_ForeignWALNotReplayedIntoPublishedDB : la metadata démo est
+// publiée par RENAME. Si un `<db>.wal` de la génération précédente survit à côté du
+// nom publié, DuckDB le REJOUE dans la base fraîchement publiée à la première
+// ouverture — sans erreur : les tables et les lignes de l'ancienne génération sont
+// injectées dans la nouvelle metadata (vérifié sur DuckDB v1.4 : 2000 lignes
+// ressuscitées), et l'ouverture READ_ONLY suivante meurt sur « Failure while
+// replaying WAL file ». D'où le retrait du WAL par removeDuckDBForFreshWrite.
+func TestCopyMetadataFile_ForeignWALNotReplayedIntoPublishedDB(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	wal := previousGenerationWAL(t, dir)
+
+	src := filepath.Join(dir, "src_meta.duckdb")
+	srcDB, err := sql.Open("duckdb", src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mustExec(t, srcDB, `CREATE TABLE career_ranks (rank_id INTEGER, rank_name VARCHAR)`)
+	mustExec(t, srcDB, `INSERT INTO career_ranks VALUES (1, 'Recruit'), (2, 'Iron')`)
+	if err := srcDB.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Cible : metadata de la génération précédente + son WAL en suspens.
+	dst := filepath.Join(dir, "warehouse", "metadata.duckdb")
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(dst, []byte("ANCIENNE_METADATA"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(dst+".wal", wal, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := copyMetadataFile(src, dst); err != nil {
+		t.Fatalf("copyMetadataFile: %v", err)
+	}
+
+	published, err := sql.Open("duckdb", dst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer published.Close()
+	var ranks int
+	if err := published.QueryRowContext(ctx, `SELECT COUNT(*) FROM career_ranks`).Scan(&ranks); err != nil {
+		t.Fatalf("ouverture de la metadata publiée: %v", err)
+	}
+	if ranks != 2 {
+		t.Errorf("career_ranks = %d, want 2", ranks)
+	}
+	var leaked int
+	if err := published.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM duckdb_tables() WHERE table_name = 'ancienne_generation'`).Scan(&leaked); err != nil {
+		t.Fatal(err)
+	}
+	if leaked != 0 {
+		t.Error("le WAL de la génération précédente a été rejoué dans la metadata publiée : " +
+			"la démo sert des données d'une autre génération")
+	}
+}
+
+// TestExtractSharedTables_OrphanWALFromPreviousGeneration : le chemin cible porte la
+// base ET le WAL en suspens de la génération précédente. L'extraction doit produire
+// une base saine et ne rien laisser du couple précédent.
+//
+// NB (mesuré sur DuckDB v1.4) : quand DuckDB CRÉE lui-même le fichier (cas des
+// extracteurs, contrairement à la metadata publiée par rename), un WAL préexistant
+// est écarté sans erreur. Le retrait explicite est donc ici une défense en
+// profondeur — sur un comportement non documenté, et pour ne pas laisser un WAL
+// derrière une extraction avortée en cours de route.
+func TestExtractSharedTables_OrphanWALFromPreviousGeneration(t *testing.T) {
+	ctx := context.Background()
+	tmpDir, _, srcShared, _ := seedSourceDBs(t)
+	const sourceXUID = "1111111111111111"
+	wal := previousGenerationWAL(t, tmpDir)
+
+	dst := filepath.Join(tmpDir, "out", "warehouse", "shared_matches_v2.duckdb")
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	prev, err := sql.Open("duckdb", dst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mustExec(t, prev, `CREATE TABLE ancienne_generation (n INTEGER)`)
+	mustExec(t, prev, `CHECKPOINT`)
+	if err := prev.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(dst+".wal", wal, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	counts, err := extractSharedTables(ctx, srcShared, dst, []string{"m1", "m2"}, sourceXUID, demoXUIDForIndex(0))
+	if err != nil {
+		t.Fatalf("extractSharedTables avec WAL orphelin préexistant: %v", err)
+	}
+	if counts["match_registry"] != 2 {
+		t.Errorf("match_registry extraits = %d, want 2", counts["match_registry"])
+	}
+
+	// Base saine : elle se relit (le lecteur suivant du seed ouvre en READ_ONLY) et ne
+	// porte plus rien de la génération précédente.
+	out, err := sql.Open("duckdb", dst+"?access_mode=READ_ONLY")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer out.Close()
+	var n int
+	if err := out.QueryRowContext(ctx, `SELECT COUNT(*) FROM match_registry`).Scan(&n); err != nil {
+		t.Fatalf("relecture de la base extraite: %v", err)
+	}
+	if n != 2 {
+		t.Errorf("match_registry rows = %d, want 2", n)
+	}
+	if err := out.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM duckdb_tables() WHERE table_name = 'ancienne_generation'`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Error("table de la génération précédente encore présente : la base n'a pas été recréée")
 	}
 }
