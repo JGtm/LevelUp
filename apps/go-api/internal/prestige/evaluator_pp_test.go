@@ -129,11 +129,9 @@ func TestEvaluateCumulative_TargetReached(t *testing.T) {
 		Target:   5.0,
 		EvalType: EvalCumulative,
 	}
-	events := []MedalEvent{
-		{MedalID: "Killtacular", Count: 2},
-		{MedalID: "Killtacular", Count: 3},
-	}
-	res := EvaluateCumulative(tuning, c, events, time.Now())
+	// Total agrégé par l'appelant (2 + 3) — EvaluateCumulative reçoit la somme,
+	// plus une liste d'événements dont aucune source de production n'existait.
+	res := EvaluateCumulative(tuning, c, 5.0, time.Now())
 	if !res.StatusChanged {
 		t.Error("expected status change")
 	}
@@ -154,10 +152,66 @@ func TestEvaluateCumulative_DeadlinePassedMissed(t *testing.T) {
 		WindowValue: "2026-01-01",
 	}
 	now := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
-	events := []MedalEvent{{Count: 3}}
-	res := EvaluateCumulative(tuning, c, events, now)
+	res := EvaluateCumulative(tuning, c, 3.0, now)
 	if res.NewStatus != StatusExpired {
 		t.Errorf("got %s want expired", res.NewStatus)
+	}
+}
+
+// TestEvaluateCumulative_SumsNeverAverages — RÉGRESSION 2026-07-26. Les deux
+// chemins d'évaluation retombaient sur EvaluateThreshold : un cumulatif était
+// donc MOYENNÉ. Sur « 220 tirs à la tête » réalisés en 176 sur 40 matchs, la
+// jauge affichait 4,4 (la moyenne par match) au lieu de 176 — 2 % de progression
+// affichée sur un objectif à 80 %. Ce test verrouille la sémantique : la valeur
+// rendue est le TOTAL, tel quel, jamais divisé par un nombre de matchs.
+func TestEvaluateCumulative_SumsNeverAverages(t *testing.T) {
+	tuning := DefaultTuning()
+	c := Challenge{
+		Status:      StatusActive,
+		Metric:      "headshot_kills",
+		Target:      220,
+		EvalType:    EvalCumulative,
+		WindowType:  WindowLastNMatches,
+		WindowValue: "20",
+	}
+	res := EvaluateCumulative(tuning, c, 176.0, time.Now())
+	if res.NewValue != 176.0 {
+		t.Errorf("NewValue = %.2f, want 176 (le TOTAL, jamais une moyenne)", res.NewValue)
+	}
+	if res.StatusChanged || res.NewStatus != StatusActive {
+		t.Errorf("176 < 220 → le défi reste actif, got status=%s changed=%v",
+			res.NewStatus, res.StatusChanged)
+	}
+	if res.Reason != EvalReasonProgress {
+		t.Errorf("Reason = %s, want progress", res.Reason)
+	}
+}
+
+// TestEvalSince_NeverBeforeCreatedAt — invariant anti-complétion-rétroactive :
+// la borne basse d'un défi n'est jamais antérieure à sa création, et une fenêtre
+// rolling_days ne peut que la RESSERRER, jamais l'élargir.
+func TestEvalSince_NeverBeforeCreatedAt(t *testing.T) {
+	created := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	now := time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC)
+
+	cases := []struct {
+		name       string
+		windowType WindowType
+		value      string
+		want       time.Time
+	}{
+		{"last_n_matches borné par created_at", WindowLastNMatches, "20", created},
+		{"rolling 30j plus ancien que created_at → created_at gagne", WindowRollingDays, "30", created},
+		{"rolling 7j plus récent que created_at → la fenêtre resserre", WindowRollingDays, "7",
+			now.AddDate(0, 0, -7)},
+		{"rolling avec valeur illisible → created_at", WindowRollingDays, "abc", created},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := evalSince(created, tc.windowType, tc.value, now); !got.Equal(tc.want) {
+				t.Errorf("evalSince = %v, want %v", got, tc.want)
+			}
+		})
 	}
 }
 

@@ -1,5 +1,5 @@
 /**
- * ChartsShowcasePage — galerie des 10 wrappers ECharts du projet.
+ * ChartsShowcasePage — galerie des wrappers ECharts du projet.
  *
  * Phase 3 Option C : alternative légère à Storybook. Rend chaque wrapper
  * avec des données de démo statiques pour servir de :
@@ -20,6 +20,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { BarGroupedChart } from '@/components/charts/BarGroupedChart'
 import { BarStackedChart } from '@/components/charts/BarStackedChart'
 import { DonutChart } from '@/components/charts/DonutChart'
+import {
+  FirstBloodLanes,
+  type FirstBloodPlayerSeries,
+} from '@/components/charts/FirstBloodLanes'
 import { Heatmap2DChart } from '@/components/charts/Heatmap2DChart'
 import { HistogramChart } from '@/components/charts/HistogramChart'
 import { OutcomeSequenceTape } from '@/components/charts/OutcomeSequenceTape'
@@ -199,6 +203,50 @@ const KDA_ROWS: TimeseriesMatchRow[] = Array.from({ length: 10 }, (_, i) => ({
   time_played_seconds: null,
 })) as unknown as TimeseriesMatchRow[]
 
+// Premier frag / première mort : 4 joueurs, 12 matchs, quelques `null` (événement
+// absent du match — exclu des médianes, compté dans « n/12 »).
+function firstBloodMatches(
+  kills: (number | null)[],
+  deaths: (number | null)[],
+): FirstBloodPlayerSeries['matches'] {
+  return kills.map((k, i) => ({
+    matchId: `m${i + 1}`,
+    firstKillSec: k,
+    firstDeathSec: deaths[i] ?? null,
+  }))
+}
+
+const FIRST_BLOOD_SERIES: FirstBloodPlayerSeries[] = [
+  {
+    player: 'Rusher',
+    matches: firstBloodMatches(
+      [12, 18, 9, 26, 15, 33, 11, 21, 17, null, 24, 14],
+      [40, 22, 61, 35, 18, 74, 29, 52, 44, 31, 66, 27],
+    ),
+  },
+  {
+    player: 'Sniper',
+    matches: firstBloodMatches(
+      [58, 72, 44, 96, 63, 81, 55, 110, 68, 77, null, 90],
+      [120, 145, 88, 190, 132, 165, 99, 210, 141, 158, 176, 205],
+    ),
+  },
+  {
+    player: 'Objectif',
+    matches: firstBloodMatches(
+      [35, 48, 29, 62, 41, 55, 38, 70, 44, 51, 33, 59],
+      [28, 33, 21, 45, 30, 39, 25, 50, 31, 36, 24, 42],
+    ),
+  },
+  {
+    player: 'Support',
+    matches: firstBloodMatches(
+      [80, 105, 65, 130, 92, 118, 74, 145, 99, null, 87, 124],
+      [95, 88, 140, 76, 112, 69, 155, 84, 101, 71, 133, 90],
+    ),
+  },
+]
+
 // ─── Page ──────────────────────────────────────────────────────────────────
 
 interface ShowcaseSectionProps {
@@ -331,6 +379,13 @@ export function ChartsShowcasePage() {
             matches={OUTCOME_TAPE}
             labels={{ win: 'Win', loss: 'Loss', tie: 'Tie', dnf: 'DNF' }}
           />
+        </ShowcaseSection>
+
+        <ShowcaseSection
+          title="FirstBloodLanes"
+          description="Bandes par joueur : nuages premier frag / première mort + fenêtre d'avance médiane (custom + scatter)"
+        >
+          <FirstBloodLanes data={FIRST_BLOOD_SERIES} />
         </ShowcaseSection>
 
         <ShowcaseSection

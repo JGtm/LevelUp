@@ -12,6 +12,45 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
+// ─── Compositions mono-handle (tests) ────────────────────────────────────────
+//
+// En PROD le post-sync exécute COLLECT (hors writer, lectures RO) puis FLUSH
+// (burst writer court) — cf. postSyncFilmSteps.runWeaponKills. Les contrats
+// historiques (bit-honnêteté, done/noFilm, idempotence, annulation) restent
+// vérifiés ici en composant les deux phases sur un MÊME handle : ces helpers
+// remplacent les ex-BackfillWeaponKillsForMatch / processWeaponKillsInline,
+// supprimés avec leur dernier caller de prod (règle « 0 code mort »).
+
+// weaponKillsOneShot : COLLECT+FLUSH d'un match unique.
+// Retourne (filmFound, error) — mêmes valeurs que l'ex-BackfillWeaponKillsForMatch.
+func weaponKillsOneShot(ctx context.Context, client HaloClient, db *sql.DB, matchID, xuid string) (bool, error) {
+	collected, err := collectWeaponKillsForMatch(ctx, client, db, matchID, xuid)
+	if err != nil {
+		return collected.filmFound, err
+	}
+	if err := flushWeaponKillsForMatch(ctx, db, collected); err != nil {
+		return collected.filmFound, err
+	}
+	return collected.filmFound, nil
+}
+
+// weaponKillsInline : COLLECT+FLUSH d'un lot sur un même handle.
+// Contrat (identique à l'ex-processWeaponKillsInline) :
+//   - matchIDs vide → (0, 0, nil)
+//   - tous films présents → done = len(matchIDs), noFilm = 0 ; tous absents → l'inverse
+//   - 1 call par match_id, idempotent sur runs consécutifs
+//   - ctx.Cancel → ctx.Err() (le lot collecté non flushé est repris au cycle suivant)
+func weaponKillsInline(ctx context.Context, db *sql.DB, client HaloClient, xuid string, matchIDs []string) (done, noFilm int, err error) {
+	if len(matchIDs) == 0 {
+		return 0, 0, nil
+	}
+	done, noFilm = flushWeaponKillsChunk(ctx, db, collectWeaponKillsChunk(ctx, db, client, xuid, matchIDs))
+	if ctx.Err() != nil {
+		return done, noFilm, ctx.Err()
+	}
+	return done, noFilm, nil
+}
+
 func openWeaponDB(t *testing.T) *sql.DB {
 	t.Helper()
 	db, err := sql.Open("duckdb", ":memory:")
@@ -179,7 +218,7 @@ func ptrU64(v uint64) *uint64 { return &v }
 
 // ─── weaponTestClient ────────────────────────────────────────────────────────
 
-// weaponTestClient est un mock minimal de HaloClient pour les tests BackfillWeaponKillsForMatch.
+// weaponTestClient est un mock minimal de HaloClient pour les tests du pipeline weapons (COLLECT+FLUSH).
 type weaponTestClient struct {
 	filmChunks  map[int]FilmChunkData
 	filmPresent bool
@@ -212,7 +251,7 @@ func (w *weaponTestClient) GetPlaylistCsr(_ context.Context, _, _, _ string) (*P
 	return nil, nil
 }
 
-// ─── TestBackfillWeaponKillsForMatch ─────────────────────────────────────────
+// ─── Pipeline weapons par match (COLLECT+FLUSH) ──────────────────────────────
 
 // TestBackfillWeaponKillsForMatch_NoFilm vérifie que le pipeline s'arrête
 // proprement quand le film est absent (404/410) et que MBitWeaponKillsNoFilm est posé.
@@ -221,7 +260,7 @@ func TestBackfillWeaponKillsForMatch_NoFilm(t *testing.T) {
 	db.Exec(`INSERT INTO match_registry (match_id) VALUES ('m_nofilm')`)
 
 	client := &weaponTestClient{filmPresent: false}
-	found, err := BackfillWeaponKillsForMatch(context.Background(), client, db, "m_nofilm", "xuid1")
+	found, err := weaponKillsOneShot(context.Background(), client, db, "m_nofilm", "xuid1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -251,7 +290,7 @@ func TestBackfillWeaponKillsForMatch_WithHighlightEvents(t *testing.T) {
 			0: {Data: []byte{}, StartMS: 0, DurationMS: 1000},
 		},
 	}
-	found, err := BackfillWeaponKillsForMatch(context.Background(), client, db, "m_hev", "xuid1")
+	found, err := weaponKillsOneShot(context.Background(), client, db, "m_hev", "xuid1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -283,7 +322,7 @@ func TestBackfillWeaponKillsForMatch_EmptyHighlightEvents(t *testing.T) {
 			0: {Data: []byte{}, StartMS: 0, DurationMS: 1000},
 		},
 	}
-	found, err := BackfillWeaponKillsForMatch(context.Background(), client, db, "m_empty", "xuid1")
+	found, err := weaponKillsOneShot(context.Background(), client, db, "m_empty", "xuid1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

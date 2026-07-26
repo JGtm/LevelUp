@@ -19,7 +19,7 @@
 //  2. PreservesAllChunks : map[int]FilmChunkData identique au séquentiel
 //     (clés == chunk.Index, data == blob CDN décompressé).
 //  3. CompletesAllBeforeReturn : GetMatchFilm ne retourne QUE quand tous
-//     les chunks sont téléchargés (le caller BackfillWeaponKillsForMatch
+//     les chunks sont téléchargés (le caller collectWeaponKillsForMatch
 //     traite ensuite — pas de race avec le download).
 //  4. OneChunkFails_ReturnsError : errgroup propage la 1ère erreur, les
 //     autres goroutines abortent via ctx cancel.

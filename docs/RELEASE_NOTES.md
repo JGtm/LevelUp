@@ -1,5 +1,43 @@
 ## What's new
 
+**v7.3 — Overtime, first kill / first death & a repaired Achievements page**
+
+**Overtime on your matches**
+- **A badge in the match header** — a match that went past its regulation time is now flagged "Overtime", with the extra time played shown on hover
+- **A pill in the Explorer** — the same flag appears next to the result in your match list, so overtime matches can be spotted without opening them
+- **Your whole history, straight away** — the flag is worked out as the page is read, so it covers every match you have ever played; nothing to re-sync and nothing to wait for
+- **Measured, not guessed** — the game gives no overtime signal, so the flag compares the time actually played against the regulation time of the variant played, with a safety margin
+- **Halo 5 deliberately left out** — no regulation times are declared for it yet, and an undeclared variant is never flagged rather than wrongly flagged
+
+**First kill / first death — a new chart**
+- **One lane per player** — the first kills of each match are plotted above the line and the first deaths below, so a fast starter and a fast dier are told apart at a glance
+- **Medians and advance window** — each lane carries its median first kill, its median first death and the bar between the two: the head start you usually have
+- **Sorted by how early you open** — lanes are ordered by median first kill
+- **On three pages** — Squad ("Dynamics" tab, after Intensity), Timeseries ("Progression" tab) and session detail, where it also appears in the session comparison panel
+- **Replaces the old histograms** — the 10-second and 15-second bucket charts were unreadable and disagreed with each other; both are gone
+- **A scale that holds** — one endless match no longer flattens everybody else's lane
+
+**Halo 5 — Achievements page repaired**
+- **The page opens again** — it answered with an error instead of showing your milestones
+- **Section title always present** — the Achievements grid keeps its title whether it is loading, empty or in error
+
+**Reading in your language**
+- **Commendations follow the language switch** — their labels came from the server in the language of the moment and stayed there until you reloaded the page
+- **"Headshots" is translated** — the metric showed up under its raw field name in several places
+- **A faster start** — the field reference is no longer fetched twice when the app boots
+
+**Match view**
+- **A missing objective statistic no longer breaks the scoreboard** — a match whose objective data could not be read was shown as incomplete in full; now only the Objectives section stays empty and everything else is served
+
+**Demo**
+- **Improvement campaigns visible** — the demo profile showed no campaign at all
+- **Objective statistics included** — the demo now carries the objective data the real app has
+- **Anonymization reinforced** — player identifiers are anonymized along with the rest
+
+**Also shipped ahead**
+- **Match view rearranged** — the Media block moves last, alone and full width, and the frag, chart and medal rows no longer strand a lonely card on a third of the width
+- **Objectives participation reworked** — the Objectives axis of your profile is now an index of what you actually did against what the modes you played had to offer, instead of a raw score diluted by every match you ever played
+
 **v7.2.1 — Objective modes, title isolation & instant player search**
 
 **Three more objective modes — Stockpile, Extraction and VIP**

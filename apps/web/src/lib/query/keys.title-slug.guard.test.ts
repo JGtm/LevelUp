@@ -74,9 +74,9 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   mediaAudioConfig: () => queryKeys.mediaAudioConfig(P, T),
   mediaMatchCandidates: () => queryKeys.mediaMatchCandidates(P, T, null, 5),
   // Citations / médailles / commendations / timeseries.
-  citations: () => queryKeys.citations(P, T, 'h'),
+  citations: () => queryKeys.citations(P, T, 'h', 'fr'),
   medals: () => queryKeys.medals(P, T, 'fr'),
-  commendationTotals: () => queryKeys.commendationTotals(P, T),
+  commendationTotals: () => queryKeys.commendationTotals(P, T, 'fr'),
   timeseries: () => queryKeys.timeseries(P, T, 'h'),
   // Classement.
   leaderboard: () => queryKeys.leaderboard(P, T),

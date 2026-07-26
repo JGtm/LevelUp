@@ -30,6 +30,26 @@ func (r *ServiceRegistry) WithMonitoringStore(s *ops.MonitoringStore) *ServiceRe
 	return r
 }
 
+// closeMonitoringStore ferme le handle monitoring.duckdb ouvert au boot.
+// Appelé par ServiceRegistry.Close() au shutdown ; idempotent (store nil → no-op,
+// et MonitoringStore.Close est lui-même nil-safe).
+//
+// Le sink cron est débranché AVANT le Close : les crons tournent sur
+// schedulerCtx (drainé avant reg.Close), mais un retardataire hors schedulerWG
+// écrirait sinon dans un handle fermé. observability.ReportCronRun ignore un
+// sink nil — la seule conséquence est que ces runs ne sont plus persistés,
+// ce qui est le comportement voulu pendant l'arrêt.
+func (r *ServiceRegistry) closeMonitoringStore() {
+	if r == nil || r.monitoringStore == nil {
+		return
+	}
+	observability.SetCronRunSink(nil)
+	if err := r.monitoringStore.Close(); err != nil {
+		monitoringLog.Warn("admin_monitoring: fermeture du store échouée", "err", err)
+	}
+	r.monitoringStore = nil
+}
+
 // flushDetections mappe les buckets ErrorCollector courants (mémoire) vers le
 // store (delta append-only). Best-effort : une erreur est loguée, pas propagée.
 func (r *ServiceRegistry) flushDetections(ctx context.Context) {

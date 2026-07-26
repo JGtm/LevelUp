@@ -256,7 +256,7 @@ func main() {
 	// Référençabilité cross-module : event_id propagé via ctx + ContextHandler.
 	var multiHandler *logging.MultiModuleHandler
 	if logsCfg.Enabled && logsCfg.LogsDir != "" {
-		mh, err := logging.NewMultiModuleHandler(logHandler, logsCfg.LogsDir, logsCfg.FileLevel)
+		mh, err := logging.NewMultiModuleHandler(logHandler, logsCfg.LogsDir, logsCfg.FileLevel, logsCfg.Rotation)
 		if err != nil {
 			slog.New(logHandler).Warn("logging: multi-module handler indisponible (console only)",
 				"err", err, "logs_dir", logsCfg.LogsDir)
@@ -277,6 +277,8 @@ func main() {
 			"file_level", logsCfg.FileLevel.String(),
 			"console_format", logsCfg.ConsoleFormat,
 			"max_line", logsCfg.MaxLineWidth,
+			"rotation_max_size_mb", logsCfg.Rotation.MaxSizeBytes/(1024*1024),
+			"rotation_max_backups", logsCfg.Rotation.MaxBackups,
 		)
 	}
 

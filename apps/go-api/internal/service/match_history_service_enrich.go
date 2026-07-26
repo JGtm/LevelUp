@@ -73,6 +73,16 @@ type rowFormatters struct {
 	matchURL      func(matchID string) string
 	outcomeLabel  func(code int) string
 	playlistLabel func(rawFR string) string
+	// regulation : table `game_variant_name → temps réglementaire (s)` du titre
+	// courant (regulation.toml). Nil/vide → aucun flag « Prolongation », jamais
+	// d'erreur. Injectée par MatchHistoryService.WithRegulation.
+	regulation map[string]int
+}
+
+// overtimeFor résout le flag « Prolongation » d'une ligne brute via le
+// chokepoint unique analysis.ResolveOvertime (même résolution que la Match View).
+func (f rowFormatters) overtimeFor(r domain.MatchHistoryRawRow) (bool, int) {
+	return analysis.ResolveOvertime(derefStr(r.GameVariantName), r.ElapsedSeconds, f.regulation)
 }
 
 func (f rowFormatters) matchURLFor(matchID string) string {
@@ -164,6 +174,8 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFor
 		scoreLabel = fmt.Sprintf("%d - %d", *r.MyTeamScore, *r.EnemyTeamScore)
 	}
 
+	isOvertime, overtimeSeconds := fmts.overtimeFor(r)
+
 	return domain.MatchHistoryRow{
 		MatchID:                  r.MatchID,
 		StartTime:                startTime,
@@ -194,6 +206,8 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFor
 		PerfPlacementTotal:       r.PerfPlacementTotal,
 		AverageLifeMMSS:          formatLifeSeconds(r.AverageLifeSeconds),
 		DurationSeconds:          r.TimePlayedSeconds,
+		IsOvertime:               isOvertime,
+		OvertimeSeconds:          overtimeSeconds,
 		MatchURL:                 matchURL,
 		IsExcluded:               r.IsExcluded,
 		IsWithFriends:            r.IsWithFriends,

@@ -298,6 +298,10 @@ func (s *MatchViewService) buildMatchViewFromData(
 	}
 
 	header := buildMatchHeader(ctx, matchID, meta, d.stats, d.enrich, d.scoreboard, s.assetURL, isFavorite)
+	// Flag « Prolongation » : résolu APRÈS le header (la table réglementaire est
+	// portée par le service, pas par le builder — buildMatchHeader est déjà à la
+	// limite de paramètres). Titre sans table → no-op.
+	applyMatchHeaderOvertime(&header, meta, s.regulationSeconds)
 	rank := buildRankBlock(d.skillRank, s.assetURL)
 	curDurSec := 0
 	if meta != nil && meta.DurationSeconds != nil {

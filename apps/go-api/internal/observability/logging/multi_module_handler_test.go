@@ -31,7 +31,7 @@ func TestMultiModuleHandler_WritesToConsoleAndFile(t *testing.T) {
 	var consoleBuf bytes.Buffer
 	console := slog.NewTextHandler(&consoleBuf, &slog.HandlerOptions{Level: slog.LevelInfo})
 
-	mh, err := NewMultiModuleHandler(console, dir, slog.LevelInfo)
+	mh, err := NewMultiModuleHandler(console, dir, slog.LevelInfo, DefaultRotationPolicy())
 	if err != nil {
 		t.Fatalf("NewMultiModuleHandler: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestMultiModuleHandler_WritesToConsoleAndFile(t *testing.T) {
 func TestMultiModuleHandler_ModuleAttributeRouting(t *testing.T) {
 	dir := t.TempDir()
 	console := slog.NewTextHandler(&bytes.Buffer{}, nil)
-	mh, _ := NewMultiModuleHandler(console, dir, slog.LevelInfo)
+	mh, _ := NewMultiModuleHandler(console, dir, slog.LevelInfo, DefaultRotationPolicy())
 	defer mh.Close()
 	logger := slog.New(mh)
 
@@ -108,7 +108,7 @@ func TestMultiModuleHandler_EventIDPropagation(t *testing.T) {
 
 	// Chaîne typique de prod : ContextHandler → MultiModuleHandler.
 	// On simule ça en wrappant le mh dans la chaîne.
-	mh, _ := NewMultiModuleHandler(rawConsole, dir, slog.LevelInfo)
+	mh, _ := NewMultiModuleHandler(rawConsole, dir, slog.LevelInfo, DefaultRotationPolicy())
 	defer mh.Close()
 
 	// On instancie un context handler "inverse" : il est usually au-dessus
@@ -139,7 +139,7 @@ func TestMultiModuleHandler_EventIDPropagation(t *testing.T) {
 func TestMultiModuleHandler_FallbackGeneral(t *testing.T) {
 	dir := t.TempDir()
 	console := slog.NewTextHandler(&bytes.Buffer{}, nil)
-	mh, _ := NewMultiModuleHandler(console, dir, slog.LevelInfo)
+	mh, _ := NewMultiModuleHandler(console, dir, slog.LevelInfo, DefaultRotationPolicy())
 	defer mh.Close()
 
 	// Construire un record manuellement avec PC=0 pour forcer le fallback.
@@ -159,7 +159,7 @@ func TestMultiModuleHandler_LevelFiltering(t *testing.T) {
 	var consoleBuf bytes.Buffer
 	console := slog.NewTextHandler(&consoleBuf, &slog.HandlerOptions{Level: slog.LevelDebug})
 
-	mh, _ := NewMultiModuleHandler(console, dir, slog.LevelInfo)
+	mh, _ := NewMultiModuleHandler(console, dir, slog.LevelInfo, DefaultRotationPolicy())
 	defer mh.Close()
 
 	logger := slog.New(mh)
@@ -189,7 +189,7 @@ func TestMultiModuleHandler_ConsoleQuieterThanFile(t *testing.T) {
 	var consoleBuf bytes.Buffer
 	console := slog.NewTextHandler(&consoleBuf, &slog.HandlerOptions{Level: slog.LevelWarn})
 
-	mh, err := NewMultiModuleHandler(console, dir, slog.LevelInfo)
+	mh, err := NewMultiModuleHandler(console, dir, slog.LevelInfo, DefaultRotationPolicy())
 	if err != nil {
 		t.Fatalf("NewMultiModuleHandler: %v", err)
 	}
@@ -223,7 +223,7 @@ func TestMultiModuleHandler_ConsoleQuieterThanFile(t *testing.T) {
 func TestMultiModuleHandler_Close_Idempotent(t *testing.T) {
 	dir := t.TempDir()
 	console := slog.NewTextHandler(&bytes.Buffer{}, nil)
-	mh, _ := NewMultiModuleHandler(console, dir, slog.LevelInfo)
+	mh, _ := NewMultiModuleHandler(console, dir, slog.LevelInfo, DefaultRotationPolicy())
 	slog.New(mh).With("module", "test").Info("trigger file creation")
 
 	if err := mh.Close(); err != nil {

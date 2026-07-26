@@ -107,9 +107,9 @@ func BenchmarkProcessWeaponKillsInline_16Matches(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, _, err := processWeaponKillsInline(context.Background(), db, client, "bench_xuid", matchIDs)
+		_, _, err := weaponKillsInline(context.Background(), db, client, "bench_xuid", matchIDs)
 		if err != nil {
-			b.Fatalf("processWeaponKillsInline: %v", err)
+			b.Fatalf("weaponKillsInline: %v", err)
 		}
 	}
 }

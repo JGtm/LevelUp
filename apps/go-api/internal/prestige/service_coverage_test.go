@@ -229,6 +229,13 @@ type matchesProvider struct {
 	err     error
 	pop     float64
 	popSize int
+	// cumulative : total renvoyé par CumulativeSince. Par défaut 0 → les tests
+	// threshold existants ne changent pas de comportement ; les tests cumulatifs
+	// le renseignent explicitement. sinceSeen mémorise la borne reçue pour que
+	// l'invariant anti-complétion-rétroactive soit assertable.
+	cumulative  float64
+	cumulativeN int
+	sinceSeen   time.Time
 }
 
 func (p *matchesProvider) RecentMatches(_ context.Context, _, _ string, _ int) ([]MatchData, error) {
@@ -236,6 +243,10 @@ func (p *matchesProvider) RecentMatches(_ context.Context, _, _ string, _ int) (
 }
 func (p *matchesProvider) PopulationPercentile(_ context.Context, _, _ string, _ float64) (float64, int, error) {
 	return p.pop, p.popSize, nil
+}
+func (p *matchesProvider) CumulativeSince(_ context.Context, _, _ string, since time.Time) (float64, int, error) {
+	p.sinceSeen = since
+	return p.cumulative, p.cumulativeN, p.err
 }
 
 func buildCoverageService() (*service, *stubChallengeRepo, *stubArcRepo, *stubSquadChallengeRepo, *stubPrestigeRepo, *matchesProvider) {

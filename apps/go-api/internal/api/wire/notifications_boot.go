@@ -11,8 +11,10 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sort"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/notify"
 	"levelup/go-api/internal/platform/duckdb"
@@ -50,15 +52,57 @@ func EmitAppReleaseForAllPlayers(
 		slog.WarnContext(ctx, "app_release: load players", "err", err)
 		return
 	}
+	targets, skipped := appReleaseTargets(players)
+	if len(skipped) > 0 {
+		// Trace de niveau DEBUG (et non WARN) : ne PAS avoir de player DB est l'état
+		// NORMAL et attendu d'un profil auth_only, pas une anomalie.
+		slog.DebugContext(ctx, "app_release: profils auth_only ignorés (aucune player DB)",
+			"slugs", skipped, "count", len(skipped))
+	}
+	for _, slug := range targets {
+		if err := emitAppReleaseForPlayer(ctx, reg, slug, currentVersion); err != nil {
+			slog.WarnContext(ctx, "app_release: emit", "slug", slug, "err", err)
+		}
+	}
+}
+
+// appReleaseTargets sépare les profils db_profiles.json en (cibles, ignorés) pour
+// l'émission app_release. Fonction PURE (testable sans registre ni DuckDB).
+//
+// Deux règles :
+//  1. Un profil `auth_only` n'a AUCUNE player DB (`db_path` vide dans
+//     db_profiles.json) : il n'existe que pour le pool de tokens. Tenter d'y émettre
+//     échouait à la résolution → un WARN par compte à CHAQUE redémarrage
+//     post-release (5 comptes en production). Il est écarté en amont.
+//  2. Déduplication par slug : la notification est per-JOUEUR (« la version X est
+//     disponible »), pas per-titre, alors que LoadPlayers() sans filtre retourne une
+//     entrée par (titre, joueur) — un même joueur déclaré sur 2 titres était traité
+//     deux fois.
+//
+// Les deux listes sont triées : ordre d'émission et de log stables.
+func appReleaseTargets(players []domain.PlayerSummary) (targets, skipped []string) {
+	seen := make(map[string]bool, len(players))
+	skippedSeen := make(map[string]bool)
 	for _, p := range players {
 		if p.PlayerSlug == "" {
 			continue
 		}
-		if err := emitAppReleaseForPlayer(ctx, reg, p.PlayerSlug, currentVersion); err != nil {
-			slog.WarnContext(ctx, "app_release: emit",
-				"slug", p.PlayerSlug, "err", err)
+		if p.AuthOnly {
+			if !skippedSeen[p.PlayerSlug] {
+				skippedSeen[p.PlayerSlug] = true
+				skipped = append(skipped, p.PlayerSlug)
+			}
+			continue
 		}
+		if seen[p.PlayerSlug] {
+			continue
+		}
+		seen[p.PlayerSlug] = true
+		targets = append(targets, p.PlayerSlug)
 	}
+	sort.Strings(targets)
+	sort.Strings(skipped)
+	return targets, skipped
 }
 
 func emitAppReleaseForPlayer(

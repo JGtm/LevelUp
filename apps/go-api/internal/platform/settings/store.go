@@ -11,6 +11,7 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/atomicfile"
 )
 
 // AppSettings représente la structure complète de app_settings.json.
@@ -239,13 +240,19 @@ func (s *Store) SaveTitleOverlay(overlayPath string, fields map[string]json.RawM
 	if err := os.MkdirAll(filepath.Dir(overlayPath), 0o755); err != nil {
 		return fmt.Errorf("settings.SaveTitleOverlay mkdir: %w", err)
 	}
-	if err := os.WriteFile(overlayPath, out, 0o644); err != nil {
+	if err := atomicfile.WriteFile(overlayPath, out, 0o644); err != nil {
 		return fmt.Errorf("settings.SaveTitleOverlay write: %w", err)
 	}
 	return nil
 }
 
 // Save persiste app_settings.json en préservant les champs inconnus.
+//
+// L'écriture passe par atomicfile.WriteFile : atomique (temp + rename) quand
+// l'environnement le permet, in-place en repli quand la cible est bind-montée
+// FICHIER dans un conteneur (rename EBUSY — cf. package atomicfile). C'est le
+// point d'écriture commun à TOUS les toggles admin (PATCH /settings → Apply →
+// Save) : ils bénéficient donc tous du repli.
 func (s *Store) Save(cfg *AppSettings) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -274,7 +281,7 @@ func (s *Store) Save(cfg *AppSettings) error {
 		return fmt.Errorf("settings.Save indent: %w", err)
 	}
 
-	if err := os.WriteFile(s.path, data, 0o644); err != nil {
+	if err := atomicfile.WriteFile(s.path, data, 0o644); err != nil {
 		return fmt.Errorf("settings.Save write: %w", err)
 	}
 	return nil

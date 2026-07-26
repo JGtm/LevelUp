@@ -225,7 +225,28 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 			row.ModeNameFR = gv
 		}
 	}
+	// Durée de jeu observée (socle du flag « Prolongation »). Lecture SÉPARÉE de
+	// Q13 et best-effort : elle dépend de colonnes de participation qui peuvent
+	// manquer sur une DB non migrée — hors de question de faire tomber la Match
+	// View entière pour un badge (leçon G1).
+	r.attachElapsedSeconds(ctx, &row)
 	return &row, nil
+}
+
+// attachElapsedSeconds renseigne row.ElapsedSeconds (durée de jeu observée) via
+// l'estimateur partagé. Best-effort : sur échec, le champ reste nil et le service
+// n'expose simplement pas de flag « Prolongation ».
+func (r *MatchViewRepo) attachElapsedSeconds(ctx context.Context, row *domain.MatchMetaRaw) {
+	sharedDB, release, err := r.sharedRead().Get(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "match_view: durée de jeu observée indisponible (shared reader)",
+			"match_id", row.MatchID, "err", err)
+		return
+	}
+	defer release()
+	if secs, ok := LoadElapsedSecondsForMatch(ctx, sharedDB, row.MatchID); ok {
+		row.ElapsedSeconds = &secs
+	}
 }
 
 // scanMatchMeta exécute Q13 sur le reader fourni et scanne les 19 colonnes brutes.

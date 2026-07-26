@@ -456,3 +456,26 @@ describe('ExplorerMatchesTable — badge « En placement » (Perf/ΔPerf/Note, V
     expect(screen.getByText('LUSR')).toBeInTheDocument()
   })
 })
+
+describe('ExplorerMatchesTable — pastille « Prolongation » (colonne Dominance)', () => {
+  it('is_overtime : pastille rendue avec le tooltip du dépassement', () => {
+    const row = makeRow(1, { is_overtime: true, overtime_seconds: 43 })
+    renderWithProviders(<ExplorerMatchesTable rows={[row]} playerSlug="me" />)
+    const pill = screen.getByTestId('explorer-overtime-pill')
+    expect(pill).toHaveTextContent('Prolongation')
+    expect(pill).toHaveAttribute('title', 'Prolongation : +0:43')
+  })
+
+  it('sans is_overtime et sans dominance : cellule "-" inchangée', () => {
+    const row = makeRow(1, { dominance_flag: 0 })
+    renderWithProviders(<ExplorerMatchesTable rows={[row]} playerSlug="me" />)
+    expect(screen.queryByTestId('explorer-overtime-pill')).not.toBeInTheDocument()
+  })
+
+  it('dominance ET prolongation coexistent sur la même ligne', () => {
+    const row = makeRow(1, { dominance_flag: 3, is_overtime: true, overtime_seconds: 60 })
+    renderWithProviders(<ExplorerMatchesTable rows={[row]} playerSlug="me" />)
+    expect(screen.getByTestId('explorer-overtime-pill')).toBeInTheDocument()
+    expect(screen.getByText('Remontada')).toBeInTheDocument()
+  })
+})

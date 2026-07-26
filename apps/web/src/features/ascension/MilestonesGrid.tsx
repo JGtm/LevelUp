@@ -8,6 +8,7 @@
  *
  * Cf. PLAN_PROGRESSION_TRACKING_ASCENSION.md §5.3.
  */
+import type { ReactNode } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { metricLabel } from '@/lib/i18n/metricLabel'
 import { useMilestones } from './queries'
@@ -25,27 +26,36 @@ export function MilestonesGrid({ playerSlug }: MilestonesGridProps) {
   const t = getAscensionText(locale)
   const { data, isLoading, isError } = useMilestones(playerSlug)
 
+  // Chargement / erreur : on garde le TITRE de section. Sans lui, un 500 sur
+  // /milestones faisait disparaître le bloc entier de la page Réalisations, sans
+  // que le lecteur puisse relier la ligne d'erreur aux jalons.
   if (isLoading) {
     return (
-      <p className="text-sm text-muted-foreground" role="status">
-        {t.loading}
-      </p>
+      <MilestonesSectionShell title={t.milestonesSectionTitle}>
+        <p className="text-sm text-muted-foreground" role="status">
+          {t.loading}
+        </p>
+      </MilestonesSectionShell>
     )
   }
   if (isError) {
     return (
-      <p className="text-sm text-destructive" role="alert">
-        {t.errorLoading}
-      </p>
+      <MilestonesSectionShell title={t.milestonesSectionTitle}>
+        <p className="text-sm text-destructive" role="alert">
+          {t.errorLoading}
+        </p>
+      </MilestonesSectionShell>
     )
   }
 
   const items = data?.items ?? []
   if (items.length === 0) {
     return (
-      <div className="rounded-md border border-border bg-card p-6 text-center text-muted-foreground">
-        {t.milestonesEmpty}
-      </div>
+      <MilestonesSectionShell title={t.milestonesSectionTitle}>
+        <div className="rounded-md border border-border bg-card p-6 text-center text-muted-foreground">
+          {t.milestonesEmpty}
+        </div>
+      </MilestonesSectionShell>
     )
   }
 
@@ -84,6 +94,30 @@ export function MilestonesGrid({ playerSlug }: MilestonesGridProps) {
           </li>
         ))}
       </ul>
+    </section>
+  )
+}
+
+/**
+ * MilestonesSectionShell — enveloppe de section (titre + contenu) partagée par les
+ * états chargement / erreur / vide. Garantit que le bloc « Mes jalons » reste
+ * identifiable même quand la donnée manque.
+ */
+function MilestonesSectionShell({
+  title,
+  children,
+}: {
+  title: string
+  children: ReactNode
+}) {
+  return (
+    <section aria-labelledby="milestones-section-heading">
+      <header className="mb-3">
+        <h2 id="milestones-section-heading" className="text-lg font-semibold">
+          {title}
+        </h2>
+      </header>
+      {children}
     </section>
   )
 }

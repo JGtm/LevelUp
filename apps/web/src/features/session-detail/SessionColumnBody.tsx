@@ -9,7 +9,12 @@
  * En mode `compact` (colonne divisée, drawer ouvert) : KPI abrégés + tableau compact —
  * exactement la "vue compacte" de la colonne principale.
  */
-import type { IntensityMatchRow, SessionCompareEntry, SessionDetailMatchRow } from '@/lib/api/types'
+import type {
+  FirstBloodPlayerSeriesDTO,
+  IntensityMatchRow,
+  SessionCompareEntry,
+  SessionDetailMatchRow,
+} from '@/lib/api/types'
 
 import type { CompareScale } from './_compareScale'
 import { SessionChartStack } from './SessionChartStack'
@@ -29,6 +34,8 @@ interface Props {
   scale?: CompareScale
   /** Profil d'intensité (frags par phase) de la session — calculé côté Go (payload). */
   intensityRows?: IntensityMatchRow[]
+  /** Premiers frag/mort par match de la session — calculés côté Go (payload). */
+  firstBlood?: FirstBloodPlayerSeriesDTO[]
 }
 
 export function SessionColumnBody({
@@ -39,6 +46,7 @@ export function SessionColumnBody({
   participationSide = 'right',
   scale,
   intensityRows,
+  firstBlood,
 }: Props) {
   const t = useSessionT()
 
@@ -54,6 +62,7 @@ export function SessionColumnBody({
         participationColor="compare-a"
         scale={scale}
         intensityRows={intensityRows}
+        firstBlood={firstBlood}
       />
 
       {/* Tableau "Détail des matchs" — hors bloc/Card (juste un titre + le tableau). */}

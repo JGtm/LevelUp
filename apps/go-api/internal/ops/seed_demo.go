@@ -157,6 +157,22 @@ var sharedTablesWhere = []extractTable{
 	{name: "killer_victim_pairs", where: matchIDInClause},
 	{name: "xuid_aliases", where: "xuid IN (SELECT DISTINCT xuid FROM match_participants WHERE match_id IN (%s))"},
 	{name: "match_csrs", where: matchIDInClause, appendOnly: true},
+	// match_objective_stats : stats objectifs par joueur/match (CTF, Zones, Oddball,
+	// Stockpile, Extraction, VIP). Sans elle, toutes les surfaces « objectifs » de la
+	// démo sont vides (scoreboard MatchView Q12 LEFT JOIN match_objective_stats_latest).
+	//
+	// appendOnly:FALSE — et c'est DÉLIBÉRÉ, contrairement à match_csrs juste au-dessus.
+	// Le motif `* EXCLUDE (id, written_at)` ne vaut QUE pour les tables converties par
+	// migration.ApplyAppendOnlyRebuild (match_skill_rank, player_csr_snapshots,
+	// match_csrs, pve_match_stats, …), dont la migration DÉTECTE l'absence de `id` et
+	// reconstruit. match_objective_stats, elle, est créée DIRECTEMENT en forme
+	// append-only (steps_shared_objective_stats.go) avec un `CREATE TABLE IF NOT EXISTS` :
+	// sur une table déjà présente elle est un no-op, donc les colonnes techniques ne
+	// seraient JAMAIS rajoutées — et la vue _latest, dont le QUALIFY trie
+	// `written_at DESC, id DESC`, échouerait au binder et ferait échouer tout le seed.
+	// On copie donc la table TELLE QUELLE (id + written_at inclus) : la vue _latest
+	// recréée par applyMigrationsOnPath déduplique alors exactement comme en prod.
+	{name: "match_objective_stats", where: matchIDInClause},
 	// Tables Halo 5-spécifiques (absentes côté Infinite → extraction best-effort, la
 	// table source manquante est ignorée par extractSharedTables). Toutes filtrées
 	// par match_id et non append-only (cf. probe schéma 2026-06-27).

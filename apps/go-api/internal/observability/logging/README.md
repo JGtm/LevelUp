@@ -58,6 +58,8 @@ Le module d'un record est résolu dans cet ordre :
 | `LEVELUP_LOGS_ENABLED` | `true` | Kill-switch global. `false` → console only. |
 | `LEVELUP_LOGS_DIR` | `<repoRoot>/logs` ou `logs/` | Répertoire de destination des fichiers `{module}.log`. |
 | `LEVELUP_LOGS_FILE_LEVEL` | `info` | Niveau minimal écrit dans les fichiers. `debug` capture tout, `warn` minimise le volume. |
+| `LEVELUP_LOGS_MAX_SIZE_MB` | `100` | Taille max d'un `{module}.log` avant rotation. `0` désactive la rotation (croissance illimitée). |
+| `LEVELUP_LOGS_MAX_BACKUPS` | `3` | Archives `{module}.log.1..N` conservées. `0` = aucune archive. |
 
 ### Console
 
@@ -150,9 +152,31 @@ Suite couvre :
 - `multi_module_handler_test.go` (11 tests) — dispatch console+fichier, routing par attribut module, propagation event_id, fallback general, level filtering, Close idempotent, sanitization, env vars config.
 - `console_handler_test.go` (20+ tests) — format compact, padding levels, level filtering, skip attrs default + custom, tronquage UTF-8, quoting valeurs avec espace/=/quote, types numériques (int/float/bool/duration), WithAttrs, codes ANSI on/off, écriture concurrente, `parseConsoleFormat` (matrice format × legacy JSON), `parseIntEnv`.
 
-## Limitations connues
+## Rotation par taille (`rotation.go`)
 
-- **Pas de rotation automatique** : les fichiers grossissent indéfiniment. À gérer en ops (logrotate, cron). Le helper `archivedLogPath` est prévu pour un futur sprint.
+Chaque `{module}.log` est roté **par taille**, uniformément pour toutes les catégories :
+
+```
+provider.log      (courant, < LEVELUP_LOGS_MAX_SIZE_MB)
+provider.log.1    (archive la plus récente)
+provider.log.2
+provider.log.3    (la plus ancienne ; supprimée à la rotation suivante)
+```
+
+- Défaut : **100 Mo × 3 archives** → ~400 Mo par catégorie au pire.
+- Les archives ne se terminent pas par `.log` : le viewer admin (`ops.ListLogModules`)
+  et `logtail` les ignorent déjà, aucune n'apparaît comme faux module.
+- Multi-process (serveur + CLIs `cmd/*`) : l'append reste atomique ; le writer qui perd
+  la course au rename le détecte via `os.SameFile` et se contente de ré-ouvrir le fichier
+  neuf, sans décaler les archives une seconde fois.
+- Échec de rotation (disque plein, fichier verrouillé) : signalé sur stderr, écriture
+  poursuivie dans le fichier courant, nouvelle tentative après 1 min de cooldown.
+
+Historique : avant le 2026-07-26, aucune rotation n'existait côté Go (les `app.log.1/.2/.3`
+vus en prod étaient des reliquats du `RotatingFileHandler` Python supprimé avec la
+migration) — la prod avait accumulé 2,1 Go, dont 1,5 Go pour `provider.log`.
+
+## Limitations connues
 - **Détection auto fragile** : repose sur `runtime.FuncForPC` et le nom de package. Si un package est renommé ou réorganisé, le mapping (`module.go::mapPackageToModule`) doit être mis à jour. Override possible via `slog.With("module", ...)`.
 - **Pas de compression** : les `.log` sont en texte brut UTF-8 JSON-line, ~150 octets/ligne.
 - **Aucun upload distant** : strictement local. Pour cloud logging (Loki, Splunk, etc.), agent système séparé recommandé sur le format JSON existant.

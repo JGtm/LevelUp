@@ -37,7 +37,61 @@ func (s *service) EvaluateForUser(ctx context.Context, userID, titleSlug string)
 	return outcomes, nil
 }
 
-// evaluateOne traite un défi actif (chargement matchs + évaluation + persistance).
+// evaluateChallengeNow calcule le résultat d'évaluation d'un défi à l'instant
+// `now`, sans rien persister.
+//
+// SOURCE UNIQUE de la mesure : `evaluateOne` (qui persiste la transition) ET
+// `computeCurrentValue` (qui alimente la jauge affichée) passent tous les deux
+// par ici. Les deux chemins étaient dupliqués et ont divergé : chacun décidait
+// séparément quoi faire d'un EvalCumulative, tous deux retombaient sur
+// EvaluateThreshold, et corriger l'un seulement aurait laissé l'autre faux
+// (constat 2026-07-26). Un point de mesure unique rend la divergence
+// inexprimable.
+func (s *service) evaluateChallengeNow(ctx context.Context, c Challenge, now time.Time) (EvaluationResult, error) {
+	if c.EvalType == EvalCumulative {
+		return s.evaluateCumulativeNow(ctx, c, now)
+	}
+	return s.evaluateThresholdNow(ctx, c, now)
+}
+
+// evaluateThresholdNow évalue un défi threshold (moyenne sur les N derniers matchs).
+//
+// Le provider est LIÉ au joueur du service (cf. BaselineProvider) : ne pas lui
+// repasser c.UserID — c'est un player_slug, pas un xuid, et c'est exactement
+// l'inversion qui figeait tous les objectifs à zéro (2026-07-26).
+func (s *service) evaluateThresholdNow(ctx context.Context, c Challenge, now time.Time) (EvaluationResult, error) {
+	matches, err := s.deps.BaselineProvider.RecentMatches(
+		ctx, c.TitleSlug, c.Metric, s.deps.Tuning.Baseline.WindowMatches,
+	)
+	if err != nil {
+		return EvaluationResult{}, fmt.Errorf("recent matches: %w", err)
+	}
+	samples := make([]MatchSample, len(matches))
+	for i, m := range matches {
+		samples[i] = MatchSample{StartedAt: m.StartedAt, MetricValue: m.MetricValue}
+	}
+	return EvaluateThreshold(s.deps.Tuning, c, samples, now), nil
+}
+
+// evaluateCumulativeNow évalue un défi cumulatif : SOMME de la métrique sur les
+// matchs joués depuis la borne basse du défi (created_at), comparée à la cible.
+//
+// La somme passe par CumulativeSince et NON par RecentMatches : cette dernière
+// est plafonnée à Tuning.Baseline.WindowMatches (20), ce qui tronquerait en
+// silence tout cumulatif dont la cible dépasse 20 matchs de collecte.
+func (s *service) evaluateCumulativeNow(ctx context.Context, c Challenge, now time.Time) (EvaluationResult, error) {
+	since := evalSince(c.CreatedAt, c.WindowType, c.WindowValue, now)
+	total, matchCount, err := s.deps.BaselineProvider.CumulativeSince(ctx, c.TitleSlug, c.Metric, since)
+	if err != nil {
+		return EvaluationResult{}, fmt.Errorf("cumulative since: %w", err)
+	}
+	slog.DebugContext(ctx, "prestige: cumulative evaluated",
+		"challenge_id", c.ID, "metric", c.Metric, "since", since,
+		"matches", matchCount, "total", total, "target", c.Target)
+	return EvaluateCumulative(s.deps.Tuning, c, total, now), nil
+}
+
+// evaluateOne traite un défi actif (mesure + persistance de la transition).
 func (s *service) evaluateOne(ctx context.Context, c Challenge, now time.Time) EvaluationOutcome {
 	out := EvaluationOutcome{
 		ChallengeID: c.ID,
@@ -45,31 +99,11 @@ func (s *service) evaluateOne(ctx context.Context, c Challenge, now time.Time) E
 		NewStatus:   c.Status,
 	}
 
-	// Phase 2 : on récupère les matchs récents (proxy raisonnable pour Phase 3).
-	// Le provider est LIÉ au joueur du service (cf. BaselineProvider) : ne pas
-	// lui repasser c.UserID — c'est un player_slug, pas un xuid, et c'est
-	// exactement l'inversion qui figeait tous les objectifs à zéro (2026-07-26).
-	matches, err := s.deps.BaselineProvider.RecentMatches(
-		ctx, c.TitleSlug, c.Metric, s.deps.Tuning.Baseline.WindowMatches,
-	)
+	result, err := s.evaluateChallengeNow(ctx, c, now)
 	if err != nil {
 		slog.WarnContext(ctx, "prestige: evaluate fetch matches failed",
-			"challenge_id", c.ID, "err", err)
+			"challenge_id", c.ID, "eval_type", string(c.EvalType), "err", err)
 		return out
-	}
-
-	samples := make([]MatchSample, len(matches))
-	for i, m := range matches {
-		samples[i] = MatchSample{StartedAt: m.StartedAt, MetricValue: m.MetricValue}
-	}
-
-	var result EvaluationResult
-	switch c.EvalType {
-	case EvalThreshold:
-		result = EvaluateThreshold(s.deps.Tuning, c, samples, now)
-	case EvalCumulative:
-		// Phase 3 : brancher MedalEvent. Pour l'instant fallback sur threshold.
-		result = EvaluateThreshold(s.deps.Tuning, c, samples, now)
 	}
 
 	out.NewValue = result.NewValue

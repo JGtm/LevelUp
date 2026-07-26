@@ -5,7 +5,7 @@
 //   - teammates_squad_charts_sessions_maps.go         : buildSquadSessionTimeline (.04) +
 //     buildSquadMapHeatmap (.03)
 //   - teammates_squad_charts_impact_events.go         : buildSquadImpactMatrix (.07) +
-//     buildSquadFirstEvents + helpers
+//     buildSquadFirstBlood + helpers
 //   - teammates_squad_charts_weapons_perf.go          : buildSquadWeaponKills +
 //     buildSquadPerformanceSeries
 //   - teammates_squad_charts_synergy.go               : buildSquadSynergyRadar (6 axes) +

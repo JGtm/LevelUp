@@ -1,3 +1,475 @@
+## [2026-07-26] v7.3 — post-sync : le film sort du burst d'écriture (split COLLECT/FLUSH events + weapons)
+
+**Statut** : Complété (branche `feat/v7.3-notion-batch`, non commité — revue superviseur).
+
+**Cause racine traitée** : les étapes 1.54 (convergence events) et 1.55 (weapon kills) du
+post-sync téléchargeaient ET parsaient le film SOUS le burst writer shared. La fenêtre RW
+était donc proportionnelle au réseau (~300-500 ms/match events, plusieurs secondes/match
+weapons) → « writer RW tenu > 2 s » 3-5 fois par cycle d'auto-sync en prod, lectures HTTP
+gatées pendant ce temps. Le chunking (3/2) bornait la fenêtre sans changer sa nature.
+
+**Décision technique** : appliquer le patron déjà en place pour la convergence PSA
+(split 4b) aux deux flux — SELECT (segment de lecture) → COLLECT (fetch + parse + lignes
+prêtes, AUCUN lease shared) → FLUSH (burst court, écriture des lignes collectées).
+Découpages : `collectHighlightEvents`/`flushHighlightEvents` (ProcessHighlightEvents
+devient leur composition, contrat inchangé), `convergeEventsCollect`/`convergeEventsFlush`,
+`collectWeaponKillsForMatch`/`flushWeaponKillsForMatch` + variantes lot. Les lectures shared
+dont dépend la corrélation weapons (`highlight_events`, `match_participants`) passent
+désormais par un segment de LECTURE relâché AVANT le burst, jamais par le writer.
+Orchestrateurs d'étape extraits de `runPostSyncPipeline` vers `postSyncFilmSteps`
+(convergence.go) — pas de nouveau fichier racine (ratchet `TestSyncRootPackageFrozen`).
+
+**Invariants préservés** : anti-TOCTOU events (`filterEventsStillMissing` toujours appelé
+SOUS le writer, juste avant l'écriture — la fenêtre qu'il couvre est simplement plus large
+puisqu'elle inclut le download) ; `defer releaseW()` sur chaque flush ; labels de
+télémétrie `sync_v2_postsync/{events,weapons}` sur les acquisitions de flush ; sémantique
+d'erreur match par match (un fetch KO ne jette pas le lot) ; garde bit-honnête weapons
+(bit21 seulement si ≥ 1 ligne insérée) ; INSERT-only via les persisters existants.
+Chunks 3/2 inchangés : ils bornent désormais la MÉMOIRE (films collectés avant flush),
+plus la durée du lease — pic mémoire identique à avant le split.
+
+**Code mort supprimé** (orphelins créés par le split, détectés par le lint) :
+`processWeaponKillsInline` et `BackfillWeaponKillsForMatch` — leurs contrats de sortie
+restent testés via deux helpers de test composant les vraies phases.
+
+**Tests ajoutés** : `engine_postsync_films_integration_test.go` — acquirer RW instrumenté ;
+un fetch/download LENT qui observerait un writer tenu (ou une acquisition faite) fait
+échouer le test. Vérifié par mutation : en ré-acquérant le writer avant le collect, les 3
+assertions tombent. Couvre aussi la parité (events écrits + `events_loaded`, lignes
+weapon_kills + bit posé, bit no-film) et l'anti-TOCTOU (match convergé pendant le fetch →
+0 event écrit).
+
+**Gates** : `go build ./...` OK ; `go vet` (+ `-tags=integration`) OK ; `gofmt` propre ;
+`go test ./...` 118 ok / 0 FAIL ; `go test -tags=integration -p 1 ./internal/sync/...
+./internal/persist/...` tout vert ; `golangci-lint` (cache purgé) `--new-from-merge-base=origin/main`
+0 issue ; ratchet god-package sync/ inchangé (80 fichiers racine).
+
+**Conclusion / prochaine étape** : revue + commit côté superviseur. À observer après
+déploiement : la métrique « writer RW tenu > 2 s » doit tomber à ~0 sur les étapes
+events/weapons (le flush SQL seul reste). Découverte non traitée (hors périmètre) :
+`convergence_backfill_events.go::processChunk` implémente déjà le même collect/flush pour
+la passe background — 2 copies, tolérées par la règle projet, à fusionner si une 3e
+apparaît.
+
+## [2026-07-26] Chantier v7.3 (batch Notion) — CLÔTURE : 12 commits, gates finaux verts, prêt pour revue de merge
+
+**Statut** : Complété (branche `feat/v7.3-notion-batch`, pilotage superviseur + 11 lots
+d'agents). Section Notion « Pour la v7.3 » traitée intégralement hors Replay 2D (chantier
+utilisateur) et items [POSTPONED].
+
+**Livré** (commits 7bab0260c → celui-ci) : anomalies A (close sans action — comptes
+valides, aucun match joué) B/C/D + G1-G5/G7 corrigées ; flag Prolongation bout en bout
+(règle mesurée T_reg+40 s, TOML par titre, badge header + Explorateur) ; FirstBloodLanes
+sur 3 pages (Escouade/Dynamique, Timeseries, Sessions + drawer) avec suppression des 2
+anciens histogrammes et fin du bucketing serveur ; rotation des logs par taille (100 Mo
+x 3, multi-process safe) ; rate-limit/Cache-Control statiques + 429 observables ;
+backlog.md : 3 items traités (atomicfile EBUSY, filtre auth_only, securitySchemes +
+/docs + ApiError.details), entrée armes H5 reformulée, echarts marqué reporté ;
+changelogs + What's new + notes in-app v7.3.0 FR/EN. EN PARALLÈLE : quick-wins mergée
+et DÉPLOYÉE PROD (48ce99b2c) après remboursement de 7 dettes lint + réconciliation
+baseline — le backfill objectifs « à rejouer » était déjà complet (0 candidat).
+
+**Gates finaux** : go test -tags=integration -count=1 -p 1 ./... EXIT 0 (0 FAIL) ;
+tsc -b cache purgé 0 erreur ; eslint 0 erreur (15 warnings baseline) ; vitest 376
+fichiers / 3215 tests passés / 0 échec ; lint ratchet 0 issue à chaque lot (cache
+purgé) ; openapi-gen -check à jour, types frais.
+
+**Reste côté utilisateur** : revue de merge de la branche ; vérification visuelle
+FirstBloodLanes + Prolongation (session navigateur) ; réponses Notion questions 4-5.
+**Ops au déploiement v7.3** (avec préavis) : purge logs prod (troncature in-place),
+suppression ch_seed_JGtm (validée), env démo MULTI_TITLE_API_ENABLED (si OK),
+re-seed démo (B/G4/G7 visibles après), cut snapshot (réarme l'optimisation lecture).
+
+## [2026-07-26] Lot v7.3 — backlog résiduel : écritures settings EBUSY, bruit app_release, reliquats contrat, restructuration BACKLOG
+
+**Statut** : Complété (branche `feat/v7.3-notion-batch`, agent). Périmètre décidé par
+l'utilisateur : items actionnables du `.ai/BACKLOG.md` HORS Tauri / housekeeping post-cutover /
+kills environnementaux, et HORS bump echarts (reporté explicitement). Décision produit
+préalable : contrat Huma `RawBody`/400 CONSERVÉ (pas de bascule `Body` typé / 422).
+
+**Décisions techniques.**
+
+1. *Écritures `app_settings.json` en conteneur (rename EBUSY).* Nouveau package feuille
+   `internal/platform/atomicfile` (zéro import projet) : `WriteFile` tente temp+rename,
+   replie **in-place** (truncate + un seul Write + fsync) sur EBUSY **ou** sur impossibilité
+   de créer le temporaire ; toute autre erreur de rename est remontée telle quelle — le repli
+   couvre une contrainte d'environnement connue, pas un diagnostic manquant. Points d'injection
+   (`renameFile`, `createTemp`) pour tester le repli sans conteneur. L'audit demandé par l'item
+   a trouvé **3** écritures runtime de settings, toutes migrées : `settings.Store.Save`
+   (chemin de TOUS les toggles admin — il faisait un `os.WriteFile` nu, donc jamais atomique,
+   d'où l'absence de symptôme en prod alors que la notif Discord échouait),
+   `settings.Store.SaveTitleOverlay`, `notify.writeLastNotifiedVersion` (le bug d'origine).
+   3e copie du motif → garde-rail `archlint/no_bare_settings_write_test.go`.
+
+2. *Bruit WARN `app_release: emit`.* Filtre pur `appReleaseTargets` : les profils `auth_only`
+   de `db_profiles.json` (5 en prod, `db_path` vide) sont écartés AVANT résolution, tracés par
+   un `DebugContext` groupé. Découverte au passage : `LoadPlayers()` sans filtre renvoie une
+   entrée par (titre, joueur) alors que la notif est per-JOUEUR → double traitement des joueurs
+   déclarés sur 2 titres ; déduplication par slug dans le même filtre.
+
+3. *Reliquats contrat V72-01.* `securitySchemes.sessionCookie` déclaré côté Go
+   (`internal/api/openapi_security.go`) en lisant `session.CookieName` à sa source unique ;
+   aucune exigence `security` par opération (une part de la surface est publique par
+   conception, l'inventaire route→garde reste le ratchet `bare_routes`, exécutable). UI `/docs`
+   montée sur le routeur RACINE — le `DocsPath` de Huma l'aurait enregistrée une fois par
+   sous-routeur, sous chaque préfixe — et gatée sur `IsProduction()` **OU** `DemoMode` : la
+   démo est publique et ne pose pas `LEVELUP_ENV`, la gater sur la seule production l'aurait
+   exposée ; effet de bord bénéfique, zéro entrée d'allowlist ajoutée aux 3 ratchets de routes.
+   `huma.SchemaTransformer` sur `humacore.apiError` restaure
+   `details: oneOf[object(additionalProperties true), array]` — le `{type: object}` nu générait
+   `Record<string, never>` côté TS, l'inverse de l'intention.
+
+**Statués `[!]`.** Validation automatique des inputs + résolveurs cross-champs : CLOS par la
+décision produit (pas de 422). Les **7 descriptions de schéma racine** : non rapatriées — les
+7 types vivent dans `internal/domain`, qui n'a **aucune** dépendance externe aujourd'hui ;
+`SchemaTransformer` y imposerait d'importer `huma` (framework HTTP) dans la couche « types
+métier purs ». Coût architectural disproportionné pour 7 chaînes déjà présentes au contrat
+publié via le fragment manuel. L'entrée `weapon_labels` H5 a été **reformulée** (verdict : à
+conserver — seuls porteurs des `icon_url` H5 et du catalogue admin ; seul le 3e maillon du
+COALESCE de nom serait supprimable, sous preuve d'un relevé live `weapon-coverage`).
+
+**Résultats** : `gofmt -l` vide, `go build ./...` 0, `go vet ./...` 0, `go test ./...`
+118 packages ok / 0 FAIL (exit 0), `openapi-gen -check` exit 0, `make generate-types` +
+`npm run typecheck` (cache purgé) verts, `golangci-lint --new-from-merge-base=origin/main`
+**0 issue**. Diff de contrat minimal et intentionnel : `+oneOf` sur `ApiError.details`,
+`+securitySchemes.sessionCookie`.
+
+**Prochaine étape** : revue + commit par le superviseur (le placeholder `<commit v7.3>` des
+3 lignes « Récemment complété » du BACKLOG est à remplacer par le SHA réel).
+
+## [2026-07-26] Lot G phase 2 v7.3 — FirstBloodLanes câblé : Escouade/Dynamique + Timeseries + Sessions
+
+**Statut** : Complété (branche `feat/v7.3-notion-batch`, agent + superviseur). Item Notion
+« Transformer le graphe première mort/premier frag ».
+
+**Décisions techniques.** Le délai premier frag/première mort était déjà calculé DEUX fois
+(escouade : bins 15 s ; timeseries : bins 10 s) sur la même chaîne highlight_events →
+correction T0 → min des TimeMS >= 0. Le défaut était le bucketing serveur. Refactor :
+noyau unique firstEventsAcc.note + ComputeFirstEventsByActor (N joueurs en une passe),
+DTO domain/first_blood.go (conversion ms→s en un seul point), champs `first_blood` sur
+les 3 réponses de page composites (+ compare_first_blood pour le drawer de session).
+Ancien code SUPPRIMÉ (builders bins, 4 types, 2 composants web, i18n orphelin) — les
+tests T0-shift/skip-countdown réécrits sur le nouveau builder. Front : adaptateur
+partagé features/_shared/firstBlood.ts (3 consommateurs d'emblée), maxSec = p99 arrondi
+minute sup plancher 300 (un match interminable n'écrase plus l'échelle), manifest
+first_blood.toml partagé = vocabulaire FR unifié sur les 3 pages. Emplacements :
+SquadDynamiquePage (après Intensité), TimeseriesPage.progression (case de l'ancien),
+SessionChartStack (colonne + drawer comparaison).
+
+**Résultats** : build/vet 0, go test ./... exit 0 (0 FAIL), lint ratchet 0 (1 funlen 86
+corrigé en cours de lot), openapi-gen -check à jour, types frais, tsc cache purgé 0,
+eslint 0 nouvelle, vitest ciblé 101 fichiers / 732 tests verts. Découverte consignée :
+contract-surface.snapshot.json était obsolète en ajouts (~30 chemins tolérés par le
+garde-rail), rattrapé par la régénération.
+
+**Prochaine étape** : vérification visuelle des 3 pages via le Chrome utilisateur, puis
+lot H (backlog.md), gates finaux, changelogs [FINAL].
+
+## [2026-07-26] Lot v7.3 — FirstBloodLanes phase 2 : câblage produit (Escouade/Dynamique, Timeseries, Sessions)
+
+**Statut** : Complété (branche `feat/v7.3-notion-batch`, agent). Demande Notion : « Transformer
+le graphe de la page Escouade (2 à 4 joueurs) première mort/premier frag et le déplacer dans
+l'onglet Dynamique. Puis implémenter l'équivalent 1 joueur dans Timeseries et Sessions. »
+
+**Carte de l'existant (vérifiée sur pièces).** Le délai « premier frag / première mort » était
+déjà calculé DEUX fois, sur deux formes d'events différentes : `narrative.ComputeFirstEventsPerMatch`
+(events canoniques, KillerXUID/VictimXUID, solo — servait Timeseries) et une dérivation inline
+dans `buildSquadFirstEvents` (`domain.ImpactEventRow`, XUID = acteur, multi-joueurs — servait
+l'Escouade). Les deux appliquaient la même règle non écrite : minimum des `TimeMS >= 0` après
+correction T0 (`timeline.CorrectEvents` / `CorrectSquadImpactEvents`), les events du countdown
+étant écartés. Les deux consommateurs bucketaient ensuite côté serveur (10 s pour Timeseries,
+15 s pour l'Escouade) — c'est ce bucketing, et lui seul, qui rendait le graphe illisible dès
+3 joueurs. Rien à réinventer : le calcul amont était bon, la surface de sortie était fausse.
+
+**Décision — le noyau d'agrégation devient unique.** `firstEventsAcc.note(isKill, timeMS)` est
+désormais le SEUL endroit qui décide « ce timestamp précède-t-il le minimum connu ». Deux
+adaptateurs l'utilisent dans `analysis/narrative/first_events.go` : `ComputeFirstEventsPerMatch`
+(canonical, inchangé côté contrat — ses 10 tests passent tels quels) et le nouveau
+`ComputeFirstEventsByActor(events []FirstEventActor, xuids, matchIDs)` qui sert N joueurs en une
+passe. `FirstEventActor` est la forme neutre (MatchID/XUID/IsKill/TimeMS) pour les sources qui
+n'exposent pas `canonical.HighlightEvent`. Un joueur demandé sans aucun event obtient quand même
+sa série (rows nulles) : masquer la bande est une décision d'appelant, pas d'algo.
+
+**Endpoints : extension des réponses de page, pas de route orpheline.** Les trois surfaces
+servent le MÊME DTO `domain.FirstBloodPlayerSeries` (`player` + `matches[{match_id,
+first_kill_sec, first_death_sec}]`), sans `omitempty` sur les secondes : `null` est une
+information (événement absent) et le match reste au dénominateur affiché (« 11/12 matchs »).
+`domain.NewFirstBloodPoint` est le point de conversion UNIQUE ms → secondes (arrondi au
+dixième). Champs ajoutés : `first_blood` sur `TeammatesPageResponse` / `TimeseriesPageResponse`
+/ `SessionPageResponse` + `compare_first_blood` (session comparée, miroir de
+`compare_intensity_rows`). Côté session, `attachSessionIntensity` devient
+`attachSessionEventBlocks` : les morts (`death`/`first_death`) rejoignent le filtre d'events —
+UN seul chargement alimente désormais l'intensité ET le premier frag/première mort.
+
+**Code mort supprimé (règle 7).** Go : `buildSquadFirstEvents` + `formatFirstEventsBinLabel` +
+`firstEventsBinSize`, `buildFirstEventsDistribution`, et les types `domain.SquadFirstEvents`,
+`SquadFirstEventsRow`, `FirstEventBucket`, `FirstEventDistribution`. Web :
+`SquadFirstEventsChart.tsx`, `charts/squadFirstEventsChart.ts` (+ son test),
+`TimeseriesFirstEventDistribution.tsx`, le bloc i18n `squad.firstEvents` (FR+EN) et les 5 clés
+`timeseries.progression.{first_event_title,first_kill,first_death,avg,time_axis}`. Aucun autre
+consommateur : les 4 schémas OpenAPI disparus sont un retrait ASSUMÉ, snapshot
+`contract-surface.snapshot.json` régénéré (`UPDATE_CONTRACT_SURFACE=1`) — le diff ne perd que
+ces 4 noms, le reste des lignes ajoutées comble un snapshot devenu obsolète.
+
+**Adaptateur front centralisé d'emblée.** Trois consommateurs = on ne duplique pas :
+`features/_shared/firstBlood.ts` porte `toFirstBloodSeries` (snake_case API → props camelCase du
+composant) et `firstBloodMaxSec`. Choix de la fenêtre d'axe : p99 arrondi à la minute supérieure,
+plancher 300 s — et NON le max. Une seule partie interminable (une mort à 9 min) suffirait sinon
+à écraser toutes les bandes sur le bord gauche ; le point hors fenêtre reste tracé, collé à
+droite. `FirstBloodLanes` reste ignorant du contrat HTTP. Titre/état vide/tooltips viennent du
+manifest partagé `first_blood.toml` : même vocabulaire FR (« Premier frag / première mort »)
+sur les trois pages, au lieu des trois libellés divergents d'avant.
+
+**Emplacements.** Escouade → `features/squad/SquadDynamiquePage.tsx` (après le profil
+d'intensité : les deux se lisent sur la chronologie du match) ; Timeseries → même case qu'avant
+dans `TimeseriesPage.progression.tsx` (colonne gauche, face à « Stats par minute ») ; Session →
+`features/session-detail/SessionChartStack.tsx` juste après l'intensité, donc monté à
+l'identique dans la colonne principale ET le drawer de comparaison.
+
+**Gates.** `go build ./...` et `go vet ./...` OK ; `go test ./...` UNE fois, exit 0, zéro
+`--- FAIL:` ; `golangci-lint run --new-from-merge-base=origin/main` → 0 issue (après extraction
+de `firstBloodScope` : le builder pesait 86 L > 80) ; `openapi-gen -check` à jour ;
+`check-generated-types-fresh` OK ; `npm run typecheck` OK ; `npm run lint` 0 erreur / 15
+warnings (baseline inchangée, 0 sur les fichiers touchés) ; vitest ciblé charts + _shared +
+squad + session-detail + timeseries + lib/api + lib/i18n : 101 fichiers, 732 tests verts.
+
+**Reste à vérifier visuellement** (superviseur, l'agent n'ouvre pas Chrome) :
+`/players/{gt}/squad/dynamique` avec 2 à 4 coéquipiers confirmés (une bande par joueur, le plus
+rapide en haut), `/players/{gt}/stats/timeseries` onglet Progression (bande solo à gauche de
+« Stats par minute »), et la page détail d'une session (bloc sous « Intensité », présent aussi
+dans le drawer de comparaison).
+
+## [2026-07-26] Lot v7.3 — rotation des logs par taille + durcissement rate-limit/cache des fichiers public/
+
+**Statut** : Complété (branche `feat/v7.3-notion-batch`, agent). Items v7.3 « Nettoyer les
+logs » (anomalie C) et durcissement rate-limit.
+
+**Découverte qui change le cadrage (tâche D).** La prémisse « app.log a déjà une rotation,
+l'étendre » est FAUSSE : `app.log.1/.2/.3` vus en prod sont des reliquats du
+`RotatingFileHandler` Python (5 Mo × 3 de l'ancien `src/utils/log_config.py`), supprimé avec
+la migration Go. Aucun mécanisme Go n'existait — le README du package le disait noir sur
+blanc (« Pas de rotation automatique … à gérer en ops »), et `gopkg.in/natefinch/lumberjack`
+n'est pas une dépendance du module. Il n'y avait donc pas de 2e implémentation à éviter :
+`internal/observability/logging/rotation.go` EST le mécanisme unique, appliqué au writer des
+catégories (`fileForModule`), donc à TOUTES les catégories sans exception.
+
+**Décisions techniques.** Writer maison (~200 L, zéro dépendance nouvelle) plutôt que
+lumberjack : archives `{module}.log.N` (convention des app.log.N déjà en prod) — effet de
+bord, elles ne finissent pas par `.log` donc `ops.ListLogModules` / logtail les ignorent
+déjà sans changement. Défaut 100 Mo × 3 archives (~400 Mo/catégorie au pire), pilotable par
+`LEVELUP_LOGS_MAX_SIZE_MB` / `LEVELUP_LOGS_MAX_BACKUPS` (0 Mo = rotation off).
+`RotationPolicy` portée par `logging.Config` et injectée dans `NewMultiModuleHandler`
+(4e paramètre) — aucun `os.Getenv` dispersé. Multi-process (serveur + CLIs) : fermeture
+AVANT rename (obligatoire sous Windows), et le perdant de la course détecte via
+`os.SameFile` que le fichier n'est plus son inode → simple ré-ouverture au lieu d'un 2e
+décalage d'archives (qui aurait détruit le fichier neuf du gagnant). Échec de rotation :
+stderr + cooldown 1 min, écriture jamais interrompue. Un record plus gros que le plafond
+n'est jamais roté en boucle (garde `size > 0`).
+
+**Tâche J (rate-limit).** Trois volets. (1) Exemption : `rateLimitExempt` ajoute les chemins
+à extension statique servis par le catch-all SPA (fichiers de `apps/web/public/` : /logo.png,
+icônes, /titles/**), jamais `/api/*` hors `/api/v1/assets/`. La liste d'extensions quitte
+`server_apiv1.go` pour `internal/api/middleware/static_assets.go` — `internal/api` importe
+déjà `middleware`, jamais l'inverse : pas de cycle. Trois consommateurs (rate limit,
+Cache-Control, 404 franc), garde-rail `archlint/no_duplicate_static_ext_list_test.go` (4+
+extensions distinctes dont une propre au web = catalogue dupliqué ; les listes purement
+images du pipeline média restent légitimes). (2) Cache-Control `public, max-age=3600` sur les
+fichiers non fingerprintés du dist ; les assets Vite hashés gardent `immutable` ; index.html
+et les non-assets restent sans header (revalidation à chaque déploiement). (3) Le 429
+n'est plus muet : `httprate.WithLimitHandler` + `observability.AllowThrottledLog` →
+compteur expvar `levelup.rate_limit_429_total` (exact, jamais avalé) + 1 log WARN par
+fenêtre de 30 s avec `throttled_since_last`.
+
+**Résultats** : `go build ./...` 0, `go vet ./...` 0, `go test ./...` exit 0 sans aucun
+`--- FAIL:` (suite complète, une passe), `golangci-lint run --new-from-merge-base=origin/main`
+(cache purgé) 0 issue. Tests ajoutés : 8 sur la rotation (déclenchement à la taille, N
+archives max, écriture continue après rotation, rotation off, ré-ouverture d'un gros fichier,
+record surdimensionné, bout-en-bout catégorie, env) ; 5 sur le rate-limit (exemption racine,
+`/api/*` à extension toujours limité, compteur 429 exact, pas de compteur sur exempté) ;
+Cache-Control public/ + absence sur non-asset. Front non touché.
+
+**Prochaine étape (superviseur, hors code)** : purger le stock existant en prod. La rotation
+ne raccourcit PAS un fichier déjà à 1,5 Go — elle attend le prochain franchissement de seuil,
+donc `provider.log` serait archivé tel quel (1,5 Go de plus sur disque). Purge sûre sans
+arrêter le serveur, à faire AVANT/APRÈS le déploiement :
+`: > /opt/levelup/data/logs/provider.log` (troncature in-place, le descripteur O_APPEND du
+serveur reste valide ; ne JAMAIS `rm` un fichier tenu ouvert : l'espace ne serait rendu qu'au
+redémarrage), à répéter pour `auth.log`, `general.log`, `sync.log`, et
+`rm -f /opt/levelup/data/logs/app.log*` (reliquats Python, plus aucun écrivain).
+
+## [2026-07-26] Lot F v7.3 — flag « Prolongation » (overtime) livré bout en bout
+
+**Statut** : Complété (branche `feat/v7.3-notion-batch`, agent + superviseur). Item v7.3
+« flag dominance prolongations ».
+
+**Décisions techniques.** Aucun signal API dédié (établi sur 56 payloads réels) — la
+règle mesurée sur 1793 matchs fait foi : elapsed = médiane du time_played des joueurs
+présents début→fin (repli MAX), prolongation si elapsed > T_reg(variante) + 40 s
+(marge INCLUSE : 760 réglementaire, 761 flague ; 0 faux positif sur 724 Slayer de
+contrôle). Table réglementaire déclarative `config/titles/{slug}/mappings/regulation.toml`
+(9 variantes Arena à 720 s ; halo_5 vide = aucun flag, dégradation sûre ; variante
+inconnue = jamais flaguée), loader nil-safe, JAMAIS de slug ==. Helper pur
+`analysis/overtime.go` + garde-rail anti-redéfinition de la marge. Calcul à la volée
+(zéro migration, zéro backfill, rétroactif). Contrat régénéré (make openapi-gen +
+generate-types, golden verts). Front : source unique `lib/narrative/overtime.ts`
+(dominance.ts intouché), token `info` (neutre-informatif), i18n
+`narrative.overtime.*` FR/EN, badge header + pastille Explorateur via `NarrativePill`
+extrait (dominance et prolongation coexistent).
+
+**Résultats** : build/vet 0 ; go test ./... (1 flake connu TestStartImport, ok isolé) ;
+lint ratchet 0 issue ; tsc cache purgé vert ; eslint 0 nouvelle ; vitest ciblé 107+38
+verts.
+
+**Incident de procédure** : l'agent a utilisé `git stash push/pop` (interdit) pour une
+comparaison de baseline — restauré immédiatement, fichier vérifié, aucun dégât. Rappel
+durci dans les prompts des prochains lots.
+
+**Découvertes consignées non traitées** : (a) `ExplorerMatchesRow.DurationSeconds` est
+alimenté par le time_played du joueur, pas la durée du match — la colonne « Durée » de
+l'Explorateur ment ; (b) garde-rail overtime ~12 s (scan complet apps/go-api) ;
+(c) `openapi-gen` logge une erreur mappings_validation_failed cosmétique à chaque run.
+
+**Prochaine étape** : lots D+J (rotation logs + rate-limit statiques), G phase 2, H.
+
+## [2026-07-26] Lot E v7.3 — fuites DuckDB : Close monitoring, defer des releases, télémétrie dé-écrasée
+
+**Statut** : Complété (branche `feat/v7.3-notion-batch`, agent + superviseur). Anomalie D
+du 26/07.
+
+**Décisions techniques.** (1) `MonitoringStore` enfin fermé au shutdown via
+`ServiceRegistry.Close()` (`closeMonitoringStore()` dans le fichier thématique du store,
+`SetCronRunSink(nil)` en ceinture) — la fuite `shutdown_db_leak rw:monitoring.duckdb`
+refCount 1 à chaque arrêt venait d'un Close jamais branché ; le WAL n'était jamais
+checkpointé. Test : DumpCachedLeaks == 0 après Close, idempotence vérifiée.
+(2) Les 4 releases non-defer du chemin d'écriture partagé (bursts events/weapons/
+psa_aliases d'engine_postsync + combined_persister) passent sous closure
+`func(){ defer release(); ... }()` — moment nominal de libération inchangé. Danger réel :
+le `defer recover()` global de runPostSyncPipeline rattrapait un panic en rendant un
+résultat partiel SANS relâcher le writer RW (tenu jusqu'au restart — le vrai scénario
+des incidents de verrou).
+(3) Télémétrie : la ventilation `sync_v2_postsync/{weapons,events,psa_aliases}` existait
+DÉJÀ (SharedAccess.Write) mais la closure d'acquisition `acquireSharedRW` de
+sync_v2_wiring l'ÉCRASAIT juste avant AcquireWriter — d'où 100 % des WARN prod sous le
+label grossier. Fix : `ctxkeys.WithDBWriterLabelIfAbsent` au seul site fautif + tests de
+la propriété (« une closure d'acquisition n'écrase jamais un label plus fin »).
+Constantes de chunk/watchdog/seuil non touchées — resserrement après lecture de cette
+télémétrie en prod (décision utilisateur en attente, question 5 Notion).
+
+**Résultats** : build/vet/tests ciblés + `go test ./...` (1 flake connu
+TestStartImport_HappyPath, 3/3 PASS isolé) ; intégration -p 1 persist/sync/wire verte
+(sync 165 s puis 160 s après extension psa_aliases). Lint : 0 issue sur les fichiers
+touchés.
+
+**Prochaine étape** : lots D (rotation logs), F (prolongations), J, G phase 2, H.
+
+## [2026-07-26] Lot C (G1/G2) — scoreboard dégradable + colonnes de jalons Halo 5
+
+**Statut** : Complété (branche `feat/v7.3-notion-batch`, travail NON commité — remis au
+superviseur pour revue et commit).
+
+**Décisions techniques principales.**
+- **G1 — le scoreboard ne dépend plus de la vue objectifs.** Q12 (`queries_match.go`) ne
+  porte plus le LEFT JOIN inconditionnel sur `match_objective_stats_latest` ni ses 41
+  colonnes : la section objectifs passe par une requête SÉPARÉE `Q12bObjectiveStats`
+  (nouveau fichier `queries_match_objectives.go`), chargée best-effort et jointe par xuid
+  côté Go. Vue absente ou requête en échec → `slog.WarnContext` explicite AVANT la
+  dégradation, puis map vide : le scoreboard reste servi entier, seule la section
+  objectifs manque. Choix de la séparation plutôt que d'un repli « requête sans JOIN » :
+  aucune duplication du littéral des 41 colonnes ni du scan Go (la liste vit désormais à
+  UN seul endroit au lieu d'un autre), et le garde-rail
+  `archlint/no_inline_objective_latest_view_test.go` reste satisfait (on LIT la vue, on ne
+  la crée pas). Extraction au passage de `scanScoreboardRow` / `attachTopWeaponLabels`
+  (`GetMatchScoreboard` repassait le seuil des 80 lignes).
+- **G2 — `milestone_catalog` Halo 5 aligné sur son lecteur.** Le CREATE h5 omettait
+  `condition_fr` / `condition_en` alors que `MilestoneCatalogRepo` les SELECTionne
+  toujours → Binder Error → GET /milestones 500 → grille Réalisations vide. Trois volets :
+  colonnes ajoutées au CREATE (DB neuves), nouveau step ALTER idempotent
+  `h5_milestone_catalog_add_condition_locales` (`AddColumnIfMissing`, motif
+  `h5_weapon_labels_add_icon`) pour les DB DÉJÀ provisionnées — `CREATE TABLE IF NOT
+  EXISTS` n'ajoute pas de colonne et un step tracé n'est jamais rejoué —, et seed h5
+  aligné sur HINF (INSERT/UPSERT des deux colonnes). Commentaire menteur « même forme que
+  HINF » corrigé.
+- **Front** : `MilestonesGrid` gardait bien un état d'erreur i18n FR/EN, mais l'affichait
+  SANS le titre de section — d'où le « la grille disparaît sans message ». Les trois états
+  (chargement / erreur / catalogue vide) passent par une enveloppe `MilestonesSectionShell`
+  qui conserve le titre « Mes jalons ».
+
+**Diagnostic dev local (volet A/B).** L'hypothèse « la migration n'a touché qu'une copie
+A/B du fichier » est INFIRMÉE : le B-swap d'ADR 0016 est un swap de MODE (RO↔RW) sur UN
+SEUL fichier (`sharedprovider/doc.go`), et `data/titles/halo_infinite/warehouse/` ne
+contient qu'un `shared_matches_v2.duckdb`. La vraie divergence est LIVE vs SNAPSHOT :
+`ops.OpenSnapshotShared` reconstruit un schéma shared complet en `:memory:` depuis les
+Parquet de `warehouse/snapshots/vNNN/`, avec un DDL écrit À LA MAIN — les migrations ne
+l'atteignent JAMAIS. Preuves : `migration.log` montre
+`shared_objective_stats_add_stockpile_extraction` appliqué le 26/07 à 01:23 (la vue existe
+donc en live) et `service.log` porte pourtant, à 15:15 le même jour, 31 occurrences de
+`GetMatchScoreboard: Catalog Error: Table with name match_objective_stats_latest does not
+exist!` ; les snapshots v61→v65 (dernier flip 25/07 21:13) n'ont pas de
+`match_objective_stats.parquet`, ajouté à l'export seulement le 26/07 (lot quick-wins).
+
+**Résultats observés** : `go build ./...` et `go vet ./...` EXIT 0 ; `go test ./...`
+EXIT 0 (aucun `--- FAIL:`) ; intégration ciblée `-tags=integration -p 1` sur
+`platform/duckdb`, `games/halo_5/migrations`, `games/halo_infinite/migrations`, `ops`,
+`migration`, `service` : EXIT 0 ; golangci-lint `--new-from-merge-base=origin/main` : 7
+issues, TOUTES dans des fichiers non touchés par ce lot (dette de branche préexistante :
+`service/match_view_radar.go` funlen, `analysis/narrative/objective_participation.go`
+goconst ×5, `platform/duckdb/objective_index_repo.go` gocyclo) ; front `tsc -b` cache
+purgé EXIT 0, vitest ciblé 4/4, eslint 0. `queries_match.go` passe de 546 à 512 lignes
+(dette de fichier > 500 préexistante, réduite et non accrue).
+Note d'environnement : le serveur air local a reconstruit et appliqué
+`h5_milestone_catalog_add_condition_locales` à la vraie `data/titles/halo_5/warehouse/
+metadata.duckdb` à 17:01:55 (cycle `applied:1`, zéro erreur) — validation réelle du
+chemin de réparation sur une DB existante.
+
+**Découvertes consignées non traitées** : les snapshots locaux v61→v65 restent sans
+`match_objective_stats.parquet` — avec le binaire actuel, `OpenSnapshotShared` retourne
+donc `ErrSnapshotIncomplete` et la lecture retombe en permanence sur le live (correct mais
+l'optimisation snapshot est désactivée) ; un nouveau cut de snapshot la réarme. Le
+`catalog.toml` d'Halo 5 ne définit aucune condition : `condition_fr`/`condition_en` y
+restent NULL (colonnes présentes, valeurs à remplir si le produit le décide).
+
+**Conclusion / prochaine étape** : revue superviseur puis commit ; côté prod, le step
+ALTER h5 s'appliquera au boot suivant (aucune action manuelle), et G1 neutralise
+structurellement la classe « une vue manquante détruit tout le tableau des scores ».
+
+## [2026-07-26] Chantier v7.3 (batch Notion) — lots A/B + resynchronisation de branche
+
+**Statut** : En cours (branche `feat/v7.3-notion-batch`, pilotage superviseur + agents).
+Périmètre : section Notion « Pour la v7.3 » hors Replay 2D et items [POSTPONed], plus
+anomalies A-F et G1-G8 du 26/07. Décisions utilisateur : EvaluateCumulative branché,
+backlog.md 5 items (echarts reporté), contrat Huma RawBody/400 conservé.
+
+**Décisions techniques principales.**
+- Base de branche : coupée de `fix/quick-wins-post-v721` puis resynchronisée sur `main`
+  v7.2.5 (24 commits de retard détectés par l'agent du lot B qui a REFUSÉ de coder sur
+  base périmée — les diagnostics visaient la prod v7.2.5). Rectification .dockerignore
+  commitée sur quick-wins (a2a85f65a) et rapatriée.
+- Lot A (7bab0260c) : locale dans les clés citations/commendations (motif medals), gate
+  isBootstrapped sur field-mappings (double-fetch = fenêtre d'hydratation), clé canonique
+  headshot_kills dans metricLabel.
+- Lot G phase 1 (89bf4a5df) : composant FirstBloodLanes pur (custom series pour la barre
+  d'avance, scatter pour nuages/médianes, tokens outcome-win/loss, i18n first_blood).
+- Lot B (ce commit) : évaluation Prestige cumulative unifiée en un point de mesure
+  (`evaluateChallengeNow`) — la jauge et la persistance ne peuvent plus diverger ;
+  `CumulativeSince` SQL non plafonné borné à created_at (WindowMatches=20 aurait tronqué) ;
+  MedalEvent supprimé (0 code mort) ; G4 campagnes démo (XUID + StatusCompleted + garde
+  d'énum à l'écriture) ; G7 match_objective_stats extraite vers la démo (SANS appendOnly :
+  la table naît en forme append-only, prémisse prouvée fausse par flip du flag) + colonne
+  xuid ajoutée à l'anonymisation universelle (fuite d'identifiants réels évitée dans la
+  démo publique).
+
+**Résultats observés** : lot A/G1 gates front verts (tsc cache purgé, eslint baseline,
+vitest 3173 puis 220+28) ; lot B `go build`/`go vet`/`go test ./...` EXIT 0 (117 pkgs),
+`TestSeedDemo_EndToEnd_HappyPath` intégration -p 1 ok. Suite intégration complète : aux
+gates finaux du chantier.
+
+**Découvertes consignées non traitées** : mapMetricToColumn ne mappe ni wins ni
+matches_played (jauge demo-objective-04 restera 0 — classe connue 16/28) ; AxisKind
+"metric" des campagnes démo hors énum radar|lusr_component (même classe que "closed").
+
+**Prochaine étape** : lots C (G1/G2), E (fuites DuckDB), D (rotation logs), F
+(prolongations — règle mesurée T_reg+40 s), J (rate-limit statiques), H (backlog.md),
+phase 2 FirstBloodLanes, gates finaux, changelogs [FINAL].
 ## [2026-07-26] CI quick-wins au vert — 7 dettes lint remboursées + baseline réconciliée
 
 **Statut** : Complété (branche `fix/quick-wins-post-v721`, correctif par agent, commit
@@ -1011,6 +1483,7 @@ DDL encore inline en 3 endroits (snapshot_read.go, sync/schema.go, player_repos_
 même traitement centralisation possible. (b) Commentaire périmé `snapshot_export.go:20` :
 `OpenSnapshotForPlayer` n'existe plus. (c) La fixture player_repos_test seede 41 colonnes
 « miroir » de la migration sans garde de dérive de schéma.
+
 
 ## [2026-07-25] V721-13 — What's new + changelogs + notes de version in-app v7.2.1
 

@@ -42,11 +42,15 @@ const (
 	// historyPageSize est le nombre de matchs demandés par page API.
 	historyPageSize = 25
 
-	// postsyncEventsBurstChunk / postsyncWeaponsBurstChunk : taille des chunks de
-	// bursts Write du post-sync (étape 1 contention). Le fetch film reste dans le
-	// burst (sémantique intouchée) mais le writer est relâché entre chunks →
-	// fenêtre RW bornée ~au coût du chunk (film ~300-500ms/match ; weapons plus
-	// lourd → chunk plus petit). Cible : burst < 1500ms.
+	// postsyncEventsBurstChunk / postsyncWeaponsBurstChunk : taille des lots des
+	// étapes film du post-sync (events / weapon kills).
+	//
+	// Depuis le split COLLECT/FLUSH (v7.3, engine_postsync_films.go) le fetch film
+	// n'est PLUS dans le burst : le writer n'est acquis que pour le flush SQL du
+	// lot. Ces constantes ne bornent donc plus la durée du lease (elle ne dépend
+	// que du coût des INSERT) mais la MÉMOIRE : nombre de films téléchargés/parsés
+	// avant écriture. Valeurs conservées à l'identique — le pic mémoire d'un cycle
+	// reste celui d'avant le split (weapons plus lourd → lot plus petit).
 	postsyncEventsBurstChunk  = 3
 	postsyncWeaponsBurstChunk = 2
 

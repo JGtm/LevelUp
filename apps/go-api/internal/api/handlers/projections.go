@@ -44,6 +44,8 @@ func BuildExplorerRowFromMatchHistory(item domain.MatchHistoryRow) domain.Explor
 		EnemyMMR:            item.EnemyMMR,
 		KDA:                 item.KDA,
 		DurationSeconds:     item.DurationSeconds,
+		IsOvertime:          item.IsOvertime,
+		OvertimeSeconds:     item.OvertimeSeconds,
 		DominanceFlag:       item.DominanceFlag,
 	}
 }

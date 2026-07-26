@@ -25,38 +25,10 @@ import (
 	"levelup/go-api/internal/config"
 )
 
-func TestIsStaticAssetPath(t *testing.T) {
-	cases := map[string]bool{
-		"/icons/halowaypoint-white.png": true,
-		"/logo.PNG":                     true, // insensible a la casse
-		"/photo.jpg":                    true,
-		"/photo.jpeg":                   true,
-		"/anim.webp":                    true,
-		"/anim.gif":                     true,
-		"/favicon.svg":                  true,
-		"/favicon.ico":                  true,
-		"/assets/app-Bx1Yq9Zk.css":      true,
-		"/assets/index-DiwrgTda.js":     true,
-		"/module.mjs":                   true,
-		"/assets/index-DiwrgTda.js.map": true,
-		"/fonts/inter.woff":             true,
-		"/fonts/inter.woff2":            true,
-		"/fonts/inter.ttf":              true,
-		"/robots.txt":                   true,
-		"/sitemap.xml":                  true,
-		"/manifest.json":                true,
-		"/":                             false, // racine → SPA
-		"/players/demo-player/home":     false, // route SPA sans extension
-		"/explorer":                     false,
-		"/manifest.webmanifest":         false, // extension inconnue → SPA (statu quo)
-		"/players/gamer.tag/home":       false, // point dans un segment ≠ extension connue
-	}
-	for path, want := range cases {
-		if got := isStaticAssetPath(path); got != want {
-			t.Errorf("isStaticAssetPath(%q) = %v, attendu %v", path, got, want)
-		}
-	}
-}
+// La table exhaustive du prédicat d'extension vit désormais avec sa source
+// unique : internal/api/middleware/static_assets_test.go
+// (TestIsStaticAssetPath). Ce fichier ne couvre plus que le comportement de
+// mountSPA qui le consomme.
 
 // newSPARouter monte mountSPA sur un dist temporaire minimal (index.html +
 // icons/halowaypoint-white.png) et retourne le routeur pret a servir.

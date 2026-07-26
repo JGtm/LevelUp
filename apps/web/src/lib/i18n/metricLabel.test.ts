@@ -15,6 +15,21 @@ describe('metricLabel', () => {
     expect(metricLabel('combat_precision_matches', 'fr')).toBe('Matchs de précision')
   })
 
+  it('résout `headshot_kills` (clé canonique games/canonical/fields.go) — G5', () => {
+    expect(metricLabel('headshot_kills', 'fr')).toBe('Tirs à la tête')
+    expect(metricLabel('headshot_kills', 'en')).toBe('Headshots')
+  })
+
+  it('résout `headshots` (clé historique du catalogue milestones) sans régresser', () => {
+    expect(metricLabel('headshots', 'fr')).toBe('Tirs à la tête')
+    expect(metricLabel('headshots', 'en')).toBe('Headshots')
+  })
+
+  it('FieldHeadshotKills (Prestige) reste alignée sur la clé canonique', () => {
+    expect(metricLabel('FieldHeadshotKills', 'fr')).toBe('Tirs à la tête')
+    expect(metricLabel('FieldHeadshotKills', 'en')).toBe('Headshots')
+  })
+
   it('humanise une clé inconnue (jamais la clé brute)', () => {
     const raw = 'FieldMysteryStat'
     const label = metricLabel(raw, 'fr')

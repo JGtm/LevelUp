@@ -341,6 +341,11 @@ func applyUniversalAnonymization(ctx context.Context, dst *sql.DB, roster []demo
 		{"weapon_kills", [][2]string{{"xuid", ""}}},
 		{"highlight_events", [][2]string{{"xuid", ""}}},
 		{"killer_victim_pairs", [][2]string{{"killer_xuid", "killer_gamertag"}, {"victim_xuid", "victim_gamertag"}}},
+		// match_objective_stats : extraite depuis le 2026-07-26 et porteuse d'une
+		// colonne xuid — l'omettre ici ferait fuiter les xuid RÉELS du corpus dans
+		// une démo publique. Toute table ajoutée à sharedTablesWhere avec une
+		// colonne d'identité doit apparaître ici dans le même commit.
+		{"match_objective_stats", [][2]string{{"xuid", ""}}},
 		// Tables Halo 5-spécifiques (absentes côté Infinite → tolérées : table
 		// inexistante = skip, cf. errIsMissingTable). Anonymise leur(s) colonne(s)
 		// d'identité pour qu'aucun vrai xuid ne fuite.

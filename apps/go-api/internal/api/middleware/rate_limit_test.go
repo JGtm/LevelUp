@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/api/middleware"
+	"levelup/go-api/internal/observability"
 )
 
 func TestRateLimit_AllowsRequests(t *testing.T) {
@@ -158,5 +159,103 @@ func TestRateLimitMiddleware_AssetsBypass(t *testing.T) {
 		if w.Code != http.StatusOK {
 			t.Fatalf("/api/v1/assets request %d returned %d, expected 200 (no rate limit on assets)", i, w.Code)
 		}
+	}
+}
+
+// TestRateLimitMiddleware_PublicRootAssetsBypass : les fichiers de apps/web/public/
+// servis à la RACINE (icônes, /logo.png, /titles/**) ne consomment pas le bucket.
+// Ils le consommaient jusqu'au 2026-07-26 — même classe de bug que les images
+// 2026-05-06, mais sur le catch-all SPA au lieu de /static/*.
+func TestRateLimitMiddleware_PublicRootAssetsBypass(t *testing.T) {
+	rl := middleware.RateLimit(false, 50)
+	handler := rl(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	paths := []string{"/logo.png", "/favicon.ico", "/titles/halo_5/icon.svg", "/fonts/inter.woff2"}
+	for i := 0; i < 200; i++ {
+		req := httptest.NewRequest(http.MethodGet, paths[i%len(paths)], nil)
+		req.RemoteAddr = "10.0.0.5:12345"
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("requête %d sur %s = %d, attendu 200 (fichier public/ non rate-limité)",
+				i, paths[i%len(paths)], w.Code)
+		}
+	}
+}
+
+// TestRateLimitMiddleware_APIPathWithAssetExtStillLimited : l'exemption par
+// extension ne doit JAMAIS déborder sur /api/* (hors /api/v1/assets/).
+func TestRateLimitMiddleware_APIPathWithAssetExtStillLimited(t *testing.T) {
+	const limit = 50
+	rl := middleware.RateLimit(false, limit)
+	handler := rl(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	rejected := 0
+	for i := 0; i < limit+10; i++ {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/players/test/export.json", nil)
+		req.RemoteAddr = "10.0.0.6:12345"
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+		if w.Code == http.StatusTooManyRequests {
+			rejected++
+		}
+	}
+	if rejected == 0 {
+		t.Error("un chemin /api/* à extension statique doit rester rate-limité")
+	}
+}
+
+// TestRateLimitMiddleware_429IncrementsCounter : un bucket épuisé n'est plus
+// muet — le compteur expvar rate_limit_429_total avance. Comptage RELATIF :
+// l'expvar est process-global et d'autres tests du package l'incrémentent.
+func TestRateLimitMiddleware_429IncrementsCounter(t *testing.T) {
+	const limit = 20
+	before := observability.LoadCounter(middleware.RateLimit429Counter)
+
+	rl := middleware.RateLimit(false, limit)
+	handler := rl(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	rejected := 0
+	for i := 0; i < limit+15; i++ {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/players/counter/pages/home", nil)
+		req.RemoteAddr = "10.0.0.7:12345"
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+		if w.Code == http.StatusTooManyRequests {
+			rejected++
+		}
+	}
+	if rejected == 0 {
+		t.Fatal("aucun 429 produit — limite trop haute pour ce test")
+	}
+	delta := observability.LoadCounter(middleware.RateLimit429Counter) - before
+	if delta != int64(rejected) {
+		t.Errorf("compteur 429 = +%d, attendu +%d (un par réponse 429)", delta, rejected)
+	}
+}
+
+// TestRateLimitMiddleware_429NotCountedWhenExempt : une rafale sur un fichier
+// statique ne doit produire ni 429 ni incrément de compteur.
+func TestRateLimitMiddleware_429NotCountedWhenExempt(t *testing.T) {
+	before := observability.LoadCounter(middleware.RateLimit429Counter)
+
+	rl := middleware.RateLimit(false, 5)
+	handler := rl(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	for i := 0; i < 50; i++ {
+		req := httptest.NewRequest(http.MethodGet, "/logo.png", nil)
+		req.RemoteAddr = "10.0.0.8:12345"
+		handler.ServeHTTP(httptest.NewRecorder(), req)
+	}
+
+	if delta := observability.LoadCounter(middleware.RateLimit429Counter) - before; delta != 0 {
+		t.Errorf("compteur 429 = +%d sur des chemins exemptés, attendu 0", delta)
 	}
 }

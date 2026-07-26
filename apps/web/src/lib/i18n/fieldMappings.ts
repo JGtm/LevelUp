@@ -113,7 +113,18 @@ export function useFieldMappings(
 ) {
   const slug = useAppShellStore((s) => s.currentTitleSlug)
   const locale = useAppShellStore((s) => s.locale)
+  const isBootstrapped = useAppShellStore((s) => s.isBootstrapped)
+  const callerEnabled = options?.enabled ?? true
 
+  // Gate `isBootstrapped` (G8) : avant l'hydratation du bootstrap, currentTitleSlug
+  // et locale valent leurs défauts store ('halo_infinite' / 'fr' — appShellStore.ts),
+  // pas la session réelle. __root.tsx rend l'Outlet NU pendant cette fenêtre (une
+  // passe de rendu avant que hydrateFromBootstrap commit isBootstrapped=true), donc
+  // ce hook peut monter avec des valeurs encore par défaut puis, une fois hydraté,
+  // avec les vraies valeurs — deux clés distinctes si locale/titre diffèrent des
+  // défauts (ex. session/démo en 'en') = 2 requêtes pour la même donnée. On attend
+  // la locale/le titre résolus avant d'activer la query (même patron que
+  // isBootstrapped ailleurs : players/$.tsx, LoginPage, SetupPage).
   const query = useQuery<FieldMappingsResponse>({
     queryKey: fieldMappingsQueryKey(slug, locale),
     queryFn: () => fetchFieldMappings(slug, locale),
@@ -121,6 +132,7 @@ export function useFieldMappings(
     gcTime: Infinity,
     retry: false,
     ...options,
+    enabled: isBootstrapped && callerEnabled,
   })
 
   return query

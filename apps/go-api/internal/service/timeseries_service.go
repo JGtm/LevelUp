@@ -325,7 +325,8 @@ func (s *TimeseriesService) GetPage(
 	if len(highlightEvents) > 0 {
 		timelines := timeline.BuildTimelinesFromPlayerMatches(canonicalRows)
 		corrected := timeline.CorrectEvents(highlightEvents, timelines)
-		resp.FirstEvents = buildFirstEventsDistribution(
+		resp.FirstBlood = buildSoloFirstBlood(
+			s.gamertag,
 			narrative.ComputeFirstEventsPerMatch(corrected, s.playerXUID, matchIDs),
 		)
 		resp.IntensityRows = buildIntensityRows(corrected, matches, s.playerXUID, timeline.GameplayDurationsMS(timelines))

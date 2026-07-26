@@ -90,7 +90,7 @@ func TestGetAllKillsForMatch_DeduplicatesDuplicateRows(t *testing.T) {
 }
 
 // TestGetKillsForPlayer_DeduplicatesDuplicateRows — même régression côté
-// pipeline single-player (BackfillWeaponKillsForMatch).
+// pipeline single-player (weaponKillsOneShot = COLLECT+FLUSH).
 func TestGetKillsForPlayer_DeduplicatesDuplicateRows(t *testing.T) {
 	db := openWeaponDB(t)
 	db.Exec(`INSERT INTO highlight_events VALUES ('m1', 'xuid1', 'kill', 5000)`)
