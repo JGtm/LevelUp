@@ -20,9 +20,9 @@
  *            Perf (color) | ΔPerf | Rang | MMR équipe | MMR adv. | ΔMMR
  *
  * Colonne « Waypoint » (I19) : lien externe vers la page de détail du match sur
- * Halo Waypoint, gatée par la capability `waypoint_match_url` (absente pour
- * Halo 5) ET par la préférence locale `localUiPrefs.showWaypointColumn`
- * (Settings → Apparence, défaut ON).
+ * Halo Waypoint, gatée par la capability `waypoint_match_url` (déclarée par les
+ * DEUX titres depuis le 2026-07-24) ET par la préférence locale
+ * `localUiPrefs.showWaypointColumn` (Settings → Apparence, défaut ON).
  */
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import {
@@ -189,6 +189,31 @@ function alignClass(colId: string): string {
   return RIGHT_ALIGNED_COLUMNS.has(colId) ? 'text-right' : 'text-left'
 }
 
+/** Colonnes ICÔNE (en-tête vide, contenu = une seule icône de 16 px).
+ *
+ *  Elles ont besoin d'une largeur RÉSERVÉE. Le tableau est en `w-full` avec une
+ *  largeur automatique : quand la place manque, le navigateur comprime en priorité
+ *  les colonnes sans contenu textuel. Le lien/bouton étant un conteneur `flex`,
+ *  l'icône est un élément flexible et se laissait écraser jusqu'à disparaître —
+ *  colonne présente dans le DOM, logo invisible à l'écran (constaté 2026-07-26 sur
+ *  l'Explorer, mode sombre). Le `<svg>` inline de la colonne « ouvrir » y résistait
+ *  mieux qu'un `<img>`, d'où un symptôme sur une seule des deux colonnes.
+ *
+ *  `w-9` = 16 px d'icône + les 2×8 px de `px-2` du gabarit commun. On réserve la
+ *  largeur ICI plutôt que d'élargir le rembourrage global, qui décollerait tout le
+ *  reste du tableau de ses bordures. */
+const ICON_COLUMN_WIDTHS: Record<string, string> = {
+  // Icône carrée 14 px (<svg> inline) + les 2x8 px de px-2.
+  open: 'w-9',
+  // Logotype 20x16 (ratio natif 2.25 respecté via object-contain) + px-2.
+  waypoint: 'w-9',
+}
+
+/** Classe de largeur d'une colonne : réservée pour les colonnes icône, libre sinon. */
+function widthClass(colId: string): string {
+  return ICON_COLUMN_WIDTHS[colId] ?? ''
+}
+
 /** Indicateur de tri de la colonne active : ▲ ascendant / ▼ descendant. Rien sur
  *  les colonnes inactives (l'affordance clic vient du <button> + hover). Tokens
  *  semantiques uniquement, aucune couleur. */
@@ -279,9 +304,10 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
   // KDA NET ((k+a/3)−d) pour les deux titres (valeur API Infinite / FDA Halo 5),
   // potentiellement négatif → échelle divergente autour de 0 (jamais kdScale).
 
-  // Colonne « Ouvrir sur Halo Waypoint » (I19) : gating par capability (absente
-  // pour Halo 5, cf. registry.go CapWaypointMatchURL) ET par préférence LOCALE
-  // (Apparence → « Colonne Halo Waypoint sur les listes de matchs », défaut ON).
+  // Colonne « Ouvrir sur Halo Waypoint » (I19) : gating par capability (déclarée
+  // par les DEUX titres depuis le 2026-07-24, cf. registry.go CapWaypointMatchURL)
+  // ET par préférence LOCALE (Apparence → « Colonne Halo Waypoint sur les listes
+  // de matchs », défaut ON).
   const waypointCapability = useCapability('waypoint_match_url')
   const showWaypointColumnPref = useSettingsDraftStore((s) => s.localUiPrefs.showWaypointColumn)
   const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
@@ -351,13 +377,27 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
             onClick={(e) => e.stopPropagation()}
             aria-label={t('explorer.matches.col_waypoint_aria')}
             title={t('explorer.matches.col_waypoint_aria')}
-            className="group flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+            // Boîte de taille FIXE, et non un flex qui négocie sa taille avec la
+            // cellule : voir le commentaire de l'image ci-dessous.
+            className="group inline-flex h-4 w-5 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
           >
             <img
               src={waypointLogoSrc(theme)}
               alt=""
               aria-hidden
-              className="h-4 w-4 opacity-60 group-hover:opacity-100 transition-opacity"
+              // Attributs width/height HTML en PLUS des classes : ils donnent au
+              // moteur une taille INTRINSÈQUE. Sans eux, une image dans un flex
+              // à l'intérieur d'une cellule de tableau en largeur automatique est
+              // dimensionnée différemment selon le moteur — Firefox l'écrasait
+              // jusqu'à l'invisibilité alors que Chrome la rendait correctement
+              // (constaté 2026-07-26). La taille fixe du <a> ci-dessus retire
+              // toute négociation.
+              width={20}
+              height={16}
+              // object-contain : le fichier est un LOGOTYPE 360x160 (ratio 2.25).
+              // Sans lui, le `fill` par défaut l'écrasait dans un carré — déformé
+              // sur TOUS les navigateurs, y compris ceux où il s'affichait.
+              className="h-full w-full shrink-0 object-contain opacity-60 group-hover:opacity-100 transition-opacity"
             />
           </a>
         ),
@@ -863,7 +903,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
                   // d'ouverture) : en-tête statique.
                   if (!h.column.getCanSort()) {
                     return (
-                      <th key={h.id} className={`${HEADER_TH_CLASS} ${alignClass(h.column.id)}`}>
+                      <th key={h.id} className={`${HEADER_TH_CLASS} ${alignClass(h.column.id)} ${widthClass(h.column.id)}`}>
                         <span className="inline-flex items-center gap-1">
                           {content}
                           <HeaderInfoTooltip text={tip} />
@@ -876,7 +916,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
                     sortDir === 'asc' ? 'ascending' : sortDir === 'desc' ? 'descending' : 'none'
                   const labelKey = SORT_ARIA_LABEL_KEYS[h.column.id]
                   return (
-                    <th key={h.id} className={`${HEADER_TH_CLASS} ${alignClass(h.column.id)}`} aria-sort={ariaSort}>
+                    <th key={h.id} className={`${HEADER_TH_CLASS} ${alignClass(h.column.id)} ${widthClass(h.column.id)}`} aria-sort={ariaSort}>
                       {/* Le <th> porte déjà l'alignement (text-right/left) : le bouton
                           reste inline-flex et l'icône ⓘ est sa sœur. */}
                       <span className="inline-flex items-center gap-1">
@@ -916,7 +956,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
                   return (
                     <td
                       key={cell.id}
-                      className={`px-2 py-1 whitespace-nowrap border-r border-border last:border-r-0 ${alignClass(colId)}`}
+                      className={`px-2 py-1 whitespace-nowrap border-r border-border last:border-r-0 ${alignClass(colId)} ${widthClass(colId)}`}
                       style={hlStyle}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}

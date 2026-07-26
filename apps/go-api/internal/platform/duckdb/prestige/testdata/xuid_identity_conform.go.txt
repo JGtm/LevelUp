@@ -1,0 +1,56 @@
+// FIXTURE — NE PAS COMPILER (extension .go.txt).
+//
+// CONTRE-EXEMPLE : les formes CONFORMES qui interrogent legitimement `xuid`.
+// Le detecteur doit rester TOTALEMENT muet dessus, faute de quoi le garde-rail
+// serait ingerable et finirait desactive.
+//
+// 1. Provider LIE au joueur (forme livree le 2026-07-26) : aucun parametre
+//    d identite, le xuid vient du champ fige a la construction.
+// 2. Agregat population : requete `xuid` sans aucun parametre d identite.
+// 3. Provider d escouade : l identite passe par un `rosterXUIDs []string` —
+//    des xuids explicitement nommes comme tels, jamais un slug.
+package prestige
+
+func (p *HaloBaselineProvider) RecentMatches(ctx context.Context, _, metric string, window int) ([]prestige.MatchData, error) {
+	col := mapMetricToColumn(metric)
+	q := fmt.Sprintf(`
+		SELECT mp.match_id, mr.start_time, %s
+		FROM match_participants mp
+		JOIN match_registry mr ON mr.match_id = mp.match_id
+		WHERE mp.xuid = ?
+		ORDER BY mr.start_time DESC
+		LIMIT ?
+	`, col)
+	return queryMatches(ctx, p.reader, q, p.xuid, window)
+}
+
+func (p *HaloBaselineProvider) PopulationPercentile(ctx context.Context, _ string, metric string, target float64) (float64, int, error) {
+	q := fmt.Sprintf(`
+		SELECT mp.xuid, AVG(%s) AS avg_metric
+		FROM match_participants mp
+		GROUP BY mp.xuid
+	`, mapMetricToColumn(metric))
+	return aggregate(ctx, p.reader, q, target)
+}
+
+func (p *PrestigeSquadMatchProvider) SquadMatchMetrics(ctx context.Context, rosterXUIDs []string, titleSlug, metric string, limit int) ([]prestige.SquadMatchMetric, error) {
+	q := fmt.Sprintf(`
+		SELECT mp.match_id, mp.xuid, %s
+		FROM match_participants mp
+		WHERE mp.xuid IN (%s)
+		HAVING COUNT(DISTINCT mp.xuid) = %d
+	`, metric, placeholders(len(rosterXUIDs)), len(rosterXUIDs))
+	return queryRoster(ctx, p.reader, q, rosterXUIDs, limit)
+}
+
+func (r *PrestigeSquadRepo) RemoveMember(ctx context.Context, squadID, xuid string) error {
+	return execCheckpointed(ctx, r.db,
+		`INSERT INTO squad_member_history (squad_id, xuid, is_member, joined_at)
+		 VALUES (?, ?, FALSE, NULL)`, squadID, xuid)
+}
+
+func (r *PrestigeArcRepo) ListByUser(ctx context.Context, userID, titleSlug string) ([]prestige.Arc, error) {
+	return queryArcs(ctx, r.db,
+		`SELECT id, user_id, title_slug FROM arc WHERE user_id = ? AND title_slug = ?`,
+		userID, titleSlug)
+}

@@ -145,6 +145,10 @@ apps/go-api/token_*.txt
 **/token_*.txt
 
 # Artefacts test/coverage Go (générés par go test / scripts ratchet)
+# JSONL du run courant du gate baseline (scripts/check_test_baseline.sh) : trace de
+# diagnostic conservée localement, uploadée en artefact par la CI si le gate échoue.
+# NB : la baseline de RÉFÉRENCE (.ai/baselines/tests_pre_migration.jsonl) reste versionnée.
+apps/go-api/baseline_current.jsonl
 apps/go-api/coverage
 apps/go-api/coverage*.out
 # Rapport HTML de couverture : artefact de build (régénéré + uploadé en CI),

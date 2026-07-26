@@ -767,8 +767,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		progressionResolve := func(ctx context.Context, slug string) (*platform_duckdb.PlayerDB, error) {
 			return reg.Resolve()(ctx, slug)
 		}
-		progressionH := handlers.NewProgressionHandler(progressionResolve, titlePkg.DefaultSlug).
-			WithDemoMode(cfg.DemoMode)
+		progressionH := handlers.NewProgressionHandler(progressionResolve, titlePkg.DefaultSlug)
 		progressionH.Mount(r, playerOpt)
 
 		// Coach Advisor — proposals coach proactives (ADR 0020 Phase 9).
@@ -837,16 +836,18 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// Module Prestige — routes derrière feature flag PRESTIGE_ENABLED.
 		// Le bundle a été initialisé au boot ; si nil ou flag off, routes non montées.
 		//
-		// V721-04 — contrat publié : le document OpenAPI est rendu depuis le routeur
-		// de DÉMO, dont la racine isolée n'a NI shared_social.duckdb NI
-		// metadata.duckdb → NewPrestigeBundle échoue → bundle nil. Les 29 routes
-		// Prestige disparaissaient donc du contrat MALGRÉ PrestigeEnabled=true. En
-		// démo on les monte avec un bundle nil : LazyPrestigeService est nil-safe
-		// (serviceAndPlayerDB renvoie « bundle not initialized », les lectures
-		// principales servent déjà des fixtures de démo) — aucune panique possible.
+		// V721-04 — contrat publié : le document OpenAPI est rendu depuis un routeur
+		// de DÉMO à racine isolée, qui n'a NI shared_social.duckdb NI metadata.duckdb
+		// → NewPrestigeBundleAt échoue → bundle nil. Les 29 routes Prestige
+		// disparaissaient donc du contrat MALGRÉ PrestigeEnabled=true. On les monte
+		// quand même : LazyPrestigeService est nil-safe (serviceAndPlayerDB renvoie
+		// « bundle not initialized ») — aucune panique possible, seulement des
+		// lectures en erreur sur une racine sans données, ce qui est le cas nominal
+		// d'un harnais de génération de contrat. La démo DÉPLOYÉE, elle, a bien ses
+		// bases (cf. cfg.PrestigeBundleDBPaths + seed-demo) et sert de vraies données.
 		// Le flag reste souverain, et hors démo la condition est INCHANGÉE.
 		if cfg.PrestigeEnabled && (prestigeBundle != nil || cfg.DemoMode) {
-			lazy := wire.NewLazyPrestigeService(prestigeBundle, nil, cfg.DemoMode)
+			lazy := wire.NewLazyPrestigeService(prestigeBundle, nil)
 			appPlayers := func(context.Context) ([]domain.PlayerSummary, error) {
 				return cfg.LoadPlayers()
 			}
@@ -1095,7 +1096,9 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	// le sync hook est no-op — mais le boot du bundle reste utile pour valider la
 	// config au démarrage.
 	var prestigeBundle *wire.PrestigeBundle
-	if pb, err := wire.NewPrestigeBundle(cfg.RepoRoot, reg.Resolve(), cfg.PrestigeEnabled); err != nil {
+	prestigeSocialPath, prestigeMetaPath := cfg.PrestigeBundleDBPaths()
+	if pb, err := wire.NewPrestigeBundleAt(cfg.RepoRoot, prestigeSocialPath, prestigeMetaPath,
+		reg.Resolve(), cfg.PrestigeEnabled); err != nil {
 		slog.Warn("prestige_bundle_init_failed", "err", err)
 	} else {
 		prestigeBundle = pb.WithSquadProfile(wire.NewSquadPerfProfileProvider(

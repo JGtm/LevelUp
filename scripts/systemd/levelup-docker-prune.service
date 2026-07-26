@@ -1,8 +1,47 @@
 [Unit]
-Description=LevelUp Docker prune (images/containers/networks/build cache > 24h)
+Description=Hygiène Docker quotidienne LevelUp (conteneurs arrêtés, images dangling, réseaux orphelins)
 After=docker.service
 Requires=docker.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/docker system prune -af --filter "until=24h"
+
+# PÉRIMÈTRE RÉDUIT LE 2026-07-26 — cette unité n'est PLUS propriétaire du cache de build
+# ni des images de base. Elle exécutait une seule commande :
+#     docker system prune -af --filter "until=24h"
+# Deux effets destructeurs, tous deux constatés sur le VPS :
+#   1. `-a` supprime toute image non référencée par un CONTENEUR, et le filtre `until`
+#      porte sur la date de CRÉATION de l'image, pas sur son dernier usage. Les images de
+#      base d'un build (golang:1.26-bookworm, node:22-slim, debian:bookworm-slim) sont
+#      créées par Docker Hub des semaines plus tôt et ne sont JAMAIS référencées par un
+#      conteneur — elles ne servent qu'aux builds. Elles étaient donc rasées à chaque
+#      passage. Constat du 2026-07-26 : `docker images` ne contenait plus que
+#      levelup-levelup:latest et levelup-levelup-demo:latest.
+#   2. `docker system prune` purge AUSSI le cache de build BuildKit.
+# Conséquence : tout déploiement suivant un passage du timer repartait d'un build à FROID
+# (re-téléchargement des images de base + recompilation CGO/DuckDB complète), dont le pic
+# mémoire a gelé la machine 3 fois les 25-26/07 (1,8 Go de RAM, sans swap à l'époque).
+# Ce timer est donc un ACTEUR de ces gels, pas un risque théorique.
+#
+# Propriétaire unique du cache de build désormais : scripts/deploy.sh
+#   - étape 3b : plafond `docker builder prune -f --max-used-space=12GB` après chaque
+#     deploy. 12 Go > les ~5,7 Go de working-set d'un build complet, donc le cache d'un
+#     déploiement survit au suivant et les builds restent incrémentaux.
+#   - étape 2b : soupape d'urgence disque — si < 10 Go libres AVANT un build, purge à 2 Go.
+# Le disque reste borné sans qu'aucune purge périodique ne touche au cache de build.
+# NE PAS réintroduire ici `-a`, `docker system prune` ni `docker builder prune`.
+#
+# Ce qui subsiste ci-dessous est l'hygiène sans effet sur la vitesse des builds :
+#   - L'ORDRE compte : purger les conteneurs arrêtés d'abord libère des références
+#     d'images, ce qui rend des images éligibles au `image prune` qui suit.
+#   - `image prune` SANS `-a` = images dangling (non taguées) uniquement : les couches
+#     orphelines des builds précédents partent, les images de base taguées restent.
+#     C'est la même commande que `deploy.sh` étape 3 ; cette 2e copie est délibérée, elle
+#     couvre les périodes sans déploiement.
+#   - Pas de préfixe `-` sur les ExecStart : si une commande échoue, l'unité échoue
+#     BRUYAMMENT (visible en `systemctl status` / `systemctl list-timers`) au lieu de
+#     dégrader en silence. Les commandes suivantes sont alors sautées jusqu'au passage du
+#     lendemain — acceptable pour de l'hygiène quotidienne, et préférable à un échec muet.
+ExecStart=/usr/bin/docker container prune -f --filter "until=24h"
+ExecStart=/usr/bin/docker image prune -f --filter "until=24h"
+ExecStart=/usr/bin/docker network prune -f --filter "until=24h"

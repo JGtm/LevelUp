@@ -46,8 +46,11 @@ func (s *service) evaluateOne(ctx context.Context, c Challenge, now time.Time) E
 	}
 
 	// Phase 2 : on récupère les matchs récents (proxy raisonnable pour Phase 3).
+	// Le provider est LIÉ au joueur du service (cf. BaselineProvider) : ne pas
+	// lui repasser c.UserID — c'est un player_slug, pas un xuid, et c'est
+	// exactement l'inversion qui figeait tous les objectifs à zéro (2026-07-26).
 	matches, err := s.deps.BaselineProvider.RecentMatches(
-		ctx, c.UserID, c.TitleSlug, c.Metric, s.deps.Tuning.Baseline.WindowMatches,
+		ctx, c.TitleSlug, c.Metric, s.deps.Tuning.Baseline.WindowMatches,
 	)
 	if err != nil {
 		slog.WarnContext(ctx, "prestige: evaluate fetch matches failed",

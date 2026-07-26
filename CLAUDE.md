@@ -157,6 +157,7 @@ make go-api-test            # tests Go rapides (domain/analysis/contracttest)
 cd apps/go-api && go test ./...                      # suite complète
 cd apps/go-api && go test -tags=integration ./...    # inclut les tests persist anti-ART (OBLIGATOIRE avant livraison sync/persist)
 make go-api-lint            # golangci-lint
+make gate-push              # filet local avant merge vers main (~25 min) : ratchet lint Go + typecheck/lint web + baseline de tests ; la CI reste le gate d'autorité
 
 # Frontend
 make check-types            # tsc

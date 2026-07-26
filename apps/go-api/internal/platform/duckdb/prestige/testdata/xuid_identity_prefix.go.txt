@@ -1,0 +1,58 @@
+// FIXTURE — NE PAS COMPILER (extension .go.txt).
+//
+// Copie VERBATIM du code PRE-FIX, extrait le 2026-07-26 par :
+//   git show HEAD:apps/go-api/internal/platform/duckdb/prestige/prestige_baseline_provider.go
+// (lignes 54-98 de la revision ee9c4705d, HEAD de feat/demo-prestige-samples ;
+// contenu identique sur main/9f0f7d48b). Seul le package clause a ete ajoute
+// pour rendre le fragment parsable isolement.
+//
+// C EST LE BUG : parametre d identite applicative `userID` (un player_slug tel
+// que "JGtm") injecte dans `WHERE mp.xuid = ?` (qui n accepte qu un xuid Xbox).
+// Le detecteur DOIT signaler ce fichier, sinon le garde-rail est decoratif.
+package prestige
+
+func (p *HaloBaselineProvider) RecentMatches(ctx context.Context, userID, _ string, metric string, window int) ([]prestige.MatchData, error) {
+	col := mapMetricToColumn(metric)
+	if col == "" {
+		// Métrique non mappée : pas d'erreur, juste pas de matchs.
+		// L'evaluator interprétera les []MatchData vides comme "pas de progrès".
+		return nil, nil
+	}
+	if window <= 0 {
+		window = 20
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	q := fmt.Sprintf(`
+		SELECT mp.match_id, mr.start_time, %s
+		FROM match_participants mp
+		JOIN match_registry mr ON mr.match_id = mp.match_id
+		WHERE mp.xuid = ?
+		ORDER BY mr.start_time DESC
+		LIMIT ?
+	`, col)
+
+	db, release, err := p.reader.Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("HaloBaselineProvider.RecentMatches: shared reader: %w", err)
+	}
+	defer release()
+
+	rows, err := db.QueryContext(ctx, q, userID, window)
+	if err != nil {
+		return nil, fmt.Errorf("HaloBaselineProvider.RecentMatches: %w", err)
+	}
+	defer rows.Close()
+
+	var out []prestige.MatchData
+	for rows.Next() {
+		var m prestige.MatchData
+		if err := rows.Scan(&m.MatchID, &m.StartedAt, &m.MetricValue); err != nil {
+			return nil, fmt.Errorf("scan: %w", err)
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}

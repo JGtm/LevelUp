@@ -1,9 +1,18 @@
 # lefthook.yml — LevelUp
-# Remplace .pre-commit-config.yaml (zéro Python requis, binaire Go)
+# SEUL système de hooks du projet (binaire Go, zéro Python). Le
+# .pre-commit-config.yaml qu'il remplaçait a été SUPPRIMÉ le 2026-07-26 : plus
+# aucun shim `pre-commit` n'était installé, il ne s'exécutait donc pas, et il
+# référençait un script inexistant (scripts/test_deploy_dry_run.sh).
+# Hooks universels qui n'ont jamais été portés depuis ce fichier (ils étaient déjà
+# inertes) : check-yaml/json/toml, detect-private-key, check-added-large-files,
+# trailing-whitespace. La détection de secrets, elle, A été reportée : detect-secrets
+# (+ son .secrets.baseline) est remplacé par gitleaks (binaire Go, zéro Python) en
+# pre-commit ci-dessous et par le job CI .github/workflows/gitleaks.yml.
 #
-# Installation  : lefthook install
+# Installation  : lefthook install   (ou make install-git-hooks)
 # Run manuel    : lefthook run pre-commit
 # Run pre-push  : lefthook run pre-push
+# Bypass        : LEFTHOOK=0 git commit / git push (à documenter)
 #
 # IMPORTANT : lefthook mange les quotes/parenthèses des commandes inline
 # (il enveloppe `run` dans sh -c en quotes simples). Toute logique non triviale
@@ -23,6 +32,14 @@
 pre-commit:
   parallel: true
   commands:
+
+    # Détection de secrets (gitleaks) sur le DIFF STAGÉ — ~0,2 s. Pas de `glob` :
+    # un secret peut atterrir dans n'importe quel type de fichier (Markdown de
+    # journal, JSON de fixture, script de deploy). Dégrade en avertissement si le
+    # binaire manque (justification dans l'en-tête du script) ; l'autorité du verdict
+    # reste le job CI .github/workflows/gitleaks.yml + la push protection GitHub.
+    gitleaks:
+      run: bash scripts/git-hooks/lefthook/gitleaks.sh
 
     # gofmt — scoped aux fichiers Go stagés (rapide, local)
     gofmt:
@@ -76,11 +93,36 @@ pre-push:
 
     # ── Go — lint module entier + tests + vulns ────────────────────────────────
 
-    # golangci-lint: retiré du pre-push (139 issues pré-existantes, couvert par CI)
-    # go-test-short: retiré du pre-push (trop lent, couvert par CI)
+    # golangci-lint: retiré du pre-push (dette pré-existante, couvert par le job CI
+    #   go-lint avec ratchet --new-from-merge-base). Reproductible localement via
+    #   `make go-api-lint` ou `make gate-push`.
+    # go-test-short: retiré du pre-push (trop lent, couvert par CI).
+    # Les scripts correspondants ont été supprimés le 2026-07-26 (code mort).
 
     govulncheck:
       glob: "apps/go-api/**/*.go"
       run: bash scripts/git-hooks/lefthook/govulncheck.sh
 
-    # deploy-dry-run: script scripts/test_deploy_dry_run.sh non encore créé
+    # Gate ADR 0021 — invariants shared_social (anti-corruption ART). Glob calqué
+    # sur le filtre `paths` de .github/workflows/shared-social-gate.yml : ne se
+    # déclenche que si le push touche ces chemins. Détail + delta vs CI : en-tête
+    # du script.
+    shared-social-gate:
+      glob:
+        - "apps/go-api/internal/platform/duckdb/**/*.go"
+        - "apps/go-api/internal/platform/dblease/**/*.go"
+        - "apps/go-api/internal/persist/**/*.go"
+        - "apps/go-api/internal/ops/media*.go"
+        - "apps/go-api/internal/migration/steps_shared_social*.go"
+        - "apps/go-api/internal/api/post_sync*.go"
+        - "apps/go-api/internal/api/handlers/media*.go"
+        - "apps/go-api/cmd/rebuild_shared_social/**/*.go"
+        - "apps/go-api/cmd/snapshot_shared_social/**/*.go"
+      run: bash scripts/git-hooks/lefthook/shared-social-gate.sh
+
+    # RAPPEL non bloquant (pas un gate) : les 3 gates CI les plus bruyants
+    # (baseline de tests, ratchet golangci-lint, ratchet de couverture) n'ont pas
+    # d'équivalent joué ici — ils durent ~25 min, un hook bloquant aussi long
+    # serait contourné en une semaine. `make gate-push` les rejoue à la demande.
+    rappel-gate-push:
+      run: bash scripts/git-hooks/lefthook/rappel-gate-push.sh

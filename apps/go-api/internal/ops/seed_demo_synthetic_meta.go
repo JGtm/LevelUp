@@ -34,7 +34,9 @@ func writeSyntheticMetadata(ctx context.Context, metaPath string) error {
 	if err := os.MkdirAll(filepath.Dir(metaPath), 0o755); err != nil {
 		return fmt.Errorf("mkdir: %w", err)
 	}
-	_ = os.Remove(metaPath)
+	if err := removeDuckDBForFreshWrite(metaPath); err != nil {
+		return err
+	}
 
 	// 1. Migrations metadata du titre par défaut (title steps inclus : weapon_labels,
 	//    mode_name_tr, csr thresholds, ranked playlists, schéma citation/career_rank...).
