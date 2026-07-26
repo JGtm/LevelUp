@@ -165,7 +165,10 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
                     src={waypointLogoSrc(theme)}
                     alt=""
                     aria-hidden
-                    className="h-4 w-4 opacity-60 group-hover:opacity-100 transition-opacity"
+                    // shrink-0 : même motif que l'Explorer — l'image est un élément
+                    // flexible et une colonne comprimée l'écraserait jusqu'à la
+                    // rendre invisible (constaté 2026-07-26 côté Explorer).
+                    className="h-4 w-4 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity"
                   />
                 </a>
               ),
