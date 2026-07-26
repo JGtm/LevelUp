@@ -296,30 +296,53 @@ func objectiveIndexInputFromScoreboard(row domain.ScoreboardRaw) narrative.Objec
 	if !o.HasObjective() {
 		return nil
 	}
-	fi := func(p *int) float64 {
-		if p == nil {
-			return 0
-		}
-		return float64(*p)
+	fam, ok := objectiveFamilyFromRaw(o)
+	if !ok {
+		return nil
 	}
-	ff := func(p *float64) float64 {
-		if p == nil {
-			return 0
-		}
-		return *p
-	}
-	st := narrative.ObjectiveFamilyStats{Matches: 1}
+	st := objectiveFamilySumsFromRaw(fam, o)
+	st.Matches = 1
 	if row.TimePlayed != nil {
 		st.TimePlayedSeconds = *row.TimePlayed
 	}
-	var fam narrative.ObjectiveFamily
+	return narrative.ObjectiveIndexInput{fam: st}
+}
+
+// objectiveFamilyFromRaw classe une ligne objectif (1 match, 1 joueur) dans sa
+// famille de mode. Même précédence de blocs et même split KOTH/Strongholds
+// (zone_scoring_ticks > 0, décision 3) que objectiveFamilyCaseSQL côté repo.
+// false = aucun bloc reconnu (Slayer, titre sans match.objective.stats).
+func objectiveFamilyFromRaw(o domain.ObjectiveRaw) (narrative.ObjectiveFamily, bool) {
 	switch {
 	case o.HasZones():
-		if fi(o.ZoneScoringTicks) > 0 {
-			fam = narrative.FamilyZonesKOTH
-		} else {
-			fam = narrative.FamilyZonesStrongholds
+		if derefInt(o.ZoneScoringTicks) > 0 {
+			return narrative.FamilyZonesKOTH, true
 		}
+		return narrative.FamilyZonesStrongholds, true
+	case o.HasCTF():
+		return narrative.FamilyCTF, true
+	case o.HasOddball():
+		return narrative.FamilyOddball, true
+	case o.HasStockpile():
+		return narrative.FamilyStockpile, true
+	case o.HasExtraction():
+		return narrative.FamilyExtraction, true
+	case o.HasVip():
+		return narrative.FamilyVIP, true
+	}
+	return "", false
+}
+
+// objectiveFamilySumsFromRaw remplit les sommes 1-match de la famille donnée :
+// ColumnSums ⊆ narrative.ObjectiveFamilyActionWeights[fam], HoldSeconds = Σ des
+// colonnes de durée de la famille, TimesSelectedAsVIP (dénominateur de
+// kills_as_vip) pour la seule famille VIP. Matches / TimePlayedSeconds restent
+// à la charge du caller.
+func objectiveFamilySumsFromRaw(fam narrative.ObjectiveFamily, o domain.ObjectiveRaw) narrative.ObjectiveFamilyStats {
+	fi := func(p *int) float64 { return float64(derefInt(p)) }
+	var st narrative.ObjectiveFamilyStats
+	switch fam {
+	case narrative.FamilyZonesKOTH, narrative.FamilyZonesStrongholds:
 		st.ColumnSums = map[string]float64{
 			"zone_captures":        fi(o.ZoneCaptures),
 			"zone_secures":         fi(o.ZoneSecures),
@@ -329,9 +352,8 @@ func objectiveIndexInputFromScoreboard(row domain.ScoreboardRaw) narrative.Objec
 		if fam == narrative.FamilyZonesKOTH {
 			st.ColumnSums["zone_scoring_ticks"] = fi(o.ZoneScoringTicks)
 		}
-		st.HoldSeconds = ff(o.TimeInZonesSeconds)
-	case o.HasCTF():
-		fam = narrative.FamilyCTF
+		st.HoldSeconds = derefFloat64(o.TimeInZonesSeconds)
+	case narrative.FamilyCTF:
 		st.ColumnSums = map[string]float64{
 			"flag_captures":         fi(o.FlagCaptures),
 			"flag_capture_assists":  fi(o.FlagCaptureAssists),
@@ -341,44 +363,38 @@ func objectiveIndexInputFromScoreboard(row domain.ScoreboardRaw) narrative.Objec
 			"flag_carriers_killed":  fi(o.FlagCarriersKilled),
 			"flag_returners_killed": fi(o.FlagReturnersKilled),
 		}
-		st.HoldSeconds = ff(o.TimeAsFlagCarrierSeconds)
-	case o.HasOddball():
-		fam = narrative.FamilyOddball
+		st.HoldSeconds = derefFloat64(o.TimeAsFlagCarrierSeconds)
+	case narrative.FamilyOddball:
 		st.ColumnSums = map[string]float64{
 			"skull_grabs":           fi(o.SkullGrabs),
 			"skull_carriers_killed": fi(o.SkullCarriersKilled),
 			"skull_scoring_ticks":   fi(o.SkullScoringTicks),
 		}
-		st.HoldSeconds = ff(o.TimeAsSkullCarrierSeconds)
-	case o.HasStockpile():
-		fam = narrative.FamilyStockpile
+		st.HoldSeconds = derefFloat64(o.TimeAsSkullCarrierSeconds)
+	case narrative.FamilyStockpile:
 		st.ColumnSums = map[string]float64{
 			"power_seeds_deposited":      fi(o.PowerSeedsDeposited),
 			"power_seeds_stolen":         fi(o.PowerSeedsStolen),
 			"power_seed_carriers_killed": fi(o.PowerSeedCarriersKilled),
 		}
-		st.HoldSeconds = ff(o.TimeAsPowerSeedCarrierSeconds) + ff(o.TimeAsPowerSeedDriverSeconds)
-	case o.HasExtraction():
-		fam = narrative.FamilyExtraction
+		st.HoldSeconds = derefFloat64(o.TimeAsPowerSeedCarrierSeconds) + derefFloat64(o.TimeAsPowerSeedDriverSeconds)
+	case narrative.FamilyExtraction:
 		st.ColumnSums = map[string]float64{
 			"extraction_conversions_completed": fi(o.ExtractionConversionsCompleted),
 			"successful_extractions":           fi(o.SuccessfulExtractions),
 			"extraction_initiations_completed": fi(o.ExtractionInitiationsCompleted),
 			"extraction_conversions_denied":    fi(o.ExtractionConversionsDenied),
 		}
-	case o.HasVip():
-		fam = narrative.FamilyVIP
+	case narrative.FamilyVIP:
 		st.ColumnSums = map[string]float64{
 			"vip_kills":                      fi(o.VipKills),
 			"vip_assists":                    fi(o.VipAssists),
 			narrative.ObjectiveColKillsAsVIP: fi(o.KillsAsVip),
 		}
-		st.HoldSeconds = ff(o.TimeAsVipSeconds)
+		st.HoldSeconds = derefFloat64(o.TimeAsVipSeconds)
 		st.TimesSelectedAsVIP = fi(o.TimesSelectedAsVip)
-	default:
-		return nil
 	}
-	return narrative.ObjectiveIndexInput{fam: st}
+	return st
 }
 
 // dropUncomputableRadarAxes retire les axes structurellement non calculables

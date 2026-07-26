@@ -52,7 +52,63 @@ func AllObjectiveFamilies() []ObjectiveFamily {
 // ObjectiveColKillsAsVIP est la seule colonne d'action à dénominateur spécifique :
 // sa contribution est divisée par max(1, Σ times_selected_as_vip) au lieu de n_f
 // (décision 7 du plan — kills en tant que VIP, rapportés au nombre de sélections).
+// Seule colonne EXPORTÉE : son traitement particulier doit être nommable depuis les
+// producteurs d'agrégats (service, repo). Les autres noms de colonnes n'ont pas à
+// franchir la frontière du package — leur cohérence avec les producteurs est
+// verrouillée par garde-rail (TestObjectiveIndexRepo_WeightKeysSubsetOfSchema,
+// TestObjectiveIndexInputFromScoreboard_KeysMatchWeights).
 const ObjectiveColKillsAsVIP = "kills_as_vip"
+
+// Noms de colonnes de match_objective_stats consommés par les deux tables
+// ci-dessous (poids d'action, colonnes de durée). Constantes et non littéraux :
+// plusieurs colonnes sont partagées par deux familles (bloc zones : KOTH et
+// Strongholds portent les mêmes 4 actions), et ces tables sont la SOURCE UNIQUE
+// d'où la couche repo génère ses SUM — un nom y est un contrat, pas une chaîne
+// d'agrément. Valeurs figées : elles doivent rester égales aux noms de colonnes
+// physiques de la table.
+const (
+	// Bloc CTF.
+	objectiveColFlagCaptures        = "flag_captures"
+	objectiveColFlagCaptureAssists  = "flag_capture_assists"
+	objectiveColFlagSteals          = "flag_steals"
+	objectiveColFlagSecures         = "flag_secures"
+	objectiveColFlagReturns         = "flag_returns"
+	objectiveColFlagCarriersKilled  = "flag_carriers_killed"
+	objectiveColFlagReturnersKilled = "flag_returners_killed"
+	objectiveColTimeAsFlagCarrier   = "time_as_flag_carrier_seconds"
+
+	// Bloc zones (KOTH + Strongholds).
+	objectiveColZoneCaptures       = "zone_captures"
+	objectiveColZoneSecures        = "zone_secures"
+	objectiveColZoneOffensiveKills = "zone_offensive_kills"
+	objectiveColZoneDefensiveKills = "zone_defensive_kills"
+	objectiveColZoneScoringTicks   = "zone_scoring_ticks"
+	objectiveColTimeInZones        = "time_in_zones_seconds"
+
+	// Bloc oddball.
+	objectiveColSkullGrabs          = "skull_grabs"
+	objectiveColSkullCarriersKilled = "skull_carriers_killed"
+	objectiveColSkullScoringTicks   = "skull_scoring_ticks"
+	objectiveColTimeAsSkullCarrier  = "time_as_skull_carrier_seconds"
+
+	// Bloc stockpile.
+	objectiveColPowerSeedsDeposited     = "power_seeds_deposited"
+	objectiveColPowerSeedsStolen        = "power_seeds_stolen"
+	objectiveColPowerSeedCarriersKilled = "power_seed_carriers_killed"
+	objectiveColTimeAsPowerSeedCarrier  = "time_as_power_seed_carrier_seconds"
+	objectiveColTimeAsPowerSeedDriver   = "time_as_power_seed_driver_seconds"
+
+	// Bloc extraction (aucune durée — décision 8).
+	objectiveColExtractionConversionsCompleted = "extraction_conversions_completed"
+	objectiveColSuccessfulExtractions          = "successful_extractions"
+	objectiveColExtractionInitiationsCompleted = "extraction_initiations_completed"
+	objectiveColExtractionConversionsDenied    = "extraction_conversions_denied"
+
+	// Bloc VIP (kills_as_vip : cf. ObjectiveColKillsAsVIP ci-dessus).
+	objectiveColVipKills   = "vip_kills"
+	objectiveColVipAssists = "vip_assists"
+	objectiveColTimeAsVip  = "time_as_vip_seconds"
+)
 
 // ObjectiveFamilyActionWeights : poids w_col par colonne d'action, par famille.
 // Clés = noms de colonnes de match_objective_stats (source unique consommée par la
@@ -65,46 +121,46 @@ const ObjectiveColKillsAsVIP = "kills_as_vip"
 // extraction_initiations_denied, flag_grabs.
 var ObjectiveFamilyActionWeights = map[ObjectiveFamily]map[string]float64{
 	FamilyCTF: {
-		"flag_captures":         5.0,
-		"flag_capture_assists":  2.0,
-		"flag_steals":           2.0,
-		"flag_secures":          1.0,
-		"flag_returns":          1.5,
-		"flag_carriers_killed":  1.5,
-		"flag_returners_killed": 1.5,
+		objectiveColFlagCaptures:        5.0,
+		objectiveColFlagCaptureAssists:  2.0,
+		objectiveColFlagSteals:          2.0,
+		objectiveColFlagSecures:         1.0,
+		objectiveColFlagReturns:         1.5,
+		objectiveColFlagCarriersKilled:  1.5,
+		objectiveColFlagReturnersKilled: 1.5,
 	},
 	FamilyZonesKOTH: {
-		"zone_captures":        3.0,
-		"zone_secures":         2.0,
-		"zone_offensive_kills": 1.0,
-		"zone_defensive_kills": 1.0,
-		"zone_scoring_ticks":   0.5, // KOTH seulement (0 structurel en Strongholds)
+		objectiveColZoneCaptures:       3.0,
+		objectiveColZoneSecures:        2.0,
+		objectiveColZoneOffensiveKills: 1.0,
+		objectiveColZoneDefensiveKills: 1.0,
+		objectiveColZoneScoringTicks:   0.5, // KOTH seulement (0 structurel en Strongholds)
 	},
 	FamilyZonesStrongholds: {
-		"zone_captures":        3.0,
-		"zone_secures":         2.0,
-		"zone_offensive_kills": 1.0,
-		"zone_defensive_kills": 1.0,
+		objectiveColZoneCaptures:       3.0,
+		objectiveColZoneSecures:        2.0,
+		objectiveColZoneOffensiveKills: 1.0,
+		objectiveColZoneDefensiveKills: 1.0,
 	},
 	FamilyOddball: {
-		"skull_grabs":           1.5,
-		"skull_carriers_killed": 1.5,
-		"skull_scoring_ticks":   0.5,
+		objectiveColSkullGrabs:          1.5,
+		objectiveColSkullCarriersKilled: 1.5,
+		objectiveColSkullScoringTicks:   0.5,
 	},
 	FamilyStockpile: {
-		"power_seeds_deposited":      3.0,
-		"power_seeds_stolen":         2.0,
-		"power_seed_carriers_killed": 1.5,
+		objectiveColPowerSeedsDeposited:     3.0,
+		objectiveColPowerSeedsStolen:        2.0,
+		objectiveColPowerSeedCarriersKilled: 1.5,
 	},
 	FamilyExtraction: {
-		"extraction_conversions_completed": 3.0,
-		"successful_extractions":           3.0,
-		"extraction_initiations_completed": 1.5,
-		"extraction_conversions_denied":    2.0,
+		objectiveColExtractionConversionsCompleted: 3.0,
+		objectiveColSuccessfulExtractions:          3.0,
+		objectiveColExtractionInitiationsCompleted: 1.5,
+		objectiveColExtractionConversionsDenied:    2.0,
 	},
 	FamilyVIP: {
-		"vip_kills":            3.0,
-		"vip_assists":          1.0,
+		objectiveColVipKills:   3.0,
+		objectiveColVipAssists: 1.0,
 		ObjectiveColKillsAsVIP: 2.0, // ÷ max(1, Σ times_selected_as_vip), pas ÷ n_f
 	},
 }
@@ -114,13 +170,13 @@ var ObjectiveFamilyActionWeights = map[ObjectiveFamily]map[string]float64{
 // VIP : time_as_vip_seconds est normalisé par sélection (÷ max(1, Σ selections))
 // dans ComputeObjectiveIndex, pas ici.
 var ObjectiveFamilyHoldColumns = map[ObjectiveFamily][]string{
-	FamilyCTF:              {"time_as_flag_carrier_seconds"},
-	FamilyZonesKOTH:        {"time_in_zones_seconds"},
-	FamilyZonesStrongholds: {"time_in_zones_seconds"},
-	FamilyOddball:          {"time_as_skull_carrier_seconds"},
-	FamilyStockpile:        {"time_as_power_seed_carrier_seconds", "time_as_power_seed_driver_seconds"},
+	FamilyCTF:              {objectiveColTimeAsFlagCarrier},
+	FamilyZonesKOTH:        {objectiveColTimeInZones},
+	FamilyZonesStrongholds: {objectiveColTimeInZones},
+	FamilyOddball:          {objectiveColTimeAsSkullCarrier},
+	FamilyStockpile:        {objectiveColTimeAsPowerSeedCarrier, objectiveColTimeAsPowerSeedDriver},
 	FamilyExtraction:       {},
-	FamilyVIP:              {"time_as_vip_seconds"},
+	FamilyVIP:              {objectiveColTimeAsVip},
 }
 
 // ObjectiveIndexClip est le plafond du sous-score r_f et de l'index brut : +25 %
