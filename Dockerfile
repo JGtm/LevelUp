@@ -9,7 +9,13 @@ WORKDIR /build/web
 # .npmrc : conserve `legacy-peer-deps=true` (workaround TS6 vs
 # openapi-typescript@7.x peer dep — cf. apps/web/.npmrc).
 COPY apps/web/package.json apps/web/package-lock.json apps/web/.npmrc ./
-RUN npm ci --prefer-offline
+# Cache mount BuildKit (2026-07-26, même motivation que le stage go-builder) : /root/.npm
+# est le cache npm par défaut ici (l'image node tourne en root et ne redéfinit pas
+# npm_config_cache). Il survit à l'invalidation de la couche, ce qui rend `--prefer-offline`
+# réellement offline : une invalidation du lockfile — ou une éviction de couche par la purge
+# post-deploy — ne repart plus d'un téléchargement complet des dépendances.
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --prefer-offline
 
 # Garde-fou binaire natif lightningcss : il est livré en dépendance OPTIONNELLE
 # (optionalDependencies, os/cpu-gated). Combiné à legacy-peer-deps (.npmrc),
@@ -44,7 +50,26 @@ WORKDIR /build/go
 
 # Dépendances Go (cache Docker — séparé du code source)
 COPY apps/go-api/go.mod apps/go-api/go.sum ./
-RUN go mod download
+
+# Cache mounts BuildKit (2026-07-26) — présents sur les 4 RUN Go de ce stage :
+#   /go/pkg/mod           = GOMODCACHE par défaut (l'image officielle fixe GOPATH=/go)
+#   /root/.cache/go-build = GOCACHE par défaut (l'image tourne en root, donc HOME=/root)
+#
+# Ces caches survivent à l'invalidation des COUCHES. Une couche invalidée (code modifié)
+# ou évincée (purge post-deploy, cf. scripts/deploy.sh étape 3b) ne coûte plus une
+# compilation CGO/DuckDB complète : le compilateur retrouve ses objets et un rebuild
+# « à froid » redevient incrémental. Motivation : les 3 gels du VPS des 25-26/07 — le
+# plafond de purge de 5 Go, inférieur aux ~5,7 Go de cache que produit un build, évinçait
+# le cache à chaque déploiement et transformait donc tout deploy en build à froid, dont le
+# pic mémoire est ingérable sur 1,8 Go de RAM. Le plafond est corrigé (12 Go), ces mounts
+# sont la seconde ligne de défense : ils rendent une éviction de couche peu coûteuse.
+#
+# Les 4 RUN portent les MÊMES mounts et ce n'est PAS de la redondance : le contenu d'un
+# cache mount n'est jamais écrit dans la couche d'image, donc les modules téléchargés ici
+# ne sont visibles des `go build` suivants que s'ils montent le même cache.
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go mod download
 
 # Code source Go
 COPY apps/go-api/ ./
@@ -71,24 +96,42 @@ COPY apps/go-api/ ./
 #
 # `main.version` (cmd/server/main.go) reste un repli utile pour un `go build` local
 # avec ldflags ; il n'est simplement plus renseigné ici.
-RUN CGO_ENABLED=1 GOOS=linux go build \
-    -ldflags "-extldflags '-static'" \
+
+# `-s -w` (2026-07-26) : retire la table de symboles et les données DWARF des 3 binaires.
+# Le LINK est le poste le plus gourmand en mémoire de tout le build — c'est la marge qui
+# manquait sur les 1,8 Go du VPS pendant les gels des 25-26/07 — et les binaires produits
+# sont nettement plus petits (image et transfert réduits d'autant).
+# Aucune perte d'exploitabilité : les stack traces Go restent complètes avec fichier:ligne
+# (elles proviennent de la pclntab, que `-w` ne touche pas — seul un débogueur type delve
+# aurait besoin du DWARF), et aucun outillage du dépôt ne symbolise ces binaires : ni
+# delve, ni profilage pprof exposé sur l'image de prod. Les binaires publiés par
+# release.yml ont leurs propres ldflags, indépendants de ce Dockerfile.
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=1 GOOS=linux go build \
+    -ldflags "-s -w -extldflags '-static'" \
     -o /build/levelup-server \
     ./cmd/server/
 
 # CLI levelup (seed, seed-demo, backfill…) — requis par le job deploy-demo de
 # la CI (docker compose run levelup `levelup` seed-demo). Sans ce binaire, la
 # regen démo échoue avec "executable file not found in $PATH".
-RUN CGO_ENABLED=1 GOOS=linux go build \
-    -ldflags "-extldflags '-static'" \
+# Mêmes cache mounts et mêmes `-s -w` que ci-dessus (justification au build du serveur).
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=1 GOOS=linux go build \
+    -ldflags "-s -w -extldflags '-static'" \
     -o /build/levelup \
     ./cmd/levelup/
 
 # CLI backfill_objective_stats — ops prod v7.2 : backfill historique des stats
 # d'objectifs (re-téléchargement API, serveur ARRÊTÉ pendant l'opération car il
 # prend le lock RW de la shared DB). Binaire dédié hors CLI levelup.
-RUN CGO_ENABLED=1 GOOS=linux go build \
-    -ldflags "-extldflags '-static'" \
+# Mêmes cache mounts et mêmes `-s -w` que ci-dessus (justification au build du serveur).
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=1 GOOS=linux go build \
+    -ldflags "-s -w -extldflags '-static'" \
     -o /build/backfill_objective_stats \
     ./cmd/backfill_objective_stats/
 

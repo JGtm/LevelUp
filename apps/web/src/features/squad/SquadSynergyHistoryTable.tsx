@@ -7,8 +7,9 @@
  *
  * Colonne « Waypoint » (I19) : lien externe vers la page de détail du match sur
  * Halo Waypoint (logo thème clair/sombre, remplace l'ancien lien texte « ↗ wp »),
- * gatée par la capability `waypoint_match_url` (absente pour Halo 5) ET par la
- * préférence locale `localUiPrefs.showWaypointColumn` (Settings → Apparence).
+ * gatée par la capability `waypoint_match_url` (déclarée par les DEUX titres depuis
+ * le 2026-07-24) ET par la préférence locale `localUiPrefs.showWaypointColumn`
+ * (Settings → Apparence).
  *
  * Utilise TanStack Table v8. Pagination 20/page côté client.
  * Labels carte/playlist via useFieldMappings (assets titre).
@@ -98,9 +99,9 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
   // que si le titre courant fournit un MMR par match. Faux pour Halo 5 → on
   // RETIRE silencieusement les colonnes (pas de cellule "-" ni de colonne vide).
   const providesTeamMmr = useCapability('team_mmr')
-  // Lien « Ouvrir sur Halo Waypoint » (I19) : gating par capability (absente pour
-  // Halo 5) ET par préférence LOCALE (Apparence → « Colonne Halo Waypoint sur les
-  // listes de matchs », défaut ON).
+  // Lien « Ouvrir sur Halo Waypoint » (I19) : gating par capability (déclarée par
+  // les DEUX titres depuis le 2026-07-24) ET par préférence LOCALE (Apparence →
+  // « Colonne Halo Waypoint sur les listes de matchs », défaut ON).
   const waypointCapability = useCapability('waypoint_match_url')
   const showWaypointColumnPref = useSettingsDraftStore((s) => s.localUiPrefs.showWaypointColumn)
   const showWaypoint = waypointCapability && showWaypointColumnPref
@@ -159,13 +160,21 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
                   onClick={(e) => e.stopPropagation()}
                   aria-label={labels.waypointAriaLabel}
                   title={labels.waypointAriaLabel}
-                  className="group flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                  // Boîte FIXE — cf. ExplorerMatchesTable : une image dans un flex
+                  // au sein d'une cellule de tableau se dimensionne différemment
+                  // selon le moteur (invisible sous Firefox, correcte sous Chrome).
+                  className="group inline-flex h-4 w-5 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <img
                     src={waypointLogoSrc(theme)}
                     alt=""
                     aria-hidden
-                    className="h-4 w-4 opacity-60 group-hover:opacity-100 transition-opacity"
+                    // width/height HTML : taille intrinsèque pour le moteur.
+                    // object-contain : le fichier est un logotype 360x160, le
+                    // `fill` par défaut le déformait dans un carré.
+                    width={20}
+                    height={16}
+                    className="h-full w-full shrink-0 object-contain opacity-60 group-hover:opacity-100 transition-opacity"
                   />
                 </a>
               ),

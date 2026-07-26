@@ -71,7 +71,7 @@ func (r *fakeChallengeRepo) CountCreatedSince(_ context.Context, _, _ string, _ 
 // fakeBaselineProvider évite la dépendance à un PlayerDB réel.
 type fakeBaselineProvider struct{}
 
-func (f *fakeBaselineProvider) RecentMatches(_ context.Context, _, _, _ string, _ int) ([]MatchData, error) {
+func (f *fakeBaselineProvider) RecentMatches(_ context.Context, _, _ string, _ int) ([]MatchData, error) {
 	return []MatchData{
 		{MatchID: "m1", MetricValue: 1.0, StartedAt: time.Now()},
 		{MatchID: "m2", MetricValue: 1.0, StartedAt: time.Now()},

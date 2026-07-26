@@ -65,8 +65,9 @@ func extractDemoMedia(
 	}
 	// Recréer le shared_social fresh à chaque reseed (cf. shared/player DBs). Sous
 	// Linux, unlink d'un fichier tenu par le conteneur démo est sûr (inode survit).
-	_ = os.Remove(outSocialDB)
-	_ = os.Remove(outSocialDB + ".wal")
+	if err := removeDuckDBForFreshWrite(outSocialDB); err != nil {
+		return 0, err
+	}
 	// Migrations PAR TITRE : la racine create_base_shared_social_schema (table
 	// media_files) est title-enregistrée, pas globale (cf. applyTitleMigrationsOnPath).
 	if err := applyTitleMigrationsOnPath(outSocialDB, titlePkg.DefaultSlug, migration.TargetSharedSocial); err != nil {

@@ -165,8 +165,9 @@ func extractDemoMediaH5(
 	// shared_social démo fresh (idempotence reseed). Migrations PAR TITRE (RunForTitleDB) :
 	// la racine create_base_shared_social_schema (table media_files) est title-enregistrée,
 	// pas globale → RunForDB ne la crée pas. Schéma title-agnostique → DefaultSlug.
-	_ = os.Remove(outSocialDB)
-	_ = os.Remove(outSocialDB + ".wal")
+	if err := removeDuckDBForFreshWrite(outSocialDB); err != nil {
+		return 0, err
+	}
 	if err := applyTitleMigrationsOnPath(outSocialDB, titlePkg.DefaultSlug, migration.TargetSharedSocial); err != nil {
 		return 0, fmt.Errorf("migrations shared_social démo h5: %w", err)
 	}

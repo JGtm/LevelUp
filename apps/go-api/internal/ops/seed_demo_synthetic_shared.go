@@ -43,7 +43,9 @@ func writeSyntheticShared(ctx context.Context, path string, plan []synthMatch) e
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return fmt.Errorf("mkdir: %w", err)
 	}
-	_ = os.Remove(path)
+	if err := removeDuckDBForFreshWrite(path); err != nil {
+		return err
+	}
 	db, err := sql.Open("duckdb", path)
 	if err != nil {
 		return fmt.Errorf("open: %w", err)
@@ -280,7 +282,9 @@ func writeSyntheticSharedSocial(path string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return fmt.Errorf("mkdir: %w", err)
 	}
-	_ = os.Remove(path)
+	if err := removeDuckDBForFreshWrite(path); err != nil {
+		return err
+	}
 	db, err := sql.Open("duckdb", path)
 	if err != nil {
 		return fmt.Errorf("open: %w", err)

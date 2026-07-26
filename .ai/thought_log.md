@@ -1,3 +1,774 @@
+## [2026-07-26] Vérification d'affichage v7.2.5 — verdicts, et deux corrections de mes annonces
+
+**Statut** : Complété (vérification par agent, lecture seule ; anomalies consignées Notion
+v7.3, blocs G1-G8).
+
+**Verdicts** : échantillons Prestige démo AFFICHÉS (jalons 6/19, arcs, PP, 7 objectifs
+passés statués) ; 10 citations AFFICHÉES (FR/EN complets, 10/10 icônes dont les 2
+bouche-trous SVG, paliers conformes au plan) ; stats d'objectifs PARTIEL — migration prod
+vérifiée (00:50:58), rendu des 3 modes validé par injection de payload (max-vs-somme
+correct sur le temps VIP), mais aucune page prod OBSERVÉE (pas de session, ownership-gate)
+et les 518 lignes non retrouvées dans les logs (backfill en conteneur éphémère). La chaîne
+prod est DÉDUITE, solidement (la démo sert une copie bit-à-bit de la metadata prod), pas
+observée.
+
+**Deux corrections d'annonces** : (1) « jalons 0→6 sur les DEUX titres » — faux côté
+lecture : `/milestones` répond 500 sur halo_5 (G2 : `milestone_catalog` H5 créé sans
+`condition_fr/en` que le repo sélectionne toujours ; la grille Réalisations disparaît sans
+message ; le changelog v7.2.5 est contredit). (2) Le dev local n'est PAS un proxy de prod :
+metadata non re-seedée (10 citations absentes) et TOUS ses scoreboards tombent sur la vue
+`match_objective_stats_latest` manquante alors que sa migration a tourné — suspicion de
+décalage A/B (B-swap), diagnostic dédié à faire (G1).
+
+**Le plus grave (G1)** : le LEFT JOIN inconditionnel de `queries_match.go:120` fait tomber
+TOUT le tableau des scores quand la vue manque — survenu en prod 2×, le 25/07 au soir,
+entre le déploiement v7.2.0 et la migration ; plus aucune occurrence depuis. Fix de
+robustesse à faire : section objectifs dégradable indépendamment.
+
+**Motif transverse notable** : G4 (campagnes démo invisibles — seed par player_slug, lecture
+par XUID) est la MÊME classe que le bug d'identité corrigé en v7.2.1, côté campagnes. La
+frontière slug/xuid mérite un ratchet dédié plutôt que des corrections au cas par cas.
+
+**Prochaine étape** : G1-G8 au backlog v7.3 (Notion). Rien de bloquant pour la v7.2.5 en
+prod : les deux HAUTES sont l'une réparée d'elle-même en prod (G1, la vue existe), l'autre
+limitée à halo_5 (G2).
+
+---
+
+## [2026-07-26] CI : suite Go jouée UNE fois (D3) + déploiement conditionné à la CI verte (D29)
+
+**Statut** : Complété (branche `fix/build-cache-ci-hardening` ; comportement réel de la
+boucle d'attente validé au premier déploiement).
+
+**D3 — déduplication.** Le job baseline relançait la suite complète déjà jouée par
+Go Coverage (~22 min de doublon par push). Désormais : `go-coverage` exécute UNE fois
+`go test -json -coverprofile` (union des flags des deux anciennes invocations ; seule
+divergence : timeout 300 s vs 600 s → 600 s retenu, l'exécution fusionnée porte
+l'instrumentation de couverture, 300 s fabriquerait des faux timeouts) et le gate baseline
+consomme le JSONL via le nouveau mode `--from-jsonl` de `check_test_baseline.sh` (le mode
+autonome reste le défaut, pour `make gate-push`). Deux durcissements nés de la fusion :
+contrôle n°3 « package en échec sans test en échec » (un package NEUF qui ne compile pas
+passait les deux contrôles existants) et `print_failure_output` (avec `-json`, la sortie
+humaine disparaît du log ; piège mesuré : une erreur de compilation arrive en
+`"Action":"build-fail"` avec `ImportPath` et AUCUN champ `Package` — un extracteur naïf
+rate exactement le cas le plus fréquent). Gain réel : ~22 runner-minutes/push et une
+surface de flake en moins ; le temps mur reste borné par go-coverage. Vérifié : 9 JSONL
+synthétiques + 2 JSONL `go test -json` réels (test rouge, package non compilable), codes
+de sortie et extraits humains contrôlés ; coexistence `-json`/`-coverprofile` prouvée.
+
+**D29 — le déploiement attend la CI.** Un push sur main déclenchait CI et deploy en
+PARALLÈLE : la prod recevait le code avant le verdict (c'est ainsi que main a tenu 14 jours
+à 40 % de rouge sans conséquence). Design retenu — job `attente-ci` en tête de deploy.yml
+plutôt qu'un `workflow_run` (qui perdrait paths-ignore et la concurrency) : sondage
+`gh api .../workflows/ci.yml/runs?head_sha=...` toutes les 30 s, ciblé par FICHIER (stable
+au renommage d'affichage), borné à 55 min pour rendre un message explicite avant le kill
+GitHub ; `success` → OK, rouge → refus avec marche à suivre, `skipped/neutral` → passe avec
+warning, 404 → échec dur (jamais d'attente silencieuse). Soupape d'urgence :
+`workflow_dispatch` avec `ignorer_attente_ci` (hotfix uniquement) ; pièges gérés : un
+`needs` sauté saute ses dépendants par défaut → `!failure() && !cancelled()` sur le job
+deploy, et la garde `github.ref == refs/heads/main` reste la SEULE autorisation de
+déployer. Vérifié : aucun required status check ne référençait le job supprimé (branche
+non protégée, ruleset = deletion + non_fast_forward).
+
+**Garde-rail anti-régression** : `internal/archlint/ci_deploy_triggers_test.go` — l'invariant
+« tout push qui déclenche le déploiement déclenche la CI » (sinon `attente-ci` sonde un run
+qui n'existera jamais : deadlock de 55 min). Deux tests (paths-ignore de ci.yml ⊆ deploy.yml ;
+branches de deploy ⊆ branches de CI), ancres qui `t.Fatalf` si un bloc devient introuvable
+(un garde-rail qui perd sa cible doit rougir, pas se taire). Mordant prouvé par 4 mutations,
+robustesse prouvée sur variations de forme YAML. actionlint 1.7.12 + shellcheck rejoués
+localement sur les 7 workflows (exit 0).
+
+**Incident d'agent consigné** : édition furtive du runbook dans le dépôt PRINCIPAL au lieu
+du worktree, détectée et restaurée par l'agent lui-même (`git status` principal vide,
+re-vérifié par le superviseur). Récidive du piège du dernier chantier (3 agents sur 12) —
+la consigne de vérification de chemin absolu reste indispensable dans tout prompt d'agent.
+
+---
+
+## [2026-07-26] Détection de secrets — gitleaks 8.30.1 (hook local + CI) + audit d'historique
+
+**Statut** : Complété (branche `fix/build-cache-ci-hardening`).
+
+**Contexte** : dépôt public manipulant des refresh tokens OAuth et un accès SSH prod.
+L'ancienne détection (detect-secrets, framework pre-commit) ne tournait PLUS depuis la
+migration lefthook — protection morte en silence. La push protection GitHub
+(`secret_scanning` + `push_protection`) a été ACTIVÉE via l'API le 2026-07-26 : première
+ligne de défense, côté serveur.
+
+**Livré** : gitleaks **8.30.1** épinglée en 3 endroits avec vérification SHA-256 (jamais de
+« latest ») ; `.gitleaks.toml` = défauts + 6 allowlists CIBLÉES (doctrine : `targetRules`
++ `condition = "AND"` dès qu'un chemin est cité — un chemin seul n'excuse rien ; contrôle
+négatif exécuté : une clé à haute entropie injectée dans un fichier allowlisté est bien
+DÉTECTÉE) ; workflow CI dédié (séparé de ci.yml à dessein, mêmes branches, binaire pinné
+hors du dossier scanné, `--redact`) ; hook lefthook pre-commit sur les fichiers stagés,
+non bloquant si le binaire manque (avertissement bruyant + marche d'installation — la CI
+et la push protection restent l'autorité). Piège de version documenté : en 8.30.1,
+`protect` et `detect --no-git` n'existent plus — les commandes sont `gitleaks dir` et
+`gitleaks git --staged`. `.secrets.baseline` supprimé (orphelin de detect-secrets).
+
+**Audit d'historique complet : AUCUN vrai secret.** 5 841 commits scannés (~15 s) →
+82 alertes, 100 % faux positifs vérifiés (48 = les empreintes SHA-1 du `.secrets.baseline`
+lui-même, 10 = noms de tests Go du baseline JSONL, 1 = clés i18n `discord_notify_*` de
+l'ère Python prises pour un secret Discord, le reste = identifiants de code). Vérifié
+aussi bout en bout : un `git commit` réel portant un faux secret est REFUSÉ par le hook,
+accepté après retrait.
+
+**Reste connu** : personne n'a le binaire installé localement (avertissement aux premiers
+commits jusqu'à `scoop install gitleaks`) ; l'historique n'est pas re-scanné en CI (audit
+manuel, procédure en tête de `.gitleaks.toml`) ; suivi possible — étendre le garde-rail
+des déclencheurs (archlint) pour geler l'alignement des listes de branches de
+gitleaks.yml/shared-social-gate.yml sur ci.yml.
+
+---
+
+## [2026-07-26] Assainissement CI — inventaire 14 jours et application des correctifs
+
+**Statut** : Complété (branche `fix/build-cache-ci-hardening`, verdict final = CI de branche).
+
+**Inventaire (agent dédié, 581 runs / 188 jobs rouges analysés)** : le bruit CI ne venait
+pas d'un empilement de bugs mais de trois causes structurelles — (1) le gate baseline,
+84 rouges à lui seul, exigeait une purge manuelle à chaque suppression de test ET mentait
+(un test en échec passait, seul un test absent rougissait — `|| true` sur le `go test` +
+comptage `pass|fail|skip`) ; (2) les trois gates les plus bruyants (baseline, lint
+ratchet, couverture : 149/188) n'avaient aucun filet local, tout arrivait rouge sur main ;
+(3) chaque commit `.ai/`/docs redéployait la prod entière. `main` n'était qu'à DEUX items
+du vert : la baseline périmée (8 lignes, tests supprimés volontairement en V721-09) et le
+test AttachAfterSwap (entrée dédiée ci-dessous).
+
+**Correctifs appliqués** (détail par item dans les messages de commit) : D1 baseline
+purgée · D2 le gate baseline dit la vérité (contrôle des `"fail"`, hint « package qui ne
+compile pas = tests absents », JSONL persisté + artefact de diagnostic en CI) · D4
+`paths-ignore` sur deploy/precheck/ci — avec mise en garde : ne JAMAIS ignorer `docs/**`,
+lu au runtime par l'API (changelog + notes de version) · D5 le gate anti-ART
+`shared-social` tournait sur `feature/*` mais JAMAIS sur `feat/**` — les chantiers v7.2
+ont réécrit `persist/` sans lui · D7 actionlint pinné v1.7.12 (11 rouges par dérive de
+version amont) · D9 timeouts par job (défaut GitHub : 360 min) · D10 `permissions` minimaux
+· D12 `compose up --remove-orphans` · D23 ×2 gardes sur les steps `if: always()` qui
+fabriquaient une seconde erreur parasite · D24 doc inversée du seuil de couverture (69.0
+réel vs 76.0 commenté) · D26/D27 un seul système de hooks : lefthook (suppression de
+`.pre-commit-config.yaml` mort qui référençait un script inexistant, de 2 scripts
+orphelins et de l'ancien pre-commit ; `make install-git-hooks` ÉCRASAIT le shim lefthook —
+réécrit en `lefthook install` ; gate ADR 0021 câblé en pre-push) · D28 cible
+`make gate-push` (filet local des 3 gates bruyants, la CI reste l'autorité) · D30 silence
+daté de l'alerte echarts (bump 5→6 reporté v7.3, décision utilisateur).
+
+**Faux problèmes purgés par l'inventaire** (à ne pas re-diagnostiquer) : les « flakes
+timing assets/persist » = 0 occurrence CI en 14 j (souvenir d'exécutions locales) ; le
+flake sharedprovider = 1/33, marginal ; l'échec « Bump postcss » = timeout SSH du VPS, pas
+un workflow Dependabot cassé ; le ratchet lint fonctionne (32 rouges = vraies fautes
+nouvelles) ; le run « cancelled » du 25/07 19:45 = comportement documenté de la
+concurrency deploy-vps.
+
+**Découvertes consignées NON traitées** (hors périmètre) : D3 le job baseline rejoue la
+même suite que Go Coverage (~22 min de doublon) · D8 pre-check dupliqué entre deploy.yml
+et test-deploy-precheck.yml · D11 Deploy Pre-Check tourne sur les branches RE (47 runs
+filmdec pour rien) · D25 auto-update du coverage baseline jamais committé (logique morte)
+· D29 deploy.yml ne dépend PAS de la CI (un push main déploie même CI rouge — décision
+utilisateur demandée) · D31 pinning hétérogène des actions · les hooks universels
+(detect-secrets, check-yaml…) ne tournaient déjà plus et n'existent plus nulle part —
+décision à prendre si on les veut en lefthook · D6 les branches filmdec embarquent un
+ci.yml d'avant le 12/07 → 47 pushes sans CI : recopier `.github/workflows/` de main avant
+toute reprise.
+
+---
+
+## [2026-07-26] Fix CI rouge — TestCopyMetadataFile_AttachAfterSwapWhileHeld (détenteur multi-process)
+
+**Statut** : Complété (branche `fix/build-cache-ci-hardening` ; preuve d'exécution Linux = CI).
+
+**Décision** : le détenteur du fichier est un VRAI second processus (ré-exécution du
+binaire de test, poignée de main READY / EOF stdin / `OLD <n>`, bornée 30 s). L'ancienne
+simulation same-process était structurellement impossible : DuckDB dédoublonne les bases
+attachées par CHEMIN CANONIQUE à l'échelle du processus (mesuré : chemin non normalisé →
+même refus ; lien dur → autre mécanisme), donc l'échange d'inode n'y change rien — d'où le
+`Unique file handle conflict` en CI, un conflit qui ne peut pas exister entre les deux
+conteneurs de prod. Test déplacé dans `seed_demo_inode_swap_integration_test.go` (le
+fichier d'origine était à 798 L ; précédent : `media_kill_brutal_test.go`).
+
+**Mordant mesuré sous Windows** (skip levé + forme fautive O_TRUNC de `cfc341b4f`
+restaurée temporairement) : `create dst: fichier utilisé par un autre processus`. Mordant
+Linux raisonné (O_TRUNC réussit sur verrou consultatif → ATTACH sur inode encore verrouillé
+→ `Conflicting lock is held`), tranché par la CI. `copyMetadataFile` non touché.
+
+**Skip Windows conservé, justification corrigée** : l'ancienne prémisse (« unlink d'un
+fichier tenu impossible sous Windows ») est fausse — mesuré, `os.Remove` réussit et le
+scénario passe en 0,08 s. Le skip reste parce que les sémantiques de partage Windows
+(verrouillage impératif) ne sont pas celles du conteneur démo Linux (verrou consultatif) :
+un vert Windows validerait autre chose que la prod. Le gate réel est la CI Linux — d'où la
+nouvelle règle de flux : pousser la BRANCHE et attendre la CI avant tout merge vers main.
+
+**Balayage des voisins** : aucun autre test ne simule un détenteur multi-process avec un
+handle same-process (`seed_demo_wal_test.go` : zéro ouverture DuckDB ;
+`TestAssociateMediaWithMatches_SharedMatchesHeldRW` : same-process VOULU, c'est le pool
+serveur qu'il modélise).
+
+---
+
+## [2026-07-26] Gels VPS au build : la vraie cause est NOTRE purge de cache du 24/07
+
+**Statut** : Complété (enquête) ; correctifs sur `fix/build-cache-ci-hardening`.
+
+**Symptôme** : 3 gels machine en 2 jours pendant `docker compose build` (v7.2.0 ×2 le
+25/07, v7.2.5 le 26/07 09:48). SSH et HTTP morts, seul un reboot IONOS en sort. « Ça
+fait 6 mois que ça fonctionne » (utilisateur) — exact, et c'est la clé de l'enquête.
+
+**Diagnostic ANTÉRIEUR invalidé** : j'avais conclu (v7.2.0) au double build CGO causé par
+les `build.args VERSION` divergents, corrigé par V721-15. Amplificateur réel, mais pas la
+cause première : le build du 26/07 09:48 était UNIQUE et sérialisé, et a gelé quand même.
+
+**Cause racine, en deux étages** :
+
+1. *Pourquoi des builds à froid ?* Le commit `4f61eca0a` (24/07 15:26, lot I8 « purge
+   Docker réelle ») a rendu effective la purge post-deploy
+   `docker builder prune --max-used-space=5GB`. Les purges précédentes étaient des no-op
+   silencieux : `--keep-storage` est déprécié depuis Docker 29.4 et remappé vers
+   `--reserved-space`, un PLANCHER, pas un plafond. Or un build complet produit ~5,7 Go de
+   cache (mesuré, `docker system df`). Plafond < working-set ⇒ chaque deploy évince le
+   cache du suivant ⇒ depuis le 24/07, tout deploy touchant du Go = compilation CGO
+   complète à froid (~7 min sur 2 vCPU), là où six mois de builds étaient incrémentaux
+   (2-4 min). Preuve dans les logs CI : `RUN go mod download` non `CACHED` + image de base
+   `golang:1.26-bookworm` re-téléchargée à 09:48 alors qu'elle avait servi à 07:44.
+   Ironie complète : le commentaire du script disait « on garde 5 Go de cache récent pour
+   des builds incrémentaux rapides » — doc inversée, le plafond détruisait précisément ce
+   qu'il prétendait préserver.
+
+2. *Pourquoi un GEL et pas un échec ?* `Swap: 0` — la machine n'a jamais eu de swap. Le
+   boot gelé (journalctl -b -1) ne montre AUCUN OOM-kill : à court de mémoire, le noyau
+   évince les pages exécutables au lieu de tuer le build, et tout le système se met à
+   battre la page (systemd-resolved qui expire au démarrage, etc.) — livelock. Avec du
+   swap, le même pic aurait donné un build lent.
+
+**Pourquoi 2 builds à froid sur 5 ont quand même réussi** (00:44, 07:44) : régime
+marginal. ~950 Mo résidents (2 conteneurs + OS) + pic de build ≈ la RAM totale ; le
+basculement dépend des pics concurrents (cycles auto-sync avec timeouts API de 92 s
+observés dans la fenêtre du gel de 09:48).
+
+**Correctifs** : swap 2 Go posé sur le VPS (fstab + `vm.swappiness=10`) — fait à la main,
+annoncé ; plafond 5→12 Go + doc réécrite (`deploy.sh`) ; cache mounts BuildKit
+(`/go/pkg/mod`, `/root/.cache/go-build`) + `-ldflags -s -w` (`Dockerfile`) — par agents
+sur cette branche. Mémoire projet mise à jour (piège n°10 du fichier deploy hazards).
+
+**Leçons** : (a) un plafond de purge se dimensionne par rapport au working-set MESURÉ d'un
+build, jamais dans l'absolu ; (b) une box de build sans swap meurt en livelock au lieu
+d'échouer proprement — poser le swap AVANT de chercher le coupable applicatif ; (c) quand
+un système « qui marchait depuis 6 mois » casse, chercher d'abord ce que NOUS avons changé
+dans la fenêtre — ici, le durcissement d'ops de la veille.
+
+---
+
+## [2026-07-26] Release v7.2.5 — traîne opérationnelle de la v7.2.1
+
+**Statut** : Complété. Tag `v7.2.5` sur `main`, 13 commits depuis `v7.2.1`.
+
+**Périmètre** : aucun changement de schéma, aucune migration, aucune action
+post-déploiement. Trois volets : le logo Waypoint (entrée ci-dessous), le pipeline de
+régénération de la démo (jalons bloqués à 0 par un verrou DuckDB tenu par le conteneur
+démo, plus publication atomique par échange d'inode), et deux documentations inversées
+(`discovery_client.go` sur l'authentification UGC, commentaire de capability Waypoint sur
+Halo 5) avec le garde-rail de parité qui manquait — `knownCapabilities` n'était relié à
+rien, c'est ce qui avait laissé les commentaires diverger.
+
+**Décision sur la version** : le numéro saute de 7.2.1 à 7.2.5, choix de l'utilisateur.
+`scripts/deploy.sh` lit `git describe --tags --abbrev=0 --match 'v*.*.*'` après un
+`git fetch --tags` : le tag DOIT donc être poussé, sinon la version servie reste celle du
+tag précédent. Corrigé au passage un message `echo` qui annonçait encore
+« bakée au build » alors que V721-15 a précisément sorti la version du build — doc
+inversée sur le mécanisme qui avait causé le gel du VPS, exactement l'anti-patron n°9.
+
+**Fichier orphelin traité** : `data/titles/halo_infinite/reference/map_quant_bounds.json`
+traînait non suivi dans le dépôt principal. C'est un artefact du chantier film-decoder
+(produit par `cmd/mapquant-build`, consommé par `internal/analysis/filmdec` et
+`internal/analysis/replay`), déjà versionné sur `feat/filmdec-continuation` et
+**byte-identique** (md5 `bf0a52b4`) à la version committée là-bas. Rien sur `main` ne le
+lit — aucun de ses producteurs ni consommateurs n'existe sur cette branche. Retiré du
+dépôt principal ; récupérable par
+`git show feat/filmdec-continuation:data/titles/halo_infinite/reference/map_quant_bounds.json`.
+
+**Vérification des effets de bord du correctif d'identité Prestige** (prédits au moment de
+livrer, restés non vérifiés) : les trois sont **NON SURVENUS**, et pour la même raison —
+le sous-système n'a quasiment aucun usage en prod. 5115 évaluations dans
+`prestige.log`, `transitions:0` sans exception ; 1 seul objectif actif sur toute la
+production (`ch_seed_JGtm`, inséré par seed, jamais via `CreateChallenge`) ; 4
+notifications le jour du correctif, toutes `app_release`, relais Discord désactivé ; 0
+création tentée, donc garde-fou `RejectTooEasy` jamais atteint. Preuve positive que le
+chemin corrigé fonctionne : `current_value: 1.25` mesuré de bout en bout sur la démo, là
+où le filtre `WHERE mp.xuid = ?` recevait auparavant un player_slug et ramenait 0 ligne ;
+et zéro `prestige_baseline_provider_missing_xuid` (ERROR ajouté par le correctif) en 8 h.
+**Le risque est différé, pas éliminé** : les effets 1 et 3 redeviennent actifs dès la
+première création d'objectif réelle. Sentinelles à surveiller dans `prestige.log` :
+premier `prestige: challenge created` et première `transitions` non nulle.
+
+**Prochaine étape** : 8 anomalies hors périmètre relevées en prod pendant cette
+vérification, consignées dans la section v7.3 de Notion (ingestion à l'arrêt depuis le
+24/07, 2,1 Go de logs sans rotation, fuite de référence RW au shutdown, incohérence
+`eval_type` cumulative/threshold désormais affichée sur la démo).
+
+---
+
+## [2026-07-26] Logo Waypoint invisible : trois causes, une seule visible sous Firefox
+
+**Statut** : Complété (commit `c22627074`, main local). Fichiers
+`apps/web/src/features/explorer/ExplorerMatchesTable.tsx` et
+`apps/web/src/features/squad/SquadSynergyHistoryTable.tsx`.
+
+**Symptôme rapporté** : « je vois toujours pas le logo WP dans le tableau Explorer », puis
+« même souci page Escouade, Timeseries, Session, Carrière ». Colonne pourtant présente dans
+le DOM, `<img>` chargée, `src` correct.
+
+**Trois diagnostics ERRONÉS avant le bon** — les trois valent d'être consignés, car ils
+partagent la même faute de méthode :
+
+1. « La capability Waypoint manque pour Infinite. » FAUX : `CapWaypointMatchURL` est
+   déclarée dans le descripteur Go *built-in* (`internal/domain/title/registry.go`), pas
+   dans un TOML. Mon grep ne couvrait que `config/titles/` — j'ai conclu d'une absence dans
+   un périmètre partiel à une absence tout court.
+2. « Mauvais thème : logo blanc sur fond clair. » FAUX, corrigé par l'utilisateur : il est
+   en thème sombre et voit le logo blanc dans le code.
+3. « `flex-shrink` seul. » Partiel : le `shrink-0` n'a rien changé à lui seul.
+
+**Faute de méthode commune** : j'ai mesuré dans le SEUL navigateur où le bug n'existe pas.
+Toutes mes mesures Chrome (image 16x16, `complete: true`, rect non nul, capture montrant le
+logo) étaient exactes — et sans valeur, puisque le bug est un désaccord ENTRE moteurs.
+L'indice décisif est venu de l'utilisateur : « ça marche sur Chrome mais pas Firefox ».
+Leçon : quand un rendu diverge entre machines/navigateurs, la première question n'est pas
+« que vaut la mesure ? » mais « où la mesure a-t-elle été prise ? ».
+
+**Causes réelles, corrigées ensemble** :
+
+1. *Négociation de taille entre moteurs.* Le `<a>` était un conteneur flex sans dimension
+   propre, dans une cellule de tableau en largeur automatique (`table-auto`). Chrome et
+   Firefox ne résolvent pas la taille intrinsèque identiquement dans ce cas ; Firefox
+   écrasait l'image à zéro. Le lien porte désormais une taille FIXE (`h-4 w-5`) : plus de
+   négociation possible.
+2. *Absence de taille intrinsèque.* Attributs HTML `width`/`height` ajoutés en plus des
+   classes CSS — le moteur connaît la taille avant de résoudre le CSS. C'est le point qui
+   manquait côté Firefox.
+3. *Logotype déformé* (présent sur TOUS les navigateurs, y compris ceux où il s'affichait,
+   donc jamais rapporté). Le fichier est un logotype 360x160 (ratio 2.25) forcé dans un
+   carré 16x16 sans `object-fit` : le `fill` par défaut l'écrasait en traits sub-pixel.
+   `object-contain` rétabli, boîte 20x16.
+
+**Piste utilisateur exploitée** : « c'est l'attribut `px-2` qui est trop petit, je l'ai mis à
+`px-20` et ça fonctionne ». Diagnostic confirmé (la cellule se comprimait), mais `px-20`
+aurait décollé TOUT le tableau de ses bordures — le padding est celui du gabarit commun.
+Retenu à la place : largeur réservée par colonne d'icône (`w-9` sur `<th>` et `<td>`), qui
+règle la compression sans toucher au gabarit.
+
+**Faux positif de synchronisation** : l'utilisateur a d'abord répondu « marche pas » — mon
+correctif était committé dans le worktree pendant que son serveur de dev tournait depuis le
+dépôt principal. Vérifier D'ABORD d'où sert le serveur avant de conclure qu'un correctif
+front est inopérant.
+
+**Vérifié** : Chrome par mesure DOM + capture (image 20x16, `object-contain`, cellule 37px,
+20 liens sur 20 lignes) ; Firefox par l'utilisateur. `tsc -b` vert (cache purgé), 640 tests
+verts sur explorer/squad/session-detail/career.
+
+**Prochaine étape** : `.ai/DIAG_WAYPOINT_COLUMN_INFINITE.md` reste à corriger (9 points
+relevés par l'agent de relecture : inventaire des consommateurs incomplet, mécanisme de
+synchro inter-onglets, sémantique TanStack) — le document décrit une piste invalidée.
+
+---
+
+## [2026-07-26] Deploy — regen démo : verrou DuckDB sur la metadata démo (jalons à 0)
+
+**Statut** : Complété (workflow modifié, non exécutable localement — vérifié par extraction
++ `bash -n` + harnais à stubs). Branche `feat/demo-prestige-samples`, fichier
+`.github/workflows/deploy.yml` job `deploy-demo`.
+
+**Fait établi en production (v7.2.1).** `milestone_earned = 0` sur les deux titres après
+regen, avec `WARN seed-demo prestige: jalons débloqués non seedés (best-effort)
+err="attach metadata démo: IO Error: Could not set lock on file
+/app/data/demo/warehouse/metadata.duckdb: Conflicting lock is held in PID 0"`. Cause :
+`insertDemoMilestonesEarned` (`internal/ops/seed_demo_prestige.go:460`) ATTACHe la metadata
+DÉMO en READ_ONLY pour dériver les jalons du vrai catalogue, or le job n'arrêtait que
+`levelup` (prod) et laissait `levelup-demo` tenir ce fichier. Rejeu manuel démo arrêtée :
+0 → 6 jalons par titre. L'erreur étant best-effort côté Go, le seed « réussissait ».
+
+**Correctif.** `docker compose stop levelup levelup-demo` au lieu de `stop levelup`. Le
+risque introduit n'est pas le verrou mais l'arrêt lui-même : une sortie anticipée entre le
+stop et la recréation laisserait la démo durablement hors ligne (défaut cosmétique →
+panne). D'où un trap `EXIT INT TERM HUP` armé APRÈS la garde `pgrep [b]ackfill` (qui sort
+sans rien avoir arrêté) et AVANT le stop. Le trap est le SEUL endroit qui recrée le
+conteneur démo — l'étape finale `up -d --force-recreate levelup-demo` y a été déplacée, pas
+dupliquée. Il porte aussi un `up -d levelup` idempotent, filet pour les sorties par signal
+(session SSH coupée / `command_timeout` 40m) survenant avant le redémarrage nominal de la
+prod, qui reste explicite et inchangé après le seed.
+
+**Écarté** : ordonnancement linéaire seul (recréation démo remontée avant la garde configs).
+Couvre les `exit` connus mais rien des sorties par signal ni d'un futur `exit` inséré entre
+stop et restart — c'est la classe de panne à éliminer, pas une instance.
+
+**Vérifications** (le workflow n'est pas exécutable ici) : bloc `script:` extrait et dédenté
+→ `bash -n` OK ; harnais à stubs `docker`/`pgrep` sur 7 scénarios (seed OK, seed KO, garde
+pgrep, configs invalides, échec restart prod, échec recréation démo, les deux) + SIGTERM et
+SIGHUP en plein seed. Sur tous : prod et démo relancées, sauf garde pgrep où rien n'est
+arrêté. Codes de sortie préservés (1 sur configs invalides et sur toute remise en service
+en échec, 0 sur seed KO — comportement best-effort inchangé). Non vérifiable sans le VPS :
+que `stop levelup-demo` suffise à libérer le verrou dans le conteneur (le rejeu manuel de
+l'utilisateur le prouve empiriquement) et le comportement réel d'appleboy/ssh-action au
+timeout.
+
+**Précédent interne** : le motif trap + désarmement est déjà celui de
+`scripts/restic-backup.sh:31-32,46` (`trap restart_app EXIT`, « filet de securite :
+redemarre meme si plantage »), qui arrête `levelup` seul — sans défaut équivalent, son
+snapshot ne couvre que `data/titles`/`data/auth`, jamais `data/demo`. Aucun autre lanceur
+de `seed-demo` exposé au même défaut : `scripts/deploy.sh` crée seulement les stubs JSON de
+bind-mount (étape 2a) ; `ci.yml:422` lance `seed-demo --synthetic` sur le runner GitHub
+(DuckDB vierges, aucun serveur ne tient de fichier) ; `test-deploy-precheck.yml` simule le
+regen sans jamais appeler la CLI.
+
+**Prochaine étape** : gates (actionlint via job `pre-check`) puis merge → le prochain deploy
+seede les jalons. Aucun backfill manuel nécessaire.
+
+## [2026-07-26] Seed démo — metadata publiée par remplacement d'inode (démo tronquée en vol + milestone_earned vide)
+
+**Statut** : Complété. Branche `fix/seed-demo-metadata-inode`, périmètre `internal/ops/`.
+
+**Fait établi (déploiement du 2026-07-26).** Le job `deploy-demo` seede PENDANT que
+l'ancien conteneur `levelup-demo` tourne encore (il n'est recréé qu'après) : il tient
+les DuckDB démo ouvertes avec leur verrou. La prod, elle, est stoppée pendant le seed.
+Tous les extracteurs (`extractSharedTables`, `extractPlayerTables`,
+`rebuildDemoSharedSocial`, chemins média) faisaient déjà `os.Remove` avant création →
+inode neuf, aucun conflit. **Seul `copyMetadataFile` écrivait EN PLACE**
+(`os.OpenFile(dst, O_WRONLY|O_CREATE|O_TRUNC)`), donc tronquait un fichier DuckDB
+qu'un process vivant utilisait. Deux effets : la démo servait une metadata invalide
+pendant toute la fenêtre du déploiement, et l'`ATTACH … (READ_ONLY)` suivant
+(`insertDemoMilestonesEarned`) échouait sur « Conflicting lock is held » → best-effort
+avalé en warn → `milestone_earned` démo VIDE à chaque déploiement (grille Réalisations
+vide).
+
+**Décision : remplacement d'inode atomique, pas de lecture différente de la source.**
+`copyMetadataFile` écrit un temporaire DANS le répertoire de dst (`os.CreateTemp`),
+`Sync()`, `Chmod 0644` (CreateTemp crée en 0600, la démo lit sous un autre uid), puis
+`os.Remove(dst)` + `os.Rename`. Écarté : (a) ouvrir la metadata source en lecture pour
+seeder les jalons sans toucher à la démo — ça n'aurait traité que le symptôme
+`milestone_earned` en laissant la démo servir une base tronquée ; (b) `os.Rename` sans
+`Remove` préalable — échoue si la cible existe sous Windows. **Aucun repli sur
+l'écriture en place** : toute erreur de `Remove` autre que « n'existe pas » remonte
+(un repli silencieux ressusciterait le bug). Ajout du retrait de `dst + ".wal"` :
+un WAL orphelin de la génération précédente serait rejoué contre le nouveau fichier
+(même règle que `rebuildDemoSharedSocial`). Nettoyage du temporaire sur tout chemin
+d'erreur.
+
+**Tests.** 4 unitaires (`seed_demo_test.go`) : inode remplacé (identité capturée via
+`File.Stat()` — `os.Stat` seul ne discrimine pas sous Windows, il ne résout
+l'identifiant qu'à la comparaison en rouvrant le chemin), contenu binaire octet à
+octet, lien dur vers l'ancien inode intact (rôle du descripteur tenu par l'ancien
+conteneur), dst non retirable → échec franc sans écriture en place, plus l'absence de
+temporaire résiduel au succès comme à l'échec. 1 intégration
+(`TestCopyMetadataFile_AttachAfterSwapWhileHeld`) : DB tenue ouverte + copie par-dessus
++ `ATTACH READ_ONLY` qui doit réussir — `t.Skip` justifié sous Windows (unlink d'un
+fichier ouvert impossible), joué par le gate CI Linux.
+
+**Gates** : `gofmt -l ./internal/ops` vide · `go build ./...` OK · `go vet ./...` et
+`go vet -tags=integration ./internal/ops/...` OK · `go test ./internal/ops/...` OK ·
+`go test -tags=integration -p 1 ./internal/ops/...` OK (73 s, exit 0).
+
+**Découvertes hors périmètre (notées, non traitées)** : (1) `extractSharedTables` et
+`extractPlayerTables` retirent `dstPath` mais pas `dstPath + ".wal"` — même famille de
+risque (WAL orphelin rejoué), les chemins média/social le font déjà ; (2) l'ancien
+conteneur peut recréer un `.wal` APRÈS le seed puisqu'il vit jusqu'à sa recréation —
+le correctif de fond serait de le stopper avant le seed, comme la prod ; (3) les JSON
+(`writeDemoConfigs*`, manifeste) restent écrits en place par `os.WriteFile` :
+volontaire, ce sont des bind-mounts FICHIER côté compose (`./data/demo/*.json:…:ro`),
+remplacer leur inode casserait le montage.
+
+**Prochaine étape** : merge dans `main` = déploiement prod automatique. Au déploiement
+suivant, vérifier `COUNT(*) FROM milestone_earned` démo > 0, l'absence de warn « jalons
+débloqués non seedés » dans les logs du job, et la stabilité de la démo pendant la
+fenêtre de deploy.
+
+### [2026-07-26] Suite — traitement des découvertes (1) WAL orphelins et (2) conteneur démo debout
+
+**Statut** : Complété. Même branche `fix/seed-demo-metadata-inode`.
+
+**(D1) WAL — la prémisse était à moitié fausse, mesurée avant d'être codée.** Sonde
+DuckDB v1.4 (WAL réel laissé en suspens via `SET wal_autocheckpoint='1TB'` +
+`PRAGMA disable_checkpoint_on_shutdown` ; un WAL de garbage ne prouve rien, DuckDB
+l'écarte) :
+
+- base **publiée par rename** (`copyMetadataFile`) + WAL survivant → DuckDB rejoue le
+  WAL SANS ERREUR dans la base neuve : les 2000 lignes et la table de l'ancienne
+  génération ressuscitent dedans, puis l'ouverture `READ_ONLY` suivante meurt sur
+  « Failure while replaying WAL file ». **Corruption silencieuse, prouvée.**
+- base **créée par DuckDB** (`extractSharedTables`, `extractPlayerTables`, générateurs
+  synthétiques) + WAL préexistant → écarté sans dommage. Le retrait y est donc une
+  **défense en profondeur** (comportement non documenté ; et une extraction avortée
+  entre le retrait et la création laisserait sinon le WAL derrière elle), pas un
+  correctif de bug. La découverte (1) de l'entrée ci-dessus est corrigée sur ce point.
+
+**Décision** : un point de passage unique `removeDuckDBForFreshWrite(path)` (WAL
+d'abord, puis la base — s'il résiste on échoue sans avoir délié la base) construit sur
+`removeForInodeSwap` existant, appliqué aux **9 sites** de `seed_demo*.go` : les 6 qui
+retiraient la base seule (2 extracteurs + 4 générateurs synthétiques) et les 3 qui
+faisaient déjà la paire à la main (`rebuildDemoSharedSocial`, `extractDemoMedia`,
+`extractDemoMediaH5`). Erreur désormais remontée au lieu de `_ = os.Remove(...)`.
+Garde-rail `TestSeedDemoNoBareOsRemove` (scan des `seed_demo*.go`, allowlist justifiée
+de 2 lignes, sentinelles anti-faux-vert) — sans lui le pattern re-diverge à la
+prochaine base ajoutée. Les `copyFile` média (`.mp4`/miniatures, `O_TRUNC`) restent
+hors périmètre : ce ne sont pas des bases DuckDB.
+
+**(D2) Correctif de fond : `docker compose stop levelup-demo` pendant le seed.** Job
+`deploy-demo` de `.github/workflows/deploy.yml`, en miroir exact du traitement prod.
+Élimine la classe entière : plus de fichier tenu pendant le seed, plus de WAL recréé
+par l'ancien conteneur APRÈS le seed, plus de base tronquée servie pendant la fenêtre.
+**Contrepartie assumée et commentée** : demo.lvelup.info indisponible le temps du seed
+(quelques minutes) au lieu de servir des données incohérentes. Le stop est placé APRÈS
+la garde `pgrep [b]ackfill` (un SKIP ne doit rien éteindre) et APRÈS `index-media`
+(qui ne touche pas `data/demo`) pour réduire la fenêtre. Remise en service garantie
+sur TOUS les chemins de sortie par `trap 'rc=$?; ensure_demo_up || rc=1; exit $rc' EXIT`
+(désarmé sur le chemin nominal pour ne pas recréer deux fois) — sans ce filet, un seed
+rouge ou le guard « configs invalides » laisserait la démo éteinte jusqu'au prochain
+déploiement. La recréation réutilise **exactement** la commande existante
+(`docker compose up -d --force-recreate levelup-demo` depuis `/opt/levelup`), qui
+hérite de `LEVELUP_APP_VERSION` via le `.env` réécrit par `scripts/deploy.sh` : en
+inventer une autre ferait servir « dev » par la démo (piège documenté V721-15).
+
+Le remplacement d'inode de `copyMetadataFile` **reste** : son commentaire est passé de
+« seul rempart » à « défense en profondeur » (le seed se lance aussi à la main et en
+local avec un serveur démo debout ; rien côté Go ne peut vérifier qu'aucun lecteur
+n'est branché).
+
+**Tests.** 4 unitaires (`seed_demo_wal_test.go`, nouveau fichier — `seed_demo_test.go`
+était déjà à 531 L) : base+WAL retirés, absence tolérée, WAL seul retiré, WAL bloqué →
+échec sans délier la base, plus le garde-rail source. 2 intégration :
+`TestCopyMetadataFile_ForeignWALNotReplayedIntoPublishedDB` (contrôle de mutation joué :
+sans le retrait du WAL, il échoue bien sur l'injection de l'ancienne génération) et
+`TestExtractSharedTables_OrphanWALFromPreviousGeneration` (WAL en suspens préexistant →
+base extraite saine ; passe aussi sans le correctif, son commentaire le dit).
+
+**Gates** : `gofmt -l ./internal/ops` vide · `go build ./...` · `go vet ./...` ·
+`go test ./internal/ops/...` (14,7 s) · `go test -tags=integration -p 1 ./internal/ops/...`
+(97 s) · `golangci-lint run --new-from-merge-base=origin/main` → 0 issue. Workflow :
+`actionlint` 1.7.12 sur tous les workflows → 0 issue ; `bash -n` sur le script du job ;
+répétition à blanc du job avec un `docker` factice sur 5 chemins (nominal, seed KO,
+guard configs KO, restart prod KO sous `set -e`, recréation démo KO) — la démo est
+recréée dans les 4 premiers, et le job est rouge quand il doit l'être.
+
+**Prochaine étape** : au prochain déploiement, vérifier dans les logs du job la
+séquence `Stop demo` → seed → `Recréation de levelup-demo` réussie, `COUNT(*) FROM
+milestone_earned` démo > 0, et l'absence de `*.duckdb.wal` résiduel dans
+`data/demo/warehouse/`.
+
+## [2026-07-26] Doc inversée UGC + Waypoint, et garde-rail de parité des capabilities
+
+**Statut** : Complété. Branche `fix/notion-quick-wins-2` (base `b64aaa6cc`). Gates joués.
+Commentaires + un fichier de test ; **zéro changement de comportement**.
+
+**Point A — la prémisse du cadrage était périmée.** `discovery_client.go` n'affirmait
+plus que l'API est publique : son en-tête de `FetchAsset` documentait déjà « AUTH
+REQUISE » (corrigé lors de la résolution autonome des noms d'assets). La doc réellement
+inversée était **ailleurs** : `internal/assetnames/resolver.go:43-45` décrivait le Fetcher
+comme « API **publique** GameCMS, **sans token** » — faux deux fois (l'hôte est
+discovery-infiniteugc, pas gamecms-hacs ; l'appel est authentifié). Vérifié sur pièces
+côté code : `attemptHaloGet` pose `x-343-authorization-spartan` + `343-clearance` dès que
+`p.staticTokens != nil`, et `NewAssetNameFetcher` alimente toujours ce champ depuis le pool
+unifié — le client envoie donc bien un Spartan token en production. Corrigés : le commentaire
+de `resolver.go`, l'en-tête de package de `discovery_client.go` (qui annonçait
+`gamecms-hacs.svc` comme endpoint alors que le code tape `discovery-infiniteugc`), et la
+doc de `FetchAsset` (sonde anonyme datée 2026-07-25 : 401 corps vide/Kestrel ; gamecms-hacs
+401 + `WWW-Authenticate: SpartanToken`). Documentée à côté, la voie SANS jeton éprouvée
+(120/123 cartes) : page publique `ugc/maps/{assetId}` → JSON complet dans
+`<script id="__NEXT_DATA__">`, et `blobs-infiniteugc` en lecture anonyme (404 Azure sur
+chemin invalide, pas 401). Non câblée — c'est une note d'orientation, pas une dépendance.
+
+**Point B — 5 commentaires inversés (volet B de `.ai/DIAG_WAYPOINT_COLUMN_INFINITE.md`).**
+`waypoint_match_url` est déclarée par les DEUX titres depuis le 2026-07-24 (`c5dfb9bfd`) ;
+`registry.go` (const `CapWaypointMatchURL`), `ExplorerMatchesTable.tsx` (×2),
+`SquadSynergyHistoryTable.tsx` (×2) et `_settingsCards.tsx` affirmaient l'inverse. Corrigés
+avec la date d'activation et la vraie raison de non-exclusion (les chemins d'URL diffèrent
+par titre mais sont résolus par `buildWaypointMatchUrl` — segment + bucket `arena/`).
+
+**Complément — une 6e occurrence avait échappé au balayage (signalée par l'utilisateur).**
+Le point B ne portait que sur des commentaires de code ; une CHAÎNE UI VISIBLE portait la
+même affirmation périmée : `apps/web/src/features/settings/i18n.ts`, clé
+`showWaypointColumnHint` (tooltip du réglage « Colonne Halo Waypoint sur les listes de
+matchs »), FR et EN, terminait par « (Halo 5) » accolé à la mention de masquage
+automatique. Retiré des deux locales — la fin générique « Masquée automatiquement si le
+titre courant ne l'expose pas. » / « Automatically hidden if the current title doesn't
+expose it. » reste vraie et title-agnostic sans qualificatif. Balayage complémentaire
+exhaustif (toutes occurrences de « Waypoint » et de « Halo 5 » dans les `i18n.ts` de
+`features/` et les manifests `lib/i18n/manifests/*.toml`) : aucune autre chaîne UI ne
+associe Halo 5 à une absence/un masquage de cette capability — les autres mentions de
+« Halo 5 » trouvées (labels de mécaniques natives, commendations natives, comparatif
+précision par rôle, Personnalisateur Spartan, catégories de médailles, libellé « vol à la
+tire », badge « autre jeu » de Relations) sont toutes légitimes et hors périmètre.
+
+**Le vrai livrable — garde-rail, et pourquoi CELUI-LÀ.** Le diag annonçait « trois listes
+sans lien, aucun garde-rail ». Mesure faite : il y en a **quatre**, et l'un des liens est
+**déjà** couvert. `TestCapabilitiesGoTSMirror` (`capabilities_ts_mirror_test.go`, V72-12)
+relie déjà const `Cap*` ↔ `TITLE_CAPABILITIES` (TS), dans les deux sens, avec allowlist
+datée (`weapon_kills` = backend-only). Le trou réel, non gardé, était
+`knownCapabilities` (`config_loader.go`) : **rien** ne vérifiait qu'il reflète les const.
+Sa gravité est supérieure à celle du miroir TS — mutation à l'appui : retirer
+`CapWaypointMatchURL: {}` du set fait échouer la validation de
+`config/titles/halo_5/title.toml`, et `LoadTitlesIntoRegistry` n'enregistre alors **pas
+Halo 5 du tout** (le titre entier disparaît du switcher, pas seulement une colonne).
+
+Nouveaux `internal/domain/title/capabilities_parity_test.go` (les 5 tests) et
+`capabilities_parity_scan_test.go` (les extracteurs — scindé pour rester sous le seuil
+de 500 L). Package `title` : réutilise l'extracteur `go/ast` déjà présent plutôt que
+d'en écrire un 2e (CLAUDE.md n°6). Les tests :
+1. `TestCapabilitiesKnownSetMirrorsConstants` — const `Cap*` ↔ clés de `knownCapabilities`,
+   parité exacte. Le sens retour attrape une const `Cap*` déclarée **hors** `registry.go`,
+   qui rendrait le miroir TS aveugle (il ne parse que ce fichier).
+2. `TestCapabilityLiteralsInFrontAreDeclaredInGo` — tout littéral de gating du front
+   (`useCapability` / `useCapabilityStrict` / `hasCapabilityIn` / prop `capability`) est une
+   const Go réelle. Défense en profondeur derrière le typage `TitleCapability` (qu'un
+   `as TitleCapability` contourne) ; scan à parenthèses équilibrées, pas une regex
+   (leçon reprise de `spartan-customizer-strict.guard.test.ts` : `\([^)]*` rate
+   `hasCapabilityIn(useTitleCapabilities(), 'x')`). Fichiers `.test.` exclus (ils portent
+   des capabilities factices).
+3. `TestCapabilitiesGrantedByAPublicTitle` — chaque capability est accordée par ≥1 titre
+   **public** (built-in Infinite ou `title.toml`) ; les titres internes (`synthetic_title_b`)
+   ne comptent pas. Utilise le vrai `NewRegistryFromConfig` (zéro parseur TOML dupliqué).
+4. `TestCapabilitiesReferencedByAConsumer` — chaque const est lue quelque part : référence
+   Go qualifiée hors du package `title`, ou littéral front. Les références `games.Cap*` sont
+   **ignorées** : le package `games` déclare des homonymes d'un AUTRE système
+   (`CapabilityKey` data-level, clés pointées — diag §4.4). Le garde-rail porte
+   exclusivement sur le title-level.
+5. `TestOrphanCapabilityAllowlistIsCurrent` — hygiène de l'allowlist (vide au 2026-07-26 :
+   les 21 capabilities sont toutes accordées et toutes lues).
+
+Anti-passage-à-vide : chaque scan Fatal si son rendement tombe sous un plancher mesuré
+(12 capabilities front, 8 références Go, 2 titres publics) — un garde-rail qui ne trouve
+plus rien doit crier, pas passer. Scans mémoïsés (`sync.Once`) : 20 s → 1,3 s à chaud.
+
+**Mordant prouvé par mutation** (introduites puis retirées, `git diff` vérifié propre) :
+(a) const `CapMutationProbe` ajoutée → **4 tests rouges** (1, 3, 4 + le miroir TS
+préexistant) ; (b) `CapWaypointMatchURL` retirée de `knownCapabilities` → test 1 rouge +
+test 3 rouge sur « 1 seul titre public chargé » (la disparition de Halo 5 décrite plus
+haut) ; (c) littéral front `'waypoint_match_urls'` → test 2 rouge avec fichier:ligne.
+
+**Gates** : `gofmt -l ./internal` vide ; `go build ./...` 0 ; `go vet ./...` 0 ;
+`go test` domain/title + archlint + assetnames + platform/halo OK ;
+`golangci-lint --new-from-merge-base=origin/main` → **0 issues** ; `tsc -b` 0 ;
+`npm run lint` 0 erreur / 15 warnings (baseline connue).
+
+**Découverte hors périmètre, non traitée** : le diag §9 affirme « aucun garde-rail » entre
+les listes de capabilities — c'est faux depuis V72-12 (`capabilities_ts_mirror_test.go`).
+Le §9 mériterait un erratum, mais le diag est un document d'enquête daté : non modifié.
+
+## [2026-07-26] Prestige — frontière d'identité player_slug ↔ xuid (objectifs figés à zéro)
+
+**Statut** : Complété (code écrit, NON compilé — gate à jouer par le pilote).
+Branche `feat/demo-prestige-samples`. Traite la « découverte hors périmètre » laissée
+par l'entrée démo ci-dessous.
+
+**Établissement des faits (sur pièces).** Deux identités coexistaient dans un même type
+`string` : le **player_slug** applicatif (`arc.user_id`, `challenge.user_id` — en prod
+c'est le gamertag : `JGtm`, `Chocoboflor`, cf. `config_players.go:142`) et le **xuid**
+Xbox (`match_participants.xuid` — numérique : `2533274823110022`, cf. `db_profiles.json`).
+`HaloBaselineProvider.RecentMatches` déclarait `userID string` et l'injectait dans
+`WHERE mp.xuid = ?` ; ses TROIS appelants le remplissaient avec `Challenge.UserID`
+(`service.computeBaselineFor`, `service.computeCurrentValue`, `service_evaluate.evaluateOne`),
+et la chaîne HTTP prouve que ce champ est bien un slug (`authorizeActor(ctx, body.UserID)`
+→ `CanAccessPlayer`, et `PrestigeBundle.RunPostSync(ctx, playerSlug, …)` →
+`RunPostSyncHook(ctx, svc, userID=playerSlug, …)`). Zéro ligne, partout, en silence.
+
+**Ce qui INFIRME une partie de l'hypothèse de départ.** (1) Il n'existe AUCUN chemin
+compensatoire : la « requête dédiée Phase 5 » annoncée par le commentaire de
+`RecentMatches` n'a jamais été écrite — `EvaluateCumulative` n'a aucun appelant de
+production (`service_evaluate.go` retombe sur `EvaluateThreshold`) et `MedalEvent` n'est
+jamais produit. (2) L'ampleur est plus étroite que « tout » : sur 28 templates du
+catalogue, 12 seulement ont une métrique mappée par `mapMetricToColumn` ; les 16 autres
+(`medal:*`, `matches_played`, `win_rate`, `*_vs_expected`, `ranked_wins`, `FieldCSRValue`…)
+étaient — et restent — non mesurées pour une raison DIFFÉRENTE, fonctionnelle.
+(3) Aucune autre occurrence de la confusion : le provider d'escouade passe par des
+`rosterXUIDs` explicites, `progression_diag_repo` utilise `pdb.XUID`.
+
+**Voie retenue : supprimer le transport de l'identité, pas le convertir.** Le provider
+est désormais LIÉ au joueur à la construction (`NewHaloBaselineProvider(reader, pdb.XUID)`,
+`wire.serviceAndPlayerDB`) et `BaselineProvider.RecentMatches` ne prend plus AUCUN
+paramètre d'identité : l'inversion n'est plus exprimable à la compilation. Écarté :
+(a) types distincts `XUID`/`PlayerSlug` — `T(x)` reste castable en Go, donc décoratif sans
+ratchet, et le ripple sur `Challenge`/JSON/repos était disproportionné ; (b) résolveur
+slug→xuid injecté dans `Deps` — aurait créé une 3e source de résolution alors que
+`config.ResolvePlayer` a DÉJÀ résolu le xuid dans le `PlayerDB` d'où sort le provider
+(CLAUDE.md n°6). Le provider rejoint ainsi le reste de `Deps`, déjà lié au joueur.
+
+**Échec rendu visible** (c'est le silence qui a permis la survie du défaut) :
+`slog.ErrorContext` à la résolution (`prestige_player_without_xuid`, avec le slug) ET à la
+dégradation (`prestige_baseline_provider_missing_xuid`), plus un `DebugContext` sur
+résultat vide. Durcissements exigés par la mise en service réelle du chemin :
+`COALESCE(CAST(col AS DOUBLE), 0)` (colonnes `INTEGER`/`SMALLINT` vs `MetricValue float64`)
+et fragment timestamp canonique `duckdb.StartTimeCanonicalSQL("mr")` + `sql.NullTime`
+(CLAUDE.md n°8 ; `start_time` brut était utilisé en projection ET en tri).
+
+**Garde-rail** : `internal/platform/duckdb/prestige/xuid_identity_ratchet_test.go` — scan
+AST, SANS build tag (gate par défaut), allowlist VIDE : une fonction du sous-paquet qui
+requête `xuid` en acceptant un paramètre d'identité applicative fait échouer la CI.
+Morsure PROUVÉE contre le code pré-fix réel, extrait par
+`git show HEAD:…/prestige_baseline_provider.go` dans `testdata/xuid_identity_prefix.go.txt`.
+Contrôles négatifs : formes conformes + log structuré contenant « xuid ».
+
+**Effets de bord PROD à connaître avant merge.** (1) Tout défi créé avant ce correctif
+porte `data_tier='tracking'` et `tier='normal'` figés (baseline 0 →
+`CalculatePalier` renvoyait `RejectInsufficientData`) : ils vont passer « acquis » en
+masse au premier sync, mais `PPForCompletion(*, tracking)` = **0 PP** (multiplicateur 0.0),
+bonus d'arc idem. (2) AUCUNE rafale de notifications : `CategoryChallengeCompleted` est
+alimentée par `challenge_snapshots` (défis du jeu), jamais par la table Prestige.
+(3) `CreateChallenge` va désormais REJETER (400) les cibles trop faciles
+(`RejectTooEasy`), ce qu'il ne faisait jamais avant ; `AdoptPresetArc` est best-effort et
+sautera les étapes concernées. (4) À recalculer (procédure NON exécutée) : rien de
+persisté n'est faux, mais `challenge.tier`/`data_tier` des défis actifs mériteraient un
+recalcul via `UpdateChallenge{Target}` (recompute palier) — sinon les PP restent à 0.
+
+**Prochaine étape** : gate pilote (`go build`, `go test ./...` ET `-tags=integration`,
+golangci-lint) puis arbitrage utilisateur sur le recalcul des paliers existants.
+
+## [2026-07-26] Démo publique — échantillons Prestige générés par seed-demo
+
+**Statut** : Complété (code écrit, NON compilé — gate à jouer par le pilote).
+Branche `feat/demo-prestige-samples`.
+
+**Constat de départ (vérifié sur pièces).** `seed-demo` extrait 8 tables joueur
+(`playerTablesWhere`) : aucune table Prestige/Progression. Les pages étaient donc
+accessibles (`prestige_enabled: true` dans `demoAppSettings`) et vides. **Découverte
+majeure, non anticipée** : en démo, `NewPrestigeBundle` était construit depuis
+`cfg.RepoRoot` seul → `data/titles/{slug}/warehouse/*.duckdb`, chemin ABSENT du conteneur
+démo (qui ne monte que `data/demo`). Le bundle restait `nil` (constat déjà écrit noir sur
+blanc dans `server_apiv1.go`, lot V721-04), et TOUTE lecture Prestige adossée à une base
+était morte. Ce que masquaient des fixtures read-time (`demoUserPrestige`, `demoArcs`,
+`demoActiveChallenges`, `demoStreaks`). Sans corriger ce câblage, seeder les tables
+n'aurait strictement rien affiché.
+
+**Stratégie retenue : synthétique DÉRIVÉ du corpus démo réel** (voie b + a). Extraire les
+vraies tables Prestige du joueur source a été écarté sur trois motifs : (1) sondage binaire
+des player DB prod — traces de `streak` chez 3 joueurs sur 4, AUCUNE trace de preset `ascension`
+ni de `prestige_events` : arcs et objectifs quasi inexistants, donc non représentatifs ;
+(2) `arc.user_id` / `challenge.user_id` portent le player_slug RÉEL → extraction = fuite
+d'identité à ré-anonymiser de toute façon ; (3) `streak`, `record_history`,
+`improvement_campaign` sont calculés sur l'HISTORIQUE COMPLET du joueur (milliers de matchs)
+alors que la démo n'expose qu'un corpus de ~50-90 matchs → chiffres qui se contredisent à
+l'écran. Le générateur lit donc les agrégats RÉELS du corpus démo déjà extrait
+(matchs/frags/morts/assistances/tirs à la tête/victoires + fenêtre temporelle) et en dérive
+cibles, dates et journal de points.
+
+**Invariant central.** `user_prestige.total_pp == SUM(prestige_events.pp_amount)` et
+`current_level == prestige.LevelFromPP(total)` — un événement PP par match du corpus, plus
+un par objectif complété, plus un bonus par arc complété, plus un bonus de série. Le total
+n'est jamais posé à la main.
+
+**Câblage rendu visible.** `wire.NewPrestigeBundleAt(repoRoot, sharedSocialPath, metadataPath, …)`
+remplace `NewPrestigeBundle` ; `config.PrestigeBundleDBPaths()` choisit le layout PLAT des
+fixtures démo ou le layout title-scopé de prod. Les 4 fixtures read-time sont SUPPRIMÉES
+(règle « 0 code mort » + elles auraient contredit les événements seedés).
+
+**Découverte hors périmètre, NON traitée.** `service.computeCurrentValue` passe
+`challenge.user_id` (un player_slug) à `HaloBaselineProvider.RecentMatches`, qui l'utilise
+comme `mp.xuid`. La valeur courante d'un objectif actif vaut donc 0 en prod comme en démo.
+Le plan démo compense en rendant la progression lisible par les STATUTS (étapes acquises
+d'un arc), pas par les jauges. **MAJ 2026-07-26** : traité depuis, cf. l'entrée
+« frontière d'identité player_slug ↔ xuid » en tête de journal. Conséquence pour la démo :
+le seul objectif actif à métrique mappée (`headshot_kills`) affichera désormais une valeur
+courante réelle — une MOYENNE par match, face à une cible dérivée d'un CUMUL du corpus.
+Le plan démo reste cohérent (l'objectif demeure « en cours »), mais cet écart
+cumul/moyenne est désormais visible et mérite un arbitrage produit.
+
+**Prochaine étape** : gate pilote (gofmt, `go build`, `go test ./...`, `-tags=integration`,
+golangci-lint) puis re-seed démo au déploiement.
+
 ## [2026-07-26] Match view : Medias dernier bloc pleine largeur, fin des blocs orphelins, vignettes 200px
 
 **Statut** : Complété (branche `fix/quick-wins-post-v721`, lot frontend du batch quick wins,
@@ -154,6 +925,7 @@ DDL encore inline en 3 endroits (snapshot_read.go, sync/schema.go, player_repos_
 même traitement centralisation possible. (b) Commentaire périmé `snapshot_export.go:20` :
 `OpenSnapshotForPlayer` n'existe plus. (c) La fixture player_repos_test seede 41 colonnes
 « miroir » de la migration sans garde de dérive de schéma.
+
 
 ## [2026-07-25] V721-13 — What's new + changelogs + notes de version in-app v7.2.1
 

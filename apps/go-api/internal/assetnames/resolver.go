@@ -41,8 +41,9 @@ type AssetRef struct {
 }
 
 // Fetcher récupère le nom localisé d'un asset (1 appel réseau par langue).
-// Implémenté par un adapter sur halo.HaloProvider.FetchAsset (API publique
-// GameCMS, sans token).
+// Implémenté par un adapter sur halo.HaloProvider.FetchAsset : API discovery-infiniteugc
+// AUTHENTIFIÉE (Spartan token + 343-clearance, token du pool unifié) — ni publique,
+// ni GameCMS. Sonde anonyme 2026-07-25 : 401. Cf. halo/asset_name_fetcher.go.
 type Fetcher interface {
 	FetchName(ctx context.Context, assetType, titleID, assetID, versionID, lang string) (string, error)
 }
