@@ -13,8 +13,9 @@ export function useCitationsPage(
   filterHash: string,
 ) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const locale = useAppShellStore((s) => s.locale)
   return useQuery({
-    queryKey: queryKeys.citations(playerSlug, titleSlug, filterHash),
+    queryKey: queryKeys.citations(playerSlug, titleSlug, filterHash, locale),
     queryFn: () =>
       api.post<CitationsPageResponse>(`/players/${playerSlug}/pages/citations`, request),
     enabled: !!playerSlug,
