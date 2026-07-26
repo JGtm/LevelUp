@@ -1,3 +1,61 @@
+## [2026-07-26] Lot v7.3 — rotation des logs par taille + durcissement rate-limit/cache des fichiers public/
+
+**Statut** : Complété (branche `feat/v7.3-notion-batch`, agent). Items v7.3 « Nettoyer les
+logs » (anomalie C) et durcissement rate-limit.
+
+**Découverte qui change le cadrage (tâche D).** La prémisse « app.log a déjà une rotation,
+l'étendre » est FAUSSE : `app.log.1/.2/.3` vus en prod sont des reliquats du
+`RotatingFileHandler` Python (5 Mo × 3 de l'ancien `src/utils/log_config.py`), supprimé avec
+la migration Go. Aucun mécanisme Go n'existait — le README du package le disait noir sur
+blanc (« Pas de rotation automatique … à gérer en ops »), et `gopkg.in/natefinch/lumberjack`
+n'est pas une dépendance du module. Il n'y avait donc pas de 2e implémentation à éviter :
+`internal/observability/logging/rotation.go` EST le mécanisme unique, appliqué au writer des
+catégories (`fileForModule`), donc à TOUTES les catégories sans exception.
+
+**Décisions techniques.** Writer maison (~200 L, zéro dépendance nouvelle) plutôt que
+lumberjack : archives `{module}.log.N` (convention des app.log.N déjà en prod) — effet de
+bord, elles ne finissent pas par `.log` donc `ops.ListLogModules` / logtail les ignorent
+déjà sans changement. Défaut 100 Mo × 3 archives (~400 Mo/catégorie au pire), pilotable par
+`LEVELUP_LOGS_MAX_SIZE_MB` / `LEVELUP_LOGS_MAX_BACKUPS` (0 Mo = rotation off).
+`RotationPolicy` portée par `logging.Config` et injectée dans `NewMultiModuleHandler`
+(4e paramètre) — aucun `os.Getenv` dispersé. Multi-process (serveur + CLIs) : fermeture
+AVANT rename (obligatoire sous Windows), et le perdant de la course détecte via
+`os.SameFile` que le fichier n'est plus son inode → simple ré-ouverture au lieu d'un 2e
+décalage d'archives (qui aurait détruit le fichier neuf du gagnant). Échec de rotation :
+stderr + cooldown 1 min, écriture jamais interrompue. Un record plus gros que le plafond
+n'est jamais roté en boucle (garde `size > 0`).
+
+**Tâche J (rate-limit).** Trois volets. (1) Exemption : `rateLimitExempt` ajoute les chemins
+à extension statique servis par le catch-all SPA (fichiers de `apps/web/public/` : /logo.png,
+icônes, /titles/**), jamais `/api/*` hors `/api/v1/assets/`. La liste d'extensions quitte
+`server_apiv1.go` pour `internal/api/middleware/static_assets.go` — `internal/api` importe
+déjà `middleware`, jamais l'inverse : pas de cycle. Trois consommateurs (rate limit,
+Cache-Control, 404 franc), garde-rail `archlint/no_duplicate_static_ext_list_test.go` (4+
+extensions distinctes dont une propre au web = catalogue dupliqué ; les listes purement
+images du pipeline média restent légitimes). (2) Cache-Control `public, max-age=3600` sur les
+fichiers non fingerprintés du dist ; les assets Vite hashés gardent `immutable` ; index.html
+et les non-assets restent sans header (revalidation à chaque déploiement). (3) Le 429
+n'est plus muet : `httprate.WithLimitHandler` + `observability.AllowThrottledLog` →
+compteur expvar `levelup.rate_limit_429_total` (exact, jamais avalé) + 1 log WARN par
+fenêtre de 30 s avec `throttled_since_last`.
+
+**Résultats** : `go build ./...` 0, `go vet ./...` 0, `go test ./...` exit 0 sans aucun
+`--- FAIL:` (suite complète, une passe), `golangci-lint run --new-from-merge-base=origin/main`
+(cache purgé) 0 issue. Tests ajoutés : 8 sur la rotation (déclenchement à la taille, N
+archives max, écriture continue après rotation, rotation off, ré-ouverture d'un gros fichier,
+record surdimensionné, bout-en-bout catégorie, env) ; 5 sur le rate-limit (exemption racine,
+`/api/*` à extension toujours limité, compteur 429 exact, pas de compteur sur exempté) ;
+Cache-Control public/ + absence sur non-asset. Front non touché.
+
+**Prochaine étape (superviseur, hors code)** : purger le stock existant en prod. La rotation
+ne raccourcit PAS un fichier déjà à 1,5 Go — elle attend le prochain franchissement de seuil,
+donc `provider.log` serait archivé tel quel (1,5 Go de plus sur disque). Purge sûre sans
+arrêter le serveur, à faire AVANT/APRÈS le déploiement :
+`: > /opt/levelup/data/logs/provider.log` (troncature in-place, le descripteur O_APPEND du
+serveur reste valide ; ne JAMAIS `rm` un fichier tenu ouvert : l'espace ne serait rendu qu'au
+redémarrage), à répéter pour `auth.log`, `general.log`, `sync.log`, et
+`rm -f /opt/levelup/data/logs/app.log*` (reliquats Python, plus aucun écrivain).
+
 ## [2026-07-26] Lot F v7.3 — flag « Prolongation » (overtime) livré bout en bout
 
 **Statut** : Complété (branche `feat/v7.3-notion-batch`, agent + superviseur). Item v7.3

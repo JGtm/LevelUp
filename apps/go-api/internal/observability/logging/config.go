@@ -34,6 +34,13 @@ type Config struct {
 	// Par défaut true. Override via LEVELUP_LOGS_ENABLED=false.
 	Enabled bool
 
+	// Rotation : bornes de taille appliquées à CHAQUE fichier `{module}.log`
+	// (cf. rotation.go). Défaut 100 Mo × 3 archives → ~400 Mo par catégorie au
+	// pire. Override via LEVELUP_LOGS_MAX_SIZE_MB / LEVELUP_LOGS_MAX_BACKUPS
+	// (0 Mo = rotation désactivée, croissance illimitée — l'état d'avant
+	// 2026-07-26 qui avait produit 2,1 Go en prod).
+	Rotation RotationPolicy
+
 	// ConsoleFormat : format de sortie console. Valeurs reconnues :
 	//   - "compact" (défaut) : `HH:MM:SS [LEVEL] msg key=val ...` (ConsoleHandler)
 	//   - "text"             : slog.NewTextHandler (verbose, pre-sprint)
@@ -69,6 +76,7 @@ func LoadConfig(repoRoot string) Config {
 		ConsoleFormat: parseConsoleFormat(),
 		MaxLineWidth:  parseIntEnv("LEVELUP_LOG_MAX_LINE", 200),
 		ConsoleColor:  parseBoolEnv("LEVELUP_LOG_COLOR", false),
+		Rotation:      loadRotationPolicy(),
 	}
 	cfg.LogsDir = os.Getenv("LEVELUP_LOGS_DIR")
 	if cfg.LogsDir == "" && cfg.Enabled {
@@ -118,13 +126,21 @@ func parseConsoleFormat() string {
 	return ConsoleFormatCompact
 }
 
+// loadRotationPolicy lit les bornes de rotation depuis l'env. Défauts :
+// 100 Mo par fichier, 3 archives. Une valeur négative est ramenée à 0 par
+// parseIntEnv → 0 Mo désactive la rotation, 0 archive supprime l'historique.
+func loadRotationPolicy() RotationPolicy {
+	sizeMB := parseIntEnv("LEVELUP_LOGS_MAX_SIZE_MB", DefaultRotationMaxSizeMB)
+	backups := parseIntEnv("LEVELUP_LOGS_MAX_BACKUPS", DefaultRotationMaxBackups)
+	return RotationPolicy{
+		MaxSizeBytes: int64(sizeMB) * bytesPerMB,
+		MaxBackups:   backups,
+	}
+}
+
 // parseIntEnv retourne l'entier depuis env, sinon le défaut. Valeurs négatives
-// remplacées par 0 (interprétées comme "désactivé" — pas de tronquage).
-//
-// LEVELUP_LOG_*) ; aujourd'hui un seul caller passe 200 mais la signature reste
-// stable pour éviter une refacto au prochain ajout.
-//
-//nolint:unparam // def est paramétré pour extensibilité (futures variables env
+// remplacées par 0 (interprétées comme "désactivé" : pas de tronquage console,
+// pas de rotation).
 func parseIntEnv(key string, def int) int {
 	raw := strings.TrimSpace(os.Getenv(key))
 	if raw == "" {
