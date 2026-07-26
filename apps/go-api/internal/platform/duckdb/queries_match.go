@@ -36,6 +36,14 @@ LIMIT 50`
 // Le token /*__PERFECT_KILL_IN__*/ est résolu au moment de l'exécution vers le
 // set de médailles « frag parfait » du titre du joueur (perfectKillMedalInClause ;
 // HINF byte-identique = medal_name_id IN (1512363953)).
+//
+// ROBUSTESSE (G1, 2026-07-26) : les stats d'objectifs NE sont PLUS jointes ici.
+// Un LEFT JOIN inconditionnel sur match_objective_stats_latest faisait échouer
+// TOUTE la requête (Catalog Error) quand la vue manquait sur une DB non migrée →
+// scoreboard vide → « match n'a pas pu être chargé » sur l'ensemble de la vue
+// Match (incident prod 25/07). Elles sont désormais chargées séparément et
+// best-effort par Q12bObjectiveStats (cf. match_view_repo_scoreboard.go) : la
+// section objectifs dégrade seule, le scoreboard reste servi.
 var Q12MatchScoreboard = `
 WITH me_perfect AS (
     SELECT xuid, COALESCE(SUM(count), 0) AS perfect_kills
@@ -91,33 +99,11 @@ SELECT
     p.kills_expected,
     p.deaths_expected,
     p.kills_stddev,
-    p.deaths_stddev,
-    -- Stats objectifs par joueur (match_objective_stats_latest, LEFT JOIN sur
-    -- l'index match_id) : NULL hors mode à objectif ou titre non supporté. Le
-    -- service ne construit MatchScoreboardRow.Objective que si un bloc est non-NULL
-    -- (data-driven par mode). CTF / Zones (Strongholds+KOTH) / Oddball / Stockpile /
-    -- Extraction / VIP.
-    o.flag_captures, o.flag_capture_assists, o.flag_grabs, o.flag_secures,
-    o.flag_steals, o.flag_returns, o.flag_carriers_killed, o.flag_returners_killed,
-    o.kills_as_flag_carrier, o.kills_as_flag_returner, o.time_as_flag_carrier_seconds,
-    o.zone_captures, o.zone_secures, o.zone_offensive_kills, o.zone_defensive_kills,
-    o.zone_scoring_ticks, o.time_in_zones_seconds,
-    o.kills_as_skull_carrier, o.skull_carriers_killed, o.skull_grabs,
-    o.skull_scoring_ticks, o.time_as_skull_carrier_seconds,
-    o.longest_time_as_skull_carrier_seconds,
-    o.kills_as_power_seed_carrier, o.power_seed_carriers_killed, o.power_seeds_deposited,
-    o.power_seeds_stolen, o.time_as_power_seed_carrier_seconds,
-    o.time_as_power_seed_driver_seconds,
-    o.extraction_conversions_completed, o.extraction_conversions_denied,
-    o.extraction_initiations_completed, o.extraction_initiations_denied,
-    o.successful_extractions,
-    o.kills_as_vip, o.vip_kills, o.vip_assists, o.times_selected_as_vip,
-    o.max_killing_spree_as_vip, o.time_as_vip_seconds, o.longest_time_as_vip_seconds
+    p.deaths_stddev
 FROM match_participants p
 LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p.xuid
 LEFT JOIN me_perfect m ON p.xuid = m.xuid
 LEFT JOIN top_weapons w ON p.xuid = w.xuid
-LEFT JOIN match_objective_stats_latest o ON o.match_id = p.match_id AND o.xuid = p.xuid
 WHERE p.match_id = ?
   AND NOT (
     COALESCE(p.kills, 0) = 0

@@ -146,14 +146,16 @@ type ScoreboardRaw struct {
 	// LocallyEstimated : K/D attendus issus du modèle local (count∝durée, Halo 5),
 	// pas de l'API skill. Posé sur la ligne is_me → label « Estimé localement » du drawer.
 	LocallyEstimated bool
-	// Objectifs (match_objective_stats_latest, LEFT JOIN Q12) — nil hors mode à
-	// objectif ou titre non supporté (table vide). Blocs mutuellement exclusifs par
-	// mode : seul le bloc du mode joué est non-nil. Le service construit
-	// MatchScoreboardRow.Objective uniquement si un bloc est présent.
+	// Objectifs (match_objective_stats_latest, requête SÉPARÉE Q12bObjectiveStats
+	// jointe côté Go par xuid) — nil hors mode à objectif, titre non supporté (table
+	// vide) OU vue absente (dégradation best-effort G1 : le scoreboard reste servi).
+	// Blocs mutuellement exclusifs par mode : seul le bloc du mode joué est non-nil.
+	// Le service construit MatchScoreboardRow.Objective uniquement si un bloc est présent.
 	Obj ObjectiveRaw
 }
 
-// ObjectiveRaw : stats objectifs par joueur (Q12 LEFT JOIN match_objective_stats_latest).
+// ObjectiveRaw : stats objectifs par joueur (Q12bObjectiveStats sur
+// match_objective_stats_latest, chargée séparément du scoreboard).
 // Blocs mutuellement exclusifs par mode (CTF / Zones / Oddball / Stockpile / Extraction /
 // VIP). HasObjective() vrai dès qu'un discriminant de bloc est non-nil.
 type ObjectiveRaw struct {

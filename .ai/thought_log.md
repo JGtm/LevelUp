@@ -1,3 +1,73 @@
+## [2026-07-26] Lot C (G1/G2) — scoreboard dégradable + colonnes de jalons Halo 5
+
+**Statut** : Complété (branche `feat/v7.3-notion-batch`, travail NON commité — remis au
+superviseur pour revue et commit).
+
+**Décisions techniques principales.**
+- **G1 — le scoreboard ne dépend plus de la vue objectifs.** Q12 (`queries_match.go`) ne
+  porte plus le LEFT JOIN inconditionnel sur `match_objective_stats_latest` ni ses 41
+  colonnes : la section objectifs passe par une requête SÉPARÉE `Q12bObjectiveStats`
+  (nouveau fichier `queries_match_objectives.go`), chargée best-effort et jointe par xuid
+  côté Go. Vue absente ou requête en échec → `slog.WarnContext` explicite AVANT la
+  dégradation, puis map vide : le scoreboard reste servi entier, seule la section
+  objectifs manque. Choix de la séparation plutôt que d'un repli « requête sans JOIN » :
+  aucune duplication du littéral des 41 colonnes ni du scan Go (la liste vit désormais à
+  UN seul endroit au lieu d'un autre), et le garde-rail
+  `archlint/no_inline_objective_latest_view_test.go` reste satisfait (on LIT la vue, on ne
+  la crée pas). Extraction au passage de `scanScoreboardRow` / `attachTopWeaponLabels`
+  (`GetMatchScoreboard` repassait le seuil des 80 lignes).
+- **G2 — `milestone_catalog` Halo 5 aligné sur son lecteur.** Le CREATE h5 omettait
+  `condition_fr` / `condition_en` alors que `MilestoneCatalogRepo` les SELECTionne
+  toujours → Binder Error → GET /milestones 500 → grille Réalisations vide. Trois volets :
+  colonnes ajoutées au CREATE (DB neuves), nouveau step ALTER idempotent
+  `h5_milestone_catalog_add_condition_locales` (`AddColumnIfMissing`, motif
+  `h5_weapon_labels_add_icon`) pour les DB DÉJÀ provisionnées — `CREATE TABLE IF NOT
+  EXISTS` n'ajoute pas de colonne et un step tracé n'est jamais rejoué —, et seed h5
+  aligné sur HINF (INSERT/UPSERT des deux colonnes). Commentaire menteur « même forme que
+  HINF » corrigé.
+- **Front** : `MilestonesGrid` gardait bien un état d'erreur i18n FR/EN, mais l'affichait
+  SANS le titre de section — d'où le « la grille disparaît sans message ». Les trois états
+  (chargement / erreur / catalogue vide) passent par une enveloppe `MilestonesSectionShell`
+  qui conserve le titre « Mes jalons ».
+
+**Diagnostic dev local (volet A/B).** L'hypothèse « la migration n'a touché qu'une copie
+A/B du fichier » est INFIRMÉE : le B-swap d'ADR 0016 est un swap de MODE (RO↔RW) sur UN
+SEUL fichier (`sharedprovider/doc.go`), et `data/titles/halo_infinite/warehouse/` ne
+contient qu'un `shared_matches_v2.duckdb`. La vraie divergence est LIVE vs SNAPSHOT :
+`ops.OpenSnapshotShared` reconstruit un schéma shared complet en `:memory:` depuis les
+Parquet de `warehouse/snapshots/vNNN/`, avec un DDL écrit À LA MAIN — les migrations ne
+l'atteignent JAMAIS. Preuves : `migration.log` montre
+`shared_objective_stats_add_stockpile_extraction` appliqué le 26/07 à 01:23 (la vue existe
+donc en live) et `service.log` porte pourtant, à 15:15 le même jour, 31 occurrences de
+`GetMatchScoreboard: Catalog Error: Table with name match_objective_stats_latest does not
+exist!` ; les snapshots v61→v65 (dernier flip 25/07 21:13) n'ont pas de
+`match_objective_stats.parquet`, ajouté à l'export seulement le 26/07 (lot quick-wins).
+
+**Résultats observés** : `go build ./...` et `go vet ./...` EXIT 0 ; `go test ./...`
+EXIT 0 (aucun `--- FAIL:`) ; intégration ciblée `-tags=integration -p 1` sur
+`platform/duckdb`, `games/halo_5/migrations`, `games/halo_infinite/migrations`, `ops`,
+`migration`, `service` : EXIT 0 ; golangci-lint `--new-from-merge-base=origin/main` : 7
+issues, TOUTES dans des fichiers non touchés par ce lot (dette de branche préexistante :
+`service/match_view_radar.go` funlen, `analysis/narrative/objective_participation.go`
+goconst ×5, `platform/duckdb/objective_index_repo.go` gocyclo) ; front `tsc -b` cache
+purgé EXIT 0, vitest ciblé 4/4, eslint 0. `queries_match.go` passe de 546 à 512 lignes
+(dette de fichier > 500 préexistante, réduite et non accrue).
+Note d'environnement : le serveur air local a reconstruit et appliqué
+`h5_milestone_catalog_add_condition_locales` à la vraie `data/titles/halo_5/warehouse/
+metadata.duckdb` à 17:01:55 (cycle `applied:1`, zéro erreur) — validation réelle du
+chemin de réparation sur une DB existante.
+
+**Découvertes consignées non traitées** : les snapshots locaux v61→v65 restent sans
+`match_objective_stats.parquet` — avec le binaire actuel, `OpenSnapshotShared` retourne
+donc `ErrSnapshotIncomplete` et la lecture retombe en permanence sur le live (correct mais
+l'optimisation snapshot est désactivée) ; un nouveau cut de snapshot la réarme. Le
+`catalog.toml` d'Halo 5 ne définit aucune condition : `condition_fr`/`condition_en` y
+restent NULL (colonnes présentes, valeurs à remplir si le produit le décide).
+
+**Conclusion / prochaine étape** : revue superviseur puis commit ; côté prod, le step
+ALTER h5 s'appliquera au boot suivant (aucune action manuelle), et G1 neutralise
+structurellement la classe « une vue manquante détruit tout le tableau des scores ».
+
 ## [2026-07-26] Chantier v7.3 (batch Notion) — lots A/B + resynchronisation de branche
 
 **Statut** : En cours (branche `feat/v7.3-notion-batch`, pilotage superviseur + agents).
