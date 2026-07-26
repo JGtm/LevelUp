@@ -1,3 +1,35 @@
+## [2026-07-26] Fix CI rouge — TestCopyMetadataFile_AttachAfterSwapWhileHeld (détenteur multi-process)
+
+**Statut** : Complété (branche `fix/build-cache-ci-hardening` ; preuve d'exécution Linux = CI).
+
+**Décision** : le détenteur du fichier est un VRAI second processus (ré-exécution du
+binaire de test, poignée de main READY / EOF stdin / `OLD <n>`, bornée 30 s). L'ancienne
+simulation same-process était structurellement impossible : DuckDB dédoublonne les bases
+attachées par CHEMIN CANONIQUE à l'échelle du processus (mesuré : chemin non normalisé →
+même refus ; lien dur → autre mécanisme), donc l'échange d'inode n'y change rien — d'où le
+`Unique file handle conflict` en CI, un conflit qui ne peut pas exister entre les deux
+conteneurs de prod. Test déplacé dans `seed_demo_inode_swap_integration_test.go` (le
+fichier d'origine était à 798 L ; précédent : `media_kill_brutal_test.go`).
+
+**Mordant mesuré sous Windows** (skip levé + forme fautive O_TRUNC de `cfc341b4f`
+restaurée temporairement) : `create dst: fichier utilisé par un autre processus`. Mordant
+Linux raisonné (O_TRUNC réussit sur verrou consultatif → ATTACH sur inode encore verrouillé
+→ `Conflicting lock is held`), tranché par la CI. `copyMetadataFile` non touché.
+
+**Skip Windows conservé, justification corrigée** : l'ancienne prémisse (« unlink d'un
+fichier tenu impossible sous Windows ») est fausse — mesuré, `os.Remove` réussit et le
+scénario passe en 0,08 s. Le skip reste parce que les sémantiques de partage Windows
+(verrouillage impératif) ne sont pas celles du conteneur démo Linux (verrou consultatif) :
+un vert Windows validerait autre chose que la prod. Le gate réel est la CI Linux — d'où la
+nouvelle règle de flux : pousser la BRANCHE et attendre la CI avant tout merge vers main.
+
+**Balayage des voisins** : aucun autre test ne simule un détenteur multi-process avec un
+handle same-process (`seed_demo_wal_test.go` : zéro ouverture DuckDB ;
+`TestAssociateMediaWithMatches_SharedMatchesHeldRW` : same-process VOULU, c'est le pool
+serveur qu'il modélise).
+
+---
+
 ## [2026-07-26] Gels VPS au build : la vraie cause est NOTRE purge de cache du 24/07
 
 **Statut** : Complété (enquête) ; correctifs sur `fix/build-cache-ci-hardening`.
