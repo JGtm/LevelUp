@@ -1,3 +1,39 @@
+## [2026-07-26] Détection de secrets — gitleaks 8.30.1 (hook local + CI) + audit d'historique
+
+**Statut** : Complété (branche `fix/build-cache-ci-hardening`).
+
+**Contexte** : dépôt public manipulant des refresh tokens OAuth et un accès SSH prod.
+L'ancienne détection (detect-secrets, framework pre-commit) ne tournait PLUS depuis la
+migration lefthook — protection morte en silence. La push protection GitHub
+(`secret_scanning` + `push_protection`) a été ACTIVÉE via l'API le 2026-07-26 : première
+ligne de défense, côté serveur.
+
+**Livré** : gitleaks **8.30.1** épinglée en 3 endroits avec vérification SHA-256 (jamais de
+« latest ») ; `.gitleaks.toml` = défauts + 6 allowlists CIBLÉES (doctrine : `targetRules`
++ `condition = "AND"` dès qu'un chemin est cité — un chemin seul n'excuse rien ; contrôle
+négatif exécuté : une clé à haute entropie injectée dans un fichier allowlisté est bien
+DÉTECTÉE) ; workflow CI dédié (séparé de ci.yml à dessein, mêmes branches, binaire pinné
+hors du dossier scanné, `--redact`) ; hook lefthook pre-commit sur les fichiers stagés,
+non bloquant si le binaire manque (avertissement bruyant + marche d'installation — la CI
+et la push protection restent l'autorité). Piège de version documenté : en 8.30.1,
+`protect` et `detect --no-git` n'existent plus — les commandes sont `gitleaks dir` et
+`gitleaks git --staged`. `.secrets.baseline` supprimé (orphelin de detect-secrets).
+
+**Audit d'historique complet : AUCUN vrai secret.** 5 841 commits scannés (~15 s) →
+82 alertes, 100 % faux positifs vérifiés (48 = les empreintes SHA-1 du `.secrets.baseline`
+lui-même, 10 = noms de tests Go du baseline JSONL, 1 = clés i18n `discord_notify_*` de
+l'ère Python prises pour un secret Discord, le reste = identifiants de code). Vérifié
+aussi bout en bout : un `git commit` réel portant un faux secret est REFUSÉ par le hook,
+accepté après retrait.
+
+**Reste connu** : personne n'a le binaire installé localement (avertissement aux premiers
+commits jusqu'à `scoop install gitleaks`) ; l'historique n'est pas re-scanné en CI (audit
+manuel, procédure en tête de `.gitleaks.toml`) ; suivi possible — étendre le garde-rail
+des déclencheurs (archlint) pour geler l'alignement des listes de branches de
+gitleaks.yml/shared-social-gate.yml sur ci.yml.
+
+---
+
 ## [2026-07-26] Assainissement CI — inventaire 14 jours et application des correctifs
 
 **Statut** : Complété (branche `fix/build-cache-ci-hardening`, verdict final = CI de branche).

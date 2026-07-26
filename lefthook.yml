@@ -4,8 +4,10 @@
 # aucun shim `pre-commit` n'était installé, il ne s'exécutait donc pas, et il
 # référençait un script inexistant (scripts/test_deploy_dry_run.sh).
 # Hooks universels qui n'ont jamais été portés depuis ce fichier (ils étaient déjà
-# inertes) : detect-secrets (.secrets.baseline), check-yaml/json/toml,
-# detect-private-key, check-added-large-files, trailing-whitespace.
+# inertes) : check-yaml/json/toml, detect-private-key, check-added-large-files,
+# trailing-whitespace. La détection de secrets, elle, A été reportée : detect-secrets
+# (+ son .secrets.baseline) est remplacé par gitleaks (binaire Go, zéro Python) en
+# pre-commit ci-dessous et par le job CI .github/workflows/gitleaks.yml.
 #
 # Installation  : lefthook install   (ou make install-git-hooks)
 # Run manuel    : lefthook run pre-commit
@@ -30,6 +32,14 @@
 pre-commit:
   parallel: true
   commands:
+
+    # Détection de secrets (gitleaks) sur le DIFF STAGÉ — ~0,2 s. Pas de `glob` :
+    # un secret peut atterrir dans n'importe quel type de fichier (Markdown de
+    # journal, JSON de fixture, script de deploy). Dégrade en avertissement si le
+    # binaire manque (justification dans l'en-tête du script) ; l'autorité du verdict
+    # reste le job CI .github/workflows/gitleaks.yml + la push protection GitHub.
+    gitleaks:
+      run: bash scripts/git-hooks/lefthook/gitleaks.sh
 
     # gofmt — scoped aux fichiers Go stagés (rapide, local)
     gofmt:

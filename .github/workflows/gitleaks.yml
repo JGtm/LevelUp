@@ -1,0 +1,119 @@
+name: Secrets (gitleaks)
+
+# Détection de secrets sur l'arbre de travail. Dépôt PUBLIC manipulant des refresh
+# tokens OAuth, un secret client Azure et un accès SSH prod : ce job est l'autorité du
+# verdict, derrière la push protection GitHub (côté serveur, activée le 2026-07-26) et
+# devant le hook lefthook pre-commit (local, non bloquant si le binaire manque).
+# Config + doctrine d'allowlist : .gitleaks.toml à la racine.
+#
+# WORKFLOW SÉPARÉ DE ci.yml À DESSEIN (2026-07-26) : ci.yml est en cours de
+# restructuration dans un autre chantier ; un job de sécurité qui doit rester lisible
+# et stable n'a rien à gagner à cohabiter avec une refonte. Il reste néanmoins ALIGNÉ
+# sur ci.yml pour ses déclencheurs (liste de branches reprise à l'identique) — toute
+# évolution de cette liste se fait EN MÊME TEMPS des deux côtés, sinon un préfixe de
+# branche cesse silencieusement d'être scanné (piège déjà payé : `feat/**` absent de
+# shared-social-gate.yml pendant 45 runs).
+
+# Aucune écriture dans le dépôt : ni commit, ni commentaire de PR, ni upload d'artifact.
+permissions:
+  contents: read
+
+on:
+  # Liste de branches reprise À L'IDENTIQUE de ci.yml (2026-07-26). Pas de
+  # paths-ignore : un secret peut atterrir dans n'importe quel fichier, y compris un
+  # Markdown de journal (une clé collée dans un plan d'agent est une fuite comme une
+  # autre).
+  push:
+    branches:
+      [
+        main,
+        feat/**,
+        feature/**,
+        fix/**,
+        hotfix/**,
+        refactor/**,
+        perf/**,
+        docs/**,
+        chore/**,
+        integration/**,
+      ]
+  pull_request:
+    branches: [main]
+
+jobs:
+  gitleaks:
+    name: Scan de l'arbre de travail
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # PIN — même version que scripts/git-hooks/lefthook/gitleaks.sh et que l'en-tête
+      # de .gitleaks.toml. Jamais de « latest » flottant : une nouvelle version de
+      # gitleaks arrive avec de nouvelles règles, donc potentiellement de nouveaux faux
+      # positifs — le bump doit être un commit délibéré, recalibré, pas une surprise un
+      # matin de CI rouge. Somme SHA-256 issue du fichier de checksums de la release.
+      GITLEAKS_VERSION: "8.30.1"
+      GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Installer gitleaks (binaire épinglé + vérification de checksum)
+        # Installé dans RUNNER_TEMP, HORS du workspace : le scan porte sur `.` et n'a
+        # aucune raison de relire les 22 Mo de son propre binaire.
+        working-directory: ${{ runner.temp }}
+        run: |
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          url="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${archive}"
+          curl --fail --silent --show-error --location --retry 3 -o "$archive" "$url"
+          echo "${GITLEAKS_SHA256}  ${archive}" | sha256sum --check --strict -
+          tar -xzf "$archive" gitleaks
+          rm -f "$archive"
+          ./gitleaks version
+
+      - name: Scan
+        id: scan
+        # `dir` = scan de l'arbre de travail (l'ancien `detect --no-git` a disparu en
+        # 8.19 ; `dir` en est le successeur). L'HISTORIQUE n'est PAS scanné ici : 5841
+        # commits = ~310 Mo relus, ~15 s de scan, mais surtout un verdict qui ne dépend
+        # plus du diff poussé (une alerte vieille de plusieurs mois ferait rougir toutes
+        # les PR sans que leur auteur puisse rien y faire). Historique audité une fois le
+        # 2026-07-26 (verdict : aucun vrai secret) ; à rejouer à la demande avec
+        #   gitleaks git . --redact --verbose
+        # --redact : jamais un secret en clair dans les logs de la CI (les logs d'un
+        # dépôt public sont lisibles par tout le monde, ce serait la fuite elle-même).
+        # --verbose : sans lui, gitleaks n'affiche que le nombre de fuites, ce qui rend
+        # le job inexploitable. Le couple redact+verbose donne fichier/ligne/règle sans
+        # la valeur.
+        # $RUNNER_TEMP plutôt que ${{ runner.temp }} : aucune interpolation de template
+        # dans une commande shell (règle anti-injection, même si la valeur vient ici de
+        # GitHub et non d'un utilisateur).
+        run: |
+          "$RUNNER_TEMP/gitleaks" dir . --config .gitleaks.toml --redact --verbose --no-banner
+
+      - name: Quoi faire si le scan a échoué
+        # Conditionné à l'échec DU SCAN, pas du job : un échec de téléchargement du
+        # binaire ne doit pas afficher une procédure de rotation de secret. Le
+        # `failure()` est obligatoire en plus du test d'outcome — sans fonction de
+        # statut dans le `if`, GitHub insère un `success()` implicite et l'étape ne
+        # serait jamais jouée après un échec.
+        if: failure() && steps.scan.outcome == 'failure'
+        run: |
+          echo "::error title=gitleaks::Secret potentiel détecté (valeurs masquées ci-dessus)."
+          echo ""
+          echo "1. VRAIE FUITE (la valeur ouvre vraiment un accès) :"
+          echo "   - ROTATION D'ABORD, côté émetteur (Azure, Discord, Xbox, VPS). Tant que"
+          echo "     la valeur est valide, la retirer du code ne protège rien : le dépôt est"
+          echo "     PUBLIC et l'historique reste lisible par quiconque a cloné."
+          echo "   - Puis retirer la valeur du code et purger l'historique si elle a été"
+          echo "     commitée (git filter-repo), en coordination avec le mainteneur —"
+          echo "     réécrire l'historique de main casse tous les clones."
+          echo "   - Ne JAMAIS mettre un vrai secret en allowlist."
+          echo ""
+          echo "2. FAUX POSITIF (fixture de test, placeholder, identifiant applicatif) :"
+          echo "   ajouter une exception CIBLÉE dans .gitleaks.toml — targetRules sur la"
+          echo "   seule règle qui a bruité, condition = AND avec le chemin exact et un"
+          echo "   regex sur la valeur, plus un commentaire disant pourquoi ce n'est pas un"
+          echo "   secret. La doctrine complète est en tête de .gitleaks.toml. Jamais"
+          echo "   d'exclusion large d'un dossier : elle masquerait la fuite suivante."
+          echo ""
+          echo "3. Reproduire en local (même version que ce job) :"
+          echo "   gitleaks dir . --config .gitleaks.toml --redact --verbose"
