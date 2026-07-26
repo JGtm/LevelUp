@@ -1,3 +1,60 @@
+## [2026-07-26] Lot v7.3 — backlog résiduel : écritures settings EBUSY, bruit app_release, reliquats contrat, restructuration BACKLOG
+
+**Statut** : Complété (branche `feat/v7.3-notion-batch`, agent). Périmètre décidé par
+l'utilisateur : items actionnables du `.ai/BACKLOG.md` HORS Tauri / housekeeping post-cutover /
+kills environnementaux, et HORS bump echarts (reporté explicitement). Décision produit
+préalable : contrat Huma `RawBody`/400 CONSERVÉ (pas de bascule `Body` typé / 422).
+
+**Décisions techniques.**
+
+1. *Écritures `app_settings.json` en conteneur (rename EBUSY).* Nouveau package feuille
+   `internal/platform/atomicfile` (zéro import projet) : `WriteFile` tente temp+rename,
+   replie **in-place** (truncate + un seul Write + fsync) sur EBUSY **ou** sur impossibilité
+   de créer le temporaire ; toute autre erreur de rename est remontée telle quelle — le repli
+   couvre une contrainte d'environnement connue, pas un diagnostic manquant. Points d'injection
+   (`renameFile`, `createTemp`) pour tester le repli sans conteneur. L'audit demandé par l'item
+   a trouvé **3** écritures runtime de settings, toutes migrées : `settings.Store.Save`
+   (chemin de TOUS les toggles admin — il faisait un `os.WriteFile` nu, donc jamais atomique,
+   d'où l'absence de symptôme en prod alors que la notif Discord échouait),
+   `settings.Store.SaveTitleOverlay`, `notify.writeLastNotifiedVersion` (le bug d'origine).
+   3e copie du motif → garde-rail `archlint/no_bare_settings_write_test.go`.
+
+2. *Bruit WARN `app_release: emit`.* Filtre pur `appReleaseTargets` : les profils `auth_only`
+   de `db_profiles.json` (5 en prod, `db_path` vide) sont écartés AVANT résolution, tracés par
+   un `DebugContext` groupé. Découverte au passage : `LoadPlayers()` sans filtre renvoie une
+   entrée par (titre, joueur) alors que la notif est per-JOUEUR → double traitement des joueurs
+   déclarés sur 2 titres ; déduplication par slug dans le même filtre.
+
+3. *Reliquats contrat V72-01.* `securitySchemes.sessionCookie` déclaré côté Go
+   (`internal/api/openapi_security.go`) en lisant `session.CookieName` à sa source unique ;
+   aucune exigence `security` par opération (une part de la surface est publique par
+   conception, l'inventaire route→garde reste le ratchet `bare_routes`, exécutable). UI `/docs`
+   montée sur le routeur RACINE — le `DocsPath` de Huma l'aurait enregistrée une fois par
+   sous-routeur, sous chaque préfixe — et gatée sur `IsProduction()` **OU** `DemoMode` : la
+   démo est publique et ne pose pas `LEVELUP_ENV`, la gater sur la seule production l'aurait
+   exposée ; effet de bord bénéfique, zéro entrée d'allowlist ajoutée aux 3 ratchets de routes.
+   `huma.SchemaTransformer` sur `humacore.apiError` restaure
+   `details: oneOf[object(additionalProperties true), array]` — le `{type: object}` nu générait
+   `Record<string, never>` côté TS, l'inverse de l'intention.
+
+**Statués `[!]`.** Validation automatique des inputs + résolveurs cross-champs : CLOS par la
+décision produit (pas de 422). Les **7 descriptions de schéma racine** : non rapatriées — les
+7 types vivent dans `internal/domain`, qui n'a **aucune** dépendance externe aujourd'hui ;
+`SchemaTransformer` y imposerait d'importer `huma` (framework HTTP) dans la couche « types
+métier purs ». Coût architectural disproportionné pour 7 chaînes déjà présentes au contrat
+publié via le fragment manuel. L'entrée `weapon_labels` H5 a été **reformulée** (verdict : à
+conserver — seuls porteurs des `icon_url` H5 et du catalogue admin ; seul le 3e maillon du
+COALESCE de nom serait supprimable, sous preuve d'un relevé live `weapon-coverage`).
+
+**Résultats** : `gofmt -l` vide, `go build ./...` 0, `go vet ./...` 0, `go test ./...`
+118 packages ok / 0 FAIL (exit 0), `openapi-gen -check` exit 0, `make generate-types` +
+`npm run typecheck` (cache purgé) verts, `golangci-lint --new-from-merge-base=origin/main`
+**0 issue**. Diff de contrat minimal et intentionnel : `+oneOf` sur `ApiError.details`,
+`+securitySchemes.sessionCookie`.
+
+**Prochaine étape** : revue + commit par le superviseur (le placeholder `<commit v7.3>` des
+3 lignes « Récemment complété » du BACKLOG est à remplacer par le SHA réel).
+
 ## [2026-07-26] Lot G phase 2 v7.3 — FirstBloodLanes câblé : Escouade/Dynamique + Timeseries + Sessions
 
 **Statut** : Complété (branche `feat/v7.3-notion-batch`, agent + superviseur). Item Notion
