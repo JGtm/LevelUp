@@ -188,53 +188,78 @@ func (r *ObjectiveStatsRepo) loadObjectiveIndexInputs(
 
 	nCols := len(actionCols) + len(holdCols)
 	for rows.Next() {
-		var xuid string
-		var family *string
-		var n int
-		var tp, vipSel float64
-		sums := make([]float64, nCols)
-		ptrs := make([]any, 0, 5+nCols)
-		ptrs = append(ptrs, &xuid, &family, &n, &tp, &vipSel)
-		for i := range sums {
-			ptrs = append(ptrs, &sums[i])
-		}
-		if err := rows.Scan(ptrs...); err != nil {
+		row := objectiveIndexRow{sums: make([]float64, nCols)}
+		if err := rows.Scan(row.scanPtrs()...); err != nil {
 			slog.WarnContext(ctx, "ObjectiveStatsRepo: index inputs scan failed", "err", err)
 			continue
 		}
-		if family == nil || n <= 0 {
-			continue
-		}
-		fam := narrative.ObjectiveFamily(*family)
-		weights, ok := narrative.ObjectiveFamilyActionWeights[fam]
+		fam, st, ok := row.stats(actionCols, holdCols)
 		if !ok {
 			continue
 		}
-		byCol := make(map[string]float64, nCols)
-		for i, c := range actionCols {
-			byCol[c] = sums[i]
+		if out[row.xuid] == nil {
+			out[row.xuid] = narrative.ObjectiveIndexInput{}
 		}
-		for i, c := range holdCols {
-			byCol[c] = sums[len(actionCols)+i]
-		}
-		st := narrative.ObjectiveFamilyStats{
-			Matches:           n,
-			TimePlayedSeconds: tp,
-			ColumnSums:        make(map[string]float64, len(weights)),
-		}
-		for col := range weights {
-			st.ColumnSums[col] = byCol[col]
-		}
-		for _, hc := range narrative.ObjectiveFamilyHoldColumns[fam] {
-			st.HoldSeconds += byCol[hc]
-		}
-		if fam == narrative.FamilyVIP {
-			st.TimesSelectedAsVIP = vipSel
-		}
-		if out[xuid] == nil {
-			out[xuid] = narrative.ObjectiveIndexInput{}
-		}
-		out[xuid][fam] = st
+		out[row.xuid][fam] = st
 	}
 	return out, rows.Err()
+}
+
+// objectiveIndexRow porte une ligne brute de l'agrégat (xuid × famille) : les
+// sommes arrivent dans l'ordre DÉTERMINISTE du SELECT (actionCols puis holdCols,
+// cf. objectiveIndexSelectColumns).
+type objectiveIndexRow struct {
+	xuid   string
+	family *string
+	n      int
+	tp     float64
+	vipSel float64
+	sums   []float64
+}
+
+// scanPtrs retourne les cibles de rows.Scan dans l'ordre du SELECT. sums doit
+// être pré-alloué à la taille attendue (len(actionCols)+len(holdCols)).
+func (row *objectiveIndexRow) scanPtrs() []any {
+	ptrs := make([]any, 0, 5+len(row.sums))
+	ptrs = append(ptrs, &row.xuid, &row.family, &row.n, &row.tp, &row.vipSel)
+	for i := range row.sums {
+		ptrs = append(ptrs, &row.sums[i])
+	}
+	return ptrs
+}
+
+// stats convertit la ligne en agrégat narrative. ok == false ⇒ ligne hors
+// périmètre, à ignorer : famille NULL (aucun bloc objectif), n <= 0, ou famille
+// absente de la table de poids.
+func (row objectiveIndexRow) stats(actionCols, holdCols []string) (narrative.ObjectiveFamily, narrative.ObjectiveFamilyStats, bool) {
+	if row.family == nil || row.n <= 0 {
+		return "", narrative.ObjectiveFamilyStats{}, false
+	}
+	fam := narrative.ObjectiveFamily(*row.family)
+	weights, ok := narrative.ObjectiveFamilyActionWeights[fam]
+	if !ok {
+		return "", narrative.ObjectiveFamilyStats{}, false
+	}
+	byCol := make(map[string]float64, len(row.sums))
+	for i, c := range actionCols {
+		byCol[c] = row.sums[i]
+	}
+	for i, c := range holdCols {
+		byCol[c] = row.sums[len(actionCols)+i]
+	}
+	st := narrative.ObjectiveFamilyStats{
+		Matches:           row.n,
+		TimePlayedSeconds: row.tp,
+		ColumnSums:        make(map[string]float64, len(weights)),
+	}
+	for col := range weights {
+		st.ColumnSums[col] = byCol[col]
+	}
+	for _, hc := range narrative.ObjectiveFamilyHoldColumns[fam] {
+		st.HoldSeconds += byCol[hc]
+	}
+	if fam == narrative.FamilyVIP {
+		st.TimesSelectedAsVIP = row.vipSel
+	}
+	return fam, st, true
 }
