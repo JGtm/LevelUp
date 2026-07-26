@@ -1,8 +1,35 @@
 name: Deploy to VPS
 
+# Aucun accès au dépôt nécessaire côté GITHUB_TOKEN : le déploiement se fait
+# entièrement en SSH avec des secrets (VPS_HOST / VPS_SSH_KEY) et le seul
+# checkout (job pre-check) est un clone public en lecture par l'action. Token
+# sans aucune permission (2026-07-26).
+permissions: {}
+
 on:
   push:
     branches: [main]
+    # Ne pas redéployer la PROD pour un commit qui ne change rien de déployé
+    # (2026-07-26). Constaté sur pièces : 3 déploiements prod COMPLETS (build des
+    # 2 images + arrêt/redémarrage des conteneurs) déclenchés par de simples
+    # renommages de fichiers `.ai/` les 23 et 24/07 — l'un a laissé un conteneur
+    # orphelin, un autre a fini en timeout SSH.
+    #
+    # MISE EN GARDE — NE JAMAIS élargir à `docs/**` :
+    #   - le Dockerfile fait `COPY docs /app/docs` ;
+    #   - `docs/CHANGELOG.md` (handlers/changelog.go) et
+    #     `docs/RELEASE_NOTES.md` + `docs/FR/RELEASE_NOTES.md`
+    #     (service/release_notes_service.go) sont lus AU RUNTIME par l'API.
+    # Ignorer `docs/**` ferait servir en prod des notes de version périmées sans
+    # aucun signal. Seul `docs/adr/**` est ignoré : vérifié, aucun code ne lit ce
+    # sous-dossier au runtime (uniquement cité dans des commentaires).
+    paths-ignore:
+      - ".ai/**"
+      - ".claude/**"
+      - "docs/adr/**"
+      - "README*.md"
+      - "CLAUDE.md"
+      - "LICENSE"
 
 # Un seul deploy à la fois : deux pushs rapprochés lançaient deux deploy.sh
 # CONCURRENTS sur le VPS (constaté au deploy v7.1.0 : le `compose up` du run N
@@ -18,14 +45,23 @@ jobs:
   pre-check:
     name: Pré-validation deploy
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
 
       - name: Validation workflows GitHub Actions (actionlint)
         # actionlint : binaire Go natif, validation sémantique GitHub Actions
         # (script officiel rhysd/actionlint). Remplace l'ancien python3+pyyaml.
+        #
+        # VERSION PINNÉE (2026-07-26) : le script d'installation était tiré de
+        # `main` et sans argument de version → il installait le DERNIER actionlint
+        # publié. Une nouvelle version durcissant des règles a rougi 11 runs les
+        # 17-18/07 sur des findings INFO, sans aucun changement de notre côté. Le
+        # tag du script + la version explicite rendent ce step reproductible.
+        # Montée de version = geste volontaire (changer les deux occurrences ici
+        # et dans test-deploy-precheck.yml, qui doivent rester identiques).
         run: |
-          bash <(curl -sSf https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          bash <(curl -sSf https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash) 1.7.12
           ./actionlint -color
 
       - name: Validation syntaxe Bash (scripts/*.sh)
@@ -53,6 +89,10 @@ jobs:
     name: Deploy lvelup.info
     runs-on: ubuntu-latest
     needs: pre-check
+    # 50 min : DOIT rester au-dessus du `command_timeout: 40m` de l'action SSH
+    # ci-dessous, sinon GitHub tuerait le job avant que l'action puisse rapporter
+    # son propre timeout (et le VPS resterait à moitié déployé sans message clair).
+    timeout-minutes: 50
 
     steps:
       - name: Deploy via SSH
@@ -74,6 +114,8 @@ jobs:
     name: Regen demo.lvelup.info
     runs-on: ubuntu-latest
     needs: deploy
+    # 50 min : même garde que le job deploy (command_timeout: 40m côté action).
+    timeout-minutes: 50
 
     steps:
       - name: Regen données démo via SSH

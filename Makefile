@@ -10,6 +10,7 @@
 #   make openapi-gen   # Régénère api/openapi.yaml (Huma + fragment manuel)
 #   make generate-types # Génère les types TypeScript depuis openapi.yaml
 #   make check-types   # Vérifie les types TypeScript
+#   make gate-push     # Filet local avant merge vers main (~25 min, cf. cible)
 # =============================================================================
 
 # Charge .env.local (puis .env) s'ils existent — permet aux worktrees
@@ -22,7 +23,7 @@ LOAD_DOTENV := if [ -f .env.local ]; then set -a; . ./.env.local; set +a; fi; \
 .PHONY: help web dev stop restart test-web test-e2e test-e2e-ui check-types \
         generate-types install-web \
         go-api-build go-api-test go-api-dev _go-api-run \
-        go-api-test-shared-social-gate install-git-hooks \
+        go-api-test-shared-social-gate install-git-hooks gate-push \
         go-api-test-coverage-ratchet openapi-gen openapi-check
 
 ## Affiche cette aide
@@ -215,22 +216,22 @@ go-api-lint:
 		go vet ./internal/domain/... ./internal/analysis/...; \
 	fi
 
-## Installe le hook pre-commit ADR 0021 (Phase 3.5).
+## Installe les hooks git du projet (lefthook — seul système de hooks).
 ##
-## Le hook lance go-api-test-shared-social-gate si le commit modifie des fichiers
-## critiques (pool/persist/media/ops/migration shared_social). Bypass via
-## --no-verify (documenter dans le commit msg).
+## HISTORIQUE (2026-07-26) : cette cible copiait scripts/git-hooks/pre-commit
+## dans .git/hooks/pre-commit, donc PAR-DESSUS le shim lefthook — elle cassait
+## l'installation (plus aucun hook lefthook joué, et le hook copié était lui-même
+## remplacé au prochain `lefthook install`). Les deux systèmes ont été fusionnés :
+## lefthook.yml porte désormais tous les hooks, gate ADR 0021 inclus (stage
+## pre-push, cf. scripts/git-hooks/lefthook/shared-social-gate.sh).
+## Bypass exceptionnel : LEFTHOOK=0 git commit / git push (à documenter).
 install-git-hooks:
-	@HOOKS_DIR=$$(git rev-parse --git-path hooks 2>/dev/null); \
-	if [ -z "$$HOOKS_DIR" ]; then \
-		echo "[install-git-hooks] git rev-parse échoué — repo non-initialisé ?"; \
+	@command -v lefthook >/dev/null 2>&1 || { \
+		echo "[install-git-hooks] lefthook absent du PATH."; \
+		echo "  Installation : go install github.com/evilmartians/lefthook@latest"; \
 		exit 1; \
-	fi; \
-	mkdir -p "$$HOOKS_DIR"; \
-	cp scripts/git-hooks/pre-commit "$$HOOKS_DIR/pre-commit"; \
-	chmod +x "$$HOOKS_DIR/pre-commit" 2>/dev/null || true; \
-	echo "[install-git-hooks] hook pre-commit installé : $$HOOKS_DIR/pre-commit"; \
-	echo "  Pour bypass exceptionnel : git commit --no-verify (à documenter)."
+	}
+	lefthook install
 
 ## Go API: gate ADR 0021 — tests invariants shared_social (récupération auto WAL,
 ## CHECKPOINT systématique, sentinelle AST anti-ATTACH). À lancer en CI sur PR
@@ -255,6 +256,34 @@ go-api-test-shared-social-gate:
 		go test -race -count=1 -timeout 60s \
 		-run 'TestMediaE2E_RealDB' \
 		./internal/api/handlers/
+
+## Filet local AVANT tout merge/push vers main (~25 min). La CI reste le gate
+## d'AUTORITÉ : cette cible ne fait que rejouer localement les 3 gates les plus
+## bruyants, qui n'avaient AUCUN équivalent local — d'où les « arrivées rouges »
+## sur main (149 des 188 jobs CI rouges sur 14 jours viennent de ces 3 gates).
+##
+## Contenu, dans l'ordre du plus rapide au plus lent (feedback utile d'abord) :
+##   1. ratchet golangci-lint — MÊME commande que le job CI go-lint
+##      (--new-from-merge-base=origin/main : la dette gelée reste invisible) ;
+##   2. typecheck + lint web — mêmes scripts npm que le job CI Frontend ;
+##   3. baseline de tests Go — scripts/check_test_baseline.sh tests (le plus long,
+##      ~20 min : suite complète avec -tags=integration -p 1).
+## NON reproduit : le ratchet de COUVERTURE (il rejouerait toute la suite une 2e
+## fois avec -coverprofile, doublant la durée) — il reste au job CI go-coverage.
+##
+## Prérequis : golangci-lint dans le PATH (échec explicite sinon — le but est de
+## reproduire la CI, pas de la contourner par un repli silencieux) + gcc/CGO pour
+## la baseline (le script bascule seul sur msys64 sous Windows).
+gate-push:
+	@command -v golangci-lint >/dev/null 2>&1 || { \
+		echo "[gate-push] golangci-lint absent du PATH — gate impossible à reproduire."; \
+		echo "  Installation : https://golangci-lint.run/usage/install/ (version CI : v2.12.2)"; \
+		exit 1; \
+	}
+	cd $(GO_API_DIR) && golangci-lint run --timeout 5m --new-from-merge-base=origin/main
+	cd apps/web && npm run typecheck
+	cd apps/web && npm run lint
+	bash scripts/check_test_baseline.sh tests
 
 ## Coverage ratchet (Gap 4 / Phase 5.1 strict).
 go-api-test-coverage-ratchet:

@@ -1,3 +1,54 @@
+## [2026-07-26] Assainissement CI — inventaire 14 jours et application des correctifs
+
+**Statut** : Complété (branche `fix/build-cache-ci-hardening`, verdict final = CI de branche).
+
+**Inventaire (agent dédié, 581 runs / 188 jobs rouges analysés)** : le bruit CI ne venait
+pas d'un empilement de bugs mais de trois causes structurelles — (1) le gate baseline,
+84 rouges à lui seul, exigeait une purge manuelle à chaque suppression de test ET mentait
+(un test en échec passait, seul un test absent rougissait — `|| true` sur le `go test` +
+comptage `pass|fail|skip`) ; (2) les trois gates les plus bruyants (baseline, lint
+ratchet, couverture : 149/188) n'avaient aucun filet local, tout arrivait rouge sur main ;
+(3) chaque commit `.ai/`/docs redéployait la prod entière. `main` n'était qu'à DEUX items
+du vert : la baseline périmée (8 lignes, tests supprimés volontairement en V721-09) et le
+test AttachAfterSwap (entrée dédiée ci-dessous).
+
+**Correctifs appliqués** (détail par item dans les messages de commit) : D1 baseline
+purgée · D2 le gate baseline dit la vérité (contrôle des `"fail"`, hint « package qui ne
+compile pas = tests absents », JSONL persisté + artefact de diagnostic en CI) · D4
+`paths-ignore` sur deploy/precheck/ci — avec mise en garde : ne JAMAIS ignorer `docs/**`,
+lu au runtime par l'API (changelog + notes de version) · D5 le gate anti-ART
+`shared-social` tournait sur `feature/*` mais JAMAIS sur `feat/**` — les chantiers v7.2
+ont réécrit `persist/` sans lui · D7 actionlint pinné v1.7.12 (11 rouges par dérive de
+version amont) · D9 timeouts par job (défaut GitHub : 360 min) · D10 `permissions` minimaux
+· D12 `compose up --remove-orphans` · D23 ×2 gardes sur les steps `if: always()` qui
+fabriquaient une seconde erreur parasite · D24 doc inversée du seuil de couverture (69.0
+réel vs 76.0 commenté) · D26/D27 un seul système de hooks : lefthook (suppression de
+`.pre-commit-config.yaml` mort qui référençait un script inexistant, de 2 scripts
+orphelins et de l'ancien pre-commit ; `make install-git-hooks` ÉCRASAIT le shim lefthook —
+réécrit en `lefthook install` ; gate ADR 0021 câblé en pre-push) · D28 cible
+`make gate-push` (filet local des 3 gates bruyants, la CI reste l'autorité) · D30 silence
+daté de l'alerte echarts (bump 5→6 reporté v7.3, décision utilisateur).
+
+**Faux problèmes purgés par l'inventaire** (à ne pas re-diagnostiquer) : les « flakes
+timing assets/persist » = 0 occurrence CI en 14 j (souvenir d'exécutions locales) ; le
+flake sharedprovider = 1/33, marginal ; l'échec « Bump postcss » = timeout SSH du VPS, pas
+un workflow Dependabot cassé ; le ratchet lint fonctionne (32 rouges = vraies fautes
+nouvelles) ; le run « cancelled » du 25/07 19:45 = comportement documenté de la
+concurrency deploy-vps.
+
+**Découvertes consignées NON traitées** (hors périmètre) : D3 le job baseline rejoue la
+même suite que Go Coverage (~22 min de doublon) · D8 pre-check dupliqué entre deploy.yml
+et test-deploy-precheck.yml · D11 Deploy Pre-Check tourne sur les branches RE (47 runs
+filmdec pour rien) · D25 auto-update du coverage baseline jamais committé (logique morte)
+· D29 deploy.yml ne dépend PAS de la CI (un push main déploie même CI rouge — décision
+utilisateur demandée) · D31 pinning hétérogène des actions · les hooks universels
+(detect-secrets, check-yaml…) ne tournaient déjà plus et n'existent plus nulle part —
+décision à prendre si on les veut en lefthook · D6 les branches filmdec embarquent un
+ci.yml d'avant le 12/07 → 47 pushes sans CI : recopier `.github/workflows/` de main avant
+toute reprise.
+
+---
+
 ## [2026-07-26] Fix CI rouge — TestCopyMetadataFile_AttachAfterSwapWhileHeld (détenteur multi-process)
 
 **Statut** : Complété (branche `fix/build-cache-ci-hardening` ; preuve d'exécution Linux = CI).
