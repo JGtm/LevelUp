@@ -1,3 +1,33 @@
+## [2026-07-27] Notifications : noms de palier affichés en anglais sous UI française
+
+**Statut** : Complété (branche `fix/notif-tier-locale`). Signalé par l'utilisateur : une
+notification d'approche de palier annonçait « Gold » au lieu de « Or ».
+
+**Cause.** Le backend envoie les noms de palier BRUTS et TOUJOURS en anglais :
+`next_tier_name` (notif.lusr_tier_approach) vaut `TierState.Label`, construit sur le nom
+EN — `NameFR` existe à côté mais n'est pas celui que porte `Label`
+(`progression/profile/tier.go`) ; `tier` / `previous_tier` (notif.skill_tier) sont le
+composant de la signature CSR `rating_type|tier|sub_tier`, donc le libellé de l'API Halo.
+Or `enrichParams` (`features/notifications/format.ts`) localisait déjà `metric_label`,
+`period_label` et les sous-paliers en chiffres romains, mais PAS les noms de palier :
+ils étaient interpolés tels quels.
+
+**Décision.** Localisation à l'AFFICHAGE plutôt que bakage serveur, pour trois raisons :
+c'est le patron déjà en place dans ce fichier (le backend ne connaît pas la locale), ça
+couvre les notifications DÉJÀ STOCKÉES, et ça suit une bascule de langue en session.
+Résolution par `localizeTierLabel` (`lib/skillTiers.ts`), source unique EN<->FR protégée
+par `skillTiers.guard.test.ts` : elle préserve le suffixe de sous-palier (« Gold I » →
+« Or I ») et laisse inchangé tout nom inconnu (placement, libellé brut).
+
+**Portée élargie en cours de diagnostic** : la première liste de clés (`tier_name`,
+`previous_tier_name`) était FAUSSE — vérification des templates : les clés réellement
+interpolées sont `next_tier_name`, `tier` et `previous_tier`. La notification de
+changement de palier CSR souffrait donc du même défaut, non signalé.
+
+**Résultats** : 5 tests ajoutés (FR/EN, sous-palier préservé, nom inconnu inchangé,
+non-string ignorée, titre complet résolu), 16 tests verts avec le garde-rail skillTiers ;
+tsc cache purgé 0 erreur ; eslint 0.
+
 ## [2026-07-27] Chantier v7.3 DÉPLOYÉ EN PROD — merge sans tag, ops VPS, vérifications
 
 **Statut** : Complété (main `22641859c` puis `82c0098a7`). Mandat utilisateur : merge dans

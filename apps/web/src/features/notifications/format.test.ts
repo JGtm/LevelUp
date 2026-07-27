@@ -86,3 +86,42 @@ describe('enrichParams — arrondi défensif des μ LUSR (V72 lot découvertes)'
     }
   })
 })
+
+// Localisation des noms de palier (2026-07-27) — le backend les envoie TOUJOURS
+// en anglais : next_tier_name vient de TierState.Label (nom EN + sous-palier) et
+// tier/previous_tier du composant CSR de la signature « rating_type|tier|sub_tier ».
+// Sans enrichissement, une UI française annonçait « Gold I ».
+describe('enrichParams — noms de palier localisés', () => {
+  it('traduit next_tier_name en FR en preservant le sous-palier', () => {
+    expect(enrichParams({ next_tier_name: 'Gold I' }, 'fr')?.next_tier_name).toBe('Or I')
+    expect(enrichParams({ next_tier_name: 'Gold' }, 'fr')?.next_tier_name).toBe('Or')
+  })
+
+  it('laisse next_tier_name en anglais sous locale EN', () => {
+    expect(enrichParams({ next_tier_name: 'Gold I' }, 'en')?.next_tier_name).toBe('Gold I')
+  })
+
+  it('traduit tier et previous_tier de notif.skill_tier', () => {
+    const out = enrichParams({ tier: 'Platinum', previous_tier: 'Gold' }, 'fr')
+    expect(out?.tier).toBe('Platine')
+    expect(out?.previous_tier).toBe('Or')
+  })
+
+  it('laisse inchange un nom de palier inconnu et les valeurs non-string', () => {
+    const out = enrichParams({ tier: 'Placement', previous_tier: 42 }, 'fr')
+    expect(out?.tier).toBe('Placement')
+    expect(out?.previous_tier).toBe(42)
+  })
+
+  it('resout le titre lusr_tier_approach avec le palier traduit', () => {
+    const title = resolveTitle(
+      {
+        title_key: 'notif.lusr_tier_approach.title',
+        params: { gap: 12.8, next_tier_name: 'Gold III' },
+      },
+      'fr',
+    )
+    expect(title).toContain('Or III')
+    expect(title).not.toContain('Gold')
+  })
+})
