@@ -65,7 +65,7 @@ jobs:
       run:
         working-directory: apps/web
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6.1.0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -122,7 +122,7 @@ jobs:
       run:
         working-directory: apps/go-api
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6.1.0
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -164,7 +164,7 @@ jobs:
       # fetch-depth: 0 requis par le ratchet --new-from-* : le calcul de la base
       # (merge-base contre origin/main, ou commit parent sur main) a besoin de
       # l'historique complet et de la ref origin/main.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6.1.0
         with:
           fetch-depth: 0
 
@@ -226,7 +226,7 @@ jobs:
       run:
         working-directory: apps/go-api
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6.1.0
 
       - name: Check lease enforcement (no direct DB writes in service/handlers)
         run: bash scripts/check_lease_enforcement.sh
@@ -252,7 +252,7 @@ jobs:
       run:
         working-directory: apps/go-api
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6.1.0
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -429,7 +429,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6.1.0
       - name: Validate openapi.yaml (spectral)
         uses: stoplightio/spectral-action@v0.8.13
         with:
@@ -443,7 +443,7 @@ jobs:
       run:
         working-directory: apps/go-api
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6.1.0
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -478,7 +478,7 @@ jobs:
       run:
         working-directory: apps/web
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6.1.0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4

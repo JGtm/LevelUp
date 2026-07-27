@@ -199,7 +199,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6.1.0
 
       - name: Validation workflows GitHub Actions (actionlint)
         # actionlint : binaire Go natif, validation sémantique GitHub Actions

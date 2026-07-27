@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6.1.0
 
       - name: Validation workflows GitHub Actions (actionlint)
         # actionlint : binaire Go natif, valide syntaxe YAML + sémantique
@@ -95,7 +95,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6.1.0
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -144,7 +144,7 @@ jobs:
     timeout-minutes: 20
     needs: docker-build
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6.1.0
 
       - name: Build image
         run: |
@@ -207,7 +207,7 @@ jobs:
     timeout-minutes: 20
     needs: [docker-build, permissions-simulation]
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6.1.0
 
       - name: Build image
         run: docker build -t levelup-test:ci . -q
