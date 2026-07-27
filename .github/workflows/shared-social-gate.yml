@@ -78,7 +78,7 @@ jobs:
       run:
         working-directory: apps/go-api
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6.1.0
 
       - name: Set up Go
         uses: actions/setup-go@v6
