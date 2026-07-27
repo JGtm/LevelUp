@@ -8,7 +8,7 @@
  * (certains templates contiennent "match(s)" littéralement, suffisant pour l'instant).
  */
 import type { Notification } from './types'
-import { subTierRoman } from '@/lib/skillTiers'
+import { localizeTierLabel, subTierRoman } from '@/lib/skillTiers'
 import { getNotificationsText } from './i18n'
 import type { Locale } from '@/lib/i18n/locale'
 
@@ -82,6 +82,25 @@ export function enrichParams(
   for (const key of ['sub_tier', 'previous_sub_tier'] as const) {
     if (typeof out[key] === 'number') {
       out[key] = subTierToRoman(out[key])
+    }
+  }
+  // Localise les NOMS DE PALIER envoyés bruts par le backend — ils arrivent tous
+  // en anglais et étaient interpolés tels quels sous une UI française (« Gold I »
+  // au lieu de « Or I », signalé le 2026-07-27) :
+  //   - next_tier_name (notif.lusr_tier_approach) = TierState.Label, construit sur
+  //     le nom EN du palier (progression/profile/tier.go ; `NameFR` existe à côté
+  //     mais n'est pas celui que porte Label) ;
+  //   - tier / previous_tier (notif.skill_tier) = composant de la signature CSR
+  //     « rating_type|tier|sub_tier », donc le libellé de l'API Halo, en anglais.
+  // Même classe que metric_label/period_label ci-dessus : le backend ne connaît pas
+  // la locale d'affichage, la résolution se fait ici — ce qui couvre aussi les
+  // notifications DÉJÀ STOCKÉES et suit la bascule de langue en session.
+  // localizeTierLabel est la source unique EN<->FR (lib/skillTiers.ts, garde-rail
+  // skillTiers.guard.test.ts) : elle préserve un suffixe de sous-palier et laisse
+  // inchangé tout nom inconnu (placement, libellé brut).
+  for (const key of ['next_tier_name', 'tier', 'previous_tier'] as const) {
+    if (typeof out[key] === 'string') {
+      out[key] = localizeTierLabel(out[key] as string, locale)
     }
   }
   // Arrondit les valeurs de métriques flottantes à 2 décimales. Le backend
