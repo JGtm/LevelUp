@@ -121,7 +121,7 @@ func BipedMovementI0Bit(buf []byte, stateBit int) (i0Bit, hasComp, maskBits int)
 	br := NewBitReader(buf)
 	br.SetBitPos(stateBit)
 	consumeBipedDefaultState(br) // rep (movement decode left OFF here)
-	hasComp = int(b2i(br.ReadBit()))
+	hasComp = b2i(br.ReadBit())
 	maskBits = consumePresenceMask(br)
 	return br.BitPos(), hasComp, maskBits
 }

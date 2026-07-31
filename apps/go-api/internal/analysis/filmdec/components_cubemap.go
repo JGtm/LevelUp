@@ -68,7 +68,7 @@ func DecodeVelocityMagnitude(scale uint64, width uint) float32 {
 // as FUN_14076d528 does (unit dir * FUN_14076d6dc magnitude). This is the datum that
 // dead-reckons a player's position through keep-baseline frames.
 func DecodeVelocity(packedDir, scale uint64) [3]float32 {
-	d := DecodeDynPrecDir(packedDir, uint(velocityMagBits))
+	d := DecodeDynPrecDir(packedDir, velocityMagBits)
 	m := DecodeVelocityMagnitude(scale, velScaleBitsDef)
 	return [3]float32{d[0] * m, d[1] * m, d[2] * m}
 }

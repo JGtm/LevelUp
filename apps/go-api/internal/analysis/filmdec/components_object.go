@@ -407,7 +407,7 @@ func consumeWeaponStateTypeInfoVariant(br *BitReader) (variant uint32, present b
 	br.ReadBits(12)                   // comp+0x7c inline R(12)
 	consumeVarWidthMinus1(br, 7)      // FUN_140e9fadc R(7)
 	if br.ReadBit() {                 // gate2
-		consumeShotId(br) // FUN_141001f50
+		consumeShotID(br) // FUN_141001f50
 	}
 	br.ReadBit()                  // comp+0x82 low bit
 	consumeWeaponMagazineList(br) // FUN_1407f2494
@@ -455,12 +455,12 @@ func consumeVarWidthMinus1(br *BitReader, width uint) {
 	br.ReadBits(width)
 }
 
-// consumeShotId mirrors FUN_141001f50: two sub-reads (FUN_1407ef804 +
+// consumeShotID mirrors FUN_141001f50: two sub-reads (FUN_1407ef804 +
 // FUN_1407ef724) feeding a 2-byte XOR-decoded shot id. The leading reader
 // FUN_1407ef804 is R(1)+[payload]; the bit-cost is data-shaped. Modeled here as
 // the confirmed R(1) gate; re-validate against a record where the optional shot
 // id is present.
-func consumeShotId(br *BitReader) {
+func consumeShotID(br *BitReader) {
 	// CORRIGÉ (workflow RE 2026-06-10, FUN_141001f50) : shot-id = R(4)+R(6) = 10 bits (était R(1)).
 	br.ReadBits(4)
 	br.ReadBits(6)

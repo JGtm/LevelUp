@@ -101,7 +101,7 @@ func consumeObjectScale(br *BitReader) {
 
 // consumeObjectMaximumVitalities (i13) mirrors FUN_1407ee054 -> FUN_1407eef08.
 func consumeObjectMaximumVitalities(br *BitReader) {
-	f := uint64(br.ReadBits(5))
+	f := br.ReadBits(5)
 	if f&0x4 != 0 {
 		consume1411b1ac0(br)
 		consume1411b1ac0(br)

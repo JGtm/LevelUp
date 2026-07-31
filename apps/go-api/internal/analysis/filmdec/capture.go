@@ -18,7 +18,7 @@ package filmdec
 // captureNames liste les composants dont consumeByNameCapturing rend la valeur. Sert au
 // garde-rail : le test balaie cette liste, il ne peut donc pas oublier un nom ajouté ici.
 var captureNames = []string{
-	"object-body-vitality-component",
+	compObjectBodyVitality,
 	"object-shield-vitality-component",
 	"player-respawn-timer-component",
 	"game-engine-round-timer-component",
@@ -30,7 +30,7 @@ var captureNames = []string{
 func consumeByNameCapturing(br *BitReader, name string, typeIndex, level uint32) (
 	variant uint32, dead *DeadState, payload any, ported bool) {
 	switch name {
-	case "object-body-vitality-component": // i4
+	case compObjectBodyVitality: // i4
 		return noVariant, nil, decodeObjectBodyVitality(br), true
 	case "object-shield-vitality-component": // i5
 		return noVariant, nil, decodeObjectShieldVitality(br), true

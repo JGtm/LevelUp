@@ -36,7 +36,7 @@ func consumeGateR(br *BitReader, width uint) {
 // 0xFFFFFFFF sentinel, no payload). Mirrors FUN_1406d1024 (w=6), whose polarity is
 // the INVERSE of consumeGateR/FUN_140c50d1c. CONFIRMED by decompile: the "-1 < lVar3"
 // branch (top bit clear == gate 0) is the one that advances the bit counter by width;
-// the bit==1 branch returns 0xffffffff without reading. Same polarity as consumeId2
+// the bit==1 branch returns 0xffffffff without reading. Same polarity as consumeID2
 // (FUN_1406d00ec). Used by the held-weapon i43 float block (consume1407f0550) and the
 // i48 biped-desired-ability-set deser (consumeBipedDesiredAbilitySet).
 func consumeGate0R(br *BitReader, width uint) {
@@ -52,8 +52,8 @@ func consumeOpt32(br *BitReader) {
 	}
 }
 
-// consumeId2 mirrors FUN_1406d00ec: R(1); if bit==0 R(2); else nothing.
-func consumeId2(br *BitReader) {
+// consumeID2 mirrors FUN_1406d00ec: R(1); if bit==0 R(2); else nothing.
+func consumeID2(br *BitReader) {
 	if !br.ReadBit() {
 		br.ReadBits(2)
 	}
@@ -231,11 +231,11 @@ func consume1406d025c(br *BitReader) {
 
 	// First FUN_1406d00ec gate: any a-flag in m0 OR any b-flag in m4.
 	if (m0&0b111) != 0 || (m4&0b11) != 0 {
-		consumeId2(br) // FUN_1406d00ec = R(1); if 0 R(2)
+		consumeID2(br) // FUN_1406d00ec = R(1); if 0 R(2)
 	}
 	// Second FUN_1406d00ec gate: any a-flag in m2 OR any b-flag in m5.
 	if (m2&0b111) != 0 || (m5&0b11) != 0 {
-		consumeId2(br) // FUN_1406d00ec = R(1); if 0 R(2)
+		consumeID2(br) // FUN_1406d00ec = R(1); if 0 R(2)
 	}
 
 	consume142f26740(br) // tail FUN_142f26740 -> FUN_140c9e4d8, param_3 const = 0
@@ -747,8 +747,8 @@ func consumeWeaponStateOverheated(br *BitReader) {
 //	FUN_1406d00ec = R(1)+optR(2).
 func consumeBipedDesiredWeaponSet(br *BitReader) {
 	br.ReadBits(3) // FUN_1406d0f20
-	consumeId2(br) // FUN_1406d00ec
-	consumeId2(br) // FUN_1406d00ec
+	consumeID2(br) // FUN_1406d00ec
+	consumeID2(br) // FUN_1406d00ec
 }
 
 // ---------------------------------------------------------------------------
