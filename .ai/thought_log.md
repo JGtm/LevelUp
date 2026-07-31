@@ -1,3 +1,80 @@
+## [2026-07-31] J2 — verrouiller le décodeur : deux étages, et ce que le filet a attrapé en tombant
+
+**Statut** : Complété (lot 2 de `PLAN_FINALISATION_REJEU_2D.md`, items 2.1 à 2.6 statués ; gate atteint).
+
+**Décision technique** : verrouiller à DEUX ÉTAGES plutôt qu'à un, parce qu'aucun des deux ne
+peut faire le travail de l'autre. L'étage 1 fige les ENTRÉES DÉJÀ DÉCODÉES (633 Ko, delta-codées
+au centimètre — la précision exacte que `round2` publie) et rejoue l'assemblage pur : il
+verrouille les chiffres du chantier sans lire un octet de film, et il est AVEUGLE par
+construction à un changement de décodage. L'étage 2 est une mini-bobine de paquets réels
+(698 Ko) qui verrouille précisément ce que le premier ne voit pas. Les deux se régénèrent par
+leur outil, jamais à la main, et chaque porte d'écriture exige deux conditions explicites
+(`-update` **et** `REPLAY_FILM_DIR`) — une régénération accidentelle transformerait n'importe
+quelle régression en nouvelle référence.
+
+**Résultats observés** :
+- Les chiffres du chantier sont désormais portés par des tests NOMMÉS : 475/519 tirs, 90/105
+  vies nommées, 70 lancers, 439 projectiles, 184 états d'inventaire, 26 chunks d'index
+  concordants, et la couverture avec ses trois verdicts. Le golden se relit en diff, et un
+  garde-fou vérifie qu'il n'a pas dégénéré en nombres nus — dont une règle mécanique : aucun
+  pourcentage sans sa fraction sur la même ligne.
+- **Deux mesures faites en construisant la mini-bobine, qui ont changé sa composition.** (a) La
+  PREMIÈRE image-clé du film ne rend NI loadout NI inventaire : c'est une image d'amorce. En
+  garder une seule — ce que le plan prévoyait — aurait verrouillé deux décodeurs sur un résultat
+  vide, ce qui est pire que ne rien verrouiller. (b) Le second maillon du pont exige DEUX chunks
+  de réplication : avec un seul, l'exigence de concordance (celle qui remplace le vote supprimé)
+  n'est jamais exercée.
+- Les 7 fonctions de la grammaire d'inventaire passent de 0 % à couvertes, et chaque règle est
+  testée par ce qu'elle REFUSE : R2 ne cherche les grenades qu'APRÈS l'ancre de capacité, donc
+  un motif identique placé avant doit rester invisible — c'est ce qui l'empêche de se valider
+  elle-même. Les NON-lectures sont verrouillées comme les lectures (132 capacités et 120
+  compteurs sur 184 états) : un décodeur qui remonterait à 184/184 aurait cessé de refuser, ce
+  qui n'est pas un progrès tant qu'on n'a pas compris pourquoi.
+- Le rendu canvas se teste sans navigateur et sans dépendance : le code de dessin n'INTERROGE
+  jamais le contexte, il écrit dedans ; une seule opération lit quelque chose. Un objet qui
+  empile `{op, args}` suffit.
+- Couverture du paquet `replay` : **58,5 % → 79,2 %**. Les 3 artefacts reconstruits rendent les
+  chiffres du §5 de la réconciliation à l'unité près.
+
+**Ce que le jalon a appris, et qui vaut plus que les tests** : *un décodeur qu'on n'a jamais
+interrogé hors de ses données ne dit pas ce qu'il fait sur les autres.* Les deux paniques ont
+été trouvées à la PREMIÈRE exécution du fuzz — pas au bout d'une campagne — et la
+non-reproductibilité de l'artefact n'est apparue qu'en le construisant deux fois de suite, ce
+que personne n'avait fait en quatre mois. Les filets ne servent pas seulement à retenir les
+régressions futures : en les posant, on découvre ce que le code faisait déjà.
+
+**Découvertes consignées, AUCUNE traitée** (D1-D5 du plan de finalisation ; modifier la logique
+du décodeur est hors périmètre — verrouiller précède modifier) :
+- **D1, la plus sérieuse** : `decodeFireEvent` panique sur un payload de moins de 14 octets
+  (`readBitsAt` indexe sans borner). Le chemin est ATTEIGNABLE EN PRODUCTION — `ScanFilmFireEvents`
+  n'exige que `Size >= 1`, et un paquet delta tronqué dont le premier octet vaut `0xD2` suffit à
+  faire tomber le décodage d'un film entier.
+- **D2** : la tolérance de `PeekBits` est à sens unique — 0 au-delà de la fin, panique avant le
+  début — alors que sa documentation promet de ne jamais paniquer sur un payload tronqué.
+- **D3** : **l'artefact de rejeu n'est pas reproductible à l'octet.** Traces, tirs, inventaire et
+  couverture sont stables d'une construction à l'autre ; les projectiles sont permutés (map +
+  `sort.Slice` instable), et cet ordre se propage au choix de la naissance la plus proche d'un
+  lancer, donc à 1 position de grenade sur 130. Le gate du §5 porte sur des COMPTES, tous
+  stables — mais l'idée qu'on pourrait comparer deux artefacts par leur empreinte est fausse.
+- **D4** : huit familles d'effet de tir, mais SEPT géométries — `plain` et `ballistic` émettent
+  les mêmes primitives, seul le poids du trait les sépare. Le rendu « neutre » d'une arme hors
+  catalogue est donc un balistique aminci, alors que le fichier promet qu'il « n'affirme aucune
+  famille ».
+- **D5** : `js-yaml` est une dépendance fantôme d'`apps/web` (déclarée en `overrides`, importée
+  nulle part). La première version du test de contrat web s'y appuyait ; réécrite pour ne
+  dépendre que des types générés.
+
+**Prémisse corrigée** : l'item 2.6 disait « l'OpenAPI décrit 6 champs sur 22 ». Périmé — J1.2
+avait déjà aligné les trois contrats, arité des tuples comprise (`minItems` = `maxItems`).
+`openapi-gen -check` dit « à jour », `generate-types` ne produit aucune dérive. Ce qui manquait
+était le TEST : côté Go chaque type publié est confronté à son schéma dans les deux sens, côté
+web la complétude de la frontière est prouvée par le COMPILATEUR — et falsifiée (en simulant un
+champ qui lui échappe, `tsc -b` refuse de compiler en nommant la ligne).
+
+**Conclusion / prochaine étape** : J3 (dette de lint, 70 issues). Les 33 `unused` de `filmdec`
+sont désormais protégés par des tests qui exercent réellement le format — c'était toute la
+raison de faire J2 avant J3.
+
 ## [2026-07-31] J1 — CI de branche verte : trois signaux rouges, deux causes réelles
 
 **Statut** : Complété (J1.1 à J1.4 statués ; gate atteint).
