@@ -1,3 +1,60 @@
+## [2026-07-31] J1 — CI de branche verte : trois signaux rouges, deux causes réelles
+
+**Statut** : Complété (J1.1 à J1.4 statués ; gate atteint).
+
+**Décision technique** : diagnostiquer chaque signal par sa PIÈCE avant d'y toucher — le
+JSONL du run pour la suite Go, le scan rejoué avec le binaire épinglé pour gitleaks, le
+compilateur pour le shim C++. Les trois signaux tenaient en fait à deux causes, et les deux
+étaient masquées par un outil qui s'arrête au premier obstacle.
+
+**Résultats observés** :
+- **J1.1 gitleaks** : un seul finding, un gamertag (`API : HizaroMne4262 16 ; ...`) lu comme
+  une clé dans le journal RE. Exception ciblée posée sur la VALEUR, pas sur l'empreinte : un
+  numéro de ligne dans un journal qui grossit ne survit pas à la modification suivante — c'est
+  précisément ce qui avait invalidé les exceptions antérieures. Contrairement à ce que le plan
+  supposait, le scan ne s'arrête pas au premier lot : 130,92 Mo scannés, 1 finding, et les
+  documents commités en J0 n'en lèvent aucun autre.
+- **J1.2 typecheck web** : 31 erreurs (pas 26) et DEUX causes. La nullabilité des tableaux du
+  contrat, traitée par une frontière unique (`replayNormalize.ts`, appelée dans la queryFn) :
+  après elle, aucun tableau du document n'est null et le dossier ne manipule que des types
+  `*Ready`. Et une seconde, non prévue : JSON Schema ne sait pas dire un tuple de longueur
+  fixe, donc `Poly [][2]float32` et `P [][3]float32` arrivent en `number[]` — l'arité est
+  rétablie au même endroit. **Bug réel trouvé au passage** : l'interface écrite à la main
+  appelait `weapon` le champ que le serveur nomme `w`, donc la famille d'arme des tirs était
+  TOUJOURS indéfinie et tous les tirs se dessinaient de la même forme.
+- **J1.3 suite Go Linux** : la piste du plan (chemin sensible à la casse après le rangement
+  `.ai/` → `V7.5/`) était fausse. Le JSONL le dit sans ambiguïté : 2 052 lignes, **0 test**.
+  La suite ne tournait pas, elle ne compilait pas — `internal/ooz/ooz_compat.h` n'incluait que
+  `<intrin.h>` (MSVC/mingw), absent sous gcc Linux ; tous les paquets tombaient en
+  `[build failed]`, d'où les 8 786 tests baseline déclarés « absents ». Le shim est devenu
+  portable : branche Windows inchangée, ailleurs `x86intrin.h` plus les builtins GNU, et
+  `_BitScanReverse/Forward` réécrits avec le contrat MSVC exact (rendre 0 en laissant `*index`
+  intact quand le masque est nul, là où les builtins GNU sont indéfinis).
+- **J1.4 ratchet lint** : vérifié, non traité — et c'est là que la parenté apparaît. Le job
+  n'était pas rouge de dette : il ne rapportait **qu'une** issue, le `typecheck` du même
+  `intrin.h`, qui interrompait golangci avant tout le reste. Une fois la compilation réparée,
+  la dette réelle se voit : **70 issues** (unused 33, unconvert 11, unparam 7, revive 6,
+  staticcheck 4, goconst 3, gocyclo 2, prealloc 2, errcheck 1, ineffassign 1), dans
+  `analysis/filmdec` et `analysis/objectiveevents`.
+- **Non-régression du décodeur** (gate §5 de `PLAN_RECONCILIATION_BRANCHES`) : les 3 artefacts
+  reconstruits sont conformes à l'unité près — `000d5950` 99 traces / 29 221 points, 475/519
+  tirs, 90/105 vies nommées, 70 lancers, 439 projectiles, 184 états sur 24 images-clés, 10 223
+  emprises ; `01e1f945` 1 862/2 154 ; `64e8adfa` 2 312/2 879.
+- **Gate CI** : gitleaks, Deploy Pre-Check, Frontend, Go Build+Test (ubuntu ET windows), Go
+  Coverage + Baseline, Contract Test, Lease Enforcement, OpenAPI Lint — tous verts. Seul
+  `Go Lint (golangci-lint)` reste rouge, assumé jusqu'à J3.
+
+**Conclusion / prochaine étape** : J1 clos. Deux découvertes changent la suite. J3 doit être
+dimensionné sur 70 issues et non ~40 ; et **J2 (verrouiller le décodeur) reste bien avant J3**,
+car 33 des 70 sont des `unused` sur des lecteurs de composants qu'un nettoyage mécanique
+supprimerait alors qu'ils documentent le format binaire. Deux dettes d'hygiène ont aussi été
+mises au jour : le ratchet knip dépassait son plafond depuis le portage du rejeu 2D sans que
+personne le voie (le hook pre-push ne se déclenche que sur `apps/web/**`), et
+`routeTree.gen.ts` est régénéré par toute commande vite/vitest, ce qui fabrique un faux diff
+récurrent.
+
+---
+
 ## [2026-07-31] J0 — captures avant changement de PC : exécuté, gate passé sauf les power-ups
 
 **Statut** : Complété (J0.1, J0.3, J0.4, J0.6 · J0.2 partiel · J0.5 sans relevé).
