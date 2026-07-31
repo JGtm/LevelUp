@@ -222,7 +222,7 @@ nus. C'est ce modèle qu'on reprend.
 > **LOT 2 CLOS le 2026-07-31 (jalon J2).** Les six items sont statués ci-dessous. Gate 2
 > atteint : `go test ./internal/analysis/replay/... ./internal/analysis/filmdec/...` vert, et
 > tout chiffre du chantier qui bouge fait tomber un test NOMMÉ. Commits : `5e37f4c79` (2.1+2.2),
-> `d1870b3a7` (2.3), `a05d7d448` (2.4), `96bc56175` (2.5), `9dbcb1e5f` (2.6).
+> `d1870b3a7` (2.3), `a05d7d448` (2.4), `96bc56175` (2.5), `eb0f12d23` (2.6).
 > Couverture Go du paquet `replay` : **58,5 % → 79,2 %**.
 
 ### 2.1 Le golden le plus rentable : les entrées décodées
