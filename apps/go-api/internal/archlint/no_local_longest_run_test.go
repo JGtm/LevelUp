@@ -47,14 +47,13 @@ var longestRunAllowed = map[string]bool{
 // déclenchaient déjà ce ratchet sur `feat/killsource-prod` AVANT toute réconciliation.
 // L'exemption règle donc une dette antérieure, elle n'en crée pas.
 //
-// RETRAIT : quand l'outillage de recherche `cmd/tmp_*` / `cmd/wf_*` sera supprimé
-// (il n'a de valeur que le temps du reverse-engineering) et que `filmdec` aura sa
-// propre primitive de plage de bits.
+// RETRAIT : quand `filmdec` aura sa propre primitive de plage de bits. Le volet
+// `cmd/tmp_*` / `cmd/wf_*` de cette exemption est RETIRÉ le 2026-08-01 (lot A du
+// plan de dette avant merge) : l'outillage de recherche est supprimé, l'exemption
+// par préfixe n'a plus de cible.
 var longestRunAllowedPrefixes = []string{
 	"internal/analysis/filmdec/frame_debug.go",
 	"internal/analysis/filmdec/frame_records.go",
-	"cmd/tmp_",
-	"cmd/wf_",
 }
 
 // longestRunExempt dit si le chemin relatif est couvert par une exemption datée.

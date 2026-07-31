@@ -74,18 +74,29 @@ dette ici la traite **pour les deux lignées à la fois**. Il n'y a pas deux cha
 
 ### Lot A — archiver l'outillage de recherche  *(retire ~8 issues, et beaucoup de bruit)*
 
-- [ ] A1. Trancher ce qui est **jetable** et ce qui a une valeur durable. Critère : un binaire
+- [x] A1. Trancher ce qui est **jetable** et ce qui a une valeur durable. Critère : un binaire
       qui ne sert qu'à établir une grammaire déjà portée dans `filmdec` est jetable ; un
       binaire qui **produit un artefact versionné** (`cmd/mapobj-build`, `cmd/mapstruct-build`,
       `cmd/mapquant-build`, `cmd/replay-build`) reste.
-- [ ] A2. Supprimer les jetables — `git` garde l'historique, on ne « range » pas dans un dossier
+      *FAIT 2026-08-01 : les 405 répertoires `cmd/tmp_*` + `cmd/tmpdbq` + `cmd/wf_*` sont
+      jetables — vérifié qu'aucun n'écrit dans un chemin versionné (`data/titles/*/reference/`,
+      `config/`) ; ils LISENT des DB ou des chunks. Les quatre `*-build` restent.*
+- [x] A2. Supprimer les jetables — `git` garde l'historique, on ne « range » pas dans un dossier
       `archive/` (règle 7 : pas de musée de code mort).
-- [ ] A3. Retirer du même coup les entrées d'allowlist devenues sans objet :
+      *FAIT : 462 fichiers, 405 répertoires. Ils étaient SUIVIS par git malgré la règle
+      `.gitignore` `apps/go-api/cmd/tmp_*/` (le `.gitignore` n'agit que sur l'inconnu) —
+      l'historique les garde donc réellement, la suppression est réversible.*
+- [x] A3. Retirer du même coup les entrées d'allowlist devenues sans objet :
       `halowaypointAllowlist["cmd/tmp_filmmanifest/main.go"]`, les préfixes `cmd/tmp_` et
       `cmd/wf_` de `longestRunAllowedPrefixes`. **Une allowlist dont la cible a disparu est un
       trou latent** — le self-check `TestHalowaypointAllowlistEntriesPointToExistingFiles` le
       dit déjà pour son propre ratchet.
-- [ ] A4. Re-mesurer (§1). Gate : `go build ./...` + `go test ./...` verts.
+      *FAIT : les trois entrées retirées, commentaires de retrait datés du 2026-08-01. Les deux
+      préfixes `internal/analysis/filmdec/*` restent : leur condition de retrait (une primitive
+      de plage de bits propre à `filmdec`) n'est pas remplie.*
+- [x] A4. Re-mesurer (§1). Gate : `go build ./...` + `go test ./...` verts.
+      *FAIT : `go build ./...` OK, `go test ./...` vert (0 échec), `internal/archlint` vert.
+      **Mesure : 70 → 62** — exactement les 8 `unconvert` de l'outillage jetable.*
 
 ### Lot B — la passe mécanique  *(~19 issues, zéro risque pour les mesures)*
 
@@ -190,4 +201,36 @@ vite qu'on la solde :
 
 ## 5. JOURNAL D'EXÉCUTION
 
-_(rien — plan écrit, pas encore exécuté)_
+### 2026-08-01 — session J3-1 : lots A et B (mécanique) + hygiène J3.1/J3.2/J3.6
+
+**Mesure d'entrée (§1, cache golangci purgé d'abord — J3.1 `[x]`)** : **70 issues**,
+8 dans `cmd/tmp_*`/`cmd/wf_*`, 62 dans `internal/`. Conforme à la référence d'après J1.3.
+Répartition : `unused` 33 · `unconvert` 11 · `unparam` 7 · `revive` 6 · `staticcheck` 4 ·
+`goconst` 3 · `prealloc` 2 · `gocyclo` 2 · `ineffassign` 1 · `errcheck` 1.
+
+**Gate à blanc AVANT toute modification** (pour que le filet ait une valeur de référence
+mesurée dans cette session, pas recopiée) : les 3 artefacts reconstruits, tous les chiffres du
+§5 de `PLAN_RECONCILIATION_BRANCHES.md` conformes à l'unité près —
+`000d5950` 99/29 221 · 475/519 · 90/105 · 70/70 · 439 projectiles · 184 états d'inventaire sur
+24 images-clés · 10 223 emprises ; `01e1f945` 1 862/2 154 ; `64e8adfa` 2 312/2 879.
+Les états d'inventaire ne sont PAS journalisés par `replay-build` : ils se relèvent sur
+l'artefact (`jq '.inventory|length'` et `[.inventory[].t]|unique|length`).
+
+**Lot A** : `[x]` A1-A4. 462 fichiers / 405 répertoires supprimés, 3 entrées d'allowlist
+retirées. **70 → 62.**
+
+**J3.2** `[x]` — jeu d'images de grenades orphelin supprimé : 8 PNG en casse majuscule
+(`Dynamo`/`Frag`/`Plasma`/`Spike` × `-light`/`-dark`), lignée `killsource`. Vérifié sur pièces
+que `static/grenades-assets/halo_infinite/index.json` ne désigne QUE le jeu minuscule
+(`dynamo_light.png`…) et qu'aucun `.ts`/`.tsx`/`.go` ne les référence.
+
+**J3.6** `[!]` **NON TRAITÉ — la prémisse du plan est fausse, action refusée.**
+`js-yaml` en `overrides` d'`apps/web` n'est pas une dépendance fantôme : c'est un **correctif
+de sécurité** posé le 2026-06-22 (commit `54a6eb3df`) pour **CVE-2026-53550 /
+GHSA-h67p-54hq-rp68** (DoS par complexité quadratique, js-yaml ≤ 4.1.1). `@redocly/openapi-core`
+(dép. transitive dev via `openapi-typescript`) l'épingle en **exact `4.1.1`** ; l'`overrides`
+est le seul levier qui hisse le lockfile à `4.3.0`. **Le retirer réintroduirait la
+vulnérabilité** et rouvrirait l'alerte Dependabot #3. La découverte J2-D5 disait seulement que
+le test `replayContract.test.ts` ne devait pas *s'appuyer* sur un paquet installé par un
+tiers — ce qui est vrai, et déjà appliqué. À trancher par le superviseur ; ne rien faire est
+la bonne action par défaut.
