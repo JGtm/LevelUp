@@ -24,7 +24,9 @@
  * La partie PURE (construction de la trame) vit ici sans canvas, donc elle se teste. Le rendu
  * n'en est que la mise en couleur.
  */
-import type { ReplayBounds, ReplaySurface } from '@/lib/api/types'
+import type { ReplayBounds } from '@/lib/api/types'
+
+import type { ReplaySurfaceReady } from './replayNormalize'
 
 /** Côté d'une cellule de la trame, en mètres. */
 export const FLOOR_CELL_M = 0.25
@@ -83,7 +85,7 @@ export interface FloorGrid {
  * ±250 m (skybox, décor lointain) quand la zone parcourue en fait 50 : rasteriser la seconde
  * sur la première donnerait une trame 25 fois trop grande pour peindre les mêmes pixels.
  */
-export function buildFloorGrid(surfaces: ReplaySurface[], bounds: ReplayBounds): FloorGrid {
+export function buildFloorGrid(surfaces: ReplaySurfaceReady[], bounds: ReplayBounds): FloorGrid {
   const cell = FLOOR_CELL_M
   const nx = Math.ceil((bounds.maxX - bounds.minX) / cell) + 1
   const ny = Math.ceil((bounds.maxY - bounds.minY) / cell) + 1
@@ -119,7 +121,7 @@ interface GridFrame {
  * (0 sur 10 223 pour `ridgeline`) — le code la traite quand même, sans quoi le jour où
  * `mapstruct-build` en produira, la trame les ignorerait en silence.
  */
-function rasterize(s: ReplaySurface, topZ: Float32Array, g: GridFrame): void {
+function rasterize(s: ReplaySurfaceReady, topZ: Float32Array, g: GridFrame): void {
   const poly = s.poly && s.poly.length > 2 ? s.poly : null
   const box = poly ? polyBox(poly) : { x0: s.x0, y0: s.y0, x1: s.x1, y1: s.y1 }
   const cx0 = cellIndex(box.x0, g.minX, g.nx, g.cell)

@@ -16,7 +16,7 @@
  * Aucun littéral de couleur : les teintes de trace arrivent résolues depuis les tokens, les
  * encres de lisibilité depuis le thème (cf. canvasInk.ts).
  */
-import type { ReplayProjectile, ReplayTrack } from '@/lib/api/types'
+import type { ReplayProjectileReady, ReplayTrackReady } from './replayNormalize'
 
 import {
   altitudeAt,
@@ -131,7 +131,7 @@ const OFF_FLOOR_ALPHA = 0.12
  */
 export function drawTracksLayer(
   ctx: CanvasRenderingContext2D,
-  tracks: ReplayTrack[],
+  tracks: ReplayTrackReady[],
   view: CanvasView,
   style: MarkerStyle,
 ): void {
@@ -155,7 +155,7 @@ export function drawTracksLayer(
  */
 function drawDeathMark(
   ctx: CanvasRenderingContext2D,
-  track: ReplayTrack,
+  track: ReplayTrackReady,
   view: CanvasView,
   style: MarkerStyle,
   color: string,
@@ -182,7 +182,7 @@ function drawDeathMark(
 /** drawLivingTrack : traînée, cône, apparition, marqueur d'étage, bouclier. */
 function drawLivingTrack(
   ctx: CanvasRenderingContext2D,
-  track: ReplayTrack,
+  track: ReplayTrackReady,
   view: CanvasView,
   style: MarkerStyle,
   color: string,
@@ -202,7 +202,7 @@ function drawLivingTrack(
 
 function drawTrail(
   ctx: CanvasRenderingContext2D,
-  track: ReplayTrack,
+  track: ReplayTrackReady,
   view: CanvasView,
   style: MarkerStyle,
   color: string,
@@ -233,7 +233,7 @@ function drawTrail(
  */
 function drawAimCone(
   ctx: CanvasRenderingContext2D,
-  track: ReplayTrack,
+  track: ReplayTrackReady,
   c: XY,
   style: MarkerStyle,
   color: string,
@@ -286,7 +286,7 @@ function strokeAxis(
 /** drawSpawnRing : l'anneau qui s'ouvre au premier instant de la vie. */
 function drawSpawnRing(
   ctx: CanvasRenderingContext2D,
-  track: ReplayTrack,
+  track: ReplayTrackReady,
   c: XY,
   style: MarkerStyle,
   color: string,
@@ -361,7 +361,7 @@ function drawMarker(
  */
 function drawShieldBar(
   ctx: CanvasRenderingContext2D,
-  track: ReplayTrack,
+  track: ReplayTrackReady,
   c: XY,
   style: MarkerStyle,
   color: string,
@@ -405,7 +405,7 @@ function drawShieldBar(
  */
 export function drawProjectilesLayer(
   ctx: CanvasRenderingContext2D,
-  projectiles: ReplayProjectile[],
+  projectiles: ReplayProjectileReady[],
   view: CanvasView,
   frame: number,
   color: string,
@@ -438,13 +438,13 @@ function project(p: XY, view: CanvasView): XY {
   return worldToCanvas(p, view.bounds, view.width, view.height, view.pad)
 }
 
-function floorIndex(track: ReplayTrack, style: MarkerStyle): number {
+function floorIndex(track: ReplayTrackReady, style: MarkerStyle): number {
   const z = altitudeAt(track.points, style.frame)
   return z === null ? 0 : floorOf(z, style.z.min, style.z.max)
 }
 
 /** trackAlpha estompe les entités hors de la tranche d'altitude sélectionnée. */
-function trackAlpha(track: ReplayTrack, style: MarkerStyle): number {
+function trackAlpha(track: ReplayTrackReady, style: MarkerStyle): number {
   if (style.floor === null) return 1
   return floorIndex(track, style) === style.floor ? 1 : OFF_FLOOR_ALPHA
 }

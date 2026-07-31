@@ -14,14 +14,14 @@
  *
  * Tout ce fichier est PUR : aucun React, aucun canvas, donc testable.
  */
-import type {
-  MatchScoreboardRow,
-  ReplayDocument,
-  ReplayInventory,
-  ReplayTrack,
-} from '@/lib/api/types'
+import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import { heldReading, isAliveAt, trackWindow } from './replayLogic'
+import type {
+  ReplayDocumentReady,
+  ReplayInventoryReady,
+  ReplayTrackReady,
+} from './replayNormalize'
 
 /**
  * ReplayPlayer — un joueur du rejeu : son identité (base) et ses vies (film).
@@ -37,7 +37,7 @@ export interface ReplayPlayer {
   /** Gamertag écrit par le FILM. Sert quand la base n'a rien à dire sur ce joueur. */
   filmName?: string
   /** Toutes les vies de ce joueur, dans l'ordre du temps. */
-  lives: ReplayTrack[]
+  lives: ReplayTrackReady[]
   /** Index de la couleur de série attribuée à ce joueur (stable sur tout le rejeu). */
   colorIndex: number
 }
@@ -75,7 +75,7 @@ export interface ReplayTeamGroup {
  * suivre quelqu'un des yeux deviendrait impossible.
  */
 export function buildPlayers(
-  doc: ReplayDocument,
+  doc: ReplayDocumentReady,
   scoreboard: MatchScoreboardRow[],
 ): ReplayPlayer[] {
   const byXUID = new Map<string, ReplayPlayer>()
@@ -136,7 +136,7 @@ export function groupByTeam(players: ReplayPlayer[]): ReplayTeamGroup[] {
 export interface PlayerState {
   alive: boolean
   /** La vie en cours, quand il y en a une. */
-  life: ReplayTrack | null
+  life: ReplayTrackReady | null
   /** Bouclier lu, avec l'âge de la lecture ; null = aucune mesure fraîche. */
   shield: { value: number; age: number } | null
   /** Nombre d'images écoulées depuis la fin de la dernière vie (mort) ; -1 s'il est en vie. */
@@ -175,7 +175,7 @@ export function playerStateAt(
   }
   // Mort : la dernière vie CLOSE avant cette image date la mort ; la suivante, si elle existe,
   // date le retour.
-  let last: ReplayTrack | null = null
+  let last: ReplayTrackReady | null = null
   let next = -1
   for (const l of player.lives) {
     const w = trackWindow(l)
@@ -212,7 +212,7 @@ export interface LoadoutReading {
  * un slot est réattribué à chaque réapparition. C'est aussi ce qui rend le report SÛR — une
  * dotation ne peut pas franchir une mort, puisqu'elle ne survit pas à son porteur.
  */
-export function loadoutAt(doc: ReplayDocument, slot: number, frame: number): LoadoutReading | null {
+export function loadoutAt(doc: ReplayDocumentReady, slot: number, frame: number): LoadoutReading | null {
   let best: LoadoutReading | null = null
   for (const l of doc.loadouts ?? []) {
     if (l.slot !== slot || l.t > frame) continue
@@ -224,7 +224,7 @@ export function loadoutAt(doc: ReplayDocument, slot: number, frame: number): Loa
 
 /** InventoryReading — l'inventaire d'un slot et l'ÂGE de cette lecture, en frames. */
 export interface InventoryReading {
-  state: ReplayInventory
+  state: ReplayInventoryReady
   age: number
 }
 
@@ -236,7 +236,7 @@ export interface InventoryReading {
  * mort. Chercher par joueur ferait survivre un inventaire à son porteur.
  */
 export function inventoryAt(
-  doc: ReplayDocument,
+  doc: ReplayDocumentReady,
   slot: number,
   frame: number,
 ): InventoryReading | null {
@@ -257,7 +257,7 @@ export function inventoryAt(
  * trois à zéro noierait celui qui compte.
  */
 export function grenadesCarried(
-  state: ReplayInventory,
+  state: ReplayInventoryReady,
   labels: string[] | undefined,
 ): { rank: number; name: string; count: number }[] {
   if (!state.g) return []
@@ -277,7 +277,7 @@ export function grenadesCarried(
  * on rend null, et l'écran n'en désigne aucun. Deviner ici reviendrait à afficher une certitude
  * qu'on n'a pas.
  */
-export function selectedGrenadeRank(state: ReplayInventory): number | null {
+export function selectedGrenadeRank(state: ReplayInventoryReady): number | null {
   const carried = (state.g ?? []).map((c, r) => ({ c, r })).filter((x) => x.c > 0)
   return carried.length === 1 ? carried[0].r : null
 }

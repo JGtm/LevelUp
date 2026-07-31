@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import type { MatchScoreboardRow, ReplayDocument, ReplayTrack } from '@/lib/api/types'
+import type { MatchScoreboardRow, ReplayDocument } from '@/lib/api/types'
 
+import {
+  normalizeReplayDocument,
+  type ReplayDocumentReady,
+  type ReplayInventoryReady,
+  type ReplayTrackReady,
+} from './replayNormalize'
 import {
   buildPlayers,
   grenadesCarried,
@@ -13,7 +19,12 @@ import {
   selectedGrenadeRank,
 } from './rosterLogic'
 
-function track(slot: number, xuid: string | undefined, start: number, end: number): ReplayTrack {
+function track(
+  slot: number,
+  xuid: string | undefined,
+  start: number,
+  end: number,
+): ReplayTrackReady {
   return {
     slot,
     team: -1,
@@ -53,8 +64,10 @@ function row(xuid: string, gamertag: string, side: string | null): MatchScoreboa
   }
 }
 
-function doc(over: Partial<ReplayDocument> = {}): ReplayDocument {
-  return {
+// Comme en production, le document de test passe par la frontière : ce qu'on décrit ici est
+// le document de transport, ce que les fonctions reçoivent est sa forme normalisée.
+function doc(over: Partial<ReplayDocument> = {}): ReplayDocumentReady {
+  return normalizeReplayDocument({
     schemaVersion: 1,
     matchId: 'm',
     titleSlug: 'halo_infinite',
@@ -62,7 +75,12 @@ function doc(over: Partial<ReplayDocument> = {}): ReplayDocument {
     bounds: { minX: 0, minY: 0, maxX: 10, maxY: 10 },
     tracks: [],
     ...over,
-  }
+  })
+}
+
+/** Un inventaire tel que la frontière le livre : ce qui n'a pas été lu y est un tableau vide. */
+function inv(over: Partial<ReplayInventoryReady> = {}): ReplayInventoryReady {
+  return { t: 0, slot: 1, g: [], am: [], ...over }
 }
 
 describe('buildPlayers', () => {
@@ -235,31 +253,31 @@ describe('grenadesCarried', () => {
   it('n’affiche que les types réellement portés', () => {
     // Le tableau publié est complet : un zéro y dit « ce type, aucune en réserve ». Montrer
     // quatre types dont trois à zéro noierait celui qui compte.
-    const got = grenadesCarried({ t: 0, slot: 1, g: [0, 2, 0, 0] }, labels)
+    const got = grenadesCarried(inv({ g: [0, 2, 0, 0] }), labels)
     expect(got).toEqual([{ rank: 1, name: 'Plasma', count: 2 }])
   })
 
   it('sans compteurs lus, ne rend rien — jamais quatre types à zéro', () => {
-    expect(grenadesCarried({ t: 0, slot: 1 }, labels)).toEqual([])
+    expect(grenadesCarried(inv(), labels)).toEqual([])
   })
 
   it('sans table de noms, garde le rang plutôt qu’un nom inventé', () => {
-    expect(grenadesCarried({ t: 0, slot: 1, g: [3, 0, 0, 0] }, undefined)[0].name).toBe('rang 0')
+    expect(grenadesCarried(inv({ g: [3, 0, 0, 0] }), undefined)[0].name).toBe('rang 0')
   })
 })
 
 describe('selectedGrenadeRank', () => {
   it('désigne le type quand il ne peut pas être un autre', () => {
-    expect(selectedGrenadeRank({ t: 0, slot: 1, g: [0, 0, 2, 0] })).toBe(2)
+    expect(selectedGrenadeRank(inv({ g: [0, 0, 2, 0] }))).toBe(2)
   })
 
   it('ne désigne RIEN quand deux types sont portés', () => {
     // Le sélecteur de type n'est pas dans ce qu'on sait lire : deviner afficherait une
     // certitude qu'on n'a pas.
-    expect(selectedGrenadeRank({ t: 0, slot: 1, g: [1, 2, 0, 0] })).toBeNull()
+    expect(selectedGrenadeRank(inv({ g: [1, 2, 0, 0] }))).toBeNull()
   })
 
   it('ne désigne rien sans lecture', () => {
-    expect(selectedGrenadeRank({ t: 0, slot: 1 })).toBeNull()
+    expect(selectedGrenadeRank(inv())).toBeNull()
   })
 })

@@ -14,10 +14,11 @@
 import { useMemo } from 'react'
 
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
-import type { MatchScoreboardRow, ReplayDocument } from '@/lib/api/types'
+import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { frameToMs, freshness, msToFrames } from './replayLogic'
+import type { ReplayDocumentReady } from './replayNormalize'
 import {
   buildPlayers,
   grenadesCarried,
@@ -42,7 +43,7 @@ const READING_FULL_MS = 20_000
 const READING_FADE = 0.5
 
 interface ReplayTeamsProps {
-  doc: ReplayDocument
+  doc: ReplayDocumentReady
   scoreboard: MatchScoreboardRow[]
   frame: number
   locale: ReplayLocale
@@ -109,7 +110,7 @@ function teamColor(index: number): string {
 
 interface PlayerCardProps {
   player: ReplayPlayer
-  doc: ReplayDocument
+  doc: ReplayDocumentReady
   frame: number
   shieldHold: number
   readingFull: number
@@ -180,7 +181,7 @@ function InventoryRow({
   readingFull,
   locale,
 }: {
-  doc: ReplayDocument
+  doc: ReplayDocumentReady
   slot: number
   frame: number
   readingFull: number
@@ -241,7 +242,7 @@ function InventoryRow({
  * deux états différents.
  */
 function abilityText(
-  doc: ReplayDocument,
+  doc: ReplayDocumentReady,
   index: number | undefined,
   unknownLabel: string,
 ): { text: string; known: boolean } | null {
@@ -385,7 +386,7 @@ function RespawnRow({
   locale,
 }: {
   state: PlayerState
-  doc: ReplayDocument
+  doc: ReplayDocumentReady
   frame: number
   locale: ReplayLocale
 }) {
@@ -428,7 +429,7 @@ function WeaponsRow({
   readingFull,
   locale,
 }: {
-  doc: ReplayDocument
+  doc: ReplayDocumentReady
   state: PlayerState
   frame: number
   readingFull: number

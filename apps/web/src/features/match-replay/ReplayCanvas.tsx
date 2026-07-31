@@ -19,11 +19,11 @@ import { getSeriesColors } from '@/lib/accessibility/plotlyColorscale'
 import { resolveToken } from '@/lib/accessibility/resolveToken'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
-import type { ReplayDocument } from '@/lib/api/types'
 
 import { readInk } from './canvasInk'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { buildFloorGrid } from './mapFloor'
+import type { ReplayDocumentReady } from './replayNormalize'
 import {
   drawFloorLayer,
   drawGeometryLayer,
@@ -88,7 +88,7 @@ const MIN_FLOOR_SPAN = 1
 const FRAME_PUBLISH_MS = 150
 
 interface ReplayCanvasProps {
-  doc: ReplayDocument
+  doc: ReplayDocumentReady
   locale: ReplayLocale
   /** Appelé à cadence réduite avec l'image courante : sert aux panneaux hors canvas. */
   onFrameChange?: (frame: number) => void

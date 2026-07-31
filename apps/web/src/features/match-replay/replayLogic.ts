@@ -2,13 +2,9 @@
  * replayLogic.ts — logique PURE du rejeu 2D (interpolation, projection, lecture).
  * Sans React ni canvas → testable unitairement (anti-pattern « logique dans le composant »).
  */
-import type {
-  ReplayBounds,
-  ReplayDocument,
-  ReplayMapObject,
-  ReplayPoint,
-  ReplayTrack,
-} from '@/lib/api/types'
+import type { ReplayBounds, ReplayMapObject, ReplayPoint } from '@/lib/api/types'
+
+import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
 
 export interface XY {
   x: number
@@ -168,7 +164,7 @@ export function canvasScale(
  * SANS SOL, les props Forge redeviennent le seul fond, et ils débordent de la zone parcourue :
  * on cadre alors sur l'union, sinon ils seraient rognés.
  */
-export function sceneBounds(doc: ReplayDocument): ReplayBounds {
+export function sceneBounds(doc: ReplayDocumentReady): ReplayBounds {
   if (doc.structure?.length) return doc.bounds
   const g = doc.geometryBounds
   if (!g) return doc.bounds
@@ -187,19 +183,19 @@ export function sceneBounds(doc: ReplayDocument): ReplayBounds {
  * du match (frameIntervalMs = durée réelle d'une frame). Sans échelle temporelle dans
  * l'artefact, on retombe sur la cadence historique (axe = index de record).
  */
-export function framesPerSecond(doc: ReplayDocument): number {
+export function framesPerSecond(doc: ReplayDocumentReady): number {
   const interval = doc.frameIntervalMs ?? 0
   return interval > 0 ? 1000 / interval : FALLBACK_FPS
 }
 
 /** frameToMs convertit une frame en millisecondes écoulées depuis le début du rejeu. */
-export function frameToMs(frame: number, doc: ReplayDocument): number {
+export function frameToMs(frame: number, doc: ReplayDocumentReady): number {
   const interval = doc.frameIntervalMs ?? 0
   return interval > 0 ? frame * interval : (frame / FALLBACK_FPS) * 1000
 }
 
 /** msToFrames convertit une durée réelle (ms) en nombre de frames. */
-export function msToFrames(ms: number, doc: ReplayDocument): number {
+export function msToFrames(ms: number, doc: ReplayDocumentReady): number {
   const interval = doc.frameIntervalMs ?? 0
   return interval > 0 ? ms / interval : (ms / 1000) * FALLBACK_FPS
 }
@@ -215,7 +211,7 @@ export function formatClock(ms: number): string {
  * trackWindow borne la vie d'une track sur l'axe de temps. Les champs sont omitempty
  * côté artefact : startFrame absent = 0, endFrame absent = t du dernier point.
  */
-export function trackWindow(track: ReplayTrack): { start: number; end: number } {
+export function trackWindow(track: ReplayTrackReady): { start: number; end: number } {
   const last = track.points[track.points.length - 1]
   return {
     start: track.startFrame ?? 0,
@@ -224,7 +220,7 @@ export function trackWindow(track: ReplayTrack): { start: number; end: number } 
 }
 
 /** isAliveAt indique si la vie de la track couvre la frame (sinon : ne rien dessiner). */
-export function isAliveAt(track: ReplayTrack, frame: number): boolean {
+export function isAliveAt(track: ReplayTrackReady, frame: number): boolean {
   const w = trackWindow(track)
   return frame >= w.start && frame <= w.end
 }
