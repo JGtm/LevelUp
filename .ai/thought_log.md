@@ -1,3 +1,51 @@
+## [2026-08-01] J3-1 — la dette mécanique : 70 à 43, et un item du plan qu'il fallait refuser
+
+**Statut** : Complété (lots A et B de `PLAN_DETTE_AVANT_MERGE.md`, plus J3.1 et J3.2 du master
+plan ; J3.6 statué `[!]` — décision superviseur attendue).
+
+**Décision technique** : traiter la dette linter par linter et non fichier par fichier, et
+faire tomber le gate complet APRÈS CHAQUE LINTER plutôt qu'une fois à la fin. Le gate est celui
+que J2 a posé : reconstruire les trois artefacts de rejeu et vérifier les sept grandeurs du §5
+de `PLAN_RECONCILIATION_BRANCHES.md` à l'unité près, plus les goldens replay/filmdec/killsource.
+Il a été joué SIX fois, dont une à blanc AVANT toute modification — sans quoi le filet n'a pas
+de valeur de référence mesurée dans la session, seulement une valeur recopiée. C'est ce qui a
+permis de toucher sept signatures de décodeur (`unparam`) sans jamais rester dans le doute.
+
+**Résultats observés** :
+- **70 → 43.** Les sept linters mécaniques sont à zéro : `unconvert` 11→0, `unparam` 7→0,
+  `goconst` 3→0, `prealloc` 2→0, `revive` var-naming 3→0, `errcheck` 1→0, `ineffassign` 1→0.
+- Le lot A pesait 8 des 27 issues retirées : 405 répertoires d'outillage jetable
+  (`cmd/tmp_*`, `cmd/wf_*`, `cmd/tmpdbq`), 462 fichiers. Ils étaient **suivis par git malgré**
+  la règle `.gitignore` qui les vise — le `.gitignore` n'agit que sur l'inconnu. L'historique
+  les garde donc réellement, et la suppression est réversible.
+- Les trois entrées d'allowlist devenues sans objet sont parties dans le même commit
+  (`halowaypointAllowlist["cmd/tmp_filmmanifest/main.go"]`, préfixes `cmd/tmp_` et `cmd/wf_`
+  de `longestRunAllowedPrefixes`). Une allowlist dont la cible a disparu est un trou latent.
+- Les sept grandeurs des trois films n'ont pas bougé d'une unité, à aucun des six passages.
+- **`unused` monte de 33 à 34 sans qu'aucune fonction ait été ajoutée** : golangci ne rend
+  qu'une issue par position, et `consumeForgePlayerDataEditedObjectsIDs` en portait deux
+  (`revive` + `unused`) à `components_batch8.go:94:6`. Le nommage corrigé, l'`unused` sort de
+  l'ombre. Il était là avant. Le lot C compte donc 34 verdicts, pas 33.
+
+**Ce qui a été refusé, et pourquoi** : J3.6 demandait de retirer « la dépendance fantôme
+`js-yaml` » d'`apps/web`. Vérification sur pièces : c'est un correctif de sécurité, posé le
+2026-06-22 (`54a6eb3df`) pour **CVE-2026-53550 / GHSA-h67p-54hq-rp68**. `@redocly/openapi-core`
+épingle `js-yaml` en **exact 4.1.1**, la version vulnérable ; l'`overrides` est le seul levier
+qui hisse le lockfile à 4.3.0. Le retirer aurait réintroduit la faille et rouvert l'alerte
+Dependabot. La découverte d'origine (J2-D5) disait autre chose, et de juste : un test ne doit
+pas s'appuyer sur un paquet qu'un tiers installe — c'est déjà appliqué. Écarté aussi de la
+passe mécanique : les 3 `revive argument-limit`, qui demandent de regrouper des paramètres de
+décodage dans une structure. Ce n'est pas du nommage, c'est une modification de signature pour
+une raison de forme — session 2.
+
+**Piège de méthode** : `replay-build` ne journalise PAS les états d'inventaire. Les relever sur
+l'artefact (`jq '.inventory|length'` et `[.inventory[].t]|unique|length`), sinon une des sept
+grandeurs du §5 n'est simplement pas vérifiée.
+
+**Conclusion / prochaine étape** : J3-2 — lot C (34 `unused` de `filmdec`, le seul lot à
+jugement), lot D (`gocyclo` + `staticcheck`), plus J3.3/J3.4/J3.5 et les 3 `argument-limit`
+hérités. Le compteur cible reste 0 (lot F), à re-mesurer après un merge de `main` à jour.
+
 ## [2026-07-31] J2 — verrouiller le décodeur : deux étages, et ce que le filet a attrapé en tombant
 
 **Statut** : Complété (lot 2 de `PLAN_FINALISATION_REJEU_2D.md`, items 2.1 à 2.6 statués ; gate atteint).

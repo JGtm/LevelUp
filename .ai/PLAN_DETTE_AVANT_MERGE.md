@@ -102,13 +102,26 @@ dette ici la traite **pour les deux lignées à la fois**. Il n'y a pas deux cha
 
 `unconvert`, `goconst`, `revive` (nommage), `unparam`, `errcheck`, `ineffassign`, `prealloc`.
 
-- [ ] B1. Traiter linter par linter, pas fichier par fichier — c'est plus rapide et le diff se
+- [x] B1. Traiter linter par linter, pas fichier par fichier — c'est plus rapide et le diff se
       relit.
-- [ ] B2. **Gate non négociable après chaque linter traité** : reconstruire les trois artefacts
+      *FAIT 2026-08-01, dans cet ordre : `unconvert` (3), `goconst` (3), `revive` var-naming (3),
+      `unparam` (7 + 1 en cascade), `errcheck` (1), `ineffassign` (1), `prealloc` (2).*
+      **`revive` `argument-limit` (3) NON TRAITÉ `[!]`** — ce n'est pas de la passe mécanique :
+      rentrer sous le plafond demande de regrouper des paramètres dans une structure, donc de
+      toucher des signatures de décodage pour une raison de forme. Renvoyé à la session 2.
+      Cibles : `kfBetterCand` (keyframe_world.go, 8), `fire_scanner_v3.go:120` (9),
+      `killsource/bijection.go:259` (9).
+- [x] B2. **Gate non négociable après chaque linter traité** : reconstruire les trois artefacts
       de rejeu et vérifier qu'ils sont **identiques** (tableau du §5 de
       `PLAN_RECONCILIATION_BRANCHES.md`), plus `go test ./internal/games/halo_infinite/film/killsource/...`.
       Un `unconvert` mal appliqué sur une largeur de bits change silencieusement un décodage.
-- [ ] B3. Re-mesurer (§1).
+      *FAIT : gate joué 5 fois (une par palier de linter, plus le gate à blanc d'entrée et le
+      gate final). Les 7 grandeurs des 3 films sont restées identiques à l'unité près à CHAQUE
+      passage. `go test ./...` vert en entrée et en sortie.*
+      **Note de méthode** : les états d'inventaire ne sont pas journalisés par `replay-build` ;
+      les relever sur l'artefact (`jq '.inventory|length'`) — sans quoi une des 7 grandeurs du
+      §5 n'est pas vérifiée du tout.
+- [x] B3. Re-mesurer (§1). **62 → 43.**
 
 ### Lot C — les `unused` de `filmdec`  *(14 au 2026-07-31 — le seul lot qui demande du jugement)*
 
@@ -234,3 +247,48 @@ vulnérabilité** et rouvrirait l'alerte Dependabot #3. La découverte J2-D5 dis
 le test `replayContract.test.ts` ne devait pas *s'appuyer* sur un paquet installé par un
 tiers — ce qui est vrai, et déjà appliqué. À trancher par le superviseur ; ne rien faire est
 la bonne action par défaut.
+
+**Lot B** : `[x]` B1-B3, **sauf `revive` `argument-limit` (3) en `[!]`** (renvoyé session 2,
+justification dans B1). Les 7 linters mécaniques du périmètre sont à **zéro** :
+`unconvert` 11→0 · `goconst` 3→0 · `revive` var-naming 3→0 · `unparam` 7→0 · `errcheck` 1→0 ·
+`ineffassign` 1→0 · `prealloc` 2→0. **62 → 43.**
+
+### MESURE DE SORTIE DE SESSION — 43 issues (contre 70 à l'entrée)
+
+| linter | avant | après | lot |
+|---|---:|---:|---|
+| `unused` | 33 | **34** | C — session 2 |
+| `unconvert` | 11 | 0 | B ✔ |
+| `unparam` | 7 | 0 | B ✔ |
+| `revive` | 6 | **3** | var-naming fait ; `argument-limit` → session 2 |
+| `staticcheck` | 4 | 4 | D — session 2 |
+| `goconst` | 3 | 0 | B ✔ |
+| `prealloc` | 2 | 0 | B ✔ |
+| `gocyclo` | 2 | 2 | D — session 2 |
+| `ineffassign` | 1 | 0 | B ✔ |
+| `errcheck` | 1 | 0 | B ✔ |
+| **total** | **70** | **43** | |
+
+**`unused` monte de 33 à 34, et ce n'est PAS une régression** : golangci ne rend qu'une issue
+par position. `consumeForgePlayerDataEditedObjectsIDs` portait à la fois un `revive`
+var-naming et un `unused` à `components_batch8.go:94:6` ; le var-naming corrigé, l'`unused`
+apparaît. Il était là avant. **Conséquence pour la session 2 : le lot C compte 34 verdicts,
+pas 33.**
+
+### DÉCOUVERTES DE CETTE SESSION — consignées, NON traitées
+
+1. **`consumeQuantVec3` et `consumeQuantVec3WithGate` sont des quasi-doublons**
+   (`components_movement.go`) : même grammaire FUN_14076e524, seule la porte `precHigh`
+   diffère. Hors périmètre de la passe mécanique — à instruire quand le lot C ouvrira
+   `filmdec`.
+2. **~30 fichiers de `internal/` citent un `cmd/tmp_*` supprimé** en commentaire de
+   PROVENANCE (« mesure : cmd/tmp_hdrtruth », « sweepé à l'oracle, cmd/tmp_reccheck »). Ces
+   citations restent VRAIES — elles nomment l'outil qui a établi le fait, et git le garde.
+   Décision prise : ne pas les réécrire (le diff serait énorme et perdrait la traçabilité de
+   la mesure). Deux exceptions à surveiller si elles gênent un jour : un « go run
+   ./cmd/tmp_tagname » en instruction d'exécution dans `damagetag.go`, et l'en-tête de
+   `keyframe_world.go` qui décrit `WalkKeyframeWorld` comme le portage de `tmp_kfworldpos`.
+3. **Les règles `.gitignore` `apps/go-api/cmd/tmp_*/` et `cmd/tmpdbq/` sont conservées** :
+   elles n'ont jamais empêché le suivi (les fichiers étaient tracés), et elles restent un
+   filet utile si une session de recherche recrée un binaire jetable. Ce n'est pas une
+   allowlist — pas de trou latent.
