@@ -1,3 +1,82 @@
+## [2026-07-31] J0 — captures avant changement de PC : exécuté, gate passé sauf les power-ups
+
+**Statut** : Complété (J0.1, J0.3, J0.4, J0.6 · J0.2 partiel · J0.5 sans relevé).
+
+**Décision technique** : une prémisse du plan est tombée — J0.4-J0.6 étaient classés
+« utilisateur seul » parce qu'on supposait l'agent incapable de piloter Cheat Engine. Le
+bridge MCP `cheatengine` le permet (lecture mémoire, `dofile` d'un script Lua, hook AOB,
+dump). L'agent a donc exécuté les trois captures ; le rôle humain s'est réduit à lancer le
+film et à tenir le relevé terrain. Deuxième décision : **ne rien publier d'une capture sans
+prouver de quel film elle vient** — d'où `cmd/tmp_sigalign`, qui cherche les signatures de
+16 octets de la capture dans les chunks, avec témoin négatif obligatoire.
+
+**Résultats observés** :
+- `deser_table.tsv` : **50 archétypes, 1068 composants**, double contrôle passé (archétype 35
+  = 64 composants ET `vtable[0x60]` = `0x140F44C38`). Les quatre trous comblés : objectifs 34,
+  zones 33, véhicules 48, dispositifs 41. Plus `archetype_vtables.tsv` (non prévu) : descripteur
+  et vtable des 50 archétypes en adresses Ghidra — lecture live pure, irreproductible hors ligne.
+- Deux captures continues, identité **prouvée** : `696a9d7c` (Strongholds/Vagabond) 1 205 704
+  records, 99,0 % contre 0,7 % et 0,5 % sur témoins ; `530820e5` (CTF:Arena/Catalyst) 988 752
+  records, 99,8 % contre 0,0 % et 1,0 %.
+- **Le résultat de fond** : `ti=11` (objectifs) est dispatché 162 fois en CTF et **zéro fois
+  sur 1,2 M de records de Strongholds**, alors que quatre événements de zone sont relevés à
+  l'œil. L'absence est propre au MODE. Recoupe `archive/V7/RESEARCH_THEATER_RE.md` §M/M-ter
+  (juin) : les événements `type_hint=10` vivent dans le chunk type-3, le score continu dans
+  TYPE_2. Ce document supposait la zone accessible via la machine d'état en replication —
+  **notre capture réfute cette piste**. Deux chaînes indépendantes, même conclusion.
+- `Vagabond = fo08_wetland` **prouvé par le `level_id`** (88891201 → 1 seule occurrence sur
+  88 modules, groupe `levl`), pas par le nom de fichier.
+- Film `696a9d7c` : 31 chunks dont l'en-tête (type 1) et le footer d'events (type 3) que
+  `fetch_film_chunks` n'aurait pas pris ; `killsource sante` NOMINAL, couverture 100 %.
+
+**Ce qui n'est pas fait, et pourquoi** :
+- **Power-ups par carte** `[!]` : indécidable hors ligne. Les chaînes du `.mvar` sont des
+  `"Prefab N"`, et `forge_object_types.csv` couvre 33/42 `type_id` de Catalyst mais 15/468 de
+  Vagabond (carte Forge) sans aucun groupe `eqip`. La seule voie restante est la palette Forge
+  (2,4 Go), **absente de la clé** — arbitrage utilisateur.
+- **Relevé terrain de J0.5 absent** : la capture CTF garde de la valeur (footer type-3 en cache,
+  détecteur `tiers==6`, stat `FlagCaptures`) mais surbouclier et camouflage restent sans oracle.
+
+**Conclusion / prochaine étape** : GATE J0 passé sauf le volet power-ups. Les objectifs se
+décoderont hors ligne à partir des images-clés et du footer d'events — déjà en cache, donc
+sans jeu ni Cheat Engine. Prochain jalon : **J1, CI de branche verte**. Découvertes consignées
+dans `HANDOFF_DUMPS_2026-07-31.md` (dont : `fetch_film_chunks` ignore les chunks type 1 et 3 ;
+deux films BTB ont expiré côté serveur, HTTP 404).
+
+---
+
+## [2026-07-31] Master plan du chantier film — ordonner les 14 plans/handoffs de la racine
+
+**Statut** : Complété (le plan ; aucun jalon exécuté).
+
+**Décision technique** : un document d'ordonnancement unique,
+`.ai/PLAN_MASTER_FILM_KILLFEED_REJEU.md`, au-dessus des sous-plans (qui gardent l'autorité
+sur leur contenu). Sept jalons séquentiels avant parallélisme : J0 captures avant changement
+de PC (seule étape à fenêtre de tir), J1 CI de branche verte, J2 verrouiller le décodeur par
+goldens (lot 2 finalisation promu AVANT toute retouche du décodeur), J3 dette lint A-D,
+J4 branchement killsource (ordre corrigé P1 → backfill P3 → bascule lecteurs P2, briques à
+RÉÉCRIRE) + rejeu atteignable, J5 merge vers main, J6 pistes parallèles courtes depuis main
+(décodeur exclusif / cartes / objectifs / icônes / précision projectiles / rejeu-en-prod).
+
+**Résultats observés** (vérifiés sur pièces, pas recopiés) :
+- CI de `feat/replay2d-prod` ROUGE, 4 signaux dont 3 planifiés nulle part : gitleaks
+  (empreinte invalidée par le déplacement `RE_LOG` vers `V7.5/`), typecheck web (~26 erreurs
+  match-replay — tableaux nullables du contrat généré, commit `2d8bcec8e`), suite Go Linux
+  (baseline « tests absents », Windows vert — à diagnostiquer), + ratchet golangci connu
+  (48, plan dette).
+- Les briques de branchement killsource (pont, 2 migrations, 2 persisters) sont ABSENTES de
+  la branche vivante — le tableau « CE QUI EXISTE DÉJÀ » du plan de branchement décrit
+  l'archive ; la décision du handoff (réécrire, ne pas porter) est confirmée par le disque.
+- Deux trous transverses identifiés : l'histoire prod du rejeu (production d'artefacts,
+  films expirants — recommandation : collecter les manifests au sync) et le chemin de
+  persistance non nommé de l'étape 1 d'OBJECTIFS (BatchBuilder/append-only à écrire avant
+  de coder).
+
+**Conclusion / prochaine étape** : J0 (handoff DUMPS) — d'abord J0.1 télécharger le film
+`696a9d7c` tant que réseau et tokens répondent, puis A1/A2 (power-ups par `.mvar`), et la
+soirée de captures utilisateur (table des désérialiseurs 15 min, match Catalyst à objectif
+avec relevé terrain). Décisions utilisateur en attente listées au §8 du master plan.
+
 ## [2026-07-31] Tri de `.ai/` — la recherche en V7.5, la racine réservée au chantier vivant
 
 **Statut** : Complété.
