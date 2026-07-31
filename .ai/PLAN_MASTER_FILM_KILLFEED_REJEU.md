@@ -250,7 +250,7 @@ rouges, mesurés ce soir sur `gh run list` :
 
 > **CLOS le 2026-07-31 (nuit)** — GATE J2 ATTEINT. Les six items du lot 2 statués `[x]`
 > (le 12e champ de 2.6 en `[~]`, renvoyé au lot 3.6). Commits : `5e37f4c79` (2.1+2.2),
-> `d1870b3a7` (2.3), `a05d7d448` (2.4), `96bc56175` (2.5), `9dbcb1e5f` (2.6).
+> `d1870b3a7` (2.3), `a05d7d448` (2.4), `96bc56175` (2.5), `eb0f12d23` (2.6).
 > Couverture du paquet `replay` : **58,5 % → 79,2 %**. Cinq découvertes consignées, aucune
 > traitée (D1 à D5 dans le plan de finalisation) — dont **une panique atteignable en
 > production** et **la non-reproductibilité de l'artefact à l'octet**.
