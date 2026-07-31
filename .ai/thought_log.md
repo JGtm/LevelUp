@@ -1,3 +1,49 @@
+## [2026-07-31] Portage du decodeur `killsource` sur une branche neuve depuis `main`
+
+**Statut** : Complete (branche `feat/killsource-prod`, creee depuis `origin/main` a
+`6c2b00402`). Objectif : sortir le decodeur de source de degat de la branche de
+reverse-engineering `feat/filmdec-killweapon` et le poser sur un socle a jour, sans y
+trainer les migrations, les persisters, le pont, ni les correctifs de scanner d armes
+(l utilisateur les reecrira contre le `main` du jour).
+
+**La premisse du lot etait fausse, et c est la seule chose interessante ici.** Le cadrage
+annoncait un risque de derive : « killsource importe `internal/analysis/filmdec`, et
+`internal/analysis` a recu 99 commits depuis la base commune ; les goldens sont le filet
+qui dira si le decodage a bouge ». Verification faite, `internal/analysis/filmdec`
+**n existe pas sur `main`** — zero fichier dans l arbre a `6c2b00402`, le paquet n a
+jamais quitte les branches `filmdec-*`. Le `git diff --stat` qui montrait « 48 fichiers,
+10462 suppressions » decrivait donc une absence, pas une divergence.
+
+**Decision : porter `filmdec` avec le reste**, bien qu il ne figure pas dans la liste des
+quatre repertoires a porter. Trois raisons, dans cet ordre : il est mecaniquement requis
+(sans lui rien ne compile) ; il est **auto-suffisant** (grep des imports : aucune
+dependance interne au module, uniquement la bibliotheque standard), donc c est une
+addition pure ; et main n ayant aucun fichier a ce chemin, la surface de conflit est
+nulle. Le porter est plus sur que de ne pas le porter.
+
+**La derive redoutee n existe pas.** La seule dependance de `killsource` a
+`internal/analysis` proprement dit tient en quatre symboles — `HighlightEvent`,
+`ParseHighlightEvents`, `EventTypeKill`, `EventTypeDeath` — tous portes par le seul
+fichier `highlight_event_parser.go`, et ce fichier est **identique octet pour octet**
+entre la branche source et `main` (diff vide). Les 99 commits ont porte ailleurs.
+
+**Resultats.** Aucune ligne adaptee : `diff -r` entre les repertoires source et cible est
+vide sur les trois arbres portes. `go build` passe du premier coup, `gofmt -l` ne
+remonte rien, `go vet` est propre. La suite complete avec fixtures (949 films sous
+`data/cache/film_chunks`) : **PASS en 508 s**, dont les cinq goldens
+(`TestGoldenFilms`, `TestGoldenPhrasesJustes`), les **30 ancres Theater verifiees tag par
+tag** (`TestGoldenAncresToutesPresentesAvecLeurTag`) et le controle negatif
+(`TestGoldenControleNegatif`). **Aucun golden regenere, aucun golden modifie.** Les
+quatre films de reference retrouvent leurs chiffres a l identique : couvertures 93/93,
+84/84, 99/99, 95/95, verdict de sante NOMINAL et zero DESACCORD sur les quatre.
+`damagetag` et `filmdec` passent aussi. Le CLI repond.
+
+**Conclusion.** Le portage est sain et le decodage n a pas bouge d un chiffre : le socle
+`main` ne lui fait rien. Prochaine etape, hors de ce lot : reecrire contre le `main` du
+jour ce qui a ete volontairement laisse de cote — pont `killsource_bridge.go`, migrations,
+persisters, et les correctifs de `weapon_scanner.go` / `backfill_weapons.go` (cf.
+`.ai/PLAN_BRANCHEMENT_KILLSOURCE.md`). Branche non poussee.
+
 ## [2026-07-27] Notifications : noms de palier affichés en anglais sous UI française
 
 **Statut** : Complété (branche `fix/notif-tier-locale`). Signalé par l'utilisateur : une

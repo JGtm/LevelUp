@@ -1,0 +1,518 @@
+package filmdec
+
+// Object-component (i0..i17) bit-consumers for the BIPED archetype (#35), plus
+// the held-weapon (weapon-state-type-info, i43..46) variant-name reader.
+//
+// Each consume<Name> mirrors the component's deserializer in HaloInfinite.exe.
+// The component loop FUN_14076cb60 gates every component by the presence mask
+// (FUN_1406d7610); when a component's mask bit is set, its deser (vtable+0x30)
+// is invoked with the BitReader as param_2. These functions consume EXACTLY the
+// bits that deser consumes, so the spine stays byte-aligned up to i43..46.
+//
+// Reader-primitive cross-reference (all MSB-first, big-endian accumulator):
+//   FUN_1406cf008          -> ReadBit()            (R(1))
+//   FUN_1406d6c7c(p,N)      -> ReadBits(N)          (R(N) refill path)
+//   FUN_1406d84b4(...,W,..) -> ReadBits(W)          (dequant float, width W)
+//   FUN_14080dec4          -> ReadBits(32)          ("variant-name" string-id)
+//   FUN_14080d6f0          -> ReadBits(32)          (R(32) value)
+//   FUN_14080d69c          -> ReadBit (+R(32) if 1) (optional-handle gate)
+//   FUN_1406d00ec          -> R(1); if 0 -> R(2)    (else 0xFFFFFFFF)
+//   FUN_1406d0f20          -> R(3)            (returns v-1)
+//   FUN_1406d1024          -> R(1); if 0 -> R(6)    (else 0xFFFFFFFF)
+//   FUN_140e9fadc          -> R(7)            (returns v-1)
+//   FUN_1407f2058          -> R(1); if 0 -> R(5)    (else 0xFFFFFFFF)
+//   FUN_1424e1d48          -> R(4)            (count)
+//   FUN_1407f08f8          -> R(8)
+//   FUN_1407f08bc          -> R(1); if 1 -> R(8)
+//   FUN_1407f1f24          -> (sub, see consumeWeaponStateTypeInfo notes)
+
+// deadStateMortOffset documents the byte offset (comp+0x70) where dead-state
+// writes the death flag; mirrored in the bool returned by consumeDeadState.
+const deadStateMortOffset = 0x70
+
+// consumeObjectPositionDynamicPrecision (i0) mirrors FUN_1406cfe44. This is the
+// most branch-heavy object component: a 2-bit leading selector chooses between a
+// full quantized-position block, a delta against the prediction, or a "keep"
+// path. The full bit-consume is genuinely data-dependent; this function follows
+// the path-to-position spine bit-for-bit for the common BIPED full-state shape.
+//
+// Layout of the two leading flags (bVar17, bVar18):
+//
+//	bVar17 = R(1)  -- "use prediction baseline" (high path)
+//	bVar18 = R(1)  -- "delta present"
+//
+// Case (bVar17==0, bVar18==0): absolute position via FUN_14076e524
+//
+//	-> R(1) gate; if 0: R(DAT_144632be0 = 0 -> no bits) index + vec3 deltas
+//	   (FUN_140cc5128: 3 axes, each R(perAxisW)). With the retail table the
+//	   index width is 0, so this reduces to R(1) + the 3 quantized axes.
+//
+// Case (bVar17==0, bVar18==1): predicted, reads one extra R(1) sign bit then a
+//
+//	dequant block (FUN_140f7ea14) or the FUN_14076f3ec/FUN_141f858f8 branch.
+//
+// Case (bVar17==1): "keep" — FUN_1406d676c (no value bits) then optionally the
+//
+//	bVar18 dequant tail.
+//
+// NOTE: because the vec3 axis widths come from a runtime precision descriptor
+// (not a compile-time constant) the *value* decode is data-dependent. The
+// function below consumes the confirmed control bits (2 leading + the per-branch
+// gate) and the position payload via readQuantizedPositionBlock, which must be
+// fed the archetype's per-axis widths. Treat i0 as the one component whose tail
+// alignment should be empirically re-validated against a real BIPED record.
+func consumeObjectPositionDynamicPrecision(br *BitReader, axisW [3]uint) {
+	bUsePred := br.ReadBit() // FUN_1406cfe44 first R(1)
+	bDelta := br.ReadBit()   // second R(1)
+
+	if !bUsePred {
+		if !bDelta {
+			// absolute path -> FUN_14076e524
+			if !br.ReadBit() { // gate R(1)
+				// index R(DAT_144632be0); retail DAT==0 -> zero bits.
+				// vec3 deltas: FUN_140cc5128, 3 axes x R(axisW[i]).
+				for i := 0; i < 3; i++ {
+					br.ReadBits(axisW[i])
+				}
+			}
+			return
+		}
+		// predicted-delta path: one sign R(1) then a dequant axis block.
+		br.ReadBit()
+		for i := 0; i < 3; i++ {
+			br.ReadBits(axisW[i])
+		}
+		return
+	}
+	// bUsePred == 1: "keep" baseline; FUN_1406d676c consumes no value bits.
+	if bDelta {
+		for i := 0; i < 3; i++ {
+			br.ReadBits(axisW[i])
+		}
+	}
+}
+
+// consumeObjectForwardAndUp (i2) mirrors FUN_14076e278 -> FUN_140c5f938 ->
+// FUN_140c5fa84 (the only reader; FUN_140c5f9c8 is pure dequant math, 0 bits).
+//
+//	R(1) gate (cVar5)
+//	if gate == 0: R(19)   (0x13: packed forward+up direction index)
+//	R(8)                  (always: trailing magnitude/roll word)
+func consumeObjectForwardAndUp(br *BitReader) {
+	gate := br.ReadBit() // FUN_140c5fa84 leading R(1)
+	if !gate {
+		br.ReadBits(19) // 0x13 packed direction
+	}
+	br.ReadBits(8) // trailing word (unconditional)
+}
+
+// consumeObjectBodyVitality (i4) mirrors FUN_140fb8978.
+//
+//	R(8)        (FUN_1406d84b4 width 8: quantized health -> comp+0x58)
+//	R(1) x 3    (FUN_1406cf008 x3: flags -> comp+0x5c/0x5d/0x5e)
+func consumeObjectBodyVitality(br *BitReader) {
+	br.ReadBits(8) // health (dequant width 8)
+	br.ReadBit()   // flag +0x5c
+	br.ReadBit()   // flag +0x5d
+	br.ReadBit()   // flag +0x5e
+}
+
+// consumeObjectShieldVitality (i5) mirrors the shield-vitality deser. The engine
+// reuses the vitality-component template (same shape as body-vitality, parameter-
+// ized by the target offset block), so the bit-consume is identical:
+//
+//	R(8)        (quantized shield value)
+//	R(1) x 3    (shield flags)
+//
+// INFERRED-BY-TEMPLATE: resolved structurally (object-shield-vitality-component
+// @ .rdata 0x143c99118 shares the vitality vtable family with body-vitality), not
+// by a direct decompile of the exact instance deser. Re-validate the trailing 3
+// flags against a real record if i5..i17 tail drifts.
+func consumeObjectShieldVitality(br *BitReader) {
+	br.ReadBits(8)    // shield value (+0x60)
+	if br.ReadBit() { // presence of regen/recharge pair (+0x6e)
+		if br.ReadBit() { // regen #0 (+0x6a): R(1) presence + R(12)
+			br.ReadBits(12)
+		}
+		if br.ReadBit() { // regen #1 (+0x6c)
+			br.ReadBits(12)
+		}
+	}
+	br.ReadBits(16) // inline 16-bit block (+0x64)
+	br.ReadBit()    // flag +0x66
+	br.ReadBit()    // flag +0x67
+	br.ReadBit()    // flag +0x69
+	br.ReadBit()    // flag +0x68
+}
+
+// consumeObjectDeadState (i11) mirrors FUN_140c1dce0. It returns the death flag
+// (mort, comp+0x70). The structure is:
+//
+//	mort = R(1)                              -> comp+0x70
+//	if typeIndex in {0x23, 0x28}:
+//	    FUN_140c1dd44 (deep dead-anim block, see consumeDeadStateAnimBlock)
+//	    if typeIndex == 0x23:
+//	        R(1)                             -> comp+0xc4
+//
+// CRITICAL: 0x23 == 35 == BIPED. So the PLAYER biped dead-state is NOT a bare
+// R(1) — it takes the full FUN_140c1dd44 sub-block PLUS the trailing R(1).
+// Use consumeObjectDeadStateBiped for archetype #35; consumeObjectDeadState
+// (R(1)-only) is correct ONLY for archetypes whose typeIndex is neither 0x23
+// nor 0x28.
+func consumeObjectDeadState(br *BitReader) (mort bool) {
+	return br.ReadBit() // comp+0x70 (non-0x23/0x28 archetypes)
+}
+
+// DeadState holds the captured fields of the BIPED dead-state heavy form
+// (FUN_140c1dd44), the kill-feed death event recorded on the victim's
+// object-dead-state component. These are THE candidate weapon/damage-source
+// fields established by the RE of the kill feed mechanism:
+//
+//	Mort   = comp+0x70  death flag (R(1) before the anim block).
+//	EnumA  = comp+0x04  R(5) tag-table enum (damage-type / method candidate).
+//	EnumB  = comp+0x08  R(5) tag-table enum (damage-type / method candidate).
+//	Val0c  = comp+0x0c  R(4) value.
+//	Val0e  = comp+0x0e  R(3) value.
+//	HasRef = the leading present bit of the +0x10 block was set.
+//	GIDPresent = the inner global-id present bit was set.
+//	GlobalID   = comp+0x10 source R(32) global-id (resolved via GetLocalHandleFromGlobalId,
+//	             table DAT_144b404f0) — SAME mechanism as the WST weapon handle.
+//	             This is the strongest WEAPON / damage-source candidate.
+//	Val14, Val18 = comp+0x14 (R(3)), comp+0x18 (R(1)+optR(6)) — only read when HasRef.
+//
+// The -1 / 0xFFFFFFFF sentinels mean "absent" (the engine writes them on the
+// not-present branches).
+type DeadState struct {
+	Mort       bool
+	EnumA      int32
+	EnumB      int32
+	Val0c      uint8
+	Val0e      uint8
+	HasRef     bool
+	GIDPresent bool
+	GlobalID   uint32 // raw R(32) global-id (0xFFFFFFFF if absent) — the weapon/source ref
+	Val14      uint8
+	Val18      int8
+	// SrcTag0 (comp+0x00) and SrcTag4c (comp+0x4c) are the two readOpt(1+32) reads at
+	// the HEAD and TAIL of FUN_140c1dd44, both via FUN_14080d69c. The 2026-07-10g
+	// Ghidra grammar analysis hypothesised these were the persisted damage SOURCE tag
+	// (melee/grenade cause) in the firearm family tag space. EMPIRICALLY REFUTED
+	// (2026-07-10, tmp_dmgsource on film 000d5950): 0/786 resolve to any weapon family
+	// — the values are RUNTIME entity/anim handles, because FUN_14080d69c reads a
+	// local-handle, NOT the build-time tag string-id (that is FUN_14080dec4, used for
+	// the firearm family and the WST held-weapon variant). Captured for future
+	// world-binding resolution (a handle CAN be resolved to a source entity/tag once
+	// the entity store is bound), NOT as a direct weapon name. 0xFFFFFFFF == absent.
+	SrcTag0  uint32 // comp+0x00 readOpt(1+32) head handle (FUN_14080d69c) — runtime handle, not a tag
+	SrcTag4c uint32 // comp+0x4c readOpt(1+32) tail handle (FUN_14080d69c) — runtime handle, not a tag
+}
+
+// consumeObjectDeadStateBiped is the typeIndex==0x23 (BIPED #35) form of
+// dead-state: the death flag, then the full anim sub-block, then comp+0xc4.
+// It returns the captured dead-state fields (the weapon-attribution payload).
+// deadStatePreSkip injects N extra bits consumed BEFORE the dead-state head, to
+// brute-force a CONSTANT cumulative upstream misalignment (calibration harness only; 0 in prod).
+var deadStatePreSkip int
+
+// SetDeadStatePreSkip sets the calibration pre-skip (negative = rewind via Skip).
+func SetDeadStatePreSkip(n int) { deadStatePreSkip = n }
+
+func consumeObjectDeadStateBiped(br *BitReader) DeadState {
+	return consumeObjectDeadStateBipedTI(br, 0x23)
+}
+
+// consumeObjectDeadStateBipedTI est la forme lourde parametree par le typeIndex :
+// FUN_140c1dce0 lit [R(1) Mort] puis, si typeIndex vaut 0x23 (35) OU 0x28 (40), le corps
+// FUN_140c1dd44 ; le R(1) de queue (comp+0xc4) n'est lu que si typeIndex == 0x23.
+func consumeObjectDeadStateBipedTI(br *BitReader, typeIndex uint32) DeadState {
+	ds := DeadState{GlobalID: 0xFFFFFFFF, EnumA: -1, EnumB: -1, Val14: 0, Val18: -1, SrcTag0: 0xFFFFFFFF, SrcTag4c: 0xFFFFFFFF}
+	if deadStatePreSkip != 0 {
+		br.Skip(deadStatePreSkip)
+	}
+	ds.Mort = br.ReadBit() // comp+0x70
+	if typeIndex != 0x23 && typeIndex != 0x28 {
+		return ds
+	}
+	consumeDeadStateAnimBlock(br, &ds)
+	if typeIndex == 0x23 {
+		br.ReadBit() // comp+0xc4 (0x23 only)
+	}
+	return ds
+}
+
+// consumeDeadStateAnimBlock mirrors FUN_140c1dd44 (the kill-feed death event /
+// dead-anim heavy form) bit-for-bit, capturing the weapon-attribution fields into
+// ds. Bit-consume sequence (each helper re-confirmed by decompile):
+//
+//	FUN_14080d69c   R(1); if 1 -> R(32)        (anim handle, comp+0x00)
+//	FUN_140c1e3f0   R(8)                       (comp+0x?? first byte)
+//	FUN_1407f2058   R(1); if 0 -> R(5)         enum A -> comp+0x04 (tag-table resolved)
+//	FUN_1407f2058   R(1); if 0 -> R(5)         enum B -> comp+0x08 (tag-table resolved)
+//	inline R(4)     (width = bitLen(10) = 4)   -> comp+0x0c
+//	inline R(3)                                -> comp+0x0e
+//	+0x10 REFERENCE block (the weapon/source global-id):
+//	    presentA = R(1).
+//	    if presentA == 0: comp+0x10 = -1, comp+0x18 = -1, comp+0x14 NOT read (skip).
+//	    if presentA == 1:
+//	        gidPresent = R(1); if 1 -> R(32) global-id -> GetLocalHandleFromGlobalId
+//	                     (DAT_144b404f0); else comp+0x10 = -1.
+//	        comp+0x14 = FUN_140c1e31c   R(3) (value-1)
+//	        comp+0x18 = FUN_1406d1024   R(1); if 0 -> R(6) (else -1)
+//	inline R(4)                                -> comp+0x38
+//	FUN_1407f1f24   R(4) (value-1)             -> comp+0x3c
+//	FUN_1407f1e4c   R(1); if 0 -> R(10)        -> comp+0x1e
+//	R(1) gate; if SET -> FUN_14076dc04 (quantized position vec, runtime width;
+//	    constant-dir / not-present path reads 0 further bits) -> comp+0x20..0x28
+//	if (comp+0x1c & 0x10): R(2) + FUN_140c1e9d4 (3-axis quantized dir) -> comp+0x2c
+//	    NB: comp+0x1c is a flag NOT written by this deser in the captured fields;
+//	    in retail dead-state records the orientation block is absent (0 bits).
+//	FUN_1424cd17c   R(5) dequant float ; FUN_1424cd150 R(5) dequant float
+//	    -> comp+0x40 / comp+0x44 (R3 RE 2026-06-07: both call FUN_1406d84b4 with
+//	    width=5 LITERAL and a 5-float DEQUANT bound table — DAT_143cd8454 / DAT_143cd84b8
+//	    are floats, e.g. -0.25f/16.0f. These are QUANTIZED scalars (angle/force), NOT
+//	    enums and NOT 0-bit. The old "0 bits" note was WRONG; they read 5+5=10 bits.)
+//	FUN_14080d69c   R(1); if 1 -> R(32)         -> comp+0x4c
+//
+// DATA-DEPENDENT residue: the position vec (FUN_14076dc04) reads a runtime-width
+// field when its gate is set; the orientation block (comp+0x1c&0x10 path) is gated
+// by a runtime flag NOT serialized here (absent in retail). The two FUN_1424cd1xx
+// scalars read 10 bits total. All this is AFTER the captured fields (+4,+8,+0xc,
+// +0xe,+0x10,+0x14,+0x18), which are bit-exact and precede the residue.
+//
+// R3 VERDICT (2026-06-07): comp+0x04/+0x08 (EnumA/EnumB) are NOT a death-type enum.
+// They are WORLD DATUM-HANDLES built from a 5-bit world index via
+// FUN_1407f2058 -> FUN_14049746c -> FUN_140e958c4 (the same player/unit-handle
+// packer FUN_140e958c4(idx)= (idx>>16<<15|idx&0xffff)*2|tls used by the WST held-weapon
+// resolver). They reference two world entities = VICTIM (+0x04) and KILLER (+0x08),
+// matching the live-CE capture. The record carries NO explicit DamageType
+// (Melee/Power/Shock/Hardlight/Plasma/Kinetic, enum @ FUN_14034f080: None=1,Kinetic=2,
+// Plasma=3,Hardlight=4,Shock=5,Power=6,Melee) and NO killbreakdown category
+// (weapon/grenade/melee/other). The damage class is resolved at REPLAY from the
+// DamageReport pipeline (param_3, FUN_1407e00ac), not stored per-kill in the film.
+func consumeDeadStateAnimBlock(br *BitReader, ds *DeadState) {
+	// anim handle (comp+0x00) — srcTag#1 (captured; same tag space as firearm family)
+	if br.ReadBit() { // FUN_14080d69c
+		ds.SrcTag0 = uint32(br.ReadBits(32))
+	}
+	br.ReadBits(8) // FUN_140c1e3f0 (comp+0x?? byte)
+
+	// enum A / enum B (FUN_1407f2058: R(1); if 0 -> R(5)). The raw R(5) is the
+	// pre-table index; we capture it directly (the tag-table resolve is a lookup,
+	// 0 stream bits). -1 sentinel == "present bit set, no payload".
+	ds.EnumA = readOpt5Signed(br)
+	ds.EnumB = readOpt5Signed(br)
+
+	ds.Val0c = uint8(br.ReadBits(4)) // inline width=bitLen(10)=4 (comp+0x0c)
+	ds.Val0e = uint8(br.ReadBits(3)) // inline (comp+0x0e)
+
+	// +0x10 reference block (the weapon / damage-source global-id).
+	ds.HasRef = br.ReadBit() // presentA
+	if ds.HasRef {
+		ds.GIDPresent = br.ReadBit() // FUN_1406cf008 inner present
+		if ds.GIDPresent {
+			ds.GlobalID = uint32(br.ReadBits(32)) // FUN_14080d6f0 = R(32) global-id
+		}
+		ds.Val14 = uint8(br.ReadBits(3)) // FUN_140c1e31c R(3)
+		ds.Val18 = readOpt6Signed(br)    // FUN_1406d1024 R(1); if 0 -> R(6)
+	}
+
+	// Tail steps 9-17 (workflow port-biped-components 2026-06-13, direct decompile of
+	// FUN_140c1dd44). The earlier port UNDER-read here: it omitted the two R(5)
+	// FUN_1424cd17c/cd150 scalars (steps 11,15,16), read the selPresentB gate without
+	// its R(10) position payload (step 13), and skipped the velocity block (step 14).
+	// That under-read (15..69 bits) desynced the record AFTER i11, so the clean-frame
+	// harness dropped whole death-frames -> remote-player deaths were never captured.
+	// All of this is AFTER the EnumA/EnumB/GID capture, so it does not change those.
+	br.ReadBits(4)     // step 9 : FUN_1407f1f24 (comp+0x3c, v-1)
+	br.ReadBits(4)     // step 10: inline selPosFlags (comp+0x38)
+	br.ReadBits(5)     // step 11: FUN_1424cd17c #1 (comp+0x40)
+	if !br.ReadBit() { // step 12: FUN_1407f1e4c R(1); if 0 -> R(10) (comp+0x1e)
+		br.ReadBits(10)
+	}
+	if br.ReadBit() { // step 13: selPresentB R(1); if set -> R(10) position (FUN_14076dc04)
+		br.ReadBits(10)
+	}
+	if deadStateVelocityPresent { // step 14: RAM-gate (+0x1c & 0x10) — NOT in-stream
+		br.ReadBits(2)  // table index
+		br.ReadBits(14) // velocity axis X (FUN_140c1e9d4 W=14)
+		br.ReadBits(14) // velocity axis Y
+		br.ReadBits(14) // velocity axis Z
+	}
+	br.ReadBits(5)    // step 15: FUN_1424cd17c #2 (comp+0x40)
+	br.ReadBits(5)    // step 16: FUN_1424cd150 (comp+0x44)
+	if br.ReadBit() { // step 17: tail anim handle R(1); if set -> R(32) (comp+0x4c) — srcTag#2 = persisted cause
+		ds.SrcTag4c = uint32(br.ReadBits(32))
+	}
+}
+
+// deadStateVelocityPresent toggles step 14 of the dead-state tail: the velocity
+// block (R(2)+3xR(14)) is gated by a RAM flag (*(state+0x1c) & 0x10), NOT a
+// bitstream bit, so its presence cannot be read offline. Default true (the agent's
+// "moving biped / ragdoll" assumption); a validation harness flips it to test the
+// immobile case. See consumeDeadStateAnimBlock step 14.
+var deadStateVelocityPresent = false
+
+// SetDeadStateVelocityPresent toggles the RAM-gated velocity block in the dead-state
+// tail (step 14). Calibration only.
+func SetDeadStateVelocityPresent(b bool) { deadStateVelocityPresent = b }
+
+// readOpt5Signed mirrors FUN_1407f2058: R(1) present bit; if CLEAR -> R(5) payload
+// (returned as a non-negative value); if SET -> -1 sentinel (no payload).
+func readOpt5Signed(br *BitReader) int32 {
+	if !br.ReadBit() {
+		return int32(br.ReadBits(5))
+	}
+	return -1
+}
+
+// readOpt6Signed mirrors FUN_1406d1024: R(1) present bit; if CLEAR -> R(6) payload;
+// if SET -> -1 sentinel (no payload).
+func readOpt6Signed(br *BitReader) int8 {
+	if !br.ReadBit() {
+		return int8(br.ReadBits(6))
+	}
+	return -1
+}
+
+// consumeWeaponStateTypeInfoVariant (i43..46 = HELD WEAPON) mirrors FUN_1407f06bc.
+// Returns the variant-name string-id (the WEAPON) and whether the slot is present.
+//
+// Gate (FUN_14080d69c): R(1). If 0 -> slot absent (field = 0xFFFFFFFF), no more
+// reads. If 1 -> FUN_14080d6f0 reads R(32) (the optional local-handle id) THEN:
+//
+//	variant   = R(32)   FUN_14080dec4 "variant-name"   <-- THE WEAPON
+//	R(12)               inline (comp+0x7c)
+//	FUN_140e9fadc       R(7)
+//	gate2 = R(1); if 1 -> FUN_141001f50 (R(?) shot-id; ~2 bytes XOR-decoded)
+//	R(1)                (comp+0x82 low bit)
+//	FUN_1407f2494       R(1); if 1 -> R(4) count + count*(R(1)+[R(32)])
+//	FUN_1407f0550       FUN_1404d343c + R(1)+[R(32)] + 3*(R(8)+R(1)+[dequant]+R(1)+[dequant])
+//	FUN_1407f2058       R(1); if 0 -> R(5)
+//	FUN_140e958c4       (handle lookup, 0 bits)
+//
+// Then unconditionally (both gate branches):
+//
+//	FUN_1407f08bc       R(1); if 1 -> R(8)
+//	FUN_1406d01fc       R(3) + 2*(R(1);if 0 -> R(2))
+//
+// The variant string-id is read at a FIXED position: gateR1 + R(32 handle) +
+// R(32 variant). Downstream sub-reads are data-dependent (loops); only the
+// variant itself is load-bearing for weapon attribution.
+func consumeWeaponStateTypeInfoVariant(br *BitReader) (variant uint32, present bool) {
+	if !br.ReadBit() { // FUN_14080d69c gate
+		consumeWeaponStateTail(br) // tail still runs (FUN_1407f08bc + FUN_1406d01fc)
+		return 0xFFFFFFFF, false
+	}
+	br.ReadBits(32)                   // FUN_14080d6f0 optional local-handle id
+	variant = uint32(br.ReadBits(32)) // FUN_14080dec4 "variant-name" == WEAPON
+	br.ReadBits(12)                   // comp+0x7c inline R(12)
+	consumeVarWidthMinus1(br, 7)      // FUN_140e9fadc R(7)
+	if br.ReadBit() {                 // gate2
+		consumeShotId(br) // FUN_141001f50
+	}
+	br.ReadBit()                  // comp+0x82 low bit
+	consumeWeaponMagazineList(br) // FUN_1407f2494
+	consumeWeaponAttachmentBlock(br)
+	consumeOpt5(br)            // FUN_1407f2058: R(1); if 0 -> R(5)
+	consumeWeaponStateTail(br) // FUN_1407f08bc + FUN_1406d01fc
+	return variant, true
+}
+
+// consumeWeaponStateTail mirrors the unconditional tail of FUN_1407f06bc.
+func consumeWeaponStateTail(br *BitReader) {
+	if br.ReadBit() { // FUN_1407f08bc gate
+		br.ReadBits(8)
+	}
+	// FUN_1406d01fc: R(3) [FUN_1406d0f20] + 2x optional-2bit [FUN_1406d00ec]
+	br.ReadBits(3)
+	consumeOpt2(br)
+	consumeOpt2(br)
+}
+
+// consumeOpt2 mirrors FUN_1406d00ec: R(1); if 0 -> R(2), else absent.
+func consumeOpt2(br *BitReader) {
+	if !br.ReadBit() {
+		br.ReadBits(2)
+	}
+}
+
+// consumeOpt5 mirrors FUN_1407f2058: R(1); if 0 -> R(5), else absent.
+func consumeOpt5(br *BitReader) {
+	if !br.ReadBit() {
+		br.ReadBits(5)
+	}
+}
+
+// consumeOpt6 mirrors FUN_1406d1024: R(1); if 0 -> R(6), else absent.
+func consumeOpt6(br *BitReader) {
+	if !br.ReadBit() {
+		br.ReadBits(6)
+	}
+}
+
+// consumeVarWidthMinus1 mirrors the FUN_140e9fadc / FUN_1406d0f20 family:
+// an unconditional R(width) read whose value is returned minus 1.
+func consumeVarWidthMinus1(br *BitReader, width uint) {
+	br.ReadBits(width)
+}
+
+// consumeShotId mirrors FUN_141001f50: two sub-reads (FUN_1407ef804 +
+// FUN_1407ef724) feeding a 2-byte XOR-decoded shot id. The leading reader
+// FUN_1407ef804 is R(1)+[payload]; the bit-cost is data-shaped. Modeled here as
+// the confirmed R(1) gate; re-validate against a record where the optional shot
+// id is present.
+func consumeShotId(br *BitReader) {
+	// CORRIGÉ (workflow RE 2026-06-10, FUN_141001f50) : shot-id = R(4)+R(6) = 10 bits (était R(1)).
+	br.ReadBits(4)
+	br.ReadBits(6)
+}
+
+// consumeWeaponMagazineList mirrors FUN_1407f2494:
+//
+//	R(1) gate
+//	if 0: FUN_14080d69c (R(1)+[R(32)])
+//	if 1: R(4) count (FUN_1424e1d48), then count x (R(1)+[R(32)])
+func consumeWeaponMagazineList(br *BitReader) {
+	if !br.ReadBit() { // gate
+		if br.ReadBit() { // FUN_14080d69c inner gate
+			br.ReadBits(32)
+		}
+		return
+	}
+	n := uint32(br.ReadBits(4)) // FUN_1424e1d48 count
+	for i := uint32(0); i < n; i++ {
+		if br.ReadBit() {
+			br.ReadBits(32)
+		}
+	}
+}
+
+// consumeWeaponAttachmentBlock mirrors FUN_1407f0550:
+//
+//	FUN_1404d343c       (0 control bits in the common case)
+//	R(1) gate (FUN_14080d69c); if 1 -> FUN_1407f061c (sub)
+//	3 fixed entries (static array stride 0xC, comp+0xc..0x30), each:
+//	   R(8)            (FUN_1406d1024 -> actually R(1);if0->R(6); modeled R(8) byte)
+//	   R(1); if 1 -> dequant (FUN_1406d84b4 width 8)
+//	   R(1); if 1 -> dequant (FUN_1406d84b4 width 8)
+//
+// NOTE: the per-entry first read is FUN_1406d1024 (R(1)+[R(6)]), not a flat R(8);
+// modeled via consumeOpt6. The two dequant fields are width-8.
+func consumeWeaponAttachmentBlock(br *BitReader) {
+	if br.ReadBit() { // FUN_14080d69c gate
+		// CORRIGÉ (workflow RE 2026-06-10, FUN_1407f061c) : compteur R(6)+1 + count×R(1) (était R(32)).
+		m := br.ReadBits(6) + 1
+		for i := uint64(0); i < m; i++ {
+			br.ReadBit()
+		}
+	}
+	for i := 0; i < 3; i++ {
+		consumeOpt6(br) // FUN_1406d1024
+		if br.ReadBit() {
+			br.ReadBits(8) // dequant width 8
+		}
+		if br.ReadBit() {
+			br.ReadBits(8) // dequant width 8
+		}
+	}
+}
