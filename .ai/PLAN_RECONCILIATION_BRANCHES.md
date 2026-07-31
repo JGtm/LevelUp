@@ -110,7 +110,7 @@ et y porter notre travail. C'est jouable parce que **presque tout le nôtre est 
 Tout ceci n'existe **que** chez nous et n'entre en collision avec rien :
 
 - [x] B1. `apps/go-api/internal/analysis/replay/` — le paquet d'assemblage du rejeu.
-- [!] B2. `apps/web/src/features/match-replay/` + la route `.../replay.tsx` + les types
+- [x] B2. `apps/web/src/features/match-replay/` + la route `.../replay.tsx` + les types
       `ReplayDocument` dans `lib/api/types.ts` *(attention : ce dernier fichier est partagé,
       n'ajouter que nos blocs)*.
 - [x] B3. `data/titles/halo_infinite/reference/` — bornes de carte, structures, objectifs.
@@ -135,7 +135,7 @@ Tout ceci n'existe **que** chez nous et n'entre en collision avec rien :
 
 ### Phase D — les commits
 
-- [ ] D1. **Pas un seul commit géant.** Trois ou quatre commits thématiques : le décodage, le
+- [x] D1. **Pas un seul commit géant.** Trois ou quatre commits thématiques : le décodage, le
       paquet d'assemblage, la feature web, les documents. Nos 320 commits sont une histoire de
       recherche dont la valeur est dans les docs `.ai` — qui voyagent comme fichiers.
 
@@ -169,13 +169,13 @@ Et sur les deux autres films : `01e1f945` → 1 862/2 154 · `64e8adfa` → 2 31
 
 ### Côté killfeed — leurs tests golden
 
-- [ ] `go test ./internal/games/halo_infinite/film/killsource/...` — le paquet a des
+- [x] `go test ./internal/games/halo_infinite/film/killsource/...` — le paquet a des
       `golden_*_test.go`, et un second test qui tourne **sans fixture** pour interdire que les
       golden dégénèrent en nombres nus. C'est le meilleur garde-fou des deux côtés.
 
 ### Côté app
 
-- [ ] `go build ./...` · `make check-types` · `npx vitest run` · les ratchets de pré-push
+- [x] `go build ./...` · `make check-types` · `npx vitest run` · les ratchets de pré-push
       (`knip`, linters, `govulncheck` qui charge **tout** le module).
 
 ---
@@ -373,6 +373,83 @@ voies ordinaire**.
 | `64e8adfa` | 2 312 / 2 879 | **2 312 / 2 879** |
 
 Aucun écart. La réunion du décodeur est **bit-exacte** des deux côtés.
+
+### [2026-07-31] B2 (rec��blage) + phase D + §5 — CLOSE, avec UNE réserve nommée
+
+**B2** `[x]` — l'endpoint et la route existent, réécrits contre l'architecture de `main`.
+
+- **API en Huma.** `GET .../matches/{match_id}/replay` est déclaré par
+  `ReplayHandler.Mount` (`huma.Get` + `humacore.Op`), monté dans `server_apiv1.go` ; les deux
+  calques `objective-events` et `positions` rejoignent `MatchViewHandler.Mount` (4 routes au
+  lieu de 2). Le registre `wire/registry_pages.go` gagne la factory `Replay` et les deux
+  repos du MatchViewService.
+- **Le garde local est devenu un middleware.** Il repose sur `r.RemoteAddr` — la seule donnée
+  que le demandeur ne peut pas falsifier — et Huma ne l'expose pas à un handler typé. Il vit
+  donc à l'étage transport (`handlers.LocalOnlyReplay`), monté en `r.Use` devant la route. Le
+  contenu du garde (date de bascule, cible de retrait, critère mesurable) est intact.
+- **Deux ratchets ont dicté la forme** : `TestNoCapabilityErrorDup` impose
+  `MapCapabilityError(ctx, err, probe)` plutôt qu'un `errors.Is` recopié ;
+  `TestContractRoutesDocumented` + `TestOpenAPIYAMLIsUpToDate` imposent `openapi-gen` puis
+  `generate-types`. Les deux sont passés.
+- **Route web sur le nouveau schéma.** `$matchId.tsx` devient un layout à `Outlet`, la vue
+  passe dans `$matchId/index.tsx`, et notre implémentation remplace le stub
+  `REJEU_2D_ENABLED` en gardant `RouteCapabilityGate` et les paramètres `lang`/`titleSlug`.
+  `routeTree.gen.ts` régénéré par le générateur du projet (jamais édité à la main).
+- **Les query keys sont title-scopées** (`matchReplay`, `matchObjectiveEvents`,
+  `matchPositions` prennent `titleSlug`), comme l'exige le garde-rail anti-fuite cross-titre.
+- **Les deux calques match-view sont rebranchés** : l'overlay de captures CTF a été
+  ré-implémenté contre les builders extraits de `main` (`buildCaptureSeries`), et la heatmap
+  de positions est montée dans la section « Déroulé ». Sans cela, `_objectiveCaptures.ts`,
+  `MatchPositionsHeatmap.tsx` et les deux hooks devenaient du code mort — que `knip` refuse.
+- **`comeback.go` réuni** : notre routage par type d'objectif (CTF → courbe de captures ;
+  zone/hill/skull → 0) englobe leur repli « marge de score finale » pour les titres sans
+  kill-feed. Les deux apports coexistent, les 3 tests CTF passent.
+
+### §5 — LES CRITÈRES D'ACCEPTATION, MESURÉS
+
+| gate | commande | résultat |
+|---|---|---|
+| build Go | `go build ./...` | **vert** |
+| suite Go complète | `go test ./...` | **vert** (0 FAIL) |
+| golden killfeed | `go test ./internal/games/halo_infinite/film/killsource/...` | **vert** |
+| rejeu — 3 films | `replay-build` | **identiques au §5** (revérifié après tous les changements) |
+| types web | `tsc --noEmit` | **vert** |
+| tests web | `npx vitest run` | **384 fichiers, 3 344 tests, 0 échec** |
+| eslint | `npm run lint` | **0 erreur** (19 warnings préexistants, react-compiler/TanStack Table) |
+| code mort web | `npx knip` | **vert** (exit 0) |
+
+**Quatre ratchets Go ont dû être traités** — tous déclenchés par l'outillage de recherche :
+`TestNoNewHalowaypointLiteral` (2 entrées d'allowlist datées), `TestNoLocalLongestRun`
+(exemption par chemin, datée et argumentée — ce sont des mesures de plage de bits, pas des
+séries métier ; **et ce test échouait DÉJÀ sur `feat/killsource-prod` avant toute
+réconciliation**), `TestNoNewRawStartTimeLiteral` (corrigé pour de bon : les 2 sites appellent
+`analysis.SQLStartTimeCanonical`), `TestSentinel_NoNewEnvVarReaders` (le repli env-var legacy
+de `cmd/mapobj-build` est **supprimé**, pas allowlisté).
+
+### LA RÉSERVE — le ratchet golangci-lint reste rouge, et il l'était déjà
+
+`golangci-lint run --new-from-merge-base=origin/main` :
+
+| branche | issues |
+|---|---|
+| `feat/killsource-prod` (avant nous) | **30** |
+| `feat/replay2d-prod` (après le portage) | **48** |
+
+**Le gate n'est pas cassé par la réconciliation : il était déjà rouge.** Les 26 issues que le
+portage ajoute sont dans l'outillage de recherche et le décodeur (8 `unconvert` dans
+`cmd/tmp_*`, 3 `goconst` sur des noms de composants `filmdec`, 3 fonctions non appelées,
+4 `unparam`, 2 `gocyclo` dans `himap`/`himodule`, 1 `errcheck`, 1 `ineffassign`, 1 `prealloc`,
+1 `revive`). **Non traitées** — les corriger ne rendrait pas le gate vert (les 30 de la lignée
+killfeed resteraient), et toucher au décodeur pour du style ferait courir un risque à des
+mesures qu'on vient de prouver bit-exactes. C'est une dette à solder AVANT le merge vers
+`main`, sur les deux lignées à la fois. `[!]`
+
+`govulncheck` remonte 11 vulnérabilités de la bibliothèque standard Go 1.26.1 (corrigées en
+1.26.2) : c'est la version de la chaîne d'outils locale, sans rapport avec ce portage.
+
+### CE QUI N'A PAS ÉTÉ PORTÉ, ET POURQUOI
+
+Rien de fonctionnel. Le seul écart assumé est la **dette de lint ci-dessus**.
 
 ### Découvertes (hors périmètre, non traitées)
 
