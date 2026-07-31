@@ -31,7 +31,11 @@ func newReplayRouter(factory handlers.ServiceFactory[port.ReplayService]) *chi.M
 	r := chi.NewRouter()
 	h := handlers.NewReplayHandler(factory)
 	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Get("/matches/{match_id}/replay", h.GetReplay)
+		// Le garde local est un middleware de transport, pas une branche du handler :
+		// le monter ici reproduit exactement le montage de server_apiv1.go, et laisse
+		// les tests du garde (adresse d'appel non locale → 404) porter sur la chaîne réelle.
+		r.Use(handlers.LocalOnlyReplay)
+		h.Mount(r)
 	})
 	return r
 }

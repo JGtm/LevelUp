@@ -273,7 +273,7 @@ func newObjectiveEventsRouter(factory handlers.ServiceFactory[port.MatchViewServ
 	r := chi.NewRouter()
 	h := handlers.NewMatchViewHandler(factory)
 	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Get("/matches/{match_id}/objective-events", h.GetObjectiveEvents)
+		h.Mount(r)
 	})
 	return r
 }
@@ -367,7 +367,7 @@ func newPositionsRouter(factory handlers.ServiceFactory[port.MatchViewService]) 
 	r := chi.NewRouter()
 	h := handlers.NewMatchViewHandler(factory)
 	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Get("/matches/{match_id}/positions", h.GetMatchPositions)
+		h.Mount(r)
 	})
 	return r
 }

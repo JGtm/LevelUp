@@ -39,14 +39,16 @@ func resolveTokens(ctx context.Context, cfg *config.AppConfig, playerSlug, title
 		return nil, err
 	}
 
+	// Store seul, sans repli sur la variable d'environnement legacy de jeton de
+	// rafraîchissement : le sentinel ADR 0023 interdit tout NOUVEAU lecteur de cette
+	// variable, et cet outil est nouveau sur cette branche. Le repli n'apportait rien —
+	// un joueur déclaré dans db_profiles.json a son jeton dans le store, et s'il n'en a
+	// pas, échouer ici est exactement le comportement voulu (diagnostiquer, ne pas
+	// re-capturer).
 	store := authpkg.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
-	legacy := authpkg.LegacyAuthInputs{
-		OAuthRT: oauthRefreshEnvForPlayer(playerSlug),
-		Source:  "env_var",
-	}
 
 	result, err := authpkg.RefreshHaloTokensViaStoreFirst(
-		ctx, store, authpkg.NewSISUProvider(), xuid, gamertag, legacy)
+		ctx, store, authpkg.NewSISUProvider(), xuid, gamertag, authpkg.LegacyAuthInputs{})
 	if err != nil {
 		return nil, err
 	}
@@ -77,16 +79,4 @@ func lookupPlayer(cfg *config.AppConfig, slug, titleSlug string) (string, string
 		}
 	}
 	return "", "", fmt.Errorf("joueur %q absent de db_profiles.json (titre %s)", slug, titleSlug)
-}
-
-// oauthRefreshEnvForPlayer construit SPNKR_OAUTH_REFRESH_TOKEN_<GT_NORM>.
-func oauthRefreshEnvForPlayer(gamertag string) string {
-	key := strings.ToUpper(gamertag)
-	key = strings.Map(func(r rune) rune {
-		if r == ' ' || r == '-' || r == '.' {
-			return '_'
-		}
-		return r
-	}, key)
-	return os.Getenv("SPNKR_OAUTH_REFRESH_TOKEN_" + key)
 }

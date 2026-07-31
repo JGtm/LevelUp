@@ -11,6 +11,8 @@ import (
 	"os"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+
+	"levelup/go-api/internal/analysis"
 )
 
 func main() {
@@ -23,8 +25,8 @@ func main() {
 		log.Fatal(err)
 	}
 	defer db.Close()
-	rows, err := db.Query(`SELECT match_id, duration_seconds,
-	    COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC') AS st,
+	rows, err := db.Query(`SELECT match_id, duration_seconds, `+
+		analysis.SQLStartTimeCanonical("")+` AS st,
 	    COALESCE(map_name,''), COALESCE(playlist_name,'')
 	  FROM match_registry WHERE match_id LIKE ? || '%' LIMIT 10`, prefix)
 	if err != nil {

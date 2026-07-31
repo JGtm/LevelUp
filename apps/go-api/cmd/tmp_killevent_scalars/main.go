@@ -64,7 +64,7 @@ func main() {
 	}
 
 	// 2. Kills assistés (assist != -1) : s1+s2 = ?
-	fmt.Println("\n=== kills assistés : s1 + s2 (test %dmg : doit ~99/100) ===")
+	fmt.Println("\n=== kills assistés : s1 + s2 (test des dégâts : doit ~99/100) ===")
 	nAssist, sumOK := 0, 0
 	for _, r := range rows {
 		if r.assist == 4294967295 {
