@@ -1,3 +1,26 @@
+## [2026-07-31] Reconciliation rejeu 2D x killsource — Phase A : la branche et sa ligne de base
+
+**Statut** : Complete (phase A du plan `.ai/PLAN_RECONCILIATION_BRANCHES.md`).
+
+**Decision technique.** Ne pas merger `feat/killsource-prod` dans `feat/filmdec-continuation` :
+cela ferait heriter 1 859 commits de `main` a une branche qui ne les a jamais vus, pour resoudre
+138 conflits dont ~120 sont l evolution de `main` et n ont rien a voir avec le sujet. On fait
+l inverse : `feat/replay2d-prod` part de `feat/killsource-prod` (saine, a 2 commits de `main`) et
+on y porte le rejeu. Presque tout le rejeu est additif — 840 fichiers touches, seuls 80
+intersectent l autre lignee, dont 16 dans `internal/analysis/filmdec/`.
+
+**Resultats observes.** Worktree `.claude/worktrees/replay2d-prod` cree sur `c9c1b9b41`.
+Ligne de base verte avant tout portage : `go build ./...` exit 0 ;
+`go test ./internal/games/halo_infinite/film/killsource/... ./internal/analysis/filmdec/...` →
+`ok killsource 0.271s`, `ok filmdec 0.230s`.
+
+**Conclusion / prochaine etape.** Phase B — porter l additif (paquet `replay`, feature web
+`match-replay`, references de carte, documents `.ai`, les quatre `cmd/*-build`). Le premier gate
+de compilation global n est pas attendu avant la fin de la phase C : le paquet `replay` appelle
+des API `filmdec` qui n arrivent qu avec la reunion des 16 fichiers.
+
+---
+
 ## [2026-07-31] Portage du decodeur `killsource` sur une branche neuve depuis `main`
 
 **Statut** : Complete (branche `feat/killsource-prod`, creee depuis `origin/main` a
