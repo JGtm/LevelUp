@@ -302,3 +302,11 @@ data/cache/career-rank-image/
 
 # Logs runtime des CLI backfill
 apps/go-api/backfill.log
+
+tools/ce/filmdec_delta.csv
+tools/ce/*.csv
+
+# Variantes de carte téléchargées (.mvar) : ~77 Mo, re-téléchargeables sans jeton depuis
+# blobs-infiniteugc.svc.halowaypoint.com via la page publique Waypoint. Le résultat extrait
+# est versionné dans data/titles/{slug}/reference/map_objectives.json — c'est lui qui fait foi.
+.ai/re_dump/mapvar/

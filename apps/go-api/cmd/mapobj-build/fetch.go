@@ -1,0 +1,150 @@
+// cmd/mapobj-build — fetch.go : client UGC pour récupérer la variante de carte (.mvar).
+//
+// Deux étapes :
+//  1. Discovery UGC (AUTHENTIFIÉ, jeton Spartan) : résout assetId → métadonnées
+//     (VersionId, Files.Prefix, FileRelativePaths).
+//  2. Stockage blob : télécharge chaque *.mvar depuis Files.Prefix.
+//
+// TÉMOIN d'authentification (mesuré) : un GET anonyme sur discovery-infiniteugc
+// répond HTTP 401. Le jeton vient de l'auth existante du projet (ADR 0023,
+// auth.RefreshHaloTokensViaStoreFirst) — aucune re-capture de jeton.
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log/slog"
+	"net/http"
+	"net/url"
+	"strings"
+	"time"
+
+	"levelup/go-api/internal/domain"
+)
+
+const (
+	discoveryHost   = "https://discovery-infiniteugc.svc.halowaypoint.com"
+	requestTimeout  = 30 * time.Second
+	maxMvarBytes    = 64 << 20 // garde-fou : un .mvar réaliste pèse ~100 Ko
+	politeUserAgent = "LevelUp/1.0 (dashboard stats Halo, usage personnel)"
+)
+
+// ugcAsset est la forme du DTO Discovery UGC réellement servie (champs utilisés
+// uniquement — le reste du document est ignoré).
+type ugcAsset struct {
+	AssetID    string `json:"AssetId"`
+	VersionID  string `json:"VersionId"`
+	PublicName string `json:"PublicName"`
+	Files      struct {
+		Prefix            string   `json:"Prefix"`
+		FileRelativePaths []string `json:"FileRelativePaths"`
+	} `json:"Files"`
+	CustomData struct {
+		NumOfObjectsOnMap int   `json:"NumOfObjectsOnMap"`
+		TagLevelID        int64 `json:"TagLevelId"`
+		IsBaked           bool  `json:"IsBaked"`
+	} `json:"CustomData"`
+}
+
+type ugcClient struct {
+	http   *http.Client
+	tokens *domain.HaloTokens
+}
+
+func newUGCClient(tokens *domain.HaloTokens) *ugcClient {
+	return &ugcClient{
+		http:   &http.Client{Timeout: requestTimeout},
+		tokens: tokens,
+	}
+}
+
+// fetchAsset résout un assetId de carte via Discovery UGC.
+// versionID vide → dernière version publiée.
+func (c *ugcClient) fetchAsset(ctx context.Context, assetID, versionID string) (*ugcAsset, error) {
+	endpoint := fmt.Sprintf("%s/hi/Maps/%s", discoveryHost, url.PathEscape(assetID))
+	if versionID != "" {
+		endpoint += "/versions/" + url.PathEscape(versionID)
+	}
+	body, err := c.get(ctx, endpoint, true)
+	if err != nil {
+		return nil, err
+	}
+	var asset ugcAsset
+	if err := json.Unmarshal(body, &asset); err != nil {
+		return nil, fmt.Errorf("décoder l'asset %s: %w", assetID, err)
+	}
+	if asset.Files.Prefix == "" || len(asset.Files.FileRelativePaths) == 0 {
+		return nil, fmt.Errorf("asset %s: aucun fichier exposé (Files vide)", assetID)
+	}
+	slog.InfoContext(ctx, "mapobj: asset résolu",
+		"asset_id", assetID, "version_id", asset.VersionID, "name", asset.PublicName,
+		"files", len(asset.Files.FileRelativePaths),
+		"num_objects_custom_data", asset.CustomData.NumOfObjectsOnMap)
+	return &asset, nil
+}
+
+// mvarPaths retourne les chemins relatifs *.mvar de l'asset.
+func (a *ugcAsset) mvarPaths() []string {
+	var out []string
+	for _, p := range a.Files.FileRelativePaths {
+		if strings.HasSuffix(strings.ToLower(p), ".mvar") {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// fetchMvar télécharge un fichier de variante depuis le stockage blob.
+func (c *ugcClient) fetchMvar(ctx context.Context, asset *ugcAsset, relPath string) ([]byte, error) {
+	endpoint := strings.TrimSuffix(asset.Files.Prefix, "/") + "/" + relPath
+	body, err := c.get(ctx, endpoint, false)
+	if err != nil {
+		return nil, err
+	}
+	slog.InfoContext(ctx, "mapobj: mvar téléchargé",
+		"asset_id", asset.AssetID, "file", relPath, "bytes", len(body))
+	return body, nil
+}
+
+// get exécute un GET. withAuth pose les en-têtes Spartan/Clearance ; le stockage
+// blob n'en a pas besoin (et les refuserait comme en-têtes inattendus).
+func (c *ugcClient) get(ctx context.Context, endpoint string, withAuth bool) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", politeUserAgent)
+	req.Header.Set("Accept", "application/json")
+	if withAuth {
+		if c.tokens == nil || c.tokens.SpartanToken == "" {
+			return nil, fmt.Errorf("aucun jeton Spartan disponible pour %s", endpoint)
+		}
+		req.Header.Set("x-343-authorization-spartan", c.tokens.SpartanToken)
+		if c.tokens.ClearanceToken != "" {
+			req.Header.Set("343-clearance", c.tokens.ClearanceToken)
+		}
+		req.Header.Set("Origin", "https://www.halowaypoint.com")
+	}
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("GET %s: %w", endpoint, err)
+	}
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			slog.WarnContext(ctx, "mapobj: fermeture du corps de réponse", "err", cerr)
+		}
+	}()
+	if resp.StatusCode != http.StatusOK {
+		snippet, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return nil, fmt.Errorf("GET %s: HTTP %d (%s)", endpoint, resp.StatusCode,
+			strings.TrimSpace(string(snippet)))
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxMvarBytes))
+	if err != nil {
+		return nil, fmt.Errorf("lecture %s: %w", endpoint, err)
+	}
+	return body, nil
+}

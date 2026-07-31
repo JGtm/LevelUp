@@ -711,6 +711,45 @@ func (p *PathResolver) JobsCachePath() string {
 	return filepath.Join(p.CacheRootDir(), "jobs.json")
 }
 
+// ReplayArtifactPath retourne le chemin de l'artefact de rejeu 2D d'un match (produit
+// hors ligne par cmd/replay-build, servi tel quel par l'API).
+// Ex: data/cache/replays/halo_infinite/000d5950.json
+// Sous data/cache/* (non versionné, regénérable depuis capture + film).
+func (p *PathResolver) ReplayArtifactPath(titleSlug, matchID string) string {
+	return filepath.Join(p.repoRoot, "data", "cache", "replays", titleSlug, matchID+".json")
+}
+
+// MapQuantBoundsPath retourne le chemin du catalogue des bornes de quantification par
+// carte (AABB des BSP extraites des modules du jeu, cf. filmdec.MapQuantCatalog). Donnée
+// de RÉFÉRENCE versionnée — pas un cache : elle ne se régénère qu'avec les fichiers du
+// jeu installé (cmd/mapquant-build).
+// Ex: data/titles/halo_infinite/reference/map_quant_bounds.json
+func (p *PathResolver) MapQuantBoundsPath(titleSlug string) string {
+	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_quant_bounds.json")
+}
+
+// MapObjectivesPath retourne le chemin du catalogue des objets d'objectif par carte
+// (socles de drapeau, points de livraison, sockets Stockpile, zones...), extrait des
+// variantes de carte UGC (.mvar) par cmd/mapobj-build. Donnée de RÉFÉRENCE versionnée
+// — pas un cache : elle fige un appel réseau par carte pour que le rejeu reste
+// 100 % hors ligne à l'exécution.
+// Ex: data/titles/halo_infinite/reference/map_objectives.json
+func (p *PathResolver) MapObjectivesPath(titleSlug string) string {
+	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_objectives.json")
+}
+
+// MapStructurePath retourne le chemin du fichier de STRUCTURE d'une carte : les emprises
+// (AABB monde) des instances de géométrie instanciée de son BSP — sols, plateformes,
+// rampes, murs. Un fichier PAR MODULE (et non un catalogue unique) : une carte pèse 10 000
+// à 26 000 emprises, les agréger produirait un blob de plusieurs Mo rechargé en entier
+// pour un seul match. La clé est le nom de MODULE, celui déjà porté par
+// map_quant_bounds.json — le lien nom affiché -> module reste déclaré à un seul endroit.
+// Donnée de RÉFÉRENCE versionnée (cmd/mapstruct-build, exige les fichiers du jeu).
+// Ex: data/titles/halo_infinite/reference/map_structure/ridgeline.json
+func (p *PathResolver) MapStructurePath(titleSlug, module string) string {
+	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_structure", module+".json")
+}
+
 // SyncCacheDir retourne le répertoire racine du cache fetch intermédiaire
 // (Phase 2 refactor Collect→Persist). Chaque cycle de sync crée un
 // sous-dossier `{cycle_id}/` à l'intérieur. Ex: data/sync_cache/

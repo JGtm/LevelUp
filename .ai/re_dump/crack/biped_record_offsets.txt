@@ -1,0 +1,17 @@
+# Offsets bit des records biped (ti=35, slots 512-519) dans 000d5950/chunk_02 (frame type-2).
+# Header keyframe (RE FUN_141f86704) = [id:32][champ:26 (=0 au spawn)][ti:6] = 64 bits.
+# id = gen<<30|slot ; au spawn gen==1 -> id=0x40000000|slot. Etat i0 (position) DEBUTE a hdrBit+64.
+# Localisation via ancre exacte (id||ti 64-bit), pos monotone en ordre de slot croissant (250 entités oracle).
+# Colonnes : slot ti hdrBit stateBit(=hdrBit+64) idHex
+# payload_bits_total=1141560
+#
+512 35 193403 193467 0x40000200
+513 35 196188 196252 0x40000201
+514 35 199004 199068 0x40000202
+515 35 201798 201862 0x40000203
+516 35 204601 204665 0x40000204
+517 35 207396 207460 0x40000205
+518 35 210198 210262 0x40000206
+519 35 212993 213057 0x40000207
+# bipeds_localisés=8/8 manquants=[]
+# entités_totales_localisées=249/250 manquantes_totales=[1024]

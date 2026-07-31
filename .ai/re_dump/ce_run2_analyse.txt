@@ -1,0 +1,180 @@
+CAPTURE CE — C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/.claude/worktrees/filmdec-continuation/.ai/re_dump/ce_run2_final.bin
+
+  975250 composants dispatches
+  315892 records reconstruits
+
+  ARCHETYPES (typeIndex) —
+        ti     records    composants  moy. comp/record
+        35      159772        598219  3.74
+        37       61949        171094  2.76
+        42       24997         77095  3.08
+         4       24387         25447  1.04
+        41       19515         53854  2.76
+        43       17782         35329  1.99
+        38        2071          6399  3.09
+         5        1836          2202  1.20
+        21        1790          1889  1.06
+         2         803           831  1.03
+         6         628          2027  3.23
+        47         312           312  1.00
+        12          16           122  7.62
+        13          10           258  25.80
+        45           8            10  1.25
+         9           8             8  1.00
+        26           2            18  9.00
+        25           2             2  1.00
+        27           2           128  64.00
+        34           1             4  4.00
+        11           1             2  2.00
+
+  MASQUES les plus frequents de ti=35 (159772 records) —
+   36.47 %  58264  [0 1 21 25]
+   22.82 %  36464  [0 1 25]
+   11.12 %  17760  [0 1 5 21 25]
+    6.63 %  10598  [0 25]
+    5.50 %   8783  [0 1 5 25]
+    2.88 %   4608  [0 21 25]
+    1.86 %   2964  [21 25]
+    1.51 %   2408  [0 5 25]
+    1.18 %   1892  [0 1 21 25 35]
+    0.88 %   1400  [0 1 25 35]
+    0.72 %   1150  [0 5 21 25]
+    0.47 %    758  [0 1 21 25 32]
+    0.47 %    748  [0 1 21 25 30]
+    0.47 %    744  [0 1 5 21 25 32]
+    0.44 %    703  [5]
+  … 368 autres masques distincts
+  -> 383 masques DISTINCTS sur 159772 records
+
+  TAILLES DE MASQUE ti=35 — max observe 29 composants
+    1 comp      900    0.56 %  
+    2 comp    13967    8.74 %  ###
+    3 comp    45022   28.18 %  ###########
+    4 comp    72132   45.15 %  ##################
+    5 comp    24126   15.10 %  ######
+    6 comp     3022    1.89 %  
+    7 comp      372    0.23 %  
+    8 comp       32    0.02 %  
+    9 comp        8    0.01 %  
+   12 comp        1    0.00 %  
+   13 comp        7    0.00 %  
+   14 comp       13    0.01 %  
+   15 comp       18    0.01 %  
+   16 comp       23    0.01 %  
+   17 comp       25    0.02 %  
+   18 comp        9    0.01 %  
+   19 comp        4    0.00 %  
+   25 comp        9    0.01 %  
+   27 comp       46    0.03 %  
+   29 comp       36    0.02 %  
+  -> AU-DELA DE 7 (impossible en branche eparse) : 231 records = 0.145 %
+
+  LARGEURS MESUREES ti=35 (bits consommes par composant) —
+    comp         n  distinctes  les plus frequentes
+  i0        154158           1  47 bits (100 %)
+  i1        134611           2  31 bits (99 %)  2 bits (1 %)
+  i2           126           1  9 bits (100 %)
+  i4           866           1  11 bits (100 %)
+  i5         34619           1  29 bits (100 %)
+  i6            91           1  358 bits (100 %)
+  i9            91           1  334 bits (100 %)
+  i11          100           6  191 bits (58 %)  147 bits (24 %)  127 bits (9 %)  223 bits (6 %) …
+  i13           91           1  8 bits (100 %)
+  i14           91           1  4 bits (100 %)
+  i15          226           2  72 bits (86 %)  76 bits (14 %)
+  i17          209           5  52 bits (51 %)  75 bits (13 %)  77 bits (12 %)  76 bits (12 %) …
+  i18          191           2  2 bits (52 %)  8 bits (48 %)
+  i21        94751           1  25 bits (100 %)
+  i22          256           1  35 bits (100 %)
+  i23          102           2  19 bits (94 %)  31 bits (6 %)
+  i24          128           2  12 bits (91 %)  28 bits (9 %)
+  i25        13909           1  10 bits (100 %)
+  i26           58           2  22 bits (98 %)  38 bits (2 %)
+  i28           56           3  10 bits (46 %)  35 bits (39 %)  34 bits (14 %)
+  i30          473           3  14 bits (56 %)  10 bits (28 %)  2 bits (16 %)
+  i31          135           1  11 bits (100 %)
+  i32          118           1  9 bits (100 %)
+  i33          354           3  14 bits (45 %)  10 bits (34 %)  2 bits (21 %)
+  i34          125           1  11 bits (100 %)
+  i35           58           1  9 bits (100 %)
+  i42          235           2  7 bits (57 %)  5 bits (43 %)
+  i43          191          11  15 bits (52 %)  204 bits (21 %)  203 bits (12 %)  196 bits (3 %) …
+  i44          189          10  15 bits (51 %)  204 bits (22 %)  203 bits (13 %)  196 bits (7 %) …
+  i45           91           2  17 bits (91 %)  107 bits (9 %)
+  i46           91           2  17 bits (91 %)  9 bits (9 %)
+  i47          176           1  9 bits (100 %)
+  i48          133           2  10 bits (78 %)  4 bits (22 %)
+  i49           91           1  3 bits (100 %)
+  i52           91           1  68 bits (100 %)
+  i53           94           2  31 bits (98 %)  63 bits (2 %)
+  i54           15           2  2 bits (93 %)  366 bits (7 %)
+  i56           67           2  10 bits (84 %)  3 bits (16 %)
+  i57          990           4  2 bits (94 %)  28 bits (3 %)  95 bits (2 %)  52 bits (1 %)
+
+  LOCUS DE L'INVENTAIRE ti=35 — part de records DENSES (>7 comp)
+  population generale : 0.145 % (231/159772)
+
+    comp   records    denses       part  composant
+  i0        154158       131      0.08 %  object-position (temoin: composant COMMUN)
+  i22          256       191     74.61 %  unit-grenade-counts
+  i25       158804       211      0.13 %  unit-command-tick (temoin: composant COMMUN)
+  i42          447       198     44.30 %  biped-desired-weapon-set
+  i43          208       194     93.27 %  weapon-state-type-info
+  i47          215       182     84.65 %  biped-desired-grenade-set
+  i48          218        95     43.58 %  biped-desired-ability-set
+  i56          212        36     16.98 %  biped-spartan-ability-energy
+
+  NATURE DES RECORDS LARGES ti=35 — distribution de param_4
+  231 records larges (>7 comp) contre 159541 courts
+
+   param_4          larges          courts
+         0      186   4.2 %       23   0.0 %
+         1     3040  68.7 %   591571  99.6 %
+         2     1017  23.0 %     2189   0.4 %
+         3       91   2.1 %        0   0.0 %
+         4       91   2.1 %       11   0.0 %
+
+  TAUX DE PRESENCE par composant, ti=35 (159772 records) —
+    comp     records        taux  
+  i25         158804      99.39 %
+  i0          154158      96.49 %
+  i1          134611      84.25 %
+  i21          94751      59.30 %
+  i5           35370      22.14 %
+  i35           4948       3.10 %
+  i32           3146       1.97 %
+  i30           1915       1.20 %
+  i54           1347       0.84 %
+  i59           1048       0.66 %
+  i57            990       0.62 %
+  i28            966       0.60 %
+  i33            945       0.59 %
+  i4             866       0.54 %
+  i42            447       0.28 %  <- biped-desired-weapon-set (ARME)
+  i22            256       0.16 %  <- unit-grenade-counts (COMPTES DE GRENADES)
+  i15            249       0.16 %
+  i48            218       0.14 %  <- biped-desired-ability-set (CAPACITE)
+  i47            215       0.13 %  <- biped-desired-grenade-set (TYPES EQUIPES)
+  i56            212       0.13 %  <- biped-spartan-ability-energy
+  i17            209       0.13 %
+  i43            208       0.13 %
+  i44            204       0.13 %
+  i31            195       0.12 %
+  i18            191       0.12 %
+  i34            177       0.11 %
+  i26            159       0.10 %
+  i24            129       0.08 %
+  i2             126       0.08 %
+  i53            123       0.08 %
+  i23            102       0.06 %
+  i45            102       0.06 %
+  i11            100       0.06 %
+  i58             95       0.06 %
+  i49             91       0.06 %
+  i9              91       0.06 %
+  i52             91       0.06 %
+  i46             91       0.06 %
+  i13             91       0.06 %
+  i6              91       0.06 %
+  i14             91       0.06 %
+

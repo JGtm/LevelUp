@@ -1,0 +1,821 @@
+{
+  "schema_version": 1,
+  "map": "ridgeline",
+  "match_id": "000d5950",
+  "source_trajectoires": ".ai/re_dump/offline_trajectories_clean.csv",
+  "source_zones": "callout_polys_ridgeline.json + callouts_i18n.csv (ridgeline)",
+  "duree_match_s": 498.4,
+  "entites_bipedes": 98,
+  "positions": 171107,
+  "methode": "recurrence spatiale : une signature cinematique est retenue comme dispositif de carte seulement si elle se repete au MEME point (< 15 cm) pour PLUSIEURS entites distinctes a des instants eloignes. Temoin systematique : meme mesure sur des positions tirees au hasard dans les trajectoires reelles (occupation reelle, pas la boite englobante).",
+  "limites": "les entites d'objets au sol (ti=42) ne sont pas decodees : aucune arme n'est observee directement, seulement ses effets sur les joueurs. Un socle jamais utilise reste invisible. Les socles d'armes proprement dits ne sont PAS detectes par cette methode (voir diagnostics).",
+  "devices": [
+    {
+      "id": "cannon_00",
+      "type": "man_cannon",
+      "type_fr": "Canon humain (rampe de lancement)",
+      "position": [
+        14.584,
+        20.141,
+        -0.468
+      ],
+      "radius_median_m": 0.131,
+      "radius_max_m": 1.511,
+      "occurrences": 9,
+      "distinct_entities": 8,
+      "first_seen_s": 81.8,
+      "last_seen_s": 461.5,
+      "vz_peak_median": 15.0,
+      "confidence": "haute",
+      "zone_fr": "Crique",
+      "zone_design": "ridgeline creek",
+      "zone_volume_index": 16,
+      "landing": {
+        "position": [
+          16.765,
+          -3.621,
+          6.981
+        ],
+        "radius_median_m": 0.292,
+        "radius_max_m": 3.191,
+        "flight_time_s": 1.92,
+        "n": 9,
+        "zone_fr": "Toit hexagonal",
+        "zone_design": "ridgeline hex ro",
+        "zone_volume_index": 14
+      },
+      "evidence": "9 lancements par 8 entites distinctes entre t=82 s et t=461 s ; dispersion mediane du point de depart 0.13 m ; 15 paires d'entites differentes a moins de 15 cm (temoin : mediane 0, max 1 sur 1000 tirages, p=0.000)"
+    },
+    {
+      "id": "spawn_00",
+      "type": "spawn_point",
+      "type_fr": "Socle d'apparition joueur",
+      "position": [
+        -6.325,
+        0.643,
+        -1.881
+      ],
+      "radius_median_m": 0.0,
+      "radius_max_m": 0.0,
+      "occurrences": 4,
+      "distinct_entities": 4,
+      "first_seen_s": 171.2,
+      "last_seen_s": 395.6,
+      "confidence": "haute",
+      "zone_fr": "Antenne",
+      "zone_design": "antenna",
+      "zone_volume_index": 11,
+      "evidence": "4 entites distinctes apparaissent au meme point (rayon max 0.000 m), de t=171 s a t=396 s"
+    },
+    {
+      "id": "spawn_01",
+      "type": "spawn_point",
+      "type_fr": "Socle d'apparition joueur",
+      "position": [
+        27.091,
+        -18.586,
+        -3.006
+      ],
+      "radius_median_m": 0.0,
+      "radius_max_m": 0.0,
+      "occurrences": 4,
+      "distinct_entities": 4,
+      "first_seen_s": 180.7,
+      "last_seen_s": 452.6,
+      "confidence": "haute",
+      "zone_fr": "Sanctuaire",
+      "zone_design": "ridgeline sanctu",
+      "zone_volume_index": 13,
+      "evidence": "4 entites distinctes apparaissent au meme point (rayon max 0.000 m), de t=181 s a t=453 s"
+    },
+    {
+      "id": "spawn_02",
+      "type": "spawn_point",
+      "type_fr": "Socle d'apparition joueur",
+      "position": [
+        6.113,
+        16.607,
+        -3.586
+      ],
+      "radius_median_m": 0.001,
+      "radius_max_m": 0.001,
+      "occurrences": 3,
+      "distinct_entities": 3,
+      "first_seen_s": 39.7,
+      "last_seen_s": 483.9,
+      "confidence": "haute",
+      "zone_fr": "Crique",
+      "zone_design": "ridgeline creek",
+      "zone_volume_index": 16,
+      "evidence": "3 entites distinctes apparaissent au meme point (rayon max 0.001 m), de t=40 s a t=484 s"
+    },
+    {
+      "id": "spawn_03",
+      "type": "spawn_point",
+      "type_fr": "Socle d'apparition joueur",
+      "position": [
+        35.798,
+        0.736,
+        0.209
+      ],
+      "radius_median_m": 0.004,
+      "radius_max_m": 0.009,
+      "occurrences": 3,
+      "distinct_entities": 3,
+      "first_seen_s": 115.6,
+      "last_seen_s": 348.0,
+      "confidence": "haute",
+      "zone_fr": "Chars",
+      "zone_design": "ridgeline tanks",
+      "zone_volume_index": 19,
+      "evidence": "3 entites distinctes apparaissent au meme point (rayon max 0.009 m), de t=116 s a t=348 s"
+    },
+    {
+      "id": "spawn_04",
+      "type": "spawn_point",
+      "type_fr": "Socle d'apparition joueur",
+      "position": [
+        25.889,
+        -17.405,
+        -0.891
+      ],
+      "radius_median_m": 0.0,
+      "radius_max_m": 0.0,
+      "occurrences": 3,
+      "distinct_entities": 3,
+      "first_seen_s": 161.4,
+      "last_seen_s": 222.7,
+      "confidence": "haute",
+      "zone_fr": "Sanctuaire",
+      "zone_design": "ridgeline sanctu",
+      "zone_volume_index": 13,
+      "evidence": "3 entites distinctes apparaissent au meme point (rayon max 0.000 m), de t=161 s a t=223 s"
+    },
+    {
+      "id": "spawn_05",
+      "type": "spawn_point",
+      "type_fr": "Socle d'apparition joueur",
+      "position": [
+        28.224,
+        17.816,
+        -1.142
+      ],
+      "radius_median_m": 0.001,
+      "radius_max_m": 0.001,
+      "occurrences": 3,
+      "distinct_entities": 3,
+      "first_seen_s": 220.5,
+      "last_seen_s": 271.0,
+      "confidence": "haute",
+      "zone_fr": "Glaçons",
+      "zone_design": "ridgeline icicle",
+      "zone_volume_index": 21,
+      "evidence": "3 entites distinctes apparaissent au meme point (rayon max 0.001 m), de t=220 s a t=271 s"
+    },
+    {
+      "id": "spawn_06",
+      "type": "spawn_point",
+      "type_fr": "Socle d'apparition joueur",
+      "position": [
+        15.731,
+        -16.391,
+        -4.19
+      ],
+      "radius_median_m": 0.0,
+      "radius_max_m": 0.0,
+      "occurrences": 3,
+      "distinct_entities": 3,
+      "first_seen_s": 328.3,
+      "last_seen_s": 342.1,
+      "confidence": "haute",
+      "zone_fr": "Sanctuaire",
+      "zone_design": "ridgeline sanctu",
+      "zone_volume_index": 13,
+      "evidence": "3 entites distinctes apparaissent au meme point (rayon max 0.000 m), de t=328 s a t=342 s"
+    },
+    {
+      "id": "spawn_07",
+      "type": "spawn_point",
+      "type_fr": "Socle d'apparition joueur",
+      "position": [
+        34.305,
+        23.189,
+        -0.885
+      ],
+      "radius_median_m": 0.107,
+      "radius_max_m": 0.213,
+      "occurrences": 3,
+      "distinct_entities": 3,
+      "first_seen_s": 376.5,
+      "last_seen_s": 405.6,
+      "confidence": "moyenne",
+      "zone_fr": "Glaçons",
+      "zone_design": "ridgeline icicle",
+      "zone_volume_index": 21,
+      "evidence": "3 entites distinctes apparaissent au meme point (rayon max 0.213 m), de t=376 s a t=406 s"
+    },
+    {
+      "id": "spawn_08",
+      "type": "spawn_point",
+      "type_fr": "Socle d'apparition joueur",
+      "position": [
+        12.953,
+        20.123,
+        -4.005
+      ],
+      "radius_median_m": 0.001,
+      "radius_max_m": 0.001,
+      "occurrences": 3,
+      "distinct_entities": 3,
+      "first_seen_s": 454.3,
+      "last_seen_s": 481.6,
+      "confidence": "haute",
+      "zone_fr": "Crique",
+      "zone_design": "ridgeline creek",
+      "zone_volume_index": 16,
+      "evidence": "3 entites distinctes apparaissent au meme point (rayon max 0.001 m), de t=454 s a t=482 s"
+    },
+    {
+      "id": "spawn_09",
+      "type": "spawn_point",
+      "type_fr": "Socle d'apparition joueur",
+      "position": [
+        28.722,
+        -5.026,
+        -1.99
+      ],
+      "radius_median_m": 0.001,
+      "radius_max_m": 0.001,
+      "occurrences": 2,
+      "distinct_entities": 2,
+      "first_seen_s": 48.0,
+      "last_seen_s": 131.4,
+      "confidence": "haute",
+      "zone_fr": "Radiateur",
+      "zone_design": "ridgeline radiat",
+      "zone_volume_index": 18,
+      "evidence": "2 entites distinctes apparaissent au meme point (rayon max 0.001 m), de t=48 s a t=131 s"
+    },
+    {
+      "id": "spawn_10",
+      "type": "spawn_point",
+      "type_fr": "Socle d'apparition joueur",
+      "position": [
+        22.392,
+        -24.658,
+        -0.891
+      ],
+      "radius_median_m": 0.001,
+      "radius_max_m": 0.001,
+      "occurrences": 2,
+      "distinct_entities": 2,
+      "first_seen_s": 129.1,
+      "last_seen_s": 470.6,
+      "confidence": "haute",
+      "zone_fr": "Sanctuaire",
+      "zone_design": "ridgeline sanctu",
+      "zone_volume_index": 13,
+      "evidence": "2 entites distinctes apparaissent au meme point (rayon max 0.001 m), de t=129 s a t=471 s"
+    },
+    {
+      "id": "spawn_11",
+      "type": "spawn_point",
+      "type_fr": "Socle d'apparition joueur",
+      "position": [
+        31.735,
+        20.345,
+        -1.142
+      ],
+      "radius_median_m": 0.001,
+      "radius_max_m": 0.001,
+      "occurrences": 2,
+      "distinct_entities": 2,
+      "first_seen_s": 146.3,
+      "last_seen_s": 212.9,
+      "confidence": "haute",
+      "zone_fr": "Glaçons",
+      "zone_design": "ridgeline icicle",
+      "zone_volume_index": 21,
+      "evidence": "2 entites distinctes apparaissent au meme point (rayon max 0.001 m), de t=146 s a t=213 s"
+    },
+    {
+      "id": "spawn_12",
+      "type": "spawn_point",
+      "type_fr": "Socle d'apparition joueur",
+      "position": [
+        3.59,
+        16.719,
+        -3.434
+      ],
+      "radius_median_m": 0.007,
+      "radius_max_m": 0.007,
+      "occurrences": 2,
+      "distinct_entities": 2,
+      "first_seen_s": 152.1,
+      "last_seen_s": 238.1,
+      "confidence": "haute",
+      "zone_fr": "Plateforme",
+      "zone_design": "platform",
+      "zone_volume_index": 12,
+      "evidence": "2 entites distinctes apparaissent au meme point (rayon max 0.007 m), de t=152 s a t=238 s"
+    },
+    {
+      "id": "spawn_13",
+      "type": "spawn_point",
+      "type_fr": "Socle d'apparition joueur",
+      "position": [
+        0.46,
+        13.62,
+        -3.518
+      ],
+      "radius_median_m": 0.0,
+      "radius_max_m": 0.0,
+      "occurrences": 2,
+      "distinct_entities": 2,
+      "first_seen_s": 161.0,
+      "last_seen_s": 425.1,
+      "confidence": "haute",
+      "zone_fr": "Plateforme",
+      "zone_design": "platform",
+      "zone_volume_index": 12,
+      "evidence": "2 entites distinctes apparaissent au meme point (rayon max 0.000 m), de t=161 s a t=425 s"
+    },
+    {
+      "id": "spawn_14",
+      "type": "spawn_point",
+      "type_fr": "Socle d'apparition joueur",
+      "position": [
+        22.392,
+        -18.989,
+        -3.09
+      ],
+      "radius_median_m": 0.0,
+      "radius_max_m": 0.0,
+      "occurrences": 2,
+      "distinct_entities": 2,
+      "first_seen_s": 172.7,
+      "last_seen_s": 300.7,
+      "confidence": "haute",
+      "zone_fr": "Sanctuaire",
+      "zone_design": "ridgeline sanctu",
+      "zone_volume_index": 13,
+      "evidence": "2 entites distinctes apparaissent au meme point (rayon max 0.000 m), de t=173 s a t=301 s"
+    },
+    {
+      "id": "spawn_15",
+      "type": "spawn_point",
+      "type_fr": "Socle d'apparition joueur",
+      "position": [
+        11.876,
+        27.5,
+        -2.083
+      ],
+      "radius_median_m": 0.001,
+      "radius_max_m": 0.001,
+      "occurrences": 2,
+      "distinct_entities": 2,
+      "first_seen_s": 192.7,
+      "last_seen_s": 487.7,
+      "confidence": "haute",
+      "zone_fr": "Sentier de la falaise",
+      "zone_design": "ridgeline cliffs",
+      "zone_volume_index": 22,
+      "evidence": "2 entites distinctes apparaissent au meme point (rayon max 0.001 m), de t=193 s a t=488 s"
+    },
+    {
+      "id": "spawn_16",
+      "type": "spawn_point",
+      "type_fr": "Socle d'apparition joueur",
+      "position": [
+        23.65,
+        17.121,
+        -2.822
+      ],
+      "radius_median_m": 0.001,
+      "radius_max_m": 0.001,
+      "occurrences": 2,
+      "distinct_entities": 2,
+      "first_seen_s": 197.3,
+      "last_seen_s": 349.0,
+      "confidence": "haute",
+      "zone_fr": "Crique",
+      "zone_design": "ridgeline creek",
+      "zone_volume_index": 16,
+      "evidence": "2 entites distinctes apparaissent au meme point (rayon max 0.001 m), de t=197 s a t=349 s"
+    },
+    {
+      "id": "spawn_17",
+      "type": "spawn_point",
+      "type_fr": "Socle d'apparition joueur",
+      "position": [
+        2.354,
+        23.304,
+        -2.225
+      ],
+      "radius_median_m": 0.001,
+      "radius_max_m": 0.001,
+      "occurrences": 2,
+      "distinct_entities": 2,
+      "first_seen_s": 200.7,
+      "last_seen_s": 425.6,
+      "confidence": "haute",
+      "zone_fr": "Plateforme",
+      "zone_design": "platform",
+      "zone_volume_index": 12,
+      "evidence": "2 entites distinctes apparaissent au meme point (rayon max 0.001 m), de t=201 s a t=426 s"
+    },
+    {
+      "id": "spawn_18",
+      "type": "spawn_point",
+      "type_fr": "Socle d'apparition joueur",
+      "position": [
+        20.893,
+        11.779,
+        -1.831
+      ],
+      "radius_median_m": 0.01,
+      "radius_max_m": 0.01,
+      "occurrences": 2,
+      "distinct_entities": 2,
+      "first_seen_s": 217.3,
+      "last_seen_s": 314.7,
+      "confidence": "haute",
+      "zone_fr": "Fer à cheval inférieur",
+      "zone_design": "ridgeline lower ",
+      "zone_volume_index": 25,
+      "evidence": "2 entites distinctes apparaissent au meme point (rayon max 0.010 m), de t=217 s a t=315 s"
+    },
+    {
+      "id": "spawn_19",
+      "type": "spawn_point",
+      "type_fr": "Socle d'apparition joueur",
+      "position": [
+        5.104,
+        12.272,
+        -3.283
+      ],
+      "radius_median_m": 0.001,
+      "radius_max_m": 0.001,
+      "occurrences": 2,
+      "distinct_entities": 2,
+      "first_seen_s": 227.2,
+      "last_seen_s": 334.2,
+      "confidence": "haute",
+      "zone_fr": "Plateforme",
+      "zone_design": "platform",
+      "zone_volume_index": 12,
+      "evidence": "2 entites distinctes apparaissent au meme point (rayon max 0.001 m), de t=227 s a t=334 s"
+    },
+    {
+      "id": "spawn_20",
+      "type": "spawn_point",
+      "type_fr": "Socle d'apparition joueur",
+      "position": [
+        27.077,
+        -21.129,
+        -3.006
+      ],
+      "radius_median_m": 0.001,
+      "radius_max_m": 0.001,
+      "occurrences": 2,
+      "distinct_entities": 2,
+      "first_seen_s": 235.1,
+      "last_seen_s": 263.0,
+      "confidence": "haute",
+      "zone_fr": "Sanctuaire",
+      "zone_design": "ridgeline sanctu",
+      "zone_volume_index": 13,
+      "evidence": "2 entites distinctes apparaissent au meme point (rayon max 0.001 m), de t=235 s a t=263 s"
+    },
+    {
+      "id": "spawn_21",
+      "type": "spawn_point",
+      "type_fr": "Socle d'apparition joueur",
+      "position": [
+        25.447,
+        -23.463,
+        -0.891
+      ],
+      "radius_median_m": 0.001,
+      "radius_max_m": 0.001,
+      "occurrences": 2,
+      "distinct_entities": 2,
+      "first_seen_s": 240.3,
+      "last_seen_s": 472.4,
+      "confidence": "haute",
+      "zone_fr": "Sanctuaire",
+      "zone_design": "ridgeline sanctu",
+      "zone_volume_index": 13,
+      "evidence": "2 entites distinctes apparaissent au meme point (rayon max 0.001 m), de t=240 s a t=472 s"
+    },
+    {
+      "id": "spawn_22",
+      "type": "spawn_point",
+      "type_fr": "Socle d'apparition joueur",
+      "position": [
+        4.883,
+        -10.597,
+        -1.755
+      ],
+      "radius_median_m": 0.0,
+      "radius_max_m": 0.0,
+      "occurrences": 2,
+      "distinct_entities": 2,
+      "first_seen_s": 296.9,
+      "last_seen_s": 379.5,
+      "confidence": "haute",
+      "zone_fr": "Pont",
+      "zone_design": "deck",
+      "zone_volume_index": 17,
+      "evidence": "2 entites distinctes apparaissent au meme point (rayon max 0.000 m), de t=297 s a t=380 s"
+    },
+    {
+      "id": "spawn_23",
+      "type": "spawn_point",
+      "type_fr": "Socle d'apparition joueur",
+      "position": [
+        30.104,
+        12.425,
+        -1.562
+      ],
+      "radius_median_m": 0.0,
+      "radius_max_m": 0.0,
+      "occurrences": 2,
+      "distinct_entities": 2,
+      "first_seen_s": 312.6,
+      "last_seen_s": 317.6,
+      "confidence": "haute",
+      "zone_fr": "Chars",
+      "zone_design": "ridgeline tanks",
+      "zone_volume_index": 19,
+      "evidence": "2 entites distinctes apparaissent au meme point (rayon max 0.000 m), de t=313 s a t=318 s"
+    },
+    {
+      "id": "spawn_24",
+      "type": "spawn_point",
+      "type_fr": "Socle d'apparition joueur",
+      "position": [
+        0.958,
+        -7.679,
+        -2.326
+      ],
+      "radius_median_m": 0.0,
+      "radius_max_m": 0.0,
+      "occurrences": 2,
+      "distinct_entities": 2,
+      "first_seen_s": 338.6,
+      "last_seen_s": 462.4,
+      "confidence": "haute",
+      "zone_fr": "Antenne",
+      "zone_design": "antenna",
+      "zone_volume_index": 11,
+      "evidence": "2 entites distinctes apparaissent au meme point (rayon max 0.000 m), de t=339 s a t=462 s"
+    },
+    {
+      "id": "spawn_25",
+      "type": "spawn_point",
+      "type_fr": "Socle d'apparition joueur",
+      "position": [
+        32.854,
+        0.324,
+        0.209
+      ],
+      "radius_median_m": 0.0,
+      "radius_max_m": 0.0,
+      "occurrences": 2,
+      "distinct_entities": 2,
+      "first_seen_s": 398.9,
+      "last_seen_s": 481.9,
+      "confidence": "haute",
+      "zone_fr": "Chars",
+      "zone_design": "ridgeline tanks",
+      "zone_volume_index": 19,
+      "evidence": "2 entites distinctes apparaissent au meme point (rayon max 0.000 m), de t=399 s a t=482 s"
+    },
+    {
+      "id": "spawn_26",
+      "type": "spawn_point",
+      "type_fr": "Socle d'apparition joueur",
+      "position": [
+        33.365,
+        11.529,
+        -1.545
+      ],
+      "radius_median_m": 0.007,
+      "radius_max_m": 0.007,
+      "occurrences": 2,
+      "distinct_entities": 2,
+      "first_seen_s": 402.3,
+      "last_seen_s": 422.8,
+      "confidence": "haute",
+      "zone_fr": "Chars",
+      "zone_design": "ridgeline tanks",
+      "zone_volume_index": 19,
+      "evidence": "2 entites distinctes apparaissent au meme point (rayon max 0.007 m), de t=402 s a t=423 s"
+    },
+    {
+      "id": "impact_00",
+      "type": "impact_zone",
+      "type_fr": "Zone d'arret brutal (candidat faible)",
+      "position": [
+        14.741,
+        18.121,
+        0.657
+      ],
+      "radius_median_m": 0.657,
+      "radius_max_m": 2.484,
+      "occurrences": 40,
+      "distinct_entities": 4,
+      "first_seen_s": null,
+      "last_seen_s": null,
+      "confidence": "basse",
+      "zone_fr": "Crique",
+      "zone_design": "ridgeline creek",
+      "zone_volume_index": 16,
+      "evidence": "40 arrets brutaux, 4 entites, rayon max 2.5 m - non separable d'une zone de combat ; a ne pas afficher comme dispositif"
+    },
+    {
+      "id": "impact_01",
+      "type": "impact_zone",
+      "type_fr": "Zone d'arret brutal (candidat faible)",
+      "position": [
+        20.89,
+        1.665,
+        -2.277
+      ],
+      "radius_median_m": 2.431,
+      "radius_max_m": 3.22,
+      "occurrences": 29,
+      "distinct_entities": 9,
+      "first_seen_s": null,
+      "last_seen_s": null,
+      "confidence": "basse",
+      "zone_fr": "Sous-sol hexagonal",
+      "zone_design": "ridgeline hex ba",
+      "zone_volume_index": 23,
+      "evidence": "29 arrets brutaux, 9 entites, rayon max 3.2 m - non separable d'une zone de combat ; a ne pas afficher comme dispositif"
+    },
+    {
+      "id": "impact_02",
+      "type": "impact_zone",
+      "type_fr": "Zone d'arret brutal (candidat faible)",
+      "position": [
+        28.227,
+        -3.623,
+        -0.196
+      ],
+      "radius_median_m": 1.461,
+      "radius_max_m": 2.317,
+      "occurrences": 12,
+      "distinct_entities": 3,
+      "first_seen_s": null,
+      "last_seen_s": null,
+      "confidence": "basse",
+      "zone_fr": "Radiateur",
+      "zone_design": "ridgeline radiat",
+      "zone_volume_index": 18,
+      "evidence": "12 arrets brutaux, 3 entites, rayon max 2.3 m - non separable d'une zone de combat ; a ne pas afficher comme dispositif"
+    },
+    {
+      "id": "impact_03",
+      "type": "impact_zone",
+      "type_fr": "Zone d'arret brutal (candidat faible)",
+      "position": [
+        17.619,
+        -19.912,
+        -2.784
+      ],
+      "radius_median_m": 0.407,
+      "radius_max_m": 1.812,
+      "occurrences": 10,
+      "distinct_entities": 3,
+      "first_seen_s": null,
+      "last_seen_s": null,
+      "confidence": "basse",
+      "zone_fr": "Sanctuaire",
+      "zone_design": "ridgeline sanctu",
+      "zone_volume_index": 13,
+      "evidence": "10 arrets brutaux, 3 entites, rayon max 1.8 m - non separable d'une zone de combat ; a ne pas afficher comme dispositif"
+    },
+    {
+      "id": "impact_04",
+      "type": "impact_zone",
+      "type_fr": "Zone d'arret brutal (candidat faible)",
+      "position": [
+        24.981,
+        8.593,
+        -1.527
+      ],
+      "radius_median_m": 0.046,
+      "radius_max_m": 0.229,
+      "occurrences": 6,
+      "distinct_entities": 1,
+      "first_seen_s": null,
+      "last_seen_s": null,
+      "confidence": "basse",
+      "zone_fr": "Chars",
+      "zone_design": "ridgeline tanks",
+      "zone_volume_index": 19,
+      "evidence": "6 arrets brutaux, 1 entites, rayon max 0.2 m - non separable d'une zone de combat ; a ne pas afficher comme dispositif"
+    },
+    {
+      "id": "impact_05",
+      "type": "impact_zone",
+      "type_fr": "Zone d'arret brutal (candidat faible)",
+      "position": [
+        6.306,
+        -4.456,
+        -1.0
+      ],
+      "radius_median_m": 0.0,
+      "radius_max_m": 0.0,
+      "occurrences": 5,
+      "distinct_entities": 1,
+      "first_seen_s": null,
+      "last_seen_s": null,
+      "confidence": "basse",
+      "zone_fr": "Pont",
+      "zone_design": "deck",
+      "zone_volume_index": 17,
+      "evidence": "5 arrets brutaux, 1 entites, rayon max 0.0 m - non separable d'une zone de combat ; a ne pas afficher comme dispositif"
+    },
+    {
+      "id": "impact_06",
+      "type": "impact_zone",
+      "type_fr": "Zone d'arret brutal (candidat faible)",
+      "position": [
+        16.173,
+        4.422,
+        0.797
+      ],
+      "radius_median_m": 0.001,
+      "radius_max_m": 0.001,
+      "occurrences": 5,
+      "distinct_entities": 1,
+      "first_seen_s": null,
+      "last_seen_s": null,
+      "confidence": "basse",
+      "zone_fr": "Sous-sol hexagonal",
+      "zone_design": "ridgeline hex ba",
+      "zone_volume_index": 23,
+      "evidence": "5 arrets brutaux, 1 entites, rayon max 0.0 m - non separable d'une zone de combat ; a ne pas afficher comme dispositif"
+    }
+  ],
+  "diagnostics": {
+    "canon": {
+      "critere": "vz >= 6 m/s soutenu, gain d'altitude >= 2 m ; 1 usage = 1 salve par entite (fenetre 3 s)",
+      "segments_bruts": 20,
+      "usages": 9,
+      "grappes": 1,
+      "paires_a_moins_de_15cm": 15,
+      "temoin_positions_tirees_au_hasard_dans_les_trajectoires": {
+        "tirages": 1000,
+        "mediane": 0,
+        "p95": 0,
+        "max": 1,
+        "p_value": 0.0
+      }
+    },
+    "apparition": {
+      "critere": "premiere position connue de chaque entite biped (1 entite = 1 vie)",
+      "entites": 98,
+      "socles": 27,
+      "apparitions_sur_un_socle_reutilise": 65,
+      "paires_a_moins_de_15cm": 49,
+      "temoin_positions_tirees_au_hasard_dans_les_trajectoires": {
+        "tirages": 1000,
+        "mediane": 1,
+        "p95": 3,
+        "max": 4,
+        "p_value": 0.0
+      }
+    },
+    "teleporteur": {
+      "critere": "deplacement inter-frame a plus de 25 m/s sur plus de 1 m (dt <= 60 ms)",
+      "detections": 11,
+      "par_entite": {
+        "549": 10,
+        "569": 1
+      },
+      "grappes": 3,
+      "verdict": "REJETE - aucun dispositif : 10 des 11 detections viennent d'une seule entite en 2,5 s, pendant un vol de canon (oscillation de la reconstruction de position). Un vrai teleporteur produirait des detections par plusieurs entites a des instants eloignes."
+    },
+    "arret_brutal": {
+      "critere": "vitesse 3D >= 6 m/s puis <= 1 m/s en moins de 120 ms",
+      "detections": 126,
+      "grappes": 11,
+      "temoin_grappes": {
+        "mediane": 22,
+        "p05": 17,
+        "p95": 27
+      },
+      "verdict": "FAIBLE - plus concentre que le hasard (11 grappes contre 22 attendues) mais la plus grosse grappe est le canon lui-meme et les autres sont des zones de combat : le critere ne separe pas un dispositif d'un lieu de mort frequent. Non retenu comme socle."
+    },
+    "echelle_ascenseur": {
+      "critere": "montee reguliere 0,6-5 m/s, deplacement horizontal < 2,5 m/s, duree >= 0,4 s, gain >= 1 m",
+      "detections": 5,
+      "grappes": 0,
+      "verdict": "AUCUN - 5 detections isolees, aucune grappe. Coherent avec la carte : Ridgeline n'a ni echelle ni ascenseur."
+    }
+  }
+}

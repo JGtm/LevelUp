@@ -6,7 +6,10 @@ package port
 
 import (
 	"context"
+	"errors"
 
+	"levelup/go-api/internal/analysis/positions"
+	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/analysis/temporal"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
@@ -139,6 +142,25 @@ type MatchViewService interface {
 	// GetMatchNeighborsFiltered : variante paramétrable Phase 2b. spec=nil/vide
 	// → comportement chronologie globale identique à GetMatchNeighbors.
 	GetMatchNeighborsFiltered(ctx context.Context, matchID string, spec *domain.MatchFilterSpec) (domain.MatchNeighbors, error)
+	// GetObjectiveEvents retourne les events objectif v3 (timeline mode-agnostique)
+	// d'un match. Retourne games.ErrCapabilityNotSupported si le titre n'a pas la
+	// capability (repo non câblé ou tables absentes).
+	GetObjectiveEvents(ctx context.Context, matchID string) ([]domain.ObjectiveEvent, error)
+	// GetMatchPositions retourne les positions joueurs keyframe v3 (match-level,
+	// §N) d'un match. Retourne games.ErrCapabilityNotSupported si le titre n'a pas
+	// la capability (repo non câblé ou table absente).
+	GetMatchPositions(ctx context.Context, matchID string) ([]positions.PlayerPosition, error)
+}
+
+// ErrReplayNotAvailable est renvoyé quand aucun artefact de rejeu 2D n'existe pour le
+// match : la feature s'allume par PRÉSENCE d'artefact (pas de flag global OFF « pour plus
+// tard » — règle 11 projet). Le handler le mappe en 404 propre.
+var ErrReplayNotAvailable = errors.New("replay: aucun artefact disponible pour ce match")
+
+// ReplayService sert l'artefact de rejeu 2D pré-construit d'un match (trajectoires
+// joueurs vue du dessus, produit hors ligne par cmd/replay-build).
+type ReplayService interface {
+	GetReplay(ctx context.Context, matchID string) (replay.ReplayDocument, error)
 }
 
 // MatchEventsService construit la timeline canonique d'events d'un match

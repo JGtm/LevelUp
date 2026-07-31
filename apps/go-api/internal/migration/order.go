@@ -168,6 +168,9 @@ var canonicalOrder = []string{
 	// Même pattern documenté que le reorder skill_v2 ci-dessous.
 	"shared_append_only_match_csrs_v1",                 // shared
 	"add_pve_schema",                                   // shared_pve
+	"shared_objective_events_v1",                       // shared
+	"shared_objective_score_v1",                        // shared
+	"shared_match_player_positions_v1",                 // shared
 	"shared_pve_append_only_v1",                        // shared_pve
 	"rebuild_match_participants_defeat_art_corruption", // shared
 	// Phase 1.5 b27 (reorder escaladé) : skill_v2 (créateur de lusr_hyperparams_v2)
@@ -219,6 +222,7 @@ var canonicalOrder = []string{
 	"create_world_player_no_data",                              // shared (marqueur privés/sans-données classement mondial)
 	"shared_create_objective_stats",                            // shared (V72-03 : stats objectifs CTF/Zones/Oddball par joueur/match, append-only)
 	"shared_objective_stats_add_stockpile_extraction",          // shared (V721-02 : +18 colonnes Stockpile/Extraction/VIP + vue _latest recréée)
+	"shared_weapon_kills_v3",                                   // shared (attribution d'arme par kill, voie v3 pur-film)
 }
 
 var canonicalIndex = func() map[string]int {

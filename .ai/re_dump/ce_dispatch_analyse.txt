@@ -1,0 +1,167 @@
+CAPTURE CE — ce_midflight.bin
+
+  200000 composants dispatches
+  63958 records reconstruits
+
+  ARCHETYPES (typeIndex) —
+        ti     records    composants  moy. comp/record
+        35       36651        133737  3.65
+        37        8587         26275  3.06
+         4        5473          6533  1.19
+        42        5033         14727  2.93
+        43        4365          9124  2.09
+        41        1599          5073  3.17
+        21         783           881  1.13
+        38         566          1576  2.78
+         5         398           528  1.33
+         6         221           834  3.77
+         2         186           207  1.11
+        47          64            64  1.00
+        13           8           256  32.00
+         9           8             8  1.00
+        45           6             8  1.33
+        12           2            15  7.50
+        26           2            18  9.00
+        27           2           128  64.00
+        25           2             2  1.00
+        34           1             4  4.00
+        11           1             2  2.00
+
+  MASQUES les plus frequents de ti=35 (36651 records) —
+   42.48 %  15569  [0 1 21 25]
+   24.24 %   8883  [0 1 25]
+    7.81 %   2862  [0 25]
+    7.68 %   2816  [0 1 5 21 25]
+    4.10 %   1501  [0 1 5 25]
+    3.48 %   1276  [0 21 25]
+    1.54 %    563  [21 25]
+    0.96 %    353  [0 5 25]
+    0.83 %    303  [5 21 25]
+    0.71 %    261  [0 5 21 25]
+    0.62 %    227  [0 1 21 25 54]
+    0.59 %    218  [0 1 25 54]
+    0.39 %    144  [5]
+    0.39 %    144  [0 1 21 25 35]
+    0.33 %    122  [0 1 25 28]
+  … 141 autres masques distincts
+  -> 156 masques DISTINCTS sur 36651 records
+
+  TAILLES DE MASQUE ti=35 — max observe 29 composants
+    1 comp      169    0.46 %  
+    2 comp     3473    9.48 %  ###
+    3 comp    10864   29.64 %  ###########
+    4 comp    17894   48.82 %  ###################
+    5 comp     3781   10.32 %  ####
+    6 comp      385    1.05 %  
+    7 comp       40    0.11 %  
+    8 comp        2    0.01 %  
+   12 comp        1    0.00 %  
+   13 comp        2    0.01 %  
+   14 comp        2    0.01 %  
+   15 comp        8    0.02 %  
+   16 comp        5    0.01 %  
+   17 comp        1    0.00 %  
+   25 comp        1    0.00 %  
+   27 comp       16    0.04 %  
+   29 comp        7    0.02 %  
+  -> AU-DELA DE 7 (impossible en branche eparse) : 45 records = 0.123 %
+
+  LARGEURS MESUREES ti=35 (bits consommes par composant) —
+    comp         n  distinctes  les plus frequentes
+  i0         35491           1  47 bits (100 %)
+  i1         30718           2  31 bits (99 %)  2 bits (1 %)
+  i2            37           1  9 bits (100 %)
+  i4           162           1  11 bits (100 %)
+  i5          5648           1  29 bits (100 %)
+  i6            24           1  358 bits (100 %)
+  i9            24           1  334 bits (100 %)
+  i11           19           4  191 bits (53 %)  223 bits (26 %)  147 bits (11 %)  127 bits (11 %)
+  i13           24           1  8 bits (100 %)
+  i14           24           1  4 bits (100 %)
+  i15           56           2  72 bits (84 %)  76 bits (16 %)
+  i17           46           5  52 bits (43 %)  77 bits (20 %)  74 bits (17 %)  76 bits (17 %) …
+  i18           43           2  8 bits (56 %)  2 bits (44 %)
+  i21        22025           1  25 bits (100 %)
+  i22           51           1  35 bits (100 %)
+  i23           33           2  19 bits (85 %)  31 bits (15 %)
+  i24           25           1  12 bits (100 %)
+  i25         1849           1  10 bits (100 %)
+  i26           16           1  22 bits (100 %)
+  i28            4           2  34 bits (75 %)  10 bits (25 %)
+  i30           43           3  10 bits (70 %)  2 bits (28 %)  14 bits (2 %)
+  i31           32           1  11 bits (100 %)
+  i32            2           1  9 bits (100 %)
+  i33           52           3  10 bits (50 %)  14 bits (27 %)  2 bits (23 %)
+  i34           21           1  11 bits (100 %)
+  i35            3           1  9 bits (100 %)
+  i42           59           2  7 bits (68 %)  5 bits (32 %)
+  i43           43           9  15 bits (44 %)  204 bits (14 %)  203 bits (9 %)  195 bits (9 %) …
+  i44           43           9  15 bits (44 %)  196 bits (14 %)  203 bits (14 %)  204 bits (12 %) …
+  i45           24           2  17 bits (67 %)  107 bits (33 %)
+  i46           24           2  17 bits (67 %)  9 bits (33 %)
+  i47           38           1  9 bits (100 %)
+  i48           29           2  10 bits (93 %)  4 bits (7 %)
+  i49           24           1  3 bits (100 %)
+  i52           24           1  68 bits (100 %)
+  i53           24           2  31 bits (96 %)  63 bits (4 %)
+  i54            7           1  2 bits (100 %)
+  i56            9           1  10 bits (100 %)
+  i57          266           2  2 bits (97 %)  28 bits (3 %)
+
+  LOCUS DE L'INVENTAIRE ti=35 — part de records DENSES (>7 comp)
+  population generale : 0.123 % (45/36651)
+
+    comp   records    denses       part  composant
+  i0         35491        26      0.07 %  object-position (temoin: composant COMMUN)
+  i22           51        43     84.31 %  unit-grenade-counts
+  i25        36475        39      0.11 %  unit-command-tick (temoin: composant COMMUN)
+  i42          106        43     40.57 %  biped-desired-weapon-set
+  i43           45        43     95.56 %  weapon-state-type-info
+  i47           45        42     93.33 %  biped-desired-grenade-set
+  i48           47        15     31.91 %  biped-desired-ability-set
+  i56           35         3      8.57 %  biped-spartan-ability-energy
+
+  TAUX DE PRESENCE par composant, ti=35 (36651 records) —
+    comp     records        taux  
+  i25          36475      99.52 %
+  i0           35491      96.84 %
+  i1           30718      83.81 %
+  i21          22026      60.10 %
+  i5            5792      15.80 %
+  i54            493       1.35 %
+  i28            279       0.76 %
+  i35            270       0.74 %
+  i59            266       0.73 %
+  i57            266       0.73 %
+  i30            212       0.58 %
+  i33            206       0.56 %
+  i4             162       0.44 %
+  i42            106       0.29 %  <- biped-desired-weapon-set (ARME)
+  i32             60       0.16 %
+  i15             58       0.16 %
+  i22             51       0.14 %  <- unit-grenade-counts (COMPTES DE GRENADES)
+  i44             48       0.13 %
+  i48             47       0.13 %  <- biped-desired-ability-set (CAPACITE)
+  i17             46       0.13 %
+  i43             45       0.12 %
+  i47             45       0.12 %  <- biped-desired-grenade-set (TYPES EQUIPES)
+  i18             43       0.12 %
+  i31             43       0.12 %
+  i26             41       0.11 %
+  i2              37       0.10 %
+  i53             37       0.10 %
+  i56             35       0.10 %  <- biped-spartan-ability-energy
+  i34             34       0.09 %
+  i23             33       0.09 %
+  i45             33       0.09 %
+  i24             26       0.07 %
+  i58             26       0.07 %
+  i14             24       0.07 %
+  i46             24       0.07 %
+  i6              24       0.07 %
+  i9              24       0.07 %
+  i13             24       0.07 %
+  i49             24       0.07 %
+  i52             24       0.07 %
+  i11             19       0.05 %
+
