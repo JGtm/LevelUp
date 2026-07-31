@@ -173,7 +173,9 @@ func extractCTF(matchID string, src FilmSource, roster Roster) []domain.Objectiv
 	if hasFooter {
 		th10 = scanTh10Events(footer)
 	}
-	var out []domain.ObjectiveEvent
+	// Capacité EXACTE : un événement par burst, sans continue dans la boucle. Le nil
+	// éventuel n'est pas perdu — finalize() ramène une tranche vide à nil.
+	out := make([]domain.ObjectiveEvent, 0, len(bursts))
 	for _, b := range bursts {
 		ev := domain.ObjectiveEvent{
 			MatchID:       matchID,

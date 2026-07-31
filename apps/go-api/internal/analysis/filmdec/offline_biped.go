@@ -174,7 +174,7 @@ func ScanFilmBipedPositions(dir string, opt ScanFilmOptions) ([]BipedPosition, e
 	if len(slots) == 0 {
 		return nil, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes de %s", BipedTypeIndex, dir)
 	}
-	lay := I0Layout{}
+	var lay I0Layout
 	if opt.Layout != nil {
 		lay = *opt.Layout
 	} else {

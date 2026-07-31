@@ -215,7 +215,12 @@ func walkPlugin(n xnode, off int, out *[]pluginField) int {
 		case "_34", "_35":
 			l := sizeTab[name]
 			if c.Length != "" {
-				fmt.Sscanf(c.Length, "%d", &l)
+				// Repli EXPLICITE : un attribut Length non numérique (ou vide après
+				// le test) laisse la taille par défaut du type. Sscanf peut écrire
+				// une valeur partielle avant d'échouer — on la réécrase.
+				if _, err := fmt.Sscanf(c.Length, "%d", &l); err != nil {
+					l = sizeTab[name]
+				}
 			}
 			off += l
 		case "Flag", "":

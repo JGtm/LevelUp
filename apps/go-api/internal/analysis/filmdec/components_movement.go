@@ -213,7 +213,7 @@ func consumeObjectPositionDynamicPrecisionD(br *BitReader, pd PrecisionDescripto
 			}
 			var v [3]float32
 			for i := 0; i < 3; i++ {
-				w := absAxisWFor(pd, pidx, i)                 // largeur par index (7ter.54) ou uniforme
+				w := absAxisWFor(pidx, i)                     // largeur par index (7ter.54) ou uniforme
 				v[i] = dequantWorldAxis(br.ReadBits(w), w, i) // FUN_140cc5128 axe i
 			}
 			seedAbsolute(PosKindAbsolute, v) // predFlag==1 = position absolue = seed d'accumulation
@@ -334,7 +334,7 @@ func consumeAbsoluteWithGate(br *BitReader, pd PrecisionDescriptor) {
 		// la table de région 13/13/14 qui ferme le compte à 47 bits — quand aucune table
 		// par index n'est installée, ce qui est le défaut. La mesure du rejeu est donc
 		// préservée telle quelle, et le chemin par index reste disponible.
-		w := absAxisWFor(pd, idx, i)                  // par index (7ter.54), sinon région 13/13/14
+		w := absAxisWFor(idx, i)                      // par index (7ter.54), sinon région 13/13/14
 		v[i] = dequantWorldAxis(br.ReadBits(w), w, i) // FUN_140cc5128 axis i
 	}
 	// Champ « fini » de 2 bits — FUN_14076e304, appelé en LAB_1406cffd7 sous un prédicat
@@ -417,16 +417,18 @@ func quantAxisWidth(level uint) uint {
 
 // consumeQuantVec3 lit un vecteur 3D quantifié (FUN_14076e524, le coeur quantifié de
 // FUN_14076e494) SANS capture : gate precHigh (1 -> vecteur défaut, 0 bit) ; sinon
-// index-gate (0 -> R(indexW)) + 3×R(axisW). Mêmes gates que consumeAbsoluteWithGate,
-// mais largeurs PARAMÉTRÉES (PISTE 1) : axisW = 6+level, level = flags du registre,
-// indexW = 1 (DAT_144632be0). Décode pur (pas d'emitPos) pour les composants non-position
-// porteurs d'un vec3 quantifié (crew-order, tacmap-offset, desired-respawn-location, ...).
-func consumeQuantVec3(br *BitReader, axisW, indexW uint) {
+// index-gate (0 -> R(1)) + 3×R(axisW). Mêmes gates que consumeAbsoluteWithGate, mais
+// largeur d'axe PARAMÉTRÉE (PISTE 1) : axisW = 6+level, level = flags du registre. La
+// largeur d'index reste en dur à 1 (DAT_144632be0), comme partout ailleurs dans ce
+// paquet : aucun appelant n'en a jamais passé une autre. Décode pur (pas d'emitPos) pour
+// les composants non-position porteurs d'un vec3 quantifié (crew-order, tacmap-offset,
+// desired-respawn-location, ...).
+func consumeQuantVec3(br *BitReader, axisW uint) {
 	if br.ReadBit() { // precHigh == 1 -> vecteur défaut, 0 bit
 		return
 	}
 	if !br.ReadBit() { // index-present select ; 0 -> lit l'index
-		br.ReadBits(indexW)
+		br.ReadBits(1) // DAT_144632be0 = 1
 	}
 	br.ReadBits(axisW)
 	br.ReadBits(axisW)

@@ -54,7 +54,9 @@ func kfBitAt(buf []byte, p int) uint64 {
 // kfValidAnchor : en-tête de record valide ? gen∈{1,2,3}, prev<slot<cap. FILTRE FORT
 // anti-faux-positif : le mot 32-bit à q+32 doit être < archMax (vrai pour TOUT record au
 // spawn, car field26==0 -> ce mot == ti < 50). ti/field26 EXTRAITS de façon durcie.
-func kfValidAnchor(buf []byte, q, prevSlot, total int) (slot, ti, gen, field26 int, ok bool) {
+// field26 n'est PAS rendu : il ne sert qu'à expliquer pourquoi le filtre fort tient
+// (field26==0 au spawn -> le mot 32-bit vaut ti), et aucun appelant ne l'a jamais lu.
+func kfValidAnchor(buf []byte, q, prevSlot, total int) (slot, ti, gen int, ok bool) {
 	if q < 0 || q+64 > total {
 		return
 	}
@@ -74,7 +76,6 @@ func kfValidAnchor(buf []byte, q, prevSlot, total int) (slot, ti, gen, field26 i
 		return
 	}
 	ti = int(kfReadBits(buf, q+58, 6)) // extraction durcie (== mot 32-bit quand field26==0)
-	field26 = int(kfReadBits(buf, q+32, 26))
 	ok = true
 	return
 }
@@ -95,10 +96,14 @@ func kfBetterCand(cons, g, s, q, bc, bg, bs, bb int) bool {
 	return q < bb
 }
 
-// kfScanNext : prochaine ancre après `from`. Fast-path : slot==prev+1 ET gen==1 (cas dominant
-// du keyframe de spawn, non ambigu) -> retour immédiat. Sinon score complet kfBetterCand
-// (gère les faux ancres gen 2/3 de la zone d'état + les vrais gen≥2 mid-match).
-func kfScanNext(buf []byte, from, prevSlot, total, maxWin int) (slot, ti, gen, at int) {
+// kfScanNext : POSITION EN BITS de la prochaine ancre après `from` (-1 si aucune).
+// Fast-path : slot==prev+1 ET gen==1 (cas dominant du keyframe de spawn, non ambigu) ->
+// retour immédiat. Sinon score complet kfBetterCand (gère les faux ancres gen 2/3 de la
+// zone d'état + les vrais gen≥2 mid-match).
+//
+// Seule la position est rendue : slot/ti/gen de l'ancre retenue se relisent en rejouant
+// kfValidAnchor à cette position — c'est exactement ce que l'appelant fait déjà.
+func kfScanNext(buf []byte, from, prevSlot, total, maxWin int) (at int) {
 	at = -1
 	bc, bg, bs, bb := -1, 1<<30, 1<<30, 1<<30
 	end := from + maxWin
@@ -114,19 +119,19 @@ func kfScanNext(buf []byte, from, prevSlot, total, maxWin int) (slot, ti, gen, a
 			continue
 		}
 		sentStreak = 0
-		s, t, g, _, ok := kfValidAnchor(buf, q, prevSlot, total)
+		s, _, g, ok := kfValidAnchor(buf, q, prevSlot, total)
 		if !ok {
 			continue
 		}
 		if s == prevSlot+1 && g == 1 {
-			return s, t, g, q // consécutif gen-1 : non ambigu
+			return q // consécutif gen-1 : non ambigu
 		}
 		cons := 0
 		if s == prevSlot+1 {
 			cons = 1
 		}
 		if at < 0 || kfBetterCand(cons, g, s, q, bc, bg, bs, bb) {
-			slot, ti, gen, at = s, t, g, q
+			at = q
 			bc, bg, bs, bb = cons, g, s, q
 		}
 	}
@@ -144,11 +149,11 @@ func WalkKeyframeWorld(buf []byte) []KeyframeRec {
 	var out []KeyframeRec
 	pos := 1 // préfixe 1 bit
 	prev := -1
-	if _, _, _, _, ok := kfValidAnchor(buf, pos, prev, total); !ok {
-		_, _, _, pos = kfScanNext(buf, pos, prev, total, maxWin)
+	if _, _, _, ok := kfValidAnchor(buf, pos, prev, total); !ok {
+		pos = kfScanNext(buf, pos, prev, total, maxWin)
 	}
 	for pos >= 0 {
-		slot, ti, gen, _, ok := kfValidAnchor(buf, pos, prev, total)
+		slot, ti, gen, ok := kfValidAnchor(buf, pos, prev, total)
 		if !ok {
 			break
 		}
@@ -158,13 +163,13 @@ func WalkKeyframeWorld(buf []byte) []KeyframeRec {
 			// fast-path saut-de-largeur : n'accepte QUE gen==1 (non ambigu). Les faux ancres
 			// gen 2/3 de la zone d'état peuvent tomber pile sur startState+w ; on ne saute pas
 			// dessus. Un vrai record gen≥2 (mid-match) est résolu par kfScanNext (fallback).
-			if _, _, jg, _, vok := kfValidAnchor(buf, startState+w, slot, total); vok && jg == 1 {
+			if _, _, jg, vok := kfValidAnchor(buf, startState+w, slot, total); vok && jg == 1 {
 				nat = startState + w
 			} else {
-				_, _, _, nat = kfScanNext(buf, startState, slot, total, maxWin)
+				nat = kfScanNext(buf, startState, slot, total, maxWin)
 			}
 		} else {
-			_, _, _, nat = kfScanNext(buf, startState, slot, total, maxWin)
+			nat = kfScanNext(buf, startState, slot, total, maxWin)
 		}
 		out = append(out, KeyframeRec{Slot: slot, TI: ti, Gen: gen, Bit: pos})
 		prev = slot

@@ -216,7 +216,7 @@ func scanFiresUS(chunks []ChunkInput, layout FirePiLayout, relax3 bool) []analys
 // (le marqueur melee peut apparaître hors des chunks type-2 stricts ; on scanne
 // large, le filtre high-32 écarte le bruit).
 func collectMeleeHits(chunks []ChunkInput) []MeleeHit {
-	var hits []MeleeHit
+	hits := make([]MeleeHit, 0, len(chunks)) // borne basse : au moins un chunk par coup
 	for _, c := range chunks {
 		est := USEstimator(c.Data, c.StartMS)
 		hits = append(hits, ScanMeleeHits(c.Data, est)...)

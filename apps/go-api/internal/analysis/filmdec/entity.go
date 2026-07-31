@@ -292,7 +292,11 @@ func decodePositionBody(br *BitReader) {
 
 // --- helpers; the dequant *value* math is stubbed but the bit consume is exact ---
 
-func (b *BitReader) readDequant(n uint) float32 { return float32(b.ReadBits(n)) } // FUN_1406d84b4
+// readDequant consomme les n bits d'un champ déquantifié SANS calculer sa valeur : la
+// math de déquantification est stubbée (cf. en-tête du fichier), seul le nombre de bits
+// est exact. Rien n'est rendu — l'ancien `float32(ReadBits(n))` n'était pas une valeur
+// déquantifiée, et aucun appelant ne l'a jamais lue.
+func (b *BitReader) readDequant(n uint) { b.ReadBits(n) } // FUN_1406d84b4
 func decodeOptComponent(br *BitReader) {
 	if br.ReadBit() {
 		br.ReadBits(2)
