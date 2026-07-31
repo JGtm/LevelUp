@@ -136,7 +136,7 @@ func consumeDefaultStateTI13(br *BitReader) {
 // consumeDefaultStateTI24 porte FUN_142eea5b4 (archetype 24, « state-checksum ») :
 // FUN_1406d00ec [R(1) ; si 0 -> R(2)] ; FUN_140c1e31c [R(3)]. Pas de prefixe de version.
 func consumeDefaultStateTI24(br *BitReader) {
-	consumeId2(br)
+	consumeID2(br)
 	br.ReadBits(3) // FUN_140c1e31c = R(3)
 }
 

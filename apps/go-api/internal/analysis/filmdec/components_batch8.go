@@ -91,7 +91,7 @@ func consumeStateBrokerStateChangedData(br *BitReader) {
 
 // forge-player-data-edited-objects-ids-component (FUN_142f0308c): a leading entry, then an
 // 8-bit count of additional entries. Each entry = R(2) tag then {0|16|13} bits by tag.
-func consumeForgePlayerDataEditedObjectsIds(br *BitReader) {
+func consumeForgePlayerDataEditedObjectsIDs(br *BitReader) {
 	forgeEditedEntry(br)
 	count := br.ReadBits(8)
 	for i := uint64(0); i < count; i++ {

@@ -84,7 +84,7 @@ var paramByComponent = map[string]uint32{
 	"object-frame-configuration-component": 0,
 	"unit-control-component":               2,
 	"unit-malleable-property-component":    4,
-	"weapon-state-type-info":               2,
+	compWeaponStateTypeInfo:                2,
 	"biped-malleable-property":             2,
 	"biped-malleable-property-component":   2,
 	"biped-spartan-ability":                2,
@@ -746,13 +746,13 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 	case "object-multiplayer-properties-component": // i9 = the 'obje' (FUN_1407d4c94 TLV blob)
 		consumeObjectMultiplayerProperties(br)
 		return variant, nil, true
-	case "weapon-state-type-info": // held weapon (FUN_1407f06bc)
+	case compWeaponStateTypeInfo: // held weapon (FUN_1407f06bc)
 		v, _ := consumeWeaponStateTypeInfoVariant(br)
 		return v, nil, true
 	case "object-forward-and-up-component":
 		consumeObjectForwardAndUp(br)
 		return variant, nil, true
-	case "object-body-vitality-component":
+	case compObjectBodyVitality:
 		consumeObjectBodyVitality(br)
 		return variant, nil, true
 	case "object-shield-vitality-component":
@@ -1190,7 +1190,7 @@ func traverseComponentLoopFrom(br *BitReader, arch Archetype, t *EntityTrace, fr
 		consumeCorruptionCheck(br)
 		t.Comps = append(t.Comps, CompResult{Index: i, Name: arch.Components[i], Variant: variant,
 			Ported: ported, StartBit: start, Payload: payload})
-		if arch.Components[i] == "weapon-state-type-info" && variant != noVariant && t.HeldWeapon == noVariant {
+		if arch.Components[i] == compWeaponStateTypeInfo && variant != noVariant && t.HeldWeapon == noVariant {
 			t.HeldWeapon = variant
 		}
 	}

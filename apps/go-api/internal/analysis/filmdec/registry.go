@@ -25,6 +25,16 @@ const (
 	archetypeBlockSize  = registrySlotSize * archetypeBlockSlots // 0x4100
 )
 
+// Étiquettes de composant citées à plus de deux endroits du décodage. Les autres
+// restent en littéral : les centraliser toutes créerait une table d'indirection sans
+// lecteur. Le risque que porte une étiquette dupliquée — deux branches qui ne
+// consomment pas le même nombre de bits — est déjà couvert par
+// TestCaptureConsumesSameBitsAsDispatch (capture_test.go), pas par un test de grep.
+const (
+	compObjectBodyVitality  = "object-body-vitality-component"
+	compWeaponStateTypeInfo = "weapon-state-type-info"
+)
+
 // Archetype is one ECS archetype: an ordered list of component names. The slice
 // index is the iterator/mask bit index used by the component loop.
 type Archetype struct {
