@@ -1,0 +1,19 @@
+MINI-BOBINE — film 000d5950 (Cliffhanger, Fiesta, 8 joueurs)
+
+CE FICHIER DIT D OU VIENT CHAQUE OCTET. Une fixture binaire sans provenance ecrite est un fait
+sans source ; celle-ci se REGENERE, elle ne s edite pas :
+
+    REPLAY_FILM_DIR=<repo>/data/cache/film_chunks/000d5950 \
+      go test ./internal/analysis/replay/ -run MiniFilmRegenerate -update
+
+chunk_01.bin  519438 octets (zlib) — 734 paquets REELS concatenes dans l ordre du film,
+              3962621 octets une fois decompresses, extraits des chunks [1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26] :
+                 26 image(s)-cle          (type 2) — armes portees, inventaire, bande de slots
+                519 paquet(s) a tir       (type 0, record 105 long)
+                 69 paquet(s) a grenade   (type 0, marqueur + identifiant en liste blanche)
+                120 paquet(s) de fenetre  (type 0, 2 s consecutives) — vols de projectile entiers
+chunk_02.bin  170685 octets — le chunk highlight du film, OCTET POUR OCTET (fil des morts)
+
+CE QUE CETTE BOBINE N EST PAS : un film valide. Les paquets sont concatenes hors de leur
+continuite, donc les POSITIONS de biped — qui s accumulent par deltas — y sont sans
+signification. Elles sont verrouillees ailleurs, par le fixture d entrees decodees.
