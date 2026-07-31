@@ -1,0 +1,473 @@
+# TABLE DE NOMMAGE `jpt!` -> nom / classe. Precalculee, versionnee, embarquee par go:embed.
+# colonnes : tag<TAB>classe<TAB>statut<TAB>nom<TAB>detail<TAB>reserve
+# statut AMBIGU = NE PAS PUBLIER (l entree `gggl` retenue serait un minimum arbitraire).
+# statut SOUS_RESERVE = classe sure, nom propre non garanti (cas 69fd30b9, RE_LOG 7ter.50 (3)5).
+# date=2026-07-26 lignes=468
+00000024	DEGAT_GLOBAL	VALIDE		DEGAT GLOBAL (glda/matg : chute, environnement) [effet glda 003c76f9 #1/9]	
+00000025	DEGAT_GLOBAL	VALIDE		DEGAT GLOBAL (glda/matg : chute, environnement) [effet glda 003c76f9 #2/9]	
+00000026	DEGAT_GLOBAL	VALIDE		DEGAT GLOBAL (glda/matg : chute, environnement) [effet glda 003c76f9 #3/9]	
+00000027	DEGAT_GLOBAL	VALIDE		DEGAT GLOBAL (glda/matg : chute, environnement) [effet glda 003c76f9 #5/9]	
+00000028	DEGAT_GLOBAL	VALIDE		DEGAT GLOBAL (glda/matg : chute, environnement) [effet glda 003c76f9 #7/9]	
+00000029	DEGAT_GLOBAL	VALIDE		DEGAT GLOBAL (glda/matg : chute, environnement) [effet glda 003c76f9 #8/9]	
+0000005f	INCONNU	INCONNU		[effet matg 000024a6]	
+000026ae	INCONNU	INCONNU		[effet char 357f5dfa]	
+000027cc	MELEE	VALIDE		MELEE (effet partage par 12 weap) [effet weap 000025ad #0/3]	effet partage par tout l arsenal : c est la MELEE, pas une arme particuliere
+000027cd	MELEE	VALIDE		MELEE (effet partage par 65 weap) [effet weap 6ed50061 #1/2]	effet partage par tout l arsenal : c est la MELEE, pas une arme particuliere
+000027ce	ARME	SOUS_RESERVE	Energy Sword / Infected Energy Sword	[effet weap 000025ad #2/3]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+000027d8	OBJET_EXPLOSIF	VALIDE		OBJET EXPLOSIF PORTE (hlmt 8abc1ff6, etat de degat 0/1, 2 weap, classe shield) [effet hlmt 000027c8]	la flaveur de banque est le TYPE D ENERGIE de l explosion, pas l identite de l objet ni le declencheur (RE_LOG 7ter.51 (4) leve par 7ter.57)
+00002805	INCONNU	INCONNU		[effet bipd 058c3b04 #0/4]	
+00002806	INCONNU	INCONNU		[effet bipd 058c3b04 #1/4]	
+00002808	INCONNU	INCONNU		[effet bipd 058c3b04 #3/4]	
+0000280a	INCONNU	INCONNU		[effet weap 6ed50061 #0/2]	
+00002b4f	INCONNU	INCONNU		[effet bipd 058c3b04 #2/4]	
+00003c35	VEHICULE	VALIDE		ARME DE VEHICULE (vehi fe32c0f4, classe fixed) [effet hlmt 045397ad]	
+00003d2f	INCONNU	INCONNU		[effet weap 0bf807fe #2/3]	
+00004127	ARME	SOUS_RESERVE	Mythic Sandwich / Sandwich	[effet hlmt 0000411b]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+00004292	MELEE	VALIDE		MELEE (effet partage par 15 weap) [effet hlmt 6f100dfd, PARTAGE par 2 porteurs]	effet partage par tout l arsenal : c est la MELEE, pas une arme particuliere
+000044d3	ARME	SOUS_RESERVE	Energy Sword / Infected Energy Sword	[effet weme 20255d44 #2/6]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+000044d4	ARME	SOUS_RESERVE	Energy Sword / Infected Energy Sword	[effet weme 20255d44 #4/6]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+0000563f	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 0000515c +2, sb_006_chm_ge_weaanim_plasmaturret / sb_010_tur_cv_plasmacannon / sb_006_chm_ge_weaanim_plasmaturret / sb_010_tur_cv_plasmacannon / sb_010_wea_cv_plasmapistol, classe turret) [effet proj 00005631, PARTAGE par 5 porteurs]	
+0000a487	ARME	SOUS_RESERVE	S7 Sniper	[effet proj 0000a468]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+0000b160	INCONNU	INCONNU		[effet eqip bcabbe43, PARTAGE par 3 porteurs]	
+0000b238	ARME	SOUS_RESERVE	MA40 AR	[effet proj 0000b0c1, PARTAGE par 2 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+0000b24f	INCONNU	INCONNU		[effet proj 0000b0fb]	
+0000b29c	ARME	SOUS_RESERVE	BR75	[effet proj 0000b131, PARTAGE par 2 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+0000b2a5	INCONNU	INCONNU		[effet proj 0000b1e6]	
+0000c9b6	ARME	SOUS_RESERVE	Plasma Pistol	[effet proj 02ac8ea2]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+0000ccfa	INCONNU	INCONNU		[effet bipd 0000398d #0/2]	
+0000d4f0	INCONNU	INCONNU		[effet proj 0000d4c5]	
+0000d51d	INCONNU	INCONNU		[effet proj 0000d4c9]	
+0000d57e	ARME	SOUS_RESERVE	Needler	[effet proj 0000d554 #0/3]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+0000d57f	ARME	SOUS_RESERVE	Needler	[effet proj 0000d554 #1/3]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+0000d580	ARME	SOUS_RESERVE	Needler	[effet proj 0000d554 #2/3]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+0000d614	INCONNU	INCONNU		[effet eqip caaadcb0, PARTAGE par 5 porteurs]	
+0000d627	GRENADE	VALIDE		GRENADE (gggl entree 1/4, sb_008_exp_single_med_plasma / sb_010_grn_cv_plasmagrenade) [effet proj 525eb8a3 #1/5]	
+0000dcb1	ARME	SOUS_RESERVE	Needler / Plasma Pistol	[effet proj 5f37be50]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+0000e0ce	INCONNU	INCONNU		[effet hlmt 3812504e, PARTAGE par 4 porteurs]	
+0000e101	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 0000e0ca, sb_010_veh_cv_phantom, classe fixed) [effet proj 0000e0ff #0/2]	
+0000e102	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 0000e0ca, sb_010_veh_cv_phantom, classe fixed) [effet proj 0000e0ff #1/2]	
+000125f1	INCONNU	INCONNU		[effet bipd 2bb1e983]	
+000125f2	INCONNU	INCONNU		[effet bipd bd2a79e6 #1/5, PARTAGE par 2 porteurs]	
+00012618	INCONNU	INCONNU		[effet bipd 0d0568d5 #0/6]	
+00012619	INCONNU	INCONNU		[effet bipd 0000398d #1/2]	
+0001535b	VEHICULE	VALIDE		ARME DE VEHICULE (vehi c6e79dcc, sb_010_veh_cv_banshee, classe fixed) [effet proj 0001535a #0/2]	
+0001535c	VEHICULE	VALIDE		ARME DE VEHICULE (vehi c6e79dcc, sb_010_veh_cv_banshee, classe fixed) [effet proj 0001535a #1/2]	
+00015360	VEHICULE	VALIDE		ARME DE VEHICULE (vehi c6e79dcc, sb_010_veh_cv_banshee, classe fixed) [effet proj 0001535f]	
+00015438	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 5b80c406, sb_010_veh_cv_ghost, classe fixed) [effet proj 00015439]	
+00015cd1	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 0000d500, sb_010_tur_un_machinegun, classe fixed) [effet proj 00015cd2]	
+000162eb	GRENADE	VALIDE		GRENADE (gggl entree 0/4, sb_008_exp_single_med_kineticunsc) [effet proj 0000b2dc #0/3]	
+00018e9f	INCONNU	INCONNU		[effet char 11700c6a]	
+00018ea0	INCONNU	INCONNU		[effet bipd 0001142b #1/2, PARTAGE par 3 porteurs]	
+0002bf78	INCONNU	INCONNU		[effet proj 464667f3]	
+0003532c	INCONNU	INCONNU		[effet proj 003ab26d #0/3]	
+0003532d	INCONNU	INCONNU		[effet proj 003fd9b6 #1/3]	
+0007cc69	INCONNU	INCONNU		[effet proj 0007cc6e #0/2]	
+0007cc6a	INCONNU	INCONNU		[effet proj 0007cc6e #1/2]	
+002e3d7e	INCONNU	INCONNU		[effet bipd 19f69188 #3/4]	
+003ab323	INCONNU	INCONNU		[effet proj 003ab26d #1/3]	
+003ce738	ARME	SOUS_RESERVE	MLRS-2 Hydra	[effet proj 3ef99136 #0/3]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+003ce739	ARME	SOUS_RESERVE	MLRS-2 Hydra	[effet proj 3ef99136 #1/3]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+003f00e8	INCONNU	INCONNU		[effet effe 4c9174bb #2/3]	
+003f00e9	INCONNU	INCONNU		[effet effe 4c9174bb #1/3]	
+003f00ea	INCONNU	INCONNU		[effet effe 4c9174bb #0/3]	
+003f582d	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 003f00c7 +1, sb_010_tur_un_gausscannon / sb_010_tur_un_machinegun / sb_010_tur_un_rocketturret, classe turret) [effet proj 003f582c, PARTAGE par 4 porteurs]	
+003fa498	INCONNU	INCONNU		[effet proj 003fa49a #0/2]	
+003fa499	INCONNU	INCONNU		[effet proj 003fa49a #1/2]	
+00400b07	INCONNU	INCONNU		[effet proj dabdd03d #1/3]	
+00403594	DEGAT_GLOBAL	VALIDE		DEGAT GLOBAL (glda/matg : chute, environnement) [effet glda 003c76f9 #0/9]	
+00404748	GRENADE	VALIDE		GRENADE (gggl entree 1/4, sb_008_exp_single_med_plasma / sb_010_grn_cv_plasmagrenade) [effet proj 0000d624 #0/3]	
+00408a88	INCONNU	INCONNU		[effet proj 00408a89]	
+0041248a	VEHICULE	VALIDE		ARME DE VEHICULE (vehi b857fb95, sb_010_tur_un_gausscannon / sb_010_tur_un_machinegun / sb_010_tur_un_rocketturret, classe turret) [effet proj 20220fe4 #0/2]	
+0041248b	VEHICULE	VALIDE		ARME DE VEHICULE (vehi b857fb95, sb_010_tur_un_gausscannon / sb_010_tur_un_machinegun / sb_010_tur_un_rocketturret, classe turret) [effet proj 20220fe4 #1/2]	
+00419988	INCONNU	INCONNU		[effet bipd 00011659 #0/6, PARTAGE par 19 porteurs]	
+0041c355	VEHICULE	VALIDE		ARME DE VEHICULE (vehi b857fb95, sb_010_tur_un_gausscannon / sb_010_tur_un_machinegun / sb_010_tur_un_rocketturret, classe turret) [effet proj 0041c354 #0/2]	
+0041c356	VEHICULE	VALIDE		ARME DE VEHICULE (vehi b857fb95, sb_010_tur_un_gausscannon / sb_010_tur_un_machinegun / sb_010_tur_un_rocketturret, classe turret) [effet proj 0041c354 #1/2]	
+0041d1cf	INCONNU	INCONNU		[effet proj 0041d1d0 #0/2]	
+004249cb	INCONNU	INCONNU		[effet bipd 0d0568d5 #3/6]	
+00424a9a	INCONNU	INCONNU		[effet bipd 19f69188 #0/4]	
+00426796	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 000025aa, classe fixed) [effet proj 00426793 #0/3]	
+00426797	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 000025aa, classe fixed) [effet proj 00426793 #1/3]	
+00cc27e6	INCONNU	INCONNU		[effet proj de4bc65d]	
+01bc8b0b	ARME	SOUS_RESERVE	Mutilator	[effet weap d7915565 #0/4, PARTAGE par 4 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+023dbc1a	ARME	SOUS_RESERVE	Gravity Hammer	[effet proj 486ef856]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+02b061be	INCONNU	INCONNU		[effet proj 35528da7 #1/2]	
+038ad14c	ARME	SOUS_RESERVE	CQS48 Bulldog	[effet proj e47529eb, PARTAGE par 3 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+0395f7f4	INCONNU	INCONNU		[effet proj c966ed96]	
+056cce5c	INCONNU	INCONNU		[effet proj 35528da7 #0/2]	
+07104b31	INCONNU	INCONNU		[effet eqip 1e79ebda, PARTAGE par 2 porteurs]	
+08fb84a6	VEHICULE	VALIDE		ARME DE VEHICULE (vehi b857fb95, sb_010_tur_un_gausscannon / sb_010_tur_un_machinegun / sb_010_tur_un_rocketturret, classe turret) [effet proj b223db90 #1/2]	
+099377af	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 000df0c4, sb_010_tur_cv_shadeturret, classe fixed) [effet proj 8e77c963]	
+0a67d603	INCONNU	INCONNU		[effet proj 18b437a4 #0/3]	
+0affed65	INCONNU	INCONNU		[effet hlmt 5295f69c #0/2, PARTAGE par 4 porteurs]	
+0be508f9	ARME	SOUS_RESERVE	BR75	[effet proj 01a07381]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+0bece71e	INCONNU	INCONNU		[effet proj ac954d50 #0/2]	
+0c64b43f	ARME	SOUS_RESERVE	M41 SPNKr	[effet proj 267e2ad4 #1/3]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+0d203522	OBJET_EXPLOSIF	VALIDE		OBJET EXPLOSIF PORTE (hlmt 95b23ee5, etat de degat 1/7, sb_008_exp_single_small_kineticunsc, 2 weap, classe pball) [effet weap 2e4faab6]	la flaveur de banque est le TYPE D ENERGIE de l explosion, pas l identite de l objet ni le declencheur (RE_LOG 7ter.51 (4) leve par 7ter.57)
+0d695792	INCONNU	INCONNU		[effet char 5c0b45ae, PARTAGE par 2 porteurs]	
+0e7eac6d	ARME	SOUS_RESERVE	Cindershot	[effet proj 218acc87 #0/2]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+0fba25c3	INCONNU	INCONNU		[effet proj 08c59f33]	
+0ff7b934	ARME	SOUS_RESERVE	Shock Rifle	[effet proj c78181f2]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+1115887b	INCONNU	INCONNU		[effet hlmt 633c44d7 #4/5]	
+119861b4	GRENADE	VALIDE		GRENADE (gggl entree 3/4, sb_008_exp_single_med_kineticbanished) [effet proj 49097214 #1/5]	
+130c4b61	ARME	SOUS_RESERVE	Skewer	[effet proj 31bbb2aa #1/4]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+13eca53f	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 000df0c4, sb_010_tur_cv_shadeturret, classe fixed) [effet proj 082e5661]	
+13ff7bdf	ARME	SOUS_RESERVE	Heatwave	[effet proj 2f02cfe8]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+1538c906	GRENADE	VALIDE		GRENADE (gggl entree 3/4, sb_008_exp_single_med_kineticbanished) [effet proj 49097214 #2/5]	
+15cdba9d	OBJET_EXPLOSIF	VALIDE		OBJET EXPLOSIF PORTE (hlmt 95b23ee5, etat de degat 4/7, sb_008_exp_single_small_shock, 2 weap, classe pball) [effet hlmt 95b23ee5 #4/5, PARTAGE par 2 porteurs]	la flaveur de banque est le TYPE D ENERGIE de l explosion, pas l identite de l objet ni le declencheur (RE_LOG 7ter.51 (4) leve par 7ter.57)
+15dcdfe3	ARME	SOUS_RESERVE	Mutilator	[effet proj 0cf4917b]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+166ba62b	ARME	SOUS_RESERVE	Mangler	[effet weap 80977ba5 #0/2, PARTAGE par 6 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+177a79ee	ARME	SOUS_RESERVE	Vestige Carbine	[effet proj ccf32fd5]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+17d6bd23	ARME	SOUS_RESERVE	Sentinel Beam	[effet proj 1345085b]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+18cbcf8b	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 0000d4ff +5, sb_006_cfx_un_spartan / sb_010_veh_un_scorpion / sb_010_tur_cv_shadeturret / sb_010_veh_bt_chopper / sb_010_veh_cv_banshee / sb_010_veh_un_wasp, classe fixed) [effet hlmt 48c60097 #0/2]	
+19bd6810	INCONNU	INCONNU		[effet proj ac954d50 #1/2]	
+1abc404e	INCONNU	INCONNU		[effet proj 18b437a4 #1/3]	
+1ae38096	ARME	SOUS_RESERVE	Shock Rifle / Shock Rifle (Ranked)	[effet proj 232cea71, PARTAGE par 2 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+1b6370f9	ARME	SOUS_RESERVE	Pulse Carbine	[effet proj 3c2a68bb]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+1c00012f	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 0000d3dc, sb_010_veh_cv_ghost, classe fixed) [effet proj fc0c5358]	
+1c86e402	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 5cc63540, sb_010_wea_fr_heatwave, classe fixed) [effet proj 61a64e9f #1/2]	
+1cf5d9aa	INCONNU	INCONNU		[effet proj 849f3c33, PARTAGE par 6 porteurs]	
+1d7a679e	INCONNU	INCONNU		[effet bipd f13088d1 #0/2, PARTAGE par 2 porteurs]	
+1de9fc10	VEHICULE	VALIDE		ARME DE VEHICULE (vehi cf947b4f, sb_010_veh_un_wasp, classe rifle) [effet proj 9b93c58a]	
+1ec2e6ef	INCONNU	INCONNU		[effet effe c169b917]	
+1ed34604	ARME	SOUS_RESERVE	Ravager	[effet proj 1f9bca66 #1/2]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+1f11df6b	ARME	SOUS_RESERVE	VK78 Commando	[effet proj 0d80c929, PARTAGE par 3 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+1f80502a	ARME	SOUS_RESERVE	Plasma Pistol	[effet proj 38f12438]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+1fc1a4e6	ARME	SOUS_RESERVE	Ravager	[effet proj 40366ab0 #0/3]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+20aac1d4	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 1779ea58, sb_010_tur_bt_gatlingmortar, classe turret) [effet proj b7eda0b5 #0/2]	
+2307fcda	INCONNU	INCONNU		[effet weap a95e82a9]	
+233d6896	INCONNU	INCONNU		[effet proj af274e26 #2/3]	
+23e6af1b	INCONNU	INCONNU		[effet char bbbfa3ca]	
+240af52e	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 0000d3dc, sb_010_veh_cv_ghost, classe pistol) [effet proj d5ea5f14 #0/2]	
+2431e00c	INCONNU	INCONNU		[effet eqip 169161cd]	
+246b03de	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 1a043c29, sb_010_tur_un_gausscannon / sb_010_veh_un_falcongrenadelauncher, classe turret) [effet scbd 9c39987c #0/2]	
+25674ca0	INCONNU	INCONNU		[effet hlmt 1a5937e5, PARTAGE par 2 porteurs]	
+282eac22	MELEE	VALIDE		MELEE (effet partage par 32 weap) [effet weme c8849e7c #2/3]	effet partage par tout l arsenal : c est la MELEE, pas une arme particuliere
+2858e31b	MELEE	VALIDE		MELEE (effet partage par 32 weap) [effet weme c8849e7c #0/3]	effet partage par tout l arsenal : c est la MELEE, pas une arme particuliere
+28907150	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 0000254b +1, sb_010_veh_un_pelican, classe fixed) [effet hlmt 2de351bd]	
+2a4c6d17	INCONNU	INCONNU		[effet char 5635f224]	
+2c61fb4a	INCONNU	INCONNU		[effet effe 82a2f738]	
+2d2cdd58	ARME	SOUS_RESERVE	Plasma Pistol	[effet proj 8940e23c]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+2dc9eeae	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 64b925eb, sb_010_tur_un_gausscannon, classe fixed) [effet proj eb13401b #0/2]	
+2e227b1a	INCONNU	INCONNU		[effet proj 6dac4c5c]	
+2f9b7b5f	ARME	SOUS_RESERVE	CQS48 Bulldog	[effet proj 49743319]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+2ff92041	MELEE	VALIDE		MELEE (effet partage par 28 weap) [effet weme 003a2810 #0/2]	effet partage par tout l arsenal : c est la MELEE, pas une arme particuliere
+30165fcc	ARME	SOUS_RESERVE	MLRS-2 Hydra	[effet proj 7605fd4b #1/2]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+3126c3ff	INCONNU	INCONNU		[effet hsc* fa2e669b]	
+31507a29	ARME	SOUS_RESERVE	Needler	[effet proj adcd0891 #1/3]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+317cd01d	INCONNU	INCONNU		[effet weap 523b4648 #0/4, PARTAGE par 3 porteurs]	
+31e8d17e	GRENADE	AMBIGU		GRENADE (entrees `gggl` atteintes : 0+1 sur 4) [effet proj 000162ee #3/4]	effet GENERIQUE traversant plusieurs couples `gggl` : l etiquette d entree retiendrait un minimum arbitraire (RE_LOG 7ter.49 (2)d, 7ter.50 (3)1) — NE PAS PUBLIER
+326aa47c	OBJET_EXPLOSIF	VALIDE		OBJET EXPLOSIF PORTE (modele destructible hlmt a2fb33e4, 2 weap, classe pball) [effet effe 9a2ff5e5]	la flaveur de banque est le TYPE D ENERGIE de l explosion, pas l identite de l objet ni le declencheur (RE_LOG 7ter.51 (4) leve par 7ter.57)
+3584ae71	ARME	SOUS_RESERVE	Ravager	[effet proj e16e6169 #0/3]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+35e75533	ARME	SOUS_RESERVE	MA5K Avenger	[effet proj 5f60ff9c]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+366522a6	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 3d4a8a5a +2, sb_010_veh_bt_chopper / sb_010_veh_cv_banshee / sb_010_veh_cv_ghost, classe fixed) [effet effe 94d6fcae]	
+37037ae1	INCONNU	INCONNU		[effet hsc* 3640ccc7]	
+374b54e1	INCONNU	INCONNU		[effet effe c050e46a, PARTAGE par 2 porteurs]	
+37d04098	INCONNU	INCONNU		[effet proj 6b232526 #1/3, PARTAGE par 2 porteurs]	
+382cafaf	VEHICULE	VALIDE		ARME DE VEHICULE (vehi dd7f9102, sb_010_tur_un_machinegun, classe turret) [effet proj 0cf71761]	
+384ca837	INCONNU	INCONNU		[effet proj d1164a4a]	
+3872fa6b	ARME	SOUS_RESERVE	Infected Energy Sword	[effet weap 0c55765f #0/6, PARTAGE par 3 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+3b3b3d40	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 038df01a +2, sb_003_lvl_moments_ge_shared_autoturret_banished / sb_003_lvl_moments_ge_shared_autoturret_banished_fire / sb_010_veh_un_wasp) [effet hlmt 1be49e5b #1/2]	
+3b808fe0	INCONNU	INCONNU		[effet effe 800f36e2 #0/2]	
+3c7560e0	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 001b33fc, sb_010_tur_cv_plasmacannon, classe rifle) [effet proj 001b33eb]	
+3cb60c45	INCONNU	INCONNU		[effet effe 800f36e2 #1/2]	
+3dcd3468	INCONNU	INCONNU		[effet proj 0041d1ce #1/3]	
+3e0cb712	INCONNU	INCONNU		[effet scbd 400caf15 #0/2, PARTAGE par 2 porteurs]	
+3e61899d	ARME	SOUS_RESERVE	Gravity Hammer	[effet weap 4da53bbb #2/6]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+3ec69bfa	INCONNU	INCONNU		[effet effe f8f7ea98]	
+3f1a0b26	ARME	SOUS_RESERVE	Gravity Hammer	[effet effe a8a19e30 #1/2]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+4114abb6	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 5cc63540, sb_010_wea_fr_heatwave, classe fixed) [effet proj 70bb0069]	
+419222f1	INCONNU	INCONNU		[effet weap 5bd53639 #3/4]	
+422ce2a7	INCONNU	INCONNU		[effet phmo 87c72ab7]	
+42838aa9	ARME	SOUS_RESERVE	Disruptor	[effet proj 2579ecc1]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+42cdd698	INCONNU	INCONNU		[effet proj c59794a0 #2/3]	
+44066a33	INCONNU	INCONNU		[effet hsc* 4356fea8 #0/2]	
+443f3d0e	INCONNU	INCONNU		[effet proj 5b1ba95d]	
+445cb52b	INCONNU	INCONNU		[effet proj 813ba775, PARTAGE par 2 porteurs]	
+448713eb	ARME	SOUS_RESERVE	VK78 Commando	[effet proj f49b47b4]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+45032c6f	INCONNU	INCONNU		[effet proj 2c0e2e09 #0/3]	
+45975ea4	ARME	SOUS_RESERVE	Gravity Hammer	[effet weme 90bf7d55 #0/5]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+45e0aa54	INCONNU	INCONNU		[effet effe 275b989a]	
+45f531bb	INCONNU	INCONNU		[effet char f84b48fb, PARTAGE par 2 porteurs]	
+4785ef5e	INCONNU	INCONNU		[effet proj 107f91c3 #0/3, PARTAGE par 6 porteurs]	
+47eab651	INCONNU	INCONNU		[effet bipd 4e24ec15 #0/5]	
+4844f822	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 4ccc20e6, sb_010_tur_un_machinegun, classe turret) [effet proj 4245740f #1/2]	
+48f0eb59	INCONNU	INCONNU		[effet proj 0d137a65]	
+49678358	INCONNU	INCONNU		[effet sagh 97505f6a #0/2]	
+4a555df8	ARME	SOUS_RESERVE	Needler	[effet scbd 4c3c55dc #1/2]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+4a82ce20	VEHICULE	VALIDE		ARME DE VEHICULE (montee par vcdd, weap 28c58a09, classe fixed) [effet proj e4ae28b5 #1/2]	
+4b5298f9	OBJET_EXPLOSIF	VALIDE		OBJET EXPLOSIF PORTE (hlmt a2fb33e4, etat de degat 2/7, sb_008_exp_single_small_plasma, 2 weap, classe pball) [effet hlmt a2fb33e4 #2/5, PARTAGE par 2 porteurs]	la flaveur de banque est le TYPE D ENERGIE de l explosion, pas l identite de l objet ni le declencheur (RE_LOG 7ter.51 (4) leve par 7ter.57)
+4c64a26a	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 64b925eb, sb_010_tur_un_gausscannon, classe fixed) [effet proj eb13401b #1/2]	
+4c7179c2	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 003f00c7 +1, sb_010_tur_un_gausscannon / sb_010_tur_un_machinegun / sb_010_tur_un_rocketturret, classe turret) [effet proj 438355a6 #0/2]	
+4d6b8c94	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 5cc63540, sb_010_wea_fr_heatwave, classe fixed) [effet proj 61a64e9f #0/2]	
+4dae80ef	INCONNU	INCONNU		[effet proj 1f9bca66 #0/2]	
+4e0f62ed	INCONNU	INCONNU		[effet proj f5520e3e]	
+4e2b44dc	INCONNU	INCONNU		[effet hsc* ad515076]	
+4e364c92	INCONNU	INCONNU		[effet char 79ba6629 #0/2]	
+4fbad006	ARME	SOUS_RESERVE	VK78 Commando	[effet proj 17ffb80f]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+4fc46d9a	OBJET_EXPLOSIF	VALIDE		OBJET EXPLOSIF PORTE (hlmt a2fb33e4, etat de degat 0/7, sb_008_exp_single_small_hardlight, 2 weap, classe pball) [effet hlmt a2fb33e4 #0/5, PARTAGE par 2 porteurs]	la flaveur de banque est le TYPE D ENERGIE de l explosion, pas l identite de l objet ni le declencheur (RE_LOG 7ter.51 (4) leve par 7ter.57)
+50ac45fa	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 6ec77fee) [effet proj 937399e5 #1/3]	
+51c49874	INCONNU	INCONNU		[effet proj 4ce57745]	
+53234f08	INCONNU	INCONNU		[effet proj 9df9a900]	
+53b1e6c5	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 000026ed, sb_010_veh_cv_banshee, classe fixed) [effet proj 83189ef3 #0/3]	
+55159dde	ARME	SOUS_RESERVE	Disruptor	[effet proj 5cfeef28 #1/2]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+557a2b6c	DEGAT_GLOBAL	VALIDE		DEGAT GLOBAL (glda/matg : chute, environnement) [effet glda 003c76f9 #4/9]	
+57d92793	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 6027e5ad, sb_010_veh_un_scorpion / sb_020_prototype_weapon_lightrifle, classe rifle) [effet proj cdf01d03 #0/3]	
+59255106	GRENADE	VALIDE		GRENADE (gggl entree 2/4, sb_008_exp_burst_small_shock / sb_008_exp_single_med_shock / sb_010_grn_un_lightninggrenade) [effet proj bf82fc4b, PARTAGE par 4 porteurs]	
+594095ac	ARME	SOUS_RESERVE	Energy Sword	[effet weme e330eca6 #0/6]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+5a4450e4	VEHICULE	VALIDE		ARME DE VEHICULE (vehi bcfb852f, sb_010_veh_un_rockethog, classe fixed) [effet proj ab52d5a3 #0/3]	
+5aee383d	INCONNU	INCONNU		[effet hsc* a35c6ce9, PARTAGE par 39 porteurs]	
+5b5f0033	INCONNU	INCONNU		[effet bipd 9c8d7c6c #0/3, PARTAGE par 5 porteurs]	
+5b8b94cd	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 000df0c4, sb_010_tur_cv_shadeturret, classe fixed) [effet proj 3f1ca188]	
+5be17c37	DEGAT_GLOBAL	VALIDE		DEGAT GLOBAL (glda/matg : chute, environnement) [effet glda 003c76f9 #6/9]	
+5da3966f	INCONNU	INCONNU		[effet proj 5dad2d6f]	
+5dd828f2	ARME	SOUS_RESERVE	Ravager	[effet proj 58aee1fa #0/3, PARTAGE par 2 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+5e389b5d	OBJET_EXPLOSIF	VALIDE		OBJET EXPLOSIF PORTE (hlmt 95b23ee5, etat de degat 2/7, sb_008_exp_single_small_plasma, 2 weap, classe pball) [effet hlmt 95b23ee5 #2/5, PARTAGE par 2 porteurs]	la flaveur de banque est le TYPE D ENERGIE de l explosion, pas l identite de l objet ni le declencheur (RE_LOG 7ter.51 (4) leve par 7ter.57)
+5eaa815c	ARME	SOUS_RESERVE	Fuel Rod SPNKr	[effet proj c99735af #0/3]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+5eb24859	OBJET_EXPLOSIF	VALIDE		OBJET EXPLOSIF PORTE (hlmt a2fb33e4, etat de degat 4/7, sb_008_exp_single_small_shock, 2 weap, classe pball) [effet hlmt a2fb33e4 #4/5, PARTAGE par 2 porteurs]	la flaveur de banque est le TYPE D ENERGIE de l explosion, pas l identite de l objet ni le declencheur (RE_LOG 7ter.51 (4) leve par 7ter.57)
+5f4f28f1	ARME	SOUS_RESERVE	Disruptor	[effet proj 08077026, PARTAGE par 3 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+5f8171e1	INCONNU	INCONNU		[effet effe 7a4faa91, PARTAGE par 42 porteurs]	
+5fef5b92	INCONNU	INCONNU		[effet proj 3e4a15e8 #1/2]	
+602a127b	INCONNU	INCONNU		[effet effe d8403c53 #0/2, PARTAGE par 9 porteurs]	
+60c0da7c	ARME	SOUS_RESERVE	Needler	[effet scbd 4c3c55dc #0/2]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+6155efd0	INCONNU	INCONNU		[effet weap 5bd53639 #0/4]	
+61e4d716	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 6027e5ad, sb_010_veh_un_scorpion / sb_020_prototype_weapon_lightrifle, classe rifle) [effet proj 78975e1b #0/3]	
+625c3df8	INCONNU	INCONNU		[effet proj ee4d825f, PARTAGE par 2 porteurs]	
+6267a2aa	INCONNU	INCONNU		[effet phmo 0c770bb8 #1/2]	
+62ea636f	ARME	SOUS_RESERVE	Ravager	[effet proj e16e6169 #1/3]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+638085d4	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 4ccc20e6, sb_010_tur_un_machinegun, classe turret) [effet proj 4245740f #0/2]	
+64498648	INCONNU	INCONNU		[effet hlmt 977420c7]	
+644a2cdc	ARME	SOUS_RESERVE	Shock Rifle	[effet proj 10c2bd19, PARTAGE par 3 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+64ab85c4	MELEE	VALIDE		MELEE (effet partage par 47 weap) [effet proj 5f3bcb60, PARTAGE par 44 porteurs]	effet partage par tout l arsenal : c est la MELEE, pas une arme particuliere
+65a32ee9	INCONNU	INCONNU		[effet proj 3aa35155, PARTAGE par 2 porteurs]	
+661b2987	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 3d4a8a5a, sb_010_veh_bt_chopper, classe fixed) [effet proj ff8389c4 #1/3]	
+66d1ae66	INCONNU	INCONNU		[effet hsc* 4356fea8 #1/2]	
+674a7d69	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 1a043c29, sb_010_tur_un_gausscannon / sb_010_veh_un_falcongrenadelauncher, classe turret) [effet proj daf31772 #0/2]	
+677d514a	GRENADE	VALIDE		GRENADE (gggl entree 1/4, sb_008_exp_single_med_plasma / sb_010_grn_cv_plasmagrenade) [effet proj 6071a622 #2/5]	
+67db304a	ARME	SOUS_RESERVE	MA40 AR	[effet proj 0641fcbd]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+67fd23b8	ARME	SOUS_RESERVE	Gravity Hammer / Mutilator	[effet weap 4da53bbb #5/6]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+688dd238	OBJET_EXPLOSIF	VALIDE		OBJET EXPLOSIF PORTE (modele destructible hlmt 95b23ee5, 2 weap, classe pball) [effet effe 8ae24245]	la flaveur de banque est le TYPE D ENERGIE de l explosion, pas l identite de l objet ni le declencheur (RE_LOG 7ter.51 (4) leve par 7ter.57)
+68cde65e	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 0000d4ff +2, sb_006_cfx_un_spartan / sb_010_veh_un_scorpion / sb_010_veh_cv_banshee / sb_010_veh_un_wasp, classe fixed) [effet hlmt e5ceaa28 #1/2]	
+698aacdb	ARME	SOUS_RESERVE	Energy Sword	[effet weap 0000ae3c #0/6, PARTAGE par 5 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+69fd30b9	ARME	SOUS_RESERVE	Gravity Hammer	[effet effe dbf0c709 #1/2]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+6a761168	ARME	SOUS_RESERVE	MLRS-2 Hydra	[effet proj e0ac8a6c #1/3, PARTAGE par 2 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+6a7756bf	MELEE	VALIDE		MELEE (effet partage par 22 weap) [effet hlmt a904f46e]	effet partage par tout l arsenal : c est la MELEE, pas une arme particuliere
+6bd7684f	INCONNU	INCONNU		[effet proj 18b437a4 #2/3]	
+6e54bebd	ARME	SOUS_RESERVE	Sentinel Beam	[effet proj 94751d67]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+72230737	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 3d4a8a5a, sb_010_veh_bt_chopper, classe fixed) [effet proj ff8389c4 #0/3]	
+72a9856c	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 000df0c4, sb_010_tur_cv_shadeturret, classe turret) [effet proj 1c14c5ae #1/2]	
+730ae08a	INCONNU	INCONNU		[effet proj 2b606731]	
+76545f92	OBJET_EXPLOSIF	VALIDE		OBJET EXPLOSIF PORTE (modele destructible hlmt 95b23ee5, 2 weap, classe pball) [effet proj 451bad93, PARTAGE par 2 porteurs]	la flaveur de banque est le TYPE D ENERGIE de l explosion, pas l identite de l objet ni le declencheur (RE_LOG 7ter.51 (4) leve par 7ter.57)
+7654f890	ARME	SOUS_RESERVE	S7 Sniper	[effet proj db7647a8]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+7786dcdf	INCONNU	INCONNU		[effet proj fd18fb2a #0/2]	
+77a61ef5	VEHICULE	VALIDE		ARME DE VEHICULE (vehi f4c45d71, sb_010_veh_un_falconlmgturret, classe turret) [effet proj 1af3aee3]	
+78c71665	INCONNU	INCONNU		[effet proj 74cd8bc4 #0/2]	
+78daf6f1	INCONNU	INCONNU		[effet proj 28d428b4]	
+78dfcf31	ARME	SOUS_RESERVE	Disruptor / Shock Rifle / Shock Rifle (Ranked)	[effet proj 1fb5f098, PARTAGE par 11 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+7900795d	ARME	SOUS_RESERVE	Cindershot	[effet proj c878dd11, PARTAGE par 2 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+798a239d	VEHICULE	VALIDE		ARME DE VEHICULE (vehi bcfb852f, sb_010_veh_un_rockethog, classe fixed) [effet proj ab52d5a3 #1/3]	
+79ffd3a1	GRENADE	VALIDE		GRENADE (gggl entree 3/4, sb_008_exp_single_med_kineticbanished) [effet proj 00426793 #2/3]	
+7c26c34a	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 3d4a8a5a +2, sb_010_veh_bt_chopper / sb_010_veh_un_wasp, classe fixed) [effet hlmt 6b06a15e #0/4, PARTAGE par 2 porteurs]	
+7c4f8a28	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 233c877d, sb_010_veh_cv_wraith, classe fixed) [effet proj ebdc18b4 #1/3]	
+7cb7f6a9	ARME	SOUS_RESERVE	M41 SPNKr	[effet hsc* 876675f2]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+7ceb62a8	INCONNU	INCONNU		[effet bipd e5b9e177 #2/3]	
+7d012346	ARME	SOUS_RESERVE	S7 Sniper	[effet proj 63566040]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+7d4957c7	VEHICULE	VALIDE		ARME DE VEHICULE (vehi b857fb95, sb_010_tur_un_gausscannon / sb_010_tur_un_machinegun / sb_010_tur_un_rocketturret, classe turret) [effet proj b223db90 #0/2]	
+7dcf93e6	INCONNU	INCONNU		[effet weap 523b4648 #2/4, PARTAGE par 3 porteurs]	
+7e5bfeb3	INCONNU	INCONNU		[effet proj 089c3af9]	
+7e6a7461	ARME	SOUS_RESERVE	Disruptor	[effet proj 5cfeef28 #0/2]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+7e7c91f6	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 6027e5ad, sb_010_veh_un_scorpion / sb_020_prototype_weapon_lightrifle, classe rifle) [effet proj cdf01d03 #1/3]	
+7f7d1fc9	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 000df0c4, sb_010_tur_cv_shadeturret, classe turret) [effet proj 32ce1559 #1/2]	
+7fe3cedc	ARME	SOUS_RESERVE	Disruptor	[effet proj b7147a88 #1/2]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+7ff0849c	ARME	SOUS_RESERVE	Shock Rifle / Shock Rifle (Ranked)	[effet proj 96555d72, PARTAGE par 2 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+82709a1e	ARME	SOUS_RESERVE	Energy Sword	[effet weme 20255d44 #0/6]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+82b1353b	ARME	SOUS_RESERVE	S7 Sniper	[effet proj aa675273]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+8315b9df	INCONNU	INCONNU		[effet phmo 0c770bb8 #0/2]	
+83225b95	ARME	SOUS_RESERVE	BR75	[effet proj ca29e674]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+84347468	GRENADE	VALIDE		GRENADE (gggl entree 2/4, sb_008_exp_burst_small_shock / sb_008_exp_single_med_shock / sb_010_grn_un_lightninggrenade) [effet proj 1d92b3ea #0/2]	
+84de5948	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 6027e5ad, sb_010_veh_un_scorpion / sb_020_prototype_weapon_lightrifle, classe rifle) [effet proj 78975e1b #1/3]	
+87007272	OBJET_EXPLOSIF	VALIDE		OBJET EXPLOSIF PORTE (modele destructible hlmt a2fb33e4, 2 weap, classe pball) [effet proj 38ff9354, PARTAGE par 2 porteurs]	la flaveur de banque est le TYPE D ENERGIE de l explosion, pas l identite de l objet ni le declencheur (RE_LOG 7ter.51 (4) leve par 7ter.57)
+872b02ff	INCONNU	INCONNU		[effet char 79ba6629 #1/2]	
+877da252	ARME	SOUS_RESERVE	Gravity Hammer	[effet effe fbd79a55 #0/2]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+881b207e	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 000df0c4, sb_010_tur_cv_shadeturret, classe turret) [effet proj 1c14c5ae #0/2]	
+88f1034c	GRENADE	AMBIGU		GRENADE (entrees `gggl` atteintes : 0+1+3 sur 4) [effet proj 0000b2dc #2/3]	effet GENERIQUE traversant plusieurs couples `gggl` : l etiquette d entree retiendrait un minimum arbitraire (RE_LOG 7ter.49 (2)d, 7ter.50 (3)1) — NE PAS PUBLIER
+89671e77	INCONNU	INCONNU		[effet proj 6b232526 #0/3, PARTAGE par 2 porteurs]	
+89d2d7d3	INCONNU	INCONNU		[effet phmo 5c1fc8fc]	
+8a6ba677	INCONNU	INCONNU		[effet bipd e5b9e177 #1/3]	
+8add9998	ARME	SOUS_RESERVE	Stalker Rifle	[effet proj 32930329, PARTAGE par 3 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+8b1f83ee	ARME	SOUS_RESERVE	Sentinel Beam	[effet proj 6af23111]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+8b5db8e5	ARME	SOUS_RESERVE	Gravity Hammer	[effet proj 8381393c, PARTAGE par 2 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+8c1a1ef4	ARME	SOUS_RESERVE	Plasma Pistol	[effet proj e44aeb8d]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+8c7af874	INCONNU	INCONNU		[effet weme ed2f42fe #3/5]	
+8c7f1e90	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 000df0c4, sb_010_tur_cv_shadeturret, classe fixed) [effet proj e158ddd9]	
+8cf1b446	INCONNU	INCONNU		[effet proj 107f91c3 #1/3, PARTAGE par 6 porteurs]	
+8e24d86c	INCONNU	INCONNU		[effet proj 3e4a15e8 #0/2]	
+8e555025	INCONNU	INCONNU		[effet hlmt 561b59da]	
+8f8286d5	INCONNU	INCONNU		[effet effe 479af835]	
+9095cee7	INCONNU	INCONNU		[effet hlmt 633c44d7 #2/5]	
+91f7988a	INCONNU	INCONNU		[effet mead 0edceef9]	
+958dcdf5	VEHICULE	VALIDE		ARME DE VEHICULE (vehi cf947b4f, sb_010_veh_un_wasp, classe fixed) [effet proj 40343a2e #1/2]	
+95a7c6e7	INCONNU	INCONNU		[effet proj dabdd03d #2/3]	
+967757a1	INCONNU	INCONNU		[effet effe d6073b63, PARTAGE par 2 porteurs]	
+97be2921	INCONNU	INCONNU		[effet hlmt 633c44d7 #3/5]	
+988a756f	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 0000d3dc, sb_010_veh_cv_ghost, classe pistol) [effet proj d5ea5f14 #1/2]	
+993d7b91	GRENADE	VALIDE		GRENADE (gggl entree 2/4, sb_008_exp_burst_small_shock / sb_008_exp_single_med_shock / sb_010_grn_un_lightninggrenade) [effet proj 1d92b3ea #1/2]	
+99d98aef	VEHICULE	VALIDE		ARME DE VEHICULE (vehi b65b3b4a, sb_010_veh_un_wasp, classe fixed) [effet proj f858e1c2 #0/3]	
+9d90ca04	INCONNU	INCONNU		[effet bipd 0d0568d5 #1/6]	
+9f6f5000	ARME	SOUS_RESERVE	Mangler / Ravager / Shock Rifle / Skewer	[effet weap 0bf807fe #0/3]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+9fa9b046	INCONNU	INCONNU		[effet proj 3e53cd9b #0/4]	
+9fb6cf0a	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 1779ea58, sb_010_tur_bt_gatlingmortar, classe turret) [effet proj b7eda0b5 #1/2]	
+a073779a	ARME	SOUS_RESERVE	Cindershot	[effet proj f13264cb #1/2]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+a0a6ed31	VEHICULE	VALIDE		ARME DE VEHICULE (vehi b65b3b4a, sb_010_veh_un_wasp, classe fixed) [effet proj f858e1c2 #1/3]	
+a12abc19	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 000df0c4 +3, sb_010_tur_cv_shadeturret / sb_010_veh_cv_banshee, classe fixed) [effet hlmt 48c60097 #1/2]	
+a152c0c4	INCONNU	INCONNU		[effet eqip 10bea582]	
+a16639c8	INCONNU	INCONNU		[effet proj b14f406e]	
+a21bf18a	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 000026ed, sb_010_veh_cv_banshee, classe fixed) [effet proj 83189ef3 #1/3]	
+a3f7bcef	INCONNU	INCONNU		[effet phmo 5c4cbfd3]	
+a522dc6c	ARME	SOUS_RESERVE	Skewer	[effet proj 31bbb2aa #3/4]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+a5e00eae	INCONNU	INCONNU		[effet bipd 9c8d7c6c #1/3, PARTAGE par 5 porteurs]	
+a610345e	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 000df0c4, sb_010_tur_cv_shadeturret, classe turret) [effet proj 32ce1559 #0/2]	
+a66c4455	ARME	SOUS_RESERVE	Ravager	[effet proj 58aee1fa #1/3, PARTAGE par 2 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+a6c4a982	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 5b80c406, sb_010_veh_cv_ghost, classe fixed) [effet hlmt 3b3038e6 #1/3, PARTAGE par 4 porteurs]	
+a6e597d1	INCONNU	INCONNU		[effet phmo 1efa1b59]	
+a8173399	INCONNU	INCONNU		[effet effe 2877aa30]	
+a859230a	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 1a043c29, sb_010_tur_un_gausscannon / sb_010_veh_un_falcongrenadelauncher, classe turret) [effet proj adeabd9f #1/2]	
+a85c5047	INCONNU	INCONNU		[effet effe 3062eba4]	
+a9addd22	INCONNU	INCONNU		[effet scbd 400caf15 #1/2, PARTAGE par 2 porteurs]	
+ab06203c	VEHICULE	VALIDE		ARME DE VEHICULE (vehi b65b3b4a, sb_010_veh_un_wasp, classe fixed) [effet proj 3fdb22ab]	
+ab2302e0	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 002ba902, sb_010_veh_bt_chopper, classe fixed) [effet proj c4a12cfd]	
+aba93979	INCONNU	INCONNU		[effet proj 195bf4b3 #1/2]	
+ac504895	INCONNU	INCONNU		[effet effe bc20d955]	
+acae6dab	ARME	SOUS_RESERVE	Shock Rifle	[effet proj a9124c16, PARTAGE par 2 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+acd1cff4	ARME	SOUS_RESERVE	M41 SPNKr	[effet proj 368ea9f2 #0/3]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+ae6c063d	INCONNU	INCONNU		[effet effe 8423f6a8]	
+aed08680	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 038df01a, sb_003_lvl_moments_ge_shared_autoturret_banished / sb_003_lvl_moments_ge_shared_autoturret_banished_fire, classe rifle) [effet hlmt 1be49e5b #0/2]	
+af4d34b6	INCONNU	INCONNU		[effet weap 5bd53639 #2/4]	
+affc0ca9	INCONNU	INCONNU		[effet proj 195bf4b3 #0/2]	
+b12e0187	INCONNU	INCONNU		[effet effe 12be8490]	
+b12fa3df	INCONNU	INCONNU		[effet hsc* 4edfd949]	
+b1989c00	INCONNU	INCONNU		[effet hlmt 633c44d7 #1/5]	
+b258262f	ARME	SOUS_RESERVE	Mutilator	[effet effe 952e1173]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+b2846626	INCONNU	INCONNU		[effet char a12ff9d5 #1/2]	
+b2fdadd2	INCONNU	INCONNU		[effet char 186559c3]	
+b3db247d	OBJET_EXPLOSIF	VALIDE		OBJET EXPLOSIF PORTE (modele destructible hlmt 95b23ee5, 2 weap, classe pball) [effet effe 8df039b4]	la flaveur de banque est le TYPE D ENERGIE de l explosion, pas l identite de l objet ni le declencheur (RE_LOG 7ter.51 (4) leve par 7ter.57)
+b42e3967	INCONNU	INCONNU		[effet hlmt 8772ac46]	
+b442a953	INCONNU	INCONNU		[effet char a12ff9d5 #0/2]	
+b4483ddd	INCONNU	INCONNU		[effet proj a74293a0]	
+b4681db6	INCONNU	INCONNU		[effet sagh 97505f6a #1/2]	
+b4b0a4a3	INCONNU	INCONNU		[effet bipd bd2a79e6 #0/5, PARTAGE par 2 porteurs]	
+b4ef7471	INCONNU	INCONNU		[effet proj 1396badb, PARTAGE par 2 porteurs]	
+b5c5d37a	INCONNU	INCONNU		[effet proj 3d38f0e5 #0/2, PARTAGE par 2 porteurs]	
+b61fdefb	VEHICULE	VALIDE		ARME DE VEHICULE (vehi cf947b4f, sb_010_veh_un_wasp, classe fixed) [effet proj 40343a2e #0/2]	
+b7e6d3c1	OBJET_EXPLOSIF	VALIDE		OBJET EXPLOSIF PORTE (modele destructible hlmt a2fb33e4, 2 weap, classe pball) [effet proj 481df2b6]	la flaveur de banque est le TYPE D ENERGIE de l explosion, pas l identite de l objet ni le declencheur (RE_LOG 7ter.51 (4) leve par 7ter.57)
+b8d7a768	INCONNU	INCONNU		[effet weap 523b4648 #3/4, PARTAGE par 3 porteurs]	
+b9039c37	INCONNU	INCONNU		[effet proj 3e53cd9b #1/4]	
+ba41e646	INCONNU	INCONNU		[effet effe 20cd2457]	
+ba5ac78e	ARME	SOUS_RESERVE	Ravager	[effet proj d4a181a7 #0/3]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+ba74233d	ARME	SOUS_RESERVE	CQS48 Bulldog	[effet proj 73d90ffe, PARTAGE par 3 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+bb1a095b	ARME	SOUS_RESERVE	Mk51 Sidekick	[effet proj 7ae5f020, PARTAGE par 2 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+bc15bb50	INCONNU	INCONNU		[effet proj 597f6b00 #0/2]	
+bd6cae8b	OBJET_EXPLOSIF	VALIDE		OBJET EXPLOSIF PORTE (hlmt a2fb33e4, etat de degat 3/7, 4 weap, classe pball) [effet scbd 867704f8 #0/2, PARTAGE par 2 porteurs]	la flaveur de banque est le TYPE D ENERGIE de l explosion, pas l identite de l objet ni le declencheur (RE_LOG 7ter.51 (4) leve par 7ter.57)
+bebe70df	ARME	SOUS_RESERVE	Mangler	[effet proj 8e6cdd9c]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+bf3ee187	INCONNU	INCONNU		[effet proj a3af1d4a]	
+bf8d952e	ARME	SOUS_RESERVE	CQS48 Bulldog / Mutilator	[effet proj 27a04676]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+c01b8fcc	INCONNU	INCONNU		[effet proj dabdd03d #0/3]	
+c059cab8	MELEE	VALIDE		MELEE (effet partage par 17 weap) [effet proj 003ab26d #2/3]	effet partage par tout l arsenal : c est la MELEE, pas une arme particuliere
+c0d75b2e	INCONNU	INCONNU		[effet proj 149cabec]	
+c14e9cea	OBJET_EXPLOSIF	VALIDE		OBJET EXPLOSIF PORTE (hlmt 95b23ee5, etat de degat 0/7, sb_008_exp_single_small_hardlight, 2 weap, classe pball) [effet hlmt 95b23ee5 #0/5, PARTAGE par 2 porteurs]	la flaveur de banque est le TYPE D ENERGIE de l explosion, pas l identite de l objet ni le declencheur (RE_LOG 7ter.51 (4) leve par 7ter.57)
+c246e453	INCONNU	INCONNU		[effet proj c59794a0 #1/3]	
+c248ceef	INCONNU	INCONNU		[effet proj 47b503ac]	
+c278a727	INCONNU	INCONNU		[effet phmo 0ea8e6d6 #1/2]	
+c2fe0066	INCONNU	INCONNU		[effet proj 0b346cfb]	
+c5805370	INCONNU	INCONNU		[effet effe 76758912]	
+c761225b	INCONNU	INCONNU		[effet char b2b79008, PARTAGE par 2 porteurs]	
+c83e43fc	INCONNU	INCONNU		[effet proj 0041d1ce #0/3]	
+c8681ecf	GRENADE	VALIDE		GRENADE (gggl entree 3/4, sb_008_exp_single_med_kineticbanished) [effet proj 572976be, PARTAGE par 4 porteurs]	
+c941a12e	INCONNU	INCONNU		[effet proj 3e53cd9b #2/4]	
+c9818764	VEHICULE	VALIDE		ARME DE VEHICULE (montee par vcdd, weap 28c58a09, classe fixed) [effet proj e4ae28b5 #0/2]	
+cb44cd08	INCONNU	INCONNU		[effet proj dc804b30]	
+cc3e11f6	OBJET_EXPLOSIF	VALIDE		OBJET EXPLOSIF PORTE (modele destructible hlmt 95b23ee5, 2 weap, classe pball) [effet proj d3c6921e]	la flaveur de banque est le TYPE D ENERGIE de l explosion, pas l identite de l objet ni le declencheur (RE_LOG 7ter.51 (4) leve par 7ter.57)
+cc989bdf	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 000df0c4, sb_010_tur_cv_shadeturret, classe pistol) [effet proj a59a89f5]	
+ce6fc567	ARME	SOUS_RESERVE	Shock Rifle	[effet proj e9536695, PARTAGE par 3 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+cf2285af	ARME	SOUS_RESERVE	Pulse Carbine	[effet proj 308bc768]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+d02ed019	INCONNU	INCONNU		[effet phmo 0ea8e6d6 #0/2]	
+d08ad109	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 003f00c7 +1, sb_010_tur_un_gausscannon / sb_010_tur_un_machinegun / sb_010_tur_un_rocketturret, classe turret) [effet proj 438355a6 #1/2]	
+d1708547	INCONNU	INCONNU		[effet weme ed2f42fe #2/5]	
+d1ba29e4	ARME	SOUS_RESERVE	Mythic Sandwich / Sandwich	[effet weap b7262ca1 #0/2]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+d1c149fe	INCONNU	INCONNU		[effet effe 394007d1]	
+d1e01803	ARME	SOUS_RESERVE	Disruptor / Shock Rifle / Shock Rifle (Ranked)	[effet scbd 2ef83f49]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+d21ac495	MELEE	VALIDE		MELEE (effet partage par 20 weap) [effet proj fc4f58a9, PARTAGE par 31 porteurs]	effet partage par tout l arsenal : c est la MELEE, pas une arme particuliere
+d2fa76aa	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 6ec77fee) [effet proj 937399e5 #0/3]	
+d2ffec3f	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 20737e7f +1, classe fixed) [effet hlmt 8c1ac090, PARTAGE par 2 porteurs]	
+d468178e	ARME	SOUS_RESERVE	M41 SPNKr	[effet proj 267e2ad4 #0/3]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+d4dd2172	INCONNU	INCONNU		[effet effe 3f8fac24]	
+d545c7d9	INCONNU	INCONNU		[effet weme ed2f42fe #4/5]	
+d5b4bdb7	INCONNU	INCONNU		[effet phmo 2120ed7f]	
+d5ee9bdb	MELEE	VALIDE		MELEE (effet partage par 27 weap) [effet proj 5d173128]	effet partage par tout l arsenal : c est la MELEE, pas une arme particuliere
+d60cb047	ARME	SOUS_RESERVE	Skewer	[effet proj 31bbb2aa #0/4]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+d6184b66	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 000df0c4, sb_010_tur_cv_shadeturret, classe turret) [effet effe 13089f43, PARTAGE par 2 porteurs]	
+d6e977e1	INCONNU	INCONNU		[effet bipd 9c8d7c6c #2/3, PARTAGE par 5 porteurs]	
+d7314bef	ARME	SOUS_RESERVE	Fuel Rod SPNKr	[effet proj c99735af #1/3]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+d7b4c107	INCONNU	INCONNU		[effet proj d77691d9]	
+d875ed64	OBJET_EXPLOSIF	VALIDE		OBJET EXPLOSIF PORTE (modele destructible hlmt a2fb33e4, 2 weap, classe pball) [effet effe 74cbc3cc]	la flaveur de banque est le TYPE D ENERGIE de l explosion, pas l identite de l objet ni le declencheur (RE_LOG 7ter.51 (4) leve par 7ter.57)
+d8cea1aa	MELEE	VALIDE		MELEE (effet partage par 27 weap) [effet proj c489908c, PARTAGE par 27 porteurs]	effet partage par tout l arsenal : c est la MELEE, pas une arme particuliere
+d936e4f3	INCONNU	INCONNU		[effet effe a77e28f3]	
+d94f6ca7	INCONNU	INCONNU		[effet effe 2433e6ec, PARTAGE par 7 porteurs]	
+d973efe0	INCONNU	INCONNU		[effet hlmt 633c44d7 #0/5]	
+d9dbf765	INCONNU	INCONNU		[effet phmo 00a7425c]	
+da3b5ba4	GRENADE	VALIDE		GRENADE (gggl entree 0/4, sb_008_exp_single_med_kineticunsc) [effet proj 580b8831 #0/4]	
+da94b06f	ARME	SOUS_RESERVE	CQS48 Bulldog / Mutilator	[effet proj 1bb2f859]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+daa03c35	MELEE	VALIDE		MELEE (effet partage par 23 weap) [effet weap 5ac6cfb2 #0/2]	effet partage par tout l arsenal : c est la MELEE, pas une arme particuliere
+db50890a	INCONNU	INCONNU		[effet effe 69acc189]	
+dbc43a86	INCONNU	INCONNU		[effet effe 2382990d]	
+dc02c252	OBJET_EXPLOSIF	VALIDE		OBJET EXPLOSIF PORTE (hlmt d5d9237d, etat de degat 0/1, 1 weap) [effet weap 8ca509b9]	la flaveur de banque est le TYPE D ENERGIE de l explosion, pas l identite de l objet ni le declencheur (RE_LOG 7ter.51 (4) leve par 7ter.57)
+dce6cda0	INCONNU	INCONNU		[effet proj 74cd8bc4 #1/2]	
+deffdc6b	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 233c877d, sb_010_veh_cv_wraith, classe fixed) [effet proj ebdc18b4 #0/3]	
+dfad1c9a	GRENADE	VALIDE		GRENADE (gggl entree 0/4, sb_008_exp_single_med_kineticunsc) [effet proj 0000b2dc #1/3]	
+dfe43781	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 5b80c406, sb_010_veh_cv_ghost, classe fixed) [effet hlmt 3b3038e6 #0/3, PARTAGE par 4 porteurs]	
+e005f037	INCONNU	INCONNU		[effet effe 4825ac09]	
+e006f7d3	INCONNU	INCONNU		[effet cddf 7af327e9]	
+e05ad474	ARME	SOUS_RESERVE	Needler	[effet proj adcd0891 #0/3]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+e1ea6e65	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 038df01a, sb_003_lvl_moments_ge_shared_autoturret_banished / sb_003_lvl_moments_ge_shared_autoturret_banished_fire, classe rifle) [effet effe 844ccb6b]	
+e1f38ea2	ARME	SOUS_RESERVE	Cindershot	[effet proj 83314c19 #0/3, PARTAGE par 2 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+e2e35a49	ARME	SOUS_RESERVE	Needler	[effet proj adcd0891 #2/3]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+e2f4ace2	INCONNU	INCONNU		[effet proj 597f6b00 #1/2]	
+e42c62fc	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 6ec77fee) [effet proj 937399e5 #2/3]	
+e5ad817a	ARME	SOUS_RESERVE	Gravity Hammer / Mutilator	[effet weap 4da53bbb #4/6]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+e6b2d4da	INCONNU	INCONNU		[effet char ad49961f, PARTAGE par 3 porteurs]	
+e7718307	INCONNU	INCONNU		[effet char 081f75c3]	
+e7d5b0eb	INCONNU	INCONNU		[effet proj 31fcd517]	
+e800dfd0	INCONNU	INCONNU		[effet effe 41f5faad]	
+e9941862	ARME	SOUS_RESERVE	MLRS-2 Hydra	[effet proj 003ce73c #0/3, PARTAGE par 2 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+ea0155dc	INCONNU	INCONNU		[effet effe df2b6d3c, PARTAGE par 7 porteurs]	
+eaf4d9d2	ARME	SOUS_RESERVE	Gravity Hammer	[effet effe dbf0c709 #0/2]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+ebcbab64	ARME	SOUS_RESERVE	Gravity Hammer	[effet effe fbd79a55 #1/2]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+ec73d59e	INCONNU	INCONNU		[effet char 6f334a88, PARTAGE par 2 porteurs]	
+ec76c71e	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 7226ebb5, sb_006_chm_ge_weaanim_plasmaturret / sb_010_tur_cv_plasmacannon, classe turret) [effet proj 3a4ab1cd]	
+ec919da5	ARME	SOUS_RESERVE	Needler	[effet proj 9c5fb5eb #2/3]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+ed218161	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 48914b81, sb_010_veh_un_pelican, classe fixed) [effet proj e9ad3049]	
+ee2d686d	GRENADE	VALIDE		GRENADE (gggl entree 3/4, sb_008_exp_single_med_kineticbanished) [effet proj 49097214 #0/5]	
+eea85c26	ARME	SOUS_RESERVE	Disruptor	[effet proj b7147a88 #0/2]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+ef5d9e6c	ARME	SOUS_RESERVE	Gravity Hammer	[effet effe a8a19e30 #0/2]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+f01d60e9	ARME	SOUS_RESERVE	Mangler	[effet proj 3ca42f5d, PARTAGE par 2 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+f020a0db	INCONNU	INCONNU		[effet bipd 8b708ae8 #0/3, PARTAGE par 7 porteurs]	
+f02c090d	ARME	SOUS_RESERVE	MLRS-2 Hydra	[effet proj 7605fd4b #0/2]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+f107a6ca	INCONNU	INCONNU		[effet bipd 36fcf9c7]	
+f2326f1b	INCONNU	INCONNU		[effet effe 9c8e042c]	
+f3c1f9a8	ARME	SOUS_RESERVE	Bandit Evo / M392 Bandit	[effet proj 7d299746, PARTAGE par 3 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+f4d83f1a	VEHICULE	VALIDE		ARME DE VEHICULE (vehi b857fb95, sb_010_tur_un_gausscannon / sb_010_tur_un_machinegun / sb_010_tur_un_rocketturret, classe turret) [effet proj 4d8d3a2c, PARTAGE par 2 porteurs]	
+f5eb381d	MELEE	VALIDE		MELEE (effet partage par 16 weap) [effet vehi 000025a5]	effet partage par tout l arsenal : c est la MELEE, pas une arme particuliere
+f712c64a	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 0000d3dc, sb_010_veh_cv_ghost, classe fixed) [effet proj 69330a9f]	
+f77120cc	INCONNU	INCONNU		[effet phmo 9451795d]	
+f81f1a01	ARME	SOUS_RESERVE	Stalker Rifle	[effet proj f272c076]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+fa4fad21	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 000026ed, sb_010_veh_cv_banshee, classe fixed) [effet proj 79665713]	
+fad6762f	INCONNU	INCONNU		[effet proj 16c1a0d6, PARTAGE par 2 porteurs]	
+fb9bff0c	ARME	SOUS_RESERVE	Mythic Sandwich / Sandwich	[effet weap b7262ca1 #1/2]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+fc1ca9c2	ARME	SOUS_RESERVE	Mk51 Sidekick	[effet proj be3514d9]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
+fc41c257	INCONNU	INCONNU		[effet sagh ed52f64d #1/2]	
+fca02b3c	GRENADE	VALIDE		GRENADE (gggl entree 2/4, sb_008_exp_burst_small_shock / sb_008_exp_single_med_shock / sb_010_grn_un_lightninggrenade) [effet proj 0c70ff50, PARTAGE par 3 porteurs]	
+fd741394	INCONNU	INCONNU		[effet effe 15130a69, PARTAGE par 10 porteurs]	
+fe70f395	INCONNU	INCONNU		[effet proj c59794a0 #0/3]	
+feac2551	OBJET_EXPLOSIF	VALIDE		OBJET EXPLOSIF PORTE (hlmt a2fb33e4, etat de degat 1/7, sb_008_exp_single_small_kineticunsc, 2 weap, classe pball) [effet weap 1d63a8cd, PARTAGE par 2 porteurs]	la flaveur de banque est le TYPE D ENERGIE de l explosion, pas l identite de l objet ni le declencheur (RE_LOG 7ter.51 (4) leve par 7ter.57)
+ff6577cd	INCONNU	INCONNU		[effet char 471c58ce]	
+ff768294	INCONNU	INCONNU		[effet eqip a875923f, PARTAGE par 4 porteurs]	
+ffebe84e	ARME	SOUS_RESERVE	Disruptor / Shock Rifle / Shock Rifle (Ranked)	[effet proj cb508a1a, PARTAGE par 17 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)

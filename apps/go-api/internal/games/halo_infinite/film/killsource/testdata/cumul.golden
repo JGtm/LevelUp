@@ -1,0 +1,75 @@
+# GOLDEN killsource — cumul des films 000d5950, 9b191a7f, 78919882, fccc61cd
+#
+# Fige la sortie du decodeur de la SOURCE DE DEGAT. Ne PAS editer a la main.
+#
+# REGENERATION (les fixtures ne sont pas versionnees : 107 Mo pour les quatre films) :
+#   1. les films de reference sont des repertoires chunk_NN.bin sous data/cache/film_chunks/ ;
+#      ils se retelechargent avec  go run ./cmd/fetch_film_chunks/
+#   2. KILLSOURCE_FIXTURES=<racine des films> \
+#        go test ./internal/games/halo_infinite/film/killsource/ -run Golden -update
+#
+# CHAQUE CHIFFRE PORTE LE NOM DE SON DENOMINATEUR. Un taux nu ne veut rien dire ici : trois
+# denominateurs coexistent hors ligne et ne donnent pas le meme resultat.
+
+## LES QUATRE DENOMINATEURS — ne jamais ecrire << X % des morts >> sans dire lequel
+371 / 371 couples REELS = 100.0 %
+   les couples que la reconstruction de kill-feed produit, MOINS les couples
+   FABRIQUES. C EST LE DENOMINATEUR DE REFERENCE : un couple fabrique n est pas une
+   mort manquee, c est une mort qui n existe pas (la vraie victime est un bot).
+371 / 372 couples reconstruits par la reconstruction de kill-feed = 99.7 %
+   dont 1 couple(s) FABRIQUE(S).
+371 / 375 morts du KILL-FEED = 98.9 %
+   le chunk HIGHLIGHT est HUMAIN SEUL : il ne contient AUCUNE mort de bot.
+380 / 380 morts de l API = 100.0 %
+   LA SEULE REFERENCE COMPLETE, bots compris. Les 5 morts de BOT et les 4 morts
+   INFLIGEES PAR un bot s ajoutent ici et NULLE PART AILLEURS : aucune des deux n a
+   jamais ete aux trois denominateurs precedents. Le 380 est une CONSTANTE DECLAREE
+   (constante `apiDeaths`), pas une quantite decodee : rien dans le film ne la rend.
+   LE NUMERATEUR A CHANGE, LE DENOMINATEUR NON : il valait 376 avant RE_LOG 7ter.79
+   (98.9 %), les morts infligees PAR un bot n etant decodees par personne. Les trois
+   autres denominateurs sont INCHANGES, numerateur compris.
+
+## LE COUT, VENTILE PAR VOIE — jamais deux precisions directement comparables
+marche : 334 / 340 apparie(s) au couple exact = 98.2 %
+scan   : 29 / 37 apparie(s) au couple exact = 78.4 %
+   RESERVE NON LEVEE : la bijection indice -> joueur est ajustee sur l UNION des
+   deux voies, dont la marche fournit ~91 % des candidats. Un objectif maximise
+   conjointement n est pas neutre : le taux de la marche peut etre flatte et celui
+   du scan penalise par cet effet seul. Lire ce couple comme une VENTILATION DU
+   COUT (RE_LOG 7ter.73 (5)).
+DESACCORD entre les deux voies : 0 — il DOIT valoir zero
+morts a plusieurs candidats en concurrence : 0 — il DOIT valoir zero
+
+## CONTROLE NEGATIF CUMULE — le scan n invente pas de morts
+1 candidat(s) sur 208913712 bits de paquets SANS evenement (126412 paquets).
+   POPULATION OU LA CIBLE EST ABSENTE PAR CONSTRUCTION : les morts sont toutes
+   dans les paquets A EVENTS, donc chaque candidat compte ici est un faux positif.
+   Sans ce controle, un decodeur devenu permissif passerait tous les autres tests.
+
+## VERITE TERRAIN
+30 ancres HORODATEES confirmees en mode Theater, tags compris.
+   PORTEE : ce sont 30 LIGNES DE KILL horodatees. Le bilan du chantier parle de 34
+   CONFRONTATIONS — les 4 autres ne sont pas des lignes de kill (questions de
+   classe, corrections d interpretation). Dire << 30 ancres >> est juste ; dire
+   << les 34 ancres >> ne l est pas (RE_LOG 7ter.73 (4f)).
+8 morts dont la SOURCE APPARTIENT A LA VICTIME, confirmees 8/8 en Theater.
+   Le kill-feed y credite un AUTRE joueur. LES DEUX VERITES SONT VRAIES : elles
+   repondent a des questions differentes.
+5 des 30 ancres sont servies par le SCAN SEUL et ne sont donc PAS protegees par la
+   robustesse de l hybride : 4 sur 9b191a7f (01:00, 03:41, 04:50, 05:12) et 1 sur
+   78919882 (09:18). Le << 11.2x plus robuste >> vaut en LIGNES PUBLIEES, pas en
+   ANCRES (RE_LOG 7ter.73 (4b)(4c)).
+0 etiquette de source PUBLIEE et FAUSSE sur l ensemble du chantier.
+
+## PERIMETRE — ce que ces chiffres NE couvrent PAS
+LE 4v4 SEULEMENT. En BTB (24 slots, 36 participants) le decodage tient en AGREGAT
+   (224/293 = 76.5 %) mais la bijection indice -> joueur y a une marge NULLE : aucune
+   attribution ligne par ligne n y est publiable. Decision utilisateur : perimetre 4v4.
+   LES MORTS INFLIGEES PAR UN BOT N Y SONT PAS IDENTIFIEES NON PLUS, et c est mesure :
+   7 morts orphelines pour 5 kills de bot plus 1 suicide atteste, 6 des 8 bots hors
+   de la regle d epinglage, ZERO appariee, ZERO publiee. Le code ne publie rien de
+   faux ; la population, elle, n est pas identifiee (RE_LOG 7ter.79 (6)).
+LES SOURCES SANS NOM s affichent << Autres >>. 206 des 468 identifiants du catalogue
+   ne remontent a aucune source nommee. La NATURE, elle, reste juste.
+LA PEREMPTION DU CATALOGUE est un risque MINEUR (les ajouts d armes sont rares). La
+   detection reste posee et testee ; ce n est pas un entretien regulier.
