@@ -22,6 +22,7 @@ import { Heatmap2DChart, type ChartPointHeatmap } from '@/components/charts/Heat
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import { Button } from '@/components/ui/button'
 import type { MatchPlayerPosition } from '@/lib/api/types'
+import type { Locale } from '@/lib/i18n/locale'
 
 /** Taille de la grille de binning (GRID_SIZE × GRID_SIZE cellules). */
 const GRID_SIZE = 20
@@ -33,7 +34,7 @@ type TeamFilter = 'all' | 0 | 1
 
 interface MatchPositionsHeatmapProps {
   positions: MatchPlayerPosition[] | undefined
-  locale: 'fr' | 'en'
+  locale: Locale
 }
 
 const TEXT = {

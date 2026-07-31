@@ -41,6 +41,10 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 
 vi.mock('./queries', () => ({
   useMatchView: () => hoisted.matchView,
+  // Les deux calques du film sont best-effort : ces tests portent sur la structure
+  // de la page, pas sur eux — `data` undefined reproduit le cas d'un titre sans film.
+  useMatchObjectiveEvents: () => ({ data: undefined }),
+  useMatchPositions: () => ({ data: undefined }),
 }))
 
 vi.mock('@/features/settings/queries', () => ({

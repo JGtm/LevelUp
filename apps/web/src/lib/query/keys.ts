@@ -106,6 +106,12 @@ export const queryKeys = {
   gamertagSearch: (q: string, live = false) => ['gamertag-search', q, live] as const,
   matchView: (playerSlug: string, titleSlug: string, matchId: string) =>
     ['match-view', playerSlug, titleSlug, matchId] as const,
+  matchObjectiveEvents: (playerSlug: string, titleSlug: string, matchId: string) =>
+    ['match-objective-events', playerSlug, titleSlug, matchId] as const,
+  matchPositions: (playerSlug: string, titleSlug: string, matchId: string) =>
+    ['match-positions', playerSlug, titleSlug, matchId] as const,
+  matchReplay: (playerSlug: string, titleSlug: string, matchId: string) =>
+    ['match-replay', playerSlug, titleSlug, matchId] as const,
 
   // Engagement (Phase 4 plan engagement)
   engagementMatch: (playerSlug: string, titleSlug: string, matchId: string) =>

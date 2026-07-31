@@ -2449,3 +2449,413 @@ export interface AdminLogEntry {
 }
 
 export type AdminLogTail = components['schemas']['AdminLogTail']
+
+/**
+ * Joueur impliqué dans un événement d'objectif (ex. le scorer d'une capture).
+ * Miroir exact du DTO `objective-events` (clés camelCase).
+ */
+export interface MatchObjectiveEventPlayer {
+  xuid: string
+  role: string
+}
+
+/**
+ * Événement d'objectif filmé (CTF flag capture, etc.).
+ *
+ * Source : `GET /players/{slug}/matches/{matchId}/objective-events`. Miroir
+ * exact du DTO backend (camelCase, champs nullables omis du JSON). Pour CTF :
+ * objectiveType='flag', eventType='capture', value=1, teamId=0|1 (même
+ * numérotation que scoreboard.team_side), players[0].xuid = le scorer.
+ */
+export interface MatchObjectiveEvent {
+  matchId: string
+  seq: number
+  timeMs?: number
+  objectiveType: string
+  eventType: string
+  teamId?: number
+  value?: number
+  source: string
+  confidence: string
+  players: MatchObjectiveEventPlayer[]
+}
+
+/**
+ * Position joueur keyframe v3 décodée du film (match-level — §N).
+ * Miroir exact du DTO `positions` (clés camelCase). x/y/z sont des coordonnées
+ * monde Halo ; team vaut -1 (inconnu) quand le clustering spatial n'a pas pu
+ * l'attribuer, 0/1 sinon (best-effort, pas d'attribution xuid en v1).
+ */
+export interface MatchPlayerPosition {
+  timeMs: number
+  x: number
+  y: number
+  z: number
+  team: number
+}
+
+// --- Rejeu 2D (GET /players/{slug}/matches/{matchId}/replay) ---
+// Artefact pré-construit hors ligne (cmd/replay-build). Positions dans le repère monde
+// PARTAGÉ ; le client auto-ajuste via bounds (échelle absolue non garantie, cf handoff
+// ALL_PLAYERS_TRAJECTORIES). points[].t = index de pas de temps ∈ [0, frameCount).
+export interface ReplayPoint {
+  t: number
+  x: number
+  y: number
+  /** Altitude (indication d'étage) — absente sur les artefacts sans Z, lire 0. */
+  z?: number
+  /**
+   * Cap de visée en degrés dans le plan XY (0 = +X, 90 = +Y), lu dans le MÊME record que la
+   * position — donc au même instant, sur le même joueur. Présent sur ~52 % des points : le
+   * film ne réplique la visée que lorsqu'elle change. Absent, ne rien dessiner — jamais une
+   * direction déduite du déplacement, qui affirmerait ce qu'on ignore.
+   */
+  h?: number
+  /**
+   * Fraction de bouclier dans [0, 1], même record que la position. Présent sur ~16 % des
+   * points (le film ne le réplique que lorsqu'il CHANGE).
+   * `0` EST UNE VALEUR, pas une absence : c'est même l'information la plus utile du champ
+   * (bouclier brisé). Côté Go c'est un pointeur pour cette raison précise ; côté TS,
+   * tester `=== undefined`, jamais la véracité.
+   */
+  sh?: number
+  /**
+   * Fraction de vie dans [0, 1], même record. Couverture 0,6 % (974 points sur 171 826 avant
+   * décimation) : PUBLIÉ MAIS PAS DESTINÉ À UNE BARRE — à ce taux, une barre afficherait
+   * 99 % du temps une valeur périmée présentée comme actuelle.
+   */
+  hp?: number
+}
+
+export interface ReplayTrack {
+  slot: number
+  /**
+   * -1 : L'ÉQUIPE N'EST PAS DANS LE FILM. Elle vit dans la base, avec le gamertag, et se joint
+   * par `xuid` (cf. le scoreboard du match). Un -1 n'est pas un oubli du décodeur.
+   */
+  team: number
+  /** Toujours absent : le film ne porte aucun gamertag. Le nom se joint par `xuid`. */
+  name?: string
+  /**
+   * IDENTITÉ du porteur de cette vie, en décimal (un 64 bits ne survit pas au `number` JS ;
+   * c'est aussi la forme employée par la base, donc la jointure est directe).
+   *
+   * ABSENT quand la vie n'a pas été nommée — 15 sur 105 sur le film de référence, dont 4
+   * antérieures au début réel du match et 6 survivants de fin de partie, que le film ne clôt
+   * par aucun événement. Une trace anonyme se dessine quand même : elle EXISTE, on ignore
+   * seulement à qui elle appartient.
+   */
+  xuid?: string
+  points: ReplayPoint[]
+  /**
+   * Fenêtre de vie sur l'axe de temps : une track = UNE VIE (le slot est réattribué
+   * aux respawns). Hors de [startFrame, endFrame] l'entité doit être MASQUÉE, sinon les
+   * 99 vies restent figées à l'écran. Champs omitempty : absent = 0 / dernier point.
+   */
+  startFrame?: number
+  endFrame?: number
+}
+
+export interface ReplayBounds {
+  minX: number
+  minY: number
+  maxX: number
+  maxY: number
+  /** Amplitude verticale (optionnelle) — sert à teinter/filtrer par étage. */
+  minZ?: number
+  maxZ?: number
+}
+
+/** Prop Forge projeté en 2D : centre orienté + emprise de sa bounding box (petits objets). */
+export interface ReplayMapObject {
+  typeId: number
+  x: number
+  y: number
+  z?: number
+  /** Emprise (largeur/profondeur) avant rotation ; absente = objet sans modèle. */
+  dx?: number
+  dy?: number
+  /** Rotation autour de la verticale, en degrés. */
+  yaw?: number
+}
+
+/**
+ * ReplaySurface — emprise au sol d'une instance de géométrie du BSP : le VRAI fond de carte,
+ * à distinguer de `ReplayMapObject` (props Forge, 0,25 m² de médiane).
+ * `z` est la face supérieure, `zb` la face inférieure — aucune des deux n'est optionnelle :
+ * une altitude à 0 exact serait omise et relue comme 0, l'élément changerait d'étage.
+ */
+export interface ReplaySurface {
+  x0: number
+  y0: number
+  x1: number
+  y1: number
+  z: number
+  zb: number
+  /**
+   * Emprise ORIENTÉE (4 à 8 sommets `[x, y]` monde) quand elle est connue ; sinon le client
+   * retombe sur le rectangle x0/y0/x1/y1. Les fichiers de structure figés à ce jour n'en
+   * portent aucune (0 sur 10 223 pour `ridgeline`) : la produire exige les fichiers du jeu
+   * installé (`cmd/mapstruct-build`).
+   */
+  poly?: [number, number][]
+}
+
+/**
+ * ReplayShot — un tir RATTACHÉ à une trace. Le film ne sérialise que les tirs qui INFLIGENT
+ * un dégât : ceux qui manquent n'y sont pas, et le dénominateur de `coverage` est le nombre de
+ * records du film, jamais le nombre de tirs de la partie.
+ */
+export interface ReplayShot {
+  t: number
+  slot: number
+  x: number
+  y: number
+  /** Cap de visée en degrés ; absent quand la direction n'était pas lisible hors ligne. */
+  h?: number
+  /** Identifiant d'arme en hexadécimal (un entier 64 bits ne survit pas au `number` JS). */
+  weapon?: string
+}
+
+/** ReplayGrenade — un LANCER de grenade. `s` dit d'où vient sa position. */
+export interface ReplayGrenade {
+  t: number
+  /** Biped lanceur quand il est connu ; 0 sinon — la position ne dépend pas de lui. */
+  slot: number
+  /** Index de joueur ÉCRIT dans le film : l'auteur, toujours renseigné. */
+  i: number
+  x: number
+  y: number
+  k: string
+  /** 'projectile' (position de l'objet lancé) ou 'biped' (position du lanceur). */
+  s: string
+}
+
+/**
+ * ReplayProjectile — la trajectoire d'un projectile.
+ *
+ * LE DERNIER POINT N'EST PAS UN IMPACT, et l'écrire serait un abus : le film ne porte aucun
+ * événement de détonation. C'est la dernière position RÉPLIQUÉE. Pour une grenade à
+ * fragmentation la réplication cesse ~1,4 s après le lancer alors que la mèche court jusqu'à
+ * ~3 s — le dernier point approche l'explosion parce que l'objet ne bouge plus, pas parce
+ * qu'on la lit. Seul `rest` certifie une fin de vol.
+ *
+ * FORME COMPACTE : `p` porte `[dt, x, y]` où `dt` est le décalage EN FRAMES depuis `t0`.
+ * Répéter l'index absolu doublerait le poids du document (439 trajectoires, des dizaines de
+ * points chacune).
+ */
+export interface ReplayProjectile {
+  /** Index de frame du premier point, même axe que `ReplayPoint.t`. */
+  t0: number
+  /** Suite de `[dt, x, y]`, dt en frames depuis `t0`. */
+  p: [number, number, number][]
+  /** Le dernier point porte `projectile-at-rest-state` : le seul champ qui certifie la fin du vol. */
+  rest?: boolean
+}
+
+/**
+ * ReplayLoadout — les armes PORTÉES par une trace à un instant d'image-clé.
+ *
+ * CE QUE LE CHAMP GARANTIT : à l'instant `t`, ce slot AVAIT ces armes. Témoin croisé sur une
+ * source indépendante (l'arme des events de tir) : 98,3 % d'accord, contre 7,2 % pour le
+ * témoin qui ne casse QUE la jointure record → slot.
+ *
+ * CE QU'IL NE GARANTIT PAS, et il faut le dire à l'écran :
+ * - QUELLE arme est dégainée — le loadout est l'inventaire, pas la main ;
+ * - la CONTINUITÉ : une image-clé toutes les ~20 s, un ramassage entre deux est invisible.
+ *   Un client qui maintient la dernière valeur affiche un état de RÉFÉRENCE, pas une mesure
+ *   de l'instant — d'où l'âge de la lecture porté à l'écran.
+ */
+export interface ReplayLoadout {
+  t: number
+  slot: number
+  /** Identifiants de FAMILLE d'arme (high-32 du weapon-id 64 bits), hexadécimal 8 chiffres. */
+  w: string[]
+}
+
+/**
+ * ReplayAmmoSlot — les munitions d'un EMPLACEMENT du record, numéroté 0 puis 1.
+ *
+ * L'EMPLACEMENT k CORRESPOND À L'ARME k de `ReplayLoadout.w` — MAIS SEULEMENT quand la lecture
+ * du bloc est UNIQUE (`cand === 1`).
+ *
+ * Mesuré sur le film de référence, lectures uniques seulement : **197 appariements sur 198**
+ * concordent. Seize armes sortent 100 % de cellules « chargeur » ; le Gravity Hammer, l'Energy
+ * Sword, le Stalker Rifle et le Ravager ne sortent JAMAIS de chargeur — ils portent une jauge
+ * ou rien. Une seule anomalie subsiste (un chargeur sur 19 lectures de marteau).
+ *
+ * CE QUI AVAIT ÉTÉ CONCLU À TORT : la même mesure faite sur TOUS les appariements (300, dont
+ * 102 issus de lectures à plusieurs candidats) montrait un mélange, et on en avait déduit que
+ * la correspondance échouait. C'était le bruit des parses ambigus, pas une erreur de
+ * rattachement. D'où la règle : ne se fier à une cellule que si `cand === 1`.
+ *
+ * TROIS CAS DISTINCTS, à ne jamais confondre à l'écran :
+ * - `mag`/`res` présents : arme à chargeur ;
+ * - `gauge` présent : arme à charge, et la valeur est **CE QUI A ÉTÉ CONSOMMÉ**, pas ce qui
+ *   reste. Voir ci-dessous : c'est contre-intuitif et ça a produit un affichage inversé ;
+ * - les trois absents : le film n'écrit **rien**. Pour une arme à charge, cela veut dire
+ *   **PLEIN** — le flux est différentiel, et le plein est la valeur par défaut.
+ *
+ * LA JAUGE COMPTE LA CONSOMMATION — mesuré le 2026-07-31, deux témoins concordants :
+ *
+ * 1. **À la première image-clé du match** (8 joueurs, rien de dégainé, chargeurs au plein
+ *    conformes à la table), les armes à charge — Gravity Hammer, Ravager — n'émettent
+ *    **aucun** champ. Si la jauge disait « ce qui reste », le plein serait une valeur
+ *    maximale, pas une absence.
+ * 2. **Dans une même vie, sur la même arme, la valeur ne redescend JAMAIS** : 6 hausses,
+ *    0 baisse, 5 stables. Les hausses sont des multiples du quantum de l'arme (marteau
+ *    +410 et +820, épée +1188 = 2 × 594, Stalker +252 = 4 × 63). Une charge restante
+ *    décroîtrait.
+ *
+ * CE QUI RESTE À TRANCHER : le dénominateur. Le quantum est propre à l'arme (410 pour le
+ * marteau, 594 pour l'épée, 63 pour le Stalker) et le film ne dit pas combien de charges font
+ * un plein. On peut donc afficher une PART CONSOMMÉE, pas un « 3 sur 10 ».
+ */
+export interface ReplayAmmoSlot {
+  mag?: number
+  res?: number
+  gauge?: number
+}
+
+/**
+ * ReplayInventory — l'inventaire complet d'une trace à un instant d'image-clé.
+ *
+ * CE QU'IL NE DIT PAS, et que l'écran doit dire : la CONTINUITÉ. Une image-clé toutes les
+ * ~20 s ; entre deux, ce qui s'affiche est la dernière lecture connue. Son ÂGE est donc une
+ * information à part entière — âge médian mesuré 8,4 s, et 7,1 % seulement des affichages ont
+ * moins d'une seconde. L'estompage n'est pas un ornement rare : il sert neuf fois sur dix.
+ */
+export interface ReplayInventory {
+  t: number
+  slot: number
+  /**
+   * Compteur par rang de type de grenade (cf. `grenadeLabels`). ABSENT = non lu ; un tableau
+   * présent dont une case vaut 0 dit « ce type, aucune en réserve », ce qui est une mesure.
+   */
+  g?: number[]
+  /** Index de capacité lu. Absent = non lu. L'index 0 serait une valeur : ne pas tester `!a`. */
+  a?: number
+  /**
+   * Sélecteur d'emplacement : 0 ou 1 = cet emplacement est dégainé, 2 = AUCUNE arme dégainée.
+   * Absent = non lu. Le 2 compte : à la première image-clé le match n'a pas commencé et les
+   * huit joueurs ont leurs armes rangées.
+   */
+  d?: number
+  /** Munitions des emplacements portant une arme, dans l'ordre de `ReplayLoadout.w`. */
+  am?: ReplayAmmoSlot[]
+  /**
+   * Nombre de lectures possibles du bloc de munitions. 1 = lecture unique ; au-delà, la plus
+   * longue a été retenue et ce nombre rend le départage visible plutôt que silencieux.
+   */
+  cand?: number
+}
+
+/**
+ * ReplayLayerCoverage — combien un calque a rattaché SUR COMBIEN existaient, et pourquoi il a
+ * écarté le reste. Publier un numérateur seul laisse croire à l'exhaustivité.
+ */
+export interface ReplayLayerCoverage {
+  available: number
+  attached: number
+  noSlot: number
+  ambiguous: number
+  outOfWindow: number
+  unpublished: number
+}
+
+/** ReplayBridgeHealth — sur quoi repose le pont trace → joueur. */
+export interface ReplayBridgeHealth {
+  slots: number
+  fromReading: number
+  livesNamed: number
+  livesTotal: number
+  indexReadings: number
+  indexDisagreements: number
+  slotCollisions: number
+}
+
+/**
+ * ReplayCoverage — la couverture par calque et le VERDICT qui en découle.
+ * Un calque « non publiable » doit être RETIRÉ de l'écran, pas affiché avec une note.
+ */
+export interface ReplayCoverage {
+  shots: ReplayLayerCoverage
+  grenades: ReplayLayerCoverage
+  verdict?: Record<string, string>
+  bridge: ReplayBridgeHealth
+}
+
+export interface ReplayDocument {
+  schemaVersion: number
+  matchId: string
+  titleSlug: string
+  frameCount: number
+  bounds: ReplayBounds
+  tracks: ReplayTrack[]
+  /** Durée réelle d'une frame en ms (absent = axe sans échelle temporelle). */
+  frameIntervalMs?: number
+  /** Durée réelle couverte par le rejeu, en ms. */
+  durationMs?: number
+  /** Fond de carte : props Forge (repères de décor, pas les sols). */
+  geometry?: ReplayMapObject[]
+  /** Étendue XY de `geometry`, distincte de `bounds` (les props débordent). */
+  geometryBounds?: ReplayBounds
+  /** Géométrie STRUCTURELLE de la carte : le vrai fond, à distinguer de `geometry`. */
+  structure?: ReplaySurface[]
+  /** Étendue XY de `structure` : elle déborde largement de `bounds`. */
+  structureBounds?: ReplayBounds
+  /** Tirs rattachés à une trace. Voir `coverage.shots` pour ce qui n'y est pas. */
+  shots?: ReplayShot[]
+  /** Lancers de grenade situés. */
+  grenades?: ReplayGrenade[]
+  /** Armes portées, lues aux images-clés. Voir `ReplayLoadout` pour ce que ça ne dit pas. */
+  loadouts?: ReplayLoadout[]
+  /** Inventaire complet lu aux images-clés : grenades, capacité, munitions, arme dégainée. */
+  inventory?: ReplayInventory[]
+  /** Nom de chaque RANG de type de grenade, dans l'ordre des compteurs de `ReplayInventory.g`. */
+  grenadeLabels?: string[]
+  /**
+   * Nom de chaque index de capacité employé par le document.
+   *
+   * LA TABLE EST PARTIELLE — 4 index observés pour 11 capacités dans le jeu. Un index absent
+   * GARDE SON NUMÉRO à l'écran, marqué non interprétable : le combler par le nom d'une
+   * capacité voisine se lirait comme une certitude.
+   */
+  abilityLabels?: Record<string, string>
+  /** Trajectoires de projectile. */
+  projectiles?: ReplayProjectile[]
+  /** Les joueurs du film : identité + index de film. Voir `ReplayRosterEntry`. */
+  roster?: ReplayRosterEntry[]
+  /**
+   * Nomme les identifiants d'arme du document : famille (8 chiffres hexadécimaux, cf.
+   * `ReplayLoadout.w`) ou identifiant global 64 bits (16 chiffres, cf. `ReplayShot.weapon`).
+   *
+   * UN IDENTIFIANT ABSENT DE CETTE TABLE GARDE SON HEXADÉCIMAL à l'écran : il n'emprunte pas
+   * le nom d'une arme voisine. Un dessin ou un mot faux se lit comme une certitude, ce qu'un
+   * identifiant brut ne fait pas.
+   */
+  weaponLabels?: Record<string, string>
+  /** Ce que chaque calque a rattaché sur ce qui existait, et le verdict de publication. */
+  coverage?: ReplayCoverage
+}
+
+/**
+ * ReplayRosterEntry — un joueur du film.
+ *
+ * LES DEUX CHAMPS NE SONT PAS INTERCHANGEABLES : le xuid IDENTIFIE, l'index ORDONNE et n'a de
+ * sens qu'à l'intérieur de ce film. Les événements du film désignent leur auteur par index ;
+ * c'est cette table qui permet de le traduire en identité sans jamais confondre les deux.
+ */
+export interface ReplayRosterEntry {
+  xuid: string
+  filmIndex: number
+  /**
+   * Gamertag TEL QUE LE FILM L'ÉCRIT, dans le même enregistrement que le xuid.
+   *
+   * CE N'EST PAS UNE RÉSOLUTION : rien n'est allé le chercher ailleurs, donc rien ne peut
+   * l'avoir mal apparié. Il rend le rejeu lisible même sans les données de match. Ce qu'il ne
+   * donne PAS : l'équipe et les compteurs, qui n'existent que dans la base.
+   */
+  name?: string
+}
+
