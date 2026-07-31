@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { useSettings } from '@/features/settings/queries'
 import { EngagementMatchSection } from '@/features/engagement/EngagementMatchSection'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
-import { useMatchView } from './queries'
+import { useMatchView, useMatchObjectiveEvents, useMatchPositions } from './queries'
 import { MatchBreadcrumb, MatchNavigationBar, MatchHeaderCard } from './MatchHeader'
 import { MatchAntagonistChart } from './MatchAntagonistChart'
 import { MatchFragDiffChart } from './MatchFragDiffChart'
@@ -25,6 +25,7 @@ import {
   MatchCitationsSection,
   MatchNativeCommendationsSection,
 } from './MatchSummaryMedalsAndCitations'
+import { MatchPositionsHeatmap } from './MatchPositionsHeatmap'
 import { buildMatchHeadingStr } from './format'
 import { MATCH_VIEW_TEXT } from './i18n'
 import type { MatchViewRadarSeries } from '@/lib/api/types'
@@ -115,6 +116,10 @@ export function MatchViewPage() {
     navigate({ search: (prev) => ({ ...prev, tab: next }), replace: true }).catch(() => {})
   }
   const { data, isPending, isError, error, refetch } = useMatchView(playerSlug, matchId)
+  // Deux calques décodés du film, best-effort : un titre sans film répond 503 et
+  // `data` reste undefined — la page s'affiche entière, sans placeholder mort.
+  const { data: objectiveEvents } = useMatchObjectiveEvents(playerSlug, matchId)
+  const { data: matchPositions } = useMatchPositions(playerSlug, matchId)
   const { data: settings } = useSettings()
   const friendGamertags = settings?.friend_gamertags ?? []
   const locale = useAppShellStore((s) => s.locale)
@@ -404,6 +409,7 @@ export function MatchViewPage() {
                   badges={impactBadges}
                   scoreboard={scoreboard}
                   meXUID={meXUID}
+                  objectiveEvents={objectiveEvents}
                   t={t}
                 />
               </div>
@@ -415,6 +421,7 @@ export function MatchViewPage() {
                   events={highlightEvents}
                   scoreboard={scoreboard}
                   meXUID={meXUID}
+                  objectiveEvents={objectiveEvents}
                   t={t}
                 />
                 <MatchCadenceChart
@@ -424,6 +431,14 @@ export function MatchViewPage() {
                   t={t}
                 />
               </div>
+
+              {/* Heatmap positions (film keyframe, match-level §N). Le composant
+                  se masque lui-même si aucune position n'a été décodée — titre
+                  sans film, ou match non backfillé (503). */}
+              <MatchPositionsHeatmap
+                positions={matchPositions}
+                locale={locale === 'en' ? 'en' : 'fr'}
+              />
 
               {/* Engagement — remonté ici (avant Frags différentiel cumulé).
                   Gaté sur `engagement` : évite le fetch + la carte placeholder

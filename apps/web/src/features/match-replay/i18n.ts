@@ -2,7 +2,10 @@
  * i18n de la feature match-replay (rejeu 2D vue du dessus). Strings UI FR + EN,
  * parité par typage Record<ReplayLocale, ReplayText>.
  */
-export type ReplayLocale = 'fr' | 'en'
+import type { Locale } from '@/lib/i18n/locale'
+
+/** Alias local du type central : la feature ne redéclare pas l'union des langues. */
+export type ReplayLocale = Locale
 
 interface ReplayText {
   title: string
