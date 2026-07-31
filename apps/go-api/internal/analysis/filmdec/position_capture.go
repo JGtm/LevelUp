@@ -1,7 +1,5 @@
 package filmdec
 
-import "math"
-
 // Position capture (ADDITIVE, PARTIE 1 victim-position pipeline). This file lets a
 // probe observe the i0 object-position-dynamic-precision payload WITHOUT changing
 // any bit-consumption: consumeObjectPositionDynamicPrecisionD reads exactly the same
@@ -234,7 +232,9 @@ func SetAbsoluteAxisW(w uint) { absoluteAxisW = w }
 // changeait AUSSI la largeur du delta — le chemin dominant — et dégradait la mesure. Le
 // commentaire de traverse.go le disait déjà : « le vrai correctif doit distinguer les deux
 // largeurs le long de chaque branche, et non régler une globale. »
-func absAxisW(pd PrecisionDescriptor, i int) uint {
+// (Le descripteur de précision n'entre PAS dans ce choix : la largeur absolue vient soit
+// du réglage global, soit de WorldObjectPrecision — jamais du descripteur de l'appelant.)
+func absAxisW(i int) uint {
 	if absoluteAxisW > 0 {
 		return absoluteAxisW
 	}
@@ -262,7 +262,7 @@ var absPerIndexAxisW map[int][3]uint
 func SetAbsPerIndexAxisW(t map[int][3]uint) { absPerIndexAxisW = t }
 
 // absAxisWFor retourne la largeur de l'axe i pour l'index de plage idx (repli : largeur uniforme).
-func absAxisWFor(pd PrecisionDescriptor, idx, i int) uint {
+func absAxisWFor(idx, i int) uint {
 	if i == 0 {
 		absIdxHist[idx]++
 	}
@@ -271,7 +271,7 @@ func absAxisWFor(pd PrecisionDescriptor, idx, i int) uint {
 			return w[i]
 		}
 	}
-	return absAxisW(pd, i)
+	return absAxisW(i)
 }
 
 // absIdxHist : histogramme des index de plage rencontres sur les chemins ABSOLUS de i0 (7ter.54
@@ -311,16 +311,17 @@ func signed8(b uint64) int32 {
 	return int32(b)
 }
 
-// rawVec3 reads a 96-bit raw vec3 (3 IEEE-754 float32, MSB-first per the film
-// bit-reader) without dequantization. Mirrors FUN_1406d676c(...,0x60).
+// readRawVec3 consomme les 96 bits d'un vec3 brut (3 IEEE-754 float32, MSB-first au sens
+// du lecteur de bits du film). Mirrors FUN_1406d676c(...,0x60).
 //
 // NB (2026-06-30, Ghidra FUN_1406cfe44) : le chemin keep-baseline (bUsePred=1) NE
 // réécrit PAS le champ position (il garde la baseline) — ces 96 bits ne sont donc PAS
 // une position joueur. PosKindRaw ne doit pas être interprété comme une coordonnée.
-func readRawVec3(br *BitReader) [3]float32 {
-	var v [3]float32
+// C'EST POURQUOI RIEN N'EST RENDU : la fonction n'existe que pour AVANCER le curseur, et
+// rendre un [3]float32 invitait à lire ces bits comme une coordonnée — ce que le NB
+// ci-dessus interdit. Aucun appelant ne l'a jamais fait.
+func readRawVec3(br *BitReader) {
 	for i := 0; i < 3; i++ {
-		v[i] = math.Float32frombits(uint32(br.ReadBits(32)))
+		br.ReadBits(32)
 	}
-	return v
 }

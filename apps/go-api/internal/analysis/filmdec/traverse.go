@@ -480,11 +480,11 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 	case "crew-order-component": // ti=14 i0 (FUN_142ed4274) — R(3)+R(1)gate1[si1: vec3 quant 6+level]
 		br.ReadBits(3)
 		if br.ReadBit() { // gate1 == présence du vecteur
-			consumeQuantVec3(br, quantAxisWidth(uint(level)), 1) // PISTE 1 : largeur = 6+flags(registre)
+			consumeQuantVec3(br, quantAxisWidth(uint(level))) // PISTE 1 : largeur = 6+flags(registre)
 		}
 		return variant, nil, true
 	case "tacmap-poiiconoffset": // ti=30 i1 — vec3 quant pur (6+level)
-		consumeQuantVec3(br, quantAxisWidth(uint(level)), 1)
+		consumeQuantVec3(br, quantAxisWidth(uint(level)))
 		return variant, nil, true
 	case "tacmap-poiicon": // ti=30 i0 (FUN_142ed8418) — bloc + vec3 quant(6+level) au milieu
 		br.ReadBits(32) // icon-id
@@ -495,8 +495,8 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 		br.ReadBits(32) // icon-bitmapbg
 		br.ReadBits(9)
 		br.ReadBits(9)
-		consumeQuantVec3(br, quantAxisWidth(uint(level)), 1) // vec3
-		br.ReadBits(32)                                      // string-id
+		consumeQuantVec3(br, quantAxisWidth(uint(level))) // vec3
+		br.ReadBits(32)                                   // string-id
 		br.ReadBit()
 		br.ReadBits(8)
 		br.ReadBits(8)
@@ -505,7 +505,7 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 		return variant, nil, true
 	case "flock-destination-component": // ti=21 i2-i11 — R(1)flag + vec3 quant(6+level) + R(2) si rsp>1
 		br.ReadBit()
-		consumeQuantVec3(br, quantAxisWidth(uint(level)), 1)
+		consumeQuantVec3(br, quantAxisWidth(uint(level)))
 		if paramForComponent(name) > 1 {
 			br.ReadBits(2)
 		}
@@ -619,8 +619,8 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 		return variant, nil, true
 	case "player-desired-respawn-location-component": // ti=5 i12 — R(1)[si1: vec3 quant(6+level) + R(19)]
 		if br.ReadBit() { // has_location
-			consumeQuantVec3(br, quantAxisWidth(uint(level)), 1) // PISTE 1 : largeur = 6+flags
-			br.ReadBits(19)                                      // FUN_14076dc04 handle/respawn-id
+			consumeQuantVec3(br, quantAxisWidth(uint(level))) // PISTE 1 : largeur = 6+flags
+			br.ReadBits(19)                                   // FUN_14076dc04 handle/respawn-id
 		}
 		return variant, nil, true
 	// --- lot 3 workflow filmdec-port-component-desers (2026-06-30) ---
@@ -747,7 +747,7 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 		consumeObjectMultiplayerProperties(br)
 		return variant, nil, true
 	case compWeaponStateTypeInfo: // held weapon (FUN_1407f06bc)
-		v, _ := consumeWeaponStateTypeInfoVariant(br)
+		v := consumeWeaponStateTypeInfoVariant(br)
 		return v, nil, true
 	case "object-forward-and-up-component":
 		consumeObjectForwardAndUp(br)

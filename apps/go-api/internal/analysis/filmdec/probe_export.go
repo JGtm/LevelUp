@@ -12,7 +12,7 @@ package filmdec
 func ConsumeWeaponStateTypeInfoVariantAt(buf []byte, start int) (variant uint32, end int) {
 	br := NewBitReader(buf)
 	br.Skip(start)
-	v, _ := consumeWeaponStateTypeInfoVariant(br)
+	v := consumeWeaponStateTypeInfoVariant(br)
 	return v, br.BitPos()
 }
 

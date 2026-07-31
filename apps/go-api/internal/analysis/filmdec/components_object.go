@@ -397,10 +397,12 @@ func readOpt6Signed(br *BitReader) int8 {
 // The variant string-id is read at a FIXED position: gateR1 + R(32 handle) +
 // R(32 variant). Downstream sub-reads are data-dependent (loops); only the
 // variant itself is load-bearing for weapon attribution.
-func consumeWeaponStateTypeInfoVariant(br *BitReader) (variant uint32, present bool) {
+// Le drapeau « présent » n'est pas rendu : noVariant (0xFFFFFFFF) EST le témoin
+// d'absence, et c'est déjà celui que le reste du paquet teste.
+func consumeWeaponStateTypeInfoVariant(br *BitReader) (variant uint32) {
 	if !br.ReadBit() { // FUN_14080d69c gate
 		consumeWeaponStateTail(br) // tail still runs (FUN_1407f08bc + FUN_1406d01fc)
-		return 0xFFFFFFFF, false
+		return noVariant
 	}
 	br.ReadBits(32)                   // FUN_14080d6f0 optional local-handle id
 	variant = uint32(br.ReadBits(32)) // FUN_14080dec4 "variant-name" == WEAPON
@@ -414,7 +416,7 @@ func consumeWeaponStateTypeInfoVariant(br *BitReader) (variant uint32, present b
 	consume1407f0550(br)          // copie unique de FUN_1407f0550 (cf. note de suppression plus bas)
 	consumeOpt5(br)               // FUN_1407f2058: R(1); if 0 -> R(5)
 	consumeWeaponStateTail(br)    // FUN_1407f08bc + FUN_1406d01fc
-	return variant, true
+	return variant
 }
 
 // consumeWeaponStateTail mirrors the unconditional tail of FUN_1407f06bc.
