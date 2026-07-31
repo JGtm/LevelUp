@@ -1,3 +1,54 @@
+## [2026-07-31] Réconciliation rejeu 2D x killsource — recâblage API/web et clôture
+
+**Statut** : Complété (phases B2, D et §5 du plan `.ai/PLAN_RECONCILIATION_BRANCHES.md`).
+La branche `feat/replay2d-prod` porte le rejeu 2D ET le décodeur de source de dégât, sur un
+socle à 2 commits de `main`.
+
+**Décision technique.** L'endpoint de rejeu est **réécrit en Huma**, pas copié : `main` a sorti
+le registre dans `internal/api/wire/` et déclare ses routes depuis les handlers. Le garde local
+(le rejeu n'est servi qu'en local) devient un **middleware de transport** — il lit `RemoteAddr`,
+que la couche Huma n'expose pas à un handler typé ; le mettre ailleurs l'aurait transformé en
+suggestion. Côté web, le schéma de routes est passé à `{-$lang}/t/$titleSlug/...` et portait
+déjà un **stub** de rejeu derrière `REJEU_2D_ENABLED` : notre implémentation le remplace en
+gardant `RouteCapabilityGate` et les paramètres de langue/titre, et `$matchId.tsx` redevient un
+layout à `Outlet` (sans quoi la sous-route ne s'affiche pas).
+
+**Résultats observés.**
+- Trois ratchets ont dicté la forme du portage : `TestNoCapabilityErrorDup` (passer par
+  `MapCapabilityError`), `TestContractRoutesDocumented` et `TestOpenAPIYAMLIsUpToDate`
+  (régénérer `openapi.yaml` puis `generated.ts`). Tous verts.
+- Quatre autres, déclenchés par l'outillage de recherche, traités **sans faire semblant** :
+  2 entrées d'allowlist datées pour les hôtes Halo ; une exemption par chemin argumentée pour le
+  balayage « plus longue série » (ce sont des mesures de plage de bits — et ce test échouait
+  DÉJÀ sur `feat/killsource-prod`) ; le littéral `start_time` brut **corrigé** (appel à
+  `analysis.SQLStartTimeCanonical`) ; le repli env-var legacy de `cmd/mapobj-build`
+  **supprimé** au lieu d'être allowlisté (ADR 0023).
+- `comeback.go` réuni : notre routage par type d'objectif englobe leur repli « marge de score
+  finale » pour les titres sans kill-feed. Les deux apports coexistent.
+- Les calques match-view ont été **rebranchés** (overlay de captures CTF ré-implémenté contre
+  les builders extraits de `main`, heatmap de positions montée dans la section « Déroulé ») —
+  sans quoi trois fichiers portés devenaient du code mort que `knip` refuse.
+- **Gates** : `go build` et `go test ./...` verts (0 FAIL) ; `tsc` vert ; **384 fichiers de
+  test web, 3 344 tests, 0 échec** ; `eslint` 0 erreur ; `knip` vert. Les trois artefacts de
+  rejeu se reconstruisent **à l'identique** après tous les changements.
+
+**Réserve honnête, non masquée.** `golangci-lint --new-from-merge-base=origin/main` reste rouge :
+**30 issues préexistantes sur `feat/killsource-prod`**, **48 après le portage**. Le gate n'est
+donc pas cassé par la réconciliation — il l'était déjà. Les 26 issues ajoutées sont dans
+l'outillage de recherche et le décodeur (8 conversions inutiles, 3 littéraux répétés, 3
+fonctions non appelées, 2 complexités, etc.). Non traitées à dessein : les corriger ne rendrait
+pas le gate vert, et toucher au décodeur pour du style ferait courir un risque à des mesures
+qu'on vient de prouver bit-exactes. À solder sur les deux lignées avant le merge vers `main`.
+`govulncheck` remonte 11 CVE de la bibliothèque standard Go 1.26.1 (corrigées en 1.26.2) —
+version de la chaîne d'outils locale, sans rapport avec ce portage.
+
+**Conclusion / prochaine étape.** Le fil des éliminations du rejeu (§6 du plan) n'est plus
+bloqué : `killsource` et le rejeu vivent enfin dans le même arbre. Avant tout merge vers `main` :
+solder la dette de lint des deux lignées, puis re-appliquer la rotation trimestrielle du
+`thought_log` et ranger `.ai/`.
+
+---
+
 ## [2026-07-31] Réconciliation rejeu 2D x killsource — Phase C : les deux décodeurs avaient un ancêtre commun
 
 **Statut** : Complété (phase C du plan `.ai/PLAN_RECONCILIATION_BRANCHES.md`).
