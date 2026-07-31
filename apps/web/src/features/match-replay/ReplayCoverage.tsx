@@ -11,13 +11,13 @@
  * statuts passent par les jetons sémantiques.
  */
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
-import type { ReplayDocument } from '@/lib/api/types'
 
 import { bridgeIsRead, summarizeAll, type LayerSummary } from './coverageLogic'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import type { ReplayDocumentReady } from './replayNormalize'
 
 interface Props {
-  doc: ReplayDocument | undefined
+  doc: ReplayDocumentReady | undefined
   locale: ReplayLocale
 }
 

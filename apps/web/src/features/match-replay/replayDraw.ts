@@ -208,7 +208,10 @@ export function drawShotsLayer(
     // LA COULEUR EST CELLE DU TIREUR quand on la connaît : c'est elle qui permet de suivre un
     // joueur des yeux. La FAMILLE d'arme, elle, se lit dans la FORME de l'effet.
     const color = style.colorOfSlot(s.slot) ?? style.fallback
-    drawShotEffect(ctx, familyOf(style.labelOf(s.weapon)), {
+    // `w` est le nom du champ AU CONTRAT (identifiant d'arme 64 bits en hexadécimal).
+    // L'interface écrite à la main disait `weapon` : le champ était donc toujours
+    // indéfini et toutes les familles d'arme retombaient sur la forme par défaut.
+    drawShotEffect(ctx, familyOf(style.labelOf(s.w)), {
       x: c.x,
       y: c.y,
       // Monde -> canevas : l'axe Y est inversé, donc l'angle l'est aussi. Absent = pas de

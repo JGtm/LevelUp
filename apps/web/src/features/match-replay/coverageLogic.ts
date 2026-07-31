@@ -13,7 +13,9 @@
  *
  * LOGIQUE PURE : aucun React, aucun canvas. Testable sans rendu.
  */
-import type { ReplayCoverage, ReplayDocument, ReplayLayerCoverage } from '@/lib/api/types'
+import type { ReplayCoverage, ReplayLayerCoverage } from '@/lib/api/types'
+
+import type { ReplayDocumentReady } from './replayNormalize'
 
 /** Verdict d'un calque, tel que le serveur le publie. */
 export const VERDICT_NOMINAL = 'nominal'
@@ -80,7 +82,7 @@ export function summarize(
 }
 
 /** summarizeAll prépare tous les calques d'un document. */
-export function summarizeAll(doc: ReplayDocument | undefined): LayerSummary[] {
+export function summarizeAll(doc: ReplayDocumentReady | undefined): LayerSummary[] {
   const cov: ReplayCoverage | undefined = doc?.coverage
   if (!cov) return []
   return [
@@ -97,7 +99,7 @@ export function summarizeAll(doc: ReplayDocument | undefined): LayerSummary[] {
  * donnent son index de joueur. Si une autre source venait à l'alimenter, `fromReading`
  * décrocherait de `slots` et l'écran doit le dire plutôt que de l'ignorer.
  */
-export function bridgeIsRead(doc: ReplayDocument | undefined): boolean {
+export function bridgeIsRead(doc: ReplayDocumentReady | undefined): boolean {
   const b = doc?.coverage?.bridge
   if (!b || b.slots === 0) return false
   return (

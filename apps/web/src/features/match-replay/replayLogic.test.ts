@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { ReplayDocument, ReplayTrack } from '@/lib/api/types'
+import type { ReplayDocument } from '@/lib/api/types'
 
 import {
   advanceFrame,
@@ -23,6 +23,11 @@ import {
   trailAt,
   worldToCanvas,
 } from './replayLogic'
+import {
+  normalizeReplayDocument,
+  type ReplayDocumentReady,
+  type ReplayTrackReady,
+} from './replayNormalize'
 
 const pts = [
   { t: 0, x: 0, y: 0 },
@@ -30,8 +35,11 @@ const pts = [
   { t: 20, x: 10, y: 20 },
 ]
 
-function makeDoc(over: Partial<ReplayDocument> = {}): ReplayDocument {
-  return {
+// Le document de test entre par la MÊME porte que celui du serveur : on décrit un document
+// de transport (champs facultatifs omis) et la frontière le complète. Un test qui bâtirait
+// directement la forme normalisée testerait un document que le serveur n'envoie jamais.
+function makeDoc(over: Partial<ReplayDocument> = {}): ReplayDocumentReady {
+  return normalizeReplayDocument({
     schemaVersion: 1,
     matchId: 'm',
     titleSlug: 'halo_infinite',
@@ -39,7 +47,7 @@ function makeDoc(over: Partial<ReplayDocument> = {}): ReplayDocument {
     bounds: { minX: 0, minY: 0, maxX: 10, maxY: 10 },
     tracks: [],
     ...over,
-  }
+  })
 }
 
 describe('positionAt', () => {
@@ -128,7 +136,7 @@ describe('échelle temporelle', () => {
 })
 
 describe('fenêtre de vie', () => {
-  const track: ReplayTrack = { slot: 1, team: -1, points: pts, startFrame: 5, endFrame: 15 }
+  const track: ReplayTrackReady = { slot: 1, team: -1, points: pts, startFrame: 5, endFrame: 15 }
   it('lit startFrame/endFrame', () => expect(trackWindow(track)).toEqual({ start: 5, end: 15 }))
   it('champs omitempty absents -> 0 et t du dernier point', () =>
     expect(trackWindow({ slot: 1, team: -1, points: pts })).toEqual({ start: 0, end: 20 }))

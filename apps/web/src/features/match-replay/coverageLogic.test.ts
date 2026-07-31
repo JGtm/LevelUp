@@ -7,7 +7,9 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import type { ReplayDocument, ReplayLayerCoverage } from '@/lib/api/types'
+import type { ReplayLayerCoverage } from '@/lib/api/types'
+
+import type { ReplayDocumentReady } from './replayNormalize'
 
 import { bridgeIsRead, isBalanced, ratioOf, summarizeAll } from './coverageLogic'
 
@@ -49,7 +51,7 @@ describe('summarizeAll', () => {
   it('rend une liste vide quand l’artefact ne porte pas de couverture', () => {
     // Les artefacts construits avant cette version n'ont pas le champ : l'écran doit se taire,
     // pas inventer un dénominateur.
-    expect(summarizeAll({ coverage: undefined } as ReplayDocument)).toEqual([])
+    expect(summarizeAll({ coverage: undefined } as ReplayDocumentReady)).toEqual([])
   })
 
   it('marque nominal uniquement si le verdict l’est ET que la somme tombe juste', () => {
@@ -68,7 +70,7 @@ describe('summarizeAll', () => {
           slotCollisions: 0,
         },
       },
-    } as unknown as ReplayDocument
+    } as unknown as ReplayDocumentReady
     const out = summarizeAll(doc)
     expect(out).toHaveLength(2)
     expect(out[0].nominal).toBe(true)
@@ -94,7 +96,7 @@ describe('summarizeAll', () => {
           slotCollisions: 0,
         },
       },
-    } as unknown as ReplayDocument
+    } as unknown as ReplayDocumentReady
     expect(summarizeAll(doc)[0].nominal).toBe(false)
   })
 })
@@ -116,7 +118,7 @@ describe('bridgeIsRead', () => {
           ...o,
         },
       },
-    }) as unknown as ReplayDocument
+    }) as unknown as ReplayDocumentReady
 
   it('est vrai quand tout le pont vient de la lecture', () => {
     expect(bridgeIsRead(bridge({}))).toBe(true)

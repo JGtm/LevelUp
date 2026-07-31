@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { ReplayBounds, ReplaySurface } from '@/lib/api/types'
+import type { ReplayBounds } from '@/lib/api/types'
 
 import {
   altitudeTint,
@@ -10,10 +10,11 @@ import {
   hasEdge,
   pointInPolygon,
 } from './mapFloor'
+import type { ReplaySurfaceReady } from './replayNormalize'
 
 /** Carré de 4 m de côté à l'altitude z, centré sur l'origine du repère de test. */
-function slab(x0: number, y0: number, x1: number, y1: number, z: number): ReplaySurface {
-  return { x0, y0, x1, y1, z, zb: z - 1 }
+function slab(x0: number, y0: number, x1: number, y1: number, z: number): ReplaySurfaceReady {
+  return { x0, y0, x1, y1, z, zb: z - 1, poly: [] }
 }
 
 const bounds: ReplayBounds = { minX: 0, minY: 0, maxX: 10, maxY: 10, minZ: -2, maxZ: 4 }
@@ -65,7 +66,7 @@ describe('buildFloorGrid', () => {
   it('emploie l’emprise ORIENTÉE quand elle existe', () => {
     // Un losange inscrit dans la boîte 0..4 : le coin (0,0) est HORS du polygone, son centre
     // de cellule n'est donc pas rempli, alors que la boîte alignée l'aurait rempli.
-    const s: ReplaySurface = {
+    const s: ReplaySurfaceReady = {
       ...slab(0, 0, 4, 4, 1),
       poly: [
         [2, 0],
