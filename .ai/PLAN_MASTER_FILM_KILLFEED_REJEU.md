@@ -248,6 +248,13 @@ rouges, mesurés ce soir sur `gh run list` :
 
 ## J2 — VERROUILLER LE DÉCODEUR  *(FINALISATION lot 2 — promu AVANT tout le reste)*
 
+> **CLOS le 2026-07-31 (nuit)** — GATE J2 ATTEINT. Les six items du lot 2 statués `[x]`
+> (le 12e champ de 2.6 en `[~]`, renvoyé au lot 3.6). Commits : `5e37f4c79` (2.1+2.2),
+> `d1870b3a7` (2.3), `a05d7d448` (2.4), `96bc56175` (2.5), `9dbcb1e5f` (2.6).
+> Couverture du paquet `replay` : **58,5 % → 79,2 %**. Cinq découvertes consignées, aucune
+> traitée (D1 à D5 dans le plan de finalisation) — dont **une panique atteignable en
+> production** et **la non-reproductibilité de l'artefact à l'octet**.
+
 **Document d'autorité** : `PLAN_FINALISATION_REJEU_2D.md` lot 2 (2.1 à 2.6). Périmètre fermé
 là-bas ; ce jalon n'ajoute que la justification d'ordre : les chiffres du chantier (475/519,
 90/105, 70 lancers, 439 projectiles, 184 états…) ne sont AUJOURD'HUI verrouillés par aucun
@@ -282,6 +289,10 @@ Ajouts de cette revue au plan (à statuer dans sa session) :
       un cache chaud rend un faux compte).
 - [ ] J3.2 Lot A : supprimer aussi le jeu d'images de grenades orphelin (`Dynamo-light.png`,
       casse majuscule — découverte n°1 de la réconciliation, aucun consommateur).
+- [ ] J3.3 Élargir le déclencheur du hook pre-push `knip-ratchet` (découverte J1-b : il ne se
+      déclenche que sur `apps/web/**` — un dépassement de plafond est resté invisible tant
+      que les push étaient documentaires). Correctif honnête au choix : déclencher aussi sur
+      la config/le plafond knip, ou jouer le ratchet en CI sans condition de chemin.
 
 ---
 
@@ -327,7 +338,9 @@ et rend le travail visible) :
 - [ ] J4.1 Lot 1.1-1.3 : supprimer `feature-flags.ts` (mort depuis avril), publier
       `replay_available` (un `os.Stat` via `PathResolver`), poser le lien conditionnel
       (i18n FR+EN). En prod, l'artefact n'existe pas → pas de lien : inoffensif d'ici le
-      chantier F.
+      chantier F. **Le gate visuel du lot 1 couvre AUSSI le correctif J1-a** (les familles
+      d'effets de tir enfin différenciées — champ `w`) : première revue d'écran depuis que
+      ce bug, vieux de tout le rejeu 2D, est corrigé.
 - [ ] J4.2 Lot 1.4 : le garde local — TRANCHÉ le 2026-07-31 : **comprendre le CTF d'abord**.
       Diagnostiquer pourquoi `64e8adfa` perd 564 tirs « slot introuvable » là où le Slayer en
       perd 44 (hypothèse vies courtes → traces non publiées, à mesurer, pas à supposer),
@@ -356,6 +369,9 @@ local.
 - [ ] J5.1 Lot E en entier (openapi + types régénérés, routeTree, knip, vitest, tsc cache
       purgé, `go test ./...` + `-tags=integration -p 1`, montée Go 1.26.2 puis `govulncheck`,
       ratchets ADR 0023, thought_log + rotation trimestrielle + rangement `.ai/`).
+      Vigilance découverte J1-c : `routeTree.gen.ts` est régénéré (ordre d'imports inversé)
+      par toute commande vite/vitest — vérifier le CONTENU du diff avant de committer ou
+      d'écarter, ne pas se fier à la seule présence d'un diff.
 - [ ] J5.2 Lot F : compteur ratchet à 0, re-merge de `origin/main` puis re-mesure, **prévenir
       l'utilisateur avant le push** (déploiement prod automatique).
 - [ ] J5.3 Backfill prod en deux temps (cf. J4) : fenêtre convenue, lock backfill respecté
@@ -729,3 +745,42 @@ comme prévu).
   (composants non branchés) et `analysis/objectiveevents`. Et J2 (verrouiller le décodeur)
   passe AVANT, comme prévu : 33 des 70 sont des `unused` sur des lecteurs de composants qu'un
   nettoyage mécanique supprimerait alors qu'ils documentent le format.
+- **[2026-07-31, nuit — superviseur] J1 VÉRIFIÉ ET CONFIRMÉ CLOS.** Contrôle au niveau JOB du
+  run CI de `4e2bd5dba` (30659936684) : Frontend, Go Build+Test (ubuntu ET windows), Go
+  Coverage + Baseline (18 min 22 — la suite tourne désormais réellement sous Linux), Contract
+  Test, Lease Enforcement, OpenAPI Lint — tous verts ; seul job rouge : Go Lint (ratchet),
+  assumé jusqu'à J3. gitleaks vert sur le dernier commit (`271d8f6c8`), arbre propre, commits
+  poussés. Arbitrages rendus sur les découvertes J1 : (a) revue visuelle du correctif `w` →
+  gate visuel de J4.1 ; (b) déclencheur du hook knip → J3.3 (ajouté) ; (c) faux diff
+  `routeTree.gen.ts` → vigilance notée en J5.1. Re-dimensionnement J3 accepté (70 issues,
+  prévoir 2 sessions) ; l'ordre J2 → J3 reste la protection des 33 `unused`. Prochain
+  jalon : **J2**.
+- **[2026-07-31, nuit] J2 CLOS — GATE ATTEINT.** Les six items du lot 2 statués. Le décodeur est
+  verrouillé à DEUX ÉTAGES, et les deux sont nécessaires : l'étage 1 (entrées décodées figées,
+  633 Ko) verrouille l'ASSEMBLAGE et est aveugle par construction à un changement de décodage ;
+  l'étage 2 (mini-bobine de paquets réels, 698 Ko) verrouille le DÉCODAGE là où le premier ne
+  voit rien. S'y ajoutent la grammaire d'inventaire (les 7 fonctions à 0 % — R1 à R4 testées par
+  ce qu'elles REFUSENT), le rendu canvas sans navigateur (contexte enregistreur, zéro
+  dépendance), les 3 décodeurs d'événements de `filmdec` et le second maillon du pont. Gate
+  vérifié sur pièces : les 3 artefacts reconstruits rendent les chiffres du §5 de la
+  réconciliation **à l'unité près** (475/519 · 1 862/2 154 · 2 312/2 879 ; 99/29 221 ; 90/105 ;
+  70/70 ; 439 ; 184 ; 10 223), `go test replay+filmdec` vert, 3 372 tests web verts, `tsc -b`
+  vert, ratchet knip sous plafond. Couverture `replay` : **58,5 % → 79,2 %**.
+  **Ce que J2 a appris, et qui vaut plus que les tests** : *un décodeur qu'on n'a jamais
+  interrogé hors de ses données ne dit pas ce qu'il fait sur les autres.* Les deux paniques (D1,
+  D2) sont tombées à la PREMIÈRE exécution du fuzz — pas au bout d'une campagne — et la
+  non-reproductibilité de l'artefact (D3) n'est apparue qu'en construisant deux fois de suite le
+  même film, ce que personne n'avait fait en quatre mois de chantier.
+  **Découvertes reportées (non traitées, D1-D5 du plan de finalisation)** : (D1) `decodeFireEvent`
+  panique sur un payload de moins de 14 octets, et le chemin est ATTEIGNABLE — `ScanFilmFireEvents`
+  n'exige que `Size >= 1` ; (D2) la tolérance de `PeekBits` est à sens unique alors que sa doc
+  promet l'inverse ; (D3) **l'artefact n'est pas reproductible à l'octet** — traces, tirs,
+  inventaire et couverture sont stables, mais les projectiles sont permutés d'une construction à
+  l'autre (map + `sort.Slice` instable) et cela déplace 1 position de lancer sur 130 ; (D4) huit
+  familles d'effet de tir pour SEPT géométries — `plain` est un balistique aminci ; (D5)
+  `js-yaml` est une dépendance fantôme d'`apps/web` (déclarée en `overrides`, importée nulle
+  part).
+  **Prémisse corrigée** : l'item 2.6 décrivait « l'OpenAPI décrit 6 champs sur 22 ». C'est
+  périmé — J1.2 avait déjà aligné les trois contrats, arité des tuples comprise. Ce qui manquait
+  était le TEST, et c'est lui qui a été posé (des deux côtés, dont un prouvé par le compilateur
+  et falsifié). Prochain jalon : **J3**.

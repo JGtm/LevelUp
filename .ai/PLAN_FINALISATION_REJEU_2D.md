@@ -219,41 +219,95 @@ paquet voisin `killsource` le pousse plus loin — **sorties versionnées, fixtu
 et un second test qui tourne SANS fixture** pour interdire que les golden dégénèrent en nombres
 nus. C'est ce modèle qu'on reprend.
 
+> **LOT 2 CLOS le 2026-07-31 (jalon J2).** Les six items sont statués ci-dessous. Gate 2
+> atteint : `go test ./internal/analysis/replay/... ./internal/analysis/filmdec/...` vert, et
+> tout chiffre du chantier qui bouge fait tomber un test NOMMÉ. Commits : `5e37f4c79` (2.1+2.2),
+> `d1870b3a7` (2.3), `a05d7d448` (2.4), `96bc56175` (2.5), `9dbcb1e5f` (2.6).
+> Couverture Go du paquet `replay` : **58,5 % → 79,2 %**.
+
 ### 2.1 Le golden le plus rentable : les entrées décodées
-- [ ] `BuildFromPositions` est **déjà pur** — il ne lui manque que ses entrées. Sérialiser
+- [x] `BuildFromPositions` est **déjà pur** — il ne lui manque que ses entrées. Sérialiser
       depuis le film de référence les positions, tirs, loadouts, grenades, projectiles, morts et
       index de joueur, puis rejouer l'assemblage.
-- [ ] **Verrouille sans un octet de film** : 475/519 tirs, 90/99 traces nommées, 70 lancers,
-      439 projectiles, 184 états d'inventaire, la couverture et ses verdicts.
+      *FAIT.* `testdata/inputs_000d5950.bin.gz` (633 Ko) porte les 171 826 positions, 519 tirs,
+      150 loadouts, 70 lancers, 580 trajectoires, 184 inventaires, 93 morts et les 8 index.
+      Format delta-codé **au centimètre** — la précision exacte que `round2` publie, sans
+      exception, donc pas une décimale perdue. La régénération est la seule porte d'écriture et
+      exige `-update` **et** `REPLAY_FILM_DIR`.
+- [x] **Verrouille sans un octet de film** : 475/519 tirs, 90/105 vies nommées (99 traces
+      publiées dont 90 nommées), 70 lancers, 439 projectiles, 184 états d'inventaire, la
+      couverture et ses verdicts.
+      *FAIT.* Un golden lisible en diff (`assembly_000d5950.golden`) + six tests NOMMÉS qui
+      portent chacun un chiffre, + un garde-fou qui vérifie que le golden n'a pas dégénéré en
+      nombres nus (patron killsource) et qu'aucun pourcentage n'y figure sans sa fraction.
 
 ### 2.2 La mini-bobine : verrouiller le DÉCODAGE
-- [ ] ~560 Ko de **paquets réels concaténés** (une image-clé 8 Ko, les 519 records de tir
-      132 Ko, le chunk highlight 170 Ko) — contre 20,2 Mo pour le film et 23 Go pour le cache.
-- [ ] Versionner sous `internal/analysis/replay/testdata/minifilm_000d5950/`, **avec son outil
+- [x] ~560 Ko de **paquets réels concaténés** — contre 20,2 Mo pour le film et 23 Go pour le
+      cache.
+      *FAIT, 698 Ko* (chunk_01 527 Ko + chunk_02 7 Ko + chunk_03 171 Ko). L'écart avec
+      l'estimation vient de deux **mesures faites en la construisant**, toutes deux nécessaires :
+      (a) la PREMIÈRE image-clé du film ne rend NI loadout NI inventaire — c'est une image
+      d'amorce — et la bande de slots d'objets se lit sur l'ENSEMBLE des images-clés ; en garder
+      une seule aurait verrouillé deux décodeurs sur un résultat vide, ce qui est pire que ne
+      rien verrouiller. (b) le second maillon du pont exige DEUX chunks de réplication, sans quoi
+      l'exigence de concordance n'est jamais exercée.
+- [x] Versionner sous `internal/analysis/replay/testdata/minifilm_000d5950/`, **avec son outil
       de régénération** (patron du dépôt).
+      *FAIT*, plus un `PROVENANCE.txt` versionné qui dit d'où vient chaque octet — une fixture
+      binaire sans provenance écrite est un fait sans source.
+- [x] **Ajout J2** : cible de fuzz Go native sur les lecteurs de records + corpus de graines
+      régénérable depuis la mini-bobine (§6.7 du master plan). Elle a trouvé **deux paniques dès
+      sa première exécution** (consignées en Découvertes, non corrigées). Campagne de contrôle :
+      334 625 exécutions, aucun autre plantage.
 
 ### 2.3 La grammaire d'inventaire — sept fonctions à 0 %
-- [ ] Les tests actuels ne couvrent que le sous-bloc de munitions sur un flux fabriqué. Les
+- [x] Les tests actuels ne couvrent que le sous-bloc de munitions sur un flux fabriqué. Les
       **quatre règles d'ancrage** (R1 capacité, R2 grenades, R3 armes, R4 munitions) ne sont pas
       testées. C'est le plus gros trou du paquet.
+      *FAIT.* Chaque règle est testée par ce qu'elle REFUSE autant que par ce qu'elle trouve —
+      notamment R2, dont le point de départ est la preuve : un motif de grenade identique placé
+      AVANT l'ancre de capacité doit rester invisible, sans quoi la règle se validerait
+      elle-même. Plus un test des quatre règles ENSEMBLE sur le binaire réel : 184 états, 132
+      capacités, 120 compteurs, 150 blocs de munitions, 51 lectures à plusieurs candidats — les
+      NON-lectures sont verrouillées comme les lectures.
 
 ### 2.4 Le rendu canvas, sans navigateur
-- [ ] Un **contexte enregistreur** : un objet qui empile `{op, args}`. Le code de dessin n'écrit
-      que dans le contexte (une seule lecture, `createRadialGradient`) — aucune implémentation de
-      canvas n'est nécessaire, aucune dépendance nouvelle.
-- [ ] Verrouille les huit formes d'effet de tir et la trame du sol.
+- [x] Un **contexte enregistreur** : un objet qui empile `{op, args}`. Une seule lecture à
+      traiter (`createRadialGradient`), aucune dépendance nouvelle.
+      *FAIT* (`canvasRecording.test.ts`, 21 tests).
+- [x] Verrouille les huit formes d'effet de tir et la trame du sol.
+      *FAIT*, et le correctif J1-a (champ `w`) rend enfin ce test significatif : avant lui, les
+      huit familles étaient inatteignables. **Découverte** : il n'y a que SEPT géométries pour
+      huit familles (cf. Découvertes).
 
 ### 2.5 Les trois décodeurs d'événements de `filmdec`, tous à 0 %
-- [ ] Les 439 projectiles, les 70 lancers et les tirs sortent de fonctions **jamais testées**.
-- [ ] Tester aussi le second maillon du pont : `ScanFilmPlayerIndices`, `rosterFromDeaths`,
+- [x] Les 439 projectiles, les 70 lancers et les tirs sortent de fonctions **jamais testées**.
+      *FAIT.* Un test par offset mesuré — l'index de lanceur à +103 bits et non +102, les deux
+      moitiés 32 bits de l'arme, la visée lue SEULEMENT sur le chemin où elle est localisable —
+      plus les portes de rejet du balayage de projectile (slot hors bande, i0 absent, composants
+      non strictement croissants, quantum saturé).
+- [x] Tester aussi le second maillon du pont : `ScanFilmPlayerIndices`, `rosterFromDeaths`,
       `injectiveOrEmpty` — ce sont eux qui décident si un tir est publié.
+      *FAIT*, sur binaire réel (2 chunks concordants, 8 identités, table bijective) et sur les
+      deux refus qui comptent : une table non injective est ÉCARTÉE EN ENTIER, jamais nettoyée.
 
 ### 2.6 Aligner les trois contrats
-- [ ] Go publie 22 champs, l'OpenAPI en décrit 6, le TS est écrit à la main. Compléter le
+- [x] Go publie 22 champs, l'OpenAPI en décrit 6, le TS est écrit à la main. Compléter le
       schéma, et poser un test qui **fait tomber la divergence** au lieu de la laisser passer.
+      *PRÉMISSE PÉRIMÉE, VÉRIFIÉE SUR PIÈCES : l'alignement était déjà fait par J1.2.* Le
+      contrat décrit bien les 22 champs et porte déjà l'arité des tuples (`minItems` =
+      `maxItems` sur `Surface.poly` et `Projectile.p`) ; `openapi-gen -check` dit « à jour » et
+      `generate-types` ne produit aucune dérive. **Ce qui manquait était le test**, et il est
+      posé : côté Go (`contracttest`, sans CGO) chaque type publié est confronté à son schéma
+      DANS LES DEUX SENS, plus l'arité et la cohérence `omitempty` ↔ `required` ; côté web, la
+      complétude de la frontière `replayNormalize` est prouvée **par le compilateur** contre les
+      types générés (falsifié : en simulant un champ qui lui échappe, `tsc -b` refuse de
+      compiler).
+- [~] Les 12 champs que personne ne lit : **consignés seulement**, inventaire champ par champ en
+      tête de `contracttest/replay_contract_test.go`. Leur sort est le lot **3.6**.
 
 **GATE 2** : `go test ./internal/analysis/replay/...` verrouille les chiffres du chantier ; un
-changement de décodeur qui les déplace fait tomber un test nommé.
+changement de décodeur qui les déplace fait tomber un test nommé. **ATTEINT le 2026-07-31.**
 
 ---
 
@@ -508,6 +562,68 @@ Mesuré sur les données réelles, et c'est le constat le plus sérieux de tout 
 **ATTENTION — ce lot ne vit pas sur cette branche.** La logique de score qui tourne réellement
 est sur `main`, et ce worktree en est **1 857 commits derrière**. Le lot 7.4 se fait sur `main`
 ou sur une branche qui en descend, pas ici.
+
+---
+
+## DÉCOUVERTES — consignées, NON traitées
+
+> Règle 7 du contrat `plan-execution` : une découverte se note, elle ne se traite pas. Aucune
+> des cinq n'a été corrigée — toutes touchent la LOGIQUE du décodeur ou du rendu, hors périmètre
+> de J2 (verrouiller précède modifier).
+
+### D1 — `decodeFireEvent` panique sur un payload court *(la plus sérieuse)*
+
+Trouvée par la cible de fuzz, à sa première exécution. Le décodeur lit sans garde jusqu'au
+bit 112 (les drapeaux) : **tout payload de moins de 14 octets le fait sortir des bornes**, parce
+que `readBitsAt` indexe le tableau sans le borner — contrairement à `PeekBits`.
+
+**Le chemin est ATTEIGNABLE EN PRODUCTION** : `ScanFilmFireEvents` n'exige que `p.Size >= 1`
+avant d'appeler ce décodeur. Un paquet delta tronqué dont le premier octet vaut `0xD2` suffit à
+faire tomber tout le décodage d'un film. Aucun film du cache ne le produit aujourd'hui ; un
+téléchargement partiel, si.
+
+### D2 — la tolérance de `PeekBits` est à sens unique
+
+Sa documentation annonce qu'elle « ne panique jamais sur un payload tronqué ». C'est vrai
+au-delà de la fin du buffer (les bits y valent 0), **faux avant le début** : une position
+négative panique (`index out of range [-1]`). Aucun appelant ne le fait aujourd'hui — tous
+bornent leur balayage — donc la portée est celle d'une documentation qui promet plus que le code.
+
+### D3 — l'artefact de rejeu n'est PAS reproductible à l'octet
+
+Mesuré au gate de clôture, en reconstruisant deux fois de suite le MÊME film avec le MÊME
+binaire :
+
+| couche | deux constructions successives |
+|---|---|
+| traces, tirs, inventaire, couverture | **identiques** |
+| projectiles | **différents** (201 des deux côtés, contenu permuté) |
+| lancers de grenade | **1 position sur 130 diffère** (film `01e1f945`) |
+
+Cause : `ScanFilmWorldObjects` regroupe les vies dans une **map** puis les trie par instant de
+premier point avec un `sort.Slice` **instable** — l'ordre des ex æquo dépend donc de l'ordre
+d'itération de la map, qui est aléatoire en Go. Cet ordre se propage à `projectileBirths`, donc
+au choix de la naissance la plus proche d'un lancer, donc à la POSITION publiée de ce lancer.
+
+**Ce que cela n'invalide pas** : tous les chiffres du §5 de la réconciliation sont stables
+(475/519, 90/105, 70/70, 439, 184, 99/29 221) — le gate porte sur eux, et il est passé. Les
+goldens de J2 ne flottent pas non plus : l'étage 1 rejoue des entrées FIGÉES, donc un ordre
+figé. **Ce que cela invalide** : l'idée qu'on pourrait comparer deux artefacts par leur
+empreinte. À traiter avec le lot 3 (un tri total sur (slot, gen, instant) suffirait).
+
+### D4 — huit familles d'effet de tir, mais SEPT géométries
+
+`plain` (arme hors catalogue) et `ballistic` émettent exactement les mêmes primitives, dans le
+même ordre ; seuls le poids du trait (1 px contre 1,6) et l'opacité (0,7 contre 0,9) les
+séparent. Le rendu « neutre » est donc un balistique aminci, pas une forme qui n'affirme rien —
+alors que l'en-tête de `shotEffects.ts` promet qu'une arme inconnue « ne tombe jamais sur un
+rendu approchant ». Un test fige l'état actuel pour qu'il cesse d'être invisible.
+
+### D5 — `js-yaml` est une dépendance fantôme d'`apps/web`
+
+Elle est déclarée dans `overrides` (donc épinglée comme dépendance transitive d'`openapi-typescript`)
+et **aucun fichier du dépôt ne l'importe**. La première version du test de contrat web s'appuyait
+dessus ; elle a été réécrite pour ne dépendre que des types générés. À statuer avec le lot 3.
 
 ---
 
