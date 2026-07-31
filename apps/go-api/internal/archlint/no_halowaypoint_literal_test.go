@@ -81,13 +81,13 @@ var halowaypointAllowlist = map[string]bool{
 	"cmd/probe-mcc/main.go":                   true,
 	"cmd/refresh_golden_fixture/main.go":      true,
 	"cmd/snapshot-world-leaderboard/main.go":  true,
-	// Outillage de recherche du rejeu 2D (ajouté le 2026-07-31 à la réconciliation
-	// avec killsource) : ces deux binaires appellent DIRECTEMENT les hôtes officiels
-	// pour récupérer le manifeste d'un film et les variantes de carte. Ce sont des
-	// frontières HTTP au même titre que les outils diag ci-dessus.
-	// RETRAIT : à la suppression de l'outillage de reverse-engineering.
-	"cmd/mapobj-build/fetch.go":    true,
-	"cmd/tmp_filmmanifest/main.go": true,
+	// Outillage du rejeu 2D (ajouté le 2026-07-31 à la réconciliation avec
+	// killsource) : ce binaire appelle DIRECTEMENT les hôtes officiels pour
+	// récupérer les variantes de carte. C'est une frontière HTTP au même titre que
+	// les outils diag ci-dessus. Il PRODUIT un artefact versionné, il reste.
+	// (`cmd/tmp_filmmanifest/main.go` retiré le 2026-08-01 — outillage de recherche
+	// supprimé au lot A du plan de dette avant merge.)
+	"cmd/mapobj-build/fetch.go": true,
 	// scripts/ — warm-up d'assets (URLs gamecms).
 	"scripts/warm_bp_assets/main.go": true,
 	// ops/ — seeder démo synthétique : URL blob-infiniteugc FACTICE d'assets démo
