@@ -209,12 +209,36 @@ var absoluteAxisW uint = 14
 // SetAbsoluteAxisW règle la largeur d'axe des chemins absolus i0 (0 = pd.AxisW). Harness de sweep.
 func SetAbsoluteAxisW(w uint) { absoluteAxisW = w }
 
-// absAxisW retourne la largeur d'axe effective d'un chemin absolu (override ou pd.AxisW).
+// absAxisW retourne la largeur d'axe effective d'un chemin ABSOLU i0.
+//
+// CORRECTION DU 2026-07-27 — le repli était `pd.AxisW`, c'est-à-dire 6/6/6, et c'était FAUX.
+//
+// `pd.AxisW` est la largeur du chemin DELTA. Le chemin ABSOLU lit la table de région
+// (`FUN_140cc5128` après `FUN_14076e524`), dont les largeurs sont 13/13/14 — les mêmes que
+// celles du chemin world-object, qui les porte correctement depuis toujours
+// (`WorldObjectPrecision`, cf. traverse.go). Les deux chemins lisent la MÊME table ; c'est
+// leur double implémentation qui les avait laissés diverger.
+//
+// LA MESURE QUI TRANCHE : la capture CE du dispatch donne i0 du bipède à **47 bits, une
+// seule valeur distincte, 100 % de 154 158 dispatches**. Le compte se ferme à l'unité :
+//
+//	1 bUsePred + 1 bDelta + 1 precHigh + 1 indexSel + 1 IndexW + (13+13+14) + 2 finite = 47
+//
+// Avec 6/6/6 et sans le champ « finite » on consommait 23 bits — 24 de moins, sur un
+// composant présent dans 96,8 % des records et lu EN PREMIER. Le déficit décalait donc
+// l'en-tête du record SUIVANT, d'où des masques lus n'importe où et un i22 vu 63 fois trop
+// souvent. Chercher la faute dans les grammaires de composants ne pouvait rien donner :
+// elles étaient justes.
+//
+// POURQUOI L'ESSAI PRÉCÉDENT AVAIT ÉCHOUÉ : régler `TraversalPrecision.AxisW` à 13/13/14
+// changeait AUSSI la largeur du delta — le chemin dominant — et dégradait la mesure. Le
+// commentaire de traverse.go le disait déjà : « le vrai correctif doit distinguer les deux
+// largeurs le long de chaque branche, et non régler une globale. »
 func absAxisW(pd PrecisionDescriptor, i int) uint {
 	if absoluteAxisW > 0 {
 		return absoluteAxisW
 	}
-	return pd.AxisW[i]
+	return WorldObjectPrecision.AxisW[i]
 }
 
 // absPerIndexAxisW — LARGEURS D'AXE PAR INDEX DE PLAGE DE REPLICATION (7ter.54 axe 3).

@@ -20,6 +20,10 @@ type CompResult struct {
 	Variant  uint32 // variant-name for obje/weapon components (else noVariant)
 	Ported   bool   // false => no bit-exact deser; traversal must stop here
 	StartBit int
+	// Payload porte la VALEUR décodée du composant, pour les seuls composants de
+	// captureNames (cf. capture.go) : BodyVitality, ShieldVitality, RespawnTimer,
+	// RoundTimer. nil partout ailleurs — le décodeur reste un sauteur de bits par défaut.
+	Payload any
 }
 
 // EntityTrace is the result of traversing one new-entity record.
@@ -57,14 +61,102 @@ var recordStateParam uint32 = 0
 
 // SetRecordStateParam lets a harness sweep the runtime actor-tick/weapon-set count
 // (param_4) that varies the bit width of i10/i19/i20/i23. See recordStateParam.
-func SetRecordStateParam(v uint32) { recordStateParam = v }
+func SetRecordStateParam(v uint32) { recordStateParam, recordStateParamOverride = v, true }
 
-// TraversalPrecision is the runtime position-quantization descriptor used when the
-// i0 object-position-dynamic-precision-component deser fires. The .exe tables read
-// 0 statically; the real widths come from the film replication config (measured via
-// Cheat Engine: index width 1, per-axis X/Y/Z = 6/6/6). It is a package var so a
-// validation harness can sweep alternative widths without changing signatures.
+// paramByComponent porte le VRAI param_4, par composant, tel que la capture live le
+// mesure (colonne `param4` de .ai/re_dump/ce_capture_delta.csv). Extraction sur
+// l'archétype bipède (ti=35) : la valeur est CONSTANTE pour un composant donné —
+// aucun composant n'y présente deux valeurs sur 464 010 mesures.
+//
+//	i13 object-maximum-vitalities  -> 3       i23 unit-malleable-property     -> 4
+//	i15 object-low-frequency       -> 2       i43..i46 weapon-state-type-info -> 2
+//	i17 object-frame-configuration -> 0       i53 biped-malleable-property    -> 2
+//	i18 unit-control               -> 2       i57/i59 biped-spartan-ability*  -> 2
+//	tout le reste                  -> 1
+//
+// AVANT ce correctif, une SEULE variable globale valant 0 servait tous les composants —
+// c'est-à-dire la valeur juste pour le seul i17, et fausse pour tous les autres.
+// La table ne change QUE les composants dont le déser branche sur param_4 (i10, i19,
+// i20, i23 et flock-destination) ; elle est neutre partout ailleurs.
+var paramByComponent = map[string]uint32{
+	"object-maximum-vitalities-component":  3,
+	"object-low-frequency-component":       2,
+	"object-frame-configuration-component": 0,
+	"unit-control-component":               2,
+	"unit-malleable-property-component":    4,
+	"weapon-state-type-info":               2,
+	"biped-malleable-property":             2,
+	"biped-malleable-property-component":   2,
+	"biped-spartan-ability":                2,
+	"biped-spartan-ability-component":      2,
+}
+
+// paramForComponent rend le param_4 du composant `name`. Défaut 1 : c'est la valeur
+// mesurée pour l'écrasante majorité des composants (0 était un choix « conservateur »
+// jamais mesuré, et faux).
+func paramForComponent(name string) uint32 {
+	if v, ok := paramByComponent[name]; ok {
+		return v
+	}
+	if recordStateParamOverride {
+		return recordStateParam // un harnais de balayage a forcé la valeur
+	}
+	return 1
+}
+
+// recordStateParamOverride passe à true dès qu'un harnais appelle SetRecordStateParam :
+// le balayage manuel garde alors la main sur les composants hors table.
+var recordStateParamOverride = false
+
+// TraversalPrecision est le descripteur de quantification de position employé quand le
+// déser d'i0 (object-position-dynamic-precision-component) se déclenche. Les tables de
+// l'exécutable lisent 0 statiquement : les vraies largeurs viennent de la config de
+// réplication du film.
+//
+// LE 6/6/6 HISTORIQUE ÉTAIT FAUX, ET C'ÉTAIT LA FAUTE CENTRALE DU DÉCODEUR (2026-07-26).
+// Il donne un i0 de 5 + 6+6+6 = 23 bits. La vérité terrain — 134 767 relevés du curseur
+// réel sur le désérialiseur du jeu — donne **47 bits, à 100 %**. Déficit de 24 bits dès le
+// PREMIER composant de 100 % des records : tout ce qui suit était lu à côté, ce qui explique
+// les comptes de grenades à 255 sur un champ borné à 2.
+//
+//	47 = 5 (3 spine + 1 useDefault + 1 index de région) + 13 + 13 + 14 + 2 de queue
+//
+// CE CHAMP N'EST PAS LE LEVIER — piège vérifié le 2026-07-26, à ne pas refaire.
+// `AxisW` est la largeur des DELTAS de position (petits écarts image à image : 6 bits
+// suffisent). Les 13/13/14 sont les largeurs des positions ABSOLUES, et le déser en tient
+// une seconde, distincte, via `absAxisW`/`SetAbsoluteAxisW`. Y écrire 13/13/14 allonge le
+// chemin delta — qui est le chemin DOMINANT — et dégrade au lieu de corriger : mesuré,
+// i22 passe de 90,02 % à 92,83 % de comptes impossibles. Le 6/6/6 est donc conservé ici.
+//
+// Le vrai correctif d'i0 doit distinguer les deux largeurs le long de chaque branche de
+// FUN_1406cfe44 (keep-baseline 101 bits · absolu · delta prédit), et non régler une globale.
+// `PositionCalibratedSkip` court-circuite déjà le problème en sautant 47 ou 101 bits selon
+// le premier bit — mais c'est un banc de calibration propre à Cliffhanger, pas un décodeur.
 var TraversalPrecision = PrecisionDescriptor{IndexW: 1, AxisW: [3]uint{6, 6, 6}}
+
+// WorldObjectPrecision est le descripteur du chemin WORLD-OBJECT d'i0
+// (`object-position-component`) : projectiles ti=41, armes au sol ti=42, équipement ti=37,
+// corps rigides ti=38. À la différence du bipède, ces archétypes n'envoient PAS de delta de
+// position : ils envoient la position ABSOLUE quantifiée à chaque image. Les largeurs sont
+// donc celles de la CARTE — les mêmes que l'absolu du bipède — et non un 6/6/6 de delta.
+//
+// 45 bits au total = 1 precHigh + 1 index-sel + 1 index de région + 13 + 13 + 14 + 2 de queue.
+// Mesuré sur 000d5950 : le triplet de porte vaut (0,0,0) dans 6 922 des 6 924 records des
+// 70 trajectoires de grenade.
+//
+// PROPRE À LA CARTE : sur une autre carte, installer les largeurs via
+// SetWorldObjectPrecisionFromLayout à partir de DetectI0Layout, qui les mesure DANS le film.
+var WorldObjectPrecision = PrecisionDescriptor{IndexW: 1, AxisW: [3]uint{13, 13, 14}}
+
+// SetWorldObjectPrecisionFromLayout installe les largeurs d'axe mesurées dans le film pour
+// le chemin world-object. Les axes sont partagés avec l'absolu du bipède : c'est le même AABB
+// de BSP qui les fixe.
+func SetWorldObjectPrecisionFromLayout(l I0Layout) {
+	if l.AxisW[0] == 0 || l.AxisW[1] == 0 || l.AxisW[2] == 0 {
+		return // layout non détecté : garder le défaut plutôt qu'installer des zéros
+	}
+	WorldObjectPrecision.AxisW = l.AxisW
+}
 
 // consumeByName dispatches a component to its ported bit-consumer. It returns the
 // variant-name for variant-bearing components (obje, held-weapon), the captured
@@ -102,7 +194,7 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 		consumeObjectConstraint(br)
 		return variant, nil, true
 	case "object-parent-state-component": // i10 (1st desync on typeIndex=40)
-		consumeObjectParentState(br, recordStateParam, typeIndex)
+		consumeObjectParentState(br, paramForComponent(name), typeIndex)
 		return variant, nil, true
 	case "object-scale-component": // i12
 		consumeObjectScale(br)
@@ -123,13 +215,13 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 		consumeObjectFrameConfiguration(br)
 		return variant, nil, true
 	case "unit-actor-control-component":
-		consumeUnitActorControl(br, recordStateParam)
+		consumeUnitActorControl(br, paramForComponent(name))
 		return variant, nil, true
 	case "unit-actor-state-component":
-		consumeUnitActorState(br, recordStateParam)
+		consumeUnitActorState(br, paramForComponent(name))
 		return variant, nil, true
 	case "unit-malleable-property-component":
-		consumeUnitMalleableProperty(br, recordStateParam)
+		consumeUnitMalleableProperty(br, paramForComponent(name))
 		return variant, nil, true
 	case "biped-spartan-ability-malleable-property-component": // i58 (FUN_140fea4c0)
 		consumeBipedSpartanAbilityMalleableProperty(br)
@@ -137,19 +229,31 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 	case "object-position-component": // world-object i0 (FUN_14076e29c)
 		// Structure RE bit-exacte (FUN_14076e420 precHigh R(1) -> FUN_14076e524 index-sel+index+3axes
 		// / FUN_141f85880 AABB ; FUN_14076e3e4 handle-tail gated precHigh ; FUN_14076e304 R(2) finite).
-		// Largeurs world-object UNIVERSELLES (mesurées tmp_compwidth = 45b precHigh=0 / 60b precHigh=1 ;
-		// AxisW=13 IndexW=2 -> 1+1+2+39+2 = 45). PAS map-specific : constantes du niveau de précision
-		// world-object (L≈7), idem tous films Halo. Le biped (#35) utilise L=0 -> 6/6/6 (TraversalPrecision).
+		//
+		// DÉCOUPAGE CORRIGÉ le 2026-07-26 — et c'est le bug le plus retors rencontré ici.
+		// L'ancien portage lisait `R(2)` d'index puis 13/13/13. Le vrai découpage est `R(1)`
+		// d'index puis 13/13/**14**. LE TOTAL EST LE MÊME (45 bits) : aucun test de longueur,
+		// aucune mesure de désynchronisation ne pouvait le voir. Seule une mesure de CONTENU le
+		// révèle — ici le profil de bascule bit à bit sur 6 794 paires de records consécutifs
+		// d'une même entité, qui place les frontières à 16 / 29 / 43.
+		//
+		// L'ancien commentaire affirmait « largeurs world-object UNIVERSELLES, PAS map-specific ».
+		// C'est RÉFUTÉ : ce sont les largeurs DE LA CARTE, les mêmes que celles du bipède
+		// (13/13/14 sur Cliffhanger), et les bornes de déquantification sont le même AABB de BSP.
+		// Seule la PORTE diffère du bipède : 3 bits ici (precHigh + index-sel + index de région)
+		// contre 5 là-bas. C'est ce qui explique la contradiction « i0 45 vs 47 bits » qui
+		// traînait dans les notes : ce ne sont pas deux mesures du même champ, ce sont deux
+		// archétypes différents.
 		if br.ReadBit() { // precHigh (FUN_14076e420 R(1))
 			br.ReadBits(59) // precHigh=1 : FUN_141f85880 AABB + handle-tail + R(2) (total 60 mesuré)
 		} else {
-			if !br.ReadBit() { // FUN_14076e524 index-sel ; si 0 -> lit l'index
-				br.ReadBits(2) // IndexW world-object
+			if !br.ReadBit() { // FUN_14076e524 index-sel ; si 0 -> lit l'index de région
+				br.ReadBits(WorldObjectPrecision.IndexW)
 			}
-			br.ReadBits(13) // axe X (AxisW=13)
-			br.ReadBits(13) // axe Y
-			br.ReadBits(13) // axe Z
-			br.ReadBits(2)  // FUN_14076e304 R(2) finite (handle-tail = 0 bit quand precHigh=0)
+			for a := 0; a < 3; a++ {
+				br.ReadBits(WorldObjectPrecision.AxisW[a]) // FUN_140cc5128 axe a
+			}
+			br.ReadBits(2) // FUN_14076e304 R(2) finite (handle-tail = 0 bit quand precHigh=0)
 		}
 		return variant, nil, true
 	case "object-translational-velocity-component": // world-object i1 (FUN_14076e228)
@@ -295,9 +399,8 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 		br.ReadBits(3)
 		return variant, nil, true
 	case "player-respawn-timer-component": // ti=5 i1 (FUN_140f3fb8c) — R(1)+R(10)+R(10) = 21 bits
-		br.ReadBit()
-		br.ReadBits(10)
-		br.ReadBits(10)
+		// Grammaire dans decodePlayerRespawnTimer (vitality.go) — copie unique.
+		_ = decodePlayerRespawnTimer(br)
 		return variant, nil, true
 	case "player-soft-kill-timer-component": // ti=5 i2 (FUN_140d580a8->FUN_140d580d0) — R(5)+R(5)+R(5)
 		br.ReadBits(5)
@@ -403,7 +506,7 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 	case "flock-destination-component": // ti=21 i2-i11 — R(1)flag + vec3 quant(6+level) + R(2) si rsp>1
 		br.ReadBit()
 		consumeQuantVec3(br, quantAxisWidth(uint(level)), 1)
-		if recordStateParam > 1 {
+		if paramForComponent(name) > 1 {
 			br.ReadBits(2)
 		}
 		return variant, nil, true
@@ -496,9 +599,8 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 		br.ReadBits(8)
 		return variant, nil, true
 	case "game-engine-round-timer-component": // ti=0 i5 (FUN_1407ee790) — R(16)+R(16)+R(5)
-		br.ReadBits(16)
-		br.ReadBits(16)
-		br.ReadBits(5)
+		// Grammaire dans decodeGameEngineRoundTimer (vitality.go) — copie unique.
+		_ = decodeGameEngineRoundTimer(br)
 		return variant, nil, true
 	case "game-engine-sudden-death-time-left-component": // ti=0 i6 (FUN_14116d3a4) — R(16)+R(16)+R(5)
 		br.ReadBits(16)
@@ -1049,19 +1151,22 @@ func traverseComponentLoopFrom(br *BitReader, arch Archetype, t *EntityTrace, fr
 			continue // component absent from the mask: NO bits consumed.
 		}
 		start := br.BitPos()
-		// CALIBRATION OVERRIDE: runtime-precision components (i0 position, i5 shield,
-		// i21 aiming, ...) read per-axis widths populated at map-load and absent from
-		// the static .exe, so their ported desers consume the wrong bit count in the
-		// delta predicted-precision path. When a CE delta capture has measured the real
+		// CALIBRATION OVERRIDE: runtime-precision components (i0 position, i21 aiming,
+		// ...) read per-axis widths populated at map-load and absent from the static
+		// .exe, so their ported desers consume the wrong bit count in the delta
+		// predicted-precision path. When a CE delta capture has measured the real
 		// per-component width (CONSTANT per map), skip by it instead of calling the
 		// buggy deser. The dead-state is intentionally NOT calibrated (must be decoded).
+		// i5 object-shield-vitality était cité ici À TORT (corrigé le 2026-07-26) :
+		// FUN_140d50cbc n'utilise que des largeurs littérales 8/16/12 et des bornes
+		// .rdata constantes — il ne dépend d'aucune précision runtime.
 		if w, ok := calibratedWidth[arch.Components[i]]; ok {
 			br.Skip(w)
 			consumeCorruptionCheck(br)
 			t.Comps = append(t.Comps, CompResult{Index: i, Name: arch.Components[i], Ported: true, StartBit: start})
 			continue
 		}
-		variant, dead, ported := consumeByName(br, arch.Components[i], t.TypeIndex, arch.Level(i))
+		variant, dead, payload, ported := consumeByNameCapturing(br, arch.Components[i], t.TypeIndex, arch.Level(i))
 		if dead != nil {
 			t.Dead = dead
 		}
@@ -1083,7 +1188,8 @@ func traverseComponentLoopFrom(br *BitReader, arch Archetype, t *EntityTrace, fr
 			return
 		}
 		consumeCorruptionCheck(br)
-		t.Comps = append(t.Comps, CompResult{Index: i, Name: arch.Components[i], Variant: variant, Ported: ported, StartBit: start})
+		t.Comps = append(t.Comps, CompResult{Index: i, Name: arch.Components[i], Variant: variant,
+			Ported: ported, StartBit: start, Payload: payload})
 		if arch.Components[i] == "weapon-state-type-info" && variant != noVariant && t.HeldWeapon == noVariant {
 			t.HeldWeapon = variant
 		}
@@ -1092,8 +1198,10 @@ func traverseComponentLoopFrom(br *BitReader, arch Archetype, t *EntityTrace, fr
 
 // calibratedWidth overrides a component's deser with a fixed bit-skip, for the
 // runtime-precision components whose per-axis widths are map-load runtime values
-// absent from the static .exe (i0 object-position, i5 object-shield-vitality,
-// i21 unit-desired-aiming-vector, ...). Widths come from a Cheat Engine delta
+// absent from the static .exe (i0 object-position, i21 unit-desired-aiming-vector,
+// ...). i5 object-shield-vitality figurait ici À TORT : ses largeurs sont des
+// littéraux 8/16/12 dans FUN_140d50cbc (corrigé le 2026-07-26, cf.
+// consumeObjectShieldVitality). Widths come from a Cheat Engine delta
 // capture (tools/ce/filmdec_delta_capture.lua, processed by cmd/tmp_deltacal) and
 // are CONSTANT per map. This is a CALIBRATION harness keyed to a specific film/map,
 // NOT a general decode path. Empty by default. The dead-state component must NOT be

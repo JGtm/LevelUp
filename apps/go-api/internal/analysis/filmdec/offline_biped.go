@@ -1,16 +1,40 @@
 // Décodage 100 % OFFLINE des positions absolues des bipeds (joueurs) depuis les seuls
 // chunks d'un film — zéro capture Cheat Engine.
 //
+// RÉFÉRENCE DE GRAMMAIRE : .ai/GRAMMAIRE_RECORD_FILM.md fait foi sur l'en-tête d'un record,
+// sur le fait qu'idLow est une valeur de RUNTIME variable d'un film à l'autre (11 ici, 14 sur
+// le film de la capture live), et sur les bornes de jeu utilisables comme critères absolus.
+// À lire avant tout nouveau décodage.
+//
 // GRAMMAIRE DU RECORD BIPED (validée au quantum exact, 99,99 %, contre une table de
 // vérité live ; cf. .ai/thought_log_replay.md) :
 //
-//	[1 préfixe=1][13 idLow = slot][2 tag][1 gate=0][1 maskSel=0][3 maskCount]
+//	[1 préfixe=1][idLow = slot][2 tag][1 gate=0][3 maskCount]
 //	[6 bits x maskCount indices de composants, croissants, le premier = 0]
 //	puis les composants ; offset(i0) = début + 21 + 6*maskCount
-//	i0 = [5 bits de gate à 0][X sur 13 bits][Y sur 13 bits][Z sur 14 bits]
+//	i0 = [GateBits à 0][X][Y][Z]
 //
-// Déquantification : v = min + step*(q + 0.5), step = (max-min)/2^w, bornes
-// QuantRangeCEBiped (spécifiques à la map du film 000d5950).
+// ATTENTION — il n'existe AUCUN bit « maskSel » (arbitrage 2026-07-26, sur pièces). Le
+// masque est bit-exactement FUN_1406d7610 : R(1) porte ; porte=0 -> R(3) count +
+// count x R(6) index ; porte=1 -> R(64) dense. La fonction RENVOIE elle-même le nombre de
+// bits consommés (4, 6*count+4, ou 0x41) : la question est close côté binaire. Le 21 se
+// décompose donc 1 + idLow(14) + 2 + 1 + 3, PAS 1 + 13 + 2 + 1 + 1 + 3 : le bit « en
+// trop » est le 14e bit du CHAMP ID, pas une porte de masque. `idLow` est une valeur de
+// RUNTIME (FUN_1406d3140 -> FUN_1406d310c sur DAT_1451f98d0/d4, peuplée au chargement de
+// carte) : elle peut différer d'un film à l'autre, et le fenêtrage 13 bits utilisé par le
+// détecteur ci-dessous est un MOTIF de reconnaissance, pas le champ id lui-même.
+// Vérité terrain (capture live filmdec_delta_capture, 807 855 lignes) : en-tête de record
+// DELTA = 21 bits sur 93,89 % de 166 800 paires de records consécutifs, facteur « 6 bits
+// par index » confirmé indépendamment pour count=1..7. Mesure : cmd/tmp_hdrtruth.
+//
+// Les LARGEURS D'AXE d'i0 sont une CONSTANTE PAR CARTE, pas du décodeur : elles se lisent
+// dans le film lui-même via DetectI0Layout (cf. i0_layout.go). 13/13/14 est la valeur de
+// Cliffhanger, PAS une largeur universelle (Catalyst = 15/15/15, Streets = 12/12/12...).
+//
+// Déquantification : v = min + step*(q + 0.5), step = (max-min)/2^w. Les BORNES sont
+// PROPRES À LA CARTE (AABB du BSP, tag scenario_structure_bsp du module) : elles doivent
+// être fournies par l'appelant via ScanFilmOptions.WorldRange, sinon aucune coordonnée
+// monde n'est émise (cf. map_bounds.go).
 package filmdec
 
 import (
@@ -21,15 +45,10 @@ import (
 // BipedTypeIndex est le typeIndex (ti) des entités biped (joueurs) dans le registre film.
 const BipedTypeIndex = 35
 
-// Largeurs de quantification des axes de la position absolue i0 d'un biped.
-var bipedAxisWidths = [3]uint{13, 13, 14}
-
 // Tailles (en bits) de la grammaire du record biped.
 const (
-	bipedHeaderBits = 21 // préfixe + slot + tag + gate + maskSel + maskCount
+	bipedHeaderBits = 21 // préfixe(1) + idLow(14) + tag(2) + gate(1) + maskCount(3) — cf. en-tête de fichier
 	bipedIndexBits  = 6  // un index de composant
-	bipedI0GateBits = 5  // gate en tête de i0, toujours nul pour une absolue
-	bipedI0Bits     = bipedI0GateBits + 13 + 13 + 14
 	bipedMinMaskCnt = 2
 	bipedMaxMaskCnt = 7
 	bipedSlotBits   = 13
@@ -44,11 +63,40 @@ type BipedPosition struct {
 	Chunk, PacketIndex int
 	// TimestampUS est l'horodatage du paquet porteur, en microsecondes (horloge du film).
 	TimestampUS uint64
-	// X, Y, Z sont en unités monde ; Z est l'axe vertical (étages).
+	// X, Y, Z sont en unités monde ; Z est l'axe vertical (étages). Ils ne sont renseignés
+	// que si HasWorld : sans les bornes de la carte, un quantum n'est PAS une coordonnée.
 	X, Y, Z float32
+	// HasWorld indique que X/Y/Z sont de vraies coordonnées monde (bornes de la carte
+	// fournies). À false, seul Q est exploitable.
+	HasWorld bool
+	// Q est le triplet d'INDICES DE QUANTUM BRUTS (X sur 13 bits, Y sur 13, Z sur 14) lu
+	// dans le film, AVANT déquantification. Il ne dépend d'aucune plage : c'est la seule
+	// donnée réellement décodée. Le conserver permet de re-déquantifier avec une autre
+	// plage (per-map) sans re-balayer le film.
+	Q [3]uint32
 	// Directions capturées dans le MÊME record (composants i1/i2 qui suivent i0), quand
 	// ScanFilmOptions.CaptureDirs est actif. Cf. offline_aim.go.
 	componentDirs
+	// Vitalité (santé i4, bouclier i5) capturée dans le MÊME record que la position —
+	// donc même slot, même instant, même paquet. Renseignée sous la même option
+	// CaptureDirs : c'est le même balayage, poursuivi de deux composants.
+	componentVitals
+}
+
+// HealthAt rend la fraction de vie [0,1] décodée dans ce record, et sa validité.
+func (p BipedPosition) HealthAt() (float32, bool) {
+	if !p.HasBody {
+		return 0, false
+	}
+	return HealthFraction(p.Body.Health), true
+}
+
+// ShieldAt rend la fraction de bouclier [0,1] décodée dans ce record, et sa validité.
+func (p BipedPosition) ShieldAt() (float32, bool) {
+	if !p.HasShield {
+		return 0, false
+	}
+	return ShieldFraction(p.Shield.Shield), true
 }
 
 // ScanFilmOptions règle le balayage offline.
@@ -72,6 +120,18 @@ type ScanFilmOptions struct {
 	// suivent i0 dans le même record. Ne change AUCUNE position émise (le curseur repart
 	// toujours de la fin d'i0) : le décodage des directions est en lecture seule.
 	CaptureDirs bool
+	// Layout force le découpage binaire d'i0. nil (défaut) = le découpage est LU dans le
+	// film par DetectI0Layout — c'est le mode normal, car les largeurs d'axe sont propres à
+	// la carte. Ne renseigner que pour rejouer un découpage connu (tests, comparaisons).
+	Layout *I0Layout
+	// WorldRange porte les BORNES DE LA CARTE (AABB du BSP principal). Obligatoire pour
+	// produire des coordonnées monde : nil -> ScanFilmBipedPositions échoue avec
+	// ErrUnknownMapBounds, sauf si QuantaOnly. Cf. MapQuantCatalog.
+	WorldRange *Vec3Range
+	// QuantaOnly autorise un balayage SANS bornes : les positions ne portent alors que Q
+	// (HasWorld=false), et les filtres exprimés en m/s sont inopérants — donc désactivés.
+	// Réservé aux outils d'analyse du bitstream.
+	QuantaOnly bool
 }
 
 // DefaultMaxSpeedMPS : borne haute très large (le déplacement le plus rapide d'un Spartan,
@@ -97,6 +157,9 @@ func DefaultScanFilmOptions() ScanFilmOptions {
 // film situé dans dir. Les chunks illisibles sont ignorés (le film peut être partiel) ;
 // une erreur n'est renvoyée que si AUCUN chunk n'a pu être lu.
 func ScanFilmBipedPositions(dir string, opt ScanFilmOptions) ([]BipedPosition, error) {
+	if opt.WorldRange == nil && !opt.QuantaOnly {
+		return nil, fmt.Errorf("%w (film %s) : renseigner ScanFilmOptions.WorldRange, ou QuantaOnly pour n'obtenir que les quanta", ErrUnknownMapBounds, dir)
+	}
 	chunks := opt.Chunks
 	if len(chunks) == 0 {
 		n := CountFilmChunks(dir)
@@ -111,6 +174,16 @@ func ScanFilmBipedPositions(dir string, opt ScanFilmOptions) ([]BipedPosition, e
 	if len(slots) == 0 {
 		return nil, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes de %s", BipedTypeIndex, dir)
 	}
+	lay := I0Layout{}
+	if opt.Layout != nil {
+		lay = *opt.Layout
+	} else {
+		detected, _, err := DetectI0Layout(dir)
+		if err != nil {
+			return nil, fmt.Errorf("découpage i0 illisible dans %s : %w", dir, err)
+		}
+		lay = detected
+	}
 	var out []BipedPosition
 	read := 0
 	for _, c := range chunks {
@@ -123,7 +196,7 @@ func ScanFilmBipedPositions(dir string, opt ScanFilmOptions) ([]BipedPosition, e
 			if pk.Type != PacketTypeDelta {
 				continue
 			}
-			for _, r := range ScanBipedRecords(pk.Payload(data), slots, opt) {
+			for _, r := range ScanBipedRecords(pk.Payload(data), slots, lay, opt) {
 				r.Chunk, r.PacketIndex, r.TimestampUS = c, pk.Index, pk.TimestampUS
 				out = append(out, r)
 			}
@@ -132,7 +205,11 @@ func ScanFilmBipedPositions(dir string, opt ScanFilmOptions) ([]BipedPosition, e
 	if read == 0 {
 		return nil, fmt.Errorf("aucun chunk film lisible dans %s", dir)
 	}
-	return DropTeleports(DropIsolated(out, opt.IsolationGapMS), opt.MaxSpeedMPS), nil
+	out = DropIsolated(out, opt.IsolationGapMS)
+	if opt.WorldRange == nil {
+		return out, nil // sans coordonnées monde, un seuil en m/s n'a aucun sens
+	}
+	return DropTeleports(out, opt.MaxSpeedMPS), nil
 }
 
 // bipedSlotBand construit l'ensemble des slots biped plausibles : union des ti=35 des
@@ -184,46 +261,63 @@ func fillSlotBand(s map[uint32]bool) map[uint32]bool {
 // absolues des records biped reconnus. PUR (aucune I/O) : c'est le cœur testable du
 // décodeur. Les champs Chunk/PacketIndex/TimestampUS sont laissés à zéro (remplis par
 // l'appelant).
-func ScanBipedRecords(payload []byte, slots map[uint32]bool, opt ScanFilmOptions) []BipedPosition {
+func ScanBipedRecords(payload []byte, slots map[uint32]bool, lay I0Layout, opt ScanFilmOptions) []BipedPosition {
 	total := len(payload) * 8
-	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + bipedI0Bits
+	i0Bits := lay.TotalBits()
+	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + i0Bits
 	var out []BipedPosition
 	for p := 0; p+minRecord <= total; {
-		i0, slot, idx, ok := matchBipedHeader(payload, p, total, slots, opt.RequireTag1)
+		i0, slot, idx, ok := matchBipedHeader(payload, p, total, slots, opt.RequireTag1, lay)
 		if !ok {
 			p++
 			continue
 		}
-		q := [3]uint32{
-			readBitsAt(payload, i0+bipedI0GateBits, 13),
-			readBitsAt(payload, i0+bipedI0GateBits+13, 13),
-			readBitsAt(payload, i0+bipedI0GateBits+26, 14),
+		var q [3]uint32
+		for ax := 0; ax < 3; ax++ {
+			q[ax] = readBitsAt(payload, i0+lay.AxisOffset(ax), int(lay.AxisW[ax]))
 		}
-		if opt.DropSaturated && saturatedQuantum(q) {
-			p = i0 + bipedI0Bits
+		if opt.DropSaturated && saturatedQuantum(q, lay) {
+			p = i0 + i0Bits
 			continue
 		}
-		rec := BipedPosition{
-			Slot: slot,
-			X:    DequantBipedAxis(q[0], 0),
-			Y:    DequantBipedAxis(q[1], 1),
-			Z:    DequantBipedAxis(q[2], 2),
+		rec := BipedPosition{Slot: slot, Q: q}
+		if opt.WorldRange != nil {
+			rec.HasWorld = true
+			rec.X = DequantBipedAxis(q[0], 0, lay, *opt.WorldRange)
+			rec.Y = DequantBipedAxis(q[1], 1, lay, *opt.WorldRange)
+			rec.Z = DequantBipedAxis(q[2], 2, lay, *opt.WorldRange)
 		}
 		if opt.CaptureDirs {
-			rec.componentDirs = scanRecordDirs(payload, i0+bipedI0Bits, total, idx)
+			rec.componentDirs, rec.componentVitals = scanRecordDirs(payload, i0+i0Bits, total, idx)
 			if recordMaskHook != nil {
-				recordMaskHook(idx, payload, i0+bipedI0Bits)
+				recordMaskHook(idx, payload, i0+i0Bits)
 			}
 		}
 		out = append(out, rec)
-		p = i0 + bipedI0Bits // pas de re-scan chevauchant
+		p = i0 + i0Bits // pas de re-scan chevauchant
 	}
 	return out
 }
 
-// matchBipedHeader teste la grammaire d'en-tête biped à la position bit p et renvoie
-// l'offset bit de i0, le slot et la liste des index de composants du masque.
-func matchBipedHeader(pay []byte, p, total int, slots map[uint32]bool, needTag1 bool) (int, uint32, []int, bool) {
+// matchBipedHeader teste la grammaire d'en-tête biped à la position bit p, exige un i0
+// ABSOLU (en-tête d'i0 entièrement nul) et renvoie l'offset bit de i0, le slot et la liste
+// des index de composants du masque.
+func matchBipedHeader(pay []byte, p, total int, slots map[uint32]bool, needTag1 bool, lay I0Layout) (int, uint32, []int, bool) {
+	i0, slot, idx, ok := matchBipedHeaderRaw(pay, p, total, slots, needTag1, lay.TotalBits())
+	if !ok {
+		return 0, 0, nil, false
+	}
+	if readBitsAt(pay, i0, lay.GateBits) != 0 { // i0 absolu, région explicite : en-tête nul
+		return 0, 0, nil, false
+	}
+	return i0, slot, idx, true
+}
+
+// matchBipedHeaderRaw teste la seule grammaire d'EN-TÊTE (préfixe, slot, tag, masque) et
+// vérifie que needBits bits restent lisibles après le début d'i0. Il ne suppose RIEN du
+// contenu d'i0 : c'est le point d'entrée du détecteur de découpage (i0_layout.go), qui doit
+// justement mesurer i0 sans en présupposer la structure.
+func matchBipedHeaderRaw(pay []byte, p, total int, slots map[uint32]bool, needTag1 bool, needBits int) (int, uint32, []int, bool) {
 	if readBitsAt(pay, p, 1) != 1 {
 		return 0, 0, nil, false
 	}
@@ -234,7 +328,7 @@ func matchBipedHeader(pay []byte, p, total int, slots map[uint32]bool, needTag1 
 	if needTag1 && readBitsAt(pay, p+14, 2) != 1 {
 		return 0, 0, nil, false
 	}
-	if readBitsAt(pay, p+16, 2) != 0 { // gate + maskSel
+	if readBitsAt(pay, p+16, 2) != 0 { // (14e bit id ou LSB tag) + gate — PAS un maskSel
 		return 0, 0, nil, false
 	}
 	mc := int(readBitsAt(pay, p+18, 3))
@@ -242,14 +336,11 @@ func matchBipedHeader(pay []byte, p, total int, slots map[uint32]bool, needTag1 
 		return 0, 0, nil, false
 	}
 	i0 := p + bipedHeaderBits + bipedIndexBits*mc
-	if i0+bipedI0Bits > total {
+	if i0+needBits > total {
 		return 0, 0, nil, false
 	}
 	idx, ok := ascendingFromZero(pay, p+bipedHeaderBits, mc)
 	if !ok {
-		return 0, 0, nil, false
-	}
-	if readBitsAt(pay, i0, bipedI0GateBits) != 0 { // i0 absolu : gate nul
 		return 0, 0, nil, false
 	}
 	return i0, slot, idx, true
@@ -272,8 +363,8 @@ func ascendingFromZero(pay []byte, at, count int) ([]int, bool) {
 }
 
 // saturatedQuantum signale un axe dans son bucket extrême (valeur écrêtée).
-func saturatedQuantum(q [3]uint32) bool {
-	for i, w := range bipedAxisWidths {
+func saturatedQuantum(q [3]uint32, lay I0Layout) bool {
+	for i, w := range lay.AxisW {
 		if q[i] == 0 || q[i] == uint32(1)<<w-1 {
 			return true
 		}
@@ -281,11 +372,15 @@ func saturatedQuantum(q [3]uint32) bool {
 	return false
 }
 
-// DequantBipedAxis déquantifie l'axe ax (0=X, 1=Y, 2=Z) d'une position absolue biped.
-// Calcul en float64 pour ne pas décaler l'indice de quantum sur les arrondis float32.
-func DequantBipedAxis(q uint32, ax int) float32 {
-	rng := QuantRangeCEBiped[ax]
-	step := (float64(rng.Max) - float64(rng.Min)) / float64(uint64(1)<<bipedAxisWidths[ax])
+// DequantBipedAxis déquantifie l'axe ax (0=X, 1=Y, 2=Z) d'une position absolue biped avec
+// les largeurs du découpage lay et les BORNES DE LA CARTE world. Calcul en float64 pour ne
+// pas décaler l'indice de quantum sur les arrondis float32.
+//
+// world DOIT être l'AABB du BSP de la carte du film (cf. MapQuantCatalog) : appliquer les
+// bornes d'une autre carte produit une coordonnée fausse, pas approximative.
+func DequantBipedAxis(q uint32, ax int, lay I0Layout, world Vec3Range) float32 {
+	rng := world[ax]
+	step := (float64(rng.Max) - float64(rng.Min)) / float64(uint64(1)<<lay.AxisW[ax])
 	return float32(float64(rng.Min) + step*(float64(q)+quantCenter))
 }
 

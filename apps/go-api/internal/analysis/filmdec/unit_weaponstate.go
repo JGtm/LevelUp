@@ -464,11 +464,38 @@ func consume14076e0ec(br *BitReader) {
 // i22 unit-grenade-counts  (deser FUN_140f0de00 -> FUN_140f0de1c)
 // ---------------------------------------------------------------------------
 
+// grenadeCountsHook, si non nil, reçoit le compteur et les valeurs lues par i22.
+// Sonde de mesure uniquement (cmd/tmp_i22check) : le déser est inchangé.
+var grenadeCountsHook func(count uint64, values []uint64)
+
+// SetGrenadeCountsHook installe (ou retire, avec nil) la sonde de lecture d'i22.
+func SetGrenadeCountsHook(h func(count uint64, values []uint64)) { grenadeCountsHook = h }
+
 // consumeUnitGrenadeCounts: count = FUN_1424d0f48 = R(3); then count x R(8).
+//
+// VÉRIFIÉ AU DÉSASSEMBLAGE le 2026-07-26 (rien à corriger ici) :
+//
+//	FUN_140f0de1c : iVar3 = FUN_1424d0f48(reader) ; if (iVar3 != 0) do { param_1[i] = R(8) }
+//	                while (i < iVar3)   -> compteur puis count octets, exactement.
+//	FUN_1424d0f48 : `*(param_1+0x2c) += 3` et retourne `uVar4 >> 0x3d` -> R(3) BRUT,
+//	                sans +1 (contrairement à FUN_1424cd07c, qui, lui, rend valeur+1).
+//
+// La vérité terrain CE donne 35 bits FIXES à 100 % (259 mesures) = 3 + 4×8 : le compteur
+// vaut donc TOUJOURS 4 dans les données réelles (les quatre emplacements de grenade du
+// jeu), et la borne de jeu « au plus 2 types, 2 unités » porte sur les VALEURS, pas sur
+// le compteur. Une lecture qui rend count != 4 est donc, à elle seule, la signature d'un
+// curseur mal placé.
 func consumeUnitGrenadeCounts(br *BitReader) {
 	count := br.ReadBits(3) // FUN_1424d0f48
+	var vals []uint64
 	for i := uint64(0); i < count; i++ {
-		br.ReadBits(8)
+		v := br.ReadBits(8)
+		if grenadeCountsHook != nil {
+			vals = append(vals, v)
+		}
+	}
+	if grenadeCountsHook != nil {
+		grenadeCountsHook(count, vals)
 	}
 }
 
@@ -536,71 +563,97 @@ func consumeUnitLowFrequency(br *BitReader) {
 
 // ---------------------------------------------------------------------------
 // i25 unit-command-tick / i26 unit-equipment / i27 unit-stun
+// TROIS COMPOSANTS QUI ÉTAIENT PERMUTÉS D'UN CRAN
+// ---------------------------------------------------------------------------
 //
-// CORRECTION DE MAPPAGE (2026-07-25, methode statique 7ter.30). Les trois desers
-// etaient assignes en ROTATION : le port historique donnait a chaque composant le
-// deser du composant SUIVANT (extraction live decalee de la table ECS).
+// CORRECTION DU 2026-07-26. Les trois portages ci-dessous étaient JUSTES, mais attachés aux
+// MAUVAIS noms de composant. Résolution par la procédure statique (chaîne unique dans `.rdata`
+// -> unique xref = le stub getName -> slot de vtable -> `+0x20` = le thunk `FUN_14076ce9c` ->
+// `+0x28` = le désérialiseur), appliquée aux trois noms et validée d'abord sur des composants
+// déjà connus :
 //
-// Methode de resolution (100% statique, aucun Cheat Engine) : la chaine ASCII du nom
-// est unique dans `.rdata` ; son unique xref est le getName() du descripteur ; en
-// cherchant les OCTETS de l'adresse de ce getName on tombe sur le pointeur getName DANS
-// le descripteur ; alors deser = *(ptrGetName + 0x20), et si cette valeur est le thunk
-// FUN_14076ce9c le vrai deser est *(ptrGetName + 0x28).
-//
-// Regle verifiee d'abord sur deux paires connues par ailleurs (object-position -> +0x20 =
-// FUN_1406cfe44 ; object-dead-state -> thunk puis +0x28 = FUN_140c1dce0), puis appliquee :
+// LES DEUX LIGNÉES ONT TROUVÉ LA MÊME CHOSE, À UN JOUR D'INTERVALLE ET PAR LA MÊME MÉTHODE
+// (la lignée killfeed le 2026-07-25, celle du rejeu le 2026-07-26). Les corps de fonction
+// obtenus sont identiques ; on garde ici les DEUX faisceaux de preuve, ils ne se recouvrent
+// pas. Règle vérifiée d'abord sur deux paires connues par ailleurs (object-position -> +0x20 =
+// FUN_1406cfe44 ; object-dead-state -> thunk puis +0x28 = FUN_140c1dce0), puis appliquée aux
+// adresses de getName :
 //
 //	unit-command-tick-component  getName 141175630 -> +0x28 = FUN_1406cfb28  (avant : unit-stun)
 //	unit-stun-component          getName 141175640 -> +0x28 = FUN_142ed75fc  (avant : unit-equipment)
 //	unit-equipment-component     getName 141175650 -> +0x28 = FUN_1409685d8  (avant : unit-command-tick)
 //
-// Recoupement de mesure : l'oracle de position Rosette donne unit-command-tick = 10 bits
-// constants ; FUN_1406cfb28 vaut exactement 10 bits sur son chemin dominant
+// Recoupement de mesure indépendant : l'oracle de position Rosette donne unit-command-tick =
+// 10 bits constants ; FUN_1406cfb28 vaut exactement 10 bits sur son chemin dominant
 // (FUN_140c50d1c gate=1 -> 1+8, puis g1=0 -> sortie), ce que l'ancien deser
-// (FUN_1409685d8 = R(3)+R(3)+boucle) ne pouvait pas produire de facon constante.
-// ---------------------------------------------------------------------------
-
-// consumeUnitCommandTick porte FUN_1406cfb28 (deser REEL de unit-command-tick) :
+// (FUN_1409685d8 = R(3)+R(3)+boucle) ne pouvait pas produire de façon constante.
 //
-//	FUN_140c50d1c = R(1)+optR(8).
-//	R(1) g1 ; si bit==0 -> deux champs par defaut (aucune lecture). Sinon :
-//	  R(1) g2 ; FUN_140cec0a0 une ou deux fois (g2 selectionne) ; FUN_140cec0a0 = R(1)+optR(8).
-//	  R(1) g3 ; si bit==0 : R(1) ; R(1).
+//
+//	i25 unit-command-tick -> FUN_1406CFB28    (nous l'appelions unit-stun)
+//	i26 unit-equipment    -> FUN_1409685D8    (nous l'appelions unit-command-tick)
+//	i27 unit-stun         -> FUN_142ED75FC    (nous l'appelions unit-equipment)
+//
+// CE QUI TRANCHE SANS LA VTABLE, et ce qui rend la correction sûre : `i26` vaut **22 bits à
+// 100 %** sur la vérité terrain (n = 40), or `FUN_142ED75FC` est de largeur TOTALEMENT FIXE à
+// 40 bits (16 + 12 + 12, aucune branche). L'ancienne affectation était donc PHYSIQUEMENT
+// IMPOSSIBLE — et le commentaire de l'ancien `consumeUnitEquipment` l'avouait déjà
+// (« le deser EXE FUN_142ed75fc = 40 bits fixes ne reproduit PAS les largeurs film 22/38 »)
+// sans en tirer la conclusion. Il avait donc fallu inventer une forme empirique
+// `gate(1) + [16] + 21` pour reproduire 22/38 : ces largeurs sont celles d'i26, et elles
+// appartiennent à FUN_1409685D8, qui les produit NATURELLEMENT.
+//
+// POURQUOI C'EST LA FAUTE DOMINANTE : `i25` apparaît dans 122 504 paires de la capture, soit
+// la quasi-totalité des records de bipède. Sa largeur fausse décale le curseur AVANT i22, i47
+// et i48 dans presque tous les records — exactement le symptôme observé.
+//
+// Les six permutations possibles sont réduites à une seule par les contraintes de largeur ;
+// la vtable désigne la même.
+
+// consumeUnitCommandTick porte i25, désérialiseur FUN_1406CFB28 :
+//
+//	FUN_140c50d1c = R(1) + optR(8).
+//	R(1) g1 ; si 0 -> deux champs par défaut, aucune lecture. Sinon :
+//	  R(1) g2 ; FUN_140cec0a0 une ou deux fois (g2 sélectionne) ; chacun = R(1) + optR(8).
+//	  R(1) g3 ; si 0 : R(1) ; R(1).
 func consumeUnitCommandTick(br *BitReader) {
-	consumeGateR(br, 8) // FUN_140c50d1c : R(1) ; si 1 -> R(8)
-	if br.ReadBit() {   // g1 ; bit==1 -> present
+	consumeGateR(br, 8) // FUN_140c50d1c
+	if br.ReadBit() {   // g1 ; 1 -> présent
 		g2 := br.ReadBit()  // FUN_1406cf008
 		consumeGateR(br, 8) // FUN_140cec0a0 (#1)
 		if !g2 {
-			consumeGateR(br, 8) // FUN_140cec0a0 (#2, quand g2==0)
+			consumeGateR(br, 8) // FUN_140cec0a0 (#2, quand g2 == 0)
 		}
 		g3 := br.ReadBit()
 		if !g3 {
-			br.ReadBit() // bit0
-			br.ReadBit() // bit1
+			br.ReadBit()
+			br.ReadBit()
 		}
 	}
 }
 
-// consumeUnitStun porte FUN_142ed75fc (deser REEL de unit-stun) : R(16) inline puis deux
-// FUN_1406d84b4 de largeur 0xc (la premiere est explicite au decompile :
-// FUN_1406d84b4(param_2,uVar5,0,uVar9,0xc,0,1)) => 16+12+12 = 40 bits FIXES.
-func consumeUnitStun(br *BitReader) {
-	br.ReadBits(16) // inline R(16) -> comp+0x54a
-	br.ReadBits(12) // FUN_1406d84b4 largeur 0xc -> comp+0x54c
-	br.ReadBits(12) // FUN_1406d84b4 largeur 0xc -> comp+0x550
-}
-
-// consumeUnitEquipment porte FUN_1409685d8 (deser REEL de unit-equipment) :
+// consumeUnitEquipment porte i26, désérialiseur FUN_1409685D8 :
 //
 //	FUN_1406d0f20 = R(3).
-//	count = FUN_1424d0f48 = R(3) ; count x FUN_1408f0ac4 (R(1) + opt R(13)+R(2)).
+//	count = FUN_1424d0f48 = R(3) ; count x FUN_1408f0ac4.
+//
+// Largeur vraie : 22 bits à 100 % (n = 40). Cette forme les produit naturellement, là où
+// l'ancienne affectation exigeait une forme empirique inventée pour les imiter.
 func consumeUnitEquipment(br *BitReader) {
 	br.ReadBits(3)          // FUN_1406d0f20
 	count := br.ReadBits(3) // FUN_1424d0f48
 	for i := uint64(0); i < count; i++ {
 		consume1408f0ac4(br)
 	}
+}
+
+// consumeUnitStun porte i27, désérialiseur FUN_142ED75FC : 40 bits FIXES, sans aucune branche
+// (16 + 12 + 12). C'est cette invariabilité qui a permis d'éliminer l'ancienne affectation :
+// un composant mesuré à 22 bits ne peut pas être servi par un désérialiseur qui en lit toujours
+// 40.
+func consumeUnitStun(br *BitReader) {
+	br.ReadBits(16)
+	br.ReadBits(12)
+	br.ReadBits(12)
 }
 
 // ---------------------------------------------------------------------------
@@ -639,28 +692,36 @@ func consumeUnitCrouch(br *BitReader) {
 // Indexed by slot (*(desc+8)*0x90) but the per-call bit-consume is constant.
 // ---------------------------------------------------------------------------
 
-// consumeWeaponStateAmmo mirrors FUN_140ea1018 (desassemblage 140ea1018..140ea1199,
-// deserialiseur resolu 100% statiquement : chaine "weapon-state-ammo" 143c98830 -> unique
-// xref 141172090 = getName -> unique motif d'octets -> descripteur 143e0de68 -> +0x20 est
-// le thunk FUN_14076ce9c donc deser = *(+0x28) = FUN_140ea1018).
+// consumeWeaponStateAmmo mirrors FUN_140ea1018. LES DEUX PORTES SONT ACTIVES-BAS
+// (relu instruction par instruction le 2026-07-26, disassemble_bytes 140ea1018..140ea11a7) :
 //
-//	CALL FUN_1406cf008 ; TEST AL,AL ; JNZ  -> le R(8) est saute si le PREDICAT DE LECTEUR
-//	                                          est vrai. Ce n'est PAS un bit du flux.
-//	R(8) -> ammo (ushort a +0x86e)
-//	R(1) ; TEST CL,CL ; JZ -> si le bit vaut **0** : FUN_1406d84b4(reader, 0xC) = R(12)
-//	                          (largeur passee en pile : MOV dword ptr [RSP+0x20],0xc)
+//	140ea103d CALL 1406cf008        gate1 = R(1)
+//	140ea1046 JNZ  140ea1129        gate1 != 0 -> [RDI+0x86e] = 0, AUCUN bit lu
+//	          sinon 140ea105f ADD [RBX+0x2c],0x8 -> R(8) chargeur -> [RDI+0x86e]
+//	140ea1092 INC [RBX+0x2c]        gate2 = R(1) inline (SHR RCX,0x3f = bit de tete)
+//	140ea10a9 JZ   140ea1174        gate2 == 0 -> LIT la fraction
+//	140ea10af (gate2 != 0)          [RDI+0x874] = 0.0f, AUCUN bit lu
+//	140ea1174 MOVSS XMM3,[143cd8374]=1.0f ; XORPS XMM2 (=0.0f) ; [RSP+0x20]=0xc (W=12)
+//	140ea1194 CALL 1406d84b4        dequant R(12) de [0,1] -> [RDI+0x874]
 //
-// L'ancien port avait UNE erreur : la POLARITE du gate du flottant. Il lisait les 12 bits
-// quand le bit valait 1 ; le binaire les lit quand il vaut **0** (140ea10a7 TEST CL,CL ;
-// 140ea10a9 JZ 140ea1174 -> chemin FUN_1406d84b4). Recoupement independant : l'oracle
-// Rosette donne la largeur VRAIE de i30/i33 = 10 bits = 1 (FUN_1406cf008) + 8 (ammo) +
-// 1 (gate a 1, flottant ABSENT) ; l'ancien port produisait 22 sur les memes records.
+// La polarite de gate2 etait INVERSEE dans ce port : il lisait les 12 bits quand la porte
+// valait 1. L'ecart etait de 12 bits A CHAQUE occurrence (dans un sens ou dans l'autre),
+// donc desynchronisation de tout ce qui suit i30/i33/i36/i39 dans le record : reserve,
+// surchauffe, selecteur et identite d'arme.
+//
+// LA LIGNEE KILLFEED A TROUVE LA MEME INVERSION, PAR UN AUTRE CHEMIN — les deux preuves sont
+// conservees parce qu'elles ne se recouvrent pas. Identite du deserialiseur, 100% statique :
+// chaine "weapon-state-ammo" 143c98830 -> unique xref 141172090 = getName -> motif d'octets
+// unique -> descripteur 143e0de68 -> +0x20 est le thunk FUN_14076ce9c, donc deser = *(+0x28) =
+// FUN_140ea1018. Recoupement de mesure independant : l'oracle Rosette donne la largeur VRAIE de
+// i30/i33 = 10 bits = 1 (FUN_1406cf008) + 8 (chargeur) + 1 (gate a 1, flottant ABSENT) ;
+// l'ancien port produisait 22 sur les memes records.
 func consumeWeaponStateAmmo(br *BitReader) {
-	if !br.ReadBit() { // FUN_1406cf008 == 0 -> ammo presente
+	if !br.ReadBit() { // gate1 == 0 -> chargeur present
 		br.ReadBits(8)
 	}
-	if !br.ReadBit() { // bit==0 -> le flottant quantifie est present
-		br.ReadBits(12) // FUN_1406d84b4(reader, 0xC)
+	if !br.ReadBit() { // gate2 == 0 -> fraction presente
+		br.ReadBits(12) // FUN_1406d84b4 dequant [0,1], W=12
 	}
 }
 
@@ -692,85 +753,16 @@ func consumeBipedDesiredWeaponSet(br *BitReader) {
 
 // ---------------------------------------------------------------------------
 // i43..46 weapon-state-type-info = HELD WEAPON  (deser FUN_1407f06bc)
+//
+// Le port de ce composant vit dans components_object.go :
+// `consumeWeaponStateTypeInfoVariant`, seule version cablee dans le dispatch
+// (traverse.go) et seule version exacte. Une seconde version vivait ici
+// (`ConsumeWeaponStateTypeInfo`), SANS le R(32) de FUN_14080d6f0 qui precede le
+// variant-name : elle sous-lisait 32 bits. Elle n'avait aucun appelant et a ete
+// supprimee le 2026-07-26 (regle « 0 code mort »), avec son type `HeldWeapon`, sa
+// queue `consumeHeldWeaponTail` (doublon de `consumeWeaponStateTail`) et son
+// `consume1407f2494` (doublon de `consumeWeaponMagazineList`).
 // ---------------------------------------------------------------------------
-
-// HeldWeapon holds the decoded held-weapon component.
-type HeldWeapon struct {
-	Present     bool   // gate (FUN_14080d69c) was set
-	VariantName uint32 // R(32) string-id of the weapon variant (0xFFFFFFFF if absent)
-}
-
-// ConsumeWeaponStateTypeInfo mirrors FUN_1407f06bc and returns the weapon
-// variant-name (the equipped-weapon string-id). This is THE attribution datum.
-//
-//	gate = FUN_14080d69c: R(1); if bit==0 -> variant=0xFFFFFFFF, skip body.
-//	if gate set:
-//	  variant-name = R(32)   <-- FUN_14080dec4 "variant-name" (the weapon)
-//	  R(12)                  comp+0x7c
-//	  FUN_140e9fadc = R(7)
-//	  R(1) g; if g: FUN_141001f50 = R(4)+R(6)
-//	  R(1)
-//	  FUN_1407f2494 (mag/ability list, see consume1407f2494)
-//	  FUN_1407f0550 (3-element float block, see consume1407f0550)
-//	  FUN_1407f2058 = R(1); if bit==0 R(5)
-//	tail (always):
-//	  FUN_1407f08bc = R(1); if set R(8)
-//	  FUN_1406d01fc = R(3) + 2x (R(1)+optR(2))
-func ConsumeWeaponStateTypeInfo(br *BitReader) HeldWeapon {
-	var hw HeldWeapon
-	if !br.ReadBit() { // FUN_14080d69c gate
-		hw.VariantName = 0xFFFFFFFF
-		consumeHeldWeaponTail(br)
-		return hw
-	}
-	hw.Present = true
-	hw.VariantName = uint32(br.ReadBits(32)) // FUN_14080dec4 variant-name = WEAPON
-
-	br.ReadBits(12)   // comp+0x7c
-	br.ReadBits(7)    // FUN_140e9fadc
-	if br.ReadBit() { // FUN_1406cf008 gate
-		br.ReadBits(4) // FUN_1407ef804 (value-1)
-		br.ReadBits(6) // FUN_1407ef724 (value-1)
-	}
-	br.ReadBit() // comp+0x82 bit0
-
-	consume1407f2494(br) // comp+0xc
-	consume1407f0550(br) // comp+0x48
-
-	if !br.ReadBit() { // FUN_1407f2058: R(1); if 0 R(5)
-		br.ReadBits(5)
-	}
-
-	consumeHeldWeaponTail(br)
-	return hw
-}
-
-// consumeHeldWeaponTail = FUN_1407f08bc + FUN_1406d01fc, run in both gate branches.
-func consumeHeldWeaponTail(br *BitReader) {
-	if br.ReadBit() { // FUN_1407f08bc: R(1); if set R(8)
-		br.ReadBits(8)
-	}
-	br.ReadBits(3) // FUN_1406d01fc: FUN_1406d0f20 = R(3)
-	consumeId2(br) // FUN_1406d00ec
-	consumeId2(br) // FUN_1406d00ec
-}
-
-// consume1407f2494 mirrors FUN_1407f2494 (held-weapon ability/equipment list):
-//
-//	R(1) gate; if bit==0: FUN_14080d69c (R1+optR32). else:
-//	count = FUN_1424e1d48 = R(4); loop count x [ R(1) g; if g R(32) (FUN_14080d6f0) ]
-//	(the per-element validity check FUN_1405838f0 consumes 0 bits).
-func consume1407f2494(br *BitReader) {
-	if !br.ReadBit() { // gate
-		consumeOpt32(br) // FUN_14080d69c
-		return
-	}
-	count := br.ReadBits(4) // FUN_1424e1d48
-	for i := uint64(0); i < count; i++ {
-		consumeOpt32(br) // R(1); if set R(32)
-		// FUN_1405838f0 = 0 bits
-	}
-}
 
 // consume1407f0550 mirrors FUN_1407f0550 (held-weapon 3-element float block):
 //

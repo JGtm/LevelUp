@@ -23,6 +23,7 @@ import (
 	"log/slog"
 	"time"
 
+	"levelup/go-api/internal/analysis/positions"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/observability"
@@ -146,6 +147,15 @@ type MatchViewService struct {
 	// metadataRepo (optionnel) : lookup des coefs assists_model_coefs pour
 	// calculer expected_assists à la volée. Dégradation gracieuse si nil.
 	metadataRepo port.MetadataRepository
+	// objectiveEventsRepo (optionnel) : loader des events objectif v3 (timeline
+	// mode-agnostique) pour l'endpoint /objective-events. Si nil,
+	// GetObjectiveEvents retourne games.ErrCapabilityNotSupported (le titre
+	// n'expose pas la timeline objectif).
+	objectiveEventsRepo port.ObjectiveEventsRepository
+	// playerPositionsRepo (optionnel) : loader des positions joueurs keyframe v3
+	// (match-level, §N) pour l'endpoint /positions. Si nil, GetMatchPositions
+	// retourne games.ErrCapabilityNotSupported (le titre n'expose pas le film).
+	playerPositionsRepo port.PlayerPositionsRepository
 	// regulationSeconds (optionnel) : temps réglementaire par game_variant_name
 	// du TITRE COURANT (regulation.toml, chargé au boot comme les autres
 	// mappings). Nil/vide → le header n'expose jamais le flag « Prolongation »
@@ -200,6 +210,22 @@ func (s *MatchViewService) WithFriendsExtras(loader port.FriendsExtrasResolver) 
 // assists_model_coefs (expected_assists à la volée). Dégradation gracieuse si nil.
 func (s *MatchViewService) WithMetadataRepo(r port.MetadataRepository) *MatchViewService {
 	s.metadataRepo = r
+	return s
+}
+
+// WithObjectiveEventsRepo injecte le loader des events objectif v3 (timeline
+// mode-agnostique) consommé par GetObjectiveEvents. Dégradation gracieuse si
+// nil : GetObjectiveEvents retourne games.ErrCapabilityNotSupported.
+func (s *MatchViewService) WithObjectiveEventsRepo(r port.ObjectiveEventsRepository) *MatchViewService {
+	s.objectiveEventsRepo = r
+	return s
+}
+
+// WithPlayerPositionsRepo injecte le loader des positions joueurs keyframe v3
+// (match-level, §N) consommé par GetMatchPositions. Dégradation gracieuse si
+// nil : GetMatchPositions retourne games.ErrCapabilityNotSupported.
+func (s *MatchViewService) WithPlayerPositionsRepo(r port.PlayerPositionsRepository) *MatchViewService {
+	s.playerPositionsRepo = r
 	return s
 }
 
@@ -352,6 +378,30 @@ func (s *MatchViewService) GetMatchNeighborsFiltered(
 		out.AppliedFilters = spec
 	}
 	return out, nil
+}
+
+// GetObjectiveEvents retourne les events objectif v3 (timeline mode-agnostique)
+// d'un match. Si le repo n'est pas câblé (titre sans capability film, ou wiring
+// non injecté en test), retourne games.ErrCapabilityNotSupported. Sinon délègue
+// à LoadMatch et propage l'erreur telle quelle (y compris
+// ErrCapabilityNotSupported remontée par le repo si les tables sont absentes).
+func (s *MatchViewService) GetObjectiveEvents(ctx context.Context, matchID string) ([]domain.ObjectiveEvent, error) {
+	if s.objectiveEventsRepo == nil {
+		return nil, games.ErrCapabilityNotSupported
+	}
+	return s.objectiveEventsRepo.LoadMatch(ctx, matchID)
+}
+
+// GetMatchPositions retourne les positions joueurs keyframe v3 (match-level, §N)
+// d'un match. Si le repo n'est pas câblé (titre sans capability film, ou wiring
+// non injecté en test), retourne games.ErrCapabilityNotSupported. Sinon délègue
+// à LoadMatch et propage l'erreur telle quelle (y compris
+// ErrCapabilityNotSupported remontée par le repo si la table est absente).
+func (s *MatchViewService) GetMatchPositions(ctx context.Context, matchID string) ([]positions.PlayerPosition, error) {
+	if s.playerPositionsRepo == nil {
+		return nil, games.ErrCapabilityNotSupported
+	}
+	return s.playerPositionsRepo.LoadMatch(ctx, matchID)
 }
 
 // ---------------------------------------------------------------------------

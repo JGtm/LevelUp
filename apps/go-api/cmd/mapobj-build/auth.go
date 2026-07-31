@@ -46,7 +46,7 @@ func resolveTokens(ctx context.Context, cfg *config.AppConfig, playerSlug, title
 	}
 
 	result, err := authpkg.RefreshHaloTokensViaStoreFirst(
-		ctx, store, authpkg.NewMSALProvider(), xuid, gamertag, legacy)
+		ctx, store, authpkg.NewSISUProvider(), xuid, gamertag, legacy)
 	if err != nil {
 		return nil, err
 	}

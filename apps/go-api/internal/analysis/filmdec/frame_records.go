@@ -35,15 +35,65 @@ const (
 // the game's runtime context. They must be calibrated empirically (sweep) — see
 // open_risks in the spec. Defaults are the starting hypotheses.
 type FrameConfig struct {
-	HasExtraFields      bool // cVar1: per-record R(32) prefix + R(8) NEW/DEL guards. Theater offline: likely false.
-	IDLowBits           int  // bit_length(entityCount) for the id low part. Default 13 (= bitLen 0x1FFF).
+	HasExtraFields bool // cVar1: per-record R(32) prefix + R(8) NEW/DEL guards. Theater offline: likely false.
+	// IDLowBits est la largeur du champ id bas. C'est une valeur de RUNTIME (FUN_1406d3140
+	// -> FUN_1406d310c sur DAT_1451f98d0/d4, peuplee au chargement de carte) : elle DIFFERE
+	// d'un film a l'autre. 11 sur 000d5950 (calibre) ; 21 bits d'en-tete = idLow 14 sur le
+	// film de la capture live (mesure : cmd/tmp_hdrtruth). Le 13 par defaut n'est qu'une
+	// hypothese de depart, PAS une constante du format.
+	IDLowBits           int
 	IDBase              uint32
 	NewDefaultStateBits int // default-state width for a NEW record's archetype (runtime; brute-forced).
+	// PacketPreambleBits est l'AMORCE DE PAQUET : les bits consommes sur le bitreader du
+	// payload AVANT le premier record. Source (desassemblage) : le frame-processor
+	// FUN_142987460 fait `DAT_144706104 = FUN_1406cf008(reader)` — un R(1) — puis boucle
+	// sur ses 3 vues, chacune appelant vtable[0x40] = FUN_1406cd128 (la boucle de records).
+	// Le reader est cree sur le payload EXACT du paquet (FUN_14298816c : memcpy de
+	// *(param_2+4) octets, puis FUN_1406d5cc0(reader,3) qui repositionne byte-ptr au debut),
+	// donc ce bit est bien le bit 0 du payload. N'est applique que si le lecteur est au
+	// bit 0 (un appel en cours de flux n'est pas un debut de paquet).
+	PacketPreambleBits int
 }
 
+// DefaultPacketPreambleBits est l'amorce de paquet consommee avant le premier record.
+//
+// POURQUOI 2 ALORS QUE LE DESASSEMBLAGE N'EN MONTRE QU'UN. Le desassemblage etablit UN bit :
+// FUN_142987460 fait `DAT_144706104 = FUN_1406cf008(reader)`, et FUN_1406cf008 est un R(1)
+// (`*(p+0x2c) += 1`). Ce bit vaut 1 dans 100,00 % des 30 418 payloads de 000d5950 — signature
+// d'un drapeau de configuration constant. Le SECOND bit, lui, n'est PAS localise dans le
+// desassemblage : il est etabli par la MESURE, et cette distinction doit rester visible.
+//
+// Trois grammaires donnent le meme en-tete total de 20 bits sur le PREMIER record, et ne se
+// separent qu'a partir du second : amorce 2 + idLow 11 · amorce 1 + idLow 12 · amorce 1 +
+// prefixe long + idLow 10. Le temoin qui les departage est la FORME DU MASQUE, invariant par
+// carte et par film : le compteur de composants tient sur 3 bits, donc un record epars porte
+// au plus 7 composants, et la verite terrain (138 390 records bipedes captures sur le
+// desassembleur reel) en compte 99,86 % dans cette plage, mode a 4.
+//
+//	part de masques 1..7 sur les DELTA de slots bindes :
+//	  amorce 0, idLow 11 (avant)  : 14,65 %   (n = 33 154)   <- sous le niveau du hasard
+//	  amorce 2, idLow 11          : 84,81 %   (n = 33 662)   <- retenu
+//	  amorce 1, idLow 12          : 51,67 %   (n =  5 135)
+//	  amorce 2, idLow 10          :  5,24 %
+//	  niveau du hasard mesure     : 10,67 %   (critere evalue a des decalages arbitraires)
+//	  verite terrain              : 99,86 %
+//
+// NECESSAIRE MAIS PAS SUFFISANT — a ne pas oublier. Apres cette correction, i22 lit encore
+// 92,46 % de comptes de grenades impossibles (le compteur doit valoir 4 ; il est uniforme sur
+// 0..7). Il reste donc au moins une faute dans le CORPS des records. Cette amorce est gardee
+// parce qu'elle repose sur trois temoins independants d'i22 et concordants — le R(1) du
+// desassemblage, le bit 0 a 100 %, et la forme des masques — et non parce qu'elle "ameliore"
+// un chiffre.
+const DefaultPacketPreambleBits = 2
+
 // DefaultFrameConfig is the starting hypothesis for an offline Theater film.
+//
+// IDLowBits 13 reste une hypothese de depart a calibrer (c'est une valeur de RUNTIME : 11 sur
+// 000d5950, 14 sur le film de la capture live). L'amorce, elle, est une propriete du FORMAT et
+// non du runtime : elle a donc sa place ici en dur.
 func DefaultFrameConfig() FrameConfig {
-	return FrameConfig{HasExtraFields: false, IDLowBits: 13, IDBase: 0, NewDefaultStateBits: 0}
+	return FrameConfig{HasExtraFields: false, IDLowBits: 13, IDBase: 0, NewDefaultStateBits: 0,
+		PacketPreambleBits: DefaultPacketPreambleBits}
 }
 
 // FrameRecord is one decoded record of a type-0 FRAME packet.
@@ -659,6 +709,9 @@ func inferUnboundArchetype(buf []byte, bitpos int, w *World, cfg FrameConfig) (u
 // of the next record can no longer be trusted).
 func DecodeFrameRecords(br *BitReader, w *World, cfg FrameConfig) ([]FrameRecord, error) {
 	var out []FrameRecord
+	if cfg.PacketPreambleBits > 0 && br.BitPos() == 0 {
+		br.Skip(cfg.PacketPreambleBits) // amorce de paquet (cf. FrameConfig.PacketPreambleBits)
+	}
 	for {
 		hdrBit := br.BitPos()
 		if cfg.HasExtraFields {

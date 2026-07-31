@@ -16,6 +16,18 @@ func ConsumeWeaponStateTypeInfoVariantAt(buf []byte, start int) (variant uint32,
 	return v, br.BitPos()
 }
 
+// ProbeComponentConsumedWidth exécute le déser porté de `name` sur `buf` depuis le bit 0
+// et retourne le nombre de bits RÉELLEMENT consommés + le drapeau `ported`. C'est la
+// mesure symétrique de la vérité terrain CE (curseur d'entrée du déser côté jeu) : elle
+// permet de confronter, composant par composant, la largeur que NOUS consommons à la
+// largeur VRAIE. Sonde en lecture seule (cmd/tmp_widthcmp) — aucun chemin de décodage
+// nouveau, aucun effet de bord hors du BitReader local.
+func ProbeComponentConsumedWidth(name string, ti uint32, level uint32, buf []byte) (int, bool) {
+	br := NewBitReader(buf)
+	_, _, ported := consumeByName(br, name, ti, level)
+	return br.BitPos(), ported
+}
+
 // VariantBitOffsetInWST is the fixed offset of the variant field inside a present
 // weapon-state-type-info component: gate R(1) + handle R(32) = 33 bits.
 const VariantBitOffsetInWST = 33
@@ -71,5 +83,29 @@ func DecodeDeltaRecordAt(buf []byte, start int, w *World, slot uint32) (EntityTr
 	br := NewBitReader(buf)
 	br.Skip(start)
 	t := decodeDelta(br, w, slot)
+	return t, br.BitPos()
+}
+
+// TraverseKeyframeBipedAt décode UN record de la table keyframe type-2 à partir de
+// stateBit (= bit de l'en-tête 64 bits du record + 64), avec la grammaire keyframe :
+// default-state (FUN_140F44C38 pour le biped) + porte has-components + masque de présence
+// + boucle de composants. Sonde EN LECTURE SEULE pour le harnais loadout : elle
+// n'introduit aucun chemin de décodage nouveau, elle recompose ceux qui existent déjà
+// (consumeBipedDefaultState + decodeDeltaWithArch).
+func TraverseKeyframeBipedAt(buf []byte, stateBit int, reg *Registry, ti uint32) (EntityTrace, int) {
+	br := NewBitReader(buf)
+	br.SetBitPos(stateBit)
+	if ti == bipedDefaultStateTypeIndex {
+		consumeBipedDefaultState(br)
+		consumeBipedDefaultStateTail(br)
+	} else if db, ok := defaultStateBitsByTI[ti]; ok {
+		br.Skip(db)
+	}
+	br.ReadBit() // [P2] porte has-components (FUN_1406cf008)
+	arch, ok := reg.Archetype(int(ti))
+	if !ok {
+		return EntityTrace{DesyncAt: 0, TypeIndex: ti, HeldWeapon: noVariant}, br.BitPos()
+	}
+	t := decodeDeltaWithArch(br, arch, ti)
 	return t, br.BitPos()
 }

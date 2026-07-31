@@ -103,7 +103,7 @@ func writeWeaponKillsV3Tx(ctx context.Context, db *sql.DB, matchID, xuid string,
 			) VALUES (?, ?, ?, CAST(? AS UBIGINT), CAST(? AS UBIGINT), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			matchID, xuid, row.TimeMS, ubigintV3Arg(row.WeaponID), ubigintV3Arg(row.ReconciledAs),
 			nullableInt(row.DeltaMS), row.Confidence, row.AttributionPath, row.SwapDetected, row.DelayedDamage,
-			nullableInt(row.PlayerIndex), nullableStr(row.SourceSignal), uint32V3Arg(row.HighWeaponID), nullableBool(row.KillingShotHit),
+			nullableInt(row.PlayerIndex), nullableString(row.SourceSignal), uint32V3Arg(row.HighWeaponID), nullableBool(row.KillingShotHit),
 			nullableBool(row.BurstFinal), nullableInt(row.ShotCounter),
 		); err != nil {
 			return fmt.Errorf("insert time_ms=%d: %w", row.TimeMS, err)

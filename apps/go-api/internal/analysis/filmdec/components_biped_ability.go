@@ -36,9 +36,20 @@ func consumeBipedDesiredGrenadeSet(br *BitReader) {
 // only on the gate==0 branch — see consumeGate0R). Do NOT use consumeGateR here:
 // that inverts the gate and desyncs by 6 bits whenever the gate is 0.
 func consumeBipedDesiredAbilitySet(br *BitReader) {
-	br.ReadBits(3)       // FUN_1406d0f20 = R(3)
+	v := br.ReadBits(3) // FUN_1406d0f20 = R(3)
+	start := br.BitPos()
 	consumeGate0R(br, 6) // FUN_1406d1024 = R(1) gate; if bit==0 R(6)
+	if abilitySetHook != nil {
+		abilitySetHook(v, br.BitPos()-start+3)
+	}
 }
+
+// abilitySetHook, si non nil, reçoit la valeur R(3) d'i48 et la largeur totale consommée.
+// Sonde de mesure uniquement (témoin Slayer, cmd/tmp_i22check) : le déser est inchangé.
+var abilitySetHook func(value uint64, width int)
+
+// SetAbilitySetHook installe (ou retire, avec nil) la sonde de lecture d'i48.
+func SetAbilitySetHook(h func(value uint64, width int)) { abilitySetHook = h }
 
 // ---------------------------------------------------------------------------
 // i49 biped-control-context-component  (deser FUN_14107166c)
@@ -273,20 +284,35 @@ var MobilityActionExtraBits int
 //   Descriptor @143d0ce60 ; deser thunk (6e ptr, base+0x28) @140fc1410.
 // ---------------------------------------------------------------------------
 
-// consumeBipedSpartanAbilityEnergy mirrors FUN_140fc1410:
+// consumeBipedSpartanAbilityEnergy mirrors FUN_140fc1410 : R(3) MASQUE, puis 7 BITS PAR
+// CHARGE ARMEE.
 //
-//	FUN_140fc147c(br)         (flat read R(3))
-//	for i in 0..2: ctx[0x12ea+i] = 0x7f   (state init, 0 bits)
+// ATTENTION — le DECOMPILE MENT ICI. Ghidra emet
+// `WARNING: Removing unreachable block (ram, 0x14246a410)` et supprime justement le bloc
+// qui lit les 7 bits ; le port precedent en avait conclu « 3 bits, CONFIRMED bit-exact »,
+// ce qui etait FAUX. Seul le DESASSEMBLAGE fait foi (relu le 2026-07-26) :
 //
-// FUN_140fc147c is a plain flat 3-bit reader: both the refill branch
-// (0x40-iVar1 < 3) and the fast branch do exactly `*(ctx+0x2c) += 3` with NO
-// leading gate-bit sentinel — identical primitive shape to FUN_1424d9a30 (R(3)).
-// The trailing loop just memsets 3 state bytes to 0x7f and reads no bits.
+//	140fc1432 CALL 140fc147c        masque = R(3), rendu par out-param [RSP+0x40]
+//	                                (140fc14a1 ADD [RCX+0x2c],0x3 ; SHR R9,0x3d = 3 bits de tete)
+//	140fc143e boucle i = 0..2 :
+//	140fc1446   EDX = 1 << i
+//	140fc1448   TEST EAX,EDX
+//	140fc144a   JNZ 0x14246a410     bit i arme -> bloc froid externalise
+//	140fc1450   R9B = 0x7f          bit i a 0 -> valeur par defaut, AUCUN bit lu
+//	140fc1459   [RDI + i + 0x12ea] = R9B
+//	14246a425 ADD [RBX+0x2c],0x7    bloc froid : +7 bits
+//	14246a438 SHR R9,0x39           ( >>57 = les 7 bits de tete )
+//	14246a4d2 JMP 140fc1453         retour dans la boucle, aucun autre bit
 //
-// Total: 3 bits, unconditional. CONFIRMED bit-exact from the decompile.
+// Cout total : 3 + 7 * popcount(masque), soit 3 a 24 bits (et non 3).
+// 0x7F est la valeur par defaut (charge pleine) quand le bit du masque est a 0.
 func consumeBipedSpartanAbilityEnergy(br *BitReader) {
-	br.ReadBits(3) // FUN_140fc147c flat R(3)
-	// FUN_140fc1410 ctx[0x12ea..0x12ec] = 0x7f init — 0 bits.
+	mask := br.ReadBits(3) // FUN_140fc147c
+	for i := uint(0); i < 3; i++ {
+		if mask&(1<<i) != 0 {
+			br.ReadBits(7) // bloc froid 0x14246a410
+		}
+	}
 }
 
 // ---------------------------------------------------------------------------
