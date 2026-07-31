@@ -17,8 +17,8 @@ import type { ReplayCoverage, ReplayLayerCoverage } from '@/lib/api/types'
 
 import type { ReplayDocumentReady } from './replayNormalize'
 
-/** Verdict d'un calque, tel que le serveur le publie. */
-export const VERDICT_NOMINAL = 'nominal'
+/** Verdict d'un calque, tel que le serveur le publie. Interne : personne d'autre ne le lit. */
+const VERDICT_NOMINAL = 'nominal'
 
 /** Un calque prêt à l'affichage : son rapport, son taux, son verdict. */
 export interface LayerSummary {
@@ -55,8 +55,8 @@ export function isBalanced(c: ReplayLayerCoverage): boolean {
   return c.attached + c.noSlot + c.ambiguous + c.outOfWindow + c.unpublished === c.available
 }
 
-/** summarize prépare un calque pour l'affichage. */
-export function summarize(
+/** summarize prépare un calque pour l'affichage. Appelée par summarizeAll, et par elle seule. */
+function summarize(
   key: string,
   c: ReplayLayerCoverage | undefined,
   verdict: string | undefined,

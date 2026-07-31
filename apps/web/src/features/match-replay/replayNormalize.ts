@@ -28,16 +28,16 @@ import type {
 } from '@/lib/api/types'
 
 /** Un sommet d'emprise orientée : le `[2]float32` du Go. */
-export type ReplayXY = [number, number]
+type ReplayXY = [number, number]
 
 /** Un pas de trajectoire de projectile : le `[3]float32` du Go, soit [dt, x, y]. */
-export type ReplayStep = [number, number, number]
+type ReplayStep = [number, number, number]
 
 /** Rend NON NULLABLES (et présents) les champs `K` de `T` — les tableaux du contrat. */
 type Filled<T, K extends keyof T> = Omit<T, K> & { [P in K]-?: NonNullable<T[P]> }
 
 export type ReplayTrackReady = Filled<ReplayTrack, 'points'>
-export type ReplayLoadoutReady = Filled<ReplayLoadout, 'w'>
+type ReplayLoadoutReady = Filled<ReplayLoadout, 'w'>
 export type ReplayInventoryReady = Filled<ReplayInventory, 'am' | 'g'>
 export type ReplaySurfaceReady = Omit<ReplaySurface, 'poly'> & { poly: ReplayXY[] }
 export type ReplayProjectileReady = Omit<ReplayProjectile, 'p'> & { p: ReplayStep[] }
