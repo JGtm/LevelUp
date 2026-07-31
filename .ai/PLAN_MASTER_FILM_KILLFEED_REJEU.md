@@ -285,14 +285,49 @@ restent accrochés à J5 — les faire trop tôt serait les refaire.
 
 Ajouts de cette revue au plan (à statuer dans sa session) :
 
-- [ ] J3.1 Purger le cache golangci avant toute conclusion (piège déjà payé sur ce dépôt :
+- [x] J3.1 Purger le cache golangci avant toute conclusion (piège déjà payé sur ce dépôt :
       un cache chaud rend un faux compte).
-- [ ] J3.2 Lot A : supprimer aussi le jeu d'images de grenades orphelin (`Dynamo-light.png`,
+      *FAIT 2026-08-01 — purge avant la mesure d'entrée ET avant la mesure de sortie.*
+- [x] J3.2 Lot A : supprimer aussi le jeu d'images de grenades orphelin (`Dynamo-light.png`,
       casse majuscule — découverte n°1 de la réconciliation, aucun consommateur).
+      *FAIT — 8 PNG (4 types × light/dark). `index.json` ne désignait que le jeu minuscule.*
 - [ ] J3.3 Élargir le déclencheur du hook pre-push `knip-ratchet` (découverte J1-b : il ne se
       déclenche que sur `apps/web/**` — un dépassement de plafond est resté invisible tant
       que les push étaient documentaires). Correctif honnête au choix : déclencher aussi sur
       la config/le plafond knip, ou jouer le ratchet en CI sans condition de chemin.
+- [ ] J3.4 **Gardes du décodeur** (découvertes J2-D1/D2, arbitrées le 2026-07-31) :
+      (a) `decodeFireEvent` panique sur un payload < 14 octets et le chemin est atteignable
+      (`ScanFilmFireEvents` n'exige que `Size >= 1`) — poser la garde de longueur, auditer
+      les décodeurs frères (lancers, projectiles) pour le même motif, et conserver l'entrée
+      de crash du fuzz comme corpus de régression ; (b) aligner `PeekBits` sur son contrat
+      documenté (tolérance à sens unique aujourd'hui). **AVANT le merge** : J4 met le
+      décodeur dans un collecteur en tâche de fond du process sync — une panique sur film
+      malformé y coûterait le process entier. Sous protection des goldens J2.
+- [ ] J3.5 **Tri total des projectiles** (découverte J2-D3) : l'artefact n'est pas
+      reproductible à l'octet (map + `sort.Slice` instable, 1 position de lancer sur 130
+      bouge). Un tri total rend l'artefact ET le fixture déterministes — au service des
+      goldens, du diff, et du cache prod futur.
+- [!] J3.6 Retirer la dépendance fantôme `js-yaml` d'`apps/web` (découverte J2-D5).
+      Découverte J2-D4 (huit familles d'effet pour sept géométries, `plain` = balistique
+      aminci) : **AUCUNE action** — c'est le repli sobre documenté (`ETAT_DU_POC.md`).
+      **REFUSÉ le 2026-08-01, prémisse fausse** : ce n'est pas une dépendance fantôme mais un
+      correctif de sécurité (commit `54a6eb3df`, **CVE-2026-53550 / GHSA-h67p-54hq-rp68**).
+      `@redocly/openapi-core` épingle `js-yaml` en exact `4.1.1` (vulnérable) ; l'`overrides`
+      est le seul levier qui hisse le lockfile à `4.3.0`. Le retirer réintroduirait la faille
+      et rouvrirait l'alerte Dependabot #3. **Décision superviseur attendue** — par défaut :
+      ne rien faire, et remplacer cet item par « ne pas faire dépendre un test d'un paquet
+      qu'un tiers installe », ce qui est **déjà le cas** (`replayContract.test.ts` le dit et
+      passe par les types générés).
+
+**Découpage arrêté (70 issues)** : **J3-1** = lots A + B + J3.1/J3.2/J3.6 (mécanique, sous
+gate goldens) ; **J3-2** = lots C + D + J3.3/J3.4/J3.5 (jugement + gardes décodeur).
+
+> **J3-1 CLOS le 2026-08-01.** Lots A et B faits, J3.1/J3.2 faits, J3.6 **refusé sur prémisse
+> fausse** (sécurité — voir l'item). **Mesure 70 → 43.** Les 7 linters mécaniques sont à zéro ;
+> restent 34 `unused` (et non 33 — un `unused` était masqué par un `revive` à la même
+> position), 4 `staticcheck`, 3 `revive argument-limit`, 2 `gocyclo`.
+> **J3-2 hérite d'un item de plus** : les 3 `revive argument-limit`, écartés de la passe
+> mécanique parce que rentrer sous le plafond demande de regrouper des paramètres.
 
 ---
 
@@ -614,6 +649,40 @@ Session exécuteur — [JALON/LOT] — branche [X], worktree [chemin]
 | J5 | 1 | + le GO utilisateur et la fenêtre backfill |
 | J6 | n | par piste ; A se découpe par plan |
 
+### Modèle et niveau d'effort par session  *(ajouté le 2026-08-01, demande utilisateur)*
+
+La règle en une phrase : **si la session doit DÉCIDER (un verdict de mesure, de RE, une
+conception), monter le MODÈLE ; si elle doit APPLIQUER sous un gate objectif, c'est le FILET
+qui protège — inutile de surpayer le modèle.** L'effort suit la même pente : élevé pour
+diagnostiquer et interpréter, moyen pour exécuter du spécifié, bas pour du scripté sans
+ambiguïté. Jamais « bas » sur une session qui touche le décodeur.
+
+| session | modèle | effort | pourquoi |
+|---|---|---|---|
+| Superviseur (fil unique) | Fable 5 (contexte 1M utile) | élevé | arbitrages, revues, vérification des gates — là où une erreur coûte le plus |
+| J3-1 — lots A+B (mécanique) | Sonnet 5 *(ou Opus en mode rapide)* | moyen | mission fermée, gates objectifs (goldens J2) ; le « jugement » du lot A est déjà écrit dans le critère du plan |
+| J3-2 — lot C (33 verdicts) + D + gardes | Opus 5 | élevé | brancher/supprimer/documenter des grammaires + refactors sous goldens |
+| J4 — branchement killsource (3 sessions) | Opus 5 | élevé | code de prod sous invariants anti-ART, concurrence, migrations — le jalon le plus risqué |
+| J5 — merge + backfill prod | Opus 5 | moyen | piloté par checklist (lots E/F) ; la sûreté vient de la checklist et du superviseur |
+| J6-A — features décodeur (fil, variables, table capacités/i57, branchement ramassages) | Opus 5 | élevé | mesure + code, protocoles falsifiables déjà écrits |
+| J6-A — sessions de VERDICT RE (relecture 6 bits, événement pickup 0x02-0x3c, désérialiseurs objectifs) | **Fable 5** | **max** | le profil exact où l'auto-illusion coûte des semaines (patrons d'erreur documentés) ; un verdict faux invalide tout l'aval |
+| J6-B — port triangles (étapes 1-4) | Opus 5 | élevé | portage à gates numériques bit-exacts |
+| J6-B — génération 14 cartes + retouches (étapes 5-6) | Sonnet 5 | moyen | exécution outillée, revue visuelle humaine derrière |
+| J6-C — producteur sync objectifs | Opus 5 | élevé | écritures persist (chemin cadré §5.2-4) |
+| J6-C — consommation front · J6-G citations | Sonnet 5 | moyen | patterns du dépôt, gates typecheck/vitest |
+| J6-D — icônes | Sonnet 5 | moyen | exploration bon marché, échec sans dette, gate humain |
+| J6-E — précision projectiles (timebox 2 sessions) | **Fable 5** | **max** | timebox court sur problème dur : le meilleur modèle rentabilise les 2 sessions |
+| J6-F — design rejeu prod | superviseur (Fable 5) | élevé | document de conception, court |
+| Vérifications scriptées, inventaires | Haiku 4.5 | bas | exécuter une liste de commandes, rien à décider |
+
+Précisions d'usage :
+- **Mode rapide (Opus)** : quand la latence domine (longues passes mécaniques, backfills) —
+  même modèle, sortie plus rapide ; n'y mettre aucun verdict.
+- **Contexte 1M** : pour le superviseur et les sessions de verdict RE qui tiennent les états
+  de l'art en tête ; une mission fermée n'en a pas besoin.
+- Chaque ordre de mission remis par le superviseur porte désormais une ligne « Modèle
+  recommandé / effort » en tête.
+
 ---
 
 ## §8 — DÉCISIONS UTILISATEUR EN ATTENTE  *(tranchées AVANT la session concernée)*
@@ -790,3 +859,30 @@ comme prévu).
   `Go Lint (golangci-lint)`, assumé jusqu'à J3 — et le compte est le contrôle qui vaut : **70
   issues, exactement le chiffre de J1.4, dont AUCUNE ne vient des fichiers de J2**. Le ratchet
   est rouge de la dette connue, pas du jalon. Prochain jalon : **J3**.
+- **[2026-07-31, nuit — superviseur] J2 CONFIRMÉ CLOS, arbitrages D1-D5 RENDUS.**
+  Contre-vérifié : run 30666349775 au niveau job (identique au constat ci-dessus), fixtures
+  sur disque (`inputs` 620 Ko gz, `minifilm` 700 Ko, golden 8 Ko), arbre propre. Arbitrages :
+  **D1 + D2 → J3.4, AVANT le merge** — motif : J4 met le décodeur dans un collecteur en
+  tâche de fond du process sync, une panique sur film malformé y coûterait le process entier
+  (et ses writers DuckDB) ; sous les goldens J2, la garde est sûre. **D3 → J3.5** (tri
+  total — sert les goldens, le diff et le cache prod futur). **D5 → J3.6**. **D4 → aucune
+  action** (`plain` est le repli sobre documenté). J3 découpé en 2 sessions : **J3-1** =
+  lots A + B + J3.1/J3.2/J3.6 ; **J3-2** = lots C + D + J3.3/J3.4/J3.5. Prochain : **J3-1**.
+- **[2026-08-01 — exécuteur] J3-1 CLOS : lots A + B, J3.1, J3.2 ; J3.6 REFUSÉ. 70 → 43.**
+  Mesure d'entrée refaite cache purgé (70, dont 33 `unused`) — conforme à J1.4, aucune dérive
+  depuis J2. **Lot A** : 405 répertoires jetables supprimés (462 fichiers) + 3 entrées
+  d'allowlist retirées → 62. **J3.2** : 8 PNG de grenades orphelins. **Lot B** : les 7 linters
+  mécaniques à zéro, traités un par un, **gate joué 5 fois** (3 artefacts reconstruits, les 7
+  grandeurs du §5 identiques à l'unité près à chaque passage, goldens verts, `go test ./...`
+  vert) → 43. Commits `d53c133a9`, `0ca499eaf`, `1cb67b790`.
+  **J3.6 refusé sur prémisse fausse** : `js-yaml` en `overrides` n'est pas une dépendance
+  fantôme mais le correctif de **CVE-2026-53550** (commit `54a6eb3df`) — `@redocly/openapi-core`
+  épingle la version vulnérable en exact, l'`overrides` est le seul levier. Le retirer
+  réintroduirait la faille. **Décision superviseur attendue** (par défaut : ne rien faire).
+  **Deux choses à savoir pour J3-2** : (a) le lot C compte **34** verdicts et non 33 — un
+  `unused` était masqué par un `revive` à la même position, golangci n'en rend qu'un ;
+  (b) J3-2 hérite des **3 `revive argument-limit`**, écartés de la passe mécanique (rentrer
+  sous le plafond = regrouper des paramètres de décodage, ce n'est pas du nommage).
+  **Piège de méthode consigné** : `replay-build` ne journalise PAS les états d'inventaire —
+  sans un relevé sur l'artefact (`jq '.inventory|length'`), une des 7 grandeurs du §5 n'est
+  pas vérifiée du tout. Prochain jalon : **J3-2**.
