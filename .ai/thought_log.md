@@ -8,8 +8,9 @@ compilateur pour le shim C++. Les trois signaux tenaient en fait à deux causes,
 étaient masquées par un outil qui s'arrête au premier obstacle.
 
 **Résultats observés** :
-- **J1.1 gitleaks** : un seul finding, un gamertag (`API : HizaroMne4262 16 ; ...`) lu comme
-  une clé dans le journal RE. Exception ciblée posée sur la VALEUR, pas sur l'empreinte : un
+- **J1.1 gitleaks** : un seul finding, un gamertag du journal RE lu comme une clé parce que le
+  mot-clé « API » le précède, deux-points compris (la ligne compare le kill-feed décodé à celui
+  de l'API officielle). Exception ciblée posée sur la VALEUR, pas sur l'empreinte : un
   numéro de ligne dans un journal qui grossit ne survit pas à la modification suivante — c'est
   précisément ce qui avait invalidé les exceptions antérieures. Contrairement à ce que le plan
   supposait, le scan ne s'arrête pas au premier lot : 130,92 Mo scannés, 1 finding, et les
