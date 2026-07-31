@@ -34,6 +34,18 @@ const velScaleBits = 10
 // Cohérent avec le total i0 = 47 bits mesuré par capture Cheat Engine sur le chemin delta.
 const i0TailBits = 2
 
+// componentVitals porte la VITALITÉ capturée dans le même record biped que la position.
+//
+// Même principe que componentDirs : le balayage repart du bit qui suit i0 et consomme les
+// composants du masque dans l'ordre. i4 et i5 sont deux crans après les directions ; ils
+// n'exigent donc qu'un composant de plus (i3, angular-velocity) pour être atteints.
+type componentVitals struct {
+	HasBody   bool // i4 object-body-vitality présent ET atteint sans désync
+	Body      BodyVitality
+	HasShield bool // i5 object-shield-vitality présent ET atteint sans désync
+	Shield    ShieldVitality
+}
+
 // componentDirs porte les directions capturées dans un record biped.
 type componentDirs struct {
 	HasAim   bool   // i2 présent ET direction présente (gate==0)
@@ -101,35 +113,103 @@ func SetRecordMaskHook(h func(idx []int, payload []byte, afterI0 int)) { recordM
 func ReadBitsAtForDiag(b []byte, pos, n int) uint32 { return readBitsAt(b, pos, n) }
 
 // scanRecordDirs lit les composants qui SUIVENT i0 dans un record biped et en extrait les
-// directions empaquetées. `at` est le bit juste après i0 ; `idx` la liste des index de
-// composants déclarés par le masque (idx[0] == 0 == i0). Aucune I/O, aucun état global :
-// arrêt net au premier index non modélisé.
-func scanRecordDirs(pay []byte, at, total int, idx []int) componentDirs {
+// directions empaquetées ET la vitalité (i4 santé, i5 bouclier). `at` est le bit juste
+// après i0 ; `idx` la liste des index de composants déclarés par le masque (idx[0] == 0 ==
+// i0). Aucune I/O, aucun état global : arrêt net au premier index non modélisé.
+//
+// i3 (angular-velocity) a été ajouté le 2026-07-26 non pour sa valeur — elle n'est pas
+// capturée — mais parce qu'il SÉPARE les directions de la vitalité dans l'ordre du masque.
+// Sans lui, tout record déclarant i3 s'arrêtait avant i4/i5 ET avant i21. Conséquence
+// mesurée et publiée : la couverture du cap de visée CHANGE (elle augmente) ; c'est un
+// effet de bord assumé d'un décodeur qui va plus loin, pas une modification de la position.
+func scanRecordDirs(pay []byte, at, total int, idx []int) (componentDirs, componentVitals) {
 	var out componentDirs
+	var vit componentVitals
 	at += i0TailBits // queue d'i0 (handleSel + regionPresent)
 	for _, id := range idx[1:] {
+		var ok bool
 		switch id {
 		case 1:
-			var ok bool
 			at, ok = readVelocityComponent(pay, at, total, &out)
-			if !ok {
-				return out
-			}
 		case 2:
-			var ok bool
 			at, ok = readForwardComponent(pay, at, total, &out)
-			if !ok {
-				return out
-			}
+		case 3:
+			at, ok = readAngularVelocityComponent(pay, at, total)
+		case 4:
+			at, ok = readBodyVitalityComponent(pay, at, total, &vit)
+		case 5:
+			at, ok = readShieldVitalityComponent(pay, at, total, &vit)
 		case 21:
 			readAimingVectorComponent(pay, at, total, &out)
-			return out // i21 capturé : la suite du record ne nous intéresse pas
+			return out, vit // i21 capturé : la suite du record ne nous intéresse pas
 		default:
-			return out // composant non modélisé -> curseur non fiable, on s'arrête
+			return out, vit // composant non modélisé -> curseur non fiable, on s'arrête
+		}
+		if !ok {
+			return out, vit
 		}
 	}
-	return out
+	return out, vit
 }
+
+// readAngularVelocityComponent consomme i3 (object-angular-velocity, FUN_140d70998 =
+// FUN_14076d528) : R(1) gate ; si gate == 0 -> R(19) direction + R(8) magnitude. Même
+// famille que la vélocité i1, largeurs figées par angularMagBits / angularScaleBits.
+// Aucune valeur capturée : ce composant n'est traversé que pour atteindre i4/i5.
+func readAngularVelocityComponent(pay []byte, at, total int) (int, bool) {
+	if at+1 > total {
+		return at, false
+	}
+	gate := readBitsAt(pay, at, 1)
+	at++
+	if gate != 0 { // absent : le moteur garde sa constante, zéro bit de charge utile
+		return at, true
+	}
+	n := int(angularMagBits + angularScaleBits)
+	if at+n > total {
+		return at, false
+	}
+	return at + n, true
+}
+
+// readBodyVitalityComponent consomme i4 et capture la santé. La GRAMMAIRE n'est pas
+// réécrite ici : on positionne un BitReader sur le payload et on appelle le décodeur
+// canonique (vitality.go), seul détenteur de la forme du composant.
+func readBodyVitalityComponent(pay []byte, at, total int, vit *componentVitals) (int, bool) {
+	if at+bodyVitalityBits > total {
+		return at, false
+	}
+	br := NewBitReader(pay)
+	br.SetBitPos(at)
+	vit.Body = decodeObjectBodyVitality(br)
+	vit.HasBody = true
+	return br.BitPos(), true
+}
+
+// readShieldVitalityComponent consomme i5 et capture le bouclier. Largeur VARIABLE (29 à
+// 55 bits selon deux portes internes) : on exige d'abord le minimum lisible, puis on
+// vérifie après coup que le décodage n'a pas débordé — un décodage qui déborde rendrait des
+// zéros de bourrage, c'est-à-dire un bouclier faux.
+func readShieldVitalityComponent(pay []byte, at, total int, vit *componentVitals) (int, bool) {
+	if at+shieldVitalityMinBits > total {
+		return at, false
+	}
+	br := NewBitReader(pay)
+	br.SetBitPos(at)
+	s := decodeObjectShieldVitality(br)
+	if br.BitPos() > total {
+		return at, false
+	}
+	vit.Shield = s
+	vit.HasShield = true
+	return br.BitPos(), true
+}
+
+// Largeurs de contrôle des bornes du balayage offline (cf. TestDecodeShieldVitalityBitCost).
+const (
+	bodyVitalityBits      = 8 + 3      // i4 : quantum + 3 drapeaux
+	shieldVitalityMinBits = 8 + 1 + 20 // i5 : chemin le plus court (portes fermées)
+)
 
 // readVelocityComponent consomme i1 (object-translational-velocity) et capture la
 // direction quand elle est présente. Renvoie le bit suivant et false si le record est

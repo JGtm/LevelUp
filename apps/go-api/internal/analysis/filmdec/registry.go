@@ -30,10 +30,15 @@ const (
 type Archetype struct {
 	Index      int      // block number = archetype index in the registry
 	Components []string // ordered component names (mask bit i -> Components[i])
-	// Flags[i] = le champ flags (u32 @ slot+4) du composant i. Pour un composant à
-	// vec3 quantifié, Flags = le NIVEAU de précision L (registre = source du film) :
-	// largeur d'axe = 6+L (formule FUN_140be9b88, validé i0=L0=6/6/6, respawn-loc=L1=7/7/7).
-	// PAR-SLOT (un même nom peut avoir des L différents, ex flock-destination i2=1/i3=2).
+	// Flags[i] = le champ flags (u32 @ slot+4) du composant i, utilisé comme niveau de
+	// précision L (largeur d'axe = quantAxisWidth(L)) par le traverseur générique.
+	//
+	// CE N'EST PAS la source des largeurs de la position absolue d'un biped (i0) : le
+	// registre est BIT-À-BIT IDENTIQUE d'un film à l'autre (FNV des 1067 slots noms+flags
+	// = a413610cd08e4355 sur Cliffhanger comme sur Catalyst) alors que les largeurs d'i0
+	// changent de carte en carte (13/13/14 vs 15/15/15). Le niveau d'i0 est câblé au site
+	// d'appel (MOV R9D,0x10) et les largeurs dérivent des bornes du BSP de la carte.
+	// Découpage réel d'i0 : DetectI0Layout (i0_layout.go), lu dans le bitstream.
 	Flags []uint32
 }
 

@@ -129,7 +129,7 @@ func resolveTokens(ctx context.Context, root, xuid, gamertag string) (string, st
 	}
 	store := authpkg.NewMultiUserTokenStore(filepath.Join(root, "data", "auth", "watcher_tokens"))
 	res, err := authpkg.RefreshHaloTokensViaStoreFirst(
-		ctx, store, authpkg.NewMSALProvider(), xuid, gamertag, authpkg.LegacyAuthInputs{})
+		ctx, store, authpkg.NewSISUProvider(), xuid, gamertag, authpkg.LegacyAuthInputs{})
 	if err != nil {
 		return "", "", fmt.Errorf("refresh depuis le store (xuid %s) : %w", xuid, err)
 	}

@@ -17,10 +17,10 @@ func writeBipedRecordWithDirs(w *bitWriter, slot uint32, velDir, velScale, yaw, 
 	for _, id := range []uint64{0, 1, 21} {
 		w.bits(id, bipedIndexBits)
 	}
-	w.bits(0, bipedI0GateBits) // i0 absolu
-	w.bits(4096, 13)
-	w.bits(5000, 13)
-	w.bits(8192, 14)
+	w.bits(0, cliffLayout.GateBits) // i0 absolu
+	w.bits(4096, int(cliffLayout.AxisW[0]))
+	w.bits(5000, int(cliffLayout.AxisW[1]))
+	w.bits(8192, int(cliffLayout.AxisW[2]))
 	w.bits(0, i0TailBits) // queue i0 : handleSel + regionPresent
 	// i1 : outer=0 (chemin dynamic-precision), absent=0 (direction présente)
 	w.bits(0, 1)
@@ -43,9 +43,9 @@ func TestScanBipedRecords_CaptureDirs(t *testing.T) {
 	w.bits(0, 5) // bruit de tête
 	writeBipedRecordWithDirs(w, slot, velDir, velScale, yaw, pitch)
 
-	opt := DefaultScanFilmOptions()
+	opt := scanOptWorld()
 	opt.CaptureDirs = true
-	got := ScanBipedRecords(w.buf, map[uint32]bool{slot: true}, opt)
+	got := ScanBipedRecords(w.buf, map[uint32]bool{slot: true}, cliffLayout, opt)
 	if len(got) != 1 {
 		t.Fatalf("attendu 1 record, obtenu %d", len(got))
 	}
@@ -66,8 +66,8 @@ func TestScanBipedRecords_CaptureDirs(t *testing.T) {
 	}
 
 	// CaptureDirs désactivé : mêmes positions, aucune direction (non-régression).
-	off := DefaultScanFilmOptions()
-	plain := ScanBipedRecords(w.buf, map[uint32]bool{slot: true}, off)
+	off := scanOptWorld()
+	plain := ScanBipedRecords(w.buf, map[uint32]bool{slot: true}, cliffLayout, off)
 	if len(plain) != 1 || plain[0].X != r.X || plain[0].Y != r.Y || plain[0].Z != r.Z {
 		t.Fatalf("les positions diffèrent selon CaptureDirs : %+v vs %+v", plain, got)
 	}
@@ -80,8 +80,39 @@ func TestScanBipedRecords_CaptureDirs(t *testing.T) {
 // direction interrompt la capture au lieu de décoder du bruit.
 func TestScanRecordDirs_StopsOnUnknownComponent(t *testing.T) {
 	pay := make([]byte, 64)
-	out := scanRecordDirs(pay, 0, len(pay)*8, []int{0, 7, 21})
+	out, vit := scanRecordDirs(pay, 0, len(pay)*8, []int{0, 7, 21})
 	if out.HasVel || out.HasYaw || out.HasAim {
 		t.Errorf("capture après un composant inconnu : %+v", out)
+	}
+	if vit.HasBody || vit.HasShield {
+		t.Errorf("vitalité capturée après un composant inconnu : %+v", vit)
+	}
+}
+
+// TestScanRecordVitals_ReachedThroughAngularVelocity : i4/i5 se lisent bien APRÈS i3, dont
+// le seul rôle ici est d'être traversé. Le flux est fabriqué bit à bit — c'est la seule
+// façon de vérifier l'ENCHAÎNEMENT (le film réel ne dit pas où commence i4).
+func TestScanRecordVitals_ReachedThroughAngularVelocity(t *testing.T) {
+	var w bitWriter
+	w.bits(0, i0TailBits) // queue d'i0
+	w.bits(1, 1)          // i3 : gate == 1 -> absent, zéro bit de charge utile
+	w.bits(254, 8)        // i4 : quantum de santé = max
+	w.bits(0, 3)          // i4 : trois drapeaux
+	w.bits(255, 8)        // i5 : quantum de bouclier = max
+	w.bits(0, 1)          // i5 : pas de bloc de regen
+	w.bits(0x1234, 16)    // i5 : mot inline
+	w.bits(0b1010, 4)     // i5 : quatre drapeaux
+	_, vit := scanRecordDirs(w.buf, 0, len(w.buf)*8, []int{0, 3, 4, 5})
+	if !vit.HasBody || !vit.HasShield {
+		t.Fatalf("vitalité non atteinte à travers i3 : %+v", vit)
+	}
+	if vit.Body.Health != VitalityBodyMax {
+		t.Errorf("santé = %v, attendu %v (q=254 = extrémité exacte)", vit.Body.Health, VitalityBodyMax)
+	}
+	if vit.Shield.Shield != VitalityShieldMax {
+		t.Errorf("bouclier = %v, attendu %v (q=255 = extrémité exacte)", vit.Shield.Shield, VitalityShieldMax)
+	}
+	if vit.Shield.Block64 != 0x1234 {
+		t.Errorf("mot inline du bouclier = %04x — l'enchaînement des bits est décalé", vit.Shield.Block64)
 	}
 }

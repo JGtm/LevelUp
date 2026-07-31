@@ -121,15 +121,15 @@ Tout ceci n'existe **que** chez nous et n'entre en collision avec rien :
 
 ### Phase C — les 16 fichiers `filmdec`  *(le vrai travail)*
 
-- [ ] C1. Pour chacun, **diff des deux versions** et décision explicite. Les deux lignées
+- [x] C1. Pour chacun, **diff des deux versions** et décision explicite. Les deux lignées
       descendent de la même recherche : une bonne part des écarts sera **additive**, pas
       contradictoire.
-- [ ] C2. **La règle de départage** : quand les deux versions décodent la même chose
+- [x] C2. **La règle de départage** : quand les deux versions décodent la même chose
       différemment, celle qui a un **test** ou une **mesure publiée** gagne. À défaut, garder les
       deux chemins et mesurer.
-- [ ] C3. **Ne jamais supprimer un fichier propre à l'autre lignée.** `killhealth.go` sert au
+- [x] C3. **Ne jamais supprimer un fichier propre à l'autre lignée.** `killhealth.go` sert au
       killfeed, `fire_events.go` au rejeu — les deux restent.
-- [ ] C4. Le point le plus délicat est `traverse.go` (144/105) : c'est le dispatch des ~200
+- [x] C4. Le point le plus délicat est `traverse.go` (144/105) : c'est le dispatch des ~200
       grammaires de composants. Les deux lignées y ont ajouté des branches différentes. **Les
       réunir, pas en choisir une.**
 
@@ -302,6 +302,77 @@ Elles ne portent pas sur le décodeur — celui-ci se réconcilie bien comme pr�
 
 Aucun ne contient de marqueur de conflit : ils sont **intacts**, à l'état `main`. Le travail
 restant est le recâblage décrit ci-dessus, pas une résolution de conflit.
+
+### [2026-07-31] Phase C — CLOSE. **Les deux lignées avaient un ancêtre commun.**
+
+**LE FAIT QUI CHANGE TOUT, ET QUE LE §2 SE TROMPAIT EN NIANT.** Le plan posait deux lignées
+« indépendantes », donc 16 conflits `add/add` à réconcilier à la main — 2 972 lignes ajoutées
+contre 1 488 supprimées. C'est faux, et c'est mesurable :
+
+```
+git merge-base feat/filmdec-continuation feat/filmdec-killweapon  ->  83ea06dd5   (43 fichiers filmdec)
+git diff feat/filmdec-killweapon feat/killsource-prod -- .../filmdec/              ->  VIDE
+```
+
+`83ea06dd5` porte déjà 43 fichiers `filmdec`, et le `filmdec` de `killsource-prod` est
+**identique octet pour octet** à celui de `filmdec-killweapon`. Il existe donc un **ancêtre
+commun du décodeur**, et les 16 fichiers ne sont pas un `add/add` : c'est une **fusion à trois
+voies ordinaire**.
+
+- **C1** `[x]` — les 16 fusionnés avec `83ea06dd5` pour base. **14 se fusionnent
+  automatiquement**, 2 seulement conflictent (`components_movement.go` : 1 ; `unit_weaponstate.go` :
+  8). Le « vrai travail » annoncé par le §3 se réduit à 9 conflits, tous dans 2 fichiers.
+- **C2** `[x]` — règle de départage appliquée deux fois seulement, et jamais en éliminant :
+  - `components_movement.go` : `absAxisW(pd,i)` (nous) contre `absAxisWFor(pd,idx,i)` (eux).
+    **Aucun arbitrage nécessaire** : `absAxisWFor` retombe sur `absAxisW` quand aucune table par
+    index n'est installée — ce qui est le défaut. Leur version est un sur-ensemble strict de la
+    nôtre ; elle est retenue, et notre mesure (47 bits, table de région 13/13/14) est préservée
+    telle quelle.
+  - `unit_weaponstate.go` : **les deux lignées ont trouvé la même correction, à un jour
+    d'intervalle et par la même méthode statique** — la rotation d'un cran de i25/i26/i27, puis
+    la polarité active-basse du gate de `weapon-state-ammo`. Les corps de fonction obtenus sont
+    identiques ; seuls les commentaires divergeaient. **Les deux faisceaux de preuve sont
+    conservés** (nos mesures de largeur — 22 bits à 100 %, n=40 — et leurs adresses de `getName`
+    + le recoupement Rosette à 10 bits), parce qu'ils ne se recouvrent pas.
+- **C3** `[x]` — aucun fichier propre à une lignée n'a été supprimé. `killhealth.go`,
+  `default_state_arch.go`, `components_flock.go`, `components_walk_batch9.go` (eux) et
+  `capture.go`, `fire_events.go`, `grenade_events.go`, `i0_layout.go`, `keyframe_loadout.go`,
+  `map_bounds.go`, `projectiles.go`, `vitality.go` (nous) cohabitent.
+- **C4** `[x]` — `traverse.go`, annoncé comme le point le plus délicat (144/105), **se fusionne
+  automatiquement** : les branches ajoutées de part et d'autre du dispatch ne se recouvrent pas.
+
+**Quatre ruptures de compilation, toutes hors décodeur**, dues à l'évolution de `main` :
+
+| symbole | cause | correctif |
+|---|---|---|
+| `authpkg.NewMSALProvider` (×2 : `cmd/tmp_filmmanifest`, `cmd/mapobj-build`) | ADR 0023 — MSAL retiré | `NewSISUProvider()`, le helper canonique des CLI de `main` |
+| `nullableStr` (`weapon_kills_v3_repo.go`) | helper disparu de `main` | `nullableString`, même signature, même sémantique |
+| `port.MatchViewService` incomplet | notre `port/services.go` a fusionné proprement, pas le service | les 2 champs, 2 `With*` et 2 méthodes (`GetObjectiveEvents`, `GetMatchPositions`) reportés — additif pur, aucune couche HTTP touchée |
+
+**GATE — `go build ./...` vert, et les deux lignées de mesures tiennent.**
+
+| test | résultat |
+|---|---|
+| `go test ./internal/analysis/filmdec/...` | `ok 0.305s` |
+| `go test ./internal/games/halo_infinite/film/killsource/...` (golden) | `ok 0.301s` |
+| `go test ./internal/analysis/replay/...` | `ok` (+ `mapvar` `ok`) |
+| `go test ./internal/analysis/weaponv3/...` | `ok 43.1s` |
+
+**Les critères §5 du rejeu, reconstruits sur la branche fusionnée — tous exacts :**
+
+| grandeur | attendu | obtenu |
+|---|---|---|
+| traces / points (`000d5950`) | 99 / 29 221 | **99 / 29 221** |
+| tirs rattachés | 475 / 519 | **475 / 519** |
+| vies nommées | 90 / 105 | **90 / 105** |
+| lancers | 70 / 70 | **70 / 70** |
+| projectiles | 439 | **439** |
+| états d'inventaire | 184 | **184** |
+| emprises de structure | 10 223 | **10 223** |
+| `01e1f945` | 1 862 / 2 154 | **1 862 / 2 154** |
+| `64e8adfa` | 2 312 / 2 879 | **2 312 / 2 879** |
+
+Aucun écart. La réunion du décodeur est **bit-exacte** des deux côtés.
 
 ### Découvertes (hors périmètre, non traitées)
 

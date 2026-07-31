@@ -2,6 +2,22 @@ package filmdec
 
 import "testing"
 
+// cliffLayout est le découpage d'i0 de la carte de 000d5950 (Cliffhanger), établi par
+// DetectI0Layout sur le film et recoupé avec la table de largeurs live (13/13/14).
+var cliffLayout = I0Layout{GateBits: DefaultI0GateBits, AxisW: [3]uint{13, 13, 14}}
+
+// cliffRange est l'AABB monde du BSP de Cliffhanger (module `ridgeline`), lue avec
+// internal/himap. Les bornes sont PROPRES À LA CARTE : le décodeur les exige désormais.
+var cliffRange = QuantRangeCEBiped
+
+// scanOptWorld : réglages par défaut + bornes de carte (le décodeur refuse d'émettre des
+// coordonnées monde sans elles).
+func scanOptWorld() ScanFilmOptions {
+	o := DefaultScanFilmOptions()
+	o.WorldRange = &cliffRange
+	return o
+}
+
 // writeBipedRecord écrit un record biped conforme à la grammaire décodée (bitWriter est
 // l'écrivain MSB-first partagé des tests du package, cf. frame_chain_infer_test.go).
 func writeBipedRecord(w *bitWriter, slot uint32, tag, maskCount uint64, qx, qy, qz uint64) {
@@ -13,10 +29,10 @@ func writeBipedRecord(w *bitWriter, slot uint32, tag, maskCount uint64, qx, qy, 
 	for k := uint64(0); k < maskCount; k++ {
 		w.bits(k, bipedIndexBits) // indices croissants depuis 0
 	}
-	w.bits(0, bipedI0GateBits) // i0 absolu
-	w.bits(qx, 13)
-	w.bits(qy, 13)
-	w.bits(qz, 14)
+	w.bits(0, cliffLayout.GateBits) // i0 absolu
+	w.bits(qx, int(cliffLayout.AxisW[0]))
+	w.bits(qy, int(cliffLayout.AxisW[1]))
+	w.bits(qz, int(cliffLayout.AxisW[2]))
 }
 
 // TestScanBipedRecords_RoundTrip : un record synthétique conforme est retrouvé et
@@ -28,14 +44,14 @@ func TestScanBipedRecords_RoundTrip(t *testing.T) {
 	writeBipedRecord(w, slot, 1, 3, 4096, 5000, 8192)
 	w.bits(0, 64) // queue
 
-	got := ScanBipedRecords(w.buf, map[uint32]bool{slot: true}, DefaultScanFilmOptions())
+	got := ScanBipedRecords(w.buf, map[uint32]bool{slot: true}, cliffLayout, scanOptWorld())
 	if len(got) != 1 {
 		t.Fatalf("attendu 1 record, obtenu %d (%+v)", len(got), got)
 	}
 	if got[0].Slot != slot {
 		t.Errorf("slot = %d, attendu %d", got[0].Slot, slot)
 	}
-	wantX, wantY, wantZ := DequantBipedAxis(4096, 0), DequantBipedAxis(5000, 1), DequantBipedAxis(8192, 2)
+	wantX, wantY, wantZ := DequantBipedAxis(4096, 0, cliffLayout, cliffRange), DequantBipedAxis(5000, 1, cliffLayout, cliffRange), DequantBipedAxis(8192, 2, cliffLayout, cliffRange)
 	if got[0].X != wantX || got[0].Y != wantY || got[0].Z != wantZ {
 		t.Errorf("position = (%f,%f,%f), attendu (%f,%f,%f)", got[0].X, got[0].Y, got[0].Z, wantX, wantY, wantZ)
 	}
@@ -44,41 +60,41 @@ func TestScanBipedRecords_RoundTrip(t *testing.T) {
 // TestScanBipedRecords_Rejects : slot hors bande, tag != 1 et bucket saturé sont rejetés.
 func TestScanBipedRecords_Rejects(t *testing.T) {
 	const slot uint32 = 517
-	opt := DefaultScanFilmOptions()
+	opt := scanOptWorld()
 
 	w := &bitWriter{}
 	writeBipedRecord(w, slot, 1, 3, 4096, 5000, 8192)
-	if got := ScanBipedRecords(w.buf, map[uint32]bool{999: true}, opt); len(got) != 0 {
+	if got := ScanBipedRecords(w.buf, map[uint32]bool{999: true}, cliffLayout, opt); len(got) != 0 {
 		t.Errorf("slot hors bande accepté: %+v", got)
 	}
 
 	w2 := &bitWriter{}
 	writeBipedRecord(w2, slot, 2, 3, 4096, 5000, 8192) // tag != 1
-	if got := ScanBipedRecords(w2.buf, map[uint32]bool{slot: true}, opt); len(got) != 0 {
+	if got := ScanBipedRecords(w2.buf, map[uint32]bool{slot: true}, cliffLayout, opt); len(got) != 0 {
 		t.Errorf("tag != 1 accepté: %+v", got)
 	}
 
 	w3 := &bitWriter{}
 	writeBipedRecord(w3, slot, 1, 3, 0, 5000, 8192) // qx == 0 -> écrêté
-	if got := ScanBipedRecords(w3.buf, map[uint32]bool{slot: true}, opt); len(got) != 0 {
+	if got := ScanBipedRecords(w3.buf, map[uint32]bool{slot: true}, cliffLayout, opt); len(got) != 0 {
 		t.Errorf("quantum saturé accepté: %+v", got)
 	}
 	noDrop := opt
 	noDrop.DropSaturated = false
-	if got := ScanBipedRecords(w3.buf, map[uint32]bool{slot: true}, noDrop); len(got) != 1 {
+	if got := ScanBipedRecords(w3.buf, map[uint32]bool{slot: true}, cliffLayout, noDrop); len(got) != 1 {
 		t.Errorf("DropSaturated=false devrait conserver le record, obtenu %d", len(got))
 	}
 }
 
 // TestDequantBipedAxis vérifie la formule mi-bucket sur les bornes du range biped.
 func TestDequantBipedAxis(t *testing.T) {
-	rng := QuantRangeCEBiped[0]
+	rng := cliffRange[0]
 	step := (float64(rng.Max) - float64(rng.Min)) / 8192
 	want := float32(float64(rng.Min) + step*0.5)
-	if got := DequantBipedAxis(0, 0); got != want {
+	if got := DequantBipedAxis(0, 0, cliffLayout, cliffRange); got != want {
 		t.Errorf("DequantBipedAxis(0,0) = %f, attendu %f", got, want)
 	}
-	if got := DequantBipedAxis(8191, 0); got <= float32(float64(rng.Max)-step) || got >= rng.Max {
+	if got := DequantBipedAxis(8191, 0, cliffLayout, cliffRange); got <= float32(float64(rng.Max)-step) || got >= rng.Max {
 		t.Errorf("DequantBipedAxis(8191,0) = %f, attendu juste sous %f", got, rng.Max)
 	}
 }

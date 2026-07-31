@@ -329,9 +329,23 @@ func consumeAbsoluteWithGate(br *BitReader, pd PrecisionDescriptor) {
 	}
 	var v [3]float32
 	for i := 0; i < 3; i++ {
-		w := absAxisWFor(pd, idx, i)                  // largeur par index (7ter.54) ou uniforme
+		// Les deux lignées se rejoignent ici sans se contredire : `absAxisWFor` cherche
+		// d'abord la largeur PAR INDEX de plage (7ter.54), et retombe sur `absAxisW` —
+		// la table de région 13/13/14 qui ferme le compte à 47 bits — quand aucune table
+		// par index n'est installée, ce qui est le défaut. La mesure du rejeu est donc
+		// préservée telle quelle, et le chemin par index reste disponible.
+		w := absAxisWFor(pd, idx, i)                  // par index (7ter.54), sinon région 13/13/14
 		v[i] = dequantWorldAxis(br.ReadBits(w), w, i) // FUN_140cc5128 axis i
 	}
+	// Champ « fini » de 2 bits — FUN_14076e304, appelé en LAB_1406cffd7 sous un prédicat
+	// (FUN_140492128) qui ne consomme AUCUN bit : il est donc lu systématiquement.
+	//
+	// AJOUTÉ le 2026-07-27. Le chemin world-object le lisait déjà (traverse.go, `[2 finite]`
+	// de son total de 45 bits) ; le chemin dynamic-precision du bipède ne l'a jamais lu. Les
+	// deux portent pourtant le MÊME lecteur absolu — c'est la double implémentation qui les
+	// a laissés diverger. Sans ces 2 bits le compte tombait à 45 au lieu des 47 mesurés par
+	// la capture CE (100 % de 154 158 dispatches, aucune variance).
+	br.ReadBits(2)
 	// Only index-0 positions are in the map bounds (real player positions). index!=0
 	// dequantizes against ±20000 (off-map) and is noise for a trajectory -> don't emit.
 	if idx != 0 {
@@ -365,16 +379,34 @@ func consumePositionHandleTail(br *BitReader, bHandle bool, pd PrecisionDescript
 	}
 }
 
-// quantAxisWidth retourne la largeur en bits d'un axe de position/vecteur quantifié pour
-// un composant de niveau de précision L (= le champ flags du registre chunk_00, arch.Level(i)).
-// C'est la FORME FERMÉE du calcul de largeur fait par le jeu au map-load (FUN_140be9b88) :
+// quantAxisWidth retourne la largeur en bits d'un axe quantifié dans la TABLE PAR DÉFAUT
+// du moteur — celle bâtie sur la BOÎTE MONDE (DAT_143b8c6b8, range ≈ 40000 unités par axe),
+// et non sur une région de compression.
 //
-//	axisW = min(26, bitLen(ceil(range/(2·step(L)))))   step(L)=2^(16-L)/120   range=40000 (±20000, DAT_143b8c6b8)
+//	W(L) = min(26, ceilLog2(ceil(rangeMonde / (2·q(L)))))   q(L) = 2^(16-L)/120
 //
-// qui se réduit à min(26, 6+L) pour L in 0..20. VÉRIFIÉ OFFLINE (workflow type1-precision-table-re,
-// 2026-07-03) : les largeurs de quantification NE sont PAS dans un chunk du film ; ce sont une
-// fonction pure de L (déjà dans le registre) + des constantes du build. Le chunk type-1 (ladder
-// 0x414<<L) est redondant avec cette formule. L=0 → 6/6/6 confirmé live.
+// se réduit à min(26, 6+L) pour L ∈ [0,20] (FUN_140be9b88 ; forme fermée vérifiée terme à
+// terme par TestQuantAxisWidthFormula contre la formule complète, pas par tautologie).
+//
+// PÉRIMÈTRE — ce que cette largeur N'EST PAS. Elle ne s'applique PAS à la position d'objet
+// répliquée (composant i0). Celle-ci passe par la table PAR RÉGION, bâtie sur l'AABB du BSP
+// de la carte : W = min(26, ceilLog2(ceil(60·extent))) au niveau 16 câblé au site d'appel.
+// Cette largeur-là est propre à la carte (12/12/12 sur Streets, 18/19/17 sur Highpower...) ;
+// elle est lue dans le film par DetectI0Layout et recoupée aux bornes du module de la carte
+// (cf. i0_layout.go, map_bounds.go, cmd/mapquant-build) — confrontation réussie sur 13
+// cartes / 13, largeurs identiques sur les 3 axes.
+//
+// POURQUOI ELLE RESTE VALABLE ICI. Les seuls appelants sont des composants NON-POSITION
+// (crew-order, tacmap-poiicon/offset, flock-destination, desired-respawn-location) : leur
+// vec3 n'est jamais émis comme coordonnée, il n'est consommé que pour rester aligné sur le
+// bitstream. Deux réserves explicites :
+//   - la source de L (le champ flags du registre chunk_00) reste une PISTE pour ces
+//     composants : le registre est bit-à-bit identique d'un film à l'autre, il ne peut donc
+//     pas porter d'information par carte ; pour un vec3 borné par la boîte monde c'est
+//     cohérent, mais aucun de ces composants n'a été validé au bit près ;
+//   - si l'un d'eux s'avérait borné par une région, il faudrait la table par région, pas
+//     celle-ci.
+//
 // Cf .ai/HANDOFF_KEYFRAME_LIVE_CAPTURE.md « LES LARGEURS SONT OFFLINE ».
 func quantAxisWidth(level uint) uint {
 	if w := 6 + level; w < 26 {

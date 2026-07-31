@@ -110,39 +110,38 @@ func consumeObjectForwardAndUp(br *BitReader) {
 //
 //	R(8)        (FUN_1406d84b4 width 8: quantized health -> comp+0x58)
 //	R(1) x 3    (FUN_1406cf008 x3: flags -> comp+0x5c/0x5d/0x5e)
+//
+// La GRAMMAIRE vit dans decodeObjectBodyVitality (vitality.go) : ce sauteur de bits n'en
+// est que la façade « sans valeur », pour ne pas avoir deux copies qui divergent.
 func consumeObjectBodyVitality(br *BitReader) {
-	br.ReadBits(8) // health (dequant width 8)
-	br.ReadBit()   // flag +0x5c
-	br.ReadBit()   // flag +0x5d
-	br.ReadBit()   // flag +0x5e
+	_ = decodeObjectBodyVitality(br)
 }
 
-// consumeObjectShieldVitality (i5) mirrors the shield-vitality deser. The engine
-// reuses the vitality-component template (same shape as body-vitality, parameter-
-// ized by the target offset block), so the bit-consume is identical:
+// consumeObjectShieldVitality (i5) porte FUN_140d50cbc — DESERIALISEUR IDENTIFIE,
+// relu au decompile le 2026-07-26. Ce n'est PLUS une inference par gabarit, et sa
+// forme n'est PAS celle de body-vitality (le commentaire precedent, « R(8) + 3
+// drapeaux, INFERRED-BY-TEMPLATE », etait faux et contredisait le code sous lui) :
 //
-//	R(8)        (quantized shield value)
-//	R(1) x 3    (shield flags)
+//	FUN_1406d84b4(br, br, min=0.0f, max=DAT_143cd893c, W=8, excl=0, endpointExact=1)
+//	                                                       -> f32 @+0x60
+//	FUN_1406cf008 = R(1) presence                          -> +0x6e
+//	   si presence : 2 x FUN_1411b1ac0 (chacun R(1) ; si bit==1 -> R(12)) @+0x6a/+0x6c
+//	R(16) inline                                           -> +0x64
+//	4 x FUN_1406cf008 = R(1)                               -> +0x66, +0x67, +0x69, +0x68
 //
-// INFERRED-BY-TEMPLATE: resolved structurally (object-shield-vitality-component
-// @ .rdata 0x143c99118 shares the vitality vtable family with body-vitality), not
-// by a direct decompile of the exact instance deser. Re-validate the trailing 3
-// flags against a real record if i5..i17 tail drifts.
+// DAT_143cd893c = 0x40800000 = 4.0f (lu en memoire). TOUTES les largeurs sont des
+// LITTERAUX (8 / 16 / 12) et les bornes des constantes .rdata : ce composant ne depend
+// d'AUCUNE precision runtime chargee avec la carte.
+// L'ordre des 4 derniers drapeaux n'est pas sequentiel (+0x69 avant +0x68) — c'est
+// l'ordre du desassemblage, ne pas le « corriger ».
+// Cout : 29 / 31 / 43 / 55 bits selon les portes (mesure figee par
+// TestDecodeShieldVitalityBitCost). La note historique « 25 / 27 / 39 / 51 » etait fausse
+// de 4 bits : elle oubliait les quatre R(1) de queue, que le code a toujours lus.
+//
+// La GRAMMAIRE vit dans decodeObjectShieldVitality (vitality.go) : ce sauteur de bits n'en
+// est que la façade « sans valeur », pour ne pas avoir deux copies qui divergent.
 func consumeObjectShieldVitality(br *BitReader) {
-	br.ReadBits(8)    // shield value (+0x60)
-	if br.ReadBit() { // presence of regen/recharge pair (+0x6e)
-		if br.ReadBit() { // regen #0 (+0x6a): R(1) presence + R(12)
-			br.ReadBits(12)
-		}
-		if br.ReadBit() { // regen #1 (+0x6c)
-			br.ReadBits(12)
-		}
-	}
-	br.ReadBits(16) // inline 16-bit block (+0x64)
-	br.ReadBit()    // flag +0x66
-	br.ReadBit()    // flag +0x67
-	br.ReadBit()    // flag +0x69
-	br.ReadBit()    // flag +0x68
+	_ = decodeObjectShieldVitality(br)
 }
 
 // consumeObjectDeadState (i11) mirrors FUN_140c1dce0. It returns the death flag
@@ -412,9 +411,9 @@ func consumeWeaponStateTypeInfoVariant(br *BitReader) (variant uint32, present b
 	}
 	br.ReadBit()                  // comp+0x82 low bit
 	consumeWeaponMagazineList(br) // FUN_1407f2494
-	consumeWeaponAttachmentBlock(br)
-	consumeOpt5(br)            // FUN_1407f2058: R(1); if 0 -> R(5)
-	consumeWeaponStateTail(br) // FUN_1407f08bc + FUN_1406d01fc
+	consume1407f0550(br)          // copie unique de FUN_1407f0550 (cf. note de suppression plus bas)
+	consumeOpt5(br)               // FUN_1407f2058: R(1); if 0 -> R(5)
+	consumeWeaponStateTail(br)    // FUN_1407f08bc + FUN_1406d01fc
 	return variant, true
 }
 
@@ -487,32 +486,17 @@ func consumeWeaponMagazineList(br *BitReader) {
 	}
 }
 
-// consumeWeaponAttachmentBlock mirrors FUN_1407f0550:
+// SUPPRIMÉ le 2026-07-26 : `consumeWeaponAttachmentBlock` portait FUN_1407f0550 une
+// SECONDE fois, avec une grammaire divergente de `consume1407f0550`
+// (unit_weaponstate.go) — et FAUSSE sur deux points, tranchés au désassemblage :
 //
-//	FUN_1404d343c       (0 control bits in the common case)
-//	R(1) gate (FUN_14080d69c); if 1 -> FUN_1407f061c (sub)
-//	3 fixed entries (static array stride 0xC, comp+0xc..0x30), each:
-//	   R(8)            (FUN_1406d1024 -> actually R(1);if0->R(6); modeled R(8) byte)
-//	   R(1); if 1 -> dequant (FUN_1406d84b4 width 8)
-//	   R(1); if 1 -> dequant (FUN_1406d84b4 width 8)
+//	1407f0571 CALL 0x14080d69c   ; la porte EST `R(1) ; si le bit est mis -> FUN_14080d6f0`
+//	                             ; et FUN_14080d6f0 lit R(32). Le doublon omettait ce R(32)
+//	                             ; (sous-lecture de 32 bits dès que la porte est ouverte).
+//	1407f060d MOV dword ptr [RSP+0x20], 0xc ; CALL 0x1406d84b4  <- dequant = 12 bits
+//	142325ec2 MOV dword ptr [RSP+0x20], 0xc ; CALL 0x1406d84b4  <- bloc distant : 12 AUSSI
+//	                             ; le doublon lisait 8 (sous-lecture de 4 bits par porte).
 //
-// NOTE: the per-entry first read is FUN_1406d1024 (R(1)+[R(6)]), not a flat R(8);
-// modeled via consumeOpt6. The two dequant fields are width-8.
-func consumeWeaponAttachmentBlock(br *BitReader) {
-	if br.ReadBit() { // FUN_14080d69c gate
-		// CORRIGÉ (workflow RE 2026-06-10, FUN_1407f061c) : compteur R(6)+1 + count×R(1) (était R(32)).
-		m := br.ReadBits(6) + 1
-		for i := uint64(0); i < m; i++ {
-			br.ReadBit()
-		}
-	}
-	for i := 0; i < 3; i++ {
-		consumeOpt6(br) // FUN_1406d1024
-		if br.ReadBit() {
-			br.ReadBits(8) // dequant width 8
-		}
-		if br.ReadBit() {
-			br.ReadBits(8) // dequant width 8
-		}
-	}
-}
+// Les deux `MOV ..., 0xc` ont été relus instruction par instruction (disassemble_bytes,
+// HaloInfinite.exe, image base 140000000). L'appelant `consumeWeaponStateTypeInfoVariant`
+// route désormais vers la copie unique `consume1407f0550`.

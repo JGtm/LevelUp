@@ -1,3 +1,44 @@
+## [2026-07-31] Réconciliation rejeu 2D x killsource — Phase C : les deux décodeurs avaient un ancêtre commun
+
+**Statut** : Complété (phase C du plan `.ai/PLAN_RECONCILIATION_BRANCHES.md`).
+
+**Décision technique — et la prémisse du plan était fausse, c'est le seul point intéressant.**
+Le plan posait deux lignées « indépendantes » du décodeur, donc 16 conflits `add/add` à
+réconcilier à la main (2 972 lignes ajoutées / 1 488 supprimées). Vérification faite :
+`git merge-base feat/filmdec-continuation feat/filmdec-killweapon` = `83ea06dd5`, qui porte
+**déjà 43 fichiers `filmdec`** ; et le `filmdec` de `feat/killsource-prod` est **identique octet
+pour octet** à celui de `feat/filmdec-killweapon` (diff vide). Il existe donc un ancêtre commun
+du décodeur : ce n'est pas un `add/add`, c'est une fusion à trois voies ordinaire. Faite avec
+`83ea06dd5` pour base, **14 des 16 fichiers se fusionnent automatiquement**.
+
+**Résultats observés.**
+- 2 fichiers seulement conflictent, pour 9 conflits au total. `traverse.go` — annoncé comme le
+  point le plus délicat — se fusionne **automatiquement** : les branches ajoutées de part et
+  d'autre du dispatch ne se recouvrent pas.
+- `components_movement.go` : aucun arbitrage nécessaire. Leur `absAxisWFor(pd,idx,i)` retombe sur
+  notre `absAxisW(pd,i)` quand aucune table par index n'est installée (le défaut) — sur-ensemble
+  strict, retenu sans perte de notre mesure des 47 bits.
+- `unit_weaponstate.go` : **les deux lignées ont trouvé la même correction, à un jour d'intervalle
+  et par la même méthode statique** (rotation d'un cran de i25/i26/i27, puis polarité active-basse
+  du gate de `weapon-state-ammo`). Corps de fonction identiques, commentaires seuls divergents :
+  les deux faisceaux de preuve sont conservés, ils ne se recouvrent pas.
+- 4 ruptures de compilation, toutes **hors décodeur**, dues à l'évolution de `main` :
+  `authpkg.NewMSALProvider` ×2 → `NewSISUProvider` (ADR 0023) ; `nullableStr` → `nullableString` ;
+  `port.MatchViewService` incomplet → report additif des 2 champs / 2 `With*` / 2 méthodes du
+  service (aucune couche HTTP touchée).
+- **`go build ./...` vert.** Tests verts des deux côtés : `filmdec` 0,305 s, `killsource`
+  (golden) 0,301 s, `replay` + `mapvar`, `weaponv3` 43,1 s.
+- **Les critères d'acceptation §5 du rejeu sont reproduits à l'identique**, sur les trois films :
+  `000d5950` 99 traces / 29 221 points, 475/519 tirs, 90/105 vies, 70/70 lancers, 439 projectiles,
+  184 états d'inventaire, 10 223 emprises ; `01e1f945` 1 862/2 154 ; `64e8adfa` 2 312/2 879.
+  **Aucun écart** — la réunion est bit-exacte.
+
+**Conclusion / prochaine étape.** Le décodeur est réuni et prouvé. Reste le recâblage de l'API
+(endpoint `/replay` en Huma) et de la route web (schéma `{-$lang}/t/$titleSlug`), puis les gates
+d'application (`go test ./...`, `make check-types`, vitest, ratchets de pré-push).
+
+---
+
 ## [2026-07-31] Réconciliation rejeu 2D x killsource — Phases A et B (additif porté)
 
 **Statut** : Phase A complétée, Phase B partiellement complétée (l'additif est porté ; le
