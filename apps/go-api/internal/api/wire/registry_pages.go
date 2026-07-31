@@ -96,11 +96,27 @@ func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.Matc
 		// cette page → cadence + 8 rôles bucketés sur l'horloge du film (countdown
 		// inclus). Câblé ici comme Timeseries (parité), le pipeline route les events
 		// par timeline.CorrectEvents avant les builders narrative.
-		WithHighlightEventsRepo(duckdb.NewHighlightEventsRepo(pdb))
+		WithHighlightEventsRepo(duckdb.NewHighlightEventsRepo(pdb)).
+		// Timeline objectif v3 + positions joueurs keyframe v3 : deux loaders
+		// optionnels. Titre sans film / tables absentes → le repo remonte
+		// ErrCapabilityNotSupported et l'endpoint rend un 503 propre.
+		WithObjectiveEventsRepo(duckdb.NewObjectiveEventsRepo(pdb)).
+		WithPlayerPositionsRepo(duckdb.NewPlayerPositionsRepo(pdb))
 	if loader := r.buildFriendsExtrasResolver(pdb); loader != nil {
 		svc = svc.WithFriendsExtras(loader)
 	}
 	return svc, nil
+}
+
+// Replay retourne un ReplayService pour le joueur : sert l'artefact de rejeu 2D
+// pré-construit (data/cache/replays/{title}/{matchId}.json) résolu par PathResolver. Le
+// titre vient du joueur résolu (pdb.TitleSlug, jamais un slug en dur — multi-titre).
+func (r *ServiceRegistry) Replay(ctx context.Context, slug string) (port.ReplayService, error) {
+	pdb, err := r.resolve(ctx, slug)
+	if err != nil {
+		return nil, err
+	}
+	return service.NewReplayService(pdb.TitleSlug, r.cfg.RepoRoot), nil
 }
 
 // MatchEvents retourne un MatchEventsService pour le joueur : timeline canonique

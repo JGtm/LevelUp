@@ -12,13 +12,11 @@
 package handlers
 
 import (
-	"errors"
+	"context"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
-
 	"levelup/go-api/internal/analysis/positions"
-	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/api/humacore"
 )
 
 // matchPositionDTO est la projection JSON camelCase d'une positions.PlayerPosition.
@@ -48,35 +46,37 @@ func toMatchPositionsDTO(pos []positions.PlayerPosition) []matchPositionDTO {
 	return out
 }
 
-// GetMatchPositions retourne les positions joueurs keyframe v3 d'un match.
+// matchPositionsInput : {player_slug} parent + {match_id}.
+type matchPositionsInput struct {
+	PlayerSlug string `path:"player_slug"`
+	MatchID    string `path:"match_id"`
+}
+
+type matchPositionsOutput struct{ Body []matchPositionDTO }
+
+// handleGetMatchPositions retourne les positions joueurs keyframe v3 d'un match.
 // GET /api/v1/players/{player_slug}/matches/{match_id}/positions
 //
 // Capability gating : si le titre n'expose pas le film (repo non câblé ou table
 // absente), le service remonte games.ErrCapabilityNotSupported → 503
 // capability_not_supported (dégradation gracieuse, pas une 500).
-func (h *MatchViewHandler) GetMatchPositions(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, err := h.newSvc(r.Context(), slug)
+func (h *MatchViewHandler) handleGetMatchPositions(
+	ctx context.Context, in *matchPositionsInput,
+) (*matchPositionsOutput, error) {
+	svc, err := h.resolve(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, err
+	}
+	if in.MatchID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_match_id", "match_id est requis")
 	}
 
-	matchID := chi.URLParam(r, "match_id")
-	if matchID == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_match_id", "match_id est requis")
-		return
-	}
-
-	pos, err := svc.GetMatchPositions(r.Context(), matchID)
+	pos, err := svc.GetMatchPositions(ctx, in.MatchID)
 	if err != nil {
-		if errors.Is(err, games.ErrCapabilityNotSupported) {
-			writeError(r.Context(), w, http.StatusServiceUnavailable,
-				"capability_not_supported", "positions indisponibles pour ce titre")
-			return
+		if capErr, ok := MapCapabilityError(ctx, err, "match.detail.positions"); ok {
+			return nil, capErr
 		}
-		writeError(r.Context(), w, http.StatusInternalServerError, "positions_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "positions_error", err.Error())
 	}
-	writeJSON(w, http.StatusOK, toMatchPositionsDTO(pos))
+	return &matchPositionsOutput{Body: toMatchPositionsDTO(pos)}, nil
 }

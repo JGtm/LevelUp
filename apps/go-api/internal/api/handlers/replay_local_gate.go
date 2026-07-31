@@ -64,3 +64,21 @@ func isLocalRequest(r *http.Request) bool {
 func allowReplay(r *http.Request) bool {
 	return replayPublic || isLocalRequest(r)
 }
+
+// LocalOnlyReplay applique le garde local devant les routes de rejeu.
+//
+// C'EST UN MIDDLEWARE, PAS UNE BRANCHE DE HANDLER, et ce n'est pas un détail de style :
+// le garde repose sur l'adresse de la connexion TCP (`r.RemoteAddr`), la seule donnée
+// que le demandeur ne peut pas falsifier. La couche Huma ne l'expose pas à ses handlers
+// typés — elle ne voit que le contexte et les paramètres de chemin. Le garde reste donc
+// à l'étage transport, où l'information existe.
+func LocalOnlyReplay(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !allowReplay(r) {
+			writeError(r.Context(), w, http.StatusNotFound, "replay_not_available",
+				"le rejeu 2D n'est servi qu'en local")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}

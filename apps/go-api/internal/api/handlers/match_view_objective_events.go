@@ -9,13 +9,11 @@
 package handlers
 
 import (
-	"errors"
+	"context"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
-
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games"
 )
 
 // objectiveEventDTO est la projection JSON camelCase d'un domain.ObjectiveEvent.
@@ -65,35 +63,37 @@ func toObjectiveEventsDTO(events []domain.ObjectiveEvent) []objectiveEventDTO {
 	return out
 }
 
-// GetObjectiveEvents retourne la timeline objectif v3 d'un match.
+// objectiveEventsInput : {player_slug} parent + {match_id}.
+type objectiveEventsInput struct {
+	PlayerSlug string `path:"player_slug"`
+	MatchID    string `path:"match_id"`
+}
+
+type objectiveEventsOutput struct{ Body []objectiveEventDTO }
+
+// handleGetObjectiveEvents retourne la timeline objectif v3 d'un match.
 // GET /api/v1/players/{player_slug}/matches/{match_id}/objective-events
 //
 // Capability gating : si le titre n'expose pas la timeline objectif (repo non
 // câblé ou tables absentes), le service remonte games.ErrCapabilityNotSupported
 // → 503 capability_not_supported (dégradation gracieuse, pas une 500).
-func (h *MatchViewHandler) GetObjectiveEvents(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, err := h.newSvc(r.Context(), slug)
+func (h *MatchViewHandler) handleGetObjectiveEvents(
+	ctx context.Context, in *objectiveEventsInput,
+) (*objectiveEventsOutput, error) {
+	svc, err := h.resolve(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, err
+	}
+	if in.MatchID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_match_id", "match_id est requis")
 	}
 
-	matchID := chi.URLParam(r, "match_id")
-	if matchID == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_match_id", "match_id est requis")
-		return
-	}
-
-	events, err := svc.GetObjectiveEvents(r.Context(), matchID)
+	events, err := svc.GetObjectiveEvents(ctx, in.MatchID)
 	if err != nil {
-		if errors.Is(err, games.ErrCapabilityNotSupported) {
-			writeError(r.Context(), w, http.StatusServiceUnavailable,
-				"capability_not_supported", "timeline objectif indisponible pour ce titre")
-			return
+		if capErr, ok := MapCapabilityError(ctx, err, "match.detail.objective_events"); ok {
+			return nil, capErr
 		}
-		writeError(r.Context(), w, http.StatusInternalServerError, "objective_events_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "objective_events_error", err.Error())
 	}
-	writeJSON(w, http.StatusOK, toObjectiveEventsDTO(events))
+	return &objectiveEventsOutput{Body: toObjectiveEventsDTO(events)}, nil
 }

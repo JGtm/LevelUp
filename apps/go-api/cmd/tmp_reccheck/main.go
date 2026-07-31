@@ -116,7 +116,7 @@ func main() {
 	filmdec.SetBipedActionDebug(false)
 
 	fmt.Printf("\ntypeIndex=%d (attendu 35) desyncAt=i%d endBit=%d nComps=%d\n", t.TypeIndex, t.DesyncAt, t.EndBit, len(t.Comps))
-	fmt.Printf("mask=%016X gate=%d  (bits 59-63 = %d%d%d%d%d)\n", t.Mask, t.Gate,
+	fmt.Printf("mask=%016X gate=%v  (bits 59-63 = %d%d%d%d%d)\n", t.Mask, t.Gate,
 		(t.Mask>>59)&1, (t.Mask>>60)&1, (t.Mask>>61)&1, (t.Mask>>62)&1, (t.Mask>>63)&1)
 	fmt.Printf("=== BIT-EXACT ? endBit=%d vs longueur reelle=%d => %s ===\n", t.EndBit, target,
 		map[bool]string{true: "OUI, BIT-EXACT", false: fmt.Sprintf("NON, ecart=%d", t.EndBit-target)}[t.EndBit == target])

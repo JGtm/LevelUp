@@ -88,7 +88,7 @@ func main() {
 		}
 		fmt.Printf("0x%X(%d) ", v, cat[v])
 	}
-	fmt.Println("\n")
+	fmt.Print("\n\n")
 
 	// 2. SCAN de tout le film sur ce seul critere d'appartenance.
 	nc := filmdec.CountFilmChunks(*dir)

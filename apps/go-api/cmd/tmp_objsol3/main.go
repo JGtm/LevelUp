@@ -169,7 +169,7 @@ func sweep(kfs []kf, ti int, lay filmdec.I0Layout, box [6]float32) {
 		ti, total, lo, hi, len(rows))
 	fmt.Printf("  BRUIT MESURE sur les %d offsets : mediane %d · moyenne %.1f · 99e centile %d (sur %d records)\n",
 		len(rows), med, moy, p99, total)
-	fmt.Println("  offset | porte0 | dansBoite | %tot | stables/paires")
+	fmt.Println("  offset | porte0 | dansBoite | part du total | stables/paires")
 	for i := 0; i < 10 && i < len(best); i++ {
 		r := best[i]
 		fmt.Printf("  %+6d | %6d | %9d | %5.1f | %d/%d\n",

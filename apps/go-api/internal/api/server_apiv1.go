@@ -647,6 +647,15 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			WithMediaURLs(settingsStore, cfg.RepoRoot)
 		mv.Mount(r, playerOpt)
 
+		// Rejeu 2D (vue du dessus) — artefact pré-construit servi tel quel ; 404 si
+		// absent. Hors sous-groupe capability : la disponibilité EST la présence
+		// d'artefact, pas une déclaration de titre. Le garde local est un middleware
+		// (cf. handlers/replay_local_gate.go, qui porte sa date de retrait).
+		r.Group(func(r chi.Router) {
+			r.Use(handlers.LocalOnlyReplay)
+			handlers.NewReplayHandler(reg.Replay).Mount(r, playerOpt)
+		})
+
 		// Canonical MatchEvents (Phase 3) : GET .../matches/{match_id}/events —
 		// timeline d'events on-demand (kill-feed/timeline), capability-gated.
 		handlers.NewMatchEventsHandler(reg.MatchEvents).Mount(r, playerOpt)

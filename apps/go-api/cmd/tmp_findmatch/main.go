@@ -23,6 +23,8 @@ import (
 	"strings"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+
+	"levelup/go-api/internal/analysis"
 )
 
 func main() {
@@ -105,7 +107,7 @@ func dumpSchema(db *sql.DB) {
 // timeExpr rend le fragment temporel canonique (regle projet n.8 : jamais start_time brut).
 func timeExpr(cols map[string]bool) string {
 	if cols["start_time_utc"] && cols["start_time"] {
-		return "COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC')"
+		return analysis.SQLStartTimeCanonical("")
 	}
 	if cols["start_time_utc"] {
 		return "start_time_utc"
