@@ -1,3 +1,45 @@
+## [2026-07-31] Dette avant merge — la mesure dément l'espoir « c'est juste l'outillage »
+
+**Statut** : Complété (plan écrit : `.ai/PLAN_DETTE_AVANT_MERGE.md`). Aucune correction faite.
+
+**Question posée** : les issues de lint sont-elles sur le code de recherche, donc réglées d'office
+en archivant `cmd/tmp_*` une fois le rejeu et le killfeed en prod ?
+
+**Réponse mesurée : non, et c'est l'inverse.** Répartition de
+`golangci-lint --new-from-merge-base=origin/main` :
+
+| branche | total | `cmd/tmp_*` + `cmd/wf_*` | `internal/` (livré) |
+|---|---:|---:|---:|
+| `feat/killsource-prod` | 30 | **0** | **30** |
+| `feat/replay2d-prod` | 48 | 8 | **40** |
+
+Archiver tout l'outillage jetable fait passer notre compteur de 48 à 40, et celui de la lignée
+killfeed de 30 à 30. **La dette est dans le décodeur** : ~29 des 30 préexistantes et ~30 des 40
+ajoutées sont dans `internal/analysis/filmdec/`.
+
+**Corollaire utile** : `filmdec` étant réuni sur cette branche, la traiter ici la traite pour les
+deux lignées — il n'y a pas deux chantiers.
+
+**Nature des 40 dans `internal/`** : 14 `unused`, 7 `unparam`, 4 `staticcheck`, 4 `revive`,
+3 `unconvert`, 3 `goconst`, 2 `gocyclo`, 3 divers. Les 14 `unused` sont des grammaires de
+composants portées mais pas branchées au dispatch (`consumeMusicState`, `consumeTacmapPoiicon`,
+`consumeCrewOrder`…) : forme normale du reverse-engineering, mais la règle du dépôt dit « 0 code
+mort ». C'est le seul lot qui demande du jugement — une décision par fonction (brancher /
+supprimer / exempter avec date et condition de retrait).
+
+**Décision d'écriture du plan.** Pas d'inventaire figé : le travail continue sur la branche avant
+le merge, une liste écrite aujourd'hui serait fausse dans une semaine et donnerait une fausse
+sécurité. Le plan fige la **procédure de mesure**, la **référence datée** pour comparaison, les
+**décisions déjà prises**, et un lot E qui couvre ce qui dérive tout seul (openapi/routeTree
+régénérés, knip, tests d'intégration anti-ART, allowlists, et la montée de Go 1.26.1 → 1.26.2 qui
+règle les 11 CVE stdlib remontées par govulncheck).
+
+**Conclusion / prochaine étape.** Rien n'est corrigé : c'est un plan, à exécuter avant le merge.
+Lot A (archiver l'outillage, ~8 issues) puis B (passe mécanique, ~19, sans risque) donnent le
+gros du gain ; C et D demandent du temps de lecture.
+
+---
+
 ## [2026-07-31] Réconciliation rejeu 2D x killsource — recâblage API/web et clôture
 
 **Statut** : Complété (phases B2, D et §5 du plan `.ai/PLAN_RECONCILIATION_BRANCHES.md`).
