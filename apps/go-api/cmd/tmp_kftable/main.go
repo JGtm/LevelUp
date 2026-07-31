@@ -13,7 +13,7 @@
 //  2. WALKER offline (Voie A) : sans oracle, avance pos += 64 + stateBits[ti] en se
 //     servant de la table découverte. Validé contre l'oracle.
 //
-// Oracle : .ai/re_dump/crack/world_dump_000d5950.txt (250 entités, bipeds ti=35 512-519).
+// Oracle : .ai/V7.5/dumps/crack/world_dump_000d5950.txt (250 entités, bipeds ti=35 512-519).
 //
 // Usage : CGO_ENABLED=0 go run ./cmd/tmp_kftable [filmDir] [worldDump]
 package main

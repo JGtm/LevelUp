@@ -9,7 +9,7 @@
 //
 // LES DEUX COTES :
 //   - NOTRE COTE : DecodeFrameRecords sur 000d5950, EntityTrace.Comps[i].StartBit.
-//   - LE VRAI COTE : .ai/re_dump/ce_capture_delta.csv, 807 855 curseurs captures sur le SEUL
+//   - LE VRAI COTE : .ai/V7.5/dumps/ce_capture_delta.csv, 807 855 curseurs captures sur le SEUL
 //     site de dispatch du jeu (FUN_14076cb60). largeur(N) = bitCursor(N+1) - bitCursor(N).
 //
 // PRECAUTION : les deux traces viennent de FILMS DIFFERENTS (la capture est la partie live,
@@ -73,7 +73,7 @@ func main() {
 	idlow := flag.Int("idlow", 11, "largeur du champ id bas (valeur de RUNTIME, 11 sur ce film)")
 	flag.Parse()
 
-	truth, err := loadTruth(filepath.Join(*repo, ".ai", "re_dump", "ce_capture_delta.csv"))
+	truth, err := loadTruth(filepath.Join(*repo, ".ai", "V7.5", "dumps", "ce_capture_delta.csv"))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "verite terrain:", err)
 		os.Exit(1)

@@ -17,15 +17,15 @@ Chemins relatifs à `.claude/worktrees/filmdec-killweapon/`.
 | document | contenu | quand le lire |
 |---|---|---|
 | `.ai/ETAT_DE_L_ART_KILLWEAPON.md` | **L'index maître**, 663 lignes. Questions résolues, pistes mortes, patrons d'erreur, chiffres de référence | Toujours en premier |
-| `.ai/GUIDE_KILLSOURCE.md` | Mode d'emploi du paquet `killsource` : branchement, dénominateurs, ce qu'il faut croire et ce dont il faut se méfier, écriture en base | Avant de consommer leurs sorties |
-| `.ai/RE_LOG_KILLWEAPON.md` | Le journal complet, > 7 100 lignes. **À interroger, pas à lire** | Pour retrouver le détail d'une section citée |
-| `.ai/RECETTE_DECODAGE_FILM_CHUNKS.md` | Format des morceaux, registre ECS, table des 64 noms de composants | Décodage bas niveau |
-| `.ai/RE_EXE_GHIDRA_FINDINGS.md` | Trouvailles dans l'exécutable | Avant d'ouvrir Ghidra |
+| `.ai/V7.5/killweapon/GUIDE_KILLSOURCE.md` | Mode d'emploi du paquet `killsource` : branchement, dénominateurs, ce qu'il faut croire et ce dont il faut se méfier, écriture en base | Avant de consommer leurs sorties |
+| `.ai/V7.5/killweapon/RE_LOG_KILLWEAPON.md` | Le journal complet, > 7 100 lignes. **À interroger, pas à lire** | Pour retrouver le détail d'une section citée |
+| `.ai/V7.5/film_re/RECETTE_DECODAGE_FILM_CHUNKS.md` | Format des morceaux, registre ECS, table des 64 noms de composants | Décodage bas niveau |
+| `.ai/V7.5/film_re/RE_EXE_GHIDRA_FINDINGS.md` | Trouvailles dans l'exécutable | Avant d'ouvrir Ghidra |
 | `.ai/PONT_SONORE_ARMES.md` | Nommage par les banques sonores Wwise | Nommage d'arme |
 | `.ai/GRENADE_MELEE_DETECTION.md` | Détection des lancers et de la mêlée | Événements |
-| `.ai/KEYFRAME_ARCHETYPE_DEFAULTSTATE_TABLE.md` | États par défaut des archétypes dans les images-clés | Lecture d'image-clé |
-| `.ai/HANDOFF_MAP_GEOMETRY_FROM_MODULES.md` | Géométrie de carte depuis les modules | Chantier structure |
-| `.ai/INVESTIGATION_MAP_ZONE_CALLOUT_NAMES.md` | Noms de zones de carte | Libellés de zone |
+| `.ai/V7.5/film_re/KEYFRAME_ARCHETYPE_DEFAULTSTATE_TABLE.md` | États par défaut des archétypes dans les images-clés | Lecture d'image-clé |
+| `.ai/V7.5/cartes/HANDOFF_MAP_GEOMETRY_FROM_MODULES.md` | Géométrie de carte depuis les modules | Chantier structure |
+| `.ai/V7.5/cartes/INVESTIGATION_MAP_ZONE_CALLOUT_NAMES.md` | Noms de zones de carte | Libellés de zone |
 
 ## CE QU'ILS ONT RÉSOLU ET QUE JE CROYAIS OUVERT
 
@@ -49,7 +49,7 @@ de la banque du châssis) : 22/23 et 17/22. **Ghost = fixe**, tourelle UNSC arra
 
     entree 0 = FRAG · 1 = PLASMA · 2 = DYNAMO (choc) · 3 = POINTES (Spike)
 
-**C'est exactement la table établie de mon côté** (`RECETTE_LOADOUT_2026-07-27.md` §1 et §8), par
+**C'est exactement la table établie de mon côté** (`V7.5/replay2d/RECETTE_LOADOUT_2026-07-27.md` §1 et §8), par
 deux chaînes qui n'ont rien en commun avec la leur : appariement de 35 lancers aux décréments de
 compteur, et lecture de la table `grenade_types` du binaire.
 
@@ -72,7 +72,7 @@ victime.
 
 ### Les assistances — livrées, avec une distinction à respecter
 
-`GUIDE_KILLSOURCE.md`. Une seule fonction publique :
+`V7.5/killweapon/GUIDE_KILLSOURCE.md`. Une seule fonction publique :
 
     src := killsource.MemoryChunks(chunks)
     res, err := killsource.Decode(ctx, matchID, src, nil)   // nil = configuration gelee
@@ -90,7 +90,7 @@ l'API). L'assistant et les deux parts de dégâts tombent sous la même porte qu
 ## LA CONNEXION QUE NI EUX NI MOI N'AVIONS FAITE — le groupe de tags `sofd`
 
 Leur chaîne d'armement de véhicule traverse `sofd`. De mon côté, l'identité de capacité spartan se
-résout par un parcours du bloc `sofd` (`RECETTE_LOADOUT_2026-07-27.md` §9 : `FUN_1407E7648`
+résout par un parcours du bloc `sofd` (`V7.5/replay2d/RECETTE_LOADOUT_2026-07-27.md` §9 : `FUN_1407E7648`
 compare `entrée+0x18` au handle de définition et rend le rang).
 
 **Deux chantiers ont buté sur la même structure sans le savoir.** Si `sofd` est la table
@@ -105,7 +105,7 @@ capacités connues). Première question à leur poser : leur outillage sait-il �
 ## LEURS PATRONS D'ERREUR — à confronter aux miens
 
 Ils rangent huit erreurs sous trois patrons. `ETAT_DE_L_ART_KILLWEAPON.md` §4. Plusieurs
-recoupent exactement ce que j'ai consigné dans `METHODE_RETRO_INGENIERIE_FILM.md` — la
+recoupent exactement ce que j'ai consigné dans `V7.5/film_re/METHODE_RETRO_INGENIERIE_FILM.md` — la
 convergence de deux chantiers indépendants sur les mêmes pièges vaut d'être notée.
 
 | leur patron | ce qu'il dit | mon équivalent |
@@ -166,7 +166,7 @@ Mesure du 2026-07-26, complétée le 2026-07-27.
 Pour que l'échange aille dans les deux sens :
 
 - La **carte mémoire du loadout joueur** : base `0x7F0`, pas `0x90`, quatre emplacements, avec les
-  décalages de chargeur, réserve, jauge et surchauffe (`RECETTE_LOADOUT_2026-07-27.md` §7).
+  décalages de chargeur, réserve, jauge et surchauffe (`V7.5/replay2d/RECETTE_LOADOUT_2026-07-27.md` §7).
 - La **grammaire en union d'`i30`/`i33`** et le fait que la jauge d'énergie est une fraction dans
   [0,1] sur 12 bits.
 - La **table arme → chargeur/réserve** pour 16 armes.
@@ -174,4 +174,4 @@ Pour que l'échange aille dans les deux sens :
 - La **localisation positionnelle** des lectures : 98,4 % de rappel, 0 faux positif sur 650 641
   positions.
 - L'**archétype 40** comme archétype véhicule, avec le constat que position, vitesse, vie et
-  bouclier d'un véhicule sont déjà décodables (`VEHICULES_ARCHETYPE_40.md`).
+  bouclier d'un véhicule sont déjà décodables (`V7.5/film_re/VEHICULES_ARCHETYPE_40.md`).

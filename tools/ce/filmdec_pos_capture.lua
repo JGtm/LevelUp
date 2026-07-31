@@ -41,7 +41,7 @@
     1. Theater -> film 000d5950 (le seul avec oracle world_dump slot:ti).
     2. CE attache a HaloInfinite.exe ; charger ce script (dofile ou coller+Execute).
     3. captureFilmdecPos(20000)  puis JOUE / SCRUBE le film (deltas, pas la pause).
-       -> dump auto -> .ai/re_dump/ce_pos_oracle.csv
+       -> dump auto -> .ai/V7.5/dumps/ce_pos_oracle.csv
     Manuel : startFilmdecPos / filmdecPosStatus / stopFilmdecPos / dumpFilmdecPos
     Patch residuel d'une session perdue : repairFilmdecPos()
 ==========================================================================]==]

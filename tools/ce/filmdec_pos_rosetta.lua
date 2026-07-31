@@ -18,7 +18,7 @@
   RECORD 40 o : eid(4) curseur(4) x(4) y(4) z(4) sig[16] pad(4).
 
   USAGE : dofile ce fichier ; captureFilmdecRosetta(20000) ; JOUE le film.
-    -> dump .ai/re_dump/ce_pos_rosetta.csv (eid,slot,bitCursor,x,y,z,sighex)
+    -> dump .ai/V7.5/dumps/ce_pos_rosetta.csv (eid,slot,bitCursor,x,y,z,sighex)
 ==========================================================================]==]
 
 local AOB         = "44 89 6C 24 20 48 8B CB FF 50 28"

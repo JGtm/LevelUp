@@ -4,7 +4,7 @@
 > raison. Elles ne se rediscutent pas : ce document sert à ne pas les redécouvrir, ni les défaire
 > par inadvertance à la passe suivante.
 >
-> Ce qui relève du décodage est ailleurs (`RECETTE_LOADOUT_2026-07-27.md`). Ici, uniquement ce que
+> Ce qui relève du décodage est ailleurs (`V7.5/replay2d/RECETTE_LOADOUT_2026-07-27.md`). Ici, uniquement ce que
 > l'écran doit montrer.
 
 ## LA RÈGLE QUI GOUVERNE TOUT LE RESTE

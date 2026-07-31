@@ -27,7 +27,7 @@ coûterait des heures de retéléchargement ou exigerait les fichiers du jeu ins
 
 ### `E:/LevelUp_rejeu2D/captures_cheat_engine/` — 164 Mo, 40 entrées
 
-Le contenu de `.ai/re_dump/` du worktree. **C'est la partie irremplaçable.**
+Le contenu de `.ai/V7.5/dumps/` du worktree. **C'est la partie irremplaçable.**
 
 Y figurent notamment la capture de tous les bipeds d'un match (`allbipeds_capture_sample.txt`),
 les relevés de largeurs et de plages de composants (`ce_prec_widths_*.bin`,

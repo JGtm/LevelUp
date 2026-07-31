@@ -48,14 +48,14 @@ précisément les zones de la carte étudiée.
 
 | Calque | Contenu | D'où viennent les données | Défaut par défaut |
 |---|---|---|---|
-| Carte validée (fond) | l’IMAGE validée le 26/07, extraite de l’artefact, recadrée | `.ai/re_dump/carte_validee_v1.png` — calage ajusté sur les trajectoires : échelle 0,0920 m/px, X0 -43,5, Y1 61,0 ; **95,6 % des 29 217 positions de joueur tombent sur le sol** | **actif** |
+| Carte validée (fond) | l’IMAGE validée le 26/07, extraite de l’artefact, recadrée | `.ai/V7.5/dumps/carte_validee_v1.png` — calage ajusté sur les trajectoires : échelle 0,0920 m/px, X0 -43,5, Y1 61,0 ; **95,6 % des 29 217 positions de joueur tombent sur le sol** | **actif** |
 | Boîtes englobantes | 9 630 AABB, ou 6 182 emprises orientées | `cmd/mapstruct-build` — AABB monde @0x7C, **aucune forme** | masqué quand le sol est actif |
 | Trajectoires | 98 pistes de joueur | `i0` du film, décodé | actif |
 | Tirs | **475** événements localisés (sur **519** que le film porte) | `FireEvent` + pont **fil des morts** (`replay/lives.go`) ; le vote visée→slot est SUPPRIMÉ | actif |
 | Effets d'arme (bouton dédié) | l'éclat d'un tir et l'effet d'une mort prennent la forme de la FAMILLE de l'arme : balistique, plasma, dur-lumière, choc, explosif, mêlée, aiguilles, plus un repli `sobre`. Sur une MORT, l'effet est orienté tueur→victime | mesuré : le libellé de l'arme (`shots[6]`, 147/147 ; `feed[].w.n`, 87/93, les 6 autres par la nature `w.cl`). Parti pris NON mesuré : le regroupement en familles et l'aspect. Direction : positions des deux joueurs relues dans les trajectoires, **89 des 93 morts** ont le couple complet — les 4 autres n'ont aucun axe. Sous `prefers-reduced-motion`, marqueur statique | actif |
 | Lancers de grenade | **63** sur 70 décodés | marqueur `0x4C0C00` ; le plafond du pont slot→joueur est levé | actif |
 | Projectiles | 439 trajectoires | archétype `ti=41` | actif |
-| Zones de callout | 16 libellés FR, 25 px blanc cerné de noir | `.ai/re_dump/callout_*` | actif |
+| Zones de callout | 16 libellés FR, 25 px blanc cerné de noir | `.ai/V7.5/dumps/callout_*` | actif |
 | Objectifs | drapeau, crâne, zones | terrain, **pas** ce match (Slayer) | masqué |
 | Bouclier | barre au-dessus du marqueur | `i5` | actif |
 
@@ -103,5 +103,5 @@ commandes, depuis `apps/go-api` :
     scratchpad/sc/layers_marchable.npy   la source : cellules praticables par tranche d'altitude
     scratchpad/sc/layers_meta.npy        CELL=0,10 · origine (-45, -60) · grille 1200x1200
     scratchpad/structure_callouts.png    le rendu validé en V1 le 26/07
-    .ai/HANDOFF_GEOMETRIE_TRIANGLES.md   la recette complète, à porter en Go
+    .ai/V7.5/cartes/HANDOFF_GEOMETRIE_TRIANGLES.md   la recette complète, à porter en Go
     .ai/ADDENDUM_ETAT_DE_L_ART_*.md      tout ce que la capture du dispatch a tranché

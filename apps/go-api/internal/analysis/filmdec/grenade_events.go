@@ -13,7 +13,7 @@ import "fmt"
 // chaîne dont le masque de présence est faux.
 //
 // GRAMMAIRE (méthode acurtis166 ; cf. .ai/GRENADE_MELEE_DETECTION.md et
-// .ai/FIRE_MELEE_GRENADE_EVENTS.md §8, qui la classe FIABLE : 70 événements, joueurs 0-7
+// .ai/V7.5/killweapon/FIRE_MELEE_GRENADE_EVENTS.md §8, qui la classe FIABLE : 70 événements, joueurs 0-7
 // tous présents sur 000d5950) :
 //
 //	[marqueur 24 bits = 0x4C0C00] [identifiant 32 bits] [47 bits] [index joueur 5 bits]

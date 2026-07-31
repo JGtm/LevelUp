@@ -42,7 +42,7 @@ const i22Bits = 3 + 4*8
 
 // grenadeMaxTypes / grenadeMaxEach sont les bornes du JEU, pas du format : on porte au plus deux
 // types de grenade, deux unites de chacun. Source : utilisateur, consignee dans
-// .ai/GRAMMAIRE_RECORD_FILM.md.
+// .ai/V7.5/film_re/GRAMMAIRE_RECORD_FILM.md.
 const (
 	grenadeMaxTypes = 2
 	grenadeMaxEach  = 2

@@ -49,7 +49,7 @@
   tout le monde a BR+MA40 alternés sur ~1-2s → mauvaise rafale. **C'est un mur d'horloge, pas un manque de données.**
 - **La SEULE voie pour dépasser 58%** : corrélation MÊME-HORLOGE = lire le kill (tueur+victime) dans le **flux
   FRAME** (même horloge que `0xd2`). Ça exige le **DÉCODEUR ECS bit-exact** (décision user du 2026-06-05,
-  `PLAN_FILM_ECS_DECODER.md`).
+  `V7.5/film_re/PLAN_FILM_ECS_DECODER.md`).
 - **Le mur ECS, et le levier NEUF (2026-06-12)** : le décodeur doit être **STATEFUL** (un delta se décode contre
   l'état de la frame précédente : counts RAM-dérivés type i63 `loop2`, `recordStateParam`, résolution dead-state).
   Le filmdec actuel est stateless → c'est LA cause du « garbage ». Levier neuf : les largeurs de quantification
@@ -64,21 +64,21 @@
 ## §1. ORDRE DE LECTURE (ne rien sauter)
 
 1. **CE fichier** (index + impasses).
-2. **`KILLFEED_STATE.md`** — source de vérité consolidée (état stratégique, §0 = vérité live validée).
-3. **`KILLFEED_DEATH_RECAP_FIELDS_RE.md`** (10 juin) — inventaire RE le plus complet : grammaire dead-state
+2. **`V7.5/killweapon/KILLFEED_STATE.md`** — source de vérité consolidée (état stratégique, §0 = vérité live validée).
+3. **`V7.5/killweapon/KILLFEED_DEATH_RECAP_FIELDS_RE.md`** (10 juin) — inventaire RE le plus complet : grammaire dead-state
    (`FUN_140c1dd44`) + kill-event (`FUN_14104bd08`), le mur du reach, et §7 = TOUS les scans de localisation
    négatifs. **LE doc qui liste les impasses.**
-4. **`PLAN_FILM_ECS_DECODER.md`** + **`PLAN_FILM_KILLFEED_V3.md`** — la décision « build ECS complet » (5 juin).
-5. **`WALK_PORT_NOTES.md`** — port bit-exact du walk biped (i54/i59/i63), position-linking réfuté.
-6. **`FIREARM_PER_KILL_OFFLINE_SOLVED.md`** + **`PLAN_SIBLING_DAMAGE_DESERS.md`** — le warp 96% (0xd2 + frères).
-7. **`PLAN_SAMECLOCK_ATTRIBUTION.md`** — voie same-clock (avec corrections 2026-06-12 + formule largeur).
-8. **`PLAN_WEAPON_PER_KILL_PRODUCTION.md`** — productionisation du warp (`backfill_weapons.go`).
+4. **`V7.5/film_re/PLAN_FILM_ECS_DECODER.md`** + **`V7.5/killweapon/PLAN_FILM_KILLFEED_V3.md`** — la décision « build ECS complet » (5 juin).
+5. **`V7.5/killweapon/WALK_PORT_NOTES.md`** — port bit-exact du walk biped (i54/i59/i63), position-linking réfuté.
+6. **`V7.5/killweapon/FIREARM_PER_KILL_OFFLINE_SOLVED.md`** + **`V7.5/killweapon/PLAN_SIBLING_DAMAGE_DESERS.md`** — le warp 96% (0xd2 + frères).
+7. **`V7.5/killweapon/PLAN_SAMECLOCK_ATTRIBUTION.md`** — voie same-clock (avec corrections 2026-06-12 + formule largeur).
+8. **`V7.5/killweapon/PLAN_WEAPON_PER_KILL_PRODUCTION.md`** — productionisation du warp (`backfill_weapons.go`).
 9. **`thought_log.md`** (entrées du haut, 2026-06-12) — chronologie détaillée + corrections récentes.
-10. Référence RE statique : **`RE_EXE_GHIDRA_FINDINGS.md`**, **`RESEARCH_THEATER_RE.md`**,
-    **`reference_film_chunks_structure`** (mémoire). Pour reverse externe : `HANDOFF_FILM_RE_STATE.md`,
-    `GITHUB_RE_FINDINGS_EN.md`.
-11. Handoffs historiques (contexte, redondants) : `HANDOFF_WEAPON_ATTRIBUTION.md`, `HANDOFF_KILLFEED_VOIE_A.md`,
-    `HANDOFF_KILLFEED_2026-06-07.md`, `HANDOFF_FRAME_DECODER_L3.md`, `REPRISE_KILLWEAPON_FILM.md`.
+10. Référence RE statique : **`V7.5/film_re/RE_EXE_GHIDRA_FINDINGS.md`**, **`RESEARCH_THEATER_RE.md`**,
+    **`reference_film_chunks_structure`** (mémoire). Pour reverse externe : `V7.5/film_re/HANDOFF_FILM_RE_STATE.md`,
+    `V7.5/film_re/GITHUB_RE_FINDINGS_EN.md`.
+11. Handoffs historiques (contexte, redondants) : `V7.5/killweapon/HANDOFF_WEAPON_ATTRIBUTION.md`, `V7.5/killweapon/HANDOFF_KILLFEED_VOIE_A.md`,
+    `V7.5/killweapon/HANDOFF_KILLFEED_2026-06-07.md`, `V7.5/film_re/HANDOFF_FRAME_DECODER_L3.md`, `V7.5/killweapon/REPRISE_KILLWEAPON_FILM.md`.
 
 **Mémoires à charger** : [[reference_killfeed_deadstate_fields]], [[project_kill_feed_frame_decoder]],
 [[project_killfeed_damage_source_goal]], [[feedback_no_fire_events_weaponv3]], [[reference_film_chunks_structure]],

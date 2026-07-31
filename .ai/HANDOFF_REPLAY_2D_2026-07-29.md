@@ -1,7 +1,7 @@
 # HANDOFF — le POC du rejeu 2D dans l'app
 
 > Écrit le 2026-07-29, branche `feat/filmdec-continuation`.
-> Documents qui font foi : `PLAN_POC_DANS_L_APP.md` (le plan et ses mesures),
+> Documents qui font foi : `V7.5/replay2d/PLAN_POC_DANS_L_APP.md` (le plan et ses mesures),
 > `SUIVI_REPLAY_2D.md` (l'avancement global), `thought_log.md` (les décisions datées).
 > Ce fichier ne répète aucun des trois : il dit **où reprendre, et ce qui bloque**.
 
@@ -141,7 +141,7 @@ bash scripts/git-hooks/lefthook/govulncheck.sh   # charge TOUT le module Go
 
 ## PROTOCOLE DE REPRISE
 
-1. Lire `PLAN_POC_DANS_L_APP.md` — les étapes closes y sont statuées, les mesures y sont.
+1. Lire `V7.5/replay2d/PLAN_POC_DANS_L_APP.md` — les étapes closes y sont statuées, les mesures y sont.
 2. Trancher la question de branche ci-dessus. **Rien du fil des éliminations ne peut avancer
    avant.**
 3. Sinon, la suite non bloquée est : zones nommées et objectifs de carte (rang 4 du

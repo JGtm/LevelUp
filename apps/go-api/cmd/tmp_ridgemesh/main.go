@@ -1,6 +1,6 @@
 // tmp_ridgemesh — dump BRUT des bbox monde par mesh d'un .module (runtime_geo / rawg.xml),
 // SANS filtre de taille ni percentile, vers un CSV. Sert à mesurer l'empreinte réelle
-// avant tout overlay (cf .ai/HANDOFF_MAP_GEOMETRY_FROM_MODULES.md §9).
+// avant tout overlay (cf .ai/V7.5/cartes/HANDOFF_MAP_GEOMETRY_FROM_MODULES.md §9).
 //
 // Usage : CGO_ENABLED=1 go run ./cmd/tmp_ridgemesh <module> <out.csv>
 package main

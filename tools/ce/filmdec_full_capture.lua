@@ -271,7 +271,7 @@ function dumpFilmdecFull(path)
   if #out > 0 then f:write(table.concat(out, "\n"), "\n") end
   f:close()
   print(string.format("[FFC] %d records ecrits dans %s", n, path))
-  print("[FFC] a deposer dans .ai/re_dump/ du worktree filmdec-continuation.")
+  print("[FFC] a deposer dans .ai/V7.5/dumps/ du worktree filmdec-continuation.")
 end
 
 print("[FFC] charge. Sequence : startFilmdecFull() -> rejouer un film EN CACHE ->")

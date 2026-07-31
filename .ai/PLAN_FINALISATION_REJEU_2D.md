@@ -4,7 +4,7 @@
 > Contrat d'exécution : skill `plan-execution`. Ordre strict, une étape close avant la suivante,
 > aucun report d'une action faisable, chaque item statué à la clôture.
 >
-> Ce plan REMPLACE `PLAN_POC_DANS_L_APP.md` (dont les étapes 1 à 7 sont closes) pour la suite.
+> Ce plan REMPLACE `V7.5/replay2d/PLAN_POC_DANS_L_APP.md` (dont les étapes 1 à 7 sont closes) pour la suite.
 > Il ne répète pas `HANDOFF_REPLAY_2D_2026-07-29.md` : celui-ci reste la porte d'entrée.
 
 ---
@@ -265,7 +265,7 @@ changement de décodeur qui les déplace fait tomber un test nommé.
 - [ ] **Factoriser les 4 copies** de `keep*OfPublishedTracks` en un helper, avec garde-rail.
 - [ ] Sortir `mapvar` de `internal/analysis/replay` : 673 lignes qu'aucun fichier du rejeu ne
       consomme.
-- [ ] Faire passer la géométrie par `PathResolver` : `replay-build` lit aujourd'hui `.ai/re_dump`
+- [ ] Faire passer la géométrie par `PathResolver` : `replay-build` lit aujourd'hui `.ai/V7.5/dumps`
       **par défaut**, un répertoire de rétro-ingénierie hors de `data/`.
 
 ### 3.2 Sortir les catalogues Halo vers les mappings de titre

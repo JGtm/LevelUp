@@ -1,11 +1,11 @@
 # GUIDE — la ventilation des tirs par arme (`shared.match_weapon_shots`)
 
-> Etat au 2026-07-28, apres 7ter.89. Lot `tw`. Journal : `.ai/RE_LOG_KILLWEAPON.md` section
+> Etat au 2026-07-28, apres 7ter.89. Lot `tw`. Journal : `.ai/V7.5/killweapon/RE_LOG_KILLWEAPON.md` section
 > **7ter.78**, plus **7ter.85 / 7ter.87** pour la precision par arme (§3bis) et **7ter.88 /
 > 7ter.89** pour ce qui attribue un tir a un joueur et pour le piege de methode qui va avec
 > (§3ter). Les deux sections ont ete ajoutees le 2026-07-28.
 > Ce guide fait foi sur le SCHEMA, l API du persister et la PORTEE de la donnee.
-> Il ne remplace pas `.ai/GUIDE_KILLSOURCE.md`, qui porte sur une AUTRE question
+> Il ne remplace pas `.ai/V7.5/killweapon/GUIDE_KILLSOURCE.md`, qui porte sur une AUTRE question
 > (l arme du kill) et un AUTRE espace d identifiants.
 
 ---
@@ -234,7 +234,7 @@ Ce n est pas reparable a ce grain : une ligne « zero tir » serait une mesure f
 
 > **CETTE SECTION MANQUAIT AU GUIDE ALORS QUE LE RESULTAT DATAIT DE DEUX LOTS.** Le journal et
 > l index portaient 7ter.85 et 7ter.87 ; ce guide, lu par qui UTILISE la donnee, ne les portait
-> pas. Sources : `.ai/RE_LOG_KILLWEAPON.md` 7ter.85 (lot `pv`) et 7ter.87 (verification
+> pas. Sources : `.ai/V7.5/killweapon/RE_LOG_KILLWEAPON.md` 7ter.85 (lot `pv`) et 7ter.87 (verification
 > adversariale `pv.ref`), resumes dans `.ai/ETAT_DE_L_ART_KILLWEAPON.md` §17 et §17.3.
 > **Portee** : 949 films caches, **571 retenus** (roster <= 16, sans participant fantome,
 > ancrage unique), **4 422 observations joueur x match**, TOUS MODES.
@@ -352,7 +352,7 @@ on lit.
 
 > Ajoutee le 2026-07-28. **Ce guide ne portait RIEN de 7ter.88 ni de 7ter.89 alors que les deux
 > lots portent sur son objet meme** : ce qui relie un fire-event a un joueur, et jusqu ou cette
-> relation permet d aller. Sources : `.ai/RE_LOG_KILLWEAPON.md` **7ter.88** (lot `pj.own`) et
+> relation permet d aller. Sources : `.ai/V7.5/killweapon/RE_LOG_KILLWEAPON.md` **7ter.88** (lot `pj.own`) et
 > **7ter.89** (verification adversariale `tv.ref`), index §2.1.
 
 ### 3ter.1 LE LIEN OBJET -> JOUEUR DU FIRE-EVENT EST UNE FONCTION — `[ETABLI]`
@@ -384,7 +384,7 @@ que ce soit.
 ### 3ter.2 LES TOUCHES DE PROJECTILE NE SERONT PAS VENTILEES PAR JOUEUR PAR CETTE VOIE
 
 Le film porte bien les impacts de projectile — ce sont les **codes 6 et 7** (7ter.86, detaille
-dans `.ai/GUIDE_KILLSOURCE.md` §6bis). Mais **l evenement d impact ne nomme jamais le TIREUR** :
+dans `.ai/V7.5/killweapon/GUIDE_KILLSOURCE.md` §6bis). Mais **l evenement d impact ne nomme jamais le TIREUR** :
 il nomme la cible et l objet projectile.
 
 Et le tireur n est pas ailleurs dans le flux, parce qu **IL N EXISTE AUCUN EVENEMENT DE CREATION
@@ -472,14 +472,14 @@ discriminant (PATRON E). Ici, `+34` tient par deux instruments du depot, pas par
 parcours nominal**. Ce balayage rend des resultats, et il **FABRIQUE des distributions
 credibles** — un en-tete plausible sort 1 fois tous les 18 bits, 1 fois tous les 8 366 bits avec
 toutes les contraintes ; le scan cible d un film rend 292 candidats pour 87 kills dont
-**193/292 sont la MEME paire** (7ter.27 (6)). Cf. `.ai/GUIDE_KILLSOURCE.md` §6bis.5.
+**193/292 sont la MEME paire** (7ter.27 (6)). Cf. `.ai/V7.5/killweapon/GUIDE_KILLSOURCE.md` §6bis.5.
 
 ---
 
 ## 3quater. LA PRECISION D UN JOUEUR SANS AUCUNE REFERENCE EXTERNE — LE TAUX DE REMPLISSAGE
 
 > **AJOUTEE LE 2026-07-28. C EST LE LIVRABLE PRODUIT DE LA JOURNEE, ET IL N ETAIT DANS AUCUN
-> GUIDE.** Sources : `.ai/RE_LOG_KILLWEAPON.md` **7ter.98** (lot `rc.unite`) et **7ter.101**
+> GUIDE.** Sources : `.ai/V7.5/killweapon/RE_LOG_KILLWEAPON.md` **7ter.98** (lot `rc.unite`) et **7ter.101**
 > (verification adversariale `rc.ref`), resumees dans `.ai/ETAT_DE_L_ART_KILLWEAPON.md` **§21** et
 > **§22**. Tout ce qui suit est reproduit **a l unite par un quatrieme binaire**.
 > ⚠ **CE N EST PAS CETTE TABLE.** La quantite ci-dessous se lit dans un AUTRE flux du film — les
@@ -845,5 +845,5 @@ aucun appelant de production.
   indice -> xuid, lecture de `shots_fired`, ordonnancement par rapport au decodeur de source).
 - **Le nommage des armes** : `metadata.weapon_labels`, hors de ce guide.
 - **L arme du KILL** : autre question, autre table, autre espace d identifiants —
-  `.ai/GUIDE_KILLSOURCE.md`.
+  `.ai/V7.5/killweapon/GUIDE_KILLSOURCE.md`.
 - **Les lecteurs** : aucun. Le premier qui viendra devra filtrer `publishable` (§2.2).

@@ -4,7 +4,7 @@ import "fmt"
 
 // FRAME-delta decoder (L3) — port of the type-0 packet record loop FUN_1406cd128 +
 // dispatch FUN_1406cbaa0 + delta FUN_141f86b58. Grammar extracted via Ghidra
-// (workflow frame-decoder-grammar). See .ai/PLAN_FILM_KILLFEED_V3.md / HANDOFF.
+// (workflow frame-decoder-grammar). See .ai/V7.5/killweapon/PLAN_FILM_KILLFEED_V3.md / HANDOFF.
 //
 // Per-record header (CONFIRMED, the two traps a naive port falls into):
 //   - record TYPE is a PREFIX CODE, not a flat R(2):

@@ -3,7 +3,7 @@ package filmdec
 // Entity-record decoder, full-state path (param_5==0). Mirrors FUN_14080c1f8
 // (HaloInfinite.exe @ 0x14080c1f8). Each field is commented with its RE source.
 // Grammar synthesized + adversarially verified by the entity-record-decoder-synth
-// workflow (cf. .ai/PLAN_FILM_ECS_DECODER.md, .ai/re_dump/m1_funcs.c).
+// workflow (cf. .ai/V7.5/film_re/PLAN_FILM_ECS_DECODER.md, .ai/V7.5/dumps/m1_funcs.c).
 //
 // STATUS: the path-to-position spine (steps 1-19) is bit-exact. A few deep
 // sub-decoders that only fire on rarer record shapes (decodeQuatBlock = FUN_1431a0cbc,

@@ -24,7 +24,7 @@
 | Le second bit est-il établi au désassemblage ? | **NON, et il faut le dire.** Le désassemblage n'établit qu'**UN** `R(1)`. Le second est retenu par la mesure seule. Trois grammaires donnent le même en-tête total de 20 bits sur le premier record et ne se séparent qu'au second : amorce 2 + idLow 11 (**84,81 %**) · amorce 1 + idLow 12 (51,67 %) · amorce 2 + idLow 10 (5,24 %). | MESURE |
 | Est-ce suffisant ? | **NON.** Après correction, `i22` lit encore **90 %** de comptes de grenades physiquement impossibles. Il reste au moins une faute dans le CORPS des records. | MESURE |
 
-> **Leçon de méthode, la plus chère du jour.** `.ai/GRAMMAIRE_RECORD_FILM.md` §4 **mesurait déjà**
+> **Leçon de méthode, la plus chère du jour.** `.ai/V7.5/film_re/GRAMMAIRE_RECORD_FILM.md` §4 **mesurait déjà**
 > « amorce de paquet 2 bits, en-tête 21 » depuis sa rédaction. Le constat n'avait jamais été câblé
 > dans le décodeur. Une mesure juste, écrite dans un document qui « fait foi », n'a servi à rien
 > pendant des semaines. **Vérifier qu'une conclusion documentée est effectivement branchée fait
@@ -115,7 +115,7 @@ le pas de 144 sont établis sans ambiguïté.
 
 ### 6.3 CORRECTION À PORTER — les bornes de déquantification
 
-`.ai/HANDOFF_MAP_GEOMETRY_FROM_MODULES.md` §9.3 place les bornes **par maillage** à `+0x44` du
+`.ai/V7.5/cartes/HANDOFF_MAP_GEOMETRY_FROM_MODULES.md` §9.3 place les bornes **par maillage** à `+0x44` du
 record de 0x90. **Mesure du jour** : le bloc `BoundingBoxes` (+104) fait **84 octets, identiques
 sur les quatre tags examinés**, et son contenu est trois paires parfaitement symétriques —
 

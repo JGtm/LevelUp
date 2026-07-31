@@ -7,12 +7,12 @@ import (
 	"testing"
 )
 
-// fixtureDir : les .mvar de référence vivent sous .ai/re_dump/mapvar/ (artefacts de
+// fixtureDir : les .mvar de référence vivent sous .ai/V7.5/dumps/mapvar/ (artefacts de
 // rétro-ingénierie déjà présents en dépôt). On ne les duplique pas dans testdata/ :
 // ce sont des actifs propriétaires 343/Microsoft.
 func fixture(t *testing.T, name string) []byte {
 	t.Helper()
-	path := filepath.Join("..", "..", "..", "..", "..", "..", ".ai", "re_dump", "mapvar", name)
+	path := filepath.Join("..", "..", "..", "..", "..", "..", ".ai", "V7.5", "dumps", "mapvar", name)
 	buf, err := os.ReadFile(path)
 	if err != nil {
 		t.Skipf("fixture %s absente (%v) — test de parse ignoré", name, err)

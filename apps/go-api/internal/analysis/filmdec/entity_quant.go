@@ -3,7 +3,7 @@ package filmdec
 // Entity-record decoder, QUANTIZED/keyframe path (param_5==1). Mirrors the
 // param_5==1 branch of FUN_14080c1f8. It shares the full-state preamble/tail of
 // DecodeEntityRecord but applies the three RE'd deltas (cf. workflow
-// "param_5=1 quantized path", .ai/PLAN_FILM_ECS_DECODER.md):
+// "param_5=1 quantized path", .ai/V7.5/film_re/PLAN_FILM_ECS_DECODER.md):
 //   step15 stat loop : FUN_1406d3140(_,br,1,&v)            instead of R(32)
 //   step17 position  : FUN_140c9e4d8(out,br,1,&cVar2)      instead of FUN_1406cd5b8
 //   step19           : R(30) packed-dir SKIPPED when cVar2 != 0

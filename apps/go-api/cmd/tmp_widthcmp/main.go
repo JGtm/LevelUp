@@ -2,7 +2,7 @@
 // contre largeur que NOS desers consomment. THROWAWAY.
 //
 // METHODE
-//  1. Verite : .ai/re_dump/ce_capture_delta.csv, differences de curseurs entre composants
+//  1. Verite : .ai/V7.5/dumps/ce_capture_delta.csv, differences de curseurs entre composants
 //     consecutifs d'un meme record (cf. cmd/tmp_widthtruth ; le hook CE est sur le SEUL
 //     site de dispatch, la capture est donc exhaustive et les composants captures
 //     consecutifs sont bien consecutifs dans le flux).

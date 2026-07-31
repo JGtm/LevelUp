@@ -4,7 +4,7 @@
 //
 //	(a) les objets de la variante .mvar
 //	(b) les bornes monde du BSP (data/.../reference/map_quant_bounds.json)
-//	(c) les positions joueur decodees du film (.ai/re_dump/offline_trajectories*.csv)
+//	(c) les positions joueur decodees du film (.ai/V7.5/dumps/offline_trajectories*.csv)
 //
 // Si les trois se recouvrent sans facteur d'echelle ni translation, le repere est
 // commun. Sinon il manque une transformation — et on le DIT, on ne la fabrique pas.

@@ -1,5 +1,5 @@
 // tmp_widthtruth — TABLE DES LARGEURS VRAIES par composant, tiree de la verite terrain
-// live (.ai/re_dump/ce_capture_delta.csv). THROWAWAY.
+// live (.ai/V7.5/dumps/ce_capture_delta.csv). THROWAWAY.
 //
 // PRINCIPE (aucune hypothese de grammaire de composant) : le hook CE est pose sur le SEUL
 // site de dispatch des desers (FUN_14076cb60 : call [rax+28]) et enregistre le curseur du

@@ -291,7 +291,7 @@ func consumeQuantVec3WithGate(br *BitReader, axisW uint) {
 // l'.exe — même limitation que TraversalPrecision.
 //
 // SOURCE : la table DAT_1445cc9e0 dumpée en mémoire vive
-// (.ai/re_dump/ce_prec_widths_1445cc9e0.bin) est un tableau [niveau][3 axes] de
+// (.ai/V7.5/dumps/ce_prec_widths_1445cc9e0.bin) est un tableau [niveau][3 axes] de
 // largeurs = 6+L : L0->6/6/6, L7->13/13/13, **L8->14/14/14**, L9->15/15/15.
 //
 // MESURE (non circulaire, cmd/tmp_deadstate mode `solvechain`, film 000d5950) : sur les
@@ -407,7 +407,7 @@ func consumePositionHandleTail(br *BitReader, bHandle bool, pd PrecisionDescript
 //   - si l'un d'eux s'avérait borné par une région, il faudrait la table par région, pas
 //     celle-ci.
 //
-// Cf .ai/HANDOFF_KEYFRAME_LIVE_CAPTURE.md « LES LARGEURS SONT OFFLINE ».
+// Cf .ai/V7.5/film_re/HANDOFF_KEYFRAME_LIVE_CAPTURE.md « LES LARGEURS SONT OFFLINE ».
 func quantAxisWidth(level uint) uint {
 	if w := 6 + level; w < 26 {
 		return w
