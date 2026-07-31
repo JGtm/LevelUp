@@ -1,0 +1,54 @@
+BALAYAGE DES COMPOSANTS — archetype 35
+
+  975250 lectures capturees · 1972 signatures indexees (max 50 par composant)
+
+  comp   lectures  localis.     largeur    valeurs  note
+  i0       154158       307     47 bits         52    3 bits toujours nuls
+  i1       134611        96 31 bits (2)         48    1 bits toujours nuls
+  i2          126       155      9 bits        105  
+  i4          866        50     11 bits         43    1 bits toujours nuls
+  i5        35370        50     29 bits         50    14 bits toujours nuls
+  i6           91         0    358 bits          0  
+  i9           91       567    334 bits         13  PEU DE VALEURS -> enumerable
+  i11         100        51 191 bits (6)         40  
+  i13          91       172      8 bits          3  PEU DE VALEURS -> enumerable  4 bits toujours nuls
+  i14          91       172      4 bits          3  PEU DE VALEURS -> enumerable
+  i15         249        94 72 bits (2)         41  
+  i17         209        50 52 bits (5)          5  PEU DE VALEURS -> enumerable
+  i18         191        50  2 bits (2)          2  PEU DE VALEURS -> enumerable  1 bits toujours nuls
+  i21       94751        50     25 bits         41    1 bits toujours nuls
+  i22         256        50     35 bits         10  PEU DE VALEURS -> enumerable  26 bits toujours nuls
+  i23         102        50 19 bits (2)          2  PEU DE VALEURS -> enumerable  15 bits toujours nuls
+  i24         129        50 12 bits (2)          2  PEU DE VALEURS -> enumerable  10 bits toujours nuls
+  i25      158804       449     10 bits         44  
+  i26         159        50 22 bits (2)         48    4 bits toujours nuls
+  i28         966        50 10 bits (3)          3  PEU DE VALEURS -> enumerable  5 bits toujours nuls
+  i30        1915        50 14 bits (3)         36    3 bits toujours nuls
+  i31         195        50     11 bits         18    4 bits toujours nuls
+  i32        3146        50      9 bits          3  PEU DE VALEURS -> enumerable  5 bits toujours nuls
+  i33         945        50 14 bits (3)         18    4 bits toujours nuls
+  i34         177        50     11 bits         19    4 bits toujours nuls
+  i35        4948        50      9 bits          4  PEU DE VALEURS -> enumerable  4 bits toujours nuls
+  i42         447        50  7 bits (2)          7  PEU DE VALEURS -> enumerable
+  i43         208        50 15 bits (11)         37  
+  i44         204        50 15 bits (10)         36  
+  i45         102        60 17 bits (2)         43  
+  i46          91        65 17 bits (2)         54  
+  i47         215        54      9 bits          8  PEU DE VALEURS -> enumerable
+  i48         218        51 10 bits (2)         13  PEU DE VALEURS -> enumerable  1 bits toujours nuls
+  i49          91        55      3 bits          5  PEU DE VALEURS -> enumerable
+  i52          91        55     68 bits         10  PEU DE VALEURS -> enumerable
+  i53         123        54 31 bits (2)          9  PEU DE VALEURS -> enumerable
+  i54        1347       308  2 bits (2)          4  PEU DE VALEURS -> enumerable
+  i56         212        51 10 bits (2)         13  PEU DE VALEURS -> enumerable  1 bits toujours nuls
+  i57         990        50  2 bits (4)          2  PEU DE VALEURS -> enumerable  1 bits toujours nuls
+  i58          95       130           ?         84  
+  i59        1048        50           ?         29  
+
+  LECTURE DU TABLEAU —
+    « lectures »  ce que le moteur a deserialise sur tout le film
+    « localis. »  echantillon retrouve dans le film (borne par -per)
+    « largeur »   mesuree par difference de curseurs ; (n) = n largeurs distinctes
+    « valeurs »   valeurs distinctes sur l'echantillon, a la largeur dominante
+    Un composant a PEU DE VALEURS est enumerable donc exploitable tout de suite ;
+    des bits toujours nuls signalent un champ plus etroit que sa largeur.

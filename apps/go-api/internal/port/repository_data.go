@@ -9,6 +9,7 @@ package port
 import (
 	"context"
 
+	"levelup/go-api/internal/analysis/positions"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 )
@@ -126,6 +127,31 @@ type CitationsRepository interface {
 	// Dégradation silencieuse : titre sans table (Infinite) / SharedReader indispo →
 	// slice vide. Le viewer doit fournir son xuid (les commendations sont par joueur).
 	LoadMatchCommendationsRich(ctx context.Context, matchID, xuid string) ([]domain.HomeMatchCommendationRaw, error)
+}
+
+// ObjectiveEventsRepository relit les events objectif v3 (timeline mode-agnostique)
+// d'un match. Implémenté par platform/duckdb.ObjectiveEventsRepo.
+//
+// Capability gating : retourne games.ErrCapabilityNotSupported si les tables
+// shared.match_objective_events n'existent pas (titre sans capability film /
+// migration non appliquée).
+type ObjectiveEventsRepository interface {
+	// LoadMatch relit tous les events objectif d'un match, ordonnés par seq,
+	// avec leurs joueurs associés.
+	LoadMatch(ctx context.Context, matchID string) ([]domain.ObjectiveEvent, error)
+}
+
+// PlayerPositionsRepository relit les positions joueurs keyframe v3 (match-level,
+// §N de .ai/RESEARCH_THEATER_RE.md) d'un match. Implémenté par
+// platform/duckdb.PlayerPositionsRepo.
+//
+// Capability gating : retourne games.ErrCapabilityNotSupported si la table
+// shared.match_player_positions n'existe pas (titre sans capability film /
+// migration non appliquée).
+type PlayerPositionsRepository interface {
+	// LoadMatch relit toutes les positions full-state d'un match, ordonnées par
+	// time_ms ASC. Match-level : pas d'attribution xuid (Team best-effort).
+	LoadMatch(ctx context.Context, matchID string) ([]positions.PlayerPosition, error)
 }
 
 // MatchExclusionRepository gère le flag is_excluded dans player_match_enrichment.

@@ -109,15 +109,15 @@ et y porter notre travail. C'est jouable parce que **presque tout le nôtre est 
 
 Tout ceci n'existe **que** chez nous et n'entre en collision avec rien :
 
-- [ ] B1. `apps/go-api/internal/analysis/replay/` — le paquet d'assemblage du rejeu.
-- [ ] B2. `apps/web/src/features/match-replay/` + la route `.../replay.tsx` + les types
+- [x] B1. `apps/go-api/internal/analysis/replay/` — le paquet d'assemblage du rejeu.
+- [!] B2. `apps/web/src/features/match-replay/` + la route `.../replay.tsx` + les types
       `ReplayDocument` dans `lib/api/types.ts` *(attention : ce dernier fichier est partagé,
       n'ajouter que nos blocs)*.
-- [ ] B3. `data/titles/halo_infinite/reference/` — bornes de carte, structures, objectifs.
+- [x] B3. `data/titles/halo_infinite/reference/` — bornes de carte, structures, objectifs.
       **N'existe que sur notre branche**, et `replay-build` échoue sans.
-- [ ] B4. Les documents `.ai/` du chantier. **Conflit attendu sur `thought_log.md`** : les deux
+- [x] B4. Les documents `.ai/` du chantier. **Conflit attendu sur `thought_log.md`** : les deux
       branches y ont écrit. Fusionner par ordre chronologique, ne rien perdre.
-- [ ] B5. `cmd/replay-build/`, `cmd/mapstruct-build/`, `cmd/mapquant-build/`, `cmd/mapobj-build/`.
+- [x] B5. `cmd/replay-build/`, `cmd/mapstruct-build/`, `cmd/mapquant-build/`, `cmd/mapobj-build/`.
 
 ### Phase C — les 16 fichiers `filmdec`  *(le vrai travail)*
 
@@ -237,6 +237,81 @@ tout gate de compilation global. Le paquet `internal/analysis/replay/` dépend d
 n'arrivent qu'en phase C — un `go build` vert n'est donc **pas** attendu à la fin de B. Le premier
 gate de compilation est posé à la fin de C, et les critères du §5 à la fin de D.
 
+### [2026-07-31] Phase B — PARTIELLE (l'additif est porté ; le recâblage API/web reste)
+
+**Le périmètre réel, mesuré.** `git diff 811be64ec..feat/filmdec-continuation` = **841 fichiers :
+809 ajouts purs + 32 modifications**. Sur les 809 ajouts, **48 collisionnent** avec
+`killsource-prod`, **761 non**. Sur les 48, **28 sont identiques octet pour octet** — il ne reste
+que **20 vrais désaccords** : les 16 `filmdec` du §3, plus 4 hors décodeur.
+
+- **B1** `[x]` — `internal/analysis/replay/` porté (28 fichiers). La fermeture transitive des
+  dépendances va plus loin que la liste du plan : `go list -deps` sur la chaîne
+  `replay` + les 4 `cmd/*-build` exige aussi `analysis/objectivescore`, `analysis/positions`,
+  `analysis/weaponv3`, `internal/himap`, `internal/himodule`, `internal/ooz`. Tous portés.
+- **B2** `[!]` — `features/match-replay/` (18 fichiers) porté. **La route ne l'est pas** :
+  voir la découverte n°2 ci-dessous. `lib/api/types.ts` et `lib/query/keys.ts` sont laissés à
+  leur version `main` en attendant.
+- **B3** `[x]` — `data/titles/halo_infinite/reference/` porté (4 fichiers : `map_objectives.json`,
+  `map_quant_bounds.json`, `map_structure/{ridgeline,sgh_streets}.json`).
+- **B4** `[x]` — documents `.ai/` portés (111 fichiers). `thought_log.md` fusionné par
+  interclassement chronologique : 136 entrées de notre lignée + 55 de la leur, **2 104 entrées
+  au total, zéro perte**. Choix consigné : sur le conflit profond (rotation trimestrielle faite
+  sur `main`, pas chez nous), les **deux** blocs sont conservés — dupliquer est réversible,
+  perdre ne l'est pas. Re-appliquer la rotation est une tâche d'après-réconciliation.
+- **B5** `[x]` — les 4 `cmd/*-build` portés, ainsi que l'outillage de recherche
+  (`cmd/tmp_*`, `cmd/wf_*`, `tools/ce/`) : le piège 6 rappelle que `govulncheck` charge **tout**
+  le module, donc les laisser derrière ne simplifierait rien et perdrait la recherche.
+
+**Arbitrages sur les 4 collisions hors `filmdec`** :
+
+| fichier | retenu | pourquoi |
+|---|---|---|
+| `.ai/RE_LOG_KILLWEAPON.md` | `killsource` | 18 309 lignes contre 824 — la leur est strictement plus riche |
+| `.github/workflows/gitleaks.yml` | `killsource` | `main` fait autorité sur la CI |
+| `cmd/rdata_weapon_scan/main.go` | nous | +829/-167, notre version a continué d'évoluer |
+| `static/grenades-assets/.../index.json` | nous | correspond à nos 8 PNG (nommage minuscule) |
+
+**Les 5 workflows CI + `.gitignore`** : version `main` retenue telle quelle. Vérifié sur pièces —
+**nos améliorations CI sont déjà sur `main`** (`timeout-minutes` ×9, bloc `permissions:`, ratchet
+`--new-from-merge-base` : tous présents chez eux). Seules nos 8 lignes de `.gitignore` sont
+réajoutées. `internal/migration/order.go` : nos 4 migrations réinsérées dans l'ordre canonique.
+
+### DEUX DÉCOUVERTES QUI INVALIDENT L'HYPOTHÈSE « TOUT EST ADDITIF » (§4)
+
+Elles ne portent pas sur le décodeur — celui-ci se réconcilie bien comme prévu — mais sur les
+**deux couches qui le consomment**, que les 1 859 commits de `main` ont refondues.
+
+1. **L'API est passée à Huma.** Nous enregistrions le rejeu en chi dans `internal/api/server.go`.
+   Sur `main`, le registre a déménagé dans `internal/api/wire/` et les routes se déclarent en
+   `huma.Get(api, "...", h.handle..., humacore.Op(...))` **depuis les handlers**. Porter
+   l'endpoint `/matches/{match_id}/replay` (plus `objective-events` et `positions`) est une
+   **réécriture**, pas une copie.
+2. **Le routage web a été refondu.** Notre route vivait en
+   `routes/players/$playerSlug/matches/$matchId/replay.tsx`. Ce schéma est **mort** sur `main`
+   (attrape-tout `players/$.tsx`) ; la vraie route est
+   `routes/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/replay.tsx` — et elle
+   **existe déjà, en stub**, derrière `RouteCapabilityGate` et le flag `REJEU_2D_ENABLED`. Notre
+   implémentation doit remplacer ce stub en adoptant ses paramètres (`lang`, `titleSlug`) et sa
+   garde. Le fichier au schéma mort a été retiré du portage.
+
+### Ce qui reste de la phase B — 10 fichiers partagés, laissés à leur version `main`
+
+`apps/go-api/api/openapi.yaml` · `internal/api/server.go` · `internal/service/match_view_service.go` ·
+`internal/sync/comeback.go` · `features/match-view/{MatchKDCumulChart,MatchTugOfWarChart,MatchViewPage,queries}` ·
+`lib/api/types.ts` · `lib/query/keys.ts` · `routeTree.gen.ts` (régénéré, jamais édité à la main).
+
+Aucun ne contient de marqueur de conflit : ils sont **intacts**, à l'état `main`. Le travail
+restant est le recâblage décrit ci-dessus, pas une résolution de conflit.
+
 ### Découvertes (hors périmètre, non traitées)
 
-_(rien pour l'instant)_
+1. **Deux jeux d'images de grenades coexistent** — `Dynamo-light.png` (lignée `killsource`) et
+   `dynamo_light.png` (la nôtre). `index.json` ne peut en désigner qu'un : le jeu majuscule est
+   désormais orphelin. Aucun consommateur dans le code (`grep` sur `apps/`), donc sans effet ;
+   à nettoyer après la réconciliation.
+2. **La rotation trimestrielle du `thought_log` est à re-appliquer** après la réconciliation
+   (cf. B4).
+3. **Le stub de rejeu de `main` est probablement inatteignable** : `$matchId.tsx` y rend
+   `MatchViewPage` sans `Outlet`, alors que `$matchId/replay.tsx` est une sous-route. Notre
+   lignée avait justement fait la bascule en layout + `index.tsx`. À traiter avec le recâblage
+   web, pas avant.

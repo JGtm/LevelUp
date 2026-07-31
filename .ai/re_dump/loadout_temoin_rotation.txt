@@ -1,0 +1,354 @@
+########## shuffle=0 ##########
+=== 150 loadouts de record biped sur 26 keyframes ===
+=== 171826 positions, 99 slots, 519 events de tir ; 26 slots avec proprietaire vote ===
+=== JOINTURE : 41/150 loadouts rattaches a un joueur ; 80 slots porteurs ; 8 joueurs ; 18 keyframes ===
+=== 281 tirs rattaches a un slot (arme nommee) ===
+=== 21 slots distincts couverts par le temoin ===
+
+=== TEMOIN CROISE POSITIF : arme du tir dans le loadout du MEME slot : 233/237 = 98.3% ===
+   joueur 0 : 29/29 = 100%
+   joueur 1 : 7/7 = 100%
+   joueur 2 : 61/63 = 97%
+   joueur 3 : 20/20 = 100%
+   joueur 4 : 49/50 = 98%
+   joueur 5 : 13/14 = 93%
+   joueur 6 : 17/17 = 100%
+   joueur 7 : 37/37 = 100%
+
+=== TEMOIN NEGATIF (meme tir, loadout d'un AUTRE slot vivant au meme instant) : 104/1353 = 7.7% ===
+    position dans le loadout des accords : primaire=119 secondaire=114 (autre=0)
+
+=== TEMOIN NEGATIF 2 : tirs du joueur p confrontes au loadout du joueur (p+k) mod 8 ===
+   k=1 : 0/26 = 0.0%
+   k=2 : 1/105 = 1.0%
+   k=3 : 7/53 = 13.2%
+   k=4 : 10/23 = 43.5%
+   k=5 : 12/97 = 12.4%
+   k=6 : 1/42 = 2.4%
+   k=7 : 0/87 = 0.0%
+   TOTAL k=1..7 : 31/433 = 7.2%
+
+=== ENTROPIE des armes de tir par joueur (bits) ===
+   joueur 0 : H=1.00 bits, 2 armes distinctes, n=29 | Mangler:15 Stalker Rifle:14
+   joueur 1 : H=1.38 bits, 3 armes distinctes, n=7 | Disruptor:4 Mangler:2 M41 SPNKr:1
+   joueur 2 : H=0.83 bits, 3 armes distinctes, n=63 | MA40 AR:51 BR75:10 Ravager:2
+   joueur 3 : H=0.93 bits, 2 armes distinctes, n=20 | Needler:13 M41 SPNKr:7
+   joueur 4 : H=1.43 bits, 4 armes distinctes, n=50 | BR75:30 Stalker Rifle:14 M41 SPNKr:4 Shock Rifle:2
+   joueur 5 : H=1.20 bits, 3 armes distinctes, n=14 | S7 Sniper:9 Stalker Rifle:4 Ravager:1
+   joueur 6 : H=1.50 bits, 3 armes distinctes, n=17 | S7 Sniper:7 Heatwave:7 Mk51 Sidekick:3
+   joueur 7 : H=1.02 bits, 3 armes distinctes, n=37 | Needler:28 Ravager:6 M41 SPNKr:3
+
+=== CHANGEMENTS D'ARME entre keyframes consecutifs (meme joueur) ===
+   joueur 0   100.0s slot525 [Mangler+Pulse Carbine]  ->   260.0s slot559 [Energy Sword+Stalker Rifle]  nouvelles=[Energy Sword Stalker Rifle] corrobore=true
+   joueur 0   280.0s slot559 [Energy Sword+Stalker Rifle]  ->   320.1s slot570 [Sentinel Beam+Stalker Rifle]  nouvelles=[Sentinel Beam] corrobore=false
+   joueur 1   300.1s slot566 [Disruptor+Heatwave]  ->   420.1s slot590 [Mangler+Ravager]  nouvelles=[Mangler Ravager] corrobore=true
+   joueur 1   420.1s slot590 [Mangler+Ravager]  ->   440.1s slot590 [Mangler+M41 SPNKr]  nouvelles=[M41 SPNKr] corrobore=false
+   joueur 2   320.1s slot572 [Heatwave+BR75]  ->   440.1s slot596 [Plasma Pistol+MA40 AR]  nouvelles=[MA40 AR Plasma Pistol] corrobore=false
+   joueur 3    60.0s slot520 [M41 SPNKr+Gravity Hammer]  ->   100.0s slot529 [Cindershot+M41 SPNKr]  nouvelles=[Cindershot] corrobore=false
+   joueur 3   120.0s slot529 [Cindershot+M41 SPNKr]  ->   140.0s slot529 [Gravity Hammer+M41 SPNKr]  nouvelles=[Gravity Hammer] corrobore=false
+   joueur 3   160.0s slot529 [Gravity Hammer+M41 SPNKr]  ->   360.1s slot581 [Needler+Cindershot]  nouvelles=[Cindershot Needler] corrobore=false
+   joueur 4   140.0s slot534 [Stalker Rifle+Shock Rifle]  ->   180.0s slot541 [BR75+Energy Sword]  nouvelles=[BR75 Energy Sword] corrobore=true
+   joueur 4   180.0s slot541 [BR75+Energy Sword]  ->   320.1s slot569 [Gravity Hammer+Stalker Rifle]  nouvelles=[Gravity Hammer Stalker Rifle] corrobore=true
+   joueur 4   360.1s slot569 [Gravity Hammer+Stalker Rifle]  ->   420.1s slot593 [M41 SPNKr+BR75]  nouvelles=[BR75 M41 SPNKr] corrobore=true
+   joueur 5   260.0s slot560 [Stalker Rifle+Pulse Carbine]  ->   280.0s slot564 [Pulse Carbine+S7 Sniper]  nouvelles=[S7 Sniper] corrobore=true
+   joueur 6   180.0s slot528 [Mk51 Sidekick+S7 Sniper]  ->   500.1s slot609 [Heatwave+Pulse Carbine]  nouvelles=[Heatwave Pulse Carbine] corrobore=true
+   joueur 7   300.1s slot561 [Gravity Hammer+Ravager]  ->   440.1s slot597 [M41 SPNKr+Plasma Pistol]  nouvelles=[M41 SPNKr Plasma Pistol] corrobore=true
+   joueur 7   440.1s slot597 [M41 SPNKr+Plasma Pistol]  ->   460.1s slot601 [Needler+CQS48 Bulldog]  nouvelles=[CQS48 Bulldog Needler] corrobore=false
+   15 changements sur 33 paires consecutives ; 8 corrobores par un tir de l'arme nouvelle dans l'intervalle
+   dont 2 a SLOT CONSTANT (ramassage en cours de vie, 0 corrobores) et 13 avec changement de slot (reapparition)
+########## shuffle=1 ##########
+=== MODE TEMOIN : loadouts permutes de 1 cran(s) entre slots du meme keyframe ===
+=== 150 loadouts de record biped sur 26 keyframes ===
+=== 171826 positions, 99 slots, 519 events de tir ; 26 slots avec proprietaire vote ===
+=== JOINTURE : 41/150 loadouts rattaches a un joueur ; 80 slots porteurs ; 8 joueurs ; 18 keyframes ===
+=== 281 tirs rattaches a un slot (arme nommee) ===
+=== 21 slots distincts couverts par le temoin ===
+
+=== TEMOIN CROISE POSITIF : arme du tir dans le loadout du MEME slot : 17/237 = 7.2% ===
+   joueur 0 : 9/29 = 31%
+   joueur 1 : 1/7 = 14%
+   joueur 2 : 0/63 = 0%
+   joueur 3 : 0/20 = 0%
+   joueur 4 : 7/50 = 14%
+   joueur 5 : 0/14 = 0%
+   joueur 6 : 0/17 = 0%
+   joueur 7 : 0/37 = 0%
+
+=== TEMOIN NEGATIF (meme tir, loadout d'un AUTRE slot vivant au meme instant) : 216/1353 = 16.0% ===
+    position dans le loadout des accords : primaire=10 secondaire=7 (autre=0)
+
+=== TEMOIN NEGATIF 2 : tirs du joueur p confrontes au loadout du joueur (p+k) mod 8 ===
+   k=1 : 3/26 = 11.5%
+   k=2 : 5/105 = 4.8%
+   k=3 : 13/53 = 24.5%
+   k=4 : 10/23 = 43.5%
+   k=5 : 19/97 = 19.6%
+   k=6 : 2/42 = 4.8%
+   k=7 : 0/87 = 0.0%
+   TOTAL k=1..7 : 52/433 = 12.0%
+
+=== ENTROPIE des armes de tir par joueur (bits) ===
+   joueur 0 : H=1.00 bits, 2 armes distinctes, n=29 | Mangler:15 Stalker Rifle:14
+   joueur 1 : H=1.38 bits, 3 armes distinctes, n=7 | Disruptor:4 Mangler:2 M41 SPNKr:1
+   joueur 2 : H=0.83 bits, 3 armes distinctes, n=63 | MA40 AR:51 BR75:10 Ravager:2
+   joueur 3 : H=0.93 bits, 2 armes distinctes, n=20 | Needler:13 M41 SPNKr:7
+   joueur 4 : H=1.43 bits, 4 armes distinctes, n=50 | BR75:30 Stalker Rifle:14 M41 SPNKr:4 Shock Rifle:2
+   joueur 5 : H=1.20 bits, 3 armes distinctes, n=14 | S7 Sniper:9 Stalker Rifle:4 Ravager:1
+   joueur 6 : H=1.50 bits, 3 armes distinctes, n=17 | Heatwave:7 S7 Sniper:7 Mk51 Sidekick:3
+   joueur 7 : H=1.02 bits, 3 armes distinctes, n=37 | Needler:28 Ravager:6 M41 SPNKr:3
+
+=== CHANGEMENTS D'ARME entre keyframes consecutifs (meme joueur) ===
+   joueur 0   100.0s slot525 [CQS48 Bulldog+Cindershot]  ->   260.0s slot559 [Stalker Rifle+Pulse Carbine]  nouvelles=[Pulse Carbine Stalker Rifle] corrobore=true
+   joueur 0   260.0s slot559 [Stalker Rifle+Pulse Carbine]  ->   280.0s slot559 [Gravity Hammer+Ravager]  nouvelles=[Gravity Hammer Ravager] corrobore=false
+   joueur 0   280.0s slot559 [Gravity Hammer+Ravager]  ->   320.1s slot570 [Disruptor+Skewer]  nouvelles=[Disruptor Skewer] corrobore=false
+   joueur 1   300.1s slot566 [Skewer+S7 Sniper]  ->   420.1s slot590 [M41 SPNKr+CQS48 Bulldog]  nouvelles=[CQS48 Bulldog M41 SPNKr] corrobore=true
+   joueur 2   320.1s slot572 [S7 Sniper+Cindershot]  ->   440.1s slot596 [M41 SPNKr+Plasma Pistol]  nouvelles=[M41 SPNKr Plasma Pistol] corrobore=false
+   joueur 2   440.1s slot596 [M41 SPNKr+Plasma Pistol]  ->   460.1s slot596 [Gravity Hammer+MLRS-2 Hydra]  nouvelles=[Gravity Hammer MLRS-2 Hydra] corrobore=false
+   joueur 3    60.0s slot520 [Sentinel Beam+Mk51 Sidekick]  ->   100.0s slot529 [Gravity Hammer+Disruptor]  nouvelles=[Disruptor Gravity Hammer] corrobore=false
+   joueur 3   100.0s slot529 [Gravity Hammer+Disruptor]  ->   120.0s slot529 [VK78 Commando+Needler]  nouvelles=[Needler VK78 Commando] corrobore=false
+   joueur 3   120.0s slot529 [VK78 Commando+Needler]  ->   140.0s slot529 [Gravity Hammer+Sentinel Beam+??]  nouvelles=[?? Gravity Hammer Sentinel Beam] corrobore=false
+   joueur 3   140.0s slot529 [Gravity Hammer+Sentinel Beam+??]  ->   160.0s slot529 [Heatwave+Needler]  nouvelles=[Heatwave Needler] corrobore=false
+   joueur 3   160.0s slot529 [Heatwave+Needler]  ->   360.1s slot581 [Gravity Hammer+Stalker Rifle]  nouvelles=[Gravity Hammer Stalker Rifle] corrobore=false
+   joueur 4   140.0s slot534 [Pulse Carbine+BR75]  ->   180.0s slot541 [MA40 AR+Sentinel Beam]  nouvelles=[MA40 AR Sentinel Beam] corrobore=false
+   joueur 4   180.0s slot541 [MA40 AR+Sentinel Beam]  ->   320.1s slot569 [Sentinel Beam+Stalker Rifle]  nouvelles=[Stalker Rifle] corrobore=true
+   joueur 4   320.1s slot569 [Sentinel Beam+Stalker Rifle]  ->   340.1s slot569 [Sentinel Beam+Skewer]  nouvelles=[Skewer] corrobore=false
+   joueur 4   360.1s slot569 [Sentinel Beam+Skewer]  ->   420.1s slot593 [Sentinel Beam+Gravity Hammer]  nouvelles=[Gravity Hammer] corrobore=false
+   joueur 4   420.1s slot593 [Sentinel Beam+Gravity Hammer]  ->   440.1s slot593 [Stalker Rifle+Gravity Hammer]  nouvelles=[Stalker Rifle] corrobore=false
+   joueur 5   260.0s slot560 [Gravity Hammer+Ravager]  ->   280.0s slot564 [Energy Sword+Skewer]  nouvelles=[Energy Sword Skewer] corrobore=false
+   joueur 5   280.0s slot564 [Energy Sword+Skewer]  ->   300.1s slot564 [Disruptor+Heatwave]  nouvelles=[Disruptor Heatwave] corrobore=false
+   joueur 5   300.1s slot564 [Disruptor+Heatwave]  ->   320.1s slot564 [Gravity Hammer+Stalker Rifle]  nouvelles=[Gravity Hammer Stalker Rifle] corrobore=false
+   joueur 6    80.0s slot528 [Gravity Hammer+Disruptor]  ->   100.0s slot528 [Cindershot+M41 SPNKr]  nouvelles=[Cindershot M41 SPNKr] corrobore=false
+   joueur 6   120.0s slot528 [Cindershot+M41 SPNKr]  ->   140.0s slot528 [Gravity Hammer+M41 SPNKr]  nouvelles=[Gravity Hammer] corrobore=false
+   joueur 6   160.0s slot528 [Gravity Hammer+M41 SPNKr]  ->   180.0s slot528 [Sentinel Beam+Energy Sword]  nouvelles=[Energy Sword Sentinel Beam] corrobore=false
+   joueur 6   180.0s slot528 [Sentinel Beam+Energy Sword]  ->   500.1s slot609 [M41 SPNKr+MA40 AR]  nouvelles=[M41 SPNKr MA40 AR] corrobore=false
+   joueur 7   280.0s slot561 [Plasma Pistol+Skewer]  ->   300.1s slot561 [Pulse Carbine+S7 Sniper]  nouvelles=[Pulse Carbine S7 Sniper] corrobore=false
+   joueur 7   300.1s slot561 [Pulse Carbine+S7 Sniper]  ->   440.1s slot597 [Sentinel Beam+Gravity Hammer]  nouvelles=[Gravity Hammer Sentinel Beam] corrobore=false
+   joueur 7   460.1s slot601 [Sentinel Beam+Gravity Hammer]  ->   480.1s slot601 [MLRS-2 Hydra+Mk51 Sidekick]  nouvelles=[MLRS-2 Hydra Mk51 Sidekick] corrobore=false
+   26 changements sur 33 paires consecutives ; 3 corrobores par un tir de l'arme nouvelle dans l'intervalle
+   dont 14 a SLOT CONSTANT (ramassage en cours de vie, 0 corrobores) et 12 avec changement de slot (reapparition)
+########## shuffle=2 ##########
+=== MODE TEMOIN : loadouts permutes de 2 cran(s) entre slots du meme keyframe ===
+=== 150 loadouts de record biped sur 26 keyframes ===
+=== 171826 positions, 99 slots, 519 events de tir ; 26 slots avec proprietaire vote ===
+=== JOINTURE : 41/150 loadouts rattaches a un joueur ; 80 slots porteurs ; 8 joueurs ; 18 keyframes ===
+=== 281 tirs rattaches a un slot (arme nommee) ===
+=== 21 slots distincts couverts par le temoin ===
+
+=== TEMOIN CROISE POSITIF : arme du tir dans le loadout du MEME slot : 31/237 = 13.1% ===
+   joueur 0 : 15/29 = 52%
+   joueur 1 : 1/7 = 14%
+   joueur 2 : 0/63 = 0%
+   joueur 3 : 1/20 = 5%
+   joueur 4 : 2/50 = 4%
+   joueur 5 : 9/14 = 64%
+   joueur 6 : 0/17 = 0%
+   joueur 7 : 3/37 = 8%
+
+=== TEMOIN NEGATIF (meme tir, loadout d'un AUTRE slot vivant au meme instant) : 194/1353 = 14.3% ===
+    position dans le loadout des accords : primaire=1 secondaire=30 (autre=0)
+
+=== TEMOIN NEGATIF 2 : tirs du joueur p confrontes au loadout du joueur (p+k) mod 8 ===
+   k=1 : 0/26 = 0.0%
+   k=2 : 8/105 = 7.6%
+   k=3 : 2/53 = 3.8%
+   k=4 : 0/23 = 0.0%
+   k=5 : 4/97 = 4.1%
+   k=6 : 19/42 = 45.2%
+   k=7 : 0/87 = 0.0%
+   TOTAL k=1..7 : 33/433 = 7.6%
+
+=== ENTROPIE des armes de tir par joueur (bits) ===
+   joueur 0 : H=1.00 bits, 2 armes distinctes, n=29 | Mangler:15 Stalker Rifle:14
+   joueur 1 : H=1.38 bits, 3 armes distinctes, n=7 | Disruptor:4 Mangler:2 M41 SPNKr:1
+   joueur 2 : H=0.83 bits, 3 armes distinctes, n=63 | MA40 AR:51 BR75:10 Ravager:2
+   joueur 3 : H=0.93 bits, 2 armes distinctes, n=20 | Needler:13 M41 SPNKr:7
+   joueur 4 : H=1.43 bits, 4 armes distinctes, n=50 | BR75:30 Stalker Rifle:14 M41 SPNKr:4 Shock Rifle:2
+   joueur 5 : H=1.20 bits, 3 armes distinctes, n=14 | S7 Sniper:9 Stalker Rifle:4 Ravager:1
+   joueur 6 : H=1.50 bits, 3 armes distinctes, n=17 | S7 Sniper:7 Heatwave:7 Mk51 Sidekick:3
+   joueur 7 : H=1.02 bits, 3 armes distinctes, n=37 | Needler:28 Ravager:6 M41 SPNKr:3
+
+=== CHANGEMENTS D'ARME entre keyframes consecutifs (meme joueur) ===
+   joueur 0    80.0s slot525 [Ravager+Mangler+??]  ->   100.0s slot525 [Ravager+Mangler]  nouvelles=[] corrobore=false
+   joueur 0   100.0s slot525 [Ravager+Mangler]  ->   260.0s slot559 [Gravity Hammer+Ravager]  nouvelles=[Gravity Hammer] corrobore=false
+   joueur 0   260.0s slot559 [Gravity Hammer+Ravager]  ->   280.0s slot559 [Plasma Pistol+Skewer]  nouvelles=[Plasma Pistol Skewer] corrobore=false
+   joueur 0   280.0s slot559 [Plasma Pistol+Skewer]  ->   320.1s slot570 [Heatwave+BR75]  nouvelles=[BR75 Heatwave] corrobore=false
+   joueur 1   300.1s slot566 [Gravity Hammer+Ravager]  ->   420.1s slot590 [M41 SPNKr+BR75]  nouvelles=[BR75 M41 SPNKr] corrobore=false
+   joueur 2   320.1s slot572 [Gravity Hammer+S7 Sniper]  ->   440.1s slot596 [Sentinel Beam+Gravity Hammer]  nouvelles=[Sentinel Beam] corrobore=false
+   joueur 2   440.1s slot596 [Sentinel Beam+Gravity Hammer]  ->   460.1s slot596 [Stalker Rifle+S7 Sniper]  nouvelles=[S7 Sniper Stalker Rifle] corrobore=false
+   joueur 3    60.0s slot520 [Energy Sword+Heatwave]  ->   100.0s slot529 [Sentinel Beam+Skewer]  nouvelles=[Sentinel Beam Skewer] corrobore=false
+   joueur 3   100.0s slot529 [Sentinel Beam+Skewer]  ->   120.0s slot529 [Needler+M41 SPNKr]  nouvelles=[M41 SPNKr Needler] corrobore=false
+   joueur 3   120.0s slot529 [Needler+M41 SPNKr]  ->   140.0s slot529 [Disruptor+Energy Sword]  nouvelles=[Disruptor Energy Sword] corrobore=false
+   joueur 3   140.0s slot529 [Disruptor+Energy Sword]  ->   160.0s slot529 [Pulse Carbine+Gravity Hammer]  nouvelles=[Gravity Hammer Pulse Carbine] corrobore=false
+   joueur 3   160.0s slot529 [Pulse Carbine+Gravity Hammer]  ->   360.1s slot581 [Sentinel Beam+Skewer]  nouvelles=[Sentinel Beam Skewer] corrobore=false
+   joueur 4   140.0s slot534 [Heatwave+Shock Rifle]  ->   180.0s slot541 [MA40 AR+Disruptor]  nouvelles=[Disruptor MA40 AR] corrobore=false
+   joueur 4   180.0s slot541 [MA40 AR+Disruptor]  ->   320.1s slot569 [Disruptor+Skewer]  nouvelles=[Skewer] corrobore=false
+   joueur 4   320.1s slot569 [Disruptor+Skewer]  ->   340.1s slot569 [Stalker Rifle+Gravity Hammer]  nouvelles=[Gravity Hammer Stalker Rifle] corrobore=false
+   joueur 4   340.1s slot569 [Stalker Rifle+Gravity Hammer]  ->   360.1s slot569 [Pulse Carbine+Disruptor]  nouvelles=[Disruptor Pulse Carbine] corrobore=false
+   joueur 4   360.1s slot569 [Pulse Carbine+Disruptor]  ->   420.1s slot593 [Gravity Hammer+Sentinel Beam]  nouvelles=[Gravity Hammer Sentinel Beam] corrobore=false
+   joueur 4   420.1s slot593 [Gravity Hammer+Sentinel Beam]  ->   440.1s slot593 [CQS48 Bulldog+Shock Rifle]  nouvelles=[CQS48 Bulldog Shock Rifle] corrobore=false
+   joueur 5   260.0s slot560 [Plasma Pistol+Skewer]  ->   280.0s slot564 [Skewer+S7 Sniper]  nouvelles=[S7 Sniper] corrobore=true
+   joueur 5   300.1s slot564 [Skewer+S7 Sniper]  ->   320.1s slot564 [Sentinel Beam+Stalker Rifle]  nouvelles=[Sentinel Beam Stalker Rifle] corrobore=false
+   joueur 6    80.0s slot528 [Mangler+Skewer]  ->   100.0s slot528 [Gravity Hammer+Disruptor]  nouvelles=[Disruptor Gravity Hammer] corrobore=false
+   joueur 6   100.0s slot528 [Gravity Hammer+Disruptor]  ->   120.0s slot528 [VK78 Commando+Needler]  nouvelles=[Needler VK78 Commando] corrobore=false
+   joueur 6   120.0s slot528 [VK78 Commando+Needler]  ->   140.0s slot528 [Gravity Hammer+Sentinel Beam+??]  nouvelles=[?? Gravity Hammer Sentinel Beam] corrobore=false
+   joueur 6   140.0s slot528 [Gravity Hammer+Sentinel Beam+??]  ->   160.0s slot528 [Heatwave+Needler]  nouvelles=[Heatwave Needler] corrobore=false
+   joueur 6   160.0s slot528 [Heatwave+Needler]  ->   180.0s slot528 [BR75+Energy Sword]  nouvelles=[BR75 Energy Sword] corrobore=false
+   joueur 6   180.0s slot528 [BR75+Energy Sword]  ->   500.1s slot609 [Gravity Hammer+Pulse Carbine]  nouvelles=[Gravity Hammer Pulse Carbine] corrobore=false
+   joueur 7   260.0s slot561 [Pulse Carbine+Sentinel Beam]  ->   280.0s slot561 [Gravity Hammer+Mangler]  nouvelles=[Gravity Hammer Mangler] corrobore=false
+   joueur 7   280.0s slot561 [Gravity Hammer+Mangler]  ->   300.1s slot561 [Disruptor+Heatwave]  nouvelles=[Disruptor Heatwave] corrobore=false
+   joueur 7   300.1s slot561 [Disruptor+Heatwave]  ->   440.1s slot597 [Mangler+M41 SPNKr]  nouvelles=[M41 SPNKr Mangler] corrobore=true
+   joueur 7   440.1s slot597 [Mangler+M41 SPNKr]  ->   460.1s slot601 [M41 SPNKr+CQS48 Bulldog]  nouvelles=[CQS48 Bulldog] corrobore=false
+   joueur 7   460.1s slot601 [M41 SPNKr+CQS48 Bulldog]  ->   480.1s slot601 [Gravity Hammer+Pulse Carbine]  nouvelles=[Gravity Hammer Pulse Carbine] corrobore=false
+   31 changements sur 33 paires consecutives ; 2 corrobores par un tir de l'arme nouvelle dans l'intervalle
+   dont 18 a SLOT CONSTANT (ramassage en cours de vie, 0 corrobores) et 13 avec changement de slot (reapparition)
+########## shuffle=3 ##########
+=== MODE TEMOIN : loadouts permutes de 3 cran(s) entre slots du meme keyframe ===
+=== 150 loadouts de record biped sur 26 keyframes ===
+=== 171826 positions, 99 slots, 519 events de tir ; 26 slots avec proprietaire vote ===
+=== JOINTURE : 41/150 loadouts rattaches a un joueur ; 80 slots porteurs ; 8 joueurs ; 18 keyframes ===
+=== 281 tirs rattaches a un slot (arme nommee) ===
+=== 21 slots distincts couverts par le temoin ===
+
+=== TEMOIN CROISE POSITIF : arme du tir dans le loadout du MEME slot : 3/237 = 1.3% ===
+   joueur 0 : 0/29 = 0%
+   joueur 1 : 0/7 = 0%
+   joueur 2 : 0/63 = 0%
+   joueur 3 : 0/20 = 0%
+   joueur 4 : 0/50 = 0%
+   joueur 5 : 0/14 = 0%
+   joueur 6 : 0/17 = 0%
+   joueur 7 : 3/37 = 8%
+
+=== TEMOIN NEGATIF (meme tir, loadout d'un AUTRE slot vivant au meme instant) : 234/1353 = 17.3% ===
+    position dans le loadout des accords : primaire=3 secondaire=0 (autre=0)
+
+=== TEMOIN NEGATIF 2 : tirs du joueur p confrontes au loadout du joueur (p+k) mod 8 ===
+   k=1 : 1/26 = 3.8%
+   k=2 : 56/105 = 53.3%
+   k=3 : 7/53 = 13.2%
+   k=4 : 7/23 = 30.4%
+   k=5 : 13/97 = 13.4%
+   k=6 : 7/42 = 16.7%
+   k=7 : 7/87 = 8.0%
+   TOTAL k=1..7 : 98/433 = 22.6%
+
+=== ENTROPIE des armes de tir par joueur (bits) ===
+   joueur 0 : H=1.00 bits, 2 armes distinctes, n=29 | Mangler:15 Stalker Rifle:14
+   joueur 1 : H=1.38 bits, 3 armes distinctes, n=7 | Disruptor:4 Mangler:2 M41 SPNKr:1
+   joueur 2 : H=0.83 bits, 3 armes distinctes, n=63 | MA40 AR:51 BR75:10 Ravager:2
+   joueur 3 : H=0.93 bits, 2 armes distinctes, n=20 | Needler:13 M41 SPNKr:7
+   joueur 4 : H=1.43 bits, 4 armes distinctes, n=50 | BR75:30 Stalker Rifle:14 M41 SPNKr:4 Shock Rifle:2
+   joueur 5 : H=1.20 bits, 3 armes distinctes, n=14 | S7 Sniper:9 Stalker Rifle:4 Ravager:1
+   joueur 6 : H=1.50 bits, 3 armes distinctes, n=17 | S7 Sniper:7 Heatwave:7 Mk51 Sidekick:3
+   joueur 7 : H=1.02 bits, 3 armes distinctes, n=37 | Needler:28 Ravager:6 M41 SPNKr:3
+
+=== CHANGEMENTS D'ARME entre keyframes consecutifs (meme joueur) ===
+   joueur 0   100.0s slot525 [Mk51 Sidekick+S7 Sniper]  ->   260.0s slot559 [Plasma Pistol+Skewer]  nouvelles=[Plasma Pistol Skewer] corrobore=false
+   joueur 0   260.0s slot559 [Plasma Pistol+Skewer]  ->   280.0s slot559 [Gravity Hammer+Mangler]  nouvelles=[Gravity Hammer Mangler] corrobore=false
+   joueur 0   280.0s slot559 [Gravity Hammer+Mangler]  ->   320.1s slot570 [S7 Sniper+Cindershot]  nouvelles=[Cindershot S7 Sniper] corrobore=false
+   joueur 1   300.1s slot566 [Pulse Carbine+S7 Sniper]  ->   420.1s slot590 [Sentinel Beam+Gravity Hammer]  nouvelles=[Gravity Hammer Sentinel Beam] corrobore=false
+   joueur 1   420.1s slot590 [Sentinel Beam+Gravity Hammer]  ->   440.1s slot590 [Stalker Rifle+Gravity Hammer]  nouvelles=[Stalker Rifle] corrobore=false
+   joueur 2   320.1s slot572 [Pulse Carbine+S7 Sniper]  ->   440.1s slot596 [Mangler+M41 SPNKr]  nouvelles=[M41 SPNKr Mangler] corrobore=false
+   joueur 2   440.1s slot596 [Mangler+M41 SPNKr]  ->   460.1s slot596 [Needler+CQS48 Bulldog]  nouvelles=[CQS48 Bulldog Needler] corrobore=false
+   joueur 3   100.0s slot529 [Disruptor+S7 Sniper]  ->   120.0s slot529 [Gravity Hammer+Disruptor]  nouvelles=[Gravity Hammer] corrobore=false
+   joueur 3   120.0s slot529 [Gravity Hammer+Disruptor]  ->   140.0s slot529 [Stalker Rifle+Shock Rifle]  nouvelles=[Shock Rifle Stalker Rifle] corrobore=false
+   joueur 3   140.0s slot529 [Stalker Rifle+Shock Rifle]  ->   160.0s slot529 [Cindershot+S7 Sniper]  nouvelles=[Cindershot S7 Sniper] corrobore=false
+   joueur 3   160.0s slot529 [Cindershot+S7 Sniper]  ->   360.1s slot581 [Pulse Carbine+Disruptor]  nouvelles=[Disruptor Pulse Carbine] corrobore=false
+   joueur 4   140.0s slot534 [Energy Sword+Gravity Hammer]  ->   180.0s slot541 [Disruptor+Mangler]  nouvelles=[Disruptor Mangler] corrobore=false
+   joueur 4   180.0s slot541 [Disruptor+Mangler]  ->   320.1s slot569 [Heatwave+BR75]  nouvelles=[BR75 Heatwave] corrobore=false
+   joueur 4   320.1s slot569 [Heatwave+BR75]  ->   340.1s slot569 [Pulse Carbine+Disruptor]  nouvelles=[Disruptor Pulse Carbine] corrobore=false
+   joueur 4   340.1s slot569 [Pulse Carbine+Disruptor]  ->   360.1s slot569 [Sentinel Beam+Skewer]  nouvelles=[Sentinel Beam Skewer] corrobore=false
+   joueur 4   360.1s slot569 [Sentinel Beam+Skewer]  ->   420.1s slot593 [Cindershot+Shock Rifle]  nouvelles=[Cindershot Shock Rifle] corrobore=false
+   joueur 4   420.1s slot593 [Cindershot+Shock Rifle]  ->   440.1s slot593 [Plasma Pistol+MA40 AR]  nouvelles=[MA40 AR Plasma Pistol] corrobore=false
+   joueur 5   260.0s slot560 [Pulse Carbine+Sentinel Beam]  ->   280.0s slot564 [Stalker Rifle+CQS48 Bulldog]  nouvelles=[CQS48 Bulldog Stalker Rifle] corrobore=true
+   joueur 5   280.0s slot564 [Stalker Rifle+CQS48 Bulldog]  ->   300.1s slot564 [Gravity Hammer+Ravager]  nouvelles=[Gravity Hammer Ravager] corrobore=false
+   joueur 5   300.1s slot564 [Gravity Hammer+Ravager]  ->   320.1s slot564 [Disruptor+Skewer]  nouvelles=[Disruptor Skewer] corrobore=false
+   joueur 6    80.0s slot528 [Disruptor+S7 Sniper]  ->   100.0s slot528 [Sentinel Beam+Skewer]  nouvelles=[Sentinel Beam Skewer] corrobore=false
+   joueur 6   100.0s slot528 [Sentinel Beam+Skewer]  ->   120.0s slot528 [Needler+M41 SPNKr]  nouvelles=[M41 SPNKr Needler] corrobore=false
+   joueur 6   120.0s slot528 [Needler+M41 SPNKr]  ->   140.0s slot528 [Disruptor+Energy Sword]  nouvelles=[Disruptor Energy Sword] corrobore=false
+   joueur 6   140.0s slot528 [Disruptor+Energy Sword]  ->   160.0s slot528 [Pulse Carbine+Gravity Hammer]  nouvelles=[Gravity Hammer Pulse Carbine] corrobore=false
+   joueur 6   160.0s slot528 [Pulse Carbine+Gravity Hammer]  ->   180.0s slot528 [MA40 AR+Sentinel Beam]  nouvelles=[MA40 AR Sentinel Beam] corrobore=false
+   joueur 6   180.0s slot528 [MA40 AR+Sentinel Beam]  ->   500.1s slot609 [S7 Sniper+BR75]  nouvelles=[BR75 S7 Sniper] corrobore=false
+   joueur 7   260.0s slot561 [Skewer+S7 Sniper]  ->   280.0s slot561 [Pulse Carbine+S7 Sniper]  nouvelles=[Pulse Carbine] corrobore=false
+   joueur 7   280.0s slot561 [Pulse Carbine+S7 Sniper]  ->   300.1s slot561 [Skewer+S7 Sniper]  nouvelles=[Skewer] corrobore=false
+   joueur 7   300.1s slot561 [Skewer+S7 Sniper]  ->   440.1s slot597 [M41 SPNKr+CQS48 Bulldog]  nouvelles=[CQS48 Bulldog M41 SPNKr] corrobore=true
+   joueur 7   440.1s slot597 [M41 SPNKr+CQS48 Bulldog]  ->   460.1s slot601 [Plasma Pistol+MA40 AR]  nouvelles=[MA40 AR Plasma Pistol] corrobore=false
+   joueur 7   460.1s slot601 [Plasma Pistol+MA40 AR]  ->   480.1s slot601 [S7 Sniper+BR75]  nouvelles=[BR75 S7 Sniper] corrobore=false
+   31 changements sur 33 paires consecutives ; 2 corrobores par un tir de l'arme nouvelle dans l'intervalle
+   dont 19 a SLOT CONSTANT (ramassage en cours de vie, 0 corrobores) et 12 avec changement de slot (reapparition)
+########## shuffle=4 ##########
+=== MODE TEMOIN : loadouts permutes de 4 cran(s) entre slots du meme keyframe ===
+=== 150 loadouts de record biped sur 26 keyframes ===
+=== 171826 positions, 99 slots, 519 events de tir ; 26 slots avec proprietaire vote ===
+=== JOINTURE : 41/150 loadouts rattaches a un joueur ; 80 slots porteurs ; 8 joueurs ; 18 keyframes ===
+=== 281 tirs rattaches a un slot (arme nommee) ===
+=== 21 slots distincts couverts par le temoin ===
+
+=== TEMOIN CROISE POSITIF : arme du tir dans le loadout du MEME slot : 27/237 = 11.4% ===
+   joueur 0 : 0/29 = 0%
+   joueur 1 : 4/7 = 57%
+   joueur 2 : 0/63 = 0%
+   joueur 3 : 3/20 = 15%
+   joueur 4 : 3/50 = 6%
+   joueur 5 : 2/14 = 14%
+   joueur 6 : 8/17 = 47%
+   joueur 7 : 7/37 = 19%
+
+=== TEMOIN NEGATIF (meme tir, loadout d'un AUTRE slot vivant au meme instant) : 243/1353 = 18.0% ===
+    position dans le loadout des accords : primaire=20 secondaire=7 (autre=0)
+
+=== TEMOIN NEGATIF 2 : tirs du joueur p confrontes au loadout du joueur (p+k) mod 8 ===
+   k=1 : 1/26 = 3.8%
+   k=2 : 10/105 = 9.5%
+   k=3 : 31/53 = 58.5%
+   k=4 : 0/23 = 0.0%
+   k=5 : 6/97 = 6.2%
+   k=6 : 17/42 = 40.5%
+   k=7 : 1/87 = 1.1%
+   TOTAL k=1..7 : 66/433 = 15.2%
+
+=== ENTROPIE des armes de tir par joueur (bits) ===
+   joueur 0 : H=1.00 bits, 2 armes distinctes, n=29 | Mangler:15 Stalker Rifle:14
+   joueur 1 : H=1.38 bits, 3 armes distinctes, n=7 | Disruptor:4 Mangler:2 M41 SPNKr:1
+   joueur 2 : H=0.83 bits, 3 armes distinctes, n=63 | MA40 AR:51 BR75:10 Ravager:2
+   joueur 3 : H=0.93 bits, 2 armes distinctes, n=20 | Needler:13 M41 SPNKr:7
+   joueur 4 : H=1.43 bits, 4 armes distinctes, n=50 | BR75:30 Stalker Rifle:14 M41 SPNKr:4 Shock Rifle:2
+   joueur 5 : H=1.20 bits, 3 armes distinctes, n=14 | S7 Sniper:9 Stalker Rifle:4 Ravager:1
+   joueur 6 : H=1.50 bits, 3 armes distinctes, n=17 | Heatwave:7 S7 Sniper:7 Mk51 Sidekick:3
+   joueur 7 : H=1.02 bits, 3 armes distinctes, n=37 | Needler:28 Ravager:6 M41 SPNKr:3
+
+=== CHANGEMENTS D'ARME entre keyframes consecutifs (meme joueur) ===
+   joueur 0    80.0s slot525 [Gravity Hammer+Disruptor]  ->   100.0s slot525 [Cindershot+M41 SPNKr]  nouvelles=[Cindershot M41 SPNKr] corrobore=false
+   joueur 0   100.0s slot525 [Cindershot+M41 SPNKr]  ->   260.0s slot559 [Pulse Carbine+Sentinel Beam]  nouvelles=[Pulse Carbine Sentinel Beam] corrobore=false
+   joueur 0   260.0s slot559 [Pulse Carbine+Sentinel Beam]  ->   280.0s slot559 [Pulse Carbine+S7 Sniper]  nouvelles=[S7 Sniper] corrobore=false
+   joueur 0   280.0s slot559 [Pulse Carbine+S7 Sniper]  ->   320.1s slot570 [Gravity Hammer+S7 Sniper]  nouvelles=[Gravity Hammer] corrobore=false
+   joueur 1   300.1s slot566 [Disruptor+Heatwave]  ->   420.1s slot590 [Gravity Hammer+Sentinel Beam]  nouvelles=[Gravity Hammer Sentinel Beam] corrobore=false
+   joueur 1   420.1s slot590 [Gravity Hammer+Sentinel Beam]  ->   440.1s slot590 [CQS48 Bulldog+Shock Rifle]  nouvelles=[CQS48 Bulldog Shock Rifle] corrobore=false
+   joueur 2   320.1s slot572 [Gravity Hammer+Stalker Rifle]  ->   440.1s slot596 [M41 SPNKr+CQS48 Bulldog]  nouvelles=[CQS48 Bulldog M41 SPNKr] corrobore=false
+   joueur 2   440.1s slot596 [M41 SPNKr+CQS48 Bulldog]  ->   460.1s slot596 [Sentinel Beam+Gravity Hammer]  nouvelles=[Gravity Hammer Sentinel Beam] corrobore=false
+   joueur 3    60.0s slot520 [M41 SPNKr+Disruptor]  ->   100.0s slot529 [Mangler+Pulse Carbine]  nouvelles=[Mangler Pulse Carbine] corrobore=false
+   joueur 3   100.0s slot529 [Mangler+Pulse Carbine]  ->   120.0s slot529 [Ravager+Mangler]  nouvelles=[Ravager] corrobore=false
+   joueur 3   120.0s slot529 [Ravager+Mangler]  ->   140.0s slot529 [Pulse Carbine+BR75]  nouvelles=[BR75 Pulse Carbine] corrobore=false
+   joueur 3   140.0s slot529 [Pulse Carbine+BR75]  ->   160.0s slot529 [Sentinel Beam+Energy Sword]  nouvelles=[Energy Sword Sentinel Beam] corrobore=false
+   joueur 3   160.0s slot529 [Sentinel Beam+Energy Sword]  ->   360.1s slot581 [Sentinel Beam+Skewer]  nouvelles=[Skewer] corrobore=false
+   joueur 4   180.0s slot541 [Mk51 Sidekick+S7 Sniper]  ->   320.1s slot569 [S7 Sniper+Cindershot]  nouvelles=[Cindershot] corrobore=false
+   joueur 4   320.1s slot569 [S7 Sniper+Cindershot]  ->   340.1s slot569 [Sentinel Beam+Skewer]  nouvelles=[Sentinel Beam Skewer] corrobore=false
+   joueur 4   340.1s slot569 [Sentinel Beam+Skewer]  ->   360.1s slot569 [Energy Sword+Gravity Hammer]  nouvelles=[Energy Sword Gravity Hammer] corrobore=false
+   joueur 4   360.1s slot569 [Energy Sword+Gravity Hammer]  ->   420.1s slot593 [M41 SPNKr+MLRS-2 Hydra]  nouvelles=[M41 SPNKr MLRS-2 Hydra] corrobore=true
+   joueur 4   420.1s slot593 [M41 SPNKr+MLRS-2 Hydra]  ->   440.1s slot593 [M41 SPNKr+Plasma Pistol]  nouvelles=[Plasma Pistol] corrobore=false
+   joueur 5   260.0s slot560 [Skewer+S7 Sniper]  ->   280.0s slot564 [Energy Sword+Stalker Rifle]  nouvelles=[Energy Sword Stalker Rifle] corrobore=true
+   joueur 5   280.0s slot564 [Energy Sword+Stalker Rifle]  ->   300.1s slot564 [Pulse Carbine+S7 Sniper]  nouvelles=[Pulse Carbine S7 Sniper] corrobore=true
+   joueur 5   300.1s slot564 [Pulse Carbine+S7 Sniper]  ->   320.1s slot564 [Heatwave+BR75]  nouvelles=[BR75 Heatwave] corrobore=false
+   joueur 6    80.0s slot528 [Mangler+Pulse Carbine]  ->   100.0s slot528 [Disruptor+S7 Sniper]  nouvelles=[Disruptor S7 Sniper] corrobore=false
+   joueur 6   100.0s slot528 [Disruptor+S7 Sniper]  ->   120.0s slot528 [Gravity Hammer+Disruptor]  nouvelles=[Gravity Hammer] corrobore=false
+   joueur 6   120.0s slot528 [Gravity Hammer+Disruptor]  ->   140.0s slot528 [Stalker Rifle+Shock Rifle]  nouvelles=[Shock Rifle Stalker Rifle] corrobore=false
+   joueur 6   140.0s slot528 [Stalker Rifle+Shock Rifle]  ->   160.0s slot528 [Cindershot+S7 Sniper]  nouvelles=[Cindershot S7 Sniper] corrobore=true
+   joueur 6   160.0s slot528 [Cindershot+S7 Sniper]  ->   180.0s slot528 [MA40 AR+Disruptor]  nouvelles=[Disruptor MA40 AR] corrobore=false
+   joueur 6   180.0s slot528 [MA40 AR+Disruptor]  ->   500.1s slot609 [Heatwave+Pulse Carbine]  nouvelles=[Heatwave Pulse Carbine] corrobore=true
+   joueur 7   260.0s slot561 [M41 SPNKr+CQS48 Bulldog]  ->   280.0s slot561 [Energy Sword+Skewer]  nouvelles=[Energy Sword Skewer] corrobore=false
+   joueur 7   280.0s slot561 [Energy Sword+Skewer]  ->   300.1s slot561 [Gravity Hammer+Ravager]  nouvelles=[Gravity Hammer Ravager] corrobore=true
+   joueur 7   300.1s slot561 [Gravity Hammer+Ravager]  ->   440.1s slot597 [M41 SPNKr+BR75]  nouvelles=[BR75 M41 SPNKr] corrobore=true
+   joueur 7   440.1s slot597 [M41 SPNKr+BR75]  ->   460.1s slot601 [Gravity Hammer+MLRS-2 Hydra]  nouvelles=[Gravity Hammer MLRS-2 Hydra] corrobore=false
+   joueur 7   460.1s slot601 [Gravity Hammer+MLRS-2 Hydra]  ->   480.1s slot601 [Stalker Rifle+Gravity Hammer]  nouvelles=[Stalker Rifle] corrobore=false
+   32 changements sur 33 paires consecutives ; 7 corrobores par un tir de l'arme nouvelle dans l'intervalle
+   dont 20 a SLOT CONSTANT (ramassage en cours de vie, 3 corrobores) et 12 avec changement de slot (reapparition)

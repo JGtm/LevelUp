@@ -11,14 +11,20 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/analysis/positions"
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
 )
 
 type mockMatchViewService struct {
-	resp domain.MatchViewResponse
-	err  error
+	resp        domain.MatchViewResponse
+	err         error
+	objEvents   []domain.ObjectiveEvent
+	objEventErr error
+	positions   []positions.PlayerPosition
+	posErr      error
 }
 
 func (m *mockMatchViewService) GetMatchView(_ context.Context, _ string) (domain.MatchViewResponse, error) {
@@ -31,6 +37,14 @@ func (m *mockMatchViewService) GetMatchNeighbors(_ context.Context, _ string) (d
 
 func (m *mockMatchViewService) GetMatchNeighborsFiltered(_ context.Context, _ string, _ *domain.MatchFilterSpec) (domain.MatchNeighbors, error) {
 	return domain.MatchNeighbors{}, nil
+}
+
+func (m *mockMatchViewService) GetObjectiveEvents(_ context.Context, _ string) ([]domain.ObjectiveEvent, error) {
+	return m.objEvents, m.objEventErr
+}
+
+func (m *mockMatchViewService) GetMatchPositions(_ context.Context, _ string) ([]positions.PlayerPosition, error) {
+	return m.positions, m.posErr
 }
 
 func newMatchViewRouter(factory handlers.ServiceFactory[port.MatchViewService]) *chi.Mux {
@@ -251,5 +265,177 @@ func TestMatchViewHandler_MediaURLsTransformed(t *testing.T) {
 	}
 	if got.Kind != "video" {
 		t.Errorf("kind = %q, want 'video'", got.Kind)
+	}
+}
+
+// newObjectiveEventsRouter monte la route /objective-events sur un MatchViewHandler.
+func newObjectiveEventsRouter(factory handlers.ServiceFactory[port.MatchViewService]) *chi.Mux {
+	r := chi.NewRouter()
+	h := handlers.NewMatchViewHandler(factory)
+	r.Route("/players/{player_slug}", func(r chi.Router) {
+		r.Get("/matches/{match_id}/objective-events", h.GetObjectiveEvents)
+	})
+	return r
+}
+
+// TestMatchViewHandler_ObjectiveEvents_OK : le service renvoie 2 events →
+// 200 + JSON décodable avec des clés camelCase (matchId, timeMs, players...).
+func TestMatchViewHandler_ObjectiveEvents_OK(t *testing.T) {
+	tms := 12000
+	team := 0
+	events := []domain.ObjectiveEvent{
+		{
+			MatchID: "abc123", Seq: 0, TimeMS: &tms,
+			ObjectiveType: "flag", EventType: "capture", TeamID: &team,
+			Source: "ctf", Confidence: "high",
+			Players: []domain.ObjectiveEventPlayer{{XUID: "2535", Role: "capturer"}},
+		},
+		{
+			MatchID: "abc123", Seq: 1,
+			ObjectiveType: "hill", EventType: "score",
+			Source: "koth", Confidence: "low",
+		},
+	}
+	factory := func(_ context.Context, slug string) (port.MatchViewService, error) {
+		if slug != testPlayerSlug {
+			return nil, errors.New("player_not_found")
+		}
+		return &mockMatchViewService{objEvents: events}, nil
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/players/test-player/matches/abc123/objective-events", nil)
+	w := httptest.NewRecorder()
+	newObjectiveEventsRouter(factory).ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp []map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(resp) != 2 {
+		t.Fatalf("events = %d, want 2", len(resp))
+	}
+	if resp[0]["matchId"] != "abc123" {
+		t.Errorf("matchId = %v, want abc123", resp[0]["matchId"])
+	}
+	if resp[0]["objectiveType"] != "flag" {
+		t.Errorf("objectiveType = %v, want flag", resp[0]["objectiveType"])
+	}
+	if resp[0]["timeMs"] != float64(12000) {
+		t.Errorf("timeMs = %v, want 12000", resp[0]["timeMs"])
+	}
+	players, ok := resp[0]["players"].([]any)
+	if !ok || len(players) != 1 {
+		t.Fatalf("players = %v, want 1 entry", resp[0]["players"])
+	}
+	if p0, _ := players[0].(map[string]any); p0["xuid"] != "2535" || p0["role"] != "capturer" {
+		t.Errorf("player[0] = %v, want xuid=2535 role=capturer", players[0])
+	}
+	// timeMs omitempty : le second event (TimeMS nil) ne doit pas porter la clé.
+	if _, present := resp[1]["timeMs"]; present {
+		t.Errorf("event[1] timeMs should be omitted (nil), got %v", resp[1]["timeMs"])
+	}
+}
+
+// TestMatchViewHandler_ObjectiveEvents_CapabilityUnsupported : le service remonte
+// games.ErrCapabilityNotSupported → 503 + code 'capability_not_supported'.
+func TestMatchViewHandler_ObjectiveEvents_CapabilityUnsupported(t *testing.T) {
+	factory := func(_ context.Context, _ string) (port.MatchViewService, error) {
+		return &mockMatchViewService{objEventErr: games.ErrCapabilityNotSupported}, nil
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/players/test-player/matches/abc123/objective-events", nil)
+	w := httptest.NewRecorder()
+	newObjectiveEventsRouter(factory).ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503, got %d: %s", w.Code, w.Body.String())
+	}
+	var body map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if body["code"] != "capability_not_supported" {
+		t.Errorf("code = %v, want capability_not_supported", body["code"])
+	}
+}
+
+// newPositionsRouter monte la route /positions sur un MatchViewHandler.
+func newPositionsRouter(factory handlers.ServiceFactory[port.MatchViewService]) *chi.Mux {
+	r := chi.NewRouter()
+	h := handlers.NewMatchViewHandler(factory)
+	r.Route("/players/{player_slug}", func(r chi.Router) {
+		r.Get("/matches/{match_id}/positions", h.GetMatchPositions)
+	})
+	return r
+}
+
+// TestMatchViewHandler_Positions_OK : le service renvoie 2 positions → 200 +
+// JSON décodable avec des clés camelCase (timeMs, x, y, z, team).
+func TestMatchViewHandler_Positions_OK(t *testing.T) {
+	pos := []positions.PlayerPosition{
+		{TimeMS: 0, X: 25.6, Y: 10.4, Z: 1.2, Team: 0},
+		{TimeMS: 20000, X: 34.8, Y: 13.5, Z: 0.5, Team: positions.TeamUnknown},
+	}
+	factory := func(_ context.Context, slug string) (port.MatchViewService, error) {
+		if slug != testPlayerSlug {
+			return nil, errors.New("player_not_found")
+		}
+		return &mockMatchViewService{positions: pos}, nil
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/players/test-player/matches/abc123/positions", nil)
+	w := httptest.NewRecorder()
+	newPositionsRouter(factory).ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp []map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(resp) != 2 {
+		t.Fatalf("positions = %d, want 2", len(resp))
+	}
+	if resp[0]["timeMs"] != float64(0) {
+		t.Errorf("timeMs = %v, want 0", resp[0]["timeMs"])
+	}
+	// float32 25.6 sérialisé en JSON → "25.6" (repr décimale la plus courte),
+	// donc 25.6 (float64) après unmarshal — pas la valeur élargie float32.
+	if resp[0]["x"] != 25.6 {
+		t.Errorf("x = %v, want 25.6", resp[0]["x"])
+	}
+	if resp[0]["team"] != float64(0) {
+		t.Errorf("team = %v, want 0", resp[0]["team"])
+	}
+	// team -1 (TeamUnknown) doit être sérialisé tel quel (pas omitempty).
+	if resp[1]["team"] != float64(-1) {
+		t.Errorf("team = %v, want -1 (TeamUnknown)", resp[1]["team"])
+	}
+}
+
+// TestMatchViewHandler_Positions_CapabilityUnsupported : le service remonte
+// games.ErrCapabilityNotSupported → 503 + code 'capability_not_supported'.
+func TestMatchViewHandler_Positions_CapabilityUnsupported(t *testing.T) {
+	factory := func(_ context.Context, _ string) (port.MatchViewService, error) {
+		return &mockMatchViewService{posErr: games.ErrCapabilityNotSupported}, nil
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/players/test-player/matches/abc123/positions", nil)
+	w := httptest.NewRecorder()
+	newPositionsRouter(factory).ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503, got %d: %s", w.Code, w.Body.String())
+	}
+	var body map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if body["code"] != "capability_not_supported" {
+		t.Errorf("code = %v, want capability_not_supported", body["code"])
 	}
 }

@@ -123,6 +123,9 @@ export interface MatchViewText {
   combatKilledMeFmt: (n: number) => string
   combatIKilledFmt: (n: number) => string
   combatNoData: string
+  // Overlay capture CTF (charts combat — câblé couche 2)
+  combatCtfCaptureLabel: string
+  combatCtfCaptureTooltip: (player: string, time: string) => string
   fragDiffNoData: string
   antagonistNoData: string
   impactBadgesNoData: string
@@ -333,6 +336,8 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatKilledMeFmt: (n) => `T'a martyrisé ${n} fois`,
     combatIKilledFmt: (n) => `Victimisé ${n} fois`,
     combatNoData: 'Pas de données disponibles',
+    combatCtfCaptureLabel: 'Capture',
+    combatCtfCaptureTooltip: (player, time) => `${player} — capture à ${time}`,
     fragDiffNoData: 'Aucun événement de combat enregistré pour ce match.',
     antagonistNoData: 'Aucune donnée de duels disponible pour ce match.',
     impactBadgesNoData: 'Aucun badge d\'impact sur ce match.',
@@ -598,6 +603,8 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatKilledMeFmt: (n) => `Martyred you ${n} times`,
     combatIKilledFmt: (n) => `You victimized them ${n} times`,
     combatNoData: 'No data available',
+    combatCtfCaptureLabel: 'Capture',
+    combatCtfCaptureTooltip: (player, time) => `${player} — captured at ${time}`,
     fragDiffNoData: 'No combat events recorded for this match.',
     antagonistNoData: 'No duel data available for this match.',
     impactBadgesNoData: 'No impact badges for this match.',
