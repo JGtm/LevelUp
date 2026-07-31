@@ -5,11 +5,11 @@
 > Il remplace la question « où en est-on ? ». Trois documents lui répondent ensemble et ne se
 > recouvrent pas :
 > - **celui-ci** : ce qui est fait, ce qui reste, dans quel ordre, avec les blocages ;
-> - `RECETTE_LOADOUT_2026-07-27.md` : ce qui est décodé, avec les mesures ;
+> - `V7.5/replay2d/RECETTE_LOADOUT_2026-07-27.md` : ce qui est décodé, avec les mesures ;
 > - `CAHIER_DES_CHARGES_POC.md` : ce que l'écran doit montrer, et pourquoi.
 >
 > Voisins utiles : `ETAT_DE_L_ART_CHANTIER_VOISIN.md` (index du worktree `filmdec-killweapon`),
-> `METHODE_RETRO_INGENIERIE_FILM.md` (comment chercher, et comment se tromper).
+> `V7.5/film_re/METHODE_RETRO_INGENIERIE_FILM.md` (comment chercher, et comment se tromper).
 
 ---
 
@@ -293,7 +293,7 @@ Deux choses trouvées en mesurant :
 
 ### Rang 2 — hors Notion, à ma charge
 
-**Préalable transverse — `PROPOSITION_FIABILITE_RATTACHEMENT.md`.** Les trois défauts relevés par
+**Préalable transverse — `V7.5/killweapon/PROPOSITION_FIABILITE_RATTACHEMENT.md`.** Les trois défauts relevés par
 l'utilisateur (vote au lieu de lecture, tri alphabétique pris pour une identité, rejet silencieux)
 n'en font qu'un : **on a remplacé des lectures par des inférences, puis comparé nos inférences
 entre elles**. Quatre corrections proposées, la première débloquant à elle seule le trou de tirs.
@@ -347,7 +347,7 @@ entre elles**. Quatre corrections proposées, la première débloquant à elle s
 
 ## LE POC ENTRE DANS L'APP — 2026-07-28 (soir)
 
-Plan : `PLAN_POC_DANS_L_APP.md`. L'étape 6 du plan de fiabilisation avait sorti le rejeu du POC ;
+Plan : `V7.5/replay2d/PLAN_POC_DANS_L_APP.md`. L'étape 6 du plan de fiabilisation avait sorti le rejeu du POC ;
 elle n'avait pas porté **l'écran**. Le POC est un poste de travail à quatre colonnes, la
 production n'en avait qu'une.
 

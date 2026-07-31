@@ -1,7 +1,7 @@
 # ETAT DE L ART — arme / categorie par kill (films Halo Infinite, 100% offline)
 
 > INDEX INTERROGEABLE du chantier. Etat au 2026-07-28, apres 7ter.102.
-> Ce fichier n est PAS une source : la source est `.ai/RE_LOG_KILLWEAPON.md`.
+> Ce fichier n est PAS une source : la source est `.ai/V7.5/killweapon/RE_LOG_KILLWEAPON.md`.
 >
 > **AVANT DE LANCER UN LOT, LIRE §3bis — LA METHODE** (les onze regles qui ont produit les
 > resultats, avec le lot qui illustre chacune). Elle se lit avec §4, qui dit l inverse : les
@@ -27,7 +27,7 @@
 > `7ter.99`**. **Un corps ne s ecrit pas en fin de fichier : il s INSERE apres SON PROPRE
 > en-tete** (relire le numero de ligne de son en-tete juste avant d ecrire, et verifier apres
 > coup `sed -n '<ligne>,+15p'`).
-> Verification, toujours, avant d ecrire : `grep -n "^### 7ter" .ai/RE_LOG_KILLWEAPON.md | tail -5`.
+> Verification, toujours, avant d ecrire : `grep -n "^### 7ter" .ai/V7.5/killweapon/RE_LOG_KILLWEAPON.md | tail -5`.
 
 ## 1. COMMENT SE SERVIR DE CE FICHIER
 
@@ -71,7 +71,7 @@
 10. **LE NUMERO DE SECTION SE RESERVE EN ECRIVANT L EN-TETE AVANT DE MESURER.** Regle jumelle de
     la 9 : le journal est append-only, donc deux lots paralleles qui mesurent d abord et ecrivent
     ensuite visent le MEME numero et se telescopent. La sequence obligatoire est :
-    `grep -n "^### 7ter" .ai/RE_LOG_KILLWEAPON.md | tail -5` -> **ecrire immediatement
+    `grep -n "^### 7ter" .ai/V7.5/killweapon/RE_LOG_KILLWEAPON.md | tail -5` -> **ecrire immediatement
     `### 7ter.<N> <titre provisoire> (EN COURS)`** -> mesurer -> completer le corps.
     Un en-tete pose est une reservation ; un numero annonce dans un brief n en est pas une.
     **C est arrive DEUX FOIS** : `7ter.82` le 2026-07-27 (deux lots, le second est parti en
@@ -859,7 +859,7 @@ NORMAL** de la precision reelle. Ce qui etait faux dans `HitLikely`, c est le **
 
 ## 6. LES MOTIFS DE RECHERCHE
 
-> Fichier a greper : `.ai/RE_LOG_KILLWEAPON.md` (15 814 lignes au 2026-07-28, **en croissance**).
+> Fichier a greper : `.ai/V7.5/killweapon/RE_LOG_KILLWEAPON.md` (15 814 lignes au 2026-07-28, **en croissance**).
 
 | SUJET | MOTIF |
 |---|---|
@@ -984,8 +984,8 @@ NORMAL** de la precision reelle. Ce qui etait faux dans `HitLikely`, c est le **
   que par leurs verdicts survivants ; leur detail historique n a pas ete depouille ligne a ligne.
 - **Les documents satellites** : `HANDOFF_KILLWEAPON.md` (point d entree), `PONT_SONORE_ARMES.md`
   (bandeau NON CONSOMMABLE, 15 corrections non appliquees), `HANDOFF_PONT_SONORE.md`,
-  `HANDOFF_ALL_PLAYERS_TRAJECTORIES.md`. Ils peuvent porter des chiffres PERIMES par le §5.
-- **Les deux guides de branchement** : `.ai/GUIDE_KILLSOURCE.md` (arme du KILL, tag `jpt!`
+  `V7.5/replay2d/HANDOFF_ALL_PLAYERS_TRAJECTORIES.md`. Ils peuvent porter des chiffres PERIMES par le §5.
+- **Les deux guides de branchement** : `.ai/V7.5/killweapon/GUIDE_KILLSOURCE.md` (arme du KILL, tag `jpt!`
   32 bits, table `match_kill_events`) et `.ai/GUIDE_WEAPON_SHOTS.md` (ventilation des TIRS,
   identifiant filmshell 64 bits, table `match_weapon_shots`). **DEUX ESPACES D IDENTIFIANTS
   DISTINCTS QUI NE SE JOIGNENT JAMAIS** — les confondre rend zero ligne, silencieusement.
@@ -1001,7 +1001,7 @@ NORMAL** de la precision reelle. Ce qui etait faux dans `HitLikely`, c est le **
   RESERVATION DE NUMERO en tete de fichier). **Avant d ecrire une section, `grep "^### 7ter"`,
   prendre le premier numero REELLEMENT libre, et POSER L EN-TETE AVANT DE MESURER** (§1 regle 10) —
   ne jamais faire confiance au numero annonce dans un brief.
-- **Ce que cet index ne remplace PAS pour le branchement** : `.ai/GUIDE_KILLSOURCE.md` fait foi sur
+- **Ce que cet index ne remplace PAS pour le branchement** : `.ai/V7.5/killweapon/GUIDE_KILLSOURCE.md` fait foi sur
   l API du paquet `killsource`, le schema `shared.match_kill_events` et le chemin de retrait de
   `killer_victim_pairs`.
 
@@ -1960,7 +1960,7 @@ Distinction `turret` / `fixed` confirmee en Theater. **La moitie NOMMAGE est acq
 Le decodeur de production ne lit pas << dans quoi etait le tueur >>, il lit le **tag `jpt!` du
 dead-state i11 de la VICTIME**, c est-a-dire la SOURCE DU DEGAT. Les tags des armes de vehicule
 sont au catalogue par (b). Donc la question **<< quand frague-t-il AVEC un canon de vehicule >>
-est en grande partie deja repondue par le decodeur existant** — cf. `.ai/GUIDE_KILLSOURCE.md`.
+est en grande partie deja repondue par le decodeur existant** — cf. `.ai/V7.5/killweapon/GUIDE_KILLSOURCE.md`.
 **Ce qui manque n est pas << avec quoi >>, c est << quand est-il DEDANS >>** : le temps passe a
 bord, le role (pilote / tourelle / passager), les morts subies en vehicule.
 
@@ -2171,7 +2171,7 @@ du lot `vh` sont exacts. **La piste peut demarrer sur cette cible sans re-verifi
 
 ### 18.5 LES MOTIFS DE GREP DE CE SUJET
 
-| SOUS-SUJET | MOTIF (fichier : `.ai/RE_LOG_KILLWEAPON.md`, sauf mention) |
+| SOUS-SUJET | MOTIF (fichier : `.ai/V7.5/killweapon/RE_LOG_KILLWEAPON.md`, sauf mention) |
 |---|---|
 | **Cette page** | `VEHICULES — ETAT ET PISTES` -> index §18 |
 | **Le chiffrage des frags au vehicule, et les 89 etiquettes manquantes** | `89 tags de classe VEHICULE` · `tmp_vkcat` · `tmp_vkfrag` · `sb_010_veh_` · `sb_010_tur_` · `facteur 33` -> 7ter.90 (1) ; **et la nuance mesuree** : `6 des 14 tags` · `banque REUTILISEE` · `Pelican` · `Falcon` · `publier la disjonction` · `tmp_vklist` -> 7ter.96 (3). ⚠ Le motif `6 des 14 tags` mene a un chiffre **RETIRE** : lire `8 / 14` et `53 / 89`. Motifs de la correction : `racine UNIQUE` · `8 sur 14` · `53 / 89` · `racines de banque DISTINCTES` · `dix vehi` · `croyance sur le jeu` -> **7ter.102 (1)(2)(3)(4)** |
@@ -2598,10 +2598,10 @@ Le chantier **replay 2D** vit dans le worktree `.claude/worktrees/filmdec-contin
 surinterpreter >>*, **datee du 2026-07-28**. Elle publie, sur le film `000d5950` :
 `tirs partis (API) 2 228` · `tirs qui touchent (API) 595` · `records longs dans le film 519` ·
 `rapport record / touche 0,87`. Sa regle d hygiene, adoptee ici, est dans
-**`.ai/RECETTE_LOADOUT_2026-07-27.md` §0** : *tout document de rejeu porte l identifiant du film de
+**`.ai/V7.5/replay2d/RECETTE_LOADOUT_2026-07-27.md` §0** : *tout document de rejeu porte l identifiant du film de
 CHAQUE bloc.* **CE WORKTREE EST EN LECTURE SEULE POUR NOUS** — on le cite, on n y ecrit rien.
 Reciproquement, ce qui suit est ce qu il peut citer de notre cote : `7ter.98` (`rc.unite`),
-`7ter.99` (`rc.perm`) et `7ter.101` (`rc.ref`) de `.ai/RE_LOG_KILLWEAPON.md`.
+`7ter.99` (`rc.perm`) et `7ter.101` (`rc.ref`) de `.ai/V7.5/killweapon/RE_LOG_KILLWEAPON.md`.
 
 ### 22.2 LE CONFLIT ETAIT LEXICAL SUR L OBJET — `[ETABLI]`
 

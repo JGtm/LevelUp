@@ -6,8 +6,8 @@
 > fois, aucun report d'une action faisable maintenant, chaque item statué à la clôture.
 >
 > Documents qui font foi : `SUIVI_REPLAY_2D.md` (avancement),
-> `PROPOSITION_FIABILITE_RATTACHEMENT.md` (le diagnostic), `CAHIER_DES_CHARGES_POC.md` (l'écran),
-> `METHODE_RETRO_INGENIERIE_FILM.md` (comment chercher).
+> `V7.5/killweapon/PROPOSITION_FIABILITE_RATTACHEMENT.md` (le diagnostic), `CAHIER_DES_CHARGES_POC.md` (l'écran),
+> `V7.5/film_re/METHODE_RETRO_INGENIERIE_FILM.md` (comment chercher).
 
 ---
 
@@ -104,7 +104,7 @@ bascule sur le repli — c'est la branche que cette étape prévoyait.
 
 ### CE QUE L'ÉCHEC APPREND, ET QU'IL FAUT NE PAS SURINTERPRÉTER
 
-Le diagnostic de `PROPOSITION_FIABILITE_RATTACHEMENT.md` reste **vrai sur le fond** : le composant
+Le diagnostic de `V7.5/killweapon/PROPOSITION_FIABILITE_RATTACHEMENT.md` reste **vrai sur le fond** : le composant
 existe, il est nommé, il est au registre, et le lien joueur → entité est bien sérialisé. Ce qui est
 réfuté, c'est l'estimation du coût : *« aller jusqu'à i21 est un problème de chaîne de composants »*.
 
@@ -475,7 +475,7 @@ critère de succès (> 85 %, atteint à 95,6 %), ni le gain (398 → 496, plus 2
    re-mesure a eu lieu pendant l'exécution, ce qui est déjà tard ; elle aurait dû avoir lieu à la
    rédaction du plan, où elle aurait changé la formulation du problème.
 3. Les documents portant l'ancien chiffre sont corrigés : le plan, `SUIVI_REPLAY_2D.md`,
-   `PROPOSITION_FIABILITE_RATTACHEMENT.md` (par encart daté, sans réécrire le diagnostic — un
+   `V7.5/killweapon/PROPOSITION_FIABILITE_RATTACHEMENT.md` (par encart daté, sans réécrire le diagnostic — un
    diagnostic réécrit après coup ne s'évalue plus) et les textes du POC.
 
 **Coût** : nul pour le passé (fait), faible pour l'avenir (une convention d'écriture).
@@ -516,7 +516,7 @@ player index. Ne plus ecrire « personnage ».
 
 **L'utilisateur** : « on avait resolu le biped sur l'autre worktree je crois ».
 
-**Verifie, et c'est l'inverse qui est ecrit.** `RE_LOG_KILLWEAPON.md` §8.3, mot pour mot :
+**Verifie, et c'est l'inverse qui est ecrit.** `V7.5/killweapon/RE_LOG_KILLWEAPON.md` §8.3, mot pour mot :
 
 > **entity-id d'un biped** = `0x4000xxxx` et **CHANGE a chaque respawn**
 > (ne pas s'en servir comme id joueur).

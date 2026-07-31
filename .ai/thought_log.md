@@ -1,3 +1,37 @@
+## [2026-07-31] Tri de `.ai/` — la recherche en V7.5, la racine réservée au chantier vivant
+
+**Statut** : Complété.
+
+**Décision technique** : les 69 fichiers importés des deux worktrees (`filmdec-*` décodage
+film / arme par kill, `replay2d-*` rejeu 2D) encombraient la racine de `.ai/`. Ils sont
+triés en deux tas : **archive de recherche** sous `.ai/V7.5/` (5 sous-dossiers thématiques :
+`film_re/` 15, `killweapon/` 21, `replay2d/` 6, `cartes/` 3, `dumps/` = ex-`re_dump`,
+69 Mo, resté versionné) et **chantier vivant** à la racine (24 documents).
+
+**Critère de tri, corrigé en cours de route** : la date de commit sur `feat/replay2d-prod`
+ne dit rien — les 69 fichiers y ont tous été importés le même jour. C'est
+`git log --all --diff-filter=A` sur les branches sources (`feat/filmdec-continuation`,
+`feat/filmdec-killweapon`, `feat/killsource-prod`, `feat/weapon-*`) qui donne la vraie date
+de création : **16 documents datent du 2026-07-31** (plans et handoffs encore à traiter,
+donc racine), les 53 autres s'étalent du 3 juin au 28 juillet. Sans cette vérification,
+11 plans vivants partaient en archive.
+
+**Résultats observés** :
+- 45 documents + `re_dump/` déplacés par `git mv` (historique préservé) ; 71 fichiers
+  relinkés par script (docs `.ai/`, 11 fichiers Go/Lua, `.gitignore`, 14 mémoires agent).
+- `re_dump` n'était pas seulement cité mais **lu par du code** : défaut `-geometry` de
+  `cmd/replay-build`, plusieurs `cmd/tmp_*`, et `internal/analysis/replay/mapvar` (test).
+  Chemins corrigés, y compris la forme `filepath.Join(..., ".ai", "re_dump", ...)`.
+  `go test ./internal/analysis/replay/mapvar/` : ok. `go vet` des paquets touchés : propre.
+- Non touchés volontairement : les journaux (`thought_log*.md`, archives — on ne réécrit
+  pas l'histoire, leurs entrées antérieures citent les chemins plats) et les chemins absolus
+  vers `.claude/worktrees/filmdec-continuation/.ai/re_dump/` (ce worktree garde son
+  ancienne arborescence).
+
+**Conclusion / prochaine étape** : index déposé dans `.ai/V7.5/README.md` (organisation,
+points d'entrée par sujet, liste de ce qui reste à la racine, pièges). Rien n'est committé —
+en attente du feu vert utilisateur.
+
 ## [2026-07-31] Dette avant merge — la mesure dément l'espoir « c'est juste l'outillage »
 
 **Statut** : Complété (plan écrit : `.ai/PLAN_DETTE_AVANT_MERGE.md`). Aucune correction faite.

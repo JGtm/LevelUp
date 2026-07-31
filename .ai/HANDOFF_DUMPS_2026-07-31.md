@@ -311,7 +311,7 @@ Reclaimer » qui a produit l'image : nous l'avons porté, en Python, et il march
 ### CE QUI RESTE À FAIRE, ET C'EST ÉCRIT EN UNE LIGNE
 
 > *« Porter la recette en Go pour cuire l'image des 29 autres cartes. Aujourd'hui elle n'existe
-> qu'en Python jetable, sur ridgeline seule. »* — `HANDOFF_GEOMETRIE_TRIANGLES.md`
+> qu'en Python jetable, sur ridgeline seule. »* — `V7.5/cartes/HANDOFF_GEOMETRIE_TRIANGLES.md`
 
 **Trois corrections à ne pas perdre au portage**, toutes dans ce document :
 

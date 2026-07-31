@@ -30,6 +30,9 @@ en Go ou TypeScript. **SQLite interdit** : DuckDB uniquement.
 - `docs/ARCHITECTURE_V6.md` + `docs/FOUNDATIONS_GUIDE.md` (onboarding)
 - `.ai/project_map.md` — cartographie (vérifier la date : doctrine RE-VÉRIFIER, les
   documents `.ai/` rotent plus vite qu'ils ne sont maintenus)
+- Recherche / rétro-ingénierie (film Theater, arme par kill, rejeu 2D, cartes) :
+  `.ai/V7.5/README.md` — index du dossier. La racine de `.ai/` ne garde que le chantier
+  vivant (états de l'art, plans et handoffs à traiter).
 
 **APRÈS CHAQUE MODIFICATION SIGNIFICATIVE** : mettre à jour ces fichiers.
 

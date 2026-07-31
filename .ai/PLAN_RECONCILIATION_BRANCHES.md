@@ -266,7 +266,7 @@ que **20 vrais désaccords** : les 16 `filmdec` du §3, plus 4 hors décodeur.
 
 | fichier | retenu | pourquoi |
 |---|---|---|
-| `.ai/RE_LOG_KILLWEAPON.md` | `killsource` | 18 309 lignes contre 824 — la leur est strictement plus riche |
+| `.ai/V7.5/killweapon/RE_LOG_KILLWEAPON.md` | `killsource` | 18 309 lignes contre 824 — la leur est strictement plus riche |
 | `.github/workflows/gitleaks.yml` | `killsource` | `main` fait autorité sur la CI |
 | `cmd/rdata_weapon_scan/main.go` | nous | +829/-167, notre version a continué d'évoluer |
 | `static/grenades-assets/.../index.json` | nous | correspond à nos 8 PNG (nommage minuscule) |

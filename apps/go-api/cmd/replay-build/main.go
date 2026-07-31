@@ -67,7 +67,7 @@ func main() {
 		filmDir = args[1]
 	}
 	if *geomDir == "" {
-		*geomDir = filepath.Join(repoRoot, ".ai", "re_dump")
+		*geomDir = filepath.Join(repoRoot, ".ai", "V7.5", "dumps")
 	}
 
 	doc, err := replay.BuildFromFilm(matchID, *titleFlag, filmDir, replay.Options{

@@ -10,7 +10,7 @@ import (
 )
 
 // Fichiers du fond de carte, produits par le RE de la variante Forge (.mvar) et par la
-// résolution des tags de modèle (cf. cmd/tmp_forgedim). Ils vivent dans .ai/re_dump.
+// résolution des tags de modèle (cf. cmd/tmp_forgedim). Ils vivent dans .ai/V7.5/dumps.
 const (
 	MapObjectsFile  = "map_objects.csv"
 	ObjectTypesFile = "forge_object_types.csv"

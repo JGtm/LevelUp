@@ -64,7 +64,7 @@ var recordStateParam uint32 = 0
 func SetRecordStateParam(v uint32) { recordStateParam, recordStateParamOverride = v, true }
 
 // paramByComponent porte le VRAI param_4, par composant, tel que la capture live le
-// mesure (colonne `param4` de .ai/re_dump/ce_capture_delta.csv). Extraction sur
+// mesure (colonne `param4` de .ai/V7.5/dumps/ce_capture_delta.csv). Extraction sur
 // l'archétype bipède (ti=35) : la valeur est CONSTANTE pour un composant donné —
 // aucun composant n'y présente deux valeurs sur 464 010 mesures.
 //

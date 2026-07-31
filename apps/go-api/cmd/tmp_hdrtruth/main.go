@@ -1,5 +1,5 @@
 // tmp_hdrtruth — MESURE de la longueur de l'EN-TETE de record DELTA sur la VERITE TERRAIN
-// live (.ai/re_dump/ce_capture_delta.csv : eid,typeIndex,compIndex,param4,bitCursor).
+// live (.ai/V7.5/dumps/ce_capture_delta.csv : eid,typeIndex,compIndex,param4,bitCursor).
 // THROWAWAY.
 //
 // PRINCIPE (aucune hypothese de grammaire) : dans un record, la largeur d'un composant se

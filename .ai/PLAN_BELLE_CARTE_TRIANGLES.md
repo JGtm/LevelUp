@@ -1,7 +1,7 @@
 # PLAN — la « belle image » : porter la chaîne des TRIANGLES en Go
 
 > Écrit le 2026-07-31. Contrat d'exécution : skill `plan-execution`.
-> Source de vérité sur la méthode : `HANDOFF_GEOMETRIE_TRIANGLES.md` (2026-07-26). Ce plan ne
+> Source de vérité sur la méthode : `V7.5/cartes/HANDOFF_GEOMETRIE_TRIANGLES.md` (2026-07-26). Ce plan ne
 > la réécrit pas — il la met en travail ordonné, avec ses réserves.
 
 ---
@@ -253,7 +253,7 @@ aplomb. Ce que l'utilisateur voit est juste ; sa cause est un **volume**, pas un
 
 ## PROTOCOLE DE REPRISE
 
-1. Lire `HANDOFF_GEOMETRIE_TRIANGLES.md` **en entier** — 163 lignes, et chaque offset y est
+1. Lire `V7.5/cartes/HANDOFF_GEOMETRIE_TRIANGLES.md` **en entier** — 163 lignes, et chaque offset y est
    établi. *(Ne pas le citer sans l'ouvrir : c'est l'erreur qui a coûté cet aller-retour.)*
 2. Étape 0.1, puis 1, puis 2. **Ne pas porter avant d'avoir réglé les deux points ouverts.**
 3. Les garde-fous sont déjà mesurés : **T1 à 100 %**, **0 descripteur hors bornes**.

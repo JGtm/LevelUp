@@ -13,7 +13,7 @@
 
 ### LE PIEGE A CONNAITRE : LE JOURNAL EST DESORMAIS DUPLIQUE
 
-`.ai/RE_LOG_KILLWEAPON.md` existe **sur les deux branches**. Il est APPEND-ONLY, donc deux
+`.ai/V7.5/killweapon/RE_LOG_KILLWEAPON.md` existe **sur les deux branches**. Il est APPEND-ONLY, donc deux
 ajouts paralleles ne se signalent pas : ils divergent en silence.
 
 **REGLE : a partir du 2026-07-31, l exemplaire de `feat/killsource-prod` fait foi.** Toute section
@@ -86,7 +86,7 @@ Tout est detaille dans `PLAN_BRANCHEMENT_KILLSOURCE.md`, avec ses gates par phas
 | `PLAN_BRANCHEMENT_KILLSOURCE.md` | les 4 phases du branchement, la strategie de merge chiffree |
 | `HANDOFF_PRECISION_PROJECTILES.md` | le lot cible sur la precision des armes a projectile |
 | `PLAN_RECHERCHE_ASSETS_ICONES.md` | la recherche d icones pour l UI |
-| `GUIDE_KILLSOURCE.md` | comment UTILISER le decodeur |
+| `V7.5/killweapon/GUIDE_KILLSOURCE.md` | comment UTILISER le decodeur |
 | `GUIDE_WEAPON_SHOTS.md` | comment utiliser les tirs et la precision — **porte le piege de l inversion MA40/Sidekick** |
 | `ETAT_DE_L_ART_KILLWEAPON.md` | **l index interrogeable — a greper AVANT d ouvrir une piste** |
-| `RE_LOG_KILLWEAPON.md` | le journal, APPEND-ONLY, **a ne jamais lire par le haut** |
+| `V7.5/killweapon/RE_LOG_KILLWEAPON.md` | le journal, APPEND-ONLY, **a ne jamais lire par le haut** |

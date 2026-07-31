@@ -91,7 +91,7 @@ func main() {
 	}
 	binds := filmdec.WalkKeyframeWorld(kf[0])
 	filmdec.SetRecordStateParam(2)
-	// SEED=dump : bindings slot->archetype issus de la capture LIVE (.ai/re_dump/
+	// SEED=dump : bindings slot->archetype issus de la capture LIVE (.ai/V7.5/dumps/
 	// ce_world_dump.txt, 1754 slots reels). Indispensable pour balayer idLow sans
 	// confondre "mauvais cadrage" et "slot absent du World" : les slots du keyframe ne
 	// vivent pas dans le meme espace d'identifiants que ceux des trames.
