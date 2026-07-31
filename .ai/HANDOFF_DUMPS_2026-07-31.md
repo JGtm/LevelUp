@@ -430,3 +430,66 @@ qui distingue « propre au CTF » de « vrai pour tous les objectifs ». Non blo
 2. Télécharger `696a9d7c` tant que le réseau et les tokens répondent.
 3. Copier tout sur la clé, y compris les **relevés terrain écrits**.
 4. Le reste — décompilation Ghidra, portage Go, affichage — se fait ensuite, hors ligne, à deux.
+
+---
+
+## JOURNAL D'EXÉCUTION — session J0 du 2026-07-31 (soir)
+
+Statuts détaillés dans `PLAN_MASTER_FILM_KILLFEED_REJEU.md` §J0. Résumé et écarts :
+
+**Une prémisse de ce document est tombée.** J0.4-J0.6 y étaient classés « utilisateur seul ».
+Faux : le bridge MCP `cheatengine` permet à l'agent de piloter Cheat Engine (lecture mémoire,
+chargement de script Lua, hook AOB, dump). L'agent a exécuté les trois. Le rôle humain se
+réduit à lancer le film et à tenir le relevé terrain.
+
+**Fait :**
+
+| item | résultat |
+|---|---|
+| J0.1 film `696a9d7c` | 31 chunks, décodage NOMINAL, identité prouvée à 99,0 %, clé bit-exacte |
+| J0.2 `level_id` | **Vagabond = `fo08_wetland` PROUVÉ** — 1 seule occurrence sur 88 modules, groupe `levl` |
+| J0.2 power-ups | **`[!]` bloqué** — voir Découvertes n°2 |
+| J0.3 inventaire + branches | clé conforme ; 4 branches à 0 commit non poussé |
+| J0.4 table des désérialiseurs | 50 archétypes, 1068 composants, double contrôle passé |
+| J0.5 Catalyst | capture faite (`530820e5`, CTF:Arena) **sans relevé terrain** |
+| J0.6 Vagabond | capture faite **avec** 4 ancres terrain |
+
+**Le résultat de fond, établi par deux chaînes indépendantes.** `ti=11` (objectifs) est
+dispatché 162 fois en CTF et **zéro fois sur 1 205 704 records de Strongholds**, alors que
+quatre événements de zone y sont relevés à l'œil. L'absence est propre au MODE, pas à la
+capture. Et elle recoupe `archive/V7/RESEARCH_THEATER_RE.md` §M/M-ter (juin) : les événements
+`type_hint=10` vivent dans le **chunk type-3**, le score continu dans **TYPE_2**. Ce document
+supposait la zone accessible « via la machine d'état zone (replication) » — **notre capture
+réfute cette piste**. Conséquence : pour les objectifs, chercher dans les images-clés et le
+footer d'events, jamais dans le flux delta. Les deux sont déjà en cache, donc exploitables
+hors ligne, sans jeu ni Cheat Engine.
+
+### DÉCOUVERTES — consignées, NON traitées (plan-execution règle 7)
+
+1. **`fetch_film_chunks` ne prend que les chunks type-2.** L'en-tête (type 1) et le footer
+   d'events (type 3) sont ignorés — or sans l'en-tête le décodeur ne peut pas amorcer son
+   World, et sans le footer l'équipe d'une capture de drapeau est perdue (c'est exactement ce
+   que `RESEARCH_THEATER_RE.md` §M-ter demande de corriger en production). Pris à la main ce
+   soir via `cmd/tmp_fetchchunk0` pour les deux films. **Audit du cache : 949 footers présents
+   sur 951** — le trou est donc quasi résorbé, mais l'outil, lui, n'est toujours pas corrigé.
+   À traiter avec le chantier F (rejeu en prod) ou au branchement du collecteur.
+2. **La palette Forge n'est pas sur la clé.** `any|ds/globals/forge/forge_objects-rtx-new.module`
+   (417 Mo + 2,0 Go) restent sur `D:`. Sans eux, `type_id → nom d'objet` est indécidable : c'est
+   ce qui bloque le volet power-ups de J0.2. Seuls les 31 modules de niveau ont été copiés.
+   Espace libre sur la clé : 42 Go. **Décision utilisateur.**
+3. **Deux films ont expiré côté serveur** : `33b9fbe9` et `f8c067d7` (BTB:Stockpile) rendent
+   `HTTP 404 — No film found for that match`. Ce n'est pas une perte liée au changement de PC,
+   c'est l'expiration Theater que le plan maître nomme (§5.2-2). Ils sont définitivement
+   inatteignables ; leurs manifests en cache ne servent plus à rien.
+4. **Le binaire est dépouillé** : aucun nom d'archétype ne se lit en mémoire (ni chaîne inline,
+   ni pointeur vers de l'ASCII, ni symbole). Le nommage de `ti=11`/`ti=23` passera par Ghidra,
+   à partir des vtables relevées dans `archetype_vtables.tsv`.
+5. **L'index de record est une horloge approchée** du temps de film (~2 200-2 470 records/s,
+   7 % d'écart sur 4 ancres). Utile pour situer, insuffisant pour dater : la datation fine
+   passe par l'alignement de signature.
+
+### Outil créé ce soir
+
+`cmd/tmp_sigalign` (jetable, consigné) — **prouve de quel film provient une capture** par
+recherche des signatures de 16 octets dans les chunks, avec témoin négatif obligatoire.
+Mesuré : 99,0 % et 99,8 % sur les films sources, 0,0 à 1,0 % sur les témoins.
