@@ -783,4 +783,10 @@ comme prévu).
   **Prémisse corrigée** : l'item 2.6 décrivait « l'OpenAPI décrit 6 champs sur 22 ». C'est
   périmé — J1.2 avait déjà aligné les trois contrats, arité des tuples comprise. Ce qui manquait
   était le TEST, et c'est lui qui a été posé (des deux côtés, dont un prouvé par le compilateur
-  et falsifié). Prochain jalon : **J3**.
+  et falsifié).
+  **CI de branche vérifiée au niveau JOB** (run `30666349775`) : OpenAPI Lint, Go Build+Test
+  (ubuntu ET windows), Go Contract Test, Frontend, Go Coverage + Baseline (`./...` complet,
+  CGO=1), Go Lease Enforcement — tous verts ; gitleaks vert sur les trois push. Seul job rouge :
+  `Go Lint (golangci-lint)`, assumé jusqu'à J3 — et le compte est le contrôle qui vaut : **70
+  issues, exactement le chiffre de J1.4, dont AUCUNE ne vient des fichiers de J2**. Le ratchet
+  est rouge de la dette connue, pas du jalon. Prochain jalon : **J3**.
