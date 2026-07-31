@@ -189,24 +189,57 @@ Forge (cf. J0.2 `[!]`). Deux réserves ouvertes : ce blocage, et l'absence de re
 Leçon du dépôt (VF-16) : un signal rouge public ignoré = lot non clos. La branche a 4 signaux
 rouges, mesurés ce soir sur `gh run list` :
 
-- [ ] J1.1 **Secrets (gitleaks)** : 1 finding —
+> **CLOS le 2026-07-31 (nuit)** — gate atteint : `gh run list --branch feat/replay2d-prod`
+> donne Secrets (gitleaks) vert, Deploy Pre-Check vert, et dans le workflow CI tout vert
+> (Frontend, Go Build+Test ubuntu ET windows, Go Coverage + Baseline, Contract Test,
+> Lease Enforcement, OpenAPI Lint) **sauf** `Go Lint (golangci-lint)`, rouge assumé
+> jusqu'à J3. Commits : `3a9158ae4` (J1.1), `566ebb777` + `dd020364a` (J1.2),
+> `4e2bd5dba` (J1.3).
+
+- [x] J1.1 **Secrets (gitleaks)** : 1 finding —
       `.ai/V7.5/killweapon/RE_LOG_KILLWEAPON.md:generic-api-key:17478` (des gamertags de doc
       lus comme une clé — faux positif déjà connu du handoff killsource ; le déplacement du
       fichier vers `V7.5/` a invalidé les empreintes posées sur l'archive). Ajouter l'empreinte
       au `.gitleaks.toml` de CETTE branche, commentée et datée. Vérifier s'il reste d'autres
       findings derrière celui-ci (le run s'arrête au premier lot).
-- [ ] J1.2 **Type-check web** : ~26 erreurs, toutes dans `features/match-replay/` — cause
+      **FAIT** : exception ciblée (règle qui a bruité + chemin exact + valeur, `condition = AND`),
+      posée sur la VALEUR et non sur l'empreinte — un numéro de ligne dans un journal qui
+      grossit ne survit pas à la modification suivante, c'est ce qui avait invalidé les
+      exceptions précédentes. **Le run ne s'arrête PAS au premier lot** : gitleaks scanne tout
+      (130,92 Mo) et n'avait qu'un finding — les documents commités en J0 n'en lèvent aucun.
+      Rejoué en local avec le binaire épinglé de la CI (8.30.1) sur copie propre : 0.
+- [x] J1.2 **Type-check web** : ~26 erreurs, toutes dans `features/match-replay/` — cause
       unique : le dernier commit (`2d8bcec8e`, document de rejeu tiré du contrat généré) rend
       les tableaux nullables (`tracks`, `points`… `| null`) et les composants ne les gardent
       pas. Traiter par un normalisateur unique à la frontière (le hook/query qui charge le
       document), pas par 26 `?.` éparpillés.
-- [ ] J1.3 **Suite Go Linux (CGO + intégration)** : rouge avec des tests baseline « absents du
+      **FAIT** : 31 erreurs en réalité, et **deux** causes, pas une. (1) la nullabilité —
+      `apps/web/src/features/match-replay/replayNormalize.ts` comble les tableaux UNE fois dans
+      la queryFn, tout le dossier ne manipule plus que des types `*Ready` ; les fabriques de
+      test passent par la même porte. (2) le contrat perd aussi l'ARITÉ des tuples Go
+      (`Poly [][2]float32`, `P [][3]float32` → `number[]`), rétablie au même endroit.
+- [x] J1.3 **Suite Go Linux (CGO + intégration)** : rouge avec des tests baseline « absents du
       run courant » dans des paquets sans rapport (`domain/title`, `platform/duckdb`…) — le
       Windows CI est vert, donc c'est un problème Linux-seulement (piste probable : chemin
       sensible à la casse ou fichier déplacé par le rangement `.ai/` → `V7.5/` que `mapvar` ou
       un test lit ; diagnostiquer par le JSONL du run, pas deviner).
-- [ ] J1.4 **Go Lint (ratchet golangci)** : rouge CONNU et PLANIFIÉ — c'est `PLAN_DETTE`
+      **FAIT — la piste « chemin » était fausse, le JSONL a tranché** : 2 052 lignes, **0 test**.
+      La suite ne tournait pas, elle ne COMPILAIT pas — `internal/ooz/ooz_compat.h` n'incluait
+      que `<intrin.h>` (MSVC/mingw), absent sous gcc Linux ; tous les paquets tombaient en
+      `[build failed]` et le comparateur déclarait donc les 8 786 tests baseline disparus.
+      Shim rendu portable (branche Windows inchangée ; ailleurs `x86intrin.h` + builtins GNU,
+      `_BitScanReverse/Forward` réécrits avec le contrat MSVC exact). Non-régression du
+      décodeur vérifiée : les 3 artefacts reconstruits rendent les chiffres du §5 de
+      `PLAN_RECONCILIATION_BRANCHES` à l'unité près.
+- [x] J1.4 **Go Lint (ratchet golangci)** : rouge CONNU et PLANIFIÉ — c'est `PLAN_DETTE`
       (J3). Ne pas le traiter ici ; vérifier seulement qu'il ne masque pas un autre échec.
+      **VÉRIFIÉ, non traité** : le job ne masque aucun échec d'une autre nature (aucun test
+      cassé, aucune autre compilation en défaut) — mais l'inverse était vrai, et c'est la
+      découverte : AVANT J1.3 il ne rapportait **qu'une seule** issue, le `typecheck` du même
+      `intrin.h`, qui arrêtait la course. Le compte réel de la dette apparaît maintenant :
+      **70 issues** (unused 33, unconvert 11, unparam 7, revive 6, staticcheck 4, goconst 3,
+      gocyclo 2, prealloc 2, errcheck 1, ineffassign 1), concentrées dans `analysis/filmdec` et
+      `analysis/objectiveevents`. J3 doit être dimensionné sur 70, pas sur les ~40 estimés.
 
 **GATE J1** : `gh run list --branch feat/replay2d-prod` — tout vert sauf le ratchet lint
 (rouge assumé jusqu'à J3/J5). Typecheck local : cache `.tsbuildinfo` purgé avant conclusion.
@@ -598,9 +631,7 @@ Session exécuteur — [JALON/LOT] — branche [X], worktree [chemin]
   soir : copie `any` (417 Mo) + `ds` (2,14 Go) depuis l'install Steam vers la clé
   (`jeu_deploy_any/globals/forge/`, `jeu_deploy_ds/globals/forge/`) — c'est la seule voie
   restante pour `type_id → nom` sur les cartes Forge, et elle meurt avec le PC.
-  **FAITE et VÉRIFIÉE** (tailles identiques à l'octet : 416 899 072 et 2 138 442 737). Les
-  variantes `pc` (8,5 Go) + `pc_hd1` (5,8 Go) existent aussi : NON copiées par défaut, à
-  copier si l'utilisateur veut l'assurance maximale (l'espace le permet).
+  **FAITE et VÉRIFIÉE** (tailles identiques à l'octet : 416 899 072 et 2 138 442 737).
 
 - **#1 CLOSE le 2026-07-31 (soir)** : pas de nouvelle capture — les dumps sont faits, c'était
   eux la fenêtre ; l'ANALYSE des captures se fera plus tard, sur le nouveau PC, à la phase
@@ -608,8 +639,11 @@ Session exécuteur — [JALON/LOT] — branche [X], worktree [chemin]
   interne (3.3) seule — reporté en §2. Option de dernier recours, non planifiée : si le jeu
   est installé sur le nouveau PC pendant que le match `530820e5` est encore proposé au
   Theater, un relevé à l'œil reste possible.
-- **#7 complétée** : sur accord utilisateur, la variante `pc` (8,5 Go) + `pc_hd1` (5,8 Go)
-  part aussi sur la clé (assurance maximale).
+- **#7 complétée** : sur accord utilisateur, la variante `pc` + `pc_hd1` est aussi sur la
+  clé (`jeu_deploy_pc/globals/forge/`) — **FAITE et VÉRIFIÉE** (8 519 127 040 et
+  5 776 809 226 octets, identiques aux sources). La palette Forge est intégralement
+  sécurisée ; la résolution `type_id → nom` (power-ups, objets Forge) se fera à la phase
+  d'analyse, sur le nouveau PC (décision #1).
 
 **Reste ouverte** : **#3** (GO merge + fenêtre backfill VPS — à demander à J5 avec une date,
 comme prévu).
@@ -669,3 +703,29 @@ comme prévu).
   (objectifs) partent avec une cible déplacée et une piste morte en moins.
   **Blocage à arbitrer** : la palette Forge (2,4 Go) n'est pas sur la clé — sans elle,
   `type_id → nom d'objet` meurt avec le PC (42 Go libres). Prochain jalon : **J1**.
+- **[2026-07-31, nuit] J1 CLOS — GATE ATTEINT.** Les 4 items statués `[x]`. Tout est vert sur
+  la branche sauf `Go Lint (golangci-lint)`, rouge assumé jusqu'à J3. Commits `3a9158ae4`,
+  `566ebb777`, `dd020364a`, `4e2bd5dba`.
+  **Ce que J1 a appris, et qui vaut plus que les correctifs** : les trois signaux avaient une
+  parenté que la revue n'avait pas vue — *un outil qui s'arrête au premier obstacle fait
+  passer sa cause unique pour un symptôme général*. (1) La suite Go Linux n'avait pas « des
+  tests baseline absents » : elle ne compilait pas, à cause d'un en-tête MSVC dans le shim
+  d'`ooz` ; les 8 786 tests « disparus » n'étaient que la conséquence. (2) Le ratchet lint
+  n'était pas rouge de dette : il l'était de ce MÊME `intrin.h`, qui interrompait golangci
+  avant tout le reste — la dette réelle (70 issues) n'est apparue qu'une fois la compilation
+  réparée. (3) Le typecheck web disait « 26 erreurs de nullabilité » ; il y en avait 31 et une
+  seconde cause (l'arité des tuples Go perdue par JSON Schema).
+  **Découvertes reportées (non traitées)** : (a) **bug réel** — les tirs du rejeu dessinaient
+  tous la forme par défaut : l'interface manuelle nommait `weapon` le champ que le contrat
+  nomme `w`, donc `familyOf()` ne recevait jamais rien ; corrigé dans le même lot car il
+  bloquait le typecheck, mais c'est une régression d'affichage vieille de tout le rejeu 2D
+  qui mérite un coup d'œil visuel. (b) le ratchet **knip** dépassait son plafond (92 > 90)
+  depuis le portage du rejeu 2D (`2044b7139`) sans que personne le voie — le hook pre-push ne
+  se déclenche que sur `apps/web/**` et les derniers push étaient des documents ; corrigé au
+  plus petit (deux exports rendus privés) parce qu'il bloquait le push. (c) `routeTree.gen.ts`
+  est régénéré (ordre d'imports inversé) dès qu'une commande vite/vitest tourne — bruit
+  d'outillage, écarté du commit, à surveiller comme faux diff récurrent.
+  **Pour J3** : dimensionner sur **70** issues, pas 40 ; elles sont dans `analysis/filmdec`
+  (composants non branchés) et `analysis/objectiveevents`. Et J2 (verrouiller le décodeur)
+  passe AVANT, comme prévu : 33 des 70 sont des `unused` sur des lecteurs de composants qu'un
+  nettoyage mécanique supprimerait alors qu'ils documentent le format.
