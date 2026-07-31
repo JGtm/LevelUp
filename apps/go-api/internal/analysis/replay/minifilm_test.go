@@ -15,6 +15,10 @@ package replay
 //	tous les paquets a lancer de grenade les 70 lancers (marqueur + identifiant en liste blanche)
 //	une FENETRE de paquets consecutifs   des vols de projectile COMPLETS — un projectile vit
 //	                                     moins d une seconde et n existe pas hors de sa fenetre
+//	les paquets d IDENTITE de DEUX       le second maillon du pont : le xuid, et les 5 bits
+//	chunks de replication distincts      d index qui le precedent. DEUX chunks, parce que le
+//	                                     decodeur EXIGE la concordance et ne l arbitre pas —
+//	                                     avec un seul, cette exigence ne serait jamais exercee
 //	le chunk highlight, tel quel         le fil des morts (93 morts, xuid + instant)
 //
 // POURQUOI TOUTES LES IMAGES-CLES ET NON UNE SEULE. Mesure faite en construisant la bobine :
@@ -47,6 +51,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/weaponv3"
 )
 
 // MiniFilmDir est le repertoire de la mini-bobine, relatif au paquet.
@@ -82,45 +87,56 @@ func TestMiniFilmRegenerate(t *testing.T) {
 	if err := os.MkdirAll(MiniFilmDir, 0o750); err != nil {
 		t.Fatalf("creation de %s : %v", MiniFilmDir, err)
 	}
-	// chunk_01 : les paquets retenus, concatenes dans l ordre du film, puis zlib — le meme
-	// conditionnement que les chunks reels, donc le meme chemin de lecture (`inflateChunk`).
-	blob, err := zlibBytes(sel.body)
+	// chunk_01 et chunk_02 : les paquets retenus, puis zlib — le meme conditionnement que les
+	// chunks reels, donc le meme chemin de lecture (`inflateChunk`).
+	blob1, err := zlibBytes(sel.body)
 	if err != nil {
-		t.Fatalf("zlib : %v", err)
+		t.Fatalf("zlib chunk_01 : %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(MiniFilmDir, "chunk_01.bin"), blob, 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(MiniFilmDir, "chunk_01.bin"), blob1, 0o600); err != nil {
 		t.Fatalf("ecriture chunk_01 : %v", err)
 	}
-	// chunk_02 : le chunk highlight du film, OCTET POUR OCTET. Le recomposer n aurait aucun
+	blob2, err := zlibBytes(sel.second)
+	if err != nil {
+		t.Fatalf("zlib chunk_02 : %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(MiniFilmDir, "chunk_02.bin"), blob2, 0o600); err != nil {
+		t.Fatalf("ecriture chunk_02 : %v", err)
+	}
+	// chunk_03 : le chunk highlight du film, OCTET POUR OCTET. Le recomposer n aurait aucun
 	// sens — c est un chunk entier, et c est deja le plus petit du film.
 	hl, err := os.ReadFile(filepath.Join(dir, fmt.Sprintf("chunk_%02d.bin", sel.highlightChunk)))
 	if err != nil {
 		t.Fatalf("lecture du chunk highlight : %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(MiniFilmDir, "chunk_02.bin"), hl, 0o600); err != nil {
-		t.Fatalf("ecriture chunk_02 : %v", err)
+	if err := os.WriteFile(filepath.Join(MiniFilmDir, "chunk_03.bin"), hl, 0o600); err != nil {
+		t.Fatalf("ecriture chunk_03 : %v", err)
 	}
 	if err := os.WriteFile(filepath.Join(MiniFilmDir, miniFilmManifest),
-		[]byte(sel.provenance(len(blob), len(hl))), 0o600); err != nil {
+		[]byte(sel.provenance(len(blob1), len(blob2), len(hl))), 0o600); err != nil {
 		t.Fatalf("ecriture de la provenance : %v", err)
 	}
-	t.Logf("mini-bobine reecrite : chunk_01 %d octets (%d paquets, %d octets bruts), chunk_02 %d octets",
-		len(blob), sel.count, len(sel.body), len(hl))
+	t.Logf("mini-bobine reecrite : chunk_01 %d octets (%d paquets, %d bruts), chunk_02 %d octets, "+
+		"chunk_03 %d octets", len(blob1), sel.count, len(sel.body), len(blob2), len(hl))
 }
 
 // miniSelection porte les paquets retenus et de quoi ecrire leur provenance.
 type miniSelection struct {
-	body           []byte
-	count          int
-	keyframes      int
-	fire           int
-	grenade        int
-	window         int
-	highlightChunk int
-	sourceChunks   []int
+	body   []byte
+	second []byte
+	count  int
+	// identity1 / identity2 : les paquets d IDENTITE retenus dans chacun des deux chunks de
+	// replication de la bobine.
+	identity1, identity2 int
+	keyframes            int
+	fire                 int
+	grenade              int
+	window               int
+	highlightChunk       int
+	sourceChunks         []int
 }
 
-func (s miniSelection) provenance(chunk1, chunk2 int) string {
+func (s miniSelection) provenance(chunk1, chunk2, chunk3 int) string {
 	return fmt.Sprintf(`MINI-BOBINE — film %s (Cliffhanger, Fiesta, 8 joueurs)
 
 CE FICHIER DIT D OU VIENT CHAQUE OCTET. Une fixture binaire sans provenance ecrite est un fait
@@ -129,23 +145,35 @@ sans source ; celle-ci se REGENERE, elle ne s edite pas :
     REPLAY_FILM_DIR=<repo>/data/cache/film_chunks/%s \
       go test ./internal/analysis/replay/ -run MiniFilmRegenerate -update
 
-chunk_01.bin  %d octets (zlib) — %d paquets REELS concatenes dans l ordre du film,
-              %d octets une fois decompresses, extraits des chunks %v :
+chunk_01.bin  %d octets (zlib) — %d paquets REELS, %d octets une fois decompresses, extraits
+              des chunks de replication %v du film :
+                %3d paquet(s) d identite  (xuid + les 5 bits d index qui le precedent)
                 %3d image(s)-cle          (type 2) — armes portees, inventaire, bande de slots
                 %3d paquet(s) a tir       (type 0, record 105 long)
                 %3d paquet(s) a grenade   (type 0, marqueur + identifiant en liste blanche)
                 %3d paquet(s) de fenetre  (type 0, 2 s consecutives) — vols de projectile entiers
-chunk_02.bin  %d octets — le chunk highlight du film, OCTET POUR OCTET (fil des morts)
+chunk_02.bin  %d octets (zlib) — %d paquet(s) d identite, pris dans un AUTRE chunk source.
+              C est ce second chunk qui rend la CONCORDANCE mesurable : le decodeur exige que
+              deux chunks de replication livrent la meme table, et ne l arbitre pas s ils
+              divergent. Avec un seul chunk, cette exigence ne serait jamais exercee.
+chunk_03.bin  %d octets — le chunk highlight du film, OCTET POUR OCTET (fil des morts)
+
+L ORDRE DES PAQUETS DE chunk_01 : les paquets d identite D ABORD, le reste ensuite dans l ordre
+du film. Le resolveur d index s arrete au premier xuid trouve ; les placer en tete rend sa
+lecture immediate au lieu de lui faire balayer quatre megaoctets pour rien. C est un choix
+assume, permis par ce que la bobine est deja (une concatenation hors continuite) et ecrit ici
+pour qu il ne se decouvre pas.
 
 CE QUE CETTE BOBINE N EST PAS : un film valide. Les paquets sont concatenes hors de leur
 continuite, donc les POSITIONS de biped — qui s accumulent par deltas — y sont sans
 signification. Elles sont verrouillees ailleurs, par le fixture d entrees decodees.
 `, goldenFilm, goldenFilm, chunk1, s.count, len(s.body), s.sourceChunks,
-		s.keyframes, s.fire, s.grenade, s.window, chunk2)
+		s.identity1, s.keyframes, s.fire, s.grenade, s.window,
+		chunk2, s.identity2, chunk3)
 }
 
 // selectMiniFilmPackets choisit les paquets de la bobine. Un paquet peut satisfaire plusieurs
-// criteres : il n est retenu QU UNE FOIS, et l ordre du film est conserve.
+// criteres : il n est retenu QU UNE FOIS.
 func selectMiniFilmPackets(dir string) (miniSelection, error) {
 	var sel miniSelection
 	n := filmdec.CountFilmChunks(dir)
@@ -158,6 +186,11 @@ func selectMiniFilmPackets(dir string) (miniSelection, error) {
 	if err != nil {
 		return sel, err
 	}
+	deaths, err := ScanFilmDeaths(dir)
+	if err != nil {
+		return sel, err
+	}
+	roster := rosterFromDeaths(deaths)
 	type keep struct {
 		chunk, index int
 		raw          []byte
@@ -188,6 +221,29 @@ func selectMiniFilmPackets(dir string) (miniSelection, error) {
 		}
 		return kept[i].index < kept[j].index
 	})
+	// Les paquets d IDENTITE se cherchent dans les DEUX PREMIERS chunks de replication — deux
+	// suffisent, et c est exactement le minimum que le decodeur exige pour tenir sa table pour
+	// confirmee. Les chercher dans les vingt-six aurait coute vingt-six balayages complets.
+	id1, err := identityPackets(dir, 1, roster)
+	if err != nil {
+		return sel, err
+	}
+	id2, err := identityPackets(dir, 2, roster)
+	if err != nil {
+		return sel, err
+	}
+	sel.identity1, sel.identity2 = len(id1), len(id2)
+	if sel.identity1 == 0 || sel.identity2 == 0 {
+		return sel, fmt.Errorf("paquets d identite introuvables (%d dans le chunk 1, %d dans le 2) : "+
+			"sans eux la bobine ne verrouille pas le second maillon du pont", sel.identity1, sel.identity2)
+	}
+	for _, raw := range id1 {
+		sel.body = append(sel.body, raw...)
+		sel.count++
+	}
+	for _, raw := range id2 {
+		sel.second = append(sel.second, raw...)
+	}
 	for _, k := range kept {
 		sel.body = append(sel.body, k.raw...)
 		sel.count++
@@ -207,6 +263,44 @@ func selectMiniFilmPackets(dir string) (miniSelection, error) {
 	}
 	sort.Ints(sel.sourceChunks)
 	return sel, nil
+}
+
+// identityPackets rend les paquets d un chunk qui portent au moins un xuid du roster.
+//
+// LE CRITERE EST CELUI DU DECODEUR LUI-MEME (`weaponv3.ResolveXuidToPI`, applique au payload
+// seul) : on ne recopie pas sa recherche, on l interroge. Un paquet est retenu des qu il resout
+// une identite ; le balayage du chunk s arrete des que les huit sont couvertes.
+func identityPackets(dir string, chunkNo int, roster []uint64) ([][]byte, error) {
+	chunk, err := filmdec.ReadFilmChunk(dir, chunkNo)
+	if err != nil {
+		return nil, err
+	}
+	var out [][]byte
+	couvert := map[uint64]bool{}
+	for _, p := range filmdec.WalkPackets(chunk) {
+		if len(couvert) == len(roster) {
+			break
+		}
+		got := weaponv3.ResolveXuidToPI(roster, p.Payload(chunk))
+		neuf := false
+		for x := range got {
+			if !couvert[x] {
+				couvert[x], neuf = true, true
+			}
+		}
+		if !neuf {
+			continue
+		}
+		start := p.Start - packetHeaderSizeMini
+		raw := make([]byte, p.Size+packetHeaderSizeMini)
+		copy(raw, chunk[start:p.Start+p.Size])
+		out = append(out, raw)
+	}
+	if len(couvert) != len(roster) {
+		return nil, fmt.Errorf("chunk %d : %d identite(s) sur %d retrouvee(s) paquet par paquet",
+			chunkNo, len(couvert), len(roster))
+	}
+	return out, nil
 }
 
 // packetHeaderSizeMini est la taille de l en-tete d un paquet de chunk film. Elle est redeclaree
