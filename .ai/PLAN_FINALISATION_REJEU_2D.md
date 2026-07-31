@@ -607,9 +607,17 @@ au choix de la naissance la plus proche d'un lancer, donc à la POSITION publié
 
 **Ce que cela n'invalide pas** : tous les chiffres du §5 de la réconciliation sont stables
 (475/519, 90/105, 70/70, 439, 184, 99/29 221) — le gate porte sur eux, et il est passé. Les
-goldens de J2 ne flottent pas non plus : l'étage 1 rejoue des entrées FIGÉES, donc un ordre
-figé. **Ce que cela invalide** : l'idée qu'on pourrait comparer deux artefacts par leur
-empreinte. À traiter avec le lot 3 (un tri total sur (slot, gen, instant) suffirait).
+goldens de J2 ne flottent pas non plus : l'étage 1 rejoue des entrées FIGÉES, donc un ordre figé.
+
+**Conséquence mesurée sur la régénération, et vérifiée** : le fixture d'entrées **n'est pas
+reproductible à l'octet** non plus (deux régénérations successives depuis le même film donnent
+deux empreintes différentes) — c'est la même cause. En revanche le golden d'assemblage **survit**
+à une régénération : il a été rejoué contre un fixture fraîchement régénéré, et il passe. La
+raison est structurelle, et c'est ce qui rend le résultat solide plutôt que chanceux : le golden
+rend des COMPTES et des verdicts, pas l'ordre des trajectoires.
+
+**Ce que cela invalide** : l'idée qu'on pourrait comparer deux artefacts par leur empreinte.
+À traiter avec le lot 3 (un tri total sur `(slot, gen, instant)` suffirait).
 
 ### D4 — huit familles d'effet de tir, mais SEPT géométries
 
