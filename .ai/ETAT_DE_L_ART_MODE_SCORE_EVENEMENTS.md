@@ -36,7 +36,7 @@ fournit une **chaine independante** qui a servi a Q4.
 |---|---|---|---|
 | Q1 | Cartographie du systeme d'evenements | **ETABLI (partiel)** | Recensement mesure sur 5 films / 4 modes ; appairage type-10 -> type-0 exact ; un code discriminant par famille de mode |
 | Q2 | Porteur autoritaire du score d'equipe | **NON CONCLU — 2 candidats ELIMINES** | L'octet d'etat externe et le comptage de ticks tombent tous deux sur controle negatif |
-| Q3 | La recette mode -> score | **NON CONCLU — route affinee** | La piste « table de dispatch par event-type » est cassee (voir 5.3) ; la piste statborg + categorie de variante reste ouverte et est desormais cadree |
+| Q3 | La recette mode -> score | **ETABLI — et la reponse deplace la question** | L intermediaire existe mais ce n est PAS du code : registre de stats plat adresse par identifiant, sans aucun branchement de mode ; c est le SCRIPT de la variante qui choisit l identifiant (5.4) |
 | Q4 | Evenements d'objectif nommes | **ETABLI pour les zones · REFUTE pour CTF · INDECIDABLE pour KOTH** | Zones : 3 chaines independantes, egalite EXACTE 8/8 par joueur |
 | Q5 | Famille pickup (sous-produit) | **CONSIGNE, non creuse** | Section 7 |
 
@@ -44,7 +44,9 @@ fournit une **chaine independante** qui a servi a Q4.
 type-3 **EST** une prise ou une securisation de zone, par joueur, a l'unite — total 77 = 77 et
 **8 joueurs sur 8** en egalite exacte, avec l'ancre terrain qui tombe sur l'acteur ET sur la
 seconde ; et l'hypothese d'un intermediaire universel mode -> score n'a **aucun** support
-mesure a ce stade, les deux porteurs candidats testes ayant ete elimines par controle negatif.
+mesure sous la forme cherchee — mais Ghidra en donne une autre : le moteur n a AUCUN branchement
+de mode sur le chemin de lecture du score, c est le script de la variante qui choisit
+l identifiant de stat (5.4). La recette est de la DONNEE, pas du code.
 
 ---
 
@@ -316,8 +318,73 @@ selecteur equivalent cote moteur, mais rien dans cette session ne l'a montre. `f
 porte deja le deserialiseur a deux equipes ; le maillon manquant est le **binding** (les deux
 index de slot que le moteur lit a `param_1 + 0x8` / `+ 0xc`).
 
-**« Il n'y a pas de recette » reste recevable** et n'est pas ecarte : la section 5.2 montre au
-contraire que le meme porteur d'evenement change de semantique selon le mode.
+### 5.4 Q3 — LA REPONSE, obtenue par Ghidra : l'intermediaire existe, mais ce n'est PAS du code
+
+La chaine a ete remontee **du consommateur vers l'amont**, comme le prescrit
+`METHODE_RETRO_INGENIERIE_FILM.md` §1. Elle se ferme.
+
+**Le maillon 1 — le getter.** `FUN_1406ADA4C` (decompile) lit exactement :
+
+```
+valeur = *(int32*)( world + slot*0x88 + statline*0x1DF0 + 0x38 + round*4 )
+affichee = valeur * DAT_143CE70A8[ *(byte*)(descripteur + 0xBC) ]
+```
+
+`slot` et `descripteur` ne sont pas calcules ici : ils arrivent **par parametre**
+(`param_4[1]` et `*param_4`). Le `statline` vient d'une resolution par table de hachage
+(FNV-1a sur l'identifiant d'equipe), pas d'un index direct.
+
+**Le maillon 2 — la resolution.** `FUN_140C18E54` -> `FUN_140C18EA8` : un **balayage
+lineaire** de la table de descripteurs a `engine + 0xDF77C`. Le compte est au premier dword,
+les entrees commencent a `+8`, **le premier dword de chaque entree est l'identifiant de stat**
+compare a l'argument, et le pas est de `0x30` **dwords = 0xC0 octets**. L'index trouve **EST**
+le slot.
+
+> Correction a `RE_EXE_GHIDRA_FINDINGS.md` §1, qui annonce « entrees 0x30 » : le pas est de
+> 0x30 **dwords**, soit **0xC0 octets**. Le decompile est sans ambiguite (`piVar3 + 0x30` sur
+> un `int*`).
+
+**Le maillon 3 — l'appelant, et c'est lui qui tranche.** `FUN_142B7974C` est le corps natif du
+binding **HavokScript** `Team_GetCurrentRoundStatValue`. Il ne fait que trois choses : prendre
+la table `engine + 0xDF77C`, y resoudre **l'identifiant de stat que le SCRIPT lui passe**, et
+appeler le getter.
+
+**Le controle qui donne sa valeur au resultat** : sur tout ce chemin —
+`FUN_1406ADA4C`, `FUN_140C18E54`, `FUN_140C18EA8`, `FUN_142B7974C` — il n'y a **aucun
+branchement sur une categorie de variante de jeu, aucun switch de mode, aucune table indexee
+par mode**. La seule chose qui varie d'un mode a l'autre est **l'identifiant de stat passe en
+argument**.
+
+Et la surface d'API scriptee, lue dans `.rdata` autour de `0x1436DEF00`, le confirme : elle est
+**entierement generique**, sans une seule fonction propre a un mode —
+`Team_GetCurrentRoundStatValue`, `Team_GetMatchStatValue` (+ variantes `Decimal`),
+`Team_AdjustCountStat`, `Team_SetRawStat`, `Team_ConsiderNewMinMaxStatValue`. Recherches de
+controle : **`Hill_` = 0 occurrence** ; `Objective_` ne rend qu'un `Objective_GetEnabled`
+generique et des chaines de HUD/campagne. La presence de `temp_objective_fragments.lua`
+acheve de situer la logique de mode.
+
+**VERDICT Q3.** L'intermediaire postule par l'hypothese **existe**, mais il n'est ni dans
+l'en-tete du film, ni une entite des images-cles, ni une table de dispatch du binaire — les
+trois pistes que l'ordre de mission demandait de trier. C'est un **registre de stats plat,
+adresse par identifiant**, partage par tous les modes, et **c'est le SCRIPT de la variante de
+mode qui choisit l'identifiant**. Le moteur, lui, ne sait pas a quel mode il joue.
+
+Autrement dit : **la recette n'est pas du code, c'est de la donnee** — elle vit dans l'asset de
+variante de mode. C'est la seule lecture qui explique d'un coup les trois resultats negatifs de
+cette session : pas d'octet d'etat universel (5.1), pas de comptage de ticks universel (5.2),
+et un meme porteur d'evenement dont la semantique change avec le mode (5.2). Il n'y a rien a
+chercher cote binaire parce qu'il n'y a rien **a** trouver cote binaire.
+
+**Ce que ca rend decodable, et ce que ca coute** : la voie « lire le score generiquement pour
+tous les modes » est **fermee cote RE statique**. Ce qui reste ouvert et vaut le detour : le
+**vocabulaire des identifiants de stat** (la table `engine + 0xDF77C` est enumerable hors ligne
+— compte, identifiants, echelles) ; croise avec le fait que le film serialise le statborg
+(`filmdec/statborg.go` porte deja le deserialiseur a deux equipes), il donne la liste de ce qui
+EST mesure par le jeu, sans avoir a deviner. C'est un lot borne pour une prochaine session.
+
+**« Il n'y a pas de recette » est donc ECARTE, mais pas dans le sens attendu** : il y a bien un
+intermediaire unique et universel — il n'est simplement pas la ou les trois pistes le
+cherchaient.
 
 ---
 
@@ -390,4 +457,7 @@ Tous se construisent en `CGO_ENABLED=0` (aucun DuckDB). Les oracles en base pass
    (combien de colonnes passent par hasard) — sans ce comptage, la mesure n'est pas publiable.
    Les temoins sont prets : Slayer = la timeline de frags, Strongholds = 21 puis 69-30 aux
    ancres puis 200-94, CTF = `FlagCaptures`.
-3. **Q3** : reprendre par le binding statborg (5.3), pas par la table de dispatch.
+3. **Q3 est clos cote binaire** (5.4). Le lot qui reste, borne : enumerer hors ligne le
+   vocabulaire des identifiants de stat de la table `engine + 0xDF77C` (compte, identifiants,
+   echelles) et le croiser avec le statborg deja serialise dans le film — il donne la liste de
+   ce que le jeu mesure, sans deviner.
