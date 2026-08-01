@@ -74558,3 +74558,19 @@ tantôt 50 tantôt 75. Bout en bout sur `1bc77d2e` : 100 événements, 56 nommé
 candidate. Les non-nommés le sont pour une raison lisible (`killed_player` et
 `flag_capture_assist` valent tous deux 100). Prochain lot : lever ces cas par coïncidence
 temporelle — à traiter comme des HYPOTHÈSES avec contrôle négatif, pas à coder d'emblée.
+
+**Correction de cap [2026-08-01]** — l'utilisateur a rejeté, à juste titre, l'étiquetage
+« l'un de trois noms » : sans identifiant unique c'est inexploitable. La bonne lecture n'est
+pas la VALEUR de l'incrément mais **QUEL composant a bougé**. Le registre du film
+(`chunk_00`, déjà lu par `filmdec.ParseRegistryChunk`) donne l'archétype 6 = **28 emplacements
+`statborg-current-round-value-stat-component`** ; c'est l'INDEX qui porte l'identité de la
+statistique. Vérifié nominativement : JGtm sur `696a9d7c` — `killed_player` 9 = comp 2 A,
+`kill_assist` 7 = comp 3 A, `zone_captured` 7 = comp 20 B, `zone_secured` 2 = comp 21 A,
+score personnel 1 650 = comp 1 B ; et comp 20 B (61) + comp 21 A (16) = 77 = le total API.
+Sur le CTF `1bc77d2e`, `flag_stolen` (4) est déjà isolé en comp 24 A, `runner_stopped` et
+`flag_returned` occupent deux composants distincts. **L'ambiguïté venait de ma méthode, pas
+du film.** Prochaine étape : nommer les 28 emplacements par intersection sur les films
+(même solveur que les 88 médailles, oracle = `personal_score_awards` des bases joueur, qui
+ne sont pas verrouillées par le serveur de dev). Ghidra n'a pas été nécessaire — le film
+porte son schéma ; il redeviendrait la cible si des emplacements restaient sans nom
+(getter `Team_GetCurrentRoundStatValue` @ 0x142C6B118).
