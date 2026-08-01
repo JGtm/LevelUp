@@ -132,15 +132,21 @@ Ce sont des **grammaires de composants portées mais pas branchées au dispatch*
 reverse-engineering : on porte la grammaire avant d'en avoir l'usage. La règle du dépôt dit
 malgré tout « 0 code mort ».
 
-- [ ] C1. Pour chacune, répondre à **une** question : *le composant est-il atteignable depuis
+- [x] C1. Pour chacune, répondre à **une** question : *le composant est-il atteignable depuis
       `traverse.go` pour un archétype qu'on décode déjà ?*
       - **oui** → la brancher (c'est un bug de dispatch, pas du code mort) ;
       - **non, et le composant n'a pas d'usage produit identifié** → la supprimer ;
       - **non, mais elle documente une grammaire coûteuse à re-établir** → `//nolint:unused`
         avec **date + raison + condition de retrait**, comme tout kill-switch du dépôt.
-- [ ] C2. Écrire le verdict des 14 dans ce fichier (section Journal), pas seulement dans le
+      *FAIT 2026-08-01 sur les **34** (et non 14 : legs de J3-1). **0 cas (a)**, 32 cas (b),
+      2 cas (c). Méthode et table complète au journal §5.*
+- [x] C2. Écrire le verdict des 14 dans ce fichier (section Journal), pas seulement dans le
       code : la prochaine reprise ne doit pas re-instruire le dossier.
-- [ ] C3. Gate : artefacts de rejeu identiques + golden killfeed verts.
+      *FAIT — les 34 verdicts, avec archétype, indice, couverture de dispatch et raison.*
+- [x] C3. Gate : artefacts de rejeu identiques + golden killfeed verts.
+      *FAIT — 7 grandeurs des 3 films identiques à l'unité près (gate à blanc d'entrée puis
+      gate de sortie, tous deux mesurés dans la session) ; `replay`, `filmdec`, `killsource`,
+      `objectiveevents` verts.*
 
 ### Lot D — `gocyclo` et `staticcheck`  *(le seul vrai refactor)*
 
@@ -292,3 +298,132 @@ pas 33.**
    elles n'ont jamais empêché le suivi (les fichiers étaient tracés), et elles restent un
    filet utile si une session de recherche recrée un binaire jetable. Ce n'est pas une
    allowlist — pas de trou latent.
+
+---
+
+### 2026-08-01 — session J3-2 : lots C et D + les 3 `argument-limit` + J3.3/J3.4/J3.5
+
+**Mesure d'entrée (§1, cache golangci purgé)** : **43 issues**, conformes à la sortie de J3-1
+à l'unité près — `unused` 34 · `staticcheck` 4 · `revive argument-limit` 3 · `gocyclo` 2.
+
+> **CORRECTIF DE LA PROCÉDURE §1** : la commande de comptage écrite plus haut,
+> `grep -E "^[a-zA-Z_/\\]+\.go:..."`, **sous-compte** — sa classe de caractères n'admet pas
+> les CHIFFRES, donc tout fichier au nom numéroté (`components_batch3.go`,
+> `components_batch8.go`…) tombe. Elle rendait **21** au lieu de 43 sur cette même sortie.
+> Compter avec `grep -cE "^[^ ].*\.go:[0-9]+:[0-9]+:"`.
+
+**Gate à blanc AVANT toute modification** (référence mesurée dans CETTE session) : les 3
+artefacts reconstruits, les 7 grandeurs du §5 de `PLAN_RECONCILIATION_BRANCHES.md` conformes —
+`000d5950` 99/29 221 · 475/519 · 90/105 · 70/70 · 439 projectiles · 184 états d'inventaire sur
+24 images-clés · 10 223 emprises ; `01e1f945` 1 862/2 154 ; `64e8adfa` 2 312/2 879.
+
+#### Lot C — les 34 `unused` : la méthode, puis les 34 verdicts
+
+**Ce qui tranche (a), et pourquoi aucun des 34 n'en relève.** Le traverseur s'arrête au
+**premier composant présent non porté** (`traverse.go`, `t.DesyncAt = i` puis sortie de
+boucle ; `unportedStubWidth` est vide hors banc de calibration). « Atteignable » se décide
+donc par un INDICE, pas par une intuition : un lecteur du composant i<sub>k</sub> ne change
+rien si un trou existe à un indice **antérieur**. Croisement fait sur pièces entre le registre
+ECS (`cmd/rdata_weapon_scan`, 118 archétypes / **1 067** composants — le compte de J0.4) et les
+188 noms du `switch consumeByName`. Couverture de dispatch relevée :
+
+| archétype | couverture | archétype | couverture |
+|---|---|---|---|
+| ti=6 · ti=18 · ti=21 · ti=29 | **complets** | ti=0 / ti=2 (game-engine) | 12/27 · 12/18, **1er trou à i11** |
+| ti=35 biped | 59/64 | ti=12 navpoints | 1/28, **1er trou à i1** |
+| ti=37 · ti=41 · ti=42 | 30/31 · 21/22 · 20/21 | ti=19 · ti=23 · ti=26 · ti=31 · ti=46 · ti=48 | **0/N** |
+| ti=40 véhicules · ti=43 dispositifs | 31/48 · 18/41 | ti=11 objectifs | **0/34** |
+
+Et le gate du lot exige des **artefacts identiques** : un branchement qui améliorerait le
+décodage le ferait ÉCHOUER. Améliorer le décodage n'est pas de la dette — c'est J6-A.
+
+**Le garde-fou du superviseur appliqué** : un lecteur d'un composant d'archétype PLANIFIÉ
+(objectifs ti=11, zones ti=23, véhicules ti=40, dispositifs ti=43) est un (c), jamais un (b).
+Deux des 34 sont dans ce cas. **Aucun des 34 ne concerne ti=40 ni ti=43** — vérifié : pas un
+seul lecteur `vehicle-*` ni `device-*` dans la liste.
+
+**Critère (b) vs (c) hors garde-fou, écrit une fois** : un `//nolint` n'est honnête que si sa
+**condition de retrait est évaluable** par une session future, c'est-à-dire adossée à un
+travail NOMMÉ dans un plan. Sans cela, c'est un trou permanent (anti-pattern n°2 du dépôt) et
+le code part — `git` le garde, avec l'adresse `FUN_` qui a servi à l'établir.
+
+**(c) — 2 lecteurs gardés sous `//nolint:unused` daté**
+
+| symbole | fichier | composant | ti/i | condition de retrait |
+|---|---|---|---|---|
+| `consumeObjectiveFormattedText` | `components_batch3.go` | `managed-objective-formatted-text-component` + son jumeau `-secondary-` | **11**/i2, i9 | branchée ou retirée quand ti=11 sera décodé (J6-A §4 « Objectifs étape 3 ») |
+| `consumeSelectableZoneData` | `components_world.go` | `selectable-zone-data-component` | **23**/i0..i31 | branchée ou retirée quand ti=23 sera décodé (J6-A §4, zones par images-clés + footer type-3) |
+
+**(b) — 32 supprimés, en trois familles**
+
+*Famille 1 — SUPPLANTÉS (17). Le nom du composant est déjà dispatché : `traverse.go` porte la
+grammaire, INLINE et depuis la table ECS live de J0.4. L'orphelin est un port antérieur. Les
+rebrancher serait un retour en arrière — et pour cinq d'entre eux, un retour à une approche
+explicitement écartée (largeurs fixes `TraversalPrecision` au lieu de la quantification
+6+level ; devinette de bits au lieu de la désynchronisation propre).*
+
+| symbole | fichier | composant (ti/i) | port vivant |
+|---|---|---|---|
+| `consumeEquipmentTrackedStack` | batch3 | equipment-tracked-object-handles-stack (37/i28) | `consumeEquipmentTrackedStack2` |
+| `consumeGameEngineAlliance` | batch4 | game-engine-alliance (0·1·2/i10) | inline |
+| `consumeTrackFrame` | batch5 | track-frame (16/i5) | `consumeTrackFrameComponent` |
+| `consumeCrewOrdersOffFlags` | batch8 | crew-orders-off-flags (14/i2) | inline R(8) |
+| `consumeMusicVariables` | batch8 | music-variables (17/i0) | inline |
+| `consumeEquipmentHasInfiniteUses` | batch8 | equipment-has-infinite-uses (37/i30) | inline R(1) |
+| `consumeBipedEmpTimer` | batch8 | biped-emp-timer (35/i51) | inline R(8) |
+| `consumeGameEngineCurrentState` | batch8 | game-engine-current-state (0·1·2/i2) | inline R(3) |
+| `consumeGameEngineGameFinished` | batch8 | game-engine-game-finished (0·1·2/i3) | inline R(1) — **et la table live corrige le `ti=0` écrit dans batch8 : c'est ti=2 i3** |
+| `consumeStatborgEntryIndexAndType` | batch8 | statborg-entry-index-and-type (6/i57) | inline R(32)+R(8) |
+| `consumeEffectStateData` | world | effect-state-data (18/i0..31) | inline |
+| `consumeMusicState` | world | music-state (17/i1) | inline |
+| `consumeTacmapPoiicon` | world | tacmap-poiicon (30/i0) | inline (vec3 quant 6+level) |
+| `consumeCrewMarkedObjects` | world | crew-marked-objects (14/i1) | inline |
+| `consumeCrewOrder` | world | crew-order (14/i0) | inline (`consumeQuantVec3`, 6+level) |
+| `consumeObjectPositionDynamicPrecision` | object | object-position-dynamic-precision (35·40/i0) | `consumeObjectPositionDynamicPrecisionD` — le port bit-exact ; l'orphelin portait le **6/6/6 fautif** et disait lui-même « should be empirically re-validated » |
+| `consumeObjectDeadStateBiped` | object | object-dead-state (35/i11) | `consumeObjectDeadStateBipedTI(br, 0x23)` — l'orphelin n'était que la façade qui fixait le typeIndex |
+
+*Famille 2 — ARCHÉTYPE NI DÉCODÉ NI PLANIFIÉ (11). Aucune condition de retrait évaluable.*
+
+| symbole | fichier | composant (ti/i) | fait qui tranche |
+|---|---|---|---|
+| `consumeNavpointFormattedText` | batch3 | managed-navpoint-formatted-text (**12**/i9) | trou antérieur à i1 |
+| `consumeSupplyLinesBusy` | batch4 | supply-lines-busy-state (**26**/i32) | trou à i0 ; **aucune adresse `FUN_`** au commentaire |
+| `consumeLowFrequency` | batch4 | `low-frequency` (**3**/i0) | **aucune adresse `FUN_`** ; les trois vrais low-frequency (object/unit/biped) ont chacun leur port vivant et validé |
+| `consumeGameEngineDisabledKillVolume` | batch5 | game-engine-disabled-kill-volume-flags (**0·2**/i13) | trou antérieur à i11 (`game-engine-soft-ceilings`) |
+| `consumeTacmapCategory` | batch5 | tacmap-category (**31**/i0) | 1/11 — les 10 autres tacmap-* manquent |
+| `consumeSoundPlacementStateData` | batch8 | sound-placement-state-data (**19**/i0..31) | 0/32, et rien ne planifie ti=19 — voir Découverte n°1 |
+| `consumeStateBrokerStateChangedData` | batch8 | state-broker-state-changed-data (**46**/i0..63) | 0/64, hors World, hors piste — voir Découverte n°1 |
+| `consumeStateBroker` | world | **le même composant** | **doublon** du précédent, et le moins documenté des deux |
+| `consumeForgePlayerDataEditedObjectsIDs` | batch8 | forge-player-data-edited-objects-ids (**48**/i0) | 1/2 : `forge-player-data-editing-graphs` manque |
+| `forgeEditedEntry` | batch8 | sous-lecteur du précédent | suit son appelant |
+| `consume1432026f4` | biped_ability | corps annoncé des tags 9/10 d'i63 | **PRÉMISSE RÉFUTÉE** : la vérité EXE du 2026-06-13, inscrite dans le `default` de `consumeBipedActionTag`, est que le dispatch ne gère QUE 0..5 et que tout tag ≥ 6 consomme **zéro bit**. Le garder exposait à re-câbler une lecture connue fausse |
+
+*Famille 3 — PRIMITIVES SANS COÛT DE RÉTABLISSEMENT (4). Le fait survit au retrait.*
+
+| symbole | fichier | fait conservé |
+|---|---|---|
+| `deadStateMortOffset` (const) | object | l'offset `0x70` est déjà écrit à son unique point d'usage (`ds.Mort = br.ReadBit() // comp+0x70`) |
+| `consumeOpt6` | object | « `FUN_1406d1024` -> R(1); if 0 -> R(6) » est dans la table de primitives en tête du fichier |
+| `readBitsBE` | objectiveevents | lecture MSB-first générique, 12 lignes |
+| `extractType2` | objectiveevents | `walkFrames`, dans le même fichier, parcourt le même conteneur |
+
+**Le quasi-doublon `consumeQuantVec3` / `consumeQuantVec3WithGate` (découverte J3-1) est
+STATUÉ : ce n'en est pas un.** Malgré son suffixe, `WithGate` a **une porte de moins** — c'est
+`consumeQuantVec3` qui ouvre par la porte `precHigh` à sortie immédiate (0 bit). Les deux
+comptes de bits diffèrent, les deux ont des appelants vivants (flock d'un côté, cinq sites du
+dispatch de l'autre), et les fusionner changerait un décodage. Aucune action de code : le
+piège de nommage est documenté au site (`components_movement.go`). **Le renommer serait la
+suite logique — non fait, hors périmètre J3-2 (aucun gain de dette).**
+
+#### Découvertes de cette session — consignées, NON traitées
+
+1. **UN SEUL LECTEUR PORTERAIT UN ARCHÉTYPE ENTIER — deux cas, à instruire en J6-A.** Certains
+   archétypes ne répètent qu'un composant : `ti=19` = 32 × `sound-placement-state-data`,
+   `ti=46` = 64 × `state-broker-state-changed-data`, `ti=23` = 32 × `selectable-zone-data`.
+   Y câbler LE lecteur ferait passer l'archétype de 0/N à N/N d'un seul coup. Pour ti=23
+   (zones) le lecteur est gardé sous `//nolint` (archétype planifié) ; pour **ti=19 (présent
+   dans le World de `000d5950`, slot 118) et ti=46**, les lecteurs ont été supprimés faute de
+   piste nommée — le FAIT est ici, et `git` garde le code (commit du lot C). Si J6-A veut
+   remonter le taux de marche propre des FRAMES, ce sont deux leviers à un câble chacun.
+2. **Le compteur de la procédure §1 sous-comptait** (classe de caractères sans chiffres) —
+   corrigé en tête de ce journal. Toute mesure antérieure lue par cette commande est suspecte.

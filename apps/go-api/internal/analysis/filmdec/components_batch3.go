@@ -5,37 +5,17 @@ package filmdec
 // version-gated navpoint-filter components are left unported (they desync only if present,
 // rare for the death-frame slots).
 
-// managed-navpoint-formatted-text-component.
-func consumeNavpointFormattedText(br *BitReader) {
-	count := br.ReadBits(8)
-	for i := uint64(0); i < count; i++ {
-		br.ReadBits(32)
-		if br.ReadBit() {
-			br.ReadBits(32)
-			subCount := br.ReadBits(3)
-			for j := uint64(0); j < subCount; j++ {
-				tag := br.ReadBits(3)
-				switch tag {
-				case 0:
-				case 1:
-					if !br.ReadBit() {
-						br.ReadBits(5)
-					}
-				case 2:
-					if br.ReadBit() {
-						br.ReadBits(24)
-					} else {
-						br.ReadBits(32)
-					}
-				default:
-					br.ReadBits(32)
-				}
-			}
-		}
-	}
-}
-
 // objective formatted-text + secondary share the same shape (R(1) presence + value + tagged list).
+// Lecteur de `managed-objective-formatted-text-component` (ti=11 i2) et de son jumeau
+// `-secondary-` (ti=11 i9) — l'archétype OBJECTIFS, couvert 0/34 par le dispatch.
+//
+// GARDÉE SANS APPELANT le 2026-08-01 (lot C, PLAN_DETTE_AVANT_MERGE) : ti=11 est PLANIFIÉ
+// mais non décodé — le traverseur s'arrête à i0 (traverse.go:1187), la brancher seule ne
+// changerait donc rien, et le gate du lot exige des artefacts identiques.
+// CONDITION DE RETRAIT : branchée ou supprimée quand ti=11 sera décodé (master plan J6-A,
+// ordre interne §4 « Objectifs étape 3 » / PLAN_OBJECTIFS_TEMPS_REEL).
+//
+//nolint:unused // grammaire d'un composant de ti=11 — voir la condition de retrait ci-dessus.
 func consumeObjectiveFormattedText(br *BitReader) {
 	if !br.ReadBit() {
 		return
@@ -67,14 +47,6 @@ func consumeEquipmentActivated(br *BitReader) {
 	if !br.ReadBit() {
 		br.ReadBits(3)
 	} else {
-		consume1408f0ac4(br)
-	}
-}
-
-// equipment-tracked-object-handles-stack-component: R(4) count + count x consume1408f0ac4.
-func consumeEquipmentTrackedStack(br *BitReader) {
-	count := br.ReadBits(4)
-	for i := uint64(0); i < count; i++ {
 		consume1408f0ac4(br)
 	}
 }

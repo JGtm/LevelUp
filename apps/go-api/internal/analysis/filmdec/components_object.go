@@ -26,71 +26,13 @@ package filmdec
 //   FUN_1407f08bc          -> R(1); if 1 -> R(8)
 //   FUN_1407f1f24          -> (sub, see consumeWeaponStateTypeInfo notes)
 
-// deadStateMortOffset documents the byte offset (comp+0x70) where dead-state
-// writes the death flag; mirrored in the bool returned by consumeDeadState.
-const deadStateMortOffset = 0x70
-
-// consumeObjectPositionDynamicPrecision (i0) mirrors FUN_1406cfe44. This is the
-// most branch-heavy object component: a 2-bit leading selector chooses between a
-// full quantized-position block, a delta against the prediction, or a "keep"
-// path. The full bit-consume is genuinely data-dependent; this function follows
-// the path-to-position spine bit-for-bit for the common BIPED full-state shape.
-//
-// Layout of the two leading flags (bVar17, bVar18):
-//
-//	bVar17 = R(1)  -- "use prediction baseline" (high path)
-//	bVar18 = R(1)  -- "delta present"
-//
-// Case (bVar17==0, bVar18==0): absolute position via FUN_14076e524
-//
-//	-> R(1) gate; if 0: R(DAT_144632be0 = 0 -> no bits) index + vec3 deltas
-//	   (FUN_140cc5128: 3 axes, each R(perAxisW)). With the retail table the
-//	   index width is 0, so this reduces to R(1) + the 3 quantized axes.
-//
-// Case (bVar17==0, bVar18==1): predicted, reads one extra R(1) sign bit then a
-//
-//	dequant block (FUN_140f7ea14) or the FUN_14076f3ec/FUN_141f858f8 branch.
-//
-// Case (bVar17==1): "keep" — FUN_1406d676c (no value bits) then optionally the
-//
-//	bVar18 dequant tail.
-//
-// NOTE: because the vec3 axis widths come from a runtime precision descriptor
-// (not a compile-time constant) the *value* decode is data-dependent. The
-// function below consumes the confirmed control bits (2 leading + the per-branch
-// gate) and the position payload via readQuantizedPositionBlock, which must be
-// fed the archetype's per-axis widths. Treat i0 as the one component whose tail
-// alignment should be empirically re-validated against a real BIPED record.
-func consumeObjectPositionDynamicPrecision(br *BitReader, axisW [3]uint) {
-	bUsePred := br.ReadBit() // FUN_1406cfe44 first R(1)
-	bDelta := br.ReadBit()   // second R(1)
-
-	if !bUsePred {
-		if !bDelta {
-			// absolute path -> FUN_14076e524
-			if !br.ReadBit() { // gate R(1)
-				// index R(DAT_144632be0); retail DAT==0 -> zero bits.
-				// vec3 deltas: FUN_140cc5128, 3 axes x R(axisW[i]).
-				for i := 0; i < 3; i++ {
-					br.ReadBits(axisW[i])
-				}
-			}
-			return
-		}
-		// predicted-delta path: one sign R(1) then a dequant axis block.
-		br.ReadBit()
-		for i := 0; i < 3; i++ {
-			br.ReadBits(axisW[i])
-		}
-		return
-	}
-	// bUsePred == 1: "keep" baseline; FUN_1406d676c consumes no value bits.
-	if bDelta {
-		for i := 0; i < 3; i++ {
-			br.ReadBits(axisW[i])
-		}
-	}
-}
+// Retrait 2026-08-01 (lot C, PLAN_DETTE_AVANT_MERGE) de deux orphelins de ce fichier.
+// `consumeObjectPositionDynamicPrecision(br, axisW [3]uint)` était le PREMIER port d'i0 —
+// celui dont le commentaire disait lui-même « should be empirically re-validated » et qui
+// portait le 6/6/6 fautif ; le port bit-exact vivant est consumeObjectPositionDynamicPrecisionD
+// (components_movement.go), seul appelé par le dispatch et par la sonde. Et la constante
+// `deadStateMortOffset = 0x70` ne documentait qu'un offset déjà écrit à son unique point
+// d'usage (`ds.Mort = br.ReadBit() // comp+0x70`, plus bas dans ce fichier).
 
 // consumeObjectForwardAndUp (i2) mirrors FUN_14076e278 -> FUN_140c5f938 ->
 // FUN_140c5fa84 (the only reader; FUN_140c5f9c8 is pure dequant math, 0 bits).
@@ -216,9 +158,9 @@ var deadStatePreSkip int
 // SetDeadStatePreSkip sets the calibration pre-skip (negative = rewind via Skip).
 func SetDeadStatePreSkip(n int) { deadStatePreSkip = n }
 
-func consumeObjectDeadStateBiped(br *BitReader) DeadState {
-	return consumeObjectDeadStateBipedTI(br, 0x23)
-}
+// (La façade sans typeIndex `consumeObjectDeadStateBiped(br)` a été retirée le 2026-08-01 —
+// lot C : elle ne faisait que fixer 0x23 et n'avait plus d'appelant. Passer le typeIndex
+// explicitement est de toute façon la bonne forme : le corps et la queue en dépendent.)
 
 // consumeObjectDeadStateBipedTI est la forme lourde parametree par le typeIndex :
 // FUN_140c1dce0 lit [R(1) Mort] puis, si typeIndex vaut 0x23 (35) OU 0x28 (40), le corps
@@ -444,12 +386,9 @@ func consumeOpt5(br *BitReader) {
 	}
 }
 
-// consumeOpt6 mirrors FUN_1406d1024: R(1); if 0 -> R(6), else absent.
-func consumeOpt6(br *BitReader) {
-	if !br.ReadBit() {
-		br.ReadBits(6)
-	}
-}
+// (consumeOpt6, jumeau en R(6) de consumeOpt5 pour FUN_1406d1024, a été retiré le 2026-08-01 —
+// lot C : sans appelant, et sa grammaire tient déjà dans la table de primitives en tête de
+// fichier, « FUN_1406d1024 -> R(1); if 0 -> R(6) ».)
 
 // consumeVarWidthMinus1 mirrors the FUN_140e9fadc / FUN_1406d0f20 family:
 // an unconditional R(width) read whose value is returned minus 1.

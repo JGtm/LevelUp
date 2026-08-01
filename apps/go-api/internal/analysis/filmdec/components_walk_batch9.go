@@ -24,6 +24,11 @@ func consumeDevicePosition(br *BitReader) { br.Skip(15) }
 // consumeGameEngineCampaignTimer (ti2) — deser FUN_1407ee764 -> FUN_140d580d0(dst, reader,
 // width=0x10, table) = R(16) + R(16) + FUN_1407f0354 = R(5). Meme forme que
 // game-engine-round-timer-component (FUN_1407ee790), deja porte en R(16)+R(16)+R(5).
+//
+// NOTE 2026-07-25 (rapatriee ici le 2026-08-01 a la suppression de components_batch5.go) :
+// un port anterieur attribuait ce composant a FUN_14076e744 — mauvaise fonction, et mort
+// faute d'appelant. La chaine statique nom -> getName -> descripteur -> bloc+0x40 donne
+// FUN_1407ee764, porte ci-dessous.
 func consumeGameEngineCampaignTimer(br *BitReader) { br.Skip(37) }
 
 // consumeBipedPosturePhysics (ti35 i55) — deser FUN_142f0293c -> FUN_142f1f630 : R(2) puis

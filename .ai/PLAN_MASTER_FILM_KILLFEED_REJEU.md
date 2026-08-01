@@ -307,20 +307,30 @@ Ajouts de cette revue au plan (à statuer dans sa session) :
       reproductible à l'octet (map + `sort.Slice` instable, 1 position de lancer sur 130
       bouge). Un tri total rend l'artefact ET le fixture déterministes — au service des
       goldens, du diff, et du cache prod futur.
-- [!] J3.6 Retirer la dépendance fantôme `js-yaml` d'`apps/web` (découverte J2-D5).
+- [~] J3.6 Retirer la dépendance fantôme `js-yaml` d'`apps/web` (découverte J2-D5).
       Découverte J2-D4 (huit familles d'effet pour sept géométries, `plain` = balistique
       aminci) : **AUCUNE action** — c'est le repli sobre documenté (`ETAT_DU_POC.md`).
       **REFUSÉ le 2026-08-01, prémisse fausse** : ce n'est pas une dépendance fantôme mais un
       correctif de sécurité (commit `54a6eb3df`, **CVE-2026-53550 / GHSA-h67p-54hq-rp68**).
       `@redocly/openapi-core` épingle `js-yaml` en exact `4.1.1` (vulnérable) ; l'`overrides`
       est le seul levier qui hisse le lockfile à `4.3.0`. Le retirer réintroduirait la faille
-      et rouvrirait l'alerte Dependabot #3. **Décision superviseur attendue** — par défaut :
-      ne rien faire, et remplacer cet item par « ne pas faire dépendre un test d'un paquet
-      qu'un tiers installe », ce qui est **déjà le cas** (`replayContract.test.ts` le dit et
-      passe par les types générés).
+      et rouvrirait l'alerte Dependabot #3. **Décision superviseur RENDUE le 2026-08-01 :
+      ne rien faire, statut `[~]` déjà couvert** — vérifié sur pièces (commit `54a6eb3df` +
+      `package.json`) ; l'intention réelle de J2-D5 (un test indépendant des paquets tiers)
+      est déjà appliquée (`replayContract.test.ts` passe par les types générés). Condition
+      de retrait futur de l'override, à re-vérifier aux montées Dependabot : les
+      consommateurs requièrent nativement js-yaml >= 4.2.
 
-**Découpage arrêté (70 issues)** : **J3-1** = lots A + B + J3.1/J3.2/J3.6 (mécanique, sous
-gate goldens) ; **J3-2** = lots C + D + J3.3/J3.4/J3.5 (jugement + gardes décodeur).
+**Découpage arrêté** : **J3-1 CLOSE le 2026-07-31 (70 → 43)** = lots A + B + J3.1/J3.2
+(+ J3.6 clos sans retrait, cf. ci-dessus) ; **J3-2** = lots C + D + J3.3/J3.4/J3.5 + les
+3 `revive argument-limit` renvoyés par J3-1 (regrouper les paramètres de décodage en
+structure : `kfBetterCand`, `fire_scanner_v3.go:120`, `killsource/bijection.go:259`).
+
+**À savoir pour J3-2** (legs de J3-1) : le lot C compte **34** verdicts, pas 33 (une
+position portait revive + unused superposés — `consumeForgePlayerDataEditedObjectsIDs`) ;
+et le gate des 7 grandeurs du §5 doit vérifier l'inventaire PAR LECTURE DE L'ARTEFACT
+(`jq '.inventory|length'`) — `replay-build` ne journalise pas cette grandeur, sans ce
+relevé elle n'est pas vérifiée du tout.
 
 > **J3-1 CLOS le 2026-08-01.** Lots A et B faits, J3.1/J3.2 faits, J3.6 **refusé sur prémisse
 > fausse** (sécurité — voir l'item). **Mesure 70 → 43.** Les 7 linters mécaniques sont à zéro ;
@@ -465,8 +475,15 @@ Ordre INTERNE de la piste A (respecte « killfeed d'abord », puis la valeur) :
    consomment les captures J0).
 3. Variables jetées (compteur de réapparition lu, horloge de manche, pitch/orientation selon
    couverture).
-4. Objectifs étape 3 (désérialiseurs décompilés puis portés un par un, témoin
-   `progress/required-progress`).
+4. Objectifs — **OUVRIR PAR LA SESSION DE VERDICT « recette mode → score »** (hypothèse
+   utilisateur du 2026-08-01 : une indirection dirait, selon le mode, OÙ lire le score et
+   QUELS événements comptent ; prompt remis par le superviseur ; **Fable 5, effort max** ;
+   parallélisable en worktree dès maintenant — mesure pure, zéro code livré). Elle
+   cartographie le système d'événements (dispatcher `FUN_140620564` codes 0x02-0x3c,
+   footer type-3, flux de score TYPE_2) et rend son verdict AVANT le portage des
+   désérialiseurs. L'étape 3 du plan objectifs (décompilation + portage, témoin
+   `progress/required-progress`) suit le verdict — la cartographie sert aussi A5 (mêmes
+   codes) et G3.
 5. **Ramassages — armes, power-ups, grenades** *(ajouté le 2026-07-31, demande utilisateur ;
    la piste est DÉJÀ NOMMÉE dans les archives, vérifié par grep)* :
    - Voie 1 — l'ÉVÉNEMENT de ramassage : le dispatcher d'événements du film
@@ -886,3 +903,24 @@ comme prévu).
   **Piège de méthode consigné** : `replay-build` ne journalise PAS les états d'inventaire —
   sans un relevé sur l'artefact (`jq '.inventory|length'`), une des 7 grandeurs du §5 n'est
   pas vérifiée du tout. Prochain jalon : **J3-2**.
+- **[2026-08-01 — superviseur] J3-1 VÉRIFIÉ ET CONFIRMÉ CLOS (70 → 43).** Run CI
+  30671925050 contrôlé au niveau job : tous verts (Coverage + Baseline 20 min 56), seul Go
+  Lint rouge — à 43, égal à la mesure locale. Arbre propre. **J3.6 tranché : refus de
+  l'exécuteur VALIDÉ** — contre-vérifié sur pièces (l'override est le correctif
+  CVE-2026-53550, commit `54a6eb3df`) ; statut `[~]`, condition de retrait notée. Reste
+  pour J3-2 : 34 `unused` + 4 `staticcheck` + 3 `argument-limit` + 2 `gocyclo` = 43, plus
+  J3.3/J3.4/J3.5. Garde-fou ajouté au verdict (b) du lot C : croiser avec la table des
+  désérialiseurs J0.4 — un lecteur d'un archétype PLANIFIÉ (ti=11, 23, 40, 43) est un cas
+  (c) daté, pas une suppression. Prochain : **J3-2** (Opus 5, effort élevé).
+- **[2026-08-01 — superviseur, périmètre]** Hypothèse utilisateur ajoutée : une « RECETTE
+  mode → score » existerait dans le film — une indirection qui dit, selon le mode, où se
+  lit le score et quels événements comptent (captures/défenses de base, drapeau pris/
+  déposé/capturé/rendu, frag du porteur près du dépôt — tous récompensés en score
+  personnel, donc traqués). Les symptômes du plan objectifs (sur-comptage crâne ×20,
+  libellés invalidés) sont compatibles avec une lecture SANS recette ; J0 a prouvé que le
+  mode change la représentation (ti=11 : 162 en CTF, 0 en Strongholds). Session de
+  verdict dédiée créée (Fable 5, effort max, parallélisable en worktree — mesure pure),
+  en ouverture de la piste A-objectifs : cartographie du système d'événements + témoins
+  Slayer (score = frags killsource), ancres terrain J0.6, personal_score à l'unité.
+  Sous-produit consigné pour A5 (mêmes codes 0x02-0x3c). Étapes 1-2 du plan objectifs
+  (côté app) : inchangées.
