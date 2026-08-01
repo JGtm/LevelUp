@@ -50,6 +50,8 @@ trimestre courant + le précédent.
 |---|---|
 | `plan-execution` | Dès qu'on exécute un plan multi-étapes (OBLIGATOIRE — anti-partiel, anti-report) |
 | `plan-review` | Avant de finaliser un plan d'implémentation |
+| `adversarial-review` | Faire relire un diff par un contexte frais avant merge (lots à risque : persist/sync, auth, algo) |
+| `adversarial-audit` | Auditer du code existant hors diff (périmètre × axe, registre daté, ne corrige pas) |
 | `delivery-checklist` | Avant tout commit / PR / « c'est livré » |
 | `arch-rules` | Code Go (couches, ports, multi-titre, logging) |
 | `canonical-types` | Types inter-titres (`internal/games/canonical/`) |
