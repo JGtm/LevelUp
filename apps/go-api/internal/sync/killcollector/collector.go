@@ -1,6 +1,6 @@
-package sync
+package killcollector
 
-// killsource_collector.go — LE COLLECTEUR : il enchaine telechargement, decodage et ecriture,
+// collector.go — LE COLLECTEUR : il enchaine telechargement, decodage et ecriture,
 // et c est TOUT ce qu il fait. Chacune des trois responsabilites vit ailleurs et n a pas le
 // droit de migrer ici :
 //

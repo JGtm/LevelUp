@@ -1,6 +1,6 @@
-package sync
+package killcollector
 
-// killsource_roster.go — la resolution `gamertag -> xuid`, et la passe multi-matchs.
+// roster.go — la resolution `gamertag -> xuid`, et la passe multi-matchs.
 //
 // POURQUOI CETTE RESOLUTION EXISTE : le film ne porte AUCUN xuid cote replication — il ne rend
 // que des NOMS. Le rattachement au joueur se fait donc contre le roster du match, en base. Son
