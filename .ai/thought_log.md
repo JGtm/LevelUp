@@ -51,7 +51,20 @@ tombent sur la mesure.
 **Corrections d'entrée** : `01e1f945` n'est pas un Slayer mais un **KOTH:Arena** — le corpus
 couvre donc quatre modes, pas trois.
 
-**Conclusion / prochaine étape** : Q2 (localiser le porteur de score par mode) n'a pas été
+**Q3 tranché par Ghidra (ajout post-session, sur relance utilisateur)** : la chaîne remonte du
+consommateur — getter `FUN_1406ADA4C`, résolution `FUN_140C18E54`/`FUN_140C18EA8` (balayage
+linéaire de la table `engine+0xDF77C`, pas de 0xC0 octets, l identifiant de stat en premier
+dword), appelant `FUN_142B7974C` = le binding HavokScript `Team_GetCurrentRoundStatValue`. Sur
+tout ce chemin, **zéro branchement sur une catégorie de variante**. La surface d API scriptée
+est entièrement générique (`Hill_` : 0 occurrence ; `Objective_` : un seul getter générique).
+L intermédiaire postulé existe donc, mais ce n est ni l en-tête du film, ni une entité des
+images-clés, ni une table de dispatch : c est un **registre de stats plat adressé par
+identifiant**, et **c est le script de la variante de mode qui choisit l identifiant**. La
+recette est de la DONNÉE, pas du code — ce qui explique d un coup les trois négatifs de la
+session. Correction au passage : `RE_EXE_GHIDRA_FINDINGS` §1 annonce des entrées de 0x30, le
+pas réel est 0x30 dwords = **0xC0 octets**.
+
+**Conclusion / prochaine étape** : Q2 (localiser le porteur de score par mode) n a pas été
 traité — le budget est passé dans la vérification de la source externe, demandée en cours de
 session, qui a produit deux réfutations et une confirmation. Il est cadré et ses témoins sont
 prêts ; il exige un comptage **publié** des faux positifs, sans quoi il n'est pas publiable.
