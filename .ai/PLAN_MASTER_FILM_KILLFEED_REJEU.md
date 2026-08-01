@@ -420,6 +420,29 @@ se décide en J5 selon l'état du backfill prod.
 **Et le rejeu devient atteignable** (lot 1 finalisation, dans ce jalon parce qu'il est court
 et rend le travail visible) :
 
+- [x] J4.0 **Réparer le garde de CI mort** (découverte J3-2 n°3, arbitrage superviseur du
+      2026-08-01) : « Guard — feedback-drawer ne doit pas importer le wrapper api » grepe
+      `apps/web/src/features/...` **sous `working-directory: apps/web`** — le chemin est
+      doublement préfixé, `grep` sort en erreur sur un fichier absent, et un `if` sur une
+      erreur est faux : le garde passe toujours, sans rien vérifier. **Vérifié le 2026-08-01 :
+      l'invariant TIENT** (le fichier n'importe pas `api` et pose `credentials: 'omit'`) —
+      c'est donc un trou latent, pas une fuite active, mais il partirait sur `main` en J5.
+      Trois gestes, pas un : corriger le chemin ; **rendre le garde auto-vérifiant** (échouer
+      bruyamment si le fichier cible n'existe pas — patron du dépôt,
+      `TestHalowaypointAllowlistEntriesPointToExistingFiles`) ; **auditer les autres gardes
+      CI par grep** pour le même motif. Leçon généralisable : *un garde qui ne peut pas
+      échouer ne garde rien*.
+      *FAIT 2026-08-01 (J4 session 1).* Chemin corrigé (`src/features/...`, relatif au
+      `working-directory`), contrôle d'existence AVANT le grep, et les **trois**
+      comportements PROUVÉS en rejouant le script du step tel que l'extrait le parseur
+      YAML : arbre réel → rc=0 ; cible absente → rc=1 avec `::error::` ; cible présente
+      important `api` → rc=1. La regex elle-même n'avait jamais été exécutée : vérifiée
+      sur trois formes d'import positives. **Audit des autres gardes : mécanique, pas au
+      jugement** — un détecteur (tous les `run:` de tous les workflows × leur
+      `working-directory` effectif × les chemins du dépôt qu'ils citent) donne **1 avant
+      correction, 0 après**, et le témoin de détection a été joué sur la version d'avant
+      pour prouver que le détecteur voit ce défaut-là. Découverte annexe consignée au
+      journal du plan de branchement (deux `--if-present` : même motif, latent, non traité).
 - [ ] J4.1 Lot 1.1-1.3 : supprimer `feature-flags.ts` (mort depuis avril), publier
       `replay_available` (un `os.Stat` via `PathResolver`), poser le lien conditionnel
       (i18n FR+EN). En prod, l'artefact n'existe pas → pas de lien : inoffensif d'ici le
@@ -457,6 +480,12 @@ local.
       Vigilance découverte J1-c : `routeTree.gen.ts` est régénéré (ordre d'imports inversé)
       par toute commande vite/vitest — vérifier le CONTENU du diff avant de committer ou
       d'écarter, ne pas se fier à la seule présence d'un diff.
+- [ ] J5.1bis **Fermer le ratchet knip** (découverte J3-2 n°4, arbitrage superviseur du
+      2026-08-01) : les plafonds valent `29/90/86` pour un compte réel de `0/0/0`. Les
+      abaisser à la valeur mesurée — **ici et pas avant** : la surface web n'est stable
+      qu'au merge, et un plafond à 0 pendant J4 bloquerait un push intermédiaire légitime
+      (un export posé dans un commit, son consommateur dans le suivant). Les sessions J4
+      surveillent le compte pour qu'il ne dérive pas d'ici là.
 - [ ] J5.2 Lot F : compteur ratchet à 0, re-merge de `origin/main` puis re-mesure, **prévenir
       l'utilisateur avant le push** (déploiement prod automatique).
 - [ ] J5.3 Backfill prod en deux temps (cf. J4) : fenêtre convenue, lock backfill respecté
@@ -480,6 +509,21 @@ suite de sessions), un merge rapide (< 1 semaine de vie par branche). Surfaces d
 | **A — décodeur** (UNE seule session à la fois, toujours) | `PLAN_CAPACITES_ACTIVES` puis `PLAN_VARIABLES_JETEES` puis FINALISATION lot 5 (fil des éliminations + médailles) et lot 6, puis `PLAN_OBJECTIFS_TEMPS_REEL` étape 3 | `filmdec/`, `analysis/replay/`, `killsource/`, artefact, `match-replay/` | J2 (goldens) ; étape 3 objectifs : J0.4 (table) + Ghidra |
 | **B — cartes** | `PLAN_BELLE_CARTE_TRIANGLES` (étapes 0.1 → 6) puis FINALISATION lot 4 | `himap/`, `himodule/`, `cmd/mapstruct-build`, `mapFloor.ts`, `data/.../reference/` | aucune (modules du jeu sur la clé) |
 | **B2 — la palette Forge : NOMMER et MESURER** *(ajoutée le 2026-08-01)* | session de recherche dédiée (prompt superviseur) | `mapvar/`, `himodule/`, `cmd/mapobj-build`, `map_objectives.json`, plus tard le rendu | palette Forge (sur la clé ET sur `D:` depuis le 31/07) ; **prérequis de tout affichage d'objectif** |
+| **H — hygiène post-merge** *(ajoutée le 2026-08-01)* | audit ciblé sous skill `adversarial-audit` | `analysis/weaponv3`, `analysis/objectiveevents` et leurs appelants | après J5 ; **ne jamais supprimer une migration déjà appliquée en prod** |
+
+**Condition d'entrée de la piste B** (découverte J3-2, à ne pas perdre) : `internal/himodule`
+**n'a aucun test**, et le découpage de `loadHd1` fait en J3-2 a été vérifié **par lecture, pas
+par exécution**. Le gate des artefacts ne le couvre pas : `replay-build` lit les fichiers de
+structure FIGÉS, il ne repasse pas par `himodule`. Premier geste de B : **régénérer une
+structure de carte et la comparer à la version figée** — c'est le test d'équivalence qui
+manque, et B a besoin d'`himodule` de toute façon.
+
+**Piste H, périmètre** : la lignée `weaponv3` (shadow **non promue**, piste documentée comme
+MORTE) et `objectiveevents` restent invisibles à `unused` parce qu'un `cmd` les référence —
+c'est le plus gros gisement de code mort restant. **Audit avant suppression**, jamais
+l'inverse : vérifier chaque appelant, et laisser intactes les migrations
+(`steps_shared_weapon_kills_v3.go` et consorts) — une migration appliquée en production ne se
+supprime pas, son historique fait partie du schéma.
 
 **Pourquoi B2 existe — constat vérifié le 2026-08-01.** L'extraction d'objectifs ne porte
 **aucune forme** : `mapvar.Objective` = `Pos` + `Forward` + `TeamIndex` + labels. Une zone y
@@ -1013,3 +1057,23 @@ comme prévu).
   de 0/N à N/N (n°1, pour J6-A) ; plafonds knip périmés à 0/0/0 (n°4) ; `himodule` sans
   aucun test (n°5) ; la lignée `weaponv3` + `objectiveevents` morte mais invisible à `unused`
   parce qu'un `cmd` la référence (n°6).
+- **[2026-08-01 — superviseur] J3 VÉRIFIÉ ET CONFIRMÉ CLOS — LE RATCHET LINT EST VERT.**
+  Run CI `30693673708` contrôlé au niveau job à sa fin : **les 8 jobs verts, `Go Lint
+  (golangci-lint)` COMPRIS** — première fois du chantier (il était rouge de bout en bout
+  depuis la réconciliation). Arbre propre, 4 commits de code + 1 de documents.
+  **Arbitrages rendus sur les découvertes** : (n°3, garde de CI mort) → **J4.0**, contre-
+  vérifié d'abord — *l'invariant TIENT* (`feedback-drawer/queries.ts` n'importe pas `api` et
+  pose `credentials: 'omit'`), donc trou latent et non fuite active, mais il partirait sur
+  `main` en J5 ; correctif en trois gestes (chemin, garde auto-vérifiant, audit des autres
+  gardes par grep). (n°4, plafonds knip) → **J5.1bis** et pas avant : un plafond à 0 pendant
+  J4 bloquerait un push intermédiaire légitime. (n°5, `himodule` sans test) → **condition
+  d'entrée de la piste B** : le gate des artefacts ne couvre PAS ce paquet (`replay-build`
+  lit les structures figées), l'équivalence se prouvera en régénérant une structure et en la
+  comparant à la figée. (n°6, `weaponv3`/`objectiveevents`) → **piste H**, post-merge, sous
+  `adversarial-audit`, avec l'interdit explicite de toucher aux migrations appliquées.
+  (n°1, `ti=19`/`ti=46`) → levier J6-A ; **les lecteurs supprimés sont récupérables au
+  commit `a5ff6b5ed`** — le noter là où J6-A le lira.
+  **Ce que J3 a appris** : le verdict du lot C ne s'est pas décidé au jugement mais sur un
+  INDICE mesurable — le traverseur s'arrêtant au premier composant non porté, un lecteur
+  placé après un trou ne change rien. Zéro cas (a) sur 34 : aucun n'était un bug de
+  dispatch. Prochain jalon : **J4** (Opus 5, effort élevé, 3 sessions).
