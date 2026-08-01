@@ -615,3 +615,79 @@ Tous se construisent en `CGO_ENABLED=0` (aucun DuckDB). Les oracles en base pass
    vocabulaire des identifiants de stat de la table `engine + 0xDF77C` (compte, identifiants,
    echelles) et le croiser avec le statborg deja serialise dans le film — il donne la liste de
    ce que le jeu mesure, sans deviner.
+
+---
+
+## 11. SECONDE PASSE (2026-08-01, apres relance utilisateur) — modes a objectifs
+
+### 11.1 Q4-KOTH : REFUTE (le doute de l'utilisateur sur la « corruption » etait fonde)
+
+8 films KOTH neufs, tous avec exactement 8 lignes de stats (donc sans le defaut de
+`01e1f945`). Comparaison des comptes d'evenements de mode par joueur a
+`zone_captures + zone_secures` :
+
+| film | multiset film | multiset API |
+|---|---|---|
+| `6cdec7c3` | 2 6 7 8 10 14 14 17 | 2 4 4 5 6 6 7 7 |
+| `71ad4abd` | 1 7 8 11 11 12 14 19 | 3 3 4 5 6 7 8 8 |
+| `75f1188f` | 2 3 5 7 8 9 10 17 | 3 4 4 6 6 7 7 7 |
+| `7665e832` | 3 9 11 12 14 15 15 17 | 1 4 4 5 5 5 6 7 |
+| `7f1bbf06` | 1 2 5 6 7 24 | 1 2 3 3 4 6 8 10 |
+| `da2fd554` | 3 4 4 7 11 12 13 | 0 2 2 4 6 7 9 9 |
+| `eeaf049b` | 2 4 4 10 11 12 15 16 | 2 2 3 4 5 6 9 9 |
+| `f6091638` | 1 5 6 8 10 14 18 | 1 2 3 4 4 5 6 6 |
+
+**8 films sur 8 en desaccord**, le film comptant systematiquement PLUS (rapport 1,4 a 2,6,
+non constant). L'identite etablie pour le Strongholds **ne s'etend pas au KOTH**. Croise avec
+la periodicite de 5,00 s mesuree en 5.2 : en KOTH l'evenement de mode est un **tick
+d'occupation**, pas une prise. Le defaut de donnee de `01e1f945` n'etait donc pas la cause —
+le verdict passe d'INDECIDABLE a **REFUTE**.
+
+### 11.2 Q2 modes a objectifs : trois voies de plus, toutes negatives
+
+| voie | resultat | reference de hasard mesuree |
+|---|---|---|
+| offset fixe consistant sur **46 films KOTH** | **0 triplet** couvre >= 60 % des films | le hasard atteint **46 %** (cible leurre score+1) |
+| grammaire statborg balayee dans les images-cles, 46 films KOTH | couple (s0,s1) trouve dans **65 %** des films | **leurre permute (s1,s0) : 74 %** — la cible fait MOINS bien que le leurre |
+| decodage des 16 octets de signature de la capture CE (2 716 enregistrements statborg) | **0 alignement** rend le couple 200-94 | — |
+
+### 11.3 CE QUE LA SECONDE PASSE A TROUVE, ET QUI CHANGE LA ROUTE
+
+**L'ARCHETYPE 6 EST LE STATBORG.** Dans `deser_table.tsv`, **les 58 composants de
+l'archetype 6 pointent TOUS sur `FUN_140C18794`**, le deserialiseur de stat a deux equipes
+identifie en Q3. Un composant = une paire de slots de stat, une valeur par equipe.
+
+Et il est **replique dans le film** : la capture CE compte **2 340** dispatches `ti=6` sur la
+CTF et **2 716** sur le Strongholds.
+
+**Consequence directe : je cherchais au mauvais endroit.** Le score d'equipe n'est pas un champ
+du bloc game-state des images-cles TYPE_2 — c'est un **composant replique de l'archetype 6**,
+dans le flux. Tous les balayages d'images-cles de la section 6bis portaient sur le mauvais
+substrat. Cela explique pourquoi le Slayer tombe (son score est AUSSI recopie dans l'entete
+game-state, ou il tient sur 6 bits) et pourquoi aucun mode a objectif ne suit.
+
+**Le lot suivant est donc precis** : porter le deserialiseur d'archetype 6 sur le flux de
+trames (le depot a deja `filmdec/statborg.go` et `ReadSignedVarWidth`), sortir les 58 paires de
+valeurs par image, et identifier le compIndex dont la courbe finit sur le score de l'API. Le
+temoin existe pour tous les modes, et le Slayer sert de controle positif.
+
+### 11.4 Les composants d'objectif CTF, nommes structurellement (Q4-CTF)
+
+`ti=11` est propre a la CTF (absent du Strongholds, cf. J0). Sur `530820e5`, 5 entites, 162
+dispatches. Les deux composants qui portent le trafic, decompiles :
+
+- **`ci=6` -> `FUN_1411615F8`** : lit **UN SEUL BIT** (`FUN_1406CF008`) ecrit en
+  `etat + 0x154`. 42 emissions, sur **deux entites seulement** (les deux drapeaux).
+- **`ci=4` -> `FUN_140DBE170` -> `FUN_140DBE400`** : lit un **masque** en `etat + 0x104`, puis
+  boucle sur **4 sous-blocs** (pas de 0x40) en lisant **4 bits** par sous-bloc marque. Soit
+  **4 emplacements d'objectif, 4 bits d'etat chacun, avec masque de changement**. 108 emissions.
+
+**Tentative de correlation, et son echec honnete** : les 42 bascules de `ci=6` ressemblaient
+aux 43 evenements de mode du footer, avec un alignement de fin de match frappant
+(436,6/436,5 · 443,4/443,3 · 473,2/473,4). Mise a l'epreuve avec debit et decalage libres :
+**22/43 coincidences a 1,5 s** — mais le **controle** (memes instants decales de 7 s, meme
+liberte de calage) en obtient **20/43**. La correspondance **n'est pas etablie** ; l'impression
+venait de la densite des evenements et des deux parametres libres.
+
+Ces deux composants restent la meilleure cible connue pour l'identite du drapeau — mais ils
+demandent d'etre decodes **depuis le film**, pas depuis la capture.
