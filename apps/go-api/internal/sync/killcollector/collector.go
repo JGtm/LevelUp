@@ -62,11 +62,22 @@ const KillSourceDecoderRev = "killsource-2026-07-31"
 
 // defaultKillSourceTimeout — la limite de temps PAR MATCH.
 //
-// Calibrage : 11 min mesurees sur le pire cas connu (BTB, 36 participants), doublees pour ne
-// pas transformer une machine chargee en abandons. Ce n est PAS une cible de performance : la
-// difference 4v4/BTB (8-30 s contre 11 min) est une anomalie A PROFILER, consignee au plan —
-// une limite genereuse evite d en faire une perte de donnees en attendant.
-const defaultKillSourceTimeout = 22 * time.Minute
+// CALIBRAGE SUR MESURE, PAS SUR INTUITION (2026-08-01, machine locale) :
+//
+//	8 chunks     1,6 s        69 chunks   1 145 s  (19 min 05)
+//	28 chunks   10,4 s        63 chunks     575 s  ( 9 min 35)
+//	33 chunks   14,4 s
+//
+// ⚠ LA COURBE EST VIOLEMMENT SUPERLINEAIRE, ET C EST CE QUI FIXE CETTE VALEUR : passer de 63 a
+// 69 chunks (+9,5 %) DOUBLE le temps (+99 %). Le cout par chunk va de 0,44 s en regime 4v4 a
+// 16,6 s sur le plus gros film du corpus — un facteur 38. Une telle non-linearite suggere une
+// FAILLE LOGIQUE (un cout quadratique quelque part), pas un manque de puissance : elle est A
+// PROFILER, et elle est consignee au plan comme telle. Elle n est PAS traitee ici.
+//
+// La limite vaut donc 45 min : ~2,4x le pire cas MESURE, parce qu avec une telle pente le
+// prochain film un peu plus gros peut couter beaucoup plus. Une limite trop juste ne
+// protegerait de rien — elle transformerait un film lent mais valide en PERTE DE DONNEE.
+const defaultKillSourceTimeout = 45 * time.Minute
 
 // Compteurs de sante du collecteur (ADR 0009 : entiers, snake_case, aucun ratio).
 const (

@@ -1,3 +1,72 @@
+## [2026-08-01] J4 session 1/3 — le killfeed atteint la base, et quatre prémisses tombent
+
+**Statut** : Complété (J4.0 + « correction 1 » des briques + phase 1 du
+`PLAN_BRANCHEMENT_KILLSOURCE.md` ; GATE 1 atteint. Phases 2/3/4 non entamées — session 2).
+
+**Décision technique principale** : écrire les briques CONTRE LE CODE ACTUEL au lieu de porter
+la version d'archive, comme le master plan l'imposait — et le faire en confrontant chaque
+énoncé recopié au code, pas en le recopiant une fois de plus. C'est cette confrontation qui a
+produit le résultat de la session, plus que le code lui-même : **quatre prémisses écrites dans
+le plan de branchement et dans le guide du décodeur sont fausses sur le dépôt d'aujourd'hui**,
+et aucune ne se voyait à la lecture.
+
+La plus importante renverse le plan de la session suivante. Le guide affirme (§9, piège 3) que
+« le cache disque local ne stocke QUE les chunks de réplication » et que le kill-feed est
+re-téléchargé à chaque appel. J'ai croisé les 951 manifestes en cache avec les fichiers
+réellement présents : **les 949 films utilisables portent leur en-tête (type 1), TOUTES leurs
+réplications (type 2) ET leur kill-feed (type 3)**. 949/949 sur les trois critères, vérifié
+ensuite fichier par fichier sur trois films. Conséquence directe : **le backfill de la session 2
+n'a besoin ni de réseau, ni de tokens, ni du CDN** — ce qui retire le risque qui pesait sur lui,
+l'expiration serveur des films pendant qu'il tourne.
+
+Les trois autres : `splitSQL` est conscient des commentaires `--` (l'avertissement « pas de `;`
+dans un commentaire » décrivait une version antérieure) ; le scan anti-ART détecte bien un
+`DELETE` nu sur table protégée (`TestNoRawDeleteOnAppendOnlyTables`, scopé au nom exact) alors
+que le commentaire d'archive affirmait le contraire ; et « le collecteur va dans
+`internal/sync/` » était vrai mais imprécis — la racine de ce paquet est **gelée à 80 fichiers**
+par `TestSyncRootPackageFrozen`, qui impose un sous-paquet cohésif. D'où
+`internal/sync/killcollector`. **C'est un ratchet qui l'a dit, pas une relecture** : j'avais posé
+les trois fichiers à la racine et la suite complète les a refusés.
+
+**Résultats observés** :
+- **GATE 1 atteint sur film RÉEL** : `9b191a7f` décodé → écrit → relu **par la vue
+  `match_kill_events_latest`**, 90 morts, deux passes (48 s). Les trois états de l'assistant
+  survivent jusqu'en base (3 « on ne sait pas », 63 « pas d'assistant MESURÉ »), et le test
+  échoue si la population « pas d'assistant mesuré » est vide.
+- Les garde-fous anti-ART sont verts avec les deux tables protégées **et zéro entrée
+  d'allowlist ajoutée** — c'est la seule preuve qui vaille que la conception INSERT-only tient.
+  Les tables sont inscrites dans les DEUX listes de garde, pas une (l'archive n'en peuplait
+  qu'une).
+- `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...` vert, à une
+  exception : `TestWorker_Run_PersistsAndACKs` (flake de timing sur la suppression d'un WAL
+  sous charge) — **repassé 3× isolé**, et son chemin n'a rien à voir avec le lot (il utilise un
+  persister mock). `go test ./...` vert après correction de trois ratchets.
+- La question que le guide laissait explicitement ouverte — « le persister accepte-t-il un
+  tueur nommé sans XUID ? », cas `tueur-bot` de RE_LOG 7ter.79 — est **tranchée : oui**, et elle
+  a maintenant un test au lieu d'une note.
+- **Coût de décodage mesuré, et il ne suit AUCUNE droite** : 8 chunks → 1,6 s ; 33 → 14,4 s ;
+  **63 → 575 s (9 min 35)** ; **69 → 1 145 s (19 min 05)**. Passer de 63 à 69 chunks (+9,5 %)
+  **DOUBLE** le temps. Le coût par chunk va de 0,20 s à 16,6 s — facteur **83**. Corpus : 120
+  films ≤ 20 chunks, 554 de 21 à 30, 216 de 31 à 40, 35 de 41 à 50, **24 au-delà de 50**.
+- **Périmètre du backfill** : 1 926 matchs au registre, 1 343 porteurs de `killer_victim_pairs`,
+  949 films en cache — et **949/949 correspondent à un match du registre, aucun orphelin**. Donc
+  **394 porteurs (29,3 %) n'auront jamais de film** ; l'estimation « au moins 28 % » du plan
+  était juste. La table porte **250 139 lignes pour 133 886 clés distinctes (46,5 % de
+  doublons)** — le défaut qui motive tout le chantier ne se résorbe pas de lui-même.
+
+**Conclusion / prochaine étape** : la session 2 (backfill) part avec un périmètre CHIFFRÉ et une
+contrainte en moins. Deux choses à ne pas perdre : l'anomalie de coût des gros films est à
+**profiler, pas à optimiser** (consigne utilisateur du 2026-07-31, respectée : mesurée, non
+traitée) — elle a tout de même une conséquence appliquée, la limite de temps par match passe de
+22 à 45 min, parce qu'une limite calibrée sur « 11 min doublées » est trop juste face à un pire
+cas mesuré à 19 min sur une courbe qui double tous les 6 chunks ; et
+`match_weapon_shots` n'a **aucun producteur** — sa table, son persister et sa porte de
+publication existent, mais la ventilation des tirs vient du scanner de fire-events, dont le
+câblage n'était pas au périmètre. C'est l'état voulu, il faut juste le savoir avant de lire la
+table.
+
+---
+
 ## [2026-08-01] J3-2 — la dette avant merge soldée : 43 a 0, et deux prémisses démenties
 
 **Statut** : Complété (jalon J3 CLOS ; `PLAN_DETTE_AVANT_MERGE.md` lots C et D, plus J3.3,

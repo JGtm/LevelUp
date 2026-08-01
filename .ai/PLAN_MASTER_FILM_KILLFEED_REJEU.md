@@ -392,6 +392,10 @@ plan de branchement, décidées ici :
 0019/0030) et le correctif d'indice du tueur n'existent pas sur cette branche (§1). C'est le
 préalable de la phase 1, avec `go test -tags=integration -p 1` comme gate (OBLIGATOIRE,
 persist/sync touchés).
+*FAIT — J4 session 1 (2026-08-01). Les 2 migrations, les 2 persisters, le pont ET le collecteur
+sont écrits contre le code actuel ; GATE 1 atteint sur film réel. La réécriture a démenti trois
+énoncés recopiés de l'archive (cache sans kill-feed, `splitSQL`, couverture du DELETE nu) —
+détail au journal du plan de branchement.*
 
 **Correction 2 — inverser les phases 2 et 3.** Le plan enchaîne P1 collecteur → P2 bascule
 des 8 lecteurs (vue) → P3 backfill. Mais basculer les lecteurs sur une vue posée sur une
@@ -1077,3 +1081,48 @@ comme prévu).
   INDICE mesurable — le traverseur s'arrêtant au premier composant non porté, un lecteur
   placé après un trou ne change rien. Zéro cas (a) sur 34 : aucun n'était un bug de
   dispatch. Prochain jalon : **J4** (Opus 5, effort élevé, 3 sessions).
+- **[2026-08-01 — J4 session 1/3, exécuteur] BRIQUES + PHASE 1 CLOSES, GATE 1 ATTEINT.**
+  J4.0 (garde de CI mort) + les 2 migrations + les 2 persisters + le pont + le collecteur.
+  Commits `e1b46d9d8`, `32589dad4`, `d06df0fe6`, `36fc76835`. Le collecteur EXISTE et est testé,
+  mais **aucun appelant de production ne l'invoque** : son déclencheur est la sous-commande de
+  backfill (session 2), conformément à l'ordre corrigé P1 → P3 → P2 → P4.
+  **GATE 1** : film réel `9b191a7f` décodé → écrit → relu **par la vue `_latest`** (90 morts,
+  2 passes) ; `-tags=integration -p 1` sync+persist vert (une exception : le flake de timing WAL
+  connu, repassé 3× isolé) ; les garde-fous anti-ART verts **sans une seule entrée d'allowlist** ;
+  `SUM(assist_extra_count)` interrogeable ; `go test ./...` vert.
+  **Ce que la session a appris, et qui vaut plus que le code** : *un plan qui recopie l'état
+  d'une autre branche recopie aussi ses énoncés périmés.* Quatre prémisses du plan de branchement
+  et du guide ont été démenties **en les exécutant**, pas en les relisant — (1) le cache disque
+  porterait « seulement les chunks de réplication » : **faux**, les 949 films utilisables portent
+  aussi en-tête ET kill-feed, donc **le backfill de la session 2 est intégralement HORS LIGNE**
+  (ni réseau, ni tokens, ni CDN — un risque de moins, celui de l'expiration serveur en cours de
+  route) ; (2) `splitSQL` couperait sur un `;` en commentaire : il est conscient des `--` ;
+  (3) le scan anti-ART ne verrait pas un DELETE nu : `TestNoRawDeleteOnAppendOnlyTables` le voit ;
+  (4) « le collecteur va dans `internal/sync/` » : oui, mais pas à la racine — le ratchet
+  `TestSyncRootPackageFrozen` (80 fichiers gelés) impose un sous-paquet, d'où
+  `internal/sync/killcollector`. **C'est un ratchet qui l'a dit, pas une relecture.**
+  Et la seule question que le guide laissait explicitement ouverte (« le persister accepte-t-il
+  un tueur nommé sans XUID ? », cas `tueur-bot`) est **tranchée : oui**, avec son test.
+  **Mesures pour dimensionner la session 2.** *Périmètre* : **1 926** matchs au registre,
+  **1 343** porteurs de `killer_victim_pairs`, **949** films en cache — et **949/949
+  correspondent à un match du registre, zéro orphelin**. Donc **394 porteurs de paires (29,3 %)
+  n'auront JAMAIS de film** : l'estimation « au moins 28 % » du plan était juste. La table porte
+  **250 139 lignes pour 133 886 clés distinctes — 46,5 % de doublons** (contre 46,8 % mesurés en
+  juillet sur une table plus petite : le défaut ne se résorbe pas).
+  *Coût* : de **0,20 s/chunk** (8 chunks, 1,6 s) à **16,6 s/chunk** (69 chunks, **19 min 05**),
+  en passant par 0,44 s/chunk à 33 chunks (14,4 s) et 9,1 s/chunk à 63 chunks (**9 min 35**).
+  **Passer de 63 à 69 chunks (+9,5 %) DOUBLE le temps.** Ce n'est pas une pente, c'est un mur —
+  facteur **83** sur le coût par chunk. Corpus : 120 films ≤ 20 chunks, 554 de 21-30, 216 de
+  31-40, 35 de 41-50, **24 au-delà de 50**. Backfill complet : ~2 h 30-3 h pour les 925 premiers,
+  **4 à 8 h pour les 24 derniers**, à passer en dernier. L'anomalie est **mesurée, pas corrigée**
+  (consigne du 2026-07-31 respectée) — mais elle a une conséquence appliquée : la limite de temps
+  par match passe de 22 à **45 min**, parce qu'avec une telle pente une limite trop juste
+  transformerait un film lent mais VALIDE en perte de donnée.
+  **Découvertes reportées (non traitées)** : (a) deux gardes CI en `--if-present` — même motif
+  que J4.0, latent (les deux scripts existent aujourd'hui) ; (b) `match_weapon_shots` n'a **aucun
+  producteur** (la ventilation vient du scanner de fire-events, hors périmètre de la session) ;
+  (c) le **second producteur** de `match_kill_events` (chemin `highlight_events`, crédit seul)
+  n'existe pas — sans lui, la table couvrira 949 matchs sur 1 325 et le retrait de
+  `killer_victim_pairs` reste impossible ; (d) `seed_demo.go` copie `killer_victim_pairs` : à la
+  bascule, oublier d'y ajouter la remplaçante donnerait une démo aux duels vides, panne
+  silencieuse visible seulement à l'écran.
