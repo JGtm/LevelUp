@@ -518,19 +518,11 @@ func gate8(br *BitReader) { consumeGateR(br, 8) }
 // constants, 0 stream bits). CONFIRMED: width literal 0xf, no runtime table.
 func consume1431a3a50(br *BitReader) { br.ReadBits(15) }
 
-// consume1432026f4 mirrors FUN_1432026f4 (i63 tag9/tag10 body, also reached by tag8).
-// CONFIRMED bit-exact vs disasm @1432026f4 :
-//
-//	R(1) gate (FUN_1406cf008) ; if set -> FUN_14076dc04 packed-dir R(19) (LEA R9D,[+0x13])
-//	FUN_141d0f344 -> R(32)
-//	inline R(4)
-func consume1432026f4(br *BitReader) {
-	if br.ReadBit() { // FUN_1406cf008 gate
-		br.ReadBits(19) // FUN_14076dc04 packed dir (width 0x13)
-	}
-	br.ReadBits(32) // FUN_141d0f344
-	br.ReadBits(4)  // inline R(4)
-}
+// (consume1432026f4, corps annonce pour les tags 9/10 d'i63, a ete retire le 2026-08-01 —
+// lot C. Sa premisse est REFUTEE : la verite EXE du 2026-06-13, inscrite dans le `default`
+// de consumeBipedActionTag ci-dessous, est que le dispatch ne gere QUE les tags 0..5 et que
+// tout tag >= 6 consomme ZERO bit. Les corps 6..11 de l'ancien port sur-lisaient. Le garder
+// exposait a re-cabler une lecture connue fausse.)
 
 // consumeBipedActionTag dispatches FUN_141fd4814(tag) — see consumeBipedActionLoop1Item.
 func consumeBipedActionTag(br *BitReader, tag uint64) (ported bool) {

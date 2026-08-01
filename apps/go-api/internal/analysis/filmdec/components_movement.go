@@ -275,6 +275,12 @@ func consumePredictedDelta(br *BitReader, pd PrecisionDescriptor) {
 //
 // axisW vient de la table DAT_1445cc9e0 indexee par le niveau de precision : largeur = 6+L
 // (dump memoire ce_prec_widths_1445cc9e0.bin : L0->6, L7->13, L8->14, L9->15...).
+//
+// PIEGE DE NOMMAGE, statue le 2026-08-01 (lot C) : malgre son suffixe, cette fonction a UNE
+// PORTE DE MOINS que `consumeQuantVec3` (plus bas dans ce fichier), qui commence par la porte
+// `precHigh` a sortie immediate (0 bit). Les deux ne sont donc PAS interchangeables et les
+// fusionner changerait un compte de bits. Chacune a ses appelants vivants : celle-ci pour le
+// flock (components_flock.go), l'autre pour les composants a vec3 quantifie du dispatch.
 func consumeQuantVec3WithGate(br *BitReader, axisW uint) {
 	if !br.ReadBit() { // FUN_1406cf008 ; bit==0 -> l'index est present
 		br.ReadBits(1) // DAT_144632be0 = 1

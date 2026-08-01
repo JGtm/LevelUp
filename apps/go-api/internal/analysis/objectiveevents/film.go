@@ -11,9 +11,13 @@
 // film.go porte les PRIMITIVES de décodage adaptées des décodeurs jetables
 // validés (tmp_film_explore/{filmx,ctfcap,ctfsig,t2score,firemap}) :
 //   - load+zlib d'un chunk ; marche des paquets 16 octets ;
-//   - extraction du payload TYPE_2 ;
 //   - extraction des events footer th=10 (interactions objectif horodatées) ;
 //   - détection des bursts de capture CTF (échelle 6-tiers) avec match_ms.
+//
+// (Retrait 2026-08-01, lot C de PLAN_DETTE_AVANT_MERGE : `extractType2` — extraction du
+// payload du premier paquet TYPE_2 — et `readBitsBE` n'avaient aucun appelant. La marche de
+// paquets vit dans walkFrames, qui parcourt le même conteneur ; ni l'une ni l'autre ne
+// portait de grammaire coûteuse à rétablir.)
 //
 // Faits de décode VALIDÉS (RESEARCH_THEATER_RE.md §M, §M-ter) :
 //   - footer = chunk de plus haut index, chunk_type 3 ; ses events th=10 = les
@@ -37,7 +41,6 @@ import (
 // u32le][us u64le]). Seuls ceux consommés ici sont nommés.
 const (
 	packetFrame = 0  // FRAME : snapshot/delta d'état horodaté (us)
-	packetType2 = 2  // TYPE_2 : snapshot game-state par chunk (score byte-aligné)
 	packetEnd   = 7  // CHUNK_END
 	packetHdr   = 16 // taille de l'en-tête de paquet
 )
@@ -47,22 +50,6 @@ const (
 	minXUID = uint64(2e15)
 	maxXUID = uint64(3e15)
 )
-
-// readBitsBE lit n bits big-endian (MSB-first) à partir de bitPos. Adapté de
-// tmp_film_explore (identique dans filmx/ctfcap/t2score).
-func readBitsBE(data []byte, bitPos, n int) uint64 {
-	var r uint64
-	for i := 0; i < n; i++ {
-		bi := (bitPos + i) / 8
-		if bi >= len(data) {
-			return r
-		}
-		off := 7 - ((bitPos + i) % 8)
-		bit := uint64((data[bi] >> uint(off)) & 1)
-		r = (r << 1) | bit
-	}
-	return r
-}
 
 // readByteAtBit lit un octet à un offset BIT arbitraire (gère le non-alignement).
 func readByteAtBit(data []byte, bit int) byte {
@@ -130,27 +117,6 @@ func walkFrames(data []byte) []framePacket {
 		}
 	}
 	return out
-}
-
-// extractType2 renvoie le payload du premier paquet TYPE_2 (snapshot game-state),
-// ou nil si absent. Adapté de extractType2 (ctfcap/t2score).
-func extractType2(data []byte) []byte {
-	off := 0
-	for off+packetHdr <= len(data) {
-		typ := binary.LittleEndian.Uint16(data[off:])
-		size := int(binary.LittleEndian.Uint32(data[off+4:]))
-		if size < 0 || size > len(data) {
-			break
-		}
-		if typ == packetType2 && off+packetHdr+size <= len(data) {
-			return data[off+packetHdr : off+packetHdr+size]
-		}
-		if typ == packetEnd {
-			break
-		}
-		off += packetHdr + size
-	}
-	return nil
 }
 
 // th10Event = un event highlight de type_hint==10 (interaction objectif) décodé
