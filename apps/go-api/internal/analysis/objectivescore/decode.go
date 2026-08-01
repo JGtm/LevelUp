@@ -7,6 +7,14 @@
 // Les finals exacts (calibration Strongholds) sont passés en argument par
 // l'appelant (depuis match_registry.team_0_score / team_1_score).
 //
+// SUPERSÉDÉ (2026-08-01) — la « RE plus poussée » attendue ci-dessous a abouti :
+// objectiveevents.ScoreCurve décode le VRAI score de mode, per-équipe ET per-joueur,
+// à la milliseconde (une émission par changement, au lieu d'un point par chunk de 20 s),
+// SANS calibration sur les finals. Vérifié position de bit par position de bit contre une
+// capture Cheat Engine (283/284 et 6/6) et contre un relevé terrain écrit avant décodage.
+// Ne rien construire de neuf sur ce paquet-ci ; sa condition de conservation a expiré et
+// sa suppression est proposée dans .ai/HANDOFF_MODE_SCORE_CHAINE_2026-08-01.md §6.
+//
 // ANCRE BIT-LEVEL (PROUVÉE, cmd/tmp_shbits + cmd/tmp_scoreval, 2026-06-02) :
 // le score continu vit dans le payload du paquet TYPE_2, ancré sur le token
 // 12-bit 0x7B6 (MSB-first) cherché AU NIVEAU BIT (n'importe quelle phase) dans
