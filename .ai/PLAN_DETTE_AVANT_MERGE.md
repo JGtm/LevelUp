@@ -150,10 +150,32 @@ malgré tout « 0 code mort ».
 
 ### Lot D — `gocyclo` et `staticcheck`  *(le seul vrai refactor)*
 
-- [ ] D1. `internal/himap/sbsp.go` → `boundsFromTagInfo` (complexité 22, plafond 15).
-- [ ] D2. `internal/himodule/module.go` → `(*Module).loadHd1` (16).
-- [ ] D3. Les 4 `staticcheck` — à lire, ils signalent souvent un vrai défaut.
-- [ ] D4. Gate : artefacts de rejeu identiques + `go test ./...`.
+- [x] D1. `internal/himap/sbsp.go` → `boundsFromTagInfo` (complexité 22, plafond 15).
+      *FAIT 2026-08-01 — découpé en ses trois étapes réelles : `rootBlockIndex`,
+      `rootTagBlockOffsets`, `worldBoundsFieldOffset`. Couvert par les tests `himap`.*
+- [x] D2. `internal/himodule/module.go` → `(*Module).loadHd1` (16).
+      *FAIT — `hd1Probes` (l'échantillon de témoins) et `hd1BaseScore` (le score d'une base)
+      sortent de la fonction. **`internal/himodule` n'a AUCUN test** : l'équivalence est par
+      lecture (les deux extraits sont verbatim), pas par exécution. Consigné en Découvertes.*
+- [x] D3. Les 4 `staticcheck` — à lire, ils signalent souvent un vrai défaut.
+      *LUS D'ABORD, et **aucun ne signale un défaut de logique**. Les deux `SA9003` (branche
+      vide) sont des portes dont le corps est vide PAR CONSTRUCTION — la branche prise appelle
+      `FUN_14076e494`, un résolveur d'id qui ne lit aucun bit ; le bit de porte, lui, se
+      consomme. Le `if` disparaît, le `ReadBit` reste, et le commentaire dit désormais pourquoi
+      il n'y a rien à lire dedans. Les deux `QF1007` deviennent une expression booléenne
+      directe, avec la borne enfin écrite en clair (`ID5` sur 0..3, `B1D` sur 0..1 — hors
+      bornes = record lu de travers). Correctifs triviaux ET prouvés par le gate.*
+- [x] D4. Gate : artefacts de rejeu identiques + `go test ./...`.
+      *FAIT — 7 grandeurs identiques ; `go test ./...` vert en sortie de session.*
+
+### Les 3 `revive argument-limit` — hérités de J3-1
+
+- [x] Regrouper les paramètres de décodage en structure. *FAIT 2026-08-01. Dans les trois cas
+      les valeurs groupées sont de MÊME TYPE et indexées par la même chose — le cas exact où
+      une inversion passe le compilateur sans bruit. `kfCand` porte les quatre clés de tri
+      d'une ancre keyframe (`betterThan` devient une méthode) ; `fireSite` les quatre positions
+      de bits d'un fire-event et `fireWeapon` ses deux formes d'identifiant ; `hungarianState`
+      le jeu de travail de l'algorithme hongrois (`step` devient une méthode).*
 
 ### Lot E — le reste du go/no-go, qui n'est PAS du lint
 
@@ -415,6 +437,43 @@ dispatch de l'autre), et les fusionner changerait un décodage. Aucune action de
 piège de nommage est documenté au site (`components_movement.go`). **Le renommer serait la
 suite logique — non fait, hors périmètre J3-2 (aucun gain de dette).**
 
+#### J3.3 / J3.4 / J3.5 — ce qui a été trouvé en les traitant
+
+**J3.3 `[x]`** — le hook pre-push `knip-ratchet` est glob-gaté sur `apps/web/src/**`. **Élargir
+le glob n'aurait rien réglé** : le mode d'échec réellement constaté en J1-b n'est pas « le push
+ne touchait pas de source web », c'est « la branche accumulait des exports morts et n'a JAMAIS
+été poussée » — aucun glob ne rattrape une branche non poussée. Le ratchet devient donc un step
+du job `frontend` de `ci.yml`, qui n'a pas de filtre de chemin. Vérifié depuis `apps/web` (le
+cwd du job) : le chemin relatif résout, le ratchet sort en 0. Le hook local reste en filet
+rapide, et son commentaire dit maintenant qu'il n'est PAS l'autorité.
+
+**J3.4 `[x]`** — garde de longueur posée sur `decodeFireEvent` (qui rend désormais `ok bool`),
+`PeekBits` aligné sur son contrat (la tolérance valait à la fin, pas au début), deux tests de
+régression dédiés, et le harnais de fuzz appelle maintenant les lecteurs avec EXACTEMENT le
+contrat de la production — ses deux contournements sont retirés. L'entrée de crash conservée en
+régression est la graine `seed_04` (troncature à trois octets d'un payload de tir), produite par
+`collectFuzzSeeds` donc régénérable. **Audit des frères : ils sont sains** — `scanGrenadeThrows`
+et `scanProjectileRecords` bornent leur balayage ET lisent par `PeekBits` ; `offline_aim.go`
+teste `at+n > total` avant chaque composant ; `offline_biped.go` et `i0_layout.go` bornent leur
+boucle sur `total`. `decodeFireEvent` était le seul à lire à offsets FIXES derrière une garde de
+taille qui ne les couvrait pas.
+
+**J3.5 `[x]` — et la cause annoncée n'était que la moitié de l'histoire.** Diff champ par champ
+de deux constructions du même film : exactement DEUX champs bougent. `projectiles` a le même
+multi-ensemble à l'ordre près (instabilité de tri, comme annoncé). Mais **`grenades` change de
+VALEUR** — le lancer `t=1580` de `01e1f945` sort à (11,41 ; 17,99) ou à (12,72 ; −187,11) selon
+l'exécution. La chaîne est unique : l'itération de la map de `ScanFilmWorldObjects` fixe l'ordre
+d'arrivée, un tri sur le seul instant laisse cet aléa départager les naissances de projectile
+EX ÆQUO, et `birthNear` prend la naissance d'un INDICE donné — l'aléa choisissait donc la
+position publiée. Les quatre tris deviennent totaux (`filmdec` : échantillons et vies ;
+`replay` : naissances et lancers, plus les projectiles publiés).
+
+**Preuve, les deux volets** : deux constructions successives de chacun des trois films rendent
+des octets identiques (`54a4fdf5…`, `55e169d0…`, `c17f7a91…`) ; et le fixture d'entrées des
+goldens, régénéré deux fois, rend la même empreinte — alors qu'il DIFFÉRAIT de la version
+committée, laquelle n'était donc qu'un tirage parmi d'autres. Le fixture stabilisé est committé ;
+**la sortie figée d'assemblage, elle, est INCHANGÉE**.
+
 #### Découvertes de cette session — consignées, NON traitées
 
 1. **UN SEUL LECTEUR PORTERAIT UN ARCHÉTYPE ENTIER — deux cas, à instruire en J6-A.** Certains
@@ -427,3 +486,50 @@ suite logique — non fait, hors périmètre J3-2 (aucun gain de dette).**
    remonter le taux de marche propre des FRAMES, ce sont deux leviers à un câble chacun.
 2. **Le compteur de la procédure §1 sous-comptait** (classe de caractères sans chiffres) —
    corrigé en tête de ce journal. Toute mesure antérieure lue par cette commande est suspecte.
+3. **UN GARDE DE CI NE SE DÉCLENCHE JAMAIS — le plus sérieux de la liste.** Dans `ci.yml`, job
+   `frontend`, step « Guard — feedback-drawer ne doit pas importer le wrapper api » : le job
+   déclare `defaults.run.working-directory: apps/web`, et le `grep` du step vise
+   `apps/web/src/features/feedback-drawer/queries.ts` — soit, depuis ce cwd,
+   `apps/web/apps/web/src/…`, qui n'existe pas. `grep` sort en 2, la condition est fausse, **le
+   step passe toujours**. Vérifié sur pièces (`apps/web/apps` n'existe pas). Ce garde protège
+   d'une fuite de `X-LevelUp-Title` et des cookies de session vers GitHub — il ne protège rien
+   aujourd'hui. Le correctif est le retrait du préfixe `apps/web/` ; **non fait, hors périmètre
+   J3-2** (aucun rapport avec la dette de lint). À traiter en priorité.
+4. **Les plafonds du ratchet knip sont périmés** : `files=29 · exports=90 · types=86`, alors que
+   le compte réel est **0 / 0 / 0** (knip 6.29.0, vérifié qu'il analyse bien — il rend des
+   *hints* sur des fichiers réels, ce n'est pas un scan vide). Les abaisser verrouillerait le
+   gain, mais durcirait le gate pour tout travail en cours : décision de superviseur, pas un
+   effet de bord de J3.3.
+5. **`internal/himodule` n'a aucun fichier de test**, et le paquet lit un format binaire du jeu
+   (`.module` / `.module_hd1`) avec calibration de base par score. Le découpage de `loadHd1`
+   (D2) est donc justifié par LECTURE, pas par exécution — les artefacts de rejeu ne passent pas
+   par ce paquet (la structure de carte vient d'un JSON versionné). Chantier piste J6-B.
+6. **`internal/analysis/weaponv3` n'est consommé que par `cmd/diag_weapons_v3`**, et le même
+   `cmd` est le seul consommateur d'`internal/analysis/objectiveevents` — c'est la lignée « v3
+   shadow », jamais promue. Son retrait est un chantier à part entière (il emporterait deux
+   paquets et un binaire) : **non instruit ici**, mais c'est le plus gros gisement de code mort
+   restant, et il échappe à `unused` parce qu'un `cmd` le référence.
+7. **Le départage des naissances de projectile ex æquo est ARBITRAIRE, faute de mieux.** J3.5 le
+   rend stable (par coordonnée), pas *juste* : deux grenades lancées au même instant de
+   réplication par deux joueurs différents peuvent voir leurs naissances permutées. Le bon
+   départage passerait par le propriétaire du projectile, qui n'est pas décodé. Piste J6-A.
+
+### MESURE DE SORTIE DE SESSION — **0 issue** (contre 43 à l'entrée)
+
+| linter | entrée J3-2 | sortie J3-2 | traitement |
+|---|---:|---:|---|
+| `unused` | 34 | **0** | lot C — 32 retirés, 2 sous `//nolint` daté avec condition de retrait |
+| `staticcheck` | 4 | **0** | lot D — lus d'abord, aucun défaut de logique |
+| `revive` (`argument-limit`) | 3 | **0** | paramètres regroupés en structure |
+| `gocyclo` | 2 | **0** | lot D — découpage réel |
+| **total** | **43** | **0** | |
+
+`golangci-lint run --new-from-merge-base=origin/main`, cache purgé avant la mesure : **`0 issues.`**
+C'est la cible **F1** du lot F. Les deux seuls survivants du dépôt sont les deux `//nolint:unused`
+du lot C, chacun daté, motivé et porteur d'une condition de retrait évaluable.
+
+**Ce qui RESTE au lot F et ne peut pas être fait ici** : F2 — rebaser/merger `origin/main` à jour
+puis **re-mesurer** (la base du ratchet bouge avec `main`, un 0 d'aujourd'hui n'est pas un 0 de
+demain) ; F3 — prévenir avant le push sur `main`. Et tout le lot E, qui dérive tout seul.
+
+> **J3 EST CLOS. 70 → 43 → 0.** J3-1 a soldé le mécanique, J3-2 le jugement et les gardes.
