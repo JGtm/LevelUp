@@ -105,6 +105,30 @@ type SharedBatch struct {
 	// participant d'un match à objectif ; vide pour Slayer et les titres qui
 	// n'exposent pas ces stats (Halo 5 = capability not_exposed).
 	ObjectiveStats []ObjectiveStatsInsert `json:"objective_stats,omitempty"`
+
+	// KillSource : le résultat d'UNE passe de décodage du film — 1 ligne par
+	// mort, avec les DEUX vérités (crédit du kill-feed + source du dégât).
+	// nil = aucun film décodé pour ce match (le cas courant : le film n'existe
+	// pas encore au sync primaire, il arrive un cycle plus tard, et la passe
+	// emprunte alors le chemin direct KillSourcePersister.PersistPass).
+	//
+	// Table cible `match_kill_events` : append-only, lecture par la vue
+	// `match_kill_events_latest` UNIQUEMENT (ADR 0026). ⚠ NE PAS confondre avec
+	// KillerVictim ci-dessus (table legacy `killer_victim_pairs`, conservée le
+	// temps que ses 8 lecteurs migrent).
+	KillSource *KillSourceBatch `json:"kill_source,omitempty"`
+
+	// WeaponShots : la VENTILATION DES TIRS PAR ARME d'une passe de décodage du
+	// film — grain match x joueur x arme, une seule mesure (le nombre de tirs
+	// décodés). nil = aucun film décodé pour ce match.
+	//
+	// Table cible `match_weapon_shots` : append-only, lecture par la vue
+	// `match_weapon_shots_latest` UNIQUEMENT (ADR 0026).
+	//
+	// ⚠ NE PAS confondre avec WeaponKills ci-dessus (grain KILL, question « avec
+	// quoi ce kill a-t-il été fait »). Ici la question est « combien de tirs,
+	// avec quelle arme » — aucun kill n'y entre.
+	WeaponShots *WeaponShotsBatch `json:"weapon_shots,omitempty"`
 }
 
 // PlayerBatch contient les écritures pour stats.duckdb (du joueur Player).

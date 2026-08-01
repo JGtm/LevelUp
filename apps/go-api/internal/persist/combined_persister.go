@@ -96,6 +96,27 @@ func (p *CombinedPersister) Persist(ctx context.Context, batch *MatchBatch) erro
 	func() {
 		defer releaseShared()
 		sharedErr = NewSharedPersister(sharedDB).Persist(ctx, batch)
+		if sharedErr != nil {
+			return
+		}
+		// Passe de décodage du film (match_kill_events, append-only). NO-OP tant
+		// que batch.Shared.KillSource est nil — c'est le cas de la quasi-totalité
+		// des batches : le film n'existe pas encore au sync primaire, le collecteur
+		// écrit donc par le chemin direct PersistPass. Câblé quand même : un
+		// SetKillSource() côté builder dont la charge serait silencieusement jetée
+		// serait une perte de données MUETTE, exactement ce que ce package combat.
+		// Dans la MÊME fenêtre de lease que le SharedPersister ; transaction
+		// distincte — la table est append-only, elle n'a pas à partager
+		// l'atomicité du registry.
+		sharedErr = NewKillSourcePersister(sharedDB).Persist(ctx, batch)
+		if sharedErr != nil {
+			return
+		}
+		// Ventilation des tirs par arme (match_weapon_shots, append-only). Même
+		// raisonnement : NO-OP tant que batch.Shared.WeaponShots est nil, câblé
+		// quand même pour qu'un SetWeaponShots() ne puisse pas être silencieusement
+		// jeté. Transaction distincte, même fenêtre de lease.
+		sharedErr = NewWeaponShotsPersister(sharedDB).Persist(ctx, batch)
 	}()
 	observePersistPhase("shared_write", writeStart, sharedErr == nil)
 

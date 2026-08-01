@@ -93,6 +93,29 @@ func (b *BatchBuilder) AddKillPositions(rows []KillPositionInsert) *BatchBuilder
 	return b
 }
 
+// SetKillSource fixe le résultat d'une passe de décodage du film (1 ligne par
+// mort, crédit + source du dégât) pour ce match.
+//
+// L'unité de production est le MATCH ENTIER : un décodage rend toute la liste
+// des morts. On REMPLACE donc le sous-batch au lieu de l'accumuler — deux passes
+// concaténées produiraient une liste de morts qui n'a jamais existé. C'est la
+// raison du Set… plutôt que Add… ici.
+func (b *BatchBuilder) SetKillSource(pass *KillSourceBatch) *BatchBuilder {
+	b.batch.Shared.KillSource = pass
+	return b
+}
+
+// SetWeaponShots fixe la ventilation des tirs par arme d'une passe de décodage
+// du film (grain match x joueur x arme) pour ce match.
+//
+// Set… et non Add… pour la même raison que SetKillSource : l'unité de production
+// est le FILM ENTIER. Concaténer deux passes produirait une ventilation qui n'a
+// jamais existé — et, ici, un doublon (indice, arme) que le persister refuse.
+func (b *BatchBuilder) SetWeaponShots(pass *WeaponShotsBatch) *BatchBuilder {
+	b.batch.Shared.WeaponShots = pass
+	return b
+}
+
 // AddXUIDAliases ajoute les rows xuid_aliases.
 func (b *BatchBuilder) AddXUIDAliases(rows []XUIDAliasInsert) *BatchBuilder {
 	b.batch.Shared.XUIDAliases = append(b.batch.Shared.XUIDAliases, rows...)
