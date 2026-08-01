@@ -334,27 +334,56 @@ func boundsFromTag(tag []byte) (Bounds, int, error) {
 }
 
 func boundsFromTagInfo(ti tagInfo) (Bounds, int, error) {
-	tag := ti.tag
-	rootBlock := -1
+	rootBlock, err := rootBlockIndex(ti)
+	if err != nil {
+		return Bounds{}, 0, err
+	}
+	offs := rootTagBlockOffsets(ti, rootBlock)
+	fieldOff, err := worldBoundsFieldOffset(offs)
+	if err != nil {
+		return Bounds{}, 0, err
+	}
+	rootAbs, rootSize := ti.blockAbs(rootBlock)
+	if rootAbs < 0 || fieldOff+24 > rootSize || rootAbs+fieldOff+24 > len(ti.tag) {
+		return Bounds{}, 0, fmt.Errorf("offset hors du root block")
+	}
+	base := rootAbs + fieldOff
+	var b Bounds
+	for ax := 0; ax < 3; ax++ {
+		b.Min[ax] = f32(ti.tag, base+ax*8)
+		b.Max[ax] = f32(ti.tag, base+ax*8+4)
+	}
+	return b, fieldOff, nil
+}
+
+// rootBlockIndex rend l'indice du bloc porté par la MainStruct (type 0) de la table de
+// structures, ou une erreur si elle est absente / hors des bornes de la table de blocs.
+func rootBlockIndex(ti tagInfo) (int, error) {
 	for i := 0; i < ti.structs; i++ {
 		b := ti.structTab + i*structEntrySize
-		if u16(tag, b+0x10) == 0 { // MainStruct
-			rootBlock = i32(tag, b+0x14)
+		if u16(ti.tag, b+0x10) != 0 { // MainStruct
+			continue
+		}
+		root := i32(ti.tag, b+0x14)
+		if root < 0 || ti.blockTab+(root+1)*blockEntrySize > len(ti.tag) {
 			break
 		}
+		return root, nil
 	}
-	if rootBlock < 0 || ti.blockTab+(rootBlock+1)*blockEntrySize > len(tag) {
-		return Bounds{}, 0, fmt.Errorf("root block introuvable")
-	}
-	// TagBlocks (type 1) référencés depuis le root block, triés par field_offset.
+	return 0, fmt.Errorf("root block introuvable")
+}
+
+// rootTagBlockOffsets rend les field_offsets DISTINCTS des TagBlocks (type 1) référencés
+// depuis le root block, triés croissant — c'est la suite que l'on aligne sur celle du plugin.
+func rootTagBlockOffsets(ti tagInfo, rootBlock int) []int {
 	var offs []int
 	seen := map[int]bool{}
 	for i := 0; i < ti.structs; i++ {
 		b := ti.structTab + i*structEntrySize
-		if u16(tag, b+0x10) != 1 || i32(tag, b+0x18) != rootBlock {
+		if u16(ti.tag, b+0x10) != 1 || i32(ti.tag, b+0x18) != rootBlock {
 			continue
 		}
-		fo := u32(tag, b+0x1C)
+		fo := u32(ti.tag, b+0x1C)
 		if fo < 0 || fo >= 0x10000 || seen[fo] {
 			continue
 		}
@@ -362,11 +391,21 @@ func boundsFromTagInfo(ti tagInfo) (Bounds, int, error) {
 		offs = append(offs, fo)
 	}
 	sort.Ints(offs)
+	return offs
+}
+
+// worldBoundsFieldOffset interpole l'offset de `world bounds x` dans le root block du tag, à
+// partir de sa position connue dans le plugin : on prend le dernier tag-block du plugin situé
+// AVANT le champ, et on reporte le même écart depuis son homologue dans le tag.
+//
+// Le report n'est légitime que si le préfixe du root block a gardé la même forme : d'où la
+// validation des écarts, rang par rang, jusqu'à l'encadrement. Sans elle, un préfixe modifié
+// donnerait un offset plausible et des bornes fausses, sans que rien ne le signale.
+func worldBoundsFieldOffset(offs []int) (int, error) {
 	if len(offs) > len(pluginBlocks) {
-		return Bounds{}, 0, fmt.Errorf("rang incompatible: plugin %d blocs / tag %d refs",
+		return 0, fmt.Errorf("rang incompatible: plugin %d blocs / tag %d refs",
 			len(pluginBlocks), len(offs))
 	}
-	// dernier tag-block du plugin situé AVANT `world bounds x`
 	k := -1
 	for i, b := range pluginBlocks {
 		if b.off < pluginWBOff {
@@ -374,26 +413,12 @@ func boundsFromTagInfo(ti tagInfo) (Bounds, int, error) {
 		}
 	}
 	if k < 0 || k+1 >= len(offs) {
-		return Bounds{}, 0, fmt.Errorf("`world bounds x` hors encadrement")
+		return 0, fmt.Errorf("`world bounds x` hors encadrement")
 	}
-	// Validation : tous les écarts entre tag-blocks jusqu'à l'encadrement doivent être
-	// conservés — sinon le préfixe du root block a changé de forme et l'interpolation
-	// d'offset serait fausse.
 	for i := 0; i <= k; i++ {
 		if pluginBlocks[i+1].off-pluginBlocks[i].off != offs[i+1]-offs[i] {
-			return Bounds{}, 0, fmt.Errorf("écart de tag-blocks non conservé au rang %d", i)
+			return 0, fmt.Errorf("écart de tag-blocks non conservé au rang %d", i)
 		}
 	}
-	fieldOff := offs[k] + (pluginWBOff - pluginBlocks[k].off)
-	rootAbs, rootSize := ti.blockAbs(rootBlock)
-	if rootAbs < 0 || fieldOff+24 > rootSize || rootAbs+fieldOff+24 > len(tag) {
-		return Bounds{}, 0, fmt.Errorf("offset hors du root block")
-	}
-	base := rootAbs + fieldOff
-	var b Bounds
-	for ax := 0; ax < 3; ax++ {
-		b.Min[ax] = f32(tag, base+ax*8)
-		b.Max[ax] = f32(tag, base+ax*8+4)
-	}
-	return b, fieldOff, nil
+	return offs[k] + (pluginWBOff - pluginBlocks[k].off), nil
 }

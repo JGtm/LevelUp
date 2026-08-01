@@ -80,20 +80,30 @@ func kfValidAnchor(buf []byte, q, prevSlot, total int) (slot, ti, gen int, ok bo
 	return
 }
 
-// kfBetterCand : priorité de sélection d'ancre — consécutif (slot==prev+1) d'abord, puis gen
+// kfCand est une ancre candidate en cours d'évaluation. Les quatre champs sont exactement les
+// quatre clés de tri de betterThan, dans l'ordre — les passer groupés évite la file de huit
+// entiers nus où deux clés s'inversent sans que rien ne le signale.
+type kfCand struct {
+	consecutive int // 1 si slot == prevSlot+1
+	gen         int
+	slot        int
+	bit         int // position en bits dans le payload
+}
+
+// betterThan : priorité de sélection d'ancre — consécutif (slot==prev+1) d'abord, puis gen
 // BAS (gen==1 réel bat un faux gen 2/3 au même slot ; un vrai gen≥2 mid-match reste choisi
 // s'il est seul candidat du slot), puis slot bas, puis bit bas.
-func kfBetterCand(cons, g, s, q, bc, bg, bs, bb int) bool {
-	if cons != bc {
-		return cons > bc
+func (c kfCand) betterThan(best kfCand) bool {
+	if c.consecutive != best.consecutive {
+		return c.consecutive > best.consecutive
 	}
-	if g != bg {
-		return g < bg
+	if c.gen != best.gen {
+		return c.gen < best.gen
 	}
-	if s != bs {
-		return s < bs
+	if c.slot != best.slot {
+		return c.slot < best.slot
 	}
-	return q < bb
+	return c.bit < best.bit
 }
 
 // kfScanNext : POSITION EN BITS de la prochaine ancre après `from` (-1 si aucune).
@@ -105,7 +115,7 @@ func kfBetterCand(cons, g, s, q, bc, bg, bs, bb int) bool {
 // kfValidAnchor à cette position — c'est exactement ce que l'appelant fait déjà.
 func kfScanNext(buf []byte, from, prevSlot, total, maxWin int) (at int) {
 	at = -1
-	bc, bg, bs, bb := -1, 1<<30, 1<<30, 1<<30
+	best := kfCand{consecutive: -1, gen: 1 << 30, slot: 1 << 30, bit: 1 << 30}
 	end := from + maxWin
 	if end > total {
 		end = total
@@ -126,13 +136,12 @@ func kfScanNext(buf []byte, from, prevSlot, total, maxWin int) (at int) {
 		if s == prevSlot+1 && g == 1 {
 			return q // consécutif gen-1 : non ambigu
 		}
-		cons := 0
+		cand := kfCand{gen: g, slot: s, bit: q}
 		if s == prevSlot+1 {
-			cons = 1
+			cand.consecutive = 1
 		}
-		if at < 0 || kfBetterCand(cons, g, s, q, bc, bg, bs, bb) {
-			at = q
-			bc, bg, bs, bb = cons, g, s, q
+		if at < 0 || cand.betterThan(best) {
+			at, best = q, cand
 		}
 	}
 	return

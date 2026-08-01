@@ -213,32 +213,46 @@ func bijectionMargin(r *roster, pairs []feedEvent, cs []candidate, best int) int
 	return best - second
 }
 
+// hungarianInf est le +infini de l algorithme (au-dela de tout cout representable ici).
+const hungarianInf = 1 << 60
+
+// hungarianState porte le jeu de travail de l algorithme hongrois : les potentiels `u`/`v`,
+// l affectation courante `p`, l arbre alternant `way`, et les deux tableaux remis a zero a
+// chaque ligne (`minv`, `used`). Ils sont regroupes parce qu ils sont TOUS des tranches de
+// meme longueur indexees par la meme colonne : passes a la file, deux d entre eux
+// s intervertissent sans que le compilateur bronche.
+type hungarianState struct {
+	cost   [][]int
+	n      int
+	u, v   []int
+	p, way []int
+	minv   []int
+	used   []bool
+}
+
 // hungarian : affectation de COUT MINIMAL (O(n^3), version a potentiels). On lui passe l oppose
 // des votes pour maximiser. Rend `perm[i]` = colonne affectee a la ligne i.
 func hungarian(cost [][]int) []int {
 	n := len(cost)
-	const inf = 1 << 60
-	u, v := make([]int, n+1), make([]int, n+1)
-	p, way := make([]int, n+1), make([]int, n+1)
+	st := &hungarianState{
+		cost: cost, n: n,
+		u: make([]int, n+1), v: make([]int, n+1),
+		p: make([]int, n+1), way: make([]int, n+1),
+	}
 	for i := 1; i <= n; i++ {
-		p[0] = i
+		st.p[0] = i
+		st.resetRow()
 		j0 := 0
-		minv := make([]int, n+1)
-		used := make([]bool, n+1)
-		for j := range minv {
-			minv[j] = inf
-		}
 		for {
-			used[j0] = true
-			j1 := hungarianStep(cost, u, v, p, way, minv, used, j0, n)
-			j0 = j1
-			if p[j0] == 0 {
+			st.used[j0] = true
+			j0 = st.step(j0)
+			if st.p[j0] == 0 {
 				break
 			}
 		}
 		for {
-			j1 := way[j0]
-			p[j0] = p[j1]
+			j1 := st.way[j0]
+			st.p[j0] = st.p[j1]
 			j0 = j1
 			if j0 == 0 {
 				break
@@ -247,36 +261,44 @@ func hungarian(cost [][]int) []int {
 	}
 	perm := make([]int, n)
 	for j := 1; j <= n; j++ {
-		if p[j] > 0 {
-			perm[p[j]-1] = j - 1
+		if st.p[j] > 0 {
+			perm[st.p[j]-1] = j - 1
 		}
 	}
 	return perm
 }
 
-// hungarianStep : une etape de relaxation. Extraite pour tenir le seuil de taille de fonction ;
+// resetRow reinitialise les tableaux propres a une ligne (bornes a +inf, aucune colonne prise).
+func (st *hungarianState) resetRow() {
+	st.minv = make([]int, st.n+1)
+	st.used = make([]bool, st.n+1)
+	for j := range st.minv {
+		st.minv[j] = hungarianInf
+	}
+}
+
+// step : une etape de relaxation. Extraite pour tenir le seuil de taille de fonction ;
 // la logique est celle de l algorithme de reference, sans variante.
-func hungarianStep(cost [][]int, u, v, p, way, minv []int, used []bool, j0, n int) int {
-	const inf = 1 << 60
-	i0, delta, j1 := p[j0], inf, 0
-	for j := 1; j <= n; j++ {
-		if used[j] {
+func (st *hungarianState) step(j0 int) int {
+	i0, delta, j1 := st.p[j0], hungarianInf, 0
+	for j := 1; j <= st.n; j++ {
+		if st.used[j] {
 			continue
 		}
-		cur := cost[i0-1][j-1] - u[i0] - v[j]
-		if cur < minv[j] {
-			minv[j], way[j] = cur, j0
+		cur := st.cost[i0-1][j-1] - st.u[i0] - st.v[j]
+		if cur < st.minv[j] {
+			st.minv[j], st.way[j] = cur, j0
 		}
-		if minv[j] < delta {
-			delta, j1 = minv[j], j
+		if st.minv[j] < delta {
+			delta, j1 = st.minv[j], j
 		}
 	}
-	for j := 0; j <= n; j++ {
-		if used[j] {
-			u[p[j]] += delta
-			v[j] -= delta
+	for j := 0; j <= st.n; j++ {
+		if st.used[j] {
+			st.u[st.p[j]] += delta
+			st.v[j] -= delta
 		} else {
-			minv[j] -= delta
+			st.minv[j] -= delta
 		}
 	}
 	return j1

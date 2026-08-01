@@ -47,10 +47,9 @@ func DecodeEntityRecordQ(br *BitReader, statWidth uint) EntityRecord {
 	rec.VariantName = uint32(br.ReadBits(32)) // FUN_14080dec4 (unconditional R(32))
 
 	rec.B1D = uint8(br.ReadBits(1)) // rec[0x1D]
-	valid := true
-	if (rec.ID5 != 0xFFFFFFFF && rec.ID5 > 3) || rec.B1D > 1 {
-		valid = false
-	}
+	// Memes bornes de validite que sur le chemin plein (entity.go) : un ID5 present tient
+	// sur 0..3, B1D sur 0..1 ; au-dela, le record est lu de travers.
+	valid := (rec.ID5 == 0xFFFFFFFF || rec.ID5 <= 3) && rec.B1D <= 1
 	rec.Field02 = uint8(br.ReadBits(1)) // rec[0x02]
 
 	var f2DD uint8
@@ -163,9 +162,8 @@ func DecodeEntityRecordQ(br *BitReader, statWidth uint) EntityRecord {
 	// --- step 25: trailing R(1) is full-state-only -> SKIPPED on quantized path ---
 
 	// --- step 26 (unchanged) ---
-	if br.ReadBit() {
-		// FUN_14076e494: id resolver, NO bit reads.
-	}
+	// Porte consommee, corps vide PAR CONSTRUCTION (FUN_14076e494 ne lit aucun bit).
+	br.ReadBit()
 
 	rec.Valid = valid
 	return rec
