@@ -92,6 +92,27 @@ const (
 	// la porte d'AFFICHAGE UI passe par la capability title-level `objective_stats`
 	// (registry.go, useCapability). Cf. PLAN_V72_OBJECTIVE_STATS.md.
 	CapMatchObjectiveStats CapabilityKey = "match.objective.stats"
+
+	// CapFilmKillSource — le titre expose un FILM Theater dont le décodeur sait
+	// extraire, PAR MORT, les deux vérités : le crédit du kill-feed et la SOURCE
+	// DU DÉGÂT FATAL (lue dans le dead-state de la victime). Gouverne le
+	// collecteur `internal/sync` qui remplit `shared.match_kill_events`.
+	//
+	// Halo Infinite : supported (décodeur `games/halo_infinite/film/killsource`).
+	// Halo 5 : ABSENTE — son format de film est différent ET ses mécaniques de
+	// kill sont natives dans le carnage (CapNativeKillMechanics), donc il n'a
+	// aucun besoin d'un décodeur de film pour la même information.
+	//
+	// ⚠ Clé FINE et pas fourre-tout : les tirs par arme (`match_weapon_shots`) et
+	// la précision par arme sont des familles de données DISTINCTES, chacune avec
+	// ses réserves de publication. Un titre peut avoir l'une sans les autres —
+	// c'est l'arbitrage §4.3 du plan de branchement. Ne JAMAIS élargir cette clé
+	// pour couvrir « tout ce qui vient du film ».
+	//
+	// Nommage : le plan proposait `film_kill_source` ; la convention du
+	// vocabulaire est le point (`match.objective.stats`, `playlist.label.…`),
+	// d'où `film.kill_source`. Même clé, écriture du dépôt.
+	CapFilmKillSource CapabilityKey = "film.kill_source"
 )
 
 // CapabilityMap décrit l'état des capabilities produit d'un adapter à un instant T.
