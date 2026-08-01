@@ -1,3 +1,53 @@
+## [2026-08-01] La palette Forge lue — les zones ont une FORME, et elle était dans le .mvar
+
+**Statut** : Complété (session de recherche). Branche `feat/re-mode-score`. État de l'art :
+`.ai/ETAT_DE_L_ART_FORGE_PALETTE_ZONES.md`. Aucun code livré touché, outillage `cmd/tmp_*` neuf.
+
+**Décision technique** : ne pas chercher la forme d'une zone dans l'emprise du TYPE (palette)
+ni dans l'entité d'exécution, mais dans le record d'objet du `.mvar` lui-même. Le décodeur Bond
+décode l'arbre entier ; `mapvar.parseObject` n'en extrait que 6 champs et `readGameplayBag` 3.
+Un inventaire profond des 380 464 objets des 199 cartes a exposé le reste — dont un sac de
+forme à `#8 -> #0[0] -> #0[0]` : famille (2 = cylindre, 3 = boîte) + 4 nombres en virgule fixe
+16.16. Le pas est établi, pas supposé : 393216 = 6 × 65536 exactement, 39,2 % des 62 299
+valeurs brutes sont des multiples exacts de 65536.
+
+**Résultats observés** :
+- **16 434 formes** sur 197 cartes. Couverture par nature d'objectif : **100 %** des objectifs
+  SURFACIQUES (Extraction 434/434, reperes Ravitaillement 186/186, Bastion 430/431), **0 %**
+  des objectifs PONCTUELS (apparitions de drapeau 0/669, socles 0/855). Le 34,2 % global n'est
+  pas un trou : c'est la structure.
+- **Orientation confirmée par la mesure** : sur une zone tournée de 20°, la boîte alignée capte
+  **+31 %** de positions joueur en trop (+18 % pour un cylindre traité en carré) ; sur une zone
+  non tournée les deux comptages sont identiques au millième. Témoin négatif (forme translatée
+  de 25 m) : 0,000 %.
+- **Palette résolue à 99,0 %** (2758/2785 `type_id`), contrôle positif **45/45 identiques** sur
+  `forge_object_types.csv`. Catalyst 36/36, Vagabond 479/479 (contre 78 % et 3 %).
+- **Le `[!]` power-ups de J0.2 est clos — par la négative** : `eqip` = 3 types sur 2785, sur
+  5 cartes sur 199, aucun sur Catalyst ni Vagabond. Le `.mvar` ne place pas d'équipement.
+- **Champs jetés par le dépôt, désormais consignés** : `/#6` = échelle uniforme (240 objets,
+  7 cartes) ; `/#8/#1[0]/#4` = délai de réapparition en secondes (30/60/120/240), porté par
+  `weap` 117 et `vehi` 94 — les seuls objets qui réapparaissent.
+- **Deux mesures REJETÉES, et c'est le résultat à ne pas perdre** : le critère « part de
+  l'empreinte sur du sol foulé » est tautologique (il favorise mécaniquement la forme la plus
+  petite — même piège que le « critère en or par l'AABB » déjà retiré du chantier) ; les
+  médianes par rôle donnent un rapport ni 1 ni 2. Le départ demi-extents/tailles pleines a été
+  tranché par les **coïncidences exactes** cylindre/boîte sur une même carte : **11 contre 1**.
+- **Correction transverse** : l'emprise de la palette est en **unités monde** (× 3,048), pas en
+  mètres — établi sur les véhicules (Pelican 32,7 m, Warthog 6,8 × 3,1 × 2,5 m). Les positions
+  et les formes du `.mvar` sont en mètres. Mélanger les deux donne un facteur 3 silencieux.
+- **Noms de zone A/B/C : absents du fichier.** Trois zones d'une même carte ne diffèrent que par
+  position, dimensions et `team_index`. Label craqué au passage :
+  `murmur3("extraction_include") = -903313158`.
+
+**Conclusion / prochaine étape** : le contrat de données pour `map_objectives.json` est proposé
+(famille, demi-extents, orientation, brut conservé à côté du dérivé, repli explicite « point
+sans forme » — JAMAIS de disque par défaut). Rien n'a été implémenté : ni schéma, ni rendu.
+La prochaine étape est l'oracle d'exécution qui tranche à la fois le départ « tailles pleines »
+et la lettre de zone — `zone_captured` daté à la ms × position du joueur × zone qui le
+contient. Son unique pré-requis est de produire les bornes de déquantification de Vagabond
+(`mapquant-build` sur `fo08_wetland`) et de les ajouter à `map_quant_bounds.json` : non fait
+ici, c'est une écriture dans une donnée livrée, hors du périmètre de recherche de la session.
+
 ## [2026-08-01] Q2 RÉSOLU pour les modes à objectifs — le score est le composant 0 de l'archétype 6
 
 **Statut** : Complété. Q2 établi pour Strongholds et CTF ; Q4-KOTH réfuté ; localisateur hors

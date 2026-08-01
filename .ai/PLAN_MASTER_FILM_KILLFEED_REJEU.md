@@ -127,10 +127,23 @@ changer, tout à exécuter.
         `type_id` de Catalyst (78 %) mais **15/468 de Vagabond (3 %)** — carte Forge, ses objets
         sont des blocs Forge — et ses 45 lignes ne portent **aucun groupe `eqip`** (seulement
         bloc/mach/scen/vehi/weap), donc aucun équipement n'y est nommé.
-      - **BLOCAGE IDENTIFIÉ, à arbitrer** : la seule voie restante est la palette Forge
-        (`any|ds/globals/forge/forge_objects-rtx-new.module`, 2,4 Go). Ces modules **ne sont pas
-        sur la clé** — seuls les 31 modules de niveau y sont. Sans eux la résolution
-        `type_id → nom` meurt avec le PC. Espace libre sur la clé : 42 Go.
+      - ~~**BLOCAGE IDENTIFIÉ, à arbitrer**~~ — **LEVÉ le 2026-08-01**, par la palette Forge
+        enfin lue. État de l'art : `.ai/ETAT_DE_L_ART_FORGE_PALETTE_ZONES.md`.
+        - `[x]` **La palette est résolue à 99,0 %** (2758/2785 `type_id` des 199 cartes,
+          contre 45 auparavant) ; Catalyst **36/36**, Vagabond **479/479**. Contrôle positif
+          **45/45 identiques** (groupe ET dimensions) sur `forge_object_types.csv`.
+        - `[x]` **Le volet power-ups est CLOS — par la négative, et c'est un résultat.**
+          `eqip` = **3 types sur 2785**, portés par **5 cartes sur 199**, aucun sur Catalyst
+          ni Vagabond. La variante de carte **ne place pas d'équipement** : surbouclier et
+          camouflage viennent du mode de jeu ou du scénario de base, pas du `.mvar`. La
+          question A2 n'a donc pas de réponse dans ce fichier — elle n'y est pas écrite.
+        - `[!]` **Le NOM d'objet reste indécidable hors ligne** : table des chaînes vide sur
+          **88/88 modules**, aucun nom dans le tag `forg` (753 Ko), `GlobalID ≠ murmur3` du
+          chemin de tag (testé sur 2 identifiants de niveau connus × 6 formes). Un `type_id`
+          inconnu reste SANS NOM. Seule la CLASSIFICATION (groupe de tag) est décidable.
+        - **Correction à porter** : l'emprise de la palette est en **unités monde**
+          (× 3,048), pas en mètres — établi sur les véhicules (Pelican 32,7 m, Warthog
+          6,8 × 3,1 × 2,5 m). Les positions et formes du `.mvar` sont en mètres.
 - [x] J0.3 Vérifier l'inventaire de la clé contre la liste du handoff (dont
       `deser_table.tsv` APRÈS la capture utilisateur) et pousser toutes les branches sur
       `origin` (vérifié : les 4 branches y sont — re-vérifier après tout commit local).
