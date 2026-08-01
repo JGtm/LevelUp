@@ -1399,3 +1399,92 @@ au compteur ne peut pas etre departage par la seule valeur ; idem pour les six r
 son equipe, `flag_returned` sur un evenement de drapeau. Ces trois regles sont des
 HYPOTHESES a mettre a l'epreuve avec un controle negatif, pas a coder d'emblee — le
 chantier a paye deux fois pour l'avoir oublie (§5, regle 4).
+
+---
+
+## 17. L'IDENTIFIANT UNIQUE : ce n'est pas la valeur du score, c'est LE COMPOSANT
+
+> Objection de l'utilisateur, et elle est juste : « l'un de : flag_returned, flag_stolen,
+> runner_stopped » est inexploitable. Il faut un identifiant unique. **Il existe, et le film
+> le porte** — la §16.6 lisait la mauvaise chose.
+
+### 17.1 Le registre du film nomme le schema, et il dit 28 emplacements de statistique
+
+`chunk_00` (type 1) est le registre ECS : un bloc par archetype, chaque bloc portant la liste
+ORDONNEE des noms de composants — exactement l'ordre que la boucle de composants itere, donc
+l'index de la liste creuse. `filmdec.ParseRegistryChunk` le lit deja.
+
+L'archetype **6** (le statborg) rend :
+
+| index | nom du composant |
+|---|---|
+| 0 a 27 | `statborg-current-round-value-stat-component` (**28 emplacements**) |
+| 28 a 55 | `statborg-finalized-rounds-values-stat-component` (28, valeurs de fin de manche) |
+| 56 | `statborg-round-outcomes-component` |
+| 57 | `statborg-entry-index-and-type-component` |
+
+Le nom ne distingue donc pas les 28 : **c'est l'INDEX qui est l'identite de la statistique**.
+Ce que confirme le getter natif releve par l'archive
+(`Team_GetCurrentRoundStatValue` @ `0x142C6B118`) :
+`value_raw = *(int32*)(world + statSlot*0x88 + teamIdx*0x1DF0 + 0x38 + round*4)` — `statSlot`
+est bien un rang dans une table de statistiques.
+
+### 17.2 Chaque recompense a SON emplacement — verifie nominativement
+
+Confrontation des valeurs finales d'un slot d'entite aux recompenses `personal_score_awards`
+du joueur correspondant. **JGtm, film `696a9d7c` (Strongholds), slot 22** :
+
+| recompense de l'API | compte | composant du film |
+|---|---|---|
+| `killed_player` | 9 | **comp 2, valeur A** = 9 |
+| `kill_assist` | 7 | **comp 3, valeur A** = 7 |
+| `zone_captured` | 7 | **comp 20, valeur B** = 7 |
+| `zone_secured` | 2 | **comp 21, valeur A** = 2 |
+| (score personnel) | 1 650 | **comp 1, valeur B** = 1 650 |
+
+Controle d'ensemble : sur ce film, comp 20 B totalise **61** et comp 21 A **16** ; leur somme
+vaut **77**, exactement le total `zone_captures + zone_secures` de l'API.
+
+**Et le cas exact qui bloquait**, JGtm sur `1bc77d2e` (CTF), slot 18 :
+
+| recompense | compte | composant |
+|---|---|---|
+| `killed_player` | 24 | comp 2 A = 24 |
+| `flag_stolen` | **4** | **comp 24 A = 4** |
+| `runner_stopped` | 2 | comp 21 B ou comp 23 A (les deux valent 2) |
+| `flag_returned` | 2 | l'autre des deux |
+| `kill_assist` | 2 | comp 3 A = 2 |
+| (score personnel) | 3 010 | comp 1 B = 3 010 |
+
+Les trois recompenses a 25 points **vivent dans trois composants distincts**. L'ambiguite de
+la §16.6 venait de la methode (lire la VALEUR de l'increment), pas du film. `flag_stolen` est
+deja separe sur ce seul film ; `runner_stopped` et `flag_returned` occupent deux composants
+identifies, il ne reste qu'a dire lequel est lequel — un second film ou leurs comptes
+different suffit.
+
+### 17.3 La consequence de conception
+
+**On ne lit pas un increment de score, on lit QUEL composant a bouge.** Chaque emission d'un
+composant de statistique est un evenement uniquement identifie, horodate a la milliseconde,
+et attribuable au joueur par le slot d'entite. Plus de quota, plus de liste de candidates,
+plus d'heuristique temporelle.
+
+`LabelPersonalScore` (§16.6) reste utile comme repli quand le quota est connu mais pas le
+film ; il n'est plus le chemin principal.
+
+### 17.4 Ce qu'il reste, et c'est un balayage, pas une enigme
+
+Nommer les 28 emplacements une fois pour toutes : pour chaque film, confronter la valeur
+finale de chaque composant a chaque slot au compte de la recompense correspondante dans
+`personal_score_awards`, et **intersecter sur les films**. C'est exactement le solveur qui a
+nomme 88 medailles (§16.3), avec le meme controle par moities disjointes.
+
+Deux notes de faisabilite :
+- l'oracle vit dans les **bases joueur** (`personal_score_awards`), qui ne sont pas tenues par
+  le serveur de dev — le balayage ne depend pas de `shared_matches_v2.duckdb` ;
+- il faut la correspondance slot -> joueur par film, qui s'obtient deja par les instants de
+  frag (§16.2).
+
+**Ghidra n'a pas ete necessaire** : le film porte son propre schema. Il le redeviendrait si le
+balayage laissait des emplacements sans nom — le getter `0x142C6B118` et la table qu'il indexe
+sont alors la cible.
