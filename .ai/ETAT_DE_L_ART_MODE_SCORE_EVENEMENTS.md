@@ -691,3 +691,69 @@ venait de la densite des evenements et des deux parametres libres.
 
 Ces deux composants restent la meilleure cible connue pour l'identite du drapeau — mais ils
 demandent d'etre decodes **depuis le film**, pas depuis la capture.
+
+---
+
+## 12. Q2 RESOLU POUR LES MODES A OBJECTIFS — le score est un composant de l'archetype 6
+
+Outil : `cmd/tmp_statborgfilm`. **Verdict : ETABLI**, sur les deux films a capture CE, avec
+egalite EXACTE sur trois grandeurs independantes a la fois.
+
+### 12.1 Le pont entre la capture CE et le film — arithmetique, sans balayage
+
+La capture journalise pour chaque lecture de composant le curseur moteur `c` et 16 octets lus
+au pointeur du lecteur. La recette de localisation du chantier place ces octets a
+`paquet.Start + 8*floor(c/64) + 8`. En retrouvant la signature a l'offset d'octet `M` du chunk
+decompresse, on inverse :
+
+```
+paquet.Start = M - 8*floor(c/64) - 8
+bitpos       = 8*paquet.Start + c  =  8*M - 64 + (c mod 64)
+```
+
+Le composant commence donc dans le mot de 64 bits qui **precede** la signature, au bit
+`c mod 64`. **Aucune hypothese de largeur, aucun balayage, aucun parametre libre.**
+
+Rendement mesure : **2 708 / 2 716** lectures localisees sur le Strongholds (99,7 %) et
+**2 331 / 2 340** sur la CTF (99,6 %), **zero signature absente**.
+
+### 12.2 Ce que porte l'archetype 6 — trois composants nommes par leurs valeurs
+
+Chaque enregistrement est decode par la grammaire statborg de Q3
+(`[en-tete 5][en-tete 5][valeur][valeur]`, valeurs a longueur variable). Les entites se
+separent en **deux entites d'equipe** et **huit entites de joueur**.
+
+| composant | contenu | Strongholds `696a9d7c` | CTF `530820e5` |
+|---|---|---|---|
+| **0** | **SCORE DE MODE** | equipes : **200** et **94** | equipe : **3** ; joueurs : **2** et **1** |
+| **1** | score personnel | equipes : **8 420** et **7 420** ; 8 joueurs : 1 675, 1 900, 2 175, 1 435, 2 385, 2 160, 1 650, 2 460 | equipes : **8 030** et **4 735** |
+| **2** | frags / morts | equipes : **54/48** et **48/55** | equipes : **53/40** et **39/54** |
+
+**Toutes ces valeurs sont exactes a l'unite contre l'API**, et elles se recoupent entre elles :
+la somme des 8 scores personnels du Strongholds fait **15 840 = 8 420 + 7 420**, sans
+ajustement. C'est une fermeture arithmetique gratuite, et elle tombe.
+
+Le cas CTF « 3-0 » est instructif : l'equipe a **0 n'emet jamais** le composant 0 — une valeur
+qui ne change pas n'est pas repliquee. Et les valeurs par joueur (2 et 1) sont exactement les
+`flag_captures` des deux joueurs concernes. Le composant 0 porte donc **la contribution
+d'objectif au niveau equipe ET au niveau joueur**.
+
+### 12.3 La resolution temporelle — la reponse a « 5 secondes c'est trop long »
+
+Le composant n'est reemis **que lorsqu'il change**. Chaque lecture est donc l'instant exact
+d'un changement de score, pas un echantillonnage periodique :
+
+- Strongholds, equipe qui mene : **190 emissions** du composant 0 sur 561 s, et la serie est
+  **monotone croissante** ;
+- CTF : **3 emissions** pour 3 captures — une par capture, a l'instant exact.
+
+C'est structurellement plus fin que le tick de 5 s des evenements de mode du footer : on ne
+depend plus d'un battement, on lit l'evenement de changement lui-meme.
+
+### 12.4 Ce qui reste avant que ce soit universel
+
+Ce decodage s'appuie sur la capture CE pour LOCALISER les lectures — il ne vaut donc, en
+l'etat, que pour les deux films captures. **Mais il fournit desormais 5 039 positions de verite
+terrain** (2 708 + 2 331) avec, pour chacune, la position de bit exacte et les valeurs
+attendues. C'est exactement ce qu'il faut pour calibrer un localisateur **purement hors ligne**
+et le valider sans complaisance. C'est le lot suivant, et il est borne.
