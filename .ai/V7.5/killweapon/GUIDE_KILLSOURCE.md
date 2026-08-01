@@ -728,6 +728,15 @@ GetHighlightEventsChunk -> []byte                  ChunkType == 3 UNIQUEMENT   (
 Le decodeur, lui, veut **UNE seule sequence**. C est tout le role du pont
 `internal/sync/killsource_bridge.go` (ecrit, compile, **sans aucun appelant**).
 
+> ⚠ **MIS A JOUR LE 2026-08-01 (J4 session 1).** Le pont vit desormais dans
+> `internal/sync/killcollector/bridge.go` (`killcollector.ChunkSourceForMatch`) — la racine de
+> `internal/sync` est gelee a 80 fichiers par `TestSyncRootPackageFrozen`, le neuf va dans un
+> sous-paquet. Et il n assemble PLUS les deux appels : il passe par
+> `haloclient.GetFilmChunks`, qui rend les **trois** types en UNE lecture de manifeste — donc
+> **l en-tete (type 1) aussi**, que ni `GetMatchFilm` ni `GetHighlightEventsChunk` ne prenaient
+> (decouverte J0.1 : `cmd/fetch_film_chunks` avait le meme trou). Il a un appelant : le
+> collecteur, `internal/sync/killcollector/collector.go`.
+
 ### Les trois pieges, tous verifies dans le code
 
 1. **Le chunk HIGHLIGHT n est PAS dans la map de `GetMatchFilm`.** Un branchement qui n appellerait
@@ -740,6 +749,15 @@ Le decodeur, lui, veut **UNE seule sequence**. C est tout le role du pont
 3. **Le cache disque local ne stocke QUE les chunks de replication.** Le HIGHLIGHT est
    re-telecharge a chaque appel. Sans consequence fonctionnelle, mais a savoir si on compte les
    requetes.
+   > ⚠ **CORRIGE LE 2026-08-01 (J4 session 1) — CET ENONCE EST FAUX SUR LE CACHE ACTUEL.**
+   > Croisement des 951 manifestes en cache avec les fichiers reellement presents sur disque :
+   > les **949** films utilisables (2 repertoires vides) portent **l en-tete (type 1), TOUTES
+   > les replications (type 2) ET le kill-feed (type 3)**. 949/949 sur les trois criteres.
+   > Verifie ensuite fichier par fichier sur `000d5950` (type-3 = index 27), `4f77afc1`
+   > (index 62) et `9b191a7f` (index 32). **Consequence : un backfill local est integralement
+   > HORS LIGNE** — ni reseau, ni tokens, ni CDN, donc pas de risque d expiration en cours de
+   > route. L enonce reste vrai de ce que le cache Python ECRIVAIT ; il est faux de ce que le
+   > cache CONTIENT aujourd hui.
 
 A noter : les deux appels refont chacun `fetchFilmManifest`, soit un aller-retour HTTP de plus.
 Correct, pas optimal. Si le cout devenait genant, la voie propre serait d exposer une methode qui
