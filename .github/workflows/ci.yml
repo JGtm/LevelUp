@@ -86,6 +86,17 @@ jobs:
       - name: Lint multi-titres (no hardcoded FieldKey)
         run: npm run lint:fields
 
+      # Ratchet knip — SANS condition de chemin, et c'est tout l'objet du step.
+      # Le hook pre-push homonyme (lefthook.yml) est glob-gaté sur
+      # `apps/web/src/**/*.{ts,tsx}` : il ne s'exécute que si le push CONTIENT des
+      # sources web. Le mode d'échec réellement constaté (J1-b) n'est pas celui-là —
+      # c'est une branche qui accumule des exports morts et n'est JAMAIS poussée, donc
+      # jamais soumise au hook ; le dépassement de plafond n'est apparu qu'à la
+      # réconciliation. Un glob ne peut pas rattraper ça : seul un job qui tourne à
+      # chaque push le peut. Le hook local reste le filet rapide, la CI est l'autorité.
+      - name: Ratchet knip (code mort frontend)
+        run: node ../../tools/knip-ratchet.mjs
+
       - name: Guard — feedback-drawer ne doit pas importer le wrapper api
         run: |
           if grep -E "^import.*\\bapi\\b.*from.*['\"]@/lib/api/client" apps/web/src/features/feedback-drawer/queries.ts; then
