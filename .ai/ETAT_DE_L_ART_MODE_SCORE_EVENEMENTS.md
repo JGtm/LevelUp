@@ -1002,3 +1002,34 @@ une recherche.
 Une fois ce calage pose, l'ancrage devient sur-contraint (presence + type + 13 bits de slot +
 forme + compte + index croissants bornes = plus de 30 bits de contrainte dure) et la courbe de
 score tombe hors ligne sur les 951 films.
+
+### 14.7 Le cadrage, MESURE par soustraction (et non devine)
+
+Sur les 1 078 en-tetes de masque localises, lecture des bits qui precedent le champ de 13 bits :
+
+| 3 bits avant le slot | occurrences |
+|---|---|
+| `010` | 926 |
+| `110` | 151 |
+| `000` | 1 |
+
+Les **deux bits adjacents au slot valent `10` dans 1 077 cas sur 1 078**, et le bit encore
+avant varie (0 ou 1). C'est une constante de cadrage, pas du bruit.
+
+**Et elle revele une incoherence a lever avant d'aller plus loin** : lus MSB-first, ces deux
+bits valent **2**, alors que le type DELTA vaut **3** dans `FUN_1406CD128`. Deux lectures
+possibles, et il faut les departager par la mesure, pas par preference :
+
+1. **le champ d'identite fait 14 bits, pas 13** — l'exploration empirique donnait 100 % de
+   purete pour les largeurs 11 a 14 a ce meme decalage, et la correspondance mesuree
+   `slot_flux = 2 x (eid - 0x40000000)` **suggere exactement cela** : un bit de poids faible
+   supplementaire capte par une largeur de 14. Dans ce cas les bits `10` que je lis
+   chevauchent le champ, et le type est ailleurs ;
+2. le cadrage porte un champ intermediaire non identifie entre le type et le slot.
+
+**Le controle qui tranche, et il est immediat** : relancer la recherche de purete en fixant la
+largeur a 14 et en verifiant que les 3 bits qui precedent deviennent alors `[1 bit presence]
+[2 bits = 11]`. Si `11` apparait, l'hypothese 1 est etablie et l'ancrage devient sur-contraint
+(presence + type + 14 bits de slot + forme + compte + index croissants).
+
+C'est le point de reprise exact : une mesure, pas une recherche.
