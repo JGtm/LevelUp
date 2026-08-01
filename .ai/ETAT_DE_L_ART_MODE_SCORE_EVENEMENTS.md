@@ -35,10 +35,10 @@ fournit une **chaine independante** qui a servi a Q4.
 | # | Question | Verdict | Ce qui le tient |
 |---|---|---|---|
 | Q1 | Cartographie du systeme d'evenements | **ETABLI (partiel)** | Recensement mesure sur 5 films / 4 modes ; appairage type-10 -> type-0 exact ; un code discriminant par famille de mode |
-| Q2 | Porteur autoritaire du score d'equipe | **NON CONCLU — 2 candidats ELIMINES** | L'octet d'etat externe et le comptage de ticks tombent tous deux sur controle negatif |
+| Q2 | Porteur autoritaire du score d equipe | **ETABLI en Slayer · ABSENT de l espace balaye en Strongholds · INDECIDABLE en CTF-KOTH** | Slayer : serie de 26 valeurs reproduite, leurres a zero. Ailleurs : un candidat credible DEMASQUE par les ancres terrain (6bis) |
 | Q3 | La recette mode -> score | **ETABLI — et la reponse deplace la question** | L intermediaire existe mais ce n est PAS du code : registre de stats plat adresse par identifiant, sans aucun branchement de mode ; c est le SCRIPT de la variante qui choisit l identifiant (5.4) |
 | Q4 | Evenements d'objectif nommes | **ETABLI pour les zones · REFUTE pour CTF · INDECIDABLE pour KOTH** | Zones : 3 chaines independantes, egalite EXACTE 8/8 par joueur |
-| Q5 | Famille pickup (sous-produit) | **CONSIGNE, non creuse** | Section 7 |
+| Q5 | Famille pickup (sous-produit) | **CARTOGRAPHIE** | Bornes inferieures de changements d arme par film et par mode, avec controle de vraisemblance Fiesta (section 7) |
 
 **Le resultat de la session, en une phrase** : en mode a zones, un evenement de mode du footer
 type-3 **EST** une prise ou une securisation de zone, par joueur, a l'unite — total 77 = 77 et
@@ -179,6 +179,25 @@ NeonKnight3166 = 16 (xuid 2535458126310341 : 10 + 6) et JGtm = 9 (xuid 253327482
 
 **Ce que ca rend decodable** : en mode a zones, la timeline « qui a pris/securise une zone, et
 quand » est lisible hors ligne, avec l'acteur (gamertag decode du film) et la milliseconde.
+
+**Le TIMING est livre, pas seulement le compte** : chaque evenement porte son horodatage en
+ms sur l horloge du match (octets 48-51, BIG-endian) et son acteur (gamertag UTF-16 decode du
+film, aucune jointure DB necessaire). `VERBOSE=1 cmd/tmp_modeticks` sort la timeline complete.
+Extrait verifie sur `696a9d7c` — le premier evenement du match et la rafale des trois bases :
+
+```
+t=  48.90s  equipe 0  FlyGuy8773          <- releve terrain : « 0:48 flyguy8773 capture la base B »
+t=  53.56s  equipe 1  Madina97294
+t=  53.56s  equipe 1  AG x GibsoN Zz
+t=  72.94s  equipe 0  FlyGuy8773
+t=  89.29s  equipe 0  Otti1614
+t=  89.29s  equipe 0  SunburntMonk740
+t=  89.96s  equipe 0  NeonKnight3166      <- releve terrain : « 1:30 trois bases »
+t=  89.96s  equipe 0  FlyGuy8773
+```
+
+L horloge du footer et le `start_ms` du manifeste sont sur la MEME base : les evenements sont
+donc directement replaçables sur la ligne de temps du rejeu, sans recalage.
 Ce qui **reste** hors de portee : **quelle** zone (A/B/C) — le resultat negatif de l'archive
 n'est pas entame par cette session.
 
@@ -406,18 +425,149 @@ Conformement a la consigne, ces corrections sont **proposees**, pas ecrites dans
 
 ---
 
-## 7. Q5 — LA FAMILLE PICKUP, CONSIGNEE SANS ETRE CREUSEE
+## 6bis. Q2 — LE PORTEUR DU SCORE : LOCALISE EN SLAYER, ET UN FAUX POSITIF DEMASQUE AILLEURS
 
-Ce que cette session peut deposer pour la piste A5 (ramassages), sans avoir decode quoi que ce
-soit : l'histogramme complet du premier enregistrement de trame par mode (3.2) fournit la
-**liste des codes candidats et leurs volumes**, ce qui manquait pour cibler. Les codes presents
-dans les cinq modes avec des volumes compatibles avec des ramassages (quelques centaines par
-film) sont **96, 97, 98, 99, 101, 114, 115, 116**. Aucun n'est nomme de facon fiable — la
-section 5.3 explique pourquoi la voie du nommage par table est fermee.
+Outils : `cmd/tmp_scorefind` (recherche + leurres), `cmd/tmp_scoreread` (application d'une
+regle, sans recherche), `cmd/tmp_scoreanchor` (recherche contrainte par les ancres terrain).
 
-**Ne pas partir de la** sans avoir d'abord relu `KILLFEED_STATE.md` §183 : le dispatcher
-`FUN_140620564` (codes 0x02-0x3c) est un **apply**, pas un decode, et il consomme une structure
-deja desérialisée.
+L'alignement d'horloge ne vient plus d'une estimation : le **manifeste de film** (en cache,
+`data/cache/film_manifests/<id>.json`) donne le `start_ms` de chaque chunk. Les images-cles
+sont donc datables a la milliseconde et confrontables aux evenements horodates du footer.
+
+### 6bis.1 SLAYER — ETABLI, serie complete et leurres a zero
+
+Oracle exact et **independant du film** : le score d'une equipe est le nombre de morts de
+l'autre, et les morts sont horodatees dans le footer (th=20, 93 evenements). Cela donne une
+serie attendue de **26 valeurs**, pas une valeur finale.
+
+Regle trouvee, ancree sur la premiere occurrence du jeton 12 bits `0x7B6` :
+
+| equipe | offset | largeur | echelle |
+|---|---|---|---|
+| 0 | **ancre + 28 bits** | 6 | x1 |
+| 1 | **ancre + 110 bits** | 6 | x1 |
+
+Courbes lues, `000d5950` :
+
+```
+equipe0 : 0 0 0 2 3 3 5 7 10 11 15 17 20 21 22 24 25 26 27 30 33 35 35 38 41 43
+equipe1 : 0 0 0 4 7 7 9 11 13 16 17 20 23 23 24 27 30 34 36 38 40 40 43 46 49 50
+```
+
+Toutes deux monotones, fin **43-50** = le score de l'API, exactement.
+
+**Le comptage des faux positifs, sur le flux reel** — c'est ce qui rend la mesure publiable :
+
+| serie soumise au meme balayage | colonnes qui passent |
+|---|---|
+| la vraie serie (equipe 0) | 22 (le meme champ vu a des alignements redondants) |
+| **leurre : serie decalee d'un cran** | **0** |
+| **leurre : serie constante a la valeur finale** | **0** |
+
+Espace balaye : deltas de -512 a +3000 bits, largeurs 6 a 16, echelles x1 a x32.
+
+**Un mystere de l'archive tombe au passage** : `RESEARCH_THEATER_RE.md` §M-ter mesurait sur ce
+meme film « byte 813 = team0 x4 ». Un champ de 6 bits qui se termine 2 bits avant la fin d'un
+octet, lu comme un octet, vaut exactement 4 fois sa valeur. **L'echelle x4 etait un artefact de
+lecture octet-alignee** ; en lecture bit-exacte il n'y a aucune echelle.
+
+### 6bis.2 LES AUTRES MODES — la regle NE SE GENERALISE PAS, et c'est une mesure
+
+`cmd/tmp_scoreread` applique la regle telle quelle, sans rien chercher. C'est une **prediction**.
+
+| film | mode | attendu | lu par la regle Slayer | verdict |
+|---|---|---|---|---|
+| `000d5950` | Slayer | 43-50 | **43-50** | juste |
+| `01e1f945` | KOTH | 3-2 | 3-**58** | fausse |
+| `64e8adfa` | CTF | 2-3 | 1-2 | fausse |
+| `530820e5` | CTF | 3-0 | 0-**54** | fausse |
+| `696a9d7c` | Strongholds | 200-94 | 0-24 | fausse |
+
+Deux observations qui ne sont **pas** du bruit et qui vont dans le sens du verdict Q3 :
+
+- en **KOTH**, le champ a `ancre+28` finit exactement sur **3** — le score d'equipe 0 — par
+  paliers propres (`0...0 1 1 1 1 2 2 2 2 2 3`), tandis que `ancre+110` finit sur 58, qui est
+  le nombre de morts de l'equipe 0. **Les deux emplacements ne portent pas la meme grandeur
+  selon le mode.** C'est exactement ce que Q3 predit : le bloc porte des SLOTS de stat, et
+  c'est le script de la variante qui decide quelle stat y loge ;
+- en **Strongholds**, un champ de 6 bits plafonne a 63 et ne peut pas porter 200 : les remises
+  a zero de la courbe sont la signature d'une tranche de 6 bits d'un compteur plus large.
+
+### 6bis.3 STRONGHOLDS — un candidat credible, DEMASQUE par les ancres terrain
+
+Sans oracle exact, le seul critere disponible est « monotone, part de 0, finit sur le score de
+l'API ». Sa **fragilite est mesuree** :
+
+| film / equipe | valeur finale exigee | colonnes qui passent | leurres (valeur finale fausse) |
+|---|---|---|---|
+| `530820e5` eq. 1 | 0 | **98 544** | 1 -> 136 · 2 -> 214 |
+| `64e8adfa` eq. 0 | 2 | 675 | 3 -> 79 · 4 -> 984 |
+| `01e1f945` eq. 1 | 2 | 236 | 3 -> 89 · 4 -> 290 |
+| `696a9d7c` eq. 0 | **200** | **30** | 201 -> **0** · 202 -> **0** |
+
+Quand le score final est petit, le critere laisse passer des centaines de colonnes **et les
+leurres autant** : il ne prouve rien. Le 200 du Strongholds, lui, est discriminant — leurres a
+zero. On tenait donc 30 colonnes « arithmetiquement propres », dont `[d=+34 w=6 x4]` qui rend
+**200-94 exactement, monotone**.
+
+**Et le relevé terrain les tue.** Leur courbe vaut :
+
+```
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 132 136 148 160 180 180 184 188 200
+```
+
+Elle reste a **zero jusqu'a ~400 s**, alors que le relevé a l'oeil atteste **21 points a 1:30**
+et **69-30 a 3:10**. Passe a `cmd/tmp_scoreanchor` avec ces ancres en contrainte, le compte
+tombe a **0 colonne** pour les deux equipes.
+
+C'est le resultat le plus important de Q2 sur le plan de la methode : **une colonne qui tombe
+sur la valeur finale, monotone, avec des leurres a zero, peut etre entierement fausse.** La
+regle « une mesure qui sert de score ne sert pas de filtre » n'est pas une precaution
+theorique — elle a attrape un faux positif ici, en une passe.
+
+### 6bis.4 Verdict Q2, par mode
+
+| mode | verdict |
+|---|---|
+| Slayer | **ETABLI** — offsets, largeur, echelle, serie complete, leurres a zero |
+| Strongholds | **ABSENT DE L'ESPACE BALAYE** (largeur fixe 6-20 bits, deltas -512..+3000, echelles x1..x32). Coherent avec l'archive, qui decrit un **varint** : un balayage a largeur fixe ne peut pas l'attraper **par construction** |
+| CTF, KOTH | **INDECIDABLE par cette methode** : leurs scores (0 a 3) sont trop petits pour discriminer — des centaines de colonnes passent, les leurres aussi. Il faut une serie par image-cle, pas une valeur finale |
+
+**Le lot suivant est donc nomme** : etendre le balayage aux encodages **a longueur variable**
+(varint a continuation, le `FUN_140C18A1C` selecteur 2 bits du §2 de `RE_EXE_GHIDRA_FINDINGS`),
+et pour CTF/KOTH construire une serie par image-cle a partir des evenements de mode horodates
+(section 4) plutot que de la seule valeur finale.
+
+---
+
+## 7. Q5 — LA FAMILLE PICKUP, CARTOGRAPHIEE (pas decodee)
+
+Outil : `cmd/tmp_pickupmap`. Ce que le lot A5 n'avait pas et qui lui manquait pour se
+dimensionner : **combien de changements d'arme un film porte reellement**, par joueur et par
+mode. La mesure se fait sur les evenements de tir **deja decodes par le depot**
+(`filmdec.ScanFilmFireEvents`, record `action_weapon_fire`) — aucun decodage neuf.
+
+| film | mode | evenements de tir | changements d'arme | armes distinctes cumulees |
+|---|---|---|---|---|
+| `000d5950` | **Super Fiesta** | 519 | 69 | **60** |
+| `01e1f945` | KOTH | 2 154 | 104 | 29 |
+| `64e8adfa` | CTF | 2 879 | 88 | 25 |
+| `530820e5` | CTF | 1 783 | 107 | 28 |
+| `696a9d7c` | Strongholds | 2 246 | 105 | 35 |
+
+**Controle de vraisemblance interne** : le Super Fiesta, ou l'arme est tiree au sort a chaque
+reapparition, porte **60** armes distinctes cumulees pour 8 joueurs (7,5 par joueur) contre 25
+a 35 dans les modes a dotation fixe. La mesure se comporte comme le mode l'exige.
+
+**Ce chiffre est une BORNE INFERIEURE, et la borne est explicite** : une arme ramassee mais
+jamais tiree est invisible, et la dotation de reapparition n'est pas distinguee d'un ramassage.
+Il sert a **dimensionner** A5 et a lui donner un temoin de comparaison — un decodeur de
+ramassages qui rendrait MOINS que ces chiffres serait faux.
+
+Les codes du recensement Q1 (section 3.2) compatibles en volume avec une famille de ramassage
+restent **96, 97, 98, 99, 101, 114, 115, 116** — aucun n'est nomme de facon fiable, la section
+5.3 dit pourquoi. **Ne pas partir de la** sans relire `KILLFEED_STATE.md` §183 : le dispatcher
+`FUN_140620564` est un **apply**, pas un decode.
 
 ---
 
@@ -441,7 +591,11 @@ deja desérialisée.
 |---|---|
 | `cmd/tmp_modescore` | recensement des paquets, histogramme des codes type-0, jeton 0x7B6 des images-cles, histogramme `type_hint` du footer |
 | `cmd/tmp_modestate` | la revendication externe de l'octet d'etat type-2 (transitions + valeurs) |
-| `cmd/tmp_modeticks` | evenements de mode : compte par equipe et par joueur, gamertag decode, horloge BE, deduplication, intervalles |
+| `cmd/tmp_modeticks` | evenements de mode : compte par equipe et par joueur, gamertag decode, horloge BE, deduplication, intervalles ; `VERBOSE=1` sort la TIMELINE horodatee complete (t, equipe, gamertag) |
+| `cmd/tmp_scorefind` | Q2 : recherche du porteur de score, avec series leurres et comptage des faux positifs |
+| `cmd/tmp_scoreread` | Q2 : applique une regle d offsets SANS rien chercher (test de prediction) |
+| `cmd/tmp_scoreanchor` | Q2 : recherche contrainte par les ancres terrain (celle qui demasque les faux positifs) |
+| `cmd/tmp_pickupmap` | Q5 : bornes inferieures de changements d arme par joueur et par mode |
 
 Tous se construisent en `CGO_ENABLED=0` (aucun DuckDB). Les oracles en base passent par
 `cmd/diag_q` en lecture seule.
@@ -452,11 +606,11 @@ Tous se construisent en `CGO_ENABLED=0` (aucun DuckDB). Les oracles en base pass
 
 1. **Un second film KOTH** — c'est le seul point qui bloque un verdict Q4 complet, et il coute
    une mesure (l'outil est ecrit).
-2. **Q2 non traite** : la localisation du porteur de score par mode n'a **pas** ete faite. Elle
-   demande le balayage de colonnes ancre sur `0x7B6` avec **comptage publie des faux positifs**
-   (combien de colonnes passent par hasard) — sans ce comptage, la mesure n'est pas publiable.
-   Les temoins sont prets : Slayer = la timeline de frags, Strongholds = 21 puis 69-30 aux
-   ancres puis 200-94, CTF = `FlagCaptures`.
+2. **Q2, la suite nommee** : etendre le balayage aux encodages a LONGUEUR VARIABLE (varint a
+   continuation ; le lecteur `FUN_140C18A1C` a selecteur de 2 bits, cf. RE_EXE_GHIDRA_FINDINGS
+   §2) — le Strongholds est absent de l espace a largeur fixe par construction. Et pour
+   CTF/KOTH, construire une serie PAR IMAGE-CLE a partir des evenements de mode horodates
+   (section 4) : leurs scores sont trop petits pour qu une valeur finale discrimine.
 3. **Q3 est clos cote binaire** (5.4). Le lot qui reste, borne : enumerer hors ligne le
    vocabulaire des identifiants de stat de la table `engine + 0xDF77C` (compte, identifiants,
    echelles) et le croiser avec le statborg deja serialise dans le film — il donne la liste de

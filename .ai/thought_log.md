@@ -1,3 +1,48 @@
+## [2026-08-01] RE mode→score, seconde passe — Q2 localisé en Slayer, Q5 chiffré, un faux positif démasqué
+
+**Statut** : Complété pour Q1, Q3, Q5 ; Q4 établi (zones) / réfuté (CTF) / indécidable (KOTH) ;
+Q2 établi en Slayer, absent de l'espace balayé en Strongholds, indécidable en CTF/KOTH.
+Branche `feat/re-mode-score`.
+
+**Décision technique** : refuser le critère « monotone + valeur finale » comme preuve, et
+exiger soit une SÉRIE complète, soit les ancres terrain en contrainte. C'est ce qui a payé :
+le critère faible a produit un candidat Strongholds parfait sur le papier (30 colonnes, leurres
+201 et 202 à zéro, `[d=+34 w=6 x4]` rendant 200-94 monotone) que les ancres ont tué en une
+passe — sa courbe reste à zéro jusqu'à ~400 s alors que le relevé atteste 21 points à 1:30.
+
+**Résultats observés** :
+- **Q2 Slayer ÉTABLI.** Ancre = 1re occurrence du jeton 12 bits `0x7B6` dans TYPE_2 ; équipe 0
+  = 6 bits à ancre+28, équipe 1 = 6 bits à ancre+110, sans échelle. Les deux courbes sont
+  monotones et finissent sur 43-50, le score de l'API. Validées non sur la valeur finale mais
+  sur une **série de 26 valeurs** dérivée des morts horodatées du footer — chaîne indépendante.
+  Leurres : série décalée 0, série constante 0. Espace balayé : deltas -512..+3000, largeurs
+  6..16, échelles ×1..×32. L'alignement d'horloge vient du **manifeste de film** (`start_ms`
+  par chunk), qui était en cache et que personne n'utilisait.
+- **Le « ×4 » de l'archive était un artefact.** Un champ de 6 bits finissant 2 bits avant la
+  fin d'un octet, lu comme un octet, vaut 4× sa valeur. En lecture bit-exacte, aucune échelle.
+- **La règle ne se généralise pas** (prédiction appliquée sans rien chercher) : 1/5 films. Mais
+  pas au hasard — en KOTH le champ à ancre+28 finit exactement sur 3, le score d'objectif, et
+  celui à ancre+110 sur 58, le nombre de morts d'équipe 0. **Les deux emplacements ne portent
+  pas la même grandeur selon le mode**, ce qui est exactement la prédiction de Q3 (des slots de
+  stat dont le contenu est choisi par le script de la variante). Convergence Q2/Q3.
+- **Strongholds absent de l'espace balayé** : un champ de largeur fixe ≤ 20 bits ne le porte
+  pas, et l'archive décrivait un varint — un balayage à largeur fixe ne peut pas l'attraper par
+  construction. CTF/KOTH indécidables : avec des scores de 0 à 3, le critère de valeur finale
+  laisse passer jusqu'à 98 544 colonnes et les leurres autant.
+- **Q4 timing livré** : chaque événement de zone porte son horodatage ms (octets 48-51 BE) et
+  son acteur (gamertag UTF-16 décodé du film, sans jointure DB). Footer et manifeste sont sur
+  la même base d'horloge : les événements se replacent directement sur la ligne de temps du
+  rejeu, sans recalage.
+- **Q5 chiffré** : bornes inférieures de changements d'arme par film, mesurées sur les
+  événements de tir déjà décodés — 69 à 107 par film. Contrôle de vraisemblance interne : le
+  Super Fiesta porte 60 armes distinctes cumulées pour 8 joueurs contre 25-35 dans les modes à
+  dotation fixe. Un décodeur de ramassages qui rendrait moins que ces chiffres serait faux.
+
+**Conclusion / prochaine étape** : le lot Q2 suivant est nommé — étendre le balayage aux
+encodages à longueur variable (lecteur `FUN_140C18A1C`, sélecteur 2 bits) pour le Strongholds,
+et construire une série par image-clé depuis les événements de mode horodatés pour CTF/KOTH.
+Reste aussi un second film KOTH pour trancher Q4-KOTH.
+
 ## [2026-08-01] RE mode→score — ce que les zones rendent, et deux pistes externes réfutées
 
 **Statut** : Complété pour Q1, Q4 et Q5 ; Q2 non traité (justifié) ; Q3 non conclu, route
