@@ -757,3 +757,22 @@ l'etat, que pour les deux films captures. **Mais il fournit desormais 5 039 posi
 terrain** (2 708 + 2 331) avec, pour chacune, la position de bit exacte et les valeurs
 attendues. C'est exactement ce qu'il faut pour calibrer un localisateur **purement hors ligne**
 et le valider sans complaisance. C'est le lot suivant, et il est borne.
+
+### 12.5 La tentative de localisateur HORS LIGNE, et son echec mesure
+
+Outil : `cmd/tmp_scoreoffline`. Motif cherche dans les paquets type-0 : « 10 bits d'en-tete
+nuls + deux valeurs a longueur variable, la seconde nulle » — la signature exacte observee sur
+la verite terrain.
+
+**Resultat : NEGATIF, et le chiffre le dit.** Sur `696a9d7c`, le motif rend **103 560
+candidats bruts** et « atteint » **les 200 valeurs** du score : il est sature de bruit. La
+marche d'escalier extraite (45 a 149 s, 137 a 411 s) contredit le releve terrain (21 points a
+1:30, 69 a 3:10). Le motif est trop faible — 10 bits nuls plus deux valeurs courtes se
+rencontrent partout dans un flux bit-packe.
+
+**Ce que ca dit du lot suivant** : la localisation ne s'obtiendra pas par motif, mais par
+**parcours de la chaine d'enregistrements de trame** (`FUN_1406CD128`, deja porte dans
+`filmdec/frame_records.go`), qui seule donne l'attribution entite/composant. C'etait deja le
+mur du chantier killweapon. La nouveaute, et elle est reelle : on dispose desormais de
+**5 039 positions de bit exactes avec leurs valeurs attendues** — le parcours peut enfin etre
+valide enregistrement par enregistrement au lieu d'etre pilote par un gradient.
