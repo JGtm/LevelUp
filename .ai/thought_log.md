@@ -74587,3 +74587,15 @@ récompenses à 25 points sont bien dans trois composants distincts : l'objectio
 Non fermé : plusieurs clés portent le même nom (duplication réelle du statborg + coïncidences
 de comptes), et l'oracle ne couvre que les 4 joueurs suivis. L'ancre d'identité (comp 2 A =
 `killed_player`) est circulaire pour elle-même et ne compte pas comme résultat.
+
+**Contrôle sur moitiés disjointes [2026-08-01]** — il RECALE la table du balayage :
+8 désaccords sur 19 clés en CTF, 1 sur 7 en zones. Survivent exactement les clés à forte
+observation, c'est-à-dire les revendications utiles : `flag_returned` = comp 23 A,
+`flag_stolen` = comp 24 A, `runner_stopped` = comp 21 B, `flag_taken` = comp 22 A,
+`flag_capture_assist` = comp 20 B, `zone_captured` = comp 20 B (zones), `zone_secured` =
+comp 21 A (zones). Tombent : 5 B, 6 A, 8 A, 8 B, 9 A, 22 B, 23 B, 25 A — les faibles
+observations que le balayage signalait comme suspectes, nommées par coïncidence de comptes.
+La table figée ne garde que les clés confirmées. Handoff écrit :
+`.ai/HANDOFF_EVENEMENTS_NOMMES_2026-08-01.md`. Reste : KOTH et Oddball non nommés, oracle
+limité aux 4 joueurs suivis (base partagée indisponible — backfill prioritaire en cours), et
+le code du dépôt lit encore la valeur et non le composant.
