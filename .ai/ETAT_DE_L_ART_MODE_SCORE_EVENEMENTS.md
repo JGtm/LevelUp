@@ -776,3 +776,56 @@ rencontrent partout dans un flux bit-packe.
 mur du chantier killweapon. La nouveaute, et elle est reelle : on dispose desormais de
 **5 039 positions de bit exactes avec leurs valeurs attendues** — le parcours peut enfin etre
 valide enregistrement par enregistrement au lieu d'etre pilote par un gradient.
+
+---
+
+## 13. CE QU'ON PEUT DESSINER SUR LA LIGNE DE TEMPS D'UN REJEU — par mode, SANS dump
+
+Relecture de tout ce qui precede sous l'angle de l'objectif reel : **rejouer le deroule du
+match**. La question n'est pas « ou est le score » mais « que puis-je afficher, quand, et sur
+quel film ».
+
+### 13.1 Zones (Strongholds) — DISPONIBLE MAINTENANT, sur tous les films en cache
+
+« Qui prend ou securise une base, et a quelle milliseconde » : **etabli et universel**.
+Verifie sur **9 films** dont 8 sans aucune capture Cheat Engine :
+
+| film | comptes film vs API (joueurs a zero exclus) |
+|---|---|
+| `696a9d7c` | 8/8 exact |
+| `28d77409`, `353367d6` | identiques sans retouche |
+| `10ed320d`, `1e26f641`, `2b2c5aa3`, `305a6b15`, `316205b8` | exacts apres exclusion des joueurs a 0 |
+| `1b1e380f` | 1 joueur manquant (2 evenements) |
+
+**8 films sur 9 exacts.** Un joueur qui ne prend aucune zone n'emet rien — d'ou les zeros
+presents cote API et absents cote film. Chaque evenement porte l'horodatage en ms et le
+gamertag decode du film.
+
+### 13.2 CTF — l'INSTANT des captures est disponible, l'action ne l'est pas
+
+- **Instants de capture** : le detecteur de rafale `tiers==6` de l'archive est deja dans le
+  depot (`objectiveevents/film.go`), ms-precis, mesure a 0 manque / 0 faux positif sur 4 matchs.
+- **Auteur** : par le groupe d'evenements de mode coincidents.
+- **Ce qui manque** : distinguer prise / retour / capture. L'identite avec
+  `flag_captures + grabs + returns` est **refutee** (section 4.2). On peut donc afficher « ce
+  joueur a interagi avec le drapeau a t », pas « il l'a pris ».
+
+### 13.3 KOTH — occupation de la colline toutes les 5 s, pas les captures
+
+L'evenement de mode est un **tick d'occupation de 5,00 s par joueur** (mediane 5 005 ms,
+64 intervalles ; refute comme prise sur 8 films, section 11.1). On peut donc tracer **qui tient
+la colline au cours du temps**, a 5 s pres. Les instants de capture, eux, ne sont pas
+disponibles par cette voie.
+
+### 13.4 La COURBE DE SCORE — le seul manque, et il est cerne
+
+| | avec capture CE | sans capture CE |
+|---|---|---|
+| score final | oui (API de toute facon) | oui (API) |
+| **courbe de score, a l'instant de chaque changement** | **OUI** (section 12) | **NON** |
+
+C'est le seul element du deroule qui reste hors de portee sur un film quelconque. Il est
+localise (composant 0 de l'archetype 6, paquets type-0) et lu exactement sur les deux films
+captures ; ce qui manque est le **parcours de la chaine d'enregistrements de trame** pour le
+retrouver sans capture. Les 5 039 positions de verite terrain existent desormais pour valider
+ce parcours.
