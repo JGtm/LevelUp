@@ -1,3 +1,53 @@
+## [2026-08-01] Deux skills de revue adversariale, et l'espace de travail mis sur clé
+
+**Statut** : Complété.
+
+**Décision technique** : scinder le pattern « relecteur adversarial » en DEUX skills au lieu
+d'un, parce que les deux usages n'ont pas le même contrat de référence. `adversarial-review`
+relit un diff : sa référence est le contrat du lot (ce qui devait être construit), et il
+converge en 2 rondes bornées avant merge. `adversarial-audit` relit du code existant : sa
+référence est la doctrine (CLAUDE.md, ADRs, skills), il se cadre en `périmètre x axe`, et
+surtout **il ne corrige rien** — il produit un registre daté qui devient un plan. Un skill
+unique aurait laissé l'audit dériver en session de correction non relue sur du code qui
+marchait.
+
+Les trois garde-fous repris du fil r/ClaudeAI (post + 40 commentaires) et codés dans les deux
+skills : (1) le relecteur reçoit le contrat, sans quoi il ne distingue pas « pas implémenté »
+de « hors périmètre » ; (2) tout constat porte `fichier:ligne` + condition de déclenchement +
+conséquence observable, sinon il est jeté ; (3) le relecteur a explicitement le droit de ne
+rien trouver. Le troisième point est le moins intuitif et le plus important : un relecteur qui
+trouve toujours quelque chose voit ses alarmes ignorées, ce qui ramène au point de départ.
+Ajouté par-dessus : la formulation par inversion (« énonce ce qui devrait être vrai pour que ce
+code soit correct, puis vérifie-le ») plutôt que l'injonction hostile, qui produit du volume.
+
+**Résultats observés** :
+- `.claude/skills/adversarial-review/SKILL.md` et `.claude/skills/adversarial-audit/SKILL.md`
+  créés, enregistrés en priorité `critical` dans `skill-rules.json` (11 -> 13 skills), table
+  des skills de `CLAUDE.md` mise à jour. JSON validé.
+- Les deux skills embarquent les invariants maison en « lentilles » (anti-ART, multi-titre,
+  les 10 anti-patterns, KDA/timezone/`_latest`, front) : un relecteur générique rate ces pièges.
+- Sauvegarde de l'espace de travail sur `E:\LevelUp_workspace_backup` (237 fichiers, 855 Ko)
+  avec `RESTAURATION.md` et `MANIFESTE.md`.
+- Constat de la sauvegarde : le seul contenu réellement irremplaçable est ce qui est HORS
+  dépôt — `.claude/settings.json`, `.claude/hooks/*.js` (gitignorés par `.gitignore:233`), les
+  settings globaux, et les 192 fichiers de mémoire agent. Tout le reste (13 skills,
+  `lefthook.yml`, les 8 scripts de hooks, `.golangci.yml`, eslint, les 6 ratchets `tools/*.mjs`)
+  revient avec un `git clone`.
+- Trois chemins absolus vers `C:\Users\Guillaume\...` cassent en silence au changement de
+  poste : les deux hooks déclarés dans `.claude/settings.json`, `core.hooksPath`, et le nom du
+  dossier de mémoire (dérivé du chemin projet). Documentés en §4 de `RESTAURATION.md`.
+- Piège worktree relevé : le dossier de travail n'est pas un dépôt mais un worktree de
+  `LevelUp/.git` avec un `gitdir:` absolu — le copier tel quel donne un dépôt cassé. La
+  restauration passe par `git clone` puis `git worktree add`.
+- Écart doc/réalité constaté au passage (non traité, hors périmètre) : `gitleaks` et le CLI
+  `duckdb` sont documentés dans `CLAUDE.md` mais absents du PATH du poste. Le hook
+  `gitleaks.sh` se dégrade donc en avertissement, l'autorité restant le job CI.
+
+**Prochaine étape** : rien de bloquant. Les deux skills sont armés et s'activeront via le hook
+`skill-activation-prompt.js`. Premier usage réel conseillé : un `adversarial-audit` cadré sur
+`internal/persist/` + `internal/sync/` avec l'axe A2 (garde-rails ART), qui est l'axe dont les
+défauts corrompent des données en prod.
+
 ## [2026-08-01] J3-1 — la dette mécanique : 70 à 43, et un item du plan qu'il fallait refuser
 
 **Statut** : Complété (lots A et B de `PLAN_DETTE_AVANT_MERGE.md`, plus J3.1 et J3.2 du master
