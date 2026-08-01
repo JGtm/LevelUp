@@ -1488,3 +1488,53 @@ Deux notes de faisabilite :
 **Ghidra n'a pas ete necessaire** : le film porte son propre schema. Il le redeviendrait si le
 balayage laissait des emplacements sans nom — le getter `0x142C6B118` et la table qu'il indexe
 sont alors la cible.
+
+### 17.5 Le balayage : les emplacements nommes, et le piege qu'il a revele
+
+Solveur `cmd/tmp_statnames` : pour chaque couple (film, joueur suivi), la valeur finale de
+chaque composant est confrontee au compte de chaque recompense de `personal_score_awards`,
+puis les candidates sont intersectees sur les films. L'identite du slot vient du compte de
+frags (`killed_player` = comp 2 A) — **cette ancre est donc circulaire pour comp 2 A seul**,
+et son nommage ne compte pas comme resultat.
+
+**Le premier balayage, tous modes confondus, etait FAUX** — et c'est lui qui a appris la
+regle. Il rendait `comp 21 A = flag_captured` quand la verification nominative sur le
+Strongholds disait `zone_secured`. Cause : **le sens d'un emplacement depend du MODE**.
+Intersecter des films de modes differents force un nom unique sur une case qui en porte
+plusieurs. Le mode se lit sans base — les recompenses le trahissent (`flag_*`, `zone_*`,
+`hill_*`, `ball_*`).
+
+Partitionne par mode, tout redevient coherent.
+
+**Modes a zones** (56 films, 76 couples) :
+
+| composant | recompense | observations |
+|---|---|---|
+| comp 20 B | **`zone_captured`** | 73 |
+| comp 21 A | **`zone_secured`** | 54 |
+| comp 3 A · comp 12 B | `kill_assist` | 69 · 68 |
+| comp 2 A · comp 12 A | `killed_player` (ancre) | 76 |
+
+**CTF** (147 films, 145 couples) — et c'est la reponse a l'objection :
+
+| composant | recompense | observations |
+|---|---|---|
+| comp 23 A | **`flag_returned`** | 80 |
+| comp 24 A | **`flag_stolen`** | 105 |
+| comp 21 B · comp 23 B | **`runner_stopped`** | 75 |
+| comp 22 A | `flag_taken` | 67 |
+| comp 20 B | `flag_capture_assist` | 47 |
+| comp 0 A · comp 21 A · comp 5 B | `flag_captured` | 54 · 54 · 74 |
+
+**Les trois recompenses a 25 points occupent trois composants distincts.** L'ambiguite de la
+§16.6 est levee : on lit le composant, pas la valeur.
+
+**Ce qui n'est pas ferme, et il faut le dire** : plusieurs cles portent le meme nom. Une
+partie est reelle (le statborg duplique des statistiques — `comp 12 A` reproduit `comp 2 A`
+sur 76/76 observations), une autre est une coincidence de comptes que seul un controle par
+moities disjointes trancherait. Table figee : `.ai/refs/TABLE_STATS_STATBORG.tsv`.
+
+**Angle mort assume** : l'oracle ne couvre que les **4 joueurs suivis** (les bases joueur),
+d'ou 588 couples ecartes sur 1 531. Un oracle sur les 8 joueurs viendrait de
+`match_objective_stats_latest` — dans la base partagee, tenue en ecriture par le serveur de
+dev pendant cette session.

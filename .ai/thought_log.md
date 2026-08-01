@@ -74574,3 +74574,16 @@ du film.** Prochaine étape : nommer les 28 emplacements par intersection sur le
 ne sont pas verrouillées par le serveur de dev). Ghidra n'a pas été nécessaire — le film
 porte son schéma ; il redeviendrait la cible si des emplacements restaient sans nom
 (getter `Team_GetCurrentRoundStatValue` @ 0x142C6B118).
+
+**Balayage des emplacements [2026-08-01]** — `cmd/tmp_statnames` nomme les emplacements de
+statistique par confrontation aux comptes de `personal_score_awards`. **Le premier balayage,
+tous modes confondus, était FAUX** et c'est lui qui a appris la règle : il rendait
+`comp 21 A = flag_captured` quand la vérification nominative sur Strongholds disait
+`zone_secured`. **Le sens d'un emplacement dépend du MODE.** Partitionné (le mode se lit dans
+les récompenses, sans base) : zones → `zone_captured` = comp 20 B (73 obs), `zone_secured` =
+comp 21 A (54 obs) ; CTF → `flag_returned` = comp 23 A (80), `flag_stolen` = comp 24 A (105),
+`runner_stopped` = comp 21 B / 23 B (75), `flag_taken` = comp 22 A (67). Les trois
+récompenses à 25 points sont bien dans trois composants distincts : l'objection est levée.
+Non fermé : plusieurs clés portent le même nom (duplication réelle du statborg + coïncidences
+de comptes), et l'oracle ne couvre que les 4 joueurs suivis. L'ancre d'identité (comp 2 A =
+`killed_player`) est circulaire pour elle-même et ne compte pas comme résultat.
