@@ -58,6 +58,10 @@ const (
 	fireFlagsBit    = 108
 	fireFlagsCount  = 5
 	fireAimBit      = 113
+	// FireHeadBits est la longueur MINIMALE, en bits, d'un payload pour que la tête du
+	// record tienne : le dernier champ obligatoire est le cinquième drapeau (bit 112).
+	// C'est la garde de decodeFireEvent — voir son commentaire.
+	FireHeadBits = fireFlagsBit + fireFlagsCount // 113
 	// FireAimBits est la largeur du champ de visée du record long (0x1E au site d'appel
 	// FUN_1406D8288 dans FUN_14080C1F8).
 	FireAimBits uint = 30
@@ -117,7 +121,10 @@ func ScanFilmFireEvents(dir string) ([]FireEvent, error) {
 			if int(pay[0]>>1) != FireEventType || int(pay[0])&1 != 0 {
 				continue // autre type d'event, ou variante courte (sans arme)
 			}
-			e := decodeFireEvent(pay)
+			e, ok := decodeFireEvent(pay)
+			if !ok {
+				continue // record tronqué : voir la garde de decodeFireEvent
+			}
 			e.Chunk, e.PacketIndex, e.TimestampUS = c, p.Index, p.TimestampUS
 			out = append(out, e)
 		}
@@ -128,8 +135,25 @@ func ScanFilmFireEvents(dir string) ([]FireEvent, error) {
 	return out, nil
 }
 
-// decodeFireEvent lit la tête du record type 105 d'un payload de paquet.
-func decodeFireEvent(pay []byte) FireEvent {
+// decodeFireEvent lit la tête du record type 105 d'un payload de paquet. Rend ok=false, sans
+// rien lire, si le payload est trop court pour porter cette tête.
+//
+// LA GARDE N'EST PAS DÉFENSIVE « au cas où » — le chemin était atteignable en production.
+// `ScanFilmFireEvents` n'exige que `p.Size >= 1` ; un paquet delta tronqué dont le premier
+// octet vaut 0xD2 (type 105, variante longue) suffisait à faire lire jusqu'au bit 112, et
+// `readBitsAt` indexe le tableau SANS borne — contrairement à `PeekBits`, qui rend 0 au-delà.
+// Un film tronqué par un téléchargement partiel faisait donc paniquer le décodeur ; en J4 il
+// tourne dans un collecteur de fond du process de sync, où une panique coûte le process entier.
+//
+// Le paquet a été audité pour ce même motif : ses frères sont sains. `scanGrenadeThrows` et
+// `scanProjectileRecords` bornent leur balayage (`len(pay)*8 - <bits du record>`) ET lisent par
+// `PeekBits` ; `offline_aim.go` teste `at+n > total` avant chaque composant ; `offline_biped.go`
+// et `i0_layout.go` bornent leur boucle sur `total`. `decodeFireEvent` était le seul à lire à
+// des offsets FIXES derrière une garde de taille qui ne les couvrait pas.
+func decodeFireEvent(pay []byte) (FireEvent, bool) {
+	if len(pay)*8 < FireHeadBits {
+		return FireEvent{}, false
+	}
 	e := FireEvent{Variant: int(pay[0]) & 1}
 	e.FilmIndex = int(readBitsAt(pay, fireAttackerBit, fireAttackerW)) >> 1
 	e.WeaponID = uint64(readBitsAt(pay, fireWeaponHiBit, fireWeaponW))<<32 |
@@ -144,7 +168,7 @@ func decodeFireEvent(pay []byte) FireEvent {
 			e.HasAim, e.Aim = true, v
 		}
 	}
-	return e
+	return e, true
 }
 
 // AimHeadingDeg renvoie le cap de visée du tir dans le plan XY, en degrés dans [0,360[,

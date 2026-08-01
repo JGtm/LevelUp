@@ -133,13 +133,47 @@ func ScanFilmWorldObjects(dir string, wr *Vec3Range, typeIndex int) ([]Projectil
 	}
 	out := make([]ProjectileTrack, 0, len(lives))
 	for k, pts := range lives {
-		sort.Slice(pts, func(i, j int) bool { return pts[i].TimestampUS < pts[j].TimestampUS })
+		// Tri TOTAL des échantillons d'une vie : l'instant seul laisse des ex æquo (plusieurs
+		// records du même projectile dans un même paquet), et un départage arbitraire ferait
+		// dépendre le premier point — donc la naissance — de l'ordre d'arrivée.
+		sort.Slice(pts, func(i, j int) bool { return lessSample(pts[i], pts[j]) })
 		for _, seg := range splitLives(pts) {
 			out = append(out, ProjectileTrack{Slot: k.slot, Gen: k.gen, Pts: seg})
 		}
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Pts[0].TimestampUS < out[j].Pts[0].TimestampUS })
+	// Tri TOTAL des vies. `lives` est une MAP : son ordre d'itération change à chaque exécution,
+	// et un tri sur le seul instant de naissance laissait cet aléa décider du rang des ex æquo.
+	// Ce n'était pas cosmétique : `replay.projectileBirths` retrie ces naissances et
+	// `birthNear` prend celle d'un INDICE donné — l'ordre choisissait donc la position publiée
+	// pour un lancer de grenade. Le couple (slot, gen) est unique par construction (c'est la clé
+	// de `lives`), l'instant de naissance sépare les segments d'une même clé : l'ordre est total.
+	sort.Slice(out, func(i, j int) bool { return lessTrack(out[i], out[j]) })
 	return out, nil
+}
+
+// lessSample : ordre total sur les échantillons d'une vie (instant, puis position).
+func lessSample(a, b ProjectileSample) bool {
+	if a.TimestampUS != b.TimestampUS {
+		return a.TimestampUS < b.TimestampUS
+	}
+	if a.X != b.X {
+		return a.X < b.X
+	}
+	if a.Y != b.Y {
+		return a.Y < b.Y
+	}
+	return a.Z < b.Z
+}
+
+// lessTrack : ordre total sur les vies (naissance, puis slot, puis génération).
+func lessTrack(a, b ProjectileTrack) bool {
+	if a.Pts[0].TimestampUS != b.Pts[0].TimestampUS {
+		return a.Pts[0].TimestampUS < b.Pts[0].TimestampUS
+	}
+	if a.Slot != b.Slot {
+		return a.Slot < b.Slot
+	}
+	return a.Gen < b.Gen
 }
 
 // projectileGapUS est le trou temporel au-delà duquel deux échantillons d'un même couple

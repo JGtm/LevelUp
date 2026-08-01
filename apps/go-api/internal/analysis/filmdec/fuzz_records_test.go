@@ -53,16 +53,12 @@ const miniFilmFromFilmdec = "../replay/testdata/minifilm_000d5950"
 // qu on cherche ici, ce sont les bornes de lecture, pas le volume.
 const fuzzMaxSeed = 4096
 
-// fireRecordHeadBytes est la longueur minimale qu un payload doit avoir pour que la TETE du
-// record type 105 tienne : les drapeaux s arretent au bit 112, soit 14 octets. La valeur porte
-// une marge d un mot parce qu elle borne un harnais, pas une lecture.
-const fireRecordHeadBytes = 18
-
 // FuzzFilmRecordReaders : les lecteurs de records ne paniquent sur AUCUNE entree.
 //
 // Les cinq lecteurs balayes sont ceux qui prennent un payload brut et calculent leurs bornes
-// eux-memes. `decodeFireEvent` est appele sur le chemin qui le protege dans la production (un
-// payload non vide), parce que c est ce contrat-la qu on veut verifier, pas un autre.
+// eux-memes. Ils sont appeles ici avec EXACTEMENT le contrat de la production — aucune garde
+// de longueur ajoutee par le harnais : un harnais qui protege ce que la production ne protege
+// pas ne teste rien.
 func FuzzFilmRecordReaders(f *testing.F) {
 	f.Add([]byte{})
 	f.Add([]byte{0xD2})
@@ -79,26 +75,20 @@ func FuzzFilmRecordReaders(f *testing.F) {
 		_ = scanGrenadeThrows(payload)
 		_ = scanProjectileRecords(payload, band, &wr)
 		_ = WalkKeyframeWorld(payload)
-		// Lecture DELIBEREMENT a cheval sur la fin du buffer : c est la tolerance que PeekBits
-		// documente. La position est bornee a 0 parce que c est le contrat que TOUS ses
-		// appelants de production respectent — ils bornent leur balayage. DECOUVERTE CONSIGNEE
-		// (J2, plan de finalisation) : la tolerance de PeekBits est A SENS UNIQUE — au-dela de
-		// la fin elle rend 0, mais une position NEGATIVE panique (`index out of range [-1]`),
-		// alors que sa documentation annonce « ne jamais paniquer sur un payload tronque ».
-		// Aucun appelant ne le fait aujourd hui ; non corrige ici (hors perimetre du jalon).
-		_ = PeekBits(payload, max(0, len(payload)*8-3), 24)
-		// DECOUVERTE CONSIGNEE (J2, plan de finalisation), et c est la plus serieuse des deux :
-		// `decodeFireEvent` PANIQUE sur un payload court. Il lit sans garde jusqu au bit 112
-		// (drapeaux), donc tout payload de moins de 14 octets le fait sortir des bornes —
-		// `readBitsAt` indexe le tableau sans borne, contrairement a `PeekBits`. Le chemin est
-		// ATTEIGNABLE EN PRODUCTION : `ScanFilmFireEvents` n exige que `p.Size >= 1` avant
-		// d appeler ce decodeur, et un paquet delta tronque dont le premier octet vaut 0xD2
-		// suffit. Non corrige ici — modifier la logique du decodeur est hors du perimetre du
-		// jalon. Le harnais se borne donc a la longueur du record, pour rester vert sans faire
-		// semblant que la garde existe.
-		if len(payload) >= fireRecordHeadBytes {
-			_ = decodeFireEvent(payload)
-		}
+		// Lecture DELIBEREMENT a cheval sur les DEUX bouts du buffer : c est la tolerance que
+		// PeekBits documente. Le depart negatif n est pas un caprice du harnais — jusqu au
+		// 2026-08-01 la tolerance etait a SENS UNIQUE et une position negative paniquait
+		// (`index out of range [-1]`), alors que la documentation annoncait le contraire
+		// (decouverte J2, alignee en J3.4). Cette ligne est ce qui interdit la rechute.
+		_ = PeekBits(payload, len(payload)*8-3, 24)
+		_ = PeekBits(payload, -4, 24)
+		// decodeFireEvent est appele SANS garde de longueur, exactement comme le fait
+		// `ScanFilmFireEvents` (qui n exige que `p.Size >= 1`). C etait la panique la plus
+		// serieuse des deux : le decodeur lisait jusqu au bit 112 a offsets FIXES via
+		// `readBitsAt`, qui indexe sans borne. La garde vit maintenant dans le decodeur, et la
+		// graine de troncature a trois octets d un payload de tir (seed_04, produite par
+		// collectFuzzSeeds) est l entree de crash conservee en regression.
+		_, _ = decodeFireEvent(payload)
 	})
 }
 
@@ -180,13 +170,6 @@ func clampSeed(b []byte) []byte {
 
 func min(a, b int) int {
 	if a < b {
-		return a
-	}
-	return b
-}
-
-func max(a, b int) int {
-	if a > b {
 		return a
 	}
 	return b
