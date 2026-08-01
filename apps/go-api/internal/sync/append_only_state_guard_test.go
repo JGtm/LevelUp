@@ -78,6 +78,15 @@ var appendOnlyStateTables = []string{
 	// match_objective_stats_latest). Écriture = INSERT pur (persistObjectiveStats) ;
 	// aucun DELETE / ON CONFLICT / INSERT OR REPLACE|IGNORE toléré. Lecture via _latest.
 	"match_objective_stats",
+	// match_kill_events / match_weapon_shots (J4, 2026-08-01) : créées directement
+	// append-only (id PK seq + decode_pass + written_at + vue _latest). L'unité de
+	// génération est la PASSE DE DÉCODAGE, pas la ligne : la vue retient la DERNIÈRE
+	// PASSE par match. Écriture = INSERT pur (kill_events_persister.go /
+	// weapon_shots_persister.go, un seul statement chacun) ; aucun DELETE /
+	// ON CONFLICT / INSERT OR REPLACE|IGNORE toléré. Lecture via _latest UNIQUEMENT —
+	// une lecture brute servirait les lignes des passes précédentes.
+	"match_kill_events",
+	"match_weapon_shots",
 }
 
 // rawPMEReadAllowlist : accès BRUTS intentionnels à player_match_enrichment (hors
