@@ -1,3 +1,40 @@
+## [2026-08-01] Q2 RÉSOLU pour les modes à objectifs — le score est le composant 0 de l'archétype 6
+
+**Statut** : Complété. Q2 établi pour Strongholds et CTF ; Q4-KOTH réfuté ; localisateur hors
+ligne tenté et négatif (chiffré). Branche `feat/re-mode-score`.
+
+**Décision technique** : arrêter de chercher le score dans les images-clés TYPE_2 et faire le
+pont entre la capture Cheat Engine et le film par une identité arithmétique. La capture donne
+le curseur moteur `c` et 16 octets lus ; la recette de localisation les place à
+`paquet.Start + 8*floor(c/64) + 8` ; en retrouvant la signature à l'offset `M`, la position
+exacte du composant vaut `8*M - 64 + (c mod 64)`. Aucun balayage, aucun paramètre libre.
+
+**Résultats observés** :
+- **2 708/2 716 lectures localisées** (Strongholds) et **2 331/2 340** (CTF), zéro signature
+  absente. L'archétype 6 est le statborg et porte 2 entités d'équipe + 8 entités de joueur.
+- **Composant 0 = le score de mode** : 200 et 94 en Strongholds, 3 en CTF (l'équipe à 0
+  n'émet jamais — une valeur qui ne change pas n'est pas répliquée), plus les contributions
+  par joueur (2 et 1, exactement leurs `flag_captures`).
+- **Composant 1 = score personnel** (8 420 / 7 420 et les 8 joueurs), **composant 2 =
+  frags/morts** (54/48 et 48/55 ; 53/40 et 39/54). Toutes exactes à l'unité contre l'API.
+- **Fermeture arithmétique gratuite** : la somme des 8 scores personnels du Strongholds fait
+  15 840 = 8 420 + 7 420, sans ajustement.
+- **Résolution temporelle** : le composant n'est réémis QUE lorsqu'il change — 190 émissions
+  monotones pour l'équipe qui mène en Strongholds, 3 émissions pour 3 captures en CTF. Plus
+  fin que le tick de 5 s du footer, et sans battement.
+- **Q4-KOTH réfuté** sur 8 films neufs à 8 lignes propres : le film compte 1,4 à 2,6 fois plus
+  que `zone_captures+secures`, rapport non constant. Le défaut de `01e1f945` n'était pas la
+  cause. En KOTH l'événement de mode est un tick d'occupation, pas une prise.
+- **Localisateur hors ligne : négatif et chiffré.** Le motif « 10 bits nuls + deux valeurs à
+  longueur variable » rend 103 560 candidats sur un seul film et atteint les 200 valeurs du
+  score : saturé de bruit. La marche extraite contredit le relevé terrain.
+
+**Conclusion / prochaine étape** : la lecture du score est établie mais dépend encore de la
+capture CE pour localiser — elle ne vaut donc que pour les 2 films capturés. Le passage à
+l'universel ne se fera pas par motif mais par parcours de la chaîne d'enregistrements de trame
+(`FUN_1406CD128`, déjà porté dans `filmdec/frame_records.go`). La nouveauté qui rend ce
+parcours enfin vérifiable : 5 039 positions de bit exactes avec leurs valeurs attendues.
+
 ## [2026-08-01] RE mode→score, seconde passe — Q2 localisé en Slayer, Q5 chiffré, un faux positif démasqué
 
 **Statut** : Complété pour Q1, Q3, Q5 ; Q4 établi (zones) / réfuté (CTF) / indécidable (KOTH) ;
