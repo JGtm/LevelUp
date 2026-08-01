@@ -924,3 +924,37 @@ facon de l'obtenir.
 
 Une fois `W` connu, la boucle de trame se parcourt de bout en bout **sans capture Cheat
 Engine** — et la courbe de score de la section 12 devient disponible sur les 951 films du cache.
+
+### 14.4 La largeur de l'identifiant : DERIVEE du binaire, mais NON confirmee par la mesure
+
+La voie statique a abouti. `FUN_1406D310C` est un `ceil(log2(x))` : la largeur se deduit d'une
+**borne**. Et l'initialiseur **`FUN_140D10BB0`** remplit la table des bornes en clair :
+
+| index | base | borne | largeur deduite |
+|---|---|---|---|
+| 0, 1 | 0x200 | `0x1FFF - 0x200` | 13 |
+| 2 | 0x200 | 0x100 | 8 |
+| 3 | 0x300 | 0x100 | 8 |
+| 4 | 0x200 | 0x200 | 9 |
+| 5 | 0x400 | 0x100 | 8 |
+| 6 | 0 | 0x200 | 9 |
+| **7** *(l'appel de la boucle de trame)* | **0** | **0x1FFF** | **13** |
+| 8 | 0 | 0x1FFF | 13 |
+
+`DAT_144706100 = 0x1FFF` est lu en clair dans l'image, et `DAT_144706104 = 1` (l'initialiseur
+l'arme). L'identifiant d'entite serait donc **`[13 bits slot][2 bits generation]`**, sans base.
+
+**Mais la mesure ne le confirme pas** : en testant toutes les largeurs de 8 a 32 juste avant le
+masque, **aucune** ne rend le slot attendu. La grammaire du masque, elle, est bonne a 99 % —
+donc l'erreur est **entre l'identifiant et le masque**, pas apres.
+
+**Ce qu'il faut verifier en premier a la reprise** (et ne pas re-deviner) : `FUN_1406CD128`
+porte deux lectures conditionnelles gatees par `FUN_14076CEA8()` — un mot de 32 bits en tete de
+chaque tour de boucle, et un autre de 8 bits sur certains types. `FUN_14076CB60` en porte une
+troisieme : un mot de 32 bits **apres chaque composant**, compare a la sentinelle
+`0xBCDDCBA` (« entity component corrupt »). Si ce mode est actif dans les films, il decale tout
+ce qui precede le masque. La sentinelle `0xBCDDCBA` est **cherchable directement dans le
+flux** : sa presence ou son absence tranche la question en une passe, sans hypothese.
+
+C'est la seule inconnue restante entre l'etat actuel et un parcours de chaine complet hors
+ligne — donc entre l'etat actuel et la courbe de score sur les 951 films du cache.
