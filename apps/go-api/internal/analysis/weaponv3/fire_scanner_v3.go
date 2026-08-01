@@ -100,27 +100,44 @@ func ScanFireEventsV3(data []byte, estimateTS func(int) float64, layout FirePiLa
 			continue
 		}
 
-		weaponInt := readFireBitsU64(data, weaponStart, 64)
-		var weaponBytes [8]byte
-		binary.BigEndian.PutUint64(weaponBytes[:], weaponInt)
-		if !fireWeaponAccepted(weaponInt, weaponBytes, relax3) {
+		weapon := fireWeapon{id: readFireBitsU64(data, weaponStart, 64)}
+		binary.BigEndian.PutUint64(weapon.bytes[:], weapon.id)
+		if !fireWeaponAccepted(weapon.id, weapon.bytes, relax3) {
 			continue
 		}
 
-		ev := buildFireEvent(data, bitPos, eventStart, weaponStart, totalBits, weaponInt, weaponBytes, layout, estimateTS)
-		events = append(events, ev)
+		site := fireSite{bitPos: bitPos, eventStart: eventStart, weaponStart: weaponStart, totalBits: totalBits}
+		events = append(events, buildFireEvent(data, site, weapon, layout, estimateTS))
 	}
 
 	return dedupAndSortFires(events)
+}
+
+// fireSite regroupe les quatre positions de bits d'un fire-event candidat. Elles pointent
+// toutes dans le MÊME flux et sont toutes des `int` : passées à la file, deux d'entre elles
+// s'intervertissent sans que le compilateur bronche.
+type fireSite struct {
+	bitPos      int // début du marqueur (origine de l'horodatage)
+	eventStart  int // bitPos + longueur du préfixe "101"
+	weaponStart int // eventStart + fireWeaponBitOffset
+	totalBits   int // borne du flux
+}
+
+// fireWeapon porte l'identifiant d'arme sous ses deux formes : l'entier lu et ses 8 octets
+// big-endian (les deux sont attendus par analysis.FireEvent).
+type fireWeapon struct {
+	id    uint64
+	bytes [8]byte
 }
 
 // buildFireEvent assemble un analysis.FireEvent à partir des positions de bits
 // résolues. Seul le player_index dépend du layout ; le reste (fireSeq, counter,
 // burst/hit) reprend exactement la v2.
 func buildFireEvent(
-	data []byte, bitPos, eventStart, weaponStart, totalBits int,
-	weaponInt uint64, weaponBytes [8]byte, layout FirePiLayout, estimateTS func(int) float64,
+	data []byte, site fireSite, weapon fireWeapon,
+	layout FirePiLayout, estimateTS func(int) float64,
 ) analysis.FireEvent {
+	eventStart, totalBits := site.eventStart, site.totalBits
 	b5Int := readFireBitsU8(data, eventStart+fireB5BitOffset, 8)
 	pi := readFirePI(data, eventStart, b5Int, layout)
 
@@ -133,14 +150,14 @@ func buildFireEvent(
 		fireCounter = int(readFireBitsU8(data, eventStart+24, 8))
 	}
 
-	weaponName := analysis.WeaponIDToName[weaponInt]
+	weaponName := analysis.WeaponIDToName[weapon.id]
 	if weaponName == "" {
 		weaponName = "INCONNU"
 	}
 
 	var burstEnd bool
 	var hitLikely *bool
-	postStart := weaponStart + 64
+	postStart := site.weaponStart + 64
 	if postStart+32 <= totalBits {
 		postB1 := readFireBitsU8(data, postStart+8, 8)
 		postB2 := readFireBitsU8(data, postStart+16, 8)
@@ -150,15 +167,15 @@ func buildFireEvent(
 	}
 
 	return analysis.FireEvent{
-		TimestampMS: estimateTS(bitPos / 8),
+		TimestampMS: estimateTS(site.bitPos / 8),
 		PlayerIndex: pi,
 		Slot:        int(b5Int & 0x03),
 		B5:          int(b5Int),
 		WeaponName:  weaponName,
-		WeaponBytes: weaponBytes,
+		WeaponBytes: weapon.bytes,
 		FireSeq:     fireSeq,
 		FireCounter: fireCounter,
-		BytePos:     bitPos / 8,
+		BytePos:     site.bitPos / 8,
 		BurstEnd:    burstEnd,
 		HitLikely:   hitLikely,
 	}

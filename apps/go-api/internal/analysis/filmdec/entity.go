@@ -97,10 +97,9 @@ func DecodeEntityRecord(br *BitReader, fullState bool) EntityRecord {
 
 	rec.B1D = uint8(br.ReadBits(1)) // rec[0x1D]
 
-	valid := true
-	if (rec.ID5 != 0xFFFFFFFF && rec.ID5 > 3) || rec.B1D > 1 {
-		valid = false
-	}
+	// Un ID5 present doit tenir sur 0..3 et B1D sur 0..1 : hors de ces bornes, le record
+	// est lu de travers (marqueur de desynchronisation, pas une donnee du jeu).
+	valid := (rec.ID5 == 0xFFFFFFFF || rec.ID5 <= 3) && rec.B1D <= 1
 
 	rec.Field02 = uint8(br.ReadBits(1)) // rec[0x02]
 
@@ -213,9 +212,10 @@ func DecodeEntityRecord(br *BitReader, fullState bool) EntityRecord {
 	br.ReadBit() // rec[0x04]
 
 	// --- step 26 ---
-	if br.ReadBit() {
-		// FUN_14076e494: id resolver, NO bit reads.
-	}
+	// La porte se consomme, mais son corps est vide PAR CONSTRUCTION : la branche prise
+	// appelle FUN_14076e494 (resolveur d'id) qui ne lit AUCUN bit. Ne pas « remettre » un
+	// corps ici — il n'y a rien a lire.
+	br.ReadBit()
 
 	rec.Valid = valid
 	return rec

@@ -134,25 +134,13 @@ func (m *Module) loadHd1(path string) {
 	if err != nil || len(raw) == 0 {
 		return
 	}
-	var ents []File
-	for i := 0; i < m.fileCount && len(ents) < 400; i++ {
-		if f := m.file(i); f.UseHd1() && f.CompSize > 0 {
-			ents = append(ents, f)
-		}
-	}
+	ents := m.hd1Probes()
 	if len(ents) == 0 {
 		return
 	}
 	best, bestN := -1, 0
 	for _, base := range hd1BaseCandidates(m.data, len(raw)) {
-		n := 0
-		for _, f := range ents {
-			off := base + int(f.DataOffset)
-			if off >= 0 && off+f.CompSize <= len(raw) && raw[off]&0xF0 == 0x80 {
-				n++
-			}
-		}
-		if n > bestN {
+		if n := hd1BaseScore(raw, ents, base); n > bestN {
 			bestN, best = n, base
 		}
 	}
@@ -160,6 +148,32 @@ func (m *Module) loadHd1(path string) {
 	if best >= 0 && bestN*2 >= len(ents) {
 		m.hd1, m.hd1Base = raw, best
 	}
+}
+
+// hd1Probes rend l'echantillon d'entrees qui sert de temoin a la calibration : les entrees
+// marquees hd1 et non vides, plafonnees a 400 (au-dela, le critere ne separe pas mieux).
+func (m *Module) hd1Probes() []File {
+	var ents []File
+	for i := 0; i < m.fileCount && len(ents) < 400; i++ {
+		if f := m.file(i); f.UseHd1() && f.CompSize > 0 {
+			ents = append(ents, f)
+		}
+	}
+	return ents
+}
+
+// hd1BaseScore compte, pour une base candidate, les entrees temoins dont la premiere lecture
+// tombe DANS les bornes du compagnon ET dont le premier octet porte un en-tete Kraken
+// (nibble haut 0x8). Une base fausse echoue en masse : c'est ce qui rend le critere separant.
+func hd1BaseScore(raw []byte, ents []File, base int) int {
+	n := 0
+	for _, f := range ents {
+		off := base + int(f.DataOffset)
+		if off >= 0 && off+f.CompSize <= len(raw) && raw[off]&0xF0 == 0x80 {
+			n++
+		}
+	}
+	return n
 }
 
 // hd1BaseCandidates enumere les bases plausibles du compagnon : 0, la valeur derivee de
