@@ -1,6 +1,6 @@
 //go:build integration
 
-// Package sync — killsource_collector_test.go : LE GATE DU BRANCHEMENT.
+// Package killcollector — collector_test.go : LE GATE DU BRANCHEMENT.
 //
 // Le test central decode un FILM REEL, ecrit en base de test et relit PAR LA VUE `_latest` —
 // la chaine entiere, sans mock du decodeur ni du persister. C est le seul test du lot qui
@@ -10,13 +10,13 @@
 // comme les goldens du decodeur. Le skip porte la commande exacte pour le rejouer — un skip
 // muet ferait passer une absence de couverture pour une couverture.
 //
-//	KILLSOURCE_FIXTURES=../../../../data/cache/film_chunks \
-//	  go test -tags=integration -p 1 ./internal/sync/ -run KillSource
+//	KILLSOURCE_FIXTURES=../../../../../data/cache/film_chunks \
+//	  go test -tags=integration -p 1 ./internal/sync/killcollector/
 //
 // Les tests de contrat (capability, delai, traduction) tournent SANS fixture : ils n ont pas
 // besoin d un film.
 
-package sync
+package killcollector
 
 import (
 	"context"
@@ -100,7 +100,7 @@ func chargerFilmDeFixture(t *testing.T, court string) []haloclient.FilmChunk {
 	if root == "" {
 		t.Skip("KILLSOURCE_FIXTURES absent : les films ne sont pas versionnes (107 Mo). " +
 			"Rejouer avec KILLSOURCE_FIXTURES=<racine des films en cache> " +
-			"go test -tags=integration -p 1 ./internal/sync/ -run KillSource")
+			"go test -tags=integration -p 1 ./internal/sync/killcollector/")
 	}
 	names, err := filepath.Glob(filepath.Join(root, court, "chunk_*.bin"))
 	if err != nil || len(names) == 0 {
