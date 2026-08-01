@@ -1,3 +1,81 @@
+## [2026-08-01] J3-2 — la dette avant merge soldée : 43 a 0, et deux prémisses démenties
+
+**Statut** : Complété (jalon J3 CLOS ; `PLAN_DETTE_AVANT_MERGE.md` lots C et D, plus J3.3,
+J3.4, J3.5 et les 3 `argument-limit` hérités de J3-1).
+
+**Décision technique principale** : faire décider le lot C par un INDICE, pas par une
+intuition. La question du plan — « le composant est-il atteignable depuis `traverse.go` pour un
+archétype qu'on décode déjà ? » — se tranche mécaniquement dès qu'on remarque que le traverseur
+s'arrête au PREMIER composant présent non porté : un lecteur du composant i(k) ne change rien
+s'il existe un trou à un indice ANTÉRIEUR. J'ai donc croisé le registre ECS complet (118
+archétypes, 1 067 composants — le compte de J0.4, retrouvé à l'unité) avec les 188 noms du
+`switch consumeByName`, et comparé indice par indice. **Résultat : zéro cas (a).** Aucun des 34
+n'était un bug de dispatch, et il n'y avait donc rien à brancher — ce qui est cohérent avec le
+gate du lot, qui exige des artefacts identiques : un branchement qui améliorerait le décodage
+l'aurait fait échouer. Améliorer le décodage n'est pas de la dette, c'est J6-A.
+
+Le critère (b)/(c) hors du garde-fou du superviseur, lui, tient en une phrase : **un `//nolint`
+n'est honnête que si sa condition de retrait est ÉVALUABLE**, donc adossée à un travail nommé
+dans un plan. Sans ça, c'est un trou permanent — l'anti-pattern n°2 du dépôt. Deux lecteurs
+seulement passent ce test : ceux des objectifs `ti=11` et des zones `ti=23`, les deux
+archétypes planifiés. Les 32 autres partent, et `git` garde le code avec l'adresse `FUN_` qui a
+servi à l'établir.
+
+**Résultats observés** :
+- **43 → 0.** `golangci-lint --new-from-merge-base=origin/main`, cache purgé avant la mesure :
+  `0 issues.` C'est la cible F1 du lot F, atteinte. `go test ./...` vert.
+- Les 7 grandeurs des 3 films sont restées identiques à l'unité près à CHAQUE gate (gate à
+  blanc d'entrée mesuré dans la session, puis un gate par bloc).
+- L'artefact de rejeu est désormais **reproductible à l'octet**, et le fixture d'entrées des
+  goldens aussi.
+
+**Deux prémisses écrites dans le plan se sont révélées fausses, et c'est le plus utile de la
+session** :
+
+1. **J3.5 ne décrivait que la moitié du défaut.** Le plan disait « tri instable ». Le diff
+   champ par champ de deux constructions du même film montre exactement deux champs mobiles :
+   `projectiles` a bien le même multi-ensemble à l'ordre près — mais **`grenades` change de
+   VALEUR**. Le lancer `t=1580` de `01e1f945` sort à (11,41 ; 17,99) ou à (12,72 ; −187,11)
+   selon l'exécution. Une seule chaîne causale explique les deux : l'itération de la map de
+   `ScanFilmWorldObjects` fixe l'ordre d'arrivée, un tri sur le seul instant laisse cet aléa
+   départager les naissances de projectile ex æquo, et `birthNear` prend la naissance d'un
+   INDICE donné — l'aléa choisissait donc la position publiée. Sans le diff, j'aurais rendu
+   les tris totaux et déclaré l'item fait sans jamais voir que la position bougeait.
+
+2. **J3.3 proposait un correctif qui n'aurait rien réglé.** « Élargir le glob du hook
+   pre-push » ne traite pas le mode d'échec constaté : la branche fautive n'avait pas été
+   poussée SANS sources web, elle n'avait **jamais été poussée**. Aucun glob ne rattrape ça —
+   seul un job qui tourne à chaque push le peut. Le ratchet est donc devenu un step de CI sans
+   filtre de chemin, et le hook local porte maintenant en commentaire qu'il n'est PAS
+   l'autorité, pour que personne ne croie régler l'angle mort en élargissant son glob.
+
+**Piège de méthode consigné** : la commande de comptage du §1 du plan de dette
+(`grep -E "^[a-zA-Z_/\]+\.go:..."`) **sous-compte** — sa classe de caractères n'admet pas les
+chiffres, donc tout fichier au nom numéroté (`components_batch3.go`, `components_batch8.go`)
+tombe. Elle rendait 21 au lieu de 43 sur la même sortie. Corrigée dans le plan.
+
+**Ce qui a été refusé, et pourquoi** : rien n'a été branché au dispatch, rien n'a été renommé
+(le faux doublon `consumeQuantVec3` / `consumeQuantVec3WithGate` est statué — ce n'en est pas
+un, `WithGate` a une porte de MOINS, les comptes de bits diffèrent, les deux ont des appelants
+vivants ; le piège de nommage est documenté au site, le renommage reste hors périmètre), et
+aucune découverte n'a été traitée.
+
+**Découverte à remonter en priorité** : dans `ci.yml`, le step « Guard — feedback-drawer ne
+doit pas importer le wrapper api » **ne se déclenche jamais**. Le job déclare
+`working-directory: apps/web` et le `grep` du step vise `apps/web/src/…` — soit, depuis ce cwd,
+`apps/web/apps/web/src/…`, qui n'existe pas. `grep` sort en 2, la condition est fausse, le step
+passe toujours. Ce garde protège d'une fuite de `X-LevelUp-Title` et des cookies de session
+vers GitHub : il ne protège rien aujourd'hui. Correctif à un préfixe près — hors périmètre J3,
+non fait.
+
+**Conclusion / prochaine étape** : J3 est clos, la branche est propre au sens du ratchet. Il
+reste au jalon J5 : le lot E (go/no-go qui dérive tout seul — `openapi.yaml`, `routeTree.gen`,
+knip, vitest/tsc/eslint, `go test -tags=integration`, `govulncheck` après montée de Go, les
+ratchets archlint, rotation du thought_log) et le lot F2/F3 — **re-merger `origin/main` à jour
+puis RE-MESURER** (la base du ratchet bouge avec `main`, un 0 d'aujourd'hui n'est pas un 0 de
+demain), et prévenir avant le push sur `main` (= déploiement prod automatique). Le prochain
+jalon de fond est J4.
+
 ## [2026-08-01] Deux skills de revue adversariale, et l'espace de travail mis sur clé
 
 **Statut** : Complété.

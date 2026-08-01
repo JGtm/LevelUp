@@ -291,11 +291,16 @@ Ajouts de cette revue au plan (à statuer dans sa session) :
 - [x] J3.2 Lot A : supprimer aussi le jeu d'images de grenades orphelin (`Dynamo-light.png`,
       casse majuscule — découverte n°1 de la réconciliation, aucun consommateur).
       *FAIT — 8 PNG (4 types × light/dark). `index.json` ne désignait que le jeu minuscule.*
-- [ ] J3.3 Élargir le déclencheur du hook pre-push `knip-ratchet` (découverte J1-b : il ne se
+- [x] J3.3 Élargir le déclencheur du hook pre-push `knip-ratchet` (découverte J1-b : il ne se
       déclenche que sur `apps/web/**` — un dépassement de plafond est resté invisible tant
       que les push étaient documentaires). Correctif honnête au choix : déclencher aussi sur
       la config/le plafond knip, ou jouer le ratchet en CI sans condition de chemin.
-- [ ] J3.4 **Gardes du décodeur** (découvertes J2-D1/D2, arbitrées le 2026-07-31) :
+      *FAIT 2026-08-01, par la SECONDE voie — et la première n'aurait rien réglé : le mode
+      d'échec constaté n'est pas « le push ne touchait pas de source web », c'est « la branche
+      n'a jamais été poussée », qu'aucun glob ne rattrape. Le ratchet est un step du job
+      `frontend` de `ci.yml`, sans filtre de chemin ; le hook local reste en filet rapide et
+      son commentaire dit qu'il n'est pas l'autorité. Vérifié depuis `apps/web` : sort en 0.*
+- [x] J3.4 **Gardes du décodeur** (découvertes J2-D1/D2, arbitrées le 2026-07-31) :
       (a) `decodeFireEvent` panique sur un payload < 14 octets et le chemin est atteignable
       (`ScanFilmFireEvents` n'exige que `Size >= 1`) — poser la garde de longueur, auditer
       les décodeurs frères (lancers, projectiles) pour le même motif, et conserver l'entrée
@@ -303,10 +308,32 @@ Ajouts de cette revue au plan (à statuer dans sa session) :
       documenté (tolérance à sens unique aujourd'hui). **AVANT le merge** : J4 met le
       décodeur dans un collecteur en tâche de fond du process sync — une panique sur film
       malformé y coûterait le process entier. Sous protection des goldens J2.
-- [ ] J3.5 **Tri total des projectiles** (découverte J2-D3) : l'artefact n'est pas
+      *FAIT 2026-08-01. (a) Garde de longueur posée (`decodeFireEvent` rend `ok bool`), le
+      harnais de fuzz appelle désormais les lecteurs avec EXACTEMENT le contrat de production
+      (ses deux contournements retirés), la graine `seed_04` — troncature à 3 octets d'un
+      payload de tir, produite par `collectFuzzSeeds` donc régénérable — est l'entrée de crash
+      gardée en régression, et deux tests dédiés figent les deux seuils. **Audit des frères :
+      ils sont SAINS** — les scanners de lancers et de projectiles bornent leur balayage ET
+      lisent par `PeekBits` ; `offline_aim` teste `at+n > total` avant chaque composant ;
+      `offline_biped` et `i0_layout` bornent leur boucle sur `total`. `decodeFireEvent` était
+      le seul à lire à offsets FIXES derrière une garde de taille qui ne les couvrait pas.
+      (b) `PeekBits` aligné : sa tolérance valait à la fin, pas au début.*
+- [x] J3.5 **Tri total des projectiles** (découverte J2-D3) : l'artefact n'est pas
       reproductible à l'octet (map + `sort.Slice` instable, 1 position de lancer sur 130
       bouge). Un tri total rend l'artefact ET le fixture déterministes — au service des
       goldens, du diff, et du cache prod futur.
+      *FAIT 2026-08-01 — **et la cause annoncée n'était que la moitié de l'histoire**. Le diff
+      champ par champ de deux constructions montre exactement DEUX champs mobiles :
+      `projectiles` a le même multi-ensemble à l'ordre près (instabilité de tri, comme prévu),
+      mais **`grenades` change de VALEUR** — le lancer `t=1580` de `01e1f945` sort à
+      (11,41 ; 17,99) ou à (12,72 ; −187,11). Chaîne unique : l'itération de la map de
+      `ScanFilmWorldObjects` fixe l'ordre d'arrivée, un tri sur le seul instant laisse cet aléa
+      départager les naissances de projectile EX ÆQUO, et `birthNear` prend la naissance d'un
+      INDICE donné — l'aléa choisissait la position publiée. Quatre tris rendus totaux.
+      **Preuve, les deux volets** : deux constructions successives de chacun des trois films
+      rendent des octets identiques ; et le fixture d'entrées des goldens, régénéré deux fois,
+      rend la même empreinte — alors qu'il DIFFÉRAIT de la version committée (celle-ci n'était
+      qu'un tirage). Fixture stabilisé committé ; sortie figée d'assemblage INCHANGÉE.*
 - [~] J3.6 Retirer la dépendance fantôme `js-yaml` d'`apps/web` (découverte J2-D5).
       Découverte J2-D4 (huit familles d'effet pour sept géométries, `plain` = balistique
       aminci) : **AUCUNE action** — c'est le repli sobre documenté (`ETAT_DU_POC.md`).
@@ -338,6 +365,19 @@ relevé elle n'est pas vérifiée du tout.
 > position), 4 `staticcheck`, 3 `revive argument-limit`, 2 `gocyclo`.
 > **J3-2 hérite d'un item de plus** : les 3 `revive argument-limit`, écartés de la passe
 > mécanique parce que rentrer sous le plafond demande de regrouper des paramètres.
+
+> **J3-2 CLOS le 2026-08-01 — ET J3 AVEC LUI. 43 → 0.** Lot C (les 34 `unused` statués un par
+> un : **0 cas (a)**, 32 retirés, 2 gardés sous `//nolint` daté à condition de retrait), lot D
+> (`gocyclo` découpés ; les 4 `staticcheck` lus d'abord — **aucun défaut de logique**), les 3
+> `argument-limit` regroupés en structure, J3.3/J3.4/J3.5 faits.
+> `golangci-lint --new-from-merge-base=origin/main`, cache purgé : **`0 issues.`** — c'est la
+> cible **F1** atteinte. `go test ./...` vert. Les 7 grandeurs des 3 films identiques à
+> l'unité près à chaque gate, et l'artefact est désormais **reproductible à l'octet**.
+> **Restent pour J5** : F2 (re-merger `origin/main` puis RE-MESURER — la base du ratchet bouge
+> avec `main`) et tout le lot E, plus F3 (prévenir avant le push sur `main`).
+> **Découverte à traiter en priorité, hors périmètre J3** : un garde de CI ne se déclenche
+> jamais (« Guard — feedback-drawer », chemin doublement préfixé sous
+> `working-directory: apps/web`) — détail au journal du plan de dette, découverte n°3.
 
 ---
 
@@ -439,6 +479,21 @@ suite de sessions), un merge rapide (< 1 semaine de vie par branche). Surfaces d
 |---|---|---|---|
 | **A — décodeur** (UNE seule session à la fois, toujours) | `PLAN_CAPACITES_ACTIVES` puis `PLAN_VARIABLES_JETEES` puis FINALISATION lot 5 (fil des éliminations + médailles) et lot 6, puis `PLAN_OBJECTIFS_TEMPS_REEL` étape 3 | `filmdec/`, `analysis/replay/`, `killsource/`, artefact, `match-replay/` | J2 (goldens) ; étape 3 objectifs : J0.4 (table) + Ghidra |
 | **B — cartes** | `PLAN_BELLE_CARTE_TRIANGLES` (étapes 0.1 → 6) puis FINALISATION lot 4 | `himap/`, `himodule/`, `cmd/mapstruct-build`, `mapFloor.ts`, `data/.../reference/` | aucune (modules du jeu sur la clé) |
+| **B2 — la palette Forge : NOMMER et MESURER** *(ajoutée le 2026-08-01)* | session de recherche dédiée (prompt superviseur) | `mapvar/`, `himodule/`, `cmd/mapobj-build`, `map_objectives.json`, plus tard le rendu | palette Forge (sur la clé ET sur `D:` depuis le 31/07) ; **prérequis de tout affichage d'objectif** |
+
+**Pourquoi B2 existe — constat vérifié le 2026-08-01.** L'extraction d'objectifs ne porte
+**aucune forme** : `mapvar.Objective` = `Pos` + `Forward` + `TeamIndex` + labels. Une zone y
+est un POINT. Dessiner un disque serait donc une invention, pas une lecture — et
+l'observation utilisateur va plus loin : bases, extractions et collines ont des **angles
+droits**, et la présence de `Up` ET `Forward` dans `mapvar.Object` (deux axes = base
+d'orientation complète) indique des **boîtes ORIENTÉES**, qu'un disque ne peut pas
+représenter même en ajustant un rayon. Trois sources candidates à trier, dans cet ordre :
+(1) `forge_object_types.csv` porte DÉJÀ une emprise par type (`min/max_{x,y,z}`, `dx/dy/dz`,
+colonne `geom`) sur 45 types — c'est une boîte, pas un rayon ; (2) une éventuelle **échelle
+par objet** dans le `.mvar`, non décodée aujourd'hui (Forge permet de redimensionner) ;
+(3) l'entité de zone à l'exécution (`ti=23`, **33/33 désérialiseurs lisibles depuis J0.4**)
+si le statique ne suffit pas — cas des collines mobiles (KOTH). B2 traite dans la même passe
+le `[!]` power-ups de J0.2 (`type_id → nom`) : même module, même parcours.
 | **C — objectifs côté app** | `PLAN_OBJECTIFS_TEMPS_REEL` étapes 1-2 (brancher ce qui dort) ; FINALISATION lot 7.4 (scores de mode) sur SA PROPRE branche | `internal/sync/` (producteur), front consommation, `map_objectives.json` ; 7.4 : `analysis/` scores | étape 1 : rien ; 7.4 : rien (mais gros) |
 | **D — icônes d'armes** | `PLAN_RECHERCHE_ASSETS_ICONES` | `himodule/` lecture, `static/`, `TitleAssetURLAdapter` | rien ; peut échouer sans dette ; **GATE HUMAIN entre phase 1 et phase 2** (revue visuelle utilisateur AVANT toute intégration — décision #4) |
 | **E — précision projectiles** | `HANDOFF_PRECISION_PROJECTILES` | outillage de mesure + Ghidra (hors ligne) | rien ; MESURE seulement jusqu'au verdict ; **timebox 2 sessions** puis verdict écrit (décision #6) |
@@ -924,3 +979,37 @@ comme prévu).
   Slayer (score = frags killsource), ancres terrain J0.6, personal_score à l'unité.
   Sous-produit consigné pour A5 (mêmes codes 0x02-0x3c). Étapes 1-2 du plan objectifs
   (côté app) : inchangées.
+- **[2026-08-01 — superviseur, périmètre] Piste B2 créée : la FORME des zones.** Observation
+  utilisateur : les zones (bases, extraction, KOTH) ne sont pas toujours circulaires — angles
+  droits fréquents. Vérifié sur pièces, et le problème est plus large que « gérer les
+  formes » : **l'extraction ne porte aucune forme du tout** (`mapvar.Objective` = un point +
+  une orientation). Rien n'est donc à corriger dans un rendu — il n'y a rien à rendre.
+  Trois sources candidates identifiées (emprise de `forge_object_types.csv` / échelle
+  par objet dans le `.mvar` / entité `ti=23` à l'exécution), voir §J6-B2. Groupée avec le
+  `[!]` power-ups de J0.2 : même module Forge, même passe. **Placement** : avant tout
+  affichage d'objectif (plan objectifs étape 4.1, lot 7.3c) ; sans dépendance sur le
+  verdict mode→score — les deux sessions sont parallélisables (surfaces disjointes :
+  `mapvar`/`himodule` contre film/Ghidra), ou séquentielles sur le même worktree.
+- **[2026-08-01 — J3-2, exécuteur] J3 CLOS : 43 → 0.** Lot C, les 34 `unused` statués un par
+  un — et le verdict s'est décidé sur un INDICE, pas sur une intuition : le traverseur
+  s'arrête au PREMIER composant présent non porté, donc un lecteur du composant i<sub>k</sub>
+  ne change rien s'il existe un trou à un indice antérieur. Croisement fait sur pièces entre
+  le registre ECS (118 archétypes, **1 067** composants — le compte de J0.4) et les 188 noms
+  du `switch consumeByName`. **Zéro cas (a)** : aucun n'était un bug de dispatch. 32 retirés
+  (17 supplantés par le port INLINE de `traverse.go` — souvent le port CORRIGÉ ; 11 dans un
+  archétype ni décodé ni planifié, dont un doublon et un dont la prémisse est réfutée par la
+  vérité EXE ; 4 primitives dont le fait survit au retrait), 2 gardés sous `//nolint` daté —
+  ce sont exactement les deux qui visent un archétype PLANIFIÉ, objectifs `ti=11` et zones
+  `ti=23`. Lot D : les 4 `staticcheck` LUS d'abord, aucun défaut de logique ; les 2 `gocyclo`
+  découpés ; les 3 `argument-limit` regroupés en structure. J3.3 (ratchet knip en CI sans
+  filtre de chemin — élargir le glob du hook n'aurait rien réglé), J3.4 (garde de longueur +
+  `PeekBits` aligné + corpus de régression), J3.5 (artefact reproductible à l'octet).
+  **Mesure de sortie : `0 issues.`** (cache purgé) — la cible F1 est atteinte ; `go test ./...`
+  vert ; les 7 grandeurs des 3 films identiques à l'unité près à chaque gate.
+  **J3.5 a démenti sa propre prémisse** : le défaut n'était pas qu'un tri instable, `grenades`
+  changeait de VALEUR d'une exécution à l'autre. Une seule chaîne causale expliquait les deux.
+  **Découvertes remontées** (détail au journal du plan de dette) : un garde de CI qui ne se
+  déclenche JAMAIS (n°3, à traiter en priorité) ; deux archétypes qu'un seul câble porterait
+  de 0/N à N/N (n°1, pour J6-A) ; plafonds knip périmés à 0/0/0 (n°4) ; `himodule` sans
+  aucun test (n°5) ; la lignée `weaponv3` + `objectiveevents` morte mais invisible à `unused`
+  parce qu'un `cmd` la référence (n°6).
