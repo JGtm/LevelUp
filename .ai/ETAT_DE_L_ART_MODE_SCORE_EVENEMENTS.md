@@ -829,3 +829,98 @@ localise (composant 0 de l'archetype 6, paquets type-0) et lu exactement sur les
 captures ; ce qui manque est le **parcours de la chaine d'enregistrements de trame** pour le
 retrouver sans capture. Les 5 039 positions de verite terrain existent desormais pour valider
 ce parcours.
+
+---
+
+## 14. LA CHAINE D'ENREGISTREMENTS — grammaire decodee, et LE MECANISME DE SAUT EXISTE
+
+Attaque Ghidra du parcours de chaine, en remontant et redescendant les appels. Resultat :
+**la grammaire complete de l'en-tete est etablie, et elle contient un mecanisme de saut** —
+un enregistrement DECLARE quels composants il porte, on n'a donc pas a tous les parcourir.
+
+### 14.1 La grammaire, fonction par fonction
+
+**`FUN_1406CD128` — la boucle de trame** (deja portee en partie dans
+`filmdec/frame_records.go`) :
+
+```
+boucle :
+  [1 bit presence]        -> 0 = fin de la chaine
+  [2 bits type]           -> 1 = NEW, 2 = DELETE, 3 = DELTA
+  [identifiant d'entite]  -> FUN_1406D3140
+  puis dispatch : type 1 -> FUN_141F86704 · type 3 -> FUN_141F86B58
+```
+
+Pour le type 3 (delta), le moteur valide l'entite avant de deserialiser :
+
+```
+slot = identifiant & 0x3FFFFFFF
+table = *(param_1 + 0x38)          // table d'entites, pas de 0xA0
+si  *(u32*)(table + slot*0xA0 + 8) == identifiant
+et  *(u16*)(table + slot*0xA0 + 2) == type   -> FUN_141F86B58
+```
+
+**`FUN_1406D3140` — l'identifiant d'entite** : `[W bits valeur][2 bits]` puis
+`identifiant = (2bits << 30) | (base + valeur)`. La largeur `W` et la `base` viennent de
+globales (`DAT_1451F98D0` / `DAT_1451F98D4`, indexees par le parametre, gatees par
+`DAT_144706104`) — **configurees au demarrage, donc pas lisibles statiquement**. C'est le seul
+maillon qui reste ouvert (14.3).
+
+**`FUN_141F86B58` — le delta** : `memcpy` de la ligne de base, puis appelle
+**`FUN_14076CB60`** avec le descripteur d'archetype.
+
+**`FUN_14076CB60` — la boucle de composants, et c'est la que tout se joue** :
+
+```
+masque = FUN_1406D7610(descripteurArchetype, lecteur)
+pour i de 0 a *(int*)(descripteur + 0x4320) - 1 :        // nombre de composants
+    si (masque >> i) & 1 :
+        deserialiseur = (*(descripteur + i*8))[+0x28]     // le slot appele
+        deserialiseur(...)
+        // pose le bit sale : octet d'index a  descripteur + 0x4850 + i
+```
+
+**`FUN_1406D7610` — LE MECANISME DE SAUT** :
+
+```
+[1 bit forme]
+  forme 0 : [3 bits compte N][N x 6 bits index de composant]   <- LISTE CREUSE
+  forme 1 : [64 bits masque plein]
+```
+
+Autrement dit **l'enregistrement enumere les index des composants qu'il porte, sur 6 bits
+chacun** (au plus 7 en forme creuse). C'est exactement l'adressage direct espere : pour
+atteindre un composant on n'a pas a decoder ceux qui le precedent dans l'archetype — seulement
+ceux qui sont effectivement PRESENTS et listes avant lui.
+
+### 14.2 Validation sur la verite terrain : 1 078 / 1 090
+
+La grammaire n'est pas supposee, elle est verifiee. En remontant depuis la **premiere lecture
+de chaque entite** (1 090 cas, localises par la capture CE), on exige que les bits qui
+precedent forment `[1 bit forme = 0][3 bits N][N x 6 bits]` **et que le premier index liste
+soit exactement le composant observe** :
+
+**1 078 / 1 090 = 99 %.** Repartition du nombre de composants declares :
+`N=1 : 235 · N=2 : 596 · N=3 : 47 · N=4 : 32 · N=5 : 70 · N=6 : 70 · N=7 : 28`.
+
+Un enregistrement d'entite porte donc **1 a 7 composants**, mediane 2 — et non les 58 de
+l'archetype. Le cout de decodage d'un enregistrement statborg est minuscule.
+
+### 14.3 Le maillon qui reste — et il est nomme
+
+La largeur `W` et la `base` de l'identifiant d'entite sortent d'une globale ecrite au
+demarrage. La recherche empirique par verite terrain n'a pas converge (les candidats W=9 a 14
+rendent tous le meme compte, signature d'un appariement degenere) : ce n'est pas la bonne
+facon de l'obtenir.
+
+**Deux voies propres pour la prochaine session, par ordre de cout :**
+1. **Statique** : remonter les ecrivains de `DAT_1451F98D0` / `DAT_144706104` par
+   `get_xrefs_to` — ce sont des globales d'initialisation, leur valeur est probablement une
+   constante du code de boot.
+2. **Par construction** : l'en-tete complet mesure `1 + 2 + W + 2 + (4 + 6N)` bits. On connait
+   deja, pour 1 078 enregistrements, la position exacte du masque ET la valeur de `N`. La
+   distance entre deux enregistrements consecutifs d'une meme trame donne donc `W` par
+   soustraction, sans deviner : c'est une mesure directe, pas un balayage.
+
+Une fois `W` connu, la boucle de trame se parcourt de bout en bout **sans capture Cheat
+Engine** — et la courbe de score de la section 12 devient disponible sur les 951 films du cache.
