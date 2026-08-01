@@ -1,3 +1,64 @@
+## [2026-08-01] RE mode→score — ce que les zones rendent, et deux pistes externes réfutées
+
+**Statut** : Complété pour Q1, Q4 et Q5 ; Q2 non traité (justifié) ; Q3 non conclu, route
+corrigée. Branche `feat/re-mode-score` (worktree dédié), livrable
+`.ai/ETAT_DE_L_ART_MODE_SCORE_EVENEMENTS.md`.
+
+**Décision technique** : traiter la source externe ouverte par l'utilisateur en cours de
+session (dépôt `davidhouweling/guilty-spark`, PR 752-757, qui parse le même format de film)
+comme une **hypothèse à réfuter**, jamais comme une référence — et lui appliquer le même
+contrôle négatif qu'à une piste interne. C'est ce qui a payé : la source énonce exactement
+l'hypothèse Q3 d'un intermédiaire universel mode→score, et deux de ses trois revendications
+tombent sur la mesure.
+
+**Résultats observés** :
+- **Le résultat fort — les zones.** En Strongholds, un événement de mode du footer type-3 est
+  une prise OU une sécurisation de zone, par joueur, à l'unité. Trois chaînes sans étape
+  commune : le relevé terrain écrit avant tout décodage (« 0:48 flyguy8773 capture la base B »)
+  contre le premier événement décodé (t = 48,90 s, FlyGuy8773) ; le total 77 = 77 ; et surtout
+  **l'égalité par joueur 8/8** avec `zone_captures + zone_secures`, multisets identiques, les
+  deux joueurs nommés tombant nominativement. Contrôle négatif : le Slayer porte 0 événement
+  de mode et 0 statistique de zone.
+- **CTF réfuté** : `flag_captures+grabs+returns` donne 90 contre 68 événements sur un film et
+  33 contre 43 sur l'autre — l'écart change de signe, donc aucun facteur d'échelle ne
+  réconcilie. La prudence de `PLAN_OBJECTIFS_TEMPS_REEL` 2.3 devient une mesure.
+- **KOTH indécidable, et la faute est chez nous** : le total tombe (66 = 66) mais pas le détail
+  — et `match_objective_stats_latest` porte 9 lignes pour un match à 8 joueurs, dont une avec
+  un xuid non numérique `bid(42.0`. La référence est corrompue : on ne conclut pas.
+- **Deux porteurs de score candidats éliminés.** (a) « L'octet d'état du payload type-2 est un
+  signal d'objectif universel » : le mode SANS objectif porte 2 808 transitions, plus que le
+  Strongholds (1 051) et les deux CTF (935, 1 195) ; et à ~1 transition / 0,5 s la coïncidence
+  avec une capture est garantie par la densité seule. La PR 757 de la source confirme
+  indirectement en empilant un filtre nommé « bruit de byte2 ». (b) « Le score est le compte de
+  ticks dédupliqués » : 0 sur 4 modes en égalité exacte, et 41 événements ne feront jamais les
+  200 points du Strongholds.
+- **Confirmé de la source, par oracle interne** : en KOTH les événements de mode sont
+  périodiques à **5 005 / 5 009 ms** de médiane sur 64 intervalles. Mais la cadence est propre
+  au mode (Strongholds 11,8 s en rafales ; CTF 15,0 / 9,9 s sans périodicité) — argument
+  **contre** une recette unique, et il est mesuré.
+- **Q1** : recensement sur 5 films / 4 modes. Le code 123 n'existe que dans les deux modes à
+  zones (KOTH 117, Strongholds 249) et jamais en Slayer ni dans les deux CTF — dont une **sur
+  la même carte** que le KOTH, donc le signal suit le mode et non la carte. Chaîne
+  indépendante : l'API range Strongholds et KOTH sous le même bloc `ZonesStats`. Et le paquet
+  type-10 de 10 octets précède **chaque** trame, 1:1 exact sur les 5 films — une donnée que
+  `filmdec` traverse sans la lire.
+- **Q3, le piège évité** : le contrôle positif de la table de handlers passe magnifiquement à
+  l'index 105 (`vtable+0x68` = le déserialiseur de dégât connu, nom `action_weapon_fire`) — et
+  ne se généralise pas : le code qui porte 71-85 % des paquets s'y nommerait « NavpointRequest »
+  et son déserialiseur n'est pas la boucle de trame. L'index de cette table n'est pas notre
+  champ 7 bits. Ne pas y retourner par ce chemin ; reprendre par le binding statborg.
+
+**Corrections d'entrée** : `01e1f945` n'est pas un Slayer mais un **KOTH:Arena** — le corpus
+couvre donc quatre modes, pas trois.
+
+**Conclusion / prochaine étape** : Q2 (localiser le porteur de score par mode) n'a pas été
+traité — le budget est passé dans la vérification de la source externe, demandée en cours de
+session, qui a produit deux réfutations et une confirmation. Il est cadré et ses témoins sont
+prêts ; il exige un comptage **publié** des faux positifs, sans quoi il n'est pas publiable.
+Ensuite : un second film KOTH (une mesure, l'outil est écrit) pour trancher Q4-KOTH.
+L'outillage `cmd/tmp_modescore`, `tmp_modestate`, `tmp_modeticks` reste non suivi par git
+(règle `.gitignore` posée en J3 lot A) ; le livrable en consigne les commandes exactes.
+
 ## [2026-08-01] J3-1 — la dette mécanique : 70 à 43, et un item du plan qu'il fallait refuser
 
 **Statut** : Complété (lots A et B de `PLAN_DETTE_AVANT_MERGE.md`, plus J3.1 et J3.2 du master
