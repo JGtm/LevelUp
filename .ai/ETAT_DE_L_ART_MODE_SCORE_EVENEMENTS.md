@@ -1538,3 +1538,38 @@ moities disjointes trancherait. Table figee : `.ai/refs/TABLE_STATS_STATBORG.tsv
 d'ou 588 couples ecartes sur 1 531. Un oracle sur les 8 joueurs viendrait de
 `match_objective_stats_latest` — dans la base partagee, tenue en ecriture par le serveur de
 dev pendant cette session.
+
+### 17.6 LE CONTROLE SUR MOITIES DISJOINTES — il recale la table de 17.5
+
+La table de 17.5 sur-affirmait, et le controle le dit. Ajustee separement sur les films de
+rang pair et de rang impair (aucun film partage), puis comparee :
+
+| mode | cles nommees des deux cotes | **desaccords** |
+|---|---|---|
+| CTF | 19 | **8** |
+| zones | 7 | **1** |
+
+**Ce qui SURVIT** — et ce sont exactement les cles a forte observation, les revendications
+utiles :
+
+| mode | composant | recompense |
+|---|---|---|
+| CTF | comp 23 A | **`flag_returned`** |
+| CTF | comp 24 A | **`flag_stolen`** |
+| CTF | comp 21 B | **`runner_stopped`** |
+| CTF | comp 22 A | `flag_taken` |
+| CTF | comp 20 B | `flag_capture_assist` |
+| CTF | comp 0 A · comp 21 A | `flag_captured` |
+| zones | comp 20 B | **`zone_captured`** |
+| zones | comp 21 A | **`zone_secured`** |
+| les deux | comp 2 A · comp 12 A | `killed_player` (ancre, circulaire) |
+| les deux | comp 3 A · comp 12 B | `kill_assist` |
+
+**Ce qui TOMBE** : `5 B`, `6 A`, `8 A`, `8 B`, `9 A`, `22 B`, `23 B`, `25 A` en CTF et `5 B`
+en zones — exactement les cles a faible observation que 17.5 signalait comme suspectes. Elles
+etaient nommees par coincidence de comptes, pas par une correspondance reelle.
+
+`comp 21 A` vaut `zone_secured` en zones et `flag_captured` en CTF : la dependance au mode
+est desormais adossee au controle, plus seulement a une observation.
+
+**La table figee (`.ai/refs/TABLE_STATS_STATBORG.tsv`) ne garde que les cles confirmees.**
