@@ -68,6 +68,22 @@ func buildProjectiles(tracks []filmdec.ProjectileTrack, origin, step uint64) []P
 		}
 		out = append(out, Projectile{T0: t0, P: pts, Rest: tr.Pts[len(tr.Pts)-1].AtRest})
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].T0 < out[j].T0 })
+	// Tri TOTAL : T0 est un index de frame de la grille 10 Hz, donc les ex æquo sont la règle,
+	// pas l'exception. Départager par la première position publiée puis par la longueur rend
+	// l'ordre indépendant de celui des `tracks` reçues — deux projectiles que ces trois clés ne
+	// séparent pas produisent les mêmes octets, quel que soit leur rang.
+	sort.Slice(out, func(i, j int) bool {
+		a, b := out[i], out[j]
+		switch {
+		case a.T0 != b.T0:
+			return a.T0 < b.T0
+		case a.P[0][1] != b.P[0][1]:
+			return a.P[0][1] < b.P[0][1]
+		case a.P[0][2] != b.P[0][2]:
+			return a.P[0][2] < b.P[0][2]
+		default:
+			return len(a.P) < len(b.P)
+		}
+	})
 	return out
 }

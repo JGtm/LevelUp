@@ -146,9 +146,16 @@ func scanGrenadeThrows(pay []byte) []GrenadeThrow {
 	return out
 }
 
-// PeekBits lit n bits MSB-first à la position bp, sans curseur. Les bits au-delà du buffer
-// valent 0 — l'appelant borne son balayage, cette tolérance n'est là que pour ne jamais
-// paniquer sur un payload tronqué.
+// PeekBits lit n bits MSB-first à la position bp, sans curseur. Tout bit HORS du buffer vaut
+// 0 — l'appelant borne son balayage, cette tolérance n'est là que pour ne jamais paniquer sur
+// un payload tronqué.
+//
+// « Hors du buffer » veut bien dire des DEUX CÔTÉS. Jusqu'au 2026-08-01 la tolérance était à
+// SENS UNIQUE : au-delà de la fin elle rendait 0, mais une position NÉGATIVE paniquait
+// (`index out of range [-1]`) — le contraire de ce que cette phrase annonce (découverte J2,
+// corrigée en J3.4). Aucun appelant de production ne recule sous zéro ; le défaut était que la
+// documentation promettait une garantie que le code n'offrait pas, sur une primitive dont
+// c'est la SEULE raison d'être.
 //
 // EXPORTÉ pour les sondes qui balayent un payload à la recherche d'un motif (marqueurs de
 // mêlée, de tir, de lancer) sans dérouler la chaîne de composants.
@@ -156,7 +163,7 @@ func PeekBits(d []byte, bp, n int) uint64 {
 	var v uint64
 	for i := 0; i < n; i++ {
 		p := bp + i
-		if p>>3 >= len(d) {
+		if p < 0 || p>>3 >= len(d) {
 			v <<= 1
 			continue
 		}

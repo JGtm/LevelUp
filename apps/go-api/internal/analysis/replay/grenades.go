@@ -83,7 +83,23 @@ func buildGrenades(pos []filmdec.BipedPosition, throws []filmdec.GrenadeThrow,
 		gr.Kind = g.Name()
 		out = append(out, gr)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].T < out[j].T })
+	// Tri TOTAL : deux lancers tombent souvent sur la même frame de la grille (10 Hz), et un
+	// départage arbitraire suffit à changer l'artefact d'un octet à l'autre.
+	sort.Slice(out, func(i, j int) bool {
+		a, b := out[i], out[j]
+		switch {
+		case a.T != b.T:
+			return a.T < b.T
+		case a.Idx != b.Idx:
+			return a.Idx < b.Idx
+		case a.Slot != b.Slot:
+			return a.Slot < b.Slot
+		case a.X != b.X:
+			return a.X < b.X
+		default:
+			return a.Y < b.Y
+		}
+	})
 	return out, cov
 }
 
@@ -106,6 +122,14 @@ func locateThrow(g filmdec.GrenadeThrow, births []filmdec.ProjectileSample,
 }
 
 // projectileBirths rend le premier point de chaque projectile, trié par instant.
+//
+// LE TRI EST TOTAL, ET C'EST LA CONDITION DE REPRODUCTIBILITÉ DE L'ARTEFACT. Plusieurs
+// projectiles naissent au MÊME instant de réplication ; `birthNear` prend ensuite la naissance
+// d'un INDICE donné dans cette tranche, donc le départage des ex æquo décide de la position
+// publiée pour le lancer. Sur l'instant seul, ce départage venait de l'ordre d'arrivée — issu
+// d'une itération de map — et deux constructions du même film donnaient deux positions
+// différentes (mesuré : 12,72 / −187,11 contre 11,41 / 17,99 sur le lancer t=1580 de
+// `01e1f945`). Départager par la position rend le choix indépendant de l'amont.
 func projectileBirths(proj []filmdec.ProjectileTrack) []filmdec.ProjectileSample {
 	out := make([]filmdec.ProjectileSample, 0, len(proj))
 	for _, p := range proj {
@@ -113,7 +137,19 @@ func projectileBirths(proj []filmdec.ProjectileTrack) []filmdec.ProjectileSample
 			out = append(out, p.Pts[0])
 		}
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].TimestampUS < out[j].TimestampUS })
+	sort.Slice(out, func(i, j int) bool {
+		a, b := out[i], out[j]
+		switch {
+		case a.TimestampUS != b.TimestampUS:
+			return a.TimestampUS < b.TimestampUS
+		case a.X != b.X:
+			return a.X < b.X
+		case a.Y != b.Y:
+			return a.Y < b.Y
+		default:
+			return a.Z < b.Z
+		}
+	})
 	return out
 }
 

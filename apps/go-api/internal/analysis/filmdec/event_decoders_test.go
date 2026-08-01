@@ -70,7 +70,10 @@ func buildFireRecord(attacker int, weapon uint64, flags [5]uint8, aim uint32) []
 // TestFireRecordLayout : chaque champ est lu a l offset mesure.
 func TestFireRecordLayout(t *testing.T) {
 	const weapon = uint64(0x48C19D2D42C9679F)
-	e := decodeFireEvent(buildFireRecord(6, weapon, [5]uint8{0, 0, 0, 0, 0}, 0))
+	e, ok := decodeFireEvent(buildFireRecord(6, weapon, [5]uint8{0, 0, 0, 0, 0}, 0))
+	if !ok {
+		t.Fatal("record complet refuse par la garde de longueur")
+	}
 	if e.Variant != 0 {
 		t.Errorf("variante %d, attendu 0 (record long)", e.Variant)
 	}
@@ -93,7 +96,7 @@ func TestFireRecordLayout(t *testing.T) {
 // regression silencieuse.
 func TestFireRecordAimOnlyOnTheSafePath(t *testing.T) {
 	const aim = 0x15555555 & ((1 << 30) - 1)
-	sur := decodeFireEvent(buildFireRecord(1, 1, [5]uint8{0, 0, 1, 0, 0}, aim))
+	sur, _ := decodeFireEvent(buildFireRecord(1, 1, [5]uint8{0, 0, 1, 0, 0}, aim))
 	if !sur.HasAim {
 		t.Error("chemin sur (110=1, 111=0, 112=0) : la visee doit etre lue")
 	}
@@ -102,7 +105,7 @@ func TestFireRecordAimOnlyOnTheSafePath(t *testing.T) {
 		{0, 0, 1, 1, 0}, // 111 = 1 : une porte est ouverte, le champ a bouge
 		{0, 0, 1, 0, 1}, // 112 = 1 : idem
 	} {
-		if e := decodeFireEvent(buildFireRecord(1, 1, f, aim)); e.HasAim {
+		if e, _ := decodeFireEvent(buildFireRecord(1, 1, f, aim)); e.HasAim {
 			t.Errorf("drapeaux %v : la visee a ete lue hors du chemin sur — le champ n y est "+
 				"pas localisable hors ligne, et la lire revient a inventer une direction", f)
 		}

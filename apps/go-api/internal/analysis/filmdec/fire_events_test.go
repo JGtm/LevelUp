@@ -44,7 +44,10 @@ func TestDecodeFireEventLayout(t *testing.T) {
 	if got := int(w.buf[0] >> 1); got != FireEventType {
 		t.Fatalf("type d'event dans payload[0] = %d, attendu %d", got, FireEventType)
 	}
-	e := decodeFireEvent(w.buf)
+	e, ok := decodeFireEvent(w.buf)
+	if !ok {
+		t.Fatal("record complet refuse par la garde de longueur")
+	}
 	if e.FilmIndex != wantPlayer {
 		t.Errorf("FilmIndex = %d, attendu %d", e.FilmIndex, wantPlayer)
 	}
@@ -82,9 +85,62 @@ func TestDecodeFireEventAimGatedOff(t *testing.T) {
 			w.putBits(fireFlagsBit+3, 1, tc.flags[1])
 			w.putBits(fireFlagsBit+4, 1, tc.flags[2])
 			w.putBits(fireAimBit, int(FireAimBits), 12345)
-			if e := decodeFireEvent(w.buf); e.HasAim {
+			if e, _ := decodeFireEvent(w.buf); e.HasAim {
 				t.Errorf("visée décodée hors du chemin sûr (drapeaux %v)", tc.flags)
 			}
 		})
+	}
+}
+
+// TestDecodeFireEventRefuseRecordTronque : LA GARDE DE LONGUEUR, ET POURQUOI ELLE EXISTE.
+//
+// Le décodeur lit la tête à des offsets FIXES jusqu'au bit 112, via `readBitsAt` qui indexe le
+// tableau SANS borne (contrairement à `PeekBits`, qui rend 0 au-delà). `ScanFilmFireEvents`
+// n'exige que `p.Size >= 1` : avant la garde, un paquet delta tronqué dont le premier octet
+// vaut 0xD2 — type 105, variante longue — faisait paniquer le décodeur. Un film tronqué par un
+// téléchargement partiel suffit, et en J4 ce décodeur tourne dans un collecteur de fond du
+// process de sync, où une panique coûte le process entier.
+//
+// Le test balaie TOUTES les longueurs sous le seuil, pas seulement zéro : c'est la longueur du
+// dernier champ obligatoire qui fixe le seuil, et une régression le déplacerait d'un octet.
+func TestDecodeFireEventRefuseRecordTronque(t *testing.T) {
+	full := (FireHeadBits + 7) / 8
+	for n := 0; n < full; n++ {
+		pay := make([]byte, n)
+		if n > 0 {
+			pay[0] = FireEventType << 1 // 0xD2 : type 105, variante longue
+		}
+		e, ok := decodeFireEvent(pay)
+		if ok {
+			t.Errorf("payload de %d octet(s) accepté alors que la tête en exige %d", n, full)
+		}
+		if e != (FireEvent{}) {
+			t.Errorf("payload de %d octet(s) : event non nul rendu avec ok=false", n)
+		}
+	}
+	if _, ok := decodeFireEvent(make([]byte, full)); !ok {
+		t.Errorf("payload de %d octets refusé alors qu'il porte la tête entière", full)
+	}
+}
+
+// TestPeekBitsToleranceDesDeuxCotes : la tolérance de PeekBits vaut aux DEUX bouts.
+//
+// Sa documentation a toujours annoncé « ne jamais paniquer sur un payload tronqué », mais
+// jusqu'au 2026-08-01 une position NÉGATIVE paniquait (`index out of range [-1]`) — une
+// primitive dont c'est la seule raison d'être ne tenait sa promesse que d'un côté.
+func TestPeekBitsToleranceDesDeuxCotes(t *testing.T) {
+	d := []byte{0xFF, 0xFF}
+	if got := PeekBits(d, -8, 8); got != 0 {
+		t.Errorf("lecture entièrement avant le début = %#x, attendu 0", got)
+	}
+	if got := PeekBits(d, len(d)*8, 8); got != 0 {
+		t.Errorf("lecture entièrement après la fin = %#x, attendu 0", got)
+	}
+	// À cheval sur le début : 4 bits hors buffer (0) puis 4 bits à 1 -> 0b00001111.
+	if got := PeekBits(d, -4, 8); got != 0x0F {
+		t.Errorf("lecture à cheval sur le début = %#x, attendu 0x0F", got)
+	}
+	if got := PeekBits(nil, -4, 8); got != 0 {
+		t.Errorf("buffer vide = %#x, attendu 0", got)
 	}
 }
