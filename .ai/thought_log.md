@@ -74426,3 +74426,135 @@ citations). **Point de blocage explicite avant tout déploiement** : les 2 visue
 citations sont des bouche-trous provisoires — l'utilisateur les dessine lui-même (brief
 technique complet déposé dans sa section HUMAN GATE Notion). Rien ne doit partir en
 production avec les SVG provisoires.
+
+---
+
+## [2026-08-01] Rétro-ingénierie — la courbe de score des matchs à objectifs se lit hors ligne
+
+**Statut** : Complété (volet rétro-ingénierie). Branche `feat/re-mode-score`, worktree dédié.
+
+**Le but, et il est tenu** : rejouer le déroulé d'un match à objectifs — la progression du
+score ET qui prend quoi — à la milliseconde, à partir des seuls films en cache, sans dump
+mémoire ni capture Cheat Engine.
+
+**Décision technique principale — mesurer le cadrage au lieu de le déduire du binaire.** Le
+handoff prescrivait un contrôle : fixer à 14 bits la largeur du champ de slot et vérifier que
+les bits précédents deviennent `[présence][type=11]`. Le contrôle est passé sur la largeur et
+**a démenti la seconde moitié** : les 2 bits qui précèdent le bit de présence sont
+statistiquement indépendants (22 co-occurrences observées, 21,6 attendues sous indépendance) —
+ce n'est pas un champ de type, c'est la queue de l'enregistrement précédent. Cadrage retenu,
+entièrement lu sur 1 078 en-têtes de vérité terrain :
+`[1 bit = 1][14 bits slot][2 bits = 10][1 bit forme = 0][3 bits N][N × 6 bits index]`.
+Deux contraintes supplémentaires viennent de la même méthode, jamais d'un seuil choisi : les
+deux en-têtes de 5 bits du composant valent 0 sur 283/283 lectures réelles (contre 11/151 et
+98/151 chez les faux positifs), et le sélecteur de largeur ne vaut jamais 2.
+
+**Résultats observés** — confrontation position de bit par position de bit contre la capture
+CE (`cmd/tmp_scoreverify`) : Strongholds `696a9d7c` **283/284 retrouvées (99,6 %) pour 2 faux
+positifs (0,7 %)**, CTF `530820e5` **6/6 pour 0 faux positif**, zéro valeur fausse à bonne
+position dans les deux cas. La méthode se généralise aux autres composants du même archétype :
+composant 1 (score personnel) 374/381, composant 2 (frags/morts) 385/397.
+
+**Les deux horloges sont la même, et c'est mesuré** (`cmd/tmp_filmclock`) : le `TimestampUS`
+du premier paquet de chaque chunk reproduit le `start_ms` du manifeste à **-4 à 0 ms près sur
+573 s**. Piège payé : prendre pour origine le premier paquet *où l'on trouve quelque chose*
+décale toute la courbe (36 s sur le Strongholds, 140 s sur le CTF) ; l'origine se prend par
+chunk, sur le manifeste.
+
+**Deux confrontations indépendantes ferment le dossier.** En CTF le score n'avance que sur une
+capture : les captures détectées par `objectiveevents` (bursts à 6 tiers du footer) et les
+incréments de score (composant 0 des paquets delta) tombent à **+1 ms l'un de l'autre, 3 fois
+sur 3**. Deux décodeurs sans rien en commun. Sur le Strongholds, les **quatre** ancres du
+relevé terrain — écrit à l'œil avant tout décodage — tombent : capture à 48,901 s, 21 pour
+l'équipe plafonnée à t=90 s, **69-30 exactement à t=190 s**, contrôle des trois bases à 5:34.
+
+**Livrable** : `cmd/tmp_timeline <cacheDir> <filmID> <gameVariantName>` sort la ligne de temps
+fusionnée « événement d'objectif + progression du score », par équipe et par joueur.
+
+**Conclusion / prochaine étape** : le volet rétro-ingénierie est clos. Ce qui reste est un lot
+d'industrialisation (`PLAN_OBJECTIFS_TEMPS_REEL` étape 1) : promouvoir le décodeur dans un
+paquet de `internal/analysis/`, le faire produire par la synchronisation et non par un CLI,
+puis l'exposer. Reste hors de portée, inchangé : **quelle** zone (A/B/C) est prise, et
+l'identité fine des actions CTF (prise/retour), réfutée plus tôt dans le chantier.
+
+---
+
+## [2026-08-01] Nommer les evenements : bareme du score, identite des slots, 88 medailles
+
+**Statut** : Complété (volet nommage). Branche `feat/re-mode-score`, worktree dédié.
+Fait suite à l'entrée du même jour sur la courbe de score.
+
+**Demande** : le score personnel intéresse l'utilisateur non comme chiffre mais comme
+**description de l'événement**. Garde qu'il a posée en cours de route et qui a été
+respectée : **tout événement de score n'est pas une médaille** — les deux canaux sont
+mesurés séparément, le lien n'est jamais supposé.
+
+**Décision technique principale — nommer par confrontation de décodeurs indépendants
+plutôt que par inférence.** Les incréments du composant 1 (score personnel, valeur B) sont
+confrontés aux morts de `killsource` (horloge kill-feed) et aux événements d'objectif
+d'`objectiveevents` (horloge footer). **+100 = un frag** (95/95 coïncident avec le frag DU
+joueur du slot), **+50 = une assistance** (29/31 en CTF), **+25 = objectif** (16/16 en
+Strongholds), **+300 = capture de drapeau** (3 incréments pour 3 captures). Cela referme
+`ObjectivePointsPerCapture = 25.0` d'`engagement_score.go`, posé « à calibrer » : les trois
+constantes du dépôt sont désormais mesurées. Limite consignée : les incréments ne sont pas
+atomiques (125 = 100 + 25 observé en CTF).
+
+**Résultat non prévu — l'identité des entités.** Apparier les +100 d'un slot aux instants
+de frag attribue chaque slot à UN joueur sans collision (95/95 expliqués, second candidat
+toujours ≤ 4). La même opération avec les événements d'objectif donne le xuid : **le pont
+gamertag ↔ xuid est refermé sans aucune jointure en base**, et il concorde avec les deux
+identités que l'état de l'art avait établies par une autre voie (NeonKnight3166 = 16
+événements, JGtm = 9). Toutes les courbes par joueur deviennent nominatives.
+
+**Piste ouverte par l'utilisateur, et elle valait mieux que l'inférence** : lire une
+bibliothèque plutôt que deviner. Le bloc d'événement du footer ne porte PAS l'identifiant de
+médaille (balayage de tous les décalages 32 bits, deux boutismes : zéro correspondance) et
+`medal_definitions.personal_score` n'a jamais été peuplée. Mais le bloc porte un couple
+`(type_hint, medal_type)` + le xuid, et ce couple se nomme par égalité EXACTE du vecteur
+« combien de fois par joueur » avec `medals_earned`. **88 couples sur 95 résolus sur
+948 films.** Le contrôle qui le prouve : table ajustée séparément sur les 474 films pairs et
+les 474 impairs, aucun film partagé — 72 couples nommés des deux côtés, **zéro désaccord**.
+Table déposée : `.ai/refs/TABLE_MEDAILLES_FILM.tsv`.
+
+**Ce qui est mesuré et NON résolu, dit franchement** : appliquée film par film, la table
+rend 27,3 % de triplets (médaille, joueur) exacts sur la moitié non ajustée, avec 11 440
+sur-comptes pour 3 730 sous-comptes. Le maillon faible est le **scan d'événements du
+footer** (exact sur un film entier dans ~37 % des cas), pas le nommage. À durcir avant toute
+exposition de médailles horodatées.
+
+**Autres modes** : courbe de score confrontée à `match_registry` sur 61 films KOTH / Total
+Control / Oddball — **46 scores finaux exacts (75 %), aucun 0-0 trivial**. Les 15 écarts
+sont structurés, pas du bruit : en Total Control le film compte les points fins et le
+registre les SETS (facteur 32 mesuré sur deux films), en KOTH le film compte les collines et
+le registre les points. Le film est plus FIN que la référence — c'est la sémantique du
+composant 0 qui dépend du mode.
+
+**Conclusion / prochaine étape** : durcir le scan de footer (c'est lui qui plafonne les
+médailles horodatées), puis lever les 7 couples ambigus quand des films de véhicule
+s'ajouteront au cache. Le barème complet des actions d'objectif se résoudra par régression
+entière `personal_score = 100·frags + 50·assistances + Σ barème·statistique` sur
+`match_objective_stats_latest`, tous matchs — mesure purement en base, sans film.
+
+**Complément [2026-08-01, même jour]** — la bibliothèque des événements de score existait
+déjà : `personal_score_awards` (bases joueur) porte `award_name`, `award_category` et
+`award_score`, donc le barème NOMMÉ. Les valeurs mesurées sur le film (100 frag, 50
+assistance, 25 objectif, 300 capture) sont confirmées par cette source indépendante.
+**Défaut corrigé dans la foulée** : le score personnel n'est PAS monotone
+(`self_destruction` = −100) ; `PersonalScoreCurve` n'applique plus de filtre de monotonie,
+celui-ci ne vaut que pour le score de mode. Réconciliation exacte sur un match réel (JGtm,
+film `1bc77d2e`) : les incréments datés du film reconstituent les 7 récompenses de l'API à
+l'unité, total 3 010 des deux côtés, les incréments composés (+125 = 100 + 25) se
+décomposant exactement. Prochaine étape précise : étiqueter chaque incréments daté par
+(valeur × quota du joueur × coïncidence temporelle) — même appariement contraint que celui
+qui a nommé les 88 médailles.
+
+**Complément 2 [2026-08-01]** — étiquetage livré. `objectiveevents.LabelPersonalScore`
+rapproche les incréments datés du film et le quota `personal_score_awards` du joueur :
+résolution à la VALEUR (exacte, sans arbitrage), liste de candidates quand plusieurs
+récompenses partagent la valeur, décomposition d'un incrément composé seulement si elle est
+unique à nombre de parts minimal. Quatre tests, dont la réconciliation JGtm (36 actions
+reconstituées, 28 nommées) et le refus de décomposer un +125 quand `zone_captured` vaut
+tantôt 50 tantôt 75. Bout en bout sur `1bc77d2e` : 100 événements, 56 nommés, 0 sans nom ni
+candidate. Les non-nommés le sont pour une raison lisible (`killed_player` et
+`flag_capture_assist` valent tous deux 100). Prochain lot : lever ces cas par coïncidence
+temporelle — à traiter comme des HYPOTHÈSES avec contrôle négatif, pas à coder d'emblée.

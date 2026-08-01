@@ -1033,3 +1033,369 @@ largeur a 14 et en verifiant que les 3 bits qui precedent deviennent alors `[1 b
 (presence + type + 14 bits de slot + forme + compte + index croissants).
 
 C'est le point de reprise exact : une mesure, pas une recherche.
+
+---
+
+## 15. LA COURBE DE SCORE EST LUE HORS LIGNE — le chantier est ferme (2026-08-01, 3e passe)
+
+> Ce qu'il fallait obtenir : **le deroule d'un match a objectifs — la progression du score et
+> qui prend quoi, a l'instant pres, sur les films deja en cache et sans aucun dump**. C'est
+> fait, et c'est verifie par confrontation, pas par vraisemblance.
+
+### 15.1 Le controle de 14.7 est passe — mais il a corrige l'hypothese, pas seulement confirme
+
+Le controle prescrit (fixer la largeur a 14 et regarder les bits precedents) a ete joue sur les
+1 078 en-tetes de verite terrain (`tmp_chainhdr`, mode `FRAMEBITS`). Il rend trois mesures :
+
+| largeur du slot | bit precedent | 2 bits precedents | purete du slot |
+|---|---|---|---|
+| 13 | 1 dans 151/1 078 | `10` dans 1 077/1 078 | 100 % |
+| **14** | **1 dans 1 077/1 078** | varie | **100 %** |
+
+et, a largeur 14, les **2 bits qui suivent le slot valent `10` dans 1 077/1 078**, tandis que
+les slots observes sont exactement `6, 8` (equipes) et `10, 12, 14, 16, 18, 20, 22, 24`.
+
+L'hypothese 1 de 14.7 est donc **etablie sur la largeur** (14 bits) mais **corrigee sur le
+type** : les 2 bits qui precedent le bit de presence sont **independants l'un de l'autre**
+(22 co-occurrences observees contre 21,6 attendues sous independance). Ce ne sont pas un champ
+de type : c'est **la queue de l'enregistrement precedent**. On ne les contraint pas.
+
+Cadrage retenu, entierement mesure :
+
+```
+[1 bit = 1][14 bits slot][2 bits = 10][1 bit forme = 0][3 bits N][N x 6 bits index croissants]
+puis, par index : [5 bits = 0][5 bits = 0][valeur A][valeur B][2 drapeaux][conditionnelles]
+```
+
+### 15.2 Les deux en-tetes de 5 bits du composant valent ZERO — 10 bits de contrainte de plus
+
+Sans eux, l'ancrage rend **434 lectures pour 284 reelles** sur le Strongholds : 151 faux
+positifs. La mesure des champs de l'enregistrement statborg separe les deux populations sans
+appel au jugement :
+
+| champ | lectures reelles | faux positifs |
+|---|---|---|
+| en-tete A = 0 | 283 / 283 | 11 / 151 |
+| en-tete B = 0 | 283 / 283 | 98 / 151 |
+
+Exiger `A == 0 && B == 0` est donc une contrainte **lue**, pas un seuil choisi.
+
+### 15.3 Le rendement, confronte position par position a la capture Cheat Engine
+
+`cmd/tmp_scoreverify` compare l'ancrage hors ligne et la capture CE **bit de depart par bit de
+depart**, et publie les deux chiffres qui comptent :
+
+| film | verite terrain | ancrages | retrouves (position ET valeur) | faux positifs | manques |
+|---|---|---|---|---|---|
+| `696a9d7c` Strongholds | 284 | 285 | **283 (99,6 %)** | **2 (0,7 %)** | 1 |
+| `530820e5` CTF | 6 | 6 | **6 (100 %)** | **0** | 0 |
+
+**Zero valeur fausse a bonne position** dans les deux cas. Les 2 residus tombent sur la seule
+monotonie du score, sans seuil arbitraire (`keepMonotone`).
+
+### 15.4 Les DEUX horloges sont la meme, a la milliseconde — mesure, pas hypothese
+
+`cmd/tmp_filmclock` compare le `TimestampUS` du premier paquet de chaque chunk au `start_ms`
+du manifeste : **ecart compris entre -4 et 0 ms sur 573 s de film**, 30 chunks. La courbe de
+score horodatee par paquet et les evenements d'objectif du footer sont donc **directement
+superposables, sans recalage**.
+
+Piege paye au passage : prendre pour origine le premier paquet *ou l'on trouve quelque chose*
+au lieu du `start_ms` du manifeste decale toute la courbe (36 s sur le Strongholds, 140 s sur
+le CTF). L'origine se prend **par chunk, sur le manifeste**.
+
+### 15.5 La preuve croisee CTF : deux decodeurs independants, la meme milliseconde
+
+En CTF le score d'equipe n'avance **que** sur une capture. Les deux sources sont decodees par
+des chemins qui n'ont rien en commun (bursts a 6 tiers du footer d'un cote, composant 0 de
+l'archetype 6 dans les paquets delta de l'autre) :
+
+```
+140.072  OBJ    capture         2535469190789936
+140.073  SCORE  equipe slot 8  -> 1
+186.218  OBJ    capture         2533274823110022
+186.219  SCORE  equipe slot 8  -> 2
+473.211  OBJ    capture         2533274858283686
+473.212  SCORE  equipe slot 8  -> 3
+```
+
+**3 captures sur 3, chacune suivie de son point a +1 ms.** Score final 3-0, conforme a l'API.
+
+### 15.6 Le releve terrain Strongholds : quatre ancres sur quatre
+
+Le releve a ete ecrit a l'oeil le 2026-07-31, **avant** tout decodage de score.
+
+| releve terrain | ce que rend le decodage |
+|---|---|
+| 0:48 — flyguy8773 capture la base B | `zone_capture` a **48,901 s** |
+| 1:30 — une equipe controle les trois bases, **21 pour l'autre** | rafale de 4 captures a 89,29/89,96 s ; **slot 8 = 21** a t=90 s |
+| 3:10 — **score 69 - 30** | a t=190 s : **slot 6 = 69, slot 8 = 30** |
+| 5:34 — controle des trois bases par l'equipe de flyguy8773 | slot 6 a 1 pt/s sans interruption, slot 8 gele |
+
+Le recit se lit d'un bloc : premiere capture a 48,9 s (equipe 0) ; l'equipe 1 prend deux zones a
+53,556 s et **commence a marquer 1 s plus tard, a 54,552 s** ; elle plafonne a 21 quand
+l'equipe 0 prend les trois bases a 89,96 s et **demarre a 90,288 s**. Score final 200-94,
+conforme a l'API.
+
+### 15.7 Ce que ca livre, et ce qui reste
+
+**Livre, sur les films en cache, sans aucun dump ni capture** : la ligne de temps fusionnee
+« evenement d'objectif + progression du score », a la milliseconde. Dans le depot :
+`internal/analysis/objectiveevents.ScoreCurve`, avec deux tests de verite terrain.
+Outil de lecture : `cmd/tmp_timeline <cacheDir> <filmID> <gameVariantName>`.
+
+**Ce que porte le composant depend du mode, et c'est mesure** : en Strongholds il n'est emis
+QUE par les 2 entites d'equipe (284 lectures, toutes sur les slots 6 et 8) ; en CTF les 8
+entites de joueur l'emettent aussi, ou il vaut leur compte de captures. Les composants 1
+(score personnel) et 2 (frags/morts) sont per-joueur dans tous les modes et le meme ancrage
+les atteint — rendement mesure 374/381 et 385/397 — mais ils ne sont pas livres : les
+atteindre oblige a chainer les largeurs des composants qui les precedent dans la liste creuse.
+
+**Reste hors de portee, inchange par cette passe** : **quelle** zone (A/B/C) est prise — le
+resultat negatif de l'archive tient toujours ; et l'identite fine des actions CTF
+(prise / retour), refutee en 4.2.
+
+### 15.8 Le balayage des 951 films du cache — la generalite, chiffree
+
+Le decodeur a ete passe sur **tout le cache**, sans oracle externe, en ne regardant que ce
+qu'un film seul ne montre pas : la distribution des scores maximaux doit reproduire les
+plafonds canoniques des modes, et les valeurs aberrantes doivent rester rares.
+
+| resultat | compte |
+|---|---|
+| films decodes proprement | **944 / 951 (99,3 %)** |
+| films a valeur aberrante (> 1 000) | **5** |
+| films sans aucune emission | 2 |
+
+Distribution du score maximal par film — ce sont les plafonds de Halo, retrouves sans qu'on
+les ait dits au decodeur :
+
+| score max | 50 | 3 | 200 | 100 | 2 | 5 | 49 | 1 | 80 |
+|---|---|---|---|---|---|---|---|---|---|
+| films | **576** | **159** | **48** | 44 | 35 | 18 | 17 | 14 | 4 |
+
+(50 = Slayer · 3 et 2 = CTF · 200 = Strongholds · 5 = KOTH classe.)
+
+**Deux contraintes ont ete ajoutees a partir de ce balayage, et chacune est mesuree** :
+
+1. **selecteur de largeur != 2.** Aucune lecture reelle n'encode sa valeur sur 32 bits ; les
+   ancrages a valeur aberrante, si. Passe de 24 a 10 films aberrants.
+2. **plus longue suite croissante, au lieu d'un filtre glouton.** Un parasite a valeur
+   enorme arrivant EN PREMIER masquait toute la vraie courbe derriere lui. Le critere de
+   longueur est sans parametre — les emissions reelles ecrasent en nombre les parasites
+   (283 contre 2 sur le film de reference). Passe de 10 a **5**.
+
+---
+
+## 16. NOMMER LES EVENEMENTS — bareme du score personnel, identite des slots, medailles
+
+> Demande de l'utilisateur : « le score personnel ne m'interesse pas comme chiffre, mais
+> comme DESCRIPTION de l'evenement ». Cette section rend trois resultats : le bareme des
+> actions, l'identite nominative des entites, et une table de 88 medailles nommees.
+>
+> Garde posee par l'utilisateur et respectee : **tout evenement de score n'est pas une
+> medaille**. Les deux canaux sont mesures separement et le lien n'est jamais suppose.
+
+### 16.1 Le bareme des actions, mesure par coincidence temporelle
+
+Le composant 1 porte le score personnel dans sa **valeur B** (la valeur A est constamment
+nulle). Ses increments sont confrontes a deux decodages independants : les morts de
+`killsource` (horloge du kill-feed) et les evenements d'objectif d'`objectiveevents`.
+
+Strongholds `696a9d7c` — 217 increments, fenetre d'appariement 1,5 s :
+
+| bareme | n | SON frag | SON objectif | SON assistance | inexplique |
+|---|---|---|---|---|---|
+| **+100** | 95 | **95** | — | 0 | **0** |
+| +50 | 100 | 4 | — | 46 | 50 |
+| **+25** | 16 | 9 | **16/16 (100 %)** | 1 | — |
+
+CTF `530820e5` — 152 increments, ou le contraste est plus net :
+
+| bareme | n | SON frag | SON assistance | inexplique par le combat |
+|---|---|---|---|---|
+| **+100** | 77 | **75** | 1 | 1 |
+| **+50** | 31 | 0 | **29** | 2 |
+| +25 | 18 | 2 | 0 | **16** |
+| **+300** | **3** | 1 | 0 | 2 |
+
+**+100 = un frag** et **+50 = une assistance** sont etablis. **+300 apparait exactement
+3 fois pour 3 captures de drapeau** (score final 3-0). +25 est un bareme d'objectif : en
+Strongholds il coincide a 100 % avec un evenement d'objectif.
+
+**Ce que ce resultat referme cote depot** : `internal/analysis/temporal/engagement_score.go`
+pose `100*kills + 50*assists` et `ObjectivePointsPerCapture = 25.0` avec la mention « a
+calibrer en post-validation ». Les trois valeurs sont desormais **mesurees sur le film**.
+
+**La limite, et il faut la dire** : les increments ne sont pas atomiques. Le CTF porte des
+increments de 125 (= 100 + 25), 60 (= 50 + 10) et 225 : plusieurs actions tombent dans le
+meme paquet et se somment. Un bareme compose ne se lit pas par sa seule valeur.
+
+### 16.2 L'IDENTITE des slots d'entite — resolue, et par deux voies qui se confirment
+
+En appariant les increments de +100 d'un slot aux instants de frag de chaque joueur, chaque
+slot s'attribue a **un** joueur, sans collision — 95 increments sur 95 expliques, le second
+candidat toujours loin derriere (0 a 4) :
+
+| slot | 10 | 12 | 14 | 16 | 18 | 20 | 22 | 24 |
+|---|---|---|---|---|---|---|---|---|
+| joueur | FlyGuy8773 | SunburntMonk740 | AG x GibsoN Zz | Destruk2107 | Otti1614 | Madina97294 | JGtm | NeonKnight3166 |
+| frags expliques | 6/8 | 14/15 | 15/15 | 8/9 | 14/15 | 14/15 | 8/9 | 16/16 |
+
+La meme operation avec les evenements d'objectif attribue a chaque slot un **xuid**, ce qui
+referme le pont gamertag <-> xuid **sans aucune jointure en base**. Les deux voies se
+confirment sur les deux joueurs dont l'identite etait etablie ailleurs (§4.1) :
+slot 24 -> NeonKnight3166 -> xuid `2535458126310341` (16 evenements) et
+slot 22 -> JGtm -> `2533274823110022` (9 evenements).
+
+**Consequence** : toutes les courbes par joueur deviennent nominatives.
+
+### 16.3 Les MEDAILLES du film, nommees — 88 couples, controle sur moities disjointes
+
+Piste ouverte par l'utilisateur : plutot que d'inferer, lire une bibliotheque. Le depot en a
+une, `medal_definitions` (167 medailles, nom et description FR/EN).
+
+**Ce que le bloc d'evenement NE porte PAS** : l'identifiant de medaille. Balayage de tous
+les decalages de 32 bits des 60 octets, dans les deux boutismes — **aucun** ne rend un
+identifiant du catalogue. La colonne `medal_definitions.personal_score` existe mais n'a
+jamais ete peuplee (167 lignes a 0).
+
+**Ce qu'il porte** : un couple `(type_hint, medal_type)` et le xuid. Le nommage se fait donc
+par les COMPTES et se prouve par l'UNICITE : pour un film donne, le vecteur « combien de
+fois par joueur » d'un couple doit etre exactement celui d'une medaille de `medals_earned`.
+Un seul film laisse des ambiguites ; **l'intersection sur 948 films les leve**.
+
+| resultat | valeur |
+|---|---|
+| films lus | 948 |
+| couples distincts | 95 |
+| **couples resolus a UNE medaille** | **88** |
+| ambigus | 7 (tous vus sur **un seul** film — medailles de vehicule) |
+
+**Le controle qui donne sa valeur au resultat** : la table est ajustee separement sur les
+films pairs (474) et sur les films impairs (474), qui ne partagent **aucun** film. Les deux
+tables nomment 78 et 81 couples, en commun 72, et **zero desaccord**.
+
+Extrait : `(50,26)` Abats joie · `(50,71)` Tirailleur · `(50,74)` Boxeur · `(50,76)`
+Flingueur · `(50,101)` Kong · `(50,127)` Frag d'outre-tombe · `(100,0)` Double frag ·
+`(100,9)` Folie meurtriere · `(150,1)` Triple frag · `(150,10)` Massacre · `(200,44)`
+Extermination · `(225,3)` Quelle tuerie.
+
+**Ce que la table NE resout pas, et c'est mesure** : appliquee film par film, elle rend
+27,3 % de triplets (medaille, joueur) exacts sur la moitie non utilisee pour l'ajustement,
+avec **11 440 sur-comptes pour 3 730 sous-comptes**. Le maillon faible n'est pas le nommage
+— prouve par le controle sur moities disjointes — mais le **scan d'evenements du footer**,
+qui n'est exact sur la totalite d'un film que dans ~37 % des cas. C'est lui qu'il faut
+durcir avant d'exposer des medailles horodatees.
+
+**Et la garde de l'utilisateur tient** : les actions d'objectif pures (prise, retour,
+capture de drapeau, capture de zone) **ne sont pas des medailles**. Les medailles liees aux
+objectifs sont des faits d'armes (« Bataille de drapeaux », « Interception », « Garde de
+colline », « Zonard »...). Les deux canaux sont complementaires, pas redondants.
+
+### 16.4 Les autres modes a objectifs — ce qui passe et ce qui differe
+
+Courbe de score confrontee au score de `match_registry` sur les films caches de KOTH,
+Total Control et Oddball :
+
+| resultat | valeur |
+|---|---|
+| films disponibles | 61 (135 matchs sans film cache) |
+| **score final EXACT** | **46 (75 %)**, dont **aucun** 0-0 trivial |
+| ecarts | 15 |
+
+Les 15 ecarts ne sont pas du bruit, ils sont **structures** — le film et le registre ne
+comptent pas la meme chose :
+
+- **Total Control** : le film compte les points fins, le registre compte les SETS.
+  `a521164d` film 96-0 / API 3-0 · `a349fea8` film 32-64 / API 1-2 — soit **un facteur 32**.
+  Le film est donc plus FIN que la reference, pas faux.
+- **KOTH** : `606d9844` film 0-3 / API 105-8 ; `8076f97f` film 3-0 / API 78-105. Le film
+  porte un compte de collines, le registre un total de points.
+- **Oddball** : `24dbb67d` film 100-78 / API 200-121 ; plusieurs films plafonnent a 80 ou
+  100. A instruire (manches ?).
+
+**Conclusion** : le decodeur ne casse pas hors des zones et du CTF ; c'est la SEMANTIQUE du
+composant 0 qui depend du mode. Ce qu'il faut, avant d'exposer ces modes, c'est nommer la
+quantite mode par mode — pas re-decoder.
+
+### 16.5 LA BIBLIOTHEQUE EXISTE DEJA — `personal_score_awards`, et elle ferme le nommage
+
+L'utilisateur demandait s'il existe un texte pour les evenements de score qui ne sont PAS
+des medailles. **Oui, et dans le depot** : la table `personal_score_awards` des bases
+joueur porte `award_name`, `award_category`, `award_count` et `award_score`. Le bareme s'en
+deduit directement (`award_score / award_count`) :
+
+| valeur unitaire | noms possibles |
+|---|---|
+| **300** | `flag_captured` |
+| **100** | `killed_player` · `flag_capture_assist` · `hill_scored` · `destroyed_scorpion` · `destroyed_wraith` |
+| **75 / 50** | `zone_captured` (variable) |
+| **50** | `kill_assist` · `ball_control` · `emp_assist` · `driver_assist` · destructions de vehicules legers |
+| **25** | `flag_stolen` · `flag_returned` · `zone_secured` · `hill_control` · `runner_stopped` · les `hijacked_*` |
+| **10** | `flag_taken` · `ball_taken` · `sensor_assist` · `mark_assist` |
+| **-100** | `self_destruction` · `betrayed_player` |
+
+Les valeurs mesurees sur le film en 16.1 (100 = frag, 50 = assistance, 25 = objectif,
+300 = capture) sont donc **confirmees par une source qui ne doit rien au film**.
+
+**Consequence de code, et c'etait un defaut** : le score personnel **n'est pas monotone**
+(-100 existe). `PersonalScoreCurve` n'applique donc AUCUN filtre de monotonie — celui de
+`ScoreCurve` ne vaut que pour le score de MODE, qui, lui, ne recule jamais.
+
+**La reconciliation, sur un match reel** — JGtm, film `1bc77d2e` (CTF), slot 18 :
+
+| recompense de l'API | compte API | ce que le film porte |
+|---|---|---|
+| `killed_player` | 24 | 22 x (+100) + 2 x (+125) = **24** |
+| `flag_captured` | 1 | 1 x (+300) = **1** |
+| `kill_assist` | 2 | 2 x (+50) = **2** |
+| `flag_stolen` 4 + `flag_returned` 2 + `runner_stopped` 2 | 8 | 6 x (+25) + les 2 x (+25) inclus dans les +125 = **8** |
+| `flag_taken` | 1 | 1 x (+10) = **1** |
+
+Somme : 22x100 + 6x25 + 2x50 + 2x125 + 300 + 10 = **3 010**, exactement le total de l'API.
+**Aucune recompense n'est perdue, aucune n'est inventee**, et les increments composes se
+decomposent exactement.
+
+**Ce qui reste a faire pour etiqueter, et c'est mecanique** : la valeur seule ne suffit pas
+a nommer un +25 (six noms possibles). Trois contraintes le font, et elles sont toutes
+disponibles : la **valeur**, le **quota** exact par joueur (`personal_score_awards`), et la
+**coincidence temporelle** (`runner_stopped` tombe sur un frag du joueur, `flag_returned` sur
+un evenement de drapeau). C'est le meme genre d'appariement contraint que celui qui a nomme
+les 88 medailles.
+
+### 16.6 L'ETIQUETAGE — la ligne de temps nommee, livree
+
+`objectiveevents.LabelPersonalScore(points, quotas)` rapproche les increments dates du film
+et le quota `personal_score_awards` du joueur. La resolution se fait a la VALEUR, ce qui est
+exact et sans arbitrage :
+
+- une valeur portee par **une seule** recompense du quota -> l'evenement est **nomme** ;
+- une valeur partagee -> l'evenement porte **la liste des candidates**, jamais un nom choisi
+  au hasard ;
+- un increment **compose** est decompose **si et seulement si** la decomposition est unique
+  a nombre de parts minimal. Le cas ambigu est reel : `zone_captured` valant tantot 50
+  tantot 75, un +125 admet `25+100` ET `50+75` — l'increment reste alors brut. Se taire vaut
+  mieux qu'un faux nom.
+
+**Bout en bout sur un vrai film** (`1bc77d2e`, CTF, 3 joueurs suivis, `cmd/tmp_awards`) :
+100 evenements etiquetes, **56 nommes sans ambiguite**, 8 issus d'un increment compose,
+**0 sans nom ni candidate**. Extrait :
+
+```
+    60.324  JGtm                +100  killed_player
+    60.324  Chocoboflor          +50  kill_assist
+    69.866  JGtm                 +25  l'un de : flag_returned, flag_stolen, runner_stopped
+   141.388  Madina97294          +10  flag_taken
+```
+
+Les 44 evenements non nommes le sont pour une raison **lisible et non pour un echec** :
+`killed_player` et `flag_capture_assist` valent tous deux 100, donc un joueur qui a les deux
+au compteur ne peut pas etre departage par la seule valeur ; idem pour les six recompenses a
+25 points. **JGtm, qui n'a pas de `flag_capture_assist`, voit ses 24 frags nommes 24/24.**
+
+**Ce qui leverait le reste, et c'est le prochain lot** : la **coincidence temporelle**.
+`runner_stopped` doit tomber sur un frag du joueur, `flag_capture_assist` sur une capture de
+son equipe, `flag_returned` sur un evenement de drapeau. Ces trois regles sont des
+HYPOTHESES a mettre a l'epreuve avec un controle negatif, pas a coder d'emblee — le
+chantier a paye deux fois pour l'avoir oublie (§5, regle 4).
