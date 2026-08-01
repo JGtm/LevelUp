@@ -79,3 +79,13 @@ schema_version = 1
 # → shared.match_objective_stats. Gouverne le JOIN _latest servi au scoreboard /
 # synthesis / squad. Cf. PLAN_V72_OBJECTIVE_STATS.md.
 "match.objective.stats"  = "supported"
+# Source du dégât fatal PAR MORT, décodée du film Theater (dead-state de la
+# victime) → shared.match_kill_events, avec le crédit du kill-feed à côté. Gouverne
+# le collecteur internal/sync (passe SÉPARÉE du sync primaire : le film n'existe
+# pas encore quand le match arrive). Infinite = supported (30 ancres Theater, 0
+# étiquette fausse). ABSENTE pour Halo 5 : autre format de film, et ses mécaniques
+# de kill sont déjà natives dans le carnage (commendations.native /
+# CapNativeKillMechanics) — il n'a aucun besoin d'un décodeur de film pour ça.
+# ⚠ Clé FINE : les tirs par arme et la précision par arme sont des familles
+# DISTINCTES, chacune avec ses réserves. Ne pas élargir cette clé.
+"film.kill_source"       = "supported"
