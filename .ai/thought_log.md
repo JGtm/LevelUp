@@ -1,3 +1,47 @@
+## [2026-08-01] Power-ups : le contrôle différentiel de l'utilisateur, et un verdict révisé
+
+**Statut** : En cours — question ouverte, il manque une observation. Branche
+`feat/re-mode-score`. Suite de l'entrée ci-dessous. État de l'art : section **Q1.3-bis** de
+`.ai/ETAT_DE_L_ART_FORGE_PALETTE_ZONES.md`.
+
+**Décision technique** : ne pas défendre la conclusion « les power-ups ne sont pas dans le
+`.mvar` », mais la re-tester avec le contrôle fourni par l'utilisateur (Cliffhanger négatif,
+Catalyst et Vagabond positifs), en commençant par attaquer la faiblesse de ma propre mesure.
+
+**Résultats observés** :
+- **La faiblesse était réelle et ne masquait rien.** `resolveType` retenait la première
+  référence d'une liste ORDONNÉE de groupes : un `food` référençant un `bloc` (le socle) et
+  un `eqip` (l'objet) aurait été classé `bloc`. Nouvelle commande `groups` — ensemble des
+  groupes atteignables à profondeur ≤ 2, sans priorité — : `eqip` reste atteignable pour
+  **3 types sur 2785**. Le chiffre ne bouge pas.
+- **Fait dur du différentiel** : AUCUN `type_id` n'est présent à la fois sur Catalyst et sur
+  Vagabond et absent de Cliffhanger. L'intersection est **vide** — aucun objet unique ne peut
+  être le power-up des deux cartes.
+- **Candidat sérieux pour Catalyst seul** : `-721267272`, groupe `weap`, **cube de 30 cm**,
+  présent sur **35 cartes**, toujours dans la variante de BASE `*_map` (jamais dans une
+  variante de mode), **1 ou 3 par carte**. Sur Catalyst : 3 instances à (0, −14,8, 24,9),
+  (0, +14,8, 24,9), (0, 0, 27,5) — deux symétriques exacts sur l'axe x = 0 plus un au centre
+  exact, 2,6 m plus haut ; Aquarius montre le même motif. **Absent de Cliffhanger** (conforme
+  au négatif) mais **absent de Vagabond** (contredit le positif).
+- **Piste des labels fermée, sur mesure** : les 3 instances portent 4 labels dont 2 varient
+  d'une instance à l'autre — ce qui ressemblait à un discriminateur d'identité. Craqueur
+  murmur3 validé **4/4 sur des labels déjà connus AVANT usage**, puis lancé :
+  `248451123 = minigame_include`. Ce sont des **filtres de mode**, pas l'identité de l'objet.
+- **4 labels craqués** (0,006 collision fortuite attendue sur 1,6 M d'essais, garde-fou
+  d'`objectives.go` respecté) : `extraction_include` (−903313158, 200 objets),
+  `firefight_include` (2140598169, 1357), `minigame_include` (248451123, 297),
+  `forge_include` (−1875636905, 178).
+
+**Conclusion / prochaine étape** : la formulation « clos par la négative » est **retirée** —
+elle supposait sans preuve que power-up implique le groupe `eqip`. Ce qui reste établi est
+plus étroit, et écrit en Q1.3-bis. Il manque une **observation**, pas un calcul : les trois
+positions Catalyst marquées dans `catalyst_powerup_candidat.png` sont-elles les emplacements
+réels du surbouclier et du camouflage ? Si oui le candidat est identifié ; si non, les
+power-ups viennent du scénario de base ou du mode de jeu. En réserve, la voie non essayée :
+Ghidra (serveur MCP tombé en fin de session).
+
+---
+
 ## [2026-08-01] La palette Forge lue — les zones ont une FORME, et elle était dans le .mvar
 
 **Statut** : Complété (session de recherche). Branche `feat/re-mode-score`. État de l'art :

@@ -74,7 +74,74 @@ Resolution, sur les **2 785 `type_id` distincts des 199 cartes** :
 **2 758 / 2 785 = 99,0 %.** Pour memoire, l'etat au 2026-07-31 : 33/42 sur Catalyst (78 %)
 et **15/468 sur Vagabond (3 %)**. Les deux cartes sont desormais a **36/36** et **479/479**.
 
-### Q1.3 Le `[!]` power-ups de J0.2 — clos par la negative
+### Q1.3-bis REPRISE DU 2026-08-01 (soir) — le controle differentiel de l'utilisateur
+
+> **Ce qui a declenche la reprise** : la formulation de Q1.3 ci-dessous est TROP FERME et
+> elle est retiree. Elle supposait que « power-up » implique le groupe de tag `eqip`, ce qui
+> n'a jamais ete etabli. L'utilisateur a fourni le controle qui manquait :
+> **Cliffhanger n'a pas de power-up ; Catalyst et Vagabond en ont.** Un negatif, deux positifs.
+
+**D'abord, tester ma propre faiblesse.** `resolveType` retient la premiere reference d'une
+liste de groupes ORDONNEE : un `food` qui reference a la fois un `bloc` (le socle) et un
+`eqip` (l'objet) serait classe `bloc`. Une commande `groups` rend donc l'ENSEMBLE des groupes
+atteignables a profondeur <= 2 (`food -> refs` et `food -> foki -> refs`), sans aucun ordre de
+priorite. Sur les 2 785 types : `bloc` 2669 · `weap` 36 · *(aucun)* 26 · `mach` 23 ·
+`scen` 22 · `vehi` 15 · **`eqip` 3** · `ctrl` 2. **Le chiffre ne bouge pas.** La faiblesse
+etait reelle, elle ne masquait rien.
+
+**Le fait dur du controle differentiel** : sur les six variantes (`catalyst_catalyst`,
+`catalyst_map`, `vagabond_map`, `vagabond_fo08_wetland`, `cliffhanger_map`,
+`cliffhanger_ridgeline`), **AUCUN `type_id` n'est present a la fois sur Catalyst et sur
+Vagabond et absent de Cliffhanger.** L'intersection est vide. Aucun objet unique ne peut donc
+etre « le power-up » des deux cartes a la fois.
+
+**Le meilleur candidat, et il ne tient qu'a moitie** : `type_id` **-721267272**.
+
+| critere | mesure |
+|---|---|
+| groupe / emprise | `weap`, **0,28 x 0,29 x 0,30 m** — un cube de 30 cm, pas une arme |
+| presence | **35 cartes**, 61 instances, **toujours dans la variante de BASE `*_map`**, jamais dans une variante de mode |
+| nombre par carte | **1 ou 3**, jamais plus |
+| Catalyst | **3**, aux positions (0,00 · -14,80 · 24,90), (0,00 · +14,80 · 24,90), (0,00 · 0,00 · 27,50) — **deux points parfaitement symetriques sur l'axe x = 0, plus un au centre exact, 2,6 m plus haut** |
+| Aquarius (temoin de motif) | 3, a (+19,00 · 0), (-19,00 · 0), (0,02 · 0,02) — **meme motif** |
+| Cliffhanger | **ABSENT** — conforme au negatif de l'utilisateur |
+| Vagabond | **ABSENT** — **contredit le positif de l'utilisateur** |
+
+Le motif « deux symetriques + un au centre conteste » est la disposition classique des objets
+de puissance d'une arene. Il tient sur Catalyst et sur Cliffhanger. **Il tombe sur Vagabond.**
+
+**La piste des labels est fermee, et c'est mesure.** Les trois instances de Catalyst portent
+chacune 4 labels, dont deux DIFFERENT d'une instance a l'autre — ce qui ressemblait a un
+discriminateur d'identite. Une recherche exhaustive murmur3 (craqueur valide **4/4 sur des
+labels deja connus** avant usage) en a craque un : **`248451123 = minigame_include`**. Ce sont
+donc des **filtres de mode**, pas l'identite de l'objet. Ils disent dans quels modes l'objet
+apparait, jamais ce qu'il est.
+
+**Nouveaux labels craques au passage** (a porter dans `objectives.go` ; 0,006 collision
+fortuite attendue sur 1,6 M d'essais, garde-fou du fichier respecte) :
+
+| hash | nom | objets porteurs |
+|---|---|---|
+| `-903313158` | `extraction_include` | 200 |
+| `2140598169` | `firefight_include` | 1 357 |
+| `248451123` | `minigame_include` | 297 |
+| `-1875636905` | `forge_include` | 178 |
+
+**Verdict revise.** Ce qui est etabli :
+
+1. aucun objet de groupe `eqip` sur Catalyst, Vagabond ou Cliffhanger (mesure sans ordre de
+   priorite) ;
+2. aucun `type_id` commun a Catalyst et Vagabond et absent de Cliffhanger ;
+3. un candidat serieux pour Catalyst (**-721267272**), qui echoue sur Vagabond ;
+4. les labels ne nomment pas l'objet — ils filtrent les modes.
+
+**Ce qui manque pour trancher est une observation, pas un calcul** : les trois positions
+Catalyst ci-dessus correspondent-elles aux emplacements reels du surbouclier et du
+camouflage ? L'image `catalyst_powerup_candidat.png` les marque. Si oui, le candidat est
+identifie et le verdict s'inverse pour Catalyst. Si non, le `.mvar` ne porte pas les
+power-ups et il faut les chercher dans le scenario de base ou dans le mode de jeu.
+
+### Q1.3 Le `[!]` power-ups de J0.2 — clos par la negative *(FORMULATION RETIREE, cf. Q1.3-bis)*
 
 Les 3 types `eqip` de la palette et leurs porteurs :
 
