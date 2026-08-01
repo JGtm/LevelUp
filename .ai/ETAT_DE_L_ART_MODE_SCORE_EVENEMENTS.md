@@ -958,3 +958,47 @@ flux** : sa presence ou son absence tranche la question en une passe, sans hypot
 
 C'est la seule inconnue restante entre l'etat actuel et un parcours de chaine complet hors
 ligne — donc entre l'etat actuel et la courbe de score sur les 951 films du cache.
+
+### 14.5 L'identifiant EST trouve — par la mesure, pas par l'hypothese
+
+La recherche « quel champ est CONSTANT par entite et DIFFERENT entre entites » tranche sans
+rien supposer : **purete 100 %, 10 valeurs distinctes pour 10 entites** (2 equipes + 8 joueurs),
+a **2 bits avant le masque, sur 13 bits** — exactement la largeur derivee du binaire en 14.4.
+
+Ma verification precedente echouait pour une raison simple : **la valeur du flux n'est pas
+l'identifiant runtime de la capture.** La correspondance mesuree est propre :
+
+| eid de la capture | slot dans le flux |
+|---|---|
+| 1073741827 (equipe A) | **6** |
+| 1073741828 (equipe B) | **8** |
+| 1073741829 a 1073741836 (les 8 joueurs) | 10, 12, 14, 16, 18, 20, 22, 24 |
+
+soit `slot_flux = 2 x (eid - 0x40000000)`. La grammaire d'en-tete est donc **complete** :
+
+```
+[1 bit presence][2 bits type][13 bits slot][2 bits generation][1 bit forme][3 bits N][N x 6 bits index]
+```
+
+### 14.6 L'ancrage direct hors ligne : tente, INSUFFISANT en l'etat
+
+`cmd/tmp_scorechain` ancre sur ce motif et decode les composants listes. Resultat sur le
+Strongholds, slot 6, composant 0 : **506 ancrages**, valeurs incoherentes (1 815 043 216,
+-19 383...), la ou la verite terrain en compte **190** et une courbe monotone jusqu'a 200.
+
+**Le diagnostic est net, et il faut le dire tel quel** : 13 bits de slot ne suffisent pas a
+discriminer dans un paquet de ~2 000 bits, et mes contraintes de cadrage
+(bit de presence, 2 bits de type) ne sont pas encore correctes — avec elles, 5 ancrages ; sans
+elles, 506 de bruit. Le motif est trop faible **seul**.
+
+**Ce qui manque exactement, et c'est un lot, pas une enigme** : caler le cadrage
+presence/type. `FUN_1406CD128` lit le bit de presence puis 2 bits de type, mais avec deux
+lectures conditionnelles gatees par `FUN_14076CEA8` (32 bits en tete de tour, 8 bits selon le
+type) qui decalent le tout si le mode est actif. La verite terrain le donne **par soustraction
+directe** : on connait 1 078 positions de masque exactes ; l'ecart entre le masque et le debut
+reel de l'enregistrement se lit, il ne se devine pas. C'est une mesure de quelques lignes, pas
+une recherche.
+
+Une fois ce calage pose, l'ancrage devient sur-contraint (presence + type + 13 bits de slot +
+forme + compte + index croissants bornes = plus de 30 bits de contrainte dure) et la courbe de
+score tombe hors ligne sur les 951 films.
