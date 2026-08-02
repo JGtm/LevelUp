@@ -135,6 +135,33 @@ haut, cf. Q1.3-ter).
 Sorties : `.ai/V7.5/dumps/forge_zones/palette_noms.csv` (4 213 entrees, hachage + nom quand
 il est craque) et `noms_craques_murmur3.txt` (les 33 correspondances hachage -> nom).
 
+### Q1.0-sexies LE FORGE KIT ET L'APPARIEMENT `fosp` — deux impasses, mesurees
+
+**Le `Forge Kit` (groupe `kit!`) ne mene nulle part ici.** Sa definition fait 337 Ko et porte
+90 champs `name` et **71 champs `folder name`** litteraux — l'arborescence du navigateur
+Forge, en principe. Mais dans le jeu installe il n'existe **qu'UN SEUL tag `kit!`**
+(gid 1824735348, 26 600 o, dans `globals-rtx-new.module`), et son extraction ne rend
+**10 suites imprimables**, toutes des marqueurs de structure (`ucsh`, `SFDM`…). Les gids
+`kit!` references par les `foki` de la palette (1769181442, 1747229976, 240986752…) sont
+**introuvables** dans `deploy/any`. Le catalogue de dossiers n'est pas dans les fichiers
+locaux du jeu.
+
+**L'appariement direct dans `fosp` est REFUTE.** La definition montre un bloc « Strings »
+qui met cote a cote `_2 String` (StringID) et `_1 String Literal` — l'esperance etait que le
+StringID soit le murmur3 du litteral, ce qui aurait donne un dictionnaire mecanique. Test sur
+le tag `fosp -631325601` (24 512 o) qui contient « Active Camouflage » : les murmur3 des
+**cinq** ecritures plausibles du libelle (`Active Camouflage`, `active_camouflage`,
+`activecamouflage`, `active_camo`, `ActiveCamouflage`) sont cherches dans les 24 512 octets
+du tag, en petit-boutiste ET en gros-boutiste : **0 occurrence sur 10 recherches**.
+
+Le StringID et le litteral sont donc **poses independamment** : l'un designe une propriete
+interne, l'autre est le texte affiche. Recuperer les couples exige de **parser reellement le
+bloc** avec la definition, pas de deviner l'appariement. C'est la prochaine action concrete
+pour qui reprend.
+
+**Un label de carte craque au passage** : `-534119345 = assault_bomb`, trouve dans le
+dictionnaire Halo de 616 697 noms — a ajouter a `objectives.go` avec les quatre autres.
+
 ### Q1.0-quinquies LES CHAINES DE L'INTERFACE FORGE — trouvees, EN CLAIR, dans les tags
 
 Les definitions `foki.xml` et `fosp.xml` (depot Z-15) portent des champs de type **`_1` =

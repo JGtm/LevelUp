@@ -1,3 +1,50 @@
+## [2026-08-01] Les chaînes de l'interface Forge, en clair — et le râtelier nommé par le jeu
+
+**Statut** : Complété pour l'inventaire des emplacements ; le nommage des quatre entrées
+reste ouvert. Branche `feat/re-mode-score`. État de l'art : sections **Q1.0-quater** à
+**Q1.0-sexies**.
+
+**Décision technique** : suivre les dépôts communautaires proposés par l'utilisateur, mais
+les évaluer sur pièces plutôt que sur leur réputation — et notamment contrôler MA méthode
+contre la leur avant de leur faire confiance.
+
+**Résultats observés** :
+- **Mon murmur3 est validé par une source indépendante.** Le dictionnaire de
+  `Z-15/Halo-Infinite-Tag-Editor` donne `gravity_hammer -> 3C2CDAAC` ; cette session
+  calculait `0xACDA2C3C`. **Mêmes octets, ordre inverse** — ils stockent en gros-boutiste.
+  Vérifié sur `needler`, `assault_rifle`, `warthog`. La recette de nommage tient donc de
+  l'extérieur, plus seulement par cohérence interne.
+- **Les définitions de tag communautaires expliquent la structure mesurée à l'aveugle** :
+  `food.xml` nomme mon « bloc 1 » = bloc **Object Representations**, mot 0 =
+  **Representation Name**, mot 1 = **Crate Variant**, puis Configuration / Object Definition
+  (Crate) / Menu Item Definitions — exactement le layout observé. Les quatre entrées
+  « emplacement » sont donc **quatre variantes de caisse**, et les deux mots sont des
+  StringID, donc des **noms** — pas un identifiant opaque comme je le supposais.
+- **`foki` et `fosp` portent des chaînes LITTÉRALES.** Extraction des 79 tags du module de
+  la palette : **575 chaînes**, les libellés de l'interface Forge en clair. D'où
+  **l'inventaire des types d'emplacement** : `PowerUpPad`, `PowerWeaponPad`,
+  **`WeaponRack`** (le râtelier signalé par l'utilisateur), `WeaponTrunk`, `EquipmentPad`,
+  `GrenadePad`, `OrdnancePod`, `VehiclePad`. Et les power-ups en clair : `Overshield`,
+  `Active Camouflage`, `Threat Sensor`, `Grappleshot`, `Repair Field`, `Shroud Screen`,
+  `Quantum Translocator`, `Thruster`.
+- **Trois impasses mesurées, pour qu'on ne les rejoue pas** : (1) les dictionnaires
+  communautaires sont d'un autre build — intersection **exactement 0** entre leurs 3 120
+  `food` du module de la palette et nos 4 235, et leur liste de 616 697 noms ne contient
+  aucun des huit StringID des quatre emplacements ; (2) le `Forge Kit` n'existe qu'en **un
+  seul tag** dans le jeu installé et ne rend aucun littéral ; (3) l'appariement direct dans
+  `fosp` est **réfuté** — les murmur3 des cinq écritures plausibles d'« Active Camouflage »
+  sont absents des 24 512 octets de son propre tag, en petit ET gros-boutiste.
+- **Deux noms de plus** : `warthog_gauss`, `primitive_teleporter`, `shell_casing` côté
+  palette (67 entrées nommées), et le label de carte `-534119345 = assault_bomb`.
+
+**Conclusion / prochaine étape** : récupérer les couples (StringID, littéral) exige de
+**parser réellement le bloc « Strings » de `fosp`** avec la définition — le raccourci par
+devinette d'appariement est testé et faux. C'est l'action concrète pour qui reprend. Le
+râtelier, lui, est désormais nommé par le jeu : `WeaponRackPlacementKey`, catégorie distincte
+du socle d'arme lourde et du socle de power-up.
+
+---
+
 ## [2026-08-01] Le nommage de la palette Forge est RÉSOLU — un murmur3 dans le tag
 
 **Statut** : Complété pour le mécanisme ; 64 entrées nommées sur 4 213, le reste est du
