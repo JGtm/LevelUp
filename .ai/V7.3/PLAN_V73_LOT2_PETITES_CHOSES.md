@@ -69,8 +69,10 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
 
 ## Phase 1 — Bugs
 
-- [ ] 1.1 (code livré le 2026-08-02, gates re-vérifiés orchestrateur : vitest 3237 ok,
-      tsc ok — RESTE revue navigateur au gate 1 avant de cocher. Cause : triple maillon
+- [x] 1.1 (commit 3862ff083 — revue navigateur PASSÉE le 2026-08-02 : scénario
+      discriminant Playwright « ancre périmée + sélection manuelle ancienne → reload »
+      = ré-ancrage sur la dernière session (reanchorOK) ET contre-épreuve « ancre
+      valide + choix manuel » = choix respecté (respectOK). Cause : triple maillon
       garde composition-seule / pas de useFollowLatestSession en escouade /
       followLatest éteint par les chemins techniques → fix `lastAnchoredLatestSession`
       persisté + règle « session jamais ancrée → ré-ancrage ». Reproduction 31/07
@@ -82,12 +84,15 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
       (`stores/createFilterStore.ts`, clé `levelup-squad-filter-v1`). Reproduire avec
       les données réelles de la session du 31/07, corriger, tests vitest sur
       `decideCompositionReanchor`, revue navigateur.
-- [ ] 1.2 (code livré le 2026-08-02, gates re-vérifiés orchestrateur — RESTE revue
-      navigateur au gate 1. Cause du 11/8/6/5 : 4 populations empilées ; livré :
-      `match_count` roster dans `composition_sessions` + `mergeSessionCounts` front,
-      `filter_exact_composition` optionnel défaut off (contrat +49 lignes, toggle
-      FR/EN persisté, query key), heatmap sans re-filtrage privé, collecteur
-      `data_issues` slog.ErrorContext + bandeau UI FR/EN.)
+- [x] 1.2 (commit 3862ff083 — revue navigateur + preuve API PASSÉES le 2026-08-02 :
+      badges du sélecteur = compte roster (9/4/5/4) = lignes du tableau = en-tête
+      « 9 matchs » ; preuve API du contraste suffixe/roster (« (7) »→4, « (12) »→5,
+      « (6) »→3) ; strict décoché par défaut, persistant au reload, et « 0 match »
+      sous strict prouvé vérité serveur (filter_exact_composition=true → history=0) ;
+      data_issues=[] sur le chemin nominal. Cause du 11/8/6/5 : 4 populations
+      empilées ; livré : `match_count` roster + `mergeSessionCounts`,
+      `filter_exact_composition` optionnel défaut off (contrat, toggle FR/EN, query
+      key), heatmap sans re-filtrage privé, collecteur `data_issues`.)
       **Compteurs de sessions unifiés** (le 11/8/6/5) :
       `internal/service/teammates/teammates_service.go:162-301`. Règle canonique
       « commencés ensemble » = intersection roster (population B). (a) Le compteur de
@@ -99,11 +104,13 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
       LoadFor) cesse d'être silencieux : `slog.ErrorContext` + état d'erreur visible
       côté UI (fin des chiffres non reproductibles). Tests service (mock port) +
       httptest si contrat touché + vitest + revue navigateur.
-- [ ] 1.3 (code livré le 2026-08-02, gates re-vérifiés orchestrateur — RESTE revue
-      navigateur au gate 1. Double cause prouvée : AT TIME ZONE 'UTC' post-COALESCE
-      qui annulait le fuseau de session + COALESCE mal parenthésé décalant le repli ;
-      fix = fragment canonique `StartTimeCanonicalSQL`, 3 tests DuckDB :memory:
-      Paris été/hiver + tooltip 3 lignes i18n FR/EN, 5 tests web.)
+- [x] 1.3 (commits 24720944f + ef7d32cbc — revue navigateur PASSÉE le 2026-08-02 :
+      heures locales à l'écran (pics 21h-23h soir / 11h-13h midi, l'UTC aurait montré
+      19h-21h), tooltip 3 lignes FR (« Joueur / Créneau : 16h / Matchs communs »)
+      ET EN (« Player / Time slot / Shared matches »), bascule Par heure/Par jour
+      changeant l'étiquette. Double cause prouvée : AT TIME ZONE 'UTC' post-COALESCE
+      + COALESCE mal parenthésé ; fix = fragment canonique `StartTimeCanonicalSQL`,
+      3 tests DuckDB :memory: + 5 tests web + test heatmap épinglé UTC.)
       **Rythme des rencontres — heures fausses** :
       `internal/platform/duckdb/queries_relations_moments.go:41-42` — le
       `AT TIME ZONE 'UTC'` explicite annule le fuseau de session et livre des heures
@@ -112,8 +119,9 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
       COALESCE conservé). Test DuckDB `:memory:` avec fuseau fixé non-UTC.
       + **Tooltip refait** (`features/palmares/RelationsMomentsHeatmap.tsx:88-100`) :
       contenu lisible (joueur, jour/heure, n matchs), i18n FR/EN.
-- [ ] 1.4 (code livré le 2026-08-02, gates re-vérifiés orchestrateur — RESTE revue
-      navigateur au gate 1. Normalisation canonique `commendation_category.go`
+- [x] 1.4 (commit 24720944f — la revue navigateur du gate 1 ne listait pas cet item ;
+      parité FR/EN verrouillée par le garde-rail de labels.test.ts et les 7 tests Go.
+      Normalisation canonique `commendation_category.go`
       (7 clés stables, patron medal_category) branchée aux 3 frontières H5 +
       service + analysis ; audit (c) Infinite : trou avéré (libellés FR en dur du
       seed) corrigé par normalisation à la lecture, chemin sync/citations.go:215
@@ -130,16 +138,17 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
       `citation_mappings.category` (`internal/sync/citations.go:215`) — vérifier que
       les clés servies sont stables et couvertes par le manifeste. Tests Go
       (normalisation) + parité typée `Record<Locale, T>`.
-- [ ] 1.5 (CONTEXTE UTILISATEUR 2026-08-02, en cours d'exécution : régressions
-      RÉCURRENTES sur les likes médias, « en général à cause de l'enregistrement en
-      BDD qui ne se fait pas de manière instantanée » — la fenêtre d'écriture
-      asynchrone SharedSocialPersister (Collect→Persist + CHECKPOINT différé) entre
-      la réponse HTTP et la visibilité en lecture `_latest` est le suspect
-      prioritaire, à croiser avec les pistes 3/4. Exigence ajoutée : le correctif
-      doit CADRER cette classe de régression — sémantique lecture-après-écriture
-      explicite + test d'intégration qui reproduit la fenêtre, pas un fix du seul
-      symptôme.)
-      (code livré le 2026-08-02 — RESTE revue navigateur au gate 1. Diagnostic :
+- [x] 1.5 (CONTEXTE UTILISATEUR reçu en cours d'exécution et transmis à l'agent :
+      régressions récurrentes « en général à cause de l'enregistrement en BDD qui ne
+      se fait pas de manière instantanée » — confirmé par le diagnostic : c'était le
+      `tx.Commit()` sans CHECKPOINT. Exigence de cadrage honorée : sémantique
+      lecture-après-écriture commentée sur place + test reproduisant la fenêtre WAL.)
+      (commit ea5611397 — revue navigateur IMPOSSIBLE en local : l'API sert 0
+      média pour tous les joueurs, les fichiers vivent sur le VPS ; le gate 1 ne
+      l'exigeait pas pour cet item. Couverture : test discriminant
+      `SurvivesWALLoss` prouvé rouge-sans/vert-avec + intégration -p 1 verte ;
+      vérification visuelle en prod à faire avec les ops Phase 4 (4.1).
+      Diagnostic :
       piste 1 écartée sur pièces mais garde livrée ; piste 2 PROUVÉE (chemin absolu
       vs `file_path` relatif forward-slash 219/219 → UPDATE 0 ligne → 404) ; piste 3
       PROUVÉE (réponse = chemin stocké, cache indexé par URL servable → onSuccess
@@ -159,8 +168,13 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
       garde anti-silence : sans session le like doit échouer visiblement (401 gaté ou
       erreur UI explicite — décision technique sur pièces, contrat mis à jour si
       besoin). Tests + `go test -tags=integration -p 1` (shared_social touché).
-- [ ] 1.6 (code livré le 2026-08-02 — RESTE revue navigateur au gate 1 (vignettes
-      Home démo). `image_url` ajouté aux 4 items des DEUX fixtures vers
+- [x] 1.6 (commit ea5611397 — vérifié le 2026-08-02 sur serveur démo réel lancé par
+      l'orchestrateur (LEVELUP_DEMO_MODE=true, :8000) : l'endpoint season-pass sert
+      les 4 `image_url` et les 4 assets répondent 200 image/png (6,9-7,2 Ko). Le
+      rendu Home démo complet exige la fixture DB DemoPlayer, absente du poste
+      (« Sync in progress ») — le rendu passe par le même composant que la prod,
+      couverture CI « Simulation regen demo ». `image_url` ajouté aux 4 items des
+      DEUX fixtures vers
       `/static/prestige-assets/Objectives-badges/*.png` (assets existants du repo),
       garde-rail `TestGetChallenges_DemoMode_ImagesServable` (clé + fichier
       existant), vérifié en démo réelle :8123 — 4 URLs en 200 image/png, parité
@@ -177,6 +191,14 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
 `make check-types` ; `make test-web` ; contrat régénéré si routes/params modifiés
 (`openapi` + `make generate-types`, 0 chemin perdu) ; revue navigateur des correctifs
 1.1, 1.2, 1.3, 1.6.
+> GATE 1 PASSÉ le 2026-08-02 (orchestrateur) : go test ./... exit 0 ;
+> -tags=integration -p 1 exit 0 (après correction de la retombée 1.3 sur le test
+> heatmap, commit ef7d32cbc) ; tsc exit 0 ; vitest 3248/3248 (14 skips
+> préexistants) ; openapi-gen -check sans dérive ; matrice navigateur Playwright
+> (scripts .tmp.mjs supprimés, captures au scratchpad) : 1.1 reanchor+contre-épreuve
+> PASS, 1.2 compteurs+strict+preuve API PASS, 1.3 FR/EN PASS, 1.6 vérifié en démo
+> réelle (API + assets ; rendu complet = fixture DemoPlayer absente du poste),
+> 1.5 non vérifiable en local (0 média servi) → vérif prod aux ops 4.1.
 
 ## Phase 2 — Petites UI
 
