@@ -498,18 +498,6 @@ func renderCounts(m map[string]int) string {
 	return strings.Join(parts, " · ")
 }
 
-func renderStringMap(m map[string]string) string {
-	keys := sortedKeys(m)
-	parts := make([]string, 0, len(keys))
-	for _, k := range keys {
-		parts = append(parts, fmt.Sprintf("%s=%s", k, m[k]))
-	}
-	if len(parts) == 0 {
-		return "aucune"
-	}
-	return strings.Join(parts, " · ")
-}
-
 func sortedKeys[V any](m map[string]V) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
