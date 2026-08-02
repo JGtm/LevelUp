@@ -1517,6 +1517,20 @@ comme prévu).
   collecteur parte de la liste officielle des morts et l'ENRICHISSE, au lieu de publier la seule
   liste qu'il sait décoder. Mesurable : `lignes_passe_film / morts_api` ≥ 98,4 % sur le même
   périmètre. *Le doublon se voit et se corrige ; la mort manquante, non.*
+- **[2026-08-02] CONCEPTION DE L'INVERSION — `.ai/CONCEPTION_INVERSION_PRESEANCE.md`.** Le critère
+  ci-dessus est ATTEIGNABLE sans re-décoder un seul film, et c'est le résultat qui compte : les
+  deux sources ne sont pas deux mesures indépendantes mais **un seul flux lu par deux canaux** —
+  le kill-feed du film passe par `analysis.ParseHighlightEvents`, le MÊME parseur que
+  `highlight_events`. D'où un appariement `(match_id, time_ms)` à **tolérance ZÉRO**, seule valeur
+  où il est une bijection stricte (73 589 = 73 589 ; dès 50 ms les deux côtés divergent), et une
+  reprise **SQL→SQL** : l'enrichissement des 949 matchs est déjà en base. Table cible **134 866**
+  contre 124 694 aujourd'hui (**+10 172 morts**, dont 73 589 enrichies). **Un chiffre du chantier
+  est corrigé** : l'oracle brut sur-comptait (15 120 groupes en double exact dans
+  `highlight_events` sur les 394 matchs sans film) — sur l'oracle dédupliqué le crédit tient
+  **98,5 % PARTOUT**, pas seulement sur le périmètre film. Les 980 orphelins de film sont
+  CONSERVÉS : aucun ne tombe sur un instant sans événement API, et 968 sont des morts de bot que
+  le kill-feed humain-seul de l'API ne peut structurellement pas porter. **Rien n'est
+  implémenté** ; 4 arbitrages restent ouverts (§8 du document).
 
 ---
 
@@ -1905,7 +1919,7 @@ ronde. Ne pas « améliorer » la liste `dependentViews` en croyant refermer le 
 | lot | état | ce qu'il rend | sessions |
 |---|---|---|---|
 | **J4-fix** — ronde de correction post-revue (7 constats) + ronde 2 | EN COURS | — | 1-2 |
-| **Killfeed VISIBLE** — inversion de préséance (crédit = base, film = enrichissement) → re-backfill → bascule des 8 lecteurs (vue de compat) + seed_demo | à faire | **LE vrai visible** : armes de kill, assists nommés dans les pages existantes, agrégats carrière dégonflés (« 101 → 29 ») | 3-4 |
+| **Killfeed VISIBLE** — inversion de préséance (crédit = base, film = enrichissement) → re-backfill → bascule des 20 lecteurs (vue de compat) + seed_demo | **CONÇU** (`.ai/CONCEPTION_INVERSION_PRESEANCE.md`, 2026-08-02) — reste à implémenter | **LE vrai visible** : armes de kill, assists nommés dans les pages existantes, agrégats carrière dégonflés (« 101 → 29 ») | 3-4 |
 | **Intégration re-mode-score** — rebaser sur `feat/replay2d-prod`, intégrer le code objectifs + P1/P2 de sa revue (docs déjà restitués) | à faire | anti-divergence (le code atterrit ; son débouché rejeu reste dev) | 1-2 |
 | **Hygiène** — rangement `.ai/` → V7.5, lot E delivery-checklist | à faire | — | 1-2 |
 | **MERGE** — revue adverse finale si besoin, GO utilisateur, backfill prod | à faire | la release | 1 |

@@ -1,3 +1,89 @@
+## [2026-08-02] Conception de l'inversion de préséance crédit↔film — l'appariement est une identité, pas une jointure floue
+
+**Statut** : Complété (CONCEPTION SEULE, rien d'implémenté). Livrable :
+`.ai/CONCEPTION_INVERSION_PRESEANCE.md`. Périmètre fermé aux 4 questions à trancher par la
+mesure. Aucune écriture en base : mesures en lecture seule (`cmd/diag_q`, `access_mode=read_only`)
+sur des COPIES des bases de dev dans le scratchpad. Décodeur non touché, aucun lecteur basculé.
+
+**Décision technique principale** : l'appariement retenu est **`(match_id, time_ms)` à tolérance
+ZÉRO**, pas la clé `match + victime + tueur + Δt` que le prompt proposait. Trois mesures le
+commandent. (1) La tolérance n'achète rien : de 0 ms à 1 SECONDE, la clé à quatre colonnes gagne
+**8 lignes sur 74 569**. (2) La tolérance détruit la bijection : à 0 ms, film apparié = crédit
+apparié = **73 589 exactement** ; dès 50 ms les deux nombres divergent (73 618 contre 73 848),
+signature d'une correspondance devenue multiple. (3) Les identités n'ajoutent aucun pouvoir
+discriminant — `(match_id, time_ms)` est mesurée **strictement unique des deux côtés** (98 662 et
+74 569 clés pour autant de lignes, zéro collision) — mais elles RETIRENT 1 293 appariements
+valides quand le film n'a pas résolu un xuid. Elles restent donc un CONTRÔLE (0 divergence de xuid
+sur 73 589 appariés, victime comme tueur), jamais un critère de jointure.
+
+**LE FAIT QUI EXPLIQUE TOUT, et qui n'était écrit nulle part** : les deux sources ne sont pas deux
+mesures indépendantes du même événement, c'est **une seule mesure livrée par deux canaux**. Le
+kill-feed du film est décodé par `analysis.ParseHighlightEvents` (`killsource/feed.go:59`) — le
+MÊME parseur que celui qui alimente la table `highlight_events` depuis l'API. Il n'y a aucun écart
+d'horloge à absorber, et c'est pour ça que la tolérance est inutile. Second fait vérifié à part :
+`ComputeKillerVictimPairs` horodate le couple sur l'instant du KILL (`TimeMS: k.t`), et le film
+ancre au même endroit — les deux axes coïncident par construction.
+
+**Le sort des orphelins : les GARDER, et la mesure ferme la question.** 980 lignes de film (1,3 %)
+sans mort de crédit en face. **Zéro ne tombe sur un instant sans événement API** (831 coïncident
+avec un `kill`, 158 avec un `death`). Anatomie : 819 victimes BOT, 149 tueurs BOT, 13
+humain-contre-humain. Le kill-feed de l'API est humain-seul — un bot n'a pas de xuid, donc pas
+d'événement — donc ces morts ne peuvent structurellement PAS produire de couple. Les rejeter
+traiterait une absence de mesure comme une mesure d'absence. La décision ne rouvre rien :
+l'arbitrage (A) du DDL dit déjà « les bots sont DANS la table, ce sont les lecteurs carrière qui
+les filtrent ».
+
+**Résultats observés** :
+- **Correction d'un chiffre du chantier** : l'oracle brut SUR-COMPTE. `highlight_events` porte
+  **15 120 groupes `(match, instant, joueur)` en double exact** sur les 394 matchs sans film
+  (50 857 lignes pour 35 737 morts distinctes). Comparé à cet oracle gonflé, le crédit tombait à
+  69,3 % sur ce périmètre et paraissait très inégal. Sur l'oracle DÉDUPLIQUÉ il est **uniforme :
+  98,5 % (périmètre film) / 98,6 % (sans film) / 98,5 % global (133 886 sur 135 909)**. Le 98,4 %
+  de la session 3 était juste, mais il n'était pas la propriété d'un périmètre — le crédit tient
+  98,5 % PARTOUT.
+- **Le critère de bascule est franchi** : table cible = 133 886 (base crédit) + 980 (orphelins) =
+  **134 866**, contre **124 694** aujourd'hui — **+10 172 morts**, dont **73 589 enrichies**
+  (100 % d'entre elles portent un `source_tag`, 23 018 un assistant nommé). Aujourd'hui, à
+  l'inverse, 389 matchs sur 949 PERDENT des morts (24 919 au total) sous la préséance film.
+- **Les trois états de l'assistant survivent** : la fusion ne crée aucun champ. Ligne non enrichie
+  = état 1 inchangé ; ligne enrichie = copie VERBATIM du film, y compris ses 1 521 états 1. La
+  seule combinaison fabricable — défauter `assist_known` à TRUE, ce qui inventerait 60 297
+  « mesures : pas d'assistant » — est nommée et doit être rendue impossible à l'écriture.
+- **Halo 5 : no-op vérifié.** 268 337 lignes, **0 ligne de film**, `read_path = 'kill-feed'`
+  partout : le titre est déjà intégralement crédit-base.
+- **Ce qui rend la bascule bon marché** : aucune migration de schéma, aucun re-décodage.
+  L'enrichissement des 949 matchs est DÉJÀ en base, indexé par `(match_id, time_ms)` — la reprise
+  est une migration SQL→SQL, jouable en production sans les 23 Go de films.
+
+**Le garde-rail proposé, et c'est celui dont l'absence a coûté la session 3** : *une passe écrite
+pour un match ne peut jamais porter moins de morts que la base crédit de ce match*. Testé ET
+refusé à l'écriture, il aurait fait rougir la bascule au lieu de la laisser effacer 25 697 morts
+en silence.
+
+**Découvertes consignées, AUCUNE traitée** : (a) le garde-fou `assist_extra_count` du DDL A BOUGÉ
+— **5 lignes à 1** alors que le commentaire dit « 0 partout, s'il bouge c'est le déclencheur de
+migration vers une table fille » ; volume dérisoire, mais à statuer ; (b) les doublons exacts de
+`highlight_events` ci-dessus — tout `COUNT(*)` sur cette table sur-compte de ~42 % sur ce
+périmètre ; (c) `(match_id, time_ms)` n'est PAS unique sur Halo 5 (7 collisions sur 268 337) :
+l'unicité est une propriété MESURÉE du corpus Infinite, pas une garantie de schéma, et le
+fusionneur doit rejeter proprement si elle est violée.
+
+**Piège de méthode de la session** : définir le côté crédit par `SELECT DISTINCT match_id,
+killer_xuid, victim_xuid, time_ms, killer_gamertag, victim_gamertag` gonfle le jeu (plusieurs
+orthographes de gamertag pour une même clé) et fait sortir **85 150 appariés pour 74 569 lignes de
+film** — un cardinal supérieur à sa source. Le `DISTINCT` doit porter sur la clé, jamais sur les
+attributs. L'absurdité du nombre est ce qui l'a fait voir ; une erreur du même type sur des
+grandeurs plausibles serait passée.
+
+**Conclusion / prochaine étape** : la conception est prête à passer `plan-review` avant
+implémentation. Quatre points restent à trancher avec l'utilisateur, dont le principal : faut-il
+baser sur les COUPLES (133 886, 98,5 %) ou aller jusqu'aux MORTS (100 %, avec `feed_killer_*` NULL
+sur les 2 023 morts sans tueur appariable) ? Recommandation : les couples pour cette bascule —
+changer la définition du contenu en même temps que la préséance rendrait le gate avant/après
+illisible. La bascule des 20 sites de lecture reste APRÈS, inchangée.
+
+---
+
 ## [2026-08-02] Ronde de correction J4R — les 7 constats de la revue adverse, et 6 mutations pour le prouver
 
 **Statut** : Complété. Périmètre FERMÉ aux 7 constats du tableau « REVUE ADVERSARIALE DU LOT J4 ».

@@ -218,6 +218,15 @@ pour le rejouer. **En CI il ne tourne donc pas** : c est une limite assumee, pas
 
 ## PHASE 2 — LA BASCULE DES LECTEURS
 
+> **PREALABLE ECRIT LE 2026-08-02 — `.ai/CONCEPTION_INVERSION_PRESEANCE.md`.** La bascule telle
+> qu ecrite ci-dessous suppose la preseance FILM > CREDIT, celle-la meme que la mesure de la
+> session 3 a invalidee. Le document de conception etablit l inversion (credit = base, film =
+> enrichissement) : appariement `(match_id, time_ms)` a tolerance ZERO (bijection stricte
+> mesuree), orphelins de film CONSERVES (968 morts de bot sur 980), table cible **134 866** contre
+> 124 694 aujourd hui. Il etablit aussi que le credit tient **98,5 % PARTOUT** et non sur le seul
+> perimetre film — l oracle brut sur-comptait. **Cette phase 2 s execute APRES cette inversion**,
+> pas avant.
+
 ### 2.1 La strategie : une VUE de compatibilite, pas huit reecritures
 
 `killer_victim_pairs` devient une **VUE** sur `match_kill_events_latest`. Les 8 lecteurs continuent
