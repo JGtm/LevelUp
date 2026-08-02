@@ -131,6 +131,11 @@ export interface PalmaresText {
       heatmapLegend: string
       heatmapByHour: string
       heatmapByDay: string
+      tooltipPlayer: string
+      tooltipHourSlot: string
+      tooltipDaySlot: string
+      tooltipMatches: string
+      tooltipEmptyCell: string
       dayLabels: string[]
       rivalriesTitle: string
       rivalriesEmpty: string
@@ -341,6 +346,11 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
         heatmapLegend: t(loc, 'palmares.relations.moments.heatmap_legend'),
         heatmapByHour: t(loc, 'palmares.relations.moments.heatmap_by_hour'),
         heatmapByDay: t(loc, 'palmares.relations.moments.heatmap_by_day'),
+        tooltipPlayer: t(loc, 'palmares.relations.moments.tooltip_player'),
+        tooltipHourSlot: t(loc, 'palmares.relations.moments.tooltip_hour_slot'),
+        tooltipDaySlot: t(loc, 'palmares.relations.moments.tooltip_day_slot'),
+        tooltipMatches: t(loc, 'palmares.relations.moments.tooltip_matches'),
+        tooltipEmptyCell: t(loc, 'palmares.relations.moments.tooltip_empty_cell'),
         dayLabels: [
           t(loc, 'palmares.relations.moments.day_0'),
           t(loc, 'palmares.relations.moments.day_1'),

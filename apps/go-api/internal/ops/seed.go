@@ -86,7 +86,13 @@ const (
 	citationNormSkullGrabs           = "skull_grabs"
 )
 
-// Catégories citation_mappings.category (libellés FR — UI Cockpit).
+// Catégories citation_mappings.category. Ces libellés FR sont la valeur SOURCE
+// stockée en base ; depuis V7.3 lot 2 (item 1.4) ils ne sont plus servis tels
+// quels : canonical.NormalizeCommendationCategory les convertit en clés stables
+// (« Mode de jeu » -> "game_mode") à la lecture, et la traduction FR/EN vit
+// dans le manifeste web citations.toml. Ajouter une catégorie ici impose donc
+// d'ajouter son mapping dans internal/games/canonical/commendation_category.go
+// (sinon elle est servie comme "other").
 const (
 	citationCatModeJeu          = "Mode de jeu"
 	citationCatVehicule         = "Véhicule"

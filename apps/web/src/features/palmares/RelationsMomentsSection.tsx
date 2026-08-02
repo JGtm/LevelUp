@@ -15,7 +15,11 @@ import { useRelationsPrefsStore } from '@/stores/relationsPrefsStore'
 
 import type { PalmaresText } from './i18n'
 import { useRelationsMoments } from './queries'
-import { RelationsMomentsHeatmap, type HeatmapBucketCell } from './RelationsMomentsHeatmap'
+import {
+  RelationsMomentsHeatmap,
+  type HeatmapBucketCell,
+  type HeatmapTooltipText,
+} from './RelationsMomentsHeatmap'
 import { RelationsRivalryCards } from './RelationsRivalryCards'
 
 // Libellés des 24 créneaux horaires (index = heure 0..23). Neutres FR/EN
@@ -61,6 +65,14 @@ export function RelationsMomentsSection({ playerSlug, filterContext, filterHash,
   const bucketLabels =
     mode === 'hour' ? HOUR_LABELS : [...text.dayLabels.slice(1), text.dayLabels[0]]
 
+  // Libellés du tooltip : l'étiquette du bucket suit le toggle (créneau / jour).
+  const tooltipText: HeatmapTooltipText = {
+    playerLabel: text.tooltipPlayer,
+    bucketTypeLabel: mode === 'hour' ? text.tooltipHourSlot : text.tooltipDaySlot,
+    matchesLabel: text.tooltipMatches,
+    emptyCell: text.tooltipEmptyCell,
+  }
+
   return (
     <>
       {/* Section « Rythme des rencontres » : heatmap relation × créneau */}
@@ -99,7 +111,7 @@ export function RelationsMomentsSection({ playerSlug, filterContext, filterHash,
               bucketLabels={bucketLabels}
               legendLabel={text.heatmapLegend}
               emptyMessage={text.heatmapEmpty}
-              matchesLabel={(count) => `${text.heatmapLegend} : ${count}`}
+              tooltipText={tooltipText}
             />
           </div>
         )}

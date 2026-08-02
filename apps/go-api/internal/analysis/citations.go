@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
 )
 
 // OverrideCompositeTotals remplace les totaux des citations composites par le nombre
@@ -179,7 +180,7 @@ func MergeCitationTotals(
 		item := domain.CitationItem{
 			NameNorm:    m.NameNorm,
 			NameDisplay: m.NameDisplay,
-			Category:    m.Category,
+			Category:    canonical.NormalizeCommendationCategory(m.Category),
 			Total:       total,
 			ImageURL:    imgURL,
 			Description: m.Description,
@@ -255,7 +256,7 @@ func MergeCitationTotals(
 
 	sort.Slice(items, func(i, j int) bool {
 		if items[i].Category != items[j].Category {
-			return items[i].Category < items[j].Category
+			return lessCommendationCategory(items[i].Category, items[j].Category)
 		}
 		ri, rj := citationRank(items[i].NameNorm), citationRank(items[j].NameNorm)
 		if ri != rj {
@@ -266,8 +267,20 @@ func MergeCitationTotals(
 	return items
 }
 
+// lessCommendationCategory ordonne deux clés de catégorie canoniques selon
+// l'ordre produit (multiplayer, game_mode, weapon, …, other). Source unique du
+// tri : les catégories étant désormais des CLÉS et non des libellés, un tri
+// alphabétique donnerait un ordre arbitraire à l'écran.
+func lessCommendationCategory(a, b string) bool {
+	ra, rb := canonical.CommendationCategoryRank(a), canonical.CommendationCategoryRank(b)
+	if ra != rb {
+		return ra < rb
+	}
+	return a < b
+}
+
 // BuildCitationsByCategory regroupe les citations par catégorie en préservant l'ordre
-// de tri de items (catégorie alphabétique, puis total décroissant).
+// de tri de items (ordre canonique des catégories, puis total décroissant).
 func BuildCitationsByCategory(items []domain.CitationItem) []domain.CitationCategoryGroup {
 	if len(items) == 0 {
 		return nil
@@ -299,7 +312,8 @@ func BuildCitationsByCategory(items []domain.CitationItem) []domain.CitationCate
 	return result
 }
 
-// ExtractCategories retourne la liste dédupliquée et triée des catégories.
+// ExtractCategories retourne la liste dédupliquée des catégories, dans l'ordre
+// produit canonique (même ordre que les groupes rendus par BuildCitationsByCategory).
 func ExtractCategories(items []domain.CitationItem) []string {
 	seen := make(map[string]bool)
 	var cats []string
@@ -309,7 +323,7 @@ func ExtractCategories(items []domain.CitationItem) []string {
 			cats = append(cats, item.Category)
 		}
 	}
-	sort.Strings(cats)
+	sort.Slice(cats, func(i, j int) bool { return lessCommendationCategory(cats[i], cats[j]) })
 	return cats
 }
 
@@ -339,7 +353,7 @@ func MergeMedalSummary(
 				MedalID:   me.MedalID,
 				MedalName: "Unknown",
 				Count:     me.TotalCount,
-				Category:  domain.CitationCategoryMisc,
+				Category:  canonical.NormalizeCommendationCategory(domain.CitationCategoryMisc),
 			})
 			continue
 		}
@@ -347,15 +361,15 @@ func MergeMedalSummary(
 			MedalID:   me.MedalID,
 			MedalName: m.NameDisplay,
 			Count:     me.TotalCount,
-			Category:  m.Category,
+			Category:  canonical.NormalizeCommendationCategory(m.Category),
 			ImagePath: m.ImagePath,
 		})
 	}
 
-	// Trier par catégorie puis count décroissant.
+	// Trier par catégorie (ordre produit canonique) puis count décroissant.
 	sort.Slice(items, func(i, j int) bool {
 		if items[i].Category != items[j].Category {
-			return items[i].Category < items[j].Category
+			return lessCommendationCategory(items[i].Category, items[j].Category)
 		}
 		return items[i].Count > items[j].Count
 	})
