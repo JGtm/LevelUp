@@ -135,6 +135,59 @@ haut, cf. Q1.3-ter).
 Sorties : `.ai/V7.5/dumps/forge_zones/palette_noms.csv` (4 213 entrees, hachage + nom quand
 il est craque) et `noms_craques_murmur3.txt` (les 33 correspondances hachage -> nom).
 
+### Q1.0-ter LA STRUCTURE DU TAG `food` EST NOMMEE — definition communautaire
+
+Piste ouverte par l'utilisateur (`Surasia/InfiniteExt`, qui mene a
+`Gamergotten/Infinite-runtime-tagviewer`). Ce depot porte **479 definitions de tag**, une
+par groupe de quatre lettres, dans `Plugins/*.xml` — dumpees par Lord Zedd et Exhibit.
+
+**`Plugins/food.xml` nomme exactement ce que cette session avait mesure a l'aveugle** :
+
+```
+_38  struct interne : vtable space / global tag ID / local tag handle
+_41  Static IO Representation                      <- reference de tag
+_2   Asset variant ...                             <- StringID
+_40  Object Representations            (BLOC)      <- c'est NOTRE « bloc 1 »
+       _2   Representation Name                    <- mot 0 = NOTRE hash de nom
+       _2   Crate Variant                          <- mot 1, non nul sur les 4 emplacements
+       _41  Configuration                          <- ref vide observee
+       _41  Object Definition (Crate)              <- LA reference `weap` observee
+       _41  Menu Item Definitions                  <- ref vide observee
+_40  Runtime Variants (Variant Name, geo, collision, materiaux, Style)
+_41  Forge Kit
+_2   Default Representation
+_E   Property Flags : Yaw Rotation Only · Allow In-Game Variant Toggle ·
+     Disable Primary/Secondary/Tertiary Color · Disable Normal/Fixed/Phased Physics ·
+     Allow Boundary Scale · Disable Rotation
+```
+
+**Correspondance parfaite avec la mesure**, champ par champ : un bloc de 92 octets
+commencant par deux StringID puis trois references de tag dont seule la deuxieme est
+remplie. Le type `_2` est un **StringID**, c'est-a-dire un murmur3 — ce que le
+`hashnames.txt` du meme depot confirme noir sur blanc : *« any block that says mmr3Hash
+derives a string from a Murmur3 Hash »*.
+
+**Ce que cela requalifie** :
+
+| ce que la session appelait | le vrai nom |
+|---|---|
+| « le mot de nom » (mot 0) | **Representation Name** |
+| « le second mot, non nul sur 4 entrees » | **Crate Variant** |
+| « la reference `weap` » | **Object Definition (Crate)** |
+| « les deux references vides » | **Configuration** et **Menu Item Definitions** |
+
+Les quatre entrees « emplacement » sont donc **quatre VARIANTES DE CAISSE d'une meme
+representation** — et c'est le `Crate Variant` qui separe le lance-roquettes du camouflage
+sur Vagabond. Ce n'est pas un identifiant 64 bits comme le supposait Q1.0-bis : **c'est
+deux StringID**, donc deux noms, donc craquables — il manque le vocabulaire, pas la methode.
+
+**Ce que ce depot n'apporte PAS** : son `files/tagnames.txt` (315 927 chemins de tag indexes
+par identifiant global) **ne couvre aucun de nos tags** — controle : **0 / 150** `type_id`
+tires au hasard de nos 2 785. Le dump est anterieur a Forge. Il reste utile pour d'autres
+chantiers, pas pour celui-ci.
+
+Definition conservee : `.ai/V7.5/dumps/forge_zones/reference_food_tag_definition.xml`.
+
 ### Q1.0-bis LES QUATRE EMPLACEMENTS RESISTENT — ce qui a ete tente, et refute
 
 Quatre voies essayees pour les nommer, quatre negatives. Ecrites ici pour qu'on ne les
