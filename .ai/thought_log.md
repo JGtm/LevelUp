@@ -1,3 +1,29 @@
+## [2026-08-02] Lot 2 v7.3 — Phase 2 close (5 UI), gate 2 passé
+
+**Statut** : Complété. 2 agents Opus (2.1-2.3, 2.4-2.5), gates re-exécutés
+orchestrateur, matrice navigateur Playwright en clôture (8 captures).
+
+**Décision technique principale** : deux découvertes d'agents TRAITÉES en fold
+immédiat au titre de la délégation utilisateur (3e instance du tooltip intensité
+et 3e surface FDA gap alignées — deux registres ne coexistent plus sur les mêmes
+charts) ; harmonisation de registre FR (tutoiement, convention dominante 111 vs 37)
+sur les 2 tooltips d'en-tête introduits en 2.5. Piège Playwright documenté : les
+en-têtes 2 lignes ont un textContent SANS blanc entre les mots (spans + retour CSS)
+— matcher avec \s*, pas d'espace littéral.
+
+**Résultats observés** : commits 610aaeb23 (2.1-2.3 + folds) et 008d4cf1f
+(2.4+2.5) + commit de clôture registre/plan. Preuves navigateur : cartes médailles
+compactées sur match vide ; légende « Bonus barré + ⓘ » ; ⓘ Intensité + courbe
+équipe pointillée sur 3 panneaux ; Explorer 19/20 badges de rang en image
+(+1 dégradation texte), aide au survol du libellé, tri conservé, colonne Score
+personnel triable. personal_score était une donnée déjà lue puis jetée par
+enrichRow (fuite, zéro SQL). Réserve d'agent (go test exit 1 non capturé) tranchée
+flake par rejeu complet. Contrat 203/203 chemins conservés.
+
+**Conclusion / prochaine étape** : Phase 3 (3.1 suppression médias → 3.2 véhicules
+H5 avec vérification bloquante → 3.3 i18n source unique) ; 3.4/3.5 en attente des
+décisions d'artefacts utilisateur (gate 0).
+
 ## [2026-08-02] Lot 2 v7.3 — Phase 1 close (6 bugs), gate 1 passé, volet D clos (D1/D2)
 
 **Statut** : Complété (Phase 1 + volet D exécutable). Pilotage : 3 agents Opus
