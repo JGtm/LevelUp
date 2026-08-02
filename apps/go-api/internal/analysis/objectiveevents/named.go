@@ -20,7 +20,7 @@ import "sort"
 //
 // # Le sens d'un emplacement DEPEND DU MODE — et ce n'est pas une precaution de style
 //
-// `comp 21 A` vaut `zone_secured` en zones et `flag_captured` en CTF. Un balayage tous
+// `comp 21 A` vaut `zone_secures` en zones et `flag_captures` en CTF. Un balayage tous
 // modes confondus rend des noms contradictoires avec des chiffres d'apparence solide : il a
 // ete fait, il etait faux, et c'est lui qui a appris la regle. D'ou le parametre de mode,
 // obligatoire, et l'absence de table « tous modes ».
@@ -56,8 +56,8 @@ const (
 
 // statSlot decrit ce qu'un emplacement porte pour un mode donne.
 type statSlot struct {
-	// Award est le nom canonique de la recompense (`personal_score_awards.award_name`).
-	Award string
+	// Stat est le nom canonique de la statistique (cf. les constantes Stat*).
+	Stat string
 	// Redundant marque un emplacement qui REPRODUIT un autre du meme mode. Le statborg
 	// duplique certaines statistiques : `comp 12 A` reproduit `comp 2 A` (frags) et
 	// `comp 12 B` reproduit `comp 3 A` (assistances). Un emplacement redondant n'emet
@@ -74,42 +74,57 @@ type statSlot struct {
 // par coincidence de comptes et non par une correspondance reelle.
 var namedStatSlots = map[string]map[statSlotKey]statSlot{
 	ObjectiveTypeFlag: {
-		{0, sideA}:  {Award: AwardFlagCaptured, Redundant: true},
-		{21, sideA}: {Award: AwardFlagCaptured},
-		{20, sideB}: {Award: AwardFlagCaptureAssist},
-		{21, sideB}: {Award: AwardRunnerStopped},
-		{22, sideA}: {Award: AwardFlagTaken},
-		{23, sideA}: {Award: AwardFlagReturned},
-		{24, sideA}: {Award: AwardFlagStolen},
-		{2, sideA}:  {Award: AwardKilledPlayer},
-		{12, sideA}: {Award: AwardKilledPlayer, Redundant: true},
-		{3, sideA}:  {Award: AwardKillAssist},
-		{12, sideB}: {Award: AwardKillAssist, Redundant: true},
+		{0, sideA}:  {Stat: StatFlagCaptures, Redundant: true},
+		{21, sideA}: {Stat: StatFlagCaptures},
+		{20, sideB}: {Stat: StatFlagCaptureAssists},
+		{21, sideB}: {Stat: StatFlagCarriersKilled},
+		{22, sideA}: {Stat: StatFlagGrabs},
+		{23, sideA}: {Stat: StatFlagReturns},
+		{24, sideA}: {Stat: StatFlagSteals},
+		{2, sideA}:  {Stat: StatKills},
+		{12, sideA}: {Stat: StatKills, Redundant: true},
+		{3, sideA}:  {Stat: StatAssists},
+		{12, sideB}: {Stat: StatAssists, Redundant: true},
 	},
 	ObjectiveTypeZone: {
-		{20, sideB}: {Award: AwardZoneCaptured},
-		{21, sideA}: {Award: AwardZoneSecured},
-		{2, sideA}:  {Award: AwardKilledPlayer},
-		{12, sideA}: {Award: AwardKilledPlayer, Redundant: true},
-		{3, sideA}:  {Award: AwardKillAssist},
-		{12, sideB}: {Award: AwardKillAssist, Redundant: true},
+		{20, sideB}: {Stat: StatZoneCaptures},
+		{21, sideA}: {Stat: StatZoneSecures},
+		{2, sideA}:  {Stat: StatKills},
+		{12, sideA}: {Stat: StatKills, Redundant: true},
+		{3, sideA}:  {Stat: StatAssists},
+		{12, sideB}: {Stat: StatAssists, Redundant: true},
 	},
 }
 
-// Noms canoniques des recompenses, tels que `personal_score_awards.award_name` les porte.
-// Constantes plutot que litteraux : ces noms sont la jointure avec l'oracle de l'API, une
-// coquille y serait silencieuse.
+// Noms canoniques des STATISTIQUES, tels que `match_objective_stats` les nomme et que le
+// binaire les declare (`CtfStats_FlagGrabs`, `StrongholdsStats_StrongholdCaptures`...).
+//
+// # Pourquoi des noms de STATS et non de RECOMPENSES — et ce que ca a coute de l'ignorer
+//
+// Une premiere version portait les noms de `personal_score_awards` (`flag_taken`,
+// `killed_player`...). C'etait une confusion de nature : le statborg replique des
+// COMPTEURS DE STATISTIQUE, pas les recompenses de score que le serveur en derive. Pour la
+// plupart les deux coincident numeriquement, ce qui masquait l'erreur.
+//
+// **`comp 22 A` l'a demasquee.** Nomme `flag_taken`, il comptait systematiquement plus que
+// la recompense — jamais moins. L'oracle a 8 joueurs (`match_objective_stats_latest`) donne
+// la reponse : ses valeurs sont EXACTEMENT `flag_grabs`, slot par slot (16 pour Madina97294
+// la ou la recompense `flag_taken` dit 4). Le binaire disait la meme chose depuis le debut
+// avec `CtfStats_FlagGrabs`. Ramasser le drapeau au sol se COMPTE a chaque fois, mais ne se
+// RECOMPENSE pas a chaque fois.
+//
+// Trois sources concordantes, un seul nom juste : `flag_grabs`.
 const (
-	AwardFlagCaptured      = "flag_captured"
-	AwardFlagCaptureAssist = "flag_capture_assist"
-	AwardFlagTaken         = "flag_taken"
-	AwardFlagReturned      = "flag_returned"
-	AwardFlagStolen        = "flag_stolen"
-	AwardRunnerStopped     = "runner_stopped"
-	AwardZoneCaptured      = "zone_captured"
-	AwardZoneSecured       = "zone_secured"
-	AwardKilledPlayer      = "killed_player"
-	AwardKillAssist        = "kill_assist"
+	StatFlagCaptures       = "flag_captures"
+	StatFlagCaptureAssists = "flag_capture_assists"
+	StatFlagGrabs          = "flag_grabs"
+	StatFlagReturns        = "flag_returns"
+	StatFlagSteals         = "flag_steals"
+	StatFlagCarriersKilled = "flag_carriers_killed"
+	StatZoneCaptures       = "zone_captures"
+	StatZoneSecures        = "zone_secures"
+	StatKills              = "kills"
+	StatAssists            = "assists"
 )
 
 // NamedEvent est une action de joueur nommee, datee a la milliseconde sur l'horloge du
@@ -120,8 +135,8 @@ type NamedEvent struct {
 	TimeMS int
 	// Slot identifie l'entite de joueur (10..24 pairs ; cf. IsTeamSlot).
 	Slot int
-	// Award est le nom canonique de la recompense.
-	Award string
+	// Stat est le nom canonique de la statistique repliquee (cf. les constantes Stat*).
+	Stat string
 	// Comp et Side disent quel emplacement de statistique a porte l'evenement : c'est la
 	// provenance, et elle se verifie.
 	Comp int
@@ -154,7 +169,7 @@ func namedEventsFrom(recs []StatRecord, objectiveType string) []NamedEvent {
 		for entity, pts := range seriesBySlot(recs, key) {
 			for _, t := range incrementTimes(pts) {
 				out = append(out, NamedEvent{
-					TimeMS: t, Slot: entity, Award: slot.Award, Comp: key.Comp, Side: key.Side,
+					TimeMS: t, Slot: entity, Stat: slot.Stat, Comp: key.Comp, Side: key.Side,
 				})
 			}
 		}
@@ -173,7 +188,7 @@ func sortNamedEvents(evs []NamedEvent) {
 		if evs[i].Slot != evs[j].Slot {
 			return evs[i].Slot < evs[j].Slot
 		}
-		return evs[i].Award < evs[j].Award
+		return evs[i].Stat < evs[j].Stat
 	})
 }
 
@@ -240,13 +255,13 @@ func incrementTimes(pts []ScorePoint) []int {
 	return out
 }
 
-// KnownAwards rend les recompenses qu'une famille d'objectif sait nommer. C'est
+// KnownStats rend les statistiques qu'une famille d'objectif sait nommer. C'est
 // l'inventaire de ce que la lecture par composant couvre pour ce mode — et donc, en
 // creux, ce qu'elle ne couvre pas.
-func KnownAwards(objectiveType string) map[string]bool {
+func KnownStats(objectiveType string) map[string]bool {
 	out := map[string]bool{}
 	for _, slot := range namedStatSlots[objectiveType] {
-		out[slot.Award] = true
+		out[slot.Stat] = true
 	}
 	return out
 }
@@ -260,7 +275,7 @@ func CountsBySlot(evs []NamedEvent) map[int]map[string]int {
 		if out[e.Slot] == nil {
 			out[e.Slot] = map[string]int{}
 		}
-		out[e.Slot][e.Award]++
+		out[e.Slot][e.Stat]++
 	}
 	return out
 }
@@ -285,12 +300,12 @@ func crossCheckFrom(recs []StatRecord, objectiveType string) map[int]map[string]
 	canonical := map[string]statSlotKey{}
 	for key, slot := range table {
 		if !slot.Redundant {
-			canonical[slot.Award] = key
+			canonical[slot.Stat] = key
 		}
 	}
 	out := map[int]map[string][2]int{}
 	for key, slot := range table {
-		ref, hasRef := canonical[slot.Award]
+		ref, hasRef := canonical[slot.Stat]
 		if !slot.Redundant || !hasRef {
 			continue
 		}
@@ -303,7 +318,7 @@ func crossCheckFrom(recs []StatRecord, objectiveType string) map[int]map[string]
 			if out[entity] == nil {
 				out[entity] = map[string][2]int{}
 			}
-			out[entity][slot.Award] = [2]int{want, got}
+			out[entity][slot.Stat] = [2]int{want, got}
 		}
 	}
 	return out
