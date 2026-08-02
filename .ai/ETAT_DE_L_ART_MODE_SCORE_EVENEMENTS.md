@@ -1573,3 +1573,96 @@ etaient nommees par coincidence de comptes, pas par une correspondance reelle.
 est desormais adossee au controle, plus seulement a une observation.
 
 **La table figee (`.ai/refs/TABLE_STATS_STATBORG.tsv`) ne garde que les cles confirmees.**
+
+---
+
+## 18. LA LECTURE PAR COMPOSANT EST CODEE ET RECETTEE (2026-08-02)
+
+> Lot 1 du handoff `HANDOFF_EVENEMENTS_NOMMES_2026-08-01.md` §4. `NamedEvents(src, mode)`
+> vit dans `internal/analysis/objectiveevents/named.go`, adossee a la table du §17.6.
+> Elle remplace `LabelPersonalScore` comme chemin principal ; celle-ci reste le repli quand
+> le quota est connu mais pas le film.
+
+### 18.1 Le mecanisme, et le seul choix de conception qu'il demande
+
+Une emission d'un emplacement de statistique EST un evenement. Le compteur d'un slot passe
+de n a n+1 : c'est une occurrence, datee de l'emission, attribuee au joueur par son slot.
+Les increments de plus d'une unite sont convertis en autant d'evenements de meme instant.
+
+Deux filtres, et tous deux ont ete payes par un echec :
+
+1. **La plus longue sous-suite NON DECROISSANTE** (et non strictement croissante, comme
+   pour le score de mode) : un composant porte deux valeurs et il est reemis des que l'UNE
+   des deux bouge, donc la meme valeur revient legitimement. `longestRun(pts, strict)`
+   sert les deux usages.
+2. **Les emissions negatives sont jetees AVANT le choix de la sous-suite.** Les jeter
+   apres ne suffit pas : sur la suite (1, -115, 1), la sous-suite retenue devenait
+   (-115, 1) et l'evenement etait date de la DERNIERE emission au lieu de la premiere.
+   Sans aucun filtre, cette meme suite rendait **116** evenements au lieu d'un
+   (`1bc77d2e`, slot 24, comp 0 A).
+
+### 18.2 La recette — 30 confrontations exactes sur 30
+
+Confrontation des comptes decodes a `personal_score_awards`, sur les joueurs suivis
+(oracle regenere le 2026-08-02, il reproduit a l'identique le balayage de la veille) :
+
+| mode | film | resultat |
+|---|---|---|
+| zones | `696a9d7c` | slot 22 = JGtm **4/4** · slot 20 = Madina97294 **4/4** (zero inclus) |
+| CTF | `1bc77d2e` | JGtm, Chocoboflor, Madina97294 — **exact sur tout sauf `flag_taken`** |
+| CTF | 6 films (recette `cmd/tmp_namedcheck`) | **EXACT partout**, un seul ecart : `flag_taken` |
+
+Controle d'ensemble sur les HUIT joueurs, qui ne depend d'aucune correspondance
+slot -> joueur : sur `696a9d7c`, `zone_captured` totalise **61** et `zone_secured` **16**,
+somme **77** — exactement le total de l'API, retrouve independamment du §17.2.
+
+**Ce que la lecture par valeur ne pouvait pas faire** : `zone_captured` et `zone_secured`
+valent tous deux 25 points ; `flag_returned`, `flag_stolen` et `runner_stopped` aussi. Ils
+se separent ici parfaitement, parce qu'on ne lit plus la valeur mais l'emplacement.
+
+### 18.3 `flag_taken` — le film est PLUS FIN que l'API, et c'est mesure
+
+Seul ecart de toute la recette, et il a **un seul sens** : le film compte parfois plus,
+**jamais moins**. Sur 8 couples (film, joueur) : 4 exacts, 4 au-dessus, ecart total +11,
+pire ecart +5, **zero contre-exemple**.
+
+L'explication vient de l'utilisateur et elle colle a la mesure : ramasser le drapeau au sol
+pendant sa course se compte a chaque fois, mais ne se **recompense** pas a chaque fois.
+Madina97294, qui joue en lancant et rattrapant le drapeau, est a 16 contre 4 ; JGtm, qui
+prefere l'attraper et courir, est a 3 contre 1.
+
+C'est le meme precedent qu'en §16.4 (Total Control : facteur 32) — **le film est plus fin
+que la reference, pas faux**. Le test encode donc une INEGALITE (`film >= API`) et non une
+egalite : un « film moins » serait fatal a cette lecture, on ne peut pas rater une action
+qu'on recompense.
+
+### 18.4 Le controle croise interne, gratuit et sans oracle
+
+Le statborg duplique certaines statistiques : `comp 12 A` reproduit `comp 2 A` (frags),
+`comp 12 B` reproduit `comp 3 A` (assistances), `comp 0 A` reproduit `comp 21 A`
+(captures). Les emplacements redondants n'emettent pas — sinon chaque frag compterait
+double — mais `CrossCheckNamedEvents` les confronte a leur canonique et signale tout
+desaccord. **Aucun desaccord sur les deux films de reference**, une fois le filtre des
+negatives pose au bon endroit ; c'est d'ailleurs ce controle qui a demasque le parasite
+a -115.
+
+### 18.5 Ce que ce lot NE fait pas
+
+- **KOTH et Oddball ne sont toujours pas nommes.** `KnownAwards("hill")` et
+  `KnownAwards("ball")` rendent un inventaire VIDE, et `NamedEvents` y rend nil plutot
+  qu'un nom invente. Le balayage est le meme, c'est le corpus qui manque.
+- **L'oracle reste celui des 4 joueurs suivis.** `match_objective_stats_latest` (8 joueurs,
+  426 matchs) est disponible — la base partagee s'est liberee — mais n'a pas ete branchee.
+- **Aucun cablage cote API ni cote rejeu 2D** : `NamedEvents` est une fonction pure, encore
+  sans appelant de production.
+
+### 18.6 AVERTISSEMENT D'EXPLOITATION — le balayage corpus est une bombe
+
+`StatRecords` ancre par balayage BIT A BIT et alloue une map par enregistrement retenu. Sur
+un film sain le pic est de 16 a 55 Mo, mais **un balayage corpus (56 a 147 films) a rendu
+la machine de l'utilisateur inutilisable deux fois le 2026-08-02**, jusqu'a redemarrage
+force — aggrave par un `go build` lance en parallele.
+
+Regle pour la suite, non negociable : balayage **au premier plan uniquement**, un seul
+processus, borne `LIMIT=n` explicite, **plafond memoire surveille qui tue le processus**, et
+prevenir l'utilisateur avant tout balayage large. C'est sa machine qui paie.

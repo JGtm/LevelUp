@@ -198,6 +198,14 @@ func seriesBySlot(recs []StatRecord, key statSlotKey) map[int][]ScorePoint {
 		if key.Side == sideB {
 			val = v.B
 		}
+		// Une emission NEGATIVE est un ancrage parasite : un compteur de recompense est
+		// positif. Elle est jetee ICI, avant le choix de la sous-suite, et pas apres —
+		// sinon elle fausse ce choix. Mesure : sur la suite (1, -115, 1), la plus longue
+		// sous-suite non decroissante retenue devenait (-115, 1), ce qui datait
+		// l'evenement de la DERNIERE emission au lieu de la premiere.
+		if val < 0 {
+			continue
+		}
 		raw[r.Slot] = append(raw[r.Slot], ScorePoint{TimeMS: r.TimeMS, Slot: r.Slot, Value: val})
 	}
 	out := make(map[int][]ScorePoint, len(raw))
@@ -217,18 +225,14 @@ func seriesBySlot(recs []StatRecord, key statSlotKey) map[int][]ScorePoint {
 //
 // # Le garde-fou, et il a ete paye
 //
-// Un compteur de recompense est POSITIF et NE RECULE PAS. Les emissions negatives sont donc
-// des ancrages parasites et sont jetees : sans ce filtre, une seule valeur aberrante a
-// -115 faisait remonter le compteur de 0 a 1 en **116** evenements (mesure sur `1bc77d2e`,
-// slot 24, comp 0 A). Et `prev` ne redescend jamais, sinon la meme unite se compte deux
-// fois apres un creux.
+// `prev` ne redescend JAMAIS, sinon la meme unite se compte deux fois apres un creux. Sans
+// cela, une seule emission aberrante a -115 faisait remonter le compteur de 0 a 1 en **116**
+// evenements (mesure sur `1bc77d2e`, slot 24, comp 0 A). Les emissions negatives elles-memes
+// sont ecartees plus tot, par [seriesBySlot].
 func incrementTimes(pts []ScorePoint) []int {
 	var out []int
 	prev := int64(0)
 	for _, p := range pts {
-		if p.Value < 0 {
-			continue
-		}
 		for ; prev < p.Value; prev++ {
 			out = append(out, p.TimeMS)
 		}
