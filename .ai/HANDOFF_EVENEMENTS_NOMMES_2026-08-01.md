@@ -70,6 +70,27 @@ ete fait, il etait faux, c'est lui qui a appris la regle.
    candidates quand la valeur ne discrimine pas. Il fonctionne et il est teste, mais **le
    passage au composant le rendra secondaire**. C'est le prochain lot de code.
 
+## 3bis. CE QUI A ETE FAIT LE 2026-08-02 — et ce que ca change au plan du §4
+
+> Etat de l'art **§18** (le code et sa recette) et **§19** (la retro-ingenierie).
+
+| lot du §4 | statut |
+|---|---|
+| 1. coder la lecture par composant | **FAIT** — `NamedEvents(src, mode)` + `named_test.go`, recette **30 confrontations exactes sur 30** (§18.2). Commit `d475b3c54` |
+| 2. nommer `hill` et `ball` | **`ball` FAIT par le binaire** (6 stats Oddball, §19.2). **`hill` : le lot n'a probablement pas d'objet** — KOTH n'a AUCUNE famille de stats dans l'executable, et `match_objective_stats` n'a aucune colonne `hill_*` (§19.3) |
+| 3. rejouer avec l'oracle 8 joueurs | **NON FAIT** — la base partagee est pourtant libre (`match_objective_stats_latest`, 426 matchs). Devenu secondaire : le binaire nomme sans oracle |
+| 4. coller aux positions du rejeu 2D | **NON FAIT** |
+
+**Le virage de methode, et il vient d'une objection de l'utilisateur** : « c'est de la
+retro-ingenierie pas de l'exploration de films ». Le balayage corpus etait le mauvais outil —
+il coutait cher (il a rendu la machine inutilisable deux fois, §18.6) et le binaire porte les
+reponses. **123 noms de stats lus en clair**, 10 familles, sans un seul film balaye
+(`.ai/refs/TABLE_STATS_BINAIRE.tsv`).
+
+**Ce qui reste ouvert et qui est LA suite** : la correspondance nom -> index d'emplacement.
+L'identifiant est attribue a l'execution, donc il se lit en memoire jeu lance, pas en statique
+(§19.6). Aucun balayage de films n'est requis pour cela.
+
 ## 4. LE PROCHAIN LOT, DANS L'ORDRE
 
 1. **Coder la lecture par composant** : `NamedEvents(src, mode) []NamedEvent` dans

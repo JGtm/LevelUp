@@ -1666,3 +1666,115 @@ force — aggrave par un `go build` lance en parallele.
 Regle pour la suite, non negociable : balayage **au premier plan uniquement**, un seul
 processus, borne `LIMIT=n` explicite, **plafond memoire surveille qui tue le processus**, et
 prevenir l'utilisateur avant tout balayage large. C'est sa machine qui paie.
+
+---
+
+## 19. LE BINAIRE NOMME LES STATS — 123 noms lus, sans un seul film balaye (2026-08-02)
+
+> **Objection de l'utilisateur, et elle redresse le chantier** : « en quoi c'est necessaire de
+> balayer autant de matchs ? on cherche a comprendre comment c'est exploite dans le jeu et le
+> film, c'est de la retro-ingenierie pas de l'exploration de films ».
+>
+> Elle est juste. Le §17.4 le disait deja — « Ghidra le redeviendrait si le balayage laissait
+> des emplacements sans nom » — et le balayage laissait `hill` et `ball` sans nom. La voie
+> statistique etait le mauvais outil, et elle coutait la machine de l'utilisateur (§18.6).
+
+### 19.1 Acces : le bridge MCP est casse, le plugin repond quand meme
+
+Le bridge Python de `ghidra-mcp` echoue sous Windows (`module 'socket' has no attribute
+'AF_UNIX'`) : la decouverte se fait par socket UNIX, que CPython Windows n'expose pas. Un
+redemarrage cote Ghidra n'y change rien, c'est le CLIENT qui est en cause.
+
+**Contournement, et il suffit** : le plugin GhidraMCP expose une API HTTP sur `127.0.0.1:8089`.
+`curl` la joint directement — `/get_current_program_info`, `/search_strings?search_term=`,
+`/decompile_function?address=`, `/get_xrefs_to?address=`, `/read_memory?address=&length=`.
+Programme charge : `HaloInfinite.exe`, image base `0x140000000`, 311 104 fonctions.
+
+### 19.2 Les noms des stats sont EN CLAIR dans le binaire
+
+Ce que l'API expose sous `personal_score_awards.award_name` (`flag_captured`, `zone_secured`...)
+**n'existe pas** dans l'executable : ces noms-la sont cote serveur. Les noms INTERNES, eux, y
+sont, en `<Famille>Stats_<Nom>` — **218 chaines, 123 noms de stats, 10 familles** :
+
+| famille | n | contenu |
+|---|---:|---|
+| `CoreStats_` | 48 | Score, PersonalScore, Kills, Deaths, Assists, KDA, Accuracy... |
+| `InfectionStats_` | 12 | AlphasKilled, SpartansInfected... |
+| `ElimStats_` · `CtfStats_` | 11 · 11 | |
+| `VipStats_` · `BombStats_` | 9 · 9 | |
+| `StrongholdsStats_` · `StockpileStats_` · `OddballStats_` | 6 · 6 · 6 | |
+| `ExtractionStats_` | 5 | |
+
+Table figee : **`.ai/refs/TABLE_STATS_BINAIRE.tsv`** (famille, rang, nom, adresse de la chaine).
+
+**CTF** : FlagCaptures · FlagReturns · FlagSteals · FlagCaptureAssists · FlagCarriersKilled ·
+**FlagGrabs** · FlagReturnersKilled · FlagSecures · KillsAsFlagCarrier · KillsAsFlagReturner ·
+TimeAsFlagCarrier.
+
+**Oddball** (le `ball` que le balayage n'avait pas nomme) : TimeAsSkullCarrier ·
+SkullCarriersKilled · KillsAsSkullCarrier · LongestTimeAsSkullCarrier · SkullGrabs ·
+SkullScoringTicks.
+
+### 19.3 KOTH N'A PAS de famille de stats — et c'est une reponse, pas un echec
+
+Aucune chaine `*Stats_*Hill*`, `KothStats_` ni `KingOfTheHill` cote stats. Ce n'est pas un trou
+de recherche : c'est **coherent avec `match_objective_stats`**, qui porte des colonnes `flag_*`,
+`zone_*`, `skull_*`, `power_seed_*`, `extraction_*`, `vip_*` et **aucune colonne `hill_*`**.
+
+Consequence pour le lot 2 du handoff : « nommer `hill` » n'a probablement pas d'objet tel qu'il
+etait formule. `hill_control` / `hill_scored` de `personal_score_awards` sont des RECOMPENSES DE
+SCORE, pas des stats de boxscore ; les collines sont vraisemblablement comptees par
+`StrongholdsStats_*` (une colline est une zone). **A confirmer sur un film KOTH — non fait.**
+
+### 19.4 `CtfStats_FlagGrabs` confirme l'ecart de `flag_taken`, et par une source independante
+
+Le §18.3 mesurait sur le film que `flag_taken` compte parfois plus que l'API, jamais moins, et
+l'utilisateur l'expliquait par le style de jeu (lancer et rattraper le drapeau pendant sa
+course). Le binaire tranche : le jeu compte des **`FlagGrabs`** — des RAMASSAGES. L'API
+recompense des `flag_taken`. Deux quantites differentes, et le film porte la plus fine.
+
+**La mesure et le binaire disent la meme chose sans rien se devoir.**
+
+### 19.5 La corroboration croisee, et c'est le resultat le plus fort de la section
+
+`CoreStats_` dans l'ordre de ses chaines commence par :
+
+| rang | nom binaire | ce que la MESURE sur film disait, etablie independamment |
+|---:|---|---|
+| 0 | **Score** | `comp 0 A` = score de MODE (283/284 contre capture CE) |
+| 1 | **PersonalScore** | `comp 1 B` = score PERSONNEL |
+| 5 · 6 | **Kills** · **Deaths** | `comp 2` = frags ET morts (score.go le notait deja) |
+| 7 | **Assists** | `comp 3 A` = `kill_assist` |
+
+Les deux premiers emplacements du statborg portent exactement les deux premieres stats du
+binaire. Le decodage du film et l'ordre du binaire se confirment mutuellement.
+
+### 19.6 Ce qui reste ouvert — l'index, pas le nom
+
+La correspondance **nom -> index d'emplacement** n'est PAS etablie, et il faut le dire net.
+L'identifiant de stat est attribue A L'EXECUTION : `FUN_1403a77e0` appelle
+`FUN_140748a74(PTR_s_CtfStats_FlagCaptures_1443d10c0, ...)` et range le retour dans des globales
+CONSECUTIVES (`_DAT_1451a28a0`, `+4`, `+8` pour Captures/Returns/Steals). L'ordre d'enregistrement
+fait l'index ; il n'est pas ecrit en dur.
+
+Ce qui EST etabli sur la structure :
+- une **table de descripteurs** a `0x1443d10c0`, **stride `0x50`** (10 pointeurs), dont le
+  **premier champ est le pointeur vers le nom** — verifie sur Captures (`+0x00`), Returns
+  (`+0x50`), Steals (`+0xA0`) ;
+- la statline monde vit a `world + statSlot*0x88 + teamIdx*0x1DF0 + 0x38 + round*4`, et
+  `FUN_140807ebc` boucle sur **56 stats** de stride `0x88` — soit exactement les 28 emplacements
+  `current-round` + 28 `finalized-rounds` du registre du film. **`statSlot` est donc bien
+  l'index de composant** ;
+- une table indexee par stat, **stride `0xC0`**, a `base + 0xdf78c` (nombre de stats a
+  `+0xdf77c`), dont un champ est teste `!= 4` — un TYPE de stat. Sa base est allouee au
+  runtime (`DAT_145121d28 + 0x28 + (DAT_1445c5838 & 0xffff) * 0x1134f0`), donc **illisible en
+  statique**.
+
+**Les deux routes pour fermer l'index**, aucune tentee :
+1. lire les globales d'ID en memoire, jeu lance (Cheat Engine ou le debogueur Ghidra) — direct
+   et definitif ;
+2. reconstruire l'ordre d'enregistrement statiquement, en listant tous les appelants de
+   `FUN_140748a74` et l'ordre des initialiseurs — plus fragile.
+
+En attendant, la table du §17.6 reste la source pour CTF et zones : elle est MESUREE, et le §18.2
+la recette a 30 confrontations exactes sur 30.
