@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/killscope"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/migration"
 
@@ -279,9 +280,10 @@ func insertMatchEvents(ctx context.Context, db *sql.DB, m synthMatch, parts []sy
 					(match_id, decode_pass, decoder_rev, publishable, time_ms,
 					 victim_gamertag, victim_xuid, feed_killer_gamertag, feed_killer_xuid,
 					 feed_present, assist_known, read_path, read_origin)
-				VALUES (?, ?, 'demo-seed', TRUE, ?, ?, ?, ?, ?, TRUE, FALSE, 'kill-feed', 'credit-seul')`,
+				VALUES (?, ?, 'demo-seed', TRUE, ?, ?, ?, ?, ?, TRUE, FALSE, ?, ?)`,
 				m.matchID, "demo-"+m.matchID, t,
-				opp.gamertag, opp.xuid, DefaultDemoMainGamertag, demoXUIDForIndex(0)); err != nil {
+				opp.gamertag, opp.xuid, DefaultDemoMainGamertag, demoXUIDForIndex(0),
+				killscope.ReadPathLiveFeed, killscope.OriginCreditOnly); err != nil {
 				return err
 			}
 		}

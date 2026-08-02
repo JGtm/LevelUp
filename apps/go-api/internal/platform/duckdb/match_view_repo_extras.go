@@ -58,7 +58,9 @@ func (r *MatchViewRepo) GetMatchKVPairs(ctx context.Context, matchID string) ([]
 	defer release()
 	rows, err := sharedDB.QueryContext(ctx, Q20KVPairs, matchID)
 	if err != nil {
-		// Vue v_killer_victim_full peut être absente dans certaines DBs → vide
+		// Q20 lit la TABLE `killer_victim_pairs` directement depuis le 2026-08-02 (la vue
+		// v_killer_victim_full a été supprimée avec la bascule J4 ; elle ne fait plus partie du
+		// schéma). La table peut manquer sur une DB non migrée → duels vides, jamais d'erreur.
 		return nil, nil
 	}
 	defer rows.Close()

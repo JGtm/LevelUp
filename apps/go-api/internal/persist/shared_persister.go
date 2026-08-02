@@ -381,7 +381,7 @@ func persistKillerVictim(ctx context.Context, tx *sql.Tx, rows []KillerVictimIns
 	if len(rows) == 0 {
 		return nil
 	}
-	if err := persistCreditKillEvents(ctx, tx, CreditKillEventsFromPairs(rows[0].MatchID, rows)); err != nil {
+	if err := persistCreditKillEvents(ctx, tx, CreditKillEventsFromPairs(ctx, rows[0].MatchID, rows)); err != nil {
 		return err
 	}
 	now := time.Now().UTC()

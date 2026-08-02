@@ -19,6 +19,9 @@ import (
 	"context"
 	"database/sql"
 	"testing"
+
+	"levelup/go-api/internal/domain/killscope"
+	"levelup/go-api/internal/observability"
 )
 
 // coupleLive : un couple tueur -> victime tel que le pipeline de sync le rend (les deux titres
@@ -50,6 +53,33 @@ func ecrireCouples(t *testing.T, db *sql.DB, rows []KillerVictimInsert) {
 	}
 	if err := tx.Commit(); err != nil {
 		t.Fatalf("Commit: %v", err)
+	}
+}
+
+// TestCoupleSansNomDeVictimeEstEcarteEtCompte — l ecart ne doit pas etre muet (constat J4R-5).
+//
+// La ligne est ECARTEE (la refuser ferait tomber la passe entiere, donc perdre aussi les morts
+// nommees) mais elle ne DISPARAIT PAS EN SILENCE : elle se compte. Le cas n existe pas sur les
+// donnees connues — 0 ligne sans nom sur 518 476 couples des deux titres — et c est precisement
+// pourquoi un `continue` nu etait dangereux : le jour ou un titre en produit, des morts
+// manqueraient au journal sans qu aucun compteur ne bouge.
+func TestCoupleSansNomDeVictimeEstEcarteEtCompte(t *testing.T) {
+	avant := observability.LoadCounter(metricLiveFeedCouplesSansVictime)
+
+	nomme := coupleLive("m-ecart", 1000)
+	anonyme := coupleLive("m-ecart", 2000)
+	anonyme.VictimGamertag = ""
+
+	batch := CreditKillEventsFromPairs(context.Background(), "m-ecart",
+		[]KillerVictimInsert{nomme, anonyme})
+
+	if len(batch.Deaths) != 1 {
+		t.Fatalf("%d mort(s) dans le batch, attendu 1 — seul le couple nomme entre, et il doit "+
+			"entrer (ecarter la ligne ne doit pas faire tomber la passe)", len(batch.Deaths))
+	}
+	if got := observability.LoadCounter(metricLiveFeedCouplesSansVictime) - avant; got != 1 {
+		t.Errorf("compteur %q = +%d, attendu +1 — le couple ecarte n est pas compte, donc son "+
+			"absence du journal serait invisible", metricLiveFeedCouplesSansVictime, got)
 	}
 }
 
@@ -102,8 +132,9 @@ func TestProducteurLiveEcritLesMortsCreditSeul(t *testing.T) {
 		t.Error("assist_known = TRUE : le kill-feed ne porte AUCUN assistant. Ecrire « connu » " +
 			"ici fabriquerait un « pas d assistant » jamais observe")
 	}
-	if readPath != ReadPathLiveFeed || readOrigin != ReadOriginCreditOnly {
-		t.Errorf("portee = %q/%q, attendu %q/%q", readPath, readOrigin, ReadPathLiveFeed, ReadOriginCreditOnly)
+	if readPath != killscope.ReadPathLiveFeed || readOrigin != killscope.OriginCreditOnly {
+		t.Errorf("portee = %q/%q, attendu %q/%q", readPath, readOrigin,
+			killscope.ReadPathLiveFeed, killscope.OriginCreditOnly)
 	}
 	if sourceTag.Valid || sourceCategorie.Valid || diverges.Valid || pctTueur.Valid || pctAssist.Valid {
 		t.Errorf("source/divergence/parts renseignees (tag=%v cat=%v div=%v pctT=%v pctA=%v) — "+

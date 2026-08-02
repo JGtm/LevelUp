@@ -209,7 +209,9 @@ func ApplyDropHighlightEventsGamertag(db *sql.DB) error {
 //     `killer_gamertag`/`victim_gamertag` re-jointes qui portaient déjà ces noms-là : les deux
 //     LEFT JOIN sur `v_gamertag_lookup` étaient du travail mort exécuté à chaque chargement de
 //     vue match, et la vue ne « marchait » que par le renommage silencieux qu'applique DuckDB
-//     aux colonnes homonymes. Son seul lecteur (Q20) lit la vue de compatibilité.
+//     aux colonnes homonymes. Son seul lecteur (Q20) lit désormais la TABLE
+//     `killer_victim_pairs` directement, et rend les mêmes six colonnes. Aucune vue de
+//     compatibilité n'a été posée à sa place : il n'y en a pas.
 func ApplyResolutionViews(db *sql.DB) error {
 	if err := EnsureMatchKillEvents(db); err != nil {
 		return fmt.Errorf("ensure match_kill_events (dep v_gamertag_lookup): %w", err)

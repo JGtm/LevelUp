@@ -46,8 +46,19 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"time"
+
+	"levelup/go-api/internal/domain/killscope"
+	"levelup/go-api/internal/observability"
 )
+
+// metricLiveFeedCouplesSansVictime — compteur de sante du producteur live (ADR 0009).
+//
+// Il vaut 0 sur les deux titres connus. Le jour ou il bouge, il designe un titre dont les
+// couples arrivent degrades — et il le designe AVANT qu on cherche pourquoi un match a moins de
+// morts qu il ne devrait.
+const metricLiveFeedCouplesSansVictime = "killsource_live_couples_sans_victime_nommee"
 
 // LiveFeedDecoderRev — la version du producteur live.
 //
@@ -56,18 +67,13 @@ import (
 // toucher aux matchs decodes depuis un film.
 const LiveFeedDecoderRev = "sync-kill-feed-2026-08-02"
 
-// Portee des lignes du producteur live.
-const (
-	// ReadPathLiveFeed : la voie de lecture. Le kill-feed rendu par le pipeline de sync DU
-	// TITRE — kill-feed de l API pour Halo Infinite, carnage natif pour Halo 5. C est la
-	// colonne qui distingue ce producteur des autres, et donc celle sur laquelle la preseance
-	// se decide.
-	ReadPathLiveFeed = "kill-feed"
-	// ReadOriginCreditOnly : « le credit, et rien que le credit ». Partagee avec le producteur
-	// credit-seul hors ligne : les deux mesurent la meme chose, ils ne la lisent pas au meme
-	// endroit.
-	ReadOriginCreditOnly = "credit-seul"
-)
+// Portee des lignes du producteur live — LUE CHEZ SON PROPRIETAIRE, jamais recopiee.
+//
+// Ce vocabulaire est partage par quatre ecrivains (ici, la reprise de `migration`, le producteur
+// credit-seul de `killcollector`, la base de demonstration de `ops`). Il vit dans
+// `domain/killscope`, une feuille sans import, parce que `migration` ne peut pas importer
+// `persist` sans cycle a la compilation des tests. Garde-rail :
+// `internal/archlint/no_raw_kill_scope_literal_test.go`.
 
 // FilmReadPaths — LES VOIES DE LECTURE PRODUITES PAR UN DECODAGE DE FILM.
 //
@@ -97,22 +103,25 @@ var FilmReadPaths = []string{"marche", "scan"}
 // — meme source, memes couples — et cette table etait deja lue ligne par ligne (match-view,
 // timeline K/D, penalite de depart LUSR). Les declarer non publiables retirerait une capacite
 // existante au nom d une prudence qui ne repose sur aucune mesure.
-func CreditKillEventsFromPairs(matchID string, pairs []KillerVictimInsert) KillSourceBatch {
+func CreditKillEventsFromPairs(ctx context.Context, matchID string, pairs []KillerVictimInsert) KillSourceBatch {
 	batch := KillSourceBatch{
 		MatchID:     matchID,
 		DecoderRev:  LiveFeedDecoderRev,
 		Publishable: true,
 		Deaths:      make([]KillEventInsert, 0, len(pairs)),
 	}
+	sansNom := 0
 	for _, p := range pairs {
-		// UNE MORT SANS NOM DE VICTIME EST ECARTEE, PAS REFUSEE. `victim_gamertag` est la
-		// seule colonne qu une mort ne peut pas ne pas avoir, et la validation du persister
-		// s applique a la PASSE ENTIERE : une ligne sans nom ferait echouer tout le match, donc
-		// perdre aussi les morts nommees et le reste du batch. Le cas n existe pas sur les
-		// donnees reelles — 0 ligne sans nom de victime sur les 518 476 couples des deux titres,
-		// mesure du 2026-08-02 — mais un couple degrade venu d un titre futur ne doit pas
-		// pouvoir faire tomber une synchronisation.
+		// UNE MORT SANS NOM DE VICTIME EST ECARTEE, PAS REFUSEE — ET ELLE SE COMPTE (cf. le log
+		// et le compteur apres la boucle). `victim_gamertag` est la seule colonne qu une mort ne
+		// peut pas ne pas avoir, et la validation du persister s applique a la PASSE ENTIERE :
+		// une ligne sans nom ferait echouer tout le match, donc perdre aussi les morts nommees
+		// et le reste du batch. Le cas n existe pas sur les donnees reelles — 0 ligne sans nom
+		// de victime sur les 518 476 couples des deux titres, mesure du 2026-08-02 — mais un
+		// couple degrade venu d un titre futur ne doit pas pouvoir faire tomber une
+		// synchronisation, ni disparaitre sans laisser de trace.
 		if p.VictimGamertag == "" {
+			sansNom++
 			continue
 		}
 		batch.Deaths = append(batch.Deaths, KillEventInsert{
@@ -124,9 +133,20 @@ func CreditKillEventsFromPairs(matchID string, pairs []KillerVictimInsert) KillS
 			// Le kill-feed porte bien cette mort : c est LUI la source de ces lignes.
 			FeedPresent: true,
 			AssistKnown: false,
-			ReadPath:    ReadPathLiveFeed,
-			ReadOrigin:  ReadOriginCreditOnly,
+			ReadPath:    killscope.ReadPathLiveFeed,
+			ReadOrigin:  killscope.OriginCreditOnly,
 		})
+	}
+	// L ECART SE COMPTE ET SE DIT, AVANT que le batch degrade parte a l ecriture. Ce cas
+	// n existe pas sur les donnees connues (0 ligne sans nom de victime sur 518 476 couples des
+	// deux titres, mesure du 2026-08-02) : c est PRECISEMENT ce qui le rend dangereux muet. Le
+	// jour ou un titre en produit, un `continue` sans trace ferait disparaitre des morts du
+	// journal sans qu aucun compteur ne bouge — et le nombre de morts d un match n a pas de
+	// valeur attendue a laquelle le comparer.
+	if sansNom > 0 {
+		observability.AddInt(metricLiveFeedCouplesSansVictime, int64(sansNom))
+		slog.WarnContext(ctx, "persist: couples ecartes, nom de victime absent",
+			"match_id", matchID, "couples_ecartes", sansNom, "couples_recus", len(pairs))
 	}
 	return batch
 }

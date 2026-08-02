@@ -50,6 +50,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain/killscope"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 )
@@ -61,15 +62,12 @@ import (
 // toucher aux matchs decodes depuis un film.
 const CreditDecoderRev = "highlight-credit-2026-08-01"
 
-// Portee des lignes credit-seul. Les valeurs sont celles que le DDL de `match_kill_events`
-// annonce — les changer ici sans changer le DDL rendrait la preseance aveugle.
-const (
-	// CreditReadPath : la voie de lecture. C est LA colonne qui distingue les deux producteurs,
-	// et donc celle sur laquelle la preseance se decide.
-	CreditReadPath = "highlight-events"
-	// CreditReadOrigin : l origine. « Le credit, et rien que le credit ».
-	CreditReadOrigin = "credit-seul"
-)
+// Portee des lignes credit-seul : `killscope.ReadPathCreditBackfill` / `killscope.OriginCreditOnly`.
+//
+// Elle N EST PAS redeclaree ici. Ce vocabulaire est partage par quatre ecrivains et il vit dans
+// une feuille sans import (`domain/killscope`) — une copie locale qui deriverait d un caractere
+// rendrait la preseance aveugle sans rien casser d autre. Garde-rail :
+// `internal/archlint/no_raw_kill_scope_literal_test.go`.
 
 // creditToleranceMS : la fenetre d appariement kill <-> death.
 //
@@ -248,8 +246,8 @@ func BuildCreditBatch(matchID string, events []analysis.RawEvent) persist.KillSo
 			// ON NE SAIT PAS s il y avait un assistant. Le reste des champs d assistant, de
 			// source et de parts reste a zero — et le persister les ecrit NULL, jamais 0.
 			AssistKnown: false,
-			ReadPath:    CreditReadPath,
-			ReadOrigin:  CreditReadOrigin,
+			ReadPath:    killscope.ReadPathCreditBackfill,
+			ReadOrigin:  killscope.OriginCreditOnly,
 		})
 	}
 	return batch

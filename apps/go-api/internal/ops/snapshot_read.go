@@ -85,7 +85,7 @@ func sharedSnapshotRequiredTables() []string {
 
 // OpenSnapshotShared ouvre la version courante comme une DuckDB :memory: reconstruisant
 // le SCHÉMA SHARED COMPLET — toutes les tables de base + TOUTES les vues aux noms live
-// (v_gamertag_lookup, v_match_full, v_killer_victim_full, v_weapon_kills,
+// (v_gamertag_lookup, v_match_full, v_weapon_kills, match_kill_events_latest,
 // match_csrs_latest, match_objective_stats_latest, mv_player_matches) → un SharedReader
 // peut servir TOUTES les lectures shared de l'app depuis le snapshot, hors fenêtre RW.
 // Retourne ErrNoSnapshot (aucune version) ou ErrSnapshotIncomplete (table requise

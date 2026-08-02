@@ -1,3 +1,80 @@
+## [2026-08-02] Ronde de correction J4R — les 7 constats de la revue adverse, et 6 mutations pour le prouver
+
+**Statut** : Complété. Périmètre FERMÉ aux 7 constats du tableau « REVUE ADVERSARIALE DU LOT J4 ».
+7/7 statués `[x]`, aucun `[!]`. Trois découvertes consignées, **aucune traitée**.
+
+**Décision technique principale** : créer `internal/domain/killscope`, une feuille SANS AUCUN
+IMPORT, pour héberger le vocabulaire de portée de `match_kill_events` (`read_path` /
+`read_origin`). Le commentaire de la copie privée dans `migration` invoquait une raison —
+« `migration` ne peut pas importer `persist` sans inverser la dépendance » — qui s'est révélée
+VRAIE à la vérification : les tests internes de `persist` (`package persist`) importent
+`migration`, donc la dépendance inverse serait un cycle à la compilation des tests. Ce qui était
+faux, c'est la suite : « verrouillée par un test d'égalité — cf.
+steps_shared_kill_events_from_pairs_test.go », un fichier qui n'a jamais existé. Un paquet feuille
+supprime la contrainte au lieu de la contourner : personne ne peut cycler à travers lui.
+Les constantes locales sont SUPPRIMÉES, pas aliasées — un alias aurait recréé le « deux noms pour
+une valeur » que la centralisation élimine.
+
+**Ce qui décide la préséance décide en silence.** C'est le fil des 7 constats. `read_path` est la
+colonne sur laquelle le film gagne contre le crédit ; une copie qui dérive d'un caractère ne lève
+aucune erreur, ne bouge aucun compteur, ne change aucun nom — elle fait seulement qu'une passe
+crédit réécrit par-dessus une passe de film, et la source du dégât fatal disparaît de la lecture.
+Même forme pour J4R-1 (retirer le `NOT IN` : même nombre de morts servies, mêmes noms, mêmes
+instants) et pour J4R-2 (supprimer l'écriture canonique : les couples continuent d'arriver dans la
+table historique, la table canonique se vide sur le seul chemin de complétion).
+
+**Méthode : ne pas croire les tests, les casser.** Chaque test neuf a été vérifié par MUTATION du
+code qu'il garde — 6 mutations, 6 rougissements, chacun sur le test attendu :
+
+| mutation appliquée | test qui rougit |
+|---|---|
+| `SELECT DISTINCT` → `SELECT` | `TestRepriseDedupliqueLesCouples` |
+| filtre `NOT IN (…match_kill_events_latest)` neutralisé | `TestRepriseNeSupplantePasUnePasseExistante` |
+| `decode_pass` = constante au lieu de `'pairs-' \|\| match_id` | `TestRepriseEcritUnePasseParMatch` |
+| vue `_latest` : `written_at DESC, id DESC` → `ASC, ASC` | `TestPasseLaPlusRecenteGagne` |
+| appel `persistCreditKillEvents` supprimé | `_EcritLaTableCanonique` **et** `_KVIdempotent` |
+| `if !c.caps.Has(CapFilmWeaponShots)` → `if c.caps.Has(…)` | `TestPorteDesTirsSansFixture` (les DEUX assertions) |
+
+Le garde-rail J4R-3 a été vérifié de la même façon : littéral `"highlight-events"` réintroduit dans
+`killcollector/credit.go` → `TestNoRawKillScopeLiteral` rouge, avec le fichier et la ligne.
+
+**Résultats observés / ce que la vérification a corrigé** :
+- **J4R-7 : le mode de panne annoncé était l'INVERSE du vrai.** La revue disait « l'outil
+  avorterait » ; le commentaire du code disait « une vue oubliée manque ensuite silencieusement ».
+  Sonde DuckDB jouée plutôt que de trancher sur parole : `DROP TABLE t CASCADE` **réussit** mais
+  LAISSE la vue au catalogue, et le `CREATE VIEW` de recréation échoue en `Catalog Error: View
+  with name "v" already exists!`. Donc : rollback, base intacte, échec BRUYANT. La revue avait
+  raison, le commentaire avait tort — et pas seulement sur « le seul filet ». `cmd/rebuild_mp`
+  est **inutilisable dès que la table reconstruite porte des vues dépendantes**, c'est-à-dire
+  toujours. Outil NON réécrit (hors périmètre), dette consignée au plan maître.
+- **J4R-6 : 5 commentaires stales, pas 4.** En vérifiant les 3 « vue de compatibilité » annoncés,
+  deux références de plus à la vue supprimée sont sorties : `match_view_repo_extras.go:61`
+  (« Vue v_killer_victim_full peut être absente… » — elle n'est pas absente, elle n'existe plus)
+  et `ops/snapshot_read.go:88` (elle figurait dans la liste des vues du snapshot). Corrigées.
+- **Le test `TestRunForDB_Shared_V6ViewsExist` était doublement mort** : il se skippe (Phase 1.5
+  b23) ET il exigeait la vue supprimée. Réparé plutôt que retiré — il vérifie les 3 vues
+  restantes, plus **que la supprimée ne revienne pas**. Le retirer aurait coûté la couverture des
+  3 autres.
+- **J4R-5, le comptage a un piège de périmètre** : compter TOUS les couples sans nom de victime
+  annoncerait comme perdus ceux de matchs que la reprise ne prend de toute façon pas (préséance).
+  `compterCouplesSansVictime` porte donc le MÊME filtre que l'INSERT, et tourne AVANT lui —
+  après, les matchs repris sont dans `_latest` et le décompte ne rendrait plus rien. Testé dans
+  les deux sens.
+- `CreditKillEventsFromPairs` prend désormais un `ctx` (les 2 appelants en avaient un sous la
+  main) : logger sans contexte aurait été le seul moyen de garder la signature, au prix de la
+  convention du dépôt.
+
+**Piège d'outillage re-rencontré** : `Set-Content -Encoding utf8` (PowerShell 5.1) a ré-encodé
+`credit.go` pendant une restauration post-mutation — 31 lignes de mojibake dans le diff. Restauré
+par `git checkout` puis modifications réappliquées à l'outil d'édition. **Pour les mutations de
+test, passer par `cp` (bash) ou l'outil d'édition, jamais par `Set-Content`.** Le contrôle qui l'a
+attrapé : `git diff | grep -c "â€"`, à refaire après toute écriture PowerShell sur un fichier
+accentué.
+
+**Conclusion / prochaine étape** : ronde 2 — relecture des SEULES corrections par un contexte
+frais (skill `adversarial-review` §8, 2 rondes max), puis merge J5. La bascule des 8 lecteurs
+reste hors périmètre, derrière son critère mesuré.
+
 ## [2026-08-02] J4 session 4 — le rejeu atteignable, et les catalogues Halo sortis du code
 
 **Statut** : Complété (lots 1.2/1.3, 3.1, 3.2, phase 4). Bascule des lecteurs (phase 2)

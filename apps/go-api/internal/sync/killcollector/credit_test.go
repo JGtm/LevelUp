@@ -24,6 +24,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	"levelup/go-api/internal/domain/killscope"
 	"levelup/go-api/internal/persist"
 )
 
@@ -165,7 +166,7 @@ func TestPreseanceFilmSurCredit(t *testing.T) {
 		t.Fatalf("la vue sert %d lignes apres la passe de film, attendu 2 — "+
 			"les deux passes se melangent, ce qui est exactement le doublon qu on elimine", n)
 	}
-	if voie := voieDeLaVue(t, db, match); voie == CreditReadPath {
+	if voie := voieDeLaVue(t, db, match); voie == killscope.ReadPathCreditBackfill {
 		t.Fatalf("la vue sert la voie %q — le film doit primer, sinon la source du degat "+
 			"disparait de la lecture", voie)
 	}
@@ -182,7 +183,7 @@ func TestPreseanceFilmSurCredit(t *testing.T) {
 	if n := compterVue(t, db, match); n != 2 {
 		t.Fatalf("la vue sert %d lignes apres le second passage du credit, attendu 2", n)
 	}
-	if voie := voieDeLaVue(t, db, match); voie == CreditReadPath {
+	if voie := voieDeLaVue(t, db, match); voie == killscope.ReadPathCreditBackfill {
 		t.Fatal("le second passage du credit a supplante le film — la source du degat est perdue")
 	}
 }
@@ -270,7 +271,7 @@ func TestCreditEcritLesTroisEtatsSansMentir(t *testing.T) {
 	var horsPortee int
 	if err := db.QueryRow(`SELECT COUNT(*) FROM match_kill_events_latest
 		WHERE match_id = ? AND (read_path <> ? OR read_origin <> ?)`,
-		match, CreditReadPath, CreditReadOrigin).Scan(&horsPortee); err != nil {
+		match, killscope.ReadPathCreditBackfill, killscope.OriginCreditOnly).Scan(&horsPortee); err != nil {
 		t.Fatalf("select portee: %v", err)
 	}
 	if horsPortee != 0 {

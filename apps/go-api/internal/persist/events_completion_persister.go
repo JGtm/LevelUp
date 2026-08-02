@@ -1,6 +1,6 @@
 // Package persist — events_completion_persister.go : écriture atomique de la
-// COMPLÉTION combat (highlight_events + killer_victim_pairs + bits de
-// complétude) dans shared_matches_v2.duckdb.
+// COMPLÉTION combat (highlight_events + killer_victim_pairs + match_kill_events
+// + bits de complétude) dans shared_matches_v2.duckdb.
 //
 // Pourquoi un persister dédié (et pas SharedPersister) :
 //
@@ -22,6 +22,16 @@
 // timeline, antagonistes). NE PAS confondre avec persistKillerVictim
 // (shared_persister.go) qui écrit la forme agrégée (kill_count, sans gamertags
 // ni time_ms) destinée au flux primaire — lossy pour la complétion.
+//
+// TROISIÈME TABLE ÉCRITE DEPUIS LE 2026-08-02 : `match_kill_events`, la table
+// canonique des morts (double écriture datée, cf. persistKillerVictim). Les
+// mêmes couples y entrent par l'unique traduction du dépôt
+// (CreditKillEventsFromPairs → persistCreditKillEvents), DANS LA MÊME
+// TRANSACTION, et sous la préséance du film. C'est le chemin par lequel les
+// matchs dont le film arrive un cycle après le sync primaire obtiennent leurs
+// morts — l'omettre de cet en-tête a masqué qu'aucun test ne l'assertait
+// (constat J4R-2 ; couvert depuis par
+// TestEventsCompletionPersister_EcritLaTableCanonique).
 //
 // ⚠️ ART-safety (asymétrie volontaire, alignée sur la complétion legacy) :
 //   - highlight_events possède des index ART (PK id seq + idx_highlight_match +
@@ -248,7 +258,7 @@ func insertCompletionKillerVictim(ctx context.Context, tx *sql.Tx, matchID strin
 		return nil
 	}
 	if err := persistCreditKillEvents(ctx, tx,
-		CreditKillEventsFromPairs(matchID, killerVictimRowsFromCompletion(matchID, pairs))); err != nil {
+		CreditKillEventsFromPairs(ctx, matchID, killerVictimRowsFromCompletion(matchID, pairs))); err != nil {
 		return err
 	}
 	if _, err := tx.ExecContext(ctx,
