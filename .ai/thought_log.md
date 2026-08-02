@@ -1,3 +1,29 @@
+## [2026-08-03] Passation du rôle superviseur — handoff écrit
+
+**Statut** : Complété.
+
+**Décision technique** : écrire `.ai/HANDOFF_SUPERVISEUR_2026-08-03.md` comme point d entrée
+unique du rôle superviseur, le master plan restant le document d autorité. Motif : contexte
+plein côté superviseur, passation à une autre conversation.
+
+**Résultats observés** — état transmis, vérifié sur pièces : branche `feat/replay2d-prod`
+HEAD `d8f420e81`, arbre propre, **0 commit de retard sur `main`** (merge `1a0c1eb5c`), CI
+verte au niveau job. Jalons J0 à J4 clos, dont J4 avec revue adversariale complète (2
+relecteurs aveugles + 2 rondes, 3 P1 -> 0, aucun défaut introduit). Killfeed enrichi en base
+pour les deux titres, gardé par des tests prouvés par mutation. Aucun lecteur basculé : la
+valeur n est donc pas encore visible à l écran.
+
+**Ce que le handoff transmet** : le rôle et ses 3 règles (vérifier sur pièces ; un gate qui
+ne peut pas échouer ne garde rien — motif rencontré 6 fois ; merger `main` DANS la branche à
+chaque session), la stratégie arrêtée (finaliser le VISIBLE avant de merger), les 9 décisions
+tranchées à ne pas rouvrir, le prompt du prochain lot (implémentation de l inversion de
+préséance), la dette H1-H6, et les 6 pièges les plus coûteux du chantier.
+
+**Conclusion / prochaine étape** : implémenter l inversion de préséance crédit<->film
+(document d autorité `CONCEPTION_INVERSION_PRESEANCE.md`, appariement prouvé bijectif à
+tolérance zéro, aucune migration de schéma, reprise SQL->SQL). Puis bascule des 8 lecteurs,
+intégration de `feat/re-mode-score`, hygiène, et merge avec GO utilisateur.
+
 ## [2026-08-02] Conception de l'inversion de préséance crédit↔film — l'appariement est une identité, pas une jointure floue
 
 **Statut** : Complété (CONCEPTION SEULE, rien d'implémenté). Livrable :
