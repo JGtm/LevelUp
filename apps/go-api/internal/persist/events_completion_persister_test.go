@@ -20,6 +20,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	"levelup/go-api/internal/domain/killscope"
 	"levelup/go-api/internal/migration"
 )
 
@@ -183,6 +184,147 @@ func TestEventsCompletionPersister_KVIdempotent(t *testing.T) {
 	}
 	if got := countCompletionRows(t, db, "killer_victim_pairs", matchID); got != 1 {
 		t.Errorf("killer_victim_pairs après 2 runs = %d, want 1 (idempotent)", got)
+	}
+	// Côté table canonique, l'idempotence a une AUTRE mécanique : deux passes ne
+	// s'additionnent pas, la vue `_latest` n'en retient qu'une. C'est là que meurt le
+	// doublon de killer_victim_pairs — il faut le vérifier, pas seulement l'écrire.
+	if got := countCompletionRows(t, db, "match_kill_events_latest", matchID); got != 1 {
+		t.Errorf("match_kill_events_latest après 2 runs = %d, want 1 — les deux passes "+
+			"s'additionnent, ce qui est exactement le doublon (46,5 %%) que la table doit "+
+			"rendre impossible", got)
+	}
+	if got := countCompletionRows(t, db, "match_kill_events", matchID); got != 2 {
+		t.Errorf("match_kill_events (table brute) = %d, want 2 — la table est append-only, "+
+			"les deux passes doivent y rester", got)
+	}
+}
+
+// TestEventsCompletionPersister_EcritLaTableCanonique — LE SECOND PRODUCTEUR, ASSERTÉ.
+//
+// Constat J4R-2 : depuis le 2026-08-02 la complétion combat écrit `match_kill_events` en plus de
+// `killer_victim_pairs` (`insertCompletionKillerVictim` → `persistCreditKillEvents`), et AUCUN
+// test ne le vérifiait. Supprimer cet appel laissait toute la suite au vert : les couples
+// continuaient d'arriver dans la table historique, et la table canonique se vidait en silence
+// sur tout le chemin de complétion — c'est-à-dire sur les matchs dont le film arrive un cycle
+// après le sync primaire.
+//
+// Le test porte sur les DEUX choses qui se perdent sans bruit : la présence des lignes, et la
+// portée qu'elles déclarent.
+func TestEventsCompletionPersister_EcritLaTableCanonique(t *testing.T) {
+	ctx := context.Background()
+	db := openCompletionTestDB(t)
+	matchID := "m-canonique-001"
+	seedCompletionRegistry(t, db, matchID)
+
+	if _, err := NewEventsCompletionPersister(db).Persist(ctx, sampleCompletionInput(matchID)); err != nil {
+		t.Fatalf("Persist: %v", err)
+	}
+
+	// (1) LES LIGNES SONT LÀ. Une mort par couple, servie par la vue `_latest`.
+	if got := countCompletionRows(t, db, "match_kill_events_latest", matchID); got != 1 {
+		t.Fatalf("match_kill_events_latest = %d ligne(s), want 1 — la complétion combat n'écrit "+
+			"plus la table canonique ; les matchs dont le film arrive après le sync primaire n'y "+
+			"auraient aucune mort, et rien ne le signalerait", got)
+	}
+
+	var victime, tueur, voie, origine string
+	var timeMS int
+	var feedPresent, assistKnown, publishable bool
+	var sourceTag, sourceCat sql.NullInt64
+	var diverge sql.NullBool
+	var pctTueur, pctAssist sql.NullInt64
+	if err := db.QueryRowContext(ctx, `
+		SELECT victim_gamertag, feed_killer_gamertag, time_ms, feed_present, assist_known,
+		       publishable, read_path, read_origin,
+		       source_tag, source_category, diverges, killer_damage_pct, assist_damage_pct
+		FROM match_kill_events_latest WHERE match_id = ?`, matchID).
+		Scan(&victime, &tueur, &timeMS, &feedPresent, &assistKnown, &publishable, &voie, &origine,
+			&sourceTag, &sourceCat, &diverge, &pctTueur, &pctAssist); err != nil {
+		t.Fatalf("select ligne canonique: %v", err)
+	}
+
+	// (2) LE FAIT LUI-MÊME est intact : qui, qui, quand.
+	if victime != "Victim1" || tueur != "Killer1" || timeMS != 1000 {
+		t.Errorf("mort = (victime=%q, tueur=%q, t=%d), attendu (Victim1, Killer1, 1000) — "+
+			"la traduction couple → mort a perdu ou décalé un champ", victime, tueur, timeMS)
+	}
+	if !feedPresent || !publishable {
+		t.Errorf("feed_present=%v publishable=%v, attendu true/true : ces lignes valent "+
+			"EXACTEMENT ce que valait killer_victim_pairs, qui était déjà lue ligne par ligne",
+			feedPresent, publishable)
+	}
+
+	// (3) « ON NE SAIT PAS » — l'assertion qui motive le constat. Le kill-feed ne porte AUCUN
+	//     assistant. Écrire `assist_known = TRUE` fabriquerait un « pas d'assistant » observé,
+	//     alors que rien n'a été observé du tout : c'est le troisième état qui s'effondre.
+	if assistKnown {
+		t.Error("assist_known = TRUE : le kill-feed de la complétion ne porte aucun assistant. " +
+			"« Connu » ici fabrique une mesure d'absence à partir d'une absence de mesure — les " +
+			"trois états de l'assistant retombent à deux")
+	}
+
+	// (4) LA PORTÉE est déclarée, et c'est elle qui décide la préséance du film.
+	if voie != killscope.ReadPathLiveFeed || origine != killscope.OriginCreditOnly {
+		t.Errorf("portée = %q/%q, attendu %q/%q — la préséance se décide sur read_path",
+			voie, origine, killscope.ReadPathLiveFeed, killscope.OriginCreditOnly)
+	}
+
+	// (5) « NULL n'est jamais zéro » : ce que la complétion ne mesure pas reste ABSENT.
+	if sourceTag.Valid || sourceCat.Valid || diverge.Valid || pctTueur.Valid || pctAssist.Valid {
+		t.Errorf("source/divergence/parts renseignées (tag=%v cat=%v div=%v pctT=%v pctA=%v) — "+
+			"la source du dégât se lit dans le film, et il n'y en a pas ici : ces colonnes sont "+
+			"NON MESURÉES, donc NULL",
+			sourceTag.Valid, sourceCat.Valid, diverge.Valid, pctTueur.Valid, pctAssist.Valid)
+	}
+}
+
+// TestEventsCompletionPersister_PreseanceFilm — la complétion ne supplante JAMAIS un film.
+//
+// Même règle, même sens, que les deux autres producteurs crédit : la vue `_latest` retient la
+// DERNIÈRE passe, donc une passe de complétion écrite après un décodage de film deviendrait la
+// génération servie et effacerait de la lecture la source du dégât fatal. Sans erreur, sans
+// compteur, sans qu'un seul nom change.
+//
+// La table HISTORIQUE, elle, continue d'être écrite : la préséance ne porte que sur la table
+// canonique. Le test vérifie les deux — sinon « ne rien écrire du tout » passerait au vert.
+func TestEventsCompletionPersister_PreseanceFilm(t *testing.T) {
+	ctx := context.Background()
+	db := openCompletionTestDB(t)
+	matchID := "m-preseance-001"
+	seedCompletionRegistry(t, db, matchID)
+
+	// Une passe de FILM précède. Aucun film n'est nécessaire : ce qui décide est la voie.
+	if _, err := db.ExecContext(ctx, `
+		INSERT INTO match_kill_events (
+			match_id, decode_pass, decoder_rev, publishable, time_ms,
+			victim_gamertag, feed_present, assist_known, source_tag, read_path, read_origin
+		) VALUES (?, 'film-pass', 'film-rev', TRUE, 500, 'VictimeFilm', TRUE, TRUE, 3735928559,
+			'marche', 'credit-concordant')`, matchID); err != nil {
+		t.Fatalf("seed passe de film: %v", err)
+	}
+
+	if _, err := NewEventsCompletionPersister(db).Persist(ctx, sampleCompletionInput(matchID)); err != nil {
+		t.Fatalf("Persist: %v", err)
+	}
+
+	// (a) la table historique est bien écrite — la préséance ne la concerne pas.
+	if got := countCompletionRows(t, db, "killer_victim_pairs", matchID); got != 1 {
+		t.Errorf("killer_victim_pairs = %d, want 1 : la préséance ne porte QUE sur la table "+
+			"canonique, les ~20 lecteurs historiques doivent continuer d'être servis", got)
+	}
+
+	// (b) la génération servie reste celle du film, avec sa source du dégât.
+	var voie string
+	var source sql.NullInt64
+	if err := db.QueryRowContext(ctx,
+		`SELECT read_path, source_tag FROM match_kill_events_latest WHERE match_id = ?`, matchID).
+		Scan(&voie, &source); err != nil {
+		t.Fatalf("select génération servie: %v", err)
+	}
+	if voie != "marche" || !source.Valid {
+		t.Errorf("génération servie : voie=%q source_tag valide=%v — attendu la passe de film. "+
+			"La complétion l'a supplantée, et la source du dégât fatal a disparu de la lecture",
+			voie, source.Valid)
 	}
 }
 

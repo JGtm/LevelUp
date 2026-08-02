@@ -43,8 +43,14 @@ Core tables:
 
 SQL views (`ensure_resolution_views()`):
 - `v_match_full`: `match_registry` enriched with i18n names from `meta.asset_translations` — 8 LEFT JOINs (en-US + fr-FR × map/playlist/pair/variant). Columns: `map_name`, `map_name_fr`, `game_variant_name`, `game_variant_name_fr`, etc.
-- `v_gamertag_lookup`: XUID → current gamertag (FULL OUTER JOIN `xuid_aliases` + `match_participants`)
-- `v_killer_victim_full`: killer/victim pairs with resolved gamertags
+- `v_gamertag_lookup`: XUID → current gamertag (FULL OUTER JOIN `xuid_aliases` + `match_participants` + `match_kill_events_latest`)
+
+> `v_killer_victim_full` was **dropped on 2026-08-02** and is no longer a guaranteed v6 view.
+> Its two LEFT JOINs re-joined `v_gamertag_lookup` to produce columns that already carried those
+> names, and it only "worked" through DuckDB's silent renaming of homonymous columns. Its single
+> reader (match-view Q20) now reads the table directly and returns the same six columns. Killer →
+> victim pairs live in `killer_victim_pairs` (historical, still read) and in `match_kill_events`
+> — read the latter through its `match_kill_events_latest` view only (ADR 0026).
 
 > **Important**: `v_match_full` requires `metadata.duckdb` to be ATTACHed as `meta` in the same connection for the i18n JOINs to work. `DuckDBRepository` handles this automatically.
 

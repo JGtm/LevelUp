@@ -18,6 +18,8 @@ import (
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+
+	"levelup/go-api/internal/domain/killscope"
 )
 
 // killEventsDB : une base avec la table, l index et la vue.
@@ -179,13 +181,15 @@ func TestVueSuitColonneAjoutee(t *testing.T) {
 // exclurait les ~28 % de matchs dont le film a expire cote serveur.
 func TestSourceEtDivergenceNullables(t *testing.T) {
 	db := killEventsDB(t)
+	// La portée vient de `killscope`, pas d'un littéral : un seed qui figerait sa propre copie
+	// continuerait de passer au vert le jour où la valeur de production change.
 	_, err := db.Exec(`
 		INSERT INTO match_kill_events (
 			match_id, decode_pass, decoder_rev, publishable, time_ms,
 			victim_gamertag, feed_killer_gamertag, feed_present, assist_known,
 			read_path, read_origin
-		) VALUES ('m1', 'p1', 'highlight-v1', TRUE, 1000, 'V1', 'K1', TRUE, FALSE,
-			'highlight-events', 'credit-seul')`)
+		) VALUES ('m1', 'p1', 'highlight-v1', TRUE, 1000, 'V1', 'K1', TRUE, FALSE, ?, ?)`,
+		killscope.ReadPathCreditBackfill, killscope.OriginCreditOnly)
 	if err != nil {
 		t.Fatalf("le producteur credit-seul doit pouvoir ecrire sans source: %v", err)
 	}

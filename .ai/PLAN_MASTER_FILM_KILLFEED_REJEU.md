@@ -1857,6 +1857,42 @@ pas encore. **À corriger avant le merge J5.**
 mensonger + CONSIGNER la dette (ne pas réécrire l'outil, hors périmètre). Puis **ronde 2** :
 relecture des seules corrections par un contexte frais (skill §8, 2 rondes max).
 
+### RONDE DE CORRECTION — CLOSE le 2026-08-02. 7/7 traités, aucun `[!]`.
+
+| # | statut | correction livrée | ce qui la garde |
+|---|---|---|---|
+| J4R-1 | `[x]` | migration de reprise jouée sur base **peuplée** : dédup (4 lignes → 2 morts), une passe par match + passes distinctes, préséance (match à film non réimporté, source du dégât conservée), récence (film postérieur gagne) | `migration/steps_shared_kill_events_from_pairs_test.go` — 4 tests, **4 mutations vérifiées rouges** : `DISTINCT` retiré → dédup ; `NOT IN` neutralisé → préséance ; passe constante → une-passe-par-match ; ordre `_latest` inversé → récence |
+| J4R-2 | `[x]` | chemin complétion asserté : lignes présentes, `assist_known = FALSE`, portée déclarée, source/parts NULL ; + préséance film et non-addition des passes | `TestEventsCompletionPersister_EcritLaTableCanonique` + `_PreseanceFilm` + assertion canonique ajoutée à `_KVIdempotent` — **supprimer l'appel `persistCreditKillEvents` fait rougir 2 tests** (vérifié) |
+| J4R-3 | `[x]` | vocabulaire de portée centralisé dans **`internal/domain/killscope`** (feuille SANS import). 4 écrivains + CLI + 3 tests le lisent ; `persist.ReadPathLiveFeed`/`ReadOriginCreditOnly` et `killcollector.CreditReadPath`/`CreditReadOrigin` supprimées (pas d'alias). Commentaire mensonger corrigé — et le fichier qu'il citait EXISTE désormais | `archlint/no_raw_kill_scope_literal_test.go` (walk `internal/` + `cmd/`, allowlist **vide**, commentaires Go et SQL sautés) — **vérifié rouge sur littéral réintroduit** ; + `killscope_test.go` épingle les valeurs de fil et leur distinction. Referme J4R-4-bis : écrire `read_path <> 'kill-feed'` exige un littéral, que le ratchet refuse |
+| J4R-4 | `[x]` | porte `CapFilmWeaponShots` testée **sans fixture** : `collectShots` appelée directement sur un chunk de réplication synthétique (instrument de `shots_test.go`), les deux sens vérifiés | `killcollector/shots_capability_test.go` — **inverser la condition fait rougir les DEUX assertions** (vérifié). Tourne partout où DuckDB tourne, donc en CI |
+| J4R-5 | `[x]` | 3 sites : `CreditKillEventsFromPairs` (prend `ctx`, compte + `WarnContext`, compteur `killsource_live_couples_sans_victime_nommee`) ; reprise migration (`compterCouplesSansVictime` **avant** l'INSERT, même périmètre que le filtre, compteur `killsource_reprise_couples_sans_victime_nommee`) ; `convergence_backfill_events.go` (`ErrorContext` + `convergence_events_persist_failed_total`, **loggé avant** le `Skipped++`) | `TestCoupleSansNomDeVictimeEstEcarteEtCompte` (lit le compteur via `observability.LoadCounter`) + `TestRepriseCompteLesCouplesSansVictime` (nom vide ET nom NULL ; vérifie que le comptage ne compte PAS les matchs déjà couverts) |
+| J4R-6 | `[x]` | `v_killer_victim_full` retirée des garanties v6 dans `docs/ARCHITECTURE_V6.md`, `docs/FR/ARCHITECTURE_V6.md` et `.github/copilot-instructions.md` (CHANGELOGs NON touchés — historiques datés). **5** commentaires code corrigés : `order.go:175`, `steps_shared.go:212`, `steps_shared_kill_events_from_pairs.go:116`, + 2 références stales trouvées en vérifiant (`match_view_repo_extras.go:61`, `ops/snapshot_read.go:88`). En-tête `events_completion_persister.go` : 3 tables écrites, pas 2 | `TestRunForDB_Shared_V6ViewsExist` **réparé** : il exigeait la vue supprimée (il aurait échoué le jour où son skip serait levé) ; il vérifie désormais les 3 vues restantes **et que la supprimée ne revient pas** |
+| J4R-7 | `[x]` | commentaire de `cmd/rebuild_mp/main.go` corrigé **sur mesure**, pas sur parole : sonde DuckDB jouée — `DROP TABLE t CASCADE` réussit mais LAISSE la vue au catalogue, et le `CREATE VIEW` de recréation échoue en `Catalog Error: View with name "v" already exists!`. Le mode de panne annoncé était l'inverse du vrai (« vue manquante en silence » → en fait l'outil **avorte**, transaction annulée, base intacte). Outil **non réécrit** (hors périmètre) | aucun test (outil `//go:build ignore`) — dette consignée ci-dessous |
+
+**Dette ouverte par J4R-7** : `cmd/rebuild_mp` est **inutilisable en l'état** dès que la table
+reconstruite porte des vues dépendantes — c'est-à-dire toujours. La réparation ART par CTAS est
+donc indisponible tant que l'outil ne DROPpe pas explicitement les vues capturées avant de les
+recréer. Défaut **PRÉEXISTANT** (le lot J4 n'a fait qu'en réécrire la liste). **Lot séparé**, hors
+ronde. Ne pas « améliorer » la liste `dependentViews` en croyant refermer le trou.
+
+### Découvertes de la ronde — CONSIGNÉES, NON TRAITÉES (hors périmètre fermé)
+
+1. **`persist.FilmReadPaths` recopie `killsource.PathWalk`/`PathScan`.** `persist` déclare
+   `[]string{"marche", "scan"}` alors que les valeurs vivent, typées, dans
+   `games/halo_infinite/film/killsource/kill.go:126,129`. La copie est probablement délibérée
+   (`persist` ne doit pas importer un paquet title-specific) mais elle n'est ni datée ni
+   verrouillée. `killscope` serait le domicile naturel. Le ratchet J4R-3 ne les police PAS :
+   « marche » et « scan » sont des mots courants, un grep produirait du bruit.
+2. **Deux erreurs avalées voisines de celle de J4R-5**, dans le même `switch` :
+   `convergence_backfill_events.go` — `MarkEventsEmptyDefinitive` et `MarkNoFilmDefinitive`
+   incrémentent `Skipped++` sans log ni compteur. Même anti-pattern n°10, à 20 lignes du site
+   corrigé. Non traités : hors des 3 sites nommés par le constat.
+3. **Quatre tests `migration` skippent en permanence** (`sharedBaseSchemaIsGlobal()` est faux
+   depuis Phase 1.5 b23) : `TestRunForDB_Shared_V6ViewsExist` et ses 3 voisins. La couverture est
+   assurée ailleurs (`TestTitleStepsRunEndToEnd_Shared`) et le skip est documenté — mais c'est
+   le motif « skip = faux vert » qui a produit J4R-4, à l'échelle de 4 tests. À trancher :
+   supprimer, ou rebrancher sur le chemin title-owned.
+
 ---
 
 ## STRATÉGIE DE MERGE — RÉVISÉE le 2026-08-02 (décision utilisateur)

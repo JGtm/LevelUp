@@ -62,6 +62,8 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain/killscope"
+	"levelup/go-api/internal/observability"
 )
 
 func init() {
@@ -113,9 +115,17 @@ func applyKillEventsFromPairs(db *sql.DB) error {
 	return nil
 }
 
-// killerVictimPairsIsTable distingue la table de la vue de compatibilite. `tableExists` ne
-// suffirait pas : le catalogue DuckDB ne separe pas les deux espaces de noms, et une vue
-// repondrait « oui ».
+// killerVictimPairsIsTable : `killer_victim_pairs` est-elle encore une TABLE ?
+//
+// La question se pose parce que la bascule (phase 2, apres le merge) remplacera un jour cette
+// table par une vue posee sur `match_kill_events_latest`. Ce jour-la, la reprise n aura plus rien
+// a reprendre et devra le voir. `tableExists` ne suffirait pas : le catalogue DuckDB ne separe
+// pas les deux espaces de noms, une vue repondrait « oui », et la reprise tenterait de recopier
+// dans la table canonique une vue qui la lit deja.
+//
+// ⚠ AUCUNE VUE DE COMPATIBILITE N EXISTE AUJOURD HUI, ni sous ce nom ni sous un autre (constat
+// J4R-6 : trois commentaires du lot en decrivaient une). `killer_victim_pairs` est une vraie
+// table, ecrite par le flux primaire et par la completion, et lue par ses ~20 lecteurs.
 func killerVictimPairsIsTable(db *sql.DB) (bool, error) {
 	var n int
 	err := db.QueryRowContext(bootCtx(), `
@@ -144,7 +154,28 @@ func killerVictimPairsIsTable(db *sql.DB) (bool, error) {
 // Les colonnes non mesurees par le kill-feed (source, categorie, divergence, parts de degats)
 // restent NULL et l assistant reste INCONNU (`assist_known = FALSE`) : ecrire « pas d assistant »
 // fabriquerait un fait jamais observe.
+//
+// La PORTEE (`read_path` / `read_origin`) est lue chez son proprietaire, `domain/killscope` : une
+// feuille sans import, precisement parce que `migration` ne peut PAS importer `persist` (les
+// tests internes de `persist` importent `migration` — la dependance inverse serait un cycle).
+// Ce fichier en portait une copie privee jusqu au 2026-08-02, avec un commentaire qui la disait
+// « verrouillee par un test d egalite » renvoyant a un fichier de test INEXISTANT (constat
+// J4R-3). Le garde-rail reel est `internal/archlint/no_raw_kill_scope_literal_test.go`.
+//
+// Le comportement de cette fonction — deduplication, une passe par match, preseance — est tenu
+// par `steps_shared_kill_events_from_pairs_test.go`, qui joue la migration sur une base PEUPLEE
+// (constat J4R-1 : elle ne l avait jamais ete que sur base vide).
 func reprendreCouplesDansKillEvents(db *sql.DB) error {
+	// COMPTE AVANT D ECRIRE : les couples sans nom de victime que le WHERE ci-dessous ecarte.
+	// La mesure doit precede l INSERT — apres, les matchs repris sont dans `_latest` et le
+	// meme decompte ne rendrait plus rien.
+	ecartes := compterCouplesSansVictime(db)
+	if ecartes > 0 {
+		observability.AddInt(metricPairsBackfillSansVictime, int64(ecartes))
+		slog.WarnContext(bootCtx(), "bascule kill events: couples ecartes, nom de victime absent",
+			"couples_ecartes", ecartes, "decoder_rev", PairsBackfillDecoderRev)
+	}
+
 	res, err := db.ExecContext(bootCtx(), `
 		INSERT INTO match_kill_events (
 			match_id, decode_pass, decoder_rev, written_at, publishable,
@@ -163,21 +194,43 @@ func reprendreCouplesDansKillEvents(db *sql.DB) error {
 		FROM killer_victim_pairs kvp
 		WHERE kvp.victim_gamertag IS NOT NULL AND kvp.victim_gamertag <> ''
 		  AND kvp.match_id NOT IN (SELECT match_id FROM match_kill_events_latest)`,
-		PairsBackfillDecoderRev, readPathLiveFeed, readOriginCreditOnly)
+		PairsBackfillDecoderRev, killscope.ReadPathLiveFeed, killscope.OriginCreditOnly)
 	if err != nil {
 		return fmt.Errorf("bascule kill events: reprise des couples: %w", err)
 	}
 	if n, errRows := res.RowsAffected(); errRows == nil {
 		slog.InfoContext(bootCtx(), "bascule kill events: couples repris depuis killer_victim_pairs",
-			"lignes", n, "decoder_rev", PairsBackfillDecoderRev)
+			"lignes", n, "decoder_rev", PairsBackfillDecoderRev, "couples_ecartes", ecartes)
 	}
 	return nil
 }
 
-// Portee des lignes reprises. Dupliquee depuis `persist` (que `migration` ne peut pas importer
-// sans inverser la dependance) et verrouillee par un test d egalite — cf.
-// steps_shared_kill_events_from_pairs_test.go.
-const (
-	readPathLiveFeed     = "kill-feed"
-	readOriginCreditOnly = "credit-seul"
-)
+// metricPairsBackfillSansVictime — compteur de sante de la reprise (ADR 0009).
+//
+// Il vaut 0 sur les deux titres connus (mesure du 2026-08-02 : 0 ligne sans nom de victime sur
+// 518 476 couples). C est ce qui le rend dangereux muet : une reprise qui laisserait en route
+// des morts d un titre futur rendrait un journal incomplet, et le nombre de morts d un match n a
+// pas de valeur attendue a laquelle le comparer.
+const metricPairsBackfillSansVictime = "killsource_reprise_couples_sans_victime_nommee"
+
+// compterCouplesSansVictime : combien de couples le filtre de la reprise ECARTE.
+//
+// Meme perimetre que l INSERT (le filtre de preseance compris) : compter TOUS les couples sans
+// nom, y compris ceux de matchs deja couverts, annoncerait une perte qui n en est pas une.
+//
+// Contrat d erreur : la mesure est un DIAGNOSTIC, elle ne doit pas faire echouer une migration
+// de boot. L erreur est journalisee — elle n est pas avalee — et la reprise continue ; le
+// compteur reste alors a zero, ce que le log explique.
+func compterCouplesSansVictime(db *sql.DB) int {
+	var n int
+	err := db.QueryRowContext(bootCtx(), `
+		SELECT COUNT(*) FROM killer_victim_pairs kvp
+		WHERE (kvp.victim_gamertag IS NULL OR kvp.victim_gamertag = '')
+		  AND kvp.match_id NOT IN (SELECT match_id FROM match_kill_events_latest)`).Scan(&n)
+	if err != nil {
+		slog.WarnContext(bootCtx(), "bascule kill events: comptage des couples sans victime "+
+			"impossible, la reprise continue sans ce diagnostic", "err", err)
+		return 0
+	}
+	return n
+}

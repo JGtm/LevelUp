@@ -24,9 +24,20 @@ const targetMatch = "de3cec8b-edf1-4edc-ad87-830369e0a358"
 //
 // BASCULE DU 2026-08-02 : v_killer_victim_full n'existe plus (deux LEFT JOIN morts), et
 // match_kill_events_latest entre dans la liste — v_gamertag_lookup la lit désormais, donc elle
-// doit être recréée AVANT lui. Cet outil porte `//go:build ignore` : AUCUN test ne le protège,
-// cette liste est le seul filet. Une vue oubliée ici n'est pas recréée après le CTAS, et elle
-// manque ensuite silencieusement.
+// doit être recréée AVANT lui. Cet outil porte `//go:build ignore` : AUCUN test ne le protège.
+//
+// ⚠ CET OUTIL EST AUJOURD'HUI CASSÉ, ET LA LISTE N'Y CHANGE RIEN (constat J4R-7, mesuré le
+// 2026-08-02 sur DuckDB : `DROP TABLE t CASCADE` réussit mais LAISSE la vue dépendante au
+// catalogue ; le `CREATE VIEW` de recréation échoue alors en « Catalog Error: View with name
+// "v" already exists! »). Conséquence sur le déroulé ci-dessous : le CTAS passe, le DROP passe,
+// puis la première recréation de vue échoue → rollback → `os.Exit(1)`.
+//
+// Ce qu'il faut en retenir, et qui corrige la version précédente de ce commentaire : le risque
+// n'est PAS qu'une vue oubliée manque silencieusement — c'est l'inverse, l'outil AVORTE
+// bruyamment, et la base reste intacte (transaction annulée). La réparation ART via cet outil
+// est donc indisponible tant qu'il ne DROPpe pas explicitement les vues avant de les recréer.
+// Correctif hors périmètre de la ronde J4R (dette consignée au plan maître) : ne pas
+// « améliorer » cette liste en croyant refermer le trou.
 var dependentViews = []string{
 	"match_kill_events_latest", "v_gamertag_lookup", "mv_player_matches",
 }

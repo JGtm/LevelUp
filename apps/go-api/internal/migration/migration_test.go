@@ -270,8 +270,13 @@ func TestRunForDB_Shared_CoreTablesExist(t *testing.T) {
 	t.Logf("✅ %d tables shared vérifiées", len(tables))
 }
 
-// TestRunForDB_Shared_V6ViewsExist vérifie les 4 vues garanties en v6.
-// Sprint 47 T18 — v_gamertag_lookup, v_match_full, v_killer_victim_full, v_weapon_kills.
+// TestRunForDB_Shared_V6ViewsExist vérifie les vues garanties en v6.
+//
+// Sprint 47 T18 en listait QUATRE. Il n'en reste TROIS : `v_killer_victim_full` a été supprimée
+// le 2026-08-02 (deux LEFT JOIN morts re-produisant des colonnes déjà présentes, cf.
+// steps_shared.go). Le test l'exigeait encore — doublement mort, puisqu'il se skippe aussi sur
+// ce chemin depuis Phase 1.5 b23 : il aurait donc échoué le jour où le skip aurait été levé,
+// sur une vue que le dépôt a délibérément retirée (constat J4R-6).
 func TestRunForDB_Shared_V6ViewsExist(t *testing.T) {
 	db := openMemDB(t)
 
@@ -294,15 +299,21 @@ func TestRunForDB_Shared_V6ViewsExist(t *testing.T) {
 		}
 	}
 
-	// v_match_full et v_killer_victim_full nécessitent un ATTACH 'meta' à query-time
-	// mais la définition (CREATE VIEW) doit être présente.
-	for _, v := range []string{"v_match_full", "v_killer_victim_full"} {
-		if !assertViewExists(t, db, v) {
-			t.Errorf("vue v6 %q absente après migration shared", v)
-		}
+	// v_match_full nécessite un ATTACH 'meta' à query-time mais la définition
+	// (CREATE VIEW) doit être présente.
+	if !assertViewExists(t, db, "v_match_full") {
+		t.Error("vue v6 \"v_match_full\" absente après migration shared")
 	}
 
-	t.Logf("✅ 4 vues v6 (v_gamertag_lookup, v_match_full, v_killer_victim_full, v_weapon_kills) présentes")
+	// Et la vue SUPPRIMÉE ne doit pas revenir : la recréer réintroduirait deux LEFT JOIN
+	// exécutés à chaque chargement de vue match, pour des colonnes déjà portées par la table.
+	if assertViewExists(t, db, "v_killer_victim_full") {
+		t.Error("vue \"v_killer_victim_full\" présente : elle a été supprimée le 2026-08-02, " +
+			"son unique lecteur (Q20) lit la table directement")
+	}
+
+	t.Logf("✅ 3 vues v6 (v_gamertag_lookup, v_match_full, v_weapon_kills) présentes, " +
+		"v_killer_victim_full bien absente")
 }
 
 // TestRunForDB_Shared_VGamertagLookup_ResolvesBotNames vérifie que la vue

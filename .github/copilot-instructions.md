@@ -72,10 +72,14 @@ Healthcheck (à lancer avant de diagnostiquer un souci d'environnement) :
 
 | Vue | Description |
 |-----|-------------|
-| `v_gamertag_lookup` | FULL OUTER JOIN `xuid_aliases` + `match_participants` — résolution gamertag unifiée |
+| `v_gamertag_lookup` | FULL OUTER JOIN `xuid_aliases` + `match_participants` + `match_kill_events_latest` — résolution gamertag unifiée |
 | `v_match_full` | `match_registry` enrichi avec métadonnées i18n (maps, playlists, game variants) |
-| `v_killer_victim_full` | Paires killer/victim avec gamertags résolus |
 | `v_weapon_kills` | `weapon_kills` avec `effective_weapon_id = COALESCE(reconciled_as, weapon_id)` |
+
+> `v_killer_victim_full` a été **supprimée le 2026-08-02** : elle n'est plus garantie et ne doit
+> plus être écrite dans une requête. Les paires tueur → victime se lisent dans
+> `killer_victim_pairs` (historique) ou dans `match_kill_events` via sa vue
+> `match_kill_events_latest` (ADR 0026 — jamais la table brute).
 
 #### stats.duckdb (par joueur) — v5.1 allégée
 

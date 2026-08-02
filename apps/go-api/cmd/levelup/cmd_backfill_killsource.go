@@ -57,6 +57,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/domain/killscope"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
@@ -309,7 +310,7 @@ func matchsAJour(ctx context.Context, db *sql.DB) (map[string]bool, error) {
 	rows, err := db.QueryContext(ctx, `
 		SELECT DISTINCT match_id FROM match_kill_events_latest
 		WHERE decoder_rev = ? AND read_path <> ?`,
-		killcollector.KillSourceDecoderRev, killcollector.CreditReadPath)
+		killcollector.KillSourceDecoderRev, killscope.ReadPathCreditBackfill)
 	if err != nil {
 		return nil, fmt.Errorf("matchs deja a jour: %w", err)
 	}
