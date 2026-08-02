@@ -1,3 +1,50 @@
+## [2026-08-02] La lecture par composant est codée et recettée — et le balayage corpus a coûté cher
+
+**Statut** : Complété (lot 1 du handoff `HANDOFF_EVENEMENTS_NOMMES_2026-08-01.md` §4).
+Branche `feat/re-mode-score`. Livrables : `internal/analysis/objectiveevents/named.go` +
+`named_test.go`, table figée `.ai/refs/TABLE_STATS_STATBORG.tsv` recalée, état de l'art §18.
+
+**Décision technique principale** : `NamedEvents(src, mode)` lit QUEL emplacement de
+statistique a bougé, plus jamais la valeur de l'increment. Une émission d'un emplacement
+EST un événement, daté à la ms et attribué au joueur par son slot. `LabelPersonalScore`
+devient le repli (quota connu mais film absent), plus le chemin principal.
+
+**Résultats observés** :
+
+- **Recette : 30 confrontations exactes sur 30.** Zones `696a9d7c` : slot 22 = JGtm 4/4,
+  slot 20 = Madina97294 4/4 (le zéro de `zone_secured` inclus). CTF `1bc77d2e` : trois
+  joueurs suivis, exact sur tout sauf `flag_taken`. Recette sur 6 films CTF
+  (`cmd/tmp_namedcheck`) : exact partout, même seul écart.
+- **Contrôle d'ensemble indépendant de toute correspondance slot -> joueur** : sur
+  `696a9d7c`, `zone_captured` = 61 et `zone_secured` = 16, somme **77** = total API.
+- **`flag_taken` : le film est PLUS FIN que l'API**, et l'écart n'a qu'un sens — film >=
+  API, **0 contre-exemple sur 8 couples** (+11 au total, pire +5). L'explication vient de
+  l'utilisateur et colle à la mesure : ramasser le drapeau au sol pendant sa course se
+  compte à chaque fois mais ne se récompense pas à chaque fois (Madina 16 contre 4, JGtm 3
+  contre 1). Le test encode donc une INÉGALITÉ, pas une égalité.
+- **Deux pièges payés sur le filtrage.** Sous-suite NON décroissante (un composant est
+  réémis dès que l'UNE de ses deux valeurs bouge) ; et surtout **les émissions négatives se
+  jettent AVANT le choix de la sous-suite** : les jeter après datait l'événement de la
+  dernière émission au lieu de la première. Sans filtre du tout, la suite (1, -115, 1)
+  rendait **116** événements au lieu d'un.
+- **Le contrôle croisé interne fonctionne** : les emplacements redondants (`12 A` = `2 A`,
+  `12 B` = `3 A`, `0 A` = `21 A`) concordent sans exception — et c'est lui qui a démasqué
+  le parasite à -115.
+
+**Ce qui a mal tourné, et qu'il faut retenir** : mon balayage corpus (56 à 147 films) a
+**rendu le PC de l'utilisateur inutilisable deux fois**, jusqu'à redémarrage forcé, en
+saturant la mémoire — aggravé par un `go build` lancé en parallèle d'un balayage en tâche
+de fond, ce que la mémoire projet interdisait déjà. `StatRecords` ancre bit à bit et alloue
+une map par enregistrement : 16-55 Mo sur un film sain, sans borne connue sur le corpus.
+Règle posée en §18.6 : balayage au premier plan seulement, `LIMIT` explicite, plafond
+mémoire surveillé qui tue le processus, et prévenir avant tout balayage large.
+
+**Conclusion / prochaine étape** : le lot 1 est clos, gates verts (paquet complet, `go vet`,
+`golangci-lint` sans nouvelle remarque). Restent les lots 2 à 4 du handoff — nommer `hill`
+et `ball`, rejouer le balayage avec l'oracle 8 joueurs (`match_objective_stats_latest`, 426
+matchs, la base partagée est libre), et coller les événements aux positions du rejeu 2D.
+Les lots 2 et 3 EXIGENT un balayage corpus : à cadrer avec l'utilisateur avant de lancer.
+
 ## [2026-08-02] Le mode change tout — protocole de vérification daté, en mode normal seulement
 
 **Statut** : Complété. Branche `feat/re-mode-score`. Livrable :
