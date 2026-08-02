@@ -5789,6 +5789,7 @@ export interface components {
         FragRoleEntry: {
             /** Format: int64 */
             kills: number;
+            label?: string;
             role: string;
         };
         FreshnessBackupInfo: {

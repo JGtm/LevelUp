@@ -256,6 +256,10 @@ type BulkWeaponKillRaw struct {
 	Class  string
 	Role   string
 	Family string
+	// WeaponKey : clé canonique du registre ("h5_vehicle_warthog"), niveau 2 des classes
+	// ventilées par ENGIN (véhicule/tourelle — V73-3.2, où Class/Role/Family valent tous
+	// « vehicle » et ne distinguent donc aucun engin).
+	WeaponKey string
 	// MechanicKills : sous-ensemble de Kills non-arme (mêlée/assassinat/coup au sol/charge
 	// d'épaule attribués à l'arme TENUE, kill_kind <> 'weapon' sur H5 ; 0 sur Infinite).
 	// buildFragDistribution les retire des classes gun (anti-double-comptage V72-15.3).

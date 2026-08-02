@@ -11,6 +11,7 @@
  * (le set GUN_CLASSES + le filtre) — cf. règle ≤2 copies (3e usage = centraliser).
  */
 import type { FragDistribution, SynthesisWeaponKillEntry } from '@/lib/api/types'
+import { fragRoleDisplayLabel } from './fragRoleLabel'
 
 /** Classes servies par des ARMES (registre) — les seules gardées depuis la liste per-arme. */
 export const GUN_CLASSES = new Set(['shoulder', 'sidearm', 'heavy'])
@@ -41,7 +42,10 @@ export function buildFragDetailBreakdown(
     if (GUN_CLASSES.has(c.class) || c.class === 'unattributed') continue
     const roles = c.roles ?? []
     if (roles.length > 0) {
-      for (const r of roles) details.push({ label: labels.roleLabel(r.role), kills: r.kills, class: c.class })
+      // Nom d'engin servi par l'API (véhicule/tourelle) ou clé canonique traduite.
+      for (const r of roles) {
+        details.push({ label: fragRoleDisplayLabel(r, labels.roleLabel), kills: r.kills, class: c.class })
+      }
     } else {
       details.push({ label: labels.classLabel(c.class), kills: c.kills, class: c.class })
     }

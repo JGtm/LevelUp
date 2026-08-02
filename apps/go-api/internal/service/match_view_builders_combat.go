@@ -37,9 +37,11 @@ func buildCombatTabFull(
 		if w.XUID != myXUID {
 			continue
 		}
-		// Breakdown par-ARME = armes réelles seulement : on écarte les buckets
-		// non-combat H5 (véhicule/tourelle/environnement/non attribué/autre). Ces
-		// kills restent comptés dans les classes du sunburst (« Non attribué »).
+		// Breakdown par-ARME = outils de destruction identifiables seulement : on écarte
+		// les buckets non-combat (environnement / autre / non attribué), qui n'ont aucun
+		// engin à nommer et restent absorbés par « Non attribué » dans le sunburst.
+		// Véhicules et tourelles NE sont plus écartés (V73-3.2) : le registre les nomme
+		// par engin, ils apparaissent donc au breakdown comme au sunburst.
 		if domain.IsNonCombatFragClass(w.Class) {
 			continue
 		}
@@ -388,7 +390,7 @@ func buildViewerFragDistribution(
 		}
 		rows = append(rows, port.WeaponKillRow{
 			Label: w.WeaponLabel, Kills: w.Kills, Class: w.Class, Role: w.Role,
-			Family: w.Family, MechanicKills: w.MechanicKills,
+			Family: w.Family, WeaponKey: w.WeaponKey, MechanicKills: w.MechanicKills,
 		})
 	}
 	counts := domain.FragKillTypeCounts{

@@ -11815,6 +11815,8 @@ components:
         kills:
           format: int64
           type: integer
+        label:
+          type: string
         role:
           type: string
       required:
