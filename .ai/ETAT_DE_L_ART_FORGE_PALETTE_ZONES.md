@@ -135,6 +135,56 @@ haut, cf. Q1.3-ter).
 Sorties : `.ai/V7.5/dumps/forge_zones/palette_noms.csv` (4 213 entrees, hachage + nom quand
 il est craque) et `noms_craques_murmur3.txt` (les 33 correspondances hachage -> nom).
 
+### Q1.0-quinquies LES CHAINES DE L'INTERFACE FORGE — trouvees, EN CLAIR, dans les tags
+
+Les definitions `foki.xml` et `fosp.xml` (depot Z-15) portent des champs de type **`_1` =
+chaine LITTERALE**, la ou tout le reste du format n'a que des StringID :
+
+- `foki` / « Kit Groups » -> « Scriptable Properties » : chaque propriete (bool, numerique,
+  chaine, tag, couleur) porte un **`_1 name`** en clair ;
+- `fosp` / « Menu Item Definitions » : **`_1 Property Name Literal`**, et un bloc
+  « Strings » qui APPARIE **`_2 String` (StringID)** avec **`_1 String Literal`**.
+
+Extraction des 79 tags `fosp` + `foki` du module de la palette : **575 chaines**, dont
+461 exploitables. Ce sont les libelles de l'interface Forge, en clair.
+
+**Les CLES D'EMPLACEMENT — la reponse directe a la question « quels types d'emplacements
+existe-t-il »** :
+
+```
+PowerUpPadPlacementKey        <- socle de power-up
+PowerWeaponPadPlacementKey    <- socle d'arme lourde
+WeaponRackPlacementKey        <- LE RATELIER signale par l'utilisateur
+WeaponTrunkPlacementKey       <- coffre d'armes
+EquipmentPadPlacementKey      <- socle d'equipement
+GrenadePadPlacementKey        <- socle de grenades
+OrdnancePodPlacementKey       <- capsule de largage
+VehiclePadPlacementKey        <- socle de vehicule
+```
+
+**L'avertissement de l'utilisateur est confirme par le jeu lui-meme** : le râtelier est une
+categorie d'emplacement DISTINCTE (`WeaponRackPlacementKey`), separee du socle d'arme lourde
+et du socle de power-up. La confusion qu'il signalait est reelle et nommee.
+
+**Les power-ups et equipements, nommes en clair** : `Overshield` · `Active Camouflage` ·
+`Threat Sensor` · `Threat Seeker` · `Grappleshot` · `Repair Field` · `Shroud Screen` ·
+`Quantum Translocator` · `Thruster`. Plus le catalogue d'armes complet (`Cindershot`,
+`Diminisher of Hope`, `MA5K Avenger`, `Scout DMR`, `VK78 Commando`, `Vestige Carbine`,
+`Skewer`, `Shock Rifle`, `Stalker Rifle`, `Tactical Rifle`, `S7 Sniper`, `M41 SPNKr`,
+`Fuel Rod SPNKr`, `Mk50 Sidekick`, `M392 Bandit`…), les vehicules (`Razorback`, `Rockethog`,
+`Gungoose`, `Wasp`, `Wraith`, `Ghost`, `Mongoose`, `Falcon`) et les categories de largage
+(`AirDrop Alpha/Bravo/Charlie/Delta`, `Custom Equipment A/B/C`).
+
+**Ce qui ne marche PAS, et c'est mesure** : le murmur3 de ces huit cles d'emplacement
+n'apparait **nulle part** dans nos donnees — ni parmi les 3 995 hachages de nom de la
+palette, ni parmi les labels des 199 cartes. Elles sont donc employees comme **chaines de
+script**, pas comme StringID d'objet. Le lien entre une entree de palette et sa cle
+d'emplacement passe par autre chose (vraisemblablement le `Forge Kit`, groupe `kit!`, dont
+la definition fait 337 Ko — non explore).
+
+Sorties : `forge_ui_chaines_litterales.txt`, `reference_foki_tag_definition.xml`,
+`reference_fosp_tag_definition.xml`.
+
 ### Q1.0-quater LES DEPOTS COMMUNAUTAIRES — ce qu'ils donnent, ce qu'ils ne donnent pas
 
 Trois depots proposes par l'utilisateur, evalues sur pieces.
