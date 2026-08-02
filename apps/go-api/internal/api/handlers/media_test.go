@@ -34,6 +34,9 @@ type mockMediaService struct {
 	uploadErr  error
 	authors    []domain.MediaAuthor
 	authorsErr error
+	del        *domain.MediaDeleteResponse
+	delErr     error
+	delReq     *domain.MediaDeleteRequest // dernière requête reçue (assertions d'identité)
 }
 
 func (m *mockMediaService) GetMediaPage(_ context.Context, _ domain.MediaPageRequest) (*domain.MediaPageResponse, error) {
@@ -70,6 +73,17 @@ func (m *mockMediaService) AssociateMediaToMatch(_ context.Context, req domain.M
 
 func (m *mockMediaService) ListMediaAuthors(_ context.Context) ([]domain.MediaAuthor, error) {
 	return m.authors, m.authorsErr
+}
+
+func (m *mockMediaService) DeleteMedia(_ context.Context, req domain.MediaDeleteRequest) (*domain.MediaDeleteResponse, error) {
+	m.delReq = &req
+	if m.delErr != nil {
+		return nil, m.delErr
+	}
+	if m.del != nil {
+		return m.del, nil
+	}
+	return &domain.MediaDeleteResponse{FilePath: req.FilePath, Deleted: true, FilesRemoved: 1}, nil
 }
 
 func newMediaRouter(factory handlers.ServiceFactory[port.MediaService]) *chi.Mux {

@@ -11,6 +11,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	platform_duckdb "levelup/go-api/internal/platform/duckdb"
 )
 
 func ensureMediaTables(ctx context.Context, db *sql.DB) error {
@@ -161,8 +163,18 @@ func dropLegacyMediaFilesIfNeeded(ctx context.Context, db *sql.DB) error {
 	return nil
 }
 
+// loadKnownHashes liste les empreintes déjà indexées, pour ignorer un fichier
+// dont le contenu est connu.
+//
+// Les médias SUPPRIMÉS (item 3.1) en sont exclus : re-déposer le fichier dans le
+// dossier captures est le geste par lequel l'utilisateur annule sa suppression.
+// Garder leur hash ici le rendrait définitivement non ré-indexable, donc
+// invisible pour toujours malgré un ré-upload explicite (insertMediaFile
+// ressuscite alors la ligne au lieu d'en créer une seconde).
 func loadKnownHashes(ctx context.Context, db *sql.DB) (map[string]bool, error) {
-	rows, err := db.QueryContext(ctx, "SELECT file_hash FROM media_files WHERE file_hash IS NOT NULL")
+	rows, err := db.QueryContext(ctx,
+		"SELECT file_hash FROM media_files WHERE file_hash IS NOT NULL AND "+
+			platform_duckdb.MediaVisiblePredicate(""))
 	if err != nil {
 		return nil, err
 	}

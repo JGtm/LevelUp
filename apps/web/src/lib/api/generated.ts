@@ -1944,6 +1944,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/media": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Supprime définitivement un média (propriétaire ou admin) */
+        delete: operations["deleteMedia"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/media/associate": {
         parameters: {
             query?: never;
@@ -7258,6 +7275,12 @@ export interface components {
         };
         MediaAuthorsResponse: {
             authors: components["schemas"]["MediaAuthor"][] | null;
+        };
+        MediaDeleteResponse: {
+            deleted: boolean;
+            file_path: string;
+            /** Format: int64 */
+            files_removed: number;
         };
         MediaFilterOptions: {
             maps: components["schemas"]["LabelValue"][] | null;
@@ -14233,6 +14256,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MatchNeighbors"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    deleteMedia: {
+        parameters: {
+            query?: {
+                file_path?: string;
+            };
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaDeleteResponse"];
                 };
             };
             /** @description Error */

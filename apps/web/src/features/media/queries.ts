@@ -7,11 +7,13 @@ import { api, apiErrorMessage } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { getMediaText } from './i18n'
+import { getMediaModalsText } from './i18n-modals'
 import type {
   MediaAssociateRequest,
   MediaAssociateResponse,
   MediaAuthorsResponse,
   MediaAvailableFilters,
+  MediaDeleteResponse,
   MediaItemRow,
   MediaLikeRequest,
   MediaLikeResponse,
@@ -374,6 +376,37 @@ export function useAssociateMediaToMatch(playerSlug: string) {
     onSuccess: () => {
       // Invalide tout le cache média : la map/mode du média a changé
       queryClient.invalidateQueries({ queryKey: queryKeys.mediaBase(playerSlug) })
+    },
+  })
+}
+
+/**
+ * Mutation de SUPPRESSION DÉFINITIVE d'un média (item 3.1).
+ *
+ * Invalidation FRANCHE (pas d'écriture ciblée dans le cache comme le like) : le
+ * média disparaît des listes, donc les compteurs de page, la pagination et les
+ * filtres changent — seul un refetch redonne un état cohérent.
+ *
+ * Le toast d'erreur est obligatoire (garde anti-silence, item 1.5) : une
+ * suppression qui échoue en silence laisse l'utilisateur croire que le fichier
+ * est parti alors qu'il est toujours là.
+ */
+export function useDeleteMedia(playerSlug: string) {
+  const queryClient = useQueryClient()
+  const locale = useAppShellStore((s) => s.locale)
+  return useMutation({
+    mutationFn: (filePath: string) =>
+      api.delete<MediaDeleteResponse>(
+        `/players/${playerSlug}/media?file_path=${encodeURIComponent(filePath)}`,
+      ),
+    onSuccess: () => {
+      toast.success(getMediaModalsText(locale).coverFlow.deleteSuccess)
+      queryClient.invalidateQueries({ queryKey: queryKeys.mediaBase(playerSlug) })
+    },
+    onError: (error) => {
+      toast.error(getMediaModalsText(locale).coverFlow.deleteError, {
+        description: apiErrorMessage(error),
+      })
     },
   })
 }

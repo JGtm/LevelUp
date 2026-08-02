@@ -16,7 +16,7 @@ import { MediaMatchPicker } from './MediaMatchPicker'
 import { useMediaPicker } from './useMediaPicker'
 import { UploadButton } from './UploadButton'
 import { getMediaText, type MediaText } from './i18n'
-import { useMediaAuthors, useMediaPage, useToggleMediaLike, useFeedVersion } from './queries'
+import { useDeleteMedia, useMediaAuthors, useMediaPage, useToggleMediaLike, useFeedVersion } from './queries'
 import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query/keys'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
@@ -199,6 +199,7 @@ export function MediaPage() {
   const { data: authorsData } = useMediaAuthors(playerSlug)
   const authors = authorsData?.authors ?? []
   const toggleMediaLike = useToggleMediaLike(playerSlug)
+  const deleteMedia = useDeleteMedia(playerSlug)
   // Mémoïsé pour stabiliser les useMemo/useCallback consommateurs (indexByPath,
   // groups, handleOpenMatch) — sinon `[] ?? data` change de référence à chaque render.
   const mediaItems = useMemo<MediaItemRow[]>(() => data?.items?.items ?? [], [data])
@@ -327,6 +328,8 @@ export function MediaPage() {
           onOpenMatch={handleOpenMatch}
           autoChain={autoChain}
           onToggleAutoChain={() => setAutoChain((prev) => !prev)}
+          onDelete={(item) => deleteMedia.mutate(item.file_path)}
+          deleteBusy={deleteMedia.isPending}
         />
       )}
 

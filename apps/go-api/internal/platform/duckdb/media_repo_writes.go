@@ -25,7 +25,9 @@ func (r *MediaRepo) SetMediaMatchAssociation(ctx context.Context, filePath, matc
 	basename := filepath.Base(filePath)
 	var mediaID int64
 	if err := r.socialDB().QueryRow(ctx,
-		`SELECT id FROM media_files WHERE file_path = ? OR file_name = ? LIMIT 1`,
+		`SELECT id FROM media_files
+		 WHERE (file_path = ? OR file_name = ?) AND `+MediaVisiblePredicate("")+`
+		 LIMIT 1`,
 		filePath, basename,
 	).Scan(&mediaID); err != nil {
 		return nil, nil, fmt.Errorf("SetMediaMatchAssociation: media not found: %w", err)
@@ -97,12 +99,12 @@ func (r *MediaRepo) SetMediaLike(ctx context.Context, filePath string, liked boo
 	}
 
 	// Fallback legacy : UPDATE direct + CHECKPOINT explicite.
+	// Même exclusion des médias supprimés que le chemin atomique.
 	result, err := r.socialDB().ExecRecovered(ctx, `
 		UPDATE media_files
 		SET liked = ?,
 			liked_at = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE NULL END
-		WHERE file_path = ?
-	`, liked, liked, filePath)
+		WHERE file_path = ? AND `+MediaVisiblePredicate(""), liked, liked, filePath)
 	if err != nil {
 		return false, fmt.Errorf("SetMediaLike: %w", err)
 	}
@@ -133,12 +135,15 @@ func (r *MediaRepo) SetMediaLikeAtomic(
 	filePath, likerSlug, likerGamertag string,
 	liked bool,
 ) (bool, error) {
+	// Le prédicat de visibilité rend un like sur média SUPPRIMÉ inopérant :
+	// 0 ligne touchée → le caller traduit en 404, et aucun event n'est ajouté à
+	// media_likes_history (qui est append-only : un event inséré par erreur ne
+	// pourrait jamais être retiré).
 	result, err := exec.ExecContext(ctx, `
 		UPDATE media_files
 		SET liked = ?,
 			liked_at = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE NULL END
-		WHERE file_path = ?
-	`, liked, liked, filePath)
+		WHERE file_path = ? AND `+MediaVisiblePredicate(""), liked, liked, filePath)
 	if err != nil {
 		return false, fmt.Errorf("SetMediaLikeAtomic update: %w", err)
 	}

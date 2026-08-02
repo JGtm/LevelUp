@@ -1556,6 +1556,8 @@ export interface MediaAssociateRequest {
 
 export type MediaAssociateResponse = components['schemas']['MediaAssociateResponse']
 export type MediaAuthorsResponse = components['schemas']['MediaAuthorsResponse']
+/** Suppression définitive d'un média (item 3.1) — dérivé du contrat. */
+export type MediaDeleteResponse = components['schemas']['MediaDeleteResponse']
 
 export interface MediaLikeRequest {
   file_path: string

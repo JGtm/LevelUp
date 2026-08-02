@@ -15,6 +15,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { intlLocale } from '@/lib/formatters'
 import { playerScopedHref, useTitleSlug } from '@/lib/title-routing'
 import type { ManifestLocale } from '@/lib/i18n/format'
+import { AlertDialog } from '@/components/ui/alert-dialog'
 import { MediaLikeButton } from './MediaViewer'
 import { getMediaModalsText } from './i18n-modals'
 import { log } from './_logger'
@@ -46,6 +47,12 @@ interface CoverFlowModalProps {
   onOpenMatch?: (matchId: string) => void
   autoChain?: boolean
   onToggleAutoChain?: () => void
+  /** Callback de SUPPRESSION DÉFINITIVE (item 3.1). Non fourni = action absente.
+   *  Le composant n'affiche l'action qu'au propriétaire (ou à un admin) et exige
+   *  une confirmation ; l'autorité reste le backend, ce filtrage est cosmétique. */
+  onDelete?: (item: MediaItemRow) => void
+  /** Suppression en cours : fige les deux boutons de la confirmation. */
+  deleteBusy?: boolean
 }
 
 type SlotPos = { x: string; scale: number; opacity: number }
@@ -365,10 +372,14 @@ export function CoverFlowModal({
   onOpenMatch,
   autoChain = false,
   onToggleAutoChain,
+  onDelete,
+  deleteBusy = false,
 }: CoverFlowModalProps) {
   const locale = useAppShellStore((s) => s.locale)
+  const isAdmin = useAppShellStore((s) => s.isAdmin)
   const titleSlug = useTitleSlug()
   const text = getMediaModalsText(locale)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   // L'identité de l'item courant est suivie via son file_path (stable),
   // pas via un index (qui peut changer si l'array items est réordonné).
   const [currentFilePath, setCurrentFilePath] = useState<string | null>(items[startIndex]?.file_path ?? null)
@@ -392,6 +403,17 @@ export function CoverFlowModal({
     document.addEventListener('fullscreenchange', onFsChange)
     return () => document.removeEventListener('fullscreenchange', onFsChange)
   }, [])
+
+  // Plus rien à afficher → on referme pour de bon (item 3.1). Avant la
+  // suppression, `items` ne se vidait jamais depuis le visualiseur ; désormais
+  // supprimer le dernier média laisserait le parent croire la modale ouverte
+  // (état résiduel invisible) alors que le composant ne rend plus rien.
+  // Supprimer un média parmi d'autres ne ferme PAS : le carrousel enchaîne sur
+  // le suivant, ce qui permet d'en supprimer plusieurs d'affilée.
+  const isEmpty = items.length === 0
+  useEffect(() => {
+    if (isEmpty) onClose()
+  }, [isEmpty, onClose])
 
   function toggleFullscreen() {
     const el = stageRef.current
@@ -464,6 +486,15 @@ export function CoverFlowModal({
   const showViewMatchLink = currentHasMatch && !isOnCurrentMatchPage && Boolean(playerSlug) && Boolean(currentItem?.match_id)
   const reassociateLabel = currentHasMatch ? text.coverFlow.reassociateButton : text.coverFlow.associateButton
   const reassociateTitle = currentHasMatch ? text.coverFlow.reassociateTitle : text.coverFlow.associateTitle
+  // Appartenance du média affiché — règle PERMISSIVE partagée par les actions
+  // « réassocier » et « supprimer » : on ne masque que si le média appartient de
+  // façon PROUVÉE à un autre joueur. Se rabattre sur playerSlug serait faux
+  // (slug ≠ gamertag → régression 8edd5c784 sur MatchMediaTab/RecentMediaRail,
+  // qui ne passent pas currentPlayerGamertag).
+  const ownsCurrentMedia =
+    !currentPlayerGamertag ||
+    !currentItem?.owner_gamertag ||
+    currentItem.owner_gamertag.toLowerCase() === currentPlayerGamertag.toLowerCase()
 
   function navigate(dir: 'next' | 'prev') {
     if (animatingRef.current) return
@@ -621,10 +652,7 @@ export function CoverFlowModal({
                 référence). On ne se rabat PAS sur playerSlug ici (slug ≠ gamertag
                 ⇒ masquait le bouton à tort dans MatchMediaTab/RecentMediaRail qui
                 ne passent pas currentPlayerGamertag — cf. régression 8edd5c784). */}
-            {onReassociate &&
-              (!currentPlayerGamertag ||
-                !currentItem.owner_gamertag ||
-                currentItem.owner_gamertag.toLowerCase() === currentPlayerGamertag.toLowerCase()) && (
+            {onReassociate && ownsCurrentMedia && (
               <button
                 type="button"
                 onClick={(e) => {
@@ -647,6 +675,38 @@ export function CoverFlowModal({
                 disabled={likeDisabled}
               />
             </div>
+            {/* Suppression définitive (item 3.1) — même règle de visibilité que
+                la réassociation (on ne masque que si le média appartient de
+                façon PROUVÉE à un autre joueur), élargie aux administrateurs.
+                Cosmétique : le backend refait la vérification (403). */}
+            {onDelete && (isAdmin || ownsCurrentMedia) && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setConfirmDeleteOpen(true)
+                }}
+                title={text.coverFlow.deleteTitle}
+                aria-label={text.coverFlow.deleteTitle}
+                className="flex shrink-0 items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs text-foreground/70 transition-colors hover:border-destructive/60 hover:text-destructive"
+              >
+                <svg
+                  className="h-3.5 w-3.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v3M4 7h16"
+                  />
+                </svg>
+                {text.coverFlow.deleteButton}
+              </button>
+            )}
             {onToggleAutoChain && (
               <button
                 onClick={onToggleAutoChain}
@@ -845,6 +905,29 @@ export function CoverFlowModal({
           </div>
         </div>
       </div>
+
+      {/* Confirmation de suppression définitive (item 3.1). Rendue à la racine de
+          la modale pour rester au-dessus du carrousel, et stopPropagation sur le
+          conteneur : un clic dans le dialogue ne doit pas fermer le visualiseur
+          (le backdrop du coverflow ferme au clic). */}
+      {onDelete && (
+        <div onClick={(e) => e.stopPropagation()}>
+          <AlertDialog
+            open={confirmDeleteOpen}
+            onOpenChange={setConfirmDeleteOpen}
+            title={text.coverFlow.deleteConfirmTitle}
+            description={text.coverFlow.deleteConfirmBody}
+            confirmLabel={text.coverFlow.deleteConfirmLabel}
+            cancelLabel={text.coverFlow.deleteCancelLabel}
+            destructive
+            busy={deleteBusy}
+            onConfirm={() => {
+              setConfirmDeleteOpen(false)
+              onDelete(currentItem)
+            }}
+          />
+        </div>
+      )}
     </div>
   )
 }

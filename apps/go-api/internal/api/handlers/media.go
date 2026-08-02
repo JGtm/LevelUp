@@ -13,6 +13,7 @@
 //	GET  /api/v1/players/{player_slug}/media/match-candidates  → MediaMatchCandidatesResponse (Huma)
 //	POST /api/v1/players/{player_slug}/media/associate         → MediaAssociateResponse (Huma)
 //	GET  /api/v1/players/{player_slug}/media/authors           → MediaAuthorsResponse (Huma)
+//	DELETE /api/v1/players/{player_slug}/media                 → MediaDeleteResponse (Huma, item 3.1)
 //	POST /api/v1/players/{player_slug}/media/upload            → UploadResult (multipart, reste chi)
 //	GET  /api/v1/players/{player_slug}/media/files/*           → fichier servi depuis captures (reste chi)
 package handlers
@@ -52,6 +53,7 @@ func (h *MediaHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	huma.Get(api, "/media/match-candidates", h.handleGetMediaMatchCandidates, humacore.Op("getMediaMatchCandidates", "Candidats de match pour associer un média", "media"))
 	huma.Post(api, "/media/associate", h.handlePostMediaAssociate, humacore.Op("postMediaAssociate", "Associe un média à un match", "media"))
 	huma.Get(api, "/media/authors", h.handleGetMediaAuthors, humacore.Op("getMediaAuthors", "Liste des auteurs de médias visibles pour ce joueur", "media"))
+	huma.Delete(api, "/media", h.handleDeleteMedia, humacore.Op("deleteMedia", "Supprime définitivement un média (propriétaire ou admin)", "media"))
 	huma.Get(api, "/media/audio-config", h.handleGetMediaAudioConfig, humacore.Op("getMediaAudioConfig", "Réglage des pistes audio des médias du joueur", "media"))
 	huma.Put(api, "/media/audio-config", h.handlePutMediaAudioConfig, humacore.Op("putMediaAudioConfig", "Définit le réglage des pistes audio des médias du joueur", "media"))
 }
