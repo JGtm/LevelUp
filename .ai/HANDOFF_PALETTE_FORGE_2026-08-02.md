@@ -179,7 +179,7 @@ tag **`weap` de 14 088 octets** posé directement sur Catalyst.
 
 ---
 
-## LE CONTRAT DE DONNÉES PROPOSÉ — inchangé, et désormais adossé à deux témoins
+## LE CONTRAT DE DONNÉES — **LIVRÉ en `schema_version` 2**, et adossé à deux témoins
 
 Détail complet dans l'état de l'art. Les cinq règles :
 
@@ -192,7 +192,22 @@ Détail complet dans l'état de l'art. Les cinq règles :
 5. **pas de nom de zone** : les lettres A/B/C ne sont pas dans le fichier (trois zones d'une
    même carte ne diffèrent que par position, dimensions et `team_index`).
 
-**Rien n'a été implémenté** : ni le schéma `map_objectives.json`, ni le rendu.
+**CE QUI EST IMPLÉMENTÉ** *(2026-08-02 — détail dans l'état de l'art, section « LE CONTRAT
+DE DONNÉES »)* :
+
+| élément | où |
+|---|---|
+| lecture du sac de forme | `internal/analysis/replay/mapvar/shape.go` (`readShape`, `Object.Shape()`) |
+| brut conservé à côté du dérivé | `mapvar.Object.ShapeRaw` |
+| champ de sortie | `mapvar.Objective.Shape` (`omitempty`) |
+| bump de schéma | `cmd/mapobj-build/catalog.go` — `catalogSchemaVersion = 2` |
+| régénération HORS LIGNE | `cmd/mapobj-build --refresh-from <dossier de .mvar>` |
+| catalogue régénéré | 34 cartes, 597 objectifs, **264 avec forme**, migration v1→v2 34/34 |
+| tests d'ancrage | 4 dans `mapvar_test.go`, dont le témoin demi-extent / taille pleine |
+
+**CE QUI NE L'EST PAS** : le **rendu**. Et le catalogue n'a encore **aucun lecteur**, ni Go
+ni web (grep `MapObjectivesPath` / `map_objectives` : zéro consommateur) — le brancher est un
+chantier à part entière, tenu par `.ai/PLAN_OBJECTIFS_TEMPS_REEL.md` étapes 1-2.
 
 ---
 
@@ -228,7 +243,12 @@ avec leur commande de restauration. CGO requis (`PATH` doit contenir `C:\msys64\
 
 ## MODIFICATIONS HORS PÉRIMÈTRE DE RECHERCHE — à connaître
 
-Une seule, autorisée par le superviseur le 2026-08-02 : `cmd/mapquant-build` gagne
+D'abord le contrat de données lui-même : `mapvar/shape.go`, `mapvar.Objective.Shape` et
+`cmd/mapobj-build` (`catalogSchemaVersion = 2`, `--refresh-from`) sont du code livré, avec
+leurs quatre tests — cf. la section précédente.
+
+Ensuite une modification de DONNÉES, autorisée par le superviseur le 2026-08-02 :
+`cmd/mapquant-build` gagne
 `"Vagabond": "fo08_wetland"` **avec sa raison écrite** (le `level_id` 88891201 rend une
 seule occurrence sur 88 modules, groupe `levl`), et le catalogue
 `data/titles/halo_infinite/reference/map_quant_bounds.json` passe de 14 à **15 cartes**.
