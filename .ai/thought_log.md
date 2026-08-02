@@ -1,3 +1,44 @@
+## [2026-08-02] Le témoin de Q2 est joué — la lecture « tailles pleines » confirmée par l'oracle
+
+**Statut** : Complété. Branche `feat/re-mode-score`. État de l'art : section **Q2 — LE TÉMOIN
+EST JOUÉ**. Outillage archivé sous `.ai/V7.5/outillage/forge_palette/`.
+
+**Décision technique** : produire enfin le témoin que la première passe avait laissé ouvert,
+en acceptant d'écrire dans une donnée livrée — sur accord du superviseur. Ajout de
+`"Vagabond": "fo08_wetland"` à la table de `cmd/mapquant-build`, **avec sa raison écrite**
+comme l'exige le commentaire du fichier : le `level_id` 88891201 rend exactement une
+occurrence sur les 88 modules (groupe `levl`), preuve établie hors de toute mesure de largeur.
+
+**Résultats observés** :
+- Catalogue de bornes régénéré : **15 cartes**, Vagabond W=15/15/17.
+- Artefact de rejeu du film `696a9d7c` construit : **110 traces, 31 216 points**, 5 337
+  images à 100 ms, 533,7 s. Ponts slot->joueur, tirs et grenades : verdicts **nominaux**.
+- **Le témoin, aux quatre instants du relevé terrain de J0.6**, avec témoin négatif (les
+  mêmes formes translatées de 12 m) :
+
+  | instant | réels DEMI | témoin DEMI | réels PLEIN | témoin PLEIN |
+  |---|---:|---:|---:|---:|
+  | 48 s (capture base B) | 2 | 0 | 2 | 0 |
+  | 90 s (trois bases) | 2 | **3** | 1 | 1 |
+  | 190 s | 3 | **4** | 1 | 0 |
+  | 334 s (trois bases) | 3 | 0 | 2 | 0 |
+  | total | **10** | **7** | **6** | **1** |
+
+- **Le verdict** : sous la lecture « demi-extents », le témoin négatif attrape autant voire
+  PLUS de joueurs que les vraies zones (3 contre 2, puis 4 contre 3) — être « dedans » n'y
+  est pas informatif. Rapport signal/témoin **1,4**. Sous « tailles pleines » : **6,0**.
+- **Témoin nominal juste** : à 48 s le relevé dit « capture de la base B », une seule base ;
+  le test rend exactement **une** zone occupée, par deux joueurs, témoin négatif à 0.
+
+**Conclusion / prochaine étape** : le contrat de données de Q2 est désormais adossé à DEUX
+mesures indépendantes et concordantes (les 11 coïncidences cylindre/boîte, et cet oracle
+d'exécution). Reste ouvert : le nommage des quatre entrées « emplacement », qui demande de
+parser le bloc « Strings » de `fosp`. L'outillage (4 commandes, une douzaine de sous-commandes)
+est archivé sous `.ai/V7.5/outillage/forge_palette/` avec sa procédure de restauration —
+`cmd/tmp_*` reste gitignoré, la convention du dépôt n'est pas forcée.
+
+---
+
 ## [2026-08-01] Les chaînes de l'interface Forge, en clair — et le râtelier nommé par le jeu
 
 **Statut** : Complété pour l'inventaire des emplacements ; le nommage des quatre entrées

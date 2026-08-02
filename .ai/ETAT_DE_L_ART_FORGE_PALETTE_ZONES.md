@@ -595,6 +595,48 @@ d'execution — un evenement `zone_captured` date a la ms (etabli dans ce meme w
 instant. Ce test **n'a pas ete joue** : il exige les bornes de dequantification de Vagabond,
 absentes du catalogue `map_quant_bounds.json`. **C'est la premiere chose a faire ensuite.**
 
+### Q2 — LE TEMOIN EST JOUE : un joueur qui capture une zone est DEDANS *(2026-08-02)*
+
+Ce temoin manquait a la premiere passe. Il est desormais produit, et **il tranche le depart
+demi-extents / tailles pleines** que les mesures hors ligne ne separaient pas.
+
+**Ce qu'il a fallu produire** (autorise par le superviseur le 2026-08-02) :
+
+1. **Les bornes de dequantification de Vagabond**, absentes du catalogue. Ajout de
+   `"Vagabond": "fo08_wetland"` a la table de `cmd/mapquant-build`, avec sa RAISON ecrite :
+   le `level_id` 88891201 du `.mvar` rend exactement une occurrence sur les 88 modules
+   (groupe `levl`), preuve etablie hors de toute mesure de largeur (plan maitre §J0.2).
+   Catalogue regenere : **15 cartes**, Vagabond W=15/15/17, etendue 462,6 / 453,4 / 1188,5.
+2. **L'artefact de rejeu du film `696a9d7c`** : 110 traces, **31 216 points**, 5 337 images
+   a 100 ms, 533,7 s. Verdicts du pont slot->joueur, des tirs et des grenades : **nominaux**.
+
+**Le protocole** : aux **quatre instants du releve terrain** de J0.6, on demande quels
+joueurs sont dans quelle zone, sous chacune des deux lectures, avec un **temoin negatif** —
+les memes formes translatees de 12 m en x et en y. Test 3D : la hauteur compte.
+
+| instant du releve | ce que le releve dit | reels DEMI | temoin DEMI | reels PLEIN | temoin PLEIN |
+|---|---|---:|---:|---:|---:|
+| 48 s | flyguy8773 capture la base B | 2 | **0** | 2 | **0** |
+| 90 s | une equipe controle les trois bases | 2 | **3** | 1 | 1 |
+| 190 s | score 69-30 | 3 | **4** | 1 | **0** |
+| 334 s | controle des trois bases | 3 | **0** | 2 | **0** |
+| **total** | | **10** | **7** | **6** | **1** |
+
+**Le verdict.** Sous la lecture « demi-extents », les zones sont si grandes que **le temoin
+negatif attrape AUTANT voire PLUS de joueurs que les vraies zones** (3 contre 2 a 90 s,
+4 contre 3 a 190 s) : etre « dedans » n'y est pas informatif. Le rapport signal/temoin vaut
+**10 / 7 = 1,4**. Sous la lecture « tailles pleines », il vaut **6 / 1 = 6,0**.
+
+**La lecture « tailles pleines » est donc confirmee par un oracle d'execution**, et non plus
+seulement par les 11 coincidences cylindre/boite. Les deux mesures independantes concordent.
+
+**Et le temoin nominal tombe juste** : a 48 s, le releve terrain dit « capture de la base
+B », une seule base ; le test rend **exactement une zone occupee** (la zone 2, par deux
+joueurs), sous les deux lectures, avec un temoin negatif a **0**. Un joueur qui capture une
+zone est bien dedans.
+
+Outil : `cmd/tmp_zonetest <artefact.json> <carte.mvar> <t_secondes...>`.
+
 ### Q2(c) L'entite de zone a l'execution — NON OUVERTE
 
 (a) ne suffisait pas, (b) suffit. La consigne etait de n'ouvrir (c) que dans le cas
