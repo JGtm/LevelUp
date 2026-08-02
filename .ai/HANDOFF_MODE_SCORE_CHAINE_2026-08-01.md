@@ -19,8 +19,15 @@
 | **CTF : l'instant de chaque capture** | ETABLI | a la ms, 0 manque / 0 faux positif sur 4 matchs |
 | **CTF : le compteur de captures PAR JOUEUR** | ETABLI | a la ms (le composant de score des 8 entites de joueur) |
 | Score personnel et frags/morts par joueur, dans le temps | mesure, PAS livre | composants 1 et 2, meme ancrage — voir §6 |
-| CTF : qui a pris / rendu (hors capture) | **NON** | identite refutee (etat de l'art 4.2) |
+| **CTF : qui a pris / rendu / vole (hors capture)** | **ETABLI** *(2026-08-02)* | par la lecture par COMPOSANT : `comp 22 A` = `flag_grabs`, `23 A` = `flag_returns`, `24 A` = `flag_steals`, dates a la ms et attribues par xuid — **48/48 exacts** sur `1bc77d2e` contre l'oracle a 8 joueurs (etat de l'art §22.1) |
 | **Quelle** zone (A/B/C) | **NON** | resultat negatif inchange |
+
+> **Mise a jour 2026-08-02 — la ligne « qui a pris / rendu » a change de verdict.** Le
+> **NON** portait sur les evenements de MODE du footer (etat de l'art 4.2 : le compte du film
+> et celui de l'API divergent, et l'ecart change de signe d'un film a l'autre). Cette
+> refutation tient toujours **pour ce canal-la**. Les emplacements de statistique du statborg
+> sont un canal different, et lui ferme la question : detail dans
+> `HANDOFF_EVENEMENTS_NOMMES_2026-08-01.md` §2 et etat de l'art §§17-18, 22.
 
 **Outil** : `cmd/tmp_timeline <cacheDir> <filmID> <gameVariantName>` — ligne de temps fusionnee
 « evenement d'objectif + progression du score ». `COMPACT=1` masque les lignes par joueur.
@@ -196,8 +203,17 @@ aux objectifs sont des faits d'armes. Deux canaux complementaires, jamais a conf
 
 **Autres modes** : 46 scores finaux exacts sur 61 films KOTH / Total Control / Oddball
 (75 %, aucun 0-0 trivial). Les 15 ecarts sont structures : en Total Control le film compte
-les points fins et le registre les SETS (facteur 32), en KOTH le film compte les collines.
-Le film est plus FIN que la reference — la semantique du composant 0 depend du mode.
+les points fins et le registre les SETS — facteur 32, sur deux films, vainqueur preserve
+(`a521164d` 96-0 / 3-0 · `a349fea8` 32-64 / 1-2). La semantique du composant 0 depend donc
+du mode.
+
+**KOTH : « le film compte les collines » est une INTERPRETATION, pas un fait etabli.** Elle
+repose sur **deux films**, et sur les **deux** le vainqueur est INVERSE entre le film et
+l'API : `606d9844` film 0-3 / API 105-8 ; `8076f97f` film 3-0 / API 78-105. L'appariement des
+equipes n'est donc meme pas assure, et aucun autre canal ne vient l'appuyer — le statborg ne
+replique **aucun** compteur de colline (etat de l'art §21, mesure sur deux films KOTH) et le
+binaire ne declare **aucune** famille de stats KOTH (§19.3). A mettre a l'epreuve avant
+d'exposer ce mode ; en l'etat, ne rien en deduire.
 
 ### Le point de reprise de ce volet
 

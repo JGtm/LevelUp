@@ -15,9 +15,9 @@
 
 | question | verdict |
 |---|---|
-| **Q1 nommer** | Les modules ne portent **AUCUN nom** (table des chaines vide, 88/88). Le nom d'objet est **indecidable hors ligne** — voie fermee sur pieces. Mais la **classification** l'est : `type_id -> groupe de tag` resolu a **99,0 % (2758/2785)** sur les 199 cartes, contre 45 types auparavant. Controle positif **45/45 identiques**. |
-| **Q1 power-ups** | Le `[!]` de J0.2 est **CLOS, par la negative** : la variante de carte ne place **pas d'equipement**. `eqip` = **3 types sur 2785**, presents sur **5 cartes sur 199**, aucun sur Catalyst ni Vagabond. La question « quels power-ups porte cette carte » n'a **pas** de reponse dans le `.mvar` — elle n'y est pas ecrite. |
-| **Q2 mesurer** | **RESOLU par la source (b)** : le record d'objet porte un **sac de forme** jamais decode — famille + 4 nombres en virgule fixe 16.16. 16 434 formes lues sur 197 cartes. La source (a), l'emprise par type, est **inutilisable pour les zones** (modele vide, ±0,0005). La source (c) n'a **pas ete ouverte** — inutile. |
+| **Q1 nommer** | **LE NOMMAGE EST RESOLU** (Q1.0) : le nom d'objet est un **murmur3 porte par le tag lui-meme** — `food` -> bloc « Object Representations » -> `Representation Name` — craque contre les chaines du binaire. **67 entrees de palette nommees**, plus les `Crate Variant` et le champ de nom d'objet du `.mvar` (Q1.0-septies, -septies-bis, -quater ; recette validee de l'exterieur par le dictionnaire Z-15, memes octets en gros-boutiste). **Le verdict « indecidable hors ligne » de Q1.1 est RETIRE** : il reposait sur une premisse non testee (un constat J0 qui portait sur les noms d'ARCHETYPE en memoire vive) — le binaire est plein de chaines lisibles. Ce qui resiste : les **quatre `Representation Name` des emplacements**, apres cinq vocabulaires independants. La **classification** `type_id -> groupe de tag` est, elle, resolue a **99,0 % (2758/2785)** sur les 199 cartes, controle positif **45/45 identiques**. |
+| **Q1 power-ups** | **La cloture « par la negative » est RETIREE** (Q1.3 : formulation retiree, cf. Q1.3-bis puis Q1.0). Elle supposait que « power-up » implique le groupe de tag `eqip`, ce qui n'a jamais ete etabli — et qui est **faux** : **le groupe `eqip` de la palette Forge, ce sont les GRENADES** (frag, plasma, spike, 3 entrees sur 4 235). Ce que la carte porte reellement, ce sont des **emplacements** (socles), reconnus sans liste en dur par leur signature d'emprise `0.1306/0.1308/0.2617` — **5 types, 387 objets, 59 cartes** (Q1.0-octies) ; le jeu nomme lui-meme ces categories (`PowerUpPadPlacementKey`, `PowerWeaponPadPlacementKey`, `WeaponRackPlacementKey`... Q1.0-quinquies). Ce qui apparait sur un socle est designe par son `Representation Name`, **non craque** : le nommer demande une **observation** au Theatre (Q1.0-decies), pas un calcul. |
+| **Q2 mesurer** | **RESOLU par la source (b)** : le record d'objet porte un **sac de forme** jamais decode — famille + 4 nombres en virgule fixe 16.16. 16 434 formes lues sur 197 cartes. La source (a), l'emprise par type, est **inutilisable pour les zones** (modele vide, ±0,0005). La source (c) n'a **pas ete ouverte** : (b) suffit pour une zone fixe, mais (c) **reste necessaire pour une colline KOTH mobile**, qu'une variante de carte ne peut par construction pas decrire (Q2(c)). |
 | **Q3 orientation** | **OUI, orientee.** Sur les formes tournees, la boite alignee capte **+31 %** (boite a 20 deg) et **+18 %** (cylindre) de positions joueur en plus que la forme reelle ; sur les formes non tournees les deux comptages sont **identiques au millieme**. |
 | **Q4 regle generale** | **100 % des objectifs SURFACIQUES** portent une forme (zones Bastion 430/431, Extraction 434/434, reperes Ravitaillement 186/186). **0 % des objectifs PONCTUELS** en portent (apparitions de drapeau 0/669, socles 0/855). Ce n'est pas un trou de couverture : c'est la structure. |
 | **noms de zone (A/B/C)** | **ABSENTS du `.mvar`.** Trois zones d'une meme carte ne different que par leur position, leurs dimensions et leur `team_index`. La lettre est attribuee a l'execution. |
@@ -30,7 +30,11 @@ formes de zone, elles, sont en **metres**. Melanger les deux donne un facteur 3 
 
 ## Q1 — NOMMER
 
-### Q1.1 Le nom d'objet n'existe pas dans les fichiers du jeu
+### Q1.1 Le nom d'objet n'existe pas dans les fichiers du jeu *(CONCLUSION RENVERSEE, cf. Q1.0)*
+
+> **Sa conclusion est fausse et elle est retiree** : le nom EST dans le tag, sous forme de
+> murmur3 (Q1.0). Les quatre mesures ci-dessous restent valides — ce sont quatre voies
+> fermees, pas une preuve d'impossibilite.
 
 Quatre voies essayees, quatre fermees, chacune sur une mesure :
 
@@ -46,8 +50,9 @@ Les groupes de tag de la palette Forge (`forge_objects-rtx-new.module`, 43 685 e
 `phmo` 3611 · `coll` 3606 · … · `fpal` 110 · `fosp` 52 · `foki` 27. Les `fpal` (« palette »)
 font 272 octets et ne contiennent aucune chaine.
 
-**Conclusion.** Sur ce build, un `type_id` ne peut pas etre nomme hors ligne. La regle du
-chantier tient : **un `type_id` inconnu reste SANS NOM**, jamais un nom approchant.
+**Conclusion, corrigee par Q1.0.** Aucune de ces quatre voies ne nomme un `type_id` — mais
+une cinquieme le fait : le murmur3 porte par le tag. Ce qui subsiste ici, c'est la regle du
+chantier : **un `type_id` non craque reste SANS NOM**, jamais un nom approchant.
 
 ### Q1.2 Ce qui EST decidable : la classification, a 99,0 %
 

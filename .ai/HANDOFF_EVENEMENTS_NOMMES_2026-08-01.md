@@ -16,7 +16,7 @@
 |---|---|
 | Courbe de score d'equipe, a la ms, reemise a chaque changement | **ETABLI** (283/284 et 6/6 contre capture CE) |
 | Evenements d'objectif dates + acteur (zones, captures CTF) | **ETABLI** |
-| **Evenements de joueur NOMMES** : `flag_returned`, `flag_stolen`, `zone_captured`... | **ETABLI pour CTF et zones** |
+| **Evenements de joueur NOMMES** : `flag_returns`, `flag_steals`, `zone_captures`... | **ETABLI pour CTF et zones** |
 | Identite slot -> joueur (gamertag ET xuid), sans jointure DB | **ETABLI** |
 | Une seule horloge pour tout (manifeste = paquets = footer, ecart < 4 ms sur 573 s) | **ETABLI** |
 
@@ -32,24 +32,42 @@ emplacement a bouge**.
 (aucun film partage) ; ne sont gardees que les cles sur lesquelles **les deux moities sont
 d'accord**.
 
-| mode | composant | recompense |
+| mode | composant | statistique |
 |---|---|---|
-| CTF | comp 23 A | `flag_returned` |
-| CTF | comp 24 A | `flag_stolen` |
-| CTF | comp 21 B | `runner_stopped` |
-| CTF | comp 22 A | `flag_taken` |
-| CTF | comp 20 B | `flag_capture_assist` |
-| CTF | comp 0 A · 21 A | `flag_captured` |
-| zones | comp 20 B | `zone_captured` |
-| zones | comp 21 A | `zone_secured` |
-| les deux | comp 2 A · 12 A | `killed_player` |
-| les deux | comp 3 A · 12 B | `kill_assist` |
+| CTF | comp 23 A | `flag_returns` |
+| CTF | comp 24 A | `flag_steals` |
+| CTF | comp 21 B | `flag_carriers_killed` |
+| CTF | comp 22 A | `flag_grabs` |
+| CTF | comp 20 B | `flag_capture_assists` |
+| CTF | comp 0 A · 21 A | `flag_captures` |
+| zones | comp 20 B | `zone_captures` |
+| zones | comp 21 A | `zone_secures` |
+| les deux | comp 2 A · 12 A | `kills` |
+| les deux | comp 3 A · 12 B | `assists` |
 
-**Le sens d'un emplacement DEPEND DU MODE** : `comp 21 A` vaut `zone_secured` en zones et
-`flag_captured` en CTF. Un balayage tous modes confondus rend des noms contradictoires — il a
+**Ce sont des noms de STATISTIQUE, pas de RECOMPENSE — et la version precedente de cette
+table se trompait de nature.** Elle portait les noms de `personal_score_awards`
+(`flag_taken`, `runner_stopped`, `killed_player`...). Le statborg replique des COMPTEURS DE
+STATISTIQUE, pas les recompenses de score que le serveur en derive ; pour la plupart les deux
+coincident numeriquement, ce qui masquait la confusion. **`comp 22 A` l'a demasquee** :
+l'oracle a 8 joueurs (`match_objective_stats_latest`) donne exactement `flag_grabs`, slot par
+slot — **16 pour Madina97294 la ou la recompense `flag_taken` dit 4** — et le binaire disait
+la meme chose depuis le debut avec `CtfStats_FlagGrabs`. Detail : etat de l'art **§22.2** ;
+noms canoniques dans le code : `objectiveevents/named.go` (constantes `Stat*`).
+
+**Une cle de la table figee que `NamedEvents` n'emet pas** : `zone` `comp 2 B` = `deaths`
+(exact 8/8 contre `match_participants`, 2026-08-02, cf. TSV et etat de l'art §20.3). Elle a
+servi au pont d'identite ; elle n'est pas dans `namedStatSlots`.
+
+**Le sens d'un emplacement DEPEND DU MODE** : `comp 21 A` vaut `zone_secures` en zones et
+`flag_captures` en CTF. Un balayage tous modes confondus rend des noms contradictoires — il a
 ete fait, il etait faux, c'est lui qui a appris la regle.
 
-## 3. CE QUI N'EST PAS FAIT, ET IL FAUT LE LIRE AVANT DE CONSTRUIRE
+## 3. CE QUI N'ETAIT PAS FAIT AU 2026-08-01 — lire le §3bis d'abord
+
+> **Etat au soir du 2026-08-01, conserve tel quel.** Les points 1, 2 et 5 ci-dessous ont ete
+> traites le 2026-08-02 : le §3bis dit lequel et comment. Ne pas construire sur cette liste
+> sans lui.
 
 1. **KOTH et Oddball ne sont pas nommes.** Seuls `flag` et `zone` ont ete partitionnes et
    controles. Les recompenses existent (`hill_control`, `hill_scored`, `ball_control`,
@@ -72,14 +90,17 @@ ete fait, il etait faux, c'est lui qui a appris la regle.
 
 ## 3bis. CE QUI A ETE FAIT LE 2026-08-02 — et ce que ca change au plan du §4
 
-> Etat de l'art **§18** (le code et sa recette) et **§19** (la retro-ingenierie).
+> Etat de l'art **§18** (le code et sa recette), **§19** (la retro-ingenierie), **§20** (le
+> pont d'identite), **§21** (KOTH), **§22** (l'oracle a 8 joueurs) et **§23** (le calque de
+> rejeu). Les quatre lots du §4 sont donc traites : le §4 ci-dessous est conserve tel qu'il a
+> ete ecrit le 2026-08-01, cette table dit ce qu'il est devenu.
 
 | lot du §4 | statut |
 |---|---|
 | 1. coder la lecture par composant | **FAIT** — `NamedEvents(src, mode)` + `named_test.go`, recette **30 confrontations exactes sur 30** (§18.2). Commit `d475b3c54` |
 | 2. nommer `hill` et `ball` | **`ball` FAIT par le binaire** (6 stats Oddball, §19.2). **`hill` : le lot n'a probablement pas d'objet** — KOTH n'a AUCUNE famille de stats dans l'executable, et `match_objective_stats` n'a aucune colonne `hill_*` (§19.3) |
-| 3. rejouer avec l'oracle 8 joueurs | **NON FAIT** — la base partagee est pourtant libre (`match_objective_stats_latest`, 426 matchs). Devenu secondaire : le binaire nomme sans oracle |
-| 4. coller aux positions du rejeu 2D | **NON FAIT** |
+| 3. rejouer avec l'oracle 8 joueurs | **FAIT — et c'est le lot qui a le plus rapporte** (§22). `match_objective_stats_latest` (426 matchs x 8 joueurs) porte la recette de 30 a **64 confrontations, toutes exactes**, ET **corrige un NOM FAUX** : `comp 22 A` n'est pas `flag_taken` mais `flag_grabs`. Ce qui n'a pas ete refait, c'est le BALAYAGE corpus — inutile pour nommer et couteux (§18.6, §22.3) |
+| 4. coller aux positions du rejeu 2D | **FAIT** — pont d'identite par xuid (§20) puis calque `ReplayDocument.Objectives` avec sa couverture (§23). Restent l'appelant de production et le rendu client (§23.5) |
 
 **Le virage de methode, et il vient d'une objection de l'utilisateur** : « c'est de la
 retro-ingenierie pas de l'exploration de films ». Le balayage corpus etait le mauvais outil —
@@ -107,7 +128,7 @@ L'identifiant est attribue a l'execution, donc il se lit en memoire jeu lance, p
 **« Combien de bases une equipe controle-t-elle a l'instant T ? »** Deux routes existent,
 aucune n'est verifiee :
 
-- **par les evenements** : integrer `zone_captured` / `zone_secured` des deux equipes. Cela
+- **par les evenements** : integrer `zone_captures` / `zone_secures` des deux equipes. Cela
   suppose que TOUTE bascule de propriete emet un evenement — a prouver, pas a supposer.
 - **par la cadence du score**, et c'est la piste la plus prometteuse. Mesure sur `696a9d7c`,
   equipe slot 6 : **162 emissions a +1 point par seconde**, **8 a +2 points par seconde**, et

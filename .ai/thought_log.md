@@ -1,3 +1,57 @@
+## [2026-08-02] Restitution documentaire — trois verdicts perimes alignes sur leurs sources
+
+**Statut** : Complete. Branche `feat/re-mode-score`. Session de RESTITUTION : aucune mesure
+neuve, aucune piste ouverte, aucun fichier de code touche (`git diff --stat` : 4 `.md`).
+
+**Decision technique principale** : sur cette branche le code est en avance sur ses
+documents. Trois documents portaient des verdicts que leur propre corps, la table figee ou
+le code refutent — un repreneur aurait copie le faux. Regle tenue de bout en bout : chaque
+correction est adossee a une source ROUVERTE (`.ai/refs/TABLE_STATS_STATBORG.tsv`,
+`objectiveevents/named.go`, ou une section datee du meme document) ; rien n'a ete corrige
+sans source.
+
+**Resultats observes** :
+
+- **D-P0a — la table du §2 de `HANDOFF_EVENEMENTS_NOMMES` portait des noms de RECOMPENSE
+  la ou le statborg replique des STATISTIQUES.** Les dix lignes sont realignees sur la TSV
+  et sur les constantes `Stat*` de `named.go` : `flag_taken` -> `flag_grabs`,
+  `runner_stopped` -> `flag_carriers_killed`, et les huit autres au passage
+  (`flag_returned` -> `flag_returns`, `zone_captured` -> `zone_captures`,
+  `killed_player` -> `kills`...). Une cle de la TSV manquait a la table :
+  `zone comp 2 B = deaths` (exact 8/8 contre `match_participants`, servie au pont
+  d'identite, non emise par `NamedEvents`) — consignee sous la table.
+- **D-P0b — le resume de tete de `ETAT_DE_L_ART_FORGE_PALETTE_ZONES` gardait deux verdicts
+  que son corps refute.** (1) « nommage indecidable hors ligne » alors que Q1.0 dit « LE
+  NOMMAGE EST RESOLU » (murmur3 dans le tag, 67 entrees nommees, recette validee de
+  l'exterieur par le dictionnaire Z-15) ; (2) « power-ups clos par la negative », qui
+  reposait sur la premisse « power-up = groupe `eqip` » — fausse, `eqip` ce sont les
+  grenades (Q1.0), et ce que la carte porte ce sont des emplacements reconnus par leur
+  signature d'emprise (Q1.0-octies). Q1.1 porte desormais le bandeau de sa conclusion
+  renversee. Nuance ajoutee : la source (c) n'est pas « inutile », elle reste necessaire
+  pour une colline KOTH mobile (Q2(c)).
+- **D-P1b — quatre resumes perimes.** `HANDOFF_MODE_SCORE_CHAINE` §1 : « CTF, qui a pris /
+  rendu » n'est plus NON — la lecture par composant le livre (`22 A`/`23 A`/`24 A`, 48/48
+  exacts contre l'oracle a 8 joueurs) ; la refutation de 4.2 est conservee explicitement
+  pour le canal du footer, qui est un autre canal. §8 : « en KOTH le film compte les
+  collines » est requalifie en INTERPRETATION sur deux films, dont les deux ont un vainqueur
+  INVERSE entre le film et l'API (0-3 / 105-8 ; 3-0 / 78-105), sans corroboration (§21,
+  §19.3). `HANDOFF_EVENEMENTS_NOMMES` §3bis : l'oracle a 8 joueurs n'est ni « NON FAIT » ni
+  « secondaire » — c'est lui qui a attrape le nom faux ; le lot 4 est fait aussi, verifie sur
+  pieces (`replay/objectives.go`, `ReplayDocument.Objectives`). `HANDOFF_PALETTE_FORGE` :
+  « Rien n'a ete implemente » est faux — `mapvar/shape.go` et `catalogSchemaVersion = 2`
+  existent ; ce qui manque c'est le RENDU, et le catalogue n'a toujours aucun lecteur (grep
+  refait : seuls le producteur `mapobj-build` et le `PathResolver`).
+
+**Conclusion / prochaine etape** : les documents de recherche de la branche ne contredisent
+plus ni le code ni leurs propres mesures. Deux points SIGNALES et volontairement non
+corriges : (1) `HANDOFF_MODE_SCORE_CHAINE` §1 garde « score personnel et frags/morts par
+joueur : mesure, PAS livre » — la ligne melange deux choses (le decodage par chainage de
+largeurs des composants 1 et 2, toujours non livre, et les compteurs repliques que
+`NamedEvents` date deja, plus `comp 2 B = morts` verifie 8/8) ; la departager demande un
+arbitrage, pas une source. (2) Les entrees anterieures du `thought_log` ne sont PAS
+retouchees, y compris celle qui dit « Rien n'a ete implemente » : un journal date enregistre
+ce qui etait vrai quand il a ete ecrit.
+
 ## [2026-08-02] Lot 4 fermé — le calque d'objectifs est dans le document de rejeu
 
 **Statut** : Complété (lot 4 du handoff §4, dernier des quatre). Branche
