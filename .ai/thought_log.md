@@ -1,3 +1,48 @@
+## [2026-08-02] Le pont vers le rejeu 2D — l'identité, pas le numéro de slot
+
+**Statut** : Complété pour le PONT ; l'intégration au document de rejeu reste à faire (dit en
+§20.4). Branche `feat/re-mode-score`. Livrables : `objectiveevents/slotidentity.go` +
+`slotidentity_test.go`, état de l'art §20.
+
+**Décision technique principale** : le collage au rejeu 2D ne peut pas passer par le numéro
+de slot. Les événements nommés portent un slot d'entité STATBORG (10..24 pairs) ; le rejeu
+indexe par slot de BIPED et identifie par XUID — deux espaces différents. Les confondre
+aurait attribué les événements aux mauvais joueurs, et sur une carte l'erreur serait
+invisible et crédible. Le pont est donc le XUID, résolu par le triplet exact
+(frags, morts, assistances) contre `match_participants`.
+
+**Résultats observés** :
+
+- **Appariement unique sur les 8 joueurs des deux films de référence**, et il retrouve les
+  identités que le §16.2 avait établies par une méthode indépendante (coïncidence des
+  incréments de +100 avec les instants de frag) : slot 18 -> JGtm `2533274823110022` sur
+  `1bc77d2e`. Deux chemins, même résultat.
+- **Ni fenêtre, ni seuil, ni paramètre** : le triplet compare trois entiers exacts, là où
+  l'ancienne méthode exigeait une tolérance temporelle et une source externe d'instants de
+  frag.
+- **Trois emplacements confirmés nominativement au passage**, contre `match_participants`
+  sur `696a9d7c` : `comp 2 A` = frags 8/8, **`comp 2 B` = morts 8/8**, `comp 3 A` =
+  assistances 8/8 ; et `comp 1 B` = score personnel, slot 22 = 1 650, exactement le §17.2.
+  Le binaire dit la même chose (`CoreStats_` : Score, PersonalScore, ..., Kills, Deaths,
+  Assists) — mesure sur film et ordre du binaire se confirment.
+- **L'appariement ne dépend d'AUCUN mode** : ces trois stats sont répliquées quel que soit le
+  type de partie, donc il fonctionne aussi en Slayer, KOTH et Oddball, où aucun emplacement
+  d'objectif n'est nommé.
+- **Prudence codée et testée** : un triplet partagé par deux joueurs n'apparie aucun des deux,
+  et `IdentifyNamedEvents` écarte les événements des slots non appariés plutôt que de les
+  attribuer par défaut.
+
+**Ce qui n'est PAS fait** : `ReplayDocument` ne porte pas encore ces événements. Manquent un
+champ optionnel + sa ligne de `Coverage`, la conversion `TimeMS` -> index de frame via
+`FrameIntervalMS` (avec la question de l'arrondi), le câblage dans `cmd/replay-build` (hors
+ligne, donc les `PlayerLine` doivent lui être fournies en entrée comme `Extract` reçoit son
+`Roster`), et le rendu client. L'horloge, elle, ne pose pas de problème : même base que les
+positions, superposable sans recalage.
+
+**Conclusion / prochaine étape** : l'intégration au document de rejeu est la suite directe et
+ne demande aucun balayage de films. L'autre chantier ouvert est la correspondance nom ->
+index d'emplacement (§19.6), qui exige une lecture mémoire jeu lancé.
+
 ## [2026-08-02] Le binaire nomme les stats — 123 noms lus, et une objection qui redresse le chantier
 
 **Statut** : Complété (volet rétro-ingénierie). Branche `feat/re-mode-score`. Livrables :

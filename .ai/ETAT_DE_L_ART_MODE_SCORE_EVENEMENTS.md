@@ -1778,3 +1778,75 @@ Ce qui EST etabli sur la structure :
 
 En attendant, la table du §17.6 reste la source pour CTF et zones : elle est MESUREE, et le §18.2
 la recette a 30 confrontations exactes sur 30.
+
+---
+
+## 20. LE PONT VERS LE REJEU 2D — l'identite, pas le numero de slot (2026-08-02)
+
+> Lot 4 du handoff §4. **Livre : le pont.** Non livre : l'integration dans le document de
+> rejeu (cf. §20.4).
+
+### 20.1 Le piege qu'il fallait voir avant de coller quoi que ce soit
+
+Les evenements nommes portent un slot d'entite STATBORG (10..24 pairs). Le rejeu 2D indexe
+ses trajectoires par slot de BIPED et identifie ses vies par XUID. **Ce sont deux espaces de
+slots differents.** Les confondre aurait colle les evenements sur les mauvais joueurs — et sur
+une carte, l'erreur serait invisible et credible.
+
+Le pont ne peut donc pas etre le numero. C'est le XUID.
+
+### 20.2 La methode : un triplet exact, pas une fenetre temporelle
+
+`SlotIdentity(src, lines)` apparie chaque slot a une ligne de `match_participants` par le
+triplet **(frags, morts, assistances)**.
+
+Ce que cela remplace : l'appariement par coincidence temporelle du §16.2 (apparier les
+increments de +100 aux instants de frag). Celui-ci marchait, mais exigeait une fenetre de
+tolerance et une source externe d'instants de frag. **Le triplet compare trois entiers
+exacts** — ni fenetre, ni seuil, ni parametre.
+
+**Mesure** : appariement UNIQUE sur les **8 joueurs des deux films de reference**, et les
+slots rendus concordent avec les identites que le §16.2 avait etablies par l'autre chemin
+(slot 18 -> JGtm `2533274823110022` sur `1bc77d2e`). Deux methodes independantes, meme
+resultat.
+
+**Prudence codee** : un slot dont le triplet ne designe pas UNE seule ligne n'est pas
+apparie, et un xuid que deux slots se disputent n'est attribue a aucun des deux.
+`IdentifyNamedEvents` ECARTE les evenements des slots non apparies plutot que de les
+attribuer par defaut — la perte est observable par difference avec `NamedEvents`.
+
+### 20.3 Et il confirme trois emplacements de plus, nominativement
+
+L'appariement a exige de verifier `comp 2 B`. Contre `match_participants` sur `696a9d7c` :
+
+| emplacement | ce qu'il porte | verification |
+|---|---|---|
+| `comp 2 A` | frags | 8/8 exacts |
+| **`comp 2 B`** | **morts** | **8/8 exacts** |
+| `comp 3 A` | assistances | 8/8 exacts |
+| `comp 1 B` | score personnel | slot 22 = **1 650**, exactement le §17.2 |
+
+Le binaire dit la meme chose : `CoreStats_` declare `Score`, `PersonalScore`, ..., `Kills`,
+`Deaths`, `Assists` (§19.5). **La mesure sur film et l'ordre du binaire se confirment.**
+
+Consequence pratique : l'appariement ne depend d'AUCUN mode — frags, morts et assistances
+sont repliques quel que soit le type de partie. Il fonctionne donc aussi en Slayer, KOTH et
+Oddball, ou aucun emplacement d'objectif n'est nomme.
+
+### 20.4 Ce qui N'EST PAS fait, et il faut le lire avant de croire le lot clos
+
+Le document de rejeu (`internal/analysis/replay.ReplayDocument`) **ne porte pas encore ces
+evenements**. Il manque, et ce n'est pas trivial :
+
+1. un champ optionnel (`Events []IdentifiedEvent`, `omitempty`) et sa ligne de `Coverage` —
+   publier des evenements attribues sans dire combien ne l'ont pas ete laisserait croire a
+   l'exhaustivite ;
+2. la conversion `TimeMS` -> index de frame `T` via `FrameIntervalMS`, avec la question de
+   l'arrondi (un evenement tombe entre deux frames) ;
+3. le cablage dans `cmd/replay-build`, qui est HORS LIGNE et n'ouvre aucune base — les
+   `PlayerLine` doivent donc lui etre fournies en entree, comme `Extract` recoit deja son
+   `Roster` ;
+4. le rendu cote client.
+
+L'horloge, elle, ne pose pas de probleme : le `TimeMS` des evenements est sur l'horloge du
+manifeste, la meme que les positions — superposable sans recalage (§15).

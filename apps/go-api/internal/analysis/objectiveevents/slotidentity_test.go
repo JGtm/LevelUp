@@ -1,0 +1,162 @@
+package objectiveevents
+
+import "testing"
+
+// slotidentity_test.go — la verite terrain du pont slot d'entite -> joueur.
+//
+// L'oracle est `match_participants` (frags, morts, assistances), fige ici en dur pour
+// garder le test pur, comme le fait deja extract_test.go pour les rosters.
+
+// participants fige les lignes de match des HUIT joueurs des films de reference.
+var participants = map[string][]PlayerLine{
+	// 696a9d7c (Strongholds). Les xuid ne sont pas dans la base pour ce match : on
+	// identifie par un libelle stable, ce qui suffit — le test porte sur l'appariement,
+	// pas sur la forme de la cle.
+	"696a9d7c": {
+		{XUID: "p16-13-4", Kills: 16, Deaths: 13, Assists: 4},
+		{XUID: "p15-14-3", Kills: 15, Deaths: 14, Assists: 3},
+		{XUID: "p15-17-4", Kills: 15, Deaths: 17, Assists: 4},
+		{XUID: "p15-9-10", Kills: 15, Deaths: 9, Assists: 10},
+		{XUID: "madina", Kills: 15, Deaths: 11, Assists: 5},
+		{XUID: "p9-12-4", Kills: 9, Deaths: 12, Assists: 4},
+		{XUID: "p9-15-7", Kills: 9, Deaths: 15, Assists: 7},
+		{XUID: "p8-12-8", Kills: 8, Deaths: 12, Assists: 8},
+	},
+	// 1bc77d2e (CTF), avec les vrais xuid.
+	"1bc77d2e": {
+		{XUID: "2533274823110022", Kills: 24, Deaths: 13, Assists: 2}, // JGtm
+		{XUID: "2535433601851512", Kills: 20, Deaths: 15, Assists: 7},
+		{XUID: "2535421262359392", Kills: 16, Deaths: 13, Assists: 5},
+		{XUID: "2535469190789936", Kills: 16, Deaths: 15, Assists: 7}, // Chocoboflor
+		{XUID: "2535415145546162", Kills: 11, Deaths: 11, Assists: 2},
+		{XUID: "2533274858283686", Kills: 11, Deaths: 12, Assists: 13}, // Madina97294
+		{XUID: "2535436340554308", Kills: 10, Deaths: 18, Assists: 5},
+		{XUID: "2535456897775421", Kills: 6, Deaths: 17, Assists: 4},
+	},
+}
+
+// TestSlotIdentityResolvesAllEightPlayers — l'appariement doit rendre les HUIT slots, et
+// aucun xuid ne doit apparaitre deux fois.
+//
+// C'est le test qui autorise le collage au rejeu 2D : sans lui, les evenements seraient
+// attribues par un numero de slot qui n'a pas le meme sens dans les deux mondes.
+func TestSlotIdentityResolvesAllEightPlayers(t *testing.T) {
+	for film, lines := range participants {
+		src, ok := newDiskFilmSource(t, film)
+		if !ok {
+			continue
+		}
+		got := slotIdentityFrom(StatRecords(src), lines)
+		if len(got) != 8 {
+			t.Errorf("%s : %d slots apparies, attendu 8", film, len(got))
+		}
+		seen := map[string]int{}
+		for slot, xuid := range got {
+			if prev, dup := seen[xuid]; dup {
+				t.Errorf("%s : xuid %s attribue aux slots %d ET %d", film, xuid, prev, slot)
+			}
+			seen[xuid] = slot
+			if slot < 10 || slot > 24 || slot%2 != 0 {
+				t.Errorf("%s : slot %d hors des slots de joueur (10..24 pairs)", film, slot)
+			}
+		}
+	}
+}
+
+// TestSlotIdentityMatchesKnownOwners — l'appariement doit retrouver les identites etablies
+// par une AUTRE methode (coincidence des increments de +100 avec les instants de frag,
+// etat de l'art §16.2). Deux chemins independants qui tombent d'accord.
+func TestSlotIdentityMatchesKnownOwners(t *testing.T) {
+	src, ok := newDiskFilmSource(t, "1bc77d2e")
+	if !ok {
+		t.Skip("film 1bc77d2e absent du cache local")
+	}
+	got := slotIdentityFrom(StatRecords(src), participants["1bc77d2e"])
+	// slotOwners (named_test.go) donne slot 18 = JGtm, dont le xuid est etabli en §16.2.
+	for slot, want := range map[int]string{
+		18: "2533274823110022", // JGtm
+		24: "2535469190789936", // Chocoboflor
+		16: "2533274858283686", // Madina97294
+	} {
+		if got[slot] != want {
+			t.Errorf("slot %d -> %q, attendu %q", slot, got[slot], want)
+		}
+	}
+}
+
+// TestSlotIdentityRefusesAmbiguousTriplets — deux joueurs sur le meme triplet ne prouvent
+// rien : aucun des deux slots ne doit etre apparie.
+//
+// Se taire est le comportement voulu. Attribuer les frags d'un joueur a un autre serait,
+// sur une carte, une erreur invisible et credible.
+func TestSlotIdentityRefusesAmbiguousTriplets(t *testing.T) {
+	recs := []StatRecord{
+		{TimeMS: 1000, Slot: 10, Comps: map[int]StatValue{2: {A: 5, B: 3}, 3: {A: 2}}},
+		{TimeMS: 1000, Slot: 12, Comps: map[int]StatValue{2: {A: 5, B: 3}, 3: {A: 2}}},
+		{TimeMS: 1000, Slot: 14, Comps: map[int]StatValue{2: {A: 9, B: 1}, 3: {A: 4}}},
+	}
+	lines := []PlayerLine{
+		{XUID: "a", Kills: 5, Deaths: 3, Assists: 2},
+		{XUID: "b", Kills: 5, Deaths: 3, Assists: 2},
+		{XUID: "c", Kills: 9, Deaths: 1, Assists: 4},
+	}
+	got := slotIdentityFrom(recs, lines)
+	if _, ok := got[10]; ok {
+		t.Error("slot 10 apparie alors que deux joueurs partagent son triplet")
+	}
+	if _, ok := got[12]; ok {
+		t.Error("slot 12 apparie alors que deux joueurs partagent son triplet")
+	}
+	if got[14] != "c" {
+		t.Errorf("slot 14 -> %q, attendu \"c\" (triplet unique)", got[14])
+	}
+}
+
+// TestIdentifyNamedEventsDropsUnmatchedSlots — un evenement dont le slot n'est pas apparie
+// est ECARTE, jamais attribue par defaut.
+func TestIdentifyNamedEventsDropsUnmatchedSlots(t *testing.T) {
+	evs := []NamedEvent{
+		{TimeMS: 500, Slot: 10, Award: AwardZoneCaptured, Comp: 20, Side: sideB},
+		{TimeMS: 900, Slot: 12, Award: AwardZoneSecured, Comp: 21, Side: sideA},
+	}
+	got := IdentifyNamedEvents(evs, map[int]string{10: "xuid-a"})
+	if len(got) != 1 {
+		t.Fatalf("%d evenements identifies, attendu 1 (le slot 12 n'est pas apparie)", len(got))
+	}
+	if got[0].XUID != "xuid-a" || got[0].Award != AwardZoneCaptured {
+		t.Errorf("evenement = %s par %s, attendu zone_captured par xuid-a", got[0].Award, got[0].XUID)
+	}
+}
+
+// TestIdentifyNamedEventsOnRealFilm — bout en bout : les evenements nommes d'un vrai film,
+// attribues a de vrais xuid, prets a etre superposes aux positions du rejeu.
+func TestIdentifyNamedEventsOnRealFilm(t *testing.T) {
+	src, ok := newDiskFilmSource(t, "1bc77d2e")
+	if !ok {
+		t.Skip("film 1bc77d2e absent du cache local")
+	}
+	evs := NamedEvents(src, ObjectiveTypeFlag)
+	identity := slotIdentityFrom(StatRecords(src), participants["1bc77d2e"])
+	got := IdentifyNamedEvents(evs, identity)
+
+	// Les 8 slots etant apparies, aucun evenement ne doit etre perdu.
+	if len(got) != len(evs) {
+		t.Errorf("%d evenements identifies sur %d, attendu aucune perte", len(got), len(evs))
+	}
+	// L'ordre chronologique est la propriete dont depend le collage aux positions.
+	for i := 1; i < len(got); i++ {
+		if got[i].TimeMS < got[i-1].TimeMS {
+			t.Fatalf("evenements non chronologiques a l'index %d", i)
+		}
+	}
+	// JGtm doit porter ses 4 vols de drapeau, sous son xuid.
+	steals := 0
+	for _, e := range got {
+		if e.XUID == "2533274823110022" && e.Award == AwardFlagStolen {
+			steals++
+		}
+	}
+	if steals != 4 {
+		t.Errorf("JGtm : %d flag_stolen, attendu 4 (personal_score_awards)", steals)
+	}
+}
