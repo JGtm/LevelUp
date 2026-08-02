@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
@@ -215,48 +214,6 @@ func mediaServableURLToStoredPath(viewerSlug, input string) string {
 		return rel
 	}
 	return input
-}
-
-// urlToFilePath fait l'inverse de filePathToURL : convertit une URL servable
-// `/api/v1/players/{slug}/media/files/{relPath}` en chemin absolu de stockage.
-// Si l'entrée n'est pas une URL transformée (déjà un chemin absolu, par exemple),
-// retourne tel quel.
-func (h *MediaHandler) urlToFilePath(slug, input string) string {
-	stored := mediaServableURLToStoredPath(slug, input)
-	if stored == input {
-		return input // pas une URL servable → passthrough
-	}
-	relPath := filepath.FromSlash(stored)
-
-	// Tentative 1 : capturesBase configuré.
-	capturesBase := ""
-	if h.settingsStore != nil {
-		if cfg, err := h.settingsStore.Load(); err == nil && cfg.MediaCapturesBaseDir != "" {
-			capturesBase = filepath.Clean(cfg.MediaCapturesBaseDir)
-		}
-	}
-	if capturesBase != "" {
-		// relPath contient déjà le slug du propriétaire en préfixe (ex: "JGtm/clip.mp4").
-		// On ne rajoute PAS slug (viewer) pour éviter le double-slug "capturesBase/viewer/owner/clip.mp4".
-		candidate := filepath.Join(capturesBase, relPath)
-		if _, err := os.Stat(candidate); err == nil {
-			return candidate
-		}
-	}
-
-	// Tentative 2 : chemin interne repo data/.
-	if h.repoRoot != "" {
-		pr := titlePkg.NewPathResolver(h.repoRoot)
-		internalDir := filepath.Dir(pr.PlayerCapturesDir(titlePkg.DefaultSlug, slug))
-		candidate := filepath.Join(internalDir, relPath)
-		if _, err := os.Stat(candidate); err == nil {
-			return candidate
-		}
-	}
-
-	// Fallback : retourner relPath (pas l'URL). Pour les paths post-migration
-	// stockés en relatif (ex: "JGtm/clip.mp4"), relPath == stored path → UPDATE match.
-	return relPath
 }
 
 // resolveLikerGamertag résout le gamertag affichable depuis le slug du joueur

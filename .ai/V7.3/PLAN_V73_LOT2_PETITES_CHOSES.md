@@ -130,7 +130,27 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
       `citation_mappings.category` (`internal/sync/citations.go:215`) — vérifier que
       les clés servies sont stables et couvertes par le manifeste. Tests Go
       (normalisation) + parité typée `Record<Locale, T>`.
-- [ ] 1.5 **Likes médias cassés** : diagnostic hiérarchisé sur pièces AVANT tout code,
+- [ ] 1.5 (CONTEXTE UTILISATEUR 2026-08-02, en cours d'exécution : régressions
+      RÉCURRENTES sur les likes médias, « en général à cause de l'enregistrement en
+      BDD qui ne se fait pas de manière instantanée » — la fenêtre d'écriture
+      asynchrone SharedSocialPersister (Collect→Persist + CHECKPOINT différé) entre
+      la réponse HTTP et la visibilité en lecture `_latest` est le suspect
+      prioritaire, à croiser avec les pistes 3/4. Exigence ajoutée : le correctif
+      doit CADRER cette classe de régression — sémantique lecture-après-écriture
+      explicite + test d'intégration qui reproduit la fenêtre, pas un fix du seul
+      symptôme.)
+      (code livré le 2026-08-02 — RESTE revue navigateur au gate 1. Diagnostic :
+      piste 1 écartée sur pièces mais garde livrée ; piste 2 PROUVÉE (chemin absolu
+      vs `file_path` relatif forward-slash 219/219 → UPDATE 0 ligne → 404) ; piste 3
+      PROUVÉE (réponse = chemin stocké, cache indexé par URL servable → onSuccess
+      muet) ; cause racine de la RÉCURRENCE = `tx.Commit()` nu, like en WAL jusqu'à
+      5 min, effacé par tout redémarrage/déploiement — `CommitWithCheckpoint`
+      existait, documenté pour les likes, jamais appelé. Correctifs : conversion
+      URL unifiée 3 endpoints + garde-rail, écho du file_path reçu, 401
+      `like_requires_session` + toast FR/EN, CommitWithCheckpoint avec garantie
+      commentée, media.go 596→485 L. 11 tests Go + 2 web dont
+      `SurvivesWALLoss` au pouvoir discriminant prouvé rouge-sans/vert-avec.)
+      **Likes médias cassés** : diagnostic hiérarchisé sur pièces AVANT tout code,
       dans cet ordre : (1) session absente => `liker_slug` vide => like fantôme sans
       401 (`api/handlers/media.go:312-372`) ; (2) `urlToFilePath` désaligné après un
       changement de préfixe d'URL média ; (3) forme de cache divergente
@@ -139,7 +159,13 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
       garde anti-silence : sans session le like doit échouer visiblement (401 gaté ou
       erreur UI explicite — décision technique sur pièces, contrat mis à jour si
       besoin). Tests + `go test -tags=integration -p 1` (shared_social touché).
-- [ ] 1.6 **Démo : images des défis absentes** : les fixtures
+- [ ] 1.6 (code livré le 2026-08-02 — RESTE revue navigateur au gate 1 (vignettes
+      Home démo). `image_url` ajouté aux 4 items des DEUX fixtures vers
+      `/static/prestige-assets/Objectives-badges/*.png` (assets existants du repo),
+      garde-rail `TestGetChallenges_DemoMode_ImagesServable` (clé + fichier
+      existant), vérifié en démo réelle :8123 — 4 URLs en 200 image/png, parité
+      FR/EN.)
+      **Démo : images des défis absentes** : les fixtures
       `internal/service/demo_fixtures/challenges.json` + `challenges.en.json` n'ont
       pas de clé `image_url` (le mode démo bypasse le cache DB —
       `home_service_battlepass.go:88-89`). Ajouter `image_url` aux items des DEUX
@@ -374,6 +400,31 @@ AVANT merge, pas seulement un rejeu local).
 - [2026-08-02, agent 1.3/1.4] `routeTree.gen.ts` se fait régénérer (réordonnancement
   603 lignes) au passage de tsc/vitest — décalage de version du plugin TanStack
   Router à investiguer (bruit de diff récurrent).
+- [2026-08-02, agent 1.5/1.6] **Les tests du chemin atomique des likes sont
+  désactivés depuis le 2026-05-15** (`media_service_atomic_integration_test.go`,
+  tag `atomic_legacy`) : le chemin nominal de prod n'avait AUCUN test actif —
+  c'est ce qui a laissé passer les régressions successives. Recommandation :
+  réactiver ou supprimer (anti-pattern dead code museum).
+- [2026-08-02, agent 1.5/1.6] **`/players/{player_slug}` sans RequireAuth** :
+  l'ownership laisse passer `sess == nil` sur toutes les routes joueur. Traité
+  pour le like uniquement (401 gaté) — audit des autres routes du groupe à
+  recommander.
+- [2026-08-02, agent 1.5/1.6] Like historique orphelin (event du 26/04/2026 en
+  chemin absolu, sans correspondance `media_files`) — réparable par INSERT d'un
+  event sous la clé canonique.
+- [2026-08-02, agent 1.5/1.6] **`media_files.liked` est global** (partagé entre
+  tous les viewers) alors que `media_likes_history` est par liker — le cœur d'un
+  média est commun à tous. À trancher avec l'item 3.1 (suppression de médias).
+- [2026-08-02, agent 1.5/1.6] Placeholder « Défi » en dur non i18n
+  (`HomeChallengesList.tsx:119`) ; compat `LegacyMediaItemRow` sans date
+  d'expiration (`features/media/queries.ts`).
+- [2026-08-02, agent 1.5/1.6] Flakes qualifiés (verts au rejeu isolé) :
+  `TestStartImport_HappyPathReturns202WithJobID` (cleanup TempDir Windows),
+  `TestCareerLive_NilAPIResponse_NotCached` (timeout 2 s sous charge).
+- [2026-08-02, orchestrateur] Retombée du fix 1.3 corrigée par l'orchestrateur :
+  `TestCareerRepo_GetRelationsHeatmap` (integration) attendait des heures UTC et
+  dépendait du fuseau machine → ouvert via le chemin production épinglé UTC
+  (les non-UTC restent couverts par les tests dédiés 1.3).
 - [2026-08-02, orchestrateur] **CI main rouge post-merge #71** (run 30745523574),
   2 causes sans lien avec #71 : (1) `TODO(expiry:2026-08-01)` échu dans
   `season_pass_repo_tracks.go:297` → hotfix PR #73 (échéance 2026-09-15, critère
