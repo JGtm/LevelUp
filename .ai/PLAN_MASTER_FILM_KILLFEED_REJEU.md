@@ -1830,3 +1830,29 @@ falsifier un journal daté — l'entrée neuve en tête dit l'état réel).
 au pont d'identité §20.3) absent de `namedStatSlots`. À trancher à l'intégration : légitime
 (deaths n'est pas un événement d'objectif à nommer) ou lecteur manquant. Croiser avec le
 constat R1 « TSV concorde ligne à ligne avec namedStatSlots » — l'un des deux a une exception.
+
+---
+
+## REVUE ADVERSARIALE DU LOT J4 — 2 relecteurs Fable aveugles, 2026-08-02
+
+**Verdict : 0 P0, 3 P1, ~6 P2. Le cœur anti-ART est SOLIDE** (les deux relecteurs, ~35
+conditions vérifiées cumulées : INSERT purs, lectures `_latest`, préséance testée 2 sens,
+3 états assistant tenus, `killer_victim_pairs` intacte, allowlist inchangée). Les P1 sont des
+trous de COUVERTURE, pas des bugs — le producteur live est prouvé, ce qui l'entoure ne l'est
+pas encore. **À corriger avant le merge J5.**
+
+| # | grav | où | défaut | recoupé ? |
+|---|---|---|---|---|
+| J4R-1 | P1 | `steps_shared_kill_events_from_pairs.go:85-176` | migration de reprise SANS test comportemental (jouée sur base vide) — dédup 46,5 %, une passe/match, préséance film au backfill régressables sans test rouge | B seul |
+| J4R-2 | P1 | `events_completion_persister.go:250-296` | second producteur (complétion) écrit `match_kill_events`, JAMAIS asserté | B seul |
+| J4R-3 | P1 | `steps_shared_kill_events_from_pairs.go:177-183` + persist/killcollector/seed | littéraux `kill-feed`/`credit-seul` en multiples copies + commentaire renvoyant à `steps_shared_kill_events_from_pairs_test.go` **qui n'existe pas** (vérifié) | **A ET B** |
+| J4R-4 | P2 | `killcollector/collector_test.go:261` | porte `CapFilmWeaponShots` non couverte sans fixture (skip = faux vert — 6e occurrence du motif) | B |
+| J4R-5 | P2 | `kill_events_credit.go:116`, migration:163, `convergence_backfill_events.go:323` | erreurs avalées : `continue`/`Skipped++` sans log ni compteur (anti-pattern n°10) | B |
+| J4R-6 | P2 | `ARCHITECTURE_V6.md` FR+EN, `copilot-instructions.md`, + 4 commentaires code | `v_killer_victim_full` droppée mais documentée « garantie v6 » ; « vue de compatibilité killer_victim_pairs » qui n'existe pas ; en-tête `events_completion_persister.go:20` faux | **A ET B** |
+| J4R-7 | P2 | `cmd/rebuild_mp/main.go:30,105` | `DROP ... CASCADE` ne supprime pas les vues DuckDB → l'outil de réparation ART avorterait ; **défaut PRÉEXISTANT**, mais le lot a réécrit la liste + le commentaire sur cette prémisse fausse | B |
+
+**Ronde de correction avant merge** (session dédiée, Opus, périmètre fermé) : J4R-1/2/3
+(2 tests comportementaux + centralisation littéraux avec vrai garde-rail) ; J4R-4/5/6
+(règles écrites : test capability, logs, doc bilingue) ; J4R-7 = corriger le commentaire
+mensonger + CONSIGNER la dette (ne pas réécrire l'outil, hors périmètre). Puis **ronde 2** :
+relecture des seules corrections par un contexte frais (skill §8, 2 rondes max).
