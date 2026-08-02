@@ -14,7 +14,7 @@
  *     rien affiché (pas de section vide).
  *
  * Style aligné sur le scoreboard existant (colonnes compactes, tooltips d'en-tête
- * via HeaderInfoTooltip, tokens sémantiques — aucun hex). Le rendu ne réplique pas
+ * via HeaderLabelTooltip, tokens sémantiques — aucun hex). Le rendu ne réplique pas
  * l'identité complète d'équipe du scoreboard principal : couleur d'identité en
  * accent (bordure gauche + fond subtil), texte en --foreground pour le contraste.
  */
@@ -30,7 +30,7 @@ import {
   resolveTeamColorFromID,
   resolveTeamName,
 } from '@/lib/halo/teamNames'
-import { HeaderInfoTooltip } from '@/lib/table/columnMeta'
+import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 
 import type { MatchViewText } from './i18n'
 import {
@@ -104,10 +104,11 @@ export function MatchObjectivesSection({ rows, teams, myTeamSide, t }: Props) {
               </th>
               {cols.map((c) => (
                 <th key={String(c.key)} className="border border-border border-b-2 px-2 py-1 text-right">
-                  <span className="inline-flex items-center justify-end gap-1">
-                    {colMeta[String(c.key)]?.label ?? String(c.key)}
-                    <HeaderInfoTooltip text={colMeta[String(c.key)]?.tooltip} />
-                  </span>
+                  <HeaderLabelTooltip text={colMeta[String(c.key)]?.tooltip} focusable>
+                    <span className="inline-flex items-center justify-end gap-1">
+                      {colMeta[String(c.key)]?.label ?? String(c.key)}
+                    </span>
+                  </HeaderLabelTooltip>
                 </th>
               ))}
             </tr>

@@ -19,7 +19,7 @@ import {
 import { useMemo, useState, type ReactNode } from 'react'
 
 import { Tooltip } from '@/components/ui/tooltip'
-import { HeaderInfoTooltip } from '@/lib/table/columnMeta'
+import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 import { tokenCssVar } from '@/lib/accessibility'
 import { formatPercent } from '@/lib/formatters'
 import { ratioColor } from '@/lib/colors/outcomePalette'
@@ -196,10 +196,9 @@ function buildColumns(
       accessorFn: (r) => r.total_matches,
       sortDescFirst: true,
       header: (ctx) => (
-        <span className="inline-flex items-center gap-1">
+        <HeaderLabelTooltip text={labels.table.encountersTooltip}>
           <SortLabel column={ctx.column}>{labels.table.encounters}</SortLabel>
-          <HeaderInfoTooltip text={labels.table.encountersTooltip} />
-        </span>
+        </HeaderLabelTooltip>
       ),
       cell: (ctx) => {
         const r = ctx.row.original
@@ -221,10 +220,9 @@ function buildColumns(
       sortUndefined: 'last',
       sortDescFirst: true,
       header: (ctx) => (
-        <span className="inline-flex items-center gap-1">
+        <HeaderLabelTooltip text={labels.table.winRateAllyTooltip}>
           <SortLabel column={ctx.column}>{labels.table.winRateAlly}</SortLabel>
-          <HeaderInfoTooltip text={labels.table.winRateAllyTooltip} />
-        </span>
+        </HeaderLabelTooltip>
       ),
       cell: (ctx) => {
         const v = ctx.row.original.teammate_win_rate
@@ -242,10 +240,9 @@ function buildColumns(
       sortUndefined: 'last',
       sortDescFirst: true,
       header: (ctx) => (
-        <span className="inline-flex items-center gap-1">
+        <HeaderLabelTooltip text={labels.table.winRateEnemyTooltip}>
           <SortLabel column={ctx.column}>{labels.table.winRateEnemy}</SortLabel>
-          <HeaderInfoTooltip text={labels.table.winRateEnemyTooltip} />
-        </span>
+        </HeaderLabelTooltip>
       ),
       cell: (ctx) => {
         const v = ctx.row.original.enemy_win_rate
@@ -263,10 +260,9 @@ function buildColumns(
       accessorFn: (r) => r.kills_dealt - r.deaths_suffered,
       sortDescFirst: true,
       header: (ctx) => (
-        <span className="inline-flex items-center gap-1">
+        <HeaderLabelTooltip text={labels.table.fragsDeathsTooltip}>
           <SortLabel column={ctx.column}>{labels.table.fragsDeaths}</SortLabel>
-          <HeaderInfoTooltip text={labels.table.fragsDeathsTooltip} />
-        </span>
+        </HeaderLabelTooltip>
       ),
       cell: (ctx) => {
         const r = ctx.row.original

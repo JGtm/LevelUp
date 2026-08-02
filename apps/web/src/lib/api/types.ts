@@ -681,6 +681,14 @@ export interface ExplorerMatchRow {
   perf_tier?: number
   delta_perf?: number | null
   skill_tier_label?: string | null
+  /** URL de l'image du badge de palier, résolue par l'adaptateur d'assets du TITRE
+   *  côté backend. Absente quand le titre n'expose pas de badge, que le match est en
+   *  placement ou que le palier est inconnu → la colonne « Rang » retombe alors sur
+   *  `skill_tier_label` (texte localisé). Jamais construite côté front. */
+  skill_rank_image_url?: string | null
+  /** Score PERSONNEL du joueur sur le match. À ne pas confondre avec `score_label`,
+   *  qui porte le score d'ÉQUIPE (« 50 - 30 »). */
+  personal_score?: number | null
   /** "CSR" (classé officiel) ou "LUSR" (interne LevelUp). Nil si pas de skill rank (PvE, Custom). */
   rating_type?: string | null
   /** Gain/perte de rating du match. NON rendu par les colonnes propres d'ExplorerMatchesTable :

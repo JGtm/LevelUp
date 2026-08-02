@@ -63,6 +63,7 @@ export const SORT_ARIA_LABEL_KEYS: Record<string, ExplorerManifestKey> = {
   assists: 'explorer.matches.col_assists_long',
   kda: 'explorer.matches.col_kda',
   score_label: 'explorer.matches.col_score',
+  personal_score: 'explorer.matches.col_personal_score',
   duration_seconds: 'explorer.matches.col_duration',
   perf_score: 'explorer.matches.col_perf',
   delta_perf: 'explorer.matches.col_delta_perf',

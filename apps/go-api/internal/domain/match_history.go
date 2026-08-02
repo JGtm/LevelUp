@@ -136,6 +136,15 @@ type MatchHistoryRow struct {
 	Assists                  int       `json:"assists,omitempty"`
 	SkillTierLabel           *string   `json:"skill_tier_label,omitempty"`  // "Diamant IV" ou nil
 	SkillRatingType          *string   `json:"skill_rating_type,omitempty"` // "CSR" | "LUSR" | nil
+	// SkillRankImageURL : URL de l'image du badge de palier, résolue par
+	// l'adaptateur d'assets du TITRE (analysis.SkillBadgeURL + résolveur injecté).
+	// Nil quand le titre n'expose pas de badge, que le palier est en placement ou
+	// inconnu → le front retombe sur SkillTierLabel (texte localisé).
+	SkillRankImageURL *string `json:"skill_rank_image_url,omitempty"`
+	// PersonalScore : score personnel du joueur sur le match (match_participants.
+	// personal_score). Distinct de ScoreLabel qui porte le score d'ÉQUIPE "X - Y".
+	// Nil quand le titre/le match ne le fournit pas.
+	PersonalScore *int `json:"personal_score,omitempty"`
 	// ExpectedWinProb : proba de victoire pré-match de l'équipe ∈ [0,1] (LUSR v2).
 	// Alimente la colonne « Prob. vic. ». Nil si pré-v2 / non disponible.
 	ExpectedWinProb *float64 `json:"expected_win_prob,omitempty"`

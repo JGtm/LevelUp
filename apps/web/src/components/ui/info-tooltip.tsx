@@ -7,8 +7,31 @@ import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/com
 interface InfoTooltipProps {
   /** Texte ou contenu affiché dans le tooltip */
   content: ReactNode
-  /** Taille de l'icône ⓘ en classes Tailwind (défaut: "w-4 h-4") */
+  /** Taille de l'icône ⓘ en classes Tailwind (défaut: "w-4 h-4"). Ignoré si `trigger`. */
   iconClass?: string
+  /**
+   * Déclencheur ALTERNATIF à l'icône ⓘ : le contenu passé ici devient la zone de
+   * survol, enveloppée dans un `<span>` — JAMAIS un `<button>`.
+   *
+   * C'est ce qui permet à un LIBELLÉ d'en-tête de tableau de porter lui-même son
+   * aide : ce libellé est déjà un `<button>` de tri, et un bouton imbriqué dans un
+   * bouton est du HTML invalide (le navigateur referme le bouton externe) — le
+   * piège qui imposait jusqu'ici une icône ⓘ SŒUR du contrôle de tri.
+   *
+   * En mode trigger il n'y a PAS de bascule au clic : le clic appartient au
+   * contrôle enveloppé (trier). L'aide s'ouvre au survol et au focus — l'événement
+   * focus des enfants remonte jusqu'au wrapper, donc le bouton de tri atteint au
+   * clavier affiche l'aide sans arrêt de tabulation supplémentaire.
+   */
+  trigger?: ReactNode
+  /**
+   * Trigger PASSIF : rend le wrapper atteignable au clavier (`tabIndex=0`) et
+   * affiche le curseur d'aide. À poser UNIQUEMENT quand le trigger ne contient
+   * pas déjà un élément focusable (en-tête non triable) — sinon on ajoute un
+   * arrêt de tabulation en double et on masque l'affordance de clic du contrôle
+   * enveloppé.
+   */
+  triggerFocusable?: boolean
 }
 
 const PANEL_WIDTH = 256 // px — équivalent de l'ancien w-64
@@ -32,9 +55,14 @@ interface PanelPos {
  * au-dessus, repli en dessous s'il n'y a pas la place. Fermeture : clic extérieur, scroll,
  * resize, blur/mouseleave. `role="tooltip"` + aria conservés.
  */
-export function InfoTooltip({ content, iconClass = 'w-4 h-4' }: InfoTooltipProps) {
+export function InfoTooltip({ content, iconClass = 'w-4 h-4', trigger, triggerFocusable }: InfoTooltipProps) {
   const [open, setOpen] = useState(false)
-  const buttonRef = useRef<HTMLButtonElement>(null)
+  // Callback ref : le déclencheur est un <button> (icône ⓘ) OU un <span>
+  // (mode `trigger`) — un seul type de ref ne couvrirait pas les deux.
+  const buttonRef = useRef<HTMLElement | null>(null)
+  const setTriggerRef = (el: HTMLElement | null) => {
+    buttonRef.current = el
+  }
   const panelRef = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<PanelPos | null>(null)
   const locale = useAppShellStore((s) => s.locale)
@@ -78,21 +106,41 @@ export function InfoTooltip({ content, iconClass = 'w-4 h-4' }: InfoTooltipProps
     }
   }, [open])
 
+  // Ouverture/fermeture partagées par les deux déclencheurs. `onFocus`/`onBlur`
+  // remontent depuis les enfants en React → en mode trigger, le focus clavier du
+  // bouton de tri enveloppé suffit à afficher l'aide.
+  const hoverHandlers = {
+    onMouseEnter: () => setOpen(true),
+    onMouseLeave: () => setOpen(false),
+    onFocus: () => setOpen(true),
+    onBlur: () => setOpen(false),
+  }
+
   return (
     <span className="inline-flex items-center">
-      <button
-        ref={buttonRef}
-        type="button"
-        className={`${iconClass} inline-flex items-center justify-center rounded-full border border-input text-muted-foreground hover:text-foreground hover:border-border text-2xs font-bold leading-none cursor-help transition-colors`}
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
-        onClick={() => setOpen((v) => !v)}
-        aria-label={t('common.tooltip.more_info_aria')}
-      >
-        i
-      </button>
+      {trigger !== undefined ? (
+        <span
+          ref={setTriggerRef}
+          {...hoverHandlers}
+          // Pas d'onClick : en mode trigger le clic appartient au contrôle
+          // enveloppé (trier une colonne), jamais à l'aide.
+          tabIndex={triggerFocusable ? 0 : undefined}
+          className={`inline-flex items-center gap-1${triggerFocusable ? ' cursor-help' : ''}`}
+        >
+          {trigger}
+        </span>
+      ) : (
+        <button
+          ref={setTriggerRef}
+          type="button"
+          className={`${iconClass} inline-flex items-center justify-center rounded-full border border-input text-muted-foreground hover:text-foreground hover:border-border text-2xs font-bold leading-none cursor-help transition-colors`}
+          {...hoverHandlers}
+          onClick={() => setOpen((v) => !v)}
+          aria-label={t('common.tooltip.more_info_aria')}
+        >
+          i
+        </button>
+      )}
       {open &&
         createPortal(
           <div

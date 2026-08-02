@@ -11067,6 +11067,9 @@ components:
         perf_tier:
           format: int64
           type: integer
+        personal_score:
+          format: int64
+          type: integer
         placement_done:
           format: int64
           type: integer
@@ -11080,6 +11083,8 @@ components:
         rating_type:
           type: string
         score_label:
+          type: string
+        skill_rank_image_url:
           type: string
         skill_tier_label:
           type: string
@@ -13829,6 +13834,9 @@ components:
           type:
             - integer
             - "null"
+        personal_score:
+          format: int64
+          type: integer
         placement_done:
           format: int64
           type: integer
@@ -13840,6 +13848,8 @@ components:
             - string
             - "null"
         score_label:
+          type: string
+        skill_rank_image_url:
           type: string
         skill_rating_type:
           type: string
