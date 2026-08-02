@@ -17,7 +17,39 @@ package replay
 // SchemaVersion est incrémenté quand la forme de ReplayDocument change d'une façon que le
 // client web doit gérer. L'ajout de champs OPTIONNELS (omitempty) ne casse pas le client
 // et n'incrémente pas la version ; seul un changement cassant le fait.
-const SchemaVersion = 1
+//
+// v2 (2026-08-02, lot 3.1/3.2) : les trois tables de libellés deviennent BILINGUES
+// (`{en, fr}` au lieu d'une chaîne) et le type d'un lancer de grenade devient son RANG
+// (`rank`) au lieu d'un nom. Motif : les catalogues étaient codés en Go, dont deux en
+// français — ce qui interdisait l'anglais autant qu'un second titre — et les grenades
+// étaient nommées deux fois, différemment, sur la même fiche.
+const SchemaVersion = 2
+
+// Label est un libellé affichable dans les deux langues du produit.
+//
+// POURQUOI DEUX LANGUES DANS L'ARTEFACT, et pas une résolution au service : l'artefact
+// est construit UNE FOIS, hors ligne, et servi tel quel — la locale, elle, change à
+// chaque requête. Y figer une seule langue reviendrait à choisir la langue du lecteur au
+// moment du décodage d'un film.
+type Label struct {
+	En string `json:"en"`
+	Fr string `json:"fr"`
+}
+
+// WeaponLabel est le libellé d'une arme, plus l'EFFET de rendu de ses tirs.
+//
+// L'effet vit à côté du nom parce qu'il se résout au même endroit et à partir de la même
+// clé (le weapon_key du titre). Le publier ici est ce qui a permis de retirer du code web
+// le catalogue des 22 noms d'armes Halo : le client dessine ce que le document dit, il
+// n'a plus à savoir ce qu'est un Ravager.
+type WeaponLabel struct {
+	En string `json:"en"`
+	Fr string `json:"fr"`
+	// Fx est la famille de RENDU du tir (ballistic, plasma, light, shock, explosive,
+	// melee, needles). Vide = arme non catégorisée : le client dessine le trait neutre,
+	// jamais l'effet d'une arme voisine.
+	Fx string `json:"fx,omitempty"`
+}
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -65,15 +97,17 @@ type ReplayDocument struct {
 	// n'a livré aucun état.
 	Inventory []Inventory `json:"inventory,omitempty"`
 	// GrenadeLabels nomme les RANGS de type de grenade, dans l'ordre des compteurs
-	// d'Inventory.G. Deux chaînes indépendantes l'établissent (35 lancers appariés aux
-	// décréments, et la table du binaire) : la question est close.
-	GrenadeLabels []string `json:"grenadeLabels,omitempty"`
+	// d'Inventory.G — et c'est LA SEULE table qui les nomme, y compris pour le type d'un
+	// lancer (Grenade.Rank y est un index). Deux chaînes indépendantes établissent
+	// l'ordre (35 lancers appariés aux décréments, et la table du binaire) : la question
+	// est close. Source : replay_labels.toml du titre.
+	GrenadeLabels []Label `json:"grenadeLabels,omitempty"`
 	// AbilityLabels nomme les index de capacité que le document emploie.
 	//
 	// LA TABLE EST PARTIELLE — 4 index observés pour 11 capacités dans le jeu — et un index
 	// absent GARDE SON NUMÉRO à l'écran, marqué non interprétable. Combler par le nom d'une
 	// capacité voisine se lirait comme une certitude.
-	AbilityLabels map[string]string `json:"abilityLabels,omitempty"`
+	AbilityLabels map[string]Label `json:"abilityLabels,omitempty"`
 	// Grenades est la liste des LANCERS de grenade rattachés à un slot (cf. grenades.go).
 	// Contrairement aux tirs, chaque lancer porte son auteur DANS le film — il n'est pas
 	// deviné. Ce n'est pas l'inventaire de grenades (c'est i22, non résolu) : c'est
@@ -93,7 +127,10 @@ type ReplayDocument struct {
 	// LE TAG BRUT RESTE À CÔTÉ DU LIBELLÉ, jamais à sa place — règle du dépôt : on ne stocke
 	// jamais une résolution qui peut s'améliorer. Un identifiant absent de cette table garde
 	// donc son hexadécimal à l'écran, et n'emprunte pas le nom d'une arme voisine.
-	WeaponLabels map[string]string `json:"weaponLabels,omitempty"`
+	//
+	// Source : `weapon_names.toml` du titre (nom, bilingue) + `replay_labels.toml`
+	// (effet de rendu), joints par le weapon_key du registre d'armes.
+	WeaponLabels map[string]WeaponLabel `json:"weaponLabels,omitempty"`
 	// Roster est la liste des joueurs du film : leur identité et leur index de film.
 	//
 	// CE QU'IL SERT : le client y trouve l'ensemble des joueurs du match, y compris ceux dont

@@ -99,23 +99,8 @@ func buildLoadouts(raw []filmdec.KeyframeLoadout, origin, step uint64) []Loadout
 // keepLoadoutsOfPublishedTracks écarte les loadouts dont le slot n'a pas de trajectoire
 // publiée : le client n'aurait personne à qui les attribuer. Même règle que pour les tirs.
 func keepLoadoutsOfPublishedTracks(loadouts []Loadout, tracks []Track) []Loadout {
-	if len(loadouts) == 0 {
-		return nil
-	}
-	known := make(map[uint32]bool, len(tracks))
-	for _, t := range tracks {
-		known[t.Slot] = true
-	}
-	out := loadouts[:0]
-	for _, l := range loadouts {
-		if known[l.Slot] {
-			out = append(out, l)
-		}
-	}
-	if len(out) == 0 {
-		return nil
-	}
-	return out
+	return keepOfPublishedTracks(loadouts, tracks,
+		func(l Loadout, published map[uint32]bool) bool { return published[l.Slot] })
 }
 
 // formatWeaponFamily rend un identifiant de FAMILLE (high-32 du weapon-id) en hexadécimal,

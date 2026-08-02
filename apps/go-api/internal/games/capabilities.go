@@ -33,6 +33,7 @@ func AllCapabilityKeys() []CapabilityKey {
 		CapPlaylistCategoryStrip,
 		CapMatchObjectiveStats,
 		CapFilmKillSource,
+		CapFilmWeaponShots,
 	}
 }
 

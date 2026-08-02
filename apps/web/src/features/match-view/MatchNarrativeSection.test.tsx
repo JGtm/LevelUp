@@ -48,6 +48,7 @@ const headerWithoutBadge: MatchViewHeader = {
   is_excluded: false,
   is_ranked: false,
   is_favorite: false,
+  replay_available: false,
 }
 
 describe('MatchNarrativeSection', () => {

@@ -60,7 +60,7 @@ export type ReplayDocumentReady = Omit<
   | 'tracks'
 > & {
   geometry: NonNullable<ReplayDocument['geometry']>
-  grenadeLabels: string[]
+  grenadeLabels: NonNullable<ReplayDocument['grenadeLabels']>
   grenades: NonNullable<ReplayDocument['grenades']>
   inventory: ReplayInventoryReady[]
   loadouts: ReplayLoadoutReady[]

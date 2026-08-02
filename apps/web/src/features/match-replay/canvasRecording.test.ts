@@ -260,10 +260,12 @@ describe('les huit formes d’effet de tir', () => {
     expect(radius(0.9, false)).not.toBe(radius(0.3, false))
   })
 
-  it('la famille vient du LIBELLÉ publié, et une arme hors catalogue reste sobre', () => {
-    expect(familyOf('Needler')).toBe('needles')
-    const connue = JSON.stringify(trace(familyOf('Needler')).map((o) => o.op))
-    const inconnue = JSON.stringify(trace(familyOf('Arme Inventée 9000')).map((o) => o.op))
+  it('la famille vient du DOCUMENT, et une famille hors rendu reste sobre', () => {
+    // Depuis le lot 3.2 la famille est publiée par l'artefact (`weaponLabels[id].fx`),
+    // résolue depuis les mappings du titre : le rendu ne connaît plus une seule arme.
+    expect(familyOf('needles')).toBe('needles')
+    const connue = JSON.stringify(trace(familyOf('needles')).map((o) => o.op))
+    const inconnue = JSON.stringify(trace(familyOf('famille-inventee-9000')).map((o) => o.op))
     expect(connue).not.toBe(inconnue)
   })
 })

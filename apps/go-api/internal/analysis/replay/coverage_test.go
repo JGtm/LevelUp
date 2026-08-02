@@ -161,7 +161,11 @@ func TestGrenadePlacedFromProjectileWithoutBridge(t *testing.T) {
 	// et le film ecrit deja son auteur. Ce test verrouille la correction du 2026-07-28 : avant
 	// elle, sept lancers sur soixante-dix etaient perdus parce que la vie du lanceur n'etait
 	// pas nommee — alors que leur position etait decodee.
-	throws := []filmdec.GrenadeThrow{{TimestampUS: 2_000_000, FilmIndex: 5}}
+	// Le TypeID est renseigne : depuis le lot 3.1 un lancer porte son RANG, et un tag
+	// hors liste blanche n'est pas publie (il n'aurait aucune table pour le nommer).
+	throws := []filmdec.GrenadeThrow{
+		{TimestampUS: 2_000_000, FilmIndex: 5, TypeID: filmdec.GrenadeFragmentation},
+	}
 	proj := []filmdec.ProjectileTrack{{Slot: 1024, Gen: 1, Pts: []filmdec.ProjectileSample{
 		{TimestampUS: 2_050_000, X: 12, Y: 34, Z: 5},
 	}}}

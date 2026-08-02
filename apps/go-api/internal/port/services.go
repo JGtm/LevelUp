@@ -161,6 +161,12 @@ var ErrReplayNotAvailable = errors.New("replay: aucun artefact disponible pour c
 // joueurs vue du dessus, produit hors ligne par cmd/replay-build).
 type ReplayService interface {
 	GetReplay(ctx context.Context, matchID string) (replay.ReplayDocument, error)
+	// IsAvailable dit si l'artefact du match existe, SANS le lire. La Match View
+	// s'en sert pour ne poser un lien « Rejeu 2D » que là où il mène quelque part :
+	// un lien vers une page vide serait pire que pas de lien.
+	// Contrat : aucune erreur remontée — un artefact illisible, un titre sans rejeu
+	// ou un chemin absent valent tous « pas de rejeu » (dégradation gracieuse).
+	IsAvailable(ctx context.Context, matchID string) bool
 }
 
 // MatchEventsService construit la timeline canonique d'events d'un match

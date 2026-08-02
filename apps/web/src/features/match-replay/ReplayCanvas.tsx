@@ -245,7 +245,7 @@ export function ReplayCanvas({ doc, locale, onFrameChange }: ReplayCanvasProps) 
       drawShotsLayer(ctx, doc.shots, view, win, {
         colorOfSlot: (slot) => colorBySlot.get(slot) ?? null,
         fallback: shotColor,
-        labelOf: (id) => (id ? doc.weaponLabels?.[id] : undefined),
+        effectOf: (id) => (id ? doc.weaponLabels?.[id]?.fx : undefined),
         reducedMotion,
       })
     }

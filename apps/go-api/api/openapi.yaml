@@ -12116,8 +12116,9 @@ components:
         i:
           format: int64
           type: integer
-        k:
-          type: string
+        rank:
+          format: int64
+          type: integer
         s:
           type: string
         slot:
@@ -12139,7 +12140,7 @@ components:
         - i
         - x
         - "y"
-        - k
+        - rank
         - s
       type: object
     Group:
@@ -13073,6 +13074,17 @@ components:
         - points
         - current_rating
         - has_data
+      type: object
+    Label:
+      additionalProperties: false
+      properties:
+        en:
+          type: string
+        fr:
+          type: string
+      required:
+        - en
+        - fr
       type: object
     LabelValue:
       additionalProperties: false
@@ -15241,6 +15253,8 @@ components:
           type: integer
         playlist_label:
           type: string
+        replay_available:
+          type: boolean
         score_label:
           type: string
         start_time:
@@ -15264,6 +15278,7 @@ components:
         - is_excluded
         - is_ranked
         - is_favorite
+        - replay_available
       type: object
     MatchViewImpactRole:
       additionalProperties: false
@@ -18419,7 +18434,7 @@ components:
       properties:
         abilityLabels:
           additionalProperties:
-            type: string
+            $ref: '#/components/schemas/Label'
           type: object
         bounds:
           $ref: '#/components/schemas/Bounds'
@@ -18444,7 +18459,7 @@ components:
           $ref: '#/components/schemas/Bounds'
         grenadeLabels:
           items:
-            type: string
+            $ref: '#/components/schemas/Label'
           type:
             - array
             - "null"
@@ -18507,7 +18522,7 @@ components:
             - "null"
         weaponLabels:
           additionalProperties:
-            type: string
+            $ref: '#/components/schemas/WeaponLabel'
           type: object
       required:
         - schemaVersion
@@ -23080,6 +23095,19 @@ components:
         - label_fr
         - label_en
         - kills
+      type: object
+    WeaponLabel:
+      additionalProperties: false
+      properties:
+        en:
+          type: string
+        fr:
+          type: string
+        fx:
+          type: string
+      required:
+        - en
+        - fr
       type: object
     WinLossPoint:
       additionalProperties: false

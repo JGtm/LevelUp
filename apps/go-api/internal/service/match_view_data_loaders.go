@@ -302,6 +302,10 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// portée par le service, pas par le builder — buildMatchHeader est déjà à la
 	// limite de paramètres). Titre sans table → no-op.
 	applyMatchHeaderOvertime(&header, meta, s.regulationSeconds)
+	// Présence de l'artefact de rejeu 2D : un os.Stat, jamais une lecture. Même
+	// raison d'être ici que le flag « Prolongation » — la dépendance est portée par
+	// le service, pas par le builder.
+	applyMatchHeaderReplay(ctx, &header, matchID, s.replaySvc)
 	rank := buildRankBlock(d.skillRank, s.assetURL)
 	curDurSec := 0
 	if meta != nil && meta.DurationSeconds != nil {

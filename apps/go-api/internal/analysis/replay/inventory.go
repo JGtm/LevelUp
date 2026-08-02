@@ -21,24 +21,14 @@ import (
 //     mesuré 8,4 s, et 7,1 % seulement des affichages ont moins d'une seconde.
 //   - le COMPTEUR D'UTILISATIONS de la capacité : non localisé, donc jamais publié.
 
-// grenadeRankLabels nomme les rangs de type de grenade.
+// LES DEUX TABLES DE LIBELLÉS QUI VIVAIENT ICI SONT PARTIES DANS LE TITRE (lot 3.1/3.2,
+// 2026-08-02) : `config/titles/{slug}/mappings/replay_labels.toml`.
 //
-// DEUX CHAÎNES INDÉPENDANTES l'établissent : 35 lancers sur 35 appariés aux décréments
-// unitaires du compteur, et la table `grenade_types` lue dans le binaire du jeu (ordre =
-// typeId - 1). La question est close.
-var grenadeRankLabels = []string{"Fragmentation", "Plasma", "Dynamo", "Spike"}
-
-// abilityIndexLabels nomme les index de capacité d'armure.
-//
-// TABLE PARTIELLE, ET C'EST PUBLIÉ COMME TEL : 4 index observés, 11 capacités existent dans le
-// jeu. Un index absent de cette table s'affiche « inconnu » — jamais deviné, jamais approché
-// par le nom d'une capacité voisine.
-var abilityIndexLabels = map[int]string{
-	3: "mur portatif",
-	4: "grappin",
-	5: "propulseur",
-	6: "capteur de menace",
-}
+// Les rangs de grenade parce qu'ils étaient nommés DEUX FOIS et différemment (« Dynamo »
+// ici, « Shock » dans le décodeur, pour le même rang et sur la même fiche) ; les
+// capacités parce que leurs noms étaient EN FRANÇAIS DANS DU GO — ce qui interdisait
+// l'anglais autant que l'ajout d'un titre. L'ordre des rangs, lui, reste une mesure du
+// décodeur (filmdec.GrenadeTypeIDsByRank) : c'est une donnée, pas un libellé.
 
 // AmmoSlot est l'état de munitions d'un emplacement d'arme, dans l'ordre de Loadout.W.
 //
@@ -154,36 +144,21 @@ func ammoSlotsOf(r KeyframeInventory) []AmmoSlot {
 // keepInventoryOfPublishedTracks écarte les inventaires dont le slot n'a pas de trajectoire
 // publiée : le client n'aurait aucune fiche où les poser.
 func keepInventoryOfPublishedTracks(inv []Inventory, tracks []Track) []Inventory {
-	if len(inv) == 0 {
-		return nil
-	}
-	known := make(map[uint32]bool, len(tracks))
-	for _, t := range tracks {
-		known[t.Slot] = true
-	}
-	out := inv[:0]
-	for _, i := range inv {
-		if known[i.Slot] {
-			out = append(out, i)
-		}
-	}
-	if len(out) == 0 {
-		return nil
-	}
-	return out
+	return keepOfPublishedTracks(inv, tracks,
+		func(i Inventory, published map[uint32]bool) bool { return published[i.Slot] })
 }
 
 // abilityLabelsUsed nomme les index de capacité que le document emploie RÉELLEMENT.
 //
 // Un index hors table n'entre pas : il gardera son numéro à l'écran, marqué comme non
 // interprétable. La table est partielle et le dire vaut mieux que combler.
-func abilityLabelsUsed(inv []Inventory) map[string]string {
-	out := map[string]string{}
+func abilityLabelsUsed(inv []Inventory, catalog map[int]Label) map[string]Label {
+	out := map[string]Label{}
 	for _, i := range inv {
 		if i.A == nil {
 			continue
 		}
-		if name, ok := abilityIndexLabels[*i.A]; ok {
+		if name, ok := catalog[*i.A]; ok {
 			out[strconv.Itoa(*i.A)] = name
 		}
 	}

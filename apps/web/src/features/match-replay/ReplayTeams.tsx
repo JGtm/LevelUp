@@ -16,6 +16,7 @@ import { useMemo } from 'react'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
+import { catalogText } from './catalogLabel'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { frameToMs, freshness, msToFrames } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
@@ -191,9 +192,9 @@ function InventoryRow({
   const read = inventoryAt(doc, slot, frame)
   if (!read) return null
   const { state } = read
-  const grenades = grenadesCarried(state, doc.grenadeLabels)
+  const grenades = grenadesCarried(state, doc.grenadeLabels, locale)
   const selected = selectedGrenadeRank(state)
-  const ability = abilityText(doc, state.a, t.abilityUnknown)
+  const ability = abilityText(doc, state.a, t.abilityUnknown, locale)
   const ammo = state.am ?? []
   if (grenades.length === 0 && !ability && ammo.length === 0) return null
 
@@ -245,9 +246,10 @@ function abilityText(
   doc: ReplayDocumentReady,
   index: number | undefined,
   unknownLabel: string,
+  locale: ReplayLocale,
 ): { text: string; known: boolean } | null {
   if (index === undefined) return null
-  const name = doc.abilityLabels?.[String(index)]
+  const name = catalogText(doc.abilityLabels?.[String(index)], locale)
   if (name) return { text: name, known: true }
   return { text: `${unknownLabel} (${index})`, known: false }
 }
@@ -449,11 +451,16 @@ function WeaponsRow({
       style={{ opacity: freshness(read.age, readingFull, READING_FADE) }}
       title={hint}
     >
-      {read.weapons.map((id) => (
-        <span key={id} className={doc.weaponLabels?.[id] ? '' : 'border-b border-dashed border-border'}>
-          {doc.weaponLabels?.[id] ?? id}
-        </span>
-      ))}
+      {read.weapons.map((id) => {
+        // Le tag brut reste À CÔTÉ du libellé, jamais à sa place : une arme hors
+        // catalogue garde son hexadécimal, souligné en pointillés pour le dire.
+        const name = catalogText(doc.weaponLabels?.[id], locale)
+        return (
+          <span key={id} className={name ? '' : 'border-b border-dashed border-border'}>
+            {name ?? id}
+          </span>
+        )
+      })}
     </div>
   )
 }

@@ -18,8 +18,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-
-	"levelup/go-api/internal/analysis/weaponv3"
 )
 
 // nameTracks pose le xuid du porteur sur chaque trace dont le slot est ponté.
@@ -62,8 +60,11 @@ func gamertagsOf(deaths []Death) map[uint64]string {
 // UNE ARME NON CATALOGUÉE N'ENTRE PAS DANS LA TABLE : elle gardera son hexadécimal à l'écran.
 // C'est la règle « on ne stocke jamais une résolution qui peut s'améliorer » — un nom approchant
 // serait pire qu'un identifiant, parce qu'il se lit comme une certitude.
-func buildWeaponLabels(loadouts []Loadout, shots []Shot) map[string]string {
-	out := map[string]string{}
+//
+// LE CATALOGUE VIENT DU TITRE (cf. catalog.go), plus de l'enum d'armes du décodeur : le
+// nom affiché a une source unique, `weapon_names.toml`, et il est bilingue.
+func buildWeaponLabels(loadouts []Loadout, shots []Shot, cat LabelCatalog) map[string]WeaponLabel {
+	out := map[string]WeaponLabel{}
 	add := func(id string) {
 		if id == "" {
 			return
@@ -81,8 +82,8 @@ func buildWeaponLabels(loadouts []Loadout, shots []Shot) map[string]string {
 		if len(id) > 10 {
 			high = uint32(v >> 32)
 		}
-		if name, ok := weaponv3.KnownWeaponHigh32[high]; ok {
-			out[id] = name
+		if lbl, ok := cat.Weapons[high]; ok {
+			out[id] = lbl
 		}
 	}
 	for _, l := range loadouts {

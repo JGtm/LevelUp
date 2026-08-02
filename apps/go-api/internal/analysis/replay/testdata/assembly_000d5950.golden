@@ -6,7 +6,7 @@
 
 ## AXE DE TEMPS
 4985 frames · intervalle 100 ms · duree 498500 ms
-schema 1 · titre halo_infinite
+schema 2 · titre halo_infinite
 
 ## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)
 99 trace(s) · 29221 point(s) de grille
@@ -38,7 +38,7 @@ rejets : slot introuvable=0 · slot ambigu=0 · hors fenetre=0 · sans trace pub
 somme de controle : rattaches + rejets = disponibles -> 70 = 70 (equilibre : true)
 verdict : nominal
 par source : projectile=65 (aucun pont) · biped=5 (le pont a servi)
-par type : Fragmentation=17 · Plasma=14 · Shock=17 · Spike=22
+par type : Dynamo=17 · Frag=17 · Plasma=14 · Spike=22
 
 ## PROJECTILES — le dernier point est la DERNIERE POSITION REPLIQUEE, jamais un impact
 439 trajectoire(s) · 2732 point(s) de grille
@@ -48,8 +48,8 @@ par type : Fragmentation=17 · Plasma=14 · Shock=17 · Spike=22
 184 etat(s) publie(s) · 120 avec grenades lues · 132 avec capacite lue · 150 avec munitions lues
 51 lecture(s) de munitions a PLUSIEURS candidats : la plus longue a ete retenue et le
 nombre de candidats est publie, pour que le departage reste visible
-rangs de grenade : Fragmentation, Plasma, Dynamo, Spike
-capacites nommees (TABLE PARTIELLE — 4 index observes pour 11 capacites dans le jeu) : 3=mur portatif · 4=grappin · 5=propulseur · 6=capteur de menace
+rangs de grenade : 0:en="Frag"/fr="Fragmentation", 1:en="Plasma"/fr="Plasma", 2:en="Dynamo"/fr="Dynamo", 3:en="Spike"/fr="Spike"
+capacites nommees (TABLE PARTIELLE — 4 index observes pour 11 capacites dans le jeu) : 3=en:"Drop Wall"/fr:"mur portatif", 4=en:"Grappleshot"/fr:"grappin", 5=en:"Thruster"/fr:"propulseur", 6=en:"Threat Sensor"/fr:"capteur de menace"
 
 ## ARMES PORTEES — l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee
 150 loadout(s) publie(s) · 22 famille(s) distincte(s)
@@ -63,45 +63,45 @@ verdict : nominal
 ## LIBELLES D ARMES — le tag brut reste A COTE du libelle, jamais a sa place
 39 identifiant(s) nomme(s) ; un identifiant absent garde son hexadecimal a l ecran et
 n emprunte pas le nom d une arme voisine
-  0x0A1992BC  "S7 Sniper"
-  0x0A1992BC42C9679F  "S7 Sniper"
-  0x0D20C469  "Skewer"
-  0x0D20C46942C9679F  "Skewer"
-  0x230447B1  "Cindershot"
-  0x230447B142C9679F  "Cindershot"
-  0x2AC9C2FF  "Heatwave"
-  0x2AC9C2FF42C9679F  "Heatwave"
-  0x2B1824D5  "BR75"
-  0x2B1824D542C9679F  "BR75"
-  0x30484EA6  "Pulse Carbine"
-  0x30484EA642C9679F  "Pulse Carbine"
-  0x48C19D2D  "MA40 AR"
-  0x48C19D2D42C9679F  "MA40 AR"
-  0x4FF3937E  "Energy Sword"
-  0x71AB0A2C  "M41 SPNKr"
-  0x71AB0A2C42C9679F  "M41 SPNKr"
-  0x767DB96D  "MLRS-2 Hydra"
-  0x767DB96D42C9679F  "MLRS-2 Hydra"
-  0x80977BA5  "Mangler"
-  0x80977BA542C9679F  "Mangler"
-  0x841AC5E5  "Gravity Hammer"
-  0x84BD29ED  "Disruptor"
-  0x84BD29ED42C9679F  "Disruptor"
-  0x9387A8B9  "Shock Rifle"
-  0x9387A8B942C9679F  "Shock Rifle"
-  0xA0955E9E  "Sentinel Beam"
-  0xB533957E  "Needler"
-  0xB533957E42C9679F  "Needler"
-  0xB619D84A  "CQS48 Bulldog"
-  0xB619D84A42C9679F  "CQS48 Bulldog"
-  0xC30D87C7  "Ravager"
-  0xC30D87C742C9679F  "Ravager"
-  0xC3542946  "Plasma Pistol"
-  0xDAF193C7  "Stalker Rifle"
-  0xDAF193C742C9679F  "Stalker Rifle"
-  0xF408190F  "Mk51 Sidekick"
-  0xF408190F42C9679F  "Mk51 Sidekick"
-  0xFD98554C  "VK78 Commando"
+  0x0A1992BC  en="S7 Sniper" fr="S7 Sniper" fx="ballistic"
+  0x0A1992BC42C9679F  en="S7 Sniper" fr="S7 Sniper" fx="ballistic"
+  0x0D20C469  en="Skewer" fr="Empaleur" fx="ballistic"
+  0x0D20C46942C9679F  en="Skewer" fr="Empaleur" fx="ballistic"
+  0x230447B1  en="Cindershot" fr="Crémateur" fx="explosive"
+  0x230447B142C9679F  en="Cindershot" fr="Crémateur" fx="explosive"
+  0x2AC9C2FF  en="Heatwave" fr="Calcineur" fx="light"
+  0x2AC9C2FF42C9679F  en="Heatwave" fr="Calcineur" fx="light"
+  0x2B1824D5  en="BR75" fr="BR75" fx="ballistic"
+  0x2B1824D542C9679F  en="BR75" fr="BR75" fx="ballistic"
+  0x30484EA6  en="Pulse Carbine" fr="Carabine à impulsion" fx="plasma"
+  0x30484EA642C9679F  en="Pulse Carbine" fr="Carabine à impulsion" fx="plasma"
+  0x48C19D2D  en="MA40 AR" fr="MA40 AR" fx="ballistic"
+  0x48C19D2D42C9679F  en="MA40 AR" fr="MA40 AR" fx="ballistic"
+  0x4FF3937E  en="Energy Sword" fr="Épée à énergie" fx="melee"
+  0x71AB0A2C  en="M41 SPNKr" fr="M41 SPNKr" fx="explosive"
+  0x71AB0A2C42C9679F  en="M41 SPNKr" fr="M41 SPNKr" fx="explosive"
+  0x767DB96D  en="MLRS-2 Hydra" fr="Hydra" fx="explosive"
+  0x767DB96D42C9679F  en="MLRS-2 Hydra" fr="Hydra" fx="explosive"
+  0x80977BA5  en="Mangler" fr="Déchiqueteur" fx="ballistic"
+  0x80977BA542C9679F  en="Mangler" fr="Déchiqueteur" fx="ballistic"
+  0x841AC5E5  en="Gravity Hammer" fr="Marteau antigravité" fx="melee"
+  0x84BD29ED  en="Disruptor" fr="Disrupteur" fx="shock"
+  0x84BD29ED42C9679F  en="Disruptor" fr="Disrupteur" fx="shock"
+  0x9387A8B9  en="Shock Rifle" fr="Fusil électrique" fx="shock"
+  0x9387A8B942C9679F  en="Shock Rifle" fr="Fusil électrique" fx="shock"
+  0xA0955E9E  en="Sentinel Beam" fr="Rayon de Sentinelle" fx="light"
+  0xB533957E  en="Needler" fr="Needler" fx="needles"
+  0xB533957E42C9679F  en="Needler" fr="Needler" fx="needles"
+  0xB619D84A  en="CQS48 Bulldog" fr="CQS48 Bulldog" fx="ballistic"
+  0xB619D84A42C9679F  en="CQS48 Bulldog" fr="CQS48 Bulldog" fx="ballistic"
+  0xC30D87C7  en="Ravager" fr="Ravageur" fx="plasma"
+  0xC30D87C742C9679F  en="Ravager" fr="Ravageur" fx="plasma"
+  0xC3542946  en="Plasma Pistol" fr="Pistolet à plasma" fx="plasma"
+  0xDAF193C7  en="Stalker Rifle" fr="Fusil traqueur" fx="ballistic"
+  0xDAF193C742C9679F  en="Stalker Rifle" fr="Fusil traqueur" fx="ballistic"
+  0xF408190F  en="Mk50 Sidekick" fr="MK50 Sidekick" fx="ballistic"
+  0xF408190F42C9679F  en="Mk50 Sidekick" fr="MK50 Sidekick" fx="ballistic"
+  0xFD98554C  en="VK78 Commando" fr="VK78 Commando" fx="ballistic"
 
 ## BORNES — l etendue des points publies, dans le repere monde partage
 x [-7.02, 43.79] · y [-25.14, 30.35] · z [-4.20, 7.08]

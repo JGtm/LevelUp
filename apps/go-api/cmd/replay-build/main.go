@@ -36,12 +36,14 @@ import (
 	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 )
 
 func main() {
 	titleFlag := flag.String("title", title.DefaultSlug, "slug du titre")
 	interval := flag.Int("interval", replay.DefaultFrameIntervalMS, "pas de temps du rejeu, en ms")
-	geomDir := flag.String("geometry", "", "répertoire des CSV de géométrie (défaut : <repo>/.ai/re_dump ; vide si absent)")
+	geomDir := flag.String("geometry", "",
+		"répertoire des CSV de props Forge (défaut : PathResolver.MapGeometryDir du titre)")
 	mapName := flag.String("map", "", "nom de carte du match (obligatoire : porte les bornes de déquantification)")
 	flag.Parse()
 	args := flag.Args()
@@ -66,14 +68,29 @@ func main() {
 	if len(args) >= 2 {
 		filmDir = args[1]
 	}
+	// Les props passent par le PathResolver comme toute donnée du dépôt. Le défaut
+	// pointait `.ai/V7.5/dumps` — un répertoire de rétro-ingénierie, hors de `data/` :
+	// une donnée de production n'a pas à vivre dans les notes du chantier qui l'a
+	// produite (règle multi-titre : jamais de chemin composé à la main).
 	if *geomDir == "" {
-		*geomDir = filepath.Join(repoRoot, ".ai", "V7.5", "dumps")
+		*geomDir = title.NewPathResolver(repoRoot).MapGeometryDir(*titleFlag)
+	}
+
+	// Le catalogue de libellés vient des mappings du TITRE (armes, grenades, capacités).
+	// Son absence est FATALE : un rejeu sans libellés est indistinguable, à l'écran, d'un
+	// rejeu dont les armes seraient inconnues — on refuse d'écrire l'artefact plutôt que
+	// de publier un document muet sans que rien ne le dise.
+	labels, err := replaylabels.Load(repoRoot, *titleFlag)
+	if err != nil {
+		slog.Error("catalogue de libellés du titre", "err", err, "title", *titleFlag)
+		os.Exit(1)
 	}
 
 	doc, err := replay.BuildFromFilm(matchID, *titleFlag, filmDir, replay.Options{
 		FrameIntervalMS: *interval,
 		Geometry:        loadGeometry(*geomDir),
 		Structure:       loadStructure(repoRoot, *titleFlag, entry.Module),
+		Labels:          labels,
 		WorldRange:      &worldRange,
 	})
 	if err != nil {

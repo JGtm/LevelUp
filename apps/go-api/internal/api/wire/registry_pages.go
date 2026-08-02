@@ -101,7 +101,11 @@ func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.Matc
 		// optionnels. Titre sans film / tables absentes → le repo remonte
 		// ErrCapabilityNotSupported et l'endpoint rend un 503 propre.
 		WithObjectiveEventsRepo(duckdb.NewObjectiveEventsRepo(pdb)).
-		WithPlayerPositionsRepo(duckdb.NewPlayerPositionsRepo(pdb))
+		WithPlayerPositionsRepo(duckdb.NewPlayerPositionsRepo(pdb)).
+		// Rejeu 2D : MÊME service que l'endpoint /replay (une seule résolution de
+		// chemin dans le dépôt). Seule IsAvailable est appelée par la Match View,
+		// pour publier `replay_available` sans lire l'artefact.
+		WithReplay(service.NewReplayService(pdb.TitleSlug, r.cfg.RepoRoot))
 	if loader := r.buildFriendsExtrasResolver(pdb); loader != nil {
 		svc = svc.WithFriendsExtras(loader)
 	}
