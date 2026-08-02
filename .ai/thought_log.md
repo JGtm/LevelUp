@@ -1,3 +1,40 @@
+## [2026-08-02] Lot 4 fermé — le calque d'objectifs est dans le document de rejeu
+
+**Statut** : Complété (lot 4 du handoff §4, dernier des quatre). Branche
+`feat/re-mode-score`. Livrables : `internal/analysis/replay/objectives.go` +
+`objectives_test.go`, champ `ReplayDocument.Objectives`, `Coverage.Objectives`, état de
+l'art §23.
+
+**Décision technique principale** : les actions arrivent DÉJÀ identifiées par xuid, via
+`Options.Objectives []objectiveevents.IdentifiedEvent`. Le pont d'identité a besoin de
+`match_participants`, donc de la base, que `cmd/replay-build` n'ouvre pas — c'est
+exactement le pattern de `objectiveevents.Extract`, qui reçoit son `Roster` plutôt que
+d'aller le chercher. Le paquet d'assemblage reste pur.
+
+**Résultats observés** :
+
+- **La conversion vers l'axe du rejeu est une simple division.** Les événements sont sur
+  l'horloge du manifeste, la même que les positions (écart < 4 ms sur 573 s) : ni
+  appariement, ni fenêtre, ni seuil. C'est le seul calque du document dans ce cas — les
+  tirs et les lancers, eux, exigent un rattachement.
+- **`timeMs` est conservé à côté de `t`** : la grille perd 100 ms, et deux actions d'une
+  même frame doivent rester ordonnables.
+- **La couverture publie les trois causes de rejet** (`noSlot`, `outOfWindow`,
+  `unpublished`) et l'invariant `rattachées + rejetées = disponibles` est testé. Un calque
+  qui perd sans le dire est l'anti-patron que `coverage.go` existe pour interdire.
+- **Tous les paquets `internal/analysis/...` passent**, golden du rejeu compris — l'ajout
+  d'un champ `omitempty` ne casse aucun artefact existant, et un test le verrouille.
+- Lint : aucune remarque nouvelle (les 2 restantes sont préexistantes dans `awards.go` et
+  `film.go`).
+
+**Ce qui reste, et ce n'est plus du décodage** : aucun chemin de production ne remplit
+encore `Options.Objectives` (il faut lire `match_participants`, appeler `SlotIdentity` puis
+`IdentifyNamedEvents`), et `apps/web` ne dessine pas le champ.
+
+**Conclusion** : les quatre lots du handoff `HANDOFF_EVENEMENTS_NOMMES_2026-08-01.md` sont
+traités. Reste ouverte la correspondance nom -> index d'emplacement (§19.6), qui exige une
+lecture mémoire jeu lancé.
+
 ## [2026-08-02] Lots 2 et 3 bouclés — KOTH n'a rien à nommer, et l'oracle 8 joueurs corrige un nom faux
 
 **Statut** : Complété (lots 2 et 3 du handoff §4). Branche `feat/re-mode-score`. Livrables :

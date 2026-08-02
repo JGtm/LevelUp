@@ -101,6 +101,15 @@ type ReplayDocument struct {
 	// les événements (un lancer de grenade écrit son auteur par index) en identité.
 	// Absent quand le film n'a livré ni fil des morts ni table d'index.
 	Roster []RosterEntry `json:"roster,omitempty"`
+	// Objectives est la liste des ACTIONS D'OBJECTIF nommées : ce que chaque joueur a
+	// accompli (capture de drapeau, retour, prise de zone, porteur stoppé), daté à la
+	// milliseconde et attribué à un xuid (cf. objectives.go).
+	//
+	// CE QU'ELLE APPORTE que les autres calques n'ont pas : les tirs et les positions
+	// disent où les joueurs étaient ; celle-ci dit ce qu'ils ont FAIT. Absente quand le
+	// mode n'est pas un mode à objectifs, ou quand l'appelant n'a pas fourni les lignes de
+	// match nécessaires au pont d'identité.
+	Objectives []ObjectiveAction `json:"objectives,omitempty"`
 	// Coverage dit, pour chaque calque, COMBIEN il a rattaché SUR COMBIEN existaient, et
 	// pourquoi il a écarté le reste (cf. coverage.go).
 	//
