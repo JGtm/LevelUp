@@ -6,6 +6,76 @@
 
 ---
 
+## LE RÉSULTAT ATTENDU — LE VISUEL FAIT FOI  *(ajouté le 2026-08-01, arbitrage utilisateur)*
+
+**La référence est une IMAGE VERSIONNÉE, pas une description** :
+`.ai/V7.5/dumps/carte_validee_v1.png` — validée par l'utilisateur le 2026-07-26.
+**Aucune étape de ce plan n'est close tant que le rendu produit ne lui ressemble pas.**
+
+Ce que la référence porte, et qu'il faut retrouver — énuméré pour être opposable :
+
+| ce qu'on doit voir | pourquoi c'est le critère |
+|---|---|
+| l'**architecture réelle** lisible à l'œil — sur la référence Cliffhanger : le fer à cheval **en anneau**, la structure circulaire centrale, les plateformes hexagonales, les deux ponts au sud. **Ces repères sont PROPRES À CLIFFHANGER** : ils servent de témoins de non-régression du portage, jamais de critère pour une autre carte (cf. gate humain, checklist (b)) | une forme attendue qui manque = échec, quel que soit le chiffre de couverture |
+| la **distinction de matière** : les zones rocheuses (texture mouchetée, dense) se distinguent des plateformes construites (surfaces lisses, arêtes nettes) | c'est ce qui rend la carte lisible d'un coup d'œil ; un aplat uniforme la rend inutilisable |
+| **zéro rectangle** : aucune boîte englobante visible | c'est LA différence entre les deux chaînes — voir un rectangle, c'est voir la mauvaise chaîne |
+| une **vue orthographique du dessus**, fond neutre, sans décor ajouté | c'est un fond de carte, pas une illustration |
+
+**RÈGLE D'ARBITRAGE, non négociable** : **le visuel commande, le poids s'adapte.** On choisit
+la résolution qui préserve ce rendu, PUIS on résout le poids (découpage en tuiles, compression,
+simplification du maillage, niveau de détail). Jamais l'inverse. Un pas choisi pour tenir dans
+un budget d'octets, puis un rendu « acceptable » constaté après coup, est le chemin exact par
+lequel on retomberait sur une carte en gros blocs — c'est-à-dire sur ce qu'on remplace.
+
+### GATE HUMAIN — un artefact à valider, à chaque image produite
+
+**S'applique à toute étape qui produit une image** (1.2, 3, 4, 5, 6) **et à chaque carte
+nouvellement traitée.** Les mesures numériques (82,0 % des positions à moins de 25 cm,
+12,9 m² de vide dans le fer à cheval, etc.) restent des garde-fous **nécessaires et non
+suffisants** : elles disent que la géométrie est juste, pas que la carte est lisible.
+
+1. **Produire un ARTEFACT DE REVUE** — une page publiée (outil `Artifact`), pas un fichier
+   perdu dans un scratchpad. Elle porte, **par carte** : le rendu produit et
+   `carte_validee_v1.png` **côte à côte, à la même échelle**, la carte nommée par ses DEUX
+   noms (affiché + module), la couverture mesurée, et la checklist ci-dessous en clair.
+   Contrainte technique : une page publiée n'atteint aucun hôte externe — les images sont
+   **embarquées en `data:` URI**. Si le poids devient déraisonnable, embarquer une version
+   réduite pour la revue ET donner le chemin de la pleine résolution à côté.
+2. **Rendre la main et ATTENDRE.** L'utilisateur valide **expressément**. Aucune revue
+   visuelle ne se déclare passée par la session elle-même ; « ça a l'air correct » n'est pas
+   une validation. (Le pilotage de navigateur n'est pas utilisé pour ça : on remet la main
+   avec une URL et une checklist.)
+3. **La checklist soumise — deux parties, à ne pas confondre.**
+
+   **(a) Critères GÉNÉRAUX, valables pour TOUTE carte** :
+   - l'architecture de la carte se lit-elle à l'œil (on reconnaît les lieux) ?
+   - la roche / le terrain se distinguent-ils des plateformes construites ?
+   - voit-on un seul rectangle (= une boîte englobante ayant fuité) ?
+   - l'échelle et l'orientation sont-elles cohérentes avec les positions de joueurs ?
+   - la couverture est-elle publiée, et le rendu montre-t-il ce qui manque ?
+
+   **(b) Témoins PROPRES À CHAQUE CARTE** — nommés AVANT la revue, jamais inventés par la
+   session. Pour **Cliffhanger / ridgeline**, les témoins validés le 2026-07-26 sont
+   l'**anneau du fer à cheval** et les **deux ponts au sud** : ils valent pour cette carte
+   **et pour elle seule**, ce sont les repères de non-régression du portage.
+   Pour **toute autre carte** (Catalyst, Vagabond, les 12 du catalogue) : demander à
+   l'utilisateur **deux ou trois repères qu'il s'attend à reconnaître** sur cette carte-là,
+   ou les prendre d'une source externe (carte en jeu, rendu Reclaimer). **Ne jamais réutiliser
+   les témoins de Cliffhanger ailleurs** — et ne jamais laisser la session choisir elle-même
+   ses témoins après avoir vu son propre rendu : un critère qu'on choisit après coup ne
+   protège de rien (même leçon que le seuil du garde local, satisfait « à la lettre » par un
+   choix de films).
+4. **Consigner la validation** dans le journal de ce plan : date, carte, ce qui a été validé,
+   et les réserves éventuelles. **Un `[x]` posé sans validation écrite est invalide** — c'est
+   la seule étape du chantier où le juge est l'œil de l'utilisateur, et elle ne se
+   court-circuite pas.
+
+**Et pour les cartes autres que Cliffhanger** (Catalyst, Vagabond, les 12 autres) : la barre
+est la même. Publier une carte, c'est publier son rendu ET sa couverture — une carte à 40 %
+se montre comme telle (§5.4), elle ne se publie pas comme un décor complet.
+
+---
+
 ## CE QU'ON A, ET CE QU'ON N'A PAS
 
 **La recette existe, elle marche, et elle est validée.** `C_carte_triangles.png` :
@@ -173,9 +243,21 @@ Le Python, lui, produit **directement** un champ d'altitude (`raster.npz`, grill
 
 - [ ] **4.1** Le fichier de structure porte un **champ d'altitude** : origine, pas, dimensions,
       et les altitudes. Les emprises AABB restent, en repli, pour les cartes non traitées.
-- [ ] **4.2** **Arbitrer le pas et le poids.** À 5 cm sur la zone jouée de Cliffhanger
-      (≈ 50 × 55 m), c'est ~1,1 M de cellules ; à 25 cm, ~44 000. Le fichier actuel fait 677 Ko.
-      Mesurer, puis choisir — et publier le pas dans le fichier plutôt que de le supposer.
+- [ ] **4.2** **Arbitrer le pas — SOUS LA RÈGLE VISUELLE** (cf. « LE RÉSULTAT ATTENDU » en
+      tête de plan) : le pas se choisit sur ce qu'il PRÉSERVE du rendu de référence, pas sur
+      ce qu'il coûte. Méthode : produire le rendu à plusieurs pas (5, 10, 25 cm), les mettre
+      côte à côte avec `carte_validee_v1.png`, retenir le plus grossier qui garde encore
+      l'anneau, les ponts et la distinction roche/plateforme — **et si aucun ne tient dans le
+      budget, c'est le budget qui cède** (tuiles, compression, niveau de détail), pas le
+      rendu. Ordres de grandeur pour situer : à 5 cm sur la zone jouée de Cliffhanger
+      (≈ 50 × 55 m), ~1,1 M de cellules ; à 25 cm, ~44 000 ; le fichier actuel fait 677 Ko.
+      Publier le pas DANS le fichier plutôt que de le supposer.
+- [ ] **4.2bis** **Un champ d'altitude seul peut ne pas suffire.** La référence donne à voir
+      des arêtes et une différence de matière que la seule altitude par cellule ne porte pas.
+      Si le côte-à-côte de 4.2 montre l'écart, prévoir ce qui le comble — ombrage par la
+      normale, canal de pente, ou conservation d'un second canal — **et le décider sur
+      l'image**, pas sur une intuition de format. C'est le point où le plan d'origine
+      supposait l'équivalence sans l'avoir vérifiée.
 - [ ] **4.3** Côté web, `mapFloor.ts` **se simplifie** : il peint un champ reçu au lieu de
       rasteriser 10 223 boîtes. Garder le chemin AABB tant que des cartes n'ont que ça.
 - [ ] **4.4** Les tests existants de `mapFloor` couvrent la rastérisation : les faire porter sur
@@ -203,6 +285,47 @@ Le Python, lui, produit **directement** un champ d'altitude (`raster.npz`, grill
 
 **GATE 5** : chaque carte traitée a son fichier figé et sa mesure de couverture ; les autres ont
 une raison écrite.
+
+---
+
+## ÉTAPE 5bis — LES NOMS DE ZONES (CALLOUTS)  *(ajoutée le 2026-08-01, demande utilisateur)*
+
+**Pourquoi ici et pas au backlog** : c'est le **même tag, les mêmes cartes, la même passe**.
+Sortir les callouts séparément obligerait à re-parcourir les modules des mois plus tard. Et
+surtout, ils portent le critère (a) du gate visuel — *« l'architecture se lit-elle à l'œil,
+reconnaît-on les lieux ? »* : une carte sans ses noms reste un dessin, avec eux elle devient
+utilisable.
+
+**Ce qui est déjà établi** (`../V7.5/cartes/INVESTIGATION_MAP_ZONE_CALLOUT_NAMES.md`,
+2026-06-26) et qu'il ne faut pas re-chercher :
+
+- les noms ne sont **PAS dans le film** (le rejeu ne réplique que le dynamique) ;
+- ils ne sont **PAS dans la variante `ds/`** — celle qu'on utilise pour la géométrie ;
+- ils sont dans la variante **`any/`** du module de carte (tag scénario / placements
+  gameplay), **même espace monde que la géométrie**, lisibles avec l'infra existante
+  (`himodule` + `ooz` + parcours d'arbre de tag). Verdict de l'investigation : « mini-chantier
+  neuf mais **faible risque** ».
+- **`callout_zones_ridgeline_clipped.json`** existe déjà (Cliffhanger, 16 libellés FR), c'est
+  ce que le POC affiche — il sert de **témoin de non-régression** pour la voie générale.
+
+**Conséquence matérielle, traitée le 2026-08-01** : la clé ne portait que `ds/levels/multi`.
+Les 31 modules de `any/levels/multi` (0,90 Go) y ont été copiés — sans eux, ce lot serait
+**mort avec le PC**, comme la palette Forge l'aurait été.
+
+- [ ] **5bis.1** Lire les zones nommées d'une carte depuis la variante `any/`, et retrouver
+      les **16 libellés de Cliffhanger** (témoin de non-régression, comparer au JSON existant).
+- [ ] **5bis.2** Étendre aux cartes traitées par l'étape 5. **Règle valable pour toutes les
+      cartes** (contrainte utilisateur) — pas d'ajustement carte par carte.
+- [ ] **5bis.3** **Découper par ÉTAGE** (on a `top`/`bottom` par prisme) et **conserver le
+      polygone BRUT à côté du découpé** : le brut est la donnée du jeu, le découpé notre
+      interprétation. Les deux voyagent ensemble, jamais l'un sans l'autre.
+- [ ] **5bis.4** Publier la couverture par carte : combien de zones nommées, combien sans nom.
+      Une zone sans nom reste **sans nom** — jamais un libellé approchant.
+- [ ] **5bis.5** i18n FR + EN pour les libellés exposés à l'écran ; aucun nom en dur côté Go.
+
+**GATE 5bis** : le gate humain s'applique — l'artefact de revue montre les noms **posés sur la
+carte**, et la checklist (b) devient, pour Cliffhanger, « retrouve-t-on les 16 zones du POC,
+au bon endroit ? ».
 
 ---
 
