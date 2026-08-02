@@ -135,6 +135,44 @@ haut, cf. Q1.3-ter).
 Sorties : `.ai/V7.5/dumps/forge_zones/palette_noms.csv` (4 213 entrees, hachage + nom quand
 il est craque) et `noms_craques_murmur3.txt` (les 33 correspondances hachage -> nom).
 
+### Q1.0-quater LES DEPOTS COMMUNAUTAIRES — ce qu'ils donnent, ce qu'ils ne donnent pas
+
+Trois depots proposes par l'utilisateur, evalues sur pieces.
+
+| depot | ce qu'il apporte ICI |
+|---|---|
+| [`Surasia/InfiniteExt`](https://github.com/Surasia/InfiniteExt) | **rien directement** : un greffon DLL d'edition a chaud, pas de definitions. Sert de point d'entree vers les deux suivants |
+| [`Gamergotten/Infinite-runtime-tagviewer`](https://github.com/Gamergotten/Infinite-runtime-tagviewer) | **`Plugins/food.xml`** — la structure nommee (cf. Q1.0-ter). Son `files/tagnames.txt` est anterieur a Forge : **0 / 150** de nos `type_id` |
+| [`Z-15/Halo-Infinite-Tag-Editor`](https://github.com/Z-15/Halo-Infinite-Tag-Editor) | 4 fichiers de donnees, dont **`all_trimmed.txt` : 616 697 correspondances `hachage:nom` deja calculees** |
+| [`Gravemind2401/Reclaimer`](https://github.com/Gravemind2401/Reclaimer) | code C# de lecture (deja utilise par le chantier pour confirmer les offsets de la chaine des triangles) — **aucun dictionnaire de noms** |
+
+**LE RESULTAT LE PLUS SOLIDE DE CETTE PASSE — mon murmur3 est valide par une source
+independante.** Le dictionnaire de Z-15 donne `gravity_hammer -> 3C2CDAAC` ; cette session
+calculait `0xACDA2C3C`. **Ce sont les memes octets, en ordre inverse** : ils stockent en
+gros-boutiste, le decodeur du depot lit en petit-boutiste. Verifie sur quatre noms :
+
+| nom | leur hachage | le notre | relation |
+|---|---|---|---|
+| `gravity_hammer` | `3C2CDAAC` | `ACDA2C3C` | octets inverses |
+| `needler` | `07E63B7A` | `7A3BE607` | octets inverses |
+| `assault_rifle` | `AF1EAA12` | `12AA1EAF` | octets inverses |
+| `warthog` | `B7491EF0` | `F01E49B7` | octets inverses |
+
+La recette de Q1.0 est donc confirmee de l'exterieur, pas seulement par coherence interne.
+
+**Ce que ces dictionnaires ne couvrent PAS, mesure et non suppose** :
+
+- leurs `tagnames.txt` sont d'un **autre build** : sur les 3 120 `food` que leur dump liste
+  pour `forge_objects-rtx-new.module` et nos 4 235, l'intersection des identifiants est
+  **exactement 0**. Les identifiants de tag ont bouge entre les versions ;
+- leur `all_trimmed.txt` (616 697 noms) ne contient **aucun** des huit StringID des quatre
+  emplacements — ni les `Representation Name`, ni les `Crate Variant` ;
+- il ne contient meme pas nos noms deja craques (`gravity_hammer` y est, mais pas
+  `skull_weapon`) : c'est un dictionnaire partiel, collecte sur d'autres tags.
+
+**Gain net de la passe** : +3 noms (`warthog_gauss`, `primitive_teleporter`, `shell_casing`),
+soit **67 entrees nommees** au total, et surtout la validation externe de la methode.
+
 ### Q1.0-ter LA STRUCTURE DU TAG `food` EST NOMMEE — definition communautaire
 
 Piste ouverte par l'utilisateur (`Surasia/InfiniteExt`, qui mene a
