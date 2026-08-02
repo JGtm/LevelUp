@@ -358,9 +358,31 @@ func persistWeaponAccuracy(ctx context.Context, tx *sql.Tx, rows []WeaponAccurac
 	return nil
 }
 
+// persistKillerVictim ecrit les couples tueur -> victime du match, DANS LES DEUX TABLES.
+//
+// DOUBLE ECRITURE ASSUMEE, ET DATEE (2026-08-02) : la table canonique `match_kill_events`
+// recoit les couples comme une PASSE (append-only, ADR 0026) ; la table historique
+// `killer_victim_pairs` continue de les recevoir ligne a ligne, parce que ses ~20 lecteurs de
+// production n ont pas encore migre.
+//
+// POURQUOI ELLE N A PAS ETE COUPEE LE JOUR MEME, et c est une mesure qui l a decide : le
+// remplacement pur aurait fait perdre 25 % des morts sur les matchs couverts par un film. Sur
+// les 949 matchs concernes, l API en compte 100 266 (les evenements `death` de
+// `highlight_events`, l oracle), l ancienne table en portait 98 662 (98,4 %) et la passe de
+// film n en publie que 74 569 (74,4 %). La vue `_latest` retenant UNE passe par match, la passe
+// de film — plus riche par ligne (source du degat, assistant) mais plus pauvre en couverture —
+// aurait EFFACE de la lecture un quart des morts, sans erreur ni compteur pour le signaler.
+//
+// RETRAIT : conditionne a ce que la passe de film porte l integralite du kill-feed (le
+// collecteur doit partir de la liste officielle des morts et l ENRICHIR, au lieu de publier la
+// seule liste qu il sait decoder). Tant que le rapport `lignes_passe_film / morts_api` mesure
+// sur les matchs a film n atteint pas celui de l ancienne table, cette seconde ecriture reste.
 func persistKillerVictim(ctx context.Context, tx *sql.Tx, rows []KillerVictimInsert) error {
 	if len(rows) == 0 {
 		return nil
+	}
+	if err := persistCreditKillEvents(ctx, tx, CreditKillEventsFromPairs(rows[0].MatchID, rows)); err != nil {
+		return err
 	}
 	now := time.Now().UTC()
 	for _, p := range rows {

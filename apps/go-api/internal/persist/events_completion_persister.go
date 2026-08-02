@@ -235,11 +235,21 @@ func insertCompletionHighlightEvents(ctx context.Context, tx *sql.Tx, matchID st
 	return inserted, nil
 }
 
-// insertCompletionKillerVictim remplace les killer_victim_pairs du match
-// (DELETE-then-INSERT, forme par-kill avec gamertags + time_ms).
+// insertCompletionKillerVictim écrit les couples tueur → victime de la complétion combat,
+// DANS LES DEUX TABLES (double écriture datée du 2026-08-02, cf. persistKillerVictim).
+//
+// Côté table canonique, elle AJOUTE UNE PASSE : deux passes ne s'additionnent pas, la vue
+// `_latest` ne retient que la dernière. C'est là que meurt le mécanisme des doublons — le
+// DELETE-then-INSERT ci-dessous face à l'INSERT nu du flux primaire, 46,5 % de la table et un
+// facteur 2,006 sur les agrégats carrière. Il subsiste tant que la table historique est lue,
+// et il part avec elle.
 func insertCompletionKillerVictim(ctx context.Context, tx *sql.Tx, matchID string, pairs []KVPairCompletion) error {
 	if len(pairs) == 0 {
 		return nil
+	}
+	if err := persistCreditKillEvents(ctx, tx,
+		CreditKillEventsFromPairs(matchID, killerVictimRowsFromCompletion(matchID, pairs))); err != nil {
+		return err
 	}
 	if _, err := tx.ExecContext(ctx,
 		`DELETE FROM killer_victim_pairs WHERE match_id = ?`, matchID); err != nil {
@@ -263,6 +273,26 @@ func insertCompletionKillerVictim(ctx context.Context, tx *sql.Tx, matchID strin
 		}
 	}
 	return nil
+}
+
+// killerVictimRowsFromCompletion adapte la forme de la complétion à celle du pipeline
+// primaire. Adaptation de FORME seulement : la traduction vers les morts de
+// `match_kill_events` reste unique (CreditKillEventsFromPairs), sans quoi les trois états de
+// l'assistant auraient deux chances d'être confondus.
+func killerVictimRowsFromCompletion(matchID string, pairs []KVPairCompletion) []KillerVictimInsert {
+	rows := make([]KillerVictimInsert, 0, len(pairs))
+	for _, kv := range pairs {
+		rows = append(rows, KillerVictimInsert{
+			MatchID:        matchID,
+			KillerXUID:     kv.KillerXUID,
+			KillerGamertag: kv.KillerGamertag,
+			VictimXUID:     kv.VictimXUID,
+			VictimGamertag: kv.VictimGamertag,
+			Count:          1,
+			TimeMS:         kv.TimeMS,
+		})
+	}
+	return rows
 }
 
 // markCompletionRegistry positionne les bits de complétude + events_loaded en un

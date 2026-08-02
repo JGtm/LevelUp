@@ -172,6 +172,7 @@ var canonicalOrder = []string{
 	// fichier — steps_shared_kill_events.go précède steps_shared_objective_events.go),
 	// exigence de TestSortByCanonicalIsNoOpOnCurrentRegistry.
 	"shared_match_kill_events_v1",                      // shared (1 ligne par mort, crédit kill-feed + source du dégât, append-only + vue _latest)
+	"shared_kill_events_from_pairs_v1",                 // shared (J4 : bascule killer_victim_pairs -> match_kill_events, reprise dédupliquée + vue de compatibilité)
 	"shared_objective_events_v1",                       // shared
 	"shared_objective_score_v1",                        // shared
 	"shared_match_player_positions_v1",                 // shared

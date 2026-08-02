@@ -20,8 +20,16 @@ import (
 const targetMatch = "de3cec8b-edf1-4edc-ad87-830369e0a358"
 
 // Vues dépendant (directement ou transitivement) de match_participants, dans
-// l'ordre de recréation (v_gamertag_lookup avant v_killer_victim_full).
-var dependentViews = []string{"v_gamertag_lookup", "v_killer_victim_full", "mv_player_matches"}
+// l'ordre de recréation.
+//
+// BASCULE DU 2026-08-02 : v_killer_victim_full n'existe plus (deux LEFT JOIN morts), et
+// match_kill_events_latest entre dans la liste — v_gamertag_lookup la lit désormais, donc elle
+// doit être recréée AVANT lui. Cet outil porte `//go:build ignore` : AUCUN test ne le protège,
+// cette liste est le seul filet. Une vue oubliée ici n'est pas recréée après le CTAS, et elle
+// manque ensuite silencieusement.
+var dependentViews = []string{
+	"match_kill_events_latest", "v_gamertag_lookup", "mv_player_matches",
+}
 
 func main() {
 	dbPath := os.Args[1]

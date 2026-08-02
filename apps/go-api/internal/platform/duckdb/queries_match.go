@@ -431,6 +431,13 @@ SELECT
 // Paramètre : ? = match_id.
 // Retourne 6 colonnes : killer_xuid, killer_gamertag, victim_xuid,
 // victim_gamertag, kill_count, time_ms.
+//
+// LIT LA TABLE DIRECTEMENT depuis le 2026-08-02. Elle lisait `v_killer_victim_full`, qui
+// projetait `kvp.*` PUIS deux colonnes `killer_gamertag`/`victim_gamertag` re-jointes sur
+// `v_gamertag_lookup` — donc portant déjà ces noms-là. DuckDB renommant silencieusement les
+// homonymes, `kvf.killer_gamertag` désignait la colonne de la table, jamais celle de la
+// jointure : les deux LEFT JOIN étaient du travail mort exécuté à chaque chargement de vue
+// match. Les six colonnes rendues sont identiques, la vue a été supprimée.
 const Q20KVPairs = `
 SELECT
     kvf.killer_xuid,
@@ -439,7 +446,7 @@ SELECT
     kvf.victim_gamertag,
     kvf.kill_count,
     kvf.time_ms
-FROM v_killer_victim_full kvf
+FROM killer_victim_pairs kvf
 WHERE kvf.match_id = ?
 ORDER BY kvf.time_ms ASC`
 

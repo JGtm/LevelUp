@@ -341,6 +341,15 @@ func applyUniversalAnonymization(ctx context.Context, dst *sql.DB, roster []demo
 		{"weapon_kills", [][2]string{{"xuid", ""}}},
 		{"highlight_events", [][2]string{{"xuid", ""}}},
 		{"killer_victim_pairs", [][2]string{{"killer_xuid", "killer_gamertag"}, {"victim_xuid", "victim_gamertag"}}},
+		// match_kill_events porte TROIS paires d'identité, pas deux : le tueur, la victime et
+		// l'ASSISTANT. Oublier la troisième ferait fuiter des xuid et des gamertags réels dans
+		// une démo publique — la colonne n'existait pas sur killer_victim_pairs, qui n'a jamais
+		// su représenter l'assistant.
+		{"match_kill_events", [][2]string{
+			{"feed_killer_xuid", "feed_killer_gamertag"},
+			{"victim_xuid", "victim_gamertag"},
+			{"assist_xuid", "assist_gamertag"},
+		}},
 		// match_objective_stats : extraite depuis le 2026-07-26 et porteuse d'une
 		// colonne xuid — l'omettre ici ferait fuiter les xuid RÉELS du corpus dans
 		// une démo publique. Toute table ajoutée à sharedTablesWhere avec une

@@ -197,10 +197,23 @@ func ApplyDropHighlightEventsGamertag(db *sql.DB) error {
 }
 
 // ApplyResolutionViews crée les vues SQL v6 garanties (v_gamertag_lookup résolveur unifié,
-// v_match_full, v_killer_victim_full). Appelée par les steps title-owned ET par
-// RebuildMatchParticipantsART (qui recrée les vues post-rebuild). DDL de v_gamertag_lookup
-// généré par analysis.GamertagLookupViewSQL (source unique partagée avec le boot).
+// v_match_full). Appelée par les steps title-owned ET par RebuildMatchParticipantsART (qui
+// recrée les vues post-rebuild). DDL de v_gamertag_lookup généré par
+// analysis.GamertagLookupViewSQL (source unique partagée avec le boot).
+//
+// BASCULE DU 2026-08-02 — deux changements, et le second est une suppression :
+//
+//  1. la dépendance garantie n'est plus `killer_victim_pairs` mais `match_kill_events` : c'est
+//     elle que `v_gamertag_lookup` lit désormais, et DuckDB bind les vues à leur création ;
+//  2. `v_killer_victim_full` N'EST PLUS CRÉÉE. Elle projetait `kvp.*` PUIS deux colonnes
+//     `killer_gamertag`/`victim_gamertag` re-jointes qui portaient déjà ces noms-là : les deux
+//     LEFT JOIN sur `v_gamertag_lookup` étaient du travail mort exécuté à chaque chargement de
+//     vue match, et la vue ne « marchait » que par le renommage silencieux qu'applique DuckDB
+//     aux colonnes homonymes. Son seul lecteur (Q20) lit la vue de compatibilité.
 func ApplyResolutionViews(db *sql.DB) error {
+	if err := EnsureMatchKillEvents(db); err != nil {
+		return fmt.Errorf("ensure match_kill_events (dep v_gamertag_lookup): %w", err)
+	}
 	if _, err := db.ExecContext(bootCtx(), `CREATE TABLE IF NOT EXISTS killer_victim_pairs (
 		match_id        VARCHAR NOT NULL,
 		killer_xuid     VARCHAR NOT NULL,
@@ -212,7 +225,7 @@ func ApplyResolutionViews(db *sql.DB) error {
 		is_validated    BOOLEAN DEFAULT FALSE,
 		created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	)`); err != nil {
-		return fmt.Errorf("ensure killer_victim_pairs (dep v_gamertag_lookup): %w", err)
+		return fmt.Errorf("ensure killer_victim_pairs (lue par Q20 et ~20 sites): %w", err)
 	}
 	if _, err := db.ExecContext(bootCtx(), analysis.GamertagLookupViewSQL()); err != nil {
 		return fmt.Errorf("create v_gamertag_lookup: %w", err)
@@ -223,19 +236,6 @@ func ApplyResolutionViews(db *sql.DB) error {
 		SELECT mr.*
 		FROM match_registry mr
 	`)
-
-	if exists, _ := tableExists(db, "killer_victim_pairs"); exists {
-		_, _ = db.ExecContext(bootCtx(), `
-			CREATE OR REPLACE VIEW v_killer_victim_full AS
-			SELECT
-				kvp.*,
-				k.gamertag AS killer_gamertag,
-				v.gamertag AS victim_gamertag
-			FROM killer_victim_pairs kvp
-			LEFT JOIN v_gamertag_lookup k ON kvp.killer_xuid = k.xuid
-			LEFT JOIN v_gamertag_lookup v ON kvp.victim_xuid = v.xuid
-		`)
-	}
 
 	return nil
 }
