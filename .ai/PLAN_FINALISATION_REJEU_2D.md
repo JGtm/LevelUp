@@ -148,19 +148,47 @@ la **confiance dans la lecture** qui doit être filtrée, pas le rattachement qu
 ## LOT 1 — RENDRE LE REJEU ATTEIGNABLE  *(le plus court chemin vers une valeur visible)*
 
 ### 1.1 Supprimer le drapeau mort
-- [ ] Effacer `apps/web/src/lib/feature-flags.ts` (14 lignes, un export, zéro import depuis le
+- [x] Effacer `apps/web/src/lib/feature-flags.ts` (14 lignes, un export, zéro import depuis le
       2026-04-21). Abaisser le plafond `knip` en conséquence — **abaisser, pas relever**.
+      *FAIT 2026-08-02 (J4 session 3).* Fichier supprimé, et les plafonds abaissés **de
+      29/90/86 à 0/0/0** : la mesure, prise avant ET après la suppression, dit que knip ne
+      trouve **plus rien** sur les trois axes. Les plafonds dataient d'un état révolu et
+      laissaient donc rentrer 115 findings sans rien dire — c'était un ratchet qui ne
+      ratchetait plus. `node tools/knip-ratchet.mjs` → 0/0/0 [OK], `npx tsc -b --force` vert.
 
 ### 1.2 Publier la disponibilité par match
-- [ ] Ajouter `ReplayAvailable bool \`json:"replay_available"\`` à `MatchViewHeader`
+- [x] Ajouter `ReplayAvailable bool \`json:"replay_available"\`` à `MatchViewHeader`
       (`internal/domain/match_view.go`), à côté de `WaypointURL` — c'est le patron du dépôt pour
       une disponibilité par-match.
-- [ ] Le remplir depuis la présence de l'artefact via `PathResolver.ReplayArtifactPath`.
+- [x] Le remplir depuis la présence de l'artefact via `PathResolver.ReplayArtifactPath`.
       **Un `os.Stat`, pas une lecture** : le handler ne doit pas charger 2 Mo pour dire oui.
+      *FAIT 2026-08-02 (J4 session 4).* `port.ReplayService.IsAvailable(ctx, matchID) bool` — le
+      MÊME service que l'endpoint `/replay`, donc **une seule résolution de chemin dans le dépôt**.
+      Injecté dans `MatchViewService` par `WithReplay`, appliqué après le header comme le flag
+      « Prolongation ». Nil → faux, jamais d'erreur. Un test écrit un artefact au JSON INVALIDE et
+      vérifie qu'`IsAvailable` répond quand même oui : si l'implémentation lisait, elle ne
+      pourrait pas.
+
+> **CE LIEN N'AURAIT JAMAIS PU APPARAÎTRE — défaut trouvé en posant le gate visuel.** L'outil hors
+> ligne écrit l'artefact sous la forme COURTE du `match_id` (`000d5950.json`, celle du film qu'il
+> vient de décoder) ; l'application ne manipule que la forme COMPLÈTE (`000d5950-….`). Les deux ne
+> se rencontraient jamais : le service cherchait un fichier que personne n'écrit, répondait
+> « aucun rejeu », et `GetReplay` faisait un 404 **sur un artefact présent**. Mesuré : les 3
+> artefacts du dépôt sont tous en forme courte. Correctif : la troncature devient
+> `title.FilmShortMatchID` (`internal/domain/title/film_id.go`), **une seule fois dans le dépôt** (la copie de
+> `sync/haloclient/local_film_cache.go` l'appelle désormais), et `ReplayArtifactPath` normalise —
+> les deux formes donnent le même chemin. Garde-rail : `TestUneSeuleTroncatureDeMatchID` scanne
+> `internal/` et échoue à la 3e copie.
 
 ### 1.3 Poser le lien
-- [ ] Dans `MatchHeader.tsx` / `MatchNavigationBar`, un lien conditionné à `replay_available`.
+- [x] Dans `MatchHeader.tsx` / `MatchNavigationBar`, un lien conditionné à `replay_available`.
       i18n FR+EN. **Pas de lien vers une page vide** : c'est toute la raison de 1.2.
+      *FAIT 2026-08-02.* `ReplayLink` dans `MatchHeader.card.tsx`, première action de la rangée
+      (avant « Copier ID »), rendu `null` quand le champ est faux ou absent. FR « Rejeu 2D » / EN
+      « 2D replay ». Quatre tests : absent quand faux, absent quand le champ manque (titre sans
+      rejeu), présent en FR, présent en EN.
+      **GATE 1 : la revue visuelle est DUE et n'est pas passée** — artefact de revue produit,
+      main rendue.
 
 ### 1.4 Le garde local — SON CRITÈRE EST ATTEINT (mesuré le 2026-07-31)
 
@@ -314,20 +342,56 @@ changement de décodeur qui les déplace fait tomber un test nommé. **ATTEINT l
 ## LOT 3 — LES COUCHES ET LE TITLE-AGNOSTIC
 
 ### 3.1 Les corrections immédiates (aucune raison d'attendre)
-- [ ] **Unifier les deux tables de grenade** — « Dynamo » contre « Shock » pour le même rang.
+- [x] **Unifier les deux tables de grenade** — « Dynamo » contre « Shock » pour le même rang.
       Une seule table, un garde-rail qui interdit la seconde.
-- [ ] **Factoriser les 4 copies** de `keep*OfPublishedTracks` en un helper, avec garde-rail.
-- [ ] Sortir `mapvar` de `internal/analysis/replay` : 673 lignes qu'aucun fichier du rejeu ne
-      consomme.
-- [ ] Faire passer la géométrie par `PathResolver` : `replay-build` lit aujourd'hui `.ai/V7.5/dumps`
+      *FAIT 2026-08-02.* **La contradiction était RÉELLE et mesurée sur `000d5950`** : le lancer
+      publiait `k="Shock"` pendant que le compteur porté de la même fiche affichait « Dynamo ».
+      Correctif : le décodeur ne nomme plus rien — `KnownGrenadeIDs` (map id→nom) devient
+      `GrenadeTypeIDsByRank` (liste ORDONNÉE, sans nom) + `GrenadeRankOf(id) (int, bool)` ; le
+      lancer publie son **rang** (`Grenade.Rank`), qui est un index dans `GrenadeLabels`. Un index
+      ne peut pas diverger de sa table. La constante `GrenadeShock` est renommée `GrenadeDynamo`.
+- [x] **Factoriser les 4 copies** de `keep*OfPublishedTracks` en un helper, avec garde-rail.
+      *FAIT 2026-08-02.* `keepOfPublishedTracks[T]` + `publishedSlots` dans
+      `replay/published_tracks.go` ; les 4 fonctions deviennent des adaptateurs d'une ligne (celle
+      des grenades garde son exemption « position lue sur le projectile »). Garde-rail
+      `TestUneSeuleTroncature...` non — `TestUnSeulConstructeurDEnsembleDeSlotsPublies` : il scanne
+      le paquet, exige que le motif existe CHEZ SON PROPRIÉTAIRE (un garde qui ne peut pas échouer
+      ne garde rien) et **le témoin de détection a été joué** (fichier fautif temporaire → échec
+      nommant le fichier ; retiré → vert).
+- [!] Sortir `mapvar` de `internal/analysis/replay` : 673 lignes qu'aucun fichier du rejeu ne
+      consomme. **HORS PÉRIMÈTRE de la session 4** (l'ordre de mission ferme le lot 3.1 aux
+      grenades, aux 4 copies et à la géométrie). À reprendre avec les découpages 3.3-3.6.
+- [x] Faire passer la géométrie par `PathResolver` : `replay-build` lit aujourd'hui `.ai/V7.5/dumps`
       **par défaut**, un répertoire de rétro-ingénierie hors de `data/`.
+      *FAIT 2026-08-02.* `PathResolver.MapGeometryDir(slug)` →
+      `data/titles/{slug}/reference/map_geometry/`, au même titre que `map_structure/` et
+      `map_quant_bounds.json` (donnée de référence versionnée, pas un cache). Les deux CSV y sont
+      déplacés (`git mv`), et les 3 artefacts reconstruits chargent bien 382 props depuis le
+      nouveau chemin.
 
 ### 3.2 Sortir les catalogues Halo vers les mappings de titre
-- [ ] Armes : brancher `WeaponLabels` sur `config/titles/halo_infinite/mappings/weapon_names.toml`
+- [x] Armes : brancher `WeaponLabels` sur `config/titles/halo_infinite/mappings/weapon_names.toml`
       — **il existe déjà et il est bilingue**.
-- [ ] Grenades, capacités : même traitement. Aujourd'hui les noms de capacité sont **en français
+- [x] Grenades, capacités : même traitement. Aujourd'hui les noms de capacité sont **en français
       dans du Go**, ce qui interdit l'anglais autant que l'ajout d'un titre.
-- [ ] Web : les 22 noms d'armes en dur de `shotEffects.ts` doivent venir du document, pas du code.
+- [x] Web : les 22 noms d'armes en dur de `shotEffects.ts` doivent venir du document, pas du code.
+
+*FAIT 2026-08-02.* Nouveau `config/titles/halo_infinite/mappings/replay_labels.toml` (rangs de
+grenade, capacités, effet de tir par `weapon_key`) + loader strict `mappings.LoadReplayLabels*`
+(liste FERMÉE des 7 effets : une valeur libre ferait tomber l'arme sur le rendu neutre **en
+silence**). La jointure `famille (high-32) → weapon_key → {nom, effet}` est
+`replay.NewLabelCatalog`, **une seule fois** — elle est appelée par la production
+(`games/halo_infinite/replaylabels.Load`) ET par le golden, qui lit donc les VRAIS fichiers du
+titre. `SchemaVersion 1 → 2` : les trois tables deviennent `{en, fr}` (un artefact est construit
+une fois et servi aux deux locales — y figer une langue reviendrait à choisir celle du lecteur au
+moment du décodage). Côté web, `shotEffects.ts` ne connaît plus une seule arme Halo : il valide la
+famille publiée par le document (`weaponLabels[id].fx`) contre les 7 formes qu'il sait dessiner.
+
+**Trois libellés CHANGENT, et ce sont des corrections** : `0xF408190F` Mk51 → **MK50 Sidekick**,
+`0x9D6AAED2` « M41 SPNKr » → **SPNKr à combustible**, `0x3E070217` « Pulse Carbine » → **Carabine
+Vestige**. L'énumération du décodeur nommait deux familles d'après la mauvaise arme ; le registre
+du titre les nomme juste. Les deux dernières ont reçu leur effet dans le TOML pour **préserver le
+rendu qu'elles avaient sous un faux nom** (explosif / plasma).
 
 ### 3.3 Découper le paquet Go
 - [ ] Un paquet de **décodage** (883 lignes : `inventory_decode`, `deaths_source`, `player_index`,
@@ -626,6 +690,31 @@ même ordre ; seuls le poids du trait (1 px contre 1,6) et l'opacité (0,7 contr
 séparent. Le rendu « neutre » est donc un balistique aminci, pas une forme qui n'affirme rien —
 alors que l'en-tête de `shotEffects.ts` promet qu'une arme inconnue « ne tombe jamais sur un
 rendu approchant ». Un test fige l'état actuel pour qu'il cesse d'être invisible.
+
+### D6 — quatre armes du registre n'ont PAS d'effet de tir *(2026-08-02, session 4)*
+
+`hinf_bandit`, `hinf_ma5k_avenger` et les 3 grenades portées n'ont pas d'entrée dans
+`[shot_effects]`, donc leurs tirs tombent sur le trait neutre. **Ce n'est pas une régression** :
+elles n'étaient pas non plus dans le catalogue web qui a été déplacé (le Bandit s'y appelait
+« M392 Bandit », absent de la table par nom). Les nommer maintenant serait une décision produit,
+pas un déplacement — donc consigné, pas traité. Le Bandit et le MA5K sont manifestement
+balistiques ; à décider avec la revue visuelle.
+
+### D7 — trois familles d'arme du décodeur n'ont aucun `weapon_key` *(2026-08-02, session 4)*
+
+`Sandwich`, `Mythic Sandwich` et `Mutilator` sont connues de l'énumération du décodeur (35
+familles) mais absentes du registre d'armes du titre (32) : elles n'ont donc **aucun libellé** et
+gardent leur hexadécimal à l'écran. Aucune n'apparaît dans les 3 artefacts construits à ce jour.
+Figé par une allowlist datée dans `TestFamillesDArmeConnuesDuDecodeurSontAuRegistre`, qui échoue
+si la liste grossit **et** si une entrée devient périmée. Les ajouter au registre d'armes touche
+`metadata.duckdb` (kills, donut d'armes) — hors périmètre d'une session de rejeu.
+
+### D8 — `cmd/openapi-gen` journalise une erreur de mappings à chaque exécution *(2026-08-02)*
+
+`level=ERROR msg=mappings_validation_failed … openapi-gen<rand>/config/titles/halo_infinite/mappings/fields.toml`
+— le générateur boote dans un répertoire temporaire sans `config/`. Le fichier est écrit
+correctement malgré tout (581 Ko, golden `TestOpenAPIYAMLIsUpToDate` vert). Défaut d'outillage
+préexistant, non traité : une ERREUR qui n'en est pas une use la vigilance.
 
 ### D5 — `js-yaml` est une dépendance fantôme d'`apps/web`
 

@@ -229,6 +229,16 @@ facteur **1,879** — sur un duo reel, l ecran affiche **101 frags la ou il y en
 
 ### 2.2 Les sites, tous recenses
 
+> ⚠ **L INVENTAIRE CI-DESSOUS ETAIT INCOMPLET DE MOITIE.** Re-fait par grep le 2026-08-02
+> (session 3) : **20 sites de LECTURE** en production, pas 8, plus 3 ecrivains, 3 sites de DDL
+> et 5 sites speciaux. Manquaient : `queries_career_encounters.go:191` et `:294`,
+> `queries_relations_moments.go:104`, `queries_squad.go:201`,
+> `engagement_score_repo_queries.go:199`, `highlight_events_repo.go:135`,
+> `halo5/halo5_match_events_source.go:46`, `sync/engagement.go:468`,
+> `sync/enrichment_discipline.go:39` et `:47`, `analysis/identity.go` (v_gamertag_lookup),
+> plus `ops/seed_demo_corpus.go:343` et `ops/snapshot_export.go:26` cote sites speciaux.
+> *Lecon : une liste de sites qu on recopie d une session a l autre vieillit sans le dire.*
+
 | # | Site | Ce qu il attend |
 |---|---|---|
 | 1 | `queries_career_encounters.go:48` (Q26) | cumul — rencontres carriere |
@@ -242,21 +252,35 @@ facteur **1,879** — sur un duo reel, l ecran affiche **101 frags la ou il y en
 | S1 | `internal/ops/seed_demo.go:108` | la table est COPIEE dans la base de demo |
 | S2 | `cmd/rebuild_mp/main.go:24` | `v_killer_victim_full` dans les vues dependantes |
 
-- [ ] **Traiter 4 et 5 dans le meme commit** (regle des <= 2 copies) et poser le garde-rail
-- [ ] `v_killer_victim_full` NE SURVIT PAS : ses deux `LEFT JOIN` sont du travail mort a chaque
-      chargement de vue match, et elle ne marche que par un renommage silencieux de DuckDB
+- [!] **Traiter 4 et 5 dans le meme commit** (regle des <= 2 copies) et poser le garde-rail —
+      NON TRAITE : la bascule des lecteurs est reportee (cf. journal session 3), les deux copies
+      restent identiques et lisent la meme table.
+- [x] `v_killer_victim_full` NE SURVIT PAS — **FAIT le 2026-08-02**. Supprimee du DDL
+      (`ApplyResolutionViews`), de la migration, des vues dependantes de `rebuild_mp` et du
+      contrat de snapshot. Son unique lecteur, Q20, lit `killer_victim_pairs` directement et
+      rend les SIX MEMES colonnes : les deux `LEFT JOIN` re-joignaient `v_gamertag_lookup` pour
+      produire deux colonnes qui portaient deja ces noms-la, et DuckDB renommant silencieusement
+      les homonymes, `kvf.killer_gamertag` designait la colonne de la table — jamais la jointure.
 
 ### 2.3 Deux arbitrages DEJA TRANCHES, a ecrire dans le DDL
 
-- [ ] **Les bots restent EXCLUS des agregats carriere.** La nouvelle table sait les representer,
-      l ancienne non (zero ligne de bot en prod) : un compteur qui bouge a cause d une migration
-      technique est une mauvaise surprise. Ils sont DANS la table, les lecteurs carriere filtrent.
-      **Attention** : Q26 ne filtre PAS les bots aujourd hui, Q27 si — c est le piege de la bascule.
-- [ ] **Le BTB reste INCLUS dans les cumuls, interdit ligne par ligne.** C est exactement ce que
-      `publishable` veut dire : exact en agregat, faux individuellement.
+- [~] **Les bots restent EXCLUS des agregats carriere** — sans objet tant que les lecteurs
+      carriere lisent l ancienne table, qui ne porte aucune ligne de bot. A re-armer le jour de
+      la bascule des lecteurs (le filtre `NOT LIKE 'bid(%'` de Q27 est un NO-OP aujourd hui,
+      Q26 n en a pas : c est la que le piege se refermera).
+- [~] **Le BTB reste INCLUS dans les cumuls, interdit ligne par ligne** — idem : `publishable`
+      est ecrit dans `match_kill_events` et n a pas encore de lecteur.
 
 **GATE 2** : pour chaque lecteur bascule, une requete AVANT/APRES sur le meme match rend le meme
 resultat a la deduplication pres ; aucun lecteur ne casse en silence ; `go test ./internal/...`.
+
+**GATE 2 — RESULTAT DU 2026-08-02, sur les deux bases reelles.** Onze mesures (lignes, matchs,
+cles distinctes, couples carriere, top duo Q26 et Q27, lignes nommees, xuids du resolveur, xuids
+NOMMES par le resolveur, sonde de presence, instants non nuls) prises AVANT sur la sauvegarde et
+APRES sur la base migree : **les onze sont identiques sur les deux titres**. Halo Infinite
+250 139 / 1 343 / 133 886 / 49 708 / 101 / 101 / 18 219 / **18 183** ; Halo 5 268 337 / 2 754 /
+268 337 / 86 484 / 274 / 274 / 14 652 / **14 652**. Aucun lecteur ne bouge — c est le resultat
+attendu d une session qui ALIMENTE la table canonique sans encore y brancher personne.
 
 ---
 
@@ -459,10 +483,30 @@ Les armes a projectile sont fausses d un facteur 30 a 60 — **non publiables**.
 
 ### 4.3 Capabilities
 
-- [ ] Une cle par famille de donnee, pas une seule fourre-tout : le kill enrichi, les tirs par arme,
+- [x] Une cle par famille de donnee, pas une seule fourre-tout : le kill enrichi, les tirs par arme,
       la precision. Un titre peut avoir l un sans les autres.
-- [ ] Cote web : `useFieldLabel()` / `useOutcomeLabel()`, jamais de libelle en dur ; strings FR ET EN
-- [ ] Couleurs par tokens semantiques uniquement
+      *FAIT 2026-08-02 (J4 session 4).* **TROIS familles, trois cles, et aucune n en couvre deux** :
+      `film.kill_source` (le kill enrichi, deja posee en session 1), **`film.weapon_shots`
+      (NOUVELLE** — la ventilation des tirs, `shared.match_weapon_shots`) et
+      `match.weapon.accuracy` (la precision, deja au vocabulaire). Les TROIS endroits exiges par le
+      test de parite sont faits : constante `games.CapFilmWeaponShots`, `AllCapabilityKeys()`
+      (21 -> 22, compteur mis a jour) et la `CapabilityMap` codee en dur de l adapter.
+      **La cle a un CONSOMMATEUR, ce n est pas un drapeau decoratif** : `collectShots` la teste et
+      degrade en silence (aucune erreur — la passe des morts reste acquise). Prouve sur film reel
+      dans les DEUX sens : `film.kill_source` seule -> 90 morts et **0** ligne de tirs ; les deux
+      -> 90 morts et **30** lignes (`TestTirsParArmeSuiventLeurPropreCapability`, `-tags=integration`).
+- [x] La RAISON du `not_exposed` de `match.weapon.accuracy` corrigee pour Infinite — elle etait
+      PERIMEE. Elle disait « pas d events weapon_drop, table non peuplee » ; la table des tirs est
+      desormais remplie. La vraie raison est le §4.2 : le taux calcule sur le corpus entier
+      INVERSE l ordre MA40/Sidekick. Ecrit dans `adapter.go` ET dans `capabilities.toml`, avec le
+      critere de bascule (une population de publication declaree DANS LE CODE + l ecart a l API
+      publie a cote du taux). *Doc inversee sur un flag = incident en attente (anti-pattern n°9).*
+- [~] Cote web : `useFieldLabel()` / `useOutcomeLabel()`, jamais de libelle en dur ; strings FR ET EN
+      — **aucune surface produit n expose ces donnees**, donc rien a localiser ici. La regle a en
+      revanche ete appliquee la ou une surface EXISTE (rejeu 2D, lot 3.2) : les libelles d armes,
+      de grenades et de capacites sont passes du code Go/TS aux mappings du titre, bilingues.
+- [~] Couleurs par tokens semantiques uniquement — idem : rien de nouveau a l ecran pour ces
+      familles. Verifie sur le diff de la session : 0 hex, 0 classe Tailwind couleur.
 
 **GATE 4** : `make check-types`, `make test-web`, aucun hex ni classe Tailwind couleur dans
 `features/`, i18n FR+EN complet.
@@ -760,6 +804,136 @@ d environnement**, donc dans le `go test ./... -p 1` du job de couverture, en 0,
 - **Portee declaree** : la calibration tombe en PROFIL PLAT sur un prefixe (l echantillon ne
   rend aucun record de biped), donc ce garde ne verrouille PAS le balayage lui-meme — seul
   `TestGoldenFilms`, sur les films entiers, le fait.
+
+---
+
+### 2026-08-02 — J4 session 3 : le producteur live, et la mesure qui a arrete la bascule
+
+**Perimetre traite** : item zero (CI), re-inventaire des sites, producteur live des kill-events
+pour les DEUX titres, reprise dedupliquee de l ancienne table, suppression de
+`v_killer_victim_full`, GATE 2. **Phase 2 : PARTIELLE** — la table est alimentee et les deux
+titres y ecrivent, mais AUCUN lecteur n a bascule et `killer_victim_pairs` n est pas retiree.
+**Phase 4 : NON ENTAMEE.**
+
+**LA MESURE QUI A TOUT DECIDE — LA PASSE DE FILM PUBLIE UN QUART DE MORTS EN MOINS.**
+La bascule etait ecrite comme « `killer_victim_pairs` devient une vue sur
+`match_kill_events_latest` ». Elle a ete IMPLEMENTEE, appliquee sur les bases reelles, puis
+RETIREE — parce que le controle avant/apres a montre ce que personne n avait mesure. Oracle :
+les evenements `death` de `highlight_events`, sur les 949 matchs a film de la base Infinite.
+
+| source | morts | part de l oracle |
+|---|---|---|
+| API (`highlight_events`, `death`) | **100 266** | — |
+| `killer_victim_pairs` (dedupliquee) | 98 662 | **98,4 %** |
+| passe de film (`marche` + `scan`) | 74 569 | **74,4 %** |
+
+La vue `_latest` retenant UNE passe par match, la passe de film — plus riche par LIGNE (source du
+degat, assistant, parts) mais plus pauvre en COUVERTURE — serait devenue la generation servie et
+aurait efface **25 697 morts** de la lecture. Sans erreur, sans compteur, sans qu un seul nom ni
+un seul instant ne change : seulement moins de lignes. Le controle chiffre : 405 matchs sur 949
+en perte, 133 886 couples distincts tombant a 107 533.
+
+*Ce que ca apprend, et qui vaut plus que le correctif* : **le corollaire etait ECRIT dans le DDL
+depuis la session 1** (« si les deux producteurs ecrivent le meme match, LE DERNIER GAGNE
+ENTIEREMENT »), et il etait meme signale comme une contrainte d ordonnancement. Ce qui manquait
+n etait pas l avertissement, c etait sa MAGNITUDE. Un risque documente sans chiffre se lit comme
+un risque theorique.
+
+**CE QUI A ETE LIVRE, ET QUI TIENT** :
+
+1. **Le producteur live** (`persist/kill_events_credit.go`) — les deux producteurs de
+   `match_kill_events` etaient HORS LIGNE, appeles par la seule sous-commande
+   `backfill-killsource` : verifie par grep sur `internal/api/`, `internal/sync/v2/`,
+   `cmd/server/`, `internal/service/` → **zero appel**. Tout match synchronise apres la derniere
+   passe de backfill n avait donc AUCUNE ligne. Les couples que le pipeline rend deja
+   (`Shared.KillerVictim`) sont desormais traduits en morts credit-seul et ecrits dans la MEME
+   transaction que le match. UNE seule traduction dans le depot, empruntee par les deux
+   ecrivains — flux primaire et completion combat.
+2. **Title-agnostic par construction** : Halo Infinite y arrive par sa completion combat, Halo 5
+   par son carnage natif. Ce n est pas cosmetique — mesure : `highlight_events` de Halo 5 ne
+   porte AUCUN evenement kill/death (medal, assist, mode seulement), donc le producteur
+   credit-seul de `killcollector`, qui lit cette table, n aurait JAMAIS couvert ce titre. Et
+   Halo 5 pese **268 337 couples sur 2 754 matchs, dont ZERO doublon**.
+3. **La reprise dedupliquee** (migration `shared_kill_events_from_pairs_v1`) : tout ce que porte
+   l ancienne table entre dans la canonique, `SELECT DISTINCT`, une passe par match, en sautant
+   les matchs deja couverts. Effet mesure : Infinite **0 ligne** (les 1 343 matchs etaient deja
+   couverts), Halo 5 **268 337 lignes** — le titre passe de « la table n existe meme pas » a
+   couverture complete.
+4. **La preseance testee EN POSITIF** sur les voies de film (`persist.FilmReadPaths`), au lieu
+   de la negation de sa propre voie. L ancienne forme (`read_path <> 'highlight-events'`) faisait
+   passer TOUTE voie autre que la sienne pour un film : le jour ou une seconde voie credit est
+   apparue — ce jour meme — elle aurait bloque le producteur live en silence.
+5. **`v_killer_victim_full` supprimee** (cf. §2.2), et **`feature-flags.ts`** cote web, avec le
+   plafond knip abaisse **de 29/90/86 a 0/0/0** : le compte reel etait deja a zero sur les trois
+   axes, donc les plafonds laissaient rentrer 115 findings sans rien dire.
+6. **Le resolveur d identite lit les DEUX sources.** `v_gamertag_lookup` a ete rebranche sur
+   `match_kill_events_latest` — le 11e site, celui dont l oubli aurait fait retomber tous les
+   adversaires sur « Joueur #### ». Mesure : la canonique SEULE coutait **4 gamertags sur
+   18 219**. La jambe historique est conservee en UNION jusqu au retrait de la table : le
+   resolveur rend exactement les memes 18 183 noms qu avant.
+
+**LE PIEGE DE METHODE DE LA SESSION** : le decoupeur SQL de `internal/sync/schema.go` (`splitSQL`)
+n est PAS conscient des commentaires — il coupe sur CHAQUE `;`, y compris dans un `--`. Un
+point-virgule ajoute dans un commentaire du schema de base a fait echouer 13 tests avec
+« empty query », a des kilometres de la cause. ⚠ A ne pas confondre avec le decoupeur du paquet
+`migration`, lui conscient des commentaires (constat de la session 1) : **ce sont deux fonctions
+differentes, et une seule des deux est sure**.
+
+**CE QUE LE RETRAIT DE `killer_victim_pairs` ATTEND** — un critere, pas une date : que la passe
+de film porte l INTEGRALITE du kill-feed. Le collecteur doit partir de la liste officielle des
+morts et l ENRICHIR de ce qu il sait decoder, au lieu de publier la seule liste qu il sait
+decoder. Mesurable : `lignes_passe_film / morts_api` >= le ratio de l ancienne table (98,4 %) sur
+le meme perimetre. Tant que ce n est pas vrai, remplacer reviendrait a echanger 46,5 % de
+doublons contre 25 % de morts manquantes — *et le doublon se voit, la mort manquante non*.
+
+---
+
+### 2026-08-02 — J4 session 4 : l exposition, et la porte qui n existait pas
+
+**Perimetre traite** : phase 4 (capabilities par famille), plus les lots 1.2/1.3 et 3.1/3.2 du plan
+de finalisation du rejeu. **Phase 4 : CLOSE au sens ou elle etait armable** — les trois familles ont
+leur cle, la nouvelle a un consommateur teste, et la raison perimee du `not_exposed` de la precision
+est corrigee. **Aucune surface produit n a ete ouverte**, et c est conforme : exposer une lecture
+alimentee par une table dont la couverture est en arbitrage (74,4 % contre 98,4 %) ferait des pages
+qui se vident. La bascule des lecteurs n a pas ete rouverte.
+
+**CE QUI A ETE TROUVE EN POSANT LE GATE VISUEL, ET QUI VAUT LA SESSION.** Le lien vers le rejeu
+n aurait **jamais** pu apparaitre. L outil hors ligne ecrit l artefact sous la forme COURTE du
+`match_id` (`000d5950.json` — celle du film qu il vient de decoder) ; l application ne manipule que
+la forme COMPLETE. Le service cherchait donc un fichier que personne n ecrit : `GetReplay` rendait
+un 404 **sur un artefact present**, et `replay_available` aurait ete faux partout. Les 3 artefacts
+du depot sont tous en forme courte — le defaut etait total, pas marginal.
+
+*Ce que ca apprend* : le champ `replay_available` ne prouve rien tant qu on n a pas ouvert la page.
+Le gate visuel n est pas un rituel de fin — c est le seul controle qui aurait pu voir ce defaut, et
+il l a vu **avant** d etre joue, simplement en cherchant l URL a donner a l utilisateur.
+
+**Correctif** : la troncature devient `title.FilmShortMatchID`, **une seule fois dans le depot** —
+la copie de `sync/haloclient/local_film_cache.go` l appelle desormais. `ReplayArtifactPath`
+normalise : les deux formes donnent le meme chemin. Garde-rail `TestUneSeuleTroncatureDeMatchID`
+(scan d `internal/`, echoue a la 3e copie).
+
+**LE RESTE, EN BREF** :
+
+1. **Les grenades etaient nommees deux fois et differemment**, et c est mesure sur `000d5950` : le
+   lancer publiait « Shock » quand le compteur porte de la meme fiche disait « Dynamo ». Le
+   decodeur ne nomme plus rien (liste ORDONNEE de tags, sans libelle) ; le lancer publie son RANG,
+   qui est un index dans la table du titre. Un index ne peut pas diverger de sa table.
+2. **Les catalogues Halo sortent du code** vers `config/titles/halo_infinite/mappings/` : les noms
+   d armes viennent de `weapon_names.toml` (bilingue, deja la), les rangs de grenade / capacites /
+   effets de tir d un nouveau `replay_labels.toml`. Cote web, `shotEffects.ts` ne connait plus une
+   seule arme Halo. **Trois libelles CHANGENT et ce sont des corrections** : l enumeration du
+   decodeur nommait `0x9D6AAED2` « M41 SPNKr » (c est le SPNKr a combustible) et `0x3E070217`
+   « Pulse Carbine » (c est la carabine Vestige).
+3. **Les 3 artefacts reconstruits et compares champ par champ** : traces, tirs, inventaire,
+   couverture, roster, geometrie et structure **identiques** ; les lancers identiques hors leur
+   type ; la correspondance ancien nom -> nouveau rang exacte ; 39/39, 17/17 et 12/12 armes
+   toujours nommees. Le seul identifiant sans effet de tir est la grenade Dynamo PORTEE — une
+   grenade ne se tire pas.
+4. **4 copies de `keep*OfPublishedTracks` factorisees** avec garde-rail et temoin de detection joue.
+
+**CE QUI ATTEND L UTILISATEUR** : la revue visuelle du lot 1 (le lien, son absence, les familles
+d effet de tir). Elle n est PAS declaree passee.
 
 ---
 

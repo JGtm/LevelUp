@@ -415,8 +415,25 @@ table VIDE casserait les pages carrière entre P2 et P3. Ordre corrigé :
 3. **P2** — la bascule des 8 lecteurs (+ les 2 sites spéciaux S1/S2), gate AVANT/APRÈS sur
    données réelles. Les deux arbitrages du plan tiennent (bots exclus des agrégats — attention
    Q26 ne filtre pas les bots aujourd'hui ; BTB inclus en cumul, interdit ligne à ligne).
+   *PARTIELLE — J4 session 3 (2026-08-02). L'inventaire était incomplet de moitié (**20** sites
+   de lecture, pas 8). Trois préalables ont été livrés : le producteur LIVE des kill-events pour
+   les deux titres (les deux producteurs existants étaient hors ligne — zéro appel depuis
+   `api/`, `sync/v2/`, `cmd/server/`, `service/`), la reprise dédupliquée de l'ancienne table, et
+   la suppression de `v_killer_victim_full`. **La bascule elle-même est ARRÊTÉE par une mesure** :
+   la passe de film ne publie que **74,4 %** des morts de l'oracle API là où l'ancienne table en
+   porte **98,4 %** — la remplacer effacerait 25 697 morts sur 949 matchs, sans erreur ni
+   compteur. Le corollaire était écrit dans le DDL depuis la session 1 ; ce qui manquait était sa
+   magnitude. GATE 2 passé au sens strict : les 11 mesures sont IDENTIQUES avant/après sur les
+   deux titres.*
 4. **P4** — l'exposition produit (capabilities par famille, i18n FR+EN, tokens). Le piège
    MA40/Sidekick du §4.2 est NON NÉGOCIABLE : jamais de taux par arme sur corpus entier.
+   *FAIT — J4 session 4 (2026-08-02), pour ce qui était armable sans rouvrir P2.* Trois familles,
+   trois clés : `film.kill_source` (déjà là), **`film.weapon_shots` (nouvelle)** et
+   `match.weapon.accuracy`. La nouvelle clé a un CONSOMMATEUR testé sur film réel dans les deux
+   sens (kill_source seule → 90 morts et 0 tir ; les deux → 90 morts et 30 tirs). La raison du
+   `not_exposed` de la précision était PÉRIMÉE (« table non peuplée ») : réécrite sur le vrai
+   motif — le taux sur corpus entier inverse l'ordre MA40/Sidekick — avec son critère de bascule.
+   **Aucune surface produit ouverte**, conformément à l'arbitrage : elle se viderait.*
 
 **Découverte J0.1 à intégrer au pont** : `cmd/fetch_film_chunks` ne télécharge QUE les chunks
 REPLICATION_DATA — ni l'en-tête (chunk 0, type 1) ni le footer d'événements (type 3), sans
@@ -454,18 +471,35 @@ et rend le travail visible) :
       correction, 0 après**, et le témoin de détection a été joué sur la version d'avant
       pour prouver que le détecteur voit ce défaut-là. Découverte annexe consignée au
       journal du plan de branchement (deux `--if-present` : même motif, latent, non traité).
-- [ ] J4.1 Lot 1.1-1.3 : supprimer `feature-flags.ts` (mort depuis avril), publier
+- [x] J4.1 Lot 1.1-1.3 : supprimer `feature-flags.ts` (mort depuis avril), publier
       `replay_available` (un `os.Stat` via `PathResolver`), poser le lien conditionnel
       (i18n FR+EN). En prod, l'artefact n'existe pas → pas de lien : inoffensif d'ici le
       chantier F. **Le gate visuel du lot 1 couvre AUSSI le correctif J1-a** (les familles
       d'effets de tir enfin différenciées — champ `w`) : première revue d'écran depuis que
       ce bug, vieux de tout le rejeu 2D, est corrigé.
+      *PARTIEL — J4 session 3 (2026-08-02) : **1.1 FAIT** (fichier supprimé, plafond knip
+      abaissé de 29/90/86 à **0/0/0** — le compte réel était déjà nul, le ratchet ne ratchetait
+      plus). **1.2 et 1.3 NON TRAITÉS** : la phase 2 a absorbé la session (la mesure qui a
+      arrêté la bascule ne pouvait pas se deviner sans l'implémenter). Donc **AUCUN gate visuel
+      à demander pour l'instant** — le lien vers le rejeu n'existe pas encore, et la revue du
+      correctif `w` reste due avec lui.*
+      *FAIT — J4 session 4 (2026-08-02). **1.2** : `port.ReplayService.IsAvailable` (un `os.Stat`,
+      le MÊME service que l'endpoint `/replay` — une seule résolution de chemin dans le dépôt) →
+      header `replay_available`. **1.3** : `ReplayLink` en tête de la rangée d'actions, FR
+      « Rejeu 2D » / EN « 2D replay », 4 tests dont l'absence sur un match sans artefact.
+      **ET LE LIEN N'AURAIT JAMAIS PU APPARAÎTRE** : l'outil hors ligne écrit l'artefact sous la
+      forme COURTE du `match_id`, l'app ne manipule que la forme COMPLÈTE — le service cherchait un
+      fichier que personne n'écrit, et `GetReplay` rendait un 404 sur un artefact PRÉSENT (les 3
+      artefacts du dépôt sont tous en forme courte). Correctif : `title.FilmShortMatchID`, une
+      seule troncature dans le dépôt, garde-rail au 3e exemplaire. Le défaut a été trouvé en
+      cherchant l'URL à donner à l'utilisateur pour le gate visuel — le gate a donc servi AVANT
+      d'être joué. **GATE VISUEL DÛ : artefact de revue produit, NON déclaré passé.***
 - [ ] J4.2 Lot 1.4 : le garde local — TRANCHÉ le 2026-07-31 : **comprendre le CTF d'abord**.
       Diagnostiquer pourquoi `64e8adfa` perd 564 tirs « slot introuvable » là où le Slayer en
       perd 44 (hypothèse vies courtes → traces non publiées, à mesurer, pas à supposer),
       écrire la cause, PUIS redécider retrait/critère avec l'utilisateur. Le garde reste en
       place d'ici là.
-- [ ] J4.3 Lot 3.1 + 3.2 (title-agnostic minimal AVANT merge) : unifier les deux tables de
+- [x] J4.3 Lot 3.1 + 3.2 (title-agnostic minimal AVANT merge) : unifier les deux tables de
       grenades (« Dynamo » vs « Shock » pour le même rang — une contradiction visible à
       l'écran), sortir armes/grenades/capacités vers
       `config/titles/halo_infinite/mappings/*.toml` (`weapon_names.toml` existe, bilingue),
@@ -473,6 +507,19 @@ et rend le travail visible) :
       `PathResolver` (le défaut actuel pointe `.ai/V7.5/dumps` — un répertoire de
       rétro-ingénierie). Motif : ne pas MERGER vers `main` de nouvelles violations des règles
       du dépôt (libellés FR en dur côté Go). Les lots 3.3-3.6 (découpages) restent post-merge.
+      *FAIT — J4 session 4 (2026-08-02). La contradiction des grenades était RÉELLE et mesurée sur
+      `000d5950` : le lancer publiait « Shock » quand le compteur porté de la MÊME fiche disait
+      « Dynamo ». Le décodeur ne nomme plus rien (liste ORDONNÉE de tags) ; le lancer publie son
+      RANG, index dans la table du titre — un index ne peut pas diverger de sa table. Les
+      catalogues (armes, grenades, capacités, effets de tir) sont dans
+      `config/titles/halo_infinite/mappings/` et BILINGUES, `SchemaVersion 1 → 2` ; côté web
+      `shotEffects.ts` ne connaît plus une seule arme Halo. Les 4 copies de `keep*` sont
+      factorisées avec garde-rail (témoin de détection joué), la géométrie passe par
+      `PathResolver.MapGeometryDir`. **3 libellés CHANGENT et ce sont des corrections** : l'énum du
+      décodeur nommait `0x9D6AAED2` « M41 SPNKr » (SPNKr à combustible) et `0x3E070217` « Pulse
+      Carbine » (carabine Vestige). `mapvar` `[!]` : hors périmètre fermé de la session.
+      **Les 3 artefacts reconstruits et comparés champ par champ** : tout ce qui n'est pas un
+      libellé est IDENTIQUE, y compris les 70/130/153 lancers hors leur type.*
 
 **ÉCART DES GOLDENS KILLSOURCE — instruit le 2026-08-02 (session 2bis), verdict ci-dessous.**
 `TestGoldenFilms` échoue sur les 4 films de référence. **L'hypothèse du superviseur est
@@ -1381,3 +1428,312 @@ comme prévu).
   **État B2** : Q2 (forme des zones) EN COURS dans un travail parallèle depuis ce jour ; Q1 et
   Q2bis NON couverts. Recommandation rendue : transmettre Q2bis au travail en cours (même
   passe, même fichier) et ne pas lancer Q1/Q2bis en parallèle (surface `mapvar/` partagée).
+- **[2026-08-02 — superviseur] J4 session 2 + 2bis VÉRIFIÉES ET CONFIRMÉES CLOSES.**
+  Run CI `30742303580` au niveau job : **8 jobs verts sur 9** — Go Lint (0 issue), Frontend,
+  Build+Test ubuntu ET windows, Contract Test, OpenAPI Lint, Lease Enforcement, plus gitleaks
+  et Deploy Pre-Check. **Un seul job rouge**, `Go Coverage + Baseline`, et **une seule cause** :
+  `TestNoExpiredTODO` — le `TODO(expiry:2026-08-01)` de `season_pass_repo_tracks.go:297`
+  (repli de rétro-compatibilité `track-def` → `bp-item-def`) est arrivé à échéance hier.
+  **Dette datée arrivée à terme, sans rapport avec J4** ; le garde fait exactement son travail.
+  **HYPOTHÈSE DU SUPERVISEUR RÉFUTÉE, et c'est la bonne nouvelle.** J'avais accusé le
+  correctif de performance de J4-2 (« le plafond de 1 048 576 itérations disparaît, donc
+  l'état final diffère »). **Faux, deux fois** : par la mesure — la divergence est déjà
+  présente, signature identique au bit près, dès `96bc56175` (J2), donc avant J4 ; et par la
+  lecture — le plafond est CONSERVÉ (`tlvBodyMaxBytes = 1<<20`, exactement le `i < 1<<20`
+  d'origine) et `ReadBits` n'a d'autre effet que d'avancer `pos`, donc `Skip(8N)` atterrit au
+  même endroit. J3 est exonéré par la même mesure.
+  **LA CAUSE est `47c9e72ac`** — le commit de RÉCONCILIATION des deux `filmdec`, dont le
+  message annonçait « killsource (golden) vert » alors que le test avait **skippé** faute de
+  `KILLSOURCE_FIXTURES`. Faux vert de bonne foi, et il a tenu deux jours.
+  Sous-cause prouvée : le `br.ReadBits(2)` ajouté dans `consumeAbsoluteWithGate` ; la
+  calibration l'absorbe en rétrécissant l'axe et `3*axisW + indexW` perd **exactement 2** sur
+  les quatre films (43→41, 53→51, 50→48, 52→50).
+  **L'ORACLE NE DÉPARTAGE PAS, et on sait de combien** : 371 lignes publiées sur 371
+  **identiques** (victime, tueur, tag, étiquette, catégorie), 380/380 morts de l'API et 30/30
+  ancres Theater inchangées des deux côtés ; `cumul.golden` INCHANGÉ. Ne bougent que la
+  calibration, les compteurs par voie, et le champ `voie` de **4 lignes sur 371**.
+  **Conséquences statuées** : goldens re-congelés avec justification chiffrée ; **backfill NON
+  rejoué** (124 694 lignes) — réserve écrite : l'équivalence est mesurée sur les 4 films de
+  référence, pas sur les 1 343 matchs.
+  **Défaut structurel corrigé** : `TestGoldenMiniBobine` tourne **sans fixture ni variable
+  d'environnement**, donc en CI — vérifié positivement sur le runner (run puis pass). C'est la
+  première fois du chantier que la sortie du décodeur killsource est gardée par un test que
+  personne ne peut skipper par inadvertance. **Une prémisse de MON prompt est tombée en le
+  construisant** : le patron de mini-bobine de J2 (paquets choisis, concaténés hors
+  continuité) décode **zéro mort** ici — le décodeur construit son monde par accumulation
+  depuis l'en-tête. Il fallait un **PRÉFIXE contigu**. À reprendre pour toute future bobine.
+  **Deux limites déclarées, acceptées telles quelles** : (1) une sous-cause B subsiste dans
+  les 892 insertions de `47c9e72ac`, non isolée, **effet borné et mesuré** (la provenance de
+  4 lignes sur 371) → consignée pour la piste A, pas bloquante ; (2) la mini-bobine **ne
+  verrouille pas le balayage de calibration** (profil plat sur un préfixe) — seul
+  `TestGoldenFilms`, sur films entiers, le fait, et il reste optionnel.
+  **RÈGLE PERMANENTE POSÉE** : toute session qui touche au décodeur (`filmdec`, `killsource`)
+  DOIT jouer `TestGoldenFilms` en local avec `KILLSOURCE_FIXTURES=<chemin ABSOLU>` — les
+  tests Go s'exécutent depuis le répertoire du paquet, un chemin relatif fait skipper le test
+  en silence (erreur commise par le superviseur lui-même le 2026-08-01). La CI ne peut pas
+  couvrir ce cas : les films pèsent 107 Mo.
+- **[2026-08-02 — exécuteur] J4 session 3 : la bascule est PRÉPARÉE, pas faite — et c'est une
+  mesure qui l'a décidé.** Item zéro clos (le `TODO(expiry)` échu de `season_pass_repo_tracks.go`
+  retiré sur mesure : **zéro** item subsiste en `track-def`, vérifié sur DEUX bases — la base de
+  dev dont l'`asset_index` remonte au 2026-04-21, donc antérieure à la bascule de kind, et la
+  graine de production `metadata-prebuilt.zip`. 30 lignes de part et d'autre, toutes des chemins
+  `RewardTracks/`, aucun chemin d'item : le repli ne pouvait plus apparier quoi que ce soit).
+  **LE RÉSULTAT QUI COMPTE** : la phase 2 telle qu'écrite — « `killer_victim_pairs` devient une
+  vue sur `match_kill_events_latest` » — a été implémentée, appliquée aux bases réelles, MESURÉE,
+  puis retirée. Oracle (les événements `death` de `highlight_events`, 949 matchs à film,
+  Halo Infinite) : **API 100 266 · ancienne table 98 662 (98,4 %) · passe de film 74 569
+  (74,4 %)**. La vue `_latest` ne retenant qu'UNE passe par match, la passe de film — plus riche
+  par ligne, plus pauvre en couverture — serait devenue la génération servie et aurait effacé
+  **25 697 morts**, sans erreur, sans compteur, sans qu'un nom ou un instant ne change. Le
+  corollaire figurait dans le DDL depuis la session 1 ; **ce qui manquait n'était pas
+  l'avertissement, c'était sa magnitude** — un risque documenté sans chiffre se lit comme un
+  risque théorique.
+  **Livré et vérifié** : (1) le **producteur LIVE** des kill-events pour les DEUX titres — les
+  deux producteurs existants étaient hors ligne (grep : zéro appel depuis `internal/api/`,
+  `internal/sync/v2/`, `cmd/server/`, `internal/service/`), donc tout match synchronisé après le
+  dernier backfill n'avait AUCUNE ligne ; (2) title-agnostic par construction, et ce n'est pas
+  cosmétique — `highlight_events` de Halo 5 ne porte aucun événement kill/death, donc le
+  producteur crédit-seul de `killcollector` n'aurait jamais couvert ce titre, qui pèse **268 337
+  couples sans un seul doublon** ; (3) la **reprise dédupliquée** (migration
+  `shared_kill_events_from_pairs_v1`) : Infinite 0 ligne (déjà couvert), Halo 5 **268 337** —
+  le titre passe de « la table n'existe pas » à couverture complète ; (4) la préséance testée EN
+  POSITIF sur les voies de film, l'ancienne forme (`read_path <> 'highlight-events'`) faisant
+  passer toute voie autre que la sienne pour un film ; (5) **`v_killer_victim_full` supprimée**
+  (Q20 lit la table, mêmes six colonnes) et **`feature-flags.ts`** avec le plafond knip abaissé
+  **de 29/90/86 à 0/0/0** ; (6) `v_gamertag_lookup` rebranché sur la table canonique **en gardant
+  la jambe historique en UNION** — la canonique seule coûtait 4 gamertags sur 18 219, mesuré.
+  **GATE 2 au sens strict** : 11 mesures avant/après sur les deux titres, **toutes identiques**.
+  **Découvertes reportées, non traitées** : (a) le découpeur SQL de `internal/sync/schema.go`
+  n'est PAS conscient des commentaires — il coupe sur chaque `;`, y compris dans un `--` ; un
+  point-virgule ajouté dans un commentaire a fait échouer 13 tests avec « empty query », loin de
+  la cause. ⚠ **Deux découpeurs différents dans le dépôt, un seul est sûr** (celui de
+  `migration`, constat de la session 1) ; (b) `match_kill_events` n'entre PAS dans le contrat de
+  snapshot : toute table de cette liste est REQUISE à la lecture, l'y ajouter rendrait illisible
+  tout snapshot antérieur (le lecteur ne dégrade pas, il refuse le snapshot entier).
+  **NON FAIT, et à re-planifier** : lot 1.2/1.3 (lien vers le rejeu), lots 3.1/3.2, phase 4.
+  **Donc aucun gate visuel à demander pour l'instant** — le lien n'existe pas, et la revue du
+  correctif `w` reste due avec lui.
+  **CE QUE LE RETRAIT DE `killer_victim_pairs` ATTEND** — un critère, pas une date : que le
+  collecteur parte de la liste officielle des morts et l'ENRICHISSE, au lieu de publier la seule
+  liste qu'il sait décoder. Mesurable : `lignes_passe_film / morts_api` ≥ 98,4 % sur le même
+  périmètre. *Le doublon se voit et se corrige ; la mort manquante, non.*
+
+---
+
+## PISTE F — LE REJEU EN PRODUCTION : la conception  *(écrite le 2026-08-02, questions utilisateur)*
+
+> Ce n'est PAS un bloquant du merge (§J5 le vérifie), mais c'est un préalable à l'ouverture
+> de la feature en production. Les décisions ci-dessous sont des recommandations du
+> superviseur, à valider avant de coder.
+
+### Le fait qui commande toute l'architecture
+
+**L'artefact est REPRODUCTIBLE À L'OCTET depuis J3.5.** Un artefact construit sur le poste de
+développement est donc **identique** à celui qu'un VPS produirait. *Où* on le construit
+devient une pure question de coût, jamais de justesse. C'est le levier qui rend la suite
+simple.
+
+### Les grandeurs mesurées
+
+| grandeur | valeur |
+|---|---|
+| artefact de rejeu | **~2 Mo** par match (2,19 · 1,64 · 2,62 Mo mesurés) |
+| film source | ~24 Mo par match, **23 Go** pour 949 films |
+| coût de décodage (poste de dev, APRÈS le correctif de J4-2) | 33 morceaux → 7,3 s · 40 → 33,7 s · 64 → 51 s · 69 → 46,7 s |
+| matchs sans film, définitivement | **29,3 %** (les films Theater expirent côté serveur) |
+| contrainte VPS de prod | petit CPU, **disque sous tension** (plafond de cache 5 Go, zéro swap — incidents de gel documentés) |
+
+### 1. OÙ GÉNÉRER — un OUVRIER EXTERNE, et c'est un RÔLE, pas une machine
+
+> **Recommandation corrigée le 2026-08-02 sur objection de l'utilisateur, et il a raison.**
+> Ma première version faisait produire les artefacts sur son poste, puis les poussait. Deux
+> défauts rédhibitoires : (1) **le dépôt est PUBLIC** — une conception qui dépend d'une
+> machine nommée n'est ni déployable par un tiers ni reproductible ; (2) le poste **n'est pas
+> toujours allumé**. Ce n'était pas un inconfort, c'était un défaut de conception.
+
+**Le principe** : l'ouvrier est un **rôle**, tenu par n'importe quelle machine — le second VPS
+(choix de l'utilisateur : plus de CPU et de RAM), un poste de développement, ou rien du tout.
+**Le VPS web ne décode JAMAIS.** Il met en file et il sert.
+
+```
+VPS web (petit)                          OUVRIER (second VPS, ou poste, ou rien)
+  met en file un job  ──── HTTP ────►      demande le prochain job
+  résout le MANIFESTE (il a les tokens)    télécharge les morceaux (CDN pré-signé)
+  sert l'artefact quand il arrive          décode, construit l'artefact (~2 Mo)
+  ◄──────────── HTTP ────────────────      renvoie l'artefact, puis SUPPRIME les morceaux
+```
+
+**Trois propriétés qui découlent de ce découpage, et qui valent d'être vues :**
+
+1. **L'ouvrier n'a AUCUN secret Halo.** Le manifeste exige les tokens ; les morceaux, eux,
+   viennent d'un **CDN Azure pré-signé, sans authentification**. Donc le VPS web résout le
+   manifeste et met **les URL pré-signées dans le job** — l'ouvrier devient un simple nœud de
+   calcul, sans identifiants, sans accès à la base. C'est ce qui rend sûr de le faire tourner
+   n'importe où.
+2. **Aucune infrastructure nouvelle.** L'ouvrier *tire* le travail en HTTPS (deux routes
+   internes : prendre un job, rendre un résultat) — pas de port entrant, pas de système de
+   fichiers partagé, pas de Redis. C'est le patron de csstat, porté sur la pile Go existante.
+3. **La dégradation sans ouvrier est déjà écrite.** Aucun ouvrier déployé → aucun artefact →
+   aucun lien (`os.Stat`, lot 1.2). Indispensable pour un dépôt public : la feature s'installe
+   sans que personne ait à monter un ouvrier.
+
+**Le rattrapage reste à part** : 951 matchs ≈ 8 h une seule fois, et les films sont déjà en
+cache sur le poste — cela se fait par le CLI (`levelup backfill-*`), sans passer par la file.
+Un ouvrier neuf ne doit pas retélécharger 23 Go pour rattraper l'historique.
+
+### 1bis. RÉTENTION GLISSANTE + PURGE TRIMESTRIELLE — décision utilisateur 2026-08-02
+
+**On ne génère que les artefacts des matchs des N derniers mois** (défaut proposé : 3), et une
+purge trimestrielle retire les artefacts plus vieux. Deux conséquences de conception :
+
+- **La fenêtre est un RÉGLAGE ADMIN**, pas une constante. Elle vit dans `app_settings` (le
+  store de configuration existant), s'édite depuis la page admin, et **commande deux choses à
+  la fois** : ce qu'on accepte de mettre en file (un match hors fenêtre n'est pas construit) et
+  ce que la purge supprime (un artefact hors fenêtre est effacé). Une seule valeur, deux
+  usages — sinon ils divergent.
+- **La purge est elle-même un JOB** (récurrent, cf. le scheduler existant ADR 0027), donc
+  visible dans le même monitoring que les constructions. Elle supprime des FICHIERS (les
+  artefacts, `cache` jetable) — **jamais les films** (archive perpétuelle) ni les lignes de
+  base (`match_kill_events`). Le film reste : si un match ressort de la fenêtre puis y rentre
+  (fenêtre élargie par l'admin), l'artefact se reconstruit.
+- **Idempotence** : reconstruire un artefact déjà présent et à jour (`decoder_rev` inchangé)
+  est un no-op — la purge et la reconstruction ne se courent pas après.
+
+### 2. QUEL SYSTÈME DE JOBS — L'OSSATURE EXISTE DÉJÀ, on l'ÉTEND
+
+**Ne rien réinventer. Vérifié le 2026-08-02, le dépôt a déjà tout le squelette :**
+
+| brique existante | où | ce qu'elle fait |
+|---|---|---|
+| `domain.AsyncJobStatus` + `JobStatus` | `internal/domain/job.go` | états `queued/running/succeeded/failed/cancelled/interrupted`, `progress_pct`, `current_step`, `started_at`, `finished_at`, `error` — **le contrat de job est déjà écrit** |
+| `JobStore` (ring mémoire) | `handlers` (`h.jobs.SetStatus/Update/Get`) | suit les jobs asynchrones, déjà consommé par l'auto-sync |
+| `GET /admin/monitoring/jobs` | `admin_monitoring.go` | **la route de monitoring des jobs existe** |
+| page admin | `apps/web/src/routes/admin/{sync,logs,system}.tsx` | le dashboard admin est là, avec sync et logs |
+| scheduler récurrent | ADR 0027 (cycle orchestrator) | fait déjà tourner du travail de fond périodique |
+
+Ce que la piste F **ajoute**, et rien de plus : un **type de job** « construire un rejeu » (le
+`JobStore` est agnostique du genre), une **file persistante** (le ring mémoire actuel perd les
+jobs au redémarrage — acceptable pour l'auto-sync qui se relance, pas pour une file de
+construction : une petite table d'état, écrite par le chemin d'écriture normal), et le
+**protocole ouvrier** ci-dessous.
+
+**Le patron reste celui de csstat** (`POST …/parse` → `202 {jobId}` → ouvrier → maj + invalide
+le cache), **porté sur ces briques Go** — pas BullMQ, pas Redis, pas d'ouvrier Node.
+
+csstat fait exactement le bon geste (`POST /matches/:id/parse` → `parseQueue.add()` → `202
+{jobId}` → l'ouvrier construit, met à jour, invalide le cache). **Le patron se reprend tel
+quel.** Son implémentation, non : c'est **BullMQ (Node + Redis)**, or LevelUp est **Go +
+DuckDB sans Redis**. Ajouter Redis et un ouvrier Node à une pile Go pour une feature de
+consultation serait un mauvais échange.
+
+Version Go, à volume faible et **un seul ouvrier** : une table d'état de job + une goroutine
+d'ouvrier, ou le cycle d'orchestration qui existe déjà (ADR 0027) — il fait déjà du travail de
+fond. Sérialisation obligatoire de toute façon : `filmdec` porte des globaux de paquet, un
+seul décodage à la fois par process (§J4).
+
+### 2bis. LES JOBS ET LE MONITORING — de bout en bout, DANS l'app  *(décision utilisateur du 2026-08-02)*
+
+**La demande**
+
+**Un artefact est un FICHIER, pas une ligne.** 2 Mo de JSON immuable, servi tel quel : c'est
+du stockage de fichiers, et c'est déjà ce que fait `data/cache/replays/{titre}/{matchId}.json`.
+L'intuition sur DuckDB est juste, pour deux raisons cumulées : le modèle **mono-process
+writer** (ADR 0013/0016) et le fait qu'un blob de 2 Mo dans une colonne est un anti-patron.
+Ce qui mérite éventuellement une ligne, c'est **l'état d'un job** (en file / en cours / fait /
+échoué) et l'index (`decoder_rev`, `built_at`) — petit, écrit par le chemin d'écriture normal.
+Et à l'étage 0, même ça est inutile : `os.Stat` suffit.
+
+### 4. RÉTENTION — la règle est INVERSE de l'intuition
+
+| donnée | politique | pourquoi |
+|---|---|---|
+| **films** (morceaux) | **archive PERPÉTUELLE, en local** | **irremplaçables** : ils expirent côté serveur, 29,3 % sont déjà perdus. Jamais sur la prod |
+| **artefacts** | **cache, avec expiration** (TTL ou LRU) | **reproductibles à l'octet** depuis le film — les jeter ne perd rien |
+| manifests de film | conserver (119 Mo pour 950) | permettent de re-télécharger depuis le CDN **sans authentification** |
+
+Autrement dit : **on garde le brut pour toujours, on jette le dérivé sans état d'âme.** Un
+artefact expiré se reconstruit ; un film expiré est perdu à jamais.
+
+### 3bis. UN SEUL DÉCODEUR, DEUX EXTRACTEURS, ET OÙ CHACUN TOURNE — tranché 2026-08-02
+
+**La prémisse « le killfeed est moins gourmand » est vraie pour UN des deux killfeeds, fausse
+pour l'autre. Il faut les distinguer** (vérifié sur le schéma `match_kill_events`, qui sépare
+explicitement « Vérité 1 : le crédit » et « Vérité 2 : la source du dégât ») :
+
+| killfeed | ce qu'il porte | source | coût | où il tourne |
+|---|---|---|---|---|
+| **basique** | tueur / victime / instant | `highlight_events` en base → SQL | négligeable | **VPS web — inchangé, il y est déjà** |
+| **enrichi** | + **arme du kill** (`source_tag`), + **assistant nommé**, + parts de dégâts, + morts de bots, + catégorie | **décodage du film ENTIER** (`killsource` prend `MemoryChunks`, tous les chunks) | ~50 s/gros film — **même ordre que le rejeu** | **OUVRIER distant** |
+
+À l'écran, l'enrichi est la différence entre « A a éliminé B » (croix générique) et « A a
+éliminé B au BR75, assisté par C ». C'est ce que le fil des éliminations du rejeu (lot 5) et
+les agrégats carrière dégonflés consomment.
+
+**« Deux décodeurs » — NON, et la séparation est une RÈGLE, pas un accident.** Il y a **un**
+décodeur bas niveau (`filmdec`) et **deux extracteurs** au-dessus : `killsource` (lit le
+dead-state → morts, arme, assistant) et `replay` (lit les positions → trajectoires, tirs).
+Leur séparation est **doctrinale** : le rejeu ne re-décode PAS les morts, il les CONSOMME de
+`killsource` via `Options.Kills` — parce que « deux décodeurs du même fait divergeraient »
+(règle écrite du chantier). Les fusionner serait une régression.
+
+**Le vrai coût à surveiller n'est pas « deux décodeurs » mais DEUX TRAVERSÉES du même film** :
+construire un rejeu complet (avec fil des éliminations) fait tourner `killsource` ET
+`BuildFromFilm`, soit deux parcours. Trois conséquences arrêtées :
+
+1. **Tout décodage de film → l'ouvrier.** Le VPS web ne décode jamais un film ; il garde le
+   killfeed basique SQL (léger, permanent) qu'il a déjà. La règle « le léger reste sur le
+   web » est donc tenue — le léger, c'est le SQL.
+2. **Un passage, deux sorties, la LOURDE conditionnelle.** L'ouvrier décode un film et rend :
+   les lignes killfeed enrichi → **toujours** écrites en base (permanent, léger à stocker) ;
+   l'artefact rejeu → **seulement si le match est dans la fenêtre** de rétention. Un match
+   récent (donc dans la fenêtre) produit les deux d'un coup ; un vieux match consulté à la
+   demande re-décode pour l'artefact, le killfeed étant déjà en base (idempotent, skip).
+3. **La FUSION des deux traversées en une seule** (une passe `filmdec` alimentant les deux
+   extracteurs, gain ~2× sur le décodage) est une **optimisation à trancher par une mesure**,
+   PAS un prérequis. Elle couple les deux extracteurs sur un état `filmdec` partagé — coût de
+   conception réel. À mesurer avant de s'y engager ; ne pas la faire d'office.
+
+**Dépendance déclarée** : déléguer le killfeed enrichi à l'ouvrier le couple à la disponibilité
+de celui-ci. Acceptable, parce que (a) l'enrichi n'est de toute façon PAS produit en prod
+aujourd'hui (CLI/backfill seulement, mesuré 2026-08-02), donc on ne perd rien ; (b) la
+dégradation est propre — sans ouvrier, le killfeed basique reste, et l'écran montre la croix
+générique au lieu de l'arme. Jamais un blanc, jamais un faux.
+
+### 4bis. LE MONITORING DE BOUT EN BOUT — l'app voit tout, même le travail distant
+
+**Exigence utilisateur : le monitoring dans l'app, bout en bout, même quand l'ouvrier tourne
+sur l'autre VPS.** C'est faisable ET c'est déjà le bon modèle, parce que **l'ÉTAT vit côté web,
+pas côté ouvrier.** L'ouvrier ne fait que calculer ; il ne détient rien. La file, les statuts,
+l'historique sont dans la base du VPS web — donc le dashboard admin les voit sans jamais
+interroger l'ouvrier.
+
+Ce que l'admin doit voir (une page `admin/replays`, sœur de `admin/sync`) :
+
+| vue | source | déjà là ? |
+|---|---|---|
+| file : en attente / en cours / faits / échoués | table d'état des jobs | contrat `AsyncJobStatus` oui, table à créer |
+| par job : match, étape, %, durée, erreur | `AsyncJobStatus` (champs existants) | **oui** |
+| les OUVRIERS : dernier battement, job courant, débit | table d'ouvriers (heartbeat) | à créer |
+| couverture : matchs dans la fenêtre / construits / manquants | requête sur les artefacts + la fenêtre | à créer |
+| actions admin : (re)mettre en file un match, forcer une purge, changer la fenêtre | routes admin (patron `admin_actions.go`) | patron oui |
+
+**Le heartbeat est ce qui rend le distant OBSERVABLE** : l'ouvrier, à chaque prise de job et
+périodiquement, POST un battement (id d'ouvrier, job courant, horodatage). Un ouvrier muet
+depuis N minutes s'affiche « hors ligne » — et comme l'ouvrier ne détient aucun état, sa
+disparition ne perd aucun job : le job repris s'affiche `interrupted` puis `queued` (l'état
+`interrupted` EXISTE DÉJÀ dans `job.go`, prévu pour « running → interrupted au redémarrage »).
+
+**Santé du décodage** : `killhealth.go`/expvar (ADR 0009) existe déjà côté décodeur — l'ouvrier
+remonte ces compteurs dans le résultat du job, et le monitoring les agrège. Rien à inventer.
+
+### 5. CE QUE LE MERGE DOIT VÉRIFIER — et c'est tout
+
+Le merge est sûr **à condition que la prod ne génère rien**. Trois vérifications, à faire en
+J5 (§J5.5) :
+1. aucun chemin de code de prod ne télécharge ni ne décode un film — le producteur live est le
+   chemin **crédit** (SQL, vérifié le 2026-08-02), le décodeur de film est **CLI seulement** ;
+2. le garde local (`replay_local_gate.go`) est **toujours en place** — la prod ne sert donc
+   même pas la route ;
+3. aucun artefact n'est déployé par mégarde (ils ne sont pas versionnés).
+
+**Conception de la piste F à écrire AVANT d'ouvrir la feature en prod, pas avant le merge.**

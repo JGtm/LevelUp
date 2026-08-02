@@ -1,3 +1,100 @@
+## [2026-08-02] J4 session 4 — le rejeu atteignable, et les catalogues Halo sortis du code
+
+**Statut** : Complété (lots 1.2/1.3, 3.1, 3.2, phase 4). Bascule des lecteurs (phase 2)
+toujours reportee derriere son critere mesure — hors de cette session.
+
+**Decision technique principale** : rendre le rejeu 2D atteignable sans l ouvrir en prod. Un
+`os.Stat` via le service de rejeu alimente `replay_available` sur le header ; le lien
+n apparait que si l artefact existe. BUG BLOQUANT trouve en cherchant l URL de revue :
+l outil hors ligne ecrit l artefact en forme COURTE du match_id (`000d5950.json`), l app ne
+manipule que la forme longue — `GetReplay` rendait 404 sur un artefact present, le lien
+n aurait JAMAIS pu apparaitre. Corrige par une troncature unique (`film_id.go`) avec
+garde-rail.
+
+**Resultats observes** : contradiction Dynamo/Shock des grenades supprimee (le decodeur
+publie le rang, ne nomme plus) ; armes/grenades/capacites/effets de tir sortis du Go et du TS
+vers `config/titles/halo_infinite/mappings/`, bilingues (`shotEffects.ts` ne connait plus une
+arme Halo) ; 3 capabilities par famille de donnee, aucun taux par arme publie (inversion
+MA40/Sidekick). 3 armes RENOMMEES, corrections validees par l utilisateur le 2026-08-02 :
+Mk51 -> MK50 Sidekick, M41 SPNKr -> SPNKr a combustible, Pulse Carbine -> Carabine Vestige.
+Gate complet vert (go test, -tags=integration -p 1, TestGoldenFilms avec fixtures absolu,
+tsc -b --force, vitest 3377/0, knip 0/0/0, 0 violation couleur) ; 3 artefacts reconstruits
+identiques hors libelles. Deux fichiers non gofmt corriges au commit (entorse mineure au gate
+executeur).
+
+**Decouvertes consignees** : D6 4 armes du registre sans effet de tir (pas une regression) ;
+D7 3 familles du decodeur sans weapon_key (allowlist datee auto-perimable) ; D8 openapi-gen
+journalise une erreur benigne a chaque execution (a solder au lot hygiene J5).
+
+**Conclusion / prochaine etape** : J4 CLOS sauf la bascule des lecteurs (lot post-merge,
+critere lignes_passe_film/morts_api >= 98,4 % via inversion de preseance). Prochain jalon J5 :
+revue adverse du diff complet de branche (persist/sync/migration touches) PUIS merge vers main.
+
+## [2026-08-02] J4 session 3 — le producteur live, et la mesure qui a arrêté la bascule
+
+**Statut** : Complété (périmètre réduit et assumé). Item zéro clos, phase 2 PARTIELLE, phase 4
+non entamée, lot 1.1 fait, lots 1.2/1.3 et 3.1/3.2 non traités.
+
+**Décision technique principale** : ne pas remplacer `killer_victim_pairs` par une vue sur
+`match_kill_events_latest`, alors que la bascule était écrite, implémentée et appliquée. C'est
+le contrôle avant/après qui l'a interdit, et il l'a fait avec un oracle : les événements `death`
+de `highlight_events`. Sur les 949 matchs à film de la base Halo Infinite — API **100 266**,
+ancienne table dédupliquée **98 662 (98,4 %)**, passe de film **74 569 (74,4 %)**. La vue
+`_latest` ne retenant qu'UNE passe par match, la passe de film — plus riche par ligne (source du
+dégât, assistant, parts) mais plus pauvre en couverture — serait devenue la génération servie et
+aurait effacé **25 697 morts**. Sans erreur, sans compteur, sans qu'un seul nom ni un seul
+instant ne change : seulement moins de lignes.
+
+**Ce que ça apprend, et qui vaut plus que le correctif** : le corollaire était ÉCRIT dans le DDL
+depuis la session 1 — « si les deux producteurs écrivent le même match, LE DERNIER GAGNE
+ENTIÈREMENT » — et signalé comme une contrainte d'ordonnancement. Ce qui manquait n'était donc
+pas l'avertissement, c'était sa MAGNITUDE. *Un risque documenté sans chiffre se lit comme un
+risque théorique.*
+
+**Résultats observés** :
+
+- **Le producteur live des kill-events, pour les deux titres.** Les deux producteurs de
+  `match_kill_events` étaient hors ligne — vérifié par grep sur `internal/api/`,
+  `internal/sync/v2/`, `cmd/server/`, `internal/service/` : **zéro appel**, seule la
+  sous-commande `backfill-killsource` les invoque. Tout match synchronisé après la dernière
+  passe de backfill n'avait donc aucune ligne, et un lecteur basculé aurait affiché zéro mort
+  sur les matchs récents. Une seule traduction dans le dépôt (`CreditKillEventsFromPairs`),
+  empruntée par les deux écrivains ; écriture dans la transaction du match.
+- **Title-agnostic par construction, et ce n'est pas cosmétique** : `highlight_events` de Halo 5
+  ne porte AUCUN événement kill/death (medal, assist, mode seulement), donc le producteur
+  crédit-seul de `killcollector`, qui lit cette table, n'aurait jamais couvert ce titre — qui
+  pèse **268 337 couples sur 2 754 matchs, dont zéro doublon**.
+- **La reprise dédupliquée** (`shared_kill_events_from_pairs_v1`) : Infinite **0 ligne** (les
+  1 343 matchs étaient déjà couverts), Halo 5 **268 337** — le titre passe de « la table n'existe
+  même pas » à couverture complète.
+- **GATE 2 au sens strict** : onze mesures avant/après sur les deux bases réelles (lignes,
+  matchs, clés distinctes, couples carrière, top duo Q26 et Q27, lignes nommées, xuids du
+  résolveur, xuids NOMMÉS, sonde de présence, instants non nuls) — **toutes identiques**.
+- **Suppressions** : `v_killer_victim_full` (deux LEFT JOIN morts à chaque chargement de vue
+  match ; elle ne « marchait » que par le renommage silencieux des homonymes par DuckDB — Q20
+  lit la table et rend les mêmes six colonnes) et `apps/web/src/lib/feature-flags.ts`, avec le
+  plafond knip abaissé **de 29/90/86 à 0/0/0** : le compte réel était déjà nul, les plafonds
+  laissaient donc rentrer 115 findings sans rien dire.
+- **Le résolveur d'identité lit les DEUX sources.** `v_gamertag_lookup` — le 11e site, celui
+  dont l'oubli aurait fait retomber tous les adversaires sur « Joueur #### » — est rebranché sur
+  la table canonique, mais la jambe historique est CONSERVÉE en UNION : la canonique seule
+  coûtait 4 gamertags sur 18 219, mesuré. Le résolveur rend exactement les mêmes 18 183 noms.
+- **L'inventaire du plan était incomplet de moitié** : 20 sites de lecture en production, pas 8,
+  plus 3 écrivains, 3 sites de DDL et 5 sites spéciaux.
+
+**Piège de méthode consigné** : le découpeur SQL de `internal/sync/schema.go` (`splitSQL`) n'est
+PAS conscient des commentaires — il coupe sur CHAQUE `;`, y compris dans un `--`. Un
+point-virgule ajouté dans un commentaire du schéma de base a fait échouer 13 tests avec « empty
+query », à des kilomètres de la cause. ⚠ Le dépôt a DEUX découpeurs différents et un seul est
+sûr (celui de `migration`, constat de la session 1).
+
+**Conclusion / prochaine étape** : le retrait de `killer_victim_pairs` attend un critère, pas une
+date — que le collecteur parte de la liste officielle des morts et l'ENRICHISSE de ce qu'il sait
+décoder, au lieu de publier la seule liste qu'il sait décoder. Mesurable :
+`lignes_passe_film / morts_api` ≥ 98,4 % sur le même périmètre. D'ici là la double écriture
+reste, datée et justifiée dans le code. *Le doublon se voit et se corrige ; la mort manquante,
+non.*
+
 ## [2026-08-02] J4 session 2bis — l'écart des goldens : deux hypothèses réfutées, et un oracle qui refuse de départager
 
 **Statut** : Complété. Verdict, cause et conséquence backfill instruits ; arbitrage rendu au
@@ -74659,3 +74756,66 @@ citations). **Point de blocage explicite avant tout déploiement** : les 2 visue
 citations sont des bouche-trous provisoires — l'utilisateur les dessine lui-même (brief
 technique complet déposé dans sa section HUMAN GATE Notion). Rien ne doit partir en
 production avec les SVG provisoires.
+
+---
+
+## [2026-08-02] J4 session 4 — l'exposition : le rejeu devient atteignable, et la porte n'existait pas
+
+**Statut** : Complété (code et gates) — **la revue visuelle est DUE et n'est pas passée**.
+Rien n'est commité, rien n'est mergé, rien n'est déployé.
+
+**Périmètre** : lots 1.2/1.3 et 3.1/3.2 du plan de finalisation du rejeu 2D, phase 4 du plan
+de branchement killsource. La bascule des lecteurs n'a pas été rouverte (elle reste derrière
+son critère mesurable : 74,4 % contre 98,4 %), le décodeur n'a pas été touché.
+
+**Décision technique principale — LE LIEN N'AURAIT JAMAIS PU APPARAÎTRE.** En cherchant l'URL
+à donner à l'utilisateur pour le gate visuel, j'ai trouvé que l'outil hors ligne écrit
+l'artefact sous la forme COURTE du `match_id` (`000d5950.json` — celle du film qu'il vient de
+décoder) alors que l'application ne manipule que la forme COMPLÈTE. Les deux ne se
+rencontraient jamais : le service cherchait un fichier que personne n'écrit, `GetReplay`
+rendait un 404 **sur un artefact présent**, et `replay_available` aurait été faux partout. Les
+3 artefacts du dépôt sont tous en forme courte — le défaut était total, pas marginal.
+Correctif : la troncature devient `title.FilmShortMatchID`, **une seule fois dans le dépôt**
+(la copie de `sync/haloclient/local_film_cache.go` l'appelle), `ReplayArtifactPath` normalise,
+et un garde-rail échoue à la 3e copie.
+*Ce que ça apprend* : le gate visuel n'est pas un rituel de fin. Il a servi AVANT d'être joué,
+simplement parce que préparer la revue oblige à parcourir le chemin réel de l'utilisateur.
+
+**Le reste, en bref** :
+- **Grenades** : la contradiction du lot 3.1 était réelle et mesurée — le lancer publiait
+  « Shock » quand le compteur porté de la MÊME fiche disait « Dynamo ». Le décodeur ne nomme
+  plus rien (liste ORDONNÉE de tags + `GrenadeRankOf`) ; le lancer publie son RANG, index dans
+  la table du titre. Un index ne peut pas diverger de sa table.
+- **Catalogues** : armes (`weapon_names.toml`, déjà là), rangs de grenade, capacités et effets
+  de tir (nouveau `replay_labels.toml`) sortent du Go et du TS, BILINGUES. `SchemaVersion 1→2`.
+  `shotEffects.ts` ne connaît plus une seule arme Halo : il valide la famille publiée par le
+  document contre les 7 formes qu'il sait dessiner. La jointure famille→weapon_key→{nom,effet}
+  est écrite UNE fois (`replay.NewLabelCatalog`) et le golden appelle la même — un golden qui
+  recopierait la jointure figerait sa propre version.
+- **Trois libellés CHANGENT, et ce sont des corrections** : l'énumération du décodeur nommait
+  `0x9D6AAED2` « M41 SPNKr » (c'est le SPNKr à combustible) et `0x3E070217` « Pulse Carbine »
+  (c'est la carabine Vestige) ; `0xF408190F` passe de Mk51 à MK50 Sidekick. Les deux premières
+  ont reçu leur effet dans le TOML pour préserver le rendu qu'elles avaient sous un faux nom.
+- **Phase 4** : trois familles, trois clés. `film.weapon_shots` est nouvelle et elle a un
+  CONSOMMATEUR testé dans les deux sens sur film réel (kill_source seule → 90 morts et 0 tir ;
+  les deux → 90 morts et 30 tirs). La raison du `not_exposed` de `match.weapon.accuracy` était
+  PÉRIMÉE (« table non peuplée ») : réécrite sur le vrai motif — le taux sur corpus entier
+  inverse l'ordre MA40/Sidekick — avec son critère de bascule. Aucune surface produit ouverte.
+- **4 copies de `keep*OfPublishedTracks`** factorisées, garde-rail posé et **témoin de
+  détection joué** (fichier fautif temporaire → échec nommant le fichier ; retiré → vert).
+- **Géométrie** via `PathResolver.MapGeometryDir` : les 2 CSV quittent `.ai/V7.5/dumps` pour
+  `data/titles/halo_infinite/reference/map_geometry/`.
+
+**Résultats observés** : `go test ./...` exit 0 (130 paquets) · `TestGoldenFilms` et
+`TestGoldenMiniBobine` verts EN LOCAL avec `KILLSOURCE_FIXTURES` absolu ·
+`go test -tags=integration -p 1 ./...` · `tsc -b --force` cache purgé exit 0 · vitest
+3377/0 (386 fichiers) · eslint 0 erreur (19 warnings de baseline) · knip-ratchet 0/0/0 ·
+lint-no-hardcoded-colors 0 violation · **les 3 artefacts reconstruits et comparés champ par
+champ** : traces, tirs, inventaire, couverture, roster, géométrie et structure IDENTIQUES,
+lancers identiques hors leur type, correspondance ancien nom → nouveau rang exacte,
+39/39 · 17/17 · 12/12 armes toujours nommées.
+
+**Conclusion / prochaine étape** : rendre la main pour la **revue visuelle** (le lien, son
+absence sur un match sans artefact, les 7 familles d'effet de tir — première revue d'écran
+depuis le correctif du champ `w` en J1). Artefact de revue publié. Restent J4.2 (le garde
+local, qui attend le diagnostic du CTF) et les découpages 3.3-3.6, post-merge.
