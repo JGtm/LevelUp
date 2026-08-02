@@ -69,6 +69,10 @@ light/dark, chaque proposition faisable en ECharts avec les tokens sémantiques 
 **Gate 0** : 2 artefacts publiés (privés), URLs remises à l'utilisateur, décisions
 consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémentation
 (3.4/3.5) ne démarre pas sans décision.
+> GATE 0 PASSÉ le 2026-08-02 : artefacts republiés par l'orchestrateur (publications
+> agents fantômes, leçon en mémoire), complément E ajouté sur question utilisateur,
+> décisions rendues : 0.1 = C partout (escouade comprise), 0.2 = A encoches.
+> 3.4/3.5 débloqués.
 
 ## Phase 1 — Bugs
 
@@ -534,11 +538,13 @@ AVANT merge, pas seulement un rejeu local).
 
 ## Décisions d'artefacts (à remplir au gate 0)
 
-- Rendement & Résistance : **C pressenti** (pistes par joueur — validé par l'utilisateur
-  pour l'esprit timeseries/sessions) ; question utilisateur du 2026-08-02 en cours :
-  transformation de données pour superposer les 4 joueurs sur UN graphe en contexte
-  escouade → section E ajoutée à l'artefact (E1 écart au collectif du match, E2 rangs,
-  E3 cumul d'écart à la frontière élite), décision finale en attente.
+- Rendement & Résistance : **C — écart à la frontière élite, une piste par joueur,
+  PARTOUT y compris la page Escouade** (décision finale utilisateur du 2026-08-02,
+  après examen du complément E : les transformations E1/E2/E3 restent consignées dans
+  l'artefact comme pistes futures mais ne sont PAS retenues pour 3.4). Implémentation
+  3.4 : les deux cartes de la Dynamique passent en pistes empilées par joueur (écart
+  signé au P80 élite, remplissage vert/rouge, axe symétrique partagé), survol = valeurs
+  brutes. GATE 0 INTÉGRALEMENT CLOS.
 - Marqueurs dominance V/D : **A — encoches traversantes** (décision utilisateur du
   2026-08-02, verrouillée). Implémentation en 3.5 sur les 5 surfaces, liseré/gouttière
   obligatoire (contraste tokens/issues hors norme quelle que soit la forme).
