@@ -276,7 +276,7 @@ func (r *SeasonPassRepo) loadItemMetadataMap(
 
 	// Fallback : pour les items absents de battlepass_item_definitions (ex: joueurs sans
 	// investigation JSON), chercher dans asset_index où warmBPTrackAssets stocke les JSONs
-	// fetches en arrière-plan (kind='track-def').
+	// fetches en arrière-plan (kind='bp-item-def').
 	missing := make([]string, 0, len(itemPaths))
 	for _, p := range itemPaths {
 		if _, found := itemMap[p]; !found {
@@ -291,11 +291,17 @@ func (r *SeasonPassRepo) loadItemMetadataMap(
 }
 
 // fillItemsFromAssetIndex complète itemMap avec les items présents dans asset_index
-// (stockés par warmBPTrackAssets lors d'appels précédents).
-// Cherche d'abord dans le nouveau kind 'bp-item-def', puis dans l'ancien 'track-def'
-// pour la rétrocompatibilité avec les items mis en cache avant ce déploiement.
-// TODO(expiry:2026-08-01): supprimer 'track-def' de la liste une fois tous les items
-// migrés vers 'bp-item-def' via le live flow ou le backfill.
+// (stockés par warmBPTrackAssets lors d'appels précédents, kind='bp-item-def').
+//
+// Le repli sur l'ancien kind 'track-def' (items warmés sous le kind des tracks avant
+// b1333aa32, 2026-04-25) a été RETIRÉ le 2026-08-02 sur mesure : zéro item y subsiste.
+// Mesuré sur les deux bases disponibles — la base de dev (asset_index remontant au
+// 2026-04-21, donc antérieure à la bascule) et la graine de production
+// `metadata-prebuilt.zip` : 30 lignes 'track-def' de part et d'autre, toutes des
+// chemins `RewardTracks/...`, aucun chemin d'item. Le repli ne pouvait donc plus
+// apparier quoi que ce soit. `cmd/backfill_bp_items` reste, lui, capable de lire les
+// deux kinds : c'est l'outil de migration d'une base qui en porterait encore.
+//
 // Best-effort : toute erreur est silencieusement ignorée.
 func (r *SeasonPassRepo) fillItemsFromAssetIndex(
 	ctx context.Context,
@@ -332,7 +338,7 @@ func (r *SeasonPassRepo) fillItemsFromAssetIndex(
 		           json_extract_string(raw_json, '$.CommonData.ItemType')
 		       )                                                                            AS item_type
 		FROM asset_index
-		WHERE kind IN ('bp-item-def', 'track-def')
+		WHERE kind = 'bp-item-def'
 		  AND id IN (%s)
 		  AND raw_json IS NOT NULL`, assetTitle, assetDesc, placeholders)
 

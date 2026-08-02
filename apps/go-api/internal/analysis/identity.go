@@ -149,11 +149,19 @@ func MaskedXuidLabelSQL(xuidExpr string) string {
 //  1. xuid bot Halo connu → nom officiel (ex: "343 Meowlnir") via BotSQLCase.
 //  2. sinon xuid_aliases.gamertag si non vide.
 //  3. sinon match_participants.gamertag (MAX si plusieurs) si non vide.
-//  4. sinon killer_victim_pairs.{killer,victim}_gamertag — gamertag résolu
-//     depuis les films (kill-feed). Source VIVANTE pour les adversaires :
-//     xuid_aliases a cessé d'être alimenté par les events en avril 2026, mais
-//     killer_victim_pairs porte toujours le gamertag (même DB shared, donc
-//     aucun ATTACH). Couvre les joueurs croisés en match mais absents d'alias.
+//  4. sinon le gamertag porté par le KILL-FEED, lu dans les DEUX tables qui le
+//     portent : `match_kill_events_latest` (canonique) et `killer_victim_pairs`
+//     (historique). Source VIVANTE pour les adversaires : xuid_aliases a cessé
+//     d'être alimenté par les events en avril 2026, mais le kill-feed porte
+//     toujours le gamertag (même DB shared, donc aucun ATTACH). Couvre les
+//     joueurs croisés en match mais absents d'alias.
+//     ⚠ POURQUOI LES DEUX, ET PAS LA SEULE CANONIQUE (2026-08-02) : sur les
+//     matchs couverts par un film, la passe de film publie moins de morts que le
+//     kill-feed de l'API (74,4 % contre 98,4 % de l'oracle, mesuré). Lire la
+//     canonique SEULE coûtait 4 gamertags sur 18 219 — mesuré, pas supposé — qui
+//     retombaient sur « Joueur #### » sur le chemin le plus visible du produit.
+//     La jambe historique part le jour où la table part. La vue `_latest` est le
+//     seul chemin de lecture autorisé de la table append-only (ADR 0026).
 //  5. sinon libellé masqué "Joueur ####" via MaskedXuidLabelSQL.
 //
 // Colonnes exposées : (xuid, gamertag). On ne projette PAS xa.last_seen : aucun
@@ -180,6 +188,16 @@ FULL OUTER JOIN (
 FULL OUTER JOIN (
 	SELECT xuid, MAX(gamertag) AS gamertag
 	FROM (
+		SELECT feed_killer_xuid AS xuid, feed_killer_gamertag AS gamertag
+		FROM match_kill_events_latest
+		WHERE feed_killer_xuid IS NOT NULL AND feed_killer_xuid != ''
+		  AND feed_killer_gamertag IS NOT NULL AND feed_killer_gamertag != ''
+		UNION ALL
+		SELECT victim_xuid AS xuid, victim_gamertag AS gamertag
+		FROM match_kill_events_latest
+		WHERE victim_xuid IS NOT NULL AND victim_xuid != ''
+		  AND victim_gamertag IS NOT NULL AND victim_gamertag != ''
+		UNION ALL
 		SELECT killer_xuid AS xuid, killer_gamertag AS gamertag
 		FROM killer_victim_pairs
 		WHERE killer_gamertag IS NOT NULL AND killer_gamertag != ''

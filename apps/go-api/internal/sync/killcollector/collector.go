@@ -280,6 +280,17 @@ func (c *KillSourceCollector) collect(ctx context.Context, matchID string) (Kill
 func (c *KillSourceCollector) collectShots(
 	ctx context.Context, matchID string, chunks []haloclient.FilmChunk, parts MatchIdentities,
 ) {
+	// DEUX FAMILLES DE DONNÉES, DEUX CAPABILITIES (§4.3 du plan de branchement). Le film
+	// est déjà téléchargé et décodé pour les morts ; un titre peut malgré tout exposer le
+	// kill enrichi SANS exposer la ventilation des tirs — elle a ses propres réserves
+	// (Fiesta et BTB non livrables). Dégradation gracieuse : on n'écrit rien, on ne
+	// remonte pas d'erreur, et la passe des morts reste acquise.
+	if !c.caps.Has(games.CapFilmWeaponShots) {
+		slog.DebugContext(ctx, "killsource: tirs par arme — capability absente, ventilation ignorée",
+			"match_id", matchID, "capability", string(games.CapFilmWeaponShots),
+			"err", games.ErrCapabilityNotSupported)
+		return
+	}
 	batch := BuildWeaponShotsBatch(matchID, ReplicationChunks(chunks), parts.XUIDs, parts.ShotsFired)
 	if err := c.writeShots(ctx, batch); err != nil {
 		observability.AddInt(metricShotsWriteFail, 1)

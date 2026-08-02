@@ -110,6 +110,12 @@ func openEventsBackfillDBs(t *testing.T) (playerDB, sharedDB *sql.DB) {
 	`); err != nil {
 		t.Fatal(err)
 	}
+	// match_kill_events : seconde destination des couples depuis le 2026-08-02 (double
+	// écriture datée). Sans elle la complétion combat échoue et le match est SKIPPÉ —
+	// silencieusement, puisqu'un skip n'est pas une erreur.
+	if err := migration.EnsureMatchKillEvents(sdb); err != nil {
+		t.Fatal(err)
+	}
 	return pdb, sdb
 }
 
