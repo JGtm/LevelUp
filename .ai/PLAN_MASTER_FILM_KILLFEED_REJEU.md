@@ -1737,3 +1737,65 @@ J5 (§J5.5) :
 3. aucun artefact n'est déployé par mégarde (ils ne sont pas versionnés).
 
 **Conception de la piste F à écrire AVANT d'ouvrir la feature en prod, pas avant le merge.**
+
+---
+
+## PISTE C-bis — INTÉGRATION DE `feat/re-mode-score` (objectifs mode/score/zones)
+
+> Écrit le 2026-08-02 après revue adversariale à 3 relecteurs Fable (contexte frais, aveugles).
+> Branche `feat/re-mode-score` (worktree `.claude/worktrees/re-mode-score`), base `b9f163d80`
+> (J3-1) — elle n'a PAS les commits J4. Surface de code disjointe de J4 (elle touche
+> `objectiveevents/`, `objectivescore/`, `replay/objectives`, `mapvar/`, `cmd/mapobj-build`).
+
+### Verdict de la revue
+
+**Le CODE est solide** : 0 P0, 1 P1, quelques P2 ; méthode de recherche jugée « remarquable »
+(contrôles négatifs réels, faux positifs publiés, relevé pré-enregistré, goldens intacts,
+multi-titre propre, forme inconnue → nil jamais de rayon inventé). **Les DOCUMENTS retardent
+sur les mesures** — c'est là que sont les P0.
+
+### Constats à traiter, par gravité
+
+| # | gravité | où | action | quand |
+|---|---|---|---|---|
+| D-P0a | P0 **doc** | `HANDOFF_EVENEMENTS_NOMMES §2` porte 2 noms DÉMONTRÉS FAUX (`flag_taken`, `runner_stopped`) alors que `.ai/refs/TABLE_STATS_STATBORG.tsv` est corrigée | aligner le handoff sur la TSV/le code | **session restitution** |
+| D-P0b | P0 **doc** | `ETAT_DE_L_ART_FORGE_PALETTE_ZONES` résumé de tête conserve 2 verdicts que le corps réfute (« power-ups clos par la négative » sur prémisse `power-up=eqip` fausse ; « nommage indécidable » alors que résolu) | réécrire le résumé à la date du dernier commit | **session restitution** |
+| D-P1a | P1 code | `cmd/mapobj-build/refresh.go:62-114` : refresh peut écrire un catalogue `schema_version=2` avec zones sans `shape` (rendues points), rien ne distingue « non migré » de « ponctuel » ; `refreshOffline` sans test. **N'affecte pas l'artefact actuel** (242/242 ont shape) | marqueur distinct + test, OU consigner avec condition « avant prochaine migration v2→v3 » | **à l'intégration** |
+| D-P1b | P1 doc | résumés/tableaux périmés dans les 3 docs (mode-score §1 CTF, §8 KOTH vainqueur inversé, §3bis « oracle secondaire » qui inverse la leçon, handoffs « rien implémenté » faux) | mise à jour | **session restitution** |
+| D-P2 | P2 code | `awards.go:130-137` no-op + commentaire inversé · `slotidentity.go:94-107` 2e passe non testée · `named_test.go`/`slotidentity_test.go` `continue` au lieu de `t.Skip` (faux vert — **5e occurrence du motif** dans le chantier) | corriger | **à l'intégration** |
+
+### Décisions utilisateur (2026-08-02)
+
+1. **Intégrer le prouvé, Ghidra APRÈS le merge.** On n'attend pas la RE pour merger.
+2. **Session de restitution ciblée** pour réaligner les documents (D-P0a/b, D-P1b) — mécanique,
+   pas de la recherche.
+
+### Ordre d'intégration (dans J5 ou juste après)
+
+1. Merger `feat/replay2d-prod` (J4) → `main` d'abord.
+2. Rebaser `feat/re-mode-score` sur `main` (surface disjointe → rebase attendu propre ; le
+   seul recouvrement est `mapvar/`, que J4 a laissé en `[!]` exprès).
+3. **Rejouer les goldens du rejeu 2D** (les 7 grandeurs) + `go test -tags=integration -p 1`
+   après rebase — la base a bougé de J3-1 à `main`.
+4. Traiter D-P1a et D-P2 dans le lot d'intégration (petits, sous goldens).
+5. Revue adversariale de l'intégration elle-même si le rebase produit des conflits non triviaux.
+
+### Ce qui part en piste post-merge (J6)
+
+- **Ghidra — nommage** (piste A-objectifs ou nouvelle) : nommer les 4 emplacements de
+  zone/power-up + Oddball via le décompilateur / la lecture mémoire jeu lancé. **C'est LE
+  contrôle que les 3 relecteurs ET le 1er agent pointent** — il fermerait KOTH/Oddball et
+  aurait attrapé les noms faux. Fable, effort max (verdict RE).
+- **Containment « lettre de zone »** (code, PAS de la RE) : croiser les formes de zone
+  décodées × les événements datés → quel joueur est DANS quelle zone à l'instant d'une
+  capture. Faisable en croisant les deux chantiers ; inverserait le « Quelle zone : NON »
+  du chantier d'origine. Opus.
+- **Le décodage d'objectifs n'a AUCUN producteur ni rendu** (mesuré) : le brancher (sync →
+  `Options.Objectives`, puis web) est un lot produit à part entière, après l'intégration.
+
+### Trous de couverture par mode, à ne pas oublier (consignés par la revue)
+
+Slayer complet · Strongholds/zones : manque la lettre A/B/C et « combien de bases à t » ·
+CTF : manque la machine d'état du drapeau (porteur/position) et 15 % de zones de livraison
+sans forme · **KOTH et Oddball : presque rien** (pas d'événements nommés, sémantique de score
+non établie, 1 match KOTH à vainqueur inversé non expliqué).
