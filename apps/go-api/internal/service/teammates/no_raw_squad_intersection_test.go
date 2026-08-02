@@ -1,12 +1,23 @@
 package teammates
 
-// no_raw_squad_intersection_test.go — garde-rail (ratchet) : interdit de consommer
-// l'intersection brute (intersectSquadRowsByMatchID) SANS la passer par le filtre
-// de composition exacte (filterExactComposition). Sans ce filtre, la page Escouade
-// ré-introduit le bug "coéquipier ajouté à une session qu'il n'a pas jouée" : une
-// composition {A,B} inclut à tort les matchs {A,B,C} (C = autre coéquipier connu).
+// no_raw_squad_intersection_test.go — garde-rail (ratchet) du câblage de la
+// population escouade.
 //
-// Créé 2026-07-24 (fix bugs Escouade). Modèle : archlint/no_inline_expected_fda_test.go.
+// Créé 2026-07-24 (fix bugs Escouade) pour interdire de consommer l'intersection
+// brute sans filterExactComposition. RÉVISÉ le 2026-08-02 (décision produit
+// « compteurs de sessions unifiés ») : la population canonique du contexte
+// escouade est désormais « matchs commencés ensemble » = intersection du roster,
+// et l'exclusivité de composition est une OPTION utilisateur désactivée par
+// défaut. L'invariant verrouillé devient donc :
+//
+//   - filterExactComposition existe toujours et reste câblé sur les deux
+//     populations (allSquadRows / allSquadRowsForTimeline) ;
+//   - mais il n'est appliqué QUE sous le paramètre req.FilterExactComposition —
+//     un jour où quelqu'un le rendrait inconditionnel, les compteurs de la page
+//     redivergeraient (le heatmap, le briefing et le sélecteur de sessions
+//     consomment tous la population non exclusive).
+//
+// Modèle : archlint/no_inline_expected_fda_test.go.
 
 import (
 	"os"
@@ -18,12 +29,15 @@ import (
 
 // TestExactCompositionWiringPresent verrouille le câblage des 3 maillons Go :
 //   - allSquadRows / allSquadRowsForTimeline passent par filterExactComposition ;
-//   - le briefing header applique compFilter.applyShared.
+//   - ce filtrage est gardé par le paramètre optionnel req.FilterExactComposition ;
+//   - le briefing header applique compFilter.applyShared (neutre quand l'option
+//     est off : teamByMatch reste nil, cf. exactCompositionFilter.enabled).
 func TestExactCompositionWiringPresent(t *testing.T) {
 	dir := packageDir(t)
 	mustContain(t, filepath.Join(dir, "teammates_service.go"),
 		"allSquadRows = filterExactComposition(allSquadRows,",
-		"allSquadRowsForTimeline = filterExactComposition(allSquadRowsForTimeline,")
+		"allSquadRowsForTimeline = filterExactComposition(allSquadRowsForTimeline,",
+		"if req.FilterExactComposition &&")
 	mustContain(t, filepath.Join(dir, "teammates_service_briefing.go"),
 		"compFilter.applyShared(")
 }

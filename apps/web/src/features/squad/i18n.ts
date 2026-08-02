@@ -33,6 +33,18 @@ export interface SquadText {
     allExperiences: string
     allPlaylists: string
     analyse: string
+    /** Option « composition exacte » (désactivée par défaut) + son explication. */
+    exactComposition: string
+    exactCompositionTitle: string
+  }
+  /** Bandeau de données partielles (chargements dégradés remontés par l'API). */
+  dataIssues: {
+    title: string
+    teammateMatches: (detail: string) => string
+    heatmapTeammate: (detail: string) => string
+    mainTeamParticipants: string
+    mapStats: string
+    unknown: (code: string) => string
   }
   session: {
     label: string
@@ -316,6 +328,18 @@ const FR_TEXT: SquadText = {
     allExperiences: 'Toutes les expériences',
     allPlaylists: 'Toutes les sélections',
     analyse: 'Analyser',
+    exactComposition: 'Composition stricte',
+    exactCompositionTitle:
+      'Par défaut, tous les matchs commencés ensemble sont comptés, même si un autre joueur connu vous accompagnait. Cochez pour ne garder que les matchs joués avec exactement cette composition.',
+  },
+  dataIssues: {
+    title: 'Données partielles : certains chiffres sont incomplets.',
+    teammateMatches: (detail) => `Matchs de ${detail} non chargés : il manque à la population commune.`,
+    heatmapTeammate: (detail) => `Cartes de ${detail} non chargées : sa ligne de la grille est vide.`,
+    mainTeamParticipants:
+      'Équipes non chargées : la composition stricte n\'a pas pu être appliquée.',
+    mapStats: 'Historique par carte non chargé : les références historiques manquent.',
+    unknown: (code) => `Chargement incomplet (${code}).`,
   },
   session: {
     label: 'Session',
@@ -618,6 +642,17 @@ const EN_TEXT: SquadText = {
     allExperiences: 'All experiences',
     allPlaylists: 'All playlists',
     analyse: 'Analyse',
+    exactComposition: 'Strict line-up',
+    exactCompositionTitle:
+      'By default every match started together is counted, even if another known player was with you. Tick to keep only matches played with exactly this line-up.',
+  },
+  dataIssues: {
+    title: 'Partial data: some numbers are incomplete.',
+    teammateMatches: (detail) => `Could not load ${detail}'s matches: they are missing from the shared population.`,
+    heatmapTeammate: (detail) => `Could not load ${detail}'s maps: their grid row is empty.`,
+    mainTeamParticipants: 'Teams could not be loaded: the strict line-up option was not applied.',
+    mapStats: 'Per-map history could not be loaded: historical references are missing.',
+    unknown: (code) => `Incomplete load (${code}).`,
   },
   session: {
     label: 'Session',

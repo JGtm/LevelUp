@@ -1187,6 +1187,10 @@ export interface TeammatesQueryRequest {
   picked_solo_session_labels?: string[]
   picked_squad_session_labels?: string[]
   locale?: string
+  /** Option « composition exacte » (défaut false) : n'inclut que les matchs où
+   *  aucun autre coéquipier connu n'était dans l'équipe. Par défaut la
+   *  population est « matchs commencés ensemble » (intersection du roster). */
+  filter_exact_composition?: boolean
 }
 
 export type SessionLabelEntry = components['schemas']['SessionLabelEntry']
@@ -1338,7 +1342,14 @@ export interface TeammatesPageResponse {
   /** Label de la session la plus récente de la composition exacte (1re entrée de
    *  composition_sessions). Vide si la composition n'a jamais joué ensemble. */
   latest_composition_session?: string
+  /** Chargements best-effort qui ont échoué : les nombres affichés sont partiels.
+   *  Non vide => l'UI doit le signaler (fin des chiffres non reproductibles). */
+  data_issues?: DataIssue[]
 }
+
+/** Dégradation d'un chargement best-effort. `code` est une clé stable traduite
+ *  côté front ; `detail` (ex. gamertag) sert au diagnostic. */
+export type DataIssue = components['schemas']['DataIssue']
 
 // ---------------------------------------------------------------------------
 // Synthèse (Slice 7)

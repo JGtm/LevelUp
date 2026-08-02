@@ -5019,6 +5019,12 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeammatesQueryRequest'
+        required: false
       responses:
         "200":
           content:
@@ -10047,6 +10053,16 @@ components:
         - max_rw_window_ms
         - watchdog_fired
         - holders
+      type: object
+    DataIssue:
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+        detail:
+          type: string
+      required:
+        - code
       type: object
     DatabaseStatus:
       additionalProperties: false
@@ -18807,6 +18823,9 @@ components:
             - "null"
         label:
           type: string
+        match_count:
+          format: int64
+          type: integer
         playlists:
           items:
             type: string
@@ -21276,6 +21295,12 @@ components:
           type:
             - array
             - "null"
+        data_issues:
+          items:
+            $ref: '#/components/schemas/DataIssue'
+          type:
+            - array
+            - "null"
         first_blood:
           items:
             $ref: '#/components/schemas/FirstBloodPlayerSeries'
@@ -21392,6 +21417,30 @@ components:
         - total_matches
         - session_labels
         - friends_count
+      type: object
+    TeammatesQueryRequest:
+      description: 'Corps de POST /pages/teammates (handler RawBody : le schéma est documenté ici, cf. domain.TeammatesQueryRequest).'
+      properties:
+        filter_exact_composition:
+          default: false
+          description: 'Option « composition exacte » : n''inclut que les matchs où aucun autre coéquipier connu n''était sur l''équipe du joueur principal. Par défaut (false), la population est « matchs commencés ensemble » = intersection du roster sélectionné.'
+          type: boolean
+        filters:
+          $ref: '#/components/schemas/FilterContextInput'
+        locale:
+          type: string
+        picked_solo_session_labels:
+          items:
+            type: string
+          type: array
+        picked_squad_session_labels:
+          items:
+            type: string
+          type: array
+        selected_gamertags:
+          items:
+            type: string
+          type: array
       type: object
     Template:
       additionalProperties: false

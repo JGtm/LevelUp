@@ -5035,6 +5035,10 @@ export interface components {
             /** Format: int64 */
             watchdog_fired: number;
         };
+        DataIssue: {
+            code: string;
+            detail?: string;
+        };
         DatabaseStatus: {
             error?: string;
             exists: boolean;
@@ -8712,6 +8716,8 @@ export interface components {
             ended_at: string;
             experiences?: string[] | null;
             label: string;
+            /** Format: int64 */
+            match_count?: number;
             playlists?: string[] | null;
             /** Format: date-time */
             started_at: string;
@@ -9675,6 +9681,7 @@ export interface components {
         };
         TeammatesPageResponse: {
             composition_sessions?: components["schemas"]["SessionLabelEntry"][] | null;
+            data_issues?: components["schemas"]["DataIssue"][] | null;
             first_blood?: components["schemas"]["FirstBloodPlayerSeries"][] | null;
             frag_classes?: {
                 [key: string]: components["schemas"]["FragClassEntry"][] | null;
@@ -9708,6 +9715,19 @@ export interface components {
             total_matches: number;
             weapon_accuracy?: components["schemas"]["SquadWeaponAccuracy"];
             weapon_kills?: components["schemas"]["SquadWeaponKills"];
+        };
+        /** @description Corps de POST /pages/teammates (handler RawBody : le schéma est documenté ici, cf. domain.TeammatesQueryRequest). */
+        TeammatesQueryRequest: {
+            /**
+             * @description Option « composition exacte » : n'inclut que les matchs où aucun autre coéquipier connu n'était sur l'équipe du joueur principal. Par défaut (false), la population est « matchs commencés ensemble » = intersection du roster sélectionné.
+             * @default false
+             */
+            filter_exact_composition: boolean;
+            filters?: components["schemas"]["FilterContextInput"];
+            locale?: string;
+            picked_solo_session_labels?: string[];
+            picked_squad_session_labels?: string[];
+            selected_gamertags?: string[];
         };
         Template: {
             cadence: string;
@@ -15888,7 +15908,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TeammatesQueryRequest"];
+            };
+        };
         responses: {
             /** @description Analyse coéquipiers avec statistiques */
             200: {

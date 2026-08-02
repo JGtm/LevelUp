@@ -33,6 +33,7 @@ type mockSquadRepo struct {
 	// mapStats + captures : renvoyé par LoadMapStatsForSquad ; les slices capturent
 	// les derniers arguments reçus (composition exacte : test de l'anti-join pool).
 	mapStats             map[string]domain.MapSquadStats
+	mapStatsErr          error
 	mapStatsSquadXUIDs   []string
 	mapStatsExcludeXUIDs []string
 	// lookupAliases : gamertag normalisé (lowercase) -> xuid. Vide -> ("", false, nil).
@@ -92,7 +93,7 @@ func (m *mockSquadRepo) LoadModeTranslationsFR(_ context.Context, _ []string) (m
 func (m *mockSquadRepo) LoadMapStatsForSquad(_ context.Context, _ string, squadXUIDs, excludeXUIDs []string) (map[string]domain.MapSquadStats, error) {
 	m.mapStatsSquadXUIDs = squadXUIDs
 	m.mapStatsExcludeXUIDs = excludeXUIDs
-	return m.mapStats, nil
+	return m.mapStats, m.mapStatsErr
 }
 func (m *mockSquadRepo) LoadSynthesisMatches(_ context.Context, _ string) ([]legacymatch.SynthesisMatchRow, error) {
 	return m.synthRows, m.synthErr
