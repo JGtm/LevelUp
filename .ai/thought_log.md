@@ -1,3 +1,39 @@
+## [2026-08-02] Le mode change tout — protocole de vérification daté, en mode normal seulement
+
+**Statut** : Complété. Branche `feat/re-mode-score`. Livrable :
+`.ai/PROTOCOLE_VERIF_EMPLACEMENTS_2026-08-02.md`.
+
+**Décision technique principale** : l'utilisateur signale que ce qui apparaît sur un socle
+peut varier selon le mode, et demande date + heure + carte + hypothèse pour pouvoir
+vérifier. Vérifié sur la base plutôt que supposé — et il a raison deux fois.
+
+**Résultats observés** :
+
+- **Le mode change la cadence** : les mêmes positions sur Fragmentation valent 120 s en
+  variante de base et **45 s** en variante Heavies. La cadence n'est donc pas une propriété
+  du socle mais du couple (socle, variante de carte).
+- **Et surtout, mes trois cartes recommandées étaient inutilisables** : TOUS les matchs
+  récents de l'utilisateur sur Cliffhanger, Catalyst et Launch Site sont en **Super Fiesta**
+  (`Slayer:Arena Super Fiesta`), où l'armement est randomisé. Ma recommandation précédente
+  était donc creuse, et c'est la remarque de l'utilisateur qui l'a démasquée.
+- **Cinq matchs en mode normal identifiés**, datés à la minute (heure de Paris), couvrant
+  les quatre `Representation Name` plus le cas `493070541` :
+  Empyrean 2026-07-28 22:18 Team Slayer (`-1412311642`) · Argyle 2026-07-23 21:55 Team
+  Slayer (`-1351408675`, 117 socles en jeu) · Chasm 2026-07-07 22:46 CTF Neutral Flag
+  (`-219174009`) · Insolence 2026-07-24 22:06 BTB Total Control (`-245254093`) · Catalyst
+  2026-07-07 22:34 Team Slayer (`493070541`).
+- **Deux prédictions falsifiables** posées : (1) si le `Representation Name` porte bien
+  l'identité, Empyrean doit rendre un lance-roquettes comme le socle bas de Vagabond ;
+  (2) sur Catalyst, la paire symétrique (`banished_shock`) et le socle isolé
+  (`banished_plasma`) doivent être deux armes DIFFÉRENTES.
+- **Filtre de sélection** : ne retenir que les cadences 90-150 s, régime des objets de
+  puissance. Les socles à 30-45 s sont écartés — armes de base.
+
+**Conclusion / prochaine étape** : la balle est côté utilisateur, et l'attente est bornée à
+cinq observations. Un désaccord serait aussi utile qu'un accord : il réfuterait l'hypothèse
+que le `Representation Name` porte l'identité, et renverrait vers le troisième mot
+d'identité non identifié (offsets 688/732).
+
 ## [2026-08-02] Le protocole d'observation corrigé — on n'observe pas le socle, on observe ce qui y apparaît
 
 **Statut** : Complété. Branche `feat/re-mode-score`. État de l'art : section **Q1.0-decies**.

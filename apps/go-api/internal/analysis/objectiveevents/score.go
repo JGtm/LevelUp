@@ -107,7 +107,7 @@ func keepMonotoneBySlot(pts []ScorePoint) []ScorePoint {
 	}
 	out := pts[:0:0]
 	for _, slot := range order {
-		out = append(out, longestIncreasing(bySlot[slot])...)
+		out = append(out, longestRun(bySlot[slot], true)...)
 	}
 	sort.SliceStable(out, func(i, j int) bool {
 		if out[i].TimeMS != out[j].TimeMS {
@@ -118,9 +118,15 @@ func keepMonotoneBySlot(pts []ScorePoint) []ScorePoint {
 	return out
 }
 
-// longestIncreasing rend la plus longue sous-suite strictement croissante en valeur,
-// l'ordre d'entree etant deja chronologique (patience sorting, O(n log n)).
-func longestIncreasing(pts []ScorePoint) []ScorePoint {
+// longestRun rend la plus longue sous-suite croissante en valeur, l'ordre d'entree etant
+// deja chronologique (patience sorting, O(n log n)).
+//
+// strict choisit entre les deux usages, et la difference n'est pas cosmetique :
+//   - le score de MODE est strictement croissant (une egalite serait un doublon a jeter) ;
+//   - un compteur de recompense est NON DECROISSANT — un composant porte deux valeurs et
+//     il est reemis des que l'UNE des deux bouge, donc la meme valeur revient
+//     legitimement. Exiger la stricte croissance y jetterait des emissions reelles.
+func longestRun(pts []ScorePoint, strict bool) []ScorePoint {
 	if len(pts) == 0 {
 		return nil
 	}
@@ -130,7 +136,11 @@ func longestIncreasing(pts []ScorePoint) []ScorePoint {
 		lo, hi := 0, len(tailIdx)
 		for lo < hi {
 			mid := (lo + hi) / 2
-			if pts[tailIdx[mid]].Value < p.Value {
+			fits := pts[tailIdx[mid]].Value <= p.Value
+			if strict {
+				fits = pts[tailIdx[mid]].Value < p.Value
+			}
+			if fits {
 				lo = mid + 1
 			} else {
 				hi = mid
