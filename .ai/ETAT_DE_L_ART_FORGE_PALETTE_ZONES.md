@@ -279,6 +279,56 @@ un balayage.
 
 Sortie : `.ai/V7.5/dumps/forge_zones/emplacements_predicats.txt`.
 
+### Q1.0-nonies LA PISTE 2 EST SANS OBJET — il manque un DICTIONNAIRE, pas un SCHEMA
+
+> Question posee en cours de session : « les definitions `weap.xml` / `eqip.xml` du depot
+> Z-15, ce ne sera pas utile ? » Reponse mesuree, pas raisonnee.
+
+**Son but d'origine est atteint par ailleurs.** La piste 2 visait « le groupe qui porte la
+liste des variantes de caisse », pour pouvoir les enumerer et les nommer. Elles sont nommees
+(§Q1.0-septies), par murmur3 direct. Ce but-la est clos.
+
+**Son but residuel a ete teste, et il ne paie pas.** Une definition de tag decrit une
+DISPOSITION DE CHAMPS. Or notre blocage n'est pas « ou est le champ de nom » — on le sait,
+et le diff differentiel des quatre tags `food` le confirme a l'octet pres :
+
+| offset | contenu | statut |
+|---|---|---|
+| 16, 20 | en-tete du tag | — |
+| **688 et 732** | **une valeur d'identite par entree** : `1067333871` / `-2060575876` / `1128236838` | **NOUVEAU, non identifie** |
+| 708 et 1300 | **Crate Variant** | craque (§Q1.0-septies) |
+| 728, 736, 752 | le `type_id` lui-meme | — |
+| **1296** | **Representation Name** | non craque |
+
+Notre blocage est « quelle chaine hache vers `-1412311642` ». **Un schema ne repond jamais a
+cette question ; seul un dictionnaire le peut.** `weap.xml` et `eqip.xml` sont des schemas.
+
+**Et le mur est le meme un cran plus bas.** Le tag d'objet reference par les quatre
+emplacements, `-370671751`, est un vrai `weap` de **14 272 octets** ; celui de Catalyst,
+`493070541`, un `weap` de **14 088 octets** (ce n'est donc pas une entree de palette `food`,
+contrairement aux quatre autres). Extraits et passes au crible : **49 suites imprimables**,
+toutes des marqueurs fourCC en petit-boutiste (`tam ` = `mat `, `edom` = `mode`, `effe`,
+`cshd`, `dfos`). **Aucun nom.** Parser ces tags avec `weap.xml` rendrait des champs, pas des
+libelles.
+
+**La troisieme valeur d'identite, publiee plutot que comblee.** `1067333871`,
+`-2060575876`, `1128236838` — une par entree, ecrite deux fois dans le tag. Ce n'est
+**ni un murmur3 de nom** (0 correspondance sur les trois vocabulaires, esperance de
+collision <= 0,057) **ni un identifiant de tag** (`gid introuvable` sur les 88 modules).
+Un troisieme espace de nommage est donc en jeu, vraisemblablement des identifiants d'asset.
+
+**Ce qui reste realiste pour nommer les quatre**, par valeur decroissante :
+
+1. **L'attribution par observation** — la voie que le handoff proposait deja, et la seule
+   qui ne demande aucune percee. Le `Representation Name` est un identifiant STABLE : on
+   peut s'en servir sans connaitre son libelle humain. Une seule confrontation au Theatre
+   suffit a nommer une entree pour toujours, et le releve terrain de Vagabond en epingle
+   deja deux (le bas / le haut).
+2. **Un dictionnaire communautaire couvrant le build Forge** — les trois essayes ne le
+   couvrent pas (intersection **exactement 0** sur 4 235 `food`).
+3. **Ghidra sur le parseur du tag `food`** — session de retro-ingenierie a part entiere,
+   et sans garantie : le binaire doit encore contenir la table de resolution.
+
 ### Q1.0-sexies LE FORGE KIT ET L'APPARIEMENT `fosp` — deux impasses, mesurees
 
 **Le `Forge Kit` (groupe `kit!`) ne mene nulle part ici.** Sa definition fait 337 Ko et porte
