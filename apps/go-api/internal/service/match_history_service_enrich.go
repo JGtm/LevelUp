@@ -77,6 +77,17 @@ type rowFormatters struct {
 	// courant (regulation.toml). Nil/vide → aucun flag « Prolongation », jamais
 	// d'erreur. Injectée par MatchHistoryService.WithRegulation.
 	regulation map[string]int
+	// skillBadgeURL : résolveur d'URL d'image de badge de palier du TITRE courant
+	// (même contrat que la home : (tier capitalisé, sous-palier 0=Onyx/1..6) → URL).
+	// Nil → aucune image, le front retombe sur le libellé texte du palier.
+	skillBadgeURL func(tierEN string, subTier int) string
+}
+
+// skillRankImageURLFor résout l'image du badge de palier d'une ligne brute via le
+// chokepoint unique analysis.SkillBadgeURL (normalisation partagée avec la home).
+// nil sans résolveur injecté ou sans palier exploitable → dégradation sur le texte.
+func (f rowFormatters) skillRankImageURLFor(r domain.MatchHistoryRawRow) *string {
+	return analysis.SkillBadgeURL(derefStr(r.SkillTier), r.SubTier, f.skillBadgeURL)
 }
 
 // overtimeFor résout le flag « Prolongation » d'une ligne brute via le
@@ -199,6 +210,8 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFor
 		Assists:                  r.Assists,
 		SkillTierLabel:           r.SkillTierLabel,
 		SkillRatingType:          r.SkillRatingType,
+		SkillRankImageURL:        fmts.skillRankImageURLFor(r),
+		PersonalScore:            r.PersonalScore,
 		ExpectedWinProb:          r.SkillExpectedWinProb,
 		PlacementDone:            r.PlacementDone,
 		PlacementTotal:           r.PlacementTotal,

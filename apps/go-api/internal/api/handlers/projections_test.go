@@ -106,3 +106,36 @@ func TestBuildExplorerRowFromMatchHistory_deltaPerfDerivedFromScoreMinus50(t *te
 }
 
 func strPtrHandlers(s string) *string { return &s }
+
+// TestBuildExplorerRowFromMatchHistory_badgeAndPersonalScore (V73-L2 2.4a/2.5) :
+// la projection est le SEUL pont entre l'enrichissement et les lignes servies à
+// l'Explorer, à la vue session, à la progression Timeseries et aux « matchs
+// marquants » de la carrière — un champ oublié ici disparaît des 5 surfaces d'un
+// coup, sans erreur de compilation.
+func TestBuildExplorerRowFromMatchHistory_badgeAndPersonalScore(t *testing.T) {
+	badge := "/static/ranks/halo_infinite/120px-HINF-CSR_Diamond4.png"
+	score := 1450
+	row := BuildExplorerRowFromMatchHistory(domain.MatchHistoryRow{
+		MatchID:           "m1",
+		SkillTierLabel:    strPtrHandlers("Diamant IV"),
+		SkillRankImageURL: &badge,
+		PersonalScore:     &score,
+	})
+
+	if row.SkillRankImageURL == nil || *row.SkillRankImageURL != badge {
+		t.Errorf("SkillRankImageURL want %q, got %v", badge, row.SkillRankImageURL)
+	}
+	// Le libellé texte reste servi à côté : alt de l'image + repli quand elle manque.
+	if row.SkillTierLabel == nil || *row.SkillTierLabel != "Diamant IV" {
+		t.Errorf("SkillTierLabel want \"Diamant IV\", got %v", row.SkillTierLabel)
+	}
+	if row.PersonalScore == nil || *row.PersonalScore != 1450 {
+		t.Errorf("PersonalScore want 1450, got %v", row.PersonalScore)
+	}
+
+	// Titre/match sans badge ni score : nil des deux côtés (dégradation propre).
+	bare := BuildExplorerRowFromMatchHistory(domain.MatchHistoryRow{MatchID: "m2"})
+	if bare.SkillRankImageURL != nil || bare.PersonalScore != nil {
+		t.Errorf("ligne nue = (%v, %v), want (nil, nil)", bare.SkillRankImageURL, bare.PersonalScore)
+	}
+}

@@ -238,7 +238,19 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
       d'intensité escouade : ajouter la courbe agrégée de l'équipe quand >= 3 joueurs
       sélectionnés (`features/squad/charts/squadIntensityProfileChart.ts`).
       Validation en revue navigateur avec l'utilisateur.
-- [ ] 2.4 **Tableaux — colonne Rang en image + tooltips d'en-tête** : (a) ajouter
+- [ ] 2.4 (code livré le 2026-08-02 — reste revue navigateur au gate 2. (a) champ
+      `skill_rank_image_url` via chokepoint extrait `analysis.SkillBadgeURL` +
+      `WithSkillBadgeResolver` (chemin Home réutilisé, zéro slug) ; (b) largeurs :
+      Explorer px-1.5 + icônes w-8 + carte tronquée 12c + rang image (~-126 px),
+      Escouade px-2 (~-104 px), Timeseries/Session/Carrière héritent d'Explorer,
+      th nowrap = aucun libellé coupable FR/EN ; (c) InfoTooltip mode trigger span
+      sans onClick (piège bouton-dans-bouton évité), HeaderInfoTooltip supprimé,
+      8 surfaces columnMeta + SortableTh (9 consommateurs) migrées. Contrat : +10
+      openapi, +6 generated, 203/203 chemins. NOTE nommage : le type Go réel est
+      `ExplorerMatchesRow`, le schéma openapi `ExplorerMatchRow` est un orphelin
+      (découverte). Réserve agent sur un premier go test exit 1 non capturé :
+      TRANCHÉE flake — rejeu orchestrateur complet exit 0.)
+      **Tableaux — colonne Rang en image + tooltips d'en-tête** : (a) ajouter
       `skill_rank_image_url` au contrat `ExplorerMatchRow` servi par le backend via
       l'adaptateur d'assets du titre (précédent : `RecentMatchItem.skill_rank_image_url`
       pour Home) — dégradation propre : champ null => texte localisé actuel (H5) ;
@@ -248,7 +260,17 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
       LABEL : étendre `InfoTooltip` (`components/ui/info-tooltip.tsx`) avec un trigger
       non-bouton (piège documenté bouton-dans-bouton, `lib/table/columnMeta.tsx:11-15`),
       retirer les icônes ⓘ des en-têtes. Contrat + `make generate-types`.
-- [ ] 2.5 **Colonne Score personnel** dans les tableaux d'historique : vérifier
+- [ ] 2.5 (code livré le 2026-08-02 — reste revue navigateur au gate 2.
+      « L'historique » confirmé par grep = UN composant ExplorerMatchesTable monté
+      5 fois (Explorer matchs, Explorer joueur allié/ennemi, Session, Timeseries
+      Progression, Carrière marquants) — MatchHistoryPage n'existe pas côté web.
+      `personal_score` = donnée déjà lue puis JETÉE par enrichRow (fuite, zéro SQL
+      nouveau). En-tête « Score personnel »/« Personal score », tri TanStack, aide
+      ajoutée sur « Score » (équipe) pour lever l'ambiguïté ; Session : score
+      personnel sorti de score_label, colonne Score (équipe, inexistante là) masquée.
+      Part Escouade `[!]` : SquadSynergyHistoryTable volontairement sans stats
+      perso — hors « historique ».)
+      **Colonne Score personnel** dans les tableaux d'historique : vérifier
       d'abord quel(s) composant(s) constituent « l'historique » (Explorer +
       MatchHistoryPage — confirmer par grep avant code) ; champ contrat à ajouter si
       absent d'`ExplorerMatchRow` (mutualiser avec la modification 2.4a) ; tri
@@ -468,6 +490,16 @@ AVANT merge, pas seulement un rejeu local).
   découvertes)] : 3e instance du tooltip d'intensité (Timeseries) alignée sur le
   registre simple ; 3e surface FDA gap (SquadFdaGapCumulativeCard) branchée sur
   FdaGapTooltipText — 2 registres ne coexistent plus sur les mêmes charts.
+- [2026-08-02, agent 2.4/2.5] Le schéma OpenAPI `ExplorerMatchRow` est un ORPHELIN
+  (aucun path ne le référence) et diverge du `ExplorerMatchesRow` réellement servi
+  — candidat suppression du fragment manuel.
+- [2026-08-02, agent 2.4/2.5] `wire.csrBadgeURL` reste une implémentation parallèle
+  de la normalisation tier/sous-palier non migrée vers `analysis.SkillBadgeURL`
+  (sert la Carrière, ne capitalise pas le tier) — à basculer dans une passe dédiée
+  avec test de non-régression (règle 6 : 2 copies max atteintes).
+- [2026-08-02, agent 2.4/2.5] Tri non atteignable au clavier sur MatchScoreboard,
+  MatchEncountersTable, DetectionsPanel (onClick sur th sans bouton, dette
+  préexistante) ; clés i18n mortes `explorer.matches.col_tier` / `col_delta_rank`.
 - [2026-08-02, orchestrateur] Retombée du fix 1.3 corrigée par l'orchestrateur :
   `TestCareerRepo_GetRelationsHeatmap` (integration) attendait des heures UTC et
   dépendait du fuseau machine → ouvert via le chemin production épinglé UTC

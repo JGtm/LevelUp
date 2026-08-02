@@ -5504,12 +5504,15 @@ export interface components {
             /** Format: int64 */
             perf_tier?: number;
             /** Format: int64 */
+            personal_score?: number;
+            /** Format: int64 */
             placement_done?: number;
             /** Format: int64 */
             placement_total?: number;
             playlist_label: string | null;
             rating_type?: string;
             score_label: string;
+            skill_rank_image_url?: string;
             skill_tier_label?: string;
             /** Format: date-time */
             start_time: string;
@@ -6626,11 +6629,14 @@ export interface components {
             /** Format: int64 */
             performance_score_relative: number | null;
             /** Format: int64 */
+            personal_score?: number;
+            /** Format: int64 */
             placement_done?: number;
             /** Format: int64 */
             placement_total?: number;
             playlist_label: string | null;
             score_label: string;
+            skill_rank_image_url?: string;
             skill_rating_type?: string;
             skill_tier_label?: string;
             /** Format: date-time */

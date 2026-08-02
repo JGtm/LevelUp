@@ -198,6 +198,18 @@ en = "Outcome"
 fr = "Score"
 en = "Score"
 
+[explorer.matches.col_score_tooltip]
+fr = "Score final de la partie : votre équipe puis l'équipe adverse."
+en = "Final match score: your team, then the opposing team."
+
+[explorer.matches.col_personal_score]
+fr = "Score personnel"
+en = "Personal score"
+
+[explorer.matches.col_personal_score_tooltip]
+fr = "Points marqués par vous seul pendant la partie (éliminations, objectifs, assistances) — sans rapport avec le score de l'équipe."
+en = "Points you alone scored during the match (kills, objectives, assists) — unrelated to the team score."
+
 [explorer.matches.col_type]
 fr = "Type"
 en = "Type"

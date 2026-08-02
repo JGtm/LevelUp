@@ -76,7 +76,10 @@ func (r *ServiceRegistry) MatchHistoryCtx(ctx context.Context, slug string) (por
 		WithPlaylistDisplay(r.playlistLabelConfigFor(pdb)).
 		// Flag « Prolongation » des lignes Explorer/historique : table
 		// réglementaire du titre (regulation.toml). Titre sans table → nil.
-		WithRegulation(r.regulationFor(pdb))
+		WithRegulation(r.regulationFor(pdb)).
+		// Image du badge de palier des lignes Explorer/historique : MÊME résolveur
+		// title-aware que la home (skill_rank_image_url de RecentMatchItem).
+		WithSkillBadgeResolver(skillBadgeResolverFor(pdb.TitleSlug))
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
 	}

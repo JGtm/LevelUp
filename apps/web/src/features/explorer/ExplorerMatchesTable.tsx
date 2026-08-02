@@ -55,7 +55,7 @@ import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { useProvidesTeamMmr } from '@/lib/damage/effectiveHp'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { formatMessage } from '@/lib/i18n/format'
-import { HeaderInfoTooltip } from '@/lib/table/columnMeta'
+import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { matchViewManifest, type MatchViewManifestKey } from '@/lib/i18n/generated/match_view'
 import {
@@ -165,7 +165,7 @@ interface Props {
  *  SANS `text-align` : l'alignement est appliqué PAR COLONNE via `alignClass`
  *  (numériques à droite, texte à gauche — DEC-ALIGN). */
 const HEADER_TH_CLASS =
-  'px-2 py-1 whitespace-nowrap text-3xs font-medium text-muted-foreground border-r border-border last:border-r-0'
+  'px-1.5 py-1 whitespace-nowrap text-3xs font-medium text-muted-foreground border-r border-border last:border-r-0'
 
 /** Colonnes NUMÉRIQUES (par id TanStack) alignées à DROITE (en-tête ET cellules).
  *  Les autres colonnes (texte : date, carte, playlist, mode, contexte, résultat,
@@ -176,6 +176,7 @@ const RIGHT_ALIGNED_COLUMNS = new Set<string>([
   'assists',
   'kda',
   'score_label',
+  'personal_score',
   'duration_seconds',
   'perf_score',
   'delta_perf',
@@ -200,14 +201,15 @@ function alignClass(colId: string): string {
  *  l'Explorer, mode sombre). Le `<svg>` inline de la colonne « ouvrir » y résistait
  *  mieux qu'un `<img>`, d'où un symptôme sur une seule des deux colonnes.
  *
- *  `w-9` = 16 px d'icône + les 2×8 px de `px-2` du gabarit commun. On réserve la
- *  largeur ICI plutôt que d'élargir le rembourrage global, qui décollerait tout le
- *  reste du tableau de ses bordures. */
+ *  `w-8` = 32 px : couvre le plus large des deux contenus (le logotype de 20 px)
+ *  plus les 2×6 px de `px-1.5` du gabarit commun. On réserve la largeur ICI plutôt
+ *  que d'élargir le rembourrage global, qui décollerait tout le reste du tableau de
+ *  ses bordures. (Passé de `w-9` à `w-8` avec le resserrage du padding — V73-L2 2.4b.) */
 const ICON_COLUMN_WIDTHS: Record<string, string> = {
-  // Icône carrée 14 px (<svg> inline) + les 2x8 px de px-2.
-  open: 'w-9',
-  // Logotype 20x16 (ratio natif 2.25 respecté via object-contain) + px-2.
-  waypoint: 'w-9',
+  // Icône carrée 14 px (<svg> inline) + les 2x6 px de px-1.5.
+  open: 'w-8',
+  // Logotype 20x16 (ratio natif 2.25 respecté via object-contain) + px-1.5.
+  waypoint: 'w-8',
 }
 
 /** Classe de largeur d'une colonne : réservée pour les colonnes icône, libre sinon. */
@@ -454,7 +456,15 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         // Colonnes texte : tri alpha locale-aware, ascendant au 1er clic.
         sortingFn: localeTextSortingFn,
         sortDescFirst: false,
-        cell: (ctx) => labelOfMap(ctx.getValue<string>()),
+        // Tronquée comme playlist/mode (V73-L2 2.4b) : c'était la seule colonne
+        // texte à s'étaler sur toute la longueur du nom de carte. Le nom complet
+        // reste au survol.
+        cell: (ctx) => {
+          const full = labelOfMap(ctx.getValue<string>())
+          return (
+            <span title={full}>{truncateName(full)}</span>
+          )
+        },
       },
       {
         accessorKey: 'playlist_label',
@@ -638,6 +648,9 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
       {
         accessorKey: 'score_label',
         header: t('explorer.matches.col_score'),
+        // Aide ajoutée avec la colonne « Score personnel » voisine (V73-L2 2.5) :
+        // deux colonnes portent le mot « score », l'aide lève l'ambiguïté.
+        meta: { headerTooltip: t('explorer.matches.col_score_tooltip') },
         // Score « 50-30 » : tri alphanumerique naturel (compare 50 vs 100 en
         // nombres) sur la valeur brute — gere aussi les scores mono-valeur.
         sortingFn: 'alphanumeric',
@@ -646,6 +659,25 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
             {ctx.getValue<string | undefined>() || '-'}
           </span>
         ),
+      },
+      {
+        // Score PERSONNEL du joueur — distinct du score d'équipe ci-dessus.
+        // En-tête sur 2 lignes : « Score personnel » / « Personal score » est le
+        // libellé le plus long du tableau, il doublerait sinon la largeur de la
+        // colonne pour un contenu de 3-4 chiffres.
+        accessorFn: (r) => r.personal_score ?? undefined,
+        id: 'personal_score',
+        header: () => renderTwoLineHeader(t('explorer.matches.col_personal_score')),
+        meta: { headerTooltip: t('explorer.matches.col_personal_score_tooltip') },
+        ...NUMERIC_SORT,
+        cell: (ctx) => {
+          const v = ctx.getValue<number | null | undefined>()
+          return (
+            <span className="font-mono tabular-nums">
+              {v == null ? '-' : v.toLocaleString(intlLocale)}
+            </span>
+          )
+        },
       },
       {
         accessorFn: (r) => r.duration_seconds ?? undefined,
@@ -765,7 +797,29 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
           if (r.placement_done != null && r.placement_total != null) {
             return <span className="font-mono">{r.placement_done}/{r.placement_total}</span>
           }
-          return localizeTierLabel(r.skill_tier_label, locale) ?? '-'
+          const label = localizeTierLabel(r.skill_tier_label, locale)
+          // Badge servi par le BACKEND (adaptateur d'assets du titre) — jamais une
+          // URL construite ici. Absent (titre sans badge, palier inconnu) → on
+          // retombe sur le texte localisé : aucune image cassée à l'écran.
+          if (r.skill_rank_image_url) {
+            return (
+              <img
+                src={r.skill_rank_image_url}
+                // Le badge PORTE l'information : son alternative textuelle est le
+                // libellé du palier, pas un texte décoratif.
+                alt={label ?? t('explorer.matches.col_rank')}
+                title={label ?? undefined}
+                // Dimensions intrinsèques en plus des classes : sans elles, une
+                // image dans une cellule en largeur automatique est dimensionnée
+                // différemment selon le moteur (cf. colonne Waypoint ci-dessus).
+                width={20}
+                height={20}
+                loading="lazy"
+                className="h-5 w-5 shrink-0 object-contain"
+              />
+            )
+          }
+          return label ?? '-'
         },
       },
       // Colonnes MMR (équipe / adverse / Δ) : incluses uniquement si le titre
@@ -940,17 +994,18 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
                   const content = h.isPlaceholder
                     ? null
                     : flexRender(h.column.columnDef.header, h.getContext())
-                  // Aide ⓘ facultative (V72-04) : rendue en frère du bouton de tri.
+                  // Aide facultative (V72-04) : portée par le LIBELLÉ lui-même
+                  // depuis V73-L2 2.4c — plus d'icône ⓘ dans les en-têtes.
                   const tip = h.column.columnDef.meta?.headerTooltip
                   // Colonne non triable (tableau sans `sortable`, ou colonne
-                  // d'ouverture) : en-tête statique.
+                  // d'ouverture) : en-tête statique → libellé passif, donc rendu
+                  // focusable pour rester atteignable au clavier.
                   if (!h.column.getCanSort()) {
                     return (
                       <th key={h.id} className={`${HEADER_TH_CLASS} ${alignClass(h.column.id)} ${widthClass(h.column.id)}`}>
-                        <span className="inline-flex items-center gap-1">
+                        <HeaderLabelTooltip text={tip} focusable>
                           {content}
-                          <HeaderInfoTooltip text={tip} />
-                        </span>
+                        </HeaderLabelTooltip>
                       </th>
                     )
                   }
@@ -960,9 +1015,10 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
                   const labelKey = SORT_ARIA_LABEL_KEYS[h.column.id]
                   return (
                     <th key={h.id} className={`${HEADER_TH_CLASS} ${alignClass(h.column.id)} ${widthClass(h.column.id)}`} aria-sort={ariaSort}>
-                      {/* Le <th> porte déjà l'alignement (text-right/left) : le bouton
-                          reste inline-flex et l'icône ⓘ est sa sœur. */}
-                      <span className="inline-flex items-center gap-1">
+                      {/* Le <th> porte déjà l'alignement (text-right/left). L'aide
+                          ENVELOPPE le bouton de tri (span sans onClick) : le clic
+                          trie, le survol/focus du libellé ouvre l'aide. */}
+                      <HeaderLabelTooltip text={tip}>
                         <button
                           type="button"
                           onClick={h.column.getToggleSortingHandler()}
@@ -976,8 +1032,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
                           {content}
                           <SortIndicator dir={sortDir} />
                         </button>
-                        <HeaderInfoTooltip text={tip} />
-                      </span>
+                      </HeaderLabelTooltip>
                     </th>
                   )
                 })}
@@ -999,7 +1054,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
                   return (
                     <td
                       key={cell.id}
-                      className={`px-2 py-1 whitespace-nowrap border-r border-border last:border-r-0 ${alignClass(colId)} ${widthClass(colId)}`}
+                      className={`px-1.5 py-1 whitespace-nowrap border-r border-border last:border-r-0 ${alignClass(colId)} ${widthClass(colId)}`}
                       style={hlStyle}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
