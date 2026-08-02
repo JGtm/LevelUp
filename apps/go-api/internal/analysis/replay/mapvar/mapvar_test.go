@@ -133,6 +133,156 @@ func TestFlagSpawnAndDeliveryColocated(t *testing.T) {
 	}
 }
 
+// TestShapeAnchorCliffhangerStronghold — ANCRE EXTERNE de la conversion.
+// L'objet 178 de cliffhanger_map.mvar porte les valeurs brutes citées dans
+// l'état de l'art (§ contrat de données) : famille 3, s5=445644, s6=393216,
+// s7=262144, s8=0. Sous la lecture retenue (tailles pleines), elles donnent
+// une boîte de 3,400 × 3,000 m de demi-extents, 4 m au-dessus du centre.
+// Si quelqu'un rebranche la division par 2 au mauvais endroit, ce test tombe.
+func TestShapeAnchorCliffhangerStronghold(t *testing.T) {
+	v, err := Parse(fixture(t, "cliffhanger_map.mvar"))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if len(v.Objects) <= 178 {
+		t.Fatalf("objets = %d, l'ancre attend au moins 179", len(v.Objects))
+	}
+	s := v.Objects[178].Shape()
+	if s == nil {
+		t.Fatal("objet 178 sans forme, attendu une boîte")
+	}
+	if s.Family != ShapeBox {
+		t.Errorf("famille = %q, attendu %q", s.Family, ShapeBox)
+	}
+	if s.Raw.S5 != 445644 || s.Raw.S6 != 393216 || s.Raw.S7 != 262144 || s.Raw.S8 != 0 {
+		t.Fatalf("brut = %+v, attendu s5=445644 s6=393216 s7=262144 s8=0", s.Raw)
+	}
+	near(t, "half_x", *s.HalfX, 3.400, 1e-3)
+	near(t, "half_y", *s.HalfY, 3.000, 1e-3)
+	near(t, "up_z", s.UpZ, 4.000, 1e-3)
+	near(t, "down_z", s.DownZ, 0.000, 1e-3)
+	if s.Radius != nil {
+		t.Error("une boîte ne publie pas de rayon")
+	}
+	// L'orientation est obligatoire et non nulle : une zone tournée mal orientée
+	// déclare « dedans » 31 % de positions qui sont dehors.
+	near(t, "forward.x", s.Forward.X, 0.99999, 1e-4)
+	near(t, "forward.y", s.Forward.Y, -0.00397, 1e-4)
+}
+
+// TestShapeFullSizeReadingBeatsHalfExtent — LE TÉMOIN qui a tranché la lecture.
+// Sur cliffhanger_map.mvar, l'objet 185 est un cylindre (s5=334233) et l'objet
+// 188 une boîte (s5=668441), même carte et même rôle. Sous la lecture retenue
+// (« s5 est une taille pleine pour la boîte, un rayon pour le cylindre »), la
+// demi-largeur de la boîte et le rayon du cylindre coïncident au dixième de
+// millimètre. Sous la lecture rejetée (demi-extents partout), l'écart serait
+// d'un facteur 2. Ce test encode donc la mesure, pas la conclusion.
+func TestShapeFullSizeReadingBeatsHalfExtent(t *testing.T) {
+	v, err := Parse(fixture(t, "cliffhanger_map.mvar"))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if len(v.Objects) <= 188 {
+		t.Fatalf("objets = %d, le témoin attend au moins 189", len(v.Objects))
+	}
+	cyl := v.Objects[185].Shape()
+	box := v.Objects[188].Shape()
+	if cyl == nil || box == nil {
+		t.Fatal("le couple témoin (185, 188) doit porter deux formes")
+	}
+	if cyl.Family != ShapeCylinder || box.Family != ShapeBox {
+		t.Fatalf("familles = %q / %q, attendu cylinder / box", cyl.Family, box.Family)
+	}
+	if cyl.HalfX != nil || cyl.HalfY != nil {
+		t.Error("un cylindre ne publie pas de demi-extents cartésiens")
+	}
+	gap := *box.HalfX - *cyl.Radius
+	if gap < 0 {
+		gap = -gap
+	}
+	if gap > 0.005 {
+		t.Errorf("demi-largeur de boîte %.5f vs rayon %.5f : écart %.5f m > 5 mm — "+
+			"la lecture « tailles pleines » ne tient plus", *box.HalfX, *cyl.Radius, gap)
+	}
+}
+
+// TestShapePresenceFollowsSurfaceRule — la règle de couverture, sur pièces.
+// 100 % des objectifs SURFACIQUES portent une forme, 0 % des PONCTUELS. Ce
+// n'est pas un trou de couverture, c'est la structure : un point d'apparition
+// de drapeau EST un point. Un consommateur ne doit jamais inventer un rayon.
+func TestShapePresenceFollowsSurfaceRule(t *testing.T) {
+	surfacic := map[Role]bool{
+		RoleStrongholdZone: true, RoleExtractionZone: true, RoleStockpileNavpoint: true,
+	}
+	punctual := map[Role]bool{
+		RoleFlagSpawn: true, RoleStockpileSocket: true,
+	}
+	for _, name := range []string{"cliffhanger_map.mvar", "cliffhanger_ridgeline.mvar"} {
+		v, err := Parse(fixture(t, name))
+		if err != nil {
+			t.Fatalf("Parse %s: %v", name, err)
+		}
+		seen := 0
+		for _, ob := range v.Objectives() {
+			switch {
+			case surfacic[ob.Role]:
+				seen++
+				if ob.Shape == nil {
+					t.Errorf("%s objet %d rôle %s : objectif surfacique SANS forme",
+						name, ob.ObjectIdx, ob.Role)
+				}
+			case punctual[ob.Role]:
+				seen++
+				if ob.Shape != nil {
+					t.Errorf("%s objet %d rôle %s : objectif ponctuel AVEC une forme",
+						name, ob.ObjectIdx, ob.Role)
+				}
+			}
+		}
+		if seen == 0 {
+			t.Errorf("%s : aucun objectif classé, la règle n'a rien testé", name)
+		}
+	}
+}
+
+// TestShapeDerivesFromRaw — le brut et le dérivé ne peuvent pas diverger.
+// Le contrat conserve les deux ; si l'un cessait de décrire l'autre, un
+// consommateur qui recalcule depuis le brut obtiendrait autre chose que ce que
+// le champ dérivé annonce.
+func TestShapeDerivesFromRaw(t *testing.T) {
+	v, err := Parse(fixture(t, "cliffhanger_map.mvar"))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	n := 0
+	for _, o := range v.Objects {
+		s := o.Shape()
+		if s == nil {
+			continue
+		}
+		n++
+		near(t, "up_z", s.UpZ, float64(s.Raw.S7)/65536.0, 1e-9)
+		near(t, "down_z", s.DownZ, float64(s.Raw.S8)/65536.0, 1e-9)
+		switch s.Family {
+		case ShapeBox:
+			near(t, "half_x", *s.HalfX, float64(s.Raw.S5)/65536.0/2, 1e-9)
+			near(t, "half_y", *s.HalfY, float64(s.Raw.S6)/65536.0/2, 1e-9)
+		case ShapeCylinder:
+			near(t, "radius", *s.Radius, float64(s.Raw.S5)/65536.0, 1e-9)
+		}
+	}
+	if n == 0 {
+		t.Fatal("aucune forme lue sur cliffhanger_map.mvar")
+	}
+}
+
+func near(t *testing.T, what string, got, want, tol float64) {
+	t.Helper()
+	if math.Abs(got-want) > tol {
+		t.Errorf("%s = %.6f, attendu %.6f (tolérance %g)", what, got, want, tol)
+	}
+}
+
 func distance(a, b Vec3) float64 {
 	dx, dy, dz := a.X-b.X, a.Y-b.Y, a.Z-b.Z
 	return math.Sqrt(dx*dx + dy*dy + dz*dz)

@@ -925,9 +925,48 @@ ce qui rend ces trois-la ambigus par construction. Trancher demande un oracle d'
 
 ---
 
-## LE CONTRAT DE DONNEES PROPOSE — `map_objectives.json`
+## LE CONTRAT DE DONNEES — `map_objectives.json` **LIVRE en schema_version 2** *(2026-08-02)*
 
-Proposition. **Rien n'a ete implemente** : ni le schema, ni le rendu n'ont ete touches.
+> **N'est plus une proposition.** Le schema est implemente, teste et le catalogue est
+> regenere. Le RENDU, lui, n'existe toujours pas — et pour une raison mesuree : le
+> catalogue n'a **aucun lecteur**, ni Go ni web (grep sur `MapObjectivesPath` et
+> `map_objectives` : zero consommateur). Le brancher est un chantier a part entiere,
+> tenu par `.ai/PLAN_OBJECTIFS_TEMPS_REEL.md` etapes 1-2.
+
+**Ce qui est livre :**
+
+| element | ou |
+|---|---|
+| lecture du sac de forme | `internal/analysis/replay/mapvar/shape.go` (`readShape`, `Object.Shape()`) |
+| brut conserve dans le record | `mapvar.Object.ShapeRaw` |
+| champ de sortie | `mapvar.Objective.Shape` (`omitempty` — absent sur un ponctuel) |
+| bump de schema + note de contrat | `cmd/mapobj-build/catalog.go` (`catalogSchemaVersion = 2`) |
+| **regeneration HORS LIGNE** | `cmd/mapobj-build --refresh-from <dossier de .mvar>` (`refresh.go`) |
+| catalogue regenere | 34 cartes, 597 objectifs, **264 avec forme** (157 boites, 107 cylindres), 333 ponctuels sans forme |
+
+**Le mode `--refresh-from` existe parce qu'ajouter un champ au contrat ne doit pas
+obliger a re-solliciter l'UGC pour 34 cartes.** Il re-parse les `.mvar` locaux en
+appariant par `mvar_file`, PRESERVE les metadonnees issues du reseau (`map_id`,
+`version_id`, `public_name`, `fetched_at`), et signale bruyamment toute carte dont le
+fichier manque plutot que de l'effacer. Migration v1 -> v2 : 34/34, zero manquant.
+
+**Quatre tests ancrent la lecture** (`mapvar_test.go`) :
+
+1. `TestShapeAnchorCliffhangerStronghold` — l'objet 178 de `cliffhanger_map.mvar` porte
+   exactement les valeurs brutes citees ci-dessous (s5=445644, s6=393216, s7=262144, s8=0)
+   et doit rendre 3,400 x 3,000 m de demi-extents, 4 m au-dessus du centre ;
+2. **`TestShapeFullSizeReadingBeatsHalfExtent`** — LE temoin : le cylindre 185 (r = 5,0999)
+   et la boite 188 (s5 = 668441) de la meme carte coincident **au dixieme de millimetre**
+   sous la lecture retenue, et seraient a un facteur 2 sous la lecture rejetee ;
+3. `TestShapePresenceFollowsSurfaceRule` — 100 % des surfaciques avec forme, 0 % des
+   ponctuels ;
+4. `TestShapeDerivesFromRaw` — le derive ne peut pas diverger du brut.
+
+**Piege confirme au passage** : `mapobj-build` resout la racine du depot en remontant
+l'arborescence. Depuis un worktree il ecrit dans l'ARBRE PRINCIPAL — exporter
+`LEVELUP_REPO_ROOT` avant de le lancer.
+
+Le schema tel qu'il sort aujourd'hui, et les cinq regles qui le justifient :
 
 ```jsonc
 {

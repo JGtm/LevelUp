@@ -9,6 +9,7 @@
 //	go run ./cmd/mapobj-build --player <Gamertag> --map-id <uuid> [--map-id <uuid>...]
 //	go run ./cmd/mapobj-build --player <Gamertag> --all
 //	go run ./cmd/mapobj-build --from-file <chemin.mvar> --map-id <uuid>   (hors ligne)
+//	go run ./cmd/mapobj-build --refresh-from <dossier de .mvar>           (hors ligne, tout le catalogue)
 //
 // L'authentification suit ADR 0023 : MultiUserTokenStore d'abord, legacy ensuite,
 // via auth.RefreshHaloTokensViaStoreFirst. AUCUNE re-capture de jeton.
@@ -44,8 +45,10 @@ func main() {
 		titleSlug = flag.String("title", titlePkg.DefaultSlug, "slug du titre")
 		all       = flag.Bool("all", false, "toutes les cartes distinctes de match_registry")
 		fromFile  = flag.String("from-file", "", "parser un .mvar local au lieu d'appeler le réseau")
-		rateMS    = flag.Int("rate-ms", 1000, "délai entre deux requêtes réseau (politesse)")
-		dryRun    = flag.Bool("dry-run", false, "ne pas écrire le catalogue")
+		refresh   = flag.String("refresh-from", "",
+			"régénérer HORS LIGNE tout le catalogue depuis un dossier de .mvar locaux")
+		rateMS = flag.Int("rate-ms", 1000, "délai entre deux requêtes réseau (politesse)")
+		dryRun = flag.Bool("dry-run", false, "ne pas écrire le catalogue")
 	)
 	flag.Var(&mapIDs, "map-id", "identifiant d'asset de carte (répétable)")
 	flag.Parse()
@@ -59,6 +62,15 @@ func main() {
 	}
 	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
 	outPath := resolver.MapObjectivesPath(*titleSlug)
+
+	// Chemin hors ligne complet : re-parse du catalogue entier, aucune requête.
+	// Il migre aussi le schéma, il ne passe donc pas par mergeExisting.
+	if *refresh != "" {
+		if err := refreshOffline(ctx, *refresh, outPath, *titleSlug, *dryRun); err != nil {
+			fail(ctx, "régénération hors ligne", err)
+		}
+		return
+	}
 
 	cat := newCatalog(*titleSlug)
 	if !*dryRun {
