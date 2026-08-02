@@ -19,7 +19,7 @@ CGO est requis (decompression Kraken via `internal/ooz`) : `PATH` doit contenir
 | outil | commandes |
 |---|---|
 | `tmp_forgename` | `hdr` `list` `dump` `ascii` `entry` `survey` `where` (sondes module/tag) · `hash` (murmur3) · `crack` (recherche exhaustive de nom) · `control` (rejoue les 45 types nommes) · `classify` `groups` (type_id -> groupe de tag) · `slots` (le StringID de nom de chaque entree) · `raw` `blk` `scanu64` `refsof` |
-| `tmp_forgeshape` | `fields` `inventory` (champs du record .mvar) · `shapes` (extraction des formes) · `coverage` (couverture par carte) · `props` (champs jetes) · `upz` (orientation sol/mur) · `types` `zones` `obj` |
+| `tmp_forgeshape` | `fields` `inventory` (champs du record .mvar) · `shapes` (extraction des formes) · `coverage` (couverture par carte) · `props` (champs jetes) · `upz` (orientation sol/mur) · `types` `zones` `obj` · **`cratevar`** (variantes de caisse par objet + divergences) · **`cratedump`** (arbre `#8/#1` d'un type) · **`crateobj`** (detail par objet : position, variante, style, reapparition) · **`repname`** (les 848 StringID de representation) · **`names`** (les chaines ecrites par les auteurs de cartes — vivier de vocabulaire) |
 | `tmp_forgedraw` | rendu PNG des zones + mesure orientee/alignee/temoin ; mode `map` pour marquer des type_id |
 | `tmp_zonetest` | LE TEMOIN de Q2 : confronte l'artefact de rejeu aux zones du .mvar aux instants du releve terrain |
 

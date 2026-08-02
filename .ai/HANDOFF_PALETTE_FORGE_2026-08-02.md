@@ -73,6 +73,14 @@ lecture, pas une découverte.
 | `1882451900` | `-1351408675` | `-1319554708` | 20 cartes / 117 inst., jusqu'à 16 |
 | `801517767` | `-219174009` | `-257275188` | 11 cartes / 24 inst., jusqu'à 4 |
 
+> **MISE À JOUR 2026-08-02 (reprise)** — les quatre `Crate Variant` de ce tableau sont
+> désormais **nommés** : `-88833402` = `banished_kinetic`, `-224029073` = `banished_shock`,
+> `-1319554708` = `banished_plasma`, `-257275188` = `banished_hardlight`. Et la déduction
+> du paragraphe ci-dessous est **affaiblie** : les deux emplacements de Vagabond portent la
+> **même** variante par objet, donc seule la paire de `Representation Name` les sépare —
+> l'attribution lance-roquettes/camouflage repose sur la seule altitude relevée. Voir
+> « PISTE 1 — JOUÉE » plus bas.
+
 **DEUX D'ENTRE ELLES SONT ÉPINGLÉES PAR LE TERRAIN.** Sur Vagabond il y a exactement deux
 emplacements, diamétralement opposés ; l'utilisateur atteste qu'ils portent un
 **lance-roquettes** et un **camouflage**, et que **le lance-roquettes est plus bas** (un
@@ -102,15 +110,44 @@ Il manque le mot, pas le sens.
 | `Forge Kit` (`kit!`) | **un seul tag** dans le jeu installé, 10 suites imprimables, toutes des marqueurs |
 | Ghidra, constante murmur3 `0xCC9E2D51` | **plus de 700 occurrences** : trop diffus pour cibler |
 
-### Les trois pistes qui restent, par coût croissant
+### PISTE 1 — JOUÉE LE 2026-08-02. Positive sur son test, négative sur son espoir.
 
-1. **Le champ `Crate Variant` par objet** (`/#3[]/#8/#1[]/#0[]/#0`) prend **au moins 4
-   valeurs distinctes** sur 47, 20, 6 et 4 cartes. Chercher une carte où **deux instances du
-   MÊME `type_id` portent des variantes DIFFÉRENTES** : cela prouverait que la variante
-   choisit l'objet, et donnerait un couple (variante, objet observé) exploitable au Théâtre.
-2. **Les 478 autres définitions de tag** du dépôt Z-15 — notamment le groupe qui porte la
+> Détail complet : état de l'art §Q1.0-septies. Sorties : `noms_craques_stringid.txt`,
+> `crate_variants.txt`, `representation_names.csv`.
+
+**Ce qu'elle rend :**
+
+- les divergences **existent** (51 couples carte/type ; la plus nette : Catalyst,
+  type `493070541`, deux variantes sur la même carte) ;
+- **la variante de caisse est un murmur3 de nom simple**, et les quatre entrées
+  « emplacement » forment un ensemble **complet** : `banished_kinetic` (`1486653438`),
+  `banished_plasma` (`1882451900`), `banished_shock` (`-1062552774`),
+  `banished_hardlight` (`801517767`) — les 4 classes de dégât Banished, sans trou ;
+- **le champ `/#8/#24[]/#1/#0` nomme l'OBJET** : `warthog`, `wasp`, `ghost`, `banshee`,
+  `scorpion`, `mongoose`, `phantom`, `sniper_rifle`, `assault_rifle`, `bandit`,
+  `commando_rifle`, `frag_grenade`, `plasma_grenade`, `spike_grenade`, `shade_turret`,
+  `plasma_turret`, `unsc_turret` — 26 noms pour 0,027 collision fortuite attendue, dont
+  `skull_weapon` **déjà présent** dans `objectives.go` : validation croisée gratuite ;
+- **un 5ᵉ type d'emplacement** existe : `493070541` (8 cartes, 102 instances) ;
+- **le râtelier mural est épinglé** : Cliffhanger, type `1882451900`, objet d'index 160,
+  `up.z = 0,046`.
+
+**Ce qu'elle réfute :** la variante **ne choisit pas** l'objet. Sur Vagabond, les deux
+emplacements — celui du lance-roquettes et celui du camouflage — portent **la même**
+variante `banished_kinetic` et le même délai de 120 s. La variante est une **famille**
+(classe de dégât, style, matériau), pas une identité.
+
+**Ce qui reste donc :** nommer les quatre `Representation Name`
+(`-1412311642`, `-245254093`, `-1351408675`, `-219174009`). Ils résistent désormais à
+**cinq** vocabulaires indépendants, dont un vivier neuf (les noms d'objets écrits par les
+auteurs de cartes). `rocket_launcher`, `active_camo` et `powerup_active_camo` ont été
+essayés à profondeur 3 et **réfutés** — ne pas les rejouer.
+
+### Les deux pistes qui restent, par coût croissant
+
+1. **Les 478 autres définitions de tag** du dépôt Z-15 — notamment le groupe qui porte la
    liste des variantes de caisse. `weap.xml` (87 Ko) et `eqip.xml` (72 Ko) n'ont pas été lus.
-3. **Ghidra, correctement ciblé** : ne pas chercher la constante de hachage mais le
+2. **Ghidra, correctement ciblé** : ne pas chercher la constante de hachage mais le
    **parseur du tag `food`**, en partant des références au groupe `food` (fourCC 0x666F6F64)
    ou de la vtable du chargeur de tag. C'est une session de rétro-ingénierie à part entière.
 

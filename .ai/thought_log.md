@@ -1,3 +1,52 @@
+## [2026-08-02] La variante de caisse est nommée — et elle réfute l'espoir de la piste 1
+
+**Statut** : Complété. Branche `feat/re-mode-score`. État de l'art : sections
+**Q1.0-septies** et **Q1.0-septies-bis**. Handoff mis à jour (piste 1 close, deux pistes
+restantes). Outillage ré-archivé sous `.ai/V7.5/outillage/forge_palette/`.
+
+**Décision technique principale** : jouer la piste 1 du handoff jusqu'au bout — lire le
+champ `Crate Variant` PAR OBJET (`/#3[]/#8/#1[]/#0[]/#0`) sur les 199 cartes, puis passer
+les valeurs au craqueur murmur3 avec cinq vocabulaires indépendants. Chemin vérifié sur
+pièces (`cratedump` sur Vagabond objet 357) avant tout comptage.
+
+**Résultats observés** :
+
+- **380 464 objets balayés, 35 239 porteurs, 49 valeurs distinctes.** Les divergences que
+  la piste cherchait EXISTENT : 51 couples (carte, type) portent au moins deux variantes,
+  la plus nette étant Catalyst / type `493070541` (deux variantes sur une même carte).
+- **La variante est un murmur3 de nom simple.** Premier ancrage : `307451431 = equipment`,
+  qui est exactement la variante partagée par les trois grenades du groupe `eqip`. Second :
+  `1120495519 = default`, porté par `skull_weapon` et des centaines de `bloc`.
+- **Les quatre entrées « emplacement » sont nommées et forment un ensemble COMPLET** :
+  `banished_kinetic` / `banished_plasma` / `banished_shock` / `banished_hardlight` — les
+  quatre classes de dégât Banished, sans trou, pour 0,137 collision fortuite attendue sur
+  la passe entière.
+- **Le champ `/#8/#24[]/#1/#0` nomme l'OBJET** (848 valeurs distinctes) : 26 noms craqués à
+  profondeur 1 pour 0,027 collision attendue — `warthog`, `wasp`, `ghost`, `banshee`,
+  `scorpion`, `mongoose`, `phantom`, `sniper_rifle`, `assault_rifle`, `bandit`,
+  `commando_rifle`, les trois grenades, les trois tourelles. Validation croisée gratuite :
+  `1192059526 = skull_weapon` était DÉJÀ dans la table de `mapvar/objectives.go`, atteint
+  par un chemin totalement indépendant.
+- **Deux découvertes de structure** : un CINQUIÈME type d'emplacement (`493070541`, 8 cartes,
+  102 instances, celui de Catalyst), et le RÂTELIER MURAL enfin épinglé (Cliffhanger,
+  type `1882451900`, objet 160, `up.z = 0,046`) — la confusion que l'utilisateur signalait
+  est localisée.
+
+**Ce que cela réfute, et c'est le point qui compte** : la piste 1 espérait que la variante
+choisisse l'objet posé. Elle ne le fait pas. Sur Vagabond, l'emplacement du lance-roquettes
+et celui du camouflage portent la MÊME variante (`banished_kinetic`) et le même délai de
+réapparition (120 s) ; seuls leurs `Representation Name` diffèrent. La variante est une
+FAMILLE (classe de dégât, style, matériau), pas une identité.
+
+**Conclusion / prochaine étape** : les quatre `Representation Name` d'emplacement
+(`-1412311642`, `-245254093`, `-1351408675`, `-219174009`) résistent maintenant à cinq
+vocabulaires indépendants, dont un vivier neuf — les noms d'objets écrits par les AUTEURS
+de cartes (`root[10][1]`, 2 762 chaînes). `rocket_launcher`, `active_camo` et
+`powerup_active_camo` ont été essayés à profondeur 3 et réfutés : ne pas les rejouer.
+Restent les définitions `weap.xml`/`eqip.xml` du dépôt Z-15, puis Ghidra sur le parseur du
+tag `food`. Suite immédiate du chantier : porter les 5 labels craqués dans `objectives.go`,
+puis implémenter le contrat de données des formes de zone.
+
 ## [2026-08-02] Le témoin de Q2 est joué — la lecture « tailles pleines » confirmée par l'oracle
 
 **Statut** : Complété. Branche `feat/re-mode-score`. État de l'art : section **Q2 — LE TÉMOIN
