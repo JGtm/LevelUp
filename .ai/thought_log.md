@@ -1,3 +1,41 @@
+## [2026-08-03] Lot 2 v7.3 — Phase 3 close (5 features), gate 3 passé, gate 0 clos
+
+**Statut** : Complété. 4 agents Opus (3.1, 3.2, 3.3, 3.4+3.5), gates re-exécutés
+orchestrateur après chaque item, matrice navigateur en clôture.
+
+**Décisions techniques principales** :
+- Gate 0 clos en cours de phase : artefacts REPUBLIÉS par l'orchestrateur (les
+  publications des agents étaient des fantômes — leçon en mémoire : vérifier par
+  Artifact list, publier soi-même), complément E ajouté sur question utilisateur
+  (superposition escouade), décisions : 0.1 = C partout, 0.2 = A encoches.
+- 3.1 : soft-delete `status='deleted'` (jamais DELETE — précédent FATAL-invalidation
+  ART prod), likes append-only en orphelins invisibles (tombstone rejeté :
+  historique falsifié), ordre base→disque, résurrection au re-dépôt, part admin
+  livrée via RequireAdmin existant, ownership sur le player_slug DU média.
+- 3.2 : vérification bloquante = feu vert (9 véhicules + 8 tourelles H5 à IDs
+  distincts) ; ventilation par weapon_key (class=role=family identiques), WeaponKey
+  résolu en SQL depuis V72-06 mais jamais recopié — réactivé.
+- 3.3 : retrait PUR du flag MULTI_TITLE_API_ENABLED (prescrit par sa propre doc),
+  6 FieldKey ajoutées au canonique (zéro perte), assets.toml H5 vide comblé,
+  garde-rail anti-dictionnaire prouvé discriminant, baseline tests réconciliée par
+  l'orchestrateur (94 lignes des 11 tests du flag).
+- 3.4/3.5 : C = écart signé (v/p80−1)×100 sur les indicateurs DU payload (fin de la
+  double définition du rendement), frontière défensive exposée au contrat en miroir
+  de l'offensive (H5 : absence volontaire documentée) ; A = encoches hauteur 20 px
+  dans BRACKET_GAP, gouttière obligatoire (contraste < 3:1 mesuré en 0.2), seuil dur
+  6 px supprimé, clustering pur. Découverte : seules 2 des « 5 surfaces » portaient
+  des drapeaux (Home/Relations/Lab construisaient sans dominance).
+
+**Résultats observés** : commits fb6fd82b1, b0cac2585, 8dd325337, ac0c6b196.
+Preuves navigateur : sunburst H5 par engin nommé, pistes C conformes (axes
+adaptatifs ±50/±40), encoche visible sur Synergies. Requalification orchestrateur
+d'une découverte : les « littéraux P80 divergents » sont les seuils de milestones
+documentés en 0.1 (commentaires trompeurs à renommer, pas une dérive).
+
+**Conclusion / prochaine étape** : Phase 4 — ops prod 4.1/4.2 SOUS PRÉAVIS
+utilisateur, MAJ Notion (4.3), delivery-checklist + clôture (4.4), D4 à statuer,
+gate-push avant proposition de merge (deploy prod), D3 echarts après merge.
+
 ## [2026-08-02] Lot 2 v7.3 — Phase 2 close (5 UI), gate 2 passé
 
 **Statut** : Complété. 2 agents Opus (2.1-2.3, 2.4-2.5), gates re-exécutés
