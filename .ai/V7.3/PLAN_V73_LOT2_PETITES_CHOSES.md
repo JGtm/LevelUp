@@ -339,7 +339,23 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
       logique métier, service + port ; (d) UI : action supprimer dans le visualiseur
       média + modale de confirmation, invalidation des query keys `mediaBase`.
       Tests httptest + service + `go test -tags=integration -p 1`. Contrat openapi.
-- [ ] 3.2 **Kills véhicules H5** : VÉRIFICATION PRÉALABLE BLOQUANTE — confirmer que
+- [ ] 3.2 (code livré le 2026-08-02, gates en re-vérification — RESTE revue
+      navigateur du sunburst H5 au gate 3. VÉRIFICATION BLOQUANTE = FEU VERT prouvé
+      sur données réelles : 9 véhicules distincts (3 976 kills, 1,47 %) + 8 tourelles
+      (923 kills) à stock_ids distincts, le sentinel VehicleWeaponID=2 ne porte AUCUN
+      kill H5 (pipeline film Infinite) ; libellés déjà présents dans
+      weapon_names.toml H5. Subtilité structurelle : class=role=family="vehicle"
+      pour tous les engins — seul weapon_key discrimine → niveau 2 ventilé par
+      weapon_key (IsPerWeaponFragClass), et WeaponKey résolu en SQL depuis V72-06
+      mais jamais recopié = donnée morte réactivée. Dégradation Infinite garantie
+      par les données (registre sans classe vehicle/turret), zéro branche slug.
+      Noms d'engins servis par l'API depuis le TOML du titre (pas de recopie dans
+      frags.toml — cohérent 3.3). 11 tests dont la vérification bloquante devenue
+      garde-rail permanent ; 1 test existant réaligné et renforcé. Contrat +2, 0
+      chemin perdu. Attente chiffrée revue navigateur : JGtm carrière = 8 engins
+      (Ghost 52, Warthog 37, Mongoose 34, Wasp 18, Mantis 18, Scorpion 3,
+      Phaeton 2, Wraith 1).)
+      **Kills véhicules H5** : VÉRIFICATION PRÉALABLE BLOQUANTE — confirmer que
       les kills véhicule H5 portent un identifiant PAR véhicule (registre) et non le
       seul sentinel `VehicleWeaponID = 2` ; si tout s'écrase sur le sentinel, STOP et
       rapporter à l'utilisateur avant d'implémenter (son exigence : le sous-niveau
@@ -562,6 +578,21 @@ AVANT merge, pas seulement un rejeu local).
 - [2026-08-02, agent 3.1] `MediaLikeRequest`/`MediaLikeResponse` restent des types
   manuels côté web alors que les voisins dérivent du contrat — à dériver en passe
   post-lot.
+- [2026-08-02, agent 3.2] **Précision véhicule disponible mais inexploitée** :
+  `weapon_accuracy` H5 porte 178 995 tirs véhicule + 138 726 tirs tourelle, exclus
+  du graphe « Précision par arme » — décision produit préservée, arbitrage
+  utilisateur à prévoir (croise la réponse « précision par arme » des décisions
+  verrouillées).
+- [2026-08-02, agent 3.2] Le miroir Go↔web du set non-combat a divergé
+  VOLONTAIREMENT (Go = exclusion breakdown par arme ; web NON_COMBAT_WEAPON_ROLES =
+  exclusion calculs coach) et aucun garde-rail ne teste plus le miroir — à
+  documenter ou garder-railler en passe post-lot.
+- [2026-08-02, agent 3.2] Le registre d'armes H5 vit sous
+  `internal/games/halo_infinite/migrations/` alors qu'il seede les DEUX titres —
+  emplacement trompeur, candidat déplacement.
+- [2026-08-02, agent 3.2] Piège de méthode consigné : `cmd > f 2>&1; echo EXIT=$?`
+  renvoie le code du echo — deux « exit 0 » d'agents masquaient un vrai échec ;
+  capturer $LASTEXITCODE immédiatement après la commande.
 - [2026-08-02, orchestrateur] Retombée du fix 1.3 corrigée par l'orchestrateur :
   `TestCareerRepo_GetRelationsHeatmap` (integration) attendait des heures UTC et
   dépendait du fuseau machine → ouvert via le chemin production épinglé UTC
