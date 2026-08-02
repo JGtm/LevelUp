@@ -1,3 +1,44 @@
+## [2026-08-02] Reconnaitre un emplacement sans liste en dur — c'est l'emprise, pas le type_id
+
+**Statut** : Complété. Branche `feat/re-mode-score`. État de l'art : section **Q1.0-octies**.
+Sortie : `.ai/V7.5/dumps/forge_zones/emplacements_predicats.txt`.
+
+**Décision technique principale** : question posée en cours de session — au rejeu, on ne
+sait pas quels types d'emplacement une carte emploie, et selon le thème graphique les
+auteurs privilégient un composant plutôt qu'un autre. Plutôt que de trancher au
+raisonnement, mesurer trois prédicats candidats sur les 199 cartes (`tmp_forgeshape
+spawners`) et retenir celui qui sépare.
+
+**Résultats observés** :
+
+- La prémisse est exacte et chiffrable : les cinq types d'emplacement se répartissent sur
+  27 / 21 / 20 / 11 / 8 cartes ; `493070541` est celui de Catalyst, absent de Vagabond. Une
+  liste de `type_id` en dur aurait raté Catalyst — c'est exactement ce qui s'est passé au
+  handoff, qui n'en listait que quatre.
+- **P2 (porte un délai de réapparition)** est un filtre grossier utile : 65 `type_id` sur
+  2 785, 86 cartes sur 199 — `weap` 440 objets, `vehi` 184, `eqip` 37, plus 56 `bloc`
+  parasites. Insuffisant seul.
+- **P3 (signature d'emprise du modèle, au 10⁻⁴)** tranche net : parmi toutes les signatures
+  portées par un objet à délai, **une seule regroupe plus de deux `type_id`** —
+  `0.1306/0.1308/0.2617`, qui capte **les cinq emplacements et eux seuls** (387 objets,
+  59 cartes). Toutes les autres signatures ne portent qu'un ou deux types, et ce sont des
+  modèles réels : `2.2440/1.0139/0.8315` = le Warthog, `0.0615/0.0615/0.0863` = la grenade
+  à fragmentation.
+- **Pourquoi P3 survit aux thèmes** : le `type_id` est une entrée de palette (une par
+  habillage), l'emprise vient du modèle d'objet, constante au niveau du titre. Preuve
+  directe : `493070541` référence un tag d'objet DIFFÉRENT des quatre autres
+  (`-1269928936` contre `-370671751`) et porte pourtant la même emprise à la sixième
+  décimale. Ni le `type_id` ni le tag ne sont l'invariant ; l'emprise l'est.
+
+**La limite, écrite plutôt que cachée** : l'emprise se lit dans la palette Forge du jeu
+installé, pas dans le `.mvar`. `cls_all.csv` couvre les 2 785 types vus sur 199 cartes ;
+une carte neuve employant une entrée de palette inconnue exige de rejouer
+`tmp_forgename classify` contre le module — opération bornée et hors ligne, pas un balayage.
+
+**Conclusion / prochaine étape** : le contrat de données des objets d'emplacement doit
+porter le couple (emprise, `Representation Name`) et non une énumération de `type_id`.
+Suite : les 5 labels craqués dans `objectives.go`, puis le contrat des formes de zone.
+
 ## [2026-08-02] La variante de caisse est nommée — et elle réfute l'espoir de la piste 1
 
 **Statut** : Complété. Branche `feat/re-mode-score`. État de l'art : sections
