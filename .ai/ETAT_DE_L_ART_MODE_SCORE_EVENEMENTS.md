@@ -1939,3 +1939,58 @@ balayage n'a pas ete rejoue : il n'est plus necessaire pour nommer (le binaire l
 
 Les doublons connus (`12 A` = `2 A`, `12 B` = `3 A`, `0 A` = `21 A`) restent des doublons
 REELS, verifies par le controle croise interne — il n'y a rien a departager.
+
+---
+
+## 23. LE CALQUE D'OBJECTIFS EST DANS LE DOCUMENT DE REJEU (2026-08-02)
+
+> Lot 4 du handoff §4, ferme. Le §20 livrait le pont d'identite ; cette section livre
+> l'integration. `internal/analysis/replay/objectives.go` + `objectives_test.go`.
+
+### 23.1 Ce que le document porte desormais
+
+`ReplayDocument.Objectives []ObjectiveAction` (optionnel, `omitempty`) :
+
+```json
+{"t": 3, "xuid": "2533274823110022", "stat": "flag_grabs", "timeMs": 350}
+```
+
+- **`t`** est l'index de frame, le MEME axe que `Point.T` et `Shot.T` ;
+- **`timeMs`** est conserve A COTE de `t` : la grille perd de la precision (100 ms par
+  defaut), et deux actions d'une meme frame doivent rester ordonnables ;
+- **`xuid`** et non un slot — meme raison que `Track.XUID` : le slot d'entite statborg et le
+  slot de biped sont deux espaces differents (§20.1) ;
+- **`stat`** porte un nom de STATISTIQUE (`flag_grabs`), pas de recompense (§22.2).
+
+### 23.2 La conversion ne demande aucun recalage
+
+Les evenements sont sur l'horloge du manifeste, la meme que les positions (§15, ecart
+< 4 ms sur 573 s). La conversion vers l'axe du rejeu est donc **une division** par le pas de
+la grille — ni appariement, ni fenetre de tolerance, ni seuil. C'est le seul calque du
+document dans ce cas : les tirs et les lancers, eux, exigent un rattachement.
+
+### 23.3 La couverture, parce qu'un calque muet ment
+
+`Coverage.Objectives` publie le meme quintuplet que les autres calques, et l'invariant
+`rattachees + rejetees = disponibles` est teste. Trois causes de rejet sont distinguees :
+
+| cause | ce qu'elle dit |
+|---|---|
+| `noSlot` | l'evenement n'a pas de xuid — le pont d'identite ne l'a pas resolu |
+| `outOfWindow` | l'action tombe apres la derniere frame publiee (fin de partie) |
+| `unpublished` | le joueur n'a aucune trajectoire publiee : rien ou l'accrocher a l'ecran |
+
+### 23.4 La frontiere hors ligne est respectee
+
+`cmd/replay-build` n'ouvre AUCUNE base, et le pont d'identite a besoin de
+`match_participants`. Les actions arrivent donc **deja identifiees**, par
+`Options.Objectives []objectiveevents.IdentifiedEvent` — exactement le pattern de
+`objectiveevents.Extract`, qui recoit son `Roster` plutot que d'aller le chercher.
+L'appelant qui a la base resout le pont ; le paquet d'assemblage reste pur.
+
+### 23.5 Ce qui reste — et ce n'est plus du decodage
+
+1. **L'appelant de production** : aucun chemin ne remplit encore `Options.Objectives`. Il
+   faut, la ou la base est disponible, lire `match_participants`, appeler `SlotIdentity` puis
+   `IdentifyNamedEvents`, et passer le resultat au build.
+2. **Le rendu client** : le champ existe dans le document, `apps/web` ne le dessine pas.

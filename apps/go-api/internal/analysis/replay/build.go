@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/objectiveevents"
 )
 
 // DefaultFrameIntervalMS est le pas de la grille de rééchantillonnage, en millisecondes.
@@ -61,6 +62,15 @@ type Options struct {
 	// player_index.go). Second maillon du pont, et lui aussi une lecture. Absente, aucun tir
 	// ni lancer n'est publié.
 	PlayerIndices PlayerIndexTable
+	// Objectives : les actions d'objectif NOMMÉES ET IDENTIFIÉES (cf. objectives.go).
+	// Entrée de DONNÉES, comme Loadouts et Grenades.
+	//
+	// POURQUOI DÉJÀ IDENTIFIÉES, et pas décodées ici : le pont slot -> xuid a besoin des
+	// lignes de match (`match_participants`), donc de la BASE. Ce paquet et le CLI hors
+	// ligne n'en ouvrent aucune — l'appelant qui l'a résout le pont et fournit le
+	// résultat, exactement comme `objectiveevents.Extract` reçoit son `Roster`.
+	// Absente = rejeu sans calque d'objectifs.
+	Objectives []objectiveevents.IdentifiedEvent
 	// Scan : réglages du décodage offline ; zéro -> filmdec.DefaultScanFilmOptions().
 	Scan *filmdec.ScanFilmOptions
 	// WorldRange : bornes de déquantification DE LA CARTE du match (AABB du BSP, cf.
@@ -235,7 +245,13 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	grenCov.Attached = len(doc.Grenades)
 	grenCov.warnIfLossy("grenades")
 
-	doc.Coverage = buildCoverage(shotCov, grenCov, own)
+	// Les actions d'objectif arrivent DÉJÀ identifiées par xuid : leur pont passe par les
+	// lignes de match, donc par la base, que ce paquet n'ouvre pas (cf. Options.Objectives).
+	objActions, objCov := buildObjectiveActions(opt.Objectives, interval, doc.FrameCount)
+	doc.Objectives, objCov = dropUnpublishedActions(objActions, doc.Tracks, objCov)
+	objCov.warnIfLossy("objectifs")
+
+	doc.Coverage = buildCoverage(shotCov, grenCov, objCov, own)
 	doc.Projectiles = buildProjectiles(opt.Projectiles, origin, step)
 	doc.WeaponLabels = buildWeaponLabels(doc.Loadouts, doc.Shots)
 	doc.Inventory = keepInventoryOfPublishedTracks(
