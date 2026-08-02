@@ -405,6 +405,13 @@ table VIDE casserait les pages carrière entre P2 et P3. Ordre corrigé :
    requête HTTP, un décodage à la fois, limite de temps + compteur d'abandons, expvar).
 2. **P3** — le backfill LOCAL d'abord (sous-commande `levelup`, reprenable par `decoder_rev`,
    BTB en dernier), jusqu'à couverture des matchs porteurs de films.
+   *FAIT — J4 session 2 (2026-08-01). `levelup backfill-killsource`, hors ligne par
+   construction (aucun client HTTP derrière la source de chunks). Les DEUX producteurs sont
+   câblés avant la passe, comme l'exigeait l'arbitrage : les tirs par arme sortent de la MÊME
+   passe de décodage que les morts, et le producteur credit-seul (SQL → SQL) couvre les matchs
+   dont le film a expiré, avec préséance film > credit testée dans les deux ordres d'arrivée.
+   Le mur de coût a été PROFILÉ puis CORRIGÉ sous double gate (artefacts bit-identiques) :
+   1 145 s → 46,7 s sur le plus gros film.*
 3. **P2** — la bascule des 8 lecteurs (+ les 2 sites spéciaux S1/S2), gate AVANT/APRÈS sur
    données réelles. Les deux arbitrages du plan tiennent (bots exclus des agrégats — attention
    Q26 ne filtre pas les bots aujourd'hui ; BTB inclus en cumul, interdit ligne à ligne).
@@ -467,6 +474,51 @@ et rend le travail visible) :
       rétro-ingénierie). Motif : ne pas MERGER vers `main` de nouvelles violations des règles
       du dépôt (libellés FR en dur côté Go). Les lots 3.3-3.6 (découpages) restent post-merge.
 
+**ÉCART DES GOLDENS KILLSOURCE — instruit le 2026-08-02 (session 2bis), verdict ci-dessous.**
+`TestGoldenFilms` échoue sur les 4 films de référence. **L'hypothèse du superviseur est
+réfutée** : le correctif de performance de J4-2 (`Skip` au lieu de la boucle plafonnée) n'y
+est pour rien — la divergence est déjà présente, signature identique, à `96bc56175` (J2), et
+`Skip(8N)` est strictement équivalent à N × `ReadBits(8)`, plafond compris. **La cause est
+`47c9e72ac`** (« réunir les deux décodeurs filmdec — fusion à trois voies »), dont le message
+annonce « killsource (golden) vert » : le test avait SKIPPÉ, faute de `KILLSOURCE_FIXTURES`.
+Sous-cause prouvée : le `br.ReadBits(2)` ajouté dans `consumeAbsoluteWithGate` (champ « fini »,
+FUN_14076e304, mesuré par capture CE sur 100 % de 154 158 dispatches, déjà lu par le chemin
+world-object). La calibration l'absorbe en rétrécissant l'axe — `3·axisW + indexW` perd
+exactement 2 sur les QUATRE films (43→41, 53→51, 50→48, 52→50) ; neutraliser cette seule ligne
+restaure `axisW=17 indexW=2` sur 9b191a7f. **L'oracle ne départage pas** : comparaison ligne à
+ligne des sorties JSON complètes (état figé `5b5f97c69` contre HEAD), **371 lignes publiées sur
+371 identiques** — même victime, même tueur, même tag, même étiquette, même catégorie ; 380/380
+morts de l'API et 30/30 ancres Theater inchangées des deux côtés. Seules bougent la chaîne de
+calibration, les compteurs par voie, et le champ `voie` de **4 lignes sur 371** (1,1 %).
+**TRANCHÉ par le superviseur le 2026-08-02 : re-congeler** — la consigne « restaurer » reposait
+sur une prémisse tombée (il n'y a pas de départage arbitraire qui bouge, il y a un décodeur qui
+lit un champ qu'il ne lisait pas). *FAIT : 13 lignes sur les 4 goldens de film, et
+`cumul.golden` INCHANGÉ — la ventilation agrégée est identique (marche 340/340, scan 37/37,
+appariés 334 et 29), seul le partage par film a bougé.* **Backfill : RIEN À REJOUER** — les
+124 694 lignes ont été produites par le décodeur actuel, dont les lignes publiées sont
+identiques à celles du décodeur figé.
+
+- [x] J4.4 **Le golden en CI, sur une mini-bobine versionnée** (correctif structurel du défaut
+      ci-dessus — 3e occurrence après le garde feedback-drawer J4.0 et le ratchet knip J3.3).
+      *FAIT 2026-08-02.* `TestGoldenMiniBobine` tourne **sans fixture et sans variable
+      d'environnement**, donc dans le `go test ./... -p 1` du job de couverture, en 0,63 s.
+      La bobine (`testdata/minibobine_000d5950`, 3,8 Mo) est un **préfixe CONTIGU** des 6
+      premiers chunks du film `000d5950`, en-tête compris, suivi de son chunk HIGHLIGHT —
+      contigu et depuis le début **parce que le décodeur l'exige** : le patron de la mini-bobine
+      de J2 (paquets cherry-pickés) y décode **zéro** mort, mesuré (644 Ko → 0 candidat ;
+      préfixe 00-03 → 6 ; préfixe 00-05 → 10). Le golden fige **les 10 lignes publiées en
+      entier** — tag, étiquette, catégorie, crédit, voie, origine, divergence — dont **trois
+      ancres Theater** (00:35 Disruptor, 00:44 Skewer, 01:12 M41 SPNKr) et **la ligne de
+      divergence 01:12**. Trois gardes, pas un : la bobine absente ou tronquée échoue
+      bruyamment (comptage de chunks), un plancher de 10 lignes publiées interdit de figer une
+      sortie vide, et la recette de fabrication est un test exécutable qui retrouve le chunk
+      HIGHLIGHT **par son contenu** (n27 ici, n62 en BTB) — régénération vérifiée
+      **byte-identique**. **Témoin de détection joué** : en neutralisant le `br.ReadBits(2)`,
+      la sortie de la bobine change (`recordStateParam` 0→2, croissance 1.000→1.004) —
+      **le canal de détection est la ligne de calibration, pas les lignes publiées**, et c'est
+      écrit dans le fichier. Portée déclarée : la calibration tombe en PROFIL PLAT sur un
+      préfixe, donc ce garde ne verrouille pas le balayage — seul J4/`TestGoldenFilms` le fait.
+
 **GATE J4** : gates des phases du plan de branchement (dont intégration `-p 1`) + gate 1 du
 lot 1 + `SELECT` de contrôle montrant les agrégats carrière dégonflés du facteur attendu en
 local.
@@ -511,8 +563,85 @@ suite de sessions), un merge rapide (< 1 semaine de vie par branche). Surfaces d
 | piste | plans | surface de fichiers | dépendances |
 |---|---|---|---|
 | **A — décodeur** (UNE seule session à la fois, toujours) | `PLAN_CAPACITES_ACTIVES` puis `PLAN_VARIABLES_JETEES` puis FINALISATION lot 5 (fil des éliminations + médailles) et lot 6, puis `PLAN_OBJECTIFS_TEMPS_REEL` étape 3 | `filmdec/`, `analysis/replay/`, `killsource/`, artefact, `match-replay/` | J2 (goldens) ; étape 3 objectifs : J0.4 (table) + Ghidra |
-| **B — cartes** | `PLAN_BELLE_CARTE_TRIANGLES` (étapes 0.1 → 6) puis FINALISATION lot 4 | `himap/`, `himodule/`, `cmd/mapstruct-build`, `mapFloor.ts`, `data/.../reference/` | aucune (modules du jeu sur la clé) |
+| **B — cartes** *(c'est ici que Catalyst et Vagabond obtiennent leur fond de carte — étapes 5.2 et 5.3)* | `PLAN_BELLE_CARTE_TRIANGLES` (étapes 0.1 → 6) puis FINALISATION lot 4 | `himap/`, `himodule/`, `cmd/mapstruct-build`, `mapFloor.ts`, `data/.../reference/` | aucune (modules du jeu sur la clé) |
+
+**État des fonds de carte au 2026-08-01, mesuré** (question utilisateur) : **2 cartes sur 14**
+ont un sol reconstruit — `ridgeline.json` (Cliffhanger) et `sgh_streets.json` (Streets).
+**Catalyst n'en a pas** (ses deux artefacts, `01e1f945` et `64e8adfa`, portent
+`structure = 0` : le rejeu y tourne sans sol, c'est la dégradation prévue) ; **Vagabond n'a
+ni bornes, ni sol, ni artefact** — seul son module est prouvé (`fo08_wetland`, J0.2). La
+seule image de carte produite à ce jour est Cliffhanger
+(`E:/LevelUp_rejeu2D/scratchpad_recherche/C_carte_triangles.png`, plus les PNG de
+`.ai/V7.5/dumps/`). `catalyst_overlay.png` **n'est pas un rendu de carte** : c'est une figure
+de recherche qui documente une RÉFUTATION (« le critère géométrique est réfuté sur la vérité
+terrain »), ses rectangles gris sont des boîtes englobantes et son panneau Catalyst porte la
+mention « origine arbitraire ». Ne pas la citer comme une carte.
+**Sous-produit à regarder en OUVERTURE de B2** : `.ai/V7.5/dumps/map_forge_shapes.png` — le
+nom promet des formes d'objets Forge, donc peut-être une partie de la réponse à la question
+des zones. Non ouvert par le superviseur : à vérifier, pas à supposer.
+
+**CRITÈRE VISUEL DE LA PISTE B — arbitré avec l'utilisateur le 2026-08-01.** Le résultat
+attendu est **`.ai/V7.5/dumps/carte_validee_v1.png`**, l'image validée le 2026-07-26 : une
+vue du dessus où l'**architecture réelle** se lit (fer à cheval en anneau, structure
+circulaire centrale, plateformes hexagonales, deux ponts au sud), où la **roche se distingue
+des plateformes construites**, et où **aucun rectangle** n'apparaît. La règle d'arbitrage est
+écrite en tête de `PLAN_BELLE_CARTE_TRIANGLES.md` : **le visuel commande, le poids s'adapte**
+(tuiles, compression, niveau de détail) — jamais l'inverse. Motif de l'ajout : l'étape 4.2 du
+plan demandait d'« arbitrer le pas et le poids » sans dire à quoi le résultat devait
+ressembler — un exécuteur optimisant le poids aurait choisi 25 cm de bonne foi et produit une
+carte en gros blocs **en respectant le plan à la lettre**. Ajouté aussi : un item 4.2bis, un
+champ d'altitude seul peut ne pas porter les arêtes ni la différence de matière de la
+référence — à trancher sur l'image, pas sur une intuition de format.
+
+**GATE HUMAIN DE LA PISTE B — exigé par l'utilisateur le 2026-08-01.** Toute étape qui
+produit une image, et **chaque carte** nouvellement traitée, doit produire un **artefact de
+revue** : une page publiée portant, par carte, le rendu et `carte_validee_v1.png` **côte à
+côte à la même échelle**, la couverture, et la checklist en **deux parties** : (a) critères
+GÉNÉRAUX valables partout — architecture lisible, terrain distinct des plateformes
+construites, aucun rectangle, échelle et orientation cohérentes avec les positions de
+joueurs, couverture publiée ; (b) **témoins PROPRES À LA CARTE**, nommés AVANT la revue.
+L'anneau du fer à cheval et les deux ponts sont les témoins de **Cliffhanger uniquement** —
+pour toute autre carte, l'utilisateur (ou une source externe : carte en jeu, rendu Reclaimer)
+donne deux ou trois repères attendus, et la session ne choisit JAMAIS ses propres témoins
+après avoir vu son rendu. La
+session **rend la main et attend une validation EXPRESSE** — aucune revue visuelle ne se
+déclare passée par la session elle-même, et un `[x]` posé sans validation écrite au journal
+est invalide. Détail opératoire dans `PLAN_BELLE_CARTE_TRIANGLES.md`, section « GATE
+HUMAIN ». **Ce gate est le modèle à reprendre pour tout livrable dont le juge est l'œil** —
+notamment le lot 1 du rejeu (J4.1) et les retouches visuelles (étape 6 de la piste B).
+
+**LES NOMS DE ZONES (CALLOUTS) ENTRENT DANS LA PISTE B — 2026-08-01, demande utilisateur.**
+Ils n'y étaient PAS : ils dormaient au backlog rang 4 (« non planifié »). Ils y entrent comme
+**étape 5bis** parce que c'est le même tag, les mêmes cartes, la même passe — et parce qu'ils
+portent le critère (a) du gate visuel : une carte sans ses noms reste un dessin.
+**Découverte matérielle URGENTE, traitée le jour même** : l'investigation du 2026-06-26
+établit que les noms de zones ne sont **ni dans le film, ni dans la variante `ds/`** (celle
+qu'on utilise pour la géométrie) mais dans la variante **`any/`** — or la clé ne portait que
+`ds/levels/multi`. Les 31 modules de `any/levels/multi` (971 291 037 octets) y ont été copiés
+et **vérifiés conformes** : sans ce geste, le lot callouts serait mort avec le PC, exactement
+comme la palette Forge l'aurait été (décision #7). **Leçon à retenir pour les autres lots
+« plus tard » : vérifier que leur MATIÈRE PREMIÈRE est sur la clé, pas seulement que le plan
+existe.**
 | **B2 — la palette Forge : NOMMER et MESURER** *(ajoutée le 2026-08-01)* | session de recherche dédiée (prompt superviseur) | `mapvar/`, `himodule/`, `cmd/mapobj-build`, `map_objectives.json`, plus tard le rendu | palette Forge (sur la clé ET sur `D:` depuis le 31/07) ; **prérequis de tout affichage d'objectif** |
+
+**ÉTAT DE B2 AU 2026-08-01 — travail EN COURS sur une seule de ses questions.**
+
+| question B2 | état |
+|---|---|
+| **Q2 — la FORME des zones** | **EN COURS** — travail parallèle démarré le 2026-08-01 (hors de ce fil superviseur) |
+| Q1 — NOMMER (`type_id → nom` : power-ups, armes, équipements, socles) | **non couvert** par ce travail — reste à faire |
+| Q2bis — les champs du record déjà parsés mais **jamais extraits** (échelle, **délai de réapparition**, ordre d'apparition, présent-au-départ, forme/taille) | **non couvert** — reste à faire |
+
+**Deux conséquences opérationnelles :**
+
+1. **Q2bis se fait dans la MÊME passe que Q2, ou elle coûtera deux fois.** Les deux lisent le
+   même record d'objet dans `mapvar` ; la session qui y est déjà n'a qu'à énumérer les champs
+   non extraits pendant qu'elle y est. **Transmettre Q2bis au travail en cours** est le geste
+   le moins cher — sinon il faudra rouvrir le même fichier plus tard, avec un contexte à
+   reconstruire.
+2. **Ne PAS lancer Q1 ni Q2bis en parallèle** du travail en cours : même surface
+   (`mapvar/`), c'est la règle d'or du §7 (une seule piste à la fois sur une surface
+   partagée). Les enchaîner après.
 | **H — hygiène post-merge** *(ajoutée le 2026-08-01)* | audit ciblé sous skill `adversarial-audit` | `analysis/weaponv3`, `analysis/objectiveevents` et leurs appelants | après J5 ; **ne jamais supprimer une migration déjà appliquée en prod** |
 
 **Condition d'entrée de la piste B** (découverte J3-2, à ne pas perdre) : `internal/himodule`
@@ -542,6 +671,28 @@ par objet** dans le `.mvar`, non décodée aujourd'hui (Forge permet de redimens
 (3) l'entité de zone à l'exécution (`ti=23`, **33/33 désérialiseurs lisibles depuis J0.4**)
 si le statique ne suffit pas — cas des collines mobiles (KOTH). B2 traite dans la même passe
 le `[!]` power-ups de J0.2 (`type_id → nom`) : même module, même parcours.
+
+**Q2bis — LES CHAMPS DÉJÀ PARSÉS QUE PERSONNE N'A LUS** *(ajouté le 2026-08-01, question
+utilisateur sur les râteliers d'armes, points d'apparition, grenades et power-ups qui
+réapparaissent).* Constat vérifié dans `mapvar` : le `.mvar` est décodé par un lecteur
+**structuré** (`cb2.go`, format Bond — « tout tag/type inconnu remonte une erreur, on ne saute
+JAMAIS »), donc **tous les champs du record d'objet sont déjà parsés**. Mais `parseObject`
+n'en EXTRAIT que six (2, 3, 4, 5, 7, 10) et `readGameplayBag` trois (1, 8, 9). **Tout le
+reste est sous la main, non lu.** Or Forge expose par objet placé des réglages qui sont
+exactement ce qu'on cherche : **délai de réapparition**, ordre d'apparition, présent-au-départ,
+échelle, forme et taille de zone. Enumérer ces champs et regarder ce qu'ils contiennent est
+une passe de quelques heures, pas un chantier de rétro-ingénierie — et elle sert Q2 (forme
+des zones) et Q2bis (réapparition) **en une fois**.
+
+**Ce que Q2bis débloquerait, et par quel chemin** : la présence d'une arme ou d'un power-up à
+l'instant T se calcule alors comme *placement (B2 Q1) + événement de ramassage (piste A5) +
+délai de réapparition (Q2bis)* — **sans jamais décoder l'entité vivante**, c'est-à-dire en
+contournant la route qui a été RÉFUTÉE trois fois (position des `ti=42` / `ti=37` : 5
+échantillons contre 1 006 sur un jeu de slots fantôme, signal sous le bruit).
+**Nuance à ne pas se tromper** : la table des désérialiseurs de J0.4 **ne débloque PAS** cette
+route — `ti=42` (21/21) et `ti=37` (31/31) étaient déjà complets. Le verrou n'a jamais été la
+grammaire, c'est le décodage positionnel. Ne pas rouvrir cette piste en croyant que J0.4 l'a
+changée.
 | **C — objectifs côté app** | `PLAN_OBJECTIFS_TEMPS_REEL` étapes 1-2 (brancher ce qui dort) ; FINALISATION lot 7.4 (scores de mode) sur SA PROPRE branche | `internal/sync/` (producteur), front consommation, `map_objectives.json` ; 7.4 : `analysis/` scores | étape 1 : rien ; 7.4 : rien (mais gros) |
 | **D — icônes d'armes** | `PLAN_RECHERCHE_ASSETS_ICONES` | `himodule/` lecture, `static/`, `TitleAssetURLAdapter` | rien ; peut échouer sans dette ; **GATE HUMAIN entre phase 1 et phase 2** (revue visuelle utilisateur AVANT toute intégration — décision #4) |
 | **E — précision projectiles** | `HANDOFF_PRECISION_PROJECTILES` | outillage de mesure + Ghidra (hors ligne) | rien ; MESURE seulement jusqu'au verdict ; **timebox 2 sessions** puis verdict écrit (décision #6) |
@@ -1126,3 +1277,107 @@ comme prévu).
   `killer_victim_pairs` reste impossible ; (d) `seed_demo.go` copie `killer_victim_pairs` : à la
   bascule, oublier d'y ajouter la remplaçante donnerait une démo aux duels vides, panne
   silencieuse visible seulement à l'écran.
+- **[2026-08-01 — superviseur] J4 session 1/3 VÉRIFIÉE ET CONFIRMÉE CLOSE — CI TOUTE VERTE.**
+  Run `30697874627` contrôlé au niveau job à sa fin : **les 8 jobs verts**, Go Lint compris
+  (le ratchet reste à 0 après l'ajout des migrations, persisters, pont et collecteur), plus
+  ADR 0021 Gate et Deploy Pre-Check. Arbre propre, commits `e1b46d9d8` → `deba72742`.
+  **Arbitrages rendus pour la session 2** :
+  1. **Le producteur de `match_weapon_shots` MONTE EN SESSION 2, avant le backfill.** Motif
+     décisif : le backfill est la passe chère (2 h 30 à 7 h 30, plus les BTB à 19 min pièce) ;
+     décoder 949 films pour les seules morts obligerait à TOUT re-décoder ensuite pour les
+     tirs. **Tout ce qui lit un film doit être câblé avant que la passe ne tourne.**
+  2. **Le second producteur de `match_kill_events` MONTE AUSSI EN SESSION 2 — et il ne coûte
+     rien.** Vérifié sur pièces : `killer_victim_pairs` est produit depuis la table
+     `highlight_events` (`events_completion_persister.go`), déjà EN BASE — pas depuis un
+     film. Le second producteur est donc une transformation **SQL → SQL**, sans réseau ni
+     décodage, qui couvre les **394 matchs (29,3 %) dont le film a expiré**. Sans lui, la vue
+     de compatibilité de la session 3 perdrait 29,3 % des matchs : ce ne serait plus une
+     déduplication mais une régression silencieuse.
+     **Piège à traiter dans le même geste** : un match porteur des DEUX sources doublerait
+     ses lignes — la règle de préséance (film > highlight, via `source_tag`) doit être écrite
+     ET testée, sinon on réintroduit exactement le doublon qu'on est en train d'éliminer. Et
+     les lignes issues de `highlight_events` portent `assist_known = FALSE` (« on ne sait
+     pas »), jamais « pas d'assistant ».
+  3. **Le mur de coût se PROFILE avant le backfill** (levée ciblée de l'interdit « ne pas
+     toucher au décodeur ») : 0,20 s par chunk à 8 chunks contre 16,6 s à 69 — **facteur 83**,
+     c'est une signature de bug (complexité superlinéaire), pas une propriété d'échelle.
+     Timeboxé ; tout correctif reste sous les goldens J2 et l'exigence d'artefacts
+     **bit-identiques**. Si la cause n'est pas claire dans le temps imparti : documenter et
+     lancer le backfill tel quel.
+  4. **Les deux gardes CI en `--if-present`** (même motif que J4.0, latents) → **J5.1bis**,
+     avec les plafonds knip : c'est le lot « hygiène des gates ». **`seed_demo.go`** est déjà
+     recensé comme site S1 du plan de branchement — à traiter à la bascule (session 3), pas
+     avant.
+  **Quatre prémisses du plan démenties en l'exécutant**, dont deux qui changent le risque :
+  le cache porte en-tête + réplication + kill-feed pour les 949 films, donc **le backfill est
+  intégralement hors ligne** (ni réseau, ni tokens, ni CDN — le risque d'expiration en cours
+  de route disparaît) ; et le collecteur ne pouvait pas vivre à la racine d'`internal/sync`
+  (`TestSyncRootPackageFrozen` gèle le paquet à 80 fichiers) — c'est un ratchet qui a dicté
+  `internal/sync/killcollector`, pas une relecture d'architecture.
+- **[2026-08-01 — J4 session 2/3, exécuteur] LES DEUX PRODUCTEURS, LE BACKFILL, ET LE MUR DE
+  COÛT QUI ÉTAIT UN BUG.** Périmètre (A)→(E) traité ; **phase 3 CLOSE**, phase 2 intacte
+  (session 3). Détail complet au journal du `PLAN_BRANCHEMENT_KILLSOURCE.md`.
+  **(A) Le mur de coût est tombé, et il n'était pas où on le cherchait.** Un profil CPU a suffi :
+  78 % du temps dans `filmdec.ReadBits`, appelé depuis UNE fonction —
+  `consumeObjectMultiplayerProperties` sautait le corps d'un TLV **un octet à la fois**, plafonné
+  à 1 048 576 itérations. Le corps n'est jamais interprété : `Skip(8N)` a le même état final.
+  **1 145 s → 46,7 s** sur le plus gros film (×24,5), 331 s → 33,7 s, 575 s → 51 s ; le facteur 83
+  sur le coût par chunk tombe à ~5. **Double gate tenu** : 3 artefacts de rejeu bit-identiques
+  (revérifiés après TOUTES les modifications de la session) et JSON `killsource` bit-identique
+  sur 8 films. *La leçon vaut plus que le gain* : la non-linéarité n'était pas dans le décodage
+  mais dans le **chemin d'erreur** — c'est la fréquence des traversées ratées qui croît avec la
+  taille du film, et chaque ratée coûtait un million de lectures. Chercher un algorithme
+  quadratique dans le chemin nominal aurait été chercher au mauvais endroit.
+  **(B) et (C) : les deux producteurs sont câblés AVANT le backfill**, comme l'arbitrage
+  l'exigeait. Les tirs sortent de la même passe de décodage que les morts (un film décodé une
+  fois, deux tables écrites) ; le producteur credit-seul est une transformation SQL → SQL qui
+  emploie `analysis.ComputeKillerVictimPairs` — LA fonction qui produit `killer_victim_pairs`
+  aujourd'hui. Préséance film > credit **testée dans les deux ordres d'arrivée**, trois états de
+  l'assistant vérifiés colonne par colonne en base.
+  **LE DÉFAUT QUI A COÛTÉ UNE PASSE — et c'est une remarque de l'utilisateur qui l'a ouvert.**
+  `match_participants.gamertag` est VIDE en production (4 xuids nommés sur 16 996) ; la source
+  canonique est la vue `v_gamertag_lookup` et sa cascade, où **`killer_victim_pairs` est la
+  source VIVANTE** des noms d'adversaires depuis que `xuid_aliases` a cessé d'être alimenté en
+  avril 2026. Et le film ne donne pas toujours un pseudo : sans gamertag il écrit
+  `xuid:<décimal>`, qui EST l'identité. Résultat du défaut : **16 908 morts écrites, 10 avec un
+  xuid de victime** — des lignes qu'aucun agrégat carrière ne peut joindre. Après correctif :
+  **77 morts, 75 xuids victime, 77 xuids tueur** sur les mêmes films. *Une passe qui « réussit »
+  sans erreur peut n'avoir rien produit d'utilisable : un backfill se contrôle sur ce qu'il rend
+  JOIGNABLE, pas sur son taux d'échec.*
+  ⚠ **Dépendance qui gouverne la phase 2** : supprimer `killer_victim_pairs` sans avoir d'abord
+  rebranché `v_gamertag_lookup` sur `match_kill_events_latest` ferait retomber tous les
+  adversaires sur « Joueur #### ».
+  **Découverte grave à arbitrer, PRÉEXISTANTE** : `TestGoldenFilms` échoue déjà sur les 4 films
+  de référence — prouvé sur l'arbre restauré, diffs identiques au bit près avec et sans le
+  correctif (A). Les goldens datent du 31/07 17:49 ; **J3 (lots B/C/D) a modifié le décodage sans
+  que personne le voie**, parce que ce test se skippe sans `KILLSOURCE_FIXTURES` et que le gate
+  J3 portait sur les artefacts de REJEU. Les ancres Theater tiennent. *Un gate qui se skippe sur
+  une variable d'environnement n'est pas un gate, c'est une option.*
+  **GATE 3 ATTEINT.** Backfill complet : 949 films en **2 h 52 min 57 s** (74 569 morts, 0 erreur,
+  0 abandon) puis 394 matchs credit-seul en 33 s (50 125 morts, **949 refusés par la préséance**).
+  **Couverture 1 343 matchs — la cible exacte, et 100 % de ce qui est récupérable** : les 583
+  restants portent `events_loaded = TRUE` sans événement (404 déjà constaté par le sync, dont 527
+  de 2023). Contrôle : **250 139 → 124 694 lignes, facteur 2,006** ; sur le duel de contrôle joint
+  par xuid, **101 frags affichés → 29** — mot pour mot la phrase qui motivait le chantier.
+  `-tags=integration -p 1` vert, `go test ./...` vert, ratchet lint 0 (cache purgé), 3 artefacts
+  bit-identiques.
+  ⚠ **`assist_extra_count` a bougé pour la PREMIÈRE fois : 5 sur 74 569 morts.** Le déclencheur de
+  migration de l'ADR 0026 a fait ce pour quoi il a été posé. **Arbitrage attendu** : table fille,
+  ou plafond documenté comme perte connue de 0,007 %.
+- **[2026-08-01 — superviseur, périmètre] Râteliers, points d'apparition, grenades et
+  power-ups qui réapparaissent** (question utilisateur). Réparti sur trois pistes déjà
+  existantes — **où** ils sont : acquis (`mapvar` rend position, orientation, équipe et
+  libellés de chaque objet placé), il manque le NOM → **B2 Q1** ; **qui** ramasse quoi →
+  **piste A5** ; **forme** des zones → **B2 Q2**. Manquait le **cycle de réapparition** :
+  nouvelle question **B2 Q2bis**, fondée sur un constat vérifié dans le code — le `.mvar` est
+  lu par un décodeur STRUCTURÉ qui n'ignore rien, donc tous les champs du record sont **déjà
+  parsés**, mais `parseObject` n'en extrait que 6 et `readGameplayBag` que 3. Les réglages
+  Forge par objet (délai de réapparition, ordre, présent-au-départ, échelle, forme/taille)
+  sont donc probablement **sous la main, non lus**. Si c'est le cas, la présence d'une arme à
+  l'instant T = placement + ramassage + délai, **sans décoder l'entité vivante** — la route
+  réfutée trois fois est contournée, pas rouverte. Piège inscrit au plan : J0.4 **ne débloque
+  pas** la position des `ti=42`/`ti=37` (déjà 21/21 et 31/31 — le verrou est positionnel, pas
+  grammatical).
+  **État B2** : Q2 (forme des zones) EN COURS dans un travail parallèle depuis ce jour ; Q1 et
+  Q2bis NON couverts. Recommandation rendue : transmettre Q2bis au travail en cours (même
+  passe, même fichier) et ne pas lancer Q1/Q2bis en parallèle (surface `mapvar/` partagée).

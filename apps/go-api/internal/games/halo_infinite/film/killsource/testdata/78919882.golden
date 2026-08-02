@@ -47,17 +47,17 @@
 39082 paquet(s) SANS evenement · 67544072 bits balayes · 1 candidat(s) accepte(s)
 
 ## COUT PAR VOIE DE LECTURE — ventilation, PAS deux precisions comparables
-marche   : 92 propose(s), 91 apparie(s) au couple exact, 91 publiee(s)
-scan     : 9 propose(s), 6 apparie(s) au couple exact, 6 publiee(s)
+marche   : 93 propose(s), 92 apparie(s) au couple exact, 92 publiee(s)
+scan     : 8 propose(s), 5 apparie(s) au couple exact, 5 publiee(s)
 marche, source appartenant a la victime : 1 propose(s), 1 publiee(s)
 scan,   source appartenant a la victime : 10 propose(s), 1 publiee(s)
 morts de BOT : 13 propose(s), 0 publiee(s)
 morts infligees PAR un bot : 0 propose(s), 0 apparie(s), 0 publiee(s)
-93 enregistrement(s) lu(s) par LES DEUX voies · ACCORD 91 · DESACCORD 0
+94 enregistrement(s) lu(s) par LES DEUX voies · ACCORD 92 · DESACCORD 0
 DESACCORD doit valoir 0 : sinon l hybride n est plus une PREFERENCE mais un ARBITRAGE
 0 mort(s) a plusieurs candidats en concurrence · 0 enregistrement(s) sans position
 4816 / 5027 paquet(s) a evenements localise(s)
-calibration resolue automatiquement : axisW=16 indexW=2 [score 433, mediane 100] | recordStateParam=2 [croissance x1.000]
+calibration resolue automatiquement : axisW=15 indexW=3 [score 433, mediane 100] | recordStateParam=2 [croissance x1.000]
 
 ## SANTE — un verdict porte sur le DOMAINE, pas sur les etiquettes publiees
 verdict : NOMINAL

@@ -59,7 +59,7 @@ morts infligees PAR un bot : 3 propose(s), 3 apparie(s), 3 publiee(s)
 DESACCORD doit valoir 0 : sinon l hybride n est plus une PREFERENCE mais un ARBITRAGE
 0 mort(s) a plusieurs candidats en concurrence · 0 enregistrement(s) sans position
 5525 / 5714 paquet(s) a evenements localise(s)
-calibration resolue automatiquement : axisW=17 indexW=2 [score 170, mediane 58] | recordStateParam=4 [croissance x1.157]
+calibration resolue automatiquement : axisW=16 indexW=3 [score 170, mediane 57] | recordStateParam=4 [croissance x1.157]
 
 ## SANTE — un verdict porte sur le DOMAINE, pas sur les etiquettes publiees
 verdict : NOMINAL

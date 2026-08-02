@@ -9,9 +9,17 @@ package killsource
 // LES FIXTURES NE SONT PAS VERSIONNEES, ET C EST UN CHOIX ASSUME : les quatre films de reference
 // pesent 21 a 35 Mo chacun (107 Mo au total). Ce sont les SORTIES qui sont versionnees, sous
 // `testdata/`, et la recette de regeneration est ecrite dans chaque fichier. Consequence a
-// connaitre : sans fixture, [TestGoldenFilms] passe en `t.Skip` — mais
-// [TestGoldenPhrasesJustes] tourne TOUJOURS et verifie que les golden n ont pas degenere en
-// nombres nus. C est ce second test qui interdit la derive silencieuse.
+// connaitre : sans fixture, [TestGoldenFilms] passe en `t.Skip`.
+//
+// CE SKIP A COUTE UNE DERIVE NON VUE, et il ne protege plus seul. Le 2026-08-02 on a etabli que
+// le commit `47c9e72ac` avait fait bouger la sortie du decodeur sur les quatre films en annonçant
+// << killsource (golden) vert >> : le test avait skippe. DEUX filets tournent donc TOUJOURS, sans
+// fixture ni variable d environnement, et ce sont eux qui interdisent la derive silencieuse :
+//
+//	[TestGoldenPhrasesJustes]  les golden n ont pas degenere en nombres nus.
+//	[TestGoldenMiniBobine]     LE DECODEUR LUI-MEME, sur des PAQUETS REELS VERSIONNES
+//	                           (`testdata/minibobine_000d5950`, 3,8 Mo) — voir minibobine_test.go,
+//	                           qui dit aussi PAR OU il detecte, temoin a l appui.
 //
 // REGENERATION :
 //
