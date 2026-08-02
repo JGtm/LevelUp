@@ -1818,3 +1818,15 @@ EN BASE ; la table legacy `killer_victim_pairs` reste intacte jusqu'à la bascul
 **Prochaine étape = J5**, et son prérequis est la **revue adversariale du lot J4** (écritures
 persist/sync/migration — 2 relecteurs, règle du dépôt) AVANT le merge. Base de diff du lot à
 risque : `ea3cfc88b..b0a76756f` scopé sur `internal/{persist,migration,sync/killcollector}`.
+
+### Restitution des docs re-mode-score — CLOSE le 2026-08-02 (commit `65f27a66b`, doc-only vérifié)
+
+D-P0a/b et D-P1b traités, chaque correction adossée à sa source (TSV, code, corps du document).
+Meilleur que le mandat : les 10 lignes de la table réalignées (récompenses → statistiques),
+pas seulement les 2 signalées. Deux refus VALIDÉS : la ligne §1 mêlant décodage non livré et
+compteurs datés (arbitrage, hors mandat) ; les entrées antérieures du thought_log (ne pas
+falsifier un journal daté — l'entrée neuve en tête dit l'état réel).
+**Dette consignée pour l'intégration** : la TSV porte `zone comp 2 B = deaths` (8/8, a servi
+au pont d'identité §20.3) absent de `namedStatSlots`. À trancher à l'intégration : légitime
+(deaths n'est pas un événement d'objectif à nommer) ou lecteur manquant. Croiser avec le
+constat R1 « TSV concorde ligne à ligne avec namedStatSlots » — l'un des deux a une exception.
