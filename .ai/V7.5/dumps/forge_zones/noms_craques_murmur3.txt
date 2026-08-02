@@ -10,6 +10,7 @@
 -266450505   warthog
 -280725848   cubemap_volume
 -329978355   narrative_modifiers
+-534119345	assault_bomb
 -710149251   generic_ball
 1028518636   shade_turret
 1063919886   mongoose
