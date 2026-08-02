@@ -20,6 +20,18 @@ type TeammatesQueryRequest struct {
 	PickedSquadSessions []string `json:"picked_squad_session_labels,omitempty"`
 	// Locale de l'utilisateur (ex. "fr", "en") pour les libellés localisés.
 	Locale string `json:"locale,omitempty"`
+	// FilterExactComposition restreint la population aux matchs où AUCUN autre
+	// coéquipier connu (hors sélection) n'était sur l'équipe du joueur principal.
+	//
+	// Défaut (false) = règle canonique « matchs commencés ensemble » : intersection
+	// du roster, c'est-à-dire tous les matchs joués par le joueur principal ET tous
+	// les coéquipiers sélectionnés, qu'un quatrième joueur connu ait été présent ou
+	// non. C'est la population de référence de TOUT le contexte escouade (compteurs,
+	// charts, heatmap, briefing) — décision produit 2026-08-02 : un seul nombre par
+	// session, plus de 11/8/6/5.
+	//
+	// true = option « composition exacte » (exclusive), à la main de l'utilisateur.
+	FilterExactComposition bool `json:"filter_exact_composition,omitempty"`
 }
 
 // ---------------------------------------------------------------------------
@@ -389,6 +401,12 @@ type SessionLabelEntry struct {
 	EndedAt     time.Time `json:"ended_at"`
 	Experiences []string  `json:"experiences,omitempty"`
 	Playlists   []string  `json:"playlists,omitempty"`
+	// MatchCount : nombre de matchs de la session dans la population de la page.
+	// En contexte escouade avec sélection, c'est le compte « commencés ensemble »
+	// (intersection du roster) — le seul compte affiché par le sélecteur de
+	// sessions. 0 = non renseigné par le producteur (le front retombe alors sur
+	// les counts de /filters/resolve).
+	MatchCount int `json:"match_count,omitempty"`
 }
 
 // SessionLabelsList contient les sessions disponibles pour les deux scopes (solo/escouade).
@@ -518,4 +536,33 @@ type TeammatesPageResponse struct {
 	// composition n'a jamais joué ensemble. Le front s'y ré-ancre quand la
 	// sélection change.
 	LatestCompositionSession string `json:"latest_composition_session,omitempty"`
+	// DataIssues : chargements best-effort qui ont échoué pendant la construction
+	// de la page. Non vide = les nombres affichés sont partiels ; le front DOIT le
+	// signaler (fin des chiffres non reproductibles). Vide/absent = page complète.
+	DataIssues []DataIssue `json:"data_issues,omitempty"`
 }
+
+// DataIssue décrit un chargement dégradé (best-effort) d'une page.
+//
+// Code est une clé STABLE, jamais un libellé : le front la traduit (FR/EN). Detail
+// n'est destiné qu'au diagnostic (log/tooltip technique), il n'est pas traduit.
+type DataIssue struct {
+	Code   string `json:"code"`
+	Detail string `json:"detail,omitempty"`
+}
+
+// Codes de DataIssue de la page Escouade.
+const (
+	// DataIssueMainTeamParticipants : équipes alliées non chargées → l'option
+	// « composition exacte » n'a pas pu être appliquée.
+	DataIssueMainTeamParticipants = "main_team_participants"
+	// DataIssueTeammateMatches : les matchs d'un coéquipier sélectionné n'ont pas
+	// pu être chargés → il manque à la population commune.
+	DataIssueTeammateMatches = "teammate_matches"
+	// DataIssueHeatmapTeammate : matchs d'un coéquipier non chargés pour le heatmap
+	// → sa ligne de cartes est vide.
+	DataIssueHeatmapTeammate = "heatmap_teammate"
+	// DataIssueMapStats : historique par carte de l'escouade non chargé → les
+	// références historiques du tableau des cartes manquent.
+	DataIssueMapStats = "map_stats"
+)

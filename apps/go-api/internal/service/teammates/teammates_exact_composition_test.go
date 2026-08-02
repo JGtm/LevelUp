@@ -132,19 +132,17 @@ func TestBuildMainTeamXUIDSet(t *testing.T) {
 	}
 }
 
-// TestGetPage_ExactComposition_ExtraKnownTeammateExcluded : E2E. Composition
-// {AllyA, AllyB} ; l'intersection donne {m1, m2}, mais m2 avait AllyC (top
-// coéquipier hors sélection) sur l'équipe du main → m2 doit être écarté de TOUTES
-// les surfaces (MapBreakdown + CompositionSessions). C'est le scénario du bug
-// {JGtm, Chocoboflor} qui incluait à tort la session {…, Madina97294}.
-func TestGetPage_ExactComposition_ExtraKnownTeammateExcluded(t *testing.T) {
+// newExtraTeammateRepo : composition {AllyA, AllyB} dont l'intersection donne
+// {m1, m2} ; m2 avait AllyC (top coéquipier connu hors sélection) sur l'équipe du
+// main. C'est le scénario {JGtm, Chocoboflor} + Madina97294.
+func newExtraTeammateRepo() *mockSquadRepo {
 	tS1 := time.Date(2026, 6, 1, 20, 0, 0, 0, time.UTC)
 	tS2 := time.Date(2026, 6, 8, 20, 0, 0, 0, time.UTC)
 	shared := []domain.SquadMatchRow{
 		makeSquadRowSess("m1", "Bazaar", domain.OutcomeWin, "S_exact", tS1),
 		makeSquadRowSess("m2", "Aquarius", domain.OutcomeWin, "S_with_C", tS2),
 	}
-	repo := &mockSquadRepo{
+	return &mockSquadRepo{
 		topRows: []domain.TopTeammateRow{
 			{XUID: "xa", Gamertag: "AllyA", GamesTogether: 10},
 			{XUID: "xb", Gamertag: "AllyB", GamesTogether: 10},
@@ -160,12 +158,66 @@ func TestGetPage_ExactComposition_ExtraKnownTeammateExcluded(t *testing.T) {
 			ally("m2", "px"), ally("m2", "xa"), ally("m2", "xb"), ally("m2", "xc"),
 		},
 	}
+}
+
+// TestGetPage_DefaultKeepsMatchesStartedTogether : DÉFAUT (option composition
+// exacte OFF, décision produit 2026-08-02). La règle canonique est « matchs
+// commencés ensemble » = intersection du roster : m2 compte, même si un
+// quatrième joueur connu était de la partie. Toutes les surfaces voient la même
+// population, et le compte par session est exposé (MatchCount).
+func TestGetPage_DefaultKeepsMatchesStartedTogether(t *testing.T) {
+	repo := newExtraTeammateRepo()
 	svc := NewTeammatesService(repo, nil).WithPlayerMatchesRepo(
 		newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Test",
 	)
 
 	resp, err := svc.GetPage(context.Background(), "px", domain.TeammatesQueryRequest{
 		SelectedGamertags: []string{"AllyA", "AllyB"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	maps := map[string]bool{}
+	for _, row := range resp.MapBreakdown {
+		maps[row.MapUI] = true
+	}
+	if !maps["Aquarius"] || !maps["Bazaar"] || len(resp.MapBreakdown) != 2 {
+		t.Errorf("MapBreakdown: want {Bazaar, Aquarius} (population « ensemble »), got %v", maps)
+	}
+
+	sessions := map[string]int{}
+	for _, s := range resp.CompositionSessions {
+		sessions[s.Label] = s.MatchCount
+	}
+	if len(sessions) != 2 || sessions["S_exact"] != 1 || sessions["S_with_C"] != 1 {
+		t.Errorf("CompositionSessions: want {S_exact:1, S_with_C:1}, got %v", sessions)
+	}
+
+	// Sans l'option, aucun anti-join d'exclusivité : la référence historique par
+	// carte porte sur la même population que les nombres affichés.
+	if len(repo.mapStatsExcludeXUIDs) != 0 {
+		t.Errorf("LoadMapStatsForSquad excludeXUIDs: want [] par défaut, got %v", repo.mapStatsExcludeXUIDs)
+	}
+	// LoadMainTeamParticipants n'est même pas sollicité (rien à exclure).
+	if len(resp.DataIssues) != 0 {
+		t.Errorf("DataIssues: want vide, got %v", resp.DataIssues)
+	}
+}
+
+// TestGetPage_ExactComposition_ExtraKnownTeammateExcluded : OPTION ACTIVÉE
+// (filter_exact_composition=true). m2 doit être écarté de TOUTES les surfaces
+// (MapBreakdown + CompositionSessions) — comportement historique, désormais sur
+// demande explicite de l'utilisateur.
+func TestGetPage_ExactComposition_ExtraKnownTeammateExcluded(t *testing.T) {
+	repo := newExtraTeammateRepo()
+	svc := NewTeammatesService(repo, nil).WithPlayerMatchesRepo(
+		newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Test",
+	)
+
+	resp, err := svc.GetPage(context.Background(), "px", domain.TeammatesQueryRequest{
+		SelectedGamertags:      []string{"AllyA", "AllyB"},
+		FilterExactComposition: true,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

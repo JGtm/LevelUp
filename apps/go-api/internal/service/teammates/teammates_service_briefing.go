@@ -165,6 +165,10 @@ func extractSynthesisSessionLabels(matches []legacymatch.SynthesisMatchRow) doma
 		endedAt     time.Time
 		experiences map[string]struct{}
 		playlists   map[string]struct{}
+		// count : matchs de la session dans le scope (solo OU escouade). Sans
+		// coéquipier sélectionné, c'est ce compte que le sélecteur de sessions
+		// affiche — même règle « ce que je vois est ce qui est compté ».
+		count int
 	}
 	soloMap := map[string]*meta{}
 	squadMap := map[string]*meta{}
@@ -191,6 +195,7 @@ func extractSynthesisSessionLabels(matches []legacymatch.SynthesisMatchRow) doma
 			}
 			em[label] = entry
 		}
+		entry.count++
 		if t.Before(entry.startedAt) {
 			entry.startedAt = t
 		}
@@ -222,6 +227,7 @@ func extractSynthesisSessionLabels(matches []legacymatch.SynthesisMatchRow) doma
 				EndedAt:     entry.endedAt,
 				Experiences: exps,
 				Playlists:   pls,
+				MatchCount:  entry.count,
 			})
 		}
 		slices.SortFunc(out, func(a, b domain.SessionLabelEntry) int {

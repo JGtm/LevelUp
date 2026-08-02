@@ -67,7 +67,8 @@ export interface CompositionReanchorInput {
   /**
    * « suit la dernière » : pas de sélection manuelle épinglée
    * (isAutoSnappingToLatest OU ni période ni session pickée). Quand false,
-   * une sélection manuelle ENCORE valide pour la composition est respectée.
+   * une sélection manuelle ENCORE valide pour la composition est respectée —
+   * SAUF si une session jamais ancrée est apparue (cf. lastAnchoredLatestSession).
    */
   followLatest: boolean
   /** Dernière session de la composition (back-end), '' si jamais jouée ensemble. */
@@ -76,6 +77,17 @@ export interface CompositionReanchorInput {
   pickedSessions: string[]
   /** Labels des sessions de la composition courante (validité d'une sélection manuelle). */
   compositionSessionLabels: string[]
+  /**
+   * Dernière session sur laquelle l'ancrage a DÉJÀ été posé (persistée dans le
+   * store squad, `lastKnownLatestSessionId`), '' si aucun ancrage connu.
+   *
+   * Clé de détection « une nouvelle session est arrivée » — sans elle, une
+   * sélection épinglée gèle la page sur une session périmée : `followLatest`
+   * est faux dès que N'IMPORTE quel chemin technique a appelé setSessions /
+   * setFilterContext (bouton Analyser, resync mount, réconciliation anti-zombie
+   * des suffixes « (N) »), et pas seulement sur un choix délibéré.
+   */
+  lastAnchoredLatestSession: string
 }
 
 /**
@@ -83,8 +95,12 @@ export interface CompositionReanchorInput {
  * (joueur principal + coéquipiers sélectionnés).
  *
  *  - aucun coéquipier → 'none' (l'ancrage n'est pas piloté par la composition) ;
- *  - sélection MANUELLE (followLatest=false) encore valide pour la composition →
- *    'none' (on respecte le choix, ex. session restaurée au reload) ;
+ *  - sélection MANUELLE (followLatest=false) encore valide pour la composition ET
+ *    dernière session déjà ancrée → 'none' (on respecte le choix, ex. session
+ *    restaurée au reload) ;
+ *  - dernière session de la composition JAMAIS ancrée (nouvelle session arrivée
+ *    depuis le dernier atterrissage) → on ré-ancre, même sur sélection manuelle :
+ *    c'est le sens de l'autosnap escouade (atterrir sur la dernière soirée jouée) ;
  *  - latest vide (composition jamais jouée ensemble) → 'clear' si une session est
  *    pickée (vider pour afficher l'état vide), sinon 'none' ;
  *  - déjà ancré sur la dernière (comparaison par clé SANS le suffixe « (N) »
@@ -92,7 +108,14 @@ export interface CompositionReanchorInput {
  *  - sinon → 'snap' sur la dernière session de la composition.
  */
 export function decideCompositionReanchor(input: CompositionReanchorInput): CompositionReanchorAction {
-  const { hasTeammates, followLatest, latestCompositionSession, pickedSessions, compositionSessionLabels } = input
+  const {
+    hasTeammates,
+    followLatest,
+    latestCompositionSession,
+    pickedSessions,
+    compositionSessionLabels,
+    lastAnchoredLatestSession,
+  } = input
   if (!hasTeammates) return { kind: 'none' }
 
   const stillValid =
@@ -100,15 +123,43 @@ export function decideCompositionReanchor(input: CompositionReanchorInput): Comp
     pickedSessions.every((p) =>
       compositionSessionLabels.some((l) => stripSessionCountSuffix(l) === stripSessionCountSuffix(p)),
     )
-  if (!followLatest && stillValid) return { kind: 'none' }
+  // Comparaison par clé sans le suffixe « (N) » : ce compte grossit à chaque sync
+  // sur une session en cours et ne dénote donc pas une session différente.
+  const latestKey = stripSessionCountSuffix(latestCompositionSession)
+  const latestAlreadyAnchored =
+    latestKey !== '' && stripSessionCountSuffix(lastAnchoredLatestSession) === latestKey
+  if (!followLatest && stillValid && latestAlreadyAnchored) return { kind: 'none' }
 
   if (!latestCompositionSession) {
     return pickedSessions.length > 0 ? { kind: 'clear' } : { kind: 'none' }
   }
   const alreadyOnLatest =
-    pickedSessions.length === 1 &&
-    stripSessionCountSuffix(pickedSessions[0]) === stripSessionCountSuffix(latestCompositionSession)
+    pickedSessions.length === 1 && stripSessionCountSuffix(pickedSessions[0]) === latestKey
   return alreadyOnLatest ? { kind: 'none' } : { kind: 'snap', label: latestCompositionSession }
+}
+
+/**
+ * Fusionne les compteurs de sessions affichés par le sélecteur de sessions.
+ *
+ * Règle canonique du contexte escouade : le nombre affiché est le compte
+ * « commencés ensemble » servi par teammates (`composition_sessions.match_count`,
+ * population du roster) — exactement la population des tableaux et graphes.
+ * Les counts de `/filters/resolve` (population du joueur principal, cascade
+ * seule) ne servent que de repli tant que la réponse teammates n'est pas
+ * arrivée : c'est cette double source qui affichait 11/8/6/5 pour une session.
+ */
+export function mergeSessionCounts(
+  fallback: { label: string; match_count_filtered: number }[],
+  compositionSessions: { label: string; match_count?: number }[],
+): Map<string, number> {
+  const map = new Map<string, number>()
+  for (const s of fallback) map.set(s.label, s.match_count_filtered)
+  for (const s of compositionSessions) {
+    // 0/undefined = producteur qui ne renseigne pas le compte : on garde le repli
+    // plutôt que d'afficher une session à zéro (qui serait masquée à tort).
+    if (typeof s.match_count === 'number' && s.match_count > 0) map.set(s.label, s.match_count)
+  }
+  return map
 }
 
 export function deriveSquadPending(

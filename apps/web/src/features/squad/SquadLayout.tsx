@@ -42,7 +42,14 @@ import { getSquadTeammateColors } from './colors'
 import type { KPIStats, LabelValue, TeammateRow, TeammatesQueryRequest } from '@/lib/api/types'
 import type { KPIStats as V2KPIStats } from './v2/types'
 import { SessionBriefing } from '@/features/_shared/SessionBriefing'
-import { deriveSquadPending, reconcileSquadSessionLabels, decideCompositionReanchor } from './squadPending'
+import {
+  deriveSquadPending,
+  reconcileSquadSessionLabels,
+  decideCompositionReanchor,
+  stripSessionCountSuffix,
+  mergeSessionCounts,
+} from './squadPending'
+import { formatDataIssues } from './squadDataIssues'
 
 import {
   FiltresPill,
@@ -152,6 +159,22 @@ export function SquadLayout() {
   }
   const confirmedGts = selectedGts
   const [addFriendGamertag, setAddFriendGamertag] = useState<string | null>(null)
+
+  // ── Option « composition stricte » (défaut OFF) ──────────────────────────
+  // Règle canonique du contexte escouade : « matchs commencés ensemble »
+  // (intersection du roster). Cette option restreint en plus aux matchs joués
+  // avec exactement cette composition ; persistée par joueur, appliquée en
+  // direct (pas de passage par Analyser, comme les coéquipiers/sessions).
+  const exactCompositionStorageKey = `squad-exact-composition-${playerSlug}`
+  const [exactComposition, setExactCompositionRaw] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(exactCompositionStorageKey) === 'true'
+    } catch { return false }
+  })
+  const setExactComposition = (value: boolean) => {
+    setExactCompositionRaw(value)
+    try { localStorage.setItem(exactCompositionStorageKey, String(value)) } catch { /* ignore */ }
+  }
 
   const matchRoute = useMatchRoute()
   const { data: settings } = useSettings()
@@ -297,21 +320,6 @@ export function SquadLayout() {
     }
   }, [rawAvailable])
 
-  // Counts par session label (post-cascade en mode escouade) — alimente
-  // SessionMultiSelect pour masquer les sessions vides + afficher les counts.
-  const sessionCounts = useMemo(() => {
-    const src = previewResolve?.session_options?.all_sessions ?? resolvedContext?.session_options?.all_sessions ?? []
-    const map = new Map<string, number>()
-    for (const s of src) {
-      map.set(s.label, s.match_count_filtered)
-    }
-    return map
-  }, [previewResolve, resolvedContext])
-  const getSessionCount = useMemo(
-    () => (label: string) => sessionCounts.get(label),
-    [sessionCounts],
-  )
-
   const presetCounts = previewResolve?.period_presets ?? resolvedContext?.period_presets
 
   // ── Saisons (cascade-aware counts + détection saison active) ─────────────
@@ -338,6 +346,7 @@ export function SquadLayout() {
     selected_gamertags: confirmedGts.length > 0 ? confirmedGts : undefined,
     picked_squad_session_labels: pickedSquadSessionLabels.length > 0 ? pickedSquadSessionLabels : undefined,
     locale,
+    filter_exact_composition: exactComposition,
   }
   const { data, isLoading, isError, error, isPlaceholderData } = useTeammates(
     playerSlug,
@@ -358,6 +367,30 @@ export function SquadLayout() {
     [hasTeammates, data],
   )
   const latestCompositionSession = data?.latest_composition_session ?? ''
+
+  // Counts par session label — alimente SessionMultiSelect (masque les sessions
+  // vides + affiche le compte). SOURCE UNIQUE en contexte escouade : le compte
+  // « commencés ensemble » servi par teammates (composition_sessions.match_count),
+  // c'est-à-dire exactement la population des tableaux et graphes de la page.
+  // Les counts de /filters/resolve (population du joueur principal, cascade
+  // seule) ne servent plus que de repli tant que la réponse teammates n'est pas
+  // arrivée — c'est cette double source qui donnait 11/8/6/5 sur une même session.
+  const sessionCounts = useMemo(
+    () =>
+      mergeSessionCounts(
+        previewResolve?.session_options?.all_sessions ?? resolvedContext?.session_options?.all_sessions ?? [],
+        compositionSessions,
+      ),
+    [previewResolve, resolvedContext, compositionSessions],
+  )
+  const getSessionCount = useMemo(
+    () => (label: string) => sessionCounts.get(label),
+    [sessionCounts],
+  )
+
+  // Dégradations remontées par l'API (chargements best-effort en échec) :
+  // affichées telles quelles — un chiffre partiel doit se voir, pas se deviner.
+  const dataIssueMessages = useMemo(() => formatDataIssues(data?.data_issues, t), [data?.data_issues, t])
 
   // Bouton "Voir les matchs" (L2) : la liste de matchs de la composition est
   // déjà chargée ici (data.match_history, DESC), donc zéro aller-retour serveur.
@@ -425,19 +458,31 @@ export function SquadLayout() {
   // (data.latest_composition_session, calculé back-end sur l'intersection), ou un
   // état vide si elle n'a jamais joué ensemble.
   //
-  // Anti-boucle : on n'agit qu'UNE fois par composition (ref) et seulement sur des
-  // données FRAÎCHES (!isPlaceholderData = data correspond à la sélection courante,
-  // pas au placeholder keepPreviousData). La navigation rail/manuelle et les
-  // changements de filtre ne changent pas la composition → pas de ré-ancrage, donc
-  // pas de conflit avec une sélection de session délibérée.
+  // Anti-boucle : on n'agit qu'UNE fois par couple (composition, dernière session)
+  // — ref — et seulement sur des données FRAÎCHES (!isPlaceholderData = data
+  // correspond à la sélection courante, pas au placeholder keepPreviousData). La
+  // navigation rail/manuelle et les changements de filtre ne changent ni la
+  // composition ni la dernière session → pas de ré-ancrage, donc pas de conflit
+  // avec une sélection de session délibérée.
+  //
+  // La clé de garde inclut la DERNIÈRE SESSION (clé sans le suffixe « (N) »
+  // volatil) : avec la composition seule, l'arrivée d'une nouvelle soirée pendant
+  // que la page est montée (refetch post-sync) ne rouvrait jamais la décision —
+  // l'escouade ne monte pas useFollowLatestSession (seul le solo l'a).
   const lastAnchoredCompositionRef = useRef<string | null>(null)
   useEffect(() => {
     if (!data || isPlaceholderData) return
     const compositionKey = hasTeammates ? [...confirmedGts].sort().join(',') : ''
-    if (compositionKey === lastAnchoredCompositionRef.current) return
-    lastAnchoredCompositionRef.current = compositionKey
+    const anchorKey = `${compositionKey}|${stripSessionCountSuffix(latestCompositionSession)}`
+    if (anchorKey === lastAnchoredCompositionRef.current) return
+    lastAnchoredCompositionRef.current = anchorKey
 
-    const { filterContext: fc, isAutoSnappingToLatest } = useSquadFilterStore.getState()
+    const {
+      filterContext: fc,
+      isAutoSnappingToLatest,
+      lastKnownLatestSessionId,
+      setLastKnownLatestSessionId,
+    } = useSquadFilterStore.getState()
     const picked = fc.sessions?.picked_sessions ?? []
     const hasPeriod = !!(fc.period?.start_date || fc.period?.end_date)
     // « follow-latest » : pas de sélection manuelle épinglée (cf. useFollowLatestSession).
@@ -448,6 +493,9 @@ export function SquadLayout() {
       latestCompositionSession,
       pickedSessions: picked,
       compositionSessionLabels: compositionSessions.map((s) => s.label),
+      // Ancrage déjà posé (persisté) : distingue « l'utilisateur a épinglé cette
+      // session » de « une nouvelle session est arrivée depuis ».
+      lastAnchoredLatestSession: lastKnownLatestSessionId ?? '',
     })
     if (action.kind === 'clear') {
       // Composition sans session commune → on vide et on affiche l'état vide
@@ -456,9 +504,14 @@ export function SquadLayout() {
       applySessionLabels([])
     } else if (action.kind === 'snap') {
       autoSnapToLatestSession({ session_id: action.label, label: action.label }, true)
+    } else if (latestCompositionSession && latestCompositionSession !== lastKnownLatestSessionId) {
+      // Pas de snap (déjà dessus, ou sélection délibérée respectée) : on mémorise
+      // quand même la dernière session vue, sinon elle resterait « jamais ancrée »
+      // et re-déclencherait un snap à chaque montage.
+      setLastKnownLatestSessionId(latestCompositionSession)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, isPlaceholderData, confirmedGts, hasTeammates])
+  }, [data, isPlaceholderData, confirmedGts, hasTeammates, latestCompositionSession])
 
   // ── Routes actives ───────────────────────────────────────────────────────
   const synergiesRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies' as const
@@ -615,6 +668,23 @@ export function SquadLayout() {
             />
           )}
 
+          {/* Composition stricte — option OFF par défaut : la règle affichée est
+              « matchs commencés ensemble ». Appliquée en direct (pas d'Analyser). */}
+          {hasTeammates && (
+            <label
+              className="shrink-0 inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-input bg-background px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+              title={t.filter.exactCompositionTitle}
+            >
+              <input
+                type="checkbox"
+                className="h-3 w-3 rounded border-input text-primary focus:ring-1 focus:ring-ring"
+                checked={exactComposition}
+                onChange={(e) => setExactComposition(e.target.checked)}
+              />
+              {t.filter.exactComposition}
+            </label>
+          )}
+
           <div className="flex-1" />
 
           {/* Compteur de matchs + « Voir les matchs » : déplacés dans le rail
@@ -666,6 +736,26 @@ export function SquadLayout() {
       {!isLoading && isError && (
         <div className="p-6 text-center text-destructive">
           {t.errors.loadError(formatError(error))}
+        </div>
+      )}
+
+      {/* Données partielles : un chargement best-effort a échoué côté serveur.
+          Visible plutôt que silencieux — sinon les compteurs varient d'une
+          requête à l'autre sans explication (cf. domain.DataIssue).
+          text-warning (et non text-warning-foreground, pensé pour un fond plein) :
+          sur le tint bg-warning/10 ce dernier est illisible en thème sombre —
+          piège documenté dans components/ui/privacy-banner.tsx. */}
+      {dataIssueMessages.length > 0 && (
+        <div
+          role="status"
+          className="mx-4 mt-3 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning"
+        >
+          <p className="font-medium">{t.dataIssues.title}</p>
+          <ul className="mt-1 list-disc pl-4">
+            {dataIssueMessages.map((msg) => (
+              <li key={msg}>{msg}</li>
+            ))}
+          </ul>
         </div>
       )}
 
