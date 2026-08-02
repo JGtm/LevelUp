@@ -1856,3 +1856,47 @@ pas encore. **À corriger avant le merge J5.**
 (règles écrites : test capability, logs, doc bilingue) ; J4R-7 = corriger le commentaire
 mensonger + CONSIGNER la dette (ne pas réécrire l'outil, hors périmètre). Puis **ronde 2** :
 relecture des seules corrections par un contexte frais (skill §8, 2 rondes max).
+
+---
+
+## STRATÉGIE DE MERGE — RÉVISÉE le 2026-08-02 (décision utilisateur)
+
+**On ne merge PLUS J4 seul. On finalise le VISIBLE, puis on merge un tout cohérent.**
+`main` = déploiement prod ; l'utilisateur préfère une release propre et complète.
+
+### Périmètre AVANT le merge (tout sur `feat/replay2d-prod`)
+
+| lot | état | ce qu'il rend | sessions |
+|---|---|---|---|
+| **J4-fix** — ronde de correction post-revue (7 constats) + ronde 2 | EN COURS | — | 1-2 |
+| **Killfeed VISIBLE** — inversion de préséance (crédit = base, film = enrichissement) → re-backfill → bascule des 8 lecteurs (vue de compat) + seed_demo | à faire | **LE vrai visible** : armes de kill, assists nommés dans les pages existantes, agrégats carrière dégonflés (« 101 → 29 ») | 3-4 |
+| **Intégration re-mode-score** — rebaser sur `feat/replay2d-prod`, intégrer le code objectifs + P1/P2 de sa revue (docs déjà restitués) | à faire | anti-divergence (le code atterrit ; son débouché rejeu reste dev) | 1-2 |
+| **Hygiène** — rangement `.ai/` → V7.5, lot E delivery-checklist | à faire | — | 1-2 |
+| **MERGE** — revue adverse finale si besoin, GO utilisateur, backfill prod | à faire | la release | 1 |
+
+### CLARIFICATION — ce qui est « visible » et ce qui ne l'est pas
+
+- **Le killfeed enrichi EST le visible** : c'est lui qui apporte de la valeur à l'écran une fois
+  les lecteurs basculés. C'est le cœur de la release.
+- **re-mode-score s'intègre pour NE PAS diverger**, mais son débouché principal (le calque
+  d'objectifs) est dans le **rejeu 2D, qui reste en DEV (décision #5)**. On fait atterrir le
+  code proprement ; on ne branche pas son affichage rejeu avant le merge.
+
+### RESTE POST-MERGE (branches courtes depuis `main`)
+
+Rejeu 2D public (piste F) · cartes Catalyst/Vagabond + les 12 autres (piste B) · **Ghidra
+KOTH/Oddball** (recherche, JAMAIS bloquante pour un merge) · containment lettre-de-zone ·
+précision projectiles (piste E). Le rejeu et ses cartes restent **dev** tant que #5 tient.
+
+### DISCIPLINE OBLIGATOIRE pendant la finalisation
+
+**Merger `origin/main` DANS `feat/replay2d-prod` régulièrement** (à chaque début de session,
+ou au moins entre chaque lot). Sinon on reproduit exactement la divergence que la
+réconciliation a coûté une session entière à réparer — et un acteur pousse `main` en parallèle.
+
+### Rangement `.ai/` — session dédiée, quand la branche est LIBRE
+
+Pas en vrai simultané de la correction J4 (même worktree = collision d'index git). À jouer
+entre deux lots. Tâche SOIGNEUSE : re-vérifier vivant/clos doc par doc (ne pas archiver un
+plan encore actif : capacités, objectifs, cartes, variables jetées non faits), et ne pas
+casser les références de code (`dumps/` est lu par du code : `cmd/replay-build`, `mapvar`).
