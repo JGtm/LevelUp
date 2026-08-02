@@ -22114,6 +22114,9 @@ components:
           type:
             - array
             - "null"
+        defensive_resistance_p80:
+          format: double
+          type: number
         effective_hp_to_kill:
           format: double
           type: number
@@ -22151,6 +22154,7 @@ components:
         - is_default
         - effective_hp_to_kill
         - offensive_conversion_p80
+        - defensive_resistance_p80
         - provides_damage_taken
         - provides_team_mmr
         - provides_max_killing_spree

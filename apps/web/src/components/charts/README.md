@@ -104,6 +104,8 @@ Props : `axisLabels` (axis-key → label override), `seriesNameResolver`.
 
 Custom ECharts series rendering an RLE band of recent match outcomes with I-beam brackets (wins above, losses below). Specific to LevelUp's narrative storyline.
 
+Matches carrying a `dominance` flag get a vertical **notch** crossing the band (3 px overhang on both sides) with a tooltip-background gutter — the gutter, not the hue, is what carries contrast. The notch has no density floor: below ~2 px per match, neighbouring notches merge (`clusterDominanceNotches` in `outcomeSequence.ts`, a pure helper); a merged group keeps its colour when all flags agree and turns muted when they differ.
+
 ```tsx
 <OutcomeSequenceTape
   matches={[

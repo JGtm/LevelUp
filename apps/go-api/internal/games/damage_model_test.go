@@ -132,6 +132,74 @@ offensive_conversion_p80 = 1.264
 	}
 }
 
+// TestDefensiveResistanceP80_TitleAwareAndFallback — pendant défensif du test
+// ci-dessus : un titre déclare son defensive_resistance_p80 et la valeur route (pas
+// le défaut 1.65 Infinite) ; titre inconnu / resolver nil → DefaultDefensiveResistanceP80.
+func TestDefensiveResistanceP80_TitleAwareAndFallback(t *testing.T) {
+	t.Parallel()
+	const slug = "synthetic_dr_p80_title"
+
+	tmp := t.TempDir()
+	writeFile(t, filepath.Join(tmp, "config", "titles", slug, "mappings"), "fields.toml", minimalFieldsTOML(slug))
+	writeFile(t, filepath.Join(tmp, "config", "titles", slug), "constants.toml", `
+[meta]
+title_slug = "`+slug+`"
+schema_version = 1
+
+[endpoints]
+stats = "https://stats.example.test"
+
+[damage_model]
+effective_hp_to_kill = 115
+defensive_resistance_p80 = 2.1
+`)
+	reg := mappings.NewRegistry()
+	if errs := reg.LoadFromConfigDir(tmp, []string{slug}, nil); len(errs) != 0 {
+		t.Fatalf("LoadFromConfigDir errs: %v", errs)
+	}
+	res := NewMappingsEndpointResolver(reg, "halo_infinite")
+
+	if got := DefensiveResistanceP80FromResolver(res, slug); got != 2.1 {
+		t.Errorf("DefensiveResistanceP80(%q) = %v, want 2.1", slug, got)
+	}
+	if got := DefensiveResistanceP80FromResolver(res, "never_loaded"); got != DefaultDefensiveResistanceP80 {
+		t.Errorf("inconnu = %v, want %v (défaut)", got, DefaultDefensiveResistanceP80)
+	}
+	if got := DefensiveResistanceP80FromResolver(nil, slug); got != DefaultDefensiveResistanceP80 {
+		t.Errorf("resolver nil = %v, want %v (défaut)", got, DefaultDefensiveResistanceP80)
+	}
+}
+
+// TestDefensiveResistanceP80_RealConfig — oracle bout-en-bout sur la config RÉELLE :
+// halo_infinite déclare 1.65 dans [damage_model] (fin de l'asymétrie « offensive en
+// TOML / défensive en const Go ») ; halo_5 ne la déclare PAS (no_damage_taken → la DR
+// n'existe pas) et retombe donc sur le défaut, valeur jamais consommée côté front.
+func TestDefensiveResistanceP80_RealConfig(t *testing.T) {
+	t.Parallel()
+	reg := mappings.NewRegistry()
+	root := repoConfigRoot(t)
+	if errs := reg.LoadFromConfigDir(root, []string{"halo_5", "halo_infinite"}, nil); len(errs) != 0 {
+		t.Fatalf("LoadFromConfigDir(halo_5, halo_infinite) errs: %v", errs)
+	}
+	res := NewMappingsEndpointResolver(reg, "halo_infinite")
+
+	if got := DefensiveResistanceP80FromResolver(res, "halo_infinite"); got != 1.65 {
+		t.Errorf("halo_infinite defensive_resistance_p80 = %v, want 1.65 (déclaré en TOML)", got)
+	}
+	// halo_5 : rien de déclaré → défaut. Le test cadenasse l'ABSENCE volontaire
+	// (déclarer un P80 h5 serait inventer une donnée que l'API ne fournit pas).
+	dm, ok := res.DamageModelFor("halo_5")
+	if !ok {
+		t.Fatal("halo_5 doit avoir un [damage_model]")
+	}
+	if dm.DefensiveResistanceP80 != 0 {
+		t.Errorf("halo_5 ne doit PAS déclarer defensive_resistance_p80 (reçu %v) : DR non calculable", dm.DefensiveResistanceP80)
+	}
+	if got := DefensiveResistanceP80FromResolver(res, "halo_5"); got != DefaultDefensiveResistanceP80 {
+		t.Errorf("halo_5 = %v, want %v (défaut servi, non consommé)", got, DefaultDefensiveResistanceP80)
+	}
+}
+
 // TestProvidesNativeKDA — un titre déclarant no_native_kda=true (Halo 5) route
 // false ; un titre sans le flag / inconnu / resolver legacy / resolver nil retombe
 // sur true (défaut Infinite). Garantit qu'on ne fabrique jamais de KDA pour un

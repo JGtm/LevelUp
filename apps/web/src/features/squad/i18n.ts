@@ -207,12 +207,26 @@ export interface SquadText {
     teamLabel: string
   }
   efficiencySeries: {
-    /** Titre de la carte Rendement (métrique dégâts/frag). */
+    /** Titre de la carte Rendement (écart à la frontière élite OC du titre). */
     rendementCardTitle: string
-    /** Titre de la carte Résistance (métrique dégâts/mort). */
+    /** Titre de la carte Résistance (écart à la frontière élite DR du titre). */
     resistanceCardTitle: string
-    description: string
-    refLabel: string
+    /** Aide ⓘ : comment lire les pistes empilées et le zéro = frontière élite. */
+    help: string
+    /** Nom de l'indicateur offensif au survol (« Rendement »). */
+    offensiveMetric: string
+    /** Nom de l'indicateur défensif au survol (« Résistance »). */
+    defensiveMetric: string
+    /** Libellé du repère au survol (« frontière élite »). */
+    eliteBoundary: string
+    /** Libellé des dégâts bruts offensifs au survol. */
+    damageDealt: string
+    /** Libellé des dégâts bruts défensifs au survol. */
+    damageTaken: string
+    /** Unité du ratio offensif au survol (« / frag effectif »). */
+    perFrag: string
+    /** Unité du ratio défensif au survol (« / mort »). */
+    perDeath: string
     noData: string
   }
   performanceCharts: {
@@ -538,10 +552,16 @@ const FR_TEXT: SquadText = {
     teamLabel: 'Équipe',
   },
   efficiencySeries: {
-    rendementCardTitle: 'Rendement — dégâts par frag',
-    resistanceCardTitle: 'Résistance — dégâts par mort',
-    description: 'Dégâts / frag = dégâts infligés / frags. Dégâts / mort = dégâts subis / morts. Repère 225 = 1 vie de Spartan : pour les frags, au plus proche de 225, au plus efficace ; pour les morts, au-dessus de 225 = bonne résistance.',
-    refLabel: '1 vie ({{HP}})',
+    rendementCardTitle: 'Rendement — écart à la frontière élite',
+    resistanceCardTitle: 'Résistance — écart à la frontière élite',
+    help: 'Une piste par joueur. Le trait montre, match par match, l\'écart à la frontière élite du jeu — le niveau atteint par les 20 % de joueurs les plus efficaces. Au-dessus de zéro (vert), tu fais mieux que cette frontière ; en dessous (rouge), moins bien. Rendement = dégâts infligés convertis en frags effectifs (frags + assistances / 3). Résistance = dégâts encaissés avant chaque mort. Toutes les pistes partagent la même échelle : une bosse de même hauteur vaut la même chose chez tous. Survole un point pour les valeurs brutes du match.',
+    offensiveMetric: 'Rendement',
+    defensiveMetric: 'Résistance',
+    eliteBoundary: 'frontière élite',
+    damageDealt: 'Dégâts infligés',
+    damageTaken: 'Dégâts subis',
+    perFrag: '/ frag effectif',
+    perDeath: '/ mort',
     noData: 'Aucune donnée d\'efficacité disponible.',
   },
   performanceCharts: {
@@ -855,10 +875,16 @@ const EN_TEXT: SquadText = {
     teamLabel: 'Team',
   },
   efficiencySeries: {
-    rendementCardTitle: 'Offensive efficiency — damage per kill',
-    resistanceCardTitle: 'Defensive resistance — damage per death',
-    description: 'Damage / kill = damage dealt / kills. Damage / death = damage taken / deaths. Reference 225 = one Spartan life: for kills, closer to 225 is more efficient; for deaths, above 225 means good resistance.',
-    refLabel: '1 life ({{HP}})',
+    rendementCardTitle: 'Offensive efficiency — gap to elite frontier',
+    resistanceCardTitle: 'Defensive resistance — gap to elite frontier',
+    help: 'One track per player. The line shows, match by match, the gap to the game\'s elite frontier — the level reached by the top 20% most efficient players. Above zero (green) you beat that frontier; below (red) you fall short. Offensive efficiency = damage dealt converted into effective kills (kills + assists / 3). Defensive resistance = damage absorbed before each death. Every track shares the same scale, so a peak of the same height means the same thing for everyone. Hover a point for the raw match values.',
+    offensiveMetric: 'Efficiency',
+    defensiveMetric: 'Resistance',
+    eliteBoundary: 'elite frontier',
+    damageDealt: 'Damage dealt',
+    damageTaken: 'Damage taken',
+    perFrag: '/ effective kill',
+    perDeath: '/ death',
     noData: 'No efficiency data available.',
   },
   performanceCharts: {
