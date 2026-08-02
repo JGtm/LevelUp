@@ -10,7 +10,7 @@
 // contrat HTTP inchangés (corps JSON byte-identique, ETag SHA-256, 304 sur
 // If-None-Match, Cache-Control) — seul le wrapping HTTP change.
 //
-// Gated par MULTI_TITLE_API_ENABLED (même flag que field-mappings).
+// Monté inconditionnellement (comme field-mappings) depuis le 2026-08-02.
 package handlers
 
 import (

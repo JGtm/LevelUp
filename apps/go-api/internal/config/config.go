@@ -140,10 +140,6 @@ type AppConfig struct {
 	// Backup : configuration du scheduler de backup DuckDB via restic.
 	// Activé par LEVELUP_BACKUP_ENABLED=true.
 	Backup BackupConfig
-	// MultiTitleAPIEnabled gate les routes /api/v1/titles/{slug}/field-mappings + catalog.
-	// Source : multi_title_api_enabled dans app_settings.json. Env var MULTI_TITLE_API_ENABLED
-	// en override d'urgence (1/true/yes). Défaut : false.
-	MultiTitleAPIEnabled bool
 	// PrestigeEnabled gate les 16 routes Prestige ET le hook post-sync (gate UNIQUE,
 	// C7/DEC-4). Source : prestige.IsEnabled → prestige_enabled dans app_settings.json,
 	// override d'urgence PRESTIGE_ENABLED. Défaut : true (activation actée, ADR 0005).
@@ -243,7 +239,6 @@ func Load() (*AppConfig, error) {
 	cfg.CurrentCSRSeasonID = loadCSRSeasonID(appSettingsPath)
 	cfg.MediaCapturesBaseDir = loadMediaCapturesBaseDir(appSettingsPath)
 	cfg.Backup = loadBackupConfig(repoRoot, appSettingsPath)
-	cfg.MultiTitleAPIEnabled = loadMultiTitleAPIEnabled(appSettingsPath)
 	cfg.PrestigeEnabled = prestige.IsEnabled(appSettingsPath)
 	cfg.PersistBatchAsync = getEnvOrDefault("LEVELUP_PERSIST_BATCH_ASYNC", "") != "0"
 	cfg.EventsConvergence = getEnvOrDefault("LEVELUP_EVENTS_CONVERGENCE", "") != "0"

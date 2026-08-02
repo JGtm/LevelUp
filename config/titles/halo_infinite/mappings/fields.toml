@@ -272,6 +272,16 @@ format        = "percent_1"
 display_order = 60
 group         = "career"
 
+# Compteur brut de victoires, distinct du taux (win_rate). Consommé par les
+# jalons (milestones/catalog.toml, metric = "wins").
+[fields.wins]
+labels        = { en = "Wins", fr = "Victoires" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 55
+group         = "career"
+
 # =============================================================================
 # Skill (group = "skill") — 6 FieldKey
 # =============================================================================
@@ -528,4 +538,53 @@ storage_unit  = "seconds"
 display_unit  = "seconds"
 format        = "duration_hms"
 display_order = 100
+group         = "derived"
+
+# Pendant « score » de la famille *_per_min. Métrique de record personnel suivie
+# par défaut (progression/records/extractors.go, qui l'émet sous la clé courte
+# historique "pspm" — résolution de l'alias côté front, lib/i18n/metricLabel.ts).
+[fields.personal_score_per_min]
+labels        = { en = "Personal score / min", fr = "Score perso / min" }
+storage_unit  = ""
+display_unit  = ""
+format        = "kdr_2"
+display_order = 91
+group         = "derived"
+
+# =============================================================================
+# Compteurs de progression (group = "derived") — alimentent les jalons
+# (milestones/catalog.toml). Non produits par Halo 5 : absents de son
+# fields.toml, conformément à « section absente = surface non supportée ».
+# =============================================================================
+
+[fields.accuracy_threshold_days]
+labels        = { en = "Consistent days", fr = "Jours réguliers" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 110
+group         = "derived"
+
+[fields.combat_precision_matches]
+labels        = { en = "Precision matches", fr = "Matchs de précision" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 120
+group         = "derived"
+
+[fields.combat_endurance_matches]
+labels        = { en = "Endurance matches", fr = "Matchs d'endurance" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 130
+group         = "derived"
+
+[fields.combat_excellence_matches]
+labels        = { en = "Excellence matches", fr = "Matchs d'excellence" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 140
 group         = "derived"

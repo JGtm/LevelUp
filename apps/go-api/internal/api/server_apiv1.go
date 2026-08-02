@@ -193,78 +193,82 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode)), apiOpt)
 
 	// Phase A multi-titres : exposition des field mappings TOML.
-	// Derrière MULTI_TITLE_API_ENABLED.
+	//
+	// Routes INCONDITIONNELLES depuis le 2026-08-02 (v7.3 lot 2, item 3.3). Le gate
+	// de rollout MULTI_TITLE_API_ENABLED a été retiré : son critère de bascule était
+	// « surface multi-titre validée pour >= 2 titres », atteint (halo_infinite +
+	// halo_5) et actif dans TOUS les environnements. Ces libellés sont désormais la
+	// SOURCE UNIQUE côté front — les dictionnaires de repli TS ont été supprimés
+	// dans le même commit, donc le sous-arbre ne peut plus être éteint sans casser
+	// l'affichage (CLAUDE.md n°11 : livrer actif plutôt que garder un flag OFF).
 	//
 	// NOTE : les endpoints preview/career et preview/career-multi-title
 	// (proof-of-concept Phase C) ont été supprimés en revue 2026-04-29 P0.2
 	// Q6 — orphelins côté front même flag activé. À réintroduire en endpoint
 	// admin/debug si besoin de re-valider le pipeline canonique.
-	if cfg.MultiTitleAPIEnabled {
-		slog.Info("multi_title_api_enabled", "routes", []string{"/titles/{slug}/field-mappings", "/titles/{slug}/catalog"})
-		fieldMappingsHandler := handlers.NewFieldMappingsHandler(fieldMappingsRegistry, slog.Default())
-		// V2 saisons : si le catalog est câblé, on enrichit le DTO assets
-		// avec l'union TOML + DB (cf. SeasonsCatalogForHandler ci-dessous).
-		if seasonsResolver := reg.SeasonsCatalogForHandler(); seasonsResolver != nil {
-			fieldMappingsHandler = fieldMappingsHandler.WithSeasonsCatalog(seasonsResolver)
-		}
-		fieldMappingsHandler.Mount(r, apiOpt) // GET /titles/{slug}/field-mappings (Huma, ETag préservé)
-
-		// Phase 1.7a — capabilities produit déclarées par le titre (TOML).
-		capabilitiesHandler := handlers.NewCapabilitiesHandler(fieldMappingsRegistry, slog.Default())
-		capabilitiesHandler.Mount(r, apiOpt)
-
-		// Phase 1.7b — matrice de features (cascade capabilities → 3 états).
-		featureMatrixHandler := handlers.NewFeatureMatrixHandler(fieldMappingsRegistry, slog.Default())
-		featureMatrixHandler.Mount(r, apiOpt)
-
-		// Phase H.bis — catalogue Playlists/Pairs/Maps (title-aware).
-		// OpenReadWriteShared pour compatibilité avec les connexions RW existantes
-		// (prestige presets, rank catalog) sur le même fichier DuckDB.
-		//
-		// V721-04 — SÉCURITÉ : ces 3 routes étaient montées SANS garde d'auth. Ce
-		// n'est pas un référentiel purement public : elles acceptent `?xuid=` +
-		// `only_played=true` et révèlent alors quelles playlists / cartes CE joueur
-		// a jouées — donnée d'activité, pas métadonnée de jeu. Le trou était
-		// INVISIBLE au ratchet `bare_routes_ratchet_test` parce que le harnais de
-		// démo, faute de metadata.duckdb, ne montait jamais ces routes ; le montage
-		// de repli ajouté ci-dessous l'a révélé. Fermé par RequireAuth sur les DEUX
-		// branches (aucun appelant front : vérifié par grep sur apps/web).
-		catalogRouter := r.With(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
-		if catalogMetaDB, err := platform_duckdb.OpenReadWriteShared(
-			metadataDBPathFor(cfg),
-		); err != nil {
-			slog.Warn("catalog_meta_db_unavailable", "err", err)
-			// V721-04 — contrat publié : le document OpenAPI est rendu depuis le
-			// routeur de DÉMO (racine isolée SANS metadata.duckdb). Sans ce repli,
-			// les 3 routes /titles/{slug}/catalog/* disparaissaient du contrat alors
-			// qu'elles existent en production. Repli = repo de listes vides (aucun
-			// accès DuckDB), MÊME handler donc mêmes routes/schémas. Strictement
-			// borné à la démo : hors démo, metadata absente ⇒ routes non montées,
-			// comportement de production INCHANGÉ.
-			if cfg.DemoMode {
-				handlers.NewCatalogHandler(handlers.EmptyCatalogRepo{}).Mount(catalogRouter, apiOpt)
-			}
-		} else {
-			// Handle RW persistant : le CatalogHandler le garde pour servir
-			// /catalog/*. Tracker pour fermeture au shutdown via reg.Close(),
-			// sinon fuite de refCount metadata (cf. INCIDENT_2026-05-21).
-			reg.TrackMetadataHandle(catalogMetaDB)
-			catalogH := handlers.NewCatalogHandler(platform_duckdb.NewCatalogRepo(catalogMetaDB, nil))
-			catalogH.Mount(catalogRouter, apiOpt) // /titles/{slug}/catalog/{playlists,pairs,maps}
-		}
-
-		slog.Info("multi_title_api_enabled",
-			"slugs", fieldMappingsRegistry.Slugs(),
-			"endpoints", []string{
-				"/api/v1/titles/{slug}/field-mappings",
-				"/api/v1/titles/{slug}/capabilities",
-				"/api/v1/titles/{slug}/feature-matrix",
-				"/api/v1/titles/{slug}/catalog/playlists",
-				"/api/v1/titles/{slug}/catalog/pairs",
-				"/api/v1/titles/{slug}/catalog/maps",
-			},
-		)
+	fieldMappingsHandler := handlers.NewFieldMappingsHandler(fieldMappingsRegistry, slog.Default())
+	// V2 saisons : si le catalog est câblé, on enrichit le DTO assets
+	// avec l'union TOML + DB (cf. SeasonsCatalogForHandler ci-dessous).
+	if seasonsResolver := reg.SeasonsCatalogForHandler(); seasonsResolver != nil {
+		fieldMappingsHandler = fieldMappingsHandler.WithSeasonsCatalog(seasonsResolver)
 	}
+	fieldMappingsHandler.Mount(r, apiOpt) // GET /titles/{slug}/field-mappings (Huma, ETag préservé)
+
+	// Phase 1.7a — capabilities produit déclarées par le titre (TOML).
+	capabilitiesHandler := handlers.NewCapabilitiesHandler(fieldMappingsRegistry, slog.Default())
+	capabilitiesHandler.Mount(r, apiOpt)
+
+	// Phase 1.7b — matrice de features (cascade capabilities → 3 états).
+	featureMatrixHandler := handlers.NewFeatureMatrixHandler(fieldMappingsRegistry, slog.Default())
+	featureMatrixHandler.Mount(r, apiOpt)
+
+	// Phase H.bis — catalogue Playlists/Pairs/Maps (title-aware).
+	// OpenReadWriteShared pour compatibilité avec les connexions RW existantes
+	// (prestige presets, rank catalog) sur le même fichier DuckDB.
+	//
+	// V721-04 — SÉCURITÉ : ces 3 routes étaient montées SANS garde d'auth. Ce
+	// n'est pas un référentiel purement public : elles acceptent `?xuid=` +
+	// `only_played=true` et révèlent alors quelles playlists / cartes CE joueur
+	// a jouées — donnée d'activité, pas métadonnée de jeu. Le trou était
+	// INVISIBLE au ratchet `bare_routes_ratchet_test` parce que le harnais de
+	// démo, faute de metadata.duckdb, ne montait jamais ces routes ; le montage
+	// de repli ajouté ci-dessous l'a révélé. Fermé par RequireAuth sur les DEUX
+	// branches (aucun appelant front : vérifié par grep sur apps/web).
+	catalogRouter := r.With(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
+	if catalogMetaDB, err := platform_duckdb.OpenReadWriteShared(
+		metadataDBPathFor(cfg),
+	); err != nil {
+		slog.Warn("catalog_meta_db_unavailable", "err", err)
+		// V721-04 — contrat publié : le document OpenAPI est rendu depuis le
+		// routeur de DÉMO (racine isolée SANS metadata.duckdb). Sans ce repli,
+		// les 3 routes /titles/{slug}/catalog/* disparaissaient du contrat alors
+		// qu'elles existent en production. Repli = repo de listes vides (aucun
+		// accès DuckDB), MÊME handler donc mêmes routes/schémas. Strictement
+		// borné à la démo : hors démo, metadata absente ⇒ routes non montées,
+		// comportement de production INCHANGÉ.
+		if cfg.DemoMode {
+			handlers.NewCatalogHandler(handlers.EmptyCatalogRepo{}).Mount(catalogRouter, apiOpt)
+		}
+	} else {
+		// Handle RW persistant : le CatalogHandler le garde pour servir
+		// /catalog/*. Tracker pour fermeture au shutdown via reg.Close(),
+		// sinon fuite de refCount metadata (cf. INCIDENT_2026-05-21).
+		reg.TrackMetadataHandle(catalogMetaDB)
+		catalogH := handlers.NewCatalogHandler(platform_duckdb.NewCatalogRepo(catalogMetaDB, nil))
+		catalogH.Mount(catalogRouter, apiOpt) // /titles/{slug}/catalog/{playlists,pairs,maps}
+	}
+
+	slog.Info("multi_title_routes_mounted",
+		"slugs", fieldMappingsRegistry.Slugs(),
+		"endpoints", []string{
+			"/api/v1/titles/{slug}/field-mappings",
+			"/api/v1/titles/{slug}/capabilities",
+			"/api/v1/titles/{slug}/feature-matrix",
+			"/api/v1/titles/{slug}/catalog/playlists",
+			"/api/v1/titles/{slug}/catalog/pairs",
+			"/api/v1/titles/{slug}/catalog/maps",
+		},
+	)
 
 	// Sprint 43 : changelog (markdown brut) — MIGRÉ vers Huma (Phase 3b),
 	// enregistré en tête de bloc via registerChangelogHuma.

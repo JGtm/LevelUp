@@ -169,7 +169,7 @@ Conséquence : l'événement de log `mappings_hot_reloaded` du plan §8.1 est in
 - L'onboarding d'un second vrai titre nécessite une itération TOML intensive, ou
 - Le volume du catalogue croît (ex. médailles, familles d'armes) et le tuning de labels à chaud devient utile.
 
-### API HTTP (derrière `MULTI_TITLE_API_ENABLED=true`)
+### API HTTP (montée sans condition depuis le 2026-08-02)
 
 - `GET /api/v1/titles/{slug}/field-mappings?locale=fr` — expose le `FieldMappingSet` d'un titre avec ETag + `Cache-Control: max-age=300`.
 
@@ -189,9 +189,11 @@ import {
 
 Tous les hooks lisent `currentTitleSlug` et `locale` depuis `appShellStore`, partagent un cache TanStack Query unique (`staleTime: Infinity` — versionné dans Git, pas de hot-reload), et retombent gracieusement sur la clé/l'id brut si l'endpoint est absent (flag off, 404, erreur réseau).
 
-Les composants consomment ces hooks au lieu de coder les labels en dur. La frontière TOML vs i18n React (cf. plan §6.9) est imposée par `tools/lint-no-hardcoded-fields.mjs`, qui scanne 277 fichiers et rejette tout littéral correspondant à un label déclaré dans `fields.toml`, `assets.toml` ou `outcomes.toml` (whitelist pour les dictionnaires de fallback sous `features/*/fallback.i18n.ts`).
+Les composants consomment ces hooks au lieu de coder les labels en dur. La frontière TOML vs i18n React (cf. plan §6.9) est imposée par `tools/lint-no-hardcoded-fields.mjs`, qui scanne 277 fichiers et rejette tout littéral correspondant à un label déclaré dans `fields.toml`, `assets.toml` ou `outcomes.toml` (les entrées de whitelist visant `features/*/fallback.i18n.ts` ont disparu le 2026-08-02 avec les fichiers eux-mêmes).
 
-Pages migrées au 2026-04-26 : Career (encounters), Home (barre KPI, liste des défis, identité spartan), Match View (scoreboard), Synthesis (top weeks), Compare (delta cards), Media (catégories de modes), Objectifs (paliers de défis, cadences, niveaux de prestige), Communauté (palier de leaderboard), Session Detail (outcomes). Les dictionnaires `kpi.i18n.ts`, `highlights.i18n.ts`, `compare/i18n.ts` conservent leurs labels FR/EN comme fallback pour `MULTI_TITLE_API_ENABLED=false`.
+Pages migrées au 2026-04-26 : Career (encounters), Home (barre KPI, liste des défis, identité spartan), Match View (scoreboard), Synthesis (top weeks), Compare (delta cards), Media (catégories de modes), Objectifs (paliers de défis, cadences, niveaux de prestige), Communauté (palier de leaderboard), Session Detail (outcomes).
+
+Depuis le 2026-08-02 (v7.3 lot 2), les manifests TOML sont la source UNIQUE de ces libellés : les dictionnaires `features/{home,media,prestige}/fallback.i18n.ts` et les tables FR/EN de `lib/i18n/metricLabel.ts` ont été supprimés, et le flag de rollout qui rendait l'endpoint optionnel a été retiré. Clé absente = clé brute humanisée (`humanizeMetricKey`), jamais un second dictionnaire — imposé par `apps/web/src/lib/i18n/no-field-label-dictionary.test.ts`. Les dictionnaires locaux restants (`kpi.i18n.ts`, `highlights.i18n.ts`, `compare/i18n.ts`) sont une dette pré-existante, candidate à la même migration.
 
 ### Dégradation capability-aware
 

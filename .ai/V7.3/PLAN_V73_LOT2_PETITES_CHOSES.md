@@ -363,7 +363,25 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
       `nonCombatFragClasses` (`internal/domain/frag_distribution.go:42-49`) pour le
       breakdown H5, libellés FR/EN via TOML mappings H5 si nouvelles clés, gardé par
       les données (pas de branche slug). Tests analysis/domain.
-- [ ] 3.3 **i18n source unique** : (a) vérifier `MULTI_TITLE_API_ENABLED` actif dans
+- [ ] 3.3 (code livré le 2026-08-02, gates en re-vérification orchestrateur.
+      (a) audit 5 environnements consigné (prod = app_settings bind-monté ON, démo =
+      var compose du 26/07, CI = 2 jobs, dev frais = OFF par accident — l'écart
+      dev/prod maintenait les dictionnaires en vie) ; RETRAIT PUR choisi, prescrit
+      par la doc du flag lui-même (« gate de rollout, PAS un kill-switch », critère
+      ≥ 2 titres atteint) — routes multi-titres inconditionnelles. (b/c) 3
+      fallback.i18n.ts + dictionnaires metricLabel supprimés ; ZÉRO perte prouvée :
+      13 clés déjà en TOML (3 alias clé→clé) + 6 AJOUTÉES au canonique (60→66
+      FieldKey, golden régénéré) ; trou bloquant corrigé au passage :
+      halo_5/mappings/assets.toml était VIDE (cadence + prestige_level déclarés).
+      Changements d'affichage assumés = unification registre (Éliminations→Frags,
+      KDA→FDA, DNF→Abandon, niveaux prestige EN→FR). (d) garde-rail
+      no-field-label-dictionary prouvé discriminant (rouge sur réintroduction),
+      complète lint-no-hardcoded-fields (qui ne voyait pas les dictionnaires
+      DIVERGENTS). Baseline tests réconciliée par l'orchestrateur (94 lignes
+      d'événements des 11 tests supprimés retirées, 0 test fantôme). Revue
+      navigateur au gate 3 (Accueil cadences, Ascension PB/jalons, Prestige FR,
+      média Abandon, passage H5 assets).)
+      **i18n source unique** : (a) vérifier `MULTI_TITLE_API_ENABLED` actif dans
       TOUS les environnements (compose prod + démo, `.env.example`, CI, dev) puis le
       rendre invariant (retrait du flag, ou toujours-on documenté kill-switch daté —
       règle 11) ; (b) supprimer `features/home/fallback.i18n.ts`,
@@ -593,6 +611,18 @@ AVANT merge, pas seulement un rejeu local).
 - [2026-08-02, agent 3.2] Piège de méthode consigné : `cmd > f 2>&1; echo EXIT=$?`
   renvoie le code du echo — deux « exit 0 » d'agents masquaient un vrai échec ;
   capturer $LASTEXITCODE immédiatement après la commande.
+- [2026-08-02, agent 3.3] `features/compare/i18n.ts` est un VRAI doublon du registre
+  (win_rate/kda/kdr/accuracy/max_killing_spree) — même nature que ce qui vient
+  d'être supprimé ; kpi.i18n.ts / highlights.i18n.ts cités avec lui dans
+  ARCHITECTURE_V6. Candidats à la même migration (passe post-lot).
+- [2026-08-02, agent 3.3] Le back émet des clés courtes non canoniques (kpm, pspm —
+  progression/records/extractors.go), rattachées par alias front — aligner le back
+  est un chantier distinct.
+- [2026-08-02, agent 3.3] Trois noms coexistent pour « nombre de matchs » dans le
+  canonique (match_count, total_matches_played, matches_played côté catalogues).
+- [2026-08-02, agent 3.3] PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md, référencé par
+  le contrat de modification d'AllFieldKeys, n'existe plus — consigne caduque à
+  réécrire.
 - [2026-08-02, orchestrateur] Retombée du fix 1.3 corrigée par l'orchestrateur :
   `TestCareerRepo_GetRelationsHeatmap` (integration) attendait des heures UTC et
   dépendait du fuseau machine → ouvert via le chemin production épinglé UTC

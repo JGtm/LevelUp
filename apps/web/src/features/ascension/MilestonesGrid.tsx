@@ -10,7 +10,7 @@
  */
 import type { ReactNode } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { metricLabel } from '@/lib/i18n/metricLabel'
+import { useMetricLabel } from '@/lib/i18n/metricLabel'
 import { useMilestones } from './queries'
 import { getAscensionText } from './i18n'
 import { formatAscensionDate, interpolate } from './format'
@@ -130,7 +130,7 @@ interface MilestoneCardProps {
 
 function MilestoneCard({ milestone: m, locale, t }: MilestoneCardProps) {
   const title = locale === 'fr' ? m.title_fr : m.title_en
-  const metricText = metricLabel(m.metric, locale)
+  const metricText = useMetricLabel(m.metric)
   // A9 : description lisible localisée ; jamais la formule technique. Absente
   // pour les jalons sans condition explicite -> on n'affiche rien.
   const condition = locale === 'fr' ? m.condition_fr : m.condition_en
