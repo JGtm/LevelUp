@@ -1,3 +1,51 @@
+## [2026-08-02] Le contrat des formes de zone est LIVRÉ — schema_version 2, régénéré hors ligne
+
+**Statut** : Complété. Branche `feat/re-mode-score`. État de l'art : section **LE CONTRAT DE
+DONNÉES — LIVRÉ**. Le RENDU reste non fait, et c'est explicite (voir ci-dessous).
+
+**Décision technique principale** : implémenter le contrat que la session précédente avait
+seulement proposé — lecture du sac de forme (`#8 → #0[0] → #0[0]`), conversion UNE fois à la
+lecture, publication en demi-extents et en mètres, brut conservé à côté du dérivé. Et
+surtout : ajouter un mode de régénération **hors ligne** (`--refresh-from <dossier>`) plutôt
+que de re-solliciter l'UGC pour 34 cartes juste parce qu'un champ s'ajoute au contrat.
+
+**Résultats observés** :
+
+- `mapvar/shape.go` : `ShapeRaw` (les entiers 16.16 du fichier), `Object.Shape()` (la
+  conversion), règle d'exclusivité boîte/cylindre. Une famille autre que 2 ou 3 rend `nil` —
+  on ne devine pas une géométrie.
+- `Objective.Shape` en `omitempty` : un objectif ponctuel sort SANS le champ. Le rendu devra
+  afficher un point, jamais un disque par défaut.
+- `catalogSchemaVersion` passe à **2** ; la note de contrat du catalogue documente la règle.
+- **Régénération 34/34, zéro `.mvar` manquant** : 597 objectifs, **264 avec forme**
+  (157 boîtes, 107 cylindres), 333 ponctuels. Les métadonnées issues du réseau
+  (`map_id`, `version_id`, `public_name`, `fetched_at`) sont préservées.
+- **Quatre tests ancrent la lecture**, dont le témoin qui a tranché : sur
+  `cliffhanger_map.mvar`, le cylindre 185 (r = 5,0999) et la boîte 188 (s5 = 668441)
+  coïncident au dixième de millimètre sous la lecture « tailles pleines », et seraient à un
+  facteur 2 sous la lecture rejetée. Le test encode la mesure, pas la conclusion.
+- Les 5 labels craqués sont portés dans `objectives.go`, `assault_bomb` promu au rang de
+  RÔLE (mesuré : 5 occurrences sur 5 cartes, soit exactement une par carte — la signature du
+  crâne d'Oddball). Le garde-rail `TestLabelTableIsSelfConsistent` les couvre d'office.
+
+**Ce qui reste NON fait, et pourquoi c'est dit plutôt que caché** : le rendu. Grep sur
+`MapObjectivesPath` et `map_objectives` — le catalogue n'a **aucun lecteur**, ni Go ni web.
+Le brancher n'est donc pas un câblage mais une fonctionnalité complète (lecteur, service,
+endpoint, régénération openapi, couche React). Elle est tenue par
+`.ai/PLAN_OBJECTIFS_TEMPS_REEL.md` étapes 1-2, hors du périmètre de ce handoff.
+
+**Découverte hors périmètre, non traitée (règle 7)** : `go test ./...` est ROUGE sur
+`internal/archlint` — `TestNoExpiredTODO` signale
+`internal/platform/duckdb/season_pass_repo_tracks.go:297`, un `TODO(expiry:2026-08-01)`
+échu depuis hier (suppression de `track-def` une fois les items migrés vers `bp-item-def`).
+Antérieur à ce lot, aucun fichier de mon diff n'est concerné, et l'arbitrage appartient au
+domaine season pass. **La CI de la branche est rouge tant que ce TODO n'est pas tranché.**
+
+**Conclusion / prochaine étape** : soit trancher le TODO season pass pour reverdir la CI,
+soit ouvrir le chantier du rendu (`PLAN_OBJECTIFS_TEMPS_REEL` étapes 1-2). Côté recherche,
+il reste les définitions `weap.xml`/`eqip.xml` du dépôt Z-15, puis Ghidra sur le parseur du
+tag `food`.
+
 ## [2026-08-02] Reconnaitre un emplacement sans liste en dur — c'est l'emprise, pas le type_id
 
 **Statut** : Complété. Branche `feat/re-mode-score`. État de l'art : section **Q1.0-octies**.

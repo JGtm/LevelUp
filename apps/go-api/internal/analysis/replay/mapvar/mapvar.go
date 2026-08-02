@@ -20,6 +20,7 @@
 //
 // Sac de propriétés #8, sous-arbre gameplay ([0] → liste de 1 struct) :
 //
+//	[0][0]     sac de FORME (famille + dimensions) — voir shape.go
 //	[1]        catégorie int
 //	[8]        index d'équipe (0 / 1) — ABSENT si l'objet n'est pas d'équipe
 //	[9]        liste de labels ; chaque entrée est un struct{0: hash int32}
@@ -53,6 +54,10 @@ type Object struct {
 	TeamIndex  int
 	Labels     []int32
 	InstanceID int32
+	// ShapeRaw : les entiers du sac de forme, non convertis. nil quand l'objet
+	// n'a pas de forme (cas normal des objectifs ponctuels). Voir shape.go —
+	// la conversion en mètres passe par Object.Shape().
+	ShapeRaw *ShapeRaw
 }
 
 // Variant est une variante de carte décodée.
@@ -126,6 +131,7 @@ func readGameplayBag(o *Object, bag Value) {
 		return
 	}
 	gp := sub.Items[0]
+	o.ShapeRaw = readShape(gp)
 	if c, ok := gp.Field(1); ok {
 		o.Category = int(c.Int)
 	}
