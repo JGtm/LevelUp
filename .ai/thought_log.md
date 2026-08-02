@@ -1,3 +1,50 @@
+## [2026-08-01] Le nommage de la palette Forge est RÉSOLU — un murmur3 dans le tag
+
+**Statut** : Complété pour le mécanisme ; 64 entrées nommées sur 4 213, le reste est du
+dictionnaire. Branche `feat/re-mode-score`. État de l'art : section **Q1.0**.
+
+**Décision technique** : ne pas croire ma propre conclusion « le binaire est dépouillé ».
+Elle venait d'un constat de la session J0 qui portait sur les noms d'ARCHÉTYPE en mémoire
+vive, jamais sur les chaînes du fichier. Une recherche Ghidra (`OverShield`, `ForgeObjects`,
+`PowerupData`, `power_ups`…) l'a démentie en une commande. J'ai alors extrait les **82 281
+chaînes de type identifiant** de `HaloInfinite.exe` et je m'en suis servi comme dictionnaire
+pour le craqueur murmur3 écrit plus tôt dans la session.
+
+**Résultats observés** :
+- **Le nom vit dans le tag** : le `food` d'une entrée de palette porte, en tête de son second
+  bloc de données, un mot de 32 bits qui est `murmur3_x86_32(nom_snake_case, seed=0)`.
+- **Établi puis contrôlé en croix** : `0xACDA2C3C = murmur3("gravity_hammer")`,
+  `0x7A3BE607 = murmur3("needler")`, et surtout **`1192059526 = murmur3("skull_weapon")`
+  était DÉJÀ dans la table de `objectives.go`** — même valeur, deux chemins indépendants,
+  même espace de nommage que les labels d'objectif.
+- **64 entrées nommées** (collisions fortuites attendues : 0,08 puis 5,6), toutes cohérentes
+  et plusieurs confirmées par leur usage réel : `skull_weapon` = **21 cartes / 21 instances**
+  (exactement 1 crâne d'Oddball par carte), `kill_volume` 48/164, `cubemap_volume` 57/562,
+  `unsc_turret` 41/93, plus les véhicules (`warthog` `wraith` `scorpion` `banshee` `phantom`
+  `ghost` `mongoose` `wasp` `brute_chopper` `falcon`) et des armes.
+- **DEUX de mes conclusions tombent, et c'est la méthode qui les tue** :
+  1. le groupe `eqip` de la palette, ce sont les **GRENADES** (frag, plasma, spike — les 3
+     seules entrées `eqip` de toute la palette). Le raisonnement « aucun `eqip` placé donc
+     aucun power-up » était bien le non-sequitur soupçonné ;
+  2. **`-721267272` = `generic_ball`**, pas un socle de power-up. Le motif « centre exact +
+     deux symétriques » sur Catalyst est une disposition d'apparition d'Oddball. Le candidat
+     de l'entrée précédente est **réfuté**.
+- **Ce qui résiste** : les quatre entrées « emplacement » (modèle -370671751) sont les
+  **seules** de la palette à porter un second mot de 32 bits non nul (0 chez les 4 209
+  autres). Leur mot de nom ne cède ni aux 82 281 chaînes du binaire, ni à une combinaison de
+  jetons à profondeur 3 sur un vocabulaire d'armes et de power-ups ciblé.
+- **Repère terrain de l'utilisateur exploité** : sur Vagabond, `1486653438` est 3,4 m plus
+  bas (z 51,4) que `-1062552774` (z 54,8) — un étage. L'utilisateur situe le lance-roquettes
+  en bas et le camouflage en haut : ces deux entrées sont donc les deux emplacements, et
+  leur second mot les distingue.
+
+**Conclusion / prochaine étape** : nommer les quatre emplacements. Deux voies : élargir le
+dictionnaire (les noms composés du binaire, pas seulement les chaînes littérales), ou Ghidra
+— trouver le lecteur de ce champ dans le parseur de tag `food`, ce que la connexion MCP
+permet désormais (projet `HI`, 196 outils).
+
+---
+
 ## [2026-08-01] Power-ups : le contrôle différentiel de l'utilisateur, et un verdict révisé
 
 **Statut** : En cours — question ouverte, il manque une observation. Branche

@@ -74,6 +74,67 @@ Resolution, sur les **2 785 `type_id` distincts des 199 cartes** :
 **2 758 / 2 785 = 99,0 %.** Pour memoire, l'etat au 2026-07-31 : 33/42 sur Catalyst (78 %)
 et **15/468 sur Vagabond (3 %)**. Les deux cartes sont desormais a **36/36** et **479/479**.
 
+### Q1.0 LE NOMMAGE EST RESOLU — le nom est un murmur3, dans le tag
+
+> **Cette section renverse le verdict Q1.1 ci-dessous.** Q1.1 concluait « le nom d'objet est
+> indecidable hors ligne ». C'etait faux, et l'erreur etait une prémisse non testee : j'avais
+> conclu que le binaire etait depouille sur la foi d'un constat de la session J0 qui portait
+> sur les noms d'ARCHETYPE en memoire vive. **Le binaire est plein de chaines lisibles.**
+
+**Le mecanisme.** Le tag `food` d'une entree de palette porte, **en tete de son second bloc
+de donnees**, un mot de 32 bits qui est le **murmur3_x86_32(seed=0) du nom snake_case de
+l'objet** — le meme hachage, le meme espace de nommage que les labels d'objectif deja
+craques dans `objectives.go`.
+
+**Ce qui l'etablit, et le controle croise gratuit** : `0xACDA2C3C = murmur3("gravity_hammer")`
+et `0x7A3BE607 = murmur3("needler")`, trouves en passant les **82 281 chaines de type
+identifiant extraites de `HaloInfinite.exe`** au craqueur. Et surtout :
+**`1192059526 = murmur3("skull_weapon")` etait DEJA dans la table de `objectives.go`** —
+la meme valeur, atteinte par deux chemins independants.
+
+**Recette** (3 etapes, entierement hors ligne) :
+
+1. extraire les chaines identifiant du binaire (`[a-zA-Z][a-zA-Z0-9_]{3,63}`) ;
+2. lire le mot de 32 bits en tete du bloc 1 de chaque `food` (`tmp_forgename slots`) ;
+3. craquer par murmur3 — directement, puis par combinaison de jetons (profondeur 2).
+
+**Rendement : 64 entrees de palette nommees** sur 4 213, avec 0,08 puis 5,6 collisions
+fortuites attendues. Toutes les correspondances retenues sont semantiquement coherentes et
+plusieurs se controlent par leur usage reel sur les 199 cartes :
+
+| nom | type_id | usage mesure | ce qui le confirme |
+|---|---|---|---|
+| `skull_weapon` | -1342546397 | **21 cartes / 21 instances** | **exactement 1 par carte** — le crane d'Oddball |
+| `generic_ball` | -721267272 | 35 cartes / 61 | 1 ou 3 par carte, aux points d'apparition d'Oddball |
+| `kill_volume` | 937132837 | 48 cartes / 164 | barrieres de mort |
+| `cubemap_volume` | 43333489 | 57 cartes / 562 | sondes d'eclairage |
+| `unsc_turret` | -269578988 | 41 cartes / 93 | tourelle, delai de reapparition 88 s |
+| `frag_grenade` · `plasma_grenade` · `spike_grenade` | -113703634 · -1336095237 · 475600440 | 1 / 3 / 1 carte | **les 3 entrees `eqip` de toute la palette** |
+| vehicules | — | — | `warthog` `wraith` `scorpion` `banshee` `phantom` `ghost` `mongoose` `wasp` `brute_chopper` `falcon` |
+| armes | — | — | `assault_rifle` `sniper_rifle` `energy_sword` `gravity_hammer` `needler` `stalker_rifle` `plasma_pistol` |
+
+**Deux corrections que ce nommage impose, et qui portent sur MES conclusions :**
+
+1. **Le groupe `eqip` de la palette Forge, ce sont les GRENADES** — frag, plasma, spike, et
+   rien d'autre. Le raisonnement « aucun `eqip` place, donc aucun power-up » etait donc un
+   non-sequitur, comme la section Q1.3-bis le soupconnait. On sait maintenant pourquoi.
+2. **`-721267272` n'est PAS un emplacement de power-up : c'est `generic_ball`.** Le motif
+   « centre exact + deux symetriques » sur Catalyst est une disposition d'apparition
+   d'Oddball, pas de surbouclier. Le candidat de Q1.3-bis est **refute** — et il l'est par la
+   methode elle-meme, pas par un argument.
+
+**Ce qui resiste** : les **quatre** entrees « emplacement » (`1486653438`, `-1062552774`,
+`1882451900`, `801517767`, toutes sur le modele -370671751). Elles sont les seules de la
+palette a porter un **second mot de 32 bits non nul** — chez les 4 209 autres entrees, ce
+mot vaut 0. Leur mot de nom n'est craque par aucun des deux dictionnaires (ni les 82 281
+chaines du binaire, ni les combinaisons de jetons a profondeur 3 sur un vocabulaire d'armes
+et de power-ups cible). Ce sont donc bien des objets d'une nature differente — et ce sont
+eux qui portent les deux emplacements de Vagabond (lance-roquettes en bas, camouflage en
+haut, cf. Q1.3-ter).
+
+Sorties : `.ai/V7.5/dumps/forge_zones/palette_noms.csv` (4 213 entrees, hachage + nom quand
+il est craque) et `noms_craques_murmur3.txt` (les 33 correspondances hachage -> nom).
+
 ### Q1.3-bis REPRISE DU 2026-08-01 (soir) — le controle differentiel de l'utilisateur
 
 > **Ce qui a declenche la reprise** : la formulation de Q1.3 ci-dessous est TROP FERME et
