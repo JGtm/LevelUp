@@ -447,7 +447,7 @@ func TestGetMatchFilm_BasicPrefix(t *testing.T) {
 		if strings.Contains(r.URL.Path, "/spectate") {
 			_ = json.NewEncoder(w).Encode(filmManifestJSON(
 				"http://blobs.test/base/",
-				[]map[string]any{filmChunkEntry(0, filmChunkTypeReplicationData, "chunk0.bin")},
+				[]map[string]any{filmChunkEntry(0, FilmChunkTypeReplicationData, "chunk0.bin")},
 			))
 			return
 		}
@@ -478,9 +478,9 @@ func TestGetMatchFilm_MultiChunk(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(filmManifestJSON(
 				"http://blobs.test/",
 				[]map[string]any{
-					filmChunkEntry(0, filmChunkTypeHeader, "header.bin"),
-					filmChunkEntry(1, filmChunkTypeReplicationData, "c1.bin"),
-					filmChunkEntry(2, filmChunkTypeReplicationData, "c2.bin"),
+					filmChunkEntry(0, FilmChunkTypeHeader, "header.bin"),
+					filmChunkEntry(1, FilmChunkTypeReplicationData, "c1.bin"),
+					filmChunkEntry(2, FilmChunkTypeReplicationData, "c2.bin"),
 				},
 			))
 			return
@@ -527,7 +527,7 @@ func TestGetMatchFilm_DownloadFails(t *testing.T) {
 		if strings.Contains(r.URL.Path, "/spectate") {
 			_ = json.NewEncoder(w).Encode(filmManifestJSON(
 				"http://blobs.test/",
-				[]map[string]any{filmChunkEntry(0, filmChunkTypeReplicationData, "bad.bin")},
+				[]map[string]any{filmChunkEntry(0, FilmChunkTypeReplicationData, "bad.bin")},
 			))
 			return
 		}
@@ -550,8 +550,8 @@ func TestGetHighlightEventsChunk_Found(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "/spectate") {
 			manifest := filmManifestJSON("http://blobs.test/", []map[string]any{
-				filmChunkEntry(0, filmChunkTypeReplicationData, "c0.bin"),
-				filmChunkEntry(1, filmChunkTypeHighlightEvents, "hev.bin"),
+				filmChunkEntry(0, FilmChunkTypeReplicationData, "c0.bin"),
+				filmChunkEntry(1, FilmChunkTypeHighlightEvents, "hev.bin"),
 			})
 			manifest["CustomData"].(map[string]any)["FilmMajorVersion"] = 3
 			_ = json.NewEncoder(w).Encode(manifest)
@@ -584,7 +584,7 @@ func TestGetHighlightEventsChunk_NoChunk(t *testing.T) {
 			// Manifest sans ChunkType=3.
 			_ = json.NewEncoder(w).Encode(filmManifestJSON(
 				"http://blobs.test/",
-				[]map[string]any{filmChunkEntry(0, filmChunkTypeReplicationData, "c0.bin")},
+				[]map[string]any{filmChunkEntry(0, FilmChunkTypeReplicationData, "c0.bin")},
 			))
 			return
 		}

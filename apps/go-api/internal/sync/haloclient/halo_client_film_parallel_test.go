@@ -46,9 +46,9 @@ import (
 // indexés 1..n (l'index 0 = header conventionnellement skip dans la prod).
 func filmManyChunks(prefix string, n int) map[string]any {
 	chunks := make([]map[string]any, 0, n+1)
-	chunks = append(chunks, filmChunkEntry(0, filmChunkTypeHeader, "header.bin"))
+	chunks = append(chunks, filmChunkEntry(0, FilmChunkTypeHeader, "header.bin"))
 	for i := 1; i <= n; i++ {
-		chunks = append(chunks, filmChunkEntry(i, filmChunkTypeReplicationData,
+		chunks = append(chunks, filmChunkEntry(i, FilmChunkTypeReplicationData,
 			fmt.Sprintf("chunk%d.bin", i)))
 	}
 	return filmManifestJSON(prefix, chunks)

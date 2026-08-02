@@ -36,6 +36,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime/pprof"
 	"strings"
 	"time"
 
@@ -81,15 +82,17 @@ func analyserArgs(args []string) (options, []string, error) {
 		"N afficher que les N premieres morts de la table (0 = toutes)")
 	full := fs.Bool("tout", false,
 		"Table : ajouter les colonnes techniques (tag brut, voie de lecture, statut)")
+	profil := fs.String("profil", "",
+		"Ecrire un profil CPU pprof dans ce fichier (go tool pprof <binaire> <fichier>)")
 	if err := fs.Parse(opts); err != nil {
 		return options{}, nil, err
 	}
-	return options{cache: *cacheDir, limit: *limit, full: *full}, pos, nil
+	return options{cache: *cacheDir, limit: *limit, full: *full, profil: *profil}, pos, nil
 }
 
 // optionsAvecValeur : les options qui consomment l argument suivant. Une option booleenne n en
 // consomme pas — la confondre avalerait un nom de film.
-var optionsAvecValeur = map[string]bool{"cache": true, "limite": true}
+var optionsAvecValeur = map[string]bool{"cache": true, "limite": true, "profil": true}
 
 // separer : partage les arguments entre options et positionnels, dans l ordre d apparition.
 func separer(args []string) (opts, pos []string) {
@@ -118,12 +121,23 @@ type options struct {
 	cache string
 	limit int
 	full  bool
+	// profil : fichier de sortie d un profil CPU pprof. Il existe parce que le cout du decodage
+	// est VIOLEMMENT superlineaire (0,20 s par chunk a 8 chunks, 16,6 s a 69 — facteur 83) et
+	// qu une telle pente s instruit par la mesure, jamais au jugement.
+	profil string
 }
 
 func run(args []string, o options) error {
 	if len(args) == 0 {
 		usage()
 		return errors.New("aucune commande")
+	}
+	if o.profil != "" {
+		arret, err := demarrerProfil(o.profil)
+		if err != nil {
+			return err
+		}
+		defer arret()
 	}
 	switch args[0] {
 	case "kills":
@@ -138,6 +152,26 @@ func run(args []string, o options) error {
 		usage()
 		return fmt.Errorf("commande inconnue : %q", args[0])
 	}
+}
+
+// demarrerProfil : ouvre le fichier de profil et lance l enregistrement CPU. Rend la fonction
+// d arret, qui ferme les deux — un profil non ferme est un fichier illisible, donc l erreur de
+// fermeture se JOURNALISE au lieu d etre avalee.
+func demarrerProfil(chemin string) (func(), error) {
+	f, err := os.Create(chemin)
+	if err != nil {
+		return nil, fmt.Errorf("profil %s : %w", chemin, err)
+	}
+	if err := pprof.StartCPUProfile(f); err != nil {
+		_ = f.Close()
+		return nil, fmt.Errorf("profil %s : %w", chemin, err)
+	}
+	return func() {
+		pprof.StopCPUProfile()
+		if cerr := f.Close(); cerr != nil {
+			slog.Error("killsource: fermeture du profil", "fichier", chemin, "err", cerr)
+		}
+	}, nil
 }
 
 // rapport : un film decode, plus de quoi le nommer dans la sortie.

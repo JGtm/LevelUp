@@ -19,8 +19,9 @@ package killcollector
 //
 // # LE COUT EST UNE CONTRAINTE DE CONCEPTION, PAS UN DETAIL
 //
-//	4v4 (8-10 joueurs)      8 a 30 s par film
-//	BTB (36 participants)   11 minutes  (mesure du 2026-07-31 sur 4f77afc1)
+//	4v4 (8-10 joueurs)      1 a 10 s par film
+//	le plus gros du corpus  47 s (69 chunks)   — mesures du 2026-08-01, APRES le correctif
+//	                        du mur de cout (`filmdec.consumeObjectMultiplayerProperties`)
 //
 // Consequences, toutes tenues ici :
 //   - TACHE DE FOND, jamais dans le chemin d une requete HTTP. Le type ne fournit aucun
@@ -51,6 +52,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/sync/haloclient"
 )
 
 // KillSourceDecoderRev — la version du decodeur, ecrite sur CHAQUE ligne produite.
@@ -62,21 +64,25 @@ const KillSourceDecoderRev = "killsource-2026-07-31"
 
 // defaultKillSourceTimeout — la limite de temps PAR MATCH.
 //
-// CALIBRAGE SUR MESURE, PAS SUR INTUITION (2026-08-01, machine locale) :
+// CALIBRAGE SUR MESURE, PAS SUR INTUITION. Les deux colonnes disent l histoire :
 //
-//	8 chunks     1,6 s        69 chunks   1 145 s  (19 min 05)
-//	28 chunks   10,4 s        63 chunks     575 s  ( 9 min 35)
-//	33 chunks   14,4 s
+//	chunks    avant le 2026-08-01     apres
+//	   8               1,6 s          1,0 s
+//	  33              14,4 s          7,3 s
+//	  42             131 s           24,8 s
+//	  63             575 s           51 s
+//	  69           1 145 s           46,7 s      <- x24,5
 //
-// ⚠ LA COURBE EST VIOLEMMENT SUPERLINEAIRE, ET C EST CE QUI FIXE CETTE VALEUR : passer de 63 a
-// 69 chunks (+9,5 %) DOUBLE le temps (+99 %). Le cout par chunk va de 0,44 s en regime 4v4 a
-// 16,6 s sur le plus gros film du corpus — un facteur 38. Une telle non-linearite suggere une
-// FAILLE LOGIQUE (un cout quadratique quelque part), pas un manque de puissance : elle est A
-// PROFILER, et elle est consignee au plan comme telle. Elle n est PAS traitee ici.
+// LE MUR A ETE PROFILE PUIS CORRIGE (J4 session 2) : 78 % du temps partait dans
+// `filmdec.consumeObjectMultiplayerProperties`, qui sautait le corps d un TLV en lisant un octet
+// a la fois, plafonne a 1 048 576 iterations — sur une traversee mal alignee, la longueur lue est
+// du bruit et declenchait ce million de lectures. Le cout par chunk allait de 0,20 s a 16,6 s
+// (facteur 83) ; il va desormais de 0,13 s a 0,68 s.
 //
-// La limite vaut donc 45 min : ~2,4x le pire cas MESURE, parce qu avec une telle pente le
-// prochain film un peu plus gros peut couter beaucoup plus. Une limite trop juste ne
-// protegerait de rien — elle transformerait un film lent mais valide en PERTE DE DONNEE.
+// LA LIMITE RESTE A 45 MIN, et ce n est pas de la negligence : elle vaut ~57x le pire cas mesure
+// aujourd hui. Une limite serree ne protegerait de rien de plus (aucun film connu n en approche)
+// et transformerait un film lent mais VALIDE en perte de donnee. Elle est la pour le cas
+// pathologique inconnu, pas pour le regime nominal.
 const defaultKillSourceTimeout = 45 * time.Minute
 
 // Compteurs de sante du collecteur (ADR 0009 : entiers, snake_case, aucun ratio).
@@ -98,8 +104,9 @@ const (
 // il ne rend que des noms. Un nom non resolu n est pas une erreur — c est le cas normal d un BOT
 // (qui n a pas de xuid) et le cas honnete d un nom que le roster n a pas su rattacher.
 type KillSourceRoster interface {
-	// RosterForMatch rend la table `gamertag -> xuid` des participants du match.
-	RosterForMatch(ctx context.Context, matchID string) (map[string]string, error)
+	// IdentitiesForMatch rend tout ce que la passe doit savoir des participants : leurs deux
+	// tables de noms et la reference `shots_fired` de l API.
+	IdentitiesForMatch(ctx context.Context, matchID string) (MatchIdentities, error)
 }
 
 // KillSourceCollector : la passe de fond qui remplit `shared.match_kill_events`.
@@ -168,13 +175,17 @@ const (
 // Contrat d erreur : une erreur rendue est une VRAIE panne (reseau, base, decodage casse). Un
 // film absent, un film sans kill-feed, un depassement de delai et une capability absente sont
 // des OUTCOMES, pas des erreurs — la passe appelante continue.
-func (c *KillSourceCollector) CollectMatch(ctx context.Context, matchID string) (KillSourceOutcome, error) {
+// Le nombre de morts ecrites est RENDU, pas seulement journalise : la synthese d une passe de
+// masse doit pouvoir le totaliser. Une premiere version le laissait dans le log — le compteur de
+// `KillSourceSummary` restait donc a zero pendant que chaque match en annoncait des dizaines,
+// et c est le genre de zero qu on croit longtemps.
+func (c *KillSourceCollector) CollectMatch(ctx context.Context, matchID string) (KillSourceOutcome, int, error) {
 	if !c.caps.Has(games.CapFilmKillSource) {
 		// Degradation gracieuse : ni panic, ni erreur remontee — le cycle continue.
 		slog.DebugContext(ctx, "killsource: capability absente, passe ignoree",
 			"match_id", matchID, "capability", string(games.CapFilmKillSource),
 			"err", games.ErrCapabilityNotSupported)
-		return OutcomeNotSupported, nil
+		return OutcomeNotSupported, 0, nil
 	}
 
 	start := time.Now()
@@ -194,22 +205,27 @@ func (c *KillSourceCollector) CollectMatch(ctx context.Context, matchID string) 
 		observability.AddInt(metricTimeout, 1)
 		slog.WarnContext(ctx, "killsource: abandon sur limite de temps",
 			"match_id", matchID, "duration", dur, "limite", c.timeout)
-		return OutcomeTimeout, nil
+		return OutcomeTimeout, 0, nil
 	}
 	if err != nil {
 		slog.ErrorContext(ctx, "killsource: decodage du film — echec",
 			"match_id", matchID, "duration", dur, "err", err)
-		return outcome, err
+		return outcome, 0, err
 	}
 
 	slog.InfoContext(ctx, "killsource: decodage du film — fin",
 		"match_id", matchID, "duration", dur, "resultat", string(outcome), "morts", deaths)
-	return outcome, nil
+	return outcome, deaths, nil
 }
 
 // collect : le corps, sans la journalisation ni la mesure de duree.
+//
+// UN FILM TELECHARGE UNE FOIS, DEUX TABLES ECRITES. Les morts (`match_kill_events`) et les tirs
+// (`match_weapon_shots`) sortent de la MEME passe : re-decoder un film pour la seconde table
+// couterait une seconde fois la passe chere du chantier, et donnerait deux occasions de sortir
+// deux etats differents de la meme base.
 func (c *KillSourceCollector) collect(ctx context.Context, matchID string) (KillSourceOutcome, int, error) {
-	src, found, err := ChunkSourceForMatch(ctx, c.client, matchID)
+	chunks, found, err := FilmChunksForMatch(ctx, c.client, matchID)
 	if err != nil {
 		observability.AddInt(metricDecodeError, 1)
 		return OutcomeNoFilm, 0, err
@@ -221,7 +237,7 @@ func (c *KillSourceCollector) collect(ctx context.Context, matchID string) (Kill
 
 	// `nil` = la CONFIGURATION GELEE, celle qui a produit les chiffres publies. Ne jamais
 	// passer d Options ici sans une raison ecrite : ce sont elles qui definissent le decodage.
-	res, err := killsource.Decode(ctx, matchID, src, nil)
+	res, err := killsource.Decode(ctx, matchID, ChunkSourceOf(chunks), nil)
 	if err != nil {
 		// Un film sans kill-feed n est pas une panne : c est un film dont on ne peut rien
 		// publier. Le distinguer evite qu un backfill s arrete sur un vieux match.
@@ -235,19 +251,43 @@ func (c *KillSourceCollector) collect(ctx context.Context, matchID string) (Kill
 		return OutcomeNoFilm, 0, fmt.Errorf("decodage %s: %w", matchID, err)
 	}
 
-	roster, err := c.roster.RosterForMatch(ctx, matchID)
+	ids, err := c.roster.IdentitiesForMatch(ctx, matchID)
 	if err != nil {
 		return OutcomeNoFilm, 0, fmt.Errorf("roster %s: %w", matchID, err)
 	}
 
-	batch := BuildKillSourceBatch(matchID, res, roster)
+	batch := BuildKillSourceBatch(matchID, res, ids)
 	if err := c.write(ctx, batch); err != nil {
 		observability.AddInt(metricWriteError, 1)
 		return OutcomeWritten, 0, err
 	}
-
 	publishKillSourceMetrics(res, batch)
+
+	// LA VENTILATION DES TIRS, SUR LES MEMES CHUNKS. Son echec ne remet PAS en cause les morts :
+	// elles sont deja ecrites, elles sont justes, et les deux tables repondent a deux questions
+	// differentes. Il se journalise et se compte — jamais il n avale la passe.
+	c.collectShots(ctx, matchID, chunks, ids)
+
 	return OutcomeWritten, len(batch.Deaths), nil
+}
+
+// collectShots : la seconde ecriture de la passe — `shared.match_weapon_shots`.
+//
+// BEST-EFFORT ASSUME, ET C EST UN CHOIX : les morts sont la donnee qui motive le chantier (46,5 %
+// de doublons dans `killer_victim_pairs`), les tirs sont un enrichissement. Remonter une erreur
+// de ventilation ferait recompter le match comme un echec alors que ses morts sont en base — et
+// un backfill le rejouerait, redecodant un film pour rien.
+func (c *KillSourceCollector) collectShots(
+	ctx context.Context, matchID string, chunks []haloclient.FilmChunk, parts MatchIdentities,
+) {
+	batch := BuildWeaponShotsBatch(matchID, ReplicationChunks(chunks), parts.XUIDs, parts.ShotsFired)
+	if err := c.writeShots(ctx, batch); err != nil {
+		observability.AddInt(metricShotsWriteFail, 1)
+		slog.ErrorContext(ctx, "killsource: ecriture de la ventilation des tirs echouee",
+			"match_id", matchID, "err", err)
+		return
+	}
+	publishShotsPass(ctx, batch, len(parts.XUIDs))
 }
 
 // write : l ecriture, sous le lease RW de shared (ADR 0013 — un seul writer par DB).
@@ -263,6 +303,21 @@ func (c *KillSourceCollector) write(ctx context.Context, batch persist.KillSourc
 	}
 	defer release()
 	return persist.NewKillSourcePersister(db).PersistPass(ctx, batch)
+}
+
+// writeShots : l ecriture des tirs, sous son PROPRE lease.
+//
+// DEUX LEASES COURTS PLUTOT QU UN LONG. Le lease RW de shared est la ressource la plus disputee
+// du process (un seul writer, ADR 0013) : le tenir pendant la ventilation — resolution d indices
+// au bit pres et scan de tous les chunks — le bloquerait pour rien. Les deux tables sont
+// append-only et independantes : rien n exige qu elles s ecrivent dans la meme transaction.
+func (c *KillSourceCollector) writeShots(ctx context.Context, batch persist.WeaponShotsBatch) error {
+	db, release, err := c.acquireShared(ctx)
+	if err != nil {
+		return fmt.Errorf("lease shared %s: %w", batch.MatchID, err)
+	}
+	defer release()
+	return persist.NewWeaponShotsPersister(db).PersistPass(ctx, batch)
 }
 
 // BuildKillSourceBatch traduit le resultat du decodeur en lignes ecrivables.
@@ -285,7 +340,7 @@ func (c *KillSourceCollector) write(ctx context.Context, batch persist.KillSourc
 // AUCUN PLAFOND A 100 sur les parts : 1,7 % des kill-events vont jusqu a 228, ce sont des
 // donnees. Le seul plafond applique est celui du TYPE (uint8, 255) — et si une valeur le
 // depassait, c est le type qu il faudrait elargir, pas la valeur qu il faudrait ecreter.
-func BuildKillSourceBatch(matchID string, res *killsource.Result, roster map[string]string) persist.KillSourceBatch {
+func BuildKillSourceBatch(matchID string, res *killsource.Result, ids MatchIdentities) persist.KillSourceBatch {
 	batch := persist.KillSourceBatch{
 		MatchID:     matchID,
 		DecoderRev:  KillSourceDecoderRev,
@@ -293,20 +348,26 @@ func BuildKillSourceBatch(matchID string, res *killsource.Result, roster map[str
 		Deaths:      make([]persist.KillEventInsert, 0, len(res.Kills)),
 	}
 	for i := range res.Kills {
-		batch.Deaths = append(batch.Deaths, killToInsert(&res.Kills[i], roster))
+		batch.Deaths = append(batch.Deaths, killToInsert(&res.Kills[i], ids))
 	}
 	return batch
 }
 
 // killToInsert : UNE mort. Decoupe de [BuildKillSourceBatch] pour rester sous le plafond de
 // longueur du depot (80 lignes).
-func killToInsert(k *killsource.Kill, roster map[string]string) persist.KillEventInsert {
+//
+// LES TROIS NOMS PASSENT PAR [MatchIdentities.Resoudre] — victime, tueur, assistant. Aucun ne se
+// resout « a la main » : le film peut donner un gamertag OU un xuid, et la regle qui les
+// distingue n existe qu a un seul endroit.
+func killToInsert(k *killsource.Kill, ids MatchIdentities) persist.KillEventInsert {
+	victimeXUID, victimeNom := ids.Resoudre(k.Victim)
+	tueurXUID, tueurNom := ids.Resoudre(k.Feed.Killer)
 	d := persist.KillEventInsert{
 		TimeMS:             k.TimeMS,
-		VictimGamertag:     k.Victim,
-		VictimXUID:         roster[k.Victim],
-		FeedKillerGamertag: k.Feed.Killer,
-		FeedKillerXUID:     roster[k.Feed.Killer],
+		VictimGamertag:     victimeNom,
+		VictimXUID:         victimeXUID,
+		FeedKillerGamertag: tueurNom,
+		FeedKillerXUID:     tueurXUID,
 		FeedPresent:        k.Feed.Present,
 		AssistGamertag:     k.Assist.Name,
 		AssistKnown:        k.Assist.Known,
@@ -318,7 +379,7 @@ func killToInsert(k *killsource.Kill, roster map[string]string) persist.KillEven
 		ReadOrigin:         string(k.Read.Origin),
 	}
 	if k.Assist.Name != "" {
-		d.AssistXUID = roster[k.Assist.Name]
+		d.AssistXUID, d.AssistGamertag = ids.Resoudre(k.Assist.Name)
 	}
 	// La categorie voyage AVEC le tag : les deux sortent de la meme lecture du dead-state, et
 	// le persister refuse une demi-source. Tag nul = source NON MESUREE, donc categorie vide.

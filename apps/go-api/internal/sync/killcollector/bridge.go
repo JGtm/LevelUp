@@ -64,6 +64,21 @@ type filmChunkFetcher interface {
 func ChunkSourceForMatch(
 	ctx context.Context, client filmChunkFetcher, matchID string,
 ) (killsource.ChunkSource, bool, error) {
+	chunks, found, err := FilmChunksForMatch(ctx, client, matchID)
+	if err != nil || !found {
+		return nil, found, err
+	}
+	return ChunkSourceOf(chunks), true, nil
+}
+
+// FilmChunksForMatch : les chunks TYPES d un film, en une seule lecture de manifeste.
+//
+// C est le point d entree du collecteur, parce que lui a besoin du TYPE : les morts se
+// decodent sur la sequence complete, les tirs sur la REPLICATION_DATA seule. Rendre
+// `killsource.ChunkSource` ici perdrait cette information — d ou deux fonctions et pas une.
+func FilmChunksForMatch(
+	ctx context.Context, client filmChunkFetcher, matchID string,
+) ([]haloclient.FilmChunk, bool, error) {
 	chunks, found, err := client.GetFilmChunks(ctx, matchID)
 	if err != nil {
 		return nil, found, fmt.Errorf("chunks du film %s: %w", matchID, err)
@@ -71,7 +86,18 @@ func ChunkSourceForMatch(
 	if !found || len(chunks) == 0 {
 		return nil, false, nil
 	}
+	return chunks, true, nil
+}
 
+// ChunkSourceOf assemble la sequence que le decodeur attend a partir de chunks DEJA
+// telecharges.
+//
+// Elle existe separement parce qu une passe de collecte lit le film DEUX FOIS — les morts
+// (`killsource`) et les tirs (`analysis.ScanFireEventsB5`) — et que telecharger deux fois
+// serait payer deux fois le seul cout reseau du chantier. L appelant recupere les chunks
+// TYPES une fois, en derive cette source pour les morts, et selectionne lui-meme la
+// REPLICATION_DATA pour les tirs.
+func ChunkSourceOf(chunks []haloclient.FilmChunk) killsource.ChunkSource {
 	// Les index du manifeste ne sont pas garantis contigus : on dimensionne sur le maximum
 	// observe plutot que sur le nombre d entrees, et on laisse les trous a nil. Le decodeur
 	// ignore les chunks vides — il ne compte pas sur leur position, il lit ce qu on lui donne.
@@ -87,7 +113,24 @@ func ChunkSourceForMatch(
 			seq[c.Index] = c.Data
 		}
 	}
-	return killsource.MemoryChunks(seq), true, nil
+	return killsource.MemoryChunks(seq)
+}
+
+// ReplicationChunks : les seuls chunks que la passe de TIRS a le droit de scanner.
+//
+// LA POPULATION EST LA MESURE. La loi « un fire-event = un tir » (mediane 0,994 sur 3 129
+// observations de mode standard) a ete etablie sur la REPLICATION_DATA seule — c est ce que
+// rendait `GetMatchFilm`. Scanner en plus l en-tete et le kill-feed ajouterait des evenements
+// hors de cette population : la porte de publication (+-10 % du `shots_fired` de l API) les
+// verrait comme de la SUR-attribution, sans rien qui dise pourquoi.
+func ReplicationChunks(chunks []haloclient.FilmChunk) [][]byte {
+	out := make([][]byte, 0, len(chunks))
+	for _, c := range chunks {
+		if c.ChunkType == haloclient.FilmChunkTypeReplicationData && len(c.Data) > 0 {
+			out = append(out, c.Data)
+		}
+	}
+	return out
 }
 
 // CountFilmChunkTypes compte les chunks par type de manifeste. Sert le diagnostic du collecteur :

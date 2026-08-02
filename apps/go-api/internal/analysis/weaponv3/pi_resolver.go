@@ -17,7 +17,10 @@ import (
 	"strings"
 )
 
-const piBits = 5 // largeur du champ player_index (0-31)
+// PIBits : largeur du champ player_index (0-31). EXPORTEE parce que la ventilation des tirs
+// (`sync/killcollector`) cherche le meme motif avec le meme champ devant lui : une seconde copie
+// du 5 divergerait le jour ou l un des deux lecteurs changerait.
+const PIBits = 5
 
 // bitReader fournit un accès bit-level MSB-first à un buffer décompressé.
 type bitReader struct {
@@ -69,7 +72,7 @@ func ResolveXuidToPI(rosterXuids []uint64, chunk []byte) map[uint64]int {
 			if br.readBits(bp, 64) != target {
 				continue
 			}
-			out[x] = int(br.readBits(bp-piBits, piBits))
+			out[x] = int(br.readBits(bp-PIBits, PIBits))
 			break
 		}
 	}
