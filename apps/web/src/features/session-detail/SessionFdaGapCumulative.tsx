@@ -23,6 +23,9 @@ import type { EChartsCoreOption } from 'echarts/core'
 
 import { resolveToken } from '@/lib/accessibility'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
+import { FdaGapTooltipText } from '@/components/charts/FdaGapTooltipText'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { useAppShellStore } from '@/stores/appShellStore'
 import {
   CHART_BG,
   escapeHtml,
@@ -30,6 +33,7 @@ import {
   getEChartsThemeColors,
   getLegendBase,
   getTooltipBase,
+  hoverRevealSymbol,
 } from '@/components/charts/_utils'
 import { cumulativeFdaGap, type FdaGapCumPoint } from '@/lib/charts/cumulativeFdaGap'
 import { divergentZeroGradient } from '@/lib/charts/divergentZeroGradient'
@@ -132,7 +136,7 @@ export function buildSessionFdaGapOption(
         name: opts.seriesLabel,
         type: 'line',
         data: values,
-        showSymbol: false,
+        ...hoverRevealSymbol(tc.text), // color-allow: point neutre, l'aire porte le dégradé
         // Ligne + aire divergentes (vert = cumul au-dessus de l'attendu, rouge en dessous),
         // aire ancrée à 0 (même dégradé, bascule pile sur 0).
         lineStyle: { width: 2, color: divergentColor },
@@ -152,7 +156,7 @@ export function buildSessionFdaGapOption(
         name: opts.expectedLabel,
         type: 'line',
         data: expectedValues,
-        symbol: 'none',
+        ...hoverRevealSymbol(expectedColor, 6),
         connectNulls: false,
         lineStyle: { width: 1, color: expectedColor, type: 'dashed' },
       },
@@ -171,6 +175,7 @@ interface Props {
 export function SessionFdaGapCumulative({ title, matches, height = 280, yDomain }: Props) {
   const hasExpectedStats = useCapability('expected_stats')
   const t = useSessionT()
+  const locale = useAppShellStore((s) => s.locale)
 
   const series = useMemo<ChartSeries<FdaGapPoint>[]>(() => {
     if (matches.length === 0) return []
@@ -180,9 +185,16 @@ export function SessionFdaGapCumulative({ title, matches, height = 280, yDomain 
   // Titre sans attendu (ex. Halo 5) → masquage silencieux (pas de carte vide).
   if (!hasExpectedStats) return null
 
+  // Aide ⓘ accolée au titre : MÊME texte que l'instance Timeseries
+  // (`common.charts.fda_gap_tooltip`) — le graphe n'en avait aucune.
   return (
     <ChartCard
-      title={title}
+      title={
+        <span className="flex items-center gap-1.5">
+          {title}
+          <InfoTooltip content={<FdaGapTooltipText locale={locale} />} />
+        </span>
+      }
       series={series}
       height={height}
       buildOption={(s) =>

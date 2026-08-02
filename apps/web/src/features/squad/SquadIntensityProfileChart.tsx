@@ -2,10 +2,13 @@
  * SquadIntensityProfileChart — « Intensité » (onglet Dynamique).
  *
  * Un panneau par joueur : médiane des parts de frags par phase + enveloppe
- * interquartile P25–P75 (irrégularité). Consomme `intensity_profile.rows` par
- * gamertag (JAMAIS la ligne agrégée `all`), couleurs `colorByPlayer`, titres de
- * panneaux = gamertags. Le layout multi-grilles + l'agrégation vivent dans le
- * builder `charts/squadIntensityProfileChart` (échelle Y partagée, repère 10 %).
+ * interquartile P25–P75 (irrégularité). Les PANNEAUX consomment
+ * `intensity_profile.rows` par gamertag (jamais la ligne agrégée `all`),
+ * couleurs `colorByPlayer`, titres de panneaux = gamertags. À partir de
+ * `MIN_PLAYERS_FOR_TEAM_CURVE` joueurs, la ligne `all` — et elle seule — sert de
+ * courbe de référence d'ÉQUIPE superposée à chaque panneau. Le layout
+ * multi-grilles + l'agrégation vivent dans le builder
+ * `charts/squadIntensityProfileChart` (échelle Y partagée, repère 10 %).
  */
 import { useCallback, useMemo } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
@@ -18,17 +21,27 @@ import {
   buildSquadIntensityProfileOption,
   intensityAxisLabels,
   type IntensityPanelInput,
+  type IntensityTeamOverlay,
 } from './charts/squadIntensityProfileChart'
+
+/**
+ * Nombre de joueurs à partir duquel la courbe agrégée d'équipe est superposée.
+ * En dessous, comparer deux profils entre eux suffit : une 3e courbe n'apporte
+ * rien et charge le panneau.
+ */
+const MIN_PLAYERS_FOR_TEAM_CURVE = 3
 
 interface SquadIntensityProfileChartProps {
   title: string
   /** Sous-titre sous le titre de la carte. */
   subtitle: string
-  /** Texte du tooltip d'aide (médiane / enveloppe / repère 10 %). */
+  /** Texte du tooltip d'aide (courbe / zone d'irrégularité / repère / équipe). */
   tooltip: string
   medianLabel: string
   envelopeLabel: string
   refLabel: string
+  /** Libellé de la courbe agrégée d'équipe (3 joueurs et plus). */
+  teamLabel: string
   emptyMessage: string
   profile: SquadIntensityProfile
   /** gamertag → couleur hex résolue depuis les semantic tokens. */
@@ -51,6 +64,7 @@ export function SquadIntensityProfileChart({
   medianLabel,
   envelopeLabel,
   refLabel,
+  teamLabel,
   emptyMessage,
   profile,
   colorByPlayer,
@@ -86,11 +100,29 @@ export function SquadIntensityProfileChart({
     [panels],
   )
 
+  // Courbe d'équipe (3 joueurs et plus) : la ligne agrégée `all` du payload porte,
+  // pour chaque match, les frags de TOUTE l'escouade — c'est la seule population
+  // « équipe » disponible, et elle est agrégée par le même helper que les joueurs.
+  const teamOverlay = useMemo<IntensityTeamOverlay | undefined>(() => {
+    if (panels.length < MIN_PLAYERS_FOR_TEAM_CURVE) return undefined
+    const allRows = profile.rows['all']
+    if (!allRows || !hasExploitableMatch(allRows)) return undefined
+    return { label: teamLabel, rows: allRows }
+  }, [panels.length, profile.rows, teamLabel])
+
   const locale = useAppShellStore((s) => s.locale)
   const axisLabels = intensityAxisLabels(locale)
   const buildOption = useCallback(
-    () => buildSquadIntensityProfileOption({ panels, medianLabel, envelopeLabel, refLabel, axisLabels }),
-    [panels, medianLabel, envelopeLabel, refLabel, axisLabels],
+    () =>
+      buildSquadIntensityProfileOption({
+        panels,
+        medianLabel,
+        envelopeLabel,
+        refLabel,
+        axisLabels,
+        teamOverlay,
+      }),
+    [panels, medianLabel, envelopeLabel, refLabel, axisLabels, teamOverlay],
   )
 
   const rowsCount = panels.length <= 1 ? 1 : Math.ceil(panels.length / 2)

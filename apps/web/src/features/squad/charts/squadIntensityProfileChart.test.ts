@@ -167,4 +167,88 @@ describe('buildSquadIntensityProfileOption', () => {
     expect(html).toContain('40-50% du match')
     expect(html).toContain('Médiane')
   })
+
+  // Affordance de survol (v7.3 lot 2, item 2.3c) : sans symbole survolable, le
+  // canvas se lit comme une image figée. Symbole caché au repos (showSymbol:false)
+  // mais DÉFINI (symbol ≠ 'none'), sinon ECharts n'affiche rien à l'emphase.
+  it('médiane : symbole caché au repos mais révélé au survol', () => {
+    const opt = buildSquadIntensityProfileOption({ panels: [panel('A', 5)], ...OPTS })
+    const median = (opt.series as Array<{ id?: string; showSymbol?: boolean; symbol?: string }>).find(
+      (s) => s.id === 'median-0',
+    )
+    expect(median?.showSymbol).toBe(false)
+    expect(median?.symbol).toBe('circle')
+  })
+})
+
+describe('buildSquadIntensityProfileOption — courbe agrégée d équipe', () => {
+  const TEAM = { label: 'Équipe', rows: rows(8, 5) }
+
+  it('teamOverlay absent : rendu inchangé (aucune série team)', () => {
+    const opt = buildSquadIntensityProfileOption({
+      panels: [panel('A', 5), panel('B', 5), panel('C', 5)],
+      ...OPTS,
+    })
+    expect(seriesIds(opt).some((id) => id.startsWith('team-'))).toBe(false)
+  })
+
+  it('teamOverlay fourni : une courbe d équipe PAR panneau, liée à sa grille', () => {
+    const opt = buildSquadIntensityProfileOption({
+      panels: [panel('A', 5), panel('B', 5), panel('C', 5)],
+      ...OPTS,
+      teamOverlay: TEAM,
+    })
+    const team = (opt.series as Array<{ id?: string; xAxisIndex?: number; name?: string }>).filter((s) =>
+      String(s.id ?? '').startsWith('team-'),
+    )
+    expect(team).toHaveLength(3)
+    expect(team.map((s) => s.xAxisIndex)).toEqual([0, 1, 2])
+    expect(team[0].name).toBe('Équipe')
+  })
+
+  it('la médiane d équipe vient du helper canonique (manches `all`, pas une moyenne de médianes)', () => {
+    const opt = buildSquadIntensityProfileOption({
+      panels: [panel('A', 5, 0), panel('B', 5, 0), panel('C', 5, 0)],
+      ...OPTS,
+      teamOverlay: TEAM,
+    })
+    const team = (opt.series as Array<{ id?: string; data?: number[] }>).find((s) => s.id === 'team-0')
+    // TEAM = 8 manches concentrées sur la phase 5 → médiane 1 en phase 5, 0 ailleurs
+    // (une moyenne des médianes joueur aurait donné le profil de la phase 0).
+    expect(team?.data?.[5]).toBeCloseTo(1)
+    expect(team?.data?.[0]).toBeCloseTo(0)
+  })
+
+  it('échelle Y partagée : la courbe d équipe entre dans le cadre', () => {
+    const opt = buildSquadIntensityProfileOption({
+      panels: [panel('A', 5, 0), panel('B', 5, 0), panel('C', 5, 0)],
+      ...OPTS,
+      teamOverlay: TEAM,
+    })
+    const yMax = (opt.yAxis as Array<{ max: number }>)[0].max
+    expect(yMax).toBeGreaterThanOrEqual(1)
+  })
+
+  it('manches d équipe sans frag : aucune courbe d équipe plate', () => {
+    const opt = buildSquadIntensityProfileOption({
+      panels: [panel('A', 5), panel('B', 5), panel('C', 5)],
+      ...OPTS,
+      teamOverlay: { label: 'Équipe', rows: [{ phases: new Array<number>(10).fill(0) }] },
+    })
+    expect(seriesIds(opt).some((id) => id.startsWith('team-'))).toBe(false)
+  })
+
+  it('tooltip : ligne « Équipe » ajoutée sous la médiane du joueur', () => {
+    const opt = buildSquadIntensityProfileOption({
+      panels: [panel('A', 5), panel('B', 5), panel('C', 5)],
+      ...OPTS,
+      teamOverlay: TEAM,
+    })
+    const formatter = (opt.tooltip as { formatter: (p: unknown) => string }).formatter
+    const html = formatter([
+      { seriesId: 'median-0', seriesName: 'A', dataIndex: 4, value: 0.3 },
+      { seriesId: 'team-0', seriesName: 'Équipe', dataIndex: 4, value: 0.2 },
+    ])
+    expect(html).toContain('Équipe : 20%')
+  })
 })

@@ -195,7 +195,7 @@ export interface SquadText {
     title: string
     /** Sous-titre de la carte Intensité (profil médian + enveloppe). */
     subtitle: string
-    /** Tooltip d'aide : médiane / enveloppe P25–P75 / repère 10 %. */
+    /** Tooltip d'aide : courbe / zone d'irrégularité / repère / courbe d'équipe. */
     tooltip: string
     /** Libellé tooltip du trait médian. */
     medianLabel: string
@@ -203,6 +203,8 @@ export interface SquadText {
     envelopeLabel: string
     /** Libellé du repère 10 % (activité uniforme). */
     refLabel: string
+    /** Libellé de la courbe agrégée d'équipe (superposée à partir de 3 joueurs). */
+    teamLabel: string
   }
   efficiencySeries: {
     /** Titre de la carte Rendement (métrique dégâts/frag). */
@@ -219,6 +221,10 @@ export interface SquadText {
     killsDeathsTitle: string
     killsLabel: string
     deathsLabel: string
+    /** Libellé de la série « Bonus » (assistances converties) du chart Frags / Morts. */
+    bonusLabel: string
+    /** Aide ⓘ de la série Bonus : ce que vaut une assistance dans le FDA (ADR 0006). */
+    bonusInfo: string
     assistsTitle: string
     kdaTitle: string
     accuracyTitle: string
@@ -525,10 +531,11 @@ const FR_TEXT: SquadText = {
   intensity: {
     title: 'Intensité',
     subtitle: 'Répartition des frags par phase de match',
-    tooltip: 'Trait épais = médiane des parts de frags par phase (tranche de 10 % de la durée). Aplat = enveloppe P25–P75 : plus elle est large, plus le joueur est irrégulier d\'une manche à l\'autre. Pointillé à 10 % = activité parfaitement uniforme.',
+    tooltip: 'Chaque match est découpé en 10 tranches de durée égale. Le trait plein montre à quel moment les frags du joueur tombent : à gauche le début du match, à droite la fin. La zone colorée autour dit à quel point ça change d\'un match à l\'autre — large, le joueur joue très différemment selon les parties ; étroite, il fait toujours à peu près pareil. Le pointillé horizontal est le niveau d\'un match où les frags seraient répartis également du début à la fin. À partir de 3 joueurs, la courbe pointillée « Équipe » superposée montre le même profil pour l\'escouade entière : au-dessus, le joueur est plus actif que le groupe sur cette tranche.',
     medianLabel: 'Médiane',
     envelopeLabel: 'Enveloppe P25–P75',
     refLabel: '10 %',
+    teamLabel: 'Équipe',
   },
   efficiencySeries: {
     rendementCardTitle: 'Rendement — dégâts par frag',
@@ -543,6 +550,9 @@ const FR_TEXT: SquadText = {
     killsDeathsTitle: 'Frags / Morts',
     killsLabel: 'Frags',
     deathsLabel: 'Morts',
+    bonusLabel: 'Bonus',
+    bonusInfo:
+      'Bonus = assistances ÷ 3 : dans le FDA, 3 assistances valent 1 frag (FDA = (frags + assistances/3) − morts). La série empile ce bonus au-dessus des frags du match ; elle est masquée par défaut, clique « Bonus » pour l\'afficher.',
     assistsTitle: 'Assistances',
     kdaTitle: 'FDA',
     accuracyTitle: 'Précision',
@@ -838,10 +848,11 @@ const EN_TEXT: SquadText = {
   intensity: {
     title: 'Intensity',
     subtitle: 'Frag distribution across match phases',
-    tooltip: 'Thick line = median share of frags per phase (10% slice of match duration). Shaded band = P25–P75 envelope: the wider it is, the more the player varies from game to game. Dashed line at 10% = perfectly even activity.',
+    tooltip: 'Each match is split into 10 equal slices. The solid line shows when the player\'s kills happen: start of the match on the left, end on the right. The shaded band around it shows how much this changes from match to match — wide means the player plays very differently depending on the game, narrow means they play much the same way every time. The horizontal dashed line is the level of a match where kills would be spread evenly from start to finish. From 3 players on, the overlaid "Team" dashed curve shows the same profile for the whole squad: above it, the player is more active than the group on that slice.',
     medianLabel: 'Median',
     envelopeLabel: 'P25–P75 envelope',
     refLabel: '10%',
+    teamLabel: 'Team',
   },
   efficiencySeries: {
     rendementCardTitle: 'Offensive efficiency — damage per kill',
@@ -856,6 +867,9 @@ const EN_TEXT: SquadText = {
     killsDeathsTitle: 'Frags / Deaths',
     killsLabel: 'Frags',
     deathsLabel: 'Deaths',
+    bonusLabel: 'Bonus',
+    bonusInfo:
+      'Bonus = assists ÷ 3: in KDA, 3 assists count as 1 kill (KDA = (kills + assists/3) − deaths). The series stacks that bonus on top of the match kills; it is hidden by default, click "Bonus" to show it.',
     assistsTitle: 'Assists',
     kdaTitle: 'KDA',
     accuracyTitle: 'Accuracy',

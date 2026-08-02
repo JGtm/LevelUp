@@ -8,14 +8,21 @@
  * concernées (les axes restent stables). Remplace la légende ECharts N×2
  * scrollable jugée trop dense.
  */
-import { useCallback, useState } from 'react'
+import { Fragment, useCallback, useState, type ReactNode } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 
 interface ToggleLegendType {
   /** Clé = label de la série côté builder (testé via hiddenTypes.has(key)). */
   key: string
   label: string
+  /**
+   * Aide contextuelle du type, rendue en ⓘ À CÔTÉ du bouton de légende (jamais
+   * dedans : InfoTooltip est un `<button>`, l'imbriquer serait du bouton-dans-bouton).
+   * Absente = aucun nœud ajouté, légende strictement identique à l'existant.
+   */
+  info?: ReactNode
 }
 
 interface HiddenState {
@@ -71,11 +78,10 @@ export function SquadToggleLegendChart({
     <ChartCard title={title} series={series} buildOption={build} height={height} emptyMessage={emptyMessage}>
       {series.length > 0 && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border px-3 py-2">
-          {types.map(({ key, label }) => {
+          {types.map(({ key, label, info }) => {
             const off = hiddenTypes.has(key)
-            return (
+            const button = (
               <button
-                key={key}
                 type="button"
                 onClick={() => setHiddenTypes((prev) => toggleInSet(prev, key))}
                 aria-pressed={!off}
@@ -83,6 +89,14 @@ export function SquadToggleLegendChart({
               >
                 {label}
               </button>
+            )
+            // Sans aide : Fragment → l'ancien bouton reste enfant direct du flex.
+            if (info == null) return <Fragment key={key}>{button}</Fragment>
+            return (
+              <span key={key} className="inline-flex items-center gap-1">
+                {button}
+                <InfoTooltip content={info} iconClass="w-3.5 h-3.5" />
+              </span>
             )
           })}
 

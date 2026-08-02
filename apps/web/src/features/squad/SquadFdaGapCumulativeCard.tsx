@@ -13,6 +13,8 @@
 import { useMemo } from 'react'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
+import { FdaGapTooltipText } from '@/components/charts/FdaGapTooltipText'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
 
@@ -76,7 +78,14 @@ export function SquadFdaGapCumulativeCard({
 
   return (
     <ChartCard
-      title={t.fdaGap.title}
+      title={
+        <span className="flex items-center gap-1.5">
+          {t.fdaGap.title}
+          <InfoTooltip
+            content={<FdaGapTooltipText locale={t.intlLocale.startsWith('en') ? 'en' : 'fr'} />}
+          />
+        </span>
+      }
       series={series}
       height={height}
       emptyMessage={emptyMessage}
