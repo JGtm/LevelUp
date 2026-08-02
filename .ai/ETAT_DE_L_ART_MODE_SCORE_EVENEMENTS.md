@@ -1850,3 +1850,92 @@ evenements**. Il manque, et ce n'est pas trivial :
 
 L'horloge, elle, ne pose pas de probleme : le `TimeMS` des evenements est sur l'horloge du
 manifeste, la meme que les positions — superposable sans recalage (§15).
+
+---
+
+## 21. KOTH : AUCUN COMPTEUR DE COLLINE N'EST REPLIQUE — mesure, plus deduction (2026-08-02)
+
+> Lot 2 du handoff §4. Le §19.3 le DEDUISAIT du binaire ; cette section le MESURE sur film,
+> ce qui n'est pas la meme chose.
+
+**Protocole** : balayage des 28 emplacements (les deux cotes) sur **deux films KOTH**,
+`d2b74083` et `cae8471d`. Slots identifies par le couple (frags, assistances), unique dans
+les deux cas.
+
+**Le bareme valide l'identite avant toute conclusion** — `comp 1 B` (score personnel) :
+
+| film | joueur | detail | comp 1 B |
+|---|---|---|---|
+| `d2b74083` | JGtm | 6x100 + 1x50 + 8x25 + 1x100 | **950** |
+| `d2b74083` | Madina97294 | 8x100 + 2x50 + 2x25 + 1x100 | **1 050** |
+| `cae8471d` | JGtm | 10x100 + 5x50 + 13x25 + 2x100 | **1 775** |
+| `cae8471d` | Madina97294 | 14x100 + 5x50 + 6x25 + 1x100 | **1 900** |
+
+Quatre egalites exactes : les slots sont les bons, et `hill_control` = 25 pts,
+`hill_scored` = 100 pts sont confirmes.
+
+**Le resultat** : **aucun** des 56 emplacements ne porte `hill_control` (8 et 2 sur le
+premier film, 13 et 6 sur le second) ni `hill_scored`. Verifie emplacement par emplacement.
+
+**Une hypothese posee et REFUTEE** : `comp 22 B` valait 551 / 135 sur le premier film, soit
+un rapport 4,08 contre 4,00 pour `hill_control` — de quoi croire a un temps de controle dont
+la recompense derive. Le second film la tue : 1 025 / 666 = **1,54** quand `hill_control`
+donne **2,17**. C'etait une coincidence, et c'est le controle sur un second film qui l'a dit.
+
+**Trois sources concordantes** : la mesure sur film (ci-dessus), le binaire (aucune famille
+`*Stats_*Hill*`, §19.2) et la base (`match_objective_stats` n'a aucune colonne `hill_*`).
+
+**Conclusion du lot 2** : `ball` est nomme (§19.2, famille `OddballStats_`), `hill` **n'a pas
+d'objet** — il n'y a rien a nommer. `KnownStats("hill")` rend un inventaire vide et
+`NamedEvents` y rend nil, ce qui est le comportement juste et non une lacune.
+
+---
+
+## 22. L'ORACLE A HUIT JOUEURS — il double la recette ET corrige un NOM FAUX (2026-08-02)
+
+> Lot 3 du handoff §4. La base partagee s'etant liberee,
+> `match_objective_stats_latest` (426 matchs x 8 joueurs) a ete confronte au decodage.
+
+### 22.1 Ce que l'oracle a huit joueurs change
+
+`personal_score_awards` ne couvre que les 4 joueurs suivis ; `match_objective_stats_latest`
+couvre les 8. La recette passe de **30 confrontations a 64**, et surtout elle change de
+nature : un decodage qui n'aurait marche que sur les joueurs suivis n'y survivrait pas.
+
+| film | mode | confrontations | resultat |
+|---|---|---|---|
+| `696a9d7c` | zones | 16 (8 joueurs x 2 compteurs) | **toutes exactes** |
+| `1bc77d2e` | CTF | 48 (8 joueurs x 6 compteurs) | **toutes exactes** |
+
+### 22.2 LE NOM ETAIT FAUX, et c'est le gain principal du lot
+
+`comp 22 A` etait nomme **`flag_taken`** d'apres `personal_score_awards`. Le §18.3 avait
+mesure qu'il comptait systematiquement PLUS que cette recompense, jamais moins, et l'avait
+mis au compte d'un « film plus fin que l'API ». **C'etait une erreur de nom, pas une
+finesse.**
+
+L'oracle a huit joueurs porte une colonne `flag_grabs`, et les valeurs de `comp 22 A` en sont
+la copie exacte, slot par slot : **16 pour Madina97294** la ou la recompense `flag_taken`
+dit 4, 13 pour un autre joueur, 3 pour JGtm. Le binaire disait la meme chose depuis le
+debut : `CtfStats_FlagGrabs` (§19.2).
+
+**La cause de fond, et elle valait d'etre corrigee** : le statborg replique des
+**STATISTIQUES**, pas les **RECOMPENSES DE SCORE** que le serveur en derive. Pour la plupart
+les deux coincident numeriquement (`flag_returns` / `flag_returned`), ce qui masquait la
+confusion. Ramasser le drapeau au sol se COMPTE a chaque fois mais ne se RECOMPENSE pas a
+chaque fois — d'ou l'ecart, et l'explication de l'utilisateur (« Madina lance et ramasse le
+drapeau pendant sa course ») etait la bonne des le depart.
+
+**Consequence de code** : les constantes du paquet passent de `Award*` a `Stat*` et portent
+desormais les noms de `match_objective_stats` (`flag_grabs`, `flag_captures`, `kills`,
+`assists`...). Le champ `NamedEvent.Award` devient `NamedEvent.Stat`.
+
+### 22.3 Ce que le lot 3 n'a PAS fait
+
+Le handoff proposait de **rejouer le balayage** avec cet oracle pour lever les doublons. Ce
+balayage n'a pas ete rejoue : il n'est plus necessaire pour nommer (le binaire le fait,
+§19), et il reste ce qui a rendu la machine inutilisable (§18.6). L'oracle a servi a
+**recetter et corriger**, ce qui etait sa valeur reelle.
+
+Les doublons connus (`12 A` = `2 A`, `12 B` = `3 A`, `0 A` = `21 A`) restent des doublons
+REELS, verifies par le controle croise interne — il n'y a rien a departager.

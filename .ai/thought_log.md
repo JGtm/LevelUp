@@ -1,3 +1,43 @@
+## [2026-08-02] Lots 2 et 3 bouclés — KOTH n'a rien à nommer, et l'oracle 8 joueurs corrige un nom faux
+
+**Statut** : Complété (lots 2 et 3 du handoff §4). Branche `feat/re-mode-score`. Livrables :
+état de l'art §21 et §22, table figée `.ai/refs/TABLE_STATS_STATBORG.tsv` réécrite,
+constantes du paquet renommées `Award*` -> `Stat*`.
+
+**Décision technique principale** : les compteurs du statborg sont des STATISTIQUES, pas les
+RÉCOMPENSES DE SCORE que le serveur en dérive. La table portait les noms de
+`personal_score_awards` ; elle porte désormais ceux de `match_objective_stats` et du binaire.
+
+**Résultats observés** :
+
+- **Lot 2 (hill) — mesuré, plus déduit.** Balayage des 28 emplacements sur DEUX films KOTH.
+  Le barème valide d'abord l'identité des slots (score personnel 950 / 1050 / 1775 / 1900,
+  quatre égalités exactes). Résultat : **aucun** emplacement ne porte `hill_control` ni
+  `hill_scored`. Une hypothèse « c'est un temps déguisé » (`comp 22 B`, rapport 4,08 contre
+  4,00 attendu sur le premier film) est **réfutée par le second** (1,54 contre 2,17). Trois
+  sources concordantes : film, binaire (aucune famille `*Stats_*Hill*`), base (aucune colonne
+  `hill_*`). Le lot n'a pas d'objet : il n'y a rien à nommer.
+- **Lot 3 (oracle 8 joueurs) — il corrige un NOM FAUX.** `comp 22 A`, nommé `flag_taken`,
+  est en réalité **`flag_grabs`** : ses valeurs sont la copie exacte de la colonne
+  `flag_grabs` de `match_objective_stats_latest`, slot par slot (16 pour Madina97294 là où
+  la récompense dit 4). Le §18.3 avait mis l'écart au compte d'un « film plus fin » —
+  c'était une erreur de nom. Le binaire le disait depuis le début (`CtfStats_FlagGrabs`), et
+  l'explication de l'utilisateur (« Madina lance et ramasse le drapeau pendant sa course »)
+  était juste dès le départ.
+- **La recette passe de 30 à 64 confrontations, toutes exactes** : 16 sur `696a9d7c` (8
+  joueurs x 2 compteurs) et 48 sur `1bc77d2e` (8 joueurs x 6 compteurs). Elle change de
+  nature : un décodage qui n'aurait marché que sur les 4 joueurs suivis n'y survivrait pas.
+- **`comp 2 B` = morts** confirmé 8/8 contre `match_participants`, et `comp 1 B` =
+  PersonalScore vérifié par le barème sur quatre couples.
+
+**Ce que le lot 3 n'a PAS fait** : rejouer le balayage corpus. Il n'est plus nécessaire pour
+nommer (le binaire le fait, §19) et c'est lui qui a rendu la machine inutilisable (§18.6).
+L'oracle a servi à recetter et corriger, ce qui était sa valeur réelle.
+
+**Conclusion / prochaine étape** : reste le lot 4 — intégrer les événements identifiés au
+`ReplayDocument` (champ optionnel + `Coverage`, conversion `TimeMS` -> index de frame,
+câblage `cmd/replay-build`, rendu client).
+
 ## [2026-08-02] Le pont vers le rejeu 2D — l'identité, pas le numéro de slot
 
 **Statut** : Complété pour le PONT ; l'intégration au document de rejeu reste à faire (dit en

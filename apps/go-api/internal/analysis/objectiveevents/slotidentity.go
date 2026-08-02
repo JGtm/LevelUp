@@ -137,7 +137,7 @@ func IdentifyNamedEvents(evs []NamedEvent, identity map[int]string) []Identified
 		if out[i].XUID != out[j].XUID {
 			return out[i].XUID < out[j].XUID
 		}
-		return out[i].Award < out[j].Award
+		return out[i].Stat < out[j].Stat
 	})
 	return out
 }

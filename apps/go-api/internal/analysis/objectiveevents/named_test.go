@@ -8,95 +8,138 @@ import "testing"
 // convention qu'extract_test.go), donc verts en CI sans films. Les tests purs, eux,
 // tournent partout : ce sont eux qui gardent les pieges deja payes.
 //
-// L'oracle est `personal_score_awards` (bases joueur), fige ici en dur pour garder le test
-// sans dependance DuckDB. Il a ete regenere le 2026-08-02 et reproduit a l'identique le
-// balayage de la session precedente.
-
-// slotOwners fige la correspondance slot d'entite -> joueur suivi sur les films de
-// reference.
+// # L'oracle est celui des HUIT joueurs, et c'est ce qui donne sa force a ce fichier
 //
-// Pourquoi en dur plutot que deduit : l'identification par le nombre de frags n'est PAS
-// unique sur ces films (sur 696a9d7c, quatre slots ont 15 frags et deux en ont 9). La
-// correspondance vient de l'appariement des increments de +100 aux instants de frag
-// (etat de l'art §16.2), qui, lui, ne laisse aucune collision.
-var slotOwners = map[string]map[int]string{
-	"696a9d7c": {22: "JGtm", 20: "Madina97294"},
-	"1bc77d2e": {18: "JGtm", 24: "Chocoboflor", 16: "Madina97294"},
+// `match_objective_stats_latest` (base partagee) porte les compteurs d'objectif des huit
+// joueurs d'un match, la ou `personal_score_awards` ne couvre que les quatre joueurs suivis.
+// Confronter les huit ne double pas la preuve, il la change de nature : un decodage qui
+// n'aurait marche que sur les joueurs suivis n'y survivrait pas.
+//
+// C'est aussi cet oracle qui a corrige un NOM FAUX : `comp 22 A`, nomme `flag_taken` d'apres
+// les recompenses, est en realite `flag_grabs` — ses valeurs sont exactement celles de la
+// colonne `flag_grabs`, slot par slot. Les compteurs du film sont des STATISTIQUES, pas les
+// recompenses de score que le serveur en derive.
+
+// playerStat est la ligne complete d'un joueur : son triplet d'identite et les compteurs
+// d'objectif que l'oracle a huit joueurs lui donne.
+type playerStat struct {
+	line  PlayerLine
+	stats map[string]int
 }
 
-// oracle fige `personal_score_awards` pour les couples (film, joueur) utilises ici.
-// Une recompense absente vaut ZERO, et ce zero compte : il interdit au decodeur
+// oracle8 fige `match_objective_stats_latest` JOINT a `match_participants`, pour les HUIT
+// joueurs des deux films de reference (releve le 2026-08-02).
+//
+// Un compteur absent de la carte vaut ZERO et ce zero compte : il interdit au decodeur
 // d'inventer des evenements que l'API ne connait pas.
-var oracle = map[string]map[string]map[string]int{
+var oracle8 = map[string][]playerStat{
+	// 696a9d7c — Strongholds. Les xuid ne sont pas necessaires ici : le triplet suffit a
+	// designer chaque joueur, et le test porte sur l'appariement, pas sur la forme de la cle.
 	"696a9d7c": {
-		"JGtm":        {"killed_player": 9, "kill_assist": 7, "zone_captured": 7, "zone_secured": 2},
-		"Madina97294": {"killed_player": 15, "kill_assist": 5, "zone_captured": 10, "zone_secured": 0},
+		{PlayerLine{"z16", 16, 13, 4}, map[string]int{StatZoneCaptures: 10, StatZoneSecures: 6}},
+		{PlayerLine{"z15a", 15, 14, 3}, map[string]int{StatZoneCaptures: 4, StatZoneSecures: 2}},
+		{PlayerLine{"z15b", 15, 17, 4}, map[string]int{StatZoneCaptures: 9, StatZoneSecures: 1}},
+		{PlayerLine{"z15c", 15, 9, 10}, map[string]int{StatZoneCaptures: 6, StatZoneSecures: 3}},
+		{PlayerLine{"madina", 15, 11, 5}, map[string]int{StatZoneCaptures: 10, StatZoneSecures: 0}},
+		{PlayerLine{"z9a", 9, 12, 4}, map[string]int{StatZoneCaptures: 6, StatZoneSecures: 1}},
+		{PlayerLine{"z9b", 9, 15, 7}, map[string]int{StatZoneCaptures: 7, StatZoneSecures: 2}},
+		{PlayerLine{"z8", 8, 12, 8}, map[string]int{StatZoneCaptures: 9, StatZoneSecures: 1}},
 	},
+	// 1bc77d2e — CTF, avec les vrais xuid.
 	"1bc77d2e": {
-		"JGtm": {
-			"killed_player": 24, "kill_assist": 2, "flag_captured": 1, "flag_returned": 2,
-			"flag_stolen": 4, "runner_stopped": 2, "flag_capture_assist": 0,
-		},
-		"Chocoboflor": {
-			"killed_player": 16, "kill_assist": 7, "flag_captured": 1, "flag_returned": 1,
-			"flag_stolen": 0, "runner_stopped": 1, "flag_capture_assist": 2,
-		},
-		"Madina97294": {
-			"killed_player": 11, "kill_assist": 13, "flag_captured": 0, "flag_returned": 0,
-			"flag_stolen": 2, "runner_stopped": 1, "flag_capture_assist": 2,
-		},
+		{PlayerLine{"2533274823110022", 24, 13, 2}, map[string]int{ // JGtm
+			StatFlagCaptures: 1, StatFlagReturns: 2, StatFlagSteals: 4,
+			StatFlagCaptureAssists: 0, StatFlagCarriersKilled: 2, StatFlagGrabs: 3}},
+		{PlayerLine{"2535433601851512", 20, 15, 7}, map[string]int{
+			StatFlagCaptures: 1, StatFlagReturns: 1, StatFlagSteals: 2,
+			StatFlagCaptureAssists: 1, StatFlagCarriersKilled: 3, StatFlagGrabs: 3}},
+		{PlayerLine{"2535421262359392", 16, 13, 5}, map[string]int{
+			StatFlagCaptures: 1, StatFlagReturns: 1, StatFlagSteals: 0,
+			StatFlagCaptureAssists: 1, StatFlagCarriersKilled: 3, StatFlagGrabs: 13}},
+		{PlayerLine{"2535469190789936", 16, 15, 7}, map[string]int{ // Chocoboflor
+			StatFlagCaptures: 1, StatFlagReturns: 1, StatFlagSteals: 0,
+			StatFlagCaptureAssists: 2, StatFlagCarriersKilled: 1, StatFlagGrabs: 6}},
+		{PlayerLine{"2535415145546162", 11, 11, 2}, map[string]int{
+			StatFlagCaptures: 0, StatFlagReturns: 3, StatFlagSteals: 1,
+			StatFlagCaptureAssists: 1, StatFlagCarriersKilled: 2, StatFlagGrabs: 2}},
+		{PlayerLine{"2533274858283686", 11, 12, 13}, map[string]int{ // Madina97294
+			StatFlagCaptures: 0, StatFlagReturns: 0, StatFlagSteals: 2,
+			StatFlagCaptureAssists: 2, StatFlagCarriersKilled: 1, StatFlagGrabs: 16}},
+		{PlayerLine{"2535436340554308", 10, 18, 5}, map[string]int{
+			StatFlagCaptures: 0, StatFlagReturns: 1, StatFlagSteals: 3,
+			StatFlagCaptureAssists: 1, StatFlagCarriersKilled: 1, StatFlagGrabs: 1}},
+		{PlayerLine{"2535456897775421", 6, 17, 4}, map[string]int{
+			StatFlagCaptures: 1, StatFlagReturns: 0, StatFlagSteals: 2,
+			StatFlagCaptureAssists: 1, StatFlagCarriersKilled: 0, StatFlagGrabs: 2}},
 	},
 }
 
-// checkFilmAgainstOracle confronte les comptes decodes a l'oracle de l'API, recompense par
-// recompense, pour chaque joueur suivi du film.
-func checkFilmAgainstOracle(t *testing.T, film, objectiveType string) {
+// linesOf rend les lignes de match d'un film, pour l'appariement des slots.
+func linesOf(film string) []PlayerLine {
+	out := make([]PlayerLine, 0, len(oracle8[film]))
+	for _, p := range oracle8[film] {
+		out = append(out, p.line)
+	}
+	return out
+}
+
+// checkAgainstOracle8 confronte les comptes decodes a l'oracle des HUIT joueurs, compteur
+// par compteur. L'appariement slot -> joueur passe par le triplet (cf. slotidentity.go).
+func checkAgainstOracle8(t *testing.T, film, objectiveType string) {
 	t.Helper()
 	src, ok := newDiskFilmSource(t, film)
 	if !ok {
 		t.Skipf("film %s absent du cache local", film)
 	}
-	counts := CountsBySlot(NamedEvents(src, objectiveType))
-	if len(counts) == 0 {
-		t.Fatalf("%s : aucun evenement nomme decode", film)
+	recs := StatRecords(src)
+	identity := slotIdentityFrom(recs, linesOf(film))
+	if len(identity) != 8 {
+		t.Fatalf("%s : %d slots apparies, attendu 8", film, len(identity))
 	}
-	for slot, player := range slotOwners[film] {
-		for award, want := range oracle[film][player] {
-			if got := counts[slot][award]; got != want {
-				t.Errorf("%s slot %d (%s) : %s = %d, attendu %d (personal_score_awards)",
-					film, slot, player, award, got, want)
+	counts := CountsBySlot(namedEventsFrom(recs, objectiveType))
+
+	byXUID := map[string]map[string]int{}
+	for _, p := range oracle8[film] {
+		byXUID[p.line.XUID] = p.stats
+	}
+	checked := 0
+	for slot, xuid := range identity {
+		for stat, want := range byXUID[xuid] {
+			checked++
+			if got := counts[slot][stat]; got != want {
+				t.Errorf("%s slot %d (%s) : %s = %d, attendu %d (oracle 8 joueurs)",
+					film, slot, xuid, stat, got, want)
 			}
 		}
 	}
+	t.Logf("%s : %d confrontations sur les 8 joueurs", film, checked)
 }
 
-// TestNamedEventsZoneGroundTruth — Strongholds `696a9d7c`. La lecture par composant doit
-// rendre, pour les deux joueurs suivis, EXACTEMENT les comptes de l'API.
+// TestNamedEventsZoneAgainstEightPlayers — Strongholds `696a9d7c`, les HUIT joueurs.
 //
-// Ce que ce test prouve et que la valeur du score ne pouvait pas prouver : `zone_captured`
-// et `zone_secured` valent tous deux 25 points par action, donc aucune lecture par valeur
-// ne pouvait les separer. Ils vivent dans deux emplacements distincts (comp 20 B et
-// comp 21 A) et s'y lisent sans ambiguite.
-func TestNamedEventsZoneGroundTruth(t *testing.T) {
-	checkFilmAgainstOracle(t, "696a9d7c", ObjectiveTypeZone)
+// Ce que ce test prouve et que la lecture par valeur ne pouvait pas prouver :
+// `zone_captures` et `zone_secures` valent tous deux 25 points par action, donc aucune
+// lecture du score ne pouvait les separer. Ils vivent dans deux emplacements distincts
+// (comp 20 B et comp 21 A) et s'y lisent sans ambiguite.
+func TestNamedEventsZoneAgainstEightPlayers(t *testing.T) {
+	checkAgainstOracle8(t, "696a9d7c", ObjectiveTypeZone)
 }
 
-// TestNamedEventsCTFGroundTruth — CTF `1bc77d2e`, le film sur lequel l'ambiguite « l'un de
-// trois noms » bloquait. `flag_returned`, `flag_stolen` et `runner_stopped` valent tous
-// 25 points ; ils doivent ici se separer parfaitement.
+// TestNamedEventsCTFAgainstEightPlayers — CTF `1bc77d2e`, les HUIT joueurs et les SIX
+// compteurs de drapeau.
 //
-// `flag_taken` est volontairement exclu de cette egalite — il ne compte pas la meme chose
-// que la recompense de l'API (cf. TestNamedEventsFlagTakenNeverUndercounts).
-func TestNamedEventsCTFGroundTruth(t *testing.T) {
-	checkFilmAgainstOracle(t, "1bc77d2e", ObjectiveTypeFlag)
+// C'est le test qui ferme l'ambiguite « l'un de trois noms » : `flag_returns`,
+// `flag_steals` et `flag_carriers_killed` valent tous 25 points et se separent ici
+// parfaitement. Et c'est lui qui garde le nom corrige — `flag_grabs`, pas `flag_taken` :
+// 16 pour Madina97294 la ou la RECOMPENSE `flag_taken` dit 4.
+func TestNamedEventsCTFAgainstEightPlayers(t *testing.T) {
+	checkAgainstOracle8(t, "1bc77d2e", ObjectiveTypeFlag)
 }
 
-// TestNamedEventsZoneTotalsMatchAPI — le controle d'ensemble, sur les HUIT joueurs et non
-// sur les seuls joueurs suivis : sur `696a9d7c`, comp 20 B totalise 61 et comp 21 A 16 ;
-// leur somme vaut 77, exactement le total `zone_captures + zone_secures` de l'API.
-//
-// Il vaut d'etre garde parce qu'il ne depend d'AUCUNE correspondance slot -> joueur : meme
-// si l'identite des slots derivait, ce total tiendrait.
+// TestNamedEventsZoneTotalsMatchAPI — le controle d'ensemble, qui ne depend d'AUCUNE
+// correspondance slot -> joueur : sur `696a9d7c`, comp 20 B totalise 61 et comp 21 A 16,
+// somme 77, exactement le total du match. Meme si l'identite des slots derivait, ce total
+// tiendrait.
 func TestNamedEventsZoneTotalsMatchAPI(t *testing.T) {
 	src, ok := newDiskFilmSource(t, "696a9d7c")
 	if !ok {
@@ -104,42 +147,16 @@ func TestNamedEventsZoneTotalsMatchAPI(t *testing.T) {
 	}
 	total := map[string]int{}
 	for _, e := range NamedEvents(src, ObjectiveTypeZone) {
-		total[e.Award]++
+		total[e.Stat]++
 	}
-	if total[AwardZoneCaptured] != 61 {
-		t.Errorf("zone_captured total = %d, attendu 61", total[AwardZoneCaptured])
+	if total[StatZoneCaptures] != 61 {
+		t.Errorf("zone_captures total = %d, attendu 61", total[StatZoneCaptures])
 	}
-	if total[AwardZoneSecured] != 16 {
-		t.Errorf("zone_secured total = %d, attendu 16", total[AwardZoneSecured])
+	if total[StatZoneSecures] != 16 {
+		t.Errorf("zone_secures total = %d, attendu 16", total[StatZoneSecures])
 	}
-	if sum := total[AwardZoneCaptured] + total[AwardZoneSecured]; sum != 77 {
-		t.Errorf("zone_captured + zone_secured = %d, attendu 77 (total API du match)", sum)
-	}
-}
-
-// TestNamedEventsFlagTakenNeverUndercounts — `flag_taken` est le seul emplacement ou le
-// film et l'API divergent, et la divergence a UN SEUL SENS.
-//
-// Mesure (6 films CTF + les 3 joueurs de `1bc77d2e`, soit 8 couples) : le film compte
-// parfois PLUS, JAMAIS MOINS — ecart total +11, pire ecart +5, zero contre-exemple. C'est
-// la signature d'un compteur d'actions REELLES face a une recompense que le jeu ne verse
-// pas a chaque fois : ramasser le drapeau au sol pendant sa course se compte plusieurs
-// fois, ne se recompense pas plusieurs fois.
-//
-// Le test encode donc l'INEGALITE et non l'egalite. Un « film moins » serait fatal a cette
-// lecture : on ne peut pas rater une action qu'on recompense.
-func TestNamedEventsFlagTakenNeverUndercounts(t *testing.T) {
-	src, ok := newDiskFilmSource(t, "1bc77d2e")
-	if !ok {
-		t.Skip("film 1bc77d2e absent du cache local")
-	}
-	counts := CountsBySlot(NamedEvents(src, ObjectiveTypeFlag))
-	// `personal_score_awards` sur ce film : JGtm 1, Chocoboflor 3, Madina97294 4.
-	for slot, want := range map[int]int{18: 1, 24: 3, 16: 4} {
-		if got := counts[slot][AwardFlagTaken]; got < want {
-			t.Errorf("slot %d : flag_taken = %d, INFERIEUR aux %d de l'API — "+
-				"une action recompensee ne peut pas manquer au film", slot, got, want)
-		}
+	if sum := total[StatZoneCaptures] + total[StatZoneSecures]; sum != 77 {
+		t.Errorf("zone_captures + zone_secures = %d, attendu 77 (total du match)", sum)
 	}
 }
 
@@ -158,18 +175,22 @@ func TestNamedEventsCrossCheck(t *testing.T) {
 		if !ok {
 			continue
 		}
-		for slot, byAward := range CrossCheckNamedEvents(src, objectiveType) {
-			for award, pair := range byAward {
+		for slot, byStat := range CrossCheckNamedEvents(src, objectiveType) {
+			for stat, pair := range byStat {
 				t.Errorf("%s slot %d : %s = %d sur l'emplacement canonique mais %d sur le "+
-					"redondant", film, slot, award, pair[0], pair[1])
+					"redondant", film, slot, stat, pair[0], pair[1])
 			}
 		}
 	}
 }
 
 // TestNamedEventsUnknownModeIsSilent — un mode sans table ne rend rien, et surtout
-// n'invente aucun nom. KOTH et Oddball sont dans ce cas : leurs emplacements n'ont pas
-// encore ete nommes.
+// n'invente aucun nom.
+//
+// KOTH est dans ce cas DEFINITIVEMENT, et ce n'est pas un trou a combler : les recompenses
+// de colline ne sont repliquees dans AUCUN emplacement du statborg (mesure sur deux films,
+// etat de l'art §21), le binaire ne declare aucune famille de stats KOTH, et la base n'a
+// aucune colonne `hill_*`. Trois sources concordantes.
 func TestNamedEventsUnknownModeIsSilent(t *testing.T) {
 	recs := []StatRecord{{TimeMS: 1000, Slot: 10, Comps: map[int]StatValue{20: {A: 0, B: 3}}}}
 	for _, mode := range []string{ObjectiveTypeHill, ObjectiveTypeSkull, "", "slayer"} {
@@ -194,9 +215,8 @@ func TestNamedEventsIgnoresNegativeValues(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("%d evenements rendus, attendu 1 (la valeur negative est un parasite)", len(got))
 	}
-	if got[0].Award != AwardFlagReturned || got[0].TimeMS != 1000 {
-		t.Errorf("evenement = %s a t=%d, attendu flag_returned a t=1000",
-			got[0].Award, got[0].TimeMS)
+	if got[0].Stat != StatFlagReturns || got[0].TimeMS != 1000 {
+		t.Errorf("evenement = %s a t=%d, attendu flag_returns a t=1000", got[0].Stat, got[0].TimeMS)
 	}
 }
 
@@ -209,11 +229,11 @@ func TestNamedEventsRedundantSlotsDoNotDoubleCount(t *testing.T) {
 		Comps: map[int]StatValue{2: {A: 3}, 12: {A: 3, B: 2}, 3: {A: 2}},
 	}}
 	counts := CountsBySlot(namedEventsFrom(recs, ObjectiveTypeZone))
-	if got := counts[10][AwardKilledPlayer]; got != 3 {
-		t.Errorf("killed_player = %d, attendu 3 (comp 12 A redouble comp 2 A)", got)
+	if got := counts[10][StatKills]; got != 3 {
+		t.Errorf("kills = %d, attendu 3 (comp 12 A redouble comp 2 A)", got)
 	}
-	if got := counts[10][AwardKillAssist]; got != 2 {
-		t.Errorf("kill_assist = %d, attendu 2 (comp 12 B redouble comp 3 A)", got)
+	if got := counts[10][StatAssists]; got != 2 {
+		t.Errorf("assists = %d, attendu 2 (comp 12 B redouble comp 3 A)", got)
 	}
 }
 
@@ -235,12 +255,12 @@ func TestNamedEventsRepeatedValueIsNotAnEvent(t *testing.T) {
 	}
 }
 
-// TestKnownAwardsCoverBothModes — l'inventaire d'un mode dit ce que la lecture couvre.
-// Il garde aussi le piege central du chantier : `comp 21 A` vaut `zone_secured` en zones et
-// `flag_captured` en CTF, donc les deux inventaires DOIVENT differer.
-func TestKnownAwardsCoverBothModes(t *testing.T) {
-	flag, zone := KnownAwards(ObjectiveTypeFlag), KnownAwards(ObjectiveTypeZone)
-	for _, name := range []string{AwardFlagReturned, AwardFlagStolen, AwardRunnerStopped} {
+// TestKnownStatsCoverBothModes — l'inventaire d'un mode dit ce que la lecture couvre. Il
+// garde aussi le piege central du chantier : `comp 21 A` vaut `zone_secures` en zones et
+// `flag_captures` en CTF, donc les deux inventaires DOIVENT differer.
+func TestKnownStatsCoverBothModes(t *testing.T) {
+	flag, zone := KnownStats(ObjectiveTypeFlag), KnownStats(ObjectiveTypeZone)
+	for _, name := range []string{StatFlagReturns, StatFlagSteals, StatFlagCarriersKilled} {
 		if !flag[name] {
 			t.Errorf("CTF : %s absent de l'inventaire", name)
 		}
@@ -248,10 +268,10 @@ func TestKnownAwardsCoverBothModes(t *testing.T) {
 			t.Errorf("zones : %s ne devrait pas y figurer", name)
 		}
 	}
-	if !zone[AwardZoneCaptured] || !zone[AwardZoneSecured] {
-		t.Error("zones : zone_captured / zone_secured absents de l'inventaire")
+	if !zone[StatZoneCaptures] || !zone[StatZoneSecures] {
+		t.Error("zones : zone_captures / zone_secures absents de l'inventaire")
 	}
-	if len(KnownAwards(ObjectiveTypeHill)) != 0 {
-		t.Error("hill : l'inventaire devrait etre vide, les emplacements ne sont pas nommes")
+	if len(KnownStats(ObjectiveTypeHill)) != 0 {
+		t.Error("hill : l'inventaire doit rester vide — aucun compteur de colline n'est replique")
 	}
 }

@@ -4,36 +4,8 @@ import "testing"
 
 // slotidentity_test.go — la verite terrain du pont slot d'entite -> joueur.
 //
-// L'oracle est `match_participants` (frags, morts, assistances), fige ici en dur pour
-// garder le test pur, comme le fait deja extract_test.go pour les rosters.
-
-// participants fige les lignes de match des HUIT joueurs des films de reference.
-var participants = map[string][]PlayerLine{
-	// 696a9d7c (Strongholds). Les xuid ne sont pas dans la base pour ce match : on
-	// identifie par un libelle stable, ce qui suffit — le test porte sur l'appariement,
-	// pas sur la forme de la cle.
-	"696a9d7c": {
-		{XUID: "p16-13-4", Kills: 16, Deaths: 13, Assists: 4},
-		{XUID: "p15-14-3", Kills: 15, Deaths: 14, Assists: 3},
-		{XUID: "p15-17-4", Kills: 15, Deaths: 17, Assists: 4},
-		{XUID: "p15-9-10", Kills: 15, Deaths: 9, Assists: 10},
-		{XUID: "madina", Kills: 15, Deaths: 11, Assists: 5},
-		{XUID: "p9-12-4", Kills: 9, Deaths: 12, Assists: 4},
-		{XUID: "p9-15-7", Kills: 9, Deaths: 15, Assists: 7},
-		{XUID: "p8-12-8", Kills: 8, Deaths: 12, Assists: 8},
-	},
-	// 1bc77d2e (CTF), avec les vrais xuid.
-	"1bc77d2e": {
-		{XUID: "2533274823110022", Kills: 24, Deaths: 13, Assists: 2}, // JGtm
-		{XUID: "2535433601851512", Kills: 20, Deaths: 15, Assists: 7},
-		{XUID: "2535421262359392", Kills: 16, Deaths: 13, Assists: 5},
-		{XUID: "2535469190789936", Kills: 16, Deaths: 15, Assists: 7}, // Chocoboflor
-		{XUID: "2535415145546162", Kills: 11, Deaths: 11, Assists: 2},
-		{XUID: "2533274858283686", Kills: 11, Deaths: 12, Assists: 13}, // Madina97294
-		{XUID: "2535436340554308", Kills: 10, Deaths: 18, Assists: 5},
-		{XUID: "2535456897775421", Kills: 6, Deaths: 17, Assists: 4},
-	},
-}
+// L oracle est celui des HUIT joueurs, defini dans named_test.go (oracle8) : le triplet
+// (frags, morts, assistances) de match_participants, joint aux compteurs d objectif.
 
 // TestSlotIdentityResolvesAllEightPlayers — l'appariement doit rendre les HUIT slots, et
 // aucun xuid ne doit apparaitre deux fois.
@@ -41,7 +13,8 @@ var participants = map[string][]PlayerLine{
 // C'est le test qui autorise le collage au rejeu 2D : sans lui, les evenements seraient
 // attribues par un numero de slot qui n'a pas le meme sens dans les deux mondes.
 func TestSlotIdentityResolvesAllEightPlayers(t *testing.T) {
-	for film, lines := range participants {
+	for _, film := range []string{"696a9d7c", "1bc77d2e"} {
+		lines := linesOf(film)
 		src, ok := newDiskFilmSource(t, film)
 		if !ok {
 			continue
@@ -71,7 +44,7 @@ func TestSlotIdentityMatchesKnownOwners(t *testing.T) {
 	if !ok {
 		t.Skip("film 1bc77d2e absent du cache local")
 	}
-	got := slotIdentityFrom(StatRecords(src), participants["1bc77d2e"])
+	got := slotIdentityFrom(StatRecords(src), linesOf("1bc77d2e"))
 	// slotOwners (named_test.go) donne slot 18 = JGtm, dont le xuid est etabli en §16.2.
 	for slot, want := range map[int]string{
 		18: "2533274823110022", // JGtm
@@ -116,15 +89,15 @@ func TestSlotIdentityRefusesAmbiguousTriplets(t *testing.T) {
 // est ECARTE, jamais attribue par defaut.
 func TestIdentifyNamedEventsDropsUnmatchedSlots(t *testing.T) {
 	evs := []NamedEvent{
-		{TimeMS: 500, Slot: 10, Award: AwardZoneCaptured, Comp: 20, Side: sideB},
-		{TimeMS: 900, Slot: 12, Award: AwardZoneSecured, Comp: 21, Side: sideA},
+		{TimeMS: 500, Slot: 10, Stat: StatZoneCaptures, Comp: 20, Side: sideB},
+		{TimeMS: 900, Slot: 12, Stat: StatZoneSecures, Comp: 21, Side: sideA},
 	}
 	got := IdentifyNamedEvents(evs, map[int]string{10: "xuid-a"})
 	if len(got) != 1 {
 		t.Fatalf("%d evenements identifies, attendu 1 (le slot 12 n'est pas apparie)", len(got))
 	}
-	if got[0].XUID != "xuid-a" || got[0].Award != AwardZoneCaptured {
-		t.Errorf("evenement = %s par %s, attendu zone_captured par xuid-a", got[0].Award, got[0].XUID)
+	if got[0].XUID != "xuid-a" || got[0].Stat != StatZoneCaptures {
+		t.Errorf("evenement = %s par %s, attendu zone_captured par xuid-a", got[0].Stat, got[0].XUID)
 	}
 }
 
@@ -136,7 +109,7 @@ func TestIdentifyNamedEventsOnRealFilm(t *testing.T) {
 		t.Skip("film 1bc77d2e absent du cache local")
 	}
 	evs := NamedEvents(src, ObjectiveTypeFlag)
-	identity := slotIdentityFrom(StatRecords(src), participants["1bc77d2e"])
+	identity := slotIdentityFrom(StatRecords(src), linesOf("1bc77d2e"))
 	got := IdentifyNamedEvents(evs, identity)
 
 	// Les 8 slots etant apparies, aucun evenement ne doit etre perdu.
@@ -152,7 +125,7 @@ func TestIdentifyNamedEventsOnRealFilm(t *testing.T) {
 	// JGtm doit porter ses 4 vols de drapeau, sous son xuid.
 	steals := 0
 	for _, e := range got {
-		if e.XUID == "2533274823110022" && e.Award == AwardFlagStolen {
+		if e.XUID == "2533274823110022" && e.Stat == StatFlagSteals {
 			steals++
 		}
 	}
