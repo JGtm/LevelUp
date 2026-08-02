@@ -57,6 +57,16 @@ func main() {
 		cmdCoverage(expand(os.Args[2:]))
 	case "props":
 		cmdProps(expand(os.Args[3:]), os.Args[2])
+	case "cratevar":
+		cmdCrateVar(expand(os.Args[3:]), os.Args[2])
+	case "cratedump":
+		cmdCrateDump(os.Args[2], os.Args[3])
+	case "crateobj":
+		cmdCrateObj(os.Args[2], os.Args[3:])
+	case "repname":
+		cmdRepName(expand(os.Args[3:]), os.Args[2])
+	case "names":
+		cmdNames(expand(os.Args[2:]))
 	case "findhash":
 		cmdFindHash(expand([]string{os.Args[2]}), os.Args[3:])
 	case "upz":

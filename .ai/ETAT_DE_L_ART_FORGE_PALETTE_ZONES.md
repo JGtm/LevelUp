@@ -135,6 +135,94 @@ haut, cf. Q1.3-ter).
 Sorties : `.ai/V7.5/dumps/forge_zones/palette_noms.csv` (4 213 entrees, hachage + nom quand
 il est craque) et `noms_craques_murmur3.txt` (les 33 correspondances hachage -> nom).
 
+### Q1.0-septies LA VARIANTE DE CAISSE EST NOMMEE — et elle refute l'espoir de la piste 1 *(2026-08-02, reprise)*
+
+> PISTE 1 du handoff, jouee integralement. Elle demandait : « chercher une carte ou deux
+> instances du MEME `type_id` portent des variantes DIFFERENTES ; cela prouverait que la
+> variante choisit l'objet ». **Les divergences existent. La conclusion esperee est fausse.**
+
+**Le balayage.** `tmp_forgeshape cratevar` lit le champ `/#3[]/#8/#1[]/#0[]/#0` sur les
+**380 464 objets** des 199 cartes : **35 239 porteurs**, **49 valeurs distinctes** non nulles.
+Chemin verifie sur pieces avant tout comptage (`cratedump` sur Vagabond objet 357).
+
+**Les divergences existent** — 51 couples (carte, type) portent au moins deux variantes. La
+plus nette : `catalyst_map.mvar`, type `493070541`, **deux** variantes sur la meme carte.
+
+**LA VARIANTE EST UN murmur3 DE NOM SIMPLE.** Passee au craqueur, elle rend d'abord
+`equipment` — qui est **exactement** la variante partagee par les trois grenades du groupe
+`eqip` (frag, plasma, spike) — puis `default`, porte par `skull_weapon` et des centaines de
+`bloc`. Deux ancrages semantiques independants, pour 0,000 collision fortuite attendue.
+
+**LES QUATRE ENTREES « EMPLACEMENT » SONT NOMMEES, ET L'ENSEMBLE EST COMPLET :**
+
+| entree de palette | Crate Variant | nom craque |
+|---|---|---|
+| `1486653438` | `-88833402` | **`banished_kinetic`** |
+| `1882451900` | `-1319554708` | **`banished_plasma`** |
+| `-1062552774` | `-224029073` | **`banished_shock`** |
+| `801517767` | `-257275188` | **`banished_hardlight`** |
+
+Les **quatre** classes de degat Banished de Halo Infinite, sans trou et sans doublon. Quatre
+collisions fortuites tombant pile sur l'ensemble complet d'une taxonomie du jeu : l'esperance
+de la passe entiere valait 0,137.
+
+**CE QUE CELA REFUTE.** La piste 1 esperait que la variante soit le selecteur d'objet. Le
+recoupement terrain dit le contraire :
+
+| carte | objets | variante | reapparition | lecture |
+|---|---|---|---|---|
+| **Vagabond** | `1486653438` a z=51,4 **et** `-1062552774` a z=54,8 | **`banished_kinetic` pour les DEUX** | 120 s | l'utilisateur atteste un lance-roquettes ET un camouflage : **la variante ne les separe pas** |
+| **Catalyst** | `493070541` x3 | `banished_shock` x2 (symetriques) + `banished_plasma` x1 | 90 s | la variante varie PAR OBJET, mais c'est une famille d'arme, pas un objet |
+| **Cliffhanger** | `1882451900` x4 | `banished_plasma` | 120 s | dont **un a `up.z = 0,046`** : le **RATELIER MURAL** que l'utilisateur signalait, enfin epingle |
+
+**Verdict : la variante de caisse est une FAMILLE (classe de degat, style, materiau), pas
+l'identite de l'objet pose.** Le selecteur reste le `Representation Name`.
+
+**UN CINQUIEME TYPE D'EMPLACEMENT, absent de la table du handoff** : `493070541`, 8 cartes,
+102 instances. C'est lui qui porte les emplacements de Catalyst.
+
+### Q1.0-septies-bis L'ESPACE DE NOMMAGE DES OBJETS EST OUVERT — 30 noms de plus
+
+Le meme craqueur, applique au champ **`/#3[]/#8/#24[]/#1/#0`** (848 valeurs distinctes sur
+les 199 cartes), etablit deux choses.
+
+**1. Les deux champs partagent UN SEUL espace de nommage.** `banished`, `default`, `forge`,
+`apple`, `base_green`, `base_grime` apparaissent dans les deux. Ce sont des StringID.
+
+**2. Ce champ NOMME L'OBJET.** Passe au vocabulaire du binaire a profondeur 1 — **136 906
+essais, 0,027 collision fortuite attendue, 26 correspondances** :
+
+| categorie | noms |
+|---|---|
+| vehicules | `warthog` `mongoose` `ghost` `banshee` `scorpion` `wasp` `phantom` |
+| armes | `assault_rifle` `sniper_rifle` `bandit` `commando_rifle` |
+| grenades | `frag_grenade` `plasma_grenade` `spike_grenade` |
+| tourelles | `shade_turret` `plasma_turret` `unsc_turret` |
+| styles / etats | `default` `forge` `forge_mp` `campaign` `banished` `emissive` `white` `dirt` `mossy` `glacier` `space` `locked` `closed` `arrow` `apple` `fo_ai_zone` `base_green` `base_yellow` `base_grime` |
+
+**Le controle croise gratuit** : `1192059526 = skull_weapon` est **deja** dans la table de
+`mapvar/objectives.go`, atteinte par un chemin totalement independant. La recette est validee
+une seconde fois.
+
+**CE QUI RESISTE, ET C'EST DESORMAIS BIEN BORNE.** Les quatre `Representation Name` des
+emplacements (`-1412311642`, `-245254093`, `-1351408675`, `-219174009`) restent non craques
+apres **cinq vocabulaires independants** :
+
+| vocabulaire | profondeur | essais | correspondances |
+|---|---:|---:|---:|
+| binaire complet (136 906 mots) | 1 | 136 906 | 0 |
+| binaire alphabetique (43 483) | 2 | 1 890 814 772 | 1, rejetee (`xvw_rmc`) |
+| interface Forge (2 648) | 2 | 7 014 552 | 0 |
+| Halo curate (327) | 3 | 35 073 039 | 0 |
+| **noms d'auteurs de cartes** (2 762, vivier neuf) | 2 | 7 631 406 | 0 |
+
+Les jetons `rocket`, `launcher`, `active`, `camo`, `camouflage`, `overshield`, `powerup`,
+`spawner`, `pad`, `rack`, `weapon` etaient tous dans le vocabulaire curate a profondeur 3 :
+`rocket_launcher`, `active_camo` et `powerup_active_camo` ont donc ete **essayes et refutes**.
+
+Sorties : `noms_craques_stringid.txt` (table complete + rejets nommes),
+`crate_variants.txt` (balayage), `representation_names.csv` (les 848).
+
 ### Q1.0-sexies LE FORGE KIT ET L'APPARIEMENT `fosp` — deux impasses, mesurees
 
 **Le `Forge Kit` (groupe `kit!`) ne mene nulle part ici.** Sa definition fait 337 Ko et porte
