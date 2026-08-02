@@ -143,13 +143,39 @@ variante `banished_kinetic` et le même délai de 120 s. La variante est une **f
 auteurs de cartes). `rocket_launcher`, `active_camo` et `powerup_active_camo` ont été
 essayés à profondeur 3 et **réfutés** — ne pas les rejouer.
 
-### Les deux pistes qui restent, par coût croissant
+### PISTE 2 — ÉCARTÉE SUR MESURE. Il manque un DICTIONNAIRE, pas un SCHÉMA.
 
-1. **Les 478 autres définitions de tag** du dépôt Z-15 — notamment le groupe qui porte la
-   liste des variantes de caisse. `weap.xml` (87 Ko) et `eqip.xml` (72 Ko) n'ont pas été lus.
-2. **Ghidra, correctement ciblé** : ne pas chercher la constante de hachage mais le
-   **parseur du tag `food`**, en partant des références au groupe `food` (fourCC 0x666F6F64)
-   ou de la vtable du chargeur de tag. C'est une session de rétro-ingénierie à part entière.
+> Détail : état de l'art §Q1.0-nonies.
+
+Son but d'origine — énumérer les variantes de caisse — est atteint autrement. Son but
+résiduel a été testé : une définition de tag décrit une **disposition de champs**, or on
+sait déjà où sont les champs (diff différentiel des quatre `food`, à l'octet près :
+`Representation Name` en 1296, `Crate Variant` en 708 et 1300). Le blocage est « quelle
+chaîne hache vers `-1412311642` » — **un schéma ne répond jamais à ça**.
+
+Et le mur est identique un cran plus bas : le tag `weap` référencé par les quatre
+(`-370671751`, 14 272 o) ne porte **aucun nom** — 49 suites imprimables, toutes des
+marqueurs fourCC en petit-boutiste.
+
+**Trouvaille au passage, publiée plutôt que comblée** : une **troisième** valeur d'identité,
+aux offsets 688 et 732, une par entrée — `1067333871` / `-2060575876` / `1128236838`. Ni un
+murmur3 de nom (0 correspondance, 3 vocabulaires), ni un identifiant de tag (`introuvable`
+sur les 88 modules). Un troisième espace de nommage est en jeu.
+
+**Et une correction de nature** : `493070541` n'est pas une entrée de palette `food` mais un
+tag **`weap` de 14 088 octets** posé directement sur Catalyst.
+
+### Les pistes qui restent, par valeur décroissante
+
+1. **L'attribution par observation** — et c'est la seule qui ne demande aucune percée. Le
+   `Representation Name` est un identifiant STABLE : on s'en sert sans connaître son libellé
+   humain, et une seule confrontation au Théâtre nomme une entrée pour toujours. Le relevé
+   terrain de Vagabond en épingle déjà deux (le bas / le haut).
+2. **Un dictionnaire communautaire couvrant le build Forge** — les trois essayés ne le
+   couvrent pas (intersection **exactement 0** sur 4 235 `food`).
+3. **Ghidra, correctement ciblé** : non pas la constante de hachage mais le **parseur du tag
+   `food`** (fourCC 0x666F6F64, ou la vtable du chargeur). Session de rétro-ingénierie à part
+   entière, et sans garantie que la table de résolution soit encore dans le binaire.
 
 ---
 

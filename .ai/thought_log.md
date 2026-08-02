@@ -1,3 +1,42 @@
+## [2026-08-02] La piste 2 est écartée sur mesure — il manque un dictionnaire, pas un schéma
+
+**Statut** : Complété. Branche `feat/re-mode-score`. État de l'art : section **Q1.0-nonies**.
+Handoff mis à jour (piste 2 écartée, pistes restantes réordonnées par valeur).
+
+**Décision technique principale** : plutôt que de rejouer la piste 2 du handoff (lire
+`weap.xml` / `eqip.xml` du dépôt Z-15), tester ce qu'elle pourrait rendre. Une définition de
+tag décrit une DISPOSITION DE CHAMPS ; il fallait vérifier si le blocage est un problème de
+disposition ou de vocabulaire.
+
+**Résultats observés** :
+
+- **Diff différentiel des quatre tags `food`** (1 388 o, identiques à 40 octets près) : les
+  dix mots qui diffèrent sont localisés à l'octet près. `Representation Name` en 1296,
+  `Crate Variant` en 708 et 1300, le `type_id` en 728/736/752, l'en-tête en 16/20. **On sait
+  donc déjà où sont les champs** — une définition n'apprendrait rien là-dessus.
+- **Le mur est identique un cran plus bas** : le tag `weap` référencé par les quatre
+  emplacements, `-370671751`, fait 14 272 octets et ne porte **aucun nom** — 49 suites
+  imprimables, toutes des marqueurs fourCC en petit-boutiste (`tam ` = `mat `, `edom` =
+  `mode`, `effe`, `cshd`). Parser ce tag avec `weap.xml` rendrait des champs, pas des
+  libellés.
+- **Trouvaille neuve, publiée plutôt que comblée** : une TROISIÈME valeur d'identité, aux
+  offsets 688 et 732, une par entrée — `1067333871` / `-2060575876` / `1128236838`. Ce n'est
+  ni un murmur3 de nom (0 correspondance sur trois vocabulaires, espérance de collision
+  <= 0,057) ni un identifiant de tag (`gid introuvable` sur les 88 modules). Un troisième
+  espace de nommage est en jeu, vraisemblablement des identifiants d'asset.
+- **Correction de nature** : `493070541` n'est pas une entrée de palette `food` mais un tag
+  **`weap` de 14 088 octets** posé directement sur Catalyst. Les quatre autres sont bien des
+  `food`.
+
+**Conclusion / prochaine étape** : le blocage est « quelle chaîne hache vers
+`-1412311642` », et un schéma ne répond jamais à cette question — seul un dictionnaire le
+peut. Piste 2 écartée. Les pistes restantes, par valeur décroissante : (1) l'attribution par
+OBSERVATION, la seule qui ne demande aucune percée — le `Representation Name` est un
+identifiant stable, on s'en sert sans connaître son libellé, et une seule confrontation au
+Théâtre nomme une entrée pour toujours ; (2) un dictionnaire communautaire couvrant le build
+Forge, les trois essayés ne le couvrant pas ; (3) Ghidra sur le parseur du tag `food`, sans
+garantie que la table de résolution soit encore dans le binaire.
+
 ## [2026-08-02] Le contrat des formes de zone est LIVRÉ — schema_version 2, régénéré hors ligne
 
 **Statut** : Complété. Branche `feat/re-mode-score`. État de l'art : section **LE CONTRAT DE
