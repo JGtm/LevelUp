@@ -57,6 +57,8 @@ func main() {
 		cmdCoverage(expand(os.Args[2:]))
 	case "props":
 		cmdProps(expand(os.Args[3:]), os.Args[2])
+	case "findhash":
+		cmdFindHash(expand([]string{os.Args[2]}), os.Args[3:])
 	case "upz":
 		cmdUpZ(expand([]string{os.Args[2]}), os.Args[3:])
 	case "types":

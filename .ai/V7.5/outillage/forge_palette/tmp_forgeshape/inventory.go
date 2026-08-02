@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"levelup/go-api/internal/analysis/replay/mapvar"
@@ -208,4 +209,86 @@ func topValues(m map[string]int, k int) string {
 		parts = append(parts, fmt.Sprintf("%s(%d)", e.v, e.n))
 	}
 	return strings.Join(parts, " ")
+}
+
+// cmdFindHash cherche des valeurs entieres N'IMPORTE OU dans l'arbre Bond de chaque
+// variante de carte, et dit ou elles apparaissent (chemin de champ). Sert a savoir si un
+// StringID de la palette est aussi pose sur l'objet dans la carte.
+func cmdFindHash(paths []string, wanted []string) {
+	want := map[int64]string{}
+	for _, w := range wanted {
+		if v, err := strconv.ParseInt(strings.TrimSpace(w), 10, 64); err == nil {
+			want[v] = w
+		}
+	}
+	hits := map[string]int{}
+	files := map[string]map[string]bool{}
+	var walk func(path string, v mapvar.Value, file string, depth int)
+	walk = func(path string, v mapvar.Value, file string, depth int) {
+		if depth > 8 {
+			return
+		}
+		switch v.Type {
+		case 14, 15, 16, 17:
+			if w, ok := want[v.Int]; ok {
+				k := w + " @ " + path
+				hits[k]++
+				if files[k] == nil {
+					files[k] = map[string]bool{}
+				}
+				files[k][file] = true
+			}
+		case 2, 3, 4, 5, 6:
+			if w, ok := want[int64(v.Uint)]; ok {
+				k := w + " @ " + path
+				hits[k]++
+				if files[k] == nil {
+					files[k] = map[string]bool{}
+				}
+				files[k][file] = true
+			}
+		case 10:
+			ids := make([]int, 0, len(v.Fields))
+			for id := range v.Fields {
+				ids = append(ids, int(id))
+			}
+			sort.Ints(ids)
+			for _, id := range ids {
+				walk(fmt.Sprintf("%s/#%d", path, id), v.Fields[uint16(id)], file, depth+1)
+			}
+		case 11, 12:
+			for _, it := range v.Items {
+				walk(path+"[]", it, file, depth+1)
+			}
+		}
+	}
+	nobj := 0
+	for _, p := range paths {
+		buf, err := os.ReadFile(p)
+		if err != nil {
+			continue
+		}
+		root, err := mapvar.DecodeRoot(buf)
+		if err != nil {
+			continue
+		}
+		base := filepath.Base(p)
+		walk("", root, base, 0)
+		if objs, ok := root.Field(3); ok {
+			nobj += len(objs.Items)
+		}
+	}
+	fmt.Printf("objets balayes : %d, valeurs cherchees : %d\n", nobj, len(want))
+	if len(hits) == 0 {
+		fmt.Println("AUCUNE occurrence, nulle part dans l'arbre Bond des variantes.")
+		return
+	}
+	ks := make([]string, 0, len(hits))
+	for k := range hits {
+		ks = append(ks, k)
+	}
+	sort.Strings(ks)
+	for _, k := range ks {
+		fmt.Printf("  %-40s %d occurrences, %d cartes\n", k, hits[k], len(files[k]))
+	}
 }
