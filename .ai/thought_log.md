@@ -38,10 +38,23 @@ pour le craqueur murmur3 écrit plus tôt dans la session.
   en bas et le camouflage en haut : ces deux entrées sont donc les deux emplacements, et
   leur second mot les distingue.
 
-**Conclusion / prochaine étape** : nommer les quatre emplacements. Deux voies : élargir le
-dictionnaire (les noms composés du binaire, pas seulement les chaînes littérales), ou Ghidra
-— trouver le lecteur de ce champ dans le parseur de tag `food`, ce que la connexion MCP
-permet désormais (projet `HI`, 196 outils).
+**Les quatre emplacements résistent — quatre voies essayées, quatre négatives**, écrites en
+section Q1.0-bis pour qu'on ne les rejoue pas : dictionnaire élargi à 105 291 mots (0),
+le second mot testé comme nom (0), vocabulaire armes/power-ups en combinaisons jusqu'à
+profondeur 3 sur 666 159 essais (0), et Ghidra sur la constante murmur3 `0xCC9E2D51` —
+plus de 700 occurrences, trop diffus pour cibler. L'hypothèse économique restante : la
+paire `(mot0, mot1)` de ces quatre-là est un **identifiant 64 bits**, pas deux noms.
+
+**Test du râtelier, sur l'avertissement de l'utilisateur** (« des râteliers muraux pour les
+armes de base, ne pas confondre ») : un râtelier est fixé au mur, donc `Up` non vertical.
+Mesuré sur les 199 cartes — les quatre emplacements sont posés **au sol à 89-100 %**, aucun
+n'est un râtelier. Les râteliers sont un autre type d'objet, encore non identifié ; la
+confusion n'a pas eu lieu, et c'est mesuré plutôt que supposé.
+
+**Conclusion / prochaine étape** : nommer ces quatre-là demande de retrouver le **parseur du
+tag `food`** dans le binaire — une session de rétro-ingénierie Ghidra à part entière, pas une
+sonde. Le reste de la palette, lui, est nommable dès maintenant par la recette de Q1.0 : le
+rendement dépend uniquement de la richesse du dictionnaire.
 
 ---
 
