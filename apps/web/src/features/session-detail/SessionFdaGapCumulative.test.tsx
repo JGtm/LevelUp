@@ -169,6 +169,15 @@ describe('SessionFdaGapCumulative — masquage capability', () => {
     expect(await screen.findByTestId('echarts-mock')).toBeInTheDocument()
   })
 
+  // v7.3 lot 2, item 2.3a : le graphe n'avait AUCUNE aide ; le texte est partagé
+  // avec l'instance Timeseries (clé commune `common.charts.fda_gap_tooltip`).
+  it('aide ⓘ rendue à côté du titre', async () => {
+    setTitleCaps(['expected_stats'])
+    render(<SessionFdaGapCumulative title="Écart cumulé au FDA attendu" matches={matches} />)
+    await screen.findByTestId('echarts-mock')
+    expect(screen.getByRole('button', { name: /info/i })).toBeInTheDocument()
+  })
+
   it('capability expected_stats absente → non rendu (null)', () => {
     setTitleCaps(['ranked'])
     const { container } = render(

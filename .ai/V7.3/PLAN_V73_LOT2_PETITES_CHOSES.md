@@ -202,17 +202,32 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
 
 ## Phase 2 — Petites UI
 
-- [ ] 2.1 **Médailles/citations à peu d'éléments** :
+- [ ] 2.1 (code livré le 2026-08-02 — reste revue navigateur au gate 2. Plancher
+      remplacé par MEDALS_CARD_MIN_BODY_HEIGHT=96 + flex, égalisation par la grille
+      du parent conservée ; 4 tests.)
+      **Médailles/citations à peu d'éléments** :
       `features/match-view/MatchSummaryMedalsAndCitations.tsx` — la co-localisation
       2 colonnes existe déjà ; le problème est le plancher `CARD_HEIGHT = 280`.
       Hauteur adaptative quand peu d'éléments (les deux cartes se compactent sur la
       rangée). Revue navigateur sur un match pauvre en médailles.
-- [ ] 2.2 **(i) Bonus** sur le graphe « Frags / Morts » de la page Escouade
+- [ ] 2.2 (code livré le 2026-08-02 — reste revue navigateur au gate 2. ⓘ posé sur
+      le bouton de légende « Bonus » (l'élément expliqué), prop info optionnelle de
+      SquadToggleLegendChart, textes FR/EN ADR 0006 validés orchestrateur ; 4 tests.)
+      **(i) Bonus** sur le graphe « Frags / Morts » de la page Escouade
       (`features/squad/charts/squadPerformanceLineCharts.ts`, série `Bonus` masquée
       par défaut) : InfoTooltip FR/EN expliquant Bonus = assistances/3 (ADR 0006).
       Si le même composant sert d'autres pages, elles en héritent (pas de travail
       supplémentaire hors périmètre).
-- [ ] 2.3 **FDA gap + intensité — pédagogie sans refonte** (choix utilisateur : pas
+- [ ] 2.3 (code livré le 2026-08-02 — reste revue navigateur au gate 2. (a) texte
+      partagé FdaGapTooltipText branché sur les 2 instances + (fold découverte,
+      délégation utilisateur) la 3e surface SquadFdaGapCumulativeCard ; (b) tooltip
+      intensité réécrit sans jargon + (fold) la 3e instance Timeseries alignée sur
+      le même texte ; (c) helper hoverRevealSymbol centralisé (cause du figé :
+      symbol 'none' ne s'affiche pas à l'emphase) appliqué aux 4 courbes ; (d)
+      courbe Équipe dès 3 panneaux via rows['all'] du back (population sans filtre
+      joueur, même helper phaseProfile — pas de moyenne de médianes), dégradation
+      silencieuse sans 'all'. +25 tests.)
+      **FDA gap + intensité — pédagogie sans refonte** (choix utilisateur : pas
       d'artefact) : (a) InfoTooltip pédagogique sur les 2 instances du FDA gap
       (`features/timeseries/TimeseriesFdaGapTrend.tsx`,
       `features/session-detail/SessionFdaGapCumulative.tsx`) — il n'en existe aucun
@@ -443,6 +458,16 @@ AVANT merge, pas seulement un rejeu local).
 - [2026-08-02, agent 1.5/1.6] Flakes qualifiés (verts au rejeu isolé) :
   `TestStartImport_HappyPathReturns202WithJobID` (cleanup TempDir Windows),
   `TestCareerLive_NilAPIResponse_NotCached` (timeout 2 s sous charge).
+- [2026-08-02, agent 2.1-2.3] `TimeseriesKdaTrend.tsx` est le pendant exact de 2.2
+  côté Timeseries (série Bonus masquée, libellé 'Bonus' en dur non i18n, aucune
+  aide) — candidat passe post-lot, même patron SquadToggleLegendChart.
+- [2026-08-02, agent 2.1-2.3] Le libellé « Bonus » sert aussi de clé de masquage
+  dans les builders (`hiddenTypes.has('Bonus')`) : couplage clé/label documenté en
+  commentaire, casserait si quelqu'un localisait la clé — garde-rail grep candidat.
+- [2026-08-02, agent 2.1-2.3, TRAITÉES en fold par l'orchestrateur (délégation
+  découvertes)] : 3e instance du tooltip d'intensité (Timeseries) alignée sur le
+  registre simple ; 3e surface FDA gap (SquadFdaGapCumulativeCard) branchée sur
+  FdaGapTooltipText — 2 registres ne coexistent plus sur les mêmes charts.
 - [2026-08-02, orchestrateur] Retombée du fix 1.3 corrigée par l'orchestrateur :
   `TestCareerRepo_GetRelationsHeatmap` (integration) attendait des heures UTC et
   dépendait du fuseau machine → ouvert via le chemin production épinglé UTC

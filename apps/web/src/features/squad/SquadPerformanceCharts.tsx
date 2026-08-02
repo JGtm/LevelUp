@@ -36,6 +36,8 @@ interface I18nLabels {
   killsDeathsTitle: string
   killsLabel: string
   deathsLabel: string
+  bonusLabel: string
+  bonusInfo: string
   assistsTitle: string
   kdaTitle: string
   accuracyTitle: string
@@ -259,7 +261,10 @@ export function SquadPerformanceCharts({
           types={[
             { key: labels.killsLabel, label: labels.killsLabel },
             { key: labels.deathsLabel, label: labels.deathsLabel },
-            { key: 'Bonus', label: 'Bonus' },
+            // Clé 'Bonus' NON localisée : c'est le contrat du builder
+            // (`hiddenTypes.has('Bonus')` dans buildKillsDeathsButterflyOption)
+            // et de `initialHiddenTypes` ci-dessous. Seul le libellé est i18n.
+            { key: 'Bonus', label: labels.bonusLabel, info: labels.bonusInfo },
           ]}
           initialHiddenTypes={new Set(['Bonus'])}
           buildOption={buildKillsDeaths}
