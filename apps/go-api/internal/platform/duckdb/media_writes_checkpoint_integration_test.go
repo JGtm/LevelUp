@@ -55,6 +55,9 @@ func createSharedSocialSchemaForMediaTests(t *testing.T) *DB {
 			thumbnail_path VARCHAR,
 			liked BOOLEAN DEFAULT FALSE,
 			liked_at TIMESTAMP,
+			-- status : présente en prod (ALTER de steps_shared_social) et filtrée par
+			-- toute lecture applicative depuis l'item 3.1 (MediaVisiblePredicate).
+			status VARCHAR,
 			mtime TIMESTAMP WITH TIME ZONE,
 			indexed_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 		);

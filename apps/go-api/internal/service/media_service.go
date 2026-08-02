@@ -35,6 +35,7 @@ type MediaService struct {
 	acquireWriter func() (*dblease.LeasedWriter, error) // optionnel
 	jobStore      *jobs.Store                           // optionnel : si nil, pas de transcoding HLS
 	feedBump      func()                                // optionnel : notifie la galerie (BumpMediaFeedVersion)
+	fileRemover   port.MediaFileRemover                 // optionnel : si nil, DeleteMedia refuse d'agir
 }
 
 // MediaOption configure un MediaService à la construction.

@@ -8,6 +8,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/games/halo_infinite"
+	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
@@ -55,7 +56,25 @@ func (r *ServiceRegistry) Media(ctx context.Context, slug string) (port.MediaSer
 		repo = repo.WithAssetURL(a)
 	}
 	return service.NewMediaService(repo, r.timezone,
-		service.WithMediaWriterAcquirer(mediaWriterAcquirerFor(pdb))), nil
+		service.WithMediaWriterAcquirer(mediaWriterAcquirerFor(pdb)),
+		service.WithMediaFileRemover(r.mediaFileRemover())), nil
+}
+
+// mediaFileRemover construit le port de retrait disque des médias (item 3.1).
+// La base de captures est relue à chaque suppression (réglage modifiable à
+// chaud) ; sans settings store, le remover ne traite que les chemins absolus
+// legacy et trace les autres.
+func (r *ServiceRegistry) mediaFileRemover() port.MediaFileRemover {
+	return ops.NewOSMediaFileRemover(func() string {
+		if r.settingsStore == nil {
+			return ""
+		}
+		cfg, err := r.settingsStore.Load()
+		if err != nil {
+			return ""
+		}
+		return cfg.MediaCapturesBaseDir
+	})
 }
 
 // MediaUpload retourne un MediaService + métadonnées joueur pour l'upload.

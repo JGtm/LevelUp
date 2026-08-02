@@ -306,7 +306,28 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
 
 ## Phase 3 — Features et unifications
 
-- [ ] 3.1 **Suppression de médias** (propriétaire + admin, définitive, confirmation) :
+- [ ] 3.1 (code livré le 2026-08-02, gates en re-vérification orchestrateur.
+      (a) design consigné : fichiers disque supprimés définitivement (seule garantie
+      « plus servi », ServeMediaFile ne consulte pas la base) ; `media_files` en
+      SOFT-DELETE `status='deleted'` — jamais DELETE, 4 index ART + précédent
+      FATAL-invalidation prod du 2026-06-19 — colonne hors index, COALESCE NULL-safe,
+      prédicat `MediaVisiblePredicate` centralisé AVEC garde-rail grep (7 lectures
+      filtrées) ; likes/associations append-only = ORPHELINS INVISIBLES, zéro
+      écriture (tombstone rejeté : événements sociaux jamais produits = historique
+      falsifié) ; ordre base→disque (pire cas = fichier résiduel idempotent, pas de
+      média fantôme) ; CommitWithCheckpoint (un WAL perdu ferait réapparaître un
+      média aux fichiers détruits) ; résurrection au re-dépôt livrée (hashs
+      supprimés exclus de loadKnownHashes). (b) admin : mécanisme antérieur
+      RequireAdmin/RoleAdmin réutilisé, part admin LIVRÉE (pas de [!]) ; subtilité
+      traitée : ownership sur le player_slug DU MÉDIA (une galerie agrège plusieurs
+      auteurs) et les co-membres de groupe ne peuvent PAS supprimer (couche B ADR
+      0029). (c) DELETE gardé (ratchet bare_routes PASS sans allowlist), handler
+      mince, premier port filesystem média. (d) modale de confirmation FR/EN,
+      invalidation mediaBase, galerie uniquement. Matrice httptest 7/7, 39 tests,
+      contrat 204 chemins (0 perdu). Incident agent traité à la racine (9 fixtures
+      sans status). Revue navigateur IMPOSSIBLE en local (0 média — même constat
+      que 1.5) → vérif prod ops 4.1.)
+      **Suppression de médias** (propriétaire + admin, définitive, confirmation) :
       (a) design sur pièces AVANT code : modèle de stockage réel (fichiers disque +
       `media_likes` append-only sur shared_social) => sémantique de suppression des
       likes du média supprimé compatible ADR 0022/0026 (pas d'UPDATE/DELETE sur
@@ -525,6 +546,22 @@ AVANT merge, pas seulement un rejeu local).
 - [2026-08-02, agent 2.4/2.5] Tri non atteignable au clavier sur MatchScoreboard,
   MatchEncountersTable, DetectionsPanel (onClick sur th sans bouton, dette
   préexistante) ; clés i18n mortes `explorer.matches.col_tier` / `col_delta_rank`.
+- [2026-08-02, agent 3.1] **Trou du garde-rail anti-ART** : `media_likes_history` et
+  `media_match_associations_history` (append-only, vues `_latest`) sont ABSENTES de
+  `tablesProtegees` — rien n'interdit un DELETE dessus. Les ajouter tel quel casserait
+  par faux positif file-level (`ON CONFLICT` legacy dans shared_social_persister.go,
+  cas déjà documenté pour player_records_history). Recommandation : garde-rail DELETE
+  statement-level dédié, passe post-lot.
+- [2026-08-02, agent 3.1] Branche legacy morte : `mediaCandidatesLegacyFromClause`
+  court-circuitée dès que SharedSocial == nil — candidat suppression (règle 7).
+- [2026-08-02, agent 3.1] `hls_path` n'existe que via l'ALTER runtime
+  d'ensureMediaTables (absente de la migration) — lecture tolérante requise partout.
+- [2026-08-02, agent 3.1] Suppression offerte depuis la GALERIE uniquement
+  (MatchMediaTab et RecentMediaRail montent CoverFlowModal sans onDelete) — choix
+  minimal délibéré, à étendre sur demande utilisateur.
+- [2026-08-02, agent 3.1] `MediaLikeRequest`/`MediaLikeResponse` restent des types
+  manuels côté web alors que les voisins dérivent du contrat — à dériver en passe
+  post-lot.
 - [2026-08-02, orchestrateur] Retombée du fix 1.3 corrigée par l'orchestrateur :
   `TestCareerRepo_GetRelationsHeatmap` (integration) attendait des heures UTC et
   dépendait du fuseau machine → ouvert via le chemin production épinglé UTC

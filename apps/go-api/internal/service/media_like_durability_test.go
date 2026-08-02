@@ -56,7 +56,7 @@ func socialDBForLikeTest(t *testing.T) (*duckdb.DB, string) {
 			id INTEGER DEFAULT nextval('media_id_seq') PRIMARY KEY,
 			player_slug VARCHAR, file_path VARCHAR NOT NULL UNIQUE, file_name VARCHAR,
 			kind VARCHAR DEFAULT 'video', thumbnail_path VARCHAR,
-			liked BOOLEAN DEFAULT FALSE, liked_at TIMESTAMP,
+			liked BOOLEAN DEFAULT FALSE, liked_at TIMESTAMP, status VARCHAR,
 			mtime TIMESTAMP WITH TIME ZONE, indexed_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 		);
 		CREATE SEQUENCE IF NOT EXISTS media_likes_history_id_seq START 1;

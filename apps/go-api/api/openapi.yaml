@@ -3382,6 +3382,36 @@ paths:
       summary: Match précédent / suivant pour navigation
       tags:
         - match-view
+  /players/{player_slug}/media:
+    delete:
+      operationId: deleteMedia
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+        - explode: false
+          in: query
+          name: file_path
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaDeleteResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Supprime définitivement un média (propriétaire ou admin)
+      tags:
+        - media
   /players/{player_slug}/media/associate:
     post:
       operationId: postMediaAssociate
@@ -15274,6 +15304,21 @@ components:
             - "null"
       required:
         - authors
+      type: object
+    MediaDeleteResponse:
+      additionalProperties: false
+      properties:
+        deleted:
+          type: boolean
+        file_path:
+          type: string
+        files_removed:
+          format: int64
+          type: integer
+      required:
+        - file_path
+        - deleted
+        - files_removed
       type: object
     MediaFilterOptions:
       additionalProperties: false
