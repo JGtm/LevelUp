@@ -100,6 +100,7 @@ var publicRoutesAllowlist = map[string]string{
 	"DELETE /static/*":                "assets statiques (file-server chi, toutes méthodes)",
 	"CONNECT /static/*":               "assets statiques (file-server chi, toutes méthodes)",
 	"TRACE /static/*":                 "assets statiques (file-server chi, toutes méthodes)",
+	"QUERY /static/*":                 "assets statiques (file-server chi, toutes méthodes) — méthode QUERY ajoutée par go-chi 5.3.1 (bump 2026-08-02)",
 	"GET /static/commendations/*":     "assets statiques commendations",
 	"HEAD /static/commendations/*":    "assets statiques commendations (HEAD)",
 	"OPTIONS /static/commendations/*": "assets statiques commendations (preflight)",
@@ -109,6 +110,7 @@ var publicRoutesAllowlist = map[string]string{
 	"DELETE /static/commendations/*":  "assets statiques commendations (file-server chi, toutes méthodes)",
 	"CONNECT /static/commendations/*": "assets statiques commendations (file-server chi, toutes méthodes)",
 	"TRACE /static/commendations/*":   "assets statiques commendations (file-server chi, toutes méthodes)",
+	"QUERY /static/commendations/*":   "assets statiques commendations (file-server chi, toutes méthodes) — méthode QUERY ajoutée par go-chi 5.3.1 (bump 2026-08-02)",
 }
 
 // routeIsGuarded — vrai si la chaîne de middlewares de la route contient au moins

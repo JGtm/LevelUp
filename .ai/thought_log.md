@@ -1699,6 +1699,47 @@ persisters, et les correctifs de `weapon_scanner.go` / `backfill_weapons.go` (cf
   147 → 443 tirs, non-régression 125/125). Ce repli est une INFÉRENCE et devra être marqué comme
   tel à l'écran.
 
+## [2026-07-27] Tri des 5 PR Dependabot ouvertes + plan pour les 3 restantes
+
+**Statut** : Complété (tri + merge), plan préparé (non exécuté). Demande utilisateur :
+évaluer la pertinence des branches Dependabot en remote avant de les merger.
+
+**Décision technique principale** : audit CI réel par branche (`gh run list`,
+`gh run view --log-failed`) plutôt qu'un merge aveugle. 5 PR ouvertes (#66-#70).
+3 entièrement vertes mergées same-day : #66 `actions/checkout` 6.0.2→6.1.0, #68 groupe
+npm-minor-patch (20 paquets : react 19.2.8, tanstack query/router, vite, vitest, eslint,
+tailwind, playwright, msw, knip...), #69 `@testing-library/jest-dom` 6.9.1→7.0.0 (major,
+CI verte malgré tout). Les 3 sont sur `main` (69f6713f1, 2d9d7b335, 46e90a07f) —
+déploiement auto déclenché.
+
+**2 PR bloquées, cause identifiée (pas des flakes)** :
+- **#67** (10 paquets Go dont `duckdb-go/v2` 2.10504→2.10505, `go-chi` 5.3.0→5.3.1) :
+  CI rouge sur `TestBareRoutesRatchet_NoUnguardedRouteOutsideAllowlist` — le bump chi fait
+  apparaître la méthode HTTP `QUERY` sur `/static/*` (déjà public "toutes méthodes"),
+  juste absente de l'allowlist. Fix trivial identifié (2 lignes), pas fait ici (délégué
+  au plan, exécution différée par l'utilisateur).
+- **#70** (TypeScript 6.0.3→7.0.2, major) : CI rouge, `baseUrl` supprimé par TS7
+  (TS5102/TS5090). Découverte additionnelle plus bloquante : `typescript-eslint` 8.65.0
+  (déjà mergé via #68) a un peerDependency `typescript: ">=4.8.4 <6.1.0"` — TS7 est HORS
+  range supporté. Ce lot ne peut pas avancer avant que `typescript-eslint` publie un
+  support TS7 (à revérifier au moment de l'exécution).
+
+**3e volet ajouté par l'utilisateur** : le bump sécurité `echarts` 5.6.0→6.1.0
+(CVE-2026-45249 XSS, moderate), déjà noté « REPORTÉ » dans `.ai/BACKLOG.md` (PR
+dependabot #49 fermée manuellement le 2026-06-22 — tous les checks auto passaient mais
+aucun test ne couvre le rendu visuel réel, `vitest` mocke `echarts` partout). `v7.3` a
+shippé sans traiter le critère de retrait écrit dans `dependabot.yml`. Décision : ne pas
+re-différer une 3e fois, combler le trou de couverture (harness Playwright
+`toHaveScreenshot` sur les pages denses en graphes) plutôt que merger à l'aveugle ou
+re-fermer.
+
+**Résultats observés** : 3 PR mergées, CI/déploiement `main` déclenché et vérifié en
+file d'attente. Plan écrit : `.ai/PLAN_DEPS_ECHARTS_TS7_2026-07-27.md` (lot A = fix
+allowlist QUERY + intégration DuckDB, lot B = echarts + garde-rail visuel manquant,
+lot C = TS7, bloqué en C1 sur la dépendance externe typescript-eslint).
+
+**Conclusion / prochaine étape** : l'utilisateur exécutera les 3 lots plus tard. Ne pas
+re-proposer un merge aveugle de #67/#70 — suivre le plan (ordre A→B→C recommandé).
 
 ## [2026-07-27] Notifications : noms de palier affichés en anglais sous UI française
 
