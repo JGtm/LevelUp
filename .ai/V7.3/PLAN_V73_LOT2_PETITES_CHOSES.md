@@ -202,7 +202,9 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
 
 ## Phase 2 — Petites UI
 
-- [ ] 2.1 (code livré le 2026-08-02 — reste revue navigateur au gate 2. Plancher
+- [x] 2.1 (commit 610aaeb23 — revue navigateur PASSÉE : cas extrême vérifié sur un
+      match sans médaille ni citation, les deux cartes se compactent en fines
+      rangées égalisées, plus de bloc vide 280 px. Plancher
       remplacé par MEDALS_CARD_MIN_BODY_HEIGHT=96 + flex, égalisation par la grille
       du parent conservée ; 4 tests.)
       **Médailles/citations à peu d'éléments** :
@@ -210,7 +212,9 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
       2 colonnes existe déjà ; le problème est le plancher `CARD_HEIGHT = 280`.
       Hauteur adaptative quand peu d'éléments (les deux cartes se compactent sur la
       rangée). Revue navigateur sur un match pauvre en médailles.
-- [ ] 2.2 (code livré le 2026-08-02 — reste revue navigateur au gate 2. ⓘ posé sur
+- [x] 2.2 (commit 610aaeb23 — revue navigateur PASSÉE : légende « Frags · Morts ·
+      Bonus barré (masqué par défaut) · ⓘ » constatée à l'écran, aide adjacente au
+      bouton qu'elle explique. ⓘ posé sur
       le bouton de légende « Bonus » (l'élément expliqué), prop info optionnelle de
       SquadToggleLegendChart, textes FR/EN ADR 0006 validés orchestrateur ; 4 tests.)
       **(i) Bonus** sur le graphe « Frags / Morts » de la page Escouade
@@ -218,7 +222,9 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
       par défaut) : InfoTooltip FR/EN expliquant Bonus = assistances/3 (ADR 0006).
       Si le même composant sert d'autres pages, elles en héritent (pas de travail
       supplémentaire hors périmètre).
-- [ ] 2.3 (code livré le 2026-08-02 — reste revue navigateur au gate 2. (a) texte
+- [x] 2.3 (commit 610aaeb23 — revue navigateur PASSÉE : ⓘ sur le titre Intensité,
+      3 panneaux joueurs avec la courbe d'équipe pointillée distincte du repère
+      10 % ; symboles au survol couverts par le helper testé. (a) texte
       partagé FdaGapTooltipText branché sur les 2 instances + (fold découverte,
       délégation utilisateur) la 3e surface SquadFdaGapCumulativeCard ; (b) tooltip
       intensité réécrit sans jargon + (fold) la 3e instance Timeseries alignée sur
@@ -238,7 +244,10 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
       d'intensité escouade : ajouter la courbe agrégée de l'équipe quand >= 3 joueurs
       sélectionnés (`features/squad/charts/squadIntensityProfileChart.ts`).
       Validation en revue navigateur avec l'utilisateur.
-- [ ] 2.4 (code livré le 2026-08-02 — reste revue navigateur au gate 2. (a) champ
+- [x] 2.4 (commit 008d4cf1f — revue navigateur PASSÉE : 19 badges de rang en image
+      sur 20 lignes Explorer (+1 dégradation texte), zéro icône ⓘ dans les th, le
+      survol du libellé ouvre l'aide, le clic trie toujours (ordre changé constaté).
+      (a) champ
       `skill_rank_image_url` via chokepoint extrait `analysis.SkillBadgeURL` +
       `WithSkillBadgeResolver` (chemin Home réutilisé, zéro slug) ; (b) largeurs :
       Explorer px-1.5 + icônes w-8 + carte tronquée 12c + rang image (~-126 px),
@@ -260,7 +269,9 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
       LABEL : étendre `InfoTooltip` (`components/ui/info-tooltip.tsx`) avec un trigger
       non-bouton (piège documenté bouton-dans-bouton, `lib/table/columnMeta.tsx:11-15`),
       retirer les icônes ⓘ des en-têtes. Contrat + `make generate-types`.
-- [ ] 2.5 (code livré le 2026-08-02 — reste revue navigateur au gate 2.
+- [x] 2.5 (commit 008d4cf1f + harmonisation registre orchestrateur — revue
+      navigateur PASSÉE : colonne présente et triable, tooltip lisible ; registre
+      FR harmonisé en tutoiement (convention dominante 111 vs 37 constatée).
       « L'historique » confirmé par grep = UN composant ExplorerMatchesTable monté
       5 fois (Explorer matchs, Explorer joueur allié/ennemi, Session, Timeseries
       Progression, Carrière marquants) — MatchHistoryPage n'existe pas côté web.
@@ -278,6 +289,13 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
 
 **Gate 2** : `make check-types` ; `make test-web` ; contrat régénéré (2.4/2.5) ;
 `make go-api-test` si le backend a bougé ; revue navigateur de chaque item.
+> GATE 2 PASSÉ le 2026-08-02 (orchestrateur) : go test ./... exit 0 (réserve agent
+> tranchée flake), tsc exit 0, vitest 3285 (puis re-suite après harmonisation
+> registre), contrat 203/203 chemins, matrice navigateur Playwright : 2.1 cas
+> extrême compacté, 2.2 ⓘ légende Bonus, 2.3 ⓘ titre + courbe équipe × 3 panneaux,
+> 2.4 badges 19/20 + aide au libellé + tri conservé, 2.5 colonne triable.
+> Découverte registre : 37 vouvoiements résiduels dans les manifests (dette mixte
+> préexistante) — candidat passe post-lot.
 
 ## Phase 3 — Features et unifications
 
