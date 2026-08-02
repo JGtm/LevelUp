@@ -306,7 +306,8 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
 
 ## Phase 3 — Features et unifications
 
-- [ ] 3.1 (code livré le 2026-08-02, gates en re-vérification orchestrateur.
+- [x] 3.1 (commit fb6fd82b1 — gates re-vérifiés orchestrateur, intégration -p 1
+      exit 0.
       (a) design consigné : fichiers disque supprimés définitivement (seule garantie
       « plus servi », ServeMediaFile ne consulte pas la base) ; `media_files` en
       SOFT-DELETE `status='deleted'` — jamais DELETE, 4 index ART + précédent
@@ -339,8 +340,11 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
       logique métier, service + port ; (d) UI : action supprimer dans le visualiseur
       média + modale de confirmation, invalidation des query keys `mediaBase`.
       Tests httptest + service + `go test -tags=integration -p 1`. Contrat openapi.
-- [ ] 3.2 (code livré le 2026-08-02, gates en re-vérification — RESTE revue
-      navigateur du sunburst H5 au gate 3. VÉRIFICATION BLOQUANTE = FEU VERT prouvé
+- [x] 3.2 (commit b0cac2585 — revue navigateur PASSÉE le 2026-08-03 : sunburst H5
+      JGtm avec classes Véhicule 0,9 % / Tourelle 0,2 % et niveau 2 énumérant chaque
+      engin par son nom localisé (Warthog, Ghost, Mongoose, Mantis, Wasp, Scorpion,
+      tourelles Gauss/Splinter/mitrailleuse/anti-infanterie…) — exigence utilisateur
+      tenue, pas de bucket unique ni de clé brute. VÉRIFICATION BLOQUANTE = FEU VERT prouvé
       sur données réelles : 9 véhicules distincts (3 976 kills, 1,47 %) + 8 tourelles
       (923 kills) à stock_ids distincts, le sentinel VehicleWeaponID=2 ne porte AUCUN
       kill H5 (pipeline film Infinite) ; libellés déjà présents dans
@@ -363,7 +367,9 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
       `nonCombatFragClasses` (`internal/domain/frag_distribution.go:42-49`) pour le
       breakdown H5, libellés FR/EN via TOML mappings H5 si nouvelles clés, gardé par
       les données (pas de branche slug). Tests analysis/domain.
-- [ ] 3.3 (code livré le 2026-08-02, gates en re-vérification orchestrateur.
+- [x] 3.3 (commit 8dd325337 — gates re-vérifiés orchestrateur ; le gate 3 ne
+      requiert pas de revue navigateur pour cet item (couvert garde-rails + vitest),
+      et les unifications sont déjà visibles en navigation (FDA dans les KPI).
       (a) audit 5 environnements consigné (prod = app_settings bind-monté ON, démo =
       var compose du 26/07, CI = 2 jobs, dev frais = OFF par accident — l'écart
       dev/prod maintenait les dictionnaires en vie) ; RETRAIT PUR choisi, prescrit
@@ -392,8 +398,11 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
       unique repli d'affichage ; (d) garde-rail (règle 6) : test grep interdisant les
       dictionnaires de libellés de field-keys hors TOML. Hors périmètre :
       `lib/skillTiers.ts` (couplage Go<->TS distinct, garde-rail déjà existant).
-- [ ] 3.4 (code livré le 2026-08-03, gates en re-vérification — RESTE revue
-      navigateur au gate 3. Proposition C : pistes empilées par joueur, écart signé
+- [x] 3.4 (commit ac0c6b196 — revue navigateur PASSÉE le 2026-08-03 : deux cartes
+      « écart à la frontière élite » en pistes par joueur, étiquettes couleur joueur,
+      vert/rouge autour du zéro par piste, axes symétriques adaptatifs (±50 %
+      Rendement / ±40 % Résistance constatés), libellés de match sous la seule
+      dernière piste. Proposition C : pistes empilées par joueur, écart signé
       `(v/p80−1)×100` sur les indicateurs DU PAYLOAD (OC/DR — tranche la découverte
       « deux définitions du rendement » : plus de recalcul sans assistances), axe
       symétrique partagé [40,150]% pas de 10, croisement de zéro INSÉRÉ par
@@ -403,8 +412,11 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
       volontaire documentée, no_damage_taken). Code mort supprimé
       (buildSquadEfficiencyMultiOption). 25 tests builder + 2 Go.)
       **Implémentation du choix d'artefact Rendement & Résistance** (gate 0.1).
-- [ ] 3.5 (code livré le 2026-08-03, gates en re-vérification — RESTE revue
-      navigateur au gate 3. Proposition A : encoches traversantes hauteur 20 px
+- [x] 3.5 (commit ac0c6b196 — revue navigateur PASSÉE le 2026-08-03 : encoche
+      traversante visible sur Escouade/Synergies (barre traversant la bande,
+      gouttières nettes, drapeau humiliation) ; session Timeseries courante sans
+      drapeau = aucun marqueur (correct) ; non-régression Home/Relations capturée ;
+      fusions et cas limites couverts par les 28 tests. Proposition A : encoches traversantes hauteur 20 px
       (±10 = BRACKET_GAP, compatible height=64 Relations), cœur clamp(0,5×perMatchW;
       1,8; 5), gouttière tooltipBg 1 px (0,75 sous 4 px/match — OBLIGATOIRE,
       contraste tokens/issues < 3:1), fusion ≤ 2 px/match (homogène = couleur,
@@ -420,6 +432,13 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
 **Gate 3** : suite Go complète `go test ./...` + `-tags=integration -p 1` exit 0 ;
 `make go-api-lint` 0 issue nouvelle ; `make check-types` ; `make test-web` ; contrat +
 types front régénérés ; revue navigateur 3.1/3.2/3.4/3.5.
+> GATE 3 PASSÉ le 2026-08-03 (orchestrateur) : go test ./... exit 0 + intégration
+> -p 1 exit 0 (rejoués après chaque item ET en clôture) ; tsc exit 0 ; vitest 3334 ;
+> openapi-check sans dérive (204 chemins) ; lint = go vet local propre, golangci
+> d'autorité en CI de branche (verte au dernier push) ; matrice navigateur : 3.2
+> sunburst H5 par engin PASS, 3.4 pistes C PASS, 3.5 encoches PASS (+ non-régressions
+> Home/Relations), 3.1 reporté aux ops prod 4.1 (0 média local, même constat que
+> 1.5). Baseline tests réconciliée (3.3).
 
 ## Phase 4 — Ops prod et clôture
 
