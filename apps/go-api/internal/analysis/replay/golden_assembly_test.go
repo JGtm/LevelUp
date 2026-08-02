@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -59,7 +60,11 @@ func goldenAssemblyPath() string {
 func buildGolden(t *testing.T) ReplayDocument {
 	t.Helper()
 	g := loadGoldenInputs(t)
-	return BuildFromPositions(goldenFilm, "halo_infinite", g.Positions, g.Fire, g.options())
+	opt := g.options()
+	// Le catalogue vient des VRAIS mappings du titre (cf. golden_catalog_test.go) : le
+	// golden fige donc aussi les libellés servis, dans les deux langues.
+	opt.Labels = goldenCatalog(t)
+	return BuildFromPositions(goldenFilm, "halo_infinite", g.Positions, g.Fire, opt)
 }
 
 // TestGoldenAssembly : l assemblage rejoue rend-il toujours la meme chose ?
@@ -306,6 +311,16 @@ func renderLayerCoverage(p func(string, ...any), titre string, c LayerCoverage, 
 	p("verdict : %s", verdict)
 }
 
+// grenadeRankName rend le nom EN du rang d'un lancer, ou son numéro si le document ne
+// porte pas la table. Le golden compte PAR TYPE : sans nom il compterait des entiers, et
+// une inversion de rangs passerait inaperçue.
+func grenadeRankName(doc ReplayDocument, rank int) string {
+	if rank >= 0 && rank < len(doc.GrenadeLabels) {
+		return doc.GrenadeLabels[rank].En
+	}
+	return "rang " + strconv.Itoa(rank)
+}
+
 func renderGrenades(p func(string, ...any), doc ReplayDocument) {
 	renderLayerCoverage(p, "GRENADES — le lancer porte son auteur ; ce qui se mesure est OU il est pose",
 		doc.Coverage.Grenades, doc.Coverage.Verdict["grenades"])
@@ -313,7 +328,7 @@ func renderGrenades(p func(string, ...any), doc ReplayDocument) {
 	byKind := map[string]int{}
 	for _, g := range doc.Grenades {
 		bySrc[g.Src]++
-		byKind[g.Kind]++
+		byKind[grenadeRankName(doc, g.Rank)]++
 	}
 	p("par source : projectile=%d (aucun pont) · biped=%d (le pont a servi)",
 		bySrc[GrenadeSrcProjectile], bySrc[GrenadeSrcBiped])
@@ -358,9 +373,9 @@ func renderInventory(p func(string, ...any), doc ReplayDocument) {
 	p("%d lecture(s) de munitions a PLUSIEURS candidats : la plus longue a ete retenue et le",
 		multi)
 	p("nombre de candidats est publie, pour que le departage reste visible")
-	p("rangs de grenade : %s", strings.Join(doc.GrenadeLabels, ", "))
+	p("rangs de grenade : %s", renderBilingualList(doc.GrenadeLabels))
 	p("capacites nommees (TABLE PARTIELLE — 4 index observes pour 11 capacites dans le jeu) : %s",
-		renderStringMap(doc.AbilityLabels))
+		renderBilingualMap(doc.AbilityLabels))
 	p("")
 }
 
@@ -395,9 +410,30 @@ func renderLabels(p func(string, ...any), doc ReplayDocument) {
 		len(doc.WeaponLabels))
 	p("n emprunte pas le nom d une arme voisine")
 	for _, k := range sortedKeys(doc.WeaponLabels) {
-		p("  %s  %q", k, doc.WeaponLabels[k])
+		l := doc.WeaponLabels[k]
+		p("  %s  en=%q fr=%q fx=%q", k, l.En, l.Fr, l.Fx)
 	}
 	p("")
+}
+
+// renderBilingualList / renderBilingualMap — les libelles sont BILINGUES depuis le lot
+// 3.2 : le golden fige les DEUX langues, sinon une regression FR passerait sous un
+// golden vert.
+func renderBilingualList(in []Label) string {
+	parts := make([]string, 0, len(in))
+	for i, l := range in {
+		parts = append(parts, fmt.Sprintf("%d:en=%q/fr=%q", i, l.En, l.Fr))
+	}
+	return strings.Join(parts, ", ")
+}
+
+func renderBilingualMap(in map[string]Label) string {
+	keys := sortedKeys(in)
+	parts := make([]string, 0, len(keys))
+	for _, k := range keys {
+		parts = append(parts, fmt.Sprintf("%s=en:%q/fr:%q", k, in[k].En, in[k].Fr))
+	}
+	return strings.Join(parts, ", ")
 }
 
 func renderBounds(p func(string, ...any), doc ReplayDocument) {
@@ -474,7 +510,7 @@ func renderStringMap(m map[string]string) string {
 	return strings.Join(parts, " · ")
 }
 
-func sortedKeys(m map[string]string) []string {
+func sortedKeys[V any](m map[string]V) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)

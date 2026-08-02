@@ -7,6 +7,9 @@
  * autrement qu'une autre. Aucune famille n'est déduite d'une observation : une arme hors
  * catalogue tombe sur le rendu neutre, jamais sur un rendu approchant.
  *
+ * OÙ VIT LE CLASSEMENT : dans les mappings du titre, publiés par l'artefact
+ * (`weaponLabels[id].fx`). Ce fichier ne connaît plus une seule arme Halo.
+ *
  * POURQUOI LA FORME ET NON LA TEINTE. Le POC distinguait les familles par sept teintes `hsla`
  * en dur. Ici la couleur appartient au TIREUR — c'est elle qui permet de suivre un joueur des
  * yeux — et les couleurs sémantiques passent par des tokens (règle du dépôt). Faire porter la
@@ -32,47 +35,38 @@ export type ShotFamily =
   | 'plain'
 
 /**
- * FAMILY_OF_WEAPON — le catalogue, par NOM canonique d'arme (celui que l'artefact publie).
+ * DRAWN_FAMILIES — les familles que ce fichier sait DESSINER.
  *
- * Le regroupement suit la nature physique de la décharge, pas le rôle de l'arme dans le jeu :
- * une poudre se détonne brièvement, un plasma ne s'éteint pas comme une poudre, un rai de
- * dur-lumière est continu, un arc électrique est brisé.
+ * LE CATALOGUE DES ARMES N'EST PLUS ICI (lot 3.2). Il vivait en dur, par nom canonique
+ * d'arme — 22 noms Halo dans du code de rendu, donc un catalogue de jeu recopié côté web,
+ * qui se serait tu le jour où une arme est renommée et qui n'aurait jamais rien su d'un
+ * second titre. Le classement vient désormais du DOCUMENT (`weaponLabels[id].fx`), résolu
+ * hors ligne depuis `config/titles/{slug}/mappings/replay_labels.toml`.
+ *
+ * Ce qui reste ici est ce qui APPARTIENT au rendu : la géométrie de chaque famille, et le
+ * refus de dessiner ce qu'on ne connaît pas.
  */
-const FAMILY_OF_WEAPON: Record<string, ShotFamily> = {
-  'MA40 AR': 'ballistic',
-  BR75: 'ballistic',
-  'VK78 Commando': 'ballistic',
-  'Mk51 Sidekick': 'ballistic',
-  'CQS48 Bulldog': 'ballistic',
-  'S7 Sniper': 'ballistic',
-  'Stalker Rifle': 'ballistic',
-  Mangler: 'ballistic',
-  Skewer: 'ballistic',
-  'Plasma Pistol': 'plasma',
-  'Pulse Carbine': 'plasma',
-  Ravager: 'plasma',
-  'Sentinel Beam': 'light',
-  Heatwave: 'light',
-  Disruptor: 'shock',
-  'Shock Rifle': 'shock',
-  'M41 SPNKr': 'explosive',
-  Cindershot: 'explosive',
-  'MLRS-2 Hydra': 'explosive',
-  'Gravity Hammer': 'melee',
-  'Energy Sword': 'melee',
-  Needler: 'needles',
+const DRAWN_FAMILIES: Record<string, ShotFamily> = {
+  ballistic: 'ballistic',
+  plasma: 'plasma',
+  light: 'light',
+  shock: 'shock',
+  explosive: 'explosive',
+  melee: 'melee',
+  needles: 'needles',
 }
 
 /**
- * familyOf classe une arme par son libellé.
+ * familyOf valide la famille annoncée par le document.
  *
- * SANS LIBELLÉ, OU HORS CATALOGUE : `plain`. On ne rapproche pas d'une famille voisine — un
- * rendu emprunté affirmerait une arme qu'on ignore, exactement comme le ferait un visuel par
- * défaut.
+ * SANS FAMILLE, OU HORS DES FORMES CONNUES : `plain`. On ne rapproche pas d'une famille
+ * voisine — un rendu emprunté affirmerait une arme qu'on ignore, exactement comme le ferait
+ * un visuel par défaut. Une famille inconnue du client (document plus récent que l'app)
+ * tombe donc sur le trait neutre, pas sur une forme approchante.
  */
-export function familyOf(weaponLabel: string | undefined): ShotFamily {
-  if (!weaponLabel) return 'plain'
-  return FAMILY_OF_WEAPON[weaponLabel] ?? 'plain'
+export function familyOf(effect: string | undefined): ShotFamily {
+  if (!effect) return 'plain'
+  return DRAWN_FAMILIES[effect] ?? 'plain'
 }
 
 /** Géométrie d'un effet : origine, direction (radians canvas) et longueur en pixels. */

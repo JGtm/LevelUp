@@ -10,7 +10,9 @@ import (
 )
 
 // Fichiers du fond de carte, produits par le RE de la variante Forge (.mvar) et par la
-// résolution des tags de modèle (cf. cmd/tmp_forgedim). Ils vivent dans .ai/V7.5/dumps.
+// résolution des tags de modèle (cf. cmd/tmp_forgedim). Ils vivent sous
+// `PathResolver.MapGeometryDir(titleSlug)` — donnée de référence versionnée du titre,
+// et non plus dans le répertoire de notes du chantier (lot 3.1).
 const (
 	MapObjectsFile  = "map_objects.csv"
 	ObjectTypesFile = "forge_object_types.csv"

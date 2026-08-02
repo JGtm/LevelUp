@@ -5935,7 +5935,8 @@ export interface components {
         Grenade: {
             /** Format: int64 */
             i: number;
-            k: string;
+            /** Format: int64 */
+            rank: number;
             s: string;
             /** Format: int32 */
             slot: number;
@@ -6327,6 +6328,10 @@ export interface components {
             current_rating: number | null;
             has_data: boolean;
             points: components["schemas"]["LUSRPoint"][] | null;
+        };
+        Label: {
+            en: string;
+            fr: string;
         };
         LabelValue: {
             /** Format: int64 */
@@ -7275,6 +7280,7 @@ export interface components {
             /** Format: int64 */
             playable_duration_seconds?: number;
             playlist_label: string;
+            replay_available: boolean;
             score_label?: string;
             /** Format: date-time */
             start_time?: string;
@@ -8557,7 +8563,7 @@ export interface components {
         };
         ReplayDocument: {
             abilityLabels?: {
-                [key: string]: string;
+                [key: string]: components["schemas"]["Label"];
             };
             bounds: components["schemas"]["Bounds"];
             coverage?: components["schemas"]["Coverage"];
@@ -8569,7 +8575,7 @@ export interface components {
             frameIntervalMs?: number;
             geometry?: components["schemas"]["MapObject"][] | null;
             geometryBounds?: components["schemas"]["Bounds"];
-            grenadeLabels?: string[] | null;
+            grenadeLabels?: components["schemas"]["Label"][] | null;
             grenades?: components["schemas"]["Grenade"][] | null;
             inventory?: components["schemas"]["Inventory"][] | null;
             loadouts?: components["schemas"]["Loadout"][] | null;
@@ -8584,7 +8590,7 @@ export interface components {
             titleSlug: string;
             tracks: components["schemas"]["Track"][] | null;
             weaponLabels?: {
-                [key: string]: string;
+                [key: string]: components["schemas"]["WeaponLabel"];
             };
         };
         ResolveResult: {
@@ -10369,6 +10375,11 @@ export interface components {
             label_fr: string;
             /** Format: int64 */
             weapon_id: number;
+        };
+        WeaponLabel: {
+            en: string;
+            fr: string;
+            fx?: string;
         };
         WinLossPoint: {
             /** Format: int64 */

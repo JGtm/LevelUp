@@ -162,6 +162,11 @@ type MatchViewService struct {
 	// (titre sans mesure, ex. Halo 5). Jamais de comparaison de slug ici : la
 	// table injectée EST le titre.
 	regulationSeconds map[string]int
+	// replaySvc (optionnel) : service du rejeu 2D, interrogé UNIQUEMENT pour la
+	// présence de l'artefact (IsAvailable = un os.Stat). Nil → ReplayAvailable
+	// reste faux et le front ne pose aucun lien : un titre qui ne produit pas de
+	// rejeu n'a rien à afficher, pas une erreur à remonter.
+	replaySvc port.ReplayService
 }
 
 // NewMatchViewService crée un MatchViewService.
@@ -218,6 +223,14 @@ func (s *MatchViewService) WithMetadataRepo(r port.MetadataRepository) *MatchVie
 // nil : GetObjectiveEvents retourne games.ErrCapabilityNotSupported.
 func (s *MatchViewService) WithObjectiveEventsRepo(r port.ObjectiveEventsRepository) *MatchViewService {
 	s.objectiveEventsRepo = r
+	return s
+}
+
+// WithReplay injecte le service de rejeu 2D pour publier `replay_available` dans le
+// header. SEULE IsAvailable est appelée ici (un os.Stat) : la Match View ne charge
+// jamais l'artefact. Dégradation gracieuse si nil (pas de lien côté front).
+func (s *MatchViewService) WithReplay(svc port.ReplayService) *MatchViewService {
+	s.replaySvc = svc
 	return s
 }
 

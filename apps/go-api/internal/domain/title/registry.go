@@ -715,8 +715,14 @@ func (p *PathResolver) JobsCachePath() string {
 // hors ligne par cmd/replay-build, servi tel quel par l'API).
 // Ex: data/cache/replays/halo_infinite/000d5950.json
 // Sous data/cache/* (non versionné, regénérable depuis capture + film).
+//
+// La clé est la forme COURTE (cf. FilmShortMatchID) : l'artefact est un dérivé du film,
+// et tout ce qui dérive du film est rangé sous cette forme. Passer le match_id complet ou
+// sa forme courte donne donc le MÊME chemin — c'est ce qui rend l'artefact atteignable
+// depuis une route de l'application.
 func (p *PathResolver) ReplayArtifactPath(titleSlug, matchID string) string {
-	return filepath.Join(p.repoRoot, "data", "cache", "replays", titleSlug, matchID+".json")
+	return filepath.Join(p.repoRoot, "data", "cache", "replays", titleSlug,
+		FilmShortMatchID(matchID)+".json")
 }
 
 // MapQuantBoundsPath retourne le chemin du catalogue des bornes de quantification par
@@ -736,6 +742,16 @@ func (p *PathResolver) MapQuantBoundsPath(titleSlug string) string {
 // Ex: data/titles/halo_infinite/reference/map_objectives.json
 func (p *PathResolver) MapObjectivesPath(titleSlug string) string {
 	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_objectives.json")
+}
+
+// MapGeometryDir retourne le répertoire des PROPS de carte (géométrie Forge : socles,
+// caisses, rampes posées dans la variante), lus par cmd/replay-build pour poser des
+// repères contextuels sur le rejeu 2D — à distinguer de la STRUCTURE, qui est le sol.
+// Donnée de RÉFÉRENCE versionnée (produite par le RE de la variante .mvar), au même
+// titre que map_structure/ et map_quant_bounds.json : ce n'est pas un cache.
+// Ex: data/titles/halo_infinite/reference/map_geometry/
+func (p *PathResolver) MapGeometryDir(titleSlug string) string {
+	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_geometry")
 }
 
 // MapStructurePath retourne le chemin du fichier de STRUCTURE d'une carte : les emprises
@@ -762,6 +778,17 @@ func (p *PathResolver) SyncCacheDir() string {
 // Recovery au boot via persist.BatchQueue.RecoverPending. Ex: data/wal/
 func (p *PathResolver) WALDir() string {
 	return filepath.Join(p.repoRoot, "data", "wal")
+}
+
+// TitleMappingsDir retourne le répertoire des mappings VERSIONNÉS d'un titre
+// (config/titles/<slug>/mappings/) : fields, assets, outcomes, capabilities,
+// weapon_names, replay_labels… C'est du CONFIG versionné en Git, pas de la donnée
+// sous data/ — d'où la racine distincte. slug vide → titre par défaut.
+func (p *PathResolver) TitleMappingsDir(slug string) string {
+	if slug == "" {
+		slug = DefaultSlug
+	}
+	return filepath.Join(p.repoRoot, "config", "titles", slug, "mappings")
 }
 
 // DBProfilesPath retourne le chemin de db_profiles.json (global).

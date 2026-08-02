@@ -16,6 +16,8 @@
  */
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
+import { catalogText, type CatalogLabel } from './catalogLabel'
+import type { ReplayLocale } from './i18n'
 import { heldReading, isAliveAt, trackWindow } from './replayLogic'
 import type {
   ReplayDocumentReady,
@@ -258,13 +260,16 @@ export function inventoryAt(
  */
 export function grenadesCarried(
   state: ReplayInventoryReady,
-  labels: string[] | undefined,
+  labels: CatalogLabel[] | undefined,
+  locale: ReplayLocale,
 ): { rank: number; name: string; count: number }[] {
   if (!state.g) return []
   const out: { rank: number; name: string; count: number }[] = []
   state.g.forEach((count, rank) => {
     if (count <= 0) return
-    out.push({ rank, name: labels?.[rank] ?? `rang ${rank}`, count })
+    // Sans table, le RANG s'affiche tel quel : c'est ce que le document dit, et c'est
+    // vrai. Inventer un nom serait pire (cf. catalogLabel.ts).
+    out.push({ rank, name: catalogText(labels?.[rank], locale) ?? `rang ${rank}`, count })
   })
   return out
 }

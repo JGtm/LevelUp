@@ -203,15 +203,22 @@ func TestAbilityLabelsUsedNamesOnlyWhatItKnows(t *testing.T) {
 	// LA TABLE EST PARTIELLE : 4 index observes pour 11 capacites. Un index hors table garde
 	// son numero a l'ecran — le combler par le nom d'une capacite voisine se lirait comme une
 	// certitude.
+	// Le catalogue vient du TITRE (replay_labels.toml) et non plus d'une table Go : le
+	// test l'injecte, comme le fait cmd/replay-build.
+	catalogue := map[int]Label{4: {En: "Grappleshot", Fr: "grappin"}}
 	known, unknown := 4, 9
-	got := abilityLabelsUsed([]Inventory{{A: &known}, {A: &unknown}, {}})
-	if got["4"] != "grappin" {
-		t.Errorf("index connu non nomme : %+v", got)
+	got := abilityLabelsUsed([]Inventory{{A: &known}, {A: &unknown}, {}}, catalogue)
+	if got["4"].Fr != "grappin" || got["4"].En != "Grappleshot" {
+		t.Errorf("index connu non nomme dans les deux langues : %+v", got)
 	}
 	if _, named := got["9"]; named {
 		t.Error("un index hors table ne doit PAS etre nomme")
 	}
-	if abilityLabelsUsed(nil) != nil {
+	if abilityLabelsUsed(nil, catalogue) != nil {
 		t.Error("sans inventaire, pas de table inventee")
+	}
+	// Catalogue absent (titre sans libelles) : aucun nom, et surtout aucun panic.
+	if abilityLabelsUsed([]Inventory{{A: &known}}, nil) != nil {
+		t.Error("sans catalogue, aucune capacite ne doit etre nommee")
 	}
 }

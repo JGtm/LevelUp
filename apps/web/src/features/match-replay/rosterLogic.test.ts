@@ -248,21 +248,33 @@ describe('inventoryAt', () => {
 })
 
 describe('grenadesCarried', () => {
-  const labels = ['Fragmentation', 'Plasma', 'Dynamo', 'Spike']
+  // Les libellés du document sont BILINGUES depuis le schéma v2 : une seule table nomme
+  // les rangs, et c'est le lecteur qui choisit sa langue.
+  const labels = [
+    { en: 'Frag', fr: 'Fragmentation' },
+    { en: 'Plasma', fr: 'Plasma' },
+    { en: 'Dynamo', fr: 'Dynamo' },
+    { en: 'Spike', fr: 'Spike' },
+  ]
 
   it('n’affiche que les types réellement portés', () => {
     // Le tableau publié est complet : un zéro y dit « ce type, aucune en réserve ». Montrer
     // quatre types dont trois à zéro noierait celui qui compte.
-    const got = grenadesCarried(inv({ g: [0, 2, 0, 0] }), labels)
+    const got = grenadesCarried(inv({ g: [0, 2, 0, 0] }), labels, 'fr')
     expect(got).toEqual([{ rank: 1, name: 'Plasma', count: 2 }])
   })
 
+  it('rend le nom dans la langue du lecteur', () => {
+    expect(grenadesCarried(inv({ g: [2, 0, 0, 0] }), labels, 'fr')[0].name).toBe('Fragmentation')
+    expect(grenadesCarried(inv({ g: [2, 0, 0, 0] }), labels, 'en')[0].name).toBe('Frag')
+  })
+
   it('sans compteurs lus, ne rend rien — jamais quatre types à zéro', () => {
-    expect(grenadesCarried(inv(), labels)).toEqual([])
+    expect(grenadesCarried(inv(), labels, 'fr')).toEqual([])
   })
 
   it('sans table de noms, garde le rang plutôt qu’un nom inventé', () => {
-    expect(grenadesCarried(inv({ g: [3, 0, 0, 0] }), undefined)[0].name).toBe('rang 0')
+    expect(grenadesCarried(inv({ g: [3, 0, 0, 0] }), undefined, 'fr')[0].name).toBe('rang 0')
   })
 })
 

@@ -27,6 +27,12 @@ func (m *mockReplayService) GetReplay(_ context.Context, _ string) (replay.Repla
 	return m.doc, m.err
 }
 
+// IsAvailable : le mock rend « disponible » exactement quand GetReplay rendrait un
+// document — la présence et la lecture ne peuvent pas diverger dans un test.
+func (m *mockReplayService) IsAvailable(_ context.Context, _ string) bool {
+	return m.err == nil
+}
+
 func newReplayRouter(factory handlers.ServiceFactory[port.ReplayService]) *chi.Mux {
 	r := chi.NewRouter()
 	h := handlers.NewReplayHandler(factory)

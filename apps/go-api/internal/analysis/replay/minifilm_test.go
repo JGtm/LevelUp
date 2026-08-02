@@ -338,7 +338,7 @@ func hasKnownGrenadeMarker(pay []byte) bool {
 		if filmdec.PeekBits(pay, bp, 24) != 0x4C0C00 {
 			continue
 		}
-		if _, ok := filmdec.KnownGrenadeIDs[uint32(filmdec.PeekBits(pay, bp+24, 32))]; ok {
+		if _, ok := filmdec.GrenadeRankOf(uint32(filmdec.PeekBits(pay, bp+24, 32))); ok {
 			return true
 		}
 	}
@@ -433,9 +433,10 @@ func TestMiniFilmDecodesTheGrenadeThrows(t *testing.T) {
 	if len(th) != wantGrenades {
 		t.Errorf("%d lancers decodes, attendu %d", len(th), wantGrenades)
 	}
-	byKind := map[string]int{}
+	byKind := map[int]int{}
 	for _, g := range th {
-		if g.Name() == "" {
+		rank, known := g.Rank()
+		if !known {
 			t.Fatalf("lancer de type %08x hors liste blanche : le filtre qui fait la selectivite "+
 				"du marqueur a saute", g.TypeID)
 		}
@@ -443,7 +444,7 @@ func TestMiniFilmDecodesTheGrenadeThrows(t *testing.T) {
 			t.Errorf("index de lanceur %d hors 0..7 : le champ a +103 bits s est deplace "+
 				"(a +102 les valeurs tombent entre 16 et 19)", g.FilmIndex)
 		}
-		byKind[g.Name()]++
+		byKind[rank]++
 	}
 	if len(byKind) != 4 {
 		t.Errorf("%d types de grenade lances, attendu 4 : %v", len(byKind), byKind)

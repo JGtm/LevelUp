@@ -3,36 +3,42 @@ import { describe, expect, it } from 'vitest'
 import { familyOf } from './shotEffects'
 
 describe('familyOf', () => {
-  it('classe les armes du catalogue par nature de décharge', () => {
-    expect(familyOf('S7 Sniper')).toBe('ballistic')
-    expect(familyOf('Pulse Carbine')).toBe('plasma')
-    expect(familyOf('Sentinel Beam')).toBe('light')
-    expect(familyOf('Shock Rifle')).toBe('shock')
-    expect(familyOf('M41 SPNKr')).toBe('explosive')
-    expect(familyOf('Energy Sword')).toBe('melee')
-    expect(familyOf('Needler')).toBe('needles')
+  // LE CATALOGUE D'ARMES N'EST PLUS ICI (lot 3.2) : le document publie la famille de
+  // rendu (`weaponLabels[id].fx`), résolue hors ligne depuis les mappings du titre. Ce
+  // fichier ne sait plus ce qu'est un Ravager, et c'est le but — un catalogue Halo dans
+  // du code de rendu ne connaît qu'un jeu, et qu'un état de ce jeu.
+  //
+  // La COUVERTURE des 22 armes du film de référence, elle, est vérifiée là où elle vit
+  // désormais : `replay_labels.toml` + le golden d'assemblage Go (colonne `fx`).
+  it('accepte les sept familles que le rendu sait dessiner', () => {
+    expect(familyOf('ballistic')).toBe('ballistic')
+    expect(familyOf('plasma')).toBe('plasma')
+    expect(familyOf('light')).toBe('light')
+    expect(familyOf('shock')).toBe('shock')
+    expect(familyOf('explosive')).toBe('explosive')
+    expect(familyOf('melee')).toBe('melee')
+    expect(familyOf('needles')).toBe('needles')
   })
 
-  it('ne rapproche JAMAIS une arme inconnue d’une famille voisine', () => {
-    // Un rendu emprunté affirmerait une arme qu'on ignore — même faute qu'un visuel par défaut.
-    expect(familyOf('Arme Inventée 9000')).toBe('plain')
+  it('ne rapproche JAMAIS une famille inconnue d’une famille voisine', () => {
+    // Un rendu emprunté affirmerait une arme qu'on ignore — même faute qu'un visuel par
+    // défaut. Le cas est RÉEL : un artefact plus récent que l'app peut nommer une famille
+    // que ce fichier ne dessine pas encore.
+    expect(familyOf('gravitic')).toBe('plain')
+    expect(familyOf('Ballistic')).toBe('plain')
   })
 
-  it('sans libellé, ne suppose aucune famille', () => {
+  it('sans famille publiée, ne suppose rien', () => {
+    // C'est le cas d'une arme hors catalogue du titre : le document ne lui donne ni nom
+    // ni effet, et l'écran la dessine sobrement plutôt que comme sa voisine.
     expect(familyOf(undefined)).toBe('plain')
     expect(familyOf('')).toBe('plain')
   })
 
-  it('couvre les 22 armes que l’artefact du film de référence nomme', () => {
-    // Si le catalogue d'armes s'enrichit sans que ce fichier suive, les nouvelles tombent en
-    // `plain` : c'est le comportement voulu, mais ce test rappelle le contrat.
-    const duFilm = [
-      'S7 Sniper', 'Skewer', 'Cindershot', 'Heatwave', 'BR75', 'Pulse Carbine', 'MA40 AR',
-      'Energy Sword', 'M41 SPNKr', 'Mangler', 'CQS48 Bulldog', 'Disruptor', 'Shock Rifle',
-      'MLRS-2 Hydra', 'Needler', 'Mk51 Sidekick', 'VK78 Commando', 'Sentinel Beam',
-      'Gravity Hammer', 'Plasma Pistol', 'Ravager', 'Stalker Rifle',
-    ]
-    const sansFamille = duFilm.filter((w) => familyOf(w) === 'plain')
-    expect(sansFamille).toEqual([])
+  it('`plain` n’est pas une famille publiable : c’est l’absence de famille', () => {
+    // Le loader Go refuse `plain` dans replay_labels.toml (liste fermée) ; ici le pendant
+    // côté rendu — la valeur ne peut pas venir du document, et si elle venait elle
+    // donnerait le même trait neutre.
+    expect(familyOf('plain')).toBe('plain')
   })
 })

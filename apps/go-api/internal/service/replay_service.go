@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 
 	"levelup/go-api/internal/analysis/replay"
@@ -24,6 +25,27 @@ type replayService struct {
 // NewReplayService construit le service de rejeu pour un titre (résolu depuis le joueur).
 func NewReplayService(titleSlug, repoRoot string) port.ReplayService {
 	return &replayService{titleSlug: titleSlug, repoRoot: repoRoot}
+}
+
+// IsAvailable dit si l'artefact existe, par un os.Stat — JAMAIS par une lecture : la
+// Match View interroge cette présence à chaque affichage de match, et charger 2 Mo de
+// trajectoires pour répondre « oui » serait payer le rejeu sans le montrer.
+//
+// Tout échec vaut « pas de rejeu » (répertoire absent, droits, chemin non résolu) :
+// l'absence de lien est la dégradation sûre, une erreur 500 sur la page match ne l'est pas.
+func (s *replayService) IsAvailable(ctx context.Context, matchID string) bool {
+	path := title.NewPathResolver(s.repoRoot).ReplayArtifactPath(s.titleSlug, matchID)
+	info, err := os.Stat(path)
+	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			// Un artefact présent mais illisible n'est pas un cas normal : il ne doit pas
+			// se confondre en silence avec « ce match n'a pas de rejeu ».
+			slog.WarnContext(ctx, "rejeu 2D : artefact non consultable",
+				"err", err, "match_id", matchID, "titleSlug", s.titleSlug)
+		}
+		return false
+	}
+	return !info.IsDir()
 }
 
 // GetReplay lit et désérialise l'artefact du match. Retourne port.ErrReplayNotAvailable

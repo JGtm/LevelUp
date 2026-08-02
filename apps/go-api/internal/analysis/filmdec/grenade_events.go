@@ -53,8 +53,12 @@ import "fmt"
 const (
 	GrenadeFragmentation uint32 = 0xB0171062
 	GrenadePlasma        uint32 = 0xC0E34C44
-	GrenadeShock         uint32 = 0x3B2567D4
-	GrenadeSpike         uint32 = 0x9212E428
+	// GrenadeDynamo — le tag du rang 2. Il s'est appelé `GrenadeShock` jusqu'au
+	// 2026-08-02 : le décodeur nommait « Shock » ce que les compteurs d'inventaire
+	// nommaient « Dynamo », pour le MÊME rang et sur la MÊME fiche (constaté sur le
+	// film 000d5950). Le nom du jeu est Dynamo ; le décodeur ne nomme plus rien.
+	GrenadeDynamo uint32 = 0x3B2567D4
+	GrenadeSpike  uint32 = 0x9212E428
 )
 
 // grenadeMarker est la constante 24 bits qui précède un lancer dans un paquet delta.
@@ -64,14 +68,37 @@ const grenadeMarker uint64 = 0x4C0C00
 // bourrage + index joueur.
 const grenadeThrowBits = 24 + 32 + 47 + 5
 
-// KnownGrenadeIDs est la liste blanche des types de grenade confirmés. Seuls ces quatre
-// identifiants ont été observés ; un cinquième type ferait un faux négatif, PAS un faux
-// positif — la liste est donc conservatrice par construction.
-var KnownGrenadeIDs = map[uint32]string{
-	GrenadeFragmentation: "Fragmentation",
-	GrenadePlasma:        "Plasma",
-	GrenadeShock:         "Shock",
-	GrenadeSpike:         "Spike",
+// GrenadeTypeIDsByRank est la liste blanche des types de grenade confirmés, DANS L'ORDRE
+// DES RANGS (rang = typeId - 1). Seuls ces quatre identifiants ont été observés ; un
+// cinquième type ferait un faux négatif, PAS un faux positif — la liste est donc
+// conservatrice par construction.
+//
+// ELLE NE PORTE AUCUN NOM, et c'est le correctif du lot 3.1. Un décodeur mesure des
+// identifiants ; le NOM d'un rang est un libellé de titre, il vit dans
+// `config/titles/{slug}/mappings/replay_labels.toml`. Tant que le décodeur nommait
+// aussi, deux tables coexistaient et elles avaient fini par diverger.
+//
+// L'ORDRE EST LA DONNÉE : il est établi par deux chaînes indépendantes (35 lancers
+// appariés aux décréments unitaires du compteur porté, et la table `grenade_types` lue
+// dans le binaire du jeu). C'est lui qui relie un lancer au compteur d'inventaire du
+// même type — le réordonner désaccorderait les deux calques.
+var GrenadeTypeIDsByRank = [...]uint32{
+	GrenadeFragmentation,
+	GrenadePlasma,
+	GrenadeDynamo,
+	GrenadeSpike,
+}
+
+// GrenadeRankOf rend le rang d'un tag de grenade, et s'il est connu. Un tag inconnu n'a
+// PAS de rang 0 par défaut : le second retour existe pour que l'appelant ne confonde
+// jamais « fragmentation » avec « pas reconnu ».
+func GrenadeRankOf(typeID uint32) (int, bool) {
+	for rank, id := range GrenadeTypeIDsByRank {
+		if id == typeID {
+			return rank, true
+		}
+	}
+	return 0, false
 }
 
 // GrenadeThrow est un lancer de grenade attribué à son auteur.
@@ -93,8 +120,9 @@ type GrenadeThrow struct {
 	TypeID uint32
 }
 
-// Name rend le nom canonique du type de grenade lancée.
-func (g GrenadeThrow) Name() string { return KnownGrenadeIDs[g.TypeID] }
+// Rank rend le RANG du type lancé (cf. GrenadeTypeIDsByRank), et s'il est connu. Le
+// décodeur ne rend pas de nom : le libellé du rang appartient au titre.
+func (g GrenadeThrow) Rank() (int, bool) { return GrenadeRankOf(g.TypeID) }
 
 // ScanFilmGrenadeThrows décode tous les lancers de grenade du film de dir.
 //
@@ -134,7 +162,7 @@ func scanGrenadeThrows(pay []byte) []GrenadeThrow {
 			continue
 		}
 		id := uint32(PeekBits(pay, bp+24, 32))
-		if _, ok := KnownGrenadeIDs[id]; !ok {
+		if _, ok := GrenadeRankOf(id); !ok {
 			continue
 		}
 		out = append(out, GrenadeThrow{

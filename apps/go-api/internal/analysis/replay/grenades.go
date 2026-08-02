@@ -55,8 +55,14 @@ type Grenade struct {
 	// X, Y sont la position du lancer.
 	X float32 `json:"x"`
 	Y float32 `json:"y"`
-	// Kind est le type de grenade ("Fragmentation", "Plasma", "Shock", "Spike").
-	Kind string `json:"k"`
+	// Rank est le RANG du type de grenade : un index dans ReplayDocument.GrenadeLabels,
+	// la seule table qui les nomme.
+	//
+	// C'ÉTAIT UN NOM JUSQU'AU 2026-08-02, et c'est ce qui a produit la contradiction du
+	// lot 3.1 : le lancer disait « Shock » là où le compteur porté du MÊME type disait
+	// « Dynamo », sur la même fiche. Un index ne peut pas diverger de sa table.
+	// Pas d'omitempty : le rang 0 (fragmentation) est une valeur, pas une absence.
+	Rank int `json:"rank"`
 	// Src dit d'où vient la position : GrenadeSrcProjectile ou GrenadeSrcBiped.
 	Src string `json:"s"`
 }
@@ -72,6 +78,14 @@ func buildGrenades(pos []filmdec.BipedPosition, throws []filmdec.GrenadeThrow,
 	tracks := indexBySlot(pos)
 	var out []Grenade
 	for _, g := range throws {
+		rank, known := g.Rank()
+		if !known {
+			// Le décodeur ne rend que des tags de sa liste blanche ; un tag hors rangs
+			// serait un lancer qu'aucune table ne peut nommer. On ne le publie pas
+			// plutôt que de le poser sur le rang 0 (fragmentation).
+			cov.count(reasonNoSlot)
+			continue
+		}
 		gr, ok := locateThrow(g, births, tracks, owner)
 		if !ok {
 			cov.count(reasonNoSlot)
@@ -80,7 +94,7 @@ func buildGrenades(pos []filmdec.BipedPosition, throws []filmdec.GrenadeThrow,
 		cov.count(reasonAttached)
 		gr.T = int((g.TimestampUS - origin) / step)
 		gr.Idx = g.FilmIndex
-		gr.Kind = g.Name()
+		gr.Rank = rank
 		out = append(out, gr)
 	}
 	// Tri TOTAL : deux lancers tombent souvent sur la même frame de la grille (10 Hz), et un
@@ -179,21 +193,7 @@ func birthNear(births []filmdec.ProjectileSample, at uint64) (filmdec.Projectile
 // sa position est celle de l'objet lancé. Le filtrer reviendrait à jeter une donnée complète
 // parce qu'une donnée voisine manque.
 func keepGrenadesOfPublishedTracks(gren []Grenade, tracks []Track) []Grenade {
-	if len(gren) == 0 {
-		return nil
-	}
-	live := make(map[uint32]bool, len(tracks))
-	for _, t := range tracks {
-		live[t.Slot] = true
-	}
-	out := gren[:0]
-	for _, g := range gren {
-		if g.Src == GrenadeSrcProjectile || live[g.Slot] {
-			out = append(out, g)
-		}
-	}
-	if len(out) == 0 {
-		return nil
-	}
-	return out
+	return keepOfPublishedTracks(gren, tracks, func(g Grenade, published map[uint32]bool) bool {
+		return g.Src == GrenadeSrcProjectile || published[g.Slot]
+	})
 }

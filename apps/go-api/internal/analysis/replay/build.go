@@ -63,6 +63,11 @@ type Options struct {
 	PlayerIndices PlayerIndexTable
 	// Scan : réglages du décodage offline ; zéro -> filmdec.DefaultScanFilmOptions().
 	Scan *filmdec.ScanFilmOptions
+	// Labels : le catalogue de libellés DU TITRE (armes, grenades, capacités), chargé
+	// depuis config/titles/{slug}/mappings/ par l'appelant hors ligne (cf. catalog.go).
+	// Absent = document sans table de libellés : le client affiche les identifiants
+	// bruts, ce qui reste vrai — contrairement à un nom approché.
+	Labels LabelCatalog
 	// WorldRange : bornes de déquantification DE LA CARTE du match (AABB du BSP, cf.
 	// filmdec.MapQuantCatalog). OBLIGATOIRE : sans elles le décodeur ne produit que des
 	// quanta, et BuildFromFilm refuse d'émettre un document plutôt que des coordonnées
@@ -237,12 +242,17 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 
 	doc.Coverage = buildCoverage(shotCov, grenCov, own)
 	doc.Projectiles = buildProjectiles(opt.Projectiles, origin, step)
-	doc.WeaponLabels = buildWeaponLabels(doc.Loadouts, doc.Shots)
+	doc.WeaponLabels = buildWeaponLabels(doc.Loadouts, doc.Shots, opt.Labels)
 	doc.Inventory = keepInventoryOfPublishedTracks(
 		buildInventory(opt.Inventory, origin, step), doc.Tracks)
+	// Les rangs de grenade sont publiés dès qu'un calque les référence : l'inventaire
+	// (compteurs portés) OU les lancers (Grenade.Rank). Les conditionner au seul
+	// inventaire laissait des lancers pointer une table absente.
+	if len(doc.Inventory) > 0 || len(doc.Grenades) > 0 {
+		doc.GrenadeLabels = opt.Labels.Grenades
+	}
 	if len(doc.Inventory) > 0 {
-		doc.GrenadeLabels = grenadeRankLabels
-		doc.AbilityLabels = abilityLabelsUsed(doc.Inventory)
+		doc.AbilityLabels = abilityLabelsUsed(doc.Inventory, opt.Labels.Abilities)
 	}
 	slog.Info("rejeu : couverture par calque",
 		"tirsRattaches", shotCov.Attached, "tirsDisponibles", shotCov.Available,
@@ -258,23 +268,8 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 // keepShotsOfPublishedTracks écarte les tirs dont le slot n'a pas de trajectoire publiée
 // (track trop courte) : le client n'aurait rien à quoi les rattacher.
 func keepShotsOfPublishedTracks(shots []Shot, tracks []Track) []Shot {
-	if len(shots) == 0 {
-		return nil
-	}
-	known := make(map[uint32]bool, len(tracks))
-	for _, t := range tracks {
-		known[t.Slot] = true
-	}
-	out := shots[:0]
-	for _, s := range shots {
-		if known[s.Slot] {
-			out = append(out, s)
-		}
-	}
-	if len(out) == 0 {
-		return nil
-	}
-	return out
+	return keepOfPublishedTracks(shots, tracks,
+		func(s Shot, published map[uint32]bool) bool { return published[s.Slot] })
 }
 
 // decimateTracks projette les positions sur la grille de frames (un point par slot et par

@@ -211,7 +211,7 @@ export function drawShotsLayer(
     // `w` est le nom du champ AU CONTRAT (identifiant d'arme 64 bits en hexadécimal).
     // L'interface écrite à la main disait `weapon` : le champ était donc toujours
     // indéfini et toutes les familles d'arme retombaient sur la forme par défaut.
-    drawShotEffect(ctx, familyOf(style.labelOf(s.w)), {
+    drawShotEffect(ctx, familyOf(style.effectOf(s.w)), {
       x: c.x,
       y: c.y,
       // Monde -> canevas : l'axe Y est inversé, donc l'angle l'est aussi. Absent = pas de
@@ -232,8 +232,13 @@ export interface ShotStyle {
   colorOfSlot: (slot: number) => string | null
   /** Couleur employée quand le tireur n'a pas de trace connue. */
   fallback: string
-  /** Nom canonique de l'arme, ou undefined si l'identifiant n'est pas au catalogue. */
-  labelOf: (weaponId: string | undefined) => string | undefined
+  /**
+   * Famille de RENDU du tir, telle que le document la publie (`weaponLabels[id].fx`), ou
+   * undefined si l'identifiant n'est pas au catalogue du titre. Ce n'est PAS le nom de
+   * l'arme : le rendu n'a jamais eu besoin de le connaître, et le lui faire deviner
+   * imposait un catalogue Halo dans du code web (lot 3.2).
+   */
+  effectOf: (weaponId: string | undefined) => string | undefined
   reducedMotion: boolean
 }
 

@@ -161,8 +161,9 @@ func TestGrenadeThrowLayout(t *testing.T) {
 	if got[0].FilmIndex != 5 {
 		t.Errorf("index de lanceur %d, attendu 5", got[0].FilmIndex)
 	}
-	if got[0].TypeID != GrenadePlasma || got[0].Name() != "Plasma" {
-		t.Errorf("type %08x (%q), attendu Plasma", got[0].TypeID, got[0].Name())
+	rank, known := got[0].Rank()
+	if got[0].TypeID != GrenadePlasma || !known || rank != 1 {
+		t.Errorf("type %08x (rang %d, connu=%v), attendu le rang 1 (plasma)", got[0].TypeID, rank, known)
 	}
 	if got[0].BitPos != 11 {
 		t.Errorf("marqueur rapporte au bit %d, attendu 11", got[0].BitPos)
@@ -191,10 +192,14 @@ func TestGrenadeWhitelistIsWhatMakesTheMarkerSelective(t *testing.T) {
 		t.Errorf("%d lancer(s) sur un marqueur suivi d un identifiant HORS liste blanche : la "+
 			"selectivite ne vient plus de la liste, et le decodeur rendrait du bruit", len(got))
 	}
-	for id, name := range KnownGrenadeIDs {
+	for want, id := range GrenadeTypeIDsByRank {
 		got := scanGrenadeThrows(buildGrenadeRecord(0, id, 1))
-		if len(got) != 1 || got[0].Name() != name {
-			t.Errorf("identifiant %08x (%s) : %d lancer(s) reconnu(s)", id, name, len(got))
+		if len(got) != 1 {
+			t.Errorf("identifiant %08x (rang %d) : %d lancer(s) reconnu(s)", id, want, len(got))
+			continue
+		}
+		if rank, known := got[0].Rank(); !known || rank != want {
+			t.Errorf("identifiant %08x : rang %d (connu=%v), attendu %d", id, rank, known, want)
 		}
 	}
 }

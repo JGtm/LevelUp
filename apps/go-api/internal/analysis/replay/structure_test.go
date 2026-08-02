@@ -94,7 +94,14 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 			t.Fatalf("champ %q présent sur un document sans structure — omitempty manquant", k)
 		}
 	}
-	if SchemaVersion != 1 {
-		t.Fatalf("SchemaVersion = %d : l'ajout de champs optionnels ne doit pas l'incrémenter", SchemaVersion)
+	// LA RÈGLE TENUE ICI : un champ OPTIONNEL de plus n'incrémente pas la version — sans
+	// quoi chaque enrichissement casserait les clients. La version ne bouge que sur un
+	// changement de FORME, et chaque incrément doit avoir sa raison écrite :
+	//   v1 -> v2 (2026-08-02, lot 3.1/3.2) : les tables de libellés passent de `string`
+	//   à `{en, fr}` et le type d'un lancer de grenade devient son RANG. Deux formes
+	//   changées, donc une version — la structure, elle, n'y est pour rien.
+	if SchemaVersion != 2 {
+		t.Fatalf("SchemaVersion = %d, attendu 2 : incrémenter exige une raison écrite ci-dessus "+
+			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }
