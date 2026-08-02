@@ -141,6 +141,82 @@ camouflage ? L'image `catalyst_powerup_candidat.png` les marque. Si oui, le cand
 identifie et le verdict s'inverse pour Catalyst. Si non, le `.mvar` ne porte pas les
 power-ups et il faut les chercher dans le scenario de base ou dans le mode de jeu.
 
+### Q1.3-ter L'EMPLACEMENT GENERIQUE — l'hypothese de l'utilisateur, verifiee
+
+> Retour utilisateur du 2026-08-01 : « au milieu de Catalyst on a bien un emplacement de
+> spawn d'arme/power-up, c'est un objet au-dessus duquel levite l'equipement » ; « sur
+> Vagabond il y a un emplacement avec un lance-roquettes et un autre avec un camouflage,
+> diametralement opposes » ; et l'hypothese : « un objet-emplacement reutilise par le jeu,
+> l'arme ou le power-up etant place dessus en parametre ».
+
+**L'hypothese est la bonne, et elle se lit dans les fichiers.**
+
+**Recensement de la palette ENTIERE** (4 235 entrees `food` du module Forge, pas seulement
+les 2 785 utilisees par les cartes) : `bloc` 4063 · **`weap` 76** · *(aucun)* 32 · `mach` 31 ·
+`vehi` 21 · `scen` 21 · **`eqip` 4** · `ctrl` 2. Ces 80 entrees armes/equipement pointent vers
+seulement **47 tags d'objet distincts** — donc plusieurs entrees de palette partagent un meme
+modele. C'est exactement la signature d'un emplacement generique.
+
+**Deux familles nettes, separees par la taille du modele :**
+
+| famille | taille du modele | tags | lecture |
+|---|---|---|---|
+| **vraies armes** | 0,92 a 2,04 m | ~40 tags distincts | des modeles d'arme (fusil ~1 m, sniper 1,5 m, epee 2,04 m) |
+| **emplacements** | **0,22 a 0,40 m** | 6 tags | des petits volumes — pas des armes |
+
+Le detail des emplacements, avec leur usage reel sur les 199 cartes :
+
+| entree de palette | tag d'objet | taille | cartes / instances | par carte |
+|---|---|---|---|---|
+| `1486653438` | -370671751 | 0,40 x 0,40 x 0,80 | 27 / 98 | jusqu'a 9 |
+| `1882451900` | **-370671751** *(le meme)* | 0,40 x 0,40 x 0,80 | 20 / 117 | jusqu'a 16 |
+| `-1062552774` | **-370671751** *(le meme)* | 0,40 x 0,40 x 0,80 | 21 / 46 | jusqu'a 4 |
+| `801517767` | **-370671751** *(le meme)* | 0,40 x 0,40 x 0,80 | 11 / 24 | jusqu'a 4 |
+| `-721267272` | 1072582607 | 0,28 x 0,29 x 0,30 | **35 / 61** | **1 ou 3** |
+| `-2013147197` | 1379616328 | 0,28 x 0,29 x 0,30 | 2 / 4 | jusqu'a 3 |
+| `-1342546397` | 1530156 | 0,22 x 0,16 x 0,20 | 21 / 21 | **exactement 1** |
+| `-1136587198` | 1737103770 | 0,22 x 0,16 x 0,20 | 0 / 0 | — |
+
+**Quatre entrees de palette pour UN SEUL modele** (-370671751) : la preuve directe que
+l'objet place est un **emplacement**, et que ce qui apparait dessus est choisi ailleurs.
+
+**Ou est le parametre.** Les quatre entrees `food` de cette famille sont **identiques octet
+pour octet** (1 388 o) a **40 octets pres**, dont 8 dans l'en-tete du tag et **8 en tete de
+leur second bloc de donnees** — un **u64 propre a chaque entree** :
+
+| entree | u64 |
+|---|---|
+| `1486653438` | `0xFAB48286ABD1D5A6` |
+| `-1062552774` | `0xF2A5966FF161B833` |
+| `1882451900` | `0xB159316CAF7323DD` |
+
+La reference `weap` qui suit dans le meme bloc est **identique** dans les trois. Ce u64 est
+donc **le selecteur d'objet** — l'« en parametre » de l'hypothese utilisateur.
+
+**Ce qu'il n'est pas** (teste, pour ne pas le re-tester) : ni un identifiant d'arme de film
+(aucun ne se termine par `42C9679F`, la basse moitie commune de la table
+`REFERENCE_WEAPON_IDS.md`), ni un identifiant d'asset de module (balayage des 88 modules a
+tous les offsets de l'entree fichier : **0 occurrence** pour les trois).
+
+**Ce que les cartes de reference disent :**
+
+- **Vagabond** porte exactement **deux** emplacements, `1486653438` a (121,1 · 50,7 · 51,4)
+  et `-1062552774` a (145,0 · 53,4 · 54,8) — **deux entrees DIFFERENTES a deux endroits
+  opposes**. L'utilisateur y voit un lance-roquettes et un camouflage. Les deux entrees
+  partagent le meme modele et ne different que par leur u64 : **le u64 distingue le
+  lance-roquettes du camouflage.**
+- **Catalyst** porte `-721267272` (3 instances : centre exact + deux symetriques) — modele
+  different (0,28 m), et l'utilisateur confirme que celui du centre est bien un emplacement
+  au-dessus duquel levite l'equipement. Une carte livree et une carte Forge n'emploient donc
+  pas les memes entrees de palette pour la meme fonction.
+- **Cliffhanger** ne porte ni `-721267272` ni les deux entrees de Vagabond — conforme a
+  « pas de power-up ».
+
+**Ce qui reste a faire, et c'est desormais une seule chose** : donner un nom au u64. Deux
+voies, dans l'ordre : (1) **Ghidra** — trouver le lecteur de ce champ dans le binaire, c'est
+ce que le projet `HI` permet ; (2) a defaut, l'observation — confirmer lequel des deux
+emplacements de Vagabond porte le lance-roquettes, ce qui nomme deux u64 d'un coup.
+
 ### Q1.3 Le `[!]` power-ups de J0.2 — clos par la negative *(FORMULATION RETIREE, cf. Q1.3-bis)*
 
 Les 3 types `eqip` de la palette et leurs porteurs :
