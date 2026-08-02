@@ -1,4 +1,5 @@
 -1087066335  wasp
+-1274794290  shell_casing
 -1284820930  ghost
 -1339732272  stalker_rifle
 -1394987972  gravity_hammer
@@ -15,8 +16,10 @@
 1120495519   default
 1192059526   skull_weapon
 1206711506   wraith
+1296991821   warthog_gauss
 1403109065   brute_chopper
 1455922937   auto_turret
+1555014708   primitive_teleporter
 1730553442   scorpion
 1949598901   safe_volume
 1953167207   falcon
