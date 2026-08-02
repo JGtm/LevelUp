@@ -8,6 +8,20 @@ package filmdec
 // targeted FUN_14080c1f8, a DIFFERENT/larger entity record). Structure: R(1) present ; if set,
 // R(5) tag + a byte-oriented TLV blob (each "byte" = next R(8), no byte-align in FRAME mode).
 // Length-driven -> bit-exact reproducible regardless of variant kind.
+//
+// tlvBodyMaxBytes : le PLAFOND de corps TLV sauté, et il vient du chemin GARBAGE. Sur une
+// traversée mal alignée — c'est-à-dire la quasi-totalité des tentatives d'un calibrage ou d'une
+// recherche de signature — la longueur LEB128 lue est du bruit et peut valoir des millions. Le
+// plafond ne protège pas la donnée, il borne le coût.
+const tlvBodyMaxBytes = 1 << 20
+
+// LE CORPS SE SAUTE, IL NE SE LIT PAS — ET C'EST LA CAUSE MESURÉE DU MUR DE COÛT DU DÉCODAGE
+// (profil CPU du 2026-08-01, film 34bb3bc8 : 102 s sur 131 s dans `ReadBits` appelé DEPUIS cette
+// fonction, soit 78 % du temps total). Le corps d'un TLV n'est jamais interprété : les
+// `br.ReadBits(8)` de la boucle d'origine jetaient leur résultat. Or `ReadBits` n'a AUCUN effet
+// autre que d'avancer `pos` (les bits hors tampon lisent zéro, la position n'est pas bornée) :
+// N lectures de 8 bits ont donc exactement le même état final qu'un `Skip(8N)` — à 1 048 576
+// itérations près sur le chemin garbage. L'équivalence est structurelle, pas empirique.
 func consumeObjectMultiplayerProperties(br *BitReader) {
 	if !br.ReadBit() { // present flag
 		return
@@ -49,13 +63,14 @@ func consumeObjectMultiplayerProperties(br *BitReader) {
 					break
 				}
 			}
-			for i := uint64(0); i < length && i < 1<<20; i++ {
-				br.ReadBits(8)
+			// Plafond explicite plutôt que `min` : le paquet définit son propre `min(int, int)`
+			// dans un fichier de test, qui masque le builtin à la compilation des tests.
+			if length > tlvBodyMaxBytes {
+				length = tlvBodyMaxBytes
 			}
+			br.Skip(int(8 * length))
 		} else {
-			for i := uint(0); i < skip; i++ {
-				br.ReadBits(8)
-			}
+			br.Skip(int(8 * skip))
 		}
 	}
 }

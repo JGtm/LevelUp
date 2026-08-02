@@ -24,6 +24,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 	"time"
 
@@ -58,10 +59,24 @@ func (f *fakeFilmClient) GetFilmChunks(_ context.Context, matchID string) ([]hal
 }
 
 // fakeRoster : la resolution nom -> xuid, sans base.
+//
+// Aucune reference `shots_fired` — la porte de publication doit donc refuser toutes les lignes
+// de tirs produites ici, et c est exactement ce qu on veut par defaut : sans reference, rien
+// n est publiable.
 type fakeRoster map[string]string
 
-func (r fakeRoster) RosterForMatch(_ context.Context, _ string) (map[string]string, error) {
-	return r, nil
+func (r fakeRoster) IdentitiesForMatch(_ context.Context, _ string) (MatchIdentities, error) {
+	out := MatchIdentities{
+		ParNom:     map[string]string(r),
+		ParXUID:    make(map[string]string, len(r)),
+		ShotsFired: map[string]int{},
+	}
+	for nom, xuid := range r {
+		out.ParXUID[xuid] = nom
+		out.XUIDs = append(out.XUIDs, xuid)
+	}
+	sort.Strings(out.XUIDs)
+	return out, nil
 }
 
 func openSharedTestDB(t *testing.T) *sql.DB {
@@ -140,7 +155,7 @@ func TestKillSourceCollecteFilmReelEtRelitParLaVue(t *testing.T) {
 	client := &fakeFilmClient{chunks: map[string][]haloclient.FilmChunk{film: chunks}}
 	col := NewKillSourceCollector(client, fakeRoster{}, sharedWriter(db), capsAvecFilm(), 0)
 
-	outcome, err := col.CollectMatch(context.Background(), film)
+	outcome, _, err := col.CollectMatch(context.Background(), film)
 	if err != nil {
 		t.Fatalf("CollectMatch: %v", err)
 	}
@@ -217,7 +232,7 @@ func TestKillSourceCollecteFilmReelEtRelitParLaVue(t *testing.T) {
 
 	// 6. UNE SECONDE PASSE REMPLACE ENTIEREMENT LA PREMIERE dans la vue, et la table conserve
 	//    les deux (append-only).
-	if _, err := col.CollectMatch(context.Background(), film); err != nil {
+	if _, _, err := col.CollectMatch(context.Background(), film); err != nil {
 		t.Fatalf("2e passe: %v", err)
 	}
 	var vue, table int
@@ -246,7 +261,7 @@ func TestKillSourceRosterResoutLesXuid(t *testing.T) {
 
 	// On lit d abord les noms du film pour fabriquer un roster credible.
 	col := NewKillSourceCollector(client, fakeRoster{}, sharedWriter(db), capsAvecFilm(), 0)
-	if _, err := col.CollectMatch(context.Background(), film); err != nil {
+	if _, _, err := col.CollectMatch(context.Background(), film); err != nil {
 		t.Fatalf("passe de reconnaissance: %v", err)
 	}
 	var victime string
@@ -258,7 +273,7 @@ func TestKillSourceRosterResoutLesXuid(t *testing.T) {
 	db2 := openSharedTestDB(t)
 	col2 := NewKillSourceCollector(client, fakeRoster{victime: "xuid(2533274792395366)"},
 		sharedWriter(db2), capsAvecFilm(), 0)
-	if _, err := col2.CollectMatch(context.Background(), film); err != nil {
+	if _, _, err := col2.CollectMatch(context.Background(), film); err != nil {
 		t.Fatalf("passe avec roster: %v", err)
 	}
 
@@ -280,7 +295,7 @@ func TestKillSourceCapabilityAbsenteNeCassePas(t *testing.T) {
 	client := &fakeFilmClient{}
 	col := NewKillSourceCollector(client, fakeRoster{}, nil, games.CapabilityMap{}, 0)
 
-	outcome, err := col.CollectMatch(context.Background(), "m1")
+	outcome, _, err := col.CollectMatch(context.Background(), "m1")
 	if err != nil {
 		t.Fatalf("capability absente ne doit PAS rendre d erreur: %v", err)
 	}
@@ -298,7 +313,7 @@ func TestKillSourceCapabilityAbsenteNeCassePas(t *testing.T) {
 // s arreterait sur le premier vieux match.
 func TestKillSourceFilmAbsentEstUnEtatPasUneErreur(t *testing.T) {
 	col := NewKillSourceCollector(&fakeFilmClient{}, fakeRoster{}, nil, capsAvecFilm(), 0)
-	outcome, err := col.CollectMatch(context.Background(), "match-sans-film")
+	outcome, _, err := col.CollectMatch(context.Background(), "match-sans-film")
 	if err != nil {
 		t.Fatalf("film absent ne doit PAS rendre d erreur: %v", err)
 	}

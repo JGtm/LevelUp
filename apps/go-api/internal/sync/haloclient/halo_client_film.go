@@ -23,10 +23,15 @@ import (
 const haloUGCHost = "https://discovery-infiniteugc.svc.halowaypoint.com"
 
 // Constantes pour les types de chunks film Halo.
+//
+// EXPORTÉES parce qu'un consommateur hors de ce paquet doit pouvoir SÉLECTIONNER un type sans
+// recopier le nombre : la ventilation des tirs (`sync/killcollector`) ne scanne que la
+// REPLICATION_DATA, la population sur laquelle la loi « un fire-event = un tir » a été mesurée.
+// Une copie locale du littéral 2 serait un magic number de plus, et il dériverait.
 const (
-	filmChunkTypeHeader          = 1
-	filmChunkTypeReplicationData = 2
-	filmChunkTypeHighlightEvents = 3
+	FilmChunkTypeHeader          = 1
+	FilmChunkTypeReplicationData = 2
+	FilmChunkTypeHighlightEvents = 3
 )
 
 // filmChunkParallelism : nombre max de downloads CDN parallèles dans
@@ -139,7 +144,7 @@ func (c *HaloAPIClient) fetchFilmManifest(ctx context.Context, matchID string) (
 // séquentiellement après eg.Wait() — race-free par construction.
 func (c *HaloAPIClient) GetMatchFilm(ctx context.Context, matchID string) (map[int]FilmChunkData, bool, error) {
 	chunks, found, err := c.fetchFilmChunks(ctx, matchID, "GetMatchFilm",
-		func(t int) bool { return t == filmChunkTypeReplicationData })
+		func(t int) bool { return t == FilmChunkTypeReplicationData })
 	if err != nil || !found {
 		return nil, found, err
 	}
@@ -278,7 +283,7 @@ func (c *HaloAPIClient) GetHighlightEventsChunk(ctx context.Context, matchID str
 	}
 
 	for _, chunk := range manifest.CustomData.Chunks {
-		if chunk.ChunkType != filmChunkTypeHighlightEvents {
+		if chunk.ChunkType != FilmChunkTypeHighlightEvents {
 			continue
 		}
 		// Cache disque d'abord (rarement présent — Python ne cache que

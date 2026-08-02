@@ -27,6 +27,23 @@ const (
 	weaponBitOffset  = 40 // bits depuis event_start → weapon_id (8 bytes, 64 bits)
 	b5BitOffset      = 32 // bits depuis event_start → b5 (player_index<<4 | slot)
 	b5DedupProximity = 2  // bytes — deux hits à ≤2 bytes = même event physique
+
+	// pi5BitOffset / pi5Width — L'INDICE DE JOUEUR SUR SA LARGEUR RÉELLE : 5 bits à
+	// event_start+31, soit le bit qui PRÉCÈDE l'octet b5. Le champ n'est pas ambigu, il est
+	// TRONQUÉ par la lecture 4 bits (`b5 >> 4`), et la preuve est offline (949 films du cache,
+	// population exacte de ScanFireEventsB5) :
+	//
+	//	                   roster <= 16 (823 films)     roster > 16 (116 films)
+	//	bit emprunté à 1   1 sur 1 672 653 events       172 038 sur 542 992  (31,7 %)
+	//	valeur max         (31,5)=20  (32,4)=7          (31,5)=26  (32,4)=15  ← saturation
+	//	couverture roster  identique                    0,917 contre 0,615
+	//
+	// Sous 17 joueurs les deux lectures rendent la MÊME valeur (à un event près sur 1,6 M) ;
+	// au-delà, la lecture 4 bits sature à 15 et FUSIONNE les joueurs d'indice >= 16 avec ceux
+	// d'indice < 16. Corroboré par une autre structure du film : `weaponv3/pi_resolver.go`
+	// déclare 5 bits pour le même espace d'indices.
+	pi5BitOffset = 31
+	pi5Width     = 5
 )
 
 // universalMarker = 0b10100100110 = 11 bits.
@@ -51,17 +68,30 @@ type FormulaAResult struct {
 // FireEvent est un événement de tir scanné.
 type FireEvent struct {
 	TimestampMS float64
+	// PlayerIndex : l'indice tel que le lit la CORRÉLATION D'ARMES DE PRODUCTION — 4 bits
+	// (`b5 >> 4`). Il est conservé tel quel DÉLIBÉRÉMENT : le chemin qui le consomme
+	// (`CorrelateKillsGlobal` via `backfill_weapons.go`) apparie l'indice du tueur avec
+	// `getXuidToPI`, qui le dérive de l'ORDRE DE LA BASE — déclaré faux depuis la v3. Corriger
+	// la largeur d'un champ NE RÉPARE PAS un appariement qui ne repose pas sur ce champ : mesuré
+	// kill par kill, l'effet est STRICTEMENT NUL sous 17 joueurs (823 films, 72 077 kills, zéro
+	// différence) et le gain au-delà exige de remplacer AUSSI `getXuidToPI`. Ce remplacement est
+	// hors du périmètre de la session J4-2 ; il est consigné au plan.
 	PlayerIndex int
-	Slot        int
-	B5          int
-	WeaponName  string
-	WeaponBytes [8]byte
-	FireSeq     int
-	FireCounter int
-	BytePos     int
-	BurstEnd    bool
-	HitLikely   *bool
-	ChunkIdx    int // rempli par le parser
+	// PlayerIndex5 : LE MÊME indice sur sa largeur RÉELLE (5 bits, event_start+31). C'est celui
+	// qu'écrit `shared.match_weapon_shots`, et il n'y a pas le choix : la lecture 4 bits SATURE
+	// à 15 au-delà de 16 joueurs, donc elle FUSIONNERAIT les tirs de deux joueurs distincts sur
+	// une même ligne. Une ligne fabriquée par troncature est pire qu'une ligne absente.
+	PlayerIndex5 int
+	Slot         int
+	B5           int
+	WeaponName   string
+	WeaponBytes  [8]byte
+	FireSeq      int
+	FireCounter  int
+	BytePos      int
+	BurstEnd     bool
+	HitLikely    *bool
+	ChunkIdx     int // rempli par le parser
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -269,15 +299,18 @@ func ScanFireEventsB5(data []byte, estimateTS func(int) float64) []FireEvent {
 		events = append(events, FireEvent{
 			TimestampMS: estimateTS(bitPos / 8),
 			PlayerIndex: int(b5Int >> 4),
-			Slot:        int(b5Int & 0x03),
-			B5:          int(b5Int),
-			WeaponName:  weaponName,
-			WeaponBytes: weaponBytes,
-			FireSeq:     fireSeq,
-			FireCounter: fireCounter,
-			BytePos:     bitPos / 8,
-			BurstEnd:    burstEnd,
-			HitLikely:   hitLikely,
+			// Le champ 5 bits déborde d'un bit à GAUCHE de b5 : il se relit à sa position, pas
+			// à partir de b5 (cf. pi5BitOffset).
+			PlayerIndex5: int(readBitsUint8(data, eventStart+pi5BitOffset, pi5Width)),
+			Slot:         int(b5Int & 0x03),
+			B5:           int(b5Int),
+			WeaponName:   weaponName,
+			WeaponBytes:  weaponBytes,
+			FireSeq:      fireSeq,
+			FireCounter:  fireCounter,
+			BytePos:      bitPos / 8,
+			BurstEnd:     burstEnd,
+			HitLikely:    hitLikely,
 		})
 	}
 
@@ -328,7 +361,7 @@ func readBitsUint64(data []byte, bitPos, n int) uint64 {
 }
 
 // readBitsUint8 lit n bits (≤8) depuis bitPos en big-endian.
-func readBitsUint8(data []byte, bitPos, n int) uint8 { //nolint:unparam // n=8 actuellement, paramètre générique conservé
+func readBitsUint8(data []byte, bitPos, n int) uint8 {
 	var result uint8
 	for i := 0; i < n; i++ {
 		byteIdx := (bitPos + i) / 8

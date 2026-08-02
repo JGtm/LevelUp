@@ -80,6 +80,16 @@ func loadKillFeed(f *film) (*killFeed, error) {
 	return kf, nil
 }
 
+// XUIDNamePrefix : le prefixe du nom de REPLI, quand le kill-feed d un film ne porte pas de
+// gamertag pour un joueur (il porte alors son XUID, et lui seul).
+//
+// EXPORTE PARCE QUE L APPELANT DOIT SAVOIR LE LIRE. Un nom `xuid:2533...` n est pas un pseudo :
+// c est l identite la plus forte qui soit, et un collecteur qui le traiterait comme un gamertag
+// chercherait dans son roster une cle qui n y sera jamais — il ecrirait alors des lignes SANS
+// xuid, qu aucun agregat carriere ne peut joindre. C est exactement le defaut mesure le
+// 2026-08-01 : 16 908 morts ecrites, 10 avec un xuid de victime.
+const XUIDNamePrefix = "xuid:"
+
 // buildFeed : regroupe les events par instant et resout les XUID en gamertags.
 func buildFeed(evs []analysis.HighlightEvent) *killFeed {
 	gt := map[uint64]string{}
@@ -99,7 +109,7 @@ func buildFeed(evs []analysis.HighlightEvent) *killFeed {
 	for _, e := range evs {
 		name := gt[e.XUID]
 		if name == "" {
-			name = fmt.Sprintf("xuid:%d", e.XUID)
+			name = fmt.Sprintf("%s%d", XUIDNamePrefix, e.XUID)
 		}
 		switch e.EventType {
 		case analysis.EventTypeKill:
