@@ -9972,6 +9972,8 @@ export interface components {
         TitleSummary: {
             capabilities: string[] | null;
             /** Format: double */
+            defensive_resistance_p80: number;
+            /** Format: double */
             effective_hp_to_kill: number;
             icon_url?: string;
             is_default: boolean;

@@ -11,7 +11,6 @@
  */
 import { useMemo } from 'react'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
-import { EfficiencyTooltipText } from '@/components/charts/EfficiencyTooltipText'
 import { FirstBloodLanes } from '@/components/charts/FirstBloodLanes'
 import { firstBloodMaxSec, toFirstBloodSeries } from '@/features/_shared/firstBlood'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -87,8 +86,11 @@ export function SquadDynamiquePage() {
         emptyMessage={t.empty.noBlockData}
       />
 
+      {/* Aide PROPRE à cette surface : depuis le passage en pistes d'écart à la
+          frontière élite, l'explication partagée EfficiencyTooltipText (dégâts
+          bruts par frag) décrit les charts Timeseries/Session, plus celui-ci. */}
       <SquadEfficiencyChart
-        infoTooltip={<InfoTooltip content={<EfficiencyTooltipText locale={locale} />} />}
+        infoTooltip={<InfoTooltip content={t.efficiencySeries.help} />}
         rowsByPlayer={performanceSeries ?? {}}
         playerOrder={[mainPlayerKey, ...confirmedGamertags].filter((p) => performanceSeries?.[p])}
         colorByPlayer={playerColors}

@@ -71,6 +71,34 @@ func OffensiveConversionP80(slug string) float64 {
 	return OffensiveConversionP80FromResolver(DefaultEndpointResolver(), slug)
 }
 
+// DefaultDefensiveResistanceP80 — frontière élite DR (80e percentile) Halo Infinite,
+// pendant défensif de DefaultOffensiveConversionP80 (DR = dégâts_subis / (PV × morts)).
+// Défaut quand le titre ne déclare pas son defensive_resistance_p80. Aligné sur
+// analysis.DefensiveResistanceP80 (games ne peut pas importer analysis → littéral
+// dupliqué, gardé en sync — même contrat que l'offensive).
+const DefaultDefensiveResistanceP80 = 1.65
+
+// DefensiveResistanceP80FromResolver résout la frontière élite DR d'un titre via un
+// resolver, fallback DefaultDefensiveResistanceP80. Point d'injection testable.
+func DefensiveResistanceP80FromResolver(res EndpointResolver, slug string) float64 {
+	if dmr, ok := res.(DamageModelResolver); ok {
+		if dm, found := dmr.DamageModelFor(slug); found && dm.DefensiveResistanceP80 > 0 {
+			return dm.DefensiveResistanceP80
+		}
+	}
+	return DefaultDefensiveResistanceP80
+}
+
+// DefensiveResistanceP80 résout la frontière élite DR du titre (repère des écarts de
+// résistance affichés) via le resolver partagé, fallback DefaultDefensiveResistanceP80.
+// Point d'entrée des callers d'AFFICHAGE qui disposent du slug. NB : le chemin LUSR
+// garde la constante analysis.DefensiveResistanceP80 (LUSR = Infinite-only, ne doit pas
+// varier) — symétrique d'OffensiveConversionP80. Un titre sans damage_taken sert le
+// défaut, jamais consommé (les surfaces de résistance y sont neutralisées).
+func DefensiveResistanceP80(slug string) float64 {
+	return DefensiveResistanceP80FromResolver(DefaultEndpointResolver(), slug)
+}
+
 // ProvidesNativeKDA indique si le titre fournit un KDA per-match via son API (donc
 // utilisable/affichable tel quel). Faux pour les titres qui n'en renvoient pas —
 // Halo 5 : forme native = FDA NET ((k+a/3)−d)/games, distincte du quotient KDA ;

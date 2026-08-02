@@ -392,8 +392,29 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
       unique repli d'affichage ; (d) garde-rail (règle 6) : test grep interdisant les
       dictionnaires de libellés de field-keys hors TOML. Hors périmètre :
       `lib/skillTiers.ts` (couplage Go<->TS distinct, garde-rail déjà existant).
-- [ ] 3.4 **Implémentation du choix d'artefact Rendement & Résistance** (gate 0.1).
-- [ ] 3.5 **Implémentation du choix d'artefact dominance V/D** (gate 0.2) — mêmes
+- [ ] 3.4 (code livré le 2026-08-03, gates en re-vérification — RESTE revue
+      navigateur au gate 3. Proposition C : pistes empilées par joueur, écart signé
+      `(v/p80−1)×100` sur les indicateurs DU PAYLOAD (OC/DR — tranche la découverte
+      « deux définitions du rendement » : plus de recalcul sans assistances), axe
+      symétrique partagé [40,150]% pas de 10, croisement de zéro INSÉRÉ par
+      interpolation, garde DR=0 sans dégât = pas de point, hauteur 302 px à 4
+      joueurs. Frontière défensive exposée au CONTRAT (miroir de l'offensive :
+      constants.toml + damage_model + bootstrap, +1 champ 0 perdu ; H5 = absence
+      volontaire documentée, no_damage_taken). Code mort supprimé
+      (buildSquadEfficiencyMultiOption). 25 tests builder + 2 Go.)
+      **Implémentation du choix d'artefact Rendement & Résistance** (gate 0.1).
+- [ ] 3.5 (code livré le 2026-08-03, gates en re-vérification — RESTE revue
+      navigateur au gate 3. Proposition A : encoches traversantes hauteur 20 px
+      (±10 = BRACKET_GAP, compatible height=64 Relations), cœur clamp(0,5×perMatchW;
+      1,8; 5), gouttière tooltipBg 1 px (0,75 sous 4 px/match — OBLIGATOIRE,
+      contraste tokens/issues < 3:1), fusion ≤ 2 px/match (homogène = couleur,
+      mêlé = muted-foreground), SEUIL DUR 6 px SUPPRIMÉ, clustering pur testé hors
+      React, renderItem 116→90 L. DÉCOUVERTE MAJEURE : sur les 5 surfaces, seules
+      Timeseries et Escouade/Synergies portent des drapeaux — Home, Relations et
+      Lab construisent leurs points SANS dominance (le losange n'y a jamais été
+      rendu) ; fixture Lab enrichie de 3 drapeaux, Home/Relations = surfaces de
+      non-régression. 28 tests dont 13 nouveaux.)
+      **Implémentation du choix d'artefact dominance V/D** (gate 0.2) — mêmes
       surfaces que les losanges actuels (Home, Timeseries, Relations, showcase Lab).
 
 **Gate 3** : suite Go complète `go test ./...` + `-tags=integration -p 1` exit 0 ;
@@ -623,6 +644,19 @@ AVANT merge, pas seulement un rejeu local).
 - [2026-08-02, agent 3.3] PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md, référencé par
   le contrat de modification d'AllFieldKeys, n'existe plus — consigne caduque à
   réécrire.
+- [2026-08-03, agent 3.4/3.5, REQUALIFIÉE par l'orchestrateur] L'agent signale des
+  « littéraux P80 divergents » (coach 1,59 ; wire 0,83 vs canoniques 1,65/0,90) —
+  requalification : l'agent 0.1 avait documenté ces valeurs comme SEUILS DE
+  MILESTONES volontairement distincts des frontières élite (0,83/1,59). Pas une
+  dérive ; en revanche les commentaires `// DefensiveResistanceP80` sur ces
+  littéraux sont TROMPEURS — renommage de commentaire candidat en passe post-lot.
+- [2026-08-03, agent 3.4/3.5] `divergent-pos` sert à la fois de 3e couleur
+  coéquipier et de remplissage positif des pistes — recroise la découverte palette
+  0.1 (ΔE 6,7) : la re-attribution des tokens joueur reste LE sujet palette
+  post-lot.
+- [2026-08-03, agent 3.4/3.5] `make openapi-gen` journalise un ERROR
+  mappings_validation_failed trompeur à chaque run (tmpdir sans config/) en sortant
+  0 — bruit à nettoyer post-lot.
 - [2026-08-02, orchestrateur] Retombée du fix 1.3 corrigée par l'orchestrateur :
   `TestCareerRepo_GetRelationsHeatmap` (integration) attendait des heures UTC et
   dépendait du fuseau machine → ouvert via le chemin production épinglé UTC

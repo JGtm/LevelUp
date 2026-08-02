@@ -1,23 +1,30 @@
 /**
- * SquadEfficiencyChart — deux graphes multi-joueurs :
- *   - « Rendement — dégâts par frag » (métrique damagePerKill) ;
- *   - « Résistance — dégâts par mort » (métrique damagePerDeath).
+ * SquadEfficiencyChart — deux cartes multi-joueurs de la page Dynamique escouade :
+ *   - « Rendement — écart à la frontière élite » (indicateur OC du titre) ;
+ *   - « Résistance — écart à la frontière élite » (indicateur DR du titre).
  *
- * Chaque carte trace UNE courbe par joueur (couleur = joueur), togglable via la
- * légende native ECharts, avec le repère « 1 vie » du titre. Titres sans résistance
- * (ex. Halo 5, pas de damage_taken) : seule la carte Rendement est rendue.
+ * Chaque carte empile UNE PISTE PAR JOUEUR (décision d'artefact « C ») : l'écart
+ * signé en % à la frontière élite du titre, remplissage vert au-dessus de zéro /
+ * rouge en dessous, axe symétrique partagé par toutes les pistes. Les deux
+ * frontières viennent du contrat (`TitleSummary.offensive_conversion_p80` et
+ * `defensive_resistance_p80`) — aucune constante de gameplay dupliquée côté web.
+ *
+ * Titres sans résistance (Halo 5 : pas de damage_taken, donc pas de DR) : seule la
+ * carte Rendement est rendue.
  */
 import { useCallback, useMemo, type ReactNode } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
-import { useEffectiveHpToKill, substituteHpToken } from '@/lib/damage/effectiveHp'
-import { damagePerDeath } from '@/lib/charts/oneLifeDamageGradient'
-import { buildSquadEfficiencyMultiOption } from './charts/squadEfficiencyChart'
+import { useDefensiveResistanceP80, useOffensiveConversionP80 } from '@/lib/damage/effectiveHp'
+import {
+  buildSquadEfficiencyTracksOption,
+  tracksChartHeight,
+  type EfficiencyTrackLabels,
+} from './charts/squadEfficiencyChart'
 
-interface EfficiencyLabels {
+interface EfficiencyLabels extends EfficiencyTrackLabels {
   rendementCardTitle: string
   resistanceCardTitle: string
-  refLabel: string
   noData: string
 }
 
@@ -31,10 +38,8 @@ interface SquadEfficiencyChartProps {
   infoTooltip?: ReactNode
 }
 
-const TRACK_HEIGHT = 320
-
 function hasEfficiencyData(pts: SquadPerformanceSeriesPoint[]): boolean {
-  return pts.some((p) => p.rendement_offensif !== undefined || p.resistance_defensive !== undefined)
+  return pts.some((p) => p.rendement_offensif != null || p.resistance_defensive != null)
 }
 
 export function SquadEfficiencyChart({
@@ -49,19 +54,15 @@ export function SquadEfficiencyChart({
     [playerOrder, rowsByPlayer],
   )
 
-  // Barème PV-pour-tuer du titre courant (225 Infinite, 115 Halo 5) → repère
-  // « 1 vie » title-aware (sinon H5 serait jaugé sur 225).
-  const hp = useEffectiveHpToKill()
-  // Libellé du repère avec le barème du titre injecté (« 1 vie (115) » en H5).
-  const refLabel = substituteHpToken(labels.refLabel, hp)
+  // Frontières élite du titre COURANT (title-aware, servies par le bootstrap) :
+  // 0.90 / 1.264 en OC selon le titre, 1.65 en DR (Infinite).
+  const ocP80 = useOffensiveConversionP80()
+  const drP80 = useDefensiveResistanceP80()
 
-  // Résistance disponible ? (dégâts/mort calculable sur au moins un point). Halo 5
-  // ne fournit pas damage_taken → false → seule la carte Rendement est rendue.
+  // Résistance disponible ? Halo 5 ne fournit pas damage_taken → l'API ne sert
+  // aucune `resistance_defensive` → la carte défensive n'est pas rendue.
   const hasResistance = useMemo(
-    () =>
-      players.some((p) =>
-        (rowsByPlayer[p] ?? []).some((pt) => damagePerDeath(pt.damage_taken, pt.deaths) != null),
-      ),
+    () => players.some((p) => (rowsByPlayer[p] ?? []).some((pt) => pt.resistance_defensive != null)),
     [players, rowsByPlayer],
   )
 
@@ -74,26 +75,28 @@ export function SquadEfficiencyChart({
 
   const buildRendement = useCallback(
     () =>
-      buildSquadEfficiencyMultiOption(rowsByPlayer, players, {
-        metric: 'damagePerKill',
-        refLabel,
-        oneLife: hp,
+      buildSquadEfficiencyTracksOption(rowsByPlayer, players, {
+        metric: 'offensive',
+        eliteP80: ocP80,
         colorByPlayer,
-        showXAxis: true,
+        labels,
       }),
-    [rowsByPlayer, players, refLabel, hp, colorByPlayer],
+    [rowsByPlayer, players, ocP80, colorByPlayer, labels],
   )
   const buildResistance = useCallback(
     () =>
-      buildSquadEfficiencyMultiOption(rowsByPlayer, players, {
-        metric: 'damagePerDeath',
-        refLabel,
-        oneLife: hp,
+      buildSquadEfficiencyTracksOption(rowsByPlayer, players, {
+        metric: 'defensive',
+        eliteP80: drP80,
         colorByPlayer,
-        showXAxis: true,
+        labels,
       }),
-    [rowsByPlayer, players, refLabel, hp, colorByPlayer],
+    [rowsByPlayer, players, drP80, colorByPlayer, labels],
   )
+
+  // Hauteur pilotée par le nombre de pistes : les deux cartes en ont autant, donc
+  // elles restent alignées côte à côte sur la grille desktop.
+  const height = tracksChartHeight(players.length)
 
   return (
     // Rendement + Résistance côte à côte sur desktop (empilés en mobile). En mode
@@ -109,7 +112,7 @@ export function SquadEfficiencyChart({
         }
         series={series}
         buildOption={buildRendement}
-        height={TRACK_HEIGHT}
+        height={height}
         emptyMessage={labels.noData}
       />
       {hasResistance && (
@@ -117,7 +120,7 @@ export function SquadEfficiencyChart({
           title={labels.resistanceCardTitle}
           series={series}
           buildOption={buildResistance}
-          height={TRACK_HEIGHT}
+          height={height}
           emptyMessage={labels.noData}
         />
       )}
