@@ -24,13 +24,27 @@ export interface HeatmapBucketCell {
   count: number
 }
 
+/**
+ * Libellés du tooltip (une cellule = un joueur × un créneau). Fournis par le
+ * parent depuis le manifeste palmares.toml — parité FR/EN garantie par le
+ * générateur de manifestes, qui refuse une clé sans ses deux langues.
+ * `bucketTypeLabel` suit le toggle : « Créneau » en mode heure, « Jour » en
+ * mode jour de semaine.
+ */
+export interface HeatmapTooltipText {
+  playerLabel: string
+  bucketTypeLabel: string
+  matchesLabel: string
+  emptyCell: string
+}
+
 interface Props {
   cells: HeatmapBucketCell[]
   bucketLabels: string[] // index = bucket (tranche horaire ou jour)
   title?: string
   legendLabel: string
   emptyMessage: string
-  matchesLabel: (count: number) => string
+  tooltipText: HeatmapTooltipText
   height?: number
 }
 
@@ -38,13 +52,37 @@ interface Props {
 // l'axe Y — au-delà, la heatmap devient illisible (choix produit 2026-07-18).
 const MAX_HEATMAP_ROWS = 12
 
+/**
+ * formatHeatmapTooltip — contenu du tooltip d'une cellule, en trois lignes
+ * étiquetées (joueur / créneau ou jour / matchs communs) au lieu de l'ancien
+ * « Joueur · 14h » suivi d'un compteur sans contexte. Le gamertag est échappé
+ * (donnée joueur) ; les libellés viennent du manifeste i18n.
+ * Exporté pour test unitaire sans monter ECharts.
+ */
+// eslint-disable-next-line react-refresh/only-export-components
+export function formatHeatmapTooltip(
+  gamertag: string,
+  bucketLabel: string,
+  count: number | null,
+  t: HeatmapTooltipText,
+): string {
+  const who = escapeHtml(gamertag)
+  const when = escapeHtml(bucketLabel)
+  const head = `<strong>${escapeHtml(t.playerLabel)} : ${who}</strong>`
+  const slot = `${escapeHtml(t.bucketTypeLabel)} : ${when}`
+  if (count == null || count <= 0) {
+    return `${head}<br>${slot}<br>${escapeHtml(t.emptyCell)}`
+  }
+  return `${head}<br>${slot}<br>${escapeHtml(t.matchesLabel)} : ${count}`
+}
+
 // Exporté pour tester le cap sans monter le React tree (garde-rail des 12 lignes).
 // eslint-disable-next-line react-refresh/only-export-components
 export function buildOption(
   cells: HeatmapBucketCell[],
   bucketLabels: string[],
   legendLabel: string,
-  matchesLabel: (count: number) => string,
+  tooltipText: HeatmapTooltipText,
 ): EChartsCoreOption {
   const tc = getEChartsThemeColors()
 
@@ -92,10 +130,7 @@ export function buildOption(
       textStyle: { color: tc.text },
       formatter: (params: { data: { value: [number, number, number | null] } }) => {
         const [b, row, count] = params.data.value
-        const who = escapeHtml(rowLabels[row] ?? '')
-        const when = bucketLabels[b] ?? ''
-        if (count == null || count === 0) return `${who} · ${when}`
-        return `${who} · ${when}<br>${matchesLabel(count)}`
+        return formatHeatmapTooltip(rowLabels[row] ?? '', bucketLabels[b] ?? '', count, tooltipText)
       },
     },
     legend: false as unknown as undefined,
@@ -159,7 +194,7 @@ export function RelationsMomentsHeatmap({
   title,
   legendLabel,
   emptyMessage,
-  matchesLabel,
+  tooltipText,
   height,
 }: Props) {
   const series: ChartSeries<Pt>[] =
@@ -169,11 +204,18 @@ export function RelationsMomentsHeatmap({
 
   const cellsKey = useMemo(() => JSON.stringify(cells), [cells])
   const bucketsKey = useMemo(() => bucketLabels.join('|'), [bucketLabels])
+  // Clé stable des libellés : le parent peut recréer l'objet à chaque rendu sans
+  // provoquer de rebuild inutile de l'option ECharts.
+  const tooltipKey = useMemo(
+    () =>
+      [tooltipText.playerLabel, tooltipText.bucketTypeLabel, tooltipText.matchesLabel, tooltipText.emptyCell].join('|'),
+    [tooltipText.playerLabel, tooltipText.bucketTypeLabel, tooltipText.matchesLabel, tooltipText.emptyCell],
+  )
   const build = useCallback(
-    () => buildOption(cells, bucketLabels, legendLabel, matchesLabel),
-    // cells/bucketLabels capturés via clés stables (cellsKey/bucketsKey).
+    () => buildOption(cells, bucketLabels, legendLabel, tooltipText),
+    // cells/bucketLabels/tooltipText capturés via clés stables.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [cellsKey, bucketsKey, legendLabel, matchesLabel],
+    [cellsKey, bucketsKey, legendLabel, tooltipKey],
   )
 
   return (

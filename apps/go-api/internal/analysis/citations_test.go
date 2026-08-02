@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
 )
 
 // =============================================================================
@@ -63,17 +64,25 @@ func TestMergeCitationTotals_Sorted(t *testing.T) {
 	}
 	img := "/path/img.png"
 	mappings := []domain.CitationMappingRow{
-		{NameNorm: "triple_kill", NameDisplay: "Triple Kill", Category: "kills"},
-		{NameNorm: "double_kill", NameDisplay: "Double Kill", Category: "kills"},
-		{NameNorm: "flag_cap", NameDisplay: "Flag Capture", Category: "objective", ImagePath: &img},
+		// Libellés FR du seed Infinite : normalisés en clés canoniques (item 1.4).
+		{NameNorm: "triple_kill", NameDisplay: "Triple Kill", Category: "Arme"},
+		{NameNorm: "double_kill", NameDisplay: "Double Kill", Category: "Arme"},
+		{NameNorm: "flag_cap", NameDisplay: "Flag Capture", Category: "Mode de jeu", ImagePath: &img},
 	}
 	items := MergeCitationTotals(totals, mappings)
-	// Kills avant objective (alphabétique). Dans kills : triple_kill (10) avant double_kill (5).
-	if items[0].Category != "kills" {
-		t.Errorf("première catégorie attendue kills, got %s", items[0].Category)
+	// Ordre produit canonique : game_mode avant weapon. Dans weapon :
+	// triple_kill (10) avant double_kill (5).
+	if items[0].Category != canonical.CommendationCategoryGameMode {
+		t.Errorf("première catégorie attendue game_mode, got %s", items[0].Category)
 	}
-	if items[0].NameNorm != "triple_kill" {
-		t.Errorf("premier item attendu triple_kill, got %s", items[0].NameNorm)
+	if items[1].Category != canonical.CommendationCategoryWeapon || items[1].NameNorm != "triple_kill" {
+		t.Errorf("attendu weapon/triple_kill en 2e position, got %s/%s", items[1].Category, items[1].NameNorm)
+	}
+	// Aucun libellé humain ne subsiste dans la sortie.
+	for _, it := range items {
+		if it.Category != canonical.NormalizeCommendationCategory(it.Category) {
+			t.Errorf("catégorie non canonique %q pour %s", it.Category, it.NameNorm)
+		}
 	}
 }
 
@@ -111,16 +120,19 @@ func TestMergeMedalSummary_Enrichment(t *testing.T) {
 		{MedalID: 1002, TotalCount: 10},
 	}
 	mappings := []domain.MedalCitationRow{
-		{MedalID: 1001, NameDisplay: "Killing Spree", Category: "spree"},
-		// 1002 sans mapping → Unknown
+		{MedalID: 1001, NameDisplay: "Killing Spree", Category: "Multijoueur"},
+		// 1002 sans mapping → Unknown, catégorie sentinelle "misc" → "other"
 	}
 	items := MergeMedalSummary(medals, mappings)
 	if len(items) != 2 {
 		t.Fatalf("attendu 2 items, got %d", len(items))
 	}
-	// Doit être trié : spree avant misc (alphabétique)
-	if items[0].Category != "misc" && items[0].Category != "spree" {
-		t.Errorf("catégories inattendues : %v", items)
+	// Ordre canonique : multiplayer avant other (le sans-mapping).
+	if items[0].Category != canonical.CommendationCategoryMultiplayer {
+		t.Errorf("première catégorie attendue multiplayer, got %s — %v", items[0].Category, items)
+	}
+	if items[1].Category != canonical.CommendationCategoryOther {
+		t.Errorf("seconde catégorie attendue other (misc normalisé), got %s — %v", items[1].Category, items)
 	}
 	// Trouver Killing Spree
 	found := false

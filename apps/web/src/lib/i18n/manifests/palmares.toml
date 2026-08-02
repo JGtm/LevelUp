@@ -486,6 +486,29 @@ en = "Not enough encounters yet to build a time-of-day map."
 fr = "Matchs communs"
 en = "Shared matches"
 
+# Tooltip d'une cellule du heatmap : joueur / creneau ou jour / nombre de matchs.
+[palmares.relations.moments.tooltip_player]
+fr = "Joueur"
+en = "Player"
+
+[palmares.relations.moments.tooltip_hour_slot]
+fr = "Créneau"
+en = "Time slot"
+
+[palmares.relations.moments.tooltip_day_slot]
+fr = "Jour"
+en = "Day"
+
+# « communs » (et non « ensemble ») : la relation peut être coéquipière OU
+# adverse — meme vocabulaire que la legende du heatmap.
+[palmares.relations.moments.tooltip_matches]
+fr = "Matchs communs"
+en = "Shared matches"
+
+[palmares.relations.moments.tooltip_empty_cell]
+fr = "Aucun match sur ce créneau"
+en = "No match in this slot"
+
 [palmares.relations.moments.rivalries_title]
 fr = "Rivaux"
 en = "Rivals"

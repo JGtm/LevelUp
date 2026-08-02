@@ -21,6 +21,11 @@ interface CitationsViewProps {
   headerTitle: string
   /** Suffixe « complétées » par catégorie. */
   completedSuffix: string
+  /**
+   * Traduit une CLÉ de catégorie servie par l'API (`weapon`, `game_mode`…) en
+   * libellé affichable. Fourni par le conteneur — la vue reste sans accès i18n.
+   */
+  categoryLabel: (key: string) => string
   emptyTitle: string
   emptyDescription: string
 }
@@ -31,6 +36,7 @@ export function CitationsView({
   filterBar,
   headerTitle,
   completedSuffix,
+  categoryLabel,
   emptyTitle,
   emptyDescription,
 }: CitationsViewProps) {
@@ -46,7 +52,7 @@ export function CitationsView({
           vm.categories.map((group) => (
             <div key={group.category} className="rounded-lg border border-border bg-card">
               <div className="flex items-center justify-between border-b border-border px-3 py-2 text-sm font-medium">
-                <span>{group.category.charAt(0).toUpperCase() + group.category.slice(1)}</span>
+                <span>{categoryLabel(group.category)}</span>
                 <span className="text-xs font-normal text-muted-foreground">
                   {group.completed} / {group.items.length} {completedSuffix}
                 </span>

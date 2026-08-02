@@ -3,6 +3,13 @@
 
 export const citationsManifest = {
   "citations.category.completed_suffix": { fr: "complètes", en: "completed" },
+  "citations.category.enemy": { fr: "Ennemis", en: "Enemies" },
+  "citations.category.game_mode": { fr: "Modes de jeu", en: "Game modes" },
+  "citations.category.multiplayer": { fr: "Multijoueur", en: "Multiplayer" },
+  "citations.category.other": { fr: "Autres", en: "Other" },
+  "citations.category.spartan_companies": { fr: "Compagnies Spartan", en: "Spartan Companies" },
+  "citations.category.vehicle": { fr: "Véhicules", en: "Vehicles" },
+  "citations.category.weapon": { fr: "Armes", en: "Weapons" },
   "citations.commendations.col_name": { fr: "Nom", en: "Name" },
   "citations.commendations.col_progress": { fr: "Progression", en: "Progress" },
   "citations.commendations.col_tier": { fr: "Palier", en: "Tier" },

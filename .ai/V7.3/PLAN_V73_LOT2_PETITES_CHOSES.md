@@ -99,7 +99,12 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
       LoadFor) cesse d'être silencieux : `slog.ErrorContext` + état d'erreur visible
       côté UI (fin des chiffres non reproductibles). Tests service (mock port) +
       httptest si contrat touché + vitest + revue navigateur.
-- [ ] 1.3 **Rythme des rencontres — heures fausses** :
+- [ ] 1.3 (code livré le 2026-08-02, gates re-vérifiés orchestrateur — RESTE revue
+      navigateur au gate 1. Double cause prouvée : AT TIME ZONE 'UTC' post-COALESCE
+      qui annulait le fuseau de session + COALESCE mal parenthésé décalant le repli ;
+      fix = fragment canonique `StartTimeCanonicalSQL`, 3 tests DuckDB :memory:
+      Paris été/hiver + tooltip 3 lignes i18n FR/EN, 5 tests web.)
+      **Rythme des rencontres — heures fausses** :
       `internal/platform/duckdb/queries_relations_moments.go:41-42` — le
       `AT TIME ZONE 'UTC'` explicite annule le fuseau de session et livre des heures
       UTC sous l'alias `hour_local`. Corriger pour rendre l'heure dans
@@ -107,7 +112,14 @@ consignées dans ce fichier (section Décisions d'artefacts en bas). L'implémen
       COALESCE conservé). Test DuckDB `:memory:` avec fuseau fixé non-UTC.
       + **Tooltip refait** (`features/palmares/RelationsMomentsHeatmap.tsx:88-100`) :
       contenu lisible (joueur, jour/heure, n matchs), i18n FR/EN.
-- [ ] 1.4 **Catégories de citations en anglais** : (a) H5 — normaliser les catégories
+- [ ] 1.4 (code livré le 2026-08-02, gates re-vérifiés orchestrateur — RESTE revue
+      navigateur au gate 1. Normalisation canonique `commendation_category.go`
+      (7 clés stables, patron medal_category) branchée aux 3 frontières H5 +
+      service + analysis ; audit (c) Infinite : trou avéré (libellés FR en dur du
+      seed) corrigé par normalisation à la lecture, chemin sync/citations.go:215
+      confirmé sans consommateur aval ; 7 clés citations.category.* FR/EN + 
+      labels.ts patron médailles ; 7 tests Go + 4 tests web parité.)
+      **Catégories de citations en anglais** : (a) H5 — normaliser les catégories
       brutes de l'API (`"MULTIPLAYER"`, `"GAME MODE"`...) en clés stables côté Go
       (`platform/duckdb/halo5/halo5_commendation_defs.go:68`,
       `service/.../commendation_totals.go:69`) ; (b) clés
@@ -349,6 +361,19 @@ AVANT merge, pas seulement un rejeu local).
 - [2026-08-02, agent 0.1] `DefensiveResistanceP80 = 1,65` est une constante Go alors
   que le pendant offensif est déclaré par titre dans `constants.toml` (asymétrie
   title-agnostic).
+- [2026-08-02, agent 1.3/1.4] **Le garde-rail du fragment timezone n'existe pas** :
+  `player_matches_repo.go:145-146` référence `analysis/start_time_canonical_test.go`
+  qui est introuvable — rien n'interdit de réécrire le fragment à la main (c'est
+  ainsi que le bug 1.3 est né). Recommandation : ratchet grep sur `start_time_utc`
+  hors helper (candidat passe post-lot, règle 6 CLAUDE.md).
+- [2026-08-02, agent 1.3/1.4] Le seed Infinite écrit toujours des libellés FR dans
+  `citation_mappings.category` (neutre : normalisation à la lecture) — écrire les
+  clés stables serait une migration de données, hors lot.
+- [2026-08-02, agent 1.3/1.4] `CitationFullMapping.Category` (`sync/citations.go`)
+  est scanné mais jamais consommé — champ mort candidat au nettoyage (règle 7).
+- [2026-08-02, agent 1.3/1.4] `routeTree.gen.ts` se fait régénérer (réordonnancement
+  603 lignes) au passage de tsc/vitest — décalage de version du plugin TanStack
+  Router à investiguer (bruit de diff récurrent).
 - [2026-08-02, orchestrateur] **CI main rouge post-merge #71** (run 30745523574),
   2 causes sans lien avec #71 : (1) `TODO(expiry:2026-08-01)` échu dans
   `season_pass_repo_tracks.go:297` → hotfix PR #73 (échéance 2026-09-15, critère
