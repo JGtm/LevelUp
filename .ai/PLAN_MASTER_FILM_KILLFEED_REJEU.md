@@ -1799,3 +1799,22 @@ Slayer complet · Strongholds/zones : manque la lettre A/B/C et « combien de ba
 CTF : manque la machine d'état du drapeau (porteur/position) et 15 % de zones de livraison
 sans forme · **KOTH et Oddball : presque rien** (pas d'événements nommés, sémantique de score
 non établie, 1 match KOTH à vainqueur inversé non expliqué).
+
+---
+
+## J4 — CLOS le 2026-08-02, CI VERTE (vérifiée au niveau job)
+
+Run CI `30758938137` (b0a76756f) : **8 jobs verts**, Go Lint (ratchet) compris, Coverage +
+Baseline 21m31, Build+Test ubuntu ET windows, Frontend, Contract, OpenAPI, Lease. Commits
+J4 : `f9d5a11e6` (producteur live killfeed) · `0afd83f7e` (rejeu atteignable + catalogues
+title-agnostic) · `2fe1aef40` (identité + TODO échu) · `74e93d427` (docs + piste F) ·
+`b0a76756f` (fix lint : `renderStringMap` morte, seule issue réintroduite par J4).
+
+**État de J4** : sessions 1→4 + 2bis faites. **Reste hors J4, reporté à raison** : la bascule
+des 8 lecteurs (phase 2) attend le critère `lignes_passe_film/morts_api ≥ 98,4 %` via
+l'inversion de préséance — lot post-merge. Le killfeed enrichi (arme, assistant, tirs) est
+EN BASE ; la table legacy `killer_victim_pairs` reste intacte jusqu'à la bascule.
+
+**Prochaine étape = J5**, et son prérequis est la **revue adversariale du lot J4** (écritures
+persist/sync/migration — 2 relecteurs, règle du dépôt) AVANT le merge. Base de diff du lot à
+risque : `ea3cfc88b..b0a76756f` scopé sur `internal/{persist,migration,sync/killcollector}`.
