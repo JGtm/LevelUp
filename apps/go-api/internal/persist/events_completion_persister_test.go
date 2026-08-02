@@ -19,6 +19,8 @@ import (
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+
+	"levelup/go-api/internal/migration"
 )
 
 // Valeurs des bits passées par le caller (sync.MBitEvents / MBitKillerVictim).
@@ -67,6 +69,11 @@ func openCompletionTestDB(t *testing.T) *sql.DB {
 		if _, err := db.ExecContext(ctx, ddl); err != nil {
 			t.Fatalf("create schema: %v", err)
 		}
+	}
+	// match_kill_events : seconde destination des couples depuis le 2026-08-02 (double
+	// écriture datée). DDL issue de la migration réelle — la recopier ici la ferait diverger.
+	if err := migration.EnsureMatchKillEvents(db); err != nil {
+		t.Fatalf("ensure match_kill_events: %v", err)
 	}
 	return db
 }

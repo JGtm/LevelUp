@@ -128,7 +128,7 @@ func OpenSnapshotShared(ctx context.Context, paths *title.PathResolver, titleSlu
 		}
 	}
 	// Recrée TOUTES les vues shared via les fonctions canoniques (zéro divergence).
-	if err := migration.ApplyResolutionViews(db); err != nil { // v_gamertag_lookup, v_match_full, v_killer_victim_full
+	if err := migration.ApplyResolutionViews(db); err != nil { // v_gamertag_lookup, v_match_full, killer_victim_pairs (compat)
 		_ = db.Close()
 		return nil, fmt.Errorf("snapshot read shared: resolution views: %w", err)
 	}

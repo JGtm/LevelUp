@@ -46,6 +46,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/analysis"
@@ -154,12 +155,24 @@ func (c *CreditCollector) CollectMatch(ctx context.Context, matchID string) (Cre
 // La question n est pas « ce match a-t-il DEJA eu une passe de film » mais « la passe COURANTE
 // vient-elle d un film » : une passe de film ancienne, supplantee par une passe credit-seul,
 // ne doit pas bloquer eternellement. La vue repond exactement a cette question.
+// La question se teste EN POSITIF sur les voies de film (`persist.FilmReadPaths`), et le
+// changement du 2026-08-02 n est pas cosmetique : la version precedente demandait
+// `read_path <> 'highlight-events'`, donc toute voie AUTRE que la sienne passait pour un film.
+// Le jour ou une seconde voie credit est apparue (le producteur live, `kill-feed`), ce test
+// aurait bloque ce producteur-la en le prenant pour un decodage — silencieusement.
 func (c *CreditCollector) covertParUnFilm(ctx context.Context, matchID string) (bool, error) {
+	args := make([]any, 0, len(persist.FilmReadPaths)+1)
+	args = append(args, matchID)
+	marques := make([]string, 0, len(persist.FilmReadPaths))
+	for _, p := range persist.FilmReadPaths {
+		marques = append(marques, "?")
+		args = append(args, p)
+	}
+
 	var n int
-	err := c.read.QueryRowContext(ctx, `
-		SELECT COUNT(*) FROM match_kill_events_latest
-		WHERE match_id = ? AND read_path <> ?`, matchID, CreditReadPath).Scan(&n)
-	if err != nil {
+	q := fmt.Sprintf(`SELECT COUNT(*) FROM match_kill_events_latest
+		WHERE match_id = ? AND read_path IN (%s)`, strings.Join(marques, ", "))
+	if err := c.read.QueryRowContext(ctx, q, args...).Scan(&n); err != nil {
 		return false, fmt.Errorf("killsource credit: preseance %s: %w", matchID, err)
 	}
 	return n > 0, nil

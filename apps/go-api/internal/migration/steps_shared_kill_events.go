@@ -199,6 +199,17 @@ func init() {
 // table est creee VIDE dans le shared des autres titres. Le nom reste dans `canonicalOrder` le
 // jour de la relocation.
 func applyMatchKillEvents(db *sql.DB) error {
+	return EnsureMatchKillEvents(db)
+}
+
+// EnsureMatchKillEvents cree la table et sa vue `_latest` si elles manquent. Idempotente.
+//
+// EXPORTEE depuis le 2026-08-02 pour la meme raison qui avait fait remonter
+// `killer_victim_pairs` dans le schema de base : `v_gamertag_lookup` lit desormais
+// `match_kill_events_latest`, et DuckDB BIND les vues a leur creation — la table doit donc
+// exister AVANT le resolveur d identite, sur une base neuve comme au boot. Les deux appelants
+// hors migrations sont `sync.EnsureSharedSchema` et [ApplyResolutionViews].
+func EnsureMatchKillEvents(db *sql.DB) error {
 	if err := execScript(db, ddlMatchKillEvents); err != nil {
 		return err
 	}

@@ -30,6 +30,7 @@ package persist
 import (
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -209,6 +210,24 @@ func (p *KillSourcePersister) insertKillPass(
 	}
 	defer func() { _ = tx.Rollback() }() // no-op apres Commit
 
+	extra, err := insertKillEventRows(ctx, tx, in, pass, now)
+	if err != nil {
+		return 0, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("persist: Commit match_kill_events %s: %w", in.MatchID, err)
+	}
+	return extra, nil
+}
+
+// insertKillEventRows ecrit les lignes d une passe dans la transaction FOURNIE, sans la
+// committer. LE SEUL ECRIVAIN de `match_kill_events` du depot — les deux chemins l empruntent :
+// le persister dedie (qui ouvre sa transaction) et le producteur live (qui ecrit dans celle du
+// match, cf. kill_events_credit.go). Retourne le total d assistants supplementaires observes.
+func insertKillEventRows(
+	ctx context.Context, tx *sql.Tx, in KillSourceBatch, pass string, now time.Time,
+) (int, error) {
 	stmt, err := tx.PrepareContext(ctx, insertKillEventSQL)
 	if err != nil {
 		return 0, fmt.Errorf("persist: prepare match_kill_events %s: %w", in.MatchID, err)
@@ -222,10 +241,6 @@ func (p *KillSourcePersister) insertKillPass(
 			return 0, fmt.Errorf("persist: INSERT match_kill_events %s@%d: %w", in.MatchID, d.TimeMS, err)
 		}
 		extra += d.AssistExtra
-	}
-
-	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("persist: Commit match_kill_events %s: %w", in.MatchID, err)
 	}
 	return extra, nil
 }

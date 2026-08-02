@@ -263,12 +263,25 @@ func insertMatchEvents(ctx context.Context, db *sql.DB, m synthMatch, parts []sy
 				m.matchID, t, opp.xuid); err != nil {
 				return err
 			}
-			// kill-feed principal → adversaire.
+			// kill-feed principal → adversaire, dans les DEUX tables (double écriture datée
+			// du 2026-08-02, cf. persist/shared_persister.go). Côté table canonique, UNE PASSE
+			// PAR MATCH (decode_pass) : la vue _latest retient une passe entière, un
+			// decode_pass par ligne ne rendrait que la dernière mort du match.
 			if _, err := db.ExecContext(ctx, `
 				INSERT INTO killer_victim_pairs
 					(match_id, killer_xuid, killer_gamertag, victim_xuid, victim_gamertag, kill_count, time_ms)
 				VALUES (?, ?, ?, ?, ?, 1, ?)`,
 				m.matchID, demoXUIDForIndex(0), DefaultDemoMainGamertag, opp.xuid, opp.gamertag, t); err != nil {
+				return err
+			}
+			if _, err := db.ExecContext(ctx, `
+				INSERT INTO match_kill_events
+					(match_id, decode_pass, decoder_rev, publishable, time_ms,
+					 victim_gamertag, victim_xuid, feed_killer_gamertag, feed_killer_xuid,
+					 feed_present, assist_known, read_path, read_origin)
+				VALUES (?, ?, 'demo-seed', TRUE, ?, ?, ?, ?, ?, TRUE, FALSE, 'kill-feed', 'credit-seul')`,
+				m.matchID, "demo-"+m.matchID, t,
+				opp.gamertag, opp.xuid, DefaultDemoMainGamertag, demoXUIDForIndex(0)); err != nil {
 				return err
 			}
 		}
