@@ -1,7 +1,7 @@
 # HANDOFF — palette Forge, formes de zone, nommage : où en est le chantier
 
 > Écrit le 2026-08-02 en fin de session (contexte saturé). Branche `feat/re-mode-score`,
-> worktree `.claude/worktrees/re-mode-score`, **12 commits poussés**, arbre propre.
+> worktree `.claude/worktrees/re-mode-score`, **12 commits poussés** (le dernier étant celui qui porte ce document), arbre propre.
 >
 > Ce document dit ce qui est ACQUIS, ce qui est RÉFUTÉ (pour ne pas le rejouer), et
 > l'unique question ouverte avec son plan d'attaque.
