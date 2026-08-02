@@ -135,6 +135,40 @@ haut, cf. Q1.3-ter).
 Sorties : `.ai/V7.5/dumps/forge_zones/palette_noms.csv` (4 213 entrees, hachage + nom quand
 il est craque) et `noms_craques_murmur3.txt` (les 33 correspondances hachage -> nom).
 
+### Q1.0-bis LES QUATRE EMPLACEMENTS RESISTENT — ce qui a ete tente, et refute
+
+Quatre voies essayees pour les nommer, quatre negatives. Ecrites ici pour qu'on ne les
+rejoue pas.
+
+| voie | mesure | verdict |
+|---|---|---|
+| dictionnaire elargi | tous les jetons snake_case du binaire, non ancres — **105 291 mots** apres fusion des deux extractions | **0 correspondance** sur les 4 mots de nom |
+| le SECOND mot porte-t-il le nom ? | les 4 valeurs `0xFAB48286` `0xF2A5966F` `0xB159316C` `0xF0AA4ACC` contre le meme dictionnaire | **0 correspondance** — ni l'un ni l'autre des deux mots n'est un nom |
+| vocabulaire cible armes/power-ups | `rocket_launcher`, `active_camouflage`, `overshield`, `weapon_spawner`… en combinaisons jusqu'a profondeur 3 (666 159 essais) | **0 correspondance** |
+| Ghidra — la constante murmur3 | `0xCC9E2D51` : **plus de 700 occurrences** dans le binaire | trop diffus pour cibler ; nommer ces entrees demande de retrouver le **parseur du tag `food`**, c'est une session de retro-ingenierie a part entiere |
+
+**Ce que le negatif apprend quand meme** : puisque, chez les 4 209 autres entrees, le second
+mot vaut 0 et le premier est un nom, la paire `(mot0, mot1)` de ces quatre-la n'obeit pas au
+meme schema. L'hypothese la plus economique est un **identifiant sur 64 bits** (asset), pas
+deux noms — ce qui est coherent avec le fait qu'aucune moitie ne se craque.
+
+**Le test du RATELIER, sur l'avertissement de l'utilisateur** (« il y a des rateliers sur
+certains murs, ce sont des emplacements pour des armes de base — ne pas confondre »). Un
+ratelier est fixe au mur : son vecteur `Up` n'est pas vertical. Mesure sur les 199 cartes :
+
+| type_id | n | pose au SOL | fixe au MUR |
+|---|---:|---:|---:|
+| `1486653438` | 98 | 90 % | 10 % |
+| `-1062552774` | 46 | 89 % | 9 % |
+| `1882451900` | 117 | 96 % | 3 % |
+| `801517767` | 24 | **100 %** | 0 % |
+| `-721267272` (`generic_ball`) | 66 | 82 % | 0 % |
+| `-1342546397` (`skull_weapon`) | 21 | **100 %** | 0 % |
+
+**Aucun des quatre n'est un ratelier mural** : ils sont poses au sol a 89-100 %. Les rateliers
+sont donc un AUTRE type d'objet, encore non identifie — la confusion signalee par
+l'utilisateur n'a pas eu lieu, et le test le prouve plutot que de le supposer.
+
 ### Q1.3-bis REPRISE DU 2026-08-01 (soir) — le controle differentiel de l'utilisateur
 
 > **Ce qui a declenche la reprise** : la formulation de Q1.3 ci-dessous est TROP FERME et
