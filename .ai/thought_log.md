@@ -1,3 +1,53 @@
+## [2026-08-02] Le binaire nomme les stats — 123 noms lus, et une objection qui redresse le chantier
+
+**Statut** : Complété (volet rétro-ingénierie). Branche `feat/re-mode-score`. Livrables :
+`.ai/refs/TABLE_STATS_BINAIRE.tsv` (123 noms), état de l'art §19.
+
+**Décision technique principale** : abandon de la voie statistique (balayer des centaines de
+films et intersecter) au profit de la lecture directe du binaire. L'objection de l'utilisateur
+est la cause du virage : « en quoi c'est nécessaire de balayer autant de matchs ? c'est de la
+rétro-ingénierie pas de l'exploration de films ». Elle est juste, et le §17.4 désignait déjà
+cette cible — je ne m'en étais pas servi alors que Ghidra et les dumps étaient disponibles dès
+le départ.
+
+**Résultats observés** :
+
+- **Accès** : le bridge MCP `ghidra-mcp` est cassé sous Windows (`socket.AF_UNIX` inexistant en
+  CPython Windows) — un redémarrage côté Ghidra n'y change rien, c'est le client. Contournement
+  qui suffit : le plugin expose une API HTTP sur `127.0.0.1:8089`, jointe en `curl`.
+- **123 noms de stats en clair**, 10 familles (`CoreStats_` 48, `InfectionStats_` 12,
+  `ElimStats_` 11, `CtfStats_` 11, `VipStats_` 9, `BombStats_` 9, `StrongholdsStats_` /
+  `StockpileStats_` / `OddballStats_` 6 chacune, `ExtractionStats_` 5). Les noms de l'API
+  (`flag_captured`...) n'existent PAS dans l'exe : ils sont côté serveur.
+- **Oddball nommé sans balayage** : SkullGrabs, SkullScoringTicks, TimeAsSkullCarrier...
+  Le lot 2 du handoff est donc résolu pour `ball` par le binaire seul.
+- **KOTH n'a AUCUNE famille de stats** — et c'est une réponse, pas un trou de recherche :
+  `match_objective_stats` n'a pas non plus de colonne `hill_*`. `hill_control` / `hill_scored`
+  sont des récompenses de score, pas des stats de boxscore. Le lot « nommer hill » n'a
+  probablement pas d'objet tel qu'il était formulé.
+- **`CtfStats_FlagGrabs` confirme l'écart de `flag_taken`** mesuré la veille (§18.3), et par une
+  source qui ne doit rien au film : le jeu compte des RAMASSAGES, l'API récompense des
+  `flag_taken`. L'explication de l'utilisateur (style de jeu : lancer et rattraper le drapeau)
+  a devancé la preuve binaire.
+- **Corroboration croisée, le résultat le plus fort** : `CoreStats_` commence par `Score` puis
+  `PersonalScore`, exactement ce que la mesure sur film avait établi indépendamment en
+  `comp 0 A` (score de mode) et `comp 1 B` (score personnel) ; `Kills`/`Deaths` et `Assists`
+  suivent comme `comp 2` (frags ET morts) et `comp 3 A`.
+- **Structure établie** : table de descripteurs à `0x1443d10c0`, stride `0x50`, premier champ =
+  pointeur vers le nom (vérifié sur 3 entrées). `statSlot` EST l'index de composant —
+  `FUN_140807ebc` boucle sur 56 stats de stride `0x88`, soit les 28 `current-round` + 28
+  `finalized-rounds` du registre du film.
+
+**Ce qui reste ouvert, et dit net** : la correspondance nom -> index n'est PAS établie.
+L'identifiant est attribué à l'exécution (`FUN_140748a74`, retours rangés dans des globales
+consécutives `_DAT_1451a28a0+4k`), et la table indexée par stat (stride `0xC0`) a une base
+allouée au runtime, donc illisible en statique. Deux routes non tentées : lire les globales
+jeu lancé (direct), ou reconstruire l'ordre d'enregistrement statiquement (fragile).
+
+**Conclusion / prochaine étape** : la table mesurée du §17.6 reste la source pour CTF et zones
+(recette 30/30, §18.2). Fermer l'index par la lecture mémoire jeu lancé est la suite naturelle,
+et elle ne demande aucun balayage de films.
+
 ## [2026-08-02] La lecture par composant est codée et recettée — et le balayage corpus a coûté cher
 
 **Statut** : Complété (lot 1 du handoff `HANDOFF_EVENEMENTS_NOMMES_2026-08-01.md` §4).
