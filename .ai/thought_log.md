@@ -1,3 +1,32 @@
+## [2026-08-02] Lot 2 v7.3 — Phase 1 close (6 bugs), gate 1 passé, volet D clos (D1/D2)
+
+**Statut** : Complété (Phase 1 + volet D exécutable). Pilotage : 3 agents Opus
+séquentiels (1.1+1.2, 1.3+1.4, 1.5+1.6), gates re-exécutés par l'orchestrateur à
+chaque lot, revue navigateur Playwright orchestrateur en clôture de phase.
+
+**Décision technique principale** : la revue navigateur a été menée en matrice
+Playwright ad hoc (scripts .tmp.mjs, supprimés) avec preuves discriminantes plutôt
+que du smoke-test : scénario « ancre périmée » + contre-épreuve pour 1.1, preuve API
+du contraste suffixe/roster et du 0-strict pour 1.2, interception réseau pour les
+heures locales 1.3 (FR+EN), serveur démo réel pour 1.6. Résultat : 4/4 PASS ;
+1.5 non vérifiable localement (0 média sur le poste — fichiers sur VPS), couvert par
+le test discriminant WAL (rouge sans fix) et reporté aux ops prod 4.1.
+
+**Résultats observés** : commits 3862ff083 (1.1+1.2), 24720944f (1.3+1.4),
+ef7d32cbc (retombée 1.3 : test heatmap dépendant du fuseau machine, épinglé UTC),
+ea5611397 (1.5+1.6). Cause racine des régressions likes CONFIRMÉE = intuition
+utilisateur (écriture non instantanée) : tx.Commit() nu → like en WAL jusqu'à 5 min,
+effacé à chaque déploiement ; CommitWithCheckpoint existait et n'était jamais appelé,
+et les tests du chemin atomique étaient désactivés depuis mai (consigné). Piège
+récurrent : routeTree.gen.ts régénéré par chaque tsc/vitest/vite (2 interceptions,
+1 amend) — décalage de version du plugin TanStack Router consigné en découverte.
+Incidents pilotage : 2 agents coupés par la limite de session API, relancés par
+SendMessage avec récupération complète (doctrine mémoire confirmée).
+
+**Conclusion / prochaine étape** : Phase 2 (5 petites UI) — agents séquentiels
+2.1-2.3 puis 2.4-2.5 (contrat partagé), revue navigateur par item au gate 2.
+Serveurs dev arrêtés (état initial du poste restauré).
+
 ## [2026-08-02] Lot 2 v7.3 — exécution : Phase 0 publiée, volet D1/D2 livré, hotfix CI main
 
 **Statut** : En cours (pilotage multi-agents Opus, branche `feat/v7.3-notion-lot2`).
