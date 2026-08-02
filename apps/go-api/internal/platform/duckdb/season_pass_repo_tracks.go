@@ -294,12 +294,12 @@ func (r *SeasonPassRepo) loadItemMetadataMap(
 // (stockés par warmBPTrackAssets lors d'appels précédents).
 // Cherche d'abord dans le nouveau kind 'bp-item-def', puis dans l'ancien 'track-def'
 // pour la rétrocompatibilité avec les items mis en cache avant ce déploiement.
-// TODO(expiry:2026-11-01): supprimer 'track-def' de la liste une fois tous les items
+// TODO(expiry:2026-09-15): supprimer 'track-def' de la liste une fois tous les items
 // migrés vers 'bp-item-def' via le live flow ou le backfill.
-// Échéance repoussée le 2026-08-02 (échue la veille) : le critère de retrait est la
-// migration complète des caches vers 'bp-item-def', qui n'est pas mesurée aujourd'hui —
-// retirer le fallback maintenant ferait régresser les items mis en cache avant le
-// déploiement. À traiter avec le chantier season-pass, pas en marge d'un bump de deps.
+// Échéance repoussée le 2026-08-02 (était 2026-08-01, constatée échue par la CI main) :
+// la migration n'est vérifiable que sur les données prod (critère mesurable :
+// 0 ligne kind='track-def' dans asset_index côté VPS) — vérification planifiée avec
+// les ops prod du lot 2 v7.3 (Phase 4).
 // Best-effort : toute erreur est silencieusement ignorée.
 func (r *SeasonPassRepo) fillItemsFromAssetIndex(
 	ctx context.Context,
