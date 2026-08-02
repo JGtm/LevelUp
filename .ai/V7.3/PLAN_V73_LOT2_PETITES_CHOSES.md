@@ -534,5 +534,11 @@ AVANT merge, pas seulement un rejeu local).
 
 ## Décisions d'artefacts (à remplir au gate 0)
 
-- Rendement & Résistance : (en attente)
-- Marqueurs dominance V/D : (en attente)
+- Rendement & Résistance : **C pressenti** (pistes par joueur — validé par l'utilisateur
+  pour l'esprit timeseries/sessions) ; question utilisateur du 2026-08-02 en cours :
+  transformation de données pour superposer les 4 joueurs sur UN graphe en contexte
+  escouade → section E ajoutée à l'artefact (E1 écart au collectif du match, E2 rangs,
+  E3 cumul d'écart à la frontière élite), décision finale en attente.
+- Marqueurs dominance V/D : **A — encoches traversantes** (décision utilisateur du
+  2026-08-02, verrouillée). Implémentation en 3.5 sur les 5 surfaces, liseré/gouttière
+  obligatoire (contraste tokens/issues hors norme quelle que soit la forme).
