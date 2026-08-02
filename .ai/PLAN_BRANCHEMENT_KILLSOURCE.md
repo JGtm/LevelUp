@@ -315,17 +315,103 @@ resultat a la deduplication pres ; aucun lecteur ne casse en silence ; `go test 
 > ≈ **2 h 30 a 3 h** ; les 24 films au-dela de 50 chunks sont a compter SEPAREMENT — entre 10 min
 > et 20 min chacun, soit **4 h a 8 h a eux seuls**. Les passer EN DERNIER reste le bon ordre.
 
-- [ ] ~~**949 films en cache**, 1 908 matchs au registre, 1 325 porteurs de paires~~ → re-mesure ci-dessus
-- [ ] ~~Estimation : ~900 films 4v4 a 8-30 s = **2 h 30 a 7 h 30** ; les BTB a 11 min chacun~~ → re-mesure ci-dessus
-- [ ] Sous-commande dediee du CLI principal (`levelup`), pas un script jetable
-- [ ] Reprenable : `decoder_rev` + la vue par PASSE permettent de rejouer sans tout refaire
-- [ ] **Les films Theater EXPIRENT cote serveur** : ce qui n est pas en cache est perdu
+> **⚠ LE MUR DE COUT CI-DESSUS EST TOMBE LE 2026-08-01 (J4 session 2). Les chiffres de cout de
+> cette phase sont donc PERIMES — ils decrivent le decodeur d avant le correctif.** Cause
+> mesuree au profil CPU (film `34bb3bc8` : 102 s sur 131 s dans `filmdec.ReadBits`, appele
+> depuis UNE fonction) : `consumeObjectMultiplayerProperties` sautait le corps d un TLV par
+> `ReadBits(8)` **une fois par octet**, plafonne a 1 048 576 iterations — sur une traversee mal
+> alignee (la quasi-totalite des tentatives d un calibrage), la longueur LEB128 lue est du bruit
+> et declenche ce million de lectures. Le corps n est jamais interprete : `Skip(8N)` a le meme
+> etat final. **Gain mesure : 1 145 s -> 46,7 s sur le plus gros film (x24,5), 331 s -> 33,7 s,
+> 575 s -> 51 s.** Le facteur 83 sur le cout par chunk tombe a ~5. Equivalence prouvee
+> DEUX FOIS : 3 artefacts de rejeu reconstruits bit-identiques, et JSON `killsource`
+> bit-identique sur 8 films dont les 4 de reference.
+
+- [x] ~~**949 films en cache**, 1 908 matchs au registre, 1 325 porteurs de paires~~ → re-mesure ci-dessus
+- [x] ~~Estimation : ~900 films 4v4 a 8-30 s = **2 h 30 a 7 h 30** ; les BTB a 11 min chacun~~ → **re-mesure
+      apres correctif : 951 films, 28 769 chunks, passe complete en ~1 h 15** (voir journal J4-2)
+- [x] Sous-commande dediee du CLI principal (`levelup`), pas un script jetable
+      → `levelup backfill-killsource` (`cmd/levelup/cmd_backfill_killsource.go`) : deux passes
+      (films puis credit), `--dry-run`, `--limit`, `--films-only`, `--credit-only`, `--force`,
+      restitution des compteurs de sante en fin de passe (un process qui s arrete emporte ses
+      `expvar` avec lui).
+- [x] Reprenable : `decoder_rev` + la vue par PASSE permettent de rejouer sans tout refaire
+      → la selection lit `match_kill_events_latest` et saute les matchs deja a jour ; **verifie
+      sur pieces** : une seconde passe `--limit 25` a traite 25 films NEUFS, pas les 20 deja faits.
+- [x] **Les films Theater EXPIRENT cote serveur** : ce qui n est pas en cache est perdu
       definitivement. Au moins **28 % des matchs** n auront jamais de ligne issue d un film — d ou
       `source_tag` NULLABLE et le chemin `highlight_events` comme SECOND producteur.
-- [ ] Prevenir avant toute execution sur le VPS de prod
+      → le second producteur EXISTE depuis J4-2 (`killcollector/credit.go`), avec preseance
+      film > credit testee.
+- [x] Prevenir avant toute execution sur le VPS de prod
+      → **aucune execution VPS dans cette session** (interdit de l ordre de mission). La passe
+      prod reste a planifier en J5, avec l utilisateur.
+- [x] **HORS LIGNE, et c est mesure** : la source de chunks du backfill est
+      `killcollector.LocalCacheFilms` — elle lit le manifeste et les chunks du cache disque et
+      **n a aucun client HTTP derriere elle**. Il est donc structurellement impossible que la
+      passe parte sur le reseau ou expire une authentification en cours de route.
 
 **GATE 3** : le backfill tourne sur 20 films, les compteurs de sante sont dans le domaine, et un
 `SELECT` de controle montre que les agregats carriere ont DEGONFLE du facteur attendu.
+
+**GATE 3 — ATTEINT le 2026-08-01 (J4 session 2).**
+
+| controle | resultat |
+|---|---|
+| backfill sur 20 films puis EN ENTIER | **949 films ecrits, 74 569 morts, 2 h 52 min 57 s** ; 2 films absents (repertoires vides), **0 erreur, 0 abandon sur delai, 0 sans kill-feed** |
+| producteur credit-seul | **394 matchs, 50 125 morts, 33 s** ; **949 refuses par la PRESEANCE** (film prioritaire) ; 583 sans evenement |
+| **couverture** | **1 343 matchs** — la cible exacte du plan (949 par le film + 394 par le credit), et **100 % de ce qui est recuperable** : les 583 restants portent `events_loaded = TRUE` sans evenement, c est-a-dire un 404 deja constate par le sync (527 datent de 2023) |
+| lignes joignables | 124 694 lignes ; **123 244 xuid de victime (98,8 %)**, 123 786 xuid de tueur (99,3 %) |
+| compteurs de sante | dans le domaine — cf. detail ci-dessous ; **une exception : `assist_extra_count = 5`** |
+| `go test -tags=integration -p 1 ./...` | **vert** (parite CI) |
+| `go test ./...` | vert |
+| ratchet lint (`--new-from-merge-base=origin/main`, cache purge) | **0 issue** |
+| 3 artefacts de rejeu | **bit-identiques**, revérifies APRES toutes les modifications de la session |
+
+**LE `SELECT` DE CONTROLE — LE DEGONFLEMENT EST LA, ET IL TOMBE SUR LE CHIFFRE ANNONCE.**
+
+```
+population : les 1 343 matchs couverts
+  killer_victim_pairs        250 139 lignes
+  match_kill_events_latest   124 694 lignes
+  facteur de degonflement    2,006
+
+le duel de controle, joint par XUID (Luigi Numba 01 -> JGtm) :
+  avant   101 frags affiches
+  apres    29 frags
+```
+
+**101 -> 29 : c est EXACTEMENT le chiffre que le plan annoncait** (« sur un duo reel, l ecran
+affiche 101 frags la ou il y en a 29 »), retrouve sans avoir ete cherche. Les quatre duels
+suivants degonflent pareil : 73 -> 24, 72 -> 18, 71 -> 24, 64 -> 19.
+
+**PROVENANCE DES LIGNES** — la portee voyage avec la donnee :
+
+```
+read_path          lignes   matchs   publiables   avec source de degat
+marche             57 278      947       39 242   57 278
+scan               17 291      923       13 104   17 291
+highlight-events   50 125      394       50 125        0   <- credit seul, par construction
+```
+
+**LES TROIS ETATS DE L ASSISTANT, EN BASE** : 52 466 « on ne sait pas » · 49 147 « pas
+d assistant MESURE » · 23 081 assistants nommes. Les trois populations sont non vides : la
+distinction survit jusqu au bout de la chaine.
+
+⚠ **`assist_extra_count = 5` — LE DECLENCHEUR DE L ADR 0026 A BOUGE POUR LA PREMIERE FOIS.**
+Il valait 0 sur tout ce qui avait ete decode jusqu ici ; sur 74 569 morts, **5** portent plus
+d un assistant distinct. L hypothese de schema « un seul assistant » n est donc pas fausse a
+l echelle du corpus, mais elle n est plus universelle. Le compteur a fait exactement ce pour
+quoi il a ete pose. **Arbitrage superviseur** : migrer vers une table fille, ou documenter le
+plafond a 1 assistant comme une perte connue de 5 lignes sur 74 569 (0,007 %).
+
+**LA VENTILATION DES TIRS** : 49 392 lignes sur **941 matchs**, 6 040 joueurs, **16 397
+publiables** (33,2 % — la porte des +-10 % fait son travail, Fiesta et grand format refuses).
+`MAX(player_index) = 26` : la preuve que la lecture 5 bits etait necessaire, une lecture 4 bits
+aurait fusionne ces joueurs avec ceux d indice 26-16 = 10.
+`killsource_tirs_indices_non_resolus = 1 593` : les joueurs dont le motif de xuid n apparait pas
+dans le flux — ils n ont AUCUNE ligne, et c est ce compteur qui empeche de confondre leur
+absence avec « ce joueur n a pas tire ».
 
 ---
 
@@ -353,6 +439,23 @@ devant de 3 points. Ce n est pas une imprecision, c est une reponse fausse.
 Armes publiables, sur les joueurs dont l arme domine >= 80 % des tirs decodes :
 `MA40 AR +0,0249` · `BR75 -0,0108` · `Mk51 Sidekick -0,0050` · `Bandit Evo +0,0132`.
 Les armes a projectile sont fausses d un facteur 30 a 60 — **non publiables**.
+
+> **ETAT AU 2026-08-01 (J4 session 2) : LA TABLE EST REMPLIE, ET ELLE NE PUBLIE RIEN.** Le
+> producteur (`killcollector/shots.go`) ecrit `match_weapon_shots` dans la MEME passe de
+> decodage que les morts — un film decode une fois alimente les deux tables. Il ne calcule
+> AUCUN taux par arme : la porte de publication (+-10 % du `shots_fired` de l API) est
+> evaluee par le persister, jamais fournie, et **aucun lecteur n existe**. L interdit du §4.2
+> est donc tenu par construction, pas par vigilance.
+>
+> Deux points a savoir avant de lire la table :
+> - **l indice de joueur y est lu sur 5 bits** (`analysis.FireEvent.PlayerIndex5`), pas 4. La
+>   lecture 4 bits SATURE a 15 : au-dela de 16 joueurs elle FUSIONNERAIT les tirs de deux
+>   joueurs sur une meme ligne. Constate sur les donnees ecrites : `MAX(player_index) = 23`.
+>   ⚠ `FireEvent.PlayerIndex` (4 bits) est CONSERVE tel quel pour la correlation d armes de
+>   production : la corriger ne repare rien tant que `getXuidToPI` derive l indice de l ordre
+>   de la base (indiscernable d une permutation au hasard). Remplacement hors perimetre J4-2.
+> - **l indice -> xuid est resolu DANS LE FILM** (motif du xuid au bit pres, 5 bits devant),
+>   jamais par l ordre de la base.
 
 ### 4.3 Capabilities
 
@@ -430,6 +533,233 @@ VALIDE en perte de donnee.
 - **(d) `killer_victim_pairs` figure dans `internal/ops/seed_demo.go`** : le jour de la bascule,
   la table de remplacement doit s y ajouter, sinon la demo affiche des duels vides — panne
   silencieuse visible seulement a l ecran.
+
+---
+
+### 2026-08-01 — J4 session 2 : le mur de cout, les deux producteurs, le backfill
+
+**Perimetre traite** : (A) profilage du mur de cout, (B) producteur de `match_weapon_shots`,
+(C) second producteur de `match_kill_events`, (D) sous-commande de backfill, (E) controle
+avant/apres. **Phase 3 CLOSE.** Phase 2 (bascule des lecteurs) : non entamee, c est la session 3.
+
+**(A) LE MUR DE COUT ETAIT UN BUG, ET LE PROFIL L A DIT EN UNE MESURE.** 78 % du temps d un
+decodage dans `filmdec.ReadBits`, appele depuis UNE fonction :
+`consumeObjectMultiplayerProperties` sautait le corps d un TLV en lisant **un octet a la fois**,
+plafonne a 1 048 576 iterations. Le corps n est jamais interprete — les lectures jetaient leur
+resultat. Sur une traversee mal alignee (la quasi-totalite des tentatives d un calibrage ou
+d une recherche de signature), la longueur LEB128 lue est du BRUIT : d ou le million de lectures.
+`Skip(8N)` a exactement le meme etat final, `ReadBits` n ayant d autre effet que d avancer la
+position. **L equivalence est structurelle, pas empirique** — et elle a ete verifiee DEUX FOIS
+quand meme (3 artefacts de rejeu bit-identiques, JSON `killsource` bit-identique sur 8 films).
+
+| film | chunks | avant | apres |
+|---|---|---|---|
+| `e157a672` | 8 | 1,6 s | **1,0 s** |
+| `9b191a7f` | 33 | 14,2 s | **7,3 s** |
+| `34bb3bc8` | 42 | 131 s | **24,8 s** |
+| `37f8b21c` | 40 | **331 s** | **33,7 s** |
+| `4f77afc1` | 64 | 575 s | **51 s** |
+| `1c4c63c2` | 69 | **1 145 s** | **46,7 s** |
+
+*Ce que la mesure a appris et qui vaut plus que le gain* : la non-linearite n etait pas dans le
+DECODAGE mais dans le chemin d ERREUR. Un cout qui explose avec la taille du film n implique pas
+un algorithme quadratique en taille de film — ici c est la FREQUENCE des traversees ratees qui
+croit, et chaque ratee coutait un million de lectures. Chercher la complexite dans le chemin
+nominal aurait ete chercher au mauvais endroit.
+
+**(B) LE PRODUCTEUR DE TIRS ECRIT DANS LA MEME PASSE QUE LES MORTS.** Un film telecharge une
+fois, decompresse une fois, deux tables ecrites. Deux points ont demande une decision :
+1. **L indice de joueur se lit sur 5 bits** (`PlayerIndex5`), pas 4. Ce n est pas un raffinement :
+   la lecture 4 bits SATURE a 15, donc au-dela de 16 joueurs elle FUSIONNERAIT les tirs de deux
+   joueurs distincts sur une meme ligne — une ligne fabriquee, qu aucune colonne ne signalerait.
+   `MAX(player_index) = 23` sur les donnees ecrites : le cas est reel, pas theorique. Le champ
+   4 bits reste EN PLACE pour la correlation d armes de production, avec la raison ecrite : le
+   corriger ne repare rien tant que `getXuidToPI` derive l indice de l ordre de la base.
+2. **La resolution indice -> xuid a du etre reecrite.** La version naive (`weaponv3.ResolveBest`)
+   balaie le film UNE FOIS PAR XUID, chaque position coutant une relecture de 64 bits : mesure a
+   **24 s par film** sur des films de 8 a 16 chunks, la ou le decodage des morts en coute 1 a 3.
+   La resolution coutait DIX FOIS le decodage qu elle accompagne. Fenetre glissante + prefiltre
+   16 bits + arret des que tout est resolu : **3,8 s/film**, et l equivalence exacte (memes
+   chunks, memes positions, premiere occurrence gagnante) est TESTEE contre la version naive.
+
+**(C) LE SECOND PRODUCTEUR EST UNE TRANSFORMATION SQL -> SQL.** Il lit `highlight_events` et
+apparie avec `analysis.ComputeKillerVictimPairs` — LA fonction qui produit `killer_victim_pairs`
+aujourd hui, meme tolerance de 5 ms. Trois exigences, trois tests sur base :
+- **preseance film > credit** : un match porteur des deux sources ne rend QU UN jeu de lignes, et
+  c est celui du film. Testee dans les DEUX ordres d arrivee ;
+- **trois etats de l assistant** : `assist_known = FALSE`, et source/categorie/divergence/parts
+  ABSENTES (NULL), jamais nulles-comme-zero. Le test verifie colonne par colonne ;
+- **couverture** : un match sans film produit quand meme ses lignes.
+
+**(D) LE BACKFILL EST UNE SOUS-COMMANDE, ET IL EST HORS LIGNE PAR CONSTRUCTION.**
+`levelup backfill-killsource` : films (les moins chers d abord, gros en dernier) puis credit.
+La source de chunks n a AUCUN client HTTP derriere elle — il n y a pas de reseau a atteindre,
+donc pas d authentification a expirer. Reprenable par `decoder_rev`, verifie sur pieces.
+
+**LE DEFAUT LE PLUS COUTEUX DE LA SESSION — L IDENTITE DES JOUEURS, ET IL ETAIT SILENCIEUX.**
+Repere en cours de backfill (200 films deja ecrits), sur une remarque de l utilisateur : *« a mon
+avis tu regardes la mauvaise table pour les xuid-gamertags »*. Trois faits qui s enchainent :
+
+1. **`match_participants.gamertag` est VIDE en production** — 27 607 lignes sans nom sur 27 989,
+   **4 xuids nommes sur 16 996**. Le roster du collecteur lisait cette colonne : il rendait une
+   table quasi vide.
+2. **La source canonique est la VUE `v_gamertag_lookup`** (`analysis.GamertagLookupViewSQL`) et
+   sa cascade : bot connu -> `xuid_aliases` -> `match_participants` -> **`killer_victim_pairs`**
+   -> libelle masque. `xuid_aliases` a cesse d etre alimente en avril 2026 : ce sont les
+   gamertags du KILL-FEED qui couvrent les adversaires depuis. 18 219 xuids, 36 masques.
+3. **Le film ne donne pas toujours un pseudo.** Quand il n en a pas, le decodeur ecrit
+   `xuid:<decimal>` (`feed.go`). Cette forme EST l identite — la chercher dans une table de
+   gamertags ne rend evidemment rien.
+
+**Constat chiffre du defaut** : 16 908 morts ecrites, **10** portaient un xuid de victime. Des
+lignes qu AUCUN agregat carriere ne peut joindre — c est-a-dire exactement ce que ce chantier
+existe pour produire. Apres correctif, sur les memes films : **77 morts, 75 xuids victime,
+77 xuids tueur**. La regle a ete centralisee en UNE copie (`MatchIdentities.Resoudre`), le
+prefixe `xuid:` exporte par le decodeur (`killsource.XUIDNamePrefix`) pour qu il n existe qu un
+seul litteral, et un test de non-regression couvre les deux formes de nom.
+
+*Lecon* : **une passe qui « reussit » sans erreur peut n avoir rien produit d utilisable.** Les
+compteurs disaient 20 matchs ecrits, 0 erreur ; c est une requete sur le CONTENU — pas sur le
+succes — qui a montre le trou. Un backfill doit se controler sur ce qu il rend JOIGNABLE, pas
+sur son taux d echec.
+
+⚠ **DEPENDANCE A CONSIGNER POUR LA PHASE 2** : `v_gamertag_lookup` LIT `killer_victim_pairs`.
+Supprimer cette table (etape 7 du chemin de retrait) sans avoir d abord rebranche la vue sur
+`match_kill_events_latest` ferait retomber tous les adversaires sur « Joueur #### » — une panne
+d affichage que rien ne signalerait, sur le chemin le plus visible du produit.
+
+**DEUX AUTRES DEFAUTS TROUVES EN EXECUTANT, PAS EN RELISANT** :
+- `KillSourceSummary.Deaths` n etait **jamais incremente** : chaque match journalisait ses
+  dizaines de morts pendant que la synthese de passe affichait `0`. Corrige (le compte remonte
+  desormais de `CollectMatch`) — c est le genre de zero qu on croit longtemps ;
+- le paquet `filmdec` definit son propre `min(int, int)` dans un fichier de TEST, qui masque le
+  builtin a la compilation des tests. Un `min(uint64, uint64)` legitime dans le code de
+  production ne compile donc pas. Contourne, non traite (hors perimetre).
+
+**DECOUVERTE GRAVE, NON TRAITEE — LES GOLDENS DU DECODEUR SONT DEJA ROUGES SUR LA BRANCHE.**
+`TestGoldenFilms` echoue sur les 4 films de reference, **avant tout changement de cette
+session** : prouve en rejouant le test sur l arbre restaure, diffs identiques au bit pres avec et
+sans le correctif (A). Les goldens datent du 2026-07-31 17:49 ; **J3 (lots B/C/D) a modifie le
+decodage sans que personne le voie**, parce que ce test SE SKIPPE sans `KILLSOURCE_FIXTURES` et
+que le gate J3 portait sur les artefacts de REJEU, pas sur la sortie `killsource`. Les ancres
+Theater, elles, tiennent (`TestGoldenAncres...`, `TestLigneDiscriminante...` verts). Ecarts :
+`78919882` 91 -> 92 apparies, `fccc61cd` 84 -> 85, `000d5950` 86 -> 84, `9b191a7f` calibration
+17/2 -> 16/3 a score egal. **Arbitrage superviseur requis** : re-congeler deliberement apres
+revue du diff, ou instruire l ecart. *Lecon : un gate qui se skippe sur une variable
+d environnement n est pas un gate, c est une option.*
+
+> ⚠ **CORRECTION DU 2026-08-02 (session 2bis).** L attribution ci-dessus est FAUSSE : **J3 n y
+> est pour rien**, et c est mesure — la signature de l ecart est identique, au bit pres, des
+> `96bc56175` (J2 lot 2.5), soit AVANT le premier lot de J3. Le lot D de J3 (`bijection.go`)
+> ne change rien d observable. La cause est `47c9e72ac`. Voir l entree ci-dessous.
+
+### 2026-08-02 — J4 session 2bis : instruire l ecart des goldens
+
+**LA CAUSE, ET CE QU ELLE N EST PAS.** Bissection sur worktree detache, 4 films, `go test`
+avec `KILLSOURCE_FIXTURES` : `5b5f97c69` VERT, `47c9e72ac` ROUGE. Entre les deux, `2044b7139`
+**NE COMPILE PAS** (`capture.go` reference `CompResult.Payload`, absent) — commit non
+evaluable, la paire port+fusion se juge sur `47c9e72ac`. Piege de methode releve en cours de
+route : `RC=1` confond echec de BUILD et echec de TEST ; deux conclusions intermediaires ont du
+etre reprises apres lecture des sorties.
+
+**Deux hypotheses refutees, chacune deux fois :**
+
+- *Le correctif de performance de J4-2* (`Skip(8N)` au lieu de la boucle plafonnee). Refute par
+  la mesure (l ecart existe des J2) ET par la lecture : `ReadBits` n a d autre effet que
+  d avancer `pos`, et le plafond est CONSERVE (`tlvBodyMaxBytes = 1<<20`, exactement le
+  `i < 1<<20` d origine). Le saut n est pas plus loin, il est au meme endroit. **Le correctif
+  reste bon, et il n y a rien a borner.**
+- *J3 lots B/C/D* — exonere par la mesure (cf. correction ci-dessus).
+
+**LA CAUSE : `47c9e72ac`** (« reunir les deux decodeurs filmdec — fusion a trois voies »). Son
+message annonce « killsource (golden) vert » : le test avait SKIPPE. Faux vert de bonne foi.
+
+**Sous-cause A, PROUVEE** — le `br.ReadBits(2)` ajoute dans `consumeAbsoluteWithGate`
+(`components_movement.go`) : champ « fini », FUN_14076e304, lu sous un predicat qui ne consomme
+aucun bit ; le chemin world-object le lisait DEJA (`[2 finite]` de ses 45 bits) et la capture CE
+mesure 47 bits sur 100 % de 154 158 dispatches, sans variance. La calibration l absorbe en
+retrecissant l axe, et **`3*axisW + indexW` perd exactement 2 sur les QUATRE films** :
+000d5950 43->41, 9b191a7f 53->51, 78919882 50->48, fccc61cd 52->50. **Controle** : neutraliser
+cette seule ligne a HEAD restaure exactement `axisW=17 indexW=2` sur 9b191a7f. Le critere de
+calibration ne voit que la SOMME des largeurs (le record se referme au meme bit) : le parametre
+est sous-determine, le balayage re-alloue, la sortie ne bouge pas.
+
+**Sous-cause B, NON ISOLEE** : la neutralisation des 2 bits ne restaure ni la ventilation
+marche/scan ni la mediane (58 -> 57). Une seconde difference vit dans les 892 insertions de
+`47c9e72ac`. Non poursuivie — son effet est borne et mesure (cf. ci-dessous) ; l isoler exige
+des reverts fichier par fichier dans un commit de fusion. Consigne en Decouvertes.
+
+**L ORACLE NE DEPARTAGE PAS, ET ON SAIT EXACTEMENT DE COMBIEN.** Comparaison **ligne a ligne**
+des sorties JSON completes de `cmd/killsource json` sur les 4 films, etat fige (`5b5f97c69`)
+contre HEAD (`deba72742`) — le paquet `killsource` et son CLI n ont change qu en UN fichier
+entre les deux, le rendu est donc le meme et seul le decodeur differe. **Les seules differences
+sont** : la chaine `calibration`, les compteurs `stats` par voie, et le champ `voie` /
+`voie_identifiant` de **4 lignes au total** (2 sur 000d5950, 1 sur 78919882, 1 sur fccc61cd,
+0 sur 9b191a7f). **AUCUNE ligne publiee ne change de victime, de tueur, de tag, d etiquette, de
+categorie, d instant, de divergence ni d assistant : 371 sur 371 identiques.** Donc **380/380
+morts de l API inchange** des deux cotes (`couverts`, `mortsBot`, `mortsParBot` identiques sur
+les 4 films) et **30/30 ancres Theater inchangees**, etiquettes ET voie — aucune des 4 lignes
+deplacees n est une ancre. `DESACCORD = 0` des deux cotes : quand une mort change de voie, les
+deux voies disaient deja la meme chose. Ce qui bouge est la PROVENANCE INTERNE de 1,1 % des
+lignes, jamais leur contenu.
+
+**VERDICT : issue (c) au sens de la mesure — equivalence sur l oracle.** Mais la consigne
+attachee a (c) (« le plafond de l ancienne boucle fait foi, restaurer le comportement »)
+reposait sur une premisse tombee : il n y a pas de departage arbitraire qui bouge, il y a un
+decodeur qui lit un champ de 2 bits qu il ne lisait pas, avec sa propre trace de mesure.
+Restaurer reviendrait a SUPPRIMER cette correction pour conserver des nombres etablis contre un
+decodeur a qui il manquait un champ. **Recommandation : re-congeler**, cause et preuve
+d equivalence dans le meme commit. **Arbitrage rendu au superviseur** — la premisse etant
+tombee, le choix lui revient. **TRANCHE LE MEME JOUR : re-congeler.**
+
+**RE-CONGELEMENT FAIT**, et son diff est instructif : **13 lignes sur les 4 goldens de film, et
+`cumul.golden` INCHANGE**. Les sommes agregees sont identiques au numerateur pres — marche
+340/340 proposes et 334 apparies, scan 37/37 et 29 apparies — donc **seul le PARTAGE par film a
+bouge, pas la ventilation du chantier**. C est le controle le plus fort qu on pouvait esperer :
+si la re-allocation avait degrade quoi que ce soit, le cumul l aurait montre.
+
+**LE BACKFILL.** `match_kill_events` persiste `read_path VARCHAR NOT NULL` : la voie de lecture
+EST en base, et 4 lignes sur 371 (1,1 %) y porteraient une valeur differente ; tous les autres
+champs sont identiques. **Si re-congelement : RIEN A REJOUER** — les 124 694 lignes / 1 343
+matchs ont ete produites par le decodeur ACTUEL, celui dont les lignes sont identiques a celles
+du decodeur fige. **Si restauration : a rejouer** (2 h 53, reprenable par `decoder_rev`), pour
+~1 % de lignes dont seule la colonne de provenance differe. *Reserve honnete : l equivalence est
+mesuree sur les 4 films de reference, pas sur les 1 343 matchs ; le mecanisme (budget de bits
+total conserve) est general, la mesure ne l est pas.*
+
+**LE DEFAUT STRUCTUREL — 3e occurrence.** `TestGoldenFilms` fait `t.Skip` sans
+`KILLSOURCE_FIXTURES`, ce qui a laisse `47c9e72ac` annoncer un golden vert en toute bonne foi.
+Apres le garde feedback-drawer (J4.0) et le ratchet knip (J3.3), c est la troisieme fois qu un
+garde ne peut pas echouer. *Lecon, la meme qu en J4.0 : un garde qui ne peut pas echouer ne
+garde rien — et un gate optionnel est un garde qui ne peut pas echouer.*
+
+**CORRECTIF POSE LE MEME JOUR** : `TestGoldenMiniBobine` tourne **sans fixture et sans variable
+d environnement**, donc dans le `go test ./... -p 1` du job de couverture, en 0,63 s.
+
+- **La bobine** (`testdata/minibobine_000d5950`, 3,8 Mo) est un **PREFIXE CONTIGU** des 6
+  premiers chunks de `000d5950`, en-tete compris, suivi de son chunk HIGHLIGHT. Contigu et
+  depuis le debut **parce que le decodeur l exige** — et c est une premisse du plan qui tombe :
+  le patron de la mini-bobine de J2 (paquets choisis, concatenes hors continuite) y decode
+  **ZERO** mort. Mesure : en-tete + chunk 01 + highlight (644 Ko) -> 0 candidat ; prefixe 00-03
+  -> 6 morts ; prefixe 00-05 -> 10 morts, et c est ce dernier qui atteint la ligne `01:12`.
+- **Ce qu il fige** : les **10 lignes publiees EN ENTIER** (tag, etiquette, categorie, credit,
+  assistant, voie, origine, divergence), dont **3 ancres Theater** — 00:35 Disruptor,
+  00:44 Skewer, 01:12 M41 SPNKr — et **la ligne de divergence `01:12`**, la seule du prefixe ou
+  la source appartient a la victime.
+- **Trois gardes, pas un** — la lecon de J4.0 appliquee : bobine absente ou tronquee = echec
+  bruyant (comptage de chunks) ; **plancher de 10 lignes publiees**, qui interdit de figer une
+  sortie vide (un golden fige une sortie, il ne dit pas qu elle est NON TRIVIALE) ; recette de
+  fabrication **executable**, qui retrouve le chunk HIGHLIGHT **par son contenu** (n27 ici, n62
+  en BTB — l outillage de RE a deja perdu un kill-feed entier en le bornant, 7ter.52).
+  Regeneration verifiee **byte-identique** (sha256 des 7 chunks).
+- **TEMOIN DE DETECTION JOUE**, parce qu un garde dont on ignore PAR OU il detecte est un garde
+  qu on croit avoir : en neutralisant le `br.ReadBits(2)`, la sortie de la bobine CHANGE
+  (`recordStateParam` 0 -> 2, croissance 1.000 -> 1.004). Les 10 lignes publiees, elles, ne
+  bougent pas — coherent avec le 371/371 du jour. **Le canal de detection est la ligne de
+  calibration**, et c est ecrit dans le fichier de test.
+- **Portee declaree** : la calibration tombe en PROFIL PLAT sur un prefixe (l echantillon ne
+  rend aucun record de biped), donc ce garde ne verrouille PAS le balayage lui-meme — seul
+  `TestGoldenFilms`, sur les films entiers, le fait.
 
 ---
 

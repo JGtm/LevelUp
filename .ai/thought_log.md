@@ -1,3 +1,195 @@
+## [2026-08-02] J4 session 2bis — l'écart des goldens : deux hypothèses réfutées, et un oracle qui refuse de départager
+
+**Statut** : Complété. Verdict, cause et conséquence backfill instruits ; arbitrage rendu au
+superviseur puis **tranché le même jour (re-congeler)** ; goldens re-congelés ; golden en CI
+posé sur mini-bobine versionnée.
+
+**Décision technique principale** : ne pas conclure sur la signature de tête. Le test ne montre
+que le PREMIER écart par fichier ; le relevé transmis en tenait lieu et cachait le mouvement
+compensatoire. Régénérer les quatre goldens sous `-update`, lire le `git diff` complet, puis les
+restaurer a suffi à retourner la lecture : chaque perte de la voie « marche » est exactement
+compensée par un gain de la voie « scan », et réciproquement. Le total publié par film ne bouge
+d'aucune ligne.
+
+**Deux hypothèses réfutées, chacune deux fois :**
+
+- *Le correctif de performance de J4-2* (`Skip(8N)` au lieu de la boucle plafonnée), qui était
+  l'hypothèse du superviseur. Réfuté **par la mesure** — la divergence est déjà présente, avec
+  une signature identique au bit près, à `96bc56175` (J2 lot 2.5), soit avant J4 — et **par la
+  lecture** : le plafond est CONSERVÉ dans le correctif (`tlvBodyMaxBytes = 1<<20`, exactement
+  le `i < 1<<20` d'origine) et `ReadBits` n'a d'autre effet que d'avancer `pos`. Le saut n'est
+  pas plus loin : il est au même endroit. Il n'y a rien à borner.
+- *J3 lots B/C/D*, que le journal de la session 2 accusait. Exonéré par la même mesure ; la
+  correction est portée dans le plan de branchement, à côté de l'affirmation fausse.
+
+**La cause** : `47c9e72ac`, « réunir les deux décodeurs filmdec — fusion à trois voies ». Son
+message annonce « killsource (golden) vert » — le test avait SKIPPÉ, faute de
+`KILLSOURCE_FIXTURES`. Faux vert de bonne foi. Sous-cause prouvée : le `br.ReadBits(2)` ajouté
+dans `consumeAbsoluteWithGate`, champ « fini » que le chemin world-object lisait déjà et que la
+capture CE mesure sur 100 % de 154 158 dispatches. La calibration l'absorbe en rétrécissant
+l'axe, et l'arithmétique est exacte sur les quatre films : `3·axisW + indexW` perd exactement 2
+(43→41, 53→51, 50→48, 52→50). Neutraliser cette seule ligne restaure `axisW=17 indexW=2` sur
+9b191a7f — le lien causal est établi, pas inféré. Une sous-cause B subsiste dans les 892
+insertions du même commit, non isolée, effet borné et mesuré.
+
+**Ce que l'oracle dit, et il est catégorique** : comparaison ligne à ligne des sorties JSON
+complètes, état figé contre HEAD, sur les quatre films. **371 lignes publiées sur 371
+identiques** — même victime, même tueur, même tag, même étiquette, même catégorie, même instant.
+380/380 morts de l'API et 30/30 ancres Theater inchangées des deux côtés. Ne bougent que la
+chaîne de calibration, les compteurs par voie, et le champ `voie` de **4 lignes sur 371**
+(1,1 %) : la provenance interne, jamais le contenu. `DESACCORD = 0` des deux côtés — quand une
+mort change de voie, les deux voies disaient déjà la même chose.
+
+**Verdict** : issue (c) au sens de la mesure, mais la consigne attachée à (c) — « restaurer le
+comportement, un départage arbitraire qui bouge n'est pas une amélioration » — reposait sur une
+prémisse tombée. Il n'y a pas de départage arbitraire qui bouge ; il y a un décodeur qui lit un
+champ de 2 bits qu'il ne lisait pas, avec sa propre trace de mesure. Restaurer reviendrait à
+supprimer cette correction pour conserver des nombres établis contre un décodeur à qui il
+manquait un champ. Recommandation : re-congeler, cause et preuve d'équivalence dans le même
+commit.
+
+**Backfill** : `match_kill_events` persiste `read_path`, donc 1,1 % des lignes y porteraient une
+valeur différente — et rien d'autre. Si re-congélation : **rien à rejouer**, les 124 694 lignes
+ont été produites par le décodeur actuel, celui dont les lignes sont identiques à celles du
+décodeur figé. Si restauration : à rejouer (2 h 53, reprenable par `decoder_rev`). Réserve
+honnête : l'équivalence est mesurée sur 4 films, pas sur les 1 343 matchs.
+
+**Piège de méthode, payé en séance** : `RC=1` confond échec de BUILD et échec de TEST. Deux
+conclusions intermédiaires ont dû être reprises après lecture des sorties — dont un « coupable
+identifié » qui était en réalité un commit qui ne compile pas (`2044b7139`, `capture.go` référence
+un champ absent). Une bissection qui ne distingue pas « ne compile pas » de « échoue » désigne le
+mauvais commit avec aplomb.
+
+**Re-congélation faite, et son diff est le meilleur contrôle de la séance** : 13 lignes sur les
+4 goldens de film, et **`cumul.golden` INCHANGÉ**. Les sommes agrégées sont identiques — marche
+340/340 proposés et 334 appariés, scan 37/37 et 29 appariés : seul le PARTAGE par film a bougé,
+pas la ventilation du chantier. Si la ré-allocation avait dégradé quoi que ce soit, le cumul
+l'aurait montré.
+
+**Le correctif structurel, posé le même jour** : `TestGoldenMiniBobine` tourne sans fixture et
+sans variable d'environnement, donc dans le `go test ./... -p 1` du job de couverture, en 0,63 s.
+Une prémisse du plan est tombée en le construisant : **le patron de la mini-bobine de J2 ne
+s'applique pas ici**. Des paquets choisis et concaténés hors continuité décodent **zéro** mort —
+le décodeur construit son monde par accumulation depuis l'en-tête. Il fallait un PRÉFIXE
+CONTIGU : 644 Ko → 0 candidat, préfixe 00-03 → 6 morts, préfixe 00-05 → 10, et c'est le dernier
+qui atteint la ligne `01:12`. Le golden fige les 10 lignes en entier, dont 3 ancres Theater et la
+divergence. Trois gardes, pas un — bobine tronquée = échec bruyant, plancher de 10 lignes
+publiées (un golden fige une sortie, il ne dit pas qu'elle est non triviale), recette de
+fabrication exécutable qui retrouve le chunk HIGHLIGHT par son CONTENU, régénération vérifiée
+byte-identique. Et un **témoin de détection joué** : neutraliser le `br.ReadBits(2)` fait bouger
+la sortie de la bobine (`recordStateParam` 0→2) — *le canal de détection est la ligne de
+calibration, pas les lignes publiées*, écrit dans le fichier, parce qu'un garde dont on ignore
+PAR OÙ il détecte est un garde qu'on croit avoir.
+
+**Découverte hors périmètre, non traitée (règle 7)** : `go test ./...` rend 128 paquets verts et
+**un échec étranger** — `TestNoExpiredTODO` sur un `TODO(expiry:2026-08-01)` de
+`platform/duckdb/season_pass_repo_tracks.go`, échu la veille, venu du chantier season pass. Ce
+ratchet est une bombe à retardement qui s'est déclenchée seule ; il rendra la CI de branche rouge
+tant qu'il n'est pas statué (supprimer la dette ou repousser l'échéance avec justification).
+
+**Conclusion / prochaine étape** : commit et CI de branche à vérifier au niveau job ; puis la
+session 3 (bascule des 8 lecteurs). Troisième occurrence du même motif après le garde
+feedback-drawer et le ratchet knip : *un gate optionnel est un garde qui ne peut pas échouer, et
+un garde qui ne peut pas échouer ne garde rien.*
+
+## [2026-08-01] J4 session 2/3 — le mur de coût était un bug, et une passe « réussie » n'avait rien produit d'utilisable
+
+**Statut** : Complété (points A à E de l'ordre de mission ; phase 3 du
+`PLAN_BRANCHEMENT_KILLSOURCE.md` CLOSE. Phase 2 — bascule des lecteurs — non entamée, c'est la
+session 3).
+
+**Décision technique principale** : profiler AVANT d'optimiser, et corriger sous un gate qui
+prouve l'équivalence plutôt qu'un gate qui prouve l'absence d'erreur. Le mur de coût du décodage
+(0,20 s par chunk à 8 chunks contre 16,6 s à 69 — facteur 83) a cédé en **une seule mesure** :
+78 % du temps CPU dans `filmdec.ReadBits`, appelé depuis une SEULE fonction.
+`consumeObjectMultiplayerProperties` sautait le corps d'un TLV en lisant **un octet à la fois**,
+plafonné à 1 048 576 itérations. Le corps n'est jamais interprété — les lectures jetaient leur
+résultat — et `ReadBits` n'a d'autre effet que d'avancer la position : `Skip(8N)` a exactement le
+même état final. L'équivalence est **structurelle**, et elle a quand même été vérifiée deux fois.
+
+**Ce que la mesure a appris, et qui vaut plus que le gain** : la non-linéarité n'était pas dans
+le décodage, elle était dans le **chemin d'erreur**. Ce qui croît avec la taille du film, c'est
+la FRÉQUENCE des traversées mal alignées — et chacune coûtait un million de lectures. Chercher
+un algorithme quadratique dans le chemin nominal aurait été chercher au mauvais endroit pendant
+longtemps.
+
+**Résultats observés** :
+- **Coût** : `1c4c63c2` (69 chunks) **1 145 s → 46,7 s** (×24,5) · `4f77afc1` 575 s → 51 s ·
+  `37f8b21c` **331 s → 33,7 s** · `34bb3bc8` 131 s → 24,8 s · `9b191a7f` 14,2 → 7,3 s. Le coût
+  par chunk va désormais de 0,13 s à 0,68 s : facteur 5 au lieu de 83.
+- **Double gate tenu** : les 3 artefacts de rejeu reconstruits **bit-identiques** (`cmp`,
+  revérifiés APRÈS toutes les modifications de la session) et le JSON `killsource`
+  **bit-identique sur 8 films**, dont les 4 de référence.
+- **Les deux producteurs sont câblés AVANT le backfill** : les tirs par arme sortent de la MÊME
+  passe de décodage que les morts (un film décodé une fois écrit dans les deux tables), et le
+  producteur credit-seul est une transformation SQL → SQL qui emploie
+  `analysis.ComputeKillerVictimPairs` — la fonction qui produit `killer_victim_pairs`
+  aujourd'hui. Un appariement différent aurait rendu la comparaison avant/après vide de sens.
+- **Préséance film > credit testée dans les DEUX ordres d'arrivée** (la vue `_latest` retient la
+  dernière passe : un producteur credit-seul qui repasse après un film EFFACERAIT la source du
+  dégât de la lecture). Trois états de l'assistant vérifiés colonne par colonne en base.
+- **Ratchet lint à 0**, `go test ./...` vert, artefacts inchangés.
+
+**LE DÉFAUT LE PLUS COÛTEUX, ET IL ÉTAIT SILENCIEUX.** Repéré en cours de backfill, sur une
+remarque de l'utilisateur (« tu regardes la mauvaise table pour les xuid-gamertags ») :
+1. `match_participants.gamertag` est **vide en production** — 4 xuids nommés sur 16 996 ;
+2. la source canonique est la vue **`v_gamertag_lookup`**, dont la cascade fait de
+   **`killer_victim_pairs` la source VIVANTE** des noms d'adversaires depuis que `xuid_aliases`
+   a cessé d'être alimenté en avril 2026 ;
+3. le film ne donne pas toujours un pseudo : sans gamertag, le décodeur écrit `xuid:<décimal>`,
+   et cette forme **est** l'identité — la chercher dans une table de gamertags ne rend rien.
+
+Résultat du défaut : **16 908 morts écrites, 10 avec un xuid de victime**. Des lignes qu'aucun
+agrégat carrière ne peut joindre, c'est-à-dire exactement ce que ce chantier existe pour
+produire. Après correctif, sur les mêmes films : **77 morts, 75 xuids victime, 77 xuids tueur**.
+La règle vit désormais dans **une seule** copie (`MatchIdentities.Resoudre`), le préfixe `xuid:`
+est exporté par le décodeur pour qu'il n'existe qu'un littéral, et un test couvre les deux
+formes de nom.
+
+*Leçon* : **une passe qui « réussit » sans erreur peut n'avoir rien produit d'utilisable.** Les
+compteurs disaient 20 matchs écrits, 0 erreur. C'est une requête sur le CONTENU — pas sur le
+succès — qui a montré le trou. Un backfill se contrôle sur ce qu'il rend JOIGNABLE.
+
+**Deux autres défauts trouvés en exécutant** : `KillSourceSummary.Deaths` n'était jamais
+incrémenté (chaque match journalisait ses dizaines de morts pendant que la synthèse affichait 0) ;
+et la résolution indice → xuid empruntée à `weaponv3.ResolveBest` balaie le film une fois PAR
+XUID — 24 s par film contre 1 à 3 s pour le décodage qu'elle accompagne. Réécrite en une passe
+(fenêtre glissante + préfiltre 16 bits), **3,8 s/film**, équivalence exacte testée contre la
+version naïve.
+
+**Découverte grave, NON TRAITÉE, arbitrage superviseur** : `TestGoldenFilms` échoue **déjà** sur
+les 4 films de référence, avant tout changement de cette session — prouvé en rejouant le test sur
+l'arbre restauré (diffs identiques au bit près avec et sans le correctif). Les goldens datent du
+31/07 17:49 ; **J3 (lots B/C/D) a modifié le décodage sans que personne le voie**, parce que ce
+test se skippe sans `KILLSOURCE_FIXTURES` et que le gate J3 portait sur les artefacts de REJEU,
+pas sur la sortie `killsource`. Les ancres Theater, elles, tiennent. *Un gate qui se skippe sur
+une variable d'environnement n'est pas un gate, c'est une option.*
+
+**LE BACKFILL, ET LE CONTRÔLE QUI LE VALIDE** : 949 films décodés en **2 h 52 min 57 s**
+(74 569 morts), 0 erreur, 0 abandon sur délai, 2 films absents (répertoires vides) ; puis le
+producteur credit-seul, **394 matchs en 33 s** (50 125 morts), **949 refusés par la préséance**.
+Couverture : **1 343 matchs** — la cible exacte, et **100 % de ce qui est récupérable** (les 583
+restants portent `events_loaded = TRUE` sans événement : un 404 déjà constaté par le sync, dont
+527 datent de 2023, la fenêtre de rétention Theater). 124 694 lignes, dont **98,8 % portent un
+xuid de victime**.
+
+Le SELECT de contrôle tombe sur le chiffre annoncé par le plan sans qu'on l'ait cherché :
+**250 139 → 124 694 lignes (facteur 2,006)**, et sur le duel de contrôle joint par XUID,
+**101 frags affichés → 29 réels**. C'était mot pour mot la phrase qui motivait le chantier.
+
+⚠ **`assist_extra_count` a bougé pour la première fois : 5 sur 74 569 morts.** Le compteur posé
+en session 1 comme déclencheur de migration (ADR 0026) a fait exactement ce pour quoi il
+existait. L'hypothèse « un seul assistant » n'est pas fausse à l'échelle du corpus, mais elle
+n'est plus universelle — **arbitrage superviseur** : table fille, ou plafond documenté comme une
+perte connue de 0,007 %.
+
+**Conclusion / prochaine étape** : session 3 — la bascule des 8 lecteurs (phase 2), avec la
+dépendance à traiter EN PREMIER : `v_gamertag_lookup` lit `killer_victim_pairs`, donc la vue doit
+être rebranchée sur `match_kill_events_latest` AVANT tout retrait, sous peine de faire retomber
+tous les adversaires sur « Joueur #### » — une panne d'affichage que rien ne signalerait.
+
+---
+
 ## [2026-08-01] J4 session 1/3 — le killfeed atteint la base, et quatre prémisses tombent
 
 **Statut** : Complété (J4.0 + « correction 1 » des briques + phase 1 du
