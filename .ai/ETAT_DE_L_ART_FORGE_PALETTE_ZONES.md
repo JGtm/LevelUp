@@ -329,6 +329,59 @@ Un troisieme espace de nommage est donc en jeu, vraisemblablement des identifian
 3. **Ghidra sur le parseur du tag `food`** — session de retro-ingenierie a part entiere,
    et sans garantie : le binaire doit encore contenir la table de resolution.
 
+### Q1.0-decies LE PROTOCOLE D'OBSERVATION, CORRIGE — on n'observe pas le socle, on observe CE QUI Y APPARAIT
+
+> Correction apportee par l'utilisateur : « le Representation Name c'est un emplacement non ?
+> Moi je peux te confirmer si tu me dis ce qu'il fait spawn comme arme ou power-up et a
+> quelle frequence, sinon ce sont juste des images sans aspect particulier en jeu. »
+>
+> **Elle invalide la formulation precedente du protocole.** Demander « lequel de ces deux
+> socles est-ce ? » n'a pas de reponse en jeu : les socles sont visuellement generiques —
+> ce que confirme d'ailleurs la mesure, puisque sur Vagabond les deux portent la MEME
+> variante de caisse (`banished_kinetic`) et la meme cadence. Le seul observable est
+> l'objet qui apparait dessus.
+
+**Ce que la table d'observation rend** (`tmp_forgeshape observe`, groupee par
+`Representation Name`, selection par la signature d'emprise §Q1.0-octies) :
+**4 `Representation Name` distincts** couvrant 285 socles sur les 199 cartes.
+
+| hachage | socles | cartes | famille dominante |
+|---|---:|---:|---|
+| `-1351408675` | 117 | 20 | `banished_plasma` |
+| `-1412311642` | 98 | 27 | `banished_kinetic` |
+| `-245254093` | 46 | 21 | `banished_shock` |
+| `-219174009` | 24 | 11 | `banished_hardlight` |
+
+**Un fait de structure a ne pas confondre : la CADENCE n'appartient pas a l'identite.** Un
+meme `Representation Name` apparait a 45 s (Fragmentation Heavies, Oasis Heavies), 120 s
+(Cliffhanger, Launch Site), 150 s (Empyrean) et 240 s (Scarr). La cadence sert a LOCALISER
+un socle, jamais a le nommer.
+
+**Et le releve terrain de Vagabond devient une PREDICTION FALSIFIABLE.** L'utilisateur
+atteste un lance-roquettes sur le socle bas (`-1412311642`, z = 51,4) et un camouflage sur
+le haut (`-245254093`, z = 54,8). Si l'identite est bien portee par le `Representation
+Name`, alors les MEMES objets doivent apparaitre partout ailleurs ou ce hachage est pose :
+
+| a verifier | ou | prediction |
+|---|---|---|
+| `-1412311642` | Scarr (9 socles, 240 s), Empyrean (2 socles, 150 s) | lance-roquettes |
+| `-245254093` | **Launch Site, un seul socle a (9,0 · -27,1 · 1,9), 120 s** | camouflage |
+| `-1351408675` | **Cliffhanger, 4 socles a 120 s dont un AU MUR** | inconnu — une observation nomme 117 socles d'un coup |
+| `-219174009` | **Launch Site, un seul socle a (-21,4 · -26,7 · -1,3)**, Chasm (2 socles) | inconnu |
+
+Les cas a **un seul socle** (Launch Site) sont les meilleurs temoins : aucune ambiguite
+d'appariement. Un desaccord entre Vagabond et Launch Site refuterait l'hypothese que le
+`Representation Name` porte l'identite de l'objet — c'est donc un vrai test, pas une
+collecte.
+
+**Cas a part, et il est plus simple** : sur Catalyst, les trois socles (90 s) sont de type
+`493070541`, qui **ne porte AUCUN `Representation Name`** — parce que ce type_id n'est pas
+une entree de palette `food` mais **le tag `weap` lui-meme** (14 088 octets). Nommer ce qui
+y apparait nomme donc directement une arme.
+
+Sortie : `.ai/V7.5/dumps/forge_zones/emplacements_a_observer.txt` (les 4 hachages, toutes
+leurs positions, cadences et familles).
+
 ### Q1.0-sexies LE FORGE KIT ET L'APPARIEMENT `fosp` — deux impasses, mesurees
 
 **Le `Forge Kit` (groupe `kit!`) ne mene nulle part ici.** Sa definition fait 337 Ko et porte
