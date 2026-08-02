@@ -277,7 +277,27 @@ func (s *MediaService) setMediaLikeAtomic(
 		_ = tx.Rollback()
 		return nil, domain.ErrNotFound("media", req.FilePath)
 	}
-	if err := tx.Commit(); err != nil {
+	// GARANTIE DE DURABILITÉ DU LIKE (lecture-après-écriture) — v7.3 lot 2, item 1.5.
+	//
+	// Le like N'EST PAS confirmé au client tant que la transaction n'est pas
+	// commitée ET le WAL shared_social flushé sur disque : CommitWithCheckpoint
+	// (ADR 0021 Phase 3.2 bis / ADR 0022) enchaîne Commit puis CHECKPOINT
+	// immédiat. Toute réponse 200 vaut donc « écrit et durable ».
+	//
+	// Pourquoi c'est indispensable ICI et pas un détail de perf : un tx.Commit()
+	// nu laisse le like dans le WAL jusqu'au prochain tick du scheduler
+	// périodique (5 min, cmd/server/main.go) ou du CHECKPOINT de shutdown. Tout
+	// redémarrage dans cette fenêtre — et un push sur main déploie en prod — ou
+	// toute quarantaine de WAL orphelin (ADR 0021) fait DISPARAÎTRE le like
+	// après coup : l'UI l'affiche (réponse 200), puis il s'évapore au rechargement
+	// suivant. C'est la classe de régression « le like ne tient pas », observée
+	// plusieurs fois. Le commentaire de cmd/server/main.go désignait déjà les
+	// likes comme cas d'usage de CommitWithCheckpoint ; ce call-site ne l'utilisait
+	// pas.
+	//
+	// Ne pas revenir à tx.Commit() ici : verrouillé par
+	// TestMediaService_SetMediaLike_Atomic_SurvivesWALLoss.
+	if err := w.CommitWithCheckpoint(ctx, tx); err != nil {
 		return nil, fmt.Errorf("media_like commit: %w", err)
 	}
 	return s.buildLikeResponse(ctx, req), nil

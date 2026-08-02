@@ -248,3 +248,12 @@ en = "No associated match"
 [media.nav_context_label]
 fr = "Galerie médias"
 en = "Media gallery"
+
+# ─── Likes ─────────────────────────────────────────────────────────────────
+# Garde anti-silence (plan v7.3 lot 2, item 1.5) : un like refusé par le serveur
+# (session absente, base occupée, media introuvable) doit se voir, au lieu de
+# disparaitre derriere la mise a jour optimiste.
+
+[media.like.error]
+fr = "Impossible d'enregistrer ce like."
+en = "Could not save this like."

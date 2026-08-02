@@ -721,6 +721,9 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			WithSettingsStore(settingsStore).
 			WithDemoMode(cfg.DemoMode).
 			WithProduction(cfg.IsProduction()).
+			// Multi-user authentifié : un like sans joueur courant en session est
+			// refusé (401) au lieu d'être écrit comme like anonyme non attribuable.
+			WithAuthEnforced(authz.Enforced(cfg.DemoMode, cfg.AuthMode)).
 			WithAuthorsContext(reg.MediaPlayerCtx, func(_ context.Context, titleSlug string) ([]domain.PlayerSummary, error) {
 				return cfg.LoadPlayers(titleSlug)
 			}).

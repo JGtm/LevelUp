@@ -6,6 +6,7 @@
   "items": [
     {
       "challenge_path": "demo/challenge/eliminations",
+      "image_url": "/static/prestige-assets/Objectives-badges/objective-daily-heroic.png",
       "title": "Killing Spree",
       "description": "Eliminate 25 opponents in Quick Play",
       "progress_current": 18,
@@ -15,6 +16,7 @@
     },
     {
       "challenge_path": "demo/challenge/objectives",
+      "image_url": "/static/prestige-assets/Objectives-badges/objective-daily-normal.png",
       "title": "Objective Master",
       "description": "Capture 10 zones or flags",
       "progress_current": 7,
@@ -24,6 +26,7 @@
     },
     {
       "challenge_path": "demo/challenge/headshots",
+      "image_url": "/static/prestige-assets/Objectives-badges/objective-daily-legendary.png",
       "title": "Deadly Precision",
       "description": "Land 50 headshots",
       "progress_current": 32,
@@ -33,6 +36,7 @@
     },
     {
       "challenge_path": "demo/challenge/assists",
+      "image_url": "/static/prestige-assets/Objectives-badges/objective-weekly-normal.png",
       "title": "Team Spirit",
       "description": "Earn 15 assists while in a squad",
       "progress_current": 15,
