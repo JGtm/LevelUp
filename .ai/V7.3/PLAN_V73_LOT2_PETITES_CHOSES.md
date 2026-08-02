@@ -260,14 +260,14 @@ exécuter, avec l'état constaté le 2026-08-02. Chaque merge sur main = déploi
       passée rouge après #71 sur un TODO(expiry:2026-08-01) échu (bombe datée sans lien
       avec #71) + un flake persist qualifié (10/10 PASS local) → hotfix PR #73 mergée
       (voir Découvertes). Deploys prod déclenchés et verts (#71, #73, #72).
-- [ ] D2 **Lot A — PR #67 (go-minor-patch, 10 paquets dont duckdb-go 2.10505)** —
-      exécuté le 2026-08-02 (agent Opus, A1-A6 faits) : changelog duckdb-go
+- [x] D2 **Lot A — PR #67 (go-minor-patch, 10 paquets dont duckdb-go 2.10505)** —
+      clos le 2026-08-02 (agent Opus A1-A6, orchestrateur A7/A8) : changelog duckdb-go
       2.10505/DuckDB 1.5.5 audité, AUCUNE mention ART/index ; fix allowlist = 2 entrées
       datées (`QUERY /static/*` + `QUERY /static/commendations/*`) ; gates locaux
       `go test ./...` et `-tags=integration -p 1` exit 0 (persist + sync verts) ;
       conflit avec le hotfix #73 résolu en reprenant la version main (TODO 2026-09-15) ;
-      CI GitHub 15/15 verte, PR MERGEABLE/CLEAN. RESTE : merge (préavis utilisateur,
-      A7) + entrée thought_log (A8) — puis cocher.
+      CI branche 15/15 verte, mergée squash sur go utilisateur, **CI main post-merge
+      verte**, thought_log fait. `main` rapatriée dans la branche du lot.
 - [ ] D3 **Lot B — echarts 5.6.0 → 6.1.0 (CVE-2026-45249, XSS)** — effort moyen.
       Décision du 27/07 maintenue : ne pas re-différer une 3e fois. SÉQUENCEMENT
       IMPOSÉ : après le merge du lot 2, depuis un `main` à jour (branche
