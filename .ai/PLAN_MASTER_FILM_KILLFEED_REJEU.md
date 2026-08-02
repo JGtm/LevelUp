@@ -1936,3 +1936,23 @@ Pas en vrai simultané de la correction J4 (même worktree = collision d'index g
 entre deux lots. Tâche SOIGNEUSE : re-vérifier vivant/clos doc par doc (ne pas archiver un
 plan encore actif : capacités, objectifs, cartes, variables jetées non faits), et ne pas
 casser les références de code (`dumps/` est lu par du code : `cmd/replay-build`, `mapvar`).
+
+### Ronde 2 (relecture des corrections, contexte frais) — CLOSE le 2026-08-02
+
+**Verdict : 6 défauts FERMÉS (J4R-1/2/3/4/5/7), J4R-6 P1 fermé avec 2 commentaires de test
+résiduels (P2), AUCUN défaut introduit.** La boucle a convergé : **3 P1 → 0 P1** (skill §8,
+2 rondes, décroissance stricte respectée). Chaque fermeture vérifiée par la mutation-test qui
+devrait rougir (retrait DISTINCT, suppression d'appel, inversion de condition, injection de
+littéral → garde-rail rouge re-vert après retrait). **La revue adversariale du lot J4 est
+close** — 0 P0/P1 résiduel. Le producteur live, la migration de reprise et le second
+producteur sont désormais gardés par des tests qui échouent quand on casse ce qu'ils protègent.
+
+### DETTE P2 À SOLDER DANS LE LOT D'HYGIÈNE (avant merge, pas dans le lot J4)
+
+| # | où | quoi |
+|---|---|---|
+| H1 | `duckdb/extra_coverage_test.go:131,137` + `player_repos_test.go:189-193` | 2 commentaires de test périmés citant `v_killer_victim_full` (résidu J4R-6, doc inversée n°9, zéro impact fonctionnel) |
+| H2 | `sync/convergence_backfill_events.go:317-318` | 3e erreur avalée du même switch que J4R-5 (`case f.err != nil: res.Skipped++` sans log ni compteur) — non consignée par le lot, la ronde 2 l'a rattrapée |
+| H3 | `persist/kill_events_credit.go:84` | recopie les read_path film `"marche"/"scan"` de `killsource/kill.go:126,129` sans verrou d'égalité — J4R-3 n'a centralisé que read_origin ; centraliser aussi les read_path (frontière killsource title-specific ↔ domain/killscope à trancher) |
+| H4 | `cmd/rebuild_mp/main.go` | l'outil de réparation ART avorte dès qu'une vue dépend de la table (DROP CASCADE DuckDB ne supprime pas les vues) — outil non réécrit, dette de J4R-7 |
+| H5 | `migration_test.go` (+ voisins) | 4 tests migration en skip permanent (`sharedBaseSchemaIsGlobal()` faux depuis Phase 1.5) — assertions dormantes |
