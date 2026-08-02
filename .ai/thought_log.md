@@ -1,3 +1,42 @@
+## [2026-08-02] Le protocole d'observation corrigé — on n'observe pas le socle, on observe ce qui y apparaît
+
+**Statut** : Complété. Branche `feat/re-mode-score`. État de l'art : section **Q1.0-decies**.
+Sortie : `.ai/V7.5/dumps/forge_zones/emplacements_a_observer.txt`.
+
+**Décision technique principale** : l'utilisateur corrige le protocole que j'avais proposé —
+« le Representation Name c'est un emplacement ; je peux te confirmer ce qu'il fait spawn et à
+quelle fréquence, sinon ce sont juste des images sans aspect particulier en jeu ». Demander
+« lequel de ces deux socles est-ce ? » n'a donc pas de réponse en jeu. La mesure le confirme
+d'ailleurs : sur Vagabond les deux socles portent la MÊME variante de caisse
+(`banished_kinetic`) et la même cadence — ils sont bien indiscernables à l'œil. Le seul
+observable est l'objet qui apparaît dessus. J'ai donc produit la table dans ce sens.
+
+**Résultats observés** :
+
+- **4 `Representation Name` distincts** couvrent 285 socles sur les 199 cartes :
+  `-1351408675` (117 socles / 20 cartes, `banished_plasma`), `-1412311642` (98 / 27,
+  `banished_kinetic`), `-245254093` (46 / 21, `banished_shock`), `-219174009` (24 / 11,
+  `banished_hardlight`).
+- **La CADENCE n'appartient pas à l'identité** : un même `Representation Name` apparaît à
+  45 s (Fragmentation Heavies, Oasis Heavies), 120 s (Cliffhanger, Launch Site), 150 s
+  (Empyrean) et 240 s (Scarr). Elle sert à LOCALISER un socle, jamais à le nommer.
+- **Le relevé terrain de Vagabond devient une prédiction falsifiable** : si l'identité est
+  portée par le `Representation Name`, le lance-roquettes doit réapparaître partout où
+  `-1412311642` est posé (Scarr 9 socles à 240 s, Empyrean 2 à 150 s) et le camouflage
+  partout où `-245254093` l'est (**Launch Site, un seul socle** à (9,0 · -27,1 · 1,9), 120 s).
+  Un désaccord réfuterait l'hypothèse — c'est un test, pas une collecte.
+- **Les meilleurs témoins sont les cartes à UN SEUL socle** : Launch Site en porte un de
+  `-245254093` et un de `-219174009`, sans ambiguïté d'appariement.
+- **Cas à part, et plus simple** : les trois socles de Catalyst (90 s) sont de type
+  `493070541`, qui ne porte AUCUN `Representation Name` — parce que ce type_id n'est pas une
+  entrée de palette `food` mais le tag `weap` lui-même. Nommer ce qui y apparaît nomme
+  directement une arme.
+
+**Conclusion / prochaine étape** : la balle est côté utilisateur, et l'attente est bornée —
+quatre observations suffisent à nommer les 285 socles. Priorité par rendement :
+`-1351408675` sur Cliffhanger (une observation nomme 117 socles), puis les deux témoins
+uniques de Launch Site, puis Catalyst.
+
 ## [2026-08-02] La piste 2 est écartée sur mesure — il manque un dictionnaire, pas un schéma
 
 **Statut** : Complété. Branche `feat/re-mode-score`. État de l'art : section **Q1.0-nonies**.
