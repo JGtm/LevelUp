@@ -12,7 +12,12 @@ import (
 // dérive non documentée (ajout/suppression sans mise à jour du plan).
 func TestAllFieldKeysCount(t *testing.T) {
 	t.Parallel()
-	const expected = 60 // bumped pour engagement_score (metrique 1er ordre, chantier F7 title-agnostic gradue) — voir golden fields.golden.txt
+	// 66 = 60 + 6 (v7.3 lot 2, item 3.3) : wins, personal_score_per_min,
+	// accuracy_threshold_days, combat_{precision,endurance,excellence}_matches.
+	// Ces clés étaient consommées à l'écran (PB Ascension, jalons) mais absentes
+	// des TOML : leurs libellés vivaient dans un dictionnaire TS parallèle,
+	// supprimé au profit de la source unique. Voir golden fields.golden.txt.
+	const expected = 66
 	if got := len(AllFieldKeys()); got != expected {
 		t.Fatalf("AllFieldKeys count = %d, want %d (mettre à jour fields.golden.txt + annexe §17 si intentionnel)", got, expected)
 	}

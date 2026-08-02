@@ -62,6 +62,9 @@ const (
 	FieldTotalMatchesPlayed FieldKey = "total_matches_played"
 	FieldTotalKillsCareer   FieldKey = "total_kills_career"
 	FieldWinRate            FieldKey = "win_rate"
+	// FieldWins : nombre de victoires (compteur brut, distinct de win_rate).
+	// Produit par les catalogues milestones des deux titres (metric = "wins").
+	FieldWins FieldKey = "wins"
 )
 
 // --- Skill (group = "skill") ---
@@ -113,6 +116,25 @@ const (
 	// dans son fields.toml. Unite = score sans dimension, bornes [0, 100].
 	// cf. internal/analysis/temporal/engagement_score.go + ADR chantier F7.
 	FieldEngagementScore FieldKey = "engagement_score"
+
+	// FieldPersonalScorePerMin complète la famille *_per_min (kills/deaths/assists)
+	// avec le score personnel par minute. Métrique de PB suivie par défaut
+	// (progression/records/extractors.go), title-agnostic.
+	//
+	// NOTE de nommage : le détecteur de PB émet la clé COURTE "pspm" (comme "kpm"
+	// pour kills_per_min) — dette de nommage antérieure au canonique. La résolution
+	// clé courte → clé canonique est faite côté front (lib/i18n/metricLabel.ts,
+	// table d'alias) ; aligner le back est un chantier distinct.
+	FieldPersonalScorePerMin FieldKey = "personal_score_per_min"
+
+	// Compteurs de progression consommés par les jalons (milestones). Déclarés
+	// dans le fields.toml du seul titre qui les produit — un titre sans le
+	// catalogue correspondant n'a pas la section, conformément à la convention
+	// « section absente = surface produit non supportée ».
+	FieldAccuracyThresholdDays   FieldKey = "accuracy_threshold_days"
+	FieldCombatPrecisionMatches  FieldKey = "combat_precision_matches"
+	FieldCombatEnduranceMatches  FieldKey = "combat_endurance_matches"
+	FieldCombatExcellenceMatches FieldKey = "combat_excellence_matches"
 )
 
 // AllFieldKeys retourne la liste exhaustive des FieldKey supportés par le
@@ -138,7 +160,7 @@ func AllFieldKeys() []FieldKey {
 		FieldRankedMatchCount,
 		// Career
 		FieldCurrentRankID, FieldCurrentXP, FieldXPForNextRank,
-		FieldTotalMatchesPlayed, FieldTotalKillsCareer, FieldWinRate,
+		FieldTotalMatchesPlayed, FieldTotalKillsCareer, FieldWinRate, FieldWins,
 		// Skill
 		FieldTeamMMR, FieldEnemyMMR,
 		FieldKillsExpected, FieldDeathsExpected,
@@ -154,7 +176,9 @@ func AllFieldKeys() []FieldKey {
 		FieldKDRatio, FieldKillsPerMin, FieldPerformanceScore,
 		FieldPerfectKillsPerMatch, FieldTimePlayedSeconds,
 		FieldOffensiveConversion, FieldDefensiveResistance,
-		FieldEngagementScore,
+		FieldEngagementScore, FieldPersonalScorePerMin,
+		FieldAccuracyThresholdDays, FieldCombatPrecisionMatches,
+		FieldCombatEnduranceMatches, FieldCombatExcellenceMatches,
 	}
 }
 

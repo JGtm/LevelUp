@@ -1,8 +1,9 @@
 /**
  * Garde-rail (règle n°6 CLAUDE.md) : aucune clé de métrique technique `Field*`
  * ne doit apparaître dans le JSX rendu des features Prestige et Ascension. Les
- * libellés passent par le helper unique `metricLabel()` ; les valeurs `Field*`
- * (contrat fil) vivent dans lib/i18n/metricLabel.ts, hors composants.
+ * libellés passent par le hook unique `useMetricLabel()` (qui résout depuis les
+ * manifests TOML) ; les valeurs `Field*` (contrat fil) vivent dans
+ * lib/i18n/metricLabel.ts, hors composants.
  *
  * Le motif `\bField[A-Z][a-zA-Z]+\b` cible les jetons de type FieldKDA /
  * FieldWinRate. Il EXCLUT volontairement `formFieldMetric`, `<Field …>` (pas de

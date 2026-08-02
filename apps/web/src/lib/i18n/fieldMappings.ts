@@ -5,8 +5,11 @@
  * canonique et les expose via TanStack Query + un hook useFieldLabel.
  *
  * - L'endpoint backend est /api/v1/titles/{slug}/field-mappings?locale=...
- *   et n'est exposé que si MULTI_TITLE_API_ENABLED=true côté serveur.
- *   Quand le flag est off, le hook tombe en fallback gracieusement (key as label).
+ *   Il est monté SANS CONDITION depuis le 2026-08-02 (v7.3 lot 2, item 3.3 : le
+ *   flag de rollout MULTI_TITLE_API_ENABLED a été supprimé). Ces libellés sont
+ *   désormais la source unique — il n'existe plus de dictionnaire de repli côté
+ *   TS. Si la réponse manque (réseau, titre sans la clé), le hook rend la clé
+ *   elle-même ; useMetricLabel l'humanise alors (lib/i18n/metricLabel.ts).
  *
  * - Une seule requête par couple (slug, locale) au boot, cache infini :
  *   la couche sémantique est versionnée Git, pas de hot-reload prod.

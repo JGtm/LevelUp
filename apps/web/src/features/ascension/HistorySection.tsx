@@ -15,7 +15,7 @@ import type { ReactNode } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { intlLocale } from '@/lib/formatters'
 import { tokenCssVar } from '@/lib/accessibility'
-import { metricLabel } from '@/lib/i18n/metricLabel'
+import { useMetricLabel } from '@/lib/i18n/metricLabel'
 import { useChallengeHistory, useArcs } from '@/features/prestige/hooks'
 import { useCampaignHistory } from './profile/queries'
 import { useProfileI18n } from './profile/useProfileI18n'
@@ -68,6 +68,32 @@ interface PastObjectivesBlockProps {
   t: AscensionText
 }
 
+interface PastObjectiveRowProps {
+  challenge: Challenge
+  locale: Locale
+  t: AscensionText
+}
+
+// Une ligne = un composant : le libellé de métrique se résout par hook
+// (useMetricLabel), qui ne peut pas être appelé dans un .map().
+function PastObjectiveRow({ challenge: c, locale, t }: PastObjectiveRowProps) {
+  // Hook inconditionnel, même quand `c.label` prendra le dessus à l'affichage.
+  const metricText = useMetricLabel(c.metric)
+  return (
+    <li className="flex items-center justify-between gap-3 py-2">
+      <span className="min-w-0 truncate text-sm font-medium">
+        {c.label || metricText}
+      </span>
+      <span className="flex shrink-0 items-center gap-2">
+        <ResultBadge status={c.status} t={t} />
+        <time className="text-xs text-muted-foreground">
+          {formatDate(terminalDate(c), locale)}
+        </time>
+      </span>
+    </li>
+  )
+}
+
 function PastObjectivesBlock({ challenges, locale, t }: PastObjectivesBlockProps) {
   return (
     <HistoryBlock title={t.historyObjectivesTitle}>
@@ -76,17 +102,7 @@ function PastObjectivesBlock({ challenges, locale, t }: PastObjectivesBlockProps
       ) : (
         <ul className="divide-y divide-border">
           {challenges.map((c) => (
-            <li key={c.id} className="flex items-center justify-between gap-3 py-2">
-              <span className="min-w-0 truncate text-sm font-medium">
-                {c.label || metricLabel(c.metric, locale)}
-              </span>
-              <span className="flex shrink-0 items-center gap-2">
-                <ResultBadge status={c.status} t={t} />
-                <time className="text-xs text-muted-foreground">
-                  {formatDate(terminalDate(c), locale)}
-                </time>
-              </span>
-            </li>
+            <PastObjectiveRow key={c.id} challenge={c} locale={locale} t={t} />
           ))}
         </ul>
       )}

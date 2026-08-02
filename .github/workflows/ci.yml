@@ -145,10 +145,8 @@ jobs:
         env:
           CGO_ENABLED: "0"
           LEVELUP_DEMO_MODE: "true"
-          # P6.1 (revue 2026-04-29) : flag MULTI_TITLE_API_ENABLED active en CI
-          # pour exercer les chemins multi-titres (sinon le code derriere le flag
-          # reste non couvert).
-          MULTI_TITLE_API_ENABLED: "true"
+          # MULTI_TITLE_API_ENABLED retire le 2026-08-02 (v7.3 lot 2) : le flag
+          # n'existe plus, les routes multi-titres sont montees sans condition.
           # P3.4 : flag PRESTIGE_ENABLED active en CI pour exercer les ~21 routes
           # Prestige (smoke tests + route registration).
           PRESTIGE_ENABLED: "true"
@@ -277,8 +275,9 @@ jobs:
       # suivant), `-coverprofile` produit le profil consommé par le ratchet de
       # couverture. Les flags/env sont l'UNION des deux anciennes invocations
       # (job go-baseline-tests supprimé + ce job) : tags=integration, CGO_ENABLED=1,
-      # -p 1, -count=1, ./..., LEVELUP_DEMO_MODE / MULTI_TITLE_API_ENABLED /
-      # PRESTIGE_ENABLED. SEULE divergence, tranchée volontairement : `-timeout 600s`
+      # -p 1, -count=1, ./..., LEVELUP_DEMO_MODE / PRESTIGE_ENABLED (le troisieme,
+      # MULTI_TITLE_API_ENABLED, a ete retire le 2026-08-02 avec le flag lui-meme).
+      # SEULE divergence, tranchée volontairement : `-timeout 600s`
       # (celui de ce job) et non `300s` (celui du script). 300 s était calibré pour
       # un run NON instrumenté ; l'exécution fusionnée porte l'instrumentation de
       # couverture (plus lente), un budget plus court fabriquerait des timeouts qui
@@ -309,9 +308,9 @@ jobs:
         env:
           CGO_ENABLED: "1"
           LEVELUP_DEMO_MODE: "true"
-          # P6.1 / P3.4 (revue 2026-04-29) : flags actives en CI pour couvrir
-          # les chemins multi-titres + Prestige.
-          MULTI_TITLE_API_ENABLED: "true"
+          # P3.4 (revue 2026-04-29) : flag active en CI pour couvrir les chemins
+          # Prestige. MULTI_TITLE_API_ENABLED retire le 2026-08-02 (v7.3 lot 2) :
+          # les routes multi-titres sont desormais montees sans condition.
           PRESTIGE_ENABLED: "true"
 
       # Gate de NON-RÉGRESSION — ex-job `go-baseline-tests`, fusionné ici (D3).

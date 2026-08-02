@@ -14,7 +14,7 @@
 // maison) pour préserver les octets EXACTS et l'ETag dérivé du corps (pas la
 // sérialisation JSONFormat de humacore, qui ajouterait un "\n" final).
 //
-// Gated par MULTI_TITLE_API_ENABLED (même flag que field-mappings/capabilities).
+// Monté inconditionnellement (comme field-mappings/capabilities) depuis le 2026-08-02.
 package handlers
 
 import (

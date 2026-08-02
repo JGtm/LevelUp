@@ -1,12 +1,21 @@
-// Smoke test E2E de l'activation MULTI_TITLE_API_ENABLED.
+// Smoke test E2E de l'INVARIANCE des routes multi-titres.
 //
-// Construit le routeur en mode démo + flag activé, puis vérifie que :
-//   - flag off : GET /api/v1/titles/{slug}/field-mappings retourne 404 (route absente)
-//   - flag on : la route /field-mappings est bien enregistrée
+// Historique : ce fichier testait l'ouverture/fermeture du sous-arbre de routes
+// par le flag de rollout MULTI_TITLE_API_ENABLED (un test « flag off → 404
+// routeur », un test « flag on → route enregistrée »). Le flag a été retiré le
+// 2026-08-02 (v7.3 lot 2, item 3.3) : les libellés servis par
+// /titles/{slug}/field-mappings sont devenus la SOURCE UNIQUE du front, dont les
+// dictionnaires de repli TS ont été supprimés dans le même commit. Une route
+// éteignable servirait désormais des clés brutes à l'écran.
 //
-// NOTE : les routes /preview/career et /preview/career-multi-title ont été
-// supprimées en revue 2026-04-29 P0.2 Q6 (orphelines côté front). Le test
-// TestSmoke_PreviewCareer_FlagOn_NotFoundForUnloadedTitle a été retiré.
+// Ce que ces tests protègent maintenant : la route est montée SANS aucune
+// variable d'environnement, et le reste même si l'ancien nom de flag est
+// repositionné à "false". Le second test est le garde-rail DISCRIMINANT du
+// retrait : il redevient rouge si quelqu'un réintroduit un gate.
+//
+// NOTE : les routes /preview/career et /preview/career-multi-title
+// (proof-of-concept Phase C) ont été supprimées en revue 2026-04-29 P0.2 Q6
+// (orphelines côté front).
 //
 // Nécessite CGO=1 (transitivement via platform/duckdb).
 
@@ -60,31 +69,31 @@ func writeSmokeTOML(t *testing.T) string {
 	return tmpDir
 }
 
-func TestSmoke_FieldMappings_FlagOff_RouteAbsent(t *testing.T) {
-	// Flag explicitement à false : la route /titles/{slug}/field-mappings ne
-	// doit même pas exister dans chi → 404 sans handler match.
-	t.Setenv("MULTI_TITLE_API_ENABLED", "false")
-
-	router := buildTestRouter(t)
+// assertFieldMappingsRouteMounted vérifie que la route field-mappings est bien
+// ENREGISTRÉE dans chi. buildTestRouter utilise un tmpDir sans TOML, donc le
+// titre n'est pas chargé et le handler répond 404 — mais avec un corps JSON, ce
+// qui le distingue du 404 de routeur (route absente, aucun handler atteint).
+func assertFieldMappingsRouteMounted(t *testing.T, router http.Handler) {
+	t.Helper()
 	req := httptest.NewRequestWithContext(t.Context(), "GET", "/api/v1/titles/halo_infinite/field-mappings?locale=fr", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusNotFound {
-		t.Errorf("flag off → status = %d, want 404", w.Code)
+		t.Errorf("status = %d, want 404 (titre non chargé dans le tmpDir de test)", w.Code)
+	}
+	ct := w.Header().Get("Content-Type")
+	if !strings.Contains(ct, "json") {
+		t.Errorf("route NON montée : le 404 vient du routeur et non du handler (Content-Type = %q, want JSON)", ct)
 	}
 }
 
-// TestSmoke_FieldMappings_FlagOn_RouteRegistered : flag on → la route est
-// bien enregistrée dans le routeur. On ne peut pas tester le happy path
-// complet ici car buildTestRouter utilise son propre tmpDir, donc on
-// vérifie juste que la route est exposée (le handler répond 404 sur le
-// titre non chargé, mais c'est différent d'un 404 routeur).
-//
-// Le helper writeSmokeTOML est conservé pour de futurs tests d'intégration
-// qui pourraient copier le TOML dans un tmpDir partagé avec le routeur.
-func TestSmoke_FieldMappings_FlagOn_RouteRegistered(t *testing.T) {
-	t.Setenv("MULTI_TITLE_API_ENABLED", "true")
+// TestSmoke_FieldMappings_RouteMountedWithoutAnyFlag : aucun flag positionné →
+// la route existe quand même. C'est la situation de tout poste de dev
+// fraîchement cloné (avant le 2026-08-02, il servait des clés brutes faute de
+// flag activé — c'est précisément ce qui maintenait les dictionnaires de repli
+// TS en vie).
+func TestSmoke_FieldMappings_RouteMountedWithoutAnyFlag(t *testing.T) {
 	t.Setenv("LEVELUP_DEMO_MODE", "true")
 
 	// Sanity check du helper writeSmokeTOML (pour qu'il reste exercé).
@@ -93,23 +102,16 @@ func TestSmoke_FieldMappings_FlagOn_RouteRegistered(t *testing.T) {
 		t.Fatalf("writeSmokeTOML n'a pas écrit le fichier: %v", err)
 	}
 
-	router := buildTestRouter(t)
-	req := httptest.NewRequestWithContext(t.Context(), "GET", "/api/v1/titles/halo_infinite/field-mappings?locale=fr", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-
-	// Avec un buildTestRouter qui utilise un tmpDir vide (sans TOML), la
-	// route est exposée mais le titre n'est pas chargé → réponse 404 du
-	// handler (avec body JSON), pas un 404 routeur.
-	if w.Code != http.StatusNotFound {
-		t.Errorf("status = %d, want 404 (titre non chargé)", w.Code)
-	}
-	if w.Header().Get("Content-Type") != "" && !strings.Contains(w.Header().Get("Content-Type"), "json") {
-		t.Errorf("flag on devrait passer par le handler avec body JSON, Content-Type = %q", w.Header().Get("Content-Type"))
-	}
+	assertFieldMappingsRouteMounted(t, buildTestRouter(t))
 }
 
-// TestSmoke_PreviewCareer_FlagOn_NotFoundForUnloadedTitle supprimé en revue
-// 2026-04-29 P0.2 Q6 — la route /preview/career a été retirée (orpheline côté
-// front). Le smoke test field-mappings ci-dessus suffit à valider que le flag
-// MULTI_TITLE_API_ENABLED ouvre/ferme correctement le sous-arbre de routes.
+// TestSmoke_FieldMappings_RouteMountedEvenWithLegacyFlagOff est le garde-rail
+// DISCRIMINANT du retrait : l'ancien nom de flag posé à "false" ne doit plus
+// avoir le moindre effet. Réintroduire un `if cfg.MultiTitleAPIEnabled` — ou
+// tout autre gate lisant cette variable — rend ce test rouge.
+func TestSmoke_FieldMappings_RouteMountedEvenWithLegacyFlagOff(t *testing.T) {
+	t.Setenv("MULTI_TITLE_API_ENABLED", "false")
+	t.Setenv("LEVELUP_DEMO_MODE", "true")
+
+	assertFieldMappingsRouteMounted(t, buildTestRouter(t))
+}
