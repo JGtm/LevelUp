@@ -19,6 +19,8 @@ import (
 	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+
+	"levelup/go-api/internal/migration"
 )
 
 // openReplayShared crée une DB DuckDB in-memory avec le schéma minimal exercé
@@ -73,6 +75,11 @@ func openReplayShared(t *testing.T) *sql.DB {
 		);
 	`
 	if err := execScript(t.Context(), db, ddl); err != nil {
+		t.Fatal(err)
+	}
+	// match_kill_events : seconde destination du kill-feed depuis le 2026-08-02 (double
+	// écriture datée). DDL issue des migrations réelles.
+	if err := migration.EnsureMatchKillEvents(db); err != nil {
 		t.Fatal(err)
 	}
 	return db

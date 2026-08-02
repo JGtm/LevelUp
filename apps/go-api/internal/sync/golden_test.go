@@ -34,6 +34,7 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/migration"
 )
 
 // openGoldenShared ouvre une DB DuckDB in-memory avec le schéma prod aligné
@@ -88,6 +89,12 @@ func openGoldenShared(t *testing.T) *sql.DB {
 		);
 	`
 	if err := execScript(t.Context(), db, ddl); err != nil {
+		t.Fatal(err)
+	}
+	// match_kill_events : seconde destination du kill-feed depuis le 2026-08-02 (double
+	// écriture datée). DDL issue des migrations réelles — un schéma recopié ici divergerait
+	// du jour où la table change, et le golden certifierait une forme disparue de la prod.
+	if err := migration.EnsureMatchKillEvents(db); err != nil {
 		t.Fatal(err)
 	}
 	return db

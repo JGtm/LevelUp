@@ -250,6 +250,60 @@ func TestKillSourceCollecteFilmReelEtRelitParLaVue(t *testing.T) {
 	}
 }
 
+// TestTirsParArmeSuiventLeurPropreCapability — DEUX FAMILLES, DEUX PORTES (phase 4, §4.3).
+//
+// Un titre peut exposer le kill enrichi SANS exposer la ventilation des tirs : ce sont deux
+// questions differentes, et les tirs ont leurs propres reserves (Fiesta et BTB non livrables).
+// Le test le PROUVE sur le meme film : avec `film.kill_source` seul, les morts sont ecrites et
+// `match_weapon_shots` reste VIDE ; en ajoutant `film.weapon_shots`, elle se remplit.
+//
+// Sans cette porte, la seule facon de ne pas ventiler serait de ne pas decoder du tout.
+func TestTirsParArmeSuiventLeurPropreCapability(t *testing.T) {
+	const film = "9b191a7f"
+	chunks := chargerFilmDeFixture(t, film)
+	client := &fakeFilmClient{chunks: map[string][]haloclient.FilmChunk{film: chunks}}
+
+	compterTirs := func(t *testing.T, caps games.CapabilityMap) (morts, tirs int) {
+		t.Helper()
+		db := openSharedTestDB(t)
+		col := NewKillSourceCollector(client, fakeRoster{}, sharedWriter(db), caps, 0)
+		if _, _, err := col.CollectMatch(context.Background(), film); err != nil {
+			t.Fatalf("CollectMatch: %v", err)
+		}
+		if err := db.QueryRow(`SELECT
+			(SELECT COUNT(*) FROM match_kill_events_latest),
+			(SELECT COUNT(*) FROM match_weapon_shots)`).Scan(&morts, &tirs); err != nil {
+			t.Fatalf("select: %v", err)
+		}
+		return morts, tirs
+	}
+
+	mortsSeules, tirsSeuls := compterTirs(t, capsAvecFilm())
+	if mortsSeules == 0 {
+		t.Fatal("aucune mort ecrite : la porte des tirs ne doit pas toucher celle des morts")
+	}
+	if tirsSeuls != 0 {
+		t.Errorf("%d ligne(s) de tirs ecrites SANS la capability film.weapon_shots — "+
+			"la porte ne garde rien", tirsSeuls)
+	}
+
+	avecTirs := games.CapabilityMap{
+		games.CapFilmKillSource:  games.CapSupported,
+		games.CapFilmWeaponShots: games.CapSupported,
+	}
+	mortsAvec, tirsAvec := compterTirs(t, avecTirs)
+	if mortsAvec != mortsSeules {
+		t.Errorf("les morts changent selon la capability des TIRS (%d vs %d) : les deux familles "+
+			"ne sont pas independantes", mortsAvec, mortsSeules)
+	}
+	// Le temoin de detection : sans cette assertion, une porte toujours fermee passerait.
+	if tirsAvec == 0 {
+		t.Error("aucune ligne de tirs AVEC la capability — la porte est fermee dans les deux cas")
+	}
+	t.Logf("film %s : %d morts ; tirs = %d sans la capability, %d avec",
+		film, mortsSeules, tirsSeuls, tirsAvec)
+}
+
 // TestKillSourceRosterResoutLesXuid — avec un roster, les noms deviennent des xuid. Le meme
 // film, la meme chaine : seule la resolution change.
 func TestKillSourceRosterResoutLesXuid(t *testing.T) {
