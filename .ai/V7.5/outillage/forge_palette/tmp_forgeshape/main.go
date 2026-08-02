@@ -65,6 +65,8 @@ func main() {
 		cmdCrateObj(os.Args[2], os.Args[3:])
 	case "repname":
 		cmdRepName(expand(os.Args[3:]), os.Args[2])
+	case "spawners":
+		cmdSpawners(expand(os.Args[3:]), os.Args[2])
 	case "names":
 		cmdNames(expand(os.Args[2:]))
 	case "findhash":

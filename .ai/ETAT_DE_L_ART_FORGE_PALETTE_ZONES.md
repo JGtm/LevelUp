@@ -223,6 +223,62 @@ Les jetons `rocket`, `launcher`, `active`, `camo`, `camouflage`, `overshield`, `
 Sorties : `noms_craques_stringid.txt` (table complete + rejets nommes),
 `crate_variants.txt` (balayage), `representation_names.csv` (les 848).
 
+### Q1.0-octies RECONNAITRE UN EMPLACEMENT SANS LISTE EN DUR — le predicat qui tient
+
+> Question posee en cours de session : « au rejeu, on ne sait pas quels types d'emplacement
+> la carte utilise ; y a-t-il un denominateur, ou faut-il balayer tous les cas de figure ?
+> Selon le theme graphique, les auteurs privilegient un composant ou un autre. »
+>
+> **La premisse est exacte et elle est mesurable** : les cinq types se repartissent sur
+> 27 / 21 / 20 / 11 / 8 cartes, et `493070541` est celui de Catalyst, absent de Vagabond.
+> Une liste de `type_id` en dur aurait rate Catalyst. Reponse : **on ne balaye pas, et on
+> ne liste pas — on branche sur un predicat.**
+
+**D'abord, le faux probleme.** Au rejeu il n'y a rien a deviner : le `.mvar` de la carte
+enumere ses propres `type_id`. Le catalogue est bati **par carte et hors ligne**. La vraie
+question est celle de la REGLE DE CLASSEMENT — comment reconnaitre un emplacement sur une
+carte jamais vue, sans table a maintenir.
+
+**Trois predicats testes sur les 199 cartes** (`tmp_forgeshape spawners`) :
+
+| predicat | portee mesuree |
+|---|---|
+| **P1** groupe de palette dans `{weap, vehi, eqip}` | trop large : 2 785 types, dont 2 669 `bloc` a exclure |
+| **P2** porte un delai de reapparition (`/#8/#1[]/#4`) | **filtre grossier utile** : 65 `type_id` sur 2 785, 86 cartes sur 199 — `weap` 440 objets, `vehi` 184, `eqip` 37, et 56 `bloc` parasites |
+| **P3** signature d'emprise du modele (dx/dy/dz au 10⁻⁴) | **LE PREDICAT** |
+
+**P3 tranche net.** Parmi toutes les signatures portees par un objet a delai, **une seule
+regroupe plus de deux `type_id`** :
+
+```
+-> 0.1306/0.1308/0.2617    5 type_id   387 objets   59 cartes
+                           [-1062552774  493070541  801517767  1486653438  1882451900]
+```
+
+**Les cinq emplacements, et eux seuls.** Toutes les autres signatures ne portent qu'un ou
+deux types, et ce sont des MODELES REELS : `2.2440/1.0139/0.8315` = le Warthog,
+`0.0615/0.0615/0.0863` = la grenade a fragmentation. La taxonomie tombe d'elle-meme :
+
+| lecture | signature | ce qui est place |
+|---|---|---|
+| **emplacement** | `0.1306/0.1308/0.2617` (petit socle) | un PAD ; ce qui apparait dessus est nomme par le `Representation Name` |
+| **objet direct** | l'emprise du modele reel | l'objet lui-meme (arme, vehicule, grenade) |
+
+**Pourquoi P3 survit aux themes et pas la liste de `type_id`** : le `type_id` est une entree
+de PALETTE (une par habillage, donc une par theme), tandis que l'emprise vient du **modele
+d'objet**, constante au niveau du titre. `493070541` reference d'ailleurs un tag d'objet
+DIFFERENT des quatre autres (`-1269928936` contre `-370671751`) et porte pourtant **la meme
+emprise a la sixieme decimale**. Ni le `type_id` ni le tag ne sont l'invariant : l'emprise
+l'est.
+
+**La limite, dite plutot que cachee** : l'emprise se lit dans la palette Forge du jeu
+installe, pas dans le `.mvar`. Le catalogue `cls_all.csv` couvre les 2 785 types vus sur
+199 cartes ; une carte neuve employant une entree de palette inconnue exige de rejouer
+`tmp_forgename classify` contre le module. C'est une operation bornee et hors ligne, pas
+un balayage.
+
+Sortie : `.ai/V7.5/dumps/forge_zones/emplacements_predicats.txt`.
+
 ### Q1.0-sexies LE FORGE KIT ET L'APPARIEMENT `fosp` — deux impasses, mesurees
 
 **Le `Forge Kit` (groupe `kit!`) ne mene nulle part ici.** Sa definition fait 337 Ko et porte
