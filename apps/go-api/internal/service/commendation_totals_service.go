@@ -61,10 +61,9 @@ func (s *CommendationTotalsService) GetTotals(ctx context.Context) (*domain.Nati
 func groupNativeCommendations(totals []canonical.CommendationTotal) *domain.NativeCommendationsTotalsResponse {
 	byCat := map[string][]domain.NativeCommendationTotal{}
 	for _, t := range totals {
-		cat := t.Category
-		if cat == "" {
-			cat = "AUTRE"
-		}
+		// Clé canonique (jamais un libellé humain) : la traduction FR/EN vit dans
+		// le manifeste web citations.toml. Catégorie vide ou inconnue -> « other ».
+		cat := canonical.NormalizeCommendationCategory(t.Category)
 		// Progression À VIE : delta=0 (vitrine, pas un gain de match). On NE filtre
 		// PAS les maîtrisées (à l'inverse des snippets de match) — une commendation
 		// maîtrisée doit s'afficher pleine/dorée. tier_targets vide → tier_count=0 →
@@ -84,7 +83,16 @@ func groupNativeCommendations(totals []canonical.CommendationTotal) *domain.Nati
 	for c := range byCat {
 		cats = append(cats, c)
 	}
-	sort.Strings(cats)
+	// Ordre produit canonique (multiplayer, game_mode, weapon, …, other) : l'ancien
+	// tri alphabétique portait sur les libellés bruts et devenait dépendant de la
+	// langue de la donnée une fois les clés normalisées.
+	sort.Slice(cats, func(i, j int) bool {
+		ri, rj := canonical.CommendationCategoryRank(cats[i]), canonical.CommendationCategoryRank(cats[j])
+		if ri != rj {
+			return ri < rj
+		}
+		return cats[i] < cats[j]
+	})
 	groups := make([]domain.NativeCommendationCategoryGroup, 0, len(cats))
 	for _, c := range cats {
 		items := byCat[c]

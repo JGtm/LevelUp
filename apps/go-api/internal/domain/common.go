@@ -27,6 +27,13 @@ func ErrBadRequest(msg string) *APIError {
 	return &APIError{Code: "bad_request", Message: msg, Retryable: false}
 }
 
+// ErrForbidden crée une erreur 403 standard (autorisation au niveau de la
+// RESSOURCE — couche B de l'ADR 0029, distincte du refus d'accès au profil
+// rendu par le middleware RequirePlayerOwnership).
+func ErrForbidden(msg string) *APIError {
+	return &APIError{Code: "forbidden", Message: msg, Retryable: false}
+}
+
 // ErrInternal crée une erreur 500 standard.
 func ErrInternal(msg string) *APIError {
 	return &APIError{Code: "internal_error", Message: msg, Retryable: true}

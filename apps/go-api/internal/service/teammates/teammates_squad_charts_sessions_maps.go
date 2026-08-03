@@ -6,7 +6,6 @@ package teammates
 
 import (
 	"context"
-	"log/slog"
 	"sort"
 	"time"
 
@@ -25,7 +24,10 @@ import (
 // décalage TZ/DST (cohérent buildSquadSessionTimeline). Alimente le
 // SessionMultiSelect ET le ré-ancrage front (sortie[0] = LatestCompositionSession).
 func buildCompositionSessionLabels(rows []domain.SquadMatchRow) []domain.SessionLabelEntry {
-	type bounds struct{ started, ended time.Time }
+	type bounds struct {
+		started, ended time.Time
+		count          int
+	}
 	byLabel := make(map[string]*bounds)
 	seen := make(map[string]struct{}, len(rows))
 	for _, m := range rows {
@@ -39,9 +41,13 @@ func buildCompositionSessionLabels(rows []domain.SquadMatchRow) []domain.Session
 		label := *m.SessionLabel
 		b, ok := byLabel[label]
 		if !ok {
-			byLabel[label] = &bounds{started: m.StartTime, ended: m.StartTime}
+			byLabel[label] = &bounds{started: m.StartTime, ended: m.StartTime, count: 1}
 			continue
 		}
+		// MatchCount = matchs de la session « commencés ensemble » (population du
+		// roster) : c'est CE nombre que le sélecteur de sessions affiche, et non le
+		// suffixe « (N) » du label (figé au sync, solo+escouade confondus).
+		b.count++
 		if m.StartTime.Before(b.started) {
 			b.started = m.StartTime
 		}
@@ -52,7 +58,12 @@ func buildCompositionSessionLabels(rows []domain.SquadMatchRow) []domain.Session
 
 	out := make([]domain.SessionLabelEntry, 0, len(byLabel))
 	for label, b := range byLabel {
-		out = append(out, domain.SessionLabelEntry{Label: label, StartedAt: b.started, EndedAt: b.ended})
+		out = append(out, domain.SessionLabelEntry{
+			Label:      label,
+			StartedAt:  b.started,
+			EndedAt:    b.ended,
+			MatchCount: b.count,
+		})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].StartedAt.After(out[j].StartedAt) })
 	return out
@@ -177,7 +188,7 @@ func (s *TeammatesService) buildSquadMapHeatmap(
 	ctx context.Context,
 	allSquadRows []domain.SquadMatchRow,
 	selectedGamertags []string,
-	sessionMatchIDs map[string]bool,
+	issues *dataIssues,
 ) *domain.SquadMapHeatmap {
 	if len(allSquadRows) == 0 {
 		return nil
@@ -298,17 +309,13 @@ func (s *TeammatesService) buildSquadMapHeatmap(
 		cells = append(cells, c)
 	}
 
-	// 4. Coéquipiers : LoadPlayerMatches par gamertag, filtre sur match_ids escouade.
+	// 4. Coéquipiers : LoadPlayerMatches par gamertag, restreint aux match_ids de
+	// la population escouade reçue (matchIDByID). Aucun re-filtrage privé ici :
+	// allSquadRows porte DÉJÀ les filtres de session/période/cascade, et un second
+	// filtre local (sessionMatchIDs, calculé sur les matchs du joueur principal)
+	// donnait aux lignes coéquipiers une population plus étroite que la ligne du
+	// main — une des sources du désaccord entre compteurs (retiré le 2026-08-02).
 	matchIDsAllowed := matchIDByID
-	if len(sessionMatchIDs) > 0 {
-		filtered := make(map[string]struct{}, len(sessionMatchIDs))
-		for id := range matchIDByID {
-			if sessionMatchIDs[id] {
-				filtered[id] = struct{}{}
-			}
-		}
-		matchIDsAllowed = filtered
-	}
 
 	for _, gt := range selectedGamertags {
 		if s.squadLoader == nil {
@@ -321,8 +328,9 @@ func (s *TeammatesService) buildSquadMapHeatmap(
 			ctx, s.titleSlug, gt, port.PlayerMatchFilters{},
 		)
 		if err != nil {
-			slog.WarnContext(ctx, "teammates_heatmap_load_failed",
-				"gamertag", gt, "err", err)
+			// Ligne de cartes vide pour ce coéquipier : l'UI doit signaler que la
+			// heatmap est partielle plutôt que d'afficher des cellules muettes.
+			issues.add(ctx, domain.DataIssueHeatmapTeammate, gt, err)
 			for _, mapUI := range mapsTop {
 				cells = append(cells, domain.SquadMapHeatmapCell{Player: gt, MapUI: mapUI})
 			}

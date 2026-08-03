@@ -26,6 +26,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
 )
@@ -493,13 +494,19 @@ func insertMediaFile(ctx context.Context, db *sql.DB, path, hash, playerSlug str
 		// On met à jour aussi duration / capture_end_utc puisque le fichier
 		// physique a changé (re-encodage) — sauf si la nouvelle valeur est NULL
 		// (on garde l'ancienne dans ce cas via COALESCE).
+		// RÉSURRECTION (item 3.1) : si la ligne visée avait été supprimée, le
+		// fichier vient d'être re-déposé — la suppression est annulée en remettant
+		// status à NULL. Le CASE est indispensable : écrire NULL inconditionnellement
+		// dégraderait une ligne 'active' (valeur exigée par le rail home).
 		_, err := db.ExecContext(ctx, `
 			UPDATE media_files
 			SET file_path = ?, file_name = ?, file_ext = ?, file_hash = ?, kind = ?,
 				duration_seconds = COALESCE(?, duration_seconds),
-				capture_end_utc = COALESCE(?, capture_end_utc)
+				capture_end_utc = COALESCE(?, capture_end_utc),
+				status = CASE WHEN COALESCE(status, '') = ? THEN NULL ELSE status END
 			WHERE id = ?
-		`, storedPath, baseName, ext, hash, kind, durationSec, captureEnd, existingID)
+		`, storedPath, baseName, ext, hash, kind, durationSec, captureEnd,
+			domain.MediaStatusDeleted, existingID)
 		if err != nil {
 			slog.ErrorContext(ctx, "insertMediaFile: UPDATE failed for format conversion",
 				"err", err, "player", playerSlug, "stem", stem, "id", existingID)
@@ -516,10 +523,28 @@ func insertMediaFile(ctx context.Context, db *sql.DB, path, hash, playerSlug str
 	// blast MAX shared_social). On reproduit la dédup en applicatif (SELECT-then-INSERT) :
 	// skip si une ligne porte déjà ce file_path. Race-safe car insertMediaFile tourne sous
 	// indexLock(dbPath) (IndexMedia sérialisé par chemin DB). mtime non écrit (cf. supra).
-	var dup int
+	//
+	// RÉSURRECTION (item 3.1) : un doublon SUPPRIMÉ n'est pas un skip — c'est un
+	// média que l'utilisateur re-dépose. On rend la ligne existante visible au
+	// lieu d'en insérer une seconde portant le même file_path (deux lignes
+	// concurrentes rendraient la dédup applicative de la galerie ambiguë).
+	var dupID int64
+	var dupStatus sql.NullString
 	switch err := db.QueryRowContext(ctx,
-		`SELECT 1 FROM media_files WHERE file_path = ? LIMIT 1`, storedPath).Scan(&dup); err {
+		`SELECT id, status FROM media_files WHERE file_path = ? LIMIT 1`,
+		storedPath).Scan(&dupID, &dupStatus); err {
 	case nil:
+		if dupStatus.Valid && dupStatus.String == domain.MediaStatusDeleted {
+			if _, err := db.ExecContext(ctx,
+				`UPDATE media_files SET status = NULL WHERE id = ?`, dupID); err != nil {
+				slog.ErrorContext(ctx, "insertMediaFile: résurrection du média supprimé échouée",
+					"err", err, "player", playerSlug, "file_path", storedPath, "id", dupID)
+				return err
+			}
+			slog.InfoContext(ctx, "insertMediaFile: média supprimé ressuscité par ré-upload",
+				"player", playerSlug, "file_path", storedPath, "id", dupID)
+			return nil
+		}
 		slog.Debug("insertMediaFile: file_path déjà indexé, SKIP",
 			"player", playerSlug, "file_path", storedPath)
 		return nil

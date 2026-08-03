@@ -1630,6 +1630,13 @@ en = "No match found in this window. Broaden your search."
 fr = "Rendement = efficacité offensive : à quel point tu convertis tes dégâts en éliminations. Résistance = solidité défensive : combien de dégâts tu encaisses avant de mourir. Une vie équivaut à environ {{HP}} points de dégâts. Chaque graphe trace sa propre ligne de référence indiquant un niveau « normal »."
 en = "Output = offensive efficiency: how well you turn your damage into kills. Resistance = defensive resilience: how much damage you absorb before dying. One life ≈ {{HP}} points of damage. Each chart draws its own reference line marking a \"normal\" level."
 
+# Aide pédagogique UNIQUE du graphe « Écart cumulé au FDA attendu » (Séries
+# temporelles + Sessions) : le graphe n'en avait aucune. Langage simple, pas de
+# vocabulaire statistique — l'important est la PENTE, pas la valeur absolue.
+[common.charts.fda_gap_tooltip]
+fr = "À chaque match, on compare ton FDA réel au FDA attendu (le niveau prévu pour toi face à cette opposition). La courbe additionne ces écarts match après match : elle monte quand tu fais mieux que prévu, elle descend quand tu fais moins bien. Regarde surtout sa pente — au-dessus de la ligne 0 tu es en avance sur l'attendu, en dessous tu es en retard. Le trait fin en pointillés est le FDA attendu de chaque match."
+en = "For every match, your actual KDA is compared to the KDA expected of you against that opposition. The line adds up those gaps match after match: it rises when you do better than expected and falls when you do worse. Watch its slope above all — above the 0 line you are ahead of expectations, below it you are behind. The thin dashed line is each match's expected KDA."
+
 # Axes du profil « Intensité » (Escouade / Séries temporelles / Sessions). L'axe X
 # ne montre que 3 repères (début / milieu / fin du match) ; rangeSuffix complète la
 # tranche dans le tooltip (ex. « 40-50% du match »).

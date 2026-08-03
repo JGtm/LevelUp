@@ -68,7 +68,7 @@ function setTitleCaps(caps: string[]) {
   useAppShellStore.setState({
     currentTitleSlug: 'test_title',
     availableTitles: [
-      { slug: 'test_title', name: 'Test', status: 'active', capabilities: caps, is_default: true, effective_hp_to_kill: 225, provides_damage_taken: true, provides_team_mmr: true, provides_max_killing_spree: true, offensive_conversion_p80: 0.9 },
+      { slug: 'test_title', name: 'Test', status: 'active', capabilities: caps, is_default: true, effective_hp_to_kill: 225, provides_damage_taken: true, provides_team_mmr: true, provides_max_killing_spree: true, offensive_conversion_p80: 0.9, defensive_resistance_p80: 1.65 },
     ],
   })
 }
@@ -167,6 +167,15 @@ describe('SessionFdaGapCumulative — masquage capability', () => {
     setTitleCaps(['expected_stats'])
     render(<SessionFdaGapCumulative title="Écart cumulé au FDA attendu" matches={matches} />)
     expect(await screen.findByTestId('echarts-mock')).toBeInTheDocument()
+  })
+
+  // v7.3 lot 2, item 2.3a : le graphe n'avait AUCUNE aide ; le texte est partagé
+  // avec l'instance Timeseries (clé commune `common.charts.fda_gap_tooltip`).
+  it('aide ⓘ rendue à côté du titre', async () => {
+    setTitleCaps(['expected_stats'])
+    render(<SessionFdaGapCumulative title="Écart cumulé au FDA attendu" matches={matches} />)
+    await screen.findByTestId('echarts-mock')
+    expect(screen.getByRole('button', { name: /info/i })).toBeInTheDocument()
   })
 
   it('capability expected_stats absente → non rendu (null)', () => {

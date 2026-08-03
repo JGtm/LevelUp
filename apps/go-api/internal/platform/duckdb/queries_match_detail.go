@@ -162,11 +162,11 @@ ORDER BY tm.xuid`
 // ce match, on l'affiche aussi sur la page match.
 // Paramètre : ? = match_id.
 //
-// Note : pas de filtre sur mf.status — aligné sur le baseWhereClause de la
-// galerie en mode shared_social (cf. queries_home_citations.go) qui n'en
-// applique pas non plus. Les médias existants n'ont pas de status non-NULL
-// par défaut (ALTER ADD COLUMN sans DEFAULT).
-const Q24MatchMedia = `
+// Note : le seul filtre sur mf.status est l'exclusion des médias SUPPRIMÉS
+// (item 3.1). Les lignes historiques ont status NULL et restent donc visibles —
+// d'où le COALESCE de MediaVisiblePredicate, qu'un `status <> 'deleted'` nu
+// aurait éliminées en silence.
+var Q24MatchMedia = `
 SELECT
     mf.id               AS file_id,
     mf.file_name,
@@ -177,7 +177,7 @@ SELECT
     COALESCE(mf.liked, FALSE) AS liked
 FROM media_files mf
 JOIN media_match_associations_latest mma ON mf.id = mma.media_file_id
-WHERE mma.match_id = ?
+WHERE mma.match_id = ? AND ` + MediaVisiblePredicate("mf") + `
 ORDER BY mf.capture_end_utc ASC NULLS LAST`
 
 // Q27 : Médailles de tous les joueurs d'un match (bulk).

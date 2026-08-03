@@ -6,7 +6,18 @@ import { citationMastery } from '@/lib/citations/mastery'
 import { MedalIcon } from '@/components/ui/MedalIcon'
 import type { MatchViewText } from './i18n'
 
-const CARD_HEIGHT = 280
+/**
+ * Plancher de hauteur du CORPS de carte (hors bandeau de titre). Remplace
+ * l'ancien plancher fixe de 280 px qui réservait la hauteur de 3 rangées de
+ * vignettes même pour un match à 2 médailles (v7.3 lot 2, item 2.1).
+ *
+ * L'égalisation des deux cartes d'une même rangée est laissée à la grille CSS
+ * du parent (`MatchViewPage`, `align-items: stretch` par défaut) : la carte
+ * riche impose sa hauteur à sa voisine, et quand les DEUX sont pauvres la
+ * rangée entière se compacte. Le plancher ne sert plus qu'à garder un état
+ * vide (« Aucune médaille ») lisible et une carte à une seule rangée aérée.
+ */
+export const MEDALS_CARD_MIN_BODY_HEIGHT = 96
 
 function buildTooltip(name: string, description?: string | null): string {
   if (description && description.trim() !== '') {
@@ -29,17 +40,18 @@ function PaneCard({
   isEmpty: boolean
   emptyMessage: string
 }) {
+  // `flex flex-col` + corps `flex-1` : la carte remplit la cellule de grille que
+  // sa voisine étire, sans jamais réserver de hauteur quand rien ne l'étire.
   return (
-    <div className="relative rounded-lg border border-border bg-card">
-      <div className="border-b border-border px-3 py-2 text-sm font-medium">{title}</div>
-      <div className="p-3" style={{ minHeight: CARD_HEIGHT }}>
+    <div className="relative flex flex-col rounded-lg border border-border bg-card">
+      <div className="flex-none border-b border-border px-3 py-2 text-sm font-medium">{title}</div>
+      <div
+        className={`flex-1 p-3${isEmpty ? ' flex items-center justify-center' : ''}`}
+        style={{ minHeight: MEDALS_CARD_MIN_BODY_HEIGHT }}
+        data-testid="medals-pane-body"
+      >
         {isEmpty ? (
-          <div
-            className="flex items-center justify-center text-sm text-muted-foreground"
-            style={{ minHeight: CARD_HEIGHT }}
-          >
-            {emptyMessage}
-          </div>
+          <span className="text-sm text-muted-foreground">{emptyMessage}</span>
         ) : (
           <div className="flex flex-wrap gap-x-5 gap-y-4">{children}</div>
         )}

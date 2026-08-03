@@ -6,6 +6,7 @@
   "items": [
     {
       "challenge_path": "demo/challenge/eliminations",
+      "image_url": "/static/prestige-assets/Objectives-badges/objective-daily-heroic.png",
       "title": "Tueur en série",
       "description": "Éliminez 25 adversaires en Partie rapide",
       "progress_current": 18,
@@ -15,6 +16,7 @@
     },
     {
       "challenge_path": "demo/challenge/objectives",
+      "image_url": "/static/prestige-assets/Objectives-badges/objective-daily-normal.png",
       "title": "Maître des objectifs",
       "description": "Capturez 10 zones ou drapeaux",
       "progress_current": 7,
@@ -24,6 +26,7 @@
     },
     {
       "challenge_path": "demo/challenge/headshots",
+      "image_url": "/static/prestige-assets/Objectives-badges/objective-daily-legendary.png",
       "title": "Précision mortelle",
       "description": "Réalisez 50 tirs à la tête",
       "progress_current": 32,
@@ -33,6 +36,7 @@
     },
     {
       "challenge_path": "demo/challenge/assists",
+      "image_url": "/static/prestige-assets/Objectives-badges/objective-weekly-normal.png",
       "title": "Esprit d'équipe",
       "description": "Obtenez 15 assistances en escouade",
       "progress_current": 15,

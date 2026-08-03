@@ -209,6 +209,43 @@ type MediaRepository interface {
 	SetMediaMatchAssociation(ctx context.Context, filePath, matchID string) (mapName, modeName *string, err error)
 }
 
+// MediaDeleter porte la suppression définitive d'un média (v7.3 lot 2, item 3.1).
+//
+// Interface SÉPARÉE de MediaRepository — même motif que atomicMediaLiker dans
+// service/media_service.go : le service la détecte par type-assertion sur son
+// repo. Élargir MediaRepository casserait tous les mocks existants sans rien
+// apporter, alors que la suppression n'est servie que par le repo concret.
+//
+// Implémentée par platform/duckdb.MediaRepo (media_repo_delete.go).
+type MediaDeleter interface {
+	// LoadMediaForDeletion charge le propriétaire et les chemins physiques d'un
+	// média encore visible. Retourne domain.ErrNotFound si le chemin est inconnu
+	// ou si le média est DÉJÀ supprimé (une suppression n'est pas rejouable).
+	LoadMediaForDeletion(ctx context.Context, filePath string) (domain.MediaDeletionTarget, error)
+
+	// MarkMediaDeleted masque un média (status='deleted'), sans jamais supprimer
+	// la ligne ni toucher aux tables append-only (cf. domain/media_delete.go).
+	// exec permet d'exécuter dans la transaction du LeasedWriter appelant.
+	// Retourne false si aucune ligne visible ne correspondait.
+	MarkMediaDeleted(ctx context.Context, exec DBExecutor, filePath string) (bool, error)
+}
+
+// MediaFileRemover retire des fichiers média du disque.
+//
+// SEUL port filesystem du domaine média : avant l'item 3.1, tous les accès
+// disque média étaient des appels os.* directs disséminés (ops/, service/,
+// handlers/), donc intestables sans disque réel. La suppression étant la seule
+// opération média IRRÉVERSIBLE, elle passe par une frontière explicite que les
+// tests substituent.
+//
+// Implémenté par ops.OSMediaFileRemover.
+type MediaFileRemover interface {
+	// RemoveMediaFiles retire les chemins STOCKÉS passés ({owner_slug}/{rel} ou
+	// absolu legacy). Un fichier déjà absent n'est PAS une erreur (idempotence) et
+	// n'est pas compté. Retourne le nombre de fichiers effectivement retirés.
+	RemoveMediaFiles(ctx context.Context, storedPaths []string) (int, error)
+}
+
 // SocialRepository gère les données sociales (favoris) dans shared_social.duckdb.
 // Implémenté par platform/duckdb.SocialRepo.
 type SocialRepository interface {

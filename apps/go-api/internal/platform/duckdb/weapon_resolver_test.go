@@ -133,3 +133,50 @@ func TestResolveWeaponMeta_FallbackWhenNoRegistry(t *testing.T) {
 		t.Errorf("sentinel sans registre = %+v, want label=Grenade", s)
 	}
 }
+
+// TestResolveWeaponMeta_H5VehiclesDistinctPerEngine fige le SOCLE de la ventilation par
+// ENGIN (V73-3.2) et documente pourquoi elle ne peut pas passer par le rôle :
+//
+//	(a) les stock_ids RÉELS des véhicules H5 (relevés en base le 2026-08-02 :
+//	    Warthog 4028516791, Ghost 3010146366) résolvent chacun un weapon_key DISTINCT —
+//	    ils ne s'écrasent PAS sur le sentinel véhicule (id 2), qui ne porte aucun kill H5 ;
+//	(b) leur class vaut « vehicle » pour les deux, tout comme role et family : ventiler le
+//	    niveau 2 par rôle donnerait donc un arc unique sans information. Seul weapon_key
+//	    distingue un Warthog d'un Ghost — d'où domain.IsPerWeaponFragClass.
+func TestResolveWeaponMeta_H5VehiclesDistinctPerEngine(t *testing.T) {
+	meta := resolverTestMeta(t, true)
+	ctx := context.Background()
+	for _, ins := range []string{
+		"INSERT INTO weapon_name_labels VALUES ('halo_5', 'h5_vehicle_warthog', 'Warthog', 'Warthog')",
+		"INSERT INTO weapon_name_labels VALUES ('halo_5', 'h5_vehicle_ghost', 'Ghost', 'Ghost')",
+	} {
+		if _, err := meta.Exec(ctx, ins); err != nil {
+			t.Fatalf("seed weapon_name_labels véhicules: %v", err)
+		}
+	}
+	const warthogID, ghostID = int64(4028516791), int64(3010146366)
+	res := resolveWeaponMeta(ctx, meta, "halo_5", []int64{warthogID, ghostID})
+
+	warthog, ghost := res[warthogID], res[ghostID]
+	if warthog.weaponKey != "h5_vehicle_warthog" || ghost.weaponKey != "h5_vehicle_ghost" {
+		t.Fatalf("weapon_key par engin = %q / %q, want h5_vehicle_warthog / h5_vehicle_ghost",
+			warthog.weaponKey, ghost.weaponKey)
+	}
+	if warthog.weaponKey == ghost.weaponKey {
+		t.Error("deux engins distincts partagent une clé : le sous-niveau ne pourrait pas les séparer")
+	}
+	if warthog.label != "Warthog" || ghost.label != "Ghost" {
+		t.Errorf("libellés registre = %q / %q, want Warthog / Ghost (source weapon_names.toml)",
+			warthog.label, ghost.label)
+	}
+	// (b) class/role/family confondus → le rôle ne distingue aucun engin.
+	for name, m := range map[string]weaponResolved{"warthog": warthog, "ghost": ghost} {
+		if m.class != "vehicle" {
+			t.Errorf("%s class = %q, want vehicle", name, m.class)
+		}
+		if m.role != m.class {
+			t.Errorf("%s : role=%q class=%q — le test suppose role == class (socle de la ventilation par engin)",
+				name, m.role, m.class)
+		}
+	}
+}

@@ -16,6 +16,8 @@ export interface MediaText {
   title: string
   emptyState: string
   errorPrefix: string
+  /** Message affiché quand le serveur refuse un like (garde anti-silence). */
+  likeError: string
   previousPage: string
   nextPage: string
   pageLabel: (page: number, totalPages: number) => string
@@ -92,6 +94,7 @@ export function getMediaText(locale?: string | null): MediaText {
     title: t(loc, 'media.page.title'),
     emptyState: t(loc, 'media.page.empty_state'),
     errorPrefix: t(loc, 'media.page.error_prefix'),
+    likeError: t(loc, 'media.like.error'),
     previousPage: t(loc, 'media.pagination.previous'),
     nextPage: t(loc, 'media.pagination.next'),
     pageLabel: (page, totalPages) =>

@@ -2,6 +2,9 @@ package service
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/ctxkeys"
@@ -59,5 +62,38 @@ func TestGetChallenges_DemoMode_LocaleSelectsFixture(t *testing.T) {
 	}
 	if fr.Items[0].Title != "Tueur en série" {
 		t.Errorf("demo challenges FR: 1er titre attendu %q, got %q", "Tueur en série", fr.Items[0].Title)
+	}
+}
+
+// TestGetChallenges_DemoMode_ImagesServable verrouille l'item 1.6 : chaque défi
+// de démo porte une image_url ET cette image existe réellement sous static/
+// (servi par /static/*). Sans image_url la vignette retombait sur le placeholder
+// texte « Défi » ; sans ce test, la fixture peut re-diverger silencieusement
+// puisque le mode démo bypasse le cache DB et l'API live.
+func TestGetChallenges_DemoMode_ImagesServable(t *testing.T) {
+	// internal/service → racine du dépôt (static/ est servi depuis {repoRoot}/static).
+	staticDir := filepath.Join("..", "..", "..", "..", "static")
+
+	for _, locale := range []string{"fr", "en"} {
+		resp := NewHomeService(nil).WithDemoMode(true).
+			GetChallenges(ctxkeys.WithLocale(context.Background(), locale))
+		if len(resp.Items) == 0 {
+			t.Fatalf("%s: fixture sans item", locale)
+		}
+		for i, it := range resp.Items {
+			if it.ImageURL == nil || *it.ImageURL == "" {
+				t.Errorf("%s: item %d (%s) sans image_url", locale, i, it.Title)
+				continue
+			}
+			url := *it.ImageURL
+			rel, ok := strings.CutPrefix(url, "/static/")
+			if !ok {
+				t.Errorf("%s: item %d image_url = %q, want un chemin /static/…", locale, i, url)
+				continue
+			}
+			if _, err := os.Stat(filepath.Join(staticDir, filepath.FromSlash(rel))); err != nil {
+				t.Errorf("%s: item %d image_url = %q → asset absent du dépôt: %v", locale, i, url, err)
+			}
+		}
 	}
 }

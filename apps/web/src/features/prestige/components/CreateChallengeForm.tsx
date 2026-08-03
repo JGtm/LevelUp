@@ -21,8 +21,7 @@ import {
   type WindowType,
 } from '@/lib/prestige'
 import { useAssetLabel } from '@/lib/i18n/fieldMappings'
-import { metricLabel, PRESTIGE_METRIC_OPTIONS } from '@/lib/i18n/metricLabel'
-import { CADENCE_FREE_FALLBACK_FR } from '../fallback.i18n'
+import { useMetricLabel, PRESTIGE_METRIC_OPTIONS } from '@/lib/i18n/metricLabel'
 import { getPrestigeText } from '../i18n'
 import { useCreateChallenge, useSuggestedTemplates } from '../hooks'
 
@@ -44,10 +43,9 @@ export function CreateChallengeForm({
   const [mode, setMode] = useState<FormMode>('hybride')
   const locale = useAppShellStore((s) => s.locale)
   const t = getPrestigeText(locale)
-  // Phase 4 plan finition multi-titres : libellé "Libre" via cadence.free du TOML.
-  const libreLabelFromTOML = useAssetLabel('cadence', 'free')
-  const libreLabel =
-    libreLabelFromTOML !== 'free' ? libreLabelFromTOML : CADENCE_FREE_FALLBACK_FR
+  // Libellé "Libre" servi par cadence.free des TOML (source unique — les deux
+  // titres le déclarent ; plus aucun repli FR local depuis le 2026-08-02).
+  const libreLabel = useAssetLabel('cadence', 'free')
 
   return (
     <div className="space-y-4">
@@ -98,6 +96,14 @@ function ModeButton({ active, onClick, label }: { active: boolean; onClick: () =
   )
 }
 
+// Une option = un composant : le libellé vient d'un hook (useMetricLabel), qui
+// ne peut pas être appelé dans le .map() du <select>. L'élément rendu reste un
+// <option>, donc un enfant direct valide du <select>.
+function MetricOption({ value }: { value: string }) {
+  const label = useMetricLabel(value)
+  return <option value={value}>{label}</option>
+}
+
 // ─── Mode libre : tous les champs ───
 
 function FreeForm({ userId, titleSlug, onSuccess }: TabFormProps) {
@@ -139,9 +145,7 @@ function FreeForm({ userId, titleSlug, onSuccess }: TabFormProps) {
           className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground"
         >
           {PRESTIGE_METRIC_OPTIONS.map((opt) => (
-            <option key={opt} value={opt}>
-              {metricLabel(opt, locale)}
-            </option>
+            <MetricOption key={opt} value={opt} />
           ))}
         </select>
       </Field>

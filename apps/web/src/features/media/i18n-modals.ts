@@ -47,6 +47,16 @@ export interface CoverFlowText {
   audioGroupLabel: string
   enterFullscreen: string
   exitFullscreen: string
+  /** Suppression définitive d'un média (item 3.1) — propriétaire ou admin. */
+  deleteButton: string
+  deleteTitle: string
+  deleteConfirmTitle: string
+  /** Corps de la confirmation : dit explicitement que c'est irréversible. */
+  deleteConfirmBody: string
+  deleteConfirmLabel: string
+  deleteCancelLabel: string
+  deleteSuccess: string
+  deleteError: string
 }
 
 export interface MediaModalsText {
@@ -93,6 +103,16 @@ const FR: MediaModalsText = {
     audioGroupLabel: 'Pistes audio',
     enterFullscreen: 'Plein écran',
     exitFullscreen: 'Quitter le plein écran',
+    deleteButton: 'Supprimer',
+    deleteTitle: 'Supprimer définitivement ce média',
+    deleteConfirmTitle: 'Supprimer ce média ?',
+    deleteConfirmBody:
+      'Le fichier sera effacé du serveur et ne pourra pas être récupéré. '
+      + 'Le média disparaîtra de la galerie et des pages de match.',
+    deleteConfirmLabel: 'Supprimer définitivement',
+    deleteCancelLabel: 'Annuler',
+    deleteSuccess: 'Média supprimé.',
+    deleteError: 'Impossible de supprimer ce média.',
   },
 }
 
@@ -135,6 +155,16 @@ const EN: MediaModalsText = {
     audioGroupLabel: 'Audio tracks',
     enterFullscreen: 'Fullscreen',
     exitFullscreen: 'Exit fullscreen',
+    deleteButton: 'Delete',
+    deleteTitle: 'Permanently delete this media',
+    deleteConfirmTitle: 'Delete this media?',
+    deleteConfirmBody:
+      'The file will be erased from the server and cannot be recovered. '
+      + 'The media will disappear from the gallery and from match pages.',
+    deleteConfirmLabel: 'Delete permanently',
+    deleteCancelLabel: 'Cancel',
+    deleteSuccess: 'Media deleted.',
+    deleteError: 'Could not delete this media.',
   },
 }
 

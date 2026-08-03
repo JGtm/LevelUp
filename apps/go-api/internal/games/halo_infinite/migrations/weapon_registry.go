@@ -429,12 +429,17 @@ var weaponRegistryWeapons = []weaponRow{
 	// Mêlée d'objectif / REQ : rôle `melee`, class `melee`.
 	{"h5_golf_club", titleH5, "Golf Club", clsMelee, clsMelee, "golf_club", facHuman, "kinetic", ""},
 	{"h5_oddball", titleH5, "Oddball", clsMelee, clsMelee, "oddball", facHuman, "kinetic", ""},
-	// ── Halo 5 hors-arsenal (frags NON-COMBAT, décision produit 2026-07-17) ──
+	// ── Halo 5 hors-arsenal (décision produit 2026-07-17) ──
 	// Rôles dédiés `vehicle`/`turret`/`environmental`/`unattributed`/`other` : ils
 	// alimentent le donut « Frags par type d'arme » (JOIN weapons.role) mais sont
 	// EXCLUS de l'insight coach (NON_COMBAT_WEAPON_ROLES, web) — sinon « Spartan »
 	// (~8.8k) fausserait blind_spot_power. faction/damage vides (non pertinents pour
 	// un bucket non-combat). class == role. name = proper noun / libellé neutre.
+	//
+	// V73-3.2 : véhicules et tourelles ne sont plus « non-combat » côté sunburst — ils
+	// ont leur propre classe et un niveau 2 PAR ENGIN, keyé sur le weapon_key ci-dessous
+	// (c'est bien pourquoi chaque engin garde une clé distincte malgré class == role).
+	// Leur exclusion de l'insight coach et du graphe de précision, elle, est INCHANGÉE.
 	{"h5_vehicle_ghost", titleH5, "Ghost", "vehicle", "vehicle", "vehicle", "", "", ""},
 	{"h5_vehicle_mongoose", titleH5, "Mongoose", "vehicle", "vehicle", "vehicle", "", "", ""},
 	{"h5_vehicle_warthog", titleH5, "Warthog", "vehicle", "vehicle", "vehicle", "", "", ""},

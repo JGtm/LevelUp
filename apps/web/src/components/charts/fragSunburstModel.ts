@@ -4,6 +4,7 @@
  * (react-refresh/only-export-components) et testable sans DOM.
  */
 import type { FragClassEntry } from '@/lib/api/types'
+import { fragRoleDisplayLabel } from './fragRoleLabel'
 
 // ── Géométrie du sunburst (reprise fidèle de la maquette validée) ────────────────
 export const W = 440
@@ -128,6 +129,9 @@ function buildArcs(
         const ra1 = rc + rs
         rc = ra1
         const col = colors.roleColor(c.class, i, roles.length)
+        // Libellé résolu UNE fois (rôle canonique traduit, ou nom d'engin servi par
+        // l'API pour les classes véhicule/tourelle) — cf. fragRoleDisplayLabel.
+        const roleText = fragRoleDisplayLabel(r, labels.roleLabel)
         arcs.push({
           key: `r-${c.class}-${r.role}`,
           d: arcPath(R1, R2, ra0, ra1),
@@ -135,10 +139,10 @@ function buildArcs(
           classKey: c.class,
           kind: 'role',
           tipColor: col,
-          tipTitle: `${labels.classLabel(c.class)} · ${labels.roleLabel(r.role)}`,
+          tipTitle: `${labels.classLabel(c.class)} · ${roleText}`,
           tipSub: `${labels.formatValue(r.kills)} · ${labels.formatShare(r.kills)}`,
         })
-        roleSeeds.push({ label: labels.roleLabel(r.role), value: r.kills, color: col, mid: (ra0 + ra1) / 2, classKey: c.class })
+        roleSeeds.push({ label: roleText, value: r.kills, color: col, mid: (ra0 + ra1) / 2, classKey: c.class })
       })
     } else {
       arcs.push({

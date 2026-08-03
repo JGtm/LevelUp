@@ -92,6 +92,11 @@ type DamageModelConstants struct {
 	// titre, repère de normalisation des barres/radars. 0 = non déclaré → défaut
 	// 0.90 (Infinite). h5 = 1.264 (calibré sur sa propre distribution, hp=115).
 	OffensiveConversionP80 float64
+	// DefensiveResistanceP80 = frontière élite (80e percentile) de la résistance DR
+	// du titre (DR = dégâts_subis / (hp × morts)), pendant défensif de
+	// OffensiveConversionP80. 0 = non déclaré → défaut 1.65 (Infinite). Un titre sans
+	// damage_taken (NoDamageTaken, Halo 5) ne la déclare pas : la DR n'y existe pas.
+	DefensiveResistanceP80 float64
 	// NoTeamMMR = true → le titre ne fournit PAS de MMR d'équipe/adverse par match
 	// (Halo 5). La colonne MMR du tableau Escouade/Explorer est masquée (valeur nil)
 	// plutôt qu'affichée à 0 (trompeur). Défaut false (MMR fourni, Infinite).

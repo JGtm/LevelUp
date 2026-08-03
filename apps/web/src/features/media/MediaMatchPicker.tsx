@@ -22,7 +22,6 @@ import { useFieldMappings, useAssetLabel } from '@/lib/i18n/fieldMappings'
 import { resolveTeamNameFromID } from '@/lib/halo/teamNames'
 import { outcomeCodeToValue } from '@/lib/outcome'
 import { tokenCssVar } from '@/lib/accessibility'
-import { OUTCOME_LABELS_FALLBACK_FR } from './fallback.i18n'
 import { getMediaModalsText, type MatchPickerText } from './i18n-modals'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { intlLocale } from '@/lib/formatters'
@@ -167,7 +166,9 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose, hasCurrentMatc
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   // GH2-B7 : dictionnaire bilingue de la popup (i18n-modals.ts, enfin câblé).
   const mp = getMediaModalsText(locale).matchPicker
-  // Phase 4 plan finition multi-titres : libellés outcomes via TOML, fallback FR.
+  // Libellés d'issue servis par outcomes.toml (source unique — plus de repli FR
+  // local). Le dictionnaire brut est lu ici, au niveau du composant : la
+  // résolution se fait ensuite dans une boucle, où un hook serait illégal.
   const { data: fieldMappings } = useFieldMappings()
   const outcomeLabel = (outcome: number | null | undefined): { text: string; cls: string } => {
     if (outcome == null || !(outcome in outcomeClassByCode)) {
@@ -175,8 +176,7 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose, hasCurrentMatc
     }
     const cls = outcomeClassByCode[outcome]
     const key = outcomeCodeToValue(outcome)
-    const text =
-      (key && fieldMappings?.outcomes?.[key]?.label) ?? OUTCOME_LABELS_FALLBACK_FR[outcome] ?? '—'
+    const text = (key && fieldMappings?.outcomes?.[key]?.label) ?? '—'
     return { text, cls }
   }
 

@@ -35,7 +35,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { tokenCssVar } from '@/lib/accessibility'
 import { BadgeIcon } from '@/components/feedback/BadgeIcon'
 import { Tooltip } from '@/components/ui/tooltip'
-import { HeaderInfoTooltip } from '@/lib/table/columnMeta'
+import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 import { getSquadText } from './i18n'
 
 /** Badges où un count élevé est PIRE (rouge=worst au lieu de best). */
@@ -333,10 +333,9 @@ export function SquadImpactScoreboard({ matrix }: SquadImpactScoreboardProps) {
                   key={h.id}
                   className={`px-2 py-1 text-center align-bottom font-medium ${idx > 0 ? 'border-l border-border/60' : ''}`}
                 >
-                  <span className="inline-flex items-center gap-1">
+                  <HeaderLabelTooltip text={h.column.columnDef.meta?.headerTooltip} focusable>
                     {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
-                    <HeaderInfoTooltip text={h.column.columnDef.meta?.headerTooltip} />
-                  </span>
+                  </HeaderLabelTooltip>
                 </th>
               ))}
             </tr>

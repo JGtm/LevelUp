@@ -153,6 +153,38 @@ en = "Categories"
 fr = "complètes"
 en = "completed"
 
+# Libelles des CLES canoniques de categorie servies par l'API
+# (internal/games/canonical/commendation_category.go). Le backend n'envoie que
+# des cles ; toute cle ajoutee cote Go doit avoir son entree ici, sinon l'UI
+# affiche la cle brute. Meme patron que medals.category.* .
+[citations.category.multiplayer]
+fr = "Multijoueur"
+en = "Multiplayer"
+
+[citations.category.game_mode]
+fr = "Modes de jeu"
+en = "Game modes"
+
+[citations.category.weapon]
+fr = "Armes"
+en = "Weapons"
+
+[citations.category.vehicle]
+fr = "Véhicules"
+en = "Vehicles"
+
+[citations.category.enemy]
+fr = "Ennemis"
+en = "Enemies"
+
+[citations.category.spartan_companies]
+fr = "Compagnies Spartan"
+en = "Spartan Companies"
+
+[citations.category.other]
+fr = "Autres"
+en = "Other"
+
 # ─── États vides (données présentes mais liste vide) ──────────────────────
 
 [citations.empty.no_items]

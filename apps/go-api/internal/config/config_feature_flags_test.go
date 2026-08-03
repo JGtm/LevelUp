@@ -1,15 +1,18 @@
-// Package config — config_feature_flags_test.go : couverture loadMultiTitleAPIEnabled
-// et loadPrestigeEnabled.
+// Package config — config_feature_flags_test.go : couverture de loadPrestigeEnabled.
 //
-// Ces fonctions gèrent deux feature flags dont la source primaire est désormais
-// app_settings.json (MULTI_TITLE_API_ENABLED et PRESTIGE_ENABLED en env var
-// servent uniquement d'override d'urgence).
+// Ce flag a pour source primaire app_settings.json (PRESTIGE_ENABLED en env var
+// sert uniquement d'override d'urgence).
 //
 // Invariants à protéger :
 //   - env var prend la priorité sur JSON
-//   - défaut de MultiTitle = false (opt-in)
-//   - défaut de Prestige   = true  (opt-out)
+//   - défaut de Prestige = true (opt-out)
 //   - tolérance aux fichiers absents ou malformés
+//
+// Les 9 tests de loadMultiTitleAPIEnabled ont été RETIRÉS le 2026-08-02 avec la
+// fonction elle-même (v7.3 lot 2, item 3.3 — gate de rollout supprimé, routes
+// multi-titres inconditionnelles). L'invariant qui les remplace ne vit plus ici
+// mais dans internal/api/multi_title_smoke_test.go : les routes se montent SANS
+// aucune variable d'environnement.
 package config
 
 import (
@@ -19,91 +22,6 @@ import (
 
 	"levelup/go-api/internal/prestige"
 )
-
-// ---------------------------------------------------------------------------
-// loadMultiTitleAPIEnabled
-// ---------------------------------------------------------------------------
-
-func TestLoadMultiTitleAPIEnabled_EnvOverridesJSON(t *testing.T) {
-	t.Setenv("MULTI_TITLE_API_ENABLED", "true")
-	path := writeTempSettings(t, `{"multi_title_api_enabled": false}`)
-	if !loadMultiTitleAPIEnabled(path) {
-		t.Error("env var true doit prendre la priorité sur JSON false")
-	}
-}
-
-func TestLoadMultiTitleAPIEnabled_EnvFalseOverridesJSON(t *testing.T) {
-	t.Setenv("MULTI_TITLE_API_ENABLED", "false")
-	path := writeTempSettings(t, `{"multi_title_api_enabled": true}`)
-	if loadMultiTitleAPIEnabled(path) {
-		t.Error("env var false doit prendre la priorité sur JSON true")
-	}
-}
-
-func TestLoadMultiTitleAPIEnabled_FallbackToJSONTrue(t *testing.T) {
-	t.Setenv("MULTI_TITLE_API_ENABLED", "")
-	path := writeTempSettings(t, `{"multi_title_api_enabled": true}`)
-	if !loadMultiTitleAPIEnabled(path) {
-		t.Error("JSON true doit être retourné quand env var absente")
-	}
-}
-
-func TestLoadMultiTitleAPIEnabled_FallbackToJSONFalse(t *testing.T) {
-	t.Setenv("MULTI_TITLE_API_ENABLED", "")
-	path := writeTempSettings(t, `{"multi_title_api_enabled": false}`)
-	if loadMultiTitleAPIEnabled(path) {
-		t.Error("JSON false doit être retourné quand env var absente")
-	}
-}
-
-func TestLoadMultiTitleAPIEnabled_DefaultFalseWhenAbsent(t *testing.T) {
-	t.Setenv("MULTI_TITLE_API_ENABLED", "")
-	path := writeTempSettings(t, `{"lang": "fr"}`)
-	if loadMultiTitleAPIEnabled(path) {
-		t.Error("défaut doit être false quand ni JSON ni env var ne précisent la valeur")
-	}
-}
-
-func TestLoadMultiTitleAPIEnabled_DefaultFalseWhenFileMissing(t *testing.T) {
-	t.Setenv("MULTI_TITLE_API_ENABLED", "")
-	if loadMultiTitleAPIEnabled(filepath.Join(t.TempDir(), "nonexistent.json")) {
-		t.Error("défaut doit être false quand le fichier est absent")
-	}
-}
-
-func TestLoadMultiTitleAPIEnabled_DefaultFalseWhenJSONMalformed(t *testing.T) {
-	t.Setenv("MULTI_TITLE_API_ENABLED", "")
-	path := writeTempSettings(t, `{"multi_title_api_enabled": true`)
-	if loadMultiTitleAPIEnabled(path) {
-		t.Error("défaut doit être false sur JSON malformé")
-	}
-}
-
-func TestLoadMultiTitleAPIEnabled_EnvVariants(t *testing.T) {
-	truthy := []string{"1", "yes", "true", "TRUE", "YES"}
-	for _, v := range truthy {
-		t.Run("env="+v, func(t *testing.T) {
-			t.Setenv("MULTI_TITLE_API_ENABLED", v)
-			path := writeTempSettings(t, `{}`)
-			if !loadMultiTitleAPIEnabled(path) {
-				t.Errorf("env=%q doit être reconnu comme true", v)
-			}
-		})
-	}
-}
-
-// TestLoadMultiTitleAPIEnabled_ProductionSettingsHasField est un sentinel qui
-// vérifie que app_settings.json racine contient bien la clé (régression guard).
-func TestLoadMultiTitleAPIEnabled_ProductionSettingsHasField(t *testing.T) {
-	t.Setenv("MULTI_TITLE_API_ENABLED", "")
-	prodPath := filepath.Join("..", "..", "..", "..", "app_settings.json")
-	if _, err := os.Stat(prodPath); err != nil {
-		t.Skipf("app_settings.json racine introuvable (%v) — skip CI", err)
-	}
-	// La clé doit exister ; on vérifie qu'on peut au moins la lire sans paniquer.
-	// La valeur n'est pas testée ici (peut varier par environnement).
-	_ = loadMultiTitleAPIEnabled(prodPath)
-}
 
 // ---------------------------------------------------------------------------
 // loadPrestigeEnabled

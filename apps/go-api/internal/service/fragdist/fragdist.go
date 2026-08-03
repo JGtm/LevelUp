@@ -19,30 +19,47 @@ import (
 
 // canonicalFragClassOrder fixe l'ordre déterministe des classes du sunburst v2
 // (§4 du plan). Toute sortie de Build suit cet ordre.
+// Véhicule et tourelle se placent APRÈS les classes API et AVANT le résidu : ce sont
+// des outils de destruction secondaires, et « Non attribué » reste en dernier.
 var canonicalFragClassOrder = []string{
 	domain.FragClassShoulder, domain.FragClassSidearm, domain.FragClassHeavy,
 	domain.FragClassMelee, domain.FragClassGrenade, domain.FragClassSpartanAbility,
+	domain.FragClassVehicle, domain.FragClassTurret,
 	domain.FragClassUnattributed,
 }
 
-// gunFragClasses = classes dont la ventilation par arme vient du REGISTRE (estimé).
-// Les autres classes (melee/grenade/spartan) sont servies par les totaux API, et
-// les buckets non-combat H5 (vehicle/turret/…) retombent dans « Non attribué ».
+// gunFragClasses = classes d'ARME à main dont la ventilation vient du REGISTRE (estimé),
+// avec un niveau 2 par RÔLE de combat. Les classes melee/grenade/spartan sont servies par
+// les totaux API ; les classes d'ENGIN (vehicle/turret) viennent aussi du registre mais se
+// ventilent par engin (domain.IsPerWeaponFragClass) ; environnement/autre et les ids hors
+// registre retombent dans « Non attribué ».
 var gunFragClasses = map[string]bool{
 	domain.FragClassShoulder: true,
 	domain.FragClassSidearm:  true,
 	domain.FragClassHeavy:    true,
 }
 
+// isRegistryFragClass : classe dont les KILLS proviennent des rows du registre (par
+// opposition aux compteurs API). Recouvre les deux familles de niveau 2 — par rôle
+// (gun) et par engin (véhicule/tourelle).
+func isRegistryFragClass(class string) bool {
+	return gunFragClasses[class] || domain.IsPerWeaponFragClass(class)
+}
+
 // Build assemble la répartition hiérarchique des frags (sunburst v2).
 // Builder PUR (aucune IO, aucun log — le câblage service loggue les compteurs).
 //
 // Provenance (anti-double-source, §2) : classes gun shoulder/sidearm/heavy + rôles
-// d'arme = registre (rows, Authoritative=false) ; classes melee/grenade/
+// d'arme = registre (rows, Authoritative=false) ; classes d'ENGIN véhicule/tourelle +
+// leur niveau 2 par engin = registre également (V73-3.2) ; classes melee/grenade/
 // spartan_ability + total = compteurs kill-type API canoniques (counts,
 // Authoritative=true) ; unattributed = counts.Total − Σ classes (résidu, ajouté si
 // > 0). hasMechanics gate spartan_ability et le niveau 2 de Mêlée (invariant d — cap
 // off ⇒ pas de spartan + Mêlée feuille).
+//
+// Les classes d'engin sont DATA-DRIVEN, jamais gated par titre : un titre dont le
+// registre ne déclare aucune arme de classe vehicle/turret ne produit aucune row de
+// cette classe, donc aucun arc (cas Halo Infinite au 2026-08-02).
 //
 // Niveau 2 de la classe Grenade (V72-15.2) = TYPE (frag/plasma/dynamo/splinter) dérivé de
 // la FAMILLE des rows class=grenade, réconcilié au total API (grenadeRoles). Anti-double-
@@ -59,7 +76,7 @@ func Build(
 	hasMechanics bool,
 ) domain.FragDistribution {
 	byClass := make(map[string]domain.FragClassEntry, len(canonicalFragClassOrder))
-	for _, e := range buildGunFragClasses(rows) {
+	for _, e := range buildRegistryFragClasses(rows) {
 		byClass[e.Class] = e
 	}
 	for _, e := range buildAPIFragClasses(rows, counts, hasMechanics) {
@@ -86,22 +103,39 @@ func Build(
 	return domain.FragDistribution{TotalKills: counts.Total, Classes: classes}
 }
 
-// buildGunFragClasses agrège les classes gun (shoulder/sidearm/heavy) + leurs rôles
-// depuis le registre (rows). Exclut les sentinels grenade/melee et les rows sans
-// class/role résolu (dégradation propre, comme buildKillsByRole).
+// registryAcc accumule une classe servie par le registre : total + ventilation de
+// niveau 2 keyée (rôle de combat, ou weapon_key d'engin), les libellés d'engin, et le
+// volume NON keyable (qui interdit une ventilation partielle trompeuse).
+type registryAcc struct {
+	kills   int
+	byKey   map[string]int
+	labels  map[string]string // key → libellé registre (classes par engin uniquement)
+	unkeyed int
+}
+
+// buildRegistryFragClasses agrège les classes servies par le REGISTRE (rows) : les
+// classes gun (shoulder/sidearm/heavy, niveau 2 par RÔLE) et les classes d'ENGIN
+// (véhicule/tourelle, niveau 2 par weapon_key — V73-3.2). Exclut les sentinels
+// grenade/melee et les rows sans class résolue (dégradation propre).
 //
-// Anti-double-comptage V72-15.3 : on retranche MechanicKills des kills gun. Sur H5 une
-// mêlée/un assassinat est attribué à l'ARME TENUE dans weapon_kills (kill_kind <> 'weapon')
-// → sans ce retrait le kill compte à la fois dans la classe gun ET dans le compteur natif
-// Mêlée/Capacités spartanes (Σ classes > total). Sur Infinite MechanicKills == 0 → inchangé.
-func buildGunFragClasses(rows []port.WeaponKillRow) []domain.FragClassEntry {
-	type acc struct {
-		kills  int
-		byRole map[string]int
-	}
-	agg := make(map[string]*acc, len(gunFragClasses))
+// Distinction de niveau 2 : sur une classe d'engin, le registre porte
+// class == role == family == « vehicle » — ventiler par rôle donnerait un arc unique
+// sans information. La clé est donc le weapon_key, et le libellé vient du registre
+// (weapon_names.toml du titre), jamais d'un nom en dur.
+//
+// Anti-double-comptage V72-15.3 : on retranche MechanicKills. Sur H5 une mêlée/un
+// assassinat est attribué à l'ARME TENUE dans weapon_kills (kill_kind <> 'weapon') → sans
+// ce retrait le kill compte à la fois dans la classe ET dans le compteur natif Mêlée/
+// Capacités spartanes (Σ classes > total). Sur Infinite MechanicKills == 0 → inchangé.
+func buildRegistryFragClasses(rows []port.WeaponKillRow) []domain.FragClassEntry {
+	agg := make(map[string]*registryAcc, len(gunFragClasses)+2)
 	for _, r := range rows {
-		if r.IsGrenadeMelee || r.Class == "" || r.Role == "" || !gunFragClasses[r.Class] {
+		if r.IsGrenadeMelee || r.Class == "" || !isRegistryFragClass(r.Class) {
+			continue
+		}
+		perWeapon := domain.IsPerWeaponFragClass(r.Class)
+		// Classe gun sans rôle résolu : row ignorée (comportement historique conservé).
+		if !perWeapon && r.Role == "" {
 			continue
 		}
 		weaponKills := r.Kills - r.MechanicKills // kills d'ARME seuls (hors mécaniques natives)
@@ -110,11 +144,24 @@ func buildGunFragClasses(rows []port.WeaponKillRow) []domain.FragClassEntry {
 		}
 		a := agg[r.Class]
 		if a == nil {
-			a = &acc{byRole: make(map[string]int)}
+			a = &registryAcc{byKey: make(map[string]int), labels: make(map[string]string)}
 			agg[r.Class] = a
 		}
 		a.kills += weaponKills
-		a.byRole[r.Role] += weaponKills
+		key := r.Role
+		if perWeapon {
+			key = r.WeaponKey
+		}
+		if key == "" {
+			// Engin hors registre : le kill compte dans la classe, mais la ventilation
+			// devient partielle → la classe retombera en feuille (cf. registryRoles).
+			a.unkeyed += weaponKills
+			continue
+		}
+		a.byKey[key] += weaponKills
+		if perWeapon && r.Label != "" {
+			a.labels[key] = r.Label
+		}
 	}
 	out := make([]domain.FragClassEntry, 0, len(agg))
 	for class, a := range agg {
@@ -123,10 +170,44 @@ func buildGunFragClasses(rows []port.WeaponKillRow) []domain.FragClassEntry {
 		}
 		out = append(out, domain.FragClassEntry{
 			Class: class, Kills: a.kills, Authoritative: false,
-			Roles: rolesFromMap(a.byRole, class),
+			Roles: registryRoles(class, a),
 		})
 	}
 	return out
+}
+
+// registryRoles choisit la ventilation de niveau 2 d'une classe registre : par ENGIN
+// (véhicule/tourelle) ou par RÔLE (classes gun). Sur une classe d'engin, un reliquat
+// non keyable (engin absent du registre) force la FEUILLE : mieux vaut aucun niveau 2
+// qu'une ventilation qui ne somme pas au total de la classe (invariant b).
+func registryRoles(class string, a *registryAcc) []domain.FragRoleEntry {
+	if domain.IsPerWeaponFragClass(class) {
+		if a.unkeyed > 0 {
+			return nil
+		}
+		return perWeaponRoles(a.byKey, a.labels)
+	}
+	return rolesFromMap(a.byKey, class)
+}
+
+// perWeaponRoles trie les engins (kills desc, tie-break sur la clé → ordre stable) et
+// porte leur libellé registre. Aucun repli en feuille à un seul engin : « Warthog » est
+// une information, « véhicule » n'en est pas une (exigence V73-3.2).
+func perWeaponRoles(byKey map[string]int, labels map[string]string) []domain.FragRoleEntry {
+	roles := make([]domain.FragRoleEntry, 0, len(byKey))
+	for key, kills := range byKey {
+		if kills <= 0 {
+			continue
+		}
+		roles = append(roles, domain.FragRoleEntry{Role: key, Kills: kills, Label: labels[key]})
+	}
+	sort.Slice(roles, func(i, j int) bool {
+		if roles[i].Kills != roles[j].Kills {
+			return roles[i].Kills > roles[j].Kills
+		}
+		return roles[i].Role < roles[j].Role
+	})
+	return roles
 }
 
 // rolesFromMap trie les rôles (kills desc, tie-break alpha → ordre stable) et

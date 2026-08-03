@@ -25,7 +25,10 @@ import (
 // L'alternance à `"` fermant distingue LEVELUP_EVENTS_CONVERGENCE de son suffixe
 // _MAX (deux flags distincts, tous deux centralisés).
 var centralizedEnvReadPattern = regexp.MustCompile(
-	`Getenv\(\s*"(MULTI_TITLE_API_ENABLED|DISCORD_WEBHOOK_URL|LEVELUP_DISCORD_WEBHOOK_URL|` +
+	// MULTI_TITLE_API_ENABLED est sorti de cette liste le 2026-08-02 : le flag a été
+	// SUPPRIMÉ (item 3.3), plus aucun lecteur ne doit exister nulle part — c'est le
+	// smoke test internal/api/multi_title_smoke_test.go qui garde cet invariant.
+	`Getenv\(\s*"(DISCORD_WEBHOOK_URL|LEVELUP_DISCORD_WEBHOOK_URL|` +
 		`LEVELUP_PERSIST_BATCH_ASYNC|LEVELUP_EVENTS_CONVERGENCE|LEVELUP_EVENTS_CONVERGENCE_MAX)"\s*\)`)
 
 // allowedCentralizedEnvReaders : sites AUTORISÉS à lire ces flags via os.Getenv.

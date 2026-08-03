@@ -93,6 +93,12 @@ type WeaponKillRow struct {
 	// MÊME passe que Role/Class (COALESCE(w.family_key)). Vide sinon. Sert le niveau 2
 	// de la classe Grenade (TYPE de grenade, V72-15.2 : frag/plasma/dynamo/splinter).
 	Family string `json:"family,omitempty"`
+	// WeaponKey : cle canonique du registre ("h5_vehicle_warthog", "hinf_br75"), resolue
+	// dans la MÊME passe que Role/Class/Family (COALESCE(w.weapon_key)). Vide sinon. Sert
+	// le niveau 2 des classes ventilees PAR ENGIN (domain.IsPerWeaponFragClass :
+	// vehicule/tourelle), ou Role et Family valent la classe elle-meme et ne distinguent
+	// donc aucun engin (V73-3.2).
+	WeaponKey string `json:"weapon_key,omitempty"`
 	// IsGrenadeMelee : true si la valeur vient d'highlight_events (grenade ou
 	// melee), false si elle vient de weapon_kills (arme primaire).
 	IsGrenadeMelee bool `json:"is_grenade_melee,omitempty"`

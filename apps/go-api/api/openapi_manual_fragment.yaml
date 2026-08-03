@@ -875,6 +875,12 @@ paths:
         - name: player_slug
           in: path
           description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeammatesQueryRequest'
       responses:
         '200':
           description: Analyse coéquipiers avec statistiques
@@ -2962,6 +2968,36 @@ components:
         liked:
           type: boolean
           default: false
+    TeammatesQueryRequest:
+      type: object
+      description: >-
+        Corps de POST /pages/teammates (handler RawBody : le schéma est
+        documenté ici, cf. domain.TeammatesQueryRequest).
+      properties:
+        selected_gamertags:
+          type: array
+          items:
+            type: string
+        filters:
+          $ref: '#/components/schemas/FilterContextInput'
+        picked_solo_session_labels:
+          type: array
+          items:
+            type: string
+        picked_squad_session_labels:
+          type: array
+          items:
+            type: string
+        locale:
+          type: string
+        filter_exact_composition:
+          type: boolean
+          default: false
+          description: >-
+            Option « composition exacte » : n'inclut que les matchs où aucun
+            autre coéquipier connu n'était sur l'équipe du joueur principal.
+            Par défaut (false), la population est « matchs commencés ensemble »
+            = intersection du roster sélectionné.
     MediaPageRequest:
       type: object
       properties:

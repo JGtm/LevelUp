@@ -15,8 +15,7 @@ import { useMemo, useState } from 'react'
 import type { Challenge, Tier, ChallengeMode } from '@/lib/prestige'
 import { TIER_COLORS, TIER_LABELS_FR } from '@/lib/prestige'
 import { useAssetLabel } from '@/lib/i18n/fieldMappings'
-import { metricLabel } from '@/lib/i18n/metricLabel'
-import { CADENCE_FREE_FALLBACK_FR } from '../fallback.i18n'
+import { useMetricLabel } from '@/lib/i18n/metricLabel'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
@@ -84,15 +83,24 @@ export function StatsGlobales({ challenges }: StatsGlobalesProps) {
         ) : (
           <ul className="space-y-1">
             {stats.topMetrics.map(({ metric, count }) => (
-              <li key={metric} className="flex items-center justify-between text-sm">
-                <span className="font-medium">{metricLabel(metric, locale)}</span>
-                <span className="text-xs text-muted-foreground">{count}</span>
-              </li>
+              <TopMetricRow key={metric} metric={metric} count={count} />
             ))}
           </ul>
         )}
       </div>
     </section>
+  )
+}
+
+// Une ligne = un composant : le libellé de métrique vient d'un hook
+// (useMetricLabel), interdit dans le .map() de la liste.
+function TopMetricRow({ metric, count }: { metric: string; count: number }) {
+  const label = useMetricLabel(metric)
+  return (
+    <li className="flex items-center justify-between text-sm">
+      <span className="font-medium">{label}</span>
+      <span className="text-xs text-muted-foreground">{count}</span>
+    </li>
   )
 }
 
@@ -102,11 +110,13 @@ interface ModeFilterToggleProps {
 }
 
 function ModeFilterToggle({ value, onChange }: ModeFilterToggleProps) {
-  // Phase 4 plan finition multi-titres : libellé "Libre" via cadence.free du TOML.
+  // Libellé "Libre" servi par cadence.free des TOML (source unique — les deux
+  // titres le déclarent ; plus aucun repli FR local depuis le 2026-08-02).
+  // Le hook reste ICI, hors du .map() ci-dessous.
   const libreLabel = useAssetLabel('cadence', 'free')
   const labelOf = (opt: ModeFilter) => {
     if (opt === 'all') return 'Tous'
-    if (opt === 'libre') return libreLabel !== 'free' ? libreLabel : CADENCE_FREE_FALLBACK_FR
+    if (opt === 'libre') return libreLabel
     return 'Pilote'
   }
   return (

@@ -88,13 +88,12 @@ services:
       # + {dir}/warehouse/*.duckdb, et le chemin flat {dir}/shared_matches_v2.duckdb
       # (via symlinks). Généré par `levelup seed-demo --out data/demo`.
       - LEVELUP_DEMO_FIXTURES_DIR=/app/data/demo
-      # Référentiels de titre (field-mappings, catalog). La prod tire ce flag de son
-      # app_settings.json bind-monté ; la démo n'a ni ce bind-mount ni la variable, donc
-      # loadMultiTitleAPIEnabled retombait sur false → /titles/{slug}/field-mappings en
-      # 404 → le front affichait les clés brutes (offensive_conversion,
-      # defensive_resistance) en en-tête du tableau des scores de la vitrine publique
-      # (anomalie G6 du 2026-07-26). Le flag est déjà à true dans la baseline CI.
-      - MULTI_TITLE_API_ENABLED=true
+      # NOTE (2026-08-02, v7.3 lot 2) : MULTI_TITLE_API_ENABLED a été retiré ici avec
+      # le flag lui-même. Les routes /titles/{slug}/field-mappings sont désormais
+      # montées sans condition, ce qui supprime par construction l'anomalie G6 du
+      # 2026-07-26 (la démo, sans bind-mount d'app_settings.json ni variable,
+      # retombait sur false et affichait les clés brutes — offensive_conversion,
+      # defensive_resistance — en en-tête du tableau des scores de la vitrine).
     volumes:
       # Fixtures démo (générées par `levelup seed-demo --out data/demo`). resolveDemoPlayer
       # + le provider lisent les chemins NESTED /app/data/demo/{warehouse,players/DEMO}/*.
