@@ -90,7 +90,7 @@ func (h *MatchFavoriteHandler) handlePatchFavorite(ctx context.Context, in *matc
 			return nil, huma.ErrorWithHeaders(
 				humacore.NewError(http.StatusServiceUnavailable, "db_busy",
 					"database is currently busy, please retry"),
-				http.Header{"Retry-After": []string{"5"}},
+				http.Header{headerRetryAfter: []string{"5"}},
 			)
 		}
 		slog.ErrorContext(ctx, "match_favorite: erreur bascule",

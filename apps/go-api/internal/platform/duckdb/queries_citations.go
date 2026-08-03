@@ -89,13 +89,13 @@ LIMIT 4`
 
 // Q40 : Moteur citations complet â€” tous les champs de citation_mappings.
 // ParamÃ¨tre : aucun. RequÃªte sur metadata.duckdb (passÃ© comme DB racine dans le sync).
-// Retourne 11 colonnes pour le dispatch par mapping_type.
+// Retourne 10 colonnes pour le dispatch par mapping_type (la colonne `category`
+// a ete retiree le 2026-08-03 : le champ Go correspondant n'etait jamais lu).
 const Q40CitationFullMappings = `
 SELECT
     citation_name_norm,
     citation_name_display,
     COALESCE(mapping_type, 'medal') AS mapping_type,
-    COALESCE(category, 'misc')     AS category,
     medal_id,
     medal_ids,
     stat_name,
@@ -173,27 +173,16 @@ type mediaQueryConfig struct {
 	playerSlug string
 }
 
-func (cfg mediaQueryConfig) useSharedSocialSchema() bool {
-	return cfg.playerSlug != ""
-}
-
 // baseWhereClause renvoie les contraintes de base + le filtre de section (ownership).
 //
 //	"" (vide)   → sources visibles : mine + teammate (pas de contrainte player_slug)
 //	"mine"      → uniquement player_slug courant
 //	"teammate"  → uniquement les autres (player_slug != courant)
 //
-// En schéma legacy (pas de player_slug), seul "mine" et "" donnent des résultats ;
-// "teammate" force WHERE FALSE pour cohérence (rien à montrer).
+// La branche « schéma legacy » (playerSlug vide) a été supprimée le 2026-08-03
+// avec le reste du chemin legacy du pipeline Q37 : elle était inatteignable
+// (cf. mediaCandidatesSharedSocialFromClause).
 func (cfg mediaQueryConfig) baseWhereClause(sectionFilter string) ([]string, []any) {
-	if !cfg.useSharedSocialSchema() {
-		switch sectionFilter {
-		case "teammate":
-			return []string{"FALSE"}, nil
-		default:
-			return []string{"mf.status = 'active'"}, nil
-		}
-	}
 	switch sectionFilter {
 	case "mine":
 		return []string{"mf.player_slug = ?"}, []any{cfg.playerSlug}

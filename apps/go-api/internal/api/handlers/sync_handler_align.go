@@ -116,7 +116,7 @@ func cooldownError(retry time.Duration) error {
 	return huma.ErrorWithHeaders(
 		humacore.NewError(http.StatusTooManyRequests, "sync_cooldown",
 			fmt.Sprintf("Synchronisation déjà déclenchée récemment — réessayez dans %d s.", secs)),
-		http.Header{"Retry-After": []string{strconv.Itoa(secs)}},
+		http.Header{headerRetryAfter: []string{strconv.Itoa(secs)}},
 	)
 }
 

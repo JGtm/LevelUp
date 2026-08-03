@@ -142,8 +142,12 @@ func (r *PlayerMatchesRepo) buildSharedQuery(f port.PlayerMatchFilters) (string,
 
 // StartTimeCanonicalSQL délègue à analysis.SQLStartTimeCanonical — source unique
 // du fragment timezone canonique (règle CLAUDE.md n°8). Conservé comme alias local
-// pour les repos platform/duckdb (appel sans préfixe de package). Le garde-rail
-// analysis/start_time_canonical_test.go interdit le littéral brut ailleurs.
+// pour les repos platform/duckdb (appel sans préfixe de package). Les garde-rails
+// vivent dans internal/archlint/no_raw_start_time_literal_test.go (le chemin
+// analysis/start_time_canonical_test.go cité ici jusqu'au 2026-08-03 n'a jamais
+// existé) : ils interdisent la recopie du littéral, l'ORDER BY et le CAST … AS DATE
+// sur start_time brut, et — depuis V7.3 — toute expression composée à la main
+// autour de start_time_utc (forme du bug 1.3).
 // Unification H1 (2026-07-04) : le corps a migré vers internal/analysis car
 // analysis/match_filter.go en a besoin et ne peut pas importer platform/duckdb.
 func StartTimeCanonicalSQL(alias string) string {
