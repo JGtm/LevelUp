@@ -174,12 +174,15 @@ const RADAR_SERIES = [
   },
 ]
 
+// `dominance` sur quelques matchs : la vitrine doit montrer l'ENCOCHE traversante
+// (drapeaux 1 domination / 3 remontada / 4 débandade), sinon la bande du Lab est la
+// seule des 5 surfaces où le marqueur n'apparaît jamais.
 const OUTCOME_TAPE = [
-  { matchId: '1', outcome: 'win' as const, map: 'Streets' },
+  { matchId: '1', outcome: 'win' as const, map: 'Streets', dominance: 1 as const },
   { matchId: '2', outcome: 'win' as const, map: 'Streets' },
-  { matchId: '3', outcome: 'loss' as const, map: 'Argyle' },
+  { matchId: '3', outcome: 'loss' as const, map: 'Argyle', dominance: 4 as const },
   { matchId: '4', outcome: 'tie' as const, map: 'Aquarius' },
-  { matchId: '5', outcome: 'win' as const, map: 'Live Fire' },
+  { matchId: '5', outcome: 'win' as const, map: 'Live Fire', dominance: 3 as const },
   { matchId: '6', outcome: 'win' as const, map: 'Streets' },
   { matchId: '7', outcome: 'loss' as const, map: 'Recharge' },
   { matchId: '8', outcome: 'win' as const, map: 'Bazaar' },

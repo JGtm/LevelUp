@@ -15,7 +15,6 @@ import { PatternContextGrid } from './PatternContextGrid'
 import { SquadVsSoloCard } from './SquadVsSoloCard'
 import { BehaviorAlertList } from './BehaviorAlertList'
 import { LayerSection, SectionShell } from './AscensionLayers'
-import type { Locale } from '@/lib/i18n/locale'
 
 export function AscensionProfilTab() {
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
@@ -36,7 +35,7 @@ export function AscensionProfilTab() {
     <div className="space-y-10">
       <LayerSection title={t.profilLayerTitle} description={t.profilLayerDescription}>
         <PlayerProfileV3 playerSlug={playerSlug} />
-        <ProfilePatternsSection playerSlug={playerSlug} titleSlug={titleSlug} t={t} locale={locale} />
+        <ProfilePatternsSection playerSlug={playerSlug} titleSlug={titleSlug} t={t} />
       </LayerSection>
     </div>
   )
@@ -48,10 +47,9 @@ interface ProfilePatternsSectionProps {
   playerSlug: string
   titleSlug: string
   t: ReturnType<typeof getAscensionText>
-  locale: Locale
 }
 
-function ProfilePatternsSection({ playerSlug, titleSlug, t, locale }: ProfilePatternsSectionProps) {
+function ProfilePatternsSection({ playerSlug, titleSlug, t }: ProfilePatternsSectionProps) {
   const { data: patterns, isLoading } = usePatterns(playerSlug)
   if (isLoading) return null
   const contextPatterns = patterns?.context_patterns ?? []
@@ -72,7 +70,7 @@ function ProfilePatternsSection({ playerSlug, titleSlug, t, locale }: ProfilePat
             playerSlug={playerSlug}
             titleSlug={titleSlug}
           />
-          <SquadVsSoloCard patterns={contextPatterns} t={t} locale={locale} />
+          <SquadVsSoloCard patterns={contextPatterns} t={t} />
         </SectionShell>
       )}
       {behaviorPatterns.length > 0 && (

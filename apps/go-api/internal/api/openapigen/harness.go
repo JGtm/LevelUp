@@ -35,9 +35,9 @@ type Options struct {
 	Root string
 	// GroupStorePath : chemin du store de groupes JSON (jamais lu en démo).
 	GroupStorePath string
-	// MultiTitleAPI / Prestige : flags d'exposition des routes conditionnelles.
-	MultiTitleAPI bool
-	Prestige      bool
+	// Prestige : flag d'exposition des routes conditionnelles restantes.
+	// (MultiTitleAPI retiré le 2026-08-02 — routes multi-titres inconditionnelles.)
+	Prestige bool
 }
 
 // stubBootstrapRepo implémente port.BootstrapRepository sans DuckDB (mode démo).
@@ -87,11 +87,10 @@ func BuildDemoRouter(ctx context.Context, opts Options) (http.Handler, *huma.Ope
 		APIHost:         "127.0.0.1",
 		APIPort:         8000,
 		// Secret par défaut → isProduction=false (cookies non Secure, cf. NewRouter).
-		SessionSecret:        "CHANGE_ME_IN_PRODUCTION", // pragma: allowlist secret
-		CORSOrigins:          []string{},
-		Lang:                 "fr",
-		MultiTitleAPIEnabled: opts.MultiTitleAPI,
-		PrestigeEnabled:      opts.Prestige,
+		SessionSecret:   "CHANGE_ME_IN_PRODUCTION", // pragma: allowlist secret
+		CORSOrigins:     []string{},
+		Lang:            "fr",
+		PrestigeEnabled: opts.Prestige,
 	}
 
 	repo := stubBootstrapRepo{}

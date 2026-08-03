@@ -99,6 +99,12 @@ type TitleSummary struct {
 	// titre, repère de normalisation des barres/radars de rendement (0.90 Infinite,
 	// 1.264 Halo 5). Permet au front de normaliser les barres OC sur la bonne échelle.
 	OffensiveConversionP80 float64 `json:"offensive_conversion_p80"`
+	// DefensiveResistanceP80 : frontière élite (80e percentile) de la résistance DR du
+	// titre (dégâts_subis / (PV × morts)), pendant défensif d'OffensiveConversionP80
+	// (1.65 Infinite). Permet au front de tracer l'écart à la frontière élite sans
+	// dupliquer la constante. Un titre sans damage_taken sert le défaut, non consommé
+	// (ProvidesDamageTaken=false → les surfaces de résistance sont neutralisées).
+	DefensiveResistanceP80 float64 `json:"defensive_resistance_p80"`
 	// ProvidesDamageTaken : false si l'API du titre ne fournit PAS damage_taken
 	// (Halo 5 — carnage cryptum sans dégâts subis). Le front NEUTRALISE alors la
 	// Résistance défensive (N/A) au lieu d'afficher 0 (trompeur : « résistance

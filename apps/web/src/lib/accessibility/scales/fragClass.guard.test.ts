@@ -10,9 +10,10 @@
  *    un) — corrige le doublon mêlée=grenade de l'ancien donut.
  * 2. Tokens valides : chaque token existe dans le contrat sémantique (ALL_TOKENS).
  * 3. Pin du mapping validé (la gamme Antagonistes actée avec l'utilisateur).
- * 4. Distinction : résolus sur la palette DÉFAUT, les 6 classes de combat donnent 6
- *    hex DISTINCTS et une distance perceptuelle normale-vision suffisante (min
- *    all-pairs ΔE OKLab ×100 ≥ 8 ; mesuré 12.5). La robustesse daltonisme est
+ * 4. Distinction : résolus sur la palette DÉFAUT, les classes de combat (véhicule et
+ *    tourelle inclus depuis V73-3.2) donnent autant d'hex DISTINCTS et une distance
+ *    perceptuelle normale-vision suffisante (min all-pairs ΔE OKLab ×100 ≥ 8). La
+ *    robustesse daltonisme est
  *    portée par l'ENCODAGE SECONDAIRE (labels + lignes de rappel + légende +
  *    position d'anneau), jamais par la seule teinte — cf. double encodage P1.2.
  */
@@ -63,6 +64,8 @@ describe('fragClass — garde-rail gamme Antagonistes (tokens)', () => {
       melee: 'chart-series-8',
       grenade: 'chart-series-7',
       spartan_ability: 'compare-a',
+      vehicle: 'chart-series-5',
+      turret: 'narrative-debacle',
       unattributed: 'divergent-neutral',
     })
   })
@@ -72,7 +75,7 @@ describe('fragClass — garde-rail gamme Antagonistes (tokens)', () => {
     expect(fragClassToken(null)).toBe('divergent-neutral')
   })
 
-  it('6 classes de combat : hex DISTINCTS + distinction normale-vision (ΔE ≥ 8) sur la palette défaut', () => {
+  it('classes de combat (engins inclus) : hex DISTINCTS + distinction normale-vision (ΔE ≥ 8) sur la palette défaut', () => {
     const combat = FRAG_CLASS_ORDER.filter((c) => c !== 'unattributed')
     const hexes = combat.map((c) => defaultPalette[FRAG_CLASS_TOKENS[c]])
     // Hex distincts (pas deux classes sur la même teinte de palette).

@@ -1,4 +1,5 @@
 accuracy
+accuracy_threshold_days
 assists
 assists_per_min
 avg_damage_dealt
@@ -7,6 +8,9 @@ avg_life_seconds
 avg_max_killing_spree
 bosses_killed
 brute_kills
+combat_endurance_matches
+combat_excellence_matches
+combat_precision_matches
 csr_value
 current_rank_id
 current_xp
@@ -44,6 +48,7 @@ outcome
 perfect_kills_per_match
 performance_score
 personal_score
+personal_score_per_min
 power_weapon_kills
 rank_in_match
 ranked_match_count
@@ -57,4 +62,5 @@ total_kills_career
 total_matches_played
 waves_completed
 win_rate
+wins
 xp_for_next_rank

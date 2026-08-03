@@ -138,7 +138,7 @@ func TestSelectPendingHLSCandidates(t *testing.T) {
 		defer db.Close() //nolint:errcheck
 		if _, err := db.Exec(`CREATE TABLE media_files (
 			id INTEGER, player_slug VARCHAR, file_path VARCHAR, hls_path VARCHAR, kind VARCHAR,
-			transcode_status VARCHAR, transcode_started_at TIMESTAMPTZ)`); err != nil {
+			transcode_status VARCHAR, transcode_started_at TIMESTAMPTZ, status VARCHAR)`); err != nil {
 			t.Fatal(err)
 		}
 		// now() FRAIS vs now()-3h PÉRIMÉ (transcodeStaleAfter = 2 h) ; comparaison
@@ -206,7 +206,7 @@ func TestEnsurePendingHLS_MissingSource(t *testing.T) {
 		defer db.Close() //nolint:errcheck
 		if _, err := db.Exec(`CREATE TABLE media_files (
 			id INTEGER, player_slug VARCHAR, file_path VARCHAR, hls_path VARCHAR, kind VARCHAR,
-			transcode_status VARCHAR, transcode_started_at TIMESTAMPTZ)`); err != nil {
+			transcode_status VARCHAR, transcode_started_at TIMESTAMPTZ, status VARCHAR)`); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := db.Exec(`INSERT INTO media_files

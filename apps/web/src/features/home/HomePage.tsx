@@ -211,7 +211,8 @@ export function HomePage() {
   const kpiText = getKPIText(locale)
   // Phase D multi-titres : résout les libellés métier via le backend TOML.
   // Fallback gracieux sur les libellés locaux de kpi.i18n.ts si l'endpoint
-  // est absent (flag MULTI_TITLE_API_ENABLED off ou 404) — sinon les tuiles
+  // est absent (404, réseau — le flag serveur qui pouvait l'éteindre a été
+  // retiré le 2026-08-02) — sinon les tuiles
   // affichent la clé canonique brute (kda, win_rate, accuracy) au lieu du
   // libellé traduit. La tuile « Matchs » utilise directement kpiText (libellé
   // fixe court, indépendant du field-mapping backend « Parties jouées »).

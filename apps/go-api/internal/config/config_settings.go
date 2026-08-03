@@ -45,37 +45,14 @@ func loadBackupConfig(repoRoot, settingsPath string) BackupConfig {
 	return cfg
 }
 
-// loadMultiTitleAPIEnabled lit multi_title_api_enabled depuis app_settings.json.
-// La var d'env MULTI_TITLE_API_ENABLED prend la priorité (override d'urgence).
-// Défaut : false.
-//
-// Nature : gate de déploiement progressif (rollout), PAS un kill-switch de
-// rollback. Cycle de vie :
-//   - défaut actuel : OFF (surface API multi-titre field-mappings/preview non
-//     exposée par défaut) ;
-//   - critère de bascule ON : surface multi-titre validée pour >= 2 titres
-//     (activation Halo 5, chantier multi-titre phase 1b) ;
-//   - date cible de retrait du flag : quand le multi-titre est le comportement
-//     permanent — corriger la cause et livrer actif (CLAUDE.md n°11) plutôt que
-//     de conserver un flag qui laisse la feature OFF « pour plus tard ».
-func loadMultiTitleAPIEnabled(settingsPath string) bool {
-	if v := os.Getenv("MULTI_TITLE_API_ENABLED"); v != "" {
-		vl := strings.ToLower(strings.TrimSpace(v))
-		return vl == "1" || vl == "true" || vl == "yes"
-	}
-	data, err := os.ReadFile(settingsPath)
-	if err != nil {
-		return false
-	}
-	var m map[string]any
-	if err := json.Unmarshal(data, &m); err != nil {
-		return false
-	}
-	if b, ok := m["multi_title_api_enabled"].(bool); ok {
-		return b
-	}
-	return false
-}
+// Le gate de rollout MULTI_TITLE_API_ENABLED (loadMultiTitleAPIEnabled) a été
+// RETIRÉ le 2026-08-02 (v7.3 lot 2, item 3.3). Son critère de bascule documenté
+// — « surface multi-titre validée pour >= 2 titres » — était atteint et le flag
+// valait true dans tous les environnements (prod via app_settings.json, démo via
+// le compose, CI via les deux jobs go test). Les routes /titles/{slug}/* sont
+// désormais montées inconditionnellement (server_apiv1.go) et leurs libellés sont
+// la source unique du front. Ne pas réintroduire de flag ici : ce serait rendre
+// éteignable un affichage qui n'a plus de repli.
 
 // DiscordWebhookURLFromEnv retourne le webhook Discord depuis l'environnement SEUL
 // (LEVELUP_DISCORD_WEBHOOK_URL prioritaire sur DISCORD_WEBHOOK_URL, nom legacy Python).

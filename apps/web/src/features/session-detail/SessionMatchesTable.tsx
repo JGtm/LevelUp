@@ -22,9 +22,6 @@ import { type ColumnDef, type SortingState } from '@tanstack/react-table'
 import { ExplorerMatchesTable } from '@/features/explorer/ExplorerMatchesTable'
 import type { ExplorerMatchRow, SessionDetailMatchRow } from '@/lib/api/types'
 import { tokenCssVar } from '@/lib/accessibility'
-import { useAppShellStore } from '@/stores/appShellStore'
-import { intlLocale } from '@/lib/formatters'
-import type { ManifestLocale } from '@/lib/i18n/format'
 
 import { formatRankDelta, rankDeltaToken, useSessionT } from './_shared'
 
@@ -53,11 +50,23 @@ const COMPACT_HIDDEN_COLUMNS: Record<string, boolean> = {
   is_with_friends: false,
   dominance_flag: false,
   score_label: false,
+  personal_score: false,
   duration_seconds: false,
   delta_perf: false,
   rating_type: false,
   team_mmr: false,
   enemy_mmr: false,
+}
+
+/**
+ * Colonnes masquées en mode plein (V73-L2 2.5). `SessionDetailMatchRow` ne porte
+ * AUCUN score d'équipe : cette vue détournait donc la colonne « Score » pour y
+ * afficher le score PERSONNEL — même en-tête, deux sens selon la page. Le score
+ * personnel ayant désormais sa propre colonne, on masque « Score » plutôt que d'y
+ * laisser une valeur qui ne correspond pas à son libellé.
+ */
+const SESSION_HIDDEN_COLUMNS: Record<string, boolean> = {
+  score_label: false,
 }
 
 interface Props {
@@ -74,7 +83,7 @@ interface Props {
  * (delta_perf, dominance) restent nuls → l'Explorer affiche "-" gracieusement.
  */
 // eslint-disable-next-line react-refresh/only-export-components
-export function toExplorerRow(m: SessionDetailMatchRow, withFriends: boolean, locale: ManifestLocale): ExplorerMatchRow {
+export function toExplorerRow(m: SessionDetailMatchRow, withFriends: boolean): ExplorerMatchRow {
   const ratingType = m.skill_rating_type ? m.skill_rating_type.toUpperCase() : null
   return {
     match_id: m.match_id,
@@ -85,7 +94,10 @@ export function toExplorerRow(m: SessionDetailMatchRow, withFriends: boolean, lo
     playlist_label: m.playlist_name ?? '',
     outcome_label: '',
     outcome_code: m.outcome ?? 4,
-    score_label: m.personal_score != null ? m.personal_score.toLocaleString(intlLocale(locale)) : '',
+    // Score d'ÉQUIPE : absent du contrat session → vide (colonne masquée, cf.
+    // SESSION_HIDDEN_COLUMNS). Le score personnel a sa propre colonne ci-dessous.
+    score_label: '',
+    personal_score: m.personal_score ?? null,
     is_with_friends: withFriends,
     experience_type_label: '',
     kills: m.kills,
@@ -119,15 +131,14 @@ export function toExplorerRow(m: SessionDetailMatchRow, withFriends: boolean, lo
 
 export function SessionMatchesTable({ matches, playerSlug, variant = 'full', withFriends = false }: Props) {
   const t = useSessionT()
-  const locale = useAppShellStore((s) => s.locale)
   // Tri chronologique ASC (oldest first) — cohérent avec les charts de session
   // au-dessus. start_time ISO UTC → comparaison lexicale = ordre chrono.
   const rows = useMemo(
     () =>
       [...matches]
         .sort((a, b) => a.start_time.localeCompare(b.start_time))
-        .map((m) => toExplorerRow(m, withFriends, locale)),
-    [matches, withFriends, locale],
+        .map((m) => toExplorerRow(m, withFriends)),
+    [matches, withFriends],
   )
 
   // Colonne « Δ rang » (gain/perte de rating du match) INJECTÉE après la colonne
@@ -175,7 +186,7 @@ export function SessionMatchesTable({ matches, playerSlug, variant = 'full', wit
       contextDescriptor={{ kind: 'session', startTimeUtc: sessionStartUtc }}
       filterSpecOverride={sessionId ? { session_id: sessionId } : undefined}
       defaultPageSize={variant === 'compact' ? 10 : undefined}
-      columnVisibility={variant === 'compact' ? COMPACT_HIDDEN_COLUMNS : undefined}
+      columnVisibility={variant === 'compact' ? COMPACT_HIDDEN_COLUMNS : SESSION_HIDDEN_COLUMNS}
       extraColumns={extraColumns}
       extraColumnsAfterId="skill_tier_label"
       sortable

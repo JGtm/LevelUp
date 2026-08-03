@@ -34,6 +34,9 @@ type mockMediaService struct {
 	uploadErr  error
 	authors    []domain.MediaAuthor
 	authorsErr error
+	del        *domain.MediaDeleteResponse
+	delErr     error
+	delReq     *domain.MediaDeleteRequest // dernière requête reçue (assertions d'identité)
 }
 
 func (m *mockMediaService) GetMediaPage(_ context.Context, _ domain.MediaPageRequest) (*domain.MediaPageResponse, error) {
@@ -70,6 +73,17 @@ func (m *mockMediaService) AssociateMediaToMatch(_ context.Context, req domain.M
 
 func (m *mockMediaService) ListMediaAuthors(_ context.Context) ([]domain.MediaAuthor, error) {
 	return m.authors, m.authorsErr
+}
+
+func (m *mockMediaService) DeleteMedia(_ context.Context, req domain.MediaDeleteRequest) (*domain.MediaDeleteResponse, error) {
+	m.delReq = &req
+	if m.delErr != nil {
+		return nil, m.delErr
+	}
+	if m.del != nil {
+		return m.del, nil
+	}
+	return &domain.MediaDeleteResponse{FilePath: req.FilePath, Deleted: true, FilesRemoved: 1}, nil
 }
 
 func newMediaRouter(factory handlers.ServiceFactory[port.MediaService]) *chi.Mux {
@@ -663,7 +677,11 @@ func TestUploadHandler_WithCaptureTimes_InvalidJSON_Ignored(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// urlToFilePath — conversion URL→chemin stocké en DB
+// Conversion URL servable → chemin stocké en DB (item 1.5)
+//
+// media_files.file_path est RELATIF forward-slash ({owner_slug}/{rel}) depuis la
+// migration des paths. Toute mutation qui rejoue une URL servable doit recomposer
+// EXACTEMENT cette forme, sinon l'UPDATE ne touche aucune ligne (404 silencieux).
 // ─────────────────────────────────────────────────────────────────────────────
 
 // spyLikeService capture le MediaLikeRequest reçu par SetMediaLike.
@@ -687,10 +705,9 @@ func patchLike(r http.Handler, filePath string, liked bool) *httptest.ResponseRe
 	return w
 }
 
-// TestMediaHandler_PatchMediaLike_URLPath_FallbackToRelPath vérifie que urlToFilePath
-// dépouille le préfixe URL et transmet relPath au service quand aucun settingsStore
-// ni repoRoot n'est configuré. C'est le fix du bug double-slug (before: URL complète
-// retournée → UPDATE 0 rows → 404).
+// TestMediaHandler_PatchMediaLike_URLPath_FallbackToRelPath vérifie que le handler
+// dépouille le préfixe URL et transmet le chemin stocké (relatif, forward-slash)
+// au service quand aucun settingsStore ni repoRoot n'est configuré.
 func TestMediaHandler_PatchMediaLike_URLPath_FallbackToRelPath(t *testing.T) {
 	spy := &spyLikeService{}
 	factory := func(_ context.Context, _ string) (port.MediaService, error) { return spy, nil }
@@ -705,10 +722,11 @@ func TestMediaHandler_PatchMediaLike_URLPath_FallbackToRelPath(t *testing.T) {
 	if spy.capturedReq == nil {
 		t.Fatal("SetMediaLike not called")
 	}
-	// URL dépouillée du préfixe → relPath avec séparateur OS.
-	wantRelPath := filepath.Join("JGtm", "clip.mp4")
+	// Format DB : forward-slash, JAMAIS le séparateur OS (sur Windows,
+	// filepath.Join produirait "JGtm\clip.mp4" → 0 ligne mise à jour).
+	const wantRelPath = "JGtm/clip.mp4"
 	if spy.capturedReq.FilePath != wantRelPath {
-		t.Errorf("FilePath = %q, want %q (URL stripped to relPath)", spy.capturedReq.FilePath, wantRelPath)
+		t.Errorf("FilePath = %q, want %q (URL stripped to stored path)", spy.capturedReq.FilePath, wantRelPath)
 	}
 }
 
@@ -733,12 +751,12 @@ func TestMediaHandler_PatchMediaLike_PlainPath_Passthrough(t *testing.T) {
 	}
 }
 
-// TestMediaHandler_PatchMediaLike_URLPath_CapturesBaseResolves vérifie que urlToFilePath
-// retourne le chemin absolu correct quand capturesBase est configuré et que le fichier
-// existe à capturesBase/relPath. Valide le fix du bug double-slug : l'ancienne version
-// cherchait capturesBase/viewer-slug/owner-slug/clip.mp4 (introuvable) ; la version
-// corrigée cherche capturesBase/owner-slug/clip.mp4 (trouve le fichier → chemin absolu).
-func TestMediaHandler_PatchMediaLike_URLPath_CapturesBaseResolves(t *testing.T) {
+// newCapturesSettingsStore crée un settings store dont media_captures_base_dir
+// pointe sur un dossier temporaire contenant RÉELLEMENT JGtm/clip.mp4. C'est la
+// configuration qui déclenchait le bug 1.5 : le fichier présent sur le disque du
+// serveur faisait résoudre un chemin ABSOLU, introuvable en base.
+func newCapturesSettingsStore(t *testing.T) *settings.Store {
+	t.Helper()
 	capturesBase := t.TempDir()
 	ownerDir := filepath.Join(capturesBase, "JGtm")
 	if err := os.MkdirAll(ownerDir, 0o755); err != nil {
@@ -747,15 +765,23 @@ func TestMediaHandler_PatchMediaLike_URLPath_CapturesBaseResolves(t *testing.T) 
 	if err := os.WriteFile(filepath.Join(ownerDir, "clip.mp4"), []byte("fake"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-
-	settingsDir := t.TempDir()
-	settingsPath := filepath.Join(settingsDir, "app_settings.json")
+	settingsPath := filepath.Join(t.TempDir(), "app_settings.json")
 	settingsJSON := fmt.Sprintf(`{"media_captures_base_dir":%q}`, capturesBase)
 	if err := os.WriteFile(settingsPath, []byte(settingsJSON), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	store := settings.NewStore(settingsPath)
+	return settings.NewStore(settingsPath)
+}
 
+// TestMediaHandler_PatchMediaLike_URLPath_KeepsStoredRelativePath est le test de
+// non-régression de l'item 1.5 : même quand media_captures_base_dir est configuré
+// ET que le fichier existe à capturesBase/{owner}/{file}, le handler doit
+// transmettre le chemin STOCKÉ (relatif forward-slash), pas un chemin absolu
+// reconstruit depuis le disque. Le comportement inverse (retenu jusqu'ici) faisait
+// échouer l'UPDATE media_files (0 ligne → 404) sur toute installation où le
+// serveur voit les fichiers — c'est-à-dire en production.
+func TestMediaHandler_PatchMediaLike_URLPath_KeepsStoredRelativePath(t *testing.T) {
+	store := newCapturesSettingsStore(t)
 	spy := &spyLikeService{}
 	factory := func(_ context.Context, _ string) (port.MediaService, error) { return spy, nil }
 
@@ -774,8 +800,151 @@ func TestMediaHandler_PatchMediaLike_URLPath_CapturesBaseResolves(t *testing.T) 
 	if spy.capturedReq == nil {
 		t.Fatal("SetMediaLike not called")
 	}
-	wantPath := filepath.Join(capturesBase, "JGtm", "clip.mp4")
+	const wantPath = "JGtm/clip.mp4"
 	if spy.capturedReq.FilePath != wantPath {
-		t.Errorf("FilePath = %q, want %q (capturesBase resolved to absolute)", spy.capturedReq.FilePath, wantPath)
+		t.Errorf("FilePath = %q, want %q (chemin stocké, pas de résolution disque)",
+			spy.capturedReq.FilePath, wantPath)
+	}
+}
+
+// TestMediaHandler_PatchMediaLike_EchoesRequestedFilePath : la réponse renvoie le
+// file_path REÇU (URL servable). Le client indexe son cache par cette URL ; un
+// chemin stocké en réponse ne matcherait aucun item (likers/compteur perdus).
+func TestMediaHandler_PatchMediaLike_EchoesRequestedFilePath(t *testing.T) {
+	spy := &spyLikeService{}
+	factory := func(_ context.Context, _ string) (port.MediaService, error) { return spy, nil }
+	r := newMediaRouter(factory)
+
+	const urlPath = "/api/v1/players/test-player/media/files/JGtm/hls/clip/master.m3u8"
+	w := patchLike(r, urlPath, true)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp domain.MediaLikeResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp.FilePath != urlPath {
+		t.Errorf("réponse file_path = %q, want %q (écho de la requête)", resp.FilePath, urlPath)
+	}
+	// Le service, lui, a bien reçu le chemin stocké.
+	if spy.capturedReq == nil || spy.capturedReq.FilePath != "JGtm/hls/clip/master.m3u8" {
+		t.Errorf("service FilePath = %+v, want JGtm/hls/clip/master.m3u8", spy.capturedReq)
+	}
+}
+
+// TestMediaHandler_PatchMediaLike_AuthEnforced_NoSession_401 : garde anti-silence.
+// En multi-utilisateur authentifié, un like sans joueur courant en session ne peut
+// pas être attribué : il doit échouer VISIBLEMENT (401) au lieu d'écrire un
+// media_files.liked global muet côté social.
+func TestMediaHandler_PatchMediaLike_AuthEnforced_NoSession_401(t *testing.T) {
+	spy := &spyLikeService{}
+	factory := func(_ context.Context, _ string) (port.MediaService, error) { return spy, nil }
+
+	r := chi.NewRouter()
+	h := handlers.NewMediaHandler(factory, nil, "").WithAuthEnforced(true)
+	r.Route("/players/{player_slug}", func(r chi.Router) {
+		h.Mount(r)
+	})
+
+	w := patchLike(r, "/api/v1/players/test-player/media/files/JGtm/clip.mp4", true)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d: %s", w.Code, w.Body.String())
+	}
+	if spy.capturedReq != nil {
+		t.Error("SetMediaLike ne doit PAS être appelé sans liker identifiable")
+	}
+	if !bytes.Contains(w.Body.Bytes(), []byte("like_requires_session")) {
+		t.Errorf("corps sans code like_requires_session : %s", w.Body.String())
+	}
+}
+
+// TestMediaHandler_PatchMediaLike_NoAuthEnforced_NoSession_Passes : en
+// mono-utilisateur / démo (auth non appliquée), le comportement historique est
+// conservé — le like passe, sans liker social.
+func TestMediaHandler_PatchMediaLike_NoAuthEnforced_NoSession_Passes(t *testing.T) {
+	spy := &spyLikeService{}
+	factory := func(_ context.Context, _ string) (port.MediaService, error) { return spy, nil }
+	r := newMediaRouter(factory) // WithAuthEnforced non appelé → false
+
+	w := patchLike(r, "/api/v1/players/test-player/media/files/JGtm/clip.mp4", true)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if spy.capturedReq == nil {
+		t.Fatal("SetMediaLike doit être appelé en mode mono-utilisateur")
+	}
+}
+
+// spyPathService capture le file_path reçu par les TROIS endpoints qui reversent
+// une URL servable vers le chemin stocké.
+type spyPathService struct {
+	mockMediaService
+	paths map[string]string
+}
+
+func (s *spyPathService) SetMediaLike(_ context.Context, req domain.MediaLikeRequest) (*domain.MediaLikeResponse, error) {
+	s.paths["like"] = req.FilePath
+	return &domain.MediaLikeResponse{FilePath: req.FilePath, Liked: true}, nil
+}
+
+func (s *spyPathService) GetMatchCandidates(_ context.Context, filePath string, _ int) (*domain.MediaMatchCandidatesResponse, error) {
+	s.paths["candidates"] = filePath
+	return &domain.MediaMatchCandidatesResponse{}, nil
+}
+
+func (s *spyPathService) AssociateMediaToMatch(_ context.Context, req domain.MediaAssociateRequest) (*domain.MediaAssociateResponse, error) {
+	s.paths["associate"] = req.FilePath
+	return &domain.MediaAssociateResponse{FilePath: req.FilePath, MatchID: req.MatchID}, nil
+}
+
+// TestMediaHandler_URLReverse_ConsistentAcrossEndpoints est le GARDE-RAIL de la
+// règle « une seule conversion inverse » (CLAUDE.md n°6) : like, match-candidates
+// et associate doivent produire le MÊME chemin stocké pour la MÊME URL d'entrée.
+// C'est cette divergence (like via une résolution disque, les deux autres via le
+// strip de préfixe) qui a produit le bug 1.5 ; le test la rend impossible à
+// réintroduire sans échec rouge.
+func TestMediaHandler_URLReverse_ConsistentAcrossEndpoints(t *testing.T) {
+	store := newCapturesSettingsStore(t) // capturesBase peuplé = piège du bug d'origine
+	spy := &spyPathService{paths: map[string]string{}}
+	factory := func(_ context.Context, _ string) (port.MediaService, error) { return spy, nil }
+
+	r := chi.NewRouter()
+	h := handlers.NewMediaHandler(factory, nil, "").WithSettingsStore(store)
+	r.Route("/players/{player_slug}", func(r chi.Router) {
+		h.Mount(r)
+	})
+
+	const urlPath = "/api/v1/players/test-player/media/files/JGtm/clip.mp4"
+
+	if w := patchLike(r, urlPath, true); w.Code != http.StatusOK {
+		t.Fatalf("like: expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/players/test-player/media/match-candidates?file_path="+url.QueryEscape(urlPath), nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("candidates: expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	body, _ := json.Marshal(domain.MediaAssociateRequest{FilePath: urlPath, MatchID: "m1"})
+	req = httptest.NewRequest(http.MethodPost, "/players/test-player/media/associate", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("associate: expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	const want = "JGtm/clip.mp4"
+	for _, endpoint := range []string{"like", "candidates", "associate"} {
+		if got := spy.paths[endpoint]; got != want {
+			t.Errorf("%s: file_path = %q, want %q (conversion inverse unique)", endpoint, got, want)
+		}
 	}
 }

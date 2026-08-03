@@ -6,7 +6,8 @@
 //	GET /api/v1/titles/{slug}/catalog/pairs?playlist_asset_id={uuid}
 //	GET /api/v1/titles/{slug}/catalog/maps?xuid={xuid}&only_played={bool}
 //
-// Gated par MULTI_TITLE_API_ENABLED (cf. field_mappings.go).
+// Monté inconditionnellement depuis le 2026-08-02 (cf. field_mappings.go), sous
+// réserve que metadata.duckdb soit disponible (dep-gate, cf. server_apiv1.go).
 //
 // MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) et enregistre les 3
 // GET via huma.Get. Logique métier inchangée (CatalogRepo), seul le wrapping HTTP

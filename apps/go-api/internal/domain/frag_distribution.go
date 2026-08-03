@@ -35,41 +35,72 @@ const (
 	FragClassOther         = "other"         // Autre
 )
 
-// nonCombatFragClasses regroupe les classes d'arme qui ne correspondent PAS à une
-// arme réelle (buckets H5 véhicule/tourelle/environnement/autre + résidu « Spartan »
-// non attribué). Elles sont exclues du breakdown par-ARME (le sunburst les absorbe
-// dans « Non attribué »). Miroir Go canonique de NON_COMBAT_WEAPON_ROLES
+// nonCombatFragClasses regroupe les classes qui ne correspondent à AUCUN outil de
+// destruction identifiable : environnement (chute, explosifs de map), « autre » (UGC)
+// et le résidu non attribué. Elles sont exclues du breakdown par-ARME (le sunburst les
+// absorbe dans « Non attribué »). Miroir Go canonique de NON_COMBAT_WEAPON_ROLES
 // (apps/web/src/features/synthesis/weaponRoleInsight.ts) — source unique côté Go,
 // gardée par frag_distribution_test.go (TestIsNonCombatFragClass).
+//
+// V73-3.2 : véhicule et tourelle en sont SORTIS. Ce sont des outils de destruction
+// réels, identifiés PAR ENGIN dans le registre d'armes (weapon_key h5_vehicle_warthog,
+// h5_turret_gauss…) — ils portent donc un breakdown légitime, au lieu de disparaître
+// dans « Non attribué ». Rien n'est codé par titre : un titre dont le registre ne
+// déclare aucune arme de classe vehicle/turret ne produit simplement aucune row de
+// cette classe (cas Halo Infinite au 2026-08-02, en attente du killsource).
 var nonCombatFragClasses = map[string]bool{
 	FragClassUnattributed:  true,
-	FragClassVehicle:       true,
-	FragClassTurret:        true,
 	FragClassEnvironmental: true,
 	FragClassOther:         true,
 }
 
 // IsNonCombatFragClass indique si une classe d'arme est un bucket non-combat
-// (véhicule/tourelle/environnement/non attribué/autre), à exclure d'un breakdown
-// par-arme réservé aux armes réelles.
+// (environnement / autre / non attribué), à exclure d'un breakdown par-arme réservé
+// aux outils de destruction identifiables.
 func IsNonCombatFragClass(class string) bool {
 	return nonCombatFragClasses[class]
 }
 
+// perWeaponFragClasses regroupe les classes dont le niveau 2 du sunburst est ventilé
+// par ENGIN (weapon_key du registre) et non par rôle de combat : sur ces classes,
+// `role` et `family` valent la classe elle-même dans le registre (tous les véhicules
+// portent class=role=family="vehicle"), un niveau 2 par rôle serait donc un arc unique
+// sans information. La clé de niveau 2 est le weapon_key ; le libellé vient de
+// config/titles/{slug}/mappings/weapon_names.toml via metadata.weapon_name_labels
+// (jamais de nom d'engin en dur côté Go).
+var perWeaponFragClasses = map[string]bool{
+	FragClassVehicle: true,
+	FragClassTurret:  true,
+}
+
+// IsPerWeaponFragClass indique si le niveau 2 d'une classe se ventile par ENGIN
+// (weapon_key) plutôt que par rôle de combat. Cf. perWeaponFragClasses.
+func IsPerWeaponFragClass(class string) bool {
+	return perWeaponFragClasses[class]
+}
+
 // WeaponClassHasAccuracy indique si une classe d'arme a une précision PERTINENTE dans un
 // graphe « Précision par arme ». Faux pour les classes SANS « tir au but » — projectiles
-// (grenade), mêlée, capacités spartanes, résidu non attribué — et les buckets non-combat
-// (véhicule/tourelle/environnement/… via IsNonCombatFragClass). Vrai pour les armes à tir
-// (classes gun) et les classes non résolues ("" — bénéfice du doute : arme hors registre).
-// Sans ce filtre, une grenade lancée (shots_fired > 0, jamais « au but ») apparaît à 0 %
-// dans le graphe alors qu'elle est absente du sunburst (bug observé Sessions/Synthesis).
+// (grenade), mêlée, capacités spartanes, résidu non attribué — les armes montées d'engin
+// (véhicule/tourelle) et les buckets non-combat (environnement/autre via
+// IsNonCombatFragClass). Vrai pour les armes à tir (classes gun) et les classes non
+// résolues ("" — bénéfice du doute : arme hors registre). Sans ce filtre, une grenade
+// lancée (shots_fired > 0, jamais « au but ») apparaît à 0 % dans le graphe alors qu'elle
+// est absente du sunburst (bug observé Sessions/Synthesis).
+//
+// V73-3.2 : véhicule/tourelle sont désormais listés ICI explicitement. Ils ont quitté
+// nonCombatFragClasses (ils ont gagné un breakdown par engin dans le sunburst) mais leur
+// exclusion du graphe de précision est INCHANGÉE — décision produit distincte, hors
+// périmètre. Note : la donnée existerait (weapon_accuracy H5 porte des shots_fired pour
+// ces classes), son exploitation relève d'un arbitrage produit séparé.
 //
 // Exporté et hébergé côté domain (déplacé depuis service) pour être partagé par le package
 // service/teammates, qui ne peut pas importer son parent service. N'utilise que des
 // constantes domain → aucun cycle d'import.
 func WeaponClassHasAccuracy(class string) bool {
 	switch class {
-	case FragClassGrenade, FragClassMelee, FragClassSpartanAbility, FragClassUnattributed:
+	case FragClassGrenade, FragClassMelee, FragClassSpartanAbility, FragClassUnattributed,
+		FragClassVehicle, FragClassTurret:
 		return false
 	}
 	return !IsNonCombatFragClass(class)
@@ -152,8 +183,18 @@ type FragClassEntry struct {
 	Roles         []FragRoleEntry `json:"roles,omitempty"` // nil = feuille ; sinon Σ Kills(roles) == Kills
 }
 
-// FragRoleEntry est un arc du niveau 2 (rôle = fonction de combat, ou sous-mécanique).
+// FragRoleEntry est un arc du niveau 2 (rôle = fonction de combat, sous-mécanique, type
+// de grenade, ou ENGIN pour les classes véhicule/tourelle).
 type FragRoleEntry struct {
-	Role  string `json:"role"` // precision|automatic|sniper|shotgun|special|sidearm|assassination|direct_melee|ground_pound|shoulder_bash
+	Role  string `json:"role"` // precision|automatic|sniper|shotgun|special|sidearm|assassination|direct_melee|ground_pound|shoulder_bash|grenade_*| weapon_key d'engin (h5_vehicle_warthog…)
 	Kills int    `json:"kills"`
+	// Label : libellé d'affichage DÉJÀ résolu, servi UNIQUEMENT quand Role est un
+	// weapon_key d'engin (classes IsPerWeaponFragClass) — sa source est
+	// config/titles/{slug}/mappings/weapon_names.toml (via metadata.weapon_name_labels),
+	// et non un manifeste i18n web. Motif : les noms d'engins sont propres à CHAQUE
+	// titre ; les recopier dans le manifeste web frags.toml (partagé par tous les titres)
+	// dupliquerait le TOML du titre et enflerait à chaque titre ajouté. Vide pour tous
+	// les autres rôles, qui restent des clés canoniques traduites côté web
+	// (frags.role.*) — le front applique `label || t(frags.role.<role>)`.
+	Label string `json:"label,omitempty"`
 }

@@ -681,6 +681,14 @@ export interface ExplorerMatchRow {
   perf_tier?: number
   delta_perf?: number | null
   skill_tier_label?: string | null
+  /** URL de l'image du badge de palier, résolue par l'adaptateur d'assets du TITRE
+   *  côté backend. Absente quand le titre n'expose pas de badge, que le match est en
+   *  placement ou que le palier est inconnu → la colonne « Rang » retombe alors sur
+   *  `skill_tier_label` (texte localisé). Jamais construite côté front. */
+  skill_rank_image_url?: string | null
+  /** Score PERSONNEL du joueur sur le match. À ne pas confondre avec `score_label`,
+   *  qui porte le score d'ÉQUIPE (« 50 - 30 »). */
+  personal_score?: number | null
   /** "CSR" (classé officiel) ou "LUSR" (interne LevelUp). Nil si pas de skill rank (PvE, Custom). */
   rating_type?: string | null
   /** Gain/perte de rating du match. NON rendu par les colonnes propres d'ExplorerMatchesTable :
@@ -1187,6 +1195,10 @@ export interface TeammatesQueryRequest {
   picked_solo_session_labels?: string[]
   picked_squad_session_labels?: string[]
   locale?: string
+  /** Option « composition exacte » (défaut false) : n'inclut que les matchs où
+   *  aucun autre coéquipier connu n'était dans l'équipe. Par défaut la
+   *  population est « matchs commencés ensemble » (intersection du roster). */
+  filter_exact_composition?: boolean
 }
 
 export type SessionLabelEntry = components['schemas']['SessionLabelEntry']
@@ -1338,7 +1350,14 @@ export interface TeammatesPageResponse {
   /** Label de la session la plus récente de la composition exacte (1re entrée de
    *  composition_sessions). Vide si la composition n'a jamais joué ensemble. */
   latest_composition_session?: string
+  /** Chargements best-effort qui ont échoué : les nombres affichés sont partiels.
+   *  Non vide => l'UI doit le signaler (fin des chiffres non reproductibles). */
+  data_issues?: DataIssue[]
 }
+
+/** Dégradation d'un chargement best-effort. `code` est une clé stable traduite
+ *  côté front ; `detail` (ex. gamertag) sert au diagnostic. */
+export type DataIssue = components['schemas']['DataIssue']
 
 // ---------------------------------------------------------------------------
 // Synthèse (Slice 7)
@@ -1537,6 +1556,8 @@ export interface MediaAssociateRequest {
 
 export type MediaAssociateResponse = components['schemas']['MediaAssociateResponse']
 export type MediaAuthorsResponse = components['schemas']['MediaAuthorsResponse']
+/** Suppression définitive d'un média (item 3.1) — dérivé du contrat. */
+export type MediaDeleteResponse = components['schemas']['MediaDeleteResponse']
 
 export interface MediaLikeRequest {
   file_path: string

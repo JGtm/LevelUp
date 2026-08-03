@@ -118,10 +118,9 @@ func TestContractRoutesRegistered(t *testing.T) {
 
 	// Construire le routeur en mode démo (sans DuckDB)
 	t.Setenv("LEVELUP_DEMO_MODE", "true")
-	// P8.8 (revue 2026-04-29) : flags ON pour exposer les routes
-	// conditionnelles (multi-title field-mappings, prestige challenges/arcs/...)
-	// que l'OpenAPI documente désormais.
-	t.Setenv("MULTI_TITLE_API_ENABLED", "true")
+	// P8.8 (revue 2026-04-29) : flag ON pour exposer les routes conditionnelles
+	// (prestige challenges/arcs/...) que l'OpenAPI documente désormais. Les
+	// routes multi-titres n'ont plus de flag depuis le 2026-08-02 (item 3.3).
 	t.Setenv("PRESTIGE_ENABLED", "true")
 	router := buildTestRouter(t)
 	chiRouteSet := chiRoutes(router)
@@ -189,7 +188,6 @@ func TestContractRoutesRegistered(t *testing.T) {
 func TestContractRoutesDocumented(t *testing.T) {
 	doc := loadOpenAPI(t)
 	t.Setenv("LEVELUP_DEMO_MODE", "true")
-	t.Setenv("MULTI_TITLE_API_ENABLED", "true")
 	t.Setenv("PRESTIGE_ENABLED", "true")
 	router := buildTestRouter(t)
 	chiRouteSet := chiRoutes(router)

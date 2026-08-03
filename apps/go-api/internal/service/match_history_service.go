@@ -112,6 +112,10 @@ type MatchHistoryService struct {
 	// du flag « Prolongation » des lignes Explorer/historique. Nil/vide → aucun
 	// flag (titre sans mesure). Jamais de comparaison de slug : la table EST le titre.
 	regulationSeconds map[string]int
+	// skillBadgeResolver : résolveur d'URL d'image de badge de palier du TITRE
+	// courant, injecté par le wiring (jamais dérivé d'un slug ici — ADR 0025).
+	// Nil → colonne « Rang » en texte localisé, comme avant (H5, titre sans badge).
+	skillBadgeResolver func(tierEN string, subTier int) string
 }
 
 // outcomeCodeToKey mappe le code outcome Halo (domain.Outcome*) vers la clé
@@ -158,6 +162,15 @@ func (s *MatchHistoryService) WithRegulation(regulationSeconds map[string]int) *
 	return s
 }
 
+// WithSkillBadgeResolver injecte le résolveur d'URL d'image de badge de palier du
+// titre courant — même résolveur title-aware que la home (RecentMatchItem.
+// skill_rank_image_url). Sans injection : aucune image, la colonne « Rang » reste
+// le libellé texte du palier (dégradation gracieuse).
+func (s *MatchHistoryService) WithSkillBadgeResolver(f func(tierEN string, subTier int) string) *MatchHistoryService {
+	s.skillBadgeResolver = f
+	return s
+}
+
 // rowFormatters construit les résolveurs title-agnostic injectés dans
 // l'enrichissement d'une ligne : URL de page publique du match (F3, via l'adapter
 // d'assets + gamertag) et libellé d'outcome (F4, via l'adapter sémantique). Champs
@@ -169,6 +182,7 @@ func (s *MatchHistoryService) rowFormatters() rowFormatters {
 	cfg := s.playlistDisplay
 	f.playlistLabel = func(rawFR string) string { return cfg.Display(rawFR) }
 	f.regulation = s.regulationSeconds
+	f.skillBadgeURL = s.skillBadgeResolver
 	if s.assetURL != nil {
 		gt := s.waypointPlayer
 		f.matchURL = func(matchID string) string { return s.assetURL.PlayerMatchWebURL(gt, matchID) }

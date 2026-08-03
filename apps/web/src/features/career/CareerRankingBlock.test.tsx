@@ -36,6 +36,7 @@ const HINF: TitleSummary = {
   provides_team_mmr: true,
   provides_max_killing_spree: true,
   offensive_conversion_p80: 0.9,
+  defensive_resistance_p80: 1.65,
 }
 
 const HALO5: TitleSummary = {
@@ -49,6 +50,7 @@ const HALO5: TitleSummary = {
   provides_team_mmr: true,
   provides_max_killing_spree: true,
   offensive_conversion_p80: 0.9,
+  defensive_resistance_p80: 1.65,
 }
 
 function checkpoint(group: string): CareerLusrSection['checkpoints'][number] {

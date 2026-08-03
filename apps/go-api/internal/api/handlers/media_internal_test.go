@@ -164,3 +164,45 @@ func TestRelIfWithin(t *testing.T) {
 		}
 	}
 }
+
+// TestOwnerSlugFromFilePath couvre les 3 conventions de chemin reconnues pour
+// déduire le propriétaire d'un média (destinataire de la notification
+// media_liked). Le format CANONIQUE {owner_slug}/{rel} est celui que le handler
+// de like transmet depuis l'item 1.5 : sans lui, la notification disparaissait
+// silencieusement.
+func TestOwnerSlugFromFilePath(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"canonique relatif", "Madina97294/Halo Infinite 2026-04-19.mp4", "Madina97294"},
+		{"canonique relatif HLS", "JGtm/hls/clip/master.m3u8", "JGtm"},
+		{"basename seul", "clip.mp4", ""},
+		{"vide", "", ""},
+	}
+	for _, tc := range cases {
+		if got := ownerSlugFromFilePath(tc.in); got != tc.want {
+			t.Errorf("%s: ownerSlugFromFilePath(%q) = %q, want %q", tc.name, tc.in, got, tc.want)
+		}
+	}
+}
+
+// TestOwnerSlugFromFilePath_LegacyAbsolute vérifie que les conventions legacy
+// (chemins absolus Windows) restent reconnues après l'ajout du format canonique.
+func TestOwnerSlugFromFilePath_LegacyAbsolute(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("test Windows-specific paths")
+	}
+	cases := []struct {
+		in, want string
+	}{
+		{`C:\Users\Guillaume\Videos\Captures\Madina97294\clip.mp4`, "Madina97294"},
+		{`C:\data\titles\halo_infinite\players\JGtm\captures\clip.mp4`, "JGtm"},
+	}
+	for _, tc := range cases {
+		if got := ownerSlugFromFilePath(tc.in); got != tc.want {
+			t.Errorf("ownerSlugFromFilePath(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}

@@ -83,7 +83,7 @@ var publicRoutesAllowlist = map[string]string{
 	"GET /api/v1/assets/{title_id}/maps":                       "référentiel catalogue maps",
 	"GET /api/v1/assets/{title_id}/medals":                     "référentiel catalogue médailles",
 	"GET /api/v1/assets/{title_id}/weapons":                    "référentiel catalogue armes",
-	// Référentiels de titre (labels / capacités — MULTI_TITLE_API_ENABLED). NOTE :
+	// Référentiels de titre (labels / capacités, montés sans condition). NOTE :
 	// les catalog/{playlists,pairs,maps} sont dep-gated (câblés seulement si le
 	// catalog seasons est branché) → absents du routeur de test démo, donc non
 	// couverts ici ; référentiels GET public par conception (LOT_S table §1).
@@ -133,7 +133,6 @@ func TestBareRoutesRatchet_NoUnguardedRouteOutsideAllowlist(t *testing.T) {
 	// Flags ON pour exposer les routes conditionnelles (référentiels titre, prestige),
 	// comme le contract_test — la surface publique doit être couverte au complet.
 	t.Setenv("LEVELUP_DEMO_MODE", "true")
-	t.Setenv("MULTI_TITLE_API_ENABLED", "true")
 	t.Setenv("PRESTIGE_ENABLED", "true")
 
 	router := buildTestRouter(t)

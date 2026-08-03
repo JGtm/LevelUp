@@ -1,6 +1,6 @@
 // cross-feature-allow: bloc Progression Prestige de la tab Réalisations —
-// consomme queryKeys.prestige (lib/query) + PRESTIGE_LEVEL_NAMES_FALLBACK depuis
-// features/prestige et useSettings (friend_gamertags) depuis features/settings.
+// consomme queryKeys.prestige (lib/query) et useSettings (friend_gamertags)
+// depuis features/settings.
 /**
  * PrestigeSquadProgress — bloc "Progression Prestige" de la tab Réalisations.
  *
@@ -23,7 +23,6 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { intlLocale } from '@/lib/formatters'
 import { useSettings } from '@/features/settings/queries'
 import { queryKeys } from '@/lib/query/keys'
-import { PRESTIGE_LEVEL_NAMES_FALLBACK } from '@/features/prestige/fallback.i18n'
 import { getAscensionText } from './i18n'
 import { interpolate } from './format'
 import { prestigeApi, type UserPrestige } from '@/lib/prestige'
@@ -138,19 +137,17 @@ function SquadPrestigeRow({
   const t = getAscensionText(locale)
   const level = prestige.current_level
   const levelKey = String(level)
-  const levelLabel = useAssetLabel('prestige_level', levelKey)
-  const levelName =
-    levelLabel !== levelKey
-      ? levelLabel
-      : PRESTIGE_LEVEL_NAMES_FALLBACK[level] ?? PRESTIGE_LEVEL_NAMES_FALLBACK[0]
+  // Noms de niveau servis par assets.prestige_level des TOML (source unique :
+  // les deux titres déclarent les niveaux 0..5 — plus aucun repli EN local).
+  const levelName = useAssetLabel('prestige_level', levelKey)
 
-  // Nom du niveau SUIVANT (pour « … vers {next} »). Hook appelé inconditionnellement.
+  // Nom du niveau SUIVANT (pour « … vers {next} »). Hook appelé
+  // inconditionnellement. Au dernier palier, la clé level+1 n'est pas déclarée
+  // et le hook renvoie la clé : on affiche alors une chaîne vide plutôt qu'un
+  // numéro de niveau inexistant.
   const nextKey = String(level + 1)
   const nextLabelResolved = useAssetLabel('prestige_level', nextKey)
-  const nextLevelName =
-    nextLabelResolved !== nextKey
-      ? nextLabelResolved
-      : PRESTIGE_LEVEL_NAMES_FALLBACK[level + 1] ?? ''
+  const nextLevelName = nextLabelResolved !== nextKey ? nextLabelResolved : ''
 
   const lvl = prestige.level
   const isMax = lvl ? lvl.next_threshold_pp <= 0 : false
