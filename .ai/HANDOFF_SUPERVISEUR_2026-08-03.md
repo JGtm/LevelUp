@@ -63,6 +63,51 @@ némésis — c'est une correction, mais elle se voit.
    SQL→SQL joue en prod sans les films, ~15 s + passe crédit ~5 min par titre). Push `main` =
    déploiement prod automatique : prévenir AVANT.
 
+**Consignes MASTER PLAN pour le repreneur** : le document d'autorité reste
+`PLAN_MASTER_FILM_KILLFEED_REJEU.md` — il est À JOUR au 2026-08-03 (lots 1/2 et 2/2 marqués FAIT
+dans le tableau des jalons ; le plan du prochain lot est sa **piste C-bis**, ligne ~1757, avec le
+registre P1/P2 de la revue). À chaque clôture de lot : statuer les items du plan concerné
+(`[x]`/`[~]`/`[!]`), reporter le statut dans le tableau des jalons du master plan, entrée
+thought_log, et vérifier les comptes rendus SUR PIÈCES avant tout commit (§1 — les trois règles
+payées cher restent la méthode).
+
+### Prompt du prochain lot (intégration re-mode-score) — à remettre tel quel
+
+```
+Modèle recommandé : Opus 5 — effort élevé.
+
+Session EXÉCUTEUR — intégration de feat/re-mode-score dans feat/replay2d-prod (piste C-bis).
+Dépôt principal, branche feat/replay2d-prod.
+COMMENCER PAR : merger origin/main dans la branche (discipline anti-divergence), et VÉRIFIER
+que la CI du dernier push (run 30810162011 et suivants) est verte AU NIVEAU JOB — si rouge,
+STOP et remonter au superviseur avant tout.
+
+1. Invoquer plan-execution, arch-rules, db-schema.
+2. Lire : master plan PISTE C-BIS EN ENTIER (≈ ligne 1757 — le plan d'intégration, le registre
+   P1/P2 de la revue, et la raison d'être : intégrer pour NE PAS diverger, le débouché rejeu
+   reste dev) ; le §0 du présent handoff (pièges nouveaux).
+3. Périmètre FERMÉ = la piste C-bis : rebaser feat/re-mode-score (worktree
+   .claude/worktrees/re-mode-score, base b9f163d80 = J3-1, AVANT l'inversion et la bascule) sur
+   feat/replay2d-prod ; résoudre ; traiter le P1 de la revue et les P2 rentables ; intégrer.
+   ⚠ pièges : conflits thought_log = résolution en BASH octets bruts ; retirer une jonction
+   AVANT tout `git worktree remove` ; si le code objectifs lit le kill-feed, il lit
+   match_kill_events_latest — killer_victim_pairs est INTERDITE aux lecteurs (le garde
+   TestAucunLecteurNeLitLAncienneTable doit rester vert, ne pas l'allowlister).
+4. GATE : go test ./... -p 1 ; go test -tags=integration -p 1 ./... (-p 1 NON NÉGOCIABLE) ;
+   TestGoldenFilms avec KILLSOURCE_FIXTURES=<chemin ABSOLU> (la branche date d'avant J4 : les
+   goldens sont LE filet du rebase) ; artefacts de rejeu comparés PAR EMPREINTES à
+   data/cache/replays/halo_infinite/baseline_2026-08-03/SHA256SUMS.txt — jamais en
+   reconstruisant par-dessus ; ratchet lint 0 ; CI au niveau job après push (pousser depuis
+   Git Bash — le hook shared-social-gate échoue sous un bash WSL).
+   Les nouveaux tests doivent ÉCHOUER quand on casse ce qu'ils gardent (mutation).
+5. INTERDITS : toucher au décodeur, aux producteurs killsource ou aux lecteurs basculés ;
+   écrire sur le VPS de prod ; productioniser le rejeu (décision #5 : on reste en dev).
+   TOUTE ACTION AU-DELÀ = STOP et question au superviseur.
+6. Clôture : statuts dans la piste C-bis + tableau des jalons du master plan, entrée
+   thought_log, compte rendu : ce qui a été intégré, le sort du P1 et de chaque P2, les
+   conflits du rebase et leur résolution, découvertes, décisions en attente.
+```
+
 Le reste du document (rôle §1, décisions §4, dette §6, pièges §7) reste valable.
 
 ---
