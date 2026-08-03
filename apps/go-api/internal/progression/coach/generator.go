@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/patterns"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/progression/milestones"
@@ -443,7 +444,7 @@ func buildPatternAlerts(input GenerateInput) []Alert {
 // « percentile 80 de la population ».
 const (
 	combatOCP80Threshold = 0.83
-	combatDRP80Threshold = 1.59
+	combatDRP80Threshold = analysis.CombatDRReferenceThreshold
 )
 
 // buildCombatPatternAlerts émet des alertes proactives basées sur OC/DR/activité.

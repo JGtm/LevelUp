@@ -355,7 +355,7 @@ func loadPlayerStats(ctx context.Context, pdb *duckdb.PlayerDB) (milestones.Play
 	// combat_endurance_matches  : matchs avec DR >= 1,59.
 	// combat_excellence_matches : matchs avec OC >= 0,83 ET DR >= 1,59.
 	const ocMilestoneThreshold = 0.83
-	const drMilestoneThreshold = 1.59
+	const drMilestoneThreshold = analysis.CombatDRReferenceThreshold
 	// effectiveHpToKill = baseline PV-pour-tuer du titre (225 Infinite ; 115 Halo 5).
 	// Float de confiance issu de la config → injecté via Sprintf (%g), pas une
 	// entrée utilisateur. Les seuils de milestone restent en bind params (?).

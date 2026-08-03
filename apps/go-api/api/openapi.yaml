@@ -10937,57 +10937,6 @@ components:
             - squad
           type: string
       type: object
-    ExplorerMatchRow:
-      properties:
-        deaths:
-          default: 0
-          type: integer
-        experience_type_label:
-          default: Non classé
-          type: string
-        had_bot_teammate:
-          default: false
-          description: |
-            Un coéquipier était un bot. Exposé uniquement sur les best_matches de la page carrière (les LOSS avec bot sont exclus côté backend pour isoler la responsabilité du joueur).
-          type: boolean
-        is_with_friends:
-          default: false
-          type: boolean
-        kda:
-          default: 0
-          format: float
-          type: number
-        kills:
-          default: 0
-          type: integer
-        map_ui:
-          type: string
-        match_id:
-          format: uuid
-          type: string
-        mode_ui:
-          type: string
-        outcome_label:
-          type: string
-        playlist_label:
-          type: string
-        score_label:
-          type: string
-        start_time:
-          format: date-time
-          type: string
-        start_time_label:
-          type: string
-      required:
-        - match_id
-        - start_time
-        - start_time_label
-        - map_ui
-        - mode_ui
-        - playlist_label
-        - outcome_label
-        - score_label
-      type: object
     ExplorerMatchesQueryRequest:
       properties:
         filters:
@@ -16307,18 +16256,6 @@ components:
         - losses
         - ties
         - dnf
-      type: object
-    PaginatedExplorerMatchesResponse:
-      properties:
-        items:
-          items:
-            $ref: '#/components/schemas/ExplorerMatchRow'
-          type: array
-        pagination:
-          $ref: '#/components/schemas/PaginationMeta'
-      required:
-        - items
-        - pagination
       type: object
     PaginatedMatchHistoryResponse:
       properties:

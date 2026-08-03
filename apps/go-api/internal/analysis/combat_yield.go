@@ -51,6 +51,23 @@ const (
 	CombatYieldClipFactor  = 1.5 // clippage à 1.5× le repère
 )
 
+// CombatDRReferenceThreshold — seuil de référence DR (résistance défensive)
+// partagé par le coach (alerte « combat fragile » + traduction en signal), le
+// détecteur de jalons combat (combat_endurance / combat_excellence) et le
+// backfill des dates de franchissement de ces jalons.
+//
+// Volontairement DISTINCT de DefensiveResistanceP80 (1,65) ci-dessus : ce
+// dernier normalise l'échelle visuelle des jauges, alors que celui-ci déclenche
+// un conseil ou débloque un jalon et vise donc un niveau ATTEIGNABLE. Les
+// aligner changerait la sensibilité des alertes — ce n'est PAS une dérive à
+// corriger. Le suffixe « P80 » des noms locaux historiques (combatDRP80,
+// drMilestoneThreshold…) se lit « seuil de référence », pas « percentile 80 de
+// la population ».
+//
+// Source unique (CLAUDE.md règle 6) — garde-rail interdisant toute nouvelle
+// copie du littéral : internal/archlint/no_raw_combat_dr_threshold_test.go.
+const CombatDRReferenceThreshold = 1.59
+
 // assistFragWeight : convention officielle Halo Infinite — 1 assist = 1/3 de frag.
 // Coefficient unique partagé par OffensiveConversion (numérateur) et le dégâts par
 // frag-équivalent (dénominateur), pour que % et chiffre affiché restent l'inverse exact.

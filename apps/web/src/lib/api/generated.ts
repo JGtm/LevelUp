@@ -5431,36 +5431,6 @@ export interface components {
              */
             squad_scope: "all" | "solo" | "squad";
         };
-        ExplorerMatchRow: {
-            /** @default 0 */
-            deaths: number;
-            /** @default Non classé */
-            experience_type_label: string;
-            /**
-             * @description Un coéquipier était un bot. Exposé uniquement sur les best_matches de la page carrière (les LOSS avec bot sont exclus côté backend pour isoler la responsabilité du joueur).
-             * @default false
-             */
-            had_bot_teammate: boolean;
-            /** @default false */
-            is_with_friends: boolean;
-            /**
-             * Format: float
-             * @default 0
-             */
-            kda: number;
-            /** @default 0 */
-            kills: number;
-            map_ui: string;
-            /** Format: uuid */
-            match_id: string;
-            mode_ui: string;
-            outcome_label: string;
-            playlist_label: string;
-            score_label: string;
-            /** Format: date-time */
-            start_time: string;
-            start_time_label: string;
-        };
         ExplorerMatchesQueryRequest: {
             filters?: components["schemas"]["FilterContextInput"];
             match_filters?: components["schemas"]["ExplorerMatchFilters"];
@@ -7703,10 +7673,6 @@ export interface components {
             ties: number;
             /** Format: int64 */
             wins: number;
-        };
-        PaginatedExplorerMatchesResponse: {
-            items: components["schemas"]["ExplorerMatchRow"][];
-            pagination: components["schemas"]["PaginationMeta"];
         };
         PaginatedMatchHistoryResponse: {
             freshness?: components["schemas"]["FreshnessInfo"] | null;

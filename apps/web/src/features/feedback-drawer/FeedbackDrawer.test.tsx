@@ -68,7 +68,7 @@ describe('FeedbackDrawer — interactions', () => {
   it("submit ouvre window.open avec URL GitHub valide", async () => {
     useFeedbackDrawerStore.setState({ isOpen: true })
     renderWithProviders(<FeedbackDrawer />)
-    const titleInput = screen.getByPlaceholderText(/Résumez votre retour/i)
+    const titleInput = screen.getByPlaceholderText(/Résume ton retour/i)
     fireEvent.change(titleInput, { target: { value: 'mon retour' } })
     const submitBtn = screen.getByRole('button', { name: /Ouvrir sur GitHub/i })
     await waitFor(() => expect(submitBtn).toBeEnabled())
@@ -101,7 +101,7 @@ describe('FeedbackDrawer — popup blocker fallback', () => {
       configurable: true,
     })
     renderWithProviders(<FeedbackDrawer />)
-    fireEvent.change(screen.getByPlaceholderText(/Résumez votre retour/i), {
+    fireEvent.change(screen.getByPlaceholderText(/Résume ton retour/i), {
       target: { value: 'titre' },
     })
     const submitBtn = screen.getByRole('button', { name: /Ouvrir sur GitHub/i })
@@ -123,7 +123,7 @@ describe('FeedbackDrawer — anti-spam', () => {
       JSON.stringify(Array.from({ length: 5 }, () => Date.now())),
     )
     renderWithProviders(<FeedbackDrawer />)
-    fireEvent.change(screen.getByPlaceholderText(/Résumez votre retour/i), {
+    fireEvent.change(screen.getByPlaceholderText(/Résume ton retour/i), {
       target: { value: 'titre' },
     })
     const submitBtn = screen.getByRole('button', { name: /Ouvrir sur GitHub/i })
@@ -136,7 +136,7 @@ describe('FeedbackDrawer — observabilité', () => {
     useFeedbackDrawerStore.setState({ isOpen: true })
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     renderWithProviders(<FeedbackDrawer />)
-    fireEvent.change(screen.getByPlaceholderText(/Résumez votre retour/i), {
+    fireEvent.change(screen.getByPlaceholderText(/Résume ton retour/i), {
       target: { value: 'titre top secret' },
     })
     const submitBtn = screen.getByRole('button', { name: /Ouvrir sur GitHub/i })
@@ -161,7 +161,7 @@ describe('FeedbackDrawer — observabilité', () => {
       configurable: true,
     })
     renderWithProviders(<FeedbackDrawer />)
-    fireEvent.change(screen.getByPlaceholderText(/Résumez votre retour/i), {
+    fireEvent.change(screen.getByPlaceholderText(/Résume ton retour/i), {
       target: { value: 'titre' },
     })
     const submitBtn = screen.getByRole('button', { name: /Ouvrir sur GitHub/i })

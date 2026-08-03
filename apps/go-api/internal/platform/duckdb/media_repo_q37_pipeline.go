@@ -7,7 +7,9 @@ package duckdb
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -75,6 +77,18 @@ func (r *MediaRepo) loadMediaCandidates(
 	// on retourne vide plutôt que de propager un crash via le fallback Player DB.
 	if r.pdb.SharedSocial == nil {
 		return nil, nil
+	}
+	// Garde Gamertag vide. mediaQueryConfig.playerSlug porte TOUT le scoping
+	// d'ownership de la galerie (baseWhereClause : « mine » → mf.player_slug = ?,
+	// « teammate » → mf.player_slug <> ?). Un Gamertag vide ne dégrade pas le
+	// résultat, il l'INVERSE : « mine » ne remonte rien et « teammate » remonte
+	// TOUT, y compris les médias du joueur courant. Le repli « config vide » qui
+	// neutralisait ce cas a disparu avec la branche SQL legacy (2026-08-03) →
+	// refus explicite et tracé, jamais un scoping silencieusement faux.
+	if r.pdb.Gamertag == "" {
+		slog.ErrorContext(ctx, "loadMediaCandidates: Gamertag vide — scoping ownership des médias impossible",
+			"titleSlug", r.pdb.TitleSlug)
+		return nil, errors.New("loadMediaCandidates: gamertag du PlayerDB vide — scoping ownership impossible")
 	}
 	cfg := r.queryConfig()
 	q, args := buildMediaCandidatesQuery(f, cfg)

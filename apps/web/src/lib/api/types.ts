@@ -1559,20 +1559,15 @@ export type MediaAuthorsResponse = components['schemas']['MediaAuthorsResponse']
 /** Suppression définitive d'un média (item 3.1) — dérivé du contrat. */
 export type MediaDeleteResponse = components['schemas']['MediaDeleteResponse']
 
-export interface MediaLikeRequest {
-  file_path: string
-  liked: boolean
-  /** Slug du joueur qui like (pour la table shared) */
-  liker_slug?: string
-}
-
-export interface MediaLikeResponse {
-  file_path: string
-  liked: boolean
-  like_count: number
-  likers?: string[]
-  total_likers?: number
-}
+/**
+ * PATCH /media/likes — dérivés du contrat (2026-08-03). Les versions écrites à
+ * la main divergeaient du serveur sur deux points : `total_likers` y était
+ * optionnel alors que le DTO Go l'émet toujours (pas d'`omitempty`), et la
+ * requête portait un `liker_slug` que le front n'a jamais envoyé — le liker est
+ * résolu côté serveur depuis la session (handlers.resolveLikerIdentity).
+ */
+export type MediaLikeRequest = components['schemas']['MediaLikeRequest']
+export type MediaLikeResponse = components['schemas']['MediaLikeResponse']
 
 export interface MediaUploadResponse {
   saved: number

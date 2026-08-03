@@ -146,7 +146,9 @@ function updateMediaLikeInResponse(
   filePath: string,
   liked: boolean,
   likeCount: number,
-  likers?: string[],
+  // `likers` vient du contrat en `string[] | null` (champ Go `omitempty`) :
+  // null = information absente, on laisse la valeur en cache intacte.
+  likers?: string[] | null,
   totalLikers?: number,
 ) {
   if (!response) {
@@ -170,7 +172,7 @@ function updateMediaLikeInResponse(
               ...item,
               liked,
               like_count: likeCount,
-              ...(likers !== undefined && { likers }),
+              ...(likers != null && { likers }),
               ...(totalLikers !== undefined && { total_likers: totalLikers }),
             }
           : item,

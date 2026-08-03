@@ -405,7 +405,7 @@ fr = "Classements"
 en = "Rankings"
 
 [career.ranking.tooltip]
-fr = "CSR : classement officiel Halo Waypoint par sélection classée. LUSR : rating local calculé depuis vos matchs synchés."
+fr = "CSR : classement officiel Halo Waypoint par sélection classée. LUSR : rating local calculé depuis tes matchs synchés."
 en = "CSR: official Halo Waypoint ranking per ranked playlist. LUSR: local rating calculated from your synced matches."
 
 [career.ranking.csr_section]
@@ -417,7 +417,7 @@ fr = "LUSR"
 en = "LUSR"
 
 [career.ranking.lusr_tooltip]
-fr = "Le LUSR (LevelUp Skill Rating) est calculé localement depuis vos résultats récents. Indépendant du CSR officiel et de la saison."
+fr = "Le LUSR (LevelUp Skill Rating) est calculé localement depuis tes résultats récents. Indépendant du CSR officiel et de la saison."
 en = "LUSR (LevelUp Skill Rating) is calculated locally from your recent results. Independent from the official CSR and from the season."
 
 [career.ranking.lusr_cumulative]
@@ -433,7 +433,7 @@ fr = "Pas de données CSR"
 en = "No CSR data"
 
 [career.ranking.csr_no_data_description]
-fr = "Lancez une synchronisation pour récupérer vos classements en partie classée."
+fr = "Lance une synchronisation pour récupérer tes classements en partie classée."
 en = "Run a sync to retrieve your ranked standings."
 
 [career.ranking.lusr_no_data_title]
@@ -485,7 +485,7 @@ fr = "Nombre de matchs où ce joueur était dans l'équipe adverse."
 en = "Matches where this player was on the enemy team."
 
 [career.encounters.col_avg_kda_tooltip]
-fr = "FDA moyen de ce joueur sur vos matchs communs (impact par match, pas frags/morts)."
+fr = "FDA moyen de ce joueur sur tes matchs communs (impact par match, pas frags/morts)."
 en = "This player's average KDA across your shared matches (per-match impact, not kills/deaths)."
 
 [career.encounters.players_suffix]

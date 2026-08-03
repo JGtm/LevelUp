@@ -1,3 +1,69 @@
+## [2026-08-03] Reprise handoff : lot quick wins reliquat + artefact palette joueurs
+
+**Statut** : En cours (lot quick wins vérifié, en attente de commit ; lot palette en
+worktree ; artefact palette livré).
+
+**Décision technique principale** : reprise du handoff post-lot 2 en pilotage
+multi-agents. (a) Lot quick wins reliquat (branche `chore/post-lot2-reliquat-quickwins`,
+agent Opus) : 7/8 items [x] — Q40 supprimé, seuil 1,59 centralisé
+(`analysis.CombatDRReferenceThreshold` + garde-rail archlint), `errDBBusy()` factorisé
+(7 handlers + garde-rail), garde Gamertag vide (le scoping média s'INVERSAIT : « mine »
+vide, « teammate » = tout), schémas OpenAPI orphelins `ExplorerMatchRow`/
+`PaginatedExplorerMatchesResponse` supprimés (−97 lignes générées), 35 vouvoiements
+corrigés (6 manifests, EN intact), types MediaLike dérivés du contrat (2 divergences
+réelles corrigées dont `total_likers` faussement optionnel). Item 6 (doublons i18n
+compare/kpi/highlights) statué [!] : prémisse non tenue — le vrai sujet est la fin de
+migration du registre de champs de `features/compare/i18n.ts`, qui change des libellés
+visibles = décision produit. (b) Palette joueurs : artefact de propositions publié
+(quadruple `squad-player-1..4` #2563EB/#D97706/#DB2777/#0891B2, 100 % des contrôles
+daltonisme/contraste sur les DEUX surfaces avec les mêmes hex — validateur OKLab/Machado,
+chiffres de l'audit 0.1/0.2 reproduits exactement) ; décisions utilisateur actées, lot
+d'implémentation lancé en worktree (8 étapes, dont cerne + aires adoucies
+Rendement/Résistance — à arbitrer contre la proposition B' de la session parallèle,
+cf. entrée suivante).
+
+**Résultats observés** : gates re-exécutés par l'orchestrateur, cache froid : go build +
+`go test ./... -count=1` exit 0 (PowerShell natif), `tsc -b --force` exit 0, vitest
+387 fichiers / 3334 passés / 0 échec, golangci-lint 0 issue (agent), openapi-check à
+jour. CI main : les 2 runs en attente du handoff (découvertes + deps #74) VERTS, deploy
+compris. TS7 re-vérifié : toujours bloqué amont (`typescript <6.1.0`).
+
+**Conclusion / prochaine étape** : commit du lot quick wins sur go utilisateur ; retour
+du lot palette (revue + matrice navigateur), arbitrage étape 7 vs B'. Découvertes
+notables consignées par l'agent : seuil 0,83 en 3 copies (pendant exact du 1,59),
+libellés FR en dur dans `compare_service.go` (viole title-agnostic),
+`damage_taken_per_game` absent du dictionnaire front, type front `ExplorerMatchRow`
+désormais sans pendant contractuel.
+
+## [2026-08-03] Artefact Rendement & Résistance — révision B' post-implémentation C
+
+**Statut** : Complété (artefact seul — aucun code applicatif modifié).
+
+**Décision technique principale** : suite de la discussion « déviation absolue |Y − X| »
+(proposition collègue) : écartée — la valeur absolue jette le côté du repère, qui porte
+tout le jugement (180 vs 270 dgt/frag → même écart). L'intuition sous-jacente (UN calcul
+commun pour superposer les 4 joueurs sur un graphe) est retenue sous forme d'écart signé
+ORIENTÉ : proposition B' = calcul de C (eliteGapPercent, % à la frontière élite) rendu en
+un seul grid par carte au lieu des 4 pistes — la comparaison d'escouade redevient directe.
+Transformations lobby/collectif (ex-complément E1-E3) écartées sur décision utilisateur :
+la page représente les coûts en dégâts de chacun, pas le niveau du lobby.
+
+**Résultats observés** : audit sur pièces de la coloration des aires (question
+utilisateur) : nulle part vert/rouge inversés — pistes C correctes (rendement_offensif =
+OC canonique, monter = bien) mais libellé « Rendement » ambigu (se lit comme des
+dégâts/frag) ; dégradé une-vie de TimeseriesSquadAdapted (essai P5) : direction juste
+mais 3 défauts — saturation calée sur l'étendue de session (offsetOf min/max), milieu
+divergent-neutral bleu au lieu d'un gris, métaphore de surface inversée entre les deux
+cartes. Artefact 9775c1ab mis à jour (même URL) : audit, article B' chiffré sur la même
+session de maquette, statuts A-D, pistes écartées tracées.
+
+**Conclusion / prochaine étape** : décision utilisateur sur B'. Si retenue : diff net
+négatif dans squadEfficiencyChart.ts (1 grid, suppression des aires par piste, markArea
+favorable + étiquettes de fin de courbe), puis même transformation sur la Timeseries
+escouade adaptée (résorbe les 3 défauts du dégradé ET la double définition du
+« rendement »). Repli sans code : renommer les cartes pistes en « écart à la frontière
+élite ».
+
 ## [2026-08-03] Campagne close : lot 2 + echarts 6 + passe découvertes mergés, handoff écrit
 
 **Statut** : Complété. Séquence de fin exécutée sur go utilisateur : merge lot 2

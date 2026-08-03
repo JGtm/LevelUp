@@ -20,8 +20,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/danielgtaylor/huma/v2"
-
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/domain"
@@ -113,10 +111,7 @@ func (h *MediaHandler) resolveDeleteRequester(ctx context.Context, req *domain.M
 // le client n'a qu'à se reconnecter.
 func mediaDeleteError(ctx context.Context, err error) error {
 	if errors.Is(err, dblease.ErrDBLocked) {
-		return huma.ErrorWithHeaders(
-			humacore.NewError(http.StatusServiceUnavailable, "db_busy", "database is currently busy, please retry"),
-			http.Header{headerRetryAfter: []string{"5"}},
-		)
+		return errDBBusy()
 	}
 	var apiErr *domain.APIError
 	if errors.As(err, &apiErr) {

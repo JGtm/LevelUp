@@ -9,109 +9,74 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SetupRouteImport } from './routes/setup'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as RegisterRouteImport } from './routes/register'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as JoinRouteImport } from './routes/join'
-import { Route as HelpRouteImport } from './routes/help'
-import { Route as GroupsRouteImport } from './routes/groups'
-import { Route as ChangelogRouteImport } from './routes/changelog'
-import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as ChangelogRouteImport } from './routes/changelog'
+import { Route as GroupsRouteImport } from './routes/groups'
+import { Route as HelpRouteImport } from './routes/help'
+import { Route as JoinRouteImport } from './routes/join'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as RegisterRouteImport } from './routes/register'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SetupRouteImport } from './routes/setup'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
-import { Route as PlayersSplatRouteImport } from './routes/players/$'
-import { Route as OnboardingOpenspartanRouteImport } from './routes/onboarding.openspartan'
-import { Route as LabChartsRouteImport } from './routes/lab/charts'
-import { Route as AdminTitlesRouteImport } from './routes/admin/titles'
-import { Route as AdminSystemRouteImport } from './routes/admin/system'
-import { Route as AdminSyncRouteImport } from './routes/admin/sync'
-import { Route as AdminManagementRouteImport } from './routes/admin/management'
-import { Route as AdminLogsRouteImport } from './routes/admin/logs'
-import { Route as AdminLabRouteImport } from './routes/admin/lab'
-import { Route as AdminDetectionsRouteImport } from './routes/admin/detections'
-import { Route as AdminDataQualityRouteImport } from './routes/admin/data-quality'
-import { Route as AdminDataRouteImport } from './routes/admin/data'
-import { Route as AdminConvergenceRouteImport } from './routes/admin/convergence'
 import { Route as AdminAccessRouteImport } from './routes/admin/access'
+import { Route as AdminConvergenceRouteImport } from './routes/admin/convergence'
+import { Route as AdminDataRouteImport } from './routes/admin/data'
+import { Route as AdminDataQualityRouteImport } from './routes/admin/data-quality'
+import { Route as AdminDetectionsRouteImport } from './routes/admin/detections'
+import { Route as AdminLabRouteImport } from './routes/admin/lab'
+import { Route as AdminLogsRouteImport } from './routes/admin/logs'
+import { Route as AdminManagementRouteImport } from './routes/admin/management'
+import { Route as AdminSyncRouteImport } from './routes/admin/sync'
+import { Route as AdminSystemRouteImport } from './routes/admin/system'
+import { Route as AdminTitlesRouteImport } from './routes/admin/titles'
+import { Route as LabChartsRouteImport } from './routes/lab/charts'
+import { Route as OnboardingOpenspartanRouteImport } from './routes/onboarding.openspartan'
+import { Route as PlayersSplatRouteImport } from './routes/players/$'
 import { Route as Char123LangChar125TTitleSlugRouteImport } from './routes/{-$lang}/t/$titleSlug'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugSynthesisRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/synthesis'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/squad'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugNotificationsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/notifications'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugMediaRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/media'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugHomeRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/home'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCompareRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/compare'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCommendationsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/commendations'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCitationsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/citations'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCareerRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/career_'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/ascension'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugStatsIndexRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/stats/index'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugSquadIndexRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/squad/index'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresIndexRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/index'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugObjectifsIndexRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/objectifs/index'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugExplorerIndexRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/explorer/index'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityIndexRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/community/index'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCareerRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/career_'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCitationsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/citations'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCommendationsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/commendations'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCompareRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/compare'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugHomeRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/home'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugMediaRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/media'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugNotificationsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/notifications'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/squad'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugSynthesisRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/synthesis'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionIndexRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/index'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTimeseriesRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/stats/timeseries'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSynthesisRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/stats/synthesis'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSessionsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/stats/sessions'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugSquadSynergiesRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugSquadDynamiqueRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/squad/dynamique'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugSquadContributionsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresRelationsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/relations'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresPrestigeRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/prestige'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityRelationsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/community/relations'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityPrestigeRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/community/prestige'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityCompareRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/community/compare'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCareerSeasonPassRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/career/season-pass'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCareerMedalsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/career/medals'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCommendationsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/career/commendations'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCitationsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRealisationsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations'
-import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionObjectifsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/objectifs'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionCoachingRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/coaching'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionObjectifsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/objectifs'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRealisationsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCitationsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCommendationsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/career/commendations'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCareerMedalsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/career/medals'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCareerSeasonPassRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/career/season-pass'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityIndexRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/community/index'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityCompareRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/community/compare'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityPrestigeRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/community/prestige'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityRelationsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/community/relations'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugExplorerIndexRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/explorer/index'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugObjectifsIndexRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/objectifs/index'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresIndexRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/index'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresPrestigeRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/prestige'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresRelationsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/relations'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugSquadIndexRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/squad/index'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugSquadContributionsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugSquadDynamiqueRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/squad/dynamique'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugSquadSynergiesRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugStatsIndexRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/stats/index'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSessionsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/stats/sessions'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSynthesisRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/stats/synthesis'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTimeseriesRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/stats/timeseries'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdReplayRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/replay'
 
-const SetupRoute = SetupRouteImport.update({
-  id: '/setup',
-  path: '/setup',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RegisterRoute = RegisterRouteImport.update({
-  id: '/register',
-  path: '/register',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const JoinRoute = JoinRouteImport.update({
-  id: '/join',
-  path: '/join',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HelpRoute = HelpRouteImport.update({
-  id: '/help',
-  path: '/help',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GroupsRoute = GroupsRouteImport.update({
-  id: '/groups',
-  path: '/groups',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ChangelogRoute = ChangelogRouteImport.update({
-  id: '/changelog',
-  path: '/changelog',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -119,9 +84,44 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const ChangelogRoute = ChangelogRouteImport.update({
+  id: '/changelog',
+  path: '/changelog',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GroupsRoute = GroupsRouteImport.update({
+  id: '/groups',
+  path: '/groups',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpRoute = HelpRouteImport.update({
+  id: '/help',
+  path: '/help',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JoinRoute = JoinRouteImport.update({
+  id: '/join',
+  path: '/join',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SetupRoute = SetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -129,64 +129,9 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
-const PlayersSplatRoute = PlayersSplatRouteImport.update({
-  id: '/players/$',
-  path: '/players/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OnboardingOpenspartanRoute = OnboardingOpenspartanRouteImport.update({
-  id: '/onboarding/openspartan',
-  path: '/onboarding/openspartan',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LabChartsRoute = LabChartsRouteImport.update({
-  id: '/lab/charts',
-  path: '/lab/charts',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminTitlesRoute = AdminTitlesRouteImport.update({
-  id: '/titles',
-  path: '/titles',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminSystemRoute = AdminSystemRouteImport.update({
-  id: '/system',
-  path: '/system',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminSyncRoute = AdminSyncRouteImport.update({
-  id: '/sync',
-  path: '/sync',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminManagementRoute = AdminManagementRouteImport.update({
-  id: '/management',
-  path: '/management',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminLogsRoute = AdminLogsRouteImport.update({
-  id: '/logs',
-  path: '/logs',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminLabRoute = AdminLabRouteImport.update({
-  id: '/lab',
-  path: '/lab',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminDetectionsRoute = AdminDetectionsRouteImport.update({
-  id: '/detections',
-  path: '/detections',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminDataQualityRoute = AdminDataQualityRouteImport.update({
-  id: '/data-quality',
-  path: '/data-quality',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminDataRoute = AdminDataRouteImport.update({
-  id: '/data',
-  path: '/data',
+const AdminAccessRoute = AdminAccessRouteImport.update({
+  id: '/access',
+  path: '/access',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminConvergenceRoute = AdminConvergenceRouteImport.update({
@@ -194,10 +139,65 @@ const AdminConvergenceRoute = AdminConvergenceRouteImport.update({
   path: '/convergence',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminAccessRoute = AdminAccessRouteImport.update({
-  id: '/access',
-  path: '/access',
+const AdminDataRoute = AdminDataRouteImport.update({
+  id: '/data',
+  path: '/data',
   getParentRoute: () => AdminRoute,
+} as any)
+const AdminDataQualityRoute = AdminDataQualityRouteImport.update({
+  id: '/data-quality',
+  path: '/data-quality',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDetectionsRoute = AdminDetectionsRouteImport.update({
+  id: '/detections',
+  path: '/detections',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminLabRoute = AdminLabRouteImport.update({
+  id: '/lab',
+  path: '/lab',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminLogsRoute = AdminLogsRouteImport.update({
+  id: '/logs',
+  path: '/logs',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminManagementRoute = AdminManagementRouteImport.update({
+  id: '/management',
+  path: '/management',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSyncRoute = AdminSyncRouteImport.update({
+  id: '/sync',
+  path: '/sync',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSystemRoute = AdminSystemRouteImport.update({
+  id: '/system',
+  path: '/system',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminTitlesRoute = AdminTitlesRouteImport.update({
+  id: '/titles',
+  path: '/titles',
+  getParentRoute: () => AdminRoute,
+} as any)
+const LabChartsRoute = LabChartsRouteImport.update({
+  id: '/lab/charts',
+  path: '/lab/charts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingOpenspartanRoute = OnboardingOpenspartanRouteImport.update({
+  id: '/onboarding/openspartan',
+  path: '/onboarding/openspartan',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlayersSplatRoute = PlayersSplatRouteImport.update({
+  id: '/players/$',
+  path: '/players/$',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const Char123LangChar125TTitleSlugRoute =
   Char123LangChar125TTitleSlugRouteImport.update({
@@ -211,52 +211,10 @@ const Char123LangChar125TTitleSlugPlayersPlayerSlugRoute =
     path: '/players/$playerSlug',
     getParentRoute: () => Char123LangChar125TTitleSlugRoute,
   } as any)
-const Char123LangChar125TTitleSlugPlayersPlayerSlugSynthesisRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugSynthesisRouteImport.update({
-    id: '/synthesis',
-    path: '/synthesis',
-    getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
-  } as any)
-const Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRouteImport.update({
-    id: '/squad',
-    path: '/squad',
-    getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
-  } as any)
-const Char123LangChar125TTitleSlugPlayersPlayerSlugNotificationsRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugNotificationsRouteImport.update({
-    id: '/notifications',
-    path: '/notifications',
-    getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
-  } as any)
-const Char123LangChar125TTitleSlugPlayersPlayerSlugMediaRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugMediaRouteImport.update({
-    id: '/media',
-    path: '/media',
-    getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
-  } as any)
-const Char123LangChar125TTitleSlugPlayersPlayerSlugHomeRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugHomeRouteImport.update({
-    id: '/home',
-    path: '/home',
-    getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
-  } as any)
-const Char123LangChar125TTitleSlugPlayersPlayerSlugCompareRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugCompareRouteImport.update({
-    id: '/compare',
-    path: '/compare',
-    getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
-  } as any)
-const Char123LangChar125TTitleSlugPlayersPlayerSlugCommendationsRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugCommendationsRouteImport.update({
-    id: '/commendations',
-    path: '/commendations',
-    getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
-  } as any)
-const Char123LangChar125TTitleSlugPlayersPlayerSlugCitationsRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugCitationsRouteImport.update({
-    id: '/citations',
-    path: '/citations',
+const Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRouteImport.update({
+    id: '/ascension',
+    path: '/ascension',
     getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
   } as any)
 const Char123LangChar125TTitleSlugPlayersPlayerSlugCareerRoute =
@@ -265,53 +223,54 @@ const Char123LangChar125TTitleSlugPlayersPlayerSlugCareerRoute =
     path: '/career',
     getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
   } as any)
-const Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRouteImport.update({
-    id: '/ascension',
-    path: '/ascension',
+const Char123LangChar125TTitleSlugPlayersPlayerSlugCitationsRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugCitationsRouteImport.update({
+    id: '/citations',
+    path: '/citations',
     getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
   } as any)
-const Char123LangChar125TTitleSlugPlayersPlayerSlugStatsIndexRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugStatsIndexRouteImport.update({
-    id: '/stats/',
-    path: '/stats/',
+const Char123LangChar125TTitleSlugPlayersPlayerSlugCommendationsRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugCommendationsRouteImport.update({
+    id: '/commendations',
+    path: '/commendations',
     getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
   } as any)
-const Char123LangChar125TTitleSlugPlayersPlayerSlugSquadIndexRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugSquadIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () =>
-      Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRoute,
-  } as any)
-const Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresIndexRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresIndexRouteImport.update({
-    id: '/palmares/',
-    path: '/palmares/',
+const Char123LangChar125TTitleSlugPlayersPlayerSlugCompareRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugCompareRouteImport.update({
+    id: '/compare',
+    path: '/compare',
     getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
   } as any)
-const Char123LangChar125TTitleSlugPlayersPlayerSlugObjectifsIndexRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugObjectifsIndexRouteImport.update(
-    {
-      id: '/objectifs/',
-      path: '/objectifs/',
-      getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
-    } as any,
-  )
-const Char123LangChar125TTitleSlugPlayersPlayerSlugExplorerIndexRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugExplorerIndexRouteImport.update({
-    id: '/explorer/',
-    path: '/explorer/',
+const Char123LangChar125TTitleSlugPlayersPlayerSlugHomeRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugHomeRouteImport.update({
+    id: '/home',
+    path: '/home',
     getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
   } as any)
-const Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityIndexRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityIndexRouteImport.update(
-    {
-      id: '/community/',
-      path: '/community/',
-      getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
-    } as any,
-  )
+const Char123LangChar125TTitleSlugPlayersPlayerSlugMediaRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugMediaRouteImport.update({
+    id: '/media',
+    path: '/media',
+    getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
+  } as any)
+const Char123LangChar125TTitleSlugPlayersPlayerSlugNotificationsRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugNotificationsRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
+    getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
+  } as any)
+const Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRouteImport.update({
+    id: '/squad',
+    path: '/squad',
+    getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
+  } as any)
+const Char123LangChar125TTitleSlugPlayersPlayerSlugSynthesisRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugSynthesisRouteImport.update({
+    id: '/synthesis',
+    path: '/synthesis',
+    getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
+  } as any)
 const Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionIndexRoute =
   Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionIndexRouteImport.update(
     {
@@ -321,138 +280,11 @@ const Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionIndexRoute =
         Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRoute,
     } as any,
   )
-const Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTimeseriesRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTimeseriesRouteImport.update(
+const Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionCoachingRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionCoachingRouteImport.update(
     {
-      id: '/stats/timeseries',
-      path: '/stats/timeseries',
-      getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
-    } as any,
-  )
-const Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSynthesisRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSynthesisRouteImport.update(
-    {
-      id: '/stats/synthesis',
-      path: '/stats/synthesis',
-      getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
-    } as any,
-  )
-const Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSessionsRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSessionsRouteImport.update({
-    id: '/stats/sessions',
-    path: '/stats/sessions',
-    getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
-  } as any)
-const Char123LangChar125TTitleSlugPlayersPlayerSlugSquadSynergiesRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugSquadSynergiesRouteImport.update(
-    {
-      id: '/synergies',
-      path: '/synergies',
-      getParentRoute: () =>
-        Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRoute,
-    } as any,
-  )
-const Char123LangChar125TTitleSlugPlayersPlayerSlugSquadDynamiqueRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugSquadDynamiqueRouteImport.update(
-    {
-      id: '/dynamique',
-      path: '/dynamique',
-      getParentRoute: () =>
-        Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRoute,
-    } as any,
-  )
-const Char123LangChar125TTitleSlugPlayersPlayerSlugSquadContributionsRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugSquadContributionsRouteImport.update(
-    {
-      id: '/contributions',
-      path: '/contributions',
-      getParentRoute: () =>
-        Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRoute,
-    } as any,
-  )
-const Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresRelationsRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresRelationsRouteImport.update(
-    {
-      id: '/palmares/relations',
-      path: '/palmares/relations',
-      getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
-    } as any,
-  )
-const Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresPrestigeRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresPrestigeRouteImport.update(
-    {
-      id: '/palmares/prestige',
-      path: '/palmares/prestige',
-      getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
-    } as any,
-  )
-const Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdRouteImport.update(
-    {
-      id: '/matches/$matchId',
-      path: '/matches/$matchId',
-      getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
-    } as any,
-  )
-const Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityRelationsRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityRelationsRouteImport.update(
-    {
-      id: '/community/relations',
-      path: '/community/relations',
-      getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
-    } as any,
-  )
-const Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityPrestigeRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityPrestigeRouteImport.update(
-    {
-      id: '/community/prestige',
-      path: '/community/prestige',
-      getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
-    } as any,
-  )
-const Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityCompareRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityCompareRouteImport.update(
-    {
-      id: '/community/compare',
-      path: '/community/compare',
-      getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
-    } as any,
-  )
-const Char123LangChar125TTitleSlugPlayersPlayerSlugCareerSeasonPassRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugCareerSeasonPassRouteImport.update(
-    {
-      id: '/career/season-pass',
-      path: '/career/season-pass',
-      getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
-    } as any,
-  )
-const Char123LangChar125TTitleSlugPlayersPlayerSlugCareerMedalsRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugCareerMedalsRouteImport.update({
-    id: '/career/medals',
-    path: '/career/medals',
-    getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
-  } as any)
-const Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCommendationsRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCommendationsRouteImport.update(
-    {
-      id: '/career/commendations',
-      path: '/career/commendations',
-      getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
-    } as any,
-  )
-const Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCitationsRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCitationsRouteImport.update(
-    {
-      id: '/career/citations',
-      path: '/career/citations',
-      getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
-    } as any,
-  )
-const Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRealisationsRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRealisationsRouteImport.update(
-    {
-      id: '/realisations',
-      path: '/realisations',
+      id: '/coaching',
+      path: '/coaching',
       getParentRoute: () =>
         Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRoute,
     } as any,
@@ -466,13 +298,181 @@ const Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionObjectifsRoute =
         Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRoute,
     } as any,
   )
-const Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionCoachingRoute =
-  Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionCoachingRouteImport.update(
+const Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRealisationsRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRealisationsRouteImport.update(
     {
-      id: '/coaching',
-      path: '/coaching',
+      id: '/realisations',
+      path: '/realisations',
       getParentRoute: () =>
         Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRoute,
+    } as any,
+  )
+const Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCitationsRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCitationsRouteImport.update(
+    {
+      id: '/career/citations',
+      path: '/career/citations',
+      getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
+    } as any,
+  )
+const Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCommendationsRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCommendationsRouteImport.update(
+    {
+      id: '/career/commendations',
+      path: '/career/commendations',
+      getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
+    } as any,
+  )
+const Char123LangChar125TTitleSlugPlayersPlayerSlugCareerMedalsRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugCareerMedalsRouteImport.update({
+    id: '/career/medals',
+    path: '/career/medals',
+    getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
+  } as any)
+const Char123LangChar125TTitleSlugPlayersPlayerSlugCareerSeasonPassRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugCareerSeasonPassRouteImport.update(
+    {
+      id: '/career/season-pass',
+      path: '/career/season-pass',
+      getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
+    } as any,
+  )
+const Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityIndexRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityIndexRouteImport.update(
+    {
+      id: '/community/',
+      path: '/community/',
+      getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
+    } as any,
+  )
+const Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityCompareRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityCompareRouteImport.update(
+    {
+      id: '/community/compare',
+      path: '/community/compare',
+      getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
+    } as any,
+  )
+const Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityPrestigeRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityPrestigeRouteImport.update(
+    {
+      id: '/community/prestige',
+      path: '/community/prestige',
+      getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
+    } as any,
+  )
+const Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityRelationsRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityRelationsRouteImport.update(
+    {
+      id: '/community/relations',
+      path: '/community/relations',
+      getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
+    } as any,
+  )
+const Char123LangChar125TTitleSlugPlayersPlayerSlugExplorerIndexRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugExplorerIndexRouteImport.update({
+    id: '/explorer/',
+    path: '/explorer/',
+    getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
+  } as any)
+const Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdRouteImport.update(
+    {
+      id: '/matches/$matchId',
+      path: '/matches/$matchId',
+      getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
+    } as any,
+  )
+const Char123LangChar125TTitleSlugPlayersPlayerSlugObjectifsIndexRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugObjectifsIndexRouteImport.update(
+    {
+      id: '/objectifs/',
+      path: '/objectifs/',
+      getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
+    } as any,
+  )
+const Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresIndexRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresIndexRouteImport.update({
+    id: '/palmares/',
+    path: '/palmares/',
+    getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
+  } as any)
+const Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresPrestigeRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresPrestigeRouteImport.update(
+    {
+      id: '/palmares/prestige',
+      path: '/palmares/prestige',
+      getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
+    } as any,
+  )
+const Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresRelationsRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresRelationsRouteImport.update(
+    {
+      id: '/palmares/relations',
+      path: '/palmares/relations',
+      getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
+    } as any,
+  )
+const Char123LangChar125TTitleSlugPlayersPlayerSlugSquadIndexRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugSquadIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () =>
+      Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRoute,
+  } as any)
+const Char123LangChar125TTitleSlugPlayersPlayerSlugSquadContributionsRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugSquadContributionsRouteImport.update(
+    {
+      id: '/contributions',
+      path: '/contributions',
+      getParentRoute: () =>
+        Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRoute,
+    } as any,
+  )
+const Char123LangChar125TTitleSlugPlayersPlayerSlugSquadDynamiqueRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugSquadDynamiqueRouteImport.update(
+    {
+      id: '/dynamique',
+      path: '/dynamique',
+      getParentRoute: () =>
+        Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRoute,
+    } as any,
+  )
+const Char123LangChar125TTitleSlugPlayersPlayerSlugSquadSynergiesRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugSquadSynergiesRouteImport.update(
+    {
+      id: '/synergies',
+      path: '/synergies',
+      getParentRoute: () =>
+        Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRoute,
+    } as any,
+  )
+const Char123LangChar125TTitleSlugPlayersPlayerSlugStatsIndexRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugStatsIndexRouteImport.update({
+    id: '/stats/',
+    path: '/stats/',
+    getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
+  } as any)
+const Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSessionsRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSessionsRouteImport.update({
+    id: '/stats/sessions',
+    path: '/stats/sessions',
+    getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
+  } as any)
+const Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSynthesisRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSynthesisRouteImport.update(
+    {
+      id: '/stats/synthesis',
+      path: '/stats/synthesis',
+      getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
+    } as any,
+  )
+const Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTimeseriesRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTimeseriesRouteImport.update(
+    {
+      id: '/stats/timeseries',
+      path: '/stats/timeseries',
+      getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
     } as any,
   )
 const Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdReplayRoute =
@@ -898,60 +898,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/setup': {
-      id: '/setup'
-      path: '/setup'
-      fullPath: '/setup'
-      preLoaderRoute: typeof SetupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/register': {
-      id: '/register'
-      path: '/register'
-      fullPath: '/register'
-      preLoaderRoute: typeof RegisterRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/join': {
-      id: '/join'
-      path: '/join'
-      fullPath: '/join'
-      preLoaderRoute: typeof JoinRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/help': {
-      id: '/help'
-      path: '/help'
-      fullPath: '/help'
-      preLoaderRoute: typeof HelpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/groups': {
-      id: '/groups'
-      path: '/groups'
-      fullPath: '/groups'
-      preLoaderRoute: typeof GroupsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/changelog': {
-      id: '/changelog'
-      path: '/changelog'
-      fullPath: '/changelog'
-      preLoaderRoute: typeof ChangelogRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -961,11 +912,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/changelog': {
+      id: '/changelog'
+      path: '/changelog'
+      fullPath: '/changelog'
+      preLoaderRoute: typeof ChangelogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/groups': {
+      id: '/groups'
+      path: '/groups'
+      fullPath: '/groups'
+      preLoaderRoute: typeof GroupsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help': {
+      id: '/help'
+      path: '/help'
+      fullPath: '/help'
+      preLoaderRoute: typeof HelpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/join': {
+      id: '/join'
+      path: '/join'
+      fullPath: '/join'
+      preLoaderRoute: typeof JoinRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/setup': {
+      id: '/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof SetupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -975,88 +975,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/players/$': {
-      id: '/players/$'
-      path: '/players/$'
-      fullPath: '/players/$'
-      preLoaderRoute: typeof PlayersSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/onboarding/openspartan': {
-      id: '/onboarding/openspartan'
-      path: '/onboarding/openspartan'
-      fullPath: '/onboarding/openspartan'
-      preLoaderRoute: typeof OnboardingOpenspartanRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lab/charts': {
-      id: '/lab/charts'
-      path: '/lab/charts'
-      fullPath: '/lab/charts'
-      preLoaderRoute: typeof LabChartsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/titles': {
-      id: '/admin/titles'
-      path: '/titles'
-      fullPath: '/admin/titles'
-      preLoaderRoute: typeof AdminTitlesRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/system': {
-      id: '/admin/system'
-      path: '/system'
-      fullPath: '/admin/system'
-      preLoaderRoute: typeof AdminSystemRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/sync': {
-      id: '/admin/sync'
-      path: '/sync'
-      fullPath: '/admin/sync'
-      preLoaderRoute: typeof AdminSyncRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/management': {
-      id: '/admin/management'
-      path: '/management'
-      fullPath: '/admin/management'
-      preLoaderRoute: typeof AdminManagementRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/logs': {
-      id: '/admin/logs'
-      path: '/logs'
-      fullPath: '/admin/logs'
-      preLoaderRoute: typeof AdminLogsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/lab': {
-      id: '/admin/lab'
-      path: '/lab'
-      fullPath: '/admin/lab'
-      preLoaderRoute: typeof AdminLabRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/detections': {
-      id: '/admin/detections'
-      path: '/detections'
-      fullPath: '/admin/detections'
-      preLoaderRoute: typeof AdminDetectionsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/data-quality': {
-      id: '/admin/data-quality'
-      path: '/data-quality'
-      fullPath: '/admin/data-quality'
-      preLoaderRoute: typeof AdminDataQualityRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/data': {
-      id: '/admin/data'
-      path: '/data'
-      fullPath: '/admin/data'
-      preLoaderRoute: typeof AdminDataRouteImport
+    '/admin/access': {
+      id: '/admin/access'
+      path: '/access'
+      fullPath: '/admin/access'
+      preLoaderRoute: typeof AdminAccessRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/convergence': {
@@ -1066,12 +989,89 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminConvergenceRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/admin/access': {
-      id: '/admin/access'
-      path: '/access'
-      fullPath: '/admin/access'
-      preLoaderRoute: typeof AdminAccessRouteImport
+    '/admin/data': {
+      id: '/admin/data'
+      path: '/data'
+      fullPath: '/admin/data'
+      preLoaderRoute: typeof AdminDataRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/admin/data-quality': {
+      id: '/admin/data-quality'
+      path: '/data-quality'
+      fullPath: '/admin/data-quality'
+      preLoaderRoute: typeof AdminDataQualityRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/detections': {
+      id: '/admin/detections'
+      path: '/detections'
+      fullPath: '/admin/detections'
+      preLoaderRoute: typeof AdminDetectionsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/lab': {
+      id: '/admin/lab'
+      path: '/lab'
+      fullPath: '/admin/lab'
+      preLoaderRoute: typeof AdminLabRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/logs': {
+      id: '/admin/logs'
+      path: '/logs'
+      fullPath: '/admin/logs'
+      preLoaderRoute: typeof AdminLogsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/management': {
+      id: '/admin/management'
+      path: '/management'
+      fullPath: '/admin/management'
+      preLoaderRoute: typeof AdminManagementRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/sync': {
+      id: '/admin/sync'
+      path: '/sync'
+      fullPath: '/admin/sync'
+      preLoaderRoute: typeof AdminSyncRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/system': {
+      id: '/admin/system'
+      path: '/system'
+      fullPath: '/admin/system'
+      preLoaderRoute: typeof AdminSystemRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/titles': {
+      id: '/admin/titles'
+      path: '/titles'
+      fullPath: '/admin/titles'
+      preLoaderRoute: typeof AdminTitlesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/lab/charts': {
+      id: '/lab/charts'
+      path: '/lab/charts'
+      fullPath: '/lab/charts'
+      preLoaderRoute: typeof LabChartsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding/openspartan': {
+      id: '/onboarding/openspartan'
+      path: '/onboarding/openspartan'
+      fullPath: '/onboarding/openspartan'
+      preLoaderRoute: typeof OnboardingOpenspartanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/players/$': {
+      id: '/players/$'
+      path: '/players/$'
+      fullPath: '/players/$'
+      preLoaderRoute: typeof PlayersSplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/{-$lang}/t/$titleSlug': {
       id: '/{-$lang}/t/$titleSlug'
@@ -1087,60 +1087,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRouteImport
       parentRoute: typeof Char123LangChar125TTitleSlugRoute
     }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/synthesis': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/synthesis'
-      path: '/synthesis'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/synthesis'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSynthesisRouteImport
-      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
-    }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/squad': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad'
-      path: '/squad'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRouteImport
-      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
-    }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/notifications': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/notifications'
-      path: '/notifications'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/notifications'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugNotificationsRouteImport
-      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
-    }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/media': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/media'
-      path: '/media'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/media'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugMediaRouteImport
-      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
-    }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/home': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/home'
-      path: '/home'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/home'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugHomeRouteImport
-      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
-    }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/compare': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/compare'
-      path: '/compare'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/compare'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCompareRouteImport
-      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
-    }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/commendations': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/commendations'
-      path: '/commendations'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/commendations'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCommendationsRouteImport
-      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
-    }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/citations': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/citations'
-      path: '/citations'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/citations'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCitationsRouteImport
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension'
+      path: '/ascension'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRouteImport
       parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
     }
     '/{-$lang}/t/$titleSlug/players/$playerSlug/career_': {
@@ -1150,53 +1101,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerRouteImport
       parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
     }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension'
-      path: '/ascension'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRouteImport
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/citations': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/citations'
+      path: '/citations'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/citations'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCitationsRouteImport
       parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
     }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/'
-      path: '/stats'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsIndexRouteImport
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/commendations': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/commendations'
+      path: '/commendations'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/commendations'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCommendationsRouteImport
       parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
     }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/'
-      path: '/'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadIndexRouteImport
-      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRoute
-    }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/'
-      path: '/palmares'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresIndexRouteImport
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/compare': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/compare'
+      path: '/compare'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/compare'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCompareRouteImport
       parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
     }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/objectifs/': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/objectifs/'
-      path: '/objectifs'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/objectifs/'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugObjectifsIndexRouteImport
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/home': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/home'
+      path: '/home'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/home'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugHomeRouteImport
       parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
     }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/explorer/': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/explorer/'
-      path: '/explorer'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/explorer/'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugExplorerIndexRouteImport
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/media': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/media'
+      path: '/media'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/media'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugMediaRouteImport
       parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
     }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/community/': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/community/'
-      path: '/community'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/community/'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityIndexRouteImport
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/notifications': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/notifications'
+      path: '/notifications'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/notifications'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugNotificationsRouteImport
+      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
+    }
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/squad': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad'
+      path: '/squad'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRouteImport
+      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
+    }
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/synthesis': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/synthesis'
+      path: '/synthesis'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/synthesis'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSynthesisRouteImport
       parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
     }
     '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/': {
@@ -1206,123 +1164,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionIndexRouteImport
       parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRoute
     }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/timeseries': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/timeseries'
-      path: '/stats/timeseries'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/timeseries'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTimeseriesRouteImport
-      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
-    }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/synthesis': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/synthesis'
-      path: '/stats/synthesis'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/synthesis'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSynthesisRouteImport
-      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
-    }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/sessions': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/sessions'
-      path: '/stats/sessions'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/sessions'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSessionsRouteImport
-      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
-    }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies'
-      path: '/synergies'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadSynergiesRouteImport
-      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRoute
-    }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/dynamique': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/dynamique'
-      path: '/dynamique'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/dynamique'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadDynamiqueRouteImport
-      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRoute
-    }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions'
-      path: '/contributions'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadContributionsRouteImport
-      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRoute
-    }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/relations': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/relations'
-      path: '/palmares/relations'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/relations'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresRelationsRouteImport
-      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
-    }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/prestige': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/prestige'
-      path: '/palmares/prestige'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/prestige'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresPrestigeRouteImport
-      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
-    }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId'
-      path: '/matches/$matchId'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdRouteImport
-      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
-    }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/community/relations': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/community/relations'
-      path: '/community/relations'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/community/relations'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityRelationsRouteImport
-      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
-    }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/community/prestige': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/community/prestige'
-      path: '/community/prestige'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/community/prestige'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityPrestigeRouteImport
-      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
-    }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/community/compare': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/community/compare'
-      path: '/community/compare'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/community/compare'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityCompareRouteImport
-      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
-    }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/career/season-pass': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/season-pass'
-      path: '/career/season-pass'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/season-pass'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerSeasonPassRouteImport
-      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
-    }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/career/medals': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/medals'
-      path: '/career/medals'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/medals'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerMedalsRouteImport
-      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
-    }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/career/commendations': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/commendations'
-      path: '/career/commendations'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/commendations'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCommendationsRouteImport
-      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
-    }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations'
-      path: '/career/citations'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCitationsRouteImport
-      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
-    }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations'
-      path: '/realisations'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRealisationsRouteImport
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/coaching': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/coaching'
+      path: '/coaching'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/coaching'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionCoachingRouteImport
       parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRoute
     }
     '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/objectifs': {
@@ -1332,12 +1178,166 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionObjectifsRouteImport
       parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRoute
     }
-    '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/coaching': {
-      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/coaching'
-      path: '/coaching'
-      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/coaching'
-      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionCoachingRouteImport
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations'
+      path: '/realisations'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRealisationsRouteImport
       parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRoute
+    }
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations'
+      path: '/career/citations'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCitationsRouteImport
+      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
+    }
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/career/commendations': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/commendations'
+      path: '/career/commendations'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/commendations'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCommendationsRouteImport
+      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
+    }
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/career/medals': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/medals'
+      path: '/career/medals'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/medals'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerMedalsRouteImport
+      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
+    }
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/career/season-pass': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/season-pass'
+      path: '/career/season-pass'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/season-pass'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerSeasonPassRouteImport
+      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
+    }
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/community/': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/community/'
+      path: '/community'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/community/'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityIndexRouteImport
+      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
+    }
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/community/compare': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/community/compare'
+      path: '/community/compare'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/community/compare'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityCompareRouteImport
+      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
+    }
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/community/prestige': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/community/prestige'
+      path: '/community/prestige'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/community/prestige'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityPrestigeRouteImport
+      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
+    }
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/community/relations': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/community/relations'
+      path: '/community/relations'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/community/relations'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityRelationsRouteImport
+      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
+    }
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/explorer/': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/explorer/'
+      path: '/explorer'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/explorer/'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugExplorerIndexRouteImport
+      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
+    }
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId'
+      path: '/matches/$matchId'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdRouteImport
+      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
+    }
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/objectifs/': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/objectifs/'
+      path: '/objectifs'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/objectifs/'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugObjectifsIndexRouteImport
+      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
+    }
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/'
+      path: '/palmares'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresIndexRouteImport
+      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
+    }
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/prestige': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/prestige'
+      path: '/palmares/prestige'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/prestige'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresPrestigeRouteImport
+      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
+    }
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/relations': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/relations'
+      path: '/palmares/relations'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/relations'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresRelationsRouteImport
+      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
+    }
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/'
+      path: '/'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadIndexRouteImport
+      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRoute
+    }
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions'
+      path: '/contributions'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadContributionsRouteImport
+      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRoute
+    }
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/dynamique': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/dynamique'
+      path: '/dynamique'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/dynamique'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadDynamiqueRouteImport
+      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRoute
+    }
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies'
+      path: '/synergies'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadSynergiesRouteImport
+      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRoute
+    }
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/'
+      path: '/stats'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsIndexRouteImport
+      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
+    }
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/sessions': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/sessions'
+      path: '/stats/sessions'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/sessions'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSessionsRouteImport
+      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
+    }
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/synthesis': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/synthesis'
+      path: '/stats/synthesis'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/synthesis'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSynthesisRouteImport
+      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
+    }
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/timeseries': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/timeseries'
+      path: '/stats/timeseries'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/timeseries'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTimeseriesRouteImport
+      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
     }
     '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/replay': {
       id: '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/replay'
