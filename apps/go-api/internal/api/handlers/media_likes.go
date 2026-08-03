@@ -114,12 +114,6 @@ func (h *MediaHandler) resolveLikerIdentity(ctx context.Context, playerSlug stri
 	return nil
 }
 
-// headerRetryAfter : nom de l'en-tête 503 « réessayer dans N s ». Constante de
-// paquet posée au passage du ratchet goconst (10e occurrence du littéral) — la
-// migration des sites antérieurs (home, engagement, match_favorite…) est une
-// passe post-lot consignée au plan v7.3 lot 2 (règle CLAUDE.md n°6).
-const headerRetryAfter = "Retry-After"
-
 // mediaLikeError traduit une erreur de service en erreur HTTP : 503 + Retry-After
 // sur base occupée (dblease), 400/404 sur erreur métier typée, 500 sinon.
 func mediaLikeError(err error) error {

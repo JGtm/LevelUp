@@ -128,7 +128,7 @@ func (h *HomeHandler) handleGetHomePage(ctx context.Context, in *homePageInput) 
 			return nil, huma.ErrorWithHeaders(
 				humacore.NewError(http.StatusServiceUnavailable, "home_page_db_recovering",
 					"page d'accueil temporairement indisponible — connexion DB en cours de récupération"),
-				http.Header{"Retry-After": []string{"5"}},
+				http.Header{headerRetryAfter: []string{"5"}},
 			)
 		}
 		// Contention de swap : le shared reader n'a pas pu être obtenu dans le budget
@@ -138,7 +138,7 @@ func (h *HomeHandler) handleGetHomePage(ctx context.Context, in *homePageInput) 
 			return nil, huma.ErrorWithHeaders(
 				humacore.NewError(http.StatusServiceUnavailable, "home_page_db_busy",
 					"page d'accueil temporairement indisponible — base occupée par une synchronisation"),
-				http.Header{"Retry-After": []string{"2"}},
+				http.Header{headerRetryAfter: []string{"2"}},
 			)
 		}
 		return nil, humacore.NewError(http.StatusInternalServerError, "home_page_error", "erreur chargement page d'accueil")

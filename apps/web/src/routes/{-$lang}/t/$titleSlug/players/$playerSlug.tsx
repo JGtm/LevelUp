@@ -71,9 +71,10 @@ function PlayerLayout() {
   // résolu séparément depuis SquadLayout (qui appelle aussi useFiltersResolve).
   useFiltersResolve(playerSlug, useSoloFilterStore)
 
-  // Atterrissage sur la dernière session : piloté par l'état (resolvedContext),
-  // tant que rien n'est épinglé manuellement. Le snap squad est monté côté
-  // SquadLayout (où le store squad est résolu). Cf. useFollowLatestSession.
+  // Atterrissage sur la dernière session SOLO : piloté par l'état (resolvedContext),
+  // tant que rien n'est épinglé manuellement. C'est le SEUL montage du hook dans
+  // l'app : côté escouade, l'ancrage est piloté par la composition (effet de
+  // ré-ancrage de SquadLayout), pas par ce hook. Cf. useFollowLatestSession.
   useFollowLatestSession(playerSlug, useSoloFilterStore, 'solo')
 
   // À la fin d'un sync (transition activeSyncJobId string → null), invalider la
