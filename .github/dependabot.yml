@@ -26,12 +26,6 @@ updates:
         update-types:
           - "minor"
           - "patch"
-    ignore:
-      # echarts 5->6 : bump majeur reporte a v7.3 (decision utilisateur, 2026-07-25).
-      # Alerte GHSA-fgmj-fm8m-jvvx / CVE-2026-45249 (medium, XSS) — patch = 6.1.0.
-      # RETRAIT de cette entree : au chantier v7.3 (critere : npm ls echarts >= 6.1.0).
-      - dependency-name: "echarts"
-        update-types: ["version-update:semver-major"]
 
   # Backend (Go modules) — apps/go-api
   - package-ecosystem: "gomod"
