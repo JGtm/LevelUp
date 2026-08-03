@@ -71,6 +71,20 @@ en = "Grenade"
 fr = "Capacités spartanes"
 en = "Spartan abilities"
 
+# Classes d'ENGIN (V73-3.2) : seul le nom de la CLASSE est traduit ici (il est
+# title-agnostic). Les libellés du niveau 2 nomment CHAQUE engin (Warthog, Ghost,
+# Tourelle Gauss…) et viennent du TOML du titre —
+# config/titles/{slug}/mappings/weapon_names.toml, servi par l'API dans
+# FragRoleEntry.label. Les recopier ici dupliquerait ce TOML et ferait enfler ce
+# manifeste partagé à chaque titre ajouté.
+[frags.class.vehicle]
+fr = "Véhicule"
+en = "Vehicle"
+
+[frags.class.turret]
+fr = "Tourelle"
+en = "Turret"
+
 [frags.class.unattributed]
 fr = "Non attribué"
 en = "Unattributed"

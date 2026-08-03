@@ -9,6 +9,7 @@ export const mediaManifest = {
   "media.group.unknown_mode": { fr: "Mode inconnu", en: "Unknown mode" },
   "media.group.unknown_owner": { fr: "Auteur inconnu", en: "Unknown author" },
   "media.group.unknown_session": { fr: "Session inconnue", en: "Unknown session" },
+  "media.like.error": { fr: "Impossible d'enregistrer ce like.", en: "Could not save this like." },
   "media.nav_context_label": { fr: "Galerie médias", en: "Media gallery" },
   "media.page.empty_state": { fr: "Aucun média disponible pour ces filtres.", en: "No media available for the current filters." },
   "media.page.error_prefix": { fr: "Erreur :", en: "Error:" },

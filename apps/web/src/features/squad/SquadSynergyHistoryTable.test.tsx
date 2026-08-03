@@ -46,6 +46,7 @@ function setTitleCaps(caps: string[]) {
         provides_team_mmr: true,
         provides_max_killing_spree: true,
         offensive_conversion_p80: 0.9,
+        defensive_resistance_p80: 1.65,
       },
     ],
   })

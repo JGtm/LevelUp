@@ -470,7 +470,13 @@ export const handlers = [
     HttpResponse.json({ count: 0, by_category: {} }),
   ),
 
-  // Field mappings i18n (réutilisé par toutes les pages via useFieldMappings)
+  // Field mappings i18n (réutilisé par toutes les pages via useFieldMappings).
+  //
+  // `assets.cadence` reflète config/titles/{slug}/mappings/assets.toml : depuis la
+  // suppression des dictionnaires de repli (v7.3 lot 2, item 3.3), c'est l'UNIQUE
+  // source des libellés de cadence. Un mapping vide ferait afficher les clés
+  // brutes ("daily"), ce qui n'est le comportement d'aucun environnement réel.
+  // Les autres sections restent vides tant qu'aucun test n'en dépend.
   http.get(p('/titles/:slug/field-mappings'), ({ params, request }) => {
     const url = new URL(request.url)
     return HttpResponse.json({
@@ -478,7 +484,14 @@ export const handlers = [
       schema_version: 1,
       locale: url.searchParams.get('locale') ?? 'fr',
       fields: {},
-      assets: {},
+      assets: {
+        cadence: {
+          daily: { label: 'Quotidien', display_order: 10 },
+          weekly: { label: 'Hebdomadaire', display_order: 20 },
+          monthly: { label: 'Mensuel', display_order: 30 },
+          free: { label: 'Libre', display_order: 40 },
+        },
+      },
       outcomes: {},
     })
   }),

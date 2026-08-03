@@ -25,6 +25,8 @@
 import { useMemo, type ReactNode } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
+import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { FdaGapTooltipText } from '@/components/charts/FdaGapTooltipText'
 import { resolveToken } from '@/lib/accessibility'
 import {
   getEChartsThemeColors,
@@ -33,6 +35,7 @@ import {
   getTooltipBase,
   CHART_BG,
   escapeHtml,
+  hoverRevealSymbol,
 } from '@/components/charts/_utils'
 import { cumulativeFdaGap, meanFdaGap } from '@/lib/charts/cumulativeFdaGap'
 import { divergentZeroGradient } from '@/lib/charts/divergentZeroGradient'
@@ -124,7 +127,7 @@ export function buildFdaGapCumulativeOption(
         type: 'line',
         name: labels.series,
         data: values,
-        showSymbol: false,
+        ...hoverRevealSymbol(tc.text), // color-allow: point neutre, l'aire porte le dégradé
         // Ligne + aire divergentes (vert = cumul au-dessus de l'attendu, rouge
         // en dessous), aire ancrée à 0 (même dégradé, bascule pile sur 0).
         lineStyle: { width: 2, color: gradient },
@@ -144,7 +147,7 @@ export function buildFdaGapCumulativeOption(
         type: 'line',
         name: labels.expected,
         data: expectedValues,
-        symbol: 'none',
+        ...hoverRevealSymbol(expectedColor, 6),
         connectNulls: false,
         lineStyle: { width: 1, color: expectedColor, type: 'dashed' },
       },
@@ -205,9 +208,16 @@ export function TimeseriesFdaGapTrend({
     </div>
   )
 
+  // Aide ⓘ accolée au titre : texte partagé avec l'instance Sessions
+  // (`common.charts.fda_gap_tooltip`) — le graphe n'en avait aucune.
   return (
     <ChartFromOption
-      title={title}
+      title={
+        <span className="flex items-center gap-1.5">
+          {title}
+          <InfoTooltip content={<FdaGapTooltipText locale={locale === 'en' ? 'en' : 'fr'} />} />
+        </span>
+      }
       option={option}
       height={height}
       emptyMessage={emptyMessage}

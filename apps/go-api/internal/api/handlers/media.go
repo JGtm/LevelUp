@@ -13,6 +13,7 @@
 //	GET  /api/v1/players/{player_slug}/media/match-candidates  → MediaMatchCandidatesResponse (Huma)
 //	POST /api/v1/players/{player_slug}/media/associate         → MediaAssociateResponse (Huma)
 //	GET  /api/v1/players/{player_slug}/media/authors           → MediaAuthorsResponse (Huma)
+//	DELETE /api/v1/players/{player_slug}/media                 → MediaDeleteResponse (Huma, item 3.1)
 //	POST /api/v1/players/{player_slug}/media/upload            → UploadResult (multipart, reste chi)
 //	GET  /api/v1/players/{player_slug}/media/files/*           → fichier servi depuis captures (reste chi)
 package handlers
@@ -21,10 +22,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"log/slog"
 	"net/http"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -33,12 +32,10 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/api/humacore"
-	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/notifications"
-	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/mediaaudio"
 	"levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
@@ -56,6 +53,7 @@ func (h *MediaHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	huma.Get(api, "/media/match-candidates", h.handleGetMediaMatchCandidates, humacore.Op("getMediaMatchCandidates", "Candidats de match pour associer un média", "media"))
 	huma.Post(api, "/media/associate", h.handlePostMediaAssociate, humacore.Op("postMediaAssociate", "Associe un média à un match", "media"))
 	huma.Get(api, "/media/authors", h.handleGetMediaAuthors, humacore.Op("getMediaAuthors", "Liste des auteurs de médias visibles pour ce joueur", "media"))
+	huma.Delete(api, "/media", h.handleDeleteMedia, humacore.Op("deleteMedia", "Supprime définitivement un média (propriétaire ou admin)", "media"))
 	huma.Get(api, "/media/audio-config", h.handleGetMediaAudioConfig, humacore.Op("getMediaAudioConfig", "Réglage des pistes audio des médias du joueur", "media"))
 	huma.Put(api, "/media/audio-config", h.handlePutMediaAudioConfig, humacore.Op("putMediaAudioConfig", "Définit le réglage des pistes audio des médias du joueur", "media"))
 }
@@ -159,6 +157,7 @@ type MediaHandler struct {
 	recipientResolver MediaRecipientResolver      // optionnel : fan-out aux autres joueurs
 	demoMode          bool                        // true = upload figé (vitrine publique)
 	isProduction      bool                        // défaut de rétention source (env LEVELUP_ENV=production)
+	authEnforced      bool                        // true = multi-user authentifié (like sans session refusé)
 }
 
 // NewMediaHandler crée un MediaHandler.
@@ -189,6 +188,17 @@ func (h *MediaHandler) WithDemoMode(demo bool) *MediaHandler {
 // isProd). Sans appel : false (conserver le source — défaut sûr hors prod).
 func (h *MediaHandler) WithProduction(isProd bool) *MediaHandler {
 	h.isProduction = isProd
+	return h
+}
+
+// WithAuthEnforced déclare que l'authentification est APPLIQUÉE sur cette
+// instance (multi-utilisateur : ni démo, ni auth_mode=none). Dans ce mode, un
+// like sans joueur courant en session est refusé (401 like_requires_session)
+// au lieu d'être écrit comme like anonyme non attribuable — cf. garde
+// anti-silence de handlePatchMediaLike. Sans appel : false (comportement
+// mono-utilisateur historique conservé).
+func (h *MediaHandler) WithAuthEnforced(enforced bool) *MediaHandler {
+	h.authEnforced = enforced
 	return h
 }
 
@@ -305,124 +315,6 @@ func (h *MediaHandler) handleGetMediaLibrary(ctx context.Context, in *mediaLibra
 	h.transformMediaURLs(in.PlayerSlug, resp.Items.Items)
 
 	return &mediaLibraryOutput{Body: resp}, nil
-}
-
-// PatchMediaLike persiste le like/unlike d'un média.
-// PATCH /api/v1/players/{player_slug}/media/likes
-func (h *MediaHandler) handlePatchMediaLike(ctx context.Context, in *mediaLikeInput) (*mediaLikeOutput, error) {
-	svc, err := h.newSvc(ctx, in.PlayerSlug)
-	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
-	}
-
-	var req domain.MediaLikeRequest
-	if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
-	}
-
-	// Le frontend reçoit les file_path déjà transformés en URL HTTP
-	// (cf. transformMediaURLs / filePathToURL). Quand il rejoue ce file_path
-	// dans une mutation (like, réassociation), on doit reverser la transformation
-	// vers le chemin absolu de stockage tel que présent en DB.
-	rawPath := req.FilePath
-	req.FilePath = h.urlToFilePath(in.PlayerSlug, req.FilePath)
-	slog.DebugContext(ctx, "media_like: path resolved",
-		"slug", in.PlayerSlug, "raw", rawPath, "resolved", req.FilePath)
-
-	// Auto-injecter le liker depuis la session si absent du body.
-	// Sans liker_slug, le service ne peuple pas media_likes (table partagée
-	// entre joueurs) → les badges "♥ Alice et Bob" ne s'affichent pas.
-	if req.LikerSlug == "" {
-		if sess := middleware.GetSession(ctx); sess != nil && sess.CurrentPlayerSlug != nil {
-			req.LikerSlug = *sess.CurrentPlayerSlug
-			if req.LikerGamertag == "" {
-				req.LikerGamertag = h.resolveLikerGamertag(ctx, *sess.CurrentPlayerSlug)
-			}
-		}
-	}
-
-	resp, err := svc.SetMediaLike(ctx, req)
-	if err != nil {
-		if errors.Is(err, dblease.ErrDBLocked) {
-			return nil, huma.ErrorWithHeaders(
-				humacore.NewError(http.StatusServiceUnavailable, "db_busy", "database is currently busy, please retry"),
-				http.Header{"Retry-After": []string{"5"}},
-			)
-		}
-		var apiErr *domain.APIError
-		if errors.As(err, &apiErr) {
-			switch apiErr.Code {
-			case "bad_request":
-				return nil, humacore.NewError(http.StatusBadRequest, apiErr.Code, apiErr.Message)
-			case "not_found":
-				return nil, humacore.NewError(http.StatusNotFound, apiErr.Code, apiErr.Message)
-			}
-		}
-		return nil, humacore.NewError(http.StatusInternalServerError, "media_like_error", err.Error())
-	}
-
-	out := &mediaLikeOutput{Body: resp}
-	BumpMediaFeedVersion()
-
-	// Notification au owner si quelqu'un d'autre a liké son média.
-	if req.Liked && req.LikerSlug != "" {
-		h.emitMediaLiked(ctx, req.FilePath, req.LikerSlug, req.LikerGamertag)
-	}
-	return out, nil
-}
-
-// emitMediaLiked notifie le owner d'un média quand quelqu'un d'autre le like.
-// Le owner_slug est déduit du file_path (.../Captures/<slug>/file.ext).
-// Silent fail si notifierFor absent, liker == owner, ou owner indéterminable.
-func (h *MediaHandler) emitMediaLiked(ctx context.Context, filePath, likerSlug, likerGamertag string) {
-	if h.notifierFor == nil {
-		return
-	}
-	ownerSlug := ownerSlugFromFilePath(filePath)
-	if ownerSlug == "" || ownerSlug == likerSlug {
-		return
-	}
-	em, err := h.notifierFor(ctx, ownerSlug)
-	if err != nil || em == nil {
-		return
-	}
-	displayName := likerGamertag
-	if displayName == "" {
-		displayName = likerSlug
-	}
-	// Titre ambiant de la requête (like) — le média liké appartient à ce titre.
-	titleSlug := ctxkeys.TitleSlug(ctx)
-	_ = em.Emit(ctx, notifications.EmitInput{
-		Category:    notifications.CategoryMediaLiked,
-		Severity:    notifications.SeverityInfo,
-		TitleKey:    "notif.media_liked.title",
-		BodyKey:     "notif.media_liked.body",
-		Params:      map[string]any{"actor_name": displayName},
-		TargetRoute: notifications.PlayerTargetRoute(titleSlug, ownerSlug, "media"),
-		Actor:       &notifications.Actor{Name: displayName},
-		Source:      "media_handler",
-	})
-}
-
-// ownerSlugFromFilePath extrait le slug du joueur propriétaire depuis le chemin.
-// Conventions reconnues :
-//   - .../Captures/<slug>/file.ext         (capturesBase utilisateur, ex. Windows Captures)
-//   - .../players/<slug>/captures/file.ext (chemin interne data/)
-//
-// Retourne "" si la convention n'est pas détectée.
-func ownerSlugFromFilePath(filePath string) string {
-	clean := filepath.Clean(filePath)
-	parts := strings.Split(clean, string(filepath.Separator))
-	for i := 0; i < len(parts)-1; i++ {
-		if strings.EqualFold(parts[i], "Captures") && i+1 < len(parts)-1 {
-			return parts[i+1]
-		}
-		if parts[i] == "captures" && i > 0 && i+1 < len(parts) {
-			// .../<slug>/captures/file.ext → slug est avant
-			return parts[i-1]
-		}
-	}
-	return ""
 }
 
 // PostUploadMedia reçoit des fichiers via multipart/form-data, les sauvegarde

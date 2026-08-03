@@ -2,7 +2,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
 import { OutcomeSequenceTape, type OutcomeSequenceLabels } from './OutcomeSequenceTape'
-import { asDominance, matchIndexAtX, toRuns, type OutcomePoint, type Run } from './outcomeSequence'
+import {
+  asDominance,
+  clusterDominanceNotches,
+  matchIndexAtX,
+  notchCoreWidth,
+  notchGutterWidth,
+  toRuns,
+  type DominanceValue,
+  type OutcomePoint,
+  type Run,
+} from './outcomeSequence'
 
 // Mock du wrapper ECharts (canvas absent en jsdom) : on capture les props passées
 // pour vérifier le câblage `onEvents`/`onChartReady` selon la présence de la prop.
@@ -140,12 +150,82 @@ describe('OutcomeSequenceTape — handleClick (résolution du match)', () => {
   })
 })
 
-// ─── F1 — marqueur de dominance ─────────────────────────────────────────────
+// ─── Encoches de dominance (v7.3 lot 2, item 3.5) ───────────────────────────
 //
 // Le drapeau est OPTIONNEL : les consommateurs qui ne le fournissent pas doivent
 // garder un rendu strictement identique (même exigence que `onMatchClick`).
 
-type RenderChild = { type: string; style?: Record<string, unknown> }
+function flagged(i: number, dominance?: DominanceValue): OutcomePoint {
+  return { outcome: 'win', matchId: `m${i}`, dominance }
+}
+
+describe('encoches de dominance — géométrie (helpers purs)', () => {
+  it('cœur = perMatchW × 0,5, borné à [1,8 ; 5] px', () => {
+    expect(notchCoreWidth(6)).toBe(3) // facteur 0,5 dans la bande utile
+    expect(notchCoreWidth(8)).toBe(4)
+    expect(notchCoreWidth(3.6)).toBe(1.8) // pile sur le plancher
+    expect(notchCoreWidth(2)).toBe(1.8) // sous le plancher → écrêté
+    expect(notchCoreWidth(0)).toBe(1.8)
+    expect(notchCoreWidth(10)).toBe(5) // pile sur le plafond
+    expect(notchCoreWidth(400)).toBe(5) // au-dessus → écrêté
+  })
+
+  it('gouttière 1 px, amincie à 0,75 px sous 4 px/match', () => {
+    expect(notchGutterWidth(20)).toBe(1)
+    expect(notchGutterWidth(4)).toBe(1) // borne inclusive
+    expect(notchGutterWidth(3.9)).toBe(0.75)
+    expect(notchGutterWidth(0.5)).toBe(0.75)
+  })
+})
+
+describe('clusterDominanceNotches — fusion des encoches voisines', () => {
+  it('aucun drapeau → aucune encoche', () => {
+    expect(clusterDominanceNotches([flagged(0), flagged(1)], 20)).toEqual([])
+  })
+
+  it('densité confortable → une encoche par match, drapeau conservé', () => {
+    const notches = clusterDominanceNotches([flagged(0, 1), flagged(1), flagged(2, 3)], 20)
+    expect(notches).toEqual([
+      { center: 0.5, flag: 1, size: 1 },
+      { center: 2.5, flag: 3, size: 1 },
+    ])
+  })
+
+  it('pas de fusion juste au-dessus du seuil (2,1 px/match)', () => {
+    const notches = clusterDominanceNotches([flagged(0, 1), flagged(1, 1)], 2.1)
+    expect(notches).toHaveLength(2)
+  })
+
+  it('fusion sous ~2 px/match, MÊME drapeau → couleur conservée', () => {
+    const notches = clusterDominanceNotches([flagged(0, 3), flagged(1, 3)], 2)
+    expect(notches).toEqual([{ center: 1, flag: 3, size: 2 }])
+  })
+
+  it('fusion de drapeaux MÊLÉS → neutre (flag null), aucun drapeau élu au hasard', () => {
+    const notches = clusterDominanceNotches([flagged(0, 1), flagged(1, 4)], 1)
+    expect(notches).toEqual([{ center: 1, flag: null, size: 2 }])
+  })
+
+  it('deux groupes assez éloignés restent deux encoches distinctes', () => {
+    const matches = [flagged(0, 1), flagged(1, 1), flagged(2), flagged(3), flagged(4), flagged(5, 2)]
+    // Empreinte à 1 px/match = 1,8 + 2×0,75 = 3,3 px ; l'écart 1→5 vaut 4 px.
+    const notches = clusterDominanceNotches(matches, 1)
+    expect(notches).toEqual([
+      { center: 1, flag: 1, size: 2 },
+      { center: 5.5, flag: 2, size: 1 },
+    ])
+  })
+
+  it('densité dégénérée (0 px/match) → tout fusionne, pas de division par zéro', () => {
+    // 10 matchs, drapeaux aux extrémités : à 0 px/match ils occupent le même pixel.
+    const matches = Array.from({ length: 10 }, (_, i) =>
+      flagged(i, i === 0 || i === 9 ? 1 : undefined),
+    )
+    expect(clusterDominanceNotches(matches, 0)).toEqual([{ center: 5, flag: 1, size: 2 }])
+  })
+})
+
+type RenderChild = { type: string; shape?: Record<string, number>; style?: Record<string, unknown> }
 
 function renderChildren(
   matches: OutcomePoint[],
@@ -190,29 +270,42 @@ describe('OutcomeSequenceTape — dominance', () => {
     expect(asDominance(9)).toBeUndefined()
   })
 
-  it('dessine un losange par match porteur d’un drapeau (largeur suffisante)', () => {
-    const children = renderChildren(
-      [
-        { outcome: 'win', matchId: 'm1', dominance: 1 },
-        { outcome: 'win', matchId: 'm2' },
-        { outcome: 'win', matchId: 'm3', dominance: 3 },
-      ],
-      { pxPerMatch: 20 },
-    )
-    const polygons = children.filter((c) => c.type === 'polygon')
-    expect(polygons).toHaveLength(2)
-  })
+  // La bande elle-même est le PREMIER rect ; chaque encoche en ajoute deux
+  // (gouttière puis cœur). Aucun `polygon` n'est plus produit (fin des losanges).
+  const notchRects = (children: RenderChild[]) => children.slice(1).filter((c) => c.type === 'rect')
 
-  it('n’affiche aucun losange sous le seuil de densité (bande trop serrée)', () => {
-    const children = renderChildren(
-      [{ outcome: 'win', matchId: 'm1', dominance: 1 }],
-      { pxPerMatch: 4 },
-    )
+  it('dessine une gouttière + un cœur par match porteur d’un drapeau', () => {
+    const children = renderChildren([flagged(1, 1), flagged(2), flagged(3, 3)], { pxPerMatch: 20 })
     expect(children.filter((c) => c.type === 'polygon')).toHaveLength(0)
+    const rects = notchRects(children)
+    expect(rects).toHaveLength(4)
+    // Gouttière (1 px de chaque côté à 20 px/match) plus large que le cœur (5 px).
+    expect(rects[0].shape?.width).toBe(7)
+    expect(rects[1].shape?.width).toBe(5)
+    // Encoche TRAVERSANTE : 14 px de bande + 2 × 3 px de dépassement.
+    expect(rects[0].shape?.height).toBe(20)
+    expect(rects[1].shape?.height).toBe(20)
+    // Gouttière et cœur sont concentriques.
+    const gutterMid = (rects[0].shape as { x: number; width: number })
+    const coreMid = (rects[1].shape as { x: number; width: number })
+    expect(gutterMid.x + gutterMid.width / 2).toBeCloseTo(coreMid.x + coreMid.width / 2, 6)
   })
 
-  it('consommateur SANS drapeau → aucun losange (non-régression)', () => {
+  it('le seuil dur de 6 px/match a DISPARU : encoche dessinée à 4 px comme à 1 px', () => {
+    const dense = renderChildren([flagged(1, 1), flagged(2), flagged(3)], { pxPerMatch: 4 })
+    expect(notchRects(dense)).toHaveLength(2)
+    const denser = renderChildren([flagged(1, 1), flagged(2), flagged(3)], { pxPerMatch: 1 })
+    expect(notchRects(denser)).toHaveLength(2)
+  })
+
+  it('bande très serrée : deux drapeaux voisins fusionnent en UNE encoche', () => {
+    const children = renderChildren([flagged(1, 1), flagged(2, 1), flagged(3)], { pxPerMatch: 1 })
+    expect(notchRects(children)).toHaveLength(2)
+  })
+
+  it('consommateur SANS drapeau → aucune encoche (non-régression)', () => {
     const children = renderChildren([pt('a'), pt('b')], { pxPerMatch: 20 })
+    expect(notchRects(children)).toHaveLength(0)
     expect(children.filter((c) => c.type === 'polygon')).toHaveLength(0)
   })
 

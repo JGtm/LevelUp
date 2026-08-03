@@ -35,6 +35,8 @@ export const FRAG_CLASS_ORDER = [
   'melee',
   'grenade',
   'spartan_ability',
+  'vehicle',
+  'turret',
   'unattributed',
 ] as const
 
@@ -49,7 +51,14 @@ export const FRAG_CLASS_UNATTRIBUTED: FragClassKey = 'unattributed'
  * MatchAntagonistChart. Le résidu prend un neutre divergent.
  *
  * Rappel des teintes sous la palette DÉFAUT (pour lecture) : shoulder=cyan,
- * sidearm=émeraude, heavy=violet, melee=rose, grenade=ambre, spartan=indigo.
+ * sidearm=émeraude, heavy=violet, melee=rose, grenade=ambre, spartan=indigo,
+ * vehicle=indigo profond, turret=orange brûlé.
+ *
+ * Les tokens de véhicule/tourelle (V73-3.2) empruntent à d'autres gammes — comme le
+ * font déjà heavy (narrative-*) et shoulder (perf-tier-*) : le critère du mapping est
+ * la DISTANCE PERCEPTUELLE, pas l'appartenance à une gamme. Cette paire est celle qui
+ * maximise le pire ΔE all-pairs parmi les tokens libres (16,1 sur la palette défaut
+ * comme sur Okabe-Ito), les deux classes étant adjacentes dans l'ordre canonique.
  */
 export const FRAG_CLASS_TOKENS: Record<FragClassKey, SemanticToken> = {
   shoulder: 'perf-tier-2', // cyan
@@ -58,6 +67,8 @@ export const FRAG_CLASS_TOKENS: Record<FragClassKey, SemanticToken> = {
   melee: 'chart-series-8', // rose
   grenade: 'chart-series-7', // ambre
   spartan_ability: 'compare-a', // indigo
+  vehicle: 'chart-series-5', // indigo profond
+  turret: 'narrative-debacle', // orange brûlé
   unattributed: 'divergent-neutral', // neutre (résidu)
 }
 

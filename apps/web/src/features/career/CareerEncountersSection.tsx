@@ -52,8 +52,9 @@ function compareEncounters(a: EncounterDTO, b: EncounterDTO, key: EncounterSortK
 }
 
 function EncounterTable({ items }: { items: EncounterDTO[] }) {
-  // Phase D plan multi-titres : libellés métier issus du backend TOML avec
-  // fallback gracieux sur les valeurs FR locales si MULTI_TITLE_API_ENABLED off.
+  // Phase D plan multi-titres : libellés métier issus du backend TOML, avec
+  // repli sur les valeurs FR locales si la réponse manque (le flag serveur qui
+  // pouvait éteindre l'endpoint a été retiré le 2026-08-02).
   const { data: fieldMappings } = useFieldMappings()
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CareerManifestKey) => formatMessage(careerManifest, key, locale)

@@ -37,7 +37,7 @@ import { tokenCssVar } from '@/lib/accessibility'
 import { getOutcomeColor, outcomeKey } from '@/lib/outcome-color'
 import { formatDate, formatDurationMinSec } from '@/lib/formatters'
 import { useCapability } from '@/lib/capabilities/capabilities'
-import { HeaderInfoTooltip } from '@/lib/table/columnMeta'
+import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 import { getSquadText } from './i18n'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { buildWaypointMatchUrl, waypointLogoSrc } from '@/lib/match-nav/waypointUrl'
@@ -58,8 +58,12 @@ const HISTORY_DATE_OPTS: Intl.DateTimeFormatOptions = {
 }
 
 // Classe des cellules d'en-tête (inchangée par le tri — I16).
+// Rembourrage aligné sur ExplorerMatchesTable (V73-L2 2.4b) : ce tableau était le
+// seul à `px-3`, soit 4 px de plus PAR CÔTÉ et par colonne (13 colonnes → ~100 px
+// de largeur inutile). `whitespace-nowrap` conservé sur l'en-tête : la colonne ne
+// peut pas descendre sous la largeur de son libellé, aucun libellé n'est cassé.
 const HISTORY_TH_CLASS =
-  'px-3 py-2 text-left whitespace-nowrap text-xs font-medium text-muted-foreground border-r border-border last:border-r-0'
+  'px-2 py-2 text-left whitespace-nowrap text-xs font-medium text-muted-foreground border-r border-border last:border-r-0'
 
 /** aria-sort du <th> pour un état de tri TanStack (I16, miroir ExplorerMatchesTable). */
 function sortAriaValue(dir: false | 'asc' | 'desc'): 'ascending' | 'descending' | 'none' {
@@ -387,17 +391,16 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
                   if (!h.column.getCanSort()) {
                     return (
                       <th key={h.id} className={HISTORY_TH_CLASS}>
-                        <span className="inline-flex items-center gap-1">
+                        <HeaderLabelTooltip text={tip} focusable>
                           {content}
-                          <HeaderInfoTooltip text={tip} />
-                        </span>
+                        </HeaderLabelTooltip>
                       </th>
                     )
                   }
                   const sortDir = h.column.getIsSorted()
                   return (
                     <th key={h.id} className={HISTORY_TH_CLASS} aria-sort={sortAriaValue(sortDir)}>
-                      <span className="inline-flex items-center gap-1">
+                      <HeaderLabelTooltip text={tip}>
                         <button
                           type="button"
                           onClick={h.column.getToggleSortingHandler()}
@@ -411,8 +414,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
                             </span>
                           )}
                         </button>
-                        <HeaderInfoTooltip text={tip} />
-                      </span>
+                      </HeaderLabelTooltip>
                     </th>
                   )
                 })}
@@ -434,7 +436,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
                 }}
               >
                 {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="px-3 py-2 whitespace-nowrap border-r border-border last:border-r-0">
+                  <td key={cell.id} className="px-2 py-2 whitespace-nowrap border-r border-border last:border-r-0">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}

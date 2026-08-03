@@ -177,7 +177,7 @@ Consequence: the log event `mappings_hot_reloaded` from plan §8.1 is intentiona
 - A second real title onboarding requires intensive TOML iteration, or
 - Catalog volume grows (e.g., medals, weapons families) and live label tuning becomes valuable.
 
-### HTTP API (behind `MULTI_TITLE_API_ENABLED=true`)
+### HTTP API (always mounted since 2026-08-02)
 
 - `GET /api/v1/titles/{slug}/field-mappings?locale=fr` — exposes the
   `FieldMappingSet` of a title with ETag + `Cache-Control: max-age=300`.
@@ -206,14 +206,23 @@ Components consume these hooks instead of hardcoding labels. The frontier
 TOML vs i18n React (cf. plan §6.9) is enforced by `tools/lint-no-hardcoded-fields.mjs`,
 which scans 277 files and rejects any literal matching a label declared in
 `fields.toml`, `assets.toml`, or `outcomes.toml` (whitelist for fallback
-dictionaries under `features/*/fallback.i18n.ts`).
+dictionaries; the `features/*/fallback.i18n.ts` entries were dropped on
+2026-08-02 along with the files themselves).
 
 Pages migrated as of 2026-04-26: Career (encounters), Home (KPI bar, challenges
 list, spartan identity), Match View (scoreboard), Synthesis (top weeks),
 Compare (delta cards), Media (mode categories), Objectifs (challenge tiers,
 cadences, prestige levels), Communauté (leaderboard tier), Session Detail
-(outcomes). Dictionaries `kpi.i18n.ts`, `highlights.i18n.ts`, `compare/i18n.ts`
-keep their FR/EN labels as fallback for `MULTI_TITLE_API_ENABLED=false`.
+(outcomes).
+
+As of 2026-08-02 (v7.3 lot 2) the TOML manifests are the SINGLE source of these
+labels: the `features/{home,media,prestige}/fallback.i18n.ts` dictionaries and
+the FR/EN tables of `lib/i18n/metricLabel.ts` were deleted, and the rollout flag
+that made the endpoint optional was removed. Missing key = the humanized raw key
+(`humanizeMetricKey`), never a second dictionary — enforced by
+`apps/web/src/lib/i18n/no-field-label-dictionary.test.ts`. Remaining local
+dictionaries (`kpi.i18n.ts`, `highlights.i18n.ts`, `compare/i18n.ts`) are
+pre-existing debt scheduled for the same migration.
 
 ### Capability-aware degradation
 

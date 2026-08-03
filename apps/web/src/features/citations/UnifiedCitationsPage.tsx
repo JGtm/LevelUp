@@ -13,6 +13,7 @@ import { useCitationsPage } from './queries'
 import { useCommendationTotals } from '@/features/commendations/queries'
 import { useLocalFilterBar } from '@/features/_shared/useLocalFilterBar'
 import { CitationsView } from './CitationsView'
+import { citationCategoryLabel } from './labels'
 import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
 import { citationsManifest, type CitationsManifestKey } from '@/lib/i18n/generated/citations'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -106,6 +107,7 @@ function CitationsInfiniteSource() {
       filterBar={bar}
       headerTitle={masteryHeader(vm, locale)}
       completedSuffix={t('citations.category.completed_suffix')}
+      categoryLabel={(key) => citationCategoryLabel(key, locale)}
       emptyTitle={t('citations.empty.no_items')}
       emptyDescription={t('citations.empty.no_items_description')}
     />
@@ -137,6 +139,7 @@ function CitationsNativeSource() {
       locale={locale}
       headerTitle={masteryHeader(vm, locale)}
       completedSuffix={t('citations.category.completed_suffix')}
+      categoryLabel={(key) => citationCategoryLabel(key, locale)}
       emptyTitle={t('citations.empty.no_items')}
       emptyDescription={t('citations.empty.no_items_description')}
     />

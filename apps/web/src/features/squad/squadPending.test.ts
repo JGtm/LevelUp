@@ -14,6 +14,7 @@ import {
   reconcileSquadSessionLabels,
   stripSessionCountSuffix,
   decideCompositionReanchor,
+  mergeSessionCounts,
 } from './squadPending'
 import type { FilterContextInput, SessionLabelEntry } from '@/lib/api/types'
 
@@ -134,7 +135,12 @@ describe('reconcileSquadSessionLabels', () => {
 })
 
 describe('decideCompositionReanchor', () => {
-  const base = { hasTeammates: true, followLatest: true, compositionSessionLabels: [] as string[] }
+  const base = {
+    hasTeammates: true,
+    followLatest: true,
+    compositionSessionLabels: [] as string[],
+    lastAnchoredLatestSession: '',
+  }
 
   it('aucun coéquipier → none (ancrage non piloté par la composition)', () => {
     expect(
@@ -194,12 +200,13 @@ describe('decideCompositionReanchor', () => {
     ).toEqual({ kind: 'snap', label: 'S_new (3)' })
   })
 
-  it('sélection MANUELLE encore valide pour la composition → none (respect du choix, ex. reload)', () => {
+  it('sélection MANUELLE encore valide + dernière session DÉJÀ ancrée → none (respect du choix, ex. reload)', () => {
     expect(
       decideCompositionReanchor({
         ...base,
         followLatest: false,
         latestCompositionSession: 'S_new (5)',
+        lastAnchoredLatestSession: 'S_new (5)', // on a déjà atterri sur S_new
         pickedSessions: ['S_old (2)'],
         compositionSessionLabels: ['S_new (5)', 'S_old (3)'], // S_old reste une session de la compo
       }),
@@ -212,9 +219,120 @@ describe('decideCompositionReanchor', () => {
         ...base,
         followLatest: false,
         latestCompositionSession: 'S_new (5)',
+        lastAnchoredLatestSession: 'S_new (5)',
         pickedSessions: ['ghost (2)'], // absente de compositionSessionLabels
         compositionSessionLabels: ['S_new (5)'],
       }),
     ).toEqual({ kind: 'snap', label: 'S_new (5)' })
+  })
+
+  // ── Bug « la page ne s'ouvre pas sur la dernière soirée » ────────────────
+  // followLatest est faux dès qu'un chemin TECHNIQUE a appelé setSessions /
+  // setFilterContext (bouton Analyser, resync au montage, réconciliation des
+  // suffixes « (N) ») — pas seulement sur un choix délibéré. Sans clé de
+  // détection, la page restait ancrée sur la session précédente indéfiniment.
+  it('sélection épinglée valide MAIS nouvelle session jamais ancrée → snap (cœur du fix autosnap)', () => {
+    expect(
+      decideCompositionReanchor({
+        ...base,
+        followLatest: false,
+        latestCompositionSession: '31/07/2026 20:12–23:40 (14)',
+        lastAnchoredLatestSession: '23/07/2026 19:32–19:55 (3)', // dernier atterrissage connu
+        pickedSessions: ['23/07/2026 19:32–19:55 (3)'],
+        compositionSessionLabels: ['31/07/2026 20:12–23:40 (14)', '23/07/2026 19:32–19:55 (3)'],
+      }),
+    ).toEqual({ kind: 'snap', label: '31/07/2026 20:12–23:40 (14)' })
+  })
+
+  it('même dernière session avec un suffixe « (N) » qui a grossi au sync → none (pas de re-snap)', () => {
+    expect(
+      decideCompositionReanchor({
+        ...base,
+        followLatest: false,
+        latestCompositionSession: '31/07/2026 20:12–23:40 (14)',
+        lastAnchoredLatestSession: '31/07/2026 20:12–23:40 (11)',
+        pickedSessions: ['23/07/2026 19:32–19:55 (3)'],
+        compositionSessionLabels: ['31/07/2026 20:12–23:40 (14)', '23/07/2026 19:32–19:55 (3)'],
+      }),
+    ).toEqual({ kind: 'none' })
+  })
+
+  it('aucun ancrage connu (premier atterrissage) + sélection épinglée → snap sur la dernière', () => {
+    expect(
+      decideCompositionReanchor({
+        ...base,
+        followLatest: false,
+        latestCompositionSession: 'S_new (5)',
+        lastAnchoredLatestSession: '',
+        pickedSessions: ['S_old (2)'],
+        compositionSessionLabels: ['S_new (5)', 'S_old (2)'],
+      }),
+    ).toEqual({ kind: 'snap', label: 'S_new (5)' })
+  })
+
+  it('sélection épinglée DÉJÀ sur la dernière session nouvellement arrivée → none', () => {
+    expect(
+      decideCompositionReanchor({
+        ...base,
+        followLatest: false,
+        latestCompositionSession: 'S_new (5)',
+        lastAnchoredLatestSession: 'S_old (2)',
+        pickedSessions: ['S_new (5)'],
+        compositionSessionLabels: ['S_new (5)', 'S_old (2)'],
+      }),
+    ).toEqual({ kind: 'none' })
+  })
+
+  it('nouvelle session jamais ancrée mais AUCUN coéquipier → none (règle inchangée)', () => {
+    expect(
+      decideCompositionReanchor({
+        ...base,
+        hasTeammates: false,
+        followLatest: false,
+        latestCompositionSession: 'S_new (5)',
+        lastAnchoredLatestSession: 'S_old (2)',
+        pickedSessions: ['S_old (2)'],
+        compositionSessionLabels: ['S_new (5)', 'S_old (2)'],
+      }),
+    ).toEqual({ kind: 'none' })
+  })
+})
+
+// Compteurs de sessions unifiés (le « 11/8/6/5 ») : le sélecteur doit afficher le
+// compte « commencés ensemble » servi par teammates, pas celui de /filters/resolve.
+describe('mergeSessionCounts', () => {
+  const fallback = [
+    { label: 'S1 (11)', match_count_filtered: 8 },
+    { label: 'S2 (4)', match_count_filtered: 4 },
+  ]
+
+  it('le compte « ensemble » de la composition prime sur celui de filters/resolve', () => {
+    const merged = mergeSessionCounts(fallback, [{ label: 'S1 (11)', match_count: 6 }])
+    expect(merged.get('S1 (11)')).toBe(6)
+  })
+
+  it('sessions non couvertes par la composition : repli sur filters/resolve', () => {
+    const merged = mergeSessionCounts(fallback, [{ label: 'S1 (11)', match_count: 6 }])
+    expect(merged.get('S2 (4)')).toBe(4)
+  })
+
+  it('réponse teammates pas encore arrivée → uniquement le repli', () => {
+    const merged = mergeSessionCounts(fallback, [])
+    expect(merged.get('S1 (11)')).toBe(8)
+    expect(merged.size).toBe(2)
+  })
+
+  it('match_count absent ou nul → on garde le repli (pas de session affichée à 0)', () => {
+    const merged = mergeSessionCounts(fallback, [
+      { label: 'S1 (11)' },
+      { label: 'S2 (4)', match_count: 0 },
+    ])
+    expect(merged.get('S1 (11)')).toBe(8)
+    expect(merged.get('S2 (4)')).toBe(4)
+  })
+
+  it('session connue de la composition seule (absente du repli) → exposée', () => {
+    const merged = mergeSessionCounts(fallback, [{ label: 'S3 (2)', match_count: 2 }])
+    expect(merged.get('S3 (2)')).toBe(2)
   })
 })

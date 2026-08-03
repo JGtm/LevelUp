@@ -23,6 +23,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	platform_duckdb "levelup/go-api/internal/platform/duckdb"
 )
 
 // hlsSweepMu garantit qu'un seul balayage EnsurePendingHLS tourne à la fois dans
@@ -124,10 +126,13 @@ func selectPendingHLSCandidates(ctx context.Context, dbPath, onlySlug string) ([
 	// définition de « déjà en cours » des deux côtés, sinon la course renaît.
 	staleBefore := time.Now().UTC().Add(-transcodeStaleAfter)
 	err := withSharedSocialDB(ctx, dbPath, func(db *sql.DB) error {
+		// Les médias supprimés (item 3.1) sont exclus : leur fichier source n'existe
+		// plus sur le disque, les transcoder ne produirait que des échecs répétés.
 		q := `SELECT id, COALESCE(player_slug, ''), COALESCE(file_path, '')
 		      FROM media_files
 		      WHERE kind = 'video' AND hls_path IS NULL
 		        AND COALESCE(transcode_status, '') NOT IN ('direct', 'failed')
+		        AND ` + platform_duckdb.MediaVisiblePredicate("") + `
 		        AND ` + transcodeNotFreshProcessingSQL
 		args := []any{staleBefore}
 		if onlySlug != "" {

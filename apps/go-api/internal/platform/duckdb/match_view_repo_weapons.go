@@ -24,6 +24,9 @@ type weaponMetaEntry struct {
 	class  string
 	role   string
 	family string
+	// weaponKey : clé canonique du registre, niveau 2 des classes ventilées par ENGIN
+	// (véhicule/tourelle — V73-3.2, où class/role/family valent tous « vehicle »).
+	weaponKey string
 }
 
 // lookupWeaponMeta résout label (FR>EN) + name_en + class/role depuis le registre.
@@ -38,7 +41,10 @@ func (r *MatchViewRepo) lookupWeaponMeta(ctx context.Context, weaponIDs []int64)
 	// nom). On ne garde que les ids résolus (label non vide), comme l'ancien lookup.
 	for id, m := range resolveWeaponMeta(ctx, r.pdb.Metadata, r.pdb.TitleSlug, weaponIDs) {
 		if m.label != "" {
-			result[id] = weaponMetaEntry{label: m.label, nameEN: m.nameEN, class: m.class, role: m.role, family: m.family}
+			result[id] = weaponMetaEntry{
+				label: m.label, nameEN: m.nameEN, class: m.class, role: m.role,
+				family: m.family, weaponKey: m.weaponKey,
+			}
 		}
 	}
 	return result
@@ -177,6 +183,7 @@ func (r *MatchViewRepo) GetMatchBulkWeaponKills(ctx context.Context, matchID str
 			results[i].Class = m.class
 			results[i].Role = m.role
 			results[i].Family = m.family
+			results[i].WeaponKey = m.weaponKey
 			continue
 		}
 		// Fallback : weapon_id en string pour les variantes absentes de

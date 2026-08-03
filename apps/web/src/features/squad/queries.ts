@@ -16,7 +16,15 @@ export function useTeammates(
 ) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
-    queryKey: queryKeys.teammates(playerSlug, titleSlug, filterContextHash, confirmedGts, sessionLabels, request.locale ?? ''),
+    queryKey: queryKeys.teammates(
+      playerSlug,
+      titleSlug,
+      filterContextHash,
+      confirmedGts,
+      sessionLabels,
+      request.locale ?? '',
+      request.filter_exact_composition ?? false,
+    ),
     queryFn: () =>
       api.post<TeammatesPageResponse>(
         `/players/${playerSlug}/pages/teammates`,

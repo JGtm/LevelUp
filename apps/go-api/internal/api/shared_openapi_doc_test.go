@@ -88,7 +88,6 @@ func TestSharedOpenAPIDocCoversAllHumaRoutes(t *testing.T) {
 	// routes prestige / catalog / diag auto-sync sont montées avec des dépendances
 	// de repli au lieu de disparaître).
 	t.Setenv("LEVELUP_DEMO_MODE", "true")
-	t.Setenv("MULTI_TITLE_API_ENABLED", "true")
 	t.Setenv("PRESTIGE_ENABLED", "true")
 
 	// Capture chaque enregistrement Huma (méthode, chemin ABSOLU) via le hook.

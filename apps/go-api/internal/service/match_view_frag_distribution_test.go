@@ -208,9 +208,13 @@ func TestBuildViewerFragDistribution_GrenadeSubLevel(t *testing.T) {
 }
 
 // TestBuildCombatTabFull_ExcludesNonCombatFromWeaponBreakdown : le breakdown par-ARME
-// (combat_tab.weapon_kills) ne contient QUE des armes réelles — les buckets non-combat
-// H5 (véhicule/tourelle/environnement/non attribué) sont écartés (FIX 2). Ces kills
-// restent comptés dans les classes du sunburst.
+// (combat_tab.weapon_kills) ne contient que des OUTILS DE DESTRUCTION IDENTIFIABLES.
+// Sont écartés les seuls buckets sans engin à nommer — non attribué, environnement,
+// autre — dont les kills restent comptés dans les classes du sunburst.
+//
+// V73-3.2 : véhicule et tourelle ne sont PLUS écartés. Le registre les nomme par engin
+// (« Warthog », « Tourelle Gauss »), ils ont donc leur place au breakdown comme au
+// sunburst. Ce test figeait auparavant l'exclusion inverse (want 1).
 func TestBuildCombatTabFull_ExcludesNonCombatFromWeaponBreakdown(t *testing.T) {
 	const myXUID = "me"
 	bulk := []domain.BulkWeaponKillRaw{
@@ -218,13 +222,30 @@ func TestBuildCombatTabFull_ExcludesNonCombatFromWeaponBreakdown(t *testing.T) {
 		{XUID: "me", WeaponID: 2, WeaponLabel: "Spartan", Kills: 9, Class: "unattributed"},
 		{XUID: "me", WeaponID: 3, WeaponLabel: "Warthog", Kills: 2, Class: "vehicle"},
 		{XUID: "me", WeaponID: 4, WeaponLabel: "Turret", Kills: 1, Class: "turret"},
+		{XUID: "me", WeaponID: 5, WeaponLabel: "Explosifs", Kills: 4, Class: "environmental"},
+		{XUID: "me", WeaponID: 6, WeaponLabel: "Autre", Kills: 3, Class: "other"},
 		{XUID: "other", WeaponID: 1, WeaponLabel: "BR75", Kills: 99, Class: "shoulder"}, // pas is_me
 	}
 	tab := buildCombatTabFull("m1", bulk, nil, nil, nil, nil, myXUID, 60000)
-	if len(tab.WeaponKills) != 1 {
-		t.Fatalf("WeaponKills = %d, want 1 (armes réelles seulement) : %+v", len(tab.WeaponKills), tab.WeaponKills)
+
+	got := make(map[string]string, len(tab.WeaponKills)) // label → classe
+	for _, w := range tab.WeaponKills {
+		got[w.WeaponLabel] = w.Class
 	}
-	if tab.WeaponKills[0].WeaponLabel != "BR75" || tab.WeaponKills[0].Class != "shoulder" {
-		t.Errorf("WeaponKills[0] = %+v, want BR75/shoulder", tab.WeaponKills[0])
+	want := map[string]string{"BR75": "shoulder", "Warthog": "vehicle", "Turret": "turret"}
+	if len(got) != len(want) {
+		t.Fatalf("WeaponKills = %d entrées, want %d (outils identifiables) : %+v",
+			len(got), len(want), tab.WeaponKills)
+	}
+	for label, class := range want {
+		if got[label] != class {
+			t.Errorf("WeaponKills[%q] classe = %q, want %q", label, got[label], class)
+		}
+	}
+	// Les buckets sans engin identifiable restent écartés (leur volume passe par le résidu).
+	for _, label := range []string{"Spartan", "Explosifs", "Autre"} {
+		if _, present := got[label]; present {
+			t.Errorf("bucket non identifiable %q présent au breakdown par-arme", label)
+		}
 	}
 }

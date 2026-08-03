@@ -47,7 +47,7 @@ function makeRow(): SessionDetailMatchRow {
 
 describe('toExplorerRow — adapter session → Explorer', () => {
   it('mappe les champs clés (escouade, map/mode/playlist, MMR, rating)', () => {
-    const r = toExplorerRow(makeRow(), true, 'fr')
+    const r = toExplorerRow(makeRow(), true)
     expect(r.match_id).toBe('m1')
     expect(r.outcome_code).toBe(2)
     expect(r.map_ui).toBe('Tir réel')
@@ -66,15 +66,30 @@ describe('toExplorerRow — adapter session → Explorer', () => {
 
   it('palier passthrough ; outcome null → DNF(4) ; solo', () => {
     const row = { ...makeRow(), skill_rating_type: 'lusr', skill_tier_label: 'Diamant V', outcome: undefined }
-    const r = toExplorerRow(row, false, 'fr')
+    const r = toExplorerRow(row, false)
     expect(r.rating_type).toBe('LUSR')
     expect(r.skill_tier_label).toBe('Diamant V') // libellé fourni par le backend, tel quel
     expect(r.outcome_code).toBe(4)
     expect(r.is_with_friends).toBe(false) // solo
   })
 
+  // V73-L2 2.5 : le score personnel avait été injecté dans `score_label` (colonne
+  // « Score », qui porte le score d'ÉQUIPE sur l'Explorer) — même en-tête, deux
+  // sens selon la page. Il a maintenant son propre champ ; `score_label` reste
+  // vide côté session, faute de score d'équipe dans le contrat.
+  it('score personnel dans personal_score, PAS dans le score d’équipe', () => {
+    const r = toExplorerRow(makeRow(), true)
+    expect(r.personal_score).toBe(2400)
+    expect(r.score_label).toBe('')
+  })
+
+  it('score personnel absent → null (pas de 0 trompeur)', () => {
+    const r = toExplorerRow({ ...makeRow(), personal_score: undefined }, true)
+    expect(r.personal_score).toBeNull()
+  })
+
   it('placement (placement_done/total) mappé', () => {
-    const r = toExplorerRow({ ...makeRow(), placement_done: 3, placement_total: 5 }, false, 'fr')
+    const r = toExplorerRow({ ...makeRow(), placement_done: 3, placement_total: 5 }, false)
     expect(r.placement_done).toBe(3)
     expect(r.placement_total).toBe(5)
   })
@@ -85,7 +100,6 @@ describe('toExplorerRow — adapter session → Explorer', () => {
       // de classement ; seul le signal perf est posé — c'est le cas JGtm.
       { ...makeRow(), placement_done: undefined, placement_total: undefined, perf_placement_done: 8, perf_placement_total: 10 },
       false,
-      'fr',
     )
     expect(r.perf_placement_done).toBe(8)
     expect(r.perf_placement_total).toBe(10)

@@ -1995,6 +1995,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/media": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Supprime définitivement un média (propriétaire ou admin) */
+        delete: operations["deleteMedia"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/media/associate": {
         parameters: {
             query?: never;
@@ -5132,6 +5149,10 @@ export interface components {
             /** Format: int64 */
             watchdog_fired: number;
         };
+        DataIssue: {
+            code: string;
+            detail?: string;
+        };
         DatabaseStatus: {
             error?: string;
             exists: boolean;
@@ -5597,12 +5618,15 @@ export interface components {
             /** Format: int64 */
             perf_tier?: number;
             /** Format: int64 */
+            personal_score?: number;
+            /** Format: int64 */
             placement_done?: number;
             /** Format: int64 */
             placement_total?: number;
             playlist_label: string | null;
             rating_type?: string;
             score_label: string;
+            skill_rank_image_url?: string;
             skill_tier_label?: string;
             /** Format: date-time */
             start_time: string;
@@ -5862,6 +5886,7 @@ export interface components {
         FragRoleEntry: {
             /** Format: int64 */
             kills: number;
+            label?: string;
             role: string;
         };
         FreshnessBackupInfo: {
@@ -6789,11 +6814,14 @@ export interface components {
             /** Format: int64 */
             performance_score_relative: number | null;
             /** Format: int64 */
+            personal_score?: number;
+            /** Format: int64 */
             placement_done?: number;
             /** Format: int64 */
             placement_total?: number;
             playlist_label: string | null;
             score_label: string;
+            skill_rank_image_url?: string;
             skill_rating_type?: string;
             skill_tier_label?: string;
             /** Format: date-time */
@@ -7428,6 +7456,12 @@ export interface components {
         };
         MediaAuthorsResponse: {
             authors: components["schemas"]["MediaAuthor"][] | null;
+        };
+        MediaDeleteResponse: {
+            deleted: boolean;
+            file_path: string;
+            /** Format: int64 */
+            files_removed: number;
         };
         MediaFilterOptions: {
             maps: components["schemas"]["LabelValue"][] | null;
@@ -8972,6 +9006,8 @@ export interface components {
             ended_at: string;
             experiences?: string[] | null;
             label: string;
+            /** Format: int64 */
+            match_count?: number;
             playlists?: string[] | null;
             /** Format: date-time */
             started_at: string;
@@ -9963,6 +9999,7 @@ export interface components {
         };
         TeammatesPageResponse: {
             composition_sessions?: components["schemas"]["SessionLabelEntry"][] | null;
+            data_issues?: components["schemas"]["DataIssue"][] | null;
             first_blood?: components["schemas"]["FirstBloodPlayerSeries"][] | null;
             frag_classes?: {
                 [key: string]: components["schemas"]["FragClassEntry"][] | null;
@@ -9996,6 +10033,19 @@ export interface components {
             total_matches: number;
             weapon_accuracy?: components["schemas"]["SquadWeaponAccuracy"];
             weapon_kills?: components["schemas"]["SquadWeaponKills"];
+        };
+        /** @description Corps de POST /pages/teammates (handler RawBody : le schéma est documenté ici, cf. domain.TeammatesQueryRequest). */
+        TeammatesQueryRequest: {
+            /**
+             * @description Option « composition exacte » : n'inclut que les matchs où aucun autre coéquipier connu n'était sur l'équipe du joueur principal. Par défaut (false), la population est « matchs commencés ensemble » = intersection du roster sélectionné.
+             * @default false
+             */
+            filter_exact_composition: boolean;
+            filters?: components["schemas"]["FilterContextInput"];
+            locale?: string;
+            picked_solo_session_labels?: string[];
+            picked_squad_session_labels?: string[];
+            selected_gamertags?: string[];
         };
         Template: {
             cadence: string;
@@ -10209,6 +10259,8 @@ export interface components {
         };
         TitleSummary: {
             capabilities: string[] | null;
+            /** Format: double */
+            defensive_resistance_p80: number;
             /** Format: double */
             effective_hp_to_kill: number;
             icon_url?: string;
@@ -14622,6 +14674,39 @@ export interface operations {
             };
         };
     };
+    deleteMedia: {
+        parameters: {
+            query?: {
+                file_path?: string;
+            };
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaDeleteResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     postMediaAssociate: {
         parameters: {
             query?: never;
@@ -16290,7 +16375,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TeammatesQueryRequest"];
+            };
+        };
         responses: {
             /** @description Analyse coéquipiers avec statistiques */
             200: {

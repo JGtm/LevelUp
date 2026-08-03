@@ -65,8 +65,10 @@ type SeasonCatalogEntry struct {
 
 // FieldMappingsHandler gère GET /api/v1/titles/{slug}/field-mappings.
 //
-// Le handler n'est enregistré que si MULTI_TITLE_API_ENABLED=true au boot.
-// En Phase A : flag off par défaut → endpoint absent du routeur.
+// Le handler est enregistré INCONDITIONNELLEMENT depuis le 2026-08-02 (v7.3 lot 2,
+// item 3.3) : le gate de rollout MULTI_TITLE_API_ENABLED a été retiré, et les
+// libellés servis ici sont la source unique du front (plus aucun dictionnaire de
+// repli côté TS). Garde-rail : internal/api/multi_title_smoke_test.go.
 type FieldMappingsHandler struct {
 	registry FieldMappingsRegistry
 	seasons  SeasonsCatalogResolver // optionnel : nil → kind season exposé tel quel depuis TOML

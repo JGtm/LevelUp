@@ -67,6 +67,10 @@ func realMediaPipelineSetup(t *testing.T) (*chi.Mux, string) {
 			mtime TIMESTAMP WITH TIME ZONE,
 			liked BOOLEAN DEFAULT FALSE,
 			liked_at TIMESTAMP,
+			-- status : cycle de vie du fichier ('active', NULL, ou 'deleted' depuis
+			-- l'item 3.1). Présente en prod via l'ALTER de steps_shared_social ;
+			-- toute lecture applicative la filtre (MediaVisiblePredicate).
+			status VARCHAR,
 			indexed_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 		);
 		CREATE TABLE IF NOT EXISTS media_match_associations (

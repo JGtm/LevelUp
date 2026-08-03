@@ -445,6 +445,16 @@ type ExplorerMatchesRow struct {
 	DeltaPerf *int `json:"delta_perf,omitempty"`
 	// SkillTierLabel : label formaté du tier ranked/LUSR (ex. "Diamant IV"), nil si absent.
 	SkillTierLabel *string `json:"skill_tier_label,omitempty"`
+	// SkillRankImageURL : URL de l'image du badge de palier de CE match, résolue par
+	// l'adaptateur d'assets du TITRE (jamais un chemin en dur — cf.
+	// analysis.SkillBadgeURL). La colonne « Rang » rend l'image quand le champ est
+	// présent, et DÉGRADE sur SkillTierLabel (texte localisé) quand il est nil —
+	// cas d'un titre sans badge, d'un palier en placement ou inconnu.
+	SkillRankImageURL *string `json:"skill_rank_image_url,omitempty"`
+	// PersonalScore : score personnel du joueur sur ce match. À NE PAS confondre
+	// avec ScoreLabel, qui porte le score d'ÉQUIPE ("50 - 30"). Nil quand la donnée
+	// est absente.
+	PersonalScore *int `json:"personal_score,omitempty"`
 	// RatingType : "CSR" (classé officiel Microsoft) ou "LUSR" (interne LevelUp).
 	// Nil pour les matchs sans skill rank (PvE, Custom). Source : match_skill_rank.rating_type.
 	RatingType *string `json:"rating_type,omitempty"`

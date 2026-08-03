@@ -372,6 +372,10 @@ func (r *WeaponKillsRepo) attachWeaponMeta(ctx context.Context, slug string, row
 			if m.family != "" {
 				rows[i].Family = m.family
 			}
+			// WeaponKey : clé d'engin du niveau 2 des classes véhicule/tourelle (V73-3.2).
+			if m.weaponKey != "" {
+				rows[i].WeaponKey = m.weaponKey
+			}
 		}
 	}
 }

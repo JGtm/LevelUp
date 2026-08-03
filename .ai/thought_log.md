@@ -1937,6 +1937,219 @@ persisters, et les correctifs de `weapon_scanner.go` / `backfill_weapons.go` (cf
   147 → 443 tirs, non-régression 125/125). Ce repli est une INFÉRENCE et devra être marqué comme
   tel à l'écran.
 
+## [2026-08-03] Lot 2 v7.3 — Phase 4 close, gate 4 passé : lot COMPLET, prêt à merger
+
+**Statut** : Complété (24 commits sur feat/v7.3-notion-lot2, merge en attente du go
+utilisateur — deploy prod).
+
+**Décision technique principale** : gate 4 rendu maillon par maillon après une
+traque de deux vraies causes et d'une cause d'outillage : (1) ratchet goconst —
+9e/10e occurrences de "Retry-After" → constante headerRetryAfter sur les 2 nouveaux
+sites, migration des ~8 anciens consignée post-lot ; (2) gitleaks — WeaponKey
+h5_vehicle_* des tests 3.2 pris pour des clés API → allowlist ciblée conforme à la
+doctrine du fichier, vérifiée sur copie propre avec le binaire pin CI ; (3) l'env
+git-bash du poste casse DÉTERMINISTIQUEMENT le lien des binaires de test embarquant
+libduckdb_static 10505 (emutls ; CC POSIX corrigé dans le script — nécessaire mais
+pas suffisant, MSYSTEM insuffisant, cause profonde poste) → baseline rendue par la
+voie du script en mode consommateur sur un JSONL produit depuis PowerShell
+(10 989 tests, 8769/8769 baseline présents, 0 échec). Les « verts bash » initiaux
+étaient des hits de cache de liens PowerShell — leçon : un ok de go test ne prouve
+pas un lien frais.
+
+**Résultats observés** : Phase 4 — 4.1 lot K validé en réel (3 dépassements
+marginaux le 31/07, 0 depuis, vs 3-5/cycle avant) ; 4.2 snapshots vivants (v125,
+recoupe auto ~15 min) sans op écrivante ; 4.3 Notion mise à jour et VÉRIFIÉE par
+re-fetch/diff (16 puces barrées + commits, 3 consignations, callout, +26 lignes /
+0 suppression) ; 4.4 delivery-checklist complète (hygiène 0/0/0, tsc sans cache,
+vet, baselines réconciliées 11+1 tests remplacés) ; 4.5 rappel tag transmis.
+Volet D : D1/D2 clos (4 PR mergées le 02/08), D4 statué [!] externe avec
+commentaire daté sur #70, D3 séquencé post-merge. Deux flakes qualifiés 10/10
+isolés (CareerLive timeout 2 s sous charge, StartImport TempDir).
+
+**Conclusion / prochaine étape** : push de la réconciliation baseline → CI de
+branche attendue toute verte → proposition de merge à l'utilisateur (deploy prod),
+puis D3 (echarts 6 + harnais screenshots) depuis main à jour. Post-lot consigné :
+passe découvertes (~25 entrées triées avec recommandations).
+
+## [2026-08-03] Lot 2 v7.3 — Phase 3 close (5 features), gate 3 passé, gate 0 clos
+
+**Statut** : Complété. 4 agents Opus (3.1, 3.2, 3.3, 3.4+3.5), gates re-exécutés
+orchestrateur après chaque item, matrice navigateur en clôture.
+
+**Décisions techniques principales** :
+- Gate 0 clos en cours de phase : artefacts REPUBLIÉS par l'orchestrateur (les
+  publications des agents étaient des fantômes — leçon en mémoire : vérifier par
+  Artifact list, publier soi-même), complément E ajouté sur question utilisateur
+  (superposition escouade), décisions : 0.1 = C partout, 0.2 = A encoches.
+- 3.1 : soft-delete `status='deleted'` (jamais DELETE — précédent FATAL-invalidation
+  ART prod), likes append-only en orphelins invisibles (tombstone rejeté :
+  historique falsifié), ordre base→disque, résurrection au re-dépôt, part admin
+  livrée via RequireAdmin existant, ownership sur le player_slug DU média.
+- 3.2 : vérification bloquante = feu vert (9 véhicules + 8 tourelles H5 à IDs
+  distincts) ; ventilation par weapon_key (class=role=family identiques), WeaponKey
+  résolu en SQL depuis V72-06 mais jamais recopié — réactivé.
+- 3.3 : retrait PUR du flag MULTI_TITLE_API_ENABLED (prescrit par sa propre doc),
+  6 FieldKey ajoutées au canonique (zéro perte), assets.toml H5 vide comblé,
+  garde-rail anti-dictionnaire prouvé discriminant, baseline tests réconciliée par
+  l'orchestrateur (94 lignes des 11 tests du flag).
+- 3.4/3.5 : C = écart signé (v/p80−1)×100 sur les indicateurs DU payload (fin de la
+  double définition du rendement), frontière défensive exposée au contrat en miroir
+  de l'offensive (H5 : absence volontaire documentée) ; A = encoches hauteur 20 px
+  dans BRACKET_GAP, gouttière obligatoire (contraste < 3:1 mesuré en 0.2), seuil dur
+  6 px supprimé, clustering pur. Découverte : seules 2 des « 5 surfaces » portaient
+  des drapeaux (Home/Relations/Lab construisaient sans dominance).
+
+**Résultats observés** : commits fb6fd82b1, b0cac2585, 8dd325337, ac0c6b196.
+Preuves navigateur : sunburst H5 par engin nommé, pistes C conformes (axes
+adaptatifs ±50/±40), encoche visible sur Synergies. Requalification orchestrateur
+d'une découverte : les « littéraux P80 divergents » sont les seuils de milestones
+documentés en 0.1 (commentaires trompeurs à renommer, pas une dérive).
+
+**Conclusion / prochaine étape** : Phase 4 — ops prod 4.1/4.2 SOUS PRÉAVIS
+utilisateur, MAJ Notion (4.3), delivery-checklist + clôture (4.4), D4 à statuer,
+gate-push avant proposition de merge (deploy prod), D3 echarts après merge.
+
+## [2026-08-02] Lot 2 v7.3 — Phase 2 close (5 UI), gate 2 passé
+
+**Statut** : Complété. 2 agents Opus (2.1-2.3, 2.4-2.5), gates re-exécutés
+orchestrateur, matrice navigateur Playwright en clôture (8 captures).
+
+**Décision technique principale** : deux découvertes d'agents TRAITÉES en fold
+immédiat au titre de la délégation utilisateur (3e instance du tooltip intensité
+et 3e surface FDA gap alignées — deux registres ne coexistent plus sur les mêmes
+charts) ; harmonisation de registre FR (tutoiement, convention dominante 111 vs 37)
+sur les 2 tooltips d'en-tête introduits en 2.5. Piège Playwright documenté : les
+en-têtes 2 lignes ont un textContent SANS blanc entre les mots (spans + retour CSS)
+— matcher avec \s*, pas d'espace littéral.
+
+**Résultats observés** : commits 610aaeb23 (2.1-2.3 + folds) et 008d4cf1f
+(2.4+2.5) + commit de clôture registre/plan. Preuves navigateur : cartes médailles
+compactées sur match vide ; légende « Bonus barré + ⓘ » ; ⓘ Intensité + courbe
+équipe pointillée sur 3 panneaux ; Explorer 19/20 badges de rang en image
+(+1 dégradation texte), aide au survol du libellé, tri conservé, colonne Score
+personnel triable. personal_score était une donnée déjà lue puis jetée par
+enrichRow (fuite, zéro SQL). Réserve d'agent (go test exit 1 non capturé) tranchée
+flake par rejeu complet. Contrat 203/203 chemins conservés.
+
+**Conclusion / prochaine étape** : Phase 3 (3.1 suppression médias → 3.2 véhicules
+H5 avec vérification bloquante → 3.3 i18n source unique) ; 3.4/3.5 en attente des
+décisions d'artefacts utilisateur (gate 0).
+
+## [2026-08-02] Lot 2 v7.3 — Phase 1 close (6 bugs), gate 1 passé, volet D clos (D1/D2)
+
+**Statut** : Complété (Phase 1 + volet D exécutable). Pilotage : 3 agents Opus
+séquentiels (1.1+1.2, 1.3+1.4, 1.5+1.6), gates re-exécutés par l'orchestrateur à
+chaque lot, revue navigateur Playwright orchestrateur en clôture de phase.
+
+**Décision technique principale** : la revue navigateur a été menée en matrice
+Playwright ad hoc (scripts .tmp.mjs, supprimés) avec preuves discriminantes plutôt
+que du smoke-test : scénario « ancre périmée » + contre-épreuve pour 1.1, preuve API
+du contraste suffixe/roster et du 0-strict pour 1.2, interception réseau pour les
+heures locales 1.3 (FR+EN), serveur démo réel pour 1.6. Résultat : 4/4 PASS ;
+1.5 non vérifiable localement (0 média sur le poste — fichiers sur VPS), couvert par
+le test discriminant WAL (rouge sans fix) et reporté aux ops prod 4.1.
+
+**Résultats observés** : commits 3862ff083 (1.1+1.2), 24720944f (1.3+1.4),
+ef7d32cbc (retombée 1.3 : test heatmap dépendant du fuseau machine, épinglé UTC),
+ea5611397 (1.5+1.6). Cause racine des régressions likes CONFIRMÉE = intuition
+utilisateur (écriture non instantanée) : tx.Commit() nu → like en WAL jusqu'à 5 min,
+effacé à chaque déploiement ; CommitWithCheckpoint existait et n'était jamais appelé,
+et les tests du chemin atomique étaient désactivés depuis mai (consigné). Piège
+récurrent : routeTree.gen.ts régénéré par chaque tsc/vitest/vite (2 interceptions,
+1 amend) — décalage de version du plugin TanStack Router consigné en découverte.
+Incidents pilotage : 2 agents coupés par la limite de session API, relancés par
+SendMessage avec récupération complète (doctrine mémoire confirmée).
+
+**Conclusion / prochaine étape** : Phase 2 (5 petites UI) — agents séquentiels
+2.1-2.3 puis 2.4-2.5 (contrat partagé), revue navigateur par item au gate 2.
+Serveurs dev arrêtés (état initial du poste restauré).
+
+## [2026-08-02] Lot 2 v7.3 — exécution : Phase 0 publiée, volet D1/D2 livré, hotfix CI main
+
+**Statut** : En cours (pilotage multi-agents Opus, branche `feat/v7.3-notion-lot2`).
+
+**Décision technique principale** : exécution parallélisée conforme au plan — Phase 0
+(2 artefacts) + D1/D2 dès le démarrage, Phase 1 lancée à la remise des artefacts.
+Doctrine mémoire appliquée : relance SendMessage des agents interrompus (3 relances, 3
+récupérations — dont 2 coupures limite de session API), gates re-exécutés par
+l'orchestrateur avant tout commit, aucune écriture agent sous .ai/.
+
+**Résultats observés** :
+- Phase 0 : 2 artefacts publiés (privés) et URLs remises — Rendement & Résistance
+  (4 propositions A/B/C/D) et marqueurs dominance V/D (4 formes + bac d'essai
+  12→600 matchs). Décisions utilisateur en attente (bloquent 3.4/3.5 uniquement).
+  Découverte majeure : les losanges actuels ne sont visibles QUE par leur liseré
+  (contraste couleur 1,03:1 au pire) ; collision de tokens `outcome-dnf` =
+  `narrative-humiliation`.
+- Volet D : D1 fait (PR #71 puis #72 mergées squash, CI main verte entre et après) ;
+  D2 fait (PR #67 : changelog duckdb-go 2.10505/DuckDB 1.5.5 sans mention ART,
+  allowlist QUERY 2 entrées datées, gates intégration -p 1 verts, mergée squash sur
+  go utilisateur, CI post-merge en cours au moment de cette entrée).
+- Incident hors plan traité (bloquait les gates D) : CI main rouge post-#71 sur
+  TODO(expiry:2026-08-01) échu (season_pass_repo_tracks.go) → hotfix PR #73 (échéance
+  2026-09-15, critère mesurable : 0 ligne kind='track-def' dans asset_index prod,
+  vérification à faire avec les ops Phase 4) + flake TestWorker_Run_PersistsAndACKs
+  qualifié (10/10 PASS local). Conflit #67/#73 sur le même hunk résolu côté PR en
+  reprenant la version main.
+- Phase 1 : items 1.1 (autosnap escouade — ré-ancrage si dernière session jamais
+  ancrée, garde composition+session, 10 cas vitest) et 1.2 (population canonique
+  « commencés ensemble », `filter_exact_composition` optionnel défaut off + contrat,
+  heatmap sans re-filtrage privé, collecteur `data_issues` loggé + visible UI) rendus
+  par l'agent, gates re-exécutés (teammates ok, tsc ok, vitest en cours), commit à
+  suivre. Reproduction 31/07 impossible en local (DBs arrêtées au 23/07) — mécanique
+  validée sur la dernière session locale, revue navigateur au gate 1.
+
+**Décisions utilisateur ajoutées en cours de lot** : découvertes d'exécution traitées
+selon mes recommandations (croisement item du lot sinon passe post-lot) ; Dependabot
+au fil de l'eau à ma discrétion (état du jour : rien de neuf hors D3/D4 connus).
+
+**Conclusion / prochaine étape** : commit 1.1+1.2 après vitest vert, merge de main
+dans la branche (récupère hotfix TODO + deps), agent 1.3+1.4, revue navigateur
+groupée au gate 1.
+
+## [2026-08-02] Plan v7.3 lot 2 — « petites choses » de la section Notion (hors Replay 2D)
+
+**Statut** : Complété (plan écrit et validé par questionnaires ; exécution NON démarrée).
+Demande utilisateur : plan pour les points non barrés de la section Notion v7.3, questions
+plutôt qu'hypothèses, artefacts >= 3 propositions pour les représentations graphiques.
+
+**Décision technique principale** : reconnaissance AVANT plan (3 agents Explore : UI
+charts, data/Go, divers) — les causes sont identifiées et écrites dans le plan, pas à
+re-chercher à l'exécution. Trouvailles clés : « Rythme des rencontres » affiche des
+heures UTC (le `AT TIME ZONE 'UTC'` de queries_relations_moments.go annule le fuseau de
+session malgré l'alias `hour_local`) ; l'écart 11/8/6/5 des sessions escouade est
+mécanique (4 populations de matchs empilées : filtre solo, intersection roster,
+exclusivité de composition, re-filtrage privé du heatmap avec échecs silencieux) — l'AFK
+n'y est pour rien ; la démo n'a pas d'images de défis car les fixtures embarquées n'ont
+pas de clé `image_url` (le mode démo bypasse le cache DB) ; la précision par arme existe
+déjà en base pour H5 (`weapon_accuracy`) et pas pour Infinite (viendra du killsource) ;
+la note de perf n'a AUCUNE métrique d'objectif et le statut Ranked court-circuite la
+chaîne `arena_objectif`.
+
+**Arbitrages utilisateur (9 décisions, questionnaires du 2026-08-02)** : killsource
+re-différé (branche `feat/killsource-prod` vivante, handoff 31/07) ; note de perf
+objectifs = chantier isolé futur ; artefacts limités à Rendement/Résistance + losanges
+V/D ; sessions unifiées sur « matchs commencés ensemble » (composition exacte en option
+off) ; i18n = suppression du repli (flag invariant, metricLabel migré) ; suppression
+médias = propriétaire + admin ; kills véhicules H5 maintenant (exigence : sous-niveau
+par véhicule, vérification bloquante avant code) ; colonne Score personnel maintenant,
+colonne Replay à la livraison du Replay 2D.
+
+**Résultats observés** : plan `.ai/V7.3/PLAN_V73_LOT2_PETITES_CHOSES.md` (passé par la
+grille plan-review : périmètre fermé par item, gates en commandes exactes, statuts,
+découvertes, protocole de reprise). Branche proposée : `feat/v7.3-notion-lot2`.
+Volet D ajouté sur demande (branches Dependabot, état vérifié le 2026-08-02) : #71 et
+#72 (jsdom 30, dev-only) CI intégralement vertes -> merge recommandé immédiat ; #67
+toujours rouge sur le ratchet QUERY (lot A du plan deps, exécutable tout de suite) ;
+echarts 6.1.0 (CVE) séquencé APRÈS le merge du lot (le harnais screenshots doit
+capturer les visuels finaux, 3.5 modifie OutcomeSequenceTape) ; TS7 TOUJOURS bloqué
+(typescript-eslint@latest 8.65.0, peer <6.1.0, revérifié ce jour) -> statuer [!], ne
+pas exécuter.
+
+**Conclusion / prochaine étape** : validation du plan par l'utilisateur, puis exécution
+Phase 0 (2 artefacts de propositions) en premier pour que ses choix tournent pendant les
+phases bugs/UI. Reste côté utilisateur : tag v7.3.0 au moment de clore la v7.3.
+
 ## [2026-07-27] Tri des 5 PR Dependabot ouvertes + plan pour les 3 restantes
 
 **Statut** : Complété (tri + merge), plan préparé (non exécuté). Demande utilisateur :

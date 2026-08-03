@@ -47,8 +47,9 @@ func buildTestRouterWithDoc(t *testing.T) (http.Handler, *huma.OpenAPI) {
 		Root: t.TempDir(),
 		// Store de groupes partagé par les tests de contrat (jamais lu en démo).
 		GroupStorePath: filepath.Join(os.TempDir(), "levelup_contract_groups.json"),
-		MultiTitleAPI:  parseBoolEnvFlag("MULTI_TITLE_API_ENABLED", false),
-		Prestige:       parseBoolEnvFlag("PRESTIGE_ENABLED", true),
+		// Les routes multi-titres n'ont plus de flag depuis le 2026-08-02 : elles
+		// sont montées inconditionnellement par mountAPIV1.
+		Prestige: parseBoolEnvFlag("PRESTIGE_ENABLED", true),
 	})
 	if err != nil {
 		t.Fatalf("buildTestRouter: %v", err)
