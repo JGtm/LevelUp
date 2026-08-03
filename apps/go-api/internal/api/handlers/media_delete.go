@@ -115,7 +115,7 @@ func mediaDeleteError(ctx context.Context, err error) error {
 	if errors.Is(err, dblease.ErrDBLocked) {
 		return huma.ErrorWithHeaders(
 			humacore.NewError(http.StatusServiceUnavailable, "db_busy", "database is currently busy, please retry"),
-			http.Header{"Retry-After": []string{"5"}},
+			http.Header{headerRetryAfter: []string{"5"}},
 		)
 	}
 	var apiErr *domain.APIError
