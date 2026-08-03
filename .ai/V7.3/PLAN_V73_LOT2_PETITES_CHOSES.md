@@ -514,7 +514,17 @@ exécuter, avec l'état constaté le 2026-08-02. Chaque merge sur main = déploi
       conflit avec le hotfix #73 résolu en reprenant la version main (TODO 2026-09-15) ;
       CI branche 15/15 verte, mergée squash sur go utilisateur, **CI main post-merge
       verte**, thought_log fait. `main` rapatriée dans la branche du lot.
-- [ ] D3 **Lot B — echarts 5.6.0 → 6.1.0 (CVE-2026-45249, XSS)** — effort moyen.
+- [x] D3 **Lot B — echarts 6.1.0 : FAIT et mergé le 2026-08-03** (ef165518b, après le
+      merge du lot comme séquencé) : harnais Playwright toHaveScreenshot livré
+      (105 captures, 8 pages, baselines Lab versionnées, projet `visual` hors CI par
+      construction) — le trou de couverture de la PR #49 est comblé ; bump 5.6.0 →
+      6.1.0, CVE-2026-45249 éteinte (npm audit 1→0 moderate) ; 24 diffs pixel
+      analysées, SIGN-OFF UTILISATEUR RENDU (artefact 658ae5e8) : rendu épuré
+      accepté (grilles atténuées), radar amélioré, encoches lot 2 identiques au
+      pixel ; ignore dependabot retiré (critère rempli). Découvertes consignées :
+      fixture démo inexploitable pages joueur, tri sans départage API, heatmap Lab
+      à 0 préexistant, harnais local win32 (extension CI Linux = passe future).
+      (Texte d'origine :
       Décision du 27/07 maintenue : ne pas re-différer une 3e fois. SÉQUENCEMENT
       IMPOSÉ : après le merge du lot 2, depuis un `main` à jour (branche
       `fix/echarts-6-security-bump`) — le harnais Playwright `toHaveScreenshot` (B2)
