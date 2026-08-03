@@ -1,3 +1,17 @@
+## [2026-08-03] Vérification superviseur phase 2 + push + handoff de fin de journée
+
+**Statut** : Complété. Vérification sur pièces de la bascule (entrée ci-dessous) : suite complète
+`-p 1` exit 0 sur l'arbre MERGÉ (origin/main repris, +5 commits echarts 6, 0 conflit), artefacts
+3/3 bit-identiques à la baseline PAR EMPREINTES, 3 garde-rails lus et présents. Deux correctifs
+superviseur : 3 références de commentaires vers des tests FANTÔMES corrigées (motif J4R-3,
+`10068dad2`) ; `TeammatesQueryRequest` en baseline du ratchet contrat (`62baf42df`) — collision
+née de la régénération du contrat au merge, re-shim au lot hygiène. **Deux pièges de push** :
+`bash` du hook `shared-social-gate` résolvait vers le stub WSL (échec 0,1 s) — gate rejoué vert
+sous Git Bash, push refait depuis Git Bash ; le hook ne s'était jamais déclenché depuis le
+changement de PC. Poussé `4ab023d56..62baf42df` ; CI (run 30810162011) EN COURS à la passation —
+le repreneur la vérifie AU NIVEAU JOB. Handoff mis à jour (§0 en tête). Arbitrages endossés :
+bascule directe, publishable non filtré.
+
 ## [2026-08-03] Bascule des lecteurs killsource — FAITE (phase 2 close)
 
 **Statut** : Complété. Les 17 lecteurs de production lisent `match_kill_events_latest` ;
