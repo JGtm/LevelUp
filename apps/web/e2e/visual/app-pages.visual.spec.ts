@@ -36,13 +36,14 @@ import {
 const PAGES: { id: string; suffix: string; unstableCanvases?: number[] }[] = [
   { id: 'home', suffix: 'home' },
   { id: 'timeseries-summary', suffix: 'stats/timeseries?tab=summary' },
-  // canvas 04/05 = classements cartes et modes : à nombre de matchs ÉGAL, l'ordre
+  // canvas 06/07 = classements cartes et modes : à nombre de matchs ÉGAL, l'ordre
   // des libellés varie d'une réponse d'API à l'autre (tri sans clé de départage
   // côté backend). Les barres sont identiques, seuls les libellés permutent —
   // captures exclues faute d'être comparables, pas parce qu'elles « gênent ».
-  // Instabilité MESURÉE (deux générations comparées sur echarts 5.6.0), pas
-  // supposée. Voir README.
-  { id: 'synthesis', suffix: 'stats/synthesis', unstableCanvases: [4, 5] },
+  // Instabilité MESURÉE (deux générations comparées), pas supposée. Ces deux
+  // charts étaient en 04/05 sur `echarts` 5.6.0 : la heatmap de la page occupe
+  // 3 canvas depuis la 6.1.0, ce qui décale de +2 tout ce qui la suit. Voir README.
+  { id: 'synthesis', suffix: 'stats/synthesis', unstableCanvases: [6, 7] },
   { id: 'squad-synergies', suffix: 'squad/synergies' },
   { id: 'squad-dynamique', suffix: 'squad/dynamique' },
   // canvas 19 = classement des armes, même cause que ci-dessus (ex aequo à 2 et 3).
