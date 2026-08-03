@@ -27,13 +27,18 @@ package killcollector
 //	                                  divergence ».
 //	killer/assist_damage_pct          NULL. « Non mesure » n est jamais zero.
 //
-// # LA PRESEANCE — SANS ELLE, ON REINTRODUIT LE DOUBLON QU ON ELIMINE
+// # LA PRESEANCE — INVERSEE LE 2026-08-03 : LE CREDIT EST LA BASE, LE FILM ENRICHIT
 //
-// La vue `_latest` retient LA DERNIERE PASSE par match. Si ce producteur repassait apres le
-// decodeur de film sur un match porteur des deux sources, il EFFACERAIT la source du degat de la
-// lecture — pas en ajoutant des lignes, en devenant la generation servie. Il refuse donc
-// d ecrire un match dont la passe courante vient d un film. L ordre inverse (film apres credit)
-// se resout tout seul : le film gagne parce qu il est plus recent. **FILM > CREDIT, toujours.**
+// La vue `_latest` retient LA DERNIERE PASSE par match. Ce producteur REFUSAIT donc d ecrire un
+// match dont la passe courante venait d un film, pour ne pas effacer la source du degat fatal.
+// Le refus protegeait la source — au prix d un quart des morts : la passe de film ne publie que
+// 74,4 % de ce que le credit porte a 98,5 % (`.ai/CONCEPTION_INVERSION_PRESEANCE.md`).
+//
+// Il ECRIT DESORMAIS TOUJOURS, et il recompose : sa base credit + l enrichissement de la passe de
+// film courante, RELU EN BASE (`persist.FilmPassForMatch`) et fusionne par
+// `persist.MergeCreditAndFilm` sur la clef `(match_id, time_ms)` a tolerance ZERO. Rien n est
+// perdu d aucun cote. `covertParUnFilm` n a pas disparu : meme requete, sens inverse — elle
+// decide s il y a un enrichissement A RELIRE, pas un refus d ecrire.
 //
 // # TITLE-AGNOSTIC PAR CONSTRUCTION
 //
@@ -81,8 +86,13 @@ const creditToleranceMS = int64(5)
 const (
 	metricCreditMatches = "killsource_credit_matchs_ecrits"
 	metricCreditDeaths  = "killsource_credit_morts_ecrites"
-	metricCreditSkipped = "killsource_credit_matchs_deja_couverts_par_un_film"
-	metricCreditEmpty   = "killsource_credit_matchs_sans_evenement"
+	// metricCreditEnriched remplace `killsource_credit_matchs_deja_couverts_par_un_film`, qui
+	// comptait des REFUS d ecrire. La preseance inversee, ces matchs ne sont plus refuses : ils
+	// sont ECRITS avec l enrichissement du film recopie dessus. Le compteur change donc de nom
+	// avec ce qu il mesure — garder l ancien nom sur une quantite differente ferait mentir un
+	// graphe.
+	metricCreditEnriched = "killsource_credit_matchs_enrichis_par_un_film"
+	metricCreditEmpty    = "killsource_credit_matchs_sans_evenement"
 )
 
 // CreditCollector : le producteur credit-seul.
@@ -104,60 +114,91 @@ func NewCreditCollector(read *sql.DB, acquireShared persist.SharedWriterFn) *Cre
 type CreditOutcome string
 
 const (
-	// CreditWritten : les lignes credit-seul ont ete ecrites.
+	// CreditWritten : la base credit a ete ecrite, sans enrichissement (aucun film sur ce match).
 	CreditWritten CreditOutcome = "ecrit"
-	// CreditSkippedFilm : un film couvre deja ce match. LA PRESEANCE, et c est un succes, pas
-	// un echec : ecrire ici EFFACERAIT la source du degat de la lecture.
-	CreditSkippedFilm CreditOutcome = "film-prioritaire"
+	// CreditEnriched : la base credit a ete ecrite AVEC l enrichissement de la passe de film
+	// courante recopie dessus. Remplace l ancien `film-prioritaire`, qui designait un REFUS.
+	CreditEnriched CreditOutcome = "ecrit-enrichi"
 	// CreditNoEvents : aucun couple reconstituable. Cas NORMAL sur un match dont les
 	// `highlight_events` n ont jamais ete charges.
 	CreditNoEvents CreditOutcome = "sans-evenement"
 )
 
-// CollectMatch produit les lignes credit-seul d UN match.
+// CollectMatch produit la passe d UN match : sa base credit, enrichie du film s il y en a un.
 //
-// Contrat d erreur : une erreur rendue est une VRAIE panne (base injoignable, ecriture refusee).
-// La preseance et l absence d evenements sont des OUTCOMES — une passe de masse continue.
+// Contrat d erreur : une erreur rendue est une VRAIE panne (base injoignable, ecriture refusee,
+// identites divergentes entre les deux cotes de la fusion). L absence d evenements est un
+// OUTCOME — une passe de masse continue.
 func (c *CreditCollector) CollectMatch(ctx context.Context, matchID string) (CreditOutcome, int, error) {
-	couvert, err := c.covertParUnFilm(ctx, matchID)
-	if err != nil {
-		return CreditNoEvents, 0, err
-	}
-	if couvert {
-		observability.AddInt(metricCreditSkipped, 1)
-		slog.DebugContext(ctx, "killsource credit: match deja couvert par un film, preseance au film",
-			"match_id", matchID)
-		return CreditSkippedFilm, 0, nil
-	}
-
 	events, err := c.evenementsDuMatch(ctx, matchID)
 	if err != nil {
 		return CreditNoEvents, 0, err
 	}
-	batch := BuildCreditBatch(matchID, events)
-	if len(batch.Deaths) == 0 {
+	base := BuildCreditBatch(matchID, events)
+	if len(base.Deaths) == 0 {
 		observability.AddInt(metricCreditEmpty, 1)
 		return CreditNoEvents, 0, nil
 	}
 
+	batch, enrichi, err := c.recomposer(ctx, base)
+	if err != nil {
+		return CreditNoEvents, 0, err
+	}
 	if err := c.write(ctx, batch); err != nil {
 		return CreditNoEvents, 0, err
 	}
 	observability.AddInt(metricCreditMatches, 1)
 	observability.AddInt(metricCreditDeaths, int64(len(batch.Deaths)))
+	if enrichi {
+		observability.AddInt(metricCreditEnriched, 1)
+		return CreditEnriched, len(batch.Deaths), nil
+	}
 	return CreditWritten, len(batch.Deaths), nil
 }
 
-// covertParUnFilm : LA PRESEANCE, lue par la VUE et pas par la table.
+// recomposer : la base credit, plus l enrichissement de la passe de film courante s il y en a un.
+//
+// La sonde `covertParUnFilm` reste en tete pour la meme raison qu avant : elle est un `COUNT(*)`
+// sur l index `(match_id, written_at)`, la lecture complete des lignes de film ne suit que si elle
+// repond oui — et ~70 % des matchs n ont pas de film.
+func (c *CreditCollector) recomposer(
+	ctx context.Context, base persist.KillSourceBatch,
+) (persist.KillSourceBatch, bool, error) {
+	couvert, err := c.covertParUnFilm(ctx, base.MatchID)
+	if err != nil {
+		return persist.KillSourceBatch{}, false, err
+	}
+	if !couvert {
+		return base, false, nil
+	}
+	film, err := persist.FilmPassForMatch(ctx, c.read, base.MatchID)
+	if err != nil {
+		return persist.KillSourceBatch{}, false, err
+	}
+	batch, st, err := persist.MergeCreditAndFilm(base, film)
+	if err != nil {
+		return persist.KillSourceBatch{}, false, err
+	}
+	persist.PublishMergeStats(ctx, base.MatchID, st)
+	slog.DebugContext(ctx, "killsource credit: passe recomposee sur la base credit",
+		"match_id", base.MatchID, "base_credit", len(base.Deaths), "publiees", len(batch.Deaths),
+		"enrichies", st.Enriched, "orphelins", st.Orphans)
+	return batch, true, nil
+}
+
+// covertParUnFilm : LE DETECTEUR D ENRICHISSEMENT, lu par la VUE et pas par la table.
+//
+// Meme requete qu avant le 2026-08-03, sens inverse : elle decidait un REFUS D ECRIRE, elle
+// decide desormais s il y a quelque chose a RELIRE avant d ecrire.
 //
 // La question n est pas « ce match a-t-il DEJA eu une passe de film » mais « la passe COURANTE
-// vient-elle d un film » : une passe de film ancienne, supplantee par une passe credit-seul,
-// ne doit pas bloquer eternellement. La vue repond exactement a cette question.
+// porte-t-elle un enrichissement » : l enrichissement d une passe supplantee n existe plus. La vue
+// repond exactement a cette question.
 // La question se teste EN POSITIF sur les voies de film (`persist.FilmReadPaths`), et le
 // changement du 2026-08-02 n est pas cosmetique : la version precedente demandait
 // `read_path <> 'highlight-events'`, donc toute voie AUTRE que la sienne passait pour un film.
 // Le jour ou une seconde voie credit est apparue (le producteur live, `kill-feed`), ce test
-// aurait bloque ce producteur-la en le prenant pour un decodage — silencieusement.
+// aurait pris ce producteur-la pour un decodage — silencieusement.
 func (c *CreditCollector) covertParUnFilm(ctx context.Context, matchID string) (bool, error) {
 	args := make([]any, 0, len(persist.FilmReadPaths)+1)
 	args = append(args, matchID)
@@ -250,6 +291,14 @@ func BuildCreditBatch(matchID string, events []analysis.RawEvent) persist.KillSo
 			ReadOrigin:  killscope.OriginCreditOnly,
 		})
 	}
+	// LA DEDUPLICATION N EST PAS UNE PRECAUTION, ELLE EST NECESSAIRE — et c est une mesure du
+	// 2026-08-02 qui l impose : `highlight_events` porte 15 120 groupes `(match_id, time_ms,
+	// xuid)` en DOUBLE EXACT sur les 394 matchs sans film. Appariés tels quels, ils rendaient
+	// 50 125 morts la ou l oracle deduplique en compte 35 224 — 140 %. Une base qui sur-compte de
+	// 42 % n est pas une base, et l invariant « une passe ne porte jamais moins que la base »
+	// deviendrait ininterpretable. Une seule definition de la deduplication dans le depot.
+	batch.Deaths = persist.DedupCreditDeaths(batch.Deaths)
+	batch.CreditBaseCount = len(batch.Deaths)
 	return batch
 }
 
@@ -263,12 +312,16 @@ func (c *CreditCollector) write(ctx context.Context, batch persist.KillSourceBat
 	return persist.NewKillSourcePersister(db).PersistPass(ctx, batch)
 }
 
-// CreditSummary : ce qu une passe credit-seul a produit.
+// CreditSummary : ce qu une passe credit a produit.
+//
+// `Enriched` remplace `SkippedFilm` : la preseance inversee, un match couvert par un film n est
+// plus SAUTE, il est ecrit AVEC son enrichissement. Les deux compteurs se ressemblent, ils ne
+// disent pas la meme chose — et `Written` + `Enriched` totalisent les matchs ecrits.
 type CreditSummary struct {
 	Total       int
 	Written     int
+	Enriched    int
 	Deaths      int
-	SkippedFilm int
 	NoEvents    int
 	Errors      int
 	ElapsedTime time.Duration
@@ -283,7 +336,7 @@ func (c *CreditCollector) CollectMatches(ctx context.Context, matchIDs []string)
 	for _, id := range matchIDs {
 		if ctx.Err() != nil {
 			slog.InfoContext(ctx, "killsource credit: passe interrompue par l appelant",
-				"traites", sum.Written+sum.SkippedFilm+sum.NoEvents+sum.Errors, "total", sum.Total)
+				"traites", sum.Written+sum.Enriched+sum.NoEvents+sum.Errors, "total", sum.Total)
 			break
 		}
 		outcome, deaths, err := c.CollectMatch(ctx, id)
@@ -296,16 +349,17 @@ func (c *CreditCollector) CollectMatches(ctx context.Context, matchIDs []string)
 		case CreditWritten:
 			sum.Written++
 			sum.Deaths += deaths
-		case CreditSkippedFilm:
-			sum.SkippedFilm++
+		case CreditEnriched:
+			sum.Enriched++
+			sum.Deaths += deaths
 		case CreditNoEvents:
 			sum.NoEvents++
 		}
 	}
 	sum.ElapsedTime = time.Since(start)
 	slog.InfoContext(ctx, "killsource credit: passe terminee",
-		"total", sum.Total, "ecrits", sum.Written, "morts", sum.Deaths,
-		"preseance_film", sum.SkippedFilm, "sans_evenement", sum.NoEvents,
+		"total", sum.Total, "ecrits", sum.Written, "enrichis_par_un_film", sum.Enriched,
+		"morts", sum.Deaths, "sans_evenement", sum.NoEvents,
 		"erreurs", sum.Errors, "duration", sum.ElapsedTime)
 	return sum
 }

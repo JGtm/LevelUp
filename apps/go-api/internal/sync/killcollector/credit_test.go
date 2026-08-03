@@ -139,12 +139,20 @@ func TestRosterResoutLesDeuxFormesDeNom(t *testing.T) {
 
 // ─── EXIGENCE 1 : LA PRESEANCE ─────────────────────────────────────────────────────────────
 
-// TestPreseanceFilmSurCredit — le test qui empeche de reintroduire le doublon.
+// TestCreditRecomposeAvecLEnrichissementDuFilm — L INVERSION DE PRESEANCE, DE BOUT EN BOUT.
 //
-// Le match porte LES DEUX sources. Quel que soit l ordre d arrivee, la vue doit servir UN SEUL
-// jeu de lignes, et ce doit etre celui du FILM : lui seul porte la source du degat, et une
-// passe credit-seul qui le supplanterait l EFFACERAIT de la lecture.
-func TestPreseanceFilmSurCredit(t *testing.T) {
+// AVANT le 2026-08-03 ce test s appelait `TestPreseanceFilmSurCredit` et exigeait le contraire :
+// le producteur credit REFUSAIT d ecrire un match couvert par un film, et la passe de film restait
+// servie SEULE. C est cette regle qui a efface 25 697 morts a la bascule — la passe de film ne
+// publie que 74,4 % de ce que le credit porte a 98,5 %.
+//
+// Le scenario rejoue exactement cet enchainement, et exige les TROIS proprietes de l inversion :
+//
+//	(1) les morts que le film ne portait pas sont REVENUES ;
+//	(2) la source du degat mesuree par le film est TOUJOURS la, sur la mort qu elle decrit ;
+//	(3) la ligne de film qui n a aucune mort de credit en face (l orpheline — une mort de bot en
+//	    production) est CONSERVEE.
+func TestCreditRecomposeAvecLEnrichissementDuFilm(t *testing.T) {
 	const match = "match-deux-sources"
 	db := openSharedTestDB(t)
 	insererEvenements(t, db, match, duelSimple())
@@ -152,39 +160,74 @@ func TestPreseanceFilmSurCredit(t *testing.T) {
 	credit := NewCreditCollector(db, sharedWriter(db))
 	ctx := context.Background()
 
-	// (a) le credit d abord, le film ensuite : le film est plus recent, il gagne.
+	// (a) le credit d abord : trois couples, aux instants des KILLS (1000, 5000, 9000).
 	if _, _, err := credit.CollectMatch(ctx, match); err != nil {
 		t.Fatalf("credit: %v", err)
 	}
-	apresCredit := compterVue(t, db, match)
-	if apresCredit == 0 {
-		t.Fatal("le producteur credit n a rien ecrit — le reste du test ne prouverait rien")
+	if n := compterVue(t, db, match); n != 3 {
+		t.Fatalf("la vue sert %d lignes apres le credit, attendu 3 — le reste du test ne "+
+			"prouverait rien", n)
 	}
+
+	// (b) une passe de film arrive : DEUX lignes seulement (1000 et 2000). C est la situation
+	// de production en miniature — le film publie moins de morts que le credit.
 	ecrirePasseDeFilm(t, db, match, 2)
-
 	if n := compterVue(t, db, match); n != 2 {
-		t.Fatalf("la vue sert %d lignes apres la passe de film, attendu 2 — "+
-			"les deux passes se melangent, ce qui est exactement le doublon qu on elimine", n)
-	}
-	if voie := voieDeLaVue(t, db, match); voie == killscope.ReadPathCreditBackfill {
-		t.Fatalf("la vue sert la voie %q — le film doit primer, sinon la source du degat "+
-			"disparait de la lecture", voie)
+		t.Fatalf("la vue sert %d lignes apres la passe de film, attendu 2 — les deux passes se "+
+			"melangent, ce qui est exactement le doublon qu on elimine", n)
 	}
 
-	// (b) le credit REPASSE alors que le film couvre deja le match : il doit REFUSER.
+	// (c) le credit REPASSE : il ne refuse plus, il RECOMPOSE.
 	outcome, n, err := credit.CollectMatch(ctx, match)
 	if err != nil {
 		t.Fatalf("credit (second passage): %v", err)
 	}
-	if outcome != CreditSkippedFilm || n != 0 {
-		t.Fatalf("outcome = %q (%d lignes), attendu %q et 0 — la preseance n a pas joue",
-			outcome, n, CreditSkippedFilm)
+	if outcome != CreditEnriched {
+		t.Fatalf("outcome = %q, attendu %q — la recomposition n a pas eu lieu", outcome, CreditEnriched)
 	}
-	if n := compterVue(t, db, match); n != 2 {
-		t.Fatalf("la vue sert %d lignes apres le second passage du credit, attendu 2", n)
+	if n != 4 || compterVue(t, db, match) != 4 {
+		t.Fatalf("%d lignes publiees (vue : %d), attendu 4 = 3 morts de credit + 1 orpheline de "+
+			"film. Moins de 4 veut dire qu une mort a disparu de la lecture", n, compterVue(t, db, match))
 	}
-	if voie := voieDeLaVue(t, db, match); voie == killscope.ReadPathCreditBackfill {
-		t.Fatal("le second passage du credit a supplante le film — la source du degat est perdue")
+
+	// (1) et (2) : la mort de 1000 ms porte la source du degat du film ; celles de 5000 et 9000,
+	// que le film ne portait pas, sont revenues SANS source (non mesuree, jamais zero).
+	sourceParInstant := map[int]bool{}
+	rows, err := db.Query(
+		`SELECT time_ms, source_tag IS NOT NULL FROM match_kill_events_latest WHERE match_id = ?`,
+		match)
+	if err != nil {
+		t.Fatalf("relecture: %v", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var instant int
+		var avecSource bool
+		if err := rows.Scan(&instant, &avecSource); err != nil {
+			t.Fatalf("scan: %v", err)
+		}
+		sourceParInstant[instant] = avecSource
+	}
+	attendu := map[int]bool{1000: true, 2000: true, 5000: false, 9000: false}
+	for instant, avecSource := range attendu {
+		got, present := sourceParInstant[instant]
+		if !present {
+			t.Errorf("aucune mort a %d ms — la recomposition en a perdu une", instant)
+			continue
+		}
+		if got != avecSource {
+			t.Errorf("mort a %d ms : source presente = %v, attendu %v", instant, got, avecSource)
+		}
+	}
+	// (3) l orpheline de film (2000 ms) a survecu ET porte la voie du film.
+	if voie := voieALInstant(t, db, match, 2000); voie != killscope.ReadPathFilmWalk {
+		t.Errorf("l orpheline a 2000 ms porte la voie %q, attendu %q — une mort de bot mesuree "+
+			"par le film ne doit ni disparaitre ni changer de portee", voie, killscope.ReadPathFilmWalk)
+	}
+	if voie := voieALInstant(t, db, match, 5000); voie != killscope.ReadPathCreditBackfill {
+		t.Errorf("la mort a 5000 ms porte la voie %q, attendu %q — la portee reste PAR LIGNE, "+
+			"c est elle qui dit mort par mort si une arme a ete mesuree",
+			voie, killscope.ReadPathCreditBackfill)
 	}
 }
 
@@ -201,7 +244,7 @@ func ecrirePasseDeFilm(t *testing.T, db *sql.DB, matchID string, morts int) {
 			FeedKillerGamertag: "Alpha", FeedKillerXUID: "1001", FeedPresent: true,
 			AssistKnown: true,
 			SourceTag:   0xacd1cff4, SourceCategory: "None",
-			ReadPath: "marche", ReadOrigin: "credit-concordant",
+			ReadPath: killscope.ReadPathFilmWalk, ReadOrigin: "credit-concordant",
 		})
 	}
 	if err := persist.NewKillSourcePersister(db).PersistPass(context.Background(), batch); err != nil {
@@ -209,13 +252,18 @@ func ecrirePasseDeFilm(t *testing.T, db *sql.DB, matchID string, morts int) {
 	}
 }
 
-func voieDeLaVue(t *testing.T, db *sql.DB, matchID string) string {
+// voieALInstant : la portee de LA mort d un instant donne.
+//
+// Elle se lit par instant et non pour le match entier, et c est le point : depuis l inversion de
+// preseance une passe porte DEUX portees a la fois — les morts enrichies portent celle du film,
+// les autres celle du credit. Un `SELECT DISTINCT read_path` sur le match rendrait deux lignes.
+func voieALInstant(t *testing.T, db *sql.DB, matchID string, instant int) string {
 	t.Helper()
 	var voie string
 	if err := db.QueryRow(
-		`SELECT DISTINCT read_path FROM match_kill_events_latest WHERE match_id = ?`,
-		matchID).Scan(&voie); err != nil {
-		t.Fatalf("voie de la vue: %v", err)
+		`SELECT read_path FROM match_kill_events_latest WHERE match_id = ? AND time_ms = ?`,
+		matchID, instant).Scan(&voie); err != nil {
+		t.Fatalf("voie a %d ms: %v", instant, err)
 	}
 	return voie
 }

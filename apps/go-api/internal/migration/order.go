@@ -171,7 +171,12 @@ var canonicalOrder = []string{
 	// J4 : la position suit l'ordre d'enregistrement réel (init() par nom de
 	// fichier — steps_shared_kill_events.go précède steps_shared_objective_events.go),
 	// exigence de TestSortByCanonicalIsNoOpOnCurrentRegistry.
-	"shared_match_kill_events_v1",                      // shared (1 ligne par mort, crédit kill-feed + source du dégât, append-only + vue _latest)
+	"shared_match_kill_events_v1", // shared (1 ligne par mort, crédit kill-feed + source du dégât, append-only + vue _latest)
+	// Inversion de préséance (2026-08-03) : base crédit + enrichissement film + orphelins.
+	// Placée AVANT from_pairs parce que l'ordre d'init() suit le nom de fichier — from_pairs
+	// ne trouve alors plus rien à reprendre, et c'est correct : la reprise credit-base couvre
+	// tout ce qu'elle couvrait, dédupliqué sur l'identité (cf. §10-2 de la conception).
+	"shared_kill_events_credit_base_v1",                // shared
 	"shared_kill_events_from_pairs_v1",                 // shared (J4 : reprise dédupliquée de killer_victim_pairs -> match_kill_events + drop v_killer_victim_full ; la table source RESTE)
 	"shared_objective_events_v1",                       // shared
 	"shared_objective_score_v1",                        // shared

@@ -83,9 +83,9 @@ func passeDeFilm(t *testing.T, db *sql.DB, matchID string, morts int) {
 			INSERT INTO match_kill_events (
 				match_id, decode_pass, decoder_rev, publishable, time_ms,
 				victim_gamertag, feed_present, assist_known, source_tag, read_path, read_origin
-			) VALUES (?, ?, 'film-rev', TRUE, ?, 'VictimeFilm', TRUE, TRUE, 3735928559, 'marche',
+			) VALUES (?, ?, 'film-rev', TRUE, ?, 'VictimeFilm', TRUE, TRUE, 3735928559, ?,
 				'credit-concordant')`,
-			matchID, "film-"+matchID, 100*(i+1)); err != nil {
+			matchID, "film-"+matchID, 100*(i+1), killscope.ReadPathFilmWalk); err != nil {
 			t.Fatalf("insert passe de film (%s): %v", matchID, err)
 		}
 	}
@@ -342,7 +342,7 @@ func TestPasseLaPlusRecenteGagne(t *testing.T) {
 		"m-puis-film").Scan(&voie); err != nil {
 		t.Fatalf("select voie: %v", err)
 	}
-	if voie != "marche" {
+	if voie != killscope.ReadPathFilmWalk {
 		t.Errorf("voie servie = %q, attendu celle du film — la passe la plus recente ne gagne "+
 			"plus, donc aucun decodage ulterieur ne remonte a la lecture", voie)
 	}

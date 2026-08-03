@@ -133,6 +133,19 @@ type KillSourceBatch struct {
 	// Publishable : la passe autorisait-elle la publication LIGNE PAR LIGNE ? Faux = agregat
 	// seulement (marge de bijection nulle, ou sante en alerte). Ecrit sur CHAQUE ligne.
 	Publishable bool `json:"publishable"`
+	// CreditBaseCount : LE PLANCHER DE LA PASSE — le nombre de morts que porte la base credit du
+	// match. Une passe ne peut JAMAIS en publier moins (cf. [validateKillSourceBatch]).
+	//
+	// C EST LE GARDE-RAIL DONT L ABSENCE A COUTE LA SESSION 3 : la passe de film remplacait la
+	// passe credit en n en publiant que 74,4 %, et rien — ni erreur, ni compteur, ni changement
+	// de nom — ne le signalait. Seulement moins de lignes.
+	//
+	// Il n est PAS renseigne a la main par un appelant : il vient de [MergeCreditAndFilm], qui le
+	// pose a la taille de la base qu il a recue, et des producteurs credit, qui le posent a la
+	// taille de leur propre base. Un producteur qui publierait une passe de film SEULE le
+	// laisserait a zero — c est le cas que la sonde DB de [KillSourcePersister.PersistPass]
+	// rattrape.
+	CreditBaseCount int `json:"credit_base_count,omitempty"`
 	// Deaths : les morts, dans l ordre rendu par le decodeur.
 	Deaths []KillEventInsert `json:"deaths,omitempty"`
 }
@@ -190,10 +203,20 @@ func (p *KillSourcePersister) PersistPass(ctx context.Context, in KillSourceBatc
 	}
 
 	// Le garde-fou de l hypothese « un seul assistant » : il vit dans la donnee
-	// (assist_extra_count) ET remonte ici. Silencieux tant qu il vaut 0.
+	// (assist_extra_count) ET remonte ici.
+	//
+	// ⚠ IL A BOUGE, ET IL NE VEUT PAS DIRE CE QU IL DISAIT (2026-08-03). Le message annoncait
+	// « l hypothese de schema est en defaut, migrer vers une table fille » des la premiere unite.
+	// Mesure : 5 lignes a 1 sur 124 694 (0,004 %), aucune au-dela — et ce que le compteur mesure
+	// est « deux kill-events ATTACHES a la meme mort nomment des assistants differents », pas
+	// « une mort porte deux assistants ». Le declencheur mesurable de migration est ecrit dans le
+	// DDL (`migration/steps_shared_kill_events.go`) : une ligne a >= 2, ou plus de 0,1 % des
+	// lignes a >= 1. Le log reste — un surplus doit se voir — mais il DIT ce qu il est.
 	if extra > 0 {
-		slog.WarnContext(ctx, "persist: morts portant plus d un assistant distinct — "+
-			"l hypothese de schema « un seul assistant » est en defaut, migrer vers une table fille",
+		slog.WarnContext(ctx, "persist: morts portant un assistant distinct SUPPLEMENTAIRE "+
+			"(deux kill-events attaches nommant des assistants differents) — anecdotique a "+
+			"l echelle mesuree ; declencheur de migration vers une table fille : cf. le DDL de "+
+			"match_kill_events",
 			"match_id", in.MatchID, "assist_extra_total", extra, "decoder_rev", in.DecoderRev)
 	}
 	return nil
@@ -209,6 +232,10 @@ func (p *KillSourcePersister) insertKillPass(
 		return 0, fmt.Errorf("persist: BeginTx kill_events %s: %w", in.MatchID, err)
 	}
 	defer func() { _ = tx.Rollback() }() // no-op apres Commit
+
+	if err := verifierPlancherCreditEnBase(ctx, tx, in.MatchID, len(in.Deaths)); err != nil {
+		return 0, err
+	}
 
 	extra, err := insertKillEventRows(ctx, tx, in, pass, now)
 	if err != nil {
@@ -243,6 +270,64 @@ func insertKillEventRows(
 		extra += d.AssistExtra
 	}
 	return extra, nil
+}
+
+// verifierPlancherCreditEnBase : LA SONDE INDEPENDANTE DU PRODUCTEUR.
+//
+// `KillSourceBatch.CreditBaseCount` protege contre une FUSION qui perdrait des lignes ; il ne
+// protege pas contre un producteur qui ne fusionnerait pas du tout — celui-la le laisserait a
+// zero et passerait. C est EXACTEMENT ce qui s est produit en session 3 : le decodeur de film
+// publiait sa seule liste, et rien ne la comparait a la liste officielle des morts.
+//
+// Cette sonde compare donc a une quantite que le producteur ne fournit pas : le nombre d IDENTITES
+// DISTINCTES `(time_ms, victime, tueur)` que `killer_victim_pairs` porte pour ce match. C est la
+// definition meme de la base credit, et elle rend 133 886 sur Halo Infinite / 268 337 sur Halo 5 —
+// les deux cardinaux cibles.
+//
+// ⚠ L IDENTITE, PAS LA CLEF. Deduplique sur `(match_id, time_ms)` seul, la base perdrait 7 morts
+// REELLES sur Halo 5 (deux victimes distinctes a la meme milliseconde, mesure du 2026-08-03) ;
+// dedupliquee sur toutes les colonnes elle en fabriquerait 12 088 de trop sur Infinite (une meme
+// mort ecrite sous deux orthographes de gamertag). L identite par xuids est le seul decoupage qui
+// rende les deux cardinaux justes.
+//
+// CE QU ELLE NE FAIT PAS : elle ne tourne PAS sur le chemin live (`persistCreditKillEvents`, qui
+// ecrit dans la transaction du match). La, les couples du match ne sont pas encore inseres — la
+// mesure serait celle du cycle precedent, donc fausse — et la base credit est de toute facon EN
+// MAIN, donc couverte par `CreditBaseCount`.
+//
+// Contrat d erreur : l absence de `killer_victim_pairs` (le jour ou elle deviendra une vue, etape 7
+// du chemin de retrait) N EST PAS une panne — la sonde se tait alors, et c est `CreditBaseCount`
+// qui reste seul en garde. Toute AUTRE erreur remonte : une sonde de securite qui echoue en
+// silence ne garde rien.
+func verifierPlancherCreditEnBase(ctx context.Context, tx *sql.Tx, matchID string, publiees int) error {
+	var estTable int
+	if err := tx.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM duckdb_tables() WHERE table_name = 'killer_victim_pairs'`,
+	).Scan(&estTable); err != nil {
+		return fmt.Errorf("persist: sonde plancher credit %s (nature de killer_victim_pairs): %w",
+			matchID, err)
+	}
+	if estTable == 0 {
+		return nil
+	}
+
+	var base int
+	if err := tx.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM (
+			SELECT DISTINCT COALESCE(time_ms, 0), COALESCE(victim_xuid, ''), COALESCE(killer_xuid, '')
+			FROM killer_victim_pairs
+			WHERE match_id = ? AND victim_gamertag IS NOT NULL AND victim_gamertag <> ''
+		)`, matchID).Scan(&base); err != nil {
+		return fmt.Errorf("persist: sonde plancher credit %s: %w", matchID, err)
+	}
+	if publiees < base {
+		return fmt.Errorf("persist: passe %s appauvrissante — %d morts publiees pour une base "+
+			"credit de %d en base (killer_victim_pairs, identites distinctes). La vue _latest ne "+
+			"retient qu une passe par match : l ecart serait EFFACE de la lecture sans erreur ni "+
+			"compteur. Le producteur doit FUSIONNER sur la base credit, pas la remplacer",
+			matchID, publiees, base)
+	}
+	return nil
 }
 
 const insertKillEventSQL = `
@@ -309,6 +394,15 @@ func validateKillSourceBatch(in KillSourceBatch) error {
 	if in.DecoderRev == "" {
 		return fmt.Errorf("persist: KillSourceBatch.DecoderRev vide (%s) — "+
 			"une passe doit dire quel decodeur l a produite", in.MatchID)
+	}
+	// L INVARIANT DE COUVERTURE. Il est verifie AVANT la transaction : un refus ne laisse aucune
+	// ligne derriere lui, et le match garde la passe qu il avait — c est-a-dire plus de morts que
+	// celle qu on refuse d ecrire.
+	if len(in.Deaths) < in.CreditBaseCount {
+		return fmt.Errorf("persist: passe %s appauvrissante — %d morts publiees pour une base "+
+			"credit de %d. Une passe ne peut jamais porter moins de morts que la base credit du "+
+			"match : la vue _latest n en retient qu une, donc l ecart serait EFFACE de la lecture "+
+			"sans erreur ni compteur", in.MatchID, len(in.Deaths), in.CreditBaseCount)
 	}
 	for i := range in.Deaths {
 		if err := validateKillEvent(&in.Deaths[i]); err != nil {

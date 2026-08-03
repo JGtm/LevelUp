@@ -278,16 +278,20 @@ func TestEventsCompletionPersister_EcritLaTableCanonique(t *testing.T) {
 	}
 }
 
-// TestEventsCompletionPersister_PreseanceFilm — la complétion ne supplante JAMAIS un film.
+// TestEventsCompletionPersister_RecomposeAvecLeFilm — la complétion ENRICHIT, elle n'efface plus.
 //
-// Même règle, même sens, que les deux autres producteurs crédit : la vue `_latest` retient la
-// DERNIÈRE passe, donc une passe de complétion écrite après un décodage de film deviendrait la
-// génération servie et effacerait de la lecture la source du dégât fatal. Sans erreur, sans
-// compteur, sans qu'un seul nom change.
+// AVANT le 2026-08-03 ce test s'appelait `_PreseanceFilm` et vérifiait l'inverse : la complétion
+// REFUSAIT d'écrire dès qu'un film couvrait le match, pour ne pas effacer la source du dégât. Le
+// refus protégeait la source — au prix des morts que le film ne porte pas (25,4 % en production).
 //
-// La table HISTORIQUE, elle, continue d'être écrite : la préséance ne porte que sur la table
-// canonique. Le test vérifie les deux — sinon « ne rien écrire du tout » passerait au vert.
-func TestEventsCompletionPersister_PreseanceFilm(t *testing.T) {
+// Les deux propriétés que le test tient maintenant, et il faut les DEUX :
+//
+//	(a) la mort de la complétion est PUBLIÉE (avant, elle disparaissait purement) ;
+//	(b) la ligne du film, à un autre instant, survit AVEC sa source du dégât.
+//
+// La table HISTORIQUE continue d'être écrite : la recomposition ne porte que sur la table
+// canonique, et ses ~20 lecteurs n'ont pas encore migré.
+func TestEventsCompletionPersister_RecomposeAvecLeFilm(t *testing.T) {
 	ctx := context.Background()
 	db := openCompletionTestDB(t)
 	matchID := "m-preseance-001"
@@ -296,10 +300,11 @@ func TestEventsCompletionPersister_PreseanceFilm(t *testing.T) {
 	// Une passe de FILM précède. Aucun film n'est nécessaire : ce qui décide est la voie.
 	if _, err := db.ExecContext(ctx, `
 		INSERT INTO match_kill_events (
-			match_id, decode_pass, decoder_rev, publishable, time_ms,
-			victim_gamertag, feed_present, assist_known, source_tag, read_path, read_origin
-		) VALUES (?, 'film-pass', 'film-rev', TRUE, 500, 'VictimeFilm', TRUE, TRUE, 3735928559,
-			'marche', 'credit-concordant')`, matchID); err != nil {
+			match_id, decode_pass, decoder_rev, written_at, publishable, time_ms,
+			victim_gamertag, feed_present, assist_known, source_tag, source_category,
+			read_path, read_origin
+		) VALUES (?, 'film-pass', 'film-rev', TIMESTAMP '2026-01-01 00:00:00', TRUE, 500,
+			'VictimeFilm', TRUE, TRUE, 3735928559, 'Headshot', ?, 'credit-concordant')`, matchID, killscope.ReadPathFilmWalk); err != nil {
 		t.Fatalf("seed passe de film: %v", err)
 	}
 
@@ -313,18 +318,39 @@ func TestEventsCompletionPersister_PreseanceFilm(t *testing.T) {
 			"canonique, les ~20 lecteurs historiques doivent continuer d'être servis", got)
 	}
 
-	// (b) la génération servie reste celle du film, avec sa source du dégât.
+	// (b) la génération servie porte LES DEUX morts : celle de la complétion (1000 ms) et
+	// l'orpheline du film (500 ms), qui garde sa source du dégât.
+	var lignes int
+	if err := db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM match_kill_events_latest WHERE match_id = ?`, matchID).
+		Scan(&lignes); err != nil {
+		t.Fatalf("compte de la génération servie: %v", err)
+	}
+	if lignes != 2 {
+		t.Fatalf("%d ligne(s) servies, attendu 2 (la mort de la complétion + l'orpheline du "+
+			"film) — moins de 2 veut dire qu'une mort a disparu de la lecture", lignes)
+	}
+
 	var voie string
 	var source sql.NullInt64
-	if err := db.QueryRowContext(ctx,
-		`SELECT read_path, source_tag FROM match_kill_events_latest WHERE match_id = ?`, matchID).
+	if err := db.QueryRowContext(ctx, `SELECT read_path, source_tag
+		FROM match_kill_events_latest WHERE match_id = ? AND time_ms = 500`, matchID).
 		Scan(&voie, &source); err != nil {
-		t.Fatalf("select génération servie: %v", err)
+		t.Fatalf("select ligne du film: %v", err)
 	}
-	if voie != "marche" || !source.Valid {
-		t.Errorf("génération servie : voie=%q source_tag valide=%v — attendu la passe de film. "+
-			"La complétion l'a supplantée, et la source du dégât fatal a disparu de la lecture",
-			voie, source.Valid)
+	if voie != killscope.ReadPathFilmWalk || !source.Valid {
+		t.Errorf("ligne du film : voie=%q source_tag valide=%v — la complétion l'a supplantée, "+
+			"et la source du dégât fatal a disparu de la lecture", voie, source.Valid)
+	}
+
+	if err := db.QueryRowContext(ctx, `SELECT read_path
+		FROM match_kill_events_latest WHERE match_id = ? AND time_ms = 1000`, matchID).
+		Scan(&voie); err != nil {
+		t.Fatalf("select mort de la complétion: %v", err)
+	}
+	if voie != killscope.ReadPathLiveFeed {
+		t.Errorf("mort de la complétion : voie=%q, attendu %q — la portée reste PAR LIGNE",
+			voie, killscope.ReadPathLiveFeed)
 	}
 }
 

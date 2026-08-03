@@ -218,14 +218,36 @@ pour le rejouer. **En CI il ne tourne donc pas** : c est une limite assumee, pas
 
 ## PHASE 2 — LA BASCULE DES LECTEURS
 
-> **PREALABLE ECRIT LE 2026-08-02 — `.ai/CONCEPTION_INVERSION_PRESEANCE.md`.** La bascule telle
-> qu ecrite ci-dessous suppose la preseance FILM > CREDIT, celle-la meme que la mesure de la
-> session 3 a invalidee. Le document de conception etablit l inversion (credit = base, film =
-> enrichissement) : appariement `(match_id, time_ms)` a tolerance ZERO (bijection stricte
-> mesuree), orphelins de film CONSERVES (968 morts de bot sur 980), table cible **134 866** contre
-> 124 694 aujourd hui. Il etablit aussi que le credit tient **98,5 % PARTOUT** et non sur le seul
-> perimetre film — l oracle brut sur-comptait. **Cette phase 2 s execute APRES cette inversion**,
-> pas avant.
+> **PREALABLE LEVE LE 2026-08-03 — l inversion de preseance est IMPLEMENTEE.** Elle etait ecrite
+> le 2026-08-02 (`.ai/CONCEPTION_INVERSION_PRESEANCE.md`) ; son §9 porte le statut d execution.
+> La bascule telle qu ecrite ci-dessous supposait la preseance FILM > CREDIT, celle-la meme que la
+> mesure de la session 3 a invalidee. Elle est desormais CREDIT = base, FILM = enrichissement :
+> appariement `(match_id, time_ms)` a tolerance ZERO, orphelins de film CONSERVES, et la table
+> sert **134 866** lignes contre 124 694 avant — **0 match ne perd de mort** (389 en perdaient).
+> Le credit tient **98,5 % PARTOUT**.
+>
+> **CE QUI CHANGE POUR CETTE PHASE, ET QU IL FAUT LIRE AVANT DE BASCULER :**
+>
+> 1. **`read_path` est desormais MIXTE dans une meme passe** : les morts enrichies portent la voie
+>    du FILM (`marche`/`scan`), les autres celle du credit. Un `SELECT DISTINCT read_path` par
+>    match rend maintenant DEUX lignes — tout lecteur qui supposait une voie unique par match est
+>    a reverifier.
+> 2. **`publishable` reste un attribut de la PASSE**, celui du film quand il y en a un. Sur les
+>    **366 matchs** a passe de film non publiable (BTB), les lignes de credit ajoutees heritent de
+>    `publishable = FALSE` alors qu elles seraient publiables sans film. **A TRANCHER DANS CETTE
+>    PHASE** — c est elle qui donne un lecteur a cette colonne (cf. §10-3 de la conception).
+> 3. **Les morts de BOT sont dans la table** (819 lignes, victime sans xuid) : l arbitrage (A) du
+>    §2.3 se referme ici, et le filtre `NOT LIKE 'bid(%'` de Q27 cesse d etre un NO-OP. Q26 n en a
+>    pas. **Les tester AVANT**, comme le §2.3 le demande depuis le debut.
+> 4. **631 morts ont GAGNE un xuid de victime** (le film ne le resolvait pas, le credit si) : les
+>    agregats carriere joignent desormais des lignes qu ils ignoraient.
+> 5. **Le gate « 3 artefacts bit-identiques » a une NOUVELLE baseline** (arbitrage superviseur
+>    2026-08-03) : les versions du 2026-08-02 de `01e1f945.json` et `64e8adfa.json` ont ete
+>    ecrasees par une regeneration sans sauvegarde prealable, et leur provenance (~650 Ko de plus
+>    qu aucun build reproductible) reste inexpliquee. La forme courante est ACCEPTEE comme
+>    reference : copies + empreintes SHA-256 dans
+>    `data/cache/replays/halo_infinite/baseline_2026-08-03/`. Le gate se joue desormais par
+>    comparaison a CETTE baseline — jamais en reconstruisant par-dessus (lecon de l incident).
 
 ### 2.1 La strategie : une VUE de compatibilite, pas huit reecritures
 
@@ -943,6 +965,81 @@ normalise : les deux formes donnent le meme chemin. Garde-rail `TestUneSeuleTron
 
 **CE QUI ATTEND L UTILISATEUR** : la revue visuelle du lot 1 (le lien, son absence, les familles
 d effet de tir). Elle n est PAS declaree passee.
+
+---
+
+### 2026-08-03 — L INVERSION DE PRESEANCE (session executeur 1/2)
+
+**Perimetre ferme au §6 de `.ai/CONCEPTION_INVERSION_PRESEANCE.md`. La bascule des lecteurs
+N EST PAS faite : c est la session 2/2.** Statut de chaque item, gate avant/apres, ecarts et
+decouvertes : §9 et §10 du document de conception. Ce journal ne garde que ce qui interesse le
+BRANCHEUR.
+
+**Ce qui a change, en une ligne** : `match_kill_events_latest` sert **134 866** lignes au lieu de
+124 694, sur les memes 1 343 matchs, et **aucun match ne publie moins de morts que sa base
+credit** (389 en publiaient moins). `killer_victim_pairs` est intacte (250 139 lignes).
+
+**Les trois producteurs ne REFUSENT plus, ils RECOMPOSENT.**
+
+| producteur | avant | apres |
+|---|---|---|
+| `persist/kill_events_credit.go` (LIVE, in-transaction) | refusait si la passe courante venait d un film | relit l enrichissement (`FilmPassForMatch`), fusionne, ecrit une passe recomposee |
+| `killcollector/credit.go` (backfill SQL -> SQL) | idem | idem. Outcome `film-prioritaire` remplace par `ecrit-enrichi` |
+| `killcollector/collector.go` (film) | publiait sa seule liste | lit la base credit (`CreditBaseForMatch`), fusionne, publie base + enrichissement + orphelins |
+
+`matchCoveredByFilmPass` et `covertParUnFilm` **n ont pas ete supprimees** : meme requete, sens
+inverse — elles decident s il y a un enrichissement A RELIRE, ce qui evite la lecture complete sur
+les ~70 % de matchs sans film.
+
+**CE QUE LE BRANCHEUR DOIT SAVOIR AVANT LA PHASE 2** (repris en tete du §2.1) :
+
+1. **`read_path` est MIXTE dans une meme passe.** Un `SELECT DISTINCT read_path` par match rend
+   desormais DEUX valeurs : la voie du FILM sur les morts enrichies, celle du CREDIT sur les
+   autres. Tout lecteur qui supposait une voie unique par match est a reverifier.
+2. **`publishable` reste un attribut de PASSE, celui du film.** 366 matchs a passe non publiable
+   (BTB) : leurs lignes de credit ajoutees heritent de `FALSE`. Aucun lecteur ne lit cette colonne
+   aujourd hui — **c est la phase 2 qui doit trancher** (accepter, ou passer `publishable` en
+   per-ligne comme `read_path`).
+3. **819 lignes de BOT** (victime sans xuid) sont servies : l arbitrage (A) du §2.3 se referme a
+   la bascule, et le filtre `NOT LIKE 'bid(%'` de Q27 cesse d etre un NO-OP. **Q26 n en a pas.**
+4. **631 morts ont GAGNE un xuid de victime** — le film ne le resolvait pas, le credit si. Les
+   agregats carriere joignent desormais des lignes qu ils ignoraient (mesure : victimes sans xuid
+   1 450 -> 819).
+
+**Ce qui est ecrit, et ou :**
+
+| brique | fichier |
+|---|---|
+| fusionneur PUR (`MergeCreditAndFilm` + `MergeStats`) | `persist/kill_events_merge.go` |
+| relecture de l enrichissement en base | `persist/kill_events_film_pass.go` |
+| base credit depuis `killer_victim_pairs` + `DedupCreditDeaths` | `persist/kill_events_credit.go` |
+| plancher `CreditBaseCount` + sonde DB | `persist/kill_events_persister.go` |
+| reprise SQL -> SQL, INSERT-only, idempotente | `migration/steps_shared_kill_events_credit_base.go` |
+| voies de film centralisees + verrou d egalite | `domain/killscope` + `killcollector/film_read_paths_test.go` |
+
+**Le fusionneur est dans `persist`, PAS dans `killcollector`** comme le §6.2 le proposait : le
+producteur live vit dans `persist`, et `persist` ne peut pas importer `killcollector` (qui
+l importe deja). `persist` possede de toute facon `KillSourceBatch`, type d entree et de sortie.
+
+**DEUX garde-rails d invariant, pas un** (le §6.5-2 en demandait un) : `CreditBaseCount` attrape
+une fusion qui perd des lignes ; la sonde `killer_victim_pairs` de `PersistPass` attrape un
+producteur qui **ne fusionne pas du tout** — celui-la laisserait le premier a zero. C est le cas
+exact de la session 3, et il est rejoue par
+`TestSondeRefuseUnePasseDeFilmQuiRemplaceLaBaseCredit`.
+
+**Dette H3 REFERMEE** : `marche`/`scan` vivaient en deux copies (`killsource.Path`,
+`persist.FilmReadPaths`) et la migration en aurait fait une troisieme. Elles sont dans
+`domain/killscope`, le decodeur reste leur proprietaire TYPE (il n a pas ete touche), l egalite
+est verrouillee par un test dans le seul paquet qui importe les deux, et le ratchet
+`archlint/no_raw_kill_scope_literal_test.go` les police desormais.
+
+**17 mutations verifiees rouges** : 9 sur le fusionneur, 2 sur les garde-rails du persister,
+6 sur la migration. Aucune n a ete supposee — chacune a ete injectee, jouee, et le fichier
+restaure.
+
+**Le croisement qui compte le plus** : la migration SQL et le fusionneur Go sont deux
+implementations independantes de la meme regle. Jouees separement sur deux copies neuves de la
+meme base et comparees ligne a ligne : **134 866 = 134 866, zero ecart**.
 
 ---
 

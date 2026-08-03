@@ -45,8 +45,8 @@ func insertKillRow(t *testing.T, db *sql.DB, matchID, pass string, timeMS int, v
 		INSERT INTO match_kill_events (
 			match_id, decode_pass, decoder_rev, publishable, time_ms,
 			victim_gamertag, feed_present, assist_known, read_path, read_origin
-		) VALUES (?, ?, 'test-rev', TRUE, ?, ?, TRUE, TRUE, 'marche', 'credit-concordant')`,
-		matchID, pass, timeMS, victim)
+		) VALUES (?, ?, 'test-rev', TRUE, ?, ?, TRUE, TRUE, ?, 'credit-concordant')`,
+		matchID, pass, timeMS, victim, killscope.ReadPathFilmWalk)
 	if err != nil {
 		t.Fatalf("insert (%s/%s): %v", matchID, pass, err)
 	}
@@ -133,8 +133,9 @@ func TestResiduDegatsQuatreCasNull(t *testing.T) {
 				victim_gamertag, feed_present, assist_known, assist_gamertag,
 				killer_damage_pct, assist_damage_pct, read_path, read_origin
 			) VALUES (?, 'p', 'test-rev', TRUE, ?, 'V', TRUE, ?, ?,
-				CAST(? AS UTINYINT), CAST(? AS UTINYINT), 'marche', 'credit-concordant')`,
-			c.nom, i, c.assistKnwn, c.assistName, c.killerPct, c.assistPct)
+				CAST(? AS UTINYINT), CAST(? AS UTINYINT), ?, 'credit-concordant')`,
+			c.nom, i, c.assistKnwn, c.assistName, c.killerPct, c.assistPct,
+			killscope.ReadPathFilmWalk)
 		if err != nil {
 			t.Fatalf("insert %q: %v", c.nom, err)
 		}

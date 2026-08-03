@@ -257,7 +257,8 @@ func (c *KillSourceCollector) collect(ctx context.Context, matchID string) (Kill
 	}
 
 	batch := BuildKillSourceBatch(matchID, res, ids)
-	if err := c.write(ctx, batch); err != nil {
+	publiees, err := c.write(ctx, batch)
+	if err != nil {
 		observability.AddInt(metricWriteError, 1)
 		return OutcomeWritten, 0, err
 	}
@@ -268,7 +269,7 @@ func (c *KillSourceCollector) collect(ctx context.Context, matchID string) (Kill
 	// differentes. Il se journalise et se compte — jamais il n avale la passe.
 	c.collectShots(ctx, matchID, chunks, ids)
 
-	return OutcomeWritten, len(batch.Deaths), nil
+	return OutcomeWritten, publiees, nil
 }
 
 // collectShots : la seconde ecriture de la passe — `shared.match_weapon_shots`.
@@ -301,19 +302,48 @@ func (c *KillSourceCollector) collectShots(
 	publishShotsPass(ctx, batch, len(parts.XUIDs))
 }
 
-// write : l ecriture, sous le lease RW de shared (ADR 0013 — un seul writer par DB).
+// write : la FUSION puis l ecriture, sous le lease RW de shared (ADR 0013 — un seul writer par DB).
+//
+// ─── LE DECODAGE NE PUBLIE PLUS SEUL ───────────────────────────────────────────────────────
+//
+// Depuis l inversion de preseance (2026-08-03), une passe de film ne remplace plus rien : elle se
+// POSE sur la base credit du match. La base est relue ici, dans le meme handle que l ecriture
+// (`persist.CreditBaseForMatch` — les couples de `killer_victim_pairs`, dedupliques sur
+// l identite, exactement la definition que la migration de reprise emploie), puis
+// `persist.MergeCreditAndFilm` apparie sur `(match_id, time_ms)` a tolerance ZERO.
+//
+// UN MATCH SANS COUPLE REND UNE BASE VIDE, et ce n est pas une erreur : toutes les lignes du film
+// deviennent alors des orphelines et la passe vaut ce qu elle valait avant l inversion. Le cas se
+// produit sur un match dont la completion combat n a pas encore tourne — le producteur live
+// recomposera la passe quand elle arrivera.
 //
 // Le chemin est le persister DEDIE et pas `BatchBuilder` : une passe de decodage arrive sur un
 // match DEJA insere, donc sans `Shared.Match`, et `SharedPersister` y serait un no-op. Le chemin
 // builder existe (`SetKillSource`) et reste le bon quand un film serait pret des le sync
 // primaire — ce qui n arrive pas aujourd hui.
-func (c *KillSourceCollector) write(ctx context.Context, batch persist.KillSourceBatch) error {
+func (c *KillSourceCollector) write(ctx context.Context, film persist.KillSourceBatch) (int, error) {
 	db, release, err := c.acquireShared(ctx)
 	if err != nil {
-		return fmt.Errorf("lease shared %s: %w", batch.MatchID, err)
+		return 0, fmt.Errorf("lease shared %s: %w", film.MatchID, err)
 	}
 	defer release()
-	return persist.NewKillSourcePersister(db).PersistPass(ctx, batch)
+
+	base, err := persist.CreditBaseForMatch(ctx, db, film.MatchID)
+	if err != nil {
+		return 0, err
+	}
+	batch, st, err := persist.MergeCreditAndFilm(base, film)
+	if err != nil {
+		return 0, err
+	}
+	persist.PublishMergeStats(ctx, film.MatchID, st)
+	slog.InfoContext(ctx, "killsource: passe fusionnee sur la base credit",
+		"match_id", film.MatchID, "base_credit", len(base.Deaths), "lignes_film", len(film.Deaths),
+		"publiees", len(batch.Deaths), "enrichies", st.Enriched, "orphelins", st.Orphans)
+	if err := persist.NewKillSourcePersister(db).PersistPass(ctx, batch); err != nil {
+		return 0, err
+	}
+	return len(batch.Deaths), nil
 }
 
 // writeShots : l ecriture des tirs, sous son PROPRE lease.

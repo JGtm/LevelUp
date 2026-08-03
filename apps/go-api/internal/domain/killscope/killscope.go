@@ -45,3 +45,38 @@ const (
 	// ET ce qu'elle ignore.
 	OriginCreditOnly = "credit-seul"
 )
+
+// Les voies de lecture produites par un DÉCODAGE DE FILM.
+//
+// ─── POURQUOI ELLES ATTERRISSENT ICI LE 2026-08-03 ─────────────────────────────────────────
+//
+// Leur propriétaire typé est `games/halo_infinite/film/killsource` (`Path`) — un paquet
+// title-specific, que ni `persist` ni `migration` ne peuvent importer. `persist` en portait donc
+// une copie brute (`FilmReadPaths`), non datée et non verrouillée (dette H3), et l'inversion de
+// préséance en aurait ajouté une TROISIÈME dans `migration`. À la 3e copie, la règle du dépôt
+// impose de centraliser ET de poser un garde-rail.
+//
+// LA VALEUR DE CE QU'ELLES DÉCIDENT : c'est sur elles que se teste, EN POSITIF, la présence d'un
+// enrichissement de film. Une copie qui dérive d'un caractère ne lève aucune erreur — le
+// détecteur cesse simplement de voir les passes de film, et un producteur crédit réécrit
+// par-dessus l'enrichissement. Le nombre de lignes ne bouge pas, aucun nom ne change : seule la
+// source du dégât fatal disparaît de la lecture.
+//
+// LE VERROU D'ÉGALITÉ avec le décodeur est `sync/killcollector` (le seul paquet qui importe les
+// deux) ; le ratchet qui interdit une 3e copie est
+// `internal/archlint/no_raw_kill_scope_literal_test.go`.
+const (
+	// ReadPathFilmWalk : la MARCHE déroule les records depuis le début du paquet — rappel plus
+	// faible, mais une chaîne complète l'a atteint.
+	ReadPathFilmWalk = "marche"
+	// ReadPathFilmScan : le SCAN DIRECT balaie les positions de bit — rappel supérieur,
+	// précision inférieure, en rattrapage de la marche.
+	ReadPathFilmScan = "scan"
+)
+
+// FilmReadPaths rend les voies de film, dans un ordre stable.
+//
+// UNE FONCTION ET PAS UNE VARIABLE : une slice exportée est modifiable par n'importe quel
+// importateur, et celle-ci décide de la préséance. Un appelant qui la muterait rendrait le
+// détecteur d'enrichissement aveugle pour tout le process.
+func FilmReadPaths() []string { return []string{ReadPathFilmWalk, ReadPathFilmScan} }

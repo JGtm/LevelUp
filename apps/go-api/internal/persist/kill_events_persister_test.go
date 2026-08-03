@@ -16,6 +16,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	"levelup/go-api/internal/domain/killscope"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
 )
@@ -41,7 +42,7 @@ func mortValide() KillEventInsert {
 		VictimGamertag: "Victime",
 		FeedPresent:    true,
 		AssistKnown:    true,
-		ReadPath:       "marche",
+		ReadPath:       killscope.ReadPathFilmWalk,
 		ReadOrigin:     "credit-concordant",
 	}
 }
@@ -90,7 +91,7 @@ func TestPersistPassEcritEtRelitParLaVue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("select vue: %v", err)
 	}
-	if victim != "Victime" || path != "marche" {
+	if victim != "Victime" || path != killscope.ReadPathFilmWalk {
 		t.Errorf("victime=%q path=%q", victim, path)
 	}
 	if !tag.Valid || tag.Int64 != 0x6a707421 || !cat.Valid || cat.String != "Headshot" {
@@ -170,6 +171,63 @@ func TestPasseVideNEcritRien(t *testing.T) {
 	}
 }
 
+// TestSondeRefuseUnePasseDeFilmQuiRemplaceLaBaseCredit — LE SCENARIO DE LA SESSION 3, REJOUE.
+//
+// C est le test que ce chantier existe pour ne plus avoir a ecrire apres coup. Un decodeur de
+// film publie sa seule liste de morts (74,4 % de l oracle) sur un match dont la base credit en
+// porte davantage : sans sonde, la passe devient la generation servie et l ecart disparait de la
+// lecture — meme noms, memes instants, seulement MOINS de lignes. Sur les donnees reelles :
+// 25 697 morts sur 949 matchs, sans erreur ni compteur.
+//
+// La sonde ne fait PAS confiance au producteur : elle compare a une quantite qu il ne fournit
+// pas, les identites distinctes de `killer_victim_pairs`. Un producteur qui oublierait de
+// fusionner laisserait `CreditBaseCount` a zero et passerait le premier garde-fou.
+func TestSondeRefuseUnePasseDeFilmQuiRemplaceLaBaseCredit(t *testing.T) {
+	db := openKillEventsTestDB(t)
+	ctx := context.Background()
+
+	for _, instant := range []int{1000, 2000, 3000} {
+		if _, err := db.ExecContext(ctx, `
+			INSERT INTO killer_victim_pairs
+				(match_id, killer_xuid, killer_gamertag, victim_xuid, victim_gamertag, kill_count, time_ms)
+			VALUES ('m-sonde', 'xuid(1)', 'Tueur', 'xuid(2)', 'Victime', 1, ?)`, instant); err != nil {
+			t.Fatalf("seed killer_victim_pairs: %v", err)
+		}
+	}
+
+	// Une passe de film qui ne porte QU UNE des trois morts, et qui ne declare aucun plancher —
+	// exactement ce que produisait le collecteur avant l inversion de preseance.
+	maigre := passeValide(mortValide())
+	maigre.MatchID = "m-sonde"
+	err := NewKillSourcePersister(db).PersistPass(ctx, maigre)
+	if err == nil {
+		t.Fatal("passe ACCEPTEE alors qu elle publie 1 mort pour une base credit de 3 — la vue " +
+			"_latest n en retient qu une : les deux autres morts viennent de disparaitre de la " +
+			"lecture, sans erreur ni compteur")
+	}
+	if !strings.Contains(err.Error(), "appauvrissante") {
+		t.Errorf("message = %q, attendu un refus « appauvrissante »", err.Error())
+	}
+
+	var n int
+	if err := db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM match_kill_events WHERE match_id = 'm-sonde'`).Scan(&n); err != nil {
+		t.Fatalf("select: %v", err)
+	}
+	if n != 0 {
+		t.Errorf("%d ligne(s) ecrites malgre le refus — le controle doit precede l INSERT", n)
+	}
+
+	// La MEME passe, fusionnee sur sa base credit, passe.
+	fusionnee := maigre
+	fusionnee.Deaths = []KillEventInsert{mortValide(), mortValide(), mortValide()}
+	fusionnee.Deaths[1].TimeMS, fusionnee.Deaths[2].TimeMS = 2000, 3000
+	fusionnee.CreditBaseCount = 3
+	if err := NewKillSourcePersister(db).PersistPass(ctx, fusionnee); err != nil {
+		t.Fatalf("passe fusionnee refusee: %v", err)
+	}
+}
+
 // TestRefusDuPersister — un test par propriete que le schema affirme. Le message d erreur
 // compte autant que le refus : c est lui qui dira au brancheur ce qu il a confondu.
 func TestRefusDuPersister(t *testing.T) {
@@ -195,6 +253,12 @@ func TestRefusDuPersister(t *testing.T) {
 		{"AssistExtra negatif", func(d *KillEventInsert) { d.AssistExtra = -1 }, nil, "AssistExtra"},
 		{"DecoderRev vide", nil, func(b *KillSourceBatch) { b.DecoderRev = "" }, "DecoderRev"},
 		{"MatchID vide", nil, func(b *KillSourceBatch) { b.MatchID = "" }, "MatchID"},
+		// L INVARIANT DE COUVERTURE — le refus dont l ABSENCE a coute la session 3. Une passe
+		// qui publie moins de morts que la base credit de son match devient la generation
+		// servie, et l ecart disparait de la lecture sans erreur ni compteur : c est exactement
+		// ce qui a efface 25 697 morts sur 949 matchs.
+		{"passe appauvrissante", nil, func(b *KillSourceBatch) { b.CreditBaseCount = 2 },
+			"appauvrissante"},
 	}
 
 	db := openKillEventsTestDB(t)

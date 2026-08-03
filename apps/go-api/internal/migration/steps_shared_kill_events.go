@@ -100,9 +100,36 @@ package migration
 // denominateur, et il n a jamais ete « la population » : la grammaire ne lit qu UN champ
 // d assistant par enregistrement (RE_LOG 7ter.76). Mais une hypothese de schema n est legitime
 // que si une mesure la surveille : `assist_extra_count` compte les assistants distincts
-// SUPPLEMENTAIRES vus sur une mort. Le jour ou `SELECT SUM(assist_extra_count) FROM
-// match_kill_events_latest` bouge, c est le declencheur de migration vers une table fille — et la
-// donnee etant DERIVEE de chunks en cache, cette migration se fera par un redecodage.
+// SUPPLEMENTAIRES vus sur une mort.
+//
+// ⚠ LE GARDE-FOU A BOUGE, ET LE DECLENCHEUR EST RECRIT (2026-08-03). Ce commentaire annoncait
+// « 0 partout aujourd hui ; s il bouge, migrer vers une table fille ». La mesure du 2026-08-03 sur
+// la base Halo Infinite dit : **5 lignes a 1, sur 5 matchs distincts, pour 124 694 lignes servies
+// (0,004 %)** ; aucune ligne au-dela de 1. Le declencheur litteral est donc franchi, et pourtant
+// l hypothese de schema TIENT — parce que ce que ce compteur mesure n est pas « une mort porte
+// deux assistants » mais « DEUX KILL-EVENTS ATTACHES a la meme mort nomment des assistants
+// differents » (cf. `killsource.Assist.Extra`, qui delimite lui-meme cette portee). Un seuil a
+// zero sur une quantite d appariement, et non sur une cardinalite du format, ne pouvait rester
+// vrai indefiniment.
+//
+// LE DECLENCHEUR MESURABLE QUI LE REMPLACE — migrer vers une table fille des que L UN des deux
+// est atteint :
+//
+//	(a) UNE SEULE ligne a `assist_extra_count >= 2`. Deux surplus sur une meme mort ne
+//	    s expliquent plus par un doublon d appariement : le format porterait bien plusieurs
+//	    assistants, et les colonnes simples deviendraient fausses ;
+//	(b) la part des lignes a `>= 1` depasse 0,1 % de `match_kill_events_latest` (125 lignes a
+//	    l echelle actuelle, soit 25 fois la mesure). Au-dela, ce n est plus une anecdote
+//	    d appariement et il faut instruire.
+//
+// Requete de surveillance :
+//
+//	SELECT COUNT(*) FILTER (WHERE assist_extra_count >= 2) AS declencheur_a,
+//	       COUNT(*) FILTER (WHERE assist_extra_count >= 1) AS lignes,
+//	       COUNT(*)                                        AS total
+//	FROM match_kill_events_latest;
+//
+// La donnee etant DERIVEE de chunks en cache, cette migration se fera par un redecodage.
 //
 // ─── LES PARTS DE DEGATS, ET LE PIEGE QUI VA AVEC ─────────────────────────────────────────
 //
@@ -269,8 +296,10 @@ const ddlMatchKillEvents = `
 		-- un nom surprend. (Le tueur, lui, vient du kill-feed avec son XUID : pas de bijection.)
 		assist_index         SMALLINT,
 		assist_rejected      VARCHAR,
-		-- assist_extra_count : LE GARDE-FOU de l hypothese « un seul assistant ». 0 partout
-		-- aujourd hui. S il bouge, migrer vers une table fille.
+		-- assist_extra_count : LE GARDE-FOU de l hypothese « un seul assistant ». Mesure du
+		-- 2026-08-03 : 5 lignes a 1 sur 124 694, aucune au-dela. Declencheur de migration vers
+		-- une table fille : une ligne a >= 2, OU la part des lignes a >= 1 au-dela de 0,1 %
+		-- (cf. en-tete du fichier).
 		assist_extra_count   UTINYINT  NOT NULL DEFAULT 0,
 
 		-- ── VERITE 2 : LA SOURCE DU DEGAT FATAL ─────────────────────────────────────────

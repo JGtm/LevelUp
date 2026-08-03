@@ -1,3 +1,129 @@
+## [2026-08-03] Vérification superviseur du lot inversion de préséance + arbitrage artefacts
+
+**Statut** : Complété. Vérification sur pièces du compte rendu exécuteur (entrée ci-dessous),
+AVANT commit.
+
+**Ce qui a été rejoué indépendamment, et ce que ça a rendu** : `go test ./... -p 1` exit 0 ;
+`go test -tags=integration -p 1 ./...` exit 0 avec `KILLSOURCE_FIXTURES` en chemin ABSOLU (paquet
+`killsource` : 294 s — les goldens sur films réels ont tourné, pas de skip). **Deux mutations
+superviseur injectées puis retirées** : plancher `validateKillSourceBatch` neutralisé →
+`TestRefusDuPersister` ROUGE (sous tag integration — le test du plancher y vit, un run nu est un
+faux vert) ; orphelins comptés mais non ajoutés dans `MergeCreditAndFilm` →
+`TestFusionConserveLesOrphelins` + `TestFusionNAppariePasHorsDeLInstantExact` ROUGES. **Mesure DB
+refaite de zéro sur une copie neuve** (faux repo root via `LEVELUP_REPO_ROOT`, reprise +
+`backfill-killsource --credit-only` rejoués) : avant 124 694 / après **134 866** lignes,
+**73 589** enrichies, **980** orphelins dont **13** HvH, **0** instant ambigu, **0** erreur,
+états assistant 49 147 / 23 081, victimes sans xuid 819, base crédit **133 886**,
+`killer_victim_pairs` **250 139** intacte, **0 match ne perd de morts**. Tous les chiffres du
+compte rendu reproduits au chiffre près.
+
+**Arbitrage artefacts écrasés** (incident consigné dans l'entrée exécuteur) : la forme courante
+est ACCEPTÉE comme nouvelle référence. Motifs : `000d5950` revenu bit-identique (le déterminisme —
+ce que le gate protège — est prouvé), rejeu dev-only (décision #5, aucun consommateur), provenance
+des ~650 Ko perdus inexpliquée sous toutes les combinaisons essayées. Baseline datée posée :
+`data/cache/replays/halo_infinite/baseline_2026-08-03/` (copies + `SHA256SUMS.txt`). Règle
+ajoutée au plan de branchement (§ préambule, point 5) : le gate se joue par comparaison à la
+baseline, jamais en reconstruisant par-dessus.
+
+**Prochaine étape** : commit + push de la branche, CI au niveau job, puis session 2/2 (bascule
+des 20 lecteurs).
+
+## [2026-08-03] Inversion de préséance crédit↔film — le crédit devient la base, le film enrichit
+
+**Statut** : Complété (session exécuteur 1/2). Périmètre fermé au §6 de
+`.ai/CONCEPTION_INVERSION_PRESEANCE.md`. **La bascule des 20 lecteurs n'est PAS faite** — c'est la
+session 2/2. Décodeur non touché (diff vide sur `analysis/`, `games/`, `cmd/replay-build`), aucune
+écriture sur la base de dev ni sur le VPS : toutes les mesures sur des COPIES en scratchpad.
+
+**Décision technique principale** : la préséance s'inverse sans migration de schéma et sans
+re-décodage. Le crédit devient la liste des morts, le film ENRICHIT celles qu'il couvre
+(`source_tag`, assistant nommé, parts de dégâts, divergence) sur la clé `(match_id, time_ms)` à
+tolérance **zéro**, et les lignes de film sans mort de crédit en face (les orphelines, 968 morts de
+bot sur 980) sont conservées. Trois producteurs qui REFUSAIENT d'écrire RECOMPOSENT désormais ;
+leurs deux fonctions de refus ne sont pas supprimées mais retournées — même requête, sens inverse.
+
+**Résultats observés — base Halo Infinite de dev (copie), avant → après** :
+**124 694 → 134 866 lignes servies** sur les mêmes 1 343 matchs ; **389 matchs perdaient des
+morts → 0** ; couverture **98,5 %** de l'oracle dédupliqué (133 886 / 135 909), et 98,5 % aussi sur
+le seul périmètre film. Les états 2 et 3 de l'assistant sont **identiques au chiffre près**
+(49 147 et 23 081) : la fusion ne fabrique aucun fait, ce que le §4 annonçait et que le tableau
+avant/après prouve. `diverges = TRUE` inchangé (1 296). `killer_victim_pairs` intacte (250 139).
+Halo 5 : no-op vérifié **sur la donnée** (268 337 → 268 337, 0 perdue, 0 ajoutée), pas seulement
+déduit de l'absence de film. Compteurs de la passe : 73 589 enrichissements, 980 orphelins,
+**13** humain-contre-humain (le chiffre exact du document), **0 instant ambigu**, **0 identité
+divergente**, 0 erreur.
+
+**Le croisement qui vaut le plus** : la migration SQL et le fusionneur Go sont deux implémentations
+INDÉPENDANTES de la même règle. Jouées séparément sur deux copies neuves et comparées ligne à ligne
+sur les colonnes de sens : **134 866 = 134 866, zéro écart**. C'est la seule vérification qui teste
+la règle plutôt que son écriture. La migration seule met **14,5 s** — elle ne demande aucun film,
+donc elle est jouable en production telle quelle.
+
+**Trois choses que l'implémentation a démenties ou corrigées, et qui ne se devinaient pas** :
+
+1. **La déduplication ne porte PAS sur la clé d'appariement.** Dédupliquée sur `(match_id,
+   time_ms)`, la base crédit **perd 7 morts RÉELLES** sur Halo 5 (sept instants portent deux
+   victimes distinctes) ; dédupliquée sur toutes les colonnes — ce que fait la reprise
+   `from_pairs` de J4 — elle **fabrique 12 088 doublons** sur Infinite (une même mort sous deux
+   orthographes de gamertag). Seule l'identité `(time_ms, victime, tueur)` rend les deux cardinaux
+   justes : 133 886 et 268 337. Clé d'APPARIEMENT et clé de DÉDUPLICATION sont deux objets
+   différents, et le document de conception ne les distinguait pas.
+2. **Le producteur crédit-seul sur-comptait de 42 %.** Il tirait 50 125 morts de `highlight_events`
+   là où l'oracle dédupliqué en compte 35 224, à cause des 15 120 doublons exacts de cette table
+   (découverte n°2 du document). Sans déduplication à la source, la cible 134 866 était
+   inatteignable et l'invariant « jamais moins que la base » devenait ininterprétable.
+3. **`CAST(now() AS TIMESTAMP)` rend l'heure LOCALE en DuckDB** (+2 h) alors que tous les
+   producteurs Go écrivent `time.Now().UTC()`. Une passe de migration battait donc toute passe
+   fraîche pendant deux heures. Corrigé dans la reprise neuve ; **défaut préexistant consigné** dans
+   `steps_shared_kill_events_from_pairs.go`, non traité (hors périmètre).
+
+**Le garde-rail demandé était insuffisant seul — il en fallait deux.** `CreditBaseCount` (posé par
+le fusionneur, jamais à la main) attrape une fusion qui perd des lignes ; il ne dit rien d'un
+producteur qui **ne fusionnerait pas du tout** — celui-là le laisserait à zéro et passerait. La
+sonde de `PersistPass` compare donc à une quantité que le producteur ne fournit pas : les identités
+distinctes de `killer_victim_pairs`. C'est exactement le scénario de la session 3, et il est rejoué
+par un test. La migration porte le même invariant, relu APRÈS écriture — un invariant vrai par
+construction est un invariant que personne ne relit.
+
+**Vérification par mutation : 17 mutations injectées, jouées, toutes rouges, fichier restauré**
+(9 fusionneur, 2 persister, 6 migration). Aucune supposée.
+
+**Dette H3 refermée en passant, parce qu'il le fallait** : la migration aurait fait une TROISIÈME
+copie de `marche`/`scan`. Elles vivent désormais dans `domain/killscope` ; le décodeur reste
+propriétaire du type et n'a pas été touché ; l'égalité est verrouillée par un test dans le seul
+paquet qui importe les deux, et le ratchet `archlint` les police. `assist_extra_count` réconcilié :
+la mesure (5 lignes à 1 sur 124 694) franchit le déclencheur littéral « 0 partout » sans invalider
+l'hypothèse de schéma — le déclencheur est réécrit en critère mesurable (une ligne à ≥ 2, ou plus
+de 0,1 % des lignes à ≥ 1), et le log qui criait « migrer » à chaque passe dit désormais ce qu'il
+est.
+
+**Conclusion / prochaine étape** : le critère de bascule est ATTEINT et mesuré. Session 2/2 = la
+bascule des 20 sites de lecture + `seed_demo` (S1) + `rebuild_mp` (S2), avec gate AVANT/APRÈS par
+lecteur. Trois points l'attendent, écrits en tête de la phase 2 : `read_path` est désormais MIXTE
+dans une même passe (deux voies par match) ; `publishable` reste un attribut de passe et 366 matchs
+BTB voient leurs lignes de crédit héritées à `FALSE` — **à trancher là, c'est le lot qui donne un
+lecteur à cette colonne** ; les 819 lignes de bot rendent le filtre `NOT LIKE 'bid(%'` de Q27
+opérant et Q26 n'en a pas.
+
+**GATE** : `go test ./... -p 1` **0 échec** · `go test -tags=integration -p 1 ./...` **0 échec** ·
+`TestGoldenFilms` joué EN LOCAL avec `KILLSOURCE_FIXTURES` en chemin ABSOLU — **les 4 films
+PASSENT** (41 s, pas de skip), plus les 5 autres tests golden et la mini-bobine · ratchet
+`golangci-lint --new-from-merge-base=origin/main` : **0 issue**. Décodeur non touché : `git diff`
+vide sur `internal/analysis/`, `internal/games/` et `cmd/replay-build`.
+
+**INCIDENT À SIGNALER — 2 artefacts de rejeu écrasés.** Le gate « 3 artefacts bit-identiques » a
+été joué en RECONSTRUISANT les artefacts, sans les sauvegarder d'abord. `000d5950.json` est revenu
+**bit-identique** (`d88bfeda…`), ce qui prouve le déterminisme du pipeline. Mais `01e1f945.json` et
+`64e8adfa.json` ont été RÉÉCRITS plus petits (2 300 211 → 1 638 025 et 3 269 550 → 2 620 933) et
+leurs versions du 2026-08-02 21:54 sont perdues (`data/cache` est gitignoré). **La cause n'est pas
+ce lot** : `cmd/replay-build` n'importe aucun paquet modifié ici, et les tailles obtenues
+correspondent aux copies de référence du worktree `filmdec-continuation` (1 638 531 / 2 621 908).
+Les versions écrasées portaient ~650 Ko de plus que ce que ce dépôt sait produire aujourd'hui, sous
+toutes les combinaisons de drapeaux essayées (`--geometry .ai/V7.5/dumps` → geometry=0 ; build
+depuis le worktree `re-mode-score` → idem). Leur provenance reste inexpliquée. **À décider par
+l'utilisateur** : les regénérer depuis la branche/les drapeaux qui les ont produites, ou accepter
+la forme courante. Leçon : sauvegarder AVANT de rejouer un gate qui écrit.
+
 ## [2026-08-03] Passation du rôle superviseur — handoff écrit
 
 **Statut** : Complété.
