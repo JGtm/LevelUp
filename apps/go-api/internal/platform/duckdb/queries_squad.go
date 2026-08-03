@@ -191,15 +191,27 @@ ORDER BY he.match_id, he.time_ms`
 //
 // Le '%s' positionnel est remplacé dynamiquement (IN-list de match_ids).
 // Ne PAS utiliser directement — passer par squad_repo.LoadKVPairs().
+// BASCULE DU 2026-08-03 : source canonique (cf. [KillEventsCanonicalTable]).
+//
+// LES MORTS DE BOT SONT ÉCARTÉES ICI, EXPLICITEMENT. Elles arrivent avec un `xuid` NULL, et
+// la version précédente les normalisait en chaîne vide — ce que `SynthesizeKillEventsFromKVPairs`
+// rejette ensuite (paire ignorée si un xuid est vide). Le résultat était donc déjà correct,
+// mais il tenait à un helper situé trois couches plus loin : sur l'ancienne table le
+// `COALESCE` était un NO-OP (aucun xuid NULL côté Infinite), il cesse de l'être ici. Un
+// `COALESCE(xuid, ”)` fusionnerait tous les bots en UN acteur de chaîne vide ; la seule
+// question qu'un event d'impact escouade sait poser porte sur des JOUEURS, donc on écarte au
+// plus près de la source, où l'intention est lisible.
 const Q32cSquadKVPairsTemplate = `
 SELECT
     kv.match_id,
-    COALESCE(kv.killer_xuid, '') AS killer_xuid,
-    COALESCE(kv.victim_xuid, '') AS victim_xuid,
-    COALESCE(kv.kill_count, 1)   AS kill_count,
-    COALESCE(kv.time_ms, 0)      AS time_ms
-FROM killer_victim_pairs kv
+    kv.feed_killer_xuid AS killer_xuid,
+    kv.victim_xuid,
+    1                   AS kill_count,
+    kv.time_ms
+FROM ` + KillEventsCanonicalTable + ` kv
 WHERE kv.match_id IN (%s)
+  AND kv.feed_killer_xuid IS NOT NULL
+  AND kv.victim_xuid      IS NOT NULL
 ORDER BY kv.match_id, kv.time_ms`
 
 // Q32bMainTeamParticipantsTemplate : pour chaque match dans la liste, retourne

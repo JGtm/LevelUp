@@ -463,10 +463,17 @@ func loadEventsForMatch(ctx context.Context, sharedDB *sql.DB, matchID string) (
 // events canoniques kill/death via le helper partagé
 // analysis.SynthesizeKillEventsFromKVPairs (source unique de la règle). Best-effort.
 func loadSyntheticKillEventsForMatch(ctx context.Context, sharedDB *sql.DB, matchID string) ([]canonical.HighlightEvent, error) {
+	// Source canonique depuis le 2026-08-03 (`match_kill_events_latest`, dédoublonnée à
+	// l'identité). Bots (xuid NULL) écartés au SQL et non normalisés en chaîne vide : un
+	// `COALESCE(xuid, '')` les fusionnerait en un acteur fantôme unique. Le rejet était déjà
+	// fait par analysis.SynthesizeKillEventsFromKVPairs, trois couches plus loin ; il est
+	// désormais lisible à la source.
 	const q = `
-		SELECT COALESCE(killer_xuid, ''), COALESCE(victim_xuid, ''), COALESCE(time_ms, 0)
-		FROM killer_victim_pairs
+		SELECT feed_killer_xuid, victim_xuid, time_ms
+		FROM match_kill_events_latest
 		WHERE match_id = ?
+		  AND feed_killer_xuid IS NOT NULL
+		  AND victim_xuid      IS NOT NULL
 		ORDER BY time_ms ASC
 	`
 	rows, err := sharedDB.QueryContext(ctx, q, matchID)

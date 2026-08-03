@@ -1,8 +1,12 @@
-## [2026-08-03] Bascule des lecteurs killsource — mesures préalables, blocage, 3 arbitrages rendus
+## [2026-08-03] Bascule des lecteurs killsource — FAITE (phase 2 close)
 
-**Statut** : En cours — **aucun lecteur basculé**, arrêt propre sur décision superviseur
-(plan-execution règle 9). Périmètre : phase 2 de `.ai/PLAN_BRANCHEMENT_KILLSOURCE.md`.
-Détail chiffré : §2.4 du plan (nouveau).
+**Statut** : Complété. Les 17 lecteurs de production lisent `match_kill_events_latest` ;
+`killer_victim_pairs` reste une table, hors produit, jusqu'à l'étape 7. Périmètre : phase 2 de
+`.ai/PLAN_BRANCHEMENT_KILLSOURCE.md`. Statuts item par item et gate avant/après par lecteur :
+§2.4 et §2.5 du plan.
+
+**Le blocage a été rendu au superviseur en cours de session et tranché** : bascule DIRECTE
+(la vue de compatibilité étant infaisable), et aucun lecteur ne filtre `publishable`.
 
 **Le blocage, et il n'était pas connu** : le §2.1 prescrit de transformer `killer_victim_pairs`
 en VUE sur `match_kill_events_latest`. **C'est infaisable depuis l'inversion de préséance de ce
@@ -64,9 +68,32 @@ anti-divergence du master plan). 4 conflits résolus — `thought_log` et `.gitl
 sur octets bruts, les deux fichiers générés (`openapi.yaml`, `generated.ts`) REGÉNÉRÉS et non
 fusionnés à la main (les deux endpoints concurrents coexistent, vérifié). Build vert.
 
-**Conclusion / prochaine étape** : trois arbitrages au superviseur (mécanisme de bascule,
-`publishable`, changement visible Halo 5). Rien d'autre n'est exécutable sans eux : le mécanisme
-décide la forme de chaque requête rebasculée, donc chaque gate avant/après.
+**CE QUE LA BASCULE A RENDU, MESURÉ AVANT/APRÈS PAR LECTEUR** (copies post-inversion) :
+duel de contrôle `Luigi Numba 01 → JGtm` **101 → 29**, le chiffre annoncé par le plan retrouvé
+sans être cherché ; Q27 sur JGtm **mêmes 3 370 couples**, 15 741 → 10 486 frags ; journal de
+match (Q20, squad, engagement, pénalité LUSR) **1 832 → 458 lignes pour 458 instants distincts**
+— la déduplication n'a retiré QUE des doublons, pas une mort ; sonde de présence **1 343 → 1 343
+matchs**, aucun match ne devient « cassé ».
+
+**TROIS GARDE-RAILS, CHACUN VU ROUGE AVANT COMMIT** (`kill_events_source_guard_test.go`) :
+retour à l'ancienne table · seconde copie de la requête de duel · `COALESCE(xuid,'')`. Les
+mutations ont été injectées, jouées, et chaque test a désigné le bon fichier avant restauration.
+
+**CE QUE LES TESTS EXISTANTS ONT APPRIS** : 3 tests unitaires et 16 d'intégration semaient
+l'ancienne table — ils ne couvraient donc PAS ce que la bascule change. Leurs fixtures sont
+passées au JOURNAL (`kill_count = N` devient N LIGNES), ce qui les rend fidèles à la forme réelle
+de la table. Le ratchet `TestNoRawKillScopeLiteral` a en plus attrapé deux littéraux de portée
+écrits à la main dans une fixture : *un garde-rail posé pour le code de prod a rattrapé un test*.
+
+**Gates** : `go test ./... -p 1` vert · `-tags=integration -p 1` vert · paquet `killsource` avec
+`KILLSOURCE_FIXTURES` en chemin ABSOLU vert en 304 s (`TestGoldenFilms` a tourné sur les 4 films
+réels, pas de skip) · 3 artefacts de rejeu **bit-identiques à la baseline**, vérifiés par
+COMPARAISON d'empreintes et jamais par reconstruction · ratchet lint cache purgé : **0 issue**.
+
+**Conclusion / prochaine étape** : reste à pousser la branche et attendre la CI verte au niveau
+job (régime CI du 26/07). Aucune écriture VPS, aucun re-backfill : la bascule ne change que des
+requêtes de LECTURE, la donnée en base est celle de l'inversion de ce matin. Le retrait de
+`killer_victim_pairs` (étape 7) garde son critère inchangé et reste un lot distinct.
 
 ## [2026-08-03] Vérification superviseur du lot inversion de préséance + arbitrage artefacts
 

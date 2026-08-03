@@ -70,7 +70,11 @@ func FindBrokenHighlightEventMatches(ctx context.Context, db *sql.DB, limit int)
 		    NOT EXISTS (SELECT 1 FROM highlight_events he WHERE he.match_id = mr.match_id)
 		    OR (
 		      EXISTS (SELECT 1 FROM highlight_events he WHERE he.match_id = mr.match_id AND he.event_type = 'kill')
-		      AND NOT EXISTS (SELECT 1 FROM killer_victim_pairs kvp WHERE kvp.match_id = mr.match_id)
+		      -- Sonde de présence basculée sur la canonique le 2026-08-03 : c'est elle que
+		      -- les lecteurs servent désormais, donc c'est son absence qui rend un match
+		      -- « cassé ». Sonder l'ancienne table déclarerait sains des matchs que l'écran
+		      -- affiche vides.
+		      AND NOT EXISTS (SELECT 1 FROM match_kill_events_latest kvp WHERE kvp.match_id = mr.match_id)
 		    )
 		  )
 		ORDER BY `+analysis.SQLStartTimeCanonical("mr")+` DESC NULLS LAST

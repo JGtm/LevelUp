@@ -313,10 +313,10 @@ APRES sur la base migree : **les onze sont identiques sur les deux titres**. Hal
 268 337 / 86 484 / 274 / 274 / 14 652 / **14 652**. Aucun lecteur ne bouge — c est le resultat
 attendu d une session qui ALIMENTE la table canonique sans encore y brancher personne.
 
-### 2.4 SESSION DE BRANCHEMENT 2026-08-03 — MESURES PREALABLES, ET LE BLOCAGE
+### 2.4 SESSION DE BRANCHEMENT 2026-08-03 — LA BASCULE, FAITE
 
-> Session executeur 2/2. **Aucun lecteur n a ete bascule** : la strategie du §2.1 est
-> INFAISABLE en l etat (blocage 1 ci-dessous), et trois decisions relevent du superviseur.
+> Session executeur 2/2. **LES LECTEURS SONT BASCULES** — sur arbitrage superviseur rendu en
+> cours de session (le §2.1 etait infaisable, cf. blocage 1). Statut de cloture au §2.5.
 > Toutes les mesures sont prises sur COPIE des deux bases reelles, remises en etat
 > post-inversion par `cmd/apply_shared_migrations` (134 866 / 1 343 sur Infinite,
 > 268 337 / 2 754 sur Halo 5 — les chiffres exacts de la conception §9.2).
@@ -479,6 +479,64 @@ en UNION des deux sources depuis la session 3 — il ne fait pas partie du reste
 *Lecon confirmee : l inventaire ecrit vieillit. Le §2.2 listait 20 lectures mais ne signalait
 aucun des 4 `COALESCE`, et classait `kill_events_credit.go` parmi les lecteurs alors que
 l inversion en a fait la source.*
+
+### 2.5 CLOTURE DE LA PHASE 2 — STATUT DE CHAQUE ITEM
+
+**ARBITRAGES RENDUS PAR LE SUPERVISEUR (2026-08-03, en cours de session)** : (1) bascule
+DIRECTE sur `match_kill_events_latest`, `killer_victim_pairs` reste une table hors produit
+jusqu a l etape 7 ; (2) aucun lecteur ne filtre sur `publishable`. Le retrait de l opposant
+fantome Halo 5 suit mecaniquement et est declare, pas arbitre.
+
+| item | statut | ou |
+|---|---|---|
+| §2.1 `killer_victim_pairs` devient une VUE | `[!]` | **INFAISABLE** — la table est la base credit (blocage 1). Remplace par la bascule directe, qui est l objectif reel du §2.1 et l etape 2/3/4 du chemin de retrait du DDL. |
+| §2.2 sites 1-4 (Q26, Q27, Q28, Q28 scope) | `[x]` | `queries_career_encounters.go` |
+| §2.2 site 5 (Q23b) | `[x]` | `queries_match_detail.go` |
+| §2.2 sites 6-7 (Q19b + `qKV`) — **meme commit + garde-rail** | `[x]` | centralises en `QKillsBetweenPlayers` (`kill_events_source.go`), les deux copies supprimees, garde-rail `TestUneSeuleRequeteDeFragsEntreDeuxJoueurs` |
+| §2.2 site 8 (Q20, journal) | `[x]` | `queries_match.go` — 6 colonnes inchangees, `kill_count` devient le litteral 1 |
+| §2.2 site 9 (Q30) | `[x]` | `queries_relations_moments.go` |
+| §2.2 sites 10-13 (squad, engagement x2, highlight_events_repo) | `[x]` | + les 4 `COALESCE(xuid,'')` remplaces par une exclusion SQL explicite |
+| §2.2 sites 14-15 (discipline : suicides, trahisons) | `[x]` | `sync/enrichment_discipline.go` — `SUM(kill_count)` -> `COUNT(*)` (l ancienne somme creditait deux fois un suicide double) |
+| §2.2 site 16 (penalite de depart LUSR) | `[x]` | `sync/skill/skill_v2_quit_penalty.go` |
+| §2.2 site 17 (sonde de presence) | `[x]` | `sync/events_replay.go` |
+| §2.2 site 18 (kill-feed Halo 5) | `[x]` | `halo5/halo5_match_events_source.go` |
+| §2.2 site 19 (`v_gamertag_lookup`) | `[~]` | deja bascule en session 3 (UNION des deux sources) — la jambe historique part avec la table |
+| §2.2 site 20 (`CreditBaseForMatch`) | `[~]` | **ne se bascule pas** : c est l INTRANT, pas un lecteur |
+| §2.3 (A) bots exclus des agregats carriere | `[x]` | tenu — mais **par la semantique NULL**, pas par le filtre `bid(` attendu (cf. 2.4-b). Mesure : 71 frags de bot ecartes sur JGtm |
+| §2.3 (B) BTB inclus en cumul, interdit ligne a ligne | `[x]` | aucun lecteur ne filtre `publishable` (arbitrage) ; l interdit ligne-a-ligne se posera sur l AFFICHAGE de l arme, pas sur la mort |
+| S1 `seed_demo` | `[~]` | **deja fait en session 4** — `match_kill_events` est dans `sharedTablesWhere` ET dans les cibles d anonymisation (3 paires d identite, dont l assistant). Verifie par lecture. |
+| S2 `rebuild_mp` | `[~]` | **deja a jour** — `match_kill_events_latest` est dans `dependentViews`. Outil `//go:build ignore` et CASSE par ailleurs (dette H4, hors perimetre). |
+
+**GATE 2 — RESULTATS DE LA BASCULE.** Avant/apres pris sur les copies post-inversion :
+
+| lecteur | avant | apres | lecture |
+|---|---|---|---|
+| Q19b / `qKV` — duel de controle `Luigi Numba 01 -> JGtm` | **101** | **29** | le chiffre annonce par le plan, retrouve au chiffre pres |
+| Q27 — JGtm, tous opposants | 3 370 couples / 15 741 frags / 19 384 morts | **3 370 / 10 486 / 12 309** | **memes couples**, cumuls degonfles ; groupe NULL (71 frags de bot) ecarte |
+| Q20 journal — match le plus doublonne | 1 832 lignes, **458 instants** | 458 lignes, **458 instants** | la deduplication n a retire QUE des doublons : pas une mort distincte perdue |
+| Q23b / squad / engagement — meme match | 1 832 | 458 | idem |
+| penalite LUSR — frags horodates, meme match | 1 832 | 458 | idem |
+| Q30 — duels Luigi/JGtm par match | 5 matchs | 5 matchs | l ensemble de matchs ne bouge pas |
+| discipline — suicides JGtm | 1 match | 1 match | — |
+| sonde de presence — matchs couverts | 1 343 | 1 343 | **aucun match ne devient « casse »** |
+| top 6 duels | 101/82/81/81/78/76 | 29/28/24/24/42/19 | — |
+
+**GATES TECHNIQUES** : `go test ./... -p 1` **vert** · `go test -tags=integration -p 1 ./...`
+**vert** · paquet `killsource` avec `KILLSOURCE_FIXTURES` en chemin ABSOLU **vert en 304 s**
+(`TestGoldenFilms` a tourne sur les 4 films reels, pas de skip) · **3 artefacts de rejeu
+bit-identiques a la baseline `baseline_2026-08-03/`**, verifies par COMPARAISON d empreintes
+et non par reconstruction · ratchet lint `--new-from-merge-base=origin/main` cache purge :
+**0 issue**.
+
+**TROIS GARDE-RAILS, CHACUN VU ROUGE** (`kill_events_source_guard_test.go`) : retour a
+l ancienne table · seconde copie de la requete de duel · `COALESCE(xuid,'')`. Les trois
+mutations ont ete injectees, jouees, et chaque test a designe le bon fichier avant restauration.
+
+**CE QUE LES TESTS EXISTANTS ONT APPRIS** : 3 tests unitaires et 16 tests d integration
+seedaient l ancienne table — ils ne couvraient donc PAS ce que la bascule change. Leurs
+fixtures sont passees au JOURNAL (`kill_count = N` devient N LIGNES), ce qui les rend fideles
+a la forme reelle de la table. Le ratchet `TestNoRawKillScopeLiteral` a par ailleurs attrape
+deux litteraux de portee ecrits a la main dans une fixture — il a fait son travail.
 
 ---
 

@@ -26,15 +26,16 @@ import (
 // porter la colonne time_ms.
 func recreateKVPairsWithTimeMS(t *testing.T, pdb *PlayerDB, ctx context.Context) {
 	t.Helper()
+	// BASCULE DU 2026-08-03 : le fallback lit la canonique. Les xuid y sont NULLABLES
+	// (un xuid absent = un BOT) et Q32c les écarte au SQL.
 	ddl := []string{
-		`DROP VIEW IF EXISTS killer_victim_pairs`,
-		`DROP TABLE IF EXISTS shared.killer_victim_pairs`,
-		`CREATE TABLE shared.killer_victim_pairs (
-			match_id VARCHAR NOT NULL, killer_xuid VARCHAR NOT NULL,
-			killer_gamertag VARCHAR, victim_xuid VARCHAR NOT NULL,
-			victim_gamertag VARCHAR, kill_count INTEGER DEFAULT 1,
-			time_ms BIGINT)`,
-		`CREATE VIEW killer_victim_pairs AS SELECT * FROM shared.killer_victim_pairs`,
+		`DROP VIEW IF EXISTS match_kill_events_latest`,
+		`DROP TABLE IF EXISTS shared.match_kill_events_latest`,
+		`CREATE TABLE shared.match_kill_events_latest (
+			match_id VARCHAR NOT NULL, feed_killer_xuid VARCHAR,
+			feed_killer_gamertag VARCHAR, victim_xuid VARCHAR,
+			victim_gamertag VARCHAR, time_ms BIGINT)`,
+		`CREATE VIEW match_kill_events_latest AS SELECT * FROM shared.match_kill_events_latest`,
 	}
 	for _, db := range []*DB{pdb.Player, pdb.Shared} {
 		for _, q := range ddl {
@@ -61,13 +62,13 @@ func TestSquadRepo_LoadImpactEvents_KVFallback_Synthesized(t *testing.T) {
 		"m1", pTestXUID, "medal", 5000)
 	// killer_victim_pairs : 2 kills horodatés sur m1.
 	execOnSharedDBs(t, pdb, ctx,
-		`INSERT INTO shared.killer_victim_pairs (match_id, killer_xuid, victim_xuid, kill_count, time_ms)
-		 VALUES (?, ?, ?, ?, ?)`,
-		"m1", pTestXUID, "victimA", 1, 3000)
+		`INSERT INTO shared.match_kill_events_latest (match_id, feed_killer_xuid, victim_xuid, time_ms)
+		 VALUES (?, ?, ?, ?)`,
+		"m1", pTestXUID, "victimA", 3000)
 	execOnSharedDBs(t, pdb, ctx,
-		`INSERT INTO shared.killer_victim_pairs (match_id, killer_xuid, victim_xuid, kill_count, time_ms)
-		 VALUES (?, ?, ?, ?, ?)`,
-		"m1", "killerB", pTestXUID, 1, 8000)
+		`INSERT INTO shared.match_kill_events_latest (match_id, feed_killer_xuid, victim_xuid, time_ms)
+		 VALUES (?, ?, ?, ?)`,
+		"m1", "killerB", pTestXUID, 8000)
 
 	repo := NewSquadRepo(pdb)
 	got, err := repo.LoadImpactEvents(ctx, []string{"m1"})
@@ -131,9 +132,9 @@ func TestSquadRepo_LoadImpactEvents_NativeKills_NoFallback(t *testing.T) {
 	// killer_victim_pairs peuplé : si le fallback se déclenchait à tort, on
 	// verrait des events synthétiques supplémentaires.
 	execOnSharedDBs(t, pdb, ctx,
-		`INSERT INTO shared.killer_victim_pairs (match_id, killer_xuid, victim_xuid, kill_count, time_ms)
-		 VALUES (?, ?, ?, ?, ?)`,
-		"m1", pTestXUID, "victimA", 1, 4000)
+		`INSERT INTO shared.match_kill_events_latest (match_id, feed_killer_xuid, victim_xuid, time_ms)
+		 VALUES (?, ?, ?, ?)`,
+		"m1", pTestXUID, "victimA", 4000)
 
 	repo := NewSquadRepo(pdb)
 	got, err := repo.LoadImpactEvents(ctx, []string{"m1"})
@@ -156,13 +157,13 @@ func TestSquadRepo_LoadKVPairs_Batch(t *testing.T) {
 	recreateKVPairsWithTimeMS(t, pdb, ctx)
 
 	execOnSharedDBs(t, pdb, ctx,
-		`INSERT INTO shared.killer_victim_pairs (match_id, killer_xuid, victim_xuid, kill_count, time_ms)
-		 VALUES (?, ?, ?, ?, ?)`,
-		"m1", "k1", "v1", 2, 1000)
+		`INSERT INTO shared.match_kill_events_latest (match_id, feed_killer_xuid, victim_xuid, time_ms)
+		 VALUES (?, ?, ?, ?)`,
+		"m1", "k1", "v1", 1000)
 	execOnSharedDBs(t, pdb, ctx,
-		`INSERT INTO shared.killer_victim_pairs (match_id, killer_xuid, victim_xuid, kill_count, time_ms)
-		 VALUES (?, ?, ?, ?, ?)`,
-		"m2", "k2", "v2", 1, 2000)
+		`INSERT INTO shared.match_kill_events_latest (match_id, feed_killer_xuid, victim_xuid, time_ms)
+		 VALUES (?, ?, ?, ?)`,
+		"m2", "k2", "v2", 2000)
 
 	repo := NewSquadRepo(pdb)
 

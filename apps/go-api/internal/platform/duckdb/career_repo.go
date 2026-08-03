@@ -25,10 +25,10 @@ import (
 )
 
 // careerEncountersTimeout : limite hard pour Q26 (encounters scope global,
-// agrège tous les matchs du joueur + JOIN killer_victim_pairs).
+// agrège tous les matchs du joueur + JOIN match_kill_events_latest).
 const careerEncountersTimeout = 30 * time.Second
 
-// careerRivalsTimeout : Q27 (agrégat global killer_victim_pairs sur le joueur).
+// careerRivalsTimeout : Q27 (agrégat global match_kill_events_latest sur le joueur).
 const careerRivalsTimeout = 20 * time.Second
 
 // CareerRepo implémente port.CareerRepository.
