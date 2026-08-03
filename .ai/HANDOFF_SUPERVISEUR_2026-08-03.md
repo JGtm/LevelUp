@@ -6,6 +6,67 @@
 
 ---
 
+## 0. MISE À JOUR — 2026-08-03 fin de journée (les §2, §3 et §5 ci-dessous sont PÉRIMÉS sur l'état)
+
+**LES DEUX SESSIONS « KILLFEED VISIBLE » SONT FAITES, VÉRIFIÉES ET POUSSÉES.** Le §5 (prompt du
+lot 1/2) et la session 2/2 sont derrière nous. État réel à la reprise :
+
+| | |
+|---|---|
+| Branche | `feat/replay2d-prod`, HEAD **`62baf42df`**, arbre propre, **poussée**, 0 retard sur `main` |
+| Lot 1/2 — inversion de préséance | **CLOS** (`4ab023d56`) — CI verte VÉRIFIÉE AU NIVEAU JOB (4 workflows, 0 job rouge) |
+| Lot 2/2 — bascule des 17 lecteurs | **CLOS** (`39da43fbf` + merge main `f36b75273` + 2 correctifs superviseur `10068dad2`, `62baf42df`) |
+| CI du push final | run **30810162011** (+ 3 workflows frères) **EN COURS à la passation** — **LE VÉRIFIER AU NIVEAU JOB** (`gh run view 30810162011`) : c'est le seul gate encore ouvert du lot 2/2 |
+| Donnée en base (dev) | celle de l'inversion : la table sert 134 866 lignes, 98,5 % partout ; `killer_victim_pairs` reste une TABLE (base crédit), plus aucun lecteur ne la lit |
+
+**Ce que le superviseur a vérifié sur pièces aujourd'hui** (méthode : ne pas refaire, s'y fier) :
+suites `-p 1` + intégration + goldens (fixtures ABSOLUES) rejouées localement sur les deux lots ;
+mesure DB refaite DE ZÉRO sur copie neuve (faux repo root `LEVELUP_REPO_ROOT`) — tous les chiffres
+des comptes rendus reproduits au chiffre près ; 2 mutations de garde-rails injectées/vues
+rouges/retirées (lot 1) ; artefacts de rejeu 3/3 bit-identiques à la baseline par empreintes.
+
+**Arbitrages rendus (ne pas rouvrir sans motif neuf)** :
+1. **Bascule DIRECTE des lecteurs** (la vue de compat du §2.1 du plan de branchement était
+   infaisable : circulaire depuis l'inversion).
+2. **`publishable` ne filtre aucun lecteur** (le filtre coûterait 47 037 morts ; la colonne
+   conditionne l'affichage futur de l'ARME, pas l'existence des morts).
+3. **Artefacts de rejeu : baseline re-posée** — les versions du 02/08 de `01e1f945`/`64e8adfa`
+   sont perdues (provenance des ~650 Ko inexpliquée), la forme courante fait référence :
+   `data/cache/replays/halo_infinite/baseline_2026-08-03/` + `SHA256SUMS.txt`. Le gate se joue
+   PAR COMPARAISON d'empreintes, jamais en reconstruisant par-dessus.
+
+**Pièges NOUVEAUX (en plus du §7)** :
+- Le test du plancher du persister (`TestRefusDuPersister`) vit derrière `//go:build integration` :
+  une mutation « vue verte » sous un run nu est un FAUX VERT — muter sous le tag.
+- **Hook pre-push `shared-social-gate` : `bash` peut résoudre vers le stub WSL** (non installé sur
+  ce PC) → échec en 0,1 s sans message utile. Pousser depuis Git Bash (ou corriger le PATH). Le
+  hook ne s'était JAMAIS déclenché depuis le changement de PC (glob `platform/duckdb/**`).
+- La régénération d'`openapi.yaml`/`generated.ts` à un merge peut créer une collision au ratchet
+  contrat (`lint-contract-ratchet`) : `TeammatesQueryRequest` est passé en baseline datée —
+  **re-shim candidat au lot hygiène**.
+- 19 fixtures de tests semaient l'ancienne table (passées au journal en phase 2) : les tests qui
+  « couvraient » la bascule ne la couvraient pas.
+
+**Visible à l'écran après cette bascule** (pour la release note / à montrer à l'utilisateur) :
+duel de contrôle 101 → 29 frags ; agrégats carrière dégonflés partout (facteur moyen 1,879) ;
+côté Halo 5, un « joueur fantôme » (bots en chaîne vide, 161 frags / 127 morts) SORT du top-10
+némésis — c'est une correction, mais elle se voit.
+
+**LA SUITE, dans l'ordre (stratégie §3 inchangée sur le fond)** :
+1. **Verdict CI au niveau job** du run 30810162011 — si rouge, traiter avant tout.
+2. **Intégration `feat/re-mode-score`** (worktree `.claude/worktrees/re-mode-score`) : rebaser sur
+   `feat/replay2d-prod`, rejouer les goldens, intégrer (revue déjà faite : 0 P0, 1 P1).
+3. **Hygiène** : H1-H6 (§ dédiée du master plan) + lot E `delivery-checklist` + re-shim
+   `TeammatesQueryRequest` + le défaut préexistant `CAST(now() AS TIMESTAMP)` consigné dans
+   `steps_shared_kill_events_from_pairs.go`.
+4. **MERGE vers `main`** — GO utilisateur EXPLICITE + fenêtre backfill prod convenue (la reprise
+   SQL→SQL joue en prod sans les films, ~15 s + passe crédit ~5 min par titre). Push `main` =
+   déploiement prod automatique : prévenir AVANT.
+
+Le reste du document (rôle §1, décisions §4, dette §6, pièges §7) reste valable.
+
+---
+
 ## 1. TON RÔLE — superviseur, pas exécuteur
 
 Tu tiens le master plan, tu ouvres les sessions exécuteur avec leur ordre de mission, tu
