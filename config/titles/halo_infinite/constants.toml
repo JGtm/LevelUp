@@ -58,6 +58,12 @@ effective_hp_to_kill = 225
 # de normalisation des barres/radars de rendement. = la constante historique
 # analysis.OffensiveConversionP80, externalisée par titre (h5 = 1.264, calibré data).
 offensive_conversion_p80 = 0.90
+# defensive_resistance_p80 = 1.65 : frontière élite DR (80e percentile) Infinite, pendant
+# DÉFENSIF du repère ci-dessus (DR = dégâts_subis / (PV × morts)). = la constante
+# historique analysis.DefensiveResistanceP80, externalisée par titre pour lever
+# l'asymétrie (l'offensive était en TOML, la défensive en const Go). Repère de l'écart
+# à la frontière élite tracé par la carte Résistance de la page Dynamique escouade.
+defensive_resistance_p80 = 1.65
 
 # ─── Préfixes de mode (normalisation pair_name) ─────────────────────────────
 # Réservé : les préfixes Assassin/Fiesta/BTB/Firefight/Ranked sont aujourd'hui

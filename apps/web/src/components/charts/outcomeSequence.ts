@@ -66,6 +66,99 @@ export function startOf(runs: Run[], i: number): number {
   return p
 }
 
+// ─── Encoches de dominance (marqueur traversant de la bande) ────────────────
+//
+// Le marqueur de dominance est une ENCOCHE VERTICALE qui traverse la bande et la
+// dépasse de quelques pixels (décision d'artefact « A » du lot v7.3-2), et non plus
+// un losange logé DANS la bande. Conséquence : il n'y a plus de seuil de densité
+// sous lequel on n'affiche rien — l'encoche vit à toute densité, quitte à fusionner
+// avec ses voisines quand la bande devient trop serrée pour les distinguer.
+//
+// Contrainte de contraste (audit 2026-08-02) : aucun token de dominance n'atteint
+// 3:1 contre la couleur d'issue qu'il surmonte. C'est la GOUTTIÈRE (fond de tooltip)
+// de part et d'autre du cœur coloré qui rend l'encoche lisible, pas sa couleur.
+
+/** Densité (px/match) au-dessous ou égale à laquelle les encoches voisines
+ *  fusionnent : sous ~2 px/match, deux cœurs de 1,8 px se toucheraient. */
+export const NOTCH_MERGE_MAX_PER_MATCH_PX = 2
+
+/**
+ * notchCoreWidth — largeur (px) du cœur coloré d'une encoche : la moitié de la
+ * largeur d'un match, bornée à [1,8 ; 5] px. Le plancher garantit un trait visible
+ * sur un historique dense, le plafond évite un pavé sur une bande de 12 matchs.
+ */
+export function notchCoreWidth(perMatchW: number): number {
+  return Math.min(5, Math.max(1.8, perMatchW * 0.5))
+}
+
+/**
+ * notchGutterWidth — largeur (px) de la gouttière de CHAQUE côté du cœur (couleur
+ * de fond de tooltip). Amincie sous 4 px/match pour ne pas manger le cœur.
+ */
+export function notchGutterWidth(perMatchW: number): number {
+  return perMatchW < 4 ? 0.75 : 1
+}
+
+/** Encoche prête à dessiner (une par match, ou une par groupe fusionné). */
+export interface DominanceNotch {
+  /** Centre de l'encoche, en unités de match depuis le début du run. */
+  center: number
+  /** Drapeau du groupe ; `null` = drapeaux MÊLÉS (couleur neutre). */
+  flag: DominanceValue | null
+  /** Nombre de matchs porteurs d'un drapeau fusionnés dans cette encoche. */
+  size: number
+}
+
+/**
+ * clusterDominanceNotches — HELPER PUR (hors React, testable isolément) : projette
+ * les matchs porteurs d'un drapeau d'un run en encoches à dessiner.
+ *
+ * Au-dessus de {@link NOTCH_MERGE_MAX_PER_MATCH_PX} px/match : une encoche par
+ * match, drapeau conservé. En dessous : les encoches dont les empreintes peintes
+ * (cœur + 2 gouttières) se chevaucheraient fusionnent en une seule, centrée sur le
+ * groupe. Un groupe homogène GARDE sa couleur (l'information n'est pas perdue) ;
+ * un groupe de drapeaux mêlés perd la sienne (`flag: null`) plutôt que d'élire
+ * arbitrairement un drapeau — le tooltip du run porte le détail.
+ */
+export function clusterDominanceNotches(
+  matches: OutcomePoint[],
+  perMatchW: number,
+): DominanceNotch[] {
+  const flagged: Array<{ index: number; flag: DominanceValue }> = []
+  matches.forEach((m, index) => {
+    if (m.dominance) flagged.push({ index, flag: m.dominance })
+  })
+  if (flagged.length === 0) return []
+  // NaN / densité confortable → aucune fusion (une encoche par match).
+  if (!(perMatchW <= NOTCH_MERGE_MAX_PER_MATCH_PX)) {
+    return flagged.map(({ index, flag }) => ({ center: index + 0.5, flag, size: 1 }))
+  }
+
+  const footprint = notchCoreWidth(perMatchW) + 2 * notchGutterWidth(perMatchW)
+  const out: DominanceNotch[] = []
+  let start = flagged[0].index
+  let end = start
+  let flags: DominanceValue[] = [flagged[0].flag]
+  const flush = () => {
+    const uniform = flags.every((f) => f === flags[0])
+    out.push({ center: (start + end) / 2 + 0.5, flag: uniform ? flags[0] : null, size: flags.length })
+  }
+  for (let i = 1; i < flagged.length; i++) {
+    const { index, flag } = flagged[i]
+    if ((index - end) * perMatchW < footprint) {
+      end = index
+      flags.push(flag)
+      continue
+    }
+    flush()
+    start = index
+    end = index
+    flags = [flag]
+  }
+  flush()
+  return out
+}
+
 /**
  * matchIndexAtX — résout le match cliqué à partir d'une valeur X continue de
  * l'axe (0..xMax). Helper PUR : `xValue` est ramené à un index global entier

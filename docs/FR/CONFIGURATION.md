@@ -240,7 +240,6 @@ ou auto-détection) avant toute lecture `os.Getenv`.
 | `LEVELUP_EVENTS_CONVERGENCE` | Passe de convergence des highlight_events (scheduler + trigger immédiat). Kill-switch : `0` pour désactiver. Retrait cible >= 2026-Q4. | on |
 | `LEVELUP_EVENTS_CONVERGENCE_MAX` | Borne le nombre de matchs traités par tick de convergence. | `50` |
 | `LEVELUP_CSR_SEASON_ID` | Surcharge l'id de saison CSR. | depuis `app_settings.json` |
-| `MULTI_TITLE_API_ENABLED` | Expose les routes multi-titres field-mappings/preview (override de `app_settings.json`). Gate de rollout (pas un kill-switch de rollback). | `false` |
 | `PRESTIGE_ENABLED` | Active le module Prestige (override de `app_settings.json`). | `true` |
 
 ### Intégrations
@@ -308,7 +307,6 @@ Clés lues par le backend Go depuis `app_settings.json` (certaines absentes du t
 | `backup_keep_daily` | int | `7` | Backups quotidiens conservés. |
 | `backup_keep_weekly` | int | `4` | Backups hebdomadaires conservés. |
 | `backup_keep_monthly` | int | `12` | Backups mensuels conservés. |
-| `multi_title_api_enabled` | bool | `false` | Expose les routes API multi-titres (surchargeable via `MULTI_TITLE_API_ENABLED`). |
 | `prestige_enabled` | bool | `true` | Active le module Prestige (surchargeable via `PRESTIGE_ENABLED`). |
 | `instance_locked` | bool | `false` | Verrouille l'instance aux utilisateurs existants (aussi via `LEVELUP_INSTANCE_LOCKED`). |
 

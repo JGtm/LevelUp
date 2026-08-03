@@ -304,3 +304,119 @@ func TestBuild_MechanicKillsExcludedFromGunClasses(t *testing.T) {
 		t.Error("attribution exacte après retrait : aucune classe unattributed attendue")
 	}
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// V73-3.2 — classes d'ENGIN (véhicule / tourelle), niveau 2 PAR ENGIN
+// ─────────────────────────────────────────────────────────────────────────────
+
+// h5VehicleRows — dataset H5 réaliste : le registre porte class == role == family ==
+// « vehicle » pour TOUS les engins (relevé sur data/titles/halo_5, 9 véhicules et 8
+// tourelles aux stock_ids distincts) ; seul weapon_key distingue un Warthog d'un Ghost.
+func h5VehicleRows() []port.WeaponKillRow {
+	return []port.WeaponKillRow{
+		{WeaponID: 10, Kills: 10, Class: "shoulder", Role: "precision"},
+		{WeaponID: 4028516791, Kills: 6, Class: "vehicle", Role: "vehicle", Family: "vehicle",
+			WeaponKey: "h5_vehicle_warthog", Label: "Warthog"},
+		{WeaponID: 3010146366, Kills: 4, Class: "vehicle", Role: "vehicle", Family: "vehicle",
+			WeaponKey: "h5_vehicle_ghost", Label: "Ghost"},
+		{WeaponID: 419783896, Kills: 4, Class: "vehicle", Role: "vehicle", Family: "vehicle",
+			WeaponKey: "h5_vehicle_banshee", Label: "Banshee"},
+		{WeaponID: 4233134183, Kills: 3, Class: "turret", Role: "turret", Family: "turret",
+			WeaponKey: "h5_turret_gauss", Label: "Tourelle Gauss"},
+	}
+}
+
+// TestBuild_H5VehiclesVentilatedPerVehicle est le test CENTRAL de l'exigence 3.2 : le
+// niveau 2 distingue CHAQUE engin (Warthog, Ghost, Banshee…) au lieu d'un bucket
+// « véhicule » unique — et ces kills ne tombent plus dans « Non attribué ».
+func TestBuild_H5VehiclesVentilatedPerVehicle(t *testing.T) {
+	// gun=10, vehicle=14, turret=3, melee=2, grenade=1 → 30 = total (résidu nul).
+	counts := domain.FragKillTypeCounts{Melee: 2, Grenade: 1, Total: 30}
+	fd := Build(h5VehicleRows(), counts, true)
+	assertFragInvariants(t, fd)
+
+	veh, ok := findFragClass(fd, domain.FragClassVehicle)
+	if !ok || veh.Kills != 14 {
+		t.Fatalf("classe vehicle = %+v, want kills=14", veh)
+	}
+	if veh.Authoritative {
+		t.Error("classe vehicle : Authoritative doit être false (estimé registre)")
+	}
+	// Ordre : kills desc, tie-break sur la CLÉ (banshee < ghost à 4 kills chacun).
+	wantRoles := []domain.FragRoleEntry{
+		{Role: "h5_vehicle_warthog", Kills: 6, Label: "Warthog"},
+		{Role: "h5_vehicle_banshee", Kills: 4, Label: "Banshee"},
+		{Role: "h5_vehicle_ghost", Kills: 4, Label: "Ghost"},
+	}
+	if len(veh.Roles) != len(wantRoles) {
+		t.Fatalf("vehicle.Roles = %+v, want %d engins distincts", veh.Roles, len(wantRoles))
+	}
+	for i, want := range wantRoles {
+		if veh.Roles[i] != want {
+			t.Errorf("vehicle.Roles[%d] = %+v, want %+v", i, veh.Roles[i], want)
+		}
+	}
+	// La tourelle suit la même règle (un seul engin : PAS de repli en feuille — le nom
+	// de l'engin est l'information, « tourelle » n'en est pas une).
+	tur, ok := findFragClass(fd, domain.FragClassTurret)
+	if !ok || tur.Kills != 3 {
+		t.Fatalf("classe turret = %+v, want kills=3", tur)
+	}
+	if len(tur.Roles) != 1 || tur.Roles[0].Role != "h5_turret_gauss" || tur.Roles[0].Label != "Tourelle Gauss" {
+		t.Errorf("turret.Roles = %+v, want [h5_turret_gauss(3, « Tourelle Gauss »)]", tur.Roles)
+	}
+	// Preuve de la correction : les 17 frags d'engin ne sont plus absorbés par le résidu.
+	if u, ok := findFragClass(fd, domain.FragClassUnattributed); ok {
+		t.Errorf("attribution exacte : aucun résidu attendu, got unattributed=%d", u.Kills)
+	}
+	// Ordre canonique : les engins se placent après les classes API, avant le résidu.
+	var order []string
+	for _, c := range fd.Classes {
+		order = append(order, c.Class)
+	}
+	want := []string{"shoulder", "melee", "grenade", "vehicle", "turret"}
+	for i := range want {
+		if i >= len(order) || order[i] != want[i] {
+			t.Fatalf("ordre des classes = %v, want %v", order, want)
+		}
+	}
+}
+
+// TestBuild_TitleWithoutVehicles_NoVehicleClass fige la DÉGRADATION par les données (et
+// non par une comparaison de slug) : un titre dont le registre ne déclare aucune arme de
+// classe vehicle/turret — cas Halo Infinite, vérifié en base le 2026-08-02 — ne produit
+// aucune row de cette classe, donc aucun arc. Sortie byte-identique à l'avant-3.2.
+func TestBuild_TitleWithoutVehicles_NoVehicleClass(t *testing.T) {
+	counts := domain.FragKillTypeCounts{Melee: 6, Grenade: 4, Total: 50}
+	fd := Build(heterogeneousInfiniteRows(), counts, false)
+	assertFragInvariants(t, fd)
+	for _, class := range []string{domain.FragClassVehicle, domain.FragClassTurret} {
+		if c, ok := findFragClass(fd, class); ok {
+			t.Errorf("titre sans engins : classe %q inattendue (%+v)", class, c)
+		}
+	}
+	// Le résidu reste celui d'avant (7 kills de la row non résolue + 3 non attribués).
+	if u, ok := findFragClass(fd, domain.FragClassUnattributed); !ok || u.Kills != 10 {
+		t.Errorf("unattributed = %+v, want kills=10 (comportement inchangé)", u)
+	}
+}
+
+// TestBuild_VehicleWithoutWeaponKey_StaysLeaf : un engin absent du registre (weapon_key
+// vide) garde ses kills dans la classe mais interdit un niveau 2 partiel — une
+// ventilation qui ne somme pas au total de la classe violerait l'invariant (b).
+func TestBuild_VehicleWithoutWeaponKey_StaysLeaf(t *testing.T) {
+	rows := []port.WeaponKillRow{
+		{WeaponID: 4028516791, Kills: 5, Class: "vehicle", Role: "vehicle",
+			WeaponKey: "h5_vehicle_warthog", Label: "Warthog"},
+		{WeaponID: 999999, Kills: 2, Class: "vehicle", Role: "vehicle"}, // hors registre
+	}
+	fd := Build(rows, domain.FragKillTypeCounts{Total: 10}, true)
+	assertFragInvariants(t, fd)
+	veh, ok := findFragClass(fd, domain.FragClassVehicle)
+	if !ok || veh.Kills != 7 {
+		t.Fatalf("classe vehicle = %+v, want kills=7 (l'engin inconnu reste compté)", veh)
+	}
+	if veh.Roles != nil {
+		t.Errorf("ventilation partielle interdite : Roles = %+v, want nil (feuille)", veh.Roles)
+	}
+}

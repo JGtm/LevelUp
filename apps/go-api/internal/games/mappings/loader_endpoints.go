@@ -59,6 +59,10 @@ type damageModelTOML struct {
 	// offensive_conversion_p80 : frontière élite OC (80e percentile) du titre, repère
 	// de normalisation des barres/radars de rendement. 0/absent = défaut Infinite (0.90).
 	OffensiveConversionP80 float64 `toml:"offensive_conversion_p80"`
+	// defensive_resistance_p80 : frontière élite DR (80e percentile) du titre, pendant
+	// défensif d'offensive_conversion_p80. 0/absent = défaut Infinite (1.65). Un titre
+	// no_damage_taken (h5) ne la déclare pas — sa DR n'est pas calculable.
+	DefensiveResistanceP80 float64 `toml:"defensive_resistance_p80"`
 	// no_team_mmr = true → le titre ne fournit PAS de MMR d'équipe/adverse par match
 	// (Halo 5). La colonne MMR du tableau Escouade/Explorer est masquée. Via
 	// games.ProvidesTeamMMR. Défaut false (MMR fourni, Infinite).
@@ -144,6 +148,9 @@ func LoadEndpointsFromBytes(path string, raw []byte) (*EndpointSet, error) {
 	if doc.DamageModel.OffensiveConversionP80 < 0 {
 		errs = append(errs, fmt.Errorf("[damage_model].offensive_conversion_p80 doit être >= 0 (reçu %v)", doc.DamageModel.OffensiveConversionP80))
 	}
+	if doc.DamageModel.DefensiveResistanceP80 < 0 {
+		errs = append(errs, fmt.Errorf("[damage_model].defensive_resistance_p80 doit être >= 0 (reçu %v)", doc.DamageModel.DefensiveResistanceP80))
+	}
 
 	// [engagement] optionnel. Poids négatifs = absurdes (un event ne retire pas du
 	// rythme) → rejetés. default à 0/absent = section non déclarée (défaut appliqué).
@@ -164,6 +171,7 @@ func LoadEndpointsFromBytes(path string, raw []byte) (*EndpointSet, error) {
 		NoNativeKDA:            doc.DamageModel.NoNativeKDA,
 		NoDamageTaken:          doc.DamageModel.NoDamageTaken,
 		OffensiveConversionP80: doc.DamageModel.OffensiveConversionP80,
+		DefensiveResistanceP80: doc.DamageModel.DefensiveResistanceP80,
 		NoTeamMMR:              doc.DamageModel.NoTeamMMR,
 	}
 	eng := EngagementConstants{

@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { ChallengeItem } from '@/lib/api/types'
 import { useAssetLabel } from '@/lib/i18n/fieldMappings'
-import { CADENCE_DAILY_FALLBACK_FR, CADENCE_WEEKLY_FALLBACK_FR } from './fallback.i18n'
 
 type ChallengeCadence = 'daily' | 'weekly' | 'capstone' | null
 type ChallengeCategory = 'daily' | 'weekly'
@@ -161,10 +160,9 @@ export function HomeChallengesList({ items }: { items: ChallengeItem[] }) {
 
 // ChallengeSection : sub-component pour pouvoir appeler useAssetLabel par section.
 function ChallengeSection({ section }: { section: ChallengeSection }) {
-  // Phase 4 plan finition multi-titres : libellé cadence via assets.toml.
-  const cadenceLabel = useAssetLabel('cadence', section.cadenceKey)
-  const fallback = section.cadenceKey === 'daily' ? CADENCE_DAILY_FALLBACK_FR : CADENCE_WEEKLY_FALLBACK_FR
-  const label = cadenceLabel !== section.cadenceKey ? cadenceLabel : fallback
+  // Libellé de cadence servi par assets.toml (source unique : les deux titres
+  // déclarent daily/weekly/monthly/free — plus aucun repli FR local).
+  const label = useAssetLabel('cadence', section.cadenceKey)
   return (
     <section data-testid={`home-challenge-section-${section.kind}`} className="space-y-3">
       <div className="space-y-2">

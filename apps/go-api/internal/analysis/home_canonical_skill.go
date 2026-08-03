@@ -95,15 +95,64 @@ func BuildCSRTierLabelFromEN(tierEN string, subTier *int, frPreferred bool) *str
 	return BuildSkillTierLabel(&t, frPtr, subTier, frPreferred)
 }
 
-func buildCanonicalSkillBadge(tierDisplay, tierCodeEN string, subTier *int, urlResolver func(tierEN string, subTier int) string) (*string, *string) {
+// normalizeSkillBadgeParts normalise le couple (tier EN brut, sous-palier) vers la
+// forme attendue par les résolveurs d'URL de badge : tier CAPITALISÉ
+// ("Bronze".."Diamond", "Onyx") + sous-palier 0 pour Onyx / 1..6 sinon.
+// ok=false quand rien n'est constructible (tier vide, sous-palier hors bornes).
+//
+// SOURCE UNIQUE de cette normalisation : le format d'URL des badges dépend de la
+// capitalisation exacte du tier ("120px-HINF-CSR_Gold3" côté HINF). Deux
+// consommateurs — buildCanonicalSkillBadge (badge de la home) et SkillBadgeURL
+// (lignes Explorer/historique) ; toute 3e copie doit passer par ici.
+func normalizeSkillBadgeParts(tierCodeEN string, subTier *int) (tierENcap string, st int, ok bool) {
 	tierEN := strings.ToLower(strings.TrimSpace(tierCodeEN))
 	if tierEN == "" {
+		return "", 0, false
+	}
+	tierENcap = strings.ToUpper(tierEN[:1]) + tierEN[1:]
+	if strings.EqualFold(tierEN, "onyx") {
+		return tierENcap, 0, true // Onyx : palier unique, pas de sous-palier
+	}
+	if subTier != nil {
+		st = *subTier
+	}
+	if st < 1 || st > 6 {
+		return "", 0, false
+	}
+	return tierENcap, st, true
+}
+
+// SkillBadgeURL résout l'URL de l'image du badge de palier depuis le tier EN brut
+// (ex. match_skill_rank_latest.tier) et son sous-palier, via le résolveur
+// title-aware INJECTÉ — même contrat que buildCanonicalSkillBadge : le résolveur
+// reçoit (tier capitalisé, sous-palier 0=Onyx/1..6) et rend "" quand il ne sait
+// pas construire d'URL.
+//
+// nil quand le palier n'est pas exploitable, que le résolveur est absent ou qu'il
+// ne produit rien : l'appelant DÉGRADE alors sur le libellé texte du palier
+// (aucune image manquante à l'écran).
+func SkillBadgeURL(tierCodeEN string, subTier *int, urlResolver func(tierEN string, subTier int) string) *string {
+	if urlResolver == nil {
+		return nil
+	}
+	tierENcap, st, ok := normalizeSkillBadgeParts(tierCodeEN, subTier)
+	if !ok {
+		return nil
+	}
+	urlStr := urlResolver(tierENcap, st)
+	if urlStr == "" {
+		return nil
+	}
+	return &urlStr
+}
+
+func buildCanonicalSkillBadge(tierDisplay, tierCodeEN string, subTier *int, urlResolver func(tierEN string, subTier int) string) (*string, *string) {
+	tierENcap, st, ok := normalizeSkillBadgeParts(tierCodeEN, subTier)
+	if !ok {
 		return nil, nil
 	}
-	// Capitalize first letter pour l'URL (Bronze, Silver, Gold, Platinum, Diamond, Onyx).
-	tierENcap := strings.ToUpper(tierEN[:1]) + tierEN[1:]
 
-	// Label : capitalize first letter du nom localisé.
+	// Label : capitalize first letter du nom localisé (repli sur le tier EN).
 	display := strings.TrimSpace(tierDisplay)
 	if display == "" {
 		display = tierENcap
@@ -111,33 +160,14 @@ func buildCanonicalSkillBadge(tierDisplay, tierCodeEN string, subTier *int, urlR
 		display = strings.ToUpper(display[:1]) + display[1:]
 	}
 
-	var label string
-	// st : sous-palier normalisé pour le résolveur (0 = Onyx, 1..6 sinon).
-	var st int
-
-	if strings.EqualFold(tierEN, "onyx") {
-		label = display
-		st = 0
-	} else {
-		if subTier != nil {
-			st = *subTier
-		}
-		if st < 1 || st > 6 {
-			return nil, nil
-		}
+	label := display
+	if st > 0 { // non-Onyx → sous-palier en chiffres romains
 		label = fmt.Sprintf("%s %s", display, csrSubTierRoman[st])
 	}
 
-	// URL : déléguée au résolveur injecté (title-aware). Aucun template HINF
-	// figé dans ce package — analysis reste pur et title-agnostic.
-	if urlResolver == nil {
-		return &label, nil
-	}
-	urlStr := urlResolver(tierENcap, st)
-	if urlStr == "" {
-		return &label, nil
-	}
-	return &label, &urlStr
+	// URL : déléguée au résolveur injecté (title-aware) via le chokepoint unique.
+	// Aucun template HINF figé ici — analysis reste pur et title-agnostic.
+	return &label, SkillBadgeURL(tierCodeEN, subTier, urlResolver)
 }
 
 // csrSubTiersPerTier : chaque palier non-Onyx (Bronze..Diamant) compte 6

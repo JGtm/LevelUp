@@ -187,6 +187,10 @@ type MediaService interface {
 	// ListMediaAuthors retourne les auteurs sélectionnables dans le filtre Auteurs
 	// (player_slug + compte + is_self), depuis la DB — gamertag enrichi par le handler.
 	ListMediaAuthors(ctx context.Context) ([]domain.MediaAuthor, error)
+	// DeleteMedia supprime définitivement un média (fichiers disque + visibilité).
+	// L'autorisation propriétaire/admin est appliquée par le service à partir de
+	// l'identité résolue par le handler (cf. domain.CanDeleteMedia).
+	DeleteMedia(ctx context.Context, req domain.MediaDeleteRequest) (*domain.MediaDeleteResponse, error)
 }
 
 // SocialService gère les interactions sociales (favoris de matchs).

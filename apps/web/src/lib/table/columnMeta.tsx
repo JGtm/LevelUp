@@ -5,14 +5,17 @@
  * Les 8 tableaux TanStack de l'app rendent chacun leur propre `<thead>` avec
  * `flexRender`. Pour éviter d'inventer un champ ad hoc par tableau, on augmente
  * `ColumnMeta` avec `headerTooltip?: string` : n'importe quelle `ColumnDef` peut
- * porter `meta: { headerTooltip: t('...') }`, et chaque `<thead>` rend l'icône
- * ⓘ via `<HeaderInfoTooltip text={header.column.columnDef.meta?.headerTooltip} />`.
+ * porter `meta: { headerTooltip: t('...') }`, et chaque `<thead>` enveloppe son
+ * libellé dans `<HeaderLabelTooltip text={...}>`.
  *
- * NB : l'icône est rendue en FRÈRE du contrôle de tri (jamais À L'INTÉRIEUR d'un
- * `<button>` de tri) — `InfoTooltip` rend lui-même un `<button>`, et un bouton
- * imbriqué dans un bouton est du HTML invalide (le navigateur referme le bouton
- * externe). Le `stopPropagation` du wrapper évite qu'un clic sur l'icône ne
- * déclenche le tri dans les tableaux dont le `<th>` porte l'`onClick` de tri.
+ * L'aide est portée par le LIBELLÉ lui-même (V73-L2 2.4c) : plus d'icône ⓘ dans
+ * les en-têtes, c'est le survol du libellé qui la révèle.
+ *
+ * NB — le piège qui imposait l'ancienne icône sœur : `InfoTooltip` rend un
+ * `<button>` par défaut, et un bouton imbriqué dans le `<button>` de tri est du
+ * HTML invalide (le navigateur referme le bouton externe). D'où le mode `trigger`
+ * d'`InfoTooltip`, qui enveloppe le libellé dans un `<span>` sans onClick : le
+ * clic reste au tri, le survol et le focus ouvrent l'aide.
  */
 import { type ReactNode } from 'react'
 import { type RowData } from '@tanstack/react-table'
@@ -24,25 +27,30 @@ import { InfoTooltip } from '@/components/ui/info-tooltip'
 declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData extends RowData, TValue> {
-    /** Texte d'aide (1 phrase, FR/EN via manifest i18n) affiché au survol d'une
-     *  icône ⓘ à côté du libellé de l'en-tête. Absent = pas d'icône. */
+    /** Texte d'aide (1 phrase, FR/EN via manifest i18n) affiché au survol du
+     *  LIBELLÉ de l'en-tête. Absent = pas d'aide. */
     headerTooltip?: string
   }
 }
 
 /**
- * HeaderInfoTooltip — icône ⓘ d'aide pour un en-tête de colonne. Rend `null`
- * quand `text` est absent, ce qui permet de l'appeler inconditionnellement dans
- * un `<thead>`. Icône réduite (w-3 h-3) adaptée à la densité des en-têtes.
+ * HeaderLabelTooltip — rend le libellé d'un en-tête de colonne porteur de son
+ * aide. Sans `text`, rend `children` inchangé : appelable inconditionnellement
+ * dans un `<thead>`, aucun nœud superflu quand la colonne n'a pas d'aide.
  *
- * Le clic est stoppé au niveau du wrapper : dans les tableaux où le `<th>` (ou un
- * `<button>` frère) porte l'`onClick` de tri, cliquer l'icône ne doit PAS trier.
+ * `focusable` : à poser sur les en-têtes NON triables uniquement (le libellé y
+ * est un texte passif → tabIndex=0 + curseur d'aide). Sur un en-tête triable, le
+ * `<button>` enveloppé est déjà focusable et son focus ouvre l'aide tout seul.
  */
-export function HeaderInfoTooltip({ text }: { text?: string }): ReactNode {
-  if (!text) return null
-  return (
-    <span className="inline-flex items-center" onClick={(e) => e.stopPropagation()}>
-      <InfoTooltip content={text} iconClass="w-3 h-3" />
-    </span>
-  )
+export function HeaderLabelTooltip({
+  text,
+  children,
+  focusable,
+}: {
+  text?: string
+  children: ReactNode
+  focusable?: boolean
+}): ReactNode {
+  if (!text) return <>{children}</>
+  return <InfoTooltip content={text} trigger={children} triggerFocusable={focusable} />
 }

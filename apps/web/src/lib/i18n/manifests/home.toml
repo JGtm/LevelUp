@@ -5,9 +5,10 @@
 #
 # Phase 2 meta-plan § 6.2.1 — chunk P2.F. Couvre les strings hardcodees
 # de HomePage.tsx qui ne sont PAS deja gerees par les modules
-# `kpi.i18n.ts`, `highlights.i18n.ts`, `spartanIdentity.i18n.ts`,
-# `fallback.i18n.ts`. Migration progressive : ces modules legacy seront
-# absorbes en Phase 3.
+# `kpi.i18n.ts`, `highlights.i18n.ts`, `spartanIdentity.i18n.ts`.
+# Migration progressive : ces modules legacy seront absorbes en Phase 3.
+# (`fallback.i18n.ts` a ete supprime le 2026-08-02 : les libelles de cadence
+# viennent desormais des TOML de titre, source unique.)
 
 # ─── États globaux page ────────────────────────────────────────────────────
 

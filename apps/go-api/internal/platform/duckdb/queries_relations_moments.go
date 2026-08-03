@@ -13,10 +13,20 @@ package duckdb
 
 // Q29RelationsHeatmapTpl : heatmap relation × heure. Restreint aux TOP-N
 // relations (les plus de matchs communs, bots exclus) puis compte les matchs
-// communs par (xuid, heure locale). L'instant UTC stocké est extrait dans le
-// fuseau de session DuckDB (SET TimeZone = cfg.UserTimezone), donc EXTRACT(hour)
-// rend l'heure locale de l'utilisateur. Le filtre top-N est fait par une
+// communs par (xuid, heure locale). Le filtre top-N est fait par une
 // sous-requête classée par count_together DESC (plafonné pour la lisibilité).
+//
+// Timezone (règle CLAUDE.md n°8) : la base UTC est le fragment canonique
+// StartTimeCanonicalSQL("r") — un TIMESTAMPTZ. EXTRACT sur un TIMESTAMPTZ
+// évalue dans le fuseau de session DuckDB (SET TimeZone = cfg.UserTimezone),
+// donc hour/dow sont bien locaux, DST inclus.
+// Correctif V7.3 lot 2 (item 1.3) : la forme précédente
+// `EXTRACT(hour FROM (COALESCE(start_time_utc, start_time) AT TIME ZONE 'UTC'))`
+// était fausse deux fois — (1) le `AT TIME ZONE 'UTC'` appliqué APRÈS le COALESCE
+// reconvertit le TIMESTAMPTZ en TIMESTAMP naïf UTC, ce qui annule le fuseau de
+// session et sert des heures UTC sous l'alias hour_local ; (2) le COALESCE
+// mal parenthésé promeut le fallback `start_time` (TIMESTAMP naïf, stocké UTC)
+// en l'interprétant dans le fuseau de session au lieu d'UTC.
 //
 // Format string : %s = inClause my_history (segmentation Phase 2, ou vide).
 //
@@ -28,7 +38,7 @@ package duckdb
 //	?  topN (LIMIT)
 //
 // Colonnes SELECT (5) : xuid, gamertag, hour (0..23 local), dow (0=dimanche…6=samedi local), count.
-const Q29RelationsHeatmapTpl = `
+var Q29RelationsHeatmapTpl = `
 WITH my_history AS (
     SELECT match_id, team_id
     FROM match_participants
@@ -38,8 +48,8 @@ encounters AS (
     SELECT
         p.xuid,
         p.match_id,
-        EXTRACT(hour FROM (COALESCE(r.start_time_utc, r.start_time) AT TIME ZONE 'UTC'))::INTEGER AS hour_local,
-        EXTRACT(dow FROM (COALESCE(r.start_time_utc, r.start_time) AT TIME ZONE 'UTC'))::INTEGER AS dow_local
+        EXTRACT(hour FROM ` + StartTimeCanonicalSQL("r") + `)::INTEGER AS hour_local,
+        EXTRACT(dow FROM ` + StartTimeCanonicalSQL("r") + `)::INTEGER AS dow_local
     FROM my_history h
     JOIN match_participants p
         ON p.match_id = h.match_id

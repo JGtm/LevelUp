@@ -15,3 +15,58 @@
 [meta]
 title_slug     = "halo_5"
 schema_version = 1
+
+# =============================================================================
+# Cadences de défi et niveaux de prestige (v7.3 lot 2, item 3.3)
+#
+# Ces deux kinds ne décrivent PAS des assets du jeu : ce sont des notions
+# LevelUp (module Prestige & Objectifs), identiques d'un titre à l'autre et
+# strictement per-titre à l'exécution (arch-rules : arcs/défis/PP disjoints par
+# titre). Ils sont déclarés ici parce que le front les résout désormais
+# uniquement depuis les TOML — les dictionnaires de repli FR/EN ont été
+# supprimés. Sans ces sections, Halo 5 afficherait les clés brutes ("free",
+# "daily", "0") là où Halo Infinite affiche "Libre", "Quotidien", "Recrue".
+#
+# Ce n'est donc pas un placeholder de taxonomie de jeu (cf. la note G9
+# ci-dessus sur les modes) : les valeurs sont exactes et exhaustives.
+# =============================================================================
+
+[assets.cadence.daily]
+labels = { en = "Daily", fr = "Quotidien" }
+display_order = 10
+
+[assets.cadence.weekly]
+labels = { en = "Weekly", fr = "Hebdomadaire" }
+display_order = 20
+
+[assets.cadence.monthly]
+labels = { en = "Monthly", fr = "Mensuel" }
+display_order = 30
+
+[assets.cadence.free]
+labels = { en = "Free", fr = "Libre" }
+display_order = 40
+
+[assets.prestige_level."0"]
+labels = { en = "Recruit", fr = "Recrue" }
+display_order = 10
+
+[assets.prestige_level."1"]
+labels = { en = "Soldier", fr = "Soldat" }
+display_order = 20
+
+[assets.prestige_level."2"]
+labels = { en = "Veteran", fr = "Vétéran" }
+display_order = 30
+
+[assets.prestige_level."3"]
+labels = { en = "Specialist", fr = "Spécialiste" }
+display_order = 40
+
+[assets.prestige_level."4"]
+labels = { en = "Elite", fr = "Élite" }
+display_order = 50
+
+[assets.prestige_level."5"]
+labels = { en = "Legendary", fr = "Légendaire" }
+display_order = 60

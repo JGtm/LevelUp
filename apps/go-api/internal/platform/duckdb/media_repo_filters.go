@@ -85,13 +85,14 @@ func (r *MediaRepo) ListMediaAuthors(ctx context.Context) ([]domain.MediaAuthor,
 		return []domain.MediaAuthor{{PlayerSlug: slug, MediaCount: 0}}, nil
 	}
 
-	// Pas de filtre status : la galerie en schéma shared_social ne filtre pas non
-	// plus (cf. mediaQueryConfig.baseWhereClause, branche default) — la plupart des
-	// lignes ont status NULL. On reste cohérent avec ce que la galerie affiche.
+	// Seul filtre de status : l'exclusion des médias supprimés (item 3.1), pour
+	// que le compte d'un auteur reste égal à ce que la galerie affiche. Les
+	// lignes à status NULL (la plupart) restent comptées grâce au COALESCE.
 	rows, err := r.socialDB().QueryRecovered(ctx, `
 		SELECT player_slug, COUNT(*) AS n
 		FROM media_files
 		WHERE player_slug IS NOT NULL AND player_slug <> ''
+		  AND `+MediaVisiblePredicate("")+`
 		GROUP BY player_slug
 		ORDER BY n DESC, player_slug ASC
 	`)
@@ -201,7 +202,7 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 			mma.match_id
 		FROM media_files mf
 		LEFT JOIN media_match_associations_latest mma ON mma.media_file_id = mf.id
-		WHERE mf.file_path = ? OR mf.file_name = ?
+		WHERE (mf.file_path = ? OR mf.file_name = ?) AND `+MediaVisiblePredicate("mf")+`
 		LIMIT 1
 	`, filePath, basename).Scan(&captureUTC, &currentMatchID)
 	if err != nil {

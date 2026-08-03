@@ -79,7 +79,17 @@ func (s *Halo5CommendationDefSource) LookupCommendations(ctx context.Context, id
 		if err := rows.Scan(&id, &name, &icon, &category, &tierTargets); err != nil {
 			return out, err
 		}
-		out[id] = canonical.CommendationDefinition{ID: id, Name: name, IconURL: icon, Category: category, TierTargets: tierTargets}
+		// Category est le libellé BRUT de l'API Metadata Halo 5 (« GAME MODE »,
+		// « MULTIPLAYER »…). Il est normalisé ici, à la frontière donnée -> type
+		// canonique : la couche produit et l'API ne voient que des clés stables,
+		// traduites côté web (citations.toml).
+		out[id] = canonical.CommendationDefinition{
+			ID:          id,
+			Name:        name,
+			IconURL:     icon,
+			Category:    canonical.NormalizeCommendationCategory(category),
+			TierTargets: tierTargets,
+		}
 	}
 	return out, rows.Err()
 }

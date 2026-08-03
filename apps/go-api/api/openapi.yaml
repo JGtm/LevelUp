@@ -3382,6 +3382,36 @@ paths:
       summary: Match précédent / suivant pour navigation
       tags:
         - match-view
+  /players/{player_slug}/media:
+    delete:
+      operationId: deleteMedia
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+        - explode: false
+          in: query
+          name: file_path
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaDeleteResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Supprime définitivement un média (propriétaire ou admin)
+      tags:
+        - media
   /players/{player_slug}/media/associate:
     post:
       operationId: postMediaAssociate
@@ -5019,6 +5049,12 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeammatesQueryRequest'
+        required: false
       responses:
         "200":
           content:
@@ -10048,6 +10084,16 @@ components:
         - watchdog_fired
         - holders
       type: object
+    DataIssue:
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+        detail:
+          type: string
+      required:
+        - code
+      type: object
     DatabaseStatus:
       additionalProperties: false
       properties:
@@ -11051,6 +11097,9 @@ components:
         perf_tier:
           format: int64
           type: integer
+        personal_score:
+          format: int64
+          type: integer
         placement_done:
           format: int64
           type: integer
@@ -11064,6 +11113,8 @@ components:
         rating_type:
           type: string
         score_label:
+          type: string
+        skill_rank_image_url:
           type: string
         skill_tier_label:
           type: string
@@ -11764,6 +11815,8 @@ components:
         kills:
           format: int64
           type: integer
+        label:
+          type: string
         role:
           type: string
       required:
@@ -13813,6 +13866,9 @@ components:
           type:
             - integer
             - "null"
+        personal_score:
+          format: int64
+          type: integer
         placement_done:
           format: int64
           type: integer
@@ -13824,6 +13880,8 @@ components:
             - string
             - "null"
         score_label:
+          type: string
+        skill_rank_image_url:
           type: string
         skill_rating_type:
           type: string
@@ -15248,6 +15306,21 @@ components:
             - "null"
       required:
         - authors
+      type: object
+    MediaDeleteResponse:
+      additionalProperties: false
+      properties:
+        deleted:
+          type: boolean
+        file_path:
+          type: string
+        files_removed:
+          format: int64
+          type: integer
+      required:
+        - file_path
+        - deleted
+        - files_removed
       type: object
     MediaFilterOptions:
       additionalProperties: false
@@ -18807,6 +18880,9 @@ components:
             - "null"
         label:
           type: string
+        match_count:
+          format: int64
+          type: integer
         playlists:
           items:
             type: string
@@ -21276,6 +21352,12 @@ components:
           type:
             - array
             - "null"
+        data_issues:
+          items:
+            $ref: '#/components/schemas/DataIssue'
+          type:
+            - array
+            - "null"
         first_blood:
           items:
             $ref: '#/components/schemas/FirstBloodPlayerSeries'
@@ -21392,6 +21474,30 @@ components:
         - total_matches
         - session_labels
         - friends_count
+      type: object
+    TeammatesQueryRequest:
+      description: 'Corps de POST /pages/teammates (handler RawBody : le schéma est documenté ici, cf. domain.TeammatesQueryRequest).'
+      properties:
+        filter_exact_composition:
+          default: false
+          description: 'Option « composition exacte » : n''inclut que les matchs où aucun autre coéquipier connu n''était sur l''équipe du joueur principal. Par défaut (false), la population est « matchs commencés ensemble » = intersection du roster sélectionné.'
+          type: boolean
+        filters:
+          $ref: '#/components/schemas/FilterContextInput'
+        locale:
+          type: string
+        picked_solo_session_labels:
+          items:
+            type: string
+          type: array
+        picked_squad_session_labels:
+          items:
+            type: string
+          type: array
+        selected_gamertags:
+          items:
+            type: string
+          type: array
       type: object
     Template:
       additionalProperties: false
@@ -22008,6 +22114,9 @@ components:
           type:
             - array
             - "null"
+        defensive_resistance_p80:
+          format: double
+          type: number
         effective_hp_to_kill:
           format: double
           type: number
@@ -22045,6 +22154,7 @@ components:
         - is_default
         - effective_hp_to_kill
         - offensive_conversion_p80
+        - defensive_resistance_p80
         - provides_damage_taken
         - provides_team_mmr
         - provides_max_killing_spree

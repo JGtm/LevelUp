@@ -126,8 +126,8 @@ func metadataDBPathForTitle(cfg *config.AppConfig, titleSlug string) string {
 // Retourne aussi le *wire.ServiceRegistry pour permettre au démon watcher de lier le TTL dynamique.
 //
 // Le montage des routes et services passe par plusieurs sous-fonctions (extraites
-// en K2a) et des groupes conditionnels (MULTI_TITLE_API_ENABLED, PRESTIGE_ENABLED,
-// etc.). La complexité reflète la surface API, pas un défaut de conception.
+// en K2a) et des groupes conditionnels (PRESTIGE_ENABLED, etc.). La complexité
+// reflète la surface API, pas un défaut de conception.
 //
 // loadTitleAssetDrawerData charge les maps + armes (avec leurs URLs d'image) d'un
 // titre additionnel depuis sa metadata.duckdb ISOLÉE, pour l'Asset Drawer
@@ -662,9 +662,9 @@ func NewRouter(
 
 	// Phase A multi-titres : chargement des FieldMappingSet TOML par titre.
 	// Erreur de chargement → log mais ne bloque pas le boot (les autres titres
-	// restent disponibles). L'endpoint /field-mappings n'est exposé que si le
-	// flag MULTI_TITLE_API_ENABLED est activé. Les slugs viennent du registre
-	// (non-archivés) → un 2e titre config charge automatiquement ses mappings.
+	// restent disponibles). L'endpoint /field-mappings est exposé sans condition
+	// depuis le 2026-08-02. Les slugs viennent du registre (non-archivés) → un 2e
+	// titre config charge automatiquement ses mappings.
 	deps := buildAPIV1Deps(r, apiV1Inputs{
 		serverCtx: serverCtx, cfg: cfg, bootRepo: bootRepo, bootSvc: bootSvc, daemon: daemon,
 		tokenProvider: tokenProvider, autoSyncScheduler: autoSyncScheduler, backupScheduler: backupScheduler,

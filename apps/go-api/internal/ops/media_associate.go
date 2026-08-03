@@ -108,11 +108,17 @@ func loadMatchTimeWindows(ctx context.Context, sharedMatchesPath string) ([]matc
 
 // loadUnassociatedMedia retourne les media_files dont capture_start_utc est
 // non-null ET qui ne sont pas déjà dans media_match_associations.
+//
+// Les médias SUPPRIMÉS (item 3.1) sont exclus : les associer produirait un
+// INSERT dans media_match_associations_history, table append-only — un event
+// écrit là n'est jamais retirable, et il porterait sur un média qui n'existe
+// plus sur le disque.
 func loadUnassociatedMedia(ctx context.Context, db *sql.DB) ([]unassocMediaRow, error) {
 	rows, err := db.QueryContext(ctx, `
 		SELECT mf.id, mf.capture_start_utc
 		FROM media_files mf
 		WHERE mf.capture_start_utc IS NOT NULL
+		  AND `+platform_duckdb.MediaVisiblePredicate("mf")+`
 		  AND mf.id NOT IN (SELECT media_file_id FROM media_match_associations_latest)
 	`)
 	if err != nil {

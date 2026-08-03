@@ -1,74 +1,38 @@
 /**
- * metricLabel — libellé lisible d'une clé de métrique. Source UNIQUE pour les
- * features Ascension (clés canoniques snake_case) et Prestige (clés `Field*`).
+ * metricLabel — résolution du libellé lisible d'une clé de métrique.
  *
- * Deux familles de clés convergent ici :
- *  - canoniques snake_case (kda, accuracy, matches_played, …) — records,
- *    milestones, patterns ;
- *  - `Field*` (FieldKDA, FieldWinRate, …) — métriques de défi Prestige, alias
- *    vers la clé canonique correspondante.
+ * SOURCE UNIQUE (v7.3 lot 2, item 3.3) : les libellés viennent des manifests
+ * TOML servis par `/api/v1/titles/{slug}/field-mappings` (config/titles/{slug}/
+ * mappings/fields.toml). Les deux dictionnaires FR/EN qui vivaient ici ont été
+ * SUPPRIMÉS — ils doublonnaient le TOML et divergeaient (« Éliminations » ici,
+ * « Frags » dans le registre ; « Matchs joués » ici, « Matchs » là-bas).
  *
- * Clé inconnue → libellé humanisé (jamais la clé brute, jamais un jeton `Field*`).
- * Centralisation (règle n°6 CLAUDE.md) : aucun composant ne doit mapper une clé
- * de métrique en dur ni afficher `Field*`. Garde-rails : metricLabel.test.ts
- * (humanisation) + features/metric-key-guardrail.test.ts (aucun `Field*` en JSX).
+ * Ce module ne conserve que ce qui n'est PAS un libellé :
+ *  - `FIELD_KEY_ALIASES` : clé transmise par le backend → FieldKey canonique.
+ *    Deux familles d'alias, aucune valeur affichable :
+ *      · jetons Prestige `Field*` (contrat fil des défis) ;
+ *      · clés courtes historiques du détecteur de records (`kpm`, `pspm`) et
+ *        clés de catalogue milestones (`headshots`, `matches_played`).
+ *  - `humanizeMetricKey` : UNIQUE repli d'affichage quand le TOML ne déclare
+ *    pas la clé (clé brute humanisée, jamais un dictionnaire).
+ *
+ * Garde-rails : metricLabel.test.ts, features/metric-key-guardrail.test.ts
+ * (aucun `Field*` en JSX) et lib/i18n/no-field-label-dictionary.test.ts
+ * (interdit de reconstituer un dictionnaire de libellés de field-keys).
  */
-import type { Locale } from '@/lib/i18n/locale'
-
-const METRIC_LABEL_FR: Record<string, string> = {
-  performance_score: 'Score de performance',
-  kda: 'KDA',
-  kdr: 'K/D',
-  kpm: 'Tueries / minute',
-  accuracy: 'Précision',
-  pspm: 'Score perso / minute',
-  matches_played: 'Matchs joués',
-  wins: 'Victoires',
-  kills: 'Éliminations',
-  // headshots : clé du catalogue milestones (config/titles/*/milestones/catalog.toml,
-  // metric = "headshots") — historique, conservée telle quelle.
-  // headshot_kills : clé canonique réelle (games/canonical/fields.go FieldHeadshotKills
-  // = "headshot_kills", fields.toml). C'est CETTE forme que reçoit metricLabel() quand
-  // le contrat fil transporte la clé canonique brute plutôt qu'un alias `Field*` —
-  // sans entrée dédiée, elle retombait sur humanizeMetricKey (jamais traduite en FR).
-  headshots: 'Tirs à la tête',
-  headshot_kills: 'Tirs à la tête',
-  assists: 'Assistances',
-  damage_dealt: 'Dégâts infligés',
-  personal_score: 'Score personnel',
-  win_rate: 'Taux de victoire',
-  accuracy_threshold_days: 'Jours réguliers',
-  combat_precision_matches: 'Matchs de précision',
-  combat_endurance_matches: "Matchs d'endurance",
-  combat_excellence_matches: "Matchs d'excellence",
-}
-
-const METRIC_LABEL_EN: Record<string, string> = {
-  performance_score: 'Performance score',
-  kda: 'KDA',
-  kdr: 'K/D',
-  kpm: 'Kills per minute',
-  accuracy: 'Accuracy',
-  pspm: 'Personal score per minute',
-  matches_played: 'Matches played',
-  wins: 'Wins',
-  kills: 'Kills',
-  headshots: 'Headshots',
-  headshot_kills: 'Headshots',
-  assists: 'Assists',
-  damage_dealt: 'Damage dealt',
-  personal_score: 'Personal score',
-  win_rate: 'Win rate',
-  accuracy_threshold_days: 'Consistent days',
-  combat_precision_matches: 'Precision matches',
-  combat_endurance_matches: 'Endurance matches',
-  combat_excellence_matches: 'Excellence matches',
-}
+import { useFieldLabel } from '@/lib/i18n/fieldMappings'
 
 /**
- * Alias des clés Prestige `Field*` vers leur clé canonique snake_case.
- * Confiné ici (hors JSX) : la valeur `Field*` reste le contrat fil envoyé au
- * backend, jamais un libellé affiché.
+ * Alias des clés reçues du backend vers leur FieldKey canonique (celle déclarée
+ * dans les TOML). Confiné ici, hors JSX : ces valeurs sont des identifiants
+ * techniques, jamais un libellé affiché.
+ *
+ * Les clés courtes `kpm`/`pspm` sont émises par le détecteur de records
+ * (internal/progression/records/extractors.go) ; `headshots` et
+ * `matches_played` proviennent des catalogues de jalons
+ * (config/titles/{slug}/milestones/catalog.toml). Aligner ces noms côté backend
+ * est un chantier distinct : tant qu'ils circulent, l'alias les rattache au
+ * registre canonique plutôt qu'à un libellé en dur.
  */
 const FIELD_KEY_ALIASES: Record<string, string> = {
   FieldKDA: 'kda',
@@ -78,6 +42,10 @@ const FIELD_KEY_ALIASES: Record<string, string> = {
   FieldDamageDealt: 'damage_dealt',
   FieldPersonalScore: 'personal_score',
   FieldWinRate: 'win_rate',
+  kpm: 'kills_per_min',
+  pspm: 'personal_score_per_min',
+  headshots: 'headshot_kills',
+  matches_played: 'match_count',
 }
 
 /**
@@ -95,19 +63,18 @@ export const PRESTIGE_METRIC_OPTIONS: readonly string[] = [
   'FieldWinRate',
 ]
 
-/** Retourne le libellé localisé d'une clé de métrique (canonique ou `Field*`). */
-export function metricLabel(key: string, locale: Locale): string {
-  const canonical = FIELD_KEY_ALIASES[key] ?? key
-  const map = locale === 'en' ? METRIC_LABEL_EN : METRIC_LABEL_FR
-  return map[canonical] ?? humanizeMetricKey(key)
+/** Résout la FieldKey canonique d'une clé de métrique (alias appliqué). */
+export function canonicalMetricKey(key: string): string {
+  return FIELD_KEY_ALIASES[key] ?? key
 }
 
 /**
- * humanizeMetricKey produit un libellé lisible depuis une clé inconnue : retire
- * le préfixe `Field`, sépare camelCase et snake_case, capitalise l'initiale.
- * Ne renvoie jamais la clé brute telle quelle ni un jeton `Field*`.
+ * humanizeMetricKey produit un libellé lisible depuis une clé non déclarée dans
+ * les TOML : retire le préfixe `Field`, sépare camelCase et snake_case,
+ * capitalise l'initiale. Ne renvoie jamais la clé brute telle quelle ni un
+ * jeton `Field*`. C'est le SEUL repli d'affichage autorisé.
  */
-function humanizeMetricKey(key: string): string {
+export function humanizeMetricKey(key: string): string {
   const spaced = key
     .replace(/^Field/, '')
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
@@ -115,4 +82,22 @@ function humanizeMetricKey(key: string): string {
     .trim()
   if (spaced === '') return key
   return spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase()
+}
+
+/**
+ * useMetricLabel — libellé localisé d'une clé de métrique, depuis les TOML.
+ *
+ * Hook React : à appeler dans le corps d'un composant, jamais dans une boucle
+ * ni après un retour conditionnel (règles des hooks). Pour une liste, extraire
+ * un sous-composant par élément.
+ *
+ * `useFieldLabel` renvoie la clé elle-même quand le mapping est absent (ou pas
+ * encore chargé) : dans ce cas seulement, on humanise — en repartant de la clé
+ * D'ORIGINE pour que `FieldMysteryStat` donne « Mystery stat » et non le nom
+ * canonique de l'alias.
+ */
+export function useMetricLabel(key: string): string {
+  const canonical = canonicalMetricKey(key)
+  const label = useFieldLabel(canonical)
+  return label === canonical ? humanizeMetricKey(key) : label
 }

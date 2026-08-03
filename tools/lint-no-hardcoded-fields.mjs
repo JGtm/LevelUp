@@ -83,7 +83,11 @@ const WHITELIST_PATTERNS = [
   /\/lib\/api\/generated\.ts$/,             // types generes par openapi-typescript (enums du contrat OpenAPI)
   /\/features\/compare\/i18n\.ts$/,         // dict FR/EN local de compare
   /\/lib\/prestige\.ts$/,                   // dict TIER_LABELS_FR — fallback canonique
-  /\/lib\/i18n\/metricLabel\.ts$/,          // dict canonique METRIC_LABEL_FR/EN (source UNIQUE des libellés de métrique Ascension/Prestige, fonction pure hors React — même statut que prestige.ts/skillTiers.ts) — whitelist 2026-07-23
+  // metricLabel.ts a été RETIRÉ de cette whitelist le 2026-08-02 (v7.3 lot 2,
+  // item 3.3) : ses dictionnaires METRIC_LABEL_FR/EN doublonnaient les TOML et
+  // en avaient divergé. Le fichier ne contient plus que des alias de clés et
+  // l'humanisation de repli. Garde-rail complémentaire (détecte la FORME d'un
+  // dictionnaire, même divergent) : apps/web/src/lib/i18n/no-field-label-dictionary.test.ts
   /\/features\/palmares\/rarity\.ts$/,      // dict rarity Halo (asset Halo natif)
   /\/lib\/medalDifficulty\.ts$/,            // dict difficulty médailles Halo (Normal/Heroic/Legendary/Mythic — valeurs API)
   /\/lib\/skillTiers\.ts$/,                 // constantes paliers skill CSR/LUSR (Bronze/Silver/Gold… — valeurs API)
@@ -131,8 +135,15 @@ function findViolations(filePath, labels) {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i]
       const trimmed = line.trim()
-      // Skip lignes commentées (basique).
-      if (trimmed.startsWith('//') || trimmed.startsWith('*')) continue
+      // Skip lignes commentées (basique). `/*` et `/**` couvrent le JSDoc
+      // tenant sur UNE ligne (`/** … ex "Victoires". */`) : sans lui, un simple
+      // commentaire d'exemple compte comme un libellé hardcodé.
+      if (
+        trimmed.startsWith('//') ||
+        trimmed.startsWith('*') ||
+        trimmed.startsWith('/*')
+      )
+        continue
       // Skip lignes contenant un commentaire inline avec ce label (ex: `// "Kills" | "Deaths"`).
       const commentIdx = line.indexOf('//')
       const codeOnly = commentIdx >= 0 ? line.slice(0, commentIdx) : line

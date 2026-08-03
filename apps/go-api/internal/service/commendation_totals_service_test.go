@@ -17,15 +17,17 @@ func (f *fakeTotalsLoader) LoadCommendationTotals(_ context.Context) ([]canonica
 	return f.totals, f.err
 }
 
-// TestCommendationTotalsService_GroupsByCategory : groupe par catégorie (alpha),
-// items triés total DESC, catégorie vide → "AUTRE", TotalCount = nb de commendations.
+// TestCommendationTotalsService_GroupsByCategory : les libellés bruts de l'API
+// Halo 5 sont servis en CLÉS canoniques (V7.3 lot 2, item 1.4) — plus aucun
+// « MULTIPLAYER » ni « AUTRE » (littéral FR) dans la réponse. Groupes dans
+// l'ordre produit canonique, items triés total DESC, catégorie vide → "other".
 func TestCommendationTotalsService_GroupsByCategory(t *testing.T) {
 	icon := "https://cdn.test/a.png"
 	svc := NewCommendationTotalsService(&fakeTotalsLoader{totals: []canonical.CommendationTotal{
 		{ID: "a", Name: "Alpha", Category: "MULTIPLAYER", Total: 50, IconURL: &icon},
 		{ID: "b", Name: "Bravo", Category: "MULTIPLAYER", Total: 100},
 		{ID: "c", Name: "Charlie", Category: "GAME MODE", Total: 10},
-		{ID: "d", Name: "Delta", Category: "", Total: 5}, // → "AUTRE"
+		{ID: "d", Name: "Delta", Category: "", Total: 5}, // → "other"
 	}})
 	resp, err := svc.GetTotals(context.Background())
 	if err != nil {
@@ -37,14 +39,34 @@ func TestCommendationTotalsService_GroupsByCategory(t *testing.T) {
 	if len(resp.Categories) != 3 {
 		t.Fatalf("categories = %d, want 3 — %+v", len(resp.Categories), resp.Categories)
 	}
-	// Catégories triées alpha : AUTRE, GAME MODE, MULTIPLAYER.
-	if resp.Categories[0].Category != "AUTRE" || resp.Categories[2].Category != "MULTIPLAYER" {
-		t.Errorf("ordre catégories: %s .. %s", resp.Categories[0].Category, resp.Categories[2].Category)
+	// Ordre produit canonique : multiplayer, game_mode, … other en dernier.
+	gotOrder := []string{resp.Categories[0].Category, resp.Categories[1].Category, resp.Categories[2].Category}
+	wantOrder := []string{
+		canonical.CommendationCategoryMultiplayer,
+		canonical.CommendationCategoryGameMode,
+		canonical.CommendationCategoryOther,
 	}
-	// MULTIPLAYER items triés total DESC : Bravo (100) avant Alpha (50).
-	mp := resp.Categories[2]
+	for i := range wantOrder {
+		if gotOrder[i] != wantOrder[i] {
+			t.Errorf("ordre catégories = %v, want %v", gotOrder, wantOrder)
+			break
+		}
+	}
+	// multiplayer : items triés total DESC — Bravo (100) avant Alpha (50).
+	mp := resp.Categories[0]
 	if len(mp.Items) != 2 || mp.Items[0].Name != "Bravo" || mp.Items[1].Name != "Alpha" {
-		t.Errorf("MULTIPLAYER mal trié: %+v", mp.Items)
+		t.Errorf("multiplayer mal trié: %+v", mp.Items)
+	}
+	// Le libellé humain ne doit JAMAIS franchir l'API (traduction côté web).
+	for _, g := range resp.Categories {
+		if g.Category != canonical.NormalizeCommendationCategory(g.Category) {
+			t.Errorf("catégorie %q non canonique dans la réponse", g.Category)
+		}
+		for _, it := range g.Items {
+			if it.Category != g.Category {
+				t.Errorf("item %q : catégorie %q != groupe %q", it.ID, it.Category, g.Category)
+			}
+		}
 	}
 }
 

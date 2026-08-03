@@ -67,7 +67,6 @@ func sortedCopy(in []string) []string {
 func TestSharedOpenAPIDocOperationMetadata(t *testing.T) {
 	// Mêmes flags que le garde-rail de fidélité H1 : surface Huma maximale.
 	t.Setenv("LEVELUP_DEMO_MODE", "true")
-	t.Setenv("MULTI_TITLE_API_ENABLED", "true")
 	t.Setenv("PRESTIGE_ENABLED", "true")
 
 	manual := loadManualYAMLOps(t)

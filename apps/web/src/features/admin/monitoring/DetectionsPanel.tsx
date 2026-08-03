@@ -20,7 +20,7 @@ import { AlertDialog } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
-import { HeaderInfoTooltip } from '@/lib/table/columnMeta'
+import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 import type { AdminManifestKey } from '@/lib/i18n/generated/admin'
 import type { MonitoringDetection } from '@/lib/api/types'
 import { useMonitoringDetections } from './queries'
@@ -257,11 +257,16 @@ export function DetectionsPanel() {
                       className={`px-3 py-2 font-medium ${header.column.getCanSort() ? 'cursor-pointer select-none' : ''}`}
                       onClick={header.column.getToggleSortingHandler()}
                     >
-                      <span className="inline-flex items-center gap-1">
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                        {{ asc: ' ↑', desc: ' ↓' }[header.column.getIsSorted() as string] ?? ''}
-                        <HeaderInfoTooltip text={header.column.columnDef.meta?.headerTooltip} />
-                      </span>
+                      {/* Aide portée par le libellé ; le tri reste sur le <th>. */}
+                      <HeaderLabelTooltip
+                        text={header.column.columnDef.meta?.headerTooltip}
+                        focusable={!header.column.getCanSort()}
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          {{ asc: ' ↑', desc: ' ↓' }[header.column.getIsSorted() as string] ?? ''}
+                        </span>
+                      </HeaderLabelTooltip>
                     </th>
                   ))}
                 </tr>

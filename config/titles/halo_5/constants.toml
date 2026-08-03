@@ -50,6 +50,11 @@ effective_hp_to_kill = 115
 # percentile) → « mêmes proportions relatives ». Résistance (DR) = N/A : l'API carnage
 # h5 ne fournit PAS damage_taken (vérifié sur le retour cryptum brut, 0/13241).
 offensive_conversion_p80 = 1.264
+# PAS de defensive_resistance_p80 pour h5 : la DR n'est pas calculable (no_damage_taken
+# ci-dessous, 0/13241). Déclarer un 80e percentile ici serait inventer une donnée. Le
+# backend sert donc le défaut Infinite (games.DefaultDefensiveResistanceP80) sur ce titre,
+# valeur JAMAIS consommée : provides_damage_taken=false neutralise toutes les surfaces
+# de résistance côté front (carte Résistance de la Dynamique escouade comprise).
 # no_native_kda = true → Halo 5 ne renvoie PAS de KDA per-match via l'API ; sa forme
 # native est un FDA NET ((k+a/3)−d)/games. On ne fabrique JAMAIS de KDA façon Infinite
 # pour h5 (valeur fausse) : les surfaces le laissent nil. Cf. games.ProvidesNativeKDA.

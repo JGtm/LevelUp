@@ -47,8 +47,8 @@ func Generate(ctx context.Context, root, fragmentPath string) ([]byte, error) {
 		Root:           root,
 		GroupStorePath: filepath.Join(root, "groups.json"),
 		// Surface MAXIMALE : mêmes flags que les garde-rails de fidélité H1/H2.
-		MultiTitleAPI: true,
-		Prestige:      true,
+		// (Les routes multi-titres n'ont plus de flag : toujours montées.)
+		Prestige: true,
 	})
 	if err != nil {
 		return nil, err

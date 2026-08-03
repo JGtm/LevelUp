@@ -209,10 +209,16 @@ func (s *TeammatesService) GetPage(
 	// "coéquipier ajouté à une session qu'il n'a pas jouée".
 	var setsFiltered, setsAllForTimeline [][]domain.SquadMatchRow
 
+	// Dégradations best-effort de CETTE requête : loggées en erreur et remontées
+	// dans la réponse (cf. teammates_data_issues.go).
+	issues := &dataIssues{}
+
 	for _, gt := range req.SelectedGamertags {
 		row, squadMatches, allSquadMatchesTm, err := s.buildTeammateRowWithMatches(ctx, playerXUID, gt, topRows, filteredMatches, sessionMatchIDs)
 		if err != nil {
-			slog.WarnContext(ctx, "teammates: erreur buildTeammateRow", "gamertag", gt, "err", err)
+			// Le coéquipier disparaît de la population commune : la page reste
+			// affichable mais ses nombres sont amputés → l'UI doit le dire.
+			issues.add(ctx, domain.DataIssueTeammateMatches, gt, err)
 			continue // skip teammate on error
 		}
 		if row != nil {
@@ -225,25 +231,28 @@ func (s *TeammatesService) GetPage(
 		}
 	}
 
-	// Composition exacte : intersection sur tous les coéquipiers sélectionnés.
+	// Population canonique du contexte escouade : « matchs commencés ensemble » =
+	// intersection du roster (matchs joués par le main ET tous les sélectionnés).
+	// C'est la SEULE population consommée par les compteurs, charts, heatmap et
+	// briefing — aucun consommateur ne re-filtre pour son compte.
 	allSquadRows := intersectSquadRowsByMatchID(setsFiltered)
 	allSquadRowsForTimeline := intersectSquadRowsByMatchID(setsAllForTimeline)
 
-	// Exclusivité de composition : l'intersection ci-dessus garantit que le main a
-	// joué AVEC tous les sélectionnés, mais PAS qu'aucun autre coéquipier connu
-	// n'était présent. On charge l'équipe alliée du main par match puis on écarte
-	// les matchs où un coéquipier connu hors sélection (extraPool) figure sur cette
-	// équipe. Best-effort : si le chargement échoue, on garde l'intersection brute
-	// (dégradation gracieuse) et le filtre briefing est désactivé (mainTeamByMatch nil).
+	// Option « composition exacte » (req.FilterExactComposition, défaut OFF —
+	// décision produit 2026-08-02) : restreint en plus aux matchs où AUCUN autre
+	// coéquipier connu (extraPool) n'était sur l'équipe alliée du main. On charge
+	// alors l'équipe alliée par match. Best-effort : si le chargement échoue, on
+	// garde l'intersection du roster (dégradation gracieuse), le filtre briefing
+	// est désactivé (mainTeamByMatch nil) et l'échec est remonté à l'UI.
 	selectedXUIDs := collectSelectedXUIDs(teammates)
 	friendXUIDs := resolveFriendXUIDs(friendGTs, topRows)
 	extraPool := buildExtraPoolXUIDs(topRows, friendXUIDs, selectedXUIDs, playerXUID)
 	var mainTeamByMatch map[string]map[string]struct{}
-	if len(allSquadRowsForTimeline) > 0 && len(selectedXUIDs) > 0 {
+	if req.FilterExactComposition && len(allSquadRowsForTimeline) > 0 && len(selectedXUIDs) > 0 {
 		allies, err := s.repo.LoadMainTeamParticipants(
 			ctx, playerXUID, collectMatchIDs(allSquadRowsForTimeline, allSquadRows))
 		if err != nil {
-			slog.WarnContext(ctx, "teammates: LoadMainTeamParticipants failed (exact composition filter skipped)", "err", err)
+			issues.add(ctx, domain.DataIssueMainTeamParticipants, "", err)
 		} else {
 			mainTeamByMatch = buildMainTeamXUIDSet(allies)
 			allSquadRows = filterExactComposition(allSquadRows, mainTeamByMatch, extraPool, selectedXUIDs)
@@ -275,19 +284,25 @@ func (s *TeammatesService) GetPage(
 		timeseries = analysis.ComputeSquadTimeseries(allSquadRows, 20)
 		mapBreakdown = computeMapBreakdown(allSquadRows)
 
-		// Historique "avec cette escouade EXACTE" par carte. squadXUIDs = coéquipiers
+		// Historique par carte "avec cette escouade". squadXUIDs = coéquipiers
 		// sélectionnés (selectedXUIDs) ; excludeXUIDs = autres coéquipiers connus
 		// (extraPool) → anti-join qui écarte les matchs où l'un d'eux était sur
-		// l'équipe du main. Aucun filtre période/session : référence historique
-		// complète, mais exclusive à la composition (parité avec allSquadRows).
-		squadStats, err := s.repo.LoadMapStatsForSquad(ctx, playerXUID, selectedXUIDs, sortedXUIDSlice(extraPool))
+		// l'équipe du main. L'anti-join n'est posé QUE sous l'option composition
+		// exacte : sinon la référence historique porterait sur une population plus
+		// étroite que les nombres affichés (parité stricte avec allSquadRows).
+		// Aucun filtre période/session : référence historique complète.
+		var excludeXUIDs []string
+		if req.FilterExactComposition {
+			excludeXUIDs = sortedXUIDSlice(extraPool)
+		}
+		squadStats, err := s.repo.LoadMapStatsForSquad(ctx, playerXUID, selectedXUIDs, excludeXUIDs)
 		if err != nil {
-			slog.WarnContext(ctx, "teammates: LoadMapStatsForSquad failed", "err", err)
+			issues.add(ctx, domain.DataIssueMapStats, "", err)
 		}
 		mapBreakdown = enrichMapBreakdownWithSquadStats(mapBreakdown, squadStats)
 		matchHistory = buildSquadMatchHistory(allSquadRows, squadStatsToWinTotal(squadStats), s.titleSlug)
 		sessionTimeline = buildSquadSessionTimeline(allSquadRowsForTimeline)
-		mapHeatmap = s.buildSquadMapHeatmap(ctx, allSquadRows, req.SelectedGamertags, sessionMatchIDs)
+		mapHeatmap = s.buildSquadMapHeatmap(ctx, allSquadRows, req.SelectedGamertags, issues)
 		impactMatrix = s.buildSquadImpactMatrix(ctx, allSquadRows, playerXUID, s.gamertag, req.SelectedGamertags)
 		perMinuteStats = s.buildSquadPerMinuteStats(ctx, allSquadRows, s.gamertag, req.SelectedGamertags, sessionMatchIDs)
 		synergyRadar = s.buildSquadSynergyRadar(ctx, allSquadRows, s.gamertag, req.SelectedGamertags)
@@ -365,6 +380,7 @@ func (s *TeammatesService) GetPage(
 
 		CompositionSessions:      compositionSessions,
 		LatestCompositionSession: latestCompositionSession,
+		DataIssues:               issues.list(),
 	}, nil
 }
 

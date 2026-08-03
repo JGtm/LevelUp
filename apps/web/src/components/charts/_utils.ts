@@ -74,6 +74,26 @@ export function getTooltipBase(tc: EChartsThemeColors) {
   } as const
 }
 
+/**
+ * Symbole de série CACHÉ au repos et RÉVÉLÉ au survol du point (à spread dans une
+ * série `line`). ECharts n'affiche le symbole emphasé sous `showSymbol: false` que
+ * si `symbol` reste défini : avec `symbol: 'none'` le canvas n'offre aucune prise
+ * et le graphe se lit comme une image figée (v7.3 lot 2, item 2.3c).
+ *
+ * Source unique des 4 séries concernées (écart cumulé au FDA attendu × 2 surfaces,
+ * médiane et courbe d'équipe du profil d'intensité) — ne pas ré-écrire le trio
+ * showSymbol/symbol/emphasis à la main dans un builder.
+ */
+export function hoverRevealSymbol(color: string, size = 7) {
+  return {
+    showSymbol: false,
+    symbol: 'circle',
+    symbolSize: size,
+    itemStyle: { color },
+    emphasis: { scale: 1.6 },
+  } as const
+}
+
 /** Base legend style (bas du chart). */
 export function getLegendBase(tc: EChartsThemeColors) {
   return {

@@ -32,7 +32,7 @@ import type {
 } from '@/lib/api/types'
 import { formatDurationMMSS } from '@/lib/formatters'
 import { tokenCssVar } from '@/lib/accessibility'
-import { HeaderInfoTooltip } from '@/lib/table/columnMeta'
+import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 import type { MatchViewText } from './i18n'
 import { MatchObjectivesSection } from './MatchObjectivesSection'
 import { displayTierLabel } from './MatchHeader.utils'
@@ -598,11 +598,19 @@ function TeamScoreboard({
                     onClick={canSort ? h.column.getToggleSortingHandler() : undefined}
                     aria-sort={canSort ? ariaSortOf(sortDir) : undefined}
                   >
-                    <span className={`inline-flex items-center gap-1 ${isPlayerCol ? '' : 'justify-end'}`}>
-                      {flexRender(h.column.columnDef.header, h.getContext())}
-                      {canSort ? sortSuffixOf(sortDir) : ''}
-                      <HeaderInfoTooltip text={h.column.columnDef.meta?.headerTooltip} />
-                    </span>
+                    {/* Aide portée par le libellé. `focusable` seulement hors
+                        colonne triable : ici c'est le <th> qui porte l'onClick de
+                        tri, et un curseur d'aide sur le libellé masquerait cette
+                        affordance de clic. */}
+                    <HeaderLabelTooltip
+                      text={h.column.columnDef.meta?.headerTooltip}
+                      focusable={!canSort}
+                    >
+                      <span className={`inline-flex items-center gap-1 ${isPlayerCol ? '' : 'justify-end'}`}>
+                        {flexRender(h.column.columnDef.header, h.getContext())}
+                        {canSort ? sortSuffixOf(sortDir) : ''}
+                      </span>
+                    </HeaderLabelTooltip>
                   </th>
                 )
               })}

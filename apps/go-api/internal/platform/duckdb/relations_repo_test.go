@@ -229,8 +229,19 @@ func TestCareerRepo_GetRelations_ScopeDropsBelowHaving(t *testing.T) {
 
 // GetRelationsHeatmap : top-N relations × heure. Ally apparaît à 02h (m1) et
 // 09h (m2) ; Foe à 19h (m3) et 20h (m4). Once exclu (1 match < HAVING 2).
+//
+// Depuis le correctif item 1.3 (v7.3 lot 2), Q29 rend les heures dans le fuseau
+// de SESSION DuckDB. openMemDB n'applique aucun SET TimeZone (fuseau machine →
+// attentes non déterministes) : on ouvre par le chemin de production épinglé sur
+// UTC pour garder les heures du seed. Les fuseaux non-UTC sont couverts par
+// queries_relations_moments_timezone_test.go.
 func TestCareerRepo_GetRelationsHeatmap(t *testing.T) {
-	db := openMemDB(t)
+	sqlDB, err := openSQLDBFor(":memory:", "UTC", "test", ":memory:")
+	if err != nil {
+		t.Fatalf("openSQLDBFor(:memory:, UTC): %v", err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
+	db := newTestDB(sqlDB, ":memory:")
 	seedRelations(t, db)
 	pdb := &PlayerDB{Player: db, Shared: db, XUID: "xuidMe", Gamertag: "MePlayer"}
 	repo := NewCareerRepo(pdb)

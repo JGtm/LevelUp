@@ -42,7 +42,7 @@ import { squadManifest, type SquadManifestKey } from '@/lib/i18n/generated/squad
 import { tokenVar } from '@/lib/accessibility'
 import { AllyEnemySplitBar, KDSplitBar } from '@/features/_shared/EncounterSplitBars'
 import { NUMERIC_SORT, localeTextSortingFn } from '@/features/explorer/explorerMatchesClientSort'
-import { HeaderInfoTooltip } from '@/lib/table/columnMeta'
+import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 import { ariaSortOf, sortSuffixOf } from './sortHeader'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import type { MatchEncounterBadge, MatchEncounterRow } from '@/lib/api/types'
@@ -167,11 +167,14 @@ function EncounterTh({ header, idx }: { header: Header<MatchEncounterRow, unknow
       onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
       aria-sort={canSort ? ariaSortOf(sortDir) : undefined}
     >
-      <span className={`inline-flex items-center gap-1 ${idx === 0 ? '' : 'justify-end'}`}>
-        {flexRender(header.column.columnDef.header, header.getContext())}
-        {canSort ? sortSuffixOf(sortDir) : ''}
-        <HeaderInfoTooltip text={header.column.columnDef.meta?.headerTooltip} />
-      </span>
+      {/* Aide portée par le libellé. `focusable` seulement hors colonne triable :
+          le tri est ici sur le <th>, un curseur d'aide masquerait le clic. */}
+      <HeaderLabelTooltip text={header.column.columnDef.meta?.headerTooltip} focusable={!canSort}>
+        <span className={`inline-flex items-center gap-1 ${idx === 0 ? '' : 'justify-end'}`}>
+          {flexRender(header.column.columnDef.header, header.getContext())}
+          {canSort ? sortSuffixOf(sortDir) : ''}
+        </span>
+      </HeaderLabelTooltip>
     </th>
   )
 }

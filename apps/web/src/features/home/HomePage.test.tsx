@@ -37,8 +37,8 @@ describe('HomePage', () => {
 
   it('affiche la section Performance globale après chargement', async () => {
     // "Taux de victoire" : le backend field-mappings (TOML) prime, mais quand il
-    // est absent (flag MULTI_TITLE_API_ENABLED off / fields vides en test),
-    // labelOf retombe sur les libellés locaux kpi.i18n.ts (pas la clé brute).
+    // est absent (ici : `fields` vide dans le handler MSW), labelOf retombe sur
+    // les libellés locaux kpi.i18n.ts (pas la clé brute).
     renderWithProviders(<HomePage />)
     await waitFor(() => {
       expect(screen.getByText('Taux de victoire')).toBeInTheDocument()
@@ -392,6 +392,16 @@ describe('HomePage', () => {
       })),
     )
 
+    // useFieldMappings est gaté par isBootstrapped (G8) : sans hydratation, la
+    // requête /field-mappings n'est jamais lancée et les titres de section
+    // retomberaient sur les clés brutes. En production la page n'est rendue
+    // qu'après le bootstrap — on reproduit cet état pour exercer le vrai chemin
+    // (libellés de cadence servis par les TOML, seule source depuis l'item 3.3).
+    const previousBootstrapped = useAppShellStore.getState().isBootstrapped
+    act(() => {
+      useAppShellStore.setState({ isBootstrapped: true })
+    })
+
     renderWithProviders(<HomePage />)
 
     await waitFor(() => {
@@ -403,8 +413,16 @@ describe('HomePage', () => {
       ).toBeInTheDocument()
     })
 
-    const sectionTitles = screen.getAllByTestId('home-challenge-section-title')
-    expect(sectionTitles.map((node) => node.textContent)).toEqual(['Quotidien', 'Hebdo'])
+    // Libellés servis par assets.cadence (TOML), seule source depuis l'item 3.3 :
+    // « Hebdomadaire » remplace l'ancien « Hebdo » du dictionnaire de repli.
+    // waitFor : /field-mappings est une requête distincte de celle de la page.
+    await waitFor(() => {
+      const sectionTitles = screen.getAllByTestId('home-challenge-section-title')
+      expect(sectionTitles.map((node) => node.textContent)).toEqual([
+        'Quotidien',
+        'Hebdomadaire',
+      ])
+    })
 
     const dailySection = screen.getByTestId('home-challenge-section-daily')
     const weeklySection = screen.getByTestId('home-challenge-section-weekly')
@@ -434,6 +452,10 @@ describe('HomePage', () => {
     const weeklyFills = within(weeklySection).getAllByTestId('home-challenge-progress-fill')
     expect(weeklyFills[0]).toHaveStyle({ width: '70%' })
     expect(weeklyFills[1]).toHaveStyle({ width: '0%' })
+
+    act(() => {
+      useAppShellStore.setState({ isBootstrapped: previousBootstrapped })
+    })
   })
 
   it('affiche un état vide compact pour les défis quand aucun item actif n’est détaillé', async () => {
@@ -490,8 +512,8 @@ describe('HomePage', () => {
 
   it('affiche les KPIs globaux (libellés locaux fallback quand TOML absent)', async () => {
     // labelOf privilégie le backend field-mappings (TOML) ; quand il est absent
-    // (fields vides en test, ou flag MULTI_TITLE_API_ENABLED off en prod), il
-    // retombe sur les libellés locaux kpi.i18n.ts — JAMAIS la clé brute.
+    // (ici : `fields` vide dans le handler MSW), il retombe sur les libellés
+    // locaux kpi.i18n.ts — JAMAIS la clé brute.
     renderWithProviders(<HomePage />)
     await waitFor(() => {
       expect(screen.getByText('Matchs')).toBeInTheDocument()

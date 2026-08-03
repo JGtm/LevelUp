@@ -192,6 +192,11 @@ func buildMediaLocalWhere(f domain.MediaFilters, cfg mediaQueryConfig) ([]string
 	var where []string
 	var args []any
 
+	// Médias supprimés (item 3.1) : exclus de TOUTE liste, quels que soient les
+	// autres filtres. Posé en premier pour qu'aucune branche ci-dessous ne puisse
+	// l'oublier — la galerie est la surface principale d'un média supprimé.
+	where = append(where, MediaVisiblePredicate("mf"))
+
 	if len(f.AuthorSlugs) > 0 && cfg.useSharedSocialSchema() {
 		placeholders := make([]string, len(f.AuthorSlugs))
 		for i, slug := range f.AuthorSlugs {

@@ -140,8 +140,11 @@ export const queryKeys = {
     ['palmares', playerSlug, titleSlug, 'relations'] as const,
 
   // Escouade / Teammates (Slice 6)
-  teammates: (playerSlug: string, titleSlug: string, filterHash: string, selectedGts: string[], sessionLabels: string[] = [], locale = '') =>
-    ['teammates', playerSlug, titleSlug, filterHash, [...selectedGts].sort().join(','), [...sessionLabels].sort().join(','), locale] as const,
+  // exactComposition : l'option « composition exacte » change la POPULATION servie
+  // (matchs commencés ensemble vs composition exclusive) — sans elle dans la clé,
+  // le cache resservirait les nombres de l'autre réglage.
+  teammates: (playerSlug: string, titleSlug: string, filterHash: string, selectedGts: string[], sessionLabels: string[] = [], locale = '', exactComposition = false) =>
+    ['teammates', playerSlug, titleSlug, filterHash, [...selectedGts].sort().join(','), [...sessionLabels].sort().join(','), locale, exactComposition] as const,
   /** Préfixe broad — invalide toutes les queries teammates (ex. après ajout d'ami).
    *  Title-agnostic PAR DESIGN (balaie tous les joueurs/titres). */
   teammatesAll: ['teammates'] as const,

@@ -6,6 +6,12 @@
  *   - wins/ties  → bracket au-dessus de la bande
  *   - losses/dnf → bracket en-dessous (miroir)
  *
+ * Les matchs porteurs d'un drapeau de dominance sont marqués par une ENCOCHE
+ * verticale qui traverse la bande et la dépasse de 3 px, cerclée d'une gouttière
+ * couleur fond de tooltip. Contrairement au losange qu'elle remplace, elle reste
+ * lisible à toute densité : sous ~2 px/match les encoches voisines fusionnent
+ * (cf. clusterDominanceNotches, helper pur) au lieu de disparaître.
+ *
  * Compact by design : hauteur ~100px, pas de card/border autour.
  * Aucune couleur hex directe : tout passe par outcomeColor() → resolveToken().
  */
@@ -19,20 +25,85 @@ import { resolveToken } from '@/lib/accessibility'
 // l'Explorateur — même vocabulaire visuel, aucune palette nouvelle.
 import { DOMINANCE_COLOR_TOKENS } from '@/lib/narrative/dominance'
 
-import { CHART_BG, escapeHtml, getEChartsThemeColors, getTooltipBase, outcomeColor } from './_utils'
+import {
+  CHART_BG,
+  escapeHtml,
+  getEChartsThemeColors,
+  getTooltipBase,
+  outcomeColor,
+  type EChartsThemeColors,
+} from './_utils'
 import {
   type DominanceValue,
   type OutcomePoint,
   type Run,
+  clusterDominanceNotches,
   matchIndexAtX,
+  notchCoreWidth,
+  notchGutterWidth,
   startOf,
   toRuns,
 } from './outcomeSequence'
 
-/** Largeur minimale par match (px) sous laquelle le losange n'est plus lisible. */
-const DOMINANCE_MIN_WIDTH_PX = 6
-/** Demi-diagonale du losange (px). */
-const DOMINANCE_HALF = 3.5
+/**
+ * Dépassement (px) de l'encoche de dominance au-dessus et en-dessous de la bande.
+ * L'encoche TRAVERSE la bande : c'est ce qui la rend lisible à toute densité, là où
+ * le losange logé dedans disparaissait sous 6 px/match. Budget vertical : la bande
+ * fait STRIP_H/2 = 7 px de part et d'autre du centre, l'encoche va donc à 10 px —
+ * soit exactement BRACKET_GAP, où commence le trait de série. Aucune contrainte de
+ * hauteur du conteneur (la série `custom` n'est pas clippée à la grille), y compris
+ * sur Relations où le composant est monté en height=64.
+ */
+const NOTCH_OVERHANG_PX = 3
+
+/** Hauteur (px) de la bande d'issues elle-même. */
+const STRIP_H = 14
+
+/**
+ * dominanceNotchShapes — formes ECharts des encoches de dominance d'un run :
+ * pour chaque encoche, la GOUTTIÈRE (fond de tooltip) puis le CŒUR coloré, tous
+ * deux traversant la bande. Extrait de `renderItem` pour ne pas gonfler une
+ * fonction déjà au-dessus du seuil de taille.
+ */
+function dominanceNotchShapes(
+  run: Run,
+  x0: number,
+  perMatchW: number,
+  yStripTop: number,
+  tc: EChartsThemeColors,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): any[] {
+  const core = notchCoreWidth(perMatchW)
+  const gutter = notchGutterWidth(perMatchW)
+  const y = yStripTop - NOTCH_OVERHANG_PX
+  const height = STRIP_H + 2 * NOTCH_OVERHANG_PX
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const out: any[] = []
+  for (const notch of clusterDominanceNotches(run.matches, perMatchW)) {
+    const cx = x0 + perMatchW * notch.center
+    out.push(
+      {
+        // Gouttière : SEUL élément qui garantit la lisibilité — aucun token de
+        // dominance n'atteint 3:1 contre la couleur d'issue qu'il surmonte
+        // (audit contraste 2026-08-02). CHART_BG vaut 'transparent' et ne
+        // séparerait rien : on prend le fond de tooltip (var(--popover)).
+        type: 'rect',
+        shape: { x: cx - core / 2 - gutter, y, width: core + 2 * gutter, height },
+        style: { fill: tc.tooltipBg },
+      },
+      {
+        type: 'rect',
+        shape: { x: cx - core / 2, y, width: core, height },
+        style: {
+          // Drapeaux MÊLÉS dans une encoche fusionnée → neutre
+          // (var(--muted-foreground)) : on n'élit pas un drapeau au hasard.
+          fill: notch.flag ? resolveToken(DOMINANCE_COLOR_TOKENS[notch.flag]) : tc.axisLabel,
+        },
+      },
+    )
+  }
+  return out
+}
 
 // Ré-export des types du modèle pur : les 5 consommateurs importent toujours
 // `OutcomeValue`/`OutcomePoint` depuis ce module (frontière stable). La logique
@@ -164,7 +235,6 @@ export function OutcomeSequenceTape({
             const x1 = a.coord([startOf(runs, i) + r.count, 0])[0]
             const yCenter = a.coord([0, 0])[1]
 
-            const STRIP_H = 14
             const BRACKET_GAP = 10
             const TICK_H = 4
             const APP_R = 8  // matches --radius: 0.5rem (card/KPI tile radius)
@@ -195,38 +265,13 @@ export function OutcomeSequenceTape({
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const children: any[] = [rect]
 
-            // Marqueurs de dominance (F1) : un losange centré sur la cellule du
-            // match, DANS la bande (n'empiète pas sur les brackets de séries).
-            // En dessous de DOMINANCE_MIN_WIDTH_PX par match, la bande est trop
-            // dense : on n'affiche rien et le tooltip porte l'information.
-            const perMatchW = (x1 - x0) / r.count
-            if (perMatchW >= DOMINANCE_MIN_WIDTH_PX) {
-              for (let k = 0; k < r.matches.length; k++) {
-                const flag = r.matches[k].dominance
-                if (!flag) continue
-                const cx = x0 + perMatchW * (k + 0.5)
-                children.push({
-                  type: 'polygon',
-                  shape: {
-                    points: [
-                      [cx, yCenter - DOMINANCE_HALF],
-                      [cx + DOMINANCE_HALF, yCenter],
-                      [cx, yCenter + DOMINANCE_HALF],
-                      [cx - DOMINANCE_HALF, yCenter],
-                    ],
-                  },
-                  style: {
-                    fill: resolveToken(DOMINANCE_COLOR_TOKENS[flag]),
-                    // Liseré couleur de fond de carte (var(--popover)) : effet
-                    // « découpe » qui sépare le losange de la couleur d'outcome
-                    // dans les deux thèmes (CHART_BG vaut 'transparent' et ne
-                    // séparerait rien).
-                    stroke: tc.tooltipBg,
-                    lineWidth: 1,
-                  },
-                })
-              }
-            }
+            // Encoches de dominance : barres verticales qui TRAVERSENT la bande.
+            // Plus aucun seuil de densité — sous ~2 px/match les encoches voisines
+            // fusionnent (clustering PUR dans outcomeSequence.ts) au lieu de
+            // disparaître comme le faisait le losange sous 6 px/match.
+            children.push(
+              ...dominanceNotchShapes(r, x0, (x1 - x0) / r.count, yStripTop, tc),
+            )
 
             if (r.count >= 2 && x1 - x0 >= 8) {
               const yLine = isTop

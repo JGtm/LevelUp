@@ -84,7 +84,7 @@ function setTitleCaps(caps: string[]) {
   useAppShellStore.setState({
     currentTitleSlug: 'test_title',
     availableTitles: [
-      { slug: 'test_title', name: 'Test', status: 'active', capabilities: caps, is_default: true, effective_hp_to_kill: 225, provides_damage_taken: true, provides_team_mmr: true, provides_max_killing_spree: true, offensive_conversion_p80: 0.9 },
+      { slug: 'test_title', name: 'Test', status: 'active', capabilities: caps, is_default: true, effective_hp_to_kill: 225, provides_damage_taken: true, provides_team_mmr: true, provides_max_killing_spree: true, offensive_conversion_p80: 0.9, defensive_resistance_p80: 1.65 },
     ],
   })
 }
@@ -121,6 +121,17 @@ describe('buildFdaGapCumulativeOption', () => {
     expect(opt.legend?.data).toEqual(['Écart cumulé', 'Attendu'])
     expect(opt.xAxis.boundaryGap).toBe(false)
     expect(opt.xAxis.data).toHaveLength(3)
+  })
+
+  // Affordance de survol (v7.3 lot 2, item 2.3c) : symbole caché au repos mais
+  // DÉFINI sur les 2 séries — avec `symbol: 'none'`, ECharts n'affiche aucun point
+  // à l'emphase et le canvas se lit comme une image figée.
+  it('symboles cachés au repos mais révélés au survol (2 séries)', () => {
+    const opt = buildFdaGapCumulativeOption([row(1.5, 1.0), row(0.8, 1.2)], LABELS) as unknown as {
+      series: Array<{ showSymbol?: boolean; symbol?: string }>
+    }
+    expect(opt.series.map((s) => s.showSymbol)).toEqual([false, false])
+    expect(opt.series.map((s) => s.symbol)).toEqual(['circle', 'circle'])
   })
 
   it('report D5 : un match sans attendu reporte le cumul (jamais 0, point conservé) et troue la courbe par-match', () => {
@@ -170,6 +181,15 @@ describe('TimeseriesFdaGapTrend — masquage capability', () => {
     )
     expect(container).toBeEmptyDOMElement()
     expect(screen.queryByTestId('echarts-mock')).toBeNull()
+  })
+
+  // v7.3 lot 2, item 2.3a : le graphe n'avait AUCUNE aide ; le texte est partagé
+  // avec l'instance Sessions (clé commune `common.charts.fda_gap_tooltip`).
+  it('aide ⓘ rendue à côté du titre', async () => {
+    setTitleCaps(['expected_stats'])
+    render(<TimeseriesFdaGapTrend rows={[row(1.5, 1.0), row(0.8, 1.2)]} labels={LABELS} locale="fr" title="Écart cumulé au FDA attendu" />)
+    await screen.findByTestId('echarts-mock')
+    expect(screen.getByRole('button', { name: /info/i })).toBeInTheDocument()
   })
 })
 

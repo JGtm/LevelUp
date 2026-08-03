@@ -279,8 +279,9 @@ export function MediaToolbar({
   const safeModeOptions = withSelectedOption(modeOptions, modeFilter)
 
   // Phase 3.3 plan finition multi-titres : résolution des labels de catégories
-  // de mode via useAssetLabel('mode', value). Fallback sur le dict React legacy
-  // pour préserver l'UX si le backend tourne sans MULTI_TITLE_API_ENABLED.
+  // de mode via useAssetLabel('mode', value). Repli sur le dict React legacy
+  // pour préserver l'UX quand le titre ne déclare pas la catégorie (cas réel :
+  // halo_5 n'a aucune section [assets.mode], cf. note G9 de son assets.toml).
   const { data: fieldMappings } = useFieldMappings()
   const resolveCategoryLabel = (value: string): string => {
     const fromTOML = fieldMappings?.assets?.mode?.[value]?.label

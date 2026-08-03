@@ -33,6 +33,8 @@ func BuildExplorerRowFromMatchHistory(item domain.MatchHistoryRow) domain.Explor
 		PerfTier:            item.PerfTier,
 		DeltaPerf:           deltaPerf,
 		SkillTierLabel:      item.SkillTierLabel,
+		SkillRankImageURL:   item.SkillRankImageURL,
+		PersonalScore:       item.PersonalScore,
 		RatingType:          item.SkillRatingType,
 		ExpectedWinProb:     item.ExpectedWinProb,
 		PlacementDone:       item.PlacementDone,
