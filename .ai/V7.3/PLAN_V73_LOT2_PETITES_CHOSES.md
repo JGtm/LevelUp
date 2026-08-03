@@ -442,14 +442,20 @@ types front régénérés ; revue navigateur 3.1/3.2/3.4/3.5.
 
 ## Phase 4 — Ops prod et clôture
 
-- [ ] 4.1 **Re-mesure lot K** (fetch films hors verrou, déployé le 26/07 mais jamais
-      mesuré en conditions réelles — 0 match ingéré alors) : la session du 31/07
-      fournit enfin la mesure. Compter dans les logs VPS les avertissements
-      « writer RW tenu > seuil » par cycle d'auto-sync depuis le 31/07 (avant :
-      3-5/cycle ; attendu : ~0). **Préavis utilisateur avant toute op VPS.**
-- [ ] 4.2 **Cut de snapshot prod** : vérifier si le snapshot de lecture a été recoupé
-      depuis le correctif G1 (sinon le repli lecture live reste actif) ; recouper si
-      nécessaire, avec préavis.
+- [x] 4.1 **Re-mesure lot K** — faite le 2026-08-03 (préavis + go utilisateur,
+      lecture seule via ssh lvelup, logs persistés /opt/levelup/data/logs) :
+      **3 avertissements « writer RW tenu » au TOTAL depuis le 31/07, zéro depuis le
+      01/08** — détail : 1× match_exclusion_recompute (16:18, 2005 ms) + 2×
+      sync_v1_run (19:30 et 20:40, 2000/2001 ms) sur TOUTE la session du soir du
+      31/07 (53 mentions sync_v1_run ce jour-là). Avant lot K : 3-5 PAR CYCLE.
+      Dépassements résiduels marginaux (à peine au-dessus du seuil 2 s). **Lot K
+      validé en conditions réelles.**
+- [x] 4.2 **Cut de snapshot prod** — vérifié le 2026-08-03 : la recoupe est
+      AUTOMATIQUE et vivante — CURRENT.json version 125, flipped_at
+      2026-08-02T21:28:38Z, versions 121→125 coupées toutes les ~15 min par les
+      cycles post-déploiement. Largement postérieur au correctif G1 : le repli
+      lecture live n'est PAS l'état stable. AUCUN recut nécessaire (aucune op
+      écrivante effectuée).
 - [ ] 4.3 **MAJ Notion** : barrer chaque point traité avec commit + notes sous les
       points ; consigner les réponses aux questions posées dans la section
       (précision par arme = H5 déjà couvert / Infinite au killsource ; « pourquoi
@@ -493,7 +499,12 @@ exécuter, avec l'état constaté le 2026-08-02. Chaque merge sur main = déploi
       `OutcomeSequenceTape`, qui fait partie des wrappers à couvrir. Exécuter B1-B8 ;
       le gros du travail est le harnais, pas le bump ; sign-off visuel utilisateur (B7)
       requis.
-- [ ] D4 **Lot C — TS7 (PR #70) : statuer, ne pas exécuter** — vérifié le 2026-08-02 :
+- [x] D4 **Lot C — TS7 (PR #70) : statué le 2026-08-03** — re-vérification finale :
+      typescript-eslint@latest = 8.65.0, peer `typescript >=4.8.4 <6.1.0` → TS 7.0.2
+      toujours HORS range. Report `[!]` confirmé (dépendance externe), commentaire de
+      blocage daté posé sur la PR #70 (issuecomment-5163262768), consignation Notion
+      via le callout 4.3, PR laissée ouverte, C2+ NON exécuté. (État antérieur du
+      2026-08-02 :
       `typescript-eslint@latest` = 8.65.0, peer `typescript >=4.8.4 <6.1.0`, TS 7.0.2
       toujours HORS range (seules des 8.65.1-alpha existent). Report justifié `[!]`
       (dépendance externe). À la clôture du lot : revérifier une dernière fois
@@ -676,6 +687,11 @@ AVANT merge, pas seulement un rejeu local).
 - [2026-08-03, agent 3.4/3.5] `make openapi-gen` journalise un ERROR
   mappings_validation_failed trompeur à chaque run (tmpdir sans config/) en sortant
   0 — bruit à nettoyer post-lot.
+- [2026-08-03, orchestrateur] Ratchet goconst au gate-push : le lot a ajouté les 9e
+  et 10e occurrences du littéral "Retry-After" (media_delete/media_likes) →
+  constante de paquet `headerRetryAfter` posée sur les 2 nouveaux sites. La
+  MIGRATION des ~8 sites antérieurs (home, engagement, match_favorite…) + garde-rail
+  = passe post-lot (règle 6).
 - [2026-08-02, orchestrateur] Retombée du fix 1.3 corrigée par l'orchestrateur :
   `TestCareerRepo_GetRelationsHeatmap` (integration) attendait des heures UTC et
   dépendait du fuseau machine → ouvert via le chemin production épinglé UTC
