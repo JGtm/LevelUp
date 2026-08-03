@@ -1,3 +1,73 @@
+## [2026-08-03] Bascule des lecteurs killsource — mesures préalables, blocage, 3 arbitrages rendus
+
+**Statut** : En cours — **aucun lecteur basculé**, arrêt propre sur décision superviseur
+(plan-execution règle 9). Périmètre : phase 2 de `.ai/PLAN_BRANCHEMENT_KILLSOURCE.md`.
+Détail chiffré : §2.4 du plan (nouveau).
+
+**Le blocage, et il n'était pas connu** : le §2.1 prescrit de transformer `killer_victim_pairs`
+en VUE sur `match_kill_events_latest`. **C'est infaisable depuis l'inversion de préséance de ce
+matin** : la table est devenue la BASE CRÉDIT. Cinq dépendances vérifiées par grep — deux
+écrivains de production (`shared_persister.go:394` INSERT, `events_completion_persister.go:265`
+DELETE+INSERT) qu'une vue casserait, un écrivain de démo, et **deux lectures qui deviendraient
+CIRCULAIRES** (`CreditBaseForMatch`, appelée par le collecteur de film, et la migration de
+reprise) : la base crédit deviendrait la dernière passe publiée, et l'invariant « jamais moins
+que la base » dégénérerait en cliquet. Un seul site était déjà prêt — la sonde du persister, qui
+teste `duckdb_tables()`. **Recommandation : basculer les lecteurs DIRECTEMENT sur
+`match_kill_events_latest`** (étapes 2/3/4 du chemin de retrait écrit dans le DDL) ; la vue
+n'était qu'un moyen. Retirer les écrivains, c'est l'étape 7 — elle touche les producteurs et la
+définition du contenu, tous deux hors mission.
+
+**Méthode** : toutes les mesures sur COPIE des deux bases réelles, remises en état
+post-inversion par `cmd/apply_shared_migrations` — la base de dev ne portait PAS la migration
+`shared_kill_events_credit_base_v1` (l'inversion a été mesurée sur copie). Cibles retrouvées au
+chiffre près : 134 866 / 1 343 sur Infinite, 268 337 / 2 754 sur Halo 5.
+
+**Les trois points du préambule, résultats** :
+
+1. **`publishable`** — uniforme par match (c'est bien un attribut de passe). Un filtre
+   `publishable = TRUE` côté lecteur coûterait **47 037 morts sur 366 matchs BTB**, qui
+   deviendraient VIDES à l'écran : la panne de la session 3 sous un autre nom. Et le motif du
+   FALSE ne porte pas sur la mort — **22 064 des 22 223 lignes de voie film de ces matchs
+   (99,3 %) ont leur identité présente dans la base crédit**, seules 159 sont des orphelines de
+   film. `publishable` qualifie l'APPARIEMENT du film, donc les colonnes qu'il apporte, jamais
+   l'existence de la mort. Recommandation : aucun lecteur ne filtre sur cette colonne ; le
+   per-ligne se pose le jour où une surface consomme les colonnes de film.
+2. **Bots sur Q26/Q27** — testés AVANT, sur les deux titres. **Le filtre `NOT LIKE 'bid(%'`
+   reste un NO-OP** : 0 ligne en forme `bid(...)` dans la canonique, les bots y sont des xuid
+   NULL (819 victimes, 154 tueurs). L'arbitrage (A) tient, mais par la sémantique NULL, pas par
+   le filtre que le plan attendait. Q27 sur JGtm : 3 370 couples des deux côtés,
+   15 741 → 10 486 frags, le groupe NULL (71 frags) correctement exclu par `opp_xuid <> ?`.
+   Q26 est protégé structurellement (jointure à `encounter_stats`, déjà filtré des bots).
+   **Duel de contrôle retrouvé au chiffre près : `Luigi Numba 01 → JGtm` 101 → 29.**
+3. **Voie de lecture unique par match** — le préambule sous-estimait : **379 matchs portent
+   TROIS `read_path` distincts**, pas deux. Sans conséquence : **aucun lecteur de production ne
+   consomme `read_path`** ; ses seuls consommateurs sont les trois producteurs et la migration,
+   qui l'emploient comme un prédicat PAR LIGNE — exact sous mixité.
+
+**Deux découvertes que l'inventaire écrit ne portait pas** :
+
+- **Le piège `COALESCE(xuid, '')`, sur QUATRE sites** (`queries_squad.go:201`,
+  `engagement_score_repo_queries.go:199`, `highlight_events_repo.go:131`,
+  `sync/engagement.go:466`). Sur Infinite, `killer_victim_pairs` ne porte aucun NULL : ces
+  COALESCE sont des NO-OP aujourd'hui. Après bascule, **les 973 lignes de bot fusionneraient en
+  UN joueur fantôme de chaîne vide** dans la matrice d'impact escouade et le score
+  d'engagement. Même forme que le `NOT LIKE 'bid(%'` — un prédicat jamais observé faute de
+  population — mais en sens INVERSE, et sur des sites que le §2.2 ne signalait pas.
+- **Halo 5 compte déjà un opposant fantôme, et la bascule le retire.** `killer_victim_pairs` y
+  code les bots en CHAÎNE VIDE (1 245 tueurs, 1 371 victimes ; 0 NULL). `'' <> moi` étant VRAI,
+  ce fantôme pèse **161 frags et 127 morts** sur le joueur le plus actif et entre dans le top-10
+  némésis / souffre-douleur sous un libellé masqué. La bascule le fait disparaître : correction
+  réelle, mais **visible** — 4 201 → 4 200 couples, 18 538 → 18 377 frags.
+
+**Fait par ailleurs** : merge d'`origin/main` dans `feat/replay2d-prod` (25 commits, discipline
+anti-divergence du master plan). 4 conflits résolus — `thought_log` et `.gitleaks.toml` en BASH
+sur octets bruts, les deux fichiers générés (`openapi.yaml`, `generated.ts`) REGÉNÉRÉS et non
+fusionnés à la main (les deux endpoints concurrents coexistent, vérifié). Build vert.
+
+**Conclusion / prochaine étape** : trois arbitrages au superviseur (mécanisme de bascule,
+`publishable`, changement visible Halo 5). Rien d'autre n'est exécutable sans eux : le mécanisme
+décide la forme de chaque requête rebasculée, donc chaque gate avant/après.
+
 ## [2026-08-03] Vérification superviseur du lot inversion de préséance + arbitrage artefacts
 
 **Statut** : Complété. Vérification sur pièces du compte rendu exécuteur (entrée ci-dessous),
