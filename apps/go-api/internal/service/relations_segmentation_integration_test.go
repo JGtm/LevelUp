@@ -43,8 +43,10 @@ func seedRelationsSegmentation(t *testing.T, db *duckdb.DB) {
 			game_variant_id VARCHAR, game_variant_name VARCHAR)`,
 		`CREATE TABLE match_participants (
 			match_id VARCHAR, xuid VARCHAR, team_id INTEGER, outcome INTEGER, kda DOUBLE)`,
-		`CREATE TABLE killer_victim_pairs (
-			match_id VARCHAR, killer_xuid VARCHAR, victim_xuid VARCHAR, kill_count INTEGER)`,
+		// BASCULE DU 2026-08-03 : Q28 (scopée ou non) lit la canonique — un JOURNAL,
+		// 1 ligne = 1 mort, sans `kill_count`.
+		`CREATE TABLE match_kill_events_latest (
+			match_id VARCHAR, feed_killer_xuid VARCHAR, victim_xuid VARCHAR, time_ms INTEGER)`,
 		`CREATE TABLE xuid_aliases (xuid VARCHAR, gamertag VARCHAR)`,
 		`CREATE VIEW v_gamertag_lookup AS SELECT xuid, gamertag FROM xuid_aliases`,
 		// v_match_full : la query FiltersRepo lit r.* depuis cette vue.
@@ -76,10 +78,14 @@ func seedRelationsSegmentation(t *testing.T, db *duckdb.DB) {
 			('m2','xuidMe',0,2,1.5), ('m2','xuidBuddy',0,2,3.0),
 			('m3','xuidMe',0,3,0.8), ('m3','xuidRival',1,2,2.5),
 			('m4','xuidMe',0,3,0.8), ('m4','xuidRival',1,2,1.5)`,
-		`INSERT INTO killer_victim_pairs VALUES
-			('m3','xuidMe','xuidRival',2),
-			('m3','xuidRival','xuidMe',6),
-			('m4','xuidRival','xuidMe',4)`,
+		// Mêmes cardinaux (me→Rival 2, Rival→me 6 sur m3 et 4 sur m4), une LIGNE par mort.
+		`INSERT INTO match_kill_events_latest VALUES
+			('m3','xuidMe','xuidRival',1000), ('m3','xuidMe','xuidRival',1100),
+			('m3','xuidRival','xuidMe',2000), ('m3','xuidRival','xuidMe',2100),
+			('m3','xuidRival','xuidMe',2200), ('m3','xuidRival','xuidMe',2300),
+			('m3','xuidRival','xuidMe',2400), ('m3','xuidRival','xuidMe',2500),
+			('m4','xuidRival','xuidMe',3000), ('m4','xuidRival','xuidMe',3100),
+			('m4','xuidRival','xuidMe',3200), ('m4','xuidRival','xuidMe',3300)`,
 		`INSERT INTO xuid_aliases VALUES
 			('xuidMe','MePlayer'), ('xuidBuddy','BuddyPlayer'), ('xuidRival','RivalPlayer')`,
 		// m1/m2 = escouade, m3/m4 = solo.

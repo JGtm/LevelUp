@@ -132,12 +132,12 @@ encounter_stats AS (
 kv_stats AS (
     SELECT
         tm.xuid,
-        SUM(CASE WHEN kv.killer_xuid = ? AND kv.victim_xuid = tm.xuid THEN kv.kill_count ELSE 0 END) AS kills_dealt,
-        SUM(CASE WHEN kv.killer_xuid = tm.xuid AND kv.victim_xuid = ? THEN kv.kill_count ELSE 0 END) AS deaths_suffered
+        COUNT(*) FILTER (WHERE kv.feed_killer_xuid = ? AND kv.victim_xuid = tm.xuid) AS kills_dealt,
+        COUNT(*) FILTER (WHERE kv.feed_killer_xuid = tm.xuid AND kv.victim_xuid = ?) AS deaths_suffered
     FROM this_match tm
-    LEFT JOIN killer_victim_pairs kv
-        ON ((kv.killer_xuid = ? AND kv.victim_xuid = tm.xuid)
-            OR (kv.killer_xuid = tm.xuid AND kv.victim_xuid = ?))
+    LEFT JOIN ` + KillEventsCanonicalTable + ` kv
+        ON ((kv.feed_killer_xuid = ? AND kv.victim_xuid = tm.xuid)
+            OR (kv.feed_killer_xuid = tm.xuid AND kv.victim_xuid = ?))
     GROUP BY tm.xuid
 )
 SELECT

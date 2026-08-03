@@ -129,11 +129,14 @@ func (r *HighlightEventsRepo) loadSyntheticKillEvents(
 		placeholders[i] = "?"
 		args[i] = id
 	}
+	// Source canonique depuis le 2026-08-03. Bots (xuid NULL) écartés au SQL et non
+	// normalisés en chaîne vide — même raison qu'en Q32c (cf. Q32cSquadKVPairsTemplate).
 	q := fmt.Sprintf(`
-SELECT match_id, COALESCE(killer_xuid, ''), COALESCE(victim_xuid, ''),
-       COALESCE(kill_count, 1), COALESCE(time_ms, 0)
-FROM killer_victim_pairs
+SELECT match_id, feed_killer_xuid, victim_xuid, 1, time_ms
+FROM `+KillEventsCanonicalTable+`
 WHERE match_id IN (%s)
+  AND feed_killer_xuid IS NOT NULL
+  AND victim_xuid      IS NOT NULL
 ORDER BY match_id, time_ms ASC`, strings.Join(placeholders, ","))
 
 	rows, err := db.QueryContext(ctx, q, args...)

@@ -230,13 +230,11 @@ func (r *CompareRepo) GetEncounterStats(ctx context.Context, xuidA, xuidB string
 		return nil, nil
 	}
 
-	const qKV = `
-		SELECT
-			COALESCE((SELECT SUM(kill_count) FROM killer_victim_pairs WHERE killer_xuid = ? AND victim_xuid = ?), 0),
-			COALESCE((SELECT SUM(kill_count) FROM killer_victim_pairs WHERE killer_xuid = ? AND victim_xuid = ?), 0)`
-
+	// Requête PARTAGÉE avec l'Explorer (ex-Q19b) : cf. [QKillsBetweenPlayers]. Deux copies
+	// textuelles vivaient ici et dans queries_match.go — le même duel avait deux chances
+	// d'afficher deux nombres différents.
 	var killsDealt, deathsSuffered int
-	if err := db.QueryRowContext(ctx, qKV, xuidA, xuidB, xuidB, xuidA).Scan(&killsDealt, &deathsSuffered); err != nil {
+	if err := db.QueryRowContext(ctx, QKillsBetweenPlayers, xuidA, xuidB, xuidB, xuidA).Scan(&killsDealt, &deathsSuffered); err != nil {
 		slog.DebugContext(ctx, "CompareRepo.GetEncounterStats: killer_victim non disponible (best-effort)", "err", err)
 	}
 

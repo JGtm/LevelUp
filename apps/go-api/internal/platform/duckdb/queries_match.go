@@ -414,19 +414,10 @@ WHERE mp.xuid = ?
 ORDER BY start_time DESC
 LIMIT ?`
 
-// Q19b : Kills croisés agrégés entre deux joueurs sur l'ensemble de leurs matchs communs.
-// Paramètres : ?1 = xuid joueur principal, ?2 = xuid autre joueur (répétés 2 fois chacun).
-// Retourne 2 colonnes : kills_dealt, deaths_suffered.
-const Q19bKillerVictimBetween = `
-SELECT
-    COALESCE((
-        SELECT SUM(kill_count) FROM killer_victim_pairs
-        WHERE killer_xuid = ? AND victim_xuid = ?
-    ), 0) AS kills_dealt,
-    COALESCE((
-        SELECT SUM(kill_count) FROM killer_victim_pairs
-        WHERE killer_xuid = ? AND victim_xuid = ?
-    ), 0) AS deaths_suffered`
+// Q19b (kills croisés entre deux joueurs) VIT DÉSORMAIS DANS [QKillsBetweenPlayers],
+// `kill_events_source.go` — elle était textuellement identique à celle de
+// `CompareRepo.GetEncounterStats`, et deux copies d'un même duel finissent par afficher deux
+// nombres différents sur deux pages. Garde-rail : `no_duplicate_kills_between_test.go`.
 
 // Paramètre : ? = match_id.
 // Retourne 6 colonnes : killer_xuid, killer_gamertag, victim_xuid,
@@ -438,15 +429,23 @@ SELECT
 // homonymes, `kvf.killer_gamertag` désignait la colonne de la table, jamais celle de la
 // jointure : les deux LEFT JOIN étaient du travail mort exécuté à chaque chargement de vue
 // match. Les six colonnes rendues sont identiques, la vue a été supprimée.
+//
+// BASCULE DU 2026-08-03 : la source est la canonique (cf. [KillEventsCanonicalTable]). Les six
+// colonnes de sortie ne bougent pas — `kill_count` devient le littéral 1, ce qu'il valait déjà
+// sur toutes les lignes de l'ancienne table. Deux gains pour ce lecteur-ci, qui est un JOURNAL :
+// les doublons de tug-of-war disparaissent, et les morts de BOT deviennent visibles (elles y
+// arrivent avec un `xuid` NULL et leur `gamertag` renseigné, que l'ancienne table ne savait pas
+// représenter). ⚠ Le xuid NULL est SERVI TEL QUEL : le normaliser en chaîne vide fusionnerait
+// tous les bots en un joueur fantôme.
 const Q20KVPairs = `
 SELECT
-    kvf.killer_xuid,
-    kvf.killer_gamertag,
+    kvf.feed_killer_xuid    AS killer_xuid,
+    kvf.feed_killer_gamertag AS killer_gamertag,
     kvf.victim_xuid,
     kvf.victim_gamertag,
-    kvf.kill_count,
+    1                        AS kill_count,
     kvf.time_ms
-FROM killer_victim_pairs kvf
+FROM ` + KillEventsCanonicalTable + ` kvf
 WHERE kvf.match_id = ?
 ORDER BY kvf.time_ms ASC`
 

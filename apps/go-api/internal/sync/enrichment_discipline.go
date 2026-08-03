@@ -34,20 +34,24 @@ func computeAndPersistH5DisciplineAwards(ctx context.Context, playerDB, sharedDB
 		return 0, nil
 	}
 
+	// Source canonique depuis le 2026-08-03. `SUM(kill_count)` devient `COUNT(*)` : la table
+	// est un JOURNAL (1 ligne = 1 mort), et l'ancienne somme comptait des doublons — un
+	// suicide ou une trahison unique pouvait être crédité deux fois. Les jointures sur
+	// `match_participants` écartent les bots d'elles-mêmes (ils n'y figurent pas).
 	suicides, err := scanMatchCounts(ctx, sharedDB, `
-		SELECT match_id, CAST(COALESCE(SUM(kill_count), 0) AS INTEGER)
-		FROM killer_victim_pairs
-		WHERE killer_xuid = ? AND victim_xuid = ?
+		SELECT match_id, CAST(COUNT(*) AS INTEGER)
+		FROM match_kill_events_latest
+		WHERE feed_killer_xuid = ? AND victim_xuid = ?
 		GROUP BY match_id`, xuid, xuid)
 	if err != nil {
 		return 0, fmt.Errorf("suicides query: %w", err)
 	}
 	betrayals, err := scanMatchCounts(ctx, sharedDB, `
-		SELECT kvp.match_id, CAST(COALESCE(SUM(kvp.kill_count), 0) AS INTEGER)
-		FROM killer_victim_pairs kvp
-		JOIN match_participants mk ON mk.match_id = kvp.match_id AND mk.xuid = kvp.killer_xuid
+		SELECT kvp.match_id, CAST(COUNT(*) AS INTEGER)
+		FROM match_kill_events_latest kvp
+		JOIN match_participants mk ON mk.match_id = kvp.match_id AND mk.xuid = kvp.feed_killer_xuid
 		JOIN match_participants mv ON mv.match_id = kvp.match_id AND mv.xuid = kvp.victim_xuid
-		WHERE kvp.killer_xuid = ? AND kvp.victim_xuid <> ? AND mk.team_id = mv.team_id
+		WHERE kvp.feed_killer_xuid = ? AND kvp.victim_xuid <> ? AND mk.team_id = mv.team_id
 		GROUP BY kvp.match_id`, xuid, xuid)
 	if err != nil {
 		return 0, fmt.Errorf("betrayals query: %w", err)
