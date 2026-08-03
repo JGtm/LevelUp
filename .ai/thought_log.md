@@ -1,3 +1,22 @@
+## [2026-08-03] Campagne close : lot 2 + echarts 6 + passe découvertes mergés, handoff écrit
+
+**Statut** : Complété. Séquence de fin exécutée sur go utilisateur : merge lot 2
+(f8913a473, deploy vert), merge echarts 6 (ef165518b, deploy vert, sign-off visuel
+rendu — rendu épuré accepté, artefact 658ae5e8), merge passe découvertes (69785cecc,
+9 quick wins + 3 garde-rails prouvés), squash PR #74 (npm-minor 7 paquets, CI branche
+verte — mergée sans attendre la CI intermédiaire sur décision utilisateur explicite).
+CI/deploys des 2 derniers merges en cours à l'écriture — surveiller, corriger en
+avant si rouge.
+
+**Décision principale** : handoff `.ai/HANDOFF_POST_LOT2_V73.md` = point d'entrée
+unique des prochaines sessions (état, actions utilisateur restantes — coup d'œil prod
+likes/suppression + tag v7.3.0 —, chantiers priorisés, pièges opérationnels du poste
+dont le contournement gate-push PowerShell/--from-jsonl).
+
+**Conclusion / prochaine étape** : rien d'agent en attente. Prochains chantiers
+recommandés dans l'ordre du handoff (Replay 2D utilisateur, killsource via son
+handoff, palette joueurs via artefact).
+
 ## [2026-08-03] Lot 2 v7.3 — Phase 4 close, gate 4 passé : lot COMPLET, prêt à merger
 
 **Statut** : Complété (24 commits sur feat/v7.3-notion-lot2, merge en attente du go
