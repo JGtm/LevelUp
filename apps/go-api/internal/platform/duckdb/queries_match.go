@@ -417,7 +417,8 @@ LIMIT ?`
 // Q19b (kills croisés entre deux joueurs) VIT DÉSORMAIS DANS [QKillsBetweenPlayers],
 // `kill_events_source.go` — elle était textuellement identique à celle de
 // `CompareRepo.GetEncounterStats`, et deux copies d'un même duel finissent par afficher deux
-// nombres différents sur deux pages. Garde-rail : `no_duplicate_kills_between_test.go`.
+// nombres différents sur deux pages. Garde-rail : `TestUneSeuleRequeteDeFragsEntreDeuxJoueurs`
+// (`kill_events_source_guard_test.go`).
 
 // Paramètre : ? = match_id.
 // Retourne 6 colonnes : killer_xuid, killer_gamertag, victim_xuid,

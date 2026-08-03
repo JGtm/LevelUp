@@ -38,7 +38,8 @@ package duckdb
 //     **Halo 5**, `killer_victim_pairs` code déjà ses bots en chaîne vide, et ce fantôme entrait
 //     dans le top-10 némésis / souffre-douleur sous un libellé masqué (161 frags, 127 morts sur
 //     le joueur le plus actif). La bascule le retire. Un lecteur qui remet un `COALESCE(…, ”)`
-//     le fait revenir — c'est ce qu'interdit `no_empty_xuid_coalesce_test.go`.
+//     le fait revenir — c'est ce qu'interdit `TestPasDeXuidNormaliseEnChaineVide`
+//     (`kill_events_source_guard_test.go`).
 //
 //  2. **`publishable` NE FILTRE PAS LES LIGNES.** C'est un attribut de la PASSE de décodage :
 //     il dit si le film est fiable ligne par ligne sur ce match (faux en BTB, marge de
@@ -54,7 +55,8 @@ const KillEventsCanonicalTable = "match_kill_events_latest"
 // UNE SEULE COPIE DANS LE DÉPÔT, et c'est délibéré : Q19b (`queries_match.go`, comparaison de
 // deux joueurs) et `CompareRepo.GetEncounterStats` en portaient deux versions textuellement
 // identiques. Les faire diverger, c'est afficher deux nombres différents pour le même duel sur
-// deux pages. Le garde-rail `no_duplicate_kills_between_test.go` échoue si le littéral
+// deux pages. Le garde-rail `TestUneSeuleRequeteDeFragsEntreDeuxJoueurs`
+// (`kill_events_source_guard_test.go`) échoue si le littéral
 // réapparaît ailleurs.
 //
 // Pas de `COALESCE` autour des `COUNT(*)` : un `COUNT` sur une sous-requête sans ligne rend 0,
