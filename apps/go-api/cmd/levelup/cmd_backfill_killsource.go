@@ -3,13 +3,20 @@ package main
 // cmd_backfill_killsource.go — sous-commande `levelup backfill-killsource`.
 //
 // ELLE REMPLIT `shared.match_kill_events` ET `shared.match_weapon_shots`, par les DEUX
-// producteurs, dans l ordre qui garantit la preseance :
+// producteurs. Depuis l inversion de preseance (2026-08-03), AUCUN DES DEUX NE REFUSE PLUS RIEN :
+// la base est toujours le CREDIT, le film ENRICHIT.
 //
-//	1. LE FILM      — decodage hors ligne des films en cache. Les deux verites (credit du
-//	                  kill-feed + source du degat), plus la ventilation des tirs par arme.
+//	1. LE FILM      — decodage hors ligne des films en cache. Sa sortie est FUSIONNEE sur la base
+//	                  credit du match (couples de `killer_victim_pairs`) avant d etre ecrite :
+//	                  elle apporte la source du degat, l assistant nomme et les parts, plus la
+//	                  ventilation des tirs par arme.
 //	2. LE CREDIT    — depuis `highlight_events`, EN BASE, sans film. Il apporte les matchs dont
-//	                  le film a EXPIRE cote serveur (29,3 % du corpus), et il REFUSE tout match
-//	                  qu une passe de film couvre deja.
+//	                  le film a EXPIRE cote serveur (29,3 % du corpus), et sur les autres il
+//	                  RECOMPOSE : sa base + l enrichissement de la passe de film deja en base.
+//
+// L ORDRE RESTE FILM PUIS CREDIT, et il n est plus une question de preseance mais de cout : la
+// passe credit est une transformation SQL -> SQL de quelques secondes, la repasser apres le
+// decodage ne coute rien et rattrape les matchs dont le film vient d arriver.
 //
 // # ELLE EST 100 % HORS LIGNE — NI RESEAU, NI TOKENS, NI CDN
 //
@@ -154,7 +161,9 @@ var santeCompteurs = []string{
 	"killsource_tirs_matchs_ventiles", "killsource_tirs_lignes_ecrites",
 	"killsource_tirs_indices_non_resolus", "killsource_tirs_erreurs_ecriture",
 	"killsource_credit_matchs_ecrits", "killsource_credit_morts_ecrites",
-	"killsource_credit_matchs_deja_couverts_par_un_film", "killsource_credit_matchs_sans_evenement",
+	"killsource_credit_matchs_enrichis_par_un_film", "killsource_credit_matchs_sans_evenement",
+	"killsource_fusion_morts_enrichies", "killsource_fusion_orphelins_film",
+	"killsource_orphelins_film_humain_contre_humain", "killsource_fusion_instants_ambigus",
 }
 
 // afficherSante restitue les compteurs de sante de la passe.
@@ -163,8 +172,12 @@ func afficherSante() {
 	for _, nom := range santeCompteurs {
 		fmt.Printf("  %-52s %d\n", nom, observability.LoadCounter(nom))
 	}
-	fmt.Println("  ⚠ killsource_assist_extra_count > 0 = l hypothese de schema « un seul " +
-		"assistant » est en defaut : migrer vers une table fille (ADR 0026).")
+	fmt.Println("  ⚠ killsource_assist_extra_count : surplus d assistants observes. Mesure du " +
+		"2026-08-03 : 5 lignes a 1 sur 124 694 — anecdotique. Declencheur de migration vers une " +
+		"table fille (ADR 0026) : UNE ligne a >= 2, ou plus de 0,1 % des lignes a >= 1.")
+	fmt.Println("  ⚠ killsource_orphelins_film_humain_contre_humain : lignes de film sans mort " +
+		"de credit en face ET portant DEUX xuids. 13 sur 74 569 au 2026-08-02, mecanisme non " +
+		"demontre — la seule des trois populations d orphelins a surveiller.")
 }
 
 // migrerSchemaPartage : joue les migrations du shared sur le handle deja ouvert.
@@ -245,9 +258,9 @@ func passeDuCredit(ctx context.Context, db *sql.DB, o killsourceOptions) error {
 	}
 	debut := time.Now()
 	sum := killcollector.NewCreditCollector(db, writerDeja(db)).CollectMatches(ctx, ids)
-	fmt.Printf("credit-seul : %d ecrits (%d morts), %d couverts par un film, "+
+	fmt.Printf("credit : %d ecrits + %d enrichis par un film (%d morts), "+
 		"%d sans evenement, %d erreurs — %s\n",
-		sum.Written, sum.Deaths, sum.SkippedFilm, sum.NoEvents, sum.Errors,
+		sum.Written, sum.Enriched, sum.Deaths, sum.NoEvents, sum.Errors,
 		time.Since(debut).Round(time.Second))
 	return nil
 }

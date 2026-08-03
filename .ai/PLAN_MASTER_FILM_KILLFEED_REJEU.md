@@ -1829,6 +1829,18 @@ des 8 lecteurs (phase 2) attend le critère `lignes_passe_film/morts_api ≥ 98,
 l'inversion de préséance — lot post-merge. Le killfeed enrichi (arme, assistant, tirs) est
 EN BASE ; la table legacy `killer_victim_pairs` reste intacte jusqu'à la bascule.
 
+**LE CRITÈRE EST ATTEINT — 2026-08-03, inversion de préséance implémentée (session 1/2).** Il l'est
+par une voie que la formulation d'origine n'anticipait pas : ce n'est PAS la passe de film qui est
+montée à 98,4 %, c'est la **préséance qui s'est inversée**. Le crédit devient la base (98,5 % de
+l'oracle dédupliqué, PARTOUT et pas seulement sur le périmètre film) et le film ENRICHIT les morts
+qu'il couvre — sans jamais en retirer. Mesure sur copie de la base de dev : **124 694 → 134 866
+lignes servies**, 73 589 enrichissements, 980 orphelins de film conservés (968 morts de bot),
+**389 matchs perdaient des morts → 0**. Les états 2 et 3 de l'assistant sont identiques au chiffre
+près avant/après : la fusion ne fabrique aucun fait. Halo 5 : no-op vérifié sur la donnée
+(268 337 → 268 337, 0 perdue, 0 ajoutée). Statut de chaque item du §6, écarts et découvertes :
+**§9 et §10 de `.ai/CONCEPTION_INVERSION_PRESEANCE.md`**. **La bascule des 20 lecteurs reste à
+faire** — c'est la session 2/2, et son gate AVANT/APRÈS par lecteur est inchangé.
+
 **Prochaine étape = J5**, et son prérequis est la **revue adversariale du lot J4** (écritures
 persist/sync/migration — 2 relecteurs, règle du dépôt) AVANT le merge. Base de diff du lot à
 risque : `ea3cfc88b..b0a76756f` scopé sur `internal/{persist,migration,sync/killcollector}`.
@@ -1918,8 +1930,9 @@ ronde. Ne pas « améliorer » la liste `dependentViews` en croyant refermer le 
 
 | lot | état | ce qu'il rend | sessions |
 |---|---|---|---|
-| **J4-fix** — ronde de correction post-revue (7 constats) + ronde 2 | EN COURS | — | 1-2 |
-| **Killfeed VISIBLE** — inversion de préséance (crédit = base, film = enrichissement) → re-backfill → bascule des 20 lecteurs (vue de compat) + seed_demo | **CONÇU** (`.ai/CONCEPTION_INVERSION_PRESEANCE.md`, 2026-08-02) — reste à implémenter | **LE vrai visible** : armes de kill, assists nommés dans les pages existantes, agrégats carrière dégonflés (« 101 → 29 ») | 3-4 |
+| **J4-fix** — ronde de correction post-revue (7 constats) + ronde 2 | CLOS 2026-08-02 | — | 1-2 |
+| **Killfeed VISIBLE — 1/2 : l'inversion de préséance** (crédit = base, film = enrichissement) + re-backfill | **FAIT 2026-08-03** — `.ai/CONCEPTION_INVERSION_PRESEANCE.md` §9. 124 694 → **134 866** lignes servies, **98,5 %** de couverture, **0 match ne perd de mort** (389 avant) | la donnée est en base et complète ; rien n'est encore à l'écran | 1 |
+| **Killfeed VISIBLE — 2/2 : la bascule des 20 lecteurs** (vue de compat) + `seed_demo` (S1) + `rebuild_mp` (S2) | à faire — le critère de bascule est désormais ATTEINT et mesuré | **LE vrai visible** : armes de kill, assists nommés dans les pages existantes, agrégats carrière dégonflés (« 101 → 29 ») | 2-3 |
 | **Intégration re-mode-score** — rebaser sur `feat/replay2d-prod`, intégrer le code objectifs + P1/P2 de sa revue (docs déjà restitués) | à faire | anti-divergence (le code atterrit ; son débouché rejeu reste dev) | 1-2 |
 | **Hygiène** — rangement `.ai/` → V7.5, lot E delivery-checklist | à faire | — | 1-2 |
 | **MERGE** — revue adverse finale si besoin, GO utilisateur, backfill prod | à faire | la release | 1 |

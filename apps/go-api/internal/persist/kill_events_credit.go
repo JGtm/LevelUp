@@ -35,12 +35,20 @@ package persist
 // credit-seul de `killcollector` (qui lit cette table) ne couvrirait jamais ce titre. Un titre
 // qui ne rend aucun couple ne produit rien : degradation gracieuse sans une ligne de branchement.
 //
-// ─── LA PRESEANCE : LE FILM GAGNE, TOUJOURS ────────────────────────────────────────────────
+// ─── LA PRESEANCE : LE CREDIT EST LA BASE, LE FILM ENRICHIT ────────────────────────────────
 //
-// La vue `_latest` retient LA DERNIERE PASSE. Une passe credit-seul ecrite apres un decodage de
-// film n ajouterait pas des lignes : elle DEVIENDRAIT la generation servie, et effacerait de la
-// lecture la source du degat fatal. D ou le refus d ecrire quand la passe courante d un match
-// vient d un film — meme regle, meme sens, que `killcollector.CreditCollector`.
+// INVERSEE LE 2026-08-03 (`.ai/CONCEPTION_INVERSION_PRESEANCE.md`). Elle etait FILM > CREDIT : ce
+// producteur REFUSAIT d ecrire quand la passe courante venait d un film, pour ne pas effacer la
+// source du degat fatal. Le refus protegeait bien la source — mais il laissait servie une passe
+// qui ne porte que 74,4 % des morts, la ou le credit en porte 98,5 %.
+//
+// Desormais il ECRIT TOUJOURS, et il recompose : sa base credit + l enrichissement de la passe de
+// film courante, relu en base (`FilmPassForMatch`) et fusionne par `MergeCreditAndFilm`. La source
+// du degat est preservee ligne par ligne, et plus une seule mort n est perdue.
+//
+// `matchCoveredByFilmPass` n a PAS ete supprimee : meme requete, sens inverse. Elle ne decide plus
+// un refus, elle decide s il y a un enrichissement A RELIRE — ce qui evite la lecture
+// supplementaire sur les ~70 % de matchs qui n ont pas de film.
 
 import (
 	"context"
@@ -77,11 +85,14 @@ const LiveFeedDecoderRev = "sync-kill-feed-2026-08-02"
 
 // FilmReadPaths — LES VOIES DE LECTURE PRODUITES PAR UN DECODAGE DE FILM.
 //
-// La preseance se teste EN POSITIF sur cette liste, jamais en negatif sur les voies credit :
+// La detection se teste EN POSITIF sur cette liste, jamais en negatif sur les voies credit :
 // un test « read_path <> 'credit' » ferait passer toute voie future pour un film, et la
-// premiere voie ajoutee bloquerait silencieusement le producteur live. Exportee parce que
-// `killcollector` decide la meme preseance sur la meme liste — une seule copie dans le depot.
-var FilmReadPaths = []string{"marche", "scan"}
+// premiere voie ajoutee ferait taire silencieusement le producteur live.
+//
+// LES VALEURS NE SONT PLUS RECOPIEES ICI (2026-08-03, dette H3 refermee) : elles vivent dans
+// `domain/killscope`, avec les trois valeurs de portee credit, et leur egalite avec le decodeur
+// est verrouillee par un test dans `sync/killcollector` — le seul paquet qui importe les deux.
+var FilmReadPaths = killscope.FilmReadPaths()
 
 // CreditKillEventsFromPairs : les couples tueur -> victime deviennent des morts, sans rien
 // inventer.
@@ -148,14 +159,113 @@ func CreditKillEventsFromPairs(ctx context.Context, matchID string, pairs []Kill
 		slog.WarnContext(ctx, "persist: couples ecartes, nom de victime absent",
 			"match_id", matchID, "couples_ecartes", sansNom, "couples_recus", len(pairs))
 	}
+	// LA BASE CREDIT EST DEDUPLIQUEE SUR L IDENTITE, ici comme partout ailleurs — une seule
+	// definition dans le depot (cf. [DedupCreditDeaths]).
+	batch.Deaths = DedupCreditDeaths(batch.Deaths)
+	// LE PLANCHER DE LA PASSE, pose par le producteur de la base et par lui seul. Ce que la
+	// fusion ajoutera ne peut que s ajouter : le persister refusera toute passe qui en publierait
+	// moins (cf. `KillSourceBatch.CreditBaseCount`).
+	batch.CreditBaseCount = len(batch.Deaths)
 	return batch
 }
 
-// persistCreditKillEvents ecrit une passe credit-seul DANS LA TRANSACTION DU CALLER.
+// DedupCreditDeaths : LA DEFINITION DE LA BASE CREDIT, en un seul endroit.
+//
+// Une mort de credit est identifiee par `(time_ms, victime, tueur)` — les XUIDS, pas les
+// gamertags. Ce decoupage n est pas un choix esthetique, il est le seul des trois qui rende les
+// deux cardinaux mesures le 2026-08-03 :
+//
+//	dedup sur (time_ms) seul                  268 330 sur Halo 5 — PERD 7 morts REELLES (deux
+//	                                          victimes distinctes a la meme milliseconde)
+//	dedup sur toutes les colonnes             145 974 sur Halo Infinite — FABRIQUE 12 088 doublons
+//	                                          (une meme mort sous deux orthographes de gamertag)
+//	dedup sur (time_ms, victime, tueur)       133 886 sur Infinite / 268 337 sur Halo 5 — JUSTE
+//
+// La premiere occurrence gagne : l ordre d entree est celui du producteur (couples apparies dans
+// l ordre du temps), donc le resultat est reproductible.
+//
+// ⚠ POURQUOI ELLE EST NECESSAIRE ET PAS SEULEMENT PRUDENTE : `highlight_events` porte
+// 15 120 groupes `(match_id, time_ms, xuid)` en DOUBLE EXACT sur les matchs sans film. Le
+// producteur credit-seul, qui apparie cette table, en tirait 50 125 morts la ou il y en a 35 224 —
+// soit 140 % de l oracle. Un « credit-base » qui sur-compte de 42 % ne serait pas une base.
+func DedupCreditDeaths(deaths []KillEventInsert) []KillEventInsert {
+	type identite struct {
+		t              int
+		victime, tueur string
+	}
+	vus := make(map[identite]bool, len(deaths))
+	out := make([]KillEventInsert, 0, len(deaths))
+	for i := range deaths {
+		id := identite{deaths[i].TimeMS, deaths[i].VictimXUID, deaths[i].FeedKillerXUID}
+		if vus[id] {
+			continue
+		}
+		vus[id] = true
+		out = append(out, deaths[i])
+	}
+	return out
+}
+
+// CreditBaseForMatch : la base credit d UN match, relue depuis `killer_victim_pairs`.
+//
+// C EST LA MEME DEFINITION QUE CELLE DE LA MIGRATION DE REPRISE, et il n en existe pas d autre :
+// les couples dedupliques sur l identite, avec la portee `kill-feed` / `credit-seul`. Elle sert le
+// collecteur de FILM, qui doit poser son enrichissement sur une base et n en produit aucune.
+//
+// LE GAMERTAG EST CHOISI DETERMINISTEMENT (`MAX`) quand une meme identite en porte plusieurs : un
+// joueur renomme laisse deux orthographes derriere lui sur des lignes qui designent la MEME mort.
+// Prendre « celui qui vient » rendrait la passe non reproductible d une execution a l autre.
+//
+// Un match sans couple rend un batch VIDE, et ce n est pas une erreur : la fusion se comporte
+// alors comme avant l inversion (le film publie ses lignes, qui sont toutes des orphelines).
+func CreditBaseForMatch(ctx context.Context, q rowQuerier, matchID string) (KillSourceBatch, error) {
+	rows, err := q.QueryContext(ctx, `
+		SELECT COALESCE(time_ms, 0) AS t,
+		       COALESCE(victim_xuid, '') AS vx, MAX(victim_gamertag) AS vg,
+		       COALESCE(killer_xuid, '') AS kx, MAX(COALESCE(killer_gamertag, '')) AS kg
+		FROM killer_victim_pairs
+		WHERE match_id = ? AND victim_gamertag IS NOT NULL AND victim_gamertag <> ''
+		GROUP BY 1, 2, 4
+		ORDER BY 1, 2, 4`, matchID)
+	if err != nil {
+		return KillSourceBatch{}, fmt.Errorf("persist: base credit %s: %w", matchID, err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	batch := KillSourceBatch{MatchID: matchID, DecoderRev: LiveFeedDecoderRev, Publishable: true}
+	for rows.Next() {
+		var d KillEventInsert
+		if err := rows.Scan(&d.TimeMS, &d.VictimXUID, &d.VictimGamertag,
+			&d.FeedKillerXUID, &d.FeedKillerGamertag); err != nil {
+			return KillSourceBatch{}, fmt.Errorf("persist: base credit %s (scan): %w", matchID, err)
+		}
+		d.FeedPresent = true
+		d.AssistKnown = false
+		d.ReadPath, d.ReadOrigin = killscope.ReadPathLiveFeed, killscope.OriginCreditOnly
+		batch.Deaths = append(batch.Deaths, d)
+	}
+	if err := rows.Err(); err != nil {
+		return KillSourceBatch{}, fmt.Errorf("persist: base credit %s (rows): %w", matchID, err)
+	}
+	batch.CreditBaseCount = len(batch.Deaths)
+	return batch, nil
+}
+
+// persistCreditKillEvents ecrit une passe RECOMPOSEE dans la transaction du caller.
 //
 // C est ce qui la distingue de [KillSourcePersister.PersistPass], qui ouvre la sienne : ici la
 // passe doit tomber ou passer AVEC le reste du match. Un match dont les participants sont ecrits
 // mais dont les morts manquent serait un match a moitie synchronise, et rien ne le signalerait.
+//
+// RECOMPOSEE, ET PLUS « credit-seul » : quand le match porte deja une passe de film, son
+// enrichissement est RELU EN BASE et fusionne sur la base credit fraiche. Aucune mort n est perdue
+// (c est la base qui fait la liste), aucune arme n est perdue (l enrichissement est recopie
+// ligne a ligne). Le refus d ecrire d avant le 2026-08-03 protegeait la source au prix d un quart
+// des morts.
+//
+// LE COUT DE LA RECOMPOSITION est une lecture supplementaire par match — et SEULEMENT pour les
+// matchs porteurs d un film : `matchCoveredByFilmPass` est une sonde `COUNT(*)` sur l index
+// `(match_id, written_at)` deja present, la lecture complete ne suit que si elle repond oui.
 //
 // Une victime sans nom fait echouer la validation du persister (`victim_gamertag` est NOT NULL,
 // et c est le seul champ qu une mort ne peut pas ne pas avoir). Ce cas ne se produit pas
@@ -169,32 +279,56 @@ func persistCreditKillEvents(ctx context.Context, tx *sql.Tx, in KillSourceBatch
 		return err
 	}
 
-	couvert, err := matchCoveredByFilmPass(ctx, tx, in.MatchID)
+	batch, err := recomposerAvecFilm(ctx, tx, in)
 	if err != nil {
 		return err
 	}
-	if couvert {
-		// LA PRESEANCE, et c est un succes : ecrire ici retirerait de la lecture la source du
-		// degat fatal que le film a mesuree.
-		return nil
+	if err := validateKillSourceBatch(batch); err != nil {
+		return err
 	}
 
 	pass, err := newDecodePassID()
 	if err != nil {
 		return fmt.Errorf("persist: credit kill events %s: %w", in.MatchID, err)
 	}
-	if _, err := insertKillEventRows(ctx, tx, in, pass, time.Now().UTC()); err != nil {
+	if _, err := insertKillEventRows(ctx, tx, batch, pass, time.Now().UTC()); err != nil {
 		return err
 	}
 	return nil
 }
 
-// matchCoveredByFilmPass : la passe COURANTE de ce match vient-elle d un decodage de film ?
+// recomposerAvecFilm : la base credit, plus l enrichissement de la passe de film courante s il y
+// en a une. Rend la base telle quelle sinon — c est le cas des ~70 % de matchs sans film.
+func recomposerAvecFilm(ctx context.Context, tx *sql.Tx, base KillSourceBatch) (KillSourceBatch, error) {
+	couvert, err := matchCoveredByFilmPass(ctx, tx, base.MatchID)
+	if err != nil {
+		return KillSourceBatch{}, err
+	}
+	if !couvert {
+		return base, nil
+	}
+	film, err := FilmPassForMatch(ctx, tx, base.MatchID)
+	if err != nil {
+		return KillSourceBatch{}, err
+	}
+	batch, st, err := MergeCreditAndFilm(base, film)
+	if err != nil {
+		return KillSourceBatch{}, err
+	}
+	PublishMergeStats(ctx, base.MatchID, st)
+	return batch, nil
+}
+
+// matchCoveredByFilmPass : la passe COURANTE de ce match porte-t-elle un enrichissement de film ?
+//
+// MEME REQUETE QU AVANT LE 2026-08-03, SENS INVERSE. Elle decidait un REFUS D ECRIRE (preseance
+// film > credit) ; elle decide desormais s il y a quelque chose a RELIRE avant d ecrire. Le
+// vocabulaire de portee (`FilmReadPaths`) et le test EN POSITIF sur les voies de film sont
+// conserves tels quels — l acquis de J4R-4.
 //
 // La question se pose a la VUE et pas a la table, et ce n est pas un detail : « ce match a-t-il
-// deja eu une passe de film » et « la passe servie AUJOURD HUI vient-elle d un film » sont deux
-// questions differentes. Une passe de film ancienne, deja supplantee, ne doit pas bloquer
-// eternellement le producteur live.
+// deja eu une passe de film » et « la passe servie AUJOURD HUI porte-t-elle un enrichissement »
+// sont deux questions differentes. Un enrichissement d une passe deja supplantee n existe plus.
 func matchCoveredByFilmPass(ctx context.Context, tx *sql.Tx, matchID string) (bool, error) {
 	placeholders := ""
 	args := make([]any, 0, len(FilmReadPaths)+1)

@@ -1,9 +1,13 @@
 # CONCEPTION — INVERSION DE PRESEANCE CREDIT <-> FILM
 
-> Ecrit le 2026-08-02. **PROPOSITION, RIEN N EST IMPLEMENTE.** Aucune ecriture n a ete faite :
-> toutes les mesures ci-dessous sont prises en LECTURE SEULE sur des COPIES des bases de
-> developpement (`scratchpad/db/shared_hi.duckdb`, `shared_h5.duckdb`), via `cmd/diag_q`
-> (`access_mode=read_only`). Aucune base de production n a ete touchee.
+> Ecrit le 2026-08-02. **IMPLEMENTE LE 2026-08-03 — §6 CLOS, tous les items statues (voir §9).**
+> Les mesures du corps du document sont celles de la CONCEPTION, prises en lecture seule sur des
+> COPIES des bases de developpement. Les mesures de VERIFICATION apres implementation sont au §9 :
+> elles confirment le document au chiffre pres (134 866 lignes, 73 589 enrichissements,
+> 980 orphelins dont 13 humain-contre-humain, 0 instant ambigu, 0 identite divergente).
+>
+> **Ce qui RESTE : la bascule des 20 sites de lecture** (phase 2 du plan de branchement) — c est
+> la session 2/2, et elle n a PAS ete faite ici.
 >
 > Documents d autorite : `PLAN_MASTER_FILM_KILLFEED_REJEU.md` (J4, STRATEGIE DE MERGE) et
 > `PLAN_BRANCHEMENT_KILLSOURCE.md` (phase 2 — LA BASCULE, qui SUIT cette conception).
@@ -404,3 +408,167 @@ gonfle le jeu (plusieurs orthographes de gamertag pour une meme clef) et fait so
 d apparies SUPERIEUR au cardinal de la source — c est ce qui a produit un « 85 150 apparies pour
 74 569 lignes de film » lors d une premiere passe. Le `DISTINCT` doit porter sur la clef, pas sur
 les attributs.
+
+---
+
+## 9. EXECUTION — 2026-08-03, §6 CLOS
+
+> Session EXECUTEUR 1/2 (implementation). La bascule des lecteurs est la session 2/2 et n a PAS
+> ete faite. Perimetre ferme au §6 ; toute decouverte hors perimetre est au §10.
+
+### 9.1 Statut de chaque item du §6
+
+| item | statut | ou |
+|---|---|---|
+| 6.1 aucune migration de schema, aucun changement au decodeur, aucun re-decodage | `[x]` | tenu : 0 ligne touchee dans `filmdec`/`killsource` ; la reprise est SQL -> SQL en **14,5 s** |
+| 6.2 fusionneur PUR, une seule copie | `[x]` | `persist/kill_events_merge.go` — **PAS** `killcollector` (voir 9.3) |
+| 6.3 les trois producteurs inversent la preseance | `[x]` | `persist/kill_events_credit.go` (live) · `killcollector/credit.go` (backfill) · `killcollector/collector.go` (film) |
+| 6.4 migration de reprise, INSERT-only, idempotente, sans film | `[x]` | `migration/steps_shared_kill_events_credit_base.go` |
+| 6.5-1 unitaires du fusionneur | `[x]` | 8 tests, **9 mutations verifiees rouges** |
+| 6.5-2 **LE garde-rail d invariant** | `[x]` | DEUX garde-rails, pas un (voir 9.4) — **2 mutations rouges** |
+| 6.5-3 mutations qui doivent rougir | `[x]` | 17 au total : 9 fusionneur + 2 persister + 6 migration |
+| 6.5-4 integration `-tags=integration -p 1 ./...` | `[x]` | 0 echec |
+| 6.5-5 gate avant/apres sur donnees reelles, sur COPIE | `[x]` | tableau 9.2 |
+| 6.6 ordre d execution | `[x]` | 6.2 -> 6.3 -> 6.4 -> gate. La bascule des lecteurs N EST PAS faite. |
+| §8-2 compteur dedie pour les 13 orphelins humain-contre-humain | `[x]` | `killsource_orphelins_film_humain_contre_humain` — mesure **13**, au chiffre pres |
+| §8-3 cout de la recomposition live | `[x]` | la sonde `matchCoveredByFilmPass` reste en tete : la lecture complete ne suit que sur les matchs a film. Passe complete de 1 926 matchs, hors ligne : **5 min 1 s** |
+| §7-1 `assist_extra_count` reconcilie | `[x]` | voir 9.5 |
+| §8-1 aller jusqu aux MORTS (2 023 restantes) | `[!]` | NON — recommandation du document suivie : lot distinct, APRES la bascule. Changer la definition du contenu en meme temps que la preseance rendrait le gate illisible. |
+| §8-4 decoupage en releases | `[~]` | la migration ne demandant aucun film, elle tient dans la release 1 : **confirme**. Le decoupage exact se decide en J5. |
+
+### 9.2 GATE AVANT/APRES — base Halo Infinite de developpement (COPIE)
+
+| mesure | avant | apres |
+|---|---|---|
+| **lignes servies** (`match_kill_events_latest`) | 124 694 | **134 866** |
+| matchs servis | 1 343 | 1 343 |
+| lignes de film (arme mesuree) | 74 569 | 74 569 |
+| assistant etat 1 — ON NE SAIT PAS | 52 466 | 62 638 |
+| assistant etat 2 — mesure : PAS d assistant | 49 147 | **49 147** |
+| assistant etat 3 — assistant NOMME | 23 081 | **23 081** |
+| `diverges = TRUE` | 1 296 | 1 296 |
+| victime sans xuid | 1 450 | **819** |
+| `assist_extra_count >= 1` | 5 | 5 |
+| `killer_victim_pairs` (doit rester INTACTE) | 250 139 | 250 139 |
+| **matchs perdant des morts** | **389** | **0** |
+
+**Ce que ce tableau prouve, ligne par ligne.** Les etats 2 et 3 de l assistant sont IDENTIQUES au
+chiffre pres : la fusion ne fabrique aucun fait — c est exactement la verification annoncee au §4.
+L etat 1 augmente de +10 172, c est-a-dire des morts de credit ajoutees, et de rien d autre. Les
+victimes sans xuid tombent de 1 450 a 819 : les 631 lignes de film dont le decodeur n avait pas
+resolu la victime portent desormais le xuid du credit — **631 morts qui etaient injoignables par
+tout agregat carriere le sont devenues**, et c est exactement la population que le §2.2d designait.
+Les 819 qui restent sont les morts de BOT, que le credit ne peut structurellement pas nommer.
+
+**Couverture atteinte** : base credit 133 886 / oracle deduplique 135 909 = **98,5 %**, et
+0 match ne publie moins que sa base. Sur le seul perimetre film : 98 662 / 100 172 = **98,5 %**.
+
+**Halo 5 — no-op VERIFIE sur la donnee, pas seulement sur l absence de film** : 268 337 -> 268 337,
+**0 ligne perdue, 0 ligne ajoutee**, 0 ligne de film.
+
+### 9.3 CE QUI S ECARTE DU DOCUMENT, ET POURQUOI
+
+1. **Le fusionneur vit dans `persist`, pas dans `sync/killcollector`** (§6.2). Le §6.2 le placait
+   a cote de `BuildCreditBatch` ; c est IMPOSSIBLE : le producteur LIVE vit dans `persist`, et
+   `persist` ne peut pas importer `killcollector` (qui l importe deja). `persist` est par ailleurs
+   le proprietaire de `KillSourceBatch`, type d entree ET de sortie de la fusion.
+2. **LA BASE CREDIT SE DEDUPLIQUE SUR L IDENTITE `(time_ms, victime, tueur)`, PAS SUR LA CLEF.**
+   Mesure du 2026-08-03, et c est le seul decoupage qui rende les deux cardinaux justes :
+   - dedup sur `(match_id, time_ms)` seul : 268 330 sur Halo 5 — **PERD 7 morts REELLES** (sept
+     instants portent deux victimes distinctes) ;
+   - dedup sur toutes les colonnes (ce que fait la reprise `from_pairs` existante) : **145 974**
+     sur Halo Infinite — **FABRIQUE 12 088 doublons** (une meme mort sous deux orthographes de
+     gamertag ; verifie : ces 12 088 clefs portent UN SEUL xuid de victime et UN SEUL de tueur) ;
+   - dedup sur l identite : **133 886** et **268 337**. Les deux cibles.
+
+   La clef `(match_id, time_ms)` reste la clef d APPARIEMENT ; l identite est la clef de
+   DEDUPLICATION. Ce sont deux choses differentes, et le document ne les distinguait pas.
+3. **Le producteur credit-seul deduplique lui aussi.** Il tirait **50 125** morts de
+   `highlight_events` la ou l oracle deduplique en compte 35 224 — 140 % — a cause des
+   15 120 doublons exacts de la decouverte n2. Sans cette deduplication, la cible 134 866 etait
+   inatteignable et l invariant « jamais moins que la base » devenait ininterpretable.
+4. **`written_at` de la migration est ecrit en UTC**, pas via `now()`. `CAST(now() AS TIMESTAMP)`
+   rend l heure LOCALE (+2 h) alors que tous les producteurs Go ecrivent `time.Now().UTC()` : une
+   passe de migration aurait battu toute passe fraiche pendant deux heures. Defaut PREEXISTANT
+   dans `steps_shared_kill_events_from_pairs.go` — consigne au §10, non traite.
+5. **`killscope` recoit les deux voies de film.** La migration en aurait fait une TROISIEME copie
+   (apres `killsource.Path` et `persist.FilmReadPaths`) ; la regle du depot impose de centraliser
+   a la 3e ET de poser un garde-rail. Le decodeur n a PAS ete touche : il reste le proprietaire du
+   type, et l egalite est verrouillee par `killcollector.TestFilmReadPathsEgalesAuDecodeur` (plus
+   un test d exhaustivite qui rougit si le decodeur ajoutait une 3e voie). Le ratchet
+   `archlint/no_raw_kill_scope_literal_test.go` police desormais `marche`/`scan`.
+   **Dette H3 refermee.**
+
+### 9.4 LE GARDE-RAIL D INVARIANT — DEUX, PAS UN
+
+Le §6.5-2 en demandait un ; il en fallait deux, parce qu ils attrapent des fautes differentes :
+
+| garde | ou | ce qu il attrape |
+|---|---|---|
+| `KillSourceBatch.CreditBaseCount` | `validateKillSourceBatch` | une FUSION qui perd des lignes. Pose par le fusionneur lui-meme, jamais a la main. |
+| sonde `killer_victim_pairs` | `PersistPass` | un producteur qui **ne fusionne pas du tout** — celui-la laisserait `CreditBaseCount` a zero et passerait le premier. C est LE cas de la session 3. |
+
+La sonde ne tourne pas sur le chemin live (les couples du match n y sont pas encore ecrits, la
+mesure serait celle du cycle precedent) : la base y est EN MAIN, donc couverte par le premier.
+Test `TestSondeRefuseUnePasseDeFilmQuiRemplaceLaBaseCredit` : le scenario de la session 3, rejoue.
+La migration porte le meme invariant, RELU APRES ECRITURE (`verifierPlancherReprise`).
+
+### 9.5 `assist_extra_count` — RECONCILIE
+
+Mesure du 2026-08-03 : **5 lignes a 1 sur 124 694 (0,004 %), aucune au-dela de 1**, sur 5 matchs
+distincts. Le declencheur litteral (« 0 partout ; s il bouge, migrer ») etait donc franchi — et
+pourtant l hypothese de schema TIENT, parce que ce compteur ne mesure pas « une mort porte deux
+assistants » mais « deux kill-events ATTACHES a la meme mort nomment des assistants differents »
+(portee que `killsource.Assist.Extra` delimite lui-meme). Un seuil a zero sur une quantite
+d APPARIEMENT ne pouvait pas rester vrai indefiniment.
+
+**Declencheur qui le remplace, ecrit dans le DDL** : migrer vers une table fille des que (a) UNE
+ligne porte `assist_extra_count >= 2`, OU (b) la part des lignes a `>= 1` depasse 0,1 % de
+`match_kill_events_latest` (125 lignes aujourd hui, 25x la mesure). Le log du persister et la
+restitution de la CLI ont ete recrits : ils annoncaient « l hypothese est en defaut, migrer », ce
+qui est FAUX a l echelle mesuree — une alerte qui crie a chaque passe cesse d etre lue.
+
+### 9.6 CROISEMENT DES DEUX IMPLEMENTATIONS — elles concordent au chiffre pres
+
+La migration SQL et le fusionneur Go sont deux implementations INDEPENDANTES de la meme regle.
+Jouees separement sur deux copies neuves de la meme base, puis comparees ligne a ligne sur
+`(match_id, time_ms, victime, tueur, source_tag, assist_known, assistant, part_tueur, diverges)` :
+
+```
+sql_lignes  go_lignes  dans_sql_pas_go  dans_go_pas_sql
+   134866     134866          0                0
+```
+
+**Zero ecart sur 134 866 lignes.** Ce n est pas une verification de plus : c est la seule qui
+teste la REGLE plutot que son ecriture.
+
+---
+
+## 10. DECOUVERTES DE L EXECUTION — CONSIGNEES, NON TRAITEES
+
+1. **`CAST(now() AS TIMESTAMP)` rend l heure LOCALE en DuckDB** (+2 h ici) alors que tous les
+   producteurs Go ecrivent `time.Now().UTC()`. `steps_shared_kill_events_from_pairs.go` (la
+   reprise de J4) ecrit donc un `written_at` DEUX HEURES DANS LE FUTUR : sa passe bat toute passe
+   fraiche pendant deux heures. Sans consequence aujourd hui (elle n ecrit que des matchs sans
+   aucune passe), mais c est un piege arme. **A traiter avec H1-H6.**
+2. **La reprise `from_pairs` ne deduplique PAS a l identite** : son `SELECT DISTINCT` porte sur
+   toutes les colonnes et rendrait **145 974** lignes la ou il y a 133 886 morts (+9 %). Elle n a
+   jamais ecrit sur la base de dev (tous les matchs y etaient deja couverts) — le defaut n a donc
+   jamais eu de consequence mesuree, mais il attend une base neuve. La reprise credit-base la
+   precede desormais dans l ordre canonique, donc `from_pairs` ne trouve plus rien a reprendre :
+   **la question de son retrait reste ouverte** et n a pas ete tranchee ici.
+3. **`publishable` devient un attribut de la PASSE FUSIONNEE, celui du film** (regle du §6.2,
+   suivie). Consequence mesuree : sur les **366 matchs** dont la passe de film est non publiable
+   (BTB, marge de bijection nulle), les lignes de credit ajoutees heritent de
+   `publishable = FALSE` alors qu elles seraient publiables sans film. Aucun impact aujourd hui —
+   **aucun lecteur ne lit cette colonne** (phase 2.3 du plan de branchement). **A trancher a la
+   bascule des lecteurs**, qui est le lot qui donnera un sens a cette colonne : soit on l accepte,
+   soit `publishable` devient per-ligne comme `read_path`.
+4. **La sonde de plancher coute une lecture de `killer_victim_pairs` par passe hors ligne.** La
+   table n a aucun index (surface ART), donc c est un scan complet. Passe de 1 926 matchs :
+   5 min 1 s, dominee par cette sonde et par les requetes du producteur credit. Acceptable hors
+   ligne ; **a re-mesurer le jour ou cette passe tournerait dans un cycle de sync**.
+5. **3 matchs portent des `highlight_events` kill/death SANS aucun couple** dans
+   `killer_victim_pairs` (1 346 contre 1 343). C est ce qui justifie que le producteur credit-seul
+   garde `highlight_events` comme source plutot que de basculer sur `killer_victim_pairs` : la
+   bascule perdrait ces 3 matchs. Volume negligeable, mecanisme non instruit.

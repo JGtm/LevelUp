@@ -187,12 +187,21 @@ func TestDeuxPassesNeSAdditionnentPas(t *testing.T) {
 	}
 }
 
-// TestPreseanceFilmSurProducteurLive — LE FILM GAGNE, ET LE PRODUCTEUR LIVE S EFFACE.
+// TestProducteurLiveFusionneSurLaBaseCredit — L INVERSION DE PRESEANCE, PROUVEE AUX DEUX BOUTS.
 //
-// Sans cette regle, une re-synchronisation d un match deja decode ferait de la passe credit-seul
-// la generation servie : elle n ajouterait pas de lignes, elle RETIRERAIT de la lecture la
-// source du degat fatal. La panne serait invisible — meme nombre de morts, memes tueurs.
-func TestPreseanceFilmSurProducteurLive(t *testing.T) {
+// AVANT le 2026-08-03, ce test s appelait `TestPreseanceFilmSurProducteurLive` et verifiait le
+// contraire : le producteur live REFUSAIT d ecrire, et la passe de film restait servie telle
+// quelle. Le refus protegeait bien la source du degat — au prix d un quart des morts, puisque la
+// passe de film ne publie que 74,4 % de ce que le credit porte a 98,5 %.
+//
+// Les deux proprietes que le test tient maintenant, et il faut les DEUX :
+//
+//	(1) la mort de la base credit est LA, avec son xuid de victime — que le film ne resout pas ;
+//	(2) la source du degat mesuree par le film est TOUJOURS la, sur cette meme ligne.
+//
+// Verifier seulement (2) laisserait revenir l ancien defaut ; verifier seulement (1) laisserait
+// une fusion qui jette l enrichissement passer pour un succes.
+func TestProducteurLiveFusionneSurLaBaseCredit(t *testing.T) {
 	db := openKillEventsTestDB(t)
 	ctx := context.Background()
 
@@ -206,31 +215,54 @@ func TestPreseanceFilmSurProducteurLive(t *testing.T) {
 		t.Fatalf("passe film: %v", err)
 	}
 
+	// Le couple du pipeline tombe au MEME instant (1000 ms) que la mort du film : c est
+	// l appariement a tolerance zero de `MergeCreditAndFilm`.
 	ecrireCouples(t, db, []KillerVictimInsert{coupleLive("m-film", 1000)})
 
-	var readPath string
-	var sourceTag sql.NullString
+	var (
+		lignes           int
+		readPath         string
+		sourceTag        sql.NullString
+		victimeXUID      sql.NullString
+		victimeGT, tueur string
+	)
 	if err := db.QueryRow(`
-		SELECT read_path, CAST(source_tag AS VARCHAR)
-		FROM match_kill_events_latest WHERE match_id = 'm-film'`).Scan(&readPath, &sourceTag); err != nil {
+		SELECT COUNT(*) OVER (), read_path, CAST(source_tag AS VARCHAR),
+		       victim_xuid, victim_gamertag, feed_killer_gamertag
+		FROM match_kill_events_latest WHERE match_id = 'm-film'`).
+		Scan(&lignes, &readPath, &sourceTag, &victimeXUID, &victimeGT, &tueur); err != nil {
 		t.Fatalf("relecture: %v", err)
 	}
-	if readPath != "marche" {
-		t.Errorf("read_path = %q apres passage du producteur live, attendu \"marche\" — "+
-			"la passe credit-seul a supplante le film", readPath)
+
+	if lignes != 1 {
+		t.Fatalf("%d ligne(s) servies, attendu 1 — la mort du film et celle du credit sont LA "+
+			"MEME (meme instant), la fusion ne doit pas la compter deux fois", lignes)
+	}
+	if readPath != killscope.ReadPathFilmWalk {
+		t.Errorf("read_path = %q, attendu %q — la portee de la ligne enrichie est celle du FILM, "+
+			"c est elle qui dit qu une arme a ete mesuree sur cette mort",
+			readPath, killscope.ReadPathFilmWalk)
 	}
 	if !sourceTag.Valid {
 		t.Error("source_tag devenu NULL : la source du degat mesuree par le film a ete " +
 			"effacee de la lecture par une passe qui ne la mesure pas")
 	}
+	if !victimeXUID.Valid || victimeXUID.String != "xuid(2)" {
+		t.Errorf("victim_xuid = %v, attendu xuid(2) — l identite vient du CREDIT, qui la resout ; "+
+			"le film ne la porte pas, et une fusion qui recopierait son absence rendrait la "+
+			"ligne injoignable par tout agregat carriere", victimeXUID)
+	}
+	if victimeGT != "Victime" || tueur != "Tueur" {
+		t.Errorf("identites = %q / %q, attendu Victime / Tueur", victimeGT, tueur)
+	}
 }
 
-// TestPreseanceTesteeEnPositifSurLesVoiesDeFilm — le garde-fou du garde-fou.
+// TestVoiesDeFilmReconnuesEnPositif — le garde-fou du garde-fou.
 //
-// La preseance se teste sur la LISTE des voies de film, jamais par la negation des voies de
-// credit : un test « read_path <> 'kill-feed' » ferait passer toute voie future pour un film et
-// bloquerait silencieusement le producteur live. Ce test fige le sens de la liste.
-func TestPreseanceTesteeEnPositifSurLesVoiesDeFilm(t *testing.T) {
+// La detection d un enrichissement se teste sur la LISTE des voies de film, jamais par la
+// negation des voies de credit : un test « read_path <> 'kill-feed' » ferait passer toute voie
+// future pour un film. Ce test fige le sens de la liste.
+func TestVoiesDeFilmReconnuesEnPositif(t *testing.T) {
 	db := openKillEventsTestDB(t)
 	ctx := context.Background()
 

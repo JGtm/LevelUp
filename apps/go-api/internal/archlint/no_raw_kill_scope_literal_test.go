@@ -41,12 +41,31 @@ import (
 // une date, ou ne pas l'ajouter.
 var killScopeAllowlist = map[string]bool{}
 
-// killScopeRE matche les trois valeurs de portée en littéral Go OU SQL (simples quotes).
+// killScopeRE matche les valeurs de portée en littéral Go OU SQL (simples quotes).
 //
-// Les trois chaînes sont distinctives : elles n'apparaissent pas dans du texte courant. La prose
+// Les chaînes crédit sont distinctives : elles n'apparaissent pas dans du texte courant. La prose
 // française du dépôt écrit « kill-feed » sans guillemets droits (commentaires) — non matchée,
 // puisque les lignes de commentaire sont sautées avant le test.
-var killScopeRE = regexp.MustCompile(`["']((kill-feed)|(credit-seul)|(highlight-events))["']`)
+//
+// LES DEUX VOIES DE FILM (`marche`, `scan`) SONT ENTRÉES DANS LE RATCHET LE 2026-08-03, avec
+// l'inversion de préséance (dette H3 refermée). Elles étaient hors périmètre au motif que « ce
+// sont des mots courants, un grep produirait du bruit » — c'est vrai d'un grep, pas de ce test :
+// il exige le littéral ENTIER entre quotes, donc `"scan %s: %w"` ou `"marche arrière"` ne
+// matchent pas. Le propriétaire typé reste `killsource.Path` ; `killscope` en porte la seule
+// autre copie, verrouillée par `killcollector.TestFilmReadPathsEgalesAuDecodeur`.
+var killScopeRE = regexp.MustCompile(
+	`["']((kill-feed)|(credit-seul)|(highlight-events)|(marche)|(scan))["']`)
+
+// killScopeOwners : les deux paquets qui ont le droit d'écrire ces valeurs.
+//
+// `killscope` est le propriétaire des chaînes nues ; `killsource` est celui du type `Path` (le
+// décodeur nomme ses propres voies, et il est title-specific — `persist` et `migration` ne
+// peuvent pas l'importer, c'est toute la raison d'être de `killscope`). Leur ÉGALITÉ est
+// verrouillée par un test, pas par ce ratchet.
+var killScopeOwners = []string{
+	"internal/domain/killscope/",
+	"internal/games/halo_infinite/film/killsource/",
+}
 
 func TestNoRawKillScopeLiteral(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
@@ -67,9 +86,11 @@ func TestNoRawKillScopeLiteral(t *testing.T) {
 			}
 			rel, _ := filepath.Rel(apiRoot, path)
 			rel = filepath.ToSlash(rel)
-			// Le propriétaire des valeurs, et lui seul, a le droit de les écrire.
-			if strings.HasPrefix(rel, "internal/domain/killscope/") {
-				return nil
+			// Les propriétaires des valeurs, et eux seuls, ont le droit de les écrire.
+			for _, owner := range killScopeOwners {
+				if strings.HasPrefix(rel, owner) {
+					return nil
+				}
 			}
 			if killScopeAllowlist[rel] {
 				return nil
