@@ -212,7 +212,6 @@ SELECT
     citation_name_norm,
     citation_name_display,
     COALESCE(mapping_type, 'medal') AS mapping_type,
-    COALESCE(category, 'misc')     AS category,
     medal_id,
     medal_ids,
     stat_name,
@@ -234,7 +233,7 @@ ORDER BY citation_name_norm`
 	for rows.Next() {
 		var m domain.CitationFullMapping
 		if err := rows.Scan(
-			&m.NameNorm, &m.NameDisplay, &m.MappingType, &m.Category,
+			&m.NameNorm, &m.NameDisplay, &m.MappingType,
 			&m.MedalID, &m.MedalIDs, &m.StatName, &m.AwardName,
 			&m.CustomFunction, &m.CompositeChildren, &m.TierTargets,
 		); err != nil {

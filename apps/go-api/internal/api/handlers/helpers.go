@@ -29,6 +29,16 @@ const (
 
 	// Modes auth.
 	authModeXbox = "xbox"
+
+	// headerRetryAfter : nom de l'en-tête HTTP 503 « réessayer dans N s », émis par
+	// tous les handlers qui rencontrent une base occupée (dblease.ErrDBLocked).
+	// Posée au passage du ratchet goconst (10e occurrence du littéral), puis
+	// GÉNÉRALISÉE à l'ensemble du paquet le 2026-08-03 : plus aucun littéral
+	// "Retry-After" ne subsiste dans le code de production de handlers, et
+	// TestNoRetryAfterLiteralInHandlers (helpers_test.go) interdit sa réapparition.
+	// Les tests gardent le littéral : ils lisent l'en-tête par son NOM HTTP réel,
+	// ce qui est précisément ce qu'on veut vérifier côté client.
+	headerRetryAfter = "Retry-After"
 )
 
 // writeJSON sérialise v en JSON et l'écrit dans w avec le code HTTP donné.

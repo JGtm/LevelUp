@@ -75,11 +75,12 @@ func (r *MediaRepo) SetMediaMatchAssociation(ctx context.Context, filePath, matc
 	return mapName, modeName, nil
 }
 
+// queryConfig porte le scoping player_slug du pipeline média Q37. Appelée
+// uniquement depuis loadMediaCandidates, DERRIÈRE son garde pdb.SharedSocial != nil
+// — le repli « config vide » (schéma legacy) a donc été supprimé le 2026-08-03
+// en même temps que la branche SQL legacy qu'il servait à sélectionner.
 func (r *MediaRepo) queryConfig() mediaQueryConfig {
-	if r.pdb.SharedSocial != nil {
-		return mediaQueryConfig{playerSlug: r.pdb.Gamertag}
-	}
-	return mediaQueryConfig{}
+	return mediaQueryConfig{playerSlug: r.pdb.Gamertag}
 }
 
 // SetMediaLike persiste l'état liked d'un média dans media_files.

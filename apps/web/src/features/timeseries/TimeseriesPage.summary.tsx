@@ -174,6 +174,8 @@ export function TimeseriesSummaryTab({
             kills: fieldMappings?.fields['kills']?.label ?? 'Frags',
             deaths: fieldMappings?.fields['deaths']?.label ?? 'Morts',
             yAxis: t('timeseries.summary.kd_yaxis'),
+            bonus: t('timeseries.summary.bonus_label'),
+            bonusInfo: t('timeseries.summary.bonus_tooltip'),
           }}
         />
 

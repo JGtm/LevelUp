@@ -84,7 +84,7 @@ func (h *MatchExclusionHandler) SetExclusion(ctx context.Context, in *matchExclu
 			return nil, huma.ErrorWithHeaders(
 				humacore.NewError(http.StatusServiceUnavailable, "db_busy",
 					"database is currently busy, please retry"),
-				http.Header{"Retry-After": []string{"5"}},
+				http.Header{headerRetryAfter: []string{"5"}},
 			)
 		}
 		slog.WarnContext(ctx, "match exclusion: db error",

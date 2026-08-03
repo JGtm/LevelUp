@@ -278,12 +278,6 @@ en = "Diamond"
 fr = "Onyx"
 en = "Onyx"
 
-# ─── Colonne tier ─────────────────────────────────────────────────────────────
-
-[explorer.matches.col_tier]
-fr = "Tier"
-en = "Tier"
-
 # ─── Filtre perf-tier ─────────────────────────────────────────────────────────
 
 [explorer.filters.perf_tier_label]
@@ -337,10 +331,6 @@ en = "Rating"
 [explorer.matches.col_rank]
 fr = "Rang"
 en = "Rank"
-
-[explorer.matches.col_delta_rank]
-fr = "ΔRang"
-en = "ΔRank"
 
 [explorer.matches.col_team_mmr]
 fr = "MMR équipe"

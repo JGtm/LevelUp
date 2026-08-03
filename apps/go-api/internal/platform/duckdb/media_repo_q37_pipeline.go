@@ -140,20 +140,16 @@ func buildMediaCandidatesQuery(f domain.MediaFilters, cfg mediaQueryConfig) (str
 		whereClause = "WHERE " + strings.Join(whereParts, " AND ")
 	}
 
-	from := mediaCandidatesLegacyFromClause
-	playerSlugExpr := "NULL"
-	indexedAtExpr := "CAST(NULL AS TIMESTAMPTZ)"
-	if cfg.useSharedSocialSchema() {
-		from = mediaCandidatesSharedSocialFromClause
-		playerSlugExpr = "mf.player_slug"
-		indexedAtExpr = "mf.indexed_at"
-	}
+	// Schéma shared_social INCONDITIONNEL : le seul appelant (loadMediaCandidates)
+	// retourne vide si pdb.SharedSocial == nil, et la query s'exécute sur socialDB().
+	// La variante « legacy » qui joignait sur mma.media_path a été supprimée le
+	// 2026-08-03 (règle CLAUDE.md n°7) : elle était inatteignable ET cassée — cette
+	// colonne n'existe pas dans shared_social (media_match_associations y porte
+	// media_file_id), donc l'atteindre aurait produit un Binder Error, pas un repli.
+	const from = mediaCandidatesSharedSocialFromClause
 
 	// match_start_time est résolu via match_registry (SharedReader) en phase B,
-	// pas depuis mma.match_start_time (colonne dénormalisée présente uniquement
-	// dans le schéma legacy, absente du schéma shared_social).
-	// indexed_at n'existe que dans shared_social — fallback NULL en legacy
-	// (cf. seedPlayerSchema vs seedSharedSocialSchema).
+	// pas depuis mma.match_start_time (colonne dénormalisée du défunt schéma legacy).
 	q := `SELECT
     mf.file_path,
     mf.file_name,
@@ -162,25 +158,21 @@ func buildMediaCandidatesQuery(f domain.MediaFilters, cfg mediaQueryConfig) (str
     mf.capture_start_utc,
     mf.capture_end_utc,
     mf.mtime,
-    ` + indexedAtExpr + ` AS indexed_at,
+    mf.indexed_at AS indexed_at,
     COALESCE(mf.liked, FALSE) AS liked,
     mma.match_id,
-    ` + playerSlugExpr + ` AS player_slug
+    mf.player_slug AS player_slug
 ` + from + `
 ` + whereClause
 
 	return q, args
 }
 
-const (
-	// Phase A : aucune référence à match_registry. La jointure cross-DB est
-	// faite côté Go via loadMediaMatchRegistry.
-	mediaCandidatesLegacyFromClause = `FROM media_files mf
-LEFT JOIN media_match_associations mma ON mf.file_path = mma.media_path`
-
-	mediaCandidatesSharedSocialFromClause = `FROM media_files mf
+// Phase A : aucune référence à match_registry. La jointure cross-DB est
+// faite côté Go via loadMediaMatchRegistry. Lecture via la vue _latest
+// (media_match_associations est append-only — règle ART n°2).
+const mediaCandidatesSharedSocialFromClause = `FROM media_files mf
 LEFT JOIN media_match_associations_latest mma ON mf.id = mma.media_file_id`
-)
 
 // buildMediaLocalWhere construit la clause WHERE avec UNIQUEMENT les filtres
 // qui ne nécessitent pas match_registry (kind, liked, date, player_slug,
@@ -197,7 +189,7 @@ func buildMediaLocalWhere(f domain.MediaFilters, cfg mediaQueryConfig) ([]string
 	// l'oublier — la galerie est la surface principale d'un média supprimé.
 	where = append(where, MediaVisiblePredicate("mf"))
 
-	if len(f.AuthorSlugs) > 0 && cfg.useSharedSocialSchema() {
+	if len(f.AuthorSlugs) > 0 {
 		placeholders := make([]string, len(f.AuthorSlugs))
 		for i, slug := range f.AuthorSlugs {
 			placeholders[i] = "?"

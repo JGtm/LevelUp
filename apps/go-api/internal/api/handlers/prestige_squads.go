@@ -458,7 +458,7 @@ func (h *PrestigeHandler) serviceError(ctx context.Context, err error) error {
 		return huma.ErrorWithHeaders(
 			humacore.NewError(http.StatusServiceUnavailable, "db_busy",
 				"database is currently busy, please retry"),
-			http.Header{"Retry-After": []string{"5"}},
+			http.Header{headerRetryAfter: []string{"5"}},
 		)
 	case errors.Is(err, prestige.ErrChallengeNotFound),
 		errors.Is(err, prestige.ErrArcNotFound),

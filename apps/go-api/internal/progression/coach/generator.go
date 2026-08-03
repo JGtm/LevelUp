@@ -429,12 +429,21 @@ func buildPatternAlerts(input GenerateInput) []Alert {
 	return out
 }
 
-// combatOCP80Threshold et combatDRP80Threshold reproduisent les seuils P80
-// définis dans analysis/combat_yield.go. Copiés ici pour éviter d'importer
-// le package analysis depuis coach (séparation des couches).
+// Seuils de référence OC/DR du coach : ce sont les MÊMES valeurs que les seuils
+// de milestones combat (post_sync_progression_queries.go), et elles sont
+// volontairement DISTINCTES des frontières élite analysis.OffensiveConversionP80
+// (0,90) et analysis.DefensiveResistanceP80 (1,65) — celles-ci normalisent
+// l'échelle visuelle des jauges, pas le déclenchement d'un conseil. Le coach doit
+// alerter sur un décrochage par rapport à un niveau ATTEIGNABLE, d'où le repère
+// plus bas. Les aligner sur analysis changerait la sensibilité des alertes ;
+// ce n'est donc PAS une dérive à corriger.
+//
+// Le suffixe « P80 » des noms est historique et conservé pour ne pas casser les
+// tests qui les référencent (generator_test.go) — lire « seuil de référence », pas
+// « percentile 80 de la population ».
 const (
-	combatOCP80Threshold = 0.83 // OffensiveConversionP80
-	combatDRP80Threshold = 1.59 // DefensiveResistanceP80
+	combatOCP80Threshold = 0.83
+	combatDRP80Threshold = 1.59
 )
 
 // buildCombatPatternAlerts émet des alertes proactives basées sur OC/DR/activité.

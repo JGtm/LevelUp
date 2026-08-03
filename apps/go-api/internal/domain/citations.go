@@ -139,7 +139,6 @@ type CitationFullMapping struct {
 	NameNorm          string
 	NameDisplay       string
 	MappingType       string // medal|stat|pve_stat|weapon_stat|award|custom|composite
-	Category          string
 	MedalID           *int64  // medal_id simple (type medal)
 	MedalIDs          *string // CSV de medal_ids (type medal multi)
 	StatName          *string // colonne match_participants ou "weapon_kills:<name>"

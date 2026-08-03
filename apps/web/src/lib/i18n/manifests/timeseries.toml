@@ -328,6 +328,17 @@ en = "Kills / Deaths timeline"
 fr = "Frags / Morts"
 en = "Kills / Deaths"
 
+# Serie « Bonus » du chart Frags / Morts : masquee par defaut, empilee sur les frags.
+# Meme texte que la serie Bonus de la page Escouade (squad i18n.ts, performanceCharts)
+# afin que les deux surfaces expliquent l'assistance de la meme facon (ADR 0006).
+[timeseries.summary.bonus_label]
+fr = "Bonus"
+en = "Bonus"
+
+[timeseries.summary.bonus_tooltip]
+fr = "Bonus = assistances ÷ 3 : dans le FDA, 3 assistances valent 1 frag (FDA = (frags + assistances/3) − morts). La série empile ce bonus au-dessus des frags du match ; elle est masquée par défaut, clique « Bonus » dans la légende pour l'afficher."
+en = "Bonus = assists ÷ 3: in KDA, 3 assists count as 1 kill (KDA = (kills + assists/3) − deaths). The series stacks that bonus on top of the match kills; it is hidden by default, click \"Bonus\" in the legend to show it."
+
 [timeseries.summary.kda_distribution_title]
 fr = "Distribution FDA"
 en = "KDA distribution"
