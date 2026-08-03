@@ -88,6 +88,12 @@ const BASELINE_COLLISIONS = new Set([
   'SquadWeaponBar',
   'TeammateKPIs',
   'TeammatesPageResponse',
+  // Phase 2 killsource (2026-08-03) : collision apparue quand la régénération du contrat
+  // (merge origin/main) a documenté le schéma du handler RawBody POST /pages/teammates.
+  // Type Input producteur, même famille que ExplorerMatchesQueryRequest — la forme manuelle
+  // garde `filters` nullable et `filter_exact_composition` optionnel côté client. Re-shim
+  // candidat au lot hygiène (aligner l'optionalité avant).
+  'TeammatesQueryRequest',
 ])
 
 /** Noms des `export interface X` de types.ts. */
