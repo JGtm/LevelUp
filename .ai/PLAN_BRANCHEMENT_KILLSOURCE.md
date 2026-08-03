@@ -313,6 +313,173 @@ APRES sur la base migree : **les onze sont identiques sur les deux titres**. Hal
 268 337 / 86 484 / 274 / 274 / 14 652 / **14 652**. Aucun lecteur ne bouge — c est le resultat
 attendu d une session qui ALIMENTE la table canonique sans encore y brancher personne.
 
+### 2.4 SESSION DE BRANCHEMENT 2026-08-03 — MESURES PREALABLES, ET LE BLOCAGE
+
+> Session executeur 2/2. **Aucun lecteur n a ete bascule** : la strategie du §2.1 est
+> INFAISABLE en l etat (blocage 1 ci-dessous), et trois decisions relevent du superviseur.
+> Toutes les mesures sont prises sur COPIE des deux bases reelles, remises en etat
+> post-inversion par `cmd/apply_shared_migrations` (134 866 / 1 343 sur Infinite,
+> 268 337 / 2 754 sur Halo 5 — les chiffres exacts de la conception §9.2).
+
+#### BLOCAGE 1 — `killer_victim_pairs` NE PEUT PLUS DEVENIR UNE VUE
+
+Le §2.1 a ete ecrit quand la table n etait qu un doublon a retirer. **L inversion de preseance
+du 2026-08-03 en a fait un INTRANT** : elle est desormais la BASE CREDIT. Quatre dependances,
+toutes verifiees par grep sur l arbre courant :
+
+| # | site | ce qu il fait | effet d une vue |
+|---|---|---|---|
+| E1 | `persist/shared_persister.go:394` | `INSERT` (flux primaire) | **casse** — une vue DuckDB n est pas inscriptible |
+| E2 | `persist/events_completion_persister.go:265,269` | `DELETE` puis `INSERT` (completion) | **casse** |
+| E3 | `ops/seed_demo_synthetic_shared.go:272` | `INSERT` (demo synthetique) | **casse** |
+| C1 | `persist/kill_events_credit.go:226` (`CreditBaseForMatch`, appele par `killcollector/collector.go:331`) | lit la base credit | **CIRCULAIRE** — la base credit deviendrait la derniere passe publiee ; l invariant « jamais moins que la base » degenererait en cliquet |
+| C2 | `migration/steps_shared_kill_events_credit_base.go:121,140` | reprise SQL -> SQL | **CIRCULAIRE** — idem |
+
+`persist/kill_events_persister.go:302` (`verifierPlancherCreditEnBase`) est le SEUL site deja
+pret : il teste `duckdb_tables()` et se tait si la table n est plus une table.
+
+**Poser la vue exigerait donc de retirer les deux ecrivains de production et de re-sourcer la
+base credit** — c est l etape 7 du chemin de retrait, pas l etape 2, et cela touche les
+producteurs (lot 1/2 clos) et la definition du contenu. **Hors perimetre de mission.**
+
+**RECOMMANDATION** : basculer les lecteurs DIRECTEMENT sur `match_kill_events_latest` et
+laisser `killer_victim_pairs` en table. C est exactement ce que decrivent les etapes 2/3/4 du
+chemin de retrait de `steps_shared_kill_events.go` ; la vue de compatibilite n etait qu un
+moyen, l objectif est la bascule.
+
+#### (a) `publishable` — MESURE, ET IL NE DOIT PAS FILTRER LES LIGNES
+
+`publishable` est UNIFORME par match (mesure : `COUNT(DISTINCT publishable) = 1` sur les
+1 343 matchs) — c est bien un attribut de PASSE. Sur les **366 matchs BTB** a passe non
+publiable :
+
+| mesure | valeur |
+|---|---|
+| lignes canoniques | **47 196** (24 973 credit + 22 223 film) |
+| lignes `killer_victim_pairs` dedupliquees a l identite (ce que l ecran sert AUJOURD HUI) | **47 037** |
+| ce que verrait un lecteur journal filtrant `publishable = TRUE` | **0** |
+
+**Un filtre `publishable = TRUE` couterait 47 037 morts sur 27 % des matchs** — 366 matchs
+entierement vides a l ecran. C est la panne de la session 3 sous un autre nom.
+
+Et le motif du `FALSE` ne porte pas sur la mort : sur ces 366 matchs, **22 064 des 22 223
+lignes de voie film (99,3 %) ont leur identite `(match, instant, victime, tueur)` PRESENTE
+dans la base credit** ; les 159 restantes sont les orphelines de film (bots). `publishable`
+qualifie donc la fiabilite de l APPARIEMENT du film — donc des colonnes qu il apporte
+(`source_tag`, `source_category`, assistant, parts de degats, `diverges`) — jamais l existence
+de la mort, qui vient du credit.
+
+**PROPOSITION (a trancher par le superviseur)** :
+1. **RECOMMANDEE — `publishable` reste un attribut de passe, et AUCUN lecteur ne le lit en
+   filtre de ligne.** Cout : 0 mort perdue, 0 changement de schema. Ce qu elle reporte : le
+   jour ou une surface produit affiche « tue par <arme> » ligne par ligne, c est l ARME
+   qu elle doit conditionner a `publishable`, pas la mort.
+2. `publishable` devient per-ligne (credit = TRUE, film = valeur de passe) — meme resultat
+   pour les lecteurs, mais ecrit dans le schema. Exige un ALTER + une reprise rejouee.
+   A faire le jour ou une surface consomme les colonnes de film, pas avant.
+3. Les lecteurs journal filtrent `publishable = TRUE` — **REFUSEE par la mesure** (47 037 morts).
+
+#### (b) LES BOTS SUR Q26/Q27 — TESTES AVANT, SUR LES DEUX TITRES
+
+**Le filtre `NOT LIKE 'bid(%'` reste un NO-OP apres la bascule** : la table canonique porte
+**0 ligne** en forme `bid(...)`. Les bots y sont des `xuid NULL` (819 victimes, 154 tueurs,
+6 les deux — 157 matchs). L arbitrage (A) tient donc, mais **par la semantique NULL, pas par
+le filtre que le plan attendait**.
+
+Q27 sur JGtm (`2533274823110022`), copie Infinite :
+
+| | couples | frags | morts |
+|---|---|---|---|
+| AVANT, retenu par Q27 | 3 370 | 15 741 | 19 384 |
+| APRES, memes filtres | 3 370 | **10 486** | **12 309** |
+| groupe NULL (bots), exclu par `opp_xuid <> ?` | 1 | 71 | 12 |
+
+Le degonflement est la, et le duel de controle du plan est retrouve **au chiffre pres** :
+`Luigi Numba 01 -> JGtm` **101 -> 29**. Les cinq suivants : 82->28, 81->24, 81->24, 78->42,
+76->19. Q26 est protege STRUCTURELLEMENT (son `kv_stats` se joint a `encounter_stats`, issu de
+`match_participants` deja filtre : un `opp_xuid` NULL ne joint jamais).
+
+⚠ **HALO 5 — CHANGEMENT VISIBLE, NON PREVU PAR LE PLAN.** `killer_victim_pairs` y code les
+bots en **CHAINE VIDE**, pas en NULL (1 245 tueurs, 1 371 victimes ; 0 NULL). `'' <> moi` etant
+VRAI, **un opposant fantome est compte AUJOURD HUI dans les agregats carriere H5** : mesure sur
+le joueur le plus actif, il pese **161 frags et 127 morts** et entre dans le top-10
+nemesis/souffre-douleur sous un libelle masque. La bascule le fait disparaitre (NULL exclu) :
+4 201 -> 4 200 couples, 18 538 -> 18 377 frags. **C est une correction, mais elle se voit.**
+Halo 5 ne degonfle pas par ailleurs (0 doublon, conforme au constat de la session 3).
+
+#### (c) VOIE DE LECTURE UNIQUE PAR MATCH — VERIFIE, ET LE PREAMBULE SOUS-ESTIMAIT
+
+`read_path` par match : **401 matchs a 1 voie, 563 a 2, et 379 a TROIS** (`marche` + `scan` +
+`kill-feed`). Le preambule annoncait « DEUX lignes » — c est jusqu a trois.
+
+**Aucun lecteur de production ne consomme `read_path`** (grep sur `internal/` + `cmd/`). Ses
+seuls consommateurs sont les trois producteurs et la migration de reprise
+(`kill_events_credit.go:346`, `kill_events_film_pass.go:63`, `killcollector/credit.go:212`,
+`steps_shared_kill_events_credit_base.go:126`), qui l emploient tous comme un predicat
+PAR LIGNE (film / pas film) — exact sous mixite. Rien a corriger, et les producteurs sont hors
+perimetre.
+
+#### DECOUVERTE — LE PIEGE `COALESCE(xuid, '')`, SUR 4 SITES QUE L INVENTAIRE NE SIGNALAIT PAS
+
+Quatre lecteurs normalisent le xuid en chaine vide AVANT de synthetiser des evenements :
+
+| site | expression |
+|---|---|
+| `platform/duckdb/queries_squad.go:201` (Q32c) | `COALESCE(kv.killer_xuid,'')`, `COALESCE(kv.victim_xuid,'')` |
+| `platform/duckdb/engagement_score_repo_queries.go:199` | idem + `COALESCE(time_ms,0)` |
+| `platform/duckdb/highlight_events_repo.go:131` | idem |
+| `sync/engagement.go:466` | idem |
+
+Sur Infinite, `killer_victim_pairs` ne porte **aucun** NULL : ces `COALESCE` sont des NO-OP
+aujourd hui. Apres la bascule ils cesseraient de l etre, et **les 973 lignes de bot
+fusionneraient en UN joueur fantome de chaine vide** dans la matrice d impact escouade et dans
+le score d engagement. Meme forme de piege que le `NOT LIKE 'bid(%'` — un predicat jamais
+observe parce que sa population etait vide — mais en sens inverse, et sur quatre sites que
+l inventaire du §2.2 ne listait pas comme sensibles. **A traiter dans la bascule** : rejeter la
+ligne quand le xuid est absent, ne pas la renommer en `''`.
+
+`sync/enrichment_discipline.go` (suicides / trahisons) est sain : il joint `match_participants`,
+ou les bots n existent pas.
+
+#### INVENTAIRE FINAL PAR GREP — 2026-08-03, arbre `67d2e8ed5`
+
+20 lectures de production (hors tests, hors `cmd/` de diagnostic), 3 ecrivains, 4 sites de DDL,
+2 sites speciaux. Le 11e site (`analysis/identity.go`, `v_gamertag_lookup`) est **deja bascule**
+en UNION des deux sources depuis la session 3 — il ne fait pas partie du reste a faire.
+
+| # | site | usage | remarque pour la bascule |
+|---|---|---|---|
+| 1 | `queries_career_encounters.go:49` (Q26) | cumul | protege par la jointure a `encounter_stats` |
+| 2 | `queries_career_encounters.go:100` (Q27) | cumul | NULL exclu par `opp_xuid <> ?` |
+| 3 | `queries_career_encounters.go:191` (Q28 Relations) | cumul | idem Q26 |
+| 4 | `queries_career_encounters.go:294` (Q28 Relations scope) | cumul | idem Q26 |
+| 5 | `queries_match_detail.go:138` (Q23b) | cumul | `LEFT JOIN` sur `this_match` : protege |
+| 6 | `queries_match.go:423,427` (Q19b) | cumul | `SUM(kill_count)` -> `COUNT(*)` |
+| 7 | `compare_repo.go:235,236` (`qKV`) | cumul | **copie textuelle de Q19b — meme commit** |
+| 8 | `queries_match.go:449` (Q20) | journal | 6 colonnes ; les bots y sont DESIRES |
+| 9 | `queries_relations_moments.go:114` (Q30) | cumul par match | pas de COALESCE : sain |
+| 10 | `queries_squad.go:201` (Q32c) | journal | ⚠ `COALESCE(xuid,'')` |
+| 11 | `engagement_score_repo_queries.go:199` | journal | ⚠ `COALESCE(xuid,'')` |
+| 12 | `highlight_events_repo.go:131` | journal | ⚠ `COALESCE(xuid,'')` |
+| 13 | `sync/engagement.go:466` | journal | ⚠ `COALESCE(xuid,'')` |
+| 14 | `sync/enrichment_discipline.go:39` (suicides) | cumul | sain |
+| 15 | `sync/enrichment_discipline.go:47` (trahisons) | cumul | sain (joint `match_participants`) |
+| 16 | `sync/skill/skill_v2_quit_penalty.go:227` | journal | `killer_xuid IS NOT NULL` deja pose |
+| 17 | `sync/events_replay.go:73` | presence `NOT EXISTS` | — |
+| 18 | `halo5/halo5_match_events_source.go:46` | journal H5 | joint `v_weapon_kills` et `kill_positions` sur `killer_xuid` |
+| 19 | `analysis/identity.go:202,206` | resolveur | **deja bascule** (UNION, session 3) |
+| 20 | `persist/kill_events_credit.go:226` | **INTRANT** — base credit | ne pas basculer : c est la source |
+| E1 | `persist/shared_persister.go:394` | INSERT | ecrivain |
+| E2 | `persist/events_completion_persister.go:265,269` | DELETE + INSERT | ecrivain |
+| E3 | `ops/seed_demo_synthetic_shared.go:272` | INSERT | ecrivain (demo) |
+| D1-D4 | `migration/steps_shared.go:219` · `sync/schema.go:323` · `games/halo_infinite/migrations/steps_shared_core.go:132` · `migration/steps_shared_kill_events_credit_base.go:121` | DDL / reprise | — |
+| S1 | `ops/seed_demo.go:157` + `ops/seed_demo_corpus.go:343` | table COPIEE en demo | ajouter la canonique |
+| S2 | `cmd/rebuild_mp/main.go:42` | vues dependantes | **deja a jour** (`match_kill_events_latest` present) ; outil `//go:build ignore` et CASSE (J4R-7) |
+
+*Lecon confirmee : l inventaire ecrit vieillit. Le §2.2 listait 20 lectures mais ne signalait
+aucun des 4 `COALESCE`, et classait `kill_events_credit.go` parmi les lecteurs alors que
+l inversion en a fait la source.*
+
 ---
 
 ## PHASE 3 — LE BACKFILL

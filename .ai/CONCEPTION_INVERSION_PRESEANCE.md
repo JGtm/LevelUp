@@ -564,6 +564,14 @@ teste la REGLE plutot que son ecriture.
    **aucun lecteur ne lit cette colonne** (phase 2.3 du plan de branchement). **A trancher a la
    bascule des lecteurs**, qui est le lot qui donnera un sens a cette colonne : soit on l accepte,
    soit `publishable` devient per-ligne comme `read_path`.
+   > **MESURE DU 2026-08-03 (session de branchement) — `PLAN_BRANCHEMENT_KILLSOURCE.md` §2.4(a).**
+   > Un filtre `publishable = TRUE` cote lecteur couterait **47 037 morts sur les 366 matchs**,
+   > qui deviendraient VIDES a l ecran (27 % des matchs). Et le `FALSE` ne porte pas sur la mort :
+   > **22 064 des 22 223 lignes de voie film de ces matchs (99,3 %) ont leur identite presente
+   > dans la base credit** — seules 159 sont des orphelines de film. `publishable` qualifie donc
+   > l APPARIEMENT du film, c est-a-dire les colonnes qu il apporte, jamais l existence de la
+   > mort. **Recommandation portee au superviseur : aucun lecteur ne filtre sur cette colonne ;
+   > le per-ligne se pose le jour ou une surface consomme les colonnes de film.**
 4. **La sonde de plancher coute une lecture de `killer_victim_pairs` par passe hors ligne.** La
    table n a aucun index (surface ART), donc c est un scan complet. Passe de 1 926 matchs :
    5 min 1 s, dominee par cette sonde et par les requetes du producteur credit. Acceptable hors
