@@ -3,6 +3,7 @@ package coach_advisor
 import (
 	"math"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/progression/coach"
 )
 
@@ -123,11 +124,11 @@ func signalFromCombatDiscret(a coach.Alert) Signal {
 }
 
 // signalFromCombatFragile : DR basse — survie à solidifier.
-// Strength = 1 - clamp(MedianDR / seuil_P80, 0, 1).
+// Strength = 1 - clamp(MedianDR / seuil de référence DR, 0, 1). Le seuil est le
+// MÊME que celui qui a déclenché l'alerte côté coach (source unique analysis).
 func signalFromCombatFragile(a coach.Alert) Signal {
 	medianDR := floatParam(a.Params, "median_dr")
-	const drP80 = 1.59
-	gapRatio := 1.0 - clamp01(medianDR/drP80)
+	gapRatio := 1.0 - clamp01(medianDR/analysis.CombatDRReferenceThreshold)
 	return Signal{
 		Kind:          SignalCombatPatternFragile,
 		LUSRComponent: "deaths_vs_expected",

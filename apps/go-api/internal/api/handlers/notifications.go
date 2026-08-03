@@ -27,10 +27,7 @@ import (
 func notifWriteErr(ctx context.Context, op string, err error) error {
 	switch {
 	case errors.Is(err, dblease.ErrDBLocked):
-		return huma.ErrorWithHeaders(
-			humacore.NewError(http.StatusServiceUnavailable, "db_busy", "database is currently busy, please retry"),
-			http.Header{headerRetryAfter: []string{"5"}},
-		)
+		return errDBBusy()
 	case errors.Is(err, notifications.ErrNotFound):
 		return humacore.NewError(http.StatusNotFound, "not_found", "notification introuvable")
 	default:

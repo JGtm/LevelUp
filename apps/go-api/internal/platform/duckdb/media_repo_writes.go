@@ -76,9 +76,11 @@ func (r *MediaRepo) SetMediaMatchAssociation(ctx context.Context, filePath, matc
 }
 
 // queryConfig porte le scoping player_slug du pipeline média Q37. Appelée
-// uniquement depuis loadMediaCandidates, DERRIÈRE son garde pdb.SharedSocial != nil
-// — le repli « config vide » (schéma legacy) a donc été supprimé le 2026-08-03
-// en même temps que la branche SQL legacy qu'il servait à sélectionner.
+// uniquement depuis loadMediaCandidates, DERRIÈRE ses deux gardes
+// (pdb.SharedSocial != nil et pdb.Gamertag != "") — le repli « config vide »
+// (schéma legacy) a été supprimé le 2026-08-03 en même temps que la branche SQL
+// legacy qu'il servait à sélectionner ; c'est le garde Gamertag du caller qui
+// couvre désormais le cas d'un PlayerDB sans gamertag.
 func (r *MediaRepo) queryConfig() mediaQueryConfig {
 	return mediaQueryConfig{playerSlug: r.pdb.Gamertag}
 }

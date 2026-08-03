@@ -9,6 +9,8 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/danielgtaylor/huma/v2"
+
 	"levelup/go-api/internal/api/humacore"
 )
 
@@ -40,6 +42,27 @@ const (
 	// ce qui est précisément ce qu'on veut vérifier côté client.
 	headerRetryAfter = "Retry-After"
 )
+
+// errDBBusy construit la réponse canonique « base occupée » : 503 `db_busy` +
+// en-tête `Retry-After: 5`, via huma.ErrorWithHeaders.
+//
+// Source unique du triplet (statut, code, message) : l'enveloppe était recopiée
+// à l'identique dans 7 handlers write (notifications, media_likes, media_delete,
+// match_favorite, match_exclusion, engagement, prestige_squads) — un client qui
+// distingue les 503 sur le `code` dépend de leur stricte égalité. À appeler dès
+// qu'une erreur wrappe dblease.ErrDBLocked.
+//
+// Garde-rail (CLAUDE.md règle 6) : TestNoDBBusyLiteralInHandlers
+// (no_db_busy_envelope_test.go) interdit la réapparition du littéral "db_busy".
+// N'englobe PAS le code distinct "home_page_db_busy" (home.go), qui porte une
+// sémantique de dégradation de page, pas un refus d'écriture.
+func errDBBusy() error {
+	return huma.ErrorWithHeaders(
+		humacore.NewError(http.StatusServiceUnavailable, "db_busy",
+			"database is currently busy, please retry"),
+		http.Header{headerRetryAfter: []string{"5"}},
+	)
+}
 
 // writeJSON sérialise v en JSON et l'écrit dans w avec le code HTTP donné.
 // Utilise json.Marshal (buffer complet) avant d'écrire les headers : si la

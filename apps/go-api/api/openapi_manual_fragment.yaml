@@ -2757,57 +2757,6 @@ components:
         exact_match:
           type: boolean
           default: false
-    ExplorerMatchRow:
-      type: object
-      required:
-        - match_id
-        - start_time
-        - start_time_label
-        - map_ui
-        - mode_ui
-        - playlist_label
-        - outcome_label
-        - score_label
-      properties:
-        match_id:
-          type: string
-          format: uuid
-        start_time:
-          type: string
-          format: date-time
-        start_time_label:
-          type: string
-        map_ui:
-          type: string
-        mode_ui:
-          type: string
-        playlist_label:
-          type: string
-        outcome_label:
-          type: string
-        score_label:
-          type: string
-        is_with_friends:
-          type: boolean
-          default: false
-        experience_type_label:
-          type: string
-          default: Non classé
-        kills:
-          type: integer
-          default: 0
-        deaths:
-          type: integer
-          default: 0
-        kda:
-          type: number
-          format: float
-          default: 0
-        had_bot_teammate:
-          type: boolean
-          description: |
-            Un coéquipier était un bot. Exposé uniquement sur les best_matches de la page carrière (les LOSS avec bot sont exclus côté backend pour isoler la responsabilité du joueur).
-          default: false
     ExplorerEncounterRow:
       type: object
       required:
@@ -2909,18 +2858,6 @@ components:
           $ref: '#/components/schemas/ExplorerMatchFilters'
         pagination:
           $ref: '#/components/schemas/PaginationRequest'
-    PaginatedExplorerMatchesResponse:
-      type: object
-      required:
-        - items
-        - pagination
-      properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/ExplorerMatchRow'
-        pagination:
-          $ref: '#/components/schemas/PaginationMeta'
     ExplorerPlayerQueryRequest:
       type: object
       required:

@@ -87,11 +87,7 @@ func (h *MatchFavoriteHandler) handlePatchFavorite(ctx context.Context, in *matc
 
 	if err := svc.ToggleMatchFavorite(ctx, req); err != nil {
 		if errors.Is(err, dblease.ErrDBLocked) {
-			return nil, huma.ErrorWithHeaders(
-				humacore.NewError(http.StatusServiceUnavailable, "db_busy",
-					"database is currently busy, please retry"),
-				http.Header{headerRetryAfter: []string{"5"}},
-			)
+			return nil, errDBBusy()
 		}
 		slog.ErrorContext(ctx, "match_favorite: erreur bascule",
 			"err", err, "match_id", matchID, "player", slug)

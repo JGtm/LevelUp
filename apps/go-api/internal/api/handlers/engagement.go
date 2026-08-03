@@ -336,10 +336,7 @@ func (h *EngagementHandler) handleRecomputeCoefficients(ctx context.Context, in 
 			return nil, humacore.NewError(http.StatusServiceUnavailable, "engagement_unavailable",
 				"migration EngagementScore non appliquee")
 		case errors.Is(err, dblease.ErrDBLocked):
-			return nil, huma.ErrorWithHeaders(
-				humacore.NewError(http.StatusServiceUnavailable, "db_busy", "database is currently busy, please retry"),
-				http.Header{headerRetryAfter: []string{"5"}},
-			)
+			return nil, errDBBusy()
 		default:
 			return nil, humacore.NewError(http.StatusInternalServerError, "engagement_error", err.Error())
 		}

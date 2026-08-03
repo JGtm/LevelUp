@@ -87,25 +87,10 @@ WHERE match_id = ?
 ORDER BY value DESC
 LIMIT 4`
 
-// Q40 : Moteur citations complet â€” tous les champs de citation_mappings.
-// ParamÃ¨tre : aucun. RequÃªte sur metadata.duckdb (passÃ© comme DB racine dans le sync).
-// Retourne 10 colonnes pour le dispatch par mapping_type (la colonne `category`
-// a ete retiree le 2026-08-03 : le champ Go correspondant n'etait jamais lu).
-const Q40CitationFullMappings = `
-SELECT
-    citation_name_norm,
-    citation_name_display,
-    COALESCE(mapping_type, 'medal') AS mapping_type,
-    medal_id,
-    medal_ids,
-    stat_name,
-    award_name,
-    custom_function,
-    composite_children,
-    tier_targets
-FROM citation_mappings
-WHERE enabled IS NOT FALSE
-ORDER BY citation_name_norm`
+// Q40 (Moteur citations complet - tous les champs de citation_mappings) a ete
+// supprimee le 2026-08-03 : la constante n'avait aucun consommateur. La requete
+// reellement executee vit dans sync.loadFullCitationMappings
+// (internal/sync/citations.go), qui interroge metadata.duckdb directement.
 
 // Q39 : Moteur citations â€” mappings citationâ†’medal depuis metadata.duckdb.
 // ParamÃ¨tre : aucun. RequÃªte sur pdb.Metadata.

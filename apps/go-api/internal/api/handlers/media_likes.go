@@ -19,8 +19,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/danielgtaylor/huma/v2"
-
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/ctxkeys"
@@ -118,10 +116,7 @@ func (h *MediaHandler) resolveLikerIdentity(ctx context.Context, playerSlug stri
 // sur base occupée (dblease), 400/404 sur erreur métier typée, 500 sinon.
 func mediaLikeError(err error) error {
 	if errors.Is(err, dblease.ErrDBLocked) {
-		return huma.ErrorWithHeaders(
-			humacore.NewError(http.StatusServiceUnavailable, "db_busy", "database is currently busy, please retry"),
-			http.Header{headerRetryAfter: []string{"5"}},
-		)
+		return errDBBusy()
 	}
 	var apiErr *domain.APIError
 	if errors.As(err, &apiErr) {

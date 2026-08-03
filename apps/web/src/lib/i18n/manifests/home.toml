@@ -316,7 +316,7 @@ fr = "Aucun match favori"
 en = "No favorite match"
 
 [home.matches.favorites_empty_description]
-fr = "Marquez vos meilleurs matchs avec l'icône étoile pour les retrouver ici."
+fr = "Marque tes meilleurs matchs avec l'icône étoile pour les retrouver ici."
 en = "Mark your best matches with the star icon to find them here."
 
 # ─── KPI hero card (anciennement kpi.i18n.ts) ─────────────────────────────
@@ -727,7 +727,7 @@ fr = "Aucun média aimé"
 en = "No liked media"
 
 [home.media.empty_liked_description]
-fr = "Marquez vos captures ou clips avec le ♥ pour les retrouver ici."
+fr = "Marque tes captures ou clips avec le ♥ pour les retrouver ici."
 en = "Mark your captures or clips with ♥ to find them here."
 
 [home.media.empty_recent_title]
