@@ -1,3 +1,37 @@
+## [2026-08-03] Lot 2 v7.3 — Phase 4 close, gate 4 passé : lot COMPLET, prêt à merger
+
+**Statut** : Complété (24 commits sur feat/v7.3-notion-lot2, merge en attente du go
+utilisateur — deploy prod).
+
+**Décision technique principale** : gate 4 rendu maillon par maillon après une
+traque de deux vraies causes et d'une cause d'outillage : (1) ratchet goconst —
+9e/10e occurrences de "Retry-After" → constante headerRetryAfter sur les 2 nouveaux
+sites, migration des ~8 anciens consignée post-lot ; (2) gitleaks — WeaponKey
+h5_vehicle_* des tests 3.2 pris pour des clés API → allowlist ciblée conforme à la
+doctrine du fichier, vérifiée sur copie propre avec le binaire pin CI ; (3) l'env
+git-bash du poste casse DÉTERMINISTIQUEMENT le lien des binaires de test embarquant
+libduckdb_static 10505 (emutls ; CC POSIX corrigé dans le script — nécessaire mais
+pas suffisant, MSYSTEM insuffisant, cause profonde poste) → baseline rendue par la
+voie du script en mode consommateur sur un JSONL produit depuis PowerShell
+(10 989 tests, 8769/8769 baseline présents, 0 échec). Les « verts bash » initiaux
+étaient des hits de cache de liens PowerShell — leçon : un ok de go test ne prouve
+pas un lien frais.
+
+**Résultats observés** : Phase 4 — 4.1 lot K validé en réel (3 dépassements
+marginaux le 31/07, 0 depuis, vs 3-5/cycle avant) ; 4.2 snapshots vivants (v125,
+recoupe auto ~15 min) sans op écrivante ; 4.3 Notion mise à jour et VÉRIFIÉE par
+re-fetch/diff (16 puces barrées + commits, 3 consignations, callout, +26 lignes /
+0 suppression) ; 4.4 delivery-checklist complète (hygiène 0/0/0, tsc sans cache,
+vet, baselines réconciliées 11+1 tests remplacés) ; 4.5 rappel tag transmis.
+Volet D : D1/D2 clos (4 PR mergées le 02/08), D4 statué [!] externe avec
+commentaire daté sur #70, D3 séquencé post-merge. Deux flakes qualifiés 10/10
+isolés (CareerLive timeout 2 s sous charge, StartImport TempDir).
+
+**Conclusion / prochaine étape** : push de la réconciliation baseline → CI de
+branche attendue toute verte → proposition de merge à l'utilisateur (deploy prod),
+puis D3 (echarts 6 + harnais screenshots) depuis main à jour. Post-lot consigné :
+passe découvertes (~25 entrées triées avec recommandations).
+
 ## [2026-08-03] Lot 2 v7.3 — Phase 3 close (5 features), gate 3 passé, gate 0 clos
 
 **Statut** : Complété. 4 agents Opus (3.1, 3.2, 3.3, 3.4+3.5), gates re-exécutés
