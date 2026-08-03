@@ -469,14 +469,29 @@ types front régénérés ; revue navigateur 3.1/3.2/3.4/3.5.
       (précision par arme = H5 déjà couvert / Infinite au killsource ; « pourquoi
       cette représentation est une image » = rendu canvas ECharts sans symbole ni
       aide, corrigé en 2.3) ; callout Suivi du lot 2.
-- [ ] 4.4 **Clôture** : delivery-checklist (skill), tous les items de ce plan statués,
-      entrée thought_log, découvertes consignées (section ci-dessous).
-- [ ] 4.5 Rappel côté utilisateur : poser le **tag v7.3.0** quand tu considères la
-      v7.3 close (déclenche notification de release + « Quoi de neuf »). Le Replay 2D
-      étant ton chantier, ce lot ne conditionne pas le tag.
+- [x] 4.4 **Clôture** — delivery-checklist déroulée le 2026-08-03 : complétude
+      (tous items statués, reports justifiés : 1.5/3.1 revue visuelle → prod,
+      part Escouade 2.5 [!], D3 séquencé post-merge, TS7 [!] externe) ; hygiène
+      diff complet 0 fmt.Println / 0 filepath.Join(data) / 0 TODO sans expiry ;
+      tsc -b --force (sans cache) vert ; go vet vert ; gitleaks vert (copie propre
+      + CI) ; baselines réconciliées (11 tests 3.3 + 1 test 1.5, remplaçants en
+      place) ; flakes qualifiés par rejeu isolé 10/10 ; thought_log à jour.
+- [x] 4.5 Rappel transmis à l'utilisateur dans le point de clôture : poser le
+      **tag v7.3.0** quand la v7.3 est jugée close (déclenche notification de
+      release + « Quoi de neuf ») — le Replay 2D reste le chantier utilisateur,
+      ce lot ne conditionne pas le tag.
 
 **Gate 4** : `make gate-push` vert avant proposition de merge (merge main = deploy
 prod auto — prévenir l'utilisateur).
+> GATE 4 PASSÉ le 2026-08-03, maillon par maillon (le make unique est bloqué par
+> l'env git-bash du poste, découverte dédiée) : ratchet golangci-lint 0 issue
+> (après fix goconst headerRetryAfter) ; web typecheck (tsc -b --force) + eslint
+> verts ; baseline VERTE par la voie du script (suite complète 10 989 tests depuis
+> l'env PowerShell, SUITE_EXIT=0, analyse consommateur --from-jsonl : 8769/8769
+> présents, 0 échec, 0 package en échec) ; gitleaks vert (allowlist WeaponKey
+> ciblée) ; CI de branche : tous jobs verts sauf Coverage+Baseline dont l'échec
+> est EXACTEMENT la réconciliation baseline non poussée (test 1.5 remplacé) —
+> re-run attendu vert après ce push.
 
 ## Volet D — Branches Dependabot (orchestration, branches séparées du lot)
 
@@ -705,6 +720,16 @@ AVANT merge, pas seulement un rejeu local).
   comparer des invocations à CC différents (cache keys différentes). Fix appliqué
   au script (CC=gcc, PATH déjà préfixé) — bloquait le gate 4, règle 7 respectée.
   CI Linux non concernée (branche non prise).
+  COMPLÉMENT après A/B exhaustif : le fix CC était nécessaire mais PAS suffisant —
+  l'environnement git-bash du poste casse le lien ucrt64 plus profondément
+  (MSYSTEM=UCRT64 explicite insuffisant, tous les liens réels depuis bash rouges,
+  tous les liens depuis PowerShell verts, mêmes gcc/commande/flags ; les « verts
+  bash » antérieurs étaient des hits de cache d'actions liées sous PS). Gate 4
+  rendu par la voie prévue du script : suite complète produite depuis l'env
+  PowerShell natif (10 989 tests, SUITE_EXIT=0) + analyse en mode consommateur
+  `--from-jsonl` (même cœur de vérification que la CI) → VERT. Recommandation
+  post-lot : wrapper PowerShell pour le mode autonome local, ou correction de
+  l'env bash msys du poste.
 - [2026-08-03, orchestrateur] Ratchet goconst au gate-push : le lot a ajouté les 9e
   et 10e occurrences du littéral "Retry-After" (media_delete/media_likes) →
   constante de paquet `headerRetryAfter` posée sur les 2 nouveaux sites. La
