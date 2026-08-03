@@ -456,7 +456,15 @@ types front régénérés ; revue navigateur 3.1/3.2/3.4/3.5.
       cycles post-déploiement. Largement postérieur au correctif G1 : le repli
       lecture live n'est PAS l'état stable. AUCUN recut nécessaire (aucune op
       écrivante effectuée).
-- [ ] 4.3 **MAJ Notion** : barrer chaque point traité avec commit + notes sous les
+- [x] 4.3 (fait le 2026-08-03, agent Opus + vérification par re-fetch et diff :
+      16/16 puces barrées avec note « ✔ lot 2 — commit » (item colonne Replay barré
+      partiellement, volontaire — Replay reste conditionné au Replay 2D), 3
+      consignations (réponse « pourquoi une image », précision par arme H5/Infinite,
+      décision note de perf modes objectifs), callout Suivi du lot 2 en tête avec la
+      ligne TS7/PR #70. Delta +26 lignes / 0 suppression, POSTPONED / ATTENTE
+      REPLAY 2D / Replay 2D / Killsource intacts. Découverte cosmétique : un gras
+      mal balancé fondu par Notion sur la puce Rythme des rencontres, texte intact.)
+      **MAJ Notion** : barrer chaque point traité avec commit + notes sous les
       points ; consigner les réponses aux questions posées dans la section
       (précision par arme = H5 déjà couvert / Infinite au killsource ; « pourquoi
       cette représentation est une image » = rendu canvas ECharts sans symbole ni
@@ -687,6 +695,16 @@ AVANT merge, pas seulement un rejeu local).
 - [2026-08-03, agent 3.4/3.5] `make openapi-gen` journalise un ERROR
   mappings_validation_failed trompeur à chaque run (tmpdir sans config/) en sortant
   0 — bruit à nettoyer post-lot.
+- [2026-08-03, orchestrateur — REQUALIFIÉE après diagnostic complet] **Gate-push
+  rouge : CC en chemin POSIX dans check_test_baseline.sh** (pas un flaky) :
+  le script exportait `CC=/c/msys64/ucrt64/bin/gcc.exe` ; invoqué ainsi hors shell
+  msys, gcc ne résout plus ses objets internes emutls → lien des binaires de test
+  duckdbbackup/e2e (libduckdb_static 10505) en échec DÉTERMINISTE (« undefined
+  reference __emutls_v._ZSt11__once_call »), vert avec `CC=gcc` résolu par le PATH
+  (prouvé A/B sur les 2 paquets). Ma première lecture « intermittent/AV » venait de
+  comparer des invocations à CC différents (cache keys différentes). Fix appliqué
+  au script (CC=gcc, PATH déjà préfixé) — bloquait le gate 4, règle 7 respectée.
+  CI Linux non concernée (branche non prise).
 - [2026-08-03, orchestrateur] Ratchet goconst au gate-push : le lot a ajouté les 9e
   et 10e occurrences du littéral "Retry-After" (media_delete/media_likes) →
   constante de paquet `headerRetryAfter` posée sur les 2 nouveaux sites. La

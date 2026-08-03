@@ -261,11 +261,16 @@ run_current_suite() {
   echo "  Lancement de la suite courante (peut prendre plusieurs minutes)..."
   (
     cd "$REPO_ROOT/apps/go-api"
-    # Sur Windows local, utiliser le gcc fourni par msys64 (chemin POSIX via
-    # git-bash). Sur Linux CI, utiliser le gcc système (déjà dans le PATH).
+    # Sur Windows local, utiliser le gcc fourni par msys64 via le PATH. Sur
+    # Linux CI, utiliser le gcc système (déjà dans le PATH).
+    # NE PAS exporter CC en chemin POSIX absolu (/c/msys64/.../gcc.exe) : invoqué
+    # ainsi hors shell msys, gcc ne résout plus ses objets internes (emutls) et le
+    # lien des binaires de test embarquant libduckdb_static échoue en
+    # « undefined reference __emutls_v._ZSt11__once_call » — échec DÉTERMINISTE
+    # reproduit le 2026-08-03 (4 gate-push rouges), vert avec CC=gcc résolu PATH.
     if [[ -f /c/msys64/ucrt64/bin/gcc.exe ]]; then
       export PATH="/c/msys64/ucrt64/bin:$PATH"
-      export CC="/c/msys64/ucrt64/bin/gcc.exe"
+      export CC=gcc
     fi
     CGO_ENABLED=1 \
       go test -tags=integration -count=1 -timeout=300s -p 1 -json ./... > "$out" 2>&1
