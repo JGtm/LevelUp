@@ -129,6 +129,19 @@ regexTarget = "secret"
 regexes = ['''^eyJmaWx0ZXJz[A-Za-z0-9_=/+-]+$''']
 
 [[allowlists]]
+# (2026-08-03, lot 2 v7.3 item 3.2) WeaponKey du registre d'armes H5 dans les tests de
+# ventilation par engin du sunburst : identifiants PUBLICS du jeu (h5_vehicle_warthog,
+# h5_turret_gauss…), versionnés volontairement comme assertions. Le mot « Key » du champ
+# Go + l'entropie déclenchent generic-api-key. Motif strict : un vrai secret collé dans
+# ce fichier ne matcherait pas ^h5_(vehicle|turret)_[a-z_]+$ et resterait détecté.
+description = "WeaponKey h5_vehicle_*/h5_turret_* des tests fragdist (registre public)"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(^|/)apps/go-api/internal/service/fragdist/fragdist_test\.go$''']
+regexTarget = "secret"
+regexes = ['''^h5_(vehicle|turret)_[a-z_]+$''']
+
+[[allowlists]]
 # Clé d'ingestion Azure Application Insights contenue dans la page HTML publique de
 # Halo Waypoint capturée comme fixture de parsing. Elle est servie à tout visiteur du
 # site, appartient à l'éditeur du jeu, n'ouvre aucun accès en lecture, et n'est pas
