@@ -99,6 +99,8 @@ export const timeseriesManifest = {
   "timeseries.skill_progression.title_lusr": { fr: "Progression LUSR", en: "LUSR Progression" },
   "timeseries.skill_progression.title_mixed": { fr: "Classement", en: "Skill Ranking" },
   "timeseries.summary.avg_life_axis": { fr: "Durée de vie (s)", en: "Average life (s)" },
+  "timeseries.summary.bonus_label": { fr: "Bonus", en: "Bonus" },
+  "timeseries.summary.bonus_tooltip": { fr: "Bonus = assistances ÷ 3 : dans le FDA, 3 assistances valent 1 frag (FDA = (frags + assistances/3) − morts). La série empile ce bonus au-dessus des frags du match ; elle est masquée par défaut, clique « Bonus » dans la légende pour l'afficher.", en: "Bonus = assists ÷ 3: in KDA, 3 assists count as 1 kill (KDA = (kills + assists/3) − deaths). The series stacks that bonus on top of the match kills; it is hidden by default, click \"Bonus\" in the legend to show it." },
   "timeseries.summary.density": { fr: "Densité", en: "Density" },
   "timeseries.summary.empty_description": { fr: "Aucune carte KPI n'a été calculée pour cette période.", en: "No KPI card computed for this period." },
   "timeseries.summary.empty_title": { fr: "KPIs indisponibles", en: "KPIs unavailable" },

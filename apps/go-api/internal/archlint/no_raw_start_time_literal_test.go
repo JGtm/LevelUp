@@ -67,6 +67,49 @@ var rawCastStartTimeDateRE = regexp.MustCompile(`CAST\(([a-z]+\.)?start_time AS 
 // vers le fragment canonique le 2026-07-22 (F2). Toute nouvelle occurrence échoue.
 var rawCastStartTimeDateAllowlist = map[string]bool{}
 
+// ─── Ratchet « expression manuelle autour de start_time_utc » (V7.3, 2026-08-03) ───
+//
+// TROU COMBLÉ : les trois ratchets ci-dessus interdisent de RECOPIER le fragment
+// canonique ou de trier/bucketer sur le start_time brut. Aucun n'interdisait de
+// COMPOSER À LA MAIN une expression FAUSSE autour de start_time_utc — et c'est
+// exactement le bug 1.3 (heatmap « Rythme des rencontres » servant des heures UTC) :
+//
+//	EXTRACT(hour FROM (COALESCE(start_time_utc, start_time) AT TIME ZONE 'UTC'))
+//
+// faux DEUX fois — le AT TIME ZONE appliqué APRÈS le COALESCE reconvertit le
+// TIMESTAMPTZ en TIMESTAMP naïf (le fuseau de session est annulé), et le COALESCE
+// mal parenthésé promeut le fallback start_time sans l'interpréter en UTC. Le
+// ratchet rawStartTimeRE ne pouvait pas le voir : il ne connaît que la forme
+// CORRECTE (AT TIME ZONE À L'INTÉRIEUR de la parenthèse). Un garde-rail qui
+// n'attrape que le code juste ne protège de rien.
+
+// rawCoalesceOutsideTZRE : le COALESCE mal parenthésé du bug 1.3 — une parenthèse
+// COALESCE contenant start_time_utc, FERMÉE avant un AT TIME ZONE.
+// `[^)]*` s'arrête au premier `)`, donc la forme canonique
+// `COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')` n'est PAS matchée :
+// son AT TIME ZONE est À L'INTÉRIEUR, il ne reste rien après la parenthèse fermante.
+var rawCoalesceOutsideTZRE = regexp.MustCompile(`COALESCE\([^)]*start_time_utc[^)]*\)\s*AT TIME ZONE`)
+
+// rawManualStartTimeUTCExprRE : filet plus large — toute expression SQL qui MÊLE
+// start_time_utc et un AT TIME ZONE sur la même ligne. Les lignes qui portent la
+// forme canonique exacte (rawStartTimeRE) sont dédouanées avant ce test, si bien
+// que ne restent que les compositions faites à la main.
+var rawManualStartTimeUTCExprRE = regexp.MustCompile(`start_time_utc[\s\S]*AT TIME ZONE|AT TIME ZONE[\s\S]*start_time_utc`)
+
+// manualStartTimeUTCAllowlist : usages LÉGITIMES d'une expression manuelle mêlant
+// start_time_utc et AT TIME ZONE, keyée par fichier. Datée, comme les voisines.
+// Toute nouvelle entrée doit expliquer pourquoi le fragment canonique ne convient pas.
+var manualStartTimeUTCAllowlist = map[string]bool{
+	// 2026-08-03 — DÉFINITION du fragment canonique (source unique). Exemptée par
+	// construction : c'est elle que tous les autres sites doivent appeler.
+	"internal/analysis/sql_fragments.go": true,
+	// 2026-08-03 — MESURE du décalage, pas une lecture de date : l'outil calcule
+	// `epoch_ms(r.start_time AT TIME ZONE 'UTC') - epoch_ms(r.start_time_utc)` pour
+	// quantifier la dette TZ historique. Le fragment canonique masquerait justement
+	// l'écart qu'on cherche à mesurer. Outil one-shot (cmd/), hors serveur.
+	"cmd/backfill_first_joined_tz/main.go": true,
+}
+
 // rawOrderByStartTimeAllowlist : dette PRÉEXISTANTE gelée (règle CLAUDE.md n°5 —
 // baseline), keyée PAR FICHIER (comme H1 ci-dessus : robuste au décalage de
 // lignes). Outils cmd/ diag/backfill/seed + requêtes internes non-lecture-chaude
@@ -112,6 +155,7 @@ func TestNoNewRawStartTimeLiteral(t *testing.T) {
 	var violations []string
 	var orderByViolations []string
 	var castDateViolations []string
+	var manualExprViolations []string
 	for _, sub := range []string{"internal", "cmd"} {
 		root := filepath.Join(goAPIRoot, sub)
 		err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
@@ -139,6 +183,7 @@ func TestNoNewRawStartTimeLiteral(t *testing.T) {
 			coalesceExempt := rel == "internal/analysis/sql_fragments.go" || rawStartTimeAllowlist[rel]
 			orderByExempt := rawOrderByStartTimeAllowlist[rel]
 			castDateExempt := rawCastStartTimeDateAllowlist[rel]
+			manualExprExempt := manualStartTimeUTCAllowlist[rel]
 			for i, line := range strings.Split(string(data), "\n") {
 				trimmed := strings.TrimSpace(line)
 				if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "*") {
@@ -152,6 +197,14 @@ func TestNoNewRawStartTimeLiteral(t *testing.T) {
 				}
 				if !castDateExempt && rawCastStartTimeDateRE.MatchString(line) {
 					castDateViolations = append(castDateViolations, rel+":"+strconv.Itoa(i+1)+"  "+trimmed)
+				}
+				// Expression manuelle autour de start_time_utc (bug 1.3). Une ligne
+				// portant la forme CANONIQUE exacte est dédouanée d'office : elle est
+				// déjà jugée par le ratchet COALESCE ci-dessus (recopie du fragment),
+				// et ne doit pas être comptée deux fois.
+				if !manualExprExempt && !rawStartTimeRE.MatchString(line) &&
+					(rawCoalesceOutsideTZRE.MatchString(line) || rawManualStartTimeUTCExprRE.MatchString(line)) {
+					manualExprViolations = append(manualExprViolations, rel+":"+strconv.Itoa(i+1)+"  "+trimmed)
 				}
 			}
 			return nil
@@ -177,5 +230,56 @@ func TestNoNewRawStartTimeLiteral(t *testing.T) {
 			"n°8) — bucketer le jour via CAST(SQLStartTimeCanonical(alias) AS DATE) sinon les "+
 			"jours se décalent aux frontières de fuseau :\n  %s",
 			strings.Join(castDateViolations, "\n  "))
+	}
+	if len(manualExprViolations) > 0 {
+		t.Errorf("expression SQL composée À LA MAIN autour de start_time_utc interdite "+
+			"(V7.3 item 1.3, règle CLAUDE.md n°8) — construire l'expression via "+
+			"analysis.SQLStartTimeCanonical(alias) (ou duckdb.StartTimeCanonicalSQL). "+
+			"Piège documenté : `COALESCE(start_time_utc, start_time) AT TIME ZONE 'UTC'` "+
+			"place le AT TIME ZONE HORS de la parenthèse — le fuseau de session est annulé "+
+			"et l'écran affiche des heures UTC. Le AT TIME ZONE va À L'INTÉRIEUR du COALESCE :\n  %s",
+			strings.Join(manualExprViolations, "\n  "))
+	}
+}
+
+// TestStartTimeGuardsAreDiscriminant prouve que les ratchets timezone MORDENT, et
+// en particulier que le nouveau attrape la forme EXACTE du bug 1.3 là où l'ancien
+// est aveugle. Un garde-rail non testé sur une régression connue n'est qu'un
+// commentaire exécutable.
+func TestStartTimeGuardsAreDiscriminant(t *testing.T) {
+	// Forme du bug 1.3 (heatmap Rythme des rencontres, heures UTC à l'écran).
+	bug13 := `EXTRACT(hour FROM (COALESCE(start_time_utc, start_time) AT TIME ZONE 'UTC'))`
+	// Forme canonique produite par le helper — doit passer partout.
+	canonical := `COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')`
+
+	// 1. Le ratchet historique est AVEUGLE au bug — c'est la raison d'être du nouveau.
+	if rawStartTimeRE.MatchString(bug13) {
+		t.Error("rawStartTimeRE matche le bug 1.3 : le nouveau ratchet ferait doublon, revoir")
+	}
+	// 2. Le nouveau ratchet l'attrape.
+	if !rawCoalesceOutsideTZRE.MatchString(bug13) {
+		t.Errorf("rawCoalesceOutsideTZRE n'attrape PAS le bug 1.3 (garde-rail inutile) : %q", bug13)
+	}
+	// 3. La forme canonique ne déclenche NI l'un NI l'autre (zéro faux positif).
+	if rawCoalesceOutsideTZRE.MatchString(canonical) {
+		t.Errorf("FAUX POSITIF : la forme canonique déclenche rawCoalesceOutsideTZRE : %q", canonical)
+	}
+	if !rawStartTimeRE.MatchString(canonical) {
+		t.Errorf("rawStartTimeRE devrait reconnaître la forme canonique (sert de dédouanement) : %q", canonical)
+	}
+	// 4. Une variante du même piège avec un fuseau non-UTC est aussi attrapée.
+	variant := `COALESCE(mr.start_time_utc, mr.start_time) AT TIME ZONE 'Europe/Paris'`
+	if !rawCoalesceOutsideTZRE.MatchString(variant) {
+		t.Errorf("variante non-UTC du piège NON détectée : %q", variant)
+	}
+	// 5. Une colonne simplement projetée/insérée n'est PAS une expression : pas de bruit.
+	for _, benign := range []string{
+		`SELECT mr.start_time_utc FROM match_registry mr`,
+		`INSERT INTO match_registry (match_id, start_time_utc) VALUES (?, ?)`,
+		`start_time_utc TIMESTAMPTZ`,
+	} {
+		if rawCoalesceOutsideTZRE.MatchString(benign) || rawManualStartTimeUTCExprRE.MatchString(benign) {
+			t.Errorf("FAUX POSITIF sur un usage colonne légitime : %q", benign)
+		}
 	}
 }

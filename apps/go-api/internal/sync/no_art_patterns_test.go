@@ -113,6 +113,14 @@ var tablesProtegees = []string{
 	// match_objective_stats_latest). Writer unique = persist.persistObjectiveStats
 	// (INSERT pur dans la transaction shared). Lecture via la vue _latest UNIQUEMENT.
 	"match_objective_stats",
+	// NB (2026-08-03) : `media_likes_history` et `media_match_associations_history` sont
+	// append-only elles aussi mais N'ONT PAS leur place ICI — même raison que
+	// `player_records_history` ci-dessus : elles co-résident dans
+	// internal/persist/shared_social_persister.go avec le fallback legacy ON CONFLICT de
+	// `player_records`, et ce scan est FILE-level → faux positif immédiat. Elles sont
+	// gardées STATEMENT-level par TestNoMutationOnMediaAppendOnlyTables
+	// (append_only_state_guard_test.go), qui couvre en plus le volet UPDATE et inclut
+	// internal/ops/ (où vivent leurs writers).
 }
 
 // allowlistArtPatterns : sites de prod où un pattern à risque reste

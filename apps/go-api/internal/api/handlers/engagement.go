@@ -338,7 +338,7 @@ func (h *EngagementHandler) handleRecomputeCoefficients(ctx context.Context, in 
 		case errors.Is(err, dblease.ErrDBLocked):
 			return nil, huma.ErrorWithHeaders(
 				humacore.NewError(http.StatusServiceUnavailable, "db_busy", "database is currently busy, please retry"),
-				http.Header{"Retry-After": []string{"5"}},
+				http.Header{headerRetryAfter: []string{"5"}},
 			)
 		default:
 			return nil, humacore.NewError(http.StatusInternalServerError, "engagement_error", err.Error())

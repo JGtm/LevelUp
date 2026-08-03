@@ -226,3 +226,151 @@ func TestNoMutationOnAppendOnlyStateTables(t *testing.T) {
 			len(violations), strings.Join(violations, "\n  - "))
 	}
 }
+
+// mediaAppendOnlyTables : les deux tables append-only du domaine MÉDIA
+// (`media_likes_history`, `media_match_associations_history` — id PK + written_at +
+// vues `_latest`). Elles sont VOLONTAIREMENT absentes de `tablesProtegees`
+// (no_art_patterns_test.go) : ce scan-là est FILE-level, et ces tables co-résident
+// dans `internal/persist/shared_social_persister.go` avec le fallback legacy
+// `ON CONFLICT` de `player_records` — les y ajouter produirait un faux positif
+// immédiat (même cas que `player_records_history`, déjà documenté là-bas).
+//
+// Le garde-rail ci-dessous comble ce trou en restant STATEMENT-level : chaque motif
+// est ancré sur le NOM EXACT de la table, donc un `ON CONFLICT` / `DELETE` visant une
+// AUTRE table du même fichier ne peut pas le déclencher.
+var mediaAppendOnlyTables = []string{
+	"media_likes_history",
+	"media_match_associations_history",
+}
+
+// allowlistMediaMutation : sites de prod où un DELETE/UPDATE sur une table média
+// append-only serait toléré. Format : "fichier — raison (date)". Toute entrée doit
+// prouver l'absence de déclencheur ART (le bug DuckDB #23046 FATAL-invalide le handle
+// partagé pour tout le process — cf. incident catalog_fetch_queue 2026-06-19).
+//
+// Vide au 2026-08-03 : aucune mutation tolérée. Les seuls DELETE existants vivent
+// dans `cmd/cleanup_media_index` et `cmd/purge_player_media` — outils one-shot
+// mono-process, hors serveur, exclus du périmètre comme partout ailleurs.
+var allowlistMediaMutation = map[string]string{}
+
+// reMediaDelete / reMediaUpdate : motifs STATEMENT-level pour une table donnée.
+// `\b` en fin de nom ne déborde pas sur un suffixe (`_latest`, `_v2` : `_` est un
+// caractère de mot, donc pas de frontière) → zéro faux positif de voisinage.
+func reMediaDelete(table string) *regexp.Regexp {
+	return regexp.MustCompile(`(?i)\bDELETE\s+FROM\s+` + regexp.QuoteMeta(table) + `\b`)
+}
+
+func reMediaUpdate(table string) *regexp.Regexp {
+	return regexp.MustCompile(`(?i)\bUPDATE\s+` + regexp.QuoteMeta(table) + `\b`)
+}
+
+// TestNoMutationOnMediaAppendOnlyTables — garde-rail DELETE/UPDATE dédié aux tables
+// média append-only. Il complète TestNoMutationOnAppendOnlyStateTables sur DEUX axes :
+//
+//  1. Le volet UPDATE : le test générique ci-dessus ne couvre que DELETE et
+//     INSERT…ON CONFLICT/REPLACE/IGNORE. Un `UPDATE media_likes_history SET is_active…`
+//     (la mutation « naturelle » qu'écrirait quelqu'un qui ignore le modèle event-log)
+//     n'était interdit NULLE PART.
+//  2. Le périmètre `internal/ops/` : le test générique l'exclut (outillage), or c'est
+//     précisément là que vivent les writers de ces deux tables (`ops/media_associate.go`
+//     INSERT dans media_match_associations_history, `ops/media_store.go` en crée le
+//     substrat). Exclure ops/ vidait le garde-rail de sa substance sur ce domaine.
+//     ops/ tourne IN-PROCESS (même raisonnement que l'inclusion d'ops/ dans
+//     no_art_patterns_test.go, E3 2026-07-03) → soumis au tripwire.
+//
+// Restent exclus : _test.go, /migration/ (rebuild one-shot sur la table physique),
+// /cmd/ et /scripts/ (outils autonomes mono-process).
+func TestNoMutationOnMediaAppendOnlyTables(t *testing.T) {
+	repoRoot := findRepoRoot(t)
+
+	var violations []string
+	for _, table := range mediaAppendOnlyTables {
+		reDelete := reMediaDelete(table)
+		reUpdate := reMediaUpdate(table)
+
+		err := filepath.Walk(repoRoot, func(path string, info os.FileInfo, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if info.IsDir() {
+				name := info.Name()
+				if name == "vendor" || name == ".git" || name == "node_modules" ||
+					name == "data" || name == "logs" || name == "dist" {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+				return nil
+			}
+			if strings.Contains(path, "/migration/") || strings.Contains(path, "\\migration\\") ||
+				strings.Contains(path, "/cmd/") || strings.Contains(path, "\\cmd\\") ||
+				strings.Contains(path, "/scripts/") || strings.Contains(path, "\\scripts\\") {
+				return nil
+			}
+			content, readErr := os.ReadFile(path)
+			if readErr != nil {
+				return nil
+			}
+			text := stripGoComments(string(content))
+			rel, _ := filepath.Rel(repoRoot, path)
+			rel = filepath.ToSlash(rel)
+			if _, allowed := allowlistMediaMutation[rel]; allowed {
+				return nil
+			}
+			if reDelete.MatchString(text) {
+				violations = append(violations, "DELETE FROM "+table+" dans "+rel)
+			}
+			if reUpdate.MatchString(text) {
+				violations = append(violations, "UPDATE "+table+" dans "+rel)
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("walk: %v", err)
+		}
+	}
+
+	if len(violations) > 0 {
+		t.Errorf("RÉGRESSION append-only MÉDIA : %d mutation(s) interdite(s) "+
+			"(append-only = INSERT pur + vue _latest ; un DELETE/UPDATE indexé déclenche "+
+			"le bug ART DuckDB #23046 qui FATAL-invalide le handle shared_social) :\n  - %s",
+			len(violations), strings.Join(violations, "\n  - "))
+	}
+}
+
+// TestMediaMutationDetection_Sanity prouve que le garde-rail ci-dessus MORD : un
+// garde-fou qui ne détecte jamais rien est inutile (même doctrine que
+// TestBareBulkUpdateDetection_Sanity). Vérifie les deux sens :
+//   - il attrape le DELETE et l'UPDATE sur la table exacte ;
+//   - il LAISSE PASSER l'INSERT pur, la lecture via la vue _latest, et une mutation
+//     visant une AUTRE table (preuve du caractère statement-level : pas de faux
+//     positif file-level, qui est la raison même de l'existence de ce test).
+func TestMediaMutationDetection_Sanity(t *testing.T) {
+	for _, table := range mediaAppendOnlyTables {
+		reDelete := reMediaDelete(table)
+		reUpdate := reMediaUpdate(table)
+
+		mustMatch := []string{
+			"q := `DELETE FROM " + table + " WHERE media_file_id = ?`",
+			"q := `UPDATE " + table + " SET is_active = FALSE WHERE media_file_id = ?`",
+		}
+		for _, src := range mustMatch {
+			if !reDelete.MatchString(src) && !reUpdate.MatchString(src) {
+				t.Errorf("table=%s : mutation NON détectée (garde-rail aveugle) : %q", table, src)
+			}
+		}
+
+		mustNotMatch := []string{
+			"q := `INSERT INTO " + table + " (media_file_id, is_active) VALUES (?, ?)`",
+			"q := `SELECT media_file_id FROM " + table + "_latest WHERE is_active`",
+			"q := `DELETE FROM media_files WHERE id = ?`",
+			"q := `UPDATE media_files SET liked = TRUE WHERE id = ?`",
+		}
+		for _, src := range mustNotMatch {
+			if reDelete.MatchString(src) || reUpdate.MatchString(src) {
+				t.Errorf("table=%s : FAUX POSITIF sur écriture légitime : %q", table, src)
+			}
+		}
+	}
+}
