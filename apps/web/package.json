@@ -27,7 +27,7 @@
     "@tanstack/react-query-devtools": "^5.101.4",
     "@tanstack/react-router": "^1.170.18",
     "@tanstack/react-table": "^8.21.3",
-    "echarts": "^5.6.0",
+    "echarts": "^6.1.0",
     "echarts-for-react": "^3.0.6",
     "hls.js": "^1.6.16",
     "intl-messageformat": "^11.2.12",

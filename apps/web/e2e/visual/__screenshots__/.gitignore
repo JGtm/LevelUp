@@ -1,0 +1,5 @@
+# Captures des PAGES APPLICATIVES : elles dépendent des données locales et peuvent
+# contenir des gamertags réels — elles ne sont pas versionnées. Ce sont des
+# références AVANT/APRÈS locales (bump de dépendance, refonte d'un chart), pas un
+# garde-rail partagé. Voir ../README.md.
+app/
