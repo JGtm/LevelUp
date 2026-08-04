@@ -1,6 +1,6 @@
-package migrations
+package weapons
 
-// weapon_name_labels.go — SOURCE UNIQUE des noms d'armes affiches (V72-06).
+// name_labels.go — SOURCE UNIQUE des noms d'armes affiches (V72-06).
 //
 // Le nom d'affichage d'une arme est desormais keye par weapon_key (identifiant
 // canonique stable), lu depuis config/titles/{slug}/mappings/weapon_names.toml et
@@ -13,7 +13,7 @@ package migrations
 // "Frag Grenade" cote H5. Ce reconcile unifie tout par weapon_key.
 //
 // Table CREE ICI (pas via une migration versionnee) : c'est un cache derive d'un
-// fichier versionne, reconcilie a CHAQUE boot (meme motif que ReconcileWeaponRegistry
+// fichier versionne, reconcilie a CHAQUE boot (meme motif que ReconcileRegistry
 // — le registre saute tout step deja « done », donc un ajout au fichier n'atteindrait
 // jamais une DB prod migree). Referentiel STATIQUE, PK simple, zero writer concurrent,
 // hors surface ART #23046. INSERT OR REPLACE pour que les corrections du fichier se
@@ -43,13 +43,13 @@ func ensureWeaponNameLabelsTable(db *sql.DB) error {
 	`)
 }
 
-// ReconcileWeaponNameLabels seede weapon_name_labels pour `titleSlug` depuis le
+// ReconcileNameLabels seede weapon_name_labels pour `titleSlug` depuis le
 // fichier weapon_names.toml a `tomlPath`. Idempotent (INSERT OR REPLACE). La table est
 // TOUJOURS creee (meme si le fichier manque) pour que le resolver puisse la joindre.
 // Fichier absent/illisible → table laissee en l'etat (log WARN, best-effort — le
 // resolver retombe sur weapon_labels pour le nom, sans casser l'UI). Retourne le
 // nombre de lignes ecrites.
-func ReconcileWeaponNameLabels(db *sql.DB, titleSlug, tomlPath string) (int, error) {
+func ReconcileNameLabels(db *sql.DB, titleSlug, tomlPath string) (int, error) {
 	if db == nil {
 		return 0, nil
 	}

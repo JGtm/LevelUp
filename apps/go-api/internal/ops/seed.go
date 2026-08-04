@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"os"
 
+	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/migration"
 
 	_ "github.com/duckdb/duckdb-go/v2"
@@ -86,20 +87,22 @@ const (
 	citationNormSkullGrabs           = "skull_grabs"
 )
 
-// Catégories citation_mappings.category. Ces libellés FR sont la valeur SOURCE
-// stockée en base ; depuis V7.3 lot 2 (item 1.4) ils ne sont plus servis tels
-// quels : canonical.NormalizeCommendationCategory les convertit en clés stables
-// (« Mode de jeu » -> "game_mode") à la lecture, et la traduction FR/EN vit
-// dans le manifeste web citations.toml. Ajouter une catégorie ici impose donc
-// d'ajouter son mapping dans internal/games/canonical/commendation_category.go
-// (sinon elle est servie comme "other").
+// Catégories citation_mappings.category — CLÉS STABLES (snake_case), jamais des
+// libellés humains. Le seed écrivait des libellés FR (« Mode de jeu ») jusqu'au
+// 2026-08-04 : la valeur stockée était alors de la donnée localisée, normalisée à
+// chaque lecture. La colonne porte désormais directement la clé canonique
+// (migration de données `normalize_citation_mappings_category_keys`), la
+// traduction FR/EN vivant dans le manifeste web citations.toml.
+//
+// Une seule source pour ces clés : internal/games/canonical — ajouter une
+// catégorie impose donc de l'ajouter là-bas (sinon elle est servie comme "other").
 const (
-	citationCatModeJeu          = "Mode de jeu"
-	citationCatVehicule         = "Véhicule"
-	citationCatArme             = "Arme"
-	citationCatMultijoueur      = "Multijoueur"
-	citationCatSpartanCompanies = "Spartan Companies"
-	citationCatEnnemi           = "Ennemi"
+	citationCatModeJeu          = canonical.CommendationCategoryGameMode
+	citationCatVehicule         = canonical.CommendationCategoryVehicle
+	citationCatArme             = canonical.CommendationCategoryWeapon
+	citationCatMultijoueur      = canonical.CommendationCategoryMultiplayer
+	citationCatSpartanCompanies = canonical.CommendationCategorySpartanCompanies
+	citationCatEnnemi           = canonical.CommendationCategoryEnemy
 )
 
 // Subcategory libellés FR récurrents pour citation_mappings.subcategory.

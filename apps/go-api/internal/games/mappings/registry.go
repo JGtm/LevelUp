@@ -3,6 +3,7 @@ package mappings
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -59,7 +60,21 @@ func (r *Registry) LoadFromConfigDir(repoRoot string, slugs []string, logger *sl
 		fieldsPath := filepath.Join(mappingsDir, "fields.toml")
 		fset, err := LoadFieldsFromFile(fieldsPath)
 		if err != nil {
-			logger.Error("mappings_validation_failed", "title_slug", slug, "path", fieldsPath, "err", err)
+			// Manifeste ABSENT ≠ manifeste INVALIDE, et seul le second est une
+			// anomalie. L'absence est une dégradation ATTENDUE dans une racine
+			// ISOLÉE sans config/titles/ : mode démo (cmd/openapi-gen, tests de
+			// contrat, fixtures). Journaliser ce cas en ERROR faisait sortir un
+			// `mappings_validation_failed` à chaque `make openapi-gen` alors que la
+			// validation des mappings n'a aucun sens dans ce contexte (le contrat
+			// se dérive des routes, pas des TOML). L'erreur reste retournée au
+			// caller : c'est lui qui décide (le validateur boot PMT-12 fait
+			// fail-fast sur un titre ACTIF mal configuré).
+			if errors.Is(err, fs.ErrNotExist) {
+				logger.Info("mappings_absent", "title_slug", slug, "path", fieldsPath,
+					"detail", "config/titles/<slug>/mappings/fields.toml introuvable — titre non configuré dans cette racine")
+			} else {
+				logger.Error("mappings_validation_failed", "title_slug", slug, "path", fieldsPath, "err", err)
+			}
 			errs = append(errs, fmt.Errorf("load fields %s: %w", slug, err))
 			continue
 		}

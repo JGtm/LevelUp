@@ -64,14 +64,16 @@ const PLAYER_A = {
 const COMPARE_RESPONSE = {
   player_a: PLAYER_A,
   player_b: { ...PLAYER_A, xuid: '0000000000000002', gamertag: TARGET, kills_per_game: 16.81, kda: 1.82, matches: 21, favorite_weapon: null },
+  // Pas de label_fr : le contrat compare ne transporte plus de libellé (2026-08-04),
+  // le front résout via le registre de champs + le dictionnaire de la feature.
   metrics: [
-    { metric: 'win_rate',       label_fr: 'Taux de victoire', value_a: 0.484, value_b: 0.476, delta: -0.008, winner: 'a' },
-    { metric: 'kda',            label_fr: 'KDA',              value_a: 0.93,  value_b: 1.82,  delta: 0.89,  winner: 'b' },
-    { metric: 'kdr',            label_fr: 'K/D',              value_a: 0.83,  value_b: 1.66,  delta: 0.83,  winner: 'b' },
-    { metric: 'kills_per_game', label_fr: 'Frags/partie',     value_a: 9.54,  value_b: 16.81, delta: 7.27,  winner: 'b' },
-    { metric: 'deaths_per_game',label_fr: 'Morts/partie',     value_a: 11.51, value_b: 10.14, delta: -1.37, winner: 'b' },
-    { metric: 'damage_per_game',label_fr: 'Dégâts/partie',    value_a: 2780,  value_b: 4806,  delta: 2026,  winner: 'b' },
-    { metric: 'matches',        label_fr: 'Parties jouées',   value_a: 769,   value_b: 21,    delta: -748,  winner: 'a' },
+    { metric: 'win_rate',       value_a: 0.484, value_b: 0.476, delta: -0.008, winner: 'a' },
+    { metric: 'kda',            value_a: 0.93,  value_b: 1.82,  delta: 0.89,  winner: 'b' },
+    { metric: 'kdr',            value_a: 0.83,  value_b: 1.66,  delta: 0.83,  winner: 'b' },
+    { metric: 'kills_per_game', value_a: 9.54,  value_b: 16.81, delta: 7.27,  winner: 'b' },
+    { metric: 'deaths_per_game',value_a: 11.51, value_b: 10.14, delta: -1.37, winner: 'b' },
+    { metric: 'damage_per_game',value_a: 2780,  value_b: 4806,  delta: 2026,  winner: 'b' },
+    { metric: 'matches',        value_a: 769,   value_b: 21,    delta: -748,  winner: 'a' },
   ],
   title_slug: 'halo_infinite',
   privacy_warning: null,

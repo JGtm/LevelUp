@@ -9662,8 +9662,6 @@ components:
           type: string
         display_b:
           type: string
-        label_fr:
-          type: string
         less_is_better:
           type: boolean
         metric:
@@ -9685,7 +9683,6 @@ components:
           type: string
       required:
         - metric
-        - label_fr
         - value_a
         - value_b
         - value_a_available

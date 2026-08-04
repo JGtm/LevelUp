@@ -458,9 +458,12 @@ func buildMetrics(a, b domain.NormalizedPlayerStats, effectiveHpToKill float64) 
 	rendementA, rendementB := cyA.OffensiveConversion, cyB.OffensiveConversion
 	resistanceA, resistanceB := cyA.DefensiveResistance, cyB.DefensiveResistance
 
+	// Aucun libellé ici : la clé `key` est le seul contrat. Le libellé affiché est
+	// résolu côté front (registre canonique fields.toml via /field-mappings, puis
+	// dictionnaire local de la feature compare) — règle title-agnostic « jamais de
+	// label FR/EN en dur côté Go ».
 	type metricDef struct {
 		key          string
-		label        string
 		va           float64
 		vb           float64
 		lessIsBetter bool
@@ -469,27 +472,27 @@ func buildMetrics(a, b domain.NormalizedPlayerStats, effectiveHpToKill float64) 
 	}
 	defs := []metricDef{
 		// win_rate et accuracy envoyés en fraction 0..1 — le frontend multiplie par 100 à l'affichage.
-		{"win_rate", "Taux de victoire", a.WinRate, b.WinRate, false, "", ""},
-		{"kda", "KDA", a.KDA, b.KDA, false, "", ""},
-		{"kdr", "K/D", a.KDR, b.KDR, false, "", ""},
-		{"kills_per_game", "Frags / partie", a.KillsPerGame, b.KillsPerGame, false, "", ""},
-		{"deaths_per_game", "Morts / partie", a.DeathsPerGame, b.DeathsPerGame, true, "", ""},
-		{"assists_per_game", "Assistances / partie", a.AssistsPerGame, b.AssistsPerGame, false, "", ""},
-		{compareMetricAccuracy, "Précision", a.Accuracy, b.Accuracy, false, "", ""},
-		{"damage_per_game", "Dégâts / partie", a.DamagePerGame, b.DamagePerGame, false, "", ""},
-		{"rendement", "Rendement", rendementA, rendementB, false, "", ""},
-		{"damage_taken_per_game", "Dégâts subis / partie", a.DamageTakenPerGame, b.DamageTakenPerGame, true, "", ""},
-		{"resistance", "Résistance", resistanceA, resistanceB, false, "", ""},
-		{compareMetricPerfectKillsPerGame, "Tirs parfaits / partie", a.PerfectKillsPerGame, b.PerfectKillsPerGame, false, "", ""},
-		{compareMetricMaxKillingSpree, "Folie meurtrière max", float64(a.MaxKillingSpree), float64(b.MaxKillingSpree), false, "", ""},
-		{compareMetricAvgLifeSecs, "Survie moy. / partie", a.AvgLifeSecs, b.AvgLifeSecs, false, "", ""},
-		{compareMetricHeadshotKillsPerGame, "Headshots / partie", a.HeadshotKillsPerGame, b.HeadshotKillsPerGame, false, "", ""},
-		{"matches", "Parties", float64(a.Matches), float64(b.Matches), false, "", ""},
-		{compareMetricCareerRank, "Rang Carrière", float64(a.CareerRank), float64(b.CareerRank), false, a.CareerRankLabel, b.CareerRankLabel},
-		{compareMetricCSR, "CSR", a.HighestCSR, b.HighestCSR, false, a.HighestCSRLabel, b.HighestCSRLabel},
-		{compareMetricCSRAllTime, "CSR record", a.HighestCSRAllTime, b.HighestCSRAllTime, false, a.HighestCSRAllTimeLabel, b.HighestCSRAllTimeLabel},
-		{compareMetricPerfATH, "Perf. record", a.PerfATH, b.PerfATH, false, "", ""},
-		{compareMetricLusrATH, "LUSR record", a.LusrATH, b.LusrATH, false, "", ""},
+		{"win_rate", a.WinRate, b.WinRate, false, "", ""},
+		{"kda", a.KDA, b.KDA, false, "", ""},
+		{"kdr", a.KDR, b.KDR, false, "", ""},
+		{"kills_per_game", a.KillsPerGame, b.KillsPerGame, false, "", ""},
+		{"deaths_per_game", a.DeathsPerGame, b.DeathsPerGame, true, "", ""},
+		{"assists_per_game", a.AssistsPerGame, b.AssistsPerGame, false, "", ""},
+		{compareMetricAccuracy, a.Accuracy, b.Accuracy, false, "", ""},
+		{"damage_per_game", a.DamagePerGame, b.DamagePerGame, false, "", ""},
+		{"rendement", rendementA, rendementB, false, "", ""},
+		{"damage_taken_per_game", a.DamageTakenPerGame, b.DamageTakenPerGame, true, "", ""},
+		{"resistance", resistanceA, resistanceB, false, "", ""},
+		{compareMetricPerfectKillsPerGame, a.PerfectKillsPerGame, b.PerfectKillsPerGame, false, "", ""},
+		{compareMetricMaxKillingSpree, float64(a.MaxKillingSpree), float64(b.MaxKillingSpree), false, "", ""},
+		{compareMetricAvgLifeSecs, a.AvgLifeSecs, b.AvgLifeSecs, false, "", ""},
+		{compareMetricHeadshotKillsPerGame, a.HeadshotKillsPerGame, b.HeadshotKillsPerGame, false, "", ""},
+		{"matches", float64(a.Matches), float64(b.Matches), false, "", ""},
+		{compareMetricCareerRank, float64(a.CareerRank), float64(b.CareerRank), false, a.CareerRankLabel, b.CareerRankLabel},
+		{compareMetricCSR, a.HighestCSR, b.HighestCSR, false, a.HighestCSRLabel, b.HighestCSRLabel},
+		{compareMetricCSRAllTime, a.HighestCSRAllTime, b.HighestCSRAllTime, false, a.HighestCSRAllTimeLabel, b.HighestCSRAllTimeLabel},
+		{compareMetricPerfATH, a.PerfATH, b.PerfATH, false, "", ""},
+		{compareMetricLusrATH, a.LusrATH, b.LusrATH, false, "", ""},
 	}
 
 	// SampleSizeB non nul uniquement si B est un joueur local croisé.
@@ -527,7 +530,6 @@ func buildMetrics(a, b domain.NormalizedPlayerStats, effectiveHpToKill float64) 
 		}
 		row := domain.CompareMetricRow{
 			Metric:          d.key,
-			LabelFR:         d.label,
 			ValueA:          d.va,
 			ValueB:          d.vb,
 			ValueAAvailable: aAvail,

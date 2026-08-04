@@ -148,7 +148,7 @@ type synthMatch struct {
 }
 
 // Armes favorites synthétiques : weapon_id < 2^63 (passables en paramètre SQL) et
-// présents dans le seed weapon_labels (weapon_labels.go). BR75 + MA40 AR.
+// présents dans le seed weapon_labels (games/weapons/labels.go). BR75 + MA40 AR.
 const (
 	weaponBR75   uint64 = 0x2b1824d542c9679f
 	weaponMA40   uint64 = 0x48c19d2d42c9679f

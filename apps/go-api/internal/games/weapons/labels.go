@@ -1,8 +1,14 @@
-package migrations
+package weapons
 
-// weapon_labels.go — step add_weapon_labels (named-func), déplacé depuis
-// internal/migration/steps_metadata.go (Phase 1.5 b6, voie B). Seed statique pur
-// (INSERT OR IGNORE, aucune lecture DB, aucune API). Le nom reste dans canonicalOrder.
+// labels.go — table weapon_labels (weapon_id -> nom EN/FR) : DDL partagé par tous
+// les titres + seed des IDs Halo Infinite. Le step add_weapon_labels
+// (halo_infinite/migrations) y délègue, comme h5_add_weapon_labels pour le DDL
+// seul (les IDs d'armes Halo 5 diffèrent : sa table reste VIDE, peuplée par le
+// fetcher halo5api.svc/weapons).
+//
+// Origine : internal/migration/steps_metadata.go → halo_infinite/migrations
+// (Phase 1.5 b6) → ici (2026-08-04, cf. registry.go). Seed statique pur
+// (INSERT OR IGNORE, aucune lecture DB, aucune API).
 
 import (
 	"database/sql"
@@ -14,22 +20,26 @@ import (
 // labelEnergySwordFR — label FR récurrent (épée à énergie + variantes).
 const labelEnergySwordFR = "Épée à énergie"
 
-// ApplyWeaponLabels expose applyWeaponLabels pour les outils CLI de reseed
-// (cf. cmd/seed-weapon-labels). Idempotent via INSERT OR IGNORE — peut être
-// appelé même si schema_migrations marque la migration comme done.
-func ApplyWeaponLabels(db *sql.DB) error {
-	return applyWeaponLabels(db)
-}
-
-// applyWeaponLabels crée et peuple weapon_labels avec tous les IDs connus.
-func applyWeaponLabels(db *sql.DB) error {
-	if _, err := db.ExecContext(migration.BootCtx(), `
+// EnsureLabelsTable crée weapon_labels (idempotent), SANS aucune donnée. Source
+// unique du DDL : un titre dont les IDs d'armes diffèrent (Halo 5) crée sa table
+// via cette fonction plutôt que de recopier le CREATE TABLE.
+func EnsureLabelsTable(db *sql.DB) error {
+	_, err := db.ExecContext(migration.BootCtx(), `
 		CREATE TABLE IF NOT EXISTS weapon_labels (
 			weapon_id UBIGINT PRIMARY KEY,
 			name_en   VARCHAR NOT NULL,
 			name_fr   VARCHAR NOT NULL
 		)
-	`); err != nil {
+	`)
+	return err
+}
+
+// ApplyLabels crée weapon_labels et la peuple avec les IDs Halo Infinite connus.
+// Idempotent (CREATE TABLE IF NOT EXISTS + INSERT OR IGNORE) : sert à la fois de
+// step de migration (add_weapon_labels) et de reseed CLI (cmd/seed-weapon-labels),
+// même quand schema_migrations marque la migration comme done.
+func ApplyLabels(db *sql.DB) error {
+	if err := EnsureLabelsTable(db); err != nil {
 		return err
 	}
 

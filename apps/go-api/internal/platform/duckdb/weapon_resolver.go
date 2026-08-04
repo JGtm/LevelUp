@@ -8,7 +8,7 @@
 // POLITIQUE DE NOM = SOURCE UNIQUE keyée par weapon_key (V72-06). Le nom d'affichage
 // vient de la table `weapon_name_labels` (title_slug, weapon_key, name_en, name_fr),
 // seedée depuis config/titles/{slug}/mappings/weapon_names.toml
-// (halo_infinite/migrations.ReconcileWeaponNameLabels). Résolution :
+// (games/weapons.ReconcileNameLabels). Résolution :
 // weapon_id → weapon_ids → weapon_key → {en, fr}. Toutes les variantes brutes d'une
 // même arme (« FRAG GRENADE » / « Frag Grenade », skins…) retombent sur UNE seule
 // traduction → tue le mismatch keyé par nom EN brut de l'ancien modèle.
@@ -69,7 +69,7 @@ func resolveWeaponMeta(ctx context.Context, meta *DB, titleSlug string, weaponID
 	// titleSlug = identifiant de titre interne (jamais user input) → littéral sûr.
 	// label = SOURCE UNIQUE keyée par weapon_key (weapon_name_labels via weapon_ids)
 	// quand la table existe (toujours vrai en prod, créée au boot par
-	// ReconcileWeaponNameLabels) ; weapon_labels seul en repli pour le nom (ids sans
+	// ReconcileNameLabels) ; weapon_labels seul en repli pour le nom (ids sans
 	// weapon_key, ou metadata non seedée en test). Le registre `weapons` ne fournit
 	// PLUS de nom (dimensions seules). name_en reste weapon_labels (URL image). label ""
 	// → id inconnu de toutes les sources (caller décide).
@@ -133,7 +133,7 @@ func weaponRegistryAvailable(ctx context.Context, meta *DB) bool {
 
 // weaponNameLabelsAvailable vérifie (sans log) la présence de weapon_name_labels, la
 // SOURCE UNIQUE des noms keyée par weapon_key (V72-06). Toujours vraie en prod (créée
-// au boot par ReconcileWeaponNameLabels) ; absente seulement sur une metadata non
+// au boot par ReconcileNameLabels) ; absente seulement sur une metadata non
 // seedée (test) → le resolver sert alors le nom depuis weapon_labels, dims préservées.
 func weaponNameLabelsAvailable(ctx context.Context, meta *DB) bool {
 	var n int
