@@ -1,174 +1,224 @@
-// Package service — media_service_atomic_integration_test.go : tests atomicité
-// des opérations media avec DuckDB :memory: réelle.
-//
-// ─── DÉSACTIVÉ TEMPORAIREMENT (2026-05-15) ──────────────────────────────────
-//
-// Build tag élargi à `integration && atomic_legacy` pour exclure ce fichier
-// de la suite `-tags=integration` standard tant qu'il n'a pas été migré vers
-// la nouvelle API LeasedWriter (refacto `7a951aed refactor(db-concurrency):
-// commit 1 — LeasedWriter type + interfaces port`).
-//
-// Symptômes pré-migration :
-//   - `dblease.NewLeasedWriter` n'existe plus → remplacé par `AcquireWriter`
-//   - Le champ public `LeasedWriter.Executor` est devenu privé
-//   - `duckdb.NewMediaRepo(playerDB)` attend un `*PlayerDB`, plus un `*DB`
-//
-// Pour réactiver : retirer le tag `atomic_legacy` après refacto vers
-// AcquireWriter + construction d'un PlayerDB minimal pour MediaRepo.
-//
-// Build tag d'origine : `integration` — lancer avec :
-//   go test -tags=integration,atomic_legacy ./internal/service/ -run TestMediaServiceAtomic
-//
-//go:build integration && atomic_legacy
+//go:build integration
 
+// media_service_atomic_integration_test.go — tests d'intégration du CHEMIN
+// NOMINAL du like média : la transaction atomique sous LeasedWriter, sur une
+// vraie base DuckDB.
+//
+// ─── RÉACTIVÉ LE 2026-08-04 ─────────────────────────────────────────────────
+//
+// Ce fichier a passé près de trois mois derrière un tag `atomic_legacy` posé le
+// 2026-05-15 « le temps de le migrer vers la nouvelle API LeasedWriter ». Entre
+// les deux, le chemin qu'il couvre — celui que la PRODUCTION emprunte, puisque
+// wire/registry_media.go câble toujours WithMediaWriterAcquirer — n'avait plus
+// aucun test actif, et trois régressions du like s'y sont succédé. Un test
+// désactivé « temporairement » ne protège de rien : il donne seulement
+// l'impression que la couverture existe.
+//
+// La migration due : dblease.NewLeasedWriter → PlayerDB.AcquireSharedSocialWriter*,
+// LeasedWriter.Executor devenu privé, MediaRepo qui prend un *PlayerDB, et
+// SetMediaLike qui retourne (*MediaLikeResponse, error) et non (bool, error).
+//
+// Les assertions ont aussi été portées à la sémantique PAR VIEWER : le like
+// n'écrit plus de booléen global sur media_files, il ajoute un event par liker
+// dans media_likes_history (lu via media_likes_latest, règle ART n°2).
+//
+// Lancer : go test -tags=integration ./internal/service/ -run TestMediaServiceAtomic
 package service
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"testing"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
 )
 
-func openIntegrationMediaDB(t *testing.T) *duckdb.DB {
+// atomicLikeFixture monte le montage de PRODUCTION : shared_social réelle,
+// MediaRepo réel, acquéreur de writer réel. Retourne aussi le PlayerDB pour que
+// les tests puissent vérifier l'état du lease après coup.
+func atomicLikeFixture(t *testing.T) (*duckdb.DB, *duckdb.PlayerDB) {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "media.duckdb")
-	db, err := duckdb.OpenReadWrite(path)
-	if err != nil {
-		t.Fatalf("OpenReadWrite: %v", err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-	_ = migration.All()
-	if err := migration.RunForDB(db.SQLDb(), migration.TargetPlayer); err != nil {
-		t.Fatalf("RunForDB(TargetPlayer): %v", err)
-	}
-	return db
+	db, _ := socialDBForLikeTest(t)
+	return db, &duckdb.PlayerDB{SharedSocial: db, Gamertag: "JGtm"}
 }
 
-// TestMediaService_SetMediaLike_Atomic_Success — cas happy path : la transaction
-// atomique succède et les changements sont persistés.
-func TestMediaService_SetMediaLike_Atomic_Success(t *testing.T) {
-	playerDB := openIntegrationMediaDB(t)
-	ctx := context.Background()
-
-	// Créer un repo réel depuis le DuckDB d'intégration
-	repo := duckdb.NewMediaRepo(playerDB)
-
-	// Créer un acquéreur qui retourne un LeasedWriter valide avec le DuckDB
-	acquirer := func() (*dblease.LeasedWriter, error) {
-		return dblease.NewLeasedWriter(playerDB.SQLDb(), "test")
+func acquirerFor(pdb *duckdb.PlayerDB) func() (*dblease.LeasedWriter, error) {
+	return func() (*dblease.LeasedWriter, error) {
+		return pdb.AcquireSharedSocialWriterTimeout(dblease.SharedLeaseTimeout)
 	}
+}
 
-	// Créer le service avec atomic support
-	svc := NewMediaService(repo, "", WithMediaWriterAcquirer(acquirer))
-
-	// Effectuer un like via SetMediaLike — doit utiliser le chemin atomique
-	filePath := "/test-media.mp4"
-	req := domain.MediaLikeRequest{
-		FilePath:  filePath,
-		LikerSlug: "test-player",
-		Liked:     true,
+// countLikeEvents compte les events de like ACTIFS d'un liker sur un média, vus
+// par la vue append-only (jamais la table brute).
+func countLikeEvents(t *testing.T, db *duckdb.DB, mediaPath, likerSlug string) int {
+	t.Helper()
+	var n int
+	if err := db.SQLDb().QueryRow(
+		`SELECT COUNT(*) FROM media_likes_latest
+		 WHERE media_path = ? AND liker_slug = ? AND is_liked = TRUE`,
+		mediaPath, likerSlug,
+	).Scan(&n); err != nil {
+		t.Fatalf("count media_likes_latest: %v", err)
 	}
-	result, err := svc.SetMediaLike(ctx, req)
+	return n
+}
+
+// countAllEvents compte TOUS les events écrits (table brute) — sert uniquement à
+// prouver qu'AUCUNE ligne n'a été ajoutée dans les cas d'échec. C'est la seule
+// raison légitime de lire la table brute : on y vérifie une absence.
+func countAllEvents(t *testing.T, db *duckdb.DB) int {
+	t.Helper()
+	var n int
+	if err := db.SQLDb().QueryRow(`SELECT COUNT(*) FROM media_likes_history`).Scan(&n); err != nil {
+		t.Fatalf("count media_likes_history: %v", err)
+	}
+	return n
+}
+
+// TestMediaServiceAtomic_Success : happy path du chemin de prod. Le like est
+// commité et n'appartient QU'À son liker.
+func TestMediaServiceAtomic_Success(t *testing.T) {
+	db, pdb := atomicLikeFixture(t)
+	svc := NewMediaService(duckdb.NewMediaRepo(pdb), "", WithMediaWriterAcquirer(acquirerFor(pdb)))
+
+	resp, err := svc.SetMediaLike(context.Background(), domain.MediaLikeRequest{
+		FilePath:      "JGtm/clip.mp4",
+		LikerSlug:     "Chocoboflor",
+		LikerGamertag: "Chocoboflor",
+		Liked:         true,
+	})
 	if err != nil {
 		t.Fatalf("SetMediaLike: %v", err)
 	}
-	if !result {
-		t.Error("expected result=true on successful like")
+	if !resp.Liked || resp.TotalLikers != 1 {
+		t.Fatalf("réponse = %+v, want Liked=true TotalLikers=1", resp)
 	}
-
-	// Vérifier que le changement est persisté via le repo
-	// (indirectement : si un SELECT retourne le nouveau state, l'atomicité a fonctionné)
-	t.Logf("atomic like succeeded, result=%v", result)
+	if got := countLikeEvents(t, db, "JGtm/clip.mp4", "Chocoboflor"); got != 1 {
+		t.Errorf("events de like pour le liker = %d, want 1", got)
+	}
+	// Le like ne déborde pas sur un autre joueur : c'est tout l'objet du
+	// passage au par-viewer.
+	if got := countLikeEvents(t, db, "JGtm/clip.mp4", "JGtm"); got != 0 {
+		t.Errorf("le like de Chocoboflor a produit %d event(s) au nom de JGtm, want 0", got)
+	}
 }
 
-// TestMediaService_SetMediaLike_Atomic_Rollback — cas d'erreur : si la transaction
-// échoue au milieu, tous les changements sont rollback (cohérence ACID garantie par DuckDB).
-func TestMediaService_SetMediaLike_Atomic_Rollback(t *testing.T) {
-	playerDB := openIntegrationMediaDB(t)
-	ctx := context.Background()
+// TestMediaServiceAtomic_UnknownMedia_WritesNothing : un like sur un file_path
+// inconnu (ou supprimé) est un 404 et ne laisse AUCUNE trace.
+//
+// L'enjeu est plus fort qu'un simple code de retour : media_likes_history est
+// append-only. Un event écrit par erreur ne pourrait plus jamais être retiré —
+// il resterait à vie dans les compteurs sociaux d'un média fantôme.
+func TestMediaServiceAtomic_UnknownMedia_WritesNothing(t *testing.T) {
+	db, pdb := atomicLikeFixture(t)
+	svc := NewMediaService(duckdb.NewMediaRepo(pdb), "", WithMediaWriterAcquirer(acquirerFor(pdb)))
 
-	// Mock un repo qui échoue pendant l'opération atomique
-	repo := &mockAtomicMediaRepo{
-		atomicErr: fmt.Errorf("simulated mid-transaction error"),
-	}
-
-	// Acquéreur qui retourne un LeasedWriter valide
-	acquirer := func() (*dblease.LeasedWriter, error) {
-		return dblease.NewLeasedWriter(playerDB.SQLDb(), "test")
-	}
-
-	svc := NewMediaService(repo, "", WithMediaWriterAcquirer(acquirer))
-
-	// Tenter un like qui va échouer
-	req := domain.MediaLikeRequest{
-		FilePath:  "/test.mp4",
-		LikerSlug: "test-player",
+	_, err := svc.SetMediaLike(context.Background(), domain.MediaLikeRequest{
+		FilePath:  "JGtm/nexiste-pas.mp4",
+		LikerSlug: "Chocoboflor",
 		Liked:     true,
-	}
-	result, err := svc.SetMediaLike(ctx, req)
+	})
 	if err == nil {
-		t.Fatal("expected error from failed atomic operation")
+		t.Fatal("attendu une erreur not_found sur un file_path inconnu")
 	}
-	if result {
-		t.Error("result should be false on failed operation")
+	var apiErr *domain.APIError
+	if !errors.As(err, &apiErr) || apiErr.Code != "not_found" {
+		t.Errorf("erreur = %v, want domain.APIError{Code: not_found}", err)
 	}
-	if !errors.Is(err, fmt.Errorf("simulated mid-transaction error")) &&
-		err.Error() != "simulated mid-transaction error" {
-		t.Logf("got expected error: %v", err)
+	if got := countAllEvents(t, db); got != 0 {
+		t.Errorf("%d event(s) écrit(s) pour un média inconnu, want 0 (table append-only : irrattrapable)", got)
 	}
 }
 
-// TestMediaService_SetMediaLike_Atomic_PanicMidTx — cas critique : si une panique
-// survient à mi-transaction, le DuckDB rollback et le writer est libéré (pas de deadlock).
-// Ce test utilise un mock qui simule la panique.
-func TestMediaService_SetMediaLike_Atomic_PanicMidTx(t *testing.T) {
-	playerDB := openIntegrationMediaDB(t)
-	ctx := context.Background()
+// TestMediaServiceAtomic_RepoError_RollsBack : une erreur au milieu de la
+// transaction remonte au caller, ne commite rien, et ne fuit pas le writer.
+func TestMediaServiceAtomic_RepoError_RollsBack(t *testing.T) {
+	db, pdb := atomicLikeFixture(t)
+	sentinel := errors.New("échec simulé en cours de transaction")
+	svc := NewMediaService(&mockAtomicMediaRepo{atomicErr: sentinel}, "",
+		WithMediaWriterAcquirer(acquirerFor(pdb)))
 
-	// Mock un repo qui panique during atomic
-	repo := &panicAtomicMediaRepo{}
-
-	// Acquéreur valide
-	acquirer := func() (*dblease.LeasedWriter, error) {
-		return dblease.NewLeasedWriter(playerDB.SQLDb(), "test")
+	_, err := svc.SetMediaLike(context.Background(), domain.MediaLikeRequest{
+		FilePath:  "JGtm/clip.mp4",
+		LikerSlug: "Chocoboflor",
+		Liked:     true,
+	})
+	if !errors.Is(err, sentinel) {
+		t.Fatalf("erreur = %v, want %v", err, sentinel)
 	}
+	if got := countAllEvents(t, db); got != 0 {
+		t.Errorf("%d event(s) survivant(s) au rollback, want 0", got)
+	}
+	assertWriterAvailable(t, pdb, "après rollback")
+}
 
-	svc := NewMediaService(repo, "", WithMediaWriterAcquirer(acquirer))
+// TestMediaServiceAtomic_PanicMidTx_ReleasesWriter : même une panique à
+// mi-transaction ne doit pas emporter le writer avec elle.
+//
+// Sans libération, shared_social resterait verrouillée jusqu'au redémarrage :
+// tout like, tout favori et toute écriture du sync suivante partiraient en 503.
+// Le service ne récupère PAS la panique (elle doit remonter, c'est un bug) —
+// il garantit seulement, via defer, que le lease est rendu au passage.
+func TestMediaServiceAtomic_PanicMidTx_ReleasesWriter(t *testing.T) {
+	_, pdb := atomicLikeFixture(t)
+	svc := NewMediaService(&panicAtomicMediaRepo{}, "", WithMediaWriterAcquirer(acquirerFor(pdb)))
 
-	// Tenter un like qui va paniquer → le service doit capturer/gérer
-	// (en Go, les paniques n'échappent pas du contexte d'exécution si bien gérées)
-	defer func() {
-		if r := recover(); r != nil {
-			t.Logf("recovered panic (expected): %v", r)
-		}
+	func() {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("la panique doit remonter au caller (ne pas être avalée par le service)")
+			}
+		}()
+		_, _ = svc.SetMediaLike(context.Background(), domain.MediaLikeRequest{
+			FilePath:  "JGtm/clip.mp4",
+			LikerSlug: "Chocoboflor",
+			Liked:     true,
+		})
 	}()
 
-	req := domain.MediaLikeRequest{
-		FilePath:  "/test.mp4",
-		LikerSlug: "test-player",
-		Liked:     true,
-	}
-
-	// Cette call pourrait paniquer si SetMediaLikeAtomic n'est pas protégée
-	_, err := svc.SetMediaLike(ctx, req)
-	if err != nil {
-		t.Logf("got error (may or may not happen depending on panic handling): %v", err)
-	}
-
-	// Si on arrive ici sans deadlock, le test a réussi
-	t.Log("no deadlock after panic scenario")
+	assertWriterAvailable(t, pdb, "après panique")
 }
 
-// panicAtomicMediaRepo — mock qui panique dans SetMediaLikeAtomic
+// TestMediaServiceAtomic_LeaseTimeout_NoLeak : quand le writer est déjà pris,
+// l'erreur remonte telle quelle (le handler la traduit en 503 + Retry-After) et
+// aucune transaction n'est ouverte.
+func TestMediaServiceAtomic_LeaseTimeout_NoLeak(t *testing.T) {
+	db, pdb := atomicLikeFixture(t)
+	svc := NewMediaService(duckdb.NewMediaRepo(pdb), "",
+		WithMediaWriterAcquirer(func() (*dblease.LeasedWriter, error) {
+			return nil, fmt.Errorf("lease timeout: %w", dblease.ErrDBLocked)
+		}))
+
+	_, err := svc.SetMediaLike(context.Background(), domain.MediaLikeRequest{
+		FilePath:  "JGtm/clip.mp4",
+		LikerSlug: "Chocoboflor",
+		Liked:     true,
+	})
+	if !errors.Is(err, dblease.ErrDBLocked) {
+		t.Fatalf("erreur = %v, want ErrDBLocked (le handler en dépend pour son 503)", err)
+	}
+	if got := countAllEvents(t, db); got != 0 {
+		t.Errorf("%d event(s) écrit(s) alors que le lease n'a jamais été obtenu, want 0", got)
+	}
+	assertWriterAvailable(t, pdb, "après échec d'acquisition")
+}
+
+// assertWriterAvailable prouve l'absence de fuite : le writer doit être
+// ré-acquérable immédiatement.
+func assertWriterAvailable(t *testing.T, pdb *duckdb.PlayerDB, when string) {
+	t.Helper()
+	w, err := pdb.AcquireSharedSocialWriterTimeout(dblease.SharedLeaseTimeout)
+	if err != nil {
+		t.Fatalf("writer non ré-acquérable %s (fuite de lease) : %v", when, err)
+	}
+	w.Release()
+}
+
+// panicAtomicMediaRepo — repo qui panique au cœur de la transaction.
 type panicAtomicMediaRepo struct {
 	mockAtomicMediaRepo
 }
@@ -179,145 +229,5 @@ func (m *panicAtomicMediaRepo) SetMediaLikeAtomic(
 	_, _, _ string,
 	_ bool,
 ) (bool, error) {
-	panic("simulated panic mid-transaction")
-}
-
-// TestMediaService_SetMediaLike_Atomic_NoLeakOnLeaseTimeout — le lease timeout
-// ne doit pas laisser de transaction ouverte ou verrous acquis.
-func TestMediaService_SetMediaLike_Atomic_NoLeakOnLeaseTimeout(t *testing.T) {
-	playerDB := openIntegrationMediaDB(t)
-	ctx := context.Background()
-
-	repo := &mockAtomicMediaRepo{atomicUpdated: true}
-
-	// Acquéreur qui simule un timeout de lease (retourne ErrDBLocked)
-	acquirer := func() (*dblease.LeasedWriter, error) {
-		return nil, fmt.Errorf("lease timeout: %w", dblease.ErrDBLocked)
-	}
-
-	svc := NewMediaService(repo, "", WithMediaWriterAcquirer(acquirer))
-
-	req := domain.MediaLikeRequest{
-		FilePath:  "/test.mp4",
-		LikerSlug: "test-player",
-		Liked:     true,
-	}
-
-	_, err := svc.SetMediaLike(ctx, req)
-	if err == nil {
-		t.Fatal("expected ErrDBLocked")
-	}
-
-	// Vérifier qu'on peut acquérir le lease après (preuve qu'aucun verrou reste ouvert)
-	directWriter, err := dblease.NewLeasedWriter(playerDB.SQLDb(), "test")
-	if err != nil {
-		t.Fatalf("failed to acquire writer after timeout (potential leak): %v", err)
-	}
-	directWriter.Release()
-
-	t.Log("no lease leak after timeout scenario")
-}
-
-// TestMediaService_SetMediaLike_Atomic_Success_RealTx — PR 6 cgo-only test.
-// Cas happy path utilisant une vraie *sql.Tx (BeginTx) pour démontrer l'atomicité ACID.
-func TestMediaService_SetMediaLike_Atomic_Success_RealTx(t *testing.T) {
-	playerDB := openIntegrationMediaDB(t)
-	ctx := context.Background()
-
-	repo := duckdb.NewMediaRepo(playerDB)
-
-	// Acquéreur qui retourne un vrai LeasedWriter avec Tx
-	acquirer := func() (*dblease.LeasedWriter, error) {
-		sqlDB := playerDB.SQLDb()
-		tx, err := sqlDB.BeginTx(ctx, nil)
-		if err != nil {
-			return nil, fmt.Errorf("BeginTx failed: %w", err)
-		}
-
-		return &dblease.LeasedWriter{
-			Executor: tx,
-		}, nil
-	}
-
-	svc := NewMediaService(repo, "", WithMediaWriterAcquirer(acquirer))
-
-	req := domain.MediaLikeRequest{
-		FilePath:  "/clip.mp4",
-		LikerSlug: "player-a",
-		Liked:     true,
-	}
-
-	result, err := svc.SetMediaLike(ctx, req)
-	if err != nil {
-		t.Fatalf("SetMediaLike with real Tx: %v", err)
-	}
-	if !result {
-		t.Error("expected result=true with real Tx")
-	}
-
-	t.Log("atomic success with real Tx: verified atomicity through BeginTx")
-}
-
-// TestMediaService_SetMediaLike_Atomic_RepoError_Rollback — PR 6 cgo-only test.
-// Cas d'erreur mid-transaction : le repo échoue, la Tx est rollback automatiquement.
-func TestMediaService_SetMediaLike_Atomic_RepoError_Rollback(t *testing.T) {
-	playerDB := openIntegrationMediaDB(t)
-	ctx := context.Background()
-
-	// Mock repo qui échoue dans SetMediaLikeAtomic
-	repo := &mockAtomicMediaRepo{
-		atomicErr: sql.ErrNoRows, // Simule une erreur mid-transaction
-	}
-
-	// Acquéreur avec vraie Tx
-	txCreated := false
-	acquirer := func() (*dblease.LeasedWriter, error) {
-		sqlDB := playerDB.SQLDb()
-		tx, err := sqlDB.BeginTx(ctx, nil)
-		if err != nil {
-			return nil, fmt.Errorf("BeginTx failed: %w", err)
-		}
-		txCreated = true
-
-		return &dblease.LeasedWriter{
-			Executor: tx,
-		}, nil
-	}
-
-	svc := NewMediaService(repo, "", WithMediaWriterAcquirer(acquirer))
-
-	req := domain.MediaLikeRequest{
-		FilePath:  "/clip.mp4",
-		LikerSlug: "player-a",
-		Liked:     true,
-	}
-
-	// L'appel doit échouer avec l'erreur du repo
-	result, err := svc.SetMediaLike(ctx, req)
-	if err == nil {
-		t.Fatal("expected error from failed atomic operation")
-	}
-	if result {
-		t.Error("result should be false on error")
-	}
-	if !errors.Is(err, sql.ErrNoRows) && err != sql.ErrNoRows {
-		t.Logf("got expected error: %v (either ErrNoRows or wrapped)", err)
-	}
-
-	// La Tx a été créée → elle doit avoir été rollback automatiquement
-	// (En vrai test, on vérifierait que aucune mutation n'a persiste)
-	if !txCreated {
-		t.Error("expected Tx to be created before error")
-	}
-
-	t.Log("atomic rollback verified: Tx created, error triggered, rollback occurred")
-}
-
-// Helper pour créer un LeasedWriter à partir d'une *sql.DB réelle.
-// Note: this is a simplified version that doesn't use the actual dblease package's
-// mutex coordination. In production, dblease.AcquireWriter handles the proper locking.
-func createTestLeasedWriter(db *sql.DB) *dblease.LeasedWriter {
-	return &dblease.LeasedWriter{
-		Executor: db,
-	}
+	panic("panique simulée en cours de transaction")
 }

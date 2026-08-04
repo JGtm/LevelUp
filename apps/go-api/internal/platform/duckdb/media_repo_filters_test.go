@@ -61,6 +61,7 @@ func newTestPlayerDBForMediaScenario(t *testing.T) *PlayerDB {
 	}
 	for _, q := range []string{
 		`DELETE FROM media_match_associations_history`,
+		`DELETE FROM media_likes_history`,
 		`DELETE FROM media_files`,
 	} {
 		if _, err := social.Exec(ctx, q); err != nil {
@@ -101,11 +102,25 @@ func newTestPlayerDBForMediaScenario(t *testing.T) *PlayerDB {
 	for _, m := range mediaInserts {
 		if _, err := social.Exec(ctx,
 			`INSERT INTO media_files
-				(id, player_slug, file_path, file_name, file_stem, file_ext, kind, capture_end_utc, liked)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			m.id, m.owner, m.path, m.name, m.stem, m.ext, m.kind, m.capture, m.liked,
+				(id, player_slug, file_path, file_name, file_stem, file_ext, kind, capture_end_utc)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			m.id, m.owner, m.path, m.name, m.stem, m.ext, m.kind, m.capture,
 		); err != nil {
 			t.Fatalf("insert media %s: %v", m.id, err)
+		}
+		// Le like appartient à un LIKER, plus à la ligne média (2026-08-04) : le
+		// « liked » du scénario est celui du viewer de ces tests (HeroPlayer). Un
+		// autre viewer verrait ces mêmes médias non likés — c'est précisément ce
+		// que les tests de galerie doivent refléter.
+		if !m.liked {
+			continue
+		}
+		if _, err := social.Exec(ctx,
+			`INSERT INTO media_likes_history (media_path, liker_slug, liker_gamertag, is_liked, liked_at)
+				VALUES (?, ?, ?, TRUE, CURRENT_TIMESTAMP)`,
+			m.path, mediaTestPlayerSlug, mediaTestPlayerSlug,
+		); err != nil {
+			t.Fatalf("insert like event %s: %v", m.id, err)
 		}
 	}
 
@@ -157,6 +172,7 @@ func newTestPlayerDBForCandidatesLocale(t *testing.T) *PlayerDB {
 	}
 	for _, q := range []string{
 		`DELETE FROM media_match_associations_history`,
+		`DELETE FROM media_likes_history`,
 		`DELETE FROM media_files`,
 	} {
 		if _, err := social.Exec(ctx, q); err != nil {
@@ -691,6 +707,7 @@ func newTestPlayerDBMapModeOverlap(t *testing.T) *PlayerDB {
 	}
 	for _, q := range []string{
 		`DELETE FROM media_match_associations_history`,
+		`DELETE FROM media_likes_history`,
 		`DELETE FROM media_files`,
 	} {
 		if _, err := social.Exec(ctx, q); err != nil {
@@ -810,6 +827,7 @@ func newTestPlayerDBVariants(t *testing.T) *PlayerDB {
 	}
 	for _, q := range []string{
 		`DELETE FROM media_match_associations_history`,
+		`DELETE FROM media_likes_history`,
 		`DELETE FROM media_files`,
 	} {
 		if _, err := social.Exec(ctx, q); err != nil {
@@ -1026,6 +1044,7 @@ func newTestPlayerDBForUserScenario(t *testing.T) *PlayerDB {
 	}
 	for _, q := range []string{
 		`DELETE FROM media_match_associations_history`,
+		`DELETE FROM media_likes_history`,
 		`DELETE FROM media_files`,
 	} {
 		if _, err := social.Exec(ctx, q); err != nil {
@@ -1116,6 +1135,7 @@ func newTestPlayerDBMultiAssoc(t *testing.T) *PlayerDB {
 	}
 	for _, q := range []string{
 		`DELETE FROM media_match_associations_history`,
+		`DELETE FROM media_likes_history`,
 		`DELETE FROM media_files`,
 	} {
 		if _, err := social.Exec(ctx, q); err != nil {
@@ -1253,6 +1273,7 @@ func newTestPlayerDBForStabilityScenario(t *testing.T) *PlayerDB {
 	}
 	for _, q := range []string{
 		`DELETE FROM media_match_associations_history`,
+		`DELETE FROM media_likes_history`,
 		`DELETE FROM media_files`,
 	} {
 		if _, err := social.Exec(ctx, q); err != nil {
@@ -1328,6 +1349,7 @@ func TestMediaFilters_Sort_PrefersCaptureStartUtc(t *testing.T) {
 	}
 	for _, q := range []string{
 		`DELETE FROM media_match_associations_history`,
+		`DELETE FROM media_likes_history`,
 		`DELETE FROM media_files`,
 	} {
 		if _, err := social.Exec(ctx, q); err != nil {

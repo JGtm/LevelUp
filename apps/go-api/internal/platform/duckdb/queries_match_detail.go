@@ -160,7 +160,13 @@ ORDER BY tm.xuid`
 // Q24 : Médias associés à un match — tous auteurs confondus (shared_social DB).
 // Le feed média est cross-joueur : si un coéquipier a uploadé un clip pour
 // ce match, on l'affiche aussi sur la page match.
-// Paramètre : ? = match_id.
+// Paramètres : ?1 = liker_slug (VIEWER de la session), ?2 = match_id.
+//
+// `liked` est l'état du cœur DU VIEWER, lu par liker dans media_likes_latest
+// (vue append-only — règle ART n°2), et non plus le booléen GLOBAL
+// media_files.liked qui allumait le cœur de tous les joueurs dès qu'un seul
+// likait (corrigé le 2026-08-04). La vue ne rend qu'une ligne par
+// (media_path, liker_slug) : la jointure ne duplique aucun média.
 //
 // Note : le seul filtre sur mf.status est l'exclusion des médias SUPPRIMÉS
 // (item 3.1). Les lignes historiques ont status NULL et restent donc visibles —
@@ -174,9 +180,10 @@ SELECT
     mf.kind,
     mf.thumbnail_path,
     mf.capture_end_utc,
-    COALESCE(mf.liked, FALSE) AS liked
+    COALESCE(mll.is_liked, FALSE) AS liked
 FROM media_files mf
 JOIN media_match_associations_latest mma ON mf.id = mma.media_file_id
+LEFT JOIN media_likes_latest mll ON mll.media_path = mf.file_path AND mll.liker_slug = ?
 WHERE mma.match_id = ? AND ` + MediaVisiblePredicate("mf") + `
 ORDER BY mf.capture_end_utc ASC NULLS LAST`
 

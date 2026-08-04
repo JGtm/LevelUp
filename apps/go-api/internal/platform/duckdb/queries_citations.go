@@ -152,10 +152,17 @@ func normalizeMediaMapName(s string) string {
 	return strings.TrimSpace(s)
 }
 
-// mediaQueryConfig porte les paramètres de scoping (player_slug) pour le
-// pipeline Q37. Utilisé par media_repo_q37_pipeline.go.
+// mediaQueryConfig porte les paramètres de scoping du pipeline Q37. Utilisé par
+// media_repo_q37_pipeline.go.
+//
+//   - playerSlug : PROPRIÉTAIRE de la galerie consultée (sections mine/teammate) ;
+//   - viewerSlug : joueur qui REGARDE (session). Détermine l'état du cœur `liked`
+//     et le filtre « favoris », lus par liker dans media_likes_latest. Les deux
+//     diffèrent dès qu'on consulte les médias d'un coéquipier — ne jamais les
+//     confondre.
 type mediaQueryConfig struct {
 	playerSlug string
+	viewerSlug string
 }
 
 // baseWhereClause renvoie les contraintes de base + le filtre de section (ownership).

@@ -32,9 +32,11 @@ type mediaCandidateRow struct {
 	CaptureEndUTC   *time.Time
 	MTime           *time.Time
 	IndexedAt       *time.Time
-	Liked           bool
-	MatchID         *string // nil si aucune assoc
-	PlayerSlug      *string // nil en schéma legacy (pas de player_slug sur media_files)
+	// Liked : état du cœur DU VIEWER de la requête (media_likes_latest), pas un
+	// état global du média — cf. mediaViewerLikedExpr.
+	Liked      bool
+	MatchID    *string // nil si aucune assoc
+	PlayerSlug *string // nil en schéma legacy (pas de player_slug sur media_files)
 }
 
 // effectiveCaptureTime retourne la meilleure approximation du timestamp de
@@ -148,11 +150,14 @@ func (r *MediaRepo) loadMediaCandidates(
 // shared.match_registry : tout ce qui dépend de match_registry sera appliqué
 // post-load en Go.
 func buildMediaCandidatesQuery(f domain.MediaFilters, cfg mediaQueryConfig) (string, []any) {
-	whereParts, args := buildMediaLocalWhere(f, cfg)
+	whereParts, whereArgs := buildMediaLocalWhere(f, cfg)
 	whereClause := ""
 	if len(whereParts) > 0 {
 		whereClause = "WHERE " + strings.Join(whereParts, " AND ")
 	}
+	// Le paramètre du viewer est porté par la clause FROM/JOIN, qui PRÉCÈDE le
+	// WHERE : il doit donc arriver en tête des arguments positionnels.
+	args := append([]any{cfg.viewerSlug}, whereArgs...)
 
 	// Schéma shared_social INCONDITIONNEL : le seul appelant (loadMediaCandidates)
 	// retourne vide si pdb.SharedSocial == nil, et la query s'exécute sur socialDB().
@@ -173,7 +178,7 @@ func buildMediaCandidatesQuery(f domain.MediaFilters, cfg mediaQueryConfig) (str
     mf.capture_end_utc,
     mf.mtime,
     mf.indexed_at AS indexed_at,
-    COALESCE(mf.liked, FALSE) AS liked,
+    ` + mediaViewerLikedExpr + ` AS liked,
     mma.match_id,
     mf.player_slug AS player_slug
 ` + from + `
@@ -183,10 +188,23 @@ func buildMediaCandidatesQuery(f domain.MediaFilters, cfg mediaQueryConfig) (str
 }
 
 // Phase A : aucune référence à match_registry. La jointure cross-DB est
-// faite côté Go via loadMediaMatchRegistry. Lecture via la vue _latest
-// (media_match_associations est append-only — règle ART n°2).
+// faite côté Go via loadMediaMatchRegistry. Lecture via les vues _latest
+// (media_match_associations ET media_likes sont append-only — règle ART n°2).
+//
+// La jointure sur media_likes_latest est ce qui rend le cœur PAR VIEWER
+// (2026-08-04) : `mf.liked` était une colonne GLOBALE, donc le like d'un
+// coéquipier allumait le cœur de tout le monde. Le liker est passé en paramètre
+// positionnel ; la vue ne rend qu'une ligne par (media_path, liker_slug), donc la
+// jointure ne peut pas dupliquer de candidate row.
 const mediaCandidatesSharedSocialFromClause = `FROM media_files mf
-LEFT JOIN media_match_associations_latest mma ON mf.id = mma.media_file_id`
+LEFT JOIN media_match_associations_latest mma ON mf.id = mma.media_file_id
+LEFT JOIN media_likes_latest mll ON mll.media_path = mf.file_path AND mll.liker_slug = ?`
+
+// mediaViewerLikedExpr : état du cœur DU VIEWER. Un viewer sans event de like,
+// un event de retrait (is_liked=FALSE) ou un viewer non identifié donnent tous
+// FALSE. Ne JAMAIS revenir à mf.liked : cette colonne est globale et dépréciée
+// (cf. media_repo_writes.go).
+const mediaViewerLikedExpr = `COALESCE(mll.is_liked, FALSE)`
 
 // buildMediaLocalWhere construit la clause WHERE avec UNIQUEMENT les filtres
 // qui ne nécessitent pas match_registry (kind, liked, date, player_slug,
@@ -228,7 +246,8 @@ func buildMediaLocalWhere(f domain.MediaFilters, cfg mediaQueryConfig) ([]string
 		where = append(where, "mf.kind IN ("+strings.Join(placeholders, ",")+")")
 	}
 	if f.LikedOnly {
-		where = append(where, "COALESCE(mf.liked, FALSE) = TRUE")
+		// « Favoris » = les favoris DU VIEWER, cohérent avec le cœur affiché.
+		where = append(where, mediaViewerLikedExpr+" = TRUE")
 	}
 	if f.UnassignedOnly {
 		where = append(where, "mma.match_id IS NULL")

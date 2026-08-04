@@ -18,6 +18,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/api/handlers"
+	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/settings"
@@ -861,10 +862,16 @@ func TestMediaHandler_PatchMediaLike_AuthEnforced_NoSession_401(t *testing.T) {
 	}
 }
 
-// TestMediaHandler_PatchMediaLike_NoAuthEnforced_NoSession_Passes : en
-// mono-utilisateur / démo (auth non appliquée), le comportement historique est
-// conservé — le like passe, sans liker social.
-func TestMediaHandler_PatchMediaLike_NoAuthEnforced_NoSession_Passes(t *testing.T) {
+// TestMediaHandler_PatchMediaLike_NoAuthEnforced_NoSession_FallsBackToPageOwner :
+// en mono-utilisateur / démo (auth non appliquée), le like passe — et il est
+// désormais ATTRIBUÉ au propriétaire de la page.
+//
+// Ce repli n'est pas cosmétique : depuis que le like est par-viewer, un like sans
+// liker n'a plus AUCUN support de stockage (media_files.liked, le booléen global,
+// n'est plus écrit). Sans ce repli, le like d'une instance locale — le cas d'usage
+// principal du produit — ne s'écrirait nulle part et le cœur retomberait au
+// rechargement.
+func TestMediaHandler_PatchMediaLike_NoAuthEnforced_NoSession_FallsBackToPageOwner(t *testing.T) {
 	spy := &spyLikeService{}
 	factory := func(_ context.Context, _ string) (port.MediaService, error) { return spy, nil }
 	r := newMediaRouter(factory) // WithAuthEnforced non appelé → false
@@ -876,6 +883,62 @@ func TestMediaHandler_PatchMediaLike_NoAuthEnforced_NoSession_Passes(t *testing.
 	}
 	if spy.capturedReq == nil {
 		t.Fatal("SetMediaLike doit être appelé en mode mono-utilisateur")
+	}
+	if spy.capturedReq.LikerSlug != testPlayerSlug {
+		t.Errorf("LikerSlug = %q, want %q — un like sans liker ne se persiste plus nulle part",
+			spy.capturedReq.LikerSlug, testPlayerSlug)
+	}
+}
+
+// TestMediaHandler_PatchMediaLike_SessionOverridesBodyLiker : le liker vient de la
+// SESSION, jamais du corps de la requête.
+//
+// Depuis que le cœur est par-viewer, `liker_slug` n'est plus un champ décoratif :
+// il décide de QUI verra ce like allumé et de quel nom s'affiche dans « ♥ Alice
+// et Bob ». Un client qui choisirait ces valeurs pourrait liker à la place d'un
+// tiers. Le serveur écrase donc les deux champs dès qu'une session porte un
+// joueur courant.
+func TestMediaHandler_PatchMediaLike_SessionOverridesBodyLiker(t *testing.T) {
+	spy := &spyLikeService{}
+	factory := func(_ context.Context, _ string) (port.MediaService, error) { return spy, nil }
+
+	sessionSlug := "Chocoboflor"
+	r := chi.NewRouter()
+	h := handlers.NewMediaHandler(factory, nil, "")
+	r.Route("/players/{player_slug}", func(r chi.Router) {
+		r.Use(func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				sess := &domain.SessionData{CurrentPlayerSlug: &sessionSlug}
+				next.ServeHTTP(w, req.WithContext(middleware.InjectSession(req.Context(), sess)))
+			})
+		})
+		h.Mount(r)
+	})
+
+	// Corps hostile : un liker et un libellé choisis par le client.
+	body, _ := json.Marshal(domain.MediaLikeRequest{
+		FilePath:      "JGtm/clip.mp4",
+		Liked:         true,
+		LikerSlug:     "victime",
+		LikerGamertag: "Quelqu'un d'autre",
+	})
+	req := httptest.NewRequest(http.MethodPatch, "/players/test-player/media/likes", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if spy.capturedReq == nil {
+		t.Fatal("SetMediaLike not called")
+	}
+	if spy.capturedReq.LikerSlug != sessionSlug {
+		t.Errorf("LikerSlug = %q, want %q (la session fait foi, pas le corps)",
+			spy.capturedReq.LikerSlug, sessionSlug)
+	}
+	if spy.capturedReq.LikerGamertag == "Quelqu'un d'autre" {
+		t.Error("LikerGamertag du corps retenu : un client choisirait le nom sous lequel son like s'affiche")
 	}
 }
 

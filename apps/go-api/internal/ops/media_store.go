@@ -45,6 +45,25 @@ func ensureMediaTables(ctx context.Context, db *sql.DB) error {
 			duration_seconds DOUBLE,
 			status VARCHAR,
 			mtime TIMESTAMPTZ,
+			-- DÉPRÉCIÉES — colonnes liked / liked_at (bascule du défaut : 2026-08-04).
+			--
+			-- La colonne liked était un booléen GLOBAL par média : le like de n'importe quel
+			-- joueur allumait le cœur de TOUT LE MONDE, et son unlike l'éteignait
+			-- partout. L'état d'un like vit désormais dans media_likes_history
+			-- (append-only, une ligne par liker) et se lit via media_likes_latest.
+			-- Depuis le 2026-08-04, PLUS AUCUN code applicatif ne lit ni n'écrit ces
+			-- deux colonnes — elles ne sont que du résidu de schéma.
+			--
+			-- RETRAIT CIBLE : 2026-11-04. CRITÈRE : le DROP COLUMN n'est pas un
+			-- one-liner de migration, parce que la boucle d'indexation le défait —
+			-- ensureMediaTables (juste en dessous) RE-CRÉE toute colonne absente à
+			-- chaque IndexMedia. Le retrait exige donc, dans le même lot : retirer
+			-- liked et liked_at de ce CREATE TABLE ET de la liste ADD COLUMN, du
+			-- CREATE de games/halo_infinite/migrations/steps_shared_social.go, des
+			-- DEFAULT restaurés par steps_shared_social_media_files_drop_filepath_unique.go
+			-- et du seed de démo, PUIS un step de migration DROP COLUMN idempotent
+			-- (garde information_schema). Tant que ce lot n'a pas eu lieu, ne pas
+			-- droper : la colonne réapparaîtrait au prochain scan de médias.
 			liked BOOLEAN DEFAULT FALSE,
 			liked_at TIMESTAMPTZ,
 			discord_notified BOOLEAN DEFAULT FALSE,

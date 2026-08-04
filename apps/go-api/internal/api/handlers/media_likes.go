@@ -81,34 +81,47 @@ func (h *MediaHandler) handlePatchMediaLike(ctx context.Context, in *mediaLikeIn
 	return out, nil
 }
 
-// resolveLikerIdentity complète req avec le liker déduit de la session, puis
-// applique le garde ANTI-SILENCE : sans liker identifiable, le like ne peut pas
-// être attribué — il ne produirait qu'un media_files.liked global, muet côté
-// social (aucun event media_likes_history, donc aucun badge « ♥ Alice et Bob »).
+// resolveLikerIdentity fixe le liker du like : c'est le VIEWER de la session,
+// et lui seul. Le like étant devenu par-viewer (2026-08-04), l'identité du liker
+// n'est plus décorative — elle décide de QUI verra ce cœur allumé.
 //
-//   - multi-utilisateur authentifié (authEnforced) → 401 like_requires_session :
-//     l'échec est VISIBLE au lieu d'écrire un like fantôme ;
-//   - mono-utilisateur / démo → comportement historique conservé, mais tracé.
+// Ordre, aligné sur la lecture (wire.viewerSlugFor — lire et écrire doivent
+// désigner le même viewer, sinon on like pour un autre que celui dont on affiche
+// le cœur) :
+//
+//  1. Joueur courant de la session. Il ÉCRASE tout `liker_slug` reçu dans le
+//     corps : sans cela un client pourrait poster liker_slug d'autrui et allumer
+//     le cœur d'un tiers, ou consommer son quota social — la sémantique
+//     par-viewer serait forgeable.
+//  2. Sans session (mono-utilisateur / démo) : le corps, s'il porte un liker,
+//     puis le propriétaire de la page. Ce repli remplace l'ancien like « global »
+//     anonyme (media_files.liked), qui n'a plus de support de stockage : sans
+//     liker, un like ne s'écrirait plus NULLE PART.
+//
+// Garde ANTI-SILENCE conservé : en multi-utilisateur authentifié (authEnforced),
+// l'absence de joueur courant est un 401 VISIBLE, jamais un repli.
 func (h *MediaHandler) resolveLikerIdentity(ctx context.Context, playerSlug string, req *domain.MediaLikeRequest) error {
-	if req.LikerSlug == "" {
-		if sess := middleware.GetSession(ctx); sess != nil && sess.CurrentPlayerSlug != nil {
-			req.LikerSlug = *sess.CurrentPlayerSlug
-			if req.LikerGamertag == "" {
-				req.LikerGamertag = h.resolveLikerGamertag(ctx, *sess.CurrentPlayerSlug)
-			}
-		}
+	if sessionSlug := middleware.SessionPlayerSlug(ctx); sessionSlug != "" {
+		req.LikerSlug = sessionSlug
+		// Le libellé affiché dans « ♥ Alice et Bob » se déduit du slug, jamais du
+		// corps : sinon un client choisirait le nom sous lequel son like apparaît.
+		req.LikerGamertag = ""
 	}
-	if req.LikerSlug != "" {
-		return nil
-	}
-	if h.authEnforced {
+	if req.LikerSlug == "" && h.authEnforced {
 		slog.WarnContext(ctx, "media_like refusé: aucun joueur courant en session",
 			"slug", playerSlug, "file_path", req.FilePath)
 		return humacore.NewError(http.StatusUnauthorized, "like_requires_session",
 			"Aucun joueur courant en session : impossible d'attribuer ce like.")
 	}
-	slog.WarnContext(ctx, "media_like sans liker (session absente) — like non attribuable socialement",
-		"slug", playerSlug, "file_path", req.FilePath)
+	if req.LikerSlug == "" {
+		// Mono-utilisateur / démo : la page consultée est celle du joueur local.
+		slog.WarnContext(ctx, "media_like sans session — liker replié sur le propriétaire de la page",
+			"slug", playerSlug, "file_path", req.FilePath)
+		req.LikerSlug = playerSlug
+	}
+	if req.LikerGamertag == "" {
+		req.LikerGamertag = h.resolveLikerGamertag(ctx, req.LikerSlug)
+	}
 	return nil
 }
 

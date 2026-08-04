@@ -65,11 +65,38 @@ type MatchViewRepo struct {
 	// "Super Fiesta Fete" -> "Super Fiesta"). nil/vide = no-op. Appliquee APRES le
 	// strip eventuel : correction explicite par nom, jamais heuristique.
 	playlistLabelOverrides map[string]string
+	// viewerSlug : joueur qui REGARDE la page match (session), injecté par requête
+	// au wiring. Détermine l'état du cœur des médias de l'onglet Médias (Q24) :
+	// `liked` = « liké PAR CE VIEWER ». Distinct du joueur dont on consulte la
+	// page. Vide → repli sur ce dernier, cf. viewer().
+	viewerSlug string
+}
+
+// viewer retourne le liker dont l'état de like doit être servi dans l'onglet
+// Médias. Même repli — et mêmes raisons — que MediaRepo.viewer : sans joueur
+// courant en session (instance mono-utilisateur), la page consultée est celle du
+// joueur local, qui est donc le viewer.
+func (r *MatchViewRepo) viewer() string {
+	if r.viewerSlug != "" {
+		return r.viewerSlug
+	}
+	if r.pdb == nil {
+		return ""
+	}
+	return r.pdb.Gamertag
 }
 
 // NewMatchViewRepo crée un MatchViewRepo.
 func NewMatchViewRepo(pdb *PlayerDB, xuid string) *MatchViewRepo {
 	return &MatchViewRepo{pdb: pdb, xuid: xuid}
+}
+
+// WithViewer injecte le slug du joueur qui consulte la page (session HTTP), qui
+// détermine l'état `liked` des médias associés au match. Vide ou non appelé :
+// repli documenté dans viewer().
+func (r *MatchViewRepo) WithViewer(slug string) *MatchViewRepo {
+	r.viewerSlug = slug
+	return r
 }
 
 // WithPlaylistCategoryStrip active/désactive le retrait du préfixe de catégorie

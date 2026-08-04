@@ -101,13 +101,22 @@ func realMediaPipelineSetup(t *testing.T) (*chi.Mux, string) {
 			SELECT a.media_file_id, a.match_id, a.delta_seconds, a.is_manual, a.associated_at, a.written_at
 			FROM act a JOIN hm ON hm.media_file_id = a.media_file_id
 			WHERE a.is_manual = hm.has_manual;
-		CREATE TABLE IF NOT EXISTS media_likes (
-			media_path VARCHAR NOT NULL,
-			liker_slug VARCHAR NOT NULL,
-			liker_gamertag VARCHAR,
-			liked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			PRIMARY KEY (media_path, liker_slug)
+		-- Append-only (cf. shared_social_likes_append_only_v1) : le like vit en
+		-- events par liker, et TOUTE lecture passe par la vue _latest (règle ART
+		-- n°2). C'est aussi le support du cœur PAR VIEWER de la galerie — sans ces
+		-- deux objets, le pipeline Q37 ne peut plus résoudre l'état liked.
+		CREATE SEQUENCE IF NOT EXISTS media_likes_history_id_seq START 1;
+		CREATE TABLE IF NOT EXISTS media_likes_history (
+			id BIGINT PRIMARY KEY DEFAULT nextval('media_likes_history_id_seq'),
+			media_path VARCHAR NOT NULL, liker_slug VARCHAR NOT NULL, liker_gamertag VARCHAR,
+			is_liked BOOLEAN NOT NULL, liked_at TIMESTAMP,
+			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 		);
+		CREATE OR REPLACE VIEW media_likes_latest AS
+			SELECT id, media_path, liker_slug, liker_gamertag, is_liked, liked_at, written_at
+			FROM media_likes_history
+			QUALIFY ROW_NUMBER() OVER (PARTITION BY media_path, liker_slug
+				ORDER BY written_at DESC, id DESC) = 1;
 		CREATE TABLE IF NOT EXISTS match_favorites (
 			player_slug VARCHAR NOT NULL,
 			match_id VARCHAR NOT NULL,
