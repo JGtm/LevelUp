@@ -1,3 +1,52 @@
+## [2026-08-05] Vague 2 : voix impersonnelle, petits restes, fixture demo, Timeseries %, DROP liked
+
+**Statut** : Complété (branche `feat/wave2`, 8 commits, validé, prêt à merger).
+
+**Décision technique principale** : 5 lots agents (2 Sonnet, 3 Opus) + 3 correctifs de
+convergence. (1) Voix impersonnelle : 244 strings explicatives (134 FR + 110 EN) sans
+pronoms personnels — décision utilisateur mémorisée ; interactif et voix coach intacts ;
+3 questions produit consignées (Réglages en vouvoiement historique, ton des ~30
+notifications, libellés directionnels Palmarès). (2) Petits restes 6[x]/1[~] :
+TimeseriesKpiCard.Label hors contrat, « Matchs joués », media.go mort supprimé,
+avg_max_killing_spree sauvé (vivant via Synthesis), Lab déterministe + 5 baselines PNG,
+scripts/gate-push.ps1 + doc bilingue. (3) Fixture démo : le mécanisme seed-demo
+--synthetic EXISTAIT — branché sur le harnais (make demo-visual), zéro code Go initial ;
+2 causes de dérive réelles corrigées (bandeau accueil aléatoire masqué, sélection
+escouade localStorage amorcée). (4) Timeseries % : conversion front en miroir exact des
+helpers canoniques, polarité unique, dégradés décoratifs supprimés, constantes du repère
+en source unique. (5) DROP media_files.liked/liked_at : 6 sites + 12 fixtures,
+DÉCOUVERTE DuckDB (DROP COLUMN refusé si un index porte une colonne d'ordinal supérieur
+→ index relevés via duckdb_indexes(), démontés/remontés), anti-résurrection testé en
+suite par défaut. CORRECTIFS de convergence attrapés par la validation orchestrateur :
+(a) netguard — le mode démo s'authentifiait avec les VRAIS tokens du poste et martelait
+l'API Halo (xuid factices, retries 12 s) ; coupe-circuit à la frontière sortante,
+9 gardes + ratchet de couverture ; (b) la bascule démo→fixture était CONDITIONNÉE à
+l'absence des DB de prod — sur ce poste le serveur démo ouvrait le shared RÉEL (302 Mo)
+et ses migrations de boot écrivaient dessus ; bascule inconditionnelle des 4 entrepôts
++ ratchet + critère harnais durci (page sans graphe = échec, fini le faux vert
+zéro-diff-à-6-skips) ; (c) un mot de commentaire épinglé par le ratchet halowaypoint.
+
+**Résultats observés** : gate-push.ps1 4/4 verts (le script s'est validé lui-même de
+bout en bout, y compris en attrapant un vrai rouge archlint) ; vitest 390/3368-3373/0 ;
+demo-visual STRICT 8/8 (7 pages + Lab), deux générations, zéro diff pixel, grep
+halowaypoint = 0, base de prod intacte (1 926 matchs vérifiés avant/après). Intégrité
+données réelles contrôlée après l'incident d'écriture démo : 27 989 participants
+intacts, colonnes liked absentes (la migration DROP s'y est appliquée par anticipation
+— idempotente et identique à celle du boot post-merge), 2 likes vivants en _latest.
+Leçons d'orchestration mémorisées : Sonnet + runs d'arrière-plan (2 arrêts + 1 sur
+« poll léger »), stalls watchdog sous contention CPU (gates orchestrateur et agents
+Opus à ne pas superposer), faux rouges de chaînage PowerShell.
+
+**Conclusion / prochaine étape** : merge dans main (deploy auto), CI/deploy à
+surveiller, validation visuelle utilisateur. DÉCOUVERTE PROD À TRAITER :
+InsertCareerProgressionPartial échoue sur les player DB fraîches construites par
+migrations (colonne manquante — divergence schéma migrations vs chemin persist career),
+réel en production. Restent aussi : kpi_cards entièrement sans consommateur (candidat
+suppression), renommage oneLifeDamageGradient.ts→oneLifeWindow.ts, clé morte
+ref_100, aides efficiency_tooltip à enrichir (%), TimeseriesSquadAdapted à 493 L,
+mode démo non hermétique côté FICHIERS (shared_social/cache écrits sous repoRoot),
+3 questions produit voix, drift lab 6018 px résolu par regénération (vérifié 8/8).
+
 ## [2026-08-04] Vague post-v7.3.0 : B' v2 + reliquat R2 + Go-struct + likes par viewer
 
 **Statut** : Complété (branche `feat/post-v730-wave`, 4 commits, prêt à merger — mandat
