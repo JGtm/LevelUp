@@ -70,7 +70,6 @@ import (
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service"
 	syncpkg "levelup/go-api/internal/sync"
-	"levelup/go-api/internal/util/pointers"
 	"levelup/go-api/internal/watcher"
 	"levelup/go-api/internal/worldenrich"
 )
@@ -367,34 +366,54 @@ func main() {
 	metaPath := pr.MetadataDBPath(titleSlug)
 	sharedSocialPath := pr.SharedSocialDBPath(titleSlug)
 
-	// En DEMO_MODE, utiliser les fixtures de démo si les DBs prod n'existent pas.
+	pvePath := pr.SharedPVEDBPath(titleSlug)
+
+	// En DEMO_MODE, les DB de la FIXTURE font autorité — INCONDITIONNELLEMENT.
+	//
+	// Cette bascule était auparavant conditionnée à l'ABSENCE de la DB de prod
+	// (« utiliser la fixture si data/titles/… n'existe pas »). Sur un poste de
+	// développement — qui a évidemment ses données réelles — la condition ne se
+	// vérifiait jamais : le serveur « démo » ouvrait le shared_matches_v2 RÉEL,
+	// où le joueur `demo-player` (xuid 0000000000000000) n'a aucun match. D'où
+	// des pages vides (`teammates … top_rows_count=0`, healthz/home 503) et un
+	// harnais visuel qui skippait 6 pages sur 7 en annonçant « données absentes ».
+	// Pire : les migrations de boot s'appliquaient alors aux DB de PRODUCTION,
+	// qu'un simple lancement de démo modifiait.
+	//
+	// Le mode démo doit être hermétique aux données comme il l'est au réseau
+	// (cf. internal/platform/netguard) : la présence ou non de données réelles
+	// sur la machine ne doit RIEN changer à ce que sert la démo.
 	if cfg.DemoMode {
-		demoPaths := []struct{ name, path *string }{
-			{name: pointers.Ptr("shared"), path: &sharedPath},
-			{name: pointers.Ptr("metadata"), path: &metaPath},
-		}
-		for _, dp := range demoPaths {
-			if _, err := os.Stat(*dp.path); os.IsNotExist(err) {
-				demo := filepath.Join(cfg.DemoFixturesDir, "warehouse", filepath.Base(*dp.path))
-				if _, err2 := os.Stat(demo); err2 == nil {
-					*dp.path = demo
-					slog.Info("demo_mode: utilisation fixture", "db", *dp.name, "path", demo)
-				}
-			}
+		for _, dp := range []struct {
+			name string
+			path *string
+		}{
+			{"shared", &sharedPath},
+			{"metadata", &metaPath},
+			{"shared_social", &sharedSocialPath},
+			{"shared_pve", &pvePath},
+		} {
+			*dp.path = demoWarehouseDBPath(cfg.DemoFixturesDir, *dp.path)
+			slog.Info("demo_mode: utilisation fixture", "db", dp.name, "path", *dp.path)
 		}
 
-		// Validation au boot — warn si la fixture player démo est absente.
-		// Sans ce warning, l'erreur n'apparaît qu'à la première requête joueur
-		// avec un message IO Error opaque ("cannot open file..."), et le
-		// frontend affiche "DemoPlayer" comme un fantôme avec erreurs en cascade.
-		// Fix après incident 2026-04-29 — process API laissé tournant en demo
-		// mode sans fixture installée.
-		demoStats := filepath.Join(cfg.DemoFixturesDir, "stats.duckdb")
+		// Validation au boot — la fixture joueur doit exister, sinon les requêtes
+		// /pages/* échouent avec un IO Error opaque et le frontend affiche
+		// « DemoPlayer » en fantôme (incident 2026-04-29).
+		//
+		// On vérifie le chemin IMBRIQUÉ réellement produit par `seed-demo`
+		// ({dir}/players/DEMO/stats.duckdb). L'ancienne vérification portait sur
+		// le chemin PLAT legacy ({dir}/stats.duckdb), que le générateur n'écrit
+		// jamais : elle criait « fixture absente » sur une fixture parfaitement
+		// installée, à chaque démarrage — un WARN qui a masqué le vrai défaut
+		// ci-dessus pendant tout le chantier.
+		demoStats := filepath.Join(cfg.DemoFixturesDir, "players",
+			config.DemoRoster[0].Dir, "stats.duckdb")
 		if _, err := os.Stat(demoStats); os.IsNotExist(err) {
 			slog.Warn(
 				"demo_mode: fixture joueur absente — les requêtes /pages/* échoueront avec un IO Error",
 				"path", demoStats,
-				"hint", "désactiver LEVELUP_DEMO_MODE ou installer la fixture dans LEVELUP_DEMO_FIXTURES_DIR",
+				"hint", "générer la fixture : go run ./cmd/levelup seed-demo --synthetic --out "+cfg.DemoFixturesDir,
 			)
 		}
 	}
@@ -405,18 +424,28 @@ func main() {
 	// Sur un clone frais, le dossier warehouse n'existe pas encore : sans lui,
 	// runMigrations puis l'ouverture du provider shared échouent et le serveur
 	// fait os.Exit(1) avant même d'afficher /setup.
-	if err := ensureWarehouseDir(pr, titleSlug); err != nil {
-		slog.Error("création warehouse dir échouée", "err", err)
-		os.Exit(1)
-	}
-	// Clone frais : extraire la base metadata pré-construite (référentiels prêts)
-	// si metadata.duckdb n'existe pas encore. Non-fatal — sinon les migrations
-	// créeront une base vide à repeupler via fetch live.
-	if err := extractPrebuiltMetadataIfAbsent(pr, titleSlug); err != nil {
-		slog.Warn("prebuilt metadata: extraction échouée (non-fatal)", "err", err)
+	// En démo, ces deux étapes visent l'arborescence de la FIXTURE : sans cela
+	// elles créent/peuplent le warehouse de PRODUCTION que la démo n'ouvre plus.
+	if cfg.DemoMode {
+		if err := os.MkdirAll(filepath.Dir(sharedPath), 0o755); err != nil {
+			slog.Error("création warehouse dir démo échouée", "err", err, "path", filepath.Dir(sharedPath))
+			os.Exit(1)
+		}
+	} else {
+		if err := ensureWarehouseDir(pr, titleSlug); err != nil {
+			slog.Error("création warehouse dir échouée", "err", err)
+			os.Exit(1)
+		}
+		// Clone frais : extraire la base metadata pré-construite (référentiels prêts)
+		// si metadata.duckdb n'existe pas encore. Non-fatal — sinon les migrations
+		// créeront une base vide à repeupler via fetch live. Inutile en démo :
+		// `seed-demo` livre une metadata déjà migrée et peuplée.
+		if err := extractPrebuiltMetadataIfAbsent(pr, titleSlug); err != nil {
+			slog.Warn("prebuilt metadata: extraction échouée (non-fatal)", "err", err)
+		}
 	}
 	titleConfigDir := filepath.Join(cfg.RepoRoot, "config", "titles", titleSlug)
-	if err := runMigrations(metaPath, sharedPath, sharedSocialPath, pr.SharedPVEDBPath(titleSlug), titleConfigDir); err != nil {
+	if err := runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, titleConfigDir); err != nil {
 		slog.Debug("migrations ignorées (DB verrouillée), démarrage sans migration")
 	} else {
 		slog.Debug("migrations appliquées")

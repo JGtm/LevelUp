@@ -226,16 +226,35 @@ web_up || fail "Vite n'a pas démarré — voir $LOG_DIR/demo-web.log"
 # non versionnées). Régénérer la vitrine reste possible, explicitement :
 #   cd apps/web && npx playwright test --project=visual lab-charts --update-snapshots
 run_visual() {
-	local scope=()
+	# `--update-snapshots` accepte une VALEUR optionnelle : passé nu, Playwright
+	# avale l'argument suivant (« option --update-snapshots argument 'app-pages'
+	# is invalid »). On normalise donc en `--update-snapshots=all`, ce qui laisse
+	# les filtres positionnels intacts.
+	local scope=() args=()
 	for a in "$@"; do
-		[ "$a" = "--update-snapshots" ] && scope=(app-pages.visual.spec.ts)
+		case "$a" in
+		--update-snapshots)
+			args+=(--update-snapshots=all)
+			scope=(app-pages.visual.spec.ts)
+			;;
+		--update-snapshots=*)
+			args+=("$a")
+			scope=(app-pages.visual.spec.ts)
+			;;
+		*) args+=("$a") ;;
+		esac
 	done
+	set -- "${args[@]+"${args[@]}"}"
 	(
 		cd "$REPO_ROOT/apps/web"
+		# E2E_VISUAL_REQUIRE_ALL : en démo, une page sans graphe est une
+		# RÉGRESSION, pas une donnée manquante. Sans ce mode strict, une fixture
+		# mal résolue produit 6 skips + « zéro diff » — un faux vert.
 		E2E_VISUAL_PLAYER=demo-player \
 			E2E_BASE_URL="http://localhost:$WEB_PORT" \
 			E2E_API_URL="http://127.0.0.1:$API_PORT" \
 			E2E_SYNTHETIC_DEMO=1 \
+			E2E_VISUAL_REQUIRE_ALL=1 \
 			npx playwright test --project=visual "${scope[@]+"${scope[@]}"}" "$@"
 	)
 }
@@ -251,7 +270,7 @@ fi
 # fixture de zéro (nouvelles DuckDB, nouveaux written_at) et on rejoue la
 # comparaison : toute diff pixel signalerait une donnée non déterministe.
 say "[déterminisme 1/3] génération des baselines sur la fixture courante..."
-run_visual --update-snapshots
+run_visual --update-snapshots "${PW_ARGS[@]+"${PW_ARGS[@]}"}"
 
 say "[déterminisme 2/3] régénération complète de la fixture (2e génération)..."
 stop_api
@@ -259,5 +278,5 @@ seed_fixture
 start_api
 
 say "[déterminisme 3/3] comparaison aux baselines de la passe 1 (0 diff attendu)..."
-run_visual
+run_visual "${PW_ARGS[@]+"${PW_ARGS[@]}"}"
 say "DÉTERMINISME VÉRIFIÉ : deux générations + deux passes, zéro diff pixel."

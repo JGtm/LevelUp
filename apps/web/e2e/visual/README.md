@@ -41,6 +41,20 @@ Les fichiers `.duckdb` diffèrent au bit près (agencement de blocs, `written_at
 La fixture (~59 Mo) est GÉNÉRÉE, jamais versionnée. Compter ~20 s de génération
 et ~1,5 min de captures.
 
+**Mode strict.** Le script pose `E2E_VISUAL_REQUIRE_ALL=1` : une page sans graphe
+devient un ÉCHEC au lieu d'un skip. Indispensable — une fixture mal résolue
+produisait 6 pages skippées + « zéro diff », donc un vert parfait sur des pages
+vides. Hors démo (joueur réel, données partielles) le skip reste le défaut.
+
+**Le mode démo est hermétique aux données.** Les quatre bases du warehouse
+(`shared`, `metadata`, `shared_social`, `shared_pve`) sont servies depuis la
+fixture **inconditionnellement**. Auparavant la bascule n'avait lieu que si la
+base de production était absente : sur un poste de développement — qui a ses
+données réelles — la démo servait donc la PRODUCTION, `demo-player` n'y avait
+aucun match, et le harnais skippait 6 pages sur 7. Les migrations de boot
+s'appliquaient en prime aux bases de production. Garde-rail :
+`cmd/server/demo_paths_test.go`.
+
 **Le mode démo est hermétique au réseau.** L'API démo n'émet aucun appel tiers
 (Halo, Xbox, gamecms, OAuth Microsoft) : `internal/platform/netguard` coupe les
 sorties dès `LEVELUP_DEMO_MODE=true`, et chaque saut est tracé
