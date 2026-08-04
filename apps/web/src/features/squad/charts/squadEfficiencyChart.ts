@@ -12,10 +12,12 @@
  * Les DEUX indicateurs montent quand le joueur va mieux (OC = PV convertis en frags
  * effectifs par dégât infligé ; DR = dégâts encaissés par mort rapportés aux PV), donc
  * un écart positif = au-dessus de l'élite dans les deux cartes : remplissage
- * `divergent-pos` au-dessus de zéro, `divergent-neg` en dessous, trait et étiquette de
- * piste à la couleur du joueur. Axe symétrique PARTAGÉ par toutes les pistes (±40 %
- * de départ, élargi par pas de 10 jusqu'à ±150 si les données débordent) : une bosse
- * de même hauteur vaut la même chose chez tous les joueurs.
+ * `divergent-pos` au-dessus de zéro, `divergent-neg` en dessous (aires peu opaques),
+ * trait et étiquette de piste à la couleur du joueur, le trait étant cerné de la
+ * couleur de carte pour rester lisible sur une aire de teinte voisine. Axe symétrique
+ * PARTAGÉ par toutes les pistes (±40 % de départ, élargi par pas de 10 jusqu'à ±150 si
+ * les données débordent) : une bosse de même hauteur vaut la même chose chez tous les
+ * joueurs.
  *
  * Pourquoi l'indicateur du PAYLOAD et pas un recalcul local : la frontière P80 est
  * définie dans l'espace OC/DR côté back (games.OffensiveConversionP80 /
@@ -218,7 +220,20 @@ function matchLabel(order: number, map: string | undefined): string {
   return map ? `#${order + 1} · ${truncateMap(map)}` : `#${order + 1}`
 }
 
-/** Séries d'une piste : aire positive, aire négative, puis le trait du joueur. */
+/** Opacité des aires signées : assez basse pour qu'un trait joueur de la même
+ *  famille de teinte reste lisible par-dessus. Le signe se lit de toute façon à
+ *  la position (au-dessus / en dessous de la ligne de base), pas à la saturation. */
+const AREA_OPACITY = 0.2
+/** Épaisseur du trait joueur, et de son cerne couleur de carte (dessous). */
+const TRACK_LINE_W = 2
+const TRACK_HALO_W = 5
+
+/**
+ * Séries d'une piste : aire positive, aire négative, cerne, puis le trait du
+ * joueur. Le cerne est le MÊME tracé, dessiné juste en dessous, plus épais et à
+ * la couleur de la carte : il détache le trait de l'aire quelle que soit la
+ * proximité de leurs teintes (le coéquipier « vert » sur l'aire verte).
+ */
 function trackSeries(
   index: number,
   player: string,
@@ -235,12 +250,22 @@ function trackSeries(
     silent: true,
     symbol: 'none' as const,
     lineStyle: { width: 0 },
-    areaStyle: { color: resolveToken(token), opacity: 0.32, origin: 0 },
+    areaStyle: { color: resolveToken(token), opacity: AREA_OPACITY, origin: 0 },
     connectNulls: false,
   })
   return [
     area(positive, 'divergent-pos'),
     area(negative, 'divergent-neg'),
+    {
+      type: 'line' as const,
+      xAxisIndex: index,
+      yAxisIndex: index,
+      data: points.map((p, i): AreaPoint => [i, p?.gap ?? null]),
+      silent: true,
+      symbol: 'none' as const,
+      lineStyle: { color: tc.surface, width: TRACK_HALO_W },
+      connectNulls: false,
+    },
     {
       name: player,
       type: 'line' as const,
@@ -253,7 +278,7 @@ function trackSeries(
       // Une piste d'un seul match n'a aucun segment à dessiner : on montre alors
       // les symboles en permanence plutôt qu'un cadre vide.
       showSymbol: points.length <= 2,
-      lineStyle: { color, width: 2 },
+      lineStyle: { color, width: TRACK_LINE_W },
       connectNulls: false,
       markLine: {
         silent: true,

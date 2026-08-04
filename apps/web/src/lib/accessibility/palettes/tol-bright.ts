@@ -47,6 +47,10 @@ const SUNSET_5 = '#DC4A38' // rouge — pire
 const NEUTRAL_GREY = '#888888'
 const TOL_BLACK = '#000000'
 
+// Tol Muted — teinte « wine », empruntée au schéma Muted du même auteur pour
+// dissocier narrative-humiliation de outcome-dnf (tous deux sur TOL_PURPLE).
+const TOL_MUTED_WINE = '#882255'
+
 export const tolBrightPalette: Palette = {
   // ── Perf tiers — Tol Sunset (séquentielle CVD-safe) ───────────────────────
   'perf-tier-1': SUNSET_1, // bleu profond — excellent
@@ -77,6 +81,18 @@ export const tolBrightPalette: Palette = {
   'compare-b': TOL_PURPLE,
   'compare-c': TOL_GREEN,
 
+  // ── Joueurs d'escouade ─────────────────────────────────────────────────────
+  // Les 7 teintes du schéma Bright servent déjà toutes un token outcome ou
+  // narratif, et 3 d'entre elles (Cyan, Yellow, Grey) sont trop claires pour le
+  // seuil de contraste 3:1 sur la surface claire. On puise donc dans les schémas
+  // VIBRANT et MUTED du même auteur (mêmes garanties CVD) 4 teintes absentes du
+  // reste de la palette : l'identité joueur ne collide avec aucun autre rôle.
+  // ΔE min 17.9 en vision normale ; contraste ≥ 3.1:1 sur les deux surfaces.
+  'squad-player-1': '#0077BB', // Tol Vibrant Blue   — joueur principal
+  'squad-player-2': '#CC3311', // Tol Vibrant Red    — coéquipier 1
+  'squad-player-3': '#AA4499', // Tol Muted Purple   — coéquipier 2
+  'squad-player-4': '#117733', // Tol Muted Green    — coéquipier 3
+
   // ── Chart series — Tol Bright 7 + black en s8 ─────────────────────────────
   // Ordre Tol officiel : Blue, Red, Green, Yellow, Cyan, Purple, Grey + extension
   'chart-series-1': TOL_BLUE,
@@ -96,7 +112,9 @@ export const tolBrightPalette: Palette = {
   // Texte calculé pour contraste WCAG AA (test automatique Phase C)
   'narrative-dominant':              TOL_GREEN,  // vert UI — statut positif
   'narrative-dominant-text':         '#FFFFFF',
-  'narrative-humiliation':           TOL_PURPLE,
+  // Wine (Tol Muted) et non TOL_PURPLE : ce dernier reste outcome-dnf, et deux
+  // verdicts de match ne doivent pas partager exactement le même fond.
+  'narrative-humiliation':           TOL_MUTED_WINE,
   'narrative-humiliation-text':      '#FFFFFF',
   'narrative-remontada':             TOL_BLUE,
   'narrative-remontada-text':        '#FFFFFF',

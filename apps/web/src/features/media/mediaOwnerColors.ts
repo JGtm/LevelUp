@@ -5,9 +5,11 @@
  */
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { MediaItemRow } from '@/lib/api/types'
+import { SQUAD_TEAMMATE_COLOR_TOKENS } from '@/features/squad/colors'
 
-// Tokens identiques à SQUAD_TEAMMATE_COLOR_TOKENS — cohérence visuelle inter-pages.
-const OWNER_TAG_TOKENS = ['narrative-dominant', 'perf-tier-3', 'divergent-pos'] as const
+// Source unique (pas de copie locale) : les pills « propriétaire » reprennent
+// l'ordre d'assignation des coéquipiers de la page Escouade.
+const OWNER_TAG_TOKENS = SQUAD_TEAMMATE_COLOR_TOKENS
 
 // Fallback hash-based pour les callers sans playerColorMap.
 export function ownerTagColor(gamertag: string): string {
