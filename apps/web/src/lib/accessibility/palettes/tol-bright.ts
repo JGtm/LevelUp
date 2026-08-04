@@ -51,6 +51,13 @@ const TOL_BLACK = '#000000'
 // dissocier narrative-humiliation de outcome-dnf (tous deux sur TOL_PURPLE).
 const TOL_MUTED_WINE = '#882255'
 
+// Tol Vibrant — teinte « orange », empruntée au schéma Vibrant du même auteur pour
+// dissocier narrative-debacle de outcome-loss (tous deux sur TOL_RED). Même motif
+// que TOL_MUTED_WINE ci-dessus : une débâcle se superpose à une défaite, les deux
+// ne peuvent pas porter exactement le même fond. L'orange aligne aussi tol-bright
+// sur la sémantique des autres palettes (débâcle = orange/vermillon).
+const TOL_VIBRANT_ORANGE = '#EE7733'
+
 export const tolBrightPalette: Palette = {
   // ── Perf tiers — Tol Sunset (séquentielle CVD-safe) ───────────────────────
   'perf-tier-1': SUNSET_1, // bleu profond — excellent
@@ -118,8 +125,8 @@ export const tolBrightPalette: Palette = {
   'narrative-humiliation-text':      '#FFFFFF',
   'narrative-remontada':             TOL_BLUE,
   'narrative-remontada-text':        '#FFFFFF',
-  'narrative-debacle':               TOL_RED,
-  'narrative-debacle-text':          '#000000', // noir sur Tol Red (6.8) — blanc ne passait pas AA (3.09)
+  'narrative-debacle':               TOL_VIBRANT_ORANGE,
+  'narrative-debacle-text':          '#000000', // noir sur Tol Vibrant Orange (7.3) — blanc ne passe pas AA
   'narrative-contre-remontada':      TOL_CYAN,   // cyan clair
   'narrative-contre-remontada-text': '#000000',
 

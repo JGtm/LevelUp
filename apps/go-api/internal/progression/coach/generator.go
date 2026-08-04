@@ -443,7 +443,7 @@ func buildPatternAlerts(input GenerateInput) []Alert {
 // tests qui les référencent (generator_test.go) — lire « seuil de référence », pas
 // « percentile 80 de la population ».
 const (
-	combatOCP80Threshold = 0.83
+	combatOCP80Threshold = analysis.CombatOCReferenceThreshold
 	combatDRP80Threshold = analysis.CombatDRReferenceThreshold
 )
 

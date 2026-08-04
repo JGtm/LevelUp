@@ -218,7 +218,11 @@ const synthesisWeaponChartTopN = 20
 
 // buildSynthesisFunStatsFromAwards agrege les fun stats depuis personal_score_awards.
 // buildTopWeaponKills filtre les rows sans label (weapon ID non résolu), trie
-// par kills desc et retourne les top N entrées.
+// par kills desc (DÉPARTAGE alphabétique sur le label, comme buildWeaponAccuracy)
+// et retourne les top N entrées. Sans clé de départage, deux armes à frags égaux
+// permutaient d'une réponse à l'autre — classement non déterministe visible sur
+// le harnais de régression visuelle (e2e/visual/app-pages, canvas « classement
+// des armes » de la page Session).
 func buildTopWeaponKills(rows []port.WeaponKillRow, n int) []domain.SynthesisWeaponKillEntry {
 	resolved := make([]port.WeaponKillRow, 0, len(rows))
 	for _, r := range rows {
@@ -226,7 +230,12 @@ func buildTopWeaponKills(rows []port.WeaponKillRow, n int) []domain.SynthesisWea
 			resolved = append(resolved, r)
 		}
 	}
-	sort.Slice(resolved, func(i, j int) bool { return resolved[i].Kills > resolved[j].Kills })
+	sort.SliceStable(resolved, func(i, j int) bool {
+		if resolved[i].Kills != resolved[j].Kills {
+			return resolved[i].Kills > resolved[j].Kills
+		}
+		return resolved[i].Label < resolved[j].Label
+	})
 	if len(resolved) > n {
 		resolved = resolved[:n]
 	}

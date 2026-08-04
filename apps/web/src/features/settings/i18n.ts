@@ -251,6 +251,7 @@ export interface SettingsText {
   paletteTolBright: string
   paletteTolBrightDesc: string
   previewLabel: string
+  previewSquadPlayersLabel: string
 
   // Couleurs d'équipe (outline Halo)
   teamColorsTitle: string
@@ -551,6 +552,7 @@ const FR_TEXT: SettingsText = {
   paletteTolBright: 'Tol Bright (catégoriel)',
   paletteTolBrightDesc: 'Palette catégorielle 7 couleurs optimisée daltonisme par Paul Tol (SRON 2018). Recommandée pour les graphes multi-séries.',
   previewLabel: 'Aperçu',
+  previewSquadPlayersLabel: 'Joueurs d\'escouade',
 
   teamColorsTitle: 'Couleurs de jeu',
   teamColorsDescription: 'Choisissez les mêmes couleurs que dans Halo Infinite (Paramètres › Gameplay & Accessibilité). Les graphes utiliseront ces couleurs pour distinguer votre équipe des adversaires.',
@@ -850,6 +852,7 @@ const EN_TEXT: SettingsText = {
   paletteTolBright: 'Tol Bright (categorical)',
   paletteTolBrightDesc: 'Categorical 7-colour palette optimised for colour-blindness by Paul Tol (SRON 2018). Recommended for multi-series charts.',
   previewLabel: 'Preview',
+  previewSquadPlayersLabel: 'Squad players',
 
   teamColorsTitle: 'In-game colours',
   teamColorsDescription: 'Match the colours you use in Halo Infinite (Settings › Gameplay & Accessibility). Charts will use these colours to distinguish your team from opponents.',

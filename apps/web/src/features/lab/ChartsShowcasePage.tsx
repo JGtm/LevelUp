@@ -94,6 +94,12 @@ const DONUT_SERIES = [
   },
 ]
 
+// Heatmap2DChart affiche `detail.count` dans chaque cellule et formate `value`
+// comme un taux de victoire (`value × 100 %` dans le tooltip) : une fixture sans
+// `detail` peignait donc « 0 » sur les 84 cellules, et une `value` en 0..10 y
+// affichait « 800 % ». Valeurs DÉTERMINISTES (pas de Math.random) — cette page
+// est la référence du harnais de régression visuelle : une fixture aléatoire rend
+// toute baseline incomparable.
 const HEATMAP_SERIES = [
   {
     key: 'demo.heatmap',
@@ -101,10 +107,14 @@ const HEATMAP_SERIES = [
     datapoints: Array.from({ length: 7 * 12 }, (_, i) => {
       const hour = i % 12
       const day = Math.floor(i / 12)
+      // Motif reproductible : creux en début de journée et en milieu de semaine,
+      // pic le week-end en soirée — plage de taux de victoire ~0,30 à ~0,70.
+      const value = 0.5 + 0.2 * Math.sin((hour / 12) * Math.PI * 2 + day)
       return {
         x: String(hour + 8).padStart(2, '0'),
         y: DOW_LABELS_FR[day],
-        value: Math.round(Math.random() * 10),
+        value: Math.round(value * 1000) / 1000,
+        detail: { count: 3 + ((hour * 5 + day * 3) % 18) },
       }
     }),
   },

@@ -662,6 +662,27 @@ export type GamertagSuggestion = components['schemas']['GamertagSuggestion']
 
 export type GamertagSearchResponse = components['schemas']['GamertagSearchResponse']
 
+/**
+ * VIEW-MODEL du tableau de matchs — PAS un ré-export du contrat.
+ *
+ * ExplorerMatchesTable est réutilisé par trois surfaces (Explorer, vue Session,
+ * « Matchs marquants » de la Carrière) alimentées par des schémas OpenAPI
+ * DIFFÉRENTS. Ce type est leur dénominateur commun côté front ; il n'est donc
+ * volontairement PAS dérivé de `components['schemas']['ExplorerMatchesRow']`
+ * (vérifié le 2026-08-04, dérivation fidèle impossible) :
+ *
+ * - `skill_rating_delta` n'appartient pas à `ExplorerMatchesRow` : il vient de
+ *   `SessionDetailMatchRow` et n'alimente qu'une colonne « Δ rang » INJECTÉE par
+ *   la vue session via `extraColumns`. Undefined côté Explorer.
+ * - `map_ui` / `mode_ui` / `playlist_label` sont `string | null` au contrat et
+ *   `string` ici : les trois producteurs backend garantissent un libellé résolu
+ *   (fallback appliqué côté service), le tableau n'a pas de branche « null ».
+ * - les champs optionnels admettent `| null` en plus de `undefined` : le JSON
+ *   servi porte `null` là où le générateur ne modélise que l'absence.
+ *
+ * Toute nouvelle colonne servie par l'API doit être ajoutée AUSSI au schéma
+ * correspondant côté Go — ce type ne dispense pas du contrat, il l'unifie.
+ */
 export interface ExplorerMatchRow {
   match_id: string
   start_time: string

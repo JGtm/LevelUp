@@ -348,13 +348,14 @@ func loadPlayerStats(ctx context.Context, pdb *duckdb.PlayerDB) (milestones.Play
 	// analysis.DefensiveResistanceP80 (1,65), qui servent à normaliser l'échelle
 	// visuelle des jauges (NormalizeForBar) : un palier de progression doit être
 	// atteignable régulièrement, une frontière élite non. Ne PAS « réaligner » ces
-	// valeurs sur les constantes d'analysis — ce serait un changement de difficulté
-	// des paliers, pas une correction de cohérence.
+	// seuils sur les constantes *P80 — ce serait un changement de difficulté des
+	// paliers, pas une correction de cohérence. Source unique des deux seuils de
+	// référence : analysis.Combat{OC,DR}ReferenceThreshold.
 	//
 	// combat_precision_matches  : matchs avec OC >= 0,83.
 	// combat_endurance_matches  : matchs avec DR >= 1,59.
 	// combat_excellence_matches : matchs avec OC >= 0,83 ET DR >= 1,59.
-	const ocMilestoneThreshold = 0.83
+	const ocMilestoneThreshold = analysis.CombatOCReferenceThreshold
 	const drMilestoneThreshold = analysis.CombatDRReferenceThreshold
 	// effectiveHpToKill = baseline PV-pour-tuer du titre (225 Infinite ; 115 Halo 5).
 	// Float de confiance issu de la config → injecté via Sprintf (%g), pas une
