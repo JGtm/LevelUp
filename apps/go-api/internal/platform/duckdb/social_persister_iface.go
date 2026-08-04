@@ -67,9 +67,10 @@ type SocialPersister interface {
 	// INSERT new dans la même TX, CHECKPOINT garanti). ADR 0021 Phase 3.2.
 	SetMediaMatchAssociation(ctx context.Context, mediaFileID int64, matchID string) error
 
-	// SetMediaLiked : UPDATE media_files.liked (+ liked_at) atomique avec
-	// CHECKPOINT garanti. Retourne true si la ligne existait. ADR 0021 Phase 3.2.
-	SetMediaLiked(ctx context.Context, filePath string, liked bool) (bool, error)
+	// NB : SetMediaLiked (UPDATE media_files.liked) a été RETIRÉ le 2026-08-04
+	// avec le passage du like au par-viewer — `liked` était un booléen global
+	// partagé par tous les joueurs. Les seules écritures de like sont désormais
+	// AddLike / RemoveLike (events append-only par liker).
 
 	// AppendPlayerRecord : INSERT pur dans player_records_history (pattern
 	// append-only, anti-bug ART). achievedAt, achievedMatchID, previousValue et

@@ -37,8 +37,14 @@ func seedCanonicalMediaFile(t *testing.T, db *DB) string {
 }
 
 // TestMediaLike_OnlyStoredRelativePathMatches reproduit la panne et vérifie le
-// comportement attendu après correctif : seul le chemin STOCKÉ met à jour la
-// ligne ; les formes dérivées du disque sont silencieusement inopérantes.
+// comportement attendu après correctif : seul le chemin STOCKÉ résout la ligne ;
+// les formes dérivées du disque sont silencieusement inopérantes.
+//
+// Le point de résolution est MediaExists depuis le passage du like au par-viewer
+// (2026-08-04) : c'est lui qui décide « média connu » vs « 404 », rôle que tenait
+// le rowsAffected de l'UPDATE media_files.liked (colonne globale supprimée du
+// chemin de like). La classe de bug traquée est INCHANGÉE — une clé de chemin
+// non canonique perd le like sans lever d'erreur.
 func TestMediaLike_OnlyStoredRelativePathMatches(t *testing.T) {
 	socialDB := createSharedSocialSchemaForMediaTests(t)
 	storedPath := seedCanonicalMediaFile(t, socialDB)
@@ -46,39 +52,43 @@ func TestMediaLike_OnlyStoredRelativePathMatches(t *testing.T) {
 	ctx := context.Background()
 
 	// (1) Chemin ABSOLU reconstruit depuis capturesBase — ce que le handler
-	// envoyait avant le correctif. Aucune ligne touchée → 404 côté service.
+	// envoyait avant le correctif. Aucune ligne résolue → 404 côté service.
 	absPath := filepath.Join(t.TempDir(), "JGtm", "clip.mp4")
-	updated, err := repo.SetMediaLike(ctx, absPath, true)
+	found, err := repo.MediaExists(ctx, absPath)
 	if err != nil {
-		t.Fatalf("SetMediaLike(abs): %v", err)
+		t.Fatalf("MediaExists(abs): %v", err)
 	}
-	if updated {
-		t.Fatalf("chemin absolu %q ne devrait toucher aucune ligne", absPath)
+	if found {
+		t.Fatalf("chemin absolu %q ne devrait résoudre aucune ligne", absPath)
 	}
 
 	// (2) Chemin stocké avec séparateurs OS (effet de filepath.FromSlash sous
 	// Windows) — inopérant lui aussi : la colonne contient des forward-slashes.
-	updated, err = repo.SetMediaLike(ctx, `JGtm\clip.mp4`, true)
+	found, err = repo.MediaExists(ctx, `JGtm\clip.mp4`)
 	if err != nil {
-		t.Fatalf("SetMediaLike(backslash): %v", err)
+		t.Fatalf("MediaExists(backslash): %v", err)
 	}
-	if updated {
-		t.Error(`chemin "JGtm\clip.mp4" ne devrait toucher aucune ligne (format DB = forward-slash)`)
+	if found {
+		t.Error(`chemin "JGtm\clip.mp4" ne devrait résoudre aucune ligne (format DB = forward-slash)`)
 	}
 
 	// (3) Chemin STOCKÉ tel quel — la seule clé valide (comportement corrigé).
-	updated, err = repo.SetMediaLike(ctx, storedPath, true)
+	found, err = repo.MediaExists(ctx, storedPath)
 	if err != nil {
-		t.Fatalf("SetMediaLike(stored): %v", err)
+		t.Fatalf("MediaExists(stored): %v", err)
 	}
-	if !updated {
-		t.Fatalf("chemin stocké %q doit mettre à jour la ligne", storedPath)
+	if !found {
+		t.Fatalf("chemin stocké %q doit résoudre la ligne", storedPath)
 	}
 
+	// Le like lui-même se persiste sous cette même clé, en event par liker.
+	if err := repo.ToggleSharedLike(ctx, storedPath, "JGtm", "JGtm", true); err != nil {
+		t.Fatalf("ToggleSharedLike(stored): %v", err)
+	}
 	got := reopenAndCount(t, socialDB,
-		`SELECT COUNT(*) FROM media_files WHERE file_path = ? AND liked = TRUE`, storedPath)
+		`SELECT COUNT(*) FROM media_likes_latest WHERE media_path = ? AND is_liked = TRUE`, storedPath)
 	if got != 1 {
-		t.Errorf("attendu liked=TRUE persisté pour %q, got %d ligne(s)", storedPath, got)
+		t.Errorf("attendu 1 like persisté pour %q, got %d ligne(s)", storedPath, got)
 	}
 }
 

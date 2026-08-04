@@ -160,8 +160,11 @@ type MediaRepository interface {
 	// compte), depuis shared_social.media_files. Gamertag/is_self résolus par le caller.
 	ListMediaAuthors(ctx context.Context) ([]domain.MediaAuthor, error)
 
-	// SetMediaLike persiste l'état liked d'un média. Retourne false si le média est introuvable.
-	SetMediaLike(ctx context.Context, filePath string, liked bool) (bool, error)
+	// MediaExists indique si le média existe et est visible (non supprimé).
+	// Le like lui-même n'est plus un état du média : il vit par liker dans
+	// media_likes_history (cf. ToggleSharedLike) depuis le passage au like
+	// par-viewer (2026-08-04).
+	MediaExists(ctx context.Context, filePath string) (bool, error)
 
 	// ToggleSharedLike écrit/supprime un like dans la table media_likes partagée.
 	ToggleSharedLike(ctx context.Context, mediaPath, likerSlug, likerGamertag string, liked bool) error

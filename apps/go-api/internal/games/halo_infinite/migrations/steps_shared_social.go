@@ -48,6 +48,10 @@ func sharedSocialRootSteps() []migration.Migration {
 						file_size            INTEGER DEFAULT 0,
 						thumbnail_path       VARCHAR,
 						capture_end_utc      TIMESTAMP,
+						-- DÉPRÉCIÉES depuis le 2026-08-04 (like par viewer), retrait
+						-- cible 2026-11-04 : plus lues ni écrites nulle part, l'état
+						-- d'un like vit dans media_likes_history. Rationale complète et
+						-- conditions du DROP : internal/ops/media_store.go.
 						liked                BOOLEAN DEFAULT FALSE,
 						liked_at             TIMESTAMP,
 						created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

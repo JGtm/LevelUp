@@ -83,11 +83,8 @@ func (h *MediaHandler) handleDeleteMedia(ctx context.Context, in *mediaDeleteInp
 // locale, qui est le cas d'usage principal.
 func (h *MediaHandler) resolveDeleteRequester(ctx context.Context, req *domain.MediaDeleteRequest) error {
 	req.AuthEnforced = h.authEnforced
-	sess := middleware.GetSession(ctx)
-	if sess != nil {
-		if sess.CurrentPlayerSlug != nil {
-			req.RequesterSlug = *sess.CurrentPlayerSlug
-		}
+	req.RequesterSlug = middleware.SessionPlayerSlug(ctx)
+	if sess := middleware.GetSession(ctx); sess != nil {
 		if sess.Role != nil && *sess.Role == string(domain.RoleAdmin) {
 			req.RequesterIsAdmin = true
 		}

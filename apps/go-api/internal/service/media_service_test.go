@@ -57,7 +57,7 @@ func (m *mockMediaRepo) CountMediaFiles(_ context.Context, _ domain.MediaFilters
 func (m *mockMediaRepo) LoadMediaFilterOptions(_ context.Context, _ domain.MediaFilters) (domain.MediaFilterOptions, error) {
 	return m.filterOptions, m.filterOptsErr
 }
-func (m *mockMediaRepo) SetMediaLike(_ context.Context, _ string, _ bool) (bool, error) {
+func (m *mockMediaRepo) MediaExists(_ context.Context, _ string) (bool, error) {
 	if m.setErr != nil {
 		return false, m.setErr
 	}
