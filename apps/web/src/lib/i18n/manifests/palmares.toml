@@ -241,12 +241,12 @@ fr = "Il te tue bien plus qu'il ne tombe (plus de 2 morts pour 1 frag)."
 en = "Kills you far more than you kill them (over 2 deaths per frag)."
 
 [palmares.relations.badge_legend.coriace]
-fr = "Adversaire que tu bats rarement : ≤ 35 % de victoires face à lui."
-en = "Opponent you rarely beat: ≤ 35% wins against them."
+fr = "Adversaire rarement battu : ≤ 35 % de victoires face à lui."
+en = "Rarely beaten opponent: ≤ 35% wins against them."
 
 [palmares.relations.badge_legend.proie_favorite]
-fr = "Tu domines les duels : ratio de frags ≥ 1,5 contre lui."
-en = "You dominate the duels: frag ratio ≥ 1.5 against them."
+fr = "Duels dominés : ratio de frags ≥ 1,5 contre lui."
+en = "Dominated duels: frag ratio ≥ 1.5 against them."
 
 [palmares.relations.badge_legend.cameleon]
 fr = "Autant coéquipier qu'adversaire au fil des matchs."
@@ -336,12 +336,12 @@ fr = "Matchs joués avec ce joueur, répartis en allié et adversaire."
 en = "Matches played with this player, split into ally and enemy."
 
 [palmares.relations.table.win_rate_ally_tooltip]
-fr = "Taux de victoire des matchs où ce joueur était ton allié."
-en = "Win rate in matches where this player was your ally."
+fr = "Taux de victoire des matchs où ce joueur était allié."
+en = "Win rate in matches where this player was an ally."
 
 [palmares.relations.table.win_rate_enemy_tooltip]
-fr = "Taux de victoire des matchs où ce joueur était ton adversaire."
-en = "Win rate in matches where this player was your enemy."
+fr = "Taux de victoire des matchs où ce joueur était adversaire."
+en = "Win rate in matches where this player was an opponent."
 
 [palmares.relations.table.frags_deaths_tooltip]
 fr = "Frags infligés à ce joueur et morts subies face à lui, tous matchs confondus."
@@ -412,8 +412,8 @@ fr = "Taux de victoires avec le noyau"
 en = "Win rate with the inner circle"
 
 [palmares.relations.core.lift_tooltip]
-fr = "Écart entre ce taux de victoire et ta moyenne personnelle historique."
-en = "Gap between this win rate and your historical personal average."
+fr = "Écart entre ce taux de victoire et la moyenne personnelle historique."
+en = "Gap between this win rate and the historical personal average."
 
 [palmares.relations.core.seen_this_week]
 fr = "{count} vus cette semaine"

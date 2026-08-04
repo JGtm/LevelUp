@@ -564,8 +564,8 @@ fr = "Répartition des frags par phase de match"
 en = "Frag distribution across match phases"
 
 [timeseries.progression.intensity_tooltip]
-fr = "Chaque match est découpé en 10 tranches de durée égale. Le trait plein montre à quel moment tes frags tombent : à gauche le début du match, à droite la fin. La zone colorée autour dit à quel point ça change d'un match à l'autre — large, tu joues très différemment selon les parties ; étroite, tu fais toujours à peu près pareil. Le pointillé est le niveau d'un match où tes frags seraient répartis également du début à la fin : au-dessus, c'est un moment fort de tes matchs, en dessous un moment creux."
-en = "Each match is split into 10 equal slices. The solid line shows when your kills happen: start of the match on the left, end on the right. The shaded band around it shows how much this changes from match to match — wide means you play very differently depending on the game, narrow means you play much the same way every time. The dashed line is the level of a match where your kills would be spread evenly from start to finish: above it is a strong stretch of your matches, below it a quiet one."
+fr = "Chaque match est découpé en 10 tranches de durée égale. Le trait plein montre à quel moment les frags tombent : à gauche le début du match, à droite la fin. La zone colorée autour dit à quel point ça change d'un match à l'autre — large, le jeu varie beaucoup selon les parties ; étroite, le profil reste à peu près le même. Le pointillé est le niveau d'un match où les frags seraient répartis également du début à la fin : au-dessus, c'est un moment fort, en dessous un moment creux."
+en = "Each match is split into 10 equal slices. The solid line shows when kills happen: start of the match on the left, end on the right. The shaded band around it shows how much this changes from match to match — wide means play varies a lot depending on the game, narrow means it stays much the same every time. The dashed line is the level of a match where kills would be spread evenly from start to finish: above it is a strong stretch, below it a quiet one."
 
 [timeseries.progression.intensity_median]
 fr = "Médiane"
