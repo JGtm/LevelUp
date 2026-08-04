@@ -215,7 +215,7 @@ export function HomePage() {
   // retiré le 2026-08-02) — sinon les tuiles
   // affichent la clé canonique brute (kda, win_rate, accuracy) au lieu du
   // libellé traduit. La tuile « Matchs » utilise directement kpiText (libellé
-  // fixe court, indépendant du field-mapping backend « Parties jouées »).
+  // fixe court, indépendant du field-mapping backend « Matchs joués »).
   const localKpiLabels: Record<string, string> = {
     kda: kpiText.labels.kda,
     win_rate: kpiText.labels.winRate,

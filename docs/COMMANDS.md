@@ -193,6 +193,28 @@ npm run test:coverage
 npm run lint
 ```
 
+### Local merge gate (`gate-push`)
+
+```bash
+make gate-push               # golangci-lint ratchet + web typecheck/lint + test baseline (~25 min)
+```
+
+On some Windows dev machines, git-bash's linker fails to resolve DuckDB's
+`libduckdb_static` when building CGO test binaries (`undefined reference
+__emutls_v._ZSt11__once_call`), which breaks the test-baseline step of
+`make gate-push` even though the code itself is fine — native PowerShell links
+correctly. Validated workaround (documented in
+`.ai/HANDOFF_POST_LOT2_V73.md`): run `scripts/gate-push.ps1` instead. It
+reproduces the same 4 links (Go lint, Go integration tests, web typecheck, web
+lint) but produces the `go test -json` output from native PowerShell, then
+hands it to `scripts/check_test_baseline.sh tests --from-jsonl <file>` (consumer
+mode — parses the JSONL, does not re-run the suite). CI remains the authority;
+this is a local-only fallback for that specific environment quirk.
+
+```powershell
+powershell -File scripts/gate-push.ps1
+```
+
 ---
 
 ## Environment variables

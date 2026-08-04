@@ -149,6 +149,9 @@ apps/go-api/token_*.txt
 # diagnostic conservée localement, uploadée en artefact par la CI si le gate échoue.
 # NB : la baseline de RÉFÉRENCE (.ai/baselines/tests_pre_migration.jsonl) reste versionnée.
 apps/go-api/baseline_current.jsonl
+# stderr du run PowerShell natif de scripts/gate-push.ps1 (contournement git-bash/emutls,
+# cf. docs/COMMANDS.md) — même statut que le JSONL ci-dessus, diagnostic local only.
+apps/go-api/baseline_current.stderr.log
 apps/go-api/coverage
 apps/go-api/coverage*.out
 # Rapport HTML de couverture : artefact de build (régénéré + uploadé en CI),

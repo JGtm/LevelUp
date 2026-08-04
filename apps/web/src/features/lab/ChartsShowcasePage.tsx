@@ -198,14 +198,31 @@ const OUTCOME_TAPE = [
   { matchId: '8', outcome: 'win' as const, map: 'Bazaar' },
 ]
 
-const KDA_ROWS: TimeseriesMatchRow[] = Array.from({ length: 10 }, (_, i) => ({
+// Frags/Morts/Assists/Précision par match : valeurs DÉTERMINISTES (pas de
+// Math.random) — même règle que HEATMAP_SERIES ci-dessus. Cette page est la
+// référence du harnais de régression visuelle (e2e/visual/lab-charts.visual.spec.ts,
+// baselines PNG versionnées) : une fixture aléatoire rend toute baseline incomparable.
+const KDA_ROW_STATS: Array<{ kills: number; deaths: number; assists: number; accuracy: number }> = [
+  { kills: 8, deaths: 6, assists: 3, accuracy: 0.52 },
+  { kills: 12, deaths: 4, assists: 5, accuracy: 0.61 },
+  { kills: 15, deaths: 9, assists: 2, accuracy: 0.47 },
+  { kills: 9, deaths: 5, assists: 6, accuracy: 0.58 },
+  { kills: 18, deaths: 11, assists: 4, accuracy: 0.65 },
+  { kills: 11, deaths: 7, assists: 3, accuracy: 0.5 },
+  { kills: 14, deaths: 8, assists: 7, accuracy: 0.55 },
+  { kills: 10, deaths: 4, assists: 2, accuracy: 0.63 },
+  { kills: 16, deaths: 10, assists: 5, accuracy: 0.49 },
+  { kills: 13, deaths: 6, assists: 4, accuracy: 0.57 },
+]
+
+const KDA_ROWS: TimeseriesMatchRow[] = KDA_ROW_STATS.map((s, i) => ({
   match_id: String(i),
   index: i,
   start_time: new Date(2026, 0, 1 + i) as unknown as string,
-  kills: 8 + Math.floor(Math.random() * 12),
-  deaths: 4 + Math.floor(Math.random() * 8),
-  assists: 2 + Math.floor(Math.random() * 6),
-  accuracy: 0.45 + Math.random() * 0.2,
+  kills: s.kills,
+  deaths: s.deaths,
+  assists: s.assists,
+  accuracy: s.accuracy,
   outcome: i % 3 === 0 ? 3 : 2,
   personal_score: null,
   damage_dealt: null,
