@@ -10,7 +10,6 @@
  * derrière FeatureGate capability="engagement".
  */
 import { useMemo } from 'react'
-import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { FirstBloodLanes } from '@/components/charts/FirstBloodLanes'
 import { firstBloodMaxSec, toFirstBloodSeries } from '@/features/_shared/firstBlood'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -86,11 +85,11 @@ export function SquadDynamiquePage() {
         emptyMessage={t.empty.noBlockData}
       />
 
-      {/* Aide PROPRE à cette surface : depuis le passage en pistes d'écart à la
-          frontière élite, l'explication partagée EfficiencyTooltipText (dégâts
-          bruts par frag) décrit les charts Timeseries/Session, plus celui-ci. */}
+      {/* Aide PROPRE à cette surface (portée par les deux titres de carte) : ces
+          cartes tracent le TAUX « une vie » des indicateurs canoniques, quand
+          l'explication partagée EfficiencyTooltipText décrit les dégâts bruts
+          des charts Timeseries/Session. */}
       <SquadEfficiencyChart
-        infoTooltip={<InfoTooltip content={t.efficiencySeries.help} />}
         rowsByPlayer={performanceSeries ?? {}}
         playerOrder={[mainPlayerKey, ...confirmedGamertags].filter((p) => performanceSeries?.[p])}
         colorByPlayer={playerColors}

@@ -6,11 +6,15 @@ vi.mock('@/lib/accessibility', () => ({ resolveToken: (token: string) => token }
 
 import {
   ONE_LIFE_DAMAGE,
-  damageAxisBounds,
+  ONE_LIFE_WINDOW_FACTOR,
+  ONE_LIFE_ZONE_OPACITY,
   damagePerDeath,
   damagePerKill,
   defensiveDamageGradient,
   offensiveDamageGradient,
+  oneLifeNeutralOffset,
+  oneLifeWindowBounds,
+  oneLifeZonesMarkArea,
 } from './oneLifeDamageGradient'
 
 describe('damagePerKill / damagePerDeath', () => {
@@ -29,79 +33,103 @@ describe('damagePerKill / damagePerDeath', () => {
   })
 })
 
+describe('oneLifeWindowBounds — fenêtre FIXE autour du pivot', () => {
+  it('demi-pivot … double pivot, quel que soit le barème du titre', () => {
+    expect(oneLifeWindowBounds(225)).toEqual({ min: 112.5, max: 450 })
+    expect(oneLifeWindowBounds(115)).toEqual({ min: 57.5, max: 230 })
+    // En unité normalisée (pivot 100 %), c'est la fenêtre 50…200 % des cartes.
+    expect(oneLifeWindowBounds(100)).toEqual({ min: 50, max: 200 })
+  })
+  it('défaut = barème Infinite', () => {
+    expect(oneLifeWindowBounds()).toEqual(oneLifeWindowBounds(ONE_LIFE_DAMAGE))
+    expect(ONE_LIFE_WINDOW_FACTOR).toBe(2)
+  })
+  it('fenêtre multiplicativement symétrique : le pivot est au centre géométrique', () => {
+    const { min, max } = oneLifeWindowBounds(225)
+    expect(min * max).toBeCloseTo(225 ** 2, 6)
+  })
+})
+
+describe('oneLifeNeutralOffset — arrêt neutre du dégradé', () => {
+  it('constant (2/3 pour un facteur 2) : la couleur ne dépend plus de la session', () => {
+    expect(oneLifeNeutralOffset()).toBeCloseTo(2 / 3, 10)
+  })
+})
+
 describe('offensiveDamageGradient (dégâts/frag — monotone, bas = vert)', () => {
-  it('valeurs à cheval sur 225 → rouge en haut (gaspillage), neutre au repère, vert en bas (efficace)', () => {
-    const g = offensiveDamageGradient([150, 300])
+  it('rouge en haut (gaspillage), neutre au pivot, vert en bas (efficace)', () => {
+    const g = offensiveDamageGradient()
     expect(g.type).toBe('linear')
     expect(g.colorStops).toHaveLength(3)
-    expect(g.colorStops[0].color).toBe('divergent-neg')
-    expect(g.colorStops[1].color).toBe('divergent-neutral')
-    expect(g.colorStops[2].color).toBe('divergent-pos')
-    expect(g.colorStops[1].offset).toBeGreaterThan(0)
-    expect(g.colorStops[1].offset).toBeLessThan(1)
-  })
-  it('toutes SOUS 225 (efficace) → aucun rouge : neutre en haut, vert en bas', () => {
-    const g = offensiveDamageGradient([120, 200])
-    expect(g.colorStops).toHaveLength(2)
-    expect(g.colorStops[0]).toEqual({ offset: 0, color: 'divergent-neutral' })
-    expect(g.colorStops[1]).toEqual({ offset: 1, color: 'divergent-pos' })
-  })
-  it('toutes au-dessus de 225 (gaspillage) → rouge en haut, neutre en bas (le plus proche de 225)', () => {
-    const g = offensiveDamageGradient([260, 400])
-    expect(g.colorStops).toHaveLength(2)
     expect(g.colorStops[0]).toEqual({ offset: 0, color: 'divergent-neg' })
-    expect(g.colorStops[1]).toEqual({ offset: 1, color: 'divergent-neutral' })
+    expect(g.colorStops[1].color).toBe('divergent-neutral')
+    expect(g.colorStops[1].offset).toBeCloseTo(2 / 3, 10)
+    expect(g.colorStops[2]).toEqual({ offset: 1, color: 'divergent-pos' })
+  })
+  it('identique d\'une session à l\'autre (aucune donnée en entrée)', () => {
+    expect(offensiveDamageGradient()).toEqual(offensiveDamageGradient())
   })
 })
 
 describe('defensiveDamageGradient (dégâts/mort — ascendant)', () => {
-  it('valeurs à cheval sur 225 → vert haut, neutre au repère, rouge bas', () => {
-    const g = defensiveDamageGradient([150, 320])
+  it('vert en haut, neutre au pivot, rouge en bas', () => {
+    const g = defensiveDamageGradient()
     expect(g.colorStops).toHaveLength(3)
-    expect(g.colorStops[0].color).toBe('divergent-pos')
+    expect(g.colorStops[0]).toEqual({ offset: 0, color: 'divergent-pos' })
     expect(g.colorStops[1].color).toBe('divergent-neutral')
-    expect(g.colorStops[2].color).toBe('divergent-neg')
-    expect(g.colorStops[0].offset).toBe(0)
-    expect(g.colorStops[2].offset).toBe(1)
-  })
-  it('vert (haut) ≠ rouge (bas)', () => {
-    const g = defensiveDamageGradient([100, 500])
-    expect(g.colorStops[0].color).toBe('divergent-pos')
-    expect(g.colorStops[g.colorStops.length - 1].color).toBe('divergent-neg')
+    expect(g.colorStops[2]).toEqual({ offset: 1, color: 'divergent-neg' })
   })
 })
 
-describe('damageAxisBounds', () => {
-  it('garantit la visibilité du repère 225', () => {
-    const b = damageAxisBounds([260, 400])
-    expect(b.min).toBeLessThanOrEqual(ONE_LIFE_DAMAGE)
-    expect(b.max).toBeGreaterThanOrEqual(ONE_LIFE_DAMAGE)
+describe('oneLifeZonesMarkArea — zones de lecture partagées et ORIENTABLES', () => {
+  it('above-is-good : vert du pivot au haut de la fenêtre, rouge du bas au pivot', () => {
+    const { data } = oneLifeZonesMarkArea(225, 'above-is-good')
+    expect(data).toHaveLength(2)
+    expect(data[0][0]).toMatchObject({ yAxis: 225 })
+    expect(data[0][0].itemStyle.color).toBe('divergent-pos')
+    expect(data[0][1]).toEqual({ yAxis: 450 })
+    expect(data[1][0]).toMatchObject({ yAxis: 112.5 })
+    expect(data[1][0].itemStyle.color).toBe('divergent-neg')
+    expect(data[1][1]).toEqual({ yAxis: 225 })
   })
-  it('ignore les null', () => {
-    const b = damageAxisBounds([null, 300, null])
-    expect(b.max).toBeGreaterThanOrEqual(300)
-  })
-})
 
-describe('barème oneLife title-aware (115 Halo 5 vs 225 défaut)', () => {
-  it('damageAxisBounds inclut le repère custom (115)', () => {
-    const b = damageAxisBounds([200, 300], 115)
-    expect(b.min).toBeLessThanOrEqual(115)
+  it('below-is-good : les couleurs S\'INVERSENT, les bornes NON', () => {
+    const { data } = oneLifeZonesMarkArea(225, 'below-is-good')
+    expect(data[0][0]).toMatchObject({ yAxis: 225 })
+    expect(data[0][0].itemStyle.color).toBe('divergent-neg')
+    expect(data[0][1]).toEqual({ yAxis: 450 })
+    expect(data[1][0]).toMatchObject({ yAxis: 112.5 })
+    expect(data[1][0].itemStyle.color).toBe('divergent-pos')
+    expect(data[1][1]).toEqual({ yAxis: 225 })
   })
-  it('offensiveDamageGradient bascule sur le repère custom : [90,140] à cheval sur 115 → 3 stops (neutre au repère, vert en bas)', () => {
-    const g = offensiveDamageGradient([90, 140], 115)
-    expect(g.colorStops).toHaveLength(3)
-    expect(g.colorStops[1].color).toBe('divergent-neutral')
-    expect(g.colorStops[2].color).toBe('divergent-pos')
+
+  it('les deux orientations sont bien opposées (aucun défaut ne les uniformise)', () => {
+    const above = oneLifeZonesMarkArea(100, 'above-is-good').data
+    const below = oneLifeZonesMarkArea(100, 'below-is-good').data
+    expect(above[0][0].itemStyle.color).not.toBe(below[0][0].itemStyle.color)
+    expect(above[1][0].itemStyle.color).not.toBe(below[1][0].itemStyle.color)
   })
-  it('sans argument, garde le barème Infinite 225 : [90,140] tous sous 225 → cas dégénéré bicolore (2 stops, sans rouge)', () => {
-    const g = offensiveDamageGradient([90, 140])
-    expect(g.colorStops).toHaveLength(2)
-    expect(g.colorStops[1].color).toBe('divergent-pos')
+
+  it('l\'opacité suit le TOKEN et non la position : le rouge reste le plus discret', () => {
+    expect(ONE_LIFE_ZONE_OPACITY.neg).toBeLessThan(ONE_LIFE_ZONE_OPACITY.pos)
+    for (const direction of ['above-is-good', 'below-is-good'] as const) {
+      for (const [start] of oneLifeZonesMarkArea(100, direction).data) {
+        const expected =
+          start.itemStyle.color === 'divergent-pos'
+            ? ONE_LIFE_ZONE_OPACITY.pos
+            : ONE_LIFE_ZONE_OPACITY.neg
+        expect(start.itemStyle.opacity).toBe(expected)
+      }
+    }
   })
-  it('defensiveDamageGradient respecte aussi le repère custom (115)', () => {
-    const g = defensiveDamageGradient([90, 140], 115)
-    expect(g.colorStops).toHaveLength(3)
-    expect(g.colorStops[1].color).toBe('divergent-neutral')
+
+  it('accepte des bornes explicites (fenêtre déjà calculée par l\'appelant)', () => {
+    const { data } = oneLifeZonesMarkArea(100, 'above-is-good', { min: 50, max: 200 })
+    expect(data[0][1].yAxis).toBe(200)
+    expect(data[1][0].yAxis).toBe(50)
+  })
+
+  it('zones silencieuses : elles ne captent jamais le survol', () => {
+    expect(oneLifeZonesMarkArea(225, 'above-is-good').silent).toBe(true)
   })
 })
