@@ -21,6 +21,7 @@ export const homeManifest = {
   "home.challenges.empty_description": { fr: "Tous les défis visibles sont terminés ou aucun défi détaillé n'est disponible pour le moment.", en: "All visible challenges are complete or no detailed challenge is available right now." },
   "home.challenges.empty_title": { fr: "Aucun défi actif", en: "No active challenge" },
   "home.challenges.loading": { fr: "Chargement des défis…", en: "Loading challenges…" },
+  "home.challenges.thumb_fallback": { fr: "Défi", en: "Challenge" },
   "home.challenges.title": { fr: "Défis actifs", en: "Active challenges" },
   "home.challenges.unavailable_error": { fr: "Les défis actifs n'ont pas pu être chargés pour le moment.", en: "Active challenges could not be loaded right now." },
   "home.challenges.unavailable_no_data": { fr: "Aucune donnée de défis n'est disponible pour le moment.", en: "No challenge data is available right now." },

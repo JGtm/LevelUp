@@ -2,7 +2,8 @@
  * AccessibilityTab — onglet Accessibilité dans les Paramètres.
  *
  * Permet de choisir entre la palette Standard et la palette Okabe-Ito.
- * Inclut un aperçu live des tokens de performance et d'outcomes.
+ * Inclut un aperçu live des tokens de performance, d'outcomes, divergents et de
+ * la quadruple couleur par joueur d'escouade.
  * Permet également de configurer les couleurs d'équipe (outline Halo).
  */
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -37,6 +38,16 @@ const DIVERGENT_TOKENS = [
   'divergent-pos',
   'divergent-neutral',
   'divergent-neg',
+] as const
+
+// Quadruple couleur par joueur d'escouade (source unique : features/squad/colors).
+// Présente dans les 4 palettes, donc aperçu-able ici au même titre que les autres
+// familles — c'est la famille qui décide de la lisibilité des graphes d'escouade.
+const SQUAD_PLAYER_TOKENS = [
+  'squad-player-1',
+  'squad-player-2',
+  'squad-player-3',
+  'squad-player-4',
 ] as const
 
 function PaletteOption({
@@ -74,7 +85,18 @@ function PaletteOption({
   )
 }
 
-function ColorSwatch({ token, label }: { token: string; label: string }) {
+// swatchText : légende affichée sous la pastille quand elle diffère du libellé
+// accessible (ex. « 1 » sous la pastille, « Joueurs d'escouade 1 » pour le lecteur
+// d'écran). Par défaut la légende EST le libellé.
+function ColorSwatch({
+  token,
+  label,
+  swatchText,
+}: {
+  token: string
+  label: string
+  swatchText?: string
+}) {
   return (
     <div className="flex flex-col items-center gap-1">
       <div
@@ -83,7 +105,7 @@ function ColorSwatch({ token, label }: { token: string; label: string }) {
         aria-label={label}
         title={label}
       />
-      <span className="text-[9px] text-muted-foreground leading-none">{label}</span>
+      <span className="text-[9px] text-muted-foreground leading-none">{swatchText ?? label}</span>
     </div>
   )
 }
@@ -225,6 +247,19 @@ export function AccessibilityTab({ t, locale }: Props) {
               {DIVERGENT_TOKENS.map((token) => (
                 <ColorSwatch key={token} token={token} label={token.replace('divergent-', 'Δ ')} />
               ))}
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-xs text-muted-foreground">{t.previewSquadPlayersLabel}</p>
+              <div className="flex flex-wrap gap-3">
+                {SQUAD_PLAYER_TOKENS.map((token) => (
+                  <ColorSwatch
+                    key={token}
+                    token={token}
+                    label={`${t.previewSquadPlayersLabel} ${token.replace('squad-player-', '')}`}
+                    swatchText={token.replace('squad-player-', '')}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         </div>

@@ -37,7 +37,8 @@ const (
 	// Posée au passage du ratchet goconst (10e occurrence du littéral), puis
 	// GÉNÉRALISÉE à l'ensemble du paquet le 2026-08-03 : plus aucun littéral
 	// "Retry-After" ne subsiste dans le code de production de handlers, et
-	// TestNoRetryAfterLiteralInHandlers (helpers_test.go) interdit sa réapparition.
+	// TestNoRetryAfterLiteralInHandlers (no_retry_after_literal_test.go) interdit
+	// sa réapparition.
 	// Les tests gardent le littéral : ils lisent l'en-tête par son NOM HTTP réel,
 	// ce qui est précisément ce qu'on veut vérifier côté client.
 	headerRetryAfter = "Retry-After"

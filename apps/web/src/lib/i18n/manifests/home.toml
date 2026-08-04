@@ -140,6 +140,11 @@ en = "No active challenge"
 fr = "Tous les défis visibles sont terminés ou aucun défi détaillé n'est disponible pour le moment."
 en = "All visible challenges are complete or no detailed challenge is available right now."
 
+# Vignette de repli quand le défi n'a pas d'illustration (ou qu'elle échoue).
+[home.challenges.thumb_fallback]
+fr = "Défi"
+en = "Challenge"
+
 [home.challenges.xp_available]
 fr = "{xp} XP disponibles"
 en = "{xp} XP available"

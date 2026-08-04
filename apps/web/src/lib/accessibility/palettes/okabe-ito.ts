@@ -102,8 +102,14 @@ export const okabePalette: Palette = {
   'narrative-humiliation-text':      '#000000', // noir (luminosité 0.62 > 0.45)
   'narrative-remontada':             '#56B4E9', // Sky Blue (remplace navy #0072B2 risqué)
   'narrative-remontada-text':        '#000000', // noir sur bleu ciel
-  'narrative-debacle':               '#D55E00', // Vermillion
-  'narrative-debacle-text':          '#000000', // noir sur vermillion (5.4) — blanc ne passait pas AA (3.87)
+  // Vermillion BRUT est déjà outcome-loss / team-enemy / divergent-neg : une
+  // débâcle est un verdict qui se superpose à une défaite, les deux ne peuvent
+  // pas porter exactement le même fond (même raison que outcome-dnf ↔
+  // narrative-humiliation ci-dessus). Okabe-Ito n'ayant que 8 teintes toutes
+  // affectées, on garde la teinte et on baisse la luminosité — technique déjà
+  // employée pour squad-player-2 (« Orange assombri × 0.60 »). × 0.75 ici.
+  'narrative-debacle':               '#A04700', // Vermillion assombri (× 0.75)
+  'narrative-debacle-text':          '#FFFFFF', // blanc sur vermillion sombre (6.2) — noir tombe à 3.40
   'narrative-contre-remontada':      '#E69F00', // Orange (remplace cyan #33D6FF trop proche)
   'narrative-contre-remontada-text': '#000000', // noir sur orange
 

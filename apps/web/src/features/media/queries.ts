@@ -12,7 +12,6 @@ import type {
   MediaAssociateRequest,
   MediaAssociateResponse,
   MediaAuthorsResponse,
-  MediaAvailableFilters,
   MediaDeleteResponse,
   MediaItemRow,
   MediaLikeRequest,
@@ -24,47 +23,6 @@ import type {
 } from '@/lib/api/types'
 
 const DEFAULT_MEDIA_SORT = 'date_desc'
-
-const EMPTY_MEDIA_FILTERS: MediaAvailableFilters = {
-  playlists: [],
-  maps: [],
-  modes: [],
-}
-
-interface LegacyMediaItemRow {
-  basename?: string | null
-  file_name?: string | null
-  file_path: string
-  kind?: string | null
-  thumbnail_path?: string | null
-  match_id?: string | null
-  capture_end_utc?: string | null
-  match_start_time?: string | null
-  section?: string | null
-  owner_gamertag?: string | null
-  map_name?: string | null
-  mode_name?: string | null
-  liked?: boolean | null
-  like_count?: number | null
-}
-
-interface LegacyMediaPageResponse {
-  items: LegacyMediaItemRow[]
-  total_count: number
-  page: number
-  page_size: number
-  has_more: boolean
-}
-
-type MediaPageApiResponse = MediaPageResponse | LegacyMediaPageResponse
-
-function isLegacyMediaItem(item: LegacyMediaItemRow | MediaItemRow): item is LegacyMediaItemRow {
-  return 'file_name' in item
-}
-
-function isLegacyMediaPageResponse(response: MediaPageApiResponse): response is LegacyMediaPageResponse {
-  return Array.isArray(response.items)
-}
 
 export function normalizeMediaKind(kind?: string | null) {
   if (kind === 'video') {
@@ -81,10 +39,12 @@ function basenameFromPath(filePath: string) {
   return parts[parts.length - 1] ?? filePath
 }
 
-function normalizeMediaItem(item: LegacyMediaItemRow | MediaItemRow): MediaItemRow {
+// Les champs optionnels du contrat (`omitempty` côté Go) arrivent en `undefined` :
+// on les ramène aux valeurs par défaut attendues par MediaItemRow (null / 0 / 'mine').
+function normalizeMediaItem(item: MediaItemRow): MediaItemRow {
   const liked = item.liked ?? false
   return {
-    basename: item.basename ?? (isLegacyMediaItem(item) ? item.file_name : null) ?? basenameFromPath(item.file_path),
+    basename: item.basename ?? basenameFromPath(item.file_path),
     file_path: item.file_path,
     kind: normalizeMediaKind(item.kind),
     thumbnail_path: item.thumbnail_path ?? null,
@@ -97,33 +57,12 @@ function normalizeMediaItem(item: LegacyMediaItemRow | MediaItemRow): MediaItemR
     mode_name: item.mode_name ?? null,
     liked,
     like_count: item.like_count ?? (liked ? 1 : 0),
-    likers: 'likers' in item ? (item as MediaItemRow).likers : undefined,
-    total_likers: 'total_likers' in item ? (item as MediaItemRow).total_likers : undefined,
+    likers: item.likers,
+    total_likers: item.total_likers,
   }
 }
 
-function normalizeMediaPageResponse(response: MediaPageApiResponse): MediaPageResponse {
-  if (isLegacyMediaPageResponse(response)) {
-    const items = response.items.map(normalizeMediaItem)
-    return {
-      items: {
-        items,
-        pagination: {
-          total: response.total_count,
-          page: response.page,
-          page_size: response.page_size,
-          has_next: response.has_more,
-          has_prev: response.page > 1,
-        },
-        freshness: null,
-      },
-      total_mine: response.total_count,
-      total_teammates: 0,
-      total_unassigned: 0,
-      available_filters: EMPTY_MEDIA_FILTERS,
-    }
-  }
-
+function normalizeMediaPageResponse(response: MediaPageResponse): MediaPageResponse {
   return {
     total_mine: response.total_mine,
     total_teammates: response.total_teammates,
@@ -204,7 +143,7 @@ export function useMediaPage(
   return useQuery({
     queryKey: queryKeys.media(playerSlug, titleSlug, requestHash),
     queryFn: () =>
-      api.post<MediaPageApiResponse>(
+      api.post<MediaPageResponse>(
         `/players/${playerSlug}/pages/media`,
         request,
       ).then(normalizeMediaPageResponse),
@@ -225,7 +164,7 @@ export function useRecentMediaRail(playerSlug: string, limit: number, likedOnly 
   return useQuery({
     queryKey: queryKeys.mediaRail(playerSlug, titleSlug, limit, likedOnly),
     queryFn: () =>
-      api.post<MediaPageApiResponse>(
+      api.post<MediaPageResponse>(
         `/players/${playerSlug}/pages/media`,
         request,
       ).then(normalizeMediaPageResponse),

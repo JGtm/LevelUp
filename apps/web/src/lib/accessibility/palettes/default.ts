@@ -41,6 +41,8 @@ export const defaultPalette: Palette = {
   'destructive': '#EF4444',
 
   // ── Comparaisons (approximations des OKLCh de globals.css) ─────────────────
+  // Consommateurs vérifiés le 2026-08-04 : page Compare (ComparePage, CompareBar,
+  // CompareMirrorRow) + chaînes LUSR de la Carrière (features/career/lusr-chains.ts).
   'compare-a': '#818CF8', // oklch(0.65 0.15 250) ≈ indigo-400
   'compare-b': '#D97706', // oklch(0.70 0.15 55)  ≈ amber-600
   'compare-c': '#10B981', // oklch(0.72 0.15 160) ≈ emerald-500

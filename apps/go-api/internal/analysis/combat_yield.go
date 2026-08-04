@@ -68,6 +68,25 @@ const (
 // copie du littéral : internal/archlint/no_raw_combat_dr_threshold_test.go.
 const CombatDRReferenceThreshold = 1.59
 
+// CombatOCReferenceThreshold — seuil de référence OC (conversion offensive),
+// jumeau de CombatDRReferenceThreshold ci-dessus. Partagé par le coach (alertes
+// « combat actif » / « combat précis »), le détecteur de jalons combat
+// (combat_precision / combat_excellence) et le backfill des dates de
+// franchissement de ces jalons.
+//
+// Volontairement DISTINCT de OffensiveConversionP80 (0,90) : ce dernier
+// normalise l'échelle visuelle des jauges (NormalizeForBar), alors que celui-ci
+// déclenche un conseil ou débloque un palier de progression et vise donc un
+// niveau ATTEIGNABLE régulièrement. Les aligner changerait la difficulté des
+// paliers et la sensibilité des alertes — ce n'est PAS une dérive à corriger.
+// Le suffixe « P80 » des noms locaux historiques (combatOCP80,
+// ocMilestoneThreshold…) se lit « seuil de référence », pas « percentile 80 de
+// la population ».
+//
+// Source unique (CLAUDE.md règle 6) — garde-rail interdisant toute nouvelle
+// copie du littéral : internal/archlint/no_raw_combat_oc_threshold_test.go.
+const CombatOCReferenceThreshold = 0.83
+
 // assistFragWeight : convention officielle Halo Infinite — 1 assist = 1/3 de frag.
 // Coefficient unique partagé par OffensiveConversion (numérateur) et le dégâts par
 // frag-équivalent (dénominateur), pour que % et chiffre affiché restent l'inverse exact.
