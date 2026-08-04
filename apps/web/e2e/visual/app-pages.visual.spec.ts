@@ -50,6 +50,14 @@ import {
  */
 const HERO_BANNER_TESTID = '[data-testid="home-hero-banner-sticky"]'
 
+/**
+ * Mode STRICT : exige que les 7 pages rendent au moins un graphe (échec sinon,
+ * au lieu du skip). Posé par `scripts/demo-visual-harness.sh`, qui vise une
+ * fixture démo censée peupler toutes les surfaces. Hors démo (joueur réel du
+ * poste, données partielles), le skip reste le comportement voulu.
+ */
+const REQUIRE_ALL_PAGES = process.env.E2E_VISUAL_REQUIRE_ALL === '1'
+
 const PAGES: { id: string; suffix: string; unstableCanvases?: number[] }[] = [
   { id: 'home', suffix: 'home' },
   { id: 'timeseries-summary', suffix: 'stats/timeseries?tab=summary' },
@@ -81,11 +89,24 @@ test.describe(`Régression visuelle — pages applicatives (${VISUAL_PLAYER})`, 
       page.on('pageerror', (err) => errors.push(err.message))
 
       const canvasCount = await gotoSettled(page, playerPath(VISUAL_PLAYER, suffix))
-      test.skip(
-        canvasCount === 0,
-        `aucun graphe rendu pour ${VISUAL_PLAYER} sur /${suffix} — données locales absentes. ` +
-          'Viser un joueur peuplé via E2E_VISUAL_PLAYER.',
-      )
+      if (REQUIRE_ALL_PAGES) {
+        // Mode strict (fixture démo) : une page sans graphe est un ÉCHEC, pas un
+        // skip. Sans ce durcissement, une démo qui sert les mauvaises données
+        // rend un « zéro diff » parfaitement vert sur 6 pages SKIPPÉES — le faux
+        // vert qui a laissé passer le bug de résolution des DB de la fixture.
+        expect(
+          canvasCount,
+          `aucun graphe rendu pour ${VISUAL_PLAYER} sur /${suffix}. En mode démo strict ` +
+            "c'est une régression : la fixture doit peupler les 7 pages. Vérifier que l'API " +
+            'sert bien les DB de la fixture (log « demo_mode: utilisation fixture »).',
+        ).toBeGreaterThan(0)
+      } else {
+        test.skip(
+          canvasCount === 0,
+          `aucun graphe rendu pour ${VISUAL_PLAYER} sur /${suffix} — données locales absentes. ` +
+            'Viser un joueur peuplé via E2E_VISUAL_PLAYER.',
+        )
+      }
 
       await expect(page.locator('main')).toHaveScreenshot(
         [...APP_SNAPSHOT_SEGMENTS, `${id}-page.png`],
