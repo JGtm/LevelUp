@@ -1,25 +1,25 @@
 /**
- * squadEfficiencyChart.test.ts — pistes empilées « écart à la frontière élite ».
+ * squadEfficiencyChart.test.ts — cartes Rendement / Résistance en courbes
+ * superposées, taux « une vie » (%) sur fenêtre FIXE 50…200 %.
  *
- * Couvre les helpers PURS (écart signé, borne symétrique de l'axe partagé, découpe
- * pos/neg avec insertion du croisement, projection des points d'une piste) puis la
- * structure de l'option : une grille / un axe X / un axe Y / trois séries par
- * joueur, étiquettes de piste colorées, axe partagé, dégradation d'un joueur sans
- * données, et valeurs brutes au survol.
+ * Couvre la projection des points (taux = indicateur × 100, valeurs brutes au
+ * survol) puis la structure de l'option : une grille / une courbe par joueur,
+ * bornes d'axe CONSTANTES (le cas « deux sessions d'amplitudes opposées » échoue
+ * si quelqu'un réintroduit des bornes calculées des données), zones de lecture,
+ * repère « 1 vie », étiquettes de fin de courbe et contenu du survol.
  */
 import { describe, it, expect } from 'vitest'
 
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
+import { ONE_LIFE_ZONE_OPACITY } from '@/lib/charts/oneLifeDamageGradient'
 import {
-  GAP_AXIS_MAX_PCT,
-  GAP_AXIS_MIN_PCT,
-  buildSquadEfficiencyTracksOption,
-  buildTrackPoints,
-  eliteGapPercent,
-  splitSignedAtZero,
-  symmetricGapBound,
-  tracksChartHeight,
-  type EfficiencyTrackLabels,
+  EFFICIENCY_CHART_HEIGHT,
+  ONE_LIFE_RATE_PCT,
+  RATE_AXIS_MAX_PCT,
+  RATE_AXIS_MIN_PCT,
+  buildEfficiencyPoints,
+  buildSquadEfficiencyOption,
+  type EfficiencyChartLabels,
 } from './squadEfficiencyChart'
 
 function pt(
@@ -37,333 +37,311 @@ function pt(
   } as SquadPerformanceSeriesPoint
 }
 
-interface TrackSeries {
+interface MarkAreaItem {
+  yAxis: number
+  itemStyle?: { color: string; opacity: number }
+}
+interface PlayerSeries {
   name?: string
   type: string
-  xAxisIndex: number
-  yAxisIndex: number
-  data: Array<{ value: [number, number | null]; player?: string } | [number, number | null]>
+  data: Array<{ value: number } | null>
   lineStyle?: { color?: string; width?: number }
-  areaStyle?: { color: string; opacity: number; origin: number }
+  showSymbol?: boolean
   connectNulls?: boolean
+  endLabel?: { show: boolean; formatter: string; color: string }
+  markArea?: { data: MarkAreaItem[][] }
+  markLine?: {
+    data: Array<{ yAxis: number }>
+    lineStyle?: { color?: string }
+    label?: { show: boolean; formatter: string }
+  }
 }
 interface AxisOpt {
-  gridIndex: number
-  min: number
-  max: number
-  axisLabel: { show?: boolean; formatter: (v: number) => string }
-}
-interface GraphicOpt {
-  type: string
-  top: number
-  style: { text: string; fill: string }
+  min?: number
+  max?: number
+  scale?: boolean
+  data?: string[]
+  axisLabel: { formatter?: (v: number) => string; interval?: number }
 }
 
 const COLORS: Record<string, string> = { Me: '#aaa', F1: '#bbb' }
 const PLAYERS = ['Me', 'F1']
-const OC_P80 = 0.9
-const DR_P80 = 1.65
 
-const LABELS: EfficiencyTrackLabels = {
+const LABELS: EfficiencyChartLabels = {
   offensiveMetric: 'Rendement',
   defensiveMetric: 'Résistance',
-  eliteBoundary: 'frontière élite',
+  oneLife: '1 vie',
   damageDealt: 'Dégâts infligés',
   damageTaken: 'Dégâts subis',
   perFrag: '/ frag effectif',
   perDeath: '/ mort',
 }
 
-function opts(metric: 'offensive' | 'defensive', eliteP80: number) {
-  return { metric, eliteP80, colorByPlayer: COLORS, labels: LABELS } as const
+function opts(metric: 'offensive' | 'defensive') {
+  return { metric, colorByPlayer: COLORS, labels: LABELS } as const
 }
 
-describe('eliteGapPercent — écart signé à la frontière élite', () => {
-  it('pile sur la frontière → 0 %, au-dessus → positif, en dessous → négatif', () => {
-    expect(eliteGapPercent(0.9, OC_P80)).toBe(0)
-    expect(eliteGapPercent(1.08, OC_P80)).toBeCloseTo(20, 6)
-    expect(eliteGapPercent(0.45, OC_P80)).toBeCloseTo(-50, 6)
-  })
-
-  it('les DEUX métriques montent quand le joueur va mieux (DR élevée = positif)', () => {
-    expect(eliteGapPercent(1.98, DR_P80)).toBeCloseTo(20, 6)
-    expect(eliteGapPercent(0.825, DR_P80)).toBeCloseTo(-50, 6)
-  })
-
-  it('indicateur absent ou frontière invalide → null (jamais de division par zéro)', () => {
-    expect(eliteGapPercent(null, OC_P80)).toBeNull()
-    expect(eliteGapPercent(undefined, OC_P80)).toBeNull()
-    expect(eliteGapPercent(Number.NaN, OC_P80)).toBeNull()
-    expect(eliteGapPercent(1, 0)).toBeNull()
-    expect(eliteGapPercent(1, -1)).toBeNull()
-  })
-})
-
-describe('symmetricGapBound — borne de l\'axe partagé', () => {
-  it('plancher à ±40 % : aucune donnée ou données étroites', () => {
-    expect(symmetricGapBound([])).toBe(GAP_AXIS_MIN_PCT)
-    expect(symmetricGapBound([12, -5])).toBe(GAP_AXIS_MIN_PCT)
-    expect(symmetricGapBound([null, 33, null])).toBe(GAP_AXIS_MIN_PCT)
-  })
-
-  it('s\'élargit par pas de 10 quand les données débordent', () => {
-    expect(symmetricGapBound([47])).toBe(50)
-    expect(symmetricGapBound([-71, 12])).toBe(80)
-  })
-
-  it('plafonne à ±150 % (un match aberrant n\'aplatit pas toutes les pistes)', () => {
-    expect(symmetricGapBound([-143])).toBe(GAP_AXIS_MAX_PCT)
-    expect(symmetricGapBound([1000])).toBe(GAP_AXIS_MAX_PCT)
-  })
-})
-
-describe('splitSignedAtZero — remplissage vert au-dessus / rouge en dessous', () => {
-  it('insère le croisement EXACT quand le signe change', () => {
-    const { positive, negative } = splitSignedAtZero([10, -10])
-    expect(positive).toEqual([
-      [0, 10],
-      [0.5, 0],
-      [1, 0],
-    ])
-    expect(negative).toEqual([
-      [0, 0],
-      [0.5, 0],
-      [1, -10],
-    ])
-  })
-
-  it('croisement pondéré par les amplitudes (−30 → 10 coupe à 75 % du segment)', () => {
-    const { positive } = splitSignedAtZero([-30, 10])
-    expect(positive).toEqual([
-      [0, 0],
-      [0.75, 0],
-      [1, 10],
-    ])
-  })
-
-  it('aucun croisement quand le signe ne change pas (0 appartient aux deux)', () => {
-    expect(splitSignedAtZero([3, 7]).positive).toEqual([
-      [0, 3],
-      [1, 7],
-    ])
-    expect(splitSignedAtZero([0, 5]).positive).toHaveLength(2)
-  })
-
-  it('un trou rompt les deux polylignes et interdit un croisement à cheval', () => {
-    const { positive, negative } = splitSignedAtZero([-5, null, 5])
-    expect(positive).toEqual([
-      [0, 0],
-      [1, null],
-      [2, 5],
-    ])
-    expect(negative).toEqual([
-      [0, -5],
-      [1, null],
-      [2, 0],
-    ])
-  })
-})
-
-describe('buildTrackPoints — projection d\'une piste sur l\'ordre de match partagé', () => {
-  it('offensif : écart depuis rendement_offensif + valeurs brutes (frag EFFECTIF)', () => {
-    const points = buildTrackPoints(
+describe('buildEfficiencyPoints — taux « une vie » (%) par match', () => {
+  it('offensif : taux = rendement_offensif × 100 + valeurs brutes (frag EFFECTIF)', () => {
+    const points = buildEfficiencyPoints(
       [pt(1, { rendement_offensif: 1.08, damage_dealt: 1800, kills: 8, assists: 3 })],
       3,
-      { metric: 'offensive', eliteP80: OC_P80 },
+      'offensive',
     )
     expect(points[0]).toBeNull()
     expect(points[2]).toBeNull()
-    expect(points[1]?.gap).toBeCloseTo(20, 6)
-    expect(points[1]?.normalized).toBe(1.08)
+    expect(points[1]?.rate).toBeCloseTo(108, 6)
     expect(points[1]?.rawDamage).toBe(1800)
     // 8 frags + 3 assistances / 3 = 9 frags effectifs (ADR 0006) → 1800 / 9.
     expect(points[1]?.perEvent).toBeCloseTo(200, 6)
   })
 
-  it('défensif : écart depuis resistance_defensive + dégâts subis par mort', () => {
-    const points = buildTrackPoints(
-      [pt(0, { resistance_defensive: 1.98, damage_taken: 1200, deaths: 4 })],
+  it('défensif : taux = resistance_defensive × 100 + dégâts subis par mort', () => {
+    const points = buildEfficiencyPoints(
+      [pt(0, { resistance_defensive: 1.65, damage_taken: 1200, deaths: 4 })],
       1,
-      { metric: 'defensive', eliteP80: DR_P80 },
+      'defensive',
     )
-    expect(points[0]?.gap).toBeCloseTo(20, 6)
+    expect(points[0]?.rate).toBeCloseTo(165, 6)
     expect(points[0]?.rawDamage).toBe(1200)
     expect(points[0]?.perEvent).toBe(300)
   })
 
-  it('DR à 0 SANS dégât subi = aucun engagement mesuré → pas de point (pas de −100 % faux)', () => {
-    const points = buildTrackPoints(
+  it('100 % = exactement une vie (indicateur natif à 1, aucun barème recodé)', () => {
+    expect(buildEfficiencyPoints([pt(0, { rendement_offensif: 1 })], 1, 'offensive')[0]?.rate).toBe(
+      ONE_LIFE_RATE_PCT,
+    )
+    expect(
+      buildEfficiencyPoints([pt(0, { resistance_defensive: 1, damage_taken: 900 })], 1, 'defensive')[0]
+        ?.rate,
+    ).toBe(ONE_LIFE_RATE_PCT)
+  })
+
+  it('DR à 0 SANS dégât subi = aucun engagement mesuré → pas de point (pas de 0 % faux)', () => {
+    const points = buildEfficiencyPoints(
       [pt(0, { resistance_defensive: 0, damage_taken: 0, deaths: 0 })],
       1,
-      { metric: 'defensive', eliteP80: DR_P80 },
+      'defensive',
     )
     expect(points[0]).toBeNull()
   })
 
-  it('DR à 0 AVEC des dégâts subis reste tracée (−100 %, information réelle)', () => {
-    const points = buildTrackPoints(
+  it('DR à 0 AVEC des dégâts subis reste tracée (0 %, information réelle)', () => {
+    const points = buildEfficiencyPoints(
       [pt(0, { resistance_defensive: 0, damage_taken: 500, deaths: 2 })],
       1,
-      { metric: 'defensive', eliteP80: DR_P80 },
+      'defensive',
     )
-    expect(points[0]?.gap).toBeCloseTo(-100, 6)
+    expect(points[0]?.rate).toBe(0)
   })
 
   it('indicateur absent ou match_order hors bornes → ignoré', () => {
-    const points = buildTrackPoints(
+    const points = buildEfficiencyPoints(
       [pt(0, { damage_dealt: 900, kills: 4 }), pt(9, { rendement_offensif: 1 })],
       2,
-      { metric: 'offensive', eliteP80: OC_P80 },
+      'offensive',
     )
     expect(points).toEqual([null, null])
   })
 })
 
-describe('tracksChartHeight', () => {
-  it('croît d\'une piste à l\'autre et garde une hauteur utile à 1 joueur', () => {
-    expect(tracksChartHeight(1)).toBe(110)
-    expect(tracksChartHeight(2)).toBe(174)
-    expect(tracksChartHeight(4)).toBe(302)
-    // 0 joueur ne doit pas produire une hauteur négative/nulle.
-    expect(tracksChartHeight(0)).toBe(110)
+describe('cadre de lecture FIXE', () => {
+  it('la fenêtre est 50…200 % autour du pivot 100 % (une vie)', () => {
+    expect(ONE_LIFE_RATE_PCT).toBe(100)
+    expect(RATE_AXIS_MIN_PCT).toBe(50)
+    expect(RATE_AXIS_MAX_PCT).toBe(200)
+  })
+
+  it('la hauteur de carte ne dépend PAS du nombre de joueurs (une seule grille)', () => {
+    expect(EFFICIENCY_CHART_HEIGHT).toBeGreaterThan(0)
   })
 })
 
-describe('buildSquadEfficiencyTracksOption', () => {
+describe('buildSquadEfficiencyOption', () => {
   const rows = {
     Me: [
       pt(0, { rendement_offensif: 1.08, damage_dealt: 1800, kills: 8, assists: 3 }),
-      pt(1, { rendement_offensif: 0.45, damage_dealt: 1000, kills: 2, assists: 3, map_name: 'Streets' }),
+      pt(1, {
+        rendement_offensif: 0.45,
+        damage_dealt: 1000,
+        kills: 2,
+        assists: 3,
+        map_name: 'Streets',
+      }),
     ],
     F1: [pt(0, { rendement_offensif: 0.9, damage_dealt: 900, kills: 4 })],
   }
 
   it('vide (aucune donnée) → fond minimal, pas de série', () => {
-    const opt = buildSquadEfficiencyTracksOption({}, PLAYERS, opts('offensive', OC_P80))
+    const opt = buildSquadEfficiencyOption({}, PLAYERS, opts('offensive'))
     expect(opt.series).toBeUndefined()
     expect(opt.backgroundColor).toBeDefined()
   })
 
-  it('une grille / un axe X / un axe Y / quatre séries par joueur, dans l\'ordre donné', () => {
-    const opt = buildSquadEfficiencyTracksOption(rows, PLAYERS, opts('offensive', OC_P80))
-    expect(opt.grid as unknown[]).toHaveLength(2)
-    expect(opt.xAxis as unknown[]).toHaveLength(2)
-    expect(opt.yAxis as unknown[]).toHaveLength(2)
-    const series = opt.series as unknown as TrackSeries[]
-    expect(series).toHaveLength(8)
-    // Aire positive, aire négative, cerne, puis le trait du joueur (dessus).
-    expect(series[0].areaStyle?.origin).toBe(0)
-    expect(series[1].areaStyle?.origin).toBe(0)
-    expect(series[3].name).toBe('Me')
-    expect(series[3].lineStyle?.color).toBe('#aaa')
-    expect(series[7].name).toBe('F1')
-    expect(series[7].lineStyle?.color).toBe('#bbb')
-    // Chaque quadruplet est rattaché à SA piste.
-    expect(series.map((s) => s.xAxisIndex)).toEqual([0, 0, 0, 0, 1, 1, 1, 1])
-    expect(series.map((s) => s.yAxisIndex)).toEqual([0, 0, 0, 0, 1, 1, 1, 1])
+  it('une SEULE grille, un axe X, un axe Y, une courbe par joueur dans l\'ordre donné', () => {
+    const opt = buildSquadEfficiencyOption(rows, PLAYERS, opts('offensive'))
+    expect(Array.isArray(opt.grid)).toBe(false)
+    expect(Array.isArray(opt.xAxis)).toBe(false)
+    expect(Array.isArray(opt.yAxis)).toBe(false)
+    const series = opt.series as unknown as PlayerSeries[]
+    expect(series).toHaveLength(2)
+    expect(series[0].name).toBe('Me')
+    expect(series[0].lineStyle?.color).toBe('#aaa')
+    expect(series[1].name).toBe('F1')
+    expect(series[1].lineStyle?.color).toBe('#bbb')
   })
 
-  it('aires peu opaques + cerne couleur de carte SOUS le trait joueur', () => {
-    const opt = buildSquadEfficiencyTracksOption(rows, PLAYERS, opts('offensive', OC_P80))
-    const series = opt.series as unknown as TrackSeries[]
-    // Le signe se lit à la position, pas à la saturation : aires discrètes.
-    expect(series[0].areaStyle?.opacity).toBe(0.2)
-    expect(series[1].areaStyle?.opacity).toBe(0.2)
-    // Cerne : même tracé, plus épais, à la couleur de surface du thème, sans nom
-    // (donc hors légende) et posé AVANT le trait joueur (donc dessous).
-    const halo = series[2]
-    const line = series[3]
-    expect(halo.name).toBeUndefined()
-    expect(halo.lineStyle?.color).toBe('#171717') // fallback --card (jsdom)
-    expect(halo.lineStyle?.width).toBeGreaterThan(line.lineStyle?.width ?? 0)
-    expect(halo.data).toEqual(line.data.map((d) => (Array.isArray(d) ? d : d.value)))
-  })
-
-  it('axe symétrique PARTAGÉ : mêmes bornes sur toutes les pistes', () => {
-    const opt = buildSquadEfficiencyTracksOption(rows, PLAYERS, opts('offensive', OC_P80))
-    const yAxes = opt.yAxis as unknown as AxisOpt[]
-    // Écarts : +20 %, −50 %, 0 % → borne arrondie à 50.
-    expect(yAxes[0].min).toBe(-50)
-    expect(yAxes[0].max).toBe(50)
-    expect(yAxes[1].min).toBe(yAxes[0].min)
-    expect(yAxes[1].max).toBe(yAxes[0].max)
-    // Le zéro (= la frontière élite) n'est pas étiqueté : il porte le trait repère.
-    expect(yAxes[0].axisLabel.formatter(0)).toBe('')
-    expect(yAxes[0].axisLabel.formatter(50)).toBe('+50 %')
-  })
-
-  it('étiquette de piste = gamertag à la couleur du joueur, une par piste', () => {
-    const opt = buildSquadEfficiencyTracksOption(rows, PLAYERS, opts('offensive', OC_P80))
-    const graphic = opt.graphic as unknown as GraphicOpt[]
-    expect(graphic).toHaveLength(2)
-    expect(graphic[0].style).toMatchObject({ text: 'Me', fill: '#aaa' })
-    expect(graphic[1].style).toMatchObject({ text: 'F1', fill: '#bbb' })
-    expect(graphic[1].top).toBeGreaterThan(graphic[0].top)
-  })
-
-  it('libellés de match sur la SEULE dernière piste (une seule frise partagée)', () => {
-    const opt = buildSquadEfficiencyTracksOption(rows, PLAYERS, opts('offensive', OC_P80))
-    const xAxes = opt.xAxis as unknown as AxisOpt[]
-    expect(xAxes[0].axisLabel.show).toBe(false)
-    expect(xAxes[1].axisLabel.show).toBe(true)
-    expect(xAxes[1].axisLabel.formatter(1)).toBe('#2 · Streets')
-    expect(xAxes[1].axisLabel.formatter(0)).toBe('#1')
-    // Un tick fractionnaire d'ECharts ne doit pas inventer d'étiquette.
-    expect(xAxes[1].axisLabel.formatter(0.5)).toBe('')
-  })
-
-  it('joueur sans donnée → piste présente, trait entièrement null (pas de trou de mise en page)', () => {
-    const opt = buildSquadEfficiencyTracksOption(
-      { Me: rows.Me, F1: [] },
-      PLAYERS,
-      opts('offensive', OC_P80),
+  it('fenêtre FIXE : deux sessions d\'amplitudes OPPOSÉES donnent les mêmes bornes', () => {
+    // Ce cas échoue dès qu'une borne est recalculée depuis les données.
+    const tight = buildSquadEfficiencyOption(
+      { Me: [pt(0, { rendement_offensif: 1.01 }), pt(1, { rendement_offensif: 1.02 })] },
+      ['Me'],
+      opts('offensive'),
     )
-    expect(opt.grid as unknown[]).toHaveLength(2)
-    const series = opt.series as unknown as TrackSeries[]
-    const f1Line = series[7]
-    expect(f1Line.name).toBe('F1')
-    expect(f1Line.data.map((d) => (Array.isArray(d) ? d[1] : d.value[1]))).toEqual([null, null])
-    // Aucune aire ne se referme sur un joueur sans données.
-    expect(series[4].data).toEqual([
-      [0, null],
-      [1, null],
-    ])
+    const wide = buildSquadEfficiencyOption(
+      { Me: [pt(0, { rendement_offensif: 0.05 }), pt(1, { rendement_offensif: 4.2 })] },
+      ['Me'],
+      opts('offensive'),
+    )
+    for (const o of [tight, wide]) {
+      const y = o.yAxis as unknown as AxisOpt
+      expect(y.min).toBe(RATE_AXIS_MIN_PCT)
+      expect(y.max).toBe(RATE_AXIS_MAX_PCT)
+      // `scale: true` laisserait ECharts recadrer sur les données.
+      expect(y.scale).toBeUndefined()
+    }
+    // Et la carte défensive partage EXACTEMENT le même cadre.
+    const defensive = buildSquadEfficiencyOption(
+      { Me: [pt(0, { resistance_defensive: 1.9, damage_taken: 900, deaths: 3 })] },
+      ['Me'],
+      opts('defensive'),
+    )
+    expect((defensive.yAxis as unknown as AxisOpt).min).toBe(RATE_AXIS_MIN_PCT)
+    expect((defensive.yAxis as unknown as AxisOpt).max).toBe(RATE_AXIS_MAX_PCT)
   })
 
-  it('survol : écart signé + indicateur normalisé + dégâts BRUTS du match', () => {
-    const opt = buildSquadEfficiencyTracksOption(rows, PLAYERS, opts('offensive', OC_P80))
-    const series = opt.series as unknown as TrackSeries[]
-    const first = series[3].data[0]
+  it('axe Y étiqueté en %', () => {
+    const opt = buildSquadEfficiencyOption(rows, PLAYERS, opts('offensive'))
+    const y = opt.yAxis as unknown as AxisOpt
+    expect(y.axisLabel.formatter?.(100)).toBe('100 %')
+    expect(y.axisLabel.formatter?.(50)).toBe('50 %')
+  })
+
+  it('repère « 1 vie » à 100 %, rendu UNE seule fois, à la couleur d\'axe du thème', () => {
+    const opt = buildSquadEfficiencyOption(rows, PLAYERS, opts('offensive'))
+    const series = opt.series as unknown as PlayerSeries[]
+    expect(series[0].markLine?.data).toEqual([{ yAxis: ONE_LIFE_RATE_PCT }])
+    expect(series[0].markLine?.label?.formatter).toBe('1 vie')
+    expect(series[0].markLine?.lineStyle?.color).toBe('#374151') // fallback --border (jsdom)
+    expect(series[1].markLine).toBeUndefined()
+  })
+
+  it('zones orientées above-is-good : VERT au-dessus de 100, ROUGE en dessous', () => {
+    // Orientation PROPRE à ces cartes : les deux indicateurs canoniques montent
+    // quand le joueur va mieux. La courbe solo en dégâts BRUTS par frag est, elle,
+    // `below-is-good` (cf. TimeseriesEfficiency.test.tsx) — uniformiser les deux
+    // surfaces casse l'un ou l'autre de ces tests.
+    for (const metric of ['offensive', 'defensive'] as const) {
+      const src =
+        metric === 'offensive'
+          ? rows
+          : { Me: [pt(0, { resistance_defensive: 1.9, damage_taken: 900, deaths: 3 })] }
+      const opt = buildSquadEfficiencyOption(src, metric === 'offensive' ? PLAYERS : ['Me'], opts(metric))
+      const zones = (opt.series as unknown as PlayerSeries[])[0].markArea?.data
+      expect(zones).toHaveLength(2)
+      const [posLow, posHigh] = zones![0]
+      const [negLow, negHigh] = zones![1]
+      expect(posLow.yAxis).toBe(ONE_LIFE_RATE_PCT)
+      expect(posHigh.yAxis).toBe(RATE_AXIS_MAX_PCT)
+      expect(negLow.yAxis).toBe(RATE_AXIS_MIN_PCT)
+      expect(negHigh.yAxis).toBe(ONE_LIFE_RATE_PCT)
+      // La bande HAUTE porte le token favorable, la bande BASSE le défavorable.
+      expect(posLow.itemStyle?.opacity).toBe(ONE_LIFE_ZONE_OPACITY.pos)
+      expect(negLow.itemStyle?.opacity).toBe(ONE_LIFE_ZONE_OPACITY.neg)
+      // Le rouge pèse plus à opacité égale : il est volontairement plus discret.
+      expect(negLow.itemStyle?.opacity).toBeLessThan(posLow.itemStyle!.opacity)
+    }
+    // Zones portées par la grille, donc rendues une seule fois.
+    const opt = buildSquadEfficiencyOption(rows, PLAYERS, opts('offensive'))
+    expect((opt.series as unknown as PlayerSeries[])[1].markArea).toBeUndefined()
+  })
+
+  it('étiquette de FIN de courbe = gamertag à la couleur du joueur (remplace la légende)', () => {
+    const opt = buildSquadEfficiencyOption(rows, PLAYERS, opts('offensive'))
+    const series = opt.series as unknown as PlayerSeries[]
+    expect(opt.legend).toBeUndefined()
+    expect(series[0].endLabel).toMatchObject({ show: true, formatter: 'Me', color: '#aaa' })
+    expect(series[1].endLabel).toMatchObject({ show: true, formatter: 'F1', color: '#bbb' })
+  })
+
+  it('libellés de match sur l\'axe X (numéro + carte quand elle est connue)', () => {
+    const opt = buildSquadEfficiencyOption(rows, PLAYERS, opts('offensive'))
+    const x = opt.xAxis as unknown as AxisOpt
+    expect(x.data).toEqual(['#1', '#2 · Streets'])
+  })
+
+  it('joueur sans donnée → courbe présente, entièrement null (pas de trou de mise en page)', () => {
+    const opt = buildSquadEfficiencyOption({ Me: rows.Me, F1: [] }, PLAYERS, opts('offensive'))
+    const series = opt.series as unknown as PlayerSeries[]
+    expect(series).toHaveLength(2)
+    expect(series[1].name).toBe('F1')
+    expect(series[1].data).toEqual([null, null])
+    // Aucun pont au-dessus d'un match non joué.
+    expect(series[0].connectNulls).toBe(false)
+  })
+
+  it('survol : taux en % + dégâts BRUTS + dégâts par frag effectif, tous joueurs du match', () => {
+    const opt = buildSquadEfficiencyOption(rows, PLAYERS, opts('offensive'))
+    const series = opt.series as unknown as PlayerSeries[]
     const formatter = (opt.tooltip as unknown as { formatter: (p: unknown) => string }).formatter
-    const html = formatter([{ data: first }])
+    const html = formatter([
+      { seriesName: 'Me', color: '#aaa', dataIndex: 0, data: series[0].data[0] },
+      { seriesName: 'F1', color: '#bbb', dataIndex: 0, data: series[1].data[0] },
+    ])
     expect(html).toContain('#1')
     expect(html).toContain('Me')
-    expect(html).toContain('+20 %')
-    expect(html).toContain('Rendement 1.08')
-    expect(html).toContain('frontière élite 0.90')
+    expect(html).toContain('108 %')
     expect(html).toContain('Dégâts infligés 1800')
     expect(html).toContain('200 / frag effectif')
+    expect(html).toContain('F1')
+    expect(html).toContain('90 %')
+    // Le pivot est rappelé : c'est la clé de lecture de la carte.
+    expect(html).toContain('Rendement — 100 % = 1 vie')
+    // Le mot « élite » a disparu de ces cartes.
+    expect(html).not.toContain('élite')
   })
 
   it('survol défensif : libellés et unité de la métrique défensive', () => {
-    const opt = buildSquadEfficiencyTracksOption(
-      { Me: [pt(0, { resistance_defensive: 1.98, damage_taken: 1200, deaths: 4 })] },
+    const opt = buildSquadEfficiencyOption(
+      { Me: [pt(0, { resistance_defensive: 1.65, damage_taken: 1200, deaths: 4 })] },
       ['Me'],
-      opts('defensive', DR_P80),
+      opts('defensive'),
     )
-    const series = opt.series as unknown as TrackSeries[]
+    const series = opt.series as unknown as PlayerSeries[]
     const formatter = (opt.tooltip as unknown as { formatter: (p: unknown) => string }).formatter
-    const html = formatter([{ data: series[3].data[0] }])
-    expect(html).toContain('Résistance 1.98')
-    expect(html).toContain('frontière élite 1.65')
+    const html = formatter([
+      { seriesName: 'Me', color: '#aaa', dataIndex: 0, data: series[0].data[0] },
+    ])
+    expect(html).toContain('165 %')
     expect(html).toContain('Dégâts subis 1200')
     expect(html).toContain('300 / mort')
+    expect(html).toContain('Résistance — 100 % = 1 vie')
   })
 
-  it('survol hors point (aires seules) → chaîne vide, jamais de tooltip fantôme', () => {
-    const opt = buildSquadEfficiencyTracksOption(rows, PLAYERS, opts('offensive', OC_P80))
+  it('survol hors point → chaîne vide, jamais de tooltip fantôme', () => {
+    const opt = buildSquadEfficiencyOption(rows, PLAYERS, opts('offensive'))
     const formatter = (opt.tooltip as unknown as { formatter: (p: unknown) => string }).formatter
-    expect(formatter([{ data: [0.5, 0] }])).toBe('')
+    expect(formatter([{ seriesName: 'F1', dataIndex: 1, data: null }])).toBe('')
     expect(formatter('pas un tableau')).toBe('')
+  })
+
+  it('joueur sans couleur attribuée → repli sur la couleur d\'axe (jamais de trait invisible)', () => {
+    const opt = buildSquadEfficiencyOption(
+      { Ghost: [pt(0, { rendement_offensif: 1 })] },
+      ['Ghost'],
+      { metric: 'offensive', colorByPlayer: {}, labels: LABELS },
+    )
+    const series = opt.series as unknown as PlayerSeries[]
+    expect(series[0].lineStyle?.color).toBe('#9ca3af') // fallback --muted-foreground (jsdom)
   })
 })

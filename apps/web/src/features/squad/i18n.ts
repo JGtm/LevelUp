@@ -207,18 +207,18 @@ export interface SquadText {
     teamLabel: string
   }
   efficiencySeries: {
-    /** Titre de la carte Rendement (écart à la frontière élite OC du titre). */
+    /** Titre COURT de la carte Rendement (la définition vit dans l'aide ⓘ). */
     rendementCardTitle: string
-    /** Titre de la carte Résistance (écart à la frontière élite DR du titre). */
+    /** Titre COURT de la carte Résistance (la définition vit dans l'aide ⓘ). */
     resistanceCardTitle: string
-    /** Aide ⓘ : comment lire les pistes empilées et le zéro = frontière élite. */
+    /** Aide ⓘ des deux cartes : formule des indicateurs + pivot « une vie ». */
     help: string
     /** Nom de l'indicateur offensif au survol (« Rendement »). */
     offensiveMetric: string
     /** Nom de l'indicateur défensif au survol (« Résistance »). */
     defensiveMetric: string
-    /** Libellé du repère au survol (« frontière élite »). */
-    eliteBoundary: string
+    /** Libellé du repère 100 % (« 1 vie »), sur le trait et au survol. */
+    oneLife: string
     /** Libellé des dégâts bruts offensifs au survol. */
     damageDealt: string
     /** Libellé des dégâts bruts défensifs au survol. */
@@ -552,12 +552,12 @@ const FR_TEXT: SquadText = {
     teamLabel: 'Équipe',
   },
   efficiencySeries: {
-    rendementCardTitle: 'Rendement — écart à la frontière élite',
-    resistanceCardTitle: 'Résistance — écart à la frontière élite',
-    help: 'Une piste par joueur. Le trait montre, match par match, l\'écart à la frontière élite du jeu — le niveau atteint par les 20 % de joueurs les plus efficaces. Au-dessus de zéro (vert), tu fais mieux que cette frontière ; en dessous (rouge), moins bien. Rendement = dégâts infligés convertis en frags effectifs (frags + assistances / 3). Résistance = dégâts encaissés avant chaque mort. Toutes les pistes partagent la même échelle : une bosse de même hauteur vaut la même chose chez tous. Survole un point pour les valeurs brutes du match.',
+    rendementCardTitle: 'Rendement',
+    resistanceCardTitle: 'Résistance',
+    help: 'Une courbe par joueur, match par match, sur une échelle où 100 % vaut exactement une vie de Spartan. Rendement = ce qu\'une vie de dégâts infligés rapporte en frags effectifs (frags + assistances / 3) : 100 % = un frag effectif par vie dépensée, 130 % = un tiers de mieux. Résistance = ce que tu encaisses avant chaque mort, rapporté à ta propre vie : 100 % = une vie exactement, 150 % = la moitié en plus. Au-dessus du repère « 1 vie » (fond vert) tu fais mieux, en dessous (fond rouge) moins bien, dans les deux cartes. L\'échelle 50–200 % est la même à chaque session : deux sessions se comparent directement. Survole un match pour les valeurs brutes.',
     offensiveMetric: 'Rendement',
     defensiveMetric: 'Résistance',
-    eliteBoundary: 'frontière élite',
+    oneLife: '1 vie',
     damageDealt: 'Dégâts infligés',
     damageTaken: 'Dégâts subis',
     perFrag: '/ frag effectif',
@@ -875,12 +875,12 @@ const EN_TEXT: SquadText = {
     teamLabel: 'Team',
   },
   efficiencySeries: {
-    rendementCardTitle: 'Offensive efficiency — gap to elite frontier',
-    resistanceCardTitle: 'Defensive resistance — gap to elite frontier',
-    help: 'One track per player. The line shows, match by match, the gap to the game\'s elite frontier — the level reached by the top 20% most efficient players. Above zero (green) you beat that frontier; below (red) you fall short. Offensive efficiency = damage dealt converted into effective kills (kills + assists / 3). Defensive resistance = damage absorbed before each death. Every track shares the same scale, so a peak of the same height means the same thing for everyone. Hover a point for the raw match values.',
+    rendementCardTitle: 'Efficiency',
+    resistanceCardTitle: 'Resistance',
+    help: 'One curve per player, match by match, on a scale where 100% is exactly one Spartan life. Efficiency = what one life worth of damage dealt buys you in effective kills (kills + assists / 3): 100% means one effective kill per life spent, 130% means a third better. Resistance = what you absorb before each death, measured against your own life: 100% is exactly one life, 150% is half again as much. Above the "1 life" marker (green background) you do better, below it (red background) you fall short — in both cards. The 50–200% scale never changes, so two sessions compare directly. Hover a match for the raw values.',
     offensiveMetric: 'Efficiency',
     defensiveMetric: 'Resistance',
-    eliteBoundary: 'elite frontier',
+    oneLife: '1 life',
     damageDealt: 'Damage dealt',
     damageTaken: 'Damage taken',
     perFrag: '/ effective kill',

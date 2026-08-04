@@ -34,11 +34,12 @@ import {
   intensityAxisLabels,
 } from '@/features/squad/charts/squadIntensityProfileChart'
 import {
-  damageAxisBounds,
   damagePerDeath,
   damagePerKill,
   defensiveDamageGradient,
   offensiveDamageGradient,
+  oneLifeWindowBounds,
+  oneLifeZonesMarkArea,
 } from '@/lib/charts/oneLifeDamageGradient'
 import {
   useEffectiveHpToKill,
@@ -243,7 +244,8 @@ export function TimeseriesSessionPerformance({
 //   dégâts/mort = damage_taken / deaths
 //
 // 2 lignes (frag plein, mort dashed) + ligne repère à 225, colorées par dégradé
-// (frag : proche de 225 = bon ; mort : au-dessus de 225 = bon). Cf. helper
+// (frag : proche de 225 = bon ; mort : au-dessus de 225 = bon). Fenêtre d'axe
+// FIXE et zones de lecture partagées avec les cartes Escouade. Cf. helper
 // oneLifeDamageGradient.
 
 export interface TimeseriesEfficiencyProps {
@@ -338,7 +340,11 @@ export function TimeseriesEfficiency({
     const dmgDeath = providesDamageTaken
       ? rows.map((r) => damagePerDeath(r.damage_taken, r.deaths))
       : []
-    const bounds = damageAxisBounds([...dmgKill, ...dmgDeath], hp)
+    // Fenêtre FIXE autour du repère « une vie » (demi-repère … double repère),
+    // image en dégâts bruts de la fenêtre 50…200 % des cartes Escouade. Les
+    // bornes ne sont PLUS dérivées de la session : une même valeur tombe au même
+    // endroit — et prend donc la même couleur — d'une session à l'autre.
+    const bounds = oneLifeWindowBounds(hp)
 
     return {
       backgroundColor: CHART_BG,
@@ -377,12 +383,17 @@ export function TimeseriesEfficiency({
           showSymbol: false,
           smooth: false,
           connectNulls: true,
-          lineStyle: { color: offensiveDamageGradient(dmgKill, hp), width: 2 },
-          // Essai visuel (P5) : aire du sur-coût/sous-coût vs le repère « 1 vie ».
-          // Ancrée à `hp` (origin numérique, ECharts >= 5.3.2), même dégradé offensif
-          // que le trait ; opacité faible pour rester discrète. Rendement seul —
-          // la Résistance (pointillé) reste sans aire.
-          areaStyle: { color: offensiveDamageGradient(dmgKill, hp), opacity: 0.1, origin: hp },
+          lineStyle: { color: offensiveDamageGradient(), width: 2 },
+          // Zones de lecture PARTAGÉES avec les cartes Escouade (helper unique),
+          // en coordonnées d'axe. Elles remplacent l'ancienne aire par courbe
+          // (ancrée à `origin: hp`). Orientation `below-is-good` : cette courbe
+          // est en dégâts BRUTS dépensés par frag — dépenser MOINS d'une vie par
+          // frag est efficace, donc le vert va SOUS le repère, en accord avec
+          // `offensiveDamageGradient` (vert en bas). Les zones sont portées par
+          // cette seule série : elles décrivent la grille, et la courbe « Dégâts
+          // / mort » (de sens inverse, cf. `defensiveDamageGradient`) ne peut pas
+          // peindre un second jeu de bandes contradictoires sur le même axe.
+          markArea: oneLifeZonesMarkArea(hp, 'below-is-good', bounds),
           markLine: {
             silent: true,
             symbol: 'none',
@@ -408,7 +419,7 @@ export function TimeseriesEfficiency({
                 smooth: false,
                 connectNulls: true,
                 lineStyle: {
-                  color: defensiveDamageGradient(dmgDeath, hp),
+                  color: defensiveDamageGradient(),
                   width: 2,
                   type: 'dashed' as const,
                 },
