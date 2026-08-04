@@ -39,18 +39,18 @@ function getTexts(locale: string): Texts {
   return {
     title: (gt) => isFr ? `Ajouter ${gt} comme ami ?` : `Add ${gt} as a friend?`,
     confirmDescription: isFr
-      ? 'Le coéquipier sera ajouté à ta liste d\'amis et apparaîtra dans le sélecteur Escouade.'
-      : 'The teammate will be added to your friends list and shown in the Squad selector.',
+      ? 'Le coéquipier sera ajouté à la liste d\'amis et apparaîtra dans le sélecteur Escouade.'
+      : 'The teammate will be added to the friends list and shown in the Squad selector.',
     syncWarning: isFr
-      ? 'Les matchs historiques où vous avez joué ensemble seront re-classés en escouade en arrière-plan (peut prendre plusieurs minutes selon la taille du corpus).'
-      : 'Historical matches you played together will be reclassified as squad in the background (may take a few minutes for large corpora).',
+      ? 'Les matchs historiques joués ensemble seront re-classés en escouade en arrière-plan (peut prendre plusieurs minutes selon la taille du corpus).'
+      : 'Historical matches played together will be reclassified as squad in the background (may take a few minutes for large corpora).',
     cancel:  isFr ? 'Annuler' : 'Cancel',
     confirm: isFr ? 'Ajouter' : 'Add',
     successToast: (gt) => isFr
       ? `${gt} ajouté aux amis. Recalcul des sessions en cours…`
       : `${gt} added to friends. Recomputing sessions…`,
     errorToast:  (gt, msg) => isFr ? `Impossible d'ajouter ${gt} : ${msg}` : `Failed to add ${gt}: ${msg}`,
-    alreadyFriend: isFr ? 'Déjà dans tes amis' : 'Already in friends',
+    alreadyFriend: isFr ? 'Déjà en amis' : 'Already friends',
   }
 }
 

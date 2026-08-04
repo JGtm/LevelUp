@@ -31,30 +31,30 @@ en = "events / min"
 # ─── Zones de forme ─────────────────────────────────────────────────────────
 
 [engagement.zone.above]
-fr = "Au-dessus de ton habitude"
-en = "Above your habit"
+fr = "Au-dessus de l'habitude"
+en = "Above the usual"
 
 [engagement.zone.in_zone]
-fr = "Dans ta zone normale"
-en = "In your usual zone"
+fr = "Dans la zone normale"
+en = "In the usual zone"
 
 [engagement.zone.below]
-fr = "Sous ton habitude"
-en = "Below your habit"
+fr = "Sous l'habitude"
+en = "Below the usual"
 
 # ─── Narratif (selon confidence) ────────────────────────────────────────────
 
 [engagement.narrative.above]
-fr = "Au-dessus de ton habitude (P{percentile})"
-en = "Above your habit (P{percentile})"
+fr = "Au-dessus de l'habitude (P{percentile})"
+en = "Above the usual (P{percentile})"
 
 [engagement.narrative.normal]
 fr = "Engagement normal (P{percentile})"
 en = "Normal engagement (P{percentile})"
 
 [engagement.narrative.below]
-fr = "Sous ton habitude (P{percentile})"
-en = "Below your habit (P{percentile})"
+fr = "Sous l'habitude (P{percentile})"
+en = "Below the usual (P{percentile})"
 
 [engagement.narrative.insufficient]
 fr = "Historique insuffisant — minimum 10 matchs sur ce mode requis"
@@ -69,20 +69,20 @@ en = "Provisional calculation ({n_matches} match history)"
 # du joueur a un match d'intensite similaire (bin), ou globale (fallback).
 
 [engagement.expected.bin_calme]
-fr = "attendu : ta reponse habituelle aux matchs calmes"
-en = "expected: your usual response in calm matches"
+fr = "attendu : reponse habituelle aux matchs calmes"
+en = "expected: usual response in calm matches"
 
 [engagement.expected.bin_standard]
-fr = "attendu : ta reponse habituelle aux matchs d'intensite standard"
-en = "expected: your usual response in standard-intensity matches"
+fr = "attendu : reponse habituelle aux matchs d'intensite standard"
+en = "expected: usual response in standard-intensity matches"
 
 [engagement.expected.bin_chaotique]
-fr = "attendu : ta reponse habituelle aux matchs chaotiques"
-en = "expected: your usual response in chaotic matches"
+fr = "attendu : reponse habituelle aux matchs chaotiques"
+en = "expected: usual response in chaotic matches"
 
 [engagement.expected.global]
-fr = "attendu : ta reponse habituelle (toutes intensites)"
-en = "expected: your usual response (all intensities)"
+fr = "attendu : reponse habituelle (toutes intensites)"
+en = "expected: usual response (all intensities)"
 
 # ─── Calibration provisoire (chantier F7 E5, DE-8) ──────────────────────────
 # Mention discrete affichee quand le titre est en calibration provisoire
@@ -118,8 +118,8 @@ fr = "Engagement"
 en = "Engagement"
 
 [engagement.match_view.subtitle]
-fr = "Comment tu t'inscris dans ton equipe ce match"
-en = "How you fit in your team this match"
+fr = "Position dans l'equipe ce match"
+en = "Position within the team this match"
 
 # ─── Squad page section ─────────────────────────────────────────────────────
 
@@ -246,16 +246,16 @@ fr = "Engagement"
 en = "Engagement"
 
 [engagement.glossary.definition]
-fr = "Mesure ton dynamisme dans un match : ecart entre ton engagement observe et ton engagement attendu (vu ton style historique et le contexte equipe), normalise en percentile vs ton propre historique. 50 = comme d'habitude. >50 = plus engage. <50 = moins engage."
-en = "Measures your dynamism in a match: gap between your observed engagement and your expected engagement (based on your historical style and team context), normalized as a percentile vs your own history. 50 = as usual. >50 = more engaged. <50 = less engaged."
+fr = "Mesure le dynamisme dans un match : ecart entre l'engagement observe et l'engagement attendu (vu le style historique et le contexte equipe), normalise en percentile vs le propre historique du joueur. 50 = comme d'habitude. >50 = plus engage. <50 = moins engage."
+en = "Measures dynamism in a match: gap between observed engagement and expected engagement (based on historical style and team context), normalized as a percentile vs the player's own history. 50 = as usual. >50 = more engaged. <50 = less engaged."
 
 [engagement.glossary.skill_vs_engagement]
-fr = "Distinct du Performance Score : le PerfScore mesure la qualite de tes actions, l'Engagement mesure leur quantite, leur regularite et ton etat d'esprit. Les deux axes sont independants."
-en = "Distinct from the Performance Score: PerfScore measures the quality of your actions, Engagement measures their quantity, regularity and your state of mind. The two axes are independent."
+fr = "Distinct du Performance Score : le PerfScore mesure la qualite des actions, l'Engagement mesure leur quantite, leur regularite et l'etat d'esprit. Les deux axes sont independants."
+en = "Distinct from the Performance Score: PerfScore measures the quality of actions, Engagement measures their quantity, regularity and state of mind. The two axes are independent."
 
 [engagement.glossary.coef_explanation]
-fr = "L'attendu est ancre sur le lobby : ce que tu fais D'HABITUDE dans un match d'intensite similaire (calme / standard / chaotique). La courbe « Joueur attendu » basse vs l'equipe reelle traduit un trait structurel ; l'ecart reel - attendu traduit ta forme du jour."
-en = "Expected engagement is lobby-anchored: what you USUALLY do in a match of similar intensity (calm / standard / chaotic). A low « Player (expected) » curve vs the actual team reflects a structural trait; the actual - expected gap reflects your form on the day."
+fr = "L'attendu est ancre sur le lobby : la reponse HABITUELLE dans un match d'intensite similaire (calme / standard / chaotique). La courbe « Joueur attendu » basse vs l'equipe reelle traduit un trait structurel ; l'ecart reel - attendu traduit la forme du jour."
+en = "Expected engagement is lobby-anchored: the USUAL response in a match of similar intensity (calm / standard / chaotic). A low « Player (expected) » curve vs the actual team reflects a structural trait; the actual - expected gap reflects the form on the day."
 
 # ─── States empty / errors ──────────────────────────────────────────────────
 

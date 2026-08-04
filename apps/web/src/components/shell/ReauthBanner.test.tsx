@@ -36,7 +36,7 @@ describe('ReauthBanner', () => {
   it('rend le message et le bouton en anglais quand locale=en', () => {
     useAppShellStore.setState({ reauthRequired: true, locale: 'en' })
     renderWithProviders(<ReauthBanner />)
-    expect(screen.getByText(/Your Xbox connection has expired/i)).toBeInTheDocument()
+    expect(screen.getByText(/The Xbox connection has expired/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Refresh/i })).toBeInTheDocument()
   })
 
