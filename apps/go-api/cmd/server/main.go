@@ -47,6 +47,7 @@ import (
 	halo5migrations "levelup/go-api/internal/games/halo_5/migrations"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/games/halo_infinite/skillchain"
+	"levelup/go-api/internal/games/weapons"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/notifications/external"
 	"levelup/go-api/internal/notify"
@@ -1633,16 +1634,16 @@ func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConf
 	// weapon_families) : le runner saute add_weapon_registry une fois « done », donc les
 	// lignes ajoutées au seed après coup (buckets non-combat, frag grenade…) n'atteignent
 	// jamais une DB déjà migrée. Rejeu INSERT OR IGNORE à chaque boot → auto-guérison
-	// (cf. ReconcileWeaponRegistry). Couvre le titre par défaut ; les titres additionnels
+	// (cf. ReconcileRegistry). Couvre le titre par défaut ; les titres additionnels
 	// sont couverts dans provisionAdditionalTitle.
-	if _, err := halomigrations.ReconcileWeaponRegistry(metaDB.SQLDb(), migration.DefaultSlug); err != nil {
+	if _, err := weapons.ReconcileRegistry(metaDB.SQLDb(), migration.DefaultSlug); err != nil {
 		metaDB.Close()
 		return fmt.Errorf("metadata weapon registry reconcile: %w", err)
 	}
 	// V72-06 : source unique des noms d'armes (weapon_name_labels keyée par weapon_key),
 	// seedée depuis config/titles/{slug}/mappings/weapon_names.toml. Idempotent au boot
 	// (comme le registre). prestigeConfigDir = config/titles/{DefaultSlug}.
-	if _, err := halomigrations.ReconcileWeaponNameLabels(metaDB.SQLDb(), migration.DefaultSlug,
+	if _, err := weapons.ReconcileNameLabels(metaDB.SQLDb(), migration.DefaultSlug,
 		filepath.Join(prestigeConfigDir, "mappings", "weapon_names.toml")); err != nil {
 		metaDB.Close()
 		return fmt.Errorf("metadata weapon name labels reconcile: %w", err)
@@ -1745,12 +1746,12 @@ func provisionAdditionalTitle(pr *title.PathResolver, td *title.TitleDescriptor)
 		// lignes ajoutées après coup (buckets non-combat H5…) manqueraient sans ce rejeu
 		// idempotent (INSERT OR IGNORE). Comparaison de TargetDB, pas de slug.
 		if t.kind == migration.TargetMetadata {
-			if _, err := halomigrations.ReconcileWeaponRegistry(db.SQLDb(), slug); err != nil {
+			if _, err := weapons.ReconcileRegistry(db.SQLDb(), slug); err != nil {
 				db.Close()
 				return fmt.Errorf("reconcile weapon registry %s (%s): %w", slug, t.path, err)
 			}
 			// V72-06 : source unique des noms d'armes du titre additionnel (idempotent).
-			if _, err := halomigrations.ReconcileWeaponNameLabels(db.SQLDb(), slug,
+			if _, err := weapons.ReconcileNameLabels(db.SQLDb(), slug,
 				filepath.Join(pr.RepoRoot(), "config", "titles", slug, "mappings", "weapon_names.toml")); err != nil {
 				db.Close()
 				return fmt.Errorf("reconcile weapon name labels %s (%s): %w", slug, t.path, err)

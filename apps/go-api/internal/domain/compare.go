@@ -117,13 +117,19 @@ func (r CompareRequest) Validate() error {
 
 // CompareMetricRow est une ligne de la table de comparaison.
 //
+// Metric est une CLÉ (pas un libellé) : le libellé affiché est résolu côté
+// front à partir du registre canonique de champs (config/titles/{slug}/mappings/
+// fields.toml exposé par /titles/{slug}/field-mappings) puis du dictionnaire
+// local de la feature. Le contrat ne transporte donc AUCUN libellé de métrique
+// (règle « jamais de label FR/EN en dur côté Go » — le champ label_fr a été
+// retiré le 2026-08-04).
+//
 // ValueAAvailable / ValueBAvailable indiquent si la donnée est exploitable :
 // false signifie « pas de source locale pour cette métrique » (joueur remote
 // pour les métriques calculées depuis stats.duckdb / shared.match_participants,
 // ou ATH non encore calculé). Le frontend rend « N/A » dans ce cas.
 type CompareMetricRow struct {
 	Metric          string  `json:"metric"`
-	LabelFR         string  `json:"label_fr"`
 	ValueA          float64 `json:"value_a"`
 	ValueB          float64 `json:"value_b"`
 	ValueAAvailable bool    `json:"value_a_available"`

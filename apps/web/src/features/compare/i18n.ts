@@ -1,3 +1,4 @@
+import { humanizeMetricKey } from '@/lib/i18n/metricLabel'
 import type { Locale } from '@/lib/i18n/locale'
 
 export interface CompareText {
@@ -45,25 +46,15 @@ const FR_TEXT: CompareText = {
   catCombat: 'Combat',
   catPrecision: 'Précision & Survie',
   catBilan: 'Bilan & Rang',
+  // N'entrent ici que les métriques SANS FieldKey canonique équivalent (cf.
+  // METRIC_TO_FIELD_KEY plus bas) : toutes les autres viennent du registre.
   metrics: {
-    win_rate: 'Taux de victoire',
-    kda: 'KDA',
-    kdr: 'K/D',
     kills_per_game: 'Frags/match',
     deaths_per_game: 'Morts/match',
     assists_per_game: 'Assistances/match',
-    accuracy: 'Précision',
-    damage_per_game: 'Dégâts/match',
-    matches: 'Matchs joués',
     career_rank: 'Rang carrière',
     csr: 'CSR (saison actuelle)',
     csr_alltime: 'CSR (record)',
-    rendement: 'Rendement',
-    resistance: 'Résistance',
-    perfect_kills_per_game: 'Tirs parfaits/match',
-    max_killing_spree: 'Folie meurtrière max',
-    avg_life_secs: 'Durée de vie moy./match',
-    headshot_kills_per_game: 'Tirs à la tête/match',
     perf_ath: 'Perf. record',
     lusr_ath: 'LUSR record',
   },
@@ -90,25 +81,14 @@ const EN_TEXT: CompareText = {
   catCombat: 'Combat',
   catPrecision: 'Precision & Survival',
   catBilan: 'Stats & Rank',
+  // Voir la note du dictionnaire FR : parité stricte des clés.
   metrics: {
-    win_rate: 'Win rate',
-    kda: 'KDA',
-    kdr: 'K/D',
     kills_per_game: 'Kills/game',
     deaths_per_game: 'Deaths/game',
     assists_per_game: 'Assists/game',
-    accuracy: 'Accuracy',
-    damage_per_game: 'Damage/game',
-    matches: 'Matches played',
     career_rank: 'Career rank',
     csr: 'CSR (current season)',
     csr_alltime: 'CSR (all-time)',
-    rendement: 'Efficiency',
-    resistance: 'Toughness',
-    perfect_kills_per_game: 'Perfect kills/game',
-    max_killing_spree: 'Max killing spree',
-    avg_life_secs: 'Avg. life/game',
-    headshot_kills_per_game: 'Headshots/game',
     perf_ath: 'Perf. all-time',
     lusr_ath: 'LUSR all-time',
   },
@@ -123,12 +103,35 @@ export function normalizeCompareLocale(locale?: string | null): Locale {
   return locale === 'en' ? 'en' : 'fr'
 }
 
-const METRIC_TO_FIELD_KEY: Record<string, string> = {
+/**
+ * Métrique du contrat compare → FieldKey canonique du registre de titre
+ * (`config/titles/{slug}/mappings/fields.toml`, servi par /field-mappings).
+ *
+ * Ces clés N'ONT PAS de libellé local : le registre est la source unique
+ * (doctrine v7.3 lot 2 — cf. lib/i18n/metricLabel.ts). Repli si le registre ne
+ * déclare pas la clé (titre partiel, réseau) : `humanizeMetricKey`, jamais un
+ * dictionnaire TS.
+ *
+ * Les métriques absentes de cette table (kills_per_game, deaths_per_game,
+ * assists_per_game, career_rank, csr, csr_alltime, perf_ath, lusr_ath) n'ont
+ * pas d'équivalent canonique — elles restent dans le dictionnaire de feature.
+ */
+export const METRIC_TO_FIELD_KEY: Record<string, string> = {
   win_rate: 'win_rate',
   kda: 'kda',
   kdr: 'kdr',
   accuracy: 'accuracy',
   matches: 'total_matches_played',
+  damage_per_game: 'avg_damage_dealt',
+  damage_taken_per_game: 'avg_damage_taken',
+  rendement: 'offensive_conversion',
+  resistance: 'defensive_resistance',
+  perfect_kills_per_game: 'perfect_kills_per_match',
+  // MAX(max_killing_spree) sur la période (compare_repo.go) → la clé « valeur
+  // de match », pas la moyenne `avg_max_killing_spree`.
+  max_killing_spree: 'max_killing_spree',
+  avg_life_secs: 'avg_life_seconds',
+  headshot_kills_per_game: 'headshots_per_match',
 }
 
 export function getCompareText(
@@ -146,4 +149,15 @@ export function getCompareText(
     if (canonical) merged.metrics[metricKey] = canonical
   }
   return merged
+}
+
+/**
+ * Libellé affichable d'une ligne de comparaison.
+ *
+ * Ordre : registre canonique (fusionné dans `metrics` par getCompareText) →
+ * dictionnaire de feature → clé humanisée. Le contrat backend ne transporte
+ * plus de libellé (`label_fr` retiré le 2026-08-04).
+ */
+export function resolveMetricLabel(text: CompareText, metric: string): string {
+  return text.metrics[metric] ?? humanizeMetricKey(metric)
 }

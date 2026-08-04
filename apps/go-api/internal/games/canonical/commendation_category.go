@@ -12,13 +12,14 @@ import "strings"
 // donc la frontière title-agnostic : aucun libellé humain (FR ou EN) ne doit
 // franchir la couche API.
 //
-// Valeurs brutes constatées en base (2026-08-02) :
+// Valeurs brutes constatées en base (2026-08-04) :
 //   - Halo 5, commendation_definitions.category (champ category.name de l'API
 //     Metadata officielle, EN majuscules) : MULTIPLAYER, GAME MODE, WEAPON,
-//     VEHICLE, ENEMY.
-//   - Halo Infinite, citation_mappings.category (libellés FR posés au seed,
-//     internal/ops/seed.go) : Multijoueur, Mode de jeu, Arme, Véhicule, Ennemi,
-//     Spartan Companies.
+//     VEHICLE, ENEMY. Source externe non maîtrisée : la normalisation de ces
+//     libellés est PERMANENTE.
+//   - Halo Infinite, citation_mappings.category : les clés canoniques ci-dessous
+//     depuis le 2026-08-04 (le seed écrivait auparavant des libellés FR ; migration
+//     de données `normalize_citation_mappings_category_keys`).
 //
 // Les deux titres décrivent la même taxonomie dans deux langues : une seule
 // table de normalisation les couvre.
@@ -79,10 +80,18 @@ func CommendationCategoryRank(key string) int {
 // multiplayer|game_mode|weapon|vehicle|enemy|spartan_companies|other.
 //
 // Idempotente et insensible à la casse : elle accepte les libellés EN de l'API
-// Halo 5 (« GAME MODE »), les libellés FR du seed Infinite (« Mode de jeu ») et
-// les clés déjà normalisées (« game_mode »). Le sentinelle SQL historique
-// « misc » (COALESCE de citation_mappings.category) et la chaîne vide retombent
-// sur « other », comme toute valeur inconnue.
+// Halo 5 (« GAME MODE » — source externe, tolérance PERMANENTE) et les clés déjà
+// normalisées (« game_mode »). Le sentinelle SQL historique « misc » (COALESCE de
+// citation_mappings.category) et la chaîne vide retombent sur « other », comme
+// toute valeur inconnue.
+//
+// TOLÉRANCE DE TRANSITION — les libellés FR du seed Infinite (« Mode de jeu »,
+// « Véhicule », …) : le seed et la migration de données
+// `normalize_citation_mappings_category_keys` écrivent des clés stables depuis le
+// 2026-08-04. Cette tolérance couvre les bases non encore migrées.
+// Critère de retrait : plus aucune ligne de citation_mappings.category hors du set
+// canonique sur les bases prod (SELECT DISTINCT category FROM citation_mappings).
+// Date cible de retrait : 2026-11-04. Garde-rail : commendation_category_test.go.
 func NormalizeCommendationCategory(raw string) string {
 	switch normalizeCommendationCategoryKey(raw) {
 	case "multiplayer", "multijoueur":

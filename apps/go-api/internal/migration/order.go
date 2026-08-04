@@ -46,6 +46,7 @@ var canonicalOrder = []string{
 	"add_assists_model_coefs",                               // metadata
 	"add_catalog_playlists",                                 // metadata
 	"fix_citation_image_paths_double_encoded",               // metadata
+	"normalize_citation_mappings_category_keys",             // metadata (2026-08-04 : libellés FR -> clés canoniques)
 	"add_csr_placement_thresholds",                          // metadata
 	"drop_metadata_art_surface_indexes_v1",                  // metadata
 	"drop_metadata_art_surface_indexes_v2",                  // metadata

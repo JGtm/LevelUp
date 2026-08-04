@@ -10,7 +10,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
-	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
+	"levelup/go-api/internal/games/weapons"
 )
 
 // TestClassifyWeaponCoverage vérifie la classification registre / weapon_labels /
@@ -37,7 +37,7 @@ func TestClassifyWeaponCoverage(t *testing.T) {
 			t.Fatalf("seed: %v", err)
 		}
 	}
-	if err := halomigrations.ApplyWeaponRegistry(db); err != nil {
+	if err := weapons.ApplyRegistry(db); err != nil {
 		t.Fatalf("registry: %v", err)
 	}
 

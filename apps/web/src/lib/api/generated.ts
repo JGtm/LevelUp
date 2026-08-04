@@ -4870,7 +4870,6 @@ export interface components {
             delta: number;
             display_a?: string;
             display_b?: string;
-            label_fr: string;
             less_is_better: boolean;
             metric: string;
             /** Format: int64 */

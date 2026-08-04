@@ -19971,22 +19971,22 @@
 {"Time":"2026-06-26T23:46:43.6361711+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite/migrations","Test":"TestWeaponKillsAppendOnly_Idempotent","Output":"2026/06/26 23:46:43 INFO migration: cycle terminé title=halo_infinite target=shared applied=57 total=57 schema_version=187 duration_ms=191\n"}
 {"Time":"2026-06-26T23:46:43.6445508+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite/migrations","Test":"TestWeaponKillsAppendOnly_Idempotent","Output":"--- PASS: TestWeaponKillsAppendOnly_Idempotent (0.21s)\n"}
 {"Time":"2026-06-26T23:46:43.6445508+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/migrations","Test":"TestWeaponKillsAppendOnly_Idempotent","Elapsed":0.21}
-{"Time":"2026-06-26T23:46:43.6445508+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_infinite/migrations","Test":"TestWeaponRegistry_SeedCardinalities"}
-{"Time":"2026-06-26T23:46:43.6445508+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite/migrations","Test":"TestWeaponRegistry_SeedCardinalities","Output":"=== RUN   TestWeaponRegistry_SeedCardinalities\n"}
-{"Time":"2026-06-26T23:46:44.3254025+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite/migrations","Test":"TestWeaponRegistry_SeedCardinalities","Output":"--- PASS: TestWeaponRegistry_SeedCardinalities (0.68s)\n"}
-{"Time":"2026-06-26T23:46:44.3254025+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/migrations","Test":"TestWeaponRegistry_SeedCardinalities","Elapsed":0.68}
-{"Time":"2026-06-26T23:46:44.3254025+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_infinite/migrations","Test":"TestWeaponRegistry_ReferentialIntegrity"}
-{"Time":"2026-06-26T23:46:44.3254025+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite/migrations","Test":"TestWeaponRegistry_ReferentialIntegrity","Output":"=== RUN   TestWeaponRegistry_ReferentialIntegrity\n"}
-{"Time":"2026-06-26T23:46:45.0609457+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite/migrations","Test":"TestWeaponRegistry_ReferentialIntegrity","Output":"--- PASS: TestWeaponRegistry_ReferentialIntegrity (0.74s)\n"}
-{"Time":"2026-06-26T23:46:45.0609457+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/migrations","Test":"TestWeaponRegistry_ReferentialIntegrity","Elapsed":0.74}
-{"Time":"2026-06-26T23:46:45.0609457+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_infinite/migrations","Test":"TestWeaponRegistry_Enums"}
-{"Time":"2026-06-26T23:46:45.061465+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite/migrations","Test":"TestWeaponRegistry_Enums","Output":"=== RUN   TestWeaponRegistry_Enums\n"}
-{"Time":"2026-06-26T23:46:45.7498328+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite/migrations","Test":"TestWeaponRegistry_Enums","Output":"--- PASS: TestWeaponRegistry_Enums (0.69s)\n"}
-{"Time":"2026-06-26T23:46:45.7498328+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/migrations","Test":"TestWeaponRegistry_Enums","Elapsed":0.69}
-{"Time":"2026-06-26T23:46:45.7498328+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_infinite/migrations","Test":"TestWeaponRegistry_FilmshellResolution"}
-{"Time":"2026-06-26T23:46:45.7498328+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite/migrations","Test":"TestWeaponRegistry_FilmshellResolution","Output":"=== RUN   TestWeaponRegistry_FilmshellResolution\n"}
-{"Time":"2026-06-26T23:46:46.4842603+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite/migrations","Test":"TestWeaponRegistry_FilmshellResolution","Output":"--- PASS: TestWeaponRegistry_FilmshellResolution (0.73s)\n"}
-{"Time":"2026-06-26T23:46:46.4842603+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/migrations","Test":"TestWeaponRegistry_FilmshellResolution","Elapsed":0.73}
+{"Time":"2026-06-26T23:46:43.6445508+02:00","Action":"run","Package":"levelup/go-api/internal/games/weapons","Test":"TestWeaponRegistry_SeedCardinalities"}
+{"Time":"2026-06-26T23:46:43.6445508+02:00","Action":"output","Package":"levelup/go-api/internal/games/weapons","Test":"TestWeaponRegistry_SeedCardinalities","Output":"=== RUN   TestWeaponRegistry_SeedCardinalities\n"}
+{"Time":"2026-06-26T23:46:44.3254025+02:00","Action":"output","Package":"levelup/go-api/internal/games/weapons","Test":"TestWeaponRegistry_SeedCardinalities","Output":"--- PASS: TestWeaponRegistry_SeedCardinalities (0.68s)\n"}
+{"Time":"2026-06-26T23:46:44.3254025+02:00","Action":"pass","Package":"levelup/go-api/internal/games/weapons","Test":"TestWeaponRegistry_SeedCardinalities","Elapsed":0.68}
+{"Time":"2026-06-26T23:46:44.3254025+02:00","Action":"run","Package":"levelup/go-api/internal/games/weapons","Test":"TestWeaponRegistry_ReferentialIntegrity"}
+{"Time":"2026-06-26T23:46:44.3254025+02:00","Action":"output","Package":"levelup/go-api/internal/games/weapons","Test":"TestWeaponRegistry_ReferentialIntegrity","Output":"=== RUN   TestWeaponRegistry_ReferentialIntegrity\n"}
+{"Time":"2026-06-26T23:46:45.0609457+02:00","Action":"output","Package":"levelup/go-api/internal/games/weapons","Test":"TestWeaponRegistry_ReferentialIntegrity","Output":"--- PASS: TestWeaponRegistry_ReferentialIntegrity (0.74s)\n"}
+{"Time":"2026-06-26T23:46:45.0609457+02:00","Action":"pass","Package":"levelup/go-api/internal/games/weapons","Test":"TestWeaponRegistry_ReferentialIntegrity","Elapsed":0.74}
+{"Time":"2026-06-26T23:46:45.0609457+02:00","Action":"run","Package":"levelup/go-api/internal/games/weapons","Test":"TestWeaponRegistry_Enums"}
+{"Time":"2026-06-26T23:46:45.061465+02:00","Action":"output","Package":"levelup/go-api/internal/games/weapons","Test":"TestWeaponRegistry_Enums","Output":"=== RUN   TestWeaponRegistry_Enums\n"}
+{"Time":"2026-06-26T23:46:45.7498328+02:00","Action":"output","Package":"levelup/go-api/internal/games/weapons","Test":"TestWeaponRegistry_Enums","Output":"--- PASS: TestWeaponRegistry_Enums (0.69s)\n"}
+{"Time":"2026-06-26T23:46:45.7498328+02:00","Action":"pass","Package":"levelup/go-api/internal/games/weapons","Test":"TestWeaponRegistry_Enums","Elapsed":0.69}
+{"Time":"2026-06-26T23:46:45.7498328+02:00","Action":"run","Package":"levelup/go-api/internal/games/weapons","Test":"TestWeaponRegistry_FilmshellResolution"}
+{"Time":"2026-06-26T23:46:45.7498328+02:00","Action":"output","Package":"levelup/go-api/internal/games/weapons","Test":"TestWeaponRegistry_FilmshellResolution","Output":"=== RUN   TestWeaponRegistry_FilmshellResolution\n"}
+{"Time":"2026-06-26T23:46:46.4842603+02:00","Action":"output","Package":"levelup/go-api/internal/games/weapons","Test":"TestWeaponRegistry_FilmshellResolution","Output":"--- PASS: TestWeaponRegistry_FilmshellResolution (0.73s)\n"}
+{"Time":"2026-06-26T23:46:46.4842603+02:00","Action":"pass","Package":"levelup/go-api/internal/games/weapons","Test":"TestWeaponRegistry_FilmshellResolution","Elapsed":0.73}
 {"Time":"2026-06-26T23:46:46.4842603+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite/migrations","Output":"PASS\n"}
 {"Time":"2026-06-26T23:46:46.4919295+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite/migrations","Output":"ok  \tlevelup/go-api/internal/games/halo_infinite/migrations\t20.336s\n"}
 {"Time":"2026-06-26T23:46:46.4919295+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/migrations","Elapsed":20.336}
