@@ -2,8 +2,13 @@
  * colors.ts — couleurs partagées de la feature Escouade.
  *
  * Source unique des couleurs des joueurs sur la page squad : la pill du
- * joueur actif (gauche du multiselect, token `compare-a`) + les 3 slots
+ * joueur actif (gauche du multiselect, token `squad-player-1`) + les 3 slots
  * coéquipiers du `GamertagCombobox` (`SQUAD_TEAMMATE_COLOR_TOKENS`).
+ *
+ * La famille `squad-player-1..4` est dédiée à l'identité joueur : elle n'est
+ * empruntée à aucun autre rôle sémantique et ses quatre valeurs sont
+ * verrouillées par `lib/accessibility/squadPlayerTokens.test.ts` (contraste et
+ * écart perceptuel, daltonisme compris).
  *
  * Tous les charts qui rendent les joueurs côte à côte (per-minute, etc.)
  * doivent passer par `getSquadPlayerColors` pour conserver la cohérence
@@ -12,7 +17,7 @@
 import { getSeriesColors, type SemanticToken } from '@/lib/accessibility'
 
 /** Token couleur du joueur actif (pill à gauche du multiselect). */
-export const SQUAD_MAIN_PLAYER_TOKEN: SemanticToken = 'compare-a'
+export const SQUAD_MAIN_PLAYER_TOKEN: SemanticToken = 'squad-player-1'
 
 /**
  * Tokens couleur des 3 slots coéquipiers (ordre = ordre d'affichage dans
@@ -20,9 +25,9 @@ export const SQUAD_MAIN_PLAYER_TOKEN: SemanticToken = 'compare-a'
  * SquadLayout.tsx.
  */
 export const SQUAD_TEAMMATE_COLOR_TOKENS: SemanticToken[] = [
-  'narrative-dominant',
-  'perf-tier-3',
-  'divergent-pos',
+  'squad-player-2',
+  'squad-player-3',
+  'squad-player-4',
 ]
 
 /**
@@ -36,9 +41,9 @@ export function getSquadTeammateColors(maxSlots = 3): string[] {
 /**
  * Construit un mapping `gamertag → couleur hex` pour le main player + les
  * coéquipiers sélectionnés. Cohérent avec :
- *   - la pill `compare-a` du joueur actif
- *   - les tokens `narrative-dominant / perf-tier-3 / divergent-pos`
- *     attribués dans l'ordre par le `GamertagCombobox`.
+ *   - la pill `squad-player-1` du joueur actif
+ *   - les tokens `squad-player-2 / -3 / -4` attribués dans l'ordre par le
+ *     `GamertagCombobox`.
  */
 export function getSquadPlayerColors(
   mainGamertag: string,

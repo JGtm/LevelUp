@@ -39,6 +39,18 @@ export type SemanticToken =
   | 'compare-b'
   | 'compare-c'
 
+  // ── Joueurs d'escouade (4) — identité d'un joueur dans TOUTE l'app ─────────
+  // 1 = joueur principal, 2..4 = coéquipiers dans l'ordre de sélection.
+  // Famille dédiée (et non des tokens empruntés à d'autres rôles) : ces quatre
+  // couleurs sont verrouillées par un garde-rail dédié (contraste ≥ 3:1 sur les
+  // deux surfaces produit + écart perceptuel toutes-paires, y compris sous
+  // simulation daltonisme) — cf. squadPlayerTokens.test.ts.
+  // Source unique d'affectation : `features/squad/colors.ts`.
+  | 'squad-player-1'
+  | 'squad-player-2'
+  | 'squad-player-3'
+  | 'squad-player-4'
+
   // ── Séries de charts (8 max — pile sur Okabe-Ito) ─────────────────────────
   | 'chart-series-1'
   | 'chart-series-2'
@@ -117,6 +129,7 @@ export const ALL_TOKENS: readonly SemanticToken[] = [
   'divergent-pos', 'divergent-neutral', 'divergent-neg',
   'success', 'warning', 'info', 'destructive',
   'compare-a', 'compare-b', 'compare-c',
+  'squad-player-1', 'squad-player-2', 'squad-player-3', 'squad-player-4',
   'chart-series-1', 'chart-series-2', 'chart-series-3', 'chart-series-4',
   'chart-series-5', 'chart-series-6', 'chart-series-7', 'chart-series-8',
   'bonus',

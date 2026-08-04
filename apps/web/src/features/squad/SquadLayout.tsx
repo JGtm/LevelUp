@@ -38,7 +38,7 @@ import { log } from './_logger'
 import { SquadContext } from './SquadContext'
 import { SquadFocusStrip } from './SquadFocusStrip'
 import { useSquadPresets } from './useSquadPresets'
-import { getSquadTeammateColors } from './colors'
+import { getSquadTeammateColors, SQUAD_MAIN_PLAYER_TOKEN } from './colors'
 import type { KPIStats, LabelValue, TeammateRow, TeammatesQueryRequest } from '@/lib/api/types'
 import type { KPIStats as V2KPIStats } from './v2/types'
 import { SessionBriefing } from '@/features/_shared/SessionBriefing'
@@ -597,7 +597,7 @@ export function SquadLayout() {
               escouades » (charger/gérer une compo) et « Mes groupes ». */}
           <GamertagCombobox
             compact
-            leadingPill={{ label: playerSlug, color: tokenCssVar('compare-a') }}
+            leadingPill={{ label: playerSlug, color: tokenCssVar(SQUAD_MAIN_PLAYER_TOKEN) }}
             selected={selectedGts}
             onChange={setSelectedGts}
             max={MAX_SELECTION}
