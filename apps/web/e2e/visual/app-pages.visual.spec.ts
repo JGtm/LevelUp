@@ -33,6 +33,23 @@ import {
  * celles dont les charts ont été retouchés en v7.3 lot 2 (bande d'issues en
  * encoches, pistes Rendement/Résistance, courbe d'intensité d'équipe).
  */
+/**
+ * Bandeau décoratif de l'accueil, MASQUÉ dans la capture de page.
+ *
+ * `HomeHeroBanner` tire son image AU HASARD (`Math.random`) parmi 7 visuels
+ * statiques du titre, et en change toutes les 45 s. Le `Math.random` seedé de
+ * `prepareVisualPage` ne suffit pas à le figer : le tirage dépend du NOMBRE
+ * d'appels consommés avant le montage du composant, qui varie avec l'ordre
+ * d'arrivée des réponses réseau. Deux passes sur des données strictement
+ * identiques affichaient donc deux visuels différents (8 % des pixels de la page).
+ *
+ * Ce bandeau est purement décoratif — aucun graphe, aucune donnée joueur : le
+ * masquer retire le seul bruit non déterministe de la capture sans réduire la
+ * couverture de régression. Locator inoffensif sur les pages qui n'en ont pas
+ * (il ne résout alors aucun élément).
+ */
+const HERO_BANNER_TESTID = '[data-testid="home-hero-banner-sticky"]'
+
 const PAGES: { id: string; suffix: string; unstableCanvases?: number[] }[] = [
   { id: 'home', suffix: 'home' },
   { id: 'timeseries-summary', suffix: 'stats/timeseries?tab=summary' },
@@ -70,10 +87,10 @@ test.describe(`Régression visuelle — pages applicatives (${VISUAL_PLAYER})`, 
           'Viser un joueur peuplé via E2E_VISUAL_PLAYER.',
       )
 
-      await expect(page.locator('main')).toHaveScreenshot([
-        ...APP_SNAPSHOT_SEGMENTS,
-        `${id}-page.png`,
-      ])
+      await expect(page.locator('main')).toHaveScreenshot(
+        [...APP_SNAPSHOT_SEGMENTS, `${id}-page.png`],
+        { mask: [page.locator(HERO_BANNER_TESTID)] },
+      )
       await expectCanvasesMatch(
         page,
         APP_SNAPSHOT_SEGMENTS,

@@ -20,7 +20,7 @@
 LOAD_DOTENV := if [ -f .env.local ]; then set -a; . ./.env.local; set +a; fi; \
                if [ -f .env ]; then set -a; . ./.env; set +a; fi
 
-.PHONY: help web dev stop restart test-web test-e2e test-e2e-ui check-types \
+.PHONY: help web dev stop restart test-web test-e2e test-e2e-ui demo-visual check-types \
         generate-types install-web \
         go-api-build go-api-test go-api-dev _go-api-run \
         go-api-test-shared-social-gate install-git-hooks gate-push \
@@ -68,6 +68,15 @@ test-e2e:
 ## Lance les tests E2E avec l'UI Playwright (mode interactif)
 test-e2e-ui:
 	cd apps/web && npm run test:e2e:ui
+
+## Harnais de régression VISUELLE sur la fixture démo synthétique (déterministe).
+## Génère la fixture (tests/fixtures/demo-root, isolée de data/), démarre l'API en
+## mode démo + Vite, joue le projet Playwright `visual` avec E2E_VISUAL_PLAYER=demo-player,
+## puis arrête les serveurs. NE PAS lancer `make dev` en parallèle (mêmes ports).
+## Usage : make demo-visual [ARGS="--update-snapshots"]
+##         make demo-visual ARGS="--verify-determinism"   # preuve zéro diff (2 générations)
+demo-visual:
+	bash scripts/demo-visual-harness.sh $(ARGS)
 
 # =============================================================================
 # Go API — cibles build/run/test (Sprint 34)

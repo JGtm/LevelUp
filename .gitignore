@@ -181,6 +181,12 @@ tests/api/_sessions_sync_test/[0-9a-f]*-*.json
 tests/api/_sessions_v7_test/[0-9a-f]*-*.json
 # Corpus de test (fichiers binaires DuckDB lourds — générer via create_test_corpus.py)
 tests/fixtures/ref_player/*.duckdb
+# Fixture démo du harnais visuel (~59 Mo de DuckDB) — GÉNÉRÉE, jamais versionnée :
+# `bash scripts/demo-visual-harness.sh` (ou `levelup seed-demo --synthetic --out …`).
+# Déterministe à graine fixe, donc reproductible à l'identique par tout le monde.
+tests/fixtures/demo-root/
+# Logs des serveurs du harnais démo (hors outputDir Playwright, qui est vidé à chaud)
+tests/demo-harness-logs/
 data/warehouse/match_facts/
 data/warehouse/*.duckdb
 data/warehouse/*.wal
