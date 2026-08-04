@@ -1,3 +1,54 @@
+## [2026-08-04] Vague post-v7.3.0 : B' v2 + reliquat R2 + Go-struct + likes par viewer
+
+**Statut** : Complété (branche `feat/post-v730-wave`, 4 commits, prêt à merger — mandat
+utilisateur : pilotage intégral, validation visuelle utilisateur en toute fin).
+
+**Décision technique principale** : exécution du mandat « pilote tout sauf killsource et
+fixture démo » en 2 phases. Phase 1 : merges quick-wins + palette dans main (un push, un
+deploy, VERT ; Pre-Check rouge = transitoire proxy Go confirmé par rerun), tag v7.3.0
+poussé, Release déclenchée. Phase 2 : 4 lots agents Opus en worktrees, intégrés
+séquentiellement par patch (leçon : export `git diff HEAD` — un `git mv` d'agent vit
+dans l'index). (1) B' v2 : Rendement/Résistance en un grid, taux une-vie x100, fenêtre
+FIXE 50-200 %, zones teintées ORIENTABLES (above/below-is-good obligatoire — le
+correctif du contresens Dégâts/frag sur la Timeseries, attrapé en revue orchestrateur),
+« élite » disparu, P80 décâblés, pistes/cerne supprimés. (2) R2 14/14 : 0,83 centralisé
++ garde-rail, 3 tris non déterministes (itération de map) corrigés SliceStable+départage
+— cause racine des canvases instables du harnais —, overrides brace-expansion RELEVÉS
+(nouvel avis GHSA-rgw5-rvv9-x895, prémisse inversée), lockfile resynchronisé, heatmap
+Lab (fixture sans detail -> 84 cellules à 0), tutoiement glossaire, ratchet
+cross-feature 10->7. (3) Go-struct 6/6 : CompareMetricRow.LabelFR SUPPRIMÉ du contrat
+(le front résout par FieldKey), registre compare complété (libellés visibles changés,
+tableau AVANT/APRÈS au rapport d'agent), citations en clés stables (migration
+idempotente bornée aux libellés exacts, tolérance lecture datée 2026-11-04), registre
+d'armes -> internal/games/weapons/ (le garde-rail a débusqué un doublon DDL H5),
+openapi-gen silencieux. (4) Likes par viewer : `liked` = état du viewer de session
+(repli propriétaire en mono-utilisateur), media_files.liked ni lu ni écrit (DROP
+impossible en step isolé : ensureMediaTables re-crée les colonnes — dépréciation datée),
+liker forgeable durci (session écrase le corps), tests atomiques RÉACTIVÉS dans le job
+CI (chemin vivant), audit RequireAuth : prémisse corrigée (sess==nil inatteignable,
+vrai défaut = 403 au lieu de 401) -> 41 routes mutantes en 401, 69 lectures inchangées
+(POST de requête = lectures), ratchet chi.Walk.
+
+**Résultats observés** : gates orchestrateur sur la combinaison des 4 lots : go test
+-count=1 exit 0, integration -p 1 exit 0 (un faux -1 antérieur = artefact de chaînage
+PowerShell, le run isolé fait foi), tsc --force 0, vitest 390 fichiers / 3368 / 0,
+npm ci --dry-run 0 (lockfile réparé). Passe navigateur sur données réelles : chart
+B' v2 conforme à la spec (asymétrie rendement<100/résistance>100 visible), Compare
+avec les nouveaux libellés, palette OK. Boot serveur branche = migration citations
+appliquée sur la base réelle (88 lignes en clés canoniques, 0 libellé FR) + reconcile
+armes. Réparation de données préalable : like orphelin du 26/04 ré-émis sous la clé
+canonique (INSERT append-only + CHECKPOINT). TS7 re-vérifié : 8.66.0 toujours
+`typescript <6.1.0`, bloqué amont.
+
+**Conclusion / prochaine étape** : merge dans main (deploy auto), CI/deploy à
+surveiller, validation visuelle utilisateur (Dynamique, Compare, likes, réglages).
+Découvertes consignées pour plus tard : DROP media_files.liked/liked_at (5 sites),
+analysis.BuildMediaItems+SummarizeMediaSections code mort, libellés FR en dur restants
+dans timeseries_service_tabs.go, « Parties jouées » dans fields.toml (vocabulaire),
+KDA_ROWS du Lab en Math.random() (baselines Lab à régénérer après correction),
+Timeseries en % (refonte complète, hors périmètre B' v2), doc inversée mineure
+append_only_state_guard_test.go:368, avg_max_killing_spree sans consommateur Compare.
+
 ## [2026-08-04] Palette joueurs escouade : famille squad-player-1..4 livrée
 
 **Statut** : Complété (branche `feat/squad-player-palette`, en attente de merge).
