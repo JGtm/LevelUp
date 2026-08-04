@@ -11,10 +11,9 @@
 import { describe, it, expect } from 'vitest'
 
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
-import { ONE_LIFE_ZONE_OPACITY } from '@/lib/charts/oneLifeDamageGradient'
+import { ONE_LIFE_RATE_PCT, ONE_LIFE_ZONE_OPACITY } from '@/lib/charts/oneLifeDamageGradient'
 import {
   EFFICIENCY_CHART_HEIGHT,
-  ONE_LIFE_RATE_PCT,
   RATE_AXIS_MAX_PCT,
   RATE_AXIS_MIN_PCT,
   buildEfficiencyPoints,
@@ -236,11 +235,10 @@ describe('buildSquadEfficiencyOption', () => {
     expect(series[1].markLine).toBeUndefined()
   })
 
-  it('zones orientées above-is-good : VERT au-dessus de 100, ROUGE en dessous', () => {
-    // Orientation PROPRE à ces cartes : les deux indicateurs canoniques montent
-    // quand le joueur va mieux. La courbe solo en dégâts BRUTS par frag est, elle,
-    // `below-is-good` (cf. TimeseriesEfficiency.test.tsx) — uniformiser les deux
-    // surfaces casse l'un ou l'autre de ces tests.
+  it('zones : VERT au-dessus de 100, ROUGE en dessous', () => {
+    // Polarité UNIQUE du cadre « une vie », partagée avec la courbe solo
+    // (cf. TimeseriesEfficiency.test.tsx) : les indicateurs tracés sont des taux
+    // qui montent quand le joueur va mieux, donc le vert est toujours en haut.
     for (const metric of ['offensive', 'defensive'] as const) {
       const src =
         metric === 'offensive'

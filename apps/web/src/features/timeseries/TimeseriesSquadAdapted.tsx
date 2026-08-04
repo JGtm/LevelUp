@@ -22,7 +22,7 @@ import {
 import { resolveToken } from '@/lib/accessibility'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { intlLocale } from '@/lib/formatters'
+import { effectiveDmgPerFrag, formatNumberFixed, intlLocale } from '@/lib/formatters'
 import { ChartFromOption } from './ChartFromOption'
 import type {
   TimeseriesMatchRow,
@@ -34,18 +34,14 @@ import {
   intensityAxisLabels,
 } from '@/features/squad/charts/squadIntensityProfileChart'
 import {
+  ONE_LIFE_RATE_BOUNDS,
+  ONE_LIFE_RATE_PCT,
   damagePerDeath,
-  damagePerKill,
-  defensiveDamageGradient,
-  offensiveDamageGradient,
-  oneLifeWindowBounds,
+  oneLifeDefensiveRatePct,
+  oneLifeOffensiveRatePct,
   oneLifeZonesMarkArea,
 } from '@/lib/charts/oneLifeDamageGradient'
-import {
-  useEffectiveHpToKill,
-  substituteHpToken,
-  useProvidesDamageTaken,
-} from '@/lib/damage/effectiveHp'
+import { useEffectiveHpToKill, useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
 import { buildMatchCategories } from './matchLabels'
 
 interface RenderProps {
@@ -239,14 +235,20 @@ export function TimeseriesSessionPerformance({
 
 // ─── Rendement & Résistance par match ────────────────────────────────────────
 //
-// Dégâts BRUTS côté front sur match_rows, repère 225 = 1 vie de Spartan :
-//   dégâts/frag = damage_dealt / kills
-//   dégâts/mort = damage_taken / deaths
+// TAUX rapporté à UNE VIE, en % — exactement l'unité et le cadre de lecture des
+// cartes Rendement / Résistance de la page Escouade :
+//   Rendement  = barème PV / (dégâts par frag effectif) × 100
+//   Résistance = (dégâts encaissés par mort) / barème PV × 100
+// Le payload Timeseries (`match_rows`) ne sert PAS les indicateurs canoniques
+// `rendement_offensif` / `resistance_defensive` : la conversion est faite ici
+// depuis les dégâts bruts, par les helpers canoniques (aucune formule recodée,
+// cf. ADR 0006 + `oneLifeDamageGradient`).
 //
-// 2 lignes (frag plein, mort dashed) + ligne repère à 225, colorées par dégradé
-// (frag : proche de 225 = bon ; mort : au-dessus de 225 = bon). Fenêtre d'axe
-// FIXE et zones de lecture partagées avec les cartes Escouade. Cf. helper
-// oneLifeDamageGradient.
+// Conséquence : les deux courbes se lisent « plus haut = mieux », donc une SEULE
+// polarité — zones communes (vert au-dessus du repère, rouge en dessous), repère
+// « 1 vie » à 100 % et fenêtre FIXE 50…200 %. La courbe pleine est le rendement,
+// la pointillée la résistance ; le jugement est porté par les zones (l'ancien
+// dégradé de trait, ancré sur la boîte de série et non sur l'axe, a été retiré).
 
 export interface TimeseriesEfficiencyProps {
   rows: TimeseriesMatchRow[]
@@ -256,7 +258,14 @@ export interface TimeseriesEfficiencyProps {
   rendementLabel: string
   resistanceLabel: string
   refLabel: string
+  /** Unité de la valeur brute offensive au survol (« / frag effectif »). */
+  perFragLabel: string
+  /** Unité de la valeur brute défensive au survol (« / mort »). */
+  perDeathLabel: string
 }
+
+/** Point tracé : taux « une vie » en % + valeur brute par événement (survol). */
+type RateDatum = { value: number; perEvent: number | null } | null
 
 // ─── Intensity profile solo (médiane des parts par phase + enveloppe P25–P75) ─
 //
@@ -315,6 +324,65 @@ export function TimeseriesIntensityProfile({
   )
 }
 
+/**
+ * Taux offensifs d'une session : dégâts par frag EFFECTIF (frags + assistances/3,
+ * ADR 0006) converti en % d'une vie. Rate null (pas de dégâts, aucun frag
+ * effectif) → point non tracé plutôt qu'un 0 % faux.
+ */
+function offensiveRates(rows: TimeseriesMatchRow[], hp: number): RateDatum[] {
+  return rows.map((r) => {
+    const perEvent = effectiveDmgPerFrag(r.damage_dealt, r.kills, r.assists)
+    const rate = oneLifeOffensiveRatePct(perEvent, hp)
+    return rate == null ? null : { value: rate, perEvent }
+  })
+}
+
+/** Taux défensifs d'une session : dégâts encaissés par mort en % d'une vie. */
+function defensiveRates(rows: TimeseriesMatchRow[], hp: number): RateDatum[] {
+  return rows.map((r) => {
+    const perEvent = damagePerDeath(r.damage_taken, r.deaths)
+    const rate = oneLifeDefensiveRatePct(perEvent, hp)
+    return rate == null ? null : { value: rate, perEvent }
+  })
+}
+
+/**
+ * Survol : taux en % + valeur brute par événement (dégâts par frag effectif ou
+ * par mort) + rappel du pivot. Même structure que les cartes Escouade.
+ */
+function efficiencyTooltip(unitByName: Record<string, string>, refLabel: string) {
+  return (params: unknown): string => {
+    const items = params as Array<{ seriesName?: string; marker?: string; data?: RateDatum }>
+    if (!Array.isArray(items)) return ''
+    const hits = items.filter((it) => it.data != null)
+    if (hits.length === 0) return ''
+    const lines = hits.map((it) => {
+      const d = it.data as NonNullable<RateDatum>
+      const unit = unitByName[it.seriesName ?? ''] ?? ''
+      const raw =
+        d.perEvent == null ? '' : ` · ${formatNumberFixed(d.perEvent, 0)} ${escapeHtml(unit)}`
+      const name = escapeHtml(it.seriesName ?? '')
+      return `${it.marker ?? ''}${name} : <b>${formatNumberFixed(d.value, 0)} %</b>${raw}`
+    })
+    // Le pivot est rappelé : c'est la clé de lecture commune aux deux courbes.
+    return [
+      ...lines,
+      `<span style="opacity:.7">${ONE_LIFE_RATE_PCT} % = ${escapeHtml(refLabel)}</span>`,
+    ].join('<br/>')
+  }
+}
+
+/** Repère « 1 vie » à 100 %, tracé une seule fois pour les deux courbes. */
+function oneLifeMarkLine(label: string, color: string) {
+  return {
+    silent: true,
+    symbol: 'none' as const,
+    lineStyle: { color, width: 1, type: 'dashed' as const },
+    label: { formatter: label, color, fontSize: 10, position: 'insideEndTop' as const },
+    data: [{ yAxis: ONE_LIFE_RATE_PCT }],
+  }
+}
+
 export function TimeseriesEfficiency({
   rows,
   height = 320,
@@ -323,10 +391,12 @@ export function TimeseriesEfficiency({
   rendementLabel,
   resistanceLabel,
   refLabel,
+  perFragLabel,
+  perDeathLabel,
 }: TimeseriesEfficiencyProps) {
   const themeVersion = useThemeVersion()
   const hp = useEffectiveHpToKill() // barème PV-pour-tuer du titre courant (225 Infinite, 115 h5)
-  // false (Halo 5 : API sans damage_taken) → « Dégâts / mort » non calculable :
+  // false (Halo 5 : API sans damage_taken) → la résistance n'est pas calculable :
   // on retire entièrement la courbe + son entrée de légende (pas de ligne vide).
   const providesDamageTaken = useProvidesDamageTaken()
 
@@ -334,17 +404,11 @@ export function TimeseriesEfficiency({
     if (rows.length === 0) return null
     const tc = getEChartsThemeColors()
     const colRef = resolveToken('divergent-neutral')
+    const colOffensive = resolveToken('chart-series-1')
+    const colDefensive = resolveToken('chart-series-3')
 
     const categories = buildMatchCategories(rows)
-    const dmgKill = rows.map((r) => damagePerKill(r.damage_dealt, r.kills))
-    const dmgDeath = providesDamageTaken
-      ? rows.map((r) => damagePerDeath(r.damage_taken, r.deaths))
-      : []
-    // Fenêtre FIXE autour du repère « une vie » (demi-repère … double repère),
-    // image en dégâts bruts de la fenêtre 50…200 % des cartes Escouade. Les
-    // bornes ne sont PLUS dérivées de la session : une même valeur tombe au même
-    // endroit — et prend donc la même couleur — d'une session à l'autre.
-    const bounds = oneLifeWindowBounds(hp)
+    const bounds = ONE_LIFE_RATE_BOUNDS
 
     return {
       backgroundColor: CHART_BG,
@@ -352,15 +416,14 @@ export function TimeseriesEfficiency({
       tooltip: {
         ...getTooltipBase(tc),
         trigger: 'axis',
-        formatter: (params: Array<{ seriesName: string; value: number | null; marker: string }>) =>
-          params
-            .filter((p) => p.value != null)
-            .map((p) => `${p.marker}${escapeHtml(p.seriesName ?? '')}: <b>${Math.round(p.value as number)}</b>`)
-            .join('<br/>'),
+        formatter: efficiencyTooltip(
+          { [rendementLabel]: perFragLabel, [resistanceLabel]: perDeathLabel },
+          refLabel,
+        ),
       },
-      // Pastille de légende élargie (itemWidth 30 vs 12) : à 12px le pointillé
-      // de « Dégâts / mort » est invisible ; à 30px on distingue trait plein
-      // (Dégâts/frag) vs pointillé (Dégâts/mort).
+      // Pastille de légende élargie (itemWidth 30 vs 12) : à 12px le pointillé de
+      // la résistance est invisible ; à 30px on distingue trait plein (rendement)
+      // vs pointillé (résistance).
       legend: { ...getLegendBase(tc), bottom: 0, itemWidth: 30 },
       xAxis: {
         ...getAxisBase(tc),
@@ -368,67 +431,63 @@ export function TimeseriesEfficiency({
         data: categories,
         axisLabel: { ...getAxisBase(tc).axisLabel, interval: 0, fontSize: 9 },
       },
+      // Fenêtre FIXE 50…200 % — bornes CONSTANTES, jamais dérivées de la session :
+      // une même valeur tombe au même endroit, et prend donc la même couleur,
+      // d'une session à l'autre. Un point hors fenêtre est écrêté par l'axe ; le
+      // survol en garde la valeur vraie.
       yAxis: {
         ...getAxisBase(tc),
         type: 'value',
         min: bounds.min,
         max: bounds.max,
-        axisLabel: { ...getAxisBase(tc).axisLabel, formatter: (v: number) => `${Math.round(v)}` },
+        interval: (bounds.max - bounds.min) / 3,
+        axisLabel: { ...getAxisBase(tc).axisLabel, formatter: (v: number) => `${Math.round(v)} %` },
       },
       series: [
         {
           type: 'line',
           name: rendementLabel,
-          data: dmgKill,
+          data: offensiveRates(rows, hp),
           showSymbol: false,
           smooth: false,
           connectNulls: true,
-          lineStyle: { color: offensiveDamageGradient(), width: 2 },
+          lineStyle: { color: colOffensive, width: 2 },
           // Zones de lecture PARTAGÉES avec les cartes Escouade (helper unique),
-          // en coordonnées d'axe. Elles remplacent l'ancienne aire par courbe
-          // (ancrée à `origin: hp`). Orientation `below-is-good` : cette courbe
-          // est en dégâts BRUTS dépensés par frag — dépenser MOINS d'une vie par
-          // frag est efficace, donc le vert va SOUS le repère, en accord avec
-          // `offensiveDamageGradient` (vert en bas). Les zones sont portées par
-          // cette seule série : elles décrivent la grille, et la courbe « Dégâts
-          // / mort » (de sens inverse, cf. `defensiveDamageGradient`) ne peut pas
-          // peindre un second jeu de bandes contradictoires sur le même axe.
-          markArea: oneLifeZonesMarkArea(hp, 'below-is-good', bounds),
-          markLine: {
-            silent: true,
-            symbol: 'none',
-            lineStyle: { color: colRef, width: 1, type: 'dashed' },
-            label: {
-              formatter: substituteHpToken(refLabel, hp),
-              color: colRef,
-              fontSize: 10,
-              position: 'insideEndTop',
-            },
-            data: [{ yAxis: hp }],
-          },
+          // en coordonnées d'axe : vert au-dessus du repère, rouge en dessous.
+          // Les deux courbes étant des taux « plus haut = mieux », les zones
+          // valent pour l'ensemble de la grille — elles sont donc portées par la
+          // première série et rendues une seule fois.
+          markArea: oneLifeZonesMarkArea(ONE_LIFE_RATE_PCT, bounds),
+          markLine: oneLifeMarkLine(refLabel, colRef),
         },
-        // Série « Résistance » (Dégâts / mort) + son entrée de légende retirées
-        // quand le titre ne fournit pas damage_taken (Halo 5).
+        // Courbe « Résistance » + son entrée de légende retirées quand le titre
+        // ne fournit pas damage_taken (Halo 5).
         ...(providesDamageTaken
           ? [
               {
                 type: 'line' as const,
                 name: resistanceLabel,
-                data: dmgDeath,
+                data: defensiveRates(rows, hp),
                 showSymbol: false,
                 smooth: false,
                 connectNulls: true,
-                lineStyle: {
-                  color: defensiveDamageGradient(),
-                  width: 2,
-                  type: 'dashed' as const,
-                },
+                lineStyle: { color: colDefensive, width: 2, type: 'dashed' as const },
               },
             ]
           : []),
       ],
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, rendementLabel, resistanceLabel, refLabel, themeVersion, hp, providesDamageTaken])
+  }, [
+    rows,
+    rendementLabel,
+    resistanceLabel,
+    refLabel,
+    perFragLabel,
+    perDeathLabel,
+    themeVersion,
+    hp,
+    providesDamageTaken,
+  ])
   return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
 }
