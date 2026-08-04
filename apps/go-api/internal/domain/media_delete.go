@@ -16,8 +16,8 @@
 //     simple d'une PK ART (incident catalog_fetch_queue 2026-06-19, cf.
 //     no_art_patterns_test.go). Une invalidation de shared_social emporterait
 //     médias + likes + followers + activité pour tout le process. L'UPDATE
-//     d'une colonne non indexée a le même profil de risque que `liked`, chemin
-//     déjà durci et prouvé par l'item 1.5.
+//     d'une colonne non indexée a le même profil de risque que celui de l'ancien
+//     `liked` (chemin durci puis retiré à l'item 1.5) : nul.
 //
 //  3. media_likes_history / media_match_associations_history : AUCUNE écriture
 //     — ORPHELINS INVISIBLES. Ces tables sont append-only strictes (id +
@@ -30,11 +30,11 @@
 //     proviennent de la galerie déjà filtrée, et les associations par un
 //     LEFT JOIN partant de media_files. Média masqué ⇒ likes jamais lus.
 //
-// Cohérence avec `media_files.liked` GLOBAL (découverte item 1.5) : `liked` est
-// un attribut du média, partagé par tous les viewers ; il disparaît AVEC le
-// média puisque la ligne entière est masquée. `media_likes_history` est par
-// liker : ses lignes survivent comme trace historique inerte. Les deux
-// convergent vers « plus rien n'est servi » sans une seule écriture append-only.
+// NB : il n'existe plus d'autre support de like que `media_likes_history` —
+// `media_files.liked`/`liked_at`, le booléen GLOBAL découvert à l'item 1.5, ont
+// été droppés le 2026-08-04 (drop_media_files_liked_columns_v1). Le masquage de
+// la ligne media_files suffit donc : les likes par liker survivent comme trace
+// historique inerte, jamais lue, sans une seule écriture append-only.
 package domain
 
 import "strings"

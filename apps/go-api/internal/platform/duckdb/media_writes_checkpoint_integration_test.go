@@ -53,8 +53,6 @@ func createSharedSocialSchemaForMediaTests(t *testing.T) *DB {
 			file_name VARCHAR,
 			kind VARCHAR DEFAULT 'video',
 			thumbnail_path VARCHAR,
-			liked BOOLEAN DEFAULT FALSE,
-			liked_at TIMESTAMP,
 			-- status : présente en prod (ALTER de steps_shared_social) et filtrée par
 			-- toute lecture applicative depuis l'item 3.1 (MediaVisiblePredicate).
 			status VARCHAR,

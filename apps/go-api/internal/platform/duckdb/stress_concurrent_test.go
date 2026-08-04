@@ -1,8 +1,13 @@
 //go:build integration
 
 // Test stress concurrent Phase 3 plan stabilisation 2026-05-22 :
-// 10 goroutines POST like (UPDATE media_files.liked) + 1 sync (INSERT
-// match_participants) en parallèle, attendu 0 erreur SQL.
+// 10 goroutines mutant media_files (UPDATE d'une colonne NON indexée) + 1 sync
+// (INSERT match_participants) en parallèle, attendu 0 erreur SQL.
+//
+// La charge utile était media_files.liked jusqu'au 2026-08-04 ; cette colonne a
+// été droppée (le like est par liker, en append-only). Le test porte désormais
+// sur `status`, qui est la vraie colonne mutée de media_files (soft-delete) —
+// ce qu'il mesure (sérialisation du pool sous writes concurrents) est inchangé.
 //
 // Garantit la robustesse du pool DuckDB sous charge concurrente. Si quelqu'un
 // retire le `sync.Mutex` interne du `*DB` ou casse l'isolation MVCC d'un
@@ -24,7 +29,7 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
-// TestPool_StressConcurrentLikesAndSync : 10 goroutines UPDATE liked + 1
+// TestPool_StressConcurrentLikesAndSync : 10 goroutines UPDATE media_files + 1
 // goroutine INSERT match_participants, en parallèle. Attendu : 0 erreur SQL.
 //
 // MaxOpenConns=1 reproduit le mode prod OpenReadWrite (cf. db.go:121) qui
@@ -38,11 +43,11 @@ func TestPool_StressConcurrentLikesAndSync(t *testing.T) {
 	sharedDB.SetMaxOpenConns(1)
 	ctx := context.Background()
 
-	// Seed media_files (10 lignes liked=FALSE par défaut).
+	// Seed media_files (10 lignes status NULL par défaut).
 	if _, err := socialDB.Exec(`
 		CREATE TABLE media_files (
 			id VARCHAR PRIMARY KEY,
-			liked BOOLEAN DEFAULT FALSE,
+			status VARCHAR,
 			updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 		)
 	`); err != nil {
@@ -82,10 +87,13 @@ func TestPool_StressConcurrentLikesAndSync(t *testing.T) {
 			defer wg.Done()
 			for iter := 0; iter < likeIterations; iter++ {
 				mediaID := fmt.Sprintf("media-%d", (gID+iter)%10)
-				liked := iter%2 == 0
+				status := "active"
+				if iter%2 == 0 {
+					status = "deleted"
+				}
 				if _, err := socialDB.ExecContext(ctx,
-					`UPDATE media_files SET liked = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-					liked, mediaID,
+					`UPDATE media_files SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+					status, mediaID,
 				); err != nil {
 					errCount.Add(1)
 					t.Logf("like goroutine %d iter %d: %v", gID, iter, err)

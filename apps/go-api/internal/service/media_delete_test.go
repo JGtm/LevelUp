@@ -58,8 +58,7 @@ func newDeleteFixture(t *testing.T) *deleteFixture {
 		CREATE TABLE media_files (
 			id INTEGER DEFAULT nextval('media_id_seq') PRIMARY KEY,
 			player_slug VARCHAR, file_path VARCHAR NOT NULL, file_name VARCHAR,
-			kind VARCHAR DEFAULT 'video', thumbnail_path VARCHAR,
-			liked BOOLEAN DEFAULT FALSE, liked_at TIMESTAMP, status VARCHAR,
+			kind VARCHAR DEFAULT 'video', thumbnail_path VARCHAR, status VARCHAR,
 			mtime TIMESTAMP WITH TIME ZONE, updated_at TIMESTAMP,
 			capture_start_utc TIMESTAMP WITH TIME ZONE,
 			capture_end_utc TIMESTAMP WITH TIME ZONE,

@@ -55,8 +55,7 @@ func socialDBForLikeTest(t *testing.T) (*duckdb.DB, string) {
 		CREATE TABLE media_files (
 			id INTEGER DEFAULT nextval('media_id_seq') PRIMARY KEY,
 			player_slug VARCHAR, file_path VARCHAR NOT NULL UNIQUE, file_name VARCHAR,
-			kind VARCHAR DEFAULT 'video', thumbnail_path VARCHAR,
-			liked BOOLEAN DEFAULT FALSE, liked_at TIMESTAMP, status VARCHAR,
+			kind VARCHAR DEFAULT 'video', thumbnail_path VARCHAR, status VARCHAR,
 			capture_start_utc TIMESTAMP WITH TIME ZONE, capture_end_utc TIMESTAMP WITH TIME ZONE,
 			mtime TIMESTAMP WITH TIME ZONE, indexed_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 		);
@@ -109,7 +108,7 @@ func socialDBForLikeTest(t *testing.T) (*duckdb.DB, string) {
 
 // TestMediaService_SetMediaLike_Atomic_SurvivesWALLoss : après un SetMediaLike
 // ayant répondu OK, la perte du WAL non flushé ne doit PAS faire disparaître le
-// like — ni son état media_files.liked, ni son event social.
+// like : son event social doit être sur disque au moment de la réponse.
 func TestMediaService_SetMediaLike_Atomic_SurvivesWALLoss(t *testing.T) {
 	db, path := socialDBForLikeTest(t)
 	ctx := context.Background()

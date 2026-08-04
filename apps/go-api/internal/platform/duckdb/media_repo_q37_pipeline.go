@@ -202,8 +202,8 @@ LEFT JOIN media_likes_latest mll ON mll.media_path = mf.file_path AND mll.liker_
 
 // mediaViewerLikedExpr : état du cœur DU VIEWER. Un viewer sans event de like,
 // un event de retrait (is_liked=FALSE) ou un viewer non identifié donnent tous
-// FALSE. Ne JAMAIS revenir à mf.liked : cette colonne est globale et dépréciée
-// (cf. media_repo_writes.go).
+// FALSE. Ne JAMAIS revenir à mf.liked : cette colonne était GLOBALE et n'existe
+// plus (droppée le 2026-08-04, cf. media_repo_writes.go).
 const mediaViewerLikedExpr = `COALESCE(mll.is_liked, FALSE)`
 
 // buildMediaLocalWhere construit la clause WHERE avec UNIQUEMENT les filtres

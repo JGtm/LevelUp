@@ -225,8 +225,8 @@ func (s *MediaService) AssociateMediaToMatch(ctx context.Context, req domain.Med
 //
 // Depuis le 2026-08-04 le like est PAR VIEWER : l'unique support de stockage est
 // l'event append-only media_likes_history (lu via media_likes_latest). La colonne
-// globale media_files.liked n'est plus ni lue ni écrite — elle allumait le cœur
-// de tous les joueurs dès qu'un seul likait.
+// globale media_files.liked, qui allumait le cœur de tous les joueurs dès qu'un
+// seul likait, a été droppée du schéma le 2026-08-04.
 //
 // Deux chemins :
 //   - **Atomique** (commit 6 db-concurrency) : si un WriterAcquirer est

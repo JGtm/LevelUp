@@ -95,9 +95,9 @@ func TestLoadMediaFiles_RealTopology_NoCrossDBSQL(t *testing.T) {
 	// Insérer un média + son association sur social (table shared_social).
 	if _, err := social.Exec(ctx, `
 		INSERT INTO media_files
-			(id, player_slug, file_path, file_name, file_stem, file_ext, kind, capture_end_utc, liked, status)
+			(id, player_slug, file_path, file_name, file_stem, file_ext, kind, capture_end_utc, status)
 		VALUES ('1', 'TestPlayer', '/e2e_test.mp4', 'e2e_test.mp4', 'e2e_test', '.mp4', 'video',
-		        ?, FALSE, 'active')
+		        ?, 'active')
 	`, time.Date(2026, 5, 20, 14, 30, 0, 0, time.UTC)); err != nil {
 		t.Fatalf("insert media: %v", err)
 	}
