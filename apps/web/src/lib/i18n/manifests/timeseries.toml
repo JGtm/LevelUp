@@ -543,17 +543,25 @@ en = "Output & resistance"
 fr = "Réf. 100%"
 en = "Ref. 100%"
 
-[timeseries.progression.dmg_per_kill]
-fr = "Dégâts / frag"
-en = "Damage / kill"
+[timeseries.progression.rate_offensive]
+fr = "Rendement (%)"
+en = "Output (%)"
 
-[timeseries.progression.dmg_per_death]
-fr = "Dégâts / mort"
-en = "Damage / death"
+[timeseries.progression.rate_defensive]
+fr = "Résistance (%)"
+en = "Resistance (%)"
+
+[timeseries.progression.per_effective_frag]
+fr = "/ frag effectif"
+en = "/ effective kill"
+
+[timeseries.progression.per_death]
+fr = "/ mort"
+en = "/ death"
 
 [timeseries.progression.ref_one_life]
-fr = "1 vie ({{HP}})"
-en = "1 life ({{HP}})"
+fr = "1 vie"
+en = "1 life"
 
 [timeseries.progression.intensity_title]
 fr = "Intensité"

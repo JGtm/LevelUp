@@ -13,7 +13,7 @@
  * dans les DEUX cartes.
  *
  * Cadre de lecture commun et FIXE : la fenêtre 50…200 %
- * ({@link oneLifeWindowBounds} sur le pivot 100) + les deux zones
+ * ({@link ONE_LIFE_RATE_BOUNDS}) + les deux zones
  * ({@link oneLifeZonesMarkArea}) + le repère « 1 vie » à 100. Rien n'est
  * recalculé depuis les données : deux sessions se comparent à l'œil par
  * construction. L'identité des courbes est portée par une ÉTIQUETTE DE FIN
@@ -32,8 +32,9 @@ import {
   hoverRevealSymbol,
 } from '@/components/charts/_utils'
 import {
+  ONE_LIFE_RATE_BOUNDS,
+  ONE_LIFE_RATE_PCT,
   damagePerDeath,
-  oneLifeWindowBounds,
   oneLifeZonesMarkArea,
 } from '@/lib/charts/oneLifeDamageGradient'
 import { effectiveDmgPerFrag, formatNumberFixed } from '@/lib/formatters'
@@ -43,10 +44,7 @@ import { truncateMap } from '@/lib/charts/matchLabels'
 /** Métrique rendue : rendement offensif (OC) ou résistance défensive (DR). */
 export type EfficiencyMetric = 'offensive' | 'defensive'
 
-/** Taux d'UNE VIE, en % — pivot des deux cartes. */
-export const ONE_LIFE_RATE_PCT = 100
-
-const RATE_BOUNDS = oneLifeWindowBounds(ONE_LIFE_RATE_PCT)
+const RATE_BOUNDS = ONE_LIFE_RATE_BOUNDS
 /** Plancher FIXE de l'axe (%) — jamais dérivé des données. */
 export const RATE_AXIS_MIN_PCT = RATE_BOUNDS.min
 /** Plafond FIXE de l'axe (%) — jamais dérivé des données. */
@@ -231,9 +229,10 @@ export function buildSquadEfficiencyOption(
       // ils décrivent la grille, pas un joueur.
       ...(idx === 0
         ? {
-            // `above-is-good` : les DEUX indicateurs canoniques montent quand le
-            // joueur va mieux (taux rapportés à une vie).
-            markArea: oneLifeZonesMarkArea(ONE_LIFE_RATE_PCT, 'above-is-good', RATE_BOUNDS),
+            // Polarité unique du cadre « une vie » : les indicateurs canoniques
+            // montent quand le joueur va mieux (taux rapportés à une vie), donc
+            // le vert est toujours au-dessus du repère.
+            markArea: oneLifeZonesMarkArea(ONE_LIFE_RATE_PCT, RATE_BOUNDS),
             markLine: {
               silent: true,
               symbol: 'none' as const,
