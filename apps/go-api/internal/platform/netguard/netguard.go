@@ -1,7 +1,7 @@
 // Package netguard — coupe-circuit des appels réseau SORTANTS en mode démo.
 //
 // POURQUOI. Le mode démo sert des données seedées et ne synchronise rien : aucun
-// appel à une API tierce (halowaypoint & co) n'y a de sens. Il n'était pourtant
+// appel à une API tierce (Halo, Xbox, OAuth) n'y a de sens. Il n'était pourtant
 // hermétique que par accident — « pas de tokens sur la machine ». Dès qu'une
 // instance démo tourne sur un poste qui EN A (cas nominal : `LEVELUP_REPO_ROOT`
 // pointe le checkout de dev, dont `data/auth/` contient les vrais tokens), le
