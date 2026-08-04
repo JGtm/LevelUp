@@ -67,6 +67,14 @@ export const cividisPalette: Palette = {
   'compare-b': CIVIDIS_LIGHTEST,
   'compare-c': CIVIDIS_MID,     // t=0.50 — gris-brun neutre (troisième joueur)
 
+  // ── Joueurs d'escouade — 4 pas de clarté réguliers (t = .25 / .50 / .75 / 1)
+  // Cividis est une rampe séquentielle : l'identité par TEINTE y est impossible
+  // par construction, les joueurs se distinguent par la clarté seule.
+  'squad-player-1': CIVIDIS_T25,      // t=0.25 — joueur principal
+  'squad-player-2': CIVIDIS_MID,      // t=0.50 — coéquipier 1
+  'squad-player-3': CIVIDIS_T75,      // t=0.75 — coéquipier 2
+  'squad-player-4': CIVIDIS_LIGHTEST, // t=1.00 — coéquipier 3
+
   // ── Chart series — alterne extrémités Cividis pour distinguer 2 séries voisines
   'chart-series-1': CIVIDIS_DARKEST,  // t=0.00
   'chart-series-2': CIVIDIS_LIGHTEST, // t=1.00

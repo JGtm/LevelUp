@@ -244,23 +244,39 @@ describe('buildSquadEfficiencyTracksOption', () => {
     expect(opt.backgroundColor).toBeDefined()
   })
 
-  it('une grille / un axe X / un axe Y / trois séries par joueur, dans l\'ordre donné', () => {
+  it('une grille / un axe X / un axe Y / quatre séries par joueur, dans l\'ordre donné', () => {
     const opt = buildSquadEfficiencyTracksOption(rows, PLAYERS, opts('offensive', OC_P80))
     expect(opt.grid as unknown[]).toHaveLength(2)
     expect(opt.xAxis as unknown[]).toHaveLength(2)
     expect(opt.yAxis as unknown[]).toHaveLength(2)
     const series = opt.series as unknown as TrackSeries[]
-    expect(series).toHaveLength(6)
-    // Aire positive, aire négative, puis le trait du joueur (dessus).
+    expect(series).toHaveLength(8)
+    // Aire positive, aire négative, cerne, puis le trait du joueur (dessus).
     expect(series[0].areaStyle?.origin).toBe(0)
     expect(series[1].areaStyle?.origin).toBe(0)
-    expect(series[2].name).toBe('Me')
-    expect(series[2].lineStyle?.color).toBe('#aaa')
-    expect(series[5].name).toBe('F1')
-    expect(series[5].lineStyle?.color).toBe('#bbb')
-    // Chaque triplet est rattaché à SA piste.
-    expect(series.map((s) => s.xAxisIndex)).toEqual([0, 0, 0, 1, 1, 1])
-    expect(series.map((s) => s.yAxisIndex)).toEqual([0, 0, 0, 1, 1, 1])
+    expect(series[3].name).toBe('Me')
+    expect(series[3].lineStyle?.color).toBe('#aaa')
+    expect(series[7].name).toBe('F1')
+    expect(series[7].lineStyle?.color).toBe('#bbb')
+    // Chaque quadruplet est rattaché à SA piste.
+    expect(series.map((s) => s.xAxisIndex)).toEqual([0, 0, 0, 0, 1, 1, 1, 1])
+    expect(series.map((s) => s.yAxisIndex)).toEqual([0, 0, 0, 0, 1, 1, 1, 1])
+  })
+
+  it('aires peu opaques + cerne couleur de carte SOUS le trait joueur', () => {
+    const opt = buildSquadEfficiencyTracksOption(rows, PLAYERS, opts('offensive', OC_P80))
+    const series = opt.series as unknown as TrackSeries[]
+    // Le signe se lit à la position, pas à la saturation : aires discrètes.
+    expect(series[0].areaStyle?.opacity).toBe(0.2)
+    expect(series[1].areaStyle?.opacity).toBe(0.2)
+    // Cerne : même tracé, plus épais, à la couleur de surface du thème, sans nom
+    // (donc hors légende) et posé AVANT le trait joueur (donc dessous).
+    const halo = series[2]
+    const line = series[3]
+    expect(halo.name).toBeUndefined()
+    expect(halo.lineStyle?.color).toBe('#171717') // fallback --card (jsdom)
+    expect(halo.lineStyle?.width).toBeGreaterThan(line.lineStyle?.width ?? 0)
+    expect(halo.data).toEqual(line.data.map((d) => (Array.isArray(d) ? d : d.value)))
   })
 
   it('axe symétrique PARTAGÉ : mêmes bornes sur toutes les pistes', () => {
@@ -304,11 +320,11 @@ describe('buildSquadEfficiencyTracksOption', () => {
     )
     expect(opt.grid as unknown[]).toHaveLength(2)
     const series = opt.series as unknown as TrackSeries[]
-    const f1Line = series[5]
+    const f1Line = series[7]
     expect(f1Line.name).toBe('F1')
     expect(f1Line.data.map((d) => (Array.isArray(d) ? d[1] : d.value[1]))).toEqual([null, null])
     // Aucune aire ne se referme sur un joueur sans données.
-    expect(series[3].data).toEqual([
+    expect(series[4].data).toEqual([
       [0, null],
       [1, null],
     ])
@@ -317,7 +333,7 @@ describe('buildSquadEfficiencyTracksOption', () => {
   it('survol : écart signé + indicateur normalisé + dégâts BRUTS du match', () => {
     const opt = buildSquadEfficiencyTracksOption(rows, PLAYERS, opts('offensive', OC_P80))
     const series = opt.series as unknown as TrackSeries[]
-    const first = series[2].data[0]
+    const first = series[3].data[0]
     const formatter = (opt.tooltip as unknown as { formatter: (p: unknown) => string }).formatter
     const html = formatter([{ data: first }])
     expect(html).toContain('#1')
@@ -337,7 +353,7 @@ describe('buildSquadEfficiencyTracksOption', () => {
     )
     const series = opt.series as unknown as TrackSeries[]
     const formatter = (opt.tooltip as unknown as { formatter: (p: unknown) => string }).formatter
-    const html = formatter([{ data: series[2].data[0] }])
+    const html = formatter([{ data: series[3].data[0] }])
     expect(html).toContain('Résistance 1.98')
     expect(html).toContain('frontière élite 1.65')
     expect(html).toContain('Dégâts subis 1200')
