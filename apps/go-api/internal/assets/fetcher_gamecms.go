@@ -10,6 +10,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/platform/netguard"
 )
 
 const defaultGameCMSBase = "https://gamecms-hacs.svc.halowaypoint.com"
@@ -326,6 +327,13 @@ func (f *GameCMSFetcher) fetchBPItemDefinition(ctx context.Context, ref Ref) (Pa
 
 // doGet exécute une requête GET avec les tokens Halo si fournis.
 func (f *GameCMSFetcher) doGet(ctx context.Context, url string, tokens *domain.HaloTokens) (*http.Response, error) {
+	// Mode démo : aucune sortie tierce (emblèmes, bannières, images de rang).
+	// L'appelant remonte ErrUpstreamUnavailable → 502 propre côté API, et le
+	// front affiche son placeholder. Sans ce garde, la démo téléchargeait le
+	// catalogue d'images de rang carrière depuis gamecms à chaque démarrage.
+	if err := netguard.Check(ctx, "gamecms_assets.get"); err != nil {
+		return nil, err
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err

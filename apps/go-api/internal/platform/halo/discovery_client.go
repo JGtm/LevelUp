@@ -20,6 +20,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/platform/netguard"
 )
 
 const (
@@ -245,6 +246,10 @@ func (p *HaloProvider) attemptHaloGet(ctx context.Context, rawURL, lang string) 
 		}
 	}
 
+	// Mode démo : aucune sortie tierce (cf. internal/platform/netguard).
+	if gErr := netguard.Check(ctx, "halo_discovery.get"); gErr != nil {
+		return nil, false, gErr
+	}
 	resp, err := p.client.Do(req)
 	if err != nil {
 		return nil, true, fmt.Errorf("http do: %w", err)

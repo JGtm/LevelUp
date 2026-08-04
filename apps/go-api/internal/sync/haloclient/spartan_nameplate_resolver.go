@@ -31,6 +31,7 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/platform/netguard"
 )
 
 // nameplateHostFor résout l'host gamecms/nameplate pour le titre courant (MT-01).
@@ -136,6 +137,10 @@ func refreshEmblemMapping(ctx context.Context, spartanToken, clearanceToken stri
 	req.Header.Set("x-343-authorization-spartan", spartanToken)
 	if clearanceToken != "" {
 		req.Header.Set("343-clearance", clearanceToken)
+	}
+	// Mode démo : aucune sortie tierce (cf. internal/platform/netguard).
+	if gErr := netguard.Check(ctx, "nameplate_resolver.mapping"); gErr != nil {
+		return
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -306,6 +311,10 @@ func resolvePositiveEmblemCfg(
 	req.Header.Set("x-343-authorization-spartan", spartanToken)
 	if clearanceToken != "" {
 		req.Header.Set("343-clearance", clearanceToken)
+	}
+	// Mode démo : aucune sortie tierce (cf. internal/platform/netguard).
+	if gErr := netguard.Check(ctx, "nameplate_resolver.emblem"); gErr != nil {
+		return 0, false
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

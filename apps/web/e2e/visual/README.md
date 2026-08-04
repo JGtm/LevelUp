@@ -41,6 +41,19 @@ Les fichiers `.duckdb` diffèrent au bit près (agencement de blocs, `written_at
 La fixture (~59 Mo) est GÉNÉRÉE, jamais versionnée. Compter ~20 s de génération
 et ~1,5 min de captures.
 
+**Le mode démo est hermétique au réseau.** L'API démo n'émet aucun appel tiers
+(Halo, Xbox, gamecms, OAuth Microsoft) : `internal/platform/netguard` coupe les
+sorties dès `LEVELUP_DEMO_MODE=true`, et chaque saut est tracé
+(`demo mode: external fetch skipped surface=…`). Sans cela, une démo lancée sur
+un poste porteur de vrais tokens s'authentifie et interroge l'API Halo pour les
+xuid FACTICES de la fixture — 400/404 avec 4 tentatives, ~12 s par appel — ce qui
+affame le chargement des pages : les captures partaient alors en timeout à un run
+et en « données absentes » au suivant. Vérification rapide après un run :
+
+```bash
+grep -c halowaypoint tests/demo-harness-logs/demo-api.log   # doit afficher 0
+```
+
 ## Exécution — sur les données locales du poste
 
 Prérequis : `make dev` (API :8000 + Vite :5173).
