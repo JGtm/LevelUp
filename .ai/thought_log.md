@@ -1,3 +1,125 @@
+## [2026-08-04] Palette joueurs escouade : famille squad-player-1..4 livrée
+
+**Statut** : Complété (branche `feat/squad-player-palette`, en attente de merge).
+
+**Décision technique principale** : famille de tokens dédiée `squad-player-1..4`
+(défaut : #2563EB bleu / #D97706 ambre / #DB2777 magenta / #0891B2 cyan — décision
+utilisateur sur artefact de propositions, validateur OKLab/Machado : toutes-paires
+CVD >= 10,3, vision normale >= 15,2, contraste >= 3:1 sur les DEUX surfaces avec les
+mêmes hex). Identité joueur découplée des tokens directionnels/narratifs empruntés
+(l'ex-coéquipier 3 ÉTAIT divergent-pos). Palettes accessibilité : écarts assumés et
+mesurés par l'agent (okabe-ito : orange canonique 2,21:1 sur clair -> assombri ;
+vermillion refusé car = camp ennemi en vue Match ; tol-bright : pool Bright épuisé
+par outcome/narratif -> Vibrant/Muted ; cividis : pas de clarté, identité par teinte
+impossible par construction). Corrections d'accompagnement : divergent-neutral gris
+#8A9099 en défaut (le milieu bleu se lisait comme une valeur), collisions
+dnf/humiliation résiduelles (okabe/tol) éteintes, doublons vue Match retirés
+(narrative-dominant x2, narrative-remontada=perf-tier-2 en okabe), 3 dérives de
+copie locale migrées vers la source unique (SquadLayout pill, mediaOwnerColors,
+CareerChartsSection.xpHistory — 3e copie). Garde-rail `squadPlayerTokens.test.ts`
+(contraste + ΔE, mordant prouvé par sabotage). Étapes 5+7 (surface ECharts + cerne
+sous trait joueur, aires 0,2) CONSERVÉES sur décision utilisateur malgré B' v2 en
+attente : le chart actuel reste lisible d'ici là, B' v2 réécrira par-dessus.
+
+**Résultats observés** : gates orchestrateur cache froid : tsc -b --force exit 0
+(tsbuildinfo purgé), vitest 388 fichiers / 3361 passés / 0 échec, eslint 0 erreur.
+Matrice navigateur AVANT/APRÈS (harnais visuel, 7 pages, JGtm réel) : squad-dynamique
+et squad-synergies = palette attendue (pastilles nav L2 + charts), synthesis /
+session-detail / timeseries-summary = effet gris neutre attendu (heatmaps, dégradés),
+community-relations = dérive de données live (hors palette), home inchangée.
+
+**Conclusion / prochaine étape** : commit + CI de branche, merge utilisateur. Le
+thought_log porte des entrées de deux sessions concurrentes : conflit trivial
+possible au merge des deux branches (garder toutes les entrées). Reste ouvert :
+B' v2 (session parallèle), aperçu AccessibilityTab sans famille squad-player (i18n
+à créer), doublons hex préexistants outcome-loss=narrative-debacle,
+compare-b/-c à réévaluer.
+
+## [2026-08-04] Restauration de la cle PNY (workspace + rejeu 2D) sur ce poste
+
+**Statut** : Complété (restauration ; aucun code applicatif modifié).
+
+**Décision technique principale** : la notice `RESTAURATION.md` de la clé a été écrite
+pour un PC vierge, or ce poste ne l'était pas — dépôt déjà cloné, `data/` vivant, `air`
+en cours d'exécution tenant les DuckDB en écriture. Appliquer la notice à la lettre
+(`cp -r E:/data ...`) aurait fait régresser les données du 04/08 vers celles du 31/07 et
+risqué un état déchiré sur les bases ouvertes (modèle mono-process, ADR 0013/0016). La
+restauration a donc été menée en **additif strict** : comparaison fichier par fichier
+d'abord, copie uniquement des manques réels, jamais d'écrasement d'un fichier plus
+récent. Corollaire : les 21 Go de binaires du jeu et d'outillage Ghidra ont été
+installés HORS du dépôt (`C:\Users\Guillaume\Projects\LevelUp-re`), pour ne pas exposer
+un arbre git à `HaloInfinite.exe` et 17 Go de modules.
+
+**Résultats observés** : workspace — hooks Claude restaurés avec réécriture des chemins
+absolus de l'ancien poste, 5 entrées d'autorisation périmées retirées (elles
+pré-autorisaient `git stash` et le monde Python, interdits par CLAUDE.md) ; settings
+globaux fusionnés en conservant `model` et `effortLevel` locaux ; 196 mémoires
+restaurées et index `MEMORY.md` fusionné sans perdre l'entrée locale
+`orchestration-opus-lots` (absente de la clé) ; skills `adversarial-audit` et
+`adversarial-review` récupérés depuis le commit 70fab1623 plutôt que depuis la clé
+(source canonique, index git intact). Données — 3 artefacts de rejeu restaurés depuis la
+baseline du 03/08 et vérifiés SHA256 avant ET après copie ; 338 films et 12 manifests
+ajoutés ; 246 captures mémoire dans `.ai/re_dump` avec règle `.gitignore` ajoutée (sans
+elle, 145 Mo de dumps binaires apparaissaient comme non suivis). Hors dépôt — 48 475
+fichiers / 24,861 Go vérifiés octet pour octet, `HI.rep` et l'empreinte MD5 de
+`HaloInfinite.exe` identiques à la source. Outillage — `lefthook` 1.13.6 installé (il
+manquait : aucun hook git n'était actif, les commits passaient sans gitleaks/gofmt/go
+vet/ratchets) puis `lefthook install` ; contrôles 2 et 3 de la notice passés (bloc
+`--- SKILL ACTIVATION ---` émis, `lefthook run pre-commit` sans erreur de chemin).
+
+**Non traité, avec justification** : (1) bases DuckDB non restaurées — la clé est en
+retard de 4 jours et le writer tournait ; (2) `data/titles/halo_infinite/reference/` non
+écrasé — le local est en avance (6 fichiers contre 4, `map_quant_bounds.json` du 02/08) ;
+(3) `skill-rules.json` laissé intact — il est suivi par git et sa version enrichie
+appartient à `feat/replay2d-prod`, l'écraser mélangerait du contenu inter-branches dans
+la branche courante ; les deux skills restent invocables, seule la suggestion
+automatique attend le merge ; (4) MCP `ghidra`/`cheatengine` non câblés — venvs Python
+absents, et aucune entrée ne les référence dans `~/.claude.json` (rien à retirer) ;
+(5) gate de reproductibilité du rejeu non joué — `cmd/replay-build` n'existe pas sur
+`feat/squad-player-palette`, il vit sur `feat/replay2d-prod`.
+
+**Conclusion / prochaine étape** : espace de travail et données opérationnels. Le gate
+« 99 traces, 29 221 points, 475 tirs, 70 lancers, 439 projectiles, 10 223 emprises »
+reste à jouer depuis `feat/replay2d-prod` pour valider la chaîne de bout en bout. Note
+de vigilance : au merge de `feat/replay2d-prod`, les deux `SKILL.md` adversarial
+actuellement non suivis devront être retirés d'abord, sinon git refusera d'écraser des
+fichiers non suivis.
+
+## [2026-08-04] Artefact Rendement & Résistance — B' v2 : pivot « 1 vie », repère élite écarté
+
+**Statut** : Complété (artefact seul — aucun code applicatif modifié).
+
+**Décision principale** (utilisateur) : abandon du repère « frontière élite » pour les
+cartes Rendement/Résistance de la Dynamique escouade — notion intéressante mais couche
+d'explication en trop ; le pivot 225 = une vie est un fait du jeu (90 PV + 135
+bouclier). B' recadrée en conséquence, puis affinée le même jour sur seconde question
+utilisateur : affichage en TAUX plutôt qu'en écart signé — rendement = OC × 100,
+résistance = DR × 100, 100 % = une vie (rendement 107 % = chaque frag effectif a coûté
+moins d'une vie ; résistance 158 % = 1,58 vie encaissée par mort). Taux et écart signé
+sont la même courbe à une translation d'étiquettes près (107 % ⇔ +7 %) : la géométrie
+de l'axe ne change pas, seul le nombre lu change. Fenêtre fixe commune 50…200 %, ligne
+repère à 100 %. Asymétrie assumée et documentée : résistance en temps normal au-dessus
+des 100 % (bouclier régénéré), rendement plutôt en dessous (dégâts perdus) — une
+information, pas un défaut d'échelle. Les seuils P80 restent en place pour profil
+combat / coach / jalons (hors périmètre de cette décision).
+
+**Résultats observés** : artefact 9775c1ab republié (même URL) — B' chiffrée sur la
+session de maquette, piste écartée « frontière élite » ajoutée à la trace de décision,
+récap et suites mis à jour (si go : i18n des 2 cartes sans « élite », app alignée sur
+le repère 225 partout, Timeseries à aligner ensuite). Dernier affinage (même jour) :
+titres de cartes courts « Rendement » / « Résistance » (décision utilisateur —
+tenable car l'axe en % ne se lit pas comme des dégâts bruts ; définition dans l'aide
+et au survol) + ZONES teintées de part et d'autre de la ligne 100 % (divergent-pos
+8 % au-dessus, divergent-neg 6 % en dessous, via resolveToken) ; les aires par courbe
+restent écartées à 4 courbes superposées (encodage mono-courbe — pertinentes
+uniquement là où il n'y a qu'une courbe, ex. Timeseries). Note : l'entrée du
+2026-08-03 ci-dessous avait disparu du journal (fichier revenu à l'état HEAD entre
+deux sessions) ; réintégrée dans la même passe.
+
+**Conclusion / prochaine étape** : go utilisateur sur l'implémentation B' v2 (diff net
+négatif sur squadEfficiencyChart.ts + i18n FR/EN), puis alignement de la Timeseries
+escouade adaptée sur le même écart signé.
+
 ## [2026-08-03] Reprise handoff : lot quick wins reliquat + artefact palette joueurs
 
 **Statut** : En cours (lot quick wins vérifié, en attente de commit ; lot palette en
@@ -39,14 +161,14 @@ désormais sans pendant contractuel.
 
 **Statut** : Complété (artefact seul — aucun code applicatif modifié).
 
-**Décision technique principale** : suite de la discussion « déviation absolue |Y − X| »
+**Décision technique principale** : discussion « déviation absolue |Y − X| »
 (proposition collègue) : écartée — la valeur absolue jette le côté du repère, qui porte
 tout le jugement (180 vs 270 dgt/frag → même écart). L'intuition sous-jacente (UN calcul
 commun pour superposer les 4 joueurs sur un graphe) est retenue sous forme d'écart signé
-ORIENTÉ : proposition B' = calcul de C (eliteGapPercent, % à la frontière élite) rendu en
-un seul grid par carte au lieu des 4 pistes — la comparaison d'escouade redevient directe.
-Transformations lobby/collectif (ex-complément E1-E3) écartées sur décision utilisateur :
-la page représente les coûts en dégâts de chacun, pas le niveau du lobby.
+ORIENTÉ : proposition B' = un seul grid par carte au lieu des 4 pistes — la comparaison
+d'escouade redevient directe. Transformations lobby/collectif (ex-complément E1-E3)
+écartées sur décision utilisateur : la page représente les coûts en dégâts de chacun,
+pas le niveau du lobby.
 
 **Résultats observés** : audit sur pièces de la coloration des aires (question
 utilisateur) : nulle part vert/rouge inversés — pistes C correctes (rendement_offensif =
@@ -54,15 +176,11 @@ OC canonique, monter = bien) mais libellé « Rendement » ambigu (se lit comme 
 dégâts/frag) ; dégradé une-vie de TimeseriesSquadAdapted (essai P5) : direction juste
 mais 3 défauts — saturation calée sur l'étendue de session (offsetOf min/max), milieu
 divergent-neutral bleu au lieu d'un gris, métaphore de surface inversée entre les deux
-cartes. Artefact 9775c1ab mis à jour (même URL) : audit, article B' chiffré sur la même
-session de maquette, statuts A-D, pistes écartées tracées.
+cartes. Artefact 9775c1ab mis à jour (même URL) : audit, article B' chiffré, statuts
+A-D, pistes écartées tracées.
 
-**Conclusion / prochaine étape** : décision utilisateur sur B'. Si retenue : diff net
-négatif dans squadEfficiencyChart.ts (1 grid, suppression des aires par piste, markArea
-favorable + étiquettes de fin de courbe), puis même transformation sur la Timeseries
-escouade adaptée (résorbe les 3 défauts du dégradé ET la double définition du
-« rendement »). Repli sans code : renommer les cartes pistes en « écart à la frontière
-élite ».
+**Conclusion / prochaine étape** : supersédée par l'entrée du 2026-08-04 ci-dessus
+(B' recadrée sur le pivot « 1 vie »).
 
 ## [2026-08-03] Campagne close : lot 2 + echarts 6 + passe découvertes mergés, handoff écrit
 

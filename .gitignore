@@ -236,6 +236,10 @@ To do.txt
 # Archives de plans IA (notes personnelles historiques)
 .ai/archive/
 
+# Captures memoire de retro-ingenierie (rejeu 2D) — restaurees depuis sauvegarde
+# externe, jamais versionnees : ~145 Mo de dumps binaires non reproductibles.
+.ai/re_dump/
+
 # Logs locaux (non trackés)
 data/logs/*
 /migrate-static-maps-dry.log

@@ -24,6 +24,7 @@ import {
   escapeHtml,
 } from '@/components/charts/_utils'
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
+import { SQUAD_MAIN_PLAYER_TOKEN, SQUAD_TEAMMATE_COLOR_TOKENS } from '@/features/squad/colors'
 import { careerManifest } from '@/lib/i18n/generated/career'
 import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
 import type {
@@ -41,13 +42,12 @@ const WEEKLY_CHALLENGE_XP = 950
 const DAILY_CHALLENGE_XP = 500
 const XP_BOOST_MULTIPLIER = 2.0
 
-// Tokens couleur par joueur — mêmes que la page Escouade (squad/colors.ts).
-// playerIdx 0 = joueur principal, 1..N = amis (cycle si > 4).
+// Tokens couleur par joueur — importés de la page Escouade (pas de copie locale :
+// la liste avait déjà divergé une fois). playerIdx 0 = joueur principal,
+// 1..N = amis (cycle si > 4).
 const XP_PLAYER_COLOR_TOKENS: SemanticToken[] = [
-  'compare-a',
-  'narrative-dominant',
-  'perf-tier-3',
-  'divergent-pos',
+  SQUAD_MAIN_PLAYER_TOKEN,
+  ...SQUAD_TEAMMATE_COLOR_TOKENS,
 ]
 
 function xpPlayerColor(playerIdx: number): string {

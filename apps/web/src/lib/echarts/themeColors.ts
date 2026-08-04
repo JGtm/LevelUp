@@ -25,6 +25,12 @@ export interface EChartsThemeColors {
   tooltipBg: string
   /** Bordure tooltip — var(--border). */
   tooltipBorder: string
+  /**
+   * Surface de la carte qui porte le chart — var(--card). Opaque : sert à
+   * détourer un tracé posé sur une aire colorée (cerne couleur de fond), là
+   * où `CHART_BG` ('transparent') ne peut rien masquer.
+   */
+  surface: string
   /** true si le thème actif est sombre (classe `dark` sur <html>). */
   isDark: boolean
 }
@@ -57,6 +63,7 @@ export function getEChartsThemeColors(): EChartsThemeColors {
     text: get('--foreground', '#f3f4f6'),
     tooltipBg: popover,
     tooltipBorder: border,
+    surface: get('--card', '#171717'),
     isDark: document.documentElement.getAttribute('data-theme') === 'dark',
   }
 }
@@ -70,5 +77,6 @@ const FALLBACK_COLORS: EChartsThemeColors = {
   text: '#f3f4f6',
   tooltipBg: '#1f2937',
   tooltipBorder: '#374151',
+  surface: '#171717',
   isDark: true,
 }
