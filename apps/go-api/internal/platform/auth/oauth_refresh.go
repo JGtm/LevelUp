@@ -26,6 +26,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability/logging"
+	"levelup/go-api/internal/platform/netguard"
 )
 
 // msalTokenURL est une var (pas une const) pour permettre l'override httptest.
@@ -203,6 +204,13 @@ func postOAuthTokenForm(ctx context.Context, tokenURL string, body url.Values) (
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
+	// Mode démo : aucune sortie tierce. Coupe le rafraîchissement OAuth Microsoft
+	// à la racine — sans quoi une démo lancée sur un poste porteur de vrais
+	// refresh tokens obtient des tokens VALIDES et interroge l'API Halo pour les
+	// xuid factices de la fixture (cf. internal/platform/netguard).
+	if gErr := netguard.Check(req.Context(), "microsoft_oauth.refresh"); gErr != nil {
+		return "", "", gErr
+	}
 	client := &http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {

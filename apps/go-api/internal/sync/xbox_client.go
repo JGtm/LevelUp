@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/platform/auth"
+	"levelup/go-api/internal/platform/netguard"
 )
 
 const xboxAchievementsBaseURL = "https://achievements.xboxlive.com"
@@ -177,6 +178,11 @@ func (c *xboxHTTPClient) fetchPage(ctx context.Context, xuid, lang string, skipI
 	req.Header.Set("x-xbl-contract-version", "2")
 	req.Header.Set("Accept-Language", lang)
 	req.Header.Set("Accept", "application/json")
+
+	// Mode démo : aucune sortie tierce (cf. internal/platform/netguard).
+	if gErr := netguard.Check(ctx, "xbox_achievements.get"); gErr != nil {
+		return nil, "", gErr
+	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {

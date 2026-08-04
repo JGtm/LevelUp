@@ -63,6 +63,7 @@ import (
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/platform/groupstore"
 	"levelup/go-api/internal/platform/halo"
+	"levelup/go-api/internal/platform/netguard"
 	"levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/platform/userstore"
 	"levelup/go-api/internal/port"
@@ -299,6 +300,16 @@ func main() {
 		"version", cfg.AppVersion,
 		"addr", cfg.ServerAddr(),
 	)
+
+	// Coupe-circuit réseau sortant. AVANT toute construction de client/cron : le
+	// mode démo sert des données seedées et ne doit émettre AUCUN appel tiers.
+	// Sans ce garde, une démo lancée sur un poste porteur de vrais tokens
+	// s'authentifie et martèle l'API Halo pour les xuid factices de la fixture,
+	// jusqu'à affamer le rendu des pages (cf. internal/platform/netguard).
+	netguard.SetOffline(cfg.DemoMode)
+	if cfg.DemoMode {
+		slog.Info("demo_mode: appels réseau tiers coupés (données seedées, aucune synchronisation)")
+	}
 
 	// Garde-fou de démarrage (revue P0 2026-06-02) : en production
 	// (LEVELUP_ENV=production), refuser de booter avec une configuration non sûre
