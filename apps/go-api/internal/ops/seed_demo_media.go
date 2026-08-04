@@ -368,8 +368,8 @@ func insertDemoMediaRow(ctx context.Context, db *sql.DB, m demoMediaRow) error {
 		INSERT INTO media_files
 			(id, player_slug, file_path, file_name, kind, file_hash, file_size,
 			 file_stem, file_ext, thumbnail_path, capture_start_utc, capture_end_utc,
-			 mtime, indexed_at, liked, status, created_at, updated_at)
-		VALUES (?,?,?,?,?,'',0,?,?,?,?,?,?,CURRENT_TIMESTAMP,FALSE,'active',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+			 mtime, indexed_at, status, created_at, updated_at)
+		VALUES (?,?,?,?,?,'',0,?,?,?,?,?,?,CURRENT_TIMESTAMP,'active',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
 		ON CONFLICT (id) DO NOTHING`,
 		m.ID, m.PlayerSlug, m.FilePath, m.FileName, m.Kind,
 		m.FileStem, m.FileExt, thumb, m.CaptureStart, m.CaptureEnd, m.MTime); err != nil {

@@ -339,8 +339,7 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 			capture_start_utc TIMESTAMPTZ,
 			capture_end_utc TIMESTAMPTZ,
 			duration_seconds DOUBLE,
-			mtime TIMESTAMPTZ, status VARCHAR,
-			liked BOOLEAN DEFAULT FALSE, liked_at TIMESTAMPTZ)`,
+			mtime TIMESTAMPTZ, status VARCHAR)`,
 		`CREATE TABLE media_match_associations (
 			media_path VARCHAR, match_id VARCHAR, match_start_time TIMESTAMPTZ)`,
 		`CREATE TABLE sync_meta (key VARCHAR PRIMARY KEY, value VARCHAR)`,
@@ -447,8 +446,6 @@ func seedSharedSocialSchema(t *testing.T, db *DB) {
 			mtime TIMESTAMPTZ,
 			indexed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 			status VARCHAR,
-			liked BOOLEAN DEFAULT FALSE,
-			liked_at TIMESTAMPTZ,
 			created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 		)`,
@@ -486,7 +483,8 @@ func seedSharedSocialSchema(t *testing.T, db *DB) {
 			WHERE a.is_manual = hm.has_manual`,
 		// Likes append-only PAR LIKER (campagne shared_social) : depuis le passage
 		// du like au par-viewer (2026-08-04), c'est le SEUL support de l'état du
-		// cœur — la galerie joint media_likes_latest, plus media_files.liked.
+		// cœur — la galerie joint media_likes_latest ; media_files.liked a été
+		// droppée du schéma (drop_media_files_liked_columns_v1).
 		`CREATE SEQUENCE IF NOT EXISTS media_likes_history_id_seq START 1`,
 		`CREATE TABLE IF NOT EXISTS media_likes_history (
 			id BIGINT PRIMARY KEY DEFAULT nextval('media_likes_history_id_seq'),
@@ -510,10 +508,10 @@ func seedSharedSocialSchema(t *testing.T, db *DB) {
 	}
 	if _, err := db.Exec(ctx, `
 		INSERT INTO media_files (
-			id, player_slug, file_path, file_name, file_stem, file_ext, kind, thumbnail_path, capture_end_utc, mtime, status, liked, created_at, updated_at
+			id, player_slug, file_path, file_name, file_stem, file_ext, kind, thumbnail_path, capture_end_utc, mtime, status, created_at, updated_at
 		) VALUES (
 			'media-1', ?, '/clips/shared.mp4', 'shared.mp4', 'shared', '.mp4', 'video', '/thumbs/shared.jpg',
-			TIMESTAMPTZ '2025-01-10 15:01:00+00', TIMESTAMPTZ '2025-01-10 15:01:00+00', 'active', TRUE, TIMESTAMPTZ '2025-01-10 15:01:00+00', TIMESTAMPTZ '2025-01-10 15:01:00+00'
+			TIMESTAMPTZ '2025-01-10 15:01:00+00', TIMESTAMPTZ '2025-01-10 15:01:00+00', 'active', TIMESTAMPTZ '2025-01-10 15:01:00+00', TIMESTAMPTZ '2025-01-10 15:01:00+00'
 		)
 	`, pTestGamertag); err != nil {
 		t.Fatalf("seedSharedSocialSchema insert media_files failed: %v", err)

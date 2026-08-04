@@ -65,8 +65,6 @@ func realMediaPipelineSetup(t *testing.T) (*chi.Mux, string) {
 			capture_start_utc TIMESTAMP WITH TIME ZONE,
 			capture_end_utc TIMESTAMP WITH TIME ZONE,
 			mtime TIMESTAMP WITH TIME ZONE,
-			liked BOOLEAN DEFAULT FALSE,
-			liked_at TIMESTAMP,
 			-- status : cycle de vie du fichier ('active', NULL, ou 'deleted' depuis
 			-- l'item 3.1). Présente en prod via l'ALTER de steps_shared_social ;
 			-- toute lecture applicative la filtre (MediaVisiblePredicate).
@@ -207,8 +205,13 @@ func TestMediaE2E_RealDB_GetMediaLibrary(t *testing.T) {
 	t.Logf("[OK] E2E HTTP GET /pages/media → 200 + 2 médias depuis vraie DB shared_social")
 }
 
-// TestMediaE2E_RealDB_PatchMediaLike (Gap 3) : PATCH /media/likes met à jour
-// liked=true dans la vraie DB et la persistance est vérifiable par re-query.
+// TestMediaE2E_RealDB_PatchMediaLike (Gap 3) : PATCH /media/likes écrit l'event
+// de like DU LIKER dans la vraie DB et la persistance est vérifiable par re-query.
+//
+// La re-query porte sur media_likes_latest : depuis le passage du like au
+// par-viewer (2026-08-04) c'est l'unique support de l'état du cœur, et
+// media_files.liked — le booléen global qu'interrogeait la version précédente de
+// ce test — n'existe plus (drop_media_files_liked_columns_v1).
 func TestMediaE2E_RealDB_PatchMediaLike(t *testing.T) {
 	r, socialPath := realMediaPipelineSetup(t)
 
@@ -241,17 +244,19 @@ func TestMediaE2E_RealDB_PatchMediaLike(t *testing.T) {
 		return
 	}
 	defer verifyDB.Close()
-	var liked bool
+	var events int
 	if err := verifyDB.QueryRow(
-		`SELECT liked FROM media_files WHERE file_path = ?`, "/m/real_a.mp4",
-	).Scan(&liked); err != nil {
+		`SELECT COUNT(*) FROM media_likes_latest
+		 WHERE media_path = ? AND liker_slug = ? AND is_liked = TRUE`,
+		"/m/real_a.mp4", "alice",
+	).Scan(&events); err != nil {
 		t.Logf("(skip re-query verify : %v)", err)
 		return
 	}
-	if !liked {
-		t.Error("la DB live ne reflète pas le like — persistance HS")
+	if events != 1 {
+		t.Errorf("la DB live ne reflète pas le like d'alice (%d event(s), want 1) — persistance HS", events)
 	}
-	t.Logf("[OK] E2E HTTP PATCH /media/likes → 200 + liked=true persisté sur disque shared_social")
+	t.Logf("[OK] E2E HTTP PATCH /media/likes → 200 + event de like persisté sur disque shared_social")
 }
 
 // TestMediaE2E_RealDB_PostFavorite (Gap 3) : favoris via SocialPersister

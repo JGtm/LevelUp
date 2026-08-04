@@ -21,8 +21,9 @@ package migration
 //     INSERT omettent id → sans ce default, INSERT écrit NULL dans la PK → indexation cassée) ;
 //   - resync de la séquence via CREATE SEQUENCE IF NOT EXISTS START max(id)+1 (si la seq a
 //     disparu, éviter une collision id=1) ;
-//   - restaurer les autres DEFAULT perdus par le CTAS (created_at, updated_at, liked,
-//     discord_notified, indexed_at, file_size) ;
+//   - restaurer les autres DEFAULT perdus par le CTAS (created_at, updated_at,
+//     discord_notified, indexed_at, file_size ; plus `liked`, colonne retirée du
+//     schéma le 2026-08-04 — cf. drop_media_files_liked_columns_v1) ;
 //   - DROP idx_mf_kind (kind est muté = surface ART) + recréer idx_mf_player_stem (sur
 //     colonnes NON mutées = ART-safe), reconciliation idempotente hors tx.
 // La dédup file_path (ex-rôle de UNIQUE) passe en applicatif (SELECT-then-INSERT dans
@@ -217,7 +218,6 @@ func swapMediaFilesDropUniqueTx(ctx context.Context, db *sql.DB) error {
 	for _, d := range []struct{ col, expr string }{
 		{"created_at", "CURRENT_TIMESTAMP"},
 		{"updated_at", "CURRENT_TIMESTAMP"},
-		{"liked", "FALSE"},
 		{"discord_notified", "FALSE"},
 		{"indexed_at", "NOW()"},
 		{"file_size", "0"},

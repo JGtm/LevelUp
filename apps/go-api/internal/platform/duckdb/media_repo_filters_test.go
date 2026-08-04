@@ -200,8 +200,8 @@ func newTestPlayerDBForCandidatesLocale(t *testing.T) *PlayerDB {
 
 	// Média capturé à 14:00 (dans la fenêtre de 15 min du match).
 	if _, err := social.Exec(ctx,
-		`INSERT INTO media_files (id, player_slug, file_path, file_name, kind, capture_start_utc, liked)
-		 VALUES ('med-loc', ?, '/clip.mp4', 'clip.mp4', 'video', '2025-01-10 14:00:00+00', FALSE)`,
+		`INSERT INTO media_files (id, player_slug, file_path, file_name, kind, capture_start_utc)
+		 VALUES ('med-loc', ?, '/clip.mp4', 'clip.mp4', 'video', '2025-01-10 14:00:00+00')`,
 		mediaTestPlayerSlug,
 	); err != nil {
 		t.Fatalf("insert media: %v", err)
@@ -742,8 +742,8 @@ func newTestPlayerDBMapModeOverlap(t *testing.T) *PlayerDB {
 	}
 	for _, m := range mediaSet {
 		if _, err := social.Exec(ctx,
-			`INSERT INTO media_files (id, player_slug, file_path, file_name, kind, capture_end_utc, liked)
-			VALUES (?, ?, ?, ?, 'video', '2025-01-10 14:30:00+00', FALSE)`,
+			`INSERT INTO media_files (id, player_slug, file_path, file_name, kind, capture_end_utc)
+			VALUES (?, ?, ?, ?, 'video', '2025-01-10 14:30:00+00')`,
 			m.id, mediaTestPlayerSlug, m.path, m.path,
 		); err != nil {
 			t.Fatalf("insert media: %v", err)
@@ -858,8 +858,8 @@ func newTestPlayerDBVariants(t *testing.T) *PlayerDB {
 	}
 	for _, m := range mediaSet {
 		if _, err := social.Exec(ctx,
-			`INSERT INTO media_files (id, player_slug, file_path, file_name, kind, capture_end_utc, liked)
-			VALUES (?, ?, ?, ?, 'video', '2025-01-10 14:30:00+00', FALSE)`,
+			`INSERT INTO media_files (id, player_slug, file_path, file_name, kind, capture_end_utc)
+			VALUES (?, ?, ?, ?, 'video', '2025-01-10 14:30:00+00')`,
 			m.id, mediaTestPlayerSlug, m.path, m.path,
 		); err != nil {
 			t.Fatalf("insert media: %v", err)
@@ -1085,8 +1085,8 @@ func newTestPlayerDBForUserScenario(t *testing.T) *PlayerDB {
 	}
 	for _, m := range mediaSet {
 		if _, err := social.Exec(ctx,
-			`INSERT INTO media_files (id, player_slug, file_path, file_name, kind, capture_end_utc, liked)
-			VALUES (?, ?, ?, ?, 'video', '2025-01-10 14:30:00+00', FALSE)`,
+			`INSERT INTO media_files (id, player_slug, file_path, file_name, kind, capture_end_utc)
+			VALUES (?, ?, ?, ?, 'video', '2025-01-10 14:30:00+00')`,
 			m.id, mediaTestPlayerSlug, m.path, m.path,
 		); err != nil {
 			t.Fatalf("insert media %s: %v", m.id, err)
@@ -1161,8 +1161,8 @@ func newTestPlayerDBMultiAssoc(t *testing.T) *PlayerDB {
 
 	// 1 SEUL média, mais 3 associations (delta_seconds différents)
 	if _, err := social.Exec(ctx,
-		`INSERT INTO media_files (id, player_slug, file_path, file_name, kind, capture_end_utc, liked)
-		VALUES ('med-multi', ?, '/the_capture.mp4', 'the_capture.mp4', 'video', '2025-01-10 14:35:00+00', FALSE)`,
+		`INSERT INTO media_files (id, player_slug, file_path, file_name, kind, capture_end_utc)
+		VALUES ('med-multi', ?, '/the_capture.mp4', 'the_capture.mp4', 'video', '2025-01-10 14:35:00+00')`,
 		mediaTestPlayerSlug,
 	); err != nil {
 		t.Fatalf("insert media: %v", err)
@@ -1290,8 +1290,8 @@ func newTestPlayerDBForStabilityScenario(t *testing.T) *PlayerDB {
 	paths := []string{"/m3.mp4", "/m1.mp4", "/m5.mp4", "/m2.mp4", "/m4.mp4"} // insertion désordonnée volontaire
 	for i, id := range mediaIDs {
 		if _, err := social.Exec(ctx,
-			`INSERT INTO media_files (id, player_slug, file_path, file_name, kind, capture_end_utc, liked)
-			VALUES (?, ?, ?, ?, 'video', '2025-01-10 14:30:00+00', FALSE)`,
+			`INSERT INTO media_files (id, player_slug, file_path, file_name, kind, capture_end_utc)
+			VALUES (?, ?, ?, ?, 'video', '2025-01-10 14:30:00+00')`,
 			id, mediaTestPlayerSlug, paths[i], paths[i],
 		); err != nil {
 			t.Fatalf("insert media %s: %v", id, err)
@@ -1360,9 +1360,9 @@ func TestMediaFilters_Sort_PrefersCaptureStartUtc(t *testing.T) {
 	// M1 : start tôt, end tard (longue vidéo)
 	if _, err := social.Exec(ctx,
 		`INSERT INTO media_files (id, player_slug, file_path, file_name, kind,
-			capture_start_utc, capture_end_utc, duration_seconds, liked)
+			capture_start_utc, capture_end_utc, duration_seconds)
 		VALUES ('m1', ?, '/m1.mp4', 'm1.mp4', 'video',
-			'2025-01-10 14:00:00+00', '2025-01-10 17:00:00+00', 10800.0, FALSE)`,
+			'2025-01-10 14:00:00+00', '2025-01-10 17:00:00+00', 10800.0)`,
 		mediaTestPlayerSlug,
 	); err != nil {
 		t.Fatalf("insert M1: %v", err)
@@ -1370,9 +1370,9 @@ func TestMediaFilters_Sort_PrefersCaptureStartUtc(t *testing.T) {
 	// M2 : start après M1, mais end plus tôt que M1 (courte vidéo)
 	if _, err := social.Exec(ctx,
 		`INSERT INTO media_files (id, player_slug, file_path, file_name, kind,
-			capture_start_utc, capture_end_utc, duration_seconds, liked)
+			capture_start_utc, capture_end_utc, duration_seconds)
 		VALUES ('m2', ?, '/m2.mp4', 'm2.mp4', 'video',
-			'2025-01-10 15:00:00+00', '2025-01-10 15:30:00+00', 1800.0, FALSE)`,
+			'2025-01-10 15:00:00+00', '2025-01-10 15:30:00+00', 1800.0)`,
 		mediaTestPlayerSlug,
 	); err != nil {
 		t.Fatalf("insert M2: %v", err)

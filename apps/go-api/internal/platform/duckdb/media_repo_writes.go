@@ -126,7 +126,7 @@ func (r *MediaRepo) MediaExists(ctx context.Context, filePath string) (bool, err
 //
 // Si likerSlug est vide, rien n'est écrit : depuis le passage du like au
 // par-viewer (2026-08-04) un like sans liker n'a plus aucun support de stockage
-// (media_files.liked, le support global, n'est plus ni lu ni écrit). Le handler
+// (media_files.liked, le support global, a été droppée du schéma). Le handler
 // garantit un liker non vide (session, ou propriétaire de la page à défaut).
 //
 // Cette méthode est l'usage canonique côté MediaService quand un

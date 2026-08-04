@@ -48,12 +48,11 @@ func sharedSocialRootSteps() []migration.Migration {
 						file_size            INTEGER DEFAULT 0,
 						thumbnail_path       VARCHAR,
 						capture_end_utc      TIMESTAMP,
-						-- DÉPRÉCIÉES depuis le 2026-08-04 (like par viewer), retrait
-						-- cible 2026-11-04 : plus lues ni écrites nulle part, l'état
-						-- d'un like vit dans media_likes_history. Rationale complète et
-						-- conditions du DROP : internal/ops/media_store.go.
-						liked                BOOLEAN DEFAULT FALSE,
-						liked_at             TIMESTAMP,
+						-- PAS de liked / liked_at : retirées le 2026-08-04 (like par
+						-- viewer). L'état d'un like vit dans media_likes_history, lu via
+						-- media_likes_latest. Les DB antérieures sont nettoyées par
+						-- drop_media_files_liked_columns_v1 (steps_shared_social_media_files_drop_liked.go) —
+						-- les rajouter ici ferait renaître la colonne sur DB fraîche.
 						created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 						updated_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 					);
@@ -345,6 +344,9 @@ func sharedSocialSteps() []migration.Migration {
 				return nil
 			},
 		},
+		// Retrait de media_files.liked / liked_at : steps_shared_social_media_files_drop_liked.go
+		// (fichier dédié — le DROP doit démonter puis remonter les index de media_files).
+		mediaFilesDropLikedStep(),
 		// ─── famille records append-only (player_records → player_records_history) ───
 		{
 			Name:        "create_player_records_history_append_only",

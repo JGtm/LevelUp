@@ -44,9 +44,7 @@ func setupWALRecoveryFixture(t *testing.T) string {
 			player_slug VARCHAR,
 			file_path VARCHAR UNIQUE,
 			file_name VARCHAR,
-			kind VARCHAR DEFAULT 'video',
-			liked BOOLEAN DEFAULT FALSE,
-			liked_at TIMESTAMP
+			kind VARCHAR DEFAULT 'video'
 		);
 		CREATE TABLE IF NOT EXISTS media_likes (
 			media_path VARCHAR NOT NULL,
@@ -118,6 +116,10 @@ func simulateWALOrphan(t *testing.T, dbPath string) func() {
 //
 // Scénario : un like est inséré sur la DB → simulate WAL orphelin → recovery →
 // re-query : le like doit toujours être présent.
+//
+// Le like porte sur media_likes (une ligne PAR LIKER) : depuis le 2026-08-04
+// c'est le seul support de l'état du cœur, media_files.liked — le booléen global
+// que ce test mutait auparavant — ayant été droppé du schéma.
 func TestMediaService_LikeSurvives_WALRecovery(t *testing.T) {
 	dbPath := setupWALRecoveryFixture(t)
 
@@ -126,7 +128,10 @@ func TestMediaService_LikeSurvives_WALRecovery(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open pre-like: %v", err)
 	}
-	if _, err := socialDB.SQLDb().Exec(`UPDATE media_files SET liked = TRUE WHERE file_path = ?`, "/m/a.mp4"); err != nil {
+	if _, err := socialDB.SQLDb().Exec(
+		`INSERT INTO media_likes (media_path, liker_slug, liker_gamertag) VALUES (?, ?, ?)`,
+		"/m/a.mp4", "alice", "alice",
+	); err != nil {
 		t.Fatalf("set like: %v", err)
 	}
 	if _, err := socialDB.SQLDb().Exec("CHECKPOINT"); err != nil {
@@ -146,12 +151,15 @@ func TestMediaService_LikeSurvives_WALRecovery(t *testing.T) {
 	}
 	defer db.Close()
 
-	var liked bool
-	if err := db.SQLDb().QueryRow(`SELECT liked FROM media_files WHERE file_path = ?`, "/m/a.mp4").Scan(&liked); err != nil {
+	var likes int
+	if err := db.SQLDb().QueryRow(
+		`SELECT COUNT(*) FROM media_likes WHERE media_path = ? AND liker_slug = ?`,
+		"/m/a.mp4", "alice",
+	).Scan(&likes); err != nil {
 		t.Fatalf("query post-recovery: %v", err)
 	}
-	if !liked {
-		t.Error("like perdu après cycle WAL recovery — la donnée pré-recovery n'a pas survécu")
+	if likes != 1 {
+		t.Errorf("like perdu après cycle WAL recovery (%d, want 1) — la donnée pré-recovery n'a pas survécu", likes)
 	}
 }
 
@@ -219,10 +227,11 @@ func TestMediaService_LikeAtomic_DuringQuarantine(t *testing.T) {
 		t.Fatalf("begin: %v", err)
 	}
 	if _, err := tx.ExecContext(context.Background(),
-		`UPDATE media_files SET liked = TRUE WHERE file_path = ?`, "/m/b.mp4",
+		`INSERT INTO media_likes (media_path, liker_slug, liker_gamertag) VALUES (?, ?, ?)`,
+		"/m/b.mp4", "bob", "bob",
 	); err != nil {
 		_ = tx.Rollback()
-		t.Fatalf("update: %v", err)
+		t.Fatalf("insert like: %v", err)
 	}
 	if err := tx.Commit(); err != nil {
 		t.Fatalf("commit: %v", err)
@@ -233,12 +242,13 @@ func TestMediaService_LikeAtomic_DuringQuarantine(t *testing.T) {
 	}
 
 	// Lecture in-place via la même conn (évite le conflit RW+RO côté DuckDB).
-	var liked bool
-	if err := db.SQLDb().QueryRow(`SELECT liked FROM media_files WHERE file_path = ?`, "/m/b.mp4").Scan(&liked); err != nil {
+	const qLikeCount = `SELECT COUNT(*) FROM media_likes WHERE media_path = ? AND liker_slug = ?`
+	var likes int
+	if err := db.SQLDb().QueryRow(qLikeCount, "/m/b.mp4", "bob").Scan(&likes); err != nil {
 		t.Fatalf("query post-checkpoint: %v", err)
 	}
-	if !liked {
-		t.Error("like post-quarantine non persisté (lecture in-place)")
+	if likes != 1 {
+		t.Errorf("like post-quarantine non persisté (lecture in-place, %d want 1)", likes)
 	}
 
 	// Bonus : ferme la conn RW et reopen RO pour preuve disque.
@@ -250,12 +260,12 @@ func TestMediaService_LikeAtomic_DuringQuarantine(t *testing.T) {
 		t.Fatalf("reopen RO: %v", err)
 	}
 	defer roDB.Close()
-	var likedRO bool
-	if err := roDB.QueryRow(`SELECT liked FROM media_files WHERE file_path = ?`, "/m/b.mp4").Scan(&likedRO); err != nil {
+	var likesRO int
+	if err := roDB.QueryRow(qLikeCount, "/m/b.mp4", "bob").Scan(&likesRO); err != nil {
 		t.Fatalf("query RO: %v", err)
 	}
-	if !likedRO {
-		t.Error("like post-quarantine non persisté sur disque après close")
+	if likesRO != 1 {
+		t.Errorf("like post-quarantine non persisté sur disque après close (%d want 1)", likesRO)
 	}
 }
 

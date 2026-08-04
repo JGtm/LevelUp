@@ -45,27 +45,16 @@ func ensureMediaTables(ctx context.Context, db *sql.DB) error {
 			duration_seconds DOUBLE,
 			status VARCHAR,
 			mtime TIMESTAMPTZ,
-			-- DÉPRÉCIÉES — colonnes liked / liked_at (bascule du défaut : 2026-08-04).
-			--
-			-- La colonne liked était un booléen GLOBAL par média : le like de n'importe quel
-			-- joueur allumait le cœur de TOUT LE MONDE, et son unlike l'éteignait
-			-- partout. L'état d'un like vit désormais dans media_likes_history
-			-- (append-only, une ligne par liker) et se lit via media_likes_latest.
-			-- Depuis le 2026-08-04, PLUS AUCUN code applicatif ne lit ni n'écrit ces
-			-- deux colonnes — elles ne sont que du résidu de schéma.
-			--
-			-- RETRAIT CIBLE : 2026-11-04. CRITÈRE : le DROP COLUMN n'est pas un
-			-- one-liner de migration, parce que la boucle d'indexation le défait —
-			-- ensureMediaTables (juste en dessous) RE-CRÉE toute colonne absente à
-			-- chaque IndexMedia. Le retrait exige donc, dans le même lot : retirer
-			-- liked et liked_at de ce CREATE TABLE ET de la liste ADD COLUMN, du
-			-- CREATE de games/halo_infinite/migrations/steps_shared_social.go, des
-			-- DEFAULT restaurés par steps_shared_social_media_files_drop_filepath_unique.go
-			-- et du seed de démo, PUIS un step de migration DROP COLUMN idempotent
-			-- (garde information_schema). Tant que ce lot n'a pas eu lieu, ne pas
-			-- droper : la colonne réapparaîtrait au prochain scan de médias.
-			liked BOOLEAN DEFAULT FALSE,
-			liked_at TIMESTAMPTZ,
+			-- RETIRÉES le 2026-08-04 : liked / liked_at. C'était un booléen GLOBAL par
+			-- média (le like de n'importe quel joueur allumait le cœur de TOUT LE MONDE).
+			-- L'état d'un like vit dans media_likes_history (append-only, une ligne par
+			-- liker) et se lit via media_likes_latest. Les colonnes sont droppées des DB
+			-- existantes par la migration drop_media_files_liked_columns_v1
+			-- (games/halo_infinite/migrations/steps_shared_social_media_files_drop_liked.go).
+			-- NE PAS les
+			-- réintroduire ici NI dans la liste ADD COLUMN ci-dessous : ce CREATE et cet
+			-- ALTER tournent à CHAQUE IndexMedia et re-créeraient la colonne droppée
+			-- (garde-rail : TestEnsureMediaTables_DoesNotResurrectLikedColumns).
 			discord_notified BOOLEAN DEFAULT FALSE,
 			indexed_at TIMESTAMPTZ DEFAULT NOW()
 		)
@@ -87,8 +76,7 @@ func ensureMediaTables(ctx context.Context, db *sql.DB) error {
 		{"status", colTypeVarchar},
 		{"mtime", colTypeTimestampTZ},
 		{"indexed_at", "TIMESTAMPTZ DEFAULT NOW()"},
-		{"liked", "BOOLEAN DEFAULT FALSE"},
-		{"liked_at", colTypeTimestampTZ},
+		// PAS de liked / liked_at ici : droppées le 2026-08-04 (cf. CREATE ci-dessus).
 		{"discord_notified", "BOOLEAN DEFAULT FALSE"},
 		{"file_stem", colTypeVarchar},
 		{"file_ext", colTypeVarchar},
