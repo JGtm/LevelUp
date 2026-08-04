@@ -9808,7 +9808,6 @@ export interface components {
         TimeseriesKpiCard: {
             delta: string | null;
             key: string;
-            label: string;
             value: string;
         };
         TimeseriesMatchRow: {

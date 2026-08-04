@@ -365,6 +365,13 @@ func TestMediaMutationDetection_Sanity(t *testing.T) {
 			"q := `INSERT INTO " + table + " (media_file_id, is_active) VALUES (?, ?)`",
 			"q := `SELECT media_file_id FROM " + table + "_latest WHERE is_active`",
 			"q := `DELETE FROM media_files WHERE id = ?`",
+			// Fixture synthétique, pas un exemple de code réel : SetMediaLiked
+			// (UPDATE media_files.liked) a été RETIRÉ le 2026-08-04
+			// (platform/duckdb/social_persister_iface.go) au profit du like par
+			// viewer append-only. Cette chaîne sert uniquement à prouver
+			// l'absence de faux positif du regex sur une table hors périmètre
+			// (media_files n'est pas dans mediaAppendOnlyTables) — pas à
+			// documenter une écriture encore légitime.
 			"q := `UPDATE media_files SET liked = TRUE WHERE id = ?`",
 		}
 		for _, src := range mustNotMatch {

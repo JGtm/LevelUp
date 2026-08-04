@@ -21702,13 +21702,10 @@ components:
             - "null"
         key:
           type: string
-        label:
-          type: string
         value:
           type: string
       required:
         - key
-        - label
         - value
         - delta
       type: object

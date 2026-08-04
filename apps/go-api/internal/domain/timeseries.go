@@ -32,9 +32,13 @@ type TimeseriesQueryRequest struct {
 // P7.1 (revue 2026-04-29) : champ `Color` retiré — le ton/couleur est résolu
 // côté front via tokens sémantiques (`tokenCssVar` + delta sign), pas
 // transporté dans le DTO. Réduit le couplage présentation/transport.
+//
+// `Label` retiré le 2026-08-04 (même règle que CompareMetricRow.LabelFR,
+// commit 33b416112) : Key est une CLÉ, jamais un libellé FR en dur côté Go.
+// Un consommateur futur résout le libellé via le registre canonique de champs
+// (fields.toml / /titles/{slug}/field-mappings) à partir de Key.
 type TimeseriesKpiCard struct {
 	Key   string  `json:"key"`
-	Label string  `json:"label"`
 	Value string  `json:"value"`
 	Delta *string `json:"delta"`
 }
