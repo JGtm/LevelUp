@@ -37,7 +37,7 @@ func scoreAt(pts []ScorePoint, tMS int) map[int]int64 {
 func TestScoreCurveStrongholdsGroundTruth(t *testing.T) {
 	src, ok := newDiskFilmSource(t, "696a9d7c")
 	if !ok {
-		t.Skip("film 696a9d7c absent du cache local")
+		t.Skipf("film 696a9d7c absent du cache (%s=%q)", filmCacheEnv, cacheRoot())
 	}
 	pts := ScoreCurve(src)
 	if len(pts) == 0 {
@@ -79,7 +79,7 @@ func TestScoreCurveStrongholdsGroundTruth(t *testing.T) {
 func TestScoreCurveMatchesCTFCaptures(t *testing.T) {
 	src, ok := newDiskFilmSource(t, "530820e5")
 	if !ok {
-		t.Skip("film 530820e5 absent du cache local")
+		t.Skipf("film 530820e5 absent du cache (%s=%q)", filmCacheEnv, cacheRoot())
 	}
 	events := Extract("530820e5", "CTF:Arena", src, MapRoster{})
 	teamPts := []ScorePoint{}

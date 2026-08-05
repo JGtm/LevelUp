@@ -42,7 +42,7 @@ func TestSlotIdentityResolvesAllEightPlayers(t *testing.T) {
 		}
 	}
 	if apparies == 0 {
-		t.Skip("aucun film de reference dans le cache local — aucun appariement joue")
+		t.Skipf("aucun film de reference dans le cache (%s=%q) — aucun appariement joue", filmCacheEnv, cacheRoot())
 	}
 }
 
@@ -52,7 +52,7 @@ func TestSlotIdentityResolvesAllEightPlayers(t *testing.T) {
 func TestSlotIdentityMatchesKnownOwners(t *testing.T) {
 	src, ok := newDiskFilmSource(t, "1bc77d2e")
 	if !ok {
-		t.Skip("film 1bc77d2e absent du cache local")
+		t.Skipf("film 1bc77d2e absent du cache (%s=%q)", filmCacheEnv, cacheRoot())
 	}
 	got := slotIdentityFrom(StatRecords(src), linesOf("1bc77d2e"))
 	// slotOwners (named_test.go) donne slot 18 = JGtm, dont le xuid est etabli en §16.2.
@@ -152,7 +152,7 @@ func TestIdentifyNamedEventsDropsUnmatchedSlots(t *testing.T) {
 func TestIdentifyNamedEventsOnRealFilm(t *testing.T) {
 	src, ok := newDiskFilmSource(t, "1bc77d2e")
 	if !ok {
-		t.Skip("film 1bc77d2e absent du cache local")
+		t.Skipf("film 1bc77d2e absent du cache (%s=%q)", filmCacheEnv, cacheRoot())
 	}
 	evs := NamedEvents(src, ObjectiveTypeFlag)
 	identity := slotIdentityFrom(StatRecords(src), linesOf("1bc77d2e"))
