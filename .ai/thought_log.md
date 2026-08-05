@@ -72,6 +72,44 @@ La premiere est plus sure, mais elle exige d'abord de rapatrier la baseline du 0
 verifier que RIEN D'AUTRE n'a bouge dans le document. Ensuite : hygiene (H1-H6 + lot E),
 puis merge sur GO utilisateur explicite.
 
+## [2026-08-05] Vague 4 : autorité de schéma unique des player DB, soin visible
+
+**Statut** : Complété (branche `feat/wave4`, 2 commits, prêt à merger).
+
+**Décision technique principale** : réponse structurelle à la question utilisateur
+(« le workflow reconstruction/destruction est-il optimal ? ») — le défaut n'était pas
+un rebuild par boot (one-shot sentinellé) mais la DUALITÉ d'autorités de schéma
+(migrations vs EnsurePlayerSchema soignant en silence à chaque open, ce qui a masqué
+le bug carrière). (1) `idx_career_xuid` supprimé PARTOUT (arbitrage utilisateur
+option 2 : sélectivité nulle en player DB, classe de corruption ART) — retiré
+d'Ensure + DROP INDEX idempotent en migration ; le step baseline ne peut pas être
+modifié (DDL gelé par le golden de squash), le drop passe en fin de bloc player.
+(2) `personal_score_awards` et `player_csr_snapshots` (Ensure-only) reçoivent leurs
+steps de CREATE ; DDL en SOURCE UNIQUE (`migration.Player*DDL`) consommée par
+migrations ET sync — 3 copies divergentes réparées, dont le seed démo (45 lignes
+supprimées). Ordres append-only/vues _latest critiques documentés. (3) Soin VISIBLE :
+`internal/sync/schemadrift` (sous-package — le ratchet sync-root-frozen a refusé un
+fichier racine), WARN structuré `schema_drift_healed` par objet réellement créé ;
+le soin reste (transition legacy). (4) Invariant : sur DB fraîche par migrations,
+Ensure = NO-OP intégral (avant : 12 objets + 29 colonnes ajoutés ; après : diff vide
+deux sens), mordant prouvé par mutation dans les deux sens. Correctif annexe :
+timeout intégration de gate-push.ps1 300s→600s (défaut Go) — internal/sync (~173 s
+isolé) dépassait sous la charge du run sérialisé depuis les nouveaux tests.
+
+**Résultats observés** : gate-push 4/4 verts après le fix timeout ; go test +
+intégration -p 1 (4 tranches agent + run complet script) verts ; lint 0 issue.
+Décisions voix actées en mémoire (3 exceptions conservées telles quelles : Réglages
+vouvoiement, notifications ton personnel, pronoms directionnels Palmarès).
+
+**Conclusion / prochaine étape** : merge dans main (deploy auto — convergence des DB
+existantes par DROP INDEX au boot), surveiller CI/deploy puis les `schema_drift_healed`
+en prod. Campagne future de retrait du soin, séquence cadrée : (a) déployer,
+(b) fenêtre d'observation des WARN couvrant tous les joueurs actifs, (c) forcer les
+migrations sur les DB silencieuses, (d) fenêtre à zéro → retirer playerSchemaSQL et
+les Ensure*AppendOnly d'OpenPlayerDB (sans (b), DB legacy inouvrables). Découvertes :
+`idx_psa_xuid` même défaut mais surface ART éteinte par construction (à arbitrer),
+3 autorités résiduelles hors EnsurePlayerSchema (Ensure*AppendOnly, non instrumentées).
+
 ## [2026-08-05] Cle PNY, phase 2 : arbitrage des bases, outillage Ghidra, MCP
 
 **Statut** : Complété (restauration ; aucun code applicatif modifié).
