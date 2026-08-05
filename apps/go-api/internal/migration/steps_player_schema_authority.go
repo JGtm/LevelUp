@@ -19,6 +19,15 @@ package migration
 //     steps de CREATE idempotents ;
 //   - idx_career_xuid n'était posé QUE par Ensure : il est SUPPRIMÉ partout (décision A).
 //
+// COMPLÉMENT 2026-08-05 (même arbitrage, appliqué à l'index jumeau) : idx_psa_xuid
+// (personal_score_awards) suit idx_career_xuid — retiré des DEUX autorités qui le
+// posaient (le DDL ci-dessous et le PostSwap de steps_player_append_only_personal_score_awards.go)
+// et retiré des DB existantes par le step drop_psa_xuid_art_index_v1.
+// Idem idx_psa_match_xuid (troisième du lot, même jour) : posé par le SEUL PostSwap
+// legacy (jamais par le DDL fraîche → divergence latente entre autorités, invisible
+// de l'invariant no-op) et pur préfixe d'idx_psa_gen. Retiré du PostSwap + step
+// drop_psa_match_xuid_art_index_v1.
+//
 // Ensure GARDE ses créations en SOIN DE TRANSITION (les player DB legacy en dépendent),
 // mais n'est plus une autorité : son action réelle est désormais BRUYANTE
 // (schema_drift_healed, internal/sync/schemadrift) et l'invariant « Ensure est un no-op
@@ -57,7 +66,13 @@ CREATE TABLE IF NOT EXISTS personal_score_awards (
     is_tombstone BOOLEAN DEFAULT FALSE
 );
 CREATE INDEX IF NOT EXISTS idx_psa_match    ON personal_score_awards(match_id);
-CREATE INDEX IF NOT EXISTS idx_psa_xuid     ON personal_score_awards(xuid);
+-- idx_psa_xuid : SUPPRIMÉ (décision 2026-08-05, miroir exact d'idx_career_xuid). Dans une
+-- player DB, xuid est QUASI CONSTANT (une DB = un joueur) → sélectivité nulle, l'index
+-- n'accélère aucun filtre. Sa surface ART #23046 est déjà éteinte par construction
+-- (personal_score_awards est append-only INSERT-only, ADR 0026), mais un index sans
+-- lecteur ni gain est du coût d'écriture pur + une surface à rallumer au premier DELETE
+-- de régression. La convergence des DB EXISTANTES est assurée par le step
+-- drop_psa_xuid_art_index_v1 (ci-dessous).
 CREATE INDEX IF NOT EXISTS idx_psa_category ON personal_score_awards(award_category);
 CREATE INDEX IF NOT EXISTS idx_psa_gen      ON personal_score_awards(match_id, xuid, generation_id);
 `
@@ -121,6 +136,24 @@ func init() {
 			"sélectivité nulle, surface ART #23046 pure perte)",
 		ApplySchema: func(db *sql.DB) error {
 			return execScript(db, `DROP INDEX IF EXISTS idx_career_xuid;`)
+		},
+	})
+	Register(Migration{
+		Name:     "drop_psa_xuid_art_index_v1",
+		TargetDB: TargetPlayer,
+		Description: "Retire idx_psa_xuid (xuid quasi constant dans une player DB : " +
+			"sélectivité nulle, coût d'écriture pur — miroir d'idx_career_xuid)",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `DROP INDEX IF EXISTS idx_psa_xuid;`)
+		},
+	})
+	Register(Migration{
+		Name:     "drop_psa_match_xuid_art_index_v1",
+		TargetDB: TargetPlayer,
+		Description: "Retire idx_psa_match_xuid (préfixe redondant d'idx_psa_gen ; n'existait " +
+			"que sur les DB converties par le PostSwap legacy — divergence fraîche/convertie)",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `DROP INDEX IF EXISTS idx_psa_match_xuid;`)
 		},
 	})
 }

@@ -314,6 +314,12 @@ CREATE TABLE IF NOT EXISTS killer_victim_pairs (
 // RÉELLE est journalisée en WARN `schema_drift_healed` (cf. sync/schemadrift). Sur une
 // player DB à jour, cette fonction est un NO-OP intégral et silencieux — invariant
 // verrouillé par schema_authority_test.go.
+//
+// PÉRIMÈTRE ÉLARGI (2026-08-05) : les 3 conversions append-only résiduelles vivaient
+// APRÈS l'appel dans OpenPlayerDB, donc HORS de la photographie — leur soin était le
+// dernier angle mort silencieux du provisioning player. Elles sont désormais appelées
+// ICI, entre le snapshot et le report : le soin complet est visible sous une seule
+// autorité, et l'invariant no-op couvre le chemin d'ouverture ENTIER.
 func EnsurePlayerSchema(ctx context.Context, db *sql.DB) error {
 	before := schemadrift.Snapshot(ctx, db)
 	if err := migration.EnsurePlayerCSRSnapshotsAppendOnly(db); err != nil {
@@ -324,7 +330,37 @@ func EnsurePlayerSchema(ctx context.Context, db *sql.DB) error {
 			return rerr
 		}
 	}
+	if err := ensurePlayerAppendOnlyTables(db); err != nil {
+		return err
+	}
 	schemadrift.Report(ctx, db, before, "sync.EnsurePlayerSchema")
+	return nil
+}
+
+// playerAppendOnlyCares — conversions append-only (#23046, ADR 0026) garanties à CHAQUE
+// ouverture d'une player DB, en plus du DDL de soin. playerSchemaSQL crée les TABLES mais
+// jamais les vues `_latest` (leur bind échouerait sur une table legacy non convertie) :
+// sans ces appels, une player DB NEUVE ouverte hors chaîne de migrations aurait la table
+// mais pas la vue, et tous les readers post-sync casseraient. Chacune est idempotente et
+// no-ope si la table est absente.
+//
+// Le nom sert UNIQUEMENT au message d'erreur ; l'ordre est celui, historique, des appels
+// qu'OpenPlayerDB portait avant le 2026-08-05.
+var playerAppendOnlyCares = []struct {
+	table string
+	care  func(*sql.DB) error
+}{
+	{"player_match_enrichment", migration.EnsurePlayerMatchEnrichmentAppendOnly},
+	{"personal_score_awards", migration.EnsurePersonalScoreAwardsAppendOnly},
+	{"match_citations", migration.EnsureMatchCitationsAppendOnly},
+}
+
+func ensurePlayerAppendOnlyTables(db *sql.DB) error {
+	for _, c := range playerAppendOnlyCares {
+		if err := c.care(db); err != nil {
+			return fmt.Errorf("EnsurePlayerSchema: conversion append-only %s: %w", c.table, err)
+		}
+	}
 	return nil
 }
 
@@ -424,31 +460,14 @@ func OpenPlayerDB(path string) (*duckdbpkg.DB, error) {
 	// NOT EXISTS). Pas de contexte caller au moment de l'ouverture du handle ;
 	// les appels ne sont pas annulables côté caller — context.Background() est
 	// le bon choix ici.
+	//
+	// Les 3 conversions append-only (pme / psa / match_citations) qu'OpenPlayerDB
+	// appelait ici sont DANS EnsurePlayerSchema depuis le 2026-08-05 : hors d'elle,
+	// elles échappaient à la photographie schemadrift (soin silencieux). Le soin
+	// player est désormais entier sous une autorité unique et instrumentée.
 	if err := EnsurePlayerSchema(context.Background(), handle.SQLDb()); err != nil {
 		handle.Close()
 		return nil, fmt.Errorf("OpenPlayerDB schema %s: %w", path, err)
-	}
-	// Append-only #23046 : garantir la vue player_match_enrichment_latest + la
-	// conversion append-only de la table. EnsurePlayerSchema crée la TABLE mais PAS
-	// la vue (créée par la migration player_append_only_match_enrichment_v1). Sans
-	// cela, une player DB NEUVE ouverte hors du pool (1er sync) aurait la table mais
-	// pas la vue → tous les readers post-sync (_latest) échoueraient. Idempotent.
-	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(handle.SQLDb()); err != nil {
-		handle.Close()
-		return nil, fmt.Errorf("OpenPlayerDB append-only pme %s: %w", path, err)
-	}
-	// Append-only #23046 (Phase 2) : idem pour personal_score_awards — garantir la
-	// vue personal_score_awards_latest + la conversion generation_id. Sans cela un
-	// reader _latest casserait sur une player DB neuve. Idempotent.
-	if err := migration.EnsurePersonalScoreAwardsAppendOnly(handle.SQLDb()); err != nil {
-		handle.Close()
-		return nil, fmt.Errorf("OpenPlayerDB append-only psa %s: %w", path, err)
-	}
-	// Append-only #23046 (Phase 2) : idem pour match_citations — garantir la vue
-	// match_citations_latest + la conversion generation_id. Idempotent.
-	if err := migration.EnsureMatchCitationsAppendOnly(handle.SQLDb()); err != nil {
-		handle.Close()
-		return nil, fmt.Errorf("OpenPlayerDB append-only mc %s: %w", path, err)
 	}
 	return handle, nil
 }

@@ -8,9 +8,10 @@
  * ce fichier est le seul endroit où leur contrat de rendu est vérifié.
  *
  * Le point sensible du badge : l'URL vient du BACKEND (adaptateur d'assets du
- * titre). Quand elle manque — titre sans badge, palier inconnu, placement en
- * cours — la colonne doit retomber sur le texte localisé, jamais afficher une
- * image cassée.
+ * titre). Quand elle manque — titre sans badge, palier inconnu — la colonne
+ * doit retomber sur le texte localisé, jamais afficher une image cassée. En
+ * placement (placement_done/total renseignés), la cellule rend le badge
+ * unranked_N (PlacementPendingCell, JGtm) au lieu du badge de palier.
  *
  * Locale par défaut = fr → libellés français.
  */
@@ -91,7 +92,7 @@ describe('Colonne Rang — badge image avec repli texte', () => {
     expect(screen.queryByAltText('Diamant IV')).toBeNull()
   })
 
-  it('placement en cours : « X/Y » prime sur le badge', () => {
+  it('placement en cours : le badge unranked_N (JGtm) prime sur le badge de palier', () => {
     renderWithProviders(
       <ExplorerMatchesTable
         rows={[
@@ -105,8 +106,17 @@ describe('Colonne Rang — badge image avec repli texte', () => {
         playerSlug="me"
       />,
     )
-    expect(screen.getByText('3/10')).toBeInTheDocument()
+    // Même cellule de rang que le badge de palier ci-dessus, mais en placement :
+    // unranked_N (N=done*10/total) via PlacementPendingCell (variant "rating",
+    // réutilisée telle quelle — même mécanisme que la colonne Note). La colonne
+    // Note (rating_type) lit le MÊME placement_done/total → 2 images identiques.
+    const imgs = screen.getAllByAltText('En placement')
+    expect(imgs).toHaveLength(2) // Rang + Note
+    for (const img of imgs) {
+      expect(img).toHaveAttribute('src', expect.stringContaining('unranked_3.png'))
+    }
     expect(screen.queryByAltText('Diamant IV')).toBeNull()
+    expect(screen.queryByText('3/10')).toBeNull()
   })
 })
 
