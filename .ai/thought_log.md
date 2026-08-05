@@ -1,3 +1,50 @@
+## [2026-08-05] Cle PNY, phase 2 : arbitrage des bases, outillage Ghidra, MCP
+
+**Statut** : Complété (restauration ; aucun code applicatif modifié).
+
+**Décision technique principale** : l'utilisateur affirmait que la clé portait des
+données plus à jour que le dépôt (« backfillées pendant des heures »), ce qui
+contredisait ma lecture des dates. Vérification sur pièces plutôt qu'arbitrage à la
+confiance — et les deux parties avaient raison sur un point différent. J'avais comparé
+le mauvais dossier : `D:\data\titles` est un instantané périmé du 11/07, alors que la
+vraie donnée est dans `D:\titles` (racine de la clé), du 02/08, et contient Halo 5 que
+je n'avais pas examiné. Comparaison refaite contre la bonne source : **identique en tout
+point** (1926 matchs, même dernier match au 28/07, mêmes tailles et dates fichier par
+fichier, Halo 5 compris). Le backfill est donc bien réel mais déjà dans le dépôt,
+transféré disque à disque comme le prévoyait `RESTAURATION.md`. Aucune base restaurée.
+
+**Résultats observés** : l'argument décisif contre la restauration est le compte de
+`schema_migrations` — 70 en local contre 65 sur la copie périmée : écraser aurait
+rétrogradé le schéma de 5 migrations. Idem `shared_matches_v2` (1926 matchs contre 1819,
++24 912 `highlight_events`) et les 4 bases joueur (JGtm : 8060 lignes de
+`lusr_component_history` contre 954). Comparaison complète de `D:\data` : une seule
+lacune réelle, `data/sync_cache/` (46 fichiers d'artefacts transitoires du 07/07),
+restaurée. Commit `0a3bb28d6` : garde `.gitignore` `.ai/re_dump/` + les 2 skills
+adversarial récupérés du commit `70fab1623` (les committer évite qu'un merge bute sur
+des fichiers non suivis — c'était l'inverse de mon analyse initiale). Outillage :
+Python 3.12.10 + JDK 21 (installé par l'utilisateur, l'élévation admin étant hors de
+portée d'un agent), greffon `GhidraMCP-5.12.0` installé dans Ghidra, serveur MCP
+`ghidra` déclaré en portée utilisateur avec `PYTHONIOENCODING=utf-8` (sans quoi l'aide
+du pont plante sur un caractère non-cp1252) — état `Connected`. Outillage Ghidra déplacé
+vers `C:\Users\Guillaume\Downloads\` sur demande, venv **recréé** et non déplacé (chemins
+absolus). Comptabilité de la copie vérifiée à l'unité : hors venv, 549 fichiers
+identiques des deux côtés.
+
+**Non traité, avec justification** : (1) `cheatengine` non installé — décision
+utilisateur, les scripts Lua restent sous `LevelUp-re/scripts_cheat_engine/` ;
+(2) gate de reproductibilité du rejeu toujours non joué — `cmd/replay-build` vit sur
+`feat/replay2d-prod` ; découverte utile : le worktree `LevelUp-wt-replay2d` existe déjà
+sur cette branche, le gate peut donc s'y jouer sans changer de branche nulle part ;
+(3) `skill-rules.json` toujours non modifié (même raison qu'en phase 1).
+
+**Conclusion / prochaine étape** : la clé PNY peut être débranchée, tout son contenu
+projet est répliqué et vérifié. Reste le gate « 99 traces, 29 221 points, 475 tirs,
+70 lancers, 439 projectiles, 10 223 emprises » à jouer depuis `LevelUp-wt-replay2d`.
+Note de méthode : cette entrée passe par un worktree dédié parce que le dépôt principal
+était sur `main` — y laisser un fichier modifié, c'est risquer de le voir emporté dans
+un push qui déploie en prod (c'est exactement ce qui est arrivé à l'entrée de phase 1,
+d'où le conflit de merge qui a suivi).
+
 ## [2026-08-05] Vague 3 : bug career_progression, kpi_cards, oneLifeWindow, aide efficiency
 
 **Statut** : Complété (branche `feat/wave3`, 3 commits, prêt à merger).
