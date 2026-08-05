@@ -1,3 +1,66 @@
+
+## [2026-08-05] Lot d'hygiène avant merge — H1-H6, résiduels C-bis, gate des artefacts, lot E
+
+**Statut** : Complété. Périmètre fermé, chaque item statué. Branche `feat/replay2d-prod`,
+worktree `LevelUp-wt-replay2d`. 12 commits, dont un merge d'`origin/main` en ouverture.
+
+**Décision technique principale — vérifier sur pièces avant de coder, systématiquement.** Le
+lot arrivait avec une liste d'items décrits par un audit vieux de trois jours. Rouvrir chaque
+site avant d'agir a changé la nature de trois d'entre eux, et c'est là qu'est la valeur de la
+session :
+
+- **H3 était déjà faite** (2026-08-03, avec l'inversion de préséance) : `killscope` porte les
+  voies de film, le ratchet les police, allowlist vide. Statuée `[~]` après vérification —
+  refaire aurait été du bruit. Le ratchet a quand même été vu ROUGE par mutation, parce
+  qu'« il existe » et « il mord » ne sont pas la même affirmation.
+- **R3 ne skippait pas « faute de cache sur ce poste »**, comme la piste C-bis l'avait conclu :
+  `cacheRoot` était un chemin ÉCRIT EN DUR vers un poste disparu, donc les neuf tests de vérité
+  terrain skippaient PARTOUT, sur toutes les machines. Un chemin absolu en dur ne casse pas, il
+  se tait. Variable `FILM_CACHE_ROOT`, et l'oracle à huit joueurs a enfin été rejoué.
+- **E6 : le poste n'était plus vulnérable, la CI l'était.** Le toolchain local est déjà 1.26.5,
+  donc govulncheck local rendait 0 — les 11 CVE de bibliothèque standard ne restaient que là où
+  ça compte : `ci.yml` installe le toolchain par `go-version-file: go.mod`, et `go.mod`
+  déclarait `go 1.26.1`. La CI, qui GARDE le merge, compilait avec la version vulnérable.
+
+**Deux défauts LATENTS trouvés, l'un et l'autre silencieux par construction.** R1 : la reprise
+des couples écrivait `now()` NU dans `written_at`, colonne TIMESTAMP naïve — donc l'heure de
+SESSION, deux heures dans le futur sur ce poste. C'est la colonne de TRI de la vue `_latest` :
+toute passe de film écrite dans ces deux heures perdait l'arbitrage, et la source du dégât fatal
+disparaissait de la lecture sans erreur, sans compteur, sans qu'un nom ni un compte ne bouge. Le
+harnais de test mélangeait les deux mêmes horloges — il aurait rougi à l'ouest de Greenwich.
+H4 : l'outil de réparation ART avortait dès qu'une vue dépendait de la table, c'est-à-dire
+toujours ; il délègue désormais au chemin de production testé, et les cinq tests existants
+partaient tous d'une base SANS vues, donc ne couvraient pas le mode de panne réel.
+
+**Le gate des artefacts est PASSÉ**, par une preuve plus forte que la baseline perdue :
+régénérer au commit PRÉ-INTÉGRATION (`d2915c8d8`, worktree détaché temporaire, fixtures en
+chemin absolu, sortie hors `data/`) rend les 3 artefacts **bit-identiques** à ceux en place —
+donc les JSON locaux SONT la sortie pré-intégration et rien d'autre ne les a touchés. Régénérés
+ensuite à HEAD et diffés clé à clé : **2 clés de plus par film, rien d'autre sur ~6,4 Mo**.
+Écart avec la lettre du protocole, tranché sur pièces et signalé : il n'y a AUCUNE clé
+`objectives` au niveau du document (cohérent avec « aucun producteur », décision #5), et la
+seconde clé est `coverage.verdict.objectives` — même `buildCoverage`, même cause. Baseline
+`baseline_2026-08-05/` posée avec ses hachés complets ; les 3 JSON en place n'ont PAS été
+écrasés, rien n'a été écrit sur la clé USB.
+
+**Résultats observés** — gates joués dans cette session : `go test ./... -p 1` exit 0, **0 échec
+0 skip** · `-tags=integration -p 1` exit 0, **0 échec 0 skip** · `TestGoldenFilms` avec
+`KILLSOURCE_FIXTURES` : **4 films réellement décodés, 74 s, aucun skip** · ratchet lint **0**
+(cache purgé, mesuré après le merge d'`origin/main` puis re-mesuré en clôture) · `tsc -b
+--force` exit 0 · `vitest run` 400 fichiers / 3 530 tests · `eslint` 0 erreur (19 warnings
+préexistants) · `knip` exit 0 · ratchet contrat clean, baseline 47 → 46 · `govulncheck` 0
+vulnérabilité appelée. **6 mutations injectées et vues rouges**, puis retirées et re-vertes.
+Rotation trimestrielle du journal ré-appliquée : 37 entrées archivées, **conservation vérifiée
+à l'entrée près** (2 141 avant, 2 141 après).
+
+**Conclusion / prochaine étape.** Le périmètre du lot est clos, aucun `[!]` sauf F3 (prévenir
+avant le push sur `main`), qui est une décision utilisateur et non une tâche. Ce qui reste
+ouvert est consigné, pas oublié : deux erreurs avalées voisines dans le même `switch` que H2,
+le DEFAULT `now()` de la colonne `written_at` (il faudrait un ALTER), 456 entrées dupliquées
+dans le journal et `.gitignore:246` qui ignore `.ai/archive/` alors que la convention est de le
+versionner — sans `git add -f`, la rotation aurait fait disparaître 37 entrées en silence.
+**Prochaine étape : le GO utilisateur pour le merge**, la CI de branche faisant foi.
+
 ## [2026-08-05] Piste C-bis — re-mode-score integre, et le contrat a rattrape le calque
 
 **Statut** : Complete, sauf le gate des artefacts de rejeu (`[!]`, arbitrage superviseur —
@@ -50933,23 +50996,6 @@ La sync Go (`processMatch` dans `engine.go`) ne récupère jamais les `highlight
 
 **Conclusion** : Les noms de cartes FR sont maintenant résolus en Go depuis `metadata.duckdb`, comme les tuiles de match.
 
-## [2025-04-25] fix(media): file serving + corrections UI galerie médias
-
-**Statut** : ✅ Complété
-
-**Décision technique** :
-- `file_path` en DB = chemin absolu Windows (ex. `C:\Users\...\JGtm\video.mp4`) — inaccessible depuis le navigateur sans endpoint HTTP dédié
-- Ajout `GET /api/v1/players/{slug}/media/files/*` dans `handlers/media.go` : sert les fichiers depuis le répertoire captures du joueur avec validation anti-traversal (`path.Clean` + `strings.HasPrefix`)
-- `transformMediaURLs()` transforme les chemins absolus en URLs servables dans `GetMediaLibrary` avant sérialisation JSON
-- Frontend : date remplace le basename (`6 avr. à 23:43` via `toLocaleDateString + toLocaleTimeString`), suppression badge "Aperçu au survol", GIF/screenshots sans thumbnail utilisent `file_path` (maintenant URL valide), limite home rail 12→20
-- Lightbox : basename retiré de la barre d'info
-
-**Résultats** :
-- `go build ./...` ✅
-- TypeScript : 0 erreur sur `MediaViewer.tsx` et `RecentMediaRail.tsx`
-
-**Note map names** : `map_name_fr` dans `match_registry` doit être rempli par le sync Python pour afficher les noms en français. L'API retourne déjà `COALESCE(map_name_fr, map_name)` — c'est une question de données, pas de code.
-
 ## [2026-04-24] chore(test): vérification finale — couverture tests et logging
 
 **Statut** : ✅ Complété — commit `70642877` sur `fix/duckdb-concurrency`
@@ -51083,20 +51129,6 @@ La sync Go (`processMatch` dans `engine.go`) ne récupère jamais les `highlight
 **Conclusion** : La commande couvre toute la bootstrap mécanique ; l'enregistrement dans registry.go reste manuel (nécessite `make build`).
 
 ---
-
-## [2025-07-15] feat(home): snippets de citations dans MatchCard
-
-**Statut** : ✅ Complété
-
-**Décision technique** :
-- Architecture full-stack en 9 phases : migration DDL (steps_metadata), seed réécrit, domain structs, SQL constants (Q26i+Q26j), repo `LoadMatchCitations` (dégradation silencieuse, aucun xuid — match_citations est par-player DB), analysis `BuildCitationSnippets` (pur, sans DB), port interface + noop, service `enrichMatchesWithCitations` (après medals), TS types, composant SVG ring, MatchCard.
-- Filtre clé : si `cumul - delta >= lastTier`, la citation était déjà masterisée avant le match → ignorée.
-- `buildLookupQuery` ne supporte que `[]int64` → placeholders manuels pour les norm strings.
-- Mock test `mockHomeRepo` mis à jour avec `LoadMatchCitations` (stub vide) pour satisfaire l'interface.
-
-**Résultats** : `go build ./...` ✅ · `go vet` (packages modifiés) ✅
-
-**Fichiers modifiés** : steps_metadata.go, ops/seed.go, domain/home.go, queries_home_citations.go, home_repo.go, analysis/citation_snippets.go (NEW), port/repository.go, service/home_service.go, service/home_service_test.go (stub), types.ts, citation-progress-ring.tsx (NEW), match-card.tsx
 
 ## [2026-04-23] fix(duckdb): timezone TIMESTAMP naïfs — SET TimeZone à l'ouverture connexion
 
@@ -52297,28 +52329,6 @@ La sync Go (`processMatch` dans `engine.go`) ne récupère jamais les `highlight
 
 **Conclusion** : Tous les gaps identifiés en session précédente sont comblés. L'API `PATCH /players/{slug}/matches/{match_id}/favorite` est complète avec tests, logging et validation.
 
-## [2025-07-25] feat(social): migration shared_social.duckdb — Phases 1→4
-
-**Statut** : Complété
-
-**Décision technique** : Création d'une DB dédiée `shared_social.duckdb` (`data/warehouse/`) pour centraliser toutes les données sociales/contenu utilisateur : `media_files`, `media_match_associations`, `media_likes`, `match_favorites`. Rationale : ces données ne sont ni des statistiques de match (shared_matches_v2) ni des enrichissements joueur (stats.duckdb).
-
-**Résultats** :
-- Phase 1 : `TargetSharedSocial` dans registry, `PlayerDB.SharedSocial`, `steps_shared_social.go` (DDL), `main.go`, `LegacySharedSocialDBPath()`, `player_resolver.go`
-- Phase 2 : Script one-shot `cmd/migrate-to-shared-social/main.go` (idempotent, `--dry-run`)
-- Phase 3 : Bascule `media_repo.go` → `socialDB()` helper (fallback Player si nil), `ops/media.go` → `SharedSocialDBPath`, `notify/notifiers.go` commentaire mis à jour, handler `match_favorite.go` + route `PATCH /players/{slug}/matches/{id}/favorite`, `port.SocialRepository`, `port.SocialService`, `service.SocialService`, `platform/duckdb.SocialRepo`
-- Phase 4 : Migrations `drop_media_from_player_db` (stats.duckdb) et `drop_media_likes_from_shared` (shared_matches_v2.duckdb). ATTACH `shared_matches_v2` sur connexion SharedSocial pour que Q37 continue de joindre `shared.match_registry`
-- Build : `go build ./...` ✅, `go vet` : sortie propre
-
-**Conclusion** : Architecture sociale proprement isolée. Les vrais DROP ne s'exécutent qu'au prochain démarrage via `launcher.py → _run_migrations()`, après que le script de migration manuelle a copié les données.
-
-
-
-### Décisions techniques
-
-1. **Faire un incrément léger mais visible** — la hauteur du visuel passe de `h-32 / sm:h-44 / lg:h-52` à `h-36 / sm:h-48 / lg:h-56`, soit environ +8 à +12% selon le breakpoint.
-2. **Conserver le reste du comportement inchangé** — sticky, radius et recouvrement par le contenu restent identiques ; seule l'emprise verticale de l'image augmente.
-
 ## [2026-04-21] feat(sessions): première tranche page détail de session + suggestion de comparaison
 
 **Statut** : Complété
@@ -52392,50 +52402,6 @@ Le bandeau ne collait pas parce que le `sticky` était appliqué au mauvais nive
 ### Conclusion
 
 Le positionnement de `Palmarès` et le wording `Face-à-face` sont maintenant cohérents dans la navigation et dans la feature compare, avec un contrat front ré-aligné sur l’implémentation Go actuelle.
-
-## [2025-01-22] feat(media): galerie partagée, filtres fonctionnels, likes sociaux, feed-version
-
-**Statut** : Complété
-
-### Décisions techniques
-
-1. **Upload full-width au-dessus de la grille** — `UploadButton` reçoit une prop `fullWidth` qui élargit la zone de dépôt, et est repositionné hors du `PageHeader` dans `MediaPage.tsx`.
-2. **Filtres dynamiques via `BuildQ37MediaQuery`** — remplace la constante `Q37MediaFiles` par une fonction avec WHERE/ORDER BY dynamiques. JOIN vers `shared.match_registry` pour `map_name`/`mode_name`.
-3. **`queryKey` corrigée** — `useMediaPage` calcule maintenant un `requestHash = JSON.stringify({p, s, k, sec, map, mod, g, lo})` pour que chaque combinaison de filtres soit indépendante dans le cache TanStack.
-4. **`MediaFilters` dans `domain`** — évite la dépendance circulaire `port → platform/duckdb`. Le type est défini en `domain.MediaFilters` et utilisé partout.
-5. **Likes sociaux via `media_likes` (shared DB)** — nouvelle table `media_likes(media_path, liker_slug, liker_gamertag, liked_at, PK)` dans `shared_matches_v2.duckdb`. `ToggleSharedLike` écrit/supprime la ligne, `GetMediaLikers` retourne les 3 premiers noms + total avec une window function.
-6. **`LikersLine` composant** — affiche "Alice, Bob et 3 autres ♥" dans la carte thumbnail et dans la lightbox footer.
-7. **`feedVersion` polling** — `GET /media/feed-version` retourne un compteur atomique incrémenté après chaque upload et like. `useFeedVersion` poll toutes les 10 s et invalide `mediaBase(playerSlug)` si la version a changé.
-8. **Erreurs `config`/`halo` pré-existantes** — confirmées présentes avant nos modifications (vérifiées via `git stash`). Hors périmètre.
-
-### Résultats observés
-
-- `go build` sur les packages modifiés : 0 erreur nouvelle
-- `tsc --noEmit` : 0 erreur dans les fichiers médias
-
-### Conclusion / prochaine étape
-
-Implémentation complète. Commit à effectuer.
-
-
-
-**Statut** : Complété
-
-### Décisions techniques
-
-1. **Utiliser `sticky` plutôt que `fixed` global** — la bannière reste fixée sous la L1 à l'intérieur de la zone scrollable de l'app, sans sortir du layout du shell.
-2. **Faire passer le contenu au-dessus au scroll** — la colonne de contenu de `HomePage` est montée en `z-10` sur fond `bg-background`, tandis que la bannière reste en `z-0`, ce qui permet à la page de la recouvrir naturellement pendant le défilement.
-3. **Augmenter franchement la hauteur du visuel** — l'image passe de `h-24 / sm:h-32 / lg:h-40` à `h-32 / sm:h-44 / lg:h-52`, soit au moins +30% sur chaque breakpoint.
-
-### Résultats observés
-
-- Le bandeau reste accroché sous la L1 pendant le scroll de la home
-- Le contenu de la page passe visuellement par-dessus
-- La hauteur du header visuel est sensiblement augmentée sur mobile, tablette et desktop
-
-### Conclusion
-
-La bannière d'accueil fonctionne maintenant comme un fond sticky sous la navigation, avec un impact visuel plus marqué.
 
 ## [2026-04-20] fix(web): aligner le radius de la bannière home sur les sections
 
@@ -53684,41 +53650,6 @@ Les gates de couverture (≥70%, ≥75%, etc.) nécessitent l'exécution réelle
 
 **Prochaine étape** : Sprints 42–44 (Phase 9 — évolutions fonctionnelles)
 
-## [2025-07-17] feat(arch): Sprint 38+39 — DRY, split fichiers >500L, tests couverture
-
-**Statut** : Complété
-
-**Décision technique** :
-- Sprint 38 T1-T6 : découpage de 5 fichiers >500L en modules à responsabilité unique ; `domain/outcomes.go` centralise les constantes outcome ; double switch `feature_flags` éliminé via `surfaceFields()` retournant `map[Surface]*Backend` (pivot unique)
-- Sprint 39 T1 : 5 fichiers `*_test.go` handlers ajoutés (patterns OK/404/500 avec mocks DI) ; T3 : tests TrueSkill purs + transforms helpers (8 fonctions couvertes)
-- Contrainte DuckDB Windows pré-existante : packages `sync` et `handlers` ne compilent pas en local (build constraint `windows-amd64`) mais les tests sont prêts pour CI
-
-**Résultats** :
-- `go build ./internal/analysis/...` → clean ✅
-- `go test ./internal/analysis/...` → OK (0.193s) ✅
-- `go vet ./internal/sync/... ./cmd/levelup/...` → seule contrainte DuckDB attendue ✅
-- Aucun fichier créé > 310L ; `queries.go` de 731L → 5 fichiers < 280L chacun
-- Double switch feature_flags → 1 seule map lookup dans `surfaceFields()`
-
-**Conclusion** : Sprint 38 100% complété. Sprint 39 : T1+T3 ✅, T2/T4/T5 restants (DuckDB in-memory fixtures + FastAPI + coverage ≥ 50%).
-
----
-
-**Statut** : Complété
-
-**Décision technique** : Pattern DI avec types génériques `ServiceFactory[S]` et `ContextFactory[S]` définis dans le package handlers. Le `ServiceRegistry` (api/registry.go) centralise la construction des services à partir du `PlayerResolver`. Les handlers reçoivent des fonctions factory typées — aucun couplage direct avec `config`, `platform/duckdb` ou `service`.
-
-**Résultats** :
-- 16/21 handlers convertis au DI (tous les player-scoped). 5 handlers non convertis (infrastructure : health, bootstrap, auth, settings, sync) — ont déjà une injection propre.
-- 18 interfaces service créées dans `port/services.go`
-- `ProfileService` extrait de `setup.go` → `service/profile_service.go`
-- `server.go` câblé via `ServiceRegistry` — les handlers ne connaissent plus que les interfaces `port.*`
-- Test mock `career_test.go` démontre le pattern (3 cas : OK, 404, 500)
-- Gamertag handler reçoit directement un `port.GamertagSearchService` (service global, pas de résolution joueur)
-- Explorer handler utilise 2 factories (ExplorerService + MatchHistoryService)
-
-**Prochaine étape** : Sprint 38 — DRY + split fichiers >500L
-
 ## [2026-04-16] docs(go-migration-v2): Sprint 44 aligné sur POST /session/context et scope multi-titres complet
 
 **Statut** : Complété
@@ -54073,31 +54004,6 @@ Les gates de couverture (≥70%, ≥75%, etc.) nécessitent l'exécution réelle
 
 ---
 
-## [2025-12-15] feat(sprint16+17): Settings/Setup + Jobs longs persistants
-
-**Statut** : Complété (commit d2ac4565)
-
-**Tâche** : Sprint 16 (Settings/Setup — mutations de configuration + création profil joueur) et Sprint 17 (Jobs longs persistants — JobStore + GET /jobs/{job_id} + POST /sync/initial).
-
-**Décisions techniques principales** :
-
-1. **AppSettings struct avec champs `raw`** — `platform/settings/store.go` charge le JSON brut dans `map[string]json.RawMessage` en plus du struct typé, puis re-merge à la sauvegarde. Garantit que les champs inconnus (ex. `doppler_enabled`) ne sont jamais effacés par un PATCH partiel.
-2. **`discord_webhook_url` masqué** — stocké dans `AppSettings.DiscordWebhookURL` (internal) mais jamais sérialisé dans `SettingsResponse` — seulement `DiscordWebhookURLPresent: bool`. Règle de sécurité identique au Python.
-3. **JobStore thread-safe + persistance JSON** — `platform/jobs/store.go` utilise `sync.RWMutex` + `data/cache/jobs.json`. À l'init, tous les jobs `running`/`queued` → `interrupted` (le process qui les exécutait est mort). TTL 1h pour les jobs terminaux. `newJobID()` basé sur `UnixNano` (simple et efficace).
-4. **Single-flight initial_sync** — `FindActiveInitialSync(playerSlug)` cherche un job non terminal par `JobType == "initial_sync"` et `PlayerSlug == slug`. Retourne 409 si actif.
-5. **`POST /setup/players` guards** — 403 `can_self_provision`, 409 `no_halo_identity`, 409 `identity_mismatch`. Compare `strings.ToLower()` pour la case-insensitive. Crée/merge dans `db_profiles.json` v2.1.
-6. **Handlers stubs Phase 4** — `PostMediaResetIndex` et `StartInitialSync` créent le job et lancent une goroutine stub. Le vrai moteur sera branché en Sprint 18/19. Commentaire `// TODO Sprint 19` explicite.
-7. **Bug pré-existant corrigé** — `citations_service.go` : `Items→Citations` et `TotalMedals→TotalCount` (champs domain inexistants, build cassé depuis Sprint 13).
-
-**Résultats observés** :
-- `go build ./...` : **0 erreur** (avec toolchain CGo ucrt64)
-- `go vet ./...` : **0 warning**
-- 11 fichiers modifiés, 1257 insertions, 86 suppressions
-
-**Prochaine étape** : Sprint 18 — Moteur sync minimal (12 mixins, ~13K LOC Python)
-
----
-
 ## [2026-05-29] feat(go-api): Sprint 14+15 — Session/cookies + Device Code Flow MSAL
 
 **Statut** : Complété
@@ -54371,47 +54277,6 @@ Phase 0 terminée. Ouvrir Sprint 4 (squelette HTTP Go + `oapi-codegen` + CI GitH
 5. **Table de mapping §5** : ligne factory ajoutée.
 
 **Fichiers modifiés** : GO_ARCHITECTURE_RULES.md (sections 2.3, 5, 6, 9), thought_log.md.
-
-## [2025-07-18] docs(go-migration): Architecture hexagonale formelle — GO_ARCHITECTURE_RULES.md
-
-**Statut** : Complété
-
-**Tâche** : Créer un document d'architecture logicielle contraignant pour le backend Go, suite à l'audit qui a révélé que l'architecture hexagonale n'était pas formalisée dans le corpus.
-
-**Décisions techniques principales** :
-
-1. **5 couches formalisées** : `domain/` (pur, 0 IO) → `port/` (interfaces) → `service/` (orchestration) → `api/` (transport) ← `platform/` (implémentations) ← `cmd/` (composition root).
-2. **Matrice d'imports** : direction des dépendances enforced par linter `depguard` en CI. Règle fondamentale : les dépendances pointent vers l'intérieur.
-3. **5 interfaces Go obligatoires** mappées depuis les 3 protocols Python : `PlayerRepository` (DataRepository), `SharedRepository` (nouveau), `HaloClient` (HaloAPIPort), `SyncEngine` (_SyncProtocol), `TokenStore` (éclaté MSAL+sync_meta). Plus 3 additionnelles : `MigrationRunner`, `JobStore`, `MediaIndexer`.
-4. **Constructor injection stricte** : zéro globales métier, mocks via constructeurs, `cmd/` seul point d'instanciation concrète.
-5. **Config `.golangci.yml`** prête avec rules `depguard` par couche (domain-purity, port-purity, service-no-platform, api-no-platform).
-6. **Layout Go révisé** : `cmd/levelup/` (binaire unique), `internal/{domain,port,service,api,platform}/`.
-7. **Exceptions documentées** : uniquement via `// ARCH-EXCEPTION: <raison>` — toute dérogation doit modifier le doc.
-
-**Résultats** :
-- [GO_ARCHITECTURE_RULES.md](.ai/go_migration_v2/GO_ARCHITECTURE_RULES.md) créé (~370 lignes, 10 sections)
-- Référencé dans PLAN (lecture obligatoire #7 + encart dans Règles de conception), CHARTER (encart dans Architecture cible minimale), README (table source de vérité + liste de lecture #2 + références exhaustives #7)
-
-**Conclusion** : Les 6 lacunes identifiées par l'audit sont désormais comblées. L'architecture hexagonale est contraignante, enforced en CI, et vérifiable par sprint.
-
-## [2025-07-18] docs(go-migration): Revue et correction exhaustive du corpus v2 (19 documents)
-
-**Statut** : Complété
-
-**Tâche** : Revue de l'intégralité du plan de migration Python→Go (19 documents dans `.ai/go_migration_v2/`), identification des erreurs factuelles, et correction masse.
-
-**Décisions techniques principales** :
-
-1. **LOC vérifiés vs codebase réelle** : les estimations initiales étaient sous-évaluées de 2-5×. Total corrigé : ~55K LOC Python (analysis=14K, sync=13K, api=12K vs plan initial ~25K).
-2. **12 mixins** (pas 11) : `MatchProcessingHelpersMixin` manquait. **96 champs SyncScope** (pas 94).
-3. **Bridge SPNKr supprimé** : décision utilisateur de passer directement au client Go natif dès S11, sans bridge Python transitoire.
-4. **Sprint 9 splitté** en S09 (Sessions) + S10 (Stats/Séries + perf score + LUSR). Réindexation S00-S28 (29 sprints).
-5. **Config native Go** : struct Go + JSON + env vars, pas de viper. Binary size : 100-200 MB (CGo+DuckDB statique).
-6. **9 items manquants ajoutés** : CI/CD (GH Actions build matrix CGo), config native Go, SSE sync progress, pagination cursor-based, CORS, hot reload (Air), binary size, pool multi-joueurs dégradation, versioning `-ldflags`.
-
-**Documents modifiés** : MATRIX.md, SPRINT_ROADMAP.md, GO_MIGRATION_CHECKLIST.md, ZERO_PYTHON_STRATEGY.md, PLAN_MIGRATION_PYTHON_TO_GO_V2.md, OPS_COMPAT_CHECKLIST.md, PROGRAM_CHARTER.md, PORTING_REFERENCE.md, ZERO_PYTHON_TARGET.md, HALO_PROVIDER_ERROR_TAXONOMY.md (10/19).
-
-**Conclusion** : Le corpus est maintenant cohérent avec la codebase réelle et les décisions utilisateur. Prêt pour Sprint 0.
 
 ## [2026-04-15] refactor(arch): P0+P1+P2 — remédiation architecture API (4/10 → 8+/10)
 
@@ -54730,33 +54595,6 @@ Phase 0 terminée. Ouvrir Sprint 4 (squelette HTTP Go + `oapi-codegen` + CI GitH
 **Conclusion / prochaine étape** :
 - Le prochain travail utile, si souhaité, est de faire la même vérification de couverture entre `go_migration_v2` et `ZERO_PYTHON_STRATEGY.md` pour voir s'il faut encore sortir 1 ou 2 invariants de cible finale dans le v2.
 
-## [2025-07-15] feat(polish): composants natifs react A2/A3/A5/B3/C3/C4/C5/D1/D2/E1
-
-**Statut** : Complété
-
-**Tâche** : Finaliser les composants UI/UX natifs listés dans `NATIVE_COMPONENTS.md` pour le dashboard React (LevelUp-no-streamlit).
-
-**Décisions techniques principales** :
-- A2/A3 : `CareerTopMatchesTable` réécrit avec colonnes K/D/A, badges DOM/HUMILIATION/etc., navigation clic, split `variant="best"|"worst"`, thème Halo dark.
-- A5 : `MatchScoreboard` créé — highlight min/max (vert=max, rouge=min, inversé pour `deaths`/`damage_taken`), badges MVP/LVP, tri par équipe.
-- E1 : `PlayerDetailPanel` — panneau collapsible par clic ligne (▸/▾) dans `MatchScoreboard`, affiche 14 stats + armes/médailles/citations si `is_me=true`.
-- C3/C4/C5 : `MatchStatCards` (`StatExpectedCard`, `MatchRankBadge`, `KdIndicatorCard`) — stats attendues vs réelles, badge de rang, ratio K/D vs nemesis.
-- B3 : `CitationsPage` — grille responsive CSS (`grid-cols-4 sm:grid-cols-6 lg:grid-cols-8`) remplace la `<table>`, triée par `count_filtered DESC`.
-- D1 : `TimeseriesPage` — 3 `DeltaCard` dans l'onglet Forme (pente K/D, pente Win Rate, R²) depuis `regression_stats` calculées dans le service backend.
-- D2 : `SessionComparePage` — 4 `DeltaCard` au-dessus du tableau de métriques (K/D, Win Rate, Kills/match, Score).
-- Composant transversal `delta-card.tsx` créé dans `components/ui/`.
-- Backend : ajout de `MatchExpectedStats` dans `match_view.py`, `TimeseriesRegressionStats` dans `timeseries.py`, population dans `timeseries_api_service.py`.
-- Import dupliqué `TimeseriesRegressionStats` nettoyé (retiré du niveau fonction → hissé dans l'import top-level).
-
-**Résultats observés** :
-- 12 fichiers TypeScript modifiés/créés — 0 erreur de compilation.
-- 3 schémas backend Pydantic mis à jour sans breaking change (champs optionnels avec defaults).
-- Task 10 (suppression fichiers Streamlit résiduels) reportée — nécessite validation manuelle.
-
-**Conclusion / prochaine étape** :
-- Task 10 (optionnelle) : supprimer `streamlit_app.py`, `streamlit_app_v7.py` à la racine de `LevelUp-no-streamlit` et les pages Streamlit pures dans `src/ui/pages/` (garder les modules `_data.py`, `_logic.py` importés par les services API).
-- Prochaine feature : implémenter A4, A6, B1, B2, D3, D4 (non prioritaires, post-MVP).
-
 ## [2026-04-14] docs(go-migration): création d'un corpus v2 avec document maître séparé
 
 **Statut** : Complété
@@ -54945,27 +54783,6 @@ Phase 0 terminée. Ouvrir Sprint 4 (squelette HTTP Go + `oapi-codegen` + CI GitH
 - `.ai/migration/SLICES.md` — statuts canonical ajoutés pour Phases B/C (slices 2, 3, 4)
 
 **Conclusion / prochaine étape** : Tous les backends MVP + Phases B/C sont canonical. La Slice 9 (Décommissionnement Streamlit) peut être déclenchée dès que les frontends React P2/P3 (Citations, Timeseries, Session Compare, Match View) sont livrés et validés.
-
-## [2025-07-14] feat(v7-onboarding): sprints 4.4 + 5.2 — audit logs et cleanup endpoints legacy
-
-**Statut** : Complété
-
-**Tâche** : Finalisation des sprints 4 (hardening) et 5 (cleanup) du plan V7 onboarding.
-
-**Décision technique principale** :
-- Sprint 4.1/4.2/4.3 découverts déjà implémentés (CSRF + rate limit + cookie security déjà en place)
-- Sprint 4.4 : ajout de `initial_sync_started` et `initial_sync_succeeded` dans `sync_service.py` (les logs device_flow_* étaient déjà présents)
-- Sprint 5.2 : suppression complète des endpoints legacy (`GET /setup/status`, `POST /setup/smoke-test`) + functions associées dans service/schema + tests legacy supprimés
-- Sprint 5.3 (déféré) : `_has_any_synced_matches()` supprimé naturellement lors du nettoyage de `get_setup_status()`. Le fallback dans `bootstrap_service.py` reste pour la migration.
-
-**Résultats** : 163/163 tests API passent (test_media.py exclu — échec pré-existant).
-
-**Fichiers modifiés** :
-- `apps/api/app/services/sync_service.py` — logs `initial_sync_started` + `initial_sync_succeeded`
-- `apps/api/app/services/setup_service.py` — supp. `get_setup_status`, `get_setup_status_demo`, `start_smoke_test`, `_run_smoke_test_bg` + helpers privés liés
-- `apps/api/app/routers/setup.py` — supp. `GET /setup/status` et `POST /setup/smoke-test`
-- `apps/api/app/schemas/setup.py` — supp. `SetupStatusResponse`, `SetupAuthInfo`, `SetupPlayerInfo`, `SmokeTestStartRequest`
-- `tests/api/test_setup.py` — supp. tests legacy setup/status + smoke-test
 
 ## [2026-04-13] feat(v7-onboarding): implémentation complète plan V7 onboarding — tous sprints
 
@@ -55472,40 +55289,6 @@ Phase 0 terminée. Ouvrir Sprint 4 (squelette HTTP Go + `oapi-codegen` + CI GitH
 - Slice 0b : implémenter `POST /api/v1/players/{player_slug}/filters/resolve` + `useGlobalFilterStore`
 
 ---
-
-## [2025-07-26] docs(migration): alignement complet des docs migration sur les sections V7
-
-**Statut** : Complété  
-**Branche** : `feature/remove-streamlit-ui`
-
-**Décision technique** :
-- Audit croisé de 6 docs migration (SLICES, PARITY_MATRIX, API_CONTRACTS, INVARIANTS, DECISIONS, FUNCTIONAL_SPECS) — 13 incohérences identifiées (4 🔴 structurelles, 6 🟡 manquantes, 3 🟠 à clarifier).
-- Réalignement systématique de tous les docs sur les 8 sections V7 réelles au lieu de l'ancien découpage par pages Streamlit.
-
-**Résultats** :
-- **SLICES.md** : Slices 2-8 restructurés par section V7 avec phases (A/B/C), table de correspondance Slices↔V7, query keys complètes, DoD V7
-- **PARITY_MATRIX.md** : matrice synthétique V7, fiches regroupées sous headers V7 (Profil, Stats, Explorer, Accueil, Escouade, Synthèse, Médias), duplicatas supprimés (Citations/Timeseries/Session Compare standalone), Objective Analysis marqué absorbé, tests de parité par section V7
-- **API_CONTRACTS.md** : sections renommées V7, Slice 5 fusionné dans Slice 4 (Explorer Phase B/C), 7 contrats placeholder ajoutés (Citations, Timeseries, Session Compare, Accueil+BattlePass+Challenges, Escouade, Synthèse, Médias), note `v_weapon_kills`, décision KPI Bar, `objective-analysis` query key supprimée, `battlepass`/`challenges` query keys ajoutées
-- **INVARIANTS.md** : routes canoniques V7 (`/profile/career`, `/stats/history`, `/squad`, `/synthesis`, `/media`)
-- **DECISIONS.md** : arbre routes V7 + features V7 dans §4 Structure repo
-- **MIGRATION_MASTER.md** : listes de lecture réalignées, scope MVP corrigé (Accueil P2 pas P1), refs post-MVP enrichies
-
-**Issues audit résolues** : 13/13
-- 🔴 #1 SLICES old pages → ✅ V7 sections
-- 🔴 #2 PARITY_MATRIX old structure → ✅ V7 sections
-- 🔴 #3 API_CONTRACTS old slices → ✅ V7 sections
-- 🔴 #4 DoD divergence → ✅ unifié V7
-- 🟡 #5 Post-MVP no contracts → ✅ 7 placeholders
-- 🟡 #6 L2 Header contract → ✅ KPI Bar décision dans API_CONTRACTS
-- 🟡 #7 weapon_kills dep → ✅ note v_weapon_kills
-- 🟡 #8 Battle Pass/Challenges → ✅ endpoints + query keys
-- 🟡 #9 KPI Bar → ✅ décision provisoire (FilterContextResolved)
-- 🟡 #10 Likes localStorage → ✅ documenté dans Slice 8
-- 🟠 #11 Objective Analysis → ✅ absorbé (Escouade radar + Synthèse)
-- 🟠 #12 Explorer includes Match View → ✅ phases A/B/C
-- 🟠 #13 Routes V7 → ✅ toutes les routes mises à jour
-
-**Prochaine étape** : constituer le corpus `tests/fixtures/ref_player/` + `tests/parity/`, puis scaffolder `apps/api/` et `apps/web/`
 
 ## [2026-04-12] docs(migration): fermer les zones grises avant Slice 0 et Slice 1
 
@@ -66576,766 +66359,6 @@ Import inutilisé `WeaponKillsMixin` retiré. Tests batch guard ajoutés.
 
 ---
 
-## [2026-03-11] Fix Step 4b — Reclassification melee/grenade manquants dans `_reconcile_api_aggregates`
-
-**Statut** : Complété
-
-**Contexte** : Sur le dernier match de Chocoboflor (`20fd2c23`), les 2 corps à corps et 1 grenade (confirmés par `match_participants.melee_kills=2` / `grenade_kills=1`) étaient attribués au Sidekick et MA40 par le pipeline weapon. Cause : les médailles contextuelles (Pummel, Back Smack, Stick…) absentes de `highlight_events` → `is_melee=False` / `is_grenade=False` sur tous les kills → tous passaient dans la branche Formula A snapshot.
-
-**Décision technique** : Ajout d'un **Step 4b** dans `_reconcile_api_aggregates` (avant Step 4a), qui compare les sentinelles déjà détectées avec les agrégats API et reclassifie les kills weapon les moins certains (priorité : `low` → `none` → `medium` → `high+swap` → `high`, à égalité : delta_ms desc) en `MELEE_WEAPON_ID` / `GRENADE_WEAPON_ID` avec `confidence='high'`.
-
-**Résultats observés** :
-- Avant : `{'Sidekick': 7, 'MA40 AR': 5}` — 0 melee, 0 grenade
-- Après : `{'Corps à corps': 2, 'Sidekick': 5, 'MA40 AR': 4, 'Grenade': 1}` — conforme à l'API ✓
-- Backfill Chocoboflor : 288 matchs, 6200 lignes, 0 erreurs
-
-**Fichier modifié** : `src/data/services/weapon_extraction_service.py` — `_reconcile_api_aggregates()`
-
-**Conclusion** : Fix minimal, sans régression sur les matchs où melee/grenade sont détectés via médailles (dans ce cas `detected == api`, le step 4b ne fait rien). Backfill global `--all --weapons --force-weapons` lancé en parallèle pour les 3 autres joueurs.
-
----
-
-## [2026-03-12] Analyse faisabilité — Détection de langue système dans `LevelUp.sh` / `LevelUp.bat`
-
-**Statut** : Complété ✅
-
-**Demande** : Déterminer si la détection de la langue système est possible dans les scripts lanceurs, et documenter la feature dans le backlog.
-
-**Décision technique** :
-- **`LevelUp.sh`** : Détection via variables POSIX `$LC_ALL` > `$LC_MESSAGES` > `$LANG` (ex. `fr_FR.UTF-8`). Extraction des 2 premières lettres via `cut -c1-2`. Compatible POSIX strict (dash/bash/zsh, macOS/Linux/WSL2). Aucune commande externe requise.
-- **`LevelUp.bat`** : Détection via `REG QUERY "HKCU\Control Panel\International" /v LocaleName` (retourne `fr-FR`, `en-US`…). Disponible sur Windows Vista+, aucune dépendance externe. Alternative PowerShell documentée.
-- **Pattern d'implémentation** : Variables nommées `msg_<key>_fr` / `msg_<key>_en` avec macro de résolution — compatible POSIX sh strict et CMD sans tableaux associatifs.
-
-**Résultat** : Section ajoutée dans `.ai/BACKLOG.md` avec inventaire complet des ~35 (sh) + ~30 (bat) chaînes à traduire, exemples de code de détection, plan en 6 étapes, complexité M.
-
-**Conclusion** : Feature entièrement faisable, documentée et prête à implémenter. Aucun fichier de code modifié (tâche de backlog uniquement).
-## [2026-03-12] Azure Auto-Registration — Suppression du client_secret et Device Code Flow
-
-**Statut** : Complété
-
-**Contexte** :
-L'utilisateur souhaitait que `LevelUp.bat` / `LevelUp.sh` dispensent l'utilisateur de visiter
-portal.azure.com pour configurer l'application Azure. Le wizard CLI (`_wizard_azure_creds()`)
-demandait encore `client_id` + `client_secret` (ancien flux Authorization Code), alors que le
-wizard web (`setup_wizard.py`) utilisait déjà le Device Code Flow (client_id uniquement).
-
-**Décisions techniques** :
-1. **Ajout de `_try_azure_auto_register()`** dans `launcher.py` : si `az` CLI est disponible,
-   crée automatiquement l'application Azure « LevelUp Halo » (public client, Device Code Flow)
-   sans visiter portal.azure.com. Vérifie si une app existe déjà avant de la créer.
-2. **Refonte de `_wizard_azure_creds()`** : tente d'abord `_try_azure_auto_register()`, sinon
-   saisie manuelle du `client_id` uniquement (plus de `client_secret`). Ouvre portal.azure.com
-   dans le navigateur et affiche le conseil d'installer `az` CLI.
-3. **Refonte de `_wizard_oauth_token()`** : remplace le flux Authorization Code + client_secret
-   par MSAL Device Code Flow (import depuis `src.utils.msal_device_flow`). Pas de redirect URI.
-4. **Mise à jour de `_onboard_first_player()`** : ne vérifie plus `SPNKR_AZURE_CLIENT_SECRET`.
-5. **Mise à jour de `_cmd_add_player()`** : idem, seul `SPNKR_AZURE_CLIENT_ID` requis.
-6. **Mise à jour de `_env_check_for_player()`** : suppression de la clé `client_secret`.
-7. **Mise à jour de `_print_token_setup_instructions()`** : instructions Device Code Flow.
-
-**Résultats** : 649 tests passent (2 échecs pre-existants liés à l'environnement CI :
-`check_code_size.py` absent + `ruff` non installé).
-
-**Conclusion** : Avec `az` CLI installé, zéro visite du portail Azure requise.
-Sans `az`, seul le `client_id` est demandé (plus simple qu'avant).
-
----
-
-## [2026-03-12] Azure CLI — Proposition d'installation automatique
-
-**Statut** : Complété
-
-**Contexte** :
-Après avoir implémenté `_try_azure_auto_register()`, l'utilisateur demande explicitement
-que LevelUp propose d'*installer* Azure CLI si celui-ci n'est pas trouvé sur le système.
-
-**Décisions techniques** :
-- `_offer_install_azure_cli()` : si `az` introuvable + terminal interactif → affiche le contexte
-  et demande confirmation [O/n]
-- `_run_az_install(platform)` : délégation par plateforme :
-  - Windows (`win32`) : `winget install --id Microsoft.AzureCLI -e` (si winget disponible)
-  - macOS (`darwin`) : `brew install azure-cli` (si brew disponible)
-  - Linux : `curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash`
-  - Fallback universel : lien `https://aka.ms/installazurecli`
-- `_try_azure_auto_register()` : appelle `_offer_install_azure_cli()` si `az` absent, puis
-  re-vérifie avec `shutil.which("az")` après installation (avertit de redémarrer le terminal
-  si az reste introuvable — cas winget sur Windows).
-
-**Résultats** : 4250 tests passent (24 échecs pre-existants, aucune régression).
-
-### [2026-03-13] — Réduction baseline taille code : 135 → 110 violations
-
-- **Statut** : Complété
-- **Tâche** : Réduire les violations de taille (fonctions > 80L, modules > 500L) de 135 à ≤ 110.
-
-**Décision technique** : Extraire des helpers/sous-fonctions (extract method) pour chaque fonction dépassant 80 lignes, en commençant par les plus petites violations (81-87L).
-
-**Actions (24 fonctions refactorisées dans 23 fichiers) :**
-
-Batch 1 (81-82L) — 10 fonctions :
-- `compute_session_performance_score_v2` → `_build_v2_result()` (keyword-only args)
-- `_get_shared_connection` → `_run_shared_migrations()` (static method)
-- `load_matches` → `_row_to_match_row()` (module-level)
-- `build_thumbnail_html` → `_build_thumbnail_container_html()` (f-string, pas `.format()`)
-- `plot_top_players_objective_bars` → `_extract_ranking_data()` + `_get_ranking_attr()`
-- `render_comparison_radar_chart` → `_add_radar_trace()` (dash optionnel)
-- `_render_backfill_section` → constante `_ALL_BACKFILL_FLAGS`
-- `_sync_async` → `_finalize_sync_result()`
-- `plot_damage_dealt_taken` → `_add_damage_traces()` (paramétrisé)
-- `plot_assist_breakdown_pie` → `_extract_assist_values()`
-
-Batch 2 (83-87L) — 7 fonctions :
-- `create_career_progress_gauge` + `create_hero_progress_gauge` → DRY (`_progress_bar_color()`, `_build_progress_gauge()`)
-- `_extract_mmr_from_skill` → 3 helpers (`_find_player_result`, `_extract_enemy_mmr_from_team_mmrs`, `_extract_enemy_mmr_from_teammates`)
-- `_upsert_csr_rating` → `_build_csr_tier_label()` + constant `_CSR_UPSERT_SQL` + `_ROMAN`
-- `_build_friend_df_from_match_ids_v4` → `_translate_playlist_pair_columns()` + `_convert_start_time_timezone()`
-- `create_teammate_synergy_radar` → `_add_synergy_trace()`
-- `create_stats_per_minute_radar` → `_add_permin_radar_trace()`
-- `_render_media_legacy` → `_scan_media_in_window()` + `_render_legacy_video_selector()`
-
-Batch 3 (81-85L) — 7 fonctions :
-- `_build_settings_from_ui` → `_get_preserved_settings()` (dict de champs non-UI)
-- `plot_cumulative_net_score` → `_add_cumulative_score_traces()`
-- `plot_performance_timeseries` → `_ensure_performance_column()`
-- `plot_kd_timeseries` → `_add_kd_cumulative_trace()`
-- `add_outcome_traces` → `_add_sparse_bar_trace()` (DRY : ties/left)
-- `render_participation_section` → `_load_participation_awards()`
-- `render_participation_comparison` → `_build_comparison_profiles()`
-
-**Corrections additionnelles :**
-- Bug `_run_shared_migrations` : `return self._shared_connection` stale dans `@staticmethod` → supprimé
-- PLR0913 : ajout `# noqa` sur helpers extraits (>5 args inévitables)
-- F401/F821 : nettoyage imports inutilisés post-extraction
-
-**Résultats** :
-- Baseline : 135 → 110 (objectif atteint)
-- 104 fonctions > 80L + 6 modules > 500L
-- Ruff : All checks passed
-- Tests : 4485 passed, 0 regressions (6 échecs pré-existants : verrou fichier shared_matches + test sync)
-
----
-
-### [2026-03-15] — Backfill weapons --force : correction bugs post-run
-
-- **Statut** : Complété
-- **Tâche** : Analyser le résultat du backfill `--all --force-weapons` (32 369 lignes sur 4 joueurs/1984 matchs), identifier les avertissements `unresolved_player` et corriger les bugs
-
-**Contexte** :
-- Run 1 (~2h45) → 0 lignes insérées : migration `add_weapon_kills_reconciled_as` absente de `_apply_schema_migrations()`. Corrigée manuellement (ensure + insert schema_migrations).
-- Run 2 (~11 min partiel) → 32 369 lignes. Warnings `unresolved_player` sur chaque match.
-
-**Décision technique principale** :
-
-**Bug 1 — `_apply_schema_migrations()` manquait `ensure_weapon_kills_reconciled_as`** :
-- Fichier : `scripts/backfill/orchestrator.py`
-- Fix : ajout de l'import + appel `ensure_weapon_kills_reconciled_as(shared_conn)` dans la fonction
-
-**Bug 2 — `unresolved_player` sur le joueur POV** :
-- Root cause identifiée via inv130 : dans le PLAYER_METADATA packet, chaque joueur non-POV a son XUID 2 fois (une avec pi réel 1-7, une avec pi=0). Le joueur POV n'a **que** des occurrences pi=0.
-- `detect_pi_from_metadata()` saute explicitement pi=0 → le joueur POV n'est jamais retourné.
-- `_resolve_player_indices()` retourne immédiatement si metadata non vide (7/8 joueurs) → le POV est perdu.
-- Le docstring `"le POV est toujours pi=1 dans l'espace Section 2"` était **incorrect** : la cross-validation METADATA vs acurtis (inv130) montre que le POV a pi=0 dans les fire events aussi.
-- Fix : après la résolution METADATA, faire un acurtis ciblé sur les XUIDs manquants → le POV est résolu avec pi=0 via `detect_player_indices(first_chunk_data, missing)`.
-- Fichier : `src/data/services/weapon_extraction_service.py` (`_resolve_player_indices`)
-- Docstring corrigée dans `src/analysis/packet_index.py`
-
-**Résultats observés** :
-- 0 erreurs de lint/type sur les 3 fichiers modifiés
-- Fix proactif : tout futur backfill trouvera les colonnes correctes sans erreur silencieuse
-
-**Conclusion** :
-- Le prochain `--force-weapons` sur de vrais données devrait éliminer les `unresolved_player` et inscrire un `player_index=0` pour le joueur POV, activant ainsi la corrélation fire event + Formula A pour ses kills.
-
----
-
-### [2026-03-14] — Cache manifest film (bug 3 : appel API redondant)
-
-- **Statut** : Complété
-- **Tâche** : Éviter un appel `get_film_by_match_id` (API Halo) par match sur les re-runs du backfill weapons.
-
-**Root cause** : Sans cache du manifest film, chaque re-run télécharge le manifest depuis l'API même pour des matchs déjà traités. Le manifest (~2KB JSON) contient uniquement le `blob_prefix` et la liste des chunks (index, timestamps, `file_relative_path`), données stables et réutilisables.
-
-**Décision technique** :
-- Nouveau module `src/data/services/_film_manifest_cache.py` : `write_manifest_cache()`, `load_manifest_cache()`, `compute_needed_chunks()`.
-- Le manifest est sérialisé en JSON dans `data/investigation/chunks/{match_id[:8]}/manifest.json` (~2KB/match).
-- `_download_needed_chunks` tente d'abord `load_manifest_cache` avant tout appel API. Si miss → appel API + sauvegarde.
-- `_compute_needed_chunks` déplacé dans `_film_manifest_cache.py` (même sémantique : analyse métadonnées chunks).
-- `_download_chunk_with_sem` + `_download_chunk` fusionnés pour rester sous 500L.
-
-**Résultats** :
-- `weapon_extraction_service.py` : 505L → 495L (sous la limite)
-- `_film_manifest_cache.py` : nouveau module 73L
-- 1984 manifests seront créés au premier run → les re-runs n'auront plus aucun appel API manifest
-
----
-
-### [2026-03-15] — Wave 4 + 5 PLAN_ABSTRACTION_RESOLUTION v6 (Commits 8-10)
-
-- **Statut** : Complété (Wave 4 + audit Wave 5 partiel)
-- **Branche** : `refactor/id-resolution-cleanup`
-
-**Commit 8 — `feat(migration): supprimer highlight_events.gamertag + nettoyer resolver`** (0a5c69c)
-- Supprimé `_resolve_from_highlight_events()` et `_extract_ascii_token()` de `_gamertag_resolver.py`
-- `_events_repo.py` : `COALESCE(vg.gamertag, he.gamertag)` → `vg.gamertag` (branche view) ; `NULL AS gamertag` (branche fallback)
-- `teammates_impact.py` : même simplification COALESCE
-- `_encounter_loader.py` : CTE `he_gamertags` entièrement supprimée + `LEFT JOIN` orphelin + paramètre target_xuids orphelin corrigé
-- `_weapon_kills_repo.py` : ajout `_has_gamertag_column()` helper défensif (compatible tests unitaires qui créent la table avec gamertag)
-- `migrations.py` : `_recreate_highlight_events_with_sequence()` — schéma sans gamertag + INSERT colonne-explicite
-- Nouveau step `drop_highlight_events_gamertag.py` : recréation complète (DuckDB ne supporte pas ALTER TABLE DROP COLUMN sur table indexée)
-- Baseline size-ratchet mis à jour (102 violations)
-- 4647 tests passants (+59 vs Commit 7)
-
-**Commit 9 — `feat(analysis): helper resolve_medal_name depuis metadata.duckdb`** (ffdd959)
-- Nouveau module `src/analysis/_medal_data.py` : `resolve_medal_name(medal_name_id, lang="fr")` — Sources : metadata.duckdb si table medals existe, sinon JSON statiques `static/medals/medals_{lang}.json`, fallback `str(id)`
-- 7 tests dans `tests/test_medal_data.py`
-- 4654 tests passants
-
-**Audit Commit 10 — résultats**
-- `grep highlight_events.*gamertag` → 0 hit non légitime (helper migration + docstrings seulement)
-- `grep match_registry.*map_name/playlist_name` → 0 hit
-- `grep killer_victim_pairs.*killer/victim_gamertag` → 0 hit
-- Vues v2 : `v_gamertag_lookup`, `v_match_full`, `v_killer_victim_full` ✅ présentes
-- `highlight_events.gamertag` : supprimée de `shared_matches_v2.duckdb` via migration recréation (239 429 lignes préservées)
-- 4654 tests passants, 0 échec
-
-**Note bascule v2 → prod** : La bascule `shared_matches.duckdb ↔ shared_matches_v2.duckdb` est une opération manuelle à exécuter avec l'app arrêtée. Condition préalable : vérifier `shared_matches.duckdb` (prod actuelle) reçoit aussi la migration `drop_highlight_events_gamertag` au premier prochain démarrage.
-
-**Décision technique principale** : `ALTER TABLE DROP COLUMN` non supporté par DuckDB 1.4 quand des index existent → recréation de table requise (même pattern que `_recreate_highlight_events_with_sequence`).
-
-**Conclusion** : Wave 4 complète. Wave 5 (Commit 11 + 11b — nettoyage traduction assets obsolètes) nécessite analyse préalable des dépendances résiduelles avant suppression. Commits 0-10 sur branche `refactor/id-resolution-cleanup`.
-
----
-
-### [2026-03-15] — Wave 5 complète : Commits 11 + 11b — Nettoyage couche i18n
-
-**Statut** : Complété ✅
-
-**Commits** :
-- `57a755c` — refactor(i18n): supprimer dicts/JSON playlists obsolètes
-- `b4ff066` — refactor(i18n): migrer modes_fr/en.json vers metadata.duckdb
-
-**Décision technique principale (Commit 11)** :
-`PLAYLIST_FR`, `PLAYLIST_EN`, `PAIR_FR` supprimés de `translations.py`. `translate_playlist_name()` réécrite en passthrough + UUID warning. Source de vérité : `metadata.duckdb` via `v_match_full.playlist_name_fr`. `match_history.py` et `explorer_enrich.py` migrés vers aliasing passthrough. Migration framework étendu (`target_db="metadata"` + `metadata_db_path` dans `apply_pending_migrations`). `drop_legacy_translation_tables` créé pour supprimer `mode_translations` + `playlist_translations` legacy.
-
-**Décision technique principale (Commit 11b)** :
-`modes_fr/en.json` migrés vers 4 tables DuckDB (`mode_prefix_names`, `mode_name_tr`, `mode_pair_overrides`, `mode_lang_settings`). `translate_pair_name()` réécrite : 35L sans `noqa: C901`, 3 étapes (override → combinatoire → mode seul), cache LRU process-level via `_load_mode_tables(lang)`. Fallback gracieux pour langues inconnues et DB absente. 9 tests dédiés dans `tests/test_translate_pair_name.py`.
-
-**Résultats observés** :
-- Tests avant : 4607 / après Commit 11 : 4607 / après Commit 11b : 4621 (+14 nouveaux tests)
-- Zéro régression sur les 2 commits
-- `mode_pair_overrides` : 15 lignes (vs 22 estimé dans le plan — normal : doublons de maps normalisés + EN moins de paires que FR)
-- Hooks pre-commit : 2 tentatives par commit (ruff-format reformate, 2ème commit propre)
-
-**Conclusion** : Plan v6 PLAN_ABSTRACTION_RESOLUTION.md entièrement complété. Branche `refactor/id-resolution-cleanup` prête pour merge. 12 commits (0-11b) couvrant fondation SQL, migration consommateurs, nettoyage, migrations schéma et couche i18n complète.
-
----
-
-### [2026-03-15] — Audit final + couverture de tests
-
-**Statut** : Complété ✅
-
-**Commit** : `2878eaa` — test(audit): couverture mode dégradé + migration drop_legacy_translation_tables
-
-**Décision technique** :
-Audit post-Wave 5 : vérification complète DB, ruff, size baseline, e2e migrations. 3 lacunes de couverture identifiées et corrigées :
-1. `translate_pair_name` sans DB (mode dégradé) — monkeypatch sur `src.utils.paths.get_metadata_db_path` (import local à la fonction)
-2. `_load_mode_tables` retourne un dict stable quand DB absente
-3. `TestDropLegacyTranslationTables` : 5 tests e2e migration (`drop_legacy_translation_tables`)
-
-**Bug corrigé** : Target du monkeypatch `"src.ui.translations.get_metadata_db_path"` échoue (import local) → corrigé en `"src.utils.paths.get_metadata_db_path"`.
-
-**Résultats observés** :
-- 4682 tests passants (4621 + 61 nouveaux suite à l'audit complet)
-- Branche `refactor/id-resolution-cleanup` : 13 commits au total
-- `metadata.duckdb` : 8 tables confirmées ; `mode_translations` + `playlist_translations` legacy supprimées par migration au prochain lancement
-
-**Conclusion** : Audit terminé. Couverture tests complète sur les nouvelles fonctionnalités i18n v6. Branche prête pour merge.
-
----
-
-### [2026-03-15] — Phase 2 abstraction DB : CareerMixin + explorer_data migration
-
-**Statut** : Complété ✅
-
-**Décision technique principale** :
-Migration systématique des appels `duckdb_read_only` directs dans la couche UI vers `DuckDBRepository`. Phase 2 couvre `career_data.py`, `career_lusr.py` et `explorer_data.py`.
-
-**Changements effectués** :
-- `src/data/repositories/_career_repo.py` (NOUVEAU) : `CareerMixin` — 6 méthodes : `load_career_data`, `load_career_history`, `load_pre_sync_match_dates`, `load_lusr_snapshot`, `load_lusr_history`, `load_is_with_friends_batch`
-- `src/data/repositories/_gamertag_resolver.py` : ajout `get_all_gamertags()` → lit `shared.v_gamertag_lookup`
-- `src/data/repositories/_roster_loader.py` : ajout `load_common_matches_df(target_xuid)` → JOIN `match_participants + match_registry`
-- `src/data/repositories/duckdb_repo.py` : `CareerMixin` inséré dans le MRO
-- `src/ui/pages/career_data.py` : 5/6 fonctions migrées (`_load_post_sync_match_count` = dead code conservé)
-- `src/ui/pages/career_lusr.py` : `xuid` threadé dans `_render_lusr_rating_chart`
-- `src/ui/pages/explorer_data.py` : entièrement réécrit — 4 fonctions déléguent au repo, suppression de `duckdb_read_only` et `_shared_db_path`
-- `src/ui/pages/explorer.py` : `xuid` threadé dans `_render_match_filters`, `_render_player_search`, `_cached_all_gamertags`
-- `tests/test_explorer_logic.py` : signatures mises à jour, `test_shared_db_path_derivation` supprimé
-- `scripts/size_baseline.txt` : `_roster_loader.py` mis à jour (545L → 592L)
-
-**Résultats observés** :
-- 4800 / 4800 tests passants (zéro régression)
-- `explorer_data.py` : ~150L → 80L (suppression code dupliqué)
-
-**Conclusion** : Phase 2 complète. Prochaine étape Phase 3 : `main_helpers.py`, `career_top_matches_data.py`, `career_encounters_data.py`, `aliases.py`, `match_view_encounters.py`, `session_compare_logic.py`, `media_library_data.py`.
-
----
-
-### [2026-03-17] — Nettoyage DB weapon_kills + backfill NS timeline
-**Statut** : Complété ✅
-
-**Décision technique principale** :
-Nettoyage chirurgical des anomalies dans `shared_matches_v2.duckdb::weapon_kills`
-suite au fix NS timeline (`b2fc825`). Trois catégories d'anomalies identifiées et corrigées.
-
-**Anomalies corrigées** :
-1. **Cat1a** (1 219 lignes) : `weapon_id=0 confidence='none'` → mis à `NULL` (puis backfill les a rétablis comme grenades correctes)
-2. **Cat1b** (375 lignes) : `weapon_id=0 confidence='high'` → DELETE + reset bits → backfill re-extrait
-3. **Cat2** (1 300 lignes) : sentinels melee `weapon_id=1` avec `confidence='high'` + `delayed_damage=TRUE` → normalisés (`confidence='none'`, `delta_ms=NULL`, `delayed_damage=FALSE`, `swap_detected=FALSE`)
-4. **Cat3** (22 594 lignes / 624 matchs) : raw FA handles en `weapon_id` → DELETE + bits `WEAPON_KILLS` + `WEAPON_KILLS_NO_FILM` resetés → backfill complet
-
-**Note importante** : `GRENADE_WEAPON_ID = 0` est un sentinel **légitime** (pas une anomalie). L'anomalie initiale était `weapon_id=0 AND confidence='high'`, pas tous les weapon_id=0.
-
-**Résultats observés** :
-- `fire_event` : 8 211 → **60 669** kills attribués (+52 458, ×7.4x)
-- `path='none'` (non résolu) : 56 985 → **2 826** (−95 %)
-- 1 457/1 457 matchs avec bits WEAPON_KILLS settés
-- Zero anomalie sentinel restante
-
-**Scripts créés** :
-- `scripts/_fix_weapon_kills_sentinel.py` — nettoyage idempotent (à supprimer après usage)
-- `scripts/_verify_weapon_kills.py` — vérification de l'état DB
-
-**Conclusion** : Le fix NS timeline est validé en production. Les weapons data sont propres.
-Prochaine étape : supprimer les scripts temporaires `_fix_*` et `_verify_*`, puis commit.
-
----
-
-### [2026-03-17] — Scoreboard detail : assets d'armes + description médailles + images commendations HI
-**Statut** : Complété ✅
-
-**Décision technique principale** :
-Enrichissement visuel du panneau scoreboard inline avec assets graphiques (armes et commendations)
-et tooltip description sur les médailles.
-
-**Changements** :
-- `WeaponDetailItem` (dataclass) remplace les tuples `(str, int)` dans `ScoreboardPlayerExtraData.weapons`
-- `_render_weapons_section()` — section armes avec images PNG (`/app/static/weapons-assets/`) via `_weapon_asset_url()`
-- `_normalize_weapon_asset_key()` + `_build_weapon_asset_url_index()` — index normalisé (NFKD ASCII) pour correspondre noms d'armes → fichiers
-- `resolve_medal_description()` dans `_medal_data.py` — résolution description depuis `metadata.duckdb` (colonnes candidates : `description_fr/en`, `desc_fr/en`, `blurb_fr/en`)
-- `MedalDetailItem.description` — tooltip sur les icônes médailles
-- Assets statiques : 27 PNG armes (`static/weapons-assets/`), 26 PNG commendations HI + 1 H5G
-- `static/styles.css` : nouveaux sélecteurs `.os-sb-detail-item--weapon`, `.os-sb-detail-weapon-asset`, `.os-sb-detail-weapon-fallback`
-- `src/ui/sync.py` : `SyncLock(timeout=0, lock_file=...)` avec chemin explicite `data/.sync.lock`
-- Logs DEBUG ajoutés dans `weapon_parser._fallback_formula_a()` et `_global_correlation._attribution_from_event()` pour tracer NS → weapon_id résolu
-
-**Conclusion** : Le scoreboard inline affiche désormais les assets visuels des armes avec fallback texte, et les médailles ont un tooltip avec leur description.
-Prochaine étape : commit + push.
-
----
-
-### [2026-03-18] — Session escouade du 18/03 classée "solo" en UI
-**Statut** : Complété ✅
-
-**Décision technique principale** :
-Utiliser `player_match_enrichment.is_with_friends` comme source de vérité pour la classification Solo/Escouade, au lieu de dépendre uniquement de `teammates_signature` + sélection d'amis UI.
-
-**Résultats observés** :
-- Audit DB sur les matchs concernés : pas d'anomalie (`is_with_friends=TRUE` sur les matchs trio).
-- Le mauvais classement venait de la couche UI qui pouvait marquer une session en solo selon le contexte de sélection d'amis.
-
-**Changements code** :
-- `src/app/_filters_session.py` : `_classify_sessions_solo_squad()` priorise `is_with_friends` si présent.
-- `src/ui/_cache_sessions.py` : `cached_compute_sessions_db()` charge et propage `is_with_friends` (SQL, schémas vides, retour Cas A/B, chemin d'erreur).
-
-**Conclusion** :
-La session du 18/03 est désormais classée escouade selon le flag BDD persistant, même si la sélection d'amis UI change.
-
----
-
-### [2025-07-18] — Axe 7 : batch_commit_size adaptatif (Phase 1 perf/sync)
-**Statut** : Complété ✅
-
-**Décision technique principale** :
-Remplacer la valeur fixe `batch_commit_size=25` par un mode auto (`-1`) qui résout la taille optimale selon `max_matches`. Logique encapsulée dans `SyncOptions.with_resolved_batch_size()` pour garder `engine.py` sous la limite 500L.
-
-**Résultats observés** :
-- 74 tests ciblés verts (tests/perf + test_sync_engine + test_sync_sprint6)
-- engine.py : 510L → 498L  
-- _sync_internal : 85L → 75L (limites respectées sans `# noqa`)
-- Commit : `149fa3f` sur branche `perf/batch-commit-auto`
-
-**Changements code** :
-- `src/data/sync/models_sync.py` : import `replace` + `logging`, + `with_resolved_batch_size()`, + `compute_optimal_batch_size()`
-- `src/data/sync/engine.py` : supprimé `dc_replace`, bloc 11L → `options.with_resolved_batch_size()` (1L)
-- `tests/perf/test_batch_commit_adaptive.py` : 11 tests (nouveau fichier)
-- `tests/test_sync_engine.py` + `test_sync_sprint6_optimizations.py` : 4 assertions stale corrigées
-
-**Conclusion** :
-Axe 7 implémenté et validé. Prochaine étape : Axe 6 — LUSR UPSERT vectorisé (`_skill_rating.py`).
-
----
-
-### [2025-07-18] — Axe 6 : LUSR UPSERT vectorisé (Phase 1 perf/sync)
-**Statut** : Complété ✅
-
-**Décision technique principale** :
-Remplacer les N `conn.execute()` individuels dans `_upsert_lusr_ratings` par une
-liste `rows_to_insert` + un unique `conn.executemany(_LUSR_UPSERT_SQL, rows_to_insert)`.
-Guard-rail ±100 pts séquentiel préservé (dicté par `prev_rating[pg]`) — seul le flush est vectorisé.
-
-**Résultats observés** :
-- 11 + 85 = 96 tests verts (tests/perf/test_lusr_batch_upsert + tests existants skill_rating)
-- Commit : `b0771f1` sur branche `perf/lusr-vectorized`
-
-**Changements code** :
-- `src/data/sync/_skill_rating.py` : `_upsert_lusr_ratings` collecte `rows_to_insert` puis flush via `executemany`
-- `tests/perf/test_lusr_batch_upsert.py` : 11 tests (nouveau fichier)
-
-**Conclusion** :
-Axe 6 validé. Branche mergée dans `perf/shared-handle-fix`.
-
----
-
-### [2025-07-18] — Axe 2 : shared_matches R/O direct sans ATTACH (Phase 1 perf/sync)
-**Statut** : Complété ✅
-
-**Décision technique principale** :
-Option A — remplacer `ensure_shared_attached(player_conn, ...)` par `duckdb.connect(shared_path, read_only=True)` (connexion directe R/O). DuckDB supporte DIRECT+DIRECT (MVCC) mais pas ATTACH+DIRECT sur le même fichier.
-
-Découverte clé : DuckDB partage le catalogue entre TOUTES les connexions au même fichier. Un ATTACH sur `cit_conn` est visible depuis `player_conn`. Solution : `try/finally` qui DETACH avant fermeture, même en cas de retour anticipé.
-
-**Résultats observés** :
-- 42 tests verts (tests/perf × 3 + test_sessions_integration)
-- Commit : `a5e5ed1` sur branche `perf/shared-handle-fix`
-- `sessions_backfill.py` : 488L (sous 500L), `backfill_sessions_for_player` : 79L (sous 80L)
-
-**Changements code** :
-- `src/data/citations_backfill.py` : `_process_citations_batch` avec `try/finally DETACH`
-- `src/data/sessions_backfill.py` : `_fetch_shared_context_ro` + `_dry_run_count` helper
-- `src/data/sessions_backfill_shared.py` : `_load_matches_split` (2 connexions directes + Polars join)
-- `tests/perf/test_shared_handle_fix.py` : 9 tests (nouveau fichier)
-
-**Conclusion** :
-Axe 2 validé. Prochaine étape : Axe 4 — Citations batch SQL.
-
----
-
-### [2025-07-18] — Axe 4 : Citations bulk SQL + executemany (Phase 2 perf/sync)
-**Statut** : Complété ✅
-
-**Décision technique principale** :
-Remplacer la boucle N×(6 SQL queries + 1 INSERT) par 6 bulk queries + 1 executemany INSERT.
-CitationEngine reçoit les données pré-chargées via `compute_all_for_match()` (0 SQL à l'intérieur).
-Plus d'ATTACH sur `cit_conn` depuis Axe 4 — `shared_ro` direct R/O suffit.
-
-**Distribution des mappings** (discovery matrix) :
-- `weapon_stat` : 20 — batchable via `v_weapon_kills`
-- `medal` : 15 — batchable via `medals_earned`
-- `custom` : 12 — Python pur, données pré-chargées (df_match construit depuis match_stats)
-- `stat` : 11 — batchable via `match_participants`
-- `award` : 9 — batchable via `personal_score_awards`
-- `composite` : 7 — non par-match
-- `pve_stat` : 6 — batchable via `shared_pve.duckdb` séparé
-
-**Résultats observés** :
-- 44 tests verts (tests/perf × 4)
-- citations_backfill.py : 331L (sous 500L), toutes fonctions ≤80L
-- Commit : `3183fa1` sur branche `perf/citations-batch-sql`
-
-**Changements code** :
-- `src/data/citations_backfill.py` : 6 fonctions `_bulk_*` + `_build_match_data_map` + `_process_citations_batch` refactoré
-- `tests/perf/test_citations_batch.py` : 11 tests (nouveau fichier)
-
-**Conclusion** :
-Axe 4 validé. Prochaine étape : Axe 1 — Post-sync partiellement parallèle.
-
----
-
-### [2025-07-18] — Axe 1 : Post-sync partiellement parallèle (Phase 3 perf/sync)
-**Statut** : Complété ✅
-
-**Décision technique principale** :
-Rendre `_run_post_sync_compute` async et lancer les citations via `run_in_executor` (thread pool)
-pendant que perf_score → sessions → dominance s'exécutent séquentiellement.
-Pas de conflit de tables : `match_citations` (citations) vs `player_match_enrichment` (perf/sessions/dominance).
-DuckDB MVCC garantit la cohérence avec plusieurs connexions R/W simultanées sur le même fichier.
-
-**Stratégie de parallélisation** :
-- `cit_future = loop.run_in_executor(None, self._post_sync_citations_sync)` lancé avant le bloc sériel
-- `_post_sync_citations_sync` ouvre sa propre connexion R/W DuckDB (thread-safe, MVCC)
-- `_shared_connection` fermée **avant** le scatter pour éviter tout conflit de catalogue
-- `await cit_future` à la fin — le bloc sériel se termine avant d'attendre les citations
-
-**Contrainte taille** :
-- `engine.py` était 498L après trim (ajout ~57L, suppression old 55L = +2L net)
-- Deux sessions de trim de commentaires/blancs pour rester ≤500L
-
-**Résultats observés** :
-- 6 tests verts : coroutine, run_in_executor, close-before-executor, exception-fallback, future-awaited, sync-fallback
-- engine.py : 498L (sous 500L)
-- Commit : `cc90e7b` sur branche `perf/post-sync-parallel`
-
-**Changements code** :
-- `src/data/sync/engine.py` : `_run_post_sync_compute` → async + `_post_sync_citations_sync` wrapper ajouté
-- `tests/perf/test_post_sync_parallel.py` : 6 tests (nouveau fichier)
-
-**Conclusion** :
-Axe 1 validé. Prochaines étapes : Axe 5 (run_in_executor MetadataResolver) puis Axe 3 (dual semaphore).
-
----
-
-### [2025-07-19] — Fix xuid_input : lire depuis sync_meta — Complété
-
-**Problème :** `init_source_state` peuplait `xuid_input` avec le gamertag extrait du chemin
-(`_infer_gamertag_from_v5_path` → `"JGtm"`). Mais `resolve_xuid_input("JGtm", db_path)` ne
-trouvait pas le XUID numérique → `xuid = ""` → condition `load_match_dataframe` échouait →
-message "Configure une DB et un joueur dans Paramètres" affiché au lieu du dashboard.
-
-**Cause racine :** La fonction de résolution `resolve_xuid_input` doit pouvoir trouver le XUID
-via xuid_aliases ou sync_meta, mais si `xuid_aliases` ne contient pas le gamertag (premier
-lancement après sync, ou gamertag incohérent), elle retourne `""`.
-
-**Fix (`src/app/state.py`):**
-- Ajout de `_read_xuid_from_sync_meta(db_path)` : lit directement `sync_meta WHERE key='xuid'`
-  → retourne `"2535469190789936"` (XUID numérique valide, pas de résolution nécessaire)
-- `init_source_state` : appelle `_read_xuid_from_sync_meta` en priorité, fallback sur
-  `_infer_gamertag_from_v5_path` (avant premier sync, sync_meta est vide)
-
-**Résultat :** `xuid_input = "2535469190789936"` → `str(xuid or "").strip()` ≠ `""` → dashboard
-s'affiche correctement.
-
-**Commit :** `7ae483a` sur branche `fix/count-matches-use-syncresult`
-
----
-
-### [2025-07-18] — Axe 5 : Transformations CPU-bound via run_in_executor (Phase 3 perf/sync)
-**Statut** : Complété ✅
-
-**Décision technique principale** :
-Pré-requis bloquant résolu en premier : `threading.RLock()` ajouté dans `MetadataResolver` pour
-protéger `_cache` et `_conn` en cas d'accès multi-thread (Axe 5 + futur Axe 3).
-Ensuite `_transform_match_stats_async` ajouté dans `_match_processing_helpers.py` — utilise
-`functools.partial + loop.run_in_executor(None, fn)` pour exécuter `transform_match_stats`
-dans le thread pool default (libère l'event loop 50-200ms par match).
-
-**Stratégie** :
-- `_transform_match_stats_async` dans helpers (308→327L, sous 500L)
-- `_match_processing.py` migré vers `await self._transform_match_stats_async(stats_json, skill_json)`
-- Import `transform_match_stats` retiré de `_match_processing.py` → 543L → 539L (gain net)
-- `size_baseline.txt` mis à jour (ratchet) : décalages de lignes suite aux edits
-
-**Résultats observés** :
-- 6 tests verts : RLock, thread-safety 10 threads, run_in_executor, partial kwargs, exception
-- metadata_resolver.py : 230L → 234L (sous 500L)
-- Commit : `0c7d7dd` sur branche `perf/post-sync-parallel`
-
-**Changements code** :
-- `src/data/sync/metadata_resolver.py` : `threading.RLock()` + `resolve()` protégé par lock
-- `src/data/sync/_match_processing_helpers.py` : ajout `asyncio`, `functools`, `transform_match_stats` import + `_transform_match_stats_async`
-- `src/data/sync/_match_processing.py` : 2 callers migrés, import retiré, -4L net
-- `scripts/size_baseline.txt` : ratchet mis à jour
-- `tests/perf/test_transform_async.py` : 6 tests (nouveau fichier)
-
-**Conclusion** :
-Axe 5 validé. Prochaine étape : Axe 3 (dual semaphore fetch/CPU — le plus complexe).
-
----
-
-## [2026-03-22] Fix fresh install : mv_player_matches jamais créée
-
-**Statut** : Complété
-
-**Problème** : Sur une fresh install (VM), après l'onboarding (sync 10 matchs),
-l'app affichait "Aucun match trouvé" alors que les matchs étaient bien dans
-`shared_matches_v2.duckdb`.
-
-**Diagnostic** : `ensure_mv_player_matches_view()` était définie dans
-`migrations.py` mais n'était appelée **nulle part** dans le code de production
-(seulement dans les tests). La vue `mv_player_matches` n'existait donc jamais sur
-une fresh install. `_get_match_source()` tente `FROM shared.mv_player_matches` →
-exception → fallback `pl.DataFrame()` vide → message "Aucun match trouvé".
-
-**Décision** : Créer une migration formelle dans le système de migration, pattern
-identique aux autres migrations `target_db="shared"`. Elle sera appliquée
-automatiquement par `launcher.py → _run_migrations()` au prochain lancement.
-
-**Fichiers** :
-- `src/data/migration/steps/add_mv_player_matches_view.py` (nouveau)
-- `src/data/migration/steps/__init__.py` (+1 import + 1 entrée `__all__`)
-
-**Tests** : 30/30 passed (`test_performance_optimizations.py`)
-
----
-
-## [2025-01-xx] fix(asyncio) — ConnectionResetError WinError 10054 Windows — Complété
-
-**Branche** : `fix/count-matches-player-enrichment` — commit `0811dda`
-
-**Problème** : Sur Windows, les logs étaient pollués massivement par :
-```
-_ProactorBasePipeTransport._call_connection_lost
-ConnectionResetError: [WinError 10054] Une connexion existante a dû être fermée par l'hôte distant
-```
-
-**Diagnostic** : Bug connu de `ProactorEventLoop` (défaut Windows Python 3.8+). Asyncio appelle
-`socket.shutdown(SHUT_RDWR)` sur des sockets déjà fermées par le serveur distant (MSAL device
-flow, Microsoft auth). L'erreur est purement cosmétique — aucune donnée perdue.
-
-**Décision** : Exception handler asyncio personnalisé qui absorbe silencieusement les
-`ConnectionResetError` (les autres exceptions sont délégués au handler par défaut).
-Installé dans `main()` du launcher via `suppress_asyncio_proactor_connection_reset()`.
-
-**Fichiers** :
-- `src/utils/log_config.py` — ajout de `suppress_asyncio_proactor_connection_reset()`
-- `launcher.py` — appel dans `main()` après `setup_script_logging`
-
-**Résultat** : Élimination du spam WinError 10054 dans les logs launcher sans impacter
-les vraies erreurs asyncio.
-
----
-
-## [2026-03-30] fix(radar) — Normalisation axe Objectifs du radar Complémentarité — Complété
-
-**Branche** : `fix/radar-objectifs-normalisation` — commits `1df74ce`, `93568dc`, `1638c4e`
-
-**Problème** : L'axe "Objectifs" du radar "Complémentarité de l'escouade" (teammates) et du
-radar de participation (match view) s'affichait proche de 0, même pour d'excellents scores CTF
-ou Strongholds. Exemple mesuré : 1800 pts sur 3 matchs CTF → 20% de l'axe.
-
-**Cause racine** : Dans `compute_global_radar_thresholds()`, le seuil objectifs était calculé
-comme `max(max_obj, max_kill)` — `max_kill` (~3000) écrasait systématiquement `max_obj` (~600
-en CTF). Le seuil objectifs se retrouvait calibré sur les kills, rendant les scores objectifs
-insignifiants.
-
-**Décision technique** :
-- Phase 0 : calcul du p90 réel par famille de mode (CTF, Strongholds, Oddball, Slayer…) via
-  une requête supplémentaire lors du scan des DBs joueurs
-- Phase 1 : `objectifs = max_obj * factor` (plus de `max(max_obj, max_kill)`)
-- Phase 2 : seuil objectifs de session = somme des p90 par match selon la famille détectée
-  par `_get_mode_family(pair_name)` — gestion native des sessions mixtes (BTB + Arena)
-- Percentile p90 : un joueur bon atteint ~82%, seul le top 10% plafonne à 100%
-- Match view : même correction, seuil per-mode appliqué au match unique
-
-**Fichiers modifiés** :
-- `src/analysis/participation_radar.py` — `RADAR_THRESHOLDS_PER_MODE`, `_get_mode_family()`,
-  `get_mode_family()` (public), scan per-mode dans `compute_global_radar_thresholds()`
-- `src/ui/pages/teammates_synergy.py` — `_compute_player_profile()` : seuil pondéré per-mode
-- `src/ui/pages/match_view_participation.py` — seuil per-mode sur le match unique
-
-**Tests ajoutés** :
-- `tests/test_participation_radar.py` — `TestGetModeFamily` : 22 cas (CTF/EN/FR, Strongholds,
-  Oddball, KOTH, Slayer, Fiesta, None, casse, invariant RADAR_THRESHOLDS_PER_MODE)
-- `tests/ui/test_teammates_helpers.py` — 2 cas : CTF objectifs_norm ≈ 750/p90_ctf,
-  custom per_mode consommé correctement
-
-**Résultat** : 49 tests verts. 1800 pts sur 3 CTF → 86% (contre 20% avant fix).
-Tous les radars (teammates + match view) utilisent maintenant le même référentiel p90 calibré.
----
-
-## [2026-03-30] Fix propagation map_id dans _session_compare_history.py
-
-**Statut** : Complété
-
-**Décision technique** :
-`map_id` était disponible dans `df_sess` à l'entrée du pipeline mais éliminé par
-`.select(display_cols)` dans `_build_history_dataframe`. Résultat : `map_name_cell_html`
-était appelé sans `map_id` → fallback EN, pas de thumbnail par ID.
-
-Pattern appliqué : identique à `perf_scores` — extraire la Series **avant** le `.select()`
-et la passer en 3ᵉ élément du tuple de retour, sans polluer `df_display`.
-
-**Fichiers modifiés** :
-- `src/ui/pages/_session_compare_history.py`
-  - `_build_history_dataframe` : signature `→ tuple[..., pl.Series | None, pl.Series | None]`,
-    extrait `map_ids` avant `.select(display_cols)`
-  - `_render_history_html` : nouveau paramètre `map_ids`, passe `map_ids[idx]` à
-    `map_name_cell_html(val, map_id)`
-  - `render_session_history_table` : décompacte le 3ᵉ élément et le transmet
-
-**Tests ajoutés** :
-- `tests/test_session_compare_history_map_id.py` — 7 cas :
-  retour 3-tuple, Series présente/absente, valeurs correctes, map_id absent de df_display,
-  longueur cohérente, perf_scores non cassé
-
-**Résultat** : 7/7 tests verts. La colonne Carte dans l'historique de session utilise
-désormais `map_id` pour la traduction FR et les thumbnails, comme les autres cal
-
----
-
-## [2026-03-31] fix(radar) — Radar "Complémentarité de l'escouade" : "Données insuffisantes" malgré 12 matchs — Complété
-
-**Statut** : Complété — commit `2cefec6` sur `feat/teammates-first-events-chart`
-
-**Cause racine** : Lors du refactoring de `compute_participation_profile` (session précédente), la fonction a perdu ses kwargs directs (`name=`, `color=`, `pair_name=`, `thresholds=`) au profit de `ProfileOptions`. Mais `_compute_player_profile` dans `teammates_synergy.py` utilisait encore l'ancienne signature → `TypeError` catchée silencieusement par `_compute_profiles_from_squad` → `profiles` liste vide → `_render_radar_display(profiles)` → `st.info(t("insufficient_data_chart"))`.
-
-**Diagnostic** : 
-- Madina97294 : PSA = 0/12 pour les matchs du 24 mars (missing sync)
-- Chocoboflor : PSA = 12/12 ✓
-- Même si Chocoboflor avait un profil valide, la TypeError l'excluait aussi
-- `test_viz_participation.py::TestComputeParticipationProfile` échouaient tous (même bug)
-
-**Décision technique** : Utiliser `ProfileOptions(name=..., color=..., pair_name=..., thresholds=...)` partout, re-exporter `ProfileOptions` depuis `src/visualization/participation_radar.py` pour la compat des tests.
-
-**Fichiers modifiés** :
-- `src/visualization/participation_radar.py` : re-export `ProfileOptions`
-- `src/ui/pages/teammates_synergy.py` : pass `ProfileOptions(...)` dans `_compute_player_profile`
-- `tests/test_viz_participation.py` : `TestComputeParticipationProfile` → `ProfileOptions`
-
-**Résultats** : 109 tests passent (test_viz_participation + test_participation_radar + test_teammates_helpers)
-
-**Conclusion** : Le graphe radar "Complémentarité de l'escouade" s'affiche désormais correctement. Le bug PSA manquants pour Madina reste un sujet sync (backfill --personal-scores à relancer), mais l'affichage fonctionne quand au moins un joueur a ses PSA.lers.
----
-
-## [2026-03-31] Fix 3 régressions tests post-i18n graphiques
-
-**Statut** : Complété
-
-**Contexte** : Suite aux 3 fixes i18n sur les graphiques (session précédente), 28 tests échouaient. Après isolation, 3 échecs réels :
-
-1. `test_teammates_history_rows_use_map_hover` — regression : `_build_html_rows` avait son elif changé de `"map_name"` à `"map_ui"`, mais le test passait `col_key="map_name"`. Fix : condition `elif key in ("map_ui", "map_name")`.
-
-2. `test_build_history_dataframe_empty` — `_build_history_dataframe` retourne désormais un tuple de 3 valeurs (`df_display, perf_scores, map_ids`) depuis commit 405e246. Le test attendait 2. Fix : `assert len(result) == 3`.
-
-3. `test_impact_tab_renders_heatmap_and_ranking` — test entièrement désynchronisé avec le module actuel (`plot_friends_impact_scatter`, `count_events_by_player`, `build_impact_ranking_df` n'existent plus dans `teammates_impact.py`). Fix : suppression des 3 monkeypatches invalides, correction schéma mock `build_impact_matrix` (colonne `events: List[Struct]`), ajout mock `_load_match_participants → None`, ajout mock `st.markdown`, updated assertions vers `st_mocks["markdown"].called`.
-
-**Décision technique** : Corriger les tests pour refléter l'API actuelle, pas ajouter du code mort pour satisfaire les anciens tests.
-
-**Résultats** : 49/49 tests passent sur les fichiers ciblés. La régression `test_viz_participation` et `test_teammates_helpers` observée en full-suite est du flapping lié à l'ordre d'exécution (passes en isolation).
-
-**Conclusion** : Branche propre, pas de nouvelles régressions.
-
-### [2025-07-24] — Butterfly histogram premier frag/mort (teammates)
-
-**Statut** : Complété
-**Branche** : `feat/teammates-first-events-chart`
-
-**Décision technique** : Implémentation d'un butterfly histogram (barres miroir positives/négatives) pour visualiser la distribution des premiers frags et premières morts par tranche de 15 secondes, par joueur de l'escouade.
-
-**Architecture** :
-- `src/analysis/first_events.py` : logique pure rolling avg (préservée, non utilisée dans le chemin final)
-- `src/data/services/_teammates_first_events_queries.py` : requête SQL sur `shared.highlight_events` MIN(time_ms) par event_type par match par xuid
-- `src/ui/pages/teammates_charts.py` : `_format_bin_label`, `_compute_bin_counts`, `_build_first_events_fig`, `render_first_events_chart`
-- `src/ui/pages/_teammates_trio.py` : wiring + fix bug xuid joueur principal
-- `src/ui/i18n/pages/teammates.py` : 3 clés FR/EN
-
-**Itérations design** :
-1. Rolling avg par index de match → rejeté (pas d'axe temporel)
-2. Subplots datetime → rejeté
-3. Butterfly histogram 15s bins → retenu
-
-**Fonctionnalités finales** :
-- Barres positives (frags) / négatives (morts) par tranche de 15s
-- Couleurs par joueur depuis `colors_by_name`
-- Axe X blanc gras (`Arial Black`), labels `0s`, `0m15s`, `0m30s`...
-- Séparateurs verticaux pointillés blancs entre tranches (`col_shapes`, `xref="x"`)
-- Annotations ▲ Frags / ▼ Morts
-- Bug fix : `me_df` n'a pas de colonne `xuid` → init directe depuis paramètre `xuid` de `render_trio_view`
-
-**Résultats** : Ruff all checks passed, commit `185f98b`.
-**Conclusion** : Feature complète et livrée.
-
----
-
 ## [2026-04-02] fix(weapons): image Mutilateur manquante dans scoreboard detail
 
 **Statut** : Complété
@@ -67529,39 +66552,6 @@ Ajout d'un panneau de filtres complet sur la page Médias, en exploitant `df_ful
 
 ---
 
-## [2025-07-16] Réécriture test_media_filters_v64.py — Complété
-
-**Statut** : Complété
-
-**Décision technique :** `_apply_media_filters` a perdu les filtres `kinds`, `name`, `outcome_codes` lors du sprint précédent (suppression UI). La suite `TestApplyMediaFilters` référençait ces clés dans `_base_filters()` → 7 tests échouants. Réécriture complète du fichier : nouvelle `_base_filters()` sans les clés obsolètes, remplacement des 7 tests supprimés par 8 tests de filtres actuels (map/mode/squad/apply_match_filters) + 8 tests d'idempotence (`TestApplyMediaFiltersIdempotence`) + 2 tests de constantes (`TestConstants`). Ajout de `maintain_order=True` sur `unique()` + tri secondaire stable sur `file_path`.
-
-**Résultats** : 31/31 tests passent. Suites régressives sprint5/sprint6 : 5/5 OK.
-
-**Conclusion** : Tests alignés avec l'interface réelle de `_apply_media_filters`. Idempotence couverte.
-
----
-
-## [2025-07-16] Fix navigation Media → Explorer (deep-link match_id) — Complété
-
-**Statut** : Complété
-
-**Décision technique :** Le flux Media → Explorer (bouton "Match" dans la bibliothèque médias) était cassé : `_consume_deep_links()` dans `explorer.py` ne lisait que `_pending_match_id` depuis `session_state`, mais `consume_pending_match_id()` (appelé dans le même run que `st.switch_page`) avait déjà consommé cette clé et créé `match_id_input`. Après le `st.switch_page` (rerun 3 → Explorer), `_pending_match_id` était absent et `match_id_input` non lu → `pending_mid` vide → `show_single_match` jamais appelé.
-
-**Flux complet corrigé (3 reruns)** :
-1. Bouton cliqué → `open_match_button()` pose `st.query_params["page"]="Match"` + `st.query_params["match_id"]=mid` → `st.rerun()`
-2. Routing : `_parse_query_params()` lit URL → pose `_pending_match_id` + `_pending_page` → vide URL → `consume_pending_match_id()` transfère vers `match_id_input` → `st.switch_page(explorer)`
-3. Explorer : `_consume_deep_links()` pop `match_id_input` (ou `_pending_match_id` en fallback) → `show_single_match()`
-
-**Fichiers modifiés** :
-- `src/ui/pages/explorer.py` : `_consume_deep_links` — ajout fallback `match_id_input` + `.strip()` inline
-- `tests/test_media_to_explorer_navigation.py` : docstring corrigée (flux query_params) + classe `TestOpenMatchButton` (4 tests)
-
-**Résultats** : 18/18 tests passent. Ruff OK.
-
-**Conclusion** : Navigation fonctionnelle. Les 3 chemins sont testés : (1) flux normal via `match_id_input`, (2) fallback via `_pending_match_id` (switch_page interrompt), (3) bouton `open_match_button` avec query_params.
-
----
-
 ## [2026-04-07] Revue chirurgicale post-v6.2.1 + plan de remédiation — Complété
 
 **Statut** : Complété
@@ -67627,22 +66617,6 @@ Ajout d'un panneau de filtres complet sur la page Médias, en exploitant `df_ful
 | **Total** | **275 MB** | **37 MB** | **−238 MB** |
 
 **Conclusion** : 238 MB récupérés. Les DBs joueurs sont maintenant proportionnelles à leurs données. À noter : si d'autres migrations DROP TABLE importantes ont lieu à l'avenir, il faudra re-exécuter le même compactage (ou intégrer un step de compactage dans le workflow de migration).
-
----
-
-## [2025-07-25] Navigation pleine largeur — Complété
-
-**Statut** : Complété
-
-**Décision technique** : Injection CSS via `static/styles.css` (chargé par `load_css()` au démarrage).
-Ajout de 3 règles ciblant `div[data-testid="stSegmentedControl"]` :
-- conteneur à `width: 100%`
-- groupe interne en `display: flex; width: 100%`
-- chaque `<label>` avec `flex: 1 1 0` pour répartition égale
-
-**Résultat** : Barre de navigation (st.segmented_control) occupe toute la largeur disponible, onglets équidistants.
-
-**Conclusion** : Modification minimaliste et non-invasive. CSS appliqué globalement via le mécanisme existant.
 
 ---
 
@@ -67791,124 +66765,6 @@ Ajout de 3 règles ciblant `div[data-testid="stSegmentedControl"]` :
 - `go test ./internal/service/ -v` → 15/15 PASS
 
 **Conclusion** : Sprint 5+6 complets. Prochaine étape : Sprint 7 (match view endpoint Q12-Q16) ou Sprint 8 (gamertag search live tests + fixtures ref_player).
-
----
-
-## [2025-12-01] Sprint 7 + Sprint 8 — Parity script + Explorer + Match View + KV
-
-**Statut** : Complété
-
-**Décision technique principale** :
-- Sprint 7 : Script `scripts/parity_check.py` qui compare les 6 endpoints Phase 1 entre le serveur Go et les golden values JSON. Génère `tests/fixtures/parity_report.json` avec diff tolérant (DEFAULT_FLOAT_TOL=0.01).
-- Sprint 8 : Port complet de l'Explorer + Match View. Architecture : repos DuckDB → services purs → handlers chi. KV pairs résolus via `shared.v_killer_victim_full` (vue v6 garantie). Algorithme KV pur dans `internal/analysis/killer_victim.go` pour les cas sans vue.
-- `formatDateFRLong` ajouté (distinct de `formatDateFR` de match_history_service.go) pour le format "JJ mois AAAA, HH:MM".
-
-**Fichiers créés** :
-- `scripts/parity_check.py` (Sprint 7 — script Python de validation de parité)
-- `internal/platform/duckdb/queries.go` — Q17-Q21 ajoutées
-- `internal/domain/match_view.go` — types JSON response + types raw DB
-- `internal/domain/explorer.go` — ExplorerPlayerQueryRequest, CommonMatchRow, CommonMatchRaw
-- `internal/domain/chart/base.go` — HaloColors, OkabeIto, OutcomeColor, PerfColor
-- `internal/domain/chart/antagonists.go` — AntagonistBarChartData, DuelChartData, ImpactTimelineData, DominanceChartData
-- `internal/analysis/killer_victim.go` — ComputeKillerVictimPairs (algo bisect ±toleranceMS), ComputeAntagonistCounts
-- `internal/platform/duckdb/match_view_repo.go` — implémente MatchViewRepository (8 méthodes)
-- `internal/platform/duckdb/explorer_repo.go` — implémente ExplorerRepository (GetCommonMatches, ResolveXUIDByGamertag)
-- `internal/service/match_view_service.go` — GetMatchView : assemble header (outcome+perf colors), summary (KPIs, medals), combat (weapons, events), team (scoreboard, nemesis)
-- `internal/service/explorer_service.go` — GetCommonMatches : résolution gamertag → Q19 → were_teammates
-- `internal/api/handlers/match_view.go` — GET /players/{slug}/matches/{match_id}
-- `internal/api/handlers/explorer.go` — POST /players/{slug}/pages/explorer/player-query
-- `internal/port/repository.go` — MatchViewRepository + ExplorerRepository interfaces + noop impls
-
-**Fichiers modifiés** :
-- `internal/api/server.go` — routes Sprint 8 ajoutées (matches/{match_id}, pages/explorer/player-query)
-- `internal/service/service_test.go` — 10 nouveaux tests (buildScoreLabel, convertMedals, convertCommonMatches, formatDateFRLong)
-- `.ai/go_migration_v2/SPRINT_ROADMAP.md` — Sprints 5-8 marqués ✅
-
-**Résultats observés** :
-- `go build ./...` → PASS
-- `go test ./internal/service/` → 25/25 PASS (15 anciens + 10 nouveaux)
-
-**Conclusion** :
-Sprint 7+8 complets. Phase 1 entière terminée. Phase 2 démarrée (Explorer + Match View opérationnels). Prochaine étape : Sprint 9 (Sessions) ou Sprint 10 (Stats/Séries + perf score).
-
----
-
-## [2025-07-16] Sprint 9 + Sprint 10 — Sessions + Performance Score + LUSR + Stats Series
-
-**Statut** : Complété
-
-**Décision technique principale** :
-Port complet des algorithmes Python en Go dans le package `analysis/` :
-- `ComputeSessions` (gap-based) + `ComputeSessionsWithContext` (friends+ranked) depuis `src/analysis/sessions.py`
-- `ComputeRelativePerformanceScore` v5-relative (10 métriques, percentile rank) depuis `src/analysis/_performance_relative.py`
-- `ComputeSkillRatingsBatch` (TrueSkill-inspired LUSR) depuis `src/analysis/skill_rating.py`
-Note critique : utiliser `create_file` plutôt que heredoc bash pour les fichiers Go → les heredoc corrompent les lignes contenant des commentaires français ou des patterns `if v, ok := ...`.
-
-**Fichiers créés** :
-- `internal/domain/sessions.go` — SessionMatchRow, SessionComputeOptions (renommé depuis SessionOptions pour éviter conflit avec filters.go), BucketType, SessionsResponse
-- `internal/domain/stats.go` — StatsMatchRow, LUSRMatchRating, ParticipantRow, 5 types tab response, StatsPageResponse
-- `internal/analysis/sessions.go` — 2 modes de calcul + grouping + labeling + GetBucketInfo
-- `internal/analysis/sessions_test.go` — 11 tests unitaires (tous verts)
-- `internal/analysis/performance_score.go` — score relatif percentile + fallback KDA
-- `internal/analysis/skill_rating.go` — TrueSkill update + composite score + normCDF/PDF/InvCDF
-- `internal/platform/duckdb/sessions_repo.go` — LoadSessionMatches (Q22)
-- `internal/platform/duckdb/stats_repo.go` — LoadStatsMatches (Q23) + LoadLUSRHistory (Q24) + LoadMatchParticipants (Q25)
-- `internal/service/sessions_service.go` — GetSessions (2 modes)
-- `internal/service/stats_service.go` — GetPage (5 onglets : win_loss, accuracy, objective, form, lusr)
-- `internal/api/handlers/sessions.go` — GET /pages/sessions
-- `internal/api/handlers/stats.go` — POST /pages/stats/query
-
-**Fichiers modifiés** :
-- `internal/api/server.go` — routes Sprint 9+10 ajoutées
-- `internal/platform/duckdb/queries.go` — Q22-Q25 ajoutés
-- `internal/port/repository.go` — SessionsRepository + StatsRepository interfaces + noop impls
-
-**Résultats observés** :
-- `go build ./...` → PASS (0 erreurs)
-- `go test ./internal/analysis/...` → 11/11 PASS
-- Commit : `fd721220` sur `feature/go-migration`
-
-**Conclusion** :
-Sprint 9+10 complets. Architecture clean layer: domain → analysis → platform/duckdb → service → handlers.
-Prochaine étape selon SPRINT_ROADMAP : Sprint 11 (charting timeseries = ~30 fonctions, à planifier séparément).
-
----
-
-## [2025-04-16] Sprint 11 — Accueil/Home + socle provider Halo
-
-**Statut** : Complété
-
-**Décision technique principale** :
-- Page Home entièrement read-only depuis DuckDB (Q26/Q27/Q28) — pas de live calls avant Sprint 15.
-- `BattlePassResponse` et `ChallengesResponse` retournent `available=false, error_hint="auth_required"` : dégradation explicite et documentée jusqu'au portage MSAL (Sprint 15).
-- Provider Halo (`platform/halo/provider.go`) : squelette avec token bucket 60 req/min + retry exponentiel x3. Méthodes `doRequest` prêtes pour Sprint 15.
-
-**Fichiers créés** :
-- `internal/domain/home.go` — 12 types domaine (HomeMatchRow, HomeSessionRow, HomeMediaRow, HeroKPIs, HeroTrend, HomeHeroCard, HighlightItem, RecentMatchItem, SessionSummaryItem, RecentMediaItem, HomePageResponse, BattlePassResponse, ChallengesResponse)
-- `internal/platform/duckdb/home_repo.go` — HomeRepo (LoadHomeMatches/Q26, LoadHomeSessions/Q27, LoadRecentMedia/Q28)
-- `internal/analysis/home.go` — 7 algos stateless (ComputeKPIs, ComputeTrend, BuildHeroCard, BuildHighlights, BuildRecentMatches, BuildSessionSummary, BuildRecentMedia)
-- `internal/analysis/home_test.go` — 10 tests
-- `internal/platform/halo/provider.go` — HaloProvider skeleton (rate limiter + retry + GetBattlePass/GetChallenges)
-- `internal/service/home_service.go` — HomeService.GetHomePage/GetBattlePass/GetChallenges
-- `internal/api/handlers/home.go` — 3 handlers GET /pages/home, GET /battlepass, GET /challenges
-
-**Fichiers modifiés** :
-- `internal/platform/duckdb/queries.go` — Q26/Q27/Q28 ajoutés
-- `internal/port/repository.go` — HomeRepository interface + noopHomeRepo
-- `internal/api/server.go` — 3 routes Sprint 11
-
-**Résultats observés** :
-- `go build ./...` → PASS (0 erreurs)
-- `go test ./internal/analysis/...` → 21/21 PASS (11 sessions + 10 home)
-- Commit : `7467e977` sur `feature/go-migration`
-
-**Conclusion** :
-Sprint 11 complet. Architecture home : Q26/Q27/Q28 → HomeRepo → HomeService → HomeHandler. Provider Halo prêt pour Sprint 15.
-Routes actives :
-  GET /api/v1/players/{slug}/pages/home
-  GET /api/v1/players/{slug}/battlepass
-  GET /api/v1/players/{slug}/challenges
-Prochaine étape selon SPRINT_ROADMAP : Sprint 12 (Escouade + Synthèse, ~7-10j). 
 
 ---
 
@@ -68155,106 +67011,6 @@ Prochaine étape : Sprint 27 (Bascule progressive, ~3-5j).
 
 ---
 
-## [2025-04-16] Sprint 40+41 — Observabilité, scoreboard, weapon parser, healthcheck
-
-**Statut** : Complété
-
-**Décision technique** : Implémenter Sprint 40 (observabilité middleware) et Sprint 41 (scoreboard + weapons + health) en un seul bloc. Sprint 36 T6 (bascule Docker) vérifié déjà fait.
-
-**Sprint 40 — Observabilité (T1+T2+T3)** :
-- T1 : `middleware/contract_validate.go` — validation dev-only (LEVELUP_CONTRACT_VALIDATE=1), stdlib JSON, vérifie Content-Type + error shape {code, message, retryable}
-- T2+T3 : `middleware/error_tracker.go` — Discord webhook fire-and-forget pour 500, rolling 1-min window error rate alerting >5% avec cooldown 5min
-- `config.go` : `DiscordWebhookURL` champ struct + `loadDiscordWebhookURL()` helper (env var + fallback app_settings.json)
-
-**Sprint 41 — Scoreboard + Weapons + Health (T1+T2+T3)** :
-- T1 : +10 colonnes dans Q12/ScoreboardRaw/MatchScoreboardRow/Scan/buildTeamTab (shots_fired, shots_hit, damage_dealt, damage_taken, avg_life_seconds, headshot_kills, max_killing_spree, grenade_kills, melee_kills, power_weapon_kills)
-- T2 : `halo_client.go` → `GetMatchFilm()` (manifest + chunk download), `backfill_weapons.go` (pipeline complet analysis→DB), `writes.go` → `InsertWeaponKills()` + `MarkWeaponKillsDone()`
-- T3 : `HealthResponse` enrichi (+player_count, last_sync_at, uptime, go_version), `BootstrapRepository` interface étendue, `bootstrap_repo.go` → `GetPlayerCount()` + `GetLastSyncAt()`
-
-**Sprint 36 T6** : docker-compose.yml + Dockerfile déjà 100% Go (healthcheck = `/app/levelup-server -health-check`). Marqué ✅.
-
-**Résultats** : go vet OK sur domain, analysis, middleware, port (api/service bloqués par CGo DuckDB Windows — attendu). gofmt appliqué sur tous les fichiers.
-
-**Conclusion** : Sprints 40+41 terminés. Sprint 36 T1 (parity_check = 0 diff) reste ��� — nécessite un run en prod. Prochaine étape : Sprint 42 (Analyse UI avancée + fanout multi-joueur).
-
----
-
-## [2025-07-11] Sprint 43 — Améliorations UX produit
-
-**Statut** : Complété (4/4 tâches)
-
-### T1 — Bipolaire solo/escouade : enrichissement payload synthesis Go
-- **Décision** : enrichir SynthesisPageResponse avec SynthesisKPIs (performance_score, accuracy, kills_per_min, avg_life_seconds), ComparisonMetricItem (bipolaire), et TemporalHeatmapCell (dow x hour au lieu de map x mode)
-- **Fichiers modifiés** : domain/squad.go, queries_squad.go (Q33b +3 colonnes), squad_repo.go (scan 10 cols), squad_breakdown.go (+3 fonctions), squad_service.go (GetSynthesisPage réécrit)
-- **Résultat** : go vet OK, tous tests analysis passent (42/42)
-
-### T2 — Composant InfoTooltip React
-- **Décision** : composant pur CSS/state (aucune dépendance Radix/Headless), hover+focus+click
-- **Fichiers créés** : components/ui/info-tooltip.tsx
-- **Intégré** : SynthesisPage (Performance Score) + CareerPage (LUSR)
-
-### T3 — Page /changelog
-- **Décision** : endpoint Go GET /api/v1/changelog lisant docs/CHANGELOG.md avec cache mémoire 5min. Frontend avec react-markdown + @tailwindcss/typography
-- **Fichiers créés** : handlers/changelog.go, features/changelog/ (queries.ts + ChangelogPage.tsx), routes/changelog.tsx
-
-### T4 — Durée session : deux métriques
-- **Décision** : ajouter DurationSeconds (span) et TotalPlayedSeconds (somme time_played_seconds) à SessionGroup
-- **Fichiers modifiés** : domain/sessions.go, analysis/sessions.go (BuildSessionGroups enrichi)
-- **Résultat** : go vet OK, tous tests analysis passent (42/42)
-
-**Conclusion** : Sprint 43 complet.
-
----
-
-## [2025-07-11] Sprint 44 — Implémentation multi-titres (tâches T6-T20)
-
-**Statut** : Complété (T6, T7, T8, T11, T12, T13, T15, T18, T20)
-
-### T6 — db_profiles.json v3 title-aware
-- **Décision** : format v3 avec structure `{ "version": "3.0", "profiles": { "<title_slug>": { "<gamertag>": {...} } } }`. Rétrocompatibilité v2.1 via détection automatique de version dans `LoadPlayers()`.
-- **Fichiers modifiés** : `config/config.go` (types v3 + version probe + loadPlayersV2/V3), `service/profile_service.go` (réécriture complète v3 : `parseOrMigrateProfiles`, `CreatePlayer` title-scoped), `db_profiles.example.json` (v3), `domain/settings.go` (TitleSlug field)
-- **Résultat** : config backward-compatible, profile_service écrit toujours en v3
-
-### T7 — Setup/players handlers title-aware
-- **Décision** : `POST /setup/players` lit `titleSlug` depuis le contexte (middleware TitleExtractor), le passe à `ProfileService.CreatePlayer`. PathResolver pour chemins DB joueur.
-- **Fichiers modifiés** : `handlers/setup.go` (imports ctxkeys/title, injection titleSlug, PathResolver pour dbPath)
-
-### T8 — Ops PathResolver migration
-- **Décision** : migrer `healthcheck.go` et `gate.go` de `filepath.Join(root, "data", ...)` vers `PathResolver.Legacy*` methods (rétrocompatibilité layout plat).
-- **Fichiers modifiés** : `ops/healthcheck.go` (PathResolver pour config/warehouse), `validation/gate.go` (PathResolver pour shared DB, metadata DB, player DB)
-
-### T13 — Routage OpenAPI {title_slug}
-- **Décision** : approche **header-only** (`X-LevelUp-Title`). Le middleware `TitleExtractor` est déjà en place au niveau du router racine. URLs inchangées. Pas de segments `{title_slug}` dans les routes — architecture moins disruptive et déjà fonctionnelle.
-- **Fichiers** : aucune modification nécessaire (middleware déjà appliqué globalement dans `server.go`)
-
-### T15 — Frontend stores/routes title-aware
-- **Décision** : `settingsDraftStore.lastPlayerSlug` → `lastPlayerSlugByTitle: Record<string, string | null>` (migration transparente). `appShellStore` enrichi avec `switchTitle()` (POST /session/context + re-bootstrap + resetPlayerData + rollback on error), `isTitleSwitching`, `resetPlayerData()`.
-- **Fichiers modifiés** : `stores/settingsDraftStore.ts` (interface + actions + default), `stores/appShellStore.ts` (switchTitle, isTitleSwitching, resetPlayerData, import api)
-
-### T11 — Corpus synthétique second titre
-- **Décision** : script Python `create_multititle_fixture.py` créant un titre `halo_mcc` avec 5 matchs dans `data/titles/halo_mcc/warehouse/` + `data/titles/halo_mcc/players/MCCTestPlayer/stats.duckdb`
-- **Fichiers créés** : `tests/create_multititle_fixture.py`
-
-### T12 — Fixtures multi-titres
-- **Décision** : 3 fichiers tests Go pour l'isolation multi-titre — PathResolver isolation (6 cas : SharedDB, MetadataDB, PlayerDB, PlayerDir, WarehouseDir, BackupDir), structure arborescence, même gamertag dans deux titres, registry isolation. Config tests v3 : title isolation, backward compat v2, empty title.
-- **Fichiers créés** : `domain/title/multititle_test.go`, `config/config_test.go`
-
-### T18 — Golden tests skeleton
-- **Décision** : squelette Go natif chargeant les fixtures JSON existantes et assertant leur structure (clés requises, types). Tests de validation structurelle (pas de serveur requis) + test `AllFixturesLoadable` itérant tous les .json.
-- **Fichiers créés** : `tests/golden/golden_test.go`
-
-### T20 — Documentation finale
-- **Décision** : ajout section « Multi-Title Architecture (Sprint 44) » dans `docs/ARCHITECTURE_V6.md` (EN) et `docs/FR/ARCHITECTURE_V6.md` (FR). Arborescence, composants clés, stratégie routage, frontend, rétrocompatibilité.
-- **Fichiers modifiés** : `docs/ARCHITECTURE_V6.md`, `docs/FR/ARCHITECTURE_V6.md`
-
-### Roadmap update
-- Sprint 44 : 9 tâches passées à ✅ (T6, T7, T8, T11, T12, T13, T15, T18, T20)
-- Gate Phase 9 : 22 items cochés sur 24 (restent coverage ≥ 50% et lint clean — à vérifier en CI)
-
-**Conclusion** : Sprint 44 implémentation multi-titres complétée. Toutes les couches sont title-aware : backend (config, handlers, ops, validation), frontend (stores, API client), données (v3 format, PathResolver), tests (isolation, fixtures, golden skeleton), documentation. Les items restants (coverage, lint) dépendent d'un run CI complet.
-
----
-
 ## [2026-07-25] Sprint 49 — Clôture gate S36 + exemptions contrat + durcissement S44
 
 **Statut** : Complété
@@ -68399,63 +67155,6 @@ Tous les packages désormais ≥ 50%. Pipeline global : 78.4%. Prêt pour Sprint
 
 ---
 
-## [2025-07-16] Sprint 49 closure — Gate Sprint 47 : Repos DuckDB ≥ 70%
-
-**Statut** : Complété ✅
-
-### Décision technique principale
-
-Création de 3 fichiers de tests `//go:build integration` (`package duckdb`) pour le package `internal/platform/duckdb` :
-- `player_repos_test.go` — HomeRepo, SessionsRepo, StatsRepo, CareerRepo, MediaRepo, ResolveXUID
-- `match_repos_test.go` — FiltersRepo, MatchHistoryRepo, CitationsRepo, ExplorerRepo, MatchViewRepo, SquadRepo
-- `extra_coverage_test.go` — fonctions 0% restantes : GetLUSRHistory, LoadMedalCitationMappings, DB.SQLDb/Path, GetMatchMedals/Events/WeaponKills/KVPairs, PoolKey, CloseAll, LoadTeammateMatches, LoadImpactEvents, LoadSynthesisHeatmap, LoadSynthesisMatches
-
-Fix correctif : `Q33SynthesisHeatmap` `GROUP BY map_name, mode_name` → `GROUP BY 1, 2` (ambiguïté alias/colonne sous DuckDB quand la table possède un champ `map_name`).
-
-### Résultats observés
-
-| Étape | Couverture |
-|-------|-----------|
-| Baseline | 13.1% |
-| Après player_repos_test.go + match_repos_test.go | 59.4% |
-| Après extra_coverage_test.go | **75.4%** ✅ |
-
-### Conclusion
-
-Gate Sprint 47 "Repos DuckDB ≥ 70%" validé à 75.4% avec `-tags integration`. SPRINT_ROADMAP.md mis à jour.
-
----
-
-## [2025-04-17] Mesure locale des coverage gates CI — Sprint 49 closure
-
-### Statut : Complété
-
-### Décision technique
-Créer des tests internes (package-level) et CGO pour couvrir les fonctions privées non testées dans handlers, middleware et validation, puis mesurer tous les gates localement au lieu d'attendre la CI GitHub Actions.
-
-### Fichiers créés/modifiés
-- `apps/go-api/internal/api/handlers/handlers_extra_test.go` — ajout tests : HomeHandler BattlePass/Challenges NotFound, SquadHandler NotFound/Error, MediaHandler PostUpload 501, MatchHistory Export avec ExportHint
-- `apps/go-api/internal/api/handlers/handlers_internal_test.go` — tests fonctions privées helpers (encodeExportToken, formatOptFloat, optStr, etc.)
-- `apps/go-api/internal/api/middleware/middleware_internal_test.go` — tests internes : contractResponseWriter, validateErrorShape, errorTrackWriter, discordSimplePayload, checkWindow, notifyError/postDiscord (avec fake webhook), shadowCall (fake Python server), shadowResponseWriter, resolveTitleSlug
-- `apps/go-api/internal/validation/compare_cgo_test.go` — tests CGO DuckDB in-memory : listTables, countRows, compareTableCounts, loadMatchIDs, compareMatchIDs, compareBitmasks, ComparePlayerDBs roundtrip + erreurs
-
-### Résultats mesurés
-
-| Package | Avant | Après | Gate | Statut |
-|---------|-------|-------|------|--------|
-| handlers | 73.7% | **75.4%** | ≥75% | ✅ |
-| middleware | 57.5% | **84.6%** | ≥80% | ✅ |
-| validation | 52.9% | **88.4%** | ≥70% | ✅ |
-| migration | 81.1% | 81.1% | ≥75% | ✅ (déjà OK) |
-| platform/duckdb | 75.4% | 75.4% | ≥70% | ✅ (déjà OK) |
-| sync | 11.2% | 11.2% | ≥70% | ❌ (dette : nécessite mock API Halo) |
-
-- **Durée suite complète** : ~6s (`go test -tags cgo,integration ./internal/...`)
-- **Rapport HTML** : `apps/go-api/coverage.html` généré
-
-### Conclusion
-5 gates sur 6 validés localement. Le gate `sync ≥ 70%` reste en dette (11.2%) — nécessiterait une infrastructure de mock API Halo massive, hors scope. SPRINT_ROADMAP.md mis à jour avec les mesures effectives.
-
 ## [2026-04-18] docs(phase11): Sprint 50 — Triple audit final Claude (3 axes)
 
 **Statut** : Complété
@@ -68573,29 +67272,6 @@ A5, A6, A7, A8 (mock HaloClient + engine_test) non implémentés cette session �
 
 ---
 
-## [2025-07-22] Sprint 54 Gate — LeaderboardBlock vitest + Garde-fous medals
-
-### Statut : Complété
-
-### Décision technique
-Deux items Gate S54 restaient non implémentés :
-1. **LeaderboardBlock vitest** : 8 tests React (vitest + MSW + @testing-library) vérifiant spinner, badge Local, tri par rank, CSR/tier, compteur, état vide, erreur 500, titre.
-2. **Garde-fous medals** : package Go `internal/metadata` avec 3 guards purs (cardinalité ±10%, champs requis, images partielles) + `RunAllGuards` orchestrateur. 13 tests Go couvrant tous les cas.
-
-### Résultats
-- vitest : 8/8 PASS (1.53s)
-- Go tests : 13/13 PASS (0.19s)
-- Gate S54 : 2 items cochés supplémentaires
-
-### Fichiers créés
-- `apps/web/src/features/leaderboard/LeaderboardBlock.test.tsx` (8 tests)
-- `apps/web/src/test/handlers.ts` (handler MSW leaderboard ajouté)
-- `apps/go-api/internal/metadata/medals_guard.go` (guards purs)
-- `apps/go-api/internal/metadata/medals_guard_test.go` (13 tests)
-- `apps/go-api/internal/metadata/medals_guard_test.go` (13 tests)
-
----
-
 ## [2026-04-18] Sprint 54 — Clôture complète : F4/F5/F6/F8 + Gate 100% vert
 
 ### Statut : Complété
@@ -68630,146 +67306,6 @@ Dernier lot d'items Sprint 54 implémentés en une session :
 Sprint 54 Phase 13 entièrement clos. Sprint 55 (Phase 14 — Convergence UX Carrière/Synthèse + privacy state durable) peut démarrer.
 
 ---
-
-## [2025-07-16] Vérification finale — Xbox/Steam Presence Watcher (feat/match-favorites)
-
-**Statut** : Complété
-
-### Décision technique principale
-Finalisation et validation du daemon de présence Xbox/Steam introduit dans la session précédente. Correction d'une entrée `go.sum` manquante pour `gorilla/websocket` et `x/crypto` (détectés uniquement lors du `go test`, pas lors du `go build`).
-
-### Actions réalisées
-1. **go.sum** : `go get github.com/gorilla/websocket@v1.5.3` + `go get levelup/go-api/internal/platform/userstore` + `go mod tidy`
-2. **7 fichiers de tests créés** (session précédente, validés maintenant) :
-   - `internal/presence/event_parser_test.go` — 8 cas
-   - `internal/presence/reconnect_test.go` — 5 cas  
-   - `internal/watcher/match_queue_test.go` — 6 cas
-   - `internal/watcher/state_machine_test.go` — 11 cas
-   - `internal/titles/registry_test.go` — 9 cas
-   - `internal/auth/token_store_test.go` — 8 cas
-   - `internal/sync/coordinator_test.go` — 6 cas
-3. **Audit logging** : `slog` standardisé, dead code supprimé dans `presence_notifier.go`
-
-### Résultats
-- `go build ./... && go vet ./...` : 0 erreur (packages watcher)
-- `go test` sur 10 packages : **100% PASS** (presence, watcher, auth, titles, sync, notify, analysis, domain)
-- Packages WIP avec erreurs préexistantes (`config_cache.go`, `reward_tracks_provider.go`, `bootstrap_service.go`) : non touchés, erreurs antérieures à cette session
-
-### Conclusion / prochaine étape
-Le daemon de présence Xbox/Steam est complet, compilable et testé. 53 cas de test couvrent toute la logique pure des nouveaux packages.
-
----
-
-## [2025-07-29] — Indicateur sync en cours dans NavL1 (SyncStatusDot)
-
-**Statut** : Complété
-
-**Décision technique principale** :
-Utiliser le système de jobs asynchrones existant (`activeSyncJobId` / `useJobStatus`) plutôt que le watcher de présence Xbox (sur une autre branche). `activeSyncJobId` était déjà dans `appShellStore` et hydraté depuis bootstrap — il manquait uniquement le setter et le composant visuel.
-
-**Fichiers modifiés** :
-- `apps/web/src/stores/appShellStore.ts` : ajout de `setActiveSyncJobId(id: string | null) => void` dans l'interface et l'implémentation
-- `apps/web/src/components/shell/NavL1.tsx` : import `useJobStatus`, composant `SyncStatusDot` (SVG `animate-spin`), intégration dans les deux zones gamertag (single et multi-joueurs)
-
-**Résultats observés** :
-- `tsc --noEmit` : 0 erreur TypeScript
-- `vitest run NavL1.test.tsx` : 3/3 tests passent
-
-**Conclusion** :
-La feature est 100% terminée. Un spinner tourne à côté du gamertag dans la L1 quand `active_sync_job_id` est non-null (retourné par bootstrap ou par POST /sync). Il disparaît automatiquement quand le job passe en état terminal via `useEffect` + `setActiveSyncJobId(null)`.
-
----
-
-## [2025-07-29] — Suppression complète Python legacy
-
-**Statut** : Complété
-
-**Décision technique principale** :
-Après confirmation que sync DuckDB, auth MSAL/XSTS, API Halo (SPNKr) et launcher sont portés en Go, suppression de tout le Python legacy sur la branche `feat/timeseries-rendering-fixes`.
-
-**Fichiers supprimés** :
-- `src/` (code Python métier entier)
-- `scripts/` (98 scripts Python)
-- `spnkr_pr/` (fork SPNKr)
-- `launcher.py` (appelait uvicorn supprimé)
-- `tests/` (tests pytest src/)
-- `levelup_halo.egg-info/` (build artifact)
-- `packaging/build_release.py` + `packaging/__pycache__/`
-- `pyproject.toml`
-- `apps/go-api/scripts/benchmark_python_api.py`, `export_fastapi_openapi.py`, `diff_openapi.py`, `capture_golden_values.py`, `parity_check.py`
-- `.github/workflows/e2e-browser-optional.yml` (testait Streamlit)
-
-**Fichiers modifiés** :
-- `Makefile` : suppression variables Python/LAUNCHER, cibles Python (install, run, test, etc.), GO_VERSION lit `VERSION`
-- `.pre-commit-config.yaml` : hook check-code-size (enforce_size_limits.py) retiré
-- `.github/workflows/ci.yml` : 5 jobs Python supprimés (fast-data-contracts, test, lint, quality, go-golden-test)
-- `.github/workflows/bump-version.yml` : réécrit pour utiliser `VERSION` au lieu de pyproject.toml
-- `.github/workflows/deploy.yml` : validation Python + prepare_demo_data.py remplacé par placeholder `levelup seed`
-- `.github/workflows/test-deploy-precheck.yml` : toutes les étapes `python -c` remplacées par shell
-- `.github/workflows/release.yml` : job `build-releases` Python supprimé, `needs` et `files` nettoyés
-- `apps/go-api/internal/service/timeseries_service.go` : correction types pointeurs FilterMatchRow (bug WIP branche)
-
-**Résultats observés** :
-- `CGO_ENABLED=1 go build ./...` : EXIT 0 (succès)
-- Aucune référence Python dans les workflows CI restants
-
-**Conclusion** :
-Go est désormais l'unique runtime. ~900 fichiers Python supprimés. Le dépôt est prêt pour un commit de clôture.
-
----
-
-## 2025-07-13 — Portage timeseries Go — rendu charts client-side
-
-**Contexte** : Sprint 33+. `PlotlyFigurePayload = null` dans toutes les réponses Go (décision architecturale). La page "Stats en solo" n'affichait que des `EmptyStateNotice` dans tous les onglets.
-
-**Décision architecturale** : Construire les charts côté React depuis les données brutes (arrays typés) — pas de régénération de `PlotlyFigurePayload` dans le Go.
-
-**Fichiers modifiés — Go** :
-- `apps/go-api/internal/domain/timeseries.go` : `TimeseriesMatchRow` ajouté, `CorrelationDataPair.Outcome *int`, 3 nouveaux champs buckets dans `TimeseriesDistributionsTab`, `MatchRows []TimeseriesMatchRow` dans `TimeseriesPageResponse`
-- `apps/go-api/internal/service/timeseries_service.go` : alpha EWMA 0.1→0.20, `buildMatchRows`, `buildAccuracyBuckets`, `buildScorePerMinBuckets`, `buildRollingWRBuckets`, `buildCorrelationPoints` étendu à 6 types avec Outcome, `filterStatsMatchRows` branché dans `GetPage`
-- `apps/go-api/internal/service/timeseries_service_test.go` : 6 nouveaux tests (buildMatchRows, buildAccuracyBuckets×2, buildCorrelationPoints, filterStatsMatchRows×2)
-
-**Fichiers modifiés — TypeScript / React** :
-- `apps/web/src/lib/api/types.ts` : 5 nouvelles interfaces (CumulativePoint, DistributionBucket, CorrelationDataPair, IntensityHeatmapPoint, TimeseriesMatchRow), interfaces existantes étendues
-- `apps/web/src/features/timeseries/TimeseriesPage.tsx` : tous les onglets câblés sur les nouveaux composants (suppression PlotlyChart fallback)
-- `apps/web/src/components/ui/timeseries-line-chart.tsx` : CRÉÉ — multi-séries Plotly ligne (cumul/rolling/EWMA)
-- `apps/web/src/components/ui/timeseries-histogram.tsx` : CRÉÉ — barres depuis DistributionBucket[]
-- `apps/web/src/components/ui/timeseries-heatmap.tsx` : CRÉÉ — heatmap 7×24 jour/heure
-- `apps/web/src/components/ui/timeseries-scatter.tsx` : CRÉÉ — scatter multi-type avec sélecteur de label
-- `apps/web/src/components/ui/timeseries-kda-bars.tsx` : CRÉÉ — timeline K/D barres+ligne par match
-
-**Résultats observés** :
-- `go build ./...` : EXIT 0
-- `go test ./internal/service/... -run "Timeseries|BuildMatchRows|BuildAccuracy|BuildCorrelation|FilterStats"` : 13/13 PASS
-
-**Conclusion** : Tous les onglets de la page timeseries ont désormais des composants de rendu fonctionnels. Le Go fournit les données brutes, React construit les figures Plotly client-side.
-
----
-
-## [2025-01-20] Page Synthèse — Navigation L1 + blocs D4/D5/D6/D7
-
-**Statut** : Complété
-
-**Décision technique principale** :
-La page Synthèse (route `/players/$playerSlug/synthesis`) était inaccessible depuis la navigation L1 (absente de `L1_SECTIONS`). Correction du bug de navigation + implémentation complète des 4 blocs Sprint 55 manquants dans le frontend React.
-
-**Modifications** :
-1. `NavL1.tsx` — Ajout de l'entrée Synthèse entre Escouade et Explorer ; correction du path Citations (`/career?tab=citations`)
-2. `NavL1.test.tsx` — 3 nouveaux tests (présence, état actif, ordre DOM)
-3. `SynthesisHighlightsSection.tsx` — Nouveau composant D5 (meilleur/pire match)
-4. `SynthesisPage.tsx` — Refactoring complet :
-   - Remplacement `ScopeOverviewBar` → `ScopeBar` (filters_applied/ignored) + `SynthesisOverviewSection` (7 KPI D4)
-   - Ajout `SynthesisBreakdownsSection` inline (tables carte/mode D7)
-   - Render mis à jour : D4 → KPIs → bipolaire → détaillée → D5 highlights → heatmap → top semaines → D6 relations → D7 breakdowns
-   - Correction `MetricRowProps` (type manquant déclaré)
-5. `.ai/CHARTS_AND_TABLES.md` — Section §14 ajoutée (8 sous-sections : scope, overview, bipolaire, heatmap, top semaines, D5/D6/D7)
-
-**Résultats observés** :
-- `get_errors` sur SynthesisPage.tsx → 0 erreurs TypeScript
-- NavL1.test.tsx : 3 nouveaux tests ajoutés
-- SynthesisHighlightsSection.tsx créé (~100 lignes)
-
-**Conclusion** : La page Synthèse est maintenant accessible en L1 et expose tous les blocs Sprint 55 (D4-D9 côté Go, D4-D7 côté React). La branche de travail est `feat/synthesis-nav-and-page-blocks`.
 
 ## [2026-04-21] fix(battlepass): contention OpenReadWrite metadata.duckdb — Complété
 

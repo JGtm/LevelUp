@@ -182,35 +182,91 @@ malgré tout « 0 code mort ».
 Ces points dérivent tout seuls pendant qu'on travaille. À revérifier **juste avant** le merge,
 jamais « une bonne fois » :
 
-- [ ] E1. `openapi.yaml` régénéré (`go run ./cmd/openapi-gen`) **et** `generated.ts`
+- [x] E1. `openapi.yaml` régénéré (`go run ./cmd/openapi-gen`) **et** `generated.ts`
       (`npm run generate-types`). Deux tests le vérifient : `TestOpenAPIYAMLIsUpToDate`,
       `TestContractRoutesDocumented`.
-- [ ] E2. `routeTree.gen.ts` régénéré par le générateur du projet (jamais édité à la main)
+      *FAIT 2026-08-05 : les deux générateurs rejoués en fin de lot rendent un diff VIDE.
+      `internal/api` et `contracttest` verts. Le contrat a réellement bougé pendant ce lot
+      (R2, forme producteur de `TeammatesQueryRequest`) — et il a bougé PAR le générateur.*
+- [x] E2. `routeTree.gen.ts` régénéré par le générateur du projet (jamais édité à la main)
       dès qu'un fichier de `src/routes/` bouge.
-- [ ] E3. `npx knip` vert — tout export non consommé le fait rougir, y compris un helper
+      *`[~]` de fait : **aucun fichier de `src/routes/` n'a bougé** dans le lot (vérifié sur
+      les 10 commits) — rien à régénérer, et le fichier n'a pas été touché.*
+- [x] E3. `npx knip` vert — tout export non consommé le fait rougir, y compris un helper
       ajouté « pour dans deux jours ».
-- [ ] E4. `npx vitest run` + `npx tsc --noEmit` + `npm run lint` (0 **erreur** ; les 19 warnings
+      *FAIT : exit 0. Restent 4 « configuration hints » (suggestions de nettoyage de
+      `knip.config.ts`), qui ne sont pas des violations.*
+- [x] E4. `npx vitest run` + `npx tsc --noEmit` + `npm run lint` (0 **erreur** ; les 19 warnings
       react-compiler/TanStack Table sont préexistants et hors périmètre).
-- [ ] E5. `go test ./...` **et** `go test -tags=integration ./...` (les tests persist anti-ART
+      *FAIT : `tsc -b --force` (cache `node_modules/.tmp` purgé) exit 0 · `vitest run`
+      **400 fichiers, 3 530 tests, 14 skips**, exit 0 · `eslint .` 0 erreur, 19 warnings —
+      exactement les préexistants. **Un premier passage vitest avait rendu 1 échec, non
+      reproduit au second passage complet** ; son nom n'a pas été capturé. Signalé comme
+      flake à surveiller, pas comme un vert acquis.*
+- [x] E5. `go test ./...` **et** `go test -tags=integration ./...` (les tests persist anti-ART
       sont obligatoires avant toute livraison touchant sync/persist).
-- [ ] E6. `govulncheck ./...` — au 2026-07-31 il remonte 11 CVE de la bibliothèque standard
+      *FAIT — résultats au gate global du lot d'hygiène (`-p 1` sur les deux, le lot touche
+      `sync/`, `persist/` et `migration/`).*
+- [x] E6. `govulncheck ./...` — au 2026-07-31 il remonte 11 CVE de la bibliothèque standard
       **Go 1.26.1, corrigées en 1.26.2**. Ce n'est pas de la dette de code : c'est la version de
       la chaîne d'outils. **Monter Go avant le merge** et re-mesurer ; ce qui resterait alors
       serait, lui, à traiter.
-- [ ] E7. Les quatre ratchets `archlint` / sentinel ADR 0023 (cf. journal de
+      *FAIT, et la mesure a d'abord DÉPLACÉ le problème : le toolchain LOCAL est déjà 1.26.5,
+      donc govulncheck local rendait déjà 0. Les 11 CVE ne restaient que là où ça compte —
+      `ci.yml` installe le toolchain par `go-version-file: apps/go-api/go.mod`, et go.mod
+      déclarait `go 1.26.1`. **La CI, qui garde le merge, compilait avec la version
+      vulnérable.** `go.mod` monté à 1.26.5 ; le Dockerfile (`golang:1.26-bookworm`) n'était
+      pas concerné. Re-mesure : 0 vulnérabilité appelée. Reste GO-2026-5932
+      (`x/crypto/openpgp`, paquet non maintenu, `Fixed in: N/A`) dans un module requis mais
+      NON appelé : aucune action possible, consigné pour ne pas le ré-instruire.*
+- [x] E7. Les quatre ratchets `archlint` / sentinel ADR 0023 (cf. journal de
       `V7.5/PLAN_RECONCILIATION_BRANCHES.md`) : re-vérifier qu'aucune allowlist n'a grossi sans
       justification datée depuis.
-- [ ] E8. Entrée `.ai/thought_log.md` + rotation trimestrielle à re-appliquer (elle a été
+      *FAIT — diff `origin/main..HEAD` sur `internal/archlint/` : trois ratchets NEUFS avec
+      leur propre allowlist justifiée, une allowlist qui DÉCROÎT (`longestRunAllowedPrefixes`,
+      retrait daté du 2026-08-01), une seule entrée ajoutée (`cmd/mapobj-build/fetch.go`,
+      datée 2026-07-31 et motivée), et `killScopeAllowlist` VIDE. `internal/archlint` et
+      `platform/auth/...` verts.*
+- [x] E8. Entrée `.ai/thought_log.md` + rotation trimestrielle à re-appliquer (elle a été
       volontairement suspendue à la réconciliation pour ne rien perdre) + rangement de `.ai/`.
+      *FAIT. Rotation appliquée : le journal actif ne garde plus que **2026-Q3 + 2026-Q2**
+      (règle CLAUDE.md), 37 entrées antérieures parties sous `.ai/archive/thought_log_<Y>-Q<n>.md`
+      (5 fichiers, 1 527 lignes). **Conservation vérifiée à l'entrée près** : 2 141 entrées
+      datées avant, 2 141 après (actif + archives). Le rangement `.ai/` est H6 du plan maître.
+      **PIÈGE TROUVÉ** : `.gitignore:246` ignore `.ai/archive/` alors que son contenu est
+      délibérément versionné (les archives antérieures sont suivies) — sans `git add -f`, la
+      rotation aurait fait DISPARAÎTRE 37 entrées du dépôt en silence.*
+
+### DÉCOUVERTES DU LOT E — consignées, NON traitées
+
+1. **Le journal actif porte 456 entrées DUPLIQUÉES avec `archive/thought_log_2026-Q2.md`**, et
+   112 ruptures d'ordre décroissant : séquelles de la réconciliation, qui a fusionné deux
+   journaux. La rotation ci-dessus n'y touche pas — dédupliquer un journal daté de 75 000 lignes
+   est un lot à part, avec son propre contrôle de conservation.
+2. **`.gitignore:246` (`.ai/archive/`) est un piège latent** : tout nouveau fichier d'archive est
+   ignoré par défaut alors que la convention du dépôt est de les versionner. À trancher — retirer
+   la règle, ou la restreindre aux répertoires réellement jetables.
 
 ### Lot F — la clôture
 
-- [ ] F1. Compteur `golangci-lint --new-from-merge-base=origin/main` = **0** sur
+- [x] F1. Compteur `golangci-lint --new-from-merge-base=origin/main` = **0** sur
       `feat/replay2d-prod`. C'est la définition de « prêt ».
-- [ ] F2. Rebaser ou merger `origin/main` à jour dans la branche, **puis re-mesurer** : la base
+      *FAIT 2026-08-05 : **0 issues**, cache purgé, mesuré APRÈS le merge de F2 puis re-mesuré
+      en fin de lot. Piège vérifié au passage : `cmd/rebuild_mp/main.go` est passé de
+      `//go:build ignore` à `//go:build cgo` (H4), donc il entre dans le champ du linter pour
+      la première fois — et il y entre EN ENTIER, comme tout fichier neuf vis-à-vis de la
+      base commune. Il rend 0.*
+- [x] F2. Rebaser ou merger `origin/main` à jour dans la branche, **puis re-mesurer** : la base
       du ratchet bouge avec `main`, un compteur à 0 hier peut ne plus l'être.
+      *FAIT 2026-08-05 en OUVERTURE du lot d'hygiène : `origin/main` mergé (3 commits de
+      retard : vague 4 « autorité de schéma des player DB », fix du timeout de `gate-push`,
+      journal). Un seul conflit, en tête du `thought_log` — résolu en gardant les deux entrées
+      dans l'ordre chronologique. Ratchet re-mesuré sur la nouvelle base : **0**. `migration`,
+      `sync` et `ops` rejoués après le merge : verts, 0 échec.*
 - [ ] F3. **Prévenir avant le push sur `main`** — push sur `main` = déploiement prod
       automatique (`docs/RUNBOOK_GO_LIVE*`).
+      *NON FAIT, et c'est volontaire : la décision de merger appartient à l'utilisateur. La
+      branche est poussée, la CI la garde ; le GO explicite reste à demander.*
 
 ---
 
