@@ -95,7 +95,7 @@ func checkAgainstOracle8(t *testing.T, film, objectiveType string) {
 	t.Helper()
 	src, ok := newDiskFilmSource(t, film)
 	if !ok {
-		t.Skipf("film %s absent du cache local", film)
+		t.Skipf("film %s absent du cache (%s=%q)", film, filmCacheEnv, cacheRoot())
 	}
 	recs := StatRecords(src)
 	identity := slotIdentityFrom(recs, linesOf(film))
@@ -149,7 +149,7 @@ func TestNamedEventsCTFAgainstEightPlayers(t *testing.T) {
 func TestNamedEventsZoneTotalsMatchAPI(t *testing.T) {
 	src, ok := newDiskFilmSource(t, "696a9d7c")
 	if !ok {
-		t.Skip("film 696a9d7c absent du cache local")
+		t.Skipf("film 696a9d7c absent du cache (%s=%q)", filmCacheEnv, cacheRoot())
 	}
 	total := map[string]int{}
 	for _, e := range NamedEvents(src, ObjectiveTypeZone) {
@@ -196,7 +196,7 @@ func TestNamedEventsCrossCheck(t *testing.T) {
 		}
 	}
 	if confrontes == 0 {
-		t.Skip("aucun film de reference dans le cache local — aucun recoupement joue")
+		t.Skipf("aucun film de reference dans le cache (%s=%q) — aucun recoupement joue", filmCacheEnv, cacheRoot())
 	}
 }
 

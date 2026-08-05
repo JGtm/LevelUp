@@ -10,9 +10,23 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
-// cacheRoot = racine du cache film de dev (chemin absolu, style --cache). Si
-// absent (CI sans films), les tests ground-truth se SKIPpent proprement.
-const cacheRoot = `c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache`
+// filmCacheEnv — nom de la variable qui porte la racine du cache film
+// (`film_manifests/<id>.json` + `film_chunks/<id>/chunk_NN.bin`). Même convention que
+// `KILLSOURCE_FIXTURES` : les films ne sont pas versionnés (107 Mo), donc les tests de
+// vérité terrain se skippent proprement quand ils ne sont pas là.
+//
+// ELLE REMPLACE UN CHEMIN ÉCRIT EN DUR (2026-08-05, R3). Le chemin visait
+// `c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache`, un poste qui
+// n'existe plus : les tests adossés au cache — dont l'oracle à HUIT joueurs, celui qui
+// garde les noms `flag_grabs`/`zone_secures` — se skippaient donc EN PERMANENCE, sur
+// toutes les machines, et rien ne le disait sinon un message citant un chemin mort. Un
+// chemin absolu en dur ne casse pas : il se tait.
+//
+//	FILM_CACHE_ROOT=<repo>/data/cache go test ./internal/analysis/objectiveevents/
+const filmCacheEnv = "FILM_CACHE_ROOT"
+
+// cacheRoot rend la racine du cache film, ou "" si la variable n'est pas posée.
+func cacheRoot() string { return os.Getenv(filmCacheEnv) }
 
 // diskFilmSource = FilmSource de test adossée au cache disque
 // (film_chunks/<id>/chunk_NN.bin + film_manifests/<id>.json). Mime la future
@@ -33,7 +47,7 @@ type manifestJSON struct {
 // newDiskFilmSource charge le manifest d'un film ; renvoie (nil,false) si absent.
 func newDiskFilmSource(t *testing.T, id string) (*diskFilmSource, bool) {
 	t.Helper()
-	mfPath := filepath.Join(cacheRoot, "film_manifests", id+".json")
+	mfPath := filepath.Join(cacheRoot(), "film_manifests", id+".json")
 	raw, err := os.ReadFile(mfPath)
 	if err != nil {
 		return nil, false
@@ -52,7 +66,7 @@ func newDiskFilmSource(t *testing.T, id string) (*diskFilmSource, bool) {
 func (d *diskFilmSource) Chunks() []ChunkMeta { return d.chunks }
 
 func (d *diskFilmSource) ChunkData(index int) ([]byte, bool) {
-	p := filepath.Join(cacheRoot, "film_chunks", d.id, fmt.Sprintf("chunk_%02d.bin", index))
+	p := filepath.Join(cacheRoot(), "film_chunks", d.id, fmt.Sprintf("chunk_%02d.bin", index))
 	raw, err := os.ReadFile(p)
 	if err != nil {
 		return nil, false
@@ -122,7 +136,7 @@ func TestExtractCTFCaptureCount(t *testing.T) {
 		t.Run(tc.id, func(t *testing.T) {
 			src, ok := newDiskFilmSource(t, tc.id)
 			if !ok {
-				t.Skipf("film cache absent for %s (%s) — skipping ground-truth test", tc.id, cacheRoot)
+				t.Skipf("film %s absent du cache (%s=%q) — verite terrain non rejouee", tc.id, filmCacheEnv, cacheRoot())
 			}
 			events := Extract(tc.id, tc.variant, src, rosterFor(tc.id))
 
