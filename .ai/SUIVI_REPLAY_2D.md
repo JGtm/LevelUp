@@ -16,7 +16,8 @@
 ## LE POC N'ÉTAIT PAS VIABLE — trois défauts sur quatre sont RÉPARÉS (2026-07-28)
 
 Constat posé avec l'utilisateur le 2026-07-28, puis traité par
-`PLAN_REJEU_2D_FIABILISATION.md` (étapes 1 à 5 closes ; étape 6 ouverte).
+`V7.5/replay2d/PLAN_REJEU_2D_FIABILISATION.md` (les six étapes sont closes ; le plan a été
+archivé sous `V7.5/` le 2026-08-05, lot d'hygiène H6).
 
 | ce qui n'était pas viable | avant | après | où |
 |---|---|---|---|

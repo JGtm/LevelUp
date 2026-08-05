@@ -23,8 +23,8 @@ Tout ce qui suit a été revérifié ce soir (git, disque, CI), pas recopié des
 | fait | preuve |
 |---|---|
 | Branche vivante : **`feat/replay2d-prod`** (dépôt principal, arbre propre). Elle contient `main` (`6c2b00402`) + killsource + le rejeu 2D réunis | `git log`, `git status` |
-| `PLAN_RECONCILIATION_BRANCHES.md` : **CLOS** — fusion bit-exacte, critères §5 tous verts sur les 3 films | journal du plan |
-| `PLAN_REJEU_2D_FIABILISATION.md` : **CLOS** (étapes 1-6) | journal du plan, SUIVI |
+| `V7.5/PLAN_RECONCILIATION_BRANCHES.md` : **CLOS** — fusion bit-exacte, critères §5 tous verts sur les 3 films | journal du plan |
+| `V7.5/replay2d/PLAN_REJEU_2D_FIABILISATION.md` : **CLOS** (étapes 1-6) | journal du plan, SUIVI |
 | **CI de branche ROUGE** — 4 signaux, dont 3 qu'aucun plan ne couvre | `gh run list`, détail §3/J1 |
 | Les briques de branchement killsource sont **ABSENTES de cette branche** : pas de `internal/sync/killsource_bridge.go`, pas de `steps_shared_kill_events.go` / `steps_shared_weapon_shots.go`, pas de persisters kill/shots. Seuls le décodeur (`internal/games/halo_infinite/film/killsource`) et `cmd/killsource` sont là | `ls` sur `internal/{sync,migration,persist}` |
 | `config/titles/halo_infinite/mappings/weapon_names.toml` existe (cible du lot title-agnostic) | `ls mappings/` |
@@ -41,7 +41,7 @@ d'indice du tueur contre le code actuel — ne pas les porter.
 
 | document | correction |
 |---|---|
-| `HANDOFF_KILLSOURCE_REPRISE.md` | La table des branches est périmée : la branche vivante est `feat/replay2d-prod` depuis la réconciliation du 31/07. `feat/killsource-prod` est absorbée, `filmdec-continuation` et `filmdec-killweapon` sont des archives |
+| `V7.5/killweapon/HANDOFF_KILLSOURCE_REPRISE.md` | La table des branches est périmée : la branche vivante est `feat/replay2d-prod` depuis la réconciliation du 31/07. `feat/killsource-prod` est absorbée, `filmdec-continuation` et `filmdec-killweapon` sont des archives |
 | `PLAN_BRANCHEMENT_KILLSOURCE.md` | Phase 0 : CLOSE (autrement — par la réconciliation). Le tableau « CE QUI EXISTE DÉJÀ » est faux ici : pont, migrations, persisters à RÉÉCRIRE (cf. §1). L'ordre des phases 2 et 3 est corrigé par ce master plan (§J4) |
 | `HANDOFF_REPLAY_2D_2026-07-29.md` | La « décision de branche » attendue est PRISE et exécutée. Le blocage du fil des éliminations est LEVÉ. Le document reste utile pour ses réserves ouvertes (cellule de munitions, `ownersFromLives`) |
 | `PLAN_FINALISATION_REJEU_2D.md` | Lot 5 : DÉBLOQUÉ (killsource est sur la branche). Lot 7.4 : la note « ce lot ne vit pas sur cette branche » est périmée — `feat/replay2d-prod` descend de `main` ; le lot 7.4 reste néanmoins un chantier séparé (branche dédiée depuis `main`, cf. §J6-C) |
@@ -243,7 +243,7 @@ rouges, mesurés ce soir sur `gh run list` :
       Shim rendu portable (branche Windows inchangée ; ailleurs `x86intrin.h` + builtins GNU,
       `_BitScanReverse/Forward` réécrits avec le contrat MSVC exact). Non-régression du
       décodeur vérifiée : les 3 artefacts reconstruits rendent les chiffres du §5 de
-      `PLAN_RECONCILIATION_BRANCHES` à l'unité près.
+      `V7.5/PLAN_RECONCILIATION_BRANCHES` à l'unité près.
 - [x] J1.4 **Go Lint (ratchet golangci)** : rouge CONNU et PLANIFIÉ — c'est `PLAN_DETTE`
       (J3). Ne pas le traiter ici ; vérifier seulement qu'il ne masque pas un autre échec.
       **VÉRIFIÉ, non traité** : le job ne masque aucun échec d'une autre nature (aucun test
@@ -880,7 +880,7 @@ FRAÎCHEUR (l'état a bougé le jour même) et d'ORDRE, pas de conception.
 | `PLAN_BELLE_CARTE_TRIANGLES` | **bon** | Reproduire avant porter, trancher les 2 réserves (seuil 5 cm, bornes par tag vs par maillage) AVANT le portage : exactement le bon ordre. Question Python réglée en §5.2-6. Étape 4.2 : mesurer le poids du champ d'altitude avant de choisir le pas (677 Ko aujourd'hui ; 5 cm ≈ 1,1 M cellules) |
 | `PLAN_RECHERCHE_ASSETS_ICONES` | **bon** | Bien isolé, échec sans dette, licence = question utilisateur AVANT intégration. La règle « vérifier visuellement, jamais le nom de fichier » est déjà payée |
 | `HANDOFF_PRECISION_PROJECTILES` | **excellent lot de recherche** | Une seule piste nommée (l'enregistrement qui CRÉE le slot du code 7), verdict binaire, critères anti-illusion (gain localisé, comparaison à l'unité, contraste intra-joueur). À timeboxer (§7) et à garder en MESURE pure jusqu'au verdict |
-| `HANDOFF_KILLSOURCE_REPRISE` | **périmé sur les branches** | Corrigé en §2 ; son point 1 (gitleaks) est confirmé par la CI et traité en J1 |
+| `V7.5/killweapon/HANDOFF_KILLSOURCE_REPRISE` | **périmé sur les branches** | Corrigé en §2 ; son point 1 (gitleaks) est confirmé par la CI et traité en J1 |
 | `HANDOFF_REPLAY_2D_2026-07-29` | **périmé sur le blocage** | Ses réserves ouvertes restent valables (cellule de munitions k, `ownersFromLives` sur collision — à reposer sur chaque nouveau film) |
 
 ---

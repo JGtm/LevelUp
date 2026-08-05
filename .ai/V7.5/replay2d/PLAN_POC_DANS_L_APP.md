@@ -5,7 +5,7 @@
 > suivante, aucun report d'une action faisable, chaque item statué à la clôture.
 >
 > Documents qui font foi : `../../SUIVI_REPLAY_2D.md` (avancement), `../../CAHIER_DES_CHARGES_POC.md`
-> (ce que l'écran doit montrer), `../../PLAN_REJEU_2D_FIABILISATION.md` (étapes 1 à 6, closes).
+> (ce que l'écran doit montrer), `PLAN_REJEU_2D_FIABILISATION.md` (étapes 1 à 6, closes).
 
 ---
 
