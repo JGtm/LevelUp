@@ -282,7 +282,7 @@ fr = "Identifiant"
 en = "Username"
 
 [common.auth.username_placeholder]
-fr = "Votre identifiant"
+fr = "Ton identifiant"
 en = "Your username"
 
 [common.auth.password_label]
@@ -330,8 +330,8 @@ fr = "Déjà un compte ?"
 en = "Already have an account?"
 
 [common.auth.first_launch_admin]
-fr = "Premier lancement — votre compte sera administrateur."
-en = "First launch — your account will be administrator."
+fr = "Premier lancement — le compte sera administrateur."
+en = "First launch — the account will be administrator."
 
 [common.auth.invalid_credentials]
 fr = "Identifiants incorrects."
@@ -874,8 +874,8 @@ en = "Loading LevelUp…"
 # ─── Reauth banner (refresh_token Xbox mort) ────────────────────────────
 
 [common.reauth.message]
-fr = "Ta connexion Xbox a expiré — la synchronisation de tes données est en pause."
-en = "Your Xbox connection has expired — data sync is paused."
+fr = "La connexion Xbox a expiré — la synchronisation des données est en pause."
+en = "The Xbox connection has expired — data sync is paused."
 
 [common.reauth.action]
 fr = "Rafraîchir"
@@ -1147,7 +1147,7 @@ fr = "Connexion Microsoft"
 en = "Microsoft Sign-In"
 
 [common.setup.go_to]
-fr = "Rendez-vous sur"
+fr = "Rends-toi sur"
 en = "Go to"
 
 [common.setup.enter_this_code]
@@ -1167,7 +1167,7 @@ fr = "Synchronisation initiale"
 en = "Initial sync"
 
 [common.setup.initial_sync_intro]
-fr = "Nous allons télécharger vos matchs Halo Infinite et calculer vos premières statistiques."
+fr = "Nous allons télécharger tes matchs Halo Infinite et calculer tes premières statistiques."
 en = "We will download your Halo Infinite matches and compute your first statistics."
 
 [common.setup.session_rules_note]
@@ -1215,7 +1215,7 @@ fr = "✗ Échec de la synchronisation."
 en = "✗ Sync failed."
 
 [common.setup.create_player_profile]
-fr = "Créer votre profil joueur"
+fr = "Créer ton profil joueur"
 en = "Create your player profile"
 
 [common.setup.halo_identity_linked]
@@ -1227,7 +1227,7 @@ fr = "Un profil local sera créé pour ce compte."
 en = "A local profile will be created for this account."
 
 [common.setup.enter_gamertag]
-fr = "Entrez votre Gamertag Xbox pour créer votre profil."
+fr = "Entre ton Gamertag Xbox pour créer ton profil."
 en = "Enter your Xbox Gamertag to create your profile."
 
 [common.setup.select_titles_title]
@@ -1253,7 +1253,7 @@ fr = "Connexion admin (mot de passe)"
 en = "Admin login (password)"
 
 [common.auth.xbox_connect_microsoft]
-fr = "Connectez-vous avec votre compte Microsoft pour accéder à votre dashboard LevelUp."
+fr = "Connecte-toi avec ton compte Microsoft pour accéder à ton dashboard LevelUp."
 en = "Sign in with your Microsoft account to access your LevelUp dashboard."
 
 [common.auth.xbox_sign_in]
@@ -1397,16 +1397,16 @@ en = "Next reward"
 # ─── Prestige (LeaderboardPP, Objectifs) ────────────────────────────────
 
 [common.prestige.leaderboard_intro]
-fr = "Classement Prestige entre amis dérivés de ton escouade et tes relations."
-en = "Prestige leaderboard with friends derived from your squad and relations."
+fr = "Classement Prestige entre amis dérivés de l'escouade et des relations."
+en = "Prestige leaderboard with friends derived from the squad and relations."
 
 [common.prestige.select_player_for_leaderboard]
 fr = "Sélectionne un joueur pour voir le classement."
 en = "Select a player to see the leaderboard."
 
 [common.prestige.select_player_for_objectives]
-fr = "Sélectionne un joueur pour voir tes objectifs."
-en = "Select a player to see your objectives."
+fr = "Sélectionne un joueur pour voir les objectifs."
+en = "Select a player to see the objectives."
 
 [common.prestige.objectives_subtitle]
 fr = "Profil, objectifs et campagnes d'amélioration personnelle."
@@ -1449,8 +1449,8 @@ fr = "Aucun arc en cours. Choisis un arc preset ou crée le tien."
 en = "No arc in progress. Pick a preset arc or create your own."
 
 [common.prestige.moment_cards_will_appear]
-fr = "Les moment cards apparaîtront ici à la validation de tes preuves."
-en = "Moment cards will appear here when your proofs are validated."
+fr = "Les moment cards apparaîtront ici à la validation des preuves."
+en = "Moment cards will appear here when the proofs are validated."
 
 [common.prestige.prestige_level]
 fr = "Niveau Prestige"
@@ -1627,15 +1627,15 @@ fr = "Aucun match trouvé dans cette fenêtre. Élargis la recherche."
 en = "No match found in this window. Broaden your search."
 
 [common.charts.efficiency_tooltip]
-fr = "Rendement = efficacité offensive : à quel point tu convertis tes dégâts en éliminations. Résistance = solidité défensive : combien de dégâts tu encaisses avant de mourir. Une vie équivaut à environ {{HP}} points de dégâts. Chaque graphe trace sa propre ligne de référence indiquant un niveau « normal »."
-en = "Output = offensive efficiency: how well you turn your damage into kills. Resistance = defensive resilience: how much damage you absorb before dying. One life ≈ {{HP}} points of damage. Each chart draws its own reference line marking a \"normal\" level."
+fr = "Rendement = efficacité offensive : à quel point les dégâts sont convertis en éliminations. Résistance = solidité défensive : combien de dégâts sont encaissés avant de mourir. Les deux courbes sont exprimées en pourcentage d'une vie : 100 % correspond à une vie complète, soit environ {{HP}} points de dégâts dans le titre affiché — la ligne de référence de chaque graphe marque ce repère. Au-dessus de 100 %, la performance dépasse une vie (rendement : élimination obtenue avec moins d'une vie de dégâts ; résistance : plus d'une vie encaissée avant la mort) ; en dessous, elle reste sous ce niveau. Le survol d'un point affiche la valeur brute en dégâts derrière le pourcentage."
+en = "Output = offensive efficiency: how well damage is turned into kills. Resistance = defensive resilience: how much damage is absorbed before dying. Both curves are expressed as a percentage of one life: 100% equals one full life, about {{HP}} points of damage in the displayed title — each chart's reference line marks that level. Above 100%, performance exceeds one life (output: a kill costs less than one life of damage; resistance: more than one life is absorbed before death); below it, performance stays under that level. Hovering over a point reveals the raw damage value behind the percentage."
 
 # Aide pédagogique UNIQUE du graphe « Écart cumulé au FDA attendu » (Séries
 # temporelles + Sessions) : le graphe n'en avait aucune. Langage simple, pas de
 # vocabulaire statistique — l'important est la PENTE, pas la valeur absolue.
 [common.charts.fda_gap_tooltip]
-fr = "À chaque match, on compare ton FDA réel au FDA attendu (le niveau prévu pour toi face à cette opposition). La courbe additionne ces écarts match après match : elle monte quand tu fais mieux que prévu, elle descend quand tu fais moins bien. Regarde surtout sa pente — au-dessus de la ligne 0 tu es en avance sur l'attendu, en dessous tu es en retard. Le trait fin en pointillés est le FDA attendu de chaque match."
-en = "For every match, your actual KDA is compared to the KDA expected of you against that opposition. The line adds up those gaps match after match: it rises when you do better than expected and falls when you do worse. Watch its slope above all — above the 0 line you are ahead of expectations, below it you are behind. The thin dashed line is each match's expected KDA."
+fr = "À chaque match, le FDA réel est comparé au FDA attendu (le niveau prévu face à cette opposition). La courbe additionne ces écarts match après match : elle monte quand la performance dépasse l'attendu, elle descend quand elle est en dessous. Sa pente est le signal à suivre — au-dessus de la ligne 0 la performance est en avance sur l'attendu, en dessous elle est en retard. Le trait fin en pointillés est le FDA attendu de chaque match."
+en = "For every match, actual KDA is compared to the KDA expected against that opposition. The line adds up those gaps match after match: it rises when performance beats expectations and falls when it falls short. Watch its slope above all — above the 0 line performance is ahead of expectations, below it it is behind. The thin dashed line is each match's expected KDA."
 
 # Axes du profil « Intensité » (Escouade / Séries temporelles / Sessions). L'axe X
 # ne montre que 3 repères (début / milieu / fin du match) ; rangeSuffix complète la
@@ -1662,8 +1662,8 @@ fr = "Mes groupes"
 en = "My groups"
 
 [common.groups.intro]
-fr = "Les membres d'un groupe partagent l'accès mutuel à leurs données. Invitez un ami : il se connecte avec Xbox et rejoint votre groupe."
-en = "Members of a group share mutual access to their data. Invite a friend: they sign in with Xbox and join your group."
+fr = "Les membres d'un groupe partagent l'accès mutuel à leurs données. Invite un ami : il se connecte avec Xbox et rejoint le groupe."
+en = "Members of a group share mutual access to their data. Invite a friend: they sign in with Xbox and join the group."
 
 [common.groups.new_placeholder]
 fr = "Nom du nouveau groupe"
@@ -1674,8 +1674,8 @@ fr = "Créer"
 en = "Create"
 
 [common.groups.empty]
-fr = "Vous n'êtes dans aucun groupe pour l'instant."
-en = "You are not in any group yet."
+fr = "Aucun groupe pour l'instant."
+en = "Not in any group yet."
 
 [common.groups.members]
 fr = "Membres"
@@ -1718,7 +1718,7 @@ fr = "Rejoindre un groupe"
 en = "Join a group"
 
 [common.groups.join_intro]
-fr = "Vous avez été invité à rejoindre un groupe. Connectez-vous avec Xbox pour rejoindre — votre compte est créé automatiquement."
+fr = "Tu as été invité à rejoindre un groupe. Connecte-toi avec Xbox pour rejoindre — ton compte est créé automatiquement."
 en = "You have been invited to join a group. Sign in with Xbox to join — your account is created automatically."
 
 [common.groups.invite_code_label]
@@ -1764,8 +1764,8 @@ en = "Valid for"
 
 # ─── Setup : device-code + sync initiale (I1, 2026-07-05) ────────────────────
 [common.device_code.err_denied]
-fr = "Vous avez refusé ou annulé la demande Microsoft."
-en = "You denied or cancelled the Microsoft request."
+fr = "La demande Microsoft a été refusée ou annulée."
+en = "The Microsoft request was denied or cancelled."
 
 [common.device_code.err_ms]
 fr = "Erreur lors de l'authentification Microsoft."
@@ -1776,8 +1776,8 @@ fr = "Impossible d'obtenir un accès Halo. Veuillez réessayer."
 en = "Unable to obtain Halo access. Please try again."
 
 [common.device_code.err_identity]
-fr = "Impossible de résoudre votre Gamertag. Réessayez dans quelques instants."
-en = "Unable to resolve your Gamertag. Try again shortly."
+fr = "Impossible de résoudre le Gamertag. Réessaie dans quelques instants."
+en = "Unable to resolve the Gamertag. Try again shortly."
 
 [common.device_code.err_expired]
 fr = "Le code a expiré."
@@ -1788,8 +1788,8 @@ fr = "Échec de l'authentification."
 en = "Authentication failed."
 
 [common.initial_sync.err_auth_expired]
-fr = "Votre session Halo a expiré. Relancez pour renouveler l'authentification."
-en = "Your Halo session expired. Restart to renew authentication."
+fr = "La session Halo a expiré. Relance pour renouveler l'authentification."
+en = "The Halo session expired. Restart to renew authentication."
 
 [common.initial_sync.err_halo_api]
 fr = "L'API Halo est temporairement indisponible. Veuillez réessayer."
@@ -1800,8 +1800,8 @@ fr = "Erreur interne lors de l'enregistrement des données. Contactez le support
 en = "Internal error while saving data. Contact support."
 
 [common.initial_sync.err_aborted]
-fr = "La synchronisation a été interrompue. Vous pouvez relancer."
-en = "Sync was interrupted. You can restart."
+fr = "La synchronisation a été interrompue. Il est possible de relancer."
+en = "Sync was interrupted. It can be restarted."
 
 [common.initial_sync.err_internal]
 fr = "Erreur inattendue. Veuillez réessayer."
@@ -1914,8 +1914,8 @@ fr = "Erreur inconnue."
 en = "Unknown error."
 
 [common.onboarding.import_err_xuid_mismatch]
-fr = "Cette base OpenSpartan n'appartient pas à ton compte Xbox connecté."
-en = "This OpenSpartan database does not belong to your connected Xbox account."
+fr = "Cette base OpenSpartan n'appartient pas au compte Xbox connecté."
+en = "This OpenSpartan database does not belong to the connected Xbox account."
 
 [common.onboarding.import_err_low_confidence]
 fr = "Impossible de vérifier que cette base est bien la tienne. Renomme le fichier en <ton-xuid>.db et réessaye."

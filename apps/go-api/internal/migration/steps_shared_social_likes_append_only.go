@@ -11,9 +11,10 @@ package migration
 // (is_liked TRUE/FALSE). PK technique id BIGINT → aucune pression ART. État courant lu
 // via media_likes_latest (dernier event par (media_path, liker_slug), filtré is_liked=TRUE).
 //
-// NB : media_files.liked (UPDATE) reste tel quel — `liked`/`liked_at` ne sont PAS
-// indexées (idx_mf_player_slug/_kind/_created) → UPDATE non corrupteur. Le DELETE
-// full-table de media_files au reindex est traité séparément (todo media_files).
+// NB (2026-08-04) : media_files.liked / liked_at, l'ancien support GLOBAL du cœur,
+// ont été retirées du schéma — le like est PAR LIKER et n'a plus d'autre support que
+// media_likes_history. Cf. drop_media_files_liked_columns_v1
+// (games/halo_infinite/migrations/steps_shared_social.go).
 //
 // Pattern calqué sur match_favorites (table sœur _history + vue + backfill, sans CTAS).
 

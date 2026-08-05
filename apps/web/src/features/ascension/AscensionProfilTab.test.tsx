@@ -119,7 +119,7 @@ describe('AscensionProfilTab — composition (couche Profil)', () => {
     mockShellState.currentPlayer = null
     render(<AscensionProfilTab />)
     expect(
-      screen.getByText(/Sélectionne un joueur pour voir tes objectifs/i),
+      screen.getByText(/Sélectionne un joueur pour voir les objectifs/i),
     ).toBeInTheDocument()
   })
 })

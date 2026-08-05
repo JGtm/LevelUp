@@ -87,25 +87,10 @@ WHERE match_id = ?
 ORDER BY value DESC
 LIMIT 4`
 
-// Q40 : Moteur citations complet â€” tous les champs de citation_mappings.
-// ParamÃ¨tre : aucun. RequÃªte sur metadata.duckdb (passÃ© comme DB racine dans le sync).
-// Retourne 11 colonnes pour le dispatch par mapping_type.
-const Q40CitationFullMappings = `
-SELECT
-    citation_name_norm,
-    citation_name_display,
-    COALESCE(mapping_type, 'medal') AS mapping_type,
-    COALESCE(category, 'misc')     AS category,
-    medal_id,
-    medal_ids,
-    stat_name,
-    award_name,
-    custom_function,
-    composite_children,
-    tier_targets
-FROM citation_mappings
-WHERE enabled IS NOT FALSE
-ORDER BY citation_name_norm`
+// Q40 (Moteur citations complet - tous les champs de citation_mappings) a ete
+// supprimee le 2026-08-03 : la constante n'avait aucun consommateur. La requete
+// reellement executee vit dans sync.loadFullCitationMappings
+// (internal/sync/citations.go), qui interroge metadata.duckdb directement.
 
 // Q39 : Moteur citations â€” mappings citationâ†’medal depuis metadata.duckdb.
 // ParamÃ¨tre : aucun. RequÃªte sur pdb.Metadata.
@@ -167,14 +152,17 @@ func normalizeMediaMapName(s string) string {
 	return strings.TrimSpace(s)
 }
 
-// mediaQueryConfig porte les paramètres de scoping (player_slug) pour le
-// pipeline Q37. Utilisé par media_repo_q37_pipeline.go.
+// mediaQueryConfig porte les paramètres de scoping du pipeline Q37. Utilisé par
+// media_repo_q37_pipeline.go.
+//
+//   - playerSlug : PROPRIÉTAIRE de la galerie consultée (sections mine/teammate) ;
+//   - viewerSlug : joueur qui REGARDE (session). Détermine l'état du cœur `liked`
+//     et le filtre « favoris », lus par liker dans media_likes_latest. Les deux
+//     diffèrent dès qu'on consulte les médias d'un coéquipier — ne jamais les
+//     confondre.
 type mediaQueryConfig struct {
 	playerSlug string
-}
-
-func (cfg mediaQueryConfig) useSharedSocialSchema() bool {
-	return cfg.playerSlug != ""
+	viewerSlug string
 }
 
 // baseWhereClause renvoie les contraintes de base + le filtre de section (ownership).
@@ -183,17 +171,10 @@ func (cfg mediaQueryConfig) useSharedSocialSchema() bool {
 //	"mine"      → uniquement player_slug courant
 //	"teammate"  → uniquement les autres (player_slug != courant)
 //
-// En schéma legacy (pas de player_slug), seul "mine" et "" donnent des résultats ;
-// "teammate" force WHERE FALSE pour cohérence (rien à montrer).
+// La branche « schéma legacy » (playerSlug vide) a été supprimée le 2026-08-03
+// avec le reste du chemin legacy du pipeline Q37 : elle était inatteignable
+// (cf. mediaCandidatesSharedSocialFromClause).
 func (cfg mediaQueryConfig) baseWhereClause(sectionFilter string) ([]string, []any) {
-	if !cfg.useSharedSocialSchema() {
-		switch sectionFilter {
-		case "teammate":
-			return []string{"FALSE"}, nil
-		default:
-			return []string{"mf.status = 'active'"}, nil
-		}
-	}
 	switch sectionFilter {
 	case "mine":
 		return []string{"mf.player_slug = ?"}, []any{cfg.playerSlug}

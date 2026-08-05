@@ -50,8 +50,6 @@ func setupSocialDB(t *testing.T) (string, *sql.DB) {
 			duration_seconds DOUBLE,
 			status VARCHAR,
 			mtime TIMESTAMPTZ,
-			liked BOOLEAN DEFAULT FALSE,
-			liked_at TIMESTAMPTZ,
 			discord_notified BOOLEAN DEFAULT FALSE,
 			indexed_at TIMESTAMPTZ DEFAULT NOW()
 		)`,

@@ -65,8 +65,6 @@ func realMediaPipelineSetup(t *testing.T) (*chi.Mux, string) {
 			capture_start_utc TIMESTAMP WITH TIME ZONE,
 			capture_end_utc TIMESTAMP WITH TIME ZONE,
 			mtime TIMESTAMP WITH TIME ZONE,
-			liked BOOLEAN DEFAULT FALSE,
-			liked_at TIMESTAMP,
 			-- status : cycle de vie du fichier ('active', NULL, ou 'deleted' depuis
 			-- l'item 3.1). Présente en prod via l'ALTER de steps_shared_social ;
 			-- toute lecture applicative la filtre (MediaVisiblePredicate).
@@ -101,13 +99,22 @@ func realMediaPipelineSetup(t *testing.T) (*chi.Mux, string) {
 			SELECT a.media_file_id, a.match_id, a.delta_seconds, a.is_manual, a.associated_at, a.written_at
 			FROM act a JOIN hm ON hm.media_file_id = a.media_file_id
 			WHERE a.is_manual = hm.has_manual;
-		CREATE TABLE IF NOT EXISTS media_likes (
-			media_path VARCHAR NOT NULL,
-			liker_slug VARCHAR NOT NULL,
-			liker_gamertag VARCHAR,
-			liked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			PRIMARY KEY (media_path, liker_slug)
+		-- Append-only (cf. shared_social_likes_append_only_v1) : le like vit en
+		-- events par liker, et TOUTE lecture passe par la vue _latest (règle ART
+		-- n°2). C'est aussi le support du cœur PAR VIEWER de la galerie — sans ces
+		-- deux objets, le pipeline Q37 ne peut plus résoudre l'état liked.
+		CREATE SEQUENCE IF NOT EXISTS media_likes_history_id_seq START 1;
+		CREATE TABLE IF NOT EXISTS media_likes_history (
+			id BIGINT PRIMARY KEY DEFAULT nextval('media_likes_history_id_seq'),
+			media_path VARCHAR NOT NULL, liker_slug VARCHAR NOT NULL, liker_gamertag VARCHAR,
+			is_liked BOOLEAN NOT NULL, liked_at TIMESTAMP,
+			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 		);
+		CREATE OR REPLACE VIEW media_likes_latest AS
+			SELECT id, media_path, liker_slug, liker_gamertag, is_liked, liked_at, written_at
+			FROM media_likes_history
+			QUALIFY ROW_NUMBER() OVER (PARTITION BY media_path, liker_slug
+				ORDER BY written_at DESC, id DESC) = 1;
 		CREATE TABLE IF NOT EXISTS match_favorites (
 			player_slug VARCHAR NOT NULL,
 			match_id VARCHAR NOT NULL,
@@ -198,8 +205,13 @@ func TestMediaE2E_RealDB_GetMediaLibrary(t *testing.T) {
 	t.Logf("[OK] E2E HTTP GET /pages/media → 200 + 2 médias depuis vraie DB shared_social")
 }
 
-// TestMediaE2E_RealDB_PatchMediaLike (Gap 3) : PATCH /media/likes met à jour
-// liked=true dans la vraie DB et la persistance est vérifiable par re-query.
+// TestMediaE2E_RealDB_PatchMediaLike (Gap 3) : PATCH /media/likes écrit l'event
+// de like DU LIKER dans la vraie DB et la persistance est vérifiable par re-query.
+//
+// La re-query porte sur media_likes_latest : depuis le passage du like au
+// par-viewer (2026-08-04) c'est l'unique support de l'état du cœur, et
+// media_files.liked — le booléen global qu'interrogeait la version précédente de
+// ce test — n'existe plus (drop_media_files_liked_columns_v1).
 func TestMediaE2E_RealDB_PatchMediaLike(t *testing.T) {
 	r, socialPath := realMediaPipelineSetup(t)
 
@@ -232,17 +244,19 @@ func TestMediaE2E_RealDB_PatchMediaLike(t *testing.T) {
 		return
 	}
 	defer verifyDB.Close()
-	var liked bool
+	var events int
 	if err := verifyDB.QueryRow(
-		`SELECT liked FROM media_files WHERE file_path = ?`, "/m/real_a.mp4",
-	).Scan(&liked); err != nil {
+		`SELECT COUNT(*) FROM media_likes_latest
+		 WHERE media_path = ? AND liker_slug = ? AND is_liked = TRUE`,
+		"/m/real_a.mp4", "alice",
+	).Scan(&events); err != nil {
 		t.Logf("(skip re-query verify : %v)", err)
 		return
 	}
-	if !liked {
-		t.Error("la DB live ne reflète pas le like — persistance HS")
+	if events != 1 {
+		t.Errorf("la DB live ne reflète pas le like d'alice (%d event(s), want 1) — persistance HS", events)
 	}
-	t.Logf("[OK] E2E HTTP PATCH /media/likes → 200 + liked=true persisté sur disque shared_social")
+	t.Logf("[OK] E2E HTTP PATCH /media/likes → 200 + event de like persisté sur disque shared_social")
 }
 
 // TestMediaE2E_RealDB_PostFavorite (Gap 3) : favoris via SocialPersister

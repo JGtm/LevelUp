@@ -81,11 +81,7 @@ func (h *MatchExclusionHandler) SetExclusion(ctx context.Context, in *matchExclu
 			return nil, humacore.NewError(http.StatusUnprocessableEntity, "ranked_not_excludable",
 				"Les matchs classés ne peuvent pas être exclus")
 		case errors.Is(err, dblease.ErrDBLocked):
-			return nil, huma.ErrorWithHeaders(
-				humacore.NewError(http.StatusServiceUnavailable, "db_busy",
-					"database is currently busy, please retry"),
-				http.Header{"Retry-After": []string{"5"}},
-			)
+			return nil, errDBBusy()
 		}
 		slog.WarnContext(ctx, "match exclusion: db error",
 			"match_id", in.MatchID,

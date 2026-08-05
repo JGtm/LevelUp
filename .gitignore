@@ -149,6 +149,9 @@ apps/go-api/token_*.txt
 # diagnostic conservée localement, uploadée en artefact par la CI si le gate échoue.
 # NB : la baseline de RÉFÉRENCE (.ai/baselines/tests_pre_migration.jsonl) reste versionnée.
 apps/go-api/baseline_current.jsonl
+# stderr du run PowerShell natif de scripts/gate-push.ps1 (contournement git-bash/emutls,
+# cf. docs/COMMANDS.md) — même statut que le JSONL ci-dessus, diagnostic local only.
+apps/go-api/baseline_current.stderr.log
 apps/go-api/coverage
 apps/go-api/coverage*.out
 # Rapport HTML de couverture : artefact de build (régénéré + uploadé en CI),
@@ -178,6 +181,12 @@ tests/api/_sessions_sync_test/[0-9a-f]*-*.json
 tests/api/_sessions_v7_test/[0-9a-f]*-*.json
 # Corpus de test (fichiers binaires DuckDB lourds — générer via create_test_corpus.py)
 tests/fixtures/ref_player/*.duckdb
+# Fixture démo du harnais visuel (~59 Mo de DuckDB) — GÉNÉRÉE, jamais versionnée :
+# `bash scripts/demo-visual-harness.sh` (ou `levelup seed-demo --synthetic --out …`).
+# Déterministe à graine fixe, donc reproductible à l'identique par tout le monde.
+tests/fixtures/demo-root/
+# Logs des serveurs du harnais démo (hors outputDir Playwright, qui est vidé à chaud)
+tests/demo-harness-logs/
 data/warehouse/match_facts/
 data/warehouse/*.duckdb
 data/warehouse/*.wal
@@ -235,6 +244,10 @@ To do.txt
 
 # Archives de plans IA (notes personnelles historiques)
 .ai/archive/
+
+# Captures memoire de retro-ingenierie (rejeu 2D) — restaurees depuis sauvegarde
+# externe, jamais versionnees : ~145 Mo de dumps binaires non reproductibles.
+.ai/re_dump/
 
 # Logs locaux (non trackés)
 data/logs/*

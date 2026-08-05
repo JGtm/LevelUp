@@ -7,7 +7,7 @@
 // (dont le long-tail H5 : grenades/mêlée + hors-arsenal non-combat mappés depuis
 // v_weapon_kills).
 
-package migrations
+package weapons
 
 import (
 	"database/sql"
@@ -23,12 +23,12 @@ func openWeaponRegistryDB(t *testing.T) *sql.DB {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	if err := ApplyWeaponRegistry(db); err != nil {
-		t.Fatalf("ApplyWeaponRegistry: %v", err)
+	if err := ApplyRegistry(db); err != nil {
+		t.Fatalf("ApplyRegistry: %v", err)
 	}
 	// Idempotence : un second apply (INSERT OR IGNORE) ne doit pas échouer ni dupliquer.
-	if err := ApplyWeaponRegistry(db); err != nil {
-		t.Fatalf("ApplyWeaponRegistry (2e): %v", err)
+	if err := ApplyRegistry(db); err != nil {
+		t.Fatalf("ApplyRegistry (2e): %v", err)
 	}
 	return db
 }
@@ -208,12 +208,12 @@ func TestWeaponRegistry_H5NonCombatResolution(t *testing.T) {
 	}
 }
 
-// TestReconcileWeaponRegistry_Idempotent — fige l'auto-guérison de boot (fix Q2) :
+// TestReconcileRegistry_Idempotent — fige l'auto-guérison de boot (fix Q2) :
 // sur une DB au seed PARTIEL (lignes ajoutées au seed APRÈS que le runner a marqué
-// add_weapon_registry « done », jamais réinsérées), ReconcileWeaponRegistry ré-insère
+// add_weapon_registry « done », jamais réinsérées), ReconcileRegistry ré-insère
 // EXACTEMENT les lignes manquantes et rend leur nombre ; un 2e passage n'insère plus
 // rien (INSERT OR IGNORE → zéro doublon).
-func TestReconcileWeaponRegistry_Idempotent(t *testing.T) {
+func TestReconcileRegistry_Idempotent(t *testing.T) {
 	db := openWeaponRegistryDB(t) // seed complet (+ 2e apply : déjà idempotent)
 
 	fullWeapons := queryCount(t, db, "SELECT count(*) FROM weapons")
@@ -233,9 +233,9 @@ func TestReconcileWeaponRegistry_Idempotent(t *testing.T) {
 	}
 
 	// 1er reconcile : ré-insère les 2 lignes manquantes (1 weapon + 1 weapon_id).
-	n, err := ReconcileWeaponRegistry(db, "halo_5")
+	n, err := ReconcileRegistry(db, "halo_5")
 	if err != nil {
-		t.Fatalf("ReconcileWeaponRegistry: %v", err)
+		t.Fatalf("ReconcileRegistry: %v", err)
 	}
 	if n != 2 {
 		t.Errorf("reconciled rows = %d, want 2 (1 weapon + 1 weapon_id)", n)
@@ -252,9 +252,9 @@ func TestReconcileWeaponRegistry_Idempotent(t *testing.T) {
 	}
 
 	// 2e reconcile : plus rien à insérer (idempotent, zéro doublon).
-	n2, err := ReconcileWeaponRegistry(db, "halo_5")
+	n2, err := ReconcileRegistry(db, "halo_5")
 	if err != nil {
-		t.Fatalf("ReconcileWeaponRegistry (2e): %v", err)
+		t.Fatalf("ReconcileRegistry (2e): %v", err)
 	}
 	if n2 != 0 {
 		t.Errorf("2e reconcile rows = %d, want 0 (idempotent)", n2)

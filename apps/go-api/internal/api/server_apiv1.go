@@ -616,6 +616,13 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// routes player-scoped, donc couvre toutes les pages.
 		r.Use(middleware.UserFacingReadBudget(0))
 
+		// Garde d'AUTHENTIFICATION des écritures (audit 2026-08-04). Répond à
+		// « es-tu connecté ? » — question que la garde de propriété ci-dessous ne
+		// pose pas. Placée AVANT elle pour qu'un visiteur anonyme reçoive un 401
+		// auth_required (que le client sait traduire en reconnexion) plutôt qu'un
+		// 403 player_forbidden trompeur. Les LECTURES ne sont pas touchées.
+		r.Use(middleware.RequireAuthForMutations(cfg.DemoMode, cfg.AuthMode))
+
 		// Couche A (ADR 0029) : garde de propriété joueur. Chokepoint unique —
 		// 403 player_forbidden si l'utilisateur courant ne possède pas le slug.
 		// Transparent en mode demo / auth non activée. Toute route player-scoped

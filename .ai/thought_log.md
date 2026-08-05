@@ -1,3 +1,387 @@
+## [2026-08-05] Cle PNY, phase 2 : arbitrage des bases, outillage Ghidra, MCP
+
+**Statut** : Complété (restauration ; aucun code applicatif modifié).
+
+**Décision technique principale** : l'utilisateur affirmait que la clé portait des
+données plus à jour que le dépôt (« backfillées pendant des heures »), ce qui
+contredisait ma lecture des dates. Vérification sur pièces plutôt qu'arbitrage à la
+confiance — et les deux parties avaient raison sur un point différent. J'avais comparé
+le mauvais dossier : `D:\data\titles` est un instantané périmé du 11/07, alors que la
+vraie donnée est dans `D:\titles` (racine de la clé), du 02/08, et contient Halo 5 que
+je n'avais pas examiné. Comparaison refaite contre la bonne source : **identique en tout
+point** (1926 matchs, même dernier match au 28/07, mêmes tailles et dates fichier par
+fichier, Halo 5 compris). Le backfill est donc bien réel mais déjà dans le dépôt,
+transféré disque à disque comme le prévoyait `RESTAURATION.md`. Aucune base restaurée.
+
+**Résultats observés** : l'argument décisif contre la restauration est le compte de
+`schema_migrations` — 70 en local contre 65 sur la copie périmée : écraser aurait
+rétrogradé le schéma de 5 migrations. Idem `shared_matches_v2` (1926 matchs contre 1819,
++24 912 `highlight_events`) et les 4 bases joueur (JGtm : 8060 lignes de
+`lusr_component_history` contre 954). Comparaison complète de `D:\data` : une seule
+lacune réelle, `data/sync_cache/` (46 fichiers d'artefacts transitoires du 07/07),
+restaurée. Commit `0a3bb28d6` : garde `.gitignore` `.ai/re_dump/` + les 2 skills
+adversarial récupérés du commit `70fab1623` (les committer évite qu'un merge bute sur
+des fichiers non suivis — c'était l'inverse de mon analyse initiale). Outillage :
+Python 3.12.10 + JDK 21 (installé par l'utilisateur, l'élévation admin étant hors de
+portée d'un agent), greffon `GhidraMCP-5.12.0` installé dans Ghidra, serveur MCP
+`ghidra` déclaré en portée utilisateur avec `PYTHONIOENCODING=utf-8` (sans quoi l'aide
+du pont plante sur un caractère non-cp1252) — état `Connected`. Outillage Ghidra déplacé
+vers `C:\Users\Guillaume\Downloads\` sur demande, venv **recréé** et non déplacé (chemins
+absolus). Comptabilité de la copie vérifiée à l'unité : hors venv, 549 fichiers
+identiques des deux côtés.
+
+**Non traité, avec justification** : (1) `cheatengine` non installé — décision
+utilisateur, les scripts Lua restent sous `LevelUp-re/scripts_cheat_engine/` ;
+(2) gate de reproductibilité du rejeu toujours non joué — `cmd/replay-build` vit sur
+`feat/replay2d-prod` ; découverte utile : le worktree `LevelUp-wt-replay2d` existe déjà
+sur cette branche, le gate peut donc s'y jouer sans changer de branche nulle part ;
+(3) `skill-rules.json` toujours non modifié (même raison qu'en phase 1).
+
+**Conclusion / prochaine étape** : la clé PNY peut être débranchée, tout son contenu
+projet est répliqué et vérifié. Reste le gate « 99 traces, 29 221 points, 475 tirs,
+70 lancers, 439 projectiles, 10 223 emprises » à jouer depuis `LevelUp-wt-replay2d`.
+Note de méthode : cette entrée passe par un worktree dédié parce que le dépôt principal
+était sur `main` — y laisser un fichier modifié, c'est risquer de le voir emporté dans
+un push qui déploie en prod (c'est exactement ce qui est arrivé à l'entrée de phase 1,
+d'où le conflit de merge qui a suivi).
+
+## [2026-08-05] Vague 3 : bug career_progression, kpi_cards, oneLifeWindow, aide efficiency
+
+**Statut** : Complété (branche `feat/wave3`, 3 commits, prêt à merger).
+
+**Décision technique principale** : (1) BUG PROD career_progression corrigé à la racine :
+`rebuildCareerProgression` (position 109) recréait la table depuis un cliché figé de mai
+2026 et DÉFAISAIT ses prédécesseurs — deux régressions (colonne `last_fetch_status`
+absente, `DEFAULT 0` réintroduit sur xp_total) ; invisible en prod (sentinelle +
+EnsurePlayerSchema soigne à chaque open), fatal sur DB fraîche. CREATE/SELECT alignés,
+AddColumnIfMissing défensif, invariant documenté dans le step, test anti-régression
+(intégration, DB fraîche par migrations croisée avec buildPartialInsertColumns +
+chemin persist complet) au mordant prouvé par mutation. Balayage : aucun autre persister
+player ne référence de colonne hors schéma-par-migrations ; écarts table-level
+(personal_score_awards, player_csr_snapshots possédées par EnsurePlayerSchema) actés par
+conception. (2) kpi_cards supprimé de bout en bout (jamais lu par le front ;
+buildTimeseriesSummaryTab morte en cascade ; summary_tab reste au contrat en objet
+vide — décision de périmètre). (3) oneLifeDamageGradient.ts → oneLifeWindow.ts (6
+imports). (4) common.charts.efficiency_tooltip : pont dégâts bruts ↔ lecture en %,
+{{HP}} title-aware conservé, registre impersonnel FR/EN. Hermétisme FICHIERS du mode
+démo consigné dans .ai/BACKLOG.md (décision utilisateur : backlog, pas de lot).
+
+**Résultats observés** : gate-push 4/4 après réconciliation baseline (2 tests supprimés
+avec kpi_cards — le maillon a correctement attrapé l'oubli de l'agent), go test +
+intégration -p 1 verts, vitest 390 fichiers / 3373 / 0. Baseline : 8 lignes retirées,
+contrôle vert contre le même JSONL.
+
+**Conclusion / prochaine étape** : merge dans main (deploy auto — le premier boot
+appliquera le step corrigé, no-op sur DB sentinellées), CI/deploy à surveiller,
+validation visuelle utilisateur (texte de l'aide notamment). Découvertes consignées :
+colonnes/tables mortes dans les player DB de prod (friends_xuids, spartan_identity,
+mv_* locales), seedPlayerSchema des tests divergent du schéma réel, EnsureAdditive ne
+tourne qu'au premier boot, idx_career_xuid absent d'une DB migrations-seul (arbitrage
+doctrinal ART à prendre), retrait éventuel de summary_tab vide du contrat.
+
+## [2026-08-05] Vague 2 : voix impersonnelle, petits restes, fixture demo, Timeseries %, DROP liked
+
+**Statut** : Complété (branche `feat/wave2`, 8 commits, validé, prêt à merger).
+
+**Décision technique principale** : 5 lots agents (2 Sonnet, 3 Opus) + 3 correctifs de
+convergence. (1) Voix impersonnelle : 244 strings explicatives (134 FR + 110 EN) sans
+pronoms personnels — décision utilisateur mémorisée ; interactif et voix coach intacts ;
+3 questions produit consignées (Réglages en vouvoiement historique, ton des ~30
+notifications, libellés directionnels Palmarès). (2) Petits restes 6[x]/1[~] :
+TimeseriesKpiCard.Label hors contrat, « Matchs joués », media.go mort supprimé,
+avg_max_killing_spree sauvé (vivant via Synthesis), Lab déterministe + 5 baselines PNG,
+scripts/gate-push.ps1 + doc bilingue. (3) Fixture démo : le mécanisme seed-demo
+--synthetic EXISTAIT — branché sur le harnais (make demo-visual), zéro code Go initial ;
+2 causes de dérive réelles corrigées (bandeau accueil aléatoire masqué, sélection
+escouade localStorage amorcée). (4) Timeseries % : conversion front en miroir exact des
+helpers canoniques, polarité unique, dégradés décoratifs supprimés, constantes du repère
+en source unique. (5) DROP media_files.liked/liked_at : 6 sites + 12 fixtures,
+DÉCOUVERTE DuckDB (DROP COLUMN refusé si un index porte une colonne d'ordinal supérieur
+→ index relevés via duckdb_indexes(), démontés/remontés), anti-résurrection testé en
+suite par défaut. CORRECTIFS de convergence attrapés par la validation orchestrateur :
+(a) netguard — le mode démo s'authentifiait avec les VRAIS tokens du poste et martelait
+l'API Halo (xuid factices, retries 12 s) ; coupe-circuit à la frontière sortante,
+9 gardes + ratchet de couverture ; (b) la bascule démo→fixture était CONDITIONNÉE à
+l'absence des DB de prod — sur ce poste le serveur démo ouvrait le shared RÉEL (302 Mo)
+et ses migrations de boot écrivaient dessus ; bascule inconditionnelle des 4 entrepôts
++ ratchet + critère harnais durci (page sans graphe = échec, fini le faux vert
+zéro-diff-à-6-skips) ; (c) un mot de commentaire épinglé par le ratchet halowaypoint.
+
+**Résultats observés** : gate-push.ps1 4/4 verts (le script s'est validé lui-même de
+bout en bout, y compris en attrapant un vrai rouge archlint) ; vitest 390/3368-3373/0 ;
+demo-visual STRICT 8/8 (7 pages + Lab), deux générations, zéro diff pixel, grep
+halowaypoint = 0, base de prod intacte (1 926 matchs vérifiés avant/après). Intégrité
+données réelles contrôlée après l'incident d'écriture démo : 27 989 participants
+intacts, colonnes liked absentes (la migration DROP s'y est appliquée par anticipation
+— idempotente et identique à celle du boot post-merge), 2 likes vivants en _latest.
+Leçons d'orchestration mémorisées : Sonnet + runs d'arrière-plan (2 arrêts + 1 sur
+« poll léger »), stalls watchdog sous contention CPU (gates orchestrateur et agents
+Opus à ne pas superposer), faux rouges de chaînage PowerShell.
+
+**Conclusion / prochaine étape** : merge dans main (deploy auto), CI/deploy à
+surveiller, validation visuelle utilisateur. DÉCOUVERTE PROD À TRAITER :
+InsertCareerProgressionPartial échoue sur les player DB fraîches construites par
+migrations (colonne manquante — divergence schéma migrations vs chemin persist career),
+réel en production. Restent aussi : kpi_cards entièrement sans consommateur (candidat
+suppression), renommage oneLifeDamageGradient.ts→oneLifeWindow.ts, clé morte
+ref_100, aides efficiency_tooltip à enrichir (%), TimeseriesSquadAdapted à 493 L,
+mode démo non hermétique côté FICHIERS (shared_social/cache écrits sous repoRoot),
+3 questions produit voix, drift lab 6018 px résolu par regénération (vérifié 8/8).
+
+## [2026-08-04] Vague post-v7.3.0 : B' v2 + reliquat R2 + Go-struct + likes par viewer
+
+**Statut** : Complété (branche `feat/post-v730-wave`, 4 commits, prêt à merger — mandat
+utilisateur : pilotage intégral, validation visuelle utilisateur en toute fin).
+
+**Décision technique principale** : exécution du mandat « pilote tout sauf killsource et
+fixture démo » en 2 phases. Phase 1 : merges quick-wins + palette dans main (un push, un
+deploy, VERT ; Pre-Check rouge = transitoire proxy Go confirmé par rerun), tag v7.3.0
+poussé, Release déclenchée. Phase 2 : 4 lots agents Opus en worktrees, intégrés
+séquentiellement par patch (leçon : export `git diff HEAD` — un `git mv` d'agent vit
+dans l'index). (1) B' v2 : Rendement/Résistance en un grid, taux une-vie x100, fenêtre
+FIXE 50-200 %, zones teintées ORIENTABLES (above/below-is-good obligatoire — le
+correctif du contresens Dégâts/frag sur la Timeseries, attrapé en revue orchestrateur),
+« élite » disparu, P80 décâblés, pistes/cerne supprimés. (2) R2 14/14 : 0,83 centralisé
++ garde-rail, 3 tris non déterministes (itération de map) corrigés SliceStable+départage
+— cause racine des canvases instables du harnais —, overrides brace-expansion RELEVÉS
+(nouvel avis GHSA-rgw5-rvv9-x895, prémisse inversée), lockfile resynchronisé, heatmap
+Lab (fixture sans detail -> 84 cellules à 0), tutoiement glossaire, ratchet
+cross-feature 10->7. (3) Go-struct 6/6 : CompareMetricRow.LabelFR SUPPRIMÉ du contrat
+(le front résout par FieldKey), registre compare complété (libellés visibles changés,
+tableau AVANT/APRÈS au rapport d'agent), citations en clés stables (migration
+idempotente bornée aux libellés exacts, tolérance lecture datée 2026-11-04), registre
+d'armes -> internal/games/weapons/ (le garde-rail a débusqué un doublon DDL H5),
+openapi-gen silencieux. (4) Likes par viewer : `liked` = état du viewer de session
+(repli propriétaire en mono-utilisateur), media_files.liked ni lu ni écrit (DROP
+impossible en step isolé : ensureMediaTables re-crée les colonnes — dépréciation datée),
+liker forgeable durci (session écrase le corps), tests atomiques RÉACTIVÉS dans le job
+CI (chemin vivant), audit RequireAuth : prémisse corrigée (sess==nil inatteignable,
+vrai défaut = 403 au lieu de 401) -> 41 routes mutantes en 401, 69 lectures inchangées
+(POST de requête = lectures), ratchet chi.Walk.
+
+**Résultats observés** : gates orchestrateur sur la combinaison des 4 lots : go test
+-count=1 exit 0, integration -p 1 exit 0 (un faux -1 antérieur = artefact de chaînage
+PowerShell, le run isolé fait foi), tsc --force 0, vitest 390 fichiers / 3368 / 0,
+npm ci --dry-run 0 (lockfile réparé). Passe navigateur sur données réelles : chart
+B' v2 conforme à la spec (asymétrie rendement<100/résistance>100 visible), Compare
+avec les nouveaux libellés, palette OK. Boot serveur branche = migration citations
+appliquée sur la base réelle (88 lignes en clés canoniques, 0 libellé FR) + reconcile
+armes. Réparation de données préalable : like orphelin du 26/04 ré-émis sous la clé
+canonique (INSERT append-only + CHECKPOINT). TS7 re-vérifié : 8.66.0 toujours
+`typescript <6.1.0`, bloqué amont.
+
+**Conclusion / prochaine étape** : merge dans main (deploy auto), CI/deploy à
+surveiller, validation visuelle utilisateur (Dynamique, Compare, likes, réglages).
+Découvertes consignées pour plus tard : DROP media_files.liked/liked_at (5 sites),
+analysis.BuildMediaItems+SummarizeMediaSections code mort, libellés FR en dur restants
+dans timeseries_service_tabs.go, « Parties jouées » dans fields.toml (vocabulaire),
+KDA_ROWS du Lab en Math.random() (baselines Lab à régénérer après correction),
+Timeseries en % (refonte complète, hors périmètre B' v2), doc inversée mineure
+append_only_state_guard_test.go:368, avg_max_killing_spree sans consommateur Compare.
+
+## [2026-08-04] Palette joueurs escouade : famille squad-player-1..4 livrée
+
+**Statut** : Complété (branche `feat/squad-player-palette`, en attente de merge).
+
+**Décision technique principale** : famille de tokens dédiée `squad-player-1..4`
+(défaut : #2563EB bleu / #D97706 ambre / #DB2777 magenta / #0891B2 cyan — décision
+utilisateur sur artefact de propositions, validateur OKLab/Machado : toutes-paires
+CVD >= 10,3, vision normale >= 15,2, contraste >= 3:1 sur les DEUX surfaces avec les
+mêmes hex). Identité joueur découplée des tokens directionnels/narratifs empruntés
+(l'ex-coéquipier 3 ÉTAIT divergent-pos). Palettes accessibilité : écarts assumés et
+mesurés par l'agent (okabe-ito : orange canonique 2,21:1 sur clair -> assombri ;
+vermillion refusé car = camp ennemi en vue Match ; tol-bright : pool Bright épuisé
+par outcome/narratif -> Vibrant/Muted ; cividis : pas de clarté, identité par teinte
+impossible par construction). Corrections d'accompagnement : divergent-neutral gris
+#8A9099 en défaut (le milieu bleu se lisait comme une valeur), collisions
+dnf/humiliation résiduelles (okabe/tol) éteintes, doublons vue Match retirés
+(narrative-dominant x2, narrative-remontada=perf-tier-2 en okabe), 3 dérives de
+copie locale migrées vers la source unique (SquadLayout pill, mediaOwnerColors,
+CareerChartsSection.xpHistory — 3e copie). Garde-rail `squadPlayerTokens.test.ts`
+(contraste + ΔE, mordant prouvé par sabotage). Étapes 5+7 (surface ECharts + cerne
+sous trait joueur, aires 0,2) CONSERVÉES sur décision utilisateur malgré B' v2 en
+attente : le chart actuel reste lisible d'ici là, B' v2 réécrira par-dessus.
+
+**Résultats observés** : gates orchestrateur cache froid : tsc -b --force exit 0
+(tsbuildinfo purgé), vitest 388 fichiers / 3361 passés / 0 échec, eslint 0 erreur.
+Matrice navigateur AVANT/APRÈS (harnais visuel, 7 pages, JGtm réel) : squad-dynamique
+et squad-synergies = palette attendue (pastilles nav L2 + charts), synthesis /
+session-detail / timeseries-summary = effet gris neutre attendu (heatmaps, dégradés),
+community-relations = dérive de données live (hors palette), home inchangée.
+
+**Conclusion / prochaine étape** : commit + CI de branche, merge utilisateur. Le
+thought_log porte des entrées de deux sessions concurrentes : conflit trivial
+possible au merge des deux branches (garder toutes les entrées). Reste ouvert :
+B' v2 (session parallèle), aperçu AccessibilityTab sans famille squad-player (i18n
+à créer), doublons hex préexistants outcome-loss=narrative-debacle,
+compare-b/-c à réévaluer.
+
+## [2026-08-04] Restauration de la cle PNY (workspace + rejeu 2D) sur ce poste
+
+**Statut** : Complété (restauration ; aucun code applicatif modifié).
+
+**Décision technique principale** : la notice `RESTAURATION.md` de la clé a été écrite
+pour un PC vierge, or ce poste ne l'était pas — dépôt déjà cloné, `data/` vivant, `air`
+en cours d'exécution tenant les DuckDB en écriture. Appliquer la notice à la lettre
+(`cp -r E:/data ...`) aurait fait régresser les données du 04/08 vers celles du 31/07 et
+risqué un état déchiré sur les bases ouvertes (modèle mono-process, ADR 0013/0016). La
+restauration a donc été menée en **additif strict** : comparaison fichier par fichier
+d'abord, copie uniquement des manques réels, jamais d'écrasement d'un fichier plus
+récent. Corollaire : les 21 Go de binaires du jeu et d'outillage Ghidra ont été
+installés HORS du dépôt (`C:\Users\Guillaume\Projects\LevelUp-re`), pour ne pas exposer
+un arbre git à `HaloInfinite.exe` et 17 Go de modules.
+
+**Résultats observés** : workspace — hooks Claude restaurés avec réécriture des chemins
+absolus de l'ancien poste, 5 entrées d'autorisation périmées retirées (elles
+pré-autorisaient `git stash` et le monde Python, interdits par CLAUDE.md) ; settings
+globaux fusionnés en conservant `model` et `effortLevel` locaux ; 196 mémoires
+restaurées et index `MEMORY.md` fusionné sans perdre l'entrée locale
+`orchestration-opus-lots` (absente de la clé) ; skills `adversarial-audit` et
+`adversarial-review` récupérés depuis le commit 70fab1623 plutôt que depuis la clé
+(source canonique, index git intact). Données — 3 artefacts de rejeu restaurés depuis la
+baseline du 03/08 et vérifiés SHA256 avant ET après copie ; 338 films et 12 manifests
+ajoutés ; 246 captures mémoire dans `.ai/re_dump` avec règle `.gitignore` ajoutée (sans
+elle, 145 Mo de dumps binaires apparaissaient comme non suivis). Hors dépôt — 48 475
+fichiers / 24,861 Go vérifiés octet pour octet, `HI.rep` et l'empreinte MD5 de
+`HaloInfinite.exe` identiques à la source. Outillage — `lefthook` 1.13.6 installé (il
+manquait : aucun hook git n'était actif, les commits passaient sans gitleaks/gofmt/go
+vet/ratchets) puis `lefthook install` ; contrôles 2 et 3 de la notice passés (bloc
+`--- SKILL ACTIVATION ---` émis, `lefthook run pre-commit` sans erreur de chemin).
+
+**Non traité, avec justification** : (1) bases DuckDB non restaurées — la clé est en
+retard de 4 jours et le writer tournait ; (2) `data/titles/halo_infinite/reference/` non
+écrasé — le local est en avance (6 fichiers contre 4, `map_quant_bounds.json` du 02/08) ;
+(3) `skill-rules.json` laissé intact — il est suivi par git et sa version enrichie
+appartient à `feat/replay2d-prod`, l'écraser mélangerait du contenu inter-branches dans
+la branche courante ; les deux skills restent invocables, seule la suggestion
+automatique attend le merge ; (4) MCP `ghidra`/`cheatengine` non câblés — venvs Python
+absents, et aucune entrée ne les référence dans `~/.claude.json` (rien à retirer) ;
+(5) gate de reproductibilité du rejeu non joué — `cmd/replay-build` n'existe pas sur
+`feat/squad-player-palette`, il vit sur `feat/replay2d-prod`.
+
+**Conclusion / prochaine étape** : espace de travail et données opérationnels. Le gate
+« 99 traces, 29 221 points, 475 tirs, 70 lancers, 439 projectiles, 10 223 emprises »
+reste à jouer depuis `feat/replay2d-prod` pour valider la chaîne de bout en bout. Note
+de vigilance : au merge de `feat/replay2d-prod`, les deux `SKILL.md` adversarial
+actuellement non suivis devront être retirés d'abord, sinon git refusera d'écraser des
+fichiers non suivis.
+
+## [2026-08-04] Artefact Rendement & Résistance — B' v2 : pivot « 1 vie », repère élite écarté
+
+**Statut** : Complété (artefact seul — aucun code applicatif modifié).
+
+**Décision principale** (utilisateur) : abandon du repère « frontière élite » pour les
+cartes Rendement/Résistance de la Dynamique escouade — notion intéressante mais couche
+d'explication en trop ; le pivot 225 = une vie est un fait du jeu (90 PV + 135
+bouclier). B' recadrée en conséquence, puis affinée le même jour sur seconde question
+utilisateur : affichage en TAUX plutôt qu'en écart signé — rendement = OC × 100,
+résistance = DR × 100, 100 % = une vie (rendement 107 % = chaque frag effectif a coûté
+moins d'une vie ; résistance 158 % = 1,58 vie encaissée par mort). Taux et écart signé
+sont la même courbe à une translation d'étiquettes près (107 % ⇔ +7 %) : la géométrie
+de l'axe ne change pas, seul le nombre lu change. Fenêtre fixe commune 50…200 %, ligne
+repère à 100 %. Asymétrie assumée et documentée : résistance en temps normal au-dessus
+des 100 % (bouclier régénéré), rendement plutôt en dessous (dégâts perdus) — une
+information, pas un défaut d'échelle. Les seuils P80 restent en place pour profil
+combat / coach / jalons (hors périmètre de cette décision).
+
+**Résultats observés** : artefact 9775c1ab republié (même URL) — B' chiffrée sur la
+session de maquette, piste écartée « frontière élite » ajoutée à la trace de décision,
+récap et suites mis à jour (si go : i18n des 2 cartes sans « élite », app alignée sur
+le repère 225 partout, Timeseries à aligner ensuite). Dernier affinage (même jour) :
+titres de cartes courts « Rendement » / « Résistance » (décision utilisateur —
+tenable car l'axe en % ne se lit pas comme des dégâts bruts ; définition dans l'aide
+et au survol) + ZONES teintées de part et d'autre de la ligne 100 % (divergent-pos
+8 % au-dessus, divergent-neg 6 % en dessous, via resolveToken) ; les aires par courbe
+restent écartées à 4 courbes superposées (encodage mono-courbe — pertinentes
+uniquement là où il n'y a qu'une courbe, ex. Timeseries). Note : l'entrée du
+2026-08-03 ci-dessous avait disparu du journal (fichier revenu à l'état HEAD entre
+deux sessions) ; réintégrée dans la même passe.
+
+**Conclusion / prochaine étape** : go utilisateur sur l'implémentation B' v2 (diff net
+négatif sur squadEfficiencyChart.ts + i18n FR/EN), puis alignement de la Timeseries
+escouade adaptée sur le même écart signé.
+
+## [2026-08-03] Reprise handoff : lot quick wins reliquat + artefact palette joueurs
+
+**Statut** : En cours (lot quick wins vérifié, en attente de commit ; lot palette en
+worktree ; artefact palette livré).
+
+**Décision technique principale** : reprise du handoff post-lot 2 en pilotage
+multi-agents. (a) Lot quick wins reliquat (branche `chore/post-lot2-reliquat-quickwins`,
+agent Opus) : 7/8 items [x] — Q40 supprimé, seuil 1,59 centralisé
+(`analysis.CombatDRReferenceThreshold` + garde-rail archlint), `errDBBusy()` factorisé
+(7 handlers + garde-rail), garde Gamertag vide (le scoping média s'INVERSAIT : « mine »
+vide, « teammate » = tout), schémas OpenAPI orphelins `ExplorerMatchRow`/
+`PaginatedExplorerMatchesResponse` supprimés (−97 lignes générées), 35 vouvoiements
+corrigés (6 manifests, EN intact), types MediaLike dérivés du contrat (2 divergences
+réelles corrigées dont `total_likers` faussement optionnel). Item 6 (doublons i18n
+compare/kpi/highlights) statué [!] : prémisse non tenue — le vrai sujet est la fin de
+migration du registre de champs de `features/compare/i18n.ts`, qui change des libellés
+visibles = décision produit. (b) Palette joueurs : artefact de propositions publié
+(quadruple `squad-player-1..4` #2563EB/#D97706/#DB2777/#0891B2, 100 % des contrôles
+daltonisme/contraste sur les DEUX surfaces avec les mêmes hex — validateur OKLab/Machado,
+chiffres de l'audit 0.1/0.2 reproduits exactement) ; décisions utilisateur actées, lot
+d'implémentation lancé en worktree (8 étapes, dont cerne + aires adoucies
+Rendement/Résistance — à arbitrer contre la proposition B' de la session parallèle,
+cf. entrée suivante).
+
+**Résultats observés** : gates re-exécutés par l'orchestrateur, cache froid : go build +
+`go test ./... -count=1` exit 0 (PowerShell natif), `tsc -b --force` exit 0, vitest
+387 fichiers / 3334 passés / 0 échec, golangci-lint 0 issue (agent), openapi-check à
+jour. CI main : les 2 runs en attente du handoff (découvertes + deps #74) VERTS, deploy
+compris. TS7 re-vérifié : toujours bloqué amont (`typescript <6.1.0`).
+
+**Conclusion / prochaine étape** : commit du lot quick wins sur go utilisateur ; retour
+du lot palette (revue + matrice navigateur), arbitrage étape 7 vs B'. Découvertes
+notables consignées par l'agent : seuil 0,83 en 3 copies (pendant exact du 1,59),
+libellés FR en dur dans `compare_service.go` (viole title-agnostic),
+`damage_taken_per_game` absent du dictionnaire front, type front `ExplorerMatchRow`
+désormais sans pendant contractuel.
+
+## [2026-08-03] Artefact Rendement & Résistance — révision B' post-implémentation C
+
+**Statut** : Complété (artefact seul — aucun code applicatif modifié).
+
+**Décision technique principale** : discussion « déviation absolue |Y − X| »
+(proposition collègue) : écartée — la valeur absolue jette le côté du repère, qui porte
+tout le jugement (180 vs 270 dgt/frag → même écart). L'intuition sous-jacente (UN calcul
+commun pour superposer les 4 joueurs sur un graphe) est retenue sous forme d'écart signé
+ORIENTÉ : proposition B' = un seul grid par carte au lieu des 4 pistes — la comparaison
+d'escouade redevient directe. Transformations lobby/collectif (ex-complément E1-E3)
+écartées sur décision utilisateur : la page représente les coûts en dégâts de chacun,
+pas le niveau du lobby.
+
+**Résultats observés** : audit sur pièces de la coloration des aires (question
+utilisateur) : nulle part vert/rouge inversés — pistes C correctes (rendement_offensif =
+OC canonique, monter = bien) mais libellé « Rendement » ambigu (se lit comme des
+dégâts/frag) ; dégradé une-vie de TimeseriesSquadAdapted (essai P5) : direction juste
+mais 3 défauts — saturation calée sur l'étendue de session (offsetOf min/max), milieu
+divergent-neutral bleu au lieu d'un gris, métaphore de surface inversée entre les deux
+cartes. Artefact 9775c1ab mis à jour (même URL) : audit, article B' chiffré, statuts
+A-D, pistes écartées tracées.
+
+**Conclusion / prochaine étape** : supersédée par l'entrée du 2026-08-04 ci-dessus
+(B' recadrée sur le pivot « 1 vie »).
+
+## [2026-08-03] Campagne close : lot 2 + echarts 6 + passe découvertes mergés, handoff écrit
+
+**Statut** : Complété. Séquence de fin exécutée sur go utilisateur : merge lot 2
+(f8913a473, deploy vert), merge echarts 6 (ef165518b, deploy vert, sign-off visuel
+rendu — rendu épuré accepté, artefact 658ae5e8), merge passe découvertes (69785cecc,
+9 quick wins + 3 garde-rails prouvés), squash PR #74 (npm-minor 7 paquets, CI branche
+verte — mergée sans attendre la CI intermédiaire sur décision utilisateur explicite).
+CI/deploys des 2 derniers merges en cours à l'écriture — surveiller, corriger en
+avant si rouge.
+
+**Décision principale** : handoff `.ai/HANDOFF_POST_LOT2_V73.md` = point d'entrée
+unique des prochaines sessions (état, actions utilisateur restantes — coup d'œil prod
+likes/suppression + tag v7.3.0 —, chantiers priorisés, pièges opérationnels du poste
+dont le contournement gate-push PowerShell/--from-jsonl).
+
+**Conclusion / prochaine étape** : rien d'agent en attente. Prochains chantiers
+recommandés dans l'ordre du handoff (Replay 2D utilisateur, killsource via son
+handoff, palette joueurs via artefact).
+
 ## [2026-08-03] Vérification superviseur phase 2 + push + handoff de fin de journée
 
 **Statut** : Complété. Vérification sur pièces de la bascule (entrée ci-dessous) : suite complète

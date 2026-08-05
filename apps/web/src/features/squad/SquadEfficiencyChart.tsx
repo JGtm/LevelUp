@@ -1,30 +1,31 @@
 /**
  * SquadEfficiencyChart — deux cartes multi-joueurs de la page Dynamique escouade :
- *   - « Rendement — écart à la frontière élite » (indicateur OC du titre) ;
- *   - « Résistance — écart à la frontière élite » (indicateur DR du titre).
+ *   - « Rendement » (indicateur `rendement_offensif` du titre, en % d'une vie) ;
+ *   - « Résistance » (indicateur `resistance_defensive`, même unité).
  *
- * Chaque carte empile UNE PISTE PAR JOUEUR (décision d'artefact « C ») : l'écart
- * signé en % à la frontière élite du titre, remplissage vert au-dessus de zéro /
- * rouge en dessous, axe symétrique partagé par toutes les pistes. Les deux
- * frontières viennent du contrat (`TitleSummary.offensive_conversion_p80` et
- * `defensive_resistance_p80`) — aucune constante de gameplay dupliquée côté web.
+ * Une seule grille par carte, les courbes joueurs SUPERPOSÉES, fenêtre fixe
+ * 50…200 % et repère « 1 vie » à 100 % : les deux cartes se lisent avec le même
+ * cadre, et deux sessions se comparent entre elles. La définition complète
+ * (formule, pivot une vie) vit dans l'aide ⓘ portée par les DEUX titres de carte.
  *
- * Titres sans résistance (Halo 5 : pas de damage_taken, donc pas de DR) : seule la
- * carte Rendement est rendue.
+ * Titres sans résistance (Halo 5 : pas de damage_taken, donc pas de DR) : seule
+ * la carte Rendement est rendue.
  */
-import { useCallback, useMemo, type ReactNode } from 'react'
+import { useCallback, useMemo } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
-import { useDefensiveResistanceP80, useOffensiveConversionP80 } from '@/lib/damage/effectiveHp'
 import {
-  buildSquadEfficiencyTracksOption,
-  tracksChartHeight,
-  type EfficiencyTrackLabels,
+  buildSquadEfficiencyOption,
+  EFFICIENCY_CHART_HEIGHT,
+  type EfficiencyChartLabels,
 } from './charts/squadEfficiencyChart'
 
-interface EfficiencyLabels extends EfficiencyTrackLabels {
+interface EfficiencyLabels extends EfficiencyChartLabels {
   rendementCardTitle: string
   resistanceCardTitle: string
+  /** Aide ⓘ : définition des deux indicateurs et du pivot « une vie ». */
+  help: string
   noData: string
 }
 
@@ -34,8 +35,6 @@ interface SquadEfficiencyChartProps {
   /** gamertag → couleur hex résolue depuis semantic tokens. */
   colorByPlayer: Record<string, string>
   labels: EfficiencyLabels
-  /** InfoTooltip optionnel rendu à côté du titre de la carte Rendement. */
-  infoTooltip?: ReactNode
 }
 
 function hasEfficiencyData(pts: SquadPerformanceSeriesPoint[]): boolean {
@@ -47,17 +46,11 @@ export function SquadEfficiencyChart({
   playerOrder,
   colorByPlayer,
   labels,
-  infoTooltip,
 }: SquadEfficiencyChartProps) {
   const players = useMemo(
     () => playerOrder.filter((p) => rowsByPlayer[p] && hasEfficiencyData(rowsByPlayer[p])),
     [playerOrder, rowsByPlayer],
   )
-
-  // Frontières élite du titre COURANT (title-aware, servies par le bootstrap) :
-  // 0.90 / 1.264 en OC selon le titre, 1.65 en DR (Infinite).
-  const ocP80 = useOffensiveConversionP80()
-  const drP80 = useDefensiveResistanceP80()
 
   // Résistance disponible ? Halo 5 ne fournit pas damage_taken → l'API ne sert
   // aucune `resistance_defensive` → la carte défensive n'est pas rendue.
@@ -66,8 +59,8 @@ export function SquadEfficiencyChart({
     [players, rowsByPlayer],
   )
 
-  // 1 entrée / joueur : sert l'état vide + la clé de mémo du ChartCard ; le builder
-  // lit rowsByPlayer directement (le ChartCard ignore l'argument série).
+  // 1 entrée / joueur : sert l'état vide + la clé de mémo du ChartCard ; le
+  // builder lit rowsByPlayer directement (le ChartCard ignore l'argument série).
   const series = useMemo<ChartSeries<SquadPerformanceSeriesPoint>[]>(
     () => players.map((p) => ({ key: p, datapoints: rowsByPlayer[p] ?? [] })),
     [players, rowsByPlayer],
@@ -75,28 +68,29 @@ export function SquadEfficiencyChart({
 
   const buildRendement = useCallback(
     () =>
-      buildSquadEfficiencyTracksOption(rowsByPlayer, players, {
+      buildSquadEfficiencyOption(rowsByPlayer, players, {
         metric: 'offensive',
-        eliteP80: ocP80,
         colorByPlayer,
         labels,
       }),
-    [rowsByPlayer, players, ocP80, colorByPlayer, labels],
+    [rowsByPlayer, players, colorByPlayer, labels],
   )
   const buildResistance = useCallback(
     () =>
-      buildSquadEfficiencyTracksOption(rowsByPlayer, players, {
+      buildSquadEfficiencyOption(rowsByPlayer, players, {
         metric: 'defensive',
-        eliteP80: drP80,
         colorByPlayer,
         labels,
       }),
-    [rowsByPlayer, players, drP80, colorByPlayer, labels],
+    [rowsByPlayer, players, colorByPlayer, labels],
   )
 
-  // Hauteur pilotée par le nombre de pistes : les deux cartes en ont autant, donc
-  // elles restent alignées côte à côte sur la grille desktop.
-  const height = tracksChartHeight(players.length)
+  const cardTitle = (text: string) => (
+    <span className="flex items-center gap-1.5">
+      {text}
+      <InfoTooltip content={labels.help} />
+    </span>
+  )
 
   return (
     // Rendement + Résistance côte à côte sur desktop (empilés en mobile). En mode
@@ -104,23 +98,18 @@ export function SquadEfficiencyChart({
     // pleine largeur (pas de grille → bloc simple).
     <div className={hasResistance ? 'grid gap-4 md:grid-cols-2' : ''}>
       <ChartCard
-        title={
-          <span className="flex items-center gap-1.5">
-            {labels.rendementCardTitle}
-            {infoTooltip}
-          </span>
-        }
+        title={cardTitle(labels.rendementCardTitle)}
         series={series}
         buildOption={buildRendement}
-        height={height}
+        height={EFFICIENCY_CHART_HEIGHT}
         emptyMessage={labels.noData}
       />
       {hasResistance && (
         <ChartCard
-          title={labels.resistanceCardTitle}
+          title={cardTitle(labels.resistanceCardTitle)}
           series={series}
           buildOption={buildResistance}
-          height={height}
+          height={EFFICIENCY_CHART_HEIGHT}
           emptyMessage={labels.noData}
         />
       )}

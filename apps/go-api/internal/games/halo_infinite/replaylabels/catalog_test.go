@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/weaponv3"
-	"levelup/go-api/internal/games/halo_infinite/migrations"
+	"levelup/go-api/internal/games/weapons"
 )
 
 // repoRoot remonte jusqu'au répertoire qui porte config/titles.
@@ -88,7 +88,7 @@ var famillesSansWeaponKey = map[string]bool{
 }
 
 func TestFamillesDArmeConnuesDuDecodeurSontAuRegistre(t *testing.T) {
-	registre := migrations.FilmshellWeaponKeysByFamily()
+	registre := weapons.FilmshellWeaponKeysByFamily()
 	var nouvelles []string
 	for high, nom := range weaponv3.KnownWeaponHigh32 {
 		if _, ok := registre[high]; ok {

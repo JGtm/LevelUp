@@ -662,6 +662,27 @@ export type GamertagSuggestion = components['schemas']['GamertagSuggestion']
 
 export type GamertagSearchResponse = components['schemas']['GamertagSearchResponse']
 
+/**
+ * VIEW-MODEL du tableau de matchs — PAS un ré-export du contrat.
+ *
+ * ExplorerMatchesTable est réutilisé par trois surfaces (Explorer, vue Session,
+ * « Matchs marquants » de la Carrière) alimentées par des schémas OpenAPI
+ * DIFFÉRENTS. Ce type est leur dénominateur commun côté front ; il n'est donc
+ * volontairement PAS dérivé de `components['schemas']['ExplorerMatchesRow']`
+ * (vérifié le 2026-08-04, dérivation fidèle impossible) :
+ *
+ * - `skill_rating_delta` n'appartient pas à `ExplorerMatchesRow` : il vient de
+ *   `SessionDetailMatchRow` et n'alimente qu'une colonne « Δ rang » INJECTÉE par
+ *   la vue session via `extraColumns`. Undefined côté Explorer.
+ * - `map_ui` / `mode_ui` / `playlist_label` sont `string | null` au contrat et
+ *   `string` ici : les trois producteurs backend garantissent un libellé résolu
+ *   (fallback appliqué côté service), le tableau n'a pas de branche « null ».
+ * - les champs optionnels admettent `| null` en plus de `undefined` : le JSON
+ *   servi porte `null` là où le générateur ne modélise que l'absence.
+ *
+ * Toute nouvelle colonne servie par l'API doit être ajoutée AUSSI au schéma
+ * correspondant côté Go — ce type ne dispense pas du contrat, il l'unifie.
+ */
 export interface ExplorerMatchRow {
   match_id: string
   start_time: string
@@ -1559,20 +1580,15 @@ export type MediaAuthorsResponse = components['schemas']['MediaAuthorsResponse']
 /** Suppression définitive d'un média (item 3.1) — dérivé du contrat. */
 export type MediaDeleteResponse = components['schemas']['MediaDeleteResponse']
 
-export interface MediaLikeRequest {
-  file_path: string
-  liked: boolean
-  /** Slug du joueur qui like (pour la table shared) */
-  liker_slug?: string
-}
-
-export interface MediaLikeResponse {
-  file_path: string
-  liked: boolean
-  like_count: number
-  likers?: string[]
-  total_likers?: number
-}
+/**
+ * PATCH /media/likes — dérivés du contrat (2026-08-03). Les versions écrites à
+ * la main divergeaient du serveur sur deux points : `total_likers` y était
+ * optionnel alors que le DTO Go l'émet toujours (pas d'`omitempty`), et la
+ * requête portait un `liker_slug` que le front n'a jamais envoyé — le liker est
+ * résolu côté serveur depuis la session (handlers.resolveLikerIdentity).
+ */
+export type MediaLikeRequest = components['schemas']['MediaLikeRequest']
+export type MediaLikeResponse = components['schemas']['MediaLikeResponse']
 
 export interface MediaUploadResponse {
   saved: number
@@ -1873,8 +1889,6 @@ export type IntensityHeatmapPoint = components['schemas']['IntensityHeatmapPoint
 
 /** Ligne brute par match pour les charts timeline côté frontend. */
 export type TimeseriesMatchRow = components['schemas']['TimeseriesMatchRow']
-
-export type TimeseriesKpiCard = components['schemas']['TimeseriesKpiCard']
 
 export type TimeseriesSummaryTab = components['schemas']['TimeseriesSummaryTab']
 

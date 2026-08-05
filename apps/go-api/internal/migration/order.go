@@ -46,6 +46,7 @@ var canonicalOrder = []string{
 	"add_assists_model_coefs",                               // metadata
 	"add_catalog_playlists",                                 // metadata
 	"fix_citation_image_paths_double_encoded",               // metadata
+	"normalize_citation_mappings_category_keys",             // metadata (2026-08-04 : libellés FR -> clés canoniques)
 	"add_csr_placement_thresholds",                          // metadata
 	"drop_metadata_art_surface_indexes_v1",                  // metadata
 	"drop_metadata_art_surface_indexes_v2",                  // metadata
@@ -188,22 +189,26 @@ var canonicalOrder = []string{
 	// historique. Sûr : les 2 sont title-owned → n'affecte pas l'ordre du registre global
 	// (TestSortByCanonicalIsNoOp). Name-keyed → no-op sur DB déjà migrées ; sur DB fraîche
 	// le seed réussit dès le 1er boot (au lieu de converger sur 2 boots via backfill swallowed).
-	"shared_create_skill_v2_tables",                            // shared
-	"shared_seed_tier_boundaries_v2",                           // shared
-	"player_skill_state_v2_reset_marker_v1",                    // shared
-	"create_base_shared_social_schema",                         // shared_social
-	"add_player_slug_to_media_files",                           // shared_social
-	"add_file_name_to_media_files",                             // shared_social
-	"add_missing_columns_to_media_files",                       // shared_social
-	"add_capture_start_indexed_at_to_media_files",              // shared_social
-	"add_is_manual_to_media_match_associations",                // shared_social
-	"add_file_stem_ext_to_media_files",                         // shared_social
-	"align_media_files_legacy_schema",                          // shared_social
-	"drop_pn_unread_art_index_v2",                              // shared_social
-	"shared_social_favorites_append_only_v1",                   // shared_social
-	"shared_social_likes_append_only_v1",                       // shared_social
-	"shared_social_media_assoc_append_only_v1",                 // shared_social
-	"media_files_drop_filepath_unique_v1",                      // shared_social
+	"shared_create_skill_v2_tables",               // shared
+	"shared_seed_tier_boundaries_v2",              // shared
+	"player_skill_state_v2_reset_marker_v1",       // shared
+	"create_base_shared_social_schema",            // shared_social
+	"add_player_slug_to_media_files",              // shared_social
+	"add_file_name_to_media_files",                // shared_social
+	"add_missing_columns_to_media_files",          // shared_social
+	"add_capture_start_indexed_at_to_media_files", // shared_social
+	"add_is_manual_to_media_match_associations",   // shared_social
+	"add_file_stem_ext_to_media_files",            // shared_social
+	"align_media_files_legacy_schema",             // shared_social
+	"drop_pn_unread_art_index_v2",                 // shared_social
+	"shared_social_favorites_append_only_v1",      // shared_social
+	"shared_social_likes_append_only_v1",          // shared_social
+	"shared_social_media_assoc_append_only_v1",    // shared_social
+	"media_files_drop_filepath_unique_v1",         // shared_social
+	// APRÈS le rebuild CTAS ci-dessus : celui-ci énumère les colonnes existantes,
+	// donc droper avant ferait juste un rebuild plus court — mais l'ordre naturel
+	// (rebuild du schéma legacy, PUIS retrait de colonne) est le plus lisible.
+	"drop_media_files_liked_columns_v1",                        // shared_social
 	"shared_social_notif_prefs_append_only_v1",                 // shared_social
 	"shared_social_notifications_append_only_v1",               // shared_social
 	"create_prestige_shared_social_schema",                     // shared_social

@@ -34,7 +34,7 @@ var (
 	_ StatsRepository    = (*noopStatsRepo)(nil)
 )
 
-func (n *noopMediaRepo) SetMediaLike(_ context.Context, _ string, _ bool) (bool, error) {
+func (n *noopMediaRepo) MediaExists(_ context.Context, _ string) (bool, error) {
 	return false, nil
 }
 func (n *noopMediaRepo) ToggleSharedLike(_ context.Context, _, _, _ string, _ bool) error { return nil }

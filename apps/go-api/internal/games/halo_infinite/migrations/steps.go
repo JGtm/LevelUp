@@ -17,6 +17,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"levelup/go-api/internal/games/weapons"
 	"levelup/go-api/internal/migration"
 )
 
@@ -76,19 +77,22 @@ func Steps() []migration.Migration {
 				`)
 			},
 		},
-		// Déplacés depuis internal/migration (b6/b7 — named-func, cf. weapon_labels.go
-		// + mode_playlist_fr.go).
+		// Référentiel d'armes : le SEED et sa réconciliation de boot vivent dans
+		// internal/games/weapons (référentiel cross-titre — Halo 5 seede les mêmes
+		// tables, cf. halo_5/migrations/metadata.go). Ces deux entrées ne sont que
+		// l'enregistrement versionné du premier passage ; aucune donnée d'armes ne
+		// doit revenir ici (garde-rail : weapons/no_registry_in_migrations_test.go).
 		{
 			Name:        "add_weapon_labels",
 			TargetDB:    migration.TargetMetadata,
 			Description: "Table weapon_labels (weapon_id UBIGINT, name_en, name_fr)",
-			ApplySchema: applyWeaponLabels,
+			ApplySchema: weapons.ApplyLabels,
 		},
 		{
 			Name:        "add_weapon_registry",
 			TargetDB:    migration.TargetMetadata,
 			Description: "Registre d'armes canonique (weapons/weapon_ids/weapon_families) : passage principal de la résolution d'arme, seed §6 vérifiée + filmshell ids Infinite",
-			ApplySchema: applyWeaponRegistry,
+			ApplySchema: weapons.ApplyRegistry,
 		},
 		{
 			Name:        "add_mode_name_tr",
@@ -802,6 +806,29 @@ func Steps() []migration.Migration {
 					UPDATE citation_mappings SET image_path = 'static/commendations/halo_5_guardians/H5G_citation_Tueur_d''Élites.png'              WHERE citation_name_norm = 'elite_slayer';
 					UPDATE citation_mappings SET image_path = 'static/commendations/halo_5_guardians/H5G_citation_Tueur_de_répliques_de_Marines.png' WHERE citation_name_norm = 'marine_slayer';
 					UPDATE citation_mappings SET image_path = 'static/commendations/halo_5_guardians/H5G_citation_Épée_à_énergie.png'               WHERE citation_name_norm = 'energy_sword_mastery';
+				`)
+			},
+		},
+		{
+			// Downstream de la famille citation (data-fix), même contrainte que
+			// fix_citation_image_paths_double_encoded : UPDATE citation_mappings,
+			// table absente en run global-only → reste title-owned et collé à la chaîne.
+			Name:        "normalize_citation_mappings_category_keys",
+			TargetDB:    migration.TargetMetadata,
+			Description: "citation_mappings.category : libellés FR seedés (« Mode de jeu ») -> clés canoniques stables (game_mode, …) — cf. internal/games/canonical/commendation_category.go",
+			ApplySchema: func(db *sql.DB) error {
+				// Idempotente : chaque UPDATE est borné au libellé FR historique
+				// EXACT ; une base déjà migrée (ou fraîchement seedée avec les clés)
+				// ne matche aucune ligne. Les valeurs déjà canoniques ne sont jamais
+				// réécrites. Aligné sur canonical.NormalizeCommendationCategory, qui
+				// reste tolérante aux anciens libellés le temps de la transition.
+				return migration.ExecScript(db, `
+					UPDATE citation_mappings SET category = 'game_mode'         WHERE category = 'Mode de jeu';
+					UPDATE citation_mappings SET category = 'vehicle'           WHERE category = 'Véhicule';
+					UPDATE citation_mappings SET category = 'weapon'            WHERE category = 'Arme';
+					UPDATE citation_mappings SET category = 'multiplayer'       WHERE category = 'Multijoueur';
+					UPDATE citation_mappings SET category = 'spartan_companies' WHERE category = 'Spartan Companies';
+					UPDATE citation_mappings SET category = 'enemy'             WHERE category = 'Ennemi';
 				`)
 			},
 		},

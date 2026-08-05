@@ -168,7 +168,7 @@ describe('AscensionObjectivesTab — composition (couche Prestige seule)', () =>
     mockShellState.currentPlayer = null
     render(<AscensionObjectivesTab />)
     expect(
-      screen.getByText(/Sélectionne un joueur pour voir tes objectifs/i),
+      screen.getByText(/Sélectionne un joueur pour voir les objectifs/i),
     ).toBeInTheDocument()
     expect(screen.queryByText(/Prestige — Objectifs/i)).not.toBeInTheDocument()
   })

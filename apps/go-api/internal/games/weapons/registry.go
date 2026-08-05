@@ -1,6 +1,16 @@
-package migrations
-
-// weapon_registry.go — step add_weapon_registry (named-func, TargetMetadata).
+// Package weapons porte le RÉFÉRENTIEL D'ARMES de metadata.duckdb : schéma,
+// données de seed et réconciliation de boot (weapon_families / weapons /
+// weapon_ids / weapon_labels / weapon_name_labels).
+//
+// Emplacement (2026-08-04) : ce référentiel vivait dans
+// internal/games/halo_infinite/migrations/ alors qu'il sert AU-DELÀ des
+// migrations Infinite — Halo 5 seede les mêmes tables
+// (halo_5/migrations/metadata.go), cmd/server le réconcilie à CHAQUE boot pour
+// tous les titres, weapon_name_labels n'a jamais eu de step versionné, et
+// platform/duckdb/weapon_resolver.go en est le lecteur. Ce n'est donc pas une
+// migration one-shot mais un référentiel cross-titre : il vit ici, et
+// internal/games/*/migrations ne garde que l'enregistrement versionné du premier
+// passage (steps qui délèguent à ApplyLabels / ApplyRegistry).
 //
 // Registre d'armes canonique = passage PRINCIPAL de la résolution d'arme (cf.
 // .ai/PLAN_WEAPON_TAXONOMY.md). 3 tables référentielles dans metadata.duckdb :
@@ -9,16 +19,17 @@ package migrations
 //   - weapon_families  : référentiel des familles cross-titre (clé → libellés FR/EN).
 //
 // Choix de schéma (décision 2026-06-23) : PK simple + INSERT OR IGNORE, comme
-// weapon_labels.go / career_ranks / mode_name_tr. C'est un référentiel STATIQUE
+// labels.go / career_ranks / mode_name_tr. C'est un référentiel STATIQUE
 // seedé au boot (zéro writer concurrent, zéro UPDATE per-match) → hors périmètre
 // du bug ART #23046, donc pas d'append-only `_latest`. L'extensibilité (TTK & co
 // « un jour ») passe par la colonne `extra` JSON, pas par une nouvelle génération.
 //
 // Seed = table §6 du plan, VÉRIFIÉE halopedia.org + wiki.halo.fr. Les filmshell
-// ids Infinite proviennent de weapon_labels.go (suffixe 42c9679f = vraie arme) ;
+// ids Infinite proviennent de labels.go (suffixe 42c9679f = vraie arme) ;
 // les stock_ids H5 du catalogue officiel weapon_labels metadata H5 (peuplé par
 // cmd/h5-metadata-fetch), figés ici (Halo 5 gelé). Plusieurs ids/arme = variantes/
 // skins (Halo 2 BR, SPNKr, Retro Beam, Flagnum…) qui résolvent vers l'arme canonique.
+package weapons
 
 import (
 	"database/sql"
@@ -29,18 +40,7 @@ import (
 	"levelup/go-api/internal/migration"
 )
 
-// ApplyWeaponRegistry expose applyWeaponRegistry pour le reseed. Idempotent
-// (CREATE IF NOT EXISTS + INSERT OR IGNORE) → sert de CHEMIN DE RÉCONCILIATION au
-// boot (cmd/server/main.go, metadata du titre par défaut ET des titres additionnels
-// dont H5) : converge les stock_ids/filmshell ajoutés au seed APRÈS que la migration
-// one-shot fut marquée "done" (sans ça, inertes sur une DB déjà migrée — cas
-// h5_other_ugc). Hors surface ART (tables PK-only, aucun index secondaire, aucun
-// UPDATE/DELETE per-row).
-func ApplyWeaponRegistry(db *sql.DB) error {
-	return applyWeaponRegistry(db)
-}
-
-// ReconcileWeaponRegistry ré-applique le seed du registre d'armes canonique
+// ReconcileRegistry ré-applique le seed du registre d'armes canonique
 // (weapon_families/weapons/weapon_ids) de façon idempotente à CHAQUE boot, sur la
 // metadata.duckdb du titre `titleSlug`. Cross-titre par conception (le seed contient
 // les lignes de tous les titres, chaque metadata en reçoit une copie complète ;
@@ -59,12 +59,12 @@ func ApplyWeaponRegistry(db *sql.DB) error {
 // décision 2026-06-23). Le rejouer n'insère QUE les lignes manquantes : aucune
 // écriture destructive, aucun UPDATE. Retourne le nombre de lignes nouvellement
 // insérées (delta pré/post seed) pour la télémétrie de boot.
-func ReconcileWeaponRegistry(db *sql.DB, titleSlug string) (int, error) {
+func ReconcileRegistry(db *sql.DB, titleSlug string) (int, error) {
 	if db == nil {
 		return 0, nil
 	}
 	before := countWeaponRegistryRows(db) // tolérant : 0 si tables absentes (DB vierge)
-	if err := applyWeaponRegistry(db); err != nil {
+	if err := ApplyRegistry(db); err != nil {
 		return 0, fmt.Errorf("reconcile weapon_registry: %w", err)
 	}
 	reconciled := countWeaponRegistryRows(db) - before
@@ -155,7 +155,7 @@ const (
 
 // Clés d'armes partagées entre le registre de dimensions (weaponRegistryWeapons) et
 // les tables d'ids numériques (filmshell/stock_id) — la constante évite la dérive de
-// frappe entre les deux tables. nameM41SPNKr : nom canonique partagé avec weapon_labels.go.
+// frappe entre les deux tables. nameM41SPNKr : nom canonique partagé avec labels.go.
 const (
 	keyHinfBandit        = "hinf_bandit"
 	keyHinfGravityHammer = "hinf_gravity_hammer"
@@ -166,8 +166,12 @@ const (
 	nameM41SPNKr         = "M41 SPNKr"
 )
 
-// applyWeaponRegistry crée les 3 tables et seede familles + armes + ids Infinite.
-func applyWeaponRegistry(db *sql.DB) error {
+// ApplyRegistry crée les 3 tables et seede familles + armes + ids Infinite.
+// Idempotent (CREATE IF NOT EXISTS + INSERT OR IGNORE) : sert à la fois de step de
+// migration (add_weapon_registry) et de CHEMIN DE RÉCONCILIATION au boot via
+// ReconcileRegistry. Hors surface ART (tables PK-only, aucun index secondaire,
+// aucun UPDATE/DELETE per-row).
+func ApplyRegistry(db *sql.DB) error {
 	if err := migration.ExecScript(db, `
 		CREATE TABLE IF NOT EXISTS weapon_families (
 			family_key VARCHAR PRIMARY KEY,
@@ -462,7 +466,7 @@ var weaponRegistryWeapons = []weaponRow{
 	{keyH5OtherUGC, titleH5, "Other", "other", "other", "other", "", "", ""},
 }
 
-// weaponRegistryInfiniteFilmshell — ids filmshell Infinite (source weapon_labels.go,
+// weaponRegistryInfiniteFilmshell — ids filmshell Infinite (source labels.go,
 // suffixe 42c9679f = vraie arme). Plusieurs ids/arme = variantes (Ranked, skins).
 var weaponRegistryInfiniteFilmshell = []weaponNumericID{
 	{"hinf_br75", 0x2b1824d542c9679f},

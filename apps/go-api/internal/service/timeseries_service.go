@@ -16,7 +16,7 @@
 //     first events distribution
 //   - timeseries_service_aggregations.go : map breakdown, sessions, top
 //     weapons, outcomes over time, filtres canonical
-//   - timeseries_service_tabs.go         : builders Summary/Cumul/Intensity/
+//   - timeseries_service_tabs.go         : builders Cumul/Intensity/
 //     Distributions + buildMatchRows
 //   - timeseries_service_buckets.go      : builders distribution buckets
 //     (Accuracy, ScorePerMin, Life, etc.)
@@ -42,7 +42,7 @@ import (
 	"levelup/go-api/internal/service/fragdist"
 )
 
-// Cles metriques canoniques utilisees dans MetricXKey/MetricYKey + KpiCards.
+// Cles metriques canoniques utilisees dans MetricXKey/MetricYKey.
 const (
 	tsMetricKeyKills    = "kills"
 	tsMetricKeyAccuracy = "accuracy"
@@ -256,7 +256,7 @@ func (s *TimeseriesService) GetPage(
 	resp := domain.TimeseriesPageResponse{
 		TotalMatches: len(matches),
 		MatchRows:    buildMatchRows(matches, provideSpree, assistsExpected, careerXPEras),
-		SummaryTab:   buildTimeseriesSummaryTab(matches),
+		SummaryTab:   domain.TimeseriesSummaryTab{},
 		CumulTab:     buildCumulTab(matches),
 
 		IntensityTab:     buildIntensityTab(matches),

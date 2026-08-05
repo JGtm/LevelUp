@@ -208,9 +208,11 @@ export function TimeseriesProgressionTab({
         }
         emptyMessage={emptyMsg}
         rows={data.match_rows ?? []}
-        rendementLabel={t('timeseries.progression.dmg_per_kill')}
-        resistanceLabel={t('timeseries.progression.dmg_per_death')}
+        rendementLabel={t('timeseries.progression.rate_offensive')}
+        resistanceLabel={t('timeseries.progression.rate_defensive')}
         refLabel={t('timeseries.progression.ref_one_life')}
+        perFragLabel={t('timeseries.progression.per_effective_frag')}
+        perDeathLabel={t('timeseries.progression.per_death')}
       />
 
       {/* Engagement — pleine largeur. EngagementTimeseriesSection

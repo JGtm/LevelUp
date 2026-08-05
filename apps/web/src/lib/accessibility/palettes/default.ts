@@ -27,7 +27,11 @@ export const defaultPalette: Palette = {
 
   // ── Divergent (source : match-card.tsx, delta-card.tsx) ────────────────────
   'divergent-pos':     '#22C55E', // green-500
-  'divergent-neutral': '#60A5FA', // blue-400 (zone non significative)
+  // Gris légèrement bleuté : la zone « non significative » ne doit porter aucune
+  // direction. L'ancien bleu #60A5FA se lisait comme une valeur positive et
+  // entrait en concurrence avec les couleurs joueurs. Les 3 autres palettes ont
+  // déjà un gris à ce poste.
+  'divergent-neutral': '#8A9099',
   'divergent-neg':     '#EF4444', // red-500
 
   // ── Statuts UI ─────────────────────────────────────────────────────────────
@@ -37,9 +41,20 @@ export const defaultPalette: Palette = {
   'destructive': '#EF4444',
 
   // ── Comparaisons (approximations des OKLCh de globals.css) ─────────────────
+  // Consommateurs vérifiés le 2026-08-04 : page Compare (ComparePage, CompareBar,
+  // CompareMirrorRow) + chaînes LUSR de la Carrière (features/career/lusr-chains.ts).
   'compare-a': '#818CF8', // oklch(0.65 0.15 250) ≈ indigo-400
   'compare-b': '#D97706', // oklch(0.70 0.15 55)  ≈ amber-600
   'compare-c': '#10B981', // oklch(0.72 0.15 160) ≈ emerald-500
+
+  // ── Joueurs d'escouade — 4 teintes franches, une par joueur ───────────────
+  // Choix produit : bleu (joueur principal) puis ambre / magenta / cyan.
+  // Contraste ≥ 3:1 sur les deux surfaces produit et écart perceptuel
+  // toutes-paires vérifiés par squadPlayerTokens.test.ts.
+  'squad-player-1': '#2563EB', // bleu    — joueur principal (blue-600)
+  'squad-player-2': '#D97706', // ambre   — coéquipier 1     (amber-600)
+  'squad-player-3': '#DB2777', // magenta — coéquipier 2     (pink-600)
+  'squad-player-4': '#0891B2', // cyan    — coéquipier 3     (cyan-600)
 
   // ── Chart series — palette bleue/indigo actuelle ────────────────────────────
   'chart-series-1': '#93C5FD', // oklch(0.81 0.10 252) ≈ blue-300

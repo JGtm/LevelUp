@@ -10,7 +10,7 @@
 //     translatePlaylistFilterOptions +
 //     LoadMatchCandidatesForMedia +
 //     loadMatchLobbies + normalizeModeLabel
-//   - media_repo_writes.go       : SetMediaMatchAssociation + SetMediaLike +
+//   - media_repo_writes.go       : SetMediaMatchAssociation + MediaExists +
 //     SetMediaLikeAtomic + ToggleSharedLike +
 //     GetMediaLikers + queryConfig + joinStrings
 //   - media_repo_translations.go : enrichMediaMapTranslations +
@@ -46,6 +46,35 @@ type MediaRepo struct {
 	// le couplage platform/duckdb → games/halo_infinite (F1). Zéro-value = pas de
 	// classification (dégradation gracieuse).
 	modeTax analysis.ModeTaxonomy
+	// viewerSlug : joueur qui REGARDE la galerie (session), injecté par requête au
+	// wiring (WithViewer). Détermine l'état du cœur servi au front : `liked` = « ce
+	// média est liké PAR CE VIEWER », lu dans media_likes_latest. Distinct de
+	// pdb.Gamertag, qui est le PROPRIÉTAIRE de la galerie consultée — les deux
+	// diffèrent dès qu'on consulte les médias d'un coéquipier.
+	// Vide → repli sur le propriétaire, cf. viewer().
+	viewerSlug string
+}
+
+// viewer retourne le liker dont l'état de like doit être servi.
+//
+// Repli sur le propriétaire de la galerie quand aucun viewer n'est injecté :
+// une instance MONO-UTILISATEUR (auth_mode=none, pas de login) n'a pas de joueur
+// courant en session, et la page qu'on y consulte est celle du joueur local.
+// Sans ce repli, tous ses cœurs seraient vides — la régression exacte que le
+// passage au like par-viewer devait corriger, retournée contre son cas d'usage
+// principal.
+//
+// Le pendant côté ÉCRITURE est le repli du liker sur le player_slug de la route
+// (handlers.resolveLikerIdentity) : lire et écrire doivent désigner le même
+// viewer, sinon on like pour un autre que celui dont on affiche le cœur.
+func (r *MediaRepo) viewer() string {
+	if r.viewerSlug != "" {
+		return r.viewerSlug
+	}
+	if r.pdb == nil {
+		return ""
+	}
+	return r.pdb.Gamertag
 }
 
 // mediaAssetURLAdapter est l'interface duck-typed que le caller (registry.go)
@@ -65,6 +94,14 @@ func NewMediaRepo(pdb *PlayerDB) *MediaRepo {
 // adapter câblé, la résolution reste exclusivement via map_images_registry.
 func (r *MediaRepo) WithAssetURL(a mediaAssetURLAdapter) *MediaRepo {
 	r.assetURL = a
+	return r
+}
+
+// WithViewer injecte le slug du joueur qui consulte la galerie (session HTTP).
+// C'est lui — et non le propriétaire de la page — qui détermine l'état `liked`
+// servi au front. Vide ou non appelé : repli documenté dans viewer().
+func (r *MediaRepo) WithViewer(slug string) *MediaRepo {
+	r.viewerSlug = slug
 	return r
 }
 

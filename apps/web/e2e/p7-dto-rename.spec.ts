@@ -75,25 +75,6 @@ test.describe('P7.1 — DTOs Timeseries renommés sémantique métier', () => {
     )
     expect(knownPairs).toContain('kills_vs_kd_ratio')
   })
-
-  test('TimeseriesKpiCard : champ color retiré', async ({ request }) => {
-    const resp = await request.post(`${API}/players/${PLAYER}/pages/timeseries`, {
-      data: { filters: {} },
-    })
-    if (resp.status() !== 200) {
-      test.skip(true, `API non disponible (status=${resp.status()}) — fixtures démo manquantes`)
-    }
-    const data = await resp.json()
-    const cards = data.summary_tab?.kpi_cards ?? []
-    if (cards.length === 0) test.skip(true, 'Pas de kpi_cards en démo — non testable')
-
-    for (const c of cards) {
-      expect(c).toHaveProperty('key')
-      expect(c).toHaveProperty('label')
-      expect(c).toHaveProperty('value')
-      expect(c).not.toHaveProperty('color')
-    }
-  })
 })
 
 test.describe('P7.1 — DTOs Synthesis renommés sémantique métier', () => {

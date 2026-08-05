@@ -21,7 +21,7 @@ type WeaponName struct {
 // weapon_key (identifiant canonique stable du registre weapons/weapon_ids), PAS par
 // le nom EN brut. La resolution d'un kill fait weapon_id -> weapon_ids -> weapon_key
 // -> {en, fr} depuis ce fichier (cf. internal/platform/duckdb/weapon_resolver.go +
-// halo_infinite/migrations.ReconcileWeaponNameLabels qui le seede en metadata).
+// games/weapons.ReconcileNameLabels qui le seede en metadata).
 //
 // Motivation (V72-06) : avant, 3 sources de noms se marchaient dessus (weapon_labels
 // keye par nom EN, name_fr invente du registre, priorite du resolver), keyees par le

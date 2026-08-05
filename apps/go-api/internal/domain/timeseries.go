@@ -27,22 +27,13 @@ type TimeseriesQueryRequest struct {
 // Onglets
 // ---------------------------------------------------------------------------
 
-// TimeseriesKpiCard est une carte KPI dans l'onglet résumé.
-//
-// P7.1 (revue 2026-04-29) : champ `Color` retiré — le ton/couleur est résolu
-// côté front via tokens sémantiques (`tokenCssVar` + delta sign), pas
-// transporté dans le DTO. Réduit le couplage présentation/transport.
-type TimeseriesKpiCard struct {
-	Key   string  `json:"key"`
-	Label string  `json:"label"`
-	Value string  `json:"value"`
-	Delta *string `json:"delta"`
-}
-
 // TimeseriesSummaryTab est l'onglet Résumé.
-type TimeseriesSummaryTab struct {
-	KpiCards []TimeseriesKpiCard `json:"kpi_cards"`
-}
+//
+// KpiCards retiré le 2026-08-05 : jamais lu côté front (TimeseriesPage.summary.tsx
+// construit ses KPI depuis match_rows + le registre de champs, pas depuis ce DTO) —
+// seuls des tests e2e vérifiaient la présence structurelle. Struct conservée vide :
+// le champ summary_tab reste dans le contrat (hors périmètre de ce retrait).
+type TimeseriesSummaryTab struct{}
 
 // TimeseriesWeaponKill agrège les kills d'une arme sur le scope filtré.
 // Alimente le chart timeseries.04 (Top weapons by kills).

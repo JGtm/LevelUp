@@ -4959,7 +4959,6 @@ export interface components {
             delta: number;
             display_a?: string;
             display_b?: string;
-            label_fr: string;
             less_is_better: boolean;
             metric: string;
             /** Format: int64 */
@@ -5527,36 +5526,6 @@ export interface components {
              * @enum {string}
              */
             squad_scope: "all" | "solo" | "squad";
-        };
-        ExplorerMatchRow: {
-            /** @default 0 */
-            deaths: number;
-            /** @default Non classé */
-            experience_type_label: string;
-            /**
-             * @description Un coéquipier était un bot. Exposé uniquement sur les best_matches de la page carrière (les LOSS avec bot sont exclus côté backend pour isoler la responsabilité du joueur).
-             * @default false
-             */
-            had_bot_teammate: boolean;
-            /** @default false */
-            is_with_friends: boolean;
-            /**
-             * Format: float
-             * @default 0
-             */
-            kda: number;
-            /** @default 0 */
-            kills: number;
-            map_ui: string;
-            /** Format: uuid */
-            match_id: string;
-            mode_ui: string;
-            outcome_label: string;
-            playlist_label: string;
-            score_label: string;
-            /** Format: date-time */
-            start_time: string;
-            start_time_label: string;
         };
         ExplorerMatchesQueryRequest: {
             filters?: components["schemas"]["FilterContextInput"];
@@ -7904,10 +7873,6 @@ export interface components {
             /** Format: int64 */
             wins: number;
         };
-        PaginatedExplorerMatchesResponse: {
-            items: components["schemas"]["ExplorerMatchRow"][];
-            pagination: components["schemas"]["PaginationMeta"];
-        };
         PaginatedMatchHistoryResponse: {
             freshness?: components["schemas"]["FreshnessInfo"] | null;
             items: components["schemas"]["MatchHistoryRow"][];
@@ -10128,12 +10093,6 @@ export interface components {
             /** Format: int64 */
             total_kills: number;
         };
-        TimeseriesKpiCard: {
-            delta: string | null;
-            key: string;
-            label: string;
-            value: string;
-        };
         TimeseriesMatchRow: {
             /** Format: double */
             accuracy: number | null;
@@ -10220,9 +10179,7 @@ export interface components {
             total_matches: number;
             weapon_accuracy?: components["schemas"]["SynthesisWeaponAccuracyEntry"][] | null;
         };
-        TimeseriesSummaryTab: {
-            kpi_cards: components["schemas"]["TimeseriesKpiCard"][] | null;
-        };
+        TimeseriesSummaryTab: Record<string, never>;
         TimeseriesWeaponKill: {
             class?: string;
             /** Format: int64 */

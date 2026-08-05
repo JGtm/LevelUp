@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { ChallengeItem } from '@/lib/api/types'
+import { formatMessage } from '@/lib/i18n/format'
+import { homeManifest } from '@/lib/i18n/generated/home'
 import { useAssetLabel } from '@/lib/i18n/fieldMappings'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 type ChallengeCadence = 'daily' | 'weekly' | 'capstone' | null
 type ChallengeCategory = 'daily' | 'weekly'
@@ -108,6 +111,7 @@ function ChallengeThumb({
   title: string
 }) {
   const [imageFailed, setImageFailed] = useState(false)
+  const locale = useAppShellStore((state) => state.locale)
 
   if (!imageUrl || imageFailed) {
     return (
@@ -115,7 +119,7 @@ function ChallengeThumb({
         data-testid="home-challenge-thumb"
         className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md text-3xs font-semibold uppercase tracking-label-sm text-muted-foreground"
       >
-        Défi
+        {formatMessage(homeManifest, 'home.challenges.thumb_fallback', locale)}
       </div>
     )
   }

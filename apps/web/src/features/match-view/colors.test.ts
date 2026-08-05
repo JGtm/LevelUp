@@ -86,17 +86,18 @@ describe('buildMatchPlayerColors — équipes', () => {
     { xuid: 'E4', gamertag: 'Enemy4', team_side: 'B', is_me: false } as MatchScoreboardRow,
   ]
 
-  it('main player → compare-a quel que soit son team_side', () => {
+  it('main player → squad-player-1 quel que soit son team_side', () => {
     const colors = buildMatchPlayerColors(scoreboard, 'ME')
-    expect(colors.tokenByXUID.get('ME')).toBe('compare-a')
+    expect(colors.tokenByXUID.get('ME')).toBe('squad-player-1')
   })
 
   it('alliés non-amis → palette cool « other » (pas les tokens squad)', () => {
     const colors = buildMatchPlayerColors(scoreboard, 'ME')
-    // Sans amis, les 3 alliés non-main reçoivent perf-tier-2, narrative-encounter-ally-plus, narrative-remontada
+    // Sans amis, les 3 alliés non-main reçoivent perf-tier-2,
+    // narrative-encounter-ally-plus, narrative-encounter-recrue
     expect(colors.tokenByXUID.get('A1')).toBe('perf-tier-2')
     expect(colors.tokenByXUID.get('A2')).toBe('narrative-encounter-ally-plus')
-    expect(colors.tokenByXUID.get('A3')).toBe('narrative-remontada')
+    expect(colors.tokenByXUID.get('A3')).toBe('narrative-encounter-recrue')
   })
 
   it('ennemis → palette warm', () => {
@@ -111,23 +112,23 @@ describe('buildMatchPlayerColors — équipes', () => {
     expect(colors.tokenByXUID.get('E4')).toBe('narrative-contre-remontada')
   })
 
-  it('amis alliés → tokens squad (narrative-dominant / perf-tier-3 / divergent-pos)', () => {
+  it('amis alliés → tokens squad (squad-player-2 / -3 / -4)', () => {
     const colors = buildMatchPlayerColors(scoreboard, 'ME', ['Ally1', 'Ally3'])
     // Ally1 et Ally3 sont amis alliés → tokens squad cyclés dans l'ordre rencontré
-    expect(colors.tokenByXUID.get('A1')).toBe('narrative-dominant')
-    expect(colors.tokenByXUID.get('A3')).toBe('perf-tier-3')
+    expect(colors.tokenByXUID.get('A1')).toBe('squad-player-2')
+    expect(colors.tokenByXUID.get('A3')).toBe('squad-player-3')
     // Ally2 (non-ami) garde la palette cool « other »
     expect(colors.tokenByXUID.get('A2')).toBe('perf-tier-2')
   })
 
   it("amis adverses NE prennent PAS la couleur squad — la distinction d'équipe l'emporte", () => {
     const colors = buildMatchPlayerColors(scoreboard, 'ME', ['Enemy1'])
-    expect(colors.tokenByXUID.get('E1')).toBe('outcome-loss') // palette warm, pas narrative-dominant
+    expect(colors.tokenByXUID.get('E1')).toBe('outcome-loss') // palette warm, pas squad-player-2
   })
 
   it('matching gamertag amis insensible à la casse / espaces', () => {
     const colors = buildMatchPlayerColors(scoreboard, 'ME', ['  ally1  ', 'ALLY3'])
-    expect(colors.tokenByXUID.get('A1')).toBe('narrative-dominant')
-    expect(colors.tokenByXUID.get('A3')).toBe('perf-tier-3')
+    expect(colors.tokenByXUID.get('A1')).toBe('squad-player-2')
+    expect(colors.tokenByXUID.get('A3')).toBe('squad-player-3')
   })
 })

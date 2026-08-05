@@ -139,8 +139,6 @@ func migratePlayerMedia(dst *sql.DB, srcPath, gamertag string, dryRun bool) (int
 			),
 			COALESCE(kind, 'video'),
 			file_hash,
-			COALESCE(liked, FALSE),
-			liked_at,
 			indexed_at
 		FROM media_files
 		WHERE file_path IS NOT NULL
@@ -154,11 +152,10 @@ func migratePlayerMedia(dst *sql.DB, srcPath, gamertag string, dryRun bool) (int
 	for rows.Next() {
 		var id, filePath, kind string
 		var fileHash sql.NullString
-		var liked bool
 		var fileName string
-		var likedAt, indexedAt sql.NullTime
+		var indexedAt sql.NullTime
 
-		if err := rows.Scan(&id, &filePath, &fileName, &kind, &fileHash, &liked, &likedAt, &indexedAt); err != nil {
+		if err := rows.Scan(&id, &filePath, &fileName, &kind, &fileHash, &indexedAt); err != nil {
 			slog.Warn("scan media_files", "err", err)
 			continue
 		}
@@ -168,10 +165,9 @@ func migratePlayerMedia(dst *sql.DB, srcPath, gamertag string, dryRun bool) (int
 		if !dryRun {
 			_, err = dst.Exec(`
 				INSERT OR IGNORE INTO media_files
-					(id, player_slug, file_path, file_name, kind, file_hash, liked, liked_at, created_at)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-			`, id, gamertag, filePath, fileName, kind,
-				fileHash, liked, likedAt, indexedAt,
+					(id, player_slug, file_path, file_name, kind, file_hash, created_at)
+				VALUES (?, ?, ?, ?, ?, ?, ?)
+			`, id, gamertag, filePath, fileName, kind, fileHash, indexedAt,
 			)
 			if err != nil {
 				slog.Warn("insert media_files", "file_path", filePath, "err", err)

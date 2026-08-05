@@ -199,16 +199,16 @@ fr = "Score"
 en = "Score"
 
 [explorer.matches.col_score_tooltip]
-fr = "Score final de la partie : ton équipe puis l'équipe adverse."
-en = "Final match score: your team, then the opposing team."
+fr = "Score final de la partie : l'équipe puis l'équipe adverse."
+en = "Final match score: the team, then the opposing team."
 
 [explorer.matches.col_personal_score]
 fr = "Score personnel"
 en = "Personal score"
 
 [explorer.matches.col_personal_score_tooltip]
-fr = "Points que tu as marqués seul pendant la partie (éliminations, objectifs, assistances) — sans rapport avec le score de l'équipe."
-en = "Points you alone scored during the match (kills, objectives, assists) — unrelated to the team score."
+fr = "Points marqués en solo pendant la partie (éliminations, objectifs, assistances) — sans rapport avec le score de l'équipe."
+en = "Points scored solo during the match (kills, objectives, assists) — unrelated to the team score."
 
 [explorer.matches.col_type]
 fr = "Type"
@@ -278,12 +278,6 @@ en = "Diamond"
 fr = "Onyx"
 en = "Onyx"
 
-# ─── Colonne tier ─────────────────────────────────────────────────────────────
-
-[explorer.matches.col_tier]
-fr = "Tier"
-en = "Tier"
-
 # ─── Filtre perf-tier ─────────────────────────────────────────────────────────
 
 [explorer.filters.perf_tier_label]
@@ -337,10 +331,6 @@ en = "Rating"
 [explorer.matches.col_rank]
 fr = "Rang"
 en = "Rank"
-
-[explorer.matches.col_delta_rank]
-fr = "ΔRang"
-en = "ΔRank"
 
 [explorer.matches.col_team_mmr]
 fr = "MMR équipe"
@@ -441,16 +431,16 @@ fr = "Palier de classement atteint sur ce match, ou progression de placement en 
 en = "Ranking tier reached this match, or placement progress if unranked."
 
 [explorer.matches.col_team_mmr_tooltip]
-fr = "Niveau de compétence moyen estimé (MMR) de ton équipe."
-en = "Average estimated skill level (MMR) of your team."
+fr = "Niveau de compétence moyen estimé (MMR) de l'équipe."
+en = "Average estimated skill level (MMR) of the team."
 
 [explorer.matches.col_enemy_mmr_tooltip]
 fr = "Niveau de compétence moyen estimé (MMR) de l'équipe adverse."
 en = "Average estimated skill level (MMR) of the enemy team."
 
 [explorer.matches.col_delta_mmr_tooltip]
-fr = "Écart de MMR entre ton équipe et l'équipe adverse."
-en = "MMR gap between your team and the enemy team."
+fr = "Écart de MMR entre l'équipe et l'équipe adverse."
+en = "MMR gap between the team and the enemy team."
 
 [explorer.matches.col_duration]
 fr = "Durée"
@@ -631,8 +621,8 @@ fr = "pts"
 en = "pts"
 
 [explorer.target_profile.donut_lift_tooltip]
-fr = "Écart entre ce taux de victoire et ta moyenne personnelle historique."
-en = "Gap between this win rate and your historical personal average."
+fr = "Écart entre ce taux de victoire et la moyenne personnelle historique."
+en = "Gap between this win rate and the historical personal average."
 
 [explorer.target_profile.frag_gap_title]
 fr = "Écart de frags cumulé"

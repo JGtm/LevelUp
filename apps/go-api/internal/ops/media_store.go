@@ -45,8 +45,16 @@ func ensureMediaTables(ctx context.Context, db *sql.DB) error {
 			duration_seconds DOUBLE,
 			status VARCHAR,
 			mtime TIMESTAMPTZ,
-			liked BOOLEAN DEFAULT FALSE,
-			liked_at TIMESTAMPTZ,
+			-- RETIRÉES le 2026-08-04 : liked / liked_at. C'était un booléen GLOBAL par
+			-- média (le like de n'importe quel joueur allumait le cœur de TOUT LE MONDE).
+			-- L'état d'un like vit dans media_likes_history (append-only, une ligne par
+			-- liker) et se lit via media_likes_latest. Les colonnes sont droppées des DB
+			-- existantes par la migration drop_media_files_liked_columns_v1
+			-- (games/halo_infinite/migrations/steps_shared_social_media_files_drop_liked.go).
+			-- NE PAS les
+			-- réintroduire ici NI dans la liste ADD COLUMN ci-dessous : ce CREATE et cet
+			-- ALTER tournent à CHAQUE IndexMedia et re-créeraient la colonne droppée
+			-- (garde-rail : TestEnsureMediaTables_DoesNotResurrectLikedColumns).
 			discord_notified BOOLEAN DEFAULT FALSE,
 			indexed_at TIMESTAMPTZ DEFAULT NOW()
 		)
@@ -68,8 +76,7 @@ func ensureMediaTables(ctx context.Context, db *sql.DB) error {
 		{"status", colTypeVarchar},
 		{"mtime", colTypeTimestampTZ},
 		{"indexed_at", "TIMESTAMPTZ DEFAULT NOW()"},
-		{"liked", "BOOLEAN DEFAULT FALSE"},
-		{"liked_at", colTypeTimestampTZ},
+		// PAS de liked / liked_at ici : droppées le 2026-08-04 (cf. CREATE ci-dessus).
 		{"discord_notified", "BOOLEAN DEFAULT FALSE"},
 		{"file_stem", colTypeVarchar},
 		{"file_ext", colTypeVarchar},

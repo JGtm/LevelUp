@@ -39,7 +39,7 @@ fr = "Titre"
 en = "Title"
 
 [feedback_drawer.field.title_placeholder]
-fr = "Résumez votre retour en quelques mots"
+fr = "Résume ton retour en quelques mots"
 en = "Sum up your feedback in a few words"
 
 [feedback_drawer.field.description]
@@ -47,7 +47,7 @@ fr = "Description"
 en = "Description"
 
 [feedback_drawer.field.description_placeholder]
-fr = "Ce qui s'est passé, ce que vous attendiez, étapes pour reproduire…"
+fr = "Ce qui s'est passé, ce que tu attendais, étapes pour reproduire…"
 en = "What happened, what you expected, steps to reproduce…"
 
 [feedback_drawer.similar.label]
@@ -67,12 +67,12 @@ fr = "Ouvrir sur GitHub"
 en = "Open on GitHub"
 
 [feedback_drawer.submit_note]
-fr = "Vous serez redirigé vers GitHub pour finaliser l'envoi. Une analyse automatique enrichira l'issue."
-en = "You'll be redirected to GitHub to finalize the submission. An automated analysis will enrich the issue."
+fr = "Redirection vers GitHub pour finaliser l'envoi. Une analyse automatique enrichira l'issue."
+en = "Redirecting to GitHub to finalize the submission. An automated analysis will enrich the issue."
 
 [feedback_drawer.rate_limit]
-fr = "Merci, vous avez déjà envoyé 5 retours dans la dernière heure."
-en = "Thanks, you already sent 5 feedbacks in the last hour."
+fr = "Merci, 5 retours ont déjà été envoyés dans la dernière heure."
+en = "Thanks, 5 feedback submissions were already sent in the last hour."
 
 [feedback_drawer.popup_blocked]
 fr = "Lien copié dans le presse-papier — collez-le dans un onglet pour ouvrir GitHub."

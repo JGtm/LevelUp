@@ -23,8 +23,8 @@ import (
 
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/games/weapons"
 )
 
 // Load assemble le catalogue de libellés d'un titre depuis ses mappings versionnés.
@@ -45,7 +45,7 @@ func Load(repoRoot, titleSlug string) (replay.LabelCatalog, error) {
 	}
 
 	return replay.NewLabelCatalog(
-		migrations.FilmshellWeaponKeysByFamily(),
+		weapons.FilmshellWeaponKeysByFamily(),
 		weaponNames(names.Names()),
 		labels.ShotEffects(),
 		toLabels(labels.GrenadeRanks()),

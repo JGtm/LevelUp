@@ -98,8 +98,8 @@ fr = "Comparaison côte à côte"
 en = "Side-by-side comparison"
 
 [session.detail.compare_tooltip_desc]
-fr = "Affiche une deuxième session à droite — mêmes graphes, même tableaux, pour comparer vos performances sur une session similaire sans changer de page."
-en = "Shows a second session on the right — same charts, same tables — to compare your performance from a similar session without switching pages."
+fr = "Affiche une deuxième session à droite — mêmes graphes, même tableaux, pour comparer les performances sur une session similaire sans changer de page."
+en = "Shows a second session on the right — same charts, same tables — to compare performance from a similar session without switching pages."
 
 [session.detail.compare_tooltip_suggested]
 fr = "Session suggérée"
@@ -365,8 +365,8 @@ fr = "vies/match"
 en = "lives/match"
 
 [session.detail.net_lives_tooltip]
-fr = "Balance des dégâts = (dégâts infligés − dégâts subis) ÷ {{HP}} PV, exprimée en vies. Positif = tu portes l'équipe ; négatif = tu coûtes plus que tu ne rapportes."
-en = "Damage balance = (damage dealt − damage taken) ÷ {{HP}} HP, expressed in lives. Positive = you carry the team; negative = you cost more than you bring."
+fr = "Balance des dégâts = (dégâts infligés − dégâts subis) ÷ {{HP}} PV, exprimée en vies. Positif = la balance porte l'équipe ; négatif = elle coûte plus qu'elle ne rapporte."
+en = "Damage balance = (damage dealt − damage taken) ÷ {{HP}} HP, expressed in lives. Positive = the balance carries the team; negative = it costs more than it brings."
 
 [session.detail.col_rating_delta]
 fr = "Δ rang"
@@ -401,8 +401,8 @@ fr = "Challenge MMR"
 en = "MMR challenge"
 
 [session.detail.mmr_team]
-fr = "Votre équipe"
-en = "Your team"
+fr = "Équipe"
+en = "Team"
 
 [session.detail.mmr_enemy]
 fr = "Adverse"
@@ -972,8 +972,8 @@ fr = "Session indisponible"
 en = "Session unavailable"
 
 [session.detail.unavailable_not_found]
-fr = "Cette session n'existe pas ou ne fait pas partie de tes matchs."
-en = "This session doesn't exist or isn't part of your matches."
+fr = "Cette session n'existe pas ou ne fait pas partie des matchs disponibles."
+en = "This session doesn't exist or isn't part of the available matches."
 
 [session.detail.action_home]
 fr = "Accueil"

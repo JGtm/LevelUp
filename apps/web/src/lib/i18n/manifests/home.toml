@@ -35,8 +35,8 @@ fr = "Synchronisation en cours"
 en = "Sync in progress"
 
 [home.first_sync.description]
-fr = "Tes données sont en cours de récupération. La première synchronisation peut prendre quelques minutes. Cette page se mettra à jour automatiquement dès que c'est prêt — en attendant, tu peux continuer à jouer sur Halo Infinite."
-en = "Your data is being synced. The first sync can take a few minutes. This page will update automatically as soon as it's ready — in the meantime, you can keep playing Halo Infinite."
+fr = "Les données sont en cours de récupération. La première synchronisation peut prendre quelques minutes. Cette page se mettra à jour automatiquement dès que c'est prêt — en attendant, il reste possible de continuer à jouer sur Halo Infinite."
+en = "Data is being synced. The first sync can take a few minutes. This page will update automatically as soon as it's ready — in the meantime, it's fine to keep playing Halo Infinite."
 
 [home.first_sync.action]
 fr = "Actualiser"
@@ -139,6 +139,11 @@ en = "No active challenge"
 [home.challenges.empty_description]
 fr = "Tous les défis visibles sont terminés ou aucun défi détaillé n'est disponible pour le moment."
 en = "All visible challenges are complete or no detailed challenge is available right now."
+
+# Vignette de repli quand le défi n'a pas d'illustration (ou qu'elle échoue).
+[home.challenges.thumb_fallback]
+fr = "Défi"
+en = "Challenge"
 
 [home.challenges.xp_available]
 fr = "{xp} XP disponibles"
@@ -270,7 +275,7 @@ en = "Mastery close"
 
 # Affiché quand le joueur a maîtrisé TOUTES ses citations tiérées (aucune en approche).
 [home.near_completion.all_complete_title]
-fr = "Toutes tes citations sont maîtrisées"
+fr = "Toutes les citations sont maîtrisées"
 en = "All citations mastered"
 
 [home.near_completion.all_complete_description]
@@ -316,7 +321,7 @@ fr = "Aucun match favori"
 en = "No favorite match"
 
 [home.matches.favorites_empty_description]
-fr = "Marquez vos meilleurs matchs avec l'icône étoile pour les retrouver ici."
+fr = "Marque tes meilleurs matchs avec l'icône étoile pour les retrouver ici."
 en = "Mark your best matches with the star icon to find them here."
 
 # ─── KPI hero card (anciennement kpi.i18n.ts) ─────────────────────────────
@@ -455,8 +460,8 @@ fr = "Faits marquants"
 en = "Highlights"
 
 [home.highlights.section_tooltip]
-fr = "Chiffres calculés sur ta dernière session et jusqu'à 4 sessions récentes avec la même composition (solo/escouade) et la même sélection dominante."
-en = "Figures computed from your last session and up to 4 recent sessions with the same party (solo/squad) and dominant playlist."
+fr = "Chiffres calculés sur la dernière session et jusqu'à 4 sessions récentes avec la même composition (solo/escouade) et la même sélection dominante."
+en = "Figures computed from the last session and up to 4 recent sessions with the same party (solo/squad) and dominant playlist."
 
 # ─── Highlights — titres tuiles (backend keys highlight.title.*) ──────────
 
@@ -727,7 +732,7 @@ fr = "Aucun média aimé"
 en = "No liked media"
 
 [home.media.empty_liked_description]
-fr = "Marquez vos captures ou clips avec le ♥ pour les retrouver ici."
+fr = "Marque tes captures ou clips avec le ♥ pour les retrouver ici."
 en = "Mark your captures or clips with ♥ to find them here."
 
 [home.media.empty_recent_title]

@@ -196,6 +196,29 @@ npm run test:coverage
 npm run lint
 ```
 
+### Gate local avant merge (`gate-push`)
+
+```bash
+make gate-push               # ratchet lint Go + typecheck/lint web + baseline de tests (~25 min)
+```
+
+Sur certains postes Windows, l'environnement git-bash casse le lien des
+binaires de test Go embarquant `libduckdb_static` (`undefined reference
+__emutls_v._ZSt11__once_call`), ce qui fait échouer le maillon baseline de
+tests de `make gate-push` alors que le code lui-même est sain — PowerShell
+natif lie correctement. Contournement validé (documenté dans
+`.ai/HANDOFF_POST_LOT2_V73.md`) : lancer `scripts/gate-push.ps1` à la place.
+Il reproduit les 4 mêmes maillons (lint Go, tests Go d'intégration, typecheck
+web, lint web) mais produit le JSONL `go test -json` depuis PowerShell natif,
+puis le fait vérifier par `scripts/check_test_baseline.sh tests --from-jsonl
+<fichier>` (mode consommateur — parse le JSONL, ne relance pas la suite). La
+CI reste l'autorité ; ce script est un filet local propre à cette
+particularité d'environnement.
+
+```powershell
+powershell -File scripts/gate-push.ps1
+```
+
 ---
 
 ## Variables d'environnement

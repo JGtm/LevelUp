@@ -137,9 +137,15 @@ type MediaItem struct {
 	OwnerGamertag  *string    `json:"owner_gamertag,omitempty"`
 	MapName        *string    `json:"map_name,omitempty"`
 	ModeName       *string    `json:"mode_name,omitempty"`
-	Liked          bool       `json:"liked"`
-	LikeCount      int        `json:"like_count"`
-	// Likes sociaux : noms des 3 premiers likers + total
+	// Liked : état du cœur DU VIEWER de la requête (le joueur courant de la
+	// session), pas un état du média. Depuis le 2026-08-04, deux viewers
+	// reçoivent des valeurs différentes pour le même média.
+	Liked bool `json:"liked"`
+	// LikeCount / Likers / TotalLikers restent GLOBAUX (tous likers confondus) —
+	// c'est ce qui rend la ligne « ♥ Alice et Bob » lisible. Ne pas aligner ces
+	// compteurs sur Liked : un compteur personnel afficherait 1 au liker et 0 aux
+	// autres.
+	LikeCount   int      `json:"like_count"`
 	Likers      []string `json:"likers,omitempty"`
 	TotalLikers int      `json:"total_likers"`
 }
@@ -167,15 +173,22 @@ type MediaPageResponse struct {
 	AvailableFilters MediaFilterOptions `json:"available_filters"`
 }
 
-// MediaLikeRequest représente une mise à jour explicite de l'état liked.
+// MediaLikeRequest représente le like/unlike d'un média PAR LE VIEWER courant.
 type MediaLikeRequest struct {
-	FilePath      string `json:"file_path"`
-	Liked         bool   `json:"liked"`
-	LikerSlug     string `json:"liker_slug,omitempty"`     // slug du joueur qui like
-	LikerGamertag string `json:"liker_gamertag,omitempty"` // gamertag affiché dans les likers
+	FilePath string `json:"file_path"`
+	Liked    bool   `json:"liked"`
+	// LikerSlug / LikerGamertag sont RÉÉCRITS par le serveur depuis la session
+	// quand il y en a une (handlers.resolveLikerIdentity) : le like étant
+	// par-viewer, un liker choisi par le client permettrait d'allumer le cœur
+	// d'un tiers.
+	LikerSlug     string `json:"liker_slug,omitempty"`
+	LikerGamertag string `json:"liker_gamertag,omitempty"`
 }
 
-// MediaLikeResponse confirme l'état liked persisté côté backend.
+// MediaLikeResponse confirme le like persisté côté backend.
+//
+// Même asymétrie que MediaItem : Liked est l'état DU VIEWER, LikeCount /
+// Likers / TotalLikers sont globaux.
 type MediaLikeResponse struct {
 	FilePath    string   `json:"file_path"`
 	Liked       bool     `json:"liked"`

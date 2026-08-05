@@ -36,6 +36,13 @@ const CIVIDIS_LIGHTEST = '#FEE838' // t=1.00
 const SAFE_BLUE = '#0072B2'
 const SAFE_VERMILLION = '#D55E00'
 const SAFE_GREY = '#888888'
+// Vermillion assombri (× 0.75) — les 9 échantillons de la rampe Cividis sont tous
+// déjà affectés (perf-tiers, séries, joueurs), et le vermillion BRUT porte déjà
+// outcome-loss / team-enemy / divergent-neg. Une débâcle se superpose à une
+// défaite : elle ne peut pas avoir exactement le même fond. On prolonge donc le
+// même emprunt Okabe-Ito « couple binaire » d'un cran de luminosité, plutôt que
+// de voler une valeur de la rampe séquentielle.
+const SAFE_VERMILLION_DEEP = '#A04700'
 
 export const cividisPalette: Palette = {
   // ── Perf tiers — ramp Cividis monotone en L* (foncé = excellent) ───────────
@@ -67,6 +74,14 @@ export const cividisPalette: Palette = {
   'compare-b': CIVIDIS_LIGHTEST,
   'compare-c': CIVIDIS_MID,     // t=0.50 — gris-brun neutre (troisième joueur)
 
+  // ── Joueurs d'escouade — 4 pas de clarté réguliers (t = .25 / .50 / .75 / 1)
+  // Cividis est une rampe séquentielle : l'identité par TEINTE y est impossible
+  // par construction, les joueurs se distinguent par la clarté seule.
+  'squad-player-1': CIVIDIS_T25,      // t=0.25 — joueur principal
+  'squad-player-2': CIVIDIS_MID,      // t=0.50 — coéquipier 1
+  'squad-player-3': CIVIDIS_T75,      // t=0.75 — coéquipier 2
+  'squad-player-4': CIVIDIS_LIGHTEST, // t=1.00 — coéquipier 3
+
   // ── Chart series — alterne extrémités Cividis pour distinguer 2 séries voisines
   'chart-series-1': CIVIDIS_DARKEST,  // t=0.00
   'chart-series-2': CIVIDIS_LIGHTEST, // t=1.00
@@ -90,8 +105,8 @@ export const cividisPalette: Palette = {
   'narrative-humiliation-text':      '#FFFFFF',
   'narrative-remontada':             CIVIDIS_T25,      // bleu-gris foncé
   'narrative-remontada-text':        '#FFFFFF',
-  'narrative-debacle':               SAFE_VERMILLION,  // vermillion (couple binaire)
-  'narrative-debacle-text':          '#000000',        // noir sur vermillion (5.4) — blanc ne passait pas AA
+  'narrative-debacle':               SAFE_VERMILLION_DEEP, // vermillion assombri (≠ outcome-loss)
+  'narrative-debacle-text':          '#FFFFFF',            // blanc sur vermillion sombre (6.2)
   'narrative-contre-remontada':      CIVIDIS_T75,      // ocre
   'narrative-contre-remontada-text': '#000000',
 

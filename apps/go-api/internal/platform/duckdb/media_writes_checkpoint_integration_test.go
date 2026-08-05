@@ -53,8 +53,6 @@ func createSharedSocialSchemaForMediaTests(t *testing.T) *DB {
 			file_name VARCHAR,
 			kind VARCHAR DEFAULT 'video',
 			thumbnail_path VARCHAR,
-			liked BOOLEAN DEFAULT FALSE,
-			liked_at TIMESTAMP,
 			-- status : présente en prod (ALTER de steps_shared_social) et filtrée par
 			-- toute lecture applicative depuis l'item 3.1 (MediaVisiblePredicate).
 			status VARCHAR,
@@ -242,42 +240,11 @@ func TestSetMediaMatchAssociation_PersistsAfterCheckpoint(t *testing.T) {
 	}
 }
 
-// TestSetMediaLike_LegacyPath_PersistsAfterCheckpoint : exerce SetMediaLike
-// legacy (sans WriterAcquirer) + reopen.
-func TestSetMediaLike_LegacyPath_PersistsAfterCheckpoint(t *testing.T) {
-	socialDB := createSharedSocialSchemaForMediaTests(t)
-	pdb := &PlayerDB{SharedSocial: socialDB, Gamertag: "test-player"}
-	repo := NewMediaRepo(pdb)
-
-	ctx := context.Background()
-	updated, err := repo.SetMediaLike(ctx, "/test/media.mp4", true)
-	if err != nil {
-		t.Fatalf("SetMediaLike: %v", err)
-	}
-	if !updated {
-		t.Fatal("attendu updated=true sur file_path existant")
-	}
-
-	// Reopen RO — vérifier que liked=TRUE est persisté.
-	path := socialDB.Path()
-	if err := socialDB.Close(); err != nil {
-		t.Fatalf("close: %v", err)
-	}
-	roDB, err := sql.Open("duckdb", path+"?access_mode=READ_ONLY")
-	if err != nil {
-		t.Fatalf("reopen RO: %v", err)
-	}
-	defer roDB.Close()
-	var liked bool
-	if err := roDB.QueryRow(
-		`SELECT liked FROM media_files WHERE file_path = ?`, "/test/media.mp4",
-	).Scan(&liked); err != nil {
-		t.Fatalf("query liked: %v", err)
-	}
-	if !liked {
-		t.Error("attendu liked=true après SetMediaLike + CHECKPOINT + reopen, got false")
-	}
-}
+// NB (2026-08-04) : TestSetMediaLike_LegacyPath_PersistsAfterCheckpoint a été
+// SUPPRIMÉ ici. Il vérifiait la durabilité de l'UPDATE media_files.liked, une
+// colonne GLOBALE retirée du chemin de like avec le passage au par-viewer. La
+// durabilité du chemin legacy est intégralement couverte par le test suivant :
+// l'unique écriture de like y est désormais l'event append-only par liker.
 
 // TestToggleSharedLike_FallbackPath_PersistsAfterCheckpoint : exerce
 // ToggleSharedLike branche legacy (Persister == nil) + reopen.

@@ -343,14 +343,23 @@ func loadPlayerStats(ctx context.Context, pdb *duckdb.PlayerDB) (milestones.Play
 	out.Metrics["assists"] = float64(assists)
 	out.Metrics["accuracy_threshold_days"] = float64(accuracyDays)
 
-	// combat_precision_matches : matchs avec OC >= 0.83 (OffensiveConversionP80).
-	// combat_endurance_matches : matchs avec DR >= 1.59 (DefensiveResistanceP80).
-	// combat_excellence_matches : matchs avec OC >= 0.83 ET DR >= 1.59.
-	const ocP80 = 0.83
-	const drP80 = 1.59
+	// Seuils de comptage des MILESTONES combat. Volontairement DISTINCTS des
+	// frontières élite analysis.OffensiveConversionP80 (0,90) et
+	// analysis.DefensiveResistanceP80 (1,65), qui servent à normaliser l'échelle
+	// visuelle des jauges (NormalizeForBar) : un palier de progression doit être
+	// atteignable régulièrement, une frontière élite non. Ne PAS « réaligner » ces
+	// seuils sur les constantes *P80 — ce serait un changement de difficulté des
+	// paliers, pas une correction de cohérence. Source unique des deux seuils de
+	// référence : analysis.Combat{OC,DR}ReferenceThreshold.
+	//
+	// combat_precision_matches  : matchs avec OC >= 0,83.
+	// combat_endurance_matches  : matchs avec DR >= 1,59.
+	// combat_excellence_matches : matchs avec OC >= 0,83 ET DR >= 1,59.
+	const ocMilestoneThreshold = analysis.CombatOCReferenceThreshold
+	const drMilestoneThreshold = analysis.CombatDRReferenceThreshold
 	// effectiveHpToKill = baseline PV-pour-tuer du titre (225 Infinite ; 115 Halo 5).
 	// Float de confiance issu de la config → injecté via Sprintf (%g), pas une
-	// entrée utilisateur. Les seuils P80 restent en bind params (?).
+	// entrée utilisateur. Les seuils de milestone restent en bind params (?).
 	hp := games.EffectiveHpToKill(pdb.TitleSlug)
 	combatMetricsQuery := fmt.Sprintf(`
 		SELECT
@@ -366,7 +375,8 @@ func loadPlayerStats(ctx context.Context, pdb *duckdb.PlayerDB) (milestones.Play
 	`, hp)
 	var precisionMatches, enduranceMatches, excellenceMatches int64
 	if err := sharedDB.QueryRowContext(ctx, combatMetricsQuery,
-		ocP80, drP80, ocP80, drP80, pdb.XUID).Scan(&precisionMatches, &enduranceMatches, &excellenceMatches); err != nil {
+		ocMilestoneThreshold, drMilestoneThreshold, ocMilestoneThreshold, drMilestoneThreshold,
+		pdb.XUID).Scan(&precisionMatches, &enduranceMatches, &excellenceMatches); err != nil {
 		return out, fmt.Errorf("aggregate combat metrics: %w", err)
 	}
 	out.Metrics["combat_precision_matches"] = float64(precisionMatches)
