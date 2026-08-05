@@ -64,6 +64,7 @@ const NULLABLE_ARRAYS = [
   'grenades',
   'inventory',
   'loadouts',
+  'objectives',
   'projectiles',
   'roster',
   'shots',

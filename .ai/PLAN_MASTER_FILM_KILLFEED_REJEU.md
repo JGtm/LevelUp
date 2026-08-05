@@ -1791,6 +1791,59 @@ sur les mesures** — c'est là que sont les P0.
 | D-P1b | P1 doc | résumés/tableaux périmés dans les 3 docs (mode-score §1 CTF, §8 KOTH vainqueur inversé, §3bis « oracle secondaire » qui inverse la leçon, handoffs « rien implémenté » faux) | mise à jour | **session restitution** |
 | D-P2 | P2 code | `awards.go:130-137` no-op + commentaire inversé · `slotidentity.go:94-107` 2e passe non testée · `named_test.go`/`slotidentity_test.go` `continue` au lieu de `t.Skip` (faux vert — **5e occurrence du motif** dans le chantier) | corriger | **à l'intégration** |
 
+### STATUTS À LA CLÔTURE DE LA PISTE C-bis — 2026-08-05
+
+| # | statut | ce qui a été livré | ce qui le garde |
+|---|---|---|---|
+| D-P0a | `[~]` | couvert par la session de restitution du 2026-08-02 (`65f27a66b`) | — |
+| D-P0b | `[~]` | idem | — |
+| D-P1a | `[x]` | `carried_from_schema` marque toute carte reportée d'un schéma antérieur ; note du catalogue + log `cartes_non_migrees` séparé du compte `sans_forme` | `cmd/mapobj-build/refresh_test.go` — 5 tests (le fichier n'en avait AUCUN), **2 mutations vues rouges** : marquage retiré, marquage inconditionnel |
+| D-P1b | `[~]` | couvert par la session de restitution du 2026-08-02 | — |
+| D-P2 | `[x]` | 3 volets : garde `if first` no-op retiré d'`awards.go` (commentaire inversé remplacé par le comportement réel) · 2e passe de `slotidentity.go` enfin exercée · `continue` → comptage + `t.Skip` dans `named_test.go` et `slotidentity_test.go` | 2 tests sur la première lecture · `TestSlotIdentityRefuseUnXuidRevendiqueParDeuxSlots` · **mutations vues rouges** : sauter la 1re lecture fait tomber 3 tests dont la réconciliation JGtm ; renvoyer `claim` fait tomber le test de 2e passe |
+| dette TSV `zone 2 B = deaths` | `[x]` | **tranchée : LÉGITIME.** La ligne a un lecteur — le pont d'identité (`slotidentity.go` lit le triplet) ; les morts ne sont pas des événements d'objectif et le kill-feed les porte déjà avec l'arme et l'assistant. Le constat R1 était faux dans sa formulation : la TSV recense TOUS les emplacements décodés, `namedStatSlots` n'en est qu'un consommateur. Colonne `lecteur` ajoutée, en-tête de `named.go` corrigé | `TestTableStatborgConcordeAvecNamedStatSlots` vérifie la concordance **dans les deux sens** sur les seules lignes de lecteur `named.go` — **3 mutations vues rouges**, dont celle qui reproduit la question posée |
+
+**Ce que l'intégration a découvert et traité en plus** : le calque d'objectifs ajoutait 2 champs
+publiés (`objectives` sur le document et sur `Coverage`) **sans que le contrat les décrive**.
+`contracttest/replay_contract_test.go` l'a attrapé — c'est exactement le défaut qu'il existe pour
+empêcher. Contrat régénéré (`make openapi-gen`, jamais à la main), `generated.ts` régénéré,
+frontière de nullabilité web comblée (`replayNormalize.ts`), le chiffre du chantier passe de 22 à
+23 champs. Le rendu, lui, n'est PAS branché — décision #5 tient.
+
+**Écart de méthode assumé** : intégré par **merge**, pas par rebase. 26 des 42 commits touchent
+`.ai/thought_log.md`, qui conflite en tête à chaque fois ; le recouvrement réel est de 4 fichiers.
+Le merge donne le même arbre pour une seule résolution par fichier.
+
+**Conflits sémantiques que git n'a pas signalés** (les deux corrigés, aucun autre trouvé) :
+`FilmshellWeaponKeysByFamily` déplacée par `main` de `games/halo_infinite/migrations` vers
+`games/weapons` ; `readBitsBE` supprimée comme code mort par J3-2 alors que `statborg.go`,
+écrit sur une base antérieure, lui donne un appelant (rétablie, en-tête de `film.go` corrigé).
+
+### GATE DES ARTEFACTS DE REJEU — `[!]` NON PASSÉ, ARBITRAGE SUPERVISEUR REQUIS
+
+Deux raisons distinctes, et la seconde compte plus que la première.
+
+1. **La baseline n'est pas sur ce PC.** `data/cache/replays/halo_infinite/baseline_2026-08-03/`
+   et son `SHA256SUMS.txt` sont restés sur l'autre poste. Consigne E respectée à la lettre :
+   **rien n'a été régénéré** sous `data/cache/replays/`. Les 3 artefacts en place sont intacts
+   (mtime 2026-08-04 09:56) ; leurs empreintes actuelles, relevées en lecture seule pour que la
+   comparaison soit faisable dès l'arrivée de la baseline :
+   `000d5950.json` `d028dff5…871e1` · `01e1f945.json` `3a24ca13…12d683` · `64e8adfa.json`
+   `bf3f2182…892275`.
+
+2. **Le gate « bit-identique » ne peut PLUS passer après cette intégration, et c'est normal.**
+   `Coverage.Objectives` est déclaré **sans `omitempty`** (`coverage.go:114`) : tout artefact
+   régénéré porte désormais `"objectives"` dans son bloc `coverage`, y compris sur un match sans
+   objectif. Le document a un champ de plus **par construction** — c'est précisément ce que
+   re-mode-score apporte. Un artefact régénéré DIFFÉRERA donc de la baseline du 03/08, et ce
+   n'est pas une régression.
+
+   **À trancher par le superviseur** : re-poser la baseline après l'intégration (le gate
+   redevient une comparaison d'empreintes sur la nouvelle référence), ou comparer
+   structurellement en tolérant les deux clés neuves. La première est plus simple et plus sûre
+   — mais elle demande de régénérer, donc la baseline du 03/08 doit d'abord être rapatriée pour
+   qu'on puisse vérifier que RIEN D'AUTRE n'a bougé. Tant que ce contrôle n'est pas fait, on ne
+   sait pas si l'intégration a laissé le reste du document intact.
+
 ### Décisions utilisateur (2026-08-02)
 
 1. **Intégrer le prouvé, Ghidra APRÈS le merge.** On n'attend pas la RE pour merger.
@@ -1946,7 +1999,7 @@ ronde. Ne pas « améliorer » la liste `dependentViews` en croyant refermer le 
 | **J4-fix** — ronde de correction post-revue (7 constats) + ronde 2 | CLOS 2026-08-02 | — | 1-2 |
 | **Killfeed VISIBLE — 1/2 : l'inversion de préséance** (crédit = base, film = enrichissement) + re-backfill | **FAIT 2026-08-03** — `.ai/CONCEPTION_INVERSION_PRESEANCE.md` §9. 124 694 → **134 866** lignes servies, **98,5 %** de couverture, **0 match ne perd de mort** (389 avant) | la donnée est en base et complète ; rien n'est encore à l'écran | 1 |
 | **Killfeed VISIBLE — 2/2 : la bascule des lecteurs** + `seed_demo` (S1) + `rebuild_mp` (S2) | **FAIT 2026-08-03** — `PLAN_BRANCHEMENT_KILLSOURCE.md` §2.4/§2.5. Bascule DIRECTE sur `match_kill_events_latest` (la vue de compat était infaisable : la table est devenue la base crédit) ; aucun lecteur ne filtre `publishable` (un filtre coûterait 47 037 morts sur 366 matchs) ; S1 et S2 étaient déjà faits. Gates : unit + intégration verts, goldens sur films réels verts, 3 artefacts bit-identiques à la baseline, ratchet lint 0, 3 garde-rails vus rouges | **LE vrai visible, mesuré** : agrégats carrière dégonflés (« 101 → 29 » retrouvé au chiffre près, Q27 15 741 → 10 486 sur JGtm), journal de match sans doublons (1 832 → 458 lignes pour 458 instants), et un opposant fantôme retiré des agrégats **Halo 5** (161 frags / 127 morts sur le joueur le plus actif) | 1 |
-| **Intégration re-mode-score** — rebaser sur `feat/replay2d-prod`, intégrer le code objectifs + P1/P2 de sa revue (docs déjà restitués) | à faire | anti-divergence (le code atterrit ; son débouché rejeu reste dev) | 1-2 |
+| **Intégration re-mode-score** — intégrer le code objectifs + P1/P2 de sa revue (docs déjà restitués) | **FAIT 2026-08-05** — piste C-bis, statuts ci-dessus. Intégré par MERGE (26 des 42 commits conflitent sur le journal ; recouvrement réel = 4 fichiers). D-P1a, D-P2 et la dette TSV traités, 7 mutations vues rouges. 2 conflits sémantiques invisibles à git corrigés. Contrat régénéré : le calque publiait 2 champs non décrits, `contracttest` l'a attrapé. **RESTE OUVERT : le gate des artefacts de rejeu** (voir ci-dessous) | anti-divergence : le code a atterri, son débouché rejeu reste dev (décision #5, rendu non branché) | 1 |
 | **Hygiène** — rangement `.ai/` → V7.5, lot E delivery-checklist | à faire | — | 1-2 |
 | **MERGE** — revue adverse finale si besoin, GO utilisateur, backfill prod | à faire | la release | 1 |
 

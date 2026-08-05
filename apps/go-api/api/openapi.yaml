@@ -10036,6 +10036,8 @@ components:
           $ref: '#/components/schemas/BridgeHealth'
         grenades:
           $ref: '#/components/schemas/LayerCoverage'
+        objectives:
+          $ref: '#/components/schemas/LayerCoverage'
         shots:
           $ref: '#/components/schemas/LayerCoverage'
         verdict:
@@ -10045,6 +10047,7 @@ components:
       required:
         - shots
         - grenades
+        - objectives
         - bridge
       type: object
     CreatePlayerProfileResponse:
@@ -16535,6 +16538,25 @@ components:
         - source
         - created_at
       type: object
+    ObjectiveAction:
+      additionalProperties: false
+      properties:
+        stat:
+          type: string
+        t:
+          format: int64
+          type: integer
+        timeMs:
+          format: int64
+          type: integer
+        xuid:
+          type: string
+      required:
+        - t
+        - xuid
+        - stat
+        - timeMs
+      type: object
     ObjectiveAggregate:
       additionalProperties: false
       description: Cumul (SUM) des stats objectifs (CTF/Zones/Oddball) d'un joueur sur un ensemble de matchs. Champs zéro omis.
@@ -18490,6 +18512,12 @@ components:
             - "null"
         matchId:
           type: string
+        objectives:
+          items:
+            $ref: '#/components/schemas/ObjectiveAction'
+          type:
+            - array
+            - "null"
         projectiles:
           items:
             $ref: '#/components/schemas/Projectile'
