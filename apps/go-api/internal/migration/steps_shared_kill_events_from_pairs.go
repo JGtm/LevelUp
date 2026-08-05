@@ -165,6 +165,14 @@ func killerVictimPairsIsTable(db *sql.DB) (bool, error) {
 // Le comportement de cette fonction — deduplication, une passe par match, preseance — est tenu
 // par `steps_shared_kill_events_from_pairs_test.go`, qui joue la migration sur une base PEUPLEE
 // (constat J4R-1 : elle ne l avait jamais ete que sur base vide).
+//
+// `written_at` S ECRIT EN UTC EXPLICITE (`CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)`), comme
+// chez les deux autres ecrivains (`persist` passe `time.Now().UTC()`, la reprise credit-base la
+// meme expression). Un `now()` NU rendrait un TIMESTAMPTZ, coerce vers la colonne TIMESTAMP par
+// le fuseau de SESSION : sur un poste a UTC+2, la reprise se serait datee deux heures dans le
+// futur. C est la colonne de tri de la vue `_latest` — une passe de film ecrite dans les deux
+// heures suivantes aurait perdu l arbitrage, et l enrichissement aurait disparu de la lecture
+// sans erreur, sans compteur, sans qu un seul nom ni un seul compte ne bouge.
 func reprendreCouplesDansKillEvents(db *sql.DB) error {
 	// COMPTE AVANT D ECRIRE : les couples sans nom de victime que le WHERE ci-dessous ecarte.
 	// La mesure doit precede l INSERT — apres, les matchs repris sont dans `_latest` et le
@@ -186,7 +194,7 @@ func reprendreCouplesDansKillEvents(db *sql.DB) error {
 		SELECT DISTINCT
 			kvp.match_id,
 			'pairs-' || kvp.match_id,
-			?, now(), TRUE,
+			?, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), TRUE,
 			COALESCE(kvp.time_ms, 0),
 			kvp.victim_gamertag, NULLIF(kvp.victim_xuid, ''),
 			kvp.killer_gamertag, NULLIF(kvp.killer_xuid, ''), TRUE,

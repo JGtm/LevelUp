@@ -19,6 +19,7 @@ package migration
 import (
 	"database/sql"
 	"testing"
+	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
@@ -78,14 +79,19 @@ func couple(t *testing.T, db *sql.DB, matchID, victime string, timeMS int) {
 // film est bien celui qu on lit.
 func passeDeFilm(t *testing.T, db *sql.DB, matchID string, morts int) {
 	t.Helper()
+	// `written_at` EXPLICITE ET EN UTC, comme le vrai producteur (`persist.KillSourcePersister`
+	// passe `time.Now().UTC()`). Le laisser au DEFAULT de la colonne (`now()`, donc l heure de
+	// SESSION) ferait tourner ce harnais sur DEUX horloges : la reprise en UTC et le film en
+	// local. Le test de preseance passerait ou tomberait selon le fuseau de la machine.
 	for i := 0; i < morts; i++ {
 		if _, err := db.Exec(`
 			INSERT INTO match_kill_events (
-				match_id, decode_pass, decoder_rev, publishable, time_ms,
+				match_id, decode_pass, decoder_rev, written_at, publishable, time_ms,
 				victim_gamertag, feed_present, assist_known, source_tag, read_path, read_origin
-			) VALUES (?, ?, 'film-rev', TRUE, ?, 'VictimeFilm', TRUE, TRUE, 3735928559, ?,
+			) VALUES (?, ?, 'film-rev', ?, TRUE, ?, 'VictimeFilm', TRUE, TRUE, 3735928559, ?,
 				'credit-concordant')`,
-			matchID, "film-"+matchID, 100*(i+1), killscope.ReadPathFilmWalk); err != nil {
+			matchID, "film-"+matchID, time.Now().UTC(), 100*(i+1),
+			killscope.ReadPathFilmWalk); err != nil {
 			t.Fatalf("insert passe de film (%s): %v", matchID, err)
 		}
 	}
@@ -345,5 +351,46 @@ func TestPasseLaPlusRecenteGagne(t *testing.T) {
 	if voie != killscope.ReadPathFilmWalk {
 		t.Errorf("voie servie = %q, attendu celle du film — la passe la plus recente ne gagne "+
 			"plus, donc aucun decodage ulterieur ne remonte a la lecture", voie)
+	}
+}
+
+// ─── PROPRIETE 5 : L HORLOGE DE LA REPRISE ─────────────────────────────────────────────────
+
+// TestRepriseHorodateEnUTC — `written_at` est la colonne de TRI de la vue `_latest`, donc une
+// erreur de fuseau y est une erreur de PRESEANCE.
+//
+// Un `now()` NU rend un TIMESTAMPTZ que DuckDB coerce vers la colonne TIMESTAMP avec le fuseau de
+// SESSION : la reprise se daterait de l offset local. Sur un poste a UTC+2, elle se serait datee
+// deux heures dans le futur, et toute passe de film ecrite dans ces deux heures aurait perdu
+// l arbitrage — l enrichissement (source du degat, assistant) aurait disparu de la lecture sans
+// erreur, sans compteur, sans qu un nom ni un compte ne bouge.
+//
+// Le test FORCE un fuseau lointain pour que la mesure ne depende pas de la machine : a UTC+14,
+// un `now()` nu s ecarte de quatorze heures, ici comme en CI.
+func TestRepriseHorodateEnUTC(t *testing.T) {
+	db := basePourReprise(t)
+	// UTC+14, sans heure d ete : l ecart est franc et stable toute l annee.
+	if _, err := db.Exec(`SET GLOBAL TimeZone = 'Pacific/Kiritimati'`); err != nil {
+		t.Fatalf("SET TimeZone: %v", err)
+	}
+	couple(t, db, "m-horloge", "Victime-A", 1000)
+
+	avant := time.Now().UTC()
+	if err := applyKillEventsFromPairs(db); err != nil {
+		t.Fatalf("applyKillEventsFromPairs: %v", err)
+	}
+	apres := time.Now().UTC()
+
+	var ecrit time.Time
+	if err := db.QueryRow(
+		`SELECT written_at FROM match_kill_events WHERE match_id = ?`, "m-horloge").Scan(&ecrit); err != nil {
+		t.Fatalf("select written_at: %v", err)
+	}
+	// La colonne est un TIMESTAMP nu : le driver le rend en UTC. Il doit tomber dans la fenetre
+	// d execution, a la seconde pres — pas quatorze heures plus loin.
+	if ecrit.Before(avant.Add(-time.Second)) || ecrit.After(apres.Add(time.Second)) {
+		t.Errorf("written_at = %s, hors de la fenetre d execution [%s, %s] — la reprise s horodate "+
+			"sur le fuseau de session au lieu d UTC, donc elle fausse la preseance de la vue "+
+			"_latest (ecart mesure : %s)", ecrit, avant, apres, ecrit.Sub(avant))
 	}
 }
