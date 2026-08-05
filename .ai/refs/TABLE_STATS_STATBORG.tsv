@@ -1,0 +1,22 @@
+mode	composant	cote	statistique	statut
+flag	0	A	flag_captures	redondant de 21 A — controle croise exact (2026-08-02)
+flag	2	A	kills	ancre — exact 8/8 contre match_participants
+flag	3	A	assists	exact 8/8 contre match_participants
+flag	12	A	kills	redondant de 2 A — controle croise exact (2026-08-02)
+flag	12	B	assists	redondant de 3 A — controle croise exact (2026-08-02)
+flag	20	B	flag_capture_assists	exact 8/8 (oracle 8 joueurs, 2026-08-02)
+flag	21	A	flag_captures	exact 8/8 (oracle 8 joueurs, 2026-08-02)
+flag	21	B	flag_carriers_killed	exact 8/8 (oracle 8 joueurs, 2026-08-02)
+flag	22	A	flag_grabs	exact 8/8 — NOM CORRIGE, ce n est PAS flag_taken (recompense)
+flag	23	A	flag_returns	exact 8/8 (oracle 8 joueurs, 2026-08-02)
+flag	24	A	flag_steals	exact 8/8 (oracle 8 joueurs, 2026-08-02)
+zone	2	A	kills	ancre — exact 8/8 contre match_participants
+zone	2	B	deaths	exact 8/8 contre match_participants (2026-08-02)
+zone	3	A	assists	exact 8/8 contre match_participants
+zone	12	A	kills	redondant de 2 A — controle croise exact (2026-08-02)
+zone	12	B	assists	redondant de 3 A — controle croise exact (2026-08-02)
+zone	20	B	zone_captures	exact 8/8 (oracle 8 joueurs) + total film 61
+zone	21	A	zone_secures	exact 8/8 (oracle 8 joueurs) + total film 16
+core	0	A	Score	score de mode — CoreStats_ rang 0 (binaire)
+core	1	B	PersonalScore	CoreStats_ rang 1 — verifie 950/1050/1775/1900 par le bareme
+hill	-	-	AUCUN	les compteurs de colline ne sont repliques nulle part (2 films, §21)

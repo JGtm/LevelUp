@@ -15,9 +15,12 @@
 //   - détection des bursts de capture CTF (échelle 6-tiers) avec match_ms.
 //
 // (Retrait 2026-08-01, lot C de PLAN_DETTE_AVANT_MERGE : `extractType2` — extraction du
-// payload du premier paquet TYPE_2 — et `readBitsBE` n'avaient aucun appelant. La marche de
-// paquets vit dans walkFrames, qui parcourt le même conteneur ; ni l'une ni l'autre ne
-// portait de grammaire coûteuse à rétablir.)
+// payload du premier paquet TYPE_2 — n'avait aucun appelant. La marche de paquets vit dans
+// walkFrames, qui parcourt le même conteneur ; elle ne portait pas de grammaire coûteuse à
+// rétablir. `readBitsBE`, retirée au même titre, est REVENUE à l'intégration de
+// `feat/re-mode-score` le 2026-08-05 : cette branche est partie d'AVANT le retrait et lui a
+// donné son appelant — `statborg.go`, qui lit la chaîne d'enregistrements du statborg à des
+// offsets non alignés. Le retrait était exact au moment où il a été fait ; il ne l'est plus.)
 //
 // Faits de décode VALIDÉS (RESEARCH_THEATER_RE.md §M, §M-ter) :
 //   - footer = chunk de plus haut index, chunk_type 3 ; ses events th=10 = les
@@ -50,6 +53,22 @@ const (
 	minXUID = uint64(2e15)
 	maxXUID = uint64(3e15)
 )
+
+// readBitsBE lit n bits big-endian (MSB-first) à partir de bitPos. Adapté de
+// tmp_film_explore (identique dans filmx/ctfcap/t2score).
+func readBitsBE(data []byte, bitPos, n int) uint64 {
+	var r uint64
+	for i := 0; i < n; i++ {
+		bi := (bitPos + i) / 8
+		if bi >= len(data) {
+			return r
+		}
+		off := 7 - ((bitPos + i) % 8)
+		bit := uint64((data[bi] >> uint(off)) & 1)
+		r = (r << 1) | bit
+	}
+	return r
+}
 
 // readByteAtBit lit un octet à un offset BIT arbitraire (gère le non-alignement).
 func readByteAtBit(data []byte, bit int) byte {
