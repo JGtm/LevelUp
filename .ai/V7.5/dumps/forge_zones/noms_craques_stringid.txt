@@ -1,0 +1,109 @@
+STRINGID DE LA PALETTE FORGE — noms craques par murmur3_x86_32(seed=0)
+Session du 2026-08-02 (PISTE 1 du handoff). Analyse 100 % hors ligne.
+
+LE FAIT CENTRAL
+  `Crate Variant`      (chemin objet /#8/#1[]/#0[]/#0, meme sac que le delai
+                        de reapparition /#8/#1[]/#4)
+  `Representation Name`(chemin objet /#8/#24[]/#1/#0)
+  puisent dans le MEME espace de nommage : `banished`, `default`, `forge`,
+  `apple`, `base_green`, `base_grime` apparaissent dans les deux.
+  Ce sont des StringID, c'est-a-dire des murmur3 de noms snake_case.
+
+METHODE (rejouable)
+  1. tmp_forgeshape cratevar <groupes.csv> <dossier mvar>   -> les valeurs
+  2. tmp_forgeshape repname --cibles <dossier mvar>         -> les valeurs
+  3. tmp_forgename crack <cibles.txt> <vocabulaire.txt> <profondeur>
+  Vocabulaires employes :
+    - chaines identifiant de HaloInfinite.exe : 136 906 mots
+      (grep -aoE '[a-zA-Z][a-zA-Z0-9_]{2,47}' | tr A-Z a-z | sort -u)
+    - le meme, filtre alphabetique 3..12 : 43 483 mots
+    - chaines litterales de l'interface Forge (fosp/foki), normalisees : 2 648
+    - vocabulaire Halo curate a la main : 327 mots
+    - noms d'objets ecrits par les AUTEURS de cartes (root[10][1]) : 2 762
+
+GARDE-FOU
+  Esperance de collisions fortuites = essais x cibles / 2^32, imprimee a chaque
+  passe. Les passes retenues ci-dessous ont une esperance <= 0,41 sauf mention.
+  Ne sont conservees que les correspondances SEMANTIQUEMENT ancrees. Rejetees
+  comme combinatoires : bombplants_umfgudaemu, advertised_kse, vectorlength_kqm,
+  bxzkui_uudzuu, gqyc_ltx, yhpi_nodepin, dgv_hours, mdz_clg, pejuo_ins,
+  yfpa_dbk, edfml_twg, yypf_ysh, things_hnwb, ewlc_obc, filmv_bxk,
+  bqzp_getsockname, ruk_hkxmaterial, qen_receives, btt_tprp, xeflul_mountshield,
+  hlud_variantname, bothandle_xrrd, xvw_rmc, jjd_preset, deep_unsc_powerup,
+  forge_hologram_captain, south_flame_beige, banished_plasma_supply_ammo,
+  grunt_skin_door, bravo_commando_rack, marine_btb_plate, brown_unsc_unlocked,
+  et `cvw` (3 lettres, aucune semantique).
+
+=== LES 4 CLASSES DE DEGAT BANISHED — l'ensemble est COMPLET, sans trou ===
+-88833402      banished_kinetic      entree de palette 1486653438  (27 cartes / 98 inst.)
+-1319554708    banished_plasma       entree de palette 1882451900  (20 cartes / 117 inst.)
+-224029073     banished_shock        entree de palette -1062552774 (21 cartes /  46 inst.)
+-257275188     banished_hardlight    entree de palette 801517767   (11 cartes /  24 inst.)
+-439440667     banished_universal
+-437051236     banished
+
+=== STYLES ET ETATS ===
+1120495519     default
+528041935      forge
+-105307848     forge_mp
+1189159012     campaign
+-2143518807    damaged
+140497641      forerunner
+1189872317     emissive
+-1105874398    locked
+-603392360     closed
+-611385325     white
+330814903      dirt
+947971454      mossy
+1501327410     glacier
+-2031641008    space
+600307218      base_green
+2010152917     base_yellow
+-81686274      base_grime
+314637593      weapon_only
+-1138267470    fo_ai_zone
+1880549520     apple
+2072964797     arrow
+
+=== OBJETS NOMMES — vehicules ===
+-266450505     warthog
+1063919886     mongoose
+-1284820930    ghost
+419783896      banshee
+1730553442     scorpion
+-1087066335    wasp
+1977724336     phantom
+
+=== OBJETS NOMMES — armes, grenades, tourelles ===
+313138863      assault_rifle
+669296699      sniper_rifle
+349319611      bandit
+-976602164     commando_rifle
+-188936615     frag_grenade
+-1834087124    plasma_grenade
+1997547608     spike_grenade
+1028518636     shade_turret
+-262278708     plasma_turret
+2072906399     unsc_turret
+307451431      equipment
+1353680800     skull
+1192059526     skull_weapon   <- deja dans mapvar/objectives.go : DEUX chemins independants
+
+=== CE QUI RESISTE, ET C'EST MESURE ===
+Les quatre `Representation Name` des entrees « emplacement » restent NON CRAQUES :
+  -1412311642  (entree 1486653438)   -245254093  (entree -1062552774)
+  -1351408675  (entree 1882451900)   -219174009  (entree 801517767)
+
+Cinq vocabulaires independants, tous negatifs sur ces quatre :
+  | vocabulaire                      | profondeur | essais       | correspondances |
+  |----------------------------------|-----------:|-------------:|----------------:|
+  | binaire complet (136 906)        |          1 |      136 906 |               0 |
+  | binaire alphabetique (43 483)    |          2 | 1 890 814 772|  1 (xvw_rmc, rejete) |
+  | interface Forge (2 648)          |          2 |    7 014 552 |               0 |
+  | Halo curate (327)                |          3 |   35 073 039 |               0 |
+  | noms d'auteurs de cartes (2 762) |          2 |    7 631 406 |               0 |
+
+Les tokens `rocket`, `launcher`, `active`, `camo`, `camouflage`, `overshield`,
+`powerup`, `spawner`, `pad`, `rack`, `weapon` etaient TOUS dans le vocabulaire
+curate a profondeur 3 : `rocket_launcher`, `active_camo`, `powerup_active_camo`
+ont donc ete essayes et REFUTES.

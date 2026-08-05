@@ -65,9 +65,14 @@ schema_version = 1
 "match.events.timeline"  = "degraded"
 "match.killfeed.per_kill" = "degraded"
 "match.events.spatial"   = "not_exposed"
-# Précision par arme : pas d'events weapon_drop dans la timeline reconstruite
-# (highlight_events ne porte ni pickup/drop ni shots par arme) → table
-# weapon_accuracy non peuplée pour Infinite.
+# Précision par arme : not_exposed, ET LA RAISON A CHANGÉ le 2026-08-02 (J4-4).
+# Ce n'est plus « la table n'est pas peuplée » : la passe de film écrit désormais les
+# tirs par arme (cf. film.weapon_shots). C'est que LE TAUX N'EST PAS PUBLIABLE — calculé
+# sur le corpus entier il INVERSE l'ordre MA40/Sidekick par rapport à la référence de
+# l'API. Ce n'est pas une imprécision, c'est une réponse fausse. 4 armes seulement
+# tiennent à ±0,03, et seulement sur les joueurs dont l'arme domine ≥ 80 % de leurs tirs.
+# Critère de bascule : une population de publication déclarée DANS LE CODE, et l'écart à
+# l'API publié à côté du taux (PLAN_BRANCHEMENT_KILLSOURCE §4.2).
 "match.weapon.accuracy"  = "not_exposed"
 # Libellés de playlist préfixés d'une catégorie matchmaking ("Arène delta : Héritage")
 # à retirer pour l'affichage (analysis.NormalizePlaylistLabel). Trait d'affichage du
@@ -79,3 +84,21 @@ schema_version = 1
 # → shared.match_objective_stats. Gouverne le JOIN _latest servi au scoreboard /
 # synthesis / squad. Cf. PLAN_V72_OBJECTIVE_STATS.md.
 "match.objective.stats"  = "supported"
+# Source du dégât fatal PAR MORT, décodée du film Theater (dead-state de la
+# victime) → shared.match_kill_events, avec le crédit du kill-feed à côté. Gouverne
+# le collecteur internal/sync (passe SÉPARÉE du sync primaire : le film n'existe
+# pas encore quand le match arrive). Infinite = supported (30 ancres Theater, 0
+# étiquette fausse). ABSENTE pour Halo 5 : autre format de film, et ses mécaniques
+# de kill sont déjà natives dans le carnage (commendations.native /
+# CapNativeKillMechanics) — il n'a aucun besoin d'un décodeur de film pour ça.
+# ⚠ Clé FINE : les tirs par arme et la précision par arme sont des familles
+# DISTINCTES, chacune avec ses réserves. Ne pas élargir cette clé.
+"film.kill_source"       = "supported"
+# Ventilation des tirs PAR ARME décodée du MÊME film, dans la MÊME passe →
+# shared.match_weapon_shots (joueur × arme × match, k = 1). Deuxième famille de données
+# du film : elle répond à une autre question que le kill enrichi, et elle a ses propres
+# réserves (Fiesta et BTB non livrables). ABSENTE pour Halo 5 : pas de décodeur de film,
+# et ses compteurs de tirs sont natifs (match.weapon.accuracy).
+# ⚠ CETTE CLÉ GOUVERNE LE STOCKAGE, PAS UNE PUBLICATION : la table stocke des COMPTES,
+# elle ne publie aucun TAUX (le taux est match.weapon.accuracy, et il est not_exposed).
+"film.weapon_shots"      = "supported"

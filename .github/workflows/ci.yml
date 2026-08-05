@@ -86,9 +86,37 @@ jobs:
       - name: Lint multi-titres (no hardcoded FieldKey)
         run: npm run lint:fields
 
+      # Ratchet knip — SANS condition de chemin, et c'est tout l'objet du step.
+      # Le hook pre-push homonyme (lefthook.yml) est glob-gaté sur
+      # `apps/web/src/**/*.{ts,tsx}` : il ne s'exécute que si le push CONTIENT des
+      # sources web. Le mode d'échec réellement constaté (J1-b) n'est pas celui-là —
+      # c'est une branche qui accumule des exports morts et n'est JAMAIS poussée, donc
+      # jamais soumise au hook ; le dépassement de plafond n'est apparu qu'à la
+      # réconciliation. Un glob ne peut pas rattraper ça : seul un job qui tourne à
+      # chaque push le peut. Le hook local reste le filet rapide, la CI est l'autorité.
+      - name: Ratchet knip (code mort frontend)
+        run: node ../../tools/knip-ratchet.mjs
+
+      # J4.0 (2026-08-01) — ce garde ne gardait RIEN. Le job tourne sous
+      # `working-directory: apps/web` (l.66) et le chemin était écrit depuis la
+      # racine : `apps/web/apps/web/src/...` n'existe pas, `grep` sortait en
+      # erreur « fichier absent » (rc=2), et un `if` sur une erreur est FAUX —
+      # le step passait au vert sans avoir lu une ligne. L'invariant, lui,
+      # tenait (vérifié le 2026-08-01 : queries.ts n'importe pas `api` et pose
+      # `credentials: 'omit'`) : c'était un trou latent, pas une fuite.
+      # Leçon généralisable : UN GARDE QUI NE PEUT PAS ÉCHOUER NE GARDE RIEN.
+      # D'où le contrôle d'existence AVANT le grep — même patron que
+      # TestHalowaypointAllowlistEntriesPointToExistingFiles côté Go : la cible
+      # disparue ou déplacée fait échouer le garde BRUYAMMENT, elle ne le rend
+      # pas muet.
       - name: Guard — feedback-drawer ne doit pas importer le wrapper api
         run: |
-          if grep -E "^import.*\\bapi\\b.*from.*['\"]@/lib/api/client" apps/web/src/features/feedback-drawer/queries.ts; then
+          cible="src/features/feedback-drawer/queries.ts"
+          if [ ! -f "$cible" ]; then
+            echo "::error::$cible est introuvable depuis $(pwd) — ce garde ne peut plus vérifier son invariant. Corriger le chemin, ou retirer le garde si le fichier a disparu pour de bon. Ne JAMAIS le laisser passer à vide."
+            exit 1
+          fi
+          if grep -E "^import.*\\bapi\\b.*from.*['\"]@/lib/api/client" "$cible"; then
             echo "::error::feedback-drawer/queries.ts ne doit JAMAIS importer { api } — il leakerait X-LevelUp-Title et les cookies de session vers GitHub. Utiliser fetch() direct avec credentials: 'omit'."
             exit 1
           fi

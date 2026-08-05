@@ -281,10 +281,10 @@ CREATE OR REPLACE VIEW match_csrs_latest AS
     QUALIFY ROW_NUMBER() OVER (PARTITION BY match_id, xuid ORDER BY written_at DESC, id DESC) = 1;
 
 -- killer_victim_pairs : historiquement créée par les migrations uniquement.
--- Remontée dans le schéma de base car v_gamertag_lookup (posée juste après par
--- EnsureSharedSchema) la référence désormais comme source de gamertag — et
--- DuckDB bind les vues à la création : la table DOIT exister avant. Schéma
--- aligné sur la migration (steps_shared.go), CREATE IF NOT EXISTS idempotent.
+-- Remontée dans le schéma de base pour v_gamertag_lookup. Le résolveur lit
+-- désormais match_kill_events (bascule du 2026-08-02), mais la table reste lue
+-- par Q20 et une vingtaine de sites, et reste écrite par les persisters.
+-- Schéma aligné sur la migration (steps_shared.go), CREATE IF NOT EXISTS idempotent.
 CREATE TABLE IF NOT EXISTS killer_victim_pairs (
     match_id        VARCHAR NOT NULL,
     killer_xuid     VARCHAR NOT NULL,
@@ -413,6 +413,13 @@ func recoverPlayerSchemaBoot(ctx context.Context, db *sql.DB, cause error) error
 //	l'ancienne définition (idempotent si la query a évolué).
 func EnsureSharedSchema(ctx context.Context, db *sql.DB) error {
 	if err := execScript(ctx, db, sharedSchemaSQL); err != nil {
+		return err
+	}
+	// match_kill_events : la dépendance de v_gamertag_lookup depuis la bascule du
+	// 2026-08-02 (le résolveur y lit le kill-feed). DuckDB bind les vues à leur
+	// création, donc la table passe AVANT — et son DDL n'existe qu'à un endroit,
+	// dans la migration qui la possède.
+	if err := migration.EnsureMatchKillEvents(db); err != nil {
 		return err
 	}
 	// v_gamertag_lookup : SOURCE UNIQUE DE VÉRITÉ (analysis.GamertagLookupViewSQL).

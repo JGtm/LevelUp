@@ -1,0 +1,135 @@
+registry: 118 archetypes (typeIndex sur R(6)=6 bits, max 63)
+chunk_02 inflated = 739972 bytes, 2404 packets
+packet types présents :
+  type=0   : 1199 paquet(s), tailles=36 36 36 36 36 36 
+  type=1   : 1 paquet(s), tailles=343019 
+  type=2   : 1 paquet(s), tailles=142695 
+  type=6   : 1 paquet(s), tailles=4 
+  type=7   : 1 paquet(s), tailles=0 
+  type=8   : 1 paquet(s), tailles=25124 
+  type=10  : 1199 paquet(s), tailles=10 10 10 10 10 10 
+  type=12  : 1 paquet(s), tailles=4 
+
+=== PAYLOAD type-2 #0 : 142695 bytes (ts=4537898226) ===
+--- premiers 128 octets ---
+  a0 00 00 00 00 00 00 0b 7f ff ff ff 98 00 00 00 
+  00 60 00 00 00 67 ab d4 2a 01 00 00 00 04 00 00 
+  00 89 00 00 00 04 c0 00 00 00 00 00 00 01 9a 00 
+  00 20 0f ff ff ff ff c0 00 00 00 00 00 00 00 00 
+  00 00 00 00 00 0f ff ff ff f0 00 00 00 00 00 00 
+  00 00 00 00 00 0f ff ff ff f0 00 00 00 00 00 00 
+  00 00 00 00 00 0f ff ff ff f0 00 00 00 00 00 00 
+  00 00 00 00 00 0f ff ff ff f0 00 00 00 00 00 00 
+  
+--- lecture spéculative d'un en-tête de compte ---
+  u16 LE@0 = 160 | u16 BE@0 = 40960
+  u32 LE@0 = 160 | u32 BE@0 = 2684354560
+--- lecture bit MSB-first du début (hypothèses largeurs) ---
+  R(1)=1 R(2)=2 R(6)=40 R(13)=5120
+
+=== marqueurs byte-alignés ===
+  a0 7b 42 : 0 occurrences ; gaps min/mean/max = 0/0/0
+  a0 7b : 0 occurrences ; gaps min/mean/max = 0/0/0
+  7b 42 : 1 occurrences ; gaps min/mean/max = 0/0/0
+      offsets = [25486]
+  42 c9 67 9f : 7 occurrences ; gaps min/mean/max = 326/4490/19002
+      offsets = [25145 25471 44473 44997 46354 51096 52086]
+
+=== top octets récurrents (séparateur dense ?) ===
+  0xff : 88408 (62.0%)
+  0x00 : 25804 (18.1%)
+  0x80 : 3875 (2.7%)
+  0x07 : 3497 (2.5%)
+  0xf8 : 3454 (2.4%)
+  0x7f : 3422 (2.4%)
+  0x01 : 756 (0.5%)
+  0x40 : 574 (0.4%)
+
+=== densité de typeIndex plausibles (< 118 ) en tête (R6 packés) ===
+  R6[0]=40 <typeIdx?
+  R6[1]=0 <typeIdx?
+  R6[2]=0 <typeIdx?
+  R6[3]=0 <typeIdx?
+  R6[4]=0 <typeIdx?
+  R6[5]=0 <typeIdx?
+  R6[6]=0 <typeIdx?
+  R6[7]=0 <typeIdx?
+  R6[8]=0 <typeIdx?
+  R6[9]=0 <typeIdx?
+  R6[10]=45 <typeIdx?
+  R6[11]=63 <typeIdx?
+  R6[12]=63 <typeIdx?
+  R6[13]=63 <typeIdx?
+  R6[14]=63 <typeIdx?
+  R6[15]=63 <typeIdx?
+  R6[16]=38 <typeIdx?
+  R6[17]=0 <typeIdx?
+  R6[18]=0 <typeIdx?
+  R6[19]=0 <typeIdx?
+  R6[20]=0 <typeIdx?
+  R6[21]=0 <typeIdx?
+  R6[22]=1 <typeIdx?
+  R6[23]=32 <typeIdx?
+  R6[24]=0 <typeIdx?
+  R6[25]=0 <typeIdx?
+  R6[26]=0 <typeIdx?
+  R6[27]=0 <typeIdx?
+  R6[28]=25 <typeIdx?
+  R6[29]=58 <typeIdx?
+  R6[30]=47 <typeIdx?
+  R6[31]=20 <typeIdx?
+  => 64/64 valeurs R6 < nArchetypes (bruit attendu ~118/64)
+
+=== rejeu record-loop sur payload type-2 (cfg par défaut) ===
+  records énumérés avant arrêt : 1
+  arrêt : desync record slot=2048 typeIdx=0 at component i0 (bit 16)
+  NEW=0 DEL=0 DELTA=1 ; desync=1 ; typeIndex distincts=1
+  R0 type=3 slot=2048 typeIdx=0 desyncAt=0 held=0xffffffff endBit=16
+
+=== variant 0x42c9679f : 63 occurrences (n'importe quel alignement bit) ===
+
+=== balayage : 1er record forcé NEW à offset de départ variable ===
+  start= 0 : typeIdx=40 gate=false maskbits=0 desyncAt=-1 held=0xffffffff
+  start= 1 : typeIdx=16 gate=false maskbits=0 desyncAt=-1 held=0xffffffff
+  start= 2 : typeIdx=32 gate=false maskbits=0 desyncAt=-1 held=0xffffffff
+  start= 3 : typeIdx= 0 gate=false maskbits=0 desyncAt=-1 held=0xffffffff
+  start= 4 : typeIdx= 0 gate=false maskbits=0 desyncAt=-1 held=0xffffffff
+  start= 5 : typeIdx= 0 gate=false maskbits=0 desyncAt=-1 held=0xffffffff
+  start= 6 : typeIdx= 0 gate=false maskbits=0 desyncAt=-1 held=0xffffffff
+  start= 7 : typeIdx= 0 gate=false maskbits=0 desyncAt=-1 held=0xffffffff
+  start= 8 : typeIdx= 0 gate=false maskbits=0 desyncAt=-1 held=0xffffffff
+  start= 9 : typeIdx= 0 gate=false maskbits=0 desyncAt=-1 held=0xffffffff
+  start=10 : typeIdx= 0 gate=false maskbits=0 desyncAt=-1 held=0xffffffff
+  start=11 : typeIdx= 0 gate=false maskbits=0 desyncAt=-1 held=0xffffffff
+  start=12 : typeIdx= 0 gate=false maskbits=0 desyncAt=-1 held=0xffffffff
+  start=13 : typeIdx= 0 gate=false maskbits=0 desyncAt=-1 held=0xffffffff
+  start=14 : typeIdx= 0 gate=false maskbits=0 desyncAt=-1 held=0xffffffff
+  start=15 : typeIdx= 0 gate=false maskbits=0 desyncAt=-1 held=0xffffffff
+  start=16 : typeIdx= 0 gate=false maskbits=0 desyncAt=-1 held=0xffffffff
+  start=17 : typeIdx= 0 gate=false maskbits=0 desyncAt=-1 held=0xffffffff
+  start=18 : typeIdx= 0 gate=false maskbits=0 desyncAt=-1 held=0xffffffff
+  start=19 : typeIdx= 0 gate=false maskbits=0 desyncAt=-1 held=0xffffffff
+  start=20 : typeIdx= 0 gate=false maskbits=0 desyncAt=-1 held=0xffffffff
+  meilleur offset NEW = 0 (run=999 composants avant desync)
+
+=== espacement (en bits) des 0x42c9679f consécutifs ===
+  arme  1 @bit  195745  (gap=390 bits, 48 octets)
+  arme  2 @bit  198172  (gap=2427 bits, 303 octets)
+  arme  3 @bit  198561  (gap=389 bits, 48 octets)
+  arme  4 @bit  200965  (gap=2404 bits, 300 octets)
+  arme  5 @bit  201160  (gap=195 bits, 24 octets)
+  arme  6 @bit  201355  (gap=195 bits, 24 octets)
+  arme  7 @bit  203768  (gap=2413 bits, 301 octets)
+  arme  8 @bit  203963  (gap=195 bits, 24 octets)
+  arme  9 @bit  204158  (gap=195 bits, 24 octets)
+  arme 10 @bit  206561  (gap=2403 bits, 300 octets)
+  arme 11 @bit  206757  (gap=196 bits, 24 octets)
+  arme 12 @bit  206953  (gap=196 bits, 24 octets)
+  arme 13 @bit  209371  (gap=2418 bits, 302 octets)
+  arme 14 @bit  209566  (gap=195 bits, 24 octets)
+  arme 15 @bit  209755  (gap=189 bits, 23 octets)
+  arme 16 @bit  212159  (gap=2404 bits, 300 octets)
+  arme 17 @bit  212355  (gap=196 bits, 24 octets)
+  arme 18 @bit  212550  (gap=195 bits, 24 octets)
+  arme 19 @bit  214954  (gap=2404 bits, 300 octets)
+  arme 20 @bit  215150  (gap=196 bits, 24 octets)

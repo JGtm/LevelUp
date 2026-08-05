@@ -19,8 +19,10 @@ func seedRelations(t *testing.T, db *DB) {
 			match_id VARCHAR, xuid VARCHAR, team_id INTEGER, outcome INTEGER, kda DOUBLE)`,
 		`CREATE TABLE match_registry (
 			match_id VARCHAR, start_time_utc TIMESTAMPTZ, start_time TIMESTAMP, pair_name VARCHAR, map_name VARCHAR, map_name_fr VARCHAR)`,
-		`CREATE TABLE killer_victim_pairs (
-			match_id VARCHAR, killer_xuid VARCHAR, victim_xuid VARCHAR, kill_count INTEGER)`,
+		// BASCULE DU 2026-08-03 : Q28 lit la canonique, un JOURNAL (1 ligne = 1 mort).
+		// Plus de `kill_count` : les frags se comptent, ils ne se somment plus.
+		`CREATE TABLE match_kill_events_latest (
+			match_id VARCHAR, feed_killer_xuid VARCHAR, victim_xuid VARCHAR, time_ms INTEGER)`,
 		`CREATE TABLE xuid_aliases (xuid VARCHAR, gamertag VARCHAR)`,
 		`CREATE VIEW v_gamertag_lookup AS SELECT xuid, gamertag FROM xuid_aliases`,
 	} {
@@ -50,10 +52,14 @@ func seedRelations(t *testing.T, db *DB) {
 			('m3', TIMESTAMPTZ '2026-03-10 19:00:00+00', NULL, 'Capture the Flag', 'Bazaar', NULL),
 			('m4', TIMESTAMPTZ '2026-04-10 20:00:00+00', NULL, 'Capture the Flag', 'Bazaar', NULL),
 			('m5', TIMESTAMPTZ '2026-05-10 14:00:00+00', NULL, 'Oddball', 'Live Fire', NULL)`,
-		`INSERT INTO killer_victim_pairs VALUES
-			('m3','xuidMe','xuidFoe',2),
-			('m3','xuidFoe','xuidMe',6),
-			('m4','xuidFoe','xuidMe',4)`,
+		// Mêmes cardinaux qu'avant (me→Foe 2, Foe→me 6+4), une LIGNE par mort.
+		`INSERT INTO match_kill_events_latest VALUES
+			('m3','xuidMe','xuidFoe',1000), ('m3','xuidMe','xuidFoe',1100),
+			('m3','xuidFoe','xuidMe',2000), ('m3','xuidFoe','xuidMe',2100),
+			('m3','xuidFoe','xuidMe',2200), ('m3','xuidFoe','xuidMe',2300),
+			('m3','xuidFoe','xuidMe',2400), ('m3','xuidFoe','xuidMe',2500),
+			('m4','xuidFoe','xuidMe',3000), ('m4','xuidFoe','xuidMe',3100),
+			('m4','xuidFoe','xuidMe',3200), ('m4','xuidFoe','xuidMe',3300)`,
 		`INSERT INTO xuid_aliases VALUES
 			('xuidMe','MePlayer'),
 			('xuidAlly','AllyPlayer'),

@@ -172,8 +172,21 @@ var canonicalOrder = []string{
 	// et match_csrs reste en created_at, cassant l'index written_at d'EnsureSharedSchema
 	// au 1er OpenSharedDB. Name-keyed → no-op sur DB déjà migrées (Infinite intact).
 	// Même pattern documenté que le reorder skill_v2 ci-dessous.
-	"shared_append_only_match_csrs_v1",                 // shared
-	"add_pve_schema",                                   // shared_pve
+	"shared_append_only_match_csrs_v1", // shared
+	"add_pve_schema",                   // shared_pve
+	// J4 : la position suit l'ordre d'enregistrement réel (init() par nom de
+	// fichier — steps_shared_kill_events.go précède steps_shared_objective_events.go),
+	// exigence de TestSortByCanonicalIsNoOpOnCurrentRegistry.
+	"shared_match_kill_events_v1", // shared (1 ligne par mort, crédit kill-feed + source du dégât, append-only + vue _latest)
+	// Inversion de préséance (2026-08-03) : base crédit + enrichissement film + orphelins.
+	// Placée AVANT from_pairs parce que l'ordre d'init() suit le nom de fichier — from_pairs
+	// ne trouve alors plus rien à reprendre, et c'est correct : la reprise credit-base couvre
+	// tout ce qu'elle couvrait, dédupliqué sur l'identité (cf. §10-2 de la conception).
+	"shared_kill_events_credit_base_v1",                // shared
+	"shared_kill_events_from_pairs_v1",                 // shared (J4 : reprise dédupliquée de killer_victim_pairs -> match_kill_events + drop v_killer_victim_full ; la table source RESTE)
+	"shared_objective_events_v1",                       // shared
+	"shared_objective_score_v1",                        // shared
+	"shared_match_player_positions_v1",                 // shared
 	"shared_pve_append_only_v1",                        // shared_pve
 	"rebuild_match_participants_defeat_art_corruption", // shared
 	// Phase 1.5 b27 (reorder escaladé) : skill_v2 (créateur de lusr_hyperparams_v2)
@@ -229,6 +242,8 @@ var canonicalOrder = []string{
 	"create_world_player_no_data",                              // shared (marqueur privés/sans-données classement mondial)
 	"shared_create_objective_stats",                            // shared (V72-03 : stats objectifs CTF/Zones/Oddball par joueur/match, append-only)
 	"shared_objective_stats_add_stockpile_extraction",          // shared (V721-02 : +18 colonnes Stockpile/Extraction/VIP + vue _latest recréée)
+	"shared_weapon_kills_v3",                                   // shared (attribution d'arme par kill, voie v3 pur-film)
+	"shared_match_weapon_shots_v1",                             // shared (J4 : ventilation des tirs par arme, append-only + vue _latest)
 }
 
 var canonicalIndex = func() map[string]int {

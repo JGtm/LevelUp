@@ -1,0 +1,190 @@
+/**
+ * i18n de la feature match-replay (rejeu 2D vue du dessus). Strings UI FR + EN,
+ * parité par typage Record<ReplayLocale, ReplayText>.
+ */
+import type { Locale } from '@/lib/i18n/locale'
+
+/** Alias local du type central : la feature ne redéclare pas l'union des langues. */
+export type ReplayLocale = Locale
+
+interface ReplayText {
+  title: string
+  back: string
+  play: string
+  pause: string
+  restart: string
+  loading: string
+  empty: string
+  note: string
+  livesSuffix: string
+  aliveSuffix: string
+  speed: string
+  time: string
+  floor: string
+  floorAll: string
+  floorLow: string
+  floorMid: string
+  floorHigh: string
+  propsSuffix: string
+  /** Calques que le lecteur peut éteindre. */
+  layers: string
+  layerAim: string
+  layerShield: string
+  layerAimHint: string
+  layerShieldHint: string
+  /** Fiches joueur : ce qui est lu, et ce qui ne l'est pas. */
+  rosterEmpty: string
+  teamUnknown: string
+  unknownPlayer: string
+  shieldUnread: string
+  loadoutUnread: string
+  loadoutAge: string
+  respawnIn: string
+  respawnUnknown: string
+  respawnUnknownHint: string
+  /** Ligne d'inventaire : grenades, capacité, munitions. */
+  inventoryAge: string
+  grenadeSelected: string
+  abilityUnknown: string
+  abilityUnknownHint: string
+  ammoNone: string
+  ammoNoneHint: string
+  ammoSlotHint: string
+  gaugeLabel: string
+  /** Bandeau de couverture : ce que chaque calque a rattaché sur ce qui existait. */
+  coverageTitle: string
+  coverageHint: string
+  layerShots: string
+  layerGrenades: string
+  causeNoSlot: string
+  causeAmbiguous: string
+  causeOutOfWindow: string
+  causeUnpublished: string
+  bridgeRead: string
+  bridgeNotRead: string
+  coverageLeak: string
+}
+
+export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
+  fr: {
+    title: 'Rejeu 2D',
+    back: 'Retour au match',
+    play: 'Lecture',
+    pause: 'Pause',
+    restart: 'Recommencer',
+    loading: 'Chargement du rejeu…',
+    empty: 'Aucun rejeu 2D disponible pour ce match.',
+    note: 'Trajectoires décodées du film (vue du dessus). Une trace = une vie : un joueur qui réapparaît repart sur une nouvelle trace, sans attribution de joueur. La lecture « 1× » suit le temps réel du match.',
+    livesSuffix: 'vies',
+    aliveSuffix: 'en jeu',
+    speed: 'Vitesse',
+    time: 'Temps de match',
+    floor: 'Étage',
+    floorAll: 'Tous',
+    floorLow: 'Bas',
+    floorMid: 'Milieu',
+    floorHigh: 'Haut',
+    propsSuffix: 'objets de décor',
+    layers: 'Calques',
+    layerAim: 'Visée',
+    layerShield: 'Bouclier',
+    layerAimHint:
+      "Direction du regard, décodée du même enregistrement que la position. Le jeu ne la retransmet que lorsqu'elle change : une mesure ancienne pâlit au lieu de disparaître, et rien n'est dessiné au-delà de cinq secondes.",
+    layerShieldHint:
+      "Bouclier lu dans le même enregistrement que la position. Une piste vide soulignée d'un trait est un bouclier BRISÉ, pas une absence de mesure.",
+    rosterEmpty:
+      "Aucune vie du film n'a pu être rattachée à un joueur : le rejeu reste anonyme.",
+    teamUnknown: 'Sans équipe',
+    unknownPlayer: 'Joueur inconnu',
+    shieldUnread: 'bouclier non transmis',
+    loadoutUnread: 'armes non lues sur cette vie',
+    loadoutAge: 'Armes lues il y a',
+    respawnIn: 'retour dans',
+    respawnUnknown: 'retour ?',
+    respawnUnknownHint:
+      "Le film ne porte aucune vie suivante pour ce joueur : le délai n'est pas lisible, et il n'est pas deviné. Le cas se produit en fin de partie, que le film ne clôt par aucun événement.",
+    inventoryAge: 'Inventaire lu il y a',
+    grenadeSelected: 'Type équipé : le seul porté, donc celui qui partira au prochain lancer.',
+    abilityUnknown: 'capacité inconnue',
+    abilityUnknownHint:
+      "La table des capacités est partielle : 4 index observés pour 11 capacités dans le jeu. Un index hors table garde son numéro plutôt que d'emprunter le nom d'une capacité voisine.",
+    ammoNone: 'aucune',
+    ammoNoneHint:
+      "Le film n'ecrit rien pour cet emplacement. Pour une arme a charge, cela veut dire PLEIN : le flux est differentiel, et le plein est la valeur par defaut, donc il n'est jamais transmis.",
+    gaugeLabel: 'charge restante',
+    ammoSlotHint:
+      "Munitions de l'emplacement portant ce numéro dans l'enregistrement. Sur les 198 appariements dont la lecture est unique, 197 concordent avec l'arme de même rang ci-dessus. Une lecture à plusieurs candidats, elle, n'est pas fiable : elle est signalée à part.",
+    coverageTitle: 'Ce qui est rattaché',
+    coverageHint:
+      "Le dénominateur est ce que LE FILM porte, pas ce que la partie a compté : le film n'enregistre que les tirs qui infligent un dégât.",
+    layerShots: 'Tirs',
+    layerGrenades: 'Lancers de grenade',
+    causeNoSlot: 'aucune trace connue pour ce joueur à cet instant',
+    causeAmbiguous: 'plusieurs traces possibles',
+    causeOutOfWindow: 'aucune position assez proche dans le temps',
+    causeUnpublished: 'trace trop courte pour être publiée',
+    bridgeRead: 'Rattachement lu dans le film',
+    bridgeNotRead: 'Rattachement incomplet — une partie des événements n’est pas publiée',
+    coverageLeak: 'Comptage incohérent : des événements manquent à l’appel',
+  },
+  en: {
+    title: '2D replay',
+    back: 'Back to match',
+    play: 'Play',
+    pause: 'Pause',
+    restart: 'Restart',
+    loading: 'Loading replay…',
+    empty: 'No 2D replay available for this match.',
+    note: 'Trajectories decoded from the film (top-down). One trail = one life: a respawning player starts a new trail, with no per-player attribution. Playback at 1x follows the real match time.',
+    livesSuffix: 'lives',
+    aliveSuffix: 'on the map',
+    speed: 'Speed',
+    time: 'Match time',
+    floor: 'Floor',
+    floorAll: 'All',
+    floorLow: 'Lower',
+    floorMid: 'Mid',
+    floorHigh: 'Upper',
+    propsSuffix: 'map props',
+    layers: 'Layers',
+    layerAim: 'Aim',
+    layerShield: 'Shield',
+    layerAimHint:
+      'Look direction, decoded from the same record as the position. The game only retransmits it when it changes: an older reading fades instead of vanishing, and nothing is drawn beyond five seconds.',
+    layerShieldHint:
+      'Shield read from the same record as the position. An empty bar with a line under it is a BROKEN shield, not a missing measurement.',
+    rosterEmpty: 'No life from the film could be attached to a player: the replay stays anonymous.',
+    teamUnknown: 'No team',
+    unknownPlayer: 'Unknown player',
+    shieldUnread: 'shield not transmitted',
+    loadoutUnread: 'weapons not read on this life',
+    loadoutAge: 'Weapons read',
+    respawnIn: 'back in',
+    respawnUnknown: 'back ?',
+    respawnUnknownHint:
+      'The film carries no next life for this player: the delay is not readable, and it is not guessed. This happens at the end of the match, which the film closes with no event.',
+    inventoryAge: 'Inventory read',
+    grenadeSelected: 'Equipped type: the only one carried, so the one the next throw will use.',
+    abilityUnknown: 'unknown ability',
+    abilityUnknownHint:
+      'The ability table is partial: 4 indices observed for 11 abilities in the game. An index outside the table keeps its number rather than borrowing a neighbouring ability name.',
+    ammoNone: 'none',
+    ammoNoneHint:
+      'The film writes nothing for this slot. For a charge weapon that means FULL: the stream is differential, and full is the default value, so it is never transmitted.',
+    gaugeLabel: 'charge left',
+    ammoSlotHint:
+      'Ammo for the record slot bearing this number. Across the 198 pairings whose reading is unique, 197 agree with the weapon of the same rank above. A reading with several candidates is not reliable and is flagged separately.',
+    coverageTitle: 'What is attached',
+    coverageHint:
+      'The denominator is what THE FILM carries, not what the match counted: the film only records shots that deal damage.',
+    layerShots: 'Shots',
+    layerGrenades: 'Grenade throws',
+    causeNoSlot: 'no known trail for that player at that moment',
+    causeAmbiguous: 'several possible trails',
+    causeOutOfWindow: 'no position close enough in time',
+    causeUnpublished: 'trail too short to be published',
+    bridgeRead: 'Attachment read from the film',
+    bridgeNotRead: 'Incomplete attachment — some events are not published',
+    coverageLeak: 'Inconsistent count: events are unaccounted for',
+  },
+}

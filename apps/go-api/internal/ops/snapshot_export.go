@@ -34,6 +34,12 @@ var sharedSnapshotTables = []string{
 // 2026-07-26 : Q12 (scoreboard MatchView) LEFT JOIN match_objective_stats_latest
 // depuis v7.2 — sans l'export, la vue manquait du schéma snapshot et TOUT match du
 // cut sortait scoreboard_empty (bandeau « match partiel »).
+// match_kill_events N'Y FIGURE PAS ENCORE, et c'est délibéré (2026-08-02). Toute table de
+// cette liste est REQUISE à la lecture (createParquetViewStrict / materializeParquetTable) :
+// l'y ajouter rendrait ILLISIBLE tout snapshot exporté avant ce jour — le lecteur ne dégrade
+// pas sur la table manquante, il refuse le snapshot entier et retombe en live. La table entre
+// ici le jour où un lecteur du snapshot en a besoin, dans le même commit que la ré-exportation.
+// D'ici là, le kill-feed du snapshot vient de killer_victim_pairs, exportée juste au-dessus.
 var sharedSnapshotMatchKeyedRaw = []string{"weapon_kills", "match_csrs", "match_objective_stats"}
 
 // sharedSnapshotGlobalTables : relations shared NON match-keyed (clé xuid) exportées en

@@ -86,6 +86,9 @@ const baseHeader: MatchViewHeader = {
   is_excluded: false,
   is_ranked: false,
   is_favorite: false,
+  // Défaut du dépôt : aucun artefact de rejeu (il n'en existe qu'en local, pour
+  // les matchs explicitement construits). Les tests du lien le surchargent.
+  replay_available: false,
   map_image_url: '/static/maps/halo_infinite/Aquarius.png',
 }
 
@@ -352,6 +355,44 @@ describe('MatchHeaderCard', () => {
       />,
     )
     expect(screen.getByRole('button', { name: 'Retirer des favoris' })).toBeInTheDocument()
+  })
+})
+
+// LOT 1.2/1.3 — PAS DE LIEN VERS UNE PAGE VIDE. La route de rejeu répond 404 quand
+// aucun artefact n'a été construit ; le lien n'apparaît donc QUE sur `replay_available`.
+describe('MatchHeaderCard — lien vers le rejeu 2D', () => {
+  function renderHeader(header: MatchViewHeader, locale: 'fr' | 'en') {
+    return renderWithQueryClient(
+      <MatchHeaderCard
+        header={header}
+        rank={baseRank}
+        matchId="m1"
+        playerSlug="MonGT"
+        matchTitle="Slayer sur Aquarius"
+        locale={locale}
+      />,
+    )
+  }
+
+  it("n'affiche AUCUN lien quand le match n'a pas d'artefact", () => {
+    renderHeader({ ...baseHeader, replay_available: false }, 'fr')
+    expect(screen.queryByText('Rejeu 2D')).not.toBeInTheDocument()
+  })
+
+  it("n'affiche aucun lien quand le champ est absent (titre sans rejeu)", () => {
+    renderHeader(baseHeader, 'fr')
+    expect(screen.queryByText('Rejeu 2D')).not.toBeInTheDocument()
+  })
+
+  it('affiche le lien FR quand l’artefact existe', () => {
+    renderHeader({ ...baseHeader, replay_available: true }, 'fr')
+    expect(screen.getByText('Rejeu 2D')).toBeInTheDocument()
+  })
+
+  it('affiche le lien EN quand l’artefact existe', () => {
+    renderHeader({ ...baseHeader, replay_available: true }, 'en')
+    expect(screen.getByText('2D replay')).toBeInTheDocument()
+    expect(screen.queryByText('Rejeu 2D')).not.toBeInTheDocument()
   })
 })
 

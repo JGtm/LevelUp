@@ -22,6 +22,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"levelup/go-api/internal/domain/title"
 )
 
 // LocalFilmCache lit les manifestes et chunks du cache disque hérité du
@@ -64,15 +66,14 @@ type CachedChunk struct {
 }
 
 // shortID retourne les 8 premiers chars hexa du match_id (avant le premier
-// tiret), forme attendue par le cache Python.
+// tiret), forme attendue par le cache historique.
+//
+// LA RÈGLE VIT DANS `domain/title` (FilmShortMatchID) et pas ici : l'artefact de rejeu
+// est rangé sous la MÊME clé, et deux copies de cette troncature suffiraient à ce que le
+// service cherche un fichier que l'outil hors ligne n'écrit pas — c'est exactement le
+// défaut trouvé le 2026-08-02. Cette enveloppe garde le nom local des appelants.
 func shortID(matchID string) string {
-	if i := strings.IndexByte(matchID, '-'); i > 0 {
-		return matchID[:i]
-	}
-	if len(matchID) > 8 {
-		return matchID[:8]
-	}
-	return matchID
+	return title.FilmShortMatchID(matchID)
 }
 
 // LoadManifest renvoie le manifest caché pour matchID, ou (nil, nil) si

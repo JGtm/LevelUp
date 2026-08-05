@@ -31,6 +31,41 @@ var longestRunAllowed = map[string]bool{
 	"max_killing_spree.go": true,
 }
 
+// longestRunAllowedPrefixes — exemptions PAR CHEMIN, ajoutées le 2026-07-31 à la
+// réconciliation du rejeu 2D et du décodeur killsource.
+//
+// POURQUOI UNE EXEMPTION ET PAS UNE MIGRATION VERS analysis.LongestRun : ces
+// balayages ne cherchent pas « la plus longue série » d'un prédicat métier (série de
+// victoires, série de kills). Ce sont des mesures de DÉCODAGE — la plus longue plage
+// de bits stables, le plus grand nombre de records consécutifs consommés sans
+// désynchronisation — dont le compteur porte des grandeurs de flux binaire, pas des
+// items de domaine. `analysis.LongestRun[T]` prend une slice et un prédicat : il ne
+// modélise pas un curseur de bits. La forme se ressemble, l'objet non.
+//
+// Le paquet `filmdec` est de surcroît importé tel quel des deux lignées de recherche
+// (il n'existait ni dans la base commune ni sur main) : deux de ses fichiers
+// déclenchaient déjà ce ratchet sur `feat/killsource-prod` AVANT toute réconciliation.
+// L'exemption règle donc une dette antérieure, elle n'en crée pas.
+//
+// RETRAIT : quand `filmdec` aura sa propre primitive de plage de bits. Le volet
+// `cmd/tmp_*` / `cmd/wf_*` de cette exemption est RETIRÉ le 2026-08-01 (lot A du
+// plan de dette avant merge) : l'outillage de recherche est supprimé, l'exemption
+// par préfixe n'a plus de cible.
+var longestRunAllowedPrefixes = []string{
+	"internal/analysis/filmdec/frame_debug.go",
+	"internal/analysis/filmdec/frame_records.go",
+}
+
+// longestRunExempt dit si le chemin relatif est couvert par une exemption datée.
+func longestRunExempt(rel string) bool {
+	for _, p := range longestRunAllowedPrefixes {
+		if strings.HasPrefix(rel, p) {
+			return true
+		}
+	}
+	return false
+}
+
 func TestNoLocalLongestRun(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
@@ -61,7 +96,11 @@ func TestNoLocalLongestRun(t *testing.T) {
 			}
 			if longestRunIdiomRE.Match(data) {
 				rel, _ := filepath.Rel(goAPIRoot, path)
-				violations = append(violations, filepath.ToSlash(rel))
+				slash := filepath.ToSlash(rel)
+				if longestRunExempt(slash) {
+					return nil
+				}
+				violations = append(violations, slash)
 			}
 			return nil
 		})

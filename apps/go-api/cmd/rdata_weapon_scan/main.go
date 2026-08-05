@@ -1,232 +1,894 @@
-// Command rdata_weapon_scan performs a READ-ONLY static scan of HaloInfinite.exe
-// looking for the 8-byte weapon IDs (wids) extracted from match films.
+// rdata_weapon_scan — THROWAWAY (mission: trouver le mécanisme de SWAP d'arme).
 //
-// Purpose: the film-weapon-extraction research (inv #1-125) closed concluding the
-// unknown skin wids are "impossible from binary" — but that verdict only tested the
-// FILM binary + game module files (mohd), never the EXE's static data sections.
-// This tool tests that last unexplored surface: are the weapon wids present as static
-// constants in the executable, and if so, in which PE section and with what structure?
-//
-// It NEVER launches the game, NEVER writes to the exe, NEVER injects anything.
-// It opens the file read-only, reads section bytes, and pattern-matches known wids.
-//
-// Usage:
-//
-//	go run ./cmd/rdata_weapon_scan [path-to-HaloInfinite.exe]
+// Étape 1 (ce fichier) : cartographier le registre ECS. Pour chaque typeIndex
+// présent dans le World (data/cache/film_chunks/000d5950/world_dump.txt), afficher
+// le nom de l'archétype (= 1er composant), le nombre de composants, et signaler ceux
+// qui portent des composants liés à l'arme/loadout/variant (weapon-state-type-info,
+// player-engine-loadout-index, object-multiplayer-properties = 'obje' qui porte un
+// variant-name, etc.). But : identifier le typeIndex + slots des entités-armes et de
+// l'archétype loadout.
 package main
 
 import (
+	"bufio"
 	"bytes"
-	"debug/pe"
-	"encoding/hex"
+	"compress/zlib"
+	"encoding/binary"
 	"fmt"
+	"io"
 	"os"
+	"sort"
+	"strconv"
+	"strings"
+
+	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/analysis/filmdec"
 )
 
-type wid struct {
-	name string
-	hex  string // 16 hex chars (8 bytes) for full wids, 8 hex chars (4 bytes) for Group-B prefixes
-}
+const cache = `c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks/000d5950`
 
-// Group A — 33 confirmed weapon wids (ground truth). FINDINGS_weapon_extraction_EN.md §4.
-var groupA = []wid{
-	{"MA40 AR", "48c19d2d42c9679f"}, {"BR75", "2b1824d542c9679f"},
-	{"VK78 Commando", "fd98554c42c9679f"}, {"Bandit Evo", "6acdc44d42c9679f"},
-	{"M392 Bandit", "2fb21c8742c9679f"}, {"CQS48 Bulldog", "b619d84a42c9679f"},
-	{"Mk51 Sidekick", "f408190f42c9679f"}, {"Plasma Pistol", "c354294642c9679f"},
-	{"Pulse Carbine", "30484ea642c9679f"}, {"Mangler", "80977ba542c9679f"},
-	{"Shock Rifle", "9387a8b942c9679f"}, {"Disruptor", "84bd29ed42c9679f"},
-	{"Ravager", "c30d87c742c9679f"}, {"Needler", "b533957e42c9679f"},
-	{"Heatwave", "2ac9c2ff42c9679f"}, {"Stalker Rifle", "daf193c742c9679f"},
-	{"S7 Sniper", "0a1992bc42c9679f"}, {"Cindershot", "230447b142c9679f"},
-	{"Skewer", "0d20c46942c9679f"}, {"M41 SPNKr", "71ab0a2c42c9679f"},
-	{"Fuel Rod SPNKr", "9d6aaed242c9679f"}, {"MLRS-2 Hydra", "767db96d42c9679f"},
-	{"Sentinel Beam", "c24e549e42c9679f"}, {"Gravity Hammer", "8afc085542c9679f"},
-	{"Energy Sword", "1488d0bb42c9679f"}, {"Mutilator", "d791556542c9679f"},
-	{"Vestige Carbine", "3e07021742c9679f"}, {"MA5K Avenger", "f5c335dfe7232c0b"},
-	{"M9 Frag Grenade", "b6dbead842c9679f"}, {"Plasma Grenade", "c1e1bab042c9679f"},
-	{"Spike Grenade", "6683257c42c9679f"}, {"Dynamo Grenade (hand)", "3ad55da442c9679f"},
-	{"Dynamo Grenade (proj)", "18e1fea042c9679f"},
-}
-
-// Formula-A-exclusive wids — virtual slot identifiers (never in kill events). §4.
-var formulaA = []wid{
-	{"slot Primary baseline", "6d32c7dc42c9679f"}, {"slot Primary variant", "f55c4bd242c9679f"},
-	{"slot Secondary", "0131ea1042c9679f"}, {"slot Grenade secondary", "d48d9b8442c9679f"},
-	{"slot Spike skin", "67fed82c42c9679f"}, {"slot Pair wid", "0af3952e42c9679f"},
-}
-
-// Group B — UNKNOWN skin variants, only 4-byte prefixes documented. §4.
-// These are the targets: if the binary resolves them, the research re-opens.
-var groupB = []wid{
-	{"SPIKE 91eb16de", "91eb16de"}, {"SPIKE 60f1d512", "60f1d512"}, {"SPIKE 87fab1d4", "87fab1d4"},
-	{"DYNAMO 6a672afc", "6a672afc"}, {"DYNAMO b5e3278e", "b5e3278e"},
-	{"GREN16 92f99df4", "92f99df4"}, {"GREN15 f9514800", "f9514800"}, {"GREN15 edff0e96", "edff0e96"},
-	{"PRIMARY 82a3f54a", "82a3f54a"},
-	{"SECONDARY d0b802c4", "d0b802c4"}, {"SECONDARY 5ded6cf2", "5ded6cf2"},
-	{"SECONDARY 510f248a", "510f248a"}, {"SECONDARY 6c587a12", "6c587a12"},
-}
-
-type section struct {
-	name     string
-	fileOff  uint32
-	fileSize uint32
-	va       uint32
-}
-
-func sectionOf(secs []section, off int) string {
-	for _, s := range secs {
-		if off >= int(s.fileOff) && off < int(s.fileOff+s.fileSize) {
-			return s.name
+func inflate(p string) []byte {
+	raw, _ := os.ReadFile(p)
+	if len(raw) >= 2 && raw[0] == 0x78 {
+		if zr, e := zlib.NewReader(bytes.NewReader(raw)); e == nil {
+			if d, e2 := io.ReadAll(zr); e2 == nil || len(d) > 0 {
+				return d
+			}
 		}
 	}
-	return "?"
+	return raw
 }
 
-func reversed(b []byte) []byte {
-	out := make([]byte, len(b))
-	for i := range b {
-		out[len(b)-1-i] = b[i]
+// loadWorld parses world_dump.txt -> slot:typeIndex map and typeIndex->slots.
+func loadWorld() (map[int]int, map[int][]int) {
+	f, err := os.Open(cache + "/world_dump.txt")
+	if err != nil {
+		panic(err)
 	}
-	return out
-}
-
-func findAll(data, pat []byte, max int) []int {
-	var out []int
-	start := 0
-	for {
-		i := bytes.Index(data[start:], pat)
-		if i < 0 {
-			break
-		}
-		out = append(out, start+i)
-		if len(out) >= max {
-			break
-		}
-		start += i + 1
-	}
-	return out
-}
-
-// hexCtx returns a hex window of `n` bytes starting `before` bytes ahead of off.
-func hexCtx(data []byte, off, before, n int) string {
-	s := off - before
-	if s < 0 {
-		s = 0
-	}
-	e := s + n
-	if e > len(data) {
-		e = len(data)
-	}
-	return hex.EncodeToString(data[s:e])
-}
-
-// scanGroup tries each wid as-is and byte-reversed; for full 8B wids it also falls
-// back to the 4-byte unique prefix. Returns count found.
-func scanGroup(data []byte, secs []section, items []wid, withCtx bool) int {
-	found := 0
-	for _, w := range items {
-		raw, err := hex.DecodeString(w.hex)
-		if err != nil {
-			fmt.Printf("  [bad hex] %s\n", w.name)
+	defer f.Close()
+	slotType := map[int]int{}
+	typeSlots := map[int][]int{}
+	sc := bufio.NewScanner(f)
+	sc.Buffer(make([]byte, 1<<20), 1<<20)
+	for sc.Scan() {
+		line := strings.TrimSpace(sc.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		type try struct {
-			label string
-			pat   []byte
-		}
-		tries := []try{{"as-is", raw}, {"reversed(u64 LE)", reversed(raw)}}
-		if len(raw) == 8 {
-			// halfswap = two independent little-endian uint32s: rev(b[0:4])+rev(b[4:8]).
-			// This is the most likely storage form given the mohd per-4-byte byte-swap.
-			halfswap := append(reversed(raw[:4]), reversed(raw[4:])...)
-			tries = append(tries,
-				try{"halfswap(2x u32 LE)", halfswap},
-				try{"prefix4 as-is", raw[:4]},
-				try{"prefix4 rev", reversed(raw[:4])})
-		}
-		hit := false
-		for _, t := range tries {
-			offs := findAll(data, t.pat, 6)
-			if len(offs) == 0 {
+		for _, tok := range strings.Fields(line) {
+			parts := strings.SplitN(tok, ":", 2)
+			if len(parts) != 2 {
 				continue
 			}
-			hit = true
-			sec := sectionOf(secs, offs[0])
-			fmt.Printf("  FOUND  %-24s [%s] %dx  sect=%-8s off=0x%X\n",
-				w.name, t.label, len(offs), sec, offs[0])
-			if withCtx {
-				fmt.Printf("         ctx: %s\n", hexCtx(data, offs[0], 16, 48))
+			slot, e1 := strconv.Atoi(parts[0])
+			ti, e2 := strconv.Atoi(parts[1])
+			if e1 != nil || e2 != nil {
+				continue
 			}
-			break // first matching representation wins; avoid duplicate noise
-		}
-		if hit {
-			found++
-		} else {
-			fmt.Printf("  ----   %-24s not found\n", w.name)
+			slotType[slot] = ti
+			typeSlots[ti] = append(typeSlots[ti], slot)
 		}
 	}
-	return found
+	return slotType, typeSlots
+}
+
+// weaponish reports whether a component name is weapon/loadout/variant-bearing.
+func weaponish(name string) bool {
+	for _, k := range []string{"weapon", "loadout", "variant", "equip", "pickup", "item", "grenade", "ability", "multiplayer-properties"} {
+		if strings.Contains(name, k) {
+			return true
+		}
+	}
+	return false
+}
+
+// ---- littéraux d'armes dans le flux ----
+
+func bitsAt(d []byte, bp, n int) uint64 {
+	var v uint64
+	for i := 0; i < n; i++ {
+		p := bp + i
+		if p>>3 >= len(d) {
+			v <<= 1
+			continue
+		}
+		v = (v << 1) | uint64((d[p>>3]>>uint(7-(p&7)))&1)
+	}
+	return v
+}
+
+func knownHigh32(v uint32) (string, bool) {
+	for id, n := range analysis.WeaponIDToName {
+		if uint32(id>>32) == v {
+			return n, true
+		}
+	}
+	return "", false
+}
+
+type packet struct {
+	typ     uint16
+	off     int
+	size    int
+	ts      uint64
+	payload []byte
+}
+
+func listPackets(d []byte) []packet {
+	var out []packet
+	off := 0
+	for off+16 <= len(d) {
+		typ := binary.LittleEndian.Uint16(d[off:])
+		sz := int(binary.LittleEndian.Uint32(d[off+4:]))
+		ts := binary.LittleEndian.Uint64(d[off+8:])
+		if sz < 0 || off+16+sz > len(d) {
+			break
+		}
+		out = append(out, packet{typ, off, sz, ts, d[off+16 : off+16+sz]})
+		off += 16 + sz
+	}
+	return out
+}
+
+// litScan balaie un chunk : pour chaque paquet, cherche un littéral d'arme complet
+// (high32 catalogué suivi de son low32 catalogué) à TOUT offset de bit. Reporte par
+// type de paquet + par arme. But : où les armes COMPLÈTES apparaissent-elles dans le
+// flux gameplay (records NEW d'entité-arme / WST keyframe-style) ?
+func litScan(chunkIdx int) {
+	chunkPath := fmt.Sprintf("%s/chunk_%02d.bin", cache, chunkIdx)
+	d := inflate(chunkPath)
+	pkts := listPackets(d)
+	byType := map[uint16]int{}     // paquets par type
+	hitsByType := map[uint16]int{} // littéraux complets par type de paquet
+	hitsByWeapon := map[string]int{}
+	pktsByType := map[uint16]int{}
+	pktsWithHit := map[uint16]int{}
+	totalLits := 0
+	for _, p := range pkts {
+		byType[p.typ]++
+		pktsByType[p.typ]++
+		total := len(p.payload) * 8
+		hadHit := false
+		for bp := 0; bp+64 <= total; bp++ {
+			hi := uint32(bitsAt(p.payload, bp, 32))
+			nm, ok := knownHigh32(hi)
+			if !ok {
+				continue
+			}
+			lo := uint32(bitsAt(p.payload, bp+32, 32))
+			id64 := (uint64(hi) << 32) | uint64(lo)
+			if real, ok := analysis.WeaponIDToName[id64]; ok {
+				hitsByType[p.typ]++
+				hitsByWeapon[real]++
+				totalLits++
+				hadHit = true
+				_ = nm
+			}
+		}
+		if hadHit {
+			pktsWithHit[p.typ]++
+		}
+	}
+	fmt.Printf("=== chunk_%02d : %d octets, %d paquets ===\n", chunkIdx, len(d), len(pkts))
+	var types []int
+	for t := range byType {
+		types = append(types, int(t))
+	}
+	sort.Ints(types)
+	fmt.Printf("  paquets par type : ")
+	for _, t := range types {
+		fmt.Printf("t%d=%d ", t, byType[uint16(t)])
+	}
+	fmt.Println()
+	fmt.Printf("  littéraux d'armes COMPLETS (high32|low32 catalogués) = %d\n", totalLits)
+	fmt.Printf("  par type de paquet : ")
+	for _, t := range types {
+		if hitsByType[uint16(t)] > 0 {
+			fmt.Printf("t%d=%d (dans %d/%d paquets) ", t, hitsByType[uint16(t)], pktsWithHit[uint16(t)], pktsByType[uint16(t)])
+		}
+	}
+	fmt.Println()
+	if len(hitsByWeapon) > 0 {
+		fmt.Printf("  par arme : ")
+		type kv struct {
+			k string
+			v int
+		}
+		var arr []kv
+		for k, v := range hitsByWeapon {
+			arr = append(arr, kv{k, v})
+		}
+		sort.Slice(arr, func(a, b int) bool { return arr[a].v > arr[b].v })
+		for _, e := range arr {
+			fmt.Printf("%s=%d ", e.k, e.v)
+		}
+		fmt.Println()
+	}
+}
+
+// litLoc décode les records type-0 d'un chunk (combo calibré extra=false idLowBits=11)
+// et, pour chaque littéral d'arme complet trouvé, indique dans QUEL record (slot,
+// typeIndex, type) et à quelle position relative il tombe. But : les armes complètes
+// vivent-elles dans des records NEW d'entité-arme (ti=42) ou loadout (ti=5), ou dans
+// les bipeds (ti=35), ou hors de tout record décodé ?
+func litLoc(reg *filmdec.Registry, worldPath string, chunkIdx, maxPkts int) {
+	d := inflate(fmt.Sprintf("%s/chunk_%02d.bin", cache, chunkIdx))
+	pkts := listPackets(d)
+	cfg := filmdec.FrameConfig{HasExtraFields: false, IDLowBits: 11}
+	filmdec.SetRecordStateParam(2)
+	// stub i63 pour franchir le dernier composant biped et enchaîner les records.
+	filmdec.SetUnportedStubWidth("biped-action-component", 48)
+	defer filmdec.SetUnportedStubWidth("biped-action-component", -1)
+
+	var t0 []packet
+	for _, p := range pkts {
+		if p.typ == 0 {
+			t0 = append(t0, p)
+		}
+	}
+	fmt.Printf("=== chunk_%02d : %d paquets type-0 ; localisation des littéraux d'armes ===\n", chunkIdx, len(t0))
+
+	typeIndexHits := map[uint32]int{} // littéraux par typeIndex de record englobant
+	inRecord, outRecord := 0, 0
+	shown := 0
+	for pi := 0; pi < len(t0) && pi < maxPkts; pi++ {
+		p := t0[pi]
+		// trouve les littéraux de ce paquet
+		var litBits []int
+		var litNames []string
+		total := len(p.payload) * 8
+		for bp := 0; bp+64 <= total; bp++ {
+			hi := uint32(bitsAt(p.payload, bp, 32))
+			if _, ok := knownHigh32(hi); !ok {
+				continue
+			}
+			lo := uint32(bitsAt(p.payload, bp+32, 32))
+			id64 := (uint64(hi) << 32) | uint64(lo)
+			if nm, ok := analysis.WeaponIDToName[id64]; ok {
+				litBits = append(litBits, bp)
+				litNames = append(litNames, nm)
+			}
+		}
+		if len(litBits) == 0 {
+			continue
+		}
+		// décode les records de ce paquet
+		w := freshWorld(reg, worldPath)
+		br := filmdec.NewBitReader(p.payload)
+		recs, _ := filmdec.DecodeFrameRecords(br, w, cfg)
+		// borne chaque record [startBit?, endBit]. On reconstruit les bornes via re-décodage :
+		// approxime par la séquence cumulée des EndBit (Trace.EndBit) — chaque record finit là.
+		type span struct {
+			start, end int
+			slot       uint32
+			ti         uint32
+			typ        int
+		}
+		var spans []span
+		prevEnd := 0
+		for _, r := range recs {
+			st := prevEnd
+			en := r.Trace.EndBit
+			if en <= st {
+				en = st + 1
+			}
+			spans = append(spans, span{st, en, r.Slot, r.TypeIndex, r.Type})
+			prevEnd = r.Trace.EndBit
+		}
+		for li, bp := range litBits {
+			var hostTI uint32 = 0xFFFFFFFF
+			var hostSlot uint32
+			var hostTyp int = -1
+			for _, s := range spans {
+				if bp >= s.start && bp < s.end {
+					hostTI = s.ti
+					hostSlot = s.slot
+					hostTyp = s.typ
+					break
+				}
+			}
+			if hostTI != 0xFFFFFFFF {
+				inRecord++
+				typeIndexHits[hostTI]++
+			} else {
+				outRecord++
+			}
+			if shown < 30 {
+				hn := "(hors record décodé)"
+				if hostTI != 0xFFFFFFFF {
+					arch, _ := reg.Archetype(int(hostTI))
+					an := ""
+					if len(arch.Components) > 0 {
+						an = arch.Components[0]
+					}
+					hn = fmt.Sprintf("record slot=%d ti=%d(%s) type=%d", hostSlot, hostTI, an, hostTyp)
+				}
+				fmt.Printf("  pkt#%d bit=%-6d %-22s -> %s\n", pi, bp, litNames[li], hn)
+				shown++
+			}
+		}
+	}
+	fmt.Printf("  >>> littéraux DANS un record décodé=%d ; HORS record décodé=%d\n", inRecord, outRecord)
+	if len(typeIndexHits) > 0 {
+		fmt.Printf("  par typeIndex de record englobant : ")
+		var tis []int
+		for ti := range typeIndexHits {
+			tis = append(tis, int(ti))
+		}
+		sort.Ints(tis)
+		for _, ti := range tis {
+			arch, _ := reg.Archetype(ti)
+			an := ""
+			if len(arch.Components) > 0 {
+				an = arch.Components[0]
+			}
+			fmt.Printf("ti=%d(%s):%d ", ti, an, typeIndexHits[uint32(ti)])
+		}
+		fmt.Println()
+	}
+}
+
+// upstreamScan : pour chaque littéral d'arme (WST gate à bit B-1), cherche en amont,
+// à TOUS les offsets [B-600, B], un header de record `[1 delta][R(11) low][R(2) tag]`
+// dont le slot (low&0x3fffffff) ∈ 512-519. Mesure : combien de WST ont un slot biped
+// plausible en amont, et la distribution des distances (révèle la structure du record
+// biped : header -> ... -> WST). Test du POC "attribution par remontée".
+func upstreamScan(chunkIdx int) {
+	d := inflate(fmt.Sprintf("%s/chunk_%02d.bin", cache, chunkIdx))
+	pkts := listPackets(d)
+	bip := map[uint32]bool{512: true, 513: true, 514: true, 515: true, 516: true, 517: true, 518: true, 519: true}
+	totalWST := 0
+	withBiped := 0
+	distHist := map[int]int{}
+	slotHist := map[uint32]int{}
+	for _, p := range pkts {
+		if p.typ != 0 {
+			continue
+		}
+		tot := len(p.payload) * 8
+		for bp := 0; bp+64 <= tot; bp++ {
+			hi := uint32(bitsAt(p.payload, bp, 32))
+			if _, ok := knownHigh32(hi); !ok {
+				continue
+			}
+			lo := uint32(bitsAt(p.payload, bp+32, 32))
+			if _, ok := analysis.WeaponIDToName[(uint64(hi)<<32)|uint64(lo)]; !ok {
+				continue
+			}
+			totalWST++
+			gateBit := bp - 1 // le gate WST est juste avant le high32
+			// remonte : un header delta `[1][R11 low][R2 tag]` se termine 14 bits avant le
+			// 1er composant du record. On cherche un header dont le slot ∈ biped à toute
+			// distance d entre le header-start et le gate.
+			found := false
+			for hs := gateBit - 1; hs >= gateBit-700 && hs >= 0; hs-- {
+				if bitsAt(p.payload, hs, 1) != 1 { // type delta
+					continue
+				}
+				low := uint32(bitsAt(p.payload, hs+1, 11))
+				slot := low & 0x3fffffff
+				if bip[slot] {
+					if !found {
+						withBiped++
+						distHist[gateBit-hs]++
+						slotHist[slot]++
+						found = true
+					}
+				}
+			}
+		}
+	}
+	fmt.Printf("=== chunk_%02d : %d WST gate=1 (littéraux d'armes) ===\n", chunkIdx, totalWST)
+	fmt.Printf("  avec un header biped (slot 512-519) en amont [<=700 bits] : %d (%.0f%%)\n", withBiped, pct(withBiped, totalWST))
+	fmt.Printf("  -- slots biped trouvés en amont (1er match) : ")
+	var ss []int
+	for s := range slotHist {
+		ss = append(ss, int(s))
+	}
+	sort.Ints(ss)
+	for _, s := range ss {
+		fmt.Printf("%d:%d ", s, slotHist[uint32(s)])
+	}
+	fmt.Println()
+	// Note : à <=700 bits, un slot biped finit presque toujours par apparaître par
+	// hasard (R(11) a 1/8 chance de tomber sur 512-519 ~ en fait 8/2048). On reporte la
+	// distribution des distances pour voir s'il y a un PIC structurel (vraie position du
+	// header) vs un bruit uniforme.
+	type kv struct{ d, n int }
+	var arr []kv
+	for dd, n := range distHist {
+		arr = append(arr, kv{dd, n})
+	}
+	sort.Slice(arr, func(a, b int) bool { return arr[a].n > arr[b].n })
+	fmt.Printf("  -- top distances header-biped -> gate WST (pic structurel ?) --\n")
+	for k := 0; k < len(arr) && k < 10; k++ {
+		fmt.Printf("    dist=%-4d : %d\n", arr[k].d, arr[k].n)
+	}
+}
+
+// litPlayer : pour chaque littéral d'arme, décode le header du 1er record du paquet
+// (idLowBits=11) pour récupérer le slot du joueur, et liste (joueur, ts, arme). Permet
+// de voir l'ÉVOLUTION TEMPORELLE de l'arme par joueur sur le chunk. Le 1er record d'un
+// paquet biped tombe sur 512-519 = le joueur "propriétaire" du paquet.
+func litPlayer(chunkIdx int) {
+	d := inflate(fmt.Sprintf("%s/chunk_%02d.bin", cache, chunkIdx))
+	pkts := listPackets(d)
+	bipedSlot := map[uint32]bool{512: true, 513: true, 514: true, 515: true, 516: true, 517: true, 518: true, 519: true}
+	pktIdx := 0
+	type hit struct {
+		pkt        int
+		ts         uint64
+		firstSlot  uint32
+		firstIsBip bool
+		arme       string
+		bit        int
+	}
+	var hits []hit
+	for _, p := range pkts {
+		if p.typ != 0 {
+			continue
+		}
+		// 1er record header sous idLowBits=11
+		bp := 0
+		if bitsAt(p.payload, 0, 1) == 1 {
+			bp = 1 // delta
+		} else {
+			bp = 3
+		}
+		low := uint32(bitsAt(p.payload, bp, 11))
+		slot := low & 0x3fffffff
+		tot := len(p.payload) * 8
+		for b := 0; b+64 <= tot; b++ {
+			hi := uint32(bitsAt(p.payload, b, 32))
+			if _, ok := knownHigh32(hi); !ok {
+				continue
+			}
+			lo := uint32(bitsAt(p.payload, b+32, 32))
+			if nm, ok := analysis.WeaponIDToName[(uint64(hi)<<32)|uint64(lo)]; ok {
+				hits = append(hits, hit{pktIdx, p.ts, slot, bipedSlot[slot], nm, b})
+			}
+		}
+		pktIdx++
+	}
+	fmt.Printf("=== chunk_%02d : %d littéraux d'armes ; 1er record du paquet = joueur ===\n", chunkIdx, len(hits))
+	inBip := 0
+	perSlot := map[uint32][]string{}
+	for _, h := range hits {
+		mark := ""
+		if h.firstIsBip {
+			inBip++
+			mark = " (BIPED)"
+			perSlot[h.firstSlot] = append(perSlot[h.firstSlot], h.arme)
+		}
+		fmt.Printf("  pkt#%-5d ts=%-12d 1erSlot=%-5d%s  bit=%-6d %s\n", h.pkt, h.ts, h.firstSlot, mark, h.bit, h.arme)
+	}
+	fmt.Printf("  >>> littéraux dont le paquet commence par un biped (512-519) : %d/%d\n", inBip, len(hits))
+	_ = perSlot
+	// Groupement par 1er slot du paquet (proxy d'entité), séquence temporelle d'armes.
+	bySlot := map[uint32][]string{}
+	for _, h := range hits {
+		bySlot[h.firstSlot] = append(bySlot[h.firstSlot], h.arme)
+	}
+	fmt.Printf("  -- séquence temporelle d'armes par 1er-slot du paquet (idLow=11) --\n")
+	var slots []int
+	for s := range bySlot {
+		slots = append(slots, int(s))
+	}
+	sort.Ints(slots)
+	for _, s := range slots {
+		seq := bySlot[uint32(s)]
+		// compresse les répétitions consécutives
+		var comp []string
+		for i, a := range seq {
+			if i == 0 || seq[i-1] != a {
+				comp = append(comp, a)
+			}
+		}
+		fmt.Printf("    slot %-5d (%d hits) : %s\n", s, len(seq), strings.Join(comp, " -> "))
+	}
+}
+
+// litPattern agrège la structure binaire autour de chaque littéral d'arme complet sur
+// plusieurs chunks. Vérifie l'hypothèse "littéral = composant WST keyframe-style"
+// (gate=bit[-1]=1, puis variant=R(32), puis la suite du deser WST : R(12)+R(7)...).
+// Mesure : distribution de bit[-1] (gate), et combien de littéraux ont un 2e littéral
+// d'arme proche (paire primaire/secondaire comme au keyframe biped).
+func litPattern(chunks []int) {
+	gate1, gate0 := 0, 0
+	total := 0
+	pairWithin := 0 // littéraux ayant un autre littéral dans [+64, +64+512] (paire arme)
+	for _, chunkIdx := range chunks {
+		d := inflate(fmt.Sprintf("%s/chunk_%02d.bin", cache, chunkIdx))
+		pkts := listPackets(d)
+		for _, p := range pkts {
+			if p.typ != 0 {
+				continue
+			}
+			tot := len(p.payload) * 8
+			var lits []int
+			for bp := 0; bp+64 <= tot; bp++ {
+				hi := uint32(bitsAt(p.payload, bp, 32))
+				if _, ok := knownHigh32(hi); !ok {
+					continue
+				}
+				lo := uint32(bitsAt(p.payload, bp+32, 32))
+				if _, ok := analysis.WeaponIDToName[(uint64(hi)<<32)|uint64(lo)]; ok {
+					lits = append(lits, bp)
+				}
+			}
+			for _, bp := range lits {
+				total++
+				if bp >= 1 && bitsAt(p.payload, bp-1, 1) == 1 {
+					gate1++
+				} else {
+					gate0++
+				}
+				for _, bp2 := range lits {
+					if bp2 > bp+64 && bp2 <= bp+64+512 {
+						pairWithin++
+						break
+					}
+				}
+			}
+		}
+	}
+	fmt.Printf("=== litPattern sur chunks %v : %d littéraux d'armes complets ===\n", chunks, total)
+	fmt.Printf("  gate bit[-1]=1 (pattern WST gate+variant) : %d (%.0f%%)\n", gate1, pct(gate1, total))
+	fmt.Printf("  gate bit[-1]=0                            : %d (%.0f%%)\n", gate0, pct(gate0, total))
+	fmt.Printf("  littéraux avec un 2e littéral dans [+64,+576] (paire d'armes) : %d (%.0f%%)\n", pairWithin, pct(pairWithin, total))
+}
+
+func pct(a, b int) float64 {
+	if b == 0 {
+		return 0
+	}
+	return 100 * float64(a) / float64(b)
+}
+
+// sizesMode liste les paquets type-0 d'un chunk par taille décroissante et compte les
+// littéraux d'armes complets de chacun. Hypothèse : les GROS paquets type-0 sont des
+// mini-keyframes (re-sync full-state des bipeds) qui retransmettent ~8 armes (1/joueur).
+func sizesMode(chunkIdx int) {
+	d := inflate(fmt.Sprintf("%s/chunk_%02d.bin", cache, chunkIdx))
+	pkts := listPackets(d)
+	type info struct {
+		idx, size, lits int
+		armes           []string
+	}
+	var infos []info
+	i0 := 0
+	for _, p := range pkts {
+		if p.typ != 0 {
+			continue
+		}
+		total := len(p.payload) * 8
+		var armes []string
+		for bp := 0; bp+64 <= total; bp++ {
+			hi := uint32(bitsAt(p.payload, bp, 32))
+			if _, ok := knownHigh32(hi); !ok {
+				continue
+			}
+			lo := uint32(bitsAt(p.payload, bp+32, 32))
+			if nm, ok := analysis.WeaponIDToName[(uint64(hi)<<32)|uint64(lo)]; ok {
+				armes = append(armes, nm)
+			}
+		}
+		infos = append(infos, info{i0, p.size, len(armes), armes})
+		i0++
+	}
+	// stats taille
+	var sizes []int
+	for _, in := range infos {
+		sizes = append(sizes, in.size)
+	}
+	sort.Ints(sizes)
+	med := sizes[len(sizes)/2]
+	fmt.Printf("=== chunk_%02d : %d paquets type-0 ; taille médiane=%d, min=%d, max=%d ===\n",
+		chunkIdx, len(infos), med, sizes[0], sizes[len(sizes)-1])
+	// top 15 par taille
+	sort.Slice(infos, func(a, b int) bool { return infos[a].size > infos[b].size })
+	fmt.Printf("  -- top 15 plus gros paquets type-0 (taille, #littéraux, armes) --\n")
+	for k := 0; k < len(infos) && k < 15; k++ {
+		in := infos[k]
+		fmt.Printf("    #%-5d size=%-6d lits=%-3d %v\n", in.idx, in.size, in.lits, dedup(in.armes))
+	}
+	// corrélation : combien de littéraux dans les paquets > 2x médiane vs <= médiane
+	bigLits, bigPkts, smallLits, smallPkts := 0, 0, 0, 0
+	for _, in := range infos {
+		if in.size > 2*med {
+			bigLits += in.lits
+			bigPkts++
+		} else {
+			smallLits += in.lits
+			smallPkts++
+		}
+	}
+	fmt.Printf("  -- gros paquets (>2x médiane=%d) : %d paquets, %d littéraux (%.1f/pkt)\n",
+		2*med, bigPkts, bigLits, ratio(bigLits, bigPkts))
+	fmt.Printf("  -- paquets normaux (<=2x médiane) : %d paquets, %d littéraux (%.3f/pkt)\n",
+		smallPkts, smallLits, ratio(smallLits, smallPkts))
+}
+
+func ratio(a, b int) float64 {
+	if b == 0 {
+		return 0
+	}
+	return float64(a) / float64(b)
+}
+
+// litCtx dump, pour un paquet type-0 donné, l'en-tête (1er record header décodé sous
+// idLowBits=11) et, pour chaque littéral d'arme, le contexte de bits autour (les 32
+// bits avant le high32, le high32, le low32, et les bits après) pour comprendre la
+// structure du record qui le porte (NEW d'entité-arme ? autre ?).
+func litCtx(reg *filmdec.Registry, chunkIdx, pktIdx int) {
+	d := inflate(fmt.Sprintf("%s/chunk_%02d.bin", cache, chunkIdx))
+	pkts := listPackets(d)
+	var t0 []packet
+	for _, p := range pkts {
+		if p.typ == 0 {
+			t0 = append(t0, p)
+		}
+	}
+	if pktIdx >= len(t0) {
+		fmt.Println("pktIdx hors borne")
+		return
+	}
+	p := t0[pktIdx]
+	total := len(p.payload) * 8
+	fmt.Printf("=== chunk_%02d type-0 #%d : %d octets (%d bits), ts=%d ===\n", chunkIdx, pktIdx, p.size, total, p.ts)
+
+	// header sous différents idLowBits pour voir le 1er record
+	for _, idLow := range []int{9, 11} {
+		bp := 0
+		typ := 0
+		if bitsAt(p.payload, bp, 1) == 1 {
+			typ = 3
+			bp = 1
+		} else {
+			typ = int(bitsAt(p.payload, bp+1, 2))
+			bp = 3
+		}
+		low := uint32(bitsAt(p.payload, bp, idLow))
+		bp += idLow
+		tag := uint32(bitsAt(p.payload, bp, 2))
+		slot := (low) & 0x3fffffff
+		fmt.Printf("  [idLow=%d] 1er record: type=%d low=%d tag=%d slot=%d\n", idLow, typ, low, tag, slot)
+	}
+
+	// littéraux + contexte
+	for bp := 0; bp+64 <= total; bp++ {
+		hi := uint32(bitsAt(p.payload, bp, 32))
+		if _, ok := knownHigh32(hi); !ok {
+			continue
+		}
+		lo := uint32(bitsAt(p.payload, bp+32, 32))
+		id64 := (uint64(hi) << 32) | uint64(lo)
+		nm, ok := analysis.WeaponIDToName[id64]
+		if !ok {
+			continue
+		}
+		before := uint32(bitsAt(p.payload, bp-32, 32))
+		after1 := uint32(bitsAt(p.payload, bp+64, 32))
+		after2 := uint32(bitsAt(p.payload, bp+96, 32))
+		fmt.Printf("\n  >>> %s @bit%d (id64=0x%016x)\n", nm, bp, id64)
+		fmt.Printf("      [-32]=0x%08x | high=0x%08x low=0x%08x | [+64]=0x%08x [+96]=0x%08x\n",
+			before, hi, lo, after1, after2)
+		// Est-ce que [bp-1] ressemble à un gate de WST (1) suivi du high32 = pattern keyframe WST ?
+		gateBit := bitsAt(p.payload, bp-1, 1)
+		fmt.Printf("      bit[-1] (gate WST candidat)=%d ; si =1 -> structure WST keyframe (gate+variant R32)\n", gateBit)
+	}
+}
+
+func freshWorld(reg *filmdec.Registry, path string) *filmdec.World {
+	raw, _ := os.ReadFile(path)
+	w := filmdec.NewWorld(reg)
+	for _, line := range strings.Split(string(raw), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		for _, tok := range strings.Fields(line) {
+			parts := strings.SplitN(tok, ":", 2)
+			if len(parts) != 2 {
+				continue
+			}
+			slot, e1 := strconv.ParseUint(parts[0], 10, 32)
+			ti, e2 := strconv.ParseUint(parts[1], 10, 32)
+			if e1 != nil || e2 != nil {
+				continue
+			}
+			w.BindFull(uint32(slot), uint32(ti))
+		}
+	}
+	return w
 }
 
 func main() {
-	path := `D:\SteamLibrary\steamapps\common\Halo Infinite\HaloInfinite.exe`
-	if len(os.Args) > 1 {
-		path = os.Args[1]
+	// Mode upstream : pour chaque WST gate=1 (littéral d'arme), cherche en AMONT un header
+	// de record dont le slot ∈ 512-519 (biped joueur). Teste l'attribution par remontée.
+	if len(os.Args) >= 2 && os.Args[1] == "upstream" {
+		chunkIdx, _ := strconv.Atoi(os.Args[2])
+		upstreamScan(chunkIdx)
+		return
 	}
 
-	data, err := os.ReadFile(path)
+	// Mode litplayer : pour chaque littéral, donne le slot du 1er record du paquet (=joueur).
+	if len(os.Args) >= 2 && os.Args[1] == "litplayer" {
+		chunkIdx, _ := strconv.Atoi(os.Args[2])
+		litPlayer(chunkIdx)
+		return
+	}
+
+	// Mode litpattern : agrège la structure bit autour de TOUS les littéraux d'un chunk.
+	if len(os.Args) >= 2 && os.Args[1] == "litpattern" {
+		chunks := []int{3, 4, 10, 15, 20, 25}
+		if len(os.Args) >= 3 {
+			chunks = nil
+			for _, a := range os.Args[2:] {
+				if v, e := strconv.Atoi(a); e == nil {
+					chunks = append(chunks, v)
+				}
+			}
+		}
+		litPattern(chunks)
+		return
+	}
+
+	// Mode sizes : distribution des tailles de paquets type-0 + littéraux par gros paquet.
+	if len(os.Args) >= 2 && os.Args[1] == "sizes" {
+		chunkIdx, _ := strconv.Atoi(os.Args[2])
+		sizesMode(chunkIdx)
+		return
+	}
+
+	// Mode litctx : dump du contexte de bits autour des littéraux d'un paquet précis.
+	// usage: litctx <chunk> <pktIndex>
+	if len(os.Args) >= 2 && os.Args[1] == "litctx" {
+		reg, _ := filmdec.ParseRegistryChunk(inflate(cache + "/chunk_00.bin"))
+		chunkIdx, _ := strconv.Atoi(os.Args[2])
+		pktIdx, _ := strconv.Atoi(os.Args[3])
+		litCtx(reg, chunkIdx, pktIdx)
+		return
+	}
+
+	// Mode litloc : localise les littéraux dans les records décodés.
+	if len(os.Args) >= 2 && os.Args[1] == "litloc" {
+		reg, err := filmdec.ParseRegistryChunk(inflate(cache + "/chunk_00.bin"))
+		if err != nil {
+			panic(err)
+		}
+		chunkIdx, maxPkts := 3, 1199
+		if len(os.Args) >= 3 {
+			chunkIdx, _ = strconv.Atoi(os.Args[2])
+		}
+		if len(os.Args) >= 4 {
+			maxPkts, _ = strconv.Atoi(os.Args[3])
+		}
+		litLoc(reg, cache+"/world_dump.txt", chunkIdx, maxPkts)
+		return
+	}
+
+	// Mode litscan : scan des littéraux d'armes dans des chunks gameplay.
+	if len(os.Args) >= 2 && os.Args[1] == "litscan" {
+		chunks := []int{2, 3, 4, 5, 10, 15, 20, 25}
+		if len(os.Args) >= 3 {
+			chunks = nil
+			for _, a := range os.Args[2:] {
+				if v, e := strconv.Atoi(a); e == nil {
+					chunks = append(chunks, v)
+				}
+			}
+		}
+		for _, c := range chunks {
+			litScan(c)
+			fmt.Println()
+		}
+		return
+	}
+
+	reg, err := filmdec.ParseRegistryChunk(inflate(cache + "/chunk_00.bin"))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "read exe: %v\n", err)
-		os.Exit(1)
+		panic(err)
 	}
+	_, typeSlots := loadWorld()
+	fmt.Printf("registre : %d archétypes ; world : %d typeIndex distincts\n\n", len(reg.Archetypes), len(typeSlots))
 
-	pf, err := pe.Open(path)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "parse PE: %v\n", err)
-		os.Exit(1)
+	// Liste triée des typeIndex présents dans le World.
+	var tis []int
+	for ti := range typeSlots {
+		tis = append(tis, ti)
 	}
-	defer pf.Close()
+	sort.Ints(tis)
 
-	var secs []section
-	for _, s := range pf.Sections {
-		secs = append(secs, section{s.Name, s.Offset, s.Size, s.VirtualAddress})
-	}
-
-	fmt.Printf("=== %s (%d bytes) ===\n\n", path, len(data))
-	fmt.Println("PE sections:")
-	for _, s := range secs {
-		fmt.Printf("  %-10s fileOff=0x%-8X fileSize=0x%-8X va=0x%X\n",
-			s.name, s.fileOff, s.fileSize, s.va)
-	}
-
-	// Positive control: prove the byte-scanner finds patterns guaranteed present in any
-	// Windows PE. If these miss, the scanner is broken and the wid "not found" is invalid.
-	fmt.Println("\n=== Positive control (must all be FOUND) ===")
-	for _, ctrl := range []string{"GetProcAddress", "kernel32", "USER32", "RSDS"} {
-		offs := findAll(data, []byte(ctrl), 1)
-		if len(offs) > 0 {
-			fmt.Printf("  ok   %-16q sect=%-8s off=0x%X\n", ctrl, sectionOf(secs, offs[0]), offs[0])
+	fmt.Printf("================ ARCHÉTYPES PRÉSENTS DANS LE WORLD ================\n")
+	for _, ti := range tis {
+		arch, ok := reg.Archetype(ti)
+		name := "(hors registre)"
+		ncomp := 0
+		if ok {
+			ncomp = len(arch.Components)
+			if ncomp > 0 {
+				name = arch.Components[0]
+			}
+		}
+		slots := typeSlots[ti]
+		sort.Ints(slots)
+		// résumé compact des slots
+		slotStr := fmt.Sprintf("%d slots", len(slots))
+		if len(slots) <= 12 {
+			slotStr = fmt.Sprintf("slots=%v", slots)
 		} else {
-			fmt.Printf("  MISS %-16q  <-- scanner suspect!\n", ctrl)
+			slotStr = fmt.Sprintf("%d slots [%d..%d]", len(slots), slots[0], slots[len(slots)-1])
+		}
+		// composants weapon-ish
+		var wcomp []string
+		for _, c := range arch.Components {
+			if weaponish(c) {
+				wcomp = append(wcomp, c)
+			}
+		}
+		flag := ""
+		if len(wcomp) > 0 {
+			flag = "  <<< WEAPON/LOADOUT: " + strings.Join(dedup(wcomp), ",")
+		}
+		fmt.Printf("  ti=%-3d  %-44s  ncomp=%-3d  %s%s\n", ti, truncate(name, 44), ncomp, slotStr, flag)
+	}
+
+	// Dump détaillé des composants des archétypes candidats (ceux weapon-ish ou
+	// passés en argument).
+	fmt.Printf("\n================ COMPOSANTS DES ARCHÉTYPES CANDIDATS ================\n")
+	candidates := map[int]bool{}
+	for _, ti := range tis {
+		arch, ok := reg.Archetype(ti)
+		if !ok {
+			continue
+		}
+		for _, c := range arch.Components {
+			if weaponish(c) {
+				candidates[ti] = true
+				break
+			}
 		}
 	}
-
-	fmt.Println("\n=== Group A (33 confirmed wids — ground truth) ===")
-	fa := scanGroup(data, secs, groupA, true)
-
-	fmt.Println("\n=== Formula-A-exclusive (slot identifiers) ===")
-	ff := scanGroup(data, secs, formulaA, true)
-
-	fmt.Println("\n=== Group B (UNKNOWN skin prefixes — the targets) ===")
-	fb := scanGroup(data, secs, groupB, true)
-
-	fmt.Printf("\n=== SUMMARY ===\n")
-	fmt.Printf("Group A found:   %d / %d\n", fa, len(groupA))
-	fmt.Printf("Formula-A found: %d / %d\n", ff, len(formulaA))
-	fmt.Printf("Group B found:   %d / %d (4-byte prefixes — collisions possible)\n", fb, len(groupB))
-	if fa == 0 {
-		fmt.Println("\nVERDICT: no known weapon wid present in the binary as a static constant.")
-		fmt.Println("=> weapon IDs are not statically tabled here; static .rdata avenue is empty.")
+	// args = typeIndex supplémentaires à dumper
+	for _, a := range os.Args[1:] {
+		if v, e := strconv.Atoi(a); e == nil {
+			candidates[v] = true
+		}
 	}
+	var cands []int
+	for ti := range candidates {
+		cands = append(cands, ti)
+	}
+	sort.Ints(cands)
+	for _, ti := range cands {
+		arch, _ := reg.Archetype(ti)
+		fmt.Printf("\n--- ti=%d (%d composants, %d slots dans le World) ---\n", ti, len(arch.Components), len(typeSlots[ti]))
+		for i, c := range arch.Components {
+			mark := ""
+			if weaponish(c) {
+				mark = "  <<<"
+			}
+			fmt.Printf("  i%-2d %s%s\n", i, c, mark)
+		}
+	}
+}
+
+func dedup(in []string) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, s := range in {
+		if !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n-1] + "…"
 }

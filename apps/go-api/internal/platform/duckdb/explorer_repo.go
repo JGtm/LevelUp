@@ -79,7 +79,7 @@ func (r *ExplorerRepo) GetKillerVictimBetween(ctx context.Context, xuid1, xuid2 
 		return domain.KillerVictimAggregate{}, fmt.Errorf("ExplorerRepo.GetKillerVictimBetween: shared reader: %w", err)
 	}
 	defer release()
-	row := sharedDB.QueryRowContext(ctx, Q19bKillerVictimBetween, xuid1, xuid2, xuid2, xuid1)
+	row := sharedDB.QueryRowContext(ctx, QKillsBetweenPlayers, xuid1, xuid2, xuid2, xuid1)
 	var agg domain.KillerVictimAggregate
 	if err := row.Scan(&agg.KillsDealt, &agg.DeathsSuffered); err != nil {
 		return domain.KillerVictimAggregate{}, fmt.Errorf("ExplorerRepo.GetKillerVictimBetween: %w", err)

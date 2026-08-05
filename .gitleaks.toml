@@ -129,6 +129,25 @@ regexTarget = "secret"
 regexes = ['''^eyJmaWx0ZXJz[A-Za-z0-9_=/+-]+$''']
 
 [[allowlists]]
+# 2026-07-31 — empreinte
+#   .ai/V7.5/killweapon/RE_LOG_KILLWEAPON.md:generic-api-key:17478
+# Journal de rétro-ingénierie du chantier « arme du kill ». La ligne compare le
+# kill-feed décodé au kill-feed de l'API officielle et aligne les deux tableaux de
+# frags : « API : HizaroMne4262 16 ; FireKoreT7 15 ; ... ». Le mot-clé « API » suivi
+# d'un deux-points fait lire le premier GAMERTAG comme une valeur de clé (entropie
+# 3,55). C'est un pseudonyme Xbox public, il n'ouvre aucun accès.
+# Exception posée sur la VALEUR, pas sur l'empreinte : le numéro de ligne d'un journal
+# qui grossit ne survit pas à la modification suivante (c'est ce qui a invalidé les
+# exceptions posées quand le fichier vivait ailleurs que sous V7.5/). Un vrai secret
+# collé dans ce même journal reste détecté.
+description = "Gamertag lu comme une clé dans les tableaux de confrontation du RE_LOG killweapon"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(^|/)\.ai/V7\.5/killweapon/RE_LOG_KILLWEAPON\.md$''']
+regexTarget = "secret"
+regexes = ['''^HizaroMne4262$''']
+
+[[allowlists]]
 # (2026-08-03, lot 2 v7.3 item 3.2) WeaponKey du registre d'armes H5 dans les tests de
 # ventilation par engin du sunburst : identifiants PUBLICS du jeu (h5_vehicle_warthog,
 # h5_turret_gauss…), versionnés volontairement comme assertions. Le mot « Key » du champ

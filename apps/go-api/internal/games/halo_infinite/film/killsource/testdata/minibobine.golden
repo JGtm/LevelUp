@@ -1,0 +1,76 @@
+# GOLDEN killsource — MINI-BOBINE (prefixe du film 000d5950)
+#
+# Fige la sortie du decodeur sur des PAQUETS REELS VERSIONNES. Ne PAS editer a la main.
+#
+# CE GOLDEN TOURNE EN CI, SANS FIXTURE ET SANS VARIABLE D ENVIRONNEMENT. C est sa raison
+# d etre : TestGoldenFilms, lui, se skippe sans KILLSOURCE_FIXTURES, et un commit a deja pu
+# annoncer un golden vert alors que la sortie avait bouge (2026-08-02, commit 47c9e72ac).
+#
+# LA BOBINE est le PREFIXE CONTIGU des 6 premiers chunks du film, en-tete compris, suivi de son
+# chunk HIGHLIGHT. Contigu et depuis le debut PARCE QUE LE DECODEUR L EXIGE : le monde
+# s accumule depuis l en-tete. Une bobine de paquets cherry-pickes n y decode AUCUNE mort.
+#
+# PORTEE — la calibration automatique tombe ici en PROFIL PLAT (l echantillon du prefixe ne rend
+# aucun record de biped) : le couple axisW/indexW ci-dessous est le DEFAUT, pas un resultat de
+# balayage. Seul TestGoldenFilms verrouille le balayage, sur les films entiers.
+#
+# REGENERATION :
+#   go test ./internal/games/halo_infinite/film/killsource/ -run TestGoldenMiniBobine -update
+
+## COUVERTURE — chaque taux porte le nom de son denominateur
+10 / 93 couples REELS (couples reconstruits moins les couples FABRIQUES)
+10 / 93 couples reconstruits par la reconstruction de kill-feed
+10 / 93 morts du KILL-FEED (il ne contient AUCUNE mort de bot)
+0 couple(s) FABRIQUE(S) retire(s) du denominateur : la vraie victime est un bot
+0 mort(s) de BOT decodee(s) — POPULATION NEUVE, jamais au denominateur ci-dessus
+0 mort(s) INFLIGEE(S) PAR un bot — SECONDE POPULATION NEUVE, jamais au denominateur
+   ci-dessus non plus : le feed porte la MORT mais aucun kill en face
+93 kill(s) et 93 mort(s) au kill-feed brut · 76 couple(s) au MEME instant
+
+## LES 10 LIGNES PUBLIEES, EN ENTIER — un compte juste peut porter une etiquette fausse
+# format : instant  victime  tag  etiquette  categorie  CREDIT DU JEU  assistant  voie  origine  divergence
+00:35  LORD PEINX13  eea85c26  "Disruptor"  ARME  credit=IKE ILYA  assistant=AUCUN (mesure)  scan  credit-concordant  divergence=non
+00:43  aldusbroncus  877da252  "Gravity Hammer"  ARME  credit=whiteknight2519  assistant=AUCUN (mesure)  scan  credit-concordant  divergence=non
+00:44  JGtm  130c4b61  "Skewer"  ARME  credit=Akatsuki fire17  assistant=AUCUN (mesure)  scan  credit-concordant  divergence=non
+00:46  JAVIERLOLITO540  acd1cff4  "M41 SPNKr"  ARME  credit=LORD PEINX13  assistant=AUCUN (mesure)  scan  credit-concordant  divergence=non
+00:52  VitaminA1688  130c4b61  "Skewer"  ARME  credit=Akatsuki fire17  assistant=AUCUN (mesure)  scan  credit-concordant  divergence=non
+00:58  whiteknight2519  acd1cff4  "M41 SPNKr"  ARME  credit=IKE ILYA  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
+01:02  JGtm  17d6bd23  "Sentinel Beam"  ARME  credit=aldusbroncus  assistant=AUCUN (mesure)  scan  credit-concordant  divergence=non
+01:08  VitaminA1688  acd1cff4  "M41 SPNKr"  ARME  credit=IKE ILYA  assistant=AUCUN (mesure)  scan  credit-concordant  divergence=non
+01:09  aldusbroncus  acd1cff4  "M41 SPNKr"  ARME  credit=LORD PEINX13  assistant=AUCUN (mesure)  scan  credit-concordant  divergence=non
+01:12  LORD PEINX13  acd1cff4  "M41 SPNKr"  ARME  credit=aldusbroncus  assistant=AUCUN (mesure)  scan  source-victime  divergence=oui
+
+## MORTS DONT LA SOURCE APPARTIENT A LA VICTIME — 1 ligne(s)
+# le kill-feed credite un AUTRE joueur : les deux verites sont vraies et divergent
+# format : instant  victime  tag  etiquette  CREDIT DU JEU  voie  origine
+01:12  LORD PEINX13  acd1cff4  "M41 SPNKr"  credit=aldusbroncus  scan  source-victime
+
+## CONTROLE NEGATIF — le scan n invente pas de morts
+# population ou la cible est ABSENTE par construction : les morts sont toutes
+# dans les paquets A EVENTS, donc tout candidat trouve ici est un faux positif.
+5484 paquet(s) SANS evenement · 7687528 bits balayes · 0 candidat(s) accepte(s)
+
+## COUT PAR VOIE DE LECTURE — ventilation, PAS deux precisions comparables
+marche   : 1 propose(s), 1 apparie(s) au couple exact, 1 publiee(s)
+scan     : 8 propose(s), 8 apparie(s) au couple exact, 8 publiee(s)
+marche, source appartenant a la victime : 0 propose(s), 0 publiee(s)
+scan,   source appartenant a la victime : 2 propose(s), 1 publiee(s)
+morts de BOT : 17 propose(s), 0 publiee(s)
+morts infligees PAR un bot : 0 propose(s), 0 apparie(s), 0 publiee(s)
+1 enregistrement(s) lu(s) par LES DEUX voies · ACCORD 1 · DESACCORD 0
+DESACCORD doit valoir 0 : sinon l hybride n est plus une PREFERENCE mais un ARBITRAGE
+0 mort(s) a plusieurs candidats en concurrence · 0 enregistrement(s) sans position
+460 / 473 paquet(s) a evenements localise(s)
+calibration resolue automatiquement : axisW=14 indexW=1 [PROFIL PLAT (score 0, mediane 0) : valeurs par defaut conservees] | recordStateParam=0 [croissance x1.000]
+
+## SANTE — un verdict porte sur le DOMAINE, pas sur les etiquettes publiees
+verdict : HORS DOMAINE MESURE
+11 candidat(s) consulte(s) · 10 publie(s) · 1 inexplique(s) sur les candidats
+ventilation : couple sans equivalent 0 · source-victime non retenue 1 · indice de bot 0
+hors roster : 0 — COMPTEUR SEPARE, il ne se compte pas sur les candidats et n entre
+   donc PAS dans le taux d inexpliques (un numerateur qui deborde son denominateur
+   ne veut rien dire)
+tags hors catalogue vus par la MARCHE : 0 — compteur principal de table perimee
+   PORTEE : bruit MESURE nul sur 5 films, et AVEUGLE a un tag servi par le seul SCAN
+publication ligne par ligne : AUTORISEE (marge de bijection 3)
+roster : 8 nom(s) dont 8 humain(s), aucun bot declare par le film

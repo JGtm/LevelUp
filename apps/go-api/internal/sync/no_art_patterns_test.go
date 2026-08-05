@@ -113,6 +113,22 @@ var tablesProtegees = []string{
 	// match_objective_stats_latest). Writer unique = persist.persistObjectiveStats
 	// (INSERT pur dans la transaction shared). Lecture via la vue _latest UNIQUEMENT.
 	"match_objective_stats",
+	// match_kill_events (J4, 2026-08-01) : table append-only NET-NEUVE (1 ligne par
+	// mort, crédit du kill-feed + source du dégât). Son persister
+	// (internal/persist/kill_events_persister.go) n'émet QU'UN statement, un INSERT —
+	// il n'a RIEN à faire dans allowlistArtPatterns, et c'est précisément ce qui permet
+	// de protéger la table ici sans aucune exception. Le remplacement d'une passe de
+	// décodage se fait en écrivant une NOUVELLE passe, jamais en effaçant l'ancienne :
+	// la vue match_kill_events_latest ne rend que la dernière. Le DELETE nu, lui, est
+	// couvert par TestNoRawDeleteOnAppendOnlyTables ci-dessous (scopé au nom exact de
+	// la table) et par append_only_state_guard_test.go.
+	"match_kill_events",
+	// match_weapon_shots (J4, 2026-08-01) : table append-only NET-NEUVE (grain match x
+	// joueur x arme, une seule mesure : le nombre de tirs décodés). Son persister
+	// (internal/persist/weapon_shots_persister.go) n'émet qu'un INSERT — aucune entrée
+	// d'allowlist à prévoir. Même mécanique de passe et même couverture DELETE que
+	// match_kill_events ci-dessus.
+	"match_weapon_shots",
 	// NB (2026-08-03) : `media_likes_history` et `media_match_associations_history` sont
 	// append-only elles aussi mais N'ONT PAS leur place ICI — même raison que
 	// `player_records_history` ci-dessus : elles co-résident dans

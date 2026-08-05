@@ -124,12 +124,14 @@ func TestOpenSnapshotShared_Fidelity_integration(t *testing.T) {
 		t.Errorf("v_gamertag_lookup xKiller = %q, attendu TueurAlias (priorité alias)", snap)
 	}
 
-	// 2. v_killer_victim_full : m1 ready présent, m2 not-ready absent.
-	if n := scanInt(q.DB, `SELECT COUNT(*) FROM v_killer_victim_full WHERE match_id='m1'`); n != 1 {
-		t.Errorf("v_killer_victim_full m1 = %d, attendu 1", n)
+	// 2. killer_victim_pairs : m1 ready présent, m2 not-ready absent. Lue DIRECTEMENT
+	// depuis le 2026-08-02 — v_killer_victim_full (deux LEFT JOIN morts) a été supprimée,
+	// Q20 lit la table et rend les mêmes six colonnes.
+	if n := scanInt(q.DB, `SELECT COUNT(*) FROM killer_victim_pairs WHERE match_id='m1'`); n != 1 {
+		t.Errorf("killer_victim_pairs m1 = %d, attendu 1", n)
 	}
-	if n := scanInt(q.DB, `SELECT COUNT(*) FROM v_killer_victim_full WHERE match_id='m2'`); n != 0 {
-		t.Errorf("v_killer_victim_full m2 (not-ready) = %d, attendu 0", n)
+	if n := scanInt(q.DB, `SELECT COUNT(*) FROM killer_victim_pairs WHERE match_id='m2'`); n != 0 {
+		t.Errorf("killer_victim_pairs m2 (not-ready) = %d, attendu 0", n)
 	}
 
 	// 3. v_weapon_kills (DENSE_RANK reconstruit) : m1 présent (effective_weapon_id résolu),
@@ -207,7 +209,7 @@ func TestOpenSnapshotShared_Incomplete_integration(t *testing.T) {
 // shared. Toutes les relations (tables + vues) que les lectures shared de l'app
 // référencent — en particulier les requêtes MatchView Q12/Q13 (match_participants,
 // v_gamertag_lookup, v_weapon_kills, match_csrs_latest, match_objective_stats_latest,
-// medals_earned, highlight_events, v_killer_victim_full...) — doivent exister dans le
+// medals_earned, highlight_events, killer_victim_pairs...) — doivent exister dans le
 // schéma :memory: reconstruit. Une table nouvellement jointe par une requête MatchView
 // (précédent : Q12 → match_objective_stats_latest en v7.2) doit être ajoutée à
 // l'export (sharedSnapshotMatchKeyedRaw & co) ET à la lecture (OpenSnapshotShared),
@@ -244,8 +246,9 @@ func TestOpenSnapshotShared_SchemaContract_integration(t *testing.T) {
 		"match_registry", "match_participants", "medals_earned", "highlight_events",
 		"killer_victim_pairs", "weapon_kills", "match_csrs", "match_objective_stats",
 		"xuid_aliases",
-		// Vues reconstruites aux noms live.
-		"v_gamertag_lookup", "v_match_full", "v_killer_victim_full", "v_weapon_kills",
+		// Vues reconstruites aux noms live. v_killer_victim_full n'y figure plus : supprimée
+		// le 2026-08-02 (ses deux LEFT JOIN étaient du travail mort), Q20 lit la table.
+		"v_gamertag_lookup", "v_match_full", "v_weapon_kills",
 		"match_csrs_latest", "match_objective_stats_latest", "mv_player_matches",
 	}
 	for _, rel := range expected {

@@ -68,9 +68,20 @@ const (
 	// CapWeaponAccuracy — précision PAR ARME : tirs au but / tirs tirés par arme.
 	// Dérivée des compteurs ShotsFired/ShotsLanded (Halo 5 natif, events
 	// weapon_drop → table weapon_accuracy, somme par (xuid, weapon_id)) OU d'une
-	// précision directe par arme si un titre la fournit telle quelle. Infinite :
-	// not_exposed (pas d'events drop dans la timeline reconstruite → table non
-	// peuplée).
+	// précision directe par arme si un titre la fournit telle quelle.
+	//
+	// Infinite : not_exposed, et la raison a CHANGÉ le 2026-08-02 (J4-4). Ce n'est
+	// plus « la table n'est pas peuplée » — la passe de film écrit désormais les
+	// tirs par arme (cf. CapFilmWeaponShots). C'est que LE TAUX N'EST PAS
+	// PUBLIABLE : calculé sur le corpus entier il INVERSE l'ordre MA40/Sidekick par
+	// rapport à la référence de l'API (MA40 8 points devant en brut, Sidekick
+	// 3 points devant à la référence). Ce n'est pas une imprécision, c'est une
+	// réponse fausse. Quatre armes seulement tiennent à ±0,03, et seulement sur les
+	// joueurs dont l'arme domine ≥ 80 % de leurs tirs décodés ; les armes à
+	// projectile sont fausses d'un facteur 30 à 60.
+	// Critère de bascule vers degraded : une population de publication déclarée
+	// dans le code (pas dans un commentaire) ET une mesure d'écart à l'API par
+	// arme publiée à côté du taux. Cf. PLAN_BRANCHEMENT_KILLSOURCE §4.2.
 	CapWeaponAccuracy CapabilityKey = "match.weapon.accuracy"
 
 	// CapPlaylistCategoryStrip — le libellé de playlist du titre porte un préfixe
@@ -92,6 +103,44 @@ const (
 	// la porte d'AFFICHAGE UI passe par la capability title-level `objective_stats`
 	// (registry.go, useCapability). Cf. PLAN_V72_OBJECTIVE_STATS.md.
 	CapMatchObjectiveStats CapabilityKey = "match.objective.stats"
+
+	// CapFilmKillSource — le titre expose un FILM Theater dont le décodeur sait
+	// extraire, PAR MORT, les deux vérités : le crédit du kill-feed et la SOURCE
+	// DU DÉGÂT FATAL (lue dans le dead-state de la victime). Gouverne le
+	// collecteur `internal/sync` qui remplit `shared.match_kill_events`.
+	//
+	// Halo Infinite : supported (décodeur `games/halo_infinite/film/killsource`).
+	// Halo 5 : ABSENTE — son format de film est différent ET ses mécaniques de
+	// kill sont natives dans le carnage (CapNativeKillMechanics), donc il n'a
+	// aucun besoin d'un décodeur de film pour la même information.
+	//
+	// ⚠ Clé FINE et pas fourre-tout : les tirs par arme (`match_weapon_shots`) et
+	// la précision par arme sont des familles de données DISTINCTES, chacune avec
+	// ses réserves de publication. Un titre peut avoir l'une sans les autres —
+	// c'est l'arbitrage §4.3 du plan de branchement. Ne JAMAIS élargir cette clé
+	// pour couvrir « tout ce qui vient du film ».
+	//
+	// Nommage : le plan proposait `film_kill_source` ; la convention du
+	// vocabulaire est le point (`match.objective.stats`, `playlist.label.…`),
+	// d'où `film.kill_source`. Même clé, écriture du dépôt.
+	CapFilmKillSource CapabilityKey = "film.kill_source"
+
+	// CapFilmWeaponShots — la VENTILATION DES TIRS PAR ARME décodée du film
+	// (`shared.match_weapon_shots`, grain joueur × arme × match). Deuxième famille
+	// de données du film, distincte du kill enrichi : elle sort de la MÊME passe de
+	// décodage mais répond à une autre question, et elle a ses propres réserves.
+	//
+	// Halo Infinite : supported (producteur `sync/killcollector/shots.go`, k = 1,
+	// 84 % des joueurs en mode standard ; Fiesta et BTB NON livrables).
+	// Halo 5 : ABSENTE — pas de décodeur de film, et ses compteurs de tirs sont
+	// natifs (cf. CapWeaponAccuracy, events weapon_drop).
+	//
+	// ⚠ CETTE CLÉ GOUVERNE LE STOCKAGE, PAS UNE PUBLICATION. La table STOCKE des
+	// COMPTES ; elle ne publie aucun TAUX. Le taux par arme est la famille
+	// `match.weapon.accuracy`, et pour Infinite il n'est pas publiable (voir sa
+	// documentation : il inverse l'ordre MA40/Sidekick). Un titre peut donc avoir
+	// celle-ci sans celle-là — c'est exactement pourquoi ce sont deux clés.
+	CapFilmWeaponShots CapabilityKey = "film.weapon_shots"
 )
 
 // CapabilityMap décrit l'état des capabilities produit d'un adapter à un instant T.

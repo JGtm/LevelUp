@@ -1,0 +1,14 @@
+--- repartition par groupe de tag (forge_object_types.csv, 45 types nommes) ---
+  bool #8/0/15     (inconnu):1580
+  bool #8/0/3      (inconnu):10087 scen:325 mach:86 bloc:83 vehi:2 weap:2
+  bool #8/1/13     (inconnu):20116 bloc:1158 mach:593 scen:214 weap:22 vehi:17
+  delai #8/1/4     (inconnu):505 weap:117 vehi:94 mach:8 scen:5 bloc:1
+  delai #8/1/5     (inconnu):179 vehi:94 mach:4 weap:2 bloc:1
+  echelle #6       (inconnu):236 bloc:4
+  ordre #8/0/10    (inconnu):30788 scen:156 bloc:32 mach:15
+--- index d'ordre : unicite par carte (5 cartes les plus fournies) ---
+  merchant's_square_map.mvar                   n=2172  distincts=248   valeurs repetees=248
+  disciple_map.mvar                            n=2161  distincts=99    valeurs repetees=99
+  perilous_map.mvar                            n=1671  distincts=319   valeurs repetees=319
+  ronin_map.mvar                               n=1553  distincts=92    valeurs repetees=92
+  lattice_-_ranked_map.mvar                    n=1475  distincts=213   valeurs repetees=213

@@ -80,6 +80,14 @@ pre-push:
 
     # Ratchet code mort frontend (knip) — fige unused files/exports/types,
     # bloque toute régression. Plafonds dans tools/knip-ratchet.mjs.
+    #
+    # CE HOOK EST UN FILET RAPIDE, PAS L'AUTORITÉ (mise au point 2026-08-01, J3.3).
+    # Son `glob` ne le déclenche que si le push contient des sources web, et le mode
+    # d'échec constaté en J1-b n'est pas celui-là : une branche qui accumulait des
+    # exports morts sans jamais être poussée n'a jamais été soumise au hook, et le
+    # dépassement de plafond n'est apparu qu'à la réconciliation. Le gate qui ferme
+    # cet angle mort est le step « Ratchet knip » du job `frontend` de ci.yml, qui
+    # tourne SANS condition de chemin. Ne pas élargir ce glob en croyant y suppléer.
     knip-ratchet:
       glob: "apps/web/src/**/*.{ts,tsx}"
       run: node tools/knip-ratchet.mjs

@@ -361,11 +361,13 @@ const shadowSchemaDDL = `
 			time_played_seconds DOUBLE,
 			PRIMARY KEY (match_id, xuid)
 		);
-		CREATE TABLE killer_victim_pairs (
+		-- BASCULE DU 2026-08-03 : la timeline de frags de la pénalité de départ lit la
+		-- canonique, dédoublonnée à l'identité. L'ancienne table portait 46,5 % de doublons
+		-- exacts, qui faussaient l'écart de frags entre les deux camps à l'instant du quit.
+		CREATE TABLE match_kill_events_latest (
 			match_id VARCHAR,
-			killer_xuid VARCHAR,
+			feed_killer_xuid VARCHAR,
 			victim_xuid VARCHAR,
-			kill_count INTEGER DEFAULT 1,
 			time_ms INTEGER
 		);
 		CREATE SEQUENCE player_skill_state_v2_seq START 1;
@@ -1371,9 +1373,9 @@ func TestRunLUSRV2Shadow_QuitContext_LeadingAtQuit(t *testing.T) {
 				killer string
 				tms    int
 			}{{"owner", 10000}, {"teammate", 20000}, {"owner", 30000}, {"opp1", 15000}} {
-				if _, err := db.Exec(`INSERT INTO killer_victim_pairs
-					(match_id, killer_xuid, victim_xuid, kill_count, time_ms)
-					VALUES ('m_quit', ?, 'victim', 1, ?)`, f.killer, f.tms); err != nil {
+				if _, err := db.Exec(`INSERT INTO match_kill_events_latest
+					(match_id, feed_killer_xuid, victim_xuid, time_ms)
+					VALUES ('m_quit', ?, 'victim', ?)`, f.killer, f.tms); err != nil {
 					t.Fatalf("insert frag: %v", err)
 				}
 			}

@@ -1,0 +1,66 @@
+cartes balayees : 199 ; cartes portant au moins un objet a delai : 86
+type_id distincts portant un delai de reapparition : 65
+
+=== P1+P2 : groupe de palette des objets a delai ===
+  weap         440 objets
+  vehi         184 objets
+  bloc         56 objets
+  eqip         37 objets
+  mach         8 objets
+  scen         5 objets
+
+=== P3 : signatures d'emprise, triees par nombre de type_id ===
+-> 0.1306/0.1308/0.2617        5 type_id    387 objets   59 cartes  [-1062552774 493070541 801517767 1486653438 1882451900]
+   0.3271/0.0442/0.1070        2 type_id      3 objets    1 cartes  [-1280545205 918263689]
+   0.3297/0.0400/0.1613        2 type_id      3 objets    1 cartes  [-1306854903 -275634364]
+   0.3317/0.0438/0.1147        2 type_id      4 objets    1 cartes  [-2109845990 1636001508]
+   0.3386/0.0428/0.1259        2 type_id      5 objets    2 cartes  [-2088317090 271068365]
+   0.3458/0.0369/0.1092        2 type_id      5 objets    1 cartes  [840393731 1965433030]
+   0.3777/0.0555/0.1188        2 type_id      4 objets    1 cartes  [-1022221022 197290350]
+   0.4996/0.1053/0.1650        2 type_id      2 objets    1 cartes  [886119887 2126055360]
+   0.6680/0.1903/0.2296        2 type_id      6 objets    4 cartes  [-758540775 795139849]
+   2.2440/1.0139/0.8315        2 type_id      3 objets    1 cartes  [-262750720 -105823600]
+   0.0000/0.0000/0.0000        1 type_id      2 objets    2 cartes  [4128967]
+   0.0010/0.0010/0.0010        1 type_id     39 objets    1 cartes  [-2079069766]
+   0.0589/0.0606/0.0650        1 type_id      3 objets    3 cartes  [-1336095237]
+   0.0615/0.0615/0.0863        1 type_id     10 objets    1 cartes  [-113703634]
+   0.0679/0.2063/0.4019        1 type_id      5 objets    3 cartes  [1649659840]
+   0.0929/0.0965/0.0968        1 type_id      3 objets    1 cartes  [-2013147197]
+   0.1012/0.2424/0.1686        1 type_id      1 objets    1 cartes  [-467387898]
+   0.1341/0.0731/0.0726        1 type_id      1 objets    1 cartes  [316771842]
+   0.1401/0.2369/0.1385        1 type_id      1 objets    1 cartes  [-1251061146]
+   0.1499/0.0405/0.0939        1 type_id      3 objets    1 cartes  [361417665]
+   0.1527/0.1363/0.1895        1 type_id      1 objets    1 cartes  [-44469856]
+   0.1715/0.2504/0.1024        1 type_id      1 objets    1 cartes  [905826440]
+   0.1828/0.2426/0.2304        1 type_id      1 objets    1 cartes  [1000978784]
+   0.2119/0.8074/0.3067        1 type_id      1 objets    1 cartes  [-869845555]
+   0.2241/0.1881/0.3665        1 type_id      2 objets    1 cartes  [-1287062553]
+   0.2665/0.4703/0.2175        1 type_id      1 objets    1 cartes  [-1114371720]
+   0.2745/0.2869/0.1951        1 type_id      1 objets    1 cartes  [-566547277]
+   0.3051/0.5626/0.2184        1 type_id      1 objets    1 cartes  [-1529003058]
+   0.3087/0.1000/0.1000        1 type_id     24 objets    1 cartes  [475600440]
+   0.3257/0.0701/0.1156        1 type_id      3 objets    1 cartes  [-1934210690]
+   0.3544/0.6747/0.0698        1 type_id      3 objets    1 cartes  [1597478195]
+   0.3671/0.0890/0.1326        1 type_id      1 objets    1 cartes  [-1967873753]
+   0.3681/0.3783/0.5253        1 type_id      1 objets    1 cartes  [-1768933402]
+   0.4838/0.4838/0.0543        1 type_id      5 objets    2 cartes  [1585893648]
+   0.4934/0.0481/0.2266        1 type_id      4 objets    3 cartes  [1670996247]
+   0.5059/0.3198/0.4537        1 type_id      1 objets    1 cartes  [-697548738]
+   0.5385/0.2178/0.2112        1 type_id      2 objets    1 cartes  [-844955619]
+   0.5394/0.5020/0.5329        1 type_id     94 objets   42 cartes  [-269578988]
+   0.5437/0.0719/0.1470        1 type_id      3 objets    1 cartes  [2144269878]
+   0.5573/0.2357/0.5109        1 type_id      9 objets    5 cartes  [1304071901]
+   0.6276/0.6384/0.8166        1 type_id      2 objets    1 cartes  [-1492727682]
+   0.6680/0.3301/0.5499        1 type_id     20 objets   10 cartes  [-1751154772]
+   0.6717/0.5679/1.0810        1 type_id      1 objets    1 cartes  [-2103231105]
+   1.1553/0.6730/0.5957        1 type_id      4 objets    2 cartes  [-870843776]
+   1.2028/1.1280/0.5984        1 type_id     28 objets   14 cartes  [-1825803927]
+   1.2665/1.2450/0.5664        1 type_id     10 objets    2 cartes  [83469709]
+   1.5694/1.2798/0.6212        1 type_id      1 objets    1 cartes  [666920711]
+   10.7251/7.3484/3.8243       1 type_id      6 objets    1 cartes  [-411259918]
+   2.2754/1.6283/1.1355        1 type_id      4 objets    1 cartes  [60452899]
+   2.5079/2.1089/0.7734        1 type_id      3 objets    2 cartes  [-522135259]
+   2.5204/2.3556/1.0767        1 type_id      1 objets    1 cartes  [-1718495603]
+   3.3068/2.5114/1.0961        1 type_id      1 objets    1 cartes  [1503350133]
+
+(-> = signature portee par l'un des 5 emplacements deja etablis)

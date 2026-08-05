@@ -72,6 +72,7 @@ import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugStatsIndexRouteIm
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSessionsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/stats/sessions'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSynthesisRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/stats/synthesis'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTimeseriesRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/stats/timeseries'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdIndexRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/index'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdReplayRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/replay'
 
 const IndexRoute = IndexRouteImport.update({
@@ -475,6 +476,15 @@ const Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTimeseriesRoute =
       getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
     } as any,
   )
+const Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdIndexRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdIndexRouteImport.update(
+    {
+      id: '/',
+      path: '/',
+      getParentRoute: () =>
+        Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdRoute,
+    } as any,
+  )
 const Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdReplayRoute =
   Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdReplayRouteImport.update(
     {
@@ -550,6 +560,7 @@ export interface FileRoutesByFullPath {
   '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadIndexRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsIndexRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/replay': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdReplayRoute
+  '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -596,7 +607,6 @@ export interface FileRoutesByTo {
   '/{-$lang}/t/$titleSlug/players/$playerSlug/community/compare': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityCompareRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/community/prestige': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityPrestigeRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/community/relations': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityRelationsRoute
-  '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdRouteWithChildren
   '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/prestige': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresPrestigeRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/relations': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresRelationsRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadContributionsRoute
@@ -613,6 +623,7 @@ export interface FileRoutesByTo {
   '/{-$lang}/t/$titleSlug/players/$playerSlug/squad': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadIndexRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/stats': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsIndexRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/replay': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdReplayRoute
+  '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -680,6 +691,7 @@ export interface FileRoutesById {
   '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadIndexRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsIndexRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/replay': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdReplayRoute
+  '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -748,6 +760,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/replay'
+    | '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -794,7 +807,6 @@ export interface FileRouteTypes {
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/community/compare'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/community/prestige'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/community/relations'
-    | '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/prestige'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/palmares/relations'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions'
@@ -811,6 +823,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/squad'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/stats'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/replay'
+    | '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId'
   id:
     | '__root__'
     | '/'
@@ -877,6 +890,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/replay'
+    | '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1339,6 +1353,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTimeseriesRouteImport
       parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
     }
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/'
+      path: '/'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdIndexRouteImport
+      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdRoute
+    }
     '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/replay': {
       id: '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/replay'
       path: '/replay'
@@ -1431,12 +1452,15 @@ const Char123LangChar125TTitleSlugPlayersPlayerSlugSquadRouteWithChildren =
 
 interface Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdRouteChildren {
   Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdReplayRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdReplayRoute
+  Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdIndexRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdIndexRoute
 }
 
 const Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdRouteChildren: Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdRouteChildren =
   {
     Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdReplayRoute:
       Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdReplayRoute,
+    Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdIndexRoute:
+      Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdIndexRoute,
   }
 
 const Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdRouteWithChildren =

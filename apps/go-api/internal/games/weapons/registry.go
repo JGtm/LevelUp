@@ -248,6 +248,31 @@ func seedWeapons(db *sql.DB) error {
 	return nil
 }
 
+// FilmshellWeaponKeysByFamily rend l'index `famille d'arme (high-32) -> weapon_key` des
+// identifiants filmshell d'Halo Infinite.
+//
+// POURQUOI EXPORTÉ. Le rejeu 2D décode des FAMILLES d'arme (les 32 bits hauts du
+// weapon-id) et doit les nommer depuis `weapon_names.toml`, qui est keyé par weapon_key.
+// Ce lien n'existe qu'ici, dans le registre qui seede `weapon_ids` — le recopier
+// ailleurs en ferait une seconde source d'identités d'armes, exactement ce que le
+// registre a supprimé (V72-06 : trois catalogues qui se marchaient dessus).
+//
+// PLUSIEURS IDS PEUVENT PARTAGER UNE FAMILLE (variantes Ranked, skins) : ils résolvent
+// alors vers le même weapon_key, ce qui est la définition même de la famille. Si deux
+// weapon_keys se disputaient une famille, le premier du registre gagne — cas non observé,
+// et le garde-rail `TestFamillesDArmeSansCollision` échoue s'il apparaît.
+func FilmshellWeaponKeysByFamily() map[uint32]string {
+	out := make(map[uint32]string, len(weaponRegistryInfiniteFilmshell))
+	for _, f := range weaponRegistryInfiniteFilmshell {
+		high := uint32(f.id >> 32)
+		if _, seen := out[high]; seen {
+			continue
+		}
+		out[high] = f.key
+	}
+	return out
+}
+
 func seedWeaponFilmshellIDs(db *sql.DB) error {
 	const q = `INSERT OR IGNORE INTO weapon_ids (title_slug, id_kind, id_value, weapon_key) VALUES (?, 'filmshell', ?, ?)`
 	for _, f := range weaponRegistryInfiniteFilmshell {

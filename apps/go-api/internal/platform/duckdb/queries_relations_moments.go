@@ -109,11 +109,11 @@ var Q30RivalTimelineTpl = `
 WITH duel AS (
     SELECT
         kv.match_id,
-        SUM(CASE WHEN kv.killer_xuid = ? THEN kv.kill_count ELSE 0 END) AS kills_on_rival,
-        SUM(CASE WHEN kv.victim_xuid = ? THEN kv.kill_count ELSE 0 END) AS deaths_by_rival
-    FROM killer_victim_pairs kv
-    WHERE ((kv.killer_xuid = ? AND kv.victim_xuid = ?)
-        OR (kv.killer_xuid = ? AND kv.victim_xuid = ?))%s
+        COUNT(*) FILTER (WHERE kv.feed_killer_xuid = ?) AS kills_on_rival,
+        COUNT(*) FILTER (WHERE kv.victim_xuid     = ?) AS deaths_by_rival
+    FROM ` + KillEventsCanonicalTable + ` kv
+    WHERE ((kv.feed_killer_xuid = ? AND kv.victim_xuid = ?)
+        OR (kv.feed_killer_xuid = ? AND kv.victim_xuid = ?))%s
     GROUP BY kv.match_id
 ),
 recent AS (

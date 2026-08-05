@@ -22,17 +22,27 @@ func setupDisciplineShared(t *testing.T) *sql.DB {
 	if err != nil {
 		t.Fatalf("open shared: %v", err)
 	}
-	discExec(t, shared, `CREATE TABLE killer_victim_pairs (
-		match_id VARCHAR, killer_xuid VARCHAR, killer_gamertag VARCHAR,
-		victim_xuid VARCHAR, victim_gamertag VARCHAR, kill_count INTEGER, time_ms BIGINT)`)
+	// BASCULE DU 2026-08-03 : la discipline lit `match_kill_events_latest`, un JOURNAL —
+	// 1 ligne = 1 mort. L'ancienne fixture agrégeait par `kill_count` (xJ→xE valait 3 sur une
+	// seule ligne) ; ici ces 3 frags sont 3 lignes, ce qui est la forme réelle de la table.
+	// Une ligne de BOT (victime sans xuid) est ajoutée à dessein : elle ne doit alimenter NI
+	// les suicides NI les trahisons — les deux requêtes joignent `match_participants`, où les
+	// bots ne figurent pas.
+	discExec(t, shared, `CREATE TABLE match_kill_events_latest (
+		match_id VARCHAR, feed_killer_xuid VARCHAR, feed_killer_gamertag VARCHAR,
+		victim_xuid VARCHAR, victim_gamertag VARCHAR, time_ms BIGINT)`)
 	discExec(t, shared, `CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR, team_id INTEGER)`)
 	discExec(t, shared, `INSERT INTO match_participants VALUES ('m1','xJ',0),('m1','xM',0),('m1','xE',1)`)
-	discExec(t, shared, `INSERT INTO killer_victim_pairs (match_id,killer_xuid,victim_xuid,kill_count) VALUES
-		('m1','xJ','xJ',1),
-		('m1','xJ','xM',1),
-		('m1','xJ','xE',3),
-		('m1','xE','xJ',2),
-		('m1','xM','xM',1)`)
+	discExec(t, shared, `INSERT INTO match_kill_events_latest (match_id,feed_killer_xuid,victim_xuid,time_ms) VALUES
+		('m1','xJ','xJ',1000),
+		('m1','xJ','xM',2000),
+		('m1','xJ','xE',3000),
+		('m1','xJ','xE',4000),
+		('m1','xJ','xE',5000),
+		('m1','xE','xJ',6000),
+		('m1','xE','xJ',7000),
+		('m1','xM','xM',8000),
+		('m1','xJ',NULL,9000)`)
 	return shared
 }
 

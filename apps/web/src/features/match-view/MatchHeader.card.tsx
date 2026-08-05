@@ -20,6 +20,7 @@ import {
 } from '@/lib/narrative/overtime'
 import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
 import { tokenVar } from '@/lib/accessibility'
+import { ReplayLink } from './MatchHeader.replayLink'
 import { useToggleMatchFavorite } from './queries'
 import { useSetMatchExclusion } from '@/features/match-history/queries'
 import {
@@ -127,6 +128,8 @@ export function MatchHeaderCard({
             <TitleAndActionsRow
               header={header}
               matchTitle={matchTitle}
+              matchId={matchId}
+              playerSlug={playerSlug}
               copied={copied}
               excludePending={excludeMutation.isPending}
               excludeBlockedByRanked={excludeBlockedByRanked}
@@ -222,6 +225,8 @@ function MapImageSection({
 interface TitleAndActionsRowProps {
   header: MatchViewHeaderData
   matchTitle: string
+  matchId: string
+  playerSlug: string
   copied: boolean
   excludePending: boolean
   excludeBlockedByRanked: boolean
@@ -233,6 +238,8 @@ interface TitleAndActionsRowProps {
 function TitleAndActionsRow({
   header,
   matchTitle,
+  matchId,
+  playerSlug,
   copied,
   excludePending,
   excludeBlockedByRanked,
@@ -277,6 +284,13 @@ function TitleAndActionsRow({
 
       {/* Boutons d'action haut-droite */}
       <div className="flex shrink-0 items-center gap-1.5">
+        <ReplayLink
+          available={header.replay_available === true}
+          matchId={matchId}
+          playerSlug={playerSlug}
+          locale={locale}
+        />
+
         <Button
           variant="outline"
           size="sm"

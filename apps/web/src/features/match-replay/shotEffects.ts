@@ -1,0 +1,278 @@
+/**
+ * shotEffects.ts — LA FORME D'UN TIR DIT SON ARME.
+ *
+ * CE QUI EST MESURÉ, ET CE QUI EST CHOISI. Ce qui est mesuré, c'est le LIBELLÉ de l'arme : le
+ * film le porte sur chaque événement de tir, et l'artefact le nomme (22 familles nommées sur
+ * 22 pour ce match). Ce qui est choisi, c'est la mise en scène — une famille d'arme se dessine
+ * autrement qu'une autre. Aucune famille n'est déduite d'une observation : une arme hors
+ * catalogue tombe sur le rendu neutre, jamais sur un rendu approchant.
+ *
+ * OÙ VIT LE CLASSEMENT : dans les mappings du titre, publiés par l'artefact
+ * (`weaponLabels[id].fx`). Ce fichier ne connaît plus une seule arme Halo.
+ *
+ * POURQUOI LA FORME ET NON LA TEINTE. Le POC distinguait les familles par sept teintes `hsla`
+ * en dur. Ici la couleur appartient au TIREUR — c'est elle qui permet de suivre un joueur des
+ * yeux — et les couleurs sémantiques passent par des tokens (règle du dépôt). Faire porter la
+ * famille par la teinte obligerait soit à écraser l'identité du tireur, soit à inventer sept
+ * couleurs hors du système. La forme, elle, est libre : une gerbe d'aiguilles ne ressemble à
+ * rien d'autre, et elle reste lisible dans les deux thèmes sans qu'on ait à la décliner.
+ *
+ * ACCESSIBILITÉ : sous « mouvement réduit », les effets ne s'animent pas. La géométrie et
+ * l'opacité restent constantes pendant toute la rémanence — le marqueur reste, il ne bouge
+ * plus. La feuille de style ne peut rien pour un canvas dessiné en JS : la préférence se lit
+ * donc ici.
+ */
+
+/** Familles de rendu. `sobre` n'est pas une famille : c'est l'absence de famille connue. */
+export type ShotFamily =
+  | 'ballistic'
+  | 'plasma'
+  | 'light'
+  | 'shock'
+  | 'explosive'
+  | 'melee'
+  | 'needles'
+  | 'plain'
+
+/**
+ * DRAWN_FAMILIES — les familles que ce fichier sait DESSINER.
+ *
+ * LE CATALOGUE DES ARMES N'EST PLUS ICI (lot 3.2). Il vivait en dur, par nom canonique
+ * d'arme — 22 noms Halo dans du code de rendu, donc un catalogue de jeu recopié côté web,
+ * qui se serait tu le jour où une arme est renommée et qui n'aurait jamais rien su d'un
+ * second titre. Le classement vient désormais du DOCUMENT (`weaponLabels[id].fx`), résolu
+ * hors ligne depuis `config/titles/{slug}/mappings/replay_labels.toml`.
+ *
+ * Ce qui reste ici est ce qui APPARTIENT au rendu : la géométrie de chaque famille, et le
+ * refus de dessiner ce qu'on ne connaît pas.
+ */
+const DRAWN_FAMILIES: Record<string, ShotFamily> = {
+  ballistic: 'ballistic',
+  plasma: 'plasma',
+  light: 'light',
+  shock: 'shock',
+  explosive: 'explosive',
+  melee: 'melee',
+  needles: 'needles',
+}
+
+/**
+ * familyOf valide la famille annoncée par le document.
+ *
+ * SANS FAMILLE, OU HORS DES FORMES CONNUES : `plain`. On ne rapproche pas d'une famille
+ * voisine — un rendu emprunté affirmerait une arme qu'on ignore, exactement comme le ferait
+ * un visuel par défaut. Une famille inconnue du client (document plus récent que l'app)
+ * tombe donc sur le trait neutre, pas sur une forme approchante.
+ */
+export function familyOf(effect: string | undefined): ShotFamily {
+  if (!effect) return 'plain'
+  return DRAWN_FAMILIES[effect] ?? 'plain'
+}
+
+/** Géométrie d'un effet : origine, direction (radians canvas) et longueur en pixels. */
+export interface ShotShape {
+  x: number
+  y: number
+  /** null = la visée n'était pas lisible : on ne dessine aucune direction. */
+  angle: number | null
+  length: number
+  /** 1 = à l'instant du tir, 0 = fin de rémanence. */
+  fade: number
+  /** Sous « mouvement réduit », la forme ne progresse pas avec `fade`. */
+  reduced: boolean
+  /** Départage les formes irrégulières pour que deux tirs voisins ne se superposent pas. */
+  seed: number
+}
+
+/**
+ * drawShotEffect dessine un tir selon sa famille, dans la couleur DÉJÀ RÉSOLUE du tireur.
+ *
+ * La direction n'est tracée que si le film la porte : sans elle, seul l'éclat d'origine est
+ * dessiné. Tracer un trait par défaut ferait croire à une visée connue.
+ */
+export function drawShotEffect(
+  ctx: CanvasRenderingContext2D,
+  family: ShotFamily,
+  shape: ShotShape,
+  color: string,
+): void {
+  ctx.save()
+  ctx.strokeStyle = color
+  ctx.fillStyle = color
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  const advance = shape.reduced ? 0.5 : 1 - shape.fade
+  if (shape.angle === null) {
+    drawOrigin(ctx, shape, shape.fade)
+  } else {
+    const s = { ...shape, angle: shape.angle, advance }
+    switch (family) {
+      case 'ballistic':
+        drawBallistic(ctx, s)
+        break
+      case 'plasma':
+        drawPlasma(ctx, s)
+        break
+      case 'light':
+        drawLight(ctx, s)
+        break
+      case 'shock':
+        drawShock(ctx, s)
+        break
+      case 'explosive':
+        drawExplosive(ctx, s)
+        break
+      case 'melee':
+        drawMelee(ctx, s)
+        break
+      case 'needles':
+        drawNeedles(ctx, s)
+        break
+      default:
+        drawPlain(ctx, s)
+    }
+  }
+  ctx.restore()
+}
+
+/** Forme orientée : la géométrie plus son avancement, une fois la direction connue. */
+interface Oriented extends Omit<ShotShape, 'angle'> {
+  angle: number
+  advance: number
+}
+
+/** drawOrigin — l'éclat d'un tir dont la visée n'est pas lisible. Aucune direction inventée. */
+function drawOrigin(ctx: CanvasRenderingContext2D, shape: ShotShape, fade: number): void {
+  ctx.globalAlpha = 0.85 * fade
+  ctx.beginPath()
+  ctx.arc(shape.x, shape.y, 2.5, 0, Math.PI * 2)
+  ctx.fill()
+}
+
+function endOf(s: Oriented): { x: number; y: number } {
+  return { x: s.x + Math.cos(s.angle) * s.length, y: s.y + Math.sin(s.angle) * s.length }
+}
+
+/** drawBallistic — une poudre : trait net et bref, qui s'éteint sec. */
+function drawBallistic(ctx: CanvasRenderingContext2D, s: Oriented): void {
+  const e = endOf(s)
+  ctx.globalAlpha = 0.9 * s.fade
+  ctx.lineWidth = 1.6
+  ctx.beginPath()
+  ctx.moveTo(s.x, s.y)
+  ctx.lineTo(e.x, e.y)
+  ctx.stroke()
+  drawOrigin(ctx, s, s.fade)
+}
+
+/** drawPlasma — l'énergie ne s'éteint pas comme une poudre : le trait ONDULE et s'épaissit. */
+function drawPlasma(ctx: CanvasRenderingContext2D, s: Oriented): void {
+  const nx = -Math.sin(s.angle)
+  const ny = Math.cos(s.angle)
+  const phase = (s.seed % 13) * 0.48
+  ctx.globalAlpha = 0.85 * s.fade
+  ctx.lineWidth = 2.2
+  ctx.beginPath()
+  const steps = 14
+  for (let i = 0; i <= steps; i++) {
+    const u = i / steps
+    const off = Math.sin(u * 7.5 + phase + s.advance * 2.2) * 3.4 * (1 - u)
+    const px = s.x + Math.cos(s.angle) * s.length * u + nx * off
+    const py = s.y + Math.sin(s.angle) * s.length * u + ny * off
+    if (i === 0) ctx.moveTo(px, py)
+    else ctx.lineTo(px, py)
+  }
+  ctx.stroke()
+}
+
+/** drawLight — un RAI CONTINU : deux traits superposés, large et pâle sous fin et franc. */
+function drawLight(ctx: CanvasRenderingContext2D, s: Oriented): void {
+  const e = endOf(s)
+  ctx.beginPath()
+  ctx.moveTo(s.x, s.y)
+  ctx.lineTo(e.x, e.y)
+  ctx.globalAlpha = 0.28 * s.fade
+  ctx.lineWidth = 5
+  ctx.stroke()
+  ctx.globalAlpha = 0.95 * s.fade
+  ctx.lineWidth = 1.2
+  ctx.stroke()
+}
+
+/** drawShock — un arc BRISÉ : une ligne en zigzag, jamais droite. */
+function drawShock(ctx: CanvasRenderingContext2D, s: Oriented): void {
+  const nx = -Math.sin(s.angle)
+  const ny = Math.cos(s.angle)
+  const segments = 6
+  ctx.globalAlpha = 0.9 * s.fade
+  ctx.lineWidth = 1.4
+  ctx.beginPath()
+  for (let i = 0; i <= segments; i++) {
+    const u = i / segments
+    const amp = i === segments ? 0 : (2 + (s.seed % 5)) * (i % 2 ? 1 : -1)
+    const px = s.x + Math.cos(s.angle) * s.length * u + nx * amp
+    const py = s.y + Math.sin(s.angle) * s.length * u + ny * amp
+    if (i === 0) ctx.moveTo(px, py)
+    else ctx.lineTo(px, py)
+  }
+  ctx.stroke()
+}
+
+/** drawExplosive — DEUX TEMPS : un départ épais et bref, puis une onde qui s'ouvre. */
+function drawExplosive(ctx: CanvasRenderingContext2D, s: Oriented): void {
+  const burst = Math.max(0, (s.fade - 0.7) / 0.3)
+  if (burst > 0) {
+    const e = { x: s.x + Math.cos(s.angle) * 22, y: s.y + Math.sin(s.angle) * 22 }
+    ctx.globalAlpha = 0.9 * burst
+    ctx.lineWidth = 3.4
+    ctx.beginPath()
+    ctx.moveTo(s.x, s.y)
+    ctx.lineTo(e.x, e.y)
+    ctx.stroke()
+  }
+  ctx.globalAlpha = 0.5 * s.fade
+  ctx.lineWidth = 1.4
+  ctx.beginPath()
+  ctx.arc(s.x, s.y, 5 + 24 * s.advance, 0, Math.PI * 2)
+  ctx.stroke()
+}
+
+/** drawMelee — AUCUN éclair de bouche : le geste n'est pas un tir, c'est un arc court. */
+function drawMelee(ctx: CanvasRenderingContext2D, s: Oriented): void {
+  const r = 7 + 13 * s.advance
+  ctx.globalAlpha = 0.9 * s.fade
+  ctx.lineWidth = 2.4
+  ctx.beginPath()
+  ctx.arc(s.x, s.y, r, s.angle - 0.9, s.angle + 0.9)
+  ctx.stroke()
+}
+
+/** drawNeedles — la signature est la GERBE, pas le trait : cinq brins qui s'écartent. */
+function drawNeedles(ctx: CanvasRenderingContext2D, s: Oriented): void {
+  const nx = -Math.sin(s.angle)
+  const ny = Math.cos(s.angle)
+  ctx.globalAlpha = 0.85 * s.fade
+  ctx.lineWidth = 1.1
+  for (let i = 0; i < 5; i++) {
+    const spread = (i - 2) / 2
+    const reach = s.length * (0.6 + 0.1 * i)
+    const ex = s.x + Math.cos(s.angle) * reach + nx * spread * 9
+    const ey = s.y + Math.sin(s.angle) * reach + ny * spread * 9
+    ctx.beginPath()
+    ctx.moveTo(s.x, s.y)
+    ctx.lineTo(ex, ey)
+    ctx.stroke()
+  }
+}
+
+/** drawPlain — arme non cataloguée : un trait sobre, qui n'affirme aucune famille. */
+function drawPlain(ctx: CanvasRenderingContext2D, s: Oriented): void {
+  const e = endOf(s)
+  ctx.globalAlpha = 0.7 * s.fade
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  ctx.moveTo(s.x, s.y)
+  ctx.lineTo(e.x, e.y)
+  ctx.stroke()
+  drawOrigin(ctx, s, s.fade)
+}

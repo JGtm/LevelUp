@@ -1210,17 +1210,7 @@ export interface TeammateKPIs {
 
 export type TeammateRow = components['schemas']['TeammateRow']
 
-export interface TeammatesQueryRequest {
-  selected_gamertags?: string[]
-  filters?: FilterContextInput | null
-  picked_solo_session_labels?: string[]
-  picked_squad_session_labels?: string[]
-  locale?: string
-  /** Option « composition exacte » (défaut false) : n'inclut que les matchs où
-   *  aucun autre coéquipier connu n'était dans l'équipe. Par défaut la
-   *  population est « matchs commencés ensemble » (intersection du roster). */
-  filter_exact_composition?: boolean
-}
+export type TeammatesQueryRequest = components['schemas']['TeammatesQueryRequest']
 
 export type SessionLabelEntry = components['schemas']['SessionLabelEntry']
 
@@ -2484,3 +2474,89 @@ export interface AdminLogEntry {
 }
 
 export type AdminLogTail = components['schemas']['AdminLogTail']
+
+/**
+ * Joueur impliqué dans un événement d'objectif (ex. le scorer d'une capture).
+ * Miroir exact du DTO `objective-events` (clés camelCase).
+ */
+export interface MatchObjectiveEventPlayer {
+  xuid: string
+  role: string
+}
+
+/**
+ * Événement d'objectif filmé (CTF flag capture, etc.).
+ *
+ * Source : `GET /players/{slug}/matches/{matchId}/objective-events`. Miroir
+ * exact du DTO backend (camelCase, champs nullables omis du JSON). Pour CTF :
+ * objectiveType='flag', eventType='capture', value=1, teamId=0|1 (même
+ * numérotation que scoreboard.team_side), players[0].xuid = le scorer.
+ */
+export interface MatchObjectiveEvent {
+  matchId: string
+  seq: number
+  timeMs?: number
+  objectiveType: string
+  eventType: string
+  teamId?: number
+  value?: number
+  source: string
+  confidence: string
+  players: MatchObjectiveEventPlayer[]
+}
+
+/**
+ * Position joueur keyframe v3 décodée du film (match-level — §N).
+ * Miroir exact du DTO `positions` (clés camelCase). x/y/z sont des coordonnées
+ * monde Halo ; team vaut -1 (inconnu) quand le clustering spatial n'a pas pu
+ * l'attribuer, 0/1 sinon (best-effort, pas d'attribution xuid en v1).
+ */
+export interface MatchPlayerPosition {
+  timeMs: number
+  x: number
+  y: number
+  z: number
+  team: number
+}
+
+
+// --- Rejeu 2D (GET /players/{slug}/matches/{matchId}/replay) ---
+//
+// CES TYPES NE SONT PLUS ÉCRITS À LA MAIN. Depuis que l'endpoint est déclaré en Huma, le
+// document de rejeu a un schéma dans `api/openapi.yaml`, donc une définition générée dans
+// `generated.ts`. En garder une seconde copie manuscrite, c'est se donner deux vérités qui
+// divergeront au premier champ ajouté côté Go — exactement ce que le ratchet
+// `tools/lint-contract-ratchet.mjs` interdit.
+//
+// Les alias ci-dessous existent quand même, et ce n'est pas de la cosmétique : les noms du
+// contrat sont génériques (`Track`, `Shot`, `Bounds`…) parce qu'ils vivent dans un espace de
+// noms plat partagé par toute l'API. Le préfixe `Replay` dit de quel document ils sont les
+// pièces, et évite qu'un `Point` du rejeu soit confondu avec un point de série temporelle.
+//
+// Artefact pré-construit hors ligne (`cmd/replay-build`). Positions dans le repère monde
+// PARTAGÉ ; le client auto-ajuste via `bounds` (échelle absolue non garantie).
+// `points[].t` = index de pas de temps ∈ [0, frameCount).
+export type ReplayPoint = components['schemas']['Point']
+export type ReplayTrack = components['schemas']['Track']
+export type ReplayBounds = components['schemas']['Bounds']
+export type ReplayMapObject = components['schemas']['MapObject']
+export type ReplaySurface = components['schemas']['Surface']
+export type ReplayShot = components['schemas']['Shot']
+export type ReplayGrenade = components['schemas']['Grenade']
+export type ReplayProjectile = components['schemas']['Projectile']
+export type ReplayLoadout = components['schemas']['Loadout']
+export type ReplayAmmoSlot = components['schemas']['AmmoSlot']
+export type ReplayInventory = components['schemas']['Inventory']
+export type ReplayLayerCoverage = components['schemas']['LayerCoverage']
+export type ReplayBridgeHealth = components['schemas']['BridgeHealth']
+export type ReplayCoverage = components['schemas']['Coverage']
+export type ReplayDocument = components['schemas']['ReplayDocument']
+
+// La table d'appariement du film : xuid ET index de slot.
+//
+// LES DEUX CHAMPS NE SONT PAS INTERCHANGEABLES : le xuid IDENTIFIE, l'index ORDONNE et n'a de
+// sens qu'à l'intérieur de ce film. Les événements du film désignent leur auteur par index ;
+// c'est cette table qui permet de le traduire en identité sans jamais confondre les deux.
+// `name` est le gamertag TEL QUE LE FILM L'ÉCRIT — ce n'est pas une résolution, rien n'est
+// allé le chercher ailleurs, donc rien ne peut l'avoir mal apparié.
+export type ReplayRosterEntry = components['schemas']['RosterEntry']

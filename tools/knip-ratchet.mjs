@@ -42,7 +42,12 @@ const WEB_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'apps', '
 // files=29, types=86 (2026-06-26) : abaissement au compte courant (relations-hub) pour
 //   verrouiller les gains de code mort déjà réalisés (était files=31, types=88). Le
 //   ratchet signalait « à abaisser » → on fige la ligne. exports inchangé (90, encore au cap).
-const THRESHOLDS = { files: 29, exports: 90, types: 86 }
+// files=0, exports=0, types=0 (2026-08-02) : knip ne trouve PLUS RIEN sur les trois axes —
+//   mesuré cache purgé avant ET après la suppression de src/lib/feature-flags.ts (mort depuis
+//   le 2026-04-21, zéro import). Le compte réel était déjà à zéro : les plafonds 29/90/86
+//   dataient d'un état révolu et laissaient rentrer 115 findings sans rien dire. On fige au
+//   compte réel — toute réapparition de code mort échoue désormais.
+const THRESHOLDS = { files: 0, exports: 0, types: 0 }
 
 function knipJson() {
   try {

@@ -1,6 +1,12 @@
 module levelup/go-api
 
-go 1.26.1
+// 1.26.1 -> 1.26.5 le 2026-08-05 (lot E, point E6). Ce n'est PAS une montée de confort :
+// `ci.yml` installe le toolchain par `go-version-file: apps/go-api/go.mod`, donc la CI
+// compilait avec 1.26.1 — la version dont govulncheck listait 11 CVE de bibliothèque
+// standard, toutes corrigées en 1.26.2. Le Dockerfile, lui, tire `golang:1.26-bookworm`
+// (dernier correctif de la branche) et n'était pas concerné : c'est la CI qui portait
+// l'écart, et c'est elle qui garde le merge.
+go 1.26.5
 
 require (
 	github.com/danielgtaylor/huma/v2 v2.39.1

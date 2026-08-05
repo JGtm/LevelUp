@@ -1,0 +1,73 @@
+# GOLDEN killsource — film fccc61cd
+#
+# Fige la sortie du decodeur de la SOURCE DE DEGAT. Ne PAS editer a la main.
+#
+# REGENERATION (les fixtures ne sont pas versionnees : 107 Mo pour les quatre films) :
+#   1. les films de reference sont des repertoires chunk_NN.bin sous data/cache/film_chunks/ ;
+#      ils se retelechargent avec  go run ./cmd/fetch_film_chunks/
+#   2. KILLSOURCE_FIXTURES=<racine des films> \
+#        go test ./internal/games/halo_infinite/film/killsource/ -run Golden -update
+#
+# CHAQUE CHIFFRE PORTE LE NOM DE SON DENOMINATEUR. Un taux nu ne veut rien dire ici : trois
+# denominateurs coexistent hors ligne et ne donnent pas le meme resultat.
+
+## COUVERTURE — chaque taux porte le nom de son denominateur
+95 / 95 couples REELS (couples reconstruits moins les couples FABRIQUES)
+95 / 95 couples reconstruits par la reconstruction de kill-feed
+95 / 96 morts du KILL-FEED (il ne contient AUCUNE mort de bot)
+0 couple(s) FABRIQUE(S) retire(s) du denominateur : la vraie victime est un bot
+2 mort(s) de BOT decodee(s) — POPULATION NEUVE, jamais au denominateur ci-dessus
+1 mort(s) INFLIGEE(S) PAR un bot — SECONDE POPULATION NEUVE, jamais au denominateur
+   ci-dessus non plus : le feed porte la MORT mais aucun kill en face
+97 kill(s) et 96 mort(s) au kill-feed brut · 72 couple(s) au MEME instant
+
+## ANCRES DE VERITE TERRAIN — 6 confrontation(s) confirmee(s) en mode Theater
+# format : instant  tag  divergence  etiquette publiee  nature  voie de lecture
+03:16  0d203522  divergence=non  "Autres"  OBJET_EXPLOSIF  marche
+02:09  00426796  divergence=non  "Autres"  VEHICULE  marche
+04:53  ffebe84e  divergence=non  "Disruptor / Shock Rifle / Shock Rifle (Ranked)"  ARME  marche
+01:25  acd1cff4  divergence=oui  "M41 SPNKr"  ARME  marche
+03:37  ba5ac78e  divergence=oui  "Ravager"  ARME  scan
+08:38  5e389b5d  divergence=oui  "Autres"  OBJET_EXPLOSIF  marche
+
+## MORTS DONT LA SOURCE APPARTIENT A LA VICTIME — 3 ligne(s)
+# le kill-feed credite un AUTRE joueur : les deux verites sont vraies et divergent
+# format : instant  victime  tag  etiquette  CREDIT DU JEU  voie  origine
+01:25  JGtm  acd1cff4  "M41 SPNKr"  credit=HizaroMne4262  marche  source-victime
+03:37  HizaroMne4262  ba5ac78e  "Ravager"  credit=topgunx10  scan  source-victime
+08:38  LORD83DAN  5e389b5d  "Autres"  credit=JGtm  marche  source-victime
+
+## MORTS INFLIGEES PAR UN BOT — 1 ligne(s)
+# le feed porte la MORT, pas le kill : le tueur vient du roster de replication
+# format : instant  victime  tueur  tag  etiquette  categorie  voie  assistant
+08:49  HizaroMne4262  343 PardonMy [bot]  0ff7b934  "Shock Rifle"  Headshot  marche  assistant=AUCUN (mesure)
+
+## CONTROLE NEGATIF — le scan n invente pas de morts
+# population ou la cible est ABSENTE par construction : les morts sont toutes
+# dans les paquets A EVENTS, donc tout candidat trouve ici est un faux positif.
+29889 paquet(s) SANS evenement · 49651416 bits balayes · 0 candidat(s) accepte(s)
+
+## COUT PAR VOIE DE LECTURE — ventilation, PAS deux precisions comparables
+marche   : 86 propose(s), 85 apparie(s) au couple exact, 85 publiee(s)
+scan     : 8 propose(s), 7 apparie(s) au couple exact, 7 publiee(s)
+marche, source appartenant a la victime : 2 propose(s), 2 publiee(s)
+scan,   source appartenant a la victime : 18 propose(s), 1 publiee(s)
+morts de BOT : 25 propose(s), 2 publiee(s)
+morts infligees PAR un bot : 1 propose(s), 1 apparie(s), 1 publiee(s)
+91 enregistrement(s) lu(s) par LES DEUX voies · ACCORD 85 · DESACCORD 0
+DESACCORD doit valoir 0 : sinon l hybride n est plus une PREFERENCE mais un ARBITRAGE
+0 mort(s) a plusieurs candidats en concurrence · 0 enregistrement(s) sans position
+4686 / 4839 paquet(s) a evenements localise(s)
+calibration resolue automatiquement : axisW=16 indexW=2 [score 1114, mediane 317] | recordStateParam=4 [croissance x1.189]
+
+## SANTE — un verdict porte sur le DOMAINE, pas sur les etiquettes publiees
+verdict : NOMINAL
+118 candidat(s) consulte(s) · 98 publie(s) · 20 inexplique(s) sur les candidats
+ventilation : couple sans equivalent 2 · source-victime non retenue 17 · indice de bot 1
+hors roster : 0 — COMPTEUR SEPARE, il ne se compte pas sur les candidats et n entre
+   donc PAS dans le taux d inexpliques (un numerateur qui deborde son denominateur
+   ne veut rien dire)
+tags hors catalogue vus par la MARCHE : 0 — compteur principal de table perimee
+   PORTEE : bruit MESURE nul sur 5 films, et AVEUGLE a un tag servi par le seul SCAN
+publication ligne par ligne : AUTORISEE (marge de bijection 22)
+roster : 9 nom(s) dont 8 humain(s) · bots declares : 343 PardonMy (slot 8, bid 7)

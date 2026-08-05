@@ -1944,6 +1944,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/matches/{match_id}/objective-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Timeline objectif mode-agnostique d'un match */
+        get: operations["getMatchObjectiveEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/matches/{match_id}/positions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Positions joueurs aux images-clés d'un match */
+        get: operations["getMatchPositions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/matches/{match_id}/replay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Rejeu 2D pré-construit d'un match */
+        get: operations["getMatchReplay"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/media": {
         parameters: {
             query?: never;
@@ -4120,6 +4171,14 @@ export interface components {
             kills: number;
             weapon_id: string;
         };
+        AmmoSlot: {
+            /** Format: float */
+            gauge?: number;
+            /** Format: int32 */
+            mag?: number;
+            /** Format: int32 */
+            res?: number;
+        };
         ApiError: {
             /**
              * @description Code d'erreur stable (snake_case)
@@ -4339,6 +4398,36 @@ export interface components {
             setup_required: boolean;
             /** @enum {string} */
             setup_state: "no_halo_link" | "halo_linked_no_profile" | "profile_ready_no_sync" | "ready";
+        };
+        Bounds: {
+            /** Format: float */
+            maxX: number;
+            /** Format: float */
+            maxY: number;
+            /** Format: float */
+            maxZ?: number;
+            /** Format: float */
+            minX: number;
+            /** Format: float */
+            minY: number;
+            /** Format: float */
+            minZ?: number;
+        };
+        BridgeHealth: {
+            /** Format: int64 */
+            fromReading: number;
+            /** Format: int64 */
+            indexDisagreements: number;
+            /** Format: int64 */
+            indexReadings: number;
+            /** Format: int64 */
+            livesNamed: number;
+            /** Format: int64 */
+            livesTotal: number;
+            /** Format: int64 */
+            slotCollisions: number;
+            /** Format: int64 */
+            slots: number;
         };
         BucketInfo: {
             label: string;
@@ -4951,6 +5040,15 @@ export interface components {
             x_value: number;
             /** Format: double */
             y_value: number;
+        };
+        Coverage: {
+            bridge: components["schemas"]["BridgeHealth"];
+            grenades: components["schemas"]["LayerCoverage"];
+            objectives: components["schemas"]["LayerCoverage"];
+            shots: components["schemas"]["LayerCoverage"];
+            verdict?: {
+                [key: string]: string;
+            };
         };
         CreatePlayerProfileResponse: {
             db_created: boolean;
@@ -5829,6 +5927,21 @@ export interface components {
             /** Format: int64 */
             stale_count: number;
         };
+        Grenade: {
+            /** Format: int64 */
+            i: number;
+            /** Format: int64 */
+            rank: number;
+            s: string;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t: number;
+            /** Format: float */
+            x: number;
+            /** Format: float */
+            y: number;
+        };
         Group: {
             created_at: string;
             id: string;
@@ -6039,6 +6152,20 @@ export interface components {
             sample: string[] | null;
             severity: string;
         };
+        Inventory: {
+            /** Format: int64 */
+            a?: number;
+            am?: components["schemas"]["AmmoSlot"][] | null;
+            /** Format: int64 */
+            cand?: number;
+            /** Format: int64 */
+            d?: number;
+            g?: number[] | null;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t: number;
+        };
         InviteCode: {
             code: string;
             created_at: string;
@@ -6197,6 +6324,10 @@ export interface components {
             has_data: boolean;
             points: components["schemas"]["LUSRPoint"][] | null;
         };
+        Label: {
+            en: string;
+            fr: string;
+        };
         LabelValue: {
             /** Format: int64 */
             count: number;
@@ -6208,6 +6339,20 @@ export interface components {
             timestamp: string;
             title_id?: string;
             title_name: string;
+        };
+        LayerCoverage: {
+            /** Format: int64 */
+            ambiguous: number;
+            /** Format: int64 */
+            attached: number;
+            /** Format: int64 */
+            available: number;
+            /** Format: int64 */
+            noSlot: number;
+            /** Format: int64 */
+            outOfWindow: number;
+            /** Format: int64 */
+            unpublished: number;
         };
         LeaderboardCatalog: {
             playlists: components["schemas"]["LeaderboardCatalogRef"][] | null;
@@ -6324,6 +6469,13 @@ export interface components {
             /** Format: int64 */
             next_cursor?: number;
         };
+        Loadout: {
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t: number;
+            w: string[] | null;
+        };
         LoginResponse: {
             gamertag?: string;
             role: string;
@@ -6366,6 +6518,22 @@ export interface components {
             performance_avg?: number;
             /** Format: double */
             win_rate: number;
+        };
+        MapObject: {
+            /** Format: float */
+            dx?: number;
+            /** Format: float */
+            dy?: number;
+            /** Format: int64 */
+            typeId: number;
+            /** Format: float */
+            x: number;
+            /** Format: float */
+            y: number;
+            /** Format: float */
+            yaw?: number;
+            /** Format: float */
+            z?: number;
         };
         MarkResult: {
             /** Format: int64 */
@@ -6789,6 +6957,18 @@ export interface components {
             /** Format: int64 */
             score?: number;
         };
+        MatchPositionDTO: {
+            /** Format: int64 */
+            team: number;
+            /** Format: int64 */
+            timeMs: number;
+            /** Format: float */
+            x: number;
+            /** Format: float */
+            y: number;
+            /** Format: float */
+            z: number;
+        };
         MatchPrivacyInfo: {
             hint: string;
             is_partial: boolean;
@@ -7098,6 +7278,7 @@ export interface components {
             /** Format: int64 */
             playable_duration_seconds?: number;
             playlist_label: string;
+            replay_available: boolean;
             score_label?: string;
             /** Format: date-time */
             start_time?: string;
@@ -7624,6 +7805,14 @@ export interface components {
             target_search?: unknown;
             title_key: string;
         };
+        ObjectiveAction: {
+            stat: string;
+            /** Format: int64 */
+            t: number;
+            /** Format: int64 */
+            timeMs: number;
+            xuid: string;
+        };
         /** @description Cumul (SUM) des stats objectifs (CTF/Zones/Oddball) d'un joueur sur un ensemble de matchs. Champs zéro omis. */
         ObjectiveAggregate: {
             /** Format: int64 */
@@ -7644,6 +7833,26 @@ export interface components {
             zone_seconds?: number;
             /** Format: int64 */
             zone_secures?: number;
+        };
+        ObjectiveEventDTO: {
+            confidence: string;
+            eventType: string;
+            matchId: string;
+            objectiveType: string;
+            players: components["schemas"]["ObjectiveEventPlayerDTO"][] | null;
+            /** Format: int64 */
+            seq: number;
+            source: string;
+            /** Format: int64 */
+            teamId?: number;
+            /** Format: int64 */
+            timeMs?: number;
+            /** Format: int64 */
+            value?: number;
+        };
+        ObjectiveEventPlayerDTO: {
+            role: string;
+            xuid: string;
         };
         ObjectivePoint: {
             /** Format: int64 */
@@ -8034,6 +8243,22 @@ export interface components {
             figure: Record<string, never>;
             revision_key?: string | null;
         };
+        Point: {
+            /** Format: float */
+            h?: number;
+            /** Format: float */
+            hp?: number;
+            /** Format: float */
+            sh?: number;
+            /** Format: int64 */
+            t: number;
+            /** Format: float */
+            x: number;
+            /** Format: float */
+            y: number;
+            /** Format: float */
+            z?: number;
+        };
         PostSyncResult: {
             achievements_synced: boolean;
             career_synced: boolean;
@@ -8127,6 +8352,12 @@ export interface components {
             /** Format: double */
             leverage_value: number;
             narrative_axes: string[] | null;
+        };
+        Projectile: {
+            p: (number[] | null)[] | null;
+            rest?: boolean;
+            /** Format: int64 */
+            t0: number;
         };
         ProposalDTO: {
             /** Format: date-time */
@@ -8338,6 +8569,39 @@ export interface components {
             overview: components["schemas"]["RelationsOverview"];
             relations: components["schemas"]["RelationInsight"][] | null;
         };
+        ReplayDocument: {
+            abilityLabels?: {
+                [key: string]: components["schemas"]["Label"];
+            };
+            bounds: components["schemas"]["Bounds"];
+            coverage?: components["schemas"]["Coverage"];
+            /** Format: int64 */
+            durationMs?: number;
+            /** Format: int64 */
+            frameCount: number;
+            /** Format: int64 */
+            frameIntervalMs?: number;
+            geometry?: components["schemas"]["MapObject"][] | null;
+            geometryBounds?: components["schemas"]["Bounds"];
+            grenadeLabels?: components["schemas"]["Label"][] | null;
+            grenades?: components["schemas"]["Grenade"][] | null;
+            inventory?: components["schemas"]["Inventory"][] | null;
+            loadouts?: components["schemas"]["Loadout"][] | null;
+            matchId: string;
+            objectives?: components["schemas"]["ObjectiveAction"][] | null;
+            projectiles?: components["schemas"]["Projectile"][] | null;
+            roster?: components["schemas"]["RosterEntry"][] | null;
+            /** Format: int64 */
+            schemaVersion: number;
+            shots?: components["schemas"]["Shot"][] | null;
+            structure?: components["schemas"]["Surface"][] | null;
+            structureBounds?: components["schemas"]["Bounds"];
+            titleSlug: string;
+            tracks: components["schemas"]["Track"][] | null;
+            weaponLabels?: {
+                [key: string]: components["schemas"]["WeaponLabel"];
+            };
+        };
         ResolveResult: {
             action: string;
             langs?: string[] | null;
@@ -8371,6 +8635,12 @@ export interface components {
             num_gc: number;
             /** Format: int64 */
             sys_bytes: number;
+        };
+        RosterEntry: {
+            /** Format: int64 */
+            filmIndex: number;
+            name?: string;
+            xuid: string;
         };
         RunOnceResult: {
             /** Format: int64 */
@@ -8852,6 +9122,19 @@ export interface components {
             user_timezone: string;
             watcher_presence_enabled?: boolean;
             watcher_subscribed_players?: string[];
+        };
+        Shot: {
+            /** Format: float */
+            h?: number;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t: number;
+            w?: string;
+            /** Format: float */
+            x: number;
+            /** Format: float */
+            y: number;
         };
         SkillRatingSnapshot: {
             /** Format: double */
@@ -9402,6 +9685,21 @@ export interface components {
             target_tier: string;
             template_id: string;
         };
+        Surface: {
+            poly?: (number[] | null)[] | null;
+            /** Format: float */
+            x0: number;
+            /** Format: float */
+            x1: number;
+            /** Format: float */
+            y0: number;
+            /** Format: float */
+            y1: number;
+            /** Format: float */
+            z: number;
+            /** Format: float */
+            zb: number;
+        };
         SynthesisBreakdowns: {
             top_maps: components["schemas"]["SynthesisMapEntry"][] | null;
             top_modes: components["schemas"]["SynthesisModeEntry"][] | null;
@@ -9718,7 +10016,30 @@ export interface components {
              * @default false
              */
             filter_exact_composition: boolean;
-            filters?: components["schemas"]["FilterContextInput"];
+            /** @description Contexte de filtre envoyé par le client — tous les champs optionnels. */
+            filters?: {
+                cascade?: {
+                    experience_types?: string[];
+                    maps?: string[];
+                    modes?: string[];
+                    playlists?: string[];
+                };
+                /** @enum {string} */
+                filter_mode?: "period" | "sessions";
+                /** @enum {string} */
+                match_context?: "solo" | "squad" | "all";
+                period?: {
+                    end_date?: string | null;
+                    start_date?: string | null;
+                };
+                sessions?: {
+                    gap_minutes?: number;
+                    picked_session_label?: string | null;
+                    picked_sessions?: string[];
+                    picked_solo_session_label?: string | null;
+                    picked_squad_session_label?: string | null;
+                };
+            };
             locale?: string;
             picked_solo_session_labels?: string[];
             picked_squad_session_labels?: string[];
@@ -10022,6 +10343,19 @@ export interface components {
             /** Format: int64 */
             wins: number;
         };
+        Track: {
+            /** Format: int64 */
+            endFrame?: number;
+            name?: string;
+            points: components["schemas"]["Point"][] | null;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            startFrame?: number;
+            /** Format: int64 */
+            team: number;
+            xuid?: string;
+        };
         UnreadCount: {
             /** Format: int64 */
             badge_count: number;
@@ -10083,6 +10417,11 @@ export interface components {
             label_fr: string;
             /** Format: int64 */
             weapon_id: number;
+        };
+        WeaponLabel: {
+            en: string;
+            fr: string;
+            fx?: string;
         };
         WinLossPoint: {
             /** Format: int64 */
@@ -14216,6 +14555,102 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MatchNeighbors"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getMatchObjectiveEvents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+                match_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObjectiveEventDTO"][] | null;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getMatchPositions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+                match_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchPositionDTO"][] | null;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getMatchReplay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+                match_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplayDocument"];
                 };
             };
             /** @description Error */
