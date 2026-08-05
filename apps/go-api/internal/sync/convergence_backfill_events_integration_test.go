@@ -16,7 +16,9 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/observability"
 )
 
 // mockHLChunkFetcher implémente highlightChunkFetcher avec des réponses canned.
@@ -181,17 +183,24 @@ func TestEventsConvergence_NoFilm_DefinitiveVsRetry(t *testing.T) {
 }
 
 // TestEventsConvergence_FetchError_Skipped : une erreur réseau laisse le match
-// events_loaded=FALSE (repris la passe suivante), comptée en Skipped.
+// events_loaded=FALSE (repris la passe suivante), comptée en Skipped — ET COMPTÉE
+// AU COMPTEUR. Le `Skipped++` seul est muet : il confond « fetch échoué » avec
+// « convergé par un sync parallèle », et une erreur qui se répète à chaque passe
+// boucle sans signal. Le compteur est ce qui distingue les deux.
 func TestEventsConvergence_FetchError_Skipped(t *testing.T) {
 	pdb, sdb := openEventsBackfillDBs(t)
 	xuid := "2533274823110022"
 	seedEventsBackfillMatch(t, sdb, "m_err", xuid, time.Now().UTC().Add(-10*24*time.Hour))
 
+	ctx := t.Context()
+	const counter = "convergence_events_fetch_failed_total"
+	before := observability.LoadCounterT(ctxkeys.TitleSlug(ctx), counter)
+
 	fetcher := &mockHLChunkFetcher{resp: map[string]hlChunkResp{
 		"m_err": {err: context.DeadlineExceeded},
 	}}
 	cfg := newEventsBackfillCfg(pdb, sdb, fetcher, xuid)
-	res, err := RunEventsConvergenceBackfill(t.Context(), cfg)
+	res, err := RunEventsConvergenceBackfill(ctx, cfg)
 	if err != nil {
 		t.Fatalf("RunEventsConvergenceBackfill: %v", err)
 	}
@@ -200,6 +209,9 @@ func TestEventsConvergence_FetchError_Skipped(t *testing.T) {
 	}
 	if readEventsLoadedFlag(t, sdb, "m_err") {
 		t.Error("m_err: events_loaded devrait rester FALSE après erreur réseau")
+	}
+	if got := observability.LoadCounterT(ctxkeys.TitleSlug(ctx), counter) - before; got != 1 {
+		t.Errorf("%s: want +1, got +%d — l'erreur de fetch est avalée en silence", counter, got)
 	}
 }
 
