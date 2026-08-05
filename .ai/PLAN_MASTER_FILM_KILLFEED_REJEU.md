@@ -1818,7 +1818,7 @@ Le merge donne le même arbre pour une seule résolution par fichier.
 `games/weapons` ; `readBitsBE` supprimée comme code mort par J3-2 alors que `statborg.go`,
 écrit sur une base antérieure, lui donne un appelant (rétablie, en-tête de `film.go` corrigé).
 
-### GATE DES ARTEFACTS DE REJEU — `[!]` NON PASSÉ, ARBITRAGE SUPERVISEUR REQUIS
+### GATE DES ARTEFACTS DE REJEU — l'état du 2026-08-05 matin (RÉSOLU le soir, voir plus bas)
 
 Deux raisons distinctes, et la seconde compte plus que la première.
 
@@ -1843,6 +1843,39 @@ Deux raisons distinctes, et la seconde compte plus que la première.
    — mais elle demande de régénérer, donc la baseline du 03/08 doit d'abord être rapatriée pour
    qu'on puisse vérifier que RIEN D'AUTRE n'a bougé. Tant que ce contrôle n'est pas fait, on ne
    sait pas si l'intégration a laissé le reste du document intact.
+
+### GATE DES ARTEFACTS — `[x]` PASSÉ le 2026-08-05 (protocole superviseur, 4 étapes)
+
+La baseline du 03/08 est irrécupérable sur ce poste. Le protocole l'a remplacée par une preuve
+plus forte : **régénérer AU COMMIT PRÉ-INTÉGRATION** et vérifier que les 3 artefacts en place
+en sont bien la sortie. La question « qu'est-ce que l'intégration a changé ? » se répond alors
+sans baseline importée.
+
+| # | ce qui a été fait | résultat |
+|---|---|---|
+| a | SHA256 des 3 JSON en place, comparés aux empreintes consignées ci-dessus | **conformes** — `d028dff5…871e1` · `3a24ca13…12d683` · `bf3f2182…892275`, mtime 2026-08-04 09:56 inchangée |
+| b | régénération **au commit `d2915c8d8`** (pré-intégration) : worktree détaché temporaire, fixtures en chemin absolu (`LevelUp/data/cache/film_chunks`), sortie dans le `data/` de ce worktree neuf | **BIT-IDENTIQUES aux 3 en place**, les trois. Le déterminisme du 03/08 tient, et les 3 JSON locaux SONT la sortie pré-intégration : rien d'autre ne les a touchés |
+| c | régénération **à HEAD** (2e répertoire neuf), puis diff STRUCTUREL clé à clé contre (b) | **2 clés de plus, par film, et rien d'autre** sur ~6,4 Mo de JSON |
+| d | `data/cache/replays/halo_infinite/baseline_2026-08-05/` posée : les 3 artefacts de (c) + `SHA256SUMS.txt` aux hachés COMPLETS, re-vérifiés par `sha256sum -c` | `4871e371…eda8a` · `42784a18…3e3e26` · `ad21769c…372161`. Les 3 JSON en place n'ont **pas** été écrasés ; rien n'a été écrit sur la clé USB |
+
+**Les 2 clés neuves, et pourquoi elles sont la MÊME construction** : `coverage.objectives`
+(la `LayerCoverage` du calque, tout à zéro) et `coverage.verdict.objectives` (`"aucune
+donnée"`, parce que `Available == 0`). Les deux sortent du même `buildCoverage`
+(`coverage.go`) : ajouter le calque d'objectifs à `Coverage` ajoute sa couverture ET son
+entrée de verdict, la carte des verdicts portant une entrée par calque.
+
+**Écart avec la lettre du protocole, tranché sur pièces.** Le protocole annonçait les clés
+« document + coverage ». La mesure en donne deux aussi, mais pas les mêmes : **il n'y a AUCUNE
+clé `objectives` au niveau du document** — cohérent avec « le décodage d'objectifs n'a aucun
+producteur » (décision #5, le rendu n'est pas branché), donc le champ reste vide et
+`omitempty` l'efface. La seconde clé est `coverage.verdict.objectives`. C'est un écart
+FAVORABLE (moins de changement que prévu) et de même cause ; il est consigné plutôt que traité
+en STOP. À rouvrir en une ligne si le superviseur en juge autrement.
+
+**Aucune valeur mesurée n'a bougé** : les 7 grandeurs du §5 de
+`V7.5/PLAN_RECONCILIATION_BRANCHES.md` sont identiques à (b) comme à HEAD — `000d5950`
+99/29 221 · 475/519 · 70/70 · 439 projectiles · 10 223 emprises ; `01e1f945` 1 862/2 154 ;
+`64e8adfa` 2 312/2 879.
 
 ### Décisions utilisateur (2026-08-02)
 
