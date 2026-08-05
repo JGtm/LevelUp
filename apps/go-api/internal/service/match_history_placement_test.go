@@ -34,7 +34,7 @@ func TestApplyCSRPlacements_threshold5(t *testing.T) {
 	rows := []domain.MatchHistoryRawRow{
 		{MatchID: "m1", SkillRatingType: strPtr("CSR"), SkillTierLabel: strPtr("Placement (4 restants)"), SeasonID: strPtr("CsrSeason13-1")},
 		{MatchID: "m2", SkillRatingType: strPtr("CSR"), SkillTierLabel: strPtr("Diamant IV"), SeasonID: strPtr("CsrSeason13-1")}, // tier officiel → pas placement
-		{MatchID: "m3", SkillRatingType: strPtr("LUSR"), SkillTierLabel: strPtr("Placement (3 restants)")},                       // LUSR → pas concerné par applyCSRPlacements
+		{MatchID: "m3", SkillRatingType: strPtr(skillRatingTypeLUSR), SkillTierLabel: strPtr("Placement (3 restants)")},          // LUSR → pas concerné par applyCSRPlacements
 		{MatchID: "m4"}, // pas de rating → ignore
 	}
 	csrResolver := func(_ context.Context, _ string) int { return 5 }
@@ -161,7 +161,7 @@ func TestApplyMatchPlacements_nilCsrResolver(t *testing.T) {
 func TestApplyLUSRPlacements_skipMatchesWithLUSRorCSR(t *testing.T) {
 	ts := time.Now()
 	rows := []domain.MatchHistoryRawRow{
-		{MatchID: "m1", StartTime: &ts, PairName: strPtr("Arena:Slayer"), SkillRatingType: strPtr("LUSR")},
+		{MatchID: "m1", StartTime: &ts, PairName: strPtr("Arena:Slayer"), SkillRatingType: strPtr(skillRatingTypeLUSR)},
 		{MatchID: "m2", StartTime: &ts, PairName: strPtr("Arena:Slayer"), SkillRatingType: strPtr("CSR")},
 		{MatchID: "m3", StartTime: &ts, PairName: strPtr("Arena:Slayer")}, // sans rating, chaîne déjà calibrée par m1
 	}
@@ -249,7 +249,7 @@ func TestApplyLUSRPlacements_chaineCalibree_dnfSansSignal(t *testing.T) {
 	rows := []domain.MatchHistoryRawRow{
 		// Match le plus ancien de la chaîne : déjà classé (LUSR établi).
 		{MatchID: "established", StartTime: tPtr(base), PairName: strPtr("Fiesta:Slayer on Bazaar"),
-			SkillRatingType: strPtr("LUSR"), SkillTierLabel: strPtr("Or III")},
+			SkillRatingType: strPtr(skillRatingTypeLUSR), SkillTierLabel: strPtr("Or III")},
 	}
 	// 3 DNF récents dans la MÊME chaîne, sans LUSR (n'en auront jamais).
 	for i := 1; i <= 3; i++ {
@@ -327,7 +327,7 @@ func TestApplyLUSRPlacements_idempotent(t *testing.T) {
 	base := time.Date(2026, 8, 1, 9, 0, 0, 0, time.UTC)
 	rows := []domain.MatchHistoryRawRow{
 		{MatchID: "established", StartTime: tPtr(base), PairName: strPtr("Fiesta:Slayer on Bazaar"),
-			SkillRatingType: strPtr("LUSR"), SkillTierLabel: strPtr("Or III")},
+			SkillRatingType: strPtr(skillRatingTypeLUSR), SkillTierLabel: strPtr("Or III")},
 	}
 	for i := 1; i <= 3; i++ {
 		rows = append(rows, domain.MatchHistoryRawRow{
@@ -381,7 +381,7 @@ func btbRow(id string, at time.Time, perf *float64, lusr bool) domain.MatchHisto
 		PerformanceScore: perf,
 	}
 	if lusr {
-		r.SkillRatingType = strPtr("LUSR")
+		r.SkillRatingType = strPtr(skillRatingTypeLUSR)
 		r.SkillTierLabel = strPtr("Or II")
 	}
 	return r

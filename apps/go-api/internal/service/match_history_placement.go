@@ -30,6 +30,14 @@ import (
 	"levelup/go-api/internal/sync"
 )
 
+// Valeurs de domain.MatchHistoryRawRow.SkillRatingType (colonne rating_type de
+// match_skill_rank_latest). Constantes de package (goconst) — distinctes des
+// canonical.RatingType* qui sont en minuscules côté types inter-titres.
+const (
+	skillRatingTypeCSR  = "CSR"
+	skillRatingTypeLUSR = "LUSR"
+)
+
 // CSRThresholdResolver lookup season_id → threshold de placement CSR (5 ou 10).
 // Implémenté par *duckdb.CSRThresholdsRepo. Callback plutôt qu'interface pour
 // éviter de remonter un port pour une seule méthode triviale.
@@ -180,7 +188,7 @@ func applyCSRPlacements(
 	count := 0
 	for i := range rows {
 		r := &rows[i]
-		if r.SkillRatingType == nil || *r.SkillRatingType != "CSR" {
+		if r.SkillRatingType == nil || *r.SkillRatingType != skillRatingTypeCSR {
 			continue
 		}
 		if r.SkillTierLabel == nil {
@@ -306,12 +314,12 @@ func applyLUSRPlacements(rows []domain.MatchHistoryRawRow) int {
 			// Ranked (→ CSR) ou Firefight (→ PvE) : exclus du LUSR par construction.
 			continue
 		}
-		isCSR := r.SkillRatingType != nil && *r.SkillRatingType == "CSR"
+		isCSR := r.SkillRatingType != nil && *r.SkillRatingType == skillRatingTypeCSR
 		inputs = append(inputs, lusrPlacementInput{
 			matchID: r.MatchID,
 			when:    r.StartTime.UnixNano(),
 			chain:   chain,
-			hasLUSR: r.SkillRatingType != nil && *r.SkillRatingType == "LUSR",
+			hasLUSR: r.SkillRatingType != nil && *r.SkillRatingType == skillRatingTypeLUSR,
 			eligible: !isCSR &&
 				r.Outcome != domain.OutcomeDNF &&
 				!r.IsExcluded,
