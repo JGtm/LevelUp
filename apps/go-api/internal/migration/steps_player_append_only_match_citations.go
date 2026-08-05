@@ -61,10 +61,10 @@ func applyAppendOnlyMatchCitations(db *sql.DB) error {
 		Table:         "match_citations",
 		IDSeq:         "match_citations_id_seq",
 		ExtraSeqs:     []string{"match_citations_generation_seq"},
-		SyntheticCols: "0::BIGINT AS generation_id, CURRENT_TIMESTAMP AS written_at",
+		SyntheticCols: "0::BIGINT AS generation_id, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP) AS written_at",
 		MarkerColumn:  "generation_id",
 		PostSwap: []string{
-			`ALTER TABLE match_citations ALTER COLUMN written_at SET DEFAULT now()`,
+			`ALTER TABLE match_citations ALTER COLUMN written_at SET DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)`,
 			`CREATE INDEX IF NOT EXISTS idx_mc_match_gen ON match_citations(match_id, generation_id)`,
 		},
 		ViewSQL: mcLatestViewSQL,

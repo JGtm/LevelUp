@@ -62,7 +62,7 @@ func newNotifSocialDB(t *testing.T) *duckdb.DB {
 			actor_xuid VARCHAR, actor_name VARCHAR, source VARCHAR NOT NULL,
 			created_at TIMESTAMP NOT NULL, read_at TIMESTAMP,
 			is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
-			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			written_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
 		CREATE OR REPLACE VIEW player_notifications_latest AS
 			SELECT xuid, id, category, severity, title_key, body_key, params,

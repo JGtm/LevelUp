@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS player_match_enrichment (
     engagement_pace_lobby       DOUBLE,
     engagement_player_activity  INTEGER,
     stage                       VARCHAR   DEFAULT 'legacy',
-    written_at                  TIMESTAMP NOT NULL DEFAULT now(),
+    written_at                  TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
     created_at                  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at                  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -104,7 +104,7 @@ CREATE TABLE IF NOT EXISTS match_skill_rank (
     playlist_group    VARCHAR,
     expected_win_prob FLOAT,
     start_time        TIMESTAMP,
-    written_at        TIMESTAMP NOT NULL DEFAULT now(),
+    written_at        TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
     created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -268,7 +268,7 @@ CREATE TABLE IF NOT EXISTS match_csrs (
     rating_delta                 FLOAT,
     measurement_matches_remaining INTEGER DEFAULT 0,
     season_id                    VARCHAR,
-    written_at                   TIMESTAMP NOT NULL DEFAULT now(),
+    written_at                   TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
     created_at                   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at                   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

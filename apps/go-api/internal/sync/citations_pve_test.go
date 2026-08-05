@@ -47,7 +47,7 @@ CREATE TABLE pve_match_stats (
     marine_kills      INTEGER DEFAULT 0,
     pve_bits          BIGINT DEFAULT 0,
     created_at        TIMESTAMP DEFAULT now(),
-    written_at        TIMESTAMP DEFAULT now()
+    written_at        TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 );
 CREATE OR REPLACE VIEW pve_match_stats_latest AS
     SELECT * FROM pve_match_stats

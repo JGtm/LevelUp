@@ -265,7 +265,7 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 			-- Colonnes append-only (ADR 0026, miroir schema.go) : Q26g
 			-- (Q26gPlaylistPhaseAMSRTpl) lit match_skill_rank BRUTE — lecture
 			-- allowlistée B8 — et ordonne par written_at DESC, id DESC.
-			id BIGINT, written_at TIMESTAMP DEFAULT now())`,
+			id BIGINT, written_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`,
 		// Vue latest (miroir de schema.go) : player_matches_repo.go la requête.
 		`CREATE OR REPLACE VIEW match_skill_rank_latest AS SELECT * FROM match_skill_rank`,
 		// match_csrs (shared, append-only) : CSR par match/participant — source
@@ -277,7 +277,7 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 			rating_type VARCHAR DEFAULT 'CSR', rating_value FLOAT,
 			tier VARCHAR, sub_tier SMALLINT, tier_label VARCHAR, rating_delta FLOAT,
 			measurement_matches_remaining INTEGER DEFAULT 0, season_id VARCHAR,
-			written_at TIMESTAMP DEFAULT now())`,
+			written_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`,
 		`CREATE VIEW match_csrs AS SELECT * FROM shared.match_csrs`,
 		// Vue latest (miroir de steps_appendonly_misc.go / sync.schema.go) :
 		// player_matches_loaders.go (loadMatchCSRMetaForMatches) et Q30 lisent
@@ -310,7 +310,7 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 			kills_as_vip INTEGER, vip_kills INTEGER, vip_assists INTEGER,
 			times_selected_as_vip INTEGER, max_killing_spree_as_vip INTEGER,
 			time_as_vip_seconds DOUBLE, longest_time_as_vip_seconds DOUBLE,
-			written_at TIMESTAMP DEFAULT now())`,
+			written_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`,
 		migration.MatchObjectiveStatsLatestViewSQL("shared.match_objective_stats"),
 		// Schéma append-only (Phase 2.G refactor ART) + vue latest
 		`CREATE SEQUENCE pcs_seq START 1`,
@@ -323,7 +323,7 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 			season_value FLOAT, season_tier VARCHAR, season_sub_tier SMALLINT,
 			alltime_value FLOAT, alltime_tier VARCHAR, alltime_sub_tier SMALLINT,
 			fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			written_at TIMESTAMP NOT NULL DEFAULT now())`,
+			written_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`,
 		`CREATE OR REPLACE VIEW player_csr_snapshots_latest AS
 			SELECT * FROM player_csr_snapshots
 			QUALIFY ROW_NUMBER() OVER (PARTITION BY playlist_id, season_id ORDER BY written_at DESC, id DESC) = 1`,
@@ -334,7 +334,7 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 		`CREATE SEQUENCE IF NOT EXISTS match_citations_generation_seq START 1`,
 		`CREATE TABLE match_citations (
 			match_id VARCHAR, citation_name_norm VARCHAR, value INTEGER,
-			generation_id BIGINT NOT NULL DEFAULT 0, written_at TIMESTAMP DEFAULT now())`,
+			generation_id BIGINT NOT NULL DEFAULT 0, written_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`,
 		`CREATE OR REPLACE VIEW match_citations_latest AS
 			SELECT * EXCLUDE (rk) FROM (
 				SELECT *, DENSE_RANK() OVER (PARTITION BY match_id ORDER BY generation_id DESC) AS rk
@@ -475,7 +475,7 @@ func seedSharedSocialSchema(t *testing.T, db *DB) {
 			is_manual BOOLEAN NOT NULL DEFAULT FALSE,
 			is_active BOOLEAN NOT NULL DEFAULT TRUE,
 			associated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			written_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		)`,
 		`CREATE OR REPLACE VIEW media_match_associations_latest AS
 			WITH lpp AS (
@@ -500,7 +500,7 @@ func seedSharedSocialSchema(t *testing.T, db *DB) {
 			liker_gamertag VARCHAR,
 			is_liked BOOLEAN NOT NULL,
 			liked_at TIMESTAMP,
-			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			written_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		)`,
 		`CREATE OR REPLACE VIEW media_likes_latest AS
 			SELECT id, media_path, liker_slug, liker_gamertag, is_liked, liked_at, written_at

@@ -252,7 +252,7 @@ CREATE TABLE match_objective_stats (
     max_killing_spree_as_vip              INTEGER,
     time_as_vip_seconds                   DOUBLE,
     longest_time_as_vip_seconds           DOUBLE,
-    written_at                            TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    written_at                            TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 );
 ` + migration.MatchObjectiveStatsLatestViewSQL("match_objective_stats") + `;
 `

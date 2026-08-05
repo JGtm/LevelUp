@@ -31,7 +31,7 @@ func init() {
 					source         VARCHAR,
 					confidence     VARCHAR,
 					details        VARCHAR,
-					written_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+					written_at     TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 					PRIMARY KEY (match_id, seq)
 				);
 				CREATE TABLE IF NOT EXISTS match_objective_event_players (
@@ -39,7 +39,7 @@ func init() {
 					seq        INTEGER NOT NULL,
 					xuid       VARCHAR NOT NULL,
 					role       VARCHAR,
-					written_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+					written_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 					PRIMARY KEY (match_id, seq, xuid)
 				);
 			`)

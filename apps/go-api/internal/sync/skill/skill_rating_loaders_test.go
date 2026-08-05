@@ -54,7 +54,7 @@ func openLUSRDB(t *testing.T) *sql.DB {
 			playlist_group   VARCHAR,
 			expected_win_prob FLOAT,
 			start_time       TIMESTAMPTZ,
-			written_at       TIMESTAMP NOT NULL DEFAULT now(),
+			written_at       TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		);

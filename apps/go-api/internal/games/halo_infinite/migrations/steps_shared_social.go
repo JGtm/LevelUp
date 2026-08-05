@@ -374,7 +374,7 @@ func sharedSocialSteps() []migration.Migration {
 						value             DOUBLE NOT NULL,
 						achieved_at       TIMESTAMP,
 						achieved_match_id VARCHAR,
-						written_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+						written_at        TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 					);
 					CREATE INDEX idx_prh_lookup
 						ON player_records_history(xuid, metric, period, written_at DESC);
