@@ -141,6 +141,47 @@ func TestLabelPersonalScoreDecomposesWhenUnique(t *testing.T) {
 	}
 }
 
+// TestLabelPersonalScorePremiereLectureEstUnIncrementDepuisZero — le FILET du retrait du
+// garde `if first` (constat D-P2). La premiere valeur lue sur un slot n'est pas un etat
+// preexistant a ignorer : le score personnel part de 0, elle vaut donc bien ce que le
+// joueur vient de gagner, et l'evenement doit sortir nomme.
+//
+// Mutation qui doit le faire rougir : sauter la premiere lecture dans labelSlot (ce que
+// l'ancien commentaire annoncait) — l'evenement de 100 disparaitrait.
+func TestLabelPersonalScorePremiereLectureEstUnIncrementDepuisZero(t *testing.T) {
+	quota := []Award{{Name: "killed_player", Category: "kill", Unit: 100, Count: 2}}
+	pts := []ScorePoint{
+		{TimeMS: 1000, Slot: 7, Value: 100},
+		{TimeMS: 2000, Slot: 7, Value: 200},
+	}
+	events := LabelPersonalScore(pts, map[int][]Award{7: quota})
+	if len(events) != 2 {
+		t.Fatalf("evenements = %d, attendu 2 : la premiere lecture compte autant que la suivante", len(events))
+	}
+	if events[0].TimeMS != 1000 || events[0].Value != 100 || events[0].Award != "killed_player" {
+		t.Errorf("premier evenement = {t=%d v=%d %q}, attendu {t=1000 v=100 killed_player}",
+			events[0].TimeMS, events[0].Value, events[0].Describe())
+	}
+}
+
+// TestLabelPersonalScoreIgnoreUnPremierPointNul — l'autre moitie : un slot dont la
+// premiere valeur vaut 0 n'a rien gagne, aucun evenement ne doit naitre. C'est le seul
+// cas que l'ancien garde attrapait, et le `d == 0` general le couvre deja.
+func TestLabelPersonalScoreIgnoreUnPremierPointNul(t *testing.T) {
+	quota := []Award{{Name: "killed_player", Category: "kill", Unit: 100, Count: 1}}
+	pts := []ScorePoint{
+		{TimeMS: 1000, Slot: 7, Value: 0},
+		{TimeMS: 2000, Slot: 7, Value: 100},
+	}
+	events := LabelPersonalScore(pts, map[int][]Award{7: quota})
+	if len(events) != 1 {
+		t.Fatalf("evenements = %d, attendu 1 : un premier point a 0 n'est pas un gain", len(events))
+	}
+	if events[0].TimeMS != 2000 {
+		t.Errorf("instant = %d, attendu 2000", events[0].TimeMS)
+	}
+}
+
 // TestLabelPersonalScoreHandlesNegativeAwards — le score personnel n'est pas monotone :
 // self_destruction vaut -100. Un increment negatif doit se nommer comme les autres.
 func TestLabelPersonalScoreHandlesNegativeAwards(t *testing.T) {
