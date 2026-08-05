@@ -37,7 +37,7 @@ du lot).
 
 - **Replay 2D** — chantier utilisateur en cours, hors périmètre agent.
 - **Killsource** — re-différé le 02/08 ; branche `feat/killsource-prod` VIVANTE,
-  reprise par `.ai/HANDOFF_KILLSOURCE_REPRISE.md` (inclut la validation « précision
+  reprise par `.ai/V7.5/killweapon/HANDOFF_KILLSOURCE_REPRISE.md` (inclut la validation « précision
   Infinite exploitable ? » et, à sa livraison, les véhicules Infinite dans le
   sunburst — le pendant H5 est déjà en prod).
 - **TS7 (PR #70)** — bloqué AMONT : `typescript-eslint` peer `<6.1.0` (re-vérifié le

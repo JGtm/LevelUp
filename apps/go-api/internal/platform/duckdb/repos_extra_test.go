@@ -79,15 +79,16 @@ func TestCompareRepo_GetLocalStats(t *testing.T) {
 			match_id VARCHAR, xuid VARCHAR, medal_name_id BIGINT, count INTEGER
 		)`,
 		`CREATE TABLE IF NOT EXISTS shared.xuid_aliases (xuid VARCHAR, gamertag VARCHAR)`,
-		`CREATE TABLE IF NOT EXISTS shared.killer_victim_pairs (
-			match_id VARCHAR, killer_xuid VARCHAR, victim_xuid VARCHAR, kill_count INTEGER DEFAULT 1
+		// Source des lecteurs depuis la bascule du 2026-08-03 : JOURNAL, 1 ligne = 1 mort.
+		`CREATE TABLE IF NOT EXISTS shared.match_kill_events_latest (
+			match_id VARCHAR, feed_killer_xuid VARCHAR, victim_xuid VARCHAR, time_ms INTEGER
 		)`,
 		`CREATE VIEW shared.v_gamertag_lookup AS SELECT xuid, gamertag FROM shared.xuid_aliases`,
 		// Vues root-level pour les queries via SharedReader.
 		`CREATE VIEW match_participants AS SELECT * FROM shared.match_participants`,
 		`CREATE VIEW medals_earned AS SELECT * FROM shared.medals_earned`,
 		`CREATE VIEW xuid_aliases AS SELECT * FROM shared.xuid_aliases`,
-		`CREATE VIEW killer_victim_pairs AS SELECT * FROM shared.killer_victim_pairs`,
+		`CREATE VIEW match_kill_events_latest AS SELECT * FROM shared.match_kill_events_latest`,
 		`CREATE VIEW v_gamertag_lookup AS SELECT * FROM shared.v_gamertag_lookup`,
 	}
 	for _, q := range ddls {
@@ -179,15 +180,16 @@ func TestCompareRepo_GetLocalStats_NotFound(t *testing.T) {
 			match_id VARCHAR, xuid VARCHAR, medal_name_id BIGINT, count INTEGER
 		)`,
 		`CREATE TABLE IF NOT EXISTS shared.xuid_aliases (xuid VARCHAR, gamertag VARCHAR)`,
-		`CREATE TABLE IF NOT EXISTS shared.killer_victim_pairs (
-			match_id VARCHAR, killer_xuid VARCHAR, victim_xuid VARCHAR, kill_count INTEGER DEFAULT 1
+		// Source des lecteurs depuis la bascule du 2026-08-03 : JOURNAL, 1 ligne = 1 mort.
+		`CREATE TABLE IF NOT EXISTS shared.match_kill_events_latest (
+			match_id VARCHAR, feed_killer_xuid VARCHAR, victim_xuid VARCHAR, time_ms INTEGER
 		)`,
 		`CREATE VIEW shared.v_gamertag_lookup AS SELECT xuid, gamertag FROM shared.xuid_aliases`,
 		// Vues root-level pour les queries via SharedReader.
 		`CREATE VIEW match_participants AS SELECT * FROM shared.match_participants`,
 		`CREATE VIEW medals_earned AS SELECT * FROM shared.medals_earned`,
 		`CREATE VIEW xuid_aliases AS SELECT * FROM shared.xuid_aliases`,
-		`CREATE VIEW killer_victim_pairs AS SELECT * FROM shared.killer_victim_pairs`,
+		`CREATE VIEW match_kill_events_latest AS SELECT * FROM shared.match_kill_events_latest`,
 		`CREATE VIEW v_gamertag_lookup AS SELECT * FROM shared.v_gamertag_lookup`,
 	}
 	for _, q := range ddls {
@@ -285,8 +287,8 @@ func TestCompareRepo_GetEncounterStats_WithData(t *testing.T) {
 	for _, ddl := range []string{
 		`CREATE TABLE match_participants (
 			match_id VARCHAR, xuid VARCHAR, team_id INTEGER, outcome INTEGER)`,
-		`CREATE TABLE killer_victim_pairs (
-			match_id VARCHAR, killer_xuid VARCHAR, victim_xuid VARCHAR, kill_count INTEGER)`,
+		`CREATE TABLE match_kill_events_latest (
+			match_id VARCHAR, feed_killer_xuid VARCHAR, victim_xuid VARCHAR, time_ms INTEGER)`,
 	} {
 		if _, err := db.Exec(ctx, ddl); err != nil {
 			t.Fatalf("DDL: %v", err)
@@ -295,14 +297,17 @@ func TestCompareRepo_GetEncounterStats_WithData(t *testing.T) {
 
 	// m1 : xuidA+xuidB ally (team 0), main win
 	// m2 : xuidA+xuidB enemy (team 0 vs team 1), main loss
-	// kv : xuidA tué xuidB 5× ; xuidB tué xuidA 3×
+	// kv : xuidA tué xuidB 5× ; xuidB tué xuidA 3× — JOURNAL, donc 5 et 3 LIGNES.
 	for _, ins := range []string{
 		`INSERT INTO match_participants VALUES
 			('m1', 'xuidA', 0, 2), ('m1', 'xuidB', 0, 2),
 			('m2', 'xuidA', 0, 3), ('m2', 'xuidB', 1, 2)`,
-		`INSERT INTO killer_victim_pairs VALUES
-			('m1', 'xuidA', 'xuidB', 5),
-			('m2', 'xuidB', 'xuidA', 3)`,
+		`INSERT INTO match_kill_events_latest VALUES
+			('m1', 'xuidA', 'xuidB', 1000), ('m1', 'xuidA', 'xuidB', 1100),
+			('m1', 'xuidA', 'xuidB', 1200), ('m1', 'xuidA', 'xuidB', 1300),
+			('m1', 'xuidA', 'xuidB', 1400),
+			('m2', 'xuidB', 'xuidA', 2000), ('m2', 'xuidB', 'xuidA', 2100),
+			('m2', 'xuidB', 'xuidA', 2200)`,
 	} {
 		if _, err := db.Exec(ctx, ins); err != nil {
 			t.Fatalf("INSERT: %v", err)
@@ -344,8 +349,8 @@ func TestCompareRepo_GetEncounterStats_NoCommonMatches(t *testing.T) {
 		match_id VARCHAR, xuid VARCHAR, team_id INTEGER, outcome INTEGER)`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.Exec(ctx, `CREATE TABLE killer_victim_pairs (
-		match_id VARCHAR, killer_xuid VARCHAR, victim_xuid VARCHAR, kill_count INTEGER)`); err != nil {
+	if _, err := db.Exec(ctx, `CREATE TABLE match_kill_events_latest (
+		match_id VARCHAR, feed_killer_xuid VARCHAR, victim_xuid VARCHAR, time_ms INTEGER)`); err != nil {
 		t.Fatal(err)
 	}
 

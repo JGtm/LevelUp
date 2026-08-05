@@ -1,0 +1,67 @@
+// Package service — replay_service.go : sert l'artefact de rejeu 2D pré-construit d'un
+// match (data/cache/replays/{title}/{matchId}.json). Aucune logique de décodage ici —
+// l'assemblage lourd est fait hors ligne par cmd/replay-build ; ce service lit l'artefact.
+package service
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log/slog"
+	"os"
+
+	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/port"
+)
+
+// replayService lit l'artefact de rejeu d'un titre donné via le PathResolver.
+type replayService struct {
+	titleSlug string
+	repoRoot  string
+}
+
+// NewReplayService construit le service de rejeu pour un titre (résolu depuis le joueur).
+func NewReplayService(titleSlug, repoRoot string) port.ReplayService {
+	return &replayService{titleSlug: titleSlug, repoRoot: repoRoot}
+}
+
+// IsAvailable dit si l'artefact existe, par un os.Stat — JAMAIS par une lecture : la
+// Match View interroge cette présence à chaque affichage de match, et charger 2 Mo de
+// trajectoires pour répondre « oui » serait payer le rejeu sans le montrer.
+//
+// Tout échec vaut « pas de rejeu » (répertoire absent, droits, chemin non résolu) :
+// l'absence de lien est la dégradation sûre, une erreur 500 sur la page match ne l'est pas.
+func (s *replayService) IsAvailable(ctx context.Context, matchID string) bool {
+	path := title.NewPathResolver(s.repoRoot).ReplayArtifactPath(s.titleSlug, matchID)
+	info, err := os.Stat(path)
+	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			// Un artefact présent mais illisible n'est pas un cas normal : il ne doit pas
+			// se confondre en silence avec « ce match n'a pas de rejeu ».
+			slog.WarnContext(ctx, "rejeu 2D : artefact non consultable",
+				"err", err, "match_id", matchID, "titleSlug", s.titleSlug)
+		}
+		return false
+	}
+	return !info.IsDir()
+}
+
+// GetReplay lit et désérialise l'artefact du match. Retourne port.ErrReplayNotAvailable
+// si aucun artefact n'existe (404 côté handler), une erreur enveloppée sinon.
+func (s *replayService) GetReplay(_ context.Context, matchID string) (replay.ReplayDocument, error) {
+	path := title.NewPathResolver(s.repoRoot).ReplayArtifactPath(s.titleSlug, matchID)
+	raw, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return replay.ReplayDocument{}, port.ErrReplayNotAvailable
+	}
+	if err != nil {
+		return replay.ReplayDocument{}, fmt.Errorf("lecture artefact rejeu %s: %w", matchID, err)
+	}
+	var doc replay.ReplayDocument
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		return replay.ReplayDocument{}, fmt.Errorf("désérialisation artefact rejeu %s: %w", matchID, err)
+	}
+	return doc, nil
+}

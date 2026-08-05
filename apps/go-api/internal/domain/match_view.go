@@ -93,6 +93,15 @@ type MatchViewHeader struct {
 	// (table shared_social.match_favorites). False par défaut si shared_social
 	// indisponible ou erreur de lecture (dégradation gracieuse).
 	IsFavorite bool `json:"is_favorite"`
+	// ReplayAvailable : true si l'artefact de rejeu 2D du match existe sur disque
+	// (data/cache/replays/{title}/{matchId}.json, produit hors ligne par
+	// cmd/replay-build). Résolu par un os.Stat via PathResolver — jamais par une
+	// lecture de l'artefact.
+	//
+	// La feature s'allume par PRÉSENCE d'artefact, pas par un flag (règle 11) : le
+	// front ne pose le lien « Rejeu 2D » que quand ce booléen est vrai, sans quoi
+	// il mènerait à un 404. Faux aussi quand le titre ne produit pas de rejeu.
+	ReplayAvailable bool `json:"replay_available"`
 }
 
 // MatchViewRank : rang CSR ou LUSR pour ce match.

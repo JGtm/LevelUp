@@ -25,6 +25,7 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/migration"
 )
 
 // rawXuidRe détecte un identifiant au format xuid brut joueur : soit "xuid(...)",
@@ -87,6 +88,12 @@ func TestGamertagLookupView_NeverLeaksRawXuid(t *testing.T) {
 		t.Fatalf("seed rows: %v", err)
 	}
 
+	// match_kill_events : le résolveur y lit le kill-feed canonique depuis le 2026-08-02,
+	// EN PLUS de killer_victim_pairs. DuckDB bind les vues à leur création : la table doit
+	// exister, même vide — et vide, elle prouve que la jambe historique tient toujours.
+	if err := migration.EnsureMatchKillEvents(db); err != nil {
+		t.Fatalf("ensure match_kill_events: %v", err)
+	}
 	if _, err := db.Exec(analysis.GamertagLookupViewSQL()); err != nil {
 		t.Fatalf("create v_gamertag_lookup: %v", err)
 	}

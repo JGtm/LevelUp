@@ -91,11 +91,11 @@ const BASELINE_COLLISIONS = new Set([
   'SquadWeaponBar',
   'TeammateKPIs',
   'TeammatesPageResponse',
-  // 2026-08-04 : type Input PRODUCTEUR — le front omet filter_exact_composition
-  // (défaut serveur false) et passe filters: null, alors que le schéma généré
-  // (handler RawBody documenté) déclare le champ requis car le Go l'émet
-  // toujours. Un shim casserait les producteurs ; collision assumée.
-  'TeammatesQueryRequest',
+  // 2026-08-05 (R2) : TeammatesQueryRequest RETIRÉ — re-shimé. La collision venait de
+  // `filters`, qui pointait le schéma `FilterContextInput` dérivé du type Go : une forme de
+  // RÉPONSE, où period/sessions/cascade sont requis parce que le serveur les émet toujours.
+  // Le corps de REQUÊTE n'a pas à les porter. Le fragment manuel décrit désormais la forme
+  // PRODUCTEUR, et types.ts ré-exporte le contrat.
 ])
 
 /** Noms des `export interface X` de types.ts. */

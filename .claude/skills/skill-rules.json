@@ -138,6 +138,79 @@
                 ]
             }
         },
+        "adversarial-review": {
+            "priority": "critical",
+            "description": "Revue adversariale d'un diff avant merge — contexte frais, contrat, constats reproductibles, bornes de boucle",
+            "promptTriggers": {
+                "keywords": [
+                    "adversarial",
+                    "adversariale",
+                    "adversarial-review",
+                    "relis",
+                    "relire",
+                    "relecture",
+                    "critique",
+                    "sceptique",
+                    "red team",
+                    "second avis",
+                    "seconde paire d'yeux",
+                    "avant de merger",
+                    "avant merge",
+                    "relis mon diff",
+                    "revue de code",
+                    "code review",
+                    "trouve les problemes",
+                    "trouve les problèmes",
+                    "qu'est-ce qui cloche",
+                    "faux positif"
+                ],
+                "intentPatterns": [
+                    "(revue|review|relecture|relire|critique).*(diff|branche|lot|commit|changement|code)",
+                    "(fais|lance|passe).*(revue|review).*(adversari|critique|sceptique)",
+                    "(trouve|cherche).*(defaut|défaut|probleme|problème|bug|faille).*(diff|code|branche)",
+                    "(est-ce que|est ce que).*(diff|code|lot).*(correct|bon|casse|risque)",
+                    "(sous.?agent|agent frais|contexte frais).*(relire|revue|review)",
+                    "avant.*(merge|merger|PR).*(relire|revue|review|verifier|vérifier)"
+                ]
+            }
+        },
+        "adversarial-audit": {
+            "priority": "critical",
+            "description": "Audit adversarial du code existant — perimetre x axe, fan-out aveugle, verification adverse, registre date",
+            "promptTriggers": {
+                "keywords": [
+                    "adversarial-audit",
+                    "auditer",
+                    "audit du code",
+                    "audit de l'app",
+                    "audit technique",
+                    "dette technique",
+                    "dette",
+                    "code mort",
+                    "dead code",
+                    "anti-pattern",
+                    "antipattern",
+                    "duplication",
+                    "erreur avalee",
+                    "erreur avalée",
+                    "garde-rail",
+                    "kill-switch",
+                    "flag legacy",
+                    "etat de l'art",
+                    "état de l'art",
+                    "revoir l'app",
+                    "revue de l'app",
+                    "passer en revue"
+                ],
+                "intentPatterns": [
+                    "(audit|auditer|revoir|passer en revue|inspecter).*(app|application|code|sous.?systeme|sous.?système|package|module|feature)",
+                    "(chercher|trouver|lister).*(dette|code mort|duplication|anti.?pattern|violation)",
+                    "(ou|où|quoi|quels).*(probleme|problème|defaut|défaut|violation).*(app|codebase|projet)",
+                    "(qualite|qualité|sante|santé|etat|état).*(code|codebase|projet|app)",
+                    "(registre|rapport).*(audit|constat)"
+                ]
+            }
+        },
         "plan-review": {
             "priority": "critical",
             "description": "Grille de revue d'un plan — architecture, multi-titres, tests, logging, livraison",

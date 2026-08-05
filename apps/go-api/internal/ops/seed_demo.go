@@ -155,6 +155,15 @@ var sharedTablesWhere = []extractTable{
 	{name: "highlight_events", where: matchIDInClause},
 	{name: "weapon_kills", where: matchIDInClause},
 	{name: "killer_victim_pairs", where: matchIDInClause},
+	// match_kill_events : le kill-feed canonique, écrit en parallèle de la table ci-dessus
+	// depuis le 2026-08-02 (double écriture datée). L'omettre livrerait une démo dont les
+	// surfaces bâties sur la table canonique sont vides — panne silencieuse, visible seulement
+	// à l'écran, exactement le mode d'échec que la ligne du dessus a déjà connu.
+	//
+	// appendOnly:FALSE, pour la raison de match_objective_stats plus bas : la table est créée
+	// DIRECTEMENT en forme append-only (jamais convertie par ApplyAppendOnlyRebuild), donc
+	// ses colonnes techniques doivent voyager — la vue _latest trie sur written_at et id.
+	{name: "match_kill_events", where: matchIDInClause},
 	{name: "xuid_aliases", where: "xuid IN (SELECT DISTINCT xuid FROM match_participants WHERE match_id IN (%s))"},
 	{name: "match_csrs", where: matchIDInClause, appendOnly: true},
 	// match_objective_stats : stats objectifs par joueur/match (CTF, Zones, Oddball,

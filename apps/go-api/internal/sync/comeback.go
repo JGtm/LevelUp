@@ -2,14 +2,20 @@
 //
 // Port de src/data/comeback_backfill.py.
 //
-// Ordre de priorité Python (reproduit ici) :
-//  1. DOMINATION   : médaille Steaktacular (ID 1169390319) gagnée par mon équipe.
-//  2. HUMILIATION  : médaille Steaktacular gagnée par l'équipe adverse.
+// Le routage dépend du mode (objectiveevents.ObjectiveTypeOf sur game_variant_name) :
+//
+//   - Mode "flag" (CTF) : chemin OBJECTIF. La courbe de score vient des captures
+//     (match_objective_events), pas des kills ni de la médaille Steaktacular.
+//   - Mode "zone"/"hill"/"skull" (Strongholds/KOTH/Oddball) : retourne 0 tant que
+//     le décodeur de score-over-time n'est pas câblé (cf. computeMatchDominanceFlag).
+//   - Mode "" (non-objectif, ex. Slayer) : chemin HISTORIQUE inchangé :
+//     1. DOMINATION   : médaille Steaktacular (ID 1169390319) gagnée par mon équipe.
+//     2. HUMILIATION  : médaille Steaktacular gagnée par l'équipe adverse.
 //     3-5. REMONTADA / DÉBÂCLE / CONTRE-REMONTADA : score curve depuis kill events,
-//     uniquement si le mode est de type Slayer (game_variant_name like '%slayer%').
+//     uniquement si game_variant_name like '%slayer%'.
 //
 // Les valeurs 3-5 utilisent l'algo ComputeDominanceFlag (analysis/comeback.go)
-// avec la sensibilité "standard".
+// avec la sensibilité "standard", quelle que soit la source de courbe.
 package sync
 
 import (
@@ -19,6 +25,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/ctxkeys"
 	titlePkg "levelup/go-api/internal/domain/title"
 )
@@ -56,13 +63,42 @@ func BackfillDominanceFlags(
 	return backfillDominanceFlagsBatch(ctx, sharedDB, playerDB, xuid, matchIDs)
 }
 
-// computeMatchDominanceFlag calcule le flag pour un match.
+// computeMatchDominanceFlag calcule le flag pour un match, en routant selon le
+// mode (objectif vs Slayer). team_id/outcome du joueur sont communs aux chemins.
 func computeMatchDominanceFlag(ctx context.Context, db *sql.DB, xuid, matchID string) (int, error) {
 	myTeamID, outcome, err := loadMyTeamAndOutcome(ctx, db, matchID, xuid)
 	if err != nil {
 		return 0, fmt.Errorf("team/outcome: %w", err)
 	}
 
+	gameVariant, err := loadGameVariant(ctx, db, matchID)
+	if err != nil {
+		return 0, nil // non critique
+	}
+
+	switch objectiveevents.ObjectiveTypeOf(gameVariant) {
+	case objectiveevents.ObjectiveTypeFlag:
+		// CTF : courbe de score depuis les captures objectif (pas de Steaktacular).
+		return computeCTFDominanceFlag(ctx, db, matchID, myTeamID, outcome)
+	case objectiveevents.ObjectiveTypeZone,
+		objectiveevents.ObjectiveTypeHill,
+		objectiveevents.ObjectiveTypeSkull:
+		// TODO(objectif) : score continu non décodé (Value nil sur th=10) — la
+		// dominance objectif reste limitée au CTF tant que le décodeur de
+		// score-over-time (byte842 varint Strongholds, etc.) n'est pas câblé.
+		// On NE fabrique PAS de fausse courbe depuis des counts d'events.
+		return analysis.DominanceFlagNone, nil
+	default:
+		// Mode non-objectif (Slayer, etc.) : chemin historique inchangé.
+		return computeSlayerDominanceFlag(ctx, db, matchID, gameVariant, myTeamID, outcome)
+	}
+}
+
+// computeSlayerDominanceFlag applique le chemin historique (médaille Steaktacular
+// puis courbe de score depuis les kill events), réservé aux modes non-objectif.
+func computeSlayerDominanceFlag(
+	ctx context.Context, db *sql.DB, matchID, gameVariant string, myTeamID, outcome int,
+) (int, error) {
 	// 1. Vérifier médaille Steaktacular (DOMINATION / HUMILIATION).
 	steakByTeam, err := loadSteaktacularByTeam(ctx, db, matchID)
 	if err != nil {
@@ -111,15 +147,33 @@ func computeMatchDominanceFlag(ctx context.Context, db *sql.DB, xuid, matchID st
 	}
 
 	// 3. Comeback (remontada + domination via courbe) — uniquement les modes Slayer.
-	gameVariant, err := loadGameVariant(ctx, db, matchID)
-	if err != nil {
-		return 0, nil // non critique
-	}
+	// `gameVariant` est déjà chargé par l'appelant, qui s'en sert pour router entre
+	// chemin objectif et chemin historique : pas de second aller-retour en base.
 	if !strings.Contains(strings.ToLower(gameVariant), "slayer") {
 		return 0, nil
 	}
 
 	snapshots := analysis.BuildScoreSnapshots(events)
+	return analysis.ComputeDominanceFlag(
+		snapshots, myTeamID, outcome,
+		"standard", false, false, matchID,
+	), nil
+}
+
+// computeCTFDominanceFlag construit la courbe de score d'un match CTF depuis les
+// captures (match_objective_events) et délègue à ComputeDominanceFlag. Retourne 0
+// si aucune capture exploitable n'est disponible (courbe vide).
+func computeCTFDominanceFlag(
+	ctx context.Context, db *sql.DB, matchID string, myTeamID, outcome int,
+) (int, error) {
+	events, err := loadCaptureEvents(ctx, db, matchID)
+	if err != nil {
+		return 0, nil // non critique : pas de courbe -> pas de flag
+	}
+	snapshots := analysis.BuildObjectiveScoreSnapshots(events)
+	if len(snapshots) == 0 {
+		return analysis.DominanceFlagNone, nil
+	}
 	return analysis.ComputeDominanceFlag(
 		snapshots, myTeamID, outcome,
 		"standard", false, false, matchID,
@@ -242,6 +296,40 @@ ORDER BY he.time_ms ASC`, matchID)
 			return nil, err
 		}
 		events = append(events, e)
+	}
+	return events, rows.Err()
+}
+
+// loadCaptureEvents charge les events de capture CTF (match_objective_events) avec
+// un team_id et un time_ms résolus, mappés vers analysis.ObjectiveScoreEvent.
+// Value est COALESCE à 1 (1 point par capture de drapeau). Ordre par seq pour
+// suivre l'ordre de décodage du film.
+func loadCaptureEvents(ctx context.Context, db *sql.DB, matchID string) ([]analysis.ObjectiveScoreEvent, error) {
+	rows, err := db.QueryContext(ctx, `
+SELECT time_ms, team_id, COALESCE(value, 1) AS value
+FROM match_objective_events
+WHERE match_id = ?
+  AND event_type = 'capture'
+  AND team_id IS NOT NULL
+  AND time_ms IS NOT NULL
+ORDER BY seq ASC`, matchID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var events []analysis.ObjectiveScoreEvent
+	for rows.Next() {
+		var timeMS int64
+		var teamID, value int
+		if err := rows.Scan(&timeMS, &teamID, &value); err != nil {
+			return nil, err
+		}
+		events = append(events, analysis.ObjectiveScoreEvent{
+			TimeMS: timeMS,
+			TeamID: teamID,
+			Value:  value,
+		})
 	}
 	return events, rows.Err()
 }

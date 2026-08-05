@@ -1,0 +1,74 @@
+# GOLDEN killsource — film 9b191a7f
+#
+# Fige la sortie du decodeur de la SOURCE DE DEGAT. Ne PAS editer a la main.
+#
+# REGENERATION (les fixtures ne sont pas versionnees : 107 Mo pour les quatre films) :
+#   1. les films de reference sont des repertoires chunk_NN.bin sous data/cache/film_chunks/ ;
+#      ils se retelechargent avec  go run ./cmd/fetch_film_chunks/
+#   2. KILLSOURCE_FIXTURES=<racine des films> \
+#        go test ./internal/games/halo_infinite/film/killsource/ -run Golden -update
+#
+# CHAQUE CHIFFRE PORTE LE NOM DE SON DENOMINATEUR. Un taux nu ne veut rien dire ici : trois
+# denominateurs coexistent hors ligne et ne donnent pas le meme resultat.
+
+## COUVERTURE — chaque taux porte le nom de son denominateur
+84 / 84 couples REELS (couples reconstruits moins les couples FABRIQUES)
+84 / 85 couples reconstruits par la reconstruction de kill-feed
+84 / 87 morts du KILL-FEED (il ne contient AUCUNE mort de bot)
+1 couple(s) FABRIQUE(S) retire(s) du denominateur : la vraie victime est un bot
+3 mort(s) de BOT decodee(s) — POPULATION NEUVE, jamais au denominateur ci-dessus
+3 mort(s) INFLIGEE(S) PAR un bot — SECONDE POPULATION NEUVE, jamais au denominateur
+   ci-dessus non plus : le feed porte la MORT mais aucun kill en face
+87 kill(s) et 87 mort(s) au kill-feed brut · 74 couple(s) au MEME instant
+
+## ANCRES DE VERITE TERRAIN — 6 confrontation(s) confirmee(s) en mode Theater
+# format : instant  tag  divergence  etiquette publiee  nature  voie de lecture
+01:00  5eaa815c  divergence=non  "Fuel Rod SPNKr"  ARME  scan
+03:41  0000b29c  divergence=non  "BR75"  ARME  scan
+04:50  5eaa815c  divergence=non  "Fuel Rod SPNKr"  ARME  scan
+05:12  5eaa815c  divergence=non  "Fuel Rod SPNKr"  ARME  scan
+08:31  5eaa815c  divergence=oui  "Fuel Rod SPNKr"  ARME  marche
+09:13  fca02b3c  divergence=oui  "Autres"  GRENADE  marche
+
+## MORTS DONT LA SOURCE APPARTIENT A LA VICTIME — 2 ligne(s)
+# le kill-feed credite un AUTRE joueur : les deux verites sont vraies et divergent
+# format : instant  victime  tag  etiquette  CREDIT DU JEU  voie  origine
+08:31  JGtm  5eaa815c  "Fuel Rod SPNKr"  credit=xSONNYX117  marche  source-victime
+09:13  Madina97294  fca02b3c  "Autres"  credit=xSONNYX117  marche  source-victime
+
+## MORTS INFLIGEES PAR UN BOT — 3 ligne(s)
+# le feed porte la MORT, pas le kill : le tueur vient du roster de replication
+# format : instant  victime  tueur  tag  etiquette  categorie  voie  assistant
+05:46  Madina97294  343 Aloysius [bot]  1f11df6b  "VK78 Commando"  Headshot  marche  assistant=xSONNYX117
+08:03  JGtm  343 Aloysius [bot]  ec919da5  "Needler"  None  marche  assistant=RaiiZeNBack
+08:24  Chocoboflor  343 Aloysius [bot]  0000d57f  "Needler"  AttachedDamage  marche  assistant=AUCUN (mesure)
+
+## CONTROLE NEGATIF — le scan n invente pas de morts
+# population ou la cible est ABSENTE par construction : les morts sont toutes
+# dans les paquets A EVENTS, donc tout candidat trouve ici est un faux positif.
+30531 paquet(s) SANS evenement · 47920512 bits balayes · 0 candidat(s) accepte(s)
+
+## COUT PAR VOIE DE LECTURE — ventilation, PAS deux precisions comparables
+marche   : 75 propose(s), 73 apparie(s) au couple exact, 73 publiee(s)
+scan     : 11 propose(s), 9 apparie(s) au couple exact, 9 publiee(s)
+marche, source appartenant a la victime : 2 propose(s), 2 publiee(s)
+scan,   source appartenant a la victime : 2 propose(s), 0 publiee(s)
+morts de BOT : 13 propose(s), 3 publiee(s)
+morts infligees PAR un bot : 3 propose(s), 3 apparie(s), 3 publiee(s)
+83 enregistrement(s) lu(s) par LES DEUX voies · ACCORD 73 · DESACCORD 0
+DESACCORD doit valoir 0 : sinon l hybride n est plus une PREFERENCE mais un ARBITRAGE
+0 mort(s) a plusieurs candidats en concurrence · 0 enregistrement(s) sans position
+5525 / 5714 paquet(s) a evenements localise(s)
+calibration resolue automatiquement : axisW=16 indexW=3 [score 170, mediane 57] | recordStateParam=4 [croissance x1.157]
+
+## SANTE — un verdict porte sur le DOMAINE, pas sur les etiquettes publiees
+verdict : NOMINAL
+96 candidat(s) consulte(s) · 90 publie(s) · 6 inexplique(s) sur les candidats
+ventilation : couple sans equivalent 4 · source-victime non retenue 2 · indice de bot 0
+hors roster : 0 — COMPTEUR SEPARE, il ne se compte pas sur les candidats et n entre
+   donc PAS dans le taux d inexpliques (un numerateur qui deborde son denominateur
+   ne veut rien dire)
+tags hors catalogue vus par la MARCHE : 0 — compteur principal de table perimee
+   PORTEE : bruit MESURE nul sur 5 films, et AVEUGLE a un tag servi par le seul SCAN
+publication ligne par ligne : AUTORISEE (marge de bijection 22)
+roster : 9 nom(s) dont 8 humain(s) · bots declares : 343 Aloysius (slot 8, bid 39)

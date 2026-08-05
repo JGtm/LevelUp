@@ -1,0 +1,45 @@
+mode	composant	cote	statistique	lecteur	statut
+flag	0	A	flag_captures	named.go	redondant de 21 A — controle croise exact (2026-08-02)
+flag	2	A	kills	named.go+slotidentity.go	ancre — exact 8/8 contre match_participants
+flag	3	A	assists	named.go+slotidentity.go	exact 8/8 contre match_participants
+flag	12	A	kills	named.go	redondant de 2 A — controle croise exact (2026-08-02)
+flag	12	B	assists	named.go	redondant de 3 A — controle croise exact (2026-08-02)
+flag	20	B	flag_capture_assists	named.go	exact 8/8 (oracle 8 joueurs, 2026-08-02)
+flag	21	A	flag_captures	named.go	exact 8/8 (oracle 8 joueurs, 2026-08-02)
+flag	21	B	flag_carriers_killed	named.go	exact 8/8 (oracle 8 joueurs, 2026-08-02)
+flag	22	A	flag_grabs	named.go	exact 8/8 — NOM CORRIGE, ce n est PAS flag_taken (recompense)
+flag	23	A	flag_returns	named.go	exact 8/8 (oracle 8 joueurs, 2026-08-02)
+flag	24	A	flag_steals	named.go	exact 8/8 (oracle 8 joueurs, 2026-08-02)
+zone	2	A	kills	named.go+slotidentity.go	ancre — exact 8/8 contre match_participants
+zone	2	B	deaths	slotidentity.go	exact 8/8 contre match_participants (2026-08-02)
+zone	3	A	assists	named.go+slotidentity.go	exact 8/8 contre match_participants
+zone	12	A	kills	named.go	redondant de 2 A — controle croise exact (2026-08-02)
+zone	12	B	assists	named.go	redondant de 3 A — controle croise exact (2026-08-02)
+zone	20	B	zone_captures	named.go	exact 8/8 (oracle 8 joueurs) + total film 61
+zone	21	A	zone_secures	named.go	exact 8/8 (oracle 8 joueurs) + total film 16
+core	0	A	Score	score.go	score de mode — CoreStats_ rang 0 (binaire)
+core	1	B	PersonalScore	score.go	CoreStats_ rang 1 — verifie 950/1050/1775/1900 par le bareme
+hill	-	-	AUCUN	-	les compteurs de colline ne sont repliques nulle part (2 films, §21)
+
+# COLONNE `lecteur` — ajoutee le 2026-08-05 a l integration (piste C-bis), pour clore la
+# dette « zone 2 B = deaths absent de namedStatSlots ».
+#
+# VERDICT : la ligne est LEGITIME, ce n est pas un lecteur manquant. Cette table est le
+# registre de TOUS les emplacements decodes du statborg, tous consommateurs confondus ;
+# `namedStatSlots` (named.go) n en est QU UN. `zone 2 B = deaths` est lu par le pont
+# d identite (slotidentity.go), qui apparie le triplet (frags, morts, assistances) aux
+# lignes de match_participants — c est meme la ligne sans laquelle le pont n existerait
+# pas. Les morts n ont rien a faire dans le nommage : ce ne sont pas des evenements
+# d objectif, et le kill-feed les porte deja avec l arme et l assistant.
+#
+# Le constat R1 de la revue (« la TSV concorde ligne a ligne avec namedStatSlots ») etait
+# donc faux dans sa formulation : les lignes `core`, `hill` et `zone 2 B` n ont jamais eu
+# vocation a y figurer. La concordance qui tient — et qui est desormais VERIFIEE par
+# TestTableStatborgConcordeAvecNamedStatSlots (named_test.go), dans les deux sens — porte
+# sur les seules lignes dont le lecteur declare est `named.go`.
+#
+# LACUNE CONSIGNEE, NON COMBLEE : `flag 2 B` (les morts en CTF) n a pas de ligne ici, alors
+# que slotidentity.go lit `{2, sideB}` quel que soit le mode et apparie 8/8 sur le film CTF
+# `1bc77d2e`. La ligne manque donc probablement par oubli de releve. Elle n est PAS ajoutee
+# ici : cette table ne porte que des mesures faites, jamais des deductions. A confirmer sur
+# le film au prochain passage avec le cache disponible.

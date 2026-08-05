@@ -32,6 +32,8 @@ func AllCapabilityKeys() []CapabilityKey {
 		CapWeaponAccuracy,
 		CapPlaylistCategoryStrip,
 		CapMatchObjectiveStats,
+		CapFilmKillSource,
+		CapFilmWeaponShots,
 	}
 }
 

@@ -223,9 +223,14 @@ func loadQuitTimeline(ctx context.Context, sharedDB *sql.DB, matchID string,
 	for _, m := range teamB {
 		side[m.xuid] = 1
 	}
+	// Source canonique depuis le 2026-08-03 : `match_kill_events_latest` est dédoublonnée à
+	// l'identité, là où `killer_victim_pairs` portait 46,5 % de doublons exacts — une timeline
+	// de frags dédoublonnée est exactement ce que cette pénalité demande (elle compte l'écart
+	// de frags entre les deux camps à l'instant du départ). Le `IS NOT NULL` sur le tueur, déjà
+	// posé, écarte les frags de bot.
 	rows, err := sharedDB.QueryContext(ctx, `
-		SELECT killer_xuid, time_ms FROM killer_victim_pairs
-		WHERE match_id = ? AND time_ms IS NOT NULL AND killer_xuid IS NOT NULL
+		SELECT feed_killer_xuid, time_ms FROM match_kill_events_latest
+		WHERE match_id = ? AND time_ms IS NOT NULL AND feed_killer_xuid IS NOT NULL
 		ORDER BY time_ms ASC`, matchID)
 	if err != nil {
 		slog.WarnContext(ctx, "LUSR v2 quit-context: chargement frags échoué — fallback outcome",

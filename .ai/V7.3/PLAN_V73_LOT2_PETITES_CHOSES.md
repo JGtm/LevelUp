@@ -555,7 +555,7 @@ AVANT merge, pas seulement un rejeu local).
 | Sujet | Statut |
 |---|---|
 | Replay 2D (tout le bloc) | Chantier utilisateur en cours |
-| Killsource (branchement + validation précision Infinite + assets icônes armes) | Re-différé (décision 2026-08-02) — branche `feat/killsource-prod`, entrer par `.ai/HANDOFF_KILLSOURCE_REPRISE.md` |
+| Killsource (branchement + validation précision Infinite + assets icônes armes) | Re-différé (décision 2026-08-02) — branche `feat/killsource-prod`, entrer par `.ai/V7.5/killweapon/HANDOFF_KILLSOURCE_REPRISE.md` |
 | Note de perf modes objectifs | Chantier isolé futur — voir décision verrouillée (subtilité écrasement/participation) |
 | 4 items `[POSTPONED]` de la section (assistants par kill, spartan abilities, profil Ascension, drawer lobby) | Marqués reportés par l'utilisateur |
 | 2 items `[ATTENTE REPLAY 2D]` (replay unique démo, niveaux de bleu cartes) | Attendent le Replay 2D |

@@ -37,10 +37,12 @@ import { resolveToken } from '@/lib/accessibility'
 import { displayPlayerName } from '@/lib/players/displayName'
 import type {
   MatchHighlightEvent,
+  MatchObjectiveEvent,
   MatchScoreboardRow,
   MatchTugOfWarBin,
 } from '@/lib/api/types'
 import { computeMomentumBins, type MomentumBin, type MomentumKill } from './_momentum'
+import { extractCtfCaptures, type CtfCapture } from './_objectiveCaptures'
 import type { MatchViewText } from './i18n'
 
 interface Props {
@@ -48,6 +50,8 @@ interface Props {
   events: MatchHighlightEvent[] | null | undefined
   scoreboard: MatchScoreboardRow[] | null | undefined
   meXUID: string | null
+  /** Événements d'objectif (CTF captures…) — overlay sur la grille haute. */
+  objectiveEvents?: MatchObjectiveEvent[] | null
   t: MatchViewText
 }
 
@@ -285,7 +289,77 @@ function buildXAxes(categories: string[], tc: EChartsThemeColors, n: number): Re
   ]
 }
 
-export function MatchTugOfWarChart({ bins, events, scoreboard, meXUID, t }: Props) {
+/**
+ * buildCaptureSeries — overlay des captures CTF sur la grille haute.
+ *
+ * L'axe X est 'category' (bins) : on convertit chaque instant de capture en index
+ * fractionnaire de bin, avec la même formule que les scatters et les vagues
+ * (binIdx - 0.5 + fracInBin). Une capture hors fenêtre des bins est ignorée —
+ * dégradation propre, pas d'exception. Mode non-CTF → `captures` vide → série absente.
+ */
+function buildCaptureSeries(input: {
+  captures: CtfCapture[]
+  bins: MatchTugOfWarBin[]
+  colorTeam: string
+  colorEnemy: string
+  yTopMax: number
+  t: MatchViewText
+}): Record<string, unknown>[] {
+  const { captures, bins, colorTeam, colorEnemy, yTopMax, t } = input
+  const captureML: Record<string, unknown>[] = []
+  const captureMP: Record<string, unknown>[] = []
+  for (const c of captures) {
+    const tSec = c.tMs / 1000
+    const idx = bins.findIndex((b) => tSec >= b.bin_start && tSec < b.bin_end)
+    if (idx < 0) continue
+    const bin = bins[idx]
+    const span = Math.max(1, bin.bin_end - bin.bin_start)
+    const frac = Math.min(0.999, Math.max(0, (tSec - bin.bin_start) / span))
+    const xPos = idx - 0.5 + frac
+    const color = c.ally ? colorTeam : colorEnemy
+    captureML.push({
+      xAxis: xPos,
+      lineStyle: { color, width: 1, type: 'solid', opacity: 0.7 },
+      label: { show: false },
+    })
+    // markPoint en tête de grille haute : label « Capture » + tooltip scorer.
+    captureMP.push({
+      coord: [xPos, yTopMax - 4],
+      symbol: 'pin',
+      symbolSize: 16,
+      itemStyle: { color, opacity: 0.9 },
+      label: {
+        show: true,
+        formatter: t.combatCtfCaptureLabel,
+        color,
+        fontSize: 9,
+        fontWeight: 'bold',
+        position: 'top',
+        distance: 2,
+      },
+      _tip: t.combatCtfCaptureTooltip(c.scorer, formatMmSs(tSec)),
+    })
+  }
+  if (captureML.length === 0) return []
+  // Hors legend (name absent de legend.data) : c'est un repère, pas une série lisible.
+  return [{
+    type: 'line',
+    name: t.combatCtfCaptureLabel,
+    data: [] as Array<[number, number]>,
+    showSymbol: false,
+    legendHoverLink: false,
+    xAxisIndex: 0,
+    yAxisIndex: 0,
+    markLine: { silent: true, symbol: ['none', 'none'], data: captureML },
+    markPoint: {
+      data: captureMP,
+      tooltip: { formatter: (p: { data?: { _tip?: string } }) => p.data?._tip ?? '' },
+    },
+    z: 6,
+  }]
+}
+
+export function MatchTugOfWarChart({ bins, events, scoreboard, meXUID, objectiveEvents, t }: Props) {
   // La carte se recompose depuis les events `kill` : sans bin ET sans kill, la
   // dominance n'a pas de sens → EmptyState (matchs servis live-only, tout titre).
   const hasKillEvents =
@@ -338,10 +412,14 @@ export function MatchTugOfWarChart({ bins, events, scoreboard, meXUID, t }: Prop
         series: [
           ...buildBarSeries({ momentum, colorTeam, colorEnemy, t, tc, binTooltips }),
           ...buildKillFeedSeries({ bins, allyKills, enemyKills, colorTeam, colorEnemy, xuidMeta, t, allyLaneY }),
+          ...buildCaptureSeries({
+            captures: extractCtfCaptures(objectiveEvents, scoreboard, meXUID),
+            bins, colorTeam, colorEnemy, yTopMax, t,
+          }),
         ],
       }
     },
-    [bins, events, scoreboard, meXUID, t],
+    [bins, events, scoreboard, meXUID, objectiveEvents, t],
   )
 
   return (

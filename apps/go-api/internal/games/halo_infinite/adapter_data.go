@@ -200,6 +200,16 @@ func fallbackCapabilities() games.CapabilityMap {
 		// Stats objectifs par joueur/match (CTF/Zones/Oddball) extraites du payload
 		// GetMatchStats → shared.match_objective_stats (PLAN_V72_OBJECTIVE_STATS).
 		games.CapMatchObjectiveStats: games.CapSupported,
+		// Source du dégât fatal PAR MORT, décodée du film Theater (J4) →
+		// shared.match_kill_events. Gouverne le collecteur internal/sync
+		// (killcollector). Clé FINE : les tirs par arme et la précision par arme
+		// sont des familles DISTINCTES (cf. capabilities.toml).
+		games.CapFilmKillSource: games.CapSupported,
+		// Ventilation des tirs par arme, MÊME passe de décodage que les morts →
+		// shared.match_weapon_shots. Clé séparée parce que la table STOCKE des
+		// comptes sans publier de taux : le taux, lui, est match.weapon.accuracy et
+		// il reste not_exposed pour ce titre.
+		games.CapFilmWeaponShots: games.CapSupported,
 	}
 }
 

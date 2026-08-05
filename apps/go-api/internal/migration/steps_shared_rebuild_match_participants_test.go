@@ -289,3 +289,59 @@ func TestRebuildMatchParticipants_NoSyncMetaNoOp(t *testing.T) {
 		t.Fatalf("rebuild (no sync_meta, no table): %v", err)
 	}
 }
+
+// TestRebuildMatchParticipants_AvecVuesDejaPresentes : LE CAS RÉEL, et celui que les
+// cinq tests ci-dessus ne couvraient pas — ils partaient tous d'une base SANS vues, où
+// le rebuild les crée pour la première fois.
+//
+// En production la table porte TOUJOURS des vues dépendantes, et DuckDB NE LES SUPPRIME
+// PAS au `DROP TABLE`, même avec CASCADE (mesuré le 2026-08-02, constat J4R-7) : elles
+// survivent au catalogue, liées à une table qui n'existe plus. C'est exactement là que
+// l'ancien `cmd/rebuild_mp` avortait — son `CREATE VIEW` de recréation tombait sur
+// « View with name "v" already exists! », rollback, réparation impossible.
+//
+// Ce test exerce ce chemin de bout en bout : les vues existent AVANT, le rebuild doit
+// passer, et les vues doivent être REBINDÉES sur la table neuve (donc interrogeables et
+// rendant les lignes reconstruites). Il garde la propriété dont dépend `cmd/rebuild_mp`
+// depuis qu'il délègue ici (dette H4).
+func TestRebuildMatchParticipants_AvecVuesDejaPresentes(t *testing.T) {
+	db := openMemDB(t)
+	seedMatchParticipantsForRebuild(t, db)
+
+	// Les vues sont posées AVANT le rebuild, comme sur une base de production.
+	if err := ApplyResolutionViews(db); err != nil {
+		t.Fatalf("pose des vues avant rebuild: %v", err)
+	}
+	if err := ApplyMvPlayerMatchesView(db); err != nil {
+		t.Fatalf("pose de mv_player_matches avant rebuild: %v", err)
+	}
+	var avant int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM v_gamertag_lookup`).Scan(&avant); err != nil {
+		t.Fatalf("v_gamertag_lookup interrogeable avant rebuild: %v", err)
+	}
+
+	if err := applyRebuildMatchParticipants(db); err != nil {
+		t.Fatalf("rebuild avec vues déjà présentes — c'est le mode de panne de J4R-7: %v", err)
+	}
+
+	// Les vues doivent être VIVANTES, pas seulement présentes au catalogue : une vue
+	// restée liée à la table détruite existe encore mais échoue à la lecture.
+	var apres int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM v_gamertag_lookup`).Scan(&apres); err != nil {
+		t.Fatalf("v_gamertag_lookup illisible APRÈS rebuild (vue non rebindée): %v", err)
+	}
+	if apres != avant {
+		t.Errorf("v_gamertag_lookup: %d lignes avant, %d après — la vue ne voit plus les mêmes joueurs", avant, apres)
+	}
+	var mv int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM mv_player_matches`).Scan(&mv); err != nil {
+		t.Fatalf("mv_player_matches illisible APRÈS rebuild (vue non rebindée): %v", err)
+	}
+	var rows int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM match_participants`).Scan(&rows); err != nil {
+		t.Fatalf("count match_participants: %v", err)
+	}
+	if rows != 10 {
+		t.Errorf("match_participants: 10 lignes attendues après rebuild, got %d", rows)
+	}
+}

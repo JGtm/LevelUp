@@ -43,11 +43,11 @@ kv_stats AS (
         SUM(kills_by_them) AS deaths_suffered
     FROM (
         SELECT
-            CASE WHEN kv.killer_xuid = ? THEN kv.victim_xuid ELSE kv.killer_xuid END AS opp_xuid,
-            CASE WHEN kv.killer_xuid = ? THEN kv.kill_count   ELSE 0               END AS kills_by_me,
-            CASE WHEN kv.victim_xuid = ? THEN kv.kill_count   ELSE 0               END AS kills_by_them
-        FROM killer_victim_pairs kv
-        WHERE kv.killer_xuid = ? OR kv.victim_xuid = ?
+            CASE WHEN kv.feed_killer_xuid = ? THEN kv.victim_xuid ELSE kv.feed_killer_xuid END AS opp_xuid,
+            CASE WHEN kv.feed_killer_xuid = ? THEN 1 ELSE 0 END AS kills_by_me,
+            CASE WHEN kv.victim_xuid     = ? THEN 1 ELSE 0 END AS kills_by_them
+        FROM ` + KillEventsCanonicalTable + ` kv
+        WHERE kv.feed_killer_xuid = ? OR kv.victim_xuid = ?
     ) t
     GROUP BY opp_xuid
 )
@@ -87,23 +87,28 @@ LIMIT 10`
 //	?5 = xuid joueur (filtre WHERE victim_xuid)
 //	?6 = xuid joueur (exclusion self dans final WHERE)
 //
-// Source : SUM(kill_count) sur shared.killer_victim_pairs (1 row par kill,
-// cf. comment migration steps_shared.go:118-120). COUNT(DISTINCT match_id)
-// pour le nombre de matchs partagés. Bots exclus via xuid NOT LIKE 'bid(%%'.
+// Source : COUNT(*) sur shared.match_kill_events_latest — 1 ligne = 1 mort
+// (cf. KillEventsCanonicalTable pour la traduction et les deux pièges).
+// COUNT(DISTINCT match_id) pour le nombre de matchs partagés.
+//
+// BOTS : le `NOT LIKE 'bid(%%'` ci-dessous est un NO-OP (0 ligne de cette forme
+// dans la canonique) et le reste. Ce qui les exclut, c'est `opp_xuid <> ?` sur un
+// xuid NULL — mesuré le 2026-08-03. NE PAS retirer le filtre pour autant : il
+// garde les formes `bid(...)` que d'autres titres pourraient écrire.
 const Q27CareerRivalsTpl = `
 WITH pairs AS (
     SELECT
-        CASE WHEN kv.killer_xuid = ? THEN kv.victim_xuid ELSE kv.killer_xuid END AS opp_xuid,
-        SUM(CASE WHEN kv.killer_xuid = ? THEN kv.kill_count ELSE 0 END) AS frags,
-        SUM(CASE WHEN kv.victim_xuid = ? THEN kv.kill_count ELSE 0 END) AS deaths,
+        CASE WHEN kv.feed_killer_xuid = ? THEN kv.victim_xuid ELSE kv.feed_killer_xuid END AS opp_xuid,
+        COUNT(*) FILTER (WHERE kv.feed_killer_xuid = ?) AS frags,
+        COUNT(*) FILTER (WHERE kv.victim_xuid     = ?) AS deaths,
         COUNT(DISTINCT kv.match_id) AS match_count
-    FROM killer_victim_pairs kv
-    WHERE kv.killer_xuid = ? OR kv.victim_xuid = ?
+    FROM ` + KillEventsCanonicalTable + ` kv
+    WHERE kv.feed_killer_xuid = ? OR kv.victim_xuid = ?
     GROUP BY opp_xuid
 )
 SELECT
     p.opp_xuid AS xuid,
-    -- opp_xuid (killer_victim_pairs) peut être orphelin de la vue → fallback masqué
+    -- opp_xuid peut être orphelin de la vue → fallback masqué
     -- "Joueur ####" (jamais de xuid brut, miroir de analysis.MaskedXuidLabelSQL).
     COALESCE(vg.gamertag, ('Joueur ' || RIGHT(p.opp_xuid, 4))) AS gamertag,
     p.frags,
@@ -185,11 +190,11 @@ kv_stats AS (
         SUM(kills_by_them) AS deaths_suffered
     FROM (
         SELECT
-            CASE WHEN kv.killer_xuid = ? THEN kv.victim_xuid ELSE kv.killer_xuid END AS opp_xuid,
-            CASE WHEN kv.killer_xuid = ? THEN kv.kill_count   ELSE 0               END AS kills_by_me,
-            CASE WHEN kv.victim_xuid = ? THEN kv.kill_count   ELSE 0               END AS kills_by_them
-        FROM killer_victim_pairs kv
-        WHERE kv.killer_xuid = ? OR kv.victim_xuid = ?
+            CASE WHEN kv.feed_killer_xuid = ? THEN kv.victim_xuid ELSE kv.feed_killer_xuid END AS opp_xuid,
+            CASE WHEN kv.feed_killer_xuid = ? THEN 1 ELSE 0 END AS kills_by_me,
+            CASE WHEN kv.victim_xuid     = ? THEN 1 ELSE 0 END AS kills_by_them
+        FROM ` + KillEventsCanonicalTable + ` kv
+        WHERE kv.feed_killer_xuid = ? OR kv.victim_xuid = ?
     ) t
     GROUP BY opp_xuid
 )
@@ -288,11 +293,11 @@ kv_stats AS (
         SUM(kills_by_them) AS deaths_suffered
     FROM (
         SELECT
-            CASE WHEN kv.killer_xuid = ? THEN kv.victim_xuid ELSE kv.killer_xuid END AS opp_xuid,
-            CASE WHEN kv.killer_xuid = ? THEN kv.kill_count   ELSE 0               END AS kills_by_me,
-            CASE WHEN kv.victim_xuid = ? THEN kv.kill_count   ELSE 0               END AS kills_by_them
-        FROM killer_victim_pairs kv
-        WHERE (kv.killer_xuid = ? OR kv.victim_xuid = ?)%s
+            CASE WHEN kv.feed_killer_xuid = ? THEN kv.victim_xuid ELSE kv.feed_killer_xuid END AS opp_xuid,
+            CASE WHEN kv.feed_killer_xuid = ? THEN 1 ELSE 0 END AS kills_by_me,
+            CASE WHEN kv.victim_xuid     = ? THEN 1 ELSE 0 END AS kills_by_them
+        FROM ` + KillEventsCanonicalTable + ` kv
+        WHERE (kv.feed_killer_xuid = ? OR kv.victim_xuid = ?)%s
     ) t
     GROUP BY opp_xuid
 )

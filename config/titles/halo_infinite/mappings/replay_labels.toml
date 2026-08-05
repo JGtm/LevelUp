@@ -1,0 +1,101 @@
+# config/titles/halo_infinite/mappings/replay_labels.toml
+#
+# SOURCE UNIQUE des libelles PROPRES AU REJEU 2D d'un titre : les rangs de grenade, les
+# capacites d'armure, et l'effet de tir par arme. Lu hors ligne par cmd/replay-build
+# (internal/games/halo_infinite/replaylabels), jamais a l'execution d'une requete.
+#
+# POURQUOI CE FICHIER EXISTE (lot 3.1/3.2). Ces trois catalogues vivaient EN GO, et deux
+# d'entre eux en FRANCAIS DANS LE CODE — ce qui interdit l'anglais autant qu'un second
+# titre. Pire, les grenades etaient nommees DEUX FOIS et differemment : le rang 2
+# s'affichait « Dynamo » dans les compteurs d'inventaire et « Shock » sur le lancer, sur
+# la MEME fiche (constate sur le film 000d5950). Une seule table, ici.
+#
+# CE QUI N'EST PAS ICI, ET NE DOIT PAS Y VENIR :
+#   - les NOMS D'ARMES : ils sont dans weapon_names.toml, keyes par weapon_key. Ce
+#     fichier ne porte que l'EFFET DE RENDU, qui n'est pas un libelle (aucune langue).
+#   - les IDENTIFIANTS de tag grenade : ils appartiennent au decodeur
+#     (filmdec.GrenadeTypeIDsByRank), qui les a MESURES. Les recopier ici en ferait une
+#     seconde source, donc une occasion de divergence.
+#
+# L'ORDRE DES RANGS EST LA DONNEE : rang = typeId - 1, etabli par deux chaines
+# independantes (35 lancers apparies aux decrements unitaires du compteur, et la table
+# `grenade_types` lue dans le binaire du jeu).
+
+[meta]
+title_slug     = "halo_infinite"
+schema_version = 1
+
+# Rangs de grenade, DANS L'ORDRE. L'index de la ligne EST le rang lu dans le film ; il
+# sert aussi bien au compteur porte (Inventory.G) qu'au type d'un lancer (Grenade.rank).
+[[grenades]]
+en = "Frag"
+fr = "Fragmentation"
+
+[[grenades]]
+en = "Plasma"
+fr = "Plasma"
+
+[[grenades]]
+en = "Dynamo"
+fr = "Dynamo"
+
+[[grenades]]
+en = "Spike"
+fr = "Spike"
+
+# Capacites d'armure, par index lu dans le record de biped.
+#
+# TABLE PARTIELLE, ET C'EST PUBLIE COMME TEL : 4 index observes, 11 capacites existent
+# dans le jeu. Un index absent de cette table s'affiche avec son NUMERO — jamais devine,
+# jamais approche par le nom d'une capacite voisine.
+[abilities]
+"3" = { en = "Drop Wall", fr = "mur portatif" }
+"4" = { en = "Grappleshot", fr = "grappin" }
+"5" = { en = "Thruster", fr = "propulseur" }
+"6" = { en = "Threat Sensor", fr = "capteur de menace" }
+
+# Effet de rendu d'un tir, par weapon_key (cf. weapon_names.toml pour le nom affiche).
+#
+# CE QUI EST MESURE, ET CE QUI EST CHOISI. Le libelle de l'arme est MESURE (le film le
+# porte sur chaque evenement de tir). L'effet, lui, est CHOISI : une famille d'arme se
+# dessine autrement qu'une autre. Le regroupement suit la nature physique de la decharge,
+# pas le role de l'arme dans le jeu — une poudre se detonne brievement, un plasma ne
+# s'eteint pas comme une poudre, un rai de dur-lumiere est continu, un arc electrique est
+# brise.
+#
+# Valeurs admises (elles nomment une GEOMETRIE de rendu, pas un type de degat) :
+#   ballistic | plasma | light | shock | explosive | melee | needles
+#
+# UNE ARME ABSENTE DE CETTE TABLE tombe sur le rendu neutre, jamais sur un rendu
+# approchant : un effet emprunte affirmerait une arme qu'on ignore.
+[shot_effects]
+hinf_ma40_ar        = "ballistic"
+hinf_br75           = "ballistic"
+hinf_vk78_commando  = "ballistic"
+hinf_sidekick       = "ballistic"
+hinf_cqs48_bulldog  = "ballistic"
+hinf_s7_sniper      = "ballistic"
+hinf_stalker_rifle  = "ballistic"
+hinf_mangler        = "ballistic"
+hinf_skewer         = "ballistic"
+hinf_plasma_pistol  = "plasma"
+hinf_pulse_carbine  = "plasma"
+hinf_ravager        = "plasma"
+hinf_sentinel_beam  = "light"
+hinf_heatwave       = "light"
+hinf_disruptor      = "shock"
+hinf_shock_rifle    = "shock"
+hinf_m41_spnkr      = "explosive"
+# Ces deux-la sont ici pour PRESERVER un rendu existant, et l'histoire vaut d'etre ecrite.
+# Le rendu se faisait par le NOM que l'enum d'armes du decodeur donnait a la famille — et
+# elle en donnait deux de faux : 0x9D6AAED2 s'y appelait « M41 SPNKr » (c'est le SPNKr a
+# combustible) et 0x3E070217 « Pulse Carbine » (c'est la carabine Vestige). Le registre du
+# titre les nomme correctement ; sans ces deux lignes, elles perdraient l'effet qu'elles
+# avaient sous un faux nom.
+hinf_fuel_rod_spnkr = "explosive"
+hinf_vestige_carbine = "plasma"
+hinf_cindershot     = "explosive"
+hinf_hydra          = "explosive"
+hinf_gravity_hammer = "melee"
+hinf_energy_sword   = "melee"
+hinf_needler        = "needles"

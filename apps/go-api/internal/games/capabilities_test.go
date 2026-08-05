@@ -9,8 +9,8 @@ import (
 func TestAllCapabilityKeys_Count(t *testing.T) {
 	// Garde-fou : si une CapabilityKey est ajoutée sans mettre à jour
 	// AllCapabilityKeys(), ce compteur le signale.
-	if got := len(AllCapabilityKeys()); got != 20 {
-		t.Errorf("AllCapabilityKeys() = %d clés, want 20 (mettre à jour si ajout de capability)", got)
+	if got := len(AllCapabilityKeys()); got != 22 {
+		t.Errorf("AllCapabilityKeys() = %d clés, want 22 (mettre à jour si ajout de capability)", got)
 	}
 }
 

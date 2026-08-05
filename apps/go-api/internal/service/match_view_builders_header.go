@@ -18,6 +18,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/port"
 )
 
 // ---------------------------------------------------------------------------
@@ -209,6 +210,22 @@ func applyMatchHeaderEnrichment(
 			ColorToken: badge.ColorToken,
 		}
 	}
+}
+
+// applyMatchHeaderReplay renseigne ReplayAvailable — la présence de l'artefact de rejeu
+// 2D du match. Appliqué APRÈS le header, comme le flag « Prolongation » : le service
+// porte le service de rejeu, pas le builder (buildMatchHeader est déjà à la limite de
+// paramètres du dépôt).
+//
+// svc nil (titre sans rejeu, registry non câblée) → false, jamais d'erreur : le front
+// n'affiche simplement pas de lien.
+func applyMatchHeaderReplay(
+	ctx context.Context, h *domain.MatchViewHeader, matchID string, svc port.ReplayService,
+) {
+	if h == nil || svc == nil || matchID == "" {
+		return
+	}
+	h.ReplayAvailable = svc.IsAvailable(ctx, matchID)
 }
 
 // applyMatchHeaderOvertime renseigne IsOvertime / OvertimeSeconds — deuxième

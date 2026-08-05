@@ -1,0 +1,11 @@
+MINI-BOBINE killsource — provenance
+
+Film source        : 000d5950 (data/cache/film_chunks/000d5950)
+Prefixe conserve   : chunks 00 a 05 du film, EN-TETE COMPRIS, octets bruts
+Chunk HIGHLIGHT    : n27 du film, recopie en chunk_06.bin
+
+POURQUOI UN PREFIXE CONTIGU ET NON DES PAQUETS CHOISIS. Le decodeur construit son
+monde par accumulation depuis l en-tete. Une bobine de paquets cherry-pickes — le patron
+de la mini-bobine du rejeu — n y decode AUCUNE mort (mesure : 0 candidat).
+
+Aucun octet n est modifie. Regeneration : voir minibobine_test.go.

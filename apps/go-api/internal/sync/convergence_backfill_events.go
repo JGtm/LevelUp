@@ -33,6 +33,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 )
 
@@ -314,6 +315,18 @@ func (cfg EventsConvergenceConfig) processChunk(ctx context.Context, chunk []str
 	for _, f := range fetched {
 		switch {
 		case f.err != nil:
+			// LOGGÉ AVANT LA DÉGRADATION (même traitement que la persistance ci-dessous).
+			// Le match repart au retry set (events_loaded reste false), donc l'échec est
+			// RATTRAPABLE — mais un `Skipped++` muet le rendait indistinguable d'un match
+			// convergé par un sync parallèle. Un film dont le parse échoue à chaque passe
+			// boucle alors indéfiniment sans qu'aucune ligne de log ni aucun compteur ne
+			// le dise. WARN et non ERROR : le fetch réseau échoue légitimement (timeout,
+			// 5xx transitoire), c'est la répétition qui fait le signal, pas l'occurrence.
+			observability.AddIntT(ctxkeys.TitleSlug(ctx),
+				"convergence_events_fetch_failed_total", 1)
+			cfg.log.WarnContext(ctx, "convergence backfill events: fetch/parse du chunk film "+
+				"échoué (match repris à la passe suivante)",
+				"gamertag", cfg.Gamertag, "match_id", f.matchID, "err", f.err)
 			res.Skipped++ // réseau/parse → events_loaded reste false → repris
 		case f.found && len(f.events) > 0:
 			if !still[f.matchID] {
@@ -321,6 +334,16 @@ func (cfg EventsConvergenceConfig) processChunk(ctx context.Context, chunk []str
 				continue
 			}
 			if _, e := persistCombatCompletion(ctx, sharedDB, f.matchID, f.events); e != nil {
+				// LOGGÉ AVANT LA DÉGRADATION. Le match repart au retry set (events_loaded reste
+				// false), donc l'échec est RATTRAPABLE — mais un `Skipped++` muet le rendait
+				// indistinguable d'un match convergé par un sync parallèle. Une écriture qui
+				// échoue à chaque passe boucle alors indéfiniment sans qu'aucune ligne de log
+				// ni aucun compteur ne le dise.
+				observability.AddIntT(ctxkeys.TitleSlug(ctx),
+					"convergence_events_persist_failed_total", 1)
+				cfg.log.ErrorContext(ctx, "convergence backfill events: persistance de la "+
+					"complétion combat échouée (match repris à la passe suivante)",
+					"gamertag", cfg.Gamertag, "match_id", f.matchID, "err", e)
 				res.Skipped++
 			} else {
 				res.EventsWritten++

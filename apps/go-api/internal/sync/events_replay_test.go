@@ -19,12 +19,15 @@ import (
 	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+
+	"levelup/go-api/internal/domain/killscope"
+	"levelup/go-api/internal/migration"
 )
 
 // openReplayShared crée une DB DuckDB in-memory avec le schéma minimal exercé
 // par events_replay (match_registry + match_participants + highlight_events +
-// killer_victim_pairs + xuid_aliases). Aligné sur le schéma prod (cf.
-// internal/migration/steps_shared.go).
+// killer_victim_pairs + match_kill_events + xuid_aliases). Aligné sur le schéma
+// prod (cf. internal/migration/steps_shared.go).
 func openReplayShared(t *testing.T) *sql.DB {
 	t.Helper()
 	db, err := sql.Open("duckdb", ":memory:")
@@ -56,6 +59,9 @@ func openReplayShared(t *testing.T) *sql.DB {
 			raw_json   VARCHAR,
 			UNIQUE (match_id, xuid, time_ms, event_type)
 		);
+		-- killer_victim_pairs RESTE : les producteurs y écrivent toujours (base crédit).
+		-- Depuis le 2026-08-03 ce n'est plus elle que la sonde de présence interroge — la
+		-- canonique arrive juste en dessous, par les migrations réelles.
 		CREATE TABLE killer_victim_pairs (
 			match_id        VARCHAR NOT NULL,
 			killer_xuid     VARCHAR NOT NULL,
@@ -73,6 +79,11 @@ func openReplayShared(t *testing.T) *sql.DB {
 		);
 	`
 	if err := execScript(t.Context(), db, ddl); err != nil {
+		t.Fatal(err)
+	}
+	// match_kill_events : seconde destination du kill-feed depuis le 2026-08-02 (double
+	// écriture datée). DDL issue des migrations réelles.
+	if err := migration.EnsureMatchKillEvents(db); err != nil {
 		t.Fatal(err)
 	}
 	return db
@@ -103,8 +114,15 @@ func insertHighlightRow(t *testing.T, db *sql.DB, matchID, eventType string, tim
 
 func insertKVPair(t *testing.T, db *sql.DB, matchID string) {
 	t.Helper()
-	_, err := db.Exec(`INSERT INTO killer_victim_pairs
-		(match_id, killer_xuid, victim_xuid, time_ms) VALUES (?, 'k', 'v', 100)`, matchID)
+	// La sonde de présence interroge la CANONIQUE depuis le 2026-08-03 : c'est donc elle
+	// qu'un match « sain » doit porter. On passe par la table réelle (la vue _latest la
+	// sert), avec les colonnes NOT NULL que le schéma exige.
+	_, err := db.Exec(`INSERT INTO match_kill_events
+		(match_id, decode_pass, decoder_rev, publishable, time_ms,
+		 victim_gamertag, victim_xuid, feed_killer_xuid, feed_present,
+		 assist_known, read_path, read_origin)
+		VALUES (?, 'p1', 'test', TRUE, 100, 'V', 'v', 'k', TRUE, FALSE, ?, ?)`,
+		matchID, killscope.ReadPathLiveFeed, killscope.OriginCreditOnly)
 	if err != nil {
 		t.Fatal(err)
 	}

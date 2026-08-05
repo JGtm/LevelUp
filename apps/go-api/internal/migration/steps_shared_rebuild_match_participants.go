@@ -29,10 +29,14 @@ package migration
 //   1. PRAGMA table_info pour énumérer les colonnes actuelles (robuste aux
 //      additions futures de colonnes via ALTER TABLE)
 //   2. CREATE TABLE __rebuilt AS SELECT <cols> FROM match_participants
-//   3. DROP TABLE match_participants (cascade sur vues)
+//   3. DROP TABLE match_participants — les vues dépendantes RESTENT au catalogue
+//      (cf. la note de swapMatchParticipantsTx : DuckDB ne les supprime pas, même
+//      avec CASCADE)
 //   4. RENAME __rebuilt → match_participants
 //   5. ADD PRIMARY KEY (match_id, xuid)
-//   6. Recrée les vues (applyResolutionViews + applyMvPlayerMatchesView)
+//   6. Recrée les vues par CREATE OR REPLACE (applyResolutionViews +
+//      applyMvPlayerMatchesView) — c'est ce OR REPLACE qui écrase celles restées
+//      au catalogue et les rebinde sur la nouvelle table
 //   7. Recrée les indexes (5 indexes idx_mp_*)
 //
 // Idempotente : sentinel `match_participants_rebuilt_v1` dans `sync_meta`.
@@ -106,10 +110,12 @@ func applyRebuildMatchParticipants(db *sql.DB) error {
 //  2. CREATE TABLE __rebuilt AS SELECT <cols> FROM match_participants
 //     (le SELECT * sans WHERE force un table-scan complet qui court-circuite
 //     l'index ART corrompu).
-//  3. DROP TABLE match_participants (cascade sur vues).
+//  3. DROP TABLE match_participants — les vues dépendantes restent au catalogue.
 //  4. RENAME __rebuilt → match_participants.
 //  5. ADD PRIMARY KEY (match_id, xuid).
-//  6. Recrée les vues (applyResolutionViews + applyMvPlayerMatchesView).
+//  6. Recrée les vues EN CREATE OR REPLACE (applyResolutionViews +
+//     applyMvPlayerMatchesView) : le OR REPLACE est ce qui écrase les vues
+//     survivantes de l'étape 3 et les rebinde sur la table neuve.
 //  7. Recrée les 6 indexes idx_mp_*.
 //
 // No-op gracieux si la table match_participants est absente.
@@ -161,7 +167,8 @@ func RebuildMatchParticipantsART(ctx context.Context, db *sql.DB) error {
 	// qu'un crash entre le DROP et le RENAME ne peut PAS laisser match_participants
 	// (table partagée de tous les joueurs) absente — rollback intégral. Un garde
 	// anti-perte vérifie en outre que le rebuild a bien toutes les rows avant de
-	// détruire l'original. Cf. cmd/rebuild_mp (même pattern, validé) + revue P0 2026-06-02.
+	// détruire l'original. Cf. revue P0 2026-06-02. `cmd/rebuild_mp` DÉLÈGUE ICI
+	// depuis le 2026-08-05 (dette H4) : il n'y a plus de second swap à la main.
 	if err := swapMatchParticipantsTx(ctx, db, colList, before); err != nil {
 		return err
 	}
@@ -255,8 +262,13 @@ func swapMatchParticipantsTx(ctx context.Context, db *sql.DB, colList string, be
 	if rebuilt != before {
 		return fmt.Errorf("rebuild_mp_runtime: swap abandonné, rebuilt=%d != before=%d (rollback, aucune perte de rows)", rebuilt, before)
 	}
-	// DROP TABLE supprime aussi les vues dépendantes (cascade interne DuckDB) ;
-	// elles sont recréées hors transaction par l'appelant.
+	// ⚠ CE QUE `DROP TABLE` NE FAIT PAS, ET QUI A ÉTÉ MESURÉ (2026-08-02, sonde DuckDB,
+	// constat J4R-7) : il NE supprime PAS les vues dépendantes, même avec CASCADE — elles
+	// restent au catalogue, liées à une table qui n'existe plus. C'est pour cela que la
+	// recréation par l'appelant (ApplyResolutionViews / ApplyMvPlayerMatchesView) doit être
+	// en `CREATE OR REPLACE` : un `CREATE VIEW` nu échouerait en « View with name "v"
+	// already exists! » et ferait avorter la réparation (c'était le défaut de l'ancien
+	// cmd/rebuild_mp). Ne pas « simplifier » ces OR REPLACE.
 	for _, sqlStmt := range []string{
 		`DROP TABLE match_participants`,
 		`ALTER TABLE match_participants__rebuilt RENAME TO match_participants`,

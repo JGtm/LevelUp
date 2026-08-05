@@ -21,8 +21,14 @@ import { useCallback } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getLegendBase, getTooltipBase } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
-import type { MatchHighlightEvent, MatchImpactBadge, MatchScoreboardRow } from '@/lib/api/types'
+import type {
+  MatchHighlightEvent,
+  MatchImpactBadge,
+  MatchObjectiveEvent,
+  MatchScoreboardRow,
+} from '@/lib/api/types'
 import { displayPlayerName } from '@/lib/players/displayName'
+import { extractCtfCaptures } from './_objectiveCaptures'
 import type { MatchViewText } from './i18n'
 
 interface Props {
@@ -30,6 +36,8 @@ interface Props {
   badges: MatchImpactBadge[] | null | undefined
   scoreboard: MatchScoreboardRow[] | null | undefined
   meXUID: string | null
+  /** Événements d'objectif (CTF captures…) — overlay de verticales pleine hauteur. */
+  objectiveEvents?: MatchObjectiveEvent[] | null
   t: MatchViewText
 }
 
@@ -73,7 +81,7 @@ function formatMmSs(valueMs: number): string {
   return `${m}m${s.toString().padStart(2, '0')}s`
 }
 
-export function MatchKDCumulChart({ events, badges, scoreboard, meXUID, t }: Props) {
+export function MatchKDCumulChart({ events, badges, scoreboard, meXUID, objectiveEvents, t }: Props) {
   // Le chart trace les frags cumulés par équipe : seuls les events `kill` le
   // peuplent. `events` peut être non-vide (médailles, autres faits marquants)
   // sans aucun kill → on force l'EmptyState plutôt qu'un canvas vide titré.
@@ -246,6 +254,31 @@ export function MatchKDCumulChart({ events, badges, scoreboard, meXUID, t }: Pro
         ? Math.min(0, ...placedBelow.map((p) => p.yChip - chipHeightY))
         : 0
 
+      // ---- Overlay captures CTF : lignes verticales pleine hauteur ---------
+      // L'axe X est en ms → un markLine `{ xAxis: tMs }` trace une verticale.
+      // Vide si mode non-CTF (extractCtfCaptures renvoie []) → overlay absent.
+      const captures = extractCtfCaptures(objectiveEvents, scoreboard, meXUID)
+      type MarkLineVert = Record<string, unknown>
+      const captureML: MarkLineVert[] = captures.map((c) => ({
+        xAxis: c.tMs,
+        lineStyle: { color: c.ally ? colorAlly : colorEnemy, width: 1, type: 'solid', opacity: 0.7 },
+        label: {
+          show: true,
+          formatter: t.combatCtfCaptureLabel,
+          color: c.ally ? colorAlly : colorEnemy,
+          fontSize: 10,
+          fontWeight: 'bold',
+          position: 'insideEndTop',
+          rotate: 90,
+        },
+        // Tooltip dédié (item-trigger) : scorer + horodatage de la capture.
+        tooltip: {
+          show: true,
+          trigger: 'item',
+          formatter: () => t.combatCtfCaptureTooltip(c.scorer, formatMmSs(c.tMs)),
+        },
+      }))
+
       const axis = getAxisBase(tc)
       return {
         backgroundColor: CHART_BG,
@@ -305,10 +338,38 @@ export function MatchKDCumulChart({ events, badges, scoreboard, meXUID, t }: Pro
             markLine: { silent: true, symbol: ['none', 'none'], label: { show: false }, data: enemyML },
             z: 4,
           },
+          // Série dédiée overlay captures CTF : verticales pleine hauteur.
+          // Absente du legend (name hors legend.data). markLine non-silent pour
+          // exposer le tooltip scorer au survol ; aucune donnée de ligne propre.
+          ...(captureML.length > 0
+            ? [{
+                name: t.combatCtfCaptureLabel,
+                type: 'line' as const,
+                data: [] as Array<[number, number]>,
+                showSymbol: false,
+                legendHoverLink: false,
+                markLine: {
+                  silent: false,
+                  symbol: ['none', 'none'],
+                  data: captureML,
+                },
+                z: 3,
+              }]
+            : []),
         ],
       }
     },
-    [events, badges, scoreboard, meXUID, t.combatTeamLabel, t.combatEnemyLabel],
+    [
+      events,
+      badges,
+      scoreboard,
+      meXUID,
+      objectiveEvents,
+      t.combatTeamLabel,
+      t.combatEnemyLabel,
+      t.combatCtfCaptureLabel,
+      t.combatCtfCaptureTooltip,
+    ],
   )
 
   return (

@@ -3382,6 +3382,104 @@ paths:
       summary: Match précédent / suivant pour navigation
       tags:
         - match-view
+  /players/{player_slug}/matches/{match_id}/objective-events:
+    get:
+      operationId: getMatchObjectiveEvents
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: match_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ObjectiveEventDTO'
+                type:
+                  - array
+                  - "null"
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Timeline objectif mode-agnostique d'un match
+      tags:
+        - match-view
+  /players/{player_slug}/matches/{match_id}/positions:
+    get:
+      operationId: getMatchPositions
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: match_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/MatchPositionDTO'
+                type:
+                  - array
+                  - "null"
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Positions joueurs aux images-clés d'un match
+      tags:
+        - match-view
+  /players/{player_slug}/matches/{match_id}/replay:
+    get:
+      operationId: getMatchReplay
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: match_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplayDocument'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Rejeu 2D pré-construit d'un match
+      tags:
+        - match-view
   /players/{player_slug}/media:
     delete:
       operationId: deleteMedia
@@ -7744,6 +7842,21 @@ components:
         - weapon_id
         - kills
       type: object
+    AmmoSlot:
+      additionalProperties: false
+      properties:
+        gauge:
+          format: float
+          type: number
+        mag:
+          format: int32
+          minimum: 0
+          type: integer
+        res:
+          format: int32
+          minimum: 0
+          type: integer
+      type: object
     ApiError:
       additionalProperties: false
       properties:
@@ -8274,6 +8387,66 @@ components:
         - first_launch
         - oauth_code_flow_enabled
         - demo_mode
+      type: object
+    Bounds:
+      additionalProperties: false
+      properties:
+        maxX:
+          format: float
+          type: number
+        maxY:
+          format: float
+          type: number
+        maxZ:
+          format: float
+          type: number
+        minX:
+          format: float
+          type: number
+        minY:
+          format: float
+          type: number
+        minZ:
+          format: float
+          type: number
+      required:
+        - minX
+        - minY
+        - maxX
+        - maxY
+      type: object
+    BridgeHealth:
+      additionalProperties: false
+      properties:
+        fromReading:
+          format: int64
+          type: integer
+        indexDisagreements:
+          format: int64
+          type: integer
+        indexReadings:
+          format: int64
+          type: integer
+        livesNamed:
+          format: int64
+          type: integer
+        livesTotal:
+          format: int64
+          type: integer
+        slotCollisions:
+          format: int64
+          type: integer
+        slots:
+          format: int64
+          type: integer
+      required:
+        - slots
+        - fromReading
+        - livesNamed
+        - livesTotal
+        - indexReadings
+        - indexDisagreements
+        - slotCollisions
       type: object
     BucketInfo:
       additionalProperties: false
@@ -9855,6 +10028,27 @@ components:
         - x_value
         - y_value
         - outcome
+      type: object
+    Coverage:
+      additionalProperties: false
+      properties:
+        bridge:
+          $ref: '#/components/schemas/BridgeHealth'
+        grenades:
+          $ref: '#/components/schemas/LayerCoverage'
+        objectives:
+          $ref: '#/components/schemas/LayerCoverage'
+        shots:
+          $ref: '#/components/schemas/LayerCoverage'
+        verdict:
+          additionalProperties:
+            type: string
+          type: object
+      required:
+        - shots
+        - grenades
+        - objectives
+        - bridge
       type: object
     CreatePlayerProfileResponse:
       additionalProperties: false
@@ -11918,6 +12112,39 @@ components:
         - coalesced_total
         - stale_count
       type: object
+    Grenade:
+      additionalProperties: false
+      properties:
+        i:
+          format: int64
+          type: integer
+        rank:
+          format: int64
+          type: integer
+        s:
+          type: string
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+        t:
+          format: int64
+          type: integer
+        x:
+          format: float
+          type: number
+        "y":
+          format: float
+          type: number
+      required:
+        - t
+        - slot
+        - i
+        - x
+        - "y"
+        - rank
+        - s
+      type: object
     Group:
       additionalProperties: false
       properties:
@@ -12424,6 +12651,43 @@ components:
         - sample
         - description
       type: object
+    Inventory:
+      additionalProperties: false
+      properties:
+        a:
+          format: int64
+          type: integer
+        am:
+          items:
+            $ref: '#/components/schemas/AmmoSlot'
+          type:
+            - array
+            - "null"
+        cand:
+          format: int64
+          type: integer
+        d:
+          format: int64
+          type: integer
+        g:
+          items:
+            format: int32
+            minimum: 0
+            type: integer
+          type:
+            - array
+            - "null"
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+        t:
+          format: int64
+          type: integer
+      required:
+        - t
+        - slot
+      type: object
     InviteCode:
       additionalProperties: false
       properties:
@@ -12813,6 +13077,17 @@ components:
         - current_rating
         - has_data
       type: object
+    Label:
+      additionalProperties: false
+      properties:
+        en:
+          type: string
+        fr:
+          type: string
+      required:
+        - en
+        - fr
+      type: object
     LabelValue:
       additionalProperties: false
       properties:
@@ -12842,6 +13117,35 @@ components:
       required:
         - timestamp
         - title_name
+      type: object
+    LayerCoverage:
+      additionalProperties: false
+      properties:
+        ambiguous:
+          format: int64
+          type: integer
+        attached:
+          format: int64
+          type: integer
+        available:
+          format: int64
+          type: integer
+        noSlot:
+          format: int64
+          type: integer
+        outOfWindow:
+          format: int64
+          type: integer
+        unpublished:
+          format: int64
+          type: integer
+      required:
+        - available
+        - attached
+        - noSlot
+        - ambiguous
+        - outOfWindow
+        - unpublished
       type: object
     LeaderboardCatalog:
       additionalProperties: false
@@ -13090,6 +13394,27 @@ components:
       required:
         - items
       type: object
+    Loadout:
+      additionalProperties: false
+      properties:
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+        t:
+          format: int64
+          type: integer
+        w:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+      required:
+        - t
+        - slot
+        - w
+      type: object
     LoginResponse:
       additionalProperties: false
       properties:
@@ -13179,6 +13504,35 @@ components:
         - map_ui
         - match_count
         - win_rate
+      type: object
+    MapObject:
+      additionalProperties: false
+      properties:
+        dx:
+          format: float
+          type: number
+        dy:
+          format: float
+          type: number
+        typeId:
+          format: int64
+          type: integer
+        x:
+          format: float
+          type: number
+        "y":
+          format: float
+          type: number
+        yaw:
+          format: float
+          type: number
+        z:
+          format: float
+          type: number
+      required:
+        - typeId
+        - x
+        - "y"
       type: object
     MarkResult:
       additionalProperties: false
@@ -14272,6 +14626,31 @@ components:
         - outcome_label
         - outcome_color
       type: object
+    MatchPositionDTO:
+      additionalProperties: false
+      properties:
+        team:
+          format: int64
+          type: integer
+        timeMs:
+          format: int64
+          type: integer
+        x:
+          format: float
+          type: number
+        "y":
+          format: float
+          type: number
+        z:
+          format: float
+          type: number
+      required:
+        - timeMs
+        - x
+        - "y"
+        - z
+        - team
+      type: object
     MatchPrivacyInfo:
       additionalProperties: false
       properties:
@@ -14881,6 +15260,8 @@ components:
           type: integer
         playlist_label:
           type: string
+        replay_available:
+          type: boolean
         score_label:
           type: string
         start_time:
@@ -14904,6 +15285,7 @@ components:
         - is_excluded
         - is_ranked
         - is_favorite
+        - replay_available
       type: object
     MatchViewImpactRole:
       additionalProperties: false
@@ -16156,6 +16538,25 @@ components:
         - source
         - created_at
       type: object
+    ObjectiveAction:
+      additionalProperties: false
+      properties:
+        stat:
+          type: string
+        t:
+          format: int64
+          type: integer
+        timeMs:
+          format: int64
+          type: integer
+        xuid:
+          type: string
+      required:
+        - t
+        - xuid
+        - stat
+        - timeMs
+      type: object
     ObjectiveAggregate:
       additionalProperties: false
       description: Cumul (SUM) des stats objectifs (CTF/Zones/Oddball) d'un joueur sur un ensemble de matchs. Champs zéro omis.
@@ -16187,6 +16588,57 @@ components:
         zone_secures:
           format: int64
           type: integer
+      type: object
+    ObjectiveEventDTO:
+      additionalProperties: false
+      properties:
+        confidence:
+          type: string
+        eventType:
+          type: string
+        matchId:
+          type: string
+        objectiveType:
+          type: string
+        players:
+          items:
+            $ref: '#/components/schemas/ObjectiveEventPlayerDTO'
+          type:
+            - array
+            - "null"
+        seq:
+          format: int64
+          type: integer
+        source:
+          type: string
+        teamId:
+          format: int64
+          type: integer
+        timeMs:
+          format: int64
+          type: integer
+        value:
+          format: int64
+          type: integer
+      required:
+        - matchId
+        - seq
+        - objectiveType
+        - eventType
+        - source
+        - confidence
+        - players
+      type: object
+    ObjectiveEventPlayerDTO:
+      additionalProperties: false
+      properties:
+        role:
+          type: string
+        xuid:
+          type: string
+      required:
+        - xuid
+        - role
       type: object
     ObjectivePoint:
       additionalProperties: false
@@ -17147,6 +17599,35 @@ components:
       required:
         - figure
       type: object
+    Point:
+      additionalProperties: false
+      properties:
+        h:
+          format: float
+          type: number
+        hp:
+          format: float
+          type: number
+        sh:
+          format: float
+          type: number
+        t:
+          format: int64
+          type: integer
+        x:
+          format: float
+          type: number
+        "y":
+          format: float
+          type: number
+        z:
+          format: float
+          type: number
+      required:
+        - t
+        - x
+        - "y"
+      type: object
     PostSyncResult:
       additionalProperties: false
       properties:
@@ -17370,6 +17851,31 @@ components:
         - leverage_value
         - narrative_axes
         - coaching_message
+      type: object
+    Projectile:
+      additionalProperties: false
+      properties:
+        p:
+          items:
+            items:
+              format: float
+              type: number
+            maxItems: 3
+            minItems: 3
+            type:
+              - array
+              - "null"
+          type:
+            - array
+            - "null"
+        rest:
+          type: boolean
+        t0:
+          format: int64
+          type: integer
+      required:
+        - t0
+        - p
       type: object
     ProposalDTO:
       additionalProperties: false
@@ -17952,6 +18458,115 @@ components:
         - overview
         - relations
       type: object
+    ReplayDocument:
+      additionalProperties: false
+      properties:
+        abilityLabels:
+          additionalProperties:
+            $ref: '#/components/schemas/Label'
+          type: object
+        bounds:
+          $ref: '#/components/schemas/Bounds'
+        coverage:
+          $ref: '#/components/schemas/Coverage'
+        durationMs:
+          format: int64
+          type: integer
+        frameCount:
+          format: int64
+          type: integer
+        frameIntervalMs:
+          format: int64
+          type: integer
+        geometry:
+          items:
+            $ref: '#/components/schemas/MapObject'
+          type:
+            - array
+            - "null"
+        geometryBounds:
+          $ref: '#/components/schemas/Bounds'
+        grenadeLabels:
+          items:
+            $ref: '#/components/schemas/Label'
+          type:
+            - array
+            - "null"
+        grenades:
+          items:
+            $ref: '#/components/schemas/Grenade'
+          type:
+            - array
+            - "null"
+        inventory:
+          items:
+            $ref: '#/components/schemas/Inventory'
+          type:
+            - array
+            - "null"
+        loadouts:
+          items:
+            $ref: '#/components/schemas/Loadout'
+          type:
+            - array
+            - "null"
+        matchId:
+          type: string
+        objectives:
+          items:
+            $ref: '#/components/schemas/ObjectiveAction'
+          type:
+            - array
+            - "null"
+        projectiles:
+          items:
+            $ref: '#/components/schemas/Projectile'
+          type:
+            - array
+            - "null"
+        roster:
+          items:
+            $ref: '#/components/schemas/RosterEntry'
+          type:
+            - array
+            - "null"
+        schemaVersion:
+          format: int64
+          type: integer
+        shots:
+          items:
+            $ref: '#/components/schemas/Shot'
+          type:
+            - array
+            - "null"
+        structure:
+          items:
+            $ref: '#/components/schemas/Surface'
+          type:
+            - array
+            - "null"
+        structureBounds:
+          $ref: '#/components/schemas/Bounds'
+        titleSlug:
+          type: string
+        tracks:
+          items:
+            $ref: '#/components/schemas/Track'
+          type:
+            - array
+            - "null"
+        weaponLabels:
+          additionalProperties:
+            $ref: '#/components/schemas/WeaponLabel'
+          type: object
+      required:
+        - schemaVersion
+        - matchId
+        - titleSlug
+        - frameCount
+        - bounds
+        - tracks
+      type: object
     ResolveResult:
       additionalProperties: false
       properties:
@@ -18037,6 +18652,20 @@ components:
         - heap_sys_bytes
         - sys_bytes
         - num_gc
+      type: object
+    RosterEntry:
+      additionalProperties: false
+      properties:
+        filmIndex:
+          format: int64
+          type: integer
+        name:
+          type: string
+        xuid:
+          type: string
+      required:
+        - xuid
+        - filmIndex
       type: object
     RunOnceResult:
       additionalProperties: false
@@ -19211,6 +19840,33 @@ components:
       required:
         - lang
         - user_timezone
+      type: object
+    Shot:
+      additionalProperties: false
+      properties:
+        h:
+          format: float
+          type: number
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+        t:
+          format: int64
+          type: integer
+        w:
+          type: string
+        x:
+          format: float
+          type: number
+        "y":
+          format: float
+          type: number
+      required:
+        - t
+        - slot
+        - x
+        - "y"
       type: object
     SkillRatingSnapshot:
       additionalProperties: false
@@ -20618,6 +21274,48 @@ components:
         - historical_streak
         - is_arc_step
       type: object
+    Surface:
+      additionalProperties: false
+      properties:
+        poly:
+          items:
+            items:
+              format: float
+              type: number
+            maxItems: 2
+            minItems: 2
+            type:
+              - array
+              - "null"
+          type:
+            - array
+            - "null"
+        x0:
+          format: float
+          type: number
+        x1:
+          format: float
+          type: number
+        y0:
+          format: float
+          type: number
+        y1:
+          format: float
+          type: number
+        z:
+          format: float
+          type: number
+        zb:
+          format: float
+          type: number
+      required:
+        - x0
+        - y0
+        - x1
+        - y1
+        - z
+        - zb
+      type: object
     SynthesisBreakdowns:
       additionalProperties: false
       properties:
@@ -21417,7 +22115,66 @@ components:
           description: 'Option « composition exacte » : n''inclut que les matchs où aucun autre coéquipier connu n''était sur l''équipe du joueur principal. Par défaut (false), la population est « matchs commencés ensemble » = intersection du roster sélectionné.'
           type: boolean
         filters:
-          $ref: '#/components/schemas/FilterContextInput'
+          description: Contexte de filtre envoyé par le client — tous les champs optionnels.
+          properties:
+            cascade:
+              properties:
+                experience_types:
+                  items:
+                    type: string
+                  type: array
+                maps:
+                  items:
+                    type: string
+                  type: array
+                modes:
+                  items:
+                    type: string
+                  type: array
+                playlists:
+                  items:
+                    type: string
+                  type: array
+              type: object
+            filter_mode:
+              enum:
+                - period
+                - sessions
+              type: string
+            match_context:
+              enum:
+                - solo
+                - squad
+                - all
+              type: string
+            period:
+              properties:
+                end_date:
+                  nullable: true
+                  type: string
+                start_date:
+                  nullable: true
+                  type: string
+              type: object
+            sessions:
+              properties:
+                gap_minutes:
+                  type: integer
+                picked_session_label:
+                  nullable: true
+                  type: string
+                picked_sessions:
+                  items:
+                    type: string
+                  type: array
+                picked_solo_session_label:
+                  nullable: true
+                  type: string
+                picked_squad_session_label:
+                  nullable: true
+                  type: string
+              type: object
+          type: object
         locale:
           type: string
         picked_solo_session_labels:
@@ -22253,6 +23010,37 @@ components:
         - avg_kda
         - match_count
       type: object
+    Track:
+      additionalProperties: false
+      properties:
+        endFrame:
+          format: int64
+          type: integer
+        name:
+          type: string
+        points:
+          items:
+            $ref: '#/components/schemas/Point'
+          type:
+            - array
+            - "null"
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+        startFrame:
+          format: int64
+          type: integer
+        team:
+          format: int64
+          type: integer
+        xuid:
+          type: string
+      required:
+        - slot
+        - team
+        - points
+      type: object
     UnreadCount:
       additionalProperties: false
       properties:
@@ -22410,6 +23198,19 @@ components:
         - label_fr
         - label_en
         - kills
+      type: object
+    WeaponLabel:
+      additionalProperties: false
+      properties:
+        en:
+          type: string
+        fr:
+          type: string
+        fx:
+          type: string
+      required:
+        - en
+        - fr
       type: object
     WinLossPoint:
       additionalProperties: false

@@ -128,13 +128,14 @@ func TestMatchViewRepo_GetMatchEvents_Empty(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// MatchViewRepo — GetMatchKVPairs (Q20, vue v_killer_victim_full)
+// MatchViewRepo — GetMatchKVPairs (Q20, table match_kill_events_latest)
 // ---------------------------------------------------------------------------
 
 func TestMatchViewRepo_GetMatchKVPairs_Empty(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	repo := NewMatchViewRepo(pdb, pTestXUID)
-	// v_killer_victim_full retourne toujours 0 lignes (stub WHERE FALSE)
+	// Q20 lit la table canonique depuis la bascule du 2026-08-03 ; le fixture la
+	// crée vide, donc 0 paire.
 	pairs, err := repo.GetMatchKVPairs(context.Background(), "m1")
 	if err != nil {
 		t.Fatalf("GetMatchKVPairs: %v", err)
