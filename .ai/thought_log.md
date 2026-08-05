@@ -1,3 +1,77 @@
+## [2026-08-05] Piste C-bis — re-mode-score integre, et le contrat a rattrape le calque
+
+**Statut** : Complete, sauf le gate des artefacts de rejeu (`[!]`, arbitrage superviseur —
+voir la fin). Branche `feat/replay2d-prod`, worktree `LevelUp-wt-replay2d`.
+
+**Decision technique principale — integrer par MERGE, pas par rebase.** Le plan prescrivait
+un rebase de `feat/re-mode-score` (42 commits, base `b9f163d80` = J3-1). Mesure avant
+d'agir : **26 de ces 42 commits touchent `.ai/thought_log.md`**, qui conflite en tete a
+chaque fois, alors que le recouvrement REEL entre les deux branches est de **4 fichiers**
+(le journal, le master plan, `replay/build.go`, `replay/document.go`). Un rebase aurait
+impose 26 resolutions manuelles du meme journal pour zero information supplementaire. Le
+merge donne le meme arbre final, une seule resolution par fichier, et preserve les 42
+commits. Ecart consigne au plan.
+
+**Deux conflits SEMANTIQUES que git n'a pas signales** — c'est la vraie difficulte de ce
+lot, et l'auto-merge les avait laisses passer verts :
+- `main` a deplace `FilmshellWeaponKeysByFamily` de `games/halo_infinite/migrations` vers
+  `games/weapons` (`33b416112`). Les 3 appelants du rejeu 2D pointaient encore l'ancien
+  domicile. Realignes — aucune recopie du registre, qui reste la source unique d'identites
+  d'armes.
+- J3-2 (lot C de `PLAN_DETTE_AVANT_MERGE`) avait retire `readBitsBE` de `film.go` comme
+  code mort. Exact au moment ou ca a ete fait ; plus exact depuis, parce que
+  `re-mode-score` est partie d'AVANT ce retrait et lui a donne un appelant — `statborg.go`,
+  qui lit la chaine d'enregistrements a des offsets non alignes. Fonction retablie, et
+  l'en-tete de `film.go` dit desormais pourquoi le retrait ne vaut plus (regle : pas de doc
+  inversee).
+
+**Constats de la revue, tous statues.** D-P0a/b et D-P1b `[~]` (couverts par la restitution
+du 02/08). D-P1a `[x]` : `mapobj-build --refresh-from` reecrivait le catalogue en
+`schema_version=2` meme quand une carte n'avait pas pu etre re-parsee — sa zone restait sans
+`shape`, **indiscernable d'un objectif ponctuel**, et le consommateur affichait un point.
+Une absence de migration lue comme une mesure de ponctualite. `carried_from_schema` marque
+desormais ces cartes ; `refreshOffline` n'avait AUCUN test, il en a 5. D-P2 `[x]` : le garde
+`if first` d'`awards.go` etait un no-op **prouve** (`d == p.Value` est toujours vrai a la
+premiere iteration, `prev` valant 0) dont le commentaire annoncait le CONTRAIRE du
+comportement reel ; la seconde passe de `slotidentity.go` n'etait exercee par aucun test (le
+test voisin est rejete des la premiere passe — il fallait le cas symetrique) ; les
+`continue` sur film absent etaient un faux vert, 5e occurrence du motif dans le chantier.
+
+**Dette TSV « zone comp 2 B = deaths » — TRANCHEE : LEGITIME.** La ligne a un lecteur, c'est
+le pont d'identite (`slotidentity.go` lit le triplet frags/morts/assistances) ; les morts ne
+sont pas des evenements d'objectif et le kill-feed les porte deja avec l'arme et
+l'assistant. Le constat R1 (« la TSV concorde ligne a ligne avec `namedStatSlots` ») etait
+faux dans sa FORMULATION : la TSV recense tous les emplacements decodes du statborg, tous
+consommateurs confondus, et `namedStatSlots` n'en est qu'un. Une colonne `lecteur` le dit
+maintenant, et `TestTableStatborgConcordeAvecNamedStatSlots` verifie **dans les deux sens**
+la seule concordance qui ait un sens. Elle etait crue, elle est mesuree.
+
+**Ce que l'integration a decouvert et traite en plus** : le calque publiait DEUX champs que
+le contrat ne decrivait pas (`objectives` sur le document ET sur `Coverage`).
+`contracttest/replay_contract_test.go` l'a attrape et l'a nomme — exactement le defaut qu'il
+existe pour empecher, celui qui avait deja coute les huit familles d'effet de tir. Contrat
+et types regeneres, frontiere de nullabilite web comblee, 22 champs -> 23. Le calque n'est
+DESSINE nulle part : decision #5 tient, on le rend typable, pas visible.
+
+**Resultats observes** — gates joues dans cette session : `go test ./... -p 1` exit 0 (0
+skip) · `-tags=integration -p 1` exit 0 · **`TestGoldenFilms` avec `KILLSOURCE_FIXTURES` en
+chemin ABSOLU : 4 films reellement decodes, 84 s, aucun skip** (c'etait LE filet du lot, la
+branche datant d'avant J4) · `golangci-lint --new-from-merge-base=origin/main` 0 issue ·
+`tsc -b --force` exit 0 · vitest `match-replay` 131 tests · ratchet contrat clean. **7
+mutations injectees et vues rouges**, puis retirees.
+
+**Conclusion / prochaine etape.** Le code objectifs a atterri sans diverger. Il reste UN
+gate ouvert, et il demande un arbitrage : les artefacts de rejeu. Deux raisons, la seconde
+etant la vraie — la baseline du 03/08 n'est pas sur ce PC (consigne respectee : RIEN n'a ete
+regenere sous `data/cache/replays/`, empreintes actuelles relevees en lecture seule), et
+surtout **`Coverage.Objectives` est declare SANS `omitempty`** (`coverage.go:114`), donc
+tout artefact regenere portera `coverage.objectives` : le « bit-identique a la baseline »
+est devenu impossible PAR CONSTRUCTION, et legitimement — c'est ce que re-mode-score
+apporte. A trancher : re-poser la baseline apres integration, ou comparer structurellement.
+La premiere est plus sure, mais elle exige d'abord de rapatrier la baseline du 03/08 pour
+verifier que RIEN D'AUTRE n'a bouge dans le document. Ensuite : hygiene (H1-H6 + lot E),
+puis merge sur GO utilisateur explicite.
+
 ## [2026-08-05] Cle PNY, phase 2 : arbitrage des bases, outillage Ghidra, MCP
 
 **Statut** : Complété (restauration ; aucun code applicatif modifié).
