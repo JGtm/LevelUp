@@ -5044,6 +5044,7 @@ export interface components {
         Coverage: {
             bridge: components["schemas"]["BridgeHealth"];
             grenades: components["schemas"]["LayerCoverage"];
+            objectives: components["schemas"]["LayerCoverage"];
             shots: components["schemas"]["LayerCoverage"];
             verdict?: {
                 [key: string]: string;
@@ -7804,6 +7805,14 @@ export interface components {
             target_search?: unknown;
             title_key: string;
         };
+        ObjectiveAction: {
+            stat: string;
+            /** Format: int64 */
+            t: number;
+            /** Format: int64 */
+            timeMs: number;
+            xuid: string;
+        };
         /** @description Cumul (SUM) des stats objectifs (CTF/Zones/Oddball) d'un joueur sur un ensemble de matchs. Champs zéro omis. */
         ObjectiveAggregate: {
             /** Format: int64 */
@@ -8579,6 +8588,7 @@ export interface components {
             inventory?: components["schemas"]["Inventory"][] | null;
             loadouts?: components["schemas"]["Loadout"][] | null;
             matchId: string;
+            objectives?: components["schemas"]["ObjectiveAction"][] | null;
             projectiles?: components["schemas"]["Projectile"][] | null;
             roster?: components["schemas"]["RosterEntry"][] | null;
             /** Format: int64 */

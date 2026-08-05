@@ -53,6 +53,7 @@ export type ReplayDocumentReady = Omit<
   | 'grenades'
   | 'inventory'
   | 'loadouts'
+  | 'objectives'
   | 'projectiles'
   | 'roster'
   | 'shots'
@@ -64,6 +65,7 @@ export type ReplayDocumentReady = Omit<
   grenades: NonNullable<ReplayDocument['grenades']>
   inventory: ReplayInventoryReady[]
   loadouts: ReplayLoadoutReady[]
+  objectives: NonNullable<ReplayDocument['objectives']>
   projectiles: ReplayProjectileReady[]
   roster: NonNullable<ReplayDocument['roster']>
   shots: NonNullable<ReplayDocument['shots']>
@@ -86,6 +88,11 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     grenades: raw.grenades ?? [],
     inventory: (raw.inventory ?? []).map((inv) => ({ ...inv, am: inv.am ?? [], g: inv.g ?? [] })),
     loadouts: (raw.loadouts ?? []).map((lo) => ({ ...lo, w: lo.w ?? [] })),
+    // Le calque d'actions d'objectif traverse la frontière comme les autres tableaux. Il
+    // n'est encore DESSINÉ nulle part (le rejeu 2D reste en dev, décision #5) : ce qui est
+    // fait ici, c'est le rendre typable — sans quoi il arriverait `null` au rendu le jour
+    // où on le branchera, et l'erreur tomberait à l'exécution.
+    objectives: raw.objectives ?? [],
     // `as` sur l'arité seule : le contenu est celui du contrat, seule la longueur fixe du
     // tuple que JSON Schema ne sait pas dire est réaffirmée (cf. en-tête).
     projectiles: (raw.projectiles ?? []).map((pr) => ({ ...pr, p: (pr.p ?? []) as ReplayStep[] })),

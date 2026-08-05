@@ -81,14 +81,21 @@ var replaySchemas = []struct {
 	{"MapObject", replay.MapObject{}},
 	{"Bounds", replay.Bounds{}},
 	{"RosterEntry", replay.RosterEntry{}},
+	{"ObjectiveAction", replay.ObjectiveAction{}},
 	{"Coverage", replay.Coverage{}},
 	{"LayerCoverage", replay.LayerCoverage{}},
 	{"BridgeHealth", replay.BridgeHealth{}},
 }
 
 // wantReplayDocumentFields : le nombre de champs que l artefact publie. Ecrit ici pour que le
-// chiffre du chantier — « 22 champs publies » — soit verifiable et pas seulement affirme.
-const wantReplayDocumentFields = 22
+// chiffre du chantier — « 22 champs publies », 23 depuis le 2026-08-05 — soit verifiable et
+// pas seulement affirme.
+//
+// Le 23e est `objectives`, le calque d actions d objectif entre a l integration de
+// `feat/re-mode-score`. Ce test l a ATTRAPE : la branche publiait le champ sans que le
+// contrat le decrive, exactement le defaut qu il existe pour empecher. Contrat regenere
+// (`make openapi-gen`), jamais ecrit a la main.
+const wantReplayDocumentFields = 23
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

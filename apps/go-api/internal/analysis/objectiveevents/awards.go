@@ -104,7 +104,15 @@ func LabelPersonalScore(points []ScorePoint, quotas map[int][]Award) []LabelledE
 		}
 		bySlot[p.Slot] = append(bySlot[p.Slot], p)
 	}
-	var out []LabelledEvent
+	// Un point de score produit au plus quelques evenements (un increment compose se
+	// decompose en 2 ou 3 parts), et souvent aucun (valeur inchangee). Le nombre de points
+	// retenus est donc l'ordre de grandeur juste pour la reservation : ni sous-dimensionne
+	// au point de recopier a chaque tour, ni gonfle par les slots sans quota.
+	retenus := 0
+	for _, ps := range bySlot {
+		retenus += len(ps)
+	}
+	out := make([]LabelledEvent, 0, retenus)
 	for slot, ps := range bySlot {
 		sort.SliceStable(ps, func(i, j int) bool { return ps[i].TimeMS < ps[j].TimeMS })
 		out = append(out, labelSlot(slot, ps, quotas[slot])...)
