@@ -53,6 +53,19 @@ vulnérabilité appelée. **6 mutations injectées et vues rouges**, puis retir�
 Rotation trimestrielle du journal ré-appliquée : 37 entrées archivées, **conservation vérifiée
 à l'entrée près** (2 141 avant, 2 141 après).
 
+**Ce que la CI a attrapé et que rien de local ne pouvait dire.** Premier push : **8 jobs sur 9
+verts, « Go Coverage + Baseline non-régression » ROUGE** — et la suite, elle, était verte dans
+le même log (`go test: exit=0`, 11 607 tests contre 8 765 en baseline). C'est le gate de
+NON-RÉGRESSION qui refusait, à juste titre : les 4 `TestRunForDB_Shared_*` supprimés par H5
+figuraient encore dans `.ai/baselines/tests_pre_migration.jsonl`, donc il les voyait
+disparaître. Procédure du dépôt appliquée (retirer les 20 lignes d'événements, justifier au
+commit). **Le gate rejoué en local reste rouge, pour une raison sans rapport** : 57 paquets
+`cmd/*` ne compilent pas sous Windows (contraintes de build), donc leurs tests de baseline sont
+« absents » ici alors qu'ils tournent en CI — 4 463 PASS, 0 test en échec, 0 timeout, et plus
+une seule occurrence de `TestRunForDB_Shared_` dans les manquants. La baseline a été capturée
+sous Linux : **la CI est son seul juge valable**, ce qui est exactement pourquoi le contrat
+exige de la vérifier AU NIVEAU JOB après le push, et pas de conclure sur un gate local vert.
+
 **Conclusion / prochaine étape.** Le périmètre du lot est clos, aucun `[!]` sauf F3 (prévenir
 avant le push sur `main`), qui est une décision utilisateur et non une tâche. Ce qui reste
 ouvert est consigné, pas oublié : deux erreurs avalées voisines dans le même `switch` que H2,
