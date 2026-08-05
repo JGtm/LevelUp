@@ -12,13 +12,20 @@ import "testing"
 //
 // C'est le test qui autorise le collage au rejeu 2D : sans lui, les evenements seraient
 // attribues par un numero de slot qui n'a pas le meme sens dans les deux mondes.
+//
+// Le `continue` sur film absent etait un FAUX VERT (constat D-P2) : sans aucun film en
+// cache, ce test passait au VERT en n'ayant apparie personne. Il compte ce qu'il a joue et
+// se declare SKIP plutot que PASS quand il n'a rien pu apparier.
 func TestSlotIdentityResolvesAllEightPlayers(t *testing.T) {
+	apparies := 0
 	for _, film := range []string{"696a9d7c", "1bc77d2e"} {
 		lines := linesOf(film)
 		src, ok := newDiskFilmSource(t, film)
 		if !ok {
+			t.Logf("film %s absent du cache local — aucun appariement joue dessus", film)
 			continue
 		}
+		apparies++
 		got := slotIdentityFrom(StatRecords(src), lines)
 		if len(got) != 8 {
 			t.Errorf("%s : %d slots apparies, attendu 8", film, len(got))
@@ -33,6 +40,9 @@ func TestSlotIdentityResolvesAllEightPlayers(t *testing.T) {
 				t.Errorf("%s : slot %d hors des slots de joueur (10..24 pairs)", film, slot)
 			}
 		}
+	}
+	if apparies == 0 {
+		t.Skip("aucun film de reference dans le cache local — aucun appariement joue")
 	}
 }
 
@@ -82,6 +92,42 @@ func TestSlotIdentityRefusesAmbiguousTriplets(t *testing.T) {
 	}
 	if got[14] != "c" {
 		t.Errorf("slot 14 -> %q, attendu \"c\" (triplet unique)", got[14])
+	}
+}
+
+// TestSlotIdentityRefuseUnXuidRevendiqueParDeuxSlots — la SECONDE passe, qui n'etait
+// couverte par aucun test (constat D-P2).
+//
+// Le test voisin (triplets ambigus) est rejete des la PREMIERE passe : deux LIGNES y
+// partagent le triplet, donc aucun slot ne designe une ligne unique et rien n'entre dans
+// `claim`. La seconde passe garde un cas different et symetrique — deux SLOTS designent
+// chacun sans ambiguite LA MEME ligne. Chacun sort donc de la premiere passe avec une
+// revendication legitime, et c'est seulement en les confrontant qu'on voit qu'ils ne
+// peuvent pas avoir raison tous les deux. Sans elle, le xuid serait attribue aux deux
+// slots — et les evenements d'un joueur apparaitraient en double a l'ecran.
+//
+// Mutation qui doit le faire rougir : renvoyer `claim` au lieu de `out`.
+func TestSlotIdentityRefuseUnXuidRevendiqueParDeuxSlots(t *testing.T) {
+	recs := []StatRecord{
+		{TimeMS: 1000, Slot: 10, Comps: map[int]StatValue{2: {A: 5, B: 3}, 3: {A: 2}}},
+		{TimeMS: 1000, Slot: 12, Comps: map[int]StatValue{2: {A: 5, B: 3}, 3: {A: 2}}},
+		{TimeMS: 1000, Slot: 14, Comps: map[int]StatValue{2: {A: 9, B: 1}, 3: {A: 4}}},
+	}
+	// UNE seule ligne porte le triplet (5, 3, 2) : les slots 10 et 12 le revendiquent
+	// chacun sans ambiguite, la premiere passe les accepte donc tous les deux.
+	lines := []PlayerLine{
+		{XUID: "a", Kills: 5, Deaths: 3, Assists: 2},
+		{XUID: "c", Kills: 9, Deaths: 1, Assists: 4},
+	}
+	got := slotIdentityFrom(recs, lines)
+	if _, ok := got[10]; ok {
+		t.Error("slot 10 apparie alors qu'il se dispute le xuid \"a\" avec le slot 12")
+	}
+	if _, ok := got[12]; ok {
+		t.Error("slot 12 apparie alors qu'il se dispute le xuid \"a\" avec le slot 10")
+	}
+	if got[14] != "c" {
+		t.Errorf("slot 14 -> %q, attendu \"c\" : la dispute des autres ne doit pas le penaliser", got[14])
 	}
 }
 

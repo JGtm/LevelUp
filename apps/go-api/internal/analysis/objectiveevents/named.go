@@ -36,6 +36,14 @@ import "sort"
 // Table figee : `.ai/refs/TABLE_STATS_STATBORG.tsv` ; detail :
 // `.ai/ETAT_DE_L_ART_MODE_SCORE_EVENEMENTS.md` §17.
 //
+// ATTENTION a ce que cette table figee EST, et a ce qu'elle n'est pas (arbitrage du
+// 2026-08-05) : elle recense TOUS les emplacements decodes du statborg, tous consommateurs
+// confondus — le nommage ci-dessous, mais aussi le pont d'identite (`slotidentity.go`, qui
+// lit `2 B = deaths`, absent d'ici a bon droit) et la courbe de score (`score.go`). Sa
+// colonne `lecteur` dit qui lit quoi. On n'attend donc PAS une egalite ligne a ligne avec
+// `namedStatSlots` : la concordance porte sur les seules lignes de lecteur `named.go`, et
+// elle est verifiee dans les deux sens par TestTableStatborgConcordeAvecNamedStatSlots.
+//
 // Limite assumee, ecrite ici pour qu'on ne l'oublie pas : l'ancre d'identite du balayage
 // est `comp 2 A = nombre de frags`, donc le nommage de `comp 2 A` est CIRCULAIRE pour
 // lui-meme. Il est etabli par ailleurs, nominativement (§17.2) ; les autres cles, elles, ne

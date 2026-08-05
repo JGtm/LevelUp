@@ -43,6 +43,16 @@ type mapEntry struct {
 	Unresolved map[string]int       `json:"unresolved_labels,omitempty"`
 	Names      []string             `json:"names,omitempty"`
 	Bounds     map[string][]float64 `json:"bounds,omitempty"` // min/max XYZ des objets
+	// CarriedFromSchema : version du schéma d'où cette carte a été REPORTÉE TELLE QUELLE,
+	// sans re-parse (son `.mvar` manquait au moment de la régénération hors ligne).
+	// Absent = la carte a été produite par le schéma courant.
+	//
+	// POURQUOI CE CHAMP EXISTE. Le document s'annonce en `schema_version` courant pour
+	// l'ENSEMBLE de ses cartes, alors qu'un report peut en laisser une au schéma d'avant.
+	// En v2, une zone non migrée n'a pas de `shape` — exactement comme un objectif
+	// PONCTUEL. Sans ce marqueur, un consommateur affiche un point dans les deux cas :
+	// il traiterait une absence de migration comme une mesure de ponctualité.
+	CarriedFromSchema int `json:"carried_from_schema,omitempty"`
 }
 
 type coverStats struct {
@@ -66,6 +76,10 @@ func newCatalog(titleSlug string) *catalog {
 				"afficher un point, jamais un disque par défaut. Orientation " +
 				"obligatoire : ignorer forward se trompe de 31 % sur une zone tournée. " +
 				"raw = les entiers 16.16 du fichier, conservés pour recalculer sans ré-extraire",
+			"carried_from_schema": "présent sur une carte REPORTÉE d'un schéma antérieur " +
+				"sans re-parse (.mvar absent au refresh) : ses objectifs n'ont pas les " +
+				"champs du schéma courant. Une zone sans `shape` y est NON MIGRÉE, pas " +
+				"ponctuelle — ne pas l'afficher en point",
 			"regeneration": "go run ./cmd/mapobj-build --player <GT> --map-id <uuid> ; " +
 				"hors ligne : --refresh-from <dossier de .mvar>",
 		},

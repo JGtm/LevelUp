@@ -97,9 +97,18 @@ func refreshOffline(ctx context.Context, dir, outPath, titleSlug string, dryRun 
 			"objectifs", len(fresh.Objectives), "objets", fresh.ObjectsN)
 	}
 
+	// Les cartes reportées d'un schéma antérieur ne sont PAS comptées dans `total` :
+	// elles n'ont pas été re-parsées. Les annoncer à part évite de lire « sans_forme: 0 »
+	// comme « tout est migré ».
+	carried := 0
+	for _, e := range cat.Maps {
+		if e != nil && e.CarriedFromSchema > 0 {
+			carried++
+		}
+	}
 	slog.InfoContext(ctx, "mapobj: régénération terminée",
 		"cartes", len(cat.Maps), "objectifs", total, "avec_forme", shaped,
-		"sans_forme", total-shaped)
+		"sans_forme", total-shaped, "cartes_non_migrees", carried)
 	if len(missing) > 0 {
 		slog.WarnContext(ctx, "mapobj: .mvar manquants — cartes non rafraîchies",
 			"n", len(missing), "detail", strings.Join(missing, " | "))
@@ -115,7 +124,22 @@ func refreshOffline(ctx context.Context, dir, outPath, titleSlug string, dryRun 
 }
 
 // carryOver recopie une carte non rafraîchie, avec sa couverture.
+//
+// Elle la MARQUE quand elle vient d'un schéma antérieur : la carte n'a pas été migrée,
+// et le document qui l'accueille s'annonce pourtant en schéma courant. Sans ce marqueur,
+// une zone v1 (aucun `shape`) est indiscernable d'un objectif ponctuel v2 — le champ
+// `carried_from_schema` de mapEntry porte le pourquoi.
+//
+// Un report depuis le schéma COURANT n'est pas marqué : il n'y a rien à distinguer. Un
+// marqueur déjà posé par un refresh antérieur est conservé tel quel — il ne tombe que le
+// jour où la carte est réellement re-parsée (addVariant repart d'une entrée neuve).
 func carryOver(cat *catalog, prev *catalog, id string) {
-	cat.Maps[id] = prev.Maps[id]
+	e := prev.Maps[id]
+	if e != nil && prev.SchemaVersion < catalogSchemaVersion {
+		clone := *e
+		clone.CarriedFromSchema = prev.SchemaVersion
+		e = &clone
+	}
+	cat.Maps[id] = e
 	cat.Coverage[id] = prev.Coverage[id]
 }

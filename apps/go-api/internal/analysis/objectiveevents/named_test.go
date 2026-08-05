@@ -1,6 +1,12 @@
 package objectiveevents
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"testing"
+)
 
 // named_test.go — la verite terrain de la lecture par COMPOSANT.
 //
@@ -167,20 +173,30 @@ func TestNamedEventsZoneTotalsMatchAPI(t *testing.T) {
 //
 // Ce test a deja servi : il a demasque une valeur parasite a -115 sur comp 0 A qui faisait
 // remonter le compteur en 116 evenements au lieu d'1.
+// Le `continue` sur film absent etait un FAUX VERT (constat D-P2, 5e occurrence du motif
+// dans le chantier) : sans aucun film en cache, ce test passait au VERT en n'ayant rien
+// confronte. Il compte desormais ce qu'il a reellement joue, et se declare SKIP plutot que
+// PASS quand il n'a rien pu verifier.
 func TestNamedEventsCrossCheck(t *testing.T) {
+	confrontes := 0
 	for film, objectiveType := range map[string]string{
 		"696a9d7c": ObjectiveTypeZone, "1bc77d2e": ObjectiveTypeFlag,
 	} {
 		src, ok := newDiskFilmSource(t, film)
 		if !ok {
+			t.Logf("film %s absent du cache local — non confronte", film)
 			continue
 		}
+		confrontes++
 		for slot, byStat := range CrossCheckNamedEvents(src, objectiveType) {
 			for stat, pair := range byStat {
 				t.Errorf("%s slot %d : %s = %d sur l'emplacement canonique mais %d sur le "+
 					"redondant", film, slot, stat, pair[0], pair[1])
 			}
 		}
+	}
+	if confrontes == 0 {
+		t.Skip("aucun film de reference dans le cache local — aucun recoupement joue")
 	}
 }
 
@@ -274,4 +290,118 @@ func TestKnownStatsCoverBothModes(t *testing.T) {
 	if len(KnownStats(ObjectiveTypeHill)) != 0 {
 		t.Error("hill : l'inventaire doit rester vide — aucun compteur de colline n'est replique")
 	}
+}
+
+// TestTableStatborgConcordeAvecNamedStatSlots — la table figee `.ai/refs/TABLE_STATS_STATBORG.tsv`
+// et `namedStatSlots` doivent dire LA MEME CHOSE, dans les deux sens.
+//
+// Pourquoi ce test existe (arbitrage du 2026-08-05, integration piste C-bis). La revue
+// avait porte deux affirmations incompatibles : « la TSV concorde ligne a ligne avec
+// namedStatSlots » (constat R1) et « zone 2 B = deaths y est mais pas dans la table »
+// (dette consignee). Les deux etaient vraies en meme temps parce que la premiere etait mal
+// formulee : la TSV est le registre de TOUS les emplacements decodes du statborg, tous
+// consommateurs confondus, et `namedStatSlots` n'en est qu'un. La colonne `lecteur` de la
+// TSV dit desormais qui lit quoi, et ce test verifie la seule concordance qui ait un sens —
+// celle des lignes dont le lecteur declare est `named.go`.
+//
+// Il ferme la question pour de bon : jusqu'ici la concordance etait CRUE, elle est mesuree.
+// Ajouter une entree a `namedStatSlots` sans la consigner dans la TSV (ou l'inverse) fait
+// echouer ce test.
+func TestTableStatborgConcordeAvecNamedStatSlots(t *testing.T) {
+	const lecteurNommage = "named.go"
+	lignes := lireTableStatborg(t)
+
+	// Sens 1 : toute ligne dont le lecteur est le nommage doit exister dans namedStatSlots,
+	// avec la MEME statistique.
+	attendu := map[string]map[statSlotKey]string{}
+	for _, l := range lignes {
+		if !strings.Contains(l.lecteur, lecteurNommage) {
+			continue
+		}
+		if attendu[l.mode] == nil {
+			attendu[l.mode] = map[statSlotKey]string{}
+		}
+		attendu[l.mode][statSlotKey{l.comp, l.side}] = l.stat
+	}
+	for mode, cles := range attendu {
+		table, ok := namedStatSlots[mode]
+		if !ok {
+			t.Errorf("mode %q present dans la TSV (lecteur %s) mais absent de namedStatSlots",
+				mode, lecteurNommage)
+			continue
+		}
+		for cle, stat := range cles {
+			got, ok := table[cle]
+			if !ok {
+				t.Errorf("%s comp %d %v : consigne dans la TSV pour %s, absent de namedStatSlots",
+					mode, cle.Comp, cle.Side, lecteurNommage)
+				continue
+			}
+			if got.Stat != stat {
+				t.Errorf("%s comp %d %v : TSV dit %q, namedStatSlots dit %q",
+					mode, cle.Comp, cle.Side, stat, got.Stat)
+			}
+		}
+	}
+
+	// Sens 2 : reciproquement, aucune entree de namedStatSlots ne doit manquer a la TSV —
+	// c'est ce sens qui empeche une cle d'entrer dans le code sans passer par le releve.
+	for mode, table := range namedStatSlots {
+		for cle, slot := range table {
+			if attendu[mode][cle] != slot.Stat {
+				t.Errorf("%s comp %d %v (%s) : dans namedStatSlots, pas dans la TSV avec le "+
+					"lecteur %s — toute cle nommee doit etre consignee",
+					mode, cle.Comp, cle.Side, slot.Stat, lecteurNommage)
+			}
+		}
+	}
+}
+
+// ligneStatborg est une ligne utile de la table figee.
+type ligneStatborg struct {
+	mode    string
+	comp    int
+	side    string
+	stat    string
+	lecteur string
+}
+
+// lireTableStatborg lit `.ai/refs/TABLE_STATS_STATBORG.tsv`. Les lignes de commentaire, la
+// ligne d'en-tete et les lignes sans emplacement (`hill`) sont ecartees.
+//
+// La table est VERSIONNEE : son absence est une anomalie du depot, pas une fixture
+// optionnelle — donc t.Fatal, jamais t.Skip.
+func lireTableStatborg(t *testing.T) []ligneStatborg {
+	t.Helper()
+	path := filepath.Join("..", "..", "..", "..", "..", ".ai", "refs", "TABLE_STATS_STATBORG.tsv")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("table figee %s illisible: %v", path, err)
+	}
+	var out []ligneStatborg
+	for i, line := range strings.Split(string(raw), "\n") {
+		line = strings.TrimRight(line, "\r")
+		if i == 0 || line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		champs := strings.Split(line, "\t")
+		if len(champs) < 6 {
+			t.Fatalf("ligne %d : %d colonnes, attendu 6 — la table a change de forme", i+1, len(champs))
+		}
+		comp, err := strconv.Atoi(champs[1])
+		if err != nil {
+			continue // ligne sans emplacement (hill)
+		}
+		side := champs[2]
+		if side != sideA && side != sideB {
+			t.Fatalf("ligne %d : cote %q inconnu", i+1, side)
+		}
+		out = append(out, ligneStatborg{
+			mode: champs[0], comp: comp, side: side, stat: champs[3], lecteur: champs[4],
+		})
+	}
+	if len(out) == 0 {
+		t.Fatal("aucune ligne exploitable dans la table figee")
+	}
+	return out
 }

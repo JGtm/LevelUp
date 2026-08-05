@@ -119,22 +119,25 @@ func LabelPersonalScore(points []ScorePoint, quotas map[int][]Award) []LabelledE
 }
 
 // labelSlot etiquette la suite d'un slot : increments successifs du score personnel.
+//
+// LA PREMIERE LECTURE EST UN INCREMENT DEPUIS ZERO, et c'est exact : un score personnel
+// part de 0 au coup d'envoi, la premiere valeur observee est donc bien ce que le joueur
+// vient de gagner. La reconciliation JGtm le confirme a l'unite sur un match reel.
+//
+// (Un garde `if first` vivait ici jusqu'au 2026-08-05, constat D-P2 de la revue du
+// 2026-08-02. Son commentaire annoncait de traiter la premiere lecture a part — le
+// CONTRAIRE de ce que la fonction fait —, et sa condition ne pouvait pas s'en charger :
+// `d == p.Value` est TOUJOURS vrai a la premiere iteration puisque `prev` vaut 0, si bien
+// que le garde se reduisait au `d == 0` teste deux lignes plus bas. Il ne faisait rien.
+// Retire avec sa variable ; le comportement, lui, est desormais epingle par
+// TestLabelPersonalScorePremiereLectureEstUnIncrementDepuisZero.)
 func labelSlot(slot int, ps []ScorePoint, awards []Award) []LabelledEvent {
 	units := unitIndex(awards)
 	var out []LabelledEvent
 	prev := int64(0)
-	first := true
 	for _, p := range ps {
 		d := p.Value - prev
 		prev = p.Value
-		if first {
-			// La premiere lecture donne la valeur courante, pas un increment : le score
-			// peut deja etre non nul quand l'entite apparait.
-			first = false
-			if d == p.Value && d == 0 {
-				continue
-			}
-		}
 		if d == 0 {
 			continue
 		}
