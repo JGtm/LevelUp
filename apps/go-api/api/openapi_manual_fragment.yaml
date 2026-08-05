@@ -2915,8 +2915,73 @@ components:
           type: array
           items:
             type: string
+        # `filters` EST DÉCRIT EN FORME PRODUCTEUR, ET C'EST DÉLIBÉRÉ (2026-08-05, R2).
+        #
+        # Il pointait `#/components/schemas/FilterContextInput`, dérivé par Huma du type Go :
+        # une forme de RÉPONSE, où `period`, `sessions` et `cascade` sont REQUIS parce que le
+        # serveur les émet toujours. Un corps de REQUÊTE, lui, n'a pas à les porter — le
+        # handler dé-sérialise du JSON, un champ absent vaut le zéro Go. Le contrat
+        # sur-contraignait donc ce que le client doit envoyer, et c'est ce qui a rendu le type
+        # front inshimable : `TeammatesQueryRequest` a passé deux jours en baseline du ratchet.
+        #
+        # Ne pas « simplifier » en re-mettant le $ref : la collision reviendrait, et avec elle
+        # une seconde définition manuelle du même corps côté web.
         filters:
-          $ref: '#/components/schemas/FilterContextInput'
+          type: object
+          description: Contexte de filtre envoyé par le client — tous les champs optionnels.
+          properties:
+            filter_mode:
+              type: string
+              enum: [period, sessions]
+            period:
+              type: object
+              properties:
+                start_date:
+                  type: string
+                  nullable: true
+                end_date:
+                  type: string
+                  nullable: true
+            sessions:
+              type: object
+              properties:
+                picked_session_label:
+                  type: string
+                  nullable: true
+                picked_solo_session_label:
+                  type: string
+                  nullable: true
+                picked_squad_session_label:
+                  type: string
+                  nullable: true
+                picked_sessions:
+                  type: array
+                  items:
+                    type: string
+                gap_minutes:
+                  type: integer
+            cascade:
+              type: object
+              properties:
+                experience_types:
+                  type: array
+                  items:
+                    type: string
+                playlists:
+                  type: array
+                  items:
+                    type: string
+                modes:
+                  type: array
+                  items:
+                    type: string
+                maps:
+                  type: array
+                  items:
+                    type: string
+            match_context:
+              type: string
+              enum: [solo, squad, all]
         picked_solo_session_labels:
           type: array
           items:
