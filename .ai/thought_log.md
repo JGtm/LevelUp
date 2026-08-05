@@ -1,3 +1,30 @@
+## [2026-08-05] idx_psa_match_xuid : troisième du lot, divergence fraîche/convertie refermée
+
+**Statut** : Complété (branche `fix/drop-idx-psa-match-xuid`, arbitrage utilisateur
+« même traitement »).
+
+**Décision technique principale** : idx_psa_match_xuid suit ses jumeaux, avec sa nuance
+propre — sa SEULE autorité était le PostSwap de conversion legacy
+(`applyAppendOnlyPersonalScoreAwards`), jamais `PlayerPersonalScoreAwardsDDL` : deux
+player DB au même niveau de migration divergeaient selon leur histoire, angle mort de
+l'invariant no-op (sur DB fraîche le swap ne tourne jamais). Il est de plus un pur
+préfixe d'idx_psa_gen(match_id, xuid, generation_id) → redondant. Retiré du PostSwap +
+step `drop_psa_match_xuid_art_index_v1` (DROP INDEX IF EXISTS, dernier du bloc player).
+Double verrou : assertion post-conversion dans TestPSAAppendOnly_LegacySwap (les deux
+index psa retirés ne renaissent plus au swap) + miroir fraîche/chaîne complète dans
+schema_authority_test (TestPlayerSchemaAuthority_NoPersonalScoreAwardsMatchXuidIndex).
+
+**Résultats observés** : `go test -tags=integration -p 1 ./internal/migration/...
+./internal/sync/...` vert (263s sync), vet propre, golangci ratchet 0 issue.
+
+**Décisions utilisateur consignées le même jour** : doublons `unranked_N - Copie/original`
+de static/ranks = conservation VOLONTAIRE (badges de l'ère 10 matchs de placement) —
+mémoire agent créée, ne jamais proposer de nettoyage ; vague 5 Explorer validée
+visuellement.
+
+**Prochaine étape** : merge main + deploy auto ; à l'ouverture des player DB prod, les
+DB converties perdent l'index au premier passage de la chaîne.
+
 ## [2026-08-05] Vague 5 — intégration : schéma résiduel + placement Explorer, merge main
 
 **Statut** : Complété (orchestrateur).
