@@ -229,6 +229,27 @@ func TestPlayerSchemaAuthority_NoPersonalScoreAwardsXuidIndex(t *testing.T) {
 	}
 }
 
+// TestPlayerSchemaAuthority_NoPersonalScoreAwardsMatchXuidIndex — troisième du lot
+// (2026-08-05) : idx_psa_match_xuid n'était posé QUE par le PostSwap de conversion
+// legacy (jamais par PlayerPersonalScoreAwardsDDL) — deux player DB au même niveau de
+// migration divergeaient donc selon leur histoire, angle mort de l'invariant no-op (sur
+// DB fraîche le swap ne tourne jamais). Pur préfixe d'idx_psa_gen(match_id, xuid,
+// generation_id) : supprimé du PostSwap, convergence par drop_psa_match_xuid_art_index_v1.
+// Le chemin de conversion est verrouillé côté migration
+// (TestPSAAppendOnly_LegacySwap_NoIdNoCreatedAt) ; ici on verrouille le chemin fraîche +
+// chaîne complète (le step de drop doit exister et la chaîne le jouer sans erreur).
+func TestPlayerSchemaAuthority_NoPersonalScoreAwardsMatchXuidIndex(t *testing.T) {
+	db := freshMigratedPlayerDB(t)
+	if err := sync.EnsurePlayerSchema(context.Background(), db); err != nil {
+		t.Fatalf("EnsurePlayerSchema: %v", err)
+	}
+	if snapshotSchemaKeys(t, db)["index idx_psa_match_xuid ON personal_score_awards"] {
+		t.Error("idx_psa_match_xuid présent après migrations + soin — l'index doit être supprimé " +
+			"partout (step drop_psa_match_xuid_art_index_v1 + retrait du PostSwap " +
+			"d'applyAppendOnlyPersonalScoreAwards, sa seule autorité)")
+	}
+}
+
 // ── MORSURE ──────────────────────────────────────────────────────────────────
 
 // TestPlayerSchemaAuthority_BiteProof — preuve que l'invariant MORD. On reproduit dans la
