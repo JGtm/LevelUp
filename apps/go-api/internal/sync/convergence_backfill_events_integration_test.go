@@ -40,9 +40,41 @@ func (m *mockHLChunkFetcher) GetHighlightEventsChunk(_ context.Context, matchID 
 	return r.data, r.ver, r.found, r.err
 }
 
+// eventsBackfillRegistryDDL : DDL nominal de match_registry pour ces tests
+// (events_empty inclus — cible de MarkEventsEmptyDefinitive en prod).
+const eventsBackfillRegistryDDL = `
+		CREATE TABLE match_registry (
+			match_id           VARCHAR PRIMARY KEY,
+			start_time         TIMESTAMPTZ,
+			events_loaded      BOOLEAN DEFAULT FALSE,
+			events_empty       BOOLEAN DEFAULT FALSE,
+			backfill_completed BIGINT  DEFAULT 0
+		);`
+
+// eventsBackfillRegistryDDLMarkFails : même table + une contrainte CHECK qui fait
+// ÉCHOUER tout UPDATE de marquage définitif (les deux Mark*Definitive posent
+// `backfill_completed |= MBitEvents`). C'est l'injection de défaillance des tests de
+// compteur : le persister est construit dans processChunk, il n'est pas injectable —
+// la seule façon de le faire échouer est de rendre son écriture invalide côté DB.
+const eventsBackfillRegistryDDLMarkFails = `
+		CREATE TABLE match_registry (
+			match_id           VARCHAR PRIMARY KEY,
+			start_time         TIMESTAMPTZ,
+			events_loaded      BOOLEAN DEFAULT FALSE,
+			events_empty       BOOLEAN DEFAULT FALSE,
+			backfill_completed BIGINT  DEFAULT 0 CHECK (backfill_completed = 0)
+		);`
+
 // openEventsBackfillDBs ouvre shared (match_registry + match_participants +
 // highlight_events + killer_victim_pairs) + player (minimal) in-memory.
 func openEventsBackfillDBs(t *testing.T) (playerDB, sharedDB *sql.DB) {
+	t.Helper()
+	return openEventsBackfillDBsWithRegistry(t, eventsBackfillRegistryDDL)
+}
+
+// openEventsBackfillDBsWithRegistry : idem, avec un DDL de match_registry au choix
+// (permet d'injecter une table dont le marquage définitif échoue).
+func openEventsBackfillDBsWithRegistry(t *testing.T, registryDDL string) (playerDB, sharedDB *sql.DB) {
 	t.Helper()
 	pdb, err := sql.Open("duckdb", ":memory:")
 	if err != nil {
@@ -72,13 +104,7 @@ func openEventsBackfillDBs(t *testing.T) (playerDB, sharedDB *sql.DB) {
 	}
 	sdb.SetMaxOpenConns(1)
 	t.Cleanup(func() { sdb.Close() })
-	if err := execScript(t.Context(), sdb, `
-		CREATE TABLE match_registry (
-			match_id           VARCHAR PRIMARY KEY,
-			start_time         TIMESTAMPTZ,
-			events_loaded      BOOLEAN DEFAULT FALSE,
-			backfill_completed BIGINT  DEFAULT 0
-		);
+	if err := execScript(t.Context(), sdb, registryDDL+`
 		CREATE TABLE match_participants (
 			match_id VARCHAR,
 			xuid     VARCHAR,
@@ -212,6 +238,71 @@ func TestEventsConvergence_FetchError_Skipped(t *testing.T) {
 	}
 	if got := observability.LoadCounterT(ctxkeys.TitleSlug(ctx), counter) - before; got != 1 {
 		t.Errorf("%s: want +1, got +%d — l'erreur de fetch est avalée en silence", counter, got)
+	}
+}
+
+// TestEventsConvergence_MarkNoFilmFailure_Counted : quand le marquage no-film
+// définitif ÉCHOUE, le match reste dans le retry set — il sera re-fetché à chaque
+// passe pour un film qu'on sait définitivement absent. Le `Skipped++` seul rendait
+// ce trafic réseau perpétuel invisible ; le compteur est ce qui le distingue.
+func TestEventsConvergence_MarkNoFilmFailure_Counted(t *testing.T) {
+	pdb, sdb := openEventsBackfillDBsWithRegistry(t, eventsBackfillRegistryDDLMarkFails)
+	xuid := "2533274823110022"
+	seedEventsBackfillMatch(t, sdb, "m_old", xuid, time.Now().UTC().Add(-60*24*time.Hour))
+
+	ctx := t.Context()
+	const counter = "convergence_events_mark_nofilm_failed_total"
+	before := observability.LoadCounterT(ctxkeys.TitleSlug(ctx), counter)
+
+	cfg := newEventsBackfillCfg(pdb, sdb, &mockHLChunkFetcher{}, xuid) // film absent
+	res, err := RunEventsConvergenceBackfill(ctx, cfg)
+	if err != nil {
+		t.Fatalf("RunEventsConvergenceBackfill: %v", err)
+	}
+	if res.NoFilmFinal != 0 {
+		t.Errorf("NoFilmFinal: want 0 (marquage échoué), got %d", res.NoFilmFinal)
+	}
+	if res.Skipped != 1 {
+		t.Errorf("Skipped: want 1, got %d", res.Skipped)
+	}
+	if readEventsLoadedFlag(t, sdb, "m_old") {
+		t.Error("m_old: events_loaded devrait rester FALSE (marquage échoué)")
+	}
+	if got := observability.LoadCounterT(ctxkeys.TitleSlug(ctx), counter) - before; got != 1 {
+		t.Errorf("%s: want +1, got +%d — l'échec de marquage est avalé en silence", counter, got)
+	}
+}
+
+// TestEventsConvergence_MarkEventsEmptyFailure_Counted : symétrique, sur le chunk
+// récupéré mais vide de tout event. Le marquage events_empty existe pour clore la
+// boucle parse_anomaly ; s'il échoue sans compteur, la boucle repart indéfiniment
+// sans signal.
+func TestEventsConvergence_MarkEventsEmptyFailure_Counted(t *testing.T) {
+	pdb, sdb := openEventsBackfillDBsWithRegistry(t, eventsBackfillRegistryDDLMarkFails)
+	xuid := "2533274823110022"
+	seedEventsBackfillMatch(t, sdb, "m_empty", xuid, time.Now().UTC().Add(-60*24*time.Hour))
+
+	ctx := t.Context()
+	const counter = "convergence_events_mark_empty_failed_total"
+	before := observability.LoadCounterT(ctxkeys.TitleSlug(ctx), counter)
+
+	// Chunk non-vide qui ne contient aucun xuid → parse OK, 0 event (anomalie légitime).
+	fetcher := &mockHLChunkFetcher{resp: map[string]hlChunkResp{
+		"m_empty": {data: []byte{0x01, 0x02, 0x03, 0x04}, ver: 41, found: true},
+	}}
+	cfg := newEventsBackfillCfg(pdb, sdb, fetcher, xuid)
+	res, err := RunEventsConvergenceBackfill(ctx, cfg)
+	if err != nil {
+		t.Fatalf("RunEventsConvergenceBackfill: %v", err)
+	}
+	if res.NoFilmFinal != 0 {
+		t.Errorf("NoFilmFinal: want 0 (marquage échoué), got %d", res.NoFilmFinal)
+	}
+	if res.Skipped != 1 {
+		t.Errorf("Skipped: want 1, got %d", res.Skipped)
+	}
+	if got := observability.LoadCounterT(ctxkeys.TitleSlug(ctx), counter) - before; got != 1 {
+		t.Errorf("%s: want +1, got +%d — l'échec de marquage est avalé en silence", counter, got)
 	}
 }
 
