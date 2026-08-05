@@ -1,3 +1,29 @@
+## [2026-08-05] Vague 5 — intégration : schéma résiduel + placement Explorer, merge main
+
+**Statut** : Complété (orchestrateur).
+
+**Contenu** : branche `feat/wave5`, 3 commits — `fa2bdf3ef` (Lot B Sonnet : bug
+applyLUSRPlacements + badge unranked_N colonnes Note/Rang Explorer, entrée dédiée
+ci-dessous « Vague 5 Lot B ») ; `c20be0727` (Lot A Opus : idx_psa_xuid + soins
+append-only sous instrumentation, entrée « Vague 4bis » ci-dessous) ; `e389732ba`
+(fixup goconst : constantes skillRatingTypeCSR/LUSR — la 6e occurrence du littéral
+"LUSR" dans le package service déclenchait le ratchet).
+
+**Résultats observés** : gate-push froid 1er passage 3/4 (Go lint rouge goconst,
+légitime), après fixup : lint 0 issue + tests service verts ; les 3 autres maillons
+verts au passage complet (tests integration JSONL baseline OK, typecheck cache purgé,
+web lint 0 erreur). Preuves de morsure des deux lots documentées dans leurs entrées.
+
+**Découvertes consignées (non traitées)** : idx_psa_match_xuid créé par le seul
+PostSwap legacy et absent du DDL fraîche (divergence latente entre autorités, invisible
+de l'invariant — même arbitrage que ses jumeaux à proposer) ; sync/schemadrift sans
+test propre ; commentaire périmé cmd/server/main.go:466 ; ExplorerTargetSeasonCSR
+badge unranked_0 fixe non proportionnel ; doublons `unranked_N - Copie.png` dans
+static/ranks/halo_infinite/.
+
+**Prochaine étape** : merge main + deploy auto, surveillance CI ; validation visuelle
+utilisateur (Explorer : badge Note/Rang, disparition du faux « En placement » sur DNF).
+
 ## [2026-08-05] Vague 4bis : idx_psa_xuid supprimé, 3 soins append-only sous instrumentation
 
 **Statut** : Complété (worktree `agent-a9d5a411cbc854884`, modifications NON commitées).
