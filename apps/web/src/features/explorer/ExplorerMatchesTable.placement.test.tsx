@@ -1,13 +1,15 @@
 /**
- * Tests unitaires — ExplorerMatchesTable.placement (V72-32, étendu V72-34).
+ * Tests unitaires — ExplorerMatchesTable.placement (V72-32, étendu V72-34,
+ * badge unranked_N pour variant="rating" — décision produit JGtm).
  *
  * Couvre :
  *  - `hasPlacementSignal` : true ssi placement_done ET placement_total sont
  *    tous deux non-nuls (signal du CLASSEMENT, colonne Note/Rang) ;
  *  - `hasPerfPlacementSignal` : idem sur perf_placement_* (signal de la CHAÎNE DE
  *    PERFORMANCE, colonnes Perf/ΔPerf) — INDÉPENDANT du précédent ;
- *  - `PlacementPendingCell` : libellé court FR/EN + tooltip avec le nombre de
- *    matchs restants (total - done), pour les deux variantes.
+ *  - `PlacementPendingCell` : variant="rating" (colonne Note) rend un badge
+ *    image `unranked_{N}.png` (alt localisé + tooltip natif "matchs restants") ;
+ *    variant="perf" (Perf/ΔPerf) reste du texte "En placement"/"In placement".
  */
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
@@ -79,21 +81,29 @@ describe('hasPerfPlacementSignal', () => {
 })
 
 describe('PlacementPendingCell', () => {
-  it('FR : libellé court "En placement" + tooltip avec les matchs restants (total - done)', () => {
+  it('variant="rating" (défaut) : badge image unranked_N (N=done*10/total) + alt "En placement" FR + tooltip restants', () => {
     render(<PlacementPendingCell row={row({ placement_done: 3, placement_total: 10 })} locale="fr" />)
-    const el = screen.getByText('En placement')
-    expect(el).toHaveAttribute('title', expect.stringContaining('7'))
+    const img = screen.getByAltText('En placement')
+    expect(img).toHaveAttribute('src', expect.stringContaining('unranked_3.png'))
+    expect(img).toHaveAttribute('title', expect.stringContaining('7'))
   })
 
-  it('EN : libellé court "In placement" (cohérent avec common.home.rank_placement)', () => {
+  it('variant="rating" EN : alt "In placement" (cohérent avec common.home.rank_placement)', () => {
     render(<PlacementPendingCell row={row({ placement_done: 3, placement_total: 10 })} locale="en" />)
-    expect(screen.getByText('In placement')).toBeInTheDocument()
+    expect(screen.getByAltText('In placement')).toBeInTheDocument()
   })
 
-  it('dernier match de placement (done === total) → tooltip "0 matchs restants" (pas négatif)', () => {
+  it('dernier match de placement (done === total) → badge unranked_9 (clamp) + tooltip "0" (pas négatif)', () => {
     render(<PlacementPendingCell row={row({ placement_done: 10, placement_total: 10 })} locale="fr" />)
-    const el = screen.getByText('En placement')
-    expect(el).toHaveAttribute('title', expect.stringContaining('0'))
+    const img = screen.getByAltText('En placement')
+    expect(img).toHaveAttribute('src', expect.stringContaining('unranked_9.png'))
+    expect(img).toHaveAttribute('title', expect.stringContaining('0'))
+  })
+
+  it('variant="rating" : mapping proportionnel sur seuil CSR=5 (done=3/5 → unranked_6, comme les cards Accueil)', () => {
+    render(<PlacementPendingCell row={row({ placement_done: 3, placement_total: 5 })} locale="fr" />)
+    const img = screen.getByAltText('En placement')
+    expect(img).toHaveAttribute('src', expect.stringContaining('unranked_6.png'))
   })
 
   it('variant="perf" : lit perf_placement_* (cas JGtm 8/10 → 2 matchs restants)', () => {
