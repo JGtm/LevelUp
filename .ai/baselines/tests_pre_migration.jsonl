@@ -49163,14 +49163,6 @@
 {"Time":"2026-06-26T23:51:37.8488542+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestTimeseriesService_GetPage_BriefingKPIsEmptyWhenNoMatches","Output":"=== RUN   TestTimeseriesService_GetPage_BriefingKPIsEmptyWhenNoMatches\n"}
 {"Time":"2026-06-26T23:51:37.8488542+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestTimeseriesService_GetPage_BriefingKPIsEmptyWhenNoMatches","Output":"--- PASS: TestTimeseriesService_GetPage_BriefingKPIsEmptyWhenNoMatches (0.00s)\n"}
 {"Time":"2026-06-26T23:51:37.8488542+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestTimeseriesService_GetPage_BriefingKPIsEmptyWhenNoMatches","Elapsed":0}
-{"Time":"2026-06-26T23:51:37.8488542+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestBuildTimeseriesSummaryTab_Empty"}
-{"Time":"2026-06-26T23:51:37.8488542+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildTimeseriesSummaryTab_Empty","Output":"=== RUN   TestBuildTimeseriesSummaryTab_Empty\n"}
-{"Time":"2026-06-26T23:51:37.8488542+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildTimeseriesSummaryTab_Empty","Output":"--- PASS: TestBuildTimeseriesSummaryTab_Empty (0.00s)\n"}
-{"Time":"2026-06-26T23:51:37.8493654+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestBuildTimeseriesSummaryTab_Empty","Elapsed":0}
-{"Time":"2026-06-26T23:51:37.8493654+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestBuildTimeseriesSummaryTab_WithMatches"}
-{"Time":"2026-06-26T23:51:37.8493654+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildTimeseriesSummaryTab_WithMatches","Output":"=== RUN   TestBuildTimeseriesSummaryTab_WithMatches\n"}
-{"Time":"2026-06-26T23:51:37.8493654+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildTimeseriesSummaryTab_WithMatches","Output":"--- PASS: TestBuildTimeseriesSummaryTab_WithMatches (0.00s)\n"}
-{"Time":"2026-06-26T23:51:37.8493654+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestBuildTimeseriesSummaryTab_WithMatches","Elapsed":0}
 {"Time":"2026-06-26T23:51:37.8493654+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestBuildMatchRows_Basic"}
 {"Time":"2026-06-26T23:51:37.8493654+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildMatchRows_Basic","Output":"=== RUN   TestBuildMatchRows_Basic\n"}
 {"Time":"2026-06-26T23:51:37.8493654+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildMatchRows_Basic","Output":"--- PASS: TestBuildMatchRows_Basic (0.00s)\n"}
