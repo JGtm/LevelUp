@@ -1294,6 +1294,929 @@ code soit correct, puis vérifie-le ») plutôt que l'injonction hostile, qui pr
 `internal/persist/` + `internal/sync/` avec l'axe A2 (garde-rails ART), qui est l'axe dont les
 défauts corrompent des données en prod.
 
+## [2026-08-02] Restitution documentaire — trois verdicts perimes alignes sur leurs sources
+
+**Statut** : Complete. Branche `feat/re-mode-score`. Session de RESTITUTION : aucune mesure
+neuve, aucune piste ouverte, aucun fichier de code touche (`git diff --stat` : 4 `.md`).
+
+**Decision technique principale** : sur cette branche le code est en avance sur ses
+documents. Trois documents portaient des verdicts que leur propre corps, la table figee ou
+le code refutent — un repreneur aurait copie le faux. Regle tenue de bout en bout : chaque
+correction est adossee a une source ROUVERTE (`.ai/refs/TABLE_STATS_STATBORG.tsv`,
+`objectiveevents/named.go`, ou une section datee du meme document) ; rien n'a ete corrige
+sans source.
+
+**Resultats observes** :
+
+- **D-P0a — la table du §2 de `HANDOFF_EVENEMENTS_NOMMES` portait des noms de RECOMPENSE
+  la ou le statborg replique des STATISTIQUES.** Les dix lignes sont realignees sur la TSV
+  et sur les constantes `Stat*` de `named.go` : `flag_taken` -> `flag_grabs`,
+  `runner_stopped` -> `flag_carriers_killed`, et les huit autres au passage
+  (`flag_returned` -> `flag_returns`, `zone_captured` -> `zone_captures`,
+  `killed_player` -> `kills`...). Une cle de la TSV manquait a la table :
+  `zone comp 2 B = deaths` (exact 8/8 contre `match_participants`, servie au pont
+  d'identite, non emise par `NamedEvents`) — consignee sous la table.
+- **D-P0b — le resume de tete de `ETAT_DE_L_ART_FORGE_PALETTE_ZONES` gardait deux verdicts
+  que son corps refute.** (1) « nommage indecidable hors ligne » alors que Q1.0 dit « LE
+  NOMMAGE EST RESOLU » (murmur3 dans le tag, 67 entrees nommees, recette validee de
+  l'exterieur par le dictionnaire Z-15) ; (2) « power-ups clos par la negative », qui
+  reposait sur la premisse « power-up = groupe `eqip` » — fausse, `eqip` ce sont les
+  grenades (Q1.0), et ce que la carte porte ce sont des emplacements reconnus par leur
+  signature d'emprise (Q1.0-octies). Q1.1 porte desormais le bandeau de sa conclusion
+  renversee. Nuance ajoutee : la source (c) n'est pas « inutile », elle reste necessaire
+  pour une colline KOTH mobile (Q2(c)).
+- **D-P1b — quatre resumes perimes.** `HANDOFF_MODE_SCORE_CHAINE` §1 : « CTF, qui a pris /
+  rendu » n'est plus NON — la lecture par composant le livre (`22 A`/`23 A`/`24 A`, 48/48
+  exacts contre l'oracle a 8 joueurs) ; la refutation de 4.2 est conservee explicitement
+  pour le canal du footer, qui est un autre canal. §8 : « en KOTH le film compte les
+  collines » est requalifie en INTERPRETATION sur deux films, dont les deux ont un vainqueur
+  INVERSE entre le film et l'API (0-3 / 105-8 ; 3-0 / 78-105), sans corroboration (§21,
+  §19.3). `HANDOFF_EVENEMENTS_NOMMES` §3bis : l'oracle a 8 joueurs n'est ni « NON FAIT » ni
+  « secondaire » — c'est lui qui a attrape le nom faux ; le lot 4 est fait aussi, verifie sur
+  pieces (`replay/objectives.go`, `ReplayDocument.Objectives`). `HANDOFF_PALETTE_FORGE` :
+  « Rien n'a ete implemente » est faux — `mapvar/shape.go` et `catalogSchemaVersion = 2`
+  existent ; ce qui manque c'est le RENDU, et le catalogue n'a toujours aucun lecteur (grep
+  refait : seuls le producteur `mapobj-build` et le `PathResolver`).
+
+**Conclusion / prochaine etape** : les documents de recherche de la branche ne contredisent
+plus ni le code ni leurs propres mesures. Deux points SIGNALES et volontairement non
+corriges : (1) `HANDOFF_MODE_SCORE_CHAINE` §1 garde « score personnel et frags/morts par
+joueur : mesure, PAS livre » — la ligne melange deux choses (le decodage par chainage de
+largeurs des composants 1 et 2, toujours non livre, et les compteurs repliques que
+`NamedEvents` date deja, plus `comp 2 B = morts` verifie 8/8) ; la departager demande un
+arbitrage, pas une source. (2) Les entrees anterieures du `thought_log` ne sont PAS
+retouchees, y compris celle qui dit « Rien n'a ete implemente » : un journal date enregistre
+ce qui etait vrai quand il a ete ecrit.
+
+## [2026-08-02] Lot 4 fermé — le calque d'objectifs est dans le document de rejeu
+
+**Statut** : Complété (lot 4 du handoff §4, dernier des quatre). Branche
+`feat/re-mode-score`. Livrables : `internal/analysis/replay/objectives.go` +
+`objectives_test.go`, champ `ReplayDocument.Objectives`, `Coverage.Objectives`, état de
+l'art §23.
+
+**Décision technique principale** : les actions arrivent DÉJÀ identifiées par xuid, via
+`Options.Objectives []objectiveevents.IdentifiedEvent`. Le pont d'identité a besoin de
+`match_participants`, donc de la base, que `cmd/replay-build` n'ouvre pas — c'est
+exactement le pattern de `objectiveevents.Extract`, qui reçoit son `Roster` plutôt que
+d'aller le chercher. Le paquet d'assemblage reste pur.
+
+**Résultats observés** :
+
+- **La conversion vers l'axe du rejeu est une simple division.** Les événements sont sur
+  l'horloge du manifeste, la même que les positions (écart < 4 ms sur 573 s) : ni
+  appariement, ni fenêtre, ni seuil. C'est le seul calque du document dans ce cas — les
+  tirs et les lancers, eux, exigent un rattachement.
+- **`timeMs` est conservé à côté de `t`** : la grille perd 100 ms, et deux actions d'une
+  même frame doivent rester ordonnables.
+- **La couverture publie les trois causes de rejet** (`noSlot`, `outOfWindow`,
+  `unpublished`) et l'invariant `rattachées + rejetées = disponibles` est testé. Un calque
+  qui perd sans le dire est l'anti-patron que `coverage.go` existe pour interdire.
+- **Tous les paquets `internal/analysis/...` passent**, golden du rejeu compris — l'ajout
+  d'un champ `omitempty` ne casse aucun artefact existant, et un test le verrouille.
+- Lint : aucune remarque nouvelle (les 2 restantes sont préexistantes dans `awards.go` et
+  `film.go`).
+
+**Ce qui reste, et ce n'est plus du décodage** : aucun chemin de production ne remplit
+encore `Options.Objectives` (il faut lire `match_participants`, appeler `SlotIdentity` puis
+`IdentifyNamedEvents`), et `apps/web` ne dessine pas le champ.
+
+**Conclusion** : les quatre lots du handoff `HANDOFF_EVENEMENTS_NOMMES_2026-08-01.md` sont
+traités. Reste ouverte la correspondance nom -> index d'emplacement (§19.6), qui exige une
+lecture mémoire jeu lancé.
+
+## [2026-08-02] Lots 2 et 3 bouclés — KOTH n'a rien à nommer, et l'oracle 8 joueurs corrige un nom faux
+
+**Statut** : Complété (lots 2 et 3 du handoff §4). Branche `feat/re-mode-score`. Livrables :
+état de l'art §21 et §22, table figée `.ai/refs/TABLE_STATS_STATBORG.tsv` réécrite,
+constantes du paquet renommées `Award*` -> `Stat*`.
+
+**Décision technique principale** : les compteurs du statborg sont des STATISTIQUES, pas les
+RÉCOMPENSES DE SCORE que le serveur en dérive. La table portait les noms de
+`personal_score_awards` ; elle porte désormais ceux de `match_objective_stats` et du binaire.
+
+**Résultats observés** :
+
+- **Lot 2 (hill) — mesuré, plus déduit.** Balayage des 28 emplacements sur DEUX films KOTH.
+  Le barème valide d'abord l'identité des slots (score personnel 950 / 1050 / 1775 / 1900,
+  quatre égalités exactes). Résultat : **aucun** emplacement ne porte `hill_control` ni
+  `hill_scored`. Une hypothèse « c'est un temps déguisé » (`comp 22 B`, rapport 4,08 contre
+  4,00 attendu sur le premier film) est **réfutée par le second** (1,54 contre 2,17). Trois
+  sources concordantes : film, binaire (aucune famille `*Stats_*Hill*`), base (aucune colonne
+  `hill_*`). Le lot n'a pas d'objet : il n'y a rien à nommer.
+- **Lot 3 (oracle 8 joueurs) — il corrige un NOM FAUX.** `comp 22 A`, nommé `flag_taken`,
+  est en réalité **`flag_grabs`** : ses valeurs sont la copie exacte de la colonne
+  `flag_grabs` de `match_objective_stats_latest`, slot par slot (16 pour Madina97294 là où
+  la récompense dit 4). Le §18.3 avait mis l'écart au compte d'un « film plus fin » —
+  c'était une erreur de nom. Le binaire le disait depuis le début (`CtfStats_FlagGrabs`), et
+  l'explication de l'utilisateur (« Madina lance et ramasse le drapeau pendant sa course »)
+  était juste dès le départ.
+- **La recette passe de 30 à 64 confrontations, toutes exactes** : 16 sur `696a9d7c` (8
+  joueurs x 2 compteurs) et 48 sur `1bc77d2e` (8 joueurs x 6 compteurs). Elle change de
+  nature : un décodage qui n'aurait marché que sur les 4 joueurs suivis n'y survivrait pas.
+- **`comp 2 B` = morts** confirmé 8/8 contre `match_participants`, et `comp 1 B` =
+  PersonalScore vérifié par le barème sur quatre couples.
+
+**Ce que le lot 3 n'a PAS fait** : rejouer le balayage corpus. Il n'est plus nécessaire pour
+nommer (le binaire le fait, §19) et c'est lui qui a rendu la machine inutilisable (§18.6).
+L'oracle a servi à recetter et corriger, ce qui était sa valeur réelle.
+
+**Conclusion / prochaine étape** : reste le lot 4 — intégrer les événements identifiés au
+`ReplayDocument` (champ optionnel + `Coverage`, conversion `TimeMS` -> index de frame,
+câblage `cmd/replay-build`, rendu client).
+
+## [2026-08-02] Le pont vers le rejeu 2D — l'identité, pas le numéro de slot
+
+**Statut** : Complété pour le PONT ; l'intégration au document de rejeu reste à faire (dit en
+§20.4). Branche `feat/re-mode-score`. Livrables : `objectiveevents/slotidentity.go` +
+`slotidentity_test.go`, état de l'art §20.
+
+**Décision technique principale** : le collage au rejeu 2D ne peut pas passer par le numéro
+de slot. Les événements nommés portent un slot d'entité STATBORG (10..24 pairs) ; le rejeu
+indexe par slot de BIPED et identifie par XUID — deux espaces différents. Les confondre
+aurait attribué les événements aux mauvais joueurs, et sur une carte l'erreur serait
+invisible et crédible. Le pont est donc le XUID, résolu par le triplet exact
+(frags, morts, assistances) contre `match_participants`.
+
+**Résultats observés** :
+
+- **Appariement unique sur les 8 joueurs des deux films de référence**, et il retrouve les
+  identités que le §16.2 avait établies par une méthode indépendante (coïncidence des
+  incréments de +100 avec les instants de frag) : slot 18 -> JGtm `2533274823110022` sur
+  `1bc77d2e`. Deux chemins, même résultat.
+- **Ni fenêtre, ni seuil, ni paramètre** : le triplet compare trois entiers exacts, là où
+  l'ancienne méthode exigeait une tolérance temporelle et une source externe d'instants de
+  frag.
+- **Trois emplacements confirmés nominativement au passage**, contre `match_participants`
+  sur `696a9d7c` : `comp 2 A` = frags 8/8, **`comp 2 B` = morts 8/8**, `comp 3 A` =
+  assistances 8/8 ; et `comp 1 B` = score personnel, slot 22 = 1 650, exactement le §17.2.
+  Le binaire dit la même chose (`CoreStats_` : Score, PersonalScore, ..., Kills, Deaths,
+  Assists) — mesure sur film et ordre du binaire se confirment.
+- **L'appariement ne dépend d'AUCUN mode** : ces trois stats sont répliquées quel que soit le
+  type de partie, donc il fonctionne aussi en Slayer, KOTH et Oddball, où aucun emplacement
+  d'objectif n'est nommé.
+- **Prudence codée et testée** : un triplet partagé par deux joueurs n'apparie aucun des deux,
+  et `IdentifyNamedEvents` écarte les événements des slots non appariés plutôt que de les
+  attribuer par défaut.
+
+**Ce qui n'est PAS fait** : `ReplayDocument` ne porte pas encore ces événements. Manquent un
+champ optionnel + sa ligne de `Coverage`, la conversion `TimeMS` -> index de frame via
+`FrameIntervalMS` (avec la question de l'arrondi), le câblage dans `cmd/replay-build` (hors
+ligne, donc les `PlayerLine` doivent lui être fournies en entrée comme `Extract` reçoit son
+`Roster`), et le rendu client. L'horloge, elle, ne pose pas de problème : même base que les
+positions, superposable sans recalage.
+
+**Conclusion / prochaine étape** : l'intégration au document de rejeu est la suite directe et
+ne demande aucun balayage de films. L'autre chantier ouvert est la correspondance nom ->
+index d'emplacement (§19.6), qui exige une lecture mémoire jeu lancé.
+
+## [2026-08-02] Le binaire nomme les stats — 123 noms lus, et une objection qui redresse le chantier
+
+**Statut** : Complété (volet rétro-ingénierie). Branche `feat/re-mode-score`. Livrables :
+`.ai/refs/TABLE_STATS_BINAIRE.tsv` (123 noms), état de l'art §19.
+
+**Décision technique principale** : abandon de la voie statistique (balayer des centaines de
+films et intersecter) au profit de la lecture directe du binaire. L'objection de l'utilisateur
+est la cause du virage : « en quoi c'est nécessaire de balayer autant de matchs ? c'est de la
+rétro-ingénierie pas de l'exploration de films ». Elle est juste, et le §17.4 désignait déjà
+cette cible — je ne m'en étais pas servi alors que Ghidra et les dumps étaient disponibles dès
+le départ.
+
+**Résultats observés** :
+
+- **Accès** : le bridge MCP `ghidra-mcp` est cassé sous Windows (`socket.AF_UNIX` inexistant en
+  CPython Windows) — un redémarrage côté Ghidra n'y change rien, c'est le client. Contournement
+  qui suffit : le plugin expose une API HTTP sur `127.0.0.1:8089`, jointe en `curl`.
+- **123 noms de stats en clair**, 10 familles (`CoreStats_` 48, `InfectionStats_` 12,
+  `ElimStats_` 11, `CtfStats_` 11, `VipStats_` 9, `BombStats_` 9, `StrongholdsStats_` /
+  `StockpileStats_` / `OddballStats_` 6 chacune, `ExtractionStats_` 5). Les noms de l'API
+  (`flag_captured`...) n'existent PAS dans l'exe : ils sont côté serveur.
+- **Oddball nommé sans balayage** : SkullGrabs, SkullScoringTicks, TimeAsSkullCarrier...
+  Le lot 2 du handoff est donc résolu pour `ball` par le binaire seul.
+- **KOTH n'a AUCUNE famille de stats** — et c'est une réponse, pas un trou de recherche :
+  `match_objective_stats` n'a pas non plus de colonne `hill_*`. `hill_control` / `hill_scored`
+  sont des récompenses de score, pas des stats de boxscore. Le lot « nommer hill » n'a
+  probablement pas d'objet tel qu'il était formulé.
+- **`CtfStats_FlagGrabs` confirme l'écart de `flag_taken`** mesuré la veille (§18.3), et par une
+  source qui ne doit rien au film : le jeu compte des RAMASSAGES, l'API récompense des
+  `flag_taken`. L'explication de l'utilisateur (style de jeu : lancer et rattraper le drapeau)
+  a devancé la preuve binaire.
+- **Corroboration croisée, le résultat le plus fort** : `CoreStats_` commence par `Score` puis
+  `PersonalScore`, exactement ce que la mesure sur film avait établi indépendamment en
+  `comp 0 A` (score de mode) et `comp 1 B` (score personnel) ; `Kills`/`Deaths` et `Assists`
+  suivent comme `comp 2` (frags ET morts) et `comp 3 A`.
+- **Structure établie** : table de descripteurs à `0x1443d10c0`, stride `0x50`, premier champ =
+  pointeur vers le nom (vérifié sur 3 entrées). `statSlot` EST l'index de composant —
+  `FUN_140807ebc` boucle sur 56 stats de stride `0x88`, soit les 28 `current-round` + 28
+  `finalized-rounds` du registre du film.
+
+**Ce qui reste ouvert, et dit net** : la correspondance nom -> index n'est PAS établie.
+L'identifiant est attribué à l'exécution (`FUN_140748a74`, retours rangés dans des globales
+consécutives `_DAT_1451a28a0+4k`), et la table indexée par stat (stride `0xC0`) a une base
+allouée au runtime, donc illisible en statique. Deux routes non tentées : lire les globales
+jeu lancé (direct), ou reconstruire l'ordre d'enregistrement statiquement (fragile).
+
+**Conclusion / prochaine étape** : la table mesurée du §17.6 reste la source pour CTF et zones
+(recette 30/30, §18.2). Fermer l'index par la lecture mémoire jeu lancé est la suite naturelle,
+et elle ne demande aucun balayage de films.
+
+## [2026-08-02] La lecture par composant est codée et recettée — et le balayage corpus a coûté cher
+
+**Statut** : Complété (lot 1 du handoff `HANDOFF_EVENEMENTS_NOMMES_2026-08-01.md` §4).
+Branche `feat/re-mode-score`. Livrables : `internal/analysis/objectiveevents/named.go` +
+`named_test.go`, table figée `.ai/refs/TABLE_STATS_STATBORG.tsv` recalée, état de l'art §18.
+
+**Décision technique principale** : `NamedEvents(src, mode)` lit QUEL emplacement de
+statistique a bougé, plus jamais la valeur de l'increment. Une émission d'un emplacement
+EST un événement, daté à la ms et attribué au joueur par son slot. `LabelPersonalScore`
+devient le repli (quota connu mais film absent), plus le chemin principal.
+
+**Résultats observés** :
+
+- **Recette : 30 confrontations exactes sur 30.** Zones `696a9d7c` : slot 22 = JGtm 4/4,
+  slot 20 = Madina97294 4/4 (le zéro de `zone_secured` inclus). CTF `1bc77d2e` : trois
+  joueurs suivis, exact sur tout sauf `flag_taken`. Recette sur 6 films CTF
+  (`cmd/tmp_namedcheck`) : exact partout, même seul écart.
+- **Contrôle d'ensemble indépendant de toute correspondance slot -> joueur** : sur
+  `696a9d7c`, `zone_captured` = 61 et `zone_secured` = 16, somme **77** = total API.
+- **`flag_taken` : le film est PLUS FIN que l'API**, et l'écart n'a qu'un sens — film >=
+  API, **0 contre-exemple sur 8 couples** (+11 au total, pire +5). L'explication vient de
+  l'utilisateur et colle à la mesure : ramasser le drapeau au sol pendant sa course se
+  compte à chaque fois mais ne se récompense pas à chaque fois (Madina 16 contre 4, JGtm 3
+  contre 1). Le test encode donc une INÉGALITÉ, pas une égalité.
+- **Deux pièges payés sur le filtrage.** Sous-suite NON décroissante (un composant est
+  réémis dès que l'UNE de ses deux valeurs bouge) ; et surtout **les émissions négatives se
+  jettent AVANT le choix de la sous-suite** : les jeter après datait l'événement de la
+  dernière émission au lieu de la première. Sans filtre du tout, la suite (1, -115, 1)
+  rendait **116** événements au lieu d'un.
+- **Le contrôle croisé interne fonctionne** : les emplacements redondants (`12 A` = `2 A`,
+  `12 B` = `3 A`, `0 A` = `21 A`) concordent sans exception — et c'est lui qui a démasqué
+  le parasite à -115.
+
+**Ce qui a mal tourné, et qu'il faut retenir** : mon balayage corpus (56 à 147 films) a
+**rendu le PC de l'utilisateur inutilisable deux fois**, jusqu'à redémarrage forcé, en
+saturant la mémoire — aggravé par un `go build` lancé en parallèle d'un balayage en tâche
+de fond, ce que la mémoire projet interdisait déjà. `StatRecords` ancre bit à bit et alloue
+une map par enregistrement : 16-55 Mo sur un film sain, sans borne connue sur le corpus.
+Règle posée en §18.6 : balayage au premier plan seulement, `LIMIT` explicite, plafond
+mémoire surveillé qui tue le processus, et prévenir avant tout balayage large.
+
+**Conclusion / prochaine étape** : le lot 1 est clos, gates verts (paquet complet, `go vet`,
+`golangci-lint` sans nouvelle remarque). Restent les lots 2 à 4 du handoff — nommer `hill`
+et `ball`, rejouer le balayage avec l'oracle 8 joueurs (`match_objective_stats_latest`, 426
+matchs, la base partagée est libre), et coller les événements aux positions du rejeu 2D.
+Les lots 2 et 3 EXIGENT un balayage corpus : à cadrer avec l'utilisateur avant de lancer.
+
+## [2026-08-02] Le mode change tout — protocole de vérification daté, en mode normal seulement
+
+**Statut** : Complété. Branche `feat/re-mode-score`. Livrable :
+`.ai/PROTOCOLE_VERIF_EMPLACEMENTS_2026-08-02.md`.
+
+**Décision technique principale** : l'utilisateur signale que ce qui apparaît sur un socle
+peut varier selon le mode, et demande date + heure + carte + hypothèse pour pouvoir
+vérifier. Vérifié sur la base plutôt que supposé — et il a raison deux fois.
+
+**Résultats observés** :
+
+- **Le mode change la cadence** : les mêmes positions sur Fragmentation valent 120 s en
+  variante de base et **45 s** en variante Heavies. La cadence n'est donc pas une propriété
+  du socle mais du couple (socle, variante de carte).
+- **Et surtout, mes trois cartes recommandées étaient inutilisables** : TOUS les matchs
+  récents de l'utilisateur sur Cliffhanger, Catalyst et Launch Site sont en **Super Fiesta**
+  (`Slayer:Arena Super Fiesta`), où l'armement est randomisé. Ma recommandation précédente
+  était donc creuse, et c'est la remarque de l'utilisateur qui l'a démasquée.
+- **Cinq matchs en mode normal identifiés**, datés à la minute (heure de Paris), couvrant
+  les quatre `Representation Name` plus le cas `493070541` :
+  Empyrean 2026-07-28 22:18 Team Slayer (`-1412311642`) · Argyle 2026-07-23 21:55 Team
+  Slayer (`-1351408675`, 117 socles en jeu) · Chasm 2026-07-07 22:46 CTF Neutral Flag
+  (`-219174009`) · Insolence 2026-07-24 22:06 BTB Total Control (`-245254093`) · Catalyst
+  2026-07-07 22:34 Team Slayer (`493070541`).
+- **Deux prédictions falsifiables** posées : (1) si le `Representation Name` porte bien
+  l'identité, Empyrean doit rendre un lance-roquettes comme le socle bas de Vagabond ;
+  (2) sur Catalyst, la paire symétrique (`banished_shock`) et le socle isolé
+  (`banished_plasma`) doivent être deux armes DIFFÉRENTES.
+- **Filtre de sélection** : ne retenir que les cadences 90-150 s, régime des objets de
+  puissance. Les socles à 30-45 s sont écartés — armes de base.
+
+**Conclusion / prochaine étape** : la balle est côté utilisateur, et l'attente est bornée à
+cinq observations. Un désaccord serait aussi utile qu'un accord : il réfuterait l'hypothèse
+que le `Representation Name` porte l'identité, et renverrait vers le troisième mot
+d'identité non identifié (offsets 688/732).
+
+## [2026-08-02] Le protocole d'observation corrigé — on n'observe pas le socle, on observe ce qui y apparaît
+
+**Statut** : Complété. Branche `feat/re-mode-score`. État de l'art : section **Q1.0-decies**.
+Sortie : `.ai/V7.5/dumps/forge_zones/emplacements_a_observer.txt`.
+
+**Décision technique principale** : l'utilisateur corrige le protocole que j'avais proposé —
+« le Representation Name c'est un emplacement ; je peux te confirmer ce qu'il fait spawn et à
+quelle fréquence, sinon ce sont juste des images sans aspect particulier en jeu ». Demander
+« lequel de ces deux socles est-ce ? » n'a donc pas de réponse en jeu. La mesure le confirme
+d'ailleurs : sur Vagabond les deux socles portent la MÊME variante de caisse
+(`banished_kinetic`) et la même cadence — ils sont bien indiscernables à l'œil. Le seul
+observable est l'objet qui apparaît dessus. J'ai donc produit la table dans ce sens.
+
+**Résultats observés** :
+
+- **4 `Representation Name` distincts** couvrent 285 socles sur les 199 cartes :
+  `-1351408675` (117 socles / 20 cartes, `banished_plasma`), `-1412311642` (98 / 27,
+  `banished_kinetic`), `-245254093` (46 / 21, `banished_shock`), `-219174009` (24 / 11,
+  `banished_hardlight`).
+- **La CADENCE n'appartient pas à l'identité** : un même `Representation Name` apparaît à
+  45 s (Fragmentation Heavies, Oasis Heavies), 120 s (Cliffhanger, Launch Site), 150 s
+  (Empyrean) et 240 s (Scarr). Elle sert à LOCALISER un socle, jamais à le nommer.
+- **Le relevé terrain de Vagabond devient une prédiction falsifiable** : si l'identité est
+  portée par le `Representation Name`, le lance-roquettes doit réapparaître partout où
+  `-1412311642` est posé (Scarr 9 socles à 240 s, Empyrean 2 à 150 s) et le camouflage
+  partout où `-245254093` l'est (**Launch Site, un seul socle** à (9,0 · -27,1 · 1,9), 120 s).
+  Un désaccord réfuterait l'hypothèse — c'est un test, pas une collecte.
+- **Les meilleurs témoins sont les cartes à UN SEUL socle** : Launch Site en porte un de
+  `-245254093` et un de `-219174009`, sans ambiguïté d'appariement.
+- **Cas à part, et plus simple** : les trois socles de Catalyst (90 s) sont de type
+  `493070541`, qui ne porte AUCUN `Representation Name` — parce que ce type_id n'est pas une
+  entrée de palette `food` mais le tag `weap` lui-même. Nommer ce qui y apparaît nomme
+  directement une arme.
+
+**Conclusion / prochaine étape** : la balle est côté utilisateur, et l'attente est bornée —
+quatre observations suffisent à nommer les 285 socles. Priorité par rendement :
+`-1351408675` sur Cliffhanger (une observation nomme 117 socles), puis les deux témoins
+uniques de Launch Site, puis Catalyst.
+
+## [2026-08-02] La piste 2 est écartée sur mesure — il manque un dictionnaire, pas un schéma
+
+**Statut** : Complété. Branche `feat/re-mode-score`. État de l'art : section **Q1.0-nonies**.
+Handoff mis à jour (piste 2 écartée, pistes restantes réordonnées par valeur).
+
+**Décision technique principale** : plutôt que de rejouer la piste 2 du handoff (lire
+`weap.xml` / `eqip.xml` du dépôt Z-15), tester ce qu'elle pourrait rendre. Une définition de
+tag décrit une DISPOSITION DE CHAMPS ; il fallait vérifier si le blocage est un problème de
+disposition ou de vocabulaire.
+
+**Résultats observés** :
+
+- **Diff différentiel des quatre tags `food`** (1 388 o, identiques à 40 octets près) : les
+  dix mots qui diffèrent sont localisés à l'octet près. `Representation Name` en 1296,
+  `Crate Variant` en 708 et 1300, le `type_id` en 728/736/752, l'en-tête en 16/20. **On sait
+  donc déjà où sont les champs** — une définition n'apprendrait rien là-dessus.
+- **Le mur est identique un cran plus bas** : le tag `weap` référencé par les quatre
+  emplacements, `-370671751`, fait 14 272 octets et ne porte **aucun nom** — 49 suites
+  imprimables, toutes des marqueurs fourCC en petit-boutiste (`tam ` = `mat `, `edom` =
+  `mode`, `effe`, `cshd`). Parser ce tag avec `weap.xml` rendrait des champs, pas des
+  libellés.
+- **Trouvaille neuve, publiée plutôt que comblée** : une TROISIÈME valeur d'identité, aux
+  offsets 688 et 732, une par entrée — `1067333871` / `-2060575876` / `1128236838`. Ce n'est
+  ni un murmur3 de nom (0 correspondance sur trois vocabulaires, espérance de collision
+  <= 0,057) ni un identifiant de tag (`gid introuvable` sur les 88 modules). Un troisième
+  espace de nommage est en jeu, vraisemblablement des identifiants d'asset.
+- **Correction de nature** : `493070541` n'est pas une entrée de palette `food` mais un tag
+  **`weap` de 14 088 octets** posé directement sur Catalyst. Les quatre autres sont bien des
+  `food`.
+
+**Conclusion / prochaine étape** : le blocage est « quelle chaîne hache vers
+`-1412311642` », et un schéma ne répond jamais à cette question — seul un dictionnaire le
+peut. Piste 2 écartée. Les pistes restantes, par valeur décroissante : (1) l'attribution par
+OBSERVATION, la seule qui ne demande aucune percée — le `Representation Name` est un
+identifiant stable, on s'en sert sans connaître son libellé, et une seule confrontation au
+Théâtre nomme une entrée pour toujours ; (2) un dictionnaire communautaire couvrant le build
+Forge, les trois essayés ne le couvrant pas ; (3) Ghidra sur le parseur du tag `food`, sans
+garantie que la table de résolution soit encore dans le binaire.
+
+## [2026-08-02] Le contrat des formes de zone est LIVRÉ — schema_version 2, régénéré hors ligne
+
+**Statut** : Complété. Branche `feat/re-mode-score`. État de l'art : section **LE CONTRAT DE
+DONNÉES — LIVRÉ**. Le RENDU reste non fait, et c'est explicite (voir ci-dessous).
+
+**Décision technique principale** : implémenter le contrat que la session précédente avait
+seulement proposé — lecture du sac de forme (`#8 → #0[0] → #0[0]`), conversion UNE fois à la
+lecture, publication en demi-extents et en mètres, brut conservé à côté du dérivé. Et
+surtout : ajouter un mode de régénération **hors ligne** (`--refresh-from <dossier>`) plutôt
+que de re-solliciter l'UGC pour 34 cartes juste parce qu'un champ s'ajoute au contrat.
+
+**Résultats observés** :
+
+- `mapvar/shape.go` : `ShapeRaw` (les entiers 16.16 du fichier), `Object.Shape()` (la
+  conversion), règle d'exclusivité boîte/cylindre. Une famille autre que 2 ou 3 rend `nil` —
+  on ne devine pas une géométrie.
+- `Objective.Shape` en `omitempty` : un objectif ponctuel sort SANS le champ. Le rendu devra
+  afficher un point, jamais un disque par défaut.
+- `catalogSchemaVersion` passe à **2** ; la note de contrat du catalogue documente la règle.
+- **Régénération 34/34, zéro `.mvar` manquant** : 597 objectifs, **264 avec forme**
+  (157 boîtes, 107 cylindres), 333 ponctuels. Les métadonnées issues du réseau
+  (`map_id`, `version_id`, `public_name`, `fetched_at`) sont préservées.
+- **Quatre tests ancrent la lecture**, dont le témoin qui a tranché : sur
+  `cliffhanger_map.mvar`, le cylindre 185 (r = 5,0999) et la boîte 188 (s5 = 668441)
+  coïncident au dixième de millimètre sous la lecture « tailles pleines », et seraient à un
+  facteur 2 sous la lecture rejetée. Le test encode la mesure, pas la conclusion.
+- Les 5 labels craqués sont portés dans `objectives.go`, `assault_bomb` promu au rang de
+  RÔLE (mesuré : 5 occurrences sur 5 cartes, soit exactement une par carte — la signature du
+  crâne d'Oddball). Le garde-rail `TestLabelTableIsSelfConsistent` les couvre d'office.
+
+**Ce qui reste NON fait, et pourquoi c'est dit plutôt que caché** : le rendu. Grep sur
+`MapObjectivesPath` et `map_objectives` — le catalogue n'a **aucun lecteur**, ni Go ni web.
+Le brancher n'est donc pas un câblage mais une fonctionnalité complète (lecteur, service,
+endpoint, régénération openapi, couche React). Elle est tenue par
+`.ai/PLAN_OBJECTIFS_TEMPS_REEL.md` étapes 1-2, hors du périmètre de ce handoff.
+
+**Découverte hors périmètre, non traitée (règle 7)** : `go test ./...` est ROUGE sur
+`internal/archlint` — `TestNoExpiredTODO` signale
+`internal/platform/duckdb/season_pass_repo_tracks.go:297`, un `TODO(expiry:2026-08-01)`
+échu depuis hier (suppression de `track-def` une fois les items migrés vers `bp-item-def`).
+Antérieur à ce lot, aucun fichier de mon diff n'est concerné, et l'arbitrage appartient au
+domaine season pass. **La CI de la branche est rouge tant que ce TODO n'est pas tranché.**
+
+**Conclusion / prochaine étape** : soit trancher le TODO season pass pour reverdir la CI,
+soit ouvrir le chantier du rendu (`PLAN_OBJECTIFS_TEMPS_REEL` étapes 1-2). Côté recherche,
+il reste les définitions `weap.xml`/`eqip.xml` du dépôt Z-15, puis Ghidra sur le parseur du
+tag `food`.
+
+## [2026-08-02] Reconnaitre un emplacement sans liste en dur — c'est l'emprise, pas le type_id
+
+**Statut** : Complété. Branche `feat/re-mode-score`. État de l'art : section **Q1.0-octies**.
+Sortie : `.ai/V7.5/dumps/forge_zones/emplacements_predicats.txt`.
+
+**Décision technique principale** : question posée en cours de session — au rejeu, on ne
+sait pas quels types d'emplacement une carte emploie, et selon le thème graphique les
+auteurs privilégient un composant plutôt qu'un autre. Plutôt que de trancher au
+raisonnement, mesurer trois prédicats candidats sur les 199 cartes (`tmp_forgeshape
+spawners`) et retenir celui qui sépare.
+
+**Résultats observés** :
+
+- La prémisse est exacte et chiffrable : les cinq types d'emplacement se répartissent sur
+  27 / 21 / 20 / 11 / 8 cartes ; `493070541` est celui de Catalyst, absent de Vagabond. Une
+  liste de `type_id` en dur aurait raté Catalyst — c'est exactement ce qui s'est passé au
+  handoff, qui n'en listait que quatre.
+- **P2 (porte un délai de réapparition)** est un filtre grossier utile : 65 `type_id` sur
+  2 785, 86 cartes sur 199 — `weap` 440 objets, `vehi` 184, `eqip` 37, plus 56 `bloc`
+  parasites. Insuffisant seul.
+- **P3 (signature d'emprise du modèle, au 10⁻⁴)** tranche net : parmi toutes les signatures
+  portées par un objet à délai, **une seule regroupe plus de deux `type_id`** —
+  `0.1306/0.1308/0.2617`, qui capte **les cinq emplacements et eux seuls** (387 objets,
+  59 cartes). Toutes les autres signatures ne portent qu'un ou deux types, et ce sont des
+  modèles réels : `2.2440/1.0139/0.8315` = le Warthog, `0.0615/0.0615/0.0863` = la grenade
+  à fragmentation.
+- **Pourquoi P3 survit aux thèmes** : le `type_id` est une entrée de palette (une par
+  habillage), l'emprise vient du modèle d'objet, constante au niveau du titre. Preuve
+  directe : `493070541` référence un tag d'objet DIFFÉRENT des quatre autres
+  (`-1269928936` contre `-370671751`) et porte pourtant la même emprise à la sixième
+  décimale. Ni le `type_id` ni le tag ne sont l'invariant ; l'emprise l'est.
+
+**La limite, écrite plutôt que cachée** : l'emprise se lit dans la palette Forge du jeu
+installé, pas dans le `.mvar`. `cls_all.csv` couvre les 2 785 types vus sur 199 cartes ;
+une carte neuve employant une entrée de palette inconnue exige de rejouer
+`tmp_forgename classify` contre le module — opération bornée et hors ligne, pas un balayage.
+
+**Conclusion / prochaine étape** : le contrat de données des objets d'emplacement doit
+porter le couple (emprise, `Representation Name`) et non une énumération de `type_id`.
+Suite : les 5 labels craqués dans `objectives.go`, puis le contrat des formes de zone.
+
+## [2026-08-02] La variante de caisse est nommée — et elle réfute l'espoir de la piste 1
+
+**Statut** : Complété. Branche `feat/re-mode-score`. État de l'art : sections
+**Q1.0-septies** et **Q1.0-septies-bis**. Handoff mis à jour (piste 1 close, deux pistes
+restantes). Outillage ré-archivé sous `.ai/V7.5/outillage/forge_palette/`.
+
+**Décision technique principale** : jouer la piste 1 du handoff jusqu'au bout — lire le
+champ `Crate Variant` PAR OBJET (`/#3[]/#8/#1[]/#0[]/#0`) sur les 199 cartes, puis passer
+les valeurs au craqueur murmur3 avec cinq vocabulaires indépendants. Chemin vérifié sur
+pièces (`cratedump` sur Vagabond objet 357) avant tout comptage.
+
+**Résultats observés** :
+
+- **380 464 objets balayés, 35 239 porteurs, 49 valeurs distinctes.** Les divergences que
+  la piste cherchait EXISTENT : 51 couples (carte, type) portent au moins deux variantes,
+  la plus nette étant Catalyst / type `493070541` (deux variantes sur une même carte).
+- **La variante est un murmur3 de nom simple.** Premier ancrage : `307451431 = equipment`,
+  qui est exactement la variante partagée par les trois grenades du groupe `eqip`. Second :
+  `1120495519 = default`, porté par `skull_weapon` et des centaines de `bloc`.
+- **Les quatre entrées « emplacement » sont nommées et forment un ensemble COMPLET** :
+  `banished_kinetic` / `banished_plasma` / `banished_shock` / `banished_hardlight` — les
+  quatre classes de dégât Banished, sans trou, pour 0,137 collision fortuite attendue sur
+  la passe entière.
+- **Le champ `/#8/#24[]/#1/#0` nomme l'OBJET** (848 valeurs distinctes) : 26 noms craqués à
+  profondeur 1 pour 0,027 collision attendue — `warthog`, `wasp`, `ghost`, `banshee`,
+  `scorpion`, `mongoose`, `phantom`, `sniper_rifle`, `assault_rifle`, `bandit`,
+  `commando_rifle`, les trois grenades, les trois tourelles. Validation croisée gratuite :
+  `1192059526 = skull_weapon` était DÉJÀ dans la table de `mapvar/objectives.go`, atteint
+  par un chemin totalement indépendant.
+- **Deux découvertes de structure** : un CINQUIÈME type d'emplacement (`493070541`, 8 cartes,
+  102 instances, celui de Catalyst), et le RÂTELIER MURAL enfin épinglé (Cliffhanger,
+  type `1882451900`, objet 160, `up.z = 0,046`) — la confusion que l'utilisateur signalait
+  est localisée.
+
+**Ce que cela réfute, et c'est le point qui compte** : la piste 1 espérait que la variante
+choisisse l'objet posé. Elle ne le fait pas. Sur Vagabond, l'emplacement du lance-roquettes
+et celui du camouflage portent la MÊME variante (`banished_kinetic`) et le même délai de
+réapparition (120 s) ; seuls leurs `Representation Name` diffèrent. La variante est une
+FAMILLE (classe de dégât, style, matériau), pas une identité.
+
+**Conclusion / prochaine étape** : les quatre `Representation Name` d'emplacement
+(`-1412311642`, `-245254093`, `-1351408675`, `-219174009`) résistent maintenant à cinq
+vocabulaires indépendants, dont un vivier neuf — les noms d'objets écrits par les AUTEURS
+de cartes (`root[10][1]`, 2 762 chaînes). `rocket_launcher`, `active_camo` et
+`powerup_active_camo` ont été essayés à profondeur 3 et réfutés : ne pas les rejouer.
+Restent les définitions `weap.xml`/`eqip.xml` du dépôt Z-15, puis Ghidra sur le parseur du
+tag `food`. Suite immédiate du chantier : porter les 5 labels craqués dans `objectives.go`,
+puis implémenter le contrat de données des formes de zone.
+
+## [2026-08-02] Le témoin de Q2 est joué — la lecture « tailles pleines » confirmée par l'oracle
+
+**Statut** : Complété. Branche `feat/re-mode-score`. État de l'art : section **Q2 — LE TÉMOIN
+EST JOUÉ**. Outillage archivé sous `.ai/V7.5/outillage/forge_palette/`.
+
+**Décision technique** : produire enfin le témoin que la première passe avait laissé ouvert,
+en acceptant d'écrire dans une donnée livrée — sur accord du superviseur. Ajout de
+`"Vagabond": "fo08_wetland"` à la table de `cmd/mapquant-build`, **avec sa raison écrite**
+comme l'exige le commentaire du fichier : le `level_id` 88891201 rend exactement une
+occurrence sur les 88 modules (groupe `levl`), preuve établie hors de toute mesure de largeur.
+
+**Résultats observés** :
+- Catalogue de bornes régénéré : **15 cartes**, Vagabond W=15/15/17.
+- Artefact de rejeu du film `696a9d7c` construit : **110 traces, 31 216 points**, 5 337
+  images à 100 ms, 533,7 s. Ponts slot->joueur, tirs et grenades : verdicts **nominaux**.
+- **Le témoin, aux quatre instants du relevé terrain de J0.6**, avec témoin négatif (les
+  mêmes formes translatées de 12 m) :
+
+  | instant | réels DEMI | témoin DEMI | réels PLEIN | témoin PLEIN |
+  |---|---:|---:|---:|---:|
+  | 48 s (capture base B) | 2 | 0 | 2 | 0 |
+  | 90 s (trois bases) | 2 | **3** | 1 | 1 |
+  | 190 s | 3 | **4** | 1 | 0 |
+  | 334 s (trois bases) | 3 | 0 | 2 | 0 |
+  | total | **10** | **7** | **6** | **1** |
+
+- **Le verdict** : sous la lecture « demi-extents », le témoin négatif attrape autant voire
+  PLUS de joueurs que les vraies zones (3 contre 2, puis 4 contre 3) — être « dedans » n'y
+  est pas informatif. Rapport signal/témoin **1,4**. Sous « tailles pleines » : **6,0**.
+- **Témoin nominal juste** : à 48 s le relevé dit « capture de la base B », une seule base ;
+  le test rend exactement **une** zone occupée, par deux joueurs, témoin négatif à 0.
+
+**Conclusion / prochaine étape** : le contrat de données de Q2 est désormais adossé à DEUX
+mesures indépendantes et concordantes (les 11 coïncidences cylindre/boîte, et cet oracle
+d'exécution). Reste ouvert : le nommage des quatre entrées « emplacement », qui demande de
+parser le bloc « Strings » de `fosp`. L'outillage (4 commandes, une douzaine de sous-commandes)
+est archivé sous `.ai/V7.5/outillage/forge_palette/` avec sa procédure de restauration —
+`cmd/tmp_*` reste gitignoré, la convention du dépôt n'est pas forcée.
+
+---
+
+## [2026-08-01] Les chaînes de l'interface Forge, en clair — et le râtelier nommé par le jeu
+
+**Statut** : Complété pour l'inventaire des emplacements ; le nommage des quatre entrées
+reste ouvert. Branche `feat/re-mode-score`. État de l'art : sections **Q1.0-quater** à
+**Q1.0-sexies**.
+
+**Décision technique** : suivre les dépôts communautaires proposés par l'utilisateur, mais
+les évaluer sur pièces plutôt que sur leur réputation — et notamment contrôler MA méthode
+contre la leur avant de leur faire confiance.
+
+**Résultats observés** :
+- **Mon murmur3 est validé par une source indépendante.** Le dictionnaire de
+  `Z-15/Halo-Infinite-Tag-Editor` donne `gravity_hammer -> 3C2CDAAC` ; cette session
+  calculait `0xACDA2C3C`. **Mêmes octets, ordre inverse** — ils stockent en gros-boutiste.
+  Vérifié sur `needler`, `assault_rifle`, `warthog`. La recette de nommage tient donc de
+  l'extérieur, plus seulement par cohérence interne.
+- **Les définitions de tag communautaires expliquent la structure mesurée à l'aveugle** :
+  `food.xml` nomme mon « bloc 1 » = bloc **Object Representations**, mot 0 =
+  **Representation Name**, mot 1 = **Crate Variant**, puis Configuration / Object Definition
+  (Crate) / Menu Item Definitions — exactement le layout observé. Les quatre entrées
+  « emplacement » sont donc **quatre variantes de caisse**, et les deux mots sont des
+  StringID, donc des **noms** — pas un identifiant opaque comme je le supposais.
+- **`foki` et `fosp` portent des chaînes LITTÉRALES.** Extraction des 79 tags du module de
+  la palette : **575 chaînes**, les libellés de l'interface Forge en clair. D'où
+  **l'inventaire des types d'emplacement** : `PowerUpPad`, `PowerWeaponPad`,
+  **`WeaponRack`** (le râtelier signalé par l'utilisateur), `WeaponTrunk`, `EquipmentPad`,
+  `GrenadePad`, `OrdnancePod`, `VehiclePad`. Et les power-ups en clair : `Overshield`,
+  `Active Camouflage`, `Threat Sensor`, `Grappleshot`, `Repair Field`, `Shroud Screen`,
+  `Quantum Translocator`, `Thruster`.
+- **Trois impasses mesurées, pour qu'on ne les rejoue pas** : (1) les dictionnaires
+  communautaires sont d'un autre build — intersection **exactement 0** entre leurs 3 120
+  `food` du module de la palette et nos 4 235, et leur liste de 616 697 noms ne contient
+  aucun des huit StringID des quatre emplacements ; (2) le `Forge Kit` n'existe qu'en **un
+  seul tag** dans le jeu installé et ne rend aucun littéral ; (3) l'appariement direct dans
+  `fosp` est **réfuté** — les murmur3 des cinq écritures plausibles d'« Active Camouflage »
+  sont absents des 24 512 octets de son propre tag, en petit ET gros-boutiste.
+- **Deux noms de plus** : `warthog_gauss`, `primitive_teleporter`, `shell_casing` côté
+  palette (67 entrées nommées), et le label de carte `-534119345 = assault_bomb`.
+
+**Conclusion / prochaine étape** : récupérer les couples (StringID, littéral) exige de
+**parser réellement le bloc « Strings » de `fosp`** avec la définition — le raccourci par
+devinette d'appariement est testé et faux. C'est l'action concrète pour qui reprend. Le
+râtelier, lui, est désormais nommé par le jeu : `WeaponRackPlacementKey`, catégorie distincte
+du socle d'arme lourde et du socle de power-up.
+
+---
+
+## [2026-08-01] Le nommage de la palette Forge est RÉSOLU — un murmur3 dans le tag
+
+**Statut** : Complété pour le mécanisme ; 64 entrées nommées sur 4 213, le reste est du
+dictionnaire. Branche `feat/re-mode-score`. État de l'art : section **Q1.0**.
+
+**Décision technique** : ne pas croire ma propre conclusion « le binaire est dépouillé ».
+Elle venait d'un constat de la session J0 qui portait sur les noms d'ARCHÉTYPE en mémoire
+vive, jamais sur les chaînes du fichier. Une recherche Ghidra (`OverShield`, `ForgeObjects`,
+`PowerupData`, `power_ups`…) l'a démentie en une commande. J'ai alors extrait les **82 281
+chaînes de type identifiant** de `HaloInfinite.exe` et je m'en suis servi comme dictionnaire
+pour le craqueur murmur3 écrit plus tôt dans la session.
+
+**Résultats observés** :
+- **Le nom vit dans le tag** : le `food` d'une entrée de palette porte, en tête de son second
+  bloc de données, un mot de 32 bits qui est `murmur3_x86_32(nom_snake_case, seed=0)`.
+- **Établi puis contrôlé en croix** : `0xACDA2C3C = murmur3("gravity_hammer")`,
+  `0x7A3BE607 = murmur3("needler")`, et surtout **`1192059526 = murmur3("skull_weapon")`
+  était DÉJÀ dans la table de `objectives.go`** — même valeur, deux chemins indépendants,
+  même espace de nommage que les labels d'objectif.
+- **64 entrées nommées** (collisions fortuites attendues : 0,08 puis 5,6), toutes cohérentes
+  et plusieurs confirmées par leur usage réel : `skull_weapon` = **21 cartes / 21 instances**
+  (exactement 1 crâne d'Oddball par carte), `kill_volume` 48/164, `cubemap_volume` 57/562,
+  `unsc_turret` 41/93, plus les véhicules (`warthog` `wraith` `scorpion` `banshee` `phantom`
+  `ghost` `mongoose` `wasp` `brute_chopper` `falcon`) et des armes.
+- **DEUX de mes conclusions tombent, et c'est la méthode qui les tue** :
+  1. le groupe `eqip` de la palette, ce sont les **GRENADES** (frag, plasma, spike — les 3
+     seules entrées `eqip` de toute la palette). Le raisonnement « aucun `eqip` placé donc
+     aucun power-up » était bien le non-sequitur soupçonné ;
+  2. **`-721267272` = `generic_ball`**, pas un socle de power-up. Le motif « centre exact +
+     deux symétriques » sur Catalyst est une disposition d'apparition d'Oddball. Le candidat
+     de l'entrée précédente est **réfuté**.
+- **Ce qui résiste** : les quatre entrées « emplacement » (modèle -370671751) sont les
+  **seules** de la palette à porter un second mot de 32 bits non nul (0 chez les 4 209
+  autres). Leur mot de nom ne cède ni aux 82 281 chaînes du binaire, ni à une combinaison de
+  jetons à profondeur 3 sur un vocabulaire d'armes et de power-ups ciblé.
+- **Repère terrain de l'utilisateur exploité** : sur Vagabond, `1486653438` est 3,4 m plus
+  bas (z 51,4) que `-1062552774` (z 54,8) — un étage. L'utilisateur situe le lance-roquettes
+  en bas et le camouflage en haut : ces deux entrées sont donc les deux emplacements, et
+  leur second mot les distingue.
+
+**Les quatre emplacements résistent — quatre voies essayées, quatre négatives**, écrites en
+section Q1.0-bis pour qu'on ne les rejoue pas : dictionnaire élargi à 105 291 mots (0),
+le second mot testé comme nom (0), vocabulaire armes/power-ups en combinaisons jusqu'à
+profondeur 3 sur 666 159 essais (0), et Ghidra sur la constante murmur3 `0xCC9E2D51` —
+plus de 700 occurrences, trop diffus pour cibler. L'hypothèse économique restante : la
+paire `(mot0, mot1)` de ces quatre-là est un **identifiant 64 bits**, pas deux noms.
+
+**Test du râtelier, sur l'avertissement de l'utilisateur** (« des râteliers muraux pour les
+armes de base, ne pas confondre ») : un râtelier est fixé au mur, donc `Up` non vertical.
+Mesuré sur les 199 cartes — les quatre emplacements sont posés **au sol à 89-100 %**, aucun
+n'est un râtelier. Les râteliers sont un autre type d'objet, encore non identifié ; la
+confusion n'a pas eu lieu, et c'est mesuré plutôt que supposé.
+
+**Conclusion / prochaine étape** : nommer ces quatre-là demande de retrouver le **parseur du
+tag `food`** dans le binaire — une session de rétro-ingénierie Ghidra à part entière, pas une
+sonde. Le reste de la palette, lui, est nommable dès maintenant par la recette de Q1.0 : le
+rendement dépend uniquement de la richesse du dictionnaire.
+
+---
+
+## [2026-08-01] Power-ups : le contrôle différentiel de l'utilisateur, et un verdict révisé
+
+**Statut** : En cours — question ouverte, il manque une observation. Branche
+`feat/re-mode-score`. Suite de l'entrée ci-dessous. État de l'art : section **Q1.3-bis** de
+`.ai/ETAT_DE_L_ART_FORGE_PALETTE_ZONES.md`.
+
+**Décision technique** : ne pas défendre la conclusion « les power-ups ne sont pas dans le
+`.mvar` », mais la re-tester avec le contrôle fourni par l'utilisateur (Cliffhanger négatif,
+Catalyst et Vagabond positifs), en commençant par attaquer la faiblesse de ma propre mesure.
+
+**Résultats observés** :
+- **La faiblesse était réelle et ne masquait rien.** `resolveType` retenait la première
+  référence d'une liste ORDONNÉE de groupes : un `food` référençant un `bloc` (le socle) et
+  un `eqip` (l'objet) aurait été classé `bloc`. Nouvelle commande `groups` — ensemble des
+  groupes atteignables à profondeur ≤ 2, sans priorité — : `eqip` reste atteignable pour
+  **3 types sur 2785**. Le chiffre ne bouge pas.
+- **Fait dur du différentiel** : AUCUN `type_id` n'est présent à la fois sur Catalyst et sur
+  Vagabond et absent de Cliffhanger. L'intersection est **vide** — aucun objet unique ne peut
+  être le power-up des deux cartes.
+- **Candidat sérieux pour Catalyst seul** : `-721267272`, groupe `weap`, **cube de 30 cm**,
+  présent sur **35 cartes**, toujours dans la variante de BASE `*_map` (jamais dans une
+  variante de mode), **1 ou 3 par carte**. Sur Catalyst : 3 instances à (0, −14,8, 24,9),
+  (0, +14,8, 24,9), (0, 0, 27,5) — deux symétriques exacts sur l'axe x = 0 plus un au centre
+  exact, 2,6 m plus haut ; Aquarius montre le même motif. **Absent de Cliffhanger** (conforme
+  au négatif) mais **absent de Vagabond** (contredit le positif).
+- **Piste des labels fermée, sur mesure** : les 3 instances portent 4 labels dont 2 varient
+  d'une instance à l'autre — ce qui ressemblait à un discriminateur d'identité. Craqueur
+  murmur3 validé **4/4 sur des labels déjà connus AVANT usage**, puis lancé :
+  `248451123 = minigame_include`. Ce sont des **filtres de mode**, pas l'identité de l'objet.
+- **4 labels craqués** (0,006 collision fortuite attendue sur 1,6 M d'essais, garde-fou
+  d'`objectives.go` respecté) : `extraction_include` (−903313158, 200 objets),
+  `firefight_include` (2140598169, 1357), `minigame_include` (248451123, 297),
+  `forge_include` (−1875636905, 178).
+
+**Conclusion / prochaine étape** : la formulation « clos par la négative » est **retirée** —
+elle supposait sans preuve que power-up implique le groupe `eqip`. Ce qui reste établi est
+plus étroit, et écrit en Q1.3-bis. Il manque une **observation**, pas un calcul : les trois
+positions Catalyst marquées dans `catalyst_powerup_candidat.png` sont-elles les emplacements
+réels du surbouclier et du camouflage ? Si oui le candidat est identifié ; si non, les
+power-ups viennent du scénario de base ou du mode de jeu. En réserve, la voie non essayée :
+Ghidra (serveur MCP tombé en fin de session).
+
+---
+
+## [2026-08-01] La palette Forge lue — les zones ont une FORME, et elle était dans le .mvar
+
+**Statut** : Complété (session de recherche). Branche `feat/re-mode-score`. État de l'art :
+`.ai/ETAT_DE_L_ART_FORGE_PALETTE_ZONES.md`. Aucun code livré touché, outillage `cmd/tmp_*` neuf.
+
+**Décision technique** : ne pas chercher la forme d'une zone dans l'emprise du TYPE (palette)
+ni dans l'entité d'exécution, mais dans le record d'objet du `.mvar` lui-même. Le décodeur Bond
+décode l'arbre entier ; `mapvar.parseObject` n'en extrait que 6 champs et `readGameplayBag` 3.
+Un inventaire profond des 380 464 objets des 199 cartes a exposé le reste — dont un sac de
+forme à `#8 -> #0[0] -> #0[0]` : famille (2 = cylindre, 3 = boîte) + 4 nombres en virgule fixe
+16.16. Le pas est établi, pas supposé : 393216 = 6 × 65536 exactement, 39,2 % des 62 299
+valeurs brutes sont des multiples exacts de 65536.
+
+**Résultats observés** :
+- **16 434 formes** sur 197 cartes. Couverture par nature d'objectif : **100 %** des objectifs
+  SURFACIQUES (Extraction 434/434, reperes Ravitaillement 186/186, Bastion 430/431), **0 %**
+  des objectifs PONCTUELS (apparitions de drapeau 0/669, socles 0/855). Le 34,2 % global n'est
+  pas un trou : c'est la structure.
+- **Orientation confirmée par la mesure** : sur une zone tournée de 20°, la boîte alignée capte
+  **+31 %** de positions joueur en trop (+18 % pour un cylindre traité en carré) ; sur une zone
+  non tournée les deux comptages sont identiques au millième. Témoin négatif (forme translatée
+  de 25 m) : 0,000 %.
+- **Palette résolue à 99,0 %** (2758/2785 `type_id`), contrôle positif **45/45 identiques** sur
+  `forge_object_types.csv`. Catalyst 36/36, Vagabond 479/479 (contre 78 % et 3 %).
+- **Le `[!]` power-ups de J0.2 est clos — par la négative** : `eqip` = 3 types sur 2785, sur
+  5 cartes sur 199, aucun sur Catalyst ni Vagabond. Le `.mvar` ne place pas d'équipement.
+- **Champs jetés par le dépôt, désormais consignés** : `/#6` = échelle uniforme (240 objets,
+  7 cartes) ; `/#8/#1[0]/#4` = délai de réapparition en secondes (30/60/120/240), porté par
+  `weap` 117 et `vehi` 94 — les seuls objets qui réapparaissent.
+- **Deux mesures REJETÉES, et c'est le résultat à ne pas perdre** : le critère « part de
+  l'empreinte sur du sol foulé » est tautologique (il favorise mécaniquement la forme la plus
+  petite — même piège que le « critère en or par l'AABB » déjà retiré du chantier) ; les
+  médianes par rôle donnent un rapport ni 1 ni 2. Le départ demi-extents/tailles pleines a été
+  tranché par les **coïncidences exactes** cylindre/boîte sur une même carte : **11 contre 1**.
+- **Correction transverse** : l'emprise de la palette est en **unités monde** (× 3,048), pas en
+  mètres — établi sur les véhicules (Pelican 32,7 m, Warthog 6,8 × 3,1 × 2,5 m). Les positions
+  et les formes du `.mvar` sont en mètres. Mélanger les deux donne un facteur 3 silencieux.
+- **Noms de zone A/B/C : absents du fichier.** Trois zones d'une même carte ne diffèrent que par
+  position, dimensions et `team_index`. Label craqué au passage :
+  `murmur3("extraction_include") = -903313158`.
+
+**Conclusion / prochaine étape** : le contrat de données pour `map_objectives.json` est proposé
+(famille, demi-extents, orientation, brut conservé à côté du dérivé, repli explicite « point
+sans forme » — JAMAIS de disque par défaut). Rien n'a été implémenté : ni schéma, ni rendu.
+La prochaine étape est l'oracle d'exécution qui tranche à la fois le départ « tailles pleines »
+et la lettre de zone — `zone_captured` daté à la ms × position du joueur × zone qui le
+contient. Son unique pré-requis est de produire les bornes de déquantification de Vagabond
+(`mapquant-build` sur `fo08_wetland`) et de les ajouter à `map_quant_bounds.json` : non fait
+ici, c'est une écriture dans une donnée livrée, hors du périmètre de recherche de la session.
+
+## [2026-08-01] Q2 RÉSOLU pour les modes à objectifs — le score est le composant 0 de l'archétype 6
+
+**Statut** : Complété. Q2 établi pour Strongholds et CTF ; Q4-KOTH réfuté ; localisateur hors
+ligne tenté et négatif (chiffré). Branche `feat/re-mode-score`.
+
+**Décision technique** : arrêter de chercher le score dans les images-clés TYPE_2 et faire le
+pont entre la capture Cheat Engine et le film par une identité arithmétique. La capture donne
+le curseur moteur `c` et 16 octets lus ; la recette de localisation les place à
+`paquet.Start + 8*floor(c/64) + 8` ; en retrouvant la signature à l'offset `M`, la position
+exacte du composant vaut `8*M - 64 + (c mod 64)`. Aucun balayage, aucun paramètre libre.
+
+**Résultats observés** :
+- **2 708/2 716 lectures localisées** (Strongholds) et **2 331/2 340** (CTF), zéro signature
+  absente. L'archétype 6 est le statborg et porte 2 entités d'équipe + 8 entités de joueur.
+- **Composant 0 = le score de mode** : 200 et 94 en Strongholds, 3 en CTF (l'équipe à 0
+  n'émet jamais — une valeur qui ne change pas n'est pas répliquée), plus les contributions
+  par joueur (2 et 1, exactement leurs `flag_captures`).
+- **Composant 1 = score personnel** (8 420 / 7 420 et les 8 joueurs), **composant 2 =
+  frags/morts** (54/48 et 48/55 ; 53/40 et 39/54). Toutes exactes à l'unité contre l'API.
+- **Fermeture arithmétique gratuite** : la somme des 8 scores personnels du Strongholds fait
+  15 840 = 8 420 + 7 420, sans ajustement.
+- **Résolution temporelle** : le composant n'est réémis QUE lorsqu'il change — 190 émissions
+  monotones pour l'équipe qui mène en Strongholds, 3 émissions pour 3 captures en CTF. Plus
+  fin que le tick de 5 s du footer, et sans battement.
+- **Q4-KOTH réfuté** sur 8 films neufs à 8 lignes propres : le film compte 1,4 à 2,6 fois plus
+  que `zone_captures+secures`, rapport non constant. Le défaut de `01e1f945` n'était pas la
+  cause. En KOTH l'événement de mode est un tick d'occupation, pas une prise.
+- **Localisateur hors ligne : négatif et chiffré.** Le motif « 10 bits nuls + deux valeurs à
+  longueur variable » rend 103 560 candidats sur un seul film et atteint les 200 valeurs du
+  score : saturé de bruit. La marche extraite contredit le relevé terrain.
+
+**Conclusion / prochaine étape** : la lecture du score est établie mais dépend encore de la
+capture CE pour localiser — elle ne vaut donc que pour les 2 films capturés. Le passage à
+l'universel ne se fera pas par motif mais par parcours de la chaîne d'enregistrements de trame
+(`FUN_1406CD128`, déjà porté dans `filmdec/frame_records.go`). La nouveauté qui rend ce
+parcours enfin vérifiable : 5 039 positions de bit exactes avec leurs valeurs attendues.
+
+## [2026-08-01] RE mode→score, seconde passe — Q2 localisé en Slayer, Q5 chiffré, un faux positif démasqué
+
+**Statut** : Complété pour Q1, Q3, Q5 ; Q4 établi (zones) / réfuté (CTF) / indécidable (KOTH) ;
+Q2 établi en Slayer, absent de l'espace balayé en Strongholds, indécidable en CTF/KOTH.
+Branche `feat/re-mode-score`.
+
+**Décision technique** : refuser le critère « monotone + valeur finale » comme preuve, et
+exiger soit une SÉRIE complète, soit les ancres terrain en contrainte. C'est ce qui a payé :
+le critère faible a produit un candidat Strongholds parfait sur le papier (30 colonnes, leurres
+201 et 202 à zéro, `[d=+34 w=6 x4]` rendant 200-94 monotone) que les ancres ont tué en une
+passe — sa courbe reste à zéro jusqu'à ~400 s alors que le relevé atteste 21 points à 1:30.
+
+**Résultats observés** :
+- **Q2 Slayer ÉTABLI.** Ancre = 1re occurrence du jeton 12 bits `0x7B6` dans TYPE_2 ; équipe 0
+  = 6 bits à ancre+28, équipe 1 = 6 bits à ancre+110, sans échelle. Les deux courbes sont
+  monotones et finissent sur 43-50, le score de l'API. Validées non sur la valeur finale mais
+  sur une **série de 26 valeurs** dérivée des morts horodatées du footer — chaîne indépendante.
+  Leurres : série décalée 0, série constante 0. Espace balayé : deltas -512..+3000, largeurs
+  6..16, échelles ×1..×32. L'alignement d'horloge vient du **manifeste de film** (`start_ms`
+  par chunk), qui était en cache et que personne n'utilisait.
+- **Le « ×4 » de l'archive était un artefact.** Un champ de 6 bits finissant 2 bits avant la
+  fin d'un octet, lu comme un octet, vaut 4× sa valeur. En lecture bit-exacte, aucune échelle.
+- **La règle ne se généralise pas** (prédiction appliquée sans rien chercher) : 1/5 films. Mais
+  pas au hasard — en KOTH le champ à ancre+28 finit exactement sur 3, le score d'objectif, et
+  celui à ancre+110 sur 58, le nombre de morts d'équipe 0. **Les deux emplacements ne portent
+  pas la même grandeur selon le mode**, ce qui est exactement la prédiction de Q3 (des slots de
+  stat dont le contenu est choisi par le script de la variante). Convergence Q2/Q3.
+- **Strongholds absent de l'espace balayé** : un champ de largeur fixe ≤ 20 bits ne le porte
+  pas, et l'archive décrivait un varint — un balayage à largeur fixe ne peut pas l'attraper par
+  construction. CTF/KOTH indécidables : avec des scores de 0 à 3, le critère de valeur finale
+  laisse passer jusqu'à 98 544 colonnes et les leurres autant.
+- **Q4 timing livré** : chaque événement de zone porte son horodatage ms (octets 48-51 BE) et
+  son acteur (gamertag UTF-16 décodé du film, sans jointure DB). Footer et manifeste sont sur
+  la même base d'horloge : les événements se replacent directement sur la ligne de temps du
+  rejeu, sans recalage.
+- **Q5 chiffré** : bornes inférieures de changements d'arme par film, mesurées sur les
+  événements de tir déjà décodés — 69 à 107 par film. Contrôle de vraisemblance interne : le
+  Super Fiesta porte 60 armes distinctes cumulées pour 8 joueurs contre 25-35 dans les modes à
+  dotation fixe. Un décodeur de ramassages qui rendrait moins que ces chiffres serait faux.
+
+**Conclusion / prochaine étape** : le lot Q2 suivant est nommé — étendre le balayage aux
+encodages à longueur variable (lecteur `FUN_140C18A1C`, sélecteur 2 bits) pour le Strongholds,
+et construire une série par image-clé depuis les événements de mode horodatés pour CTF/KOTH.
+Reste aussi un second film KOTH pour trancher Q4-KOTH.
+
+## [2026-08-01] RE mode→score — ce que les zones rendent, et deux pistes externes réfutées
+
+**Statut** : Complété pour Q1, Q4 et Q5 ; Q2 non traité (justifié) ; Q3 non conclu, route
+corrigée. Branche `feat/re-mode-score` (worktree dédié), livrable
+`.ai/ETAT_DE_L_ART_MODE_SCORE_EVENEMENTS.md`.
+
+**Décision technique** : traiter la source externe ouverte par l'utilisateur en cours de
+session (dépôt `davidhouweling/guilty-spark`, PR 752-757, qui parse le même format de film)
+comme une **hypothèse à réfuter**, jamais comme une référence — et lui appliquer le même
+contrôle négatif qu'à une piste interne. C'est ce qui a payé : la source énonce exactement
+l'hypothèse Q3 d'un intermédiaire universel mode→score, et deux de ses trois revendications
+tombent sur la mesure.
+
+**Résultats observés** :
+- **Le résultat fort — les zones.** En Strongholds, un événement de mode du footer type-3 est
+  une prise OU une sécurisation de zone, par joueur, à l'unité. Trois chaînes sans étape
+  commune : le relevé terrain écrit avant tout décodage (« 0:48 flyguy8773 capture la base B »)
+  contre le premier événement décodé (t = 48,90 s, FlyGuy8773) ; le total 77 = 77 ; et surtout
+  **l'égalité par joueur 8/8** avec `zone_captures + zone_secures`, multisets identiques, les
+  deux joueurs nommés tombant nominativement. Contrôle négatif : le Slayer porte 0 événement
+  de mode et 0 statistique de zone.
+- **CTF réfuté** : `flag_captures+grabs+returns` donne 90 contre 68 événements sur un film et
+  33 contre 43 sur l'autre — l'écart change de signe, donc aucun facteur d'échelle ne
+  réconcilie. La prudence de `PLAN_OBJECTIFS_TEMPS_REEL` 2.3 devient une mesure.
+- **KOTH indécidable, et la faute est chez nous** : le total tombe (66 = 66) mais pas le détail
+  — et `match_objective_stats_latest` porte 9 lignes pour un match à 8 joueurs, dont une avec
+  un xuid non numérique `bid(42.0`. La référence est corrompue : on ne conclut pas.
+- **Deux porteurs de score candidats éliminés.** (a) « L'octet d'état du payload type-2 est un
+  signal d'objectif universel » : le mode SANS objectif porte 2 808 transitions, plus que le
+  Strongholds (1 051) et les deux CTF (935, 1 195) ; et à ~1 transition / 0,5 s la coïncidence
+  avec une capture est garantie par la densité seule. La PR 757 de la source confirme
+  indirectement en empilant un filtre nommé « bruit de byte2 ». (b) « Le score est le compte de
+  ticks dédupliqués » : 0 sur 4 modes en égalité exacte, et 41 événements ne feront jamais les
+  200 points du Strongholds.
+- **Confirmé de la source, par oracle interne** : en KOTH les événements de mode sont
+  périodiques à **5 005 / 5 009 ms** de médiane sur 64 intervalles. Mais la cadence est propre
+  au mode (Strongholds 11,8 s en rafales ; CTF 15,0 / 9,9 s sans périodicité) — argument
+  **contre** une recette unique, et il est mesuré.
+- **Q1** : recensement sur 5 films / 4 modes. Le code 123 n'existe que dans les deux modes à
+  zones (KOTH 117, Strongholds 249) et jamais en Slayer ni dans les deux CTF — dont une **sur
+  la même carte** que le KOTH, donc le signal suit le mode et non la carte. Chaîne
+  indépendante : l'API range Strongholds et KOTH sous le même bloc `ZonesStats`. Et le paquet
+  type-10 de 10 octets précède **chaque** trame, 1:1 exact sur les 5 films — une donnée que
+  `filmdec` traverse sans la lire.
+- **Q3, le piège évité** : le contrôle positif de la table de handlers passe magnifiquement à
+  l'index 105 (`vtable+0x68` = le déserialiseur de dégât connu, nom `action_weapon_fire`) — et
+  ne se généralise pas : le code qui porte 71-85 % des paquets s'y nommerait « NavpointRequest »
+  et son déserialiseur n'est pas la boucle de trame. L'index de cette table n'est pas notre
+  champ 7 bits. Ne pas y retourner par ce chemin ; reprendre par le binding statborg.
+
+**Corrections d'entrée** : `01e1f945` n'est pas un Slayer mais un **KOTH:Arena** — le corpus
+couvre donc quatre modes, pas trois.
+
+**Q3 tranché par Ghidra (ajout post-session, sur relance utilisateur)** : la chaîne remonte du
+consommateur — getter `FUN_1406ADA4C`, résolution `FUN_140C18E54`/`FUN_140C18EA8` (balayage
+linéaire de la table `engine+0xDF77C`, pas de 0xC0 octets, l identifiant de stat en premier
+dword), appelant `FUN_142B7974C` = le binding HavokScript `Team_GetCurrentRoundStatValue`. Sur
+tout ce chemin, **zéro branchement sur une catégorie de variante**. La surface d API scriptée
+est entièrement générique (`Hill_` : 0 occurrence ; `Objective_` : un seul getter générique).
+L intermédiaire postulé existe donc, mais ce n est ni l en-tête du film, ni une entité des
+images-clés, ni une table de dispatch : c est un **registre de stats plat adressé par
+identifiant**, et **c est le script de la variante de mode qui choisit l identifiant**. La
+recette est de la DONNÉE, pas du code — ce qui explique d un coup les trois négatifs de la
+session. Correction au passage : `RE_EXE_GHIDRA_FINDINGS` §1 annonce des entrées de 0x30, le
+pas réel est 0x30 dwords = **0xC0 octets**.
+
+**Conclusion / prochaine étape** : Q2 (localiser le porteur de score par mode) n a pas été
+traité — le budget est passé dans la vérification de la source externe, demandée en cours de
+session, qui a produit deux réfutations et une confirmation. Il est cadré et ses témoins sont
+prêts ; il exige un comptage **publié** des faux positifs, sans quoi il n'est pas publiable.
+Ensuite : un second film KOTH (une mesure, l'outil est écrit) pour trancher Q4-KOTH.
+L'outillage `cmd/tmp_modescore`, `tmp_modestate`, `tmp_modeticks` reste non suivi par git
+(règle `.gitignore` posée en J3 lot A) ; le livrable en consigne les commandes exactes.
+
 ## [2026-08-01] J3-1 — la dette mécanique : 70 à 43, et un item du plan qu'il fallait refuser
 
 **Statut** : Complété (lots A et B de `PLAN_DETTE_AVANT_MERGE.md`, plus J3.1 et J3.2 du master
@@ -75883,3 +76806,174 @@ lancers identiques hors leur type, correspondance ancien nom → nouveau rang ex
 absence sur un match sans artefact, les 7 familles d'effet de tir — première revue d'écran
 depuis le correctif du champ `w` en J1). Artefact de revue publié. Restent J4.2 (le garde
 local, qui attend le diagnostic du CTF) et les découpages 3.3-3.6, post-merge.
+
+## [2026-08-01] Rétro-ingénierie — la courbe de score des matchs à objectifs se lit hors ligne
+
+**Statut** : Complété (volet rétro-ingénierie). Branche `feat/re-mode-score`, worktree dédié.
+
+**Le but, et il est tenu** : rejouer le déroulé d'un match à objectifs — la progression du
+score ET qui prend quoi — à la milliseconde, à partir des seuls films en cache, sans dump
+mémoire ni capture Cheat Engine.
+
+**Décision technique principale — mesurer le cadrage au lieu de le déduire du binaire.** Le
+handoff prescrivait un contrôle : fixer à 14 bits la largeur du champ de slot et vérifier que
+les bits précédents deviennent `[présence][type=11]`. Le contrôle est passé sur la largeur et
+**a démenti la seconde moitié** : les 2 bits qui précèdent le bit de présence sont
+statistiquement indépendants (22 co-occurrences observées, 21,6 attendues sous indépendance) —
+ce n'est pas un champ de type, c'est la queue de l'enregistrement précédent. Cadrage retenu,
+entièrement lu sur 1 078 en-têtes de vérité terrain :
+`[1 bit = 1][14 bits slot][2 bits = 10][1 bit forme = 0][3 bits N][N × 6 bits index]`.
+Deux contraintes supplémentaires viennent de la même méthode, jamais d'un seuil choisi : les
+deux en-têtes de 5 bits du composant valent 0 sur 283/283 lectures réelles (contre 11/151 et
+98/151 chez les faux positifs), et le sélecteur de largeur ne vaut jamais 2.
+
+**Résultats observés** — confrontation position de bit par position de bit contre la capture
+CE (`cmd/tmp_scoreverify`) : Strongholds `696a9d7c` **283/284 retrouvées (99,6 %) pour 2 faux
+positifs (0,7 %)**, CTF `530820e5` **6/6 pour 0 faux positif**, zéro valeur fausse à bonne
+position dans les deux cas. La méthode se généralise aux autres composants du même archétype :
+composant 1 (score personnel) 374/381, composant 2 (frags/morts) 385/397.
+
+**Les deux horloges sont la même, et c'est mesuré** (`cmd/tmp_filmclock`) : le `TimestampUS`
+du premier paquet de chaque chunk reproduit le `start_ms` du manifeste à **-4 à 0 ms près sur
+573 s**. Piège payé : prendre pour origine le premier paquet *où l'on trouve quelque chose*
+décale toute la courbe (36 s sur le Strongholds, 140 s sur le CTF) ; l'origine se prend par
+chunk, sur le manifeste.
+
+**Deux confrontations indépendantes ferment le dossier.** En CTF le score n'avance que sur une
+capture : les captures détectées par `objectiveevents` (bursts à 6 tiers du footer) et les
+incréments de score (composant 0 des paquets delta) tombent à **+1 ms l'un de l'autre, 3 fois
+sur 3**. Deux décodeurs sans rien en commun. Sur le Strongholds, les **quatre** ancres du
+relevé terrain — écrit à l'œil avant tout décodage — tombent : capture à 48,901 s, 21 pour
+l'équipe plafonnée à t=90 s, **69-30 exactement à t=190 s**, contrôle des trois bases à 5:34.
+
+**Livrable** : `cmd/tmp_timeline <cacheDir> <filmID> <gameVariantName>` sort la ligne de temps
+fusionnée « événement d'objectif + progression du score », par équipe et par joueur.
+
+**Conclusion / prochaine étape** : le volet rétro-ingénierie est clos. Ce qui reste est un lot
+d'industrialisation (`PLAN_OBJECTIFS_TEMPS_REEL` étape 1) : promouvoir le décodeur dans un
+paquet de `internal/analysis/`, le faire produire par la synchronisation et non par un CLI,
+puis l'exposer. Reste hors de portée, inchangé : **quelle** zone (A/B/C) est prise, et
+l'identité fine des actions CTF (prise/retour), réfutée plus tôt dans le chantier.
+
+---
+
+## [2026-08-01] Nommer les evenements : bareme du score, identite des slots, 88 medailles
+
+**Statut** : Complété (volet nommage). Branche `feat/re-mode-score`, worktree dédié.
+Fait suite à l'entrée du même jour sur la courbe de score.
+
+**Demande** : le score personnel intéresse l'utilisateur non comme chiffre mais comme
+**description de l'événement**. Garde qu'il a posée en cours de route et qui a été
+respectée : **tout événement de score n'est pas une médaille** — les deux canaux sont
+mesurés séparément, le lien n'est jamais supposé.
+
+**Décision technique principale — nommer par confrontation de décodeurs indépendants
+plutôt que par inférence.** Les incréments du composant 1 (score personnel, valeur B) sont
+confrontés aux morts de `killsource` (horloge kill-feed) et aux événements d'objectif
+d'`objectiveevents` (horloge footer). **+100 = un frag** (95/95 coïncident avec le frag DU
+joueur du slot), **+50 = une assistance** (29/31 en CTF), **+25 = objectif** (16/16 en
+Strongholds), **+300 = capture de drapeau** (3 incréments pour 3 captures). Cela referme
+`ObjectivePointsPerCapture = 25.0` d'`engagement_score.go`, posé « à calibrer » : les trois
+constantes du dépôt sont désormais mesurées. Limite consignée : les incréments ne sont pas
+atomiques (125 = 100 + 25 observé en CTF).
+
+**Résultat non prévu — l'identité des entités.** Apparier les +100 d'un slot aux instants
+de frag attribue chaque slot à UN joueur sans collision (95/95 expliqués, second candidat
+toujours ≤ 4). La même opération avec les événements d'objectif donne le xuid : **le pont
+gamertag ↔ xuid est refermé sans aucune jointure en base**, et il concorde avec les deux
+identités que l'état de l'art avait établies par une autre voie (NeonKnight3166 = 16
+événements, JGtm = 9). Toutes les courbes par joueur deviennent nominatives.
+
+**Piste ouverte par l'utilisateur, et elle valait mieux que l'inférence** : lire une
+bibliothèque plutôt que deviner. Le bloc d'événement du footer ne porte PAS l'identifiant de
+médaille (balayage de tous les décalages 32 bits, deux boutismes : zéro correspondance) et
+`medal_definitions.personal_score` n'a jamais été peuplée. Mais le bloc porte un couple
+`(type_hint, medal_type)` + le xuid, et ce couple se nomme par égalité EXACTE du vecteur
+« combien de fois par joueur » avec `medals_earned`. **88 couples sur 95 résolus sur
+948 films.** Le contrôle qui le prouve : table ajustée séparément sur les 474 films pairs et
+les 474 impairs, aucun film partagé — 72 couples nommés des deux côtés, **zéro désaccord**.
+Table déposée : `.ai/refs/TABLE_MEDAILLES_FILM.tsv`.
+
+**Ce qui est mesuré et NON résolu, dit franchement** : appliquée film par film, la table
+rend 27,3 % de triplets (médaille, joueur) exacts sur la moitié non ajustée, avec 11 440
+sur-comptes pour 3 730 sous-comptes. Le maillon faible est le **scan d'événements du
+footer** (exact sur un film entier dans ~37 % des cas), pas le nommage. À durcir avant toute
+exposition de médailles horodatées.
+
+**Autres modes** : courbe de score confrontée à `match_registry` sur 61 films KOTH / Total
+Control / Oddball — **46 scores finaux exacts (75 %), aucun 0-0 trivial**. Les 15 écarts
+sont structurés, pas du bruit : en Total Control le film compte les points fins et le
+registre les SETS (facteur 32 mesuré sur deux films), en KOTH le film compte les collines et
+le registre les points. Le film est plus FIN que la référence — c'est la sémantique du
+composant 0 qui dépend du mode.
+
+**Conclusion / prochaine étape** : durcir le scan de footer (c'est lui qui plafonne les
+médailles horodatées), puis lever les 7 couples ambigus quand des films de véhicule
+s'ajouteront au cache. Le barème complet des actions d'objectif se résoudra par régression
+entière `personal_score = 100·frags + 50·assistances + Σ barème·statistique` sur
+`match_objective_stats_latest`, tous matchs — mesure purement en base, sans film.
+
+**Complément [2026-08-01, même jour]** — la bibliothèque des événements de score existait
+déjà : `personal_score_awards` (bases joueur) porte `award_name`, `award_category` et
+`award_score`, donc le barème NOMMÉ. Les valeurs mesurées sur le film (100 frag, 50
+assistance, 25 objectif, 300 capture) sont confirmées par cette source indépendante.
+**Défaut corrigé dans la foulée** : le score personnel n'est PAS monotone
+(`self_destruction` = −100) ; `PersonalScoreCurve` n'applique plus de filtre de monotonie,
+celui-ci ne vaut que pour le score de mode. Réconciliation exacte sur un match réel (JGtm,
+film `1bc77d2e`) : les incréments datés du film reconstituent les 7 récompenses de l'API à
+l'unité, total 3 010 des deux côtés, les incréments composés (+125 = 100 + 25) se
+décomposant exactement. Prochaine étape précise : étiqueter chaque incréments daté par
+(valeur × quota du joueur × coïncidence temporelle) — même appariement contraint que celui
+qui a nommé les 88 médailles.
+
+**Complément 2 [2026-08-01]** — étiquetage livré. `objectiveevents.LabelPersonalScore`
+rapproche les incréments datés du film et le quota `personal_score_awards` du joueur :
+résolution à la VALEUR (exacte, sans arbitrage), liste de candidates quand plusieurs
+récompenses partagent la valeur, décomposition d'un incrément composé seulement si elle est
+unique à nombre de parts minimal. Quatre tests, dont la réconciliation JGtm (36 actions
+reconstituées, 28 nommées) et le refus de décomposer un +125 quand `zone_captured` vaut
+tantôt 50 tantôt 75. Bout en bout sur `1bc77d2e` : 100 événements, 56 nommés, 0 sans nom ni
+candidate. Les non-nommés le sont pour une raison lisible (`killed_player` et
+`flag_capture_assist` valent tous deux 100). Prochain lot : lever ces cas par coïncidence
+temporelle — à traiter comme des HYPOTHÈSES avec contrôle négatif, pas à coder d'emblée.
+
+**Correction de cap [2026-08-01]** — l'utilisateur a rejeté, à juste titre, l'étiquetage
+« l'un de trois noms » : sans identifiant unique c'est inexploitable. La bonne lecture n'est
+pas la VALEUR de l'incrément mais **QUEL composant a bougé**. Le registre du film
+(`chunk_00`, déjà lu par `filmdec.ParseRegistryChunk`) donne l'archétype 6 = **28 emplacements
+`statborg-current-round-value-stat-component`** ; c'est l'INDEX qui porte l'identité de la
+statistique. Vérifié nominativement : JGtm sur `696a9d7c` — `killed_player` 9 = comp 2 A,
+`kill_assist` 7 = comp 3 A, `zone_captured` 7 = comp 20 B, `zone_secured` 2 = comp 21 A,
+score personnel 1 650 = comp 1 B ; et comp 20 B (61) + comp 21 A (16) = 77 = le total API.
+Sur le CTF `1bc77d2e`, `flag_stolen` (4) est déjà isolé en comp 24 A, `runner_stopped` et
+`flag_returned` occupent deux composants distincts. **L'ambiguïté venait de ma méthode, pas
+du film.** Prochaine étape : nommer les 28 emplacements par intersection sur les films
+(même solveur que les 88 médailles, oracle = `personal_score_awards` des bases joueur, qui
+ne sont pas verrouillées par le serveur de dev). Ghidra n'a pas été nécessaire — le film
+porte son schéma ; il redeviendrait la cible si des emplacements restaient sans nom
+(getter `Team_GetCurrentRoundStatValue` @ 0x142C6B118).
+
+**Balayage des emplacements [2026-08-01]** — `cmd/tmp_statnames` nomme les emplacements de
+statistique par confrontation aux comptes de `personal_score_awards`. **Le premier balayage,
+tous modes confondus, était FAUX** et c'est lui qui a appris la règle : il rendait
+`comp 21 A = flag_captured` quand la vérification nominative sur Strongholds disait
+`zone_secured`. **Le sens d'un emplacement dépend du MODE.** Partitionné (le mode se lit dans
+les récompenses, sans base) : zones → `zone_captured` = comp 20 B (73 obs), `zone_secured` =
+comp 21 A (54 obs) ; CTF → `flag_returned` = comp 23 A (80), `flag_stolen` = comp 24 A (105),
+`runner_stopped` = comp 21 B / 23 B (75), `flag_taken` = comp 22 A (67). Les trois
+récompenses à 25 points sont bien dans trois composants distincts : l'objection est levée.
+Non fermé : plusieurs clés portent le même nom (duplication réelle du statborg + coïncidences
+de comptes), et l'oracle ne couvre que les 4 joueurs suivis. L'ancre d'identité (comp 2 A =
+`killed_player`) est circulaire pour elle-même et ne compte pas comme résultat.
+
+**Contrôle sur moitiés disjointes [2026-08-01]** — il RECALE la table du balayage :
+8 désaccords sur 19 clés en CTF, 1 sur 7 en zones. Survivent exactement les clés à forte
+observation, c'est-à-dire les revendications utiles : `flag_returned` = comp 23 A,
+`flag_stolen` = comp 24 A, `runner_stopped` = comp 21 B, `flag_taken` = comp 22 A,
+`flag_capture_assist` = comp 20 B, `zone_captured` = comp 20 B (zones), `zone_secured` =
+comp 21 A (zones). Tombent : 5 B, 6 A, 8 A, 8 B, 9 A, 22 B, 23 B, 25 A — les faibles
+observations que le balayage signalait comme suspectes, nommées par coïncidence de comptes.
+La table figée ne garde que les clés confirmées. Handoff écrit :
+`.ai/HANDOFF_EVENEMENTS_NOMMES_2026-08-01.md`. Reste : KOTH et Oddball non nommés, oracle
+limité aux 4 joueurs suivis (base partagée indisponible — backfill prioritaire en cours), et
+le code du dépôt lit encore la valeur et non le composant.

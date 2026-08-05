@@ -41,6 +41,15 @@ const defaultLevelsDir = `D:/SteamLibrary/steamapps/common/Halo Infinite/deploy/
 // z[-84.371,53.180], accord à 2,5e-4 unité près) — preuve externe, pas un appariement de
 // largeurs.
 //
+// Vagabond : le module `fo08_wetland` est établi par le `level_id` du .mvar, pas par le
+// nom. `vagabond_fo08_wetland.mvar` porte level_id 88891201 (0x054C5F41) ; balayé sur les
+// 88 modules de `deploy/any` + `deploy/ds`, il rend EXACTEMENT UNE occurrence,
+// `multi/fo08_wetland/fo08_wetland-rtx-new.module` à +0x28, groupe `levl`. Témoin de la
+// méthode : le level_id de Catalyst (−1044063363) rend de même une seule occurrence,
+// `multi/catalyst`. Preuve externe à toute mesure de largeur (plan maître §J0.2, 2026-07-31).
+// Vagabond est une carte Forge : `fo08_wetland` est sa TOILE, et c'est bien la toile qui
+// porte les bornes de déquantification.
+//
 // NON CATALOGUÉES faute de module établi : Live Fire, Recharge, Prism. Leurs largeurs
 // mesurées désignent un module compatible, mais rien n'établit le lien ; les cataloguer
 // reviendrait à deviner des coordonnées.
@@ -59,6 +68,7 @@ var mapModule = map[string]string{
 	"Illusion":      "ctf_illusion",
 	"Launch Site":   "va_launchsite",
 	"Streets":       "sgh_streets",
+	"Vagabond":      "fo08_wetland",
 }
 
 func main() {

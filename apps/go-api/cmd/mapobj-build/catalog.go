@@ -13,7 +13,12 @@ import (
 )
 
 // catalogSchemaVersion — incrémenter à tout changement incompatible de forme.
-const catalogSchemaVersion = 1
+//
+//	v2 (2026-08-02) : chaque objectif SURFACIQUE porte un champ `shape`
+//	(famille, demi-extents en mètres, orientation, brut). Les objectifs
+//	PONCTUELS n'en portent pas — un consommateur qui ne trouve pas `shape`
+//	affiche un point, jamais un disque par défaut.
+const catalogSchemaVersion = 2
 
 // catalog est le document figé sous data/titles/{slug}/reference/map_objectives.json.
 type catalog struct {
@@ -53,11 +58,16 @@ func newCatalog(titleSlug string) *catalog {
 		Maps:          map[string]*mapEntry{},
 		Coverage:      map[string]coverStats{},
 		Notes: map[string]string{
-			"source":       "variantes de carte UGC (.mvar), Bond CompactBinary v2",
-			"repere":       "positions en repère monde du .mvar, mètres, non transformées",
-			"labels":       "murmur3_x86_32(seed=0) du nom snake_case du label de mode",
-			"team_index":   "index d'équipe brut du fichier ; -1 = absent",
-			"regeneration": "go run ./cmd/mapobj-build --player <GT> --map-id <uuid>",
+			"source":     "variantes de carte UGC (.mvar), Bond CompactBinary v2",
+			"repere":     "positions en repère monde du .mvar, mètres, non transformées",
+			"labels":     "murmur3_x86_32(seed=0) du nom snake_case du label de mode",
+			"team_index": "index d'équipe brut du fichier ; -1 = absent",
+			"shape": "demi-extents en mètres ; ABSENT sur un objectif ponctuel — " +
+				"afficher un point, jamais un disque par défaut. Orientation " +
+				"obligatoire : ignorer forward se trompe de 31 % sur une zone tournée. " +
+				"raw = les entiers 16.16 du fichier, conservés pour recalculer sans ré-extraire",
+			"regeneration": "go run ./cmd/mapobj-build --player <GT> --map-id <uuid> ; " +
+				"hors ligne : --refresh-from <dossier de .mvar>",
 		},
 	}
 }

@@ -108,6 +108,10 @@ func (c LayerCoverage) warnIfLossy(layer string) {
 type Coverage struct {
 	Shots    LayerCoverage `json:"shots"`
 	Grenades LayerCoverage `json:"grenades"`
+	// Objectives est la couverture du calque des actions d'objectif (cf. objectives.go).
+	// Son dénominateur est le nombre d'événements identifiés fournis au build : publier
+	// 40 actions sans dire que 55 existaient laisserait croire à l'exhaustivité.
+	Objectives LayerCoverage `json:"objectives"`
 	// Verdict dit, calque par calque, si le résultat est publiable. Repris du chantier
 	// voisin, qui sait annoncer « 371 couples sur 371, verdict nominal ».
 	Verdict map[string]string `json:"verdict,omitempty"`
@@ -202,7 +206,7 @@ func verdictOfBridge(b BridgeHealth) string {
 }
 
 // buildCoverage assemble la couverture publiée et ses verdicts.
-func buildCoverage(shots, grenades LayerCoverage, own OwnerReport) *Coverage {
+func buildCoverage(shots, grenades, objectives LayerCoverage, own OwnerReport) *Coverage {
 	b := BridgeHealth{
 		Slots: len(own.Owner), FromReading: own.FromDeaths,
 		LivesNamed: own.DeathsNamed, LivesTotal: own.LivesTotal,
@@ -211,11 +215,12 @@ func buildCoverage(shots, grenades LayerCoverage, own OwnerReport) *Coverage {
 		SlotCollisions:     own.SlotCollisions,
 	}
 	return &Coverage{
-		Shots: shots, Grenades: grenades, Bridge: b,
+		Shots: shots, Grenades: grenades, Objectives: objectives, Bridge: b,
 		Verdict: map[string]string{
-			"shots":    verdictOf(shots),
-			"grenades": verdictOf(grenades),
-			"bridge":   verdictOfBridge(b),
+			"shots":      verdictOf(shots),
+			"grenades":   verdictOf(grenades),
+			"objectives": verdictOf(objectives),
+			"bridge":     verdictOfBridge(b),
 		},
 	}
 }

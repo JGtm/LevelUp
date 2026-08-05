@@ -41,12 +41,18 @@ var labelNames = map[int32]string{
 	412386272:   "strongholds_zone",
 	-1574286981: "assault_include",
 	-138058499:  "assault_exclude",
+	-534119345:  "assault_bomb",
 	1384999457:  "extraction_zone",
+	-903313158:  "extraction_include",
 	1525356238:  "infection_include",
 	-626192115:  "infection_exclude",
 	1673870030:  "elimination_include",
 	1838764749:  "elimination_exclude",
 	1192059526:  "skull_weapon",
+	// --- Filtres d'activation hors PvP d'arène (craqués 2026-08-01/02) ---
+	2140598169:  "firefight_include",
+	248451123:   "minigame_include",
+	-1875636905: "forge_include",
 }
 
 // LabelName retourne le nom d'un label, ou "" s'il n'est pas résolu.
@@ -65,6 +71,7 @@ const (
 	RoleStrongholdZone    Role = "strongholds_zone"   // zone de Bastion
 	RoleExtractionZone    Role = "extraction_zone"    // zone d'Extraction
 	RoleOddballSpawn      Role = "oddball_spawn"      // apparition du crâne (Oddball)
+	RoleAssaultBomb       Role = "assault_bomb"       // apparition de la bombe (Assaut)
 )
 
 // roleByLabel : labels qui portent un RÔLE (l'objet EST cet objectif).
@@ -79,9 +86,20 @@ var roleByLabel = map[string]Role{
 	"strongholds_zone":   RoleStrongholdZone,
 	"extraction_zone":    RoleExtractionZone,
 	"oddball_spawn":      RoleOddballSpawn,
+	// Mesuré sur les 199 variantes : 5 occurrences sur 5 cartes, soit EXACTEMENT
+	// une par carte — la même signature que le crâne d'Oddball. C'est l'objet, pas
+	// un filtre de mode.
+	"assault_bomb": RoleAssaultBomb,
 }
 
 // Objective est un objet d'objectif identifié.
+//
+// AUCUN champ de nom de zone (A / B / C) : la donnée n'existe pas dans le
+// fichier. Les trois zones Bastion d'une même carte portent le même type_id,
+// les mêmes labels et le même hachage ; elles ne diffèrent que par position,
+// dimensions et team_index. La lettre est attribuée à l'exécution — si elle
+// devient nécessaire, elle viendra de là et se posera dans un champ DISTINCT,
+// jamais devinée depuis l'ordre du fichier sans témoin.
 type Objective struct {
 	Role       Role     `json:"role"`
 	TypeID     int32    `json:"type_id"`
@@ -92,6 +110,9 @@ type Objective struct {
 	Labels     []string `json:"labels"` // labels résolus
 	Unresolved []int32  `json:"unresolved_labels,omitempty"`
 	ObjectIdx  int      `json:"object_index"`
+	// Shape est ABSENT quand l'objectif est ponctuel — le rendu doit alors
+	// afficher un point. Jamais de disque par défaut (cf. shape.go).
+	Shape *Shape `json:"shape,omitempty"`
 }
 
 // Objectives extrait les objets porteurs d'un rôle d'objectif.
@@ -112,6 +133,7 @@ func (v *Variant) Objectives() []Objective {
 			Labels:     names,
 			Unresolved: unknown,
 			ObjectIdx:  o.Index,
+			Shape:      o.Shape(),
 		})
 	}
 	return out
