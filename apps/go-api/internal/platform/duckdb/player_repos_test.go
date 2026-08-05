@@ -186,11 +186,9 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 			match_id VARCHAR NOT NULL, xuid VARCHAR NOT NULL, weapon_id UBIGINT NOT NULL,
 			shots_fired INTEGER DEFAULT 0, shots_landed INTEGER DEFAULT 0, drops INTEGER DEFAULT 0)`,
 		`CREATE VIEW shared.v_gamertag_lookup AS SELECT xuid, gamertag FROM shared.xuid_aliases`,
-		`CREATE VIEW shared.v_killer_victim_full AS
-			SELECT match_id, xuid::VARCHAR AS killer_xuid, gamertag::VARCHAR AS killer_gamertag,
-			       xuid::VARCHAR AS victim_xuid, gamertag::VARCHAR AS victim_gamertag,
-			       0::INTEGER AS kill_count, 0::BIGINT AS time_ms
-			FROM shared.match_participants WHERE FALSE`,
+		// v_killer_victim_full N'EST PLUS CRÉÉE ici : supprimée du schéma le 2026-08-02
+		// (ses deux LEFT JOIN étaient du travail mort), plus aucun lecteur ne la vise.
+		// Q20 lit `shared.match_kill_events_latest`, déclarée plus bas.
 		`CREATE VIEW shared.v_match_full AS SELECT * FROM shared.match_registry`,
 		// shared.killer_victim_pairs : RESTE (base crédit des producteurs), mais plus aucun
 		// lecteur ne la sert depuis le 2026-08-03.
