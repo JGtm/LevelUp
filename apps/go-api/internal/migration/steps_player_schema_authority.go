@@ -23,6 +23,10 @@ package migration
 // (personal_score_awards) suit idx_career_xuid — retiré des DEUX autorités qui le
 // posaient (le DDL ci-dessous et le PostSwap de steps_player_append_only_personal_score_awards.go)
 // et retiré des DB existantes par le step drop_psa_xuid_art_index_v1.
+// Idem idx_psa_match_xuid (troisième du lot, même jour) : posé par le SEUL PostSwap
+// legacy (jamais par le DDL fraîche → divergence latente entre autorités, invisible
+// de l'invariant no-op) et pur préfixe d'idx_psa_gen. Retiré du PostSwap + step
+// drop_psa_match_xuid_art_index_v1.
 //
 // Ensure GARDE ses créations en SOIN DE TRANSITION (les player DB legacy en dépendent),
 // mais n'est plus une autorité : son action réelle est désormais BRUYANTE
@@ -141,6 +145,15 @@ func init() {
 			"sélectivité nulle, coût d'écriture pur — miroir d'idx_career_xuid)",
 		ApplySchema: func(db *sql.DB) error {
 			return execScript(db, `DROP INDEX IF EXISTS idx_psa_xuid;`)
+		},
+	})
+	Register(Migration{
+		Name:     "drop_psa_match_xuid_art_index_v1",
+		TargetDB: TargetPlayer,
+		Description: "Retire idx_psa_match_xuid (préfixe redondant d'idx_psa_gen ; n'existait " +
+			"que sur les DB converties par le PostSwap legacy — divergence fraîche/convertie)",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `DROP INDEX IF EXISTS idx_psa_match_xuid;`)
 		},
 	})
 }

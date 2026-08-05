@@ -73,6 +73,19 @@ func TestPSAAppendOnly_LegacySwap_NoIdNoCreatedAt(t *testing.T) {
 	if total != 300 {
 		t.Errorf("SUM award_score m1/u1 = %d, want 300", total)
 	}
+	// Décision 2026-08-05 : le PostSwap ne recrée NI idx_psa_xuid (sélectivité nulle,
+	// miroir d'idx_career_xuid) NI idx_psa_match_xuid (pur préfixe d'idx_psa_gen ; ce
+	// PostSwap était sa SEULE autorité — divergence fraîche/convertie refermée). Les DB
+	// qui les portent encore convergent via les steps drop_psa_*_art_index_v1.
+	for _, idx := range []string{"idx_psa_xuid", "idx_psa_match_xuid"} {
+		var n int
+		if err := db.QueryRow(`SELECT COUNT(*) FROM duckdb_indexes() WHERE index_name = ?`, idx).Scan(&n); err != nil {
+			t.Fatalf("duckdb_indexes(%s): %v", idx, err)
+		}
+		if n != 0 {
+			t.Errorf("index %s recréé par la conversion — supprimé de toutes les autorités le 2026-08-05", idx)
+		}
+	}
 }
 
 func TestMatchCitationsAppendOnly_LegacySwap_NoIdNoCreatedAt(t *testing.T) {
