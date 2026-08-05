@@ -1,3 +1,65 @@
+## [2026-08-05] Vague 5 — intégration : schéma résiduel + placement Explorer, merge main
+
+**Statut** : Complété (orchestrateur).
+
+**Contenu** : branche `feat/wave5`, 3 commits — `fa2bdf3ef` (Lot B Sonnet : bug
+applyLUSRPlacements + badge unranked_N colonnes Note/Rang Explorer, entrée dédiée
+ci-dessous « Vague 5 Lot B ») ; `c20be0727` (Lot A Opus : idx_psa_xuid + soins
+append-only sous instrumentation, entrée « Vague 4bis » ci-dessous) ; `e389732ba`
+(fixup goconst : constantes skillRatingTypeCSR/LUSR — la 6e occurrence du littéral
+"LUSR" dans le package service déclenchait le ratchet).
+
+**Résultats observés** : gate-push froid 1er passage 3/4 (Go lint rouge goconst,
+légitime), après fixup : lint 0 issue + tests service verts ; les 3 autres maillons
+verts au passage complet (tests integration JSONL baseline OK, typecheck cache purgé,
+web lint 0 erreur). Preuves de morsure des deux lots documentées dans leurs entrées.
+
+**Découvertes consignées (non traitées)** : idx_psa_match_xuid créé par le seul
+PostSwap legacy et absent du DDL fraîche (divergence latente entre autorités, invisible
+de l'invariant — même arbitrage que ses jumeaux à proposer) ; sync/schemadrift sans
+test propre ; commentaire périmé cmd/server/main.go:466 ; ExplorerTargetSeasonCSR
+badge unranked_0 fixe non proportionnel ; doublons `unranked_N - Copie.png` dans
+static/ranks/halo_infinite/.
+
+**Prochaine étape** : merge main + deploy auto, surveillance CI ; validation visuelle
+utilisateur (Explorer : badge Note/Rang, disparition du faux « En placement » sur DNF).
+
+## [2026-08-05] Vague 4bis : idx_psa_xuid supprimé, 3 soins append-only sous instrumentation
+
+**Statut** : Complété (worktree `agent-a9d5a411cbc854884`, modifications NON commitées).
+
+**Décision technique principale** : les deux découvertes laissées ouvertes par la vague 4
+sont refermées. (1) `idx_psa_xuid` suit `idx_career_xuid` (arbitrage utilisateur « drop
+partout ») : retiré des DEUX autorités qui le posaient — `PlayerPersonalScoreAwardsDDL`
+et le `PostSwap` d'`applyAppendOnlyPersonalScoreAwards` — et supprimé des DB existantes
+par un step miroir `drop_psa_xuid_art_index_v1` (DROP INDEX IF EXISTS idempotent, dernier
+du bloc player dans `canonicalOrder`). Motif : xuid quasi constant en player DB
+(sélectivité nulle) ; la surface ART est déjà éteinte par construction (table append-only
+INSERT-only), l'index n'était plus que du coût d'écriture. (2) Les 3
+`Ensure*AppendOnly` (pme / psa / match_citations) qu'`OpenPlayerDB` appelait APRÈS
+`EnsurePlayerSchema` vivaient hors de la fenêtre snapshot/report de `schemadrift` : leur
+soin était le dernier angle mort silencieux du provisioning player. Design retenu :
+DÉPLACEMENT dans `EnsurePlayerSchema`, entre le snapshot et le report (l'unique caller
+non-test d'`EnsurePlayerSchema` est `OpenPlayerDB` lui-même ; les callers de test
+provisionnent une player DB et ne peuvent que gagner les vues `_latest`). Une seule
+autorité de soin, une seule instrumentation, `OpenPlayerDB` réduit à un appel.
+
+**Résultats observés** : `go test -tags=integration -p 1 ./internal/migration/...
+./internal/sync/...` vert ; `./internal/games/... ./internal/platform/duckdb/...
+./internal/persist/... ./internal/ops/...` vert ; `go vet ./...` propre ;
+`golangci-lint --new-from-merge-base=origin/main` 0 issue. Invariant no-op inchangé sur
+DB fraîche malgré le périmètre élargi (les 3 conversions sont bien no-op après la chaîne
+de migrations : aucun step manquant à ajouter). Morsure prouvée dans les deux sens :
+réintroduire `idx_psa_xuid` dans le DDL rougit l'invariant ET le test dédié ; remettre les
+3 soins APRÈS `schemadrift.Report` rougit les 3 nouveaux cas `vue_*_latest_effacee`
+(« aucun WARN ne porte object=... ») — c'est-à-dire exactement l'invisibilité corrigée.
+
+**Conclusion / prochaine étape** : rendre la main au superviseur pour revue/commit.
+Découverte hors périmètre, non traitée : `idx_psa_match_xuid` est créé par le seul
+`PostSwap` (chemin DB legacy) et absent de `PlayerPersonalScoreAwardsDDL` — divergence
+latente entre les deux autorités, invisible pour l'invariant (sur DB fraîche le swap ne
+tourne jamais).
+
 ## [2026-08-05] Vague 4 : autorité de schéma unique des player DB, soin visible
 
 **Statut** : Complété (branche `feat/wave4`, 2 commits, prêt à merger).
@@ -17255,3 +17317,78 @@ citations). **Point de blocage explicite avant tout déploiement** : les 2 visue
 citations sont des bouche-trous provisoires — l'utilisateur les dessine lui-même (brief
 technique complet déposé dans sa section HUMAN GATE Notion). Rien ne doit partir en
 production avec les SVG provisoires.
+
+## [2026-08-05] Explorer — faux « En placement » sur DNF (chaine calibree) + badge unranked_X colonne Note/Rang
+
+**Statut** : Complété.
+
+**Contexte** : deux bugs remontes par JGtm sur la colonne Note (et la colonne Rang) du
+tableau Matchs de l'Explorer.
+
+**Decision technique principale (bug 1, backend)** — `applyLUSRPlacements`
+(`apps/go-api/internal/service/match_history_placement.go`) prenait les 10 matchs les
+plus anciens SANS LUSR de chaque chaine, sans jamais verifier si la chaine etait deja
+calibree : chez un joueur classe de longue date, les seuls matchs sans LUSR restants
+sont les DNF/exclus (qui n'en auront jamais) — ils se faisaient marquer a tort
+1/10..10/10. Fix en miroir exact de la doctrine deja posee par `computePerfPlacements`
+(meme fichier) : extraction d'un type `lusrPlacementInput` (chain/hasLUSR/eligible) et
+d'une fonction pure `computeLUSRPlacements` qui (a) detecte les chaines CALIBREES (>= 1
+match avec LUSR existant) et leur coupe tout signal, (b) filtre les candidats sur
+`eligible = !isCSR && Outcome != domain.OutcomeDNF && !IsExcluded` — miroir PARTIEL
+assume du perimetre balaye par le batch LUSR (`loadShadowMatches` +
+`classifyLUSREligibility`, `internal/sync/skill/skill_v2_shadow.go`) : les 2 criteres
+disponibles cote `MatchHistoryRawRow` (DNF, is_excluded) sont reproduits a l'identique ;
+les criteres rosters 2-equipes/imbalance/duree mini (`isTeamImbalanceTooHigh`,
+`buildTwoTeamRosters`) ne le sont PAS (non exposes par la structure) — documente en
+commentaire + Decouvertes, residu accepte.
+
+**Decision technique principale (bug 2, frontend)** — decision produit JGtm : la
+colonne Note (`PlacementPendingCell`, variant `rating`) n'affiche plus le texte "En
+placement" mais le badge `unranked_{N}.png`, N = `done*10/total` clampe [0,9] — meme
+formule que le backend `unrankedBadgeURLForThreshold`
+(`home_repo_skill_peak.go`), portee cote front dans un nouveau helper
+`unrankedBadgeURLForProgress` (`apps/web/src/lib/staticAssets.ts`). Le variant `perf`
+(Perf/ΔPerf) reste du texte (calibration de chaine de performance, pas un rang — un
+badge y serait un contresens). En balayant la page Explorer, la cellule "Rang"
+(colonne `skill_tier_label`, meme tableau `ExplorerMatchesTable.tsx`) affichait aussi un
+"X/Y" en texte nu quand `placement_done/total` etaient renseignes : reconnue comme
+"cellule de rang du tableau Matchs" (perimetre explicitement ouvert par la consigne),
+convertie pour reutiliser `PlacementPendingCell` (variant rating par defaut) au lieu de
+dupliquer le rendu — 0 nouvelle copie du calcul de badge.
+
+**Resultats observes** : bite-test fait (retrait temporaire de `!in.eligible ||
+calibrated[in.chain]` dans `computeLUSRPlacements`) — 3 tests rouges
+(`TestApplyLUSRPlacements_skipMatchesWithLUSRorCSR`,
+`_chaineCalibree_dnfSansSignal`, `_chaineVierge_dnfIntercalesNonComptes`), fix restaure,
+tous verts. Gates : `go test ./internal/service/...` vert, `go vet` propre, `tsc -b
+--force` propre, `vitest run src/features/explorer` + `src/features/session-detail`
+verts (209 + 90 tests), `vitest run` complet (390 fichiers / 3374 tests) vert par
+securite, `npm run lint` 0 erreur (15 warnings preexistants hors perimetre, baseline
+inchangee).
+
+**Decouvertes (non traitees, hors perimetre ferme colonne Note + cellule Rang)** :
+- `applyLUSRPlacements` reste PARTIELLEMENT aligne sur le batch LUSR : les criteres
+  rosters 2-equipes / imbalance / duree minimale ne sont pas reproductibles depuis
+  `MatchHistoryRawRow` (donnees non exposees) — un residu de faux-positifs "chaine
+  vierge" reste possible sur ces cas marginaux (rosters casses, duree < 30s deja
+  filtree par `duration_seconds` en amont donc improbable).
+- `applyLUSRPlacements` n'est PAS title-aware (`sync.GetLUSRChain`, classifier par
+  defaut Infinite) contrairement a `applyPerfPlacements` qui prend `ctx`/slug — dette
+  preexistante, non introduite ni aggravee par ce lot, hors perimetre du bug signale.
+- `ExplorerRankedBlock.tsx` (bloc "Classement" du briefing) affiche "Placement" dans une
+  narration texte "debut -> fin" (`explorer.briefing.placement`,
+  `explorer.briefing.placement_remaining`) — pattern different (progression narrative,
+  pas une cellule de rang statique), pas de badge equivalent pertinent : liste seule,
+  non modifie.
+- `ExplorerTargetSeasonCSR.tsx` utilise deja `unrankedBadgeURL()` (toujours
+  `unranked_0.png` fixe, PAS proportionnel a la progression) — incoherent avec le
+  nouveau mapping proportionnel introduit ici, mais hors perimetre (pas la colonne Note
+  ni une cellule de rang du tableau Matchs) : signale, non corrige.
+
+**Conclusion / prochaine etape** : chantier clos, modifications non commitees dans le
+worktree `C:\Users\Guillaume\Projects\LevelUp\.claude\worktrees\agent-a17bbdd166cd7ad7a`
+(commit laisse a l'utilisateur). Fichiers touches : `apps/go-api/internal/service/
+match_history_placement.go` + `match_history_placement_test.go` ; `apps/web/src/lib/
+staticAssets.ts` ; `apps/web/src/features/explorer/ExplorerMatchesTable.{tsx,
+placement.tsx,placement.test.tsx,rankAndScore.test.tsx,test.tsx}` ; `apps/web/src/
+features/session-detail/SessionMatchesTable.test.tsx`.
