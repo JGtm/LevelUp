@@ -366,8 +366,14 @@ describe('ExplorerMatchesTable — colonne « Ouvrir sur Halo Waypoint » (I19)'
 // ÉTANCHES : Perf/ΔPerf lisent perf_placement_* (chaîne de performance), la Note
 // lit placement_* (classement LUSR/CSR). Sans le signal correspondant → "-"
 // inchangé, pas de faux état fabriqué.
+//
+// Depuis le fix badge (JGtm) : Perf/ΔPerf restent du TEXTE "En placement"
+// (calibration de chaîne perf) ; la Note (colonne rating_type) ET la cellule
+// de Rang (colonne skill_tier_label, même tableau) rendent désormais le badge
+// IMAGE unranked_N (alt localisé "En placement"/"In placement") — les deux
+// lisent le même placement_done/placement_total, d'où 2 images identiques.
 describe('ExplorerMatchesTable — badge « En placement » (Perf/ΔPerf/Note, V72-34)', () => {
-  it('placement des DEUX phases → badge sur Perf + ΔPerf + Note (3 cellules)', () => {
+  it('placement des DEUX phases → texte sur Perf + ΔPerf (2), badge image sur Note + Rang (2)', () => {
     const row = makeRow(1, {
       perf_score: null,
       perf_tier: undefined,
@@ -379,10 +385,16 @@ describe('ExplorerMatchesTable — badge « En placement » (Perf/ΔPerf/Note, V
       perf_placement_total: 10,
     })
     renderWithProviders(<ExplorerMatchesTable rows={[row]} playerSlug="me" />)
-    const badges = screen.getAllByText('En placement')
-    expect(badges).toHaveLength(3)
-    for (const badge of badges) {
+    const textBadges = screen.getAllByText('En placement')
+    expect(textBadges).toHaveLength(2) // Perf + ΔPerf
+    for (const badge of textBadges) {
       expect(badge).toHaveAttribute('title', expect.stringContaining('7'))
+    }
+    const imgBadges = screen.getAllByAltText('En placement')
+    expect(imgBadges).toHaveLength(2) // Note + Rang, même signal placement_*
+    for (const badge of imgBadges) {
+      expect(badge).toHaveAttribute('title', expect.stringContaining('7'))
+      expect(badge).toHaveAttribute('src', expect.stringContaining('unranked_3.png'))
     }
   })
 
@@ -412,7 +424,7 @@ describe('ExplorerMatchesTable — badge « En placement » (Perf/ΔPerf/Note, V
 
   // Symétrique : placement de classement seul (aucune perf en calibration) ne doit
   // PAS colorer Perf/ΔPerf — c'était le faux positif du signal partagé V72-32.
-  it('placement de classement SEUL → badge sur la Note uniquement', () => {
+  it('placement de classement SEUL → badge image sur Note + Rang, Perf/ΔPerf intacts ("-")', () => {
     const row = makeRow(1, {
       perf_score: null,
       perf_tier: undefined,
@@ -424,7 +436,8 @@ describe('ExplorerMatchesTable — badge « En placement » (Perf/ΔPerf/Note, V
       perf_placement_total: null,
     })
     renderWithProviders(<ExplorerMatchesTable rows={[row]} playerSlug="me" />)
-    expect(screen.getAllByText('En placement')).toHaveLength(1)
+    expect(screen.queryByText('En placement')).not.toBeInTheDocument() // Perf/ΔPerf pas concernés
+    expect(screen.getAllByAltText('En placement')).toHaveLength(2) // Note + Rang
   })
 
   it('cas structurel (perf_score nul SANS aucun signal) → "-" inchangé, pas de badge', () => {

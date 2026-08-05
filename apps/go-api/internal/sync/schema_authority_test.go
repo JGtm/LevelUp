@@ -9,6 +9,12 @@ package sync_test
 // sync.EnsurePlayerSchema doit être un NO-OP INTÉGRAL — aucun objet créé (table, vue,
 // index, séquence, colonne) et aucun WARN `schema_drift_healed` émis.
 //
+// PÉRIMÈTRE (2026-08-05, volet 2) : EnsurePlayerSchema porte DÉSORMAIS les 3 conversions
+// append-only (player_match_enrichment / personal_score_awards / match_citations) qui
+// vivaient après elle dans OpenPlayerDB. L'invariant couvre donc le CHEMIN D'OUVERTURE
+// ENTIER d'une player DB, plus seulement son DDL de soin — c'est exactement ce que
+// prouvent les cas `vue_*_latest_effacee` de TestPlayerSchemaAuthority_BiteProof.
+//
 // POURQUOI C'EST LE TEST QUI MANQUAIT. Deux autorités de schéma concurrentes ont
 // cohabité des mois (chaîne de migrations + EnsurePlayerSchema). Le soin SILENCIEUX
 // d'Ensure masquait la dérive : elle n'était visible que sur une DB fraîche/reconstruite
@@ -205,6 +211,45 @@ func TestPlayerSchemaAuthority_NoCareerXuidIndex(t *testing.T) {
 	}
 }
 
+// TestPlayerSchemaAuthority_NoPersonalScoreAwardsXuidIndex — même arbitrage appliqué à
+// l'index jumeau (2026-08-05, volet 1) : idx_psa_xuid est supprimé PARTOUT. xuid est
+// quasi constant dans une player DB → sélectivité nulle ; l'index ne sert aucun filtre
+// et n'est que du coût d'écriture. Aucune des DEUX autorités qui le posaient
+// (PlayerPersonalScoreAwardsDDL, PostSwap d'EnsurePersonalScoreAwardsAppendOnly) ne doit
+// le recréer, et le step drop_psa_xuid_art_index_v1 fait converger les DB existantes.
+func TestPlayerSchemaAuthority_NoPersonalScoreAwardsXuidIndex(t *testing.T) {
+	db := freshMigratedPlayerDB(t)
+	if err := sync.EnsurePlayerSchema(context.Background(), db); err != nil {
+		t.Fatalf("EnsurePlayerSchema: %v", err)
+	}
+	if snapshotSchemaKeys(t, db)["index idx_psa_xuid ON personal_score_awards"] {
+		t.Error("idx_psa_xuid présent après migrations + soin — l'index doit être supprimé partout " +
+			"(step drop_psa_xuid_art_index_v1 + retrait de PlayerPersonalScoreAwardsDDL et du PostSwap " +
+			"d'applyAppendOnlyPersonalScoreAwards)")
+	}
+}
+
+// TestPlayerSchemaAuthority_NoPersonalScoreAwardsMatchXuidIndex — troisième du lot
+// (2026-08-05) : idx_psa_match_xuid n'était posé QUE par le PostSwap de conversion
+// legacy (jamais par PlayerPersonalScoreAwardsDDL) — deux player DB au même niveau de
+// migration divergeaient donc selon leur histoire, angle mort de l'invariant no-op (sur
+// DB fraîche le swap ne tourne jamais). Pur préfixe d'idx_psa_gen(match_id, xuid,
+// generation_id) : supprimé du PostSwap, convergence par drop_psa_match_xuid_art_index_v1.
+// Le chemin de conversion est verrouillé côté migration
+// (TestPSAAppendOnly_LegacySwap_NoIdNoCreatedAt) ; ici on verrouille le chemin fraîche +
+// chaîne complète (le step de drop doit exister et la chaîne le jouer sans erreur).
+func TestPlayerSchemaAuthority_NoPersonalScoreAwardsMatchXuidIndex(t *testing.T) {
+	db := freshMigratedPlayerDB(t)
+	if err := sync.EnsurePlayerSchema(context.Background(), db); err != nil {
+		t.Fatalf("EnsurePlayerSchema: %v", err)
+	}
+	if snapshotSchemaKeys(t, db)["index idx_psa_match_xuid ON personal_score_awards"] {
+		t.Error("idx_psa_match_xuid présent après migrations + soin — l'index doit être supprimé " +
+			"partout (step drop_psa_match_xuid_art_index_v1 + retrait du PostSwap " +
+			"d'applyAppendOnlyPersonalScoreAwards, sa seule autorité)")
+	}
+}
+
 // ── MORSURE ──────────────────────────────────────────────────────────────────
 
 // TestPlayerSchemaAuthority_BiteProof — preuve que l'invariant MORD. On reproduit dans la
@@ -239,6 +284,29 @@ func TestPlayerSchemaAuthority_BiteProof(t *testing.T) {
 			mutations:  []string{`ALTER TABLE career_progression DROP COLUMN last_fetch_status`},
 			wantObject: "column career_progression.last_fetch_status",
 			wantWarn:   "object=last_fetch_status",
+		},
+		// Les 3 cas suivants prouvent que les conversions append-only déplacées DANS
+		// EnsurePlayerSchema (volet 2, 2026-08-05) sont bien SOUS la photographie
+		// schemadrift : tant qu'elles vivaient après elle dans OpenPlayerDB, effacer une
+		// vue _latest la faisait renaître EN SILENCE. Chaque vue est le seul objet posé
+		// par sa conversion sur une DB déjà append-only.
+		{
+			name:       "vue_player_match_enrichment_latest_effacee",
+			mutations:  []string{`DROP VIEW IF EXISTS player_match_enrichment_latest`},
+			wantObject: "view player_match_enrichment_latest",
+			wantWarn:   "object=player_match_enrichment_latest",
+		},
+		{
+			name:       "vue_personal_score_awards_latest_effacee",
+			mutations:  []string{`DROP VIEW IF EXISTS personal_score_awards_latest`},
+			wantObject: "view personal_score_awards_latest",
+			wantWarn:   "object=personal_score_awards_latest",
+		},
+		{
+			name:       "vue_match_citations_latest_effacee",
+			mutations:  []string{`DROP VIEW IF EXISTS match_citations_latest`},
+			wantObject: "view match_citations_latest",
+			wantWarn:   "object=match_citations_latest",
 		},
 	}
 	for _, tc := range cases {

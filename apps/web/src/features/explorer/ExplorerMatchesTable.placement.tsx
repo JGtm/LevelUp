@@ -42,10 +42,20 @@
  * manifest que la table, déjà utilisé par le bloc "Classement" du briefing
  * Explorer pour le même concept), avec le nombre de matchs restants avant la
  * 1re note = total - done (matchs restants APRÈS ce match).
+ *
+ * Rendu variant="rating" (colonne Note) — décision produit JGtm : badge image
+ * `unranked_{N}.png` (N = done*10/total, cf. `unrankedBadgeURLForProgress`,
+ * même mapping proportionnel que les cards Accueil) au lieu du texte "En
+ * placement", pour cohérence visuelle avec le reste de l'app (Accueil affiche
+ * déjà ce badge pour le même concept). Le tooltip natif (matchs restants) et
+ * l'alt localisé sont conservés. variant="perf" reste du TEXTE : Perf/ΔPerf
+ * sont une calibration de chaîne de performance, pas un rang — un badge de
+ * rang y serait un contresens (colonnes distinctes, cf. en-tête ci-dessus).
  */
 import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
 import { commonManifest } from '@/lib/i18n/generated/common'
 import { explorerManifest } from '@/lib/i18n/generated/explorer'
+import { unrankedBadgeURLForProgress } from '@/lib/staticAssets'
 import type { ExplorerMatchRow } from '@/lib/api/types'
 
 /**
@@ -100,6 +110,20 @@ export function PlacementPendingCell({
     locale,
     { n: remaining },
   )
+
+  if (variant === 'rating') {
+    return (
+      <img
+        src={unrankedBadgeURLForProgress(done, total)}
+        alt={label}
+        title={tooltip}
+        className="h-6 w-6 object-contain"
+        loading="lazy"
+        decoding="async"
+      />
+    )
+  }
+
   return (
     <span className="text-2xs italic text-muted-foreground" title={tooltip}>
       {label}

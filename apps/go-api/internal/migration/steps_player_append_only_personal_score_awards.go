@@ -74,13 +74,20 @@ func applyAppendOnlyPersonalScoreAwards(db *sql.DB) error {
 		ExtraSeqs:     []string{"psa_generation_seq"},
 		SyntheticCols: "0::BIGINT AS generation_id, CURRENT_TIMESTAMP AS written_at, FALSE AS is_tombstone",
 		MarkerColumn:  "generation_id",
+		// idx_psa_xuid N'EST PLUS recréé après le swap (décision 2026-08-05, miroir
+		// d'idx_career_xuid) : xuid est quasi constant dans une player DB (une DB = un
+		// joueur) → sélectivité nulle, coût d'écriture pur. Les DB qui le portent encore
+		// le perdent via le step drop_psa_xuid_art_index_v1 (steps_player_schema_authority.go).
+		// idx_psa_match_xuid non plus (décision 2026-08-05, même arbitrage) : ce PostSwap
+		// était sa SEULE autorité (absent de PlayerPersonalScoreAwardsDDL → divergence
+		// latente entre DB fraîche et DB convertie), et il est un pur préfixe
+		// d'idx_psa_gen(match_id, xuid, generation_id) → redondant. Convergence des DB
+		// existantes : step drop_psa_match_xuid_art_index_v1.
 		PostSwap: []string{
 			`ALTER TABLE personal_score_awards ALTER COLUMN written_at SET DEFAULT now()`,
 			`ALTER TABLE personal_score_awards ALTER COLUMN is_tombstone SET DEFAULT FALSE`,
 			`CREATE INDEX IF NOT EXISTS idx_psa_match     ON personal_score_awards(match_id)`,
-			`CREATE INDEX IF NOT EXISTS idx_psa_xuid      ON personal_score_awards(xuid)`,
 			`CREATE INDEX IF NOT EXISTS idx_psa_category  ON personal_score_awards(award_category)`,
-			`CREATE INDEX IF NOT EXISTS idx_psa_match_xuid ON personal_score_awards(match_id, xuid)`,
 			`CREATE INDEX IF NOT EXISTS idx_psa_gen       ON personal_score_awards(match_id, xuid, generation_id)`,
 		},
 		ViewSQL: psaLatestViewSQL,

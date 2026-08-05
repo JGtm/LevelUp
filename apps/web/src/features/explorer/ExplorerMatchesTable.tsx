@@ -794,8 +794,12 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         ...NUMERIC_SORT,
         cell: (ctx) => {
           const r = ctx.row.original
-          if (r.placement_done != null && r.placement_total != null) {
-            return <span className="font-mono">{r.placement_done}/{r.placement_total}</span>
+          if (hasPlacementSignal(r)) {
+            // Même badge unranked_N que la colonne Note (JGtm) : cette cellule EST
+            // une cellule de rang, un « 3/10 » en texte nu y était le même
+            // contresens que dans la colonne Note. PlacementPendingCell (variant
+            // "rating" par défaut) lit déjà row.placement_done/placement_total.
+            return <PlacementPendingCell row={r} locale={locale} />
           }
           const label = localizeTierLabel(r.skill_tier_label, locale)
           // Badge servi par le BACKEND (adaptateur d'assets du titre) — jamais une
