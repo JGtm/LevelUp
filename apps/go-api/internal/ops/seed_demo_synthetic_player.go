@@ -84,19 +84,13 @@ func writeOnePlayer(ctx context.Context, path string, spec synthPlayerSpec, matc
 		return fmt.Errorf("open: %w", err)
 	}
 	defer db.Close()
-	// Tables de la BASE schema (sync.EnsurePlayerSchema) que RunForTitleDB ne crée
-	// pas — provisionnées AVANT les migrations (ordre du boot réel : base puis
-	// migrations append-only + vues _latest). ops ne peut pas importer sync (cycle
-	// sync→ops) → DDL inlinée depuis internal/sync/schema.go (source de vérité).
-	if err := ensureSyntheticPlayerBaseTables(ctx, db); err != nil {
-		return fmt.Errorf("base tables: %w", err)
-	}
+	// Aucune table pré-provisionnée à la main ici : depuis le lot « autorité de schéma
+	// unique » (2026-08-05), la chaîne de migrations crée l'INTÉGRALITÉ du schéma player
+	// — personal_score_awards et player_csr_snapshots (+ vues _latest) incluses, via
+	// create_personal_score_awards_player_v1 / create_player_csr_snapshots_player_v1.
+	// La copie de DDL qui vivait ici (3e exemplaire) a donc été supprimée.
 	if err := migration.RunForTitleDB(db, titlePkg.DefaultSlug, migration.TargetPlayer); err != nil {
 		return fmt.Errorf("migrations player: %w", err)
-	}
-	// Vue append-only personal_score_awards_latest (lue par match view / home citations).
-	if err := migration.EnsurePersonalScoreAwardsAppendOnly(db); err != nil {
-		return fmt.Errorf("psa append-only: %w", err)
 	}
 
 	// INSERT pur : la player DB est fraîche (removeDuckDBForFreshWrite ci-dessus +
@@ -131,52 +125,6 @@ func writeOnePlayer(ctx context.Context, path string, spec synthPlayerSpec, matc
 		return err
 	}
 	return insertPlayerCSRSnapshot(ctx, db, spec)
-}
-
-// ensureSyntheticPlayerBaseTables crée les 2 tables de la base schema absentes des
-// migrations title : personal_score_awards (forme legacy → convertie append-only par
-// RunForTitleDB) et player_csr_snapshots (+ vue _latest). DDL copiée de
-// internal/sync/schema.go (2e copie contrôlée ; sync est non importable depuis ops).
-func ensureSyntheticPlayerBaseTables(ctx context.Context, db *sql.DB) error {
-	_, err := db.ExecContext(ctx, `
-		CREATE SEQUENCE IF NOT EXISTS personal_score_awards_id_seq;
-		CREATE TABLE IF NOT EXISTS personal_score_awards (
-			id             INTEGER PRIMARY KEY DEFAULT nextval('personal_score_awards_id_seq'),
-			match_id       VARCHAR NOT NULL,
-			xuid           VARCHAR NOT NULL,
-			award_name     VARCHAR NOT NULL,
-			award_category VARCHAR,
-			award_count    INTEGER DEFAULT 1,
-			award_score    INTEGER DEFAULT 0,
-			created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-		);
-		CREATE SEQUENCE IF NOT EXISTS pcs_seq START 1;
-		CREATE TABLE IF NOT EXISTS player_csr_snapshots (
-			id                            BIGINT DEFAULT nextval('pcs_seq') PRIMARY KEY,
-			playlist_id                   VARCHAR NOT NULL,
-			playlist_name                 VARCHAR,
-			queue                         VARCHAR,
-			input                         VARCHAR,
-			season_id                     VARCHAR NOT NULL,
-			current_value                 FLOAT,
-			current_tier                  VARCHAR,
-			current_sub_tier              SMALLINT,
-			current_measurement_remaining INTEGER,
-			season_value                  FLOAT,
-			season_tier                   VARCHAR,
-			season_sub_tier               SMALLINT,
-			alltime_value                 FLOAT,
-			alltime_tier                  VARCHAR,
-			alltime_sub_tier              SMALLINT,
-			fetched_at                    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			written_at                    TIMESTAMP NOT NULL DEFAULT now()
-		);
-		CREATE INDEX IF NOT EXISTS idx_pcs_lookup ON player_csr_snapshots(playlist_id, season_id, written_at);
-		CREATE OR REPLACE VIEW player_csr_snapshots_latest AS
-			SELECT * FROM player_csr_snapshots
-			QUALIFY ROW_NUMBER() OVER (PARTITION BY playlist_id, season_id ORDER BY written_at DESC, id DESC) = 1;
-	`)
-	return err
 }
 
 // participantFor retourne l'entrée participant d'un joueur dans un match.

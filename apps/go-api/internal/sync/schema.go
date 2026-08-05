@@ -16,36 +16,26 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/migration"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/sync/schemadrift"
 )
 
-// playerSchemaSQL crée les tables minimales dans stats.duckdb d'un joueur.
-// Portage de SYNC_SCHEMA_DDL (_engine_schema.py).
-const playerSchemaSQL = `
-CREATE SEQUENCE IF NOT EXISTS personal_score_awards_id_seq;
-CREATE SEQUENCE IF NOT EXISTS psa_generation_seq START 1;
-CREATE TABLE IF NOT EXISTS personal_score_awards (
-    id         INTEGER   PRIMARY KEY DEFAULT nextval('personal_score_awards_id_seq'),
-    match_id   VARCHAR   NOT NULL,
-    xuid       VARCHAR   NOT NULL,
-    award_name VARCHAR   NOT NULL,
-    award_category VARCHAR,
-    award_count INTEGER  DEFAULT 1,
-    award_score INTEGER  DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    -- APPEND-ONLY (campagne ART #23046, Phase 2). Plus de DELETE+INSERT sur les 4
-    -- index ART. Chaque ecriture INSERE pur avec UN generation_id (sequence
-    -- psa_generation_seq, partage par le batch) + written_at + is_tombstone.
-    -- Lecture via personal_score_awards_latest (DENSE_RANK, generation MAX,
-    -- tombstones exclus). Detail dans steps_player_append_only_personal_score_awards.go
-    generation_id BIGINT NOT NULL DEFAULT 0,
-    written_at TIMESTAMP DEFAULT now(),
-    is_tombstone BOOLEAN DEFAULT FALSE
-);
-CREATE INDEX IF NOT EXISTS idx_psa_match    ON personal_score_awards(match_id);
-CREATE INDEX IF NOT EXISTS idx_psa_xuid     ON personal_score_awards(xuid);
-CREATE INDEX IF NOT EXISTS idx_psa_category ON personal_score_awards(award_category);
-CREATE INDEX IF NOT EXISTS idx_psa_gen      ON personal_score_awards(match_id, xuid, generation_id);
+// playerSchemaSQL — SOIN DE TRANSITION du schéma player (plus une autorité).
+//
+// AUTORITÉ DE SCHÉMA = la chaîne de migrations (décision 2026-08-05). Ce script reste
+// rejoué à chaque OpenPlayerDB pour les player DB LEGACY qui n'ont pas encore convergé,
+// mais il ne doit RIEN ajouter à une DB fraîchement migrée : l'invariant est verrouillé
+// par internal/sync/schema_authority_test.go, et toute action réelle est journalisée
+// (schema_drift_healed, cf. internal/sync/schemadrift). Les blocs personal_score_awards et
+// player_csr_snapshots proviennent de la SOURCE UNIQUE côté migrations
+// (migration.PlayerPersonalScoreAwardsDDL / PlayerCSRSnapshotsDDL) — toute évolution s'y
+// fait, jamais ici. L'ordre de concaténation reproduit l'ordre historique du script.
+var playerSchemaSQL = migration.PlayerPersonalScoreAwardsDDL +
+	playerCoreSchemaSQL +
+	migration.PlayerCSRSnapshotsDDL
 
+// playerCoreSchemaSQL — tables player dont le DDL de soin n'est pas partagé avec un step
+// de migration (leur création vit dans create_baseline_player_v1, title-owned).
+const playerCoreSchemaSQL = `
 -- player_match_enrichment : APPEND-ONLY (campagne ART #23046, 2026-06-21). La
 -- table la PLUS écrite du projet (écritures incrémentales partielles perf/engagement/
 -- session/friends/bot/exclusion/psa) ne peut plus naître avec PK(match_id) + index
@@ -154,36 +144,11 @@ CREATE TABLE IF NOT EXISTS career_progression (
 -- ALTER additif idempotent pour migrer les player DBs existantes (post-refactor V2).
 -- DuckDB ignore ADD COLUMN si déjà présente (≥ v0.10).
 ALTER TABLE career_progression ADD COLUMN IF NOT EXISTS last_fetch_status VARCHAR;
-CREATE INDEX IF NOT EXISTS idx_career_xuid ON career_progression(xuid);
-
--- Schéma append-only (Phase 2.G du refactor ART) : PK technique sur id,
--- N versions par (playlist_id, season_id), lecture via la vue
--- player_csr_snapshots_latest.
-CREATE SEQUENCE IF NOT EXISTS pcs_seq START 1;
-CREATE TABLE IF NOT EXISTS player_csr_snapshots (
-    id                               BIGINT DEFAULT nextval('pcs_seq') PRIMARY KEY,
-    playlist_id                      VARCHAR NOT NULL,
-    playlist_name                    VARCHAR,
-    queue                            VARCHAR,
-    input                            VARCHAR,
-    season_id                        VARCHAR NOT NULL,
-    current_value                    FLOAT,
-    current_tier                     VARCHAR,
-    current_sub_tier                 SMALLINT,
-    current_measurement_remaining    INTEGER,
-    season_value                     FLOAT,
-    season_tier                      VARCHAR,
-    season_sub_tier                  SMALLINT,
-    alltime_value                    FLOAT,
-    alltime_tier                     VARCHAR,
-    alltime_sub_tier                 SMALLINT,
-    fetched_at                       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    written_at                       TIMESTAMP NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS idx_pcs_lookup ON player_csr_snapshots(playlist_id, season_id, written_at);
-CREATE OR REPLACE VIEW player_csr_snapshots_latest AS
-    SELECT * FROM player_csr_snapshots
-    QUALIFY ROW_NUMBER() OVER (PARTITION BY playlist_id, season_id ORDER BY written_at DESC, id DESC) = 1;
+-- idx_career_xuid : SUPPRIMÉ (décision 2026-08-05, arbitrage doctrinal option 2). Dans
+-- une player DB, xuid est QUASI CONSTANT (une DB = un joueur) → sélectivité nulle,
+-- l'index n'accélère aucun filtre mais porte la classe de corruption ART DuckDB #23046
+-- (ADR 0019/0026), la plus chère de l'histoire du projet. La convergence des DB
+-- EXISTANTES est assurée par le step drop_career_xuid_art_index_v1 (migration player).
 `
 
 // sharedSchemaSQL crée les tables minimales dans shared_matches_v2.duckdb.
@@ -345,13 +310,21 @@ CREATE TABLE IF NOT EXISTS killer_victim_pairs (
 // introspection des colonnes (jamais de sentinelle ; conversion CTAS transactionnelle
 // idempotente, ADR 0026) DOIT donc précéder la création de la vue. No-op sur DB vierge ou déjà
 // convertie.
+// SOIN VISIBLE (2026-08-05) : le schéma est photographié avant/après ; toute création
+// RÉELLE est journalisée en WARN `schema_drift_healed` (cf. sync/schemadrift). Sur une
+// player DB à jour, cette fonction est un NO-OP intégral et silencieux — invariant
+// verrouillé par schema_authority_test.go.
 func EnsurePlayerSchema(ctx context.Context, db *sql.DB) error {
+	before := schemadrift.Snapshot(ctx, db)
 	if err := migration.EnsurePlayerCSRSnapshotsAppendOnly(db); err != nil {
 		return fmt.Errorf("EnsurePlayerSchema: réparation append-only player_csr_snapshots: %w", err)
 	}
 	if err := execScript(ctx, db, playerSchemaSQL); err != nil {
-		return recoverPlayerSchemaBoot(ctx, db, err)
+		if rerr := recoverPlayerSchemaBoot(ctx, db, err); rerr != nil {
+			return rerr
+		}
 	}
+	schemadrift.Report(ctx, db, before, "sync.EnsurePlayerSchema")
 	return nil
 }
 
