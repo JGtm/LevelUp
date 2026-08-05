@@ -1873,6 +1873,23 @@ Deux raisons distinctes, et la seconde compte plus que la première.
 - **Le décodage d'objectifs n'a AUCUN producteur ni rendu** (mesuré) : le brancher (sync →
   `Options.Objectives`, puis web) est un lot produit à part entière, après l'intégration.
 
+### Découvertes de la piste C-bis — CONSIGNÉES, NON TRAITÉES (hors périmètre fermé)
+
+1. **`flag 2 B` (les morts en CTF) n'a pas de ligne dans la TSV**, alors que `slotidentity.go`
+   lit `{2, sideB}` quel que soit le mode et apparie 8/8 sur le film CTF `1bc77d2e`. Probable
+   oubli de relevé plutôt qu'absence réelle. **Non ajoutée** : cette table ne porte que des
+   mesures faites, jamais des déductions — à confirmer sur le film quand le cache est là.
+2. **Les tests adossés au cache film SKIPPENT sur ce poste** (`data/` n'est pas dans le
+   worktree) : `TestNamedEventsCrossCheck`, `TestSlotIdentity*`, `checkAgainstOracle8`. Ils
+   sont désormais HONNÊTES (ils annoncent le skip au lieu de passer au vert à vide, c'était
+   D-P2), mais l'oracle à 8 joueurs n'a donc pas été rejoué dans cette session. À rejouer une
+   fois sur un poste avec le cache — c'est ce qui garde les noms `flag_grabs`/`zone_secures`.
+3. **`prealloc` s'est déclenché sur `awards.go`** au ratchet parce que le fichier est
+   entièrement neuf vis-à-vis d'`origin/main` : tout code arrivant par cette intégration est
+   analysé en entier, pas en diff. À prévoir pour les prochains lots venant de branches
+   longues — le ratchet n'est pas « nouveau code de la session », il est « nouveau depuis
+   la base commune ».
+
 ### Trous de couverture par mode, à ne pas oublier (consignés par la revue)
 
 Slayer complet · Strongholds/zones : manque la lettre A/B/C et « combien de bases à t » ·
