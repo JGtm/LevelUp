@@ -355,6 +355,16 @@ func (cfg EventsConvergenceConfig) processChunk(ctx context.Context, chunk []str
 			// récent → repris (film peut-être encore instable).
 			if isNoFilmDefinitive(ctx, sharedDB, f.matchID) {
 				if e := persister.MarkEventsEmptyDefinitive(ctx, f.matchID, MBitEvents); e != nil {
+					// LOGGÉ AVANT LA DÉGRADATION (même traitement que les deux cas ci-dessus).
+					// Le marquage RATÉ laisse le match dans le retry set : il sera re-fetché et
+					// re-parsé à chaque passe pour retomber sur le même chunk vide — exactement
+					// la boucle parse_anomaly que ce marquage existe pour clore. Sans compteur,
+					// cette boucle est indistinguable d'un `Skipped` bénin.
+					observability.AddIntT(ctxkeys.TitleSlug(ctx),
+						"convergence_events_mark_empty_failed_total", 1)
+					cfg.log.ErrorContext(ctx, "convergence backfill events: marquage events_empty "+
+						"définitif échoué (match reste dans le retry set)",
+						"gamertag", cfg.Gamertag, "match_id", f.matchID, "err", e)
 					res.Skipped++
 				} else {
 					res.NoFilmFinal++ // définitivement résolu : aucun event exploitable
@@ -365,6 +375,16 @@ func (cfg EventsConvergenceConfig) processChunk(ctx context.Context, chunk []str
 		default: // film absent (404)
 			if isNoFilmDefinitive(ctx, sharedDB, f.matchID) {
 				if e := persister.MarkNoFilmDefinitive(ctx, f.matchID, MBitEvents); e != nil {
+					// LOGGÉ AVANT LA DÉGRADATION. Même raisonnement : le match reste
+					// events_loaded=false, donc re-fetché à chaque passe pour un film qu'on
+					// sait définitivement absent (404 + hors fenêtre de retry). Le
+					// `Skipped++` muet transformait un marquage cassé en trafic réseau
+					// perpétuel sans aucun signal.
+					observability.AddIntT(ctxkeys.TitleSlug(ctx),
+						"convergence_events_mark_nofilm_failed_total", 1)
+					cfg.log.ErrorContext(ctx, "convergence backfill events: marquage no-film "+
+						"définitif échoué (match reste dans le retry set)",
+						"gamertag", cfg.Gamertag, "match_id", f.matchID, "err", e)
 					res.Skipped++
 				} else {
 					res.NoFilmFinal++
