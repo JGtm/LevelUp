@@ -825,9 +825,13 @@ aucun appelant de production.
    dont la ventilation est vide — panne silencieuse, visible seulement a l ecran. La VUE ne se
    copie pas : la demo doit rejouer la migration (elle les joue deja).
    *(`match_kill_events` est dans le meme etat et pour la meme raison.)*
-2. **`cmd/rebuild_mp/main.go`** (`dependentViews`) : si un jour un reconstructeur CTAS touche une
-   table portant `match_weapon_shots_latest`, la vue doit entrer dans cette liste — sinon le swap
-   la laisse pointer dans le vide. Outil `//go:build ignore`, donc AUCUN test ne le protege.
+2. **La recreation des vues apres un swap CTAS** : si un jour un reconstructeur touche une table
+   portant `match_weapon_shots_latest`, la vue doit etre recreee EN `CREATE OR REPLACE` apres le
+   swap — `DROP TABLE` ne supprime pas les vues dependantes (meme avec CASCADE), elles survivent
+   au catalogue en pointant dans le vide. *(2026-08-05, dette H4 : `cmd/rebuild_mp` n a plus de
+   liste `dependentViews` — il delegue a `migration.RebuildMatchParticipantsART`, qui recree par
+   `ApplyResolutionViews` / `ApplyMvPlayerMatchesView` et est TESTE, vues deja presentes
+   comprises.)*
 3. **L ordonnancement avec le decodeur de source** : les deux passes lisent les MEMES chunks.
    Les enchainer dans le meme process economise 66 % du cout (§4) — mais attention, les
    parametres de replication de `filmdec` sont des GLOBAUX de package.
