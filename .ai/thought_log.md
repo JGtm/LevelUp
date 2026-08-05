@@ -1,3 +1,39 @@
+## [2026-08-05] Vague 4bis : idx_psa_xuid supprimé, 3 soins append-only sous instrumentation
+
+**Statut** : Complété (worktree `agent-a9d5a411cbc854884`, modifications NON commitées).
+
+**Décision technique principale** : les deux découvertes laissées ouvertes par la vague 4
+sont refermées. (1) `idx_psa_xuid` suit `idx_career_xuid` (arbitrage utilisateur « drop
+partout ») : retiré des DEUX autorités qui le posaient — `PlayerPersonalScoreAwardsDDL`
+et le `PostSwap` d'`applyAppendOnlyPersonalScoreAwards` — et supprimé des DB existantes
+par un step miroir `drop_psa_xuid_art_index_v1` (DROP INDEX IF EXISTS idempotent, dernier
+du bloc player dans `canonicalOrder`). Motif : xuid quasi constant en player DB
+(sélectivité nulle) ; la surface ART est déjà éteinte par construction (table append-only
+INSERT-only), l'index n'était plus que du coût d'écriture. (2) Les 3
+`Ensure*AppendOnly` (pme / psa / match_citations) qu'`OpenPlayerDB` appelait APRÈS
+`EnsurePlayerSchema` vivaient hors de la fenêtre snapshot/report de `schemadrift` : leur
+soin était le dernier angle mort silencieux du provisioning player. Design retenu :
+DÉPLACEMENT dans `EnsurePlayerSchema`, entre le snapshot et le report (l'unique caller
+non-test d'`EnsurePlayerSchema` est `OpenPlayerDB` lui-même ; les callers de test
+provisionnent une player DB et ne peuvent que gagner les vues `_latest`). Une seule
+autorité de soin, une seule instrumentation, `OpenPlayerDB` réduit à un appel.
+
+**Résultats observés** : `go test -tags=integration -p 1 ./internal/migration/...
+./internal/sync/...` vert ; `./internal/games/... ./internal/platform/duckdb/...
+./internal/persist/... ./internal/ops/...` vert ; `go vet ./...` propre ;
+`golangci-lint --new-from-merge-base=origin/main` 0 issue. Invariant no-op inchangé sur
+DB fraîche malgré le périmètre élargi (les 3 conversions sont bien no-op après la chaîne
+de migrations : aucun step manquant à ajouter). Morsure prouvée dans les deux sens :
+réintroduire `idx_psa_xuid` dans le DDL rougit l'invariant ET le test dédié ; remettre les
+3 soins APRÈS `schemadrift.Report` rougit les 3 nouveaux cas `vue_*_latest_effacee`
+(« aucun WARN ne porte object=... ») — c'est-à-dire exactement l'invisibilité corrigée.
+
+**Conclusion / prochaine étape** : rendre la main au superviseur pour revue/commit.
+Découverte hors périmètre, non traitée : `idx_psa_match_xuid` est créé par le seul
+`PostSwap` (chemin DB legacy) et absent de `PlayerPersonalScoreAwardsDDL` — divergence
+latente entre les deux autorités, invisible pour l'invariant (sur DB fraîche le swap ne
+tourne jamais).
+
 ## [2026-08-05] Vague 4 : autorité de schéma unique des player DB, soin visible
 
 **Statut** : Complété (branche `feat/wave4`, 2 commits, prêt à merger).
