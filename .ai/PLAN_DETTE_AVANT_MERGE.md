@@ -1,6 +1,6 @@
 # PLAN — solder la dette de `feat/replay2d-prod` avant le merge vers `main`
 
-> Écrit le 2026-07-31, à la clôture de `PLAN_RECONCILIATION_BRANCHES.md`.
+> Écrit le 2026-07-31, à la clôture de `V7.5/PLAN_RECONCILIATION_BRANCHES.md`.
 > Contrat d'exécution : skill `plan-execution`.
 >
 > **CE PLAN NE CONTIENT PAS DE LISTE FIGÉE, ET C'EST VOULU.** Le travail va continuer sur cette
@@ -113,7 +113,7 @@ dette ici la traite **pour les deux lignées à la fois**. Il n'y a pas deux cha
       `killsource/bijection.go:259` (9).
 - [x] B2. **Gate non négociable après chaque linter traité** : reconstruire les trois artefacts
       de rejeu et vérifier qu'ils sont **identiques** (tableau du §5 de
-      `PLAN_RECONCILIATION_BRANCHES.md`), plus `go test ./internal/games/halo_infinite/film/killsource/...`.
+      `V7.5/PLAN_RECONCILIATION_BRANCHES.md`), plus `go test ./internal/games/halo_infinite/film/killsource/...`.
       Un `unconvert` mal appliqué sur une largeur de bits change silencieusement un décodage.
       *FAIT : gate joué 5 fois (une par palier de linter, plus le gate à blanc d'entrée et le
       gate final). Les 7 grandeurs des 3 films sont restées identiques à l'unité près à CHAQUE
@@ -198,7 +198,7 @@ jamais « une bonne fois » :
       la chaîne d'outils. **Monter Go avant le merge** et re-mesurer ; ce qui resterait alors
       serait, lui, à traiter.
 - [ ] E7. Les quatre ratchets `archlint` / sentinel ADR 0023 (cf. journal de
-      `PLAN_RECONCILIATION_BRANCHES.md`) : re-vérifier qu'aucune allowlist n'a grossi sans
+      `V7.5/PLAN_RECONCILIATION_BRANCHES.md`) : re-vérifier qu'aucune allowlist n'a grossi sans
       justification datée depuis.
 - [ ] E8. Entrée `.ai/thought_log.md` + rotation trimestrielle à re-appliquer (elle a été
       volontairement suspendue à la réconciliation pour ne rien perdre) + rangement de `.ai/`.
@@ -251,7 +251,7 @@ Répartition : `unused` 33 · `unconvert` 11 · `unparam` 7 · `revive` 6 · `st
 
 **Gate à blanc AVANT toute modification** (pour que le filet ait une valeur de référence
 mesurée dans cette session, pas recopiée) : les 3 artefacts reconstruits, tous les chiffres du
-§5 de `PLAN_RECONCILIATION_BRANCHES.md` conformes à l'unité près —
+§5 de `V7.5/PLAN_RECONCILIATION_BRANCHES.md` conformes à l'unité près —
 `000d5950` 99/29 221 · 475/519 · 90/105 · 70/70 · 439 projectiles · 184 états d'inventaire sur
 24 images-clés · 10 223 emprises ; `01e1f945` 1 862/2 154 ; `64e8adfa` 2 312/2 879.
 Les états d'inventaire ne sont PAS journalisés par `replay-build` : ils se relèvent sur
@@ -335,7 +335,7 @@ pas 33.**
 > Compter avec `grep -cE "^[^ ].*\.go:[0-9]+:[0-9]+:"`.
 
 **Gate à blanc AVANT toute modification** (référence mesurée dans CETTE session) : les 3
-artefacts reconstruits, les 7 grandeurs du §5 de `PLAN_RECONCILIATION_BRANCHES.md` conformes —
+artefacts reconstruits, les 7 grandeurs du §5 de `V7.5/PLAN_RECONCILIATION_BRANCHES.md` conformes —
 `000d5950` 99/29 221 · 475/519 · 90/105 · 70/70 · 439 projectiles · 184 états d'inventaire sur
 24 images-clés · 10 223 emprises ; `01e1f945` 1 862/2 154 ; `64e8adfa` 2 312/2 879.
 

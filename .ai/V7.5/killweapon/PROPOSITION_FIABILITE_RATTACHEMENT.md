@@ -10,7 +10,7 @@
 
 ## CE QUE L'EXÉCUTION A CONFIRMÉ, ET CE QU'ELLE A CORRIGÉ — 2026-07-28 (soir)
 
-> Ce document a servi : il a produit `../../PLAN_REJEU_2D_FIABILISATION.md`, dont les étapes 1 à 5 sont
+> Ce document a servi : il a produit `../replay2d/PLAN_REJEU_2D_FIABILISATION.md`, dont les étapes 1 à 5 sont
 > closes. Il est conservé tel quel, avec cet encart, plutôt que réécrit — un diagnostic qu'on
 > réécrit après coup ne s'évalue plus.
 
