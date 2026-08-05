@@ -83,7 +83,10 @@ Push-Location $goApiDir
 try {
     $env:CGO_ENABLED = '1'
     Write-Host '  Lancement de la suite (peut prendre plusieurs minutes)...'
-    $testOutput = & go test -tags=integration -count=1 -timeout=300s -p 1 -json ./... 2> $stderrLogPath
+    # -timeout=600s (defaut Go) : 300s faisait paniquer internal/sync (~173s isole,
+    # davantage sous la charge du run serialise complet) depuis les tests
+    # d'autorite de schema qui rejouent des chaines de migrations completes.
+    $testOutput = & go test -tags=integration -count=1 -timeout=600s -p 1 -json ./... 2> $stderrLogPath
     $testExit = $LASTEXITCODE
 } finally {
     Pop-Location
