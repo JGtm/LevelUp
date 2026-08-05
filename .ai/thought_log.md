@@ -1,3 +1,37 @@
+## [2026-08-05] Vague 3 : bug career_progression, kpi_cards, oneLifeWindow, aide efficiency
+
+**Statut** : Complété (branche `feat/wave3`, 3 commits, prêt à merger).
+
+**Décision technique principale** : (1) BUG PROD career_progression corrigé à la racine :
+`rebuildCareerProgression` (position 109) recréait la table depuis un cliché figé de mai
+2026 et DÉFAISAIT ses prédécesseurs — deux régressions (colonne `last_fetch_status`
+absente, `DEFAULT 0` réintroduit sur xp_total) ; invisible en prod (sentinelle +
+EnsurePlayerSchema soigne à chaque open), fatal sur DB fraîche. CREATE/SELECT alignés,
+AddColumnIfMissing défensif, invariant documenté dans le step, test anti-régression
+(intégration, DB fraîche par migrations croisée avec buildPartialInsertColumns +
+chemin persist complet) au mordant prouvé par mutation. Balayage : aucun autre persister
+player ne référence de colonne hors schéma-par-migrations ; écarts table-level
+(personal_score_awards, player_csr_snapshots possédées par EnsurePlayerSchema) actés par
+conception. (2) kpi_cards supprimé de bout en bout (jamais lu par le front ;
+buildTimeseriesSummaryTab morte en cascade ; summary_tab reste au contrat en objet
+vide — décision de périmètre). (3) oneLifeDamageGradient.ts → oneLifeWindow.ts (6
+imports). (4) common.charts.efficiency_tooltip : pont dégâts bruts ↔ lecture en %,
+{{HP}} title-aware conservé, registre impersonnel FR/EN. Hermétisme FICHIERS du mode
+démo consigné dans .ai/BACKLOG.md (décision utilisateur : backlog, pas de lot).
+
+**Résultats observés** : gate-push 4/4 après réconciliation baseline (2 tests supprimés
+avec kpi_cards — le maillon a correctement attrapé l'oubli de l'agent), go test +
+intégration -p 1 verts, vitest 390 fichiers / 3373 / 0. Baseline : 8 lignes retirées,
+contrôle vert contre le même JSONL.
+
+**Conclusion / prochaine étape** : merge dans main (deploy auto — le premier boot
+appliquera le step corrigé, no-op sur DB sentinellées), CI/deploy à surveiller,
+validation visuelle utilisateur (texte de l'aide notamment). Découvertes consignées :
+colonnes/tables mortes dans les player DB de prod (friends_xuids, spartan_identity,
+mv_* locales), seedPlayerSchema des tests divergent du schéma réel, EnsureAdditive ne
+tourne qu'au premier boot, idx_career_xuid absent d'une DB migrations-seul (arbitrage
+doctrinal ART à prendre), retrait éventuel de summary_tab vide du contrat.
+
 ## [2026-08-05] Vague 2 : voix impersonnelle, petits restes, fixture demo, Timeseries %, DROP liked
 
 **Statut** : Complété (branche `feat/wave2`, 8 commits, validé, prêt à merger).
