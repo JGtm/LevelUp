@@ -9,7 +9,7 @@
  */
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useCapability } from '@/lib/capabilities/capabilities'
-import { ONE_LIFE_DAMAGE } from '@/lib/charts/oneLifeDamageGradient'
+import { ONE_LIFE_DAMAGE } from '@/lib/charts/oneLifeWindow'
 
 /** PV-pour-tuer du titre courant, défaut Infinite (ONE_LIFE_DAMAGE). */
 export function useEffectiveHpToKill(): number {
@@ -36,25 +36,6 @@ export function useOffensiveConversionP80(): number {
     (s) =>
       s.availableTitles.find((t) => t.slug === s.currentTitleSlug)?.offensive_conversion_p80 ??
       DEFAULT_OFFENSIVE_CONVERSION_P80,
-  )
-}
-
-/** Frontière élite DR (P80) par défaut — Halo Infinite. Miroir de
- *  games.DefaultDefensiveResistanceP80 / analysis.DefensiveResistanceP80. */
-const DEFAULT_DEFENSIVE_RESISTANCE_P80 = 1.65
-
-/**
- * Frontière élite DR (P80) du titre courant — repère de normalisation de la
- * résistance défensive (DR = dégâts_subis / (PV × morts)), pendant défensif de
- * {@link useOffensiveConversionP80}. 1.65 Infinite. Un titre sans damage_taken
- * (Halo 5) sert le défaut backend : la valeur n'y est jamais consommée puisque
- * {@link useProvidesDamageTaken} neutralise les surfaces de résistance.
- */
-export function useDefensiveResistanceP80(): number {
-  return useAppShellStore(
-    (s) =>
-      s.availableTitles.find((t) => t.slug === s.currentTitleSlug)?.defensive_resistance_p80 ??
-      DEFAULT_DEFENSIVE_RESISTANCE_P80,
   )
 }
 

@@ -33,6 +33,11 @@ var stepDependencies = map[string]string{
 	// le DROP IF EXISTS serait un no-op et la table survivrait au provisioning —
 	// exactement ce que la décision produit 2026-07-18 interdit. Créateur AVANT dropper.
 	"drop_arc_titles": "create_arc_titles_join",
+	// drop_media_files_liked_columns_v1 (2026-08-04) ne crée pas media_files : il en
+	// RETIRE liked/liked_at. Le créateur DOIT précéder — sinon, sur DB vierge, le step
+	// no-ope (garde tableExists) et les colonnes survivraient au provisioning, ce que
+	// le passage du like au par-viewer interdit.
+	"drop_media_files_liked_columns_v1": "create_base_shared_social_schema",
 }
 
 // knownPreExistingInversions : inversions DÉJÀ présentes dans canonicalOrder à la

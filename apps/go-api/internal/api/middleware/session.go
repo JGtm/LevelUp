@@ -74,6 +74,27 @@ func GetSession(ctx context.Context) *domain.SessionData {
 	return v.(*domain.SessionData)
 }
 
+// SessionPlayerSlug retourne le slug du joueur courant de la session (le
+// VIEWER), ou "" si aucune session ou aucun joueur courant.
+//
+// Point unique de résolution de l'identité du viewer : les likes par viewer
+// (lecture ET écriture), la suppression de média et le scoping des surfaces
+// sociales doivent tous répondre à la même question « qui regarde ? ». Avant sa
+// centralisation, chaque call-site refaisait `sess != nil && sess.CurrentPlayerSlug
+// != nil` — trois copies divergeaient déjà (CLAUDE.md règle n°6).
+//
+// ATTENTION : le viewer n'est PAS le propriétaire de la page. Sur
+// /players/{owner}/media, `player_slug` désigne la galerie consultée tandis que
+// le viewer est l'utilisateur connecté — ils diffèrent dès qu'on regarde les
+// médias d'un coéquipier.
+func SessionPlayerSlug(ctx context.Context) string {
+	sess := GetSession(ctx)
+	if sess == nil || sess.CurrentPlayerSlug == nil {
+		return ""
+	}
+	return *sess.CurrentPlayerSlug
+}
+
 // InjectSession returns a context with the given SessionData attached under
 // the same private key WithSession uses. Intended for tests of handlers that
 // want to bypass the cookie-based middleware and assert behaviour against a

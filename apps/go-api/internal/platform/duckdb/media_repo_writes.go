@@ -1,5 +1,5 @@
 // Package duckdb - media_repo_writes.go : SetMediaMatchAssociation +
-// SetMediaLike + SetMediaLikeAtomic + ToggleSharedLike + GetMediaLikers +
+// MediaExists + SetMediaLikeAtomic + ToggleSharedLike + GetMediaLikers +
 // queryConfig + joinStrings. Decoupe de media_repo.go (god-file split,
 // refactor 2026-05-27).
 package duckdb
@@ -7,6 +7,7 @@ package duckdb
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"path/filepath"
@@ -75,54 +76,58 @@ func (r *MediaRepo) SetMediaMatchAssociation(ctx context.Context, filePath, matc
 	return mapName, modeName, nil
 }
 
+// queryConfig porte le scoping player_slug du pipeline média Q37. Appelée
+// uniquement depuis loadMediaCandidates, DERRIÈRE ses deux gardes
+// (pdb.SharedSocial != nil et pdb.Gamertag != "") — le repli « config vide »
+// (schéma legacy) a été supprimé le 2026-08-03 en même temps que la branche SQL
+// legacy qu'il servait à sélectionner ; c'est le garde Gamertag du caller qui
+// couvre désormais le cas d'un PlayerDB sans gamertag.
 func (r *MediaRepo) queryConfig() mediaQueryConfig {
-	if r.pdb.SharedSocial != nil {
-		return mediaQueryConfig{playerSlug: r.pdb.Gamertag}
-	}
-	return mediaQueryConfig{}
+	return mediaQueryConfig{playerSlug: r.pdb.Gamertag, viewerSlug: r.viewer()}
 }
 
-// SetMediaLike persiste l'état liked d'un média dans media_files.
+// qMediaVisibleExists : lookup d'existence d'un média VISIBLE par son file_path.
+// Partagé par MediaExists (chemin legacy) et SetMediaLikeAtomic (dans la TX) —
+// les deux doivent répondre pareil, sinon le chemin atomique et le chemin legacy
+// divergeraient sur ce qui vaut 404.
+var qMediaVisibleExists = `SELECT 1 FROM media_files
+	WHERE file_path = ? AND ` + MediaVisiblePredicate("") + ` LIMIT 1`
+
+// MediaExists indique si le média existe ET est visible (non supprimé).
 //
-// ADR 0021 Phase 3.2 : route via SocialPersister (TX atomique + CHECKPOINT
-// garanti). Fallback legacy si Persister nil (tests).
-//
-// Note : quand WriterAcquirer est wired, le service utilise SetMediaLikeAtomic
-// via LeasedWriter — chemin parallèle qui combine media_files.liked +
-// media_likes (likers sociaux) en 1 TX.
-func (r *MediaRepo) SetMediaLike(ctx context.Context, filePath string, liked bool) (bool, error) {
+// Cette méthode a remplacé SetMediaLike le 2026-08-04 : `media_files.liked`
+// était une colonne GLOBALE (un seul booléen partagé par tous les viewers), donc
+// le like d'un coéquipier allumait le cœur de tout le monde. L'état du like vit
+// désormais UNIQUEMENT dans media_likes_history / media_likes_latest, par liker.
+// Ce qui restait de l'ancien UPDATE — la détection « file_path inconnu → 404 » —
+// est tout ce que le caller a encore besoin de savoir avant d'écrire l'event.
+func (r *MediaRepo) MediaExists(ctx context.Context, filePath string) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	if r.pdb.SocialPersister != nil {
-		return r.pdb.SocialPersister.SetMediaLiked(ctx, filePath, liked)
+	rows, err := r.socialDB().QueryRowRecovered(ctx, qMediaVisibleExists, filePath)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
 	}
-
-	// Fallback legacy : UPDATE direct + CHECKPOINT explicite.
-	// Même exclusion des médias supprimés que le chemin atomique.
-	result, err := r.socialDB().ExecRecovered(ctx, `
-		UPDATE media_files
-		SET liked = ?,
-			liked_at = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE NULL END
-		WHERE file_path = ? AND `+MediaVisiblePredicate(""), liked, liked, filePath)
 	if err != nil {
-		return false, fmt.Errorf("SetMediaLike: %w", err)
+		return false, fmt.Errorf("MediaExists: %w", err)
 	}
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return false, fmt.Errorf("SetMediaLike rows affected: %w", err)
-	}
-	_ = CheckpointSharedSocial(ctx, r.socialDB())
-	return rowsAffected > 0, nil
+	defer rows.Close()
+	return true, nil
 }
 
-// SetMediaLikeAtomic exécute en une seule transaction (si exec est un *sql.Tx)
-// le UPDATE media_files.liked + l'INSERT/DELETE media_likes correspondant.
+// SetMediaLikeAtomic écrit l'event de like DU LIKER dans media_likes_history
+// (append-only), après avoir vérifié que le média existe et est visible — le
+// tout dans la transaction fournie par le caller (si exec est un *sql.Tx).
 //
-// Si likerSlug est vide, seul le UPDATE media_files.liked est exécuté
-// (pas de ligne dans media_likes côté shared).
+// Retourne false si le file_path est inconnu ou supprimé : le caller traduit en
+// 404 et AUCUN event n'est écrit (media_likes_history est append-only — un event
+// inséré par erreur ne pourrait plus être retiré).
 //
-// Retourne true si la ligne media_files a été mise à jour (file_path existe).
+// Si likerSlug est vide, rien n'est écrit : depuis le passage du like au
+// par-viewer (2026-08-04) un like sans liker n'a plus aucun support de stockage
+// (media_files.liked, le support global, a été droppée du schéma). Le handler
+// garantit un liker non vide (session, ou propriétaire de la page à défaut).
 //
 // Cette méthode est l'usage canonique côté MediaService quand un
 // WriterAcquirer est configuré : le service ouvre une *sql.Tx via
@@ -135,29 +140,23 @@ func (r *MediaRepo) SetMediaLikeAtomic(
 	filePath, likerSlug, likerGamertag string,
 	liked bool,
 ) (bool, error) {
-	// Le prédicat de visibilité rend un like sur média SUPPRIMÉ inopérant :
-	// 0 ligne touchée → le caller traduit en 404, et aucun event n'est ajouté à
-	// media_likes_history (qui est append-only : un event inséré par erreur ne
-	// pourrait jamais être retiré).
-	result, err := exec.ExecContext(ctx, `
-		UPDATE media_files
-		SET liked = ?,
-			liked_at = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE NULL END
-		WHERE file_path = ? AND `+MediaVisiblePredicate(""), liked, liked, filePath)
-	if err != nil {
-		return false, fmt.Errorf("SetMediaLikeAtomic update: %w", err)
-	}
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return false, fmt.Errorf("SetMediaLikeAtomic rows affected: %w", err)
-	}
-	if rowsAffected == 0 {
-		slog.WarnContext(ctx, "SetMediaLikeAtomic: 0 rows — file_path absent en DB",
+	// Vérification d'existence DANS la transaction : elle remplace le rowsAffected
+	// de l'ancien UPDATE media_files.liked et conserve exactement sa sémantique
+	// (média supprimé ou inconnu → like inopérant, 404).
+	var one int
+	err := exec.QueryRowContext(ctx, qMediaVisibleExists, filePath).Scan(&one)
+	if errors.Is(err, sql.ErrNoRows) {
+		slog.WarnContext(ctx, "SetMediaLikeAtomic: file_path absent (ou supprimé) en DB",
 			"file_path", filePath, "liked", liked)
-		return false, nil // file_path inconnu — caller traduit en 404 sans toucher media_likes
+		return false, nil // file_path inconnu — caller traduit en 404 sans écrire d'event
+	}
+	if err != nil {
+		return false, fmt.Errorf("SetMediaLikeAtomic lookup: %w", err)
 	}
 
 	if likerSlug == "" {
+		slog.WarnContext(ctx, "SetMediaLikeAtomic: aucun liker — like non persistable",
+			"file_path", filePath, "liked", liked)
 		return true, nil
 	}
 

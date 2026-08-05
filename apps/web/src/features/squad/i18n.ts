@@ -207,18 +207,18 @@ export interface SquadText {
     teamLabel: string
   }
   efficiencySeries: {
-    /** Titre de la carte Rendement (écart à la frontière élite OC du titre). */
+    /** Titre COURT de la carte Rendement (la définition vit dans l'aide ⓘ). */
     rendementCardTitle: string
-    /** Titre de la carte Résistance (écart à la frontière élite DR du titre). */
+    /** Titre COURT de la carte Résistance (la définition vit dans l'aide ⓘ). */
     resistanceCardTitle: string
-    /** Aide ⓘ : comment lire les pistes empilées et le zéro = frontière élite. */
+    /** Aide ⓘ des deux cartes : formule des indicateurs + pivot « une vie ». */
     help: string
     /** Nom de l'indicateur offensif au survol (« Rendement »). */
     offensiveMetric: string
     /** Nom de l'indicateur défensif au survol (« Résistance »). */
     defensiveMetric: string
-    /** Libellé du repère au survol (« frontière élite »). */
-    eliteBoundary: string
+    /** Libellé du repère 100 % (« 1 vie »), sur le trait et au survol. */
+    oneLife: string
     /** Libellé des dégâts bruts offensifs au survol. */
     damageDealt: string
     /** Libellé des dégâts bruts défensifs au survol. */
@@ -382,10 +382,10 @@ const FR_TEXT: SquadText = {
   },
   empty: {
     noSelectionTitle: 'Analyse de synergies',
-    noSelectionDescription: 'Choisis 1 à 3 coéquipiers pour analyser les synergies de ton escouade.',
+    noSelectionDescription: 'Choisis 1 à 3 coéquipiers pour analyser les synergies de l\'escouade.',
     invalidSelectionTitle: 'Aucune donnée commune',
     invalidSelectionDescription:
-      'Les coéquipiers sélectionnés n\'ont pas joué de match avec toi sur la période filtrée.',
+      'Les coéquipiers sélectionnés n\'ont pas de match commun sur la période filtrée.',
     noChartTitle: 'Graphique indisponible',
     noChartDescription: 'Le graphique n\'a pas pu être construit avec les données actuelles.',
     noDataTitle: 'Données d\'escouade indisponibles',
@@ -394,7 +394,7 @@ const FR_TEXT: SquadText = {
     noBlockData: 'Aucune donnée pour cette sélection.',
   },
   synergies: {
-    description: 'Comparaison de tes stats avec chaque coéquipier sur les matchs joués ensemble.',
+    description: 'Comparaison des statistiques du joueur avec chaque coéquipier sur les matchs joués ensemble.',
   },
   contributions: {
     description: 'Profil de contribution normalisé pour chaque coéquipier sélectionné.',
@@ -453,9 +453,9 @@ const FR_TEXT: SquadText = {
     sortByAriaLabel: (col) => `Trier par ${col}`,
     winRateHistTooltip: 'Taux de victoire de cette escouade sur tous ses matchs communs.',
     winProbTooltip: 'Probabilité de victoire estimée avant le match, d\'après les MMR des deux équipes.',
-    teamMmrTooltip: 'Niveau de compétence moyen estimé (MMR) de ton équipe.',
+    teamMmrTooltip: 'Niveau de compétence moyen estimé (MMR) de l\'équipe.',
     enemyMmrTooltip: 'Niveau de compétence moyen estimé (MMR) de l\'équipe adverse.',
-    deltaMmrTooltip: 'Écart de MMR entre ton équipe et l\'équipe adverse.',
+    deltaMmrTooltip: 'Écart de MMR entre l\'équipe et l\'équipe adverse.',
   },
   timeline: {
     title: 'Performance d\'escouade par session',
@@ -552,12 +552,12 @@ const FR_TEXT: SquadText = {
     teamLabel: 'Équipe',
   },
   efficiencySeries: {
-    rendementCardTitle: 'Rendement — écart à la frontière élite',
-    resistanceCardTitle: 'Résistance — écart à la frontière élite',
-    help: 'Une piste par joueur. Le trait montre, match par match, l\'écart à la frontière élite du jeu — le niveau atteint par les 20 % de joueurs les plus efficaces. Au-dessus de zéro (vert), tu fais mieux que cette frontière ; en dessous (rouge), moins bien. Rendement = dégâts infligés convertis en frags effectifs (frags + assistances / 3). Résistance = dégâts encaissés avant chaque mort. Toutes les pistes partagent la même échelle : une bosse de même hauteur vaut la même chose chez tous. Survole un point pour les valeurs brutes du match.',
+    rendementCardTitle: 'Rendement',
+    resistanceCardTitle: 'Résistance',
+    help: 'Une courbe par joueur, match par match, sur une échelle où 100 % vaut exactement une vie de Spartan. Rendement = ce qu\'une vie de dégâts infligés rapporte en frags effectifs (frags + assistances / 3) : 100 % = un frag effectif par vie dépensée, 130 % = un tiers de mieux. Résistance = ce qui est encaissé avant chaque mort, rapporté à une vie : 100 % = une vie exactement, 150 % = la moitié en plus. Au-dessus du repère « 1 vie » (fond vert) la performance est meilleure, en dessous (fond rouge) moins bonne, dans les deux cartes. L\'échelle 50–200 % est la même à chaque session : deux sessions se comparent directement. Survoler un match affiche les valeurs brutes.',
     offensiveMetric: 'Rendement',
     defensiveMetric: 'Résistance',
-    eliteBoundary: 'frontière élite',
+    oneLife: '1 vie',
     damageDealt: 'Dégâts infligés',
     damageTaken: 'Dégâts subis',
     perFrag: '/ frag effectif',
@@ -592,7 +592,7 @@ const FR_TEXT: SquadText = {
   },
   netLives: {
     title: 'Balance des dégâts cumulée',
-    tooltip: 'Balance des dégâts = (dégâts infligés − dégâts subis) ÷ {{HP}} PV, exprimée en vies. Positif = tu portes l\'équipe ; négatif = tu coûtes plus que tu ne rapportes.',
+    tooltip: 'Balance des dégâts = (dégâts infligés − dégâts subis) ÷ {{HP}} PV, exprimée en vies. Positif = la balance porte l\'équipe ; négatif = elle coûte plus qu\'elle ne rapporte.',
   },
   engagementGap: {
     title: 'Écart d\'engagement cumulé',
@@ -705,10 +705,10 @@ const EN_TEXT: SquadText = {
   },
   empty: {
     noSelectionTitle: 'Synergy analysis',
-    noSelectionDescription: 'Pick 1 to 3 teammates to analyze the synergies of your squad.',
+    noSelectionDescription: 'Pick 1 to 3 teammates to analyze the synergies of the squad.',
     invalidSelectionTitle: 'No shared data',
     invalidSelectionDescription:
-      'The selected teammates have no shared matches with you in the filtered period.',
+      'The selected teammates have no shared matches in the filtered period.',
     noChartTitle: 'Chart unavailable',
     noChartDescription: 'The chart could not be built with the current data.',
     noDataTitle: 'Squad data unavailable',
@@ -717,7 +717,7 @@ const EN_TEXT: SquadText = {
     noBlockData: 'No data for this selection.',
   },
   synergies: {
-    description: 'Comparison of your stats with each teammate on shared matches.',
+    description: 'Comparison of the player\'s stats with each teammate on shared matches.',
   },
   contributions: {
     description: 'Normalized contribution profile for each selected teammate.',
@@ -776,9 +776,9 @@ const EN_TEXT: SquadText = {
     sortByAriaLabel: (col) => `Sort by ${col}`,
     winRateHistTooltip: 'Win rate for this squad across all their shared matches.',
     winProbTooltip: 'Win probability estimated before the match, from both teams\' MMR.',
-    teamMmrTooltip: 'Average estimated skill level (MMR) of your team.',
+    teamMmrTooltip: 'Average estimated skill level (MMR) of the team.',
     enemyMmrTooltip: 'Average estimated skill level (MMR) of the enemy team.',
-    deltaMmrTooltip: 'MMR gap between your team and the enemy team.',
+    deltaMmrTooltip: 'MMR gap between the team and the enemy team.',
   },
   timeline: {
     title: 'Squad performance by session',
@@ -875,12 +875,12 @@ const EN_TEXT: SquadText = {
     teamLabel: 'Team',
   },
   efficiencySeries: {
-    rendementCardTitle: 'Offensive efficiency — gap to elite frontier',
-    resistanceCardTitle: 'Defensive resistance — gap to elite frontier',
-    help: 'One track per player. The line shows, match by match, the gap to the game\'s elite frontier — the level reached by the top 20% most efficient players. Above zero (green) you beat that frontier; below (red) you fall short. Offensive efficiency = damage dealt converted into effective kills (kills + assists / 3). Defensive resistance = damage absorbed before each death. Every track shares the same scale, so a peak of the same height means the same thing for everyone. Hover a point for the raw match values.',
+    rendementCardTitle: 'Efficiency',
+    resistanceCardTitle: 'Resistance',
+    help: 'One curve per player, match by match, on a scale where 100% is exactly one Spartan life. Efficiency = what one life worth of damage dealt buys in effective kills (kills + assists / 3): 100% means one effective kill per life spent, 130% means a third better. Resistance = what is absorbed before each death, measured against one life: 100% is exactly one life, 150% is half again as much. Above the "1 life" marker (green background) performance is better, below it (red background) it falls short — in both cards. The 50–200% scale never changes, so two sessions compare directly. Hovering a match shows the raw values.',
     offensiveMetric: 'Efficiency',
     defensiveMetric: 'Resistance',
-    eliteBoundary: 'elite frontier',
+    oneLife: '1 life',
     damageDealt: 'Damage dealt',
     damageTaken: 'Damage taken',
     perFrag: '/ effective kill',
@@ -915,7 +915,7 @@ const EN_TEXT: SquadText = {
   },
   netLives: {
     title: 'Cumulative damage balance',
-    tooltip: 'Damage balance = (damage dealt − damage taken) ÷ {{HP}} HP, expressed in lives. Positive = you carry the team; negative = you cost more than you bring.',
+    tooltip: 'Damage balance = (damage dealt − damage taken) ÷ {{HP}} HP, expressed in lives. Positive = the balance carries the team; negative = it costs more than it brings.',
   },
   engagementGap: {
     title: 'Cumulative engagement gap',

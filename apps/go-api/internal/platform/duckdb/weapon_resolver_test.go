@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"testing"
 
-	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
+	"levelup/go-api/internal/games/weapons"
 )
 
 func resolverTestMeta(t *testing.T, withRegistry bool) *DB {
@@ -33,8 +33,8 @@ func resolverTestMeta(t *testing.T, withRegistry bool) *DB {
 		t.Fatalf("seed sentinel: %v", err)
 	}
 	if withRegistry {
-		if err := halomigrations.ApplyWeaponRegistry(meta.SQLDb()); err != nil {
-			t.Fatalf("ApplyWeaponRegistry: %v", err)
+		if err := weapons.ApplyRegistry(meta.SQLDb()); err != nil {
+			t.Fatalf("ApplyRegistry: %v", err)
 		}
 		// V72-06 : SOURCE UNIQUE des noms keyée par weapon_key. Le resolver joint
 		// weapon_name_labels (weapon_id → weapon_ids → weapon_key → {en,fr}). On seede

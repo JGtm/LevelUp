@@ -249,7 +249,7 @@ display_order = 30
 group         = "career"
 
 [fields.total_matches_played]
-labels        = { en = "Matches Played", fr = "Parties jouées" }
+labels        = { en = "Matches Played", fr = "Matchs joués" }
 storage_unit  = "count"
 display_unit  = "count"
 format        = "integer"

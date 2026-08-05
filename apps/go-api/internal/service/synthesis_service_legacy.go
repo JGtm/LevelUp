@@ -5,6 +5,7 @@ package service
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
 	"levelup/go-api/internal/analysis"
@@ -316,24 +317,30 @@ func buildBreakdownsFromCanonical(rows []canonical.PlayerMatchRow) domain.Synthe
 	return domain.SynthesisBreakdowns{TopMaps: mapEntries, TopModes: modeEntries}
 }
 
+// sortMapEntries / sortModeEntries — tri par nombre de matchs décroissant, avec
+// DÉPARTAGE alphabétique sur le nom. Les entrées sont construites par itération
+// sur une map Go (ordre aléatoire par construction) : sans clé de départage, deux
+// cartes/modes à nombre de matchs égal permutaient d'une réponse d'API à l'autre,
+// ce qui rendait les classements de la page Synthèse non déterministes (dérive
+// visuelle observée sur le harnais de régression, cf. e2e/visual/app-pages —
+// canvas « classements cartes et modes »). Le nom est la clé stable disponible
+// (identifiant d'agrégation de l'entrée).
 func sortMapEntries(s []domain.SynthesisMapEntry) {
-	for i := 0; i < len(s)-1; i++ {
-		for j := i + 1; j < len(s); j++ {
-			if s[j].MatchCount > s[i].MatchCount {
-				s[i], s[j] = s[j], s[i]
-			}
+	sort.SliceStable(s, func(i, j int) bool {
+		if s[i].MatchCount != s[j].MatchCount {
+			return s[i].MatchCount > s[j].MatchCount
 		}
-	}
+		return s[i].MapName < s[j].MapName
+	})
 }
 
 func sortModeEntries(s []domain.SynthesisModeEntry) {
-	for i := 0; i < len(s)-1; i++ {
-		for j := i + 1; j < len(s); j++ {
-			if s[j].MatchCount > s[i].MatchCount {
-				s[i], s[j] = s[j], s[i]
-			}
+	sort.SliceStable(s, func(i, j int) bool {
+		if s[i].MatchCount != s[j].MatchCount {
+			return s[i].MatchCount > s[j].MatchCount
 		}
-	}
+		return s[i].ModeName < s[j].ModeName
+	})
 }
 
 // =============================================================================

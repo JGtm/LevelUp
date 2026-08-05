@@ -53,7 +53,9 @@ const BASELINE_COLLISIONS = new Set([
   'CompareResponse',
   'DeviceFlowStartResponse',
   'EngagementTimeseriesRequest',
-  'ExplorerMatchRow',
+  // 2026-08-04 (merge post-lot2) : ExplorerMatchRow retiré — le schéma OpenAPI
+  // orphelin homonyme a été supprimé du fragment manuel, plus de collision
+  // (le type manuel front subsiste, sans pendant contractuel).
   'ExplorerMatchesQueryRequest',
   'ExplorerMatchesQuerySummary',
   'ExplorerPlayerQueryRequest',
@@ -71,8 +73,9 @@ const BASELINE_COLLISIONS = new Set([
   'MatchViewResponse',
   'MatchWeaponKill',
   'MediaItemRow',
-  'MediaLikeRequest',
-  'MediaLikeResponse',
+  // 2026-08-04 (merge post-lot2) : MediaLikeRequest/MediaLikeResponse retirés —
+  // shimés en ré-exports du contrat (les manuels divergeaient : total_likers
+  // faussement optionnel, liker_slug jamais envoyé).
   'MediaPageResponse',
   'NormalizedPlayerStats',
   'PaginationRequest',
@@ -88,11 +91,10 @@ const BASELINE_COLLISIONS = new Set([
   'SquadWeaponBar',
   'TeammateKPIs',
   'TeammatesPageResponse',
-  // Phase 2 killsource (2026-08-03) : collision apparue quand la régénération du contrat
-  // (merge origin/main) a documenté le schéma du handler RawBody POST /pages/teammates.
-  // Type Input producteur, même famille que ExplorerMatchesQueryRequest — la forme manuelle
-  // garde `filters` nullable et `filter_exact_composition` optionnel côté client. Re-shim
-  // candidat au lot hygiène (aligner l'optionalité avant).
+  // 2026-08-04 : type Input PRODUCTEUR — le front omet filter_exact_composition
+  // (défaut serveur false) et passe filters: null, alors que le schéma généré
+  // (handler RawBody documenté) déclare le champ requis car le Go l'émet
+  // toujours. Un shim casserait les producteurs ; collision assumée.
   'TeammatesQueryRequest',
 ])
 

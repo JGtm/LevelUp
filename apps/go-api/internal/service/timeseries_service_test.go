@@ -320,30 +320,6 @@ func TestTimeseriesService_GetPage_BriefingKPIsEmptyWhenNoMatches(t *testing.T) 
 }
 
 // ---------------------------------------------------------------------------
-// buildTimeseriesSummaryTab
-// ---------------------------------------------------------------------------
-
-func TestBuildTimeseriesSummaryTab_Empty(t *testing.T) {
-	tab := buildTimeseriesSummaryTab(nil)
-	if len(tab.KpiCards) != 0 {
-		t.Errorf("expected 0 cards, got %d", len(tab.KpiCards))
-	}
-}
-
-func TestBuildTimeseriesSummaryTab_WithMatches(t *testing.T) {
-	win := 2
-	dur := 600
-	matches := []legacymatch.StatsMatchRow{
-		{Kills: 10, Deaths: 5, Outcome: &win, TimePlayedSeconds: &dur},
-		{Kills: 15, Deaths: 3, Outcome: &win, TimePlayedSeconds: &dur},
-	}
-	tab := buildTimeseriesSummaryTab(matches)
-	if len(tab.KpiCards) == 0 {
-		t.Error("expected cards")
-	}
-}
-
-// ---------------------------------------------------------------------------
 // buildMatchRows
 // ---------------------------------------------------------------------------
 

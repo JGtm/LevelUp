@@ -125,6 +125,19 @@ func repairMatchCitationsPK(db *sql.DB) error {
 	return migration.ExecScript(db, script)
 }
 
+// rebuildCareerProgression reconstruit career_progression par swap (DROP + rename) pour
+// défaire la corruption ART. Sentinelle sync_meta → une seule exécution par DB.
+//
+// INVARIANT (dérive corrigée le 2026-08-05) : ce DDL est un CLICHÉ FIGÉ du schéma de la
+// table ; il tourne à la position 109 de canonicalOrder, donc APRÈS create_baseline_player_v1
+// (66) et fix_career_xp_total_default_zero (83). Toute colonne/tout DEFAULT qu'il n'énumère
+// pas est SILENCIEUSEMENT PERDU sur une DB fraîche (les DB de prod portent la sentinelle,
+// donc n'ont jamais rejoué le swap : la dérive n'était visible que sur une DB reconstruite).
+// Constaté en prod : last_fetch_status absent (career_live cassé, INSERT partiel en Binder
+// Error) et xp_total repassé en DEFAULT 0 alors que fix_career_xp_total_default_zero venait
+// de le retirer. TOUTE évolution de career_progression antérieure à la position 109 DOIT
+// être répercutée ici — garde-rail : TestFreshMigratedPlayerDB_CareerProgressionSchema
+// (internal/platform/duckdb).
 func rebuildCareerProgression(db *sql.DB) error {
 	hasMeta, err := migration.TableExists(db, "sync_meta")
 	if err != nil {
@@ -151,6 +164,14 @@ func rebuildCareerProgression(db *sql.DB) error {
 		return fmt.Errorf("rebuild_career: count before: %w", err)
 	}
 
+	// Le SELECT de recopie ci-dessous ÉNUMÈRE last_fetch_status : sur une DB dont la
+	// table pré-existe au schéma partiel (créée hors migrations), le bind échouerait.
+	// AddColumnIfMissing est idempotent et no-ope sur le chemin nominal (la baseline
+	// v1 émet déjà la colonne).
+	if err := migration.AddColumnIfMissing(db, "career_progression", "last_fetch_status", "VARCHAR"); err != nil {
+		return fmt.Errorf("rebuild_career: ensure last_fetch_status: %w", err)
+	}
+
 	stmts := []string{
 		`CREATE TABLE career_progression__rebuilt (
 			xuid VARCHAR,
@@ -159,20 +180,22 @@ func rebuildCareerProgression(db *sql.DB) error {
 			rank_tier VARCHAR,
 			current_xp INTEGER DEFAULT 0,
 			xp_for_next_rank INTEGER DEFAULT 0,
-			xp_total INTEGER DEFAULT 0,
+			xp_total INTEGER,
 			is_max_rank BOOLEAN DEFAULT FALSE,
 			adornment_path VARCHAR DEFAULT '',
 			spartan_id VARCHAR DEFAULT '',
 			banner_image_url VARCHAR DEFAULT '',
 			emblem_image_url VARCHAR DEFAULT '',
 			backdrop_image_url VARCHAR DEFAULT '',
-			recorded_at TIMESTAMP
+			recorded_at TIMESTAMP,
+			last_fetch_status VARCHAR
 		)`,
 		`INSERT INTO career_progression__rebuilt
 		 SELECT xuid, rank, rank_name, rank_tier, current_xp,
 		        xp_for_next_rank, xp_total, is_max_rank,
 		        adornment_path, spartan_id, banner_image_url,
-		        emblem_image_url, backdrop_image_url, recorded_at
+		        emblem_image_url, backdrop_image_url, recorded_at,
+		        last_fetch_status
 		 FROM career_progression`,
 		`DROP TABLE career_progression`,
 		`ALTER TABLE career_progression__rebuilt RENAME TO career_progression`,

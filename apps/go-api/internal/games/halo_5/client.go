@@ -31,6 +31,8 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/platform/netguard"
+
 	"golang.org/x/time/rate"
 )
 
@@ -321,6 +323,11 @@ func (c *Client) doGet(ctx context.Context, rawURL string) ([]byte, error) {
 		req.Header.Set("User-Agent", h5UserAgent)
 		// PAS de 343-clearance. Accept-Encoding non fixe -> gzip transparent.
 
+		// Mode démo : aucune sortie tierce (cf. internal/platform/netguard).
+		if gErr := netguard.Check(ctx, "halo5_api.get"); gErr != nil {
+			return nil, gErr
+		}
+
 		resp, err := c.http.Do(req)
 		if err != nil {
 			lastErr = err
@@ -379,6 +386,11 @@ func (c *Client) doGetBinary(ctx context.Context, rawURL string) ([]byte, string
 		req.Header.Set("Accept", "image/png,image/*")
 		req.Header.Set("X-343-Authorization-Spartan", c.spartanToken)
 		req.Header.Set("User-Agent", h5UserAgent)
+
+		// Mode démo : aucune sortie tierce (cf. internal/platform/netguard).
+		if gErr := netguard.Check(ctx, "halo5_api.get_binary"); gErr != nil {
+			return nil, "", gErr
+		}
 
 		resp, err := c.http.Do(req)
 		if err != nil {

@@ -221,17 +221,20 @@ func (s *MediaService) AssociateMediaToMatch(ctx context.Context, req domain.Med
 	}, nil
 }
 
-// SetMediaLike persiste l'état liked d'un média.
+// SetMediaLike persiste le like DU LIKER (req.LikerSlug) sur un média.
+//
+// Depuis le 2026-08-04 le like est PAR VIEWER : l'unique support de stockage est
+// l'event append-only media_likes_history (lu via media_likes_latest). La colonne
+// globale media_files.liked, qui allumait le cœur de tous les joueurs dès qu'un
+// seul likait, a été droppée du schéma le 2026-08-04.
 //
 // Deux chemins :
 //   - **Atomique** (commit 6 db-concurrency) : si un WriterAcquirer est
-//     configuré ET le repo concret expose SetMediaLikeAtomic, le service
-//     ouvre une transaction via writer.BeginTx et exécute les deux SQL
-//     (UPDATE media_files + INSERT/DELETE media_likes) dans la même tx.
-//     Rollback automatique si l'un échoue. Garantit P3 (cohérence
-//     media_files.liked ↔ media_likes).
-//   - **Legacy** : sinon (tests existants, mock repo), exécute SetMediaLike
-//     puis ToggleSharedLike séparément. Erreur ToggleSharedLike non-bloquante.
+//     configuré ET le repo concret expose SetMediaLikeAtomic, le service ouvre
+//     une transaction via writer.BeginTx ; le contrôle d'existence du média et
+//     l'INSERT de l'event y vivent ensemble (rollback si l'un échoue).
+//   - **Legacy** : sinon (tests existants, mock repo), exécute MediaExists puis
+//     ToggleSharedLike séparément. Erreur ToggleSharedLike non-bloquante.
 func (s *MediaService) SetMediaLike(
 	ctx context.Context,
 	req domain.MediaLikeRequest,
@@ -311,7 +314,7 @@ func (s *MediaService) setMediaLikeLegacy(
 	ctx context.Context,
 	req domain.MediaLikeRequest,
 ) (*domain.MediaLikeResponse, error) {
-	ok, err := s.repo.SetMediaLike(ctx, req.FilePath, req.Liked)
+	ok, err := s.repo.MediaExists(ctx, req.FilePath)
 	if err != nil {
 		return nil, err
 	}
@@ -319,7 +322,8 @@ func (s *MediaService) setMediaLikeLegacy(
 		return nil, domain.ErrNotFound("media", req.FilePath)
 	}
 
-	// Écriture dans media_likes partagé si on a un likerSlug
+	// Écriture de l'event de like si on a un likerSlug. Sans liker, le like n'a
+	// plus aucun support de stockage depuis le passage au par-viewer.
 	if req.LikerSlug != "" {
 		likerGamertag := req.LikerGamertag
 		if likerGamertag == "" {
@@ -336,6 +340,11 @@ func (s *MediaService) setMediaLikeLegacy(
 
 // buildLikeResponse construit la réponse en récupérant les likers (lecture
 // best-effort, pas d'erreur si la requête échoue).
+//
+// `Liked` reflète l'état DU LIKER qui vient d'agir (donc du viewer de la
+// session) ; `LikeCount`/`TotalLikers`/`Likers` restent GLOBAUX (tous likers
+// confondus). C'est la même asymétrie que dans la galerie : un cœur personnel,
+// un compteur social.
 func (s *MediaService) buildLikeResponse(ctx context.Context, req domain.MediaLikeRequest) *domain.MediaLikeResponse {
 	resp := &domain.MediaLikeResponse{
 		FilePath:  req.FilePath,

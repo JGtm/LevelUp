@@ -31,6 +31,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/platform/netguard"
 )
 
 // logModule est l'attribut de routage des logs du scraper vers logs/leaderboard.log
@@ -294,6 +295,14 @@ func (s *LeaderboardScraper) fetchPageBytes(ctx context.Context, seasonID, playl
 	req.Header.Set("User-Agent", scraperUserAgent)
 	req.Header.Set("Accept", "text/html,application/xhtml+xml")
 	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
+
+	// Mode démo : aucune sortie tierce. Ce scraper vise une page PUBLIQUE — il
+	// partait donc même sans aucun token, et restait le dernier appel externe
+	// d'une démo pourtant censée être hermétique. Le cron traite l'erreur par
+	// son repli existant (catalogue statique puis « cycle ignoré »).
+	if err := netguard.Check(ctx, "waypoint_leaderboard.scrape"); err != nil {
+		return nil, err
+	}
 
 	resp, err := s.client.Do(req)
 	if err != nil {

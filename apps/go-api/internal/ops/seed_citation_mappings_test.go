@@ -3,6 +3,8 @@ package ops
 import (
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/games/canonical"
 )
 
 // seed_citation_mappings_test.go — garde-rails sur l'état DÉCIDÉ des citations, pour
@@ -156,5 +158,27 @@ func TestFlagDefender_Disabled(t *testing.T) {
 		if strings.Contains(c.CompositeChildren, `"flag_defender"`) {
 			t.Errorf("composite %q référence flag_defender désactivée → potentiellement inatteignable", c.Norm)
 		}
+	}
+}
+
+// TestCitationCategories_AreCanonicalKeys : la colonne citation_mappings.category
+// porte des CLÉS STABLES, jamais un libellé humain (bascule du 2026-08-04). Le
+// contrôle est l'idempotence de la normalisation : une clé canonique se normalise
+// en elle-même, un libellé FR (« Mode de jeu ») non.
+func TestCitationCategories_AreCanonicalKeys(t *testing.T) {
+	seen := map[string]bool{}
+	for _, m := range defaultCitationMappings() {
+		if m.Category == "" {
+			t.Errorf("citation %q : category vide", m.Norm)
+			continue
+		}
+		if got := canonical.NormalizeCommendationCategory(m.Category); got != m.Category {
+			t.Errorf("citation %q : category = %q (libellé humain ?), clé canonique attendue %q",
+				m.Norm, m.Category, got)
+		}
+		seen[m.Category] = true
+	}
+	if len(seen) == 0 {
+		t.Fatal("aucune catégorie parcourue — le seed est-il vide ?")
 	}
 }

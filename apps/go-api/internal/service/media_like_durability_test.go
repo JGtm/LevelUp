@@ -5,8 +5,8 @@
 //
 // LA CLASSE DE RÉGRESSION QUE CE FICHIER VERROUILLE. Le like emprunte en
 // production le chemin ATOMIQUE (WriterAcquirer câblé, cf. wire/registry_media.go) :
-// une transaction unique sur shared_social qui écrit media_files.liked +
-// l'event append-only media_likes_history. Si cette transaction se contente d'un
+// une transaction unique sur shared_social qui écrit l'event append-only
+// media_likes_history du liker. Si cette transaction se contente d'un
 // tx.Commit(), la donnée reste dans le WAL jusqu'au CHECKPOINT périodique
 // (5 min, cmd/server/main.go) ou au shutdown. Dans cette fenêtre, le serveur
 // répond 200, l'UI affiche le cœur plein — puis tout redémarrage (un push sur
@@ -19,15 +19,15 @@
 //     contient plus le like. Avec CommitWithCheckpoint le WAL est flushé ; avec un
 //     tx.Commit() nu il pèse ~600 octets et cette assertion devient rouge.
 //  2. LECTURE-APRÈS-ÉCRITURE — une relecture immédiate (celle que déclenche le
-//     client via BumpMediaFeedVersion) voit bien le like, côté media_files ET côté
-//     vue append-only media_likes_latest.
+//     client via BumpMediaFeedVersion) voit bien le like du liker dans la vue
+//     append-only media_likes_latest.
 //
 // La vérification est faite À CHAUD, base ouverte : fermer la base déclencherait
 // un CHECKPOINT automatique qui masquerait précisément la régression traquée.
 //
-// Note : le seul autre test du chemin atomique
-// (media_service_atomic_integration_test.go) est DÉSACTIVÉ depuis 2026-05-15
-// (build tag `atomic_legacy`) — d'où l'absence de filet sur ce chemin nominal.
+// Note : le reste du chemin atomique (existence du média, rollback, absence de
+// fuite de lease, isolation entre viewers) est couvert par
+// media_service_atomic_integration_test.go, RÉACTIVÉ le 2026-08-04.
 package service
 
 import (
@@ -55,8 +55,8 @@ func socialDBForLikeTest(t *testing.T) (*duckdb.DB, string) {
 		CREATE TABLE media_files (
 			id INTEGER DEFAULT nextval('media_id_seq') PRIMARY KEY,
 			player_slug VARCHAR, file_path VARCHAR NOT NULL UNIQUE, file_name VARCHAR,
-			kind VARCHAR DEFAULT 'video', thumbnail_path VARCHAR,
-			liked BOOLEAN DEFAULT FALSE, liked_at TIMESTAMP, status VARCHAR,
+			kind VARCHAR DEFAULT 'video', thumbnail_path VARCHAR, status VARCHAR,
+			capture_start_utc TIMESTAMP WITH TIME ZONE, capture_end_utc TIMESTAMP WITH TIME ZONE,
 			mtime TIMESTAMP WITH TIME ZONE, indexed_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 		);
 		CREATE SEQUENCE IF NOT EXISTS media_likes_history_id_seq START 1;
@@ -71,6 +71,27 @@ func socialDBForLikeTest(t *testing.T) (*duckdb.DB, string) {
 			FROM media_likes_history
 			QUALIFY ROW_NUMBER() OVER (PARTITION BY media_path, liker_slug
 				ORDER BY written_at DESC, id DESC) = 1;
+		-- Substrat d'associations média-match : requis dès qu'un test LIT la
+		-- galerie (le pipeline Q37 joint media_match_associations_latest), pas
+		-- seulement quand il écrit un like.
+		CREATE SEQUENCE IF NOT EXISTS media_match_associations_history_id_seq START 1;
+		CREATE TABLE media_match_associations_history (
+			id BIGINT PRIMARY KEY DEFAULT nextval('media_match_associations_history_id_seq'),
+			media_file_id BIGINT NOT NULL, match_id VARCHAR NOT NULL, delta_seconds INTEGER,
+			is_manual BOOLEAN NOT NULL DEFAULT FALSE, is_active BOOLEAN NOT NULL DEFAULT TRUE,
+			associated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		);
+		CREATE OR REPLACE VIEW media_match_associations_latest AS
+			WITH lpp AS (
+				SELECT media_file_id, match_id, delta_seconds, is_manual, is_active, associated_at, written_at,
+					ROW_NUMBER() OVER (PARTITION BY media_file_id, match_id ORDER BY written_at DESC, id DESC) AS rn
+				FROM media_match_associations_history),
+			act AS (SELECT * FROM lpp WHERE rn = 1 AND is_active = TRUE),
+			hm AS (SELECT media_file_id, bool_or(is_manual) AS has_manual FROM act GROUP BY media_file_id)
+			SELECT a.media_file_id, a.match_id, a.delta_seconds, a.is_manual, a.associated_at, a.written_at
+			FROM act a JOIN hm ON hm.media_file_id = a.media_file_id
+			WHERE a.is_manual = hm.has_manual;
 		INSERT INTO media_files (player_slug, file_path, file_name)
 		VALUES ('JGtm', 'JGtm/clip.mp4', 'clip.mp4');
 	`
@@ -87,7 +108,7 @@ func socialDBForLikeTest(t *testing.T) (*duckdb.DB, string) {
 
 // TestMediaService_SetMediaLike_Atomic_SurvivesWALLoss : après un SetMediaLike
 // ayant répondu OK, la perte du WAL non flushé ne doit PAS faire disparaître le
-// like — ni son état media_files.liked, ni son event social.
+// like : son event social doit être sur disque au moment de la réponse.
 func TestMediaService_SetMediaLike_Atomic_SurvivesWALLoss(t *testing.T) {
 	db, path := socialDBForLikeTest(t)
 	ctx := context.Background()
@@ -129,28 +150,21 @@ func TestMediaService_SetMediaLike_Atomic_SurvivesWALLoss(t *testing.T) {
 	// client interroge toutes les 10 s avant d'invalider son cache : une relecture
 	// suit donc de près chaque like. Elle doit voir l'état écrit, sinon le cœur
 	// « saute » tout seul à l'écran.
-	var liked bool
-	if err := db.SQLDb().QueryRow(
-		`SELECT liked FROM media_files WHERE file_path = ?`, "JGtm/clip.mp4",
-	).Scan(&liked); err != nil {
-		t.Fatalf("relecture media_files: %v", err)
-	}
-	if !liked {
-		t.Error("relecture immédiate : media_files.liked = false juste après un like accepté")
-	}
-
-	// Volet social : l'event append-only doit être visible via la vue _latest
-	// (ADR 0026 — jamais la table brute), sinon les badges « ♥ » restent vides
-	// alors que le cœur est plein.
+	//
+	// La relecture porte sur la vue append-only media_likes_latest (ADR 0026 —
+	// jamais la table brute) POUR LE LIKER : depuis le passage au like par-viewer
+	// (2026-08-04), c'est l'unique support de l'état du cœur. L'ancienne assertion
+	// sur media_files.liked est morte avec la colonne globale qu'elle observait.
 	var events int
 	if err := db.SQLDb().QueryRow(
-		`SELECT COUNT(*) FROM media_likes_latest WHERE media_path = ? AND is_liked = TRUE`,
-		"JGtm/clip.mp4",
+		`SELECT COUNT(*) FROM media_likes_latest
+		 WHERE media_path = ? AND liker_slug = ? AND is_liked = TRUE`,
+		"JGtm/clip.mp4", "Chocoboflor",
 	).Scan(&events); err != nil {
 		t.Fatalf("relecture media_likes_latest: %v", err)
 	}
 	if events != 1 {
-		t.Errorf("relecture immédiate : %d event(s) dans media_likes_latest, want 1", events)
+		t.Errorf("relecture immédiate : %d event(s) de like pour Chocoboflor, want 1", events)
 	}
 
 	if err := db.Close(); err != nil {

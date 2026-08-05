@@ -7,7 +7,9 @@ package duckdb
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -30,9 +32,11 @@ type mediaCandidateRow struct {
 	CaptureEndUTC   *time.Time
 	MTime           *time.Time
 	IndexedAt       *time.Time
-	Liked           bool
-	MatchID         *string // nil si aucune assoc
-	PlayerSlug      *string // nil en schéma legacy (pas de player_slug sur media_files)
+	// Liked : état du cœur DU VIEWER de la requête (media_likes_latest), pas un
+	// état global du média — cf. mediaViewerLikedExpr.
+	Liked      bool
+	MatchID    *string // nil si aucune assoc
+	PlayerSlug *string // nil en schéma legacy (pas de player_slug sur media_files)
 }
 
 // effectiveCaptureTime retourne la meilleure approximation du timestamp de
@@ -75,6 +79,18 @@ func (r *MediaRepo) loadMediaCandidates(
 	// on retourne vide plutôt que de propager un crash via le fallback Player DB.
 	if r.pdb.SharedSocial == nil {
 		return nil, nil
+	}
+	// Garde Gamertag vide. mediaQueryConfig.playerSlug porte TOUT le scoping
+	// d'ownership de la galerie (baseWhereClause : « mine » → mf.player_slug = ?,
+	// « teammate » → mf.player_slug <> ?). Un Gamertag vide ne dégrade pas le
+	// résultat, il l'INVERSE : « mine » ne remonte rien et « teammate » remonte
+	// TOUT, y compris les médias du joueur courant. Le repli « config vide » qui
+	// neutralisait ce cas a disparu avec la branche SQL legacy (2026-08-03) →
+	// refus explicite et tracé, jamais un scoping silencieusement faux.
+	if r.pdb.Gamertag == "" {
+		slog.ErrorContext(ctx, "loadMediaCandidates: Gamertag vide — scoping ownership des médias impossible",
+			"titleSlug", r.pdb.TitleSlug)
+		return nil, errors.New("loadMediaCandidates: gamertag du PlayerDB vide — scoping ownership impossible")
 	}
 	cfg := r.queryConfig()
 	q, args := buildMediaCandidatesQuery(f, cfg)
@@ -134,26 +150,25 @@ func (r *MediaRepo) loadMediaCandidates(
 // shared.match_registry : tout ce qui dépend de match_registry sera appliqué
 // post-load en Go.
 func buildMediaCandidatesQuery(f domain.MediaFilters, cfg mediaQueryConfig) (string, []any) {
-	whereParts, args := buildMediaLocalWhere(f, cfg)
+	whereParts, whereArgs := buildMediaLocalWhere(f, cfg)
 	whereClause := ""
 	if len(whereParts) > 0 {
 		whereClause = "WHERE " + strings.Join(whereParts, " AND ")
 	}
+	// Le paramètre du viewer est porté par la clause FROM/JOIN, qui PRÉCÈDE le
+	// WHERE : il doit donc arriver en tête des arguments positionnels.
+	args := append([]any{cfg.viewerSlug}, whereArgs...)
 
-	from := mediaCandidatesLegacyFromClause
-	playerSlugExpr := "NULL"
-	indexedAtExpr := "CAST(NULL AS TIMESTAMPTZ)"
-	if cfg.useSharedSocialSchema() {
-		from = mediaCandidatesSharedSocialFromClause
-		playerSlugExpr = "mf.player_slug"
-		indexedAtExpr = "mf.indexed_at"
-	}
+	// Schéma shared_social INCONDITIONNEL : le seul appelant (loadMediaCandidates)
+	// retourne vide si pdb.SharedSocial == nil, et la query s'exécute sur socialDB().
+	// La variante « legacy » qui joignait sur mma.media_path a été supprimée le
+	// 2026-08-03 (règle CLAUDE.md n°7) : elle était inatteignable ET cassée — cette
+	// colonne n'existe pas dans shared_social (media_match_associations y porte
+	// media_file_id), donc l'atteindre aurait produit un Binder Error, pas un repli.
+	const from = mediaCandidatesSharedSocialFromClause
 
 	// match_start_time est résolu via match_registry (SharedReader) en phase B,
-	// pas depuis mma.match_start_time (colonne dénormalisée présente uniquement
-	// dans le schéma legacy, absente du schéma shared_social).
-	// indexed_at n'existe que dans shared_social — fallback NULL en legacy
-	// (cf. seedPlayerSchema vs seedSharedSocialSchema).
+	// pas depuis mma.match_start_time (colonne dénormalisée du défunt schéma legacy).
 	q := `SELECT
     mf.file_path,
     mf.file_name,
@@ -162,25 +177,34 @@ func buildMediaCandidatesQuery(f domain.MediaFilters, cfg mediaQueryConfig) (str
     mf.capture_start_utc,
     mf.capture_end_utc,
     mf.mtime,
-    ` + indexedAtExpr + ` AS indexed_at,
-    COALESCE(mf.liked, FALSE) AS liked,
+    mf.indexed_at AS indexed_at,
+    ` + mediaViewerLikedExpr + ` AS liked,
     mma.match_id,
-    ` + playerSlugExpr + ` AS player_slug
+    mf.player_slug AS player_slug
 ` + from + `
 ` + whereClause
 
 	return q, args
 }
 
-const (
-	// Phase A : aucune référence à match_registry. La jointure cross-DB est
-	// faite côté Go via loadMediaMatchRegistry.
-	mediaCandidatesLegacyFromClause = `FROM media_files mf
-LEFT JOIN media_match_associations mma ON mf.file_path = mma.media_path`
+// Phase A : aucune référence à match_registry. La jointure cross-DB est
+// faite côté Go via loadMediaMatchRegistry. Lecture via les vues _latest
+// (media_match_associations ET media_likes sont append-only — règle ART n°2).
+//
+// La jointure sur media_likes_latest est ce qui rend le cœur PAR VIEWER
+// (2026-08-04) : `mf.liked` était une colonne GLOBALE, donc le like d'un
+// coéquipier allumait le cœur de tout le monde. Le liker est passé en paramètre
+// positionnel ; la vue ne rend qu'une ligne par (media_path, liker_slug), donc la
+// jointure ne peut pas dupliquer de candidate row.
+const mediaCandidatesSharedSocialFromClause = `FROM media_files mf
+LEFT JOIN media_match_associations_latest mma ON mf.id = mma.media_file_id
+LEFT JOIN media_likes_latest mll ON mll.media_path = mf.file_path AND mll.liker_slug = ?`
 
-	mediaCandidatesSharedSocialFromClause = `FROM media_files mf
-LEFT JOIN media_match_associations_latest mma ON mf.id = mma.media_file_id`
-)
+// mediaViewerLikedExpr : état du cœur DU VIEWER. Un viewer sans event de like,
+// un event de retrait (is_liked=FALSE) ou un viewer non identifié donnent tous
+// FALSE. Ne JAMAIS revenir à mf.liked : cette colonne était GLOBALE et n'existe
+// plus (droppée le 2026-08-04, cf. media_repo_writes.go).
+const mediaViewerLikedExpr = `COALESCE(mll.is_liked, FALSE)`
 
 // buildMediaLocalWhere construit la clause WHERE avec UNIQUEMENT les filtres
 // qui ne nécessitent pas match_registry (kind, liked, date, player_slug,
@@ -197,7 +221,7 @@ func buildMediaLocalWhere(f domain.MediaFilters, cfg mediaQueryConfig) ([]string
 	// l'oublier — la galerie est la surface principale d'un média supprimé.
 	where = append(where, MediaVisiblePredicate("mf"))
 
-	if len(f.AuthorSlugs) > 0 && cfg.useSharedSocialSchema() {
+	if len(f.AuthorSlugs) > 0 {
 		placeholders := make([]string, len(f.AuthorSlugs))
 		for i, slug := range f.AuthorSlugs {
 			placeholders[i] = "?"
@@ -222,7 +246,8 @@ func buildMediaLocalWhere(f domain.MediaFilters, cfg mediaQueryConfig) ([]string
 		where = append(where, "mf.kind IN ("+strings.Join(placeholders, ",")+")")
 	}
 	if f.LikedOnly {
-		where = append(where, "COALESCE(mf.liked, FALSE) = TRUE")
+		// « Favoris » = les favoris DU VIEWER, cohérent avec le cœur affiché.
+		where = append(where, mediaViewerLikedExpr+" = TRUE")
 	}
 	if f.UnassignedOnly {
 		where = append(where, "mma.match_id IS NULL")

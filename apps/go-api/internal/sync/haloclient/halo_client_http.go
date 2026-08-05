@@ -18,9 +18,14 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/platform/netguard"
 )
 
 func (c *HaloAPIClient) downloadBlob(ctx context.Context, blobURL string) ([]byte, error) {
+	// Mode démo : aucune sortie tierce (cf. internal/platform/netguard).
+	if err := netguard.Check(ctx, "halo_api.download_blob"); err != nil {
+		return nil, err
+	}
 	// Sprint B1 commit 18 : log download blob (film chunks, highlight events).
 	// Volume potentiellement gros (>100 KB) — log les bytes en sortie pour
 	// repérer les blobs anormalement gros.
@@ -68,6 +73,11 @@ func (c *HaloAPIClient) downloadBlob(ctx context.Context, blobURL string) ([]byt
 // doGet exécute un GET authentifié avec retry + backoff exponentiel.
 // Portage de request_with_retries() (Python api_client.py).
 func (c *HaloAPIClient) doGet(ctx context.Context, rawURL string) ([]byte, error) {
+	// Mode démo : aucune sortie tierce. Placé AVANT la boucle de retry — c'est
+	// elle qui coûtait ~12 s par appel sur les xuid factices de la fixture.
+	if err := netguard.Check(ctx, "halo_api.get"); err != nil {
+		return nil, err
+	}
 	// Sprint B1 commit 18 : log de chaque appel API sortant pour diag des
 	// timeouts / 5xx / retries. event_id hérite du caller (sync.RunDelta,
 	// sync.postSync, etc.) — pas besoin d'un WithEvent local. Le slog

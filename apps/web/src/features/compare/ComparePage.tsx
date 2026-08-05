@@ -19,7 +19,7 @@ import type { CompareMetricRow, CompareResponse, MatchEncounterBadge } from '@/l
 
 import { CompareBar } from './CompareBar'
 import { CompareMirrorRow } from './CompareMirrorRow'
-import { getCompareText, normalizeCompareLocale, type CompareText } from './i18n'
+import { getCompareText, normalizeCompareLocale, resolveMetricLabel, type CompareText } from './i18n'
 import { useCompare } from './queries'
 import type { Locale } from '@/lib/i18n/locale'
 
@@ -102,7 +102,7 @@ function CategoryColumn({ title, rows, text, gamertagA, gamertagB }: CategoryCol
       </div>
       <div className="p-3 space-y-3">
         {rows.map((row) => {
-          const label = text.metrics[row.metric] ?? row.label_fr
+          const label = resolveMetricLabel(text, row.metric)
           const availableA = row.value_a_available !== false
           const availableB = row.value_b_available !== false
           const bothAvailable = availableA && availableB
@@ -169,7 +169,7 @@ function CategoryMirrorSection({ title, keys, metricsLeft, metricsRight, text }:
       </div>
       <div className="p-3 space-y-3">
         {rows.map(({ left, right }) => {
-          const label = text.metrics[left.metric] ?? left.label_fr
+          const label = resolveMetricLabel(text, left.metric)
           // Player A est partagé entre left/right ; on prend le OR pour considérer
           // la donnée comme disponible dès que l'une des deux comparaisons l'expose.
           const availableA = left.value_a_available !== false || right.value_a_available !== false

@@ -10,8 +10,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/danielgtaylor/huma/v2"
-
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/prestige"
@@ -455,11 +453,7 @@ func (h *PrestigeHandler) serviceError(ctx context.Context, err error) error {
 	case errors.Is(err, dblease.ErrDBLocked):
 		// Le sync engine ou un autre handler tient le lease — on demande au
 		// client de retry sous 5 s. Cf. plan db-concurrency commit 2.
-		return huma.ErrorWithHeaders(
-			humacore.NewError(http.StatusServiceUnavailable, "db_busy",
-				"database is currently busy, please retry"),
-			http.Header{"Retry-After": []string{"5"}},
-		)
+		return errDBBusy()
 	case errors.Is(err, prestige.ErrChallengeNotFound),
 		errors.Is(err, prestige.ErrArcNotFound),
 		errors.Is(err, prestige.ErrUserNotFound):

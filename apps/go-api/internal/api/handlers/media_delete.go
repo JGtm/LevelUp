@@ -20,8 +20,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/danielgtaylor/huma/v2"
-
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/domain"
@@ -85,11 +83,8 @@ func (h *MediaHandler) handleDeleteMedia(ctx context.Context, in *mediaDeleteInp
 // locale, qui est le cas d'usage principal.
 func (h *MediaHandler) resolveDeleteRequester(ctx context.Context, req *domain.MediaDeleteRequest) error {
 	req.AuthEnforced = h.authEnforced
-	sess := middleware.GetSession(ctx)
-	if sess != nil {
-		if sess.CurrentPlayerSlug != nil {
-			req.RequesterSlug = *sess.CurrentPlayerSlug
-		}
+	req.RequesterSlug = middleware.SessionPlayerSlug(ctx)
+	if sess := middleware.GetSession(ctx); sess != nil {
 		if sess.Role != nil && *sess.Role == string(domain.RoleAdmin) {
 			req.RequesterIsAdmin = true
 		}
@@ -113,10 +108,7 @@ func (h *MediaHandler) resolveDeleteRequester(ctx context.Context, req *domain.M
 // le client n'a qu'à se reconnecter.
 func mediaDeleteError(ctx context.Context, err error) error {
 	if errors.Is(err, dblease.ErrDBLocked) {
-		return huma.ErrorWithHeaders(
-			humacore.NewError(http.StatusServiceUnavailable, "db_busy", "database is currently busy, please retry"),
-			http.Header{headerRetryAfter: []string{"5"}},
-		)
+		return errDBBusy()
 	}
 	var apiErr *domain.APIError
 	if errors.As(err, &apiErr) {

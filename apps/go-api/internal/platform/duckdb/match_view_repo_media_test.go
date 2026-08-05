@@ -99,3 +99,44 @@ func TestMatchViewRepo_GetMatchMedia_OrderByCaptureTimeASC(t *testing.T) {
 		t.Errorf("rows[1].FilePath = %q, want /C1.png (later capture)", rows[1].FilePath)
 	}
 }
+
+// TestMatchViewRepo_GetMatchMedia_LikedIsPerViewer : l'onglet Médias d'un match
+// sert le cœur DU VIEWER, comme la galerie.
+//
+// Sans ce verrou, la page match resterait la dernière surface à lire l'ancienne
+// colonne globale : le clip d'un coéquipier y apparaîtrait liké par tout le
+// monde alors que la galerie, elle, afficherait le bon état — une incohérence
+// entre deux pages qui montrent LE MÊME média, plus déroutante encore que le
+// bug d'origine.
+//
+// Dataset : /A1.mp4 est liké par HeroPlayer (cf. fixture), /C1.png par personne.
+func TestMatchViewRepo_GetMatchMedia_LikedIsPerViewer(t *testing.T) {
+	pdb := newTestPlayerDBForMediaScenario(t)
+	ctx := context.Background()
+
+	likedByViewer := func(t *testing.T, viewer, path string) bool {
+		t.Helper()
+		repo := NewMatchViewRepo(pdb, mediaTestPlayerXUID).WithViewer(viewer)
+		rows, err := repo.GetMatchMedia(ctx, "m1")
+		if err != nil {
+			t.Fatalf("GetMatchMedia(m1) viewer=%s: %v", viewer, err)
+		}
+		for _, r := range rows {
+			if r.FilePath == path {
+				return r.Liked
+			}
+		}
+		t.Fatalf("média %q absent de l'onglet Médias pour le viewer %s", path, viewer)
+		return false
+	}
+
+	if !likedByViewer(t, mediaTestPlayerSlug, "/A1.mp4") {
+		t.Error("le viewer qui a liké /A1.mp4 doit voir son cœur allumé sur la page match")
+	}
+	if likedByViewer(t, "Bob", "/A1.mp4") {
+		t.Error("RÉGRESSION : Bob voit allumé le cœur d'un like qui appartient à HeroPlayer")
+	}
+	if likedByViewer(t, mediaTestPlayerSlug, "/C1.png") {
+		t.Error("/C1.png n'est liké par personne : cœur attendu vide")
+	}
+}

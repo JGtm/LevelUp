@@ -22,6 +22,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/platform/netguard"
 
 	"golang.org/x/sync/singleflight"
 )
@@ -482,6 +483,12 @@ func aggregateChallenges(decks []challengeDeckRaw) (total, completed, xpAvail in
 // doGet exécute un GET authentifié avec retry + backoff exponentiel.
 // Pattern identique à halo_client.go:doGet.
 func (p *HaloProvider) doGet(ctx context.Context, rawURL string, tokens *domain.HaloTokens) ([]byte, error) {
+	// Mode démo : aucune sortie tierce (battle pass, défis). Les appelants
+	// remontent l'échec en WARN et servent une réponse vide — comportement
+	// déjà en place pour un compte sans token.
+	if err := netguard.Check(ctx, "halo_provider.get"); err != nil {
+		return nil, err
+	}
 	var lastErr error
 	for attempt := 0; attempt < p.maxRetries; attempt++ {
 		if err := p.limiter.Wait(ctx); err != nil {

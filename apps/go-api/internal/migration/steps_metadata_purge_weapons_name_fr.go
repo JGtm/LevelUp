@@ -7,11 +7,11 @@ package migration
 // alimentée par config/titles/{slug}/mappings/weapon_names.toml) est devenue la
 // SOURCE UNIQUE du nom d'affichage d'une arme, pour Halo Infinite ET Halo 5. La
 // colonne weapons.name_fr — un repli « inventé » jamais fiable — a été retirée du
-// CREATE TABLE (weapon_registry.go, applyWeaponRegistry) à cette occasion : toute
+// CREATE TABLE (games/weapons/registry.go, ApplyRegistry) à cette occasion : toute
 // metadata.duckdb CRÉÉE APRÈS V72-06 n'a plus cette colonne. Mais une metadata.duckdb
 // DÉJÀ MIGRÉE (prod, dev) la conserve : DuckDB refuse `ALTER TABLE ... DROP COLUMN`
 // tant qu'un index existe sur la table (ici la PK title_slug+weapon_key) ; c'est ce
-// renoncement volontaire, documenté dans weapon_registry.go, que cette migration lève.
+// renoncement volontaire, documenté dans games/weapons/registry.go, que cette migration lève.
 //
 // Aucun lecteur ne subsiste sur weapons.name_fr (vérifié par grep sur tout le module
 // avant d'écrire cette migration) : la colonne est purement inerte, purge cosmétique
@@ -25,7 +25,7 @@ package migration
 // (steps_metadata_rebuild_catalog_fetch_queue_no_art.go) — DuckDB ne sait pas DROP une
 // colonne indexée via ALTER, donc on recrée la table sans elle. `weapons` est un
 // référentiel STATIQUE explicitement HORS périmètre du bug ART #23046 (zéro writer
-// concurrent, zéro écriture per-match — cf. tête de weapon_registry.go) : ce n'est PAS
+// concurrent, zéro écriture per-match — cf. tête de games/weapons/registry.go) : ce n'est PAS
 // une table append-only, donc PAS de vue `_latest` ni de `written_at` ici — juste la PK
 // composite recréée à l'identique.
 //

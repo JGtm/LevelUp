@@ -26,9 +26,9 @@ import (
 // (internal/api/wire/post_sync_progression_queries.go — loadPlayerStats). À garder
 // synchronisées si les seuils P80 / régularité y changent.
 const (
-	combatOCP80           = 0.83 // OffensiveConversion P80 (combat_precision/excellence)
-	combatDRP80           = 1.59 // DefensiveResistance P80 (combat_endurance/excellence)
-	accuracyThresholdDays = 0.50 // accuracy minimale d'un « jour régulier »
+	combatOCP80           = analysis.CombatOCReferenceThreshold // OffensiveConversion (combat_precision/excellence)
+	combatDRP80           = analysis.CombatDRReferenceThreshold // DefensiveResistance (combat_endurance/excellence)
+	accuracyThresholdDays = 0.50                                // accuracy minimale d'un « jour régulier »
 )
 
 // Clés de métrique de jalon dupliquées ailleurs dans le package (fixtures de test) :

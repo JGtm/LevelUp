@@ -64,7 +64,6 @@ const ALLOWLIST = new Set<string>([
   'TeammatesPageResponse',      // page composite squad — sous-types view-model locaux
   'SynthesisPageResponse',      // page composite — sous-types view-model locaux
   'MediaPageResponse',          // page composite média
-  'MediaLikeResponse',          // PATCH /media/likes — non migré Huma
   'MediaUploadResponse',        // POST /media/upload — non migré Huma
   'MatchViewResponse',          // page composite Match View — nombreux tabs view-model
   'CompareResponse',            // POST /pages/compare — NormalizedPlayerStats live-fetch
@@ -109,6 +108,10 @@ const CRITICAL_CONTRACT_TYPES = [
   'DeviceFlowStatusResponse',
   'WatcherStatusResponse',
   'LoginResponse',
+  // Sorti de l'ALLOWLIST le 2026-08-03 : le type manuel déclarait `total_likers`
+  // optionnel alors que le DTO Go l'émet toujours (compteur de likers lu à
+  // l'écran) — exactement la classe de bug A2.
+  'MediaLikeResponse',
 ] as const
 
 // `export type X = components['schemas']['Y']` (le suffixe `& { … }` d'un view-model

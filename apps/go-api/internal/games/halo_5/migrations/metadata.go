@@ -29,7 +29,7 @@ import (
 	"database/sql"
 
 	halo5 "levelup/go-api/internal/games/halo_5"
-	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
+	"levelup/go-api/internal/games/weapons"
 	"levelup/go-api/internal/migration"
 )
 
@@ -161,15 +161,10 @@ func MetadataSteps() []migration.Migration {
 			Name:        "h5_add_weapon_labels",
 			TargetDB:    migration.TargetMetadata,
 			Description: "Halo 5 — weapon_labels PROPRE (IDs d'armes h5 ≠ HINF, vide → fetcher halo5api.svc/weapons)",
-			ApplySchema: func(db *sql.DB) error {
-				return migration.ExecScript(db, `
-					CREATE TABLE IF NOT EXISTS weapon_labels (
-						weapon_id UBIGINT PRIMARY KEY,
-						name_en   VARCHAR NOT NULL,
-						name_fr   VARCHAR NOT NULL
-					);
-				`)
-			},
+			// DDL SEUL, aucune donnée : le seed Infinite (weapons.ApplyLabels) est
+			// FAUX pour Halo 5. Le CREATE TABLE vient du référentiel partagé pour ne
+			// pas dupliquer le schéma (garde-rail weapons/no_registry_in_migrations_test.go).
+			ApplySchema: weapons.EnsureLabelsTable,
 		},
 		{
 			Name:        "h5_add_maps_catalog",
@@ -284,7 +279,7 @@ func MetadataSteps() []migration.Migration {
 			TargetDB:    migration.TargetMetadata,
 			Description: "Halo 5 — registre d'armes canonique (weapons/weapon_ids/weapon_families, référentiel CROSS-TITRE seedé pour tous les titres). Débloque les rôles de combat H5 (donut « Frags par type d'arme ») via resolveWeaponMeta.",
 			ApplySchema: func(db *sql.DB) error {
-				return halomigrations.ApplyWeaponRegistry(db)
+				return weapons.ApplyRegistry(db)
 			},
 		},
 		{

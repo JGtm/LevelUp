@@ -183,7 +183,7 @@ export interface AscensionText {
 
 const FR: AscensionText = {
   pageTitle: 'Ascension',
-  pageSubtitle: 'Ton profil de jeu, tes objectifs et tes accomplissements.',
+  pageSubtitle: 'Profil de jeu, objectifs et accomplissements.',
   tabsAriaLabel: 'Sections Ascension',
   tabProfile: 'Profil',
   tabObjectives: 'Objectifs',
@@ -192,11 +192,11 @@ const FR: AscensionText = {
   tipsTickerAriaLabel: 'Astuces de jeu pour progresser',
   profilLayerTitle: 'Profil de jeu',
   profilLayerDescription:
-    'Qui tu es en jeu : ton identité, ton style, ton niveau et tes tendances par contexte.',
+    'Identité de jeu, style, niveau et tendances par contexte.',
   prestigeLayerTitle: 'Prestige — Objectifs et arcs',
   prestigeLayerDescription:
-    'Système autonome pour te fixer des objectifs personnels et suivre ta progression. Tu peux l\'utiliser seul, sans coaching.',
-  profileSelectPlayer: 'Sélectionne un joueur pour voir tes objectifs.',
+    'Système autonome pour fixer des objectifs personnels et suivre la progression. Utilisable seul, sans coaching.',
+  profileSelectPlayer: 'Sélectionne un joueur pour voir les objectifs.',
   profileMyObjectives: 'Mes objectifs',
   profilePrestigeNotEnabled: "Le module Prestige n'est pas activé sur ce serveur.",
   profileAbandonObjective: 'Abandonner',
@@ -208,7 +208,7 @@ const FR: AscensionText = {
   profileNoFreeObjective: 'Aucun objectif libre actif.',
   profileNewObjective: '+ Nouvel objectif',
   profilePilotedObjectives: 'Objectifs pilotés',
-  profilePilotHelp: "Le système t'attribue des objectifs quotidiens, hebdo et mensuels avec des plafonds.",
+  profilePilotHelp: "Le système attribue des objectifs quotidiens, hebdo et mensuels avec des plafonds.",
   profilePilotMode: 'Mode pilote',
   profilePilotEnable: 'Activer',
   profilePilotDisable: 'Désactiver',
@@ -225,7 +225,7 @@ const FR: AscensionText = {
   squadPrestigeTotal: '{pp} PP au total',
   realisationsSelectPlayer: 'Sélectionne un joueur.',
   realisationsHighlights: 'Moments marquants',
-  realisationsEmpty: 'Les cartes moments apparaîtront ici à la validation de tes premiers objectifs.',
+  realisationsEmpty: 'Les cartes moments apparaîtront ici à la validation des premiers objectifs.',
   historyTitle: 'Historique',
   historyObjectivesTitle: 'Objectifs passés',
   historyObjectivesEmpty: 'Aucun objectif terminé pour l’instant.',
@@ -242,10 +242,10 @@ const FR: AscensionText = {
   historyResultArchived: 'Retiré',
   patternSeeMatches: 'Voir les matchs',
   recordSeePeriod: 'Voir la période',
-  coachingSelectPlayer: 'Sélectionne un joueur pour voir ton entraînement.',
+  coachingSelectPlayer: 'Sélectionne un joueur pour voir l\'entraînement.',
   ascensionLayerTitle: 'Ascension — Coaching d\'amélioration',
   ascensionLayerDescription:
-    'Analyse ton historique pour te proposer des angles d\'amélioration ciblés. S\'appuie sur Prestige (les campagnes deviennent des objectifs) — tu peux ignorer cette section si tu préfères piloter toi-même.',
+    'Analyse l\'historique pour proposer des angles d\'amélioration ciblés. S\'appuie sur Prestige (les campagnes deviennent des objectifs) — cette section peut être ignorée pour piloter sa progression soi-même.',
   activityCalendarTitle: 'Calendrier d\'activité',
   activityCalendarAria:
     "Calendrier des jours joués sur les 90 derniers jours : une case remplie par jour joué, l'intensité reflète le nombre de matchs.",
@@ -282,7 +282,7 @@ const FR: AscensionText = {
   recordsSectionTitle: 'Mes records',
   recordsTimelineTitle: 'Historique des records battus',
   recordsPersonalBestsTitle: 'Records personnels',
-  recordsEmpty: 'Pas encore de record. Joue quelques matchs pour faire émerger tes meilleurs scores.',
+  recordsEmpty: 'Pas encore de record. Joue quelques matchs pour faire émerger les meilleurs scores.',
   recordsHistoryEmpty: 'Aucun record battu pour le moment.',
   recordsValueLabel: 'Valeur',
   recordsAchievedAt: 'Atteint le {date}',
@@ -306,7 +306,7 @@ const FR: AscensionText = {
   profileSectionTitle: 'Profil de jeu',
   profileStrengths: 'Points forts',
   profileImprovements: 'Axes de progression',
-  profileNotEnoughData: 'Joue encore quelques matchs pour débloquer ton profil complet (30 minimum).',
+  profileNotEnoughData: 'Joue encore quelques matchs pour débloquer le profil complet (30 minimum).',
   profileMatchesPerDay: 'match(s)/jour',
   profileLeveragesTitle: 'Leviers prioritaires',
   profileSuggestedChallenges: 'Défis suggérés',
@@ -347,7 +347,7 @@ const FR: AscensionText = {
 
   // Patterns
   patternsSectionTitle: 'Patterns de jeu',
-  patternsNotEnoughData: 'Pas assez de matchs pour analyser tes patterns (10 minimum).',
+  patternsNotEnoughData: 'Pas assez de matchs pour analyser les patterns (10 minimum).',
   contextType: {
     by_mode: 'Par mode',
     by_map: 'Par carte',
@@ -417,7 +417,7 @@ const FR: AscensionText = {
 
 const EN: AscensionText = {
   pageTitle: 'Ascension',
-  pageSubtitle: 'Your play profile, your objectives and your achievements.',
+  pageSubtitle: 'Play profile, objectives and achievements.',
   tabsAriaLabel: 'Ascension sections',
   tabProfile: 'Profile',
   tabObjectives: 'Objectives',
@@ -426,7 +426,7 @@ const EN: AscensionText = {
   tipsTickerAriaLabel: 'Gameplay tips to improve',
   profilLayerTitle: 'Play profile',
   profilLayerDescription:
-    'Who you are in game: your identity, style, tier and context tendencies.',
+    'Game identity, style, tier and context tendencies.',
   prestigeLayerTitle: 'Prestige — Objectives and arcs',
   prestigeLayerDescription:
     'Autonomous system to set personal objectives and track progression. Usable on its own, no coaching required.',
@@ -442,7 +442,7 @@ const EN: AscensionText = {
   profileNoFreeObjective: 'No free objective active.',
   profileNewObjective: '+ New objective',
   profilePilotedObjectives: 'Piloted objectives',
-  profilePilotHelp: 'The system assigns you daily/weekly/monthly objectives with caps.',
+  profilePilotHelp: 'The system assigns daily/weekly/monthly objectives with caps.',
   profilePilotMode: 'Pilot mode',
   profilePilotEnable: 'Enable',
   profilePilotDisable: 'Disable',
@@ -459,7 +459,7 @@ const EN: AscensionText = {
   squadPrestigeTotal: '{pp} PP total',
   realisationsSelectPlayer: 'Select a player.',
   realisationsHighlights: 'Highlights',
-  realisationsEmpty: 'Moment cards will appear here as you complete your first objectives.',
+  realisationsEmpty: 'Moment cards will appear here once the first objectives are completed.',
   historyTitle: 'History',
   historyObjectivesTitle: 'Past objectives',
   historyObjectivesEmpty: 'No completed objectives yet.',
@@ -479,7 +479,7 @@ const EN: AscensionText = {
   coachingSelectPlayer: 'Select a player to view coaching.',
   ascensionLayerTitle: 'Ascension — Improvement coaching',
   ascensionLayerDescription:
-    'Analyses your history to surface targeted improvement angles. Builds on Prestige (campaigns become objectives) — feel free to ignore this section if you prefer to drive your own progress.',
+    'Analyses match history to surface targeted improvement angles. Builds on Prestige (campaigns become objectives) — this section can be ignored to drive progress independently.',
   activityCalendarTitle: 'Activity calendar',
   activityCalendarAria:
     'Calendar of days played over the last 90 days: one filled cell per day played, intensity reflects the number of matches.',
@@ -515,7 +515,7 @@ const EN: AscensionText = {
   recordsSectionTitle: 'My records',
   recordsTimelineTitle: 'Records broken timeline',
   recordsPersonalBestsTitle: 'Personal bests',
-  recordsEmpty: 'No record yet. Play a few matches to start tracking your best scores.',
+  recordsEmpty: 'No record yet. Play a few matches to start tracking the best scores.',
   recordsHistoryEmpty: 'No record broken yet.',
   recordsValueLabel: 'Value',
   recordsAchievedAt: 'Achieved on {date}',
@@ -539,7 +539,7 @@ const EN: AscensionText = {
   profileSectionTitle: 'Game Profile',
   profileStrengths: 'Strengths',
   profileImprovements: 'Areas to improve',
-  profileNotEnoughData: 'Play a few more matches to unlock your full profile (30 minimum).',
+  profileNotEnoughData: 'Play a few more matches to unlock the full profile (30 minimum).',
   profileMatchesPerDay: 'match(es)/day',
   profileLeveragesTitle: 'Priority levers',
   profileSuggestedChallenges: 'Suggested challenges',
@@ -580,7 +580,7 @@ const EN: AscensionText = {
 
   // Patterns
   patternsSectionTitle: 'Play patterns',
-  patternsNotEnoughData: 'Not enough matches to analyze your patterns (10 minimum).',
+  patternsNotEnoughData: 'Not enough matches to analyze patterns (10 minimum).',
   contextType: {
     by_mode: 'By mode',
     by_map: 'By map',

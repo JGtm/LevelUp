@@ -2,14 +2,14 @@
  * colors.ts — palette des joueurs pour les charts de la match-view.
  *
  * Quatre rôles distincts (l'équipe alliée vs ennemie reste TOUJOURS lisible) :
- *  - Joueur principal (is_me) → token `compare-a` (cohérent avec la pill
- *    de la page Squad).
+ *  - Joueur principal (is_me) → `SQUAD_MAIN_PLAYER_TOKEN` (cohérent avec la
+ *    pill de la page Squad — source unique, jamais de token en dur ici).
  *  - Amis (page Escouade — `settings.friend_gamertags`) côté allié → tokens
- *    `SQUAD_TEAMMATE_COLOR_TOKENS` (`narrative-dominant` / `perf-tier-3` /
- *    `divergent-pos`). Garantit la cohérence visuelle avec la page Squad.
- *  - Autres coéquipiers (même `team_side` que le main, non amis) → reste de
- *    la palette « cool/positive » (`perf-tier-2` / `narrative-encounter-ally-plus`
- *    / `narrative-remontada`).
+ *    `SQUAD_TEAMMATE_COLOR_TOKENS` (`squad-player-2` / `-3` / `-4`).
+ *    Garantit la cohérence visuelle avec la page Squad.
+ *  - Autres coéquipiers (même `team_side` que le main, non amis) → palette
+ *    « cool/positive » (`perf-tier-2` / `narrative-encounter-ally-plus` /
+ *    `narrative-encounter-recrue` / `chart-series-6`).
  *  - Adversaires (amis ou non) → palette « warm/négative »
  *    (`outcome-loss` / `narrative-debacle` / `narrative-humiliation` / …).
  *    Les amis adverses ne reçoivent PAS la couleur squad : la distinction
@@ -25,19 +25,29 @@ import type {
   MatchRosterRow,
   MatchScoreboardRow,
 } from '@/lib/api/types'
-import { SQUAD_TEAMMATE_COLOR_TOKENS } from '@/features/squad/colors'
+import { SQUAD_MAIN_PLAYER_TOKEN, SQUAD_TEAMMATE_COLOR_TOKENS } from '@/features/squad/colors'
 
-const MAIN_TOKEN: SemanticToken = 'compare-a'
+const MAIN_TOKEN: SemanticToken = SQUAD_MAIN_PLAYER_TOKEN
 
 /** Tokens cool « squad-like » réservés aux amis présents en équipe alliée. */
 const ALLY_FRIEND_TOKENS: SemanticToken[] = [...SQUAD_TEAMMATE_COLOR_TOKENS]
 
-/** Tokens cool pour les coéquipiers non-amis (différents de ALLY_FRIEND_TOKENS). */
+/** Tokens cool pour les coéquipiers non-amis (différents de ALLY_FRIEND_TOKENS).
+ *  Règle : aucun doublon hex avec les autres pools de ce fichier. Deux retraits :
+ *   - `narrative-dominant` (identique à `squad-player-4` en Okabe-Ito et en
+ *     Cividis) → remplacé par `chart-series-6`, couleur de série générique,
+ *     neutre pour un allié non identifié ;
+ *   - `narrative-remontada` (identique à `perf-tier-2` en Okabe-Ito, et trop
+ *     proche du bleu du joueur principal en palette par défaut) → remplacé par
+ *     `narrative-encounter-recrue`, teinte palette-invariante comme
+ *     `narrative-encounter-ally-plus` déjà utilisé ici.
+ *  Reste hors de portée : Cividis est une rampe de 9 valeurs, les doublons
+ *  exacts entre familles y sont structurels. */
 const ALLY_OTHER_TOKENS: SemanticToken[] = [
   'perf-tier-2',
   'narrative-encounter-ally-plus',
-  'narrative-remontada',
-  'narrative-dominant',
+  'narrative-encounter-recrue',
+  'chart-series-6',
 ]
 
 /** Tokens warm/négatifs pour les adversaires (amis ou non).

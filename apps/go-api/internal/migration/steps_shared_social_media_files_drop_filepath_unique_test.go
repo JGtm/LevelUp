@@ -7,7 +7,7 @@
 //   - UNIQUE retiré, PK + idx_mf_player_stem préservés, idx_mf_kind droppé ;
 //   - data + types (TIMESTAMPTZ) préservés ;
 //   - DEFAULT id (nextval) restauré → INSERT sans id obtient un id auto (pas NULL) ;
-//   - autres DEFAULTs restaurés (liked/indexed_at/created_at) ;
+//   - autres DEFAULTs restaurés (indexed_at/created_at) ;
 //   - continuité de séquence (pas de collision id) ;
 //   - doublon file_path désormais accepté ; 3 UPDATE file_path OK ;
 //   - idempotence ; orphan-recovery ; no-op sans table.
@@ -47,8 +47,6 @@ func setupLegacyMediaFilesWithUnique(t *testing.T, rowCount int) *sql.DB {
 			duration_seconds DOUBLE,
 			status VARCHAR,
 			mtime TIMESTAMPTZ,
-			liked BOOLEAN DEFAULT FALSE,
-			liked_at TIMESTAMPTZ,
 			discord_notified BOOLEAN DEFAULT FALSE,
 			indexed_at TIMESTAMPTZ DEFAULT NOW(),
 			file_stem VARCHAR,
@@ -172,7 +170,8 @@ func TestMediaFilesDropUnique_IDDefaultAndSequence(t *testing.T) {
 }
 
 // TestMediaFilesDropUnique_DefaultsRestored — les DEFAULTs perdus par le CTAS sont
-// restaurés : un INSERT omettant liked/indexed_at/created_at obtient les valeurs par défaut.
+// restaurés : un INSERT omettant discord_notified/indexed_at/created_at obtient les
+// valeurs par défaut.
 func TestMediaFilesDropUnique_DefaultsRestored(t *testing.T) {
 	db := setupLegacyMediaFilesWithUnique(t, 1)
 	if err := applyMediaFilesDropFilePathUnique(db); err != nil {
@@ -184,18 +183,18 @@ func TestMediaFilesDropUnique_DefaultsRestored(t *testing.T) {
 	`); err != nil {
 		t.Fatalf("insert: %v", err)
 	}
-	var liked sql.NullBool
+	var notified sql.NullBool
 	var indexedNull, createdNull int
 	if err := db.QueryRow(`
-		SELECT liked,
+		SELECT discord_notified,
 		       (indexed_at IS NULL)::INT,
 		       (created_at IS NULL)::INT
 		FROM media_files WHERE file_path='PlayerA/def.mp4'
-	`).Scan(&liked, &indexedNull, &createdNull); err != nil {
+	`).Scan(&notified, &indexedNull, &createdNull); err != nil {
 		t.Fatal(err)
 	}
-	if !liked.Valid || liked.Bool {
-		t.Errorf("liked = %v, want FALSE (DEFAULT non restauré)", liked)
+	if !notified.Valid || notified.Bool {
+		t.Errorf("discord_notified = %v, want FALSE (DEFAULT non restauré)", notified)
 	}
 	if indexedNull != 0 {
 		t.Error("indexed_at NULL (DEFAULT NOW() non restauré)")

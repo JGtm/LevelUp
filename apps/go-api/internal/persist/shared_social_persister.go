@@ -573,54 +573,11 @@ func (p *SharedSocialPersister) SetMediaMatchAssociation(ctx context.Context, me
 	return nil
 }
 
-// SetMediaLiked met à jour le flag liked d'un média (ADR 0021 Phase 3.2).
-// Retourne true si la ligne media_files existait (rowsAffected > 0), false
-// sinon (file_path inconnu — caller traduit en 404).
-//
-// Atomique + CHECKPOINT immédiat — même pattern que SetMediaMatchAssociation.
-//
-// NB : ne touche QUE media_files.liked. La table media_likes (likers
-// sociaux) est manipulée séparément via AddLike/RemoveLike.
-func (p *SharedSocialPersister) SetMediaLiked(ctx context.Context, filePath string, liked bool) (bool, error) {
-	start := time.Now()
-	tx, err := p.db.BeginTx(ctx, nil)
-	if err != nil {
-		return false, fmt.Errorf("shared_social SetMediaLiked: begin tx: %w", err)
-	}
-	rollback := func() {
-		if rbErr := tx.Rollback(); rbErr != nil && rbErr != sql.ErrTxDone {
-			slog.WarnContext(ctx, "shared_social SetMediaLiked: rollback failed (non-fatal)", "err", rbErr)
-		}
-	}
-
-	res, err := tx.ExecContext(ctx, `
-		UPDATE media_files
-		SET liked = ?,
-			liked_at = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE NULL END
-		WHERE file_path = ?
-	`, liked, liked, filePath)
-	if err != nil {
-		rollback()
-		return false, fmt.Errorf("shared_social SetMediaLiked: update: %w", err)
-	}
-	rowsAffected, err := res.RowsAffected()
-	if err != nil {
-		rollback()
-		return false, fmt.Errorf("shared_social SetMediaLiked: rows affected: %w", err)
-	}
-	if err := tx.Commit(); err != nil {
-		return false, fmt.Errorf("shared_social SetMediaLiked: commit: %w", err)
-	}
-
-	if _, err := p.db.ExecContext(ctx, "CHECKPOINT"); err != nil {
-		slog.WarnContext(ctx, "shared_social SetMediaLiked: CHECKPOINT post-commit non-fatal", "err", err)
-	}
-
-	slog.DebugContext(ctx, "shared_social: media_file liked updated",
-		"file_path", filePath, "liked", liked, "rows_affected", rowsAffected,
-		"duration_ms", time.Since(start).Milliseconds())
-	return rowsAffected > 0, nil
-}
+// NB (2026-08-04) : SetMediaLiked — UPDATE de media_files.liked + liked_at — a
+// été SUPPRIMÉ avec le passage du like au par-viewer. Cette colonne était un
+// booléen GLOBAL : un like de n'importe quel joueur allumait le cœur de tous.
+// L'état d'un like vit maintenant exclusivement dans media_likes_history
+// (append-only, une ligne par liker) — cf. AddLike / RemoveLike.
 
 // Persist exécute toutes les écritures du batch en UNE transaction, suivie
 // d'un CHECKPOINT pour vider le WAL DuckDB sur disque. Atomique.

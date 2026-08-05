@@ -16,8 +16,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/games/weapons"
 )
 
 // goldenCatalog charge le catalogue du titre de référence depuis le dépôt.
@@ -51,7 +51,7 @@ func goldenCatalog(t *testing.T) LabelCatalog {
 		grenades = append(grenades, Label{En: v.En, Fr: v.Fr})
 	}
 	return NewLabelCatalog(
-		migrations.FilmshellWeaponKeysByFamily(), byKey, labels.ShotEffects(), grenades, abilities)
+		weapons.FilmshellWeaponKeysByFamily(), byKey, labels.ShotEffects(), grenades, abilities)
 }
 
 // repoRootForTest remonte jusqu'au répertoire qui porte `config/titles` — le test tourne

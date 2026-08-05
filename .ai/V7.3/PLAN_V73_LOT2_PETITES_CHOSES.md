@@ -574,6 +574,25 @@ AVANT merge, pas seulement un rejeu local).
 
 ## Découvertes en cours d'exécution (append-only)
 
+> PASSE POST-LOT exécutée le 2026-08-03 (branche chore/post-lot2-decouvertes, sur
+> délégation utilisateur « selon tes recommandations ») : 9 quick wins traités —
+> garde-rail UPDATE/DELETE statement-level tables média append-only (trou réel
+> requalifié : volet UPDATE + ops/ exclu du scan), migration Retry-After (8 sites +
+> garde-rail), ⓘ Bonus Timeseries, 2 clés i18n mortes, champ Category mort, branche
+> legacy média morte (non fonctionnelle de surcroît), commentaires milestones
+> corrigés (valeurs intactes), doc useFollowLatestSession corrigée, ratchet timezone
+> étendu aux formes composées à la main (la forme exacte du bug 1.3 est maintenant
+> rouge). 3 garde-rails prouvés discriminants par sonde. RESTE consigné pour
+> chantiers dédiés : palette joueurs (ΔE + token gris neutre), media_files.liked
+> global vs likers (avec 3.1 v2), audit RequireAuth /players, seed FR citations
+> (migration données), déplacement registre H5, plugin routeTree, fixture démo
+> pages joueur, tri API sans départage, heatmap Lab à 0, brace-expansion, like
+> orphelin réparable, ExplorerMatchRow openapi orphelin, types MediaLike manuels,
+> 37 vouvoiements résiduels, baselines harnais Linux/CI, wrapper PS gate local,
+> doublons compare/kpi/highlights i18n + résiduels de la passe : Q40 sans
+> consommateur, 3e copie du 1,59 (signals.go), helper errDBBusy(), garde Gamertag
+> vide.
+
 - [2026-08-02, agent 0.2] **Contraste des marqueurs de dominance** : aucun token de
   dominance n'atteint 3:1 contre la couleur d'issue qu'il surmonte (domination 1,40:1,
   remontada 2,04:1, contre-remontada 1,47:1, humiliation 1,13:1, débandade 1,03:1) —

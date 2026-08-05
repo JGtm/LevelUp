@@ -75,8 +75,16 @@ export function useFiltersResolve(playerSlug: string, filterStore: FilterStore =
  * repassent isAutoSnappingToLatest=false → followLatest devient faux → la sélection
  * manuelle est préservée (jamais re-snappée).
  *
- * scope='solo' suit la dernière session solo (`!is_squad`), 'squad' la dernière
- * squad. À monter une fois par store : PlayerLayout (solo), SquadLayout (squad).
+ * scope='solo' suit la dernière session solo (`!is_squad`), 'squad' la dernière squad.
+ *
+ * MONTÉ UNE SEULE FOIS, en scope 'solo', par la route joueur
+ * (`routes/{-$lang}/t/$titleSlug/players/$playerSlug.tsx`). L'escouade ne le monte
+ * PAS : son ancrage de session est piloté par la COMPOSITION (effet de ré-ancrage
+ * de SquadLayout), parce que snapper sur la dernière session squad du joueur
+ * principal est composition-agnostique — cela ajoutait un coéquipier à une session
+ * qu'il n'avait pas jouée. Le scope 'squad' n'a donc plus qu'un appelant : les
+ * tests unitaires de ce hook. Ne pas le remonter dans SquadLayout sans rouvrir
+ * cette décision.
  */
 export function useFollowLatestSession(
   playerSlug: string,

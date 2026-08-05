@@ -37,7 +37,7 @@ export const coachStringsFR: CoachStrings = {
   proposalsTitle: 'Suggestions du coach',
   proposalsEmpty: 'Aucune suggestion pour le moment. Reviens après quelques matchs.',
   proposalsOptInHint:
-    "Active 'Coach proactif' dans les paramètres pour recevoir des suggestions d'objectifs et d'arcs Prestige calibrés sur tes tendances récentes.",
+    "Active 'Coach proactif' dans les paramètres pour recevoir des suggestions d'objectifs et d'arcs Prestige calibrés sur les tendances récentes.",
   proposalsLoadError: 'Impossible de charger les suggestions.',
 
   accept: 'Accepter',
@@ -64,7 +64,7 @@ export const coachStringsEN: CoachStrings = {
   proposalsTitle: 'Coach suggestions',
   proposalsEmpty: 'No suggestions right now. Come back after a few matches.',
   proposalsOptInHint:
-    "Turn on 'Proactive coach' in settings to receive suggestions for objectives and Prestige arcs calibrated on your recent trends.",
+    "Turn on 'Proactive coach' in settings to receive suggestions for objectives and Prestige arcs calibrated on recent trends.",
   proposalsLoadError: 'Failed to load suggestions.',
 
   accept: 'Accept',

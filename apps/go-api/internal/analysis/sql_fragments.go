@@ -55,8 +55,14 @@ const SQLKDRExpr = `CAST(SUM(kills) AS DOUBLE) / NULLIF(SUM(deaths), 0)`
 // a causé des décalages de fuseau (DETTE first_joined_time).
 //
 // alias est le préfixe de table (ex "mr", "r") ; "" pour une colonne non
-// qualifiée. Le garde-rail analysis/start_time_canonical_test.go interdit le
-// littéral brut hors de ce helper (et de son délégué duckdb.StartTimeCanonicalSQL).
+// qualifiée. Les garde-rails vivent dans
+// internal/archlint/no_raw_start_time_literal_test.go (le chemin
+// analysis/start_time_canonical_test.go cité ici jusqu'au 2026-08-03 n'a jamais
+// existé) : ils interdisent, hors de ce helper et de son délégué
+// duckdb.StartTimeCanonicalSQL, la recopie du littéral, l'ORDER BY / CAST AS DATE
+// sur start_time brut, et toute expression composée à la main autour de
+// start_time_utc — c'est cette dernière forme qui a produit le bug 1.3
+// (COALESCE mal parenthésé, AT TIME ZONE hors de la parenthèse).
 //
 // Usage :
 //

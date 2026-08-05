@@ -14,6 +14,7 @@ import {
   getLegendBase,
   getTooltipBase,
 } from '@/components/charts/_utils'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { resolveToken } from '@/lib/accessibility'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 import type { TimeseriesMatchRow } from '@/lib/api/types'
@@ -29,6 +30,23 @@ export interface TimeseriesKdaTrendProps {
     kills: string
     deaths: string
     yAxis: string
+    /**
+     * Libellé de la série « Bonus » (assistances ÷ 3), masquée par défaut.
+     *
+     * COUPLAGE ASSUMÉ label/clé : dans une légende ECharts NATIVE, le `name` de
+     * la série EST la clé de `legend.selected` et de l'événement
+     * `legendselectchanged` — il n'existe pas de champ clé distinct (contrairement
+     * à la légende React de SquadToggleLegendChart, où le 2.2 a pu garder la clé
+     * 'Bonus' non localisée à côté d'un libellé traduit). Localiser le libellé
+     * localise donc la clé. C'est SANS danger ici parce que la valeur est lue
+     * d'une seule variable, utilisée aux quatre points de couplage (series.name,
+     * legend.data, legend.selected, handler) : aucun littéral 'Bonus' ne subsiste
+     * dans le composant. Ne JAMAIS réintroduire un 'Bonus' en dur à l'un de ces
+     * points — la série deviendrait impossible à afficher dans l'autre langue.
+     */
+    bonus: string
+    /** Aide ⓘ : ce que vaut une assistance dans le FDA (ADR 0006). */
+    bonusInfo: string
   }
 }
 
@@ -59,8 +77,8 @@ export function TimeseriesKdaTrend({ rows, height = 360, title, emptyMessage, la
       legend: {
         ...getLegendBase(tc),
         bottom: 0,
-        data: [labels.kills, labels.deaths, 'Bonus'],
-        selected: { Bonus: showBonus },
+        data: [labels.kills, labels.deaths, labels.bonus],
+        selected: { [labels.bonus]: showBonus },
       },
       xAxis: {
         ...getAxisBase(tc),
@@ -90,7 +108,7 @@ export function TimeseriesKdaTrend({ rows, height = 360, title, emptyMessage, la
           barMaxWidth: 14,
         },
         {
-          name: 'Bonus',
+          name: labels.bonus,
           type: 'bar',
           stack: 'kills',
           data: bonus,
@@ -113,15 +131,24 @@ export function TimeseriesKdaTrend({ rows, height = 360, title, emptyMessage, la
     () => ({
       legendselectchanged: (params: unknown) => {
         const p = params as { selected: Record<string, boolean> }
-        setShowBonus(p.selected['Bonus'] ?? false)
+        setShowBonus(p.selected[labels.bonus] ?? false)
       },
     }),
-    [],
+    [labels.bonus],
   )
 
   return (
     <ChartFromOption
-      title={title}
+      // L'aide ⓘ est accrochée au TITRE et non à l'item de légende : la légende
+      // est rendue par ECharts (canvas), aucun nœud React ne peut y être inséré —
+      // contrairement à la légende React du 2.2 (SquadToggleLegendChart). Même
+      // placement que TimeseriesFdaGapTrend sur cette page.
+      title={
+        <span className="flex items-center gap-1.5">
+          {title}
+          <InfoTooltip content={labels.bonusInfo} />
+        </span>
+      }
       option={option}
       height={height}
       emptyMessage={emptyMessage}

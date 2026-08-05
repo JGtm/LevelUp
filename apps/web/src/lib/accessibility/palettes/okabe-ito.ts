@@ -39,7 +39,11 @@ export const okabePalette: Palette = {
   'outcome-win':  '#0072B2', // Blue
   'outcome-loss': '#D55E00', // Vermillion
   'outcome-draw': '#F0E442', // Yellow (libère Sky Blue trop proche du Blue)
-  'outcome-dnf':  '#CC79A7', // Reddish Purple
+  // DNF = pas de résultat → teinte désaturée, comme dans Cividis (#575C6D).
+  // Okabe-Ito n'a pas de gris canonique ; on éclaircit ce gris-bleu pour tenir
+  // ≥ 3:1 sur les deux surfaces. Libère le Reddish Purple, qui servait aussi à
+  // narrative-humiliation : deux verdicts de match ne peuvent plus être confondus.
+  'outcome-dnf':  '#6E7B8B', // Gris-bleu désaturé
 
   // ── Divergent — axe blue/vermillion (Brewer RdBu inversé) ──────────────────
   'divergent-pos':     '#0072B2', // Blue
@@ -56,6 +60,22 @@ export const okabePalette: Palette = {
   'compare-a': '#0072B2', // Blue
   'compare-b': '#CC79A7', // Reddish Purple
   'compare-c': '#009E73', // Bluish Green
+
+  // ── Joueurs d'escouade ─────────────────────────────────────────────────────
+  // Contrainte du garde-rail (squadPlayerTokens.test.ts) : contraste ≥ 3:1 sur
+  // les DEUX surfaces produit + ΔE OKLab toutes-paires ≥ 15 en vision normale
+  // et ≥ 8 sous protanopie/deutéranopie. Deux teintes brutes ne peuvent pas
+  // servir telles quelles, on garde la teinte et on baisse la luminosité :
+  //   - Orange #E69F00 est trop clair (2.21 seulement sur la surface claire) ;
+  //     Vermillion, qui passerait, est déjà outcome-loss / team-enemy → un
+  //     coéquipier prendrait la couleur du camp adverse dans la vue Match ;
+  //   - Reddish Purple #CC79A7 brut tombe à ΔE deutan 7.5 contre Bluish Green.
+  // Le set retenu vaut ΔE min 17.4 (normal) / 9.6 (protan) / 10.5 (deutan) et
+  // n'entre en collision avec aucun token outcome/narratif de cette palette.
+  'squad-player-1': '#0072B2', // Blue                      — joueur principal
+  'squad-player-2': '#B77E00', // Orange assombri  (× 0.60) — coéquipier 1
+  'squad-player-3': '#8E5374', // Reddish Purple assombri   — coéquipier 2
+  'squad-player-4': '#009E73', // Bluish Green              — coéquipier 3
 
   // ── Chart series — réordonnées pour distance maximale en deutan ────────────
   // 2 premières séries = paire la plus discriminable (Blue/Orange).
@@ -82,8 +102,14 @@ export const okabePalette: Palette = {
   'narrative-humiliation-text':      '#000000', // noir (luminosité 0.62 > 0.45)
   'narrative-remontada':             '#56B4E9', // Sky Blue (remplace navy #0072B2 risqué)
   'narrative-remontada-text':        '#000000', // noir sur bleu ciel
-  'narrative-debacle':               '#D55E00', // Vermillion
-  'narrative-debacle-text':          '#000000', // noir sur vermillion (5.4) — blanc ne passait pas AA (3.87)
+  // Vermillion BRUT est déjà outcome-loss / team-enemy / divergent-neg : une
+  // débâcle est un verdict qui se superpose à une défaite, les deux ne peuvent
+  // pas porter exactement le même fond (même raison que outcome-dnf ↔
+  // narrative-humiliation ci-dessus). Okabe-Ito n'ayant que 8 teintes toutes
+  // affectées, on garde la teinte et on baisse la luminosité — technique déjà
+  // employée pour squad-player-2 (« Orange assombri × 0.60 »). × 0.75 ici.
+  'narrative-debacle':               '#A04700', // Vermillion assombri (× 0.75)
+  'narrative-debacle-text':          '#FFFFFF', // blanc sur vermillion sombre (6.2) — noir tombe à 3.40
   'narrative-contre-remontada':      '#E69F00', // Orange (remplace cyan #33D6FF trop proche)
   'narrative-contre-remontada-text': '#000000', // noir sur orange
 

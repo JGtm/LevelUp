@@ -22,7 +22,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
-	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
+	"levelup/go-api/internal/games/weapons"
 )
 
 func main() {
@@ -39,15 +39,15 @@ func main() {
 
 	var before int
 	if err := db.QueryRow("SELECT COUNT(*) FROM weapon_labels").Scan(&before); err != nil {
-		// Table absente — on continue, applyWeaponLabels la cree.
+		// Table absente — on continue, ApplyLabels la cree.
 		fmt.Printf("Avant : table absente ou erreur (%v)\n", err)
 		before = -1
 	} else {
 		fmt.Printf("Avant : %d rows dans weapon_labels\n", before)
 	}
 
-	if err := halomigrations.ApplyWeaponLabels(db); err != nil {
-		log.Fatalf("ApplyWeaponLabels: %v", err)
+	if err := weapons.ApplyLabels(db); err != nil {
+		log.Fatalf("ApplyLabels: %v", err)
 	}
 
 	var after int

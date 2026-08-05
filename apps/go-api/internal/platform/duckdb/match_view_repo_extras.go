@@ -194,6 +194,7 @@ func (r *MatchViewRepo) GetMatchEncounterStats(ctx context.Context, matchID, myX
 
 // GetMatchMedia retourne les médias associés au match (Q24).
 // Utilise shared_social DB. Cross-joueur : tous les auteurs sont retournés.
+// Le champ Liked est celui DU VIEWER (r.viewerSlug), pas un état global.
 func (r *MatchViewRepo) GetMatchMedia(ctx context.Context, matchID string) ([]domain.MediaAssocRaw, error) {
 	if r.pdb.SharedSocial == nil {
 		return nil, nil
@@ -202,7 +203,7 @@ func (r *MatchViewRepo) GetMatchMedia(ctx context.Context, matchID string) ([]do
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.SharedSocial.Query(ctx, Q24MatchMedia, matchID)
+	rows, err := r.pdb.SharedSocial.Query(ctx, Q24MatchMedia, r.viewer(), matchID)
 	if err != nil {
 		// Absence de la table ou DB non configurée → résultat vide sans erreur
 		// bloquante. On loggue tout de même : un échec récurrent ici masquerait

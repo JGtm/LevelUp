@@ -81,8 +81,12 @@ func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.Matc
 	if err != nil {
 		return nil, err
 	}
+	// WithViewer : l'onglet Médias sert le cœur DU VIEWER (session), pas du joueur
+	// dont on consulte la page — les deux diffèrent dès qu'on ouvre le match d'un
+	// coéquipier. Résolu ici, au point de composition, parce que platform/duckdb
+	// n'a pas (et ne doit pas avoir) accès à la session HTTP.
 	svc := service.NewMatchViewService(
-		r.newMatchViewRepo(pdb), pdb.XUID)
+		r.newMatchViewRepo(pdb).WithViewer(viewerSlugFor(ctx)), pdb.XUID)
 	svc = svc.WithCitationsRepo(duckdb.NewCitationsRepo(pdb)).
 		WithSocial(duckdb.NewSocialRepo(pdb), slug).
 		WithAssetURL(r.assetURLFor(pdb.TitleSlug)).

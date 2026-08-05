@@ -1,13 +1,13 @@
 //go:build cgo
 
 // weapon_registry_reconcile_test.go — prouve le CHEMIN DE RÉCONCILIATION du
-// registre d'armes au boot (ApplyWeaponRegistry, câblé dans cmd/server/main.go
+// registre d'armes au boot (ApplyRegistry, câblé dans cmd/server/main.go
 // pour le titre par défaut ET les titres additionnels dont H5). Scénario réel :
 // une metadata.duckdb migrée AVANT l'ajout des 7 stock_ids UGC H5 (h5_other_ugc,
 // 2026-07-17) — la migration one-shot h5_add_weapon_registry ne les rejoue jamais.
 // Le reconcile idempotent les fait converger, et reste stable au re-run.
 
-package migrations
+package weapons
 
 import (
 	"database/sql"
@@ -33,7 +33,7 @@ func TestWeaponRegistry_ReconcileConverges(t *testing.T) {
 	t.Cleanup(func() { _ = db.Close() })
 
 	// 1. Seed initial (état nominal d'une DB migrée).
-	if err := ApplyWeaponRegistry(db); err != nil {
+	if err := ApplyRegistry(db); err != nil {
 		t.Fatalf("apply initial: %v", err)
 	}
 
@@ -49,7 +49,7 @@ func TestWeaponRegistry_ReconcileConverges(t *testing.T) {
 	}
 
 	// 3. Réconciliation (= appel boot) : les 7 reviennent, résolvant vers "other".
-	if err := ApplyWeaponRegistry(db); err != nil {
+	if err := ApplyRegistry(db); err != nil {
 		t.Fatalf("reconcile: %v", err)
 	}
 	if got := queryCount(t, db, h5OtherUGCCount); got != 7 {
@@ -69,7 +69,7 @@ func TestWeaponRegistry_ReconcileConverges(t *testing.T) {
 	}
 
 	// 4. Re-run stable : total inchangé, aucun doublon (idempotence).
-	if err := ApplyWeaponRegistry(db); err != nil {
+	if err := ApplyRegistry(db); err != nil {
 		t.Fatalf("reconcile (2e): %v", err)
 	}
 	if got := queryCount(t, db, h5OtherUGCCount); got != 7 {

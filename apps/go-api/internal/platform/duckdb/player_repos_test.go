@@ -348,8 +348,7 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 			capture_start_utc TIMESTAMPTZ,
 			capture_end_utc TIMESTAMPTZ,
 			duration_seconds DOUBLE,
-			mtime TIMESTAMPTZ, status VARCHAR,
-			liked BOOLEAN DEFAULT FALSE, liked_at TIMESTAMPTZ)`,
+			mtime TIMESTAMPTZ, status VARCHAR)`,
 		`CREATE TABLE media_match_associations (
 			media_path VARCHAR, match_id VARCHAR, match_start_time TIMESTAMPTZ)`,
 		`CREATE TABLE sync_meta (key VARCHAR PRIMARY KEY, value VARCHAR)`,
@@ -456,8 +455,6 @@ func seedSharedSocialSchema(t *testing.T, db *DB) {
 			mtime TIMESTAMPTZ,
 			indexed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 			status VARCHAR,
-			liked BOOLEAN DEFAULT FALSE,
-			liked_at TIMESTAMPTZ,
 			created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 		)`,
@@ -493,6 +490,25 @@ func seedSharedSocialSchema(t *testing.T, db *DB) {
 			SELECT a.media_file_id, a.match_id, a.delta_seconds, a.is_manual, a.associated_at, a.written_at
 			FROM act a JOIN hm ON hm.media_file_id = a.media_file_id
 			WHERE a.is_manual = hm.has_manual`,
+		// Likes append-only PAR LIKER (campagne shared_social) : depuis le passage
+		// du like au par-viewer (2026-08-04), c'est le SEUL support de l'état du
+		// cœur — la galerie joint media_likes_latest ; media_files.liked a été
+		// droppée du schéma (drop_media_files_liked_columns_v1).
+		`CREATE SEQUENCE IF NOT EXISTS media_likes_history_id_seq START 1`,
+		`CREATE TABLE IF NOT EXISTS media_likes_history (
+			id BIGINT PRIMARY KEY DEFAULT nextval('media_likes_history_id_seq'),
+			media_path VARCHAR NOT NULL,
+			liker_slug VARCHAR NOT NULL,
+			liker_gamertag VARCHAR,
+			is_liked BOOLEAN NOT NULL,
+			liked_at TIMESTAMP,
+			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE OR REPLACE VIEW media_likes_latest AS
+			SELECT id, media_path, liker_slug, liker_gamertag, is_liked, liked_at, written_at
+			FROM media_likes_history
+			QUALIFY ROW_NUMBER() OVER (PARTITION BY media_path, liker_slug
+				ORDER BY written_at DESC, id DESC) = 1`,
 	}
 	for _, q := range ddl {
 		if _, err := db.Exec(ctx, q); err != nil {
@@ -501,10 +517,10 @@ func seedSharedSocialSchema(t *testing.T, db *DB) {
 	}
 	if _, err := db.Exec(ctx, `
 		INSERT INTO media_files (
-			id, player_slug, file_path, file_name, file_stem, file_ext, kind, thumbnail_path, capture_end_utc, mtime, status, liked, created_at, updated_at
+			id, player_slug, file_path, file_name, file_stem, file_ext, kind, thumbnail_path, capture_end_utc, mtime, status, created_at, updated_at
 		) VALUES (
 			'media-1', ?, '/clips/shared.mp4', 'shared.mp4', 'shared', '.mp4', 'video', '/thumbs/shared.jpg',
-			TIMESTAMPTZ '2025-01-10 15:01:00+00', TIMESTAMPTZ '2025-01-10 15:01:00+00', 'active', TRUE, TIMESTAMPTZ '2025-01-10 15:01:00+00', TIMESTAMPTZ '2025-01-10 15:01:00+00'
+			TIMESTAMPTZ '2025-01-10 15:01:00+00', TIMESTAMPTZ '2025-01-10 15:01:00+00', 'active', TIMESTAMPTZ '2025-01-10 15:01:00+00', TIMESTAMPTZ '2025-01-10 15:01:00+00'
 		)
 	`, pTestGamertag); err != nil {
 		t.Fatalf("seedSharedSocialSchema insert media_files failed: %v", err)
@@ -2272,32 +2288,53 @@ func TestMediaRepo_LoadMediaFiles_WithData(t *testing.T) {
 	}
 }
 
-func TestMediaRepo_SetMediaLike(t *testing.T) {
+// TestMediaRepo_LikeRoundTrip : aller-retour like → galerie → unlike au niveau
+// repo, sur le viewer par défaut (le propriétaire de la galerie).
+//
+// Remplace TestMediaRepo_SetMediaLike (2026-08-04) : ce dernier vérifiait la
+// persistance de l'UPDATE media_files.liked, colonne GLOBALE retirée du chemin
+// de like. La propriété utile — « ce que j'écris comme like, la galerie me le
+// ressert » — est ici testée de bout en bout, sans dépendre du support.
+func TestMediaRepo_LikeRoundTrip(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	repo := NewMediaRepo(pdb).WithModeTaxonomy(testModeTaxonomy())
+	ctx := context.Background()
+	const clip = "/clips/shared.mp4"
 
-	// Phase 3.bis plan stabilisation 2026-05-22 : newTestPlayerDB câble
-	// désormais SharedSocial avec son propre seed ('/clips/shared.mp4',
-	// liked=TRUE par défaut). SetMediaLike → SharedSocial via socialDB().
-	// Test la transition liked=TRUE → FALSE pour vérifier que l'UPDATE
-	// est bien persisté (Liked=false attendu post-call).
-	ok, err := repo.SetMediaLike(context.Background(), "/clips/shared.mp4", false)
+	found, err := repo.MediaExists(ctx, clip)
 	if err != nil {
-		t.Fatalf("SetMediaLike: %v", err)
+		t.Fatalf("MediaExists: %v", err)
 	}
-	if !ok {
-		t.Fatal("attendu ok=true (UPDATE doit toucher 1 ligne)")
+	if !found {
+		t.Fatalf("média seedé %q introuvable", clip)
 	}
 
-	rows, err := repo.LoadMediaFiles(context.Background(), domain.MediaFilters{}, 10, 0)
+	if err := repo.ToggleSharedLike(ctx, clip, pTestGamertag, pTestGamertag, true); err != nil {
+		t.Fatalf("ToggleSharedLike(like): %v", err)
+	}
+	rows, err := repo.LoadMediaFiles(ctx, domain.MediaFilters{}, 10, 0)
 	if err != nil {
 		t.Fatalf("LoadMediaFiles: %v", err)
 	}
 	if len(rows) != 1 {
 		t.Fatalf("expected 1 row, got %d : %+v", len(rows), rows)
 	}
+	if !rows[0].Liked {
+		t.Errorf("like du viewer non ressorti par la galerie : %+v", rows[0])
+	}
+
+	if err := repo.ToggleSharedLike(ctx, clip, pTestGamertag, pTestGamertag, false); err != nil {
+		t.Fatalf("ToggleSharedLike(unlike): %v", err)
+	}
+	rows, err = repo.LoadMediaFiles(ctx, domain.MediaFilters{}, 10, 0)
+	if err != nil {
+		t.Fatalf("LoadMediaFiles après unlike: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 row, got %d : %+v", len(rows), rows)
+	}
 	if rows[0].Liked {
-		t.Errorf("liked non persisté à FALSE : %+v", rows[0])
+		t.Errorf("unlike non pris en compte par la galerie : %+v", rows[0])
 	}
 }
 

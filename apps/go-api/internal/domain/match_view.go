@@ -603,7 +603,9 @@ type MatchAssociatedMedia struct {
 	ThumbnailURL    *string `json:"thumbnail_url,omitempty"`
 	DurationSeconds *int    `json:"duration_seconds,omitempty"`
 	CaptureTime     *string `json:"capture_time,omitempty"`
-	Liked           bool    `json:"liked"`
+	// Liked : état du cœur DU VIEWER de la requête (comme MediaItem.Liked),
+	// pas un état global du média. Cf. Q24MatchMedia.
+	Liked bool `json:"liked"`
 }
 
 // MatchMediaTab : contenu de l'onglet Médias.

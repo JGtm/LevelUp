@@ -11,6 +11,8 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+
+	"levelup/go-api/internal/domain"
 )
 
 // Clés JSON de la réponse d'erreur API (partagées par tous les middlewares).
@@ -32,31 +34,36 @@ func RequireAuth(demoMode bool, authMode ...string) func(http.Handler) http.Hand
 			return next
 		}
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			sess := GetSession(r.Context())
-			if sess == nil {
-				slog.Debug("auth: rejet 401 — pas de session", "path", r.URL.Path, "ip", r.RemoteAddr)
-				writeAuthRequired(w)
-				return
-			}
-			// En mode password, vérifier que l'utilisateur est connecté.
-			if mode == "password" {
-				if sess.Username == nil {
-					slog.Debug("auth: rejet 401 — session sans username", "path", r.URL.Path, "ip", r.RemoteAddr)
-					writeAuthRequired(w)
-					return
-				}
-				// L'auth Halo (AuthReady) est optionnelle — on vérifie juste le login local.
-				next.ServeHTTP(w, r)
-				return
-			}
-			// Fallback : vérifier AuthReady (Device Code Flow).
-			if !sess.AuthReady {
+			if !sessionAuthenticated(GetSession(r.Context()), mode) {
+				slog.Debug("auth: rejet 401 — session non authentifiée",
+					"path", r.URL.Path, "mode", mode, "ip", r.RemoteAddr)
 				writeAuthRequired(w)
 				return
 			}
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// sessionAuthenticated décide si une session porte une identité authentifiée.
+//
+// PRÉDICAT PARTAGÉ par RequireAuth et RequireAuthForMutations : deux définitions
+// de « connecté » finiraient par diverger, et la divergence se lirait comme une
+// faille (une route gardée par l'une accepterait ce que l'autre refuse).
+//
+// Note : une session non-nil ne prouve RIEN. WithSession est monté à la racine
+// et CRÉE une session vide pour toute requête anonyme — tester `sess != nil`
+// laisserait donc passer un visiteur non connecté. C'est le username (mode
+// password) ou AuthReady (device-code) qui fait foi.
+func sessionAuthenticated(sess *domain.SessionData, mode string) bool {
+	if sess == nil {
+		return false
+	}
+	if mode == "password" {
+		// L'auth Halo (AuthReady) est optionnelle — le login local suffit.
+		return sess.Username != nil
+	}
+	return sess.AuthReady
 }
 
 func writeAuthRequired(w http.ResponseWriter) {

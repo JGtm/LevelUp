@@ -184,6 +184,17 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   // useSquadPresets lit useMyGroups (queries de la feature groups) pour proposer
   // les presets d'escouade — dépendance durable.
   'squad=>groups',
+  // `squad/colors` (SQUAD_MAIN_PLAYER_TOKEN + SQUAD_TEAMMATE_COLOR_TOKENS) est la
+  // SOURCE UNIQUE des couleurs par joueur : la même personne doit porter la même
+  // couleur sur la carrière (XP history), la galerie média et la page session que
+  // sur l'escouade. Dupliquer la table de tokens la ferait diverger (CLAUDE.md
+  // règle 6) — dépendances durables, analogues à match-view=>squad.
+  'career=>squad',
+  'media=>squad',
+  // SessionIntensityProfile réutilise le constructeur d'option ECharts
+  // `squad/charts/squadIntensityProfileChart` (courbe d'intensité) plutôt que de le
+  // recopier — durable, analogue à session-detail=>synthesis.
+  'session-detail=>squad',
 ])
 
 // Fichiers shell autorisés à importer @/features/ (orchestration globale).
@@ -307,10 +318,11 @@ console.log(
     `ALLOWED_CROSS_IMPORTS si la dépendance est durable.`,
 )
 
-// Ratchet : abaissé progressivement.
-// État P8.5 (revue 2026-04-29) : 0 cross-feature non-déclarée + 6 violations
-// reverse boundary tolérées (cover-flow-modal, AppShell, NavL1).
-const RATCHET_THRESHOLD = 10
+// Ratchet : abaissé progressivement, JAMAIS relevé. Chaque baisse verrouille le
+// gain obtenu (déclaration d'une dépendance durable ou suppression d'un import).
+// État 2026-08-04 : 7 occurrences cross-feature non déclarées sur 6 fichiers,
+// 0 reverse boundary — après déclaration des 3 paires *=>squad.
+const RATCHET_THRESHOLD = 7
 
 if (totalViolations > RATCHET_THRESHOLD) {
   console.log(

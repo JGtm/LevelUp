@@ -1,4 +1,4 @@
-package migrations
+package weapons
 
 // weapon_names_completeness_test.go — GARDE-RAIL V72-06 (source unique des noms
 // d'armes). Interdit toute divergence entre le registre (weapons/weapon_ids) et le
@@ -25,8 +25,8 @@ func TestWeaponNamesFileCoversRegistry(t *testing.T) {
 	if !ok {
 		t.Fatal("runtime.Caller indisponible")
 	}
-	// apps/go-api/internal/games/halo_infinite/migrations → 6 niveaux au-dessus = racine.
-	configTitles := filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "..", "..", "..", "config", "titles")
+	// apps/go-api/internal/games/weapons → 5 niveaux au-dessus = racine du dépôt.
+	configTitles := filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "..", "..", "config", "titles")
 
 	// weapon_keys du registre, groupées par titre.
 	regByTitle := map[string]map[string]bool{}
