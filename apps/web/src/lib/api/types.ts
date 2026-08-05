@@ -1210,17 +1210,7 @@ export interface TeammateKPIs {
 
 export type TeammateRow = components['schemas']['TeammateRow']
 
-export interface TeammatesQueryRequest {
-  selected_gamertags?: string[]
-  filters?: FilterContextInput | null
-  picked_solo_session_labels?: string[]
-  picked_squad_session_labels?: string[]
-  locale?: string
-  /** Option « composition exacte » (défaut false) : n'inclut que les matchs où
-   *  aucun autre coéquipier connu n'était dans l'équipe. Par défaut la
-   *  population est « matchs commencés ensemble » (intersection du roster). */
-  filter_exact_composition?: boolean
-}
+export type TeammatesQueryRequest = components['schemas']['TeammatesQueryRequest']
 
 export type SessionLabelEntry = components['schemas']['SessionLabelEntry']
 

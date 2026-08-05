@@ -10016,7 +10016,30 @@ export interface components {
              * @default false
              */
             filter_exact_composition: boolean;
-            filters?: components["schemas"]["FilterContextInput"];
+            /** @description Contexte de filtre envoyé par le client — tous les champs optionnels. */
+            filters?: {
+                cascade?: {
+                    experience_types?: string[];
+                    maps?: string[];
+                    modes?: string[];
+                    playlists?: string[];
+                };
+                /** @enum {string} */
+                filter_mode?: "period" | "sessions";
+                /** @enum {string} */
+                match_context?: "solo" | "squad" | "all";
+                period?: {
+                    end_date?: string | null;
+                    start_date?: string | null;
+                };
+                sessions?: {
+                    gap_minutes?: number;
+                    picked_session_label?: string | null;
+                    picked_sessions?: string[];
+                    picked_solo_session_label?: string | null;
+                    picked_squad_session_label?: string | null;
+                };
+            };
             locale?: string;
             picked_solo_session_labels?: string[];
             picked_squad_session_labels?: string[];

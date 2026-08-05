@@ -22115,7 +22115,66 @@ components:
           description: 'Option « composition exacte » : n''inclut que les matchs où aucun autre coéquipier connu n''était sur l''équipe du joueur principal. Par défaut (false), la population est « matchs commencés ensemble » = intersection du roster sélectionné.'
           type: boolean
         filters:
-          $ref: '#/components/schemas/FilterContextInput'
+          description: Contexte de filtre envoyé par le client — tous les champs optionnels.
+          properties:
+            cascade:
+              properties:
+                experience_types:
+                  items:
+                    type: string
+                  type: array
+                maps:
+                  items:
+                    type: string
+                  type: array
+                modes:
+                  items:
+                    type: string
+                  type: array
+                playlists:
+                  items:
+                    type: string
+                  type: array
+              type: object
+            filter_mode:
+              enum:
+                - period
+                - sessions
+              type: string
+            match_context:
+              enum:
+                - solo
+                - squad
+                - all
+              type: string
+            period:
+              properties:
+                end_date:
+                  nullable: true
+                  type: string
+                start_date:
+                  nullable: true
+                  type: string
+              type: object
+            sessions:
+              properties:
+                gap_minutes:
+                  type: integer
+                picked_session_label:
+                  nullable: true
+                  type: string
+                picked_sessions:
+                  items:
+                    type: string
+                  type: array
+                picked_solo_session_label:
+                  nullable: true
+                  type: string
+                picked_squad_session_label:
+                  nullable: true
+                  type: string
+              type: object
+          type: object
         locale:
           type: string
         picked_solo_session_labels:
