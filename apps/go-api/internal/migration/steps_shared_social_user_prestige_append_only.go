@@ -57,7 +57,7 @@ func applyUserPrestigeAppendOnly(db *sql.DB) error {
 			total_pp      INTEGER NOT NULL DEFAULT 0,
 			current_level INTEGER NOT NULL DEFAULT 0,
 			updated_at    TIMESTAMP,
-			written_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			written_at    TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_uph_lookup ON user_prestige_history(user_id, title_slug, written_at DESC)`,
 		`CREATE OR REPLACE VIEW user_prestige_latest AS

@@ -47,7 +47,7 @@ func openCSRBackfillDBs(t *testing.T) (playerDB, sharedDB *sql.DB) {
 			playlist_group                VARCHAR,
 			start_time                    TIMESTAMPTZ,
 			measurement_matches_remaining INTEGER DEFAULT 0,
-			written_at                    TIMESTAMP NOT NULL DEFAULT now(),
+			written_at                    TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			created_at                    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			updated_at                    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		);

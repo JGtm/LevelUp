@@ -35,7 +35,7 @@ func openPveDB(t *testing.T) *sql.DB {
 			sentinel_kills INTEGER, marine_kills INTEGER,
 			total_kills INTEGER, deaths INTEGER,
 			damage_dealt DOUBLE, pve_bits INTEGER,
-			written_at TIMESTAMP NOT NULL DEFAULT now()
+			written_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
 		CREATE INDEX idx_pve_lookup ON pve_match_stats(match_id, xuid, written_at);
 		CREATE OR REPLACE VIEW pve_match_stats_latest AS

@@ -45,7 +45,7 @@ func TestPlayerSkillStateV2ResetMarker_AppendOnlyReset(t *testing.T) {
 			mu DOUBLE NOT NULL, sigma DOUBLE NOT NULL,
 			experience INTEGER NOT NULL DEFAULT 0,
 			last_match_id VARCHAR, last_match_at TIMESTAMP,
-			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			written_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP));
 		CREATE VIEW player_skill_state_v2_latest AS
 			SELECT s.* FROM player_skill_state_v2 s
 			JOIN (SELECT xuid, playlist_group, MAX(written_at) AS mw

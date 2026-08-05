@@ -234,8 +234,8 @@ func insertPlayerCitations(ctx context.Context, db *sql.DB, matches []synthMatch
 		n := 1 + m.idx%3
 		for i := 0; i < n; i++ {
 			norm := synthCitations[(m.idx+i)%len(synthCitations)]
-			// written_at ancré sur synthAnchor : la table est append-only (DEFAULT
-			// now() posé par la migration), sans valeur explicite chaque run diverge.
+			// written_at ancré sur synthAnchor : la table est append-only (DEFAULT UTC
+			// posé par la migration) ; sans valeur explicite chaque run diverge.
 			if _, err := db.ExecContext(ctx,
 				`INSERT OR IGNORE INTO match_citations (match_id, citation_name_norm, value, written_at) VALUES (?, ?, ?, ?)`,
 				m.matchID, norm, 1+i, synthAnchor); err != nil {

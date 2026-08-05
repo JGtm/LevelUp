@@ -75,7 +75,7 @@ func applyNotificationsAppendOnly(db *sql.DB) error {
 			created_at    TIMESTAMP NOT NULL,
 			read_at       TIMESTAMP,
 			is_deleted    BOOLEAN NOT NULL DEFAULT FALSE,
-			written_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			written_at    TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		)`,
 		// Index secondaire NON NULL-bearing (xuid, id NOT NULL), alimenté
 		// uniquement par INSERT → jamais de retrait/relocation d'entrée ART.

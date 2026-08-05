@@ -42,7 +42,7 @@ func init() {
 					killing_shot_hit BOOLEAN,
 					burst_final      BOOLEAN,
 					shot_counter     INTEGER,
-					written_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+					written_at       TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 				);
 				CREATE INDEX IF NOT EXISTS idx_wk_v3_match_xuid ON weapon_kills_v3(match_id, xuid);
 			`)

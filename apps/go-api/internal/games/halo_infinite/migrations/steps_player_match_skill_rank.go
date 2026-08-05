@@ -48,7 +48,7 @@ func playerMatchSkillRankSteps() []migration.Migration {
 		{
 			Name:        "msr_written_at_default_now_repair_v1",
 			TargetDB:    migration.TargetPlayer,
-			Description: "Répare written_at de match_skill_rank (DEFAULT now() + backfill des NULL) — migration append-only partielle sur certaines bases",
+			Description: "Répare written_at de match_skill_rank (DEFAULT UTC + backfill des NULL) — migration append-only partielle sur certaines bases",
 			ApplySchema: repairMatchSkillRankWrittenAt,
 		},
 		{
@@ -103,7 +103,7 @@ func lusrChainRework(db *sql.DB) error {
 		ALTER TABLE match_skill_rank__lusrwipe RENAME TO match_skill_rank;
 		ALTER TABLE match_skill_rank ADD PRIMARY KEY (id);
 		ALTER TABLE match_skill_rank ALTER COLUMN id SET DEFAULT nextval('msr_seq');
-		ALTER TABLE match_skill_rank ALTER COLUMN written_at SET DEFAULT now();
+		ALTER TABLE match_skill_rank ALTER COLUMN written_at SET DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP);
 		CREATE INDEX IF NOT EXISTS idx_msr_match_lookup ON match_skill_rank(match_id, rating_type, written_at);
 		CREATE INDEX IF NOT EXISTS idx_msr_rating_type ON match_skill_rank(rating_type);
 		CREATE INDEX IF NOT EXISTS idx_msr_playlist    ON match_skill_rank(playlist_group);
@@ -166,14 +166,14 @@ func applyAppendOnlyMatchSkillRank(db *sql.DB) error {
 			SELECT
 				nextval('msr_seq') AS id,
 				%s,
-				CURRENT_TIMESTAMP AS written_at
+				CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP) AS written_at
 			FROM match_skill_rank
 		`, colList),
 		`DROP TABLE match_skill_rank`,
 		`ALTER TABLE match_skill_rank__appendonly RENAME TO match_skill_rank`,
 		`ALTER TABLE match_skill_rank ADD PRIMARY KEY (id)`,
 		`ALTER TABLE match_skill_rank ALTER COLUMN id SET DEFAULT nextval('msr_seq')`,
-		`ALTER TABLE match_skill_rank ALTER COLUMN written_at SET DEFAULT now()`,
+		`ALTER TABLE match_skill_rank ALTER COLUMN written_at SET DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)`,
 		`CREATE INDEX IF NOT EXISTS idx_msr_match_lookup ON match_skill_rank(match_id, rating_type, written_at)`,
 		`CREATE INDEX IF NOT EXISTS idx_msr_rating_type ON match_skill_rank(rating_type)`,
 		`CREATE INDEX IF NOT EXISTS idx_msr_playlist ON match_skill_rank(playlist_group)`,
@@ -220,10 +220,10 @@ func repairMatchSkillRankWrittenAt(db *sql.DB) error {
 		return nil
 	}
 
-	if _, err := db.ExecContext(ctx, `ALTER TABLE match_skill_rank ALTER COLUMN written_at SET DEFAULT now()`); err != nil {
+	if _, err := db.ExecContext(ctx, `ALTER TABLE match_skill_rank ALTER COLUMN written_at SET DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)`); err != nil {
 		return fmt.Errorf("repair written_at: ALTER SET DEFAULT: %w", err)
 	}
-	slog.InfoContext(ctx, "match_skill_rank: written_at DEFAULT now() (ré)appliqué (réparation migration append-only partielle)")
+	slog.InfoContext(ctx, "match_skill_rank: written_at DEFAULT UTC (ré)appliqué (réparation migration append-only partielle)")
 	return nil
 }
 

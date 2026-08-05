@@ -49,7 +49,7 @@ func applyNotifPrefsAppendOnly(db *sql.DB) error {
 			enabled    BOOLEAN NOT NULL DEFAULT TRUE,
 			delivery   VARCHAR NOT NULL DEFAULT 'both',
 			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			written_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_nph_lookup ON notification_preferences_history(xuid, category, written_at DESC)`,
 		`CREATE OR REPLACE VIEW notification_preferences_latest AS

@@ -44,7 +44,7 @@ func applyAppendOnlyWeaponKills(db *sql.DB) error {
 	if err := addColumnIfMissing(db, "weapon_kills", "generation_id", "BIGINT DEFAULT 0"); err != nil {
 		return fmt.Errorf("append-only wk: add generation_id: %w", err)
 	}
-	if err := addColumnIfMissing(db, "weapon_kills", "written_at", "TIMESTAMP DEFAULT now()"); err != nil {
+	if err := addColumnIfMissing(db, "weapon_kills", "written_at", "TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)"); err != nil {
 		return fmt.Errorf("append-only wk: add written_at: %w", err)
 	}
 	return execScript(db, `

@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS personal_score_awards (
     award_score INTEGER  DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     generation_id BIGINT NOT NULL DEFAULT 0,
-    written_at TIMESTAMP DEFAULT now(),
+    written_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
     is_tombstone BOOLEAN DEFAULT FALSE
 );
 CREATE INDEX IF NOT EXISTS idx_psa_match    ON personal_score_awards(match_id);
@@ -102,7 +102,7 @@ CREATE TABLE IF NOT EXISTS player_csr_snapshots (
     alltime_tier                     VARCHAR,
     alltime_sub_tier                 SMALLINT,
     fetched_at                       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    written_at                       TIMESTAMP NOT NULL DEFAULT now()
+    written_at                       TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 );
 CREATE INDEX IF NOT EXISTS idx_pcs_lookup ON player_csr_snapshots(playlist_id, season_id, written_at);
 CREATE OR REPLACE VIEW player_csr_snapshots_latest AS

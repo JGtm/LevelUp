@@ -72,7 +72,7 @@ func applyAppendOnlyPersonalScoreAwards(db *sql.DB) error {
 		IDSeq:         "personal_score_awards_id_seq",
 		IDConditional: true,
 		ExtraSeqs:     []string{"psa_generation_seq"},
-		SyntheticCols: "0::BIGINT AS generation_id, CURRENT_TIMESTAMP AS written_at, FALSE AS is_tombstone",
+		SyntheticCols: "0::BIGINT AS generation_id, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP) AS written_at, FALSE AS is_tombstone",
 		MarkerColumn:  "generation_id",
 		// idx_psa_xuid N'EST PLUS recréé après le swap (décision 2026-08-05, miroir
 		// d'idx_career_xuid) : xuid est quasi constant dans une player DB (une DB = un
@@ -84,7 +84,7 @@ func applyAppendOnlyPersonalScoreAwards(db *sql.DB) error {
 		// d'idx_psa_gen(match_id, xuid, generation_id) → redondant. Convergence des DB
 		// existantes : step drop_psa_match_xuid_art_index_v1.
 		PostSwap: []string{
-			`ALTER TABLE personal_score_awards ALTER COLUMN written_at SET DEFAULT now()`,
+			`ALTER TABLE personal_score_awards ALTER COLUMN written_at SET DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)`,
 			`ALTER TABLE personal_score_awards ALTER COLUMN is_tombstone SET DEFAULT FALSE`,
 			`CREATE INDEX IF NOT EXISTS idx_psa_match     ON personal_score_awards(match_id)`,
 			`CREATE INDEX IF NOT EXISTS idx_psa_category  ON personal_score_awards(award_category)`,

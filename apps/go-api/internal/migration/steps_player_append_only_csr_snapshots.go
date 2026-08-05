@@ -45,7 +45,7 @@ func EnsurePlayerCSRSnapshotsAppendOnly(db *sql.DB) error {
 		IDSeq:         "pcs_seq",
 		SyntheticCols: synthWrittenAt,
 		PostSwap: []string{
-			`ALTER TABLE player_csr_snapshots ALTER COLUMN written_at SET DEFAULT now()`,
+			`ALTER TABLE player_csr_snapshots ALTER COLUMN written_at SET DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)`,
 			`CREATE INDEX IF NOT EXISTS idx_pcs_lookup ON player_csr_snapshots(playlist_id, season_id, written_at)`,
 		},
 	})

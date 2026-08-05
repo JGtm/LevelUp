@@ -51,7 +51,7 @@ func applySquadMemberAppendOnly(db *sql.DB) error {
 			user_id    VARCHAR,
 			is_member  BOOLEAN NOT NULL,
 			joined_at  TIMESTAMP,
-			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			written_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_smh_lookup ON squad_member_history(squad_id, xuid, written_at DESC)`,
 		`CREATE OR REPLACE VIEW squad_member_latest AS

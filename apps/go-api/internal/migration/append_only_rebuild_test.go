@@ -52,7 +52,7 @@ func demoSpec() appendOnlyRebuild {
 		IDSeq:         "t_demo_seq",
 		SyntheticCols: synthWrittenAt,
 		PostSwap: []string{
-			`ALTER TABLE t_demo ALTER COLUMN written_at SET DEFAULT now()`,
+			`ALTER TABLE t_demo ALTER COLUMN written_at SET DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)`,
 			`CREATE INDEX IF NOT EXISTS idx_t_demo_k ON t_demo(k)`,
 		},
 		ViewSQL: `CREATE OR REPLACE VIEW t_demo_latest AS
@@ -200,7 +200,7 @@ func TestBuildAppendOnlySelectList(t *testing.T) {
 
 	// id toujours ajouté (simple).
 	got := buildAppendOnlySelectList(cols, appendOnlyRebuild{IDSeq: "s", SyntheticCols: synthWrittenAt})
-	want := "nextval('s') AS id, k, v, CURRENT_TIMESTAMP AS written_at"
+	want := "nextval('s') AS id, k, v, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP) AS written_at"
 	if got != want {
 		t.Fatalf("select simple:\n got %q\nwant %q", got, want)
 	}

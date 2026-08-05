@@ -263,7 +263,7 @@ const ddlMatchKillEvents = `
 		-- decoder_rev : version du decodeur qui a produit la passe. Sert a savoir QUELS matchs
 		-- redecoder apres un changement de decodeur, au lieu de tout redecoder.
 		decoder_rev          VARCHAR   NOT NULL,
-		written_at           TIMESTAMP NOT NULL DEFAULT now(),
+		written_at           TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 		-- publishable : la passe autorisait-elle la publication LIGNE PAR LIGNE ? FAUX = les
 		-- lignes sont justes en AGREGAT et fausses individuellement (marge de bijection nulle,
 		-- cas BTB) ou la sante etait en alerte. La PORTEE, ecrite AVEC le resultat.

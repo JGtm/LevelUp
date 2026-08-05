@@ -27,7 +27,7 @@ func ensureObjectiveEventsTable(t *testing.T, db *sql.DB) {
 			source         VARCHAR,
 			confidence     VARCHAR,
 			details        VARCHAR,
-			written_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			written_at     TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			PRIMARY KEY (match_id, seq)
 		)`); err != nil {
 		t.Fatalf("create match_objective_events: %v", err)
