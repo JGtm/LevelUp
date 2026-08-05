@@ -109,6 +109,9 @@ var canonicalOrder = []string{
 	"rebuild_career_progression_defeat_art_corruption", // player
 	"repair_player_match_enrichment_primary_key",       // player
 	"repair_match_citations_primary_key",               // player
+	"create_personal_score_awards_player_v1",           // player (autorité de schéma unique 2026-08-05 : table ex-Ensure-only)
+	"create_player_csr_snapshots_player_v1",            // player (idem — cf. steps_player_schema_authority.go)
+	"drop_career_xuid_art_index_v1",                    // player (DERNIER du bloc : doit suivre tout créateur de l'index, dont la baseline)
 	"create_base_shared_schema",                        // shared
 	"add_film_match_start",                             // shared
 	"add_highlight_events_autoincrement",               // shared
