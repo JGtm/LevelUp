@@ -9805,11 +9805,6 @@ export interface components {
             /** Format: int64 */
             total_kills: number;
         };
-        TimeseriesKpiCard: {
-            delta: string | null;
-            key: string;
-            value: string;
-        };
         TimeseriesMatchRow: {
             /** Format: double */
             accuracy: number | null;
@@ -9896,9 +9891,7 @@ export interface components {
             total_matches: number;
             weapon_accuracy?: components["schemas"]["SynthesisWeaponAccuracyEntry"][] | null;
         };
-        TimeseriesSummaryTab: {
-            kpi_cards: components["schemas"]["TimeseriesKpiCard"][] | null;
-        };
+        TimeseriesSummaryTab: Record<string, never>;
         TimeseriesWeaponKill: {
             class?: string;
             /** Format: int64 */

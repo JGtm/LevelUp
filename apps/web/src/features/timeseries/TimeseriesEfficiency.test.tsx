@@ -17,7 +17,7 @@ import {
   ONE_LIFE_RATE_BOUNDS,
   ONE_LIFE_RATE_PCT,
   ONE_LIFE_ZONE_OPACITY,
-} from '@/lib/charts/oneLifeDamageGradient'
+} from '@/lib/charts/oneLifeWindow'
 import { TimeseriesEfficiency } from './TimeseriesSquadAdapted'
 
 let captured: Record<string, unknown> | null = null

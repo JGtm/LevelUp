@@ -9,7 +9,7 @@
  */
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useCapability } from '@/lib/capabilities/capabilities'
-import { ONE_LIFE_DAMAGE } from '@/lib/charts/oneLifeDamageGradient'
+import { ONE_LIFE_DAMAGE } from '@/lib/charts/oneLifeWindow'
 
 /** PV-pour-tuer du titre courant, défaut Infinite (ONE_LIFE_DAMAGE). */
 export function useEffectiveHpToKill(): number {

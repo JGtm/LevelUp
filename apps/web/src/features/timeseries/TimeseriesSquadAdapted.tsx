@@ -40,7 +40,7 @@ import {
   oneLifeDefensiveRatePct,
   oneLifeOffensiveRatePct,
   oneLifeZonesMarkArea,
-} from '@/lib/charts/oneLifeDamageGradient'
+} from '@/lib/charts/oneLifeWindow'
 import { useEffectiveHpToKill, useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
 import { buildMatchCategories } from './matchLabels'
 
@@ -242,7 +242,7 @@ export function TimeseriesSessionPerformance({
 // Le payload Timeseries (`match_rows`) ne sert PAS les indicateurs canoniques
 // `rendement_offensif` / `resistance_defensive` : la conversion est faite ici
 // depuis les dégâts bruts, par les helpers canoniques (aucune formule recodée,
-// cf. ADR 0006 + `oneLifeDamageGradient`).
+// cf. ADR 0006 + `oneLifeWindow`).
 //
 // Conséquence : les deux courbes se lisent « plus haut = mieux », donc une SEULE
 // polarité — zones communes (vert au-dessus du repère, rouge en dessous), repère

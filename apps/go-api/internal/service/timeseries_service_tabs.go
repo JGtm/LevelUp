@@ -1,11 +1,11 @@
-// Package service — timeseries_service_tabs.go : builders des 4 onglets
-// Summary, Cumul, Intensity, Distributions + buildMatchRows. Decoupe de
+// Package service — timeseries_service_tabs.go : builders des onglets
+// Cumul, Intensity, Distributions + buildMatchRows. Decoupe de
 // timeseries_service.go (god-file split, refactor 2026-05-27).
+// Onglet Summary retire le 2026-08-05 (kpi_cards jamais consomme par le front).
 package service
 
 import (
 	"context"
-	"fmt"
 	"math"
 
 	"levelup/go-api/internal/analysis"
@@ -13,55 +13,6 @@ import (
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/legacymatch"
 )
-
-// ---------------------------------------------------------------------------
-// Onglet Summary
-// ---------------------------------------------------------------------------
-
-func buildTimeseriesSummaryTab(matches []legacymatch.StatsMatchRow) domain.TimeseriesSummaryTab {
-	cards := make([]domain.TimeseriesKpiCard, 0, 6)
-	n := len(matches)
-	if n == 0 {
-		return domain.TimeseriesSummaryTab{KpiCards: cards}
-	}
-
-	wins, totalKills, totalDeaths := 0, 0, 0
-	accSum, accN := 0.0, 0
-	for _, m := range matches {
-		if m.Outcome != nil && *m.Outcome == analysis.OutcomeWin {
-			wins++
-		}
-		totalKills += m.Kills
-		totalDeaths += m.Deaths
-		if m.Accuracy != nil {
-			accSum += *m.Accuracy
-			accN++
-		}
-	}
-
-	// TODO(expiry:2026-12-31) P4 ADR 0006 : retirer *100 (convention API canonique 0..1).
-	winRate := analysis.WinRate(wins, n) * 100
-	kd := 0.0
-	if totalDeaths > 0 {
-		kd = float64(totalKills) / float64(totalDeaths)
-	}
-
-	cards = append(cards,
-		domain.TimeseriesKpiCard{Key: "total_matches", Value: fmt.Sprintf("%d", n)},
-		domain.TimeseriesKpiCard{Key: "win_rate", Value: fmt.Sprintf("%.1f%%", winRate)},
-		domain.TimeseriesKpiCard{Key: "kd_ratio", Value: fmt.Sprintf("%.2f", kd)},
-		domain.TimeseriesKpiCard{Key: "kills_per_game", Value: fmt.Sprintf("%.1f", float64(totalKills)/float64(n))},
-	)
-
-	if accN > 0 {
-		avgAcc := accSum / float64(accN) * 100
-		cards = append(cards, domain.TimeseriesKpiCard{
-			Key: tsMetricKeyAccuracy, Value: fmt.Sprintf("%.1f%%", avgAcc),
-		})
-	}
-
-	return domain.TimeseriesSummaryTab{KpiCards: cards}
-}
 
 // ---------------------------------------------------------------------------
 // Onglet Cumul

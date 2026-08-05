@@ -1890,8 +1890,6 @@ export type IntensityHeatmapPoint = components['schemas']['IntensityHeatmapPoint
 /** Ligne brute par match pour les charts timeline côté frontend. */
 export type TimeseriesMatchRow = components['schemas']['TimeseriesMatchRow']
 
-export type TimeseriesKpiCard = components['schemas']['TimeseriesKpiCard']
-
 export type TimeseriesSummaryTab = components['schemas']['TimeseriesSummaryTab']
 
 export type TimeseriesCumulTab = components['schemas']['TimeseriesCumulTab']

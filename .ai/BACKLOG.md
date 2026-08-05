@@ -10,6 +10,24 @@
 
 ---
 
+### [ops/demo] Hermétisme FICHIERS du mode démo — racine démo autonome
+
+Noté le 2026-08-05 (vague 2, chantier fixture démo). Le mode démo est hermétique côté
+RÉSEAU (`internal/platform/netguard`, ratchet de couverture) et côté ENTREPÔTS (bascule
+inconditionnelle des 4 DB vers la fixture, `cmd/server/demo_paths.go` + ratchet). Restent
+des fuites périphériques sur le `repoRoot` réel :
+
+- cache d'assets écrit sous `{repoRoot}/data/cache/` (au lieu de la racine démo) ;
+- fichiers de session HTTP sous `{repoRoot}/data/sessions/` ;
+- lecture du `data/auth/` réel (tokens inutilisés depuis netguard, mais lus).
+
+**Cible** : une racine démo totalement autonome — tout chemin d'écriture/lecture dérivé
+de la racine fixture quand `LEVELUP_DEMO_MODE=true`. S'appuyer sur l'audit des chemins
+qui existera pour la migration AppData Tauri (même besoin d'inventaire exhaustif).
+**Risque actuel : faible** (écritures anodines, aucune donnée métier). **Effort : S-M.**
+
+---
+
 ### [data/objectifs] Blocs `EliminationStats` / `InfectionStats` — BLOQUÉS faute de donnée
 
 Réduit le 2026-07-25 (v7.2.1, V721-02). Sur les 4 blocs de mode non extraits, **3 sont
