@@ -21693,22 +21693,6 @@ components:
         - ground_pound_kills
         - shoulder_bash_kills
       type: object
-    TimeseriesKpiCard:
-      additionalProperties: false
-      properties:
-        delta:
-          type:
-            - string
-            - "null"
-        key:
-          type: string
-        value:
-          type: string
-      required:
-        - key
-        - value
-        - delta
-      type: object
     TimeseriesMatchRow:
       additionalProperties: false
       properties:
@@ -21924,15 +21908,6 @@ components:
       type: object
     TimeseriesSummaryTab:
       additionalProperties: false
-      properties:
-        kpi_cards:
-          items:
-            $ref: '#/components/schemas/TimeseriesKpiCard'
-          type:
-            - array
-            - "null"
-      required:
-        - kpi_cards
       type: object
     TimeseriesWeaponKill:
       additionalProperties: false

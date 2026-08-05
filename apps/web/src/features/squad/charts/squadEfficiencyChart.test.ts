@@ -11,7 +11,7 @@
 import { describe, it, expect } from 'vitest'
 
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
-import { ONE_LIFE_RATE_PCT, ONE_LIFE_ZONE_OPACITY } from '@/lib/charts/oneLifeDamageGradient'
+import { ONE_LIFE_RATE_PCT, ONE_LIFE_ZONE_OPACITY } from '@/lib/charts/oneLifeWindow'
 import {
   EFFICIENCY_CHART_HEIGHT,
   RATE_AXIS_MAX_PCT,

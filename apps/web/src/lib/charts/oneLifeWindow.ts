@@ -1,5 +1,5 @@
 /**
- * oneLifeDamageGradient — repère commun « une vie » des surfaces Rendement &
+ * oneLifeWindow — repère commun « une vie » des surfaces Rendement &
  * Résistance (escouade + solo), et son cadre de lecture PARTAGÉ.
  *
  * Le pivot est le même partout : **une vie de Spartan**, exprimée à 100 % dans

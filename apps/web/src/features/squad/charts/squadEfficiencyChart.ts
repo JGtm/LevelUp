@@ -36,7 +36,7 @@ import {
   ONE_LIFE_RATE_PCT,
   damagePerDeath,
   oneLifeZonesMarkArea,
-} from '@/lib/charts/oneLifeDamageGradient'
+} from '@/lib/charts/oneLifeWindow'
 import { effectiveDmgPerFrag, formatNumberFixed } from '@/lib/formatters'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
 import { truncateMap } from '@/lib/charts/matchLabels'

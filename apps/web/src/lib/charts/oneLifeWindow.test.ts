@@ -15,7 +15,7 @@ import {
   oneLifeOffensiveRatePct,
   oneLifeWindowBounds,
   oneLifeZonesMarkArea,
-} from './oneLifeDamageGradient'
+} from './oneLifeWindow'
 
 describe('damagePerDeath', () => {
   it('dégâts/mort = ΣDT / morts, arrondi', () => {
