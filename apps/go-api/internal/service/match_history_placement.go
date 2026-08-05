@@ -7,10 +7,15 @@
 //
 // LUSR : stratégie "hack" — pour chaque chaîne (arena_slayer / arena_objectif /
 //
-//	btb / chaos), les 10 matchs non classés sans LUSR les plus anciens
-//	sont marqués comme placement 1/10, 2/10, ..., 10/10. Pas de tier=
-//	'Placement' en DB pour LUSR (contrairement à CSR), on dérive du
-//	nombre de matchs joués par chaîne.
+//	btb / chaos) NON ENCORE CALIBRÉE (aucun match avec LUSR), les 10 matchs
+//	LUSR-éligibles les plus anciens sont marqués comme placement 1/10, 2/10,
+//	..., 10/10. Pas de tier='Placement' en DB pour LUSR (contrairement à CSR),
+//	on dérive du nombre de matchs joués par chaîne. Une chaîne CALIBRÉE (≥ 1
+//	LUSR existant) ne reçoit plus AUCUN signal de placement : ses matchs sans
+//	LUSR (DNF/exclus, qui n'en auront jamais) sont des trous structurels, pas
+//	un placement en cours (bug JGtm V7.3 : Super Fiesta DNF récents affichés
+//	à tort "1/10..10/10" sur une chaîne déjà classée — cf. computePerfPlacements
+//	qui applique la même doctrine côté performance).
 package service
 
 import (
@@ -215,30 +220,84 @@ func applyCSRPlacements(
 // sur duckdb.CSRPlacementThresholdDefault (5 depuis S3, 2023-03-07).
 const defaultCSRPlacementThreshold = 5
 
-// applyLUSRPlacements : pour chaque chaîne LUSR, identifie les
-// sync.LUSRPlacementThreshold (=10) matchs les plus anciens du joueur SANS
-// LUSR existant, et leur attribue placement 1/10, 2/10, ..., 10/10 dans
-// l'ordre chronologique.
+// lusrPlacementInput décrit un match pour le calcul du placement de chaîne LUSR :
+// sa chaîne, s'il porte déjà un LUSR (signal de calibration de la chaîne) et son
+// éligibilité au batch LUSR. Structure pivot symétrique de perfPlacementInput
+// (même fichier) — même doctrine : on ne masque pas un trou structurel derrière
+// un état de placement inventé.
+type lusrPlacementInput struct {
+	matchID string
+	when    int64 // start_time.UnixNano, tri sans alloc
+	chain   string
+	hasLUSR bool
+	// eligible : le match est-il un candidat LUSR possible ? Miroir PARTIEL du
+	// périmètre balayé par le batch LUSR (loadShadowMatches + classifyLUSREligibility,
+	// internal/sync/skill/skill_v2_shadow.go) :
+	//   - DNF (domain.OutcomeDNF) : outcomeToTeamResult (skill_v2_shadow.go) ne
+	//     mappe pas le code Halo 4 (DNF) → ces matchs sont skippedNonTwoTeam par
+	//     le batch, jamais candidats à un LUSR ;
+	//   - is_excluded : LoadExcludedMatchIDs (exclusion_filter.go) est retiré
+	//     explicitement "de la cascade LUSR" selon son doc-comment ;
+	//   - déjà noté CSR : garde défensive, un match Ranked ne doit jamais
+	//     recevoir un placement LUSR même si pair_name résolvait une chaîne.
+	// Le batch filtre EN PLUS sur rosters 2-équipes / imbalance / durée mini
+	// (isTeamImbalanceTooHigh, buildTwoTeamRosters) : critères non exposés par
+	// MatchHistoryRawRow, donc non reproduits ici — cf. rapport (Découvertes).
+	eligible bool
+}
+
+// computeLUSRPlacements renvoie matchID → [done, total] pour les matchs SANS
+// LUSR dont la chaîne n'est PAS ENCORE CALIBRÉE (aucun match de la chaîne ne
+// porte de LUSR). `done` = rang chronologique du match dans les
+// `limit` plus anciens candidats éligibles de sa chaîne, `total` = limit.
+//
+// Une chaîne calibrée (≥ 1 LUSR) est CLASSÉE : ses matchs sans LUSR restants
+// (DNF, exclus, retard de sync) sont des trous structurels — jamais un
+// "placement" — donc non renseignés (même doctrine que computePerfPlacements).
+func computeLUSRPlacements(inputs []lusrPlacementInput, limit int) map[string][2]int {
+	calibrated := make(map[string]bool, 4)
+	for _, in := range inputs {
+		if in.hasLUSR && in.chain != "" {
+			calibrated[in.chain] = true
+		}
+	}
+	type candidate struct {
+		matchID string
+		when    int64
+	}
+	byChain := make(map[string][]candidate, 4)
+	for _, in := range inputs {
+		if in.hasLUSR || !in.eligible || in.chain == "" || calibrated[in.chain] {
+			continue
+		}
+		byChain[in.chain] = append(byChain[in.chain], candidate{matchID: in.matchID, when: in.when})
+	}
+	out := make(map[string][2]int)
+	for _, cands := range byChain {
+		sort.Slice(cands, func(a, b int) bool { return cands[a].when < cands[b].when })
+		n := len(cands)
+		if n > limit {
+			n = limit
+		}
+		for k := 0; k < n; k++ {
+			out[cands[k].matchID] = [2]int{k + 1, limit}
+		}
+	}
+	return out
+}
+
+// applyLUSRPlacements : pour chaque chaîne LUSR NON CALIBRÉE, identifie les
+// sync.LUSRPlacementThreshold (=10) matchs éligibles les plus anciens du joueur
+// SANS LUSR existant, et leur attribue placement 1/10, 2/10, ..., 10/10 dans
+// l'ordre chronologique. Modifie rows en place. Idempotent.
 //
 // Stratégie validée avec l'utilisateur (PR2 plan) : pas de tier='Placement'
 // en DB pour LUSR, on dérive du compte de matchs par chaîne.
 // Retourne le nombre total de matchs marqués (pour visibilité via slog).
 func applyLUSRPlacements(rows []domain.MatchHistoryRawRow) int {
-	type candidate struct {
-		idx  int   // index dans rows pour update direct
-		when int64 // start_time.UnixNano pour tri sans alloc
-	}
-	byChain := make(map[string][]candidate, 4)
+	inputs := make([]lusrPlacementInput, 0, len(rows))
 	for i := range rows {
 		r := &rows[i]
-		// Déjà un LUSR → pas en placement (a déjà atteint le 11e match).
-		if r.SkillRatingType != nil && *r.SkillRatingType == "LUSR" {
-			continue
-		}
-		// Déjà un CSR (placement ou tier officiel) → pas concerné par LUSR.
-		if r.SkillRatingType != nil && *r.SkillRatingType == "CSR" {
-			continue
-		}
 		if r.PairName == nil || r.StartTime == nil {
 			continue
 		}
@@ -247,23 +306,29 @@ func applyLUSRPlacements(rows []domain.MatchHistoryRawRow) int {
 			// Ranked (→ CSR) ou Firefight (→ PvE) : exclus du LUSR par construction.
 			continue
 		}
-		byChain[chain] = append(byChain[chain], candidate{idx: i, when: r.StartTime.UnixNano()})
+		isCSR := r.SkillRatingType != nil && *r.SkillRatingType == "CSR"
+		inputs = append(inputs, lusrPlacementInput{
+			matchID: r.MatchID,
+			when:    r.StartTime.UnixNano(),
+			chain:   chain,
+			hasLUSR: r.SkillRatingType != nil && *r.SkillRatingType == "LUSR",
+			eligible: !isCSR &&
+				r.Outcome != domain.OutcomeDNF &&
+				!r.IsExcluded,
+		})
 	}
 	limit := sync.LUSRPlacementThreshold
+	placements := computeLUSRPlacements(inputs, limit)
 	count := 0
-	for _, cands := range byChain {
-		sort.Slice(cands, func(a, b int) bool { return cands[a].when < cands[b].when })
-		n := len(cands)
-		if n > limit {
-			n = limit
+	for i := range rows {
+		dt, ok := placements[rows[i].MatchID]
+		if !ok {
+			continue
 		}
-		for k := 0; k < n; k++ {
-			done := k + 1
-			total := limit
-			rows[cands[k].idx].PlacementDone = &done
-			rows[cands[k].idx].PlacementTotal = &total
-			count++
-		}
+		d, t := dt[0], dt[1]
+		rows[i].PlacementDone = &d
+		rows[i].PlacementTotal = &t
+		count++
 	}
 	return count
 }

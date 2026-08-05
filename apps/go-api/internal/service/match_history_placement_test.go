@@ -151,12 +151,19 @@ func TestApplyMatchPlacements_nilCsrResolver(t *testing.T) {
 	}
 }
 
+// TestApplyLUSRPlacements_skipMatchesWithLUSRorCSR couvre la garde CSR (m2) et,
+// depuis le fix bug JGtm V7.3 (calibration de chaîne), le cas m1+m3 : m1 porte
+// déjà un LUSR → sa chaîne "arena_slayer" est CALIBRÉE → m3 (même chaîne, sans
+// rating) ne reçoit PLUS de signal de placement (c'était le bug : un match sans
+// LUSR sur une chaîne déjà classée — DNF ou retard — se voyait à tort marqué
+// "1/10"). Cf. TestApplyLUSRPlacements_chaineCalibree_dnfSansSignal pour le
+// scénario complet avec DNF explicite.
 func TestApplyLUSRPlacements_skipMatchesWithLUSRorCSR(t *testing.T) {
 	ts := time.Now()
 	rows := []domain.MatchHistoryRawRow{
 		{MatchID: "m1", StartTime: &ts, PairName: strPtr("Arena:Slayer"), SkillRatingType: strPtr("LUSR")},
 		{MatchID: "m2", StartTime: &ts, PairName: strPtr("Arena:Slayer"), SkillRatingType: strPtr("CSR")},
-		{MatchID: "m3", StartTime: &ts, PairName: strPtr("Arena:Slayer")}, // sans rating → placement
+		{MatchID: "m3", StartTime: &ts, PairName: strPtr("Arena:Slayer")}, // sans rating, chaîne déjà calibrée par m1
 	}
 	applyLUSRPlacements(rows)
 	if rows[0].PlacementDone != nil {
@@ -165,8 +172,8 @@ func TestApplyLUSRPlacements_skipMatchesWithLUSRorCSR(t *testing.T) {
 	if rows[1].PlacementDone != nil {
 		t.Errorf("m2 (CSR existant) ne doit pas être en placement")
 	}
-	if rows[2].PlacementDone == nil || *rows[2].PlacementDone != 1 {
-		t.Errorf("m3 (sans rating, chaîne LUSR) doit être placement 1/10, got %v", rows[2].PlacementDone)
+	if rows[2].PlacementDone != nil {
+		t.Errorf("m3 (chaîne calibrée par m1) ne doit plus recevoir de signal de placement, got %v", rows[2].PlacementDone)
 	}
 }
 
@@ -226,6 +233,135 @@ func TestApplyLUSRPlacements_bigTeamBattle_fewerThan10_userReportedScenario(t *t
 	}
 	if rows[6].PlacementDone != nil {
 		t.Errorf("ranked-same-day (chaîne différente) ne doit pas être en placement BTB, got %v", rows[6].PlacementDone)
+	}
+}
+
+// TestApplyLUSRPlacements_chaineCalibree_dnfSansSignal reproduit LE bug signalé
+// par JGtm (V7.3) : un joueur calibré de longue date en Fiesta (pair_name
+// "Fiesta:..." → chaîne "chaos", même mécanisme que Super Fiesta) a un LUSR
+// établi, et des matchs DNF récents qui n'auront JAMAIS de LUSR (skip par le
+// batch, cf. doc de lusrPlacementInput.eligible). Avant le fix, ces DNF étaient
+// les seuls matchs "sans LUSR" de la chaîne → faussement marqués 1/10..N/10.
+// Après le fix : la chaîne calibrée par le LUSR existant ne reçoit plus AUCUN
+// signal, DNF inclus.
+func TestApplyLUSRPlacements_chaineCalibree_dnfSansSignal(t *testing.T) {
+	base := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
+	rows := []domain.MatchHistoryRawRow{
+		// Match le plus ancien de la chaîne : déjà classé (LUSR établi).
+		{MatchID: "established", StartTime: tPtr(base), PairName: strPtr("Fiesta:Slayer on Bazaar"),
+			SkillRatingType: strPtr("LUSR"), SkillTierLabel: strPtr("Or III")},
+	}
+	// 3 DNF récents dans la MÊME chaîne, sans LUSR (n'en auront jamais).
+	for i := 1; i <= 3; i++ {
+		r := domain.MatchHistoryRawRow{
+			MatchID:   "dnf-" + strconv.Itoa(i),
+			StartTime: tPtr(base.Add(time.Duration(i) * time.Hour)),
+			PairName:  strPtr("Fiesta:Slayer on Bazaar"),
+			Outcome:   domain.OutcomeDNF,
+		}
+		rows = append(rows, r)
+	}
+	count := applyLUSRPlacements(rows)
+	if count != 0 {
+		t.Fatalf("chaîne calibrée avec DNF récents : 0 signal attendu, got count=%d", count)
+	}
+	for i := range rows {
+		if rows[i].PlacementDone != nil || rows[i].PlacementTotal != nil {
+			t.Errorf("%s: aucun signal de placement attendu (chaîne calibrée), got done=%v total=%v",
+				rows[i].MatchID, rows[i].PlacementDone, rows[i].PlacementTotal)
+		}
+	}
+}
+
+// TestApplyLUSRPlacements_chaineVierge_dnfIntercalesNonComptes couvre le cas
+// symétrique : chaîne JAMAIS calibrée (aucun LUSR), avec des DNF intercalés
+// chronologiquement parmi des matchs éligibles. Les DNF ne doivent JAMAIS
+// recevoir de signal, et ne doivent PAS compter dans le rang 1..10 des matchs
+// éligibles (sinon un match éligible se verrait sauter un rang).
+func TestApplyLUSRPlacements_chaineVierge_dnfIntercalesNonComptes(t *testing.T) {
+	base := time.Date(2026, 8, 1, 8, 0, 0, 0, time.UTC)
+	var rows []domain.MatchHistoryRawRow
+	// Alterne 1 match éligible / 1 DNF sur 20h : 10 éligibles, 10 DNF.
+	for i := 0; i < 20; i++ {
+		ts := base.Add(time.Duration(i) * time.Hour)
+		if i%2 == 0 {
+			rows = append(rows, domain.MatchHistoryRawRow{
+				MatchID: "ok-" + strconv.Itoa(i), StartTime: tPtr(ts), PairName: strPtr("Fiesta:Slayer on Bazaar"),
+			})
+		} else {
+			rows = append(rows, domain.MatchHistoryRawRow{
+				MatchID: "dnf-" + strconv.Itoa(i), StartTime: tPtr(ts), PairName: strPtr("Fiesta:Slayer on Bazaar"),
+				Outcome: domain.OutcomeDNF,
+			})
+		}
+	}
+	count := applyLUSRPlacements(rows)
+	if count != 10 {
+		t.Fatalf("10 matchs éligibles attendus en placement (DNF non comptés), got %d", count)
+	}
+	want := 1
+	for _, r := range rows {
+		if r.Outcome == domain.OutcomeDNF {
+			if r.PlacementDone != nil {
+				t.Errorf("%s: DNF ne doit jamais recevoir de signal de placement, got %v", r.MatchID, r.PlacementDone)
+			}
+			continue
+		}
+		if r.PlacementDone == nil || *r.PlacementDone != want {
+			t.Errorf("%s: PlacementDone want %d (DNF non comptés dans le rang), got %v", r.MatchID, want, r.PlacementDone)
+		}
+		if r.PlacementTotal == nil || *r.PlacementTotal != sync.LUSRPlacementThreshold {
+			t.Errorf("%s: PlacementTotal want %d, got %v", r.MatchID, sync.LUSRPlacementThreshold, r.PlacementTotal)
+		}
+		want++
+	}
+}
+
+// TestApplyLUSRPlacements_idempotent : appliquer applyLUSRPlacements deux fois de
+// suite sur le même rows (pattern réel : rows déjà enrichis par un appel
+// précédent) doit donner un résultat STABLE. Un match déjà marqué placement au
+// 1er passage n'a toujours pas de SkillRatingType="LUSR" (le placement ne pose
+// pas de rating) donc reste candidat au 2e passage — le compte et les valeurs
+// doivent être identiques (pas de double incrément, pas de dérive).
+func TestApplyLUSRPlacements_idempotent(t *testing.T) {
+	base := time.Date(2026, 8, 1, 9, 0, 0, 0, time.UTC)
+	rows := []domain.MatchHistoryRawRow{
+		{MatchID: "established", StartTime: tPtr(base), PairName: strPtr("Fiesta:Slayer on Bazaar"),
+			SkillRatingType: strPtr("LUSR"), SkillTierLabel: strPtr("Or III")},
+	}
+	for i := 1; i <= 3; i++ {
+		rows = append(rows, domain.MatchHistoryRawRow{
+			MatchID: "dnf-" + strconv.Itoa(i), StartTime: tPtr(base.Add(time.Duration(i) * time.Hour)),
+			PairName: strPtr("Fiesta:Slayer on Bazaar"), Outcome: domain.OutcomeDNF,
+		})
+	}
+	// Chaîne vierge indépendante, pas de calibration : doit rester stable aussi.
+	for i := 0; i < 3; i++ {
+		rows = append(rows, domain.MatchHistoryRawRow{
+			MatchID: "btb-" + strconv.Itoa(i), StartTime: tPtr(base.Add(time.Duration(100+i) * time.Hour)),
+			PairName: strPtr("BTB:CTF on Highpower"),
+		})
+	}
+
+	first := applyLUSRPlacements(rows)
+	snapshot := make([]*int, len(rows))
+	for i := range rows {
+		snapshot[i] = rows[i].PlacementDone
+	}
+	second := applyLUSRPlacements(rows)
+	if first != second {
+		t.Fatalf("applyLUSRPlacements non idempotent sur le compte : 1er=%d, 2e=%d", first, second)
+	}
+	for i := range rows {
+		got := rows[i].PlacementDone
+		switch {
+		case snapshot[i] == nil && got != nil:
+			t.Errorf("%s: 1er passage nil, 2e passage %v — dérive", rows[i].MatchID, *got)
+		case snapshot[i] != nil && got == nil:
+			t.Errorf("%s: 1er passage %v, 2e passage nil — dérive", rows[i].MatchID, *snapshot[i])
+		case snapshot[i] != nil && got != nil && *snapshot[i] != *got:
+			t.Errorf("%s: valeur a dérivé entre les 2 passages : %v -> %v", rows[i].MatchID, *snapshot[i], *got)
+		}
 	}
 }
 

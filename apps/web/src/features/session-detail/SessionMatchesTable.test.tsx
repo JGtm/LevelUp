@@ -154,10 +154,15 @@ describe('SessionMatchesTable — rendu (réutilise ExplorerMatchesTable)', () =
     expect(screen.getByText('+25')).toBeInTheDocument()
   })
 
-  it('match en placement → colonne Rang affiche "X/Y" (prime sur le palier)', () => {
+  it('match en placement → colonne Rang affiche le badge unranked_N (prime sur le palier, cohérence Explorer)', () => {
     const row = { ...makeRow(), placement_done: 3, placement_total: 5 }
     renderWithProviders(<SessionMatchesTable matches={[row]} playerSlug="me" variant="full" />)
-    expect(screen.getByText('3/5')).toBeInTheDocument()
+    // skill_rating_type='csr' → rating_type non-nul → la colonne Note affiche son
+    // rang normalement (pas de placement dessus) ; seule la colonne Rang (qui lit
+    // placement_done/total indépendamment du rating_type) bascule sur le badge
+    // unranked_N = floor(3*10/5) = 6 (même mapping proportionnel que l'Explorer).
+    const img = screen.getByAltText('En placement')
+    expect(img).toHaveAttribute('src', expect.stringContaining('unranked_6.png'))
     expect(screen.queryByText('Or III')).not.toBeInTheDocument() // placement prime sur le palier
   })
 
