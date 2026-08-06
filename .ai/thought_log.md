@@ -1,4 +1,128 @@
 
+## [2026-08-06] Lot de suivi post-killfeed — S1 à S4, et un défaut de fuseau bien plus large que son DEFAULT
+
+**Statut** : Complété. Périmètre fermé à 4 items, chacun statué `[x]`. Branche
+`chore/lot-suivi-post-killfeed` depuis `origin/main` (634e079f2), worktree
+`LevelUp-wt-replay2d`. 4 commits, un par item. NON mergée — le merge (= déploiement prod)
+reste au superviseur.
+
+**S1 `[x]` — les deux erreurs avalées voisines du site corrigé en H2.**
+`MarkEventsEmptyDefinitive` et `MarkNoFilmDefinitive` faisaient `Skipped++` sans log ni
+compteur, dans le MÊME switch que les deux sites déjà traités. Ce ne sont pas des
+symétries cosmétiques : un marquage définitif RATÉ laisse le match dans le retry set, donc
+re-fetché à chaque passe pour un film qu'on sait absent (404 hors fenêtre de retry), ou
+re-parsé indéfiniment sur un chunk vide — exactement la boucle `parse_anomaly` que ce
+marquage existe pour clore. Le `Skipped++` muet rendait ce trafic perpétuel indistinguable
+d'un skip bénin. Traitement identique aux voisins : log ERROR AVANT la dégradation +
+compteur dédié (`convergence_events_mark_{empty,nofilm}_failed_total`) + un test
+d'intégration par compteur. **Injection de défaillance** : le persister est construit DANS
+`processChunk`, il n'est pas injectable — la seule prise est la DB, d'où un
+`match_registry` porteur d'un `CHECK (backfill_completed = 0)` qui fait échouer l'UPDATE
+de marquage. Mutation (compteurs retirés) : les 2 tests virent rouges.
+
+**S2 `[x]` — le DEFAULT portait le défaut de R1, et il n'était pas seul.**
+`now()` et `CURRENT_TIMESTAMP` rendent un TIMESTAMPTZ que DuckDB coerce vers une colonne
+TIMESTAMP naïve par le fuseau de SESSION : à UTC+2, toute ligne écrite SANS valeur
+explicite se date deux heures dans le futur, quand les écrivains applicatifs posent
+`time.Now().UTC()`. `written_at` étant la colonne de TRI des vues `_latest` (ADR 0026),
+deux horloges y sont deux préséances. Trois volets.
+
+1. Les **77 sites DDL** du dépôt ramenés à la forme canonique
+   `CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)`. Trois familles distinctes, pas une :
+   le DEFAULT de colonne, l'`ALTER ... SET DEFAULT` de la recette append-only, et la
+   colonne synthétique `... AS written_at` des rebuilds. Les tests sont balayés aussi —
+   un harnais qui mélange deux horloges rend un test de préséance dépendant de la machine
+   (leçon du harnais R1).
+2. Une **migration ALTER data-driven** pour les bases déjà créées, `CREATE TABLE IF NOT
+   EXISTS` ne retouchant jamais une table existante. Elle interroge `duckdb_columns()` et
+   répare toute colonne `written_at` naïve au DEFAULT sensible au fuseau, sans liste de
+   tables à maintenir, avec le filtre `database_name = current_database()` (metadata est
+   ATTACHée sur shared, en lecture seule — sans ce filtre le step tenterait un ALTER
+   dessus). Enregistrée sur les cinq targets, DERNIÈRE de l'ordre canonique puisqu'elle
+   doit suivre toute création de table. Idempotente : après l'ALTER, le DEFAULT normalisé
+   par DuckDB ne matche plus le prédicat.
+3. **seed_demo aligné** : l'INSERT `match_kill_events` était le seul écrivain à laisser
+   jouer le DEFAULT ; il ancre désormais `written_at` sur `synthAnchor`, comme
+   `weapon_kills` et `match_csrs`.
+
+Garde-rail `written_at_utc_guard_test.go`, en analyse AST — chaînes du code seulement,
+jamais les commentaires : un commentaire qui raconte l'ancien défaut n'est pas une
+régression. Une exemption unique, nommée et datée : la fixture qui DOIT reproduire le
+DEFAULT fautif pour prouver que la migration le répare.
+
+Tests d'intégration au fuseau `Pacific/Kiritimati` (UTC+14, sans heure d'été, donc stable
+toute l'année) : écart mesuré exactement 840 min avant réparation, 0 après ; plus
+idempotence, non-régression TIMESTAMPTZ, base attachée épargnée, bout-en-bout par le
+runner. **Le harnais est tombé dans le piège qu'il teste** : sa première version relisait
+la dernière ligne par `ORDER BY written_at DESC` et lisait donc la ligne d'AVANT
+réparation, datée dans le futur — elle déclarait la réparation inopérante. La mesure passe
+désormais par un compteur croissant.
+
+**S3 `[x]` — 456 doublons, 95 ruptures d'ordre.** L'archive fait foi pour Q2, mais aucune
+suppression en aveugle : chaque doublon a été comparé au bloc d'archive AVANT retrait.
+393 identiques au bit près, 61 divergents dont le contenu est intégralement contenu dans
+l'archive (variantes tronquées) → 454 supprimés. Les **2 restants sont CONSERVÉS** parce
+qu'ils portent des lignes absentes de l'archive : l'un est une collision de titre (le bloc
+« RE film Strongholds » de l'actif contient en réalité l'entrée `match_objective_stats`),
+l'autre une ligne « Prochaine étape » unique. Contrôle d'intégrité : la somme des blocs
+conservés égale le fichier résultant à l'octet près (4 765 313), et l'unique sous-titre
+disparu (« Plan de la dette restante ») est vérifié présent dans l'archive.
+
+Ordre : tri sur la date de BASE avec ordre relatif préservé à l'intérieur d'une journée —
+les suffixes intra-jour (`2026-07-10b..n`, « suite 6 ») portent leur propre chronologie
+qu'un tri lexical aurait mélangée. L'entrée « Explorer — faux En placement sur DNF »,
+poussée en DERNIÈRE position (#2142) par la résolution du merge du 05/08, remonte au
+rang #10 ; trois entrées du 01-02/08 étaient dans le même trou de fin de fichier. Ruptures
+après : 0. 75 802 lignes → 58 950, 2142 entêtes → 1687. Manipulation en bash sur octets
+bruts : LF et accents inchangés, aucun BOM.
+
+**S4 `[x]` — la règle `.gitignore` mentait par construction.** Les archives déjà suivies
+restaient versionnées (git ignore le `.gitignore` pour ce qui est tracké), donc rien ne
+semblait cassé — mais toute NOUVELLE archive était écartée en silence : la prochaine
+rotation aurait produit `thought_log_2026-Q3.md`, `git status` ne l'aurait pas montré, et
+le trimestre serait parti avec le journal actif tronqué. Vérifié sur pièces des deux côtés
+(archive Q3 fictive : ignorée avant, visible après). Le reste de la section `.ai/` a été
+revu et reste ignoré à dessein : `re_dump/` (~145 Mo de dumps binaires non reproductibles),
+`mock_*.html`, `verify_*.png|jpeg`, `V7.5/dumps/mapvar/`. Aucun fichier d'archive n'était
+caché au moment du correctif (disque et index concordaient).
+
+**DÉCOUVERTE MAJEURE, CONSIGNÉE ET NON TRAITÉE — la même erreur de fuseau dans les
+ÉCRITURES.** Le garde-rail de S2, dans sa première version, couvrait aussi les INSERT
+alimentant `written_at`. Il a levé **37 sites de production** (+ 7 en test) où l'horloge
+est écrite NUE : `shared_social_persister` et son batch, `notifications_repo`,
+`records_repo`, `streaks_repo`, `prestige_social_repo`, `media_repo_writes`,
+`player_record_repo`, `media_associate`, plus les INSERT ... SELECT de sept steps
+append-only. Ce sont des ÉCRITURES, pas des DEFAULT : hors du périmètre fermé de ce lot.
+Le garde-rail a donc été restreint à la déclaration du DEFAULT, avec un paragraphe qui dit
+explicitement ce qu'il ne couvre pas encore et pourquoi — un périmètre documenté, pas un
+garde-rail affaibli. Un site corrigé isolément (`lusr_full_recompute.go`, jumeau exact de
+R1 sur le chemin de reset LUSR : la sentinelle `is_reset` se datait dans le futur et
+masquait deux heures d'états replayés) a été RENDU à son état d'origine, pour ne pas
+laisser une famille à moitié traitée. **C'est le lot de suivi le plus prioritaire.**
+
+**Découvertes secondaires consignées, non traitées.**
+- `platform/duckdb/leaderboard_world_repo.go:676` calcule un âge par
+  `CURRENT_TIMESTAMP - max(written_at)` : TIMESTAMPTZ moins TIMESTAMP naïve, donc l'âge
+  est sous-estimé de l'offset du fuseau. Famille LECTURE, distincte des deux autres.
+- `scripts/check_test_baseline.sh` est INJOUABLE sur ce poste : il force `export CC=gcc`,
+  qui résout vers le gcc msys64 ucrt64 16.1.0, lequel ne sait plus lier
+  `libduckdb_static.a` (`undefined reference to __emutls_v._ZSt11__once_call`) — 58
+  paquets en `[build failed]`, 5400 tests baseline déclarés « manquants », 0 test réellement
+  en échec. La chaîne qui fonctionne est le gcc winlibs porté par la variable `CC` de
+  l'environnement. Le contournement daté du 2026-08-03 (`CC=gcc`) est devenu la cause.
+
+**Gate.** Ratchet `golangci-lint --new-from-merge-base=origin/main` : **0 issue** (les
+trois fichiers neufs sont analysés en entier). `go test ./... -p 1` : **0 test en échec** ;
+`internal/notify` et `internal/observability` ont été tués par le timeout de 10 min avec
+des durées FANTÔMES (1771 s et 43300 s) — rejoués isolés, verts en 0,48 s et 1,31 s, et
+aucun des deux n'est touché par le diff. `go test -tags=integration -p 1 ./...` rejoué avec
+la chaîne gcc qui lie. Aucun test supprimé ni renommé, donc
+`.ai/baselines/tests_pre_migration.jsonl` est inchangé — rien à réconcilier. Web non touché.
+La CI Linux reste le juge d'autorité.
+
+**Prochaine étape** : décision utilisateur sur le lot de suivi des 37 écritures
+`written_at`, puis merge de cette branche par le superviseur (= déploiement prod).
+
 ## [2026-08-05] Lot d'hygiène avant merge — H1-H6, résiduels C-bis, gate des artefacts, lot E
 
 **Statut** : Complété. Périmètre fermé, chaque item statué. Branche `feat/replay2d-prod`,
