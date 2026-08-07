@@ -50,13 +50,13 @@ func setupWALRecoveryFixture(t *testing.T) string {
 			media_path VARCHAR NOT NULL,
 			liker_slug VARCHAR NOT NULL,
 			liker_gamertag VARCHAR,
-			liked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			liked_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			PRIMARY KEY (media_path, liker_slug)
 		);
 		CREATE TABLE IF NOT EXISTS match_favorites (
 			player_slug VARCHAR NOT NULL,
 			match_id VARCHAR NOT NULL,
-			favorited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			favorited_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			PRIMARY KEY (player_slug, match_id)
 		);
 	`); err != nil {

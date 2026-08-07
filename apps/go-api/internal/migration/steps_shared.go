@@ -160,7 +160,7 @@ func ApplyMedalsBigint(db *sql.DB) error {
 			xuid          VARCHAR,
 			medal_name_id BIGINT,
 			count         SMALLINT,
-			created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			created_at    TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			PRIMARY KEY (match_id, xuid, medal_name_id)
 		);
 		INSERT INTO medals_earned_new SELECT match_id, xuid, CAST(medal_name_id AS BIGINT), count, created_at FROM medals_earned;
@@ -225,7 +225,7 @@ func ApplyResolutionViews(db *sql.DB) error {
 		kill_count      INTEGER DEFAULT 1,
 		time_ms         INTEGER,
 		is_validated    BOOLEAN DEFAULT FALSE,
-		created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		created_at      TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 	)`); err != nil {
 		return fmt.Errorf("ensure killer_victim_pairs (lue par Q20 et ~20 sites): %w", err)
 	}

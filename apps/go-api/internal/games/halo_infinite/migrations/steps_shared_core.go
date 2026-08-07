@@ -138,7 +138,7 @@ func sharedCoreSteps() []migration.Migration {
 						kill_count      INTEGER DEFAULT 1,
 						time_ms         INTEGER,
 						is_validated    BOOLEAN DEFAULT FALSE,
-						created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+						created_at      TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 					);
 					CREATE TABLE IF NOT EXISTS highlight_events (
 						id INTEGER PRIMARY KEY,
@@ -432,7 +432,7 @@ func sharedCoreSteps() []migration.Migration {
 						media_path      VARCHAR NOT NULL,
 						liker_slug      VARCHAR NOT NULL,
 						liker_gamertag  VARCHAR NOT NULL DEFAULT '',
-						liked_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						liked_at        TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						PRIMARY KEY (media_path, liker_slug)
 					);
 					CREATE INDEX IF NOT EXISTS idx_ml_path ON media_likes(media_path);

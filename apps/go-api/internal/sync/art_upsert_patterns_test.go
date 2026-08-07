@@ -59,7 +59,7 @@ func setupUpsertTestTable(t *testing.T) *sql.DB {
 			val INTEGER,
 			gamertag VARCHAR,
 			score DOUBLE,
-			created_at TIMESTAMP DEFAULT NOW(),
+			created_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			PRIMARY KEY (pk1, pk2)
 		);
 	`); err != nil {

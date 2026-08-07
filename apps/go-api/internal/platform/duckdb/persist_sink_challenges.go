@@ -179,7 +179,7 @@ func (s *PersistSink) insertSnapshot(
 	err := db.QueryRow(ctx, `
 		SELECT COUNT(*) FROM challenge_snapshots
 		WHERE xuid = ? AND challenge_path = ? AND state_hash = ? AND locale = ?
-		  AND snapshot_at > CURRENT_TIMESTAMP - INTERVAL 1 DAY`,
+		  AND snapshot_at > CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP) - INTERVAL 1 DAY`,
 		s.XUID, chPath, stateHash, locale,
 	).Scan(&existing)
 	if err == nil && existing > 0 {

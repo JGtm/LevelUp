@@ -133,7 +133,7 @@ func Steps() []migration.Migration {
 						legendary_target    DOUBLE NOT NULL,
 						mythic_target       DOUBLE NOT NULL,
 						schema_version      INTEGER NOT NULL DEFAULT 1,
-						updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+						updated_at          TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 					);
 					-- PAS d'index secondaire : title_slug/cadence/metric sont MUTÉS par
 					-- PrestigeChallengeTemplateRepo.Replace (SELECT-then-write) → surface ART.
@@ -147,7 +147,7 @@ func Steps() []migration.Migration {
 						description_en  VARCHAR,
 						description_fr  VARCHAR,
 						schema_version  INTEGER NOT NULL DEFAULT 1,
-						updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+						updated_at      TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 					);
 					-- PAS d'index sur title_slug : muté par PrestigePresetArcRepo.Replace
 					-- (SELECT-then-write) → surface ART. Drop : drop_metadata_art_surface_indexes_v3.
@@ -233,7 +233,7 @@ func Steps() []migration.Migration {
 						intercept          DOUBLE  NOT NULL,
 						r2                 DOUBLE  NOT NULL,
 						n_samples          INTEGER NOT NULL,
-						computed_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+						computed_at        TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 					);
 				`)
 			},
@@ -258,7 +258,7 @@ func Steps() []migration.Migration {
 						condition    VARCHAR,
 						condition_fr VARCHAR,
 						condition_en VARCHAR,
-						updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+						updated_at   TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 					);
 					-- PAS d'index secondaire : title_slug et metric sont MUTÉS par
 					-- MilestoneCatalogRepo.Upsert (SELECT-then-write) → un index ART sur une
@@ -355,7 +355,7 @@ func Steps() []migration.Migration {
 						asset_type    VARCHAR NOT NULL,
 						asset_id      VARCHAR NOT NULL,
 						version_id    VARCHAR,
-						enqueued_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						enqueued_at   TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						attempts      INTEGER DEFAULT 0,
 						last_error    VARCHAR,
 						PRIMARY KEY (title_slug, asset_type, asset_id)
@@ -379,8 +379,8 @@ func Steps() []migration.Migration {
 						title_slug    VARCHAR NOT NULL,
 						prefix        VARCHAR NOT NULL,
 						n_matches     INTEGER DEFAULT 1,
-						first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-						last_seen_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						first_seen_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+						last_seen_at  TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						pair_examples VARCHAR[],
 						PRIMARY KEY (title_slug, prefix)
 					);
@@ -544,7 +544,7 @@ func Steps() []migration.Migration {
 						is_secret        BOOLEAN NOT NULL DEFAULT FALSE,
 						rarity_category  VARCHAR,
 						rarity_percent   FLOAT,
-						fetched_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+						fetched_at       TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 					);
 				`)
 			},
@@ -600,9 +600,9 @@ func Steps() []migration.Migration {
 						mime_type         VARCHAR NOT NULL DEFAULT 'image/png',
 						image_source_path VARCHAR,
 						source_origin     VARCHAR NOT NULL DEFAULT 'cms',
-						first_cached_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-						last_cached_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-						last_accessed_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+						first_cached_at   TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+						last_cached_at    TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+						last_accessed_at  TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 					);
 					CREATE UNIQUE INDEX IF NOT EXISTS idx_battlepass_asset_refs_kind_source ON battlepass_asset_refs(asset_kind, source_path);
 					CREATE INDEX IF NOT EXISTS idx_battlepass_asset_refs_accessed ON battlepass_asset_refs(last_accessed_at);
@@ -618,28 +618,28 @@ func Steps() []migration.Migration {
 					CREATE TABLE IF NOT EXISTS battlepass_track_definitions (
 						reward_track_path VARCHAR NOT NULL, content_hash VARCHAR NOT NULL,
 						xp_per_rank INTEGER, battlepass_image_path VARCHAR, background_image_path VARCHAR,
-						raw_payload_json VARCHAR NOT NULL, first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-						last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, is_current BOOLEAN NOT NULL DEFAULT TRUE,
+						raw_payload_json VARCHAR NOT NULL, first_seen_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+						last_seen_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), is_current BOOLEAN NOT NULL DEFAULT TRUE,
 						PRIMARY KEY (reward_track_path, content_hash)
 					);
 					CREATE TABLE IF NOT EXISTS battlepass_track_translations (
 						reward_track_path VARCHAR NOT NULL, content_hash VARCHAR NOT NULL,
 						lang VARCHAR NOT NULL, track_name VARCHAR,
-						first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						first_seen_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), last_seen_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						PRIMARY KEY (reward_track_path, content_hash, lang)
 					);
 					CREATE INDEX IF NOT EXISTS idx_battlepass_track_translations_lookup ON battlepass_track_translations(reward_track_path, lang);
 					CREATE TABLE IF NOT EXISTS battlepass_item_definitions (
 						inventory_item_path VARCHAR NOT NULL, content_hash VARCHAR NOT NULL,
 						quality VARCHAR, item_type VARCHAR, display_path VARCHAR,
-						raw_payload_json VARCHAR NOT NULL, first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-						last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, is_current BOOLEAN NOT NULL DEFAULT TRUE,
+						raw_payload_json VARCHAR NOT NULL, first_seen_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+						last_seen_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), is_current BOOLEAN NOT NULL DEFAULT TRUE,
 						PRIMARY KEY (inventory_item_path, content_hash)
 					);
 					CREATE TABLE IF NOT EXISTS battlepass_item_translations (
 						inventory_item_path VARCHAR NOT NULL, content_hash VARCHAR NOT NULL,
 						lang VARCHAR NOT NULL, title VARCHAR, description VARCHAR,
-						first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						first_seen_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), last_seen_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						PRIMARY KEY (inventory_item_path, content_hash, lang)
 					);
 					CREATE INDEX IF NOT EXISTS idx_battlepass_item_translations_lookup ON battlepass_item_translations(inventory_item_path, lang);
@@ -656,7 +656,7 @@ func Steps() []migration.Migration {
 						challenge_path VARCHAR NOT NULL, content_hash VARCHAR NOT NULL,
 						category VARCHAR, difficulty VARCHAR, threshold_for_success INTEGER,
 						reward_xp INTEGER DEFAULT 0, secondary_reward_xp INTEGER DEFAULT 0,
-						first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						first_seen_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), last_seen_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						is_current BOOLEAN DEFAULT TRUE,
 						PRIMARY KEY (challenge_path, content_hash)
 					);
@@ -665,7 +665,7 @@ func Steps() []migration.Migration {
 					CREATE TABLE IF NOT EXISTS challenge_translations (
 						challenge_path VARCHAR NOT NULL, content_hash VARCHAR NOT NULL,
 						lang VARCHAR NOT NULL, title VARCHAR, description VARCHAR,
-						first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						first_seen_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), last_seen_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						PRIMARY KEY (challenge_path, content_hash, lang)
 					);
 					CREATE INDEX IF NOT EXISTS idx_challenge_translations_lookup ON challenge_translations(challenge_path, lang);
@@ -695,7 +695,7 @@ func Steps() []migration.Migration {
 						title    VARCHAR,
 						subtitle VARCHAR,
 						tier     VARCHAR,
-						fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						fetched_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						PRIMARY KEY (rank_id, lang)
 					);
 					CREATE INDEX IF NOT EXISTS idx_career_rank_translations_lookup ON career_rank_translations(rank_id, lang);
@@ -856,7 +856,7 @@ func Steps() []migration.Migration {
 						warden_kills        INTEGER,
 						total_kills         INTEGER,
 						deaths              INTEGER,
-						created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						created_at          TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						PRIMARY KEY (match_id, xuid)
 					);
 					CREATE INDEX IF NOT EXISTS idx_pve_match ON pve_match_stats(match_id);
@@ -1061,7 +1061,7 @@ func Steps() []migration.Migration {
 						title_slug  VARCHAR NOT NULL,
 						season_id   VARCHAR NOT NULL,
 						gamertag    VARCHAR NOT NULL,
-						marked_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						marked_at   TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						PRIMARY KEY (title_slug, season_id, gamertag)
 					);
 					-- AUCUN index secondaire (PK-only) : insert-or-ignore, jamais d'UPDATE
@@ -1295,8 +1295,8 @@ func Steps() []migration.Migration {
 						rating_delta                 FLOAT,
 						measurement_matches_remaining INTEGER DEFAULT 0,
 						season_id                    VARCHAR,
-						created_at                   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-						updated_at                   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						created_at                   TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+						updated_at                   TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						PRIMARY KEY (match_id, xuid)
 					);
 					CREATE INDEX IF NOT EXISTS idx_match_csrs_xuid    ON match_csrs(xuid);
@@ -1360,7 +1360,7 @@ func Steps() []migration.Migration {
 						coef_mmr_delta    DOUBLE NOT NULL DEFAULT 0,
 						r2                DOUBLE NOT NULL DEFAULT 0,
 						n_samples         INTEGER NOT NULL DEFAULT 0,
-						computed_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+						computed_at       TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 					);
 				`)
 			},
@@ -1376,7 +1376,7 @@ func Steps() []migration.Migration {
 						component_name  VARCHAR NOT NULL,
 						value           DOUBLE  NOT NULL,
 						weight          DOUBLE  NOT NULL,
-						computed_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						computed_at     TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						PRIMARY KEY (match_id, component_name)
 					);
 					CREATE INDEX IF NOT EXISTS idx_lch_component ON lusr_component_history(component_name);

@@ -57,7 +57,7 @@ func TestSynthesisHandler_OK_NoBody(t *testing.T) {
 		Scope: domain.SynthesisScope{
 			Period:     "all",
 			MatchCount: 5,
-			ComputedAt: time.Now(),
+			ComputedAt: time.Now().UTC(),
 		},
 	}
 	mock := &mockSynthesisService{resp: resp}

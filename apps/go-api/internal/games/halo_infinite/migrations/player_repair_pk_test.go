@@ -115,7 +115,7 @@ func TestRepairCitationsPK_Idempotent(t *testing.T) {
 	db := openEngMemDB(t)
 	if _, err := db.Exec(`CREATE TABLE match_citations (
 		match_id VARCHAR NOT NULL, citation_name_norm VARCHAR NOT NULL,
-		value INTEGER NOT NULL DEFAULT 1, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		value INTEGER NOT NULL DEFAULT 1, created_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 		PRIMARY KEY (match_id, citation_name_norm))`); err != nil {
 		t.Fatalf("seed sain: %v", err)
 	}

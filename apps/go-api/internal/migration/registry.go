@@ -107,7 +107,7 @@ func ensureMigrationTable(ctx context.Context, db *sql.DB) error {
 		CREATE TABLE IF NOT EXISTS schema_migrations (
 			name          VARCHAR PRIMARY KEY,
 			description   VARCHAR,
-			applied_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			applied_at    TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			schema_done   BOOLEAN DEFAULT FALSE,
 			backfill_done BOOLEAN DEFAULT FALSE,
 			title_slug    VARCHAR DEFAULT '%s'
@@ -133,7 +133,7 @@ func ensureTitleSchemaVersionTable(ctx context.Context, db *sql.DB) error {
 			title_slug VARCHAR NOT NULL,
 			target     VARCHAR NOT NULL,
 			version    INTEGER NOT NULL,
-			applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			applied_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			PRIMARY KEY (title_slug, target)
 		)
 	`)

@@ -28,7 +28,7 @@ func (r *HomeRepo) LoadCachedBattlePass(ctx context.Context, ttl time.Duration) 
 		SELECT reward_track_path, current_rank, partial_progress, snapshot_at
 		FROM battlepass_snapshots
 		WHERE xuid = ?
-		  AND snapshot_at > CURRENT_TIMESTAMP - INTERVAL '%d' SECOND
+		  AND snapshot_at > CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP) - INTERVAL '%d' SECOND
 		ORDER BY is_active DESC, snapshot_at DESC
 		LIMIT 1`, secs)
 
@@ -114,7 +114,7 @@ func (r *HomeRepo) queryRecentChallengeSnapshots(ctx context.Context, ttl time.D
 			FROM challenge_snapshots
 			WHERE xuid = ?
 			  AND (locale = ? OR locale = '' OR locale IS NULL)
-			  AND snapshot_at > CURRENT_TIMESTAMP - INTERVAL '%d' SECOND
+			  AND snapshot_at > CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP) - INTERVAL '%d' SECOND
 		) t
 		WHERE rn = 1`, secs)
 

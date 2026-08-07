@@ -272,8 +272,8 @@ CREATE TABLE player_match_enrichment (
     engagement_score_brut       DOUBLE,
     engagement_score_confidence VARCHAR,
     mode_category               VARCHAR,
-    created_at                  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at                  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at                  TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+    updated_at                  TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 );
 
 CREATE SEQUENCE personal_score_awards_id_seq;
@@ -291,7 +291,7 @@ CREATE TABLE match_citations (
     match_id            VARCHAR NOT NULL,
     citation_name_norm  VARCHAR NOT NULL,
     value               INTEGER DEFAULT 1,
-    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at          TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
     PRIMARY KEY (match_id, citation_name_norm)
 );
 
@@ -308,8 +308,8 @@ CREATE TABLE match_skill_rank (
     playlist_group   VARCHAR,
     expected_win_prob FLOAT,
     start_time       TIMESTAMP,
-    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at       TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+    updated_at       TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 );
 
 CREATE TABLE sync_meta (

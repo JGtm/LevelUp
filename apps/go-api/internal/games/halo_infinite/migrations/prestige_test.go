@@ -46,7 +46,7 @@ func setupPrestigeSchema(t *testing.T) *sql.DB {
 			legendary_target    DOUBLE NOT NULL,
 			mythic_target       DOUBLE NOT NULL,
 			schema_version      INTEGER NOT NULL DEFAULT 1,
-			updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			updated_at          TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
 		CREATE TABLE preset_arc (
 			id              VARCHAR PRIMARY KEY,
@@ -56,7 +56,7 @@ func setupPrestigeSchema(t *testing.T) *sql.DB {
 			description_en  VARCHAR,
 			description_fr  VARCHAR,
 			schema_version  INTEGER NOT NULL DEFAULT 1,
-			updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			updated_at      TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
 		CREATE TABLE preset_arc_step (
 			preset_arc_id   VARCHAR NOT NULL,

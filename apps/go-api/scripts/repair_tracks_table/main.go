@@ -68,30 +68,30 @@ func main() {
 		`CREATE TABLE IF NOT EXISTS battlepass_track_definitions (
 			reward_track_path VARCHAR NOT NULL, content_hash VARCHAR NOT NULL,
 			xp_per_rank INTEGER, battlepass_image_path VARCHAR, background_image_path VARCHAR,
-			raw_payload_json VARCHAR NOT NULL, first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, is_current BOOLEAN NOT NULL DEFAULT TRUE,
+			raw_payload_json VARCHAR NOT NULL, first_seen_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+			last_seen_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), is_current BOOLEAN NOT NULL DEFAULT TRUE,
 			PRIMARY KEY (reward_track_path, content_hash)
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_battlepass_track_definitions_lookup ON battlepass_track_definitions(reward_track_path, is_current)`,
 		`CREATE TABLE IF NOT EXISTS battlepass_track_translations (
 			reward_track_path VARCHAR NOT NULL, content_hash VARCHAR NOT NULL,
 			lang VARCHAR NOT NULL, track_name VARCHAR,
-			first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			first_seen_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), last_seen_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			PRIMARY KEY (reward_track_path, content_hash, lang)
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_battlepass_track_translations_lookup ON battlepass_track_translations(reward_track_path, lang)`,
 		`CREATE TABLE IF NOT EXISTS battlepass_item_definitions (
 			inventory_item_path VARCHAR NOT NULL, content_hash VARCHAR NOT NULL,
 			quality VARCHAR, item_type VARCHAR, display_path VARCHAR,
-			raw_payload_json VARCHAR NOT NULL, first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, is_current BOOLEAN NOT NULL DEFAULT TRUE,
+			raw_payload_json VARCHAR NOT NULL, first_seen_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+			last_seen_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), is_current BOOLEAN NOT NULL DEFAULT TRUE,
 			PRIMARY KEY (inventory_item_path, content_hash)
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_battlepass_item_definitions_lookup ON battlepass_item_definitions(inventory_item_path, is_current)`,
 		`CREATE TABLE IF NOT EXISTS battlepass_item_translations (
 			inventory_item_path VARCHAR NOT NULL, content_hash VARCHAR NOT NULL,
 			lang VARCHAR NOT NULL, title VARCHAR, description VARCHAR,
-			first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			first_seen_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), last_seen_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			PRIMARY KEY (inventory_item_path, content_hash, lang)
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_battlepass_item_translations_lookup ON battlepass_item_translations(inventory_item_path, lang)`,

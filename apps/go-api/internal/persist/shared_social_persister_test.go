@@ -65,7 +65,7 @@ func setupSocialDB(t *testing.T) (string, *sql.DB) {
 			id BIGINT PRIMARY KEY DEFAULT nextval('media_match_associations_history_id_seq'),
 			media_file_id BIGINT NOT NULL, match_id VARCHAR NOT NULL, delta_seconds INTEGER,
 			is_manual BOOLEAN NOT NULL DEFAULT FALSE, is_active BOOLEAN NOT NULL DEFAULT TRUE,
-			associated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			associated_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			written_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		)`,
 		`CREATE OR REPLACE VIEW media_match_associations_latest AS
@@ -82,7 +82,7 @@ func setupSocialDB(t *testing.T) (string, *sql.DB) {
 			media_path VARCHAR NOT NULL,
 			liker_slug VARCHAR NOT NULL,
 			liker_gamertag VARCHAR,
-			liked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			liked_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			PRIMARY KEY (media_path, liker_slug)
 		)`,
 		// Append-only (cf. shared_social_likes_append_only_v1).
@@ -101,7 +101,7 @@ func setupSocialDB(t *testing.T) (string, *sql.DB) {
 		`CREATE TABLE match_favorites (
 			player_slug VARCHAR NOT NULL,
 			match_id VARCHAR NOT NULL,
-			favorited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			favorited_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			PRIMARY KEY (player_slug, match_id)
 		)`,
 		// Append-only (cf. shared_social_favorites_append_only_v1) : persistFavorites
@@ -131,7 +131,7 @@ func setupSocialDB(t *testing.T) (string, *sql.DB) {
 			actor_xuid VARCHAR,
 			actor_name VARCHAR,
 			source VARCHAR NOT NULL,
-			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			created_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			read_at TIMESTAMP,
 			PRIMARY KEY (xuid, id)
 		)`,
@@ -164,7 +164,7 @@ func setupSocialDB(t *testing.T) (string, *sql.DB) {
 			category VARCHAR NOT NULL,
 			enabled BOOLEAN NOT NULL DEFAULT TRUE,
 			delivery VARCHAR NOT NULL DEFAULT 'both',
-			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			PRIMARY KEY (xuid, category)
 		)`,
 		// Append-only (cf. shared_social_notif_prefs_append_only_v1).
@@ -173,7 +173,7 @@ func setupSocialDB(t *testing.T) (string, *sql.DB) {
 			id BIGINT PRIMARY KEY DEFAULT nextval('notification_preferences_history_id_seq'),
 			xuid VARCHAR NOT NULL, category VARCHAR NOT NULL,
 			enabled BOOLEAN NOT NULL DEFAULT TRUE, delivery VARCHAR NOT NULL DEFAULT 'both',
-			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			written_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		)`,
 		`CREATE OR REPLACE VIEW notification_preferences_latest AS
@@ -189,7 +189,7 @@ func setupSocialDB(t *testing.T) (string, *sql.DB) {
 			value DOUBLE NOT NULL,
 			achieved_at TIMESTAMP,
 			achieved_match_id VARCHAR,
-			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			PRIMARY KEY (xuid, metric)
 		)`,
 	}

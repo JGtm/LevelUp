@@ -117,7 +117,7 @@ func newTestPlayerDBForMediaScenario(t *testing.T) *PlayerDB {
 		}
 		if _, err := social.Exec(ctx,
 			`INSERT INTO media_likes_history (media_path, liker_slug, liker_gamertag, is_liked, liked_at)
-				VALUES (?, ?, ?, TRUE, CURRENT_TIMESTAMP)`,
+				VALUES (?, ?, ?, TRUE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`,
 			m.path, mediaTestPlayerSlug, mediaTestPlayerSlug,
 		); err != nil {
 			t.Fatalf("insert like event %s: %v", m.id, err)
@@ -1324,7 +1324,7 @@ func TestMediaFilters_Stable_TieBreakerFilePath(t *testing.T) {
 // TestMediaFilters_Sort_PrefersCaptureStartUtc vérifie que le tri utilise
 // `capture_start_utc` en priorité 1 du COALESCE — la donnée canonique
 // alimentée par insertMediaFile. Sans ce fix, le tri retombait sur
-// indexed_at (= NOW() au scan) pour tous les médias dont capture_end_utc et
+// indexed_at (= CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP) au scan) pour tous les médias dont capture_end_utc et
 // mtime étaient NULL, donnant un "ordre d'indexation" arbitraire.
 //
 // Setup : 2 médias avec capture_start et capture_end inversés sémantiquement.

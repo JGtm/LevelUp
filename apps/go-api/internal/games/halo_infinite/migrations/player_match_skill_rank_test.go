@@ -39,8 +39,8 @@ func setupLegacyMatchSkillRank(t *testing.T, rowCount int) *sql.DB {
 			rating_delta      FLOAT,
 			playlist_group    VARCHAR,
 			start_time        TIMESTAMP,
-			created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			created_at        TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+			updated_at        TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
 		CREATE INDEX idx_msr_rating_type ON match_skill_rank(rating_type);
 		CREATE INDEX idx_msr_playlist    ON match_skill_rank(playlist_group);

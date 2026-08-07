@@ -420,11 +420,16 @@ func (r *PrestigeSquadChallengeRepo) ListBySquad(ctx context.Context, squadID st
 // squad_challenge : pas de pression concurrente ni de risque ART (mêmes garanties
 // que Rename sur squad). Sous lease KindSharedSocial + CHECKPOINT (ADR 0022).
 // Idempotent : ré-archiver un défi déjà archivé est un UPDATE sans effet.
+//
+// archived_at en UTC EXPLICITE (lot S6) : `CURRENT_TIMESTAMP` rend un TIMESTAMPTZ coercé
+// vers cette colonne TIMESTAMP naive par le fuseau de SESSION, alors que les horodatages
+// voisins de la même table (created_at applicatif, written_at des tables sœurs) sont posés
+// en UTC. Un archived_at deux heures dans le futur se compare faussement à toute borne Go.
 func (r *PrestigeSquadChallengeRepo) Archive(ctx context.Context, id string) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	return execCheckpointed(ctx, r.db,
-		`UPDATE squad_challenge SET archived_at = CURRENT_TIMESTAMP WHERE id = ?`, id)
+		`UPDATE squad_challenge SET archived_at = CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP) WHERE id = ?`, id)
 }
 
 func (r *PrestigeSquadChallengeRepo) AddParticipant(ctx context.Context, p prestige.SquadChallengeParticipant) error {

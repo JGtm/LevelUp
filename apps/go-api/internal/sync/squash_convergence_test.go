@@ -57,7 +57,7 @@ CREATE TABLE player_csr_snapshots (
 	alltime_value                 FLOAT,
 	alltime_tier                  VARCHAR,
 	alltime_sub_tier              SMALLINT,
-	fetched_at                    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	fetched_at                    TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 	PRIMARY KEY (playlist_id, season_id)
 )`
 
@@ -180,7 +180,7 @@ func assertConverged(t *testing.T, db *sql.DB, suffix string) {
 			(snapshot_at, xuid, challenge_path, challenge_id,
 			 status, progress_current, progress_target, xp_reward,
 			 can_reroll, expires_at, state_hash, title, description, image_url, display_path)
-		VALUES (now(), 'u1', ?, 'c1', 'active', 1, 5, 100, false, NULL, ?, 'Titre', 'Desc', 'img://x', 'disp/x')`,
+		VALUES (CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), 'u1', ?, 'c1', 'active', 1, 5, 100, false, NULL, ?, 'Titre', 'Desc', 'img://x', 'disp/x')`,
 		"path/"+suffix, "hash-"+suffix); err != nil {
 		t.Fatalf("persist challenges (colonnes render) échoué: %v", err)
 	}

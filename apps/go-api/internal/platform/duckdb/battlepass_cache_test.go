@@ -102,7 +102,7 @@ func TestHomeRepoLoadCachedBattlePass_UsesPlayerSnapshots(t *testing.T) {
 		INSERT INTO battlepass_snapshots
 			(snapshot_at, xuid, reward_track_path, is_active, current_rank, partial_progress,
 			 is_owned, has_reached_max_rank, base_xp, boost_xp, state_hash, raw_payload_json)
-		VALUES (CURRENT_TIMESTAMP, 'xuid-1', 'RewardTracks/TrackA', TRUE, 14, 450, TRUE, FALSE, 1400, 250, 'state-a', '{}')`)
+		VALUES (CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), 'xuid-1', 'RewardTracks/TrackA', TRUE, 14, 450, TRUE, FALSE, 1400, 250, 'state-a', '{}')`)
 	if err != nil {
 		t.Fatalf("insert battlepass snapshot: %v", err)
 	}
@@ -131,7 +131,7 @@ func TestHomeRepoLoadCachedBattlePass_UsesPlayerSnapshots(t *testing.T) {
 		t.Fatal("SnapshotAt devrait etre renseigne depuis battlepass_snapshots.snapshot_at")
 	}
 	// Validation parsing RFC3339 — l'égalité exacte à `now` est évitée
-	// (DuckDB CURRENT_TIMESTAMP est en local time, notre format en UTC : la
+	// (DuckDB CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP) est en local time, notre format en UTC : la
 	// distance peut varier de plusieurs heures selon le fuseau de l'host).
 	if _, err := time.Parse(time.RFC3339, *resp.SnapshotAt); err != nil {
 		t.Fatalf("SnapshotAt = %q, doit etre RFC3339 parsable: %v", *resp.SnapshotAt, err)
@@ -154,10 +154,10 @@ func TestHomeRepoLoadCachedChallenges_ReturnsAggregateSnapshot(t *testing.T) {
 		INSERT INTO challenge_snapshots
 			(snapshot_at, xuid, challenge_path, status, xp_reward, expires_at, state_hash)
 		VALUES
-			(CURRENT_TIMESTAMP - INTERVAL '2 HOUR', 'xuid-1', 'Challenges/c1', 'NotStarted', 100, CURRENT_TIMESTAMP + INTERVAL '1 DAY', 's1-old'),
-			(CURRENT_TIMESTAMP, 'xuid-1', 'Challenges/c1', 'InProgress', 100, CURRENT_TIMESTAMP + INTERVAL '1 DAY', 's1-new'),
-			(CURRENT_TIMESTAMP, 'xuid-1', 'Challenges/c2', 'InProgress', 200, CURRENT_TIMESTAMP + INTERVAL '2 DAY', 's2'),
-			(CURRENT_TIMESTAMP, 'xuid-1', 'Challenges/c3', 'Completed', 300, NULL, 's3')`)
+			(CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP) - INTERVAL '2 HOUR', 'xuid-1', 'Challenges/c1', 'NotStarted', 100, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP) + INTERVAL '1 DAY', 's1-old'),
+			(CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), 'xuid-1', 'Challenges/c1', 'InProgress', 100, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP) + INTERVAL '1 DAY', 's1-new'),
+			(CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), 'xuid-1', 'Challenges/c2', 'InProgress', 200, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP) + INTERVAL '2 DAY', 's2'),
+			(CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), 'xuid-1', 'Challenges/c3', 'Completed', 300, NULL, 's3')`)
 	if err != nil {
 		t.Fatalf("insert challenge_snapshots: %v", err)
 	}
@@ -213,8 +213,8 @@ func TestSeasonPassRepoLoadSeasonPassTracks_UsesPlayerSnapshots(t *testing.T) {
 			(reward_track_path, content_hash, xp_per_rank, battlepass_image_path, background_image_path,
 			 raw_payload_json, is_current, first_seen_at, last_seen_at)
 		VALUES
-			('RewardTracks/TrackA', 'hash-a', 1000, 'progression/track-a.png', 'progression/bg-a.png', '{"Name":{"fr":"Operation Alpha"},"Description":{"fr":"Escalade principale"},"BattlePassImage":"progression/track-a.png","BackgroundImagePath":"progression/bg-a.png","XpPerRank":1000,"Ranks":[{"Rank":1,"FreeRewards":{"InventoryRewards":[{"InventoryItemPath":"Inventory/Reward-1.json"}]},"PaidRewards":{"InventoryRewards":[]}},{"Rank":2,"FreeRewards":{"InventoryRewards":[]},"PaidRewards":{"InventoryRewards":[{"InventoryItemPath":"Inventory/Reward-2.json"}]}},{"Rank":3,"FreeRewards":{"InventoryRewards":[]},"PaidRewards":{"InventoryRewards":[]}}]}', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-			('RewardTracks/TrackB', 'hash-b', 1000, 'https://img/track-b.png', 'https://img/bg-b.png', '{}', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`)
+			('RewardTracks/TrackA', 'hash-a', 1000, 'progression/track-a.png', 'progression/bg-a.png', '{"Name":{"fr":"Operation Alpha"},"Description":{"fr":"Escalade principale"},"BattlePassImage":"progression/track-a.png","BackgroundImagePath":"progression/bg-a.png","XpPerRank":1000,"Ranks":[{"Rank":1,"FreeRewards":{"InventoryRewards":[{"InventoryItemPath":"Inventory/Reward-1.json"}]},"PaidRewards":{"InventoryRewards":[]}},{"Rank":2,"FreeRewards":{"InventoryRewards":[]},"PaidRewards":{"InventoryRewards":[{"InventoryItemPath":"Inventory/Reward-2.json"}]}},{"Rank":3,"FreeRewards":{"InventoryRewards":[]},"PaidRewards":{"InventoryRewards":[]}}]}', TRUE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)),
+			('RewardTracks/TrackB', 'hash-b', 1000, 'https://img/track-b.png', 'https://img/bg-b.png', '{}', FALSE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`)
 	if err != nil {
 		t.Fatalf("insert track definitions: %v", err)
 	}
@@ -222,8 +222,8 @@ func TestSeasonPassRepoLoadSeasonPassTracks_UsesPlayerSnapshots(t *testing.T) {
 		INSERT INTO battlepass_track_translations
 			(reward_track_path, content_hash, lang, track_name, first_seen_at, last_seen_at)
 		VALUES
-			('RewardTracks/TrackA', 'hash-a', 'fr', 'Operation Alpha', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-			('RewardTracks/TrackB', 'hash-b', 'fr', 'Operation Beta', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`)
+			('RewardTracks/TrackA', 'hash-a', 'fr', 'Operation Alpha', CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)),
+			('RewardTracks/TrackB', 'hash-b', 'fr', 'Operation Beta', CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`)
 	if err != nil {
 		t.Fatalf("insert track translations: %v", err)
 	}
@@ -231,8 +231,8 @@ func TestSeasonPassRepoLoadSeasonPassTracks_UsesPlayerSnapshots(t *testing.T) {
 		INSERT INTO battlepass_item_definitions
 			(inventory_item_path, content_hash, quality, item_type, display_path, raw_payload_json, is_current, first_seen_at, last_seen_at)
 		VALUES
-			('Inventory/Reward-1.json', 'item-1', 'rare', 'ArmorCoating', 'progression/items/reward-1.png', '{}', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-			('Inventory/Reward-2.json', 'item-2', 'epic', 'ArmorEffect', 'progression/items/reward-2.png', '{}', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`)
+			('Inventory/Reward-1.json', 'item-1', 'rare', 'ArmorCoating', 'progression/items/reward-1.png', '{}', TRUE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)),
+			('Inventory/Reward-2.json', 'item-2', 'epic', 'ArmorEffect', 'progression/items/reward-2.png', '{}', TRUE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`)
 	if err != nil {
 		t.Fatalf("insert item definitions: %v", err)
 	}
@@ -240,8 +240,8 @@ func TestSeasonPassRepoLoadSeasonPassTracks_UsesPlayerSnapshots(t *testing.T) {
 		INSERT INTO battlepass_item_translations
 			(inventory_item_path, content_hash, lang, title, description, first_seen_at, last_seen_at)
 		VALUES
-			('Inventory/Reward-1.json', 'item-1', 'fr', 'Récompense 1', 'Description 1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-			('Inventory/Reward-2.json', 'item-2', 'fr', 'Récompense 2', 'Description 2', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`)
+			('Inventory/Reward-1.json', 'item-1', 'fr', 'Récompense 1', 'Description 1', CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)),
+			('Inventory/Reward-2.json', 'item-2', 'fr', 'Récompense 2', 'Description 2', CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`)
 	if err != nil {
 		t.Fatalf("insert item translations: %v", err)
 	}
@@ -251,8 +251,8 @@ func TestSeasonPassRepoLoadSeasonPassTracks_UsesPlayerSnapshots(t *testing.T) {
 			(snapshot_at, xuid, reward_track_path, is_active, current_rank, partial_progress,
 			 is_owned, has_reached_max_rank, base_xp, boost_xp, state_hash, raw_payload_json)
 		VALUES
-			(CURRENT_TIMESTAMP, 'xuid-1', 'RewardTracks/TrackA', TRUE, 12, 300, TRUE, FALSE, 1200, 200, 'state-a', '{}'),
-			(CURRENT_TIMESTAMP, 'xuid-1', 'RewardTracks/TrackB', FALSE, 20, 0, TRUE, TRUE, 2000, 0, 'state-b', '{}')`)
+			(CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), 'xuid-1', 'RewardTracks/TrackA', TRUE, 12, 300, TRUE, FALSE, 1200, 200, 'state-a', '{}'),
+			(CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), 'xuid-1', 'RewardTracks/TrackB', FALSE, 20, 0, TRUE, TRUE, 2000, 0, 'state-b', '{}')`)
 	if err != nil {
 		t.Fatalf("insert player snapshots: %v", err)
 	}
@@ -336,7 +336,7 @@ func TestSeasonPassRepoLoadSeasonPassTracks_FallbackTitleFromRawPayload(t *testi
 		VALUES
 			('RewardTracks/TrackC', 'hash-c', 1000, 'progression/track-c.png', 'progression/bg-c.png',
 			 '{"BattlePassImage":"progression/track-c.png","BackgroundImagePath":"progression/bg-c.png","XpPerRank":1000,"Ranks":[{"Rank":1,"FreeRewards":{"InventoryRewards":[{"InventoryItemPath":"Inventory/HelmetMarkVB.json"}]},"PaidRewards":{"InventoryRewards":[]}}]}',
-			 TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`)
+			 TRUE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`)
 	if err != nil {
 		t.Fatalf("insert track: %v", err)
 	}
@@ -351,7 +351,7 @@ func TestSeasonPassRepoLoadSeasonPassTracks_FallbackTitleFromRawPayload(t *testi
 		VALUES
 			('Inventory/HelmetMarkVB.json', 'item-c', 'Epic', '',
 			 'progression/Inventory/Armor/Helmets/eod.png', ?,
-			 TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`, rawItem)
+			 TRUE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`, rawItem)
 	if err != nil {
 		t.Fatalf("insert item def: %v", err)
 	}
@@ -361,7 +361,7 @@ func TestSeasonPassRepoLoadSeasonPassTracks_FallbackTitleFromRawPayload(t *testi
 			(snapshot_at, xuid, reward_track_path, is_active, current_rank, partial_progress,
 			 is_owned, has_reached_max_rank, base_xp, boost_xp, state_hash, raw_payload_json)
 		VALUES
-			(CURRENT_TIMESTAMP, 'xuid-2', 'RewardTracks/TrackC', TRUE, 1, 0, TRUE, FALSE, 0, 0, 'state-c', '{}')`)
+			(CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), 'xuid-2', 'RewardTracks/TrackC', TRUE, 1, 0, TRUE, FALSE, 0, 0, 'state-c', '{}')`)
 	if err != nil {
 		t.Fatalf("insert snapshot: %v", err)
 	}

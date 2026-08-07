@@ -67,8 +67,8 @@ func openCSRPlayerFileDB(t *testing.T) *sql.DB {
 			playlist_group                VARCHAR,
 			start_time                    TIMESTAMP,
 			measurement_matches_remaining INTEGER DEFAULT 0,
-			created_at                    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			updated_at                    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			created_at                    TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+			updated_at                    TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
 		CREATE INDEX idx_msr_rating_type ON match_skill_rank(rating_type);
 		CREATE INDEX idx_msr_playlist    ON match_skill_rank(playlist_group);
@@ -101,8 +101,8 @@ func openCSRSharedFileDB(t *testing.T) *sql.DB {
 			rating_delta                  FLOAT,
 			measurement_matches_remaining INTEGER DEFAULT 0,
 			season_id                     VARCHAR,
-			created_at                    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			updated_at                    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			created_at                    TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+			updated_at                    TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			PRIMARY KEY (match_id, xuid)
 		);
 		CREATE INDEX idx_match_csrs_xuid   ON match_csrs(xuid);

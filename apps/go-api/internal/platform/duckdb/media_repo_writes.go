@@ -161,10 +161,17 @@ func (r *MediaRepo) SetMediaLikeAtomic(
 	}
 
 	// APPEND-ONLY : like/unlike = INSERT pur d'event dans media_likes_history.
+	//
+	// liked_at en UTC EXPLICITE (lot S6) : la route NOMINALE de la meme colonne
+	// (persist.SharedSocialPersister.AddLike) pose `time.Now().UTC()`. Un
+	// `CURRENT_TIMESTAMP` nu rendrait ici un TIMESTAMPTZ coerce par le fuseau de SESSION,
+	// soit deux horloges sur une seule colonne : le tri d'affichage des likers
+	// (GetMediaLikers, ORDER BY liked_at) melangerait alors deux referentiels, et la ligne
+	// serait incoherente avec son propre written_at, deja canonique.
 	if liked {
 		_, err := exec.ExecContext(ctx, `
 			INSERT INTO media_likes_history (media_path, liker_slug, liker_gamertag, is_liked, liked_at)
-			VALUES (?, ?, ?, TRUE, CURRENT_TIMESTAMP)
+			VALUES (?, ?, ?, TRUE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))
 		`, filePath, likerSlug, likerGamertag)
 		if err != nil {
 			return true, fmt.Errorf("SetMediaLikeAtomic add event media_likes_history: %w", err)
@@ -204,10 +211,11 @@ func (r *MediaRepo) ToggleSharedLike(ctx context.Context, mediaPath, likerSlug, 
 	// APPEND-ONLY : like/unlike = INSERT pur d'event (is_liked TRUE/FALSE) dans
 	// media_likes_history. Plus de DELETE ni ON CONFLICT → surface ART éliminée
 	// (Exec simple suffit). CHECKPOINT conservé (durabilité, ADR 0021 Phase 3.2).
+	// liked_at en UTC explicite, meme raison qu'en route nominale ci-dessus (lot S6).
 	if liked {
 		_, err := r.socialDB().Exec(ctx, `
 			INSERT INTO media_likes_history (media_path, liker_slug, liker_gamertag, is_liked, liked_at)
-			VALUES (?, ?, ?, TRUE, CURRENT_TIMESTAMP)
+			VALUES (?, ?, ?, TRUE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))
 		`, mediaPath, likerSlug, likerGamertag)
 		if err != nil {
 			return err
