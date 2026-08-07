@@ -30,7 +30,7 @@ func metadataRootSteps() []migration.Migration {
 						lang        VARCHAR NOT NULL,
 						name        VARCHAR NOT NULL,
 						description VARCHAR,
-						fetched_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						fetched_at  TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						PRIMARY KEY (asset_id, asset_type, lang)
 					);
 					CREATE INDEX IF NOT EXISTS idx_asset_tr_id_type ON asset_translations(asset_id, asset_type);

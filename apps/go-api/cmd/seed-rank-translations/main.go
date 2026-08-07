@@ -87,7 +87,7 @@ func run(titleID string, dryRun bool) error {
 			title      VARCHAR,
 			subtitle   VARCHAR,
 			tier       VARCHAR,
-			fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			fetched_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			PRIMARY KEY (rank_id, lang)
 		)
 	`); err != nil {

@@ -47,7 +47,7 @@ func basePourReprise(t *testing.T) *sql.DB {
 			kill_count      INTEGER DEFAULT 1,
 			time_ms         INTEGER,
 			is_validated    BOOLEAN DEFAULT FALSE,
-			created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			created_at      TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		)`,
 		`CREATE TABLE xuid_aliases (xuid VARCHAR, gamertag VARCHAR)`,
 		`CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR, gamertag VARCHAR)`,

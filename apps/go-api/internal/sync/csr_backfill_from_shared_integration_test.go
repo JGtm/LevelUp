@@ -41,8 +41,8 @@ func openCSRProjectionDBs(t *testing.T) (playerDB, sharedDB *sql.DB) {
 			start_time                    TIMESTAMPTZ,
 			measurement_matches_remaining INTEGER DEFAULT 0,
 			written_at                    TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
-			created_at                    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			updated_at                    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			created_at                    TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+			updated_at                    TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
 		CREATE OR REPLACE VIEW match_skill_rank_latest AS
 			SELECT * FROM match_skill_rank
@@ -80,8 +80,8 @@ func openCSRProjectionDBs(t *testing.T) (playerDB, sharedDB *sql.DB) {
 			measurement_matches_remaining INTEGER DEFAULT 0,
 			season_id                     VARCHAR,
 			written_at                    TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
-			created_at                    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			updated_at                    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			created_at                    TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+			updated_at                    TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
 		CREATE OR REPLACE VIEW match_csrs_latest AS
 			SELECT * FROM match_csrs

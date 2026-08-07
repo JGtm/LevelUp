@@ -139,7 +139,7 @@ const ddlEngagementResponseBins = `
 		upper_bound DOUBLE NOT NULL,
 		coef_lobby DOUBLE NOT NULL,
 		n_matches INTEGER NOT NULL,
-		last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		last_updated TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 		PRIMARY KEY (xuid, mode_category, intensity_bin)
 	);`
 
@@ -265,7 +265,7 @@ func applyBaselinePlayerV1Tables(db *sql.DB) error {
 			start_time TIMESTAMP,
 			end_time TIMESTAMP,
 			match_count INTEGER DEFAULT 0,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			created_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
 
 		-- match_citations (PK match_id, citation_name_norm).
@@ -273,14 +273,14 @@ func applyBaselinePlayerV1Tables(db *sql.DB) error {
 			match_id VARCHAR NOT NULL,
 			citation_name_norm VARCHAR NOT NULL,
 			value INTEGER NOT NULL DEFAULT 1,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			created_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			PRIMARY KEY (match_id, citation_name_norm)
 		);
 
 		-- skill_history (sans PK).
 		CREATE TABLE IF NOT EXISTS skill_history (
 			playlist_id VARCHAR,
-			recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			recorded_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			csr INTEGER,
 			tier VARCHAR,
 			division INTEGER,
@@ -300,8 +300,8 @@ func applyBaselinePlayerV1Tables(db *sql.DB) error {
 			rating_delta FLOAT,
 			playlist_group VARCHAR,
 			start_time TIMESTAMP,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			created_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+			updated_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			measurement_matches_remaining INTEGER DEFAULT 0,
 			expected_win_prob FLOAT
 		);
@@ -310,7 +310,7 @@ func applyBaselinePlayerV1Tables(db *sql.DB) error {
 
 		-- challenge_snapshots (sans PK) : base + render columns + display_path.
 		CREATE TABLE IF NOT EXISTS challenge_snapshots (
-			snapshot_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			snapshot_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			xuid VARCHAR NOT NULL,
 			challenge_path VARCHAR NOT NULL,
 			challenge_id VARCHAR,
@@ -333,7 +333,7 @@ func applyBaselinePlayerV1Tables(db *sql.DB) error {
 
 		-- battlepass_snapshots (sans PK).
 		CREATE TABLE IF NOT EXISTS battlepass_snapshots (
-			snapshot_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			snapshot_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			xuid VARCHAR NOT NULL,
 			reward_track_path VARCHAR NOT NULL,
 			is_active BOOLEAN NOT NULL DEFAULT FALSE,
@@ -364,7 +364,7 @@ func applyBaselinePlayerV1Tables(db *sql.DB) error {
 			unlocked_at TIMESTAMP,
 			current_progress INTEGER,
 			target_progress INTEGER,
-			fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			fetched_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
 
 		-- engagement_coefficients (PK xuid, mode_category).
@@ -374,7 +374,7 @@ func applyBaselinePlayerV1Tables(db *sql.DB) error {
 			coef_team_share DOUBLE NOT NULL,
 			coef_lobby_share DOUBLE NOT NULL,
 			n_matches INTEGER NOT NULL,
-			last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			last_updated TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			PRIMARY KEY (xuid, mode_category)
 		);
 		-- engagement_response_bins : émise par ensureBaselinePlayerV1AdditiveColumns

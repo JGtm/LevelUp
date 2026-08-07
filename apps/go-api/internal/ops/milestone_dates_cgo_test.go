@@ -126,7 +126,7 @@ func TestBackfillMilestoneDates_DryRunThenApply(t *testing.T) {
 	if _, err := stats.Exec(`
 		CREATE TABLE milestone_earned (
 			user_id VARCHAR NOT NULL, title_slug VARCHAR NOT NULL, milestone_id VARCHAR NOT NULL,
-			earned_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			earned_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			PRIMARY KEY (user_id, title_slug, milestone_id)
 		);
 		CREATE INDEX idx_ms_earned_user_title ON milestone_earned(user_id, title_slug);

@@ -196,7 +196,7 @@ func (s *PersistSink) insertBattlePassSnapshot(
 	err = db.QueryRow(ctx, `
 		SELECT COUNT(*) FROM battlepass_snapshots
 		WHERE xuid = ? AND reward_track_path = ? AND state_hash = ?
-		  AND snapshot_at > CURRENT_TIMESTAMP - INTERVAL 1 DAY`,
+		  AND snapshot_at > CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP) - INTERVAL 1 DAY`,
 		s.XUID, track.RewardTrackPath, stateHash,
 	).Scan(&existing)
 	if err == nil && existing > 0 {

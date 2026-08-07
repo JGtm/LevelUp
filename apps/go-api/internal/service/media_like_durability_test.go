@@ -79,7 +79,7 @@ func socialDBForLikeTest(t *testing.T) (*duckdb.DB, string) {
 			id BIGINT PRIMARY KEY DEFAULT nextval('media_match_associations_history_id_seq'),
 			media_file_id BIGINT NOT NULL, match_id VARCHAR NOT NULL, delta_seconds INTEGER,
 			is_manual BOOLEAN NOT NULL DEFAULT FALSE, is_active BOOLEAN NOT NULL DEFAULT TRUE,
-			associated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			associated_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			written_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
 		CREATE OR REPLACE VIEW media_match_associations_latest AS

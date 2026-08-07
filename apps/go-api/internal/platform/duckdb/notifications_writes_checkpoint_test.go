@@ -50,7 +50,7 @@ func newNotifSocialDB(t *testing.T) *duckdb.DB {
 			severity VARCHAR NOT NULL DEFAULT 'info', title_key VARCHAR NOT NULL,
 			body_key VARCHAR, params VARCHAR, target_route VARCHAR, target_search VARCHAR,
 			actor_xuid VARCHAR, actor_name VARCHAR, source VARCHAR NOT NULL,
-			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, read_at TIMESTAMP,
+			created_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), read_at TIMESTAMP,
 			PRIMARY KEY (xuid, id)
 		);
 		CREATE SEQUENCE IF NOT EXISTS player_notifications_history_seq START 1;
@@ -75,7 +75,7 @@ func newNotifSocialDB(t *testing.T) *duckdb.DB {
 		CREATE TABLE IF NOT EXISTS notification_preferences (
 			xuid VARCHAR NOT NULL, category VARCHAR NOT NULL,
 			enabled BOOLEAN NOT NULL DEFAULT TRUE, delivery VARCHAR NOT NULL DEFAULT 'both',
-			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			PRIMARY KEY (xuid, category)
 		);
 	`

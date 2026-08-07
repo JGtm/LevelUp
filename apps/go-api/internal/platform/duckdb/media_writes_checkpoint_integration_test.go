@@ -64,7 +64,7 @@ func createSharedSocialSchemaForMediaTests(t *testing.T) *DB {
 			match_id VARCHAR,
 			delta_seconds INTEGER DEFAULT 0,
 			is_manual BOOLEAN DEFAULT FALSE,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			created_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			PRIMARY KEY (media_file_id, match_id)
 		);
 		CREATE SEQUENCE IF NOT EXISTS media_match_associations_history_id_seq START 1;
@@ -72,7 +72,7 @@ func createSharedSocialSchemaForMediaTests(t *testing.T) *DB {
 			id BIGINT PRIMARY KEY DEFAULT nextval('media_match_associations_history_id_seq'),
 			media_file_id BIGINT NOT NULL, match_id VARCHAR NOT NULL, delta_seconds INTEGER,
 			is_manual BOOLEAN NOT NULL DEFAULT FALSE, is_active BOOLEAN NOT NULL DEFAULT TRUE,
-			associated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			associated_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			written_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
 		CREATE OR REPLACE VIEW media_match_associations_latest AS
@@ -89,7 +89,7 @@ func createSharedSocialSchemaForMediaTests(t *testing.T) *DB {
 			media_path VARCHAR NOT NULL,
 			liker_slug VARCHAR NOT NULL,
 			liker_gamertag VARCHAR,
-			liked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			liked_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			PRIMARY KEY (media_path, liker_slug)
 		);
 		CREATE SEQUENCE IF NOT EXISTS media_likes_history_id_seq START 1;
@@ -107,7 +107,7 @@ func createSharedSocialSchemaForMediaTests(t *testing.T) *DB {
 		CREATE TABLE IF NOT EXISTS match_favorites (
 			player_slug VARCHAR NOT NULL,
 			match_id VARCHAR NOT NULL,
-			favorited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			favorited_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			PRIMARY KEY (player_slug, match_id)
 		);
 	`

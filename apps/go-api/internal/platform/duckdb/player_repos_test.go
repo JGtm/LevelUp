@@ -322,7 +322,7 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 			current_measurement_remaining INTEGER,
 			season_value FLOAT, season_tier VARCHAR, season_sub_tier SMALLINT,
 			alltime_value FLOAT, alltime_tier VARCHAR, alltime_sub_tier SMALLINT,
-			fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			fetched_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			written_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`,
 		`CREATE OR REPLACE VIEW player_csr_snapshots_latest AS
 			SELECT * FROM player_csr_snapshots
@@ -357,7 +357,7 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 			component_name VARCHAR NOT NULL,
 			value DOUBLE NOT NULL,
 			weight DOUBLE NOT NULL DEFAULT 1.0,
-			computed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			computed_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			PRIMARY KEY (match_id, component_name))`,
 		// Vue _latest (append-only ART) : les readers lisent désormais
 		// lusr_component_history_latest. Le fixture seed 1 ligne par
@@ -474,7 +474,7 @@ func seedSharedSocialSchema(t *testing.T, db *DB) {
 			delta_seconds INTEGER,
 			is_manual BOOLEAN NOT NULL DEFAULT FALSE,
 			is_active BOOLEAN NOT NULL DEFAULT TRUE,
-			associated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			associated_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			written_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		)`,
 		`CREATE OR REPLACE VIEW media_match_associations_latest AS

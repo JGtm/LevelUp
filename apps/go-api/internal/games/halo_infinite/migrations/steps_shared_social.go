@@ -53,8 +53,8 @@ func sharedSocialRootSteps() []migration.Migration {
 						-- media_likes_latest. Les DB antérieures sont nettoyées par
 						-- drop_media_files_liked_columns_v1 (steps_shared_social_media_files_drop_liked.go) —
 						-- les rajouter ici ferait renaître la colonne sur DB fraîche.
-						created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-						updated_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+						created_at           TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+						updated_at           TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 					);
 					CREATE INDEX IF NOT EXISTS idx_mf_player_slug ON media_files(player_slug);
 					-- PAS d'idx_mf_kind : kind est muté (insertMediaFile conversion/HLS/reconcile)
@@ -65,7 +65,7 @@ func sharedSocialRootSteps() []migration.Migration {
 						media_file_id  VARCHAR NOT NULL,
 						match_id       VARCHAR NOT NULL,
 						delta_seconds  INTEGER,
-						created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						created_at     TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						PRIMARY KEY (media_file_id, match_id)
 					);
 					CREATE INDEX IF NOT EXISTS idx_mma_match ON media_match_associations(match_id);
@@ -74,7 +74,7 @@ func sharedSocialRootSteps() []migration.Migration {
 						media_path      VARCHAR NOT NULL,
 						liker_slug      VARCHAR NOT NULL,
 						liker_gamertag  VARCHAR,
-						liked_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						liked_at        TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						PRIMARY KEY (media_path, liker_slug)
 					);
 					CREATE INDEX IF NOT EXISTS idx_ml_media_path ON media_likes(media_path);
@@ -82,7 +82,7 @@ func sharedSocialRootSteps() []migration.Migration {
 					CREATE TABLE IF NOT EXISTS match_favorites (
 						player_slug   VARCHAR NOT NULL,
 						match_id      VARCHAR NOT NULL,
-						favorited_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						favorited_at  TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						PRIMARY KEY (player_slug, match_id)
 					);
 					CREATE INDEX IF NOT EXISTS idx_mfav_player ON match_favorites(player_slug);
@@ -108,7 +108,7 @@ func sharedSocialRootSteps() []migration.Migration {
 						actor_xuid    VARCHAR,
 						actor_name    VARCHAR,
 						source        VARCHAR NOT NULL,
-						created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						created_at    TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						read_at       TIMESTAMP,
 						PRIMARY KEY (xuid, id)
 					);
@@ -124,7 +124,7 @@ func sharedSocialRootSteps() []migration.Migration {
 						category   VARCHAR NOT NULL,
 						enabled    BOOLEAN NOT NULL DEFAULT TRUE,
 						delivery   VARCHAR NOT NULL DEFAULT 'both',
-						updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						updated_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						PRIMARY KEY (xuid, category)
 					);
 
@@ -134,7 +134,7 @@ func sharedSocialRootSteps() []migration.Migration {
 						value             DOUBLE NOT NULL,
 						achieved_at       TIMESTAMP,
 						achieved_match_id VARCHAR,
-						updated_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						updated_at        TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						PRIMARY KEY (xuid, metric)
 					);
 				`)
@@ -162,7 +162,7 @@ func sharedSocialRootSteps() []migration.Migration {
 						source_id     VARCHAR,
 						pp_amount     INTEGER NOT NULL DEFAULT 0,
 						tier          VARCHAR,
-						created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+						created_at    TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 					);
 					CREATE INDEX IF NOT EXISTS idx_pe_user_title ON prestige_events(user_id, title_slug);
 					CREATE INDEX IF NOT EXISTS idx_pe_created ON prestige_events(created_at);
@@ -173,7 +173,7 @@ func sharedSocialRootSteps() []migration.Migration {
 						title_slug     VARCHAR NOT NULL,
 						total_pp       INTEGER NOT NULL DEFAULT 0,
 						current_level  INTEGER NOT NULL DEFAULT 0,
-						updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						updated_at     TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						PRIMARY KEY (user_id, title_slug)
 					);
 
@@ -181,13 +181,13 @@ func sharedSocialRootSteps() []migration.Migration {
 						id          VARCHAR PRIMARY KEY,
 						name        VARCHAR NOT NULL,
 						created_by  VARCHAR NOT NULL,
-						created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+						created_at  TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 					);
 
 					CREATE TABLE IF NOT EXISTS squad_member (
 						squad_id    VARCHAR NOT NULL,
 						user_id     VARCHAR NOT NULL,
-						joined_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						joined_at   TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						PRIMARY KEY (squad_id, user_id)
 					);
 					CREATE INDEX IF NOT EXISTS idx_sm_user ON squad_member(user_id);
@@ -204,7 +204,7 @@ func sharedSocialRootSteps() []migration.Migration {
 						target_per_member DOUBLE,
 						expires_at      TIMESTAMP,
 						created_by      VARCHAR NOT NULL,
-						created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+						created_at      TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 					);
 					CREATE INDEX IF NOT EXISTS idx_sc_squad ON squad_challenge(squad_id);
 					CREATE INDEX IF NOT EXISTS idx_sc_title ON squad_challenge(title_slug);
@@ -217,7 +217,7 @@ func sharedSocialRootSteps() []migration.Migration {
 						current_value       DOUBLE NOT NULL DEFAULT 0,
 						completed_at        TIMESTAMP,
 						is_private          BOOLEAN DEFAULT FALSE,
-						joined_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						joined_at           TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						PRIMARY KEY (squad_challenge_id, user_id)
 					);
 					CREATE INDEX IF NOT EXISTS idx_scp_user ON squad_challenge_participant(user_id);
@@ -485,7 +485,7 @@ func sharedSocialSteps() []migration.Migration {
 						achieved_match_id    VARCHAR,
 						previous_value       DOUBLE,
 						previous_achieved_at TIMESTAMP,
-						updated_at           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						updated_at           TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						PRIMARY KEY (xuid, metric, period)
 					);
 
@@ -535,7 +535,7 @@ func sharedSocialSteps() []migration.Migration {
 						actor_xuid    VARCHAR,
 						actor_name    VARCHAR,
 						source        VARCHAR NOT NULL,
-						created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						created_at    TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						read_at       TIMESTAMP,
 						PRIMARY KEY (xuid, id)
 					)`,
@@ -574,7 +574,7 @@ func sharedSocialSteps() []migration.Migration {
 						squad_id   VARCHAR NOT NULL,
 						xuid       VARCHAR NOT NULL,
 						user_id    VARCHAR,
-						joined_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						joined_at  TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						PRIMARY KEY (squad_id, xuid)
 					);
 					CREATE INDEX IF NOT EXISTS idx_sm_xuid ON squad_member(xuid);

@@ -79,7 +79,7 @@ func milestoneCatalogSchemaStep() migration.Migration {
 					condition    VARCHAR,
 					condition_fr VARCHAR,
 					condition_en VARCHAR,
-					updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+					updated_at   TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 				);
 			`)
 		},

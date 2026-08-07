@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS personal_score_awards (
     award_category VARCHAR,
     award_count INTEGER  DEFAULT 1,
     award_score INTEGER  DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 );
 CREATE TABLE IF NOT EXISTS match_skill_rank (
     match_id          VARCHAR PRIMARY KEY,
@@ -61,8 +61,8 @@ CREATE TABLE IF NOT EXISTS match_skill_rank (
     rating_delta      FLOAT,
     playlist_group    VARCHAR,
     start_time        TIMESTAMP,
-    created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at        TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+    updated_at        TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 );
 -- Crée aussi player_match_enrichment EN AMONT des migrations addColumnIfMissing
 -- qui dépendent de son existence (engagement migration skip si table absente).
@@ -78,8 +78,8 @@ CREATE TABLE IF NOT EXISTS player_match_enrichment (
     friends_xuids          VARCHAR,
     had_bot_teammate       BOOLEAN,
     is_excluded            BOOLEAN   DEFAULT FALSE,
-    created_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at             TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+    updated_at             TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 );
 `
 

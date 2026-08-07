@@ -1134,7 +1134,7 @@ func borrowDemoIdentity(ctx context.Context, demoPlayerDB, playersDir, demoXUID 
 	// anonymise le xuid et rend la row la plus récente (recorded_at = now).
 	stmt := fmt.Sprintf(`
 		INSERT INTO career_progression BY NAME
-		SELECT * REPLACE ('%s' AS xuid, CURRENT_TIMESTAMP AS recorded_at)
+		SELECT * REPLACE ('%s' AS xuid, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP) AS recorded_at)
 		FROM idsrc.career_progression
 		WHERE NULLIF(TRIM(emblem_image_url), '') IS NOT NULL
 		  AND NULLIF(TRIM(banner_image_url), '') IS NOT NULL
