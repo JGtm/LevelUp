@@ -2,17 +2,29 @@
 //
 // Port de src/data/comeback_backfill.py.
 //
-// Le routage dépend du mode (objectiveevents.ObjectiveTypeOf sur game_variant_name) :
+// Deux sources de courbe, dans cet ordre :
 //
-//   - Mode "flag" (CTF) : chemin OBJECTIF. La courbe de score vient des captures
-//     (match_objective_events), pas des kills ni de la médaille Steaktacular.
-//   - Mode "zone"/"hill"/"skull" (Strongholds/KOTH/Oddball) : retourne 0 tant que
-//     le décodeur de score-over-time n'est pas câblé (cf. computeMatchDominanceFlag).
-//   - Mode "" (non-objectif, ex. Slayer) : chemin HISTORIQUE inchangé :
-//     1. DOMINATION   : médaille Steaktacular (ID 1169390319) gagnée par mon équipe.
-//     2. HUMILIATION  : médaille Steaktacular gagnée par l'équipe adverse.
-//     3-5. REMONTADA / DÉBÂCLE / CONTRE-REMONTADA : score curve depuis kill events,
+//  1. Courbe OBJECTIF (match_objective_events) — seulement en CTF, où 1 capture
+//     vaut 1 point : la courbe EST le score. Quand elle existe elle PRIME, et le
+//     chemin historique n'est alors pas consulté (ne pas mélanger deux sources).
+//     Les modes zone/hill/skull en sont exclus : leur score vient de ticks, pas
+//     d'un compte d'events — on ne fabrique pas de fausse courbe. Leur score
+//     over-time EST décodé (internal/analysis/objectivescore, Strongholds/KOTH)
+//     mais n'est produit que par cmd/diag_weapons_v3 vers
+//     match_objective_score_timeline : le brancher ici suppose de le peupler en
+//     live d'abord — ne pas le réimplémenter.
+//  2. Chemin HISTORIQUE sinon, y compris pour un mode à objectif sans courbe.
+//     Dans l'ordre : DOMINATION si la médaille Steaktacular (ID 1169390319) est
+//     gagnée par mon équipe ; HUMILIATION si elle l'est par l'équipe adverse ;
+//     puis REMONTADA / DÉBÂCLE / CONTRE-REMONTADA depuis la courbe de kills,
 //     uniquement si game_variant_name like '%slayer%'.
+//
+// Le repli 2 n'est pas cosmétique : la courbe objectif n'est peuplée QUE par le
+// backfill film (cmd/diag_weapons_v3 -write), aucune étape de sync ne l'alimente.
+// Sans lui, tout match à objectif nouvellement syncé recevrait un flag 0 DÉFINITIF
+// (0 est terminal — selectMatchesMissingDominanceFlags ne re-traite que les NULL).
+// C'est la régression corrigée ici (audit 2026-08-06, P0). Le jour où la sync
+// peuple les events objectif, le repli devient inerte de lui-même en CTF.
 //
 // Les valeurs 3-5 utilisent l'algo ComputeDominanceFlag (analysis/comeback.go)
 // avec la sensibilité "standard", quelle que soit la source de courbe.
@@ -22,6 +34,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"levelup/go-api/internal/analysis"
@@ -76,27 +89,21 @@ func computeMatchDominanceFlag(ctx context.Context, db *sql.DB, xuid, matchID st
 		return 0, nil // non critique
 	}
 
-	switch objectiveevents.ObjectiveTypeOf(gameVariant) {
-	case objectiveevents.ObjectiveTypeFlag:
-		// CTF : courbe de score depuis les captures objectif (pas de Steaktacular).
-		return computeCTFDominanceFlag(ctx, db, matchID, myTeamID, outcome)
-	case objectiveevents.ObjectiveTypeZone,
-		objectiveevents.ObjectiveTypeHill,
-		objectiveevents.ObjectiveTypeSkull:
-		// TODO(objectif) : score continu non décodé (Value nil sur th=10) — la
-		// dominance objectif reste limitée au CTF tant que le décodeur de
-		// score-over-time (byte842 varint Strongholds, etc.) n'est pas câblé.
-		// On NE fabrique PAS de fausse courbe depuis des counts d'events.
-		return analysis.DominanceFlagNone, nil
-	default:
-		// Mode non-objectif (Slayer, etc.) : chemin historique inchangé.
-		return computeSlayerDominanceFlag(ctx, db, matchID, gameVariant, myTeamID, outcome)
+	// CTF : la courbe de captures prime quand elle existe. Les autres modes à
+	// objectif (zone/hill/skull) marquent au tick, pas à l'event : leur courbe de
+	// score reste non décodée en live, ils passent directement au repli.
+	if objectiveevents.ObjectiveTypeOf(gameVariant) == objectiveevents.ObjectiveTypeFlag {
+		if flag, ok := objectiveCurveDominanceFlag(ctx, db, matchID, myTeamID, outcome); ok {
+			return flag, nil
+		}
 	}
+	return computeHistoricalDominanceFlag(ctx, db, matchID, gameVariant, myTeamID, outcome)
 }
 
-// computeSlayerDominanceFlag applique le chemin historique (médaille Steaktacular
-// puis courbe de score depuis les kill events), réservé aux modes non-objectif.
-func computeSlayerDominanceFlag(
+// computeHistoricalDominanceFlag applique le chemin historique : médaille
+// Steaktacular, puis courbe de score depuis les kill events (modes Slayer
+// uniquement). Sert aussi de repli aux modes à objectif privés de courbe.
+func computeHistoricalDominanceFlag(
 	ctx context.Context, db *sql.DB, matchID, gameVariant string, myTeamID, outcome int,
 ) (int, error) {
 	// 1. Vérifier médaille Steaktacular (DOMINATION / HUMILIATION).
@@ -160,24 +167,31 @@ func computeSlayerDominanceFlag(
 	), nil
 }
 
-// computeCTFDominanceFlag construit la courbe de score d'un match CTF depuis les
-// captures (match_objective_events) et délègue à ComputeDominanceFlag. Retourne 0
-// si aucune capture exploitable n'est disponible (courbe vide).
-func computeCTFDominanceFlag(
+// objectiveCurveDominanceFlag construit la courbe de score d'un match CTF depuis
+// les captures (match_objective_events) et délègue à ComputeDominanceFlag.
+//
+// Le second retour dit si la courbe était exploitable. false => l'appelant
+// retombe sur le chemin historique ; il ne persiste JAMAIS un 0 muet, qui serait
+// définitif et indiscernable d'une absence réelle de dominance.
+func objectiveCurveDominanceFlag(
 	ctx context.Context, db *sql.DB, matchID string, myTeamID, outcome int,
-) (int, error) {
+) (int, bool) {
 	events, err := loadCaptureEvents(ctx, db, matchID)
 	if err != nil {
-		return 0, nil // non critique : pas de courbe -> pas de flag
+		// Table absente (migration shared_objective_events_v1 non passée), verrou
+		// ou invalidation : tracer AVANT de dégrader (règle 3), le repli couvre.
+		slog.WarnContext(ctx, "objectiveCurveDominanceFlag: lecture des captures",
+			"match_id", matchID, "err", err)
+		return 0, false
 	}
 	snapshots := analysis.BuildObjectiveScoreSnapshots(events)
 	if len(snapshots) == 0 {
-		return analysis.DominanceFlagNone, nil
+		return 0, false
 	}
 	return analysis.ComputeDominanceFlag(
 		snapshots, myTeamID, outcome,
 		"standard", false, false, matchID,
-	), nil
+	), true
 }
 
 // loadTeamScoresOrKillSums retourne (team0, team1) en privilégiant les scores
