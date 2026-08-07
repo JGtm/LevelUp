@@ -1,3 +1,74 @@
+## [2026-08-07] v7.5 lot 1 — la dominance des modes à objectifs, et un test qui figeait une prémisse fausse
+
+**Statut** : Complété. Périmètre fermé au P0 + au P1 de la même fonction, chaque item statué.
+Branche `feat/v75-objectifs` depuis `origin/main` (4886ed9ea, S6 mergé), worktree
+`LevelUp-wt-replay2d`. NON mergée — le merge (= déploiement prod) reste au superviseur.
+
+**La garde d'amorçage a mordu, et c'était utile.** La session devait brancher depuis
+`origin/main` à condition que S6 y soit. Il n'y était pas : `cf0a494c3` vivait sur sa branche,
+sans PR, CI verte au niveau job. Arrêt, remontée, merge par le superviseur, reprise. Le temps
+d'attente a servi à l'état de l'art, qui ne dépendait pas de la base de branche.
+
+**Ce que l'état de l'art a renversé.** L'audit du 2026-08-06 proposait trois options pour le
+P0 et escaladait le choix. Deux faits l'ont tranché. D'abord, le décodeur de score over-time
+que `comeback.go` déclarait « non câblé » EXISTE : `internal/analysis/objectivescore`
+(`DecodeScoreTimeline`, `DecodeStrongholds`, `DecodeKOTH`). Ce qui manque n'est pas le
+décodage mais le peuplement : `match_objective_events` comme
+`match_objective_score_timeline` n'ont qu'un seul écrivain, `cmd/diag_weapons_v3 -write`,
+un CLI manuel. Le commentaire était de la doc inversée. Ensuite, la portée dépassait le CTF :
+`classifyObjectiveMode` capture ctf/flag, stronghold/land grab/total control, koth, oddball —
+mesuré sur le corpus local, 643 matchs à objectif contre 1297 non-objectif, environ un tiers
+du volume, chacun promis à un `dominance_flag = 0` définitif (0 est terminal,
+`selectMatchesMissingDominanceFlags` ne re-traite que les NULL).
+
+**Le test verrouillait l'intention, pas le bug — et c'est pour ça qu'il fallait le réécrire.**
+`TestBackfillDominanceFlags_CTFNoCapturesNoFlag` semait une Steaktacular et exigeait flag=0,
+au nom d'une règle saine : ne pas mélanger deux sources sur la même courbe. Sa prémisse
+implicite — « une courbe vide signifie vraiment aucune capture » — est fausse en production,
+où la source n'est jamais peuplée. Corriger une prémisse n'est pas casser un garde-rail :
+l'intention d'origine survit dans `CTFRemontadaFromCaptures`, où la courbe existe et où la
+Steaktacular reste ignorée.
+
+**Le correctif.** Le routage `switch` par famille disparaît au profit d'une règle en deux
+temps : la courbe objectif prime en CTF quand elle est exploitable, sinon le chemin historique
+reprend la main. Les modes zone/hill/skull ne tentent jamais la courbe — leur score vient de
+ticks, pas d'un compte d'events, et la décision de ne pas fabriquer de fausse courbe est
+conservée telle quelle. `computeSlayerDominanceFlag` devient `computeHistoricalDominanceFlag`,
+son nom d'origine étant devenu faux le jour où elle sert aussi de repli.
+
+**Le P1 traité autrement que ne le proposait l'audit, et pourquoi.** L'audit suggérait de
+logger l'erreur de lecture des captures puis de la propager, le chemin de sécurité en aval
+retirant le match du lot. Ce remède avait été conçu sans le repli. Avec lui, propager
+priverait de dominance tous les matchs CTF d'une base où la migration
+`shared_objective_events_v1` n'est pas passée — une erreur permanente rejouée à chaque sync.
+`objectiveCurveDominanceFlag` trace donc l'erreur en WarnContext et rend `ok=false` : le grief
+réel de l'audit — un 0 muet, définitif, indiscernable d'un calcul légitime — disparaît, sans
+créer de trou. Écart consigné ici plutôt que masqué.
+
+**Résultats.** Cinq tests sur le chemin objectif, dont deux neufs qui n'existaient pas :
+un match à objectif sans aucun signal reste à 0 (le repli ne fabrique pas de dominance), et
+une table `match_objective_events` absente part au repli au lieu de persister un 0. Les deux
+tests réécrits échouent sans le changement de code : ils exigeaient 0 là où ils exigent
+maintenant DOMINATION.
+
+**Gates.** `go test ./... -p 1` exit 0 ; `go test -tags=integration -p 1 ./...` : 134 paquets
+verts, zéro ligne `--- FAIL:` ancrée, un seul paquet tué par la limite de durée locale
+(`games/halo_infinite/migrations`, « ran too long (11m0s) ») — rejoué isolé, il passe en
+40,5 s, et la CI joue le même gate à `-timeout 600s` sur runner Linux. Aucun rapport avec le
+diff, qui ne touche que `internal/sync`. `gofmt` propre, `go vet` 0,
+`golangci-lint --new-from-merge-base=origin/main` : 0 issue. Baseline
+`tests_pre_migration.jsonl` non impactée — vérifiée sur pièces, elle date du 26/06 et ne
+contient aucun des deux tests renommés, créés en août. Rien côté `apps/web`.
+
+**Conclusion.** La régression est fermée pour les quatre familles à objectif. Ce qui reste
+ouvert et n'a pas été traité : le peuplement live des events objectif, seul moyen de rendre la
+courbe CTF réellement disponible et de brancher un jour le décodeur zones/KOTH — c'est un
+chantier de pipeline film, pas un correctif. Découverte non traitée, hors périmètre :
+`loadGameVariant` en échec renvoie `0, nil` sans même tenter le chemin historique (préexistant
+à la plage, écarté par l'audit à ce titre) ; et `steaktacularMedalIDForTitle` traite le slug
+vide comme Infinite là où le repli marge de score ne le fait pas — deux lectures divergentes
+du même cas.
+
 ## [2026-08-07] Lot S6 — la campagne UTC quitte le nom `written_at` pour la classe des horodatages d'arbitrage
 
 **Statut** : Complété. Périmètre fermé à S6a + S6b + S6c + verrou, chaque item statué. Branche
