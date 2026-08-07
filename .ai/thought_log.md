@@ -1,3 +1,137 @@
+## [2026-08-07] v7.5 lot 2 — le décodeur de score de mode rencontre enfin des octets réels
+
+**Statut** : Complété. Les 4 constats « tests objectifs » de l'audit du 2026-08-06 sont
+statués `[x]`. Branche `feat/v75-lot2` depuis `origin/main` (`f3abaa202`, lot 1 mergé),
+worktree `LevelUp-wt-replay2d`. NON mergée — le merge (= déploiement prod) reste au
+superviseur.
+
+**La garde d'amorçage a mordu une seconde fois, et elle a de nouveau servi.** Le lot devait
+partir d'un `origin/main` contenant le lot 1. `373fb933f` n'y était pas — CI encore en cours,
+aucune PR. Arrêt, remontée, merge par le superviseur (`f3abaa202`), reprise. Même motif qu'au
+lot 1 : la branche est poussée, la CI tourne, le merge attend une main humaine.
+
+**Ce que l'état de l'art a changé au cadrage, et qui doit remonter.** Le paquet
+`internal/analysis/objectivescore` porte dans son propre en-tête, depuis le 2026-08-01, la
+mention « **SUPERSÉDÉ** — ne rien construire de neuf sur ce paquet-ci ». Le handoff
+`HANDOFF_MODE_SCORE_CHAINE_2026-08-01.md` §6.2 va plus loin : sa condition de conservation a
+expiré, `objectiveevents.ScoreCurve` fait mieux sur tous les axes (per-joueur, à la ms, sans
+calibration), et **sa suppression est proposée à l'utilisateur**. Vérification faite : le
+paquet n'a AUCUN consommateur applicatif — `cmd/diag_weapons_v3` (CLI manuel),
+`platform/duckdb/objective_score_repo.go` et la migration du même nom, rien d'autre.
+`sync/comeback.go` importe `objectiveevents`, pas lui.
+
+Le lot a néanmoins été exécuté tel que cadré, pour deux raisons. D'abord parce que le paquet
+est vivant tant qu'il n'est pas supprimé, et qu'il ÉCRIT dans
+`shared.match_objective_score_timeline` : un décodeur non contraint qui écrit en base est
+exactement ce que l'audit signalait. Ensuite parce que le coût de sortie est nul — le jour où
+le paquet part, ses tests partent avec lui. **La décision de suppression reste entière et
+appartient à l'utilisateur** ; elle est simplement mieux documentée qu'avant.
+
+**Ordre d'exécution, et pourquoi il diffère de l'énoncé.** Le harnais de lecture du cache
+(constat 2) conditionne le golden sur films réels (constat 1), qui a lui-même servi à choisir
+les chunks de la minibobine (constat 4). Le constat 3, indépendant, est passé en dernier.
+L'ordre retenu est donc 2 → 1 → 4 → 3, et chaque item est statué.
+
+**Constat 2 — le test mort depuis des mois tourne, et il passe.** `cache_backed_test.go`
+tenait sa racine de cache dans une constante pointant un poste disparu ; son `t.Skip` faisait
+passer cette mort pour une absence de cache. Il lit maintenant `FILM_CACHE_ROOT`, la
+convention déjà employée par `objectiveevents`. La distinction qui compte est dans le nouveau
+`filmcache_test.go` : **variable absente = skip explicite** (légitime, les films ne sont pas
+versionnés) ; **variable présente mais fausse = échec**, jamais un skip. C'est exactement le
+régime dans lequel l'ancien test vivait sans le dire.
+
+**Constat 1 — six films, six oracles sourcés.** `golden_films_test.go` fige ce que le
+décodeur lit sur `7344d24f`, `696a9d7c` (Strongholds), `0a247154`, `01e1f945`, `606d9844`,
+`8076f97f` (KOTH). Chaque final vient d'une source citée dans le tableau du corpus — un oracle
+sans provenance ne vaut pas mieux qu'une fixture auto-validante. Le golden fige la position de
+bit du token par chunk, **les valeurs brutes AVANT calibration**, puis les valeurs publiées.
+
+Le piège qui rendait l'ancien test creux est structurel et mérite d'être retenu :
+`calibrateByFinal` remet la dernière frame EXACTEMENT sur le final DB. Toute assertion de la
+forme « la dernière frame vaut le final » est donc vraie par construction, quel que soit
+l'offset lu. **Seules les brutes répondent des positions de bit.**
+
+**Ce que les films réels ont révélé — ce sont des données, pas des échecs.**
+
+| observation | mesure |
+|---|---|
+| Strongholds, brute team0 | plafonne à **50** sur les DEUX films, finals API 193 et 200 |
+| Strongholds, brute team1 | **32** sur les deux, finals API 112 et 94 |
+| KOTH variante B, `0a247154` | fin **4-2** = final API 4-2 — le cas validé exact TIENT |
+| KOTH variante A, `606d9844` | fin **104-8** contre API 105-8 — l'off-by-one documenté |
+| KOTH variante A, `8076f97f` | fin **236-4** contre API 78-105 — sans rapport |
+| KOTH `01e1f945`, API 3-2 | l'auto-sélection prend B (final ≤ 20) et publie **0-0** |
+
+Les deux premières lignes confirment sur pièces ce que l'en-tête du paquet annonçait depuis la
+cross-validation du 2026-06-03 : la courbe Strongholds n'est pas un score per-équipe, elle ne
+« retombe sur le final » que parce qu'on la calibre dessus. La dernière ligne est un écart
+NOUVEAU, non consigné jusqu'ici : `pickKOTHVariant` choisit par ordre de grandeur du final, pas
+par contexte Ranked/Arena — sur un KOTH:Arena à final bas, elle retient la variante B, qui n'y
+fonctionne pas, et publie 0-0. **Non corrigé : hors périmètre d'un lot de tests, sur un paquet
+dont la suppression est proposée.** Consigné ici pour que la décision se prenne en connaissance
+de cause.
+
+**Constat 4 — le filet permanent, et il est petit.** `minibobine_test.go` verse deux bobines
+versionnées (Strongholds `7344d24f`, KOTH `0a247154`) et un golden qui tourne
+INCONDITIONNELLEMENT, donc en CI, sans fixture ni variable. C'est le troisième exemplaire du
+motif après `killsource` : deux fois déjà sur ce chantier un vert a été annoncé sur un garde
+qui ne tournait pas.
+
+Trois choix de fabrication méritent d'être retenus. **La troncature** : contrairement à
+`killsource`, dont le monde s'accumule depuis l'en-tête, ce décodeur est SANS ÉTAT d'un chunk
+à l'autre — chaque fichier de bobine est donc un préfixe qui s'arrête à la fin du premier
+paquet TYPE_2, et la recette REFUSE d'écrire si le préfixe ne décode pas exactement comme le
+chunk entier. **La compression** : les chunks bruts font 8 Mo de plages de zéros, zlib les
+ramène à 452 Ko, et la recette relit ce qu'elle s'apprête à écrire pour le prouver. **Les huit
+DERNIERS chunks, pas les huit premiers** : mesuré, sur les huit premiers de `0a247154` le
+score KOTH vaut encore 0-0 — une bobine qui fige des zéros ne distingue pas un décodeur juste
+d'un décodeur muet. Les huit derniers portent le 4-2, seul résultat validé exact du paquet.
+
+**Constat 3 — un verrou qui se comparait à lui-même.** `film_read_paths_test.go` opposait
+`killscope.FilmReadPaths()` à un littéral `duDecodeur` tenu à la main dans le même fichier :
+deux listes, aucune dérivée du décodeur. La liste attendue vient désormais du TEXTE de
+`killsource`, lu par l'analyseur syntaxique de Go — la réflexion ne convenait pas, les
+constantes n'existent plus à l'exécution. Un témoin d'auto-vérification échoue bruyamment si
+le scan cesse de voir les deux voies historiques : un scan qui ne trouve rien passerait sinon
+pour un décodeur sans voie.
+
+**Chaque garde a été vu rouge sur la mutation de ce qu'il garde.**
+
+| mutation | GATE 1 (CI) | golden films | cache-backed | suite d'origine |
+|---|---|---|---|---|
+| `shOffTeam0` 24 -> 23 | ROUGE | ROUGE | ROUGE (brut 32 ≠ 50) | **VERTE** |
+| `shOffTeam1` 23 -> 22 | ROUGE | — | ROUGE (brut 16 ≠ 32) | **VERTE** |
+| `tokenWinLo` 835 -> 840 | ROUGE (0 frame ancrée) | — | ROUGE (0 chunk ancré) | **VERTE** |
+| `kothBOffT0` 12 -> 11 | ROUGE | — | — | **VERTE** |
+| `PathHybrid` ajoutée | — | — | — | verrou C3 **ROUGE** |
+
+La colonne de droite est le constat de l'audit reproduit à l'identique : les fixtures
+synthétiques de `decode_test.go` sont construites AVEC les constantes du décodeur, donc les
+décaler les laisse vertes. Elles n'ont pas été retirées — elles testent la mécanique du
+lecteur de bits, ce qui reste utile ; elles ne testaient simplement rien du film. À noter
+aussi, mesuré : la mutation `PathHybrid` laisse le ratchet archlint voisin VERT (sa liste est
+fermée et il exempte `killsource/`), ce qui confirme que le verrou d'exhaustivité était le
+seul filet — et qu'il ne gardait rien.
+
+**Gates joués dans la session** : `go test ./... -p 1` vert (exit 0) ; `make go-api-lint`
+(`--new-from-merge-base=origin/main`, fichiers neufs analysés en entier) **0 issue** ;
+`go test -tags=integration -p 1 ./...` vert. Baseline `tests_pre_migration.jsonl` : **aucune
+réconciliation nécessaire**, vérifié sur pièces — aucun test supprimé ni renommé, quatre
+ajoutés, et la baseline du 2026-06-26 ne contient de toute façon ni `objectivescore` ni
+`TestFilmReadPaths*`.
+
+**Découvertes non traitées, consignées sans être corrigées** : l'auto-sélection de variante
+KOTH sur les matchs Arena à final bas (ci-dessus) ; le ratchet `killScopeRE` d'archlint porte
+une liste de voies fermée qui ne suivrait pas une troisième voie (le verrou C3 le couvre
+désormais, le ratchet non).
+
+**Décision en attente du superviseur** : le sort de `internal/analysis/objectivescore`. Le
+handoff en propose la suppression avec le mode `-score` de `cmd/diag_weapons_v3`. Ce lot rend
+cette suppression moins coûteuse à décider, pas plus difficile — les tests neufs partiraient
+avec le paquet.
+
+---
+
 ## [2026-08-07] v7.5 lot 1 — la dominance des modes à objectifs, et un test qui figeait une prémisse fausse
 
 **Statut** : Complété. Périmètre fermé au P0 + au P1 de la même fonction, chaque item statué.
