@@ -52,7 +52,7 @@ func applyFavoritesAppendOnly(db *sql.DB) error {
 			match_id     VARCHAR NOT NULL,
 			is_favorite  BOOLEAN NOT NULL,
 			favorited_at TIMESTAMP,
-			written_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			written_at   TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		)`,
 		// Index secondaire NON NULL-bearing (player_slug + match_id NOT NULL),
 		// alimenté uniquement par INSERT → jamais de retrait/relocation d'entrée ART.

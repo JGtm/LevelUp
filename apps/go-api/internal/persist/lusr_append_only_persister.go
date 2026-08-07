@@ -71,7 +71,7 @@ type LUSRRatingInsert struct {
 //	  rating_delta      FLOAT,
 //	  playlist_group    VARCHAR,
 //	  start_time        TIMESTAMP,
-//	  written_at        TIMESTAMP NOT NULL DEFAULT now(),
+//	  written_at        TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 //	  created_at        TIMESTAMP DEFAULT now(),
 //	  updated_at        TIMESTAMP DEFAULT now(),
 //	  PRIMARY KEY (match_id, rating_type, written_at)
@@ -120,7 +120,7 @@ func (p *AppendOnlyLUSRPersister) Persist(ctx context.Context, rows []LUSRRating
 		}
 		// INSERT pur. Pas de ON CONFLICT, pas de WHERE, pas de DELETE.
 		// La PK (match_id, rating_type, written_at) tolère N versions
-		// par (match_id, rating_type). written_at = now() côté DB.
+		// par (match_id, rating_type). written_at = horloge UTC côté DB.
 		rt := r.RatingType
 		if rt == "" {
 			rt = "LUSR"

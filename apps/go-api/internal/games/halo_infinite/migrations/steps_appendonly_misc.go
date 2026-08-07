@@ -57,7 +57,7 @@ func applyAppendOnlyMatchCSRs(db *sql.DB) error {
 		IDSeq:         "mcsrs_seq",
 		SyntheticCols: migration.SynthWrittenAt,
 		PostSwap: []string{
-			`ALTER TABLE match_csrs ALTER COLUMN written_at SET DEFAULT now()`,
+			`ALTER TABLE match_csrs ALTER COLUMN written_at SET DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)`,
 			`CREATE INDEX IF NOT EXISTS idx_match_csrs_lookup ON match_csrs(match_id, xuid, written_at)`,
 			`CREATE INDEX IF NOT EXISTS idx_match_csrs_xuid    ON match_csrs(xuid)`,
 			`CREATE INDEX IF NOT EXISTS idx_match_csrs_season  ON match_csrs(season_id)`,
@@ -77,7 +77,7 @@ func applyAppendOnlyPveMatchStats(db *sql.DB) error {
 		IDSeq:         "pve_seq",
 		SyntheticCols: migration.SynthWrittenAt,
 		PostSwap: []string{
-			`ALTER TABLE pve_match_stats ALTER COLUMN written_at SET DEFAULT now()`,
+			`ALTER TABLE pve_match_stats ALTER COLUMN written_at SET DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)`,
 			`CREATE INDEX IF NOT EXISTS idx_pve_lookup ON pve_match_stats(match_id, xuid, written_at)`,
 			`CREATE INDEX IF NOT EXISTS idx_pve_match  ON pve_match_stats(match_id)`,
 		},

@@ -33,7 +33,7 @@ func init() {
 					team_1_score INTEGER,
 					source       VARCHAR,
 					confidence   VARCHAR,
-					written_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+					written_at   TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 					PRIMARY KEY (match_id, time_ms)
 				);
 			`)

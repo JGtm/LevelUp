@@ -121,7 +121,7 @@ func ensureMediaTables(ctx context.Context, db *sql.DB) error {
 			is_manual     BOOLEAN NOT NULL DEFAULT FALSE,
 			is_active     BOOLEAN NOT NULL DEFAULT TRUE,
 			associated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			written_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			written_at    TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
 		CREATE INDEX IF NOT EXISTS idx_mmah_lookup ON media_match_associations_history(media_file_id, written_at DESC);
 		CREATE INDEX IF NOT EXISTS idx_mmah_match  ON media_match_associations_history(match_id);

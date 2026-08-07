@@ -37,7 +37,7 @@ func seedPlayerRecordsHistory(t *testing.T, db *sql.DB) {
 			value             DOUBLE NOT NULL,
 			achieved_at       TIMESTAMP,
 			achieved_match_id VARCHAR,
-			written_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			written_at        TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			previous_value    DOUBLE,
 			previous_achieved_at TIMESTAMP
 		);

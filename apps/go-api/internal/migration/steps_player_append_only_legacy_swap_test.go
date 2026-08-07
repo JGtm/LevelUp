@@ -16,7 +16,7 @@ import (
 // Python). Les fixtures :memory: les avaient → le bug ne sortait qu'en réel.
 //
 // La conversion append-only doit donc : ajouter `id` si absent (via séquence),
-// utiliser CURRENT_TIMESTAMP pour written_at (pas COALESCE(created_at, …)), et
+// utiliser l horloge UTC pour written_at (pas COALESCE(created_at, …)), et
 // préserver toutes les données.
 func TestPSAAppendOnly_LegacySwap_NoIdNoCreatedAt(t *testing.T) {
 	db, err := sql.Open("duckdb", ":memory:")

@@ -176,7 +176,7 @@ func playerSteps() []migration.Migration {
 						shields_available INTEGER NOT NULL DEFAULT 1,
 						status            VARCHAR NOT NULL DEFAULT 'active',
 						broken_at         TIMESTAMP,
-						written_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+						written_at        TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 					);
 					CREATE INDEX idx_streak_history_lookup
 						ON streak_history(id, written_at DESC);

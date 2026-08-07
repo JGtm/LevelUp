@@ -37,7 +37,7 @@ func openSkillV2TestDB(t *testing.T) *sql.DB {
 			experience      INTEGER NOT NULL DEFAULT 0,
 			last_match_id   VARCHAR,
 			last_match_at   TIMESTAMP,
-			written_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			written_at      TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
 		CREATE VIEW player_skill_state_v2_latest AS
 		SELECT s.*
@@ -55,7 +55,7 @@ func openSkillV2TestDB(t *testing.T) *sql.DB {
 			name            VARCHAR NOT NULL,
 			value           DOUBLE  NOT NULL,
 			source          VARCHAR NOT NULL,
-			written_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			written_at      TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
 		CREATE VIEW lusr_hyperparams_v2_latest AS
 		SELECT h.*

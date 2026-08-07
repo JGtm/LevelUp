@@ -87,7 +87,7 @@ func realMediaPipelineSetup(t *testing.T) (*chi.Mux, string) {
 			media_file_id BIGINT NOT NULL, match_id VARCHAR NOT NULL, delta_seconds INTEGER,
 			is_manual BOOLEAN NOT NULL DEFAULT FALSE, is_active BOOLEAN NOT NULL DEFAULT TRUE,
 			associated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			written_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
 		CREATE OR REPLACE VIEW media_match_associations_latest AS
 			WITH lpp AS (
@@ -108,7 +108,7 @@ func realMediaPipelineSetup(t *testing.T) (*chi.Mux, string) {
 			id BIGINT PRIMARY KEY DEFAULT nextval('media_likes_history_id_seq'),
 			media_path VARCHAR NOT NULL, liker_slug VARCHAR NOT NULL, liker_gamertag VARCHAR,
 			is_liked BOOLEAN NOT NULL, liked_at TIMESTAMP,
-			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			written_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
 		CREATE OR REPLACE VIEW media_likes_latest AS
 			SELECT id, media_path, liker_slug, liker_gamertag, is_liked, liked_at, written_at

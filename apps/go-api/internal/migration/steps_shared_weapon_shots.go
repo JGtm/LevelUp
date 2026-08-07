@@ -138,7 +138,7 @@ const ddlMatchWeaponShots = `
 		-- decoder_rev : version du decodeur. Sert a savoir QUELS matchs redecoder apres un
 		-- changement, au lieu de tout redecoder.
 		decoder_rev       VARCHAR   NOT NULL,
-		written_at        TIMESTAMP NOT NULL DEFAULT now(),
+		written_at        TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 
 		-- ── LE JOUEUR ───────────────────────────────────────────────────────────────────
 		-- player_index : indice de replication BRUT lu dans le fire-event, sur 5 bits

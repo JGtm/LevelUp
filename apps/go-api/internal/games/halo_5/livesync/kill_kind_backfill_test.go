@@ -31,7 +31,7 @@ func openKillKindBackfillDB(t *testing.T) *sql.DB {
 			weapon_id UBIGINT, reconciled_as UBIGINT,
 			delta_ms INTEGER, confidence VARCHAR, attribution_path VARCHAR,
 			swap_detected BOOLEAN, delayed_damage BOOLEAN, player_index INTEGER,
-			generation_id BIGINT DEFAULT 0, written_at TIMESTAMP DEFAULT now(),
+			generation_id BIGINT DEFAULT 0, written_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			kill_kind VARCHAR)`,
 		`CREATE VIEW v_weapon_kills AS
 			SELECT * EXCLUDE (rk) FROM (

@@ -202,8 +202,8 @@ func insertMatchMedals(ctx context.Context, db *sql.DB, m synthMatch) error {
 // Lecture home via v_weapon_kills → weapon_labels (seed migration).
 func insertMatchWeaponKills(ctx context.Context, db *sql.DB, m synthMatch) error {
 	for i := 0; i < m.favWeaponKills; i++ {
-		// written_at ancré sur synthAnchor : weapon_kills est append-only (DEFAULT
-		// now() posé par la migration) ; sans valeur explicite chaque run diverge.
+		// written_at ancré sur synthAnchor : weapon_kills est append-only (DEFAULT UTC
+		// posé par la migration) ; sans valeur explicite chaque run diverge.
 		if _, err := db.ExecContext(ctx, `
 			INSERT INTO weapon_kills (match_id, xuid, time_ms, weapon_id, confidence, attribution_path, written_at)
 			VALUES (?, ?, ?, ?, 'high', 'demo', ?)`,
@@ -275,15 +275,20 @@ func insertMatchEvents(ctx context.Context, db *sql.DB, m synthMatch, parts []sy
 				m.matchID, demoXUIDForIndex(0), DefaultDemoMainGamertag, opp.xuid, opp.gamertag, t); err != nil {
 				return err
 			}
+			// written_at ancré sur synthAnchor, comme weapon_kills et match_csrs : c'était
+			// le SEUL écrivain qui laissait jouer le DEFAULT de la colonne. Une horloge qui
+			// fuit ici fait diverger deux générations de la démo, et `written_at` est la
+			// colonne de TRI de match_kill_events_latest — la préséance d'une passe de
+			// décodage ne doit pas dépendre de l'instant du seed.
 			if _, err := db.ExecContext(ctx, `
 				INSERT INTO match_kill_events
 					(match_id, decode_pass, decoder_rev, publishable, time_ms,
 					 victim_gamertag, victim_xuid, feed_killer_gamertag, feed_killer_xuid,
-					 feed_present, assist_known, read_path, read_origin)
-				VALUES (?, ?, 'demo-seed', TRUE, ?, ?, ?, ?, ?, TRUE, FALSE, ?, ?)`,
+					 feed_present, assist_known, read_path, read_origin, written_at)
+				VALUES (?, ?, 'demo-seed', TRUE, ?, ?, ?, ?, ?, TRUE, FALSE, ?, ?, ?)`,
 				m.matchID, "demo-"+m.matchID, t,
 				opp.gamertag, opp.xuid, DefaultDemoMainGamertag, demoXUIDForIndex(0),
-				killscope.ReadPathLiveFeed, killscope.OriginCreditOnly); err != nil {
+				killscope.ReadPathLiveFeed, killscope.OriginCreditOnly, synthAnchor); err != nil {
 				return err
 			}
 		}

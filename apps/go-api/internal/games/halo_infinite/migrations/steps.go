@@ -915,7 +915,7 @@ func Steps() []migration.Migration {
 						csr_value     INTEGER NOT NULL,
 						tier_derived  VARCHAR,
 						fetched_at    TIMESTAMP,
-						written_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+						written_at    TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 					);
 
 					CREATE INDEX IF NOT EXISTS idx_wcl_lookup
@@ -1084,7 +1084,7 @@ func Steps() []migration.Migration {
 						offset_value    DOUBLE  NOT NULL,
 						match_count     INTEGER NOT NULL DEFAULT 0,
 						source          VARCHAR NOT NULL,
-						written_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+						written_at      TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 					);
 					CREATE INDEX IF NOT EXISTS idx_pso_lookup
 						ON player_squad_offset(xuid, playlist_group, partner_xuid, written_at DESC);
@@ -1133,7 +1133,7 @@ func Steps() []migration.Migration {
 						damage_dealt BIGINT NOT NULL DEFAULT 0,
 						damage_taken BIGINT NOT NULL DEFAULT 0,
 						computed_at  TIMESTAMP,
-						written_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+						written_at   TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 					);
 
 					CREATE INDEX IF NOT EXISTS idx_wpss_lookup
@@ -1165,7 +1165,7 @@ func Steps() []migration.Migration {
 						experience      INTEGER NOT NULL DEFAULT 0,
 						last_match_id   VARCHAR,
 						last_match_at   TIMESTAMP,
-						written_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+						written_at      TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 					);
 					CREATE INDEX IF NOT EXISTS idx_pssv2_xuid_group_written
 						ON player_skill_state_v2(xuid, playlist_group, written_at DESC);
@@ -1189,7 +1189,7 @@ func Steps() []migration.Migration {
 						name            VARCHAR NOT NULL,
 						value           DOUBLE  NOT NULL,
 						source          VARCHAR NOT NULL,
-						written_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+						written_at      TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 					);
 					CREATE INDEX IF NOT EXISTS idx_lhv2_group_name_written
 						ON lusr_hyperparams_v2(playlist_group, name, written_at DESC);

@@ -72,7 +72,7 @@ func sharedObjectiveStatsSteps() []migration.Migration {
 						skull_scoring_ticks                   INTEGER,
 						time_as_skull_carrier_seconds         DOUBLE,
 						longest_time_as_skull_carrier_seconds DOUBLE,
-						written_at                            TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+						written_at                            TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 					);
 
 					CREATE INDEX IF NOT EXISTS idx_match_objective_stats_match

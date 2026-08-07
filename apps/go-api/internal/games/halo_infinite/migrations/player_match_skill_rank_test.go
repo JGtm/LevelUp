@@ -124,7 +124,7 @@ func TestRepairMatchSkillRankWrittenAt(t *testing.T) {
 		t.Fatal(err)
 	}
 	if nNull != 0 {
-		t.Errorf("written_at NULL après repair (%d) — DEFAULT now() devrait le peupler", nNull)
+		t.Errorf("written_at NULL après repair (%d) — DEFAULT UTC devrait le peupler", nNull)
 	}
 	if err := repairMatchSkillRankWrittenAt(db); err != nil {
 		t.Errorf("repair idempotent: %v", err)
