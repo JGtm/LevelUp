@@ -116,7 +116,7 @@ func applyNotificationsAppendOnly(db *sql.DB) error {
 			)
 			SELECT xuid, id, category, severity, title_key, body_key, params,
 			       target_route, target_search, actor_xuid, actor_name, source,
-			       created_at, read_at, FALSE, COALESCE(created_at, CURRENT_TIMESTAMP)
+			       created_at, read_at, FALSE, COALESCE(created_at, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))
 			FROM player_notifications`); err != nil {
 			return fmt.Errorf("notifications append-only: backfill: %w", err)
 		}

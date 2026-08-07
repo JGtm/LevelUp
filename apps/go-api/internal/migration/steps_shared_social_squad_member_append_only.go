@@ -74,7 +74,7 @@ func applySquadMemberAppendOnly(db *sql.DB) error {
 	if hasLegacy && hasXuid {
 		if _, err := db.ExecContext(ctx, `
 			INSERT INTO squad_member_history (squad_id, xuid, user_id, is_member, joined_at, written_at)
-			SELECT squad_id, xuid, user_id, TRUE, joined_at, COALESCE(joined_at, CURRENT_TIMESTAMP)
+			SELECT squad_id, xuid, user_id, TRUE, joined_at, COALESCE(joined_at, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))
 			FROM squad_member`); err != nil {
 			return fmt.Errorf("squad_member append-only: backfill: %w", err)
 		}

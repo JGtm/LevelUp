@@ -146,7 +146,7 @@ func (r *NotificationsRepo) Insert(ctx context.Context, n *notifications.Notific
 				(xuid, id, category, severity, title_key, body_key, params,
 				 target_route, target_search, actor_xuid, actor_name,
 				 source, created_at, read_at, is_deleted, written_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, FALSE, CURRENT_TIMESTAMP)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, FALSE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))
 		`,
 			r.xuid, n.ID, string(n.Category), string(n.Severity), n.TitleKey,
 			nullableString(n.BodyKey),
@@ -338,7 +338,7 @@ func (r *NotificationsRepo) MarkUnread(ctx context.Context, id int64) error {
 				created_at, read_at, is_deleted, written_at)
 			 SELECT xuid, id, category, severity, title_key, body_key, params,
 			        target_route, target_search, actor_xuid, actor_name, source,
-			        created_at, NULL, FALSE, CURRENT_TIMESTAMP
+			        created_at, NULL, FALSE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 			 FROM player_notifications_latest WHERE xuid = ? AND id = ?`,
 			r.xuid, id,
 		)
@@ -387,7 +387,7 @@ func (r *NotificationsRepo) MarkAllRead(ctx context.Context, category notificati
 				created_at, read_at, is_deleted, written_at)
 			SELECT xuid, id, category, severity, title_key, body_key, params,
 			       target_route, target_search, actor_xuid, actor_name, source,
-			       created_at, ?, FALSE, CURRENT_TIMESTAMP
+			       created_at, ?, FALSE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 			FROM player_notifications_latest
 			WHERE xuid = ? AND read_at IS NULL`
 		if category == "" {
@@ -443,7 +443,7 @@ func (r *NotificationsRepo) Delete(ctx context.Context, id int64) error {
 				created_at, read_at, is_deleted, written_at)
 			 SELECT xuid, id, category, severity, title_key, body_key, params,
 			        target_route, target_search, actor_xuid, actor_name, source,
-			        created_at, read_at, TRUE, CURRENT_TIMESTAMP
+			        created_at, read_at, TRUE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 			 FROM player_notifications_latest WHERE xuid = ? AND id = ?`,
 			r.xuid, id,
 		)
@@ -497,7 +497,7 @@ func (r *NotificationsRepo) CapAndSweep(ctx context.Context, max int) error {
 				created_at, read_at, is_deleted, written_at)
 			SELECT xuid, id, category, severity, title_key, body_key, params,
 			       target_route, target_search, actor_xuid, actor_name, source,
-			       created_at, read_at, TRUE, CURRENT_TIMESTAMP
+			       created_at, read_at, TRUE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 			FROM player_notifications_latest
 			WHERE xuid = ? AND id NOT IN (
 				SELECT id FROM player_notifications_latest
@@ -552,7 +552,7 @@ func (r *NotificationsRepo) SweepStaleInfoRead(ctx context.Context, cutoff time.
 				created_at, read_at, is_deleted, written_at)
 			SELECT xuid, id, category, severity, title_key, body_key, params,
 			       target_route, target_search, actor_xuid, actor_name, source,
-			       created_at, ?, FALSE, CURRENT_TIMESTAMP
+			       created_at, ?, FALSE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 			FROM player_notifications_latest
 			WHERE xuid = ? AND read_at IS NULL AND severity = 'info' AND created_at < ?
 		`, now, r.xuid, cutoff)

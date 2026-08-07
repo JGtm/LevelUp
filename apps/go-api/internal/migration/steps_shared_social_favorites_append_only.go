@@ -75,7 +75,7 @@ func applyFavoritesAppendOnly(db *sql.DB) error {
 	if hasLegacy, _ := tableExists(db, "match_favorites"); hasLegacy {
 		if _, err := db.ExecContext(ctx, `
 			INSERT INTO match_favorites_history (player_slug, match_id, is_favorite, favorited_at, written_at)
-			SELECT player_slug, match_id, TRUE, favorited_at, COALESCE(favorited_at, CURRENT_TIMESTAMP)
+			SELECT player_slug, match_id, TRUE, favorited_at, COALESCE(favorited_at, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))
 			FROM match_favorites`); err != nil {
 			return fmt.Errorf("favorites append-only: backfill: %w", err)
 		}

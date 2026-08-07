@@ -162,7 +162,7 @@ func (p *SharedSocialPersister) persistMediaAssociations(ctx context.Context, tx
 	stmt, err := tx.PrepareContext(ctx, `
 		INSERT INTO media_match_associations_history
 			(media_file_id, match_id, delta_seconds, is_manual, is_active, associated_at, written_at)
-		VALUES (?, ?, ?, FALSE, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		VALUES (?, ?, ?, FALSE, TRUE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))
 	`)
 	if err != nil {
 		return err
@@ -237,7 +237,7 @@ func (p *SharedSocialPersister) persistNotifications(ctx context.Context, tx *sq
 				xuid, id, category, severity, title_key, body_key, params,
 				target_route, target_search, actor_xuid, actor_name, source,
 				created_at, read_at, is_deleted, written_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, FALSE, CURRENT_TIMESTAMP)
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, FALSE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))
 		`)
 		if err != nil {
 			return err
@@ -264,7 +264,7 @@ func (p *SharedSocialPersister) persistNotifications(ctx context.Context, tx *sq
 			)
 			SELECT xuid, id, category, severity, title_key, body_key, params,
 			       target_route, target_search, actor_xuid, actor_name, source,
-			       created_at, ?, FALSE, CURRENT_TIMESTAMP
+			       created_at, ?, FALSE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 			FROM player_notifications_latest
 			WHERE xuid = ? AND id = ?
 		`)

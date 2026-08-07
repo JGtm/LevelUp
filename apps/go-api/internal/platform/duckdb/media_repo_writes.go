@@ -46,7 +46,7 @@ func (r *MediaRepo) SetMediaMatchAssociation(ctx context.Context, filePath, matc
 		// donne priorité à la correction utilisateur sur l'auto.
 		if _, err := r.socialDB().Exec(ctx, `INSERT INTO media_match_associations_history
 			(media_file_id, match_id, delta_seconds, is_manual, is_active, associated_at, written_at)
-			VALUES (?, ?, 0, TRUE, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`, mediaID, matchID); err != nil {
+			VALUES (?, ?, 0, TRUE, TRUE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`, mediaID, matchID); err != nil {
 			return nil, nil, fmt.Errorf("insert manual assoc event: %w", err)
 		}
 		_ = CheckpointSharedSocial(ctx, r.socialDB())

@@ -693,15 +693,18 @@ func TestSharedSocialPersister_ToggleLike_AddThenRemove(t *testing.T) {
 
 // seedNotif insère une notification minimale (event create) pour les tests de
 // mutations. APPEND-ONLY : on écrit dans player_notifications_history, written_at
-// = CURRENT_TIMESTAMP (même référentiel TZ que la prod → les events de mutation,
-// CURRENT_TIMESTAMP aussi, sont toujours ≥ ce seed ; le tie-break seq DESC règle
-// les égalités). L'état courant se lit via player_notifications_latest.
+// sur l'HORLOGE UTC CANONIQUE — le même référentiel que la prod depuis le lot S5.
+// Le seed doit partager l'horloge des events de mutation, sinon la comparaison est
+// décidée par le fuseau de la machine : un seed en `CURRENT_TIMESTAMP` (donc deux
+// heures dans le futur à UTC+2) resterait en tête de player_notifications_latest
+// devant l'event UTC écrit ensuite, et le test échouerait hors UTC.
+// Le tie-break seq DESC règle les égalités. L'état courant se lit via _latest.
 func seedNotif(t *testing.T, db *sql.DB, xuid string, id int64, category string, createdAt time.Time) {
 	t.Helper()
 	if _, err := db.Exec(`
 		INSERT INTO player_notifications_history
 			(xuid, id, category, severity, title_key, source, created_at, read_at, is_deleted, written_at)
-		VALUES (?, ?, ?, 'info', 'k', 's', ?, NULL, FALSE, CURRENT_TIMESTAMP)`,
+		VALUES (?, ?, ?, 'info', 'k', 's', ?, NULL, FALSE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`,
 		xuid, id, category, createdAt); err != nil {
 		t.Fatalf("seed notif id=%d: %v", id, err)
 	}
@@ -796,7 +799,7 @@ func TestSharedSocialPersister_SweepStaleInfoNotificationsRead(t *testing.T) {
 		if _, err := db.Exec(`
 			INSERT INTO player_notifications_history
 				(xuid, id, category, severity, title_key, source, created_at, read_at, is_deleted, written_at)
-			VALUES ('x', ?, 'c', ?, 'k', 's', ?, NULL, FALSE, CURRENT_TIMESTAMP)`,
+			VALUES ('x', ?, 'c', ?, 'k', 's', ?, NULL, FALSE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`,
 			id, severity, createdAt); err != nil {
 			t.Fatalf("seed notif id=%d: %v", id, err)
 		}
