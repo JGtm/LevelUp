@@ -77,44 +77,99 @@ func TestBackfillDominanceFlags_CTFRemontadaFromCaptures(t *testing.T) {
 	}
 }
 
-// TestBackfillDominanceFlags_CTFNoCapturesNoFlag — un match CTF sans capture
-// exploitable produit une courbe vide -> flag 0 (pas de Steaktacular consulté).
-func TestBackfillDominanceFlags_CTFNoCapturesNoFlag(t *testing.T) {
+// TestBackfillDominanceFlags_CTFNoCapturesFallsBackToHistorical — un match CTF
+// sans capture exploitable ne produit PAS un 0 définitif : la courbe objectif
+// étant vide, le chemin historique reprend la main et voit la Steaktacular.
+//
+// Ce test remplace TestBackfillDominanceFlags_CTFNoCapturesNoFlag, qui exigeait
+// flag=0 dans cette situation. Sa prémisse — « la source objectif est peuplée,
+// donc une courbe vide signifie vraiment aucune capture » — est fausse en
+// production : rien dans la sync n'alimente match_objective_events (audit
+// 2026-08-06, P0). L'intention d'origine (ne pas mélanger deux sources sur la
+// même courbe) est conservée par TestBackfillDominanceFlags_CTFRemontadaFromCaptures :
+// quand la courbe existe, la Steaktacular reste ignorée.
+func TestBackfillDominanceFlags_CTFNoCapturesFallsBackToHistorical(t *testing.T) {
 	playerDB, sharedDB := newInMemoryDBs(t)
 	ensureDominanceFlagColumn(t, playerDB)
 	ensureObjectiveEventsTable(t, sharedDB)
 
 	const matchID, myXUID = "m_ctf_empty", "me"
 	seedComebackMatch(t, sharedDB, matchID, "Ranked:CTF", myXUID, 0, 2, 1)
-	// Une médaille Steaktacular existe MAIS le chemin CTF ne doit PAS la consulter.
 	seedSteaktacularMedal(t, sharedDB, matchID, myXUID)
 
 	if err := BackfillDominanceFlags(context.Background(), sharedDB, playerDB, myXUID, []string{matchID}); err != nil {
 		t.Fatalf("BackfillDominanceFlags: %v", err)
 	}
-	if got := readDominanceFlag(t, playerDB, matchID); got != analysis.DominanceFlagNone {
-		t.Errorf("CTF sans capture -> flag 0 attendu (Steaktacular ignorée), got %d", got)
+	if got := readDominanceFlag(t, playerDB, matchID); got != analysis.DominanceFlagDomination {
+		t.Errorf("CTF sans capture -> repli historique (Domination %d) attendu, got %d",
+			analysis.DominanceFlagDomination, got)
 	}
 }
 
-// TestBackfillDominanceFlags_ZoneModeReturnsZero — un mode zone (Strongholds) est
-// routé vers le chemin objectif mais retourne 0 (score-over-time non décodé), même
-// en présence d'events th=10 sans Value/team exploitable.
-func TestBackfillDominanceFlags_ZoneModeReturnsZero(t *testing.T) {
+// TestBackfillDominanceFlags_ZoneModeFallsBackToHistorical — un mode zone
+// (Strongholds) ne tente jamais la courbe objectif (score au tick, pas à
+// l'event : on ne fabrique pas de fausse courbe depuis des counts) et part
+// directement sur le chemin historique.
+//
+// Remplace TestBackfillDominanceFlags_ZoneModeReturnsZero, même correction de
+// prémisse que le test ci-dessus : le court-circuit à 0 gelait Strongholds,
+// KOTH et Oddball en plus du CTF.
+func TestBackfillDominanceFlags_ZoneModeFallsBackToHistorical(t *testing.T) {
 	playerDB, sharedDB := newInMemoryDBs(t)
 	ensureDominanceFlagColumn(t, playerDB)
 	ensureObjectiveEventsTable(t, sharedDB)
 
 	const matchID, myXUID = "m_zone", "me"
 	seedComebackMatch(t, sharedDB, matchID, "Strongholds:Arena", myXUID, 0, 2, 1)
-	// Une médaille Steaktacular ne doit pas non plus déclencher de flag sur un
-	// mode objectif zone.
 	seedSteaktacularMedal(t, sharedDB, matchID, myXUID)
 
 	if err := BackfillDominanceFlags(context.Background(), sharedDB, playerDB, myXUID, []string{matchID}); err != nil {
 		t.Fatalf("BackfillDominanceFlags: %v", err)
 	}
+	if got := readDominanceFlag(t, playerDB, matchID); got != analysis.DominanceFlagDomination {
+		t.Errorf("mode zone -> repli historique (Domination %d) attendu, got %d",
+			analysis.DominanceFlagDomination, got)
+	}
+}
+
+// TestBackfillDominanceFlags_ObjectiveWithoutAnySignalStaysZero — le repli ne
+// fabrique pas de dominance : sans capture, sans Steaktacular et sans kill event,
+// un match à objectif reste à 0. Garde-fou contre un faux positif introduit par
+// le repli lui-même.
+func TestBackfillDominanceFlags_ObjectiveWithoutAnySignalStaysZero(t *testing.T) {
+	playerDB, sharedDB := newInMemoryDBs(t)
+	ensureDominanceFlagColumn(t, playerDB)
+	ensureObjectiveEventsTable(t, sharedDB)
+
+	const matchID, myXUID = "m_ctf_silent", "me"
+	seedComebackMatch(t, sharedDB, matchID, "Ranked:CTF", myXUID, 0, 2, 1)
+
+	if err := BackfillDominanceFlags(context.Background(), sharedDB, playerDB, myXUID, []string{matchID}); err != nil {
+		t.Fatalf("BackfillDominanceFlags: %v", err)
+	}
 	if got := readDominanceFlag(t, playerDB, matchID); got != analysis.DominanceFlagNone {
-		t.Errorf("mode zone -> flag 0 attendu (score-over-time non décodé), got %d", got)
+		t.Errorf("CTF sans aucun signal -> flag 0 attendu, got %d", got)
+	}
+}
+
+// TestBackfillDominanceFlags_ObjectiveTableMissingFallsBack — la table
+// match_objective_events absente (migration shared_objective_events_v1 non
+// passée) fait échouer la lecture : l'erreur est tracée et le repli couvre, au
+// lieu de persister un 0 muet et définitif (audit 2026-08-06, P1).
+func TestBackfillDominanceFlags_ObjectiveTableMissingFallsBack(t *testing.T) {
+	playerDB, sharedDB := newInMemoryDBs(t)
+	ensureDominanceFlagColumn(t, playerDB)
+	// Volontairement PAS de ensureObjectiveEventsTable.
+
+	const matchID, myXUID = "m_ctf_no_table", "me"
+	seedComebackMatch(t, sharedDB, matchID, "Ranked:CTF", myXUID, 0, 2, 1)
+	seedSteaktacularMedal(t, sharedDB, matchID, myXUID)
+
+	if err := BackfillDominanceFlags(context.Background(), sharedDB, playerDB, myXUID, []string{matchID}); err != nil {
+		t.Fatalf("BackfillDominanceFlags: %v", err)
+	}
+	if got := readDominanceFlag(t, playerDB, matchID); got != analysis.DominanceFlagDomination {
+		t.Errorf("table objectif absente -> repli historique (Domination %d) attendu, got %d",
+			analysis.DominanceFlagDomination, got)
 	}
 }
