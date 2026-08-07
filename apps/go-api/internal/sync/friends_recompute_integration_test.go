@@ -33,7 +33,7 @@ func openPlayerForFriendsRecompute(t *testing.T) *sql.DB {
 		CREATE TABLE player_match_enrichment (
 			match_id        VARCHAR PRIMARY KEY,
 			is_with_friends BOOLEAN,
-			updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			updated_at      TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		)
 	`); err != nil {
 		t.Fatalf("create player_match_enrichment: %v", err)

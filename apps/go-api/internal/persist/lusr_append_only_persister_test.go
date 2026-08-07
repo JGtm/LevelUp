@@ -60,8 +60,8 @@ func openAppendOnlyLUSRTestDB(t *testing.T) *sql.DB {
 			expected_win_prob FLOAT,
 			start_time        TIMESTAMP,
 			written_at        TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
-			created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			created_at        TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+			updated_at        TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
 		CREATE INDEX idx_msr_lookup ON match_skill_rank(match_id, rating_type, written_at);
 		CREATE OR REPLACE VIEW match_skill_rank_latest AS

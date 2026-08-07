@@ -13,8 +13,8 @@ package migration
 // deux heures qui suivent — l'enrichissement disparait de la lecture sans erreur, sans
 // compteur, sans qu'un seul nom ni un seul compte ne bouge (mecanisme demontre par R1).
 //
-// Le DDL source est corrige a la racine (forme canonique WrittenAtDefaultUTC partout,
-// tenue par written_at_utc_guard_test.go), ce qui suffit aux bases NEUVES. Ce step traite
+// Le DDL source est corrige a la racine (forme canonique TimestampDefaultUTC partout,
+// tenue par arbitration_clocks_utc_guard_test.go), ce qui suffit aux bases NEUVES. Ce step traite
 // les bases DEJA CREEES : `CREATE TABLE IF NOT EXISTS` ne retouche jamais une table
 // existante, seul un ALTER le fait.
 //
@@ -25,80 +25,34 @@ package migration
 // (`CAST(main.timezone('UTC', now()) AS TIMESTAMP)`) ne matche plus le predicat.
 
 import (
-	"context"
 	"database/sql"
-	"fmt"
-	"log/slog"
 )
 
-// WrittenAtDefaultUTC — forme canonique du DEFAULT de `written_at`. Tout DDL du depot
-// doit l'utiliser telle quelle (garde-rail : written_at_utc_guard_test.go).
-const WrittenAtDefaultUTC = "CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)"
+// TimestampDefaultUTC — forme canonique du DEFAULT de TOUTE colonne d'horodatage naive
+// du depot, et de toute ecriture explicite d'horloge sur une telle colonne. Tout DDL doit
+// l'utiliser telle quelle (garde-rail : arbitration_clocks_utc_guard_test.go).
+//
+// Nommee `WrittenAtDefaultUTC` jusqu'au lot S5 : le lot S6 a etendu la campagne aux autres
+// horodatages d'arbitrage (`computed_at` arbitre lusr_component_history_latest, `liked_at`
+// arbitre la vue des likes media), la constante n'est donc plus propre a `written_at`.
+const TimestampDefaultUTC = "CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)"
 
-// writtenAtDefectiveDefaultsSQL liste les colonnes `written_at` a reparer dans la base
-// COURANTE. Filtres, dans l'ordre d'importance :
-//   - `database_name = current_database()` : duckdb_columns() voit AUSSI les bases
-//     ATTACHees (metadata l'est sur shared) — sans ce filtre on tenterait un ALTER sur une
-//     base tenue en lecture seule par un autre chemin.
-//   - `data_type = 'TIMESTAMP'` : une colonne TIMESTAMPTZ n'a pas le defaut (elle garde
-//     l'instant absolu) ; la reparer serait un changement de semantique gratuit.
-//   - DEFAULT sensible au fuseau ET pas deja converti (idempotence).
-const writtenAtDefectiveDefaultsSQL = `
-	SELECT c.table_name
-	FROM duckdb_columns() c
-	JOIN duckdb_tables() t
-	  ON t.database_name = c.database_name
-	 AND t.schema_name   = c.schema_name
-	 AND t.table_name    = c.table_name
-	WHERE c.database_name = current_database()
-	  AND c.schema_name   = 'main'
-	  AND c.column_name   = 'written_at'
-	  AND c.data_type     = 'TIMESTAMP'
-	  AND c.column_default IS NOT NULL
-	  AND (lower(c.column_default) LIKE '%now()%'
-	    OR lower(c.column_default) LIKE '%current_timestamp%')
-	  AND lower(c.column_default) NOT LIKE '%timezone(''utc''%'
-	ORDER BY c.table_name`
+// writtenAtColumnFilter restreint la reparation a la seule colonne `written_at` — le
+// perimetre historique de ce step. Le predicat complet (bases attachees, TIMESTAMP naif
+// seul, idempotence) vit desormais dans steps_zz_arbitration_clocks_utc_default.go : les deux
+// steps de la campagne partagent une implementation unique, ce step-ci n'en est que la
+// restriction.
+const writtenAtColumnFilter = `AND c.column_name = 'written_at'`
 
-// EnsureWrittenAtDefaultsUTC bascule vers WrittenAtDefaultUTC le DEFAULT de toute colonne
+// EnsureWrittenAtDefaultsUTC bascule vers TimestampDefaultUTC le DEFAULT de toute colonne
 // `written_at` naive encore datee sur le fuseau de session. Retourne le nombre de tables
 // reparees. Exporte : rejoue aussi hors runner (outillage de reparation ponctuelle).
+//
+// Conserve tel quel apres le lot S6 alors qu'EnsureTimestampDefaultsUTC le subsume : son
+// step est inscrit au ledger de toutes les bases de prod, et le retirer du registre
+// desynchroniserait l'audit d'ordre (order_audit_test.go).
 func EnsureWrittenAtDefaultsUTC(db *sql.DB) (int, error) {
-	ctx := context.Background()
-	tables, err := writtenAtDefectiveTables(ctx, db)
-	if err != nil {
-		return 0, err
-	}
-	for _, table := range tables {
-		// Nom d'identifiant issu du catalogue DuckDB lui-meme (pas d'entree utilisateur),
-		// quote pour supporter un nom sensible a la casse.
-		stmt := fmt.Sprintf(`ALTER TABLE "%s" ALTER COLUMN written_at SET DEFAULT %s`,
-			table, WrittenAtDefaultUTC)
-		if _, err := db.ExecContext(ctx, stmt); err != nil {
-			return 0, fmt.Errorf("migration: written_at DEFAULT UTC sur %s: %w", table, err)
-		}
-		slog.InfoContext(ctx, "migration: written_at DEFAULT bascule en UTC explicite",
-			"table", table)
-	}
-	return len(tables), nil
-}
-
-// writtenAtDefectiveTables lit le catalogue et retourne les tables a reparer.
-func writtenAtDefectiveTables(ctx context.Context, db *sql.DB) ([]string, error) {
-	rows, err := db.QueryContext(ctx, writtenAtDefectiveDefaultsSQL)
-	if err != nil {
-		return nil, fmt.Errorf("migration: detection written_at DEFAULT: %w", err)
-	}
-	defer rows.Close()
-	var tables []string
-	for rows.Next() {
-		var table string
-		if err := rows.Scan(&table); err != nil {
-			return nil, fmt.Errorf("migration: scan written_at DEFAULT: %w", err)
-		}
-		tables = append(tables, table)
-	}
-	return tables, rows.Err()
+	return repairDefectiveDefaults(db, writtenAtColumnFilter)
 }
 
 // writtenAtUTCStepName construit le nom du step par target (un nom = une ligne

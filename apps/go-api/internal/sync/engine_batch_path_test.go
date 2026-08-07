@@ -39,8 +39,8 @@ func openBatchPathTestDB(t *testing.T, target migration.TargetDB) *sql.DB {
 				is_with_friends BOOLEAN DEFAULT FALSE,
 				teammates_signature VARCHAR, had_bot_teammate BOOLEAN,
 				is_excluded BOOLEAN DEFAULT FALSE,
-				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+				created_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+				updated_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 			);
 			CREATE SEQUENCE IF NOT EXISTS personal_score_awards_id_seq;
 			CREATE TABLE IF NOT EXISTS personal_score_awards (
@@ -48,7 +48,7 @@ func openBatchPathTestDB(t *testing.T, target migration.TargetDB) *sql.DB {
 				match_id VARCHAR NOT NULL, xuid VARCHAR NOT NULL,
 				award_name VARCHAR NOT NULL, award_category VARCHAR,
 				award_count INTEGER DEFAULT 1, award_score INTEGER DEFAULT 0,
-				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+				created_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 			);
 			CREATE TABLE IF NOT EXISTS match_skill_rank (
 				match_id VARCHAR PRIMARY KEY, rating_type VARCHAR NOT NULL,

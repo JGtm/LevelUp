@@ -58,7 +58,7 @@ func seedLegacyMilestoneCatalog(t *testing.T, db *duckdb.DB) {
 			title_fr    VARCHAR NOT NULL,
 			icon        VARCHAR,
 			condition   VARCHAR,
-			updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			updated_at  TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		)`,
 		`INSERT INTO milestone_catalog (id, title_slug, metric, threshold, title_en, title_fr)
 		 VALUES ('halo_5.matches.100', 'halo_5', 'matches_played', 100, 'Centurion', 'Centurion')`,
@@ -67,7 +67,7 @@ func seedLegacyMilestoneCatalog(t *testing.T, db *duckdb.DB) {
 		`CREATE TABLE IF NOT EXISTS schema_migrations (
 			name          VARCHAR PRIMARY KEY,
 			description   VARCHAR,
-			applied_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			applied_at    TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			schema_done   BOOLEAN DEFAULT FALSE,
 			backfill_done BOOLEAN DEFAULT FALSE,
 			title_slug    VARCHAR DEFAULT 'halo_infinite'

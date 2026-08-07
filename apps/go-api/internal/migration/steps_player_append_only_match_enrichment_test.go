@@ -38,8 +38,8 @@ func setupLegacyMatchEnrichment(t *testing.T, seed func(*sql.DB)) *sql.DB {
 			had_bot_teammate       BOOLEAN,
 			is_excluded            BOOLEAN DEFAULT FALSE,
 			psa_checked_at         TIMESTAMP,
-			created_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			updated_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			created_at             TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+			updated_at             TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
 		CREATE INDEX idx_pme_session ON player_match_enrichment(session_id);
 	`); err != nil {

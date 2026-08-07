@@ -72,8 +72,8 @@ CREATE TABLE IF NOT EXISTS player_match_enrichment (
     engagement_player_activity  INTEGER,
     stage                       VARCHAR   DEFAULT 'legacy',
     written_at                  TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
-    created_at                  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at                  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at                  TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+    updated_at                  TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 );
 -- idx_pme_match_lookup(match_id, written_at) est créé par la migration append-only
 -- (player_append_only_match_enrichment_v1), PAS ici : sur une DB legacy pré-existante,
@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS player_match_enrichment (
 CREATE TABLE IF NOT EXISTS sync_meta (
     key        VARCHAR PRIMARY KEY,
     value      VARCHAR,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 );
 
 -- Schéma append-only (Phase 2.B/E du refactor ART) : PK technique sur id,
@@ -105,8 +105,8 @@ CREATE TABLE IF NOT EXISTS match_skill_rank (
     expected_win_prob FLOAT,
     start_time        TIMESTAMP,
     written_at        TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
-    created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at        TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+    updated_at        TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 );
 CREATE INDEX IF NOT EXISTS idx_msr_match_lookup ON match_skill_rank(match_id, rating_type, written_at);
 CREATE INDEX IF NOT EXISTS idx_msr_rating_type ON match_skill_rank(rating_type);
@@ -139,7 +139,7 @@ CREATE TABLE IF NOT EXISTS career_progression (
     emblem_image_url VARCHAR,
     backdrop_image_url VARCHAR,
     last_fetch_status VARCHAR,  -- Phase 6 PLAN_V2 : 'ok' / 'api_empty' / 'forbidden_403' / 'auth_missing' / 'failed'
-    recorded_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    recorded_at     TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 );
 -- ALTER additif idempotent pour migrer les player DBs existantes (post-refactor V2).
 -- DuckDB ignore ADD COLUMN si déjà présente (≥ v0.10).
@@ -190,8 +190,8 @@ CREATE TABLE IF NOT EXISTS match_registry (
     first_sync_at             TIMESTAMP,
     last_updated_at           TIMESTAMP,
     player_count              SMALLINT DEFAULT 0,
-    created_at                TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at                TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at                TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+    updated_at                TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
     season_id                 VARCHAR
 );
 
@@ -232,7 +232,7 @@ CREATE TABLE IF NOT EXISTS match_participants (
     left_in_progress      BOOLEAN,
     first_joined_time     TIMESTAMPTZ,
     last_leave_time       TIMESTAMPTZ,
-    created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at           TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
     PRIMARY KEY (match_id, xuid)
 );
 
@@ -241,7 +241,7 @@ CREATE TABLE IF NOT EXISTS medals_earned (
     xuid         VARCHAR  NOT NULL,
     medal_name_id BIGINT  NOT NULL,
     count        SMALLINT NOT NULL,
-    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at   TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
     PRIMARY KEY (match_id, xuid, medal_name_id)
 );
 
@@ -250,7 +250,7 @@ CREATE TABLE IF NOT EXISTS xuid_aliases (
     gamertag   VARCHAR NOT NULL,
     last_seen  TIMESTAMP,
     source     VARCHAR,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 );
 
 -- Schéma append-only (Phase 2.F du refactor ART) : PK technique sur id,
@@ -269,8 +269,8 @@ CREATE TABLE IF NOT EXISTS match_csrs (
     measurement_matches_remaining INTEGER DEFAULT 0,
     season_id                    VARCHAR,
     written_at                   TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
-    created_at                   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at                   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at                   TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+    updated_at                   TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 );
 CREATE INDEX IF NOT EXISTS idx_match_csrs_lookup ON match_csrs(match_id, xuid, written_at);
 CREATE INDEX IF NOT EXISTS idx_match_csrs_xuid    ON match_csrs(xuid);
@@ -294,7 +294,7 @@ CREATE TABLE IF NOT EXISTS killer_victim_pairs (
     kill_count      INTEGER DEFAULT 1,
     time_ms         INTEGER,
     is_validated    BOOLEAN DEFAULT FALSE,
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at      TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 );
 `
 

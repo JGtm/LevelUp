@@ -70,7 +70,7 @@ func init() {
 					asset_type   VARCHAR NOT NULL,
 					asset_id     VARCHAR NOT NULL,
 					version_id   VARCHAR,
-					enqueued_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+					enqueued_at  TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 					attempts     INTEGER DEFAULT 0,
 					last_error   VARCHAR
 				);

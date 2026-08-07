@@ -87,7 +87,7 @@ func openPlayerForRecompute(t *testing.T, withPaces, withCoefsTable bool) *sql.D
 				coef_team_share  DOUBLE NOT NULL,
 				coef_lobby_share DOUBLE NOT NULL,
 				n_matches        INTEGER NOT NULL,
-				last_updated     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				last_updated     TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 				PRIMARY KEY (xuid, mode_category)
 			);
 		`
@@ -104,7 +104,7 @@ func openPlayerForRecompute(t *testing.T, withPaces, withCoefsTable bool) *sql.D
 				upper_bound   DOUBLE NOT NULL,
 				coef_lobby    DOUBLE NOT NULL,
 				n_matches     INTEGER NOT NULL,
-				last_updated  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				last_updated  TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 				PRIMARY KEY (xuid, mode_category, intensity_bin)
 			);
 		`

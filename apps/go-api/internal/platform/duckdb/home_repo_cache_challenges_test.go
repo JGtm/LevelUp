@@ -67,8 +67,8 @@ func TestBuildChallengesResponseFromSnapshots_AllUntitled_NoItemsButCounts(t *te
 	// Cache legacy (aucun titre) : pas de cartes, MAIS available+counts → le service
 	// rend quand même (parité Battle Pass), jamais « indisponible ».
 	snapshots := []challengeSnapshotRow{
-		{challengePath: "Challenges/Tracking/x", status: "Active", xpReward: 100, snapshotAt: time.Now()},
-		{challengePath: "Challenges/Tracking/y", status: "Active", xpReward: 100, snapshotAt: time.Now()},
+		{challengePath: "Challenges/Tracking/x", status: "Active", xpReward: 100, snapshotAt: time.Now().UTC()},
+		{challengePath: "Challenges/Tracking/y", status: "Active", xpReward: 100, snapshotAt: time.Now().UTC()},
 	}
 	resp := buildChallengesResponseFromSnapshots(snapshots)
 	if !resp.Available || !resp.FromCache {

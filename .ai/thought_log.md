@@ -1,3 +1,159 @@
+## [2026-08-07] Lot S6 — la campagne UTC quitte le nom `written_at` pour la classe des horodatages d'arbitrage
+
+**Statut** : Complété. Périmètre fermé à S6a + S6b + S6c + verrou, chaque item statué. Branche
+`fix/arbitration-clocks-utc` depuis `origin/main` (32ed57627, S5 mergé), worktree
+`LevelUp-wt-replay2d`. NON mergée — le merge (= déploiement prod) reste au superviseur.
+
+**La prémisse du lot était fausse, et la vérification sur pièces a trouvé pire.** Le plan
+désignait `world_player_stats_repo.go:52` comme LA colonne d'arbitrage `_latest` de sa table.
+C'est inexact : `world_player_season_stats_latest` arbitre sur `written_at DESC, id DESC`
+(cf. `create_world_player_season_stats`), et `computed_at` n'y a même pas de DEFAULT — elle
+n'est alimentée que par cet INSERT. La découverte S5 qui avait ouvert ce lot portait la même
+erreur. Le `time.Now()` nu y est corrigé quand même, mais pour une autre raison : cohérence
+de la ligne avec son propre `written_at` déjà canonique, et valeur exposée telle quelle par
+l'API.
+
+**Le vrai jumeau de `written_at`, lui, était actif en prod : `lusr_component_history`.** Sa
+vue `_latest` arbitre sur `ORDER BY computed_at DESC, id DESC` et ses DEUX écrivains la
+dataient sur DEUX horloges. `sync/skill.writeLUSRComponentHistory` pose la colonne
+explicitement en `time.Now().UTC()` ; `persist.persistLUSRComponents` (player_persister.go:287,
+le chemin canonique Collect→Persist d'ADR 0019) l'OMET de sa liste de colonnes et prenait donc
+le DEFAULT — que le PostSwap du rebuild append-only restaurait en `now()` NU
+(steps_player_lusr_components_append_only.go:53). À UTC+2, la ligne du persister se datait deux
+heures dans le futur et gagnait l'arbitrage contre toute composante recalculée dans les deux
+heures suivantes : la lecture servait la version PÉRIMÉE, sans erreur, sans compteur. C'est le
+mécanisme démontré par R1, sur la table sœur de `match_skill_rank`, invisible de tout garde-rail
+indexé sur le nom `written_at`.
+
+**S6a [x] — computed_at.** 4 sites : le DEFAULT du PostSwap LUSR (ci-dessus), le DDL de
+création de `lusr_component_history` (steps.go:1379), l'écriture Go de
+`InsertPlayerSeasonStats`, et le `NOW()` de `cmd/seed-assists-model`. Ré-inventaire sur pièces
+avant de coder : `sync/assists_model.go:255` posait DÉJÀ `time.Now().UTC()` — rien à y faire.
+
+**S6b [x] — archived_at, liked_at, legacy player_records.** 5 sites. `liked_at` reproduisait
+le schéma des deux horloges : la route NOMINALE (`SharedSocialPersister.AddLike`) pose
+`time.Now().UTC()`, les deux sites de `media_repo_writes.go` (167 et 210, route atomique et
+fallback legacy) posaient `CURRENT_TIMESTAMP`. `archived_at` (squad_challenge) et les deux
+`updated_at = NOW()` du chemin legacy `player_records` complètent — ce dernier écrivait sur le
+fuseau de session un `updated_at` dont l'`achieved_at` voisin, valeur Go, est déjà en UTC.
+
+**S6c [x] — la famille des DEFAULT : 200 sites, pas ~30.** Le relevé S5 estimait « une
+trentaine de sites DDL » sur six noms de colonnes. Le décompte réel est de **200** sites
+TIMESTAMP naïf hors `written_at` (194 en `_at` + 6 en `last_updated`, cf. plus bas), sur
+23 noms de colonnes et 70 fichiers — un facteur 7. Tous passés en forme canonique. Les **21**
+sites TIMESTAMPTZ sont laissés INTACTS à dessein : ce type conserve l'instant absolu, `now()`
+y est correct, et le convertir changerait sa sémantique pour rien.
+
+**Le choix d'architecture de S6c : un step JUMEAU, pas l'extension du step de S2.** C'est le
+ledger qui tranche, pas le style. `runSteps` (registry.go:232) saute tout step déjà inscrit
+dans `schema_migrations` : `state, exists := applied[steps[i].Name]` → si la ligne existe,
+`ApplySchema` n'est jamais rappelé. Or `written_at_default_utc_*` a déjà tourné en prod.
+Élargir SON prédicat SQL n'aurait donc rejoué sur AUCUNE des bases porteuses du défaut —
+c'est-à-dire précisément celles à réparer : la réparation aurait été inopérante là où elle
+était nécessaire, et verte partout ailleurs. Un nom neuf
+(`arbitration_clocks_default_utc_<target>`) est la seule forme qui atteigne le parc existant.
+Le step de S2 est conservé tel quel (son entrée au ledger fait foi ; le retirer
+désynchroniserait `order_audit_test.go`) et les deux partagent désormais UNE implémentation,
+le step S2 n'en étant que la restriction par `column_name = 'written_at'`. Un test dédié
+(`TestArbitrationClocksUTC_NomDistinctDuStepS2`) fige ce raisonnement.
+
+Le nouveau step est data-driven SANS liste de colonnes : une colonne TIMESTAMP naïve dont le
+DEFAULT appelle une horloge sensible au fuseau est fautive quel que soit son nom.
+
+**Le fichier porte un préfixe `zz_`, et ce n'est pas cosmétique.** Sous son nom naturel
+(`steps_arbitration_clocks_utc_default.go`), `TestSortByCanonicalIsNoOpOnCurrentRegistry`
+échouait au rang 0 : Go exécute les `init()` d'un package dans l'ordre ALPHABÉTIQUE des
+fichiers, et ce test exige que l'ordre d'enregistrement reproduise exactement
+`canonicalOrder`. Or ce step doit être le DERNIER de l'ordre — comme son jumeau de S2 — parce
+qu'il répare des tables EXISTANTES : s'enregistrer avant un créateur de table le ferait passer
+sur une base où cette table n'existe pas encore, et le DEFAULT fautif du créateur survivrait au
+boot. Le test a donc attrapé une vraie erreur d'ordonnancement, pas une convention de nommage.
+La raison est écrite en tête du fichier pour qu'un renommage futur ne la reperde pas.
+
+**AUCUNE ligne existante n'est réécrite, et le test l'exige.** `ALTER ... SET DEFAULT` ne
+touche que la valeur servie aux INSERT futurs.
+`TestArbitrationClocksUTC_NeReecritAucuneLigne` lit une ligne legacy avant/après réparation et
+échoue si elle a bougé. Un UPDATE de masse sur ces tables serait exactement le vecteur ART que
+la campagne append-only a éteint (ADR 0019/0026). L'historique déjà écrit reste biaisé, c'est
+assumé : les lignes fautives sortent du corpus par vieillissement.
+
+**Verrou [x] — la cible n'est plus un nom, c'est une classe.** Le garde-rail
+(`arbitration_clocks_utc_guard_test.go`, renommé) porte désormais DEUX règles distinctes
+plutôt qu'une :
+
+- **Règle A — DEFAULT de TOUTE colonne `<nom>_at`.** Une colonne peut devenir arbitrale
+  demain, c'est exactement ce qui est arrivé à `computed_at`. L'exemption que S5 accordait au
+  DEFAULT local d'une AUTRE colonne est RETIRÉE — le cas de test qui la déclarait saine est
+  passé du volet « légitimes » au volet « fautifs ».
+- **Règle B — écriture ET lecture d'une colonne de la classe d'arbitrage**, plus stricte, donc
+  restreinte à 8 colonnes dont il est ÉTABLI SUR PIÈCES qu'elles ordonnent une déduplication
+  ou une préséance : `written_at`, `computed_at`, `liked_at`, `snapshot_at`, `last_seen_at`,
+  `associated_at`, `achieved_at`, `archived_at`. Chacune est justifiée dans le code par son
+  site d'arbitrage, pas par son nom. `snapshot_at` et `last_seen_at` ne figuraient pas au plan :
+  elles sont venues du relevé des `ROW_NUMBER() OVER (... ORDER BY <col>)` du dépôt.
+
+**Le verrou généralisé a fait son propre ré-inventaire : 26 sites que ni le plan ni S5
+n'avaient vus.** Dont, en production : les TTL de cache Battle Pass et défis
+(`home_repo_cache.go:31/117`) et les dédup de snapshots (`persist_sink.go:199`,
+`persist_sink_challenges.go:182`), qui comparaient un `snapshot_at` naïf à `CURRENT_TIMESTAMP`
+— le défaut S5b (WorldCSRSnapshotAge) à l'identique, sur une autre colonne : un cache réputé
+frais alors qu'il est périmé de l'offset. Plus 3 `AddColumnIfMissing` sur `sync_meta.updated_at`,
+les 8 `last_fetched_at` de `catalog_refresh.go`, et la colonne synthétique `recorded_at` du
+seed démo dont le commentaire annonçait « rend la row la plus récente » alors que l'horloge
+employée la datait dans le futur.
+
+**Deux faux positifs CONSTATÉS, traités par la règle et non par une exemption.** Le CREATE de
+`media_files` nomme `liked_at` dans un COMMENTAIRE SQL (pour dire que la colonne a été
+RETIRÉE) et porte `indexed_at TIMESTAMPTZ DEFAULT NOW()`, légitime. Les commentaires `-- ...`
+et les colonnes TIMESTAMPTZ sont donc retirés avant examen, et chacun de ces deux cas est
+devenu un cas de test « légitime » du fichier de mutation.
+
+**Preuves que le verrou mord.** `arbitration_clocks_utc_guard_mutation_test.go` : **19** formes
+fautives soumises au détecteur par sa vraie porte d'entrée (12 de S5 + 7 nouvelles : DEFAULT
+d'une colonne autre que written_at, ALTER sur computed_at, INSERT sur computed_at, TTL
+comparant snapshot_at, écriture sur liked_at, champ Go ComputedAt, colonne synthétique
+recorded_at), TOUTES vues ; et **11** formes légitimes (dont les 2 nouvelles ci-dessus),
+AUCUNE vue. En complément, **4 mutations RÉELLES en arbre**, chacune depuis une base verte,
+chacune produisant EXACTEMENT 1 infraction puis restaurée et revérifiée verte : ALTER
+`computed_at` nu, TTL `snapshot_at` contre `CURRENT_TIMESTAMP`, DEFAULT `created_at` nu
+(règle A élargie), `time.Now()` nu sur une variable `computedAt` (famille Go).
+
+**Le gate a trouvé un trou que le garde-rail ne pouvait pas voir : le suffixe `_at`.** La
+règle A visait `<nom>_at TIMESTAMP DEFAULT <horloge>`. C'est l'invariant de squash
+(`TestSquashInvariant_PlayerBaselineEquivalent`), pas le garde-rail, qui a levé
+`engagement_coefficients.last_updated` et `engagement_response_bins.last_updated` : des
+horodatages naïfs au DEFAULT fautif qu'aucun `_at` ne désigne. Le critère du garde-rail est
+donc devenu le TYPE et non le nom (`<colonne> TIMESTAMP DEFAULT <horloge nue>`, TIMESTAMPTZ
+toujours exclu) — exactement le critère du step de réparation, qui était déjà data-driven sans
+filtre de nom. 6 sites supplémentaires convertis. Le garde-rail et le step visent maintenant la
+même chose, ce qui n'était pas le cas quand le premier indexait sur un suffixe.
+
+**Le golden du squash a été régénéré, sur 12 lignes et rien d'autre.**
+`testdata/squash/player_block_golden.snapshot` fige le schéma cumulé des 33 steps historiques
+et sert d'oracle indépendant à la baseline squashée. Changer un DEFAULT dans la baseline l'en
+écarte légitimement. La mise à jour a été faite par une transformation MÉCANIQUE du seul motif
+`default="CURRENT_TIMESTAMP"` → forme canonique normalisée par DuckDB, sur les 12 lignes
+concernées ; le test repassant au vert sans autre retouche prouve qu'aucun écart de schéma
+(table, colonne, contrainte, index, séquence) ne s'est glissé sous le changement d'horloge —
+ce que la seule lecture du diff n'aurait pas établi.
+
+**Un flake, pas une régression.** `TestCareerLive_NilAPIResponse_NotCached` a échoué sur
+« background refresh n'a pas terminé dans les temps » (attente bornée à 2 s) pendant la suite
+complète, et passe en 0,145 s rejoué isolé. Test de timing sous charge, sans rapport avec ce
+diff (career_live ne porte aucune des colonnes touchées).
+
+**Découvertes consignées, NON traitées** (hors du périmètre fermé) :
+- `skill_rating_coverage_test.go:193/230` — `now := time.Now()` alimentant des `LusrMatchData`
+  en mémoire, jamais persistés. Hors classe d'arbitrage.
+- La colonne `computed_at` de `world_player_season_stats` reste sans DEFAULT : si un futur
+  écrivain omet la colonne, elle sera NULL, pas fautive — mais aucune vue ne l'arbitre
+  aujourd'hui, et lui poser un DEFAULT déborderait S6.
+- Le chemin legacy `persistPlayerRecordsLegacy` est toujours vivant, avec son commentaire
+  « jamais atteint en prod ». Sa suppression relève de la Phase 2 append-only, pas de ce lot.
+
+**Prochaine étape** : CI verte sur la branche, puis merge par le superviseur (= déploiement
+prod). La campagne des horodatages est close : plus aucune colonne d'horodatage naïve du dépôt
+ne porte de DEFAULT sensible au fuseau, et le verrou tient la classe entière plutôt qu'un nom.
 ## [2026-08-07] Lot S5 — une seule horloge pour written_at : 40 sites de production, la lecture, et la fermeture du garde-rail
 
 **Statut** : Complété. Périmètre fermé à S5a + S5b + verrou, chaque item statué. Branche

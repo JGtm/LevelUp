@@ -1,6 +1,8 @@
 package migration
 
-// written_at_utc_guard_mutation_test.go — PREUVE que written_at_utc_guard_test.go MORD.
+// arbitration_clocks_utc_guard_mutation_test.go — PREUVE que
+// arbitration_clocks_utc_guard_test.go MORD (les deux fichiers portaient le prefixe
+// `written_at_` jusqu'au lot S5, avant que la cible ne devienne la CLASSE des horodatages).
 //
 // Un garde-rail non testé sur les régressions qu'il prétend interdire n'est qu'un
 // commentaire exécutable (même raisonnement que TestStartTimeGuardsAreDiscriminant,
@@ -23,9 +25,11 @@ import (
 )
 
 // horlogeNue / horlogeNueAlt — les deux expressions sensibles au fuseau, coupées.
+// canoniqueUTC — la forme attendue, assemblée depuis horlogeNue pour la même raison.
 const (
 	horlogeNue    = "now" + "()"
 	horlogeNueAlt = "CURRENT_" + "TIMESTAMP"
+	canoniqueUTC  = "CAST(" + horlogeNue + " AT TIME ZONE 'UTC' AS TIMESTAMP)"
 )
 
 // ecrireSourceDeSynthese pose un fichier Go compilable HORS du dépôt (t.TempDir),
@@ -107,6 +111,46 @@ func TestGardeRailWrittenAtMordSurChaqueFamille(t *testing.T) {
 			corps: "func addColumnIfMissing(a, b, c, d string) {}\n" +
 				"func g() { addColumnIfMissing(\"db\", \"t\", \"written_at\", \"TIMESTAMP DEFAULT " + horlogeNue + "\") }",
 		},
+
+		// ── Familles NOUVELLES du lot S6 : la cible n'est plus le nom `written_at` ──
+		{
+			// RÈGLE A élargie (S6c). Ce cas était un cas SAIN sous S5 — le DEFAULT local
+			// d'une autre colonne y était explicitement exempté. Il est désormais fautif :
+			// une colonne peut devenir arbitrale (c'est arrivé à computed_at), et une ligne
+			// dont les horodatages ne partagent pas une horloge se contredit elle-même.
+			famille: "DEFAULT d'une colonne AUTRE que written_at",
+			corps: "const ddl = `CREATE TABLE t (created_at TIMESTAMP DEFAULT " + horlogeNueAlt +
+				", written_at TIMESTAMP DEFAULT " + canoniqueUTC + ")`",
+		},
+		{
+			// Le défaut réel trouvé par S6 : lusr_component_history_latest arbitre sur
+			// computed_at, dont le PostSwap du rebuild append-only restaurait un DEFAULT nu.
+			famille: "ALTER ... SET DEFAULT sur computed_at (colonne d'arbitrage)",
+			corps:   "const alt = `ALTER TABLE t ALTER COLUMN computed_at SET DEFAULT " + horlogeNue + "`",
+		},
+		{
+			famille: "INSERT alimentant computed_at",
+			corps:   "const ins = `INSERT INTO t (match_id, computed_at) VALUES (?, " + horlogeNueAlt + ")`",
+		},
+		{
+			// persist_sink / home_repo_cache : un TTL de cache comparé à une horloge TZ
+			// sous-estime l'âge de l'offset — le versant LECTURE, sur snapshot_at.
+			famille: "TTL compare snapshot_at a une horloge sensible au fuseau",
+			corps: "const ttl = `SELECT 1 FROM battlepass_snapshots WHERE snapshot_at > " +
+				horlogeNueAlt + " - INTERVAL 1 DAY`",
+		},
+		{
+			famille: "ecriture SQL sur liked_at",
+			corps:   "const l = `INSERT INTO media_likes_history (liked_at) VALUES (" + horlogeNueAlt + ")`",
+		},
+		{
+			famille: "champ Go ComputedAt sur l'horloge locale",
+			corps:   "var r = struct{ ComputedAt interface{} }{ComputedAt: time.Now()}",
+		},
+		{
+			famille: "colonne synthetique de rebuild sur recorded_at",
+			corps:   "const s = `SELECT * REPLACE (" + horlogeNueAlt + " AS recorded_at) FROM src`",
+		},
 	}
 
 	for _, c := range cas {
@@ -123,7 +167,7 @@ func TestGardeRailWrittenAtMordSurChaqueFamille(t *testing.T) {
 // TestGardeRailWrittenAtEpargneLesFormesLegitimes — cas sains : aucun ne doit être vu.
 // Sans ce volet, un détecteur qui hurle sur tout passerait pour un détecteur qui mord.
 func TestGardeRailWrittenAtEpargneLesFormesLegitimes(t *testing.T) {
-	canonique := "CAST(" + horlogeNue + " AT TIME ZONE 'UTC' AS TIMESTAMP)"
+	canonique := canoniqueUTC
 
 	cas := []struct {
 		nom   string
@@ -142,11 +186,21 @@ func TestGardeRailWrittenAtEpargneLesFormesLegitimes(t *testing.T) {
 			corps: "const age = `SELECT " + canonique + " - max(written_at) FROM t`",
 		},
 		{
-			// steps_player_schema_authority.go : `created_at` n'arbitre aucune vue
-			// `_latest`, son DEFAULT local ne relève pas de S5.
-			nom: "DEFAULT local sur une AUTRE colonne, à côté d'un written_at canonique",
-			corps: "const ddl = `CREATE TABLE t (created_at TIMESTAMP DEFAULT " + horlogeNueAlt +
+			// Une colonne TIMESTAMPTZ conserve l'instant absolu : `now()` y est CORRECT, et
+			// la convertir changerait sa sémantique. Elle ne doit pas non plus faire
+			// accuser le DDL qui la porte (media_store.go : indexed_at TIMESTAMPTZ, dans un
+			// CREATE dont un commentaire nomme liked_at).
+			nom: "DEFAULT sur une colonne TIMESTAMPTZ",
+			corps: "const ddl = `CREATE TABLE t (indexed_at TIMESTAMPTZ DEFAULT " + horlogeNue +
 				", written_at TIMESTAMP DEFAULT " + canonique + ")`",
+		},
+		{
+			// media_store.go : le CREATE explique en commentaire que `liked_at` a été
+			// RETIRÉE de la table. Une colonne nommée pour dire qu'elle n'existe plus n'est
+			// pas une mention exécutable.
+			nom: "colonne d'arbitrage citée dans un COMMENTAIRE SQL",
+			corps: "const ddl = `CREATE TABLE t (\n-- RETIREES : liked / liked_at, voir media_likes_history\n" +
+				"indexed_at TIMESTAMPTZ DEFAULT " + horlogeNue + ")`",
 		},
 		{
 			// steps_written_at_utc_default.go : le prédicat qui DÉTECTE le défaut
@@ -157,9 +211,11 @@ func TestGardeRailWrittenAtEpargneLesFormesLegitimes(t *testing.T) {
 		},
 		{
 			// media_delete_test.go : deux instructions, aucune ne mélange deux horloges.
+			// La colonne de l'instruction voisine est HORS classe d'arbitrage (`created_at`) :
+			// sous S6, y écrire une horloge nue reste sain tant qu'aucun DEFAULT n'est posé.
 			nom: "instruction voisine, dans un script multi-instructions",
 			corps: "const s = `CREATE VIEW v AS SELECT written_at FROM h ORDER BY written_at DESC; " +
-				"INSERT INTO l (liked_at) VALUES (" + horlogeNueAlt + ");`",
+				"INSERT INTO l (created_at) VALUES (" + horlogeNueAlt + ");`",
 		},
 		{
 			nom:   "champ Go WrittenAt en UTC explicite",

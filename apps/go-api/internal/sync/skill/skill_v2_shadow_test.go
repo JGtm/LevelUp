@@ -751,8 +751,8 @@ func openCanonicalPlayerTestDB(t *testing.T) *sql.DB {
 			expected_win_prob FLOAT,
 			start_time      TIMESTAMP,
 			written_at      TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
-			created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			created_at      TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+			updated_at      TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
 		CREATE VIEW match_skill_rank_latest AS
 		  SELECT * FROM match_skill_rank

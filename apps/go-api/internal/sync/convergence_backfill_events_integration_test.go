@@ -87,7 +87,7 @@ func openEventsBackfillDBsWithRegistry(t *testing.T, registryDDL string) (player
 		CREATE TABLE player_match_enrichment (
 			match_id       VARCHAR PRIMARY KEY,
 			dominance_flag INTEGER,
-			updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			updated_at     TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
 	`); err != nil {
 		t.Fatal(err)

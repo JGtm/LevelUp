@@ -17,7 +17,7 @@ func openNoDataTestDB(t *testing.T) *sql.DB {
 	t.Cleanup(func() { db.Close() })
 	if _, err := db.Exec(`CREATE TABLE world_player_no_data (
 		title_slug VARCHAR NOT NULL, season_id VARCHAR NOT NULL, gamertag VARCHAR NOT NULL,
-		marked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		marked_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 		PRIMARY KEY (title_slug, season_id, gamertag))`); err != nil {
 		t.Fatalf("create: %v", err)
 	}

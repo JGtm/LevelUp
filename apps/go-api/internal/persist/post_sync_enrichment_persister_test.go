@@ -27,8 +27,8 @@ func openEnrichmentTestDB(t *testing.T) *sql.DB {
 			session_id VARCHAR,
 			is_with_friends BOOLEAN,
 			had_bot_teammate BOOLEAN,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			created_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+			updated_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		)
 	`); err != nil {
 		t.Fatalf("create: %v", err)

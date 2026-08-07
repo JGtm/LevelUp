@@ -73,7 +73,7 @@ func run(dbPath string) error {
 			legendary_target    DOUBLE NOT NULL,
 			mythic_target       DOUBLE NOT NULL,
 			schema_version      INTEGER NOT NULL DEFAULT 1,
-			updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			updated_at          TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		)`,
 		indexSQL: []string{
 			`CREATE INDEX idx_ctmpl_title_cadence ON challenge_template(title_slug, cadence)`,
@@ -113,7 +113,7 @@ func run(dbPath string) error {
 			description_en  VARCHAR,
 			description_fr  VARCHAR,
 			schema_version  INTEGER NOT NULL DEFAULT 1,
-			updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			updated_at      TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		)`,
 		indexSQL: []string{
 			`CREATE INDEX idx_parc_title ON preset_arc(title_slug)`,

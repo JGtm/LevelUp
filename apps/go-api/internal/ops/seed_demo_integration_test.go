@@ -603,7 +603,7 @@ func TestLoadVideoRealMaps(t *testing.T) {
 		id BIGINT PRIMARY KEY DEFAULT nextval('media_match_associations_history_id_seq'),
 		media_file_id VARCHAR NOT NULL, match_id VARCHAR NOT NULL, delta_seconds INTEGER,
 		is_manual BOOLEAN NOT NULL DEFAULT FALSE, is_active BOOLEAN NOT NULL DEFAULT TRUE,
-		associated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		associated_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 		written_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`)
 	mustExec(t, ss, `CREATE OR REPLACE VIEW media_match_associations_latest AS
 		WITH lpp AS (SELECT media_file_id, match_id, delta_seconds, is_manual, is_active, associated_at, written_at,

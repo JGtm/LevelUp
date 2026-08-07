@@ -31,7 +31,15 @@ import (
 // INSERT pur (append-only, règle ART — jamais d'UPDATE/UPSERT) dans
 // world_player_season_stats. `db` est une connexion shared en écriture (cron ou
 // backfill, writer unique). Tout le lot dans une transaction (atomicité +
-// written_at cohérent → la vue _latest groupe par batch). Retourne le nb inséré.
+// written_at cohérent → la vue _latest groupe par batch).
+//
+// L'ARBITRAGE de world_player_season_stats_latest se fait sur `written_at DESC, id DESC`
+// (cf. create_world_player_season_stats), PAS sur `computed_at` : cette colonne n'a pas
+// de DEFAULT et n'est alimentée que par cet INSERT. `computed_at` est néanmoins daté en
+// UTC comme le `written_at` de sa propre ligne — les laisser sur deux horloges rendait la
+// ligne incohérente avec elle-même (deux heures d'écart à UTC+2) et la valeur est exposée
+// telle quelle par l'API. Même raisonnement que les horodatages voisins traités en S5.
+// Retourne le nb inséré.
 func InsertPlayerSeasonStats(ctx context.Context, db *sql.DB, stats []domain.WorldPlayerSeasonStats) (int, error) {
 	if len(stats) == 0 {
 		return 0, nil
@@ -49,7 +57,7 @@ func InsertPlayerSeasonStats(ctx context.Context, db *sql.DB, stats []domain.Wor
 			 kills, deaths, assists, playtime_s, medal_count,
 			 kda, accuracy, damage_dealt, damage_taken, computed_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	now := time.Now()
+	now := time.Now().UTC()
 	for _, s := range stats {
 		title := s.TitleSlug
 		if title == "" {

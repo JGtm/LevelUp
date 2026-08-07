@@ -72,8 +72,8 @@ type LUSRRatingInsert struct {
 //	  playlist_group    VARCHAR,
 //	  start_time        TIMESTAMP,
 //	  written_at        TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
-//	  created_at        TIMESTAMP DEFAULT now(),
-//	  updated_at        TIMESTAMP DEFAULT now(),
+//	  created_at        TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+//	  updated_at        TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 //	  PRIMARY KEY (match_id, rating_type, written_at)
 //	);
 //	CREATE VIEW match_skill_rank_latest AS
