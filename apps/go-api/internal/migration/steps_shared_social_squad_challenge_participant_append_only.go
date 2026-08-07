@@ -60,7 +60,7 @@ func applySquadChallengeParticipantAppendOnly(db *sql.DB) error {
 			completed_at       TIMESTAMP,
 			is_private         BOOLEAN DEFAULT FALSE,
 			joined_at          TIMESTAMP,
-			written_at         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			written_at         TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		)`,
 		// Index secondaires NON NULL-bearing (clés NOT NULL), alimentés
 		// uniquement par INSERT → jamais de retrait/relocation d'entrée ART.

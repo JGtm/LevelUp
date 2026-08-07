@@ -277,7 +277,7 @@ func swapMatchEnrichmentAppendOnlyTx(ctx context.Context, db *sql.DB) error {
 	}
 	if _, err := tx.ExecContext(ctx, fmt.Sprintf(`
 		CREATE TABLE player_match_enrichment__appendonly AS
-		SELECT nextval('pme_seq') AS id, %s, CURRENT_TIMESTAMP AS written_at, 'legacy' AS stage
+		SELECT nextval('pme_seq') AS id, %s, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP) AS written_at, 'legacy' AS stage
 		FROM player_match_enrichment`, colList)); err != nil {
 		return fmt.Errorf("append-only pme: create __appendonly: %w", err)
 	}
@@ -293,7 +293,7 @@ func swapMatchEnrichmentAppendOnlyTx(ctx context.Context, db *sql.DB) error {
 		`ALTER TABLE player_match_enrichment__appendonly RENAME TO player_match_enrichment`,
 		`ALTER TABLE player_match_enrichment ADD PRIMARY KEY (id)`,
 		`ALTER TABLE player_match_enrichment ALTER COLUMN id SET DEFAULT nextval('pme_seq')`,
-		`ALTER TABLE player_match_enrichment ALTER COLUMN written_at SET DEFAULT now()`,
+		`ALTER TABLE player_match_enrichment ALTER COLUMN written_at SET DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)`,
 		`ALTER TABLE player_match_enrichment ALTER COLUMN stage SET DEFAULT 'legacy'`,
 	} {
 		if _, err := tx.ExecContext(ctx, stmt); err != nil {

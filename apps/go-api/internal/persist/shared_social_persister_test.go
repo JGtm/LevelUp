@@ -66,7 +66,7 @@ func setupSocialDB(t *testing.T) (string, *sql.DB) {
 			media_file_id BIGINT NOT NULL, match_id VARCHAR NOT NULL, delta_seconds INTEGER,
 			is_manual BOOLEAN NOT NULL DEFAULT FALSE, is_active BOOLEAN NOT NULL DEFAULT TRUE,
 			associated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			written_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		)`,
 		`CREATE OR REPLACE VIEW media_match_associations_latest AS
 			WITH lpp AS (
@@ -91,7 +91,7 @@ func setupSocialDB(t *testing.T) (string, *sql.DB) {
 			id BIGINT PRIMARY KEY DEFAULT nextval('media_likes_history_id_seq'),
 			media_path VARCHAR NOT NULL, liker_slug VARCHAR NOT NULL, liker_gamertag VARCHAR,
 			is_liked BOOLEAN NOT NULL, liked_at TIMESTAMP,
-			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			written_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		)`,
 		`CREATE OR REPLACE VIEW media_likes_latest AS
 			SELECT id, media_path, liker_slug, liker_gamertag, is_liked, liked_at, written_at
@@ -111,7 +111,7 @@ func setupSocialDB(t *testing.T) (string, *sql.DB) {
 			id BIGINT PRIMARY KEY DEFAULT nextval('match_favorites_history_id_seq'),
 			player_slug VARCHAR NOT NULL, match_id VARCHAR NOT NULL,
 			is_favorite BOOLEAN NOT NULL, favorited_at TIMESTAMP,
-			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			written_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		)`,
 		`CREATE OR REPLACE VIEW match_favorites_latest AS
 			SELECT id, player_slug, match_id, is_favorite, favorited_at, written_at
@@ -147,7 +147,7 @@ func setupSocialDB(t *testing.T) (string, *sql.DB) {
 			actor_xuid VARCHAR, actor_name VARCHAR, source VARCHAR NOT NULL,
 			created_at TIMESTAMP NOT NULL, read_at TIMESTAMP,
 			is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
-			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			written_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		)`,
 		`CREATE OR REPLACE VIEW player_notifications_latest AS
 			SELECT xuid, id, category, severity, title_key, body_key, params,
@@ -174,7 +174,7 @@ func setupSocialDB(t *testing.T) (string, *sql.DB) {
 			xuid VARCHAR NOT NULL, category VARCHAR NOT NULL,
 			enabled BOOLEAN NOT NULL DEFAULT TRUE, delivery VARCHAR NOT NULL DEFAULT 'both',
 			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			written_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		)`,
 		`CREATE OR REPLACE VIEW notification_preferences_latest AS
 			SELECT id, xuid, category, enabled, delivery, updated_at, written_at
@@ -216,7 +216,7 @@ func TestSharedSocialPersister_PlayerRecordsHistory_NominalPath(t *testing.T) {
 			period VARCHAR NOT NULL DEFAULT 'all_time', value DOUBLE NOT NULL,
 			achieved_at TIMESTAMP, achieved_match_id VARCHAR,
 			previous_value DOUBLE, previous_achieved_at TIMESTAMP,
-			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			written_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		)`,
 		`CREATE OR REPLACE VIEW player_records_latest AS
 			SELECT DISTINCT ON (xuid, metric, period)

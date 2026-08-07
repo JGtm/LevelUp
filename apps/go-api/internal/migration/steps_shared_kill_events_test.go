@@ -64,7 +64,7 @@ func TestVueRetientLaDernierePasseEntiere(t *testing.T) {
 	insertKillRow(t, db, "m1", "passeA", 1000, "Victime1")
 	insertKillRow(t, db, "m1", "passeA", 2000, "Victime2")
 	insertKillRow(t, db, "m1", "passeA", 3000, "Victime3")
-	// Passe B : written_at par defaut = now(), donc posterieure ; l id l est aussi.
+	// Passe B : written_at par defaut = l horloge UTC, donc posterieure ; l id l est aussi.
 	insertKillRow(t, db, "m1", "passeB", 1000, "Victime1")
 	insertKillRow(t, db, "m1", "passeB", 2000, "Victime2")
 

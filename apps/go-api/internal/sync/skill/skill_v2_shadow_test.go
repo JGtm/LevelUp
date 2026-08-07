@@ -380,7 +380,7 @@ const shadowSchemaDDL = `
 			experience      INTEGER NOT NULL DEFAULT 0,
 			last_match_id   VARCHAR,
 			last_match_at   TIMESTAMP,
-			written_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			written_at      TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
 		CREATE VIEW player_skill_state_v2_latest AS
 		SELECT s.*
@@ -397,7 +397,7 @@ const shadowSchemaDDL = `
 			name            VARCHAR NOT NULL,
 			value           DOUBLE  NOT NULL,
 			source          VARCHAR NOT NULL,
-			written_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			written_at      TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
 		CREATE VIEW lusr_hyperparams_v2_latest AS
 		SELECT h.*
@@ -416,7 +416,7 @@ const shadowSchemaDDL = `
 			offset_value    DOUBLE  NOT NULL,
 			match_count     INTEGER NOT NULL DEFAULT 0,
 			source          VARCHAR NOT NULL,
-			written_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			written_at      TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
 		CREATE VIEW player_squad_offset_latest AS
 		SELECT o.*
@@ -750,7 +750,7 @@ func openCanonicalPlayerTestDB(t *testing.T) *sql.DB {
 			playlist_group  VARCHAR,
 			expected_win_prob FLOAT,
 			start_time      TIMESTAMP,
-			written_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			written_at      TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		);

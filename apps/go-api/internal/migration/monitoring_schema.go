@@ -42,7 +42,7 @@ var monitoringDDL = []string{
 		occurred_at   TIMESTAMP,
 		count_delta   BIGINT,
 		sample_detail VARCHAR,
-		written_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		written_at    TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 	)`,
 
 	// ─── detection_status_events : cycle de vie (open/acked/muted/resolved).
@@ -53,7 +53,7 @@ var monitoringDDL = []string{
 		fingerprint VARCHAR NOT NULL,
 		status      VARCHAR NOT NULL,
 		note        VARCHAR,
-		written_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		written_at  TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 	)`,
 
 	// ─── cron_runs : historique par exécution de cron (persiste au restart).
@@ -64,7 +64,7 @@ var monitoringDDL = []string{
 		ok          BOOLEAN,
 		err         VARCHAR,
 		duration_ms BIGINT,
-		written_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		written_at  TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 	)`,
 
 	// ─── data_health_runs : résultat sérialisé (JSON) du dernier audit data
@@ -72,7 +72,7 @@ var monitoringDDL = []string{
 	`CREATE TABLE IF NOT EXISTS data_health_runs (
 		id          BIGINT PRIMARY KEY DEFAULT nextval('monitoring_data_health_seq'),
 		result_json VARCHAR,
-		written_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		written_at  TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 	)`,
 
 	// ─── Vue : dernier statut par fingerprint (ART règle n°2 : lecture via _latest).

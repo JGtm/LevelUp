@@ -242,8 +242,12 @@ To do.txt
 .claude/*
 !.claude/skills/
 
-# Archives de plans IA (notes personnelles historiques)
-.ai/archive/
+# NB : .ai/archive/ N'EST PAS ignoré. La règle a existé, et elle mentait : les fichiers
+# déjà suivis restaient versionnés (git ignore le .gitignore pour ce qui est tracké),
+# mais toute NOUVELLE archive — le fichier produit par la rotation trimestrielle du
+# journal — était écartée en silence. Une rotation perdait donc un trimestre d'entrées
+# sans qu'aucun `git status` ne le signale (vécu). L'archive du journal EST la source de
+# vérité des trimestres clos : elle se versionne comme le journal actif.
 
 # Captures memoire de retro-ingenierie (rejeu 2D) — restaurees depuis sauvegarde
 # externe, jamais versionnees : ~145 Mo de dumps binaires non reproductibles.

@@ -36,7 +36,7 @@ func init() {
 					y          REAL,
 					z          REAL,
 					team       INTEGER,
-					written_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+					written_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 				);
 			`)
 		},

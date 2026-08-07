@@ -53,7 +53,7 @@ func applyLikesAppendOnly(db *sql.DB) error {
 			liker_gamertag VARCHAR,
 			is_liked       BOOLEAN NOT NULL,
 			liked_at       TIMESTAMP,
-			written_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			written_at     TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_mlh_lookup ON media_likes_history(media_path, liker_slug, written_at DESC)`,
 		`CREATE OR REPLACE VIEW media_likes_latest AS

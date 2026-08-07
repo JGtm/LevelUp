@@ -38,7 +38,7 @@ import (
 
 // synthWrittenAt — colonne synthétique d'horloge commune aux conversions « simples »
 // (mécanisme written_at). Figée au moment de la migration pour les rows existantes.
-const synthWrittenAt = "CURRENT_TIMESTAMP AS written_at"
+const synthWrittenAt = "CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP) AS written_at"
 
 // appendOnlyRebuild décrit la conversion append-only d'une table par swap CTAS.
 // Le SQL spécifique à chaque table (colonnes synthétiques, defaults, index, vue)
@@ -57,8 +57,8 @@ type appendOnlyRebuild struct {
 	// (ex: la séquence de génération pour le mécanisme generation_id).
 	ExtraSeqs []string
 	// SyntheticCols : expressions de colonnes synthétiques ajoutées par le CTAS
-	// APRÈS les colonnes d'origine. Ex : "CURRENT_TIMESTAMP AS written_at" ou
-	// "0::BIGINT AS generation_id, CURRENT_TIMESTAMP AS written_at, FALSE AS is_tombstone".
+	// APRÈS les colonnes d'origine. Ex : "CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP) AS written_at" ou
+	// "0::BIGINT AS generation_id, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP) AS written_at, FALSE AS is_tombstone".
 	// Vide si seul `id` est synthétisé (ex: lusr_component_history préserve computed_at).
 	SyntheticCols string
 	// MarkerColumn : colonne dont la PRÉSENCE signale « déjà migrée » (idempotence).
