@@ -38,7 +38,7 @@ func setupRecordsTestDB(t *testing.T, withLegacyData bool) (*sql.DB, string) {
 				value             DOUBLE NOT NULL,
 				achieved_at       TIMESTAMP,
 				achieved_match_id VARCHAR,
-				updated_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				updated_at        TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 				PRIMARY KEY (xuid, metric, period)
 			);
 		`)

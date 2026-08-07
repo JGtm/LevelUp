@@ -76,7 +76,7 @@ func realMediaPipelineSetup(t *testing.T) (*chi.Mux, string) {
 			match_id VARCHAR,
 			delta_seconds INTEGER DEFAULT 0,
 			is_manual BOOLEAN DEFAULT FALSE,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			created_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			PRIMARY KEY (media_file_id, match_id)
 		);
 		-- Append-only (cf. shared_social_media_assoc_append_only_v1) : le reader lit
@@ -86,7 +86,7 @@ func realMediaPipelineSetup(t *testing.T) (*chi.Mux, string) {
 			id BIGINT PRIMARY KEY DEFAULT nextval('media_match_associations_history_id_seq'),
 			media_file_id BIGINT NOT NULL, match_id VARCHAR NOT NULL, delta_seconds INTEGER,
 			is_manual BOOLEAN NOT NULL DEFAULT FALSE, is_active BOOLEAN NOT NULL DEFAULT TRUE,
-			associated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			associated_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			written_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
 		CREATE OR REPLACE VIEW media_match_associations_latest AS
@@ -118,7 +118,7 @@ func realMediaPipelineSetup(t *testing.T) (*chi.Mux, string) {
 		CREATE TABLE IF NOT EXISTS match_favorites (
 			player_slug VARCHAR NOT NULL,
 			match_id VARCHAR NOT NULL,
-			favorited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			favorited_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			PRIMARY KEY (player_slug, match_id)
 		);
 	`); err != nil {

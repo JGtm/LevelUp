@@ -92,12 +92,12 @@ func refreshPlaylistsCatalog(ctx context.Context, metadataDB, sharedDB *sql.DB, 
 			`UPDATE playlists_catalog SET
 				current_version_id = CASE WHEN ? != '' THEN ? ELSE current_version_id END,
 				name_canonical = ?, experience = ?, is_ranked = ?, last_seen_at = ?,
-				last_fetched_at = CURRENT_TIMESTAMP
+				last_fetched_at = CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 			 WHERE title_slug = ? AND playlist_asset_id = ?`,
 			[]any{versionID, versionID, name, experience, isRanked, lastSeen, titleSlug, id},
 			`INSERT INTO playlists_catalog
 				(title_slug, playlist_asset_id, current_version_id, name_canonical, experience, is_ranked, is_active, first_seen_at, last_seen_at, last_fetched_at)
-			 VALUES (?, ?, ?, ?, ?, ?, TRUE, ?, ?, CURRENT_TIMESTAMP)`,
+			 VALUES (?, ?, ?, ?, ?, ?, TRUE, ?, ?, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`,
 			[]any{titleSlug, id, versionID, name, experience, isRanked, firstSeen, lastSeen},
 		); err != nil {
 			slog.WarnContext(ctx, "upsert playlist", "id", id, "err", err)
@@ -140,12 +140,12 @@ func refreshMapsCatalog(ctx context.Context, metadataDB, sharedDB *sql.DB, title
 			[]any{titleSlug, id},
 			`UPDATE maps_catalog SET
 				current_version_id = CASE WHEN ? != '' THEN ? ELSE current_version_id END,
-				name_canonical = ?, last_fetched_at = CURRENT_TIMESTAMP
+				name_canonical = ?, last_fetched_at = CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 			 WHERE title_slug = ? AND map_asset_id = ?`,
 			[]any{versionID, versionID, name, titleSlug, id},
 			`INSERT INTO maps_catalog
 				(title_slug, map_asset_id, current_version_id, name_canonical, last_fetched_at)
-			 VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+			 VALUES (?, ?, ?, ?, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`,
 			[]any{titleSlug, id, versionID, name},
 		); err != nil {
 			slog.WarnContext(ctx, "upsert map", "id", id, "err", err)
@@ -182,12 +182,12 @@ func refreshGameVariantsCatalog(ctx context.Context, metadataDB, sharedDB *sql.D
 			[]any{titleSlug, id},
 			`UPDATE game_variants_catalog SET
 				current_version_id = CASE WHEN ? != '' THEN ? ELSE current_version_id END,
-				name_canonical = ?, mode_canonical = ?, last_fetched_at = CURRENT_TIMESTAMP
+				name_canonical = ?, mode_canonical = ?, last_fetched_at = CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 			 WHERE title_slug = ? AND game_variant_asset_id = ?`,
 			[]any{versionID, versionID, name, modeCanonical, titleSlug, id},
 			`INSERT INTO game_variants_catalog
 				(title_slug, game_variant_asset_id, current_version_id, name_canonical, mode_canonical, last_fetched_at)
-			 VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+			 VALUES (?, ?, ?, ?, ?, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`,
 			[]any{titleSlug, id, versionID, name, modeCanonical},
 		); err != nil {
 			slog.WarnContext(ctx, "upsert game_variant", "id", id, "err", err)
@@ -276,12 +276,12 @@ func upsertPairDefinition(ctx context.Context, db *sql.DB, titleSlug, id, versio
 			map_asset_id          = CASE WHEN ? != '' THEN ? ELSE map_asset_id END,
 			game_variant_asset_id = CASE WHEN ? != '' THEN ? ELSE game_variant_asset_id END,
 			mode_category         = CASE WHEN ? != '' THEN ? ELSE mode_category END,
-			last_fetched_at       = CURRENT_TIMESTAMP
+			last_fetched_at       = CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		 WHERE title_slug = ? AND pair_asset_id = ?`,
 		[]any{versionID, versionID, name, mapID, mapID, gvID, gvID, modeCategory, modeCategory, titleSlug, id},
 		`INSERT INTO map_mode_pair_definitions
 			(title_slug, pair_asset_id, current_version_id, name_canonical, map_asset_id, game_variant_asset_id, mode_category, last_fetched_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+		 VALUES (?, ?, ?, ?, ?, ?, ?, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`,
 		[]any{titleSlug, id, versionID, name, mapID, gvID, modeCategory},
 	)
 }

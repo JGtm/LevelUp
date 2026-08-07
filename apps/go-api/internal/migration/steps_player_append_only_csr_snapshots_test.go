@@ -30,7 +30,7 @@ CREATE TABLE player_csr_snapshots (
 	alltime_value                 FLOAT,
 	alltime_tier                  VARCHAR,
 	alltime_sub_tier              SMALLINT,
-	fetched_at                    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	fetched_at                    TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 	PRIMARY KEY (playlist_id, season_id)
 )`
 

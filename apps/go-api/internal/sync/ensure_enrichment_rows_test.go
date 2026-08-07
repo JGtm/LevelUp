@@ -34,7 +34,7 @@ func setupTwoDBs(t *testing.T) (player, shared *sql.DB) {
 			match_id          VARCHAR PRIMARY KEY,
 			performance_score FLOAT,
 			session_id        VARCHAR,
-			created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			created_at        TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		)`); err != nil {
 		t.Fatalf("create player_match_enrichment: %v", err)
 	}

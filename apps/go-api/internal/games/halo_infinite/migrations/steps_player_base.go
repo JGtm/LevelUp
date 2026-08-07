@@ -54,7 +54,7 @@ func playerBaseSteps() []migration.Migration {
 						description   VARCHAR,
 						is_preset     BOOLEAN NOT NULL DEFAULT FALSE,
 						preset_id     VARCHAR,
-						created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						created_at    TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						completed_at  TIMESTAMP
 					);
 					CREATE INDEX IF NOT EXISTS idx_arc_user_title ON arc(user_id, title_slug);
@@ -78,7 +78,7 @@ func playerBaseSteps() []migration.Migration {
 						data_tier                   VARCHAR NOT NULL DEFAULT 'full',
 						label                       VARCHAR,
 						status                      VARCHAR NOT NULL DEFAULT 'draft',
-						created_at                  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						created_at                  TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						committed_at                TIMESTAMP,
 						completed_at                TIMESTAMP,
 						expired_at                  TIMESTAMP,
@@ -96,7 +96,7 @@ func playerBaseSteps() []migration.Migration {
 						id            VARCHAR PRIMARY KEY,
 						challenge_id  VARCHAR NOT NULL,
 						blob_path     VARCHAR,
-						created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+						created_at    TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 					);
 					CREATE INDEX IF NOT EXISTS idx_mc_challenge ON moment_card(challenge_id);
 
@@ -112,7 +112,7 @@ func playerBaseSteps() []migration.Migration {
 						cadence                     VARCHAR,
 						eval_type                   VARCHAR,
 						time_since_create_seconds   INTEGER,
-						created_at                  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+						created_at                  TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 					);
 					CREATE INDEX IF NOT EXISTS idx_pt_user_event ON prestige_telemetry(user_id, event_type);
 					CREATE INDEX IF NOT EXISTS idx_pt_challenge ON prestige_telemetry(challenge_id);
@@ -125,7 +125,7 @@ func playerBaseSteps() []migration.Migration {
 						last_match_at               TIMESTAMP,
 						is_stale                    BOOLEAN NOT NULL DEFAULT FALSE,
 						recovery_matches_remaining  INTEGER NOT NULL DEFAULT 0,
-						updated_at                  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						updated_at                  TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						PRIMARY KEY (user_id, title_slug, metric)
 					);
 				`)
@@ -259,7 +259,7 @@ func playerBaseSteps() []migration.Migration {
 						user_id      VARCHAR NOT NULL,
 						title_slug   VARCHAR NOT NULL,
 						milestone_id VARCHAR NOT NULL,
-						earned_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						earned_at    TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						PRIMARY KEY (user_id, title_slug, milestone_id)
 					);
 					CREATE INDEX IF NOT EXISTS idx_ms_earned_user_title ON milestone_earned(user_id, title_slug);

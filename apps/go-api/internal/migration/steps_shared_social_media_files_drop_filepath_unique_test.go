@@ -52,8 +52,8 @@ func setupLegacyMediaFilesWithUnique(t *testing.T, rowCount int) *sql.DB {
 			file_stem VARCHAR,
 			file_ext VARCHAR,
 			file_size INTEGER DEFAULT 0,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			created_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+			updated_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
 		CREATE INDEX idx_mf_player_stem ON media_files(player_slug, file_stem);
 		CREATE INDEX idx_mf_kind ON media_files(kind);

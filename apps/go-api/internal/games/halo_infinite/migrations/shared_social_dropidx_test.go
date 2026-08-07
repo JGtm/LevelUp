@@ -56,7 +56,7 @@ func TestMigration_DropIdxPnXuidUnread_OnLegacyDB(t *testing.T) {
 			severity   VARCHAR NOT NULL DEFAULT 'info',
 			title_key  VARCHAR NOT NULL,
 			source     VARCHAR NOT NULL,
-			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			created_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			read_at    TIMESTAMP,
 			PRIMARY KEY (xuid, id)
 		);

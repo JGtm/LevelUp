@@ -190,10 +190,10 @@ func TestDropMediaFilesLikedColumns_LegacyDB(t *testing.T) {
 			kind VARCHAR,
 			liked BOOLEAN DEFAULT FALSE,
 			liked_at TIMESTAMP,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			created_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
 		INSERT INTO media_files (id, player_slug, file_path, file_name, kind, liked, liked_at)
-		VALUES ('m1', 'alice', 'alice/a.mp4', 'a.mp4', 'video', TRUE, CURRENT_TIMESTAMP),
+		VALUES ('m1', 'alice', 'alice/a.mp4', 'a.mp4', 'video', TRUE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)),
 		       ('m2', 'bob',   'bob/b.mp4',   'b.mp4', 'video', FALSE, NULL);
 	`); err != nil {
 		t.Fatalf("seed legacy: %v", err)

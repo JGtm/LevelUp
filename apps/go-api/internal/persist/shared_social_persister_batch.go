@@ -367,13 +367,21 @@ func (p *SharedSocialPersister) persistPlayerRecordsLegacy(ctx context.Context, 
 	// réécrit via l'index ART de la PK sur shared_social). Chemin de compat sur
 	// player_records (legacy) — jamais atteint en prod (la migration _history tourne
 	// au boot). player_records sans index secondaire → UPDATE non-indexé sûr.
+	//
+	// updated_at en UTC EXPLICITE (lot S6) : `NOW()` nu rend un TIMESTAMPTZ coercé par le
+	// fuseau de SESSION, alors qu'`achieved_at` de la MEME ligne est une valeur Go déjà en
+	// UTC — la ligne se serait contredite d'un offset. Le chemin append-only équivalent
+	// (persistPlayerRecordsHistory) est déjà canonique depuis S5 : les deux chemins d'une
+	// même table doivent dater sur une seule horloge, sans quoi une base migrée en cours de
+	// route mélangerait les deux référentiels.
 	selStmt, err := tx.PrepareContext(ctx, `SELECT 1 FROM player_records WHERE xuid = ? AND metric = ?`)
 	if err != nil {
 		return err
 	}
 	defer selStmt.Close()
 	updStmt, err := tx.PrepareContext(ctx, `
-		UPDATE player_records SET value = ?, achieved_at = ?, achieved_match_id = ?, updated_at = NOW()
+		UPDATE player_records SET value = ?, achieved_at = ?, achieved_match_id = ?,
+			updated_at = CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		WHERE xuid = ? AND metric = ?`)
 	if err != nil {
 		return err
@@ -381,7 +389,7 @@ func (p *SharedSocialPersister) persistPlayerRecordsLegacy(ctx context.Context, 
 	defer updStmt.Close()
 	insStmt, err := tx.PrepareContext(ctx, `
 		INSERT INTO player_records (xuid, metric, value, achieved_at, achieved_match_id, updated_at)
-		VALUES (?, ?, ?, ?, ?, NOW())`)
+		VALUES (?, ?, ?, ?, ?, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`)
 	if err != nil {
 		return err
 	}

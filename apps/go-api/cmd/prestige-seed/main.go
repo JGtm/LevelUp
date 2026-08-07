@@ -58,7 +58,7 @@ func runSeed(socialDB, playerDB, player string, pp int) {
 			title_slug    VARCHAR NOT NULL,
 			total_pp      INTEGER NOT NULL DEFAULT 0,
 			current_level INTEGER NOT NULL DEFAULT 0,
-			updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at    TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			PRIMARY KEY (user_id, title_slug)
 		)`)
 
@@ -71,7 +71,7 @@ func runSeed(socialDB, playerDB, player string, pp int) {
 			source_id   VARCHAR,
 			pp_amount   INTEGER NOT NULL DEFAULT 0,
 			tier        VARCHAR,
-			created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			created_at  TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		)`)
 
 	level := levelFromPP(pp)
@@ -121,7 +121,7 @@ func runSeed(socialDB, playerDB, player string, pp int) {
 			description  VARCHAR,
 			is_preset    BOOLEAN NOT NULL DEFAULT FALSE,
 			preset_id    VARCHAR,
-			created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			created_at   TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			completed_at TIMESTAMP
 		)`)
 
@@ -145,7 +145,7 @@ func runSeed(socialDB, playerDB, player string, pp int) {
 			data_tier                VARCHAR NOT NULL DEFAULT 'full',
 			label                    VARCHAR,
 			status                   VARCHAR NOT NULL DEFAULT 'draft',
-			created_at               TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			created_at               TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			committed_at             TIMESTAMP,
 			completed_at             TIMESTAMP,
 			expired_at               TIMESTAMP,

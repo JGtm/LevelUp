@@ -78,8 +78,8 @@ func openRecomputeDB(t *testing.T) *sql.DB {
 			playlist_group   VARCHAR,
 			expected_win_prob FLOAT,
 			start_time       TIMESTAMPTZ,
-			created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			created_at       TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+			updated_at       TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
 		CREATE TABLE player_match_enrichment (
 			match_id VARCHAR PRIMARY KEY,
@@ -93,7 +93,7 @@ func openRecomputeDB(t *testing.T) *sql.DB {
 			xuid VARCHAR,
 			medal_name_id BIGINT,
 			count INTEGER,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			created_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
 		CREATE TABLE xuid_aliases (
 			xuid VARCHAR PRIMARY KEY,

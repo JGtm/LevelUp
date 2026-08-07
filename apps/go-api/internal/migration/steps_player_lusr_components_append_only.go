@@ -44,13 +44,24 @@ func init() {
 // Particularité : pas de written_at synthétique — `computed_at` (préservé tel quel
 // par le CTAS) sert d'horloge. Le PostSwap restaure son DEFAULT (perdu par le CTAS),
 // sur lequel le writer persister compte.
+//
+// Le DEFAULT est en UTC EXPLICITE (lot S6). Il valait `now()` nu, qui rend un TIMESTAMPTZ
+// coercé vers cette colonne TIMESTAMP naive par le fuseau de SESSION : ici, ce n'est pas
+// une colonne d'horodatage parmi d'autres, c'est LA colonne d'arbitrage de
+// `lusr_component_history_latest` (ORDER BY computed_at DESC, id DESC). Ses deux écrivains
+// la dataient sur DEUX horloges — persist.persistLUSRComponents omet la colonne et prenait
+// donc ce DEFAULT local, tandis que sync/skill.writeLUSRComponentHistory la pose
+// explicitement en `time.Now().UTC()`. A UTC+2, la ligne du persister se datait deux heures
+// dans le futur et gagnait l'arbitrage contre toute composante recalculee dans les deux
+// heures suivantes : la lecture servait la version PERIMEE, sans erreur ni compteur.
+// C'est le mecanisme demontre par R1 sur written_at, sur la table soeur (ADR 0026).
 func applyAppendOnlyLUSRComponentHistory(db *sql.DB) error {
 	return applyAppendOnlyRebuild(db, appendOnlyRebuild{
 		Table: "lusr_component_history",
 		IDSeq: "lch_seq",
 		// SyntheticCols vide : computed_at d'origine préservé, pas de written_at.
 		PostSwap: []string{
-			`ALTER TABLE lusr_component_history ALTER COLUMN computed_at SET DEFAULT now()`,
+			`ALTER TABLE lusr_component_history ALTER COLUMN computed_at SET DEFAULT ` + TimestampDefaultUTC,
 			`CREATE INDEX IF NOT EXISTS idx_lch_component ON lusr_component_history(component_name)`,
 			`CREATE INDEX IF NOT EXISTS idx_lch_match ON lusr_component_history(match_id)`,
 		},

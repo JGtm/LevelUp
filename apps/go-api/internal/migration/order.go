@@ -251,6 +251,19 @@ var canonicalOrder = []string{
 	"written_at_default_utc_shared_pve",    // shared_pve
 	"written_at_default_utc_shared_social", // shared_social
 	"written_at_default_utc_metadata",      // metadata
+	// Lot S6 — clôture de la campagne : les MÊMES DEFAULT sensibles au fuseau sur les
+	// autres colonnes d'horodatage (dont computed_at, qui arbitre
+	// lusr_component_history_latest). Un step JUMEAU et non l'extension du prédicat
+	// ci-dessus : le runner ne rejoue jamais un step déjà au ledger, donc élargir un step
+	// déjà appliqué en prod n'aurait réparé aucune des bases qui portent le défaut.
+	// Placés APRÈS leurs jumeaux written_at : sur une base vierge l'ordre est indifférent
+	// (les deux sont des no-op sur un DDL déjà canonique), sur une base legacy le second
+	// ne trouve plus que les colonnes que le premier n'a pas couvertes.
+	"arbitration_clocks_default_utc_shared",        // shared
+	"arbitration_clocks_default_utc_player",        // player
+	"arbitration_clocks_default_utc_shared_pve",    // shared_pve
+	"arbitration_clocks_default_utc_shared_social", // shared_social
+	"arbitration_clocks_default_utc_metadata",      // metadata
 }
 
 var canonicalIndex = func() map[string]int {

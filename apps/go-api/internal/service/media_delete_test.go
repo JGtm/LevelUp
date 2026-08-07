@@ -93,7 +93,7 @@ func newDeleteFixture(t *testing.T) *deleteFixture {
 		INSERT INTO media_files (player_slug, file_path, file_name, thumbnail_path)
 		VALUES ('JGtm', 'JGtm/clip.mp4', 'clip.mp4', 'JGtm/thumbs/clip.webp');
 		INSERT INTO media_likes_history (media_path, liker_slug, liker_gamertag, is_liked, liked_at)
-		VALUES ('JGtm/clip.mp4', 'Chocoboflor', 'Chocoboflor', TRUE, CURRENT_TIMESTAMP);
+		VALUES ('JGtm/clip.mp4', 'Chocoboflor', 'Chocoboflor', TRUE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP));
 	`
 	if _, err := db.SQLDb().Exec(ddl); err != nil {
 		t.Fatalf("seed shared_social: %v", err)

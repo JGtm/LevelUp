@@ -223,15 +223,15 @@ func markCareerRebuildDone(db *sql.DB) error {
 	if err != nil || !hasMeta {
 		return nil
 	}
-	if err := migration.AddColumnIfMissing(db, "sync_meta", "updated_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"); err != nil {
+	if err := migration.AddColumnIfMissing(db, "sync_meta", "updated_at", "TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)"); err != nil {
 		return fmt.Errorf("rebuild_career: ensure updated_at: %w", err)
 	}
 	_, err = db.ExecContext(migration.BootCtx(), `
 		INSERT INTO sync_meta (key, value, updated_at)
-		VALUES (?, 'true', NOW())
+		VALUES (?, 'true', CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))
 		ON CONFLICT (key) DO UPDATE SET
 			value = 'true',
-			updated_at = NOW()
+			updated_at = CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 	`, careerProgressionRebuildMetaKey)
 	if err != nil {
 		return fmt.Errorf("rebuild_career: mark done: %w", err)

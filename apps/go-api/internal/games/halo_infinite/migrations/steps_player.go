@@ -281,15 +281,15 @@ func markXPTotalFixDone(db *sql.DB) error {
 	if err != nil || !hasMeta {
 		return nil
 	}
-	if err := migration.AddColumnIfMissing(db, "sync_meta", "updated_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"); err != nil {
+	if err := migration.AddColumnIfMissing(db, "sync_meta", "updated_at", "TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)"); err != nil {
 		return fmt.Errorf("fix_xp_default: ensure updated_at: %w", err)
 	}
 	var exists bool
 	_ = db.QueryRowContext(migration.BootCtx(), `SELECT EXISTS(SELECT 1 FROM sync_meta WHERE key = ?)`, careerXPTotalFixMetaKey).Scan(&exists)
 	if exists {
-		_, err = db.ExecContext(migration.BootCtx(), `UPDATE sync_meta SET value = 'true', updated_at = NOW() WHERE key = ?`, careerXPTotalFixMetaKey)
+		_, err = db.ExecContext(migration.BootCtx(), `UPDATE sync_meta SET value = 'true', updated_at = CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP) WHERE key = ?`, careerXPTotalFixMetaKey)
 	} else {
-		_, err = db.ExecContext(migration.BootCtx(), `INSERT INTO sync_meta (key, value, updated_at) VALUES (?, 'true', NOW())`, careerXPTotalFixMetaKey)
+		_, err = db.ExecContext(migration.BootCtx(), `INSERT INTO sync_meta (key, value, updated_at) VALUES (?, 'true', CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`, careerXPTotalFixMetaKey)
 	}
 	if err != nil {
 		return fmt.Errorf("fix_xp_default: mark done: %w", err)

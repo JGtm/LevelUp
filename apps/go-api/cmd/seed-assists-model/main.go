@@ -135,10 +135,14 @@ func computeCoefs(db *sql.DB) ([]coefRow, error) {
 }
 
 func upsertCoefs(db *sql.DB, rows []coefRow) error {
+	// computed_at en UTC EXPLICITE : `NOW()` nu rend un TIMESTAMPTZ que DuckDB coerce
+	// vers cette colonne TIMESTAMP naive par le fuseau de SESSION — la valeur partirait
+	// donc a l'heure locale du poste qui seed, alors que l'ecrivain applicatif
+	// (sync.upsertAssistsModels) pose `time.Now().UTC()` sur la meme colonne.
 	const q = `
 		INSERT OR REPLACE INTO assists_model_coefs
 			(game_variant_name, slope, intercept, r2, n_samples, computed_at)
-		VALUES (?, ?, ?, ?, ?, NOW())
+		VALUES (?, ?, ?, ?, ?, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))
 	`
 	tx, err := db.Begin()
 	if err != nil {
