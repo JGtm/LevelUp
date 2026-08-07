@@ -1,3 +1,127 @@
+## [2026-08-07] Lot S5 — une seule horloge pour written_at : 40 sites de production, la lecture, et la fermeture du garde-rail
+
+**Statut** : Complété. Périmètre fermé à S5a + S5b + verrou, chaque item statué. Branche
+`fix/written-at-utc-writers` depuis `origin/main` (e4bfa1d5a), worktree
+`LevelUp-wt-replay2d`. NON mergée — le merge (= déploiement prod) reste au superviseur.
+
+**Le défaut traité est celui de S2, sans le DEFAULT.** S2 avait ramené les 77 sites DDL à
+`CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)` et consigné, sans la traiter, l'autre moitié :
+les ordres qui alimentent `written_at` avec une horloge NUE. La valeur écrite
+explicitement par `CURRENT_TIMESTAMP` subit exactement la même coercition de fuseau que
+celle écrite par le DEFAULT — une base pouvait donc porter un DEFAULT canonique et, malgré
+cela, ne recevoir que des lignes datées au fuseau local. `written_at` étant la colonne de
+TRI des vues `_latest` (ADR 0026), ces lignes gagnaient l'arbitrage contre toute ligne UTC
+écrite dans les deux heures suivantes.
+
+**S5a [x] — 39 écritures converties.** Ré-inventaire sur pièces avant de coder, par le
+garde-rail lui-même étendu (une analyse AST relève ce qu'un grep manque). Décompte par
+famille : `shared_social_persister` 7 · `shared_social_persister_batch` 3 ·
+`notifications_repo` 6 + `notifications_repo_helpers` 1 · `prestige_social_repo` 4 ·
+les 7 steps append-only `shared_social` 7 · `media_assoc_append_only` 1 ·
+`games/halo_infinite/migrations` 3 (`steps_player` 1, `steps_shared_social` 2) ·
+`media_repo_writes` 1 · `ops/media_associate` 1 · `ops/seed_demo_media` 1 ·
+`records_repo` 1 · `streaks_repo` 1 · `player_record_repo` 1 · `lusr_full_recompute` 1.
+Soit les 38 attendus (37 relevés + le jumeau LUSR, rendu à son état d'origine par le lot
+précédent pour ne pas traiter la famille à moitié) plus un site que le relevé ne POUVAIT
+pas voir.
+
+Le commentaire de `lusr_full_recompute.go` a été refait dans le même geste : il présentait
+`now()` comme la GARANTIE que la sentinelle `is_reset` soit postérieure aux états
+précédents, alors que c'en était le défaut — la sentinelle se datait deux heures dans le
+futur et masquait autant de recalcul replayé.
+
+**L'angle mort du relevé des 37.** Le backfill de `media_match_associations`
+(`steps_shared_social_media_assoc_append_only.go`) assemble son ordre par `fmt.Sprintf`,
+l'horloge transitant par la variable `atExpr := "CURRENT_TIMESTAMP"`. AUCUNE chaîne du
+fichier ne porte à la fois `written_at` et l'horloge : ni le relevé initial ni la première
+version de la règle par chaîne ne pouvaient le voir, et il datait pourtant bien
+`written_at` sur le fuseau de session. Corrigé (il consomme désormais la constante
+`WrittenAtDefaultUTC`), et le garde-rail a gagné une quatrième règle pour cette forme.
+
+**Décision assumée : dans un ordre TOUCHÉ, les horodatages VOISINS de la même ligne passent
+aussi en UTC.** `associated_at` (media_match_associations) et `achieved_at` (player_records
+legacy) sont écrits dans le même tuple `VALUES` que `written_at`. Les laisser sur le fuseau
+de session aurait rendu la ligne incohérente avec elle-même (`associated_at` deux heures
+APRÈS son propre `written_at`), et `associated_at` est justement comparé à une borne Go UTC
+par `loadRecentMediaMatchIDs`. Ce n'est PAS un élargissement à la famille de ces colonnes :
+aucun de leurs autres sites n'a été touché.
+
+**S5b [x] — la famille LECTURE.** `WorldCSRSnapshotAge` calculait l'âge par
+`CURRENT_TIMESTAMP - max(written_at)` : un TIMESTAMPTZ moins une TIMESTAMP naïve, donc
+`written_at` relu dans le fuseau de session et un âge SOUS-ESTIMÉ de l'offset. Le
+commentaire affirmait le contraire (« les deux timestamps partagent l'horloge/zone de la
+DB ») — doc inversée, corrigée dans le même commit. Conséquence réelle : le garde-fou de
+fraîcheur du cron laissait passer pour frais un snapshot périmé de deux heures, et l'écart
+suivait le fuseau du serveur sans qu'aucun test local ne puisse le voir. Les deux termes
+sont désormais sur l'horloge naïve-UTC des écrivains.
+
+**Verrou [x] — la limite documentée du garde-rail est retirée.** Il couvre maintenant
+QUATRE familles : déclaration du DEFAULT (périmètre S2), écriture SQL (y compris la
+lecture, qui relève de la même règle), écriture Go (`time.Now()` sans `.UTC()` posé dans un
+champ/variable `WrittenAt` — invisible des chaînes, la valeur y arrive par un paramètre
+lié), et interpolation. Trois faux positifs CONSTATÉS ont été traités par la règle plutôt
+que par des exemptions : le DEFAULT local d'une AUTRE colonne à côté d'un `written_at`
+canonique (`created_at`, qui n'arbitre aucune vue `_latest`), l'horloge citée dans un
+littéral SQL (`column_default LIKE '%now()%'` — le prédicat qui DÉTECTE le défaut doit la
+nommer sans jamais l'appeler), et l'instruction voisine d'un script multi-instructions
+(l'examen porte désormais sur chaque instruction, pas sur la chaîne entière). Une SEULE
+exemption a été ajoutée, datée : le fichier du garde-rail lui-même, dont les motifs sont
+par construction les formes fautives écrites en toutes lettres — un détecteur ne peut pas
+être son propre sujet.
+
+**Preuve que le garde-rail mord.** `written_at_utc_guard_mutation_test.go` : 12 formes
+fautives soumises au détecteur par sa vraie porte d'entrée (`inspecterFichier` sur une
+source de synthèse écrite hors dépôt), une par famille et par forme, TOUTES vues ; et 8
+formes légitimes, AUCUNE vue — sans ce second volet, un détecteur qui hurle sur tout
+passerait pour un détecteur qui mord. Les formes fautives y sont coupées par concaténation,
+sinon le fichier échouerait contre le garde-rail (procédé de
+`no_raw_start_time_literal_test.go`). En complément, 3 mutations RÉELLES en arbre, chacune
+vue rouge puis restaurée et revérifiée verte : `WrittenAt: time.Now()` (famille Go),
+`records_repo` remis en `CURRENT_TIMESTAMP` (famille SQL), `atExpr` remis en
+`CURRENT_TIMESTAMP` (famille interpolation).
+
+**Un harnais de test n'était pas un détail cosmétique.** Le seed de
+`shared_social_persister_test.go` datait `written_at` en `CURRENT_TIMESTAMP` avec un
+commentaire disant que c'était « le même référentiel TZ que la prod ». Ce commentaire
+devenait faux avec ce lot, et le test aurait cassé hors UTC : le seed, deux heures dans le
+futur, serait resté en tête de `player_notifications_latest` devant l'event de mutation
+écrit en UTC. 5 harnais alignés au total, sur 4 fichiers.
+
+**AUCUN written_at existant n'est réécrit.** Pas d'UPDATE de réparation : l'historique déjà
+écrit reste biaisé, et c'est assumé. Un UPDATE de masse sur ces tables serait précisément
+le vecteur ART que toute la campagne append-only a éteint (ADR 0019/0026). Les lignes
+fautives sortent du corpus par vieillissement ; toute nouvelle ligne est correcte.
+
+**Découvertes consignées, NON traitées** (hors du périmètre fermé) :
+- `world_player_stats_repo.go:52` — `computed_at` alimenté par un `time.Now()` NU. Le
+  commentaire de la fonction parle pourtant de « written_at cohérent → la vue _latest
+  groupe par batch » : sur cette table, la colonne d'arbitrage s'appelle `computed_at`.
+  Même défaut, autre nom de colonne, donc invisible de tout garde-rail `written_at`. C'est
+  le suivi le plus probable.
+- `prestige_social_repo.go:427` (`archived_at`), `media_repo_writes.go:167` et `:210`
+  (`liked_at`) : horloge nue dans des ordres qui ne portent pas `written_at`.
+- `shared_social_persister_batch.go:376` et `:384` — chemin LEGACY player_records
+  (`updated_at = NOW()`), conservé pour les bases sans table `_history`.
+- Famille des DEFAULT d'AUTRES colonnes (`created_at`, `associated_at`, `liked_at`,
+  `favorited_at`, `updated_at`, `indexed_at`) : une trentaine de sites DDL sur le fuseau de
+  session. Aucune n'arbitre une vue `_latest` ; l'écart n'est visible que si la colonne est
+  comparée à une horloge Go UTC — ce qui est le cas d'`associated_at`, d'où son traitement
+  dans les seuls ordres touchés par S5a.
+
+**Gate.** `go test ./... -p 1` : EXIT=0, 281 paquets, 0 test en échec, 0 paquet en échec.
+`go test -tags=integration -p 1 ./...` : EXIT=0, 282 paquets, 0 test en échec (obligatoire,
+le diff touche persist/, sync/ et migration/ ; `-p 1` non négociable, le driver DuckDB est
+mono-process). `go build ./...` et `go vet ./...` propres. Ratchet
+`golangci-lint --new-from-merge-base=origin/main` : 0 issue, les deux fichiers de garde-rail
+étant analysés en entier. AUCUN test supprimé ni renommé (seulement deux ajouts), donc
+`.ai/baselines/tests_pre_migration.jsonl` est inchangé : rien à réconcilier. Web non touché.
+`scripts/check_test_baseline.sh` reste INJOUABLE sur ce poste (son `export CC=gcc` casse le
+lien DuckDB, constat du 2026-08-06) : la CI Linux reste seule juge de la baseline.
+
+**Prochaine étape** : CI verte sur la branche, puis merge par le superviseur (= déploiement
+prod). Suivi le plus probable : `computed_at` de world_player_season_stats, même défaut sous
+un autre nom de colonne.
+
 
 ## [2026-08-06] Lot de suivi post-killfeed — S1 à S4, et un défaut de fuseau bien plus large que son DEFAULT
 

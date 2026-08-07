@@ -90,7 +90,7 @@ func UpsertPlayerRecord(ctx context.Context, pdb *PlayerDB, metric string, value
 	if _, err := pdb.SharedSocial.Exec(ctx, `
 		INSERT INTO player_records_history
 			(xuid, metric, period, value, achieved_at, achieved_match_id, written_at)
-		VALUES (?, ?, 'all_time', ?, NOW(), ?, NOW())
+		VALUES (?, ?, 'all_time', ?, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), ?, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))
 	`, pdb.XUID, metric, value, nullableMatchID(matchID)); err != nil {
 		return err
 	}

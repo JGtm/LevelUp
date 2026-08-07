@@ -77,7 +77,7 @@ func applyUserPrestigeAppendOnly(db *sql.DB) error {
 	if hasLegacy, _ := tableExists(db, "user_prestige"); hasLegacy {
 		if _, err := db.ExecContext(ctx, `
 			INSERT INTO user_prestige_history (user_id, title_slug, total_pp, current_level, updated_at, written_at)
-			SELECT user_id, title_slug, total_pp, current_level, updated_at, COALESCE(updated_at, CURRENT_TIMESTAMP)
+			SELECT user_id, title_slug, total_pp, current_level, updated_at, COALESCE(updated_at, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))
 			FROM user_prestige`); err != nil {
 			return fmt.Errorf("user_prestige append-only: backfill: %w", err)
 		}

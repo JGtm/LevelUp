@@ -95,7 +95,7 @@ func seedFlushedNotif(t *testing.T, db *duckdb.DB, id int64) {
 	if _, err := db.SQLDb().Exec(`
 		INSERT INTO player_notifications_history
 			(xuid, id, category, severity, title_key, source, created_at, read_at, is_deleted, written_at)
-		VALUES ('x', ?, 'c', 'info', 'k', 's', NOW(), NULL, FALSE, NOW())`, id); err != nil {
+		VALUES ('x', ?, 'c', 'info', 'k', 's', CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), NULL, FALSE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`, id); err != nil {
 		t.Fatalf("seed notif id=%d: %v", id, err)
 	}
 	if _, err := db.SQLDb().Exec("CHECKPOINT"); err != nil {
@@ -220,7 +220,7 @@ func TestNotificationWrite_LegacyNoCheckpoint_LeavesWAL(t *testing.T) {
 	if _, err := socialDB.SQLDb().Exec(`
 		INSERT INTO player_notifications_history
 			(xuid, id, category, severity, title_key, source, created_at, read_at, is_deleted, written_at)
-		VALUES ('x', 1, 'c', 'info', 'k', 's', NOW(), NOW(), FALSE, NOW())`); err != nil {
+		VALUES ('x', 1, 'c', 'info', 'k', 's', CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), FALSE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`); err != nil {
 		t.Fatalf("insert sans checkpoint: %v", err)
 	}
 	if sz := walSize(t, socialDB.Path()); sz == 0 {

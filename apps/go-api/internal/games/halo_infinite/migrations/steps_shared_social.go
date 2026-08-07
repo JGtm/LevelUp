@@ -402,7 +402,7 @@ func sharedSocialSteps() []migration.Migration {
 								(xuid, metric, period, value, achieved_at, achieved_match_id, written_at)
 							SELECT
 								xuid, metric, period, value, achieved_at, achieved_match_id,
-								COALESCE(updated_at, CURRENT_TIMESTAMP)
+								COALESCE(updated_at, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))
 							FROM player_records;
 						`
 					} else {
@@ -411,7 +411,7 @@ func sharedSocialSteps() []migration.Migration {
 								(xuid, metric, period, value, achieved_at, achieved_match_id, written_at)
 							SELECT
 								xuid, metric, 'all_time', value, achieved_at, achieved_match_id,
-								COALESCE(updated_at, CURRENT_TIMESTAMP)
+								COALESCE(updated_at, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))
 							FROM player_records;
 						`
 					}

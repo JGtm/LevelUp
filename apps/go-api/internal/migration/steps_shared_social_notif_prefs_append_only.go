@@ -69,7 +69,7 @@ func applyNotifPrefsAppendOnly(db *sql.DB) error {
 	if hasLegacy, _ := tableExists(db, "notification_preferences"); hasLegacy {
 		if _, err := db.ExecContext(ctx, `
 			INSERT INTO notification_preferences_history (xuid, category, enabled, delivery, updated_at, written_at)
-			SELECT xuid, category, enabled, delivery, updated_at, COALESCE(updated_at, CURRENT_TIMESTAMP)
+			SELECT xuid, category, enabled, delivery, updated_at, COALESCE(updated_at, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))
 			FROM notification_preferences`); err != nil {
 			return fmt.Errorf("notif_prefs append-only: backfill: %w", err)
 		}

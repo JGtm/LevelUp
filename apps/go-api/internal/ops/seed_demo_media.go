@@ -379,7 +379,7 @@ func insertDemoMediaRow(ctx context.Context, db *sql.DB, m demoMediaRow) error {
 	if _, err := db.ExecContext(ctx, `
 		INSERT INTO media_match_associations_history
 			(media_file_id, match_id, delta_seconds, is_manual, is_active, associated_at, written_at)
-		VALUES (CAST(? AS BIGINT), ?, 0, FALSE, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+		VALUES (CAST(? AS BIGINT), ?, 0, FALSE, TRUE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`,
 		m.ID, m.MatchID); err != nil {
 		return fmt.Errorf("insert media_match_associations_history: %w", err)
 	}
