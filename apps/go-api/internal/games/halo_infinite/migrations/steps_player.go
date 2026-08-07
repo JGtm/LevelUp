@@ -212,7 +212,7 @@ func playerSteps() []migration.Migration {
 							id, user_id, title_slug, type, started_at, current_length,
 							best_length, last_increment_at, threshold, shields_used,
 							shields_available, status, broken_at,
-							COALESCE(last_increment_at, started_at, CURRENT_TIMESTAMP)
+							COALESCE(last_increment_at, started_at, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))
 						FROM streak;
 					`); err != nil {
 						return fmt.Errorf("create_streak_history: backfill: %w", err)

@@ -74,7 +74,7 @@ func applyLikesAppendOnly(db *sql.DB) error {
 	if hasLegacy, _ := tableExists(db, "media_likes"); hasLegacy {
 		if _, err := db.ExecContext(ctx, `
 			INSERT INTO media_likes_history (media_path, liker_slug, liker_gamertag, is_liked, liked_at, written_at)
-			SELECT media_path, liker_slug, liker_gamertag, TRUE, liked_at, COALESCE(liked_at, CURRENT_TIMESTAMP)
+			SELECT media_path, liker_slug, liker_gamertag, TRUE, liked_at, COALESCE(liked_at, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))
 			FROM media_likes`); err != nil {
 			return fmt.Errorf("likes append-only: backfill: %w", err)
 		}

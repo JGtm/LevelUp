@@ -79,7 +79,7 @@ func (r *StreaksRepo) Upsert(ctx context.Context, s streaks.Streak) error {
 			id, user_id, title_slug, type, started_at,
 			current_length, best_length, last_increment_at, threshold,
 			shields_used, shields_available, status, broken_at, written_at
-		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, CURRENT_TIMESTAMP)`,
+		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`,
 		s.ID, s.UserID, s.TitleSlug, string(s.Type), s.StartedAt,
 		s.CurrentLength, s.BestLength, nullableTime(s.LastIncrementAt), nullableFloat(s.Threshold),
 		s.ShieldsUsed, s.ShieldsAvailable, string(s.Status), nullableTime(s.BrokenAt),

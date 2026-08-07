@@ -106,7 +106,7 @@ func TestGetMatchScoreboard_ObjectiveViewPresent_PopulatesObjective(t *testing.T
 	if _, err := pdb.Player.Exec(ctx, `
 		INSERT INTO shared.match_objective_stats
 			(id, match_id, xuid, flag_captures, flag_grabs, time_as_flag_carrier_seconds, written_at)
-		VALUES (1, ?, ?, 3, 5, 42.5, now())`, "m1", pTestXUID,
+		VALUES (1, ?, ?, 3, 5, 42.5, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`, "m1", pTestXUID,
 	); err != nil {
 		t.Fatalf("INSERT match_objective_stats: %v", err)
 	}

@@ -118,7 +118,7 @@ func (r *PersonalRecordsRepo) Upsert(ctx context.Context, pr records.PersonalRec
 		INSERT INTO player_records_history (
 			xuid, metric, period, value, achieved_at, achieved_match_id,
 			previous_value, previous_achieved_at, written_at
-		) VALUES (?,?,?,?,?,?,?,?, CURRENT_TIMESTAMP)
+		) VALUES (?,?,?,?,?,?,?,?, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))
 	`,
 		pr.XUID, pr.Metric, period, pr.Value,
 		nullableTime(pr.AchievedAt), NullableStr(pr.AchievedMatchID),
