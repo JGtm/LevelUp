@@ -247,7 +247,7 @@ func bulkInsertAssociations(ctx context.Context, db *sql.DB, assocs []mediaMatch
 	stmt, err := tx.PrepareContext(ctx, `
 		INSERT INTO media_match_associations_history
 			(media_file_id, match_id, delta_seconds, is_manual, is_active, associated_at, written_at)
-		VALUES (?, ?, ?, FALSE, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		VALUES (?, ?, ?, FALSE, TRUE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))
 	`)
 	if err != nil {
 		_ = tx.Rollback()

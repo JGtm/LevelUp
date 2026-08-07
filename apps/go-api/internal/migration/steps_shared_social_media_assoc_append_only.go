@@ -92,9 +92,13 @@ func applyMediaAssocAppendOnly(db *sql.DB) error {
 		if hasManual {
 			manualExpr = "COALESCE(is_manual, FALSE)"
 		}
-		atExpr := "CURRENT_TIMESTAMP"
+		// atExpr alimente written_at : horloge UTC canonique OBLIGATOIRE (lot S5).
+		// `CURRENT_TIMESTAMP` y rendait un TIMESTAMPTZ coercé par le fuseau de
+		// session, donc un written_at daté dans le futur qui gagne l'arbitrage de
+		// media_match_associations_latest contre les events UTC écrits ensuite.
+		atExpr := WrittenAtDefaultUTC
 		if hasCreated {
-			atExpr = "COALESCE(created_at, CURRENT_TIMESTAMP)"
+			atExpr = "COALESCE(created_at, " + WrittenAtDefaultUTC + ")"
 		}
 		q := fmt.Sprintf(`
 			INSERT INTO media_match_associations_history

@@ -105,7 +105,7 @@ func buildMarkReadQuery(xuid string, ids []int64) (string, []any) {
 		)
 		SELECT xuid, id, category, severity, title_key, body_key, params,
 		       target_route, target_search, actor_xuid, actor_name, source,
-		       created_at, ?, FALSE, CURRENT_TIMESTAMP
+		       created_at, ?, FALSE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		FROM player_notifications_latest
 		WHERE xuid = ? AND read_at IS NULL AND id IN (%s)
 	`, strings.Join(placeholders, ","))

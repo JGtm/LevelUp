@@ -60,7 +60,7 @@ func (r *PrestigeSocialRepo) EmitEvent(ctx context.Context, ev prestige.Prestige
 			INSERT INTO user_prestige_history (user_id, title_slug, total_pp, current_level, updated_at, written_at)
 			SELECT ?, ?,
 			       COALESCE((SELECT total_pp FROM user_prestige_latest WHERE user_id = ? AND title_slug = ?), 0) + ?,
-			       0, ?, CURRENT_TIMESTAMP
+			       0, ?, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		`, ev.UserID, ev.TitleSlug, ev.UserID, ev.TitleSlug, ev.PPAmount, ev.CreatedAt); e != nil {
 			_ = tx.Rollback()
 			return e
@@ -132,7 +132,7 @@ func (r *PrestigeSocialRepo) UpsertUserPrestige(ctx context.Context, up prestige
 	// APPEND-ONLY : INSERT d'un snapshot complet (plus d'ON CONFLICT DO UPDATE).
 	return execCheckpointed(ctx, r.db, `
 		INSERT INTO user_prestige_history (user_id, title_slug, total_pp, current_level, updated_at, written_at)
-		VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+		VALUES (?, ?, ?, ?, ?, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))
 	`, up.UserID, up.TitleSlug, up.TotalPP, up.CurrentLevel, up.UpdatedAt)
 }
 
@@ -438,7 +438,7 @@ func (r *PrestigeSquadChallengeRepo) AddParticipant(ctx context.Context, p prest
 			squad_challenge_id, user_id, chosen_tier, data_tier,
 			current_value, completed_at, is_private, joined_at, written_at
 		)
-		SELECT ?,?,?,?,?,?,?,?, CURRENT_TIMESTAMP
+		SELECT ?,?,?,?,?,?,?,?, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		WHERE NOT EXISTS (
 			SELECT 1 FROM squad_challenge_participant_latest
 			WHERE squad_challenge_id = ? AND user_id = ?
@@ -465,7 +465,7 @@ func (r *PrestigeSquadChallengeRepo) UpdateParticipantProgress(
 			current_value, completed_at, is_private, joined_at, written_at
 		)
 		SELECT squad_challenge_id, user_id, chosen_tier, data_tier,
-		       ?, ?, is_private, joined_at, CURRENT_TIMESTAMP
+		       ?, ?, is_private, joined_at, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		FROM squad_challenge_participant_latest
 		WHERE squad_challenge_id = ? AND user_id = ?
 	`, value, completedAt, challengeID, userID)

@@ -90,7 +90,7 @@ func applySquadChallengeParticipantAppendOnly(db *sql.DB) error {
 			)
 			SELECT squad_challenge_id, user_id, chosen_tier, data_tier,
 			       current_value, completed_at, is_private, joined_at,
-			       COALESCE(joined_at, CURRENT_TIMESTAMP)
+			       COALESCE(joined_at, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))
 			FROM squad_challenge_participant`); err != nil {
 			return fmt.Errorf("squad_challenge_participant append-only: backfill: %w", err)
 		}

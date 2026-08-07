@@ -667,13 +667,20 @@ func (r *LeaderboardRepo) isLocalXUID(xuid string) bool {
 // comme garde-fou de fraîcheur : évite de re-scraper Halo Waypoint à chaque boot /
 // hot-reload Air si un snapshot récent existe déjà.
 //
-// L'âge est calculé ENTIÈREMENT en SQL (CURRENT_TIMESTAMP - max(written_at)) :
-// les deux timestamps partagent l'horloge/zone de la DB, ce qui évite le piège
-// TZ d'un timestamp DuckDB naïf relu comme UTC puis comparé à time.Now() local
-// (cf. reference_timezone_canonical_pattern). `db` peut être RO ou RW.
+// L'âge est calculé ENTIÈREMENT en SQL, les DEUX termes sur l'horloge UTC
+// canonique — c'est la condition de justesse, pas un détail de style.
+//
+// `CURRENT_TIMESTAMP` rend un TIMESTAMPTZ ; `written_at` est une colonne TIMESTAMP
+// NAÏVE portant un instant UTC. Les soustraire faisait lire `written_at` dans le
+// fuseau de SESSION : à UTC+2, le snapshot paraissait dater de deux heures plus
+// tard qu'en réalité, donc l'âge était SOUS-ESTIMÉ de l'offset. Le garde-fou de
+// fraîcheur laissait ainsi passer pour frais un snapshot périmé de deux heures, et
+// l'écart suivait le fuseau du serveur sans qu'aucun test local ne le voie.
+// `CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)` rend la même horloge naïve-UTC que
+// celle des écrivains de `written_at` (lot S5). `db` peut être RO ou RW.
 func WorldCSRSnapshotAge(ctx context.Context, db *sql.DB, seasonID string) (time.Duration, bool, error) {
 	const q = `
-		SELECT date_part('epoch', CURRENT_TIMESTAMP - max(written_at))
+		SELECT date_part('epoch', CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP) - max(written_at))
 		FROM world_csr_leaderboard_snapshots
 		WHERE season_id = ?`
 	var ageSeconds sql.NullFloat64

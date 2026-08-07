@@ -358,7 +358,7 @@ func (p *SharedSocialPersister) MarkNotificationsRead(ctx context.Context, xuid 
 		)
 		SELECT xuid, id, category, severity, title_key, body_key, params,
 		       target_route, target_search, actor_xuid, actor_name, source,
-		       created_at, ?, FALSE, CURRENT_TIMESTAMP
+		       created_at, ?, FALSE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		FROM player_notifications_latest
 		WHERE xuid = ? AND read_at IS NULL AND id IN (%s)`,
 		strings.Join(placeholders, ","),
@@ -379,7 +379,7 @@ func (p *SharedSocialPersister) MarkNotificationUnread(ctx context.Context, xuid
 		)
 		SELECT xuid, id, category, severity, title_key, body_key, params,
 		       target_route, target_search, actor_xuid, actor_name, source,
-		       created_at, NULL, FALSE, CURRENT_TIMESTAMP
+		       created_at, NULL, FALSE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		FROM player_notifications_latest
 		WHERE xuid = ? AND id = ?`,
 		xuid, id)
@@ -397,7 +397,7 @@ func (p *SharedSocialPersister) MarkAllNotificationsRead(ctx context.Context, xu
 		)
 		SELECT xuid, id, category, severity, title_key, body_key, params,
 		       target_route, target_search, actor_xuid, actor_name, source,
-		       created_at, ?, FALSE, CURRENT_TIMESTAMP
+		       created_at, ?, FALSE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		FROM player_notifications_latest
 		WHERE xuid = ? AND read_at IS NULL`
 	if category == "" {
@@ -421,7 +421,7 @@ func (p *SharedSocialPersister) SweepStaleInfoNotificationsRead(ctx context.Cont
 		)
 		SELECT xuid, id, category, severity, title_key, body_key, params,
 		       target_route, target_search, actor_xuid, actor_name, source,
-		       created_at, ?, FALSE, CURRENT_TIMESTAMP
+		       created_at, ?, FALSE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		FROM player_notifications_latest
 		WHERE xuid = ? AND read_at IS NULL AND severity = 'info' AND created_at < ?`,
 		time.Now().UTC(), xuid, cutoff)
@@ -440,7 +440,7 @@ func (p *SharedSocialPersister) DeleteNotification(ctx context.Context, xuid str
 		)
 		SELECT xuid, id, category, severity, title_key, body_key, params,
 		       target_route, target_search, actor_xuid, actor_name, source,
-		       created_at, read_at, TRUE, CURRENT_TIMESTAMP
+		       created_at, read_at, TRUE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		FROM player_notifications_latest
 		WHERE xuid = ? AND id = ?`,
 		xuid, id)
@@ -464,7 +464,7 @@ func (p *SharedSocialPersister) CapAndSweepNotifications(ctx context.Context, xu
 		)
 		SELECT xuid, id, category, severity, title_key, body_key, params,
 		       target_route, target_search, actor_xuid, actor_name, source,
-		       created_at, read_at, TRUE, CURRENT_TIMESTAMP
+		       created_at, read_at, TRUE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		FROM player_notifications_latest
 		WHERE xuid = ? AND id NOT IN (
 			SELECT id FROM player_notifications_latest
@@ -547,10 +547,14 @@ func (p *SharedSocialPersister) SetMediaMatchAssociation(ctx context.Context, me
 	// APPEND-ONLY : le replace manuel = UN SEUL INSERT d'event (is_manual=TRUE).
 	// La vue media_match_associations_latest masque l'ancienne assoc du même
 	// media_file_id (priorité is_manual DESC, written_at DESC). Plus de DELETE.
+	// Les DEUX horodatages en UTC (lot S5) : `associated_at` partage la ligne de
+	// `written_at`, et il est comparé à une borne Go UTC par le résolveur de
+	// destinataires média (`loadRecentMediaMatchIDs`). Une seule des deux colonnes
+	// datée sur le fuseau de session rendrait la ligne incohérente avec elle-même.
 	if _, err := tx.ExecContext(ctx,
 		`INSERT INTO media_match_associations_history
 			(media_file_id, match_id, delta_seconds, is_manual, is_active, associated_at, written_at)
-		 VALUES (?, ?, 0, TRUE, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+		 VALUES (?, ?, 0, TRUE, TRUE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`,
 		mediaFileID, matchID,
 	); err != nil {
 		rollback()

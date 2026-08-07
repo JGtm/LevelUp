@@ -34,12 +34,17 @@ func RecomputeLUSRCanonicalForPlayer(ctx context.Context, playerDB, sharedDB *sq
 	// PK + idx_pssv2). On INSÈRE une row sentinelle is_reset=TRUE par (xuid,
 	// playlist_group) existant ; la vue player_skill_state_v2_latest (WHERE NOT
 	// is_reset) masque alors le groupe → LoadState renvoie nil → le replay
-	// re-seed depuis les priors. now() garantit written_at postérieur aux états
-	// précédents. Si le joueur n'a aucun état, le SELECT est vide (no-op correct).
+	// re-seed depuis les priors. L'horloge UTC canonique garantit written_at
+	// postérieur aux états précédents — et SEULEMENT elle : `now()` nu rendait un
+	// TIMESTAMPTZ coercé par le fuseau de SESSION, donc une sentinelle datée deux
+	// heures dans le futur à UTC+2. Elle gagnait alors l'arbitrage de
+	// player_skill_state_v2_latest contre les états UTC replayés dans la foulée,
+	// et masquait deux heures de recalcul (jumeau exact du défaut R1, lot S5).
+	// Si le joueur n'a aucun état, le SELECT est vide (no-op correct).
 	if _, err := sharedDB.ExecContext(ctx, `
 		INSERT INTO player_skill_state_v2
 			(xuid, playlist_group, mu, sigma, experience, written_at, is_reset)
-		SELECT xuid, playlist_group, 0, 0, 0, now(), TRUE
+		SELECT xuid, playlist_group, 0, 0, 0, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP), TRUE
 		FROM player_skill_state_v2_latest WHERE xuid = ?`, xuid); err != nil {
 		return 0, fmt.Errorf("RecomputeLUSRCanonicalForPlayer reset watermark: %w", err)
 	}
