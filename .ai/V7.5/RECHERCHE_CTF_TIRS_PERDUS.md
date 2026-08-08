@@ -816,10 +816,47 @@ projectiles n'a aucune raison d'avoir le même rapport « événements de tir / 
 mode à tir tendu.** Le déficit Fiesta (37 % contre 84-99 %) cesse donc d'être une anomalie de
 décodage : c'est probablement une **différence de composition d'arsenal**.
 
-**Ce qui reste à faire pour le trancher**, et ce n'est plus de la rétro-ingénierie : comparer, par
-ARME, les événements de tir décodés aux tirs de l'API. Si le déficit se concentre sur le marteau,
-l'épée et les projectiles, l'affaire est close sans toucher au binaire — et le « trou Fiesta »
-devient une propriété connue et documentée du format, pas un défaut à corriger.
+#### LA MESURE A ÉTÉ FAITE, ET ELLE RÉFUTE CETTE EXPLICATION
+
+Le test naïf semblait la confirmer. Sur 890 matchs, en classant par part de frags aux armes non
+tendues (marteau, épée, grenade, projectiles) :
+
+| part armes non tendues | matchs | couverture du flux de tirs |
+|---|---|---|
+| < 10 % | 38 | **99,8 %** |
+| 10-20 % | 152 | 95,2 % |
+| 20-35 % | 337 | 95,8 % |
+| 35-55 % | 127 | 92,0 % |
+| **> 55 %** | 236 | **38,2 %** |
+
+Gradient net… **et entièrement confondu.** Le bucket à plus de 55 % est composé à 89 % de matchs
+Fiesta. Le contrôle qui s'impose est donc de regarder DANS chaque famille :
+
+| | < 30 % | 30-45 % | 45-60 % | > 60 % |
+|---|---|---|---|---|
+| **Fiesta** | 39,6 % (4) | 42,3 % (18) | 44,4 % (26) | 37,6 % (211) |
+| **hors Fiesta** | 95,9 % (423) | 96,1 % (177) | 92,9 % (22) | 45,0 % (9) |
+
+**À l'intérieur de Fiesta, la couverture ne bouge pas** : 38 à 44 % quelle que soit la part
+d'armes non tendues — un Fiesta à moins de 30 % d'armes non tendues décode encore à 39,6 %. **À
+l'intérieur des autres modes, elle ne bouge pas non plus** : 93 à 96 % de moins de 30 % à 60 %.
+
+**La composition de l'arsenal n'explique donc PAS le déficit.** Ce qui le prédit, c'est
+d'appartenir à une famille de modes — et le gradient du premier tableau n'était que le reflet de
+cette appartenance.
+
+#### CE QUE LA MESURE TROUVE À LA PLACE, ET C'EST PLUS PRÉCIS
+
+Les **neuf** matchs hors Fiesta qui s'effondrent sont **tous des Husky Raid** (couverture 19,5 %
+à 86,9 %). Fiesta et Husky Raid partagent une mécanique que les autres modes n'ont pas :
+**l'arme est FOURNIE à la réapparition**, elle n'est pas ramassée sur la carte.
+
+Le déficit du flux de tirs suit donc une frontière de **mécanique de mode**, pas de composition
+d'arsenal. C'est une hypothèse plus étroite que la précédente, et elle reste à instruire.
+
+**Portée pratique** : ces deux familles représentent environ **30 % du corpus**. Pour les
+**70 % restants**, le flux de tirs est déjà décodé à **95 %** — le « trou » n'est ni général ni
+la norme.
 
 ### 8.5 CE QUE ÇA CHANGE DANS L'ORDRE DES PRIORITÉS
 

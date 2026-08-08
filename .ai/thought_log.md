@@ -1,3 +1,42 @@
+## [2026-08-08] v7.5 — l'arsenal n'explique PAS le trou Fiesta : ce sont les modes a arme fournie
+
+**Statut** : Complété (mesure en base, 890 matchs, aucun décodage). Réfute l'explication que
+j'avais avancée deux heures plus tôt, et la remplace par une frontière plus étroite.
+
+**LE TEST NAÏF SEMBLAIT CONFIRMER.** Classés par part de frags aux armes non tendues (marteau,
+épée, grenade, projectiles), les matchs donnent un gradient net : 99,8 % de couverture du flux de
+tirs sous 10 %, 38,2 % au-dessus de 55 %.
+
+**LE CONTRÔLE LE DÉMOLIT.** Le bucket haut est composé à 89 % de matchs Fiesta. En regardant DANS
+chaque famille :
+
+| | < 30 % | 30-45 % | 45-60 % | > 60 % |
+|---|---|---|---|---|
+| Fiesta | 39,6 % (4) | 42,3 % (18) | 44,4 % (26) | 37,6 % (211) |
+| hors Fiesta | 95,9 % (423) | 96,1 % (177) | 92,9 % (22) | 45,0 % (9) |
+
+**À l'intérieur de Fiesta la couverture ne bouge pas** (38-44 % quelle que soit la part d'armes
+non tendues) ; **hors Fiesta non plus** (93-96 %). La composition de l'arsenal n'explique donc
+PAS le déficit — le gradient n'était que le reflet de l'appartenance à Fiesta.
+
+**CE QUE LA MESURE TROUVE À LA PLACE.** Les NEUF matchs hors Fiesta qui s'effondrent sont **tous
+des Husky Raid**. Fiesta et Husky Raid partagent une mécanique que les autres modes n'ont pas :
+**l'arme est FOURNIE à la réapparition**, elle n'est pas ramassée sur la carte. Le déficit suit
+une frontière de MÉCANIQUE DE MODE, pas de composition d'arsenal.
+
+**PORTÉE PRATIQUE** : ces deux familles font ~30 % du corpus. Pour les 70 % restants, le flux de
+tirs est décodé à **95 %**. Le trou n'est ni général ni la norme.
+
+**LEÇON DE MÉTHODE, la deuxième de la journée sur le même motif.** Un gradient sur cinq buckets
+paraissait probant ; il était entièrement porté par une variable confondue. Le réflexe qui a
+sauvé la conclusion est le même que pour le balayage d'offsets : **stratifier avant de conclure**.
+Une corrélation entre deux grandeurs qui varient toutes deux avec le mode ne dit rien tant qu'on
+n'a pas regardé à l'intérieur d'un mode.
+
+**Conclusion / prochaine étape.** L'hypothèse « arme fournie au spawn » est plus étroite et reste
+à instruire ; elle n'est pas nécessaire aux tirs fatals (88,2 % de morts localisées, §8.4ter) ni
+au rejeu des 70 % de matchs normaux.
+
 ## [2026-08-08] v7.5 — le trou Fiesta expliqué par l'arsenal : l'intuition de l'utilisateur, et ma reponse fausse
 
 **Statut** : Complété (mesure en base, aucun décodage). Fait suite au résultat négatif du
