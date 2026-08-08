@@ -224,7 +224,10 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// ~120 ms, la grille du rejeu est à 100 ms : décimer d'abord perdrait des tireurs).
 	// LE PONT slot -> joueur vient du seul fil des morts (cf. owners.go). Il conditionne les
 	// tirs ET les lancers : le construire une seule fois, et le partager.
-	own := buildOwners(indexBySlot(sorted), opt.Deaths, opt.PlayerIndices)
+	// Les TIRS entrent dans la construction du pont — non pour désigner un tireur (l'événement
+	// porte déjà son auteur), mais parce que la fermeture A a besoin de savoir QUAND un joueur
+	// agit sans avoir de corps nommé. Cf. closures.go.
+	own := buildOwners(indexBySlot(sorted), opt.Deaths, opt.PlayerIndices, fireRefs(fire))
 	// L'IDENTITÉ se pose sur les traces dès que le pont existe : sans elle, un client ne peut
 	// ni nommer un joueur, ni regrouper ses vies, ni colorer une équipe.
 	nameTracks(doc.Tracks, own.SlotXUID)
@@ -279,6 +282,18 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 		"verdictGrenades", doc.Coverage.Verdict["grenades"],
 		"verdictPont", doc.Coverage.Verdict["bridge"])
 	return doc
+}
+
+// fireRefs réduit les événements de tir à ce que les fermetures ont le droit de connaître : QUI
+// et QUAND. L'arme et la visée sont volontairement laissées dehors — elles n'ont aucun pouvoir
+// de désignation, et les rendre visibles à la fermeture rouvrirait la porte au vote supprimé le
+// 2026-07-28.
+func fireRefs(fire []filmdec.FireEvent) []FireEventRef {
+	out := make([]FireEventRef, len(fire))
+	for i, e := range fire {
+		out[i] = FireEventRef{FilmIndex: e.FilmIndex, TimestampUS: e.TimestampUS}
+	}
+	return out
 }
 
 // keepShotsOfPublishedTracks écarte les tirs dont le slot n'a pas de trajectoire publiée

@@ -102,6 +102,19 @@ func TestCTFLostShotsResearch(t *testing.T) {
 	}
 }
 
+// ctfReadingOnlyOwners reproduit le pont TEL QU'IL ÉTAIT AVANT les fermetures : la seule lecture
+// du fil des morts. Il existe parce que `buildOwners` ferme désormais le pont en production
+// (closures.go) — mesurer le « avant » exige donc de reconstruire explicitement l'état antérieur,
+// et non de dupliquer la fermeture, qui vit dans le code de production et nulle part ailleurs.
+func ctfReadingOnlyOwners(tracks map[uint32]slotTrack, deaths []Death,
+	idx PlayerIndexTable) (map[uint32]int, []lifeSpan, int64) {
+	lives := buildLifeSpans(tracks)
+	off, _ := bestDeathOffset(lives, deaths)
+	nameLivesByDeaths(lives, deaths, off)
+	owners, _, _ := ownersFromLives(lives, idx.ByXUID)
+	return owners, lives, off
+}
+
 func loadCTFQuantCatalog(t *testing.T) *filmdec.MapQuantCatalog {
 	t.Helper()
 	root, err := title.FindRepoRoot()
@@ -147,17 +160,19 @@ func analyzeCTFFilm(t *testing.T, cat *filmdec.MapQuantCatalog, dir, short, mapN
 	sorted := append([]filmdec.BipedPosition(nil), pos...)
 	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].TimestampUS < sorted[j].TimestampUS })
 	tracks := indexBySlot(sorted)
-	own := buildOwners(tracks, deaths, table)
-
-	// Les vies sont RECONSTRUITES à l'identique de buildOwners, pour disposer de celles qu'il
-	// n'a pas nommées : ce sont elles qu'on soupçonne de porter les tirs perdus.
-	lives := buildLifeSpans(tracks)
-	off, _ := bestDeathOffset(lives, deaths)
-	named := nameLivesByDeaths(lives, deaths, off)
+	// Pont de LECTURE SEULE : cet instrument mesure l'état antérieur aux fermetures, qui est le
+	// point de comparaison de tout le verdict.
+	owners, lives, _ := ctfReadingOnlyOwners(tracks, deaths, table)
+	named := 0
+	for _, l := range lives {
+		if l.xuid != 0 {
+			named++
+		}
+	}
 
 	rep := filmReport{
 		short: short, mapName: mapName,
-		lives: len(lives), named: named, slots: len(own.Owner), posSamples: len(sorted),
+		lives: len(lives), named: named, slots: len(owners), posSamples: len(sorted),
 	}
 	if len(sorted) > 0 {
 		rep.firstUS, rep.lastUS = sorted[0].TimestampUS, sorted[len(sorted)-1].TimestampUS
@@ -168,7 +183,7 @@ func analyzeCTFFilm(t *testing.T, cat *filmdec.MapQuantCatalog, dir, short, mapN
 		}
 	}
 	rep.medianStepUS, rep.p90StepUS, rep.interSampleOver120msRatio = ctfSampleSteps(tracks)
-	rep.diags = ctfClassify(tracks, own.Owner, rep.unnamedLives, fire)
+	rep.diags = ctfClassify(tracks, owners, rep.unnamedLives, fire)
 	for _, d := range rep.diags {
 		switch d.class {
 		case "rattache":
