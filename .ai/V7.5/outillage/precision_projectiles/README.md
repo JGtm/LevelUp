@@ -86,3 +86,73 @@ premiere occurrence EN POSITION DE BIT ; balayer decalage par decalage retient l
 CHAQUE decalage, ce qui n est pas la meme occurrence. Il faut le minimum sur les huit decalages.
 
 **Cout mesure** : `-joueur -norm` sur 900 films = **3 min 10** (appariement compris).
+
+---
+
+## Ajout du 2026-08-08 (session 3) — les DUMPS et la BRANCHE OPAQUE d'i0
+
+Ces deux outils ne servent plus la piste E (close) mais le travail de DECODEUR ouvert par
+`.ai/V7.5/film_re/NOTE_I0_TI41_POSITION_PROJECTILE.md` §11.
+
+### `tmp_precdump` — lire les tables de precision dumpees de la memoire
+
+| drapeau | ce qu'il fait |
+|---|---|
+| `-widths <bin>` | decode `ce_prec_widths_1445cc9e0.bin` : triples de largeurs par niveau, comprimes par plages |
+| `-ranges <bin>` | decode `ce_prec_ranges_14462cbe0.bin` : 768 AABB `float[6]`, comprimes par plages |
+| `-verify <bin>` | **confronte la table a la forme fermee** `min(26, ceilLog2(min(ceil(40000/(2*step(L))), 2^22)))`, `step(L)=2^(16-L)/120` |
+| `-derive` | inversion : quel pas rend quelle largeur, sur les plages `+-100` et `+-20000` |
+
+```bash
+tmp_precdump -verify .ai/V7.5/dumps/ce_prec_widths_1445cc9e0.bin
+tmp_precdump -ranges .ai/V7.5/dumps/ce_prec_ranges_14462cbe0.bin
+```
+
+**Ce qu'il a etabli** : `-verify` rend **32 / 32 niveaux en accord**. La table dumpee n'est que
+la loi precalculee — elle confirme le desassemblage, elle n'apporte rien. Et l'entree 0 des
+plages EGALE le catalogue `.module` de production au flottant pres. Cout : instantane.
+
+**Correction portee au dossier au passage** : `FUN_1406d310c` est `ceilLog2`, pas `bitLen`.
+Les deux ne different que sur les puissances exactes de deux — et c'est ce cas qui decide des
+niveaux 17 a 22.
+
+### `tmp_i0hi` — la branche opaque de `object-position-component`
+
+| drapeau | ce qu'il mesure |
+|---|---|
+| `-part` | part des records `ti=41` sur la branche opaque, et structure des vies (mixtes / purement opaques / encadrables) |
+| `-controle` | **GATE OBLIGATOIRE AVANT `-reg`** : la regression rejouee sur la branche BASSE, dont les champs sont connus. Attendu : retrouver `off 3/w 13`, `off 16/w 13`, `off 29/w 14` avec des etendues implicites egales a l'AABB |
+| `-reg` | la regression sur la branche opaque, en deux regimes (coordonnee MONDE = plage fixe ; coordonnee NORMALISEE = largeurs de la carte) |
+| `-cartes <csv>` | mutualise plusieurs cartes : chaque film prend les bornes de SA carte. Un film sans bornes est ECARTE, jamais decode avec celles d'une autre |
+
+```bash
+tmp_i0hi -films <cache> -catalogue data/titles/halo_infinite/reference/map_quant_bounds.json \
+         -carte cliffhanger -only <ids> -part -controle
+tmp_i0hi -films <cache> -catalogue <json> -cartes film_maps.csv -limit 300 -part -reg
+```
+
+Le CSV `-cartes` s'exporte en une requete :
+
+```sql
+ATTACH 'data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb' AS s (READ_ONLY);
+SELECT substr(match_id,1,8) || ',' || lower(map_name) FROM s.match_registry WHERE map_name IS NOT NULL;
+```
+
+**Cout** : ~14 s par film (lecture + marche des chunks). 30 films = 7 min ; l'elagage par film
+(`keepMixedLives`, actif des que `-cartes` est passe) borne la memoire — sans lui, 300 films
+remontent ~250 Mo d'echantillons.
+
+**LA GRAMMAIRE DE RECORD EST CELLE DE LA PRODUCTION**, reprise mot pour mot de
+`filmdec/projectiles.go` (celle qui porte les 70 lancers de grenade sur 70). C'est ce qui
+distingue cette mesure de `tmp_i0w`.
+
+### ⚠ `tmp_i0w` — SA MESURE EST REFUTEE, ne pas la citer
+
+`tmp_i0w` annonce (note §8.1) que les deux branches d'i0 sont empruntees **a parts comparables**
+(264 contre 277). **C'est faux d'un facteur ~8.** Deux instruments independants disent 6,2 % :
+`tmp_i0hi` sur 30 films (9 382 records opaques sur 152 535) et `calib.txt` du cache film, qui
+porte `object-position-component:45` a une frequence modale de **0,98** — sans qu'on ait eu
+besoin de decoder quoi que ce soit. Le balayage de `tmp_i0w` n'a pas la selectivite de la
+grammaire de production : ses records a porte = 1 sont pour l'essentiel des faux positifs.
+
+L'outil reste archive pour la tracabilite de la session 2 ; **ses chiffres ne valent pas**.
