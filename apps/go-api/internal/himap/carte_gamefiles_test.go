@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"math"
 	"os"
 	"path/filepath"
 	"testing"
@@ -139,21 +140,33 @@ func TestCarteCliffhanger(t *testing.T) {
 	t.Logf("coupe a z = %+.2f ± %.2f m : %d cellules (%.1f %% de l'emprise)",
 		niveau, SliceTolerance, n, 100*float64(n)/float64(len(coupe)))
 
-	// Carte MULTI-NIVEAUX : pour chaque cellule, la bande praticable la plus HAUTE, teintee
-	// par son altitude. Cette fois « le plus haut » est bien un sol : le volume est borne a
-	// la tranche de jeu et le degagement de 2 m a deja ecarte les recoins ecrases.
+	// Carte DERIVEE : pour chaque cellule, la bande praticable la plus proche de la surface
+	// d'altitude de reference construite sur les ancres d'objectifs de la carte. Aucun
+	// reglage propre a la carte — cf. `reference.go`.
+	//
+	// Elle remplace « la bande praticable la plus HAUTE », qui ramenait le decor par-dessus
+	// l'arene des que les modules globaux entraient dans le volume.
 	hautes := make([]int, vol.NX*vol.NY)
 	for k := range hautes {
 		hautes[k] = -1
 	}
-	for iz := 0; iz < sol.NZ; iz++ {
-		for j := 0; j < sol.NY; j++ {
-			for i := 0; i < sol.NX; i++ {
-				if sol.Get(iz, j, i) {
-					hautes[j*sol.NX+i] = iz
+	if v := os.Getenv("PROBE_TOLERANCE"); v != "" {
+		fmt.Sscanf(v, "%f", &toleranceRendu)
+	}
+	surface := surfaceDesAncres(t, os.Getenv("PROBE_CARTE"))
+	if surface.Vide() {
+		t.Log("aucune ancre : repli sur la bande praticable la plus haute")
+		for iz := 0; iz < sol.NZ; iz++ {
+			for j := 0; j < sol.NY; j++ {
+				for i := 0; i < sol.NX; i++ {
+					if sol.Get(iz, j, i) {
+						hautes[j*sol.NX+i] = iz
+					}
 				}
 			}
 		}
+	} else {
+		hautes = sol.CarteParReference(surface, toleranceRendu)
 	}
 	nn := 0
 	for _, z := range hautes {
@@ -171,8 +184,16 @@ func TestCarteCliffhanger(t *testing.T) {
 			c := color.RGBA{247, 248, 250, 255}
 			if multi {
 				if iz := hautes[j*vol.NX+i]; iz >= 0 {
-					f := float64(iz) / float64(sol.NZ-1)
-					c = color.RGBA{uint8(28 + 200*f), uint8(46 + 175*f), uint8(84 + 130*f), 255}
+					// Teinte par l'ecart a la surface de REFERENCE, pas par l'altitude
+					// absolue : c'est l'etage joue qui doit ressortir, pas le relief.
+					x := vol.Min[0] + (float64(i)+0.5)*vol.Cell
+					y := vol.Min[1] + (float64(j)+0.5)*vol.Cell
+					f := 0.5
+					if !surface.Vide() {
+						f = (vol.Altitude(iz) - surface.At(x, y) + toleranceRendu) / (2 * toleranceRendu)
+						f = math.Max(0, math.Min(1, f))
+					}
+					c = color.RGBA{uint8(34 + 190*f), uint8(52 + 168*f), uint8(88 + 126*f), 255}
 				}
 			} else if coupe[j*vol.NX+i] {
 				c = color.RGBA{61, 86, 115, 255}

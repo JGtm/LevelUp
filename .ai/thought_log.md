@@ -60033,3 +60033,39 @@ praticable la plus haute » ramene le decor par-dessus l'arene, la coupe a altit
 les autres etages. Piste : filtrer les bandes affichees par le voisinage des positions
 observees. Puis le gate visuel cote a cote avec `carte_validee_v1.png`. Detail complet :
 `.ai/V7.5/cartes/HANDOFF_PORT_TRIANGLES_2026-08-08.md` §1 bis.
+
+## [2026-08-09] Cartes v7.5 — supprimer la calibration : les regles se DEDUISENT des ancres
+
+**Statut** : En cours
+
+**Decision technique principale** — l'utilisateur a identifie que le reglage carte par carte
+etait une impasse : l'oracle des positions de joueur n'existe que pour Cliffhanger, les 29
+autres cartes n'ont pas de film decode. La sortie est de DEDUIRE au lieu de regler, en
+s'appuyant sur des ancres presentes partout : les objectifs de `map_objectives.json`
+(37 cartes, positions x/y/z dans l'espace de jeu, produites au lot 5).
+
+Renversement de methode : on calibre la REGLE une fois sur la carte qui possede les deux
+oracles, et on valide la REGLE — pas ses parametres — sur les 36 autres.
+
+**Resultats observes**
+- Etalonnage de l'ancre, sans passer par la geometrie reconstruite (donnee contre donnee,
+  14 ancres de Cliffhanger contre les positions de joueur a leur aplomb) : le CENTRE de
+  l'ancre se tient a **+0,29 m au-dessus du sol**, dispersion interquartile 0,46 m.
+- Le bas de zone (`pos.z - down_z`), qui semblait le repere naturel, est bien pire :
+  median -0,49 m, dispersion 1,54 m — parce que `down_z` varie de 0,5 a 2 m.
+- Le voisinage des ancres cadre la carte sur sa zone jouable sans recadrage manuel :
+  l'emprise du sbsp fait 113 x 114 m, le jeu s'y deroule sur ~51 x 55 m.
+
+**Livre** : `internal/himap/reference.go` — `SurfaceReference` (interpolation des ancres,
+constantes `AncrageDecalageSol = 0,29` et `PorteeAncre = 25`), `DistanceAncre`,
+`Volume.CarteParReference`. `carte_ancres_gamefiles_test.go` porte l'etalonnage. Le lecteur du
+catalogue (`replay.LoadMapObjectives`) est reutilise, pas reecrit. Paquet vert, lint ratchet 0.
+
+**Ce qui est ainsi supprime** : la tranche Z reglee a la main, l'altitude de coupe choisie a
+l'oeil, et le recadrage. Le degagement redevient une constante physique et n'est plus un
+reglage de carte.
+
+**Prochaine etape** : la mesure des 37 cartes (chaque ancre doit tomber sur un sol), puis le
+gate visuel cote a cote avec `carte_validee_v1.png`. Le rendu de Cliffhanger montre desormais
+l'arene et ses structures, mais reste bruite en peripherie — suspect a instruire : le choix de
+LOD (`MaxTrianglesPerMesh = 40000` retient un LOD grossier sur les grands maillages de terrain).
