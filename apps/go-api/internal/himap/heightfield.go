@@ -75,7 +75,7 @@ func faceMarchable(a, b, c [3]float64) bool {
 	}
 	// La face peut etre orientee dans un sens ou dans l'autre selon l'ordre des sommets ;
 	// c'est l'INCLINAISON qui compte, pas le signe.
-	return math.Abs(n[2])/norme >= MinNormalZWalkable
+	return n[2]/norme >= MinNormalZWalkable
 }
 
 // rasteriseTriangle marque les cellules couvertes par la projection du triangle, en
