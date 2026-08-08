@@ -61,8 +61,11 @@ func max1(v int) int {
 // Si aucune ne colle, l'appariement par rang est CONSERVÉ mais marqué non vérifié
 // (`verified=false`) : le rejeter ferait perdre 8 icônes d'armes pourtant correctes à
 // l'oeil. Le doute est reporté dans index.json, il n'est pas avalé.
+// probeWindow : profondeur de la sonde de recalage. Reglable pour mesurer son effet.
+var probeWindow = 6
+
 func alignImages(m *hmod, tab []uint32, base int, imgs []bitmImg) (slots []int, verified []bool) {
-	const window = 6 // au-delà, on considère que le descripteur n'a pas de ressource
+	window := probeWindow
 	out := make([]int, len(imgs))
 	okFlags := make([]bool, len(imgs))
 	cur := base

@@ -54,15 +54,20 @@ import (
 var atlasTags = []struct {
 	ID    uint32
 	Style string
-	Max   int // 0 = pas de plafond
+	// CleanThrough : dernier index dont le decodage a ete CONFIRME A L OEIL. Au-dela, les
+	// images sont quand meme livrees mais marquees suspectes dans index.json — rien n est
+	// coupe, le doute est etiquete. C est un constat visuel, pas une mesure : la densite de
+	// transitions d opacite a ete essayee et NE SEPARE PAS (l icone d explosion, legitime,
+	// sort en tete du classement de bruit).
+	CleanThrough int
 }{
-	{0xbc17adf1, "contour", 0},
-	{0xe39747c8, "silhouette", 0},
+	{0xbc17adf1, "contour", 39},
+	{0xe39747c8, "silhouette", 39},
 	// Atlas « sandbox » : armes, vehicules, grenades lancees, et pictogrammes de mort. Le tag
 	// en declare 88 ; les images au-dela de l index 72 sortent RAYEES (des descripteurs faux
 	// positifs y tombent sur une ressource du bon poids, donc le controle arithmetique les
 	// laisse passer). La coupe est ASSUMEE et bornee ici plutot que servie corrompue.
-	{0x0302cad3, "sandbox", 73},
+	{0x0302cad3, "sandbox", 72},
 }
 
 // iconEntry décrit une icône extraite, telle qu'écrite dans index.json.
@@ -77,6 +82,7 @@ type iconEntry struct {
 	CroppedH   int    `json:"cropped_h"`
 	BC7Format  int    `json:"bc7_format"`
 	Verified   bool   `json:"align_verified"`
+	Suspect    bool   `json:"decode_suspect"`
 	Noise      string `json:"alpha_noise"`
 	FallbackPc string `json:"bc7_fallback_pct"`
 }
@@ -85,8 +91,10 @@ func main() {
 	deploy := flag.String("deploy", "", "racine `deploy` des archives du jeu (auto-détectée si vide)")
 	out := flag.String("out", filepath.Join("..", "..", "static", "weapons-assets", "halo_infinite", "jeu"),
 		"dossier de sortie des PNG")
+	probe := flag.Int("probe", 6, "profondeur de la sonde de recalage descripteur -> ressource")
 	maxIdx := flag.Int("max", 120, "nombre d'images à extraire par atlas")
 	flag.Parse()
+	probeWindow = *probe
 
 	if *deploy != "" {
 		if err := os.Setenv("HALO_DEPLOY", *deploy); err != nil {
@@ -112,9 +120,6 @@ func main() {
 	for _, at := range atlasTags {
 		n := 0
 		limit := *maxIdx
-		if at.Max > 0 && at.Max < limit {
-			limit = at.Max
-		}
 		for idx := 0; idx < limit; idx++ {
 			img, rate, im, err := decodeAlphaGlyph(ix, at.ID, idx)
 			if err != nil {
@@ -132,6 +137,7 @@ func main() {
 				SourceW:   im.W, SourceH: im.H,
 				CroppedW: img.Bounds().Dx(), CroppedH: img.Bounds().Dy(),
 				BC7Format: im.Format, Verified: imageVerified(ix, at.ID, idx),
+				Suspect:    idx > at.CleanThrough,
 				Noise:      fmt.Sprintf("%.4f", alphaNoise(img)),
 				FallbackPc: fmt.Sprintf("%.2f", rate),
 			})
