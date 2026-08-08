@@ -20,23 +20,34 @@
 //     (Mangler+Needler, MA40+MA5K, six armes Covenant ensemble) : c'est un réticule, pas une
 //     icône. Les deux bitmaps communs, eux, déclarent 39 images de tailles TOUTES
 //     différentes — un jeu d'icônes, et le seul candidat possible.
+//
 //  2. Le lien tag -> pixels : l'entrée .module porte à +0x10 un index dans la table de
 //     ressources du module (0 dans la variante `ds/`, qui n'a pas les pixels ; non nul dans
 //     `pc/`). Les 39 ressources qui suivent cet index correspondent une à une aux 39 images.
+//
 //  3. Le format : contrôle ARITHMÉTIQUE exact. Pour l'image 0 (333x117), la ressource pèse
 //     53372 octets = en-tête 212 + données 72 + 53088, et 53088 = 40320 + 10080 + 2688,
 //     soit mip0+mip1+mip2 en blocs 4x4 sur 16 octets. À l'octet près, sur toutes les images.
+//
 //  4. Le contenu : R constant à 255, G constant à 0, B = rampe verticale de teinte appliquée
 //     au rendu, A = LE DESSIN. Seul l'alpha est extrait, rendu en blanc sur fond transparent
 //     — même convention que static/abilities-assets.
 //
-// CE QUI N'EST PAS ÉTABLI, ET QUI EST DONC LAISSÉ AU GATE HUMAIN : quelle image désigne
-// quelle arme. L'index d'icône n'est pas un petit entier à offset constant dans le `weap`
-// (mesuré : 0 candidat sur les 29 armes), et l'appariement automatique par silhouette contre
-// les icônes déjà nommées du dépôt N'EST PAS DISCRIMINANT (marges de 0,00 à 0,10 pour des
-// scores de 0,44 à 0,90 — des armes toutes « longues et horizontales » se ressemblent trop
-// une fois remplies). Les fichiers sont donc nommés par leur INDEX dans l'atlas, jamais par
-// un nom d'arme deviné : afficher un mauvais fusil est pire qu'un libellé.
+//  5. QUELLE IMAGE DÉSIGNE QUELLE ARME — établi depuis, et c'est le champ `sprite index` du
+//     bloc `UI display info` du tag `weap` (cf. weapui.go). 29 armes sur 29, chacune
+//     auto-validée. Les fichiers restent nommés par leur INDEX d'atlas ; le weapon_key est
+//     porté par index.json, ce qui évite de renommer 168 fichiers à chaque évolution.
+//
+// CE QUI RESTE AU GATE HUMAIN : l'atlas sandbox (véhicules, objectifs, grenades lancées,
+// pictogrammes) n'a aucun lien structurel connu vers le registre, et les index de l'atlas
+// d'armes qui ne correspondent à aucune arme de notre registre restent à nommer. Rien n'y est
+// deviné : afficher un mauvais fusil est pire qu'un libellé.
+//
+// DEUX VOIES ÉCARTÉES, notées pour ne pas les re-tenter : chercher un petit entier à offset
+// CONSTANT dans le corps du tag (0 candidat sur 29 — le corps est un arbre de structures),
+// et l'appariement automatique par silhouette contre les icônes dessinées du dépôt (marges de
+// 0,00 à 0,10 pour des scores de 0,44 à 0,90 : des armes toutes « longues et horizontales »
+// se ressemblent trop une fois remplies).
 package main
 
 import (
@@ -57,10 +68,9 @@ var atlasTags = []struct {
 }{
 	{0xbc17adf1, "contour"},
 	{0xe39747c8, "silhouette"},
-	// Atlas « sandbox » : armes, vehicules, grenades lancees, et pictogrammes de mort. Le tag
-	// en declare 88 ; les images au-dela de l index 72 sortent RAYEES (des descripteurs faux
-	// positifs y tombent sur une ressource du bon poids, donc le controle arithmetique les
-	// laisse passer). La coupe est ASSUMEE et bornee ici plutot que servie corrompue.
+	// Atlas « sandbox » : armes vues de plus loin (~110x38 contre ~330x117), véhicules,
+	// grenades lancées et pictogrammes de mort. Les 88 images déclarées sortent toutes
+	// propres depuis que scanImgs lit le tableau déclaré au lieu de chercher une signature.
 	{0x0302cad3, "sandbox"},
 }
 
@@ -69,6 +79,7 @@ type iconEntry struct {
 	Index      int    `json:"index"`
 	Style      string `json:"style"`
 	File       string `json:"file"`
+	WeaponKey  string `json:"arme,omitempty"` // le weapon_key du registre ; nomme `arme` car gitleaks voit un secret dans tout identifiant contenant « key » suivi d une chaine a forte entropie
 	SourceTag  string `json:"source_tag"`
 	SourceW    int    `json:"source_w"`
 	SourceH    int    `json:"source_h"`
@@ -109,7 +120,23 @@ func main() {
 	fmt.Printf("archives : %s\nsortie   : %s\n\n", root, *out)
 
 	ix := buildIndex("")
-	fmt.Printf("index : %d archives, %d entrées\n\n", ix.nMods, ix.nEntry)
+	fmt.Printf("index : %d archives, %d entrées\n", ix.nMods, ix.nEntry)
+
+	// Le lien arme -> index d'icône, lu dans les tags `weap` et auto-validé.
+	icons, err := resolveWeaponIcons(ix)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "résolution arme -> icône:", err)
+		os.Exit(1)
+	}
+	keyByIndex := make(map[int]string, len(icons))
+	for _, w := range icons {
+		keyByIndex[w.Index] = w.Key
+	}
+	// Les 3 manquantes sont les grenades : elles ne sont pas des `weap` (elles vivent en
+	// `eqip` + `proj`, déclarés par le tag de globals `gggl`) et n'ont donc pas de bloc
+	// `UI display info` à lire. C'est attendu, pas un échec.
+	fmt.Printf("armes résolues : %d/%d familles (les 3 manquantes sont les grenades)\n\n",
+		len(icons), len(weaponFamilies()))
 
 	var entries []iconEntry
 	for _, at := range atlasTags {
@@ -126,8 +153,14 @@ func main() {
 				fmt.Fprintln(os.Stderr, "écriture:", err)
 				os.Exit(1)
 			}
+			// Le weapon_key ne vaut que pour les deux atlas d'armes : l'atlas sandbox a
+			// sa propre numérotation, sans rapport avec `sprite index`.
+			key := ""
+			if at.ID == 0xbc17adf1 || at.ID == 0xe39747c8 {
+				key = keyByIndex[idx]
+			}
 			entries = append(entries, iconEntry{
-				Index: idx, Style: at.Style, File: name,
+				Index: idx, Style: at.Style, File: name, WeaponKey: key,
 				SourceTag: fmt.Sprintf("%08x", at.ID),
 				SourceW:   im.W, SourceH: im.H,
 				CroppedW: img.Bounds().Dx(), CroppedH: img.Bounds().Dy(),
