@@ -1,3 +1,36 @@
+## [2026-08-08] v7.5 — portage des triangles, etapes T2 a T4 : 46,6 M de triangles
+
+**Statut** : En cours. Plan `.ai/V7.5/cartes/PLAN_PORT_TRIANGLES_GO.md`.
+
+**La chaine est portee de bout en bout.** `Sections` @64 est le tableau des maillages
+(60 o), ses enfants a `foff = meshIndex x 60` sont les LOD render data (148 o) — 1 195
+blocs sur 525 tags, tous multiples de 148, zero maillage nul. Les tables de descripteurs ne
+se trouvent pas par un chemin de champs mais par leur invariant `size == count * stride`.
+Le blob de ressources manquait ENTIEREMENT a `himodule` (les descripteurs pointent dedans,
+pas dans le tag) : `ResourceBlob` le reconstitue. Resultat : **9 832 instances, 46,6 M de
+triangles** en repere monde, et une image ou l'on reconnait la roche et le bati.
+
+**Decision technique principale : T4 est statue `[!]`, non tranche, et c'est le resultat.**
+Trois metriques ont ete essayees pour departager `u16` brut et `i16 + 32768` sur les MEMES
+octets. L'ecart aux bornes donne raison a la lecture que le handoff declare fausse (2,1 mm
+contre 16,9 mm) — metrique BIAISEE, une rotation du quantum disperse les valeurs vers les
+extremes donc epouse mieux les bornes par construction. Les deux autres (longueur mediane
+d'arete, part d'aretes longues) ne separent pas du tout. Leur echec explique pourquoi : la
+rotation ne DECHIRE pas les maillages, elle les DECALE chacun d'une demi-boite — chaque
+forme reste intacte, seul leur registre mutuel casse, ce qu'aucune statistique interne a un
+maillage ne voit. Le juge doit donc etre un oracle EXTERNE, et il existe : les positions de
+joueurs du film. C'est le temoin de T6.
+
+**Ce que ca coute de ne pas trancher maintenant** : rien, tant que le rendu n'est pas
+publie. Ce que ca couterait de trancher sur la metrique biaisee : porter la mauvaise
+lecture avec un test vert pour la couvrir.
+
+**Prochaine etape** : T6 — surface MARCHABLE (les images actuelles dessinent tous les
+sommets sous un plafond, donc le terrain noie l'arene) et temoin des positions joueurs, qui
+tranchera T4 par la meme occasion.
+
+---
+
 ## [2026-08-08] v7.5 — portage des triangles, etapes E et T1
 
 **Statut** : En cours. Branche `feat/v75`, plan `.ai/V7.5/cartes/PLAN_PORT_TRIANGLES_GO.md`.
