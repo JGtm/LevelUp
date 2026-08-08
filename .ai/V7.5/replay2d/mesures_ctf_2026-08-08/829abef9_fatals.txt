@@ -8,6 +8,10 @@ kills_sans_mort_appariee	0
 # ecart mort <-> tir du tueur le plus proche en amont (ms)
 n	87	p25	93	mediane	176	p75	2916	p90	22433
 
+# LA MORT SUR LA CARTE — positions des deux joueurs, sans aucun record de tir
+morts	87	deux_positions	63	tueur_seul	4	victime_seule	16	ecartees	4	hors_pont	0
+taux_deux_positions	0.7241	taux_au_moins_une	0.9540
+
 # maillon 3 et 4 — le tir du tueur existe-t-il, et sait-on le placer
 pont_actuel	couples	87	tueur_hors_table	0	aucun_tir_dans_la_fenetre	24	tir_non_place	12	tir_PLACE	51	taux	0.5862
 pont_ferme	couples	87	tueur_hors_table	0	aucun_tir_dans_la_fenetre	24	tir_non_place	7	tir_PLACE	56	taux	0.6437
