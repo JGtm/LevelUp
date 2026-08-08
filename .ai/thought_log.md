@@ -1,3 +1,46 @@
+## [2026-08-08] v7.5 icones — le vocabulaire de l'utilisateur bat toutes les moissons automatiques
+
+**Statut** : Complété. Branche `feat/v75-icones`.
+
+**Origine** : l'utilisateur a parcouru la page et donné une liste de mots vus sur les icônes —
+`perfect`, `waterfall`, `VIP`, `backsmack`, `assist`, `stick` (« deux icônes différentes, plasma
+et spike »), `core`/`stockpile`, `kinetic barrel`, `flag` (« un frag en frappant avec le
+drapeau »), « le Falcon avec des tourelles différentes », « les tourelles fixes », plus
+« sidekick et bulldog ne sont pas résolus ».
+
+**9 correspondances immédiates** : `perfect`, `waterfall`, `back_smack`, `flag_melee`,
+`plasma_grenade_stick`, `spike_grenade_stick`, `turret_plasma`, `falcon_chaingun`, `splatter`.
+
+**Et surtout, ses mots ont révélé des MOTIFS.** Ce n'était pas une liste, c'était une grammaire :
+`turret_<type>` · `<engin>_turret` · `<grenade>_grenade_stick` · `<objet>_melee` ·
+`falcon_<arme>`. Les décliner systématiquement en a rendu **3 de plus** (`turret_chaingun`,
+`scorpion_turret`, `bomb_melee`). La déclinaison est passée en production (`patternVocabulary`)
+— elle nommera automatiquement ce qu'une mise à jour du jeu ajoutera dans ces familles.
+
+**Kill feed : 43 → 55 noms sur 88.** À comparer aux tentatives automatiques de la séance
+précédente : 456 formes combinatoires = +1 nom, et 6 068 000 chaînes du paquet CMS = 0 nom réel.
+**Un humain qui regarde bat toutes les moissons.** C'est la leçon de méthode de la journée, et
+elle vaut au-delà de ce chantier : quand le décodage est fini et qu'il ne reste qu'un problème
+de VOCABULAIRE, le meilleur outil est l'oeil de quelqu'un qui connaît le jeu.
+
+**Sûreté du procédé, inchangée** : chaque nom reste une égalité de hachage exacte, filtrée par
+`plausibleIdent`. Un mot faux ne coûte rien — il ne sort simplement pas. Le vocabulaire ajouté
+est petit (~95 mots curatés + ~350 formes déclinées), donc l'espérance de collision reste
+négligeable, contrairement à la source CMS écartée hier.
+
+**Ce que l'utilisateur a signalé et qui reste ouvert** : `VIP`, `assist`, `core`/`stockpile`,
+`kinetic barrel` n'ont PAS craqué — le jeu les nomme autrement. Et `sidekick`/`bulldog` restent
+sans nom interne côté armes, alors que leurs `weapon_key` sont connus (#03 et #04) : l'icône est
+donc bien identifiée, c'est seulement son nom interne qui manque.
+
+**Restent** 33 index sans nom côté kill feed, 8 côté armes.
+
+**Gates** : `go build ./...` vert, `golangci-lint` 0 issue, `go test ./internal/archlint/...`
+vert, `node --check` sur la page. Page, état de l'art et planches régénérés.
+
+**Conclusion / prochaine étape** : le même aller-retour reste la voie la plus rentable — un mot
+juste vaut mille essais.
+
 ## [2026-08-08] v7.5 icones — `shade_turret` etait faux, et le vocabulaire par supposition s'epuise
 
 **Statut** : Complété. Branche `feat/v75-icones`.

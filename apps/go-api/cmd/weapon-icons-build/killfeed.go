@@ -129,7 +129,50 @@ func killfeedDict() map[uint32]string {
 	for _, w := range curatedVocabulary {
 		add(w)
 	}
+	for _, w := range patternVocabulary() {
+		add(w)
+	}
 	return dict
+}
+
+// patternVocabulary décline les MOTIFS observés dans les identifiants déjà craqués, au lieu
+// de continuer à deviner mot par mot.
+//
+// Les motifs ne sont pas supposés : ils sont lus dans ce qui a déjà craqué —
+// `killfeed_turret_plasma` et `killfeed_turret_chaingun` d'un côté, `killfeed_scorpion_turret`
+// de l'autre, `killfeed_falcon_chaingun`, `killfeed_plasma_grenade_stick`,
+// `killfeed_flag_melee` et `killfeed_bomb_melee`. Décliner coûte quelques centaines de
+// hachages et ne peut rien inventer : seule une égalité exacte sort.
+func patternVocabulary() []string {
+	var out []string
+	armements := []string{
+		"chaingun", "gauss", "rocket", "plasma", "machinegun", "machine_gun", "grenade",
+		"needler", "missile", "cannon", "shade", "aa", "at", "sentinel", "gunner",
+		"grenadier", "flak", "beam", "laser", "mortar",
+	}
+	engins := []string{
+		"warthog", "rockethog", "gungoose", "mongoose", "scorpion", "wraith", "banshee",
+		"ghost", "chopper", "wasp", "pelican", "phantom", "falcon", "razorback", "shade",
+	}
+	for _, a := range armements {
+		out = append(out, "turret_"+a, a+"_turret")
+		for _, e := range engins {
+			out = append(out, e+"_"+a)
+		}
+	}
+	for _, e := range engins {
+		out = append(out, e+"_turret")
+	}
+	for _, g := range []string{"frag", "plasma", "spike", "dynamo", "splinter"} {
+		out = append(out, g+"_grenade_stick", g+"_stick", "stick_"+g)
+	}
+	for _, m := range []string{
+		"flag", "ball", "oddball", "sword", "hammer", "skull", "core", "seed", "bomb",
+		"fist", "weapon", "shield", "back_smack",
+	} {
+		out = append(out, m+"_melee", "melee_"+m)
+	}
+	return out
 }
 
 // curatedVocabulary — les noms que le binaire ne contient PAS comme jeton isolé et qu'aucune
@@ -152,5 +195,7 @@ var curatedVocabulary = []string{
 	"warthog", "rockethog", "gungoose", "mongoose", "scorpion", "wraith", "banshee", "ghost",
 	"chopper", "wasp", "pelican", "phantom", "falcon", "razorback",
 	"headshot", "melee", "suicide", "ricochet", "callout", "environment", "splatter",
+	// Vocabulaire donne par l utilisateur en regardant les icones, puis valide par hachage.
+	"perfect", "waterfall", "back_smack", "vip", "stockpile", "kinetic_barrel",
 	"player_left", "player_joined", "player_rejoined", "assist", "betrayal",
 }
