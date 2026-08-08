@@ -549,3 +549,197 @@ déjà beaucoup.
   `bitCursor` par ligne. Il calibre l'instrument (contrôle positif direct sur la
   déquantification), **il ne valide pas `ti=41`** — c'est `ce_prec_widths_*.bin` qui doit le
   faire. Nuance écrite en §10.1 pour qu'on ne surestime pas ce qu'on a.
+
+---
+
+## 11. LES DUMPS SONT LUS — ET ILS NE DÉBLOQUENT RIEN, PARCE QUE LA PRODUCTION AVAIT DÉJÀ TOUT
+
+> Session du 2026-08-08 (reprise depuis le handoff). Le « prochain geste » annoncé était :
+> décoder `ce_prec_widths_*.bin` pour obtenir les largeurs que §2.2 déclarait non dérivables.
+> **C'est fait. Le résultat est un négatif partiel sur mon propre handoff**, et il vaut mieux
+> que ce qu'il annonçait : il retire une inconnue du dossier au lieu d'en ouvrir une.
+
+### 11.1 `ce_prec_widths_1445cc9e0.bin` — 32 niveaux, et ce n'est QUE la loi précalculée
+
+Outil : `apps/go-api/cmd/tmp_precdump` (mode `-widths`, `-ranges`, `-verify`).
+
+```
+L0..L16   6/6/6, 7/7/7, ... 22/22/22        (W = 6 + L)
+L17..L22  22/22/22                           (saturation du compte a 2^22)
+L23..L31  26/26/26                           (0x1a : le pas passe sous le seuil DAT_143cd837c)
+```
+
+**Confrontation a la forme fermee : 32 / 32 niveaux en ACCORD**, avec
+`table[L] = min(26, ceilLog2(min(ceil(40000 / (2·step(L))), 2^22)))` et `step(L) = 2^(16-L)/120`.
+L'etendue 40000 est celle de `DAT_143b8c6b8` (± 20000), la plage par defaut.
+
+**CONSÉQUENCE, ET ELLE ANNULE LE GESTE ANNONCÉ.** La table n'est pas une donnee de runtime
+opaque : c'est la meme loi, precalculee au chargement de carte. **Elle confirme le
+desassemblage, elle n'ajoute rien.** §2.2 avait raison sur les faits (le pas vient d'une
+globale) et tort sur la conclusion (« les largeurs ne sont pas derivables ») : la globale est
+elle-meme derivee de constantes statiques, et la chaine se remonte entierement.
+
+**UNE CORRECTION AU PASSAGE** : `FUN_1406d310c` n'est pas `bitLen` mais **`ceilLog2`**. Les deux
+coincident partout SAUF sur les puissances exactes de deux — et c'est exactement ce cas qui
+decide des niveaux 17 a 22. §2.2 ecrivait `bitLen` ; `map_bounds.go` de production ecrivait
+`ceilLog2`, et c'est la production qui avait raison.
+
+### 11.2 `ce_prec_ranges_14462cbe0.bin` — 768 AABB, et l'entree 0 coincide avec le `.module`
+
+```
+idx 0        x[-41.1032..72.1096] y[-56.6070..57.2126] z[-84.3708..53.1803]   etendues 113.21 / 113.82 / 137.55
+idx 1        x[+-3309.51] y[+-5235.79] z[-195.48..502.07]
+idx 2..767   +-20000 par axe                                                   (la plage par defaut)
+```
+
+**L'entree 0 est l'AABB de la carte, et elle EGALE le catalogue de production au flottant pres**
+(`data/titles/halo_infinite/reference/map_quant_bounds.json`, entree `cliffhanger` /
+module `ridgeline` : min `[-41.102932, -56.606728, -84.37054]`, max `[72.109375, 57.211975,
+53.179653]`). Ce catalogue est produit hors ligne par `cmd/mapquant-build` **depuis les
+`.module`**, pour 15 cartes.
+
+**La chaine est donc validee de bout en bout, et pour la premiere fois par une source
+independante** : `.module` (sbsp world bounds) -> table de precision runtime -> largeurs de
+quantification du film -> positions decodees. Jusqu'ici le catalogue n'etait controle que par
+`DetectI0Layout`, c'est-a-dire par les largeurs mesurees dans le film — un controle indirect.
+Le dump memoire confirme **les bornes elles-memes**.
+
+**Et la reserve du §10 (7ter.54 AXE3) se comprend enfin.** « Les tables dumpees effondrent
+3 films sur 4 » n'a rien de mysterieux : la table est celle de **Cliffhanger**, et l'appliquer
+a une autre carte est exactement le bug que l'en-tete de `map_bounds.go` decrit (« jusqu'ici
+toutes les cartes etaient dequantifiees avec les bornes de Cliffhanger, ce qui multipliait
+l'echelle par un facteur arbitraire — 0,38 sur Catalyst »). Le probleme n'etait pas la
+portabilite de la table : c'etait qu'il fallait une table PAR CARTE, et la production en a
+une depuis `cmd/mapquant-build`.
+
+### 11.3 CE QUE §7 AURAIT DÛ DIRE : `filmdec/projectiles.go` EXISTE, EN PRODUCTION
+
+**Troisieme conclusion de ce dossier tiree sans greper l'existant Go**, et la regle du chantier
+le disait deja. `apps/go-api/internal/analysis/filmdec/projectiles.go` :
+
+- decode les trajectoires de projectile `ti=41` du flux delta (`ScanFilmProjectiles`) ;
+- est **cable en production** dans `replay.BuildFromFilm` (rejeu 2D), avec goldens
+  (`replay/golden_inputs_test.go`) ;
+- porte une **verite terrain autrement plus forte que mon T1'** : 70 lancers de grenade sur 70
+  apparies a une naissance d'entite (contre 5,3 % par decalage circulaire), distance
+  naissance <-> bipede lanceur **0,77 u** (contre 6,4 u a instant permute et 33,9 u au hasard),
+  direction initiale a **1,0°** du cap de visee, durees de vie par type de grenade separees a
+  p < 5e-4 sur 20 000 permutations.
+
+**Autrement dit : la chaine « premiere position du projectile -> joueur le plus proche -> le
+tireur », que §3 presentait comme la troisieme et derniere voie a construire, est CONSTRUITE
+ET VALIDEE depuis le chantier rejeu 2D.** T1 et T1' ont re-mesure a la main, avec un
+instrument plus faible, ce que la production faisait deja.
+
+### 11.4 LA PART DE LA BRANCHE OPAQUE EST 6,2 %, PAS « LA MOITIÉ » — §8.1 EST FAUX
+
+Outil : `apps/go-api/cmd/tmp_i0hi`, qui reprend **mot pour mot** la grammaire de record de
+`scanProjectileRecords` (celle qui porte les 70/70), a une difference pres : la branche haute
+n'est pas rejetee, elle est etiquetee.
+
+```
+30 films Cliffhanger        152 535 records ti=41       9 382 sur la branche opaque    6,2 %
+par film                                                                 3,9 % .. 10,6 %
+```
+
+**Deuxieme instrument, independant, deja present dans le cache film depuis toujours** :
+`data/cache/film_chunks/<match>/calib.txt` porte `object-position-component:45` avec une
+frequence modale de **0,98**. Les 45 bits sont la branche BASSE.
+
+**La mesure `tmp_i0w` de §8.1 (264 a porte = 0 contre 277 a porte = 1) est donc fausse**, et
+d'un facteur ~8. Elle a ete faite avec un balayage qui n'avait pas la selectivite de la
+grammaire de production ; ses « records » a porte = 1 sont pour l'essentiel des faux positifs.
+**Lecon, et c'est la meme que 11.3** : quand un instrument de production existe et porte une
+verite terrain, mesurer avec autre chose n'est pas une verification independante, c'est une
+degradation.
+
+**Ce que la branche opaque coute VRAIMENT** — le seul chiffre qui justifierait de la decoder :
+
+```
+5 083 vies de projectile     124 melangent les deux branches     608 n'ont QUE l'opaque (12 %)
+```
+
+Douze pour cent des vies sont integralement perdues par le rejeu 2D. C'est reel, mais c'est un
+gain de couverture sur une feature livree — **pas un deblocage**, et pas ce que le handoff
+annoncait.
+
+### 11.5 L'INSTRUMENT DE VALIDATION A ENFIN UN CONTRÔLE POSITIF — ET IL LE FRANCHIT
+
+C'est ce qui manquait a T3 (§8.2, §8.3 point 1). La methode ne teste plus une FORME
+(colinearite, continuite) mais une **egalite numerique avec une position vraie** : pour chaque
+record opaque encadre dans sa vie par deux records de la branche BASSE, on interpole la
+position vraie, puis on regresse cette coordonnee sur l'entier brut de chaque champ candidat.
+Un champ juste donne une relation affine ; un champ faux donne du bruit.
+
+**Controle positif — la meme mecanique appliquee a la branche BASSE, dont les champs sont
+connus. 130 846 records encadres, 12 films :**
+
+```
+axe   champ retrouve   R2         etendue implicite   AABB de la carte   nulle (mediane / permutation)
+X     off  3, w 13     0.997083   112.99              113.21             0.0001 / 0.000002
+Y     off 16, w 13     0.997659   113.65              113.82             0.0010 / 0.000321
+Z     off 29, w 14     0.974280   135.88              137.55             0.0004 / 0.000544
+```
+
+**Les trois champs de production (3/13, 16/13, 29/14) sont retrouves, et l'etendue implicite
+tombe sur l'AABB de la carte a moins de 1,5 % pres.** La nulle par permutation vaut 3e-4 au
+pire. **L'instrument sait dire OUI** — ce que T3 n'avait jamais montre, et sans quoi ses zeros
+ne valaient rien.
+
+> Note de lecture : les largeurs sont **degenerees** (off 16 avec w 13, 14, 15, 17, 18 rendent
+> le meme R2). C'est attendu : ajouter des bits de poids faible ne change pas la relation
+> affine. **Ce que la regression determine, c'est l'OFFSET et l'ECHELLE** ; la largeur se lit
+> ensuite sur l'etendue implicite via la forme fermee. Il faut le dire, sinon on croit la
+> methode plus precise qu'elle n'est.
+
+### 11.6 CE QUE LA FORME FERMÉE PRÉDIT POUR LA BRANCHE OPAQUE — et aucun candidat ne fait 60
+
+Au niveau `L = 16` cable au site d'appel (`FUN_14076e420(br, st+4, 0x10)`) :
+
+```
+plage                                        largeurs   axes   + porte + R(2)
+AABB Cliffhanger (branche basse, VALIDEE)    13/13/14     40   43  (45 avec index-sel + index)
+DAT_143b8c6d0  +-100                         14/14/14     42   45
+DAT_143b8c6b8  +-20000                       22/22/22     66   69
+```
+
+**Aucun ne fait 60**, le total mesure de la branche opaque. Deux ajustements arithmetiques
+existent — `3 x 19 + 2 = 59` avec ± 20000 au niveau 13, ou avec ± 100 au niveau 21 — mais **ce
+sont des ajustements, pas des mesures** : deux inconnues (plage et niveau) pour une equation.
+C'est la regression qui doit trancher, pas l'arithmetique.
+
+### 11.7 LA RÉGRESSION SUR LA BRANCHE OPAQUE — NÉGATIVE, avec une signature à ne pas jeter
+
+30 films Cliffhanger, **127 records opaques encadres** par deux positions vraies :
+
+```
+axe   meilleur champ   R2       q99 de sa propre distribution   nulle permutation   etendue implicite
+X     off  7, w 10     0.2785   0.2785   <- le gagnant EST le q99   0.1161            39.47
+Y     off 16, w 13     0.4843   0.4843   <- idem                    0.0031            64.20
+Z     off 29, w 14     0.6728   0.6728   <- idem                    0.0006            96.23
+```
+
+**VERDICT : NÉGATIF.** Sur les trois axes, le meilleur candidat **est exactement le q99 de sa
+propre distribution** — c'est-a-dire le maximum d'un bruit, pas une valeur aberrante. Le meme
+instrument rendait 0,97-0,997 avec une nulle a 3e-4 sur la branche basse (§11.5). Il sait dire
+oui ; ici il dit non.
+
+**MAIS DEUX CHOSES INTERDISENT DE CLORE SUR CE CHIFFRE.**
+
+1. **Les axes Y et Z culminent EXACTEMENT aux offsets de la branche basse** (16 et 29), avec
+   une nulle par permutation de 3e-3 et 6e-4. Un R2 de 0,67 contre une nulle de 0,0006 n'est
+   pas du bruit pur — quelque chose se lit a ces offsets. Deux lectures possibles : soit la
+   branche opaque partage le decoupage de la branche basse et change seulement de plage (les
+   etendues implicites 64,20 et 96,23 ne collent alors a aucune plage connue), soit une part
+   des « records opaques » sont des faux positifs qui sont en realite des records BAS mal
+   localises. La seconde est la plus probable et se testerait par la longueur.
+2. **n = 127.** Le dossier a deja paye ce piege avec T3 : *« un negatif dont la nulle vaut zero
+   est un negatif sur l'instrument »*. Ici la nulle n'est pas nulle et l'instrument est
+   calibre, mais l'echantillon reste mince et **biaise** : un record opaque n'est encadre que
+   dans une vie MIXTE, or il n'y en a que 124 sur 5 083.
+
+**Ce qui est donc lance avant de conclure** : la meme regression, mutualisee sur **300 films de
+tout le corpus** (chaque film decode avec les bornes de SA carte), en deux regimes qui ne
+testent pas la meme hypothese — coordonnee MONDE si la plage est FIXE, coordonnee NORMALISEE si
+elle suit la carte. Si aucun des deux ne mord sur un echantillon dix fois plus grand, le negatif
+est solide.
