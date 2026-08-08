@@ -1,3 +1,60 @@
+## [2026-08-08] v7.5 icones — PLAN A ABOUTI : 29 armes sur 29, lues dans le jeu et auto-validees
+
+**Statut** : Complété. Branche `feat/v75-icones`. Toujours non branché côté web (l'intégration
+reste derrière le gate visuel), mais le nommage des armes n'est plus un travail manuel.
+
+**Ce qui est acquis** : le champ `sprite index` du bloc `UI display info` du tag `weap` rend,
+pour chacune des 29 armes du registre, l'index de son icône dans l'atlas. **29/29**, soit
+26 index distincts — les deux Bandit, les deux épées et les deux Shock Rifle partagent leur
+icône, ce qui est cohérent et non un défaut.
+
+**Trois appariements essayés, un seul tient.** Le détail compte pour ne pas les re-tenter :
+
+1. *petit entier à offset constant dans le corps du tag* — 0 candidat sur 29 (essayé lors de
+   la première passe) : le corps est un arbre de structures, les offsets bougent ;
+2. *appariement par RANG plugin↔tag* (la mécanique de `himap` pour `sbsp`) — tombe **une unité
+   à côté** : le bloc obtenu portait des références `mode`/`jmad`/`aset`, pas des sprites.
+   Corriger par un `+1` aurait été un réglage qu'aucune mesure ne garantit d'une version à
+   l'autre ; écarté ;
+3. *identification du bloc PAR SON CONTENU* — retenu. On ne retient un bloc que si son champ
+   `sprite` porte l'un des deux atlas connus. C'est auto-validant : si aucun bloc ne matche,
+   la commande le dit au lieu de rendre un index faux.
+
+**La calibration qui a débloqué** : en dumpant le bloc trouvé par rang, les identifiants
+d'atlas apparaissaient à l'offset absolu 23892 alors que le bloc s'arrêtait à 23864. Or
+`sprite` est à +20 du bloc et l'identifiant à +8 du champ : 23864 + 20 + 8 = 23892, à l'octet
+près, et `alt sprite` à +52 tombe pareil sur 23924. Le bloc correct commençait exactement là
+où finissait le mauvais.
+
+**Ce que ça corrige dans mes propres propositions.** Le gate visuel avait bien raison d'exister :
+sur les icônes que j'avais annoncées « proposition forte », plusieurs étaient fausses —
+l'index 0 est le **MA40 AR** et non le BR75, l'index 1 est le **BR75** et non le Bandit (qui
+est à 33), l'index 24 est le Disrupteur là où j'avais dit 18. Les identifications
+non-ambiguës (épée 14, Needler 9, marteau 16, empaleur 17, Sidekick 3, S7 5, SPNKr 6,
+Bulldog 4, Hydra 7, pistolet à plasma 11) étaient justes et servent de contrôle croisé.
+
+**Livré** : `cmd/weapon-icons-build/weapui.go` (le walker), `weap.xml` embarqué par `go:embed`
+comme `himap` embarque `sbsp.xml` — une seule copie, la précédente sous `.ai/` a été déplacée
+et non dupliquée. `index.json` porte désormais `weapon_key` sur les icônes d'armes. La page de
+nommage pré-remplit les 26, badge vert « résolu depuis le jeu », champ laissé modifiable.
+
+**Reste manuel** : l'atlas sandbox (88 icônes : véhicules, objectifs, grenades lancées,
+pictogrammes) et les 14 index de l'atlas d'armes qui ne correspondent à aucune arme de notre
+registre.
+
+**Piste ouverte, non exploitée** : le même bloc porte `name`, `alt name`, `description`,
+`help text` en StringID (murmur3). Les valeurs sont lues et remontées dans le walker. Le dépôt
+a déjà craqué des noms par murmur3 direct côté Forge — les NOMS d'armes du jeu pourraient
+tomber par cette voie.
+
+**Gates** : `go build ./...` vert, `golangci-lint run ./cmd/weapon-icons-build/...` 0 issue,
+`go test ./internal/archlint/... ./internal/games/weapons/...` vert, `node --check` sur le
+script de la page. Tous les fichiers du paquet sous 500 lignes.
+
+**Conclusion / prochaine étape** : ouvrir la page, vérifier d'un oeil les 26 pré-remplies
+(elles sont lues, pas devinées, mais un contrôle coûte une minute), nommer le sandbox, puis
+me remettre le TSV pour écrire `weaponImageFiles`.
+
 ## [2026-08-08] v7.5 icones — le maillon manquant existe et il s appelle « sprite index »
 
 **Statut** : Trouvé, versé au dépôt, NON encore exploité. Branche `feat/v75-icones`.

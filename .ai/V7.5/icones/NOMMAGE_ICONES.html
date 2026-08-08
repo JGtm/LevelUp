@@ -45,6 +45,7 @@
   .dup{color:var(--gap);font-size:12.5px;margin-top:4px}
   .card.suspect{border-color:#6a4a2a}
   .badge{font-size:11.5px;padding:1px 7px;border-radius:999px;border:1px solid #6a4a2a;color:var(--warn)}
+  .badge.auto{border-color:#2f5c45;color:var(--ok)}
   textarea{width:100%;height:230px;background:var(--field);color:var(--txt);border:1px solid var(--line);
         border-radius:8px;padding:10px;font:13px/1.45 Consolas,monospace}
   table{border-collapse:collapse;width:100%;margin-top:8px}
@@ -59,7 +60,11 @@
 <header>
   <h1>Nommer les icones extraites du jeu</h1>
   <p class="note">
-    Deux atlas, 128 icones a nommer. Pour chacune : choisir l'arme du registre dans la liste, ou taper
+    Deux atlas, 128 icones. <b>Les 26 icones d'armes sont deja renseignees</b> : leur index est
+    LU dans le tag `weap` du jeu (champ « sprite index »), pas devine — badge vert « resolu
+    depuis le jeu », et le champ reste modifiable si vous n'etes pas d'accord. Reste a nommer
+    le sandbox (vehicules, objectifs, grenades, pictogrammes) et les quelques armes hors
+    registre. Pour chacune : choisir l'arme du registre dans la liste, ou taper
     un libelle libre (objet d'objectif, vehicule, pictogramme...). Le travail est
     <b>sauvegarde automatiquement</b> dans le navigateur : la page peut etre fermee et reprise.
     Quand c'est fini, <b>Copier le resultat</b> ou <b>Telecharger</b> — c'est ce bloc qui sert
@@ -87,11 +92,24 @@
       partout et le repli le rend exactement.
     </p>
     <p class="note">
-      Ce qui n'est PAS etabli, et c'est exactement l'objet de cette page : <b>quelle image
-      designe quelle arme</b>. L'index d'icone n'est pas un petit entier a offset constant
-      dans le tag <code>weap</code> (0 candidat sur 29 armes) et l'appariement automatique par
-      silhouette contre les icones dessinees n'est pas discriminant (marges de 0,00 a 0,10).
-      Les fichiers sont donc nommes par leur index d'atlas, jamais par un nom devine.
+      <b>Le lien arme &rarr; icone est desormais LU, plus devine.</b> Il vit dans le champ
+      <code>sprite index</code> du bloc <code>UI display info</code> du tag <code>weap</code>,
+      que la definition communautaire <code>weap.xml</code> nomme explicitement. Le walker est
+      AUTO-VALIDE : il n'accepte un bloc que si le champ <code>sprite</code> du meme bloc porte
+      l'un des deux atlas connus. Resultat : <b>29 armes sur 29</b>, soit 26 index distincts
+      (les deux Bandit, les deux epees et les deux Shock Rifle partagent leur icone).
+    </p>
+    <p class="note">
+      Deux voies avaient echoue avant, et le detail compte pour ne pas les re-tenter : chercher
+      un petit entier a offset CONSTANT dans le corps du tag ne donne rien (0 candidat sur 29 —
+      le corps est un arbre de structures dont les offsets bougent), et l'appariement
+      automatique par silhouette contre les icones dessinees n'est pas discriminant (marges de
+      0,00 a 0,10). L'appariement par RANG plugin&harr;tag echoue aussi : il tombe une unite a
+      cote. Seule l'identification du bloc PAR SON CONTENU tient.
+    </p>
+    <p class="note">
+      Ce qui reste a nommer a la main : l'atlas sandbox en entier, et les quelques armes de
+      l'atlas d'armes qui ne sont pas dans notre registre.
     </p>
     <p class="note">
       Reserve levee : l'atlas sandbox declare 88 images et les 88 sont servies. Le recensement
@@ -120,8 +138,8 @@
 
   <h2>Atlas sandbox — 88 icones</h2>
   <p class="note">Armes vues de plus loin, vehicules, grenades lancees (regarder autour de
-     l'index 46) et pictogrammes de mort. Un seul style.
-     Un seul style.</p>
+     l'index 46) et pictogrammes de mort.
+     Un seul style — rien n'y est pre-rempli.</p>
   <div class="grid" id="gSand"></div>
 
   <h2>Armes du registre restant sans icone</h2>
@@ -135,6 +153,20 @@
 <script>
 const BASE = "../../../static/weapons-assets/halo_infinite/jeu/";
 const NB_WEAP = 40, NB_SAND = 88;
+
+// RESOLU : index d'atlas -> weapon_key, LU DANS LE JEU et non deduit. Source : le champ
+// `sprite index` du bloc `UI display info` du tag `weap` (plugin weap.xml). Chaque ligne est
+// auto-validee — elle n'existe que si le champ `sprite` du meme bloc porte bien l'atlas.
+// Regenere par `go run ./cmd/weapon-icons-build` (colonne weapon_key d'index.json).
+const RESOLU = {
+  0:"hinf_ma40_ar", 1:"hinf_br75", 2:"hinf_vk78_commando", 3:"hinf_sidekick",
+  4:"hinf_cqs48_bulldog", 5:"hinf_s7_sniper", 6:"hinf_m41_spnkr", 7:"hinf_hydra",
+  9:"hinf_needler", 10:"hinf_stalker_rifle", 11:"hinf_plasma_pistol", 13:"hinf_pulse_carbine",
+  14:"hinf_energy_sword", 15:"hinf_ravager", 16:"hinf_gravity_hammer", 17:"hinf_skewer",
+  18:"hinf_mangler", 20:"hinf_cindershot", 21:"hinf_heatwave", 22:"hinf_sentinel_beam",
+  23:"hinf_shock_rifle", 24:"hinf_disruptor", 33:"hinf_bandit", 36:"hinf_ma5k_avenger",
+  38:"hinf_fuel_rod_spnkr", 39:"hinf_vestige_carbine",
+};
 
 // Les 29 armes Halo Infinite du registre (registry.go + weapon_names.toml).
 const REGISTRE = [
@@ -198,19 +230,26 @@ function optionsSelect() {
 
 function carte(atlas, i) {
   const k = cle(atlas, i);
-  const v = etat[k] || { choix: "", libre: "" };
-  const suspect = false; // plus aucune image rayee depuis la lecture exacte du tableau
+  // Pre-remplissage : ce que le jeu declare. L'utilisateur garde la main — le champ reste
+  // modifiable, et une saisie deja enregistree n'est jamais ecrasee.
+  const resolu = atlas === "weap" ? (RESOLU[i] || "") : "";
+  let v = etat[k];
+  if (!v && resolu) {
+    v = { choix: resolu, libre: "" };
+    etat[k] = v;
+  }
+  v = v || { choix: "", libre: "" };
   const el = document.createElement("div");
-  el.className = "card" + (v.choix ? " done" : "") + (suspect ? " suspect" : "");
+  el.className = "card" + (v.choix ? " done" : "");
   el.dataset.cle = k;
-  el.dataset.suspect = suspect ? "1" : "";
+  el.dataset.suspect = "";
   const shots = atlas === "weap"
     ? '<div class="shot"><img loading="lazy" src="' + BASE + "contour-" + pad(i) + '.png" alt=""></div>' +
       '<div class="shot"><img loading="lazy" src="' + BASE + "silhouette-" + pad(i) + '.png" alt=""></div>'
     : '<div class="shot"><img loading="lazy" src="' + BASE + "sandbox-" + pad(i) + '.png" alt=""></div>';
   el.innerHTML =
     '<div class="top"><span class="idx">#' + pad(i) + '</span>' +
-      (suspect ? '<span class="badge" title="decodage raye : l image ne represente probablement rien de lisible">decodage suspect</span>' : "") +
+      (resolu ? '<span class="badge auto" title="lu dans le tag weap du jeu (champ « sprite index »), pas deduit">resolu depuis le jeu</span>' : "") +
       '<span class="meta">' + (atlas === "weap" ? "contour + silhouette " : "sandbox-") + pad(i) + '</span></div>' +
     '<div class="shots">' + shots + '</div>' +
     '<select>' + optionsSelect() + '</select>' +
