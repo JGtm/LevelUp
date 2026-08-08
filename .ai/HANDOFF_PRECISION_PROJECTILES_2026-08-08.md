@@ -7,6 +7,36 @@
 
 ---
 
+## 0. MISE À JOUR — le « prochain geste » du §3 A ÉTÉ JOUÉ, et il rend un NÉGATIF PARTIEL
+
+> Ajouté le 2026-08-08 en fin de journée (même branche, session de reprise). **Le §3 ci-dessous
+> est conservé tel quel** — c'est ce qui était su à l'époque —, mais trois de ses affirmations
+> sont désormais fausses. Détail mesuré : `.ai/V7.5/film_re/NOTE_I0_TI41_POSITION_PROJECTILE.md`
+> **§11**.
+
+| ce que §3 annonçait | ce que la mesure dit |
+|---|---|
+| « décoder `ce_prec_widths_*.bin` → **la globale que je déclarais non dérivable est dumpée** » | **SANS OBJET.** La table est **32/32 en accord** avec la forme fermée : ce n'est que la loi précalculée. Et le catalogue `.module` de production (`cmd/mapquant-build`, 15 cartes, offline-pur) résout déjà le problème *en général*. Le dump **confirme** la production — il ne la débloque pas |
+| « les projectiles portent des trajectoires dans le flux delta, la voie est vivante » | **VRAI, ET DÉJÀ LIVRÉ.** `filmdec/projectiles.go` décode ces trajectoires **en production**, câblé dans `replay.BuildFromFilm` avec goldens, et validé par **70 lancers de grenade sur 70** (0,77 u du bipède lanceur, 1,0° du cap de visée). La chaîne « première position → joueur le plus proche → tireur » de §3 du dossier **est construite** |
+| « l'opaque concerne **la MOITIÉ** des records projectile (264 / 277) » | **FAUX D'UN FACTEUR ~8 : 6,2 %.** Deux instruments indépendants — la grammaire de production sur 30 films (9 382 / 152 535) et `calib.txt`, déjà dans le cache film, qui donne `object-position-component:45` à **0,98**. La mesure `tmp_i0w` n'avait pas la sélectivité de la grammaire de production |
+
+**CE QUI A PROGRESSÉ POUR DE BON.** L'instrument de validation que T3 n'avait jamais eu existe
+maintenant et **a franchi son contrôle positif** : une régression de la position vraie
+interpolée sur l'entier brut de chaque champ candidat retrouve, sur la branche BASSE, les trois
+champs de production (`off 3/w 13`, `off 16/w 13`, `off 29/w 14`) avec des étendues implicites
+à moins de 1,5 % de l'AABB et une nulle par permutation à 3e-4. **Il sait dire OUI.**
+
+Appliqué à la branche opaque : **NÉGATIF** (n = 127, 30 films Cliffhanger) — le meilleur
+candidat de chaque axe est exactement le q99 de sa propre distribution, c'est-à-dire le maximum
+d'un bruit. Réserve écrite et campagne de durcissement lancée (300 films, corpus entier,
+deux régimes de plage) : cf. note §11.7.
+
+**CE QUI RESTE VRAI DU §3** : la branche opaque n'est pas décodée, et le rejeu 2D perd les vies
+qui n'ont qu'elle. Mais l'enjeu est un **gain de couverture sur une feature livrée**, pas un
+déblocage — et il porte sur 6,2 % des records, pas sur la moitié.
+
+---
+
 ## 1. L'ÉTAT EN CINQ LIGNES
 
 1. **La piste E est CLOSE, verdict NÉGATIF, timebox consommé** (2 sessions, décision #6 du
