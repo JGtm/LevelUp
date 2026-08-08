@@ -1,3 +1,51 @@
+## [2026-08-08] v7.5 voie B — la mort sur la carte : 88,2 %, et deux pistes remises droit par l'utilisateur
+
+**Statut** : Complété (mesure + documentation). Branche `research/v75-ctf`.
+
+**L'UTILISATEUR A REMIS DROIT MA QUESTION, ET LE CHIFFRE A GAGNÉ 17,6 POINTS.** J'avais mesuré
+« sait-on placer un TIR du tueur dans la 1,5 s avant la mort » — 70,6 % sur les morts par arme.
+Sa remarque : « on a la victime, le tueur, le timing et la position du joueur assez précisément,
+pourquoi c'est si dur de faire une corrélation ? » Elle ne l'est pas : **poser une MORT sur la
+carte ne demande AUCUN record de tir**, seulement la position des deux joueurs, donc le seul pont.
+
+**RÉSULTAT, 718 morts sur les sept films, pont fermé, sans aucun record de tir** :
+
+| film | morts | deux positions | au moins une |
+|---|---|---|---|
+| `0edb8512` | 93 | **95,7 %** | 100 % |
+| `9aeca4b3` | 81 | **92,6 %** | 97,5 % |
+| `000d5950` | 93 | **91,4 %** | 98,9 % |
+| `64e8adfa` | 121 | **90,1 %** | 100 % |
+| `db7b8c3c` | 139 | **89,9 %** | 100 % |
+| `01e1f945` | 104 | **83,7 %** | 95,2 % |
+| `829abef9` | 87 | **72,4 %** | 95,4 % |
+
+**633 morts sur 718 portent LES DEUX positions (88,2 %), 98,3 % en portent au moins une, 12
+seulement (1,7 %) sont inplaçables, et `hors_pont` vaut ZÉRO partout.**
+
+**Deux enseignements** : (1) le film Fiesta `000d5950`, à 41,4 % sur la métrique du tir fatal
+parce qu'il ne porte que 27 % des tirs de son match, est à **91,4 %** ici — la localisation des
+morts ne dépend PAS de la complétude du flux de tirs ; (2) `829abef9` reste à 72,4 % avec 16
+morts dont seule la victime est placée, et c'est le film aux 99 rejets « ambigu » — même cause,
+le découpage des vies.
+
+**LEÇON DE MÉTHODE** : une mesure hérite des contraintes de la question qu'on lui pose. En
+m'ancrant sur le record de tir, j'avais importé dans le chiffre une dépendance à la complétude du
+flux (24,6 % de perte) qui n'a rien à faire dans une mesure de LOCALISATION. Les deux chiffres
+coexistent désormais au verdict, chacun avec sa question (§8.4bis).
+
+**SECONDE PISTE — les tirs manquants, cause identifiée.** (1) Le manque est concentré sur FIESTA :
+ratio décodé/API médian **0,952 hors Fiesta** (668 matchs) contre **0,392 en Fiesta** (273), et le
+sur-décodage est quasi nul (11 matchs sur 941). (2) **Le rejeu n'utilise pas le meilleur scanner
+du dépôt** : `ScanFilmFireEvents` balaie les bits, l'instrument de la piste E parcourt les PAQUETS
+et trouve **10 à 17 % de tirs de plus** sur les sept films, deux atteignant la complétude (101 %).
+Réserve écrite : la piste E ne rend que des totaux, le rejeu a besoin d'un instant par tir —
+probable, NON VÉRIFIÉ.
+
+**Conclusion / prochaine étape.** La localisation des morts est acquise à 88,2 % et n'attend plus
+que le chemin d'écriture (étape 2bis). Le portage du scanner de paquets est la piste à plus fort
+levier sur la colonne ①, sous réserve qu'il date ses tirs.
+
 ## [2026-08-08] v7.5 voie B — le lot d'implementation : pont ferme, positions de mort, garde reecrit
 
 **Statut** : Étapes 1 et 3 **Complétées**, étape 2 **partielle et arrêtée proprement**. Branche

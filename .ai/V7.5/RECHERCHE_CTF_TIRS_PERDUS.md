@@ -544,7 +544,38 @@ question à laquelle il répond — et le §8.4bis existe pour qu'on ne les reco
 | **la mort** (tueur + victime, où) | le pont seul | §8.4ter |
 | le **tir fatal** (le coup lui-même) | le pont **et** un record de tir | §8.2 — 70,6 % |
 
-### 8.4ter LES TIRS MANQUANTS : LA CAUSE EST IDENTIFIÉE, ET ON PEUT FAIRE MIEUX
+### 8.4ter LA MORT SUR LA CARTE — LE CHIFFRE QUI RÉPOND VRAIMENT À LA DEMANDE
+
+Mesuré sur les sept films, **718 morts**, avec le pont fermé et **sans aucun record de tir** :
+
+| film | morts | **deux positions** | tueur seul | victime seule | écartées | au moins une |
+|---|---|---|---|---|---|---|
+| `0edb8512` | 93 | **95,7 %** | 2 | 2 | 0 | **100 %** |
+| `9aeca4b3` | 81 | **92,6 %** | 0 | 4 | 2 | 97,5 % |
+| `000d5950` | 93 | **91,4 %** | 2 | 5 | 1 | 98,9 % |
+| `64e8adfa` | 121 | **90,1 %** | 2 | 10 | 0 | **100 %** |
+| `db7b8c3c` | 139 | **89,9 %** | 4 | 10 | 0 | **100 %** |
+| `01e1f945` | 104 | **83,7 %** | 6 | 6 | 5 | 95,2 % |
+| `829abef9` | 87 | **72,4 %** | 4 | 16 | 4 | 95,4 % |
+
+**TOTAL : 633 morts sur 718 portent LES DEUX positions — 88,2 %. 98,3 % en portent au moins une.
+Seules 12 morts sur 718 (1,7 %) sont totalement inplaçables. Et `hors_pont` vaut ZÉRO sur les
+sept films** : aucun joueur n'échappe au pont fermé.
+
+**L'écart avec les 70,6 % du §8.2 mesure exactement le coût de la mauvaise question** : +17,6
+points, gagnés en cessant d'exiger un record de tir dont la localisation d'une mort n'a pas
+besoin.
+
+Deux observations qui comptent pour la suite :
+
+- **Le film Fiesta cesse d'être un cas désespéré.** `000d5950` s'effondrait à 41,4 % sur la
+  métrique du tir fatal (il ne porte que 27 % des tirs de son match) ; il est à **91,4 %** ici.
+  La localisation des morts **ne dépend pas du tout** de la complétude du flux de tirs.
+- **`829abef9` reste l'exception, et pour une cause déjà nommée** : 72,4 %, avec 16 morts dont
+  seule la victime est placée. C'est le film aux 99 rejets « ambigu » (H3, §6) — son découpage
+  des vies est le plus faible du corpus, et les deux symptômes désignent le même chantier.
+
+### 8.4quater LES TIRS MANQUANTS : LA CAUSE EST IDENTIFIÉE, ET ON PEUT FAIRE MIEUX
 
 Seconde question de l'utilisateur, même échange. Deux faits, mesurés en base sur les 941 films
 décodés, sans rien re-décoder :
