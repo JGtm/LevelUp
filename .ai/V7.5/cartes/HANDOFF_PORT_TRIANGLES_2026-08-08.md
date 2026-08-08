@@ -5,8 +5,9 @@
 > Plan de reference pour le VISUEL : `../../PLAN_BELLE_CARTE_TRIANGLES.md` — c'est LUI qui
 > fait foi sur le rendu attendu et sur le gate humain.
 >
-> **Etat en une ligne** : la chaine decode et rend une carte reconnaissable, la primitive de
-> rendu est trouvee, trois observations utilisateur restent ouvertes.
+> **Etat en une ligne** : la chaine decode, l.ORACLE des 29 221 positions a tranche la
+> dequantification et le filtre de module, le BORNAGE par la boite de l.instance ramene les
+> trous de 11,1 % a 0,8 % ; reste la LISIBILITE du rendu.
 
 ## 1. Ce qui EST acquis, avec ses chiffres
 
@@ -20,7 +21,55 @@
 | assemblage | fait | **46,6 M de triangles** en repere monde |
 | rendu | **primitive trouvee** | volume + praticabilite + coupe (cf. §3) |
 
-## 2. T4 — la dequantification n'est PAS tranchee
+## 1 bis. CE QUE L'ORACLE A TRANCHE (ajout du 2026-08-08, seconde session)
+
+L'oracle a ete joue. Il vit dans `internal/himap/carte_oracle_gamefiles_test.go` et confronte
+les **29 221 positions de joueur** du document de rejeu `000d5950.json` a la carte
+reconstruite : une position reellement couru avait forcement du sol sous les pieds.
+
+| ce qui etait ouvert | verdict | la mesure qui tranche |
+|---|---|---|
+| **T4 dequantification** | **u16 BRUT**, definitivement | 63,6 % des positions a moins de 25 cm du sol contre 34,3 % pour `i16 + 32768`, a reglage egal |
+| **z du rejeu = les pieds ?** | **oui** | ecart median SIGNE **+0,04 m** — aucun biais de repere a corriger |
+| **filtre de module** | **les globaux sont INDISPENSABLES** | avec le seul module de la carte, **11,1 % des positions jouees n'ont AUCUNE matiere sous elles** ; le diagnostic remonte leur geometrie a `common` (7 036), `multiplayer` (2 568) contre `ridgeline` (564), et **0 trou orphelin** |
+| **pourquoi les globaux degradaient** | **des maillages qui debordent de leur instance** | debordement median **0,231** de la diagonale de la boite declaree et **42,8** au 99e centile, contre 0,098 et 1,78 pour le module de la carte |
+
+**La correction : le BORNAGE** (`Volume.AddMeshBorne`). La boite monde de l'instance (@0x7C du
+sbsp) et le maillage (tag rtgo) viennent de deux sources independantes ; on n'ecrit que les
+cellules qui tombent dans la boite. Le bornage porte sur les **cellules ecrites**, pas sur les
+sommets — un triangle dont un seul sommet tombe dedans deposerait sinon de la matiere a
+l'autre bout de la carte.
+
+    reconstruction                trous   <25cm   <2m    ecart median signe
+    module de la carte seul       11,3 %  63,6 %  84,0 %  +0,04 m
+    tous modules, SANS bornage     0,2 %  35,9 %  67,3 %  -0,28 m
+    tous modules, AVEC bornage     0,8 %  53,2 %  88,0 %  -0,04 m   <- la meilleure carte COMPLETE
+
+**Piege de metrique a ne pas oublier** : le taux « sous 25 cm » est MONOTONE en le degagement
+exige — moins on exige, plus il y a de sols, plus la mesure est flatteuse. Il ne peut donc pas
+choisir le degagement. La colonne honnete est **`SANS SOL`**, qui ne bouge pas avec le
+degagement (11,1 % aux trois valeurs testees) : elle mesure l'absence de matiere, pas la
+generosite du critere.
+
+**Le mecanisme, reproduit en miniature** dans `volume_test.go` : un plafond a 1 m au-dessus
+d'un sol prive ce sol de son degagement, et c'est LE PLAFOND qui devient praticable. C'est
+exactement ce qui se passait en grand quand on versait les modules globaux sans bornage.
+
+### Ce qui reste ouvert cote RENDU
+
+Le bornage regle la JUSTESSE, pas la LISIBILITE. Rendus produits (Bureau) :
+
+    carte_tous_modules_borne.png   tous modules, bande praticable la plus haute -> ENTERREE
+    carte_tranche_jeu.png          idem, tranche Z reduite a [-7 ; 11]          -> ENTERREE
+    carte_coupe_tous_borne.png     idem, COUPE a z = -1,75 m                    -> structures nettes, bruit de rochers
+
+La regle « bande praticable la plus HAUTE » ramene le decor par-dessus l'arene des que les
+globaux sont la. La coupe du prototype reste la bonne primitive d'affichage. **Reste a trouver
+la regle qui garde les etages joues sans ramener le decor** — piste : ne dessiner que les
+bandes praticables qui portent (ou jouxtent) des positions observees, l'oracle servant cette
+fois de filtre et plus seulement de juge.
+
+## 2. T4 — TRANCHEE PAR L'ORACLE (§1 bis). Ce qui suit dit pourquoi les temoins INTERNES avaient echoue
 
 Trois metriques essayees sur les MEMES octets pour departager `u16` brut et `i16 + 32768` :
 
@@ -33,10 +82,10 @@ donc epouse mieux les bornes par construction) — **ne pas la reintroduire**. L
 deux autres est instructif : la rotation ne DECHIRE pas les maillages, elle les DECALE
 chacun d'une demi-boite ; leur forme reste intacte, seul leur registre mutuel casse.
 
-**L'ORACLE EXISTE, il n'a pas encore ete joue** : `ETAT_DU_POC.md` documente que la carte
+**L'ORACLE A ETE JOUE le 2026-08-08 et donne raison a `u16` brut (§1 bis).** Rappel de son calage : `ETAT_DU_POC.md` documente que la carte
 validee porte **95,6 % des 29 217 positions de joueur tombant sur le sol** (calage
 0,0920 m/px, X0 -43,5, Y1 61,0). Rejouer ces positions contre le rendu produit tranche T4 ET
-juge le rendu. **C'est le premier geste a faire a la reprise.**
+juge le rendu.
 
 ## 3. LA PRIMITIVE DE RENDU — lue dans le prototype, pas devinee
 
@@ -58,30 +107,31 @@ le degagement de 2 m ecarte ce qui est ecrase sous la roche. « Le plus haut » 
 un sol. Le tri se fait dans le VOLUME, pas au moment du dessin — j'ai perdu des heures a
 chercher « quel etage » alors que la question ne se pose pas une fois le volume propre.
 
-## 4. LES TROIS OBSERVATIONS UTILISATEUR — ouvertes, ce sont les prochains temoins
+## 4. LES TROIS OBSERVATIONS UTILISATEUR — ou elles en sont
 
-1. **Un pont manque en bas, a gauche de celui qui est visible.** Le bornage [-12 ; +28]
-   venait du prototype et **n'est pas universel** — verifie : elargi a [-45 ; +45], la
-   couverture passe de 17,5 % a 19,2 % et du contenu de basse altitude apparait en haut.
-   Avertissement pose dans `volume.go`. **Le pont manquant n'a pas encore ete retrouve.**
-2. **Un ilot en haut a gauche, impraticable.** Candidat : les elements bleu fonce apparus
-   avec la tranche elargie. Non confirme.
-3. **La partie GAUCHE devrait porter des structures praticables** — elle reste blanche, et
-   l'elargissement en Z ne la ramene PAS. **Hypothese a tester en premier** : ces structures
-   viennent des MODULES GLOBAUX, ecartes par le filtre « module de la carte seul ».
+1. **Un pont manque en bas, a gauche de celui qui est visible.** **LOCALISE** : la carte des
+   manques (`ORACLE_PNG`) montre deux trainees rouges verticales en bas au centre — ce sont
+   les deux ponts, colonnes sans aucun sol dans le module de la carte. Le bornage + les
+   globaux les ramenent (trous 11,1 % -> 0,8 %). **A confirmer a l'oeil sur un rendu lisible.**
+   Piste morte a ne pas rejouer : elargir la tranche Z a [-45 ; +45] ne fait PAS reapparaitre
+   le second pont — l'utilisateur l'a verifie, c'est un RETRAIT.
+2. **Un ilot en haut a gauche, impraticable.** Non confirme.
+3. **La partie GAUCHE devrait porter des structures praticables.** **HYPOTHESE CONFIRMEE** :
+   sa geometrie est dans les modules globaux (diagnostic `TestDiagnosticTrousDeCarte`,
+   0 trou orphelin). Il fallait les integrer AVEC bornage, pas les ecarter.
 
-## 5. LE FILTRE DE MODULE — la tension a resoudre
+## 5. LE FILTRE DE MODULE — RESOLU par le bornage
 
 Decouverte D1 : 74 % des instances resolvent dans les modules globaux (`common`,
 `multiplayer`, `multiplayer_r3`). C'est **exact**, et c'est ce qui enterrait la carte : un
 seul tag de `common` pese 976 instances et 4,3 M de sommets dans la zone centrale (rochers,
 debris). Le prototype ne les voyait pas — il ne lisait qu'un module.
 
-Filtrer sur le module de la carte rend la carte lisible (9 832 -> 2 730 instances, 61 % ->
-13 % de pixels). **Mais c'est probablement trop brutal** : l'observation 3 suggere que les
-globaux portent AUSSI de vraies structures. Piste : ne pas trier par module mais par
-PRATICABILITE — garder du global ce qui forme un sol degage, ecarter le reste. Le volume
-sait deja le faire.
+**RESOLU le 2026-08-08 (seconde session).** Filtrer sur le module de la carte rendait la carte
+lisible mais AMPUTEE : 11,1 % des positions jouees s'y retrouvent sans aucun sol, dont les deux
+ponts du sud. La reponse n'est ni « tout garder » ni « tout ecarter » mais **BORNER** — chaque
+instance n'ecrit que dans sa propre boite monde declaree. Trous 11,1 % -> 0,8 %, et la justesse
+est restauree (53,2 % sous 25 cm contre 35,9 % sans bornage). Cf. §1 bis.
 
 ## 6. Ou sont les choses
 
@@ -91,7 +141,11 @@ sait deja le faire.
 	internal/himap/geometry.go            descripteurs, LOD, dequantification, triangles
 	internal/himap/volume.go              volume, praticabilite, coupe   <- LA PRIMITIVE
 	internal/himap/heightfield.go         champ d'altitude — APPROCHE ABANDONNEE, cf. §3
+	internal/himap/volume_test.go         temoins unitaires : degagement, bornage, dequant
 	internal/himap/carte_gamefiles_test.go  produit l'artefact de revue (ecrit un PNG)
+	internal/himap/carte_oracle_gamefiles_test.go   L'ORACLE — 29 221 positions jugent la carte
+	internal/himap/carte_trous_gamefiles_test.go    d'ou vient la geometrie manquante
+	internal/himap/carte_globaux_gamefiles_test.go  les instances globales debordent-elles
 	internal/himap/deploy_root.go         ou est installe le jeu (LEVELUP_HALO_DEPLOY)
 
 Commande : `PROBE_MULTI=1 PROBE_PNG=<sortie.png> go test ./internal/himap/ -run TestCarteCliffhanger -count=1 -v`
@@ -100,15 +154,24 @@ Images de la session (hors depot, Bureau) : `cliffhanger_CARTE_multiniveaux.png`
 `cliffhanger_CARTE_z45.png`, `cliffhanger_POINTS_carte_seule.png`, et la reference
 `.ai/V7.5/dumps/carte_validee_v1.png`.
 
-## 7. Ordre de reprise
+## 7. Ordre de reprise (mis a jour le 2026-08-08, seconde session)
 
-1. **Jouer l'oracle** des 29 217 positions contre le rendu — tranche T4 et juge le rendu.
-2. **Tester l'hypothese du §4.3** : reintegrer les globaux en filtrant par praticabilite,
-   voir si la partie gauche se remplit.
-3. Retrouver le pont manquant (§4.1) une fois 1 et 2 faits.
-4. **Dette** : `volume.go` et `heightfield.go` n'ont pas de temoin sur donnees reelles ;
-   `carte_gamefiles_test.go` n'affirme rien. Le gate visuel de `PLAN_BELLE_CARTE_TRIANGLES`
-   exige un artefact cote a cote avec la reference — pas encore produit.
+Les points 1 a 3 de l'ordre precedent sont FAITS (oracle joue, globaux reintegres via le
+bornage, ponts localises). Ce qui reste :
+
+1. **La regle d'affichage.** La justesse est acquise, pas la lisibilite : « bande praticable
+   la plus haute » ramene le decor, la coupe a une altitude fixe perd les autres etages.
+   Piste chiffree a essayer : ne retenir que les bandes praticables au voisinage des positions
+   observees — l'oracle devient un FILTRE de rendu, pas seulement un juge. Verifier ensuite que
+   les deux ponts et la partie gauche sont visibles a l'oeil.
+2. **Le gate visuel** de `PLAN_BELLE_CARTE_TRIANGLES` : artefact cote a cote avec
+   `carte_validee_v1.png`, a la meme echelle. Toujours pas produit.
+3. **Le degagement.** `HeadroomBands = 4` vient du prototype ; l'oracle ne peut pas le choisir
+   (metrique monotone, cf. §1 bis). Le trancher demande un critere independant — par exemple la
+   hauteur de collision d'un Spartan, ou une mesure de plafond sur les positions observees.
+4. **Dette restante** : `heightfield.go` est une approche abandonnee toujours au depot (son
+   en-tete le dit) — la supprimer si rien ne la rappelle ; `carte_gamefiles_test.go` n'affirme
+   toujours rien (c'est assume : il produit l'artefact, le juge est l'utilisateur).
 
 ## 8. Ce que cette session a appris, au-dela du code
 
@@ -122,3 +185,13 @@ Images de la session (hors depot, Bureau) : `cliffhanger_CARTE_multiniveaux.png`
   et elle a rendu la carte illisible. « Plus complet » n'est pas « meilleur ».
 - **Lire le prototype avant de re-deriver.** Une heure de lecture de `s31/s37/s40` aurait
   evite une journee de tatonnement sur le rendu.
+- **Le temoin qui tranche vient de DEHORS.** Toutes les statistiques calculees sur la
+  geometrie elle-meme ont echoue a departager quoi que ce soit. Les positions de joueur, qui
+  ne savent rien de la quantification ni des modules, ont tranche deux questions ouvertes en
+  une seule passe de 21 secondes. Elles etaient disponibles depuis le debut.
+- **Se mefier d'une metrique monotone en son propre reglage.** « Sous 25 cm » s'ameliore
+  mecaniquement quand on exige moins de degagement : l'optimiser aurait conduit a supprimer le
+  critere. La colonne `SANS SOL`, insensible au reglage, est la seule qui mesure la carte.
+- **Un test rouge peut etre une decouverte.** Le temoin unitaire du degagement a echoue parce
+  qu'il reproduisait fidelement le phenomene reel — le plafond devient praticable quand il
+  disqualifie le sol. C'etait le diagnostic, pas un bug de test.

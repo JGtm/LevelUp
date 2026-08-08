@@ -104,13 +104,57 @@ func (v *Volume) AddMesh(m *Mesh, in Instance) {
 	}
 }
 
+// AddMeshBorne rasterise un maillage en n'admettant que les triangles qui tombent dans la
+// BOITE MONDE DECLAREE de l'instance (`AABBMin`/`AABBMax`, champ @0x7C du sbsp).
+//
+// Pourquoi borner. La boite de l'instance et le maillage viennent de DEUX sources
+// independantes : l'une du sbsp, l'autre du tag rtgo. Quand un maillage deborde massivement
+// de sa boite, l'appariement est faux et la matiere qu'il depose est quelconque. Mesure du
+// 2026-08-08 sur ridgeline : les instances resolues dans les modules globaux debordent d'un
+// facteur median 0,231 de leur diagonale et d'un facteur 42,8 au 99e centile — contre 0,098
+// et 1,78 pour celles du module de la carte. Sans bornage, ces quelques instances deversent
+// de la matiere sur toute l'emprise et detruisent le degagement des vrais sols.
+//
+// Le bornage est TRIANGLE PAR TRIANGLE et non maillage par maillage : un maillage
+// partiellement faux garde ainsi la part qui est a sa place.
+func (v *Volume) AddMeshBorne(m *Mesh, in Instance, marge float64) {
+	if m == nil {
+		return
+	}
+	lo := [3]float64{in.AABBMin[0] - marge, in.AABBMin[1] - marge, in.AABBMin[2] - marge}
+	hi := [3]float64{in.AABBMax[0] + marge, in.AABBMax[1] + marge, in.AABBMax[2] + marge}
+	monde := make([][3]float64, len(m.Vertices))
+	for i, s := range m.Vertices {
+		monde[i] = in.LocalToWorld(s)
+	}
+	for _, t := range m.Triangles {
+		v.rasteriseBorne(monde[t[0]], monde[t[1]], monde[t[2]], lo, hi)
+	}
+}
+
 func (v *Volume) rasterise(a, b, c [3]float64) {
+	inf := [3]float64{math.Inf(-1), math.Inf(-1), math.Inf(-1)}
+	sup := [3]float64{math.Inf(1), math.Inf(1), math.Inf(1)}
+	v.rasteriseBorne(a, b, c, inf, sup)
+}
+
+// rasteriseBorne rasterise un triangle en n'ecrivant que dans la boite [lo, hi].
+//
+// Le bornage porte sur les CELLULES ECRITES, pas sur les sommets du triangle : un triangle
+// dont un seul sommet tombe dans la boite depose sinon de la matiere a l'autre bout de la
+// carte, ce qui est precisement l'avarie qu'on cherche a supprimer.
+func (v *Volume) rasteriseBorne(a, b, c [3]float64, lo, hi [3]float64) {
 	minX := math.Min(a[0], math.Min(b[0], c[0]))
 	maxX := math.Max(a[0], math.Max(b[0], c[0]))
 	minY := math.Min(a[1], math.Min(b[1], c[1]))
 	maxY := math.Max(a[1], math.Max(b[1], c[1]))
 	if maxX < v.Min[0] || maxY < v.Min[1] ||
 		minX > v.Min[0]+float64(v.NX)*v.Cell || minY > v.Min[1]+float64(v.NY)*v.Cell {
+		return
+	}
+	minX, maxX = math.Max(minX, lo[0]), math.Min(maxX, hi[0])
+	minY, maxY = math.Max(minY, lo[1]), math.Min(maxY, hi[1])
+	if minX > maxX || minY > maxY {
 		return
 	}
 	i0 := borne(int((minX-v.Min[0])/v.Cell), v.NX-1)
@@ -124,6 +168,9 @@ func (v *Volume) rasterise(a, b, c [3]float64) {
 			x := v.Min[0] + (float64(i)+0.5)*v.Cell
 			z, dedans := altitudeAuPoint(a, b, c, det, x, y)
 			if !dedans {
+				continue
+			}
+			if z < lo[2] || z > hi[2] {
 				continue
 			}
 			iz := int((z - v.ZMin) / v.ZBand)
@@ -174,6 +221,46 @@ func (v *Volume) Slice(niveau, tol float64) []bool {
 		}
 	}
 	return out
+}
+
+// Colonne rend les indices de bande occupes a l'aplomb d'un point du monde, et dit si le
+// point tombe dans l'emprise.
+func (v *Volume) Colonne(x, y float64) (bandes []int, dansEmprise bool) {
+	i := int((x - v.Min[0]) / v.Cell)
+	j := int((y - v.Min[1]) / v.Cell)
+	if i < 0 || i >= v.NX || j < 0 || j >= v.NY {
+		return nil, false
+	}
+	for iz := 0; iz < v.NZ; iz++ {
+		if v.Get(iz, j, i) {
+			bandes = append(bandes, iz)
+		}
+	}
+	return bandes, true
+}
+
+// Altitude rend l'altitude du centre d'une bande.
+func (v *Volume) Altitude(iz int) float64 { return v.ZMin + (float64(iz)+0.5)*v.ZBand }
+
+// SolLePlusProche rend l'altitude du sol le plus proche de z a l'aplomb du point, et
+// l'ecart signe (positif = le point est AU-DESSUS du sol).
+//
+// Applique a un volume de praticabilite (cf. Floors), c'est la mesure qui juge une carte :
+// une position de joueur reellement observee doit trouver un sol juste sous ses pieds. Une
+// colonne vide (`ok` faux) est un TROU dans la carte, pas une position aberrante.
+func (v *Volume) SolLePlusProche(x, y, z float64) (sol, ecart float64, ok bool) {
+	bandes, dans := v.Colonne(x, y)
+	if !dans || len(bandes) == 0 {
+		return 0, 0, false
+	}
+	meilleur := math.Inf(1)
+	for _, iz := range bandes {
+		a := v.Altitude(iz)
+		if d := math.Abs(z - a); d < meilleur {
+			meilleur, sol = d, a
+		}
+	}
+	return sol, z - sol, true
 }
 
 // NiveauLePlusPeuple rend l'altitude de la bande qui porte le plus de cellules, et son

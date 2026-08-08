@@ -59994,3 +59994,42 @@ A5, A6, A7, A8 (mock HaloClient + engine_test) non implémentés cette session �
 
 ---
 
+
+## [2026-08-08] Cartes v7.5 — l'oracle des positions de joueur tranche T4 et le filtre de module
+
+**Statut** : En cours (avancee majeure, rendu non abouti)
+
+**Decision technique principale** — jouer l'ORACLE plutot que continuer a chercher un temoin
+interne. 29 221 positions de joueur decodees du film (`000d5950.json`) confrontees a la carte
+reconstruite : une position reellement couru avait forcement du sol sous les pieds. Ce temoin
+ne peut pas etre tautologique, contrairement a toutes les statistiques calculees sur la
+geometrie elle-meme, qui avaient toutes echoue.
+
+**Resultats observes**
+- T4 TRANCHEE : `u16` brut, 63,6 % des positions sous 25 cm du sol contre 34,3 % pour
+  `i16 + 32768`. L'ecart median SIGNE de +0,04 m etablit au passage que le z du rejeu est
+  bien l'altitude des pieds.
+- Filtre de module TRANCHE : avec le seul module de la carte, 11,1 % des positions jouees
+  n'ont AUCUNE matiere sous elles — dont les deux ponts du sud, localises par la carte des
+  manques. Le diagnostic remonte leur geometrie aux modules globaux (`common` 7 036,
+  `multiplayer` 2 568 contre `ridgeline` 564), avec 0 trou orphelin.
+- Cause de la degradation par les globaux : leurs maillages DEBORDENT de la boite monde
+  declaree de leur instance — debordement median 0,231 de la diagonale et 42,8 au 99e
+  centile, contre 0,098 et 1,78 pour le module de la carte.
+- Correction : `Volume.AddMeshBorne` n'ecrit que les cellules tombant dans la boite de
+  l'instance (bornage sur les CELLULES, pas sur les sommets). Trous 11,1 % -> 0,8 %,
+  justesse 35,9 % -> 53,2 % sous 25 cm, 88,0 % sous 2 m, ecart median signe -0,04 m.
+- Piege de metrique consigne : « sous 25 cm » est monotone en le degagement exige, donc
+  incapable de le choisir. La colonne honnete est `SANS SOL`, insensible au reglage.
+
+**Livre** : `internal/himap/volume.go` (`AddMeshBorne`, `SolLePlusProche`, `Colonne`),
+`geometry.go` (`Dequant` / `MeshDequant`, les deux lectures declarees pour etre departagees),
+`volume_test.go` (temoins unitaires : degagement, bornage, dequantification),
+`carte_oracle_gamefiles_test.go` (l'oracle), `carte_trous_gamefiles_test.go` et
+`carte_globaux_gamefiles_test.go` (les deux diagnostics). Lint ratchet 0, paquet vert.
+
+**Prochaine etape** : la LISIBILITE. La justesse est acquise, le rendu ne l'est pas — « bande
+praticable la plus haute » ramene le decor par-dessus l'arene, la coupe a altitude fixe perd
+les autres etages. Piste : filtrer les bandes affichees par le voisinage des positions
+observees. Puis le gate visuel cote a cote avec `carte_validee_v1.png`. Detail complet :
+`.ai/V7.5/cartes/HANDOFF_PORT_TRIANGLES_2026-08-08.md` §1 bis.

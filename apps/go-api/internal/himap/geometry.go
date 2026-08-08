@@ -262,6 +262,26 @@ func (a *RuntimeGeoAsset) Bounds(meshIndex int) (mn, mx [3]float64, ok bool) {
 // (aucun LOD, tampon de positions absent, descripteur hors du blob) — c'est un cas normal,
 // pas une erreur : le compte des maillages rendus est publie par l'appelant.
 func (a *RuntimeGeoAsset) Mesh(meshIndex int) *Mesh {
+	return a.MeshDequant(meshIndex, DequantBrut)
+}
+
+// Dequant rend la coordonnee monde d'une composante quantifiee, entre les bornes du maillage.
+type Dequant func(q uint16, mn, mx float64) float64
+
+// DequantBrut : la lecture CANONIQUE — l'entier est un u16 brut.
+func DequantBrut(q uint16, mn, mx float64) float64 {
+	return mn + float64(q)/quantMax*(mx-mn)
+}
+
+// DequantSigne : la lecture CONCURRENTE — l'entier serait un i16 decale de 32768. Elle
+// n'existe que pour etre departagee par un temoin (cf. `oracle_gamefiles_test.go`) ; ne
+// jamais s'en servir pour produire une carte.
+func DequantSigne(q uint16, mn, mx float64) float64 {
+	return mn + float64(int(int16(q))+32768)/quantMax*(mx-mn)
+}
+
+// MeshDequant decode un maillage avec une lecture de quantification donnee.
+func (a *RuntimeGeoAsset) MeshDequant(meshIndex int, dq Dequant) *Mesh {
 	vd, id, ok := a.MeshBuffers(meshIndex)
 	if !ok {
 		return nil
@@ -281,9 +301,7 @@ func (a *RuntimeGeoAsset) Mesh(meshIndex int) *Mesh {
 	for i := 0; i < vd.Count; i++ {
 		r := a.blob[vd.Offset+i*vertexStridePosition:]
 		for ax := 0; ax < 3; ax++ {
-			// u16 BRUT — cf. l'en-tete du fichier. Pas de `+ 32768`.
-			q := float64(binary.LittleEndian.Uint16(r[ax*2:]))
-			verts[i][ax] = mn[ax] + q/quantMax*(mx[ax]-mn[ax])
+			verts[i][ax] = dq(binary.LittleEndian.Uint16(r[ax*2:]), mn[ax], mx[ax])
 		}
 	}
 
