@@ -1,3 +1,56 @@
+## [2026-08-08] v7.5 voie C — les images rayees n etaient pas un probleme de decodage, mais de comptage
+
+**Statut** : Complété. Branche `feat/v75-icones`. Toujours non branché côté web.
+
+**Origine** : trois questions de l'utilisateur (corrélation avec les armes de kill, taille
+maximale des images, apport possible de Ghidra). Deux d'entre elles se répondent par la
+mesure, et la troisième a produit la correction la plus importante de la série.
+
+**La question « Ghidra peut-il corriger les dernières images distordues ? » a la réponse
+inverse de celle attendue : il n'en fallait pas.** En dumpant les 44 octets de chaque
+descripteur pour chercher un éventuel index de ressource, deux faits sautent aux yeux :
+
+1. le descripteur fait **0x28 = 40 octets**, pas 44 (0xe8 → 0x110 → 0x138), et il est
+   parfaitement régulier ; les 0xbcbc sont du remplissage ;
+2. il ne porte **aucun index de ressource** — l'appariement est donc bien positionnel.
+
+Or mon recensement cherchait une SIGNATURE partout dans le corps du tag, et sur-comptait :
+**91 enregistrements pour 88 déclarés** côté sandbox, 24 pour 22 sur l'atlas d'emblèmes. Ces
+faux positifs consommaient des ressources et décalaient tout ce qui suivait — c'était ça, les
+images rayées en queue d'atlas. Le balayage ne sert plus qu'à TROUVER LE PREMIER
+enregistrement (l'offset n'est pas codé en dur, il reste retrouvé) ; ensuite le tableau est lu
+tel qu'il est déclaré : un compte (u32 juste avant) et un pas de 0x28.
+
+**Résultat : 88 icônes sandbox sur 88 déclarées, 40 sur 40 côté armes, ZÉRO image rayée.**
+Les 14 marquées « décodage suspect » à la livraison précédente sont toutes récupérées, et ce
+qu'elles contenaient est du contenu utile : explosion, couronne, sandwich, cible, chute d'eau,
+étoile, armes supplémentaires et trois hélicoptères en 85-87. Le mécanisme `CleanThrough` /
+`decode_suspect` est SUPPRIMÉ avec son affichage dans la page : il ne marque plus rien, et un
+mécanisme qui ne marque plus rien est du code mort.
+
+**Ce que la mesure dit des deux autres questions.**
+
+- *Taille maximale* : oui. Les dimensions déclarées sont identiques dans les variantes `ds/`
+  et `pc/`, et **0 ressource sur 41 (armes) et 0 sur 91 (sandbox) ne porte le drapeau hd1** —
+  rien ne vit dans le compagnon haute résolution. C'est bien le mip0 natif qui est extrait.
+  Réserve utile pour l'UI : les deux atlas n'ont PAS la même définition — armes ~330x117,
+  sandbox ~110x38.
+- *Corrélation avec les armes de kill* : le lien existe et il manque un seul maillon, l'index
+  d'icône dans le tag `weap`. Ma recherche précédente (petit entier à offset constant) était
+  trop naïve : le corps d'un tag est un arbre de structures dont les offsets bougent. Le dépôt
+  possède DÉJÀ la bonne machinerie — `internal/himap` marche les champs d'un `sbsp` avec le
+  plugin `sbsp.xml`, et `.ai/V7.5/dumps/forge_zones/` montre que d'autres définitions de tags
+  ont déjà été obtenues. Il faut `weap.xml`, pas Ghidra.
+
+**Gates** : `go build ./...` vert, `golangci-lint` 0 issue, `go test ./internal/archlint/...`
+vert, `node --check` sur le script de la page. Fichiers du paquet tous sous 500 lignes.
+
+**Décompte final** : 40 contour + 40 silhouette + 88 sandbox = **168 PNG**, 128 index à nommer.
+
+**Conclusion / prochaine étape** : inchangée — ouvrir la page, nommer, me remettre le TSV. Si
+le nommage confirme que l'atlas couvre bien plus que les armes de kill (véhicules, objectifs,
+pictogrammes), le maillon `weap.xml` devient le chantier suivant naturel.
+
 ## [2026-08-08] v7.5 voie C — les artefacts venaient du mode 7, reconstruit sans recopier de table
 
 **Statut** : Complété. Branche `feat/v75-icones`. Toujours non branché côté web.

@@ -59,7 +59,7 @@
 <header>
   <h1>Nommer les icones extraites du jeu</h1>
   <p class="note">
-    Deux atlas, 125 icones a nommer. Pour chacune : choisir l'arme du registre dans la liste, ou taper
+    Deux atlas, 128 icones a nommer. Pour chacune : choisir l'arme du registre dans la liste, ou taper
     un libelle libre (objet d'objectif, vehicule, pictogramme...). Le travail est
     <b>sauvegarde automatiquement</b> dans le navigateur : la page peut etre fermee et reprise.
     Quand c'est fini, <b>Copier le resultat</b> ou <b>Telecharger</b> — c'est ce bloc qui sert
@@ -82,7 +82,7 @@
       mode 7 est desormais RECONSTRUIT : points extremes, bits P et index sont lus exactement,
       et ce qui manque (la partition, dont la table n'est pas reproduite ici) est retrouve par
       ajustement sur le niveau de mip inferieur, decode lui aussi. Mesure apres correction :
-      <b>zero bloc degrade</b> sur les 153 images saines. Les blocs de modes 0 a 3 restent en
+      <b>zero bloc degrade</b> sur les 168 images. Les blocs de modes 0 a 3 restent en
       repli mais ne degradent rien — ces modes n'ont pas de canal alpha, leur alpha vaut 255
       partout et le repli le rend exactement.
     </p>
@@ -94,13 +94,11 @@
       Les fichiers sont donc nommes par leur index d'atlas, jamais par un nom devine.
     </p>
     <p class="note">
-      Reserve sur l'atlas sandbox : son tag en declare 88 images, 85 recoivent une ressource et
-      sont livrees ici. Au-dela
-      de l'index 72 (et de l'index 38 pour l'atlas des armes) le decodage sort raye — des descripteurs faux positifs y tombent sur une
-      ressource du bon poids, donc le controle de taille les laisse passer. Elles sont MARQUEES
-      et non retirees : le doute est etiquete, rien n'est cache. Approfondir la sonde de
-      recalage a ete essaye et rend les choses PIRES (la corruption remonte alors a l'index 42
-      et emporte les grenades) : la profondeur 6 est celle qui est retenue.
+      Reserve levee : l'atlas sandbox declare 88 images et les 88 sont servies. Le recensement
+      des descripteurs lisait une SIGNATURE et sur-comptait (91 pour 88, 24 pour 22) ; ses faux
+      positifs consommaient des ressources et decalaient la suite, d'ou les images rayees en
+      queue d'atlas. Il lit desormais le TABLEAU DECLARE (un compte, un pas regulier de 0x28) :
+      plus aucune image n'est rayee, ni cote armes ni cote sandbox.
     </p>
   </details>
 </header>
@@ -109,7 +107,7 @@
     <button id="copy" class="primary">Copier le resultat</button>
     <button id="dl">Telecharger (.tsv)</button>
     <label><input type="checkbox" id="only"> a nommer seulement</label>
-    <label><input type="checkbox" id="hideSusp"> masquer les decodages suspects</label>
+    
     <label><input type="checkbox" id="light"> fond clair</label>
     <button id="reset">Tout effacer</button>
     <span class="pill" id="prog"></span>
@@ -120,10 +118,10 @@
      rendus : un seul nom a donner par index.</p>
   <div class="grid" id="gWeap"></div>
 
-  <h2>Atlas sandbox — 85 icones</h2>
+  <h2>Atlas sandbox — 88 icones</h2>
   <p class="note">Armes vues de plus loin, vehicules, grenades lancees (regarder autour de
-     l'index 46) et pictogrammes de mort. Un seul style. Les douze dernieres portent le badge
-     « decodage suspect » : elles sortent rayees et ne representent probablement rien de lisible.</p>
+     l'index 46) et pictogrammes de mort. Un seul style.
+     Un seul style.</p>
   <div class="grid" id="gSand"></div>
 
   <h2>Armes du registre restant sans icone</h2>
@@ -136,12 +134,7 @@
 </main>
 <script>
 const BASE = "../../../static/weapons-assets/halo_infinite/jeu/";
-const NB_WEAP = 40, NB_SAND = 85;
-// Au-dela de cet index, le decodage du sandbox sort raye : les images sont livrees quand meme
-// mais signalees. Constat visuel assume — la densite de transitions d opacite a ete essayee
-// comme critere automatique et NE SEPARE PAS (l icone d explosion, legitime, sort en tete).
-const SAND_CLEAN_THROUGH = 72;
-const WEAP_CLEAN_THROUGH = 38;
+const NB_WEAP = 40, NB_SAND = 88;
 
 // Les 29 armes Halo Infinite du registre (registry.go + weapon_names.toml).
 const REGISTRE = [
@@ -206,7 +199,7 @@ function optionsSelect() {
 function carte(atlas, i) {
   const k = cle(atlas, i);
   const v = etat[k] || { choix: "", libre: "" };
-  const suspect = i > (atlas === "sand" ? SAND_CLEAN_THROUGH : WEAP_CLEAN_THROUGH);
+  const suspect = false; // plus aucune image rayee depuis la lecture exacte du tableau
   const el = document.createElement("div");
   el.className = "card" + (v.choix ? " done" : "") + (suspect ? " suspect" : "");
   el.dataset.cle = k;
@@ -311,7 +304,7 @@ function majProgression() {
 }
 
 function appliquerFiltre() {
-  const cacher = document.getElementById("hideSusp").checked;
+  const cacher = false;
   const only = document.getElementById("only").checked;
   document.querySelectorAll(".card").forEach(c => {
     const v = etat[c.dataset.cle];
@@ -322,7 +315,6 @@ function appliquerFiltre() {
 }
 
 document.getElementById("only").addEventListener("change", appliquerFiltre);
-document.getElementById("hideSusp").addEventListener("change", appliquerFiltre);
 document.getElementById("light").addEventListener("change", e =>
   document.body.classList.toggle("light", e.target.checked));
 document.getElementById("copy").addEventListener("click", async () => {
