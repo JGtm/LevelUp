@@ -60415,3 +60415,44 @@ registre des pistes mortes, borne des 26 SID consignee).
 
 **Prochaine etape**. Gate visuel utilisateur — c est desormais la seule voie pour les 30
 restants, et 4 d entre eux sont hors de portee de tout craquage.
+
+## [2026-08-08] v7.5 voie C — icones : quatre routes de plus tentees, la voie automatique est epuisee
+
+**Statut** : Complete.
+
+**Question** : « as-tu des idees de resolution ? » Quatre pistes, toutes menees jusqu au verdict.
+
+1. **Champ `damage sprite index`** (le kill feed affiche la SOURCE DE DEGAT, et le plugin
+   declare bien ce champ dans le meme bloc `UI display info` que le `sprite index` deja
+   exploite). Offsets verifies sur les octets bruts et non postules : `sprite index` +48,
+   `alt sprite` +52 (porte l atlas silhouette `e39747c8`), `alt sprite index` +80 — il vaut le
+   MEME index, ce qui valide la lecture — puis `damage sprite index` +84. Verdict : **0 pour
+   les 29 armes**. Le champ existe, il n est pas renseigne.
+
+2. **Balayage exhaustif des tags.** Si un tag portait un des 26 identifiants, il designerait
+   l icone sans qu on ait a craquer le nom — et le depot sait deja relier `jpt!` a l arme.
+   **260 415 tags, 3,9 Go** : les 26 identifiants n apparaissent QUE dans `bitd 8646f61a`
+   lui-meme. Rien dans les DONNEES ne les relie a une arme : la correspondance est faite par le
+   CODE a l execution. C est le resultat le plus structurant de la serie.
+
+3. **Force brute** sur le suffixe (prefixe `killfeed_` connu, alphabet `[a-z_]`). Controle
+   prealable : l implementation locale de murmur3 reproduit `mapvar.LabelHash` sur trois valeurs
+   connues, sinon on s arretait. Jusqu a 5 caracteres : exhaustivement rien. Jusqu a 7
+   (1,05e10 essais, 2 min) : 68 candidats, soit exactement le bruit attendu (~64), tous du
+   charabia. Les vrais noms font 12 a 20 caracteres — hors de portee de toute enumeration.
+
+4. **Prefixes composes** (`killfeed_weapon_`, `killfeed_vehicle_`, `killfeed_medal_`, `kf_`,
+   `hud_`... 22 en tout) sur tout le vocabulaire : 408 608 mots x 22 = **8 989 376 formes,
+   0 correspondance**.
+
+**Conclusion**. La voie automatique est epuisee, et c est desormais mesure plutot que suppose.
+Le seul chemin restant serait de retrouver la table a l execution (Ghidra / CheatEngine) —
+chantier de retro-ingenierie a part entiere, hors de ce lot, et dont le precedent (scan statique
+de l EXE pour les WID d armes) etait negatif. Le gate humain n est pas un pis-aller : c est la
+voie la moins couteuse.
+
+**Resultats observes**. Etat inchange : 168 PNG, 26 weapon_key, 23 noms craques cote armes,
+58 cote kill feed, 30 index a nommer a la main dont 4 sans aucune entree de nommage. Registre
+des pistes mortes enrichi de 4 lignes avec leurs mesures.
+
+**Prochaine etape**. Labellisation manuelle par l utilisateur sur `NOMMAGE_ICONES.html`.
