@@ -1,3 +1,93 @@
+## [2026-08-08] v7.5 lot 4 — containment « lettre de zone » : le croisement marche, l'horloge non
+
+**Statut** : Complété. Périmètre fermé à P1–P5, chaque item statué. Série de commits sur
+`feat/v75` (mode branche unique, décision utilisateur du 08/08) — **pas de merge**, la CI de
+branche verte au niveau job clôt le lot. Worktree `LevelUp-wt-replay2d`. Rapport complet :
+`.ai/HANDOFF_CONTAINMENT_ZONES_2026-08-08.md`.
+
+**Ce que la vérification sur pièces a corrigé dans le cadrage, et qui devait remonter.**
+L'énoncé désignait `match_player_positions` comme « LA dépendance critique du croisement ».
+Cette table est inutilisable, pour deux raisons indépendantes : elle porte **0 ligne** en
+base, et elle est **match-level SANS xuid** — la delta-compression bloque l'index par
+joueur, `team` est best-effort à -1 (`migration/steps_shared_player_positions.go`). Son seul
+écrivain est `cmd/diag_weapons_v3 -positions -write`, un CLI de diagnostic. Le lot n'a pas
+été bloqué pour autant : la vraie source de positions PAR JOUEUR existait ailleurs et elle
+est meilleure — le pipeline du rejeu 2D (`replay.BuildFromFilm` → `Track` par xuid, grille
+100 ms, pont fil-des-morts + index de joueur). La dépendance n'a pas manqué, elle a changé
+de nom. **À retenir : ne plus citer `match_player_positions` comme source de positions.**
+
+**P1 [x] — la primitive de containment.** `mapvar.Volume` : forme posée + base orthonormée
+(Gram-Schmidt depuis Up), `Contains`, `DistanceTo` (distance au VOLUME, pas au centre — les
+zones vont de 1,7 à 5,0 m de rayon, comparer des distances au centre serait un biais de
+taille), `Translate`. Test 3D et orienté, sans repli sur les axes du monde : mesuré, 0 forme
+dégénérée sur les 224 formes de zone du catalogue, donc `NewVolume` REFUSE au lieu de
+deviner. **5 mutations vues rouges** (axe latéral retiré, UpZ/DownZ échangés, Gram-Schmidt
+sauté, centre ignoré, cylindre borné par axe).
+
+**P2 [x] — le lecteur de catalogue.** `map_objectives.json` était PRODUIT et jamais LU :
+34 cartes, 63 zones Bastion, 161 zones Extraction versionnées sans aucun consommateur Go.
+`LoadMapObjectives` / `Lookup` / `ZonesOfRole` le branchent, avec les compteurs de ce qui est
+écarté (ponctuel / dégénéré / carte reportée d'un schéma antérieur — le piège documenté par
+le producteur). Le test lit le catalogue RÉELLEMENT livré et recoupe la mesure DuckDB à
+l'unité. Aucune lettre A/B/C n'est inventée : identité = `InstanceID` du jeu, plus un
+`SpatialRank` dérivé du tri des positions, explicitement pas le nom du jeu.
+
+**P3 [x] — l'attribution.** `AttributeZones` : actions × trajectoires × zones → zone + une
+couverture dont les compteurs somment au total (invariant testé). Les vies sont fusionnées
+par xuid (une Track est une VIE), les vies anonymes écartées, l'ambiguïté comptée au lieu
+d'être tranchée par l'ordre de tri. **6 mutations vues rouges.**
+
+**P4 [x] — la mesure, et c'est elle qui a tout décidé.** Corpus : **8 films sur 208 matchs
+en mode à zones** (151 sans film en cache, 45 sans bornes de carte, 4 sans formes). 525
+actions identifiées par xuid.
+
+- Appartenance stricte : **12,2 %**. Le témoin spatial (zones translatées de 12 m) tombe à
+  0,4 % — et **il ne prouve rien** : c'est le contrôle tautologique déjà retiré une fois par
+  ce chantier, déplacer une zone la sort du sol foulé.
+- Le témoin honnête est TEMPOREL (mêmes zones, actions décalées de 30 s) : **12,6 %**, soit
+  *plus* que le réel. Rapport 1,0 à 1,2 sur toute la courbe taux(seuil). Tel quel, le
+  croisement n'apporte **aucune** information.
+- Ce n'est pas la géométrie : **écart vertical médian -0,0 m** (les deux repères coïncident)
+  et **100 % des joueurs à moins de 20 m** d'une zone (médiane 3,3 m).
+- C'est l'HORLOGE. En reculant l'instant des actions, le réel monte à **28,6 % à -5 s**
+  pendant que le témoin **reste plat** (10,9–12,6 %) : rapport 1,0 → 2,6. Contrôle
+  anti-ajustement match par match : **8 films sur 8 piquent à un décalage négatif**, aucun à
+  0 ni +1 s. La direction est unanime.
+
+**P5 [x] — rien n'est persisté, et c'est la bonne décision.** Trois critères indépendants :
+le taux (28,6 % au mieux) n'est pas consommable ; la valeur du retard n'est PAS établie
+(pics étalés de -0,5 à -10 s, dont **trois sur la borne du balayage** — mesure tronquée) ;
+et il n'existe **aucun oracle de justesse** — tout ce qui est mesuré est « une zone a-t-elle
+été rattachée », jamais « est-ce la bonne ». Le seul relevé terrain qui dise QUELLE zone
+porte sur Vagabond, carte absente du catalogue d'objectifs donc non rejouable. Aucune table,
+aucune migration : la recette ADR 0026 ne s'applique pas.
+
+**Découverte traitée parce qu'elle bloquait le périmètre** : la source disque du cache film
+existait en DEUX copies (`cmd/diag_weapons_v3`, tests d'`objectiveevents`) ; en écrire une
+troisième aurait violé la règle des ≤ 2 copies. Centralisée dans
+`internal/games/halo_infinite/film/filmcache`, `diag_weapons_v3` migré à
+comportement identique, **garde-rail posé** (une seule implémentation de `FilmSource` hors
+allowlist datée — 2 mutations vues rouges, dont l'allowlist périmée).
+
+**Découvertes CONSIGNÉES, non traitées** : (a) le littéral `film_chunks`/`film_manifests`
+reste écrit à la main dans ~7 CLI — dette antérieure, hors périmètre ; (b) Fragmentation
+Heavies n'a pas de bornes sous son nom affiché alors que ses 3 zones sont **au centimètre
+près** aux coordonnées de `fragmentation_map` : un alias dans `NormalizeMapName` débloquerait
+la carte ; (c) Highpower est au catalogue mais n'y déclare **aucune** zone de Bastion
+(5 `extraction_zone`, 0 `strongholds_zone`) — donnée absente de la variante, pas extraction
+manquante.
+
+**Gate** : `go test ./... -p 1` → **134 paquets ok, 0 échec**. Ratchet
+`golangci-lint --new-from-merge-base=origin/main` → **0 issue**. Pas de test supprimé ni
+renommé (baseline intacte). Pas de `-tags=integration` : ni persist, ni sync, ni migration
+touchés.
+
+**Prochaine étape** (au superviseur) : élargir `clockOffsets` au-delà de -10 s — trois films
+sur huit piquent sur la borne, c'est le seul point où une heure de calcul peut changer le
+verdict.
+
+---
+
 ## [2026-08-08] v7.5 lot 3 — la suppression d'objectivescore, et deux tables qu'on prenait pour une seule
 
 **Statut** : Complété. Périmètre fermé à L3a–L3f, chaque item statué. Branche
