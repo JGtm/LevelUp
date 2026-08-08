@@ -1,0 +1,24 @@
+film	0edb8512
+carte	Aquarius
+slots_pont_avant	93
+slots_pont_apres	94
+vies_non_nommees_candidates	2
+designees_par_un_tir	2
+attribuees	1	contestees	1	rejetees_recouvrement	0
+tirs_orphelins	185	dont_instant_a_une_seule_vie	36
+
+# couverture des tirs
+avant	rattaches	2623	sur	2808	taux	0.9341	sans_slot	164	ambigus	21
+apres	rattaches	2674	sur	2808	taux	0.9523	sans_slot	113	ambigus	21
+gain_points_A	1.82
+
+# fermeture B — par la reapparition
+calibration_vies	85	p05_ms	8092	mediane_ms	8294	p95_ms	16234
+vies_restantes	1	designees	1	attribuees	1	contestees	0	rejetees_recouvrement	0
+apresB	rattaches	2706	sur	2808	taux	0.9637	sans_slot	81	ambigus	21
+gain_points_total_fenetre_large	2.96
+
+# fermeture B — fenetre SERREE (mediane +/- 750 ms)
+vies_restantes	1	designees	1	attribuees	1	contestees	0	rejetees_recouvrement	0
+apresT	rattaches	2706	sur	2808	taux	0.9637	sans_slot	81	ambigus	21
+gain_points_total_fenetre_serree	2.96

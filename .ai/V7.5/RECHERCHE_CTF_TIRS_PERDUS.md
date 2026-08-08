@@ -27,12 +27,15 @@ distributions qui se recouvrent (p10 identique à 3,5 %).
 **Quatre hypothèses sont RÉFUTÉES par la mesure** : la réplication clairsemée, la dérive
 d'horloge, les familles d'armes non mappées, les flux propres au mode. Détail au §5.
 
-**La taille du gain est connue** : si toutes les vies étaient nommées, les sept films
-monteraient à **94,7–98,5 %** de tirs rattachés, tous très au-dessus du plancher de 85 %.
+**LE CORRECTIF N'EST PAS UNE HYPOTHÈSE : IL EST ÉCRIT ET MESURÉ.** Deux **fermetures**
+déterministes — pas des votes : elles n'attribuent que lorsqu'un seul candidat reste possible —
+portent **les sept films de 79,7-93,4 % à 88,7-96,4 %**, avec **+12,3 points sur le pire film**.
+Leurs deux garde-fous ont refusé un tiers des déductions, ce qui est la raison de leur croire.
+Détail et échec de réglage compris : §7.5.
 
-**Recommandation (§7)** : le rejeu public **n'est pas livrable en v7.5**, mais pour une raison
-différente de celle qu'on croyait, et le correctif est identifié, borné, et ne demande **aucune
-rétro-ingénierie nouvelle**.
+**Recommandation (§7)** : le rejeu public n'est pas livrable **avec le code d'aujourd'hui**, mais
+le blocage n'est plus une inconnue — c'est **un lot d'implémentation borné**, sans aucune
+rétro-ingénierie nouvelle. Exécuter ce lot dans v7.5 ou plus tard est une décision utilisateur.
 
 ---
 
@@ -103,6 +106,23 @@ Ce que ce tableau dit, et qui n'était pas dit :
   sans que les joueurs meurent), pas une classe de MODES.
 
 ## 4. LA CAUSE, ÉTABLIE
+
+### 4.0 DEUX NUMÉROS À NE PAS CONFONDRE — la confusion a déjà coûté une conclusion
+
+Relevé par l'utilisateur le 2026-08-08, après une première rédaction qui les écrasait en un seul.
+Le film porte **deux espaces de numérotation distincts**, et tout raisonnement qui les mélange
+est faux :
+
+| numéro | ce qu'il désigne | stable ? | statut |
+|---|---|---|---|
+| **player-slot / index de joueur** | LE JOUEUR | **OUI, sur tout le match** | **PROUVÉ et déjà utilisé** : chunk_27 `b36` (duo, 2 bits) + `b37` (équipe, 1 bit) = 8 combinaisons, bijection per-match (`film_re/RECAP_STATS_EXPLOITABLES.md`) ; et les 5 bits devant le xuid, mesurés sur **116 films sur 116**, lus par `player_index.go` (43 chunks concordants sur `64e8adfa`, 0 désaccord) |
+| **identifiant d'entité biped** | UNE VIE | **NON** | **MESURÉ** : journal du 2026-07-03, « 99 ENTITÉS biped ≠ 99 joueurs (respawns + ragdolls sur le match) ». Cette session : **138 identifiants distincts pour 8 joueurs** sur `64e8adfa`, alloués en ordre croissant, 141 segments de vie |
+| **le lien entre les deux** | quel bipède appartient à quel joueur | — | **NON RÉSOLU**, et documenté comme tel : journal du 2026-07-28, la piste i19 réfutée par son propre contrôle (handle constant `0x8000004F`, critère « huit entités distinctes par image-clé » échoué **0/26**) |
+
+**Ce que ce tableau change** : la difficulté n'est PAS d'identifier un joueur — c'est acquis et
+robuste. Elle est de savoir **quel corps il occupe à un instant donné**. Le fil des morts sert
+aujourd'hui de substitut à ce lien manquant, et c'est ce substitut qui a l'angle mort décrit
+ci-dessous.
 
 ### 4.1 La ventilation
 
@@ -204,7 +224,7 @@ taille du gain, et elle justifie qu'on cherche le nom du slot ailleurs que dans 
 | hypothèse du plan | verdict | preuve chiffrée |
 |---|---|---|
 | **Réplication clairsemée** (les positions manquent aux instants de tir) | **RÉFUTÉE** | pas médian entre échantillons du même slot : **16,7 ms** dans les 7 films, p90 entre 17,1 et 17,5 ms ; part des pas au-delà de la tolérance de 120 ms : **0,07 % à 0,29 %**. Sur les rejets où le joueur EST au pont, l'écart au plus proche échantillon vaut plus de 15 s dans 89 % des cas (`64e8adfa` : 502/561) — ce n'est pas un trou de réplication, c'est une autre vie |
-| **Familles d'armes non mappées en CTF** | **RÉFUTÉE** | le rejet suit l'exposition : sur `64e8adfa` l'arme la plus tirée (1 897 records) perd 22,5 %, la deuxième (825) 11,3 % ; sur `db7b8c3c` les deux premières perdent 8,6 % et 8,3 %. Aucune famille ne concentre la perte. *Réserve* : `0xC7D5091200000000` sur `829abef9` perd **29 records sur 29** et n'est dans aucune des 42 entrées de `weapon_labels` — sa forme diffère (32 bits bas nuls). 6,7 % des pertes de ce film ; classé en hypothèse restante (§6) |
+| **Familles d'armes non mappées en CTF** | **RÉFUTÉE** | le rejet suit l'exposition : sur `64e8adfa` l'arme la plus tirée (1 897 records) perd 22,5 %, la deuxième (825) 11,3 % ; sur `db7b8c3c` les deux premières perdent 8,6 % et 8,3 %. Aucune famille ne concentre la perte. *Réserve, et elle est solide* : `0xC7D5091200000000` sur `829abef9` perd **29 records sur 29** dans un film qui en rejette 16,5 % (p ≈ 10⁻²³), famille hors catalogue et variante nulle. La réfutation vaut pour les familles CONNUES ; cet identifiant-là est un objet à part, classé H2 (§6) |
 | **Chunks / flux propres au mode** | **RÉFUTÉE** | la ventilation des causes est la MÊME dans les trois modes ; seule l'amplitude change. Le dernier décile porte le plus gros rejet dans les 7 films. Aucun film n'a de rejet « joueur hors pont » |
 | **Fenêtres temporelles (retours de drapeau)** | **RÉFUTÉE comme cause dominante** | le rejet n'est pas épisodique mais **monotone croissant** sur `64e8adfa` (0 %, 0 %, 0 %, 0 %, 2 %, 12 %, 18 %, 37 %, 57 %, 62 %). Une fenêtre d'événement produirait des pics, pas une rampe |
 | **Objets portables absorbant des événements** | **RÉFUTÉE** | le porteur de drapeau reste un biped répliqué : ses positions sont dans le flux. Aucun index de joueur n'est absent du pont, dans aucun film |
@@ -215,7 +235,7 @@ taille du gain, et elle justifie qu'on cherche le nom du slot ailleurs que dans 
 | # | hypothèse | statut | ce qu'il faudrait pour trancher | poids estimé |
 |---|---|---|---|---|
 | H1 | **Un événement de match renouvelle les bipeds sans mort.** Sur `64e8adfa`, sept vies non nommées se terminent entre 744,3 s et 749,7 s, et cinq nouvelles commencent entre 751,5 s et 753,9 s. La base ne porte que 2 morts entre 720 et 750 s : ces fins de vie ne sont expliquées par aucune mort. Candidat naturel en CTF : la réinitialisation qui suit une capture | **OUVERT, un seul film** | corréler les fins de vie non appariées avec les événements `mode` du film sur les 129 CTF du cache ; un décompte de vagues égal au nombre de captures confirmerait | fort sur ce film (7 vies dont les 2 plus longues) |
-| H2 | **Une source de dégât qui n'est pas une arme portée** (`0xC7D5091200000000`, 29/29 perdus, hors catalogue) | **OUVERT** | greper l'index arme-par-kill (`../README_KILLWEAPON_INDEX.md`) pour cet identifiant ; vérifier s'il apparaît dans d'autres films | 6,7 % des pertes d'un film, marginal ailleurs |
+| H2 | **Une source de dégât inconnue du catalogue.** `0xC7D5091200000000` sur `829abef9` : famille `0xC7D50912` absente des **42** entrées de `weapon_labels`, et variante (32 bits bas) **nulle** là où 36 des 42 armes portent `0x42C9679F`. Recherché dans tout le corpus de rétro-ingénierie : **aucune occurrence** | **OUVERT, et ce n'est pas le hasard** | **29 rejets sur 29** dans un film qui rejette 16,5 % : p ≈ 10⁻²³. La concentration est réelle, sa cause non établie. À instruire : ces 29 records sont-ils groupés dans le temps (un joueur, une vie non nommée) ou leur index de tireur est-il systématiquement inexploitable ? | 6,7 % des pertes d'un film |
 | H3 | **Le rejet « ambigu » est mal borné.** 99 sur `829abef9` et 65 sur `db7b8c3c`, contre 0 sur deux films. Deux vies du même joueur se recouvrent dans la fenêtre de 120 ms | **OUVERT** | mesurer le recouvrement réel des vies concernées ; c'est un chantier de découpage des vies, distinct du nommage | 2 à 4 % sur deux films |
 | H4 | **La fenêtre de 150 ms** (§4.4) | **MESURÉ, non tranché** | vérifier qu'élargir à 500 ms ne crée aucun appariement faux (le tri glouton par écart croissant le rend improbable, ce n'est pas une preuve) | +7 vies sur un film sur quatre |
 
@@ -224,32 +244,127 @@ n'appelle pas d'autre mesure — elle appelle une décision.
 
 ## 7. RECOMMANDATION
 
-### 7.1 Le rejeu public n'est pas livrable en v7.5
+### 7.1 EN L'ÉTAT DU CODE : NON. APRÈS UN LOT BORNÉ ET DÉJÀ MESURÉ : OUI.
 
-**Non**, et la raison a changé. Ce n'est pas « le CTF est cassé » : c'est que **deux films sur
-sept, soit 29 % du corpus mesuré, passent sous le plancher de 85 %**, et que le mécanisme qui les
-y fait passer — un joueur qui survit à la fin du match devient anonyme — frappe **tous les
-modes**. Le dernier décile perd 40 à 74 % de ses tirs dans les sept films.
+**La réponse a changé en cours de session**, et il faut le dire dans cet ordre :
 
-Livrer en l'état exposerait un écran qui, dans la phase la plus regardée d'un match (la fin), tait
-en silence la moitié de ce que le film porte. C'est exactement ce que le garde a été posé pour
-empêcher, et la règle du chantier tient : « je préfère rien afficher que quelque chose de
-complètement faux ».
+- **Le code d'aujourd'hui ne peut pas être ouvert au public.** Deux films sur sept passent sous
+  le plancher de 85 %, et le mécanisme qui les y fait passer frappe **tous les modes** dans la
+  phase la plus regardée : le dernier décile perd 40 à 74 % de ses tirs dans les sept films.
+  Livrer ça, ce serait un écran qui tait la moitié d'une fin de match sans le dire.
+- **Mais le correctif n'est plus une hypothèse : il est écrit et mesuré** (§7.5). Les deux
+  fermetures portent **les sept films à 88,7 % ou mieux**, avec +12,3 points sur le pire. Le
+  blocage n'est plus « on ne sait pas pourquoi » ; c'est **un lot d'implémentation borné**.
 
-### 7.2 Ce qu'il faut faire à la place, et c'est borné
+**Ce qui reste à la décision de l'utilisateur** : exécuter ce lot dans v7.5 et ouvrir le rejeu, ou
+le garder en local et livrer le lot plus tard. Les deux sont défendables ; ce document ne tranche
+pas ce point, il en supprime l'inconnue.
 
-**Le pont ne doit plus dépendre du seul fil des morts.** Le plafond du §4.6 dit que le reste du
-pipeline est sain : 94,7 à 98,5 % une fois les vies nommées. Trois chantiers, par rapport
-gain/coût décroissant, **aucun ne demande de rétro-ingénierie nouvelle** :
+### 7.2 LE LOT, DANS L'ORDRE — aucune rétro-ingénierie nouvelle
 
-1. **Nommer la dernière vie de chaque joueur par continuité de slot.** Une vie non nommée qui
-   commence là où une vie nommée du même joueur s'arrête n'a pas besoin d'être devinée : la
-   chaîne des vies d'un slot est déjà lue. À vérifier sur pièces avant de coder — c'est
-   l'hypothèse à instruire en premier, et elle porte l'essentiel des 15 points de gain.
-2. **Élargir la fenêtre d'appariement à 500 ms** (§4.4) : +7 vies sur le KOTH, 0 ou +1 ailleurs,
-   zéro régression observée sur quatre films. Le moins cher des trois.
-3. **Instruire H1** (§6) : si la réinitialisation d'après-capture est confirmée, elle se lit dans
-   les événements `mode` déjà en base et rend nommables les vies qu'elle interrompt.
+1. **Les deux fermetures** (§7.5), portées des instruments de recherche vers `owners.go`, avec
+   leurs deux garde-fous (contestation, recouvrement) et leurs compteurs **publiés dans
+   `coverage`** — la règle du chantier veut qu'on dise ce qu'on perd, elle vaut aussi pour ce
+   qu'on déduit. Gain mesuré : +1,7 à +12,3 points. La fenêtre de réapparition se calibre **sur
+   le film traité**, jamais sur une constante importée.
+2. **Élargir la fenêtre d'appariement des morts à 500 ms** (§4.4) : +7 vies sur le KOTH, 0 ou +1
+   ailleurs. Le moins cher des trois, et il n'a pas encore été composé avec les fermetures — le
+   gain cumulé est donc probablement **supérieur** aux chiffres du §7.5.
+3. **Instruire H1** (§6) : la vague de renouvellement des corps à ~747 s sur `64e8adfa`. Si la
+   réinitialisation d'après-capture est confirmée, elle se lit dans les événements `mode` **déjà
+   en base**.
+
+Ce que ce lot ne fait PAS : résoudre `joueur → biped` (§4.0). Ce lien reste non résolu, et les
+fermetures sont précisément ce qui permet de s'en passer pour l'essentiel du gain.
+
+### 7.5 LES DEUX FERMETURES — mesurées, pas proposées
+
+Le §7.2 ne se contente pas de recommander : les deux fermetures ont été **implémentées en
+instrument de recherche et mesurées sur les sept films** (`ctf_closure_research_test.go`).
+
+**Ce qui les sépare du repli voté retiré le 2026-07-28**, et c'est la seule chose qui compte :
+
+```
+le vote        plusieurs candidats, on garde le mieux placé        -> un CHOIX
+la fermeture   un seul candidat POSSIBLE, les autres sont exclus   -> une DÉDUCTION
+```
+
+Dès que deux candidats subsistent, **rien n'est attribué**.
+
+| | fermeture A — par le corps disponible | fermeture B — par la réapparition |
+|---|---|---|
+| le raisonnement | un joueur tire alors qu'aucune de ses vies nommées ne le couvre : son corps est l'une des vies anonymes vivantes à cet instant. S'il n'y en a **qu'une**, c'est elle | une vie commence **une réapparition après la mort qui l'a causée**, et le fil des morts nomme cette victime. Si **une seule** mort tombe dans la fenêtre, la vie est la sienne |
+| ce qu'elle lit | les tirs (qui portent déjà leur auteur) + les vies | le fil des morts + les vies |
+| réglage | aucun | fenêtre de réapparition **calibrée sur le film lui-même** (centiles de l'écart début-de-vie ↔ mort précédente, mesurés sur les vies DÉJÀ nommées) — un réglage importé d'un autre film serait une supposition |
+
+**Deux garde-fous, posés AVANT la mesure, et qui peuvent la réfuter** :
+
+1. **contestée** — deux joueurs revendiquent le même corps : aucune attribution.
+2. **recouvrement** — un joueur n'a qu'un corps. Si le corps déduit chevauche dans le temps une
+   vie déjà nommée du même joueur, l'attribution est **impossible** et elle est rejetée. C'est le
+   pendant du critère « huit entités distinctes » qui a réfuté la piste i19 le 2026-07-28.
+
+Un taux de rejet élevé dirait que la fermeture attrape autre chose que des bipèdes de joueur.
+Les compteurs sont publiés ci-dessous **précisément pour qu'on puisse en juger**.
+
+#### Le réglage de B, et l'échec qui l'a corrigé
+
+La calibration livre un fait qui n'était pas cherché : **la réapparition est DÉTERMINISTE, et
+c'est une constante DU MATCH, pas du jeu.**
+
+| films | délai mesuré (centile 5 → médiane) |
+|---|---|
+| `000d5950`, `0edb8512`, `9aeca4b3` | **8 090 → 8 092 ms** · 8 092 → 8 294 · 8 149 → 8 166 |
+| `01e1f945`, `64e8adfa`, `829abef9`, `db7b8c3c` | **10 176 → 10 179 ms** · 10 089 → 10 188 · 10 112 → 10 118 · 10 103 → 10 306 |
+
+Deux millisecondes d'écart entre le centile 5 et la médiane : ce n'est pas une distribution,
+c'est une constante. Mesurée sur les vies **déjà nommées**, donc sans rien supposer.
+
+**Mon premier réglage était faux, et il a échoué exactement là où il fallait réussir.** J'avais
+pris `[p05, p95]` par prudence. Or le centile 95 monte à **51 717 ms** et **67 688 ms** sur les
+deux films CTF — ce sont les vies dont la mort précédente du même joueur n'est PAS celle qui les
+a fait réapparaître (premières vies). Fenêtre trop large ⇒ plusieurs morts dans la fenêtre ⇒
+**13 vies sur 13 contestées** sur `64e8adfa`, gain **nul**. Corrigé par une fenêtre serrée à
+**médiane ± 750 ms** (vingt fois plus étroite que l'intervalle entre deux morts, et vingt fois
+plus large que la dispersion réelle). Les deux réglages sont publiés ci-dessous : l'échec fait
+partie du résultat.
+
+#### Résultats — les sept films
+
+| film | mode | avant | après A | **après A+B** | **gain** |
+|---|---|---|---|---|---|
+| `0edb8512` | Team Slayer | 93,4 % | 95,2 % | **96,4 %** | +2,96 |
+| `9aeca4b3` | Team Slayer | 89,0 % | 89,7 % | **95,0 %** | +5,98 |
+| `db7b8c3c` | **CTF** | 88,5 % | 90,4 % | **94,5 %** | +5,92 |
+| `000d5950` | Fiesta Slayer | 91,5 % | 91,5 % | **93,3 %** | +1,73 |
+| `64e8adfa` | **CTF** | 80,3 % | 88,8 % | **92,6 %** | **+12,26** |
+| `01e1f945` | KOTH | 86,4 % | 88,5 % | **89,7 %** | +3,25 |
+| `829abef9` | **CTF** | 79,7 % | 83,2 % | **88,7 %** | +8,95 |
+
+**LES SEPT FILMS PASSENT AU-DESSUS DE 88,7 %**, contre deux sous 85 % avant. Le gain est le plus
+fort exactement là où le garde refusait : +12,3 points sur le pire film, +9,0 sur le second.
+
+Comparaison des deux fenêtres de B : la serrée gagne sur trois films (+3,5 à +5,5 points), fait
+jeu égal sur trois, et **perd 0,75 point sur le KOTH**. Elle est donc recommandée, sans être
+uniformément meilleure — et c'est dit.
+
+#### Les garde-fous ont mordu, et c'est ce qui rend le chiffre crédible
+
+Sur les sept films, fermeture serrée : **33 vies attribuées, 17 refusées** — 10 contestées (deux
+joueurs revendiquent le même corps) et 7 rejetées par le contrôle de recouvrement (un joueur n'a
+qu'un corps). **Un tiers des déductions sont refusées par leurs propres contrôles.**
+
+C'est le résultat le plus important de cette section : la méthode se censure elle-même. Un
+contrôle qui ne rejette jamais rien ne prouve rien ; celui-ci rejette, donc quand il laisse
+passer, il a été mis à l'épreuve.
+
+#### Ce qui reste après les deux fermetures
+
+De 3,6 % (`0edb8512`) à 11,3 % (`829abef9`) des tirs restent non placés. Le résidu est fait
+des vies encore anonymes que ni A ni B ne peuvent trancher, et — sur `829abef9` — des **99 rejets
+« ambigu » (3,8 %)** qui deviennent la première cause de ce film et relèvent d'un autre chantier
+(H3, découpage des vies). Le plafond du §4.6 (94,7-98,5 %) n'est donc pas atteint, mais l'essentiel
+de l'écart l'est.
 
 ### 7.3 Et le garde local, alors ?
 
@@ -263,9 +378,23 @@ fiabilisation demandait déjà. Ce que la mesure permet maintenant d'écrire, et
 - une **date de réexamen**, sans quoi le garde devient le « compatibility guard forever » que le
   CLAUDE.md interdit.
 
-Proposition à soumettre : **plancher 90 % sur les sept films, verdict du pont nominal sur tous,
-date de réexamen à la clôture du chantier « nommage des vies »**. À 90 %, le corpus actuel donne
-2 films sur 7 conformes ; après le chantier §7.2, le plafond calculé en donne 7 sur 7.
+Proposition à soumettre, **chiffrée sur le corpus réel et non sur un plafond théorique** :
+
+| plancher | code d'aujourd'hui | après le lot §7.2 (mesuré) |
+|---|---|---|
+| 85 % | 5 films sur 7 | **7 sur 7** |
+| **88 %** | 4 sur 7 | **7 sur 7** |
+| 90 % | 2 sur 7 | 5 sur 7 |
+| 95 % | 0 sur 7 | 2 sur 7 |
+
+**Le plancher à retenir est donc 88 %** : c'est le plus exigeant que le lot §7.2 franchit sur
+TOUS les films mesurés, sans exception à négocier. Avec, dans le même critère : verdict du pont
+nominal sur tous, **corpus nommé** (les sept films de ce document, modes et cartes explicites,
+rejoués à chaque changement du pont), et **date de réexamen**.
+
+Poser 90 % obligerait à excepter deux films, donc à retomber dans le défaut de 2026-07-31 — un
+critère qu'on satisfait en choisissant ses films. Poser 85 % laisserait passer le code actuel sur
+5 films, ce qu'on vient précisément de juger insuffisant.
 
 ### 7.4 Un prédicteur sans décodage, à connaître
 
@@ -293,6 +422,10 @@ CGO_ENABLED=0 FILM_CACHE_ROOT=<mainrepo>/data/cache CTF_RESEARCH_OUT=<dir> \
 CGO_ENABLED=0 FILM_CACHE_ROOT=<mainrepo>/data/cache CTF_RESEARCH_OUT=<dir> \
   CTF_BRIDGE_FILMS="64e8adfa:Catalyst,0edb8512:Aquarius,01e1f945:Catalyst,db7b8c3c:Aquarius" \
   go test ./internal/analysis/replay/ -run CTFBridge -timeout 60m
+
+CGO_ENABLED=0 FILM_CACHE_ROOT=<mainrepo>/data/cache CTF_RESEARCH_OUT=<dir> \
+  CTF_CLOSURE_FILMS="64e8adfa:Catalyst,829abef9:Behemoth,db7b8c3c:Aquarius,9aeca4b3:Catalyst,01e1f945:Catalyst,0edb8512:Aquarius,000d5950:Cliffhanger" \
+  go test ./internal/analysis/replay/ -run CTFExclusionClosure -timeout 90m
 ```
 
 Sans ces variables, les deux tests se sautent (`--- SKIP`, message nommant la variable). Le
@@ -302,5 +435,5 @@ corpus film est lu en LECTURE SEULE ; aucune sortie n'est écrite dans `data/`.
 ~40 min pour les sept films et ~25 min pour les quatre anatomies.
 
 **Les sorties brutes de cette session sont versionnées** sous
-`replay2d/mesures_ctf_2026-08-08/` (11 fichiers, 48 Ko) : tout chiffre de ce document s'y relit
+`replay2d/mesures_ctf_2026-08-08/` (18 fichiers, 80 Ko) : tout chiffre de ce document s'y relit
 sans re-décoder un film.

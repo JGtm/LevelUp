@@ -1,3 +1,75 @@
+## [2026-08-08] Recherche v7.5 voie B (suite) — le correctif cesse d'etre une hypothese
+
+**Statut** : Complété. Même branche `research/v75-ctf`. Prolonge l'entrée précédente du même
+jour après une correction de fond apportée par l'utilisateur.
+
+**LA CORRECTION, ET ELLE PORTE.** J'avais écrit « les positions sont rangées sous un numéro qui
+change à chaque réapparition ». L'utilisateur a signalé que la stabilité du numéro avait été
+prouvée maintes fois. Vérification sur pièces : **nous parlions de deux objets différents, et je
+les avais écrasés en un seul.**
+
+| numéro | désigne | stable | statut |
+|---|---|---|---|
+| player-slot / index de joueur | LE JOUEUR | OUI | PROUVÉ, déjà utilisé (chunk_27 b36+b37 ; 5 bits devant le xuid, 116 films/116) |
+| identifiant d'entité biped | UNE VIE | NON | MESURÉ (journal 2026-07-03 « 99 ENTITÉS biped ≠ 99 joueurs ») ; 138 identifiants pour 8 joueurs sur `64e8adfa` |
+| le lien entre les deux | quel corps pour quel joueur | — | NON RÉSOLU (journal 2026-07-28, piste i19 réfutée par son propre contrôle) |
+
+Conséquence NON cosmétique : ma recommandation n°1 (« nommer la dernière vie par continuité de
+slot ») reposait sur une prémisse fausse — il n'y a aucune continuité à exploiter. Retirée.
+
+**DÉCISION TECHNIQUE : deux FERMETURES, et la distinction avec le vote retiré le 2026-07-28 est
+de nature.** Le vote gardait le mieux placé parmi plusieurs candidats ; une fermeture n'attribue
+que lorsqu'un SEUL candidat reste possible. Dès que deux subsistent, rien n'est attribué.
+
+- **A — par le corps disponible** : un joueur tire alors qu'aucune de ses vies nommées ne le
+  couvre ; son corps est l'une des vies anonymes vivantes à cet instant ; s'il n'y en a qu'une,
+  c'est elle.
+- **B — par la réapparition** : une vie commence une réapparition après la mort qui l'a causée, et
+  le fil des morts nomme cette victime. Fenêtre calibrée SUR LE FILM traité.
+
+Deux garde-fous posés avant la mesure : contestation (deux joueurs, un corps) et recouvrement
+(un joueur n'a qu'un corps — rejet si le corps déduit chevauche une vie déjà nommée du même
+joueur). C'est le pendant du critère qui a réfuté i19.
+
+**RÉSULTATS (7 films, avant -> après A+B)** :
+
+| film | mode | avant | après | gain |
+|---|---|---|---|---|
+| `0edb8512` | Team Slayer | 93,4 % | 96,4 % | +2,96 |
+| `9aeca4b3` | Team Slayer | 89,0 % | 95,0 % | +5,98 |
+| `db7b8c3c` | CTF | 88,5 % | 94,5 % | +5,92 |
+| `000d5950` | Fiesta Slayer | 91,5 % | 93,3 % | +1,73 |
+| `64e8adfa` | CTF | 80,3 % | 92,6 % | **+12,26** |
+| `01e1f945` | KOTH | 86,4 % | 89,7 % | +3,25 |
+| `829abef9` | CTF | 79,7 % | 88,7 % | +8,95 |
+
+**Les sept films passent au-dessus de 88,7 %**, contre deux sous 85 % avant. Les garde-fous ont
+mordu : **33 vies attribuées, 17 refusées** (10 contestées, 7 par recouvrement) — un tiers des
+déductions refusées par leurs propres contrôles, ce qui est la raison de leur croire.
+
+**DÉCOUVERTE INCIDENTE : la réapparition est déterministe, et c'est une constante DU MATCH.**
+8 090 -> 8 092 ms sur trois films, 10 176 -> 10 179 ms sur quatre (centile 5 -> médiane, mesuré
+sur les vies déjà nommées). Deux millisecondes d'écart : ce n'est pas une distribution.
+
+**UN ÉCHEC DE RÉGLAGE, CONSIGNÉ PARCE QU'IL INSTRUIT.** Ma première fenêtre pour B était
+`[p05, p95]`, par prudence. Le centile 95 monte à 51 717 ms et 67 688 ms sur les deux films CTF
+(vies dont la mort précédente du même joueur n'est pas celle qui les a fait réapparaître) : 13
+vies sur 13 contestées, gain NUL sur `64e8adfa`. Corrigé par médiane ± 750 ms. Les deux réglages
+sont publiés.
+
+**Vérifications** : `go vet` propre ; `go test ./internal/analysis/replay/` vert (56,8 s) ; les
+trois instruments sautent proprement sans leur variable d'environnement (SKIP vérifié) ; aucun
+fichier au-dessus de 500 lignes ; aucun `fmt.Println`. Le décodeur et l'assemblage ne sont
+touchés d'aucune ligne.
+
+**Conclusion / prochaine étape.** La recommandation change de nature : le rejeu public n'est pas
+livrable avec le code d'aujourd'hui, mais le blocage n'est plus une inconnue — c'est un LOT
+D'IMPLÉMENTATION BORNÉ (porter les deux fermetures dans `owners.go` avec leurs garde-fous et
+leurs compteurs publiés dans `coverage` ; élargir la fenêtre d'appariement des morts à 500 ms,
+pas encore composée avec les fermetures ; instruire H1). Plancher de garde proposé : **88 %** sur
+TOUS les films du corpus nommé — le plus exigeant que le lot franchit 7/7, sans exception à
+négocier. Exécuter ce lot dans v7.5 ou plus tard est une décision utilisateur.
+
 ## [2026-08-08] Recherche v7.5 voie B — les tirs perdus du CTF ne sont pas un probleme de CTF
 
 **Statut** : Complété (recherche, aucune feature). Branche `research/v75-ctf`, worktree
