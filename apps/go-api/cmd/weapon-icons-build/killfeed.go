@@ -166,6 +166,24 @@ func patternVocabulary() []string {
 	for _, g := range []string{"frag", "plasma", "spike", "dynamo", "splinter"} {
 		out = append(out, g+"_grenade_stick", g+"_stick", "stick_"+g)
 	}
+	// Schema `<qualifiant>_<classe>` : c est lui qui a rendu `commando_rifle`, `ma5k_smg` et
+	// `plasma_blaster` la ou le seul nom commercial (`commando`, `ma5k`) echouait — et ces
+	// mots-la SONT dans le binaire, donc bien essayes. Le jeu nomme par classe, pas par
+	// marque.
+	qualifiants := []string{
+		"sidekick", "bulldog", "commando", "disruptor", "mangler", "ravager", "stalker",
+		"cindershot", "shock", "pulse", "vestige", "avenger", "ma5k", "spnkr", "fuel",
+		"fuelrod", "plasma", "energy", "gravity", "sentinel", "battle", "assault", "sniper",
+		"heatwave", "skewer", "bandit", "needler", "hydra", "mutilator", "kinetic",
+	}
+	for _, q := range qualifiants {
+		for _, c := range []string{
+			"rifle", "pistol", "smg", "blaster", "shotgun", "launcher", "carbine", "cannon",
+			"caster", "beam", "sword", "hammer", "magnum", "dmr",
+		} {
+			out = append(out, q+"_"+c, q+c)
+		}
+	}
 	for _, m := range []string{
 		"flag", "ball", "oddball", "sword", "hammer", "skull", "core", "seed", "bomb",
 		"fist", "weapon", "shield", "back_smack",
