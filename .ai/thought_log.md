@@ -107,6 +107,13 @@ c'est le gate qui compte pour ce lot, les deux garde-rails d'ordre y vivent
 enregistrés, `TestSortByCanonicalIsNoOpOnCurrentRegistry` exige que l'ordre suive
 l'enregistrement).
 
+**CI de branche VERTE, au niveau JOB** (commit `d59ecb60d`) : 4 workflows `success` — CI,
+Deploy Pre-Check, Secrets (gitleaks), ADR 0021 Gate — et 8 jobs verts, dont
+`Go Build + Test` sur ubuntu ET windows, `Go Lint`, `Go Lease Enforcement (ADR 0013)` et
+surtout **`Go Coverage + Baseline non-régression`**, qui confirme sur pièces la conclusion
+ci-dessus : aucune réconciliation n'était due. Seul `E2E React (Playwright)` est `skipped`
+(skip documenté, comme au lot 2). **NON mergée — le merge reste au superviseur.**
+
 **Découvertes non traitées, consignées sans être corrigées** : cinq documents `.ai/`
 mentionnent encore `objectivescore` (`PLAN_MASTER_FILM_KILLFEED_REJEU`,
 `V7.5/PLAN_RECONCILIATION_BRANCHES`, les trois `V7.5/film_re/*`) — ce sont des inventaires
