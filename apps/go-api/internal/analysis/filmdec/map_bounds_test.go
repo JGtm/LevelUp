@@ -14,6 +14,14 @@ func TestNormalizeMapName(t *testing.T) {
 		"Streets - Ranked":  "streets",
 		"  Live   Fire  ":   "live fire",
 		"Aquarius - Ranked": "aquarius",
+		// Variantes de sandbox : même level_id que la base, donc mêmes bornes monde
+		// (mesuré le 2026-08-08 — cf. variantSuffixes). Mutation qui doit faire rougir :
+		// retirer " heavies" de variantSuffixes.
+		"Fragmentation Heavies": "fragmentation",
+		"Highpower Heavies":     "highpower",
+		"Breaker Heavies":       "breaker",
+		// Un nom qui CONTIENT le mot sans le porter en suffixe n'est pas touché.
+		"Heavies Bay": "heavies bay",
 	}
 	for in, want := range cases {
 		if got := NormalizeMapName(in); got != want {
