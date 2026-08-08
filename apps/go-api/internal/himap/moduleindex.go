@@ -90,5 +90,26 @@ func (idx *ModuleIndex) Extract(id uint32) ([]byte, error) {
 	return idx.modules[e.module].Extract(e.fichier)
 }
 
+// ExtractWithResources rend les octets du tag ET son blob de ressources.
+//
+// Les deux vont ensemble : le tag ne porte que des descripteurs, dont les offsets designent
+// des octets du blob. Les separer serait offrir un decodage a moitie.
+func (idx *ModuleIndex) ExtractWithResources(id uint32) (tag, blob []byte, err error) {
+	e, ok := idx.parID[id]
+	if !ok {
+		return nil, nil, fmt.Errorf("himap: GlobalID %#x absent des %d modules indexes", id, len(idx.modules))
+	}
+	m := idx.modules[e.module]
+	tag, err = m.Extract(e.fichier)
+	if err != nil {
+		return nil, nil, err
+	}
+	blob, err = m.ResourceBlob(e.fichier)
+	if err != nil {
+		return nil, nil, err
+	}
+	return tag, blob, nil
+}
+
 // Taille rend le nombre d'entrees indexees (diagnostic).
 func (idx *ModuleIndex) Taille() int { return len(idx.parID) }

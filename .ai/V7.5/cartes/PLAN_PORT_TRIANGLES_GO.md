@@ -71,16 +71,25 @@ monde » est vrai par construction, ecart median 0,0000 m).
       STRICT (147 instances de plus, et jamais l'inverse). Le temoin exige desormais que
       `refOffGlobalID` soit l'ARGMAX STRICT sur tous les offsets de la reference — et la
       mutation 8 -> 12 le fait rougir.
-- [ ] **T2 — atteindre le maillage.** Champ racine `meshes`, TagBlock enfant a
+- [x] **T2 — atteindre le maillage.** Champ racine `meshes`, TagBlock enfant a
       `foff = meshIndex * 60`, records de LOD render data de 148 octets, `u16` @0x64 =
       index du tampon de SOMMETS, `u16` @0x8A = index du tampon d'INDICES.
       *Temoin* : couverture des couples `(globalID, meshIndex)` resolus — le prototype rend
       **1 247/1 247**, on exige le meme 100 % ou on s'arrete.
-- [ ] **T3 — les descripteurs de tampons.** Tables 0x50 (sommets) et 0x48 (indices) ;
+      **FAIT** : `Sections` @64 EST le tableau des maillages (420 = 7 x 60, 360 = 6 x 60,
+      120 = 2 x 60, le compte colle a `PerMeshData`). Les 525 tags livrent **1 195 blocs de
+      LOD render data, tous multiples de 148**, un par maillage a `foff = meshIndex x 60`.
+      **Zero maillage nul** sur les 9 832 instances rendues.
+- [x] **T3 — les descripteurs de tampons.** Tables 0x50 (sommets) et 0x48 (indices) ;
       `off` est un **offset d'octets dans la CONCATENATION des entrees-ressource du tag**,
       ce n'est PAS un identifiant a resoudre contre le manifeste.
       *Temoin* : **0 descripteur hors bornes** sur les 29 683 du prototype.
-- [ ] **T4 — dequantifier.** Sommets `u16` x4, 4e composante nulle. **`u16` BRUT, jamais
+      **FAIT** : les tables ne sont PAS designees par un chemin de champs — on les reconnait
+      a leur invariant interne `size == count * stride` sur TOUS leurs enregistrements.
+      Le blob de ressources manquait entierement a `himodule` : `ResourceBlob` le
+      reconstitue (table de slots avant la table des blocs). **0 descripteur hors du blob**
+      sur les 525 tags. Resultat : **46,6 M de triangles** assembles en repere monde.
+- [!] **T4 — dequantifier.** Sommets `u16` x4, 4e composante nulle. **`u16` BRUT, jamais
       `i16 + 32768`** (§2.1 : 5,8 mm d'ecart aux bornes contre 84 mm avec la mauvaise
       lecture — tout resultat geometrique anterieur au 2026-07-26 est entache de 8,4 cm).
       *Temoin* : ecart median aux bornes < 1 cm.
@@ -89,6 +98,18 @@ monde » est vrai par construction, ecart median 0,0000 m).
       designe par `BoundsIndex` (+118 de l'instance) ; le prototype lit des bornes PAR
       MAILLAGE. Les deux produisent des chiffres, une seule est juste — les departager par
       T4 sur les deux lectures.
+      **NON TRANCHE, et c'est le resultat.** Les bornes sont PAR MAILLAGE (0x44/0x50 du
+      record de 144) — ce point-la est acquis. Mais AUCUNE statistique de maillage ne
+      departage le `u16` brut du `i16 + 32768`, trois essais a l'appui sur les MEMES
+      octets : ecart aux bornes 16,9 mm contre 2,1 mm (donne raison a la FAUSSE, metrique
+      biaisee — une rotation disperse les valeurs vers les extremes donc epouse mieux les
+      bornes) ; longueur mediane d'arete 0,0189 contre 0,0196 ; part d'aretes longues
+      0,0821 contre 0,0897. **L'echec est instructif** : la rotation ne DECHIRE pas les
+      maillages, elle les DECALE chacun d'une demi-boite — la forme de chaque maillage
+      reste intacte, c'est leur REGISTRE MUTUEL qui casse, invisible a toute statistique
+      interne. Le juge est donc un oracle EXTERNE : les positions de joueurs du film
+      (temoin de T6). Le `u16` brut est retenu en attendant, sur la foi du handoff §2.1
+      et du rendu compare, PAS d'une mesure de ce chantier.
 - [ ] **T5 — appariement sommets/indices.** *Temoin* **T1 du handoff** (le seul non
       tautologique) : l'indice maximal du tampon d'INDICES doit etre strictement inferieur
       au nombre de sommets du tampon apparie. Rend 100 % pour le bon appariement et **5,1 %**
