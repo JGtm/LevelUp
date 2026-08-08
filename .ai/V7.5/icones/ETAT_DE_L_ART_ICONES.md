@@ -152,6 +152,15 @@ craquage ne les nommera jamais, quel que soit le vocabulaire. C est une borne du
 manque d effort. (Les trous, dans l ordre : 3, 4, 8, 9, 10, 11, 12, 14, 20, 23, 25 cote armes ;
 39-45 cote vehicules et tourelles ; 48, 52, 58, 62, 63, 68, 74, 75, 77, 82, 84, 87 ensuite.)
 
+**LA VOIE AUTOMATIQUE EST EPUISEE, ET C EST MESURE.** Six routes ont ete tentees jusqu au bout
+(voir §3) : vocabulaire et declinaisons, moisson UTF-16, appariement par silhouette entre les
+deux atlas du jeu, champ `damage sprite index`, balayage exhaustif des tags, force brute. La
+derniere est la plus parlante : **les identifiants n existent nulle part ailleurs que dans la
+table `bitd`**, donc rien dans les donnees du jeu ne les relie a une arme — la correspondance
+est faite par le CODE. Le seul chemin restant serait de retrouver cette table a l execution
+(Ghidra / CheatEngine), ce qui est un chantier de retro-ingenierie a part entiere, et non un
+complement de nommage. Le gate humain n est pas un pis-aller : c est la voie la moins couteuse.
+
 **Attention au decompte des trous** : le mode `kfgaps` reconstruisait son propre dictionnaire,
 plus pauvre que celui de la production — sa liste contenait des SID DEJA resolus (`d253deb2` =
 `killfeed_turret_plasma`, index 21). C est un sur-ensemble, donc aucune cible n a ete manquee,
@@ -270,6 +279,10 @@ Noms lus dans la table `bitd`, donc lies a leur index par le jeu lui-meme.
 | Index d'icone = petit entier a offset CONSTANT dans le corps du `weap` | **MORTE** | 0 candidat sur 29 armes (criteres poses avant de regarder : valeur < 40, >= 50 % distinctes). Le corps est un arbre de structures, les offsets bougent |
 | Appariement automatique par SILHOUETTE contre les icones dessinees du depot | **MORTE** | marges de 0,00 a 0,10 pour des scores de 0,44 a 0,90. Corriger le rapport d'aspect ecrase n'a rien change : des armes toutes « longues et horizontales » se ressemblent trop une fois remplies |
 | Appariement par SILHOUETTE **entre les deux atlas du JEU** (silhouette <-> kill feed) | **MORTE** | la refutation precedente portait sur un autre trace (icones dessinees du depot) ; celle-ci porte sur la MEME source, seule la resolution change — donc le verdict est general. Controle pose AVANT de conclure : 13 paires connues des deux cotes (`battle_rifle` contour 1 <-> kf 0, `needler` 9 <-> 19...). Resultat **2/13**, marges de 0,01 a 0,07 pour des scores de 0,45 a 0,72. Aspect ecrase : 1/13. Aspect preserve : 2/13. Le matcheur n a pas ete publie |
+| Champ **`damage sprite index`** du bloc `UI display info` (le kill feed suit la SOURCE DE DEGAT, le champ existe bel et bien au plugin) | **MORTE** | offsets verifies sur les octets bruts — `sprite index` +48, `alt sprite` +52 (porte l atlas silhouette `e39747c8`), `alt sprite index` +80 (= le meme index, ce qui confirme la lecture), `damage sprite index` +84. Il vaut **0 pour les 29 armes**. Le champ existe, il n est pas renseigne |
+| **Balayage exhaustif des tags** a la recherche des 26 identifiants (si un tag les porte, il dit QUI est l icone sans craquer le nom) | **MORTE** | **260 415 tags, 3,9 Go** balayes : les 26 identifiants n apparaissent QUE dans `bitd 8646f61a` lui-meme. Aucun tag ne les relie a une arme ni a un `jpt!` — la correspondance se fait dans le CODE a l execution. Verdict exhaustif, pas un echantillon |
+| **Force brute** sur le suffixe, prefixe `killfeed_` connu, alphabet `[a-z_]` | **MORTE** | controle prealable : l implementation locale de murmur3 reproduit `mapvar.LabelHash` sur 3 valeurs connues. Jusqu a **5 caracteres : exhaustivement rien**. Jusqu a **7 caracteres** (1,05e10 essais, 2 min) : 68 candidats, soit exactement le bruit attendu (~64), tous du charabia. Les vrais noms font 12 a 20 caracteres (`plasma_grenade_stick`) — hors de portee de toute enumeration |
+| **Prefixes composes** (`killfeed_weapon_`, `killfeed_vehicle_`, `killfeed_medal_`, `kf_`, `hud_`... 22 en tout) sur tout le vocabulaire | **MORTE** | 408 608 mots x 22 prefixes = **8 989 376 formes, 0 correspondance**. L espace de noms n est pas la ou manquait la cle |
 | Moisson des chaines **UTF-16LE** du binaire | **MORTE** | vrai trou de methode (la moisson ASCII coupe `s.i.d.e.k.i.c.k` a chaque caractere) mais gisement vide : **1749 chaines** seulement, 0 correspondance sur les 26 SID cherches. Le binaire est quasi entierement ASCII |
 | Vocabulaire « designations » (MK50, CQS48, M41, S7, VK78) et mots vus a l ecran (scrap, coil, fall, turret, vestige) | **MORTE** | 26 166 formes declinees, **0 correspondance** sur les 26 vrais SID. Les designations ne sont pas ce que le kill feed hache |
 | Appariement par RANG plugin <-> tag (la mecanique de `himap` pour `sbsp`) | **MORTE** | tombe UNE UNITE a cote — le bloc obtenu portait des references `mode`/`jmad`/`aset`. Un `+1` correctif ne serait garanti par aucune mesure d'une version a l'autre |
