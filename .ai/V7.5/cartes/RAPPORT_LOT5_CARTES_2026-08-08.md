@@ -125,11 +125,26 @@ forme et leur ORIENTATION reelles), la barre d'echelle de 10 m, la couverture pu
 detail metrique des zones de Bastion (position, taille pleine, hauteur au-dessus et
 au-dessous, distances mutuelles) et les criteres generaux.
 
-**Les temoins propres a chaque carte sont laisses VIDES, volontairement.** Le gate humain
-de la piste B interdit a la session de choisir ses temoins apres avoir vu son rendu, et
-c'est le cas ici. Ils reviennent a l'utilisateur (ou a une source externe : carte en jeu,
-rendu Reclaimer). Rappel du plan maitre : l'anneau du fer a cheval et les deux ponts sont
-les temoins de **Cliffhanger uniquement**, ils ne se reutilisent pas.
+**Les temoins ont ete donnes par l'utilisateur le 2026-08-08**, apres le rendu et sans que
+la session en propose aucun — c'est la regle du gate. Verdicts mesures sur la donnee :
+
+| carte | temoin (utilisateur) | verdict |
+|---|---|---|
+| Catalyst | carte symetrique | **CONFIRME** — 68,3 % des 11 178 emprises ont leur miroir exact par rapport au plan y = 0. L'hypothese concurrente (symetrie par ROTATION de 180°) ne rend que 15,5 % au meilleur centre : la symetrie est EN MIROIR |
+| Catalyst | un pont en hauteur relie deux zones, aligne avec B2 et B3 | **COMPATIBLE** — B2 et B3 sont exactement alignes (tous deux a x = 0,00) et une structure continue court au-dessus d'eux vers z = 41 m, sans trou de y = -18 a +18. Mais des boites englobantes ne distinguent pas un tablier d'un plafond |
+| Catalyst | une passerelle perpendiculaire ~10 m sous ce pont | **NON TESTABLE** — matiere perpendiculaire presente vers z = 30-34, mais un fond troue a 91 % ne dit pas si elle est continue |
+| Vagabond | carte de type urbaine | **COMPATIBLE** — 4 292 des 4 709 objets Forge dans 53 × 50 m, sol etage sur ~20 m. Sans table `type_id -> nom`, « immeuble » ne se distingue pas de « rocher » |
+| Vagabond | a gauche de B3, une zone en contrebas ; une pente remonte a droite, en oblique | **COMPATIBLE** — relief mesure autour de B3 : poche a **-2,3 a -2,9 m** cote -X sur ~25 m, palier a -0,1 m, puis remontee a +0,9 puis **+2,6 m** vers +X/+Y — une pente OBLIQUE. Deux reserves : le sens gauche/droite depend de l'orientation de la vue, que la donnee ne fixe pas ; l'emplacement d'arme n'est pas verifiable |
+
+Le fond de Vagabond a du etre refait pour cette revue : le canevas BSP ne montrait rien.
+La page porte desormais une **carte d'altitude batie sur les 4 709 objets Forge** (sol
+approche par le 10e centile des altitudes par cellule de 2 m — la mediane melangerait le
+sol et les batiments, dont la position est le CENTRE). C'est ce fond qui a permis de
+mesurer le relief autour de B3, donc de statuer le temoin. Il est produit **pour la revue
+seulement** : rien de tout cela n'entre dans `reference/map_structure/`.
+
+Rappel du plan maitre : l'anneau du fer a cheval et les deux ponts sont les temoins de
+**Cliffhanger uniquement**, ils ne se reutilisent pas.
 
 ## 7. Ce que ce lot debloque
 

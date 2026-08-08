@@ -55,6 +55,10 @@ func main() {
 		// catalogue les enregistre (mvar_file), c'est ce que --refresh-from relit.
 		saveMvar = flag.String("save-mvar", "",
 			"déposer chaque .mvar téléchargé dans ce dossier (source de --refresh-from)")
+		// Sortie de DIAGNOSTIC, jamais le catalogue : le décor d'une carte Forge EST fait
+		// d'objets de variante, et sans eux aucune revue visuelle n'est possible.
+		dumpObjectsTo = flag.String("dump-objects", "",
+			"avec --from-file : écrire TOUS les objets de la variante dans ce fichier JSON (diagnostic)")
 	)
 	flag.Var(&mapIDs, "map-id", "identifiant d'asset de carte (répétable)")
 	flag.Parse()
@@ -89,7 +93,7 @@ func main() {
 		if len(mapIDs) != 1 {
 			fail(ctx, "--from-file", errors.New("exige exactement un --map-id"))
 		}
-		if err := ingestLocal(ctx, cat, mapIDs[0], *fromFile); err != nil {
+		if err := ingestLocal(ctx, cat, mapIDs[0], *fromFile, *dumpObjectsTo); err != nil {
 			fail(ctx, "ingestion locale", err)
 		}
 		finish(ctx, cat, outPath, *dryRun)
@@ -267,7 +271,7 @@ func saveVariantFile(ctx context.Context, dir, mapID, rel string, buf []byte) er
 
 // ingestLocal ingère un .mvar déjà présent sur disque (chemin hors ligne, pour
 // rejouer un parse sans re-solliciter le réseau).
-func ingestLocal(ctx context.Context, cat *catalog, mapID, path string) error {
+func ingestLocal(ctx context.Context, cat *catalog, mapID, path, dumpPath string) error {
 	buf, err := os.ReadFile(path)
 	if err != nil {
 		return err
@@ -275,6 +279,13 @@ func ingestLocal(ctx context.Context, cat *catalog, mapID, path string) error {
 	v, err := mapvar.Parse(buf)
 	if err != nil {
 		return err
+	}
+	if dumpPath != "" {
+		if err := dumpObjects(dumpPath, v); err != nil {
+			return fmt.Errorf("dump des objets: %w", err)
+		}
+		slog.InfoContext(ctx, "mapobj: objets de variante ecrits (diagnostic)",
+			"path", dumpPath, "objets", len(v.Objects))
 	}
 	base := path
 	if i := strings.LastIndexAny(base, `/\`); i >= 0 {
