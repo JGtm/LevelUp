@@ -1,5 +1,24 @@
 # PLAN DE RECHERCHE — les icones d armes pour l interface
 
+> **PHASE 1 CLOSE le 2026-08-08** (branche `feat/v75-icones`). Resultats, chaine complete,
+> pistes refutees et reserves : **`V7.5/icones/ETAT_DE_L_ART_ICONES.md`** — c'est lui qui fait
+> foi desormais, ce plan reste comme trace du cadrage.
+>
+> **GATE 1 : PASSE, et au-dela de ce qui etait demande.** La correspondance n'est pas
+> « verifiee sur 10 armes en regardant les images » : elle est **LUE dans le jeu** (champ
+> `sprite index` du bloc `UI display info` du tag `weap`) et auto-validee arme par arme —
+> **29 sur 29**. 168 PNG extraits, trois atlas : armes en contour, armes en silhouette, et
+> l'atlas du **kill feed** (88 icones : vehicules, grenades lancees, pictogrammes).
+>
+> **PHASE 2 : NON COMMENCEE**, et c'est volontaire — elle attend le gate visuel de
+> l'utilisateur (decision #4 du master plan). Rien n'est branche : ni `apps/web/`, ni
+> `adapter_asset_urls.go`.
+>
+> Ce que le cadrage ci-dessous avait bien vu : la voie A etait la bonne, la chaine sonore
+> etait bien inutilisable, et un nom de fichier n'est pas une source fiable. Ce qu'il n'avait
+> pas prevu : le jeu porte lui-meme le lien arme -> icone, et il n'y avait donc pas a le
+> deviner.
+
 > Ecrit le 2026-07-31. **Chantier SEPARE du branchement**, et volontairement : il ne bloque rien,
 > il n a aucune dependance sur le decodeur, et il peut echouer sans consequence.
 >
@@ -38,11 +57,13 @@ C est le chemin qui a DEJA fonctionne pour NOMMER les armes : `weap -> proj -> j
 et quatre variantes documentees. Le depot sait deja lire ces archives (`internal/himodule/`,
 `internal/ooz/`).
 
-- [ ] Un `weap` reference-t-il un asset d icone (bitmap, `bitm`, ou un tag d interface) ?
-- [ ] Si oui, remonter du `jpt!` au `weap` puis a l icone — le graphe est deja parcouru dans l autre
-      sens par le generateur de catalogue
-- [ ] **Controle** : les 39 armes de `metadata.weapon_labels` doivent toutes rendre une icone, et
-      deux armes distinctes ne doivent pas rendre la meme image sans raison
+- [x] Un `weap` reference-t-il un asset d icone ? **OUI** — deux `bitm` communs aux 29 armes
+      (`bc17adf1` contour, `e39747c8` silhouette), plus un troisieme qui varie : le reticule.
+- [x] Remonter jusqu a l icone : **inutile de remonter**, le `weap` porte lui-meme l index
+      (`sprite index` du bloc `UI display info`). 29 armes sur 29, auto-validees.
+- [~] **Controle** : couvert autrement et mieux — chaque ligne est validee par le fait que le
+      champ `sprite` du meme bloc porte bien l atlas attendu. Deux armes PEUVENT partager une
+      icone, et c est correct : les deux Bandit, les deux epees et les deux Shock Rifle le font.
 
 ### Voie B — l executable, la ou le kill feed choisit son icone
 
@@ -51,22 +72,28 @@ tourne au replay. Cette piste a ete exploree en juin 2026 et abandonnee — la c
 le type d arme s est revelee accessible **en live seulement**. C est cette impasse qui a pousse le
 chantier vers le dead-state.
 
-- [ ] Mais la question ici est DIFFERENTE : on ne cherche pas a resoudre l arme (on l a), on cherche
-      **le nom de l asset d icone associe a une definition d arme**. C est une table statique, pas
-      un chemin runtime.
-- [ ] Chercher les chaines d assets d interface autour du widget de kill feed
+- [!] NON TRAITEE, et sans regret : la voie A a rendu la reponse. Le kill feed a bien sa table
+      d icones — mais elle est dans un TAG (`bitd 8646f61a`), pas dans l executable, et elle a
+      ete lue sans desassembler quoi que ce soit.
+- [!] Chercher les chaines d assets d interface autour du widget de kill feed — sans objet :
+      les chaines sont STRIPPEES en release, seuls des murmur3 subsistent. Ce sont eux qui ont
+      ete craques.
 
 ### Voie C — les assets deja extraits par le depot
 
-- [ ] `static/abilities-assets/halo_infinite/` existe deja et contient onze capacites : quelqu un a
-      donc deja su extraire des images du jeu. **Retrouver COMMENT, avant de reinventer.**
-- [ ] Reserve mesuree, et elle est serieuse : le dossier voisin des armes est **mal nomme** —
-      `Cremator.png` y est en realite le Cindershot. **Un nom de fichier n est pas une source
-      fiable**, il faut verifier chaque association visuellement.
+- [x] `static/abilities-assets/` : la question « comment ont-ils ete extraits » est restee sans
+      reponse (aucune trace en depot ni au journal). Sans objet desormais — la voie A donne une
+      chaine reproductible, ce que les capacites n avaient pas.
+- [x] Reserve confirmee et ELARGIE : `Cremator.png` est bien le Cindershot, et le jeu ajoute sa
+      propre divergence — l index 20 se nomme `heatwave` alors que le registre y lit
+      `hinf_cindershot`, depuis le MEME tag. Un nom de fichier ne fait pas foi, un nom interne
+      non plus sans confrontation.
 
-**GATE 1** : une correspondance tag -> fichier image, verifiee sur au moins 10 armes en regardant
+**GATE 1 — PASSE** (voir l en-tete). Le critere initial etait « verifiee sur au moins 10 armes en regardant
 les images, dont deux armes visuellement proches (BR75 / Bandit Evo) et une arme a variantes
-(marteau antigrav).
+(marteau antigrav) » ; le resultat obtenu est plus fort — la correspondance est LUE dans le
+jeu pour les 29 armes. Et la reserve « BR75 / Bandit visuellement proches » etait justifiee :
+je les avais **interverties** a l oeil, le champ du jeu a tranche.
 
 ## PHASE 2 — L INTEGRATION
 

@@ -1,3 +1,43 @@
+## [2026-08-08] v7.5 icones — la documentation sort du journal
+
+**Statut** : Complété. Branche `feat/v75-icones`.
+
+**Origine** : « documente tout ça, pas seulement dans le journal ». Juste — le thought_log est
+une chronologie, pas un point d'entrée : personne n'y cherche « comment sont extraites les
+icônes ».
+
+**Ce qui est écrit, et pourquoi là** :
+
+- **`.ai/V7.5/icones/ETAT_DE_L_ART_ICONES.md`** (266 lignes) — le document de référence, à la
+  convention du dossier (les états de l'art font foi sur ce qui est prouvé / assumé / réfuté).
+  Il porte la chaîne maillon par maillon avec son contrôle, **les deux tables de correspondance
+  complètes** (index → weapon_key → nom interne, générées depuis `index.json`), un tableau des
+  **8 pistes réfutées** avec leur mesure, les réserves ouvertes, et un « où est quoi ».
+- **`.ai/PLAN_RECHERCHE_ASSETS_ICONES.md`** — CLOS. En-tête de clôture, et **chaque case statuée**
+  (`[x]` / `[~]` / `[!]` avec justification) au lieu d'être laissée vide. Le gate 1 est marqué
+  passé avec la nuance qui compte : le critère demandait une vérification à l'oeil sur 10 armes,
+  le résultat est plus fort (lecture dans le jeu, 29/29) — et la réserve « BR75 / Bandit
+  visuellement proches » était fondée, je les avais interverties.
+- **`.ai/V7.5/README.md`** — `icones/` ajouté à la table des dossiers et aux points d'entrée.
+- **`.ai/README_KILLWEAPON_INDEX.md`** — entrée §1.11. C'est sa place : la table `bitd` est le
+  nommage que la chaîne sonore n'avait pas su donner, et **le Falcon y figure sous son vrai nom**
+  là où la banque Wwise disait « Pelican » (le piège documenté en tête du plan icônes).
+- **`.ai/PLAN_MASTER_FILM_KILLFEED_REJEU.md`** — chantier D marqué phase 1 close, avec le renvoi.
+- **`docs/COMMANDS.md` + `docs/FR/COMMANDS.md`** — nouvelle section « extraction d'assets du
+  jeu ». Les deux dans le même commit : règle de bilinguisme du dépôt (CLAUDE.md §15), et le
+  hook `docs-fr-sync` la vérifie.
+- **Mémoire** `reference_weap_xml_sprite_index` réécrite : elle pointait le seul `sprite index`,
+  elle porte maintenant la table `bitd`, le piège du lanceur 3,9 Mo et la liste des pistes mortes.
+
+**Ce que je n'ai PAS touché**, et c'est délibéré : `.ai/project_map.md` porte en tête
+« HISTORIQUE — GELÉ, NE FAIT PLUS FOI ». Y ajouter une ligne aurait donné l'illusion d'un
+document vivant.
+
+**Contrôle** : les 7 chemins cités par l'état de l'art ont été vérifiés sur pièces (tous
+existent). Les tables de correspondance sont générées depuis `index.json`, pas recopiées.
+
+**Conclusion / prochaine étape** : inchangée — la page de nommage, puis le TSV.
+
 ## [2026-08-08] v7.5 icones — l'atlas « sandbox » EST celui du KILL FEED, et il porte sa table
 
 **Statut** : Complété. Branche `feat/v75-icones`. Non branché côté web.
