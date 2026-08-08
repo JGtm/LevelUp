@@ -1,3 +1,43 @@
+## [2026-08-08] v7.5 — le trou Fiesta expliqué par l'arsenal : l'intuition de l'utilisateur, et ma reponse fausse
+
+**Statut** : Complété (mesure en base, aucun décodage). Fait suite au résultat négatif du
+balayage d'offset : la piste du « trou Fiesta » se déplace de la rétro-ingénierie vers une
+propriété du format, et c'est l'utilisateur qui a donné la bonne direction.
+
+**SON INTUITION** : « beaucoup de frags en Fiesta sont des armes à projectiles ou des frags au
+marteau ou à l'épée ».
+
+**MA PREMIÈRE RÉPONSE ÉTAIT FAUSSE, ET LA FAUTE EST INSTRUCTIVE.** J'ai répondu que la mêlée
+était 4,4x plus rare en Fiesta (3,4 % contre 15,1 %) — en comptant la classe `MELEE` de
+`damagetag/data/labels.tsv`, qui désigne **le coup de crosse générique partagé par tout
+l'arsenal**. Le marteau gravitationnel et l'épée à énergie ont leurs PROPRES identifiants et sont
+classés `ARME`. **Je comparais une classe technique là où la question portait sur des armes.**
+Leçon : vérifier ce qu'une classe CONTIENT avant de s'en servir pour réfuter quoi que ce soit.
+
+**RECOMPTÉ PAR ARME RÉELLEMENT EMPLOYÉE** (21 190 frags Fiesta, 53 379 hors Fiesta) :
+
+| famille | Fiesta | hors Fiesta | rapport |
+|---|---|---|---|
+| marteau + épée | **21,3 %** | 2,1 % | **10x** |
+| armes à projectiles (SPNKr, Needler, Ravager, Cindershot, Skewer, Sentinel Beam, Disruptor) | **39,0 %** | 6,9 % | **5,7x** |
+| tir tendu | ~36 % | ~76 % | 0,5x |
+
+Marteau gravitationnel : **3 261 frags en Fiesta contre 580 ailleurs**. Sentinel Beam : 1 581
+contre 254. Disruptor : 1 092 contre 98.
+
+**CE QUE ÇA CHANGE.** Le flux du film compte des ÉVÉNEMENTS DE TIR ; `shots_fired` de l'API
+compte des tirs. Un coup de marteau, un lancer d'épée, une roquette ou une bordée de Needler ne
+produisent pas le même nombre d'événements qu'une rafale de fusil d'assaut. Un mode où 60 % des
+frags viennent d'armes de corps-à-corps ou à projectiles n'a **aucune raison** d'avoir le même
+rapport événements/`shots_fired` qu'un mode à tir tendu. Le déficit Fiesta (37 % contre 84-99 %)
+cesse d'être une anomalie de décodage : c'est probablement une **différence de composition
+d'arsenal**.
+
+**Conclusion / prochaine étape.** Pour trancher, plus besoin du binaire : comparer PAR ARME les
+événements de tir décodés aux tirs de l'API. Si le déficit se concentre sur le marteau, l'épée et
+les projectiles, le « trou Fiesta » devient une propriété documentée du format et non un défaut à
+corriger. C'est la mesure la moins chère qui reste sur la colonne (1).
+
 ## [2026-08-08] v7.5 colonne (1) — l'auteur du record court : voie du balayage FERMEE
 
 **Statut** : Complété (résultat négatif, et c'en est un). Instrument #6
