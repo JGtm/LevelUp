@@ -1,3 +1,58 @@
+## [2026-08-08] v7.5 voie B — le lot d'implementation : pont ferme, positions de mort, garde reecrit
+
+**Statut** : Étapes 1 et 3 **Complétées**, étape 2 **partielle et arrêtée proprement**. Branche
+`research/v75-ctf`. Plan : `.ai/V7.5/PLAN_LOT_PONT_ET_KILLPOSITIONS.md`, chaque item statué.
+Aucun merge — le rattachement à `feat/v75` est une décision du superviseur.
+
+**ÉTAPE 1 — les deux fermetures en production (`closures.go`).** Ce qui distingue une fermeture
+d'un vote est de nature : elle n'attribue que lorsqu'un SEUL candidat reste possible. Mesure sur
+le film de référence : 475 → **484 tirs** (91,5 → 93,3 %), rejets « slot introuvable » 44 → 35,
+pont 90 → 95 entrées. Non-régression vérifiée sur trois films aux chiffres publiés :
+`000d5950` 93,26 % · `64e8adfa` 92,57 % (+12,26) · `829abef9` 88,68 % (+8,95).
+
+**LE POINT DÉLICAT ÉTAIT LA RÈGLE DE PROVENANCE DU PONT, et il a mordu.** `verdictOfBridge`
+exigeait `FromReading == Slots` — « rien d'autre qu'une lecture ». Cette règle, née du retrait du
+repli VOTÉ, serait devenue FAUSSE : une fermeture est une déduction, pas une lecture. Réécrite en
+`FromReading + ClosedByShot + ClosedByRespawn == Slots` : un écart signale désormais une
+TROISIÈME source non comptée. L'esprit est conservé, la lettre non, et le commentaire est mis à
+jour dans le même commit.
+
+**UN TEST DE GARDE-FOU NE MORDAIT PAS, et c'est la leçon de l'étape.** Le premier scénario de
+`TestLeControleDeRecouvrementRejette` laissait le tir RATTACHÉ : aucune revendication n'était
+émise, le contrôle n'était jamais atteint, et le test passait sans rien prouver. Reconstruit avec
+un tir orphelin. **Écrire un test de garde-fou ne suffit pas — il faut vérifier qu'il ÉCHOUE
+quand on retire ce qu'il protège.**
+
+**ÉTAPE 2 — producteur livré, écriture NON câblée.** `BuildKillPositions` rend les coordonnées du
+tueur et de la victime par mort, avec son compte rendu ; cinq tests, dont quatre sur des
+abstentions. Point d'architecture : les couples tueur↔victime arrivent en ENTRÉE, ils ne sont pas
+redécodés — l'appariement canonique vit dans `killsource` et sa sortie est dans
+`match_kill_events` (« deux décodeurs du même fait divergeraient »).
+
+**LA RECONNAISSANCE ÉTAIT VRAIE DU SCHÉMA ET FAUSSE DU CHEMIN D'APPEL.** J'avais conclu « rien à
+créer côté écriture » : la table, la migration, `KillPositionInsert`, `AddKillPositions` et
+`persistKillPositions` existent bien et servent Halo 5. Mais **aucun binaire du dépôt ne pilote
+`BatchBuilder`** — la seule construction de `BatchQueue` est dans `cmd/server/main.go`, le reste
+passe par le pipeline de sync. Alimenter la table hors ligne exige donc de décider comment un
+binaire court draine une file WAL, sur le chemin critique anti-ART (ADR 0019/0030). Arrêt propre
+plutôt que câblage bâclé en fin de session.
+
+**ÉTAPE 3 — critère du garde réécrit.** Plancher **88 %** sur un corpus de **sept films nommés**,
+verdict du pont nominal sur tous, réexamen au plus tard le **2026-11-08**. 88 et non 90 : mesuré,
+le corpus passe 7/7 à 88 et 5/7 à 90 — une exception négociée serait exactement le défaut qu'on
+corrige. L'en-tête porte aussi l'avertissement sur le DÉNOMINATEUR, sans quoi un lecteur
+retirerait le garde sur un malentendu. `PLAN_FINALISATION_REJEU_2D` §1.4 corrigé : `01e1f945` est
+un KOTH, et l'hypothèse qui y était écrite est inversée par la mesure.
+
+**Vérifications** : `go test ./internal/analysis/replay/` vert (108,7 s) · `go vet` propre ·
+`go test ./internal/api/handlers/ -run Replay` vert · figé régénéré et relu en diff · deux
+libellés du rendu corrigés parce qu'ils devenaient inexacts (anti-patron « doc inversée »).
+
+**Conclusion / prochaine étape.** Une seule chose sépare `kill_positions` de son remplissage :
+**le chemin d'écriture hors ligne** (étape 2bis) — réutiliser la file WAL de `cmd/server` ou
+définir un drain synchrone dédié. C'est une question de conception, pas de volume. Le backfill
+des 951 matchs suit, en opération à fenêtre.
+
 ## [2026-08-08] Recherche v7.5 voie B — les tirs fatals, et l'ordre des priorites qui bascule
 
 **Statut** : Complété. Répond à la priorité posée par l'utilisateur : « moi en priorité je veux
