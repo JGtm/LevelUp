@@ -1,3 +1,65 @@
+## [2026-08-08] v7.5 piste E — la porte `DAT_1451222c8`, une erreur à moi, et la passe d'amendement
+
+**Statut** : Complété. Branche `research/v75-precision`. Déclencheur : l'utilisateur conteste ma
+formulation « ces compteurs vivent en RAM » — argument architectural : reposer sur la RAM de
+chaque joueur (jusqu'à 32 en BTB) serait bancal, la donnée doit être envoyée telle quelle et
+enregistrée dans le film. **Il avait raison, et l'index le disait déjà.**
+
+**MON ERREUR, nommée.** J'avais écrit en §4bis.3 du verdict : « le moteur calcule la précision
+par arme et l'expédie à la télémétrie ; il ne la réplique pas ». **C'est faux.** L'index porte
+depuis 7ter.81 (3), en `[ETABLI]` : `ShotsFired++ -> FUN_142bb2d80 -> stat 0x0D`,
+`ShotsLanded++ -> FUN_142bb2e28 -> stat 0x0E`, `FUN_142bb7074` recalcule 0x0F (la précision).
+**Ces deux appels étaient dans mes propres décompilés et je ne les ai pas reconnus.** La
+télémétrie est un second consommateur, pas le seul. Leçon de méthode : la mémoire du chantier dit
+« greper l'index avant toute piste » — il faut lire « et avant d'écrire une conclusion », pas
+seulement avant d'ouvrir.
+
+**CE QUE LA RE A TROUVÉ EN ALLANT VOIR — la cause d'un négatif qui n'en avait pas.** Le dossier
+portait une tension : le code pousse 0x0D/0x0E vers la réplication, et 7ter.83 (1) mesure qu'ils
+n'arrivent pas dans le film (4/23 · 4/23 · 7/23 contre un fond de 3/23 · 4/23 · 7/23, pendant que
+le même balayage rend kills 23/23 et score 23/23). **Le push est conditionnel** :
+
+```c
+if (*(char *)(param_1 + 0x59d09) == '\0') { ... aucun push ... }
+else if (DAT_1451222c8 != '\0') { ... FUN_142b63d98(&stats, desc, 0xd); si present -> push ... }
+```
+
+**`DAT_1451222c8` porte EXACTEMENT QUATRE références dans tout le binaire, et les quatre sont des
+LECTURES** — 0x0D (tirs, `FUN_142bb2d80`), 0x0E (touches, `FUN_142bb2e28`), 0x13
+(`FUN_142bb24c8`), 0x14 (`FUN_142bb2580`). **Aucune écriture.** Les quatre statistiques de cette
+famille partagent la porte ; les kills et le score passent par un autre chemin — et ce sont
+justement eux qui arrivent. **C'est le même motif que la porte du tag des codes 6/7** (`b0 == 1`
+sur 168 380 observations, zéro exception) : un chemin qui existe et dont la porte n'est jamais
+ouverte. Deux occurrences du même motif dans ce moteur. Portée à respecter : « aucune écriture
+parmi les xrefs de Ghidra » n'est pas « aucune écriture » — un écrivain par adresse calculée y
+échapperait. Ce qui rend l'énoncé exploitable est sa **convergence avec la mesure offline**, qui
+a son propre contrôle positif.
+
+**Résultat net : le négatif de 7ter.83 (1) cesse d'être un résultat sans explication**, et
+l'intuition architecturale de l'utilisateur est validée sur le fond (le code EST écrit pour
+envoyer la donnée) tout en étant démentie sur le runtime (la porte est fermée).
+
+**PASSE D'AMENDEMENT (accord utilisateur).** Les deux documents qui font foi portaient encore des
+affirmations fausses ou incomplètes ; c'est réparé, avec les statuts explicites :
+- `ETAT_DE_L_ART_KILLWEAPON.md` : l'offset de `RoundsCorrected` corrigé (`entry+0x10`, pas
+  `+0x08`) + la levée du `NON TESTE` sur la sommation ; une ligne NEUVE sur la porte
+  `DAT_1451222c8` ; la ligne « le record est un TIR ou une TOUCHE » marquée CONTESTÉE avec les
+  deux mesures (taux de porteur 0.0067, cadence 83.4 ms) et la ligne d'origine conservée ; une
+  entrée de motifs de grep pour la piste E, avec ses cinq résultats à ne pas re-chercher.
+- `GUIDE_WEAPON_SHOTS.md` : §1.1 et §3quater.1 marqués contestés (avec la conséquence pratique
+  écrite : AUCUNE pour la porte de publication) ; §3bis.1 porte désormais « ni par aucune autre
+  voie — timebox clos, ne pas ré-ouvrir sans raison neuve ».
+- `PLAN_MASTER_FILM_KILLFEED_REJEU.md` : décision #6 close, avec son issue.
+
+Le contestataire est partout marqué `[MESURE]` non reproduit par un tiers, et les énoncés
+d'origine sont **conservés** à côté : deux formulations coexistent explicitement plutôt qu'une
+substitution silencieuse.
+
+**Conclusion / prochaine étape.** Verdict de la piste E inchangé (négatif), mais mieux fondé : la
+dernière voie « la donnée est peut-être dans le film » est fermée par une CAUSE lue dans le code,
+plus seulement par un balayage. Reste, hors piste E : `object-position-component` de `ti=41`
+bit-exact, au registre du décodeur.
+
 ## [2026-08-08] v7.5 piste E — session 2/2 : voie de la réplication reformulée, déconvolution ratée de peu, timebox CLOS
 
 **Statut** : Complété. **Le timebox de la décision #6 est consommé, le verdict est NÉGATIF et
