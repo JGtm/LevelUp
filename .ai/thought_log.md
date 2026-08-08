@@ -40,6 +40,15 @@ d'une carte publiées sous le nom d'une autre, en silence. `--save-mvar` (nouvea
   passé** — les témoins propres à chaque carte sont laissés vides, la session ayant déjà vu
   son rendu ne peut pas les choisir.
 
+**Témoins reçus et gate (même jour).** L'utilisateur a donné ses repères après coup, comme le
+gate l'exige. Catalyst : la symétrie est CONFIRMÉE (68,3 % des emprises ont leur miroir par
+rapport à y = 0, contre 15,5 % pour l'hypothèse d'une rotation de 180°) ; le pont et la
+passerelle ne sont pas tranchables sur un fond troué à 91 %. Vagabond : le fond BSP ne
+montrait rien, il a fallu bâtir une carte d'altitude sur les 4 709 objets Forge (nouveau
+--dump-objects) — et le relief autour de B3 porte bien une poche à -2,3 à -2,9 m d'un côté
+et une remontée oblique à +2,6 m de l'autre, conforme au repère donné. L'emplacement d'arme
+reste invisible faute de table type_id -> nom.
+
 **Conclusion / prochaine étape.** Le containment peut être re-statué : son oracle existe
 maintenant (3 matchs Strongholds sur Vagabond). Les deux fonds de carte refusés renvoient au
 même manque, déjà identifié : le portage en Go de la chaîne `.module -> triangles`, qui

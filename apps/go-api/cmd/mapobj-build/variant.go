@@ -18,7 +18,13 @@
 // au mauvais endroit — ce que l'en-tête de fetch.go dit vouloir éviter.
 package main
 
-import "levelup/go-api/internal/analysis/replay/mapvar"
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+
+	"levelup/go-api/internal/analysis/replay/mapvar"
+)
 
 // parkedSpreadRatio : sous cette fraction de l'emprise des objets de la variante,
 // l'emprise des objectifs n'est plus un placement mais un rangement.
@@ -59,3 +65,47 @@ func isParkedPalette(v *mapvar.Variant) bool {
 // inf sert de borne initiale aux min/max (pas de math.Inf pour rester en float64 littéral
 // lisible dans les deux sens).
 const inf = 1e18
+
+// dumpedObject est la forme de DIAGNOSTIC d'un objet de variante.
+//
+// Ce n'est PAS le catalogue : `map_objectives.json` ne porte que les objets qui ont un
+// RÔLE d'objectif. Sur une carte bâtie dans Forge, le décor lui-même est fait d'objets de
+// variante (Vagabond : 4 709), et sans eux on ne peut ni relire la carte à l'oeil ni
+// vérifier un repère de terrain — la revue visuelle du 2026-08-08 a buté exactement là.
+// Le type_id n'est pas résolu en nom : cette table n'existe pas encore (question Q1 de la
+// piste palette Forge), donc on publie l'entier brut plutôt qu'un libellé deviné.
+type dumpedObject struct {
+	Index   int           `json:"index"`
+	TypeID  int32         `json:"type_id"`
+	Pos     mapvar.Vec3   `json:"pos"`
+	Up      mapvar.Vec3   `json:"up"`
+	Forward mapvar.Vec3   `json:"forward"`
+	Team    int           `json:"team_index"`
+	Labels  []string      `json:"labels,omitempty"`
+	Shape   *mapvar.Shape `json:"shape,omitempty"`
+}
+
+// dumpObjects écrit tous les objets d'une variante, pour inspection hors ligne.
+func dumpObjects(path string, v *mapvar.Variant) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	out := make([]dumpedObject, 0, len(v.Objects))
+	for _, o := range v.Objects {
+		d := dumpedObject{
+			Index: o.Index, TypeID: o.TypeID, Pos: o.Pos, Up: o.Up,
+			Forward: o.Forward, Team: o.TeamIndex, Shape: o.Shape(),
+		}
+		for _, h := range o.Labels {
+			if n := mapvar.LabelName(h); n != "" {
+				d.Labels = append(d.Labels, n)
+			}
+		}
+		out = append(out, d)
+	}
+	blob, err := json.Marshal(out)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, blob, 0o644)
+}
