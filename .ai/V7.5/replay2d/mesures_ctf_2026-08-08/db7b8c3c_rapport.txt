@@ -1,0 +1,54 @@
+film	db7b8c3c
+carte	Aquarius
+duree_s	670.7
+tirs_disponibles	3547
+rattaches	3140	ambigus	65	sans_slot	342
+taux_rattachement	0.8853
+taux_sans_slot	0.0964
+vies	150	nommees	139	non_nommees	11	slots_pont	139
+echantillons_position	223584
+pas_median_ms	16.7
+pas_p90_ms	17.2
+part_pas_sup_120ms	0.0011
+
+# ventilation des rejets sans-slot
+cause	trou de position	101	0.0285
+cause	vie non nommee	241	0.0679
+
+# ecart au plus proche echantillon du tireur (rejets sans-slot, joueur au pont)
+ecart_max_ms	120	0
+ecart_max_ms	250	10
+ecart_max_ms	500	9
+ecart_max_ms	1000	3
+ecart_max_ms	2000	2
+ecart_max_ms	5000	26
+ecart_max_ms	15000	60
+ecart_max_ms	infini	232
+
+# repartition temporelle (deciles du film)
+decile	1	disponibles	348	sans_slot	70	taux	0.2011
+decile	2	disponibles	319	sans_slot	1	taux	0.0031
+decile	3	disponibles	358	sans_slot	0	taux	0.0000
+decile	4	disponibles	304	sans_slot	31	taux	0.1020
+decile	5	disponibles	282	sans_slot	5	taux	0.0177
+decile	6	disponibles	383	sans_slot	2	taux	0.0052
+decile	7	disponibles	270	sans_slot	0	taux	0.0000
+decile	8	disponibles	270	sans_slot	1	taux	0.0037
+decile	9	disponibles	594	sans_slot	14	taux	0.0236
+decile	10	disponibles	419	sans_slot	218	taux	0.5203
+
+# par index de joueur du film
+joueur	0	slots	9	disponibles	387	sans_slot	70	taux	0.1809
+joueur	1	slots	20	disponibles	433	sans_slot	20	taux	0.0462
+joueur	2	slots	21	disponibles	514	sans_slot	59	taux	0.1148
+joueur	3	slots	18	disponibles	363	sans_slot	12	taux	0.0331
+joueur	4	slots	19	disponibles	440	sans_slot	102	taux	0.2318
+joueur	5	slots	22	disponibles	722	sans_slot	44	taux	0.0609
+joueur	6	slots	18	disponibles	161	sans_slot	5	taux	0.0311
+joueur	7	slots	12	disponibles	527	sans_slot	30	taux	0.0569
+
+# par arme (identifiant brut du film)
+arme	0x48C19D2D42C9679F	disponibles	2432	sans_slot	210	taux	0.0863
+arme	0xF408190F42C9679F	disponibles	918	sans_slot	76	taux	0.0828
+arme	0xFD98554C42C9679F	disponibles	178	sans_slot	56	taux	0.3146
+arme	0xD791556542C9679F	disponibles	19	sans_slot	0	taux	0.0000

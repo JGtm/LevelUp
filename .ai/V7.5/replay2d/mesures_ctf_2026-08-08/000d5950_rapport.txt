@@ -1,0 +1,65 @@
+film	000d5950
+carte	Cliffhanger
+duree_s	498.4
+tirs_disponibles	519
+rattaches	475	ambigus	0	sans_slot	44
+taux_rattachement	0.9152
+taux_sans_slot	0.0848
+vies	105	nommees	90	non_nommees	15	slots_pont	90
+echantillons_position	171826
+pas_median_ms	16.7
+pas_p90_ms	17.1
+part_pas_sup_120ms	0.0014
+
+# ventilation des rejets sans-slot
+cause	trou de position	14	0.0270
+cause	vie non nommee	30	0.0578
+
+# ecart au plus proche echantillon du tireur (rejets sans-slot, joueur au pont)
+ecart_max_ms	120	0
+ecart_max_ms	250	9
+ecart_max_ms	500	6
+ecart_max_ms	1000	0
+ecart_max_ms	2000	0
+ecart_max_ms	5000	0
+ecart_max_ms	15000	6
+ecart_max_ms	infini	23
+
+# repartition temporelle (deciles du film)
+decile	1	disponibles	18	sans_slot	0	taux	0.0000
+decile	2	disponibles	31	sans_slot	0	taux	0.0000
+decile	3	disponibles	100	sans_slot	6	taux	0.0600
+decile	4	disponibles	63	sans_slot	4	taux	0.0635
+decile	5	disponibles	35	sans_slot	0	taux	0.0000
+decile	6	disponibles	64	sans_slot	2	taux	0.0312
+decile	7	disponibles	35	sans_slot	1	taux	0.0286
+decile	8	disponibles	47	sans_slot	3	taux	0.0638
+decile	9	disponibles	58	sans_slot	1	taux	0.0172
+decile	10	disponibles	68	sans_slot	27	taux	0.3971
+
+# par index de joueur du film
+joueur	0	slots	9	disponibles	49	sans_slot	0	taux	0.0000
+joueur	1	slots	13	disponibles	71	sans_slot	16	taux	0.2254
+joueur	2	slots	12	disponibles	81	sans_slot	3	taux	0.0370
+joueur	3	slots	13	disponibles	58	sans_slot	2	taux	0.0345
+joueur	4	slots	10	disponibles	82	sans_slot	2	taux	0.0244
+joueur	5	slots	11	disponibles	27	sans_slot	0	taux	0.0000
+joueur	6	slots	8	disponibles	59	sans_slot	21	taux	0.3559
+joueur	7	slots	14	disponibles	92	sans_slot	0	taux	0.0000
+
+# par arme (identifiant brut du film)
+arme	0xB533957E42C9679F	disponibles	76	sans_slot	0	taux	0.0000
+arme	0x48C19D2D42C9679F	disponibles	67	sans_slot	16	taux	0.2388
+arme	0x84BD29ED42C9679F	disponibles	59	sans_slot	0	taux	0.0000
+arme	0xDAF193C742C9679F	disponibles	53	sans_slot	0	taux	0.0000
+arme	0x0A1992BC42C9679F	disponibles	50	sans_slot	12	taux	0.2400
+arme	0x2B1824D542C9679F	disponibles	40	sans_slot	0	taux	0.0000
+arme	0x71AB0A2C42C9679F	disponibles	34	sans_slot	6	taux	0.1765
+arme	0xC30D87C742C9679F	disponibles	25	sans_slot	0	taux	0.0000
+arme	0x9387A8B942C9679F	disponibles	25	sans_slot	0	taux	0.0000
+arme	0x30484EA642C9679F	disponibles	21	sans_slot	0	taux	0.0000
+arme	0x80977BA542C9679F	disponibles	20	sans_slot	1	taux	0.0500
+arme	0xF408190F42C9679F	disponibles	13	sans_slot	0	taux	0.0000
+arme	0x2AC9C2FF42C9679F	disponibles	9	sans_slot	7	taux	0.7778
+arme	0xB619D84A42C9679F	disponibles	8	sans_slot	0	taux	0.0000
+arme	0x230447B142C9679F	disponibles	7	sans_slot	0	taux	0.0000

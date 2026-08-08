@@ -1,3 +1,61 @@
+## [2026-08-08] Recherche v7.5 voie B — les tirs perdus du CTF ne sont pas un probleme de CTF
+
+**Statut** : Complété (recherche, aucune feature). Branche `research/v75-ctf`, worktree
+`LevelUp-wt-ctf`. Verdict écrit : `.ai/V7.5/RECHERCHE_CTF_TIRS_PERDUS.md`, sorties brutes
+versionnées sous `.ai/V7.5/replay2d/mesures_ctf_2026-08-08/`. Répond à la décision #2 du master
+plan, qui conditionne le lot rejeu 2D public (piste F). **La décision finale reste à
+l'utilisateur.**
+
+**Décision technique principale.** Mesurer au lieu de supposer, avec deux instruments SOUS GARDE
+D'ENVIRONNEMENT (`ctf_research_test.go`, `ctf_bridge_research_test.go`) qui rejouent
+l'enchaînement de `BuildFromFilm` et comptent à côté de lui — le décodeur et l'assemblage ne sont
+pas touchés d'une ligne. Corpus de 7 films (3 CTF, 3 Slayer, 1 KOTH), **contrôle apparié par
+carte** : sans appariement on mesure la taille de la carte en croyant mesurer le mode.
+
+**Résultats observés.**
+
+1. **Le facteur ~13x n'existe pas** : 564/2 879 contre 44/519, ce sont des comptes absolus sur des
+   dénominateurs qui diffèrent d'un facteur 5,5. En taux, 19,6 % contre 8,5 % = **2,3x**. Et le
+   témoin Slayer historique porte 0,23 record de tir par tir effectué contre 0,80 au CTF : il est
+   quatre fois moins dense que le film qu'on lui opposait.
+2. **Les modes se recouvrent** : un CTF à 88,5 % passe devant le KOTH (86,4 %) et talonne un Team
+   Slayer de la même carte (89,0 %). Apparié par carte il reste un effet de mode réel, mais de
+   **5 à 9 points**, pas un facteur.
+3. **La cause est établie** : 63 à 92 % des rejets tombent pendant une **vie non nommée**. Le pont
+   nomme une vie par la mort qui la termine ; **un joueur qui cesse de mourir cesse d'être
+   localisable**. Le dernier décile porte le plus gros rejet dans les SEPT films (40 à 74 %),
+   tous modes confondus. Sur `64e8adfa`, deux vies non nommées de 218 s et 195 s portent
+   l'essentiel de la perte, et ce sont les deux joueurs les moins morts du film.
+4. **L'hypothèse du plan est INVERSÉE** : il supposait « un mode où l'on meurt davantage produit
+   plus de vies courtes, donc plus de traces non publiées ». C'est le contraire — c'est le joueur
+   qui meurt PEU qui coûte des tirs.
+5. **Quatre hypothèses réfutées, chiffres à l'appui** : réplication clairsemée (pas médian
+   16,7 ms dans les 7 films, 0,07-0,29 % des pas au-delà de la tolérance), dérive d'horloge
+   (résidu d'appariement plat par décile : 34,3 → 33,9 ms), familles d'armes non mappées (le
+   rejet suit l'exposition), flux propres au mode (même ventilation dans les trois modes).
+6. **Cause secondaire réelle** : la fenêtre d'appariement de 150 ms (`deathMatchWindowMS`). À
+   500 ms, le KOTH nomme **7 vies de plus** ; ailleurs 0 ou +1.
+7. **Le plafond est chiffré** : vies toutes nommées, les 7 films monteraient à **94,7-98,5 %**.
+   Le reste du pipeline est sain.
+
+**Une prédiction enregistrée puis démentie, et c'est consigné comme tel.** J'avais prédit, avant
+résultats, que `9aeca4b3` (13,9 % de temps-joueur non couvert) perdrait plus que `64e8adfa`
+(8,6 %). Il perd moins (11,0 % contre 19,6 %). Le prédicteur « temps non couvert », calculable en
+base sans décoder, ordonne donc mal : signal de tri grossier, jamais critère.
+
+**Erreur de fiche corrigée** : `PLAN_FINALISATION_REJEU_2D.md` §1.4 classe `01e1f945` en
+« Catalyst, Slayer ». `match_registry` dit `Arena:King of the Hill on Catalyst`. Le tableau des
+trois films opposait un Fiesta Slayer, un KOTH et un CTF — pas deux Slayer et un CTF.
+
+**Conclusion / prochaine étape.** Recommandation écrite : le rejeu public **n'est pas livrable en
+v7.5**, non parce que le CTF serait cassé mais parce que 2 films sur 7 passent sous 85 % et que le
+mécanisme frappe TOUS les modes dans la phase la plus regardée du match. Le garde local reste, et
+son critère doit être réécrit sur un plancher tous-films + corpus nommé + date. Le chantier qui
+débloque tout est le **nommage des vies que nulle mort ne termine** (§7.2 du verdict), suivi de
+l'élargissement de la fenêtre à 500 ms. Hypothèse restante la plus prometteuse : sur `64e8adfa`,
+sept vies se terminent entre 744 s et 750 s sans qu'aucune mort ne l'explique — candidat naturel,
+la réinitialisation d'après-capture du CTF ; à corréler sur les 129 CTF du cache.
+
 ## [2026-08-08] v7.5 lot 3 — la suppression d'objectivescore, et deux tables qu'on prenait pour une seule
 
 **Statut** : Complété. Périmètre fermé à L3a–L3f, chaque item statué. Branche
