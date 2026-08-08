@@ -1,3 +1,67 @@
+## [2026-08-08] filmdec i0 `ti=41` — les dumps sont lus : ils CONFIRMENT la production, ils ne la débloquent pas
+
+**Statut** : Complété pour cette session (reprise depuis le handoff). Note §11 :
+`.ai/V7.5/film_re/NOTE_I0_TI41_POSITION_PROJECTILE.md`. Branche `research/v75-precision`.
+Rien de porté dans `traverse.go`, aucune écriture en base, aucune action prod.
+
+**Décision technique principale** : le « prochain geste » que mon propre handoff annonçait —
+décoder `ce_prec_widths_1445cc9e0.bin`, « la globale que je déclarais non dérivable » — a été
+joué, et il rend un **négatif partiel sur ce handoff**. La table est **32/32 niveaux en accord**
+avec la forme fermée `min(26, ceilLog2(min(ceil(40000/(2·step(L))), 2^22)))`,
+`step(L)=2^(16-L)/120` : ce n'est que la loi précalculée au chargement de carte. Elle confirme
+le désassemblage, elle ne le complète pas. Et l'entrée 0 de `ce_prec_ranges_14462cbe0.bin`
+**égale au flottant près** l'entrée `cliffhanger`/`ridgeline` du catalogue `.module` de
+production — donc la chaîne `.module` -> table runtime -> largeurs de quantification ->
+positions est validée de bout en bout, pour la première fois par une source indépendante.
+Corollaire : « les largeurs ne sont pas dérivables statiquement » (note §2.2) est faux, et
+`cmd/mapquant-build` résout déjà le problème *en général*, pour 15 cartes, offline-pur.
+
+**Résultats observés**
+
+- **Correction de désassemblage** : `FUN_1406d310c` est `ceilLog2`, pas `bitLen`. Les deux ne
+  diffèrent que sur les puissances exactes de deux — et c'est ce cas qui décide des niveaux 17
+  à 22 (saturation du compte à 2^22). `filmdec/map_bounds.go` écrivait déjà `ceilLog2` :
+  **la production avait raison contre le dossier.**
+- **Deux affirmations du dossier tombent, et les deux pour la même raison** — n'avoir pas grepé
+  l'existant Go avant de conclure :
+  1. `filmdec/projectiles.go` **existe en production** : il décode les trajectoires `ti=41`,
+     est câblé dans `replay.BuildFromFilm` avec goldens, et porte **70 lancers de grenade sur
+     70** appariés à une naissance d'entité (0,77 u du bipède lanceur contre 6,4 u à instant
+     permuté et 33,9 u au hasard ; direction initiale à 1,0° du cap de visée). La chaîne
+     « première position -> joueur le plus proche -> tireur », que la note §3 présentait comme
+     la troisième et dernière voie *à construire*, **est construite et validée**. T1 et T1'
+     l'ont re-mesurée à la main avec un instrument plus faible.
+  2. La branche opaque n'est pas « la moitié » des records (`tmp_i0w` : 264 / 277) mais
+     **6,2 %**. Deux instruments indépendants : la grammaire de production sur 30 films
+     (9 382 / 152 535) et `calib.txt`, **déjà dans le cache film depuis toujours**, qui porte
+     `object-position-component:45` à une fréquence modale de **0,98**. Facteur ~8.
+- **L'instrument de validation que T3 n'avait pas existe, et il franchit son contrôle positif.**
+  Méthode : plus de critère de FORME (colinéarité, continuité) mais une **égalité numérique** —
+  régression de la position vraie interpolée sur l'entier brut de chaque champ candidat. Sur la
+  branche BASSE (130 846 records, 12 films) elle retrouve les trois champs de production
+  `off 3/w 13`, `off 16/w 13`, `off 29/w 14`, avec des étendues implicites à moins de 1,5 % de
+  l'AABB (112,99 / 113,65 / 135,88 contre 113,21 / 113,82 / 137,55) et une nulle par permutation
+  à 3e-4 au pire.
+- **Sur la branche opaque : NÉGATIF.** 127 records encadrés, 30 films Cliffhanger. Le meilleur
+  candidat de chaque axe **est exactement le q99 de sa propre distribution** — le maximum d'un
+  bruit, pas une valeur aberrante. Signature à ne pas jeter : Y et Z culminent aux offsets de la
+  branche basse (16 et 29) avec des nulles de 3e-3 et 6e-4 ; soit la branche partage le
+  découpage et change de plage, soit une part des « records opaques » sont des faux positifs.
+
+**Leçon de méthode, et c'est la troisième fois dans ce dossier** : greper l'existant Go **avant
+d'écrire une conclusion**, pas seulement avant d'ouvrir une piste. Les trois affirmations
+corrigées aujourd'hui l'ont été par un fichier de production, un fichier de cache et un
+catalogue JSON — aucune n'a demandé de désassemblage. Corollaire neuf : **quand un instrument de
+production existe et porte une vérité terrain, mesurer avec autre chose n'est pas une
+vérification indépendante, c'est une dégradation.**
+
+**Prochaine étape** : campagne de durcissement lancée (300 films de tout le corpus, chaque film
+décodé avec les bornes de SA carte, deux régimes — coordonnée monde si la plage est fixe,
+normalisée si elle suit la carte). Si aucun ne mord sur un échantillon dix fois plus grand, le
+négatif est solide et la branche opaque se documente comme non décodée, à 6,2 % des records.
+Outillage archivé sous `.ai/V7.5/outillage/precision_projectiles/` (`tmp_precdump`, `tmp_i0hi`),
+avec un bandeau de réfutation sur `tmp_i0w`.
+
 ## [2026-08-08] filmdec i0 `ti=41` — T2 et T3 : deux instruments qui ne mordent pas, et les deux échecs sont instrumentaux
 
 **Statut** : Complété pour cette session. Note §8 :
