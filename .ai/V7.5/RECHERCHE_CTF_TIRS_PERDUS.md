@@ -786,6 +786,41 @@ quelque chose n'est rien. Sans ce garde-fou, ce document annoncerait aujourd'hui
 record 105 dans le binaire pour savoir ce que la variante courte décrit. C'est le seul chemin qui
 reste, et il est plus lourd que tout ce qui précède.
 
+### 8.4septies POURQUOI UN FIESTA NE PORTE QU'UN TIERS DE SES TIRS — l'intuition utilisateur, vérifiée
+
+> « Je suppose que beaucoup de frags en Fiesta sont des armes à projectiles ou des frags au
+> marteau ou à l'épée. » — utilisateur, 2026-08-08.
+
+**Elle est JUSTE sur les deux points, et ma première réponse était FAUSSE.** J'avais répondu que
+la mêlée était plus rare en Fiesta (3,4 % contre 15,1 %) — en comptant la classe `MELEE` de la
+table de nommage, qui désigne **le coup de crosse générique partagé par tout l'arsenal**. Le
+**marteau gravitationnel** et l'**épée à énergie** ont leurs PROPRES identifiants et sont classés
+`ARME`. Je comparais donc autre chose que ce qui était demandé.
+
+Recompté par arme réellement employée, sur 21 190 frags Fiesta et 53 379 hors Fiesta :
+
+| famille | Fiesta | hors Fiesta | rapport |
+|---|---|---|---|
+| **marteau + épée** | **21,3 %** | 2,1 % | **10×** |
+| **armes à projectiles** (SPNKr, Needler, Ravager, Cindershot, Skewer, Sentinel Beam, Disruptor) | **39,0 %** | 6,9 % | **5,7×** |
+| armes à tir tendu | ~36 % | ~76 % | 0,5× |
+
+Marteau gravitationnel : **3 261 frags en Fiesta contre 580 ailleurs**. Sentinel Beam : 1 581
+contre 254. Disruptor : 1 092 contre 98.
+
+**POURQUOI ÇA COMPTE POUR LA COLONNE ①.** Le flux de tirs du film compte des ÉVÉNEMENTS DE TIR. Un
+coup de marteau, un lancer d'épée, un tir de roquette ou une bordée de Needler ne produisent pas
+le même nombre d'événements qu'une rafale de fusil d'assaut — alors que le compteur `shots_fired`
+de l'API, lui, les compte tous. **Un mode où 60 % des frags viennent d'armes de corps-à-corps ou à
+projectiles n'a aucune raison d'avoir le même rapport « événements de tir / shots_fired » qu'un
+mode à tir tendu.** Le déficit Fiesta (37 % contre 84-99 %) cesse donc d'être une anomalie de
+décodage : c'est probablement une **différence de composition d'arsenal**.
+
+**Ce qui reste à faire pour le trancher**, et ce n'est plus de la rétro-ingénierie : comparer, par
+ARME, les événements de tir décodés aux tirs de l'API. Si le déficit se concentre sur le marteau,
+l'épée et les projectiles, l'affaire est close sans toucher au binaire — et le « trou Fiesta »
+devient une propriété connue et documentée du format, pas un défaut à corriger.
+
 ### 8.5 CE QUE ÇA CHANGE DANS L'ORDRE DES PRIORITÉS
 
 `kill_positions` devient le meilleur rapport valeur/coût du chantier, et **il ne dépend pas du
