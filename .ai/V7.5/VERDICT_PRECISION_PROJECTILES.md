@@ -283,6 +283,83 @@ calcul naïf de §3bis.0 l'inversait.
 
 ---
 
+## 4bis. CE QUE LE BINAIRE DIT — lecture Ghidra du 2026-08-08 (cible 1 du timebox)
+
+> Lecture statique, HaloInfinite.exe (311 104 fonctions analysées), via l'API HTTP du plugin
+> GhidraMCP en lecture seule. **La question posée** : `shots_fired` tel que l'API le rapporte
+> est-il une grandeur unique, ou une somme incluant la réconciliation par les munitions ?
+> C'était la seule réserve `NON TESTE` de 7ter.81 (1f), et elle pesait directement sur le
+> critère « ± 0,03 contre la référence API » de la session 2.
+
+### 4bis.1 LE MOTEUR TIENT UN ENREGISTREMENT DE STATISTIQUES **PAR ARME**
+
+Trois fonctions écrivent dans le **même** enregistrement — base commune, pas de 0xa8, index
+résolu par le **même** `FUN_1408df3dc` :
+
+```
+  FUN_1408df45c   entry + 0x08  += 1                      TIRS      (ShotsFired)
+  FUN_1408df6a4   entry + 0x0c  += 1                      TOUCHES   (ShotsLanded)
+  FUN_1410af034   entry + 0x10  += (short)(dMag+dReserve) CORRECTION PAR LES MUNITIONS
+```
+
+**Le numérateur et le dénominateur de la précision par arme sont côte à côte dans un seul
+enregistrement, indexés par la même arme.** La précision par arme n'est donc pas une grandeur
+que nous essaierions de fabriquer : c'est une grandeur que le moteur calcule nativement.
+
+Les deux compteurs ont chacun un chemin de repli identique (`FUN_1408df4f4`, « trouver ou créer
+l'entrée »), qui écrit aux mêmes `+0x08` / `+0x0c`.
+
+### 4bis.2 LA CORRECTION N'EST PAS SOMMÉE DANS LE COMPTEUR DE TIRS — et le dossier se corrige
+
+**Correction à 7ter.81 (1f), qui écrit que `FUN_1410af034` ajoute à `entry+0x08` : il ajoute à
+`entry+0x10`.** Huit octets d'écart, et ils changent le sens : en mémoire, la réconciliation par
+les munitions **ne touche jamais** le compteur de tirs.
+
+Et les trois compteurs sortent comme **trois champs nommés distincts du même événement de
+télémétrie** (`FUN_140ad4e74`, événement Microsoft Xbox Telemetry CELL). Les trois chaînes sont
+adjacentes en mémoire, espacées de 0x10, et référencées depuis cette seule fonction, dans
+l'ordre :
+
+```
+  14369eec0  "RoundsCorrected"   <- 140ad4f55, 140ad4f7a
+  14369eed0  "ShotsLanded"       <- 140ad4f87, 140ad4f8e
+  14369eee0  "ShotsFired"        <- 140ad4f92, 140ad4f99
+```
+
+**Conséquence pour le critère de la session 2 : la réserve se lève dans le sens rassurant.**
+Rien dans le chemin lu ne somme la correction au compteur de tirs — les deux sont rapportés
+séparément. Le critère « ± 0,03 contre la référence API » mesure donc le film, pas un artefact
+de la référence.
+
+> **PORTÉE, et il faut la dire :** ce qui est établi porte sur les compteurs **par arme** et sur
+> l'événement de télémétrie. Le producteur des noms **agrégés** `TotalShotsFired` /
+> `TotalShotsLanded` (143ba7d28 / 143ba7d38, enregistrés chacun dans son propre global par
+> `FUN_140181e60` et ses voisins) **n'a pas été tracé**. L'énoncé juste est *« aucune sommation
+> dans le chemin lu »*, pas *« prouvé que l'API ne somme jamais »*.
+
+### 4bis.3 POURQUOI LE FILM NE PORTERA JAMAIS CES COMPTEURS — l'argument de fermeture
+
+Ces compteurs vivent dans une structure de **statistiques / télémétrie**, pas dans un composant
+ECS répliqué. C'est exactement ce que 7ter.83 (2) avait mesuré par l'autre bout — énumération
+exhaustive de **325 noms de composants** et **118 archétypes** du registre `chunk_00`, **zéro**
+composant portant une statistique de tir, et côté arme seulement l'ÉTAT (identité par
+emplacement, munitions, inventaire de chargeurs, surchauffe). **Les deux lectures se rejoignent :
+le moteur calcule la précision par arme et l'expédie à la télémétrie ; il ne la réplique pas.**
+
+Et le chemin de la touche confirme pourquoi elle est hors de portée hors ligne :
+`FUN_1408df6a4` résout son arme en **déréférençant une chaîne de handles** — objet de dégât,
+puis champ `+0x2f8` vers l'objet propriétaire, puis indice de joueur en `+0x340` ou `+0x2dc`, et
+l'indice d'arme par `FUN_1408df3dc`. Le comptage n'a lieu que si cet indice de joueur **égale**
+celui du bloc de statistiques (`param_1 + 4`). Autrement dit : au moment de l'impact le moteur
+sait parfaitement qui a tiré et avec quoi — **il le sait par le graphe d'objets du serveur**,
+celui-là même dont 7ter.88 (6) avait déjà noté qu'il n'est pas répliqué.
+
+**Ce que cela change pour la piste E : la voie du DÉCODAGE est fermée par construction du
+format, pas par insuffisance de notre décodeur. Il ne reste que la voie de l'INFÉRENCE** — la
+déconvolution du §4 — et son plafond est celui de son contrôle positif.
+
+---
+
 ## 5. VERDICT DE FAISABILITÉ AU 2026-08-08
 
 > **La précision par arme des armes à projectile n'est PAS dérivable à un niveau publiable
@@ -300,6 +377,11 @@ calcul naïf de §3bis.0 l'inversait.
   **contredite** par deux mesures indépendantes, ce qui évite à la session 2 de partir sur une
   fausse prémisse ;
 - une voie **neuve** existe, elle est chiffrée, et ses deux défauts sont nommés.
+
+- la lecture Ghidra (§4bis) **ferme la voie du décodage par construction du format** : le moteur
+  calcule bien la précision par arme, mais dans une structure de télémétrie qu'il ne réplique
+  pas, et son chemin de touche résout l'arme par le graphe d'objets du serveur. Il ne reste que
+  l'inférence.
 
 **Ce qui n'a PAS changé** : le plafond de validation du handoff tient intégralement. Même une
 estimation juste ne se **valide** pas par une population à arme dominante — le Needler ne
@@ -327,7 +409,9 @@ définitivement « non faisable » et la session s'arrête là.**
      et le Sidekick) : sans les quatre, le contrôle positif n'a que deux points ;
    - **CRITÈRE D'ARRÊT** : la méthode doit rendre MA40, BR75, Sidekick et Bandit Evo à
      **± 0,03 de leur référence API, hors échantillon**. En dessous, elle ne mesure pas ce
-     qu'elle prétend et le verdict est clos.
+     qu'elle prétend et le verdict est clos. *(Ce critère est dé-risqué depuis §4bis : rien
+     dans le binaire ne somme la réconciliation par les munitions au compteur de tirs, donc
+     l'écart mesuré est bien celui du film.)*
 
 **B. Si A passe — valider les armes à projectile par contraste intra-joueur.**
    - deux armes chez le MÊME joueur dans le MÊME match, l'une à trace instantanée (référence

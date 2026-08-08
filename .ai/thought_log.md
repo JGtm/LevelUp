@@ -1,3 +1,58 @@
+## [2026-08-08] v7.5 piste E — lecture Ghidra (cible 1) : le moteur calcule la précision par arme, mais il ne la réplique pas
+
+**Statut** : Complété. Addendum à l'entrée du jour sur la piste E, même branche
+`research/v75-precision`. Lecture statique seule (HaloInfinite.exe, 311 104 fonctions), via
+l'API HTTP du plugin GhidraMCP en lecture seule. Aucun rename, aucune écriture dans le
+programme Ghidra.
+
+**Note d'outillage** : le bridge MCP `ghidra` n'a pas pu s'attacher — la découverte UDS voit
+bien l'instance (pid 22736) mais celle-ci ne déclare **ni projet ni programme**, et le bridge
+refuse alors de retomber sur le port TCP (il ne veut pas risquer le mauvais projet). Le plugin,
+lui, sert parfaitement son schéma sur `127.0.0.1:8089` : la session s'est faite en appelant les
+endpoints HTTP directement (`/decompile_function`, `/get_xrefs_to`, `/search_strings`,
+`/get_current_program_info`). À retenir pour la prochaine fois plutôt qu'à re-diagnostiquer.
+
+**Ce que la lecture établit — un enregistrement de statistiques PAR ARME.** Trois fonctions
+écrivent dans le même enregistrement, base commune, pas de **0xa8**, index résolu par le même
+`FUN_1408df3dc` : `FUN_1408df45c` fait `entry+0x08 += 1` (TIRS), `FUN_1408df6a4` fait
+`entry+0x0c += 1` (TOUCHES), `FUN_1410af034` fait `entry+0x10 += (short)(dMag+dReserve)`
+(correction par les munitions). Les deux compteurs partagent le même repli
+`FUN_1408df4f4` (« trouver ou créer l'entrée »), qui écrit aux mêmes offsets. **Le numérateur
+et le dénominateur de la précision par arme sont côte à côte, indexés par la même arme** : ce
+n'est pas une grandeur que nous fabriquerions, c'est une grandeur que le moteur calcule.
+
+**Correction au dossier.** 7ter.81 (1f) écrit que `FUN_1410af034` ajoute à `entry+0x08`. Il
+ajoute à `entry+0x10`. Huit octets, et ils changent le sens : en mémoire la réconciliation par
+les munitions **ne touche jamais** le compteur de tirs. Les trois compteurs sortent d'ailleurs
+comme trois champs nommés distincts du même événement de télémétrie Xbox CELL
+(`FUN_140ad4e74`) — les trois chaînes sont adjacentes, espacées de 0x10, et référencées depuis
+cette seule fonction : `RoundsCorrected` 14369eec0, `ShotsLanded` 14369eed0, `ShotsFired`
+14369eee0. **La réserve `NON TESTE` de 7ter.81 (1f) se lève donc dans le sens rassurant** : le
+critère « ±0,03 contre la référence API » de la session 2 mesure le film, pas un artefact de la
+référence. Portée à respecter : le producteur des noms agrégés `TotalShotsFired` /
+`TotalShotsLanded` (143ba7d28 / 143ba7d38, enregistrés chacun dans son propre global par
+`FUN_140181e60`) n'a **pas** été tracé — l'énoncé juste est « aucune sommation dans le chemin
+lu », pas « prouvé que l'API ne somme jamais ».
+
+**L'argument de fermeture, et c'est le vrai gain de la session.** Ces compteurs vivent dans une
+structure de statistiques / télémétrie, pas dans un composant ECS répliqué — ce qui rejoint par
+l'autre bout l'énumération exhaustive de 7ter.83 (2) : 325 noms de composants, 118 archétypes,
+zéro statistique de tir, et côté arme seulement l'ÉTAT (munitions, chargeurs, surchauffe). Le
+chemin de la touche dit pourquoi : `FUN_1408df6a4` résout son arme en déréférençant une chaîne
+de handles — objet de dégât, champ `+0x2f8` vers le propriétaire, indice de joueur en `+0x340`
+ou `+0x2dc`, indice d'arme par `FUN_1408df3dc` — et ne compte que si cet indice égale celui du
+bloc de statistiques (`param_1 + 4`). **Au moment de l'impact le moteur sait parfaitement qui a
+tiré et avec quoi ; il le sait par le graphe d'objets du serveur**, celui dont 7ter.88 (6) avait
+déjà noté qu'il n'est pas répliqué.
+
+**Conclusion / prochaine étape.** La voie du DÉCODAGE de la précision par arme des armes à
+projectile est fermée **par construction du format**, pas par insuffisance de notre décodeur —
+c'est un négatif définitif, et il valait la session. Il ne reste que la voie de l'INFÉRENCE (la
+déconvolution du §4 du verdict), dont le plafond est celui de son contrôle positif. La cible 2
+du plan Ghidra (le chemin d'impact `FUN_142f1c44c`) **n'a plus d'objet** : la réponse qu'elle
+devait chercher est déjà donnée ci-dessus. La session 2/2 se consacre donc entièrement à
+l'étape A du §6 du verdict, avec son critère d'arrêt dé-risqué.
+
 ## [2026-08-08] v7.5 piste E — précision projectiles, session 1/2 : le blocage n'est pas où on le croyait
 
 **Statut** : Complété pour la session 1/2 (timebox décision #6 : 2 sessions, verdict écrit).
