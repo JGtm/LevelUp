@@ -3,25 +3,31 @@ package himap
 import (
 	"math"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
 // Ces tests lisent les fichiers du jeu installé. Ils sont IGNORÉS quand l'installation
 // est absente (CI) : ils servent de garde-rail sur poste de développement, là où la
 // régression serait sinon invisible.
-const (
-	gameRoot     = `D:/SteamLibrary/steamapps/common/Halo Infinite/deploy`
-	ridgelinePC  = gameRoot + `/pc/levels/multi/ridgeline/ridgeline-rtx-new.module`
-	ridgelineDS  = gameRoot + `/ds/levels/multi/ridgeline/ridgeline-rtx-new.module`
-	catalystAny  = gameRoot + `/any/levels/multi/catalyst/catalyst-rtx-new.module`
-	minInstances = 10000
-)
+const minInstances = 10000
 
-func requireModule(t *testing.T, path string) {
+// moduleDuJeu compose le chemin d'un module, ou declare le test absent.
+//
+// L'installation n'est plus ecrite en dur ici : elle passe par himap.DeployRoot()
+// (deploy_root.go). Motif — le chemin cable pointait sur un disque qui n'existe plus, et
+// ces tests se declaraient « module absent » en passant au vert.
+func moduleDuJeu(t *testing.T, variante, carte string) string {
 	t.Helper()
-	if _, err := os.Stat(path); err != nil {
-		t.Skipf("module absent (%s)", path)
+	dir, err := LevelsDir(variante)
+	if err != nil {
+		t.Skipf("installation du jeu introuvable : %v", err)
 	}
+	p := filepath.Join(dir, carte, carte+"-rtx-new.module")
+	if _, err := os.Stat(p); err != nil {
+		t.Skipf("module absent (%s)", p)
+	}
+	return p
 }
 
 // TestPluginInstanceStride verrouille l'accord entre le plugin sbsp.xml et la taille
@@ -41,8 +47,7 @@ func TestPluginInstanceStride(t *testing.T) {
 // Ce dernier est l'ORACLE INTERNE par instance — il ne peut passer que si les offsets
 // de la base, de l'AABB et de la sphère sont tous corrects simultanément.
 func TestRidgelineInstancesGeometry(t *testing.T) {
-	requireModule(t, ridgelinePC)
-	bsps, err := ReadModuleInstances(ridgelinePC)
+	bsps, err := ReadModuleInstances(moduleDuJeu(t, "pc", "ridgeline"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -28,14 +28,25 @@ dequantification, l'assemblage des triangles en monde.
 lecture, pas par execution. Le gate des artefacts ne le couvre pas : `replay-build` lit des
 fichiers FIGES, il ne repasse pas par `himodule`.
 
-- [ ] **E1** Regenerer `ridgeline.json` et `sgh_streets.json` depuis les modules et les
+- [x] **E1** Regenerer `ridgeline.json` et `sgh_streets.json` depuis les modules et les
       comparer aux versions figees du depot. Egalite attendue au centieme (le document est
       arrondi au centimetre). Un ecart = un bug de lecture a corriger AVANT de porter quoi
       que ce soit.
-- [ ] **E2** Figer cette comparaison en test (`-tags=gamefiles` comme les tests existants
+- [x] **E2** Figer cette comparaison en test (`-tags=gamefiles` comme les tests existants
       de `himap`, qui se declarent absents quand le jeu n'est pas installe).
 
-**Gate E** : E1 vert sur les deux cartes, E2 rouge si on mute un offset de `himodule`.
+**Gate E** : PASSE le 2026-08-08. E1 rend l'egalite EXACTE sur les deux cartes — 10 223 et
+10 908 emprises, zero ecart, ecart max 0,000 m, tous les champs identiques hors
+`generatedAt`. E2 est fige dans `cmd/mapstruct-build/equivalence_gamefiles_test.go` et sa
+mutation a ete jouee : `insOffAABB` decale de 0x7C a 0x80 rend les deux cartes ROUGES.
+
+**Decouverte traitee en passant, parce qu'elle bloquait le gate** : le chemin de
+l'installation etait ecrit en dur a TROIS endroits, tous pointant vers `D:/SteamLibrary`,
+un disque qui n'est plus monte. Les tests `gamefiles` de `himap` ne le disaient pas — ils
+se declaraient « module absent » et passaient au VERT. Centralise dans
+`himap.DeployRoot()` / `himap.LevelsDir()` (variable `LEVELUP_HALO_DEPLOY`, puis
+emplacements connus), avec un garde-rail grep qui interdit le litteral ailleurs. Les deux
+tests `gamefiles` TOURNENT desormais au lieu de se declarer absents.
 
 ## 2. Le portage, etape par etape
 
