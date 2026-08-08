@@ -88,13 +88,26 @@ func (c *MapQuantCatalog) Lookup(mapName string) (MapQuantEntry, error) {
 	return e, nil
 }
 
-// rankedSuffix est le suffixe de playlist accolé au nom de carte côté API ; il ne change
-// pas la géométrie.
-const rankedSuffix = " - ranked"
+// variantSuffixes : suffixes accolés au nom de carte côté API pour désigner une variante
+// de PLAYLIST ou de SANDBOX. Aucun ne change la géométrie, donc aucun ne change les
+// bornes monde. Retirés dans cet ordre (le second peut suivre le premier).
+//
+//   - « - Ranked » : playlist classée, même carte.
+//   - « Heavies » : réglage d'armes et de véhicules. Vérifié sur pièces le 2026-08-08 —
+//     dans map_objectives.json, Fragmentation / Highpower / Breaker et leur variante
+//     Heavies portent le MÊME level_id (l'identifiant de niveau moteur, root[1][0][0] du
+//     .mvar), et les trois zones de Bastion de Fragmentation Heavies sont au centimètre
+//     sur celles de Fragmentation. Même niveau => même BSP => mêmes bornes.
+//     Couverture regagnée sur le registre : 43 matchs (22 Fragmentation, 11 Highpower,
+//     10 Breaker).
+var variantSuffixes = []string{" - ranked", " heavies"}
 
 // NormalizeMapName met le nom de carte sous sa forme de clé : minuscules, espaces
-// resserrés, suffixe de playlist retiré.
+// resserrés, suffixes de variante retirés.
 func NormalizeMapName(s string) string {
 	n := strings.ToLower(strings.Join(strings.Fields(s), " "))
-	return strings.TrimSuffix(n, rankedSuffix)
+	for _, suf := range variantSuffixes {
+		n = strings.TrimSuffix(n, suf)
+	}
+	return n
 }
