@@ -125,6 +125,7 @@ func ctfFatalReport(t *testing.T, cat *filmdec.MapQuantCatalog, dir, short, mapN
 	fmt.Fprintf(&b, "morts_du_fil\t%d\nevenements_kill\t%d\ncouples_tueur_victime\t%d\nkills_sans_mort_appariee\t%d\n",
 		len(deaths), nKills, len(pairs), nUnpaired)
 	ctfWriteFatalDelays(&b, pairs, fire, table)
+	ctfWriteKillPositions(&b, pos, tracks, augB, lives, table, pairs, off)
 	fmt.Fprintf(&b, "\n# maillon 3 et 4 — le tir du tueur existe-t-il, et sait-on le placer\n")
 	ctfWriteFatalCoverage(&b, "pont_actuel", pairs, fire, tracks, owners, table)
 	ctfWriteFatalCoverage(&b, "pont_ferme", pairs, fire, tracks, augB, table)
@@ -136,6 +137,38 @@ func ctfFatalReport(t *testing.T, cat *filmdec.MapQuantCatalog, dir, short, mapN
 			ctfFatalStatus(p, fire, tracks, augB, table))
 	}
 	return b.String()
+}
+
+// ctfWriteKillPositions — LA MESURE QUE L'UTILISATEUR A REMISE DROIT LE 2026-08-08.
+//
+// « On a la victime, on a le tueur, on a le timing et on a la position du joueur assez
+// précisément. Pourquoi c'est si dur de faire une corrélation ? » — Ça ne l'est pas, et la
+// question précédente était mal posée. Poser une MORT sur la carte ne demande AUCUN record de
+// tir : il suffit de la position des deux joueurs à cet instant, donc du seul pont. C'est ce que
+// `BuildKillPositions` produit, et c'est ce que cette mesure chiffre — à ne pas confondre avec
+// la localisation du TIR fatal (maillons 3 et 4 ci-dessous), qui exige en plus un record de tir.
+func ctfWriteKillPositions(b *strings.Builder, pos []filmdec.BipedPosition,
+	tracks map[uint32]slotTrack, owner map[uint32]int, lives []lifeSpan,
+	tbl PlayerIndexTable, pairs []ctfKillPair, off int64) {
+	named := map[uint32]uint64{}
+	for _, l := range lives {
+		if l.xuid != 0 {
+			named[l.slot] = l.xuid
+		}
+	}
+	slotXUID := extendSlotXUID(named, owner, tbl.ByXUID)
+	kills := make([]KillRef, 0, len(pairs))
+	for _, p := range pairs {
+		kills = append(kills, KillRef{KillerXUID: p.killerXUID, VictimXUID: p.victimXUID,
+			TimeMS: int64(p.timeMS)})
+	}
+	_, rep := BuildKillPositions(pos, slotXUID, kills, off*1000)
+	fmt.Fprintf(b, "\n# LA MORT SUR LA CARTE — positions des deux joueurs, sans aucun record de tir\n")
+	fmt.Fprintf(b, "morts\t%d\tdeux_positions\t%d\ttueur_seul\t%d\tvictime_seule\t%d\tecartees\t%d\thors_pont\t%d\n",
+		rep.Kills, rep.Both, rep.KillerOnly, rep.VictimOnly, rep.Dropped, rep.NoBridge)
+	fmt.Fprintf(b, "taux_deux_positions\t%.4f\ttaux_au_moins_une\t%.4f\n",
+		ratio(rep.Both, rep.Kills), ratio(rep.Kills-rep.Dropped, rep.Kills))
+	_ = tracks
 }
 
 // ctfHighlightEvents lit TOUS les événements du chunk highlight (morts ET frags), là où
