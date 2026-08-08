@@ -57,6 +57,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 )
 
 // atlasTags : les deux bitmaps d'icônes communs à toutes les armes, et le style que chacun
@@ -79,7 +80,8 @@ type iconEntry struct {
 	Index      int    `json:"index"`
 	Style      string `json:"style"`
 	File       string `json:"file"`
-	WeaponKey  string `json:"arme,omitempty"` // le weapon_key du registre ; nomme `arme` car gitleaks voit un secret dans tout identifiant contenant « key » suivi d une chaine a forte entropie
+	GameName   string `json:"nom_jeu,omitempty"` // nom INTERNE du jeu, craqué (cf. names.go)
+	WeaponKey  string `json:"arme,omitempty"`    // le weapon_key du registre ; nomme `arme` car gitleaks voit un secret dans tout identifiant contenant « key » suivi d une chaine a forte entropie
 	SourceTag  string `json:"source_tag"`
 	SourceW    int    `json:"source_w"`
 	SourceH    int    `json:"source_h"`
@@ -135,8 +137,25 @@ func main() {
 	// Les 3 manquantes sont les grenades : elles ne sont pas des `weap` (elles vivent en
 	// `eqip` + `proj`, déclarés par le tag de globals `gggl`) et n'ont donc pas de bloc
 	// `UI display info` à lire. C'est attendu, pas un échec.
-	fmt.Printf("armes résolues : %d/%d familles (les 3 manquantes sont les grenades)\n\n",
+	fmt.Printf("armes résolues : %d/%d familles (les 3 manquantes sont les grenades)\n",
 		len(icons), len(weaponFamilies()))
+
+	// Le nom INTERNE de chaque icône, craqué contre les chaînes du binaire du jeu. Bonus :
+	// son absence ne fait pas échouer l'extraction.
+	indexOwned := make(map[int]bool, len(icons))
+	for _, w := range icons {
+		indexOwned[w.Index] = true
+	}
+	canon := make(map[uint32]bool, len(icons))
+	for _, w := range weaponFamilies() {
+		canon[w.ID] = true
+	}
+	names, err := resolveIconNames(ix, canon, indexOwned)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "noms d'icônes:", err)
+		os.Exit(1)
+	}
+	fmt.Printf("noms craqués   : %d index de l'atlas d'armes\n\n", len(names))
 
 	var entries []iconEntry
 	for _, at := range atlasTags {
@@ -155,12 +174,16 @@ func main() {
 			}
 			// Le weapon_key ne vaut que pour les deux atlas d'armes : l'atlas sandbox a
 			// sa propre numérotation, sans rapport avec `sprite index`.
-			key := ""
+			key, gameName := "", ""
 			if at.ID == 0xbc17adf1 || at.ID == 0xe39747c8 {
 				key = keyByIndex[idx]
+				// Plusieurs noms = plusieurs `weap` revendiquent l'index (variantes de
+				// campagne à index périmé). Tous sont publiés : arbitrer donnerait une
+				// étiquette fausse avec l'apparence d'une certitude.
+				gameName = strings.Join(names[idx], " | ")
 			}
 			entries = append(entries, iconEntry{
-				Index: idx, Style: at.Style, File: name, WeaponKey: key,
+				Index: idx, Style: at.Style, File: name, WeaponKey: key, GameName: gameName,
 				SourceTag: fmt.Sprintf("%08x", at.ID),
 				SourceW:   im.W, SourceH: im.H,
 				CroppedW: img.Bounds().Dx(), CroppedH: img.Bounds().Dy(),
