@@ -185,7 +185,7 @@ var canonicalOrder = []string{
 	"shared_kill_events_credit_base_v1",                // shared
 	"shared_kill_events_from_pairs_v1",                 // shared (J4 : reprise dédupliquée de killer_victim_pairs -> match_kill_events + drop v_killer_victim_full ; la table source RESTE)
 	"shared_objective_events_v1",                       // shared
-	"shared_objective_score_v1",                        // shared
+	"shared_objective_score_v1_drop",                   // shared (v7.5 lot 3 : DROP match_objective_score_timeline ; remplace shared_objective_score_v1, dont le créateur est supprimé)
 	"shared_match_player_positions_v1",                 // shared
 	"shared_pve_append_only_v1",                        // shared_pve
 	"rebuild_match_participants_defeat_art_corruption", // shared

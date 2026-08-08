@@ -52,7 +52,6 @@ func main() {
 		dryRun   = flag.Bool("dry-run", false, "Force le mode lecture seule (équivalent à ne pas passer -write)")
 		write    = flag.Bool("write", false, "Persiste sur -db (sinon shadow / lecture seule)")
 		weapons  = flag.Bool("weapons", false, "Mode ARMES : attribution v3 + rapport de comparaison §4 vs v2")
-		score    = flag.Bool("score", false, "Mode SCORE : timeline de score per-équipe Strongholds/KOTH (objectivescore)")
 		posmode  = flag.Bool("positions", false, "Mode POSITIONS : décodage des positions keyframe (match-level, §N)")
 		// firePi / relax3 — overrides de MESURE (isolation des leviers §8/§9). Vide =
 		// défaut orchestrateur (auto-layout + relax3 par défaut). firePi ∈ {auto,4high,
@@ -78,7 +77,6 @@ func main() {
 		dbPath:    *dbPath,
 		write:     doWrite,
 		weapons:   *weapons,
-		score:     *score,
 		positions: *posmode,
 		firePi:    *firePi,
 		relax3:    *relax3,
@@ -96,7 +94,6 @@ type runConfig struct {
 	dbPath    string
 	write     bool
 	weapons   bool   // mode ARMES (attribution v3 + rapport §4) au lieu des events objectif
-	score     bool   // mode SCORE (timeline objectivescore Strongholds/KOTH)
 	positions bool   // mode POSITIONS (décodage keyframe match-level, §N)
 	firePi    string // MESURE: override layout fire-pi (vide = défaut auto)
 	relax3    string // MESURE: override recall relâché (vide = défaut)
@@ -137,8 +134,6 @@ func run(ctx context.Context, cfg runConfig) error {
 	switch {
 	case cfg.weapons:
 		kind = "weapons-v3"
-	case cfg.score:
-		kind = "objective-score"
 	case cfg.positions:
 		kind = "positions"
 	}
@@ -146,9 +141,6 @@ func run(ctx context.Context, cfg runConfig) error {
 
 	if cfg.weapons {
 		return runWeapons(ctx, conn, cfg, ids)
-	}
-	if cfg.score {
-		return runScore(ctx, conn, cfg, ids)
 	}
 	if cfg.positions {
 		return runPositions(ctx, conn, cfg, ids)
@@ -167,9 +159,9 @@ func run(ctx context.Context, cfg runConfig) error {
 // -write objective-events garde le RW direct de openConn. toTemp signale une copie
 // temp jetable.
 func openRunConn(cfg runConfig) (c *conn, toTemp bool, err error) {
-	// Le -write SCORE/POSITIONS écrit sur une table shadow/additive : même garde-fou
+	// Le -write POSITIONS écrit sur une table shadow/additive : même garde-fou
 	// que les armes (copie temp si la DB est verrouillée par le serveur).
-	if (cfg.weapons || cfg.score || cfg.positions) && cfg.write {
+	if (cfg.weapons || cfg.positions) && cfg.write {
 		return openWeaponsWriteConn(cfg.dbPath)
 	}
 	c, err = openConn(cfg.dbPath, cfg.write)
@@ -190,14 +182,11 @@ func runWeapons(ctx context.Context, conn *conn, cfg runConfig, ids []matchRef) 
 }
 
 // ensureWriteTables applique la migration des tables shadow nécessaires au -write :
-// weapon_kills_v3 (ARMES), shared_objective_score_v1 (SCORE), sinon
-// shared_objective_events_v1.
+// weapon_kills_v3 (ARMES), positions, sinon shared_objective_events_v1.
 func ensureWriteTables(db *sql.DB, cfg runConfig) error {
 	switch {
 	case cfg.weapons:
 		return ensureMigration(db, "shared_weapon_kills_v3")
-	case cfg.score:
-		return ensureMigration(db, "shared_objective_score_v1")
 	case cfg.positions:
 		return ensureMigration(db, "shared_match_player_positions_v1")
 	default:

@@ -2,7 +2,10 @@ MINI-BOBINE objectivescore — provenance
 
 Film source      : 7344d24f (data/cache/film_chunks/7344d24f)
 Mode             : Arena:Strongholds
-Chunks conserves : les 8 premiers chunks TYPE-2 ANCRES du film
+Chunks conserves : les 8 DERNIERS chunks TYPE-2 ANCRES du film (instants 460 s a
+                   600 s d un film qui commence a 20 s). (Ligne corrigee le
+                   2026-08-08 : elle disait « premiers », ce que les instants
+                   conserves dementent.)
 Forme            : prefixe d octets BRUTS, tronque a la fin du premier
                    paquet TYPE_2 complet, range en zlib (forme employee par le
                    cache film lui-meme). Aucun octet n est modifie.
@@ -14,4 +17,5 @@ verifie chunk par chunk que le prefixe decode EXACTEMENT comme le chunk entier (
 position de token, memes varints) et refuse d ecrire sinon. Elle verifie de meme que
 la decompression rend octet pour octet le prefixe d origine.
 
-Regeneration : voir minibobine_test.go.
+Regeneration : la recette vivait dans minibobine_test.go, supprime le 2026-08-08 avec
+le paquet objectivescore. Voir ../../README.md, section Regeneration (historique git).
