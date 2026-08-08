@@ -1,3 +1,50 @@
+## [2026-08-08] filmdec i0 `ti=41` — fin de la phase RE, T1 positif, et le vrai périmètre
+
+**Statut** : Complété pour ce que je peux conclure seul. Note :
+`.ai/V7.5/film_re/NOTE_I0_TI41_POSITION_PROJECTILE.md`. Branche `research/v75-precision`.
+Rien de porté dans `traverse.go`, aucun fichier de production touché.
+
+**Bilan de la phase RE, et il est humiliant dans le bon sens : sur 4 écarts que j'avais annoncés
+contre le port Go, 3 étaient à moi.** (1) le « troisième encodage de position » n'existe pas —
+`FUN_14076f91c` ne lit aucun bit, c'est un test de deux globales ; (2) le `R(2)` prétendument
+conditionnel est gardé par `FUN_140492128` = `isfinite(vec3)`, toujours vrai sur un vec3
+déquantifié borné, donc le port a raison de le lire inconditionnellement ; (3) reste ouvert
+seulement la garde réelle du handle-tail `FUN_14076e3e4`. **Le port était juste ; c'est ma
+lecture des gardes qui ne l'était pas.** D'où la règle posée dans la note : pour toute branche
+vue dans un décompilé, établir si sa condition vient du BITSTREAM ou d'une GLOBALE avant de la
+porter. Troisième occurrence du motif dans ce binaire en une seule journée.
+
+**Ce que la RE a quand même rapporté.** La branche « plage par défaut » n'est pas opaque : la
+formule de largeur du dossier est **confirmée dans le binaire** (`W = min(26, bitLen(ceil(extent
+/ (2*step))))`, plafond `0x1a`), avec trois précisions neuves — la déquantification divise par
+`1 << W` et ajoute un demi-pas ; `FUN_140be9b88` **n'utilise pas** le `L` qu'on lui passe pour la
+largeur ; la lecture des bits est dans `FUN_1424cbed4`, pas dans le déquantifieur. Et les deux
+plages sont décodées octet par octet : **`DAT_143b8c6d0` vaut ± 100** (celle de cette branche) et
+`DAT_143b8c6b8` ± 20000 (celle que citait le dossier) — 0x18 d'écart, un AABB, piège confirmé.
+**Mais le pas vient d'une globale de runtime : les largeurs ne sont PAS dérivables
+statiquement.** L'hypothèse « 59 = 3 x 19 + 2 » ne peut ni se confirmer ni s'infirmer au
+désassembleur ; elle se mesurera sur le film. Fin de la phase RE.
+
+**T1 (atteignabilité) — POSITIF, et c'est le risque principal qui s'écarte.** Recensement des
+archétypes du monde de keyframe sur 12 films (`cmd/tmp_ti41`, via `WalkKeyframeWorld` déjà
+validé) : `ti=41` porte **185 records sur 132 slots distincts, présent sur 11 films sur 12**.
+L'entité projectile est donc bien une entité répliquée du film.
+
+**Ce que T1 ne prouve pas, et c'est ce qui redéfinit le périmètre.** 11 entités par film quand un
+Fiesta porte des milliers de tirs : ce n'est pas un déficit de réplication mais un **artefact
+d'échantillonnage** (un keyframe toutes les ~20 s, un projectile vit une fraction de seconde ; le
+rapport 185 records / 132 slots — la plupart n'apparaissent qu'une fois — en est la signature).
+**La trajectoire vit dans le flux DELTA**, où un record ne porte aucun typeIndex et résout son
+archétype par le World. **Donc la voie trajectoire ne dépend pas seulement de `i0` de `ti=41` :
+elle dépend du binding World du décodeur stateful** — le blocage de fond décrit en §0bis de
+`README_KILLWEAPON_INDEX.md`. `i0` exact est NÉCESSAIRE, pas SUFFISANT.
+
+**Conclusion / prochaine étape.** Ce qui reste (T2 largeurs par profil de bascule, T3 chaînage
+sur i1, puis portage) est du travail de décodeur stateful, pas un correctif de composant — et il
+faut que ce soit dit avant que quiconque estime le coût sur la seule base de la grammaire. Rien
+ne doit être porté dans `traverse.go` avant T2 et T3 : le composant est sur le chemin de tous les
+archétypes qui le portent, une régression y serait silencieuse.
+
 ## [2026-08-08] filmdec — i0 de `ti=41` (position du projectile) : ouverture, et une règle de lecture du binaire
 
 **Statut** : En cours. Note de travail tenue au fil de l'eau :
