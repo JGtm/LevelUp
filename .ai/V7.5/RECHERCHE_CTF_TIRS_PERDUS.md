@@ -2,9 +2,17 @@
 
 > Session de recherche du 2026-08-08, branche `research/v75-ctf`. Répond à la **décision #2**
 > du master plan (`../PLAN_MASTER_FILM_KILLFEED_REJEU.md` §8 et §J4.2), qui conditionne le lot
-> « rejeu 2D public » (piste F). Aucun code de production n'a été modifié : la mesure passe par
-> deux fichiers de test sous garde d'environnement,
-> `apps/go-api/internal/analysis/replay/ctf_research_test.go` et `ctf_bridge_research_test.go`.
+> « rejeu 2D public » (piste F). La mesure passe par **quatre instruments sous garde
+> d'environnement** dans `apps/go-api/internal/analysis/replay/` : `ctf_research_test.go`,
+> `ctf_bridge_research_test.go`, `ctf_closure_research_test.go`, `ctf_fatal_research_test.go`.
+>
+> **Ce document a été écrit pendant la session, et amendé quatre fois par les questions de
+> l'utilisateur** — dénominateur (§3bis), deux numéros confondus (§4.0), tirs fatals (§8), et
+> question mal posée (§8.4bis). Les corrections sont dans le texte, pas effacées : chacune dit ce
+> qui était faux et pourquoi.
+>
+> **Le code de production A ÉTÉ MODIFIÉ APRÈS ce verdict**, sur accord de l'utilisateur : les
+> fermetures du §7.5 sont désormais dans `closures.go`. Voir `PLAN_LOT_PONT_ET_KILLPOSITIONS.md`.
 
 ## 0. VERDICT EN UNE PAGE
 
@@ -38,9 +46,17 @@ pas sur les tirs du match. Le film n'en porte que 69 à 87 % en arène (23 % en 
 la part des tirs RÉELS posés sur la carte vaut **61 à 83 %**, pas 90 %. Cette autre moitié du
 sujet est le chantier de la piste E, pas celui-ci.
 
-**Recommandation (§7)** : le rejeu public n'est pas livrable **avec le code d'aujourd'hui**, mais
-le blocage n'est plus une inconnue — c'est **un lot d'implémentation borné**, sans aucune
-rétro-ingénierie nouvelle. Exécuter ce lot dans v7.5 ou plus tard est une décision utilisateur.
+**LES MORTS SE LOCALISENT DÉJÀ À 88,2 %, ET C'EST LE RÉSULTAT LE PLUS ACTIONNABLE DU JOUR (§8).**
+Sur 718 morts, 633 portent la position du tueur ET de la victime ; 98,3 % en portent au moins
+une ; 12 seulement (1,7 %) sont inplaçables. **Cela ne demande AUCUN record de tir** — donc rien
+de la colonne ①. Qui a tué qui, quand et avec quelle arme est par ailleurs déjà en base à
+**99,55 %** sur 74 909 morts. Il ne manque que le **OÙ**, et la table `kill_positions` qui
+l'attend est vide.
+
+**Recommandation (§7, amendée au §8.5)** : le rejeu public n'est pas livrable **avec le code
+d'aujourd'hui**, mais le blocage n'est plus une inconnue — c'est **un lot d'implémentation
+borné**, sans aucune rétro-ingénierie nouvelle. Et l'ordre des priorités a basculé : `kill_positions`
+d'abord, parce qu'il sert la demande la plus forte et **ne dépend pas du rejeu 2D**.
 
 ---
 
@@ -614,6 +630,34 @@ eux atteignent la complétude.** Basculer le rejeu sur ce scanner ferait passer 
 Le rejeu a besoin d'un INSTANT par tir. Les paquets portent leur horodatage, donc c'est probable,
 mais **ce n'est pas vérifié** — et un scanner qui compte bien sans dater ne servirait pas le
 rejeu. À instruire avant de s'engager.
+
+### 8.6 ET LES TIRS NON FATALS ?  *(question utilisateur, 2026-08-08)*
+
+**Ils sont l'écrasante majorité, et ce document parle d'eux depuis le début sans le dire.** Sur
+les sept films : **17 281 records de tir** pour **718 morts**. Les tirs fatals ne pèsent que
+**4,2 %** du calque ; « tous les tirs » et « les tirs non fatals » sont donc, à 4 % près, le même
+chiffre. Aucune mesure séparée n'est nécessaire, et en produire une donnerait l'illusion d'un
+troisième sujet là où il n'y en a que deux.
+
+Leur état, en une ligne : **89 à 96 % de ce que le film porte est placé** (§7.5), et le film porte
+**69 à 87 %** des tirs du match en arène (23 % en Fiesta, §3bis) — soit **61 à 83 % des tirs réels
+sur la carte**, et **jusqu'à 77-101 % de complétude du flux** si le scanner de paquets est porté
+(§8.4quater).
+
+**LA DIFFÉRENCE DE NATURE AVEC LES MORTS, ET ELLE EST STRUCTURELLE.** Un tir non fatal n'a
+d'existence QUE par son record : s'il n'est pas dans le film, rien ne le remplace. Une mort, elle,
+est connue par le fil des morts **indépendamment de tout record de tir** — c'est pourquoi elle se
+localise à 88,2 % alors que les tirs plafonnent à 61-83 %.
+
+| | ce qui l'atteste | dépend de la complétude du flux ? | couverture |
+|---|---|---|---|
+| **une mort** | le fil des morts (99,55 % avec son arme) | **NON** | **88,2 %** localisée des deux côtés |
+| **un tir** | son propre record, et rien d'autre | **OUI** | 61-83 % des tirs réels |
+
+**Conséquence pratique** : un fil des éliminations sur la carte est atteignable maintenant ; un
+nuage de tirs exhaustif ne le sera pas tant que la colonne ① n'est pas traitée. Ce sont deux
+livrables de maturité différente, et les confondre exposerait le second au reproche fait au
+premier.
 
 ### 8.5 CE QUE ÇA CHANGE DANS L'ORDRE DES PRIORITÉS
 
