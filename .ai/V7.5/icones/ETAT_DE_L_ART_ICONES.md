@@ -22,13 +22,13 @@ grenades lancees et pictogrammes de mort.
 
 **Les noms internes sont CRAQUES** : les tags ne portent que des murmur3, les chaines sont
 strippees en release. **21 index nommes cote armes** (dont 10 marques « ? », voir §4) et
-**44 cote kill feed**, ces derniers lies a leur index par le jeu lui-meme.
+**55 cote kill feed**, ces derniers lies a leur index par le jeu lui-meme.
 
 | Atlas | Tag | Images | Dimensions | Nommes |
 |---|---|---|---|---|
 | Armes, contour | `bc17adf1` | 40 | ~330x117 | 26 par le registre, 21 par le nom interne |
 | Armes, silhouette | `e39747c8` | 40 | idem, index par index | idem |
-| Kill feed | `0302cad3` | 88 | ~110x38 | 44 par sa table `bitd` |
+| Kill feed | `0302cad3` | 88 | ~110x38 | 55 par sa table `bitd` |
 
 ---
 
@@ -110,11 +110,19 @@ Motif du kill feed : **`killfeed_<nom>`**, trouve en essayant 23 prefixes x 8 su
 (14 608 combinaisons) — 4 correspondances immediates, puis 43 en prefixant tout le vocabulaire
 du binaire.
 
-Un **vocabulaire curate** (~90 mots) comble ce que la moisson ne rend pas : `fusion_coil`,
+Un **vocabulaire curate** (~95 mots) comble ce que la moisson ne rend pas : `fusion_coil`,
 `power_seed`, `machine_gun`, `sandwich` ne figurent pas dans le binaire comme jeton isole.
 Chaque entree n'est retenue que si son hachage tombe **exactement** sur un StringID cherche :
 sur 32 bits, une centaine de candidats rend une collision fortuite negligeable. Le test echoue
 bruyamment, il ne devine pas.
+
+**Ce qui a le mieux marche : demander a un humain qui REGARDE les icones.** L utilisateur a
+fourni une liste de mots en parcourant la page (`perfect`, `waterfall`, `backsmack`, `vip`,
+`stick`, `core`, `kinetic barrel`, `flag`, « le Falcon avec des tourelles differentes »,
+« les tourelles fixes ») : **9 correspondances immediates**. Et ces mots ont revele des MOTIFS
+— `turret_<type>`, `<engin>_turret`, `<grenade>_grenade_stick`, `<objet>_melee`, `falcon_<arme>`
+— dont la declinaison systematique (`patternVocabulary`) en a rendu **3 de plus**. Le kill feed
+passe de 43 a **55 noms sur 88**. Aucune moisson automatique n avait donne ca.
 
 **Calibration avant application** : le #35 est le Sandwich d'apres le registre, et
 `LabelHash("sandwich")` retombe sur son StringID. La methode est verifiee sur un cas connu
@@ -194,27 +202,27 @@ Noms lus dans la table `bitd`, donc lies a leur index par le jeu lui-meme.
 | # | nom | # | nom | # | nom | # | nom |
 |---|---|---|---|---|---|---|---|
 | 00 | battle_rifle | 01 | — | 02 | assault_rifle | 03 | — |
-| 04 | — | 05 | — | 06 | hydra | 07 | sniper |
+| 04 | — | 05 | turret_chaingun | 06 | hydra | 07 | sniper |
 | 08 | — | 09 | — | 10 | — | 11 | — |
 | 12 | — | 13 | gravity_hammer | 14 | — | 15 | skewer |
 | 16 | — | 17 | plasma_pistol | 18 | sword | 19 | needler |
-| 20 | — | 21 | — | 22 | heatwave | 23 | — |
+| 20 | — | 21 | turret_plasma | 22 | heatwave | 23 | — |
 | 24 | sentinelbeam | 25 | — | 26 | warthog | 27 | rockethog |
 | 28 | mongoose | 29 | gungoose | 30 | pelican | 31 | scorpion |
 | 32 | wasp | 33 | wraith | 34 | phantom | 35 | banshee |
-| 36 | ghost | 37 | chopper | 38 | — | 39 | — |
+| 36 | ghost | 37 | chopper | 38 | scorpion_turret | 39 | — |
 | 40 | — | 41 | — | 42 | — | 43 | — |
 | 44 | — | 45 | — | 46 | frag_grenade | 47 | plasma_grenade |
-| 48 | — | 49 | spike_grenade | 50 | — | 51 | — |
-| 52 | — | 53 | — | 54 | callout | 55 | environment |
+| 48 | — | 49 | spike_grenade | 50 | plasma_grenade_stick | 51 | spike_grenade_stick |
+| 52 | — | 53 | bomb_melee | 54 | callout | 55 | environment |
 | 56 | repulsor | 57 | ricochet | 58 | — | 59 | ball |
 | 60 | splatter | 61 | suicide | 62 | — | 63 | — |
-| 64 | headshot | 65 | melee | 66 | — | 67 | — |
+| 64 | headshot | 65 | melee | 66 | back_smack | 67 | flag_melee |
 | 68 | — | 69 | player_left | 70 | player_joined | 71 | player_rejoined |
 | 72 | grappleshot | 73 | bandit | 74 | — | 75 | — |
-| 76 | sandwich | 77 | — | 78 | — | 79 | quantum |
-| 80 | — | 81 | mutilator | 82 | — | 83 | — |
-| 84 | — | 85 | falcon | 86 | — | 87 | — |
+| 76 | sandwich | 77 | — | 78 | waterfall | 79 | quantum |
+| 80 | — | 81 | mutilator | 82 | — | 83 | perfect |
+| 84 | — | 85 | falcon | 86 | falcon_chaingun | 87 | — |
 ---
 
 ## 3. CE QUI A ETE REFUTE (ne pas re-tenter)
@@ -250,7 +258,7 @@ Noms lus dans la table `bitd`, donc lies a leur index par le jeu lui-meme.
   restent publies — mais marques, jamais servis comme des faits. A l inverse `fusion_coil`
   (27), `power_seed` (28) et `machine_gun` (8) collent a l image : le marquage dit le DOUTE,
   pas la faute.
-- **8 index sans nom ni cle** cote armes, **44** cote kill feed. Le levier est le vocabulaire
+- **8 index sans nom ni cle** cote armes, **33** cote kill feed. Le levier est le vocabulaire
   curate : chaque mot ajoute est teste, jamais affiche sans preuve.
 - **Les 3 grenades du registre** n'ont pas de bloc `UI display info` : ce ne sont pas des `weap`
   (elles vivent en `eqip` + `proj` declares par `gggl`). Leurs icones existent en revanche dans

@@ -108,7 +108,7 @@
       cote. Seule l'identification du bloc PAR SON CONTENU tient.
     </p>
     <p class="note">
-      <b>Le NOM INTERNE est craque aussi</b>, pour 21 index cote armes et 44 cote kill feed — le tag porte un StringID (murmur3),
+      <b>Le NOM INTERNE est craque aussi</b>, pour 21 index cote armes et 55 cote kill feed — le tag porte un StringID (murmur3),
       pas une chaine, et il est retrouve en hachant les chaines du binaire du jeu (meme recette
       que le nommage des objets Forge). C est ce qui a rendu <code>mutilator</code> (#37),
       <code>skull</code> (#25), <code>flag</code> (#26), <code>ball | bomb</code> (#34),
@@ -151,7 +151,7 @@
   <p class="note">Armes vues de plus loin, vehicules, grenades lancees (regarder autour de
      l'index 46), vehicules et pictogrammes. <b>43 sont deja nommes</b> : le tag `bitd` du jeu porte
      leur table (identifiant + index), et les identifiants craquent en `killfeed_     l'index 46) et pictogrammes de mort.lt;nom     l'index 46) et pictogrammes de mort.gt;`.
-     Un seul style. <b>44 sont deja nommes</b> par la table `bitd` du jeu.</p>
+     Un seul style. <b>55 sont deja nommes</b> par la table `bitd` du jeu.</p>
   <div class="grid" id="gKF"></div>
 
   <h2>Armes du registre restant sans icone</h2>
@@ -196,14 +196,17 @@ const NOMS_JEU = {
   34:"ball | bomb ?", 35:"mythic_sandwich | sandwich ?", 37:"mutilator ?", 
 };
 const NOMS_KILLFEED = {
-  0:"battle_rifle", 2:"assault_rifle", 6:"hydra", 7:"sniper", 13:"gravity_hammer", 15:"skewer", 
-  17:"plasma_pistol", 18:"sword", 19:"needler", 22:"heatwave", 24:"sentinelbeam", 26:"warthog", 
-  27:"rockethog", 28:"mongoose", 29:"gungoose", 30:"pelican", 31:"scorpion", 32:"wasp", 
-  33:"wraith", 34:"phantom", 35:"banshee", 36:"ghost", 37:"chopper", 46:"frag_grenade", 
-  47:"plasma_grenade", 49:"spike_grenade", 54:"callout", 55:"environment", 56:"repulsor", 
+  0:"battle_rifle", 2:"assault_rifle", 5:"turret_chaingun", 6:"hydra", 7:"sniper", 
+  13:"gravity_hammer", 15:"skewer", 17:"plasma_pistol", 18:"sword", 19:"needler", 
+  21:"turret_plasma", 22:"heatwave", 24:"sentinelbeam", 26:"warthog", 27:"rockethog", 
+  28:"mongoose", 29:"gungoose", 30:"pelican", 31:"scorpion", 32:"wasp", 33:"wraith", 
+  34:"phantom", 35:"banshee", 36:"ghost", 37:"chopper", 38:"scorpion_turret", 
+  46:"frag_grenade", 47:"plasma_grenade", 49:"spike_grenade", 50:"plasma_grenade_stick", 
+  51:"spike_grenade_stick", 53:"bomb_melee", 54:"callout", 55:"environment", 56:"repulsor", 
   57:"ricochet", 59:"ball", 60:"splatter", 61:"suicide", 64:"headshot", 65:"melee", 
-  69:"player_left", 70:"player_joined", 71:"player_rejoined", 72:"grappleshot", 73:"bandit", 
-  76:"sandwich", 79:"quantum", 81:"mutilator", 85:"falcon", 
+  66:"back_smack", 67:"flag_melee", 69:"player_left", 70:"player_joined", 71:"player_rejoined", 
+  72:"grappleshot", 73:"bandit", 76:"sandwich", 78:"waterfall", 79:"quantum", 81:"mutilator", 
+  83:"perfect", 85:"falcon", 86:"falcon_chaingun", 
 };
 
 // Les 29 armes Halo Infinite du registre (registry.go + weapon_names.toml).
