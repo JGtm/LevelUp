@@ -61,8 +61,8 @@ var atlasTags = []struct {
 	// sort en tete du classement de bruit).
 	CleanThrough int
 }{
-	{0xbc17adf1, "contour", 39},
-	{0xe39747c8, "silhouette", 39},
+	{0xbc17adf1, "contour", 38},
+	{0xe39747c8, "silhouette", 38},
 	// Atlas « sandbox » : armes, vehicules, grenades lancees, et pictogrammes de mort. Le tag
 	// en declare 88 ; les images au-dela de l index 72 sortent RAYEES (des descripteurs faux
 	// positifs y tombent sur une ressource du bon poids, donc le controle arithmetique les
@@ -84,7 +84,9 @@ type iconEntry struct {
 	Verified   bool   `json:"align_verified"`
 	Suspect    bool   `json:"decode_suspect"`
 	Noise      string `json:"alpha_noise"`
-	FallbackPc string `json:"bc7_fallback_pct"`
+	RebuiltPc  string `json:"bc7_rebuilt_pct"`
+	OpaquePc   string `json:"bc7_opaque_pct"`
+	DegradedPc string `json:"bc7_degraded_pct"`
 }
 
 func main() {
@@ -121,7 +123,7 @@ func main() {
 		n := 0
 		limit := *maxIdx
 		for idx := 0; idx < limit; idx++ {
-			img, rate, im, err := decodeAlphaGlyph(ix, at.ID, idx)
+			img, st, im, err := decodeAlphaGlyph(ix, at.ID, idx)
 			if err != nil {
 				fmt.Printf("%-11s arrêt à #%d : %v\n", at.Style, idx, err)
 				break
@@ -139,7 +141,9 @@ func main() {
 				BC7Format: im.Format, Verified: imageVerified(ix, at.ID, idx),
 				Suspect:    idx > at.CleanThrough,
 				Noise:      fmt.Sprintf("%.4f", alphaNoise(img)),
-				FallbackPc: fmt.Sprintf("%.2f", rate),
+				RebuiltPc:  pct(st.Rebuilt, st.Blocks),
+				OpaquePc:   pct(st.Opaque, st.Blocks),
+				DegradedPc: pct(st.Degraded, st.Blocks),
 			})
 			n++
 		}
@@ -161,4 +165,12 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Printf("\n%d entrées -> %s\n", len(entries), filepath.Join(*out, "index.json"))
+}
+
+// pct rend un pourcentage lisible, ou "0.00" si le dénominateur est nul.
+func pct(n, total int) string {
+	if total <= 0 {
+		return "0.00"
+	}
+	return fmt.Sprintf("%.2f", 100*float64(n)/float64(total))
 }

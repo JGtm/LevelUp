@@ -1,13 +1,18 @@
 package main
 
-// bc7.go — DECODEUR BC7 (BPTC), modes 4, 5 et 6.
+// bc7.go — DECODEUR BC7 (BPTC).
 //
-// PERIMETRE ASSUME, ET POURQUOI. L histogramme mesure sur les icones donne 99 % de blocs en
-// modes 4/5/6 — les trois modes a UN SEUL sous-ensemble, qui se decodent sans les tables de
-// partition. Les modes restants (0-3, 7) exigent ces tables ; les recopier de memoire ferait
-// courir un risque d erreur SILENCIEUSE (une table fausse rend une image plausible mais
-// fausse). Ils sont donc rendus par la MOYENNE DE LEURS DEUX POINTS EXTREMES et COMPTES :
-// chaque image rapporte son taux de repli, et le taux mesure vaut ~1 %.
+// PERIMETRE, ET POURQUOI IL EST CE QU IL EST. Les modes 4, 5 et 6 (un seul sous-ensemble) se
+// decodent EXACTEMENT : ils ne demandent aucune table de partition. Ils representent 99 % des
+// blocs mesures sur ces icones.
+//
+// Le mode 7 est RECONSTRUIT (bc7_mode7.go) : c est le seul des modes multi-sous-ensembles qui
+// degradait le livrable, puisque les modes 0 a 3 n ont pas de canal alpha — leur alpha vaut
+// 255 partout et le repli le rend exactement, or seul l alpha est conserve dans le glyphe.
+//
+// Les tables de partition ne sont volontairement PAS recopiees ici : une table fausse rendrait
+// une image plausible mais fausse, et c est le pire cas. Ce qui manque est retrouve par
+// ajustement sur le niveau de mip inferieur.
 //
 // Reference : specification D3D11 BC7 (BPTC). Les poids d interpolation et les largeurs de
 // champs sont ceux de la norme ; rien n est devine.
@@ -66,7 +71,7 @@ func expand(v, bits int) int {
 
 // DecodeBC7Block ecrit un bloc 4x4 dans img a la position (bx*4, by*4).
 // Retourne true si le bloc a ete decode exactement, false s il a subi le repli.
-func decodeBC7Block(block []byte, img *image.NRGBA, x0, y0 int) bool {
+func decodeBC7Block(block []byte, img *image.NRGBA, x0, y0 int, guide *image.NRGBA) bool {
 	mode := bc7Mode(block[0])
 	r := &bitReader{b: block}
 	switch mode {
@@ -126,6 +131,12 @@ func decodeBC7Block(block []byte, img *image.NRGBA, x0, y0 int) bool {
 		w := readIdx(r, 4)
 		writeBlock(img, x0, y0, c, a0, a1, w, w, 4, 4, 0)
 		return true
+	case 7:
+		if decodeMode7(block, img, x0, y0, guide) {
+			return true
+		}
+		fallbackBlock(block, img, x0, y0, mode)
+		return false
 	default:
 		fallbackBlock(block, img, x0, y0, mode)
 		return false
@@ -241,22 +252,43 @@ func fallbackBlock(block []byte, img *image.NRGBA, x0, y0, mode int) {
 	}
 }
 
-// DecodeBC7 rend l image w*h portee par `data` (blocs 4x4, 16 octets, ordre ligne par ligne)
-// et le nombre de blocs tombes en repli.
-func decodeBC7(data []byte, w, h int) (*image.NRGBA, int) {
+// decodeBC7 rend l image w*h portee par `data` (blocs 4x4, 16 octets, ordre ligne par ligne).
+//
+// `guide` est le niveau de mip inferieur agrandi, ou nil. Il ne sert QU AUX BLOCS DE MODE 7,
+// dont la partition et la position d ancre ne sont pas reproduites ici : il permet de les
+// reconstruire par ajustement au lieu de les rendre en aplat (cf. bc7_mode7.go).
+//
+// Les trois compteurs rendus distinguent ce qui DEGRADE le livrable de ce qui ne le degrade
+// pas — la distinction compte, parce que seul l alpha est conserve dans le glyphe final :
+//
+//	rebuilt  blocs de mode 7 rebatis sur le temoin : alpha RECONSTRUIT ;
+//	opaque   blocs de modes 0 a 3 : ces modes n ont PAS de canal alpha, leur alpha vaut donc
+//	         255 partout et le repli le rend EXACTEMENT — seul le RGB est approche, et le RGB
+//	         est jete. Ce compteur ne signale aucune degradation du livrable ;
+//	degraded blocs de mode 7 SANS temoin : alpha rendu en aplat. La seule vraie degradation.
+func decodeBC7(data []byte, w, h int, guide *image.NRGBA) (img *image.NRGBA, rebuilt, opaque, degraded int) {
 	bw, bh := (w+3)/4, (h+3)/4
-	img := image.NewNRGBA(image.Rect(0, 0, w, h))
-	fb := 0
+	img = image.NewNRGBA(image.Rect(0, 0, w, h))
 	for by := 0; by < bh; by++ {
 		for bx := 0; bx < bw; bx++ {
 			o := (by*bw + bx) * 16
 			if o+16 > len(data) {
 				continue
 			}
-			if !decodeBC7Block(data[o:o+16], img, bx*4, by*4) {
-				fb++
+			block := data[o : o+16]
+			mode := bc7Mode(block[0])
+			if decodeBC7Block(block, img, bx*4, by*4, guide) {
+				if mode == 7 {
+					rebuilt++
+				}
+				continue
 			}
+			if mode == 7 {
+				degraded++
+				continue
+			}
+			opaque++
 		}
 	}
-	return img, fb
+	return img, rebuilt, opaque, degraded
 }
