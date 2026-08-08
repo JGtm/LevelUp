@@ -54,9 +54,15 @@ import (
 var atlasTags = []struct {
 	ID    uint32
 	Style string
+	Max   int // 0 = pas de plafond
 }{
-	{0xbc17adf1, "contour"},
-	{0xe39747c8, "silhouette"},
+	{0xbc17adf1, "contour", 0},
+	{0xe39747c8, "silhouette", 0},
+	// Atlas « sandbox » : armes, vehicules, grenades lancees, et pictogrammes de mort. Le tag
+	// en declare 88 ; les images au-dela de l index 72 sortent RAYEES (des descripteurs faux
+	// positifs y tombent sur une ressource du bon poids, donc le controle arithmetique les
+	// laisse passer). La coupe est ASSUMEE et bornee ici plutot que servie corrompue.
+	{0x0302cad3, "sandbox", 73},
 }
 
 // iconEntry décrit une icône extraite, telle qu'écrite dans index.json.
@@ -70,6 +76,8 @@ type iconEntry struct {
 	CroppedW   int    `json:"cropped_w"`
 	CroppedH   int    `json:"cropped_h"`
 	BC7Format  int    `json:"bc7_format"`
+	Verified   bool   `json:"align_verified"`
+	Noise      string `json:"alpha_noise"`
 	FallbackPc string `json:"bc7_fallback_pct"`
 }
 
@@ -77,7 +85,7 @@ func main() {
 	deploy := flag.String("deploy", "", "racine `deploy` des archives du jeu (auto-détectée si vide)")
 	out := flag.String("out", filepath.Join("..", "..", "static", "weapons-assets", "halo_infinite", "jeu"),
 		"dossier de sortie des PNG")
-	maxIdx := flag.Int("max", 39, "nombre d'images à extraire par atlas")
+	maxIdx := flag.Int("max", 120, "nombre d'images à extraire par atlas")
 	flag.Parse()
 
 	if *deploy != "" {
@@ -103,7 +111,11 @@ func main() {
 	var entries []iconEntry
 	for _, at := range atlasTags {
 		n := 0
-		for idx := 0; idx < *maxIdx; idx++ {
+		limit := *maxIdx
+		if at.Max > 0 && at.Max < limit {
+			limit = at.Max
+		}
+		for idx := 0; idx < limit; idx++ {
 			img, rate, im, err := decodeAlphaGlyph(ix, at.ID, idx)
 			if err != nil {
 				fmt.Printf("%-11s arrêt à #%d : %v\n", at.Style, idx, err)
@@ -119,7 +131,9 @@ func main() {
 				SourceTag: fmt.Sprintf("%08x", at.ID),
 				SourceW:   im.W, SourceH: im.H,
 				CroppedW: img.Bounds().Dx(), CroppedH: img.Bounds().Dy(),
-				BC7Format: im.Format, FallbackPc: fmt.Sprintf("%.2f", rate),
+				BC7Format: im.Format, Verified: imageVerified(ix, at.ID, idx),
+				Noise:      fmt.Sprintf("%.4f", alphaNoise(img)),
+				FallbackPc: fmt.Sprintf("%.2f", rate),
 			})
 			n++
 		}

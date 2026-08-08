@@ -1,3 +1,73 @@
+## [2026-08-08] v7.5 voie C (suite) — les grenades etaient dans un second atlas, et le nommage devient une page
+
+**Statut** : Complété. Branche `feat/v75-icones`, worktree `LevelUp-wt-icones`. Toujours NON
+branché : rien de `apps/web/` ni de `adapter_asset_urls.go` n'est touché.
+
+**Origine** : retour utilisateur sur la première livraison — « manque juste les grenades » et
+« peu de tes suggestions matchent ; une page pour indiquer clairement quoi est quoi ? ». Les
+deux remarques pointent le même défaut : l'attribution d'un nom n'est pas mon travail, elle
+est le sien, et je ne lui avais donné qu'une page en lecture.
+
+**Les grenades — trouvées, par une voie qui a d'abord échoué.** La remontée
+`gggl -> eqip -> bitm` ne rend RIEN : les huit équipements lançables déclarés par le tag de
+globals ne référencent aucun bitmap. Ce qui a marché est un balayage : chercher dans les
+58 604 `bitm` du jeu la SIGNATURE d'un atlas d'interface — un tag petit (il ne porte que des
+descripteurs) déclarant plusieurs images de tailles TOUTES différentes. 8 candidats sur les
+2 104 tags dans la borne, dont **`0302cad3`, 88 images** : armes vues de plus loin, véhicules,
+**grenades lancées (index ~46, l'arc de trajectoire)** et pictogrammes de mort. Les deux
+autres candidats sont un jeu d'emblèmes d'équipe et un atlas de police.
+
+**L'appariement image <-> ressource devait être durci, et c'est la vraie leçon.** Le rang seul
+(ressource[base+i] pour le descripteur i) tient sur l'atlas des armes mais DÉRIVE sur le
+sandbox après 41 images : le recensement des descripteurs est heuristique et laisse passer des
+faux positifs qui décalent tout ce qui suit. Trois versions ont été nécessaires :
+
+1. contrôle arithmétique strict (poids = chaîne de mips exacte) : répare le sandbox (75) mais
+   **fait perdre 9 des 39 icônes d'armes** — d'autres entrées stockent une chaîne plus courte ;
+2. contrôle sur toute troncature de la chaîne (toujours une égalité stricte, pas une
+   tolérance) : 31 armes seulement, insuffisant ;
+3. retenu — le rang reste le point de départ, le contrôle sert à SE RECALER (sonde courte vers
+   l'avant), et le repli par rang n'est accepté que si la ressource peut au moins contenir le
+   mip0. Un descripteur qui échoue à ce test est écarté **sans consommer de ressource**, donc
+   sans décaler ses suivants. Résultat : **40 armes** (une de plus qu'avant) et **73 sandbox**.
+
+**Une mesure qui n'a PAS marché, et qui est écartée plutôt que gardée « au cas où ».** Pour
+couper automatiquement la queue corrompue du sandbox, j'ai mesuré la densité de transitions
+d'opacité par pixel. Elle ne sépare pas : l'icône d'explosion (légitime, hérissée) sort en tête
+à 0,1437 quand les images réellement corrompues sont en dessous. La coupe est donc MANUELLE et
+bornée dans le code (73 sur 88 déclarées), avec sa justification écrite — pas un seuil qui
+donnerait l'illusion d'un critère.
+
+**La page de nommage.** `.ai/V7.5/icones/NOMMAGE_ICONES.html` remplace la page en lecture :
+une carte par icône (les deux styles côte à côte pour l'atlas des armes, un seul nom à donner
+par index), une liste déroulante des 29 armes du registre plus les catégories hors registre
+(objectif, véhicule, tourelle, pictogramme, équipement), un champ libre, **sauvegarde
+automatique en localStorage**, filtre « à nommer seulement », signalement des doublons
+d'attribution, table des armes du registre encore sans icône, et export TSV (copie ou
+téléchargement). C'est ce bloc TSV qui servira à écrire `weaponImageFiles`.
+
+**Ce que je retire**, parce que ça ne sert plus et que le garder ferait diverger deux pages sur
+les mêmes images : `REVUE_ICONES_ARMES.html` et sa planche de contrôle des paires. Mes
+propositions de nom disparaissent avec — elles étaient majoritairement « à valider » et la page
+interactive fait mieux.
+
+**Décompte** : 40 contour + 40 silhouette + 73 sandbox = **153 PNG**, 957 Ko, sous
+`static/weapons-assets/halo_infinite/jeu/` + `index.json` (tag source, dimensions, drapeau
+d'appariement vérifié, taux de repli BC7).
+
+**Reste ouvert** : 15 images déclarées par l'atlas sandbox (73 sur 88) ne sont pas servies ;
+les 55 armes Halo 5 ne sont pas couvertes (jeu non installé, format différent — la voie est
+l'API de métadonnées officielle H5).
+
+**Gates joués** : `go build ./...` vert, `golangci-lint run ./cmd/weapon-icons-build/...`
+0 issue, `go test ./internal/archlint/...` vert, `node --check` sur le script de la page.
+`extract.go` dépassait 500 lignes après ces ajouts : scindé en `align.go` (l'appariement, là
+où le risque d'erreur silencieuse est le plus élevé) et `extract.go`.
+
+**Conclusion / prochaine étape** : ouvrir `.ai/V7.5/icones/NOMMAGE_ICONES.html`, nommer, puis
+me remettre le bloc TSV — c'est lui qui débloque l'écriture de la table de correspondance et
+l'intégration web.
+
 ## [2026-08-08] v7.5 voie C — les icones d'armes du jeu, extraites ; le NOM, lui, reste au gate humain
 
 **Statut** : Complété pour la phase d'extraction. Branche `feat/v75-icones`, worktree
