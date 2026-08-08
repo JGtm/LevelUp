@@ -8,11 +8,14 @@
 //     vaut 1 point : la courbe EST le score. Quand elle existe elle PRIME, et le
 //     chemin historique n'est alors pas consulté (ne pas mélanger deux sources).
 //     Les modes zone/hill/skull en sont exclus : leur score vient de ticks, pas
-//     d'un compte d'events — on ne fabrique pas de fausse courbe. Leur score
-//     over-time EST décodé (internal/analysis/objectivescore, Strongholds/KOTH)
-//     mais n'est produit que par cmd/diag_weapons_v3 vers
-//     match_objective_score_timeline : le brancher ici suppose de le peupler en
-//     live d'abord — ne pas le réimplémenter.
+//     d'un compte d'events — on ne fabrique pas de fausse courbe. Il n'existe
+//     plus de décodeur dédié à leur score over-time : analysis/objectivescore a
+//     été SUPPRIMÉ le 2026-08-08 (v7.5 lot 3), sa courbe Strongholds n'étant pas
+//     un score per-équipe — mesuré sur films réels, la valeur brute plafonnait
+//     quel que soit le final, et ne « retombait dessus » que par calibration.
+//     Le seul pont possible pour ces modes passe donc par la source
+//     ÉVÉNEMENTIELLE (analysis/objectiveevents), une fois qu'elle sera peuplée
+//     en live — pas par un décodeur de score à réimplémenter.
 //  2. Chemin HISTORIQUE sinon, y compris pour un mode à objectif sans courbe.
 //     Dans l'ordre : DOMINATION si la médaille Steaktacular (ID 1169390319) est
 //     gagnée par mon équipe ; HUMILIATION si elle l'est par l'équipe adverse ;
