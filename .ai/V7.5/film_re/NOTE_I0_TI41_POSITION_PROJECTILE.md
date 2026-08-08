@@ -299,3 +299,60 @@ incomplet », cascading-desync).
   un record delta ne porte pas de typeIndex : le compter exige le binding World du décodeur
   stateful. **`i0` exact est nécessaire, pas suffisant** — c'est un chantier de décodeur, pas un
   correctif de composant (§6).
+
+---
+
+## 7. T1' — LE FLUX DELTA REND DES TRAJECTOIRES, ET §6 ÉTAIT FAUX
+
+> **CORRECTION DE §6, sur objection de l'utilisateur (« le binding World est normalement déjà
+> décodé »).** J'y concluais que la voie dépendait d'un binding World non résolu, en citant
+> `README_KILLWEAPON_INDEX.md` §0bis — **un document du 13 juin qui précède la résolution du
+> chantier**. C'est la deuxième fois dans la journée que je conclus sur une source périmée.
+> Vérification sur pièces : `filmdec` porte `DecodeFrameRecords`, `DecodeFrameInfer`,
+> `TryDeltaAt`, `ScanFrameTargets`, `DecodeFrameViews`, `DecodeFrameResync`, et `killsource` les
+> pilote en production. **Le binding fonctionne.**
+
+Outil : `apps/go-api/cmd/tmp_ti41d`. Tout est réutilisé — `ParseRegistryChunk`,
+`WalkKeyframeWorld` + `World.BindFull` (même règle que `killsource`), et **`DecodeFrameInfer`,
+qui INFÈRE l'archétype des entités transitoires absentes du binding** : exactement le cas du
+projectile.
+
+```
+film       paquets delta   records   ti=41 records   ti=41 slots
+000d5950          30 371    37 510            543            49
+0014603f          23 381    37 851            110            60
+00162144          27 287    41 705            163            68
+00502e52          33 177    52 368            263            78
+00761d27          26 252    45 440            279            62
+008e1bba          10 989    17 016             30            21
+--------------------------------------------------------------
+6 films                              1 388 records    281 slots
+```
+
+**Ce que ça établit : ~4,9 records par entité projectile.** Ce n'est plus une apparition
+ponctuelle comme dans les keyframes (185 records / 132 slots = 1,4) — **c'est une suite de
+positions successives, c'est-à-dire une trajectoire.** La voie est vivante, et le mur que
+j'annonçais en §6 n'existe pas.
+
+**Les deux réserves, et elles sont sérieuses :**
+
+1. **C'est une BORNE INFÉRIEURE.** `DecodeFrameInfer` démarre au bit 0 du payload ; les paquets
+   portant une liste d'événements avant la boucle de records désynchronisent tôt — c'est pour
+   cela que `killsource` a un localisateur (`locateStrict` + repli), **qui n'est pas exporté**.
+   Un `ti=41` trouvé est un vrai `ti=41` ; un film à zéro ne prouverait rien.
+2. **`ti=0` domine le recensement : 119 307 records sur 6 535 slots.** C'est le seau des records
+   dont l'archétype n'est pas résolu. La marche couvre donc une fraction du flux, et 281
+   projectiles sur 6 films est à comparer aux milliers de tirs de projectile qu'ils portent.
+   **Couverture partielle, pas nulle.**
+
+**CE QUI DEVIENT LE VRAI BLOQUEUR, ET C'EST BIEN CELUI DU §2.2** : les records sortent, donc
+`i0` est consommé — mais sur la branche « plage par défaut » le port avale 59 bits opaques et
+**aucune position n'en sort**. C'est T2 (les largeurs, par profil de bascule) qui débloque la
+trajectoire, pas le binding. La note revient donc exactement là où §2.2 l'avait laissée, mais
+avec le périmètre correct : **un travail de composant, pas un chantier de décodeur.**
+- **2026-08-08 (5)** — **T1' joué, et il CORRIGE le §6.** Le binding World fonctionne (le doc que
+  je citais datait du 13 juin, avant la résolution du chantier). Sur 6 films, le flux delta rend
+  **1 388 records `ti=41` sur 281 slots — ~4,9 records par projectile, donc des trajectoires.**
+  Réserves : borne inférieure (pas de localisateur de boucle exporté), et `ti=0` domine
+  (couverture partielle). **Le bloqueur redevient T2 — les largeurs de la branche par défaut —
+  et le périmètre est celui d'un composant, pas d'un chantier de décodeur.**

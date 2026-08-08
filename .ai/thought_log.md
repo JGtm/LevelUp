@@ -1,3 +1,42 @@
+## [2026-08-08] filmdec i0 `ti=41` — T1' : le flux delta rend des trajectoires, et ma conclusion de la veille était fausse
+
+**Statut** : Complété. Note : `.ai/V7.5/film_re/NOTE_I0_TI41_POSITION_PROJECTILE.md` §7.
+Branche `research/v75-precision`. Rien de porté dans `traverse.go`.
+
+**Correction, sur objection de l'utilisateur.** J'avais conclu (§6) que la voie trajectoire
+dépendait du binding World du décodeur stateful, donc d'un chantier entier — en citant
+`README_KILLWEAPON_INDEX.md` §0bis. **Ce document date du 13 juin et précède la résolution du
+chantier killweapon.** C'est la DEUXIÈME fois dans la journée que je conclus sur une source
+périmée (la première : « les compteurs ne sont pas répliqués », démentie par une ligne de
+l'index). La mémoire du chantier dit de greper l'index avant toute piste ; il faut y ajouter
+**vérifier la DATE de ce qu'on cite, et préférer le CODE au document**.
+
+**Vérification sur pièces.** `filmdec` porte `DecodeFrameRecords`, `DecodeFrameInfer`,
+`TryDeltaAt`, `ScanFrameTargets`, `DecodeFrameViews`, `DecodeFrameResync` ; `killsource/walk.go`
+les pilote en production avec un World construit depuis les keyframes
+(`WalkKeyframeWorld` -> `BindFull`). **Le binding fonctionne.**
+
+**T1' — mesure.** Outil `cmd/tmp_ti41d`, tout réutilisé (`ParseRegistryChunk`,
+`WalkKeyframeWorld` + `BindFull`, `DecodeFrameInfer` — cette dernière **infère l'archétype des
+entités transitoires absentes du binding**, exactement le cas du projectile). Sur 6 films :
+**1 388 records `ti=41` sur 281 slots distincts**, soit **~4,9 records par entité projectile**.
+À comparer aux keyframes (185 records / 132 slots = 1,4 par entité). **Ce ne sont plus des
+apparitions ponctuelles : ce sont des suites de positions, donc des trajectoires.**
+
+**Deux réserves écrites avec le chiffre.** (1) C'est une **borne inférieure** :
+`DecodeFrameInfer` démarre au bit 0 et les paquets portant une liste d'événements
+désynchronisent tôt — le localisateur de boucle de `killsource` n'est pas exporté. Un `ti=41`
+trouvé est vrai ; un zéro ne prouverait rien. (2) **`ti=0` domine le recensement** (119 307
+records / 6 535 slots) : c'est le seau des archétypes non résolus, donc la couverture est
+partielle — 281 projectiles sur 6 films face aux milliers de tirs qu'ils portent.
+
+**Conclusion / prochaine étape.** Le bloqueur redevient exactement celui du §2.2 : sur la branche
+« plage par défaut », le port avale **59 bits opaques** et aucune position n'en sort. C'est **T2**
+(les largeurs, par profil de bascule bit à bit, méthode `DetectI0Layout` déjà éprouvée sur
+l'autre `i0`) qui débloque la trajectoire — **et le périmètre est celui d'un composant, pas d'un
+chantier de décodeur**, contrairement à ce que j'annonçais. Puis T3 (chaînage sur `i1`), puis
+seulement le portage.
+
 ## [2026-08-08] filmdec i0 `ti=41` — fin de la phase RE, T1 positif, et le vrai périmètre
 
 **Statut** : Complété pour ce que je peux conclure seul. Note :
